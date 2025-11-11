@@ -83,6 +83,42 @@ void alwan_mat3_mulv(alwan_mat3x3 const *m, alwan_vec3 const *v, alwan_vec3 *out
 void alwan_mat3_identity(alwan_mat3x3 *out);
 
 /* ----------------------------------------------------------------
+ * RGB Color Spaces
+ * ---------------------------------------------------------------- */
+
+/* RGB space descriptor with primaries, white point, and transfer function names */
+typedef struct {
+    Scalar primaries_xy[6];  /* rx, ry, gx, gy, bx, by in CIE xy chromaticity */
+    Scalar white_xy[2];       /* wx, wy in CIE xy chromaticity */
+    char const *oetf_name;    /* Optional: name of OETF (e.g., "srgb", "pq") */
+    char const *eotf_name;    /* Optional: name of EOTF (e.g., "srgb", "pq") */
+} alwan_rgb_space_desc;
+
+/* Derive RGB↔XYZ conversion matrices from primaries and white point
+ * Returns ALWAN_OK on success, ALWAN_E_RANGE if primaries/white form singular matrix */
+int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
+                               alwan_mat3x3 *rgb_to_xyz,
+                               alwan_mat3x3 *xyz_to_rgb);
+
+/* ----------------------------------------------------------------
+ * Transfer Functions (OETF/EOTF)
+ * ---------------------------------------------------------------- */
+
+/* Apply Opto-Electronic Transfer Function (linear → encoded)
+ * Supported names: "srgb"
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
+int alwan_oetf_apply(char const *name,
+                     Scalar const *linear, size_t count, size_t in_stride,
+                     Scalar *encoded, size_t out_stride);
+
+/* Apply Electro-Optical Transfer Function (encoded → linear)
+ * Supported names: "srgb"
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
+int alwan_eotf_apply(char const *name,
+                     Scalar const *encoded, size_t count, size_t in_stride,
+                     Scalar *linear, size_t out_stride);
+
+/* ----------------------------------------------------------------
  * Utility Functions
  * ---------------------------------------------------------------- */
 

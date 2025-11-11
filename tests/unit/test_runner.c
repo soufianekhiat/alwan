@@ -13,6 +13,8 @@
 extern int test_00_context_main(void);
 extern int test_01_mat3_ops_main(void);
 extern int test_02_data_embed_main(void);
+extern int test_10_rgb_matrices_main(void);
+extern int test_11_srgb_tf_main(void);
 
 /* Test registry */
 typedef struct {
@@ -24,6 +26,8 @@ static test_suite const g_test_suites[] = {
     {"00_context", test_00_context_main},
     {"01_mat3_ops", test_01_mat3_ops_main},
     {"02_data_embed", test_02_data_embed_main},
+    {"10_rgb_matrices", test_10_rgb_matrices_main},
+    {"11_srgb_tf", test_11_srgb_tf_main},
 };
 
 int main(void) {
