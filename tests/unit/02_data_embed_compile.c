@@ -51,18 +51,24 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 static int test_d65_data(void) {
-    /* Verify D65 white point values (CIE standard) */
-    Scalar const expected_x = ALWAN_LITERAL(0.31271);
-    Scalar const expected_y = ALWAN_LITERAL(0.32902);
+    /* Verify D65 white point data loads correctly from embedded CSV */
 
-    Scalar diff_x = ALWAN_FABS(g_d65_xy[0] - expected_x);
-    Scalar diff_y = ALWAN_FABS(g_d65_xy[1] - expected_y);
+    /* Expected values from colour-science (data/d65_xy.csv) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+    static Scalar const expected_d65[] = {
+#include "../../data/d65_xy.csv"
+    };
+    ALWAN_DIAG_POP
 
-    printf("  D65 x: %f (expected %f, diff %e)\n", g_d65_xy[0], expected_x, diff_x);
-    printf("  D65 y: %f (expected %f, diff %e)\n", g_d65_xy[1], expected_y, diff_y);
+    Scalar diff_x = ALWAN_FABS(g_d65_xy[0] - expected_d65[0]);
+    Scalar diff_y = ALWAN_FABS(g_d65_xy[1] - expected_d65[1]);
 
-    TEST_ASSERT(diff_x < 1e-5, "D65 x value mismatch");
-    TEST_ASSERT(diff_y < 1e-5, "D65 y value mismatch");
+    printf("  D65 x: %.17g (diff %e)\n", g_d65_xy[0], diff_x);
+    printf("  D65 y: %.17g (diff %e)\n", g_d65_xy[1], diff_y);
+
+    TEST_ASSERT(diff_x < ALWAN_TEST_TOLERANCE, "D65 x value mismatch");
+    TEST_ASSERT(diff_y < ALWAN_TEST_TOLERANCE, "D65 y value mismatch");
 
     TEST_PASS("test_d65_data");
 }

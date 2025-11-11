@@ -52,6 +52,26 @@ alwan_ctx *alwan_create(alwan_config const *cfg);
 void alwan_destroy(alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
+ * Data Loading
+ * ---------------------------------------------------------------- */
+
+/* Get D65 illuminant data (2 values: x, y)
+ * In embedded mode: returns pointer to static data (no deallocation needed)
+ * In runtime mode: allocates memory (caller must free with alwan_data_free) */
+int alwan_data_get_d65(alwan_ctx *ctx, Scalar **data, size_t *count);
+
+/* Get D60 illuminant data (2 values: x, y) */
+int alwan_data_get_d60(alwan_ctx *ctx, Scalar **data, size_t *count);
+
+/* Get sRGB primaries (6 values: rx, ry, gx, gy, bx, by) */
+int alwan_data_get_srgb_primaries(alwan_ctx *ctx, Scalar **data, size_t *count);
+
+#if !ALWAN_EMBED_DATA
+/* Free data allocated by runtime loader (no-op in embedded mode) */
+void alwan_data_free(alwan_ctx *ctx, Scalar *data);
+#endif
+
+/* ----------------------------------------------------------------
  * Math Types
  * ---------------------------------------------------------------- */
 
@@ -127,9 +147,9 @@ static inline Scalar alwan_clamp(Scalar x, Scalar min, Scalar max) {
     return (x < min) ? min : (x > max) ? max : x;
 }
 
-/* Linear interpolation */
+/* Linear interpolation (numerically stable) */
 static inline Scalar alwan_lerp(Scalar a, Scalar b, Scalar t) {
-    return a + t * (b - a);
+    return ((Scalar)1.0 - t) * a + t * b;
 }
 
 #ifdef __cplusplus

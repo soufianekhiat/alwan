@@ -50,12 +50,19 @@ static void mat3_print(char const *name, alwan_mat3x3 const *m) {
  * ---------------------------------------------------------------- */
 
 static int test_srgb_matrices(void) {
-    /* sRGB space descriptor */
+    /* Load sRGB descriptor from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+    static Scalar const srgb_fixture[] = {
+#include "../../data/fixtures/srgb_descriptor.csv"
+    };
+    ALWAN_DIAG_POP
+
     alwan_rgb_space_desc desc = {
-        {ALWAN_LITERAL(0.64), ALWAN_LITERAL(0.33),   /* Red */
-         ALWAN_LITERAL(0.30), ALWAN_LITERAL(0.60),   /* Green */
-         ALWAN_LITERAL(0.15), ALWAN_LITERAL(0.06)},  /* Blue */
-        {ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)},  /* D65 white */
+        {srgb_fixture[0], srgb_fixture[1],   /* Red */
+         srgb_fixture[2], srgb_fixture[3],   /* Green */
+         srgb_fixture[4], srgb_fixture[5]},  /* Blue */
+        {srgb_fixture[6], srgb_fixture[7]},  /* White */
         NULL, NULL
     };
 
@@ -63,12 +70,16 @@ static int test_srgb_matrices(void) {
     int status = alwan_rgb_derive_matrices(&desc, &rgb_to_xyz, &xyz_to_rgb);
     TEST_ASSERT(status == ALWAN_OK, "Failed to derive sRGB matrices");
 
-    /* Reference RGB→XYZ matrix for sRGB (from spec) */
-    alwan_mat3x3 expected_rgb_to_xyz = {{
-        ALWAN_LITERAL(0.4124564), ALWAN_LITERAL(0.3575761), ALWAN_LITERAL(0.1804375),
-        ALWAN_LITERAL(0.2126729), ALWAN_LITERAL(0.7151522), ALWAN_LITERAL(0.0721750),
-        ALWAN_LITERAL(0.0193339), ALWAN_LITERAL(0.1191920), ALWAN_LITERAL(0.9503041)
-    }};
+    /* Load reference RGB→XYZ matrix from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+    static Scalar const expected_matrix[] = {
+#include "../../data/fixtures/srgb_rgb_to_xyz.csv"
+    };
+    ALWAN_DIAG_POP
+
+    alwan_mat3x3 expected_rgb_to_xyz;
+    memcpy(expected_rgb_to_xyz.m, expected_matrix, sizeof(expected_rgb_to_xyz.m));
 
     /* Check RGB→XYZ - use relaxed tolerance for reference comparison */
     Scalar diff = mat3_max_diff(&rgb_to_xyz, &expected_rgb_to_xyz);
@@ -91,13 +102,20 @@ static int test_srgb_matrices(void) {
 }
 
 static int test_aces_ap0_matrices(void) {
-    /* ACES2065-1 (AP0) descriptor
+    /* Load ACES AP0 descriptor from fixture
      * Note: AP0 has imaginary primaries which can cause numerical challenges */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+    static Scalar const aces_ap0_fixture[] = {
+#include "../../data/fixtures/aces_ap0_descriptor.csv"
+    };
+    ALWAN_DIAG_POP
+
     alwan_rgb_space_desc desc = {
-        {ALWAN_LITERAL(0.7347), ALWAN_LITERAL(0.2653),
-         ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0),
-         ALWAN_LITERAL(0.0001), ALWAN_LITERAL(-0.077)},
-        {ALWAN_LITERAL(0.32168), ALWAN_LITERAL(0.33767)},  /* D60 white */
+        {aces_ap0_fixture[0], aces_ap0_fixture[1],
+         aces_ap0_fixture[2], aces_ap0_fixture[3],
+         aces_ap0_fixture[4], aces_ap0_fixture[5]},
+        {aces_ap0_fixture[6], aces_ap0_fixture[7]},
         NULL, NULL
     };
 
@@ -123,12 +141,19 @@ static int test_aces_ap0_matrices(void) {
 }
 
 static int test_aces_ap1_matrices(void) {
-    /* ACEScg (AP1) descriptor */
+    /* Load ACEScg (AP1) descriptor from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+    static Scalar const aces_ap1_fixture[] = {
+#include "../../data/fixtures/aces_ap1_descriptor.csv"
+    };
+    ALWAN_DIAG_POP
+
     alwan_rgb_space_desc desc = {
-        {ALWAN_LITERAL(0.713), ALWAN_LITERAL(0.293),
-         ALWAN_LITERAL(0.165), ALWAN_LITERAL(0.830),
-         ALWAN_LITERAL(0.128), ALWAN_LITERAL(0.044)},
-        {ALWAN_LITERAL(0.32168), ALWAN_LITERAL(0.33767)},  /* D60 white */
+        {aces_ap1_fixture[0], aces_ap1_fixture[1],
+         aces_ap1_fixture[2], aces_ap1_fixture[3],
+         aces_ap1_fixture[4], aces_ap1_fixture[5]},
+        {aces_ap1_fixture[6], aces_ap1_fixture[7]},
         NULL, NULL
     };
 
@@ -148,12 +173,19 @@ static int test_aces_ap1_matrices(void) {
 }
 
 static int test_bt2020_matrices(void) {
-    /* BT.2020 descriptor */
+    /* Load BT.2020 descriptor from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+    static Scalar const bt2020_fixture[] = {
+#include "../../data/fixtures/bt2020_descriptor.csv"
+    };
+    ALWAN_DIAG_POP
+
     alwan_rgb_space_desc desc = {
-        {ALWAN_LITERAL(0.708), ALWAN_LITERAL(0.292),
-         ALWAN_LITERAL(0.170), ALWAN_LITERAL(0.797),
-         ALWAN_LITERAL(0.131), ALWAN_LITERAL(0.046)},
-        {ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)},  /* D65 white */
+        {bt2020_fixture[0], bt2020_fixture[1],
+         bt2020_fixture[2], bt2020_fixture[3],
+         bt2020_fixture[4], bt2020_fixture[5]},
+        {bt2020_fixture[6], bt2020_fixture[7]},
         NULL, NULL
     };
 
