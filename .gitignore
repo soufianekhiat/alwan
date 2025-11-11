@@ -55,3 +55,4 @@ dkms.conf
 *.dwo
 projects
 tmp
+*.sln
