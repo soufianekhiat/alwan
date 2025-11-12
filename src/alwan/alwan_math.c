@@ -24,7 +24,7 @@ void alwan_mat3_mul(alwan_mat3x3 const *a, alwan_mat3x3 const *b, alwan_mat3x3 *
 
     for (int row = 0; row < 3; row++) {
         for (int col = 0; col < 3; col++) {
-            Scalar sum = 0;
+            alwan_scalar sum = 0;
             for (int k = 0; k < 3; k++) {
                 sum += a->m[row * 3 + k] * b->m[k * 3 + col];
             }
@@ -53,7 +53,7 @@ void alwan_mat3_mulv(alwan_mat3x3 const *m, alwan_vec3 const *v, alwan_vec3 *out
 
 int alwan_mat3_inv(alwan_mat3x3 const *m, alwan_mat3x3 *out) {
     /* Create augmented matrix [M | I] */
-    Scalar aug[3][6];
+    alwan_scalar aug[3][6];
 
     /* Initialize with input matrix on left, identity on right */
     for (int row = 0; row < 3; row++) {
@@ -69,10 +69,10 @@ int alwan_mat3_inv(alwan_mat3x3 const *m, alwan_mat3x3 *out) {
     for (int col = 0; col < 3; col++) {
         /* Find pivot row */
         int pivot_row = col;
-        Scalar max_val = ALWAN_FABS(aug[col][col]);
+        alwan_scalar max_val = ALWAN_FABS(aug[col][col]);
 
         for (int row = col + 1; row < 3; row++) {
-            Scalar val = ALWAN_FABS(aug[row][col]);
+            alwan_scalar val = ALWAN_FABS(aug[row][col]);
             if (val > max_val) {
                 max_val = val;
                 pivot_row = row;
@@ -87,21 +87,21 @@ int alwan_mat3_inv(alwan_mat3x3 const *m, alwan_mat3x3 *out) {
         /* Swap rows if needed */
         if (pivot_row != col) {
             for (int k = 0; k < 6; k++) {
-                Scalar tmp = aug[col][k];
+                alwan_scalar tmp = aug[col][k];
                 aug[col][k] = aug[pivot_row][k];
                 aug[pivot_row][k] = tmp;
             }
         }
 
         /* Scale pivot row */
-        Scalar pivot = aug[col][col];
+        alwan_scalar pivot = aug[col][col];
         for (int k = 0; k < 6; k++) {
             aug[col][k] /= pivot;
         }
 
         /* Eliminate column in rows below */
         for (int row = col + 1; row < 3; row++) {
-            Scalar factor = aug[row][col];
+            alwan_scalar factor = aug[row][col];
             for (int k = 0; k < 6; k++) {
                 aug[row][k] -= factor * aug[col][k];
             }
@@ -111,7 +111,7 @@ int alwan_mat3_inv(alwan_mat3x3 const *m, alwan_mat3x3 *out) {
     /* Back substitution */
     for (int col = 2; col >= 0; col--) {
         for (int row = col - 1; row >= 0; row--) {
-            Scalar factor = aug[row][col];
+            alwan_scalar factor = aug[row][col];
             for (int k = 0; k < 6; k++) {
                 aug[row][k] -= factor * aug[col][k];
             }

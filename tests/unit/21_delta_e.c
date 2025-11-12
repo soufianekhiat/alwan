@@ -6,8 +6,8 @@
  * Test 21: Color difference (ΔE) metrics
  */
 
-#include "../../src/alwan/alwan.h"
-#include "../../src/alwan/alwan_internal.h"
+#include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,31 +36,31 @@ static int test_delta_e_76(void) {
     /* Load Lab test pairs and expected ΔE76 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const lab1_data[] = {
-#include "../../data/fixtures/delta_e_lab1.csv"
+    static alwan_scalar const lab1_data[] = {
+#include "data/fixtures/delta_e_lab1.csv"
     };
-    static Scalar const lab2_data[] = {
-#include "../../data/fixtures/delta_e_lab2.csv"
+    static alwan_scalar const lab2_data[] = {
+#include "data/fixtures/delta_e_lab2.csv"
     };
-    static Scalar const de76_data[] = {
-#include "../../data/fixtures/delta_e_76.csv"
+    static alwan_scalar const de76_data[] = {
+#include "data/fixtures/delta_e_76.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab1_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(1e-6);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-12);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 lab1 = {{lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]}};
         alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
-        Scalar expected = de76_data[i];
+        alwan_scalar expected = de76_data[i];
 
-        Scalar result = alwan_delta_e_76(&lab1, &lab2);
-        Scalar diff = ALWAN_FABS(result - expected);
+        alwan_scalar result = alwan_delta_e_76(&lab1, &lab2);
+        alwan_scalar diff = ALWAN_FABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "ΔE*76 mismatch");
     }
@@ -72,31 +72,31 @@ static int test_delta_e_94(void) {
     /* Load Lab test pairs and expected ΔE94 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const lab1_data[] = {
-#include "../../data/fixtures/delta_e_lab1.csv"
+    static alwan_scalar const lab1_data[] = {
+#include "data/fixtures/delta_e_lab1.csv"
     };
-    static Scalar const lab2_data[] = {
-#include "../../data/fixtures/delta_e_lab2.csv"
+    static alwan_scalar const lab2_data[] = {
+#include "data/fixtures/delta_e_lab2.csv"
     };
-    static Scalar const de94_data[] = {
-#include "../../data/fixtures/delta_e_94.csv"
+    static alwan_scalar const de94_data[] = {
+#include "data/fixtures/delta_e_94.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab1_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(1e-6);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-12);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 lab1 = {{lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]}};
         alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
-        Scalar expected = de94_data[i];
+        alwan_scalar expected = de94_data[i];
 
-        Scalar result = alwan_delta_e_94(&lab1, &lab2);
-        Scalar diff = ALWAN_FABS(result - expected);
+        alwan_scalar result = alwan_delta_e_94(&lab1, &lab2);
+        alwan_scalar diff = ALWAN_FABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "ΔE*94 mismatch");
     }
@@ -108,32 +108,32 @@ static int test_delta_e_cmc(void) {
     /* Load Lab test pairs and expected ΔE CMC values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const lab1_data[] = {
-#include "../../data/fixtures/delta_e_lab1.csv"
+    static alwan_scalar const lab1_data[] = {
+#include "data/fixtures/delta_e_lab1.csv"
     };
-    static Scalar const lab2_data[] = {
-#include "../../data/fixtures/delta_e_lab2.csv"
+    static alwan_scalar const lab2_data[] = {
+#include "data/fixtures/delta_e_lab2.csv"
     };
-    static Scalar const de_cmc_data[] = {
-#include "../../data/fixtures/delta_e_cmc.csv"
+    static alwan_scalar const de_cmc_data[] = {
+#include "data/fixtures/delta_e_cmc.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab1_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(1e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-12);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 lab1 = {{lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]}};
         alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
-        Scalar expected = de_cmc_data[i];
+        alwan_scalar expected = de_cmc_data[i];
 
         /* Use default l=2, c=1 (acceptability) */
-        Scalar result = alwan_delta_e_cmc(&lab1, &lab2, ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0));
-        Scalar diff = ALWAN_FABS(result - expected);
+        alwan_scalar result = alwan_delta_e_cmc(&lab1, &lab2, ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0));
+        alwan_scalar diff = ALWAN_FABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "ΔE CMC(2:1) mismatch");
     }
@@ -145,31 +145,31 @@ static int test_delta_e_2000(void) {
     /* Load Lab test pairs and expected ΔE2000 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const lab1_data[] = {
-#include "../../data/fixtures/delta_e_lab1.csv"
+    static alwan_scalar const lab1_data[] = {
+#include "data/fixtures/delta_e_lab1.csv"
     };
-    static Scalar const lab2_data[] = {
-#include "../../data/fixtures/delta_e_lab2.csv"
+    static alwan_scalar const lab2_data[] = {
+#include "data/fixtures/delta_e_lab2.csv"
     };
-    static Scalar const de2000_data[] = {
-#include "../../data/fixtures/delta_e_2000.csv"
+    static alwan_scalar const de2000_data[] = {
+#include "data/fixtures/delta_e_2000.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab1_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(1e-6);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-12);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 lab1 = {{lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]}};
         alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
-        Scalar expected = de2000_data[i];
+        alwan_scalar expected = de2000_data[i];
 
-        Scalar result = alwan_delta_e_2000(&lab1, &lab2);
-        Scalar diff = ALWAN_FABS(result - expected);
+        alwan_scalar result = alwan_delta_e_2000(&lab1, &lab2);
+        alwan_scalar diff = ALWAN_FABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "ΔE*00 mismatch");
     }

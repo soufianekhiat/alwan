@@ -3,11 +3,11 @@
  * Copyright (c) 2025 Alwan Contributors
  * SPDX-License-Identifier: MIT
  *
- * Test 50: Spectral Power Distributions (SPD → XYZ)
+ * Test 50: Spectral Power Distributions (SPD -> XYZ)
  */
 
-#include "../../src/alwan/alwan.h"
-#include "../../src/alwan/alwan_internal.h"
+#include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,7 +106,7 @@ static int test_spd_resampling(void) {
 
     /* Fill with simple ramp */
     for (size_t i = 0; i < src.count; i++) {
-        src.values[i] = (Scalar)i / (Scalar)(src.count - 1);
+        src.values[i] = (alwan_scalar)i / (alwan_scalar)(src.count - 1);
     }
 
     /* Resample to 420-680nm, 5nm steps (linear) */
@@ -186,9 +186,9 @@ static int test_xyz_from_constant_spd(void) {
     TEST_ASSERT(xyz_simp.v[2] > ALWAN_LITERAL(0.0), "Z (Simpson) should be positive");
 
     /* Both methods should give similar results (within 10%) */
-    Scalar diff_X = ALWAN_FABS(xyz_trap.v[0] - xyz_simp.v[0]) / xyz_trap.v[0];
-    Scalar diff_Y = ALWAN_FABS(xyz_trap.v[1] - xyz_simp.v[1]) / xyz_trap.v[1];
-    Scalar diff_Z = ALWAN_FABS(xyz_trap.v[2] - xyz_simp.v[2]) / xyz_trap.v[2];
+    alwan_scalar diff_X = ALWAN_FABS(xyz_trap.v[0] - xyz_simp.v[0]) / xyz_trap.v[0];
+    alwan_scalar diff_Y = ALWAN_FABS(xyz_trap.v[1] - xyz_simp.v[1]) / xyz_trap.v[1];
+    alwan_scalar diff_Z = ALWAN_FABS(xyz_trap.v[2] - xyz_simp.v[2]) / xyz_trap.v[2];
 
     TEST_ASSERT(diff_X < ALWAN_LITERAL(0.1), "X values differ too much between methods");
     TEST_ASSERT(diff_Y < ALWAN_LITERAL(0.1), "Y values differ too much between methods");

@@ -184,7 +184,7 @@ os.makedirs('data/fixtures', exist_ok=True)
 
 # Test fixture: sRGB descriptor (primaries + white point)
 srgb = colour.RGB_COLOURSPACES['sRGB']
-with open('data/fixtures/srgb_descriptor.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/srgb_descriptor.csv', 'w', newline='') as f:
     values = [
         format_scalar(srgb.primaries[0][0]), format_scalar(srgb.primaries[0][1]),
         format_scalar(srgb.primaries[1][0]), format_scalar(srgb.primaries[1][1]),
@@ -198,7 +198,7 @@ print(f"  data/fixtures/srgb_descriptor.csv")
 try:
     import numpy as np
     rgb_to_xyz = srgb.matrix_RGB_to_XYZ
-    with open('data/fixtures/srgb_rgb_to_xyz.csv', 'w', newline='') as f:
+    with open('src/alwan/data/fixtures/srgb_rgb_to_xyz.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in rgb_to_xyz.flatten()]
         f.write(','.join(values) + '\n')
     print(f"  data/fixtures/srgb_rgb_to_xyz.csv")
@@ -207,7 +207,7 @@ except Exception as e:
 
 # Test fixture: BT.2020 descriptor
 bt2020 = colour.RGB_COLOURSPACES['ITU-R BT.2020']
-with open('data/fixtures/bt2020_descriptor.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/bt2020_descriptor.csv', 'w', newline='') as f:
     values = [
         format_scalar(bt2020.primaries[0][0]), format_scalar(bt2020.primaries[0][1]),
         format_scalar(bt2020.primaries[1][0]), format_scalar(bt2020.primaries[1][1]),
@@ -219,7 +219,7 @@ print(f"  data/fixtures/bt2020_descriptor.csv")
 
 # Test fixture: ACES AP0 descriptor
 aces_ap0 = colour.RGB_COLOURSPACES['ACES2065-1']
-with open('data/fixtures/aces_ap0_descriptor.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/aces_ap0_descriptor.csv', 'w', newline='') as f:
     values = [
         format_scalar(aces_ap0.primaries[0][0]), format_scalar(aces_ap0.primaries[0][1]),
         format_scalar(aces_ap0.primaries[1][0]), format_scalar(aces_ap0.primaries[1][1]),
@@ -231,7 +231,7 @@ print(f"  data/fixtures/aces_ap0_descriptor.csv")
 
 # Test fixture: ACES AP1 descriptor
 aces_ap1 = colour.RGB_COLOURSPACES['ACEScg']
-with open('data/fixtures/aces_ap1_descriptor.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/aces_ap1_descriptor.csv', 'w', newline='') as f:
     values = [
         format_scalar(aces_ap1.primaries[0][0]), format_scalar(aces_ap1.primaries[0][1]),
         format_scalar(aces_ap1.primaries[1][0]), format_scalar(aces_ap1.primaries[1][1]),
@@ -261,7 +261,7 @@ test_xyz_values = [
 ]
 
 # Flatten XYZ values to single line
-with open('data/fixtures/xyz_values.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/xyz_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         all_values.extend([format_scalar(v) for v in xyz])
@@ -269,7 +269,7 @@ with open('data/fixtures/xyz_values.csv', 'w', newline='') as f:
 print(f"  data/fixtures/xyz_values.csv")
 
 # Compute corresponding xyY values and flatten to single line
-with open('data/fixtures/xyy_values.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/xyy_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         xyy = colour.XYZ_to_xyY(xyz)
@@ -278,7 +278,7 @@ with open('data/fixtures/xyy_values.csv', 'w', newline='') as f:
 print(f"  data/fixtures/xyy_values.csv")
 
 # Test case 2: XYZ ↔ Lab (D65 white point)
-with open('data/fixtures/lab_d65_values.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/lab_d65_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         lab = colour.XYZ_to_Lab(xyz, illuminant=d65)
@@ -287,7 +287,7 @@ with open('data/fixtures/lab_d65_values.csv', 'w', newline='') as f:
 print(f"  data/fixtures/lab_d65_values.csv")
 
 # Test case 3: XYZ ↔ Lab (D50 white point)
-with open('data/fixtures/lab_d50_values.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/lab_d50_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         lab = colour.XYZ_to_Lab(xyz, illuminant=d50)
@@ -296,7 +296,7 @@ with open('data/fixtures/lab_d50_values.csv', 'w', newline='') as f:
 print(f"  data/fixtures/lab_d50_values.csv")
 
 # Test case 4: XYZ ↔ Luv (D65 white point)
-with open('data/fixtures/luv_d65_values.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/luv_d65_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         luv = colour.XYZ_to_Luv(xyz, illuminant=d65)
@@ -311,14 +311,14 @@ test_lab_values = [
     [25.0, 0.0, 0.0],
 ]
 
-with open('data/fixtures/lab_for_lch.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/lab_for_lch.csv', 'w', newline='') as f:
     all_values = []
     for lab in test_lab_values:
         all_values.extend([format_scalar(v) for v in lab])
     f.write(','.join(all_values) + '\n')
 print(f"  data/fixtures/lab_for_lch.csv")
 
-with open('data/fixtures/lch_values.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/lch_values.csv', 'w', newline='') as f:
     all_values = []
     for lab in test_lab_values:
         lch = colour.Lab_to_LCHab(lab)
@@ -333,14 +333,14 @@ test_luv_values = [
     [25.0, 0.0, 0.0],
 ]
 
-with open('data/fixtures/luv_for_lchuv.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/luv_for_lchuv.csv', 'w', newline='') as f:
     all_values = []
     for luv in test_luv_values:
         all_values.extend([format_scalar(v) for v in luv])
     f.write(','.join(all_values) + '\n')
 print(f"  data/fixtures/luv_for_lchuv.csv")
 
-with open('data/fixtures/lchuv_values.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/lchuv_values.csv', 'w', newline='') as f:
     all_values = []
     for luv in test_luv_values:
         lchuv = colour.Luv_to_LCHuv(luv)
@@ -366,14 +366,14 @@ delta_e_test_pairs = [
 ]
 
 # Store Lab pairs (flatten to single line)
-with open('data/fixtures/delta_e_lab1.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/delta_e_lab1.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         all_values.extend([format_scalar(v) for v in lab1])
     f.write(','.join(all_values) + '\n')
 print(f"  data/fixtures/delta_e_lab1.csv")
 
-with open('data/fixtures/delta_e_lab2.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/delta_e_lab2.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         all_values.extend([format_scalar(v) for v in lab2])
@@ -381,7 +381,7 @@ with open('data/fixtures/delta_e_lab2.csv', 'w', newline='') as f:
 print(f"  data/fixtures/delta_e_lab2.csv")
 
 # Compute ΔE76 (flatten to single line)
-with open('data/fixtures/delta_e_76.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/delta_e_76.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         # ΔE76 is Euclidean distance in Lab space
@@ -394,7 +394,7 @@ with open('data/fixtures/delta_e_76.csv', 'w', newline='') as f:
 print(f"  data/fixtures/delta_e_76.csv")
 
 # Compute ΔE94 (flatten to single line)
-with open('data/fixtures/delta_e_94.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/delta_e_94.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         de94 = colour.difference.delta_E_CIE1994(np.array(lab1), np.array(lab2))
@@ -403,7 +403,7 @@ with open('data/fixtures/delta_e_94.csv', 'w', newline='') as f:
 print(f"  data/fixtures/delta_e_94.csv")
 
 # Compute ΔE CMC(2:1) - acceptability (flatten to single line)
-with open('data/fixtures/delta_e_cmc.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/delta_e_cmc.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         de_cmc = colour.difference.delta_E_CMC(np.array(lab1), np.array(lab2), l=2, c=1)
@@ -412,7 +412,7 @@ with open('data/fixtures/delta_e_cmc.csv', 'w', newline='') as f:
 print(f"  data/fixtures/delta_e_cmc.csv")
 
 # Compute ΔE2000 (flatten to single line)
-with open('data/fixtures/delta_e_2000.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/delta_e_2000.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         de2000 = colour.difference.delta_E_CIE2000(np.array(lab1), np.array(lab2))
@@ -421,11 +421,11 @@ with open('data/fixtures/delta_e_2000.csv', 'w', newline='') as f:
 print(f"  data/fixtures/delta_e_2000.csv")
 
 # Store D65 and D50 white points in XYZ for tests
-with open('data/fixtures/d65_xyz.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/d65_xyz.csv', 'w', newline='') as f:
     f.write(','.join([format_scalar(v) for v in d65_xyz]) + '\n')
 print(f"  data/fixtures/d65_xyz.csv")
 
-with open('data/fixtures/d50_xyz.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/d50_xyz.csv', 'w', newline='') as f:
     f.write(','.join([format_scalar(v) for v in d50_xyz]) + '\n')
 print(f"  data/fixtures/d50_xyz.csv")
 
@@ -500,7 +500,7 @@ test_xyz_colors = [
 ]
 
 # Store test colors
-with open('data/fixtures/test_xyz_colors.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/test_xyz_colors.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_colors:
         all_values.extend([format_scalar(v) for v in xyz])
@@ -515,7 +515,7 @@ for xyz in test_xyz_colors:
     )
     adapted_colors.append(adapted)
 
-with open('data/fixtures/adapted_d65_to_d50_bradford.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/adapted_d65_to_d50_bradford.csv', 'w', newline='') as f:
     all_values = []
     for xyz in adapted_colors:
         all_values.extend([format_scalar(v) for v in xyz])
@@ -530,7 +530,7 @@ for xyz in test_xyz_colors:
     )
     adapted_colors_a.append(adapted)
 
-with open('data/fixtures/adapted_a_to_d65_bradford.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/adapted_a_to_d65_bradford.csv', 'w', newline='') as f:
     all_values = []
     for xyz in adapted_colors_a:
         all_values.extend([format_scalar(v) for v in xyz])
@@ -551,9 +551,18 @@ L_A = 64.0             # Adapting luminance
 Y_b = 20.0             # Background luminance
 surround = colour.VIEWING_CONDITIONS_CIECAM02['Average']
 
+# Write viewing conditions to fixture for use in tests
+with open('src/alwan/data/fixtures/cam_viewing_conditions.csv', 'w', newline='') as f:
+    # XYZ_w (3 values), L_A (1 value), Y_b (1 value)
+    values = [format_scalar(v) for v in XYZ_w]
+    values.extend([format_scalar(L_A), format_scalar(Y_b)])
+    f.write(','.join(values) + '\n')
+print(f"  data/fixtures/cam_viewing_conditions.csv (XYZ_w, L_A, Y_b)")
+
 # Test XYZ colors for CIECAM02
+# Use exact computed XYZ_w for white point to ensure J=100
 ciecam02_test_xyz = [
-    [95.047, 100.0, 108.883],     # D65 white
+    list(XYZ_w),                   # D65 white (exact match to XYZ_w)
     [50.0, 50.0, 50.0],            # Mid-gray
     [41.2456, 21.2673, 1.9334],    # sRGB red (D65, Y=100 scale)
     [35.7576, 71.5152, 11.9192],   # sRGB green
@@ -571,7 +580,7 @@ for xyz in ciecam02_test_xyz:
     ciecam02_correlates.append([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s, spec.H])
 
 # Write test XYZ colors
-with open('data/fixtures/ciecam02_xyz_input.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/ciecam02_xyz_input.csv', 'w', newline='') as f:
     all_values = []
     for xyz in ciecam02_test_xyz:
         all_values.extend([format_scalar(v) for v in xyz])
@@ -579,7 +588,7 @@ with open('data/fixtures/ciecam02_xyz_input.csv', 'w', newline='') as f:
 print(f"  data/fixtures/ciecam02_xyz_input.csv ({len(ciecam02_test_xyz)} colors)")
 
 # Write CIECAM02 correlates (J, C, h, Q, M, s, H for each color)
-with open('data/fixtures/ciecam02_correlates.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/ciecam02_correlates.csv', 'w', newline='') as f:
     all_values = []
     for corr in ciecam02_correlates:
         all_values.extend([format_scalar(v) for v in corr])
@@ -596,12 +605,70 @@ for corr in ciecam02_correlates:
     ciecam02_xyz_reconstructed.append(xyz_recon)
 
 # Write reconstructed XYZ (should match input within numerical tolerance)
-with open('data/fixtures/ciecam02_xyz_reconstructed.csv', 'w', newline='') as f:
+with open('src/alwan/data/fixtures/ciecam02_xyz_reconstructed.csv', 'w', newline='') as f:
     all_values = []
     for xyz in ciecam02_xyz_reconstructed:
         all_values.extend([format_scalar(v) for v in xyz])
     f.write(','.join(all_values) + '\n')
 print(f"  data/fixtures/ciecam02_xyz_reconstructed.csv ({len(ciecam02_xyz_reconstructed)} colors)")
+
+# ================================================================
+# M8: CAM16 Test Fixtures
+# ================================================================
+print("\nGenerating CAM16 test fixtures...")
+
+# Use same viewing conditions as CIECAM02 for consistency
+# Compute CAM16 correlates for test colors
+cam16_correlates = []
+for xyz in ciecam02_test_xyz:
+    xyz_arr = np.array(xyz)
+    spec = colour.XYZ_to_CAM16(xyz_arr, XYZ_w, L_A, Y_b, surround)
+    # Store J, C, h, Q, M, s, H
+    cam16_correlates.append([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s, spec.H])
+
+# Write CAM16 correlates (J, C, h, Q, M, s, H for each color)
+with open('src/alwan/data/fixtures/cam16_correlates.csv', 'w', newline='') as f:
+    all_values = []
+    for corr in cam16_correlates:
+        all_values.extend([format_scalar(v) for v in corr])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/cam16_correlates.csv ({len(cam16_correlates)} colors)")
+
+# Test inverse: correlates -> XYZ
+cam16_xyz_reconstructed = []
+for corr in cam16_correlates:
+    # Create specification from J, C, h
+    spec = colour.CAM_Specification_CAM16(J=corr[0], C=corr[1], h=corr[2])
+    xyz_recon = colour.CAM16_to_XYZ(spec, XYZ_w, L_A, Y_b, surround)
+    cam16_xyz_reconstructed.append(xyz_recon)
+
+# Write reconstructed XYZ
+with open('src/alwan/data/fixtures/cam16_xyz_reconstructed.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in cam16_xyz_reconstructed:
+        all_values.extend([format_scalar(v) for v in xyz])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/cam16_xyz_reconstructed.csv ({len(cam16_xyz_reconstructed)} colors)")
+
+# Test CAM16-UCS transform
+cam16_ucs_jab = []
+for corr in cam16_correlates:
+    # Convert J, M, h to CAM16-UCS Jab
+    J_prime = 1.7 * corr[0] / (1.0 + 0.007 * corr[0])
+    M = corr[4]  # Colorfulness
+    M_prime = (1.0 / 0.0228) * np.log(1.0 + 0.0228 * M)
+    h_rad = np.radians(corr[2])
+    a_prime = M_prime * np.cos(h_rad)
+    b_prime = M_prime * np.sin(h_rad)
+    cam16_ucs_jab.append([J_prime, a_prime, b_prime])
+
+# Write CAM16-UCS Jab coordinates
+with open('src/alwan/data/fixtures/cam16_ucs_jab.csv', 'w', newline='') as f:
+    all_values = []
+    for jab in cam16_ucs_jab:
+        all_values.extend([format_scalar(v) for v in jab])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/cam16_ucs_jab.csv ({len(cam16_ucs_jab)} colors)")
 
 # ================================================================
 # M5: Spectral Data - Color Matching Functions (CMFs)
@@ -630,17 +697,17 @@ y_bar_filtered = y_bar_vals[mask]
 z_bar_filtered = z_bar_vals[mask]
 
 # Write CMF data (one value per line for easier C parsing)
-with open('data/cmf/cie_1931_2deg_x_360_830_1nm.csv', 'w', newline='') as f:
+with open('src/alwan/data/cmf/cie_1931_2deg_x_360_830_1nm.csv', 'w', newline='') as f:
     values = [format_scalar(v) for v in x_bar_filtered]
     f.write(','.join(values) + '\n')
 print(f"  data/cmf/cie_1931_2deg_x_360_830_1nm.csv ({len(x_bar_filtered)} samples)")
 
-with open('data/cmf/cie_1931_2deg_y_360_830_1nm.csv', 'w', newline='') as f:
+with open('src/alwan/data/cmf/cie_1931_2deg_y_360_830_1nm.csv', 'w', newline='') as f:
     values = [format_scalar(v) for v in y_bar_filtered]
     f.write(','.join(values) + '\n')
 print(f"  data/cmf/cie_1931_2deg_y_360_830_1nm.csv ({len(y_bar_filtered)} samples)")
 
-with open('data/cmf/cie_1931_2deg_z_360_830_1nm.csv', 'w', newline='') as f:
+with open('src/alwan/data/cmf/cie_1931_2deg_z_360_830_1nm.csv', 'w', newline='') as f:
     values = [format_scalar(v) for v in z_bar_filtered]
     f.write(','.join(values) + '\n')
 print(f"  data/cmf/cie_1931_2deg_z_360_830_1nm.csv ({len(z_bar_filtered)} samples)")
@@ -659,17 +726,17 @@ try:
     y_bar_1964_filtered = y_bar_1964[mask_1964]
     z_bar_1964_filtered = z_bar_1964[mask_1964]
 
-    with open('data/cmf/cie_1964_10deg_x_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_1964_10deg_x_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in x_bar_1964_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_1964_10deg_x_360_830_1nm.csv ({len(x_bar_1964_filtered)} samples)")
 
-    with open('data/cmf/cie_1964_10deg_y_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_1964_10deg_y_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in y_bar_1964_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_1964_10deg_y_360_830_1nm.csv ({len(y_bar_1964_filtered)} samples)")
 
-    with open('data/cmf/cie_1964_10deg_z_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_1964_10deg_z_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in z_bar_1964_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_1964_10deg_z_360_830_1nm.csv ({len(z_bar_1964_filtered)} samples)")
@@ -691,17 +758,17 @@ try:
     y_bar_2012_2_filtered = y_bar_2012_2[mask_2012_2]
     z_bar_2012_2_filtered = z_bar_2012_2[mask_2012_2]
 
-    with open('data/cmf/cie_2012_2deg_x_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_2012_2deg_x_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in x_bar_2012_2_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_2012_2deg_x_360_830_1nm.csv ({len(x_bar_2012_2_filtered)} samples)")
 
-    with open('data/cmf/cie_2012_2deg_y_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_2012_2deg_y_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in y_bar_2012_2_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_2012_2deg_y_360_830_1nm.csv ({len(y_bar_2012_2_filtered)} samples)")
 
-    with open('data/cmf/cie_2012_2deg_z_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_2012_2deg_z_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in z_bar_2012_2_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_2012_2deg_z_360_830_1nm.csv ({len(z_bar_2012_2_filtered)} samples)")
@@ -722,17 +789,17 @@ try:
     y_bar_2012_10_filtered = y_bar_2012_10[mask_2012_10]
     z_bar_2012_10_filtered = z_bar_2012_10[mask_2012_10]
 
-    with open('data/cmf/cie_2012_10deg_x_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_2012_10deg_x_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in x_bar_2012_10_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_2012_10deg_x_360_830_1nm.csv ({len(x_bar_2012_10_filtered)} samples)")
 
-    with open('data/cmf/cie_2012_10deg_y_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_2012_10deg_y_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in y_bar_2012_10_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_2012_10deg_y_360_830_1nm.csv ({len(y_bar_2012_10_filtered)} samples)")
 
-    with open('data/cmf/cie_2012_10deg_z_360_830_1nm.csv', 'w', newline='') as f:
+    with open('src/alwan/data/cmf/cie_2012_10deg_z_360_830_1nm.csv', 'w', newline='') as f:
         values = [format_scalar(v) for v in z_bar_2012_10_filtered]
         f.write(','.join(values) + '\n')
     print(f"  data/cmf/cie_2012_10deg_z_360_830_1nm.csv ({len(z_bar_2012_10_filtered)} samples)")

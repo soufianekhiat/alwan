@@ -6,8 +6,8 @@
  * Test 31: Chromatic Adaptation round-trip tests
  */
 
-#include "../../src/alwan/alwan.h"
-#include "../../src/alwan/alwan_internal.h"
+#include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,10 +28,10 @@
     return 0; \
 } while(0)
 
-static Scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
-    Scalar max_diff = 0;
+static alwan_scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
+    alwan_scalar max_diff = 0;
     for (int i = 0; i < 3; i++) {
-        Scalar diff = ALWAN_FABS(a->v[i] - b->v[i]);
+        alwan_scalar diff = ALWAN_FABS(a->v[i] - b->v[i]);
         if (diff > max_diff) max_diff = diff;
     }
     return max_diff;
@@ -49,28 +49,28 @@ static int test_adapt_d65_to_d50_bradford(void) {
     /* Load white points and test colors */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/d65_xyz.csv"
+    static alwan_scalar const d65_xyz_data[] = {
+#include "data/fixtures/d65_xyz.csv"
     };
-    static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/d50_xyz.csv"
+    static alwan_scalar const d50_xyz_data[] = {
+#include "data/fixtures/d50_xyz.csv"
     };
-    static Scalar const test_colors_data[] = {
-#include "../../data/fixtures/test_xyz_colors.csv"
+    static alwan_scalar const test_colors_data[] = {
+#include "data/fixtures/test_xyz_colors.csv"
     };
-    static Scalar const expected_adapted_data[] = {
-#include "../../data/fixtures/adapted_d65_to_d50_bradford.csv"
+    static alwan_scalar const expected_adapted_data[] = {
+#include "data/fixtures/adapted_d65_to_d50_bradford.csv"
     };
     ALWAN_DIAG_POP
 
     alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
     alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
 
-    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
@@ -89,45 +89,45 @@ static int test_adapt_d65_to_d50_bradford(void) {
                                      adapted.v, 3);
         TEST_ASSERT(status == ALWAN_OK, "Adaptation failed");
 
-        Scalar diff = vec3_max_diff(&adapted, &expected);
+        alwan_scalar diff = vec3_max_diff(&adapted, &expected);
         if (diff >= tolerance) {
             printf("Test %d: diff=%e (tol=%e)\n", i, diff, tolerance);
             vec3_print("  Input", &input_xyz);
             vec3_print("  Computed", &adapted);
             vec3_print("  Expected", &expected);
         }
-        TEST_ASSERT(diff < tolerance, "D65→D50 adaptation mismatch");
+        TEST_ASSERT(diff < tolerance, "D65->D50 adaptation mismatch");
     }
 
-    TEST_PASS("Adapt D65→D50 (Bradford)");
+    TEST_PASS("Adapt D65->D50 (Bradford)");
 }
 
 static int test_adapt_a_to_d65_bradford(void) {
     /* Load white points and test colors */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/d65_xyz.csv"
+    static alwan_scalar const d65_xyz_data[] = {
+#include "data/fixtures/d65_xyz.csv"
     };
-    static Scalar const a_xyz_data[] = {
-#include "../../data/fixtures/a_xyz.csv"
+    static alwan_scalar const a_xyz_data[] = {
+#include "data/fixtures/a_xyz.csv"
     };
-    static Scalar const test_colors_data[] = {
-#include "../../data/fixtures/test_xyz_colors.csv"
+    static alwan_scalar const test_colors_data[] = {
+#include "data/fixtures/test_xyz_colors.csv"
     };
-    static Scalar const expected_adapted_data[] = {
-#include "../../data/fixtures/adapted_a_to_d65_bradford.csv"
+    static alwan_scalar const expected_adapted_data[] = {
+#include "data/fixtures/adapted_a_to_d65_bradford.csv"
     };
     ALWAN_DIAG_POP
 
     alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
     alwan_vec3 a_xyz = {{a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]}};
 
-    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
@@ -146,36 +146,36 @@ static int test_adapt_a_to_d65_bradford(void) {
                                      adapted.v, 3);
         TEST_ASSERT(status == ALWAN_OK, "Adaptation failed");
 
-        Scalar diff = vec3_max_diff(&adapted, &expected);
-        TEST_ASSERT(diff < tolerance, "A→D65 adaptation mismatch");
+        alwan_scalar diff = vec3_max_diff(&adapted, &expected);
+        TEST_ASSERT(diff < tolerance, "A->D65 adaptation mismatch");
     }
 
-    TEST_PASS("Adapt A→D65 (Bradford)");
+    TEST_PASS("Adapt A->D65 (Bradford)");
 }
 
 static int test_roundtrip_d65_d50_d65(void) {
     /* Load white points */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/d65_xyz.csv"
+    static alwan_scalar const d65_xyz_data[] = {
+#include "data/fixtures/d65_xyz.csv"
     };
-    static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/d50_xyz.csv"
+    static alwan_scalar const d50_xyz_data[] = {
+#include "data/fixtures/d50_xyz.csv"
     };
-    static Scalar const test_colors_data[] = {
-#include "../../data/fixtures/test_xyz_colors.csv"
+    static alwan_scalar const test_colors_data[] = {
+#include "data/fixtures/test_xyz_colors.csv"
     };
     ALWAN_DIAG_POP
 
     alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
     alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
 
-    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
@@ -183,43 +183,43 @@ static int test_roundtrip_d65_d50_d65(void) {
                                  test_colors_data[i * 3 + 1],
                                  test_colors_data[i * 3 + 2]}};
 
-        /* D65 → D50 */
+        /* D65 -> D50 */
         alwan_vec3 adapted_to_d50;
         int status = alwan_xyz_adapt(original.v, 1, 3,
                                      &d65_xyz, &d50_xyz,
                                      ALWAN_CAT_BRADFORD,
                                      adapted_to_d50.v, 3);
-        TEST_ASSERT(status == ALWAN_OK, "D65→D50 adaptation failed");
+        TEST_ASSERT(status == ALWAN_OK, "D65->D50 adaptation failed");
 
-        /* D50 → D65 (back) */
+        /* D50 -> D65 (back) */
         alwan_vec3 roundtrip;
         status = alwan_xyz_adapt(adapted_to_d50.v, 1, 3,
                                 &d50_xyz, &d65_xyz,
                                 ALWAN_CAT_BRADFORD,
                                 roundtrip.v, 3);
-        TEST_ASSERT(status == ALWAN_OK, "D50→D65 adaptation failed");
+        TEST_ASSERT(status == ALWAN_OK, "D50->D65 adaptation failed");
 
-        Scalar diff = vec3_max_diff(&original, &roundtrip);
+        alwan_scalar diff = vec3_max_diff(&original, &roundtrip);
         if (diff >= tolerance) {
             printf("Round-trip test %d: diff=%e (tol=%e)\n", i, diff, tolerance);
             vec3_print("  Original", &original);
             vec3_print("  Round-trip", &roundtrip);
         }
-        TEST_ASSERT(diff < tolerance, "D65→D50→D65 round-trip mismatch");
+        TEST_ASSERT(diff < tolerance, "D65->D50->D65 round-trip mismatch");
     }
 
-    TEST_PASS("Round-trip D65→D50→D65 (Bradford)");
+    TEST_PASS("Round-trip D65->D50->D65 (Bradford)");
 }
 
 static int test_roundtrip_all_methods(void) {
     /* Load white points */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/d65_xyz.csv"
+    static alwan_scalar const d65_xyz_data[] = {
+#include "data/fixtures/d65_xyz.csv"
     };
-    static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/d50_xyz.csv"
+    static alwan_scalar const d50_xyz_data[] = {
+#include "data/fixtures/d50_xyz.csv"
     };
     ALWAN_DIAG_POP
 
@@ -230,9 +230,9 @@ static int test_roundtrip_all_methods(void) {
     alwan_vec3 original = {{ALWAN_LITERAL(0.412456), ALWAN_LITERAL(0.212673), ALWAN_LITERAL(0.019334)}};
 
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     /* Test all methods */
@@ -266,7 +266,7 @@ static int test_roundtrip_all_methods(void) {
                                 roundtrip.v, 3);
         TEST_ASSERT(status == ALWAN_OK, "Backward adaptation failed");
 
-        Scalar diff = vec3_max_diff(&original, &roundtrip);
+        alwan_scalar diff = vec3_max_diff(&original, &roundtrip);
         if (diff >= tolerance) {
             printf("Round-trip %s: diff=%e (tol=%e)\n", method_names[m], diff, tolerance);
             vec3_print("  Original", &original);
@@ -282,27 +282,27 @@ static int test_bulk_adaptation(void) {
     /* Load white points */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/d65_xyz.csv"
+    static alwan_scalar const d65_xyz_data[] = {
+#include "data/fixtures/d65_xyz.csv"
     };
-    static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/d50_xyz.csv"
+    static alwan_scalar const d50_xyz_data[] = {
+#include "data/fixtures/d50_xyz.csv"
     };
-    static Scalar const test_colors_data[] = {
-#include "../../data/fixtures/test_xyz_colors.csv"
+    static alwan_scalar const test_colors_data[] = {
+#include "data/fixtures/test_xyz_colors.csv"
     };
-    static Scalar const expected_adapted_data[] = {
-#include "../../data/fixtures/adapted_d65_to_d50_bradford.csv"
+    static alwan_scalar const expected_adapted_data[] = {
+#include "data/fixtures/adapted_d65_to_d50_bradford.csv"
     };
     ALWAN_DIAG_POP
 
     alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
     alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
 
-    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 
     /* Adapt all colors at once */
-    Scalar adapted_data[15];  /* 5 colors * 3 components */
+    alwan_scalar adapted_data[15];  /* 5 colors * 3 components */
     int status = alwan_xyz_adapt(test_colors_data, num_tests, 3,
                                  &d65_xyz, &d50_xyz,
                                  ALWAN_CAT_BRADFORD,
@@ -310,9 +310,9 @@ static int test_bulk_adaptation(void) {
     TEST_ASSERT(status == ALWAN_OK, "Bulk adaptation failed");
 
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     /* Verify all results */
@@ -324,7 +324,7 @@ static int test_bulk_adaptation(void) {
                                  expected_adapted_data[i * 3 + 1],
                                  expected_adapted_data[i * 3 + 2]}};
 
-        Scalar diff = vec3_max_diff(&computed, &expected);
+        alwan_scalar diff = vec3_max_diff(&computed, &expected);
         TEST_ASSERT(diff < tolerance, "Bulk adaptation result mismatch");
     }
 

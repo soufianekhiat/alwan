@@ -17,8 +17,8 @@
 /* Bradford CAT matrix (most common, used in ICC profiles)
  * Generated from colour-science */
 static void get_bradford_matrix(alwan_mat3x3 *out) {
-    static Scalar const data[9] = {
-#include "../../data/matrices/cat_bradford.csv"
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_bradford.csv"
     };
     memcpy(out->m, data, sizeof(data));
 }
@@ -26,8 +26,8 @@ static void get_bradford_matrix(alwan_mat3x3 *out) {
 /* CAT02 matrix (from CIECAM02)
  * Generated from colour-science */
 static void get_cat02_matrix(alwan_mat3x3 *out) {
-    static Scalar const data[9] = {
-#include "../../data/matrices/cat_cat02.csv"
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_cat02.csv"
     };
     memcpy(out->m, data, sizeof(data));
 }
@@ -35,8 +35,8 @@ static void get_cat02_matrix(alwan_mat3x3 *out) {
 /* CAT16 matrix (from CAM16)
  * Generated from colour-science */
 static void get_cat16_matrix(alwan_mat3x3 *out) {
-    static Scalar const data[9] = {
-#include "../../data/matrices/cat_cat16.csv"
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_cat16.csv"
     };
     memcpy(out->m, data, sizeof(data));
 }
@@ -61,9 +61,9 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
     /* Handle XYZ scaling separately (simplest case) */
     if (method == ALWAN_CAT_XYZ_SCALING) {
         /* XYZ scaling: diagonal matrix of ratios */
-        Scalar const sx = dst_white_xyz->v[0] / src_white_xyz->v[0];
-        Scalar const sy = dst_white_xyz->v[1] / src_white_xyz->v[1];
-        Scalar const sz = dst_white_xyz->v[2] / src_white_xyz->v[2];
+        alwan_scalar const sx = dst_white_xyz->v[0] / src_white_xyz->v[0];
+        alwan_scalar const sy = dst_white_xyz->v[1] / src_white_xyz->v[1];
+        alwan_scalar const sz = dst_white_xyz->v[2] / src_white_xyz->v[2];
 
         out->m[0] = sx;              out->m[1] = ALWAN_LITERAL(0.0); out->m[2] = ALWAN_LITERAL(0.0);
         out->m[3] = ALWAN_LITERAL(0.0); out->m[4] = sy;              out->m[5] = ALWAN_LITERAL(0.0);
@@ -115,11 +115,11 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
     return ALWAN_OK;
 }
 
-int alwan_xyz_adapt(Scalar const *xyz_in, size_t count, size_t in_stride,
+int alwan_xyz_adapt(alwan_scalar const *xyz_in, size_t count, size_t in_stride,
                     alwan_vec3 const *src_white_xyz,
                     alwan_vec3 const *dst_white_xyz,
                     alwan_cat_method method,
-                    Scalar *xyz_out, size_t out_stride) {
+                    alwan_scalar *xyz_out, size_t out_stride) {
     if (!xyz_in || !xyz_out || !src_white_xyz || !dst_white_xyz) {
         return ALWAN_E_INVALID;
     }

@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 /* ----------------------------------------------------------------
- * Scalar type selection
+ * alwan_scalar type selection
  * ---------------------------------------------------------------- */
 #ifndef ALWAN_SCALAR_IS_FLOAT
 # define ALWAN_SCALAR_IS_FLOAT 0  /* default: double for parity with Colour */
@@ -25,10 +25,7 @@
 # define ALWAN_EPSILON 1e-12
 #endif
 
-/* ABI alias for public header */
-typedef alwan_scalar Scalar;
-
-/* Scalar literal suffix helper (auto-adds 'f' for float, nothing for double) */
+/* alwan_scalar literal suffix helper (auto-adds 'f' for float, nothing for double) */
 #if ALWAN_SCALAR_IS_FLOAT
 # define ALWAN_LITERAL(x) x##f
 #else

@@ -6,7 +6,7 @@
  * Test 00: Context creation/destruction and allocation hooks
  */
 
-#include "../../src/alwan/alwan.h"
+#include "alwan.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

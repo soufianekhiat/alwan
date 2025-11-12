@@ -6,8 +6,8 @@
  * M6 Tests: CIE 2012 observers, extrapolation, bandpass correction
  */
 
-#include "../../src/alwan/alwan.h"
-#include "../../src/alwan/alwan_internal.h"
+#include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -61,9 +61,9 @@ static int test_cie_2012_observers(void) {
     TEST_ASSERT(xyz_2012_10deg.v[2] > ALWAN_LITERAL(0.0), "2012 10° Z should be positive");
 
     /* 2° and 10° observers should give slightly different results */
-    Scalar diff_x = ALWAN_FABS(xyz_2012_2deg.v[0] - xyz_2012_10deg.v[0]);
-    Scalar diff_y = ALWAN_FABS(xyz_2012_2deg.v[1] - xyz_2012_10deg.v[1]);
-    Scalar diff_z = ALWAN_FABS(xyz_2012_2deg.v[2] - xyz_2012_10deg.v[2]);
+    alwan_scalar diff_x = ALWAN_FABS(xyz_2012_2deg.v[0] - xyz_2012_10deg.v[0]);
+    alwan_scalar diff_y = ALWAN_FABS(xyz_2012_2deg.v[1] - xyz_2012_10deg.v[1]);
+    alwan_scalar diff_z = ALWAN_FABS(xyz_2012_2deg.v[2] - xyz_2012_10deg.v[2]);
 
     TEST_ASSERT(diff_x + diff_y + diff_z > ALWAN_LITERAL(0.01),
                 "2° and 10° observers should differ");
@@ -90,7 +90,7 @@ static int test_extrapolation_modes(void) {
 
     /* Fill with linear ramp */
     for (size_t i = 0; i < src.count; i++) {
-        src.values[i] = ALWAN_LITERAL(0.1) + (Scalar)i / (Scalar)(src.count - 1) * ALWAN_LITERAL(0.8);
+        src.values[i] = ALWAN_LITERAL(0.1) + (alwan_scalar)i / (alwan_scalar)(src.count - 1) * ALWAN_LITERAL(0.8);
     }
 
     /* Resample to wider range (400-700nm) with different extrapolation modes */
@@ -180,7 +180,7 @@ static int test_bandpass_parameter(void) {
     TEST_ASSERT(status == ALWAN_OK, "XYZ with bandpass parameter failed");
 
     /* Since bandpass correction is not yet implemented, results should be identical */
-    Scalar diff = ALWAN_FABS(xyz_no_bp.v[0] - xyz_with_bp.v[0]) +
+    alwan_scalar diff = ALWAN_FABS(xyz_no_bp.v[0] - xyz_with_bp.v[0]) +
                   ALWAN_FABS(xyz_no_bp.v[1] - xyz_with_bp.v[1]) +
                   ALWAN_FABS(xyz_no_bp.v[2] - xyz_with_bp.v[2]);
     TEST_ASSERT(diff < ALWAN_EPSILON, "Bandpass parameter should be accepted (impl pending)");

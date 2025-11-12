@@ -23,39 +23,39 @@ ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* D65 white point (x, y) */
-static Scalar const g_d65_xy[] = {
-#include "../../data/d65_xy.csv"
+static alwan_scalar const g_d65_xy[] = {
+#include "data/d65_xy.csv"
 };
 
 /* D60 white point (x, y) */
-static Scalar const g_d60_xy[] = {
-#include "../../data/d60_xy.csv"
+static alwan_scalar const g_d60_xy[] = {
+#include "data/d60_xy.csv"
 };
 
 /* sRGB primaries (rx, ry, gx, gy, bx, by) */
-static Scalar const g_srgb_primaries_3x2[] = {
-#include "../../data/srgb_primaries_3x2.csv"
+static alwan_scalar const g_srgb_primaries_3x2[] = {
+#include "data/srgb_primaries_3x2.csv"
 };
 
 ALWAN_DIAG_POP
 
-int alwan_data_get_d65(alwan_ctx *ctx, Scalar **data, size_t *count) {
+int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     (void)ctx;  /* Unused in embedded mode */
-    *data = (Scalar *)g_d65_xy;
+    *data = (alwan_scalar *)g_d65_xy;
     *count = sizeof(g_d65_xy) / sizeof(g_d65_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_d60(alwan_ctx *ctx, Scalar **data, size_t *count) {
+int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     (void)ctx;
-    *data = (Scalar *)g_d60_xy;
+    *data = (alwan_scalar *)g_d60_xy;
     *count = sizeof(g_d60_xy) / sizeof(g_d60_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_srgb_primaries(alwan_ctx *ctx, Scalar **data, size_t *count) {
+int alwan_data_get_srgb_primaries(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     (void)ctx;
-    *data = (Scalar *)g_srgb_primaries_3x2;
+    *data = (alwan_scalar *)g_srgb_primaries_3x2;
     *count = sizeof(g_srgb_primaries_3x2) / sizeof(g_srgb_primaries_3x2[0]);
     return ALWAN_OK;
 }
@@ -77,7 +77,7 @@ static void build_path(char *dest, size_t dest_size,
 }
 
 /* Helper: load CSV file into dynamically allocated array */
-static int load_csv(char const *filepath, Scalar **out_data, size_t *out_count) {
+static int load_csv(char const *filepath, alwan_scalar **out_data, size_t *out_count) {
     FILE *f = fopen(filepath, "r");
     if (!f) {
         return ALWAN_E_IO;
@@ -86,7 +86,7 @@ static int load_csv(char const *filepath, Scalar **out_data, size_t *out_count) 
     /* Count values by counting commas + 1 */
     size_t capacity = 16;
     size_t count = 0;
-    Scalar *data = (Scalar *)ALWAN_ALLOC(capacity * sizeof(Scalar));
+    alwan_scalar *data = (alwan_scalar *)ALWAN_ALLOC(capacity * sizeof(alwan_scalar));
     if (!data) {
         fclose(f);
         return ALWAN_E_NOMEM;
@@ -102,7 +102,7 @@ static int load_csv(char const *filepath, Scalar **out_data, size_t *out_count) 
             /* Resize if needed */
             if (count >= capacity) {
                 capacity *= 2;
-                Scalar *new_data = (Scalar *)ALWAN_REALLOC(data, capacity * sizeof(Scalar));
+                alwan_scalar *new_data = (alwan_scalar *)ALWAN_REALLOC(data, capacity * sizeof(alwan_scalar));
                 if (!new_data) {
                     ALWAN_FREE(data);
                     fclose(f);
@@ -139,25 +139,25 @@ static int load_csv(char const *filepath, Scalar **out_data, size_t *out_count) 
     return ALWAN_OK;
 }
 
-int alwan_data_get_d65(alwan_ctx *ctx, Scalar **data, size_t *count) {
+int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
     build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "d65_xy.csv");
     return load_csv(path, data, count);
 }
 
-int alwan_data_get_d60(alwan_ctx *ctx, Scalar **data, size_t *count) {
+int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
     build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "d60_xy.csv");
     return load_csv(path, data, count);
 }
 
-int alwan_data_get_srgb_primaries(alwan_ctx *ctx, Scalar **data, size_t *count) {
+int alwan_data_get_srgb_primaries(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
     build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "srgb_primaries_3x2.csv");
     return load_csv(path, data, count);
 }
 
-void alwan_data_free(alwan_ctx *ctx, Scalar *data) {
+void alwan_data_free(alwan_ctx *ctx, alwan_scalar *data) {
     (void)ctx;
     if (data) {
         ALWAN_FREE(data);

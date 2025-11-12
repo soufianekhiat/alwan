@@ -6,8 +6,8 @@
  * Test 20: XYZ/xyY/Lab/Luv/LCh color space conversions
  */
 
-#include "../../src/alwan/alwan.h"
-#include "../../src/alwan/alwan_internal.h"
+#include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,10 +28,10 @@
     return 0; \
 } while(0)
 
-static Scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
-    Scalar max_diff = 0;
+static alwan_scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
+    alwan_scalar max_diff = 0;
     for (int i = 0; i < 3; i++) {
-        Scalar diff = ALWAN_FABS(a->v[i] - b->v[i]);
+        alwan_scalar diff = ALWAN_FABS(a->v[i] - b->v[i]);
         if (diff > max_diff) max_diff = diff;
     }
     return max_diff;
@@ -49,256 +49,256 @@ static int test_xyz_xyy_roundtrip(void) {
     /* Load XYZ test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const xyz_data[] = {
-#include "../../data/fixtures/xyz_values.csv"
+    static alwan_scalar const xyz_data[] = {
+#include "data/fixtures/xyz_values.csv"
     };
-    static Scalar const xyy_data[] = {
-#include "../../data/fixtures/xyy_values.csv"
+    static alwan_scalar const xyy_data[] = {
+#include "data/fixtures/xyy_values.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(xyz_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
         alwan_vec3 xyy_expected = {{xyy_data[i * 3 + 0], xyy_data[i * 3 + 1], xyy_data[i * 3 + 2]}};
 
-        /* XYZ → xyY */
+        /* XYZ -> xyY */
         alwan_vec3 xyy;
         alwan_xyz_to_xyy(&xyz, &xyy);
-        Scalar diff_forward = vec3_max_diff(&xyy, &xyy_expected);
+        alwan_scalar diff_forward = vec3_max_diff(&xyy, &xyy_expected);
         if (diff_forward >= tolerance) {
             printf("Test %d: diff=%e (tol=%e)\n", i, diff_forward, tolerance);
             vec3_print("  Computed", &xyy);
             vec3_print("  Expected", &xyy_expected);
         }
-        TEST_ASSERT(diff_forward < tolerance, "XYZ→xyY mismatch");
+        TEST_ASSERT(diff_forward < tolerance, "XYZ->xyY mismatch");
 
-        /* xyY → XYZ (round-trip) */
+        /* xyY -> XYZ (round-trip) */
         alwan_vec3 xyz_roundtrip;
         alwan_xyy_to_xyz(&xyy, &xyz_roundtrip);
-        Scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
-        TEST_ASSERT(diff_roundtrip < tolerance, "xyY→XYZ round-trip mismatch");
+        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
+        TEST_ASSERT(diff_roundtrip < tolerance, "xyY->XYZ round-trip mismatch");
     }
 
-    TEST_PASS("XYZ ↔ xyY round-trip");
+    TEST_PASS("XYZ <-> xyY round-trip");
 }
 
 static int test_xyz_lab_d65_roundtrip(void) {
     /* Load white point and test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/d65_xyz.csv"
+    static alwan_scalar const d65_xyz_data[] = {
+#include "data/fixtures/d65_xyz.csv"
     };
-    static Scalar const xyz_data[] = {
-#include "../../data/fixtures/xyz_values.csv"
+    static alwan_scalar const xyz_data[] = {
+#include "data/fixtures/xyz_values.csv"
     };
-    static Scalar const lab_data[] = {
-#include "../../data/fixtures/lab_d65_values.csv"
+    static alwan_scalar const lab_data[] = {
+#include "data/fixtures/lab_d65_values.csv"
     };
     ALWAN_DIAG_POP
 
     alwan_vec3 white_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    int const num_tests = sizeof(xyz_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
         alwan_vec3 lab_expected = {{lab_data[i * 3 + 0], lab_data[i * 3 + 1], lab_data[i * 3 + 2]}};
 
-        /* XYZ → Lab */
+        /* XYZ -> Lab */
         alwan_vec3 lab;
         alwan_xyz_to_lab(&xyz, &white_xyz, &lab);
-        Scalar diff_forward = vec3_max_diff(&lab, &lab_expected);
+        alwan_scalar diff_forward = vec3_max_diff(&lab, &lab_expected);
         if (diff_forward >= tolerance) {
             printf("Lab D65 test %d: diff=%e (tol=%e)\n", i, diff_forward, tolerance);
             vec3_print("  Computed", &lab);
             vec3_print("  Expected", &lab_expected);
         }
-        TEST_ASSERT(diff_forward < tolerance, "XYZ→Lab mismatch (D65)");
+        TEST_ASSERT(diff_forward < tolerance, "XYZ->Lab mismatch (D65)");
 
-        /* Lab → XYZ (round-trip) */
+        /* Lab -> XYZ (round-trip) */
         alwan_vec3 xyz_roundtrip;
         alwan_lab_to_xyz(&lab, &white_xyz, &xyz_roundtrip);
-        Scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
-        TEST_ASSERT(diff_roundtrip < tolerance, "Lab→XYZ round-trip mismatch (D65)");
+        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
+        TEST_ASSERT(diff_roundtrip < tolerance, "Lab->XYZ round-trip mismatch (D65)");
     }
 
-    TEST_PASS("XYZ ↔ Lab (D65) round-trip");
+    TEST_PASS("XYZ <-> Lab (D65) round-trip");
 }
 
 static int test_xyz_lab_d50_roundtrip(void) {
     /* Load white point and test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/d50_xyz.csv"
+    static alwan_scalar const d50_xyz_data[] = {
+#include "data/fixtures/d50_xyz.csv"
     };
-    static Scalar const xyz_data[] = {
-#include "../../data/fixtures/xyz_values.csv"
+    static alwan_scalar const xyz_data[] = {
+#include "data/fixtures/xyz_values.csv"
     };
-    static Scalar const lab_data[] = {
-#include "../../data/fixtures/lab_d50_values.csv"
+    static alwan_scalar const lab_data[] = {
+#include "data/fixtures/lab_d50_values.csv"
     };
     ALWAN_DIAG_POP
 
     alwan_vec3 white_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
-    int const num_tests = sizeof(xyz_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
         alwan_vec3 lab_expected = {{lab_data[i * 3 + 0], lab_data[i * 3 + 1], lab_data[i * 3 + 2]}};
 
-        /* XYZ → Lab */
+        /* XYZ -> Lab */
         alwan_vec3 lab;
         alwan_xyz_to_lab(&xyz, &white_xyz, &lab);
-        Scalar diff_forward = vec3_max_diff(&lab, &lab_expected);
-        TEST_ASSERT(diff_forward < tolerance, "XYZ→Lab mismatch (D50)");
+        alwan_scalar diff_forward = vec3_max_diff(&lab, &lab_expected);
+        TEST_ASSERT(diff_forward < tolerance, "XYZ->Lab mismatch (D50)");
 
-        /* Lab → XYZ (round-trip) */
+        /* Lab -> XYZ (round-trip) */
         alwan_vec3 xyz_roundtrip;
         alwan_lab_to_xyz(&lab, &white_xyz, &xyz_roundtrip);
-        Scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
-        TEST_ASSERT(diff_roundtrip < tolerance, "Lab→XYZ round-trip mismatch (D50)");
+        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
+        TEST_ASSERT(diff_roundtrip < tolerance, "Lab->XYZ round-trip mismatch (D50)");
     }
 
-    TEST_PASS("XYZ ↔ Lab (D50) round-trip");
+    TEST_PASS("XYZ <-> Lab (D50) round-trip");
 }
 
 static int test_xyz_luv_d65_roundtrip(void) {
     /* Load white point and test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/d65_xyz.csv"
+    static alwan_scalar const d65_xyz_data[] = {
+#include "data/fixtures/d65_xyz.csv"
     };
-    static Scalar const xyz_data[] = {
-#include "../../data/fixtures/xyz_values.csv"
+    static alwan_scalar const xyz_data[] = {
+#include "data/fixtures/xyz_values.csv"
     };
-    static Scalar const luv_data[] = {
-#include "../../data/fixtures/luv_d65_values.csv"
+    static alwan_scalar const luv_data[] = {
+#include "data/fixtures/luv_d65_values.csv"
     };
     ALWAN_DIAG_POP
 
     alwan_vec3 white_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    int const num_tests = sizeof(xyz_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
         alwan_vec3 luv_expected = {{luv_data[i * 3 + 0], luv_data[i * 3 + 1], luv_data[i * 3 + 2]}};
 
-        /* XYZ → Luv */
+        /* XYZ -> Luv */
         alwan_vec3 luv;
         alwan_xyz_to_luv(&xyz, &white_xyz, &luv);
-        Scalar diff_forward = vec3_max_diff(&luv, &luv_expected);
-        TEST_ASSERT(diff_forward < tolerance, "XYZ→Luv mismatch (D65)");
+        alwan_scalar diff_forward = vec3_max_diff(&luv, &luv_expected);
+        TEST_ASSERT(diff_forward < tolerance, "XYZ->Luv mismatch (D65)");
 
-        /* Luv → XYZ (round-trip) */
+        /* Luv -> XYZ (round-trip) */
         alwan_vec3 xyz_roundtrip;
         alwan_luv_to_xyz(&luv, &white_xyz, &xyz_roundtrip);
-        Scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
-        TEST_ASSERT(diff_roundtrip < tolerance, "Luv→XYZ round-trip mismatch (D65)");
+        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
+        TEST_ASSERT(diff_roundtrip < tolerance, "Luv->XYZ round-trip mismatch (D65)");
     }
 
-    TEST_PASS("XYZ ↔ Luv (D65) round-trip");
+    TEST_PASS("XYZ <-> Luv (D65) round-trip");
 }
 
 static int test_lab_lch_roundtrip(void) {
     /* Load Lab and LCh test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const lab_data[] = {
-#include "../../data/fixtures/lab_for_lch.csv"
+    static alwan_scalar const lab_data[] = {
+#include "data/fixtures/lab_for_lch.csv"
     };
-    static Scalar const lch_data[] = {
-#include "../../data/fixtures/lch_values.csv"
+    static alwan_scalar const lch_data[] = {
+#include "data/fixtures/lch_values.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(lab_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 lab = {{lab_data[i * 3 + 0], lab_data[i * 3 + 1], lab_data[i * 3 + 2]}};
         alwan_vec3 lch_expected = {{lch_data[i * 3 + 0], lch_data[i * 3 + 1], lch_data[i * 3 + 2]}};
 
-        /* Lab → LCh */
+        /* Lab -> LCh */
         alwan_vec3 lch;
         alwan_lab_to_lch(&lab, &lch);
-        Scalar diff_forward = vec3_max_diff(&lch, &lch_expected);
-        TEST_ASSERT(diff_forward < tolerance, "Lab→LCh mismatch");
+        alwan_scalar diff_forward = vec3_max_diff(&lch, &lch_expected);
+        TEST_ASSERT(diff_forward < tolerance, "Lab->LCh mismatch");
 
-        /* LCh → Lab (round-trip) */
+        /* LCh -> Lab (round-trip) */
         alwan_vec3 lab_roundtrip;
         alwan_lch_to_lab(&lch, &lab_roundtrip);
-        Scalar diff_roundtrip = vec3_max_diff(&lab, &lab_roundtrip);
-        TEST_ASSERT(diff_roundtrip < tolerance, "LCh→Lab round-trip mismatch");
+        alwan_scalar diff_roundtrip = vec3_max_diff(&lab, &lab_roundtrip);
+        TEST_ASSERT(diff_roundtrip < tolerance, "LCh->Lab round-trip mismatch");
     }
 
-    TEST_PASS("Lab ↔ LCh round-trip");
+    TEST_PASS("Lab <-> LCh round-trip");
 }
 
 static int test_luv_lchuv_roundtrip(void) {
     /* Load Luv and LCh(uv) test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static Scalar const luv_data[] = {
-#include "../../data/fixtures/luv_for_lchuv.csv"
+    static alwan_scalar const luv_data[] = {
+#include "data/fixtures/luv_for_lchuv.csv"
     };
-    static Scalar const lchuv_data[] = {
-#include "../../data/fixtures/lchuv_values.csv"
+    static alwan_scalar const lchuv_data[] = {
+#include "data/fixtures/lchuv_values.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(luv_data) / (3 * sizeof(Scalar));
+    int const num_tests = sizeof(luv_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
-    Scalar const tolerance = ALWAN_LITERAL(5e-5);
+    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
 #else
-    Scalar const tolerance = ALWAN_LITERAL(1e-11);
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
 #endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 luv = {{luv_data[i * 3 + 0], luv_data[i * 3 + 1], luv_data[i * 3 + 2]}};
         alwan_vec3 lchuv_expected = {{lchuv_data[i * 3 + 0], lchuv_data[i * 3 + 1], lchuv_data[i * 3 + 2]}};
 
-        /* Luv → LCh(uv) */
+        /* Luv -> LCh(uv) */
         alwan_vec3 lchuv;
         alwan_luv_to_lchuv(&luv, &lchuv);
-        Scalar diff_forward = vec3_max_diff(&lchuv, &lchuv_expected);
-        TEST_ASSERT(diff_forward < tolerance, "Luv→LCh(uv) mismatch");
+        alwan_scalar diff_forward = vec3_max_diff(&lchuv, &lchuv_expected);
+        TEST_ASSERT(diff_forward < tolerance, "Luv->LCh(uv) mismatch");
 
-        /* LCh(uv) → Luv (round-trip) */
+        /* LCh(uv) -> Luv (round-trip) */
         alwan_vec3 luv_roundtrip;
         alwan_lchuv_to_luv(&lchuv, &luv_roundtrip);
-        Scalar diff_roundtrip = vec3_max_diff(&luv, &luv_roundtrip);
-        TEST_ASSERT(diff_roundtrip < tolerance, "LCh(uv)→Luv round-trip mismatch");
+        alwan_scalar diff_roundtrip = vec3_max_diff(&luv, &luv_roundtrip);
+        TEST_ASSERT(diff_roundtrip < tolerance, "LCh(uv)->Luv round-trip mismatch");
     }
 
-    TEST_PASS("Luv ↔ LCh(uv) round-trip");
+    TEST_PASS("Luv <-> LCh(uv) round-trip");
 }
 
 /* ----------------------------------------------------------------

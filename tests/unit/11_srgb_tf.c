@@ -6,8 +6,8 @@
  * Test 11: sRGB transfer functions (OETF/EOTF)
  */
 
-#include "../../src/alwan/alwan.h"
-#include "../../src/alwan/alwan_internal.h"
+#include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,8 +32,8 @@
  * ---------------------------------------------------------------- */
 
 static int test_srgb_round_trip(void) {
-    /* Test round-trip: linear → encode → decode → linear */
-    Scalar const test_values[] = {
+    /* Test round-trip: linear -> encode -> decode -> linear */
+    alwan_scalar const test_values[] = {
         ALWAN_LITERAL(0.0),
         ALWAN_LITERAL(0.0001),
         ALWAN_LITERAL(0.001),
@@ -46,22 +46,22 @@ static int test_srgb_round_trip(void) {
     };
     size_t const num_values = sizeof(test_values) / sizeof(test_values[0]);
 
-    Scalar encoded[9];
-    Scalar decoded[9];
+    alwan_scalar encoded[9];
+    alwan_scalar decoded[9];
 
     /* Encode */
-    int status = alwan_oetf_apply("srgb", test_values, num_values, sizeof(Scalar),
-                                   encoded, sizeof(Scalar));
+    int status = alwan_oetf_apply("srgb", test_values, num_values, sizeof(alwan_scalar),
+                                   encoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "sRGB OETF failed");
 
     /* Decode */
-    status = alwan_eotf_apply("srgb", encoded, num_values, sizeof(Scalar),
-                              decoded, sizeof(Scalar));
+    status = alwan_eotf_apply("srgb", encoded, num_values, sizeof(alwan_scalar),
+                              decoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "sRGB EOTF failed");
 
     /* Verify round-trip */
     for (size_t i = 0; i < num_values; i++) {
-        Scalar diff = ALWAN_FABS(decoded[i] - test_values[i]);
+        alwan_scalar diff = ALWAN_FABS(decoded[i] - test_values[i]);
         if (diff > ALWAN_TEST_TOLERANCE) {
             printf("Round-trip failed at index %zu:\n", i);
             printf("  Input:   %.8f\n", test_values[i]);
@@ -77,17 +77,17 @@ static int test_srgb_round_trip(void) {
 
 static int test_srgb_breakpoint(void) {
     /* Test the breakpoint where formula changes */
-    /* OETF breakpoint at 0.0031308 → 0.04045 */
-    Scalar const linear_bp = ALWAN_LITERAL(0.0031308);
-    Scalar encoded;
+    /* OETF breakpoint at 0.0031308 -> 0.04045 */
+    alwan_scalar const linear_bp = ALWAN_LITERAL(0.0031308);
+    alwan_scalar encoded;
 
-    int status = alwan_oetf_apply("srgb", &linear_bp, 1, sizeof(Scalar),
-                                   &encoded, sizeof(Scalar));
+    int status = alwan_oetf_apply("srgb", &linear_bp, 1, sizeof(alwan_scalar),
+                                   &encoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "sRGB OETF at breakpoint failed");
 
     /* Expected encoded value: 12.92 * 0.0031308 ≈ 0.04045 */
-    Scalar expected = ALWAN_LITERAL(0.04045);
-    Scalar diff = ALWAN_FABS(encoded - expected);
+    alwan_scalar expected = ALWAN_LITERAL(0.04045);
+    alwan_scalar diff = ALWAN_FABS(encoded - expected);
 
     /* Use looser tolerance for breakpoint (numerical precision) */
     TEST_ASSERT(diff < ALWAN_LITERAL(0.001), "sRGB OETF breakpoint mismatch");
@@ -98,8 +98,8 @@ static int test_srgb_breakpoint(void) {
 static int test_srgb_known_values(void) {
     /* Test known sRGB values */
     struct {
-        Scalar linear;
-        Scalar encoded;
+        alwan_scalar linear;
+        alwan_scalar encoded;
     } const known_pairs[] = {
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
@@ -108,14 +108,14 @@ static int test_srgb_known_values(void) {
     size_t const num_pairs = sizeof(known_pairs) / sizeof(known_pairs[0]);
 
     for (size_t i = 0; i < num_pairs; i++) {
-        Scalar encoded, decoded;
+        alwan_scalar encoded, decoded;
 
         /* Test OETF */
-        int status = alwan_oetf_apply("srgb", &known_pairs[i].linear, 1, sizeof(Scalar),
-                                      &encoded, sizeof(Scalar));
+        int status = alwan_oetf_apply("srgb", &known_pairs[i].linear, 1, sizeof(alwan_scalar),
+                                      &encoded, sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "sRGB OETF failed");
 
-        Scalar oetf_diff = ALWAN_FABS(encoded - known_pairs[i].encoded);
+        alwan_scalar oetf_diff = ALWAN_FABS(encoded - known_pairs[i].encoded);
         if (oetf_diff > ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
             printf("OETF mismatch at pair %zu:\n", i);
             printf("  Linear:   %.8f\n", known_pairs[i].linear);
@@ -126,11 +126,11 @@ static int test_srgb_known_values(void) {
         }
 
         /* Test EOTF */
-        status = alwan_eotf_apply("srgb", &known_pairs[i].encoded, 1, sizeof(Scalar),
-                                  &decoded, sizeof(Scalar));
+        status = alwan_eotf_apply("srgb", &known_pairs[i].encoded, 1, sizeof(alwan_scalar),
+                                  &decoded, sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "sRGB EOTF failed");
 
-        Scalar eotf_diff = ALWAN_FABS(decoded - known_pairs[i].linear);
+        alwan_scalar eotf_diff = ALWAN_FABS(decoded - known_pairs[i].linear);
         if (eotf_diff > ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
             printf("EOTF mismatch at pair %zu:\n", i);
             printf("  Encoded:  %.8f\n", known_pairs[i].encoded);
@@ -145,16 +145,16 @@ static int test_srgb_known_values(void) {
 }
 
 static int test_srgb_invalid_name(void) {
-    Scalar dummy_in = ALWAN_LITERAL(0.5);
-    Scalar dummy_out;
+    alwan_scalar dummy_in = ALWAN_LITERAL(0.5);
+    alwan_scalar dummy_out;
 
     /* Test invalid transfer function name */
-    int status = alwan_oetf_apply("invalid_tf", &dummy_in, 1, sizeof(Scalar),
-                                   &dummy_out, sizeof(Scalar));
+    int status = alwan_oetf_apply("invalid_tf", &dummy_in, 1, sizeof(alwan_scalar),
+                                   &dummy_out, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid OETF name");
 
-    status = alwan_eotf_apply("invalid_tf", &dummy_in, 1, sizeof(Scalar),
-                              &dummy_out, sizeof(Scalar));
+    status = alwan_eotf_apply("invalid_tf", &dummy_in, 1, sizeof(alwan_scalar),
+                              &dummy_out, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid EOTF name");
 
     TEST_PASS("test_srgb_invalid_name");
@@ -163,29 +163,29 @@ static int test_srgb_invalid_name(void) {
 static int test_srgb_dense_lut(void) {
     /* Dense LUT test: encode and decode 256 values */
     #define LUT_SIZE 256
-    Scalar linear[LUT_SIZE];
-    Scalar encoded[LUT_SIZE];
-    Scalar decoded[LUT_SIZE];
+    alwan_scalar linear[LUT_SIZE];
+    alwan_scalar encoded[LUT_SIZE];
+    alwan_scalar decoded[LUT_SIZE];
 
     /* Generate linear ramp [0, 1] */
     for (int i = 0; i < LUT_SIZE; i++) {
-        linear[i] = (Scalar)i / (Scalar)(LUT_SIZE - 1);
+        linear[i] = (alwan_scalar)i / (alwan_scalar)(LUT_SIZE - 1);
     }
 
     /* Encode */
-    int status = alwan_oetf_apply("srgb", linear, LUT_SIZE, sizeof(Scalar),
-                                   encoded, sizeof(Scalar));
+    int status = alwan_oetf_apply("srgb", linear, LUT_SIZE, sizeof(alwan_scalar),
+                                   encoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "Dense LUT OETF failed");
 
     /* Decode */
-    status = alwan_eotf_apply("srgb", encoded, LUT_SIZE, sizeof(Scalar),
-                              decoded, sizeof(Scalar));
+    status = alwan_eotf_apply("srgb", encoded, LUT_SIZE, sizeof(alwan_scalar),
+                              decoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "Dense LUT EOTF failed");
 
     /* Verify round-trip */
-    Scalar max_diff = 0;
+    alwan_scalar max_diff = 0;
     for (int i = 0; i < LUT_SIZE; i++) {
-        Scalar diff = ALWAN_FABS(decoded[i] - linear[i]);
+        alwan_scalar diff = ALWAN_FABS(decoded[i] - linear[i]);
         if (diff > max_diff) max_diff = diff;
     }
 

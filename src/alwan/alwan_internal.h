@@ -19,7 +19,7 @@
   #define ALWAN_PI      3.14159265358979323846
 #endif
 
-/* Scalar-aware math functions to avoid double/float conversion warnings */
+/* alwan_scalar-aware math functions to avoid double/float conversion warnings */
 #if ALWAN_SCALAR_IS_FLOAT
   #define ALWAN_FABS(x)  fabsf(x)
   #define ALWAN_SQRT(x)  sqrtf(x)

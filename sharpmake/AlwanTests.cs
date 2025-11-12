@@ -29,6 +29,7 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\50_spd_to_xyz.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\60_bandpass_2012.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\70_ciecam02.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\80_cam16.c");
         }
 
         [Configure()]

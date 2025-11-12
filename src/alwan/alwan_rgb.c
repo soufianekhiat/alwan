@@ -11,14 +11,14 @@
 /* ----------------------------------------------------------------
  * Helper: Convert xyY to XYZ (Y=1)
  * ---------------------------------------------------------------- */
-static void xy_to_XYZ(Scalar x, Scalar y, alwan_vec3 *XYZ) {
+static void xy_to_XYZ(alwan_scalar x, alwan_scalar y, alwan_vec3 *XYZ) {
     /* Avoid division by zero */
     if (y < ALWAN_EPSILON) {
         XYZ->v[0] = XYZ->v[1] = XYZ->v[2] = ALWAN_LITERAL(0.0);
         return;
     }
 
-    Scalar Y = ALWAN_LITERAL(1.0);
+    alwan_scalar Y = ALWAN_LITERAL(1.0);
     XYZ->v[0] = (x / y) * Y;  /* X */
     XYZ->v[1] = Y;             /* Y */
     XYZ->v[2] = ((ALWAN_LITERAL(1.0) - x - y) / y) * Y;  /* Z */
@@ -60,7 +60,7 @@ int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
     alwan_vec3 S;
     alwan_mat3_mulv(&M_inv, &W_XYZ, &S);
 
-    /* RGB→XYZ = M * diag(S)
+    /* RGB->XYZ = M * diag(S)
      * This is equivalent to scaling each column of M by corresponding S component */
     rgb_to_xyz->m[0] = M.m[0] * S.v[0];  /* R column scaled */
     rgb_to_xyz->m[1] = M.m[1] * S.v[1];  /* G column scaled */
@@ -72,7 +72,7 @@ int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
     rgb_to_xyz->m[7] = M.m[7] * S.v[1];
     rgb_to_xyz->m[8] = M.m[8] * S.v[2];
 
-    /* XYZ→RGB = inverse of RGB→XYZ */
+    /* XYZ->RGB = inverse of RGB->XYZ */
     return alwan_mat3_inv(rgb_to_xyz, xyz_to_rgb);
 }
 
@@ -80,10 +80,10 @@ int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
  * sRGB Transfer Functions
  * ---------------------------------------------------------------- */
 
-/* sRGB OETF: linear → encoded
+/* sRGB OETF: linear -> encoded
  * Formula: V' = 12.92 * V              if V <= 0.0031308
  *               1.055 * V^(1/2.4) - 0.055   otherwise */
-static Scalar srgb_oetf_scalar(Scalar linear) {
+static alwan_scalar srgb_oetf_scalar(alwan_scalar linear) {
     if (linear <= ALWAN_LITERAL(0.0031308)) {
         return ALWAN_LITERAL(12.92) * linear;
     } else {
@@ -92,10 +92,10 @@ static Scalar srgb_oetf_scalar(Scalar linear) {
     }
 }
 
-/* sRGB EOTF: encoded → linear
+/* sRGB EOTF: encoded -> linear
  * Formula: V = V' / 12.92              if V' <= 0.04045
  *               ((V' + 0.055) / 1.055)^2.4  otherwise */
-static Scalar srgb_eotf_scalar(Scalar encoded) {
+static alwan_scalar srgb_eotf_scalar(alwan_scalar encoded) {
     if (encoded <= ALWAN_LITERAL(0.04045)) {
         return encoded / ALWAN_LITERAL(12.92);
     } else {
@@ -108,46 +108,46 @@ static Scalar srgb_eotf_scalar(Scalar encoded) {
  * PQ (ST.2084) Transfer Functions - HDR10/HDR10+
  * ---------------------------------------------------------------- */
 
-/* PQ OETF: linear (0-10000 cd/m²) → PQ code values
+/* PQ OETF: linear (0-10000 cd/m²) -> PQ code values
  * Normalizes input to [0,1] assuming 10000 cd/m² peak, then applies PQ curve */
-static Scalar pq_oetf_scalar(Scalar linear) {
+static alwan_scalar pq_oetf_scalar(alwan_scalar linear) {
     /* PQ constants */
-    Scalar const m1 = ALWAN_LITERAL(0.1593017578125);      /* 2610/16384 */
-    Scalar const m2 = ALWAN_LITERAL(78.84375);              /* 2523/32 */
-    Scalar const c1 = ALWAN_LITERAL(0.8359375);             /* 3424/4096 */
-    Scalar const c2 = ALWAN_LITERAL(18.8515625);            /* 2413/128 */
-    Scalar const c3 = ALWAN_LITERAL(18.6875);               /* 2392/128 */
+    alwan_scalar const m1 = ALWAN_LITERAL(0.1593017578125);      /* 2610/16384 */
+    alwan_scalar const m2 = ALWAN_LITERAL(78.84375);              /* 2523/32 */
+    alwan_scalar const c1 = ALWAN_LITERAL(0.8359375);             /* 3424/4096 */
+    alwan_scalar const c2 = ALWAN_LITERAL(18.8515625);            /* 2413/128 */
+    alwan_scalar const c3 = ALWAN_LITERAL(18.6875);               /* 2392/128 */
 
     /* Normalize to [0,1] assuming 10000 cd/m² peak */
-    Scalar Y = linear / ALWAN_LITERAL(10000.0);
+    alwan_scalar Y = linear / ALWAN_LITERAL(10000.0);
     if (Y < ALWAN_LITERAL(0.0)) Y = ALWAN_LITERAL(0.0);
 
-    Scalar Y_pow_m1 = ALWAN_POW(Y, m1);
-    Scalar numerator = c1 + c2 * Y_pow_m1;
-    Scalar denominator = ALWAN_LITERAL(1.0) + c3 * Y_pow_m1;
+    alwan_scalar Y_pow_m1 = ALWAN_POW(Y, m1);
+    alwan_scalar numerator = c1 + c2 * Y_pow_m1;
+    alwan_scalar denominator = ALWAN_LITERAL(1.0) + c3 * Y_pow_m1;
 
     return ALWAN_POW(numerator / denominator, m2);
 }
 
-/* PQ EOTF: PQ code values → linear (0-10000 cd/m²) */
-static Scalar pq_eotf_scalar(Scalar encoded) {
+/* PQ EOTF: PQ code values -> linear (0-10000 cd/m²) */
+static alwan_scalar pq_eotf_scalar(alwan_scalar encoded) {
     /* PQ constants */
-    Scalar const m1 = ALWAN_LITERAL(0.1593017578125);
-    Scalar const m2 = ALWAN_LITERAL(78.84375);
-    Scalar const c1 = ALWAN_LITERAL(0.8359375);
-    Scalar const c2 = ALWAN_LITERAL(18.8515625);
-    Scalar const c3 = ALWAN_LITERAL(18.6875);
-    Scalar const m1_inv = ALWAN_LITERAL(1.0) / m1;
-    Scalar const m2_inv = ALWAN_LITERAL(1.0) / m2;
+    alwan_scalar const m1 = ALWAN_LITERAL(0.1593017578125);
+    alwan_scalar const m2 = ALWAN_LITERAL(78.84375);
+    alwan_scalar const c1 = ALWAN_LITERAL(0.8359375);
+    alwan_scalar const c2 = ALWAN_LITERAL(18.8515625);
+    alwan_scalar const c3 = ALWAN_LITERAL(18.6875);
+    alwan_scalar const m1_inv = ALWAN_LITERAL(1.0) / m1;
+    alwan_scalar const m2_inv = ALWAN_LITERAL(1.0) / m2;
 
     if (encoded < ALWAN_LITERAL(0.0)) encoded = ALWAN_LITERAL(0.0);
 
-    Scalar E_pow_m2_inv = ALWAN_POW(encoded, m2_inv);
-    Scalar numerator = E_pow_m2_inv - c1;
+    alwan_scalar E_pow_m2_inv = ALWAN_POW(encoded, m2_inv);
+    alwan_scalar numerator = E_pow_m2_inv - c1;
     if (numerator < ALWAN_LITERAL(0.0)) numerator = ALWAN_LITERAL(0.0);
 
-    Scalar denominator = c2 - c3 * E_pow_m2_inv;
-    Scalar Y = ALWAN_POW(numerator / denominator, m1_inv);
+    alwan_scalar denominator = c2 - c3 * E_pow_m2_inv;
+    alwan_scalar Y = ALWAN_POW(numerator / denominator, m1_inv);
 
     /* Scale back to cd/m² (0-10000 range) */
     return Y * ALWAN_LITERAL(10000.0);
@@ -157,11 +157,11 @@ static Scalar pq_eotf_scalar(Scalar encoded) {
  * HLG (Hybrid Log-Gamma) Transfer Functions - BT.2100
  * ---------------------------------------------------------------- */
 
-/* HLG OETF: scene-referred linear → HLG signal */
-static Scalar hlg_oetf_scalar(Scalar linear) {
-    Scalar const a = ALWAN_LITERAL(0.17883277);
-    Scalar const b = ALWAN_LITERAL(0.28466892);  /* 1 - 4*a */
-    Scalar const c = ALWAN_LITERAL(0.55991073);  /* 0.5 - a*ln(4*a) */
+/* HLG OETF: scene-referred linear -> HLG signal */
+static alwan_scalar hlg_oetf_scalar(alwan_scalar linear) {
+    alwan_scalar const a = ALWAN_LITERAL(0.17883277);
+    alwan_scalar const b = ALWAN_LITERAL(0.28466892);  /* 1 - 4*a */
+    alwan_scalar const c = ALWAN_LITERAL(0.55991073);  /* 0.5 - a*ln(4*a) */
 
     if (linear < ALWAN_LITERAL(0.0)) linear = ALWAN_LITERAL(0.0);
 
@@ -172,16 +172,16 @@ static Scalar hlg_oetf_scalar(Scalar linear) {
     }
 }
 
-/* HLG EOTF: HLG signal → display-referred linear
+/* HLG EOTF: HLG signal -> display-referred linear
  * Note: Simplified EOTF without system gamma, assumes gamma=1.2 */
-static Scalar hlg_eotf_scalar(Scalar encoded) {
-    Scalar const a = ALWAN_LITERAL(0.17883277);
-    Scalar const b = ALWAN_LITERAL(0.28466892);
-    Scalar const c = ALWAN_LITERAL(0.55991073);
+static alwan_scalar hlg_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const a = ALWAN_LITERAL(0.17883277);
+    alwan_scalar const b = ALWAN_LITERAL(0.28466892);
+    alwan_scalar const c = ALWAN_LITERAL(0.55991073);
 
     if (encoded < ALWAN_LITERAL(0.0)) encoded = ALWAN_LITERAL(0.0);
 
-    Scalar linear;
+    alwan_scalar linear;
     if (encoded <= ALWAN_LITERAL(0.5)) {
         linear = (encoded * encoded) / ALWAN_LITERAL(3.0);
     } else {
@@ -197,7 +197,7 @@ static Scalar hlg_eotf_scalar(Scalar encoded) {
  * ---------------------------------------------------------------- */
 
 /* BT.1886 EOTF: assumes gamma 2.4, black level 0 */
-static Scalar bt1886_eotf_scalar(Scalar encoded) {
+static alwan_scalar bt1886_eotf_scalar(alwan_scalar encoded) {
     if (encoded < ALWAN_LITERAL(0.0)) encoded = ALWAN_LITERAL(0.0);
     return ALWAN_POW(encoded, ALWAN_LITERAL(2.4));
 }
@@ -206,28 +206,28 @@ static Scalar bt1886_eotf_scalar(Scalar encoded) {
  * ACESproxy Transfer Functions
  * ---------------------------------------------------------------- */
 
-/* ACESproxy encode: ACES linear → ACESproxy (10-bit or 12-bit log encoding) */
-static Scalar acesproxy_oetf_scalar(Scalar linear) {
+/* ACESproxy encode: ACES linear -> ACESproxy (10-bit or 12-bit log encoding) */
+static alwan_scalar acesproxy_oetf_scalar(alwan_scalar linear) {
     /* ACESproxy constants for 10-bit encoding */
-    Scalar const mid_gray_in = ALWAN_LITERAL(0.18);
-    Scalar const mid_code_value = ALWAN_LITERAL(425.0) / ALWAN_LITERAL(1023.0);
-    Scalar const steps_per_stop = ALWAN_LITERAL(50.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const mid_gray_in = ALWAN_LITERAL(0.18);
+    alwan_scalar const mid_code_value = ALWAN_LITERAL(425.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const steps_per_stop = ALWAN_LITERAL(50.0) / ALWAN_LITERAL(1023.0);
 
     if (linear <= ALWAN_LITERAL(0.0)) {
         return ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);  /* Minimum code value */
     }
 
-    Scalar log_val = ALWAN_LOG(linear / mid_gray_in) / ALWAN_LOG(ALWAN_LITERAL(2.0));
+    alwan_scalar log_val = ALWAN_LOG(linear / mid_gray_in) / ALWAN_LOG(ALWAN_LITERAL(2.0));
     return mid_code_value + steps_per_stop * log_val;
 }
 
-/* ACESproxy decode: ACESproxy → ACES linear */
-static Scalar acesproxy_eotf_scalar(Scalar encoded) {
-    Scalar const mid_gray_in = ALWAN_LITERAL(0.18);
-    Scalar const mid_code_value = ALWAN_LITERAL(425.0) / ALWAN_LITERAL(1023.0);
-    Scalar const steps_per_stop = ALWAN_LITERAL(50.0) / ALWAN_LITERAL(1023.0);
+/* ACESproxy decode: ACESproxy -> ACES linear */
+static alwan_scalar acesproxy_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const mid_gray_in = ALWAN_LITERAL(0.18);
+    alwan_scalar const mid_code_value = ALWAN_LITERAL(425.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const steps_per_stop = ALWAN_LITERAL(50.0) / ALWAN_LITERAL(1023.0);
 
-    Scalar log_val = (encoded - mid_code_value) / steps_per_stop;
+    alwan_scalar log_val = (encoded - mid_code_value) / steps_per_stop;
     return mid_gray_in * ALWAN_POW(ALWAN_LITERAL(2.0), log_val);
 }
 
@@ -236,14 +236,14 @@ static Scalar acesproxy_eotf_scalar(Scalar encoded) {
  * ---------------------------------------------------------------- */
 
 int alwan_oetf_apply(char const *name,
-                     Scalar const *linear, size_t count, size_t in_stride,
-                     Scalar *encoded, size_t out_stride) {
+                     alwan_scalar const *linear, size_t count, size_t in_stride,
+                     alwan_scalar *encoded, size_t out_stride) {
     if (!name || !linear || !encoded) {
         return ALWAN_E_INVALID;
     }
 
     /* Select transfer function */
-    Scalar (*oetf_fn)(Scalar) = NULL;
+    alwan_scalar (*oetf_fn)(alwan_scalar) = NULL;
 
     if (strcmp(name, "srgb") == 0) {
         oetf_fn = srgb_oetf_scalar;
@@ -259,8 +259,8 @@ int alwan_oetf_apply(char const *name,
 
     /* Apply transfer function to array */
     for (size_t i = 0; i < count; i++) {
-        Scalar const *in_ptr = (Scalar const *)((char const *)linear + i * in_stride);
-        Scalar *out_ptr = (Scalar *)((char *)encoded + i * out_stride);
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)linear + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)encoded + i * out_stride);
         *out_ptr = oetf_fn(*in_ptr);
     }
 
@@ -268,14 +268,14 @@ int alwan_oetf_apply(char const *name,
 }
 
 int alwan_eotf_apply(char const *name,
-                     Scalar const *encoded, size_t count, size_t in_stride,
-                     Scalar *linear, size_t out_stride) {
+                     alwan_scalar const *encoded, size_t count, size_t in_stride,
+                     alwan_scalar *linear, size_t out_stride) {
     if (!name || !encoded || !linear) {
         return ALWAN_E_INVALID;
     }
 
     /* Select transfer function */
-    Scalar (*eotf_fn)(Scalar) = NULL;
+    alwan_scalar (*eotf_fn)(alwan_scalar) = NULL;
 
     if (strcmp(name, "srgb") == 0) {
         eotf_fn = srgb_eotf_scalar;
@@ -293,8 +293,8 @@ int alwan_eotf_apply(char const *name,
 
     /* Apply transfer function to array */
     for (size_t i = 0; i < count; i++) {
-        Scalar const *in_ptr = (Scalar const *)((char const *)encoded + i * in_stride);
-        Scalar *out_ptr = (Scalar *)((char *)linear + i * out_stride);
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)encoded + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)linear + i * out_stride);
         *out_ptr = eotf_fn(*in_ptr);
     }
 

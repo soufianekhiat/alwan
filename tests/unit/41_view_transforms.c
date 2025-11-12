@@ -6,8 +6,8 @@
  * Test 41: View Transforms (ACES, AgX)
  */
 
-#include "../../src/alwan/alwan.h"
-#include "../../src/alwan/alwan_internal.h"
+#include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +28,7 @@
     return 0; \
 } while(0)
 
-static int is_in_range_01(Scalar const *rgb) {
+static int is_in_range_01(alwan_scalar const *rgb) {
     for (int i = 0; i < 3; i++) {
         if (rgb[i] < ALWAN_LITERAL(0.0) || rgb[i] > ALWAN_LITERAL(1.0)) {
             return 0;
@@ -43,7 +43,7 @@ static int is_in_range_01(Scalar const *rgb) {
 
 static int test_aces_rec709_basic(void) {
     /* Test ACES RRT+ODT for Rec.709 with typical scene-referred values */
-    Scalar test_inputs[][3] = {
+    alwan_scalar test_inputs[][3] = {
         /* Black */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         /* Middle gray (0.18) */
@@ -59,7 +59,7 @@ static int test_aces_rec709_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        Scalar output[3];
+        alwan_scalar output[3];
         int status = alwan_view_transform_apply(NULL, "aces_rec709",
                                                 test_inputs[i], 1, 3,
                                                 output, 3);
@@ -74,7 +74,7 @@ static int test_aces_rec709_basic(void) {
 
         /* Black input should produce near-black output */
         if (i == 0) {
-            Scalar max_val = output[0];
+            alwan_scalar max_val = output[0];
             if (output[1] > max_val) max_val = output[1];
             if (output[2] > max_val) max_val = output[2];
             TEST_ASSERT(max_val < ALWAN_LITERAL(0.01), "Black input should produce near-black output");
@@ -94,7 +94,7 @@ static int test_aces_rec709_basic(void) {
 
 static int test_agx_basic(void) {
     /* Test AgX base transform with typical linear RGB values */
-    Scalar test_inputs[][3] = {
+    alwan_scalar test_inputs[][3] = {
         /* Black */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         /* Very dark */
@@ -110,7 +110,7 @@ static int test_agx_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        Scalar output[3];
+        alwan_scalar output[3];
         int status = alwan_view_transform_apply(NULL, "agx",
                                                 test_inputs[i], 1, 3,
                                                 output, 3);
@@ -129,11 +129,11 @@ static int test_agx_basic(void) {
 
 static int test_agx_punchy(void) {
     /* Test AgX punchy variant produces higher contrast than base */
-    Scalar test_input[3] = {
+    alwan_scalar test_input[3] = {
         ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)
     };
 
-    Scalar base_output[3], punchy_output[3];
+    alwan_scalar base_output[3], punchy_output[3];
 
     /* Apply base AgX */
     int status = alwan_view_transform_apply(NULL, "agx",
@@ -153,7 +153,7 @@ static int test_agx_punchy(void) {
 
     /* Punchy variant should produce different results (higher contrast) */
     /* We can't predict exact differences, but they shouldn't be identical */
-    Scalar diff = ALWAN_FABS(base_output[0] - punchy_output[0]) +
+    alwan_scalar diff = ALWAN_FABS(base_output[0] - punchy_output[0]) +
                   ALWAN_FABS(base_output[1] - punchy_output[1]) +
                   ALWAN_FABS(base_output[2] - punchy_output[2]);
 
@@ -165,8 +165,8 @@ static int test_agx_punchy(void) {
 }
 
 static int test_view_transform_monotonic(void) {
-    /* Test that view transforms are monotonic: brighter input → brighter output */
-    Scalar inputs[][3] = {
+    /* Test that view transforms are monotonic: brighter input -> brighter output */
+    alwan_scalar inputs[][3] = {
         {ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)},
         {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)}
@@ -176,17 +176,17 @@ static int test_view_transform_monotonic(void) {
     size_t const num_transforms = sizeof(transforms) / sizeof(transforms[0]);
 
     for (size_t t = 0; t < num_transforms; t++) {
-        Scalar prev_luma = ALWAN_LITERAL(-1.0);
+        alwan_scalar prev_luma = ALWAN_LITERAL(-1.0);
 
         for (size_t i = 0; i < 3; i++) {
-            Scalar output[3];
+            alwan_scalar output[3];
             int status = alwan_view_transform_apply(NULL, transforms[t],
                                                    inputs[i], 1, 3,
                                                    output, 3);
             TEST_ASSERT(status == ALWAN_OK, "View transform failed");
 
             /* Calculate luminance (Rec.709 weights) */
-            Scalar luma = ALWAN_LITERAL(0.2126) * output[0] +
+            alwan_scalar luma = ALWAN_LITERAL(0.2126) * output[0] +
                          ALWAN_LITERAL(0.7152) * output[1] +
                          ALWAN_LITERAL(0.0722) * output[2];
 
@@ -206,7 +206,7 @@ static int test_view_transform_monotonic(void) {
 
 static int test_bulk_view_transform(void) {
     /* Test bulk processing of multiple RGB triplets */
-    Scalar inputs[] = {
+    alwan_scalar inputs[] = {
         /* RGB triplet 0: black */
         ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
         /* RGB triplet 1: gray */
@@ -217,7 +217,7 @@ static int test_bulk_view_transform(void) {
         ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)
     };
 
-    Scalar outputs[12];  /* 4 RGB triplets */
+    alwan_scalar outputs[12];  /* 4 RGB triplets */
 
     int status = alwan_view_transform_apply(NULL, "aces_rec709",
                                            inputs, 4, 3,
@@ -226,7 +226,7 @@ static int test_bulk_view_transform(void) {
 
     /* Verify all outputs are in [0,1] range */
     for (int i = 0; i < 4; i++) {
-        Scalar const *rgb = &outputs[i * 3];
+        alwan_scalar const *rgb = &outputs[i * 3];
         if (!is_in_range_01(rgb)) {
             printf("  Output %d out of range: [%.6f %.6f %.6f]\n",
                    i, rgb[0], rgb[1], rgb[2]);
@@ -240,8 +240,8 @@ static int test_bulk_view_transform(void) {
 static int test_view_transform_preserves_hue(void) {
     /* Test that view transforms roughly preserve hue for saturated colors */
     /* For pure red, output should have R > G and R > B */
-    Scalar red_input[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    Scalar output[3];
+    alwan_scalar red_input[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_scalar output[3];
 
     int status = alwan_view_transform_apply(NULL, "aces_rec709",
                                            red_input, 1, 3,
@@ -257,7 +257,7 @@ static int test_view_transform_preserves_hue(void) {
                 "Red hue not preserved");
 
     /* Test with green */
-    Scalar green_input[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
+    alwan_scalar green_input[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
     status = alwan_view_transform_apply(NULL, "aces_rec709",
                                        green_input, 1, 3,
                                        output, 3);
@@ -272,10 +272,10 @@ static int test_view_transform_preserves_hue(void) {
 
 static int test_invalid_view_transform(void) {
     /* Test that invalid view transform names return error */
-    Scalar dummy_in[3] = {
+    alwan_scalar dummy_in[3] = {
         ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)
     };
-    Scalar dummy_out[3];
+    alwan_scalar dummy_out[3];
 
     int status = alwan_view_transform_apply(NULL, "invalid_transform",
                                            dummy_in, 1, 3,

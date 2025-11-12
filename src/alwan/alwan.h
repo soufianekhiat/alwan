@@ -58,17 +58,17 @@ void alwan_destroy(alwan_ctx *ctx);
 /* Get D65 illuminant data (2 values: x, y)
  * In embedded mode: returns pointer to static data (no deallocation needed)
  * In runtime mode: allocates memory (caller must free with alwan_data_free) */
-int alwan_data_get_d65(alwan_ctx *ctx, Scalar **data, size_t *count);
+int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 /* Get D60 illuminant data (2 values: x, y) */
-int alwan_data_get_d60(alwan_ctx *ctx, Scalar **data, size_t *count);
+int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 /* Get sRGB primaries (6 values: rx, ry, gx, gy, bx, by) */
-int alwan_data_get_srgb_primaries(alwan_ctx *ctx, Scalar **data, size_t *count);
+int alwan_data_get_srgb_primaries(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 #if !ALWAN_EMBED_DATA
 /* Free data allocated by runtime loader (no-op in embedded mode) */
-void alwan_data_free(alwan_ctx *ctx, Scalar *data);
+void alwan_data_free(alwan_ctx *ctx, alwan_scalar *data);
 #endif
 
 /* ----------------------------------------------------------------
@@ -77,12 +77,12 @@ void alwan_data_free(alwan_ctx *ctx, Scalar *data);
 
 /* 3-component vector */
 typedef struct {
-    Scalar v[3];
+    alwan_scalar v[3];
 } alwan_vec3;
 
 /* 3x3 matrix stored in row-major order: [m00 m01 m02 m10 m11 m12 m20 m21 m22] */
 typedef struct {
-    Scalar m[9];
+    alwan_scalar m[9];
 } alwan_mat3x3;
 
 /* ----------------------------------------------------------------
@@ -108,13 +108,13 @@ void alwan_mat3_identity(alwan_mat3x3 *out);
 
 /* RGB space descriptor with primaries, white point, and transfer function names */
 typedef struct {
-    Scalar primaries_xy[6];  /* rx, ry, gx, gy, bx, by in CIE xy chromaticity */
-    Scalar white_xy[2];       /* wx, wy in CIE xy chromaticity */
+    alwan_scalar primaries_xy[6];  /* rx, ry, gx, gy, bx, by in CIE xy chromaticity */
+    alwan_scalar white_xy[2];       /* wx, wy in CIE xy chromaticity */
     char const *oetf_name;    /* Optional: name of OETF (e.g., "srgb", "pq") */
     char const *eotf_name;    /* Optional: name of EOTF (e.g., "srgb", "pq") */
 } alwan_rgb_space_desc;
 
-/* Derive RGB↔XYZ conversion matrices from primaries and white point
+/* Derive RGB<->XYZ conversion matrices from primaries and white point
  * Returns ALWAN_OK on success, ALWAN_E_RANGE if primaries/white form singular matrix */
 int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
                                alwan_mat3x3 *rgb_to_xyz,
@@ -124,19 +124,19 @@ int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
  * Transfer Functions (OETF/EOTF)
  * ---------------------------------------------------------------- */
 
-/* Apply Opto-Electronic Transfer Function (linear → encoded)
+/* Apply Opto-Electronic Transfer Function (linear -> encoded)
  * Supported names: "srgb", "pq"/"st2084", "hlg", "acesproxy"
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
 int alwan_oetf_apply(char const *name,
-                     Scalar const *linear, size_t count, size_t in_stride,
-                     Scalar *encoded, size_t out_stride);
+                     alwan_scalar const *linear, size_t count, size_t in_stride,
+                     alwan_scalar *encoded, size_t out_stride);
 
-/* Apply Electro-Optical Transfer Function (encoded → linear)
+/* Apply Electro-Optical Transfer Function (encoded -> linear)
  * Supported names: "srgb", "pq"/"st2084", "hlg", "bt1886", "acesproxy"
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
 int alwan_eotf_apply(char const *name,
-                     Scalar const *encoded, size_t count, size_t in_stride,
-                     Scalar *linear, size_t out_stride);
+                     alwan_scalar const *encoded, size_t count, size_t in_stride,
+                     alwan_scalar *linear, size_t out_stride);
 
 /* ----------------------------------------------------------------
  * View Transforms (Display Rendering)
@@ -157,30 +157,30 @@ int alwan_eotf_apply(char const *name,
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
 int alwan_view_transform_apply(alwan_ctx *ctx,
                                 char const *name,
-                                Scalar const *rgb_in, size_t count, size_t in_stride,
-                                Scalar *rgb_out, size_t out_stride);
+                                alwan_scalar const *rgb_in, size_t count, size_t in_stride,
+                                alwan_scalar *rgb_out, size_t out_stride);
 
 /* ----------------------------------------------------------------
  * Color Space Conversions
  * ---------------------------------------------------------------- */
 
-/* XYZ ↔ xyY conversions */
+/* XYZ <-> xyY conversions */
 void alwan_xyz_to_xyy(alwan_vec3 const *xyz, alwan_vec3 *xyy);
 void alwan_xyy_to_xyz(alwan_vec3 const *xyy, alwan_vec3 *xyz);
 
-/* XYZ ↔ Lab conversions (requires white point in XYZ) */
+/* XYZ <-> Lab conversions (requires white point in XYZ) */
 void alwan_xyz_to_lab(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *lab);
 void alwan_lab_to_xyz(alwan_vec3 const *lab, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
 
-/* XYZ ↔ Luv conversions (requires white point in XYZ) */
+/* XYZ <-> Luv conversions (requires white point in XYZ) */
 void alwan_xyz_to_luv(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *luv);
 void alwan_luv_to_xyz(alwan_vec3 const *luv, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
 
-/* Lab ↔ LCh(ab) conversions */
+/* Lab <-> LCh(ab) conversions */
 void alwan_lab_to_lch(alwan_vec3 const *lab, alwan_vec3 *lch);
 void alwan_lch_to_lab(alwan_vec3 const *lch, alwan_vec3 *lab);
 
-/* Luv ↔ LCh(uv) conversions */
+/* Luv <-> LCh(uv) conversions */
 void alwan_luv_to_lchuv(alwan_vec3 const *luv, alwan_vec3 *lchuv);
 void alwan_lchuv_to_luv(alwan_vec3 const *lchuv, alwan_vec3 *luv);
 
@@ -189,16 +189,16 @@ void alwan_lchuv_to_luv(alwan_vec3 const *lchuv, alwan_vec3 *luv);
  * ---------------------------------------------------------------- */
 
 /* ΔE*76 - Euclidean distance in Lab space */
-Scalar alwan_delta_e_76(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_76(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ΔE*94 - CIE 1994 color difference (graphic arts defaults: kL=1, K1=0.045, K2=0.015) */
-Scalar alwan_delta_e_94(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_94(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ΔE CMC(l:c) - CMC color difference (defaults: l=2, c=1 for acceptability) */
-Scalar alwan_delta_e_cmc(alwan_vec3 const *lab1, alwan_vec3 const *lab2, Scalar l, Scalar c);
+alwan_scalar alwan_delta_e_cmc(alwan_vec3 const *lab1, alwan_vec3 const *lab2, alwan_scalar l, alwan_scalar c);
 
 /* ΔE*00 - CIEDE2000 color difference (most perceptually uniform) */
-Scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ----------------------------------------------------------------
  * Chromatic Adaptation Transform (CAT)
@@ -233,11 +233,11 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
  * xyz_out: output XYZ colors (stride out_stride between consecutive colors)
  * out_stride: stride for output (in Scalars, typically 3 for packed array)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if parameters are invalid */
-int alwan_xyz_adapt(Scalar const *xyz_in, size_t count, size_t in_stride,
+int alwan_xyz_adapt(alwan_scalar const *xyz_in, size_t count, size_t in_stride,
                     alwan_vec3 const *src_white_xyz,
                     alwan_vec3 const *dst_white_xyz,
                     alwan_cat_method method,
-                    Scalar *xyz_out, size_t out_stride);
+                    alwan_scalar *xyz_out, size_t out_stride);
 
 /* ----------------------------------------------------------------
  * Spectral Power Distributions (SPD)
@@ -246,9 +246,9 @@ int alwan_xyz_adapt(Scalar const *xyz_in, size_t count, size_t in_stride,
 /* Spectral Power Distribution (SPD) - uniformly sampled spectrum
  * Represents a spectrum as discrete samples at regular wavelength intervals */
 typedef struct {
-    Scalar *values;        /* SPD values (power/reflectance/transmittance) */
-    Scalar wavelength_min; /* Starting wavelength (nm) */
-    Scalar wavelength_max; /* Ending wavelength (nm) */
+    alwan_scalar *values;        /* SPD values (power/reflectance/transmittance) */
+    alwan_scalar wavelength_min; /* Starting wavelength (nm) */
+    alwan_scalar wavelength_max; /* Ending wavelength (nm) */
     size_t count;          /* Number of samples */
 } alwan_spd;
 
@@ -286,8 +286,8 @@ typedef enum {
  * out: output SPD structure (values allocated internally)
  * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
 int alwan_spd_create(alwan_ctx *ctx,
-                     Scalar wavelength_min,
-                     Scalar wavelength_max,
+                     alwan_scalar wavelength_min,
+                     alwan_scalar wavelength_max,
                      size_t count,
                      alwan_spd *out);
 
@@ -313,8 +313,8 @@ int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out);
  * Returns ALWAN_OK on success */
 int alwan_spd_resample(alwan_ctx *ctx,
                        alwan_spd const *src,
-                       Scalar wavelength_min,
-                       Scalar wavelength_max,
+                       alwan_scalar wavelength_min,
+                       alwan_scalar wavelength_max,
                        size_t count,
                        alwan_resample_method method,
                        alwan_extrapolate_mode extrapolate,
@@ -334,7 +334,7 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_spd const *illuminant,
                        alwan_observer_type observer,
                        alwan_integrate_method method,
-                       Scalar bandpass_nm,
+                       alwan_scalar bandpass_nm,
                        alwan_vec3 *xyz_out);
 
 /* ----------------------------------------------------------------
@@ -351,24 +351,24 @@ typedef enum {
 /* CIECAM02 viewing conditions */
 typedef struct {
     alwan_vec3 white_xyz;                  /* Reference white in XYZ (Y typically 100) */
-    Scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m² (typically 20% of white Y) */
-    Scalar background_luminance;           /* Relative luminance of background (Yb/Yw, typically 0.2 for 20% gray) */
+    alwan_scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m² (typically 20% of white Y) */
+    alwan_scalar background_luminance;           /* Relative luminance of background (Yb/Yw, typically 0.2 for 20% gray) */
     alwan_ciecam02_surround surround;      /* Viewing surround condition */
     int discount_illuminant;               /* 1 to discount illuminant, 0 otherwise (affects D) */
 } alwan_ciecam02_viewing_conditions;
 
 /* CIECAM02 appearance correlates (all outputs from forward transform) */
 typedef struct {
-    Scalar J;  /* Lightness (0-100) */
-    Scalar C;  /* Chroma (0+) */
-    Scalar h;  /* Hue angle (0-360 degrees) */
-    Scalar s;  /* Saturation (0+) */
-    Scalar Q;  /* Brightness (0+) */
-    Scalar M;  /* Colorfulness (0+) */
-    Scalar H;  /* Hue quadrature (0-400) */
+    alwan_scalar J;  /* Lightness (0-100) */
+    alwan_scalar C;  /* Chroma (0+) */
+    alwan_scalar h;  /* Hue angle (0-360 degrees) */
+    alwan_scalar s;  /* Saturation (0+) */
+    alwan_scalar Q;  /* Brightness (0+) */
+    alwan_scalar M;  /* Colorfulness (0+) */
+    alwan_scalar H;  /* Hue quadrature (0-400) */
 } alwan_ciecam02_correlates;
 
-/* CIECAM02 forward transform: XYZ → appearance correlates
+/* CIECAM02 forward transform: XYZ -> appearance correlates
  * xyz: input color in XYZ (same white point as viewing conditions)
  * vc: viewing conditions
  * out: output appearance correlates (J, C, h, s, Q, M, H)
@@ -377,7 +377,7 @@ int alwan_ciecam02_forward(alwan_vec3 const *xyz,
                             alwan_ciecam02_viewing_conditions const *vc,
                             alwan_ciecam02_correlates *out);
 
-/* CIECAM02 inverse transform: appearance correlates → XYZ
+/* CIECAM02 inverse transform: appearance correlates -> XYZ
  * Uses J, C, h from input correlates (other fields are ignored)
  * correlates: input appearance correlates (J, C, h must be valid)
  * vc: viewing conditions
@@ -388,50 +388,116 @@ int alwan_ciecam02_inverse(alwan_ciecam02_correlates const *correlates,
                             alwan_vec3 *xyz_out);
 
 /* ----------------------------------------------------------------
+ * CAM16 Color Appearance Model
+ * ---------------------------------------------------------------- */
+
+/* CAM16 surround condition (same as CIECAM02) */
+typedef enum {
+    ALWAN_CAM16_SURROUND_AVERAGE = 0,  /* Average surround (F=1.0, c=0.69, Nc=1.0) - typical viewing */
+    ALWAN_CAM16_SURROUND_DIM = 1,      /* Dim surround (F=0.9, c=0.59, Nc=0.95) - dark room with screen */
+    ALWAN_CAM16_SURROUND_DARK = 2      /* Dark surround (F=0.8, c=0.525, Nc=0.8) - cutsheet transparency */
+} alwan_cam16_surround;
+
+/* CAM16 viewing conditions (similar to CIECAM02 but uses CAT16) */
+typedef struct {
+    alwan_vec3 white_xyz;                  /* Reference white in XYZ (Y typically 100) */
+    alwan_scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m² */
+    alwan_scalar background_luminance;           /* Relative luminance of background (Yb/Yw, typically 0.2) */
+    alwan_cam16_surround surround;         /* Viewing surround condition */
+    int discount_illuminant;               /* 1 to discount illuminant, 0 otherwise */
+} alwan_cam16_viewing_conditions;
+
+/* CAM16 appearance correlates */
+typedef struct {
+    alwan_scalar J;  /* Lightness (0-100) */
+    alwan_scalar C;  /* Chroma (0+) */
+    alwan_scalar h;  /* Hue angle (0-360 degrees) */
+    alwan_scalar s;  /* Saturation (0+) */
+    alwan_scalar Q;  /* Brightness (0+) */
+    alwan_scalar M;  /* Colorfulness (0+) */
+    alwan_scalar H;  /* Hue quadrature (0-400) */
+} alwan_cam16_correlates;
+
+/* CAM16 forward transform: XYZ -> appearance correlates
+ * xyz: input color in XYZ (same white point as viewing conditions)
+ * vc: viewing conditions
+ * out: output appearance correlates (J, C, h, s, Q, M, H)
+ * Returns ALWAN_OK on success */
+int alwan_cam16_forward(alwan_vec3 const *xyz,
+                        alwan_cam16_viewing_conditions const *vc,
+                        alwan_cam16_correlates *out);
+
+/* CAM16 inverse transform: appearance correlates -> XYZ
+ * Uses J, C, h from input correlates (other fields are ignored)
+ * correlates: input appearance correlates (J, C, h must be valid)
+ * vc: viewing conditions
+ * xyz_out: output color in XYZ
+ * Returns ALWAN_OK on success */
+int alwan_cam16_inverse(alwan_cam16_correlates const *correlates,
+                        alwan_cam16_viewing_conditions const *vc,
+                        alwan_vec3 *xyz_out);
+
+/* CAM16-UCS (Uniform Color Space) transform for perceptual distance metrics
+ * Converts CAM16 JMh to CAM16-UCS Jab for computing perceptual distances
+ * correlates: input CAM16 correlates (J, M, h used)
+ * Jab_out: output CAM16-UCS coordinates [J', a', b']
+ * Returns ALWAN_OK on success */
+int alwan_cam16_to_ucs(alwan_cam16_correlates const *correlates,
+                       alwan_vec3 *Jab_out);
+
+/* Inverse CAM16-UCS transform
+ * Converts CAM16-UCS Jab back to CAM16 JMh
+ * Jab: input CAM16-UCS coordinates [J', a', b']
+ * correlates_out: output CAM16 correlates (J, M, h filled; other fields set to 0)
+ * Returns ALWAN_OK on success */
+int alwan_cam16_from_ucs(alwan_vec3 const *Jab,
+                         alwan_cam16_correlates *correlates_out);
+
+/* ----------------------------------------------------------------
  * Utility Functions
  * ---------------------------------------------------------------- */
 
 /* Minimum of two values */
-static inline Scalar alwan_min(Scalar a, Scalar b) {
+static inline alwan_scalar alwan_min(alwan_scalar a, alwan_scalar b) {
     return (a < b) ? a : b;
 }
 
 /* Maximum of two values */
-static inline Scalar alwan_max(Scalar a, Scalar b) {
+static inline alwan_scalar alwan_max(alwan_scalar a, alwan_scalar b) {
     return (a > b) ? a : b;
 }
 
 /* Minimum of three values */
-static inline Scalar alwan_min3(Scalar a, Scalar b, Scalar c) {
-    Scalar m = a;
+static inline alwan_scalar alwan_min3(alwan_scalar a, alwan_scalar b, alwan_scalar c) {
+    alwan_scalar m = a;
     if (b < m) m = b;
     if (c < m) m = c;
     return m;
 }
 
 /* Maximum of three values */
-static inline Scalar alwan_max3(Scalar a, Scalar b, Scalar c) {
-    Scalar m = a;
+static inline alwan_scalar alwan_max3(alwan_scalar a, alwan_scalar b, alwan_scalar c) {
+    alwan_scalar m = a;
     if (b > m) m = b;
     if (c > m) m = c;
     return m;
 }
 
 /* Clamp scalar to [min, max] */
-static inline Scalar alwan_clamp(Scalar x, Scalar min, Scalar max) {
+static inline alwan_scalar alwan_clamp(alwan_scalar x, alwan_scalar min, alwan_scalar max) {
     return (x < min) ? min : (x > max) ? max : x;
 }
 
 /* Saturate (clamp to [0, 1]) */
-static inline Scalar alwan_saturate(Scalar x) {
+static inline alwan_scalar alwan_saturate(alwan_scalar x) {
     if (x < ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
     if (x > ALWAN_LITERAL(1.0)) return ALWAN_LITERAL(1.0);
     return x;
 }
 
 /* Linear interpolation (numerically stable) */
-static inline Scalar alwan_lerp(Scalar a, Scalar b, Scalar t) {
-    return ((Scalar)1.0 - t) * a + t * b;
+static inline alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scalar t) {
+    return ((alwan_scalar)1.0 - t) * a + t * b;
 }
 
 #ifdef __cplusplus
