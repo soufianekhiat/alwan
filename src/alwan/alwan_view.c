@@ -20,11 +20,9 @@
  * Output: Rec.709 linear (before display EOTF) */
 static void aces_rec709_transform(Scalar const *rgb_in, Scalar *rgb_out) {
     /* Input is ACEScg (AP1), convert to ACES2065-1 (AP0) */
-    /* AP1 to AP0 matrix */
-    Scalar const ap1_to_ap0[9] = {
-        ALWAN_LITERAL( 0.6954522414),  ALWAN_LITERAL( 0.1406786965), ALWAN_LITERAL( 0.1638690622),
-        ALWAN_LITERAL( 0.0447945634),  ALWAN_LITERAL( 0.8596711185), ALWAN_LITERAL( 0.0955343182),
-        ALWAN_LITERAL(-0.0055258826),  ALWAN_LITERAL( 0.0040252103), ALWAN_LITERAL( 1.0015006723)
+    /* AP1 to AP0 matrix (generated from colour-science) */
+    static Scalar const ap1_to_ap0[9] = {
+#include "../../data/matrices/aces_ap1_to_ap0.csv"
     };
 
     /* Transform to AP0 */
@@ -50,11 +48,10 @@ static void aces_rec709_transform(Scalar const *rgb_in, Scalar *rgb_out) {
     #undef ACES_TONEMAP
 
     /* ODT: Convert from ACES to Rec.709
-     * Simplified matrix (AP0 to Rec.709 with Bradford chromatic adaptation D60→D65) */
-    Scalar const odt_matrix[9] = {
-        ALWAN_LITERAL( 2.5216),  ALWAN_LITERAL(-1.1348), ALWAN_LITERAL(-0.3869),
-        ALWAN_LITERAL(-0.2759),  ALWAN_LITERAL( 1.3759), ALWAN_LITERAL(-0.1000),
-        ALWAN_LITERAL(-0.0161),  ALWAN_LITERAL(-0.1478), ALWAN_LITERAL( 1.1639)
+     * Simplified matrix (AP0 to Rec.709 with Bradford chromatic adaptation D60→D65)
+     * Generated from colour-science */
+    static Scalar const odt_matrix[9] = {
+#include "../../data/matrices/aces_odt_rec709.csv"
     };
 
     rgb_out[0] = odt_matrix[0] * rrt_r + odt_matrix[1] * rrt_g + odt_matrix[2] * rrt_b;

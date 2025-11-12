@@ -14,32 +14,29 @@
  * CAT Matrix Definitions
  * ---------------------------------------------------------------- */
 
-/* Bradford CAT matrix (most common, used in ICC profiles) */
+/* Bradford CAT matrix (most common, used in ICC profiles)
+ * Generated from colour-science */
 static void get_bradford_matrix(alwan_mat3x3 *out) {
-    Scalar const data[9] = {
-        ALWAN_LITERAL( 0.8951000),  ALWAN_LITERAL( 0.2664000), ALWAN_LITERAL(-0.1614000),
-        ALWAN_LITERAL(-0.7502000),  ALWAN_LITERAL( 1.7135000), ALWAN_LITERAL( 0.0367000),
-        ALWAN_LITERAL( 0.0389000),  ALWAN_LITERAL(-0.0685000), ALWAN_LITERAL( 1.0296000)
+    static Scalar const data[9] = {
+#include "../../data/matrices/cat_bradford.csv"
     };
     memcpy(out->m, data, sizeof(data));
 }
 
-/* CAT02 matrix (from CIECAM02) */
+/* CAT02 matrix (from CIECAM02)
+ * Generated from colour-science */
 static void get_cat02_matrix(alwan_mat3x3 *out) {
-    Scalar const data[9] = {
-        ALWAN_LITERAL( 0.7328),  ALWAN_LITERAL( 0.4296), ALWAN_LITERAL(-0.1624),
-        ALWAN_LITERAL(-0.7036),  ALWAN_LITERAL( 1.6975), ALWAN_LITERAL( 0.0061),
-        ALWAN_LITERAL( 0.0030),  ALWAN_LITERAL( 0.0136), ALWAN_LITERAL( 0.9834)
+    static Scalar const data[9] = {
+#include "../../data/matrices/cat_cat02.csv"
     };
     memcpy(out->m, data, sizeof(data));
 }
 
-/* CAT16 matrix (from CAM16) */
+/* CAT16 matrix (from CAM16)
+ * Generated from colour-science */
 static void get_cat16_matrix(alwan_mat3x3 *out) {
-    Scalar const data[9] = {
-        ALWAN_LITERAL( 0.401288),  ALWAN_LITERAL( 0.650173), ALWAN_LITERAL(-0.051461),
-        ALWAN_LITERAL(-0.250268),  ALWAN_LITERAL( 1.204414), ALWAN_LITERAL( 0.045854),
-        ALWAN_LITERAL(-0.002079),  ALWAN_LITERAL( 0.048952), ALWAN_LITERAL( 0.953127)
+    static Scalar const data[9] = {
+#include "../../data/matrices/cat_cat16.csv"
     };
     memcpy(out->m, data, sizeof(data));
 }

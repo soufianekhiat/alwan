@@ -610,6 +610,69 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate CIE 1964 10° CMFs: {e}", file=sys.stderr)
 
+# CIE 2015 2° Standard Observer (360-830nm, 1nm steps)
+# M6: Add physiologically-based 2015 observers (based on CIE 2006/2012 work)
+try:
+    cmfs_2012_2 = colour.MSDS_CMFS['CIE 2015 2 Degree Standard Observer']
+
+    x_bar_2012_2 = cmfs_2012_2.values[:, 0]
+    y_bar_2012_2 = cmfs_2012_2.values[:, 1]
+    z_bar_2012_2 = cmfs_2012_2.values[:, 2]
+    wavelengths_2012_2 = cmfs_2012_2.wavelengths
+
+    mask_2012_2 = (wavelengths_2012_2 >= 360) & (wavelengths_2012_2 <= 830)
+    x_bar_2012_2_filtered = x_bar_2012_2[mask_2012_2]
+    y_bar_2012_2_filtered = y_bar_2012_2[mask_2012_2]
+    z_bar_2012_2_filtered = z_bar_2012_2[mask_2012_2]
+
+    with open('data/cmf/cie_2012_2deg_x_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in x_bar_2012_2_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_2012_2deg_x_360_830_1nm.csv ({len(x_bar_2012_2_filtered)} samples)")
+
+    with open('data/cmf/cie_2012_2deg_y_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in y_bar_2012_2_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_2012_2deg_y_360_830_1nm.csv ({len(y_bar_2012_2_filtered)} samples)")
+
+    with open('data/cmf/cie_2012_2deg_z_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in z_bar_2012_2_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_2012_2deg_z_360_830_1nm.csv ({len(z_bar_2012_2_filtered)} samples)")
+except Exception as e:
+    print(f"  Warning: Could not generate CIE 2012 2° CMFs: {e}", file=sys.stderr)
+
+# CIE 2015 10° Standard Observer (360-830nm, 1nm steps)
+try:
+    cmfs_2012_10 = colour.MSDS_CMFS['CIE 2015 10 Degree Standard Observer']
+
+    x_bar_2012_10 = cmfs_2012_10.values[:, 0]
+    y_bar_2012_10 = cmfs_2012_10.values[:, 1]
+    z_bar_2012_10 = cmfs_2012_10.values[:, 2]
+    wavelengths_2012_10 = cmfs_2012_10.wavelengths
+
+    mask_2012_10 = (wavelengths_2012_10 >= 360) & (wavelengths_2012_10 <= 830)
+    x_bar_2012_10_filtered = x_bar_2012_10[mask_2012_10]
+    y_bar_2012_10_filtered = y_bar_2012_10[mask_2012_10]
+    z_bar_2012_10_filtered = z_bar_2012_10[mask_2012_10]
+
+    with open('data/cmf/cie_2012_10deg_x_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in x_bar_2012_10_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_2012_10deg_x_360_830_1nm.csv ({len(x_bar_2012_10_filtered)} samples)")
+
+    with open('data/cmf/cie_2012_10deg_y_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in y_bar_2012_10_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_2012_10deg_y_360_830_1nm.csv ({len(y_bar_2012_10_filtered)} samples)")
+
+    with open('data/cmf/cie_2012_10deg_z_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in z_bar_2012_10_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_2012_10deg_z_360_830_1nm.csv ({len(z_bar_2012_10_filtered)} samples)")
+except Exception as e:
+    print(f"  Warning: Could not generate CIE 2012 10° CMFs: {e}", file=sys.stderr)
+
 # ================================================================
 # M5: Spectral Data - Illuminant SPDs
 # ================================================================
@@ -653,6 +716,102 @@ for illum_name in illuminant_names:
 
     except Exception as e:
         print(f"  Warning: Could not generate illuminant {illum_name}: {e}", file=sys.stderr)
+
+# ============================================================
+# View Transform Matrices
+# ============================================================
+print("\n--- Generating View Transform Matrices ---")
+
+# Create matrices directory
+os.makedirs('data/matrices', exist_ok=True)
+
+try:
+    # AP1 to AP0 conversion matrix (ACEScg to ACES2065-1)
+    print("\nGenerating ACES AP1→AP0 matrix...")
+
+    # Get ACES color spaces from colour-science
+    aces_ap0 = colour.RGB_COLOURSPACES['ACES2065-1']
+    aces_ap1 = colour.RGB_COLOURSPACES['ACEScg']
+
+    # Compute conversion matrix from AP1 to AP0
+    # This uses the chromatic adaptation and primary conversion
+    ap1_to_ap0 = colour.matrix_RGB_to_RGB(
+        aces_ap1,
+        aces_ap0,
+        chromatic_adaptation_transform=None  # Both use D60, no CAT needed
+    )
+
+    # Write matrix as 9 comma-separated values (row-major 3x3)
+    filename = 'data/matrices/aces_ap1_to_ap0.csv'
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = ap1_to_ap0.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 matrix, 9 values)")
+
+except Exception as e:
+    print(f"  Warning: Could not generate AP1→AP0 matrix: {e}", file=sys.stderr)
+
+try:
+    # ACES ODT matrix for Rec.709 (simplified)
+    print("\nGenerating ACES ODT matrix for Rec.709...")
+
+    # ODT converts from ACES2065-1 (AP0, D60) to Rec.709 (D65)
+    # This includes chromatic adaptation from D60 to D65
+    aces_ap0 = colour.RGB_COLOURSPACES['ACES2065-1']
+    rec709 = colour.RGB_COLOURSPACES['ITU-R BT.709']
+
+    # Compute conversion matrix with Bradford chromatic adaptation
+    odt_matrix = colour.matrix_RGB_to_RGB(
+        aces_ap0,
+        rec709,
+        chromatic_adaptation_transform='Bradford'
+    )
+
+    # Write matrix as 9 comma-separated values (row-major 3x3)
+    filename = 'data/matrices/aces_odt_rec709.csv'
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = odt_matrix.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 matrix, 9 values)")
+
+except Exception as e:
+    print(f"  Warning: Could not generate ODT matrix: {e}", file=sys.stderr)
+
+try:
+    # Chromatic Adaptation Transform (CAT) matrices
+    print("\nGenerating CAT matrices...")
+
+    # Bradford CAT matrix
+    bradford_matrix = colour.CHROMATIC_ADAPTATION_TRANSFORMS['Bradford']
+    filename = 'data/matrices/cat_bradford.csv'
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = bradford_matrix.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 matrix, 9 values)")
+
+    # CAT02 matrix
+    cat02_matrix = colour.CHROMATIC_ADAPTATION_TRANSFORMS['CAT02']
+    filename = 'data/matrices/cat_cat02.csv'
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = cat02_matrix.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 matrix, 9 values)")
+
+    # CAT16 matrix
+    cat16_matrix = colour.CHROMATIC_ADAPTATION_TRANSFORMS['CAT16']
+    filename = 'data/matrices/cat_cat16.csv'
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = cat16_matrix.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 matrix, 9 values)")
+
+except Exception as e:
+    print(f"  Warning: Could not generate CAT matrices: {e}", file=sys.stderr)
 
 print("\nData generation complete!")
 "@

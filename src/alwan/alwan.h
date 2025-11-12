@@ -255,7 +255,9 @@ typedef struct {
 /* Observer type (standard color matching functions) */
 typedef enum {
     ALWAN_OBSERVER_CIE_1931_2DEG = 0,  /* CIE 1931 2° standard observer */
-    ALWAN_OBSERVER_CIE_1964_10DEG = 1  /* CIE 1964 10° standard observer */
+    ALWAN_OBSERVER_CIE_1964_10DEG = 1, /* CIE 1964 10° standard observer */
+    ALWAN_OBSERVER_CIE_2012_2DEG = 2,  /* CIE 2012 2° standard observer (physiologically-based) */
+    ALWAN_OBSERVER_CIE_2012_10DEG = 3  /* CIE 2012 10° standard observer (physiologically-based) */
 } alwan_observer_type;
 
 /* SPD resampling method */
@@ -263,6 +265,13 @@ typedef enum {
     ALWAN_RESAMPLE_LINEAR = 0,      /* Linear interpolation */
     ALWAN_RESAMPLE_CATMULL_ROM = 1  /* Catmull-Rom spline (smoother) */
 } alwan_resample_method;
+
+/* SPD extrapolation mode (for values outside measured range) */
+typedef enum {
+    ALWAN_EXTRAPOLATE_ZERO = 0,     /* Clamp to zero outside range (default for reflectance) */
+    ALWAN_EXTRAPOLATE_CONSTANT = 1, /* Repeat edge values (good for smooth SPDs) */
+    ALWAN_EXTRAPOLATE_LINEAR = 2    /* Linear extrapolation from edge slope */
+} alwan_extrapolate_mode;
 
 /* SPD integration method for computing XYZ */
 typedef enum {
@@ -299,6 +308,7 @@ int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out);
  * wavelength_max: new ending wavelength (nm)
  * count: new number of samples
  * method: resampling method (linear or Catmull-Rom)
+ * extrapolate: extrapolation mode for out-of-range values
  * dst: destination SPD (values allocated internally)
  * Returns ALWAN_OK on success */
 int alwan_spd_resample(alwan_ctx *ctx,
@@ -307,14 +317,16 @@ int alwan_spd_resample(alwan_ctx *ctx,
                        Scalar wavelength_max,
                        size_t count,
                        alwan_resample_method method,
+                       alwan_extrapolate_mode extrapolate,
                        alwan_spd *dst);
 
 /* Compute XYZ tristimulus values from SPD
  * ctx: context
  * spd: spectral power distribution (reflectance or emission)
  * illuminant: illuminant SPD (NULL = assume spd is already weighted by illuminant)
- * observer: observer type (CIE 1931 2° or CIE 1964 10°)
+ * observer: observer type (CIE 1931/1964/2012 2° or 10°)
  * method: integration method (trapezoid or Simpson)
+ * bandpass_nm: bandpass width for Stearns & Stearns correction (0 = no correction)
  * xyz_out: output XYZ tristimulus values
  * Returns ALWAN_OK on success */
 int alwan_xyz_from_spd(alwan_ctx *ctx,
@@ -322,6 +334,7 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_spd const *illuminant,
                        alwan_observer_type observer,
                        alwan_integrate_method method,
+                       Scalar bandpass_nm,
                        alwan_vec3 *xyz_out);
 
 /* ----------------------------------------------------------------

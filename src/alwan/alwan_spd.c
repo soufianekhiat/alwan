@@ -64,11 +64,44 @@ static inline Scalar spd_wavelength_at(alwan_spd const *spd, size_t index) {
     return spd->wavelength_min + t * (spd->wavelength_max - spd->wavelength_min);
 }
 
-/* Helper: Interpolate SPD value at wavelength */
-static Scalar spd_interpolate(alwan_spd const *spd, Scalar wavelength, alwan_resample_method method) {
-    /* Out of range */
-    if (wavelength < spd->wavelength_min || wavelength > spd->wavelength_max) {
-        return ALWAN_LITERAL(0.0);
+/* Helper: Interpolate SPD value at wavelength with extrapolation */
+static Scalar spd_interpolate(alwan_spd const *spd, Scalar wavelength,
+                               alwan_resample_method method,
+                               alwan_extrapolate_mode extrapolate) {
+    /* Handle out-of-range wavelengths based on extrapolation mode */
+    if (wavelength < spd->wavelength_min) {
+        if (extrapolate == ALWAN_EXTRAPOLATE_ZERO) {
+            return ALWAN_LITERAL(0.0);
+        } else if (extrapolate == ALWAN_EXTRAPOLATE_CONSTANT) {
+            return spd->values[0];
+        } else /* ALWAN_EXTRAPOLATE_LINEAR */ {
+            /* Linear extrapolation using first two points */
+            if (spd->count < 2) {
+                return spd->values[0];
+            }
+            Scalar wl0 = spd_wavelength_at(spd, 0);
+            Scalar wl1 = spd_wavelength_at(spd, 1);
+            Scalar slope = (spd->values[1] - spd->values[0]) / (wl1 - wl0);
+            return spd->values[0] + slope * (wavelength - wl0);
+        }
+    }
+
+    if (wavelength > spd->wavelength_max) {
+        if (extrapolate == ALWAN_EXTRAPOLATE_ZERO) {
+            return ALWAN_LITERAL(0.0);
+        } else if (extrapolate == ALWAN_EXTRAPOLATE_CONSTANT) {
+            return spd->values[spd->count - 1];
+        } else /* ALWAN_EXTRAPOLATE_LINEAR */ {
+            /* Linear extrapolation using last two points */
+            if (spd->count < 2) {
+                return spd->values[spd->count - 1];
+            }
+            size_t n = spd->count;
+            Scalar wl_n2 = spd_wavelength_at(spd, n - 2);
+            Scalar wl_n1 = spd_wavelength_at(spd, n - 1);
+            Scalar slope = (spd->values[n - 1] - spd->values[n - 2]) / (wl_n1 - wl_n2);
+            return spd->values[n - 1] + slope * (wavelength - wl_n1);
+        }
     }
 
     if (spd->count == 0) {
@@ -129,6 +162,7 @@ int alwan_spd_resample(alwan_ctx *ctx,
                        Scalar wavelength_max,
                        size_t count,
                        alwan_resample_method method,
+                       alwan_extrapolate_mode extrapolate,
                        alwan_spd *dst) {
     if (!src || !dst || count == 0 || wavelength_min >= wavelength_max) {
         return ALWAN_E_INVALID;
@@ -143,7 +177,7 @@ int alwan_spd_resample(alwan_ctx *ctx,
     /* Resample each point */
     for (size_t i = 0; i < count; i++) {
         Scalar wavelength = spd_wavelength_at(dst, i);
-        dst->values[i] = spd_interpolate(src, wavelength, method);
+        dst->values[i] = spd_interpolate(src, wavelength, method, extrapolate);
     }
 
     return ALWAN_OK;
@@ -324,19 +358,34 @@ static int load_observer_cmf(alwan_ctx *ctx,
                               alwan_spd *x_bar,
                               alwan_spd *y_bar,
                               alwan_spd *z_bar) {
-    /* CMFs are 360-830nm, 1nm steps = 471 samples */
+    /* Determine wavelength range and sample count based on observer */
+    Scalar wl_min, wl_max;
+    size_t count;
+
+    if (observer == ALWAN_OBSERVER_CIE_1931_2DEG || observer == ALWAN_OBSERVER_CIE_1964_10DEG) {
+        /* CIE 1931/1964: 360-830nm, 1nm steps = 471 samples */
+        wl_min = ALWAN_LITERAL(360.0);
+        wl_max = ALWAN_LITERAL(830.0);
+        count = 471;
+    } else {
+        /* CIE 2012/2015: 390-830nm, 1nm steps = 441 samples */
+        wl_min = ALWAN_LITERAL(390.0);
+        wl_max = ALWAN_LITERAL(830.0);
+        count = 441;
+    }
+
     int status;
 
-    status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, x_bar);
+    status = alwan_spd_create(ctx, wl_min, wl_max, count, x_bar);
     if (status != ALWAN_OK) return status;
 
-    status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, y_bar);
+    status = alwan_spd_create(ctx, wl_min, wl_max, count, y_bar);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, x_bar);
         return status;
     }
 
-    status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, z_bar);
+    status = alwan_spd_create(ctx, wl_min, wl_max, count, z_bar);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, x_bar);
         alwan_spd_destroy(ctx, y_bar);
@@ -375,6 +424,42 @@ static int load_observer_cmf(alwan_ctx *ctx,
         };
         static Scalar const z_data[] = {
 #include "../../data/cmf/cie_1964_10deg_z_360_830_1nm.csv"
+        };
+
+        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
+        for (size_t i = 0; i < n && i < x_bar->count; i++) {
+            x_bar->values[i] = x_data[i];
+            y_bar->values[i] = y_data[i];
+            z_bar->values[i] = z_data[i];
+        }
+    } else if (observer == ALWAN_OBSERVER_CIE_2012_2DEG) {
+        /* CIE 2012/2015 2° Standard Observer (390-830nm) */
+        static Scalar const x_data[] = {
+#include "../../data/cmf/cie_2012_2deg_x_360_830_1nm.csv"
+        };
+        static Scalar const y_data[] = {
+#include "../../data/cmf/cie_2012_2deg_y_360_830_1nm.csv"
+        };
+        static Scalar const z_data[] = {
+#include "../../data/cmf/cie_2012_2deg_z_360_830_1nm.csv"
+        };
+
+        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
+        for (size_t i = 0; i < n && i < x_bar->count; i++) {
+            x_bar->values[i] = x_data[i];
+            y_bar->values[i] = y_data[i];
+            z_bar->values[i] = z_data[i];
+        }
+    } else if (observer == ALWAN_OBSERVER_CIE_2012_10DEG) {
+        /* CIE 2012/2015 10° Standard Observer (390-830nm) */
+        static Scalar const x_data[] = {
+#include "../../data/cmf/cie_2012_10deg_x_360_830_1nm.csv"
+        };
+        static Scalar const y_data[] = {
+#include "../../data/cmf/cie_2012_10deg_y_360_830_1nm.csv"
+        };
+        static Scalar const z_data[] = {
+#include "../../data/cmf/cie_2012_10deg_z_360_830_1nm.csv"
         };
 
         size_t const n = sizeof(x_data) / sizeof(x_data[0]);
@@ -443,6 +528,7 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_spd const *illuminant,
                        alwan_observer_type observer,
                        alwan_integrate_method method,
+                       Scalar bandpass_nm,
                        alwan_vec3 *xyz_out) {
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
@@ -455,10 +541,11 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
         return status;
     }
 
-    /* Resample CMFs to match SPD wavelength range */
+    /* Resample CMFs to match SPD wavelength range (use constant extrapolation for smooth CMFs) */
     alwan_spd x_bar_resampled, y_bar_resampled, z_bar_resampled;
     status = alwan_spd_resample(ctx, &x_bar, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, &x_bar_resampled);
+                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT,
+                                &x_bar_resampled);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &x_bar);
         alwan_spd_destroy(ctx, &y_bar);
@@ -467,7 +554,8 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
     }
 
     status = alwan_spd_resample(ctx, &y_bar, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, &y_bar_resampled);
+                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT,
+                                &y_bar_resampled);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &x_bar);
         alwan_spd_destroy(ctx, &y_bar);
@@ -477,7 +565,8 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
     }
 
     status = alwan_spd_resample(ctx, &z_bar, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, &z_bar_resampled);
+                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT,
+                                &z_bar_resampled);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &x_bar);
         alwan_spd_destroy(ctx, &y_bar);
@@ -512,7 +601,8 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
         /* If illuminant provided, multiply by it */
         if (illuminant) {
             Scalar wavelength = spd_wavelength_at(spd, i);
-            Scalar illum_value = spd_interpolate(illuminant, wavelength, ALWAN_RESAMPLE_LINEAR);
+            Scalar illum_value = spd_interpolate(illuminant, wavelength, ALWAN_RESAMPLE_LINEAR,
+                                                  ALWAN_EXTRAPOLATE_ZERO);
             spd_value *= illum_value;
         }
 
@@ -520,6 +610,15 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
         prod_y[i] = spd_value * y_bar_resampled.values[i];
         prod_z[i] = spd_value * z_bar_resampled.values[i];
     }
+
+    /* Apply bandpass correction if requested (Stearns & Stearns 1988) */
+    /* TODO(M6): Implement full Stearns & Stearns bandpass correction algorithm
+     * For now, bandpass_nm parameter is accepted but not used.
+     * Correction would involve:
+     * 1. Computing second derivatives of reflectance spectrum
+     * 2. Applying correction factor based on bandpass width
+     * 3. Adjusting XYZ values accordingly */
+    (void)bandpass_nm;  /* Unused for now */
 
     /* Integrate to get XYZ */
     Scalar dx = (spd->wavelength_max - spd->wavelength_min) / (Scalar)(spd->count - 1);

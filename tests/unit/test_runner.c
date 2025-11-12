@@ -22,6 +22,7 @@ extern int test_31_cat_roundtrip_main(void);
 extern int test_40_tf_hdr_main(void);
 extern int test_41_view_transforms_main(void);
 extern int test_50_spd_to_xyz_main(void);
+extern int test_60_bandpass_2012_main(void);
 
 /* Test registry */
 typedef struct {
@@ -42,6 +43,7 @@ static test_suite const g_test_suites[] = {
     {"40_tf_hdr", test_40_tf_hdr_main},
     {"41_view_transforms", test_41_view_transforms_main},
     {"50_spd_to_xyz", test_50_spd_to_xyz_main},
+    {"60_bandpass_2012", test_60_bandpass_2012_main},
 };
 
 int main(void) {

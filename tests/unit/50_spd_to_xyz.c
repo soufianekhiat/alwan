@@ -113,7 +113,7 @@ static int test_spd_resampling(void) {
     alwan_spd dst_linear;
     status = alwan_spd_resample(ctx, &src,
                                 ALWAN_LITERAL(420.0), ALWAN_LITERAL(680.0), 53,
-                                ALWAN_RESAMPLE_LINEAR, &dst_linear);
+                                ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, &dst_linear);
     TEST_ASSERT(status == ALWAN_OK, "Linear resampling failed");
     TEST_ASSERT(dst_linear.count == 53, "Resampled count mismatch");
 
@@ -121,7 +121,7 @@ static int test_spd_resampling(void) {
     alwan_spd dst_catmull;
     status = alwan_spd_resample(ctx, &src,
                                 ALWAN_LITERAL(420.0), ALWAN_LITERAL(680.0), 53,
-                                ALWAN_RESAMPLE_CATMULL_ROM, &dst_catmull);
+                                ALWAN_RESAMPLE_CATMULL_ROM, ALWAN_EXTRAPOLATE_ZERO, &dst_catmull);
     TEST_ASSERT(status == ALWAN_OK, "Catmull-Rom resampling failed");
 
     /* Check that both methods produced values in reasonable range */
@@ -165,12 +165,14 @@ static int test_xyz_from_constant_spd(void) {
     status = alwan_xyz_from_spd(ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
+                                ALWAN_LITERAL(0.0),  /* No bandpass correction */
                                 &xyz_trap);
     TEST_ASSERT(status == ALWAN_OK, "XYZ integration (trapezoid) failed");
 
     status = alwan_xyz_from_spd(ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
+                                ALWAN_LITERAL(0.0),  /* No bandpass correction */
                                 &xyz_simp);
     TEST_ASSERT(status == ALWAN_OK, "XYZ integration (Simpson) failed");
 
@@ -227,12 +229,14 @@ static int test_xyz_both_observers(void) {
     status = alwan_xyz_from_spd(ctx, &reflectance, &illum_e,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
+                                ALWAN_LITERAL(0.0),  /* No bandpass correction */
                                 &xyz_2deg);
     TEST_ASSERT(status == ALWAN_OK, "XYZ with 2° observer failed");
 
     status = alwan_xyz_from_spd(ctx, &reflectance, &illum_e,
                                 ALWAN_OBSERVER_CIE_1964_10DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
+                                ALWAN_LITERAL(0.0),  /* No bandpass correction */
                                 &xyz_10deg);
     TEST_ASSERT(status == ALWAN_OK, "XYZ with 10° observer failed");
 
