@@ -54,13 +54,13 @@ static int test_cat_d65_to_d50_bradford(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const expected_matrix_data[] = {
-#include "../../data/fixtures/m3_cat_d65_to_d50_bradford.csv"
+#include "../../data/fixtures/cat_d65_to_d50_bradford.csv"
     };
     ALWAN_DIAG_POP
 
@@ -96,13 +96,13 @@ static int test_cat_d50_to_d65_bradford(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const expected_matrix_data[] = {
-#include "../../data/fixtures/m3_cat_d50_to_d65_bradford.csv"
+#include "../../data/fixtures/cat_d50_to_d65_bradford.csv"
     };
     ALWAN_DIAG_POP
 
@@ -133,13 +133,13 @@ static int test_cat_a_to_d65_bradford(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const a_xyz_data[] = {
-#include "../../data/fixtures/m3_a_xyz.csv"
+#include "../../data/fixtures/a_xyz.csv"
     };
     static Scalar const expected_matrix_data[] = {
-#include "../../data/fixtures/m3_cat_a_to_d65_bradford.csv"
+#include "../../data/fixtures/cat_a_to_d65_bradford.csv"
     };
     ALWAN_DIAG_POP
 
@@ -170,13 +170,13 @@ static int test_cat_d65_to_d60_bradford(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d60_xyz_data[] = {
-#include "../../data/fixtures/m3_d60_xyz.csv"
+#include "../../data/fixtures/d60_xyz.csv"
     };
     static Scalar const expected_matrix_data[] = {
-#include "../../data/fixtures/m3_cat_d65_to_d60_bradford.csv"
+#include "../../data/fixtures/cat_d65_to_d60_bradford.csv"
     };
     ALWAN_DIAG_POP
 
@@ -207,13 +207,13 @@ static int test_cat_d65_to_d50_cat02(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const expected_matrix_data[] = {
-#include "../../data/fixtures/m3_cat_d65_to_d50_cat02.csv"
+#include "../../data/fixtures/cat_d65_to_d50_cat02.csv"
     };
     ALWAN_DIAG_POP
 
@@ -244,13 +244,13 @@ static int test_cat_d65_to_d50_cat16(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const expected_matrix_data[] = {
-#include "../../data/fixtures/m3_cat_d65_to_d50_cat16.csv"
+#include "../../data/fixtures/cat_d65_to_d50_cat16.csv"
     };
     ALWAN_DIAG_POP
 
@@ -281,13 +281,13 @@ static int test_cat_d65_to_d50_xyz_scaling(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const expected_matrix_data[] = {
-#include "../../data/fixtures/m3_cat_d65_to_d50_xyz_scaling.csv"
+#include "../../data/fixtures/cat_d65_to_d50_xyz_scaling.csv"
     };
     ALWAN_DIAG_POP
 

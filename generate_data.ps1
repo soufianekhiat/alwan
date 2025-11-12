@@ -242,9 +242,9 @@ with open('data/fixtures/aces_ap1_descriptor.csv', 'w', newline='') as f:
 print(f"  data/fixtures/aces_ap1_descriptor.csv")
 
 # ================================================================
-# M2 Test Fixtures: Color Space Conversions
+# Test Fixtures: Color Space Conversions
 # ================================================================
-print("\nGenerating M2 test fixtures (color space conversions)...")
+print("\nGenerating color space conversion test fixtures...")
 
 # White points in XYZ (normalized to Y=1) for C code
 d65_xyz = colour.xy_to_XYZ(d65)
@@ -261,48 +261,48 @@ test_xyz_values = [
 ]
 
 # Flatten XYZ values to single line
-with open('data/fixtures/m2_xyz_values.csv', 'w', newline='') as f:
+with open('data/fixtures/xyz_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         all_values.extend([format_scalar(v) for v in xyz])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_xyz_values.csv")
+print(f"  data/fixtures/xyz_values.csv")
 
 # Compute corresponding xyY values and flatten to single line
-with open('data/fixtures/m2_xyy_values.csv', 'w', newline='') as f:
+with open('data/fixtures/xyy_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         xyy = colour.XYZ_to_xyY(xyz)
         all_values.extend([format_scalar(v) for v in xyy])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_xyy_values.csv")
+print(f"  data/fixtures/xyy_values.csv")
 
 # Test case 2: XYZ ↔ Lab (D65 white point)
-with open('data/fixtures/m2_lab_d65_values.csv', 'w', newline='') as f:
+with open('data/fixtures/lab_d65_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         lab = colour.XYZ_to_Lab(xyz, illuminant=d65)
         all_values.extend([format_scalar(v) for v in lab])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_lab_d65_values.csv")
+print(f"  data/fixtures/lab_d65_values.csv")
 
 # Test case 3: XYZ ↔ Lab (D50 white point)
-with open('data/fixtures/m2_lab_d50_values.csv', 'w', newline='') as f:
+with open('data/fixtures/lab_d50_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         lab = colour.XYZ_to_Lab(xyz, illuminant=d50)
         all_values.extend([format_scalar(v) for v in lab])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_lab_d50_values.csv")
+print(f"  data/fixtures/lab_d50_values.csv")
 
 # Test case 4: XYZ ↔ Luv (D65 white point)
-with open('data/fixtures/m2_luv_d65_values.csv', 'w', newline='') as f:
+with open('data/fixtures/luv_d65_values.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_values:
         luv = colour.XYZ_to_Luv(xyz, illuminant=d65)
         all_values.extend([format_scalar(v) for v in luv])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_luv_d65_values.csv")
+print(f"  data/fixtures/luv_d65_values.csv")
 
 # Test case 5: Lab ↔ LCh
 test_lab_values = [
@@ -311,20 +311,20 @@ test_lab_values = [
     [25.0, 0.0, 0.0],
 ]
 
-with open('data/fixtures/m2_lab_for_lch.csv', 'w', newline='') as f:
+with open('data/fixtures/lab_for_lch.csv', 'w', newline='') as f:
     all_values = []
     for lab in test_lab_values:
         all_values.extend([format_scalar(v) for v in lab])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_lab_for_lch.csv")
+print(f"  data/fixtures/lab_for_lch.csv")
 
-with open('data/fixtures/m2_lch_values.csv', 'w', newline='') as f:
+with open('data/fixtures/lch_values.csv', 'w', newline='') as f:
     all_values = []
     for lab in test_lab_values:
         lch = colour.Lab_to_LCHab(lab)
         all_values.extend([format_scalar(v) for v in lch])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_lch_values.csv")
+print(f"  data/fixtures/lch_values.csv")
 
 # Test case 6: Luv ↔ LCh(uv)
 test_luv_values = [
@@ -333,25 +333,25 @@ test_luv_values = [
     [25.0, 0.0, 0.0],
 ]
 
-with open('data/fixtures/m2_luv_for_lchuv.csv', 'w', newline='') as f:
+with open('data/fixtures/luv_for_lchuv.csv', 'w', newline='') as f:
     all_values = []
     for luv in test_luv_values:
         all_values.extend([format_scalar(v) for v in luv])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_luv_for_lchuv.csv")
+print(f"  data/fixtures/luv_for_lchuv.csv")
 
-with open('data/fixtures/m2_lchuv_values.csv', 'w', newline='') as f:
+with open('data/fixtures/lchuv_values.csv', 'w', newline='') as f:
     all_values = []
     for luv in test_luv_values:
         lchuv = colour.Luv_to_LCHuv(luv)
         all_values.extend([format_scalar(v) for v in lchuv])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_lchuv_values.csv")
+print(f"  data/fixtures/lchuv_values.csv")
 
 # ================================================================
-# M2 Test Fixtures: ΔE Metrics
+# Test Fixtures: ΔE Metrics
 # ================================================================
-print("\nGenerating M2 test fixtures (ΔE metrics)...")
+print("\nGenerating ΔE metric test fixtures...")
 
 # ΔE test pairs (Lab1, Lab2, ΔE76, ΔE94, ΔE_CMC(2:1), ΔE00)
 delta_e_test_pairs = [
@@ -366,22 +366,22 @@ delta_e_test_pairs = [
 ]
 
 # Store Lab pairs (flatten to single line)
-with open('data/fixtures/m2_delta_e_lab1.csv', 'w', newline='') as f:
+with open('data/fixtures/delta_e_lab1.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         all_values.extend([format_scalar(v) for v in lab1])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_delta_e_lab1.csv")
+print(f"  data/fixtures/delta_e_lab1.csv")
 
-with open('data/fixtures/m2_delta_e_lab2.csv', 'w', newline='') as f:
+with open('data/fixtures/delta_e_lab2.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         all_values.extend([format_scalar(v) for v in lab2])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_delta_e_lab2.csv")
+print(f"  data/fixtures/delta_e_lab2.csv")
 
 # Compute ΔE76 (flatten to single line)
-with open('data/fixtures/m2_delta_e_76.csv', 'w', newline='') as f:
+with open('data/fixtures/delta_e_76.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         # ΔE76 is Euclidean distance in Lab space
@@ -391,48 +391,48 @@ with open('data/fixtures/m2_delta_e_76.csv', 'w', newline='') as f:
         de76 = np.sqrt(dL*dL + da*da + db*db)
         all_values.append(format_scalar(de76))
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_delta_e_76.csv")
+print(f"  data/fixtures/delta_e_76.csv")
 
 # Compute ΔE94 (flatten to single line)
-with open('data/fixtures/m2_delta_e_94.csv', 'w', newline='') as f:
+with open('data/fixtures/delta_e_94.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         de94 = colour.difference.delta_E_CIE1994(np.array(lab1), np.array(lab2))
         all_values.append(format_scalar(de94))
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_delta_e_94.csv")
+print(f"  data/fixtures/delta_e_94.csv")
 
 # Compute ΔE CMC(2:1) - acceptability (flatten to single line)
-with open('data/fixtures/m2_delta_e_cmc.csv', 'w', newline='') as f:
+with open('data/fixtures/delta_e_cmc.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         de_cmc = colour.difference.delta_E_CMC(np.array(lab1), np.array(lab2), l=2, c=1)
         all_values.append(format_scalar(de_cmc))
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_delta_e_cmc.csv")
+print(f"  data/fixtures/delta_e_cmc.csv")
 
 # Compute ΔE2000 (flatten to single line)
-with open('data/fixtures/m2_delta_e_2000.csv', 'w', newline='') as f:
+with open('data/fixtures/delta_e_2000.csv', 'w', newline='') as f:
     all_values = []
     for lab1, lab2 in delta_e_test_pairs:
         de2000 = colour.difference.delta_E_CIE2000(np.array(lab1), np.array(lab2))
         all_values.append(format_scalar(de2000))
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m2_delta_e_2000.csv")
+print(f"  data/fixtures/delta_e_2000.csv")
 
 # Store D65 and D50 white points in XYZ for tests
-with open('data/fixtures/m2_d65_xyz.csv', 'w', newline='') as f:
+with open('data/fixtures/d65_xyz.csv', 'w', newline='') as f:
     f.write(','.join([format_scalar(v) for v in d65_xyz]) + '\n')
-print(f"  data/fixtures/m2_d65_xyz.csv")
+print(f"  data/fixtures/d65_xyz.csv")
 
-with open('data/fixtures/m2_d50_xyz.csv', 'w', newline='') as f:
+with open('data/fixtures/d50_xyz.csv', 'w', newline='') as f:
     f.write(','.join([format_scalar(v) for v in d50_xyz]) + '\n')
-print(f"  data/fixtures/m2_d50_xyz.csv")
+print(f"  data/fixtures/d50_xyz.csv")
 
 # ================================================================
-# M3 Test Fixtures: Chromatic Adaptation Transform (CAT)
+# Test Fixtures: Chromatic Adaptation Transform (CAT)
 # ================================================================
-print("\nGenerating M3 test fixtures (chromatic adaptation)...")
+print("\nGenerating chromatic adaptation test fixtures...")
 
 # White points in XYZ (normalized to Y=1)
 d60_xyz = colour.xy_to_XYZ(d60)
@@ -440,20 +440,18 @@ d55_xyz = colour.xy_to_XYZ(d55)
 a_xyz = colour.xy_to_XYZ(a)
 e_xyz = colour.xy_to_XYZ(e)
 
-# Store white points for tests
+# Store additional white points for tests (d65 and d50 already stored above)
 white_points = {
-    'd65': d65_xyz,
     'd60': d60_xyz,
     'd55': d55_xyz,
-    'd50': d50_xyz,
     'a': a_xyz,
     'e': e_xyz,
 }
 
 for name, wp_xyz in white_points.items():
-    with open(f'data/fixtures/m3_{name}_xyz.csv', 'w', newline='') as f:
+    with open(f'data/fixtures/{name}_xyz.csv', 'w', newline='') as f:
         f.write(','.join([format_scalar(v) for v in wp_xyz]) + '\n')
-    print(f"  data/fixtures/m3_{name}_xyz.csv")
+    print(f"  data/fixtures/{name}_xyz.csv")
 
 # CAT matrix test cases: (src_white, dst_white, method)
 cat_test_cases = [
@@ -466,9 +464,19 @@ cat_test_cases = [
     ('d65', 'd50', 'XYZ Scaling'),
 ]
 
+# Map for white points (including already generated ones)
+all_white_points = {
+    'd65': d65_xyz,
+    'd60': d60_xyz,
+    'd55': d55_xyz,
+    'd50': d50_xyz,
+    'a': a_xyz,
+    'e': e_xyz,
+}
+
 for src_name, dst_name, method in cat_test_cases:
-    src_wp = white_points[src_name]
-    dst_wp = white_points[dst_name]
+    src_wp = all_white_points[src_name]
+    dst_wp = all_white_points[dst_name]
 
     # Compute CAT matrix
     cat_matrix = colour.adaptation.matrix_chromatic_adaptation_VonKries(
@@ -476,7 +484,7 @@ for src_name, dst_name, method in cat_test_cases:
     )
 
     # Flatten matrix to single line (row-major order)
-    filename = f'm3_cat_{src_name}_to_{dst_name}_{method.lower().replace(" ", "_")}.csv'
+    filename = f'cat_{src_name}_to_{dst_name}_{method.lower().replace(" ", "_")}.csv'
     with open(f'data/fixtures/{filename}', 'w', newline='') as f:
         values = [format_scalar(v) for v in cat_matrix.flatten()]
         f.write(','.join(values) + '\n')
@@ -492,12 +500,12 @@ test_xyz_colors = [
 ]
 
 # Store test colors
-with open('data/fixtures/m3_test_xyz_colors.csv', 'w', newline='') as f:
+with open('data/fixtures/test_xyz_colors.csv', 'w', newline='') as f:
     all_values = []
     for xyz in test_xyz_colors:
         all_values.extend([format_scalar(v) for v in xyz])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m3_test_xyz_colors.csv")
+print(f"  data/fixtures/test_xyz_colors.csv")
 
 # Adaptation test case: D65 → D50 (Bradford)
 adapted_colors = []
@@ -507,12 +515,12 @@ for xyz in test_xyz_colors:
     )
     adapted_colors.append(adapted)
 
-with open('data/fixtures/m3_adapted_d65_to_d50_bradford.csv', 'w', newline='') as f:
+with open('data/fixtures/adapted_d65_to_d50_bradford.csv', 'w', newline='') as f:
     all_values = []
     for xyz in adapted_colors:
         all_values.extend([format_scalar(v) for v in xyz])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m3_adapted_d65_to_d50_bradford.csv")
+print(f"  data/fixtures/adapted_d65_to_d50_bradford.csv")
 
 # Adaptation test case: A → D65 (Bradford)
 adapted_colors_a = []
@@ -522,12 +530,12 @@ for xyz in test_xyz_colors:
     )
     adapted_colors_a.append(adapted)
 
-with open('data/fixtures/m3_adapted_a_to_d65_bradford.csv', 'w', newline='') as f:
+with open('data/fixtures/adapted_a_to_d65_bradford.csv', 'w', newline='') as f:
     all_values = []
     for xyz in adapted_colors_a:
         all_values.extend([format_scalar(v) for v in xyz])
     f.write(','.join(all_values) + '\n')
-print(f"  data/fixtures/m3_adapted_a_to_d65_bradford.csv")
+print(f"  data/fixtures/adapted_a_to_d65_bradford.csv")
 
 print("\nData generation complete!")
 "@

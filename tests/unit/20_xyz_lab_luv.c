@@ -50,10 +50,10 @@ static int test_xyz_xyy_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const xyz_data[] = {
-#include "../../data/fixtures/m2_xyz_values.csv"
+#include "../../data/fixtures/xyz_values.csv"
     };
     static Scalar const xyy_data[] = {
-#include "../../data/fixtures/m2_xyy_values.csv"
+#include "../../data/fixtures/xyy_values.csv"
     };
     ALWAN_DIAG_POP
 
@@ -94,13 +94,13 @@ static int test_xyz_lab_d65_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m2_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const xyz_data[] = {
-#include "../../data/fixtures/m2_xyz_values.csv"
+#include "../../data/fixtures/xyz_values.csv"
     };
     static Scalar const lab_data[] = {
-#include "../../data/fixtures/m2_lab_d65_values.csv"
+#include "../../data/fixtures/lab_d65_values.csv"
     };
     ALWAN_DIAG_POP
 
@@ -142,13 +142,13 @@ static int test_xyz_lab_d50_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m2_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const xyz_data[] = {
-#include "../../data/fixtures/m2_xyz_values.csv"
+#include "../../data/fixtures/xyz_values.csv"
     };
     static Scalar const lab_data[] = {
-#include "../../data/fixtures/m2_lab_d50_values.csv"
+#include "../../data/fixtures/lab_d50_values.csv"
     };
     ALWAN_DIAG_POP
 
@@ -185,13 +185,13 @@ static int test_xyz_luv_d65_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m2_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const xyz_data[] = {
-#include "../../data/fixtures/m2_xyz_values.csv"
+#include "../../data/fixtures/xyz_values.csv"
     };
     static Scalar const luv_data[] = {
-#include "../../data/fixtures/m2_luv_d65_values.csv"
+#include "../../data/fixtures/luv_d65_values.csv"
     };
     ALWAN_DIAG_POP
 
@@ -228,10 +228,10 @@ static int test_lab_lch_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const lab_data[] = {
-#include "../../data/fixtures/m2_lab_for_lch.csv"
+#include "../../data/fixtures/lab_for_lch.csv"
     };
     static Scalar const lch_data[] = {
-#include "../../data/fixtures/m2_lch_values.csv"
+#include "../../data/fixtures/lch_values.csv"
     };
     ALWAN_DIAG_POP
 
@@ -267,10 +267,10 @@ static int test_luv_lchuv_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const luv_data[] = {
-#include "../../data/fixtures/m2_luv_for_lchuv.csv"
+#include "../../data/fixtures/luv_for_lchuv.csv"
     };
     static Scalar const lchuv_data[] = {
-#include "../../data/fixtures/m2_lchuv_values.csv"
+#include "../../data/fixtures/lchuv_values.csv"
     };
     ALWAN_DIAG_POP
 

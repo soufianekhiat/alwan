@@ -37,13 +37,13 @@ static int test_delta_e_76(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const lab1_data[] = {
-#include "../../data/fixtures/m2_delta_e_lab1.csv"
+#include "../../data/fixtures/delta_e_lab1.csv"
     };
     static Scalar const lab2_data[] = {
-#include "../../data/fixtures/m2_delta_e_lab2.csv"
+#include "../../data/fixtures/delta_e_lab2.csv"
     };
     static Scalar const de76_data[] = {
-#include "../../data/fixtures/m2_delta_e_76.csv"
+#include "../../data/fixtures/delta_e_76.csv"
     };
     ALWAN_DIAG_POP
 
@@ -73,13 +73,13 @@ static int test_delta_e_94(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const lab1_data[] = {
-#include "../../data/fixtures/m2_delta_e_lab1.csv"
+#include "../../data/fixtures/delta_e_lab1.csv"
     };
     static Scalar const lab2_data[] = {
-#include "../../data/fixtures/m2_delta_e_lab2.csv"
+#include "../../data/fixtures/delta_e_lab2.csv"
     };
     static Scalar const de94_data[] = {
-#include "../../data/fixtures/m2_delta_e_94.csv"
+#include "../../data/fixtures/delta_e_94.csv"
     };
     ALWAN_DIAG_POP
 
@@ -109,13 +109,13 @@ static int test_delta_e_cmc(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const lab1_data[] = {
-#include "../../data/fixtures/m2_delta_e_lab1.csv"
+#include "../../data/fixtures/delta_e_lab1.csv"
     };
     static Scalar const lab2_data[] = {
-#include "../../data/fixtures/m2_delta_e_lab2.csv"
+#include "../../data/fixtures/delta_e_lab2.csv"
     };
     static Scalar const de_cmc_data[] = {
-#include "../../data/fixtures/m2_delta_e_cmc.csv"
+#include "../../data/fixtures/delta_e_cmc.csv"
     };
     ALWAN_DIAG_POP
 
@@ -146,13 +146,13 @@ static int test_delta_e_2000(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const lab1_data[] = {
-#include "../../data/fixtures/m2_delta_e_lab1.csv"
+#include "../../data/fixtures/delta_e_lab1.csv"
     };
     static Scalar const lab2_data[] = {
-#include "../../data/fixtures/m2_delta_e_lab2.csv"
+#include "../../data/fixtures/delta_e_lab2.csv"
     };
     static Scalar const de2000_data[] = {
-#include "../../data/fixtures/m2_delta_e_2000.csv"
+#include "../../data/fixtures/delta_e_2000.csv"
     };
     ALWAN_DIAG_POP
 

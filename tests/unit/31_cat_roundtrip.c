@@ -50,16 +50,16 @@ static int test_adapt_d65_to_d50_bradford(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const test_colors_data[] = {
-#include "../../data/fixtures/m3_test_xyz_colors.csv"
+#include "../../data/fixtures/test_xyz_colors.csv"
     };
     static Scalar const expected_adapted_data[] = {
-#include "../../data/fixtures/m3_adapted_d65_to_d50_bradford.csv"
+#include "../../data/fixtures/adapted_d65_to_d50_bradford.csv"
     };
     ALWAN_DIAG_POP
 
@@ -107,16 +107,16 @@ static int test_adapt_a_to_d65_bradford(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const a_xyz_data[] = {
-#include "../../data/fixtures/m3_a_xyz.csv"
+#include "../../data/fixtures/a_xyz.csv"
     };
     static Scalar const test_colors_data[] = {
-#include "../../data/fixtures/m3_test_xyz_colors.csv"
+#include "../../data/fixtures/test_xyz_colors.csv"
     };
     static Scalar const expected_adapted_data[] = {
-#include "../../data/fixtures/m3_adapted_a_to_d65_bradford.csv"
+#include "../../data/fixtures/adapted_a_to_d65_bradford.csv"
     };
     ALWAN_DIAG_POP
 
@@ -158,13 +158,13 @@ static int test_roundtrip_d65_d50_d65(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const test_colors_data[] = {
-#include "../../data/fixtures/m3_test_xyz_colors.csv"
+#include "../../data/fixtures/test_xyz_colors.csv"
     };
     ALWAN_DIAG_POP
 
@@ -216,10 +216,10 @@ static int test_roundtrip_all_methods(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     ALWAN_DIAG_POP
 
@@ -283,16 +283,16 @@ static int test_bulk_adaptation(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static Scalar const d65_xyz_data[] = {
-#include "../../data/fixtures/m3_d65_xyz.csv"
+#include "../../data/fixtures/d65_xyz.csv"
     };
     static Scalar const d50_xyz_data[] = {
-#include "../../data/fixtures/m3_d50_xyz.csv"
+#include "../../data/fixtures/d50_xyz.csv"
     };
     static Scalar const test_colors_data[] = {
-#include "../../data/fixtures/m3_test_xyz_colors.csv"
+#include "../../data/fixtures/test_xyz_colors.csv"
     };
     static Scalar const expected_adapted_data[] = {
-#include "../../data/fixtures/m3_adapted_d65_to_d50_bradford.csv"
+#include "../../data/fixtures/adapted_d65_to_d50_bradford.csv"
     };
     ALWAN_DIAG_POP
 
