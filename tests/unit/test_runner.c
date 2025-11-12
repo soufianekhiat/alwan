@@ -17,6 +17,8 @@ extern int test_10_rgb_matrices_main(void);
 extern int test_11_srgb_tf_main(void);
 extern int test_20_xyz_lab_luv_main(void);
 extern int test_21_delta_e_main(void);
+extern int test_30_cat_matrices_main(void);
+extern int test_31_cat_roundtrip_main(void);
 
 /* Test registry */
 typedef struct {
@@ -32,6 +34,8 @@ static test_suite const g_test_suites[] = {
     {"11_srgb_tf", test_11_srgb_tf_main},
     {"20_xyz_lab_luv", test_20_xyz_lab_luv_main},
     {"21_delta_e", test_21_delta_e_main},
+    {"30_cat_matrices", test_30_cat_matrices_main},
+    {"31_cat_roundtrip", test_31_cat_roundtrip_main},
 };
 
 int main(void) {

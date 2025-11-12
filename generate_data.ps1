@@ -429,6 +429,106 @@ with open('data/fixtures/m2_d50_xyz.csv', 'w', newline='') as f:
     f.write(','.join([format_scalar(v) for v in d50_xyz]) + '\n')
 print(f"  data/fixtures/m2_d50_xyz.csv")
 
+# ================================================================
+# M3 Test Fixtures: Chromatic Adaptation Transform (CAT)
+# ================================================================
+print("\nGenerating M3 test fixtures (chromatic adaptation)...")
+
+# White points in XYZ (normalized to Y=1)
+d60_xyz = colour.xy_to_XYZ(d60)
+d55_xyz = colour.xy_to_XYZ(d55)
+a_xyz = colour.xy_to_XYZ(a)
+e_xyz = colour.xy_to_XYZ(e)
+
+# Store white points for tests
+white_points = {
+    'd65': d65_xyz,
+    'd60': d60_xyz,
+    'd55': d55_xyz,
+    'd50': d50_xyz,
+    'a': a_xyz,
+    'e': e_xyz,
+}
+
+for name, wp_xyz in white_points.items():
+    with open(f'data/fixtures/m3_{name}_xyz.csv', 'w', newline='') as f:
+        f.write(','.join([format_scalar(v) for v in wp_xyz]) + '\n')
+    print(f"  data/fixtures/m3_{name}_xyz.csv")
+
+# CAT matrix test cases: (src_white, dst_white, method)
+cat_test_cases = [
+    ('d65', 'd50', 'Bradford'),
+    ('d50', 'd65', 'Bradford'),
+    ('a', 'd65', 'Bradford'),
+    ('d65', 'd60', 'Bradford'),
+    ('d65', 'd50', 'CAT02'),
+    ('d65', 'd50', 'CAT16'),
+    ('d65', 'd50', 'XYZ Scaling'),
+]
+
+for src_name, dst_name, method in cat_test_cases:
+    src_wp = white_points[src_name]
+    dst_wp = white_points[dst_name]
+
+    # Compute CAT matrix
+    cat_matrix = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+        src_wp, dst_wp, transform=method
+    )
+
+    # Flatten matrix to single line (row-major order)
+    filename = f'm3_cat_{src_name}_to_{dst_name}_{method.lower().replace(" ", "_")}.csv'
+    with open(f'data/fixtures/{filename}', 'w', newline='') as f:
+        values = [format_scalar(v) for v in cat_matrix.flatten()]
+        f.write(','.join(values) + '\n')
+    print(f"  data/fixtures/{filename}")
+
+# Test XYZ colors for adaptation
+test_xyz_colors = [
+    [0.95047, 1.0, 1.08883],     # D65 white
+    [0.5, 0.5, 0.5],             # Mid-gray
+    [0.412456, 0.212673, 0.019334],  # sRGB red (D65)
+    [0.357576, 0.715152, 0.119192],  # sRGB green (D65)
+    [0.180437, 0.072175, 0.950304],  # sRGB blue (D65)
+]
+
+# Store test colors
+with open('data/fixtures/m3_test_xyz_colors.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in test_xyz_colors:
+        all_values.extend([format_scalar(v) for v in xyz])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m3_test_xyz_colors.csv")
+
+# Adaptation test case: D65 → D50 (Bradford)
+adapted_colors = []
+for xyz in test_xyz_colors:
+    adapted = colour.adaptation.chromatic_adaptation_VonKries(
+        xyz, d65_xyz, d50_xyz, transform='Bradford'
+    )
+    adapted_colors.append(adapted)
+
+with open('data/fixtures/m3_adapted_d65_to_d50_bradford.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in adapted_colors:
+        all_values.extend([format_scalar(v) for v in xyz])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m3_adapted_d65_to_d50_bradford.csv")
+
+# Adaptation test case: A → D65 (Bradford)
+adapted_colors_a = []
+for xyz in test_xyz_colors:
+    adapted = colour.adaptation.chromatic_adaptation_VonKries(
+        xyz, a_xyz, d65_xyz, transform='Bradford'
+    )
+    adapted_colors_a.append(adapted)
+
+with open('data/fixtures/m3_adapted_a_to_d65_bradford.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in adapted_colors_a:
+        all_values.extend([format_scalar(v) for v in xyz])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m3_adapted_a_to_d65_bradford.csv")
+
 print("\nData generation complete!")
 "@
 

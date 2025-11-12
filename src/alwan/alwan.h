@@ -179,6 +179,45 @@ Scalar alwan_delta_e_cmc(alwan_vec3 const *lab1, alwan_vec3 const *lab2, Scalar 
 Scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ----------------------------------------------------------------
+ * Chromatic Adaptation Transform (CAT)
+ * ---------------------------------------------------------------- */
+
+/* Chromatic Adaptation Transform (CAT) method */
+typedef enum {
+    ALWAN_CAT_XYZ_SCALING = 0,  /* Von Kries in XYZ space (simplest) */
+    ALWAN_CAT_BRADFORD    = 1,  /* Bradford (most common, used in ICC) */
+    ALWAN_CAT_CAT02       = 2,  /* CAT02 (from CIECAM02) */
+    ALWAN_CAT_CAT16       = 3   /* CAT16 (from CAM16) */
+} alwan_cat_method;
+
+/* Compute chromatic adaptation matrix from source to destination white point
+ * src_white_xyz: source white point in XYZ (normalized to Y=1)
+ * dst_white_xyz: destination white point in XYZ (normalized to Y=1)
+ * method: CAT method (Bradford, CAT02, CAT16, or XYZ scaling)
+ * out: output 3x3 adaptation matrix
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if white points are invalid */
+int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
+                     alwan_vec3 const *dst_white_xyz,
+                     alwan_cat_method method,
+                     alwan_mat3x3 *out);
+
+/* Apply chromatic adaptation to XYZ colors (bulk operation)
+ * xyz_in: input XYZ colors (stride in_stride between consecutive colors)
+ * count: number of colors to transform
+ * in_stride: stride for input (in Scalars, typically 3 for packed array)
+ * src_white_xyz: source white point in XYZ
+ * dst_white_xyz: destination white point in XYZ
+ * method: CAT method
+ * xyz_out: output XYZ colors (stride out_stride between consecutive colors)
+ * out_stride: stride for output (in Scalars, typically 3 for packed array)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if parameters are invalid */
+int alwan_xyz_adapt(Scalar const *xyz_in, size_t count, size_t in_stride,
+                    alwan_vec3 const *src_white_xyz,
+                    alwan_vec3 const *dst_white_xyz,
+                    alwan_cat_method method,
+                    Scalar *xyz_out, size_t out_stride);
+
+/* ----------------------------------------------------------------
  * Utility Functions
  * ---------------------------------------------------------------- */
 
