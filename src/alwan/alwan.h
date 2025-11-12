@@ -125,18 +125,40 @@ int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
  * ---------------------------------------------------------------- */
 
 /* Apply Opto-Electronic Transfer Function (linear → encoded)
- * Supported names: "srgb"
+ * Supported names: "srgb", "pq"/"st2084", "hlg", "acesproxy"
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
 int alwan_oetf_apply(char const *name,
                      Scalar const *linear, size_t count, size_t in_stride,
                      Scalar *encoded, size_t out_stride);
 
 /* Apply Electro-Optical Transfer Function (encoded → linear)
- * Supported names: "srgb"
+ * Supported names: "srgb", "pq"/"st2084", "hlg", "bt1886", "acesproxy"
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
 int alwan_eotf_apply(char const *name,
                      Scalar const *encoded, size_t count, size_t in_stride,
                      Scalar *linear, size_t out_stride);
+
+/* ----------------------------------------------------------------
+ * View Transforms (Display Rendering)
+ * ---------------------------------------------------------------- */
+
+/* Apply a view transform (display rendering transform) to RGB data
+ * View transforms convert scene-referred RGB to display-referred RGB
+ * Supported names: "aces_rec709", "aces_rec2020", "agx", "agx_punchy"
+ *
+ * ctx: optional context (can be NULL for stateless transforms)
+ * name: view transform name
+ * rgb_in: input RGB triplets (scene-referred, typically ACES AP1 or linear)
+ * count: number of RGB triplets
+ * in_stride: stride between input RGB triplets (in Scalars, typically 3)
+ * rgb_out: output RGB triplets (display-referred)
+ * out_stride: stride between output RGB triplets (in Scalars, typically 3)
+ *
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
+int alwan_view_transform_apply(alwan_ctx *ctx,
+                                char const *name,
+                                Scalar const *rgb_in, size_t count, size_t in_stride,
+                                Scalar *rgb_out, size_t out_stride);
 
 /* ----------------------------------------------------------------
  * Color Space Conversions

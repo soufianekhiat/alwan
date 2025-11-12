@@ -24,6 +24,8 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\21_delta_e.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\30_cat_matrices.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\31_cat_roundtrip.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\40_tf_hdr.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\41_view_transforms.c");
         }
 
         [Configure()]

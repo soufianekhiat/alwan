@@ -105,6 +105,133 @@ static Scalar srgb_eotf_scalar(Scalar encoded) {
 }
 
 /* ----------------------------------------------------------------
+ * PQ (ST.2084) Transfer Functions - HDR10/HDR10+
+ * ---------------------------------------------------------------- */
+
+/* PQ OETF: linear (0-10000 cd/m²) → PQ code values
+ * Normalizes input to [0,1] assuming 10000 cd/m² peak, then applies PQ curve */
+static Scalar pq_oetf_scalar(Scalar linear) {
+    /* PQ constants */
+    Scalar const m1 = ALWAN_LITERAL(0.1593017578125);      /* 2610/16384 */
+    Scalar const m2 = ALWAN_LITERAL(78.84375);              /* 2523/32 */
+    Scalar const c1 = ALWAN_LITERAL(0.8359375);             /* 3424/4096 */
+    Scalar const c2 = ALWAN_LITERAL(18.8515625);            /* 2413/128 */
+    Scalar const c3 = ALWAN_LITERAL(18.6875);               /* 2392/128 */
+
+    /* Normalize to [0,1] assuming 10000 cd/m² peak */
+    Scalar Y = linear / ALWAN_LITERAL(10000.0);
+    if (Y < ALWAN_LITERAL(0.0)) Y = ALWAN_LITERAL(0.0);
+
+    Scalar Y_pow_m1 = ALWAN_POW(Y, m1);
+    Scalar numerator = c1 + c2 * Y_pow_m1;
+    Scalar denominator = ALWAN_LITERAL(1.0) + c3 * Y_pow_m1;
+
+    return ALWAN_POW(numerator / denominator, m2);
+}
+
+/* PQ EOTF: PQ code values → linear (0-10000 cd/m²) */
+static Scalar pq_eotf_scalar(Scalar encoded) {
+    /* PQ constants */
+    Scalar const m1 = ALWAN_LITERAL(0.1593017578125);
+    Scalar const m2 = ALWAN_LITERAL(78.84375);
+    Scalar const c1 = ALWAN_LITERAL(0.8359375);
+    Scalar const c2 = ALWAN_LITERAL(18.8515625);
+    Scalar const c3 = ALWAN_LITERAL(18.6875);
+    Scalar const m1_inv = ALWAN_LITERAL(1.0) / m1;
+    Scalar const m2_inv = ALWAN_LITERAL(1.0) / m2;
+
+    if (encoded < ALWAN_LITERAL(0.0)) encoded = ALWAN_LITERAL(0.0);
+
+    Scalar E_pow_m2_inv = ALWAN_POW(encoded, m2_inv);
+    Scalar numerator = E_pow_m2_inv - c1;
+    if (numerator < ALWAN_LITERAL(0.0)) numerator = ALWAN_LITERAL(0.0);
+
+    Scalar denominator = c2 - c3 * E_pow_m2_inv;
+    Scalar Y = ALWAN_POW(numerator / denominator, m1_inv);
+
+    /* Scale back to cd/m² (0-10000 range) */
+    return Y * ALWAN_LITERAL(10000.0);
+}
+
+/* ----------------------------------------------------------------
+ * HLG (Hybrid Log-Gamma) Transfer Functions - BT.2100
+ * ---------------------------------------------------------------- */
+
+/* HLG OETF: scene-referred linear → HLG signal */
+static Scalar hlg_oetf_scalar(Scalar linear) {
+    Scalar const a = ALWAN_LITERAL(0.17883277);
+    Scalar const b = ALWAN_LITERAL(0.28466892);  /* 1 - 4*a */
+    Scalar const c = ALWAN_LITERAL(0.55991073);  /* 0.5 - a*ln(4*a) */
+
+    if (linear < ALWAN_LITERAL(0.0)) linear = ALWAN_LITERAL(0.0);
+
+    if (linear <= ALWAN_LITERAL(1.0) / ALWAN_LITERAL(12.0)) {
+        return ALWAN_SQRT(ALWAN_LITERAL(3.0) * linear);
+    } else {
+        return a * ALWAN_LOG(ALWAN_LITERAL(12.0) * linear - b) + c;
+    }
+}
+
+/* HLG EOTF: HLG signal → display-referred linear
+ * Note: Simplified EOTF without system gamma, assumes gamma=1.2 */
+static Scalar hlg_eotf_scalar(Scalar encoded) {
+    Scalar const a = ALWAN_LITERAL(0.17883277);
+    Scalar const b = ALWAN_LITERAL(0.28466892);
+    Scalar const c = ALWAN_LITERAL(0.55991073);
+
+    if (encoded < ALWAN_LITERAL(0.0)) encoded = ALWAN_LITERAL(0.0);
+
+    Scalar linear;
+    if (encoded <= ALWAN_LITERAL(0.5)) {
+        linear = (encoded * encoded) / ALWAN_LITERAL(3.0);
+    } else {
+        linear = (ALWAN_EXP((encoded - c) / a) + b) / ALWAN_LITERAL(12.0);
+    }
+
+    /* Apply system gamma 1.2 */
+    return ALWAN_POW(linear, ALWAN_LITERAL(1.2));
+}
+
+/* ----------------------------------------------------------------
+ * BT.1886 EOTF - Reference monitor transfer function
+ * ---------------------------------------------------------------- */
+
+/* BT.1886 EOTF: assumes gamma 2.4, black level 0 */
+static Scalar bt1886_eotf_scalar(Scalar encoded) {
+    if (encoded < ALWAN_LITERAL(0.0)) encoded = ALWAN_LITERAL(0.0);
+    return ALWAN_POW(encoded, ALWAN_LITERAL(2.4));
+}
+
+/* ----------------------------------------------------------------
+ * ACESproxy Transfer Functions
+ * ---------------------------------------------------------------- */
+
+/* ACESproxy encode: ACES linear → ACESproxy (10-bit or 12-bit log encoding) */
+static Scalar acesproxy_oetf_scalar(Scalar linear) {
+    /* ACESproxy constants for 10-bit encoding */
+    Scalar const mid_gray_in = ALWAN_LITERAL(0.18);
+    Scalar const mid_code_value = ALWAN_LITERAL(425.0) / ALWAN_LITERAL(1023.0);
+    Scalar const steps_per_stop = ALWAN_LITERAL(50.0) / ALWAN_LITERAL(1023.0);
+
+    if (linear <= ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);  /* Minimum code value */
+    }
+
+    Scalar log_val = ALWAN_LOG(linear / mid_gray_in) / ALWAN_LOG(ALWAN_LITERAL(2.0));
+    return mid_code_value + steps_per_stop * log_val;
+}
+
+/* ACESproxy decode: ACESproxy → ACES linear */
+static Scalar acesproxy_eotf_scalar(Scalar encoded) {
+    Scalar const mid_gray_in = ALWAN_LITERAL(0.18);
+    Scalar const mid_code_value = ALWAN_LITERAL(425.0) / ALWAN_LITERAL(1023.0);
+    Scalar const steps_per_stop = ALWAN_LITERAL(50.0) / ALWAN_LITERAL(1023.0);
+
+    Scalar log_val = (encoded - mid_code_value) / steps_per_stop;
+    return mid_gray_in * ALWAN_POW(ALWAN_LITERAL(2.0), log_val);
+}
+
+/* ----------------------------------------------------------------
  * Transfer Function API
  * ---------------------------------------------------------------- */
 
@@ -120,6 +247,12 @@ int alwan_oetf_apply(char const *name,
 
     if (strcmp(name, "srgb") == 0) {
         oetf_fn = srgb_oetf_scalar;
+    } else if (strcmp(name, "pq") == 0 || strcmp(name, "st2084") == 0) {
+        oetf_fn = pq_oetf_scalar;
+    } else if (strcmp(name, "hlg") == 0) {
+        oetf_fn = hlg_oetf_scalar;
+    } else if (strcmp(name, "acesproxy") == 0) {
+        oetf_fn = acesproxy_oetf_scalar;
     } else {
         return ALWAN_E_INVALID;  /* Unknown transfer function */
     }
@@ -146,6 +279,14 @@ int alwan_eotf_apply(char const *name,
 
     if (strcmp(name, "srgb") == 0) {
         eotf_fn = srgb_eotf_scalar;
+    } else if (strcmp(name, "pq") == 0 || strcmp(name, "st2084") == 0) {
+        eotf_fn = pq_eotf_scalar;
+    } else if (strcmp(name, "hlg") == 0) {
+        eotf_fn = hlg_eotf_scalar;
+    } else if (strcmp(name, "bt1886") == 0) {
+        eotf_fn = bt1886_eotf_scalar;
+    } else if (strcmp(name, "acesproxy") == 0) {
+        eotf_fn = acesproxy_eotf_scalar;
     } else {
         return ALWAN_E_INVALID;  /* Unknown transfer function */
     }
