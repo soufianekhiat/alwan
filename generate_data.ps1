@@ -538,6 +538,72 @@ with open('data/fixtures/adapted_a_to_d65_bradford.csv', 'w', newline='') as f:
 print(f"  data/fixtures/adapted_a_to_d65_bradford.csv")
 
 # ================================================================
+# M7: CIECAM02 Test Fixtures
+# ================================================================
+print("\nGenerating CIECAM02 test fixtures...")
+
+# Define standard CIECAM02 viewing conditions (D65, average surround)
+# XYZ_w: white point (Y=100 for standard viewing)
+# L_A: adapting luminance (cd/m²), typically 20% of white Y
+# Y_b: background relative luminance (typically 20 for 20% gray)
+XYZ_w = d65_xyz * 100  # Scale to Y=100
+L_A = 64.0             # Adapting luminance
+Y_b = 20.0             # Background luminance
+surround = colour.VIEWING_CONDITIONS_CIECAM02['Average']
+
+# Test XYZ colors for CIECAM02
+ciecam02_test_xyz = [
+    [95.047, 100.0, 108.883],     # D65 white
+    [50.0, 50.0, 50.0],            # Mid-gray
+    [41.2456, 21.2673, 1.9334],    # sRGB red (D65, Y=100 scale)
+    [35.7576, 71.5152, 11.9192],   # sRGB green
+    [18.0437, 7.2175, 95.0304],    # sRGB blue
+    [77.0, 92.8, 10.1],            # Lime
+    [31.4, 15.9, 9.8],             # Brown
+]
+
+# Compute CIECAM02 correlates for each test color
+ciecam02_correlates = []
+for xyz in ciecam02_test_xyz:
+    xyz_arr = np.array(xyz)
+    spec = colour.XYZ_to_CIECAM02(xyz_arr, XYZ_w, L_A, Y_b, surround)
+    # Store J, C, h, Q, M, s, H
+    ciecam02_correlates.append([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s, spec.H])
+
+# Write test XYZ colors
+with open('data/fixtures/ciecam02_xyz_input.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in ciecam02_test_xyz:
+        all_values.extend([format_scalar(v) for v in xyz])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/ciecam02_xyz_input.csv ({len(ciecam02_test_xyz)} colors)")
+
+# Write CIECAM02 correlates (J, C, h, Q, M, s, H for each color)
+with open('data/fixtures/ciecam02_correlates.csv', 'w', newline='') as f:
+    all_values = []
+    for corr in ciecam02_correlates:
+        all_values.extend([format_scalar(v) for v in corr])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/ciecam02_correlates.csv ({len(ciecam02_correlates)} colors)")
+
+# Test inverse: correlates → XYZ
+# Use J, C, h from the correlates to reconstruct XYZ
+ciecam02_xyz_reconstructed = []
+for corr in ciecam02_correlates:
+    # Create specification from J, C, h
+    spec = colour.CAM_Specification_CIECAM02(J=corr[0], C=corr[1], h=corr[2])
+    xyz_recon = colour.CIECAM02_to_XYZ(spec, XYZ_w, L_A, Y_b, surround)
+    ciecam02_xyz_reconstructed.append(xyz_recon)
+
+# Write reconstructed XYZ (should match input within numerical tolerance)
+with open('data/fixtures/ciecam02_xyz_reconstructed.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in ciecam02_xyz_reconstructed:
+        all_values.extend([format_scalar(v) for v in xyz])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/ciecam02_xyz_reconstructed.csv ({len(ciecam02_xyz_reconstructed)} colors)")
+
+# ================================================================
 # M5: Spectral Data - Color Matching Functions (CMFs)
 # ================================================================
 print("\nGenerating Color Matching Functions (CMFs)...")

@@ -338,6 +338,56 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_vec3 *xyz_out);
 
 /* ----------------------------------------------------------------
+ * CIECAM02 Color Appearance Model
+ * ---------------------------------------------------------------- */
+
+/* CIECAM02 surround condition */
+typedef enum {
+    ALWAN_CIECAM02_SURROUND_AVERAGE = 0,  /* Average surround (F=1.0, c=0.69, Nc=1.0) - typical viewing */
+    ALWAN_CIECAM02_SURROUND_DIM = 1,      /* Dim surround (F=0.9, c=0.59, Nc=0.95) - dark room with screen */
+    ALWAN_CIECAM02_SURROUND_DARK = 2      /* Dark surround (F=0.8, c=0.525, Nc=0.8) - cutsheet transparency */
+} alwan_ciecam02_surround;
+
+/* CIECAM02 viewing conditions */
+typedef struct {
+    alwan_vec3 white_xyz;                  /* Reference white in XYZ (Y typically 100) */
+    Scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m² (typically 20% of white Y) */
+    Scalar background_luminance;           /* Relative luminance of background (Yb/Yw, typically 0.2 for 20% gray) */
+    alwan_ciecam02_surround surround;      /* Viewing surround condition */
+    int discount_illuminant;               /* 1 to discount illuminant, 0 otherwise (affects D) */
+} alwan_ciecam02_viewing_conditions;
+
+/* CIECAM02 appearance correlates (all outputs from forward transform) */
+typedef struct {
+    Scalar J;  /* Lightness (0-100) */
+    Scalar C;  /* Chroma (0+) */
+    Scalar h;  /* Hue angle (0-360 degrees) */
+    Scalar s;  /* Saturation (0+) */
+    Scalar Q;  /* Brightness (0+) */
+    Scalar M;  /* Colorfulness (0+) */
+    Scalar H;  /* Hue quadrature (0-400) */
+} alwan_ciecam02_correlates;
+
+/* CIECAM02 forward transform: XYZ → appearance correlates
+ * xyz: input color in XYZ (same white point as viewing conditions)
+ * vc: viewing conditions
+ * out: output appearance correlates (J, C, h, s, Q, M, H)
+ * Returns ALWAN_OK on success */
+int alwan_ciecam02_forward(alwan_vec3 const *xyz,
+                            alwan_ciecam02_viewing_conditions const *vc,
+                            alwan_ciecam02_correlates *out);
+
+/* CIECAM02 inverse transform: appearance correlates → XYZ
+ * Uses J, C, h from input correlates (other fields are ignored)
+ * correlates: input appearance correlates (J, C, h must be valid)
+ * vc: viewing conditions
+ * xyz_out: output color in XYZ
+ * Returns ALWAN_OK on success */
+int alwan_ciecam02_inverse(alwan_ciecam02_correlates const *correlates,
+                            alwan_ciecam02_viewing_conditions const *vc,
+                            alwan_vec3 *xyz_out);
+
+/* ----------------------------------------------------------------
  * Utility Functions
  * ---------------------------------------------------------------- */
 
