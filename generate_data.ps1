@@ -120,6 +120,26 @@ d60 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D60']
 write_xy('data/d60_xy.csv', d60[0], d60[1])
 print(f"  data/d60_xy.csv: {format_scalar(d60[0])}, {format_scalar(d60[1])}")
 
+# D50 (2° observer) - ICC profile connection space
+d50 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D50']
+write_xy('data/d50_xy.csv', d50[0], d50[1])
+print(f"  data/d50_xy.csv: {format_scalar(d50[0])}, {format_scalar(d50[1])}")
+
+# D55 (2° observer)
+d55 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D55']
+write_xy('data/d55_xy.csv', d55[0], d55[1])
+print(f"  data/d55_xy.csv: {format_scalar(d55[0])}, {format_scalar(d55[1])}")
+
+# Illuminant A (2° observer) - incandescent
+a = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['A']
+write_xy('data/a_xy.csv', a[0], a[1])
+print(f"  data/a_xy.csv: {format_scalar(a[0])}, {format_scalar(a[1])}")
+
+# Illuminant E (2° observer) - equal energy
+e = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['E']
+write_xy('data/e_xy.csv', e[0], e[1])
+print(f"  data/e_xy.csv: {format_scalar(e[0])}, {format_scalar(e[1])}")
+
 # Generate RGB space primaries
 print("\nGenerating RGB space primaries...")
 
@@ -220,6 +240,194 @@ with open('data/fixtures/aces_ap1_descriptor.csv', 'w', newline='') as f:
     ]
     f.write(','.join(values) + '\n')
 print(f"  data/fixtures/aces_ap1_descriptor.csv")
+
+# ================================================================
+# M2 Test Fixtures: Color Space Conversions
+# ================================================================
+print("\nGenerating M2 test fixtures (color space conversions)...")
+
+# White points in XYZ (normalized to Y=1) for C code
+d65_xyz = colour.xy_to_XYZ(d65)
+d50_xyz = colour.xy_to_XYZ(d50)
+
+# Note: colour-science XYZ_to_Lab expects xy chromaticity as illuminant parameter, not XYZ!
+
+# Test case 1: XYZ ↔ xyY round-trip
+test_xyz_values = [
+    [0.95047, 1.0, 1.08883],     # D65 white
+    [0.5, 0.5, 0.5],             # Mid-gray
+    [0.412456, 0.212673, 0.019334],  # sRGB red
+    [0.0, 0.0, 0.0],             # Black
+]
+
+# Flatten XYZ values to single line
+with open('data/fixtures/m2_xyz_values.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in test_xyz_values:
+        all_values.extend([format_scalar(v) for v in xyz])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_xyz_values.csv")
+
+# Compute corresponding xyY values and flatten to single line
+with open('data/fixtures/m2_xyy_values.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in test_xyz_values:
+        xyy = colour.XYZ_to_xyY(xyz)
+        all_values.extend([format_scalar(v) for v in xyy])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_xyy_values.csv")
+
+# Test case 2: XYZ ↔ Lab (D65 white point)
+with open('data/fixtures/m2_lab_d65_values.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in test_xyz_values:
+        lab = colour.XYZ_to_Lab(xyz, illuminant=d65)
+        all_values.extend([format_scalar(v) for v in lab])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_lab_d65_values.csv")
+
+# Test case 3: XYZ ↔ Lab (D50 white point)
+with open('data/fixtures/m2_lab_d50_values.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in test_xyz_values:
+        lab = colour.XYZ_to_Lab(xyz, illuminant=d50)
+        all_values.extend([format_scalar(v) for v in lab])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_lab_d50_values.csv")
+
+# Test case 4: XYZ ↔ Luv (D65 white point)
+with open('data/fixtures/m2_luv_d65_values.csv', 'w', newline='') as f:
+    all_values = []
+    for xyz in test_xyz_values:
+        luv = colour.XYZ_to_Luv(xyz, illuminant=d65)
+        all_values.extend([format_scalar(v) for v in luv])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_luv_d65_values.csv")
+
+# Test case 5: Lab ↔ LCh
+test_lab_values = [
+    [50.0, 25.0, 25.0],
+    [75.0, -10.0, 50.0],
+    [25.0, 0.0, 0.0],
+]
+
+with open('data/fixtures/m2_lab_for_lch.csv', 'w', newline='') as f:
+    all_values = []
+    for lab in test_lab_values:
+        all_values.extend([format_scalar(v) for v in lab])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_lab_for_lch.csv")
+
+with open('data/fixtures/m2_lch_values.csv', 'w', newline='') as f:
+    all_values = []
+    for lab in test_lab_values:
+        lch = colour.Lab_to_LCHab(lab)
+        all_values.extend([format_scalar(v) for v in lch])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_lch_values.csv")
+
+# Test case 6: Luv ↔ LCh(uv)
+test_luv_values = [
+    [50.0, 20.0, 30.0],
+    [75.0, -15.0, 45.0],
+    [25.0, 0.0, 0.0],
+]
+
+with open('data/fixtures/m2_luv_for_lchuv.csv', 'w', newline='') as f:
+    all_values = []
+    for luv in test_luv_values:
+        all_values.extend([format_scalar(v) for v in luv])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_luv_for_lchuv.csv")
+
+with open('data/fixtures/m2_lchuv_values.csv', 'w', newline='') as f:
+    all_values = []
+    for luv in test_luv_values:
+        lchuv = colour.Luv_to_LCHuv(luv)
+        all_values.extend([format_scalar(v) for v in lchuv])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_lchuv_values.csv")
+
+# ================================================================
+# M2 Test Fixtures: ΔE Metrics
+# ================================================================
+print("\nGenerating M2 test fixtures (ΔE metrics)...")
+
+# ΔE test pairs (Lab1, Lab2, ΔE76, ΔE94, ΔE_CMC(2:1), ΔE00)
+delta_e_test_pairs = [
+    # Pair 1: Small difference
+    ([50.0, 2.5, -1.0], [50.0, 0.0, -1.0]),
+    # Pair 2: Moderate difference
+    ([50.0, 2.5, -1.0], [60.0, 5.0, 3.0]),
+    # Pair 3: Large difference
+    ([50.0, 2.5, -1.0], [80.0, 30.0, 20.0]),
+    # Pair 4: Hue shift
+    ([50.0, 10.0, 0.0], [50.0, 0.0, 10.0]),
+]
+
+# Store Lab pairs (flatten to single line)
+with open('data/fixtures/m2_delta_e_lab1.csv', 'w', newline='') as f:
+    all_values = []
+    for lab1, lab2 in delta_e_test_pairs:
+        all_values.extend([format_scalar(v) for v in lab1])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_delta_e_lab1.csv")
+
+with open('data/fixtures/m2_delta_e_lab2.csv', 'w', newline='') as f:
+    all_values = []
+    for lab1, lab2 in delta_e_test_pairs:
+        all_values.extend([format_scalar(v) for v in lab2])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_delta_e_lab2.csv")
+
+# Compute ΔE76 (flatten to single line)
+with open('data/fixtures/m2_delta_e_76.csv', 'w', newline='') as f:
+    all_values = []
+    for lab1, lab2 in delta_e_test_pairs:
+        # ΔE76 is Euclidean distance in Lab space
+        dL = lab2[0] - lab1[0]
+        da = lab2[1] - lab1[1]
+        db = lab2[2] - lab1[2]
+        de76 = np.sqrt(dL*dL + da*da + db*db)
+        all_values.append(format_scalar(de76))
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_delta_e_76.csv")
+
+# Compute ΔE94 (flatten to single line)
+with open('data/fixtures/m2_delta_e_94.csv', 'w', newline='') as f:
+    all_values = []
+    for lab1, lab2 in delta_e_test_pairs:
+        de94 = colour.difference.delta_E_CIE1994(np.array(lab1), np.array(lab2))
+        all_values.append(format_scalar(de94))
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_delta_e_94.csv")
+
+# Compute ΔE CMC(2:1) - acceptability (flatten to single line)
+with open('data/fixtures/m2_delta_e_cmc.csv', 'w', newline='') as f:
+    all_values = []
+    for lab1, lab2 in delta_e_test_pairs:
+        de_cmc = colour.difference.delta_E_CMC(np.array(lab1), np.array(lab2), l=2, c=1)
+        all_values.append(format_scalar(de_cmc))
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_delta_e_cmc.csv")
+
+# Compute ΔE2000 (flatten to single line)
+with open('data/fixtures/m2_delta_e_2000.csv', 'w', newline='') as f:
+    all_values = []
+    for lab1, lab2 in delta_e_test_pairs:
+        de2000 = colour.difference.delta_E_CIE2000(np.array(lab1), np.array(lab2))
+        all_values.append(format_scalar(de2000))
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/m2_delta_e_2000.csv")
+
+# Store D65 and D50 white points in XYZ for tests
+with open('data/fixtures/m2_d65_xyz.csv', 'w', newline='') as f:
+    f.write(','.join([format_scalar(v) for v in d65_xyz]) + '\n')
+print(f"  data/fixtures/m2_d65_xyz.csv")
+
+with open('data/fixtures/m2_d50_xyz.csv', 'w', newline='') as f:
+    f.write(','.join([format_scalar(v) for v in d50_xyz]) + '\n')
+print(f"  data/fixtures/m2_d50_xyz.csv")
 
 print("\nData generation complete!")
 "@

@@ -139,6 +139,46 @@ int alwan_eotf_apply(char const *name,
                      Scalar *linear, size_t out_stride);
 
 /* ----------------------------------------------------------------
+ * Color Space Conversions
+ * ---------------------------------------------------------------- */
+
+/* XYZ ↔ xyY conversions */
+void alwan_xyz_to_xyy(alwan_vec3 const *xyz, alwan_vec3 *xyy);
+void alwan_xyy_to_xyz(alwan_vec3 const *xyy, alwan_vec3 *xyz);
+
+/* XYZ ↔ Lab conversions (requires white point in XYZ) */
+void alwan_xyz_to_lab(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *lab);
+void alwan_lab_to_xyz(alwan_vec3 const *lab, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
+
+/* XYZ ↔ Luv conversions (requires white point in XYZ) */
+void alwan_xyz_to_luv(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *luv);
+void alwan_luv_to_xyz(alwan_vec3 const *luv, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
+
+/* Lab ↔ LCh(ab) conversions */
+void alwan_lab_to_lch(alwan_vec3 const *lab, alwan_vec3 *lch);
+void alwan_lch_to_lab(alwan_vec3 const *lch, alwan_vec3 *lab);
+
+/* Luv ↔ LCh(uv) conversions */
+void alwan_luv_to_lchuv(alwan_vec3 const *luv, alwan_vec3 *lchuv);
+void alwan_lchuv_to_luv(alwan_vec3 const *lchuv, alwan_vec3 *luv);
+
+/* ----------------------------------------------------------------
+ * Color Difference (ΔE) Metrics
+ * ---------------------------------------------------------------- */
+
+/* ΔE*76 - Euclidean distance in Lab space */
+Scalar alwan_delta_e_76(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+
+/* ΔE*94 - CIE 1994 color difference (graphic arts defaults: kL=1, K1=0.045, K2=0.015) */
+Scalar alwan_delta_e_94(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+
+/* ΔE CMC(l:c) - CMC color difference (defaults: l=2, c=1 for acceptability) */
+Scalar alwan_delta_e_cmc(alwan_vec3 const *lab1, alwan_vec3 const *lab2, Scalar l, Scalar c);
+
+/* ΔE*00 - CIEDE2000 color difference (most perceptually uniform) */
+Scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+
+/* ----------------------------------------------------------------
  * Utility Functions
  * ---------------------------------------------------------------- */
 

@@ -20,6 +20,8 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\02_data_embed_compile.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\10_rgb_matrices.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\11_srgb_tf.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\20_xyz_lab_luv.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\21_delta_e.c");
         }
 
         [Configure()]

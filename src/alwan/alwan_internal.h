@@ -12,6 +12,13 @@
 #include "alwan_config.h"
 #include <math.h>
 
+/* Mathematical constants */
+#if ALWAN_SCALAR_IS_FLOAT
+  #define ALWAN_PI      3.14159265358979323846f
+#else
+  #define ALWAN_PI      3.14159265358979323846
+#endif
+
 /* Scalar-aware math functions to avoid double/float conversion warnings */
 #if ALWAN_SCALAR_IS_FLOAT
   #define ALWAN_FABS(x)  fabsf(x)
