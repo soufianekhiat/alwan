@@ -240,12 +240,130 @@ int alwan_xyz_adapt(Scalar const *xyz_in, size_t count, size_t in_stride,
                     Scalar *xyz_out, size_t out_stride);
 
 /* ----------------------------------------------------------------
+ * Spectral Power Distributions (SPD)
+ * ---------------------------------------------------------------- */
+
+/* Spectral Power Distribution (SPD) - uniformly sampled spectrum
+ * Represents a spectrum as discrete samples at regular wavelength intervals */
+typedef struct {
+    Scalar *values;        /* SPD values (power/reflectance/transmittance) */
+    Scalar wavelength_min; /* Starting wavelength (nm) */
+    Scalar wavelength_max; /* Ending wavelength (nm) */
+    size_t count;          /* Number of samples */
+} alwan_spd;
+
+/* Observer type (standard color matching functions) */
+typedef enum {
+    ALWAN_OBSERVER_CIE_1931_2DEG = 0,  /* CIE 1931 2° standard observer */
+    ALWAN_OBSERVER_CIE_1964_10DEG = 1  /* CIE 1964 10° standard observer */
+} alwan_observer_type;
+
+/* SPD resampling method */
+typedef enum {
+    ALWAN_RESAMPLE_LINEAR = 0,      /* Linear interpolation */
+    ALWAN_RESAMPLE_CATMULL_ROM = 1  /* Catmull-Rom spline (smoother) */
+} alwan_resample_method;
+
+/* SPD integration method for computing XYZ */
+typedef enum {
+    ALWAN_INTEGRATE_TRAPEZOID = 0,  /* Trapezoidal rule (fast) */
+    ALWAN_INTEGRATE_SIMPSON = 1     /* Simpson's rule (more accurate) */
+} alwan_integrate_method;
+
+/* Create SPD with uniform sampling
+ * wavelength_min: starting wavelength (nm)
+ * wavelength_max: ending wavelength (nm)
+ * count: number of samples
+ * out: output SPD structure (values allocated internally)
+ * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
+int alwan_spd_create(alwan_ctx *ctx,
+                     Scalar wavelength_min,
+                     Scalar wavelength_max,
+                     size_t count,
+                     alwan_spd *out);
+
+/* Destroy SPD and free allocated values */
+void alwan_spd_destroy(alwan_ctx *ctx, alwan_spd *spd);
+
+/* Load standard illuminant SPD
+ * ctx: context (for data path and allocation)
+ * name: illuminant name ("A", "D50", "D55", "D65", "E", "F1"..."F12")
+ * out: output SPD structure
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
+int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out);
+
+/* Resample SPD to new wavelength range/count
+ * ctx: context
+ * src: source SPD
+ * wavelength_min: new starting wavelength (nm)
+ * wavelength_max: new ending wavelength (nm)
+ * count: new number of samples
+ * method: resampling method (linear or Catmull-Rom)
+ * dst: destination SPD (values allocated internally)
+ * Returns ALWAN_OK on success */
+int alwan_spd_resample(alwan_ctx *ctx,
+                       alwan_spd const *src,
+                       Scalar wavelength_min,
+                       Scalar wavelength_max,
+                       size_t count,
+                       alwan_resample_method method,
+                       alwan_spd *dst);
+
+/* Compute XYZ tristimulus values from SPD
+ * ctx: context
+ * spd: spectral power distribution (reflectance or emission)
+ * illuminant: illuminant SPD (NULL = assume spd is already weighted by illuminant)
+ * observer: observer type (CIE 1931 2° or CIE 1964 10°)
+ * method: integration method (trapezoid or Simpson)
+ * xyz_out: output XYZ tristimulus values
+ * Returns ALWAN_OK on success */
+int alwan_xyz_from_spd(alwan_ctx *ctx,
+                       alwan_spd const *spd,
+                       alwan_spd const *illuminant,
+                       alwan_observer_type observer,
+                       alwan_integrate_method method,
+                       alwan_vec3 *xyz_out);
+
+/* ----------------------------------------------------------------
  * Utility Functions
  * ---------------------------------------------------------------- */
+
+/* Minimum of two values */
+static inline Scalar alwan_min(Scalar a, Scalar b) {
+    return (a < b) ? a : b;
+}
+
+/* Maximum of two values */
+static inline Scalar alwan_max(Scalar a, Scalar b) {
+    return (a > b) ? a : b;
+}
+
+/* Minimum of three values */
+static inline Scalar alwan_min3(Scalar a, Scalar b, Scalar c) {
+    Scalar m = a;
+    if (b < m) m = b;
+    if (c < m) m = c;
+    return m;
+}
+
+/* Maximum of three values */
+static inline Scalar alwan_max3(Scalar a, Scalar b, Scalar c) {
+    Scalar m = a;
+    if (b > m) m = b;
+    if (c > m) m = c;
+    return m;
+}
 
 /* Clamp scalar to [min, max] */
 static inline Scalar alwan_clamp(Scalar x, Scalar min, Scalar max) {
     return (x < min) ? min : (x > max) ? max : x;
+}
+
+/* Saturate (clamp to [0, 1]) */
+static inline Scalar alwan_saturate(Scalar x) {
+    if (x < ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
+    if (x > ALWAN_LITERAL(1.0)) return ALWAN_LITERAL(1.0);
+    return x;
 }
 
 /* Linear interpolation (numerically stable) */

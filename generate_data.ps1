@@ -537,6 +537,123 @@ with open('data/fixtures/adapted_a_to_d65_bradford.csv', 'w', newline='') as f:
     f.write(','.join(all_values) + '\n')
 print(f"  data/fixtures/adapted_a_to_d65_bradford.csv")
 
+# ================================================================
+# M5: Spectral Data - Color Matching Functions (CMFs)
+# ================================================================
+print("\nGenerating Color Matching Functions (CMFs)...")
+
+# Create CMF and illuminants directories
+os.makedirs('data/cmf', exist_ok=True)
+os.makedirs('data/illuminants', exist_ok=True)
+
+# CIE 1931 2° Standard Observer (360-830nm, 1nm steps)
+# colour-science provides this in standard_observers
+cmfs_1931 = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+
+# Extract wavelengths and values for 360-830nm range
+wavelengths = cmfs_1931.wavelengths
+x_bar_vals = cmfs_1931.values[:, 0]
+y_bar_vals = cmfs_1931.values[:, 1]
+z_bar_vals = cmfs_1931.values[:, 2]
+
+# Filter to 360-830nm range if needed
+mask = (wavelengths >= 360) & (wavelengths <= 830)
+wavelengths_filtered = wavelengths[mask]
+x_bar_filtered = x_bar_vals[mask]
+y_bar_filtered = y_bar_vals[mask]
+z_bar_filtered = z_bar_vals[mask]
+
+# Write CMF data (one value per line for easier C parsing)
+with open('data/cmf/cie_1931_2deg_x_360_830_1nm.csv', 'w', newline='') as f:
+    values = [format_scalar(v) for v in x_bar_filtered]
+    f.write(','.join(values) + '\n')
+print(f"  data/cmf/cie_1931_2deg_x_360_830_1nm.csv ({len(x_bar_filtered)} samples)")
+
+with open('data/cmf/cie_1931_2deg_y_360_830_1nm.csv', 'w', newline='') as f:
+    values = [format_scalar(v) for v in y_bar_filtered]
+    f.write(','.join(values) + '\n')
+print(f"  data/cmf/cie_1931_2deg_y_360_830_1nm.csv ({len(y_bar_filtered)} samples)")
+
+with open('data/cmf/cie_1931_2deg_z_360_830_1nm.csv', 'w', newline='') as f:
+    values = [format_scalar(v) for v in z_bar_filtered]
+    f.write(','.join(values) + '\n')
+print(f"  data/cmf/cie_1931_2deg_z_360_830_1nm.csv ({len(z_bar_filtered)} samples)")
+
+# CIE 1964 10° Standard Observer (360-830nm, 1nm steps)
+try:
+    cmfs_1964 = colour.MSDS_CMFS['CIE 1964 10 Degree Standard Observer']
+
+    x_bar_1964 = cmfs_1964.values[:, 0]
+    y_bar_1964 = cmfs_1964.values[:, 1]
+    z_bar_1964 = cmfs_1964.values[:, 2]
+    wavelengths_1964 = cmfs_1964.wavelengths
+
+    mask_1964 = (wavelengths_1964 >= 360) & (wavelengths_1964 <= 830)
+    x_bar_1964_filtered = x_bar_1964[mask_1964]
+    y_bar_1964_filtered = y_bar_1964[mask_1964]
+    z_bar_1964_filtered = z_bar_1964[mask_1964]
+
+    with open('data/cmf/cie_1964_10deg_x_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in x_bar_1964_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_1964_10deg_x_360_830_1nm.csv ({len(x_bar_1964_filtered)} samples)")
+
+    with open('data/cmf/cie_1964_10deg_y_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in y_bar_1964_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_1964_10deg_y_360_830_1nm.csv ({len(y_bar_1964_filtered)} samples)")
+
+    with open('data/cmf/cie_1964_10deg_z_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in z_bar_1964_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  data/cmf/cie_1964_10deg_z_360_830_1nm.csv ({len(z_bar_1964_filtered)} samples)")
+except Exception as e:
+    print(f"  Warning: Could not generate CIE 1964 10° CMFs: {e}", file=sys.stderr)
+
+# ================================================================
+# M5: Spectral Data - Illuminant SPDs
+# ================================================================
+print("\nGenerating Illuminant SPDs...")
+
+# List of illuminants to generate
+illuminant_names = ['A', 'D50', 'D55', 'D65', 'E',
+                    'F1', 'F2', 'F3', 'F4', 'F5', 'F6',
+                    'F7', 'F8', 'F9', 'F10', 'F11', 'F12']
+
+for illum_name in illuminant_names:
+    try:
+        # Get illuminant SPD from colour-science
+        if illum_name in colour.SDS_ILLUMINANTS:
+            illum_spd = colour.SDS_ILLUMINANTS[illum_name]
+        else:
+            # Try with different naming
+            try:
+                illum_spd = colour.SDS_ILLUMINANTS[f'FL{illum_name[1:]}']  # F1 -> FL1
+            except:
+                print(f"  Warning: Illuminant {illum_name} not found", file=sys.stderr)
+                continue
+
+        # Resample to 360-830nm, 1nm steps
+        # Use interpolate method instead of align for newer versions
+        target_wavelengths = np.arange(360, 831, 1)
+        resampled_values = np.interp(
+            target_wavelengths,
+            illum_spd.wavelengths,
+            illum_spd.values,
+            left=0.0,
+            right=0.0
+        )
+
+        # Write illuminant data
+        filename = f'data/illuminants/{illum_name}_360_830_1nm.csv'
+        with open(filename, 'w', newline='') as f:
+            formatted_values = [format_scalar(v) for v in resampled_values]
+            f.write(','.join(formatted_values) + '\n')
+        print(f"  {filename} ({len(resampled_values)} samples)")
+
+    except Exception as e:
+        print(f"  Warning: Could not generate illuminant {illum_name}: {e}", file=sys.stderr)
+
 print("\nData generation complete!")
 "@
 

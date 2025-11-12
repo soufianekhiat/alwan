@@ -28,6 +28,13 @@
 /* ABI alias for public header */
 typedef alwan_scalar Scalar;
 
+/* Scalar literal suffix helper (auto-adds 'f' for float, nothing for double) */
+#if ALWAN_SCALAR_IS_FLOAT
+# define ALWAN_LITERAL(x) x##f
+#else
+# define ALWAN_LITERAL(x) x
+#endif
+
 /* ----------------------------------------------------------------
  * Data embedding mode
  * ---------------------------------------------------------------- */

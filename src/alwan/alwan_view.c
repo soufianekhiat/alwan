@@ -11,23 +11,6 @@
 #include <string.h>
 
 /* ----------------------------------------------------------------
- * Utility: Per-channel operations
- * ---------------------------------------------------------------- */
-
-static inline Scalar max3(Scalar a, Scalar b, Scalar c) {
-    Scalar m = a;
-    if (b > m) m = b;
-    if (c > m) m = c;
-    return m;
-}
-
-static inline Scalar clamp01(Scalar x) {
-    if (x < ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    if (x > ALWAN_LITERAL(1.0)) return ALWAN_LITERAL(1.0);
-    return x;
-}
-
-/* ----------------------------------------------------------------
  * ACES RRT+ODT (Simplified Approximation for Rec.709)
  * ---------------------------------------------------------------- */
 
@@ -79,9 +62,9 @@ static void aces_rec709_transform(Scalar const *rgb_in, Scalar *rgb_out) {
     rgb_out[2] = odt_matrix[6] * rrt_r + odt_matrix[7] * rrt_g + odt_matrix[8] * rrt_b;
 
     /* Clamp to [0,1] */
-    rgb_out[0] = clamp01(rgb_out[0]);
-    rgb_out[1] = clamp01(rgb_out[1]);
-    rgb_out[2] = clamp01(rgb_out[2]);
+    rgb_out[0] = alwan_saturate(rgb_out[0]);
+    rgb_out[1] = alwan_saturate(rgb_out[1]);
+    rgb_out[2] = alwan_saturate(rgb_out[2]);
 }
 
 /* ----------------------------------------------------------------
@@ -114,7 +97,7 @@ static void agx_base_transform(Scalar const *rgb_in, Scalar *rgb_out) {
 
         /* Normalize to [0,1] based on AgX range */
         Scalar normalized = (log_x - agx_min) / (agx_max - agx_min);
-        normalized = clamp01(normalized);
+        normalized = alwan_saturate(normalized);
 
         /* Apply AgX curve (sigmoid-like function for smooth rolloff) */
         /* Simplified polynomial approximation of AgX Look */
@@ -127,7 +110,7 @@ static void agx_base_transform(Scalar const *rgb_in, Scalar *rgb_out) {
                       + ALWAN_LITERAL( 1.2528) * t2
                       + ALWAN_LITERAL(-0.1865) * t;
 
-        rgb_out[i] = clamp01(result);
+        rgb_out[i] = alwan_saturate(result);
     }
 }
 
@@ -156,7 +139,7 @@ static void agx_punchy_transform(Scalar const *rgb_in, Scalar *rgb_out) {
         rgb_out[i] = mid_gray + (rgb_out[i] - mid_gray) * contrast;
 
         /* Clamp */
-        rgb_out[i] = clamp01(rgb_out[i]);
+        rgb_out[i] = alwan_saturate(rgb_out[i]);
     }
 }
 

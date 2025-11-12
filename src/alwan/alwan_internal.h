@@ -32,7 +32,6 @@
   #define ALWAN_LOG(x)   logf(x)
   #define ALWAN_FLOOR(x) floorf(x)
   #define ALWAN_CEIL(x)  ceilf(x)
-  #define ALWAN_LITERAL(x) x##f
   #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-5)
 #else
   #define ALWAN_FABS(x)  fabs(x)
@@ -46,7 +45,6 @@
   #define ALWAN_LOG(x)   log(x)
   #define ALWAN_FLOOR(x) floor(x)
   #define ALWAN_CEIL(x)  ceil(x)
-  #define ALWAN_LITERAL(x) x
   #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-12)
 #endif
 
