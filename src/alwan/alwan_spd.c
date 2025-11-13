@@ -611,6 +611,7 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
         prod_z[i] = spd_value * z_bar_resampled.values[i];
     }
 
+    // TODO: Check colour-science for the proper implementation
     /* Apply bandpass correction if requested (Stearns & Stearns 1988) */
     /* TODO(M6): Implement full Stearns & Stearns bandpass correction algorithm
      * For now, bandpass_nm parameter is accepted but not used.

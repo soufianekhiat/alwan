@@ -62,6 +62,7 @@ int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
 
     /* RGB->XYZ = M * diag(S)
      * This is equivalent to scaling each column of M by corresponding S component */
+    // TODO: create alwan_mat3_mul_diag() function
     rgb_to_xyz->m[0] = M.m[0] * S.v[0];  /* R column scaled */
     rgb_to_xyz->m[1] = M.m[1] * S.v[1];  /* G column scaled */
     rgb_to_xyz->m[2] = M.m[2] * S.v[2];  /* B column scaled */
@@ -112,6 +113,7 @@ static alwan_scalar srgb_eotf_scalar(alwan_scalar encoded) {
  * Normalizes input to [0,1] assuming 10000 cd/m² peak, then applies PQ curve */
 static alwan_scalar pq_oetf_scalar(alwan_scalar linear) {
     /* PQ constants */
+    // TODO: replace the hardcoded constants a division on the comment (solved at compile time)
     alwan_scalar const m1 = ALWAN_LITERAL(0.1593017578125);      /* 2610/16384 */
     alwan_scalar const m2 = ALWAN_LITERAL(78.84375);              /* 2523/32 */
     alwan_scalar const c1 = ALWAN_LITERAL(0.8359375);             /* 3424/4096 */
@@ -158,7 +160,9 @@ static alwan_scalar pq_eotf_scalar(alwan_scalar encoded) {
  * ---------------------------------------------------------------- */
 
 /* HLG OETF: scene-referred linear -> HLG signal */
-static alwan_scalar hlg_oetf_scalar(alwan_scalar linear) {
+static alwan_scalar hlg_oetf_scalar( alwan_scalar linear )
+{
+	// TODO: replace the hardcoded constants (b, c) with the operation cf. the comment (solved at compile time)
     alwan_scalar const a = ALWAN_LITERAL(0.17883277);
     alwan_scalar const b = ALWAN_LITERAL(0.28466892);  /* 1 - 4*a */
     alwan_scalar const c = ALWAN_LITERAL(0.55991073);  /* 0.5 - a*ln(4*a) */

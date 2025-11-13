@@ -55,6 +55,8 @@ void  alwan_default_free(void *ptr);
 # define ALWAN_FREE(p) alwan_default_free((p))
 #endif
 
+// TODO: Add ALWAN_REALLOC
+
 /* ----------------------------------------------------------------
  * Diagnostic pragma helpers for CSV embedding
  * ---------------------------------------------------------------- */

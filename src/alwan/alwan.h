@@ -15,6 +15,8 @@
 extern "C" {
 #endif
 
+// TODO: add support for YPbPr, xvYCC, YCoCg, YUV, etc.
+
 /* ----------------------------------------------------------------
  * Error codes
  * ---------------------------------------------------------------- */
@@ -82,6 +84,8 @@ typedef struct {
     alwan_scalar v[3];
 } alwan_vec3;
 
+// TODO: add alwan_vec4 for CMYK, alpha channel, etc.
+
 /* 3x3 matrix stored in row-major order: [m00 m01 m02 m10 m11 m12 m20 m21 m22] */
 typedef struct {
     alwan_scalar m[9];
@@ -132,6 +136,7 @@ int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
 /* Apply Opto-Electronic Transfer Function (linear -> encoded)
  * Supported names: "srgb", "pq"/"st2084", "hlg", "acesproxy"
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
+// TODO: replace name by an enum
 int alwan_oetf_apply(char const *name,
                      alwan_scalar const *linear, size_t count, size_t in_stride,
                      alwan_scalar *encoded, size_t out_stride);
@@ -139,6 +144,7 @@ int alwan_oetf_apply(char const *name,
 /* Apply Electro-Optical Transfer Function (encoded -> linear)
  * Supported names: "srgb", "pq"/"st2084", "hlg", "bt1886", "acesproxy"
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
+// TODO: replace name by an enum
 int alwan_eotf_apply(char const *name,
                      alwan_scalar const *encoded, size_t count, size_t in_stride,
                      alwan_scalar *linear, size_t out_stride);
@@ -160,6 +166,7 @@ int alwan_eotf_apply(char const *name,
  * out_stride: stride between output RGB triplets (in Scalars, typically 3)
  *
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
+// TODO: replace name by an enum
 int alwan_view_transform_apply(alwan_ctx *ctx,
                                 char const *name,
                                 alwan_scalar const *rgb_in, size_t count, size_t in_stride,
@@ -280,6 +287,8 @@ typedef enum {
 } alwan_resample_method;
 
 /* SPD extrapolation mode (for values outside measured range) */
+// TODO: add extrapolate with specified constant value
+// TODO: add extrapolate with higher-order methods
 typedef enum {
     ALWAN_EXTRAPOLATE_ZERO = 0,     /* Clamp to zero outside range (default for reflectance) */
     ALWAN_EXTRAPOLATE_CONSTANT = 1, /* Repeat edge values (good for smooth SPDs) */
@@ -313,6 +322,7 @@ void alwan_spd_destroy(alwan_ctx *ctx, alwan_spd *spd);
  * name: illuminant name ("A", "D50", "D55", "D65", "E", "F1"..."F12")
  * out: output SPD structure
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
+// TODO: replace name by an enum
 int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out);
 
 /* Resample SPD to new wavelength range/count
@@ -483,6 +493,7 @@ int alwan_hsl_to_rgb(alwan_vec3 const *hsl, alwan_vec3 *rgb_out);
 int alwan_rgb_to_cmy(alwan_vec3 const *rgb, alwan_vec3 *cmy_out);
 int alwan_cmy_to_rgb(alwan_vec3 const *cmy, alwan_vec3 *rgb_out);
 
+// TODO: add alwan_vec4 for CMYK output
 /* CMY <-> CMYK conversions (all values in [0, 1]) */
 int alwan_cmy_to_cmyk(alwan_vec3 const *cmy, alwan_scalar *c, alwan_scalar *m, alwan_scalar *y, alwan_scalar *k);
 int alwan_cmyk_to_cmy(alwan_scalar c, alwan_scalar m, alwan_scalar y, alwan_scalar k, alwan_vec3 *cmy_out);

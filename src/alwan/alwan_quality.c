@@ -66,6 +66,8 @@ typedef struct {
     alwan_scalar dv;    /* dv/dT slope */
 } robertson_locus_point;
 
+// TODO: move that table to a data file like
+// all other data (update the script generate_data.ps1)
 static const robertson_locus_point robertson_table[] = {
     /* CCT,    u,        v,        du,         dv */
     { 1000,  0.05042,  0.52720,  0.00019551,  0.00029206},
@@ -176,6 +178,7 @@ alwan_scalar alwan_cct_robertson_xy(alwan_vec3 const *xy) {
  * This is a complex calculation that requires spectral integration.
  * For now, return a placeholder that indicates this feature is not yet implemented.
  */
+// TODO
 alwan_scalar alwan_cri_ra(alwan_spd const *test_spd) {
     if (!test_spd) {
         return ALWAN_LITERAL(-1.0);

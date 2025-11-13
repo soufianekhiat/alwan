@@ -43,7 +43,7 @@ void alwan_xyy_to_xyz(alwan_vec3 const *xyy, alwan_vec3 *xyz) {
         xyz->v[2] = ALWAN_LITERAL(0.0);
     } else {
         xyz->v[0] = (x * Y) / y;           /* X */
-        xyz->v[1] = Y;                      /* Y */
+        xyz->v[1] = Y;                     /* Y */
         xyz->v[2] = ((ALWAN_LITERAL(1.0) - x - y) * Y) / y;  /* Z */
     }
 }
@@ -90,8 +90,8 @@ void alwan_xyz_to_lab(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_
     alwan_scalar const fz = lab_f(zr);
 
     lab->v[0] = ALWAN_LITERAL(116.0) * fy - ALWAN_LITERAL(16.0);  /* L* */
-    lab->v[1] = ALWAN_LITERAL(500.0) * (fx - fy);                  /* a* */
-    lab->v[2] = ALWAN_LITERAL(200.0) * (fy - fz);                  /* b* */
+    lab->v[1] = ALWAN_LITERAL(500.0) * (fx - fy);                 /* a* */
+    lab->v[2] = ALWAN_LITERAL(200.0) * (fy - fz);                 /* b* */
 }
 
 void alwan_lab_to_xyz(alwan_vec3 const *lab, alwan_vec3 const *white_xyz, alwan_vec3 *xyz) {

@@ -65,8 +65,8 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
         alwan_scalar const sy = dst_white_xyz->v[1] / src_white_xyz->v[1];
         alwan_scalar const sz = dst_white_xyz->v[2] / src_white_xyz->v[2];
 
-        out->m[0] = sx;              out->m[1] = ALWAN_LITERAL(0.0); out->m[2] = ALWAN_LITERAL(0.0);
-        out->m[3] = ALWAN_LITERAL(0.0); out->m[4] = sy;              out->m[5] = ALWAN_LITERAL(0.0);
+        out->m[0] = sx;                 out->m[1] = ALWAN_LITERAL(0.0); out->m[2] = ALWAN_LITERAL(0.0);
+        out->m[3] = ALWAN_LITERAL(0.0); out->m[4] = sy;                 out->m[5] = ALWAN_LITERAL(0.0);
         out->m[6] = ALWAN_LITERAL(0.0); out->m[7] = ALWAN_LITERAL(0.0); out->m[8] = sz;
 
         return ALWAN_OK;
