@@ -671,6 +671,193 @@ with open('src/alwan/data/fixtures/cam16_ucs_jab.csv', 'w', newline='') as f:
 print(f"  data/fixtures/cam16_ucs_jab.csv ({len(cam16_ucs_jab)} colors)")
 
 # ================================================================
+# M9: Convenience Color Models (HSV, HSL, CMY, CMYK, YCbCr)
+# ================================================================
+print("\nGenerating convenience color model test fixtures...")
+
+# Test RGB colors for HSV/HSL round-trip
+# Use diverse set including edge cases
+conv_test_rgb = [
+    [1.0, 0.0, 0.0],      # Pure red
+    [0.0, 1.0, 0.0],      # Pure green
+    [0.0, 0.0, 1.0],      # Pure blue
+    [1.0, 1.0, 0.0],      # Yellow
+    [1.0, 0.0, 1.0],      # Magenta
+    [0.0, 1.0, 1.0],      # Cyan
+    [1.0, 1.0, 1.0],      # White
+    [0.0, 0.0, 0.0],      # Black
+    [0.5, 0.5, 0.5],      # Gray
+    [0.75, 0.25, 0.25],   # Mixed color
+    [0.2, 0.6, 0.3],      # Mixed color
+]
+
+# Write test RGB colors
+with open('src/alwan/data/fixtures/conv_rgb_input.csv', 'w', newline='') as f:
+    all_values = []
+    for rgb in conv_test_rgb:
+        all_values.extend([format_scalar(v) for v in rgb])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_rgb_input.csv ({len(conv_test_rgb)} colors)")
+
+# Compute HSV values using colour-science
+hsv_values = []
+for rgb in conv_test_rgb:
+    # colour-science uses RGB_to_HSV (already returns hue in [0, 1])
+    hsv = colour.RGB_to_HSV(np.array(rgb))
+    # Handle NaN for grayscale colors
+    hsv[0] = 0.0 if hsv[0] is None or np.isnan(hsv[0]) else hsv[0]
+    hsv_values.append(hsv)
+
+with open('src/alwan/data/fixtures/conv_hsv_values.csv', 'w', newline='') as f:
+    all_values = []
+    for hsv in hsv_values:
+        all_values.extend([format_scalar(v) for v in hsv])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_hsv_values.csv ({len(hsv_values)} colors)")
+
+# Compute HSL values using colour-science
+hsl_values = []
+for rgb in conv_test_rgb:
+    # colour-science uses RGB_to_HSL (already returns hue in [0, 1])
+    hsl = colour.RGB_to_HSL(np.array(rgb))
+    # Handle NaN for grayscale colors
+    hsl[0] = 0.0 if hsl[0] is None or np.isnan(hsl[0]) else hsl[0]
+    hsl_values.append(hsl)
+
+with open('src/alwan/data/fixtures/conv_hsl_values.csv', 'w', newline='') as f:
+    all_values = []
+    for hsl in hsl_values:
+        all_values.extend([format_scalar(v) for v in hsl])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_hsl_values.csv ({len(hsl_values)} colors)")
+
+# CMY/CMYK test values
+# CMY is simple complement
+cmy_values = []
+for rgb in conv_test_rgb:
+    cmy = [1.0 - rgb[0], 1.0 - rgb[1], 1.0 - rgb[2]]
+    cmy_values.append(cmy)
+
+with open('src/alwan/data/fixtures/conv_cmy_values.csv', 'w', newline='') as f:
+    all_values = []
+    for cmy in cmy_values:
+        all_values.extend([format_scalar(v) for v in cmy])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_cmy_values.csv ({len(cmy_values)} colors)")
+
+# CMYK conversion from CMY
+cmyk_values = []
+for cmy in cmy_values:
+    k = min(cmy[0], cmy[1], cmy[2])
+    if k < 1.0:
+        c = (cmy[0] - k) / (1.0 - k)
+        m = (cmy[1] - k) / (1.0 - k)
+        y = (cmy[2] - k) / (1.0 - k)
+    else:
+        c = m = y = 0.0
+    cmyk_values.append([c, m, y, k])
+
+with open('src/alwan/data/fixtures/conv_cmyk_values.csv', 'w', newline='') as f:
+    all_values = []
+    for cmyk in cmyk_values:
+        all_values.extend([format_scalar(v) for v in cmyk])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_cmyk_values.csv ({len(cmyk_values)} colors)")
+
+# YCbCr test values for BT.601, BT.709, BT.2020
+# colour-science uses RGB_to_YCbCr
+ycbcr_bt601_values = []
+ycbcr_bt709_values = []
+ycbcr_bt2020_values = []
+
+for rgb in conv_test_rgb:
+    rgb_arr = np.array(rgb)
+
+    # BT.601 coefficients
+    K_601 = np.array([0.299, 0.587, 0.114])
+    Y_601 = np.dot(K_601, rgb_arr)
+    Cb_601 = 0.5 * (rgb_arr[2] - Y_601) / (1.0 - K_601[2])
+    Cr_601 = 0.5 * (rgb_arr[0] - Y_601) / (1.0 - K_601[0])
+    ycbcr_bt601_values.append([Y_601, Cb_601 + 0.5, Cr_601 + 0.5])
+
+    # BT.709 coefficients
+    K_709 = np.array([0.2126, 0.7152, 0.0722])
+    Y_709 = np.dot(K_709, rgb_arr)
+    Cb_709 = 0.5 * (rgb_arr[2] - Y_709) / (1.0 - K_709[2])
+    Cr_709 = 0.5 * (rgb_arr[0] - Y_709) / (1.0 - K_709[0])
+    ycbcr_bt709_values.append([Y_709, Cb_709 + 0.5, Cr_709 + 0.5])
+
+    # BT.2020 coefficients
+    K_2020 = np.array([0.2627, 0.6780, 0.0593])
+    Y_2020 = np.dot(K_2020, rgb_arr)
+    Cb_2020 = 0.5 * (rgb_arr[2] - Y_2020) / (1.0 - K_2020[2])
+    Cr_2020 = 0.5 * (rgb_arr[0] - Y_2020) / (1.0 - K_2020[0])
+    ycbcr_bt2020_values.append([Y_2020, Cb_2020 + 0.5, Cr_2020 + 0.5])
+
+with open('src/alwan/data/fixtures/conv_ycbcr_bt601.csv', 'w', newline='') as f:
+    all_values = []
+    for ycbcr in ycbcr_bt601_values:
+        all_values.extend([format_scalar(v) for v in ycbcr])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_ycbcr_bt601.csv ({len(ycbcr_bt601_values)} colors)")
+
+with open('src/alwan/data/fixtures/conv_ycbcr_bt709.csv', 'w', newline='') as f:
+    all_values = []
+    for ycbcr in ycbcr_bt709_values:
+        all_values.extend([format_scalar(v) for v in ycbcr])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_ycbcr_bt709.csv ({len(ycbcr_bt709_values)} colors)")
+
+with open('src/alwan/data/fixtures/conv_ycbcr_bt2020.csv', 'w', newline='') as f:
+    all_values = []
+    for ycbcr in ycbcr_bt2020_values:
+        all_values.extend([format_scalar(v) for v in ycbcr])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_ycbcr_bt2020.csv ({len(ycbcr_bt2020_values)} colors)")
+
+# YcCbcCrc (constant luminance) for BT.2020
+# This is more complex with conditional formulas
+yccbccrc_values = []
+K_2020 = np.array([0.2627, 0.6780, 0.0593])
+
+for rgb in conv_test_rgb:
+    rgb_arr = np.array(rgb)
+    r, g, b = rgb_arr
+
+    # Constant luminance Yc
+    yc = np.dot(K_2020, rgb_arr)
+
+    # Conditional Cbc formula
+    # Handle edge cases where division would be undefined
+    if b <= 0.0 or yc <= 0.0:
+        cbc = 0.5
+    elif yc >= 1.0:
+        cbc = 0.5  # White: no chroma
+    elif b < yc:
+        cbc = (b - yc) / (2.0 * yc * (1.0 - K_2020[2])) + 0.5
+    else:
+        cbc = (b - yc) / (2.0 * (1.0 - yc) * (1.0 - K_2020[2])) + 0.5
+
+    # Conditional Crc formula
+    if r <= 0.0 or yc <= 0.0:
+        crc = 0.5
+    elif yc >= 1.0:
+        crc = 0.5  # White: no chroma
+    elif r < yc:
+        crc = (r - yc) / (2.0 * yc * (1.0 - K_2020[0])) + 0.5
+    else:
+        crc = (r - yc) / (2.0 * (1.0 - yc) * (1.0 - K_2020[0])) + 0.5
+
+    yccbccrc_values.append([yc, cbc, crc])
+
+with open('src/alwan/data/fixtures/conv_yccbccrc_bt2020.csv', 'w', newline='') as f:
+    all_values = []
+    for ycc in yccbccrc_values:
+        all_values.extend([format_scalar(v) for v in ycc])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/conv_yccbccrc_bt2020.csv ({len(yccbccrc_values)} colors)")
+
+# ================================================================
 # M5: Spectral Data - Color Matching Functions (CMFs)
 # ================================================================
 print("\nGenerating Color Matching Functions (CMFs)...")

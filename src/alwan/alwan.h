@@ -454,6 +454,41 @@ int alwan_cam16_from_ucs(alwan_vec3 const *Jab,
                          alwan_cam16_correlates *correlates_out);
 
 /* ----------------------------------------------------------------
+ * M9: Convenience Color Models (HSV, HSL, CMY, CMYK, YCbCr)
+ * ---------------------------------------------------------------- */
+
+/* RGB <-> HSV conversions (all values in [0, 1]) */
+int alwan_rgb_to_hsv(alwan_vec3 const *rgb, alwan_vec3 *hsv_out);
+int alwan_hsv_to_rgb(alwan_vec3 const *hsv, alwan_vec3 *rgb_out);
+
+/* RGB <-> HSL conversions (all values in [0, 1]) */
+int alwan_rgb_to_hsl(alwan_vec3 const *rgb, alwan_vec3 *hsl_out);
+int alwan_hsl_to_rgb(alwan_vec3 const *hsl, alwan_vec3 *rgb_out);
+
+/* RGB <-> CMY conversions (all values in [0, 1]) */
+int alwan_rgb_to_cmy(alwan_vec3 const *rgb, alwan_vec3 *cmy_out);
+int alwan_cmy_to_rgb(alwan_vec3 const *cmy, alwan_vec3 *rgb_out);
+
+/* CMY <-> CMYK conversions (all values in [0, 1]) */
+int alwan_cmy_to_cmyk(alwan_vec3 const *cmy, alwan_scalar *c, alwan_scalar *m, alwan_scalar *y, alwan_scalar *k);
+int alwan_cmyk_to_cmy(alwan_scalar c, alwan_scalar m, alwan_scalar y, alwan_scalar k, alwan_vec3 *cmy_out);
+
+/* YCbCr standard identifiers */
+typedef enum {
+    ALWAN_YCBCR_BT601,    /* ITU-R BT.601 (SD) */
+    ALWAN_YCBCR_BT709,    /* ITU-R BT.709 (HD) */
+    ALWAN_YCBCR_BT2020    /* ITU-R BT.2020 (UHD) */
+} alwan_ycbcr_standard;
+
+/* RGB <-> YCbCr conversions (RGB in [0, 1], YCbCr full range [0, 1]) */
+int alwan_rgb_to_ycbcr(alwan_vec3 const *rgb, alwan_ycbcr_standard standard, alwan_vec3 *ycbcr_out);
+int alwan_ycbcr_to_rgb(alwan_vec3 const *ycbcr, alwan_ycbcr_standard standard, alwan_vec3 *rgb_out);
+
+/* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020) */
+int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out);
+int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out);
+
+/* ----------------------------------------------------------------
  * Utility Functions
  * ---------------------------------------------------------------- */
 

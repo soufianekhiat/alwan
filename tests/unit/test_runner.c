@@ -25,6 +25,7 @@ extern int test_50_spd_to_xyz_main(void);
 extern int test_60_bandpass_2012_main(void);
 extern int test_70_ciecam02_main(void);
 extern int test_80_cam16_main(void);
+extern int test_90_conv_convenience_main(void);
 
 /* Test registry */
 typedef struct {
@@ -48,6 +49,7 @@ static test_suite const g_test_suites[] = {
     {"60_bandpass_2012", test_60_bandpass_2012_main},
     {"70_ciecam02", test_70_ciecam02_main},
     {"80_cam16", test_80_cam16_main},
+    {"90_conv_convenience", test_90_conv_convenience_main},
 };
 
 int main(void) {

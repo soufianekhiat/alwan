@@ -64,11 +64,10 @@ static alwan_scalar compute_D(alwan_scalar F, alwan_scalar La, int discount_illu
 /* Post-adaptation nonlinear response compression */
 static alwan_scalar post_adaptation_nonlinear(alwan_scalar x) {
     alwan_scalar const FL_pow = ALWAN_LITERAL(0.42);
-    alwan_scalar const FL_scale = ALWAN_LITERAL(100.0) / ALWAN_LITERAL(27.13);
 
     alwan_scalar x_abs = ALWAN_FABS(x);
-    alwan_scalar x_pow = ALWAN_POW(x_abs * FL_scale, FL_pow);
-    alwan_scalar result = (ALWAN_LITERAL(400.0) * x_pow) / (x_pow + ALWAN_LITERAL(27.13));
+    alwan_scalar x_pow = ALWAN_POW(x_abs, FL_pow);
+    alwan_scalar result = ALWAN_LITERAL(400.0) * x_pow / (ALWAN_LITERAL(27.13) + x_pow) + ALWAN_LITERAL(0.1);
 
     return (x < ALWAN_LITERAL(0.0)) ? -result : result;
 }
@@ -76,12 +75,14 @@ static alwan_scalar post_adaptation_nonlinear(alwan_scalar x) {
 /* Inverse of post-adaptation nonlinear response */
 static alwan_scalar post_adaptation_nonlinear_inv(alwan_scalar x) {
     alwan_scalar const FL_pow_inv = ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.42);
-    alwan_scalar const FL_scale = ALWAN_LITERAL(100.0) / ALWAN_LITERAL(27.13);
 
-    alwan_scalar x_abs = ALWAN_FABS(x);
-    alwan_scalar x_pow = ALWAN_POW((ALWAN_LITERAL(27.13) * x_abs) /
-                             (ALWAN_LITERAL(400.0) - x_abs), FL_pow_inv);
-    alwan_scalar result = x_pow / FL_scale;
+    /* First subtract the additive constant */
+    alwan_scalar y = x - ALWAN_LITERAL(0.1);
+    alwan_scalar y_abs = ALWAN_FABS(y);
+
+    /* Invert: x^0.42 = (27.13 * y) / (400 - y) */
+    alwan_scalar result = ALWAN_POW((ALWAN_LITERAL(27.13) * y_abs) /
+                             (ALWAN_LITERAL(400.0) - y_abs), FL_pow_inv);
 
     return (x < ALWAN_LITERAL(0.0)) ? -result : result;
 }
@@ -300,33 +301,52 @@ int alwan_ciecam02_inverse(alwan_ciecam02_correlates const *correlates,
     alwan_scalar et = ALWAN_LITERAL(0.25) * (ALWAN_COS(h * ALWAN_PI / ALWAN_LITERAL(180.0) + ALWAN_LITERAL(2.0)) + ALWAN_LITERAL(3.8));
 
     /* Step 8: Compute a and b from h and t */
+    /* Following colour-science's opponent_colour_dimensions_inverse implementation */
     alwan_scalar h_rad = h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar p1 = (ALWAN_LITERAL(50000.0) / ALWAN_LITERAL(13.0)) * Nc * Ncb * et;
-    alwan_scalar p2 = A / Nbb + ALWAN_LITERAL(0.305);
-    alwan_scalar p3 = ALWAN_LITERAL(21.0) / ALWAN_LITERAL(20.0);
 
-    /* Solve for a and b */
+    /* Compute P_n components as in colour-science CAM16_to_XYZ */
+    alwan_scalar P_1 = (ALWAN_LITERAL(50000.0) / ALWAN_LITERAL(13.0)) * Nc * Ncb * et / t;
+    alwan_scalar P_2 = A / Nbb + ALWAN_LITERAL(0.305);
+    alwan_scalar P_3 = ALWAN_LITERAL(21.0) / ALWAN_LITERAL(20.0);
+
     alwan_scalar sin_h = ALWAN_SIN(h_rad);
     alwan_scalar cos_h = ALWAN_COS(h_rad);
 
+    /* Numerator: numerator = P_2 * (2 + P_3) * (460 / 1403) */
+    alwan_scalar numerator = P_2 * (ALWAN_LITERAL(2.0) + P_3) * (ALWAN_LITERAL(460.0) / ALWAN_LITERAL(1403.0));
+
     alwan_scalar a, b;
+    /* Choose formula based on hue angle to avoid division by small numbers */
     if (ALWAN_FABS(sin_h) >= ALWAN_FABS(cos_h)) {
-        b = (p2 * (ALWAN_LITERAL(2.0) + p3) * (ALWAN_LITERAL(460.0) / ALWAN_LITERAL(1403.0))) /
-            (p1 / t + (ALWAN_LITERAL(2.0) + p3) * (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) * (cos_h / sin_h) -
-             (ALWAN_LITERAL(27.0) / ALWAN_LITERAL(1403.0)) + p3 * (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0)));
+        /* Case 1: |sin(h)| >= |cos(h)| - solve for b first */
+        /* P_4 = P_1 / sin(h) */
+        alwan_scalar P_4 = P_1 / sin_h;
+
+        /* b = numerator / (P_4 + (2 + P_3) * (220/1403) * (cos(h)/sin(h)) - (27/1403) + P_3 * (6300/1403)) */
+        alwan_scalar denom = P_4 +
+                            (ALWAN_LITERAL(2.0) + P_3) * (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) * (cos_h / sin_h) -
+                            (ALWAN_LITERAL(27.0) / ALWAN_LITERAL(1403.0)) +
+                            P_3 * (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0));
+        b = numerator / denom;
         a = b * (cos_h / sin_h);
     } else {
-        a = (p2 * (ALWAN_LITERAL(2.0) + p3) * (ALWAN_LITERAL(460.0) / ALWAN_LITERAL(1403.0))) /
-            (p1 / t + (ALWAN_LITERAL(2.0) + p3) * (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) -
-             ((ALWAN_LITERAL(27.0) / ALWAN_LITERAL(1403.0)) - p3 * (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0))) * (sin_h / cos_h));
+        /* Case 2: |sin(h)| < |cos(h)| - solve for a first */
+        /* P_5 = P_1 / cos(h) */
+        alwan_scalar P_5 = P_1 / cos_h;
+
+        /* a = numerator / (P_5 + (2 + P_3) * (220/1403) - ((27/1403) - P_3 * (6300/1403)) * (sin(h)/cos(h))) */
+        alwan_scalar denom = P_5 +
+                            (ALWAN_LITERAL(2.0) + P_3) * (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) -
+                            ((ALWAN_LITERAL(27.0) / ALWAN_LITERAL(1403.0)) - P_3 * (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0))) * (sin_h / cos_h);
+        a = numerator / denom;
         b = a * (sin_h / cos_h);
     }
 
     /* Step 9: Compute RGB_a from a, b, and A */
     alwan_scalar RGB_a[3];
-    RGB_a[0] = (ALWAN_LITERAL(460.0) * p2 + ALWAN_LITERAL(451.0) * a + ALWAN_LITERAL(288.0) * b) / ALWAN_LITERAL(1403.0);
-    RGB_a[1] = (ALWAN_LITERAL(460.0) * p2 - ALWAN_LITERAL(891.0) * a - ALWAN_LITERAL(261.0) * b) / ALWAN_LITERAL(1403.0);
-    RGB_a[2] = (ALWAN_LITERAL(460.0) * p2 - ALWAN_LITERAL(220.0) * a - ALWAN_LITERAL(6300.0) * b) / ALWAN_LITERAL(1403.0);
+    RGB_a[0] = (ALWAN_LITERAL(460.0) * P_2 + ALWAN_LITERAL(451.0) * a + ALWAN_LITERAL(288.0) * b) / ALWAN_LITERAL(1403.0);
+    RGB_a[1] = (ALWAN_LITERAL(460.0) * P_2 - ALWAN_LITERAL(891.0) * a - ALWAN_LITERAL(261.0) * b) / ALWAN_LITERAL(1403.0);
+    RGB_a[2] = (ALWAN_LITERAL(460.0) * P_2 - ALWAN_LITERAL(220.0) * a - ALWAN_LITERAL(6300.0) * b) / ALWAN_LITERAL(1403.0);
 
     /* Step 10: Apply inverse post-adaptation nonlinearity */
     alwan_scalar RGB_c[3];
@@ -560,32 +580,52 @@ int alwan_cam16_inverse(alwan_cam16_correlates const *correlates,
     alwan_scalar et = ALWAN_LITERAL(0.25) * (ALWAN_COS(h * ALWAN_PI / ALWAN_LITERAL(180.0) + ALWAN_LITERAL(2.0)) + ALWAN_LITERAL(3.8));
 
     /* Step 8: Compute a and b from h and t */
+    /* Following colour-science's opponent_colour_dimensions_inverse implementation */
     alwan_scalar h_rad = h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar p1 = (ALWAN_LITERAL(50000.0) / ALWAN_LITERAL(13.0)) * Nc * Ncb * et;
-    alwan_scalar p2 = A / Nbb + ALWAN_LITERAL(0.305);
-    alwan_scalar p3 = ALWAN_LITERAL(21.0) / ALWAN_LITERAL(20.0);
+
+    /* Compute P_n components as in colour-science CAM16_to_XYZ */
+    alwan_scalar P_1 = (ALWAN_LITERAL(50000.0) / ALWAN_LITERAL(13.0)) * Nc * Ncb * et / t;
+    alwan_scalar P_2 = A / Nbb + ALWAN_LITERAL(0.305);
+    alwan_scalar P_3 = ALWAN_LITERAL(21.0) / ALWAN_LITERAL(20.0);
 
     alwan_scalar sin_h = ALWAN_SIN(h_rad);
     alwan_scalar cos_h = ALWAN_COS(h_rad);
 
+    /* Numerator: numerator = P_2 * (2 + P_3) * (460 / 1403) */
+    alwan_scalar numerator = P_2 * (ALWAN_LITERAL(2.0) + P_3) * (ALWAN_LITERAL(460.0) / ALWAN_LITERAL(1403.0));
+
     alwan_scalar a, b;
+    /* Choose formula based on hue angle to avoid division by small numbers */
     if (ALWAN_FABS(sin_h) >= ALWAN_FABS(cos_h)) {
-        b = (p2 * (ALWAN_LITERAL(2.0) + p3) * (ALWAN_LITERAL(460.0) / ALWAN_LITERAL(1403.0))) /
-            (p1 / t + (ALWAN_LITERAL(2.0) + p3) * (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) * (cos_h / sin_h) -
-             (ALWAN_LITERAL(27.0) / ALWAN_LITERAL(1403.0)) + p3 * (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0)));
+        /* Case 1: |sin(h)| >= |cos(h)| - solve for b first */
+        /* P_4 = P_1 / sin(h) */
+        alwan_scalar P_4 = P_1 / sin_h;
+
+        /* b = numerator / (P_4 + (2 + P_3) * (220/1403) * (cos(h)/sin(h)) - (27/1403) + P_3 * (6300/1403)) */
+        alwan_scalar denom = P_4 +
+                            (ALWAN_LITERAL(2.0) + P_3) * (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) * (cos_h / sin_h) -
+                            (ALWAN_LITERAL(27.0) / ALWAN_LITERAL(1403.0)) +
+                            P_3 * (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0));
+        b = numerator / denom;
         a = b * (cos_h / sin_h);
     } else {
-        a = (p2 * (ALWAN_LITERAL(2.0) + p3) * (ALWAN_LITERAL(460.0) / ALWAN_LITERAL(1403.0))) /
-            (p1 / t + (ALWAN_LITERAL(2.0) + p3) * (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) -
-             ((ALWAN_LITERAL(27.0) / ALWAN_LITERAL(1403.0)) - p3 * (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0))) * (sin_h / cos_h));
+        /* Case 2: |sin(h)| < |cos(h)| - solve for a first */
+        /* P_5 = P_1 / cos(h) */
+        alwan_scalar P_5 = P_1 / cos_h;
+
+        /* a = numerator / (P_5 + (2 + P_3) * (220/1403) - ((27/1403) - P_3 * (6300/1403)) * (sin(h)/cos(h))) */
+        alwan_scalar denom = P_5 +
+                            (ALWAN_LITERAL(2.0) + P_3) * (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) -
+                            ((ALWAN_LITERAL(27.0) / ALWAN_LITERAL(1403.0)) - P_3 * (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0))) * (sin_h / cos_h);
+        a = numerator / denom;
         b = a * (sin_h / cos_h);
     }
 
     /* Step 9: Compute RGB_a from a, b, and A */
     alwan_scalar RGB_a[3];
-    RGB_a[0] = (ALWAN_LITERAL(460.0) * p2 + ALWAN_LITERAL(451.0) * a + ALWAN_LITERAL(288.0) * b) / ALWAN_LITERAL(1403.0);
-    RGB_a[1] = (ALWAN_LITERAL(460.0) * p2 - ALWAN_LITERAL(891.0) * a - ALWAN_LITERAL(261.0) * b) / ALWAN_LITERAL(1403.0);
-    RGB_a[2] = (ALWAN_LITERAL(460.0) * p2 - ALWAN_LITERAL(220.0) * a - ALWAN_LITERAL(6300.0) * b) / ALWAN_LITERAL(1403.0);
+    RGB_a[0] = (ALWAN_LITERAL(460.0) * P_2 + ALWAN_LITERAL(451.0) * a + ALWAN_LITERAL(288.0) * b) / ALWAN_LITERAL(1403.0);
+    RGB_a[1] = (ALWAN_LITERAL(460.0) * P_2 - ALWAN_LITERAL(891.0) * a - ALWAN_LITERAL(261.0) * b) / ALWAN_LITERAL(1403.0);
+    RGB_a[2] = (ALWAN_LITERAL(460.0) * P_2 - ALWAN_LITERAL(220.0) * a - ALWAN_LITERAL(6300.0) * b) / ALWAN_LITERAL(1403.0);
 
     /* Step 10: Apply inverse post-adaptation nonlinearity */
     alwan_scalar RGB_c[3];
