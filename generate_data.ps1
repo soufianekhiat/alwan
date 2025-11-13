@@ -958,6 +958,71 @@ with open('src/alwan/data/fixtures/cct_test_cases.csv', 'w', newline='') as f:
     f.write(','.join(all_values) + '\n')
 print(f"  {DATA_DIR}/fixtures/cct_test_cases.csv ({len(cct_results)} test cases)")
 
+# Generate Robertson CCT lookup table (Planckian locus in CIE 1960 UCS)
+# This table is used by the Robertson method for accurate CCT estimation
+print("\nGenerating Robertson CCT lookup table...")
+
+# CCT values for lookup table (Kelvin)
+robertson_ccts = [
+    1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500,
+    6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000,
+    12000, 15000, 20000
+]
+
+# Compute Planckian locus points in CIE 1960 UCS with slopes
+robertson_table = []
+for i, cct in enumerate(robertson_ccts):
+    # Get xy for blackbody at this CCT using Planckian locus
+    # Use uv_to_CCT inverse function - compute directly from Planckian locus
+    xy = colour.CCT_to_xy(cct)
+
+    # Convert CIE 1931 xy to CIE 1960 UCS uv
+    u = 4 * xy[0] / (12 * xy[1] - 2 * xy[0] + 3)
+    v = 6 * xy[1] / (12 * xy[1] - 2 * xy[0] + 3)
+
+    # Compute slopes (du/dT and dv/dT) for interpolation
+    # Use finite differences with neighboring points
+    if i == 0:
+        # Forward difference for first point
+        xy_next = colour.CCT_to_xy(robertson_ccts[i+1])
+        u_next = 4 * xy_next[0] / (12 * xy_next[1] - 2 * xy_next[0] + 3)
+        v_next = 6 * xy_next[1] / (12 * xy_next[1] - 2 * xy_next[0] + 3)
+        du = (u_next - u) / (robertson_ccts[i+1] - cct)
+        dv = (v_next - v) / (robertson_ccts[i+1] - cct)
+    elif i == len(robertson_ccts) - 1:
+        # Backward difference for last point
+        xy_prev = colour.CCT_to_xy(robertson_ccts[i-1])
+        u_prev = 4 * xy_prev[0] / (12 * xy_prev[1] - 2 * xy_prev[0] + 3)
+        v_prev = 6 * xy_prev[1] / (12 * xy_prev[1] - 2 * xy_prev[0] + 3)
+        du = (u - u_prev) / (cct - robertson_ccts[i-1])
+        dv = (v - v_prev) / (cct - robertson_ccts[i-1])
+    else:
+        # Central difference for middle points
+        xy_prev = colour.CCT_to_xy(robertson_ccts[i-1])
+        xy_next = colour.CCT_to_xy(robertson_ccts[i+1])
+        u_prev = 4 * xy_prev[0] / (12 * xy_prev[1] - 2 * xy_prev[0] + 3)
+        v_prev = 6 * xy_prev[1] / (12 * xy_prev[1] - 2 * xy_prev[0] + 3)
+        u_next = 4 * xy_next[0] / (12 * xy_next[1] - 2 * xy_next[0] + 3)
+        v_next = 6 * xy_next[1] / (12 * xy_next[1] - 2 * xy_next[0] + 3)
+        du = (u_next - u_prev) / (robertson_ccts[i+1] - robertson_ccts[i-1])
+        dv = (v_next - v_prev) / (robertson_ccts[i+1] - robertson_ccts[i-1])
+
+    robertson_table.append([cct, u, v, du, dv])
+
+# Write Robertson table as single-line CSV for C embedding
+# Format: cct1,u1,v1,du1,dv1,cct2,u2,v2,du2,dv2,...
+# Use fixed-point notation to avoid scientific notation issues in C compilation
+filename = f'{DATA_DIR}/fixtures/robertson_cct_locus.csv'
+ensure_dir(filename)
+with open(filename, 'w', newline='') as f:
+    all_values = []
+    for row in robertson_table:
+        # Format with enough precision, avoiding scientific notation
+        formatted_values = [f'{v:.17f}' if abs(v) < 1.0 else format_scalar(v) for v in row]
+        all_values.extend(formatted_values)
+    f.write(','.join(all_values) + '\n')
+print(f"  {filename} ({len(robertson_table)} CCT points, {len(all_values)} values)")
+
 # ================================================================
 # M5: Spectral Data - Color Matching Functions (CMFs)
 # ================================================================

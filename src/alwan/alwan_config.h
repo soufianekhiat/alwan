@@ -46,6 +46,7 @@
 /* Forward declarations for default allocators */
 void *alwan_default_alloc(size_t size, size_t align);
 void  alwan_default_free(void *ptr);
+void *alwan_default_realloc(void *ptr, size_t old_size, size_t new_size, size_t align);
 
 #ifndef ALWAN_ALLOC
 # define ALWAN_ALLOC(sz, align) alwan_default_alloc((sz), (align))
@@ -55,7 +56,9 @@ void  alwan_default_free(void *ptr);
 # define ALWAN_FREE(p) alwan_default_free((p))
 #endif
 
-// TODO: Add ALWAN_REALLOC
+#ifndef ALWAN_REALLOC
+# define ALWAN_REALLOC(p, old_sz, new_sz, align) alwan_default_realloc((p), (old_sz), (new_sz), (align))
+#endif
 
 /* ----------------------------------------------------------------
  * Diagnostic pragma helpers for CSV embedding

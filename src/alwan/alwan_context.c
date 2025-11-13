@@ -37,6 +37,32 @@ void alwan_default_free(void *ptr) {
 #endif
 }
 
+void *alwan_default_realloc(void *ptr, size_t old_size, size_t new_size, size_t align) {
+    if (new_size == 0) {
+        alwan_default_free(ptr);
+        return NULL;
+    }
+
+    if (!ptr) {
+        return alwan_default_alloc(new_size, align);
+    }
+
+    /* For aligned allocations, we need to allocate new, copy, and free old */
+    void *new_ptr = alwan_default_alloc(new_size, align);
+    if (!new_ptr) {
+        return NULL;
+    }
+
+    /* Copy old data to new allocation */
+    size_t copy_size = (old_size < new_size) ? old_size : new_size;
+    if (copy_size > 0) {
+        memcpy(new_ptr, ptr, copy_size);
+    }
+
+    alwan_default_free(ptr);
+    return new_ptr;
+}
+
 /* ----------------------------------------------------------------
  * Internal context structure
  * ---------------------------------------------------------------- */

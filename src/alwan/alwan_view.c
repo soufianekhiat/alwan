@@ -90,9 +90,8 @@ static void agx_base_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out
             continue;
         }
 
-        // TODO: create ALWAN_LOG2 macro
         /* Convert to log2 (exposure value) */
-        alwan_scalar log_x = ALWAN_LOG(x) / ALWAN_LOG(ALWAN_LITERAL(2.0));
+        alwan_scalar log_x = ALWAN_LOG2(x);
 
         /* Normalize to [0,1] based on AgX range */
         alwan_scalar normalized = (log_x - agx_min) / (agx_max - agx_min);

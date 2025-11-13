@@ -112,13 +112,12 @@ static alwan_scalar srgb_eotf_scalar(alwan_scalar encoded) {
 /* PQ OETF: linear (0-10000 cd/m²) -> PQ code values
  * Normalizes input to [0,1] assuming 10000 cd/m² peak, then applies PQ curve */
 static alwan_scalar pq_oetf_scalar(alwan_scalar linear) {
-    /* PQ constants */
-    // TODO: replace the hardcoded constants a division on the comment (solved at compile time)
-    alwan_scalar const m1 = ALWAN_LITERAL(0.1593017578125);      /* 2610/16384 */
-    alwan_scalar const m2 = ALWAN_LITERAL(78.84375);              /* 2523/32 */
-    alwan_scalar const c1 = ALWAN_LITERAL(0.8359375);             /* 3424/4096 */
-    alwan_scalar const c2 = ALWAN_LITERAL(18.8515625);            /* 2413/128 */
-    alwan_scalar const c3 = ALWAN_LITERAL(18.6875);               /* 2392/128 */
+    /* PQ constants (computed at compile time) */
+    alwan_scalar const m1 = ALWAN_LITERAL(2610.0) / ALWAN_LITERAL(16384.0);
+    alwan_scalar const m2 = ALWAN_LITERAL(2523.0) / ALWAN_LITERAL(32.0);
+    alwan_scalar const c1 = ALWAN_LITERAL(3424.0) / ALWAN_LITERAL(4096.0);
+    alwan_scalar const c2 = ALWAN_LITERAL(2413.0) / ALWAN_LITERAL(128.0);
+    alwan_scalar const c3 = ALWAN_LITERAL(2392.0) / ALWAN_LITERAL(128.0);
 
     /* Normalize to [0,1] assuming 10000 cd/m² peak */
     alwan_scalar Y = linear / ALWAN_LITERAL(10000.0);
@@ -133,12 +132,12 @@ static alwan_scalar pq_oetf_scalar(alwan_scalar linear) {
 
 /* PQ EOTF: PQ code values -> linear (0-10000 cd/m²) */
 static alwan_scalar pq_eotf_scalar(alwan_scalar encoded) {
-    /* PQ constants */
-    alwan_scalar const m1 = ALWAN_LITERAL(0.1593017578125);
-    alwan_scalar const m2 = ALWAN_LITERAL(78.84375);
-    alwan_scalar const c1 = ALWAN_LITERAL(0.8359375);
-    alwan_scalar const c2 = ALWAN_LITERAL(18.8515625);
-    alwan_scalar const c3 = ALWAN_LITERAL(18.6875);
+    /* PQ constants (computed at compile time) */
+    alwan_scalar const m1 = ALWAN_LITERAL(2610.0) / ALWAN_LITERAL(16384.0);
+    alwan_scalar const m2 = ALWAN_LITERAL(2523.0) / ALWAN_LITERAL(32.0);
+    alwan_scalar const c1 = ALWAN_LITERAL(3424.0) / ALWAN_LITERAL(4096.0);
+    alwan_scalar const c2 = ALWAN_LITERAL(2413.0) / ALWAN_LITERAL(128.0);
+    alwan_scalar const c3 = ALWAN_LITERAL(2392.0) / ALWAN_LITERAL(128.0);
     alwan_scalar const m1_inv = ALWAN_LITERAL(1.0) / m1;
     alwan_scalar const m2_inv = ALWAN_LITERAL(1.0) / m2;
 
@@ -162,10 +161,10 @@ static alwan_scalar pq_eotf_scalar(alwan_scalar encoded) {
 /* HLG OETF: scene-referred linear -> HLG signal */
 static alwan_scalar hlg_oetf_scalar( alwan_scalar linear )
 {
-	// TODO: replace the hardcoded constants (b, c) with the operation cf. the comment (solved at compile time)
-    alwan_scalar const a = ALWAN_LITERAL(0.17883277);
-    alwan_scalar const b = ALWAN_LITERAL(0.28466892);  /* 1 - 4*a */
-    alwan_scalar const c = ALWAN_LITERAL(0.55991073);  /* 0.5 - a*ln(4*a) */
+	/* HLG constants (computed at compile time) */
+	alwan_scalar const a = ALWAN_LITERAL( 0.17883277 );
+	alwan_scalar const b = ALWAN_LITERAL( 1.0 ) - ALWAN_LITERAL( 4.0 ) * a;  /* 1 - 4*a */
+	alwan_scalar const c = ALWAN_LITERAL( 0.5 ) - a * ALWAN_LOG( ALWAN_LITERAL( 4.0 ) * a );  /* 0.5 - a*ln(4*a) */
 
     if (linear < ALWAN_LITERAL(0.0)) linear = ALWAN_LITERAL(0.0);
 
@@ -179,9 +178,10 @@ static alwan_scalar hlg_oetf_scalar( alwan_scalar linear )
 /* HLG EOTF: HLG signal -> display-referred linear
  * Note: Simplified EOTF without system gamma, assumes gamma=1.2 */
 static alwan_scalar hlg_eotf_scalar(alwan_scalar encoded) {
+    /* HLG constants (computed at compile time) */
     alwan_scalar const a = ALWAN_LITERAL(0.17883277);
-    alwan_scalar const b = ALWAN_LITERAL(0.28466892);
-    alwan_scalar const c = ALWAN_LITERAL(0.55991073);
+    alwan_scalar const b = ALWAN_LITERAL(1.0) - ALWAN_LITERAL(4.0)*a;  /* 1 - 4*a */
+    alwan_scalar const c = ALWAN_LITERAL(0.5) - a*ALWAN_LOG(ALWAN_LITERAL(4.0)*a);  /* 0.5 - a*ln(4*a) */
 
     if (encoded < ALWAN_LITERAL(0.0)) encoded = ALWAN_LITERAL(0.0);
 
