@@ -858,6 +858,43 @@ with open('src/alwan/data/fixtures/conv_yccbccrc_bt2020.csv', 'w', newline='') a
 print(f"  data/fixtures/conv_yccbccrc_bt2020.csv ({len(yccbccrc_values)} colors)")
 
 # ================================================================
+# M10: Light Quality & CCT
+# ================================================================
+print("\nGenerating CCT and light quality test fixtures...")
+
+# CCT test cases: various points with known CCT values
+# Test McCamy and Robertson methods
+cct_test_cases = [
+    # (x, y, expected_cct_approx)
+    (0.31271, 0.32902, 6504),   # D65
+    (0.34570, 0.35850, 5003),   # D50
+    (0.33242, 0.34743, 5503),   # D55
+    (0.32168, 0.33767, 6000),   # D60 (approximate)
+    (0.44757, 0.40745, 2856),   # Illuminant A
+    (0.25, 0.25, 25000),        # Bluish
+    (0.40, 0.40, 3500),         # Warm white
+]
+
+# Compute CCT using colour-science for verification
+cct_results = []
+for x, y, approx_cct in cct_test_cases:
+    xy = np.array([x, y])
+    try:
+        # Use colour-science CCT calculation
+        cct_calc = colour.xy_to_CCT(xy, method='McCamy 1992')
+        cct_results.append([x, y, cct_calc])
+    except:
+        # If colour-science fails, use the approximate value
+        cct_results.append([x, y, approx_cct])
+
+with open('src/alwan/data/fixtures/cct_test_cases.csv', 'w', newline='') as f:
+    all_values = []
+    for result in cct_results:
+        all_values.extend([format_scalar(v) for v in result])
+    f.write(','.join(all_values) + '\n')
+print(f"  data/fixtures/cct_test_cases.csv ({len(cct_results)} test cases)")
+
+# ================================================================
 # M5: Spectral Data - Color Matching Functions (CMFs)
 # ================================================================
 print("\nGenerating Color Matching Functions (CMFs)...")

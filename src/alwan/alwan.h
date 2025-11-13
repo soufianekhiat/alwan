@@ -55,6 +55,8 @@ void alwan_destroy(alwan_ctx *ctx);
  * Data Loading
  * ---------------------------------------------------------------- */
 
+ // TODO: add other reference illuminants D50, D55, etc.
+
 /* Get D65 illuminant data (2 values: x, y)
  * In embedded mode: returns pointer to static data (no deallocation needed)
  * In runtime mode: allocates memory (caller must free with alwan_data_free) */
@@ -119,6 +121,9 @@ typedef struct {
 int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
                                alwan_mat3x3 *rgb_to_xyz,
                                alwan_mat3x3 *xyz_to_rgb);
+
+// TODO: add alwan_rgb_convert function for bulk RGB<->RGB conversion
+// from 2 alwan_rgb_space_desc
 
 /* ----------------------------------------------------------------
  * Transfer Functions (OETF/EOTF)
@@ -188,6 +193,9 @@ void alwan_lchuv_to_luv(alwan_vec3 const *lchuv, alwan_vec3 *luv);
  * Color Difference (ΔE) Metrics
  * ---------------------------------------------------------------- */
 
+ // TODO: comment other names for ΔE metrics ΔE*ab, ...
+ // TODO: add ΔE*ITP, ΔE*HyAB
+
 /* ΔE*76 - Euclidean distance in Lab space */
 alwan_scalar alwan_delta_e_76(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
@@ -203,6 +211,8 @@ alwan_scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 /* ----------------------------------------------------------------
  * Chromatic Adaptation Transform (CAT)
  * ---------------------------------------------------------------- */
+
+// TODO: add comment when chromatic adaptation is an identity etc.
 
 /* Chromatic Adaptation Transform (CAT) method */
 typedef enum {
@@ -253,6 +263,8 @@ typedef struct {
 } alwan_spd;
 
 /* Observer type (standard color matching functions) */
+
+// TODO: add other observers (e.g., Stockman & Sharpe (2000) physiological, 2015 XYZF CMF, ...)
 typedef enum {
     ALWAN_OBSERVER_CIE_1931_2DEG = 0,  /* CIE 1931 2° standard observer */
     ALWAN_OBSERVER_CIE_1964_10DEG = 1, /* CIE 1964 10° standard observer */
@@ -261,6 +273,7 @@ typedef enum {
 } alwan_observer_type;
 
 /* SPD resampling method */
+// TODO: Add nearest (optional: higher-order methods (e.g., spline))
 typedef enum {
     ALWAN_RESAMPLE_LINEAR = 0,      /* Linear interpolation */
     ALWAN_RESAMPLE_CATMULL_ROM = 1  /* Catmull-Rom spline (smoother) */
@@ -274,6 +287,7 @@ typedef enum {
 } alwan_extrapolate_mode;
 
 /* SPD integration method for computing XYZ */
+// TODO: Add rectangular rule
 typedef enum {
     ALWAN_INTEGRATE_TRAPEZOID = 0,  /* Trapezoidal rule (fast) */
     ALWAN_INTEGRATE_SIMPSON = 1     /* Simpson's rule (more accurate) */
@@ -487,6 +501,23 @@ int alwan_ycbcr_to_rgb(alwan_vec3 const *ycbcr, alwan_ycbcr_standard standard, a
 /* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020) */
 int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out);
 int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out);
+
+/* ----------------------------------------------------------------
+ * M10: Light Quality & CCT (Correlated Color Temperature)
+ * ---------------------------------------------------------------- */
+
+/* CCT estimation from chromaticity coordinates (xy) */
+/* McCamy approximation: fast, ~2% accuracy above 2800K */
+alwan_scalar alwan_cct_mccamy_xy(alwan_vec3 const *xy);
+
+/* Robertson method: accurate, iterative lookup against Planckian locus */
+/* Returns CCT in Kelvin, or negative value on error */
+alwan_scalar alwan_cct_robertson_xy(alwan_vec3 const *xy);
+
+/* CRI (Color Rendering Index) Ra - average of 8 TCS samples */
+/* Requires SPD (spectral power distribution) */
+/* Returns CRI Ra value [0, 100], or negative on error */
+alwan_scalar alwan_cri_ra(alwan_spd const *test_spd);
 
 /* ----------------------------------------------------------------
  * Utility Functions
