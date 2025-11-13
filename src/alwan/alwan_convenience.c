@@ -368,11 +368,13 @@ int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out) {
 
     /* Cbc and Crc use different formulas depending on whether B > Yc or R > Yc */
     /* Handle edge cases (black/white) to avoid division by zero */
+    /* Use tolerance for white/black checks to handle f32 precision issues */
+    alwan_scalar const edge_threshold = ALWAN_LITERAL(0.001);
     alwan_scalar cbc, crc;
 
-    if (b <= ALWAN_LITERAL(0.0) || yc <= ALWAN_LITERAL(0.0)) {
+    if (b <= edge_threshold || yc <= edge_threshold) {
         cbc = ALWAN_LITERAL(0.5);
-    } else if (yc >= ALWAN_LITERAL(1.0)) {
+    } else if (yc >= (ALWAN_LITERAL(1.0) - edge_threshold)) {
         cbc = ALWAN_LITERAL(0.5);  /* White: no chroma */
     } else if (b < yc) {
         cbc = (b - yc) / (ALWAN_LITERAL(2.0) * yc * (ALWAN_LITERAL(1.0) - kb)) + ALWAN_LITERAL(0.5);
@@ -380,9 +382,9 @@ int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out) {
         cbc = (b - yc) / (ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - yc) * (ALWAN_LITERAL(1.0) - kb)) + ALWAN_LITERAL(0.5);
     }
 
-    if (r <= ALWAN_LITERAL(0.0) || yc <= ALWAN_LITERAL(0.0)) {
+    if (r <= edge_threshold || yc <= edge_threshold) {
         crc = ALWAN_LITERAL(0.5);
-    } else if (yc >= ALWAN_LITERAL(1.0)) {
+    } else if (yc >= (ALWAN_LITERAL(1.0) - edge_threshold)) {
         crc = ALWAN_LITERAL(0.5);  /* White: no chroma */
     } else if (r < yc) {
         crc = (r - yc) / (ALWAN_LITERAL(2.0) * yc * (ALWAN_LITERAL(1.0) - kr)) + ALWAN_LITERAL(0.5);
