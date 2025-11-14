@@ -27,6 +27,8 @@ extern int test_70_ciecam02_main(void);
 extern int test_80_cam16_main(void);
 extern int test_90_conv_convenience_main(void);
 extern int test_100_quality_cct_main(void);
+extern int test_110_gamut_main(void);
+extern int test_111_rgb_convert_main(void);
 
 /* Test registry */
 typedef struct {
@@ -52,6 +54,8 @@ static test_suite const g_test_suites[] = {
     {"80_cam16", test_80_cam16_main},
     {"90_conv_convenience", test_90_conv_convenience_main},
     {"100_quality_cct", test_100_quality_cct_main},
+    {"110_gamut", test_110_gamut_main},
+    {"111_rgb_convert", test_111_rgb_convert_main},
 };
 
 int main(void) {

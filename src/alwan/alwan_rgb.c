@@ -304,3 +304,140 @@ int alwan_eotf_apply(char const *name,
 
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * M11: RGB <-> RGB Conversion
+ * ---------------------------------------------------------------- */
+
+/* Convert RGB color from one color space to another */
+int alwan_rgb_convert(alwan_ctx *ctx,
+                      alwan_rgb_space_desc const *src_space,
+                      alwan_rgb_space_desc const *dst_space,
+                      alwan_vec3 const *src_rgb,
+                      alwan_vec3 *dst_rgb) {
+    if (!src_space || !dst_space || !src_rgb || !dst_rgb) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Derive conversion matrices for both spaces */
+    alwan_mat3x3 src_to_xyz, xyz_to_src;
+    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+
+    int status = alwan_rgb_derive_matrices(src_space, &src_to_xyz, &xyz_to_src);
+    if (status != ALWAN_OK) return status;
+
+    status = alwan_rgb_derive_matrices(dst_space, &dst_to_xyz, &xyz_to_dst);
+    if (status != ALWAN_OK) return status;
+
+    /* Convert source RGB to XYZ */
+    alwan_vec3 xyz;
+    alwan_mat3_mulv(&src_to_xyz, src_rgb, &xyz);
+
+    /* Check if chromatic adaptation is needed */
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
+    alwan_scalar dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_scalar dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    int need_adaptation = (ALWAN_FABS(dx) > tolerance || ALWAN_FABS(dy) > tolerance);
+
+    if (need_adaptation && ctx) {
+        /* Perform chromatic adaptation using Bradford CAT */
+        alwan_vec3 src_white_xyy, src_white_xyz;
+        alwan_vec3 dst_white_xyy, dst_white_xyz;
+
+        /* Convert xy to XYZ (using Y=1.0) */
+        src_white_xyy.v[0] = src_space->white_xy[0];
+        src_white_xyy.v[1] = src_space->white_xy[1];
+        src_white_xyy.v[2] = ALWAN_LITERAL(1.0);
+        alwan_xyy_to_xyz(&src_white_xyy, &src_white_xyz);
+
+        dst_white_xyy.v[0] = dst_space->white_xy[0];
+        dst_white_xyy.v[1] = dst_space->white_xy[1];
+        dst_white_xyy.v[2] = ALWAN_LITERAL(1.0);
+        alwan_xyy_to_xyz(&dst_white_xyy, &dst_white_xyz);
+
+        /* Compute and apply CAT matrix */
+        alwan_mat3x3 cat_matrix;
+        status = alwan_cat_matrix(&src_white_xyz, &dst_white_xyz,
+                                  ALWAN_CAT_BRADFORD, &cat_matrix);
+        if (status != ALWAN_OK) return status;
+
+        alwan_vec3 xyz_adapted;
+        alwan_mat3_mulv(&cat_matrix, &xyz, &xyz_adapted);
+        xyz = xyz_adapted;
+    }
+
+    /* Convert adapted XYZ to destination RGB */
+    alwan_mat3_mulv(&xyz_to_dst, &xyz, dst_rgb);
+
+    return ALWAN_OK;
+}
+
+/* Bulk RGB color space conversion */
+int alwan_rgb_convert_bulk(alwan_ctx *ctx,
+                            alwan_rgb_space_desc const *src_space,
+                            alwan_rgb_space_desc const *dst_space,
+                            alwan_vec3 const *src_rgb,
+                            alwan_vec3 *dst_rgb,
+                            size_t count) {
+    if (!src_space || !dst_space || !src_rgb || !dst_rgb || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Derive conversion matrices once for all colors */
+    alwan_mat3x3 src_to_xyz, xyz_to_src;
+    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+
+    int status = alwan_rgb_derive_matrices(src_space, &src_to_xyz, &xyz_to_src);
+    if (status != ALWAN_OK) return status;
+
+    status = alwan_rgb_derive_matrices(dst_space, &dst_to_xyz, &xyz_to_dst);
+    if (status != ALWAN_OK) return status;
+
+    /* Check if chromatic adaptation is needed */
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
+    alwan_scalar dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_scalar dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    int need_adaptation = (ALWAN_FABS(dx) > tolerance || ALWAN_FABS(dy) > tolerance);
+
+    /* Precompute adaptation matrix if needed */
+    alwan_mat3x3 cat_matrix;
+    if (need_adaptation && ctx) {
+        alwan_vec3 src_white_xyy, src_white_xyz;
+        alwan_vec3 dst_white_xyy, dst_white_xyz;
+
+        /* Convert xy to XYZ (using Y=1.0) */
+        src_white_xyy.v[0] = src_space->white_xy[0];
+        src_white_xyy.v[1] = src_space->white_xy[1];
+        src_white_xyy.v[2] = ALWAN_LITERAL(1.0);
+        alwan_xyy_to_xyz(&src_white_xyy, &src_white_xyz);
+
+        dst_white_xyy.v[0] = dst_space->white_xy[0];
+        dst_white_xyy.v[1] = dst_space->white_xy[1];
+        dst_white_xyy.v[2] = ALWAN_LITERAL(1.0);
+        alwan_xyy_to_xyz(&dst_white_xyy, &dst_white_xyz);
+
+        /* Compute CAT matrix once */
+        status = alwan_cat_matrix(&src_white_xyz, &dst_white_xyz,
+                                  ALWAN_CAT_BRADFORD, &cat_matrix);
+        if (status != ALWAN_OK) return status;
+    }
+
+    /* Convert all colors */
+    for (size_t i = 0; i < count; i++) {
+        /* Convert source RGB to XYZ */
+        alwan_vec3 xyz;
+        alwan_mat3_mulv(&src_to_xyz, &src_rgb[i], &xyz);
+
+        /* Apply chromatic adaptation if needed */
+        if (need_adaptation && ctx) {
+            alwan_vec3 xyz_adapted;
+            alwan_mat3_mulv(&cat_matrix, &xyz, &xyz_adapted);
+            xyz = xyz_adapted;
+        }
+
+        /* Convert adapted XYZ to destination RGB */
+        alwan_mat3_mulv(&xyz_to_dst, &xyz, &dst_rgb[i]);
+    }
+
+    return ALWAN_OK;
+}

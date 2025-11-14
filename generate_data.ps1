@@ -1024,6 +1024,154 @@ with open(filename, 'w', newline='') as f:
 print(f"  {filename} ({len(robertson_table)} CCT points, {len(all_values)} values)")
 
 # ================================================================
+# M11: RGB-to-RGB Conversion Test Fixtures
+# ================================================================
+print("\nGenerating M11 RGB-to-RGB conversion test fixtures...")
+
+# Test colors in sRGB space
+rgb_test_colors = [
+    [1.0, 0.0, 0.0],  # Red
+    [0.0, 1.0, 0.0],  # Green
+    [0.0, 0.0, 1.0],  # Blue
+    [1.0, 1.0, 0.0],  # Yellow
+    [0.0, 1.0, 1.0],  # Cyan
+    [1.0, 0.0, 1.0],  # Magenta
+    [1.0, 1.0, 1.0],  # White
+    [0.5, 0.5, 0.5],  # Gray
+]
+
+# Get RGB color space definitions
+srgb = colour.RGB_COLOURSPACES['sRGB']
+bt709 = colour.RGB_COLOURSPACES['ITU-R BT.709']
+display_p3 = colour.RGB_COLOURSPACES['Display P3']
+bt2020 = colour.RGB_COLOURSPACES['ITU-R BT.2020']
+aces_ap1 = colour.RGB_COLOURSPACES['ACEScg']
+
+# Test case 1: sRGB to Display P3 (same white point D65, no CAT needed)
+print("  sRGB -> Display P3...")
+srgb_to_p3_results = []
+for rgb in rgb_test_colors:
+    rgb_array = np.array(rgb)
+    # Convert sRGB to Display P3
+    p3_rgb = colour.RGB_to_RGB(rgb_array, srgb, display_p3)
+    srgb_to_p3_results.extend(rgb)  # Source RGB
+    srgb_to_p3_results.extend(p3_rgb.tolist())  # Destination RGB
+
+filename = f'{DATA_DIR}/fixtures/rgb_convert_srgb_to_p3.csv'
+ensure_dir(filename)
+with open(filename, 'w', newline='') as f:
+    formatted_values = [format_scalar(v) for v in srgb_to_p3_results]
+    f.write(','.join(formatted_values) + '\n')
+print(f"    {filename} ({len(rgb_test_colors)} colors)")
+
+# Test case 2: sRGB to BT.2020 (same white point D65, wider gamut)
+print("  sRGB -> BT.2020...")
+srgb_to_bt2020_results = []
+for rgb in rgb_test_colors:
+    rgb_array = np.array(rgb)
+    bt2020_rgb = colour.RGB_to_RGB(rgb_array, srgb, bt2020)
+    srgb_to_bt2020_results.extend(rgb)
+    srgb_to_bt2020_results.extend(bt2020_rgb.tolist())
+
+filename = f'{DATA_DIR}/fixtures/rgb_convert_srgb_to_bt2020.csv'
+ensure_dir(filename)
+with open(filename, 'w', newline='') as f:
+    formatted_values = [format_scalar(v) for v in srgb_to_bt2020_results]
+    f.write(','.join(formatted_values) + '\n')
+print(f"    {filename} ({len(rgb_test_colors)} colors)")
+
+# Test case 3: sRGB to ACEScg (different white point, D65->D60, needs CAT)
+print("  sRGB -> ACEScg (with CAT)...")
+srgb_to_aces_results = []
+for rgb in rgb_test_colors:
+    rgb_array = np.array(rgb)
+    aces_rgb = colour.RGB_to_RGB(rgb_array, srgb, aces_ap1,
+                                  chromatic_adaptation_transform='Bradford')
+    srgb_to_aces_results.extend(rgb)
+    srgb_to_aces_results.extend(aces_rgb.tolist())
+
+filename = f'{DATA_DIR}/fixtures/rgb_convert_srgb_to_acescg.csv'
+ensure_dir(filename)
+with open(filename, 'w', newline='') as f:
+    formatted_values = [format_scalar(v) for v in srgb_to_aces_results]
+    f.write(','.join(formatted_values) + '\n')
+print(f"    {filename} ({len(rgb_test_colors)} colors)")
+
+# ================================================================
+# M11: Gamut Mapping Test Fixtures
+# ================================================================
+print("\nGenerating M11 gamut mapping test fixtures...")
+
+# Out-of-gamut test colors (RGB values outside [0,1])
+out_of_gamut_colors = [
+    [-0.2, 0.5, 0.8],    # Negative R
+    [0.5, -0.1, 0.6],    # Negative G
+    [0.3, 0.7, -0.3],    # Negative B
+    [1.5, 0.5, 0.3],     # R > 1
+    [0.4, 1.8, 0.6],     # G > 1
+    [0.2, 0.3, 2.0],     # B > 1
+    [-0.3, 1.5, 0.7],    # Mixed out of gamut
+    [0.5, 0.5, 0.5],     # In gamut (control)
+]
+
+# Generate clipped results (simple clipping to [0,1])
+print("  Generating clip mapping results...")
+gamut_map_clip_results = []
+for rgb in out_of_gamut_colors:
+    rgb_array = np.array(rgb)
+    # Clip mapping: simple clamp to [0,1]
+    clipped = np.clip(rgb_array, 0.0, 1.0)
+    gamut_map_clip_results.extend(rgb)  # Input
+    gamut_map_clip_results.extend(clipped.tolist())  # Output
+
+filename = f'{DATA_DIR}/fixtures/gamut_map_clip.csv'
+ensure_dir(filename)
+with open(filename, 'w', newline='') as f:
+    formatted_values = [format_scalar(v) for v in gamut_map_clip_results]
+    f.write(','.join(formatted_values) + '\n')
+print(f"    {filename} ({len(out_of_gamut_colors)} colors)")
+
+# Generate hue-preserving mapping results
+# For simplicity, we'll use a basic algorithm: scale towards gray while preserving ratios
+print("  Generating hue-preserving mapping results...")
+gamut_map_hue_results = []
+for rgb in out_of_gamut_colors:
+    rgb_array = np.array(rgb)
+
+    # If already in gamut, return as-is
+    if np.all(rgb_array >= 0) and np.all(rgb_array <= 1):
+        mapped = rgb_array
+    else:
+        # Compute luminance (sRGB weights)
+        L = 0.2126 * rgb_array[0] + 0.7152 * rgb_array[1] + 0.0722 * rgb_array[2]
+        L_clamped = np.clip(L, 0.0, 1.0)
+        neutral = np.array([L_clamped, L_clamped, L_clamped])
+
+        # Binary search for largest t where t*rgb + (1-t)*neutral is in [0,1]^3
+        t_min = 0.0
+        t_max = 1.0
+        mapped = neutral  # fallback
+
+        for _ in range(20):
+            t = (t_min + t_max) * 0.5
+            test = t * rgb_array + (1.0 - t) * neutral
+            if np.all(test >= 0) and np.all(test <= 1):
+                t_min = t
+                mapped = test
+            else:
+                t_max = t
+
+    gamut_map_hue_results.extend(rgb)  # Input
+    gamut_map_hue_results.extend(mapped.tolist())  # Output
+
+filename = f'{DATA_DIR}/fixtures/gamut_map_hue_preserving.csv'
+ensure_dir(filename)
+with open(filename, 'w', newline='') as f:
+    formatted_values = [format_scalar(v) for v in gamut_map_hue_results]
+    f.write(','.join(formatted_values) + '\n')
+print(f"    {filename} ({len(out_of_gamut_colors)} colors)")
+
+# ================================================================
 # M5: Spectral Data - Color Matching Functions (CMFs)
 # ================================================================
 print("\nGenerating Color Matching Functions (CMFs)...")

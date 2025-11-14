@@ -126,8 +126,72 @@ int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
                                alwan_mat3x3 *rgb_to_xyz,
                                alwan_mat3x3 *xyz_to_rgb);
 
-// TODO: add alwan_rgb_convert function for bulk RGB<->RGB conversion
-// from 2 alwan_rgb_space_desc
+/* ----------------------------------------------------------------
+ * RGB Color Space Conversion
+ * ---------------------------------------------------------------- */
+
+/* Convert RGB color from one color space to another
+ * Handles chromatic adaptation if white points differ (using Bradford CAT by default)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_rgb_convert(alwan_ctx *ctx,
+                      alwan_rgb_space_desc const *src_space,
+                      alwan_rgb_space_desc const *dst_space,
+                      alwan_vec3 const *src_rgb,
+                      alwan_vec3 *dst_rgb);
+
+/* Bulk RGB color space conversion for arrays of colors
+ * More efficient than calling alwan_rgb_convert in a loop
+ * count: number of RGB triplets to convert
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_rgb_convert_bulk(alwan_ctx *ctx,
+                            alwan_rgb_space_desc const *src_space,
+                            alwan_rgb_space_desc const *dst_space,
+                            alwan_vec3 const *src_rgb,
+                            alwan_vec3 *dst_rgb,
+                            size_t count);
+
+/* ----------------------------------------------------------------
+ * M11: Gamut Utilities & Mapping
+ * ---------------------------------------------------------------- */
+
+/* Gamut mapping method */
+typedef enum {
+    ALWAN_GAMUT_MAP_CLIP = 0,         /* Simple clipping to [0,1] */
+    ALWAN_GAMUT_MAP_HUE_PRESERVING = 1 /* Project to gamut boundary preserving hue */
+} alwan_gamut_map_method;
+
+/* Estimate RGB gamut volume using Monte Carlo sampling
+ * space: RGB color space descriptor
+ * num_samples: number of random samples (e.g., 1000000)
+ * seed: random seed for reproducibility
+ * volume: output volume estimate (in XYZ units cubed)
+ * Returns ALWAN_OK on success */
+int alwan_gamut_volume_mc(alwan_rgb_space_desc const *space,
+                          size_t num_samples,
+                          unsigned int seed,
+                          alwan_scalar *volume);
+
+/* Map RGB colors to gamut using specified method
+ * method: gamut mapping method
+ * rgb_in: input RGB colors (may be out of gamut)
+ * count: number of RGB triplets
+ * rgb_out: output RGB colors (mapped to [0,1] gamut)
+ * Returns ALWAN_OK on success */
+int alwan_gamut_map(alwan_gamut_map_method method,
+                    alwan_vec3 const *rgb_in,
+                    size_t count,
+                    alwan_vec3 *rgb_out);
+
+/* Map XYZ color to RGB gamut with hue preservation
+ * ctx: optional context (can be NULL)
+ * space: target RGB space
+ * xyz_in: input XYZ color (may be out of RGB gamut)
+ * rgb_out: output RGB color (mapped to [0,1] with preserved hue in JCh)
+ * Returns ALWAN_OK on success */
+int alwan_gamut_map_xyz_to_rgb(alwan_ctx *ctx,
+                                alwan_rgb_space_desc const *space,
+                                alwan_vec3 const *xyz_in,
+                                alwan_vec3 *rgb_out);
 
 /* ----------------------------------------------------------------
  * Transfer Functions (OETF/EOTF)
