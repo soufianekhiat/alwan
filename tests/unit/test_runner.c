@@ -29,6 +29,7 @@ extern int test_90_conv_convenience_main(void);
 extern int test_100_quality_cct_main(void);
 extern int test_110_gamut_main(void);
 extern int test_111_rgb_convert_main(void);
+extern int test_120_oklab_main(void);
 
 /* Test registry */
 typedef struct {
@@ -56,6 +57,7 @@ static test_suite const g_test_suites[] = {
     {"100_quality_cct", test_100_quality_cct_main},
     {"110_gamut", test_110_gamut_main},
     {"111_rgb_convert", test_111_rgb_convert_main},
+    {"120_oklab", test_120_oklab_main},
 };
 
 int main(void) {

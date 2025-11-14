@@ -23,6 +23,7 @@
 #if ALWAN_SCALAR_IS_FLOAT
   #define ALWAN_FABS(x)  fabsf(x)
   #define ALWAN_SQRT(x)  sqrtf(x)
+  #define ALWAN_CBRT(x)  cbrtf(x)
   #define ALWAN_SIN(x)   sinf(x)
   #define ALWAN_COS(x)   cosf(x)
   #define ALWAN_TAN(x)   tanf(x)
@@ -37,6 +38,7 @@
 #else
   #define ALWAN_FABS(x)  fabs(x)
   #define ALWAN_SQRT(x)  sqrt(x)
+  #define ALWAN_CBRT(x)  cbrt(x)
   #define ALWAN_SIN(x)   sin(x)
   #define ALWAN_COS(x)   cos(x)
   #define ALWAN_TAN(x)   tan(x)

@@ -32,6 +32,9 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\80_cam16.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\90_conv_convenience.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\100_quality_cct.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\110_gamut.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\111_rgb_convert.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\120_oklab.c");
         }
 
         [Configure()]

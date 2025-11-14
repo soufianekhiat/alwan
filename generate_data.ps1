@@ -1172,6 +1172,62 @@ with open(filename, 'w', newline='') as f:
 print(f"    {filename} ({len(out_of_gamut_colors)} colors)")
 
 # ================================================================
+# P1.1: Oklab & Oklch Test Fixtures
+# ================================================================
+print("\nGenerating P1.1 Oklab & Oklch test fixtures...")
+
+# Test colors in XYZ (D65)
+oklab_test_xyz = [
+    [0.95047, 1.00000, 1.08883],  # D65 white
+    [0.00000, 0.00000, 0.00000],  # Black
+    [0.41246, 0.21267, 0.01933],  # sRGB red
+    [0.35758, 0.71515, 0.11919],  # sRGB green
+    [0.18048, 0.07217, 0.95030],  # sRGB blue
+    [0.76986, 0.92783, 0.13853],  # sRGB yellow
+    [0.53806, 0.78732, 1.06950],  # sRGB cyan
+    [0.59294, 0.28484, 0.96963],  # sRGB magenta
+    [0.20517, 0.21586, 0.23306],  # Mid gray
+    [0.09505, 0.10000, 0.10888],  # Dark gray
+    [0.76032, 0.80000, 0.87064],  # Light gray
+]
+
+# Generate Oklab values
+print("  Generating Oklab values...")
+oklab_values = []
+for xyz in oklab_test_xyz:
+    oklab = colour.XYZ_to_Oklab(np.array(xyz))
+    oklab_values.extend(xyz)       # Input XYZ
+    oklab_values.extend(oklab.tolist())  # Output Oklab
+
+filename = f'{DATA_DIR}/fixtures/oklab_values.csv'
+ensure_dir(filename)
+with open(filename, 'w', newline='') as f:
+    formatted_values = [format_scalar(v) for v in oklab_values]
+    f.write(','.join(formatted_values) + '\n')
+print(f"    {filename} ({len(oklab_test_xyz)} colors)")
+
+# Generate Oklch values from Oklab
+print("  Generating Oklch values...")
+oklch_test_data = []
+for xyz in oklab_test_xyz:
+    oklab = colour.XYZ_to_Oklab(np.array(xyz))
+
+    # Oklab to Oklch (L, C, h)
+    L = oklab[0]
+    C = np.sqrt(oklab[1]**2 + oklab[2]**2)
+    h = np.arctan2(oklab[2], oklab[1])  # in radians
+
+    oklch_test_data.extend(oklab.tolist())  # Input Oklab
+    oklch_test_data.extend([L, C, h])       # Output Oklch
+
+filename = f'{DATA_DIR}/fixtures/oklch_values.csv'
+ensure_dir(filename)
+with open(filename, 'w', newline='') as f:
+    formatted_values = [format_scalar(v) for v in oklch_test_data]
+    f.write(','.join(formatted_values) + '\n')
+print(f"    {filename} ({len(oklab_test_xyz)} colors)")
+
+# ================================================================
 # M5: Spectral Data - Color Matching Functions (CMFs)
 # ================================================================
 print("\nGenerating Color Matching Functions (CMFs)...")

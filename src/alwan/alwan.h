@@ -260,6 +260,14 @@ void alwan_lch_to_lab(alwan_vec3 const *lch, alwan_vec3 *lab);
 void alwan_luv_to_lchuv(alwan_vec3 const *luv, alwan_vec3 *lchuv);
 void alwan_lchuv_to_luv(alwan_vec3 const *lchuv, alwan_vec3 *luv);
 
+/* XYZ <-> Oklab conversions (modern perceptually uniform space, D65 assumed) */
+void alwan_xyz_to_oklab(alwan_vec3 const *xyz, alwan_vec3 *oklab);
+void alwan_oklab_to_xyz(alwan_vec3 const *oklab, alwan_vec3 *xyz);
+
+/* Oklab <-> Oklch conversions (cylindrical Oklab) */
+void alwan_oklab_to_oklch(alwan_vec3 const *oklab, alwan_vec3 *oklch);
+void alwan_oklch_to_oklab(alwan_vec3 const *oklch, alwan_vec3 *oklab);
+
 /* ----------------------------------------------------------------
  * Color Difference (ΔE) Metrics
  * ---------------------------------------------------------------- */
