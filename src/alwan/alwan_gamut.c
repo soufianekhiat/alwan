@@ -111,6 +111,9 @@ static void gamut_map_hue_preserving_single(alwan_vec3 const *rgb_in, alwan_vec3
     alwan_vec3 neutral;
     neutral.v[0] = neutral.v[1] = neutral.v[2] = L_clamped;
 
+    /* Initialize output to neutral (t=0 fallback) */
+    *rgb_out = neutral;
+
     for (int iter = 0; iter < 20; iter++) {  /* 20 iterations gives ~1e-6 precision */
         alwan_scalar const t = (t_min + t_max) * ALWAN_LITERAL(0.5);
         alwan_vec3 test;
