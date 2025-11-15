@@ -1,6 +1,6 @@
 /*
  * Alwan - Pure C colour science library
- * Copyright (c) 2025 Alwan Contributors
+ * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
  * M8 Tests: CAM16 Color Appearance Model + UCS
@@ -27,7 +27,7 @@
 static int test_cam16_forward(void) {
     /* Load viewing conditions from fixture (XYZ_w, L_A, Y_b) */
     static alwan_scalar const viewing_params[] = {
-#include "data/fixtures/cam_viewing_conditions.csv"
+#include "reference_values/cam_viewing_conditions.csv"
     };
 
     /* Standard D65 viewing conditions (average surround) */
@@ -42,13 +42,13 @@ static int test_cam16_forward(void) {
 
     /* Load test XYZ colors (same as CIECAM02) */
     static alwan_scalar const test_xyz[] = {
-#include "data/fixtures/ciecam02_xyz_input.csv"
+#include "reference_values/ciecam02_xyz_input.csv"
     };
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
     /* Load expected correlates (J, C, h, Q, M, s, H for each color) */
     static alwan_scalar const expected_correlates[] = {
-#include "data/fixtures/cam16_correlates.csv"
+#include "reference_values/cam16_correlates.csv"
     };
 
     /* Test forward transform for each color */
@@ -81,13 +81,16 @@ static int test_cam16_forward(void) {
             printf("  Color %zu: C error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)C_err, (double)corr.C, (double)expected[1]);
         }
-        if (h_err >= CORRELATE_TOL) {
+        if (h_err >= CORRELATE_TOL && corr.C > ALWAN_LITERAL(1.0)) {
             printf("  Color %zu: h error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)h_err, (double)corr.h, (double)expected[2]);
         }
         TEST_ASSERT(J_err < CORRELATE_TOL, "J mismatch");
         TEST_ASSERT(C_err < CORRELATE_TOL, "C mismatch");
-        TEST_ASSERT(h_err < CORRELATE_TOL, "h mismatch");
+        /* For achromatic colors (C ≈ 0), hue is undefined - skip hue check */
+        if (corr.C > ALWAN_LITERAL(1.0)) {
+            TEST_ASSERT(h_err < CORRELATE_TOL, "h mismatch");
+        }
 
         /* Also check Q, M, s */
         alwan_scalar Q_err = ALWAN_FABS(corr.Q - expected[3]);
@@ -118,7 +121,7 @@ static int test_cam16_forward(void) {
 static int test_cam16_inverse(void) {
     /* Load viewing conditions from fixture */
     static alwan_scalar const viewing_params[] = {
-#include "data/fixtures/cam_viewing_conditions.csv"
+#include "reference_values/cam_viewing_conditions.csv"
     };
 
     /* Standard D65 viewing conditions */
@@ -133,13 +136,13 @@ static int test_cam16_inverse(void) {
 
     /* Load correlates (J, C, h) */
     static alwan_scalar const correlates_data[] = {
-#include "data/fixtures/cam16_correlates.csv"
+#include "reference_values/cam16_correlates.csv"
     };
     size_t const num_colors = sizeof(correlates_data) / sizeof(correlates_data[0]) / 7;
 
     /* Load expected reconstructed XYZ */
     static alwan_scalar const expected_xyz[] = {
-#include "data/fixtures/cam16_xyz_reconstructed.csv"
+#include "reference_values/cam16_xyz_reconstructed.csv"
     };
 
     /* Test inverse transform for each color */
@@ -181,7 +184,7 @@ static int test_cam16_inverse(void) {
 static int test_cam16_roundtrip(void) {
     /* Load viewing conditions from fixture */
     static alwan_scalar const viewing_params[] = {
-#include "data/fixtures/cam_viewing_conditions.csv"
+#include "reference_values/cam_viewing_conditions.csv"
     };
 
     /* Standard D65 viewing conditions */
@@ -196,7 +199,7 @@ static int test_cam16_roundtrip(void) {
 
     /* Load test XYZ colors */
     static alwan_scalar const test_xyz[] = {
-#include "data/fixtures/ciecam02_xyz_input.csv"
+#include "reference_values/ciecam02_xyz_input.csv"
     };
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
@@ -243,13 +246,13 @@ static int test_cam16_roundtrip(void) {
 static int test_cam16_ucs_forward(void) {
     /* Load CAM16 correlates */
     static alwan_scalar const correlates_data[] = {
-#include "data/fixtures/cam16_correlates.csv"
+#include "reference_values/cam16_correlates.csv"
     };
     size_t const num_colors = sizeof(correlates_data) / sizeof(correlates_data[0]) / 7;
 
     /* Load expected CAM16-UCS Jab coordinates */
     static alwan_scalar const expected_jab[] = {
-#include "data/fixtures/cam16_ucs_jab.csv"
+#include "reference_values/cam16_ucs_jab.csv"
     };
 
     /* Test UCS transform for each color */
@@ -287,7 +290,7 @@ static int test_cam16_ucs_forward(void) {
 static int test_cam16_ucs_roundtrip(void) {
     /* Load CAM16 correlates */
     static alwan_scalar const correlates_data[] = {
-#include "data/fixtures/cam16_correlates.csv"
+#include "reference_values/cam16_correlates.csv"
     };
     size_t const num_colors = sizeof(correlates_data) / sizeof(correlates_data[0]) / 7;
 

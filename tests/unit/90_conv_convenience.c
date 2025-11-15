@@ -1,6 +1,6 @@
 /*
  * Alwan - Pure C colour science library
- * Copyright (c) 2025 Alwan Contributors
+ * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
  * Test 90: Convenience color models (HSV, HSL, CMY, CMYK, YCbCr)
@@ -29,39 +29,39 @@
 
 /* Test fixtures: RGB input and expected values */
 static alwan_scalar const test_rgb[] = {
-#include "data/fixtures/conv_rgb_input.csv"
+#include "reference_values/test_rgb_colors.csv"
 };
 
 static alwan_scalar const expected_hsv[] = {
-#include "data/fixtures/conv_hsv_values.csv"
+#include "reference_values/rgb_to_hsv.csv"
 };
 
 static alwan_scalar const expected_hsl[] = {
-#include "data/fixtures/conv_hsl_values.csv"
+#include "reference_values/rgb_to_hsl.csv"
 };
 
 static alwan_scalar const expected_cmy[] = {
-#include "data/fixtures/conv_cmy_values.csv"
+#include "reference_values/rgb_to_cmy.csv"
 };
 
 static alwan_scalar const expected_cmyk[] = {
-#include "data/fixtures/conv_cmyk_values.csv"
+#include "reference_values/rgb_to_cmyk.csv"
 };
 
 static alwan_scalar const expected_ycbcr_bt601[] = {
-#include "data/fixtures/conv_ycbcr_bt601.csv"
+#include "reference_values/rgb_to_ycbcr_bt601.csv"
 };
 
 static alwan_scalar const expected_ycbcr_bt709[] = {
-#include "data/fixtures/conv_ycbcr_bt709.csv"
+#include "reference_values/rgb_to_ycbcr_bt709.csv"
 };
 
 static alwan_scalar const expected_ycbcr_bt2020[] = {
-#include "data/fixtures/conv_ycbcr_bt2020.csv"
+#include "reference_values/rgb_to_ycbcr_bt2020.csv"
 };
 
 static alwan_scalar const expected_yccbccrc[] = {
-#include "data/fixtures/conv_yccbccrc_bt2020.csv"
+#include "reference_values/rgb_to_yccbccrc.csv"
 };
 
 #define NUM_TEST_COLORS 11

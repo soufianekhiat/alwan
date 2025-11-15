@@ -1,6 +1,6 @@
 /*
  * Alwan - Pure C colour science library
- * Copyright (c) 2025 Alwan Contributors
+ * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
  * Test 40: HDR Transfer Functions (PQ, HLG, BT.1886, ACESproxy)

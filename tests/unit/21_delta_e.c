@@ -1,6 +1,6 @@
 /*
  * Alwan - Pure C colour science library
- * Copyright (c) 2025 Alwan Contributors
+ * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
  * Test 21: Color difference (ΔE) metrics
@@ -37,13 +37,13 @@ static int test_delta_e_76(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const lab1_data[] = {
-#include "data/fixtures/delta_e_lab1.csv"
+#include "reference_values/delta_e_lab1.csv"
     };
     static alwan_scalar const lab2_data[] = {
-#include "data/fixtures/delta_e_lab2.csv"
+#include "reference_values/delta_e_lab2.csv"
     };
     static alwan_scalar const de76_data[] = {
-#include "data/fixtures/delta_e_76.csv"
+#include "reference_values/delta_e_76.csv"
     };
     ALWAN_DIAG_POP
 
@@ -73,13 +73,13 @@ static int test_delta_e_94(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const lab1_data[] = {
-#include "data/fixtures/delta_e_lab1.csv"
+#include "reference_values/delta_e_lab1.csv"
     };
     static alwan_scalar const lab2_data[] = {
-#include "data/fixtures/delta_e_lab2.csv"
+#include "reference_values/delta_e_lab2.csv"
     };
     static alwan_scalar const de94_data[] = {
-#include "data/fixtures/delta_e_94.csv"
+#include "reference_values/delta_e_94.csv"
     };
     ALWAN_DIAG_POP
 
@@ -109,13 +109,13 @@ static int test_delta_e_cmc(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const lab1_data[] = {
-#include "data/fixtures/delta_e_lab1.csv"
+#include "reference_values/delta_e_lab1.csv"
     };
     static alwan_scalar const lab2_data[] = {
-#include "data/fixtures/delta_e_lab2.csv"
+#include "reference_values/delta_e_lab2.csv"
     };
     static alwan_scalar const de_cmc_data[] = {
-#include "data/fixtures/delta_e_cmc.csv"
+#include "reference_values/delta_e_cmc.csv"
     };
     ALWAN_DIAG_POP
 
@@ -146,13 +146,13 @@ static int test_delta_e_2000(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const lab1_data[] = {
-#include "data/fixtures/delta_e_lab1.csv"
+#include "reference_values/delta_e_lab1.csv"
     };
     static alwan_scalar const lab2_data[] = {
-#include "data/fixtures/delta_e_lab2.csv"
+#include "reference_values/delta_e_lab2.csv"
     };
     static alwan_scalar const de2000_data[] = {
-#include "data/fixtures/delta_e_2000.csv"
+#include "reference_values/delta_e_2000.csv"
     };
     ALWAN_DIAG_POP
 

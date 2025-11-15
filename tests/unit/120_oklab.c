@@ -15,7 +15,7 @@
 
 static int test_xyz_oklab_round_trip(void) {
     static alwan_scalar const test_data[] = {
-#include "data/fixtures/oklab_values.csv"
+#include "reference_values/test_xyz_oklab_pairs.csv"
     };
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
@@ -80,7 +80,7 @@ static int test_xyz_oklab_round_trip(void) {
 
 static int test_oklab_oklch_round_trip(void) {
     static alwan_scalar const test_data[] = {
-#include "data/fixtures/oklch_values.csv"
+#include "reference_values/test_oklab_oklch_pairs.csv"
     };
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;

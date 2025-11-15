@@ -1,6 +1,6 @@
 /*
  * Alwan - Pure C colour science library
- * Copyright (c) 2025 Alwan Contributors
+ * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
  * Main test runner - runs all unit tests consecutively
@@ -30,6 +30,7 @@ extern int test_100_quality_cct_main(void);
 extern int test_110_gamut_main(void);
 extern int test_111_rgb_convert_main(void);
 extern int test_120_oklab_main(void);
+extern int test_130_ictcp_main(void);
 
 /* Test registry */
 typedef struct {
@@ -58,6 +59,7 @@ static test_suite const g_test_suites[] = {
     {"110_gamut", test_110_gamut_main},
     {"111_rgb_convert", test_111_rgb_convert_main},
     {"120_oklab", test_120_oklab_main},
+    {"130_ictcp", test_130_ictcp_main},
 };
 
 int main(void) {

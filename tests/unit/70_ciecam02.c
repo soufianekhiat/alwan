@@ -1,6 +1,6 @@
 /*
  * Alwan - Pure C colour science library
- * Copyright (c) 2025 Alwan Contributors
+ * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
  * M7 Tests: CIECAM02 Color Appearance Model
@@ -27,7 +27,7 @@
 static int test_ciecam02_forward(void) {
     /* Load viewing conditions from fixture */
     static alwan_scalar const viewing_params[] = {
-#include "data/fixtures/cam_viewing_conditions.csv"
+#include "reference_values/cam_viewing_conditions.csv"
     };
 
     /* Standard D65 viewing conditions (average surround) */
@@ -42,13 +42,13 @@ static int test_ciecam02_forward(void) {
 
     /* Load test XYZ colors */
     static alwan_scalar const test_xyz[] = {
-#include "data/fixtures/ciecam02_xyz_input.csv"
+#include "reference_values/ciecam02_xyz_input.csv"
     };
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
     /* Load expected correlates (J, C, h, Q, M, s, H for each color) */
     static alwan_scalar const expected_correlates[] = {
-#include "data/fixtures/ciecam02_correlates.csv"
+#include "reference_values/ciecam02_correlates.csv"
     };
 
     /* Test forward transform for each color */
@@ -81,13 +81,16 @@ static int test_ciecam02_forward(void) {
             printf("  Color %zu: C error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)C_err, (double)corr.C, (double)expected[1]);
         }
-        if (h_err >= CORRELATE_TOL) {
+        if (h_err >= CORRELATE_TOL && corr.C > ALWAN_LITERAL(1.0)) {
             printf("  Color %zu: h error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)h_err, (double)corr.h, (double)expected[2]);
         }
         TEST_ASSERT(J_err < CORRELATE_TOL, "J mismatch");
         TEST_ASSERT(C_err < CORRELATE_TOL, "C mismatch");
-        TEST_ASSERT(h_err < CORRELATE_TOL, "h mismatch");
+        /* For achromatic colors (C ≈ 0), hue is undefined - skip hue check */
+        if (corr.C > ALWAN_LITERAL(1.0)) {
+            TEST_ASSERT(h_err < CORRELATE_TOL, "h mismatch");
+        }
 
         /* Also check Q, M, s (with slightly relaxed tolerance due to compound calculations) */
         alwan_scalar Q_err = ALWAN_FABS(corr.Q - expected[3]);
@@ -108,7 +111,7 @@ static int test_ciecam02_inverse(void) {
     alwan_ciecam02_viewing_conditions vc;
     /* Load viewing conditions from fixture */
     static alwan_scalar const viewing_params[] = {
-#include "data/fixtures/cam_viewing_conditions.csv"
+#include "reference_values/cam_viewing_conditions.csv"
     };
 
     vc.white_xyz.v[0] = viewing_params[0];
@@ -121,13 +124,13 @@ static int test_ciecam02_inverse(void) {
 
     /* Load correlates (J, C, h) */
     static alwan_scalar const correlates_data[] = {
-#include "data/fixtures/ciecam02_correlates.csv"
+#include "reference_values/ciecam02_correlates.csv"
     };
     size_t const num_colors = sizeof(correlates_data) / sizeof(correlates_data[0]) / 7;
 
     /* Load expected reconstructed XYZ */
     static alwan_scalar const expected_xyz[] = {
-#include "data/fixtures/ciecam02_xyz_reconstructed.csv"
+#include "reference_values/ciecam02_xyz_reconstructed.csv"
     };
 
     /* Test inverse transform for each color */
@@ -164,7 +167,7 @@ static int test_ciecam02_roundtrip(void) {
     alwan_ciecam02_viewing_conditions vc;
     /* Load viewing conditions from fixture */
     static alwan_scalar const viewing_params[] = {
-#include "data/fixtures/cam_viewing_conditions.csv"
+#include "reference_values/cam_viewing_conditions.csv"
     };
 
     vc.white_xyz.v[0] = viewing_params[0];
@@ -177,7 +180,7 @@ static int test_ciecam02_roundtrip(void) {
 
     /* Load test XYZ colors */
     static alwan_scalar const test_xyz[] = {
-#include "data/fixtures/ciecam02_xyz_input.csv"
+#include "reference_values/ciecam02_xyz_input.csv"
     };
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
@@ -217,7 +220,7 @@ static int test_ciecam02_surround_conditions(void) {
     alwan_ciecam02_viewing_conditions vc;
     /* Load viewing conditions from fixture */
     static alwan_scalar const viewing_params[] = {
-#include "data/fixtures/cam_viewing_conditions.csv"
+#include "reference_values/cam_viewing_conditions.csv"
     };
 
     vc.white_xyz.v[0] = viewing_params[0];
