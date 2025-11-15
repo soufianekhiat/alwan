@@ -56,3 +56,5 @@ dkms.conf
 projects
 tmp
 *.sln
+.vs
+tools/*.json

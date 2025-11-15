@@ -190,7 +190,12 @@ void alwan_lab_to_lch(alwan_vec3 const *lab, alwan_vec3 *lch) {
     lch->v[0] = L;  /* L* */
     lch->v[1] = ALWAN_SQRT(a * a + b * b);  /* C*ab */
     alwan_scalar h_rad = ALWAN_ATAN2(b, a);
-    lch->v[2] = h_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;  /* hab in degrees */
+    alwan_scalar h_deg = h_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;
+    /* Normalize hue to [0, 360) range */
+    if (h_deg < ALWAN_LITERAL(0.0)) {
+        h_deg += ALWAN_LITERAL(360.0);
+    }
+    lch->v[2] = h_deg;  /* hab in degrees */
 }
 
 void alwan_lch_to_lab(alwan_vec3 const *lch, alwan_vec3 *lab) {
@@ -216,7 +221,12 @@ void alwan_luv_to_lchuv(alwan_vec3 const *luv, alwan_vec3 *lchuv) {
     lchuv->v[0] = L;  /* L* */
     lchuv->v[1] = ALWAN_SQRT(u * u + v * v);  /* C*uv */
     alwan_scalar h_rad = ALWAN_ATAN2(v, u);
-    lchuv->v[2] = h_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;  /* huv in degrees */
+    alwan_scalar h_deg = h_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;
+    /* Normalize hue to [0, 360) range */
+    if (h_deg < ALWAN_LITERAL(0.0)) {
+        h_deg += ALWAN_LITERAL(360.0);
+    }
+    lchuv->v[2] = h_deg;  /* huv in degrees */
 }
 
 void alwan_lchuv_to_luv(alwan_vec3 const *lchuv, alwan_vec3 *luv) {
