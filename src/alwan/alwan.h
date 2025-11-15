@@ -1,6 +1,6 @@
 /*
  * Alwan - Pure C colour science library
- * Copyright (c) 2025 Alwan Contributors
+ * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  */
 
@@ -267,6 +267,20 @@ void alwan_oklab_to_xyz(alwan_vec3 const *oklab, alwan_vec3 *xyz);
 /* Oklab <-> Oklch conversions (cylindrical Oklab) */
 void alwan_oklab_to_oklch(alwan_vec3 const *oklab, alwan_vec3 *oklch);
 void alwan_oklch_to_oklab(alwan_vec3 const *oklch, alwan_vec3 *oklab);
+
+/* RGB <-> ICtCp conversions (ITU-R BT.2100 HDR color space)
+ * - RGB input/output is linear BT.2020 RGB
+ * - use_pq: 1 for PQ (Perceptual Quantizer), 0 for HLG (Hybrid Log-Gamma)
+ */
+void alwan_rgb_to_ictcp(alwan_vec3 const *rgb, alwan_vec3 *ictcp, int use_pq);
+void alwan_ictcp_to_rgb(alwan_vec3 const *ictcp, alwan_vec3 *rgb, int use_pq);
+
+/* XYZ <-> ICtCp conversions (via BT.2020 RGB)
+ * - XYZ is assumed to be D65 adapted
+ * - use_pq: 1 for PQ (Perceptual Quantizer), 0 for HLG (Hybrid Log-Gamma)
+ */
+void alwan_xyz_to_ictcp(alwan_vec3 const *xyz, alwan_vec3 *ictcp, int use_pq);
+void alwan_ictcp_to_xyz(alwan_vec3 const *ictcp, alwan_vec3 *xyz, int use_pq);
 
 /* ----------------------------------------------------------------
  * Color Difference (ΔE) Metrics
@@ -646,7 +660,7 @@ static inline alwan_scalar alwan_saturate(alwan_scalar x) {
 
 /* Linear interpolation (numerically stable) */
 static inline alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scalar t) {
-    return ((alwan_scalar)1.0 - t) * a + t * b;
+    return (ALWAN_LITERAL(1.0) - t) * a + t * b;
 }
 
 #ifdef __cplusplus

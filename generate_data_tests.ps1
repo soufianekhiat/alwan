@@ -388,6 +388,78 @@ for rgb in test_rgb:
 write_ref('rgb_to_ycocg', ycocg_values, 'RGB -> YCoCg')
 
 # ================================================================
+# P1.2: ICtCp (ITU-R BT.2100 HDR) Reference Values
+# ================================================================
+print('\nICtCp (BT.2100 HDR):')
+
+# Test HDR RGB colors (BT.2020 linear, normalized to SDR reference)
+# Include both SDR range [0,1] and HDR range values
+test_hdr_rgb = [
+    [0.0, 0.0, 0.0],      # Black
+    [0.18, 0.18, 0.18],   # 18% gray (SDR mid-gray)
+    [1.0, 1.0, 1.0],      # SDR white (100 cd/m²)
+    [1.0, 0.0, 0.0],      # SDR red
+    [0.0, 1.0, 0.0],      # SDR green
+    [0.0, 0.0, 1.0],      # SDR blue
+    [2.0, 2.0, 2.0],      # HDR white (~200 cd/m²)
+    [5.0, 5.0, 5.0],      # HDR bright (~500 cd/m²)
+]
+
+# Convert to BT.2020 colourspace objects (colour-science expects RGB in BT.2020 for ICtCp)
+from colour.models import RGB_COLOURSPACE_BT2020
+test_hdr_rgb_np = [np.array(rgb) for rgb in test_hdr_rgb]
+
+# ICtCp with PQ transfer function
+ictcp_pq_values = []
+for rgb in test_hdr_rgb_np:
+    # colour.RGB_to_ICtCp expects RGB in BT.2020 colourspace with method specification
+    ictcp = colour.RGB_to_ICtCp(rgb, method='ITU-R BT.2100-2 PQ')
+    ictcp_pq_values.extend(ictcp.tolist())
+write_ref('ictcp_pq_from_rgb', ictcp_pq_values, 'ICtCp (PQ) from BT.2020 RGB')
+
+# ICtCp with HLG transfer function
+ictcp_hlg_values = []
+for rgb in test_hdr_rgb_np:
+    ictcp = colour.RGB_to_ICtCp(rgb, method='ITU-R BT.2100-2 HLG')
+    ictcp_hlg_values.extend(ictcp.tolist())
+write_ref('ictcp_hlg_from_rgb', ictcp_hlg_values, 'ICtCp (HLG) from BT.2020 RGB')
+
+# Round-trip: ICtCp PQ back to RGB
+rgb_from_ictcp_pq = []
+for i in range(len(test_hdr_rgb)):
+    ictcp = np.array(ictcp_pq_values[i*3:(i+1)*3])
+    rgb = colour.ICtCp_to_RGB(ictcp, method='ITU-R BT.2100-2 PQ')
+    rgb_from_ictcp_pq.extend(rgb.tolist())
+write_ref('rgb_from_ictcp_pq', rgb_from_ictcp_pq, 'BT.2020 RGB from ICtCp (PQ)')
+
+# Round-trip: ICtCp HLG back to RGB
+rgb_from_ictcp_hlg = []
+for i in range(len(test_hdr_rgb)):
+    ictcp = np.array(ictcp_hlg_values[i*3:(i+1)*3])
+    rgb = colour.ICtCp_to_RGB(ictcp, method='ITU-R BT.2100-2 HLG')
+    rgb_from_ictcp_hlg.extend(rgb.tolist())
+write_ref('rgb_from_ictcp_hlg', rgb_from_ictcp_hlg, 'BT.2020 RGB from ICtCp (HLG)')
+
+# XYZ (D65) to ICtCp (via BT.2020)
+# Use standard test XYZ colors
+ictcp_pq_from_xyz = []
+for xyz in test_xyz_colors:
+    # Convert XYZ to BT.2020 RGB first
+    rgb = colour.XYZ_to_RGB(xyz, d65_white_xyz, d65_white_xyz,
+                            colour.RGB_COLOURSPACES['ITU-R BT.2020'].matrix_XYZ_to_RGB)
+    ictcp = colour.RGB_to_ICtCp(rgb, method='ITU-R BT.2100-2 PQ')
+    ictcp_pq_from_xyz.extend(ictcp.tolist())
+write_ref('ictcp_pq_from_xyz', ictcp_pq_from_xyz, 'ICtCp (PQ) from XYZ via BT.2020')
+
+ictcp_hlg_from_xyz = []
+for xyz in test_xyz_colors:
+    rgb = colour.XYZ_to_RGB(xyz, d65_white_xyz, d65_white_xyz,
+                            colour.RGB_COLOURSPACES['ITU-R BT.2020'].matrix_XYZ_to_RGB)
+    ictcp = colour.RGB_to_ICtCp(rgb, method='ITU-R BT.2100-2 HLG')
+    ictcp_hlg_from_xyz.extend(ictcp.tolist())
+write_ref('ictcp_hlg_from_xyz', ictcp_hlg_from_xyz, 'ICtCp (HLG) from XYZ via BT.2020')
+
+# ================================================================
 # CIECAM02 & CAM16 Color Appearance Model Reference Values
 # ================================================================
 print('\nColor Appearance Models (CIECAM02 & CAM16):')
