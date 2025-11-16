@@ -31,6 +31,12 @@ extern int test_110_gamut_main(void);
 extern int test_111_rgb_convert_main(void);
 extern int test_120_oklab_main(void);
 extern int test_130_ictcp_main(void);
+extern int test_140_jzazbz_main(void);
+extern int test_150_din99_main(void);
+extern int test_160_osa_ucs_main(void);
+extern int test_170_hunter_lab_main(void);
+extern int test_180_ipt_main(void);
+extern int test_190_prolab_main(void);
 
 /* Test registry */
 typedef struct {
@@ -60,6 +66,12 @@ static test_suite const g_test_suites[] = {
     {"111_rgb_convert", test_111_rgb_convert_main},
     {"120_oklab", test_120_oklab_main},
     {"130_ictcp", test_130_ictcp_main},
+    {"140_jzazbz", test_140_jzazbz_main},
+    {"150_din99", test_150_din99_main},
+    {"160_osa_ucs", test_160_osa_ucs_main},
+    {"170_hunter_lab", test_170_hunter_lab_main},
+    {"180_ipt", test_180_ipt_main},
+    {"190_prolab", test_190_prolab_main},
 };
 
 int main(void) {
