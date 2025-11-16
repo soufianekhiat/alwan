@@ -109,6 +109,30 @@ static alwan_scalar hlg_eotf(alwan_scalar encoded) {
     return linear;
 }
 
+/* Apply HLG inverse OETF (encoded to scene linear) to a single value
+ * This is the mathematical inverse of HLG OETF, NOT the same as HLG EOTF
+ * (HLG EOTF includes system gamma 1.2 and produces display linear) */
+static alwan_scalar hlg_inverse_oetf(alwan_scalar encoded) {
+    /* HLG constants */
+    alwan_scalar const a = ALWAN_LITERAL(0.17883277);
+    alwan_scalar const b = ALWAN_LITERAL(1.0) - ALWAN_LITERAL(4.0) * a;
+    alwan_scalar const c = ALWAN_LITERAL(0.5) - a * ALWAN_LOG(ALWAN_LITERAL(4.0) * a);
+
+    if (encoded < ALWAN_LITERAL(0.0)) encoded = ALWAN_LITERAL(0.0);
+
+    /* Inverse of HLG OETF (scene linear -> encoded):
+     * if linear <= 1/12: encoded = sqrt(3 * linear)
+     *   => linear = encoded^2 / 3
+     * if linear > 1/12: encoded = a * ln(12 * linear - b) + c
+     *   => linear = (exp((encoded - c) / a) + b) / 12
+     */
+    if (encoded <= ALWAN_LITERAL(0.5)) {
+        return (encoded * encoded) / ALWAN_LITERAL(3.0);
+    } else {
+        return (ALWAN_EXP((encoded - c) / a) + b) / ALWAN_LITERAL(12.0);
+    }
+}
+
 /* ----------------------------------------------------------------
  * RGB (BT.2020 linear) <-> ICtCp
  * ---------------------------------------------------------------- */
@@ -149,18 +173,18 @@ void alwan_ictcp_to_rgb(alwan_vec3 const *ictcp, alwan_vec3 *rgb, int use_pq) {
     lms_p.v[1] = M_inv[3] * ictcp->v[0] + M_inv[4] * ictcp->v[1] + M_inv[5] * ictcp->v[2];
     lms_p.v[2] = M_inv[6] * ictcp->v[0] + M_inv[7] * ictcp->v[1] + M_inv[8] * ictcp->v[2];
 
-    /* Step 2: Apply inverse transfer function: LMS' → LMS */
+    /* Step 2: Apply inverse transfer function: LMS' → LMS (scene linear) */
     alwan_vec3 lms;
     if (use_pq) {
-        /* PQ inverse (EOTF) */
+        /* PQ inverse (EOTF = inverse OETF for PQ) */
         lms.v[0] = pq_eotf(lms_p.v[0]);
         lms.v[1] = pq_eotf(lms_p.v[1]);
         lms.v[2] = pq_eotf(lms_p.v[2]);
     } else {
-        /* HLG inverse (EOTF) */
-        lms.v[0] = hlg_eotf(lms_p.v[0]);
-        lms.v[1] = hlg_eotf(lms_p.v[1]);
-        lms.v[2] = hlg_eotf(lms_p.v[2]);
+        /* HLG inverse OETF (NOT EOTF - EOTF produces display linear) */
+        lms.v[0] = hlg_inverse_oetf(lms_p.v[0]);
+        lms.v[1] = hlg_inverse_oetf(lms_p.v[1]);
+        lms.v[2] = hlg_inverse_oetf(lms_p.v[2]);
     }
 
     /* Step 3: LMS → BT.2020 RGB (linear) */

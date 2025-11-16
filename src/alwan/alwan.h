@@ -268,6 +268,14 @@ void alwan_oklab_to_xyz(alwan_vec3 const *oklab, alwan_vec3 *xyz);
 void alwan_oklab_to_oklch(alwan_vec3 const *oklab, alwan_vec3 *oklch);
 void alwan_oklch_to_oklab(alwan_vec3 const *oklch, alwan_vec3 *oklab);
 
+/* Lab <-> DIN99 conversions (P1.4: DIN99 Family - German color difference standards)
+ * - variant: 0 = DIN99/ASTM, 1 = DIN99b, 2 = DIN99c, 3 = DIN99d
+ * - All variants provide improved perceptual uniformity over CIE Lab
+ * - Input Lab should be D65 adapted
+ */
+void alwan_lab_to_din99(alwan_vec3 const *lab, alwan_vec3 *din99, int variant);
+void alwan_din99_to_lab(alwan_vec3 const *din99, alwan_vec3 *lab, int variant);
+
 /* RGB <-> ICtCp conversions (ITU-R BT.2100 HDR color space)
  * - RGB input/output is linear BT.2020 RGB
  * - use_pq: 1 for PQ (Perceptual Quantizer), 0 for HLG (Hybrid Log-Gamma)
@@ -281,6 +289,73 @@ void alwan_ictcp_to_rgb(alwan_vec3 const *ictcp, alwan_vec3 *rgb, int use_pq);
  */
 void alwan_xyz_to_ictcp(alwan_vec3 const *xyz, alwan_vec3 *ictcp, int use_pq);
 void alwan_ictcp_to_xyz(alwan_vec3 const *ictcp, alwan_vec3 *xyz, int use_pq);
+
+/* Jzazbz <-> XYZ conversions (P1.3: Perceptually uniform HDR color space)
+ * - XYZ input/output is D65 adapted
+ * - Jzazbz: Jz (lightness), az (red-green), bz (yellow-blue)
+ */
+void alwan_xyz_to_jzazbz(alwan_vec3 const *xyz, alwan_vec3 *jzazbz);
+void alwan_jzazbz_to_xyz(alwan_vec3 const *jzazbz, alwan_vec3 *xyz);
+
+/* Jzazbz <-> JzCzhz conversions (cylindrical coordinates)
+ * - JzCzhz: Jz (lightness), Cz (chroma), hz (hue in radians)
+ */
+void alwan_jzazbz_to_jzczhz(alwan_vec3 const *jzazbz, alwan_vec3 *jzczhz);
+void alwan_jzczhz_to_jzazbz(alwan_vec3 const *jzczhz, alwan_vec3 *jzazbz);
+
+/* Hunter Lab <-> XYZ conversions (P1.6: Earlier Lab-type color space)
+ * - XYZ input/output is D65 adapted by default
+ * - Hunter Lab: L (lightness), a (red-green), b (yellow-blue)
+ * - Uses square roots instead of cube roots (unlike CIE Lab)
+ * - Ka and Kb coefficients are illuminant-dependent
+ */
+void alwan_xyz_to_hunter_lab(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab);
+void alwan_hunter_lab_to_xyz(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz);
+
+/* Hunter Lab <-> XYZ conversions with custom illuminant
+ * - xyz_n: Reference white point (e.g., D50, D65, or custom illuminant)
+ * - Ka and Kb are calculated automatically based on xyz_n
+ */
+void alwan_xyz_to_hunter_lab_custom(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab, alwan_vec3 const *xyz_n);
+void alwan_hunter_lab_to_xyz_custom(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz, alwan_vec3 const *xyz_n);
+
+/* IPT <-> XYZ conversions (P1.7: Image Processing Transform)
+ * - XYZ input/output is D65 adapted
+ * - IPT: I (intensity/lightness), P (red-green), T (yellow-blue)
+ * - Improved hue uniformity over CIELAB
+ * - Uses power function nonlinearity (exponent 0.43)
+ */
+void alwan_xyz_to_ipt(alwan_vec3 const *xyz, alwan_vec3 *ipt);
+void alwan_ipt_to_xyz(alwan_vec3 const *ipt, alwan_vec3 *xyz);
+
+/* IPT <-> IPTch conversions (cylindrical coordinates)
+ * - IPTch: I (intensity), C (chroma), h (hue in radians)
+ */
+void alwan_ipt_to_iptch(alwan_vec3 const *ipt, alwan_vec3 *iptch);
+void alwan_iptch_to_ipt(alwan_vec3 const *iptch, alwan_vec3 *ipt);
+
+/* ProLab <-> XYZ conversions (P1.8: Perceptually Uniform Projective)
+ * - XYZ input/output is D65 adapted by default
+ * - ProLab: Uses projective transformation for improved uniformity
+ * - Based on Konovalenko et al. (2021)
+ */
+void alwan_xyz_to_prolab(alwan_vec3 const *xyz, alwan_vec3 *prolab);
+void alwan_prolab_to_xyz(alwan_vec3 const *prolab, alwan_vec3 *xyz);
+
+/* ProLab <-> XYZ conversions with custom illuminant
+ * - xyz_n: Reference white point (e.g., D50, D65, or custom illuminant)
+ */
+void alwan_xyz_to_prolab_custom(alwan_vec3 const *xyz, alwan_vec3 *prolab, alwan_vec3 const *xyz_n);
+void alwan_prolab_to_xyz_custom(alwan_vec3 const *prolab, alwan_vec3 *xyz, alwan_vec3 const *xyz_n);
+
+/* OSA-UCS <-> XYZ conversions (P1.5: Optical Society of America Uniform Color Scales)
+ * - XYZ input/output is D65 adapted
+ * - OSA-UCS: L (lightness), j (yellowness), g (greenness)
+ * - Forward transform is exact, inverse is approximate (iterative solution)
+ * - Note: Inverse transformation has lower precision than other color spaces
+ */
+void alwan_xyz_to_osa_ucs(alwan_vec3 const *xyz, alwan_vec3 *osa_ucs);
+void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz);
 
 /* ----------------------------------------------------------------
  * Color Difference (ΔE) Metrics
