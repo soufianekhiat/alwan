@@ -37,6 +37,8 @@ extern int test_160_osa_ucs_main(void);
 extern int test_170_hunter_lab_main(void);
 extern int test_180_ipt_main(void);
 extern int test_190_prolab_main(void);
+extern int test_200_zcam_main(void);
+extern int test_210_hunt_main(void);
 
 /* Test registry */
 typedef struct {
@@ -72,6 +74,8 @@ static test_suite const g_test_suites[] = {
     {"170_hunter_lab", test_170_hunter_lab_main},
     {"180_ipt", test_180_ipt_main},
     {"190_prolab", test_190_prolab_main},
+    {"200_zcam", test_200_zcam_main},
+    {"210_hunt", test_210_hunt_main},
 };
 
 int main(void) {

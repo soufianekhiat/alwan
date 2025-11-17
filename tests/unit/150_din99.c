@@ -42,8 +42,9 @@ static int test_din99_variant(int variant, char const *variant_name, char const 
         din99_expected.v[1] = test_data[i * 6 + 4];
         din99_expected.v[2] = test_data[i * 6 + 5];
 
-        /* Convert XYZ to Lab first */
-        alwan_xyz_to_lab(&xyz, &lab);
+        /* Convert XYZ to Lab first (D65) */
+        alwan_vec3 D65 = {{ALWAN_LITERAL(95.047), ALWAN_LITERAL(100.0), ALWAN_LITERAL(108.883)}};
+        alwan_xyz_to_lab(&xyz, &D65, &lab);
 
         /* Test Lab -> DIN99 */
         alwan_lab_to_din99(&lab, &din99_computed, variant);

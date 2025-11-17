@@ -40,10 +40,6 @@ static alwan_scalar const LMS_TO_OSA_J[3] = {
     ALWAN_LITERAL(-13.7), ALWAN_LITERAL(17.7), ALWAN_LITERAL(-4.0)
 };
 
-/* Newton-Raphson iteration parameters */
-static int const MAX_ITERATIONS = 20;
-static alwan_scalar const CONVERGENCE_TOLERANCE = ALWAN_LITERAL(1e-10);
-
 /* ----------------------------------------------------------------
  * Helper Functions
  * ---------------------------------------------------------------- */
@@ -141,9 +137,8 @@ void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz) {
     /* Step 1: Calculate Lambda from L */
     alwan_scalar lambda = solve_cubic_for_lambda(osa_ucs->v[0]);
 
-    /* Step 2: Initial guess for Y0 based on lightness */
+    /* Step 2: Calculate Y0_cbrt from lightness */
     alwan_scalar Y0_cbrt = (lambda / ALWAN_LITERAL(5.9)) + ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0);
-    alwan_scalar Y0 = Y0_cbrt * Y0_cbrt * Y0_cbrt;
 
     /* Step 3: Calculate chroma coefficient C */
     alwan_scalar C;
@@ -154,7 +149,7 @@ void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz) {
     }
 
     /* Guard against division by zero */
-    if (ALWAN_ABS(C) < ALWAN_LITERAL(1e-10)) {
+    if (ALWAN_FABS(C) < ALWAN_LITERAL(1e-10)) {
         xyz->v[0] = ALWAN_LITERAL(0.0);
         xyz->v[1] = ALWAN_LITERAL(0.0);
         xyz->v[2] = ALWAN_LITERAL(0.0);

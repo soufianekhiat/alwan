@@ -639,6 +639,149 @@ int alwan_cam16_from_ucs(alwan_vec3 const *Jab,
                          alwan_cam16_correlates *correlates_out);
 
 /* ----------------------------------------------------------------
+ * ZCAM - HDR Color Appearance Model
+ * Based on Safdar et al. (2021), uses Jzazbz color space
+ * Supports HDR luminance range 0.001-10,000 cd/m²
+ * ---------------------------------------------------------------- */
+
+/* ZCAM surround condition */
+typedef enum {
+    ALWAN_ZCAM_SURROUND_AVERAGE = 0,  /* Average surround (Fs=1.0, c=0.69, Nc=1.0) */
+    ALWAN_ZCAM_SURROUND_DIM = 1,      /* Dim surround (Fs=0.9, c=0.59, Nc=0.9) */
+    ALWAN_ZCAM_SURROUND_DARK = 2      /* Dark surround (Fs=0.8, c=0.525, Nc=0.8) */
+} alwan_zcam_surround;
+
+/* ZCAM viewing conditions */
+typedef struct {
+    alwan_vec3 xyz_w;                  /* White point (absolute XYZ in cd/m²) */
+    alwan_scalar La;                   /* Adapting luminance (cd/m²) */
+    alwan_scalar Yb;                   /* Background luminance factor */
+    alwan_zcam_surround surround;      /* Viewing surround condition */
+    int discount_illuminant;           /* 1 to discount illuminant, 0 otherwise */
+} alwan_zcam_viewing_conditions;
+
+/* ZCAM appearance correlates (comprehensive HDR attributes) */
+typedef struct {
+    alwan_scalar Jz;     /* Lightness */
+    alwan_scalar Cz;     /* Chroma */
+    alwan_scalar hz;     /* Hue angle (degrees) */
+    alwan_scalar Qz;     /* Brightness */
+    alwan_scalar Mz;     /* Colorfulness */
+    alwan_scalar Sz;     /* Saturation */
+    alwan_scalar Vz;     /* Vividness */
+    alwan_scalar Kz;     /* Blackness */
+    alwan_scalar Wz;     /* Whiteness */
+} alwan_zcam_correlates;
+
+/* ZCAM forward transform: XYZ -> appearance correlates
+ * xyz: absolute XYZ tristimulus values (cd/m²)
+ * vc: viewing conditions
+ * out: computed appearance correlates
+ * Returns 0 on success, -1 on error */
+int alwan_zcam_forward(alwan_vec3 const *xyz,
+                       alwan_zcam_viewing_conditions const *vc,
+                       alwan_zcam_correlates *out);
+
+/* ZCAM inverse transform: appearance correlates -> XYZ (approximate)
+ * correlates: appearance correlates
+ * vc: viewing conditions
+ * xyz: output XYZ tristimulus values (cd/m²)
+ * Returns 0 on success, -1 on error
+ * Note: Inverse is approximate due to complexity */
+int alwan_zcam_inverse(alwan_zcam_correlates const *correlates,
+                       alwan_zcam_viewing_conditions const *vc,
+                       alwan_vec3 *xyz);
+
+/* ZCAM to UCS (Uniform Color Space) for color difference
+ * correlates: input ZCAM correlates
+ * Jab_out: output ZCAM-UCS coordinates [Jz, az, bz]
+ * Returns 0 on success, -1 on error */
+int alwan_zcam_to_ucs(alwan_zcam_correlates const *correlates,
+                      alwan_vec3 *Jab_out);
+
+/* ----------------------------------------------------------------
+ * RLAB Color Appearance Model
+ * Based on Fairchild (1993, 1996)
+ * Cross-media color reproduction model
+ * ---------------------------------------------------------------- */
+
+/* RLAB surround condition */
+typedef enum {
+    ALWAN_RLAB_SURROUND_AVERAGE = 0,  /* Average surround (sigma=1/2.3) */
+    ALWAN_RLAB_SURROUND_DIM = 1,      /* Dim surround (sigma=1/2.9) */
+    ALWAN_RLAB_SURROUND_DARK = 2      /* Dark surround (sigma=1/3.5) */
+} alwan_rlab_surround;
+
+/* RLAB viewing conditions */
+typedef struct {
+    alwan_vec3 xyz_w;              /* White point (XYZ, Y=100) */
+    alwan_vec3 xyz_n;              /* Reference white (usually D65) */
+    alwan_rlab_surround surround;  /* Viewing surround */
+    int D_factor;                  /* Discounting factor: 0=auto, 1=hard copy, 2=soft copy, 3=transparency */
+} alwan_rlab_viewing_conditions;
+
+/* RLAB appearance correlates */
+typedef struct {
+    alwan_scalar L;    /* Lightness */
+    alwan_scalar C;    /* Chroma */
+    alwan_scalar h;    /* Hue angle (degrees) */
+    alwan_scalar s;    /* Saturation */
+    alwan_scalar a;    /* Red-green opponent */
+    alwan_scalar b;    /* Yellow-blue opponent */
+} alwan_rlab_correlates;
+
+/* RLAB forward transform: XYZ -> appearance correlates
+ * Returns 0 on success, -1 on error */
+int alwan_rlab_forward(alwan_vec3 const *xyz,
+                       alwan_rlab_viewing_conditions const *vc,
+                       alwan_rlab_correlates *out);
+
+/* RLAB inverse transform: appearance correlates -> XYZ
+ * Returns 0 on success, -1 on error */
+int alwan_rlab_inverse(alwan_rlab_correlates const *correlates,
+                       alwan_rlab_viewing_conditions const *vc,
+                       alwan_vec3 *xyz);
+
+/* ----------------------------------------------------------------
+ * Hunt Color Appearance Model
+ * Based on Hunt (1991, 1995)
+ * Comprehensive historical CAM
+ * ---------------------------------------------------------------- */
+
+/* Hunt surround condition */
+typedef enum {
+    ALWAN_HUNT_SURROUND_NORMAL = 0,  /* Normal scenes (Nc=1.0, Nb=75) */
+    ALWAN_HUNT_SURROUND_DIM = 1,     /* TV/CRT dim surrounds (Nc=1.0, Nb=25) */
+    ALWAN_HUNT_SURROUND_DARK = 2     /* Projected transparencies dark (Nc=0.7, Nb=10) */
+} alwan_hunt_surround;
+
+/* Hunt viewing conditions */
+typedef struct {
+    alwan_vec3 xyz_w;                  /* White point (XYZ, Y=100) */
+    alwan_scalar La;                   /* Adapting luminance (cd/m²) */
+    alwan_scalar Yb;                   /* Background luminance factor */
+    alwan_hunt_surround surround;      /* Viewing surround */
+    int discount_illuminant;           /* 1 to discount illuminant, 0 otherwise */
+} alwan_hunt_viewing_conditions;
+
+/* Hunt appearance correlates */
+typedef struct {
+    alwan_scalar J;    /* Lightness */
+    alwan_scalar C;    /* Chroma */
+    alwan_scalar h;    /* Hue angle (degrees) */
+    alwan_scalar s;    /* Saturation */
+    alwan_scalar Q;    /* Brightness */
+    alwan_scalar M;    /* Colourfulness */
+} alwan_hunt_correlates;
+
+/* Hunt forward transform: XYZ -> appearance correlates
+ * Returns 0 on success, -1 on error
+ * Note: Hunt inverse is not implemented due to extreme complexity */
+int alwan_hunt_forward(alwan_vec3 const *xyz,
+                       alwan_hunt_viewing_conditions const *vc,
+                       alwan_hunt_correlates *out);
+
+/* ----------------------------------------------------------------
  * M9: Convenience Color Models (HSV, HSL, CMY, CMYK, YCbCr)
  * ---------------------------------------------------------------- */
 

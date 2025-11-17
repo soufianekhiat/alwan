@@ -60,7 +60,7 @@ static void apply_projective_transform(alwan_scalar const *matrix,
 
     /* Normalize by homogeneous coordinate w (result[3]) */
     alwan_scalar w = result[3];
-    if (ALWAN_ABS(w) < ALWAN_LITERAL(1e-10)) {
+    if (ALWAN_FABS(w) < ALWAN_LITERAL(1e-10)) {
         /* Avoid division by zero - return input as fallback */
         output->v[0] = input->v[0];
         output->v[1] = input->v[1];
