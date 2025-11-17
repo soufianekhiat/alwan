@@ -913,6 +913,118 @@ for xyz in TEST_COLORS_P2:
     rlab_correlates.extend([0.0, 0.0, 0.0])  # L, C, h
 write_ref('test_rlab_correlates', rlab_correlates, 'P2 RLAB correlates (placeholder)')
 
+# ================================================================
+# P4: Light Quality & Rendering Metrics
+# ================================================================
+print('\nP4 Light Quality & Rendering Metrics:')
+
+# P4.6: Whiteness & Yellowness Indices
+print('  P4.6: Whiteness & Yellowness Indices')
+
+# Test samples for whiteness/yellowness (typical paper/plastic XYZ values)
+# Range from pure white to slightly yellowish/bluish samples
+TEST_SAMPLES_WY = np.array([
+    [95.047, 100.0, 108.883],      # Perfect D65 white
+    [95.0, 100.0, 105.0],          # Slightly yellowish white
+    [95.0, 100.0, 112.0],          # Slightly bluish white
+    [90.0, 95.0, 100.0],           # Off-white (yellowish)
+    [92.0, 97.0, 105.0],           # Off-white (neutral)
+    [93.0, 98.0, 110.0],           # Off-white (bluish)
+    [85.0, 90.0, 95.0],            # Cream/ivory
+    [88.0, 93.0, 88.0],            # Yellowish paper
+])
+
+# Generate ASTM E313 Yellowness Index for all illuminants
+# illuminants: C/2°, D65/2°, C/10°, D65/10°
+yi_c_2deg = []
+yi_d65_2deg = []
+yi_c_10deg = []
+yi_d65_10deg = []
+
+# ASTM E313-20 Yellowness Index coefficients
+astm_e313_yi_coeffs = {
+    'C/2': (1.2769, 1.0592),
+    'D65/2': (1.2985, 1.1335),
+    'C/10': (1.2871, 1.0781),
+    'D65/10': (1.3013, 1.1498)
+}
+
+for xyz in TEST_SAMPLES_WY:
+    X, Y, Z = xyz[0], xyz[1], xyz[2]
+
+    # C/2°: YI = 100 * (Cx * X - Cz * Z) / Y
+    Cx, Cz = astm_e313_yi_coeffs['C/2']
+    yi_c_2deg.append(100.0 * (Cx * X - Cz * Z) / Y)
+
+    # D65/2°
+    Cx, Cz = astm_e313_yi_coeffs['D65/2']
+    yi_d65_2deg.append(100.0 * (Cx * X - Cz * Z) / Y)
+
+    # C/10°
+    Cx, Cz = astm_e313_yi_coeffs['C/10']
+    yi_c_10deg.append(100.0 * (Cx * X - Cz * Z) / Y)
+
+    # D65/10°
+    Cx, Cz = astm_e313_yi_coeffs['D65/10']
+    yi_d65_10deg.append(100.0 * (Cx * X - Cz * Z) / Y)
+
+write_ref('whiteness_test_xyz', [v for xyz in TEST_SAMPLES_WY for v in xyz.tolist()], 'P4.6 Test sample XYZ values')
+write_ref('yellowness_c_2deg', yi_c_2deg, 'P4.6 Yellowness Index C/2°')
+write_ref('yellowness_d65_2deg', yi_d65_2deg, 'P4.6 Yellowness Index D65/2°')
+write_ref('yellowness_c_10deg', yi_c_10deg, 'P4.6 Yellowness Index C/10°')
+write_ref('yellowness_d65_10deg', yi_d65_10deg, 'P4.6 Yellowness Index D65/10°')
+
+# Generate ASTM E313 Whiteness Index
+# Formula: WI = Y + 800(xn - x) + 1700(yn - y)
+wi_c_2deg = []
+wi_d65_2deg = []
+wi_c_10deg = []
+wi_d65_10deg = []
+
+# Get illuminant chromaticities
+ill_c_2 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['C']
+ill_d65_2 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+ill_c_10 = colour.CCS_ILLUMINANTS['CIE 1964 10 Degree Standard Observer']['C']
+ill_d65_10 = colour.CCS_ILLUMINANTS['CIE 1964 10 Degree Standard Observer']['D65']
+
+for xyz in TEST_SAMPLES_WY:
+    X, Y, Z = xyz[0], xyz[1], xyz[2]
+    xy = colour.XYZ_to_xy(xyz)
+    x, y = xy[0], xy[1]
+
+    # C/2°: WI = Y + 800(xn - x) + 1700(yn - y)
+    WI = Y + 800.0 * (ill_c_2[0] - x) + 1700.0 * (ill_c_2[1] - y)
+    wi_c_2deg.append(WI)
+
+    # D65/2°
+    WI = Y + 800.0 * (ill_d65_2[0] - x) + 1700.0 * (ill_d65_2[1] - y)
+    wi_d65_2deg.append(WI)
+
+    # C/10°
+    WI = Y + 800.0 * (ill_c_10[0] - x) + 1700.0 * (ill_c_10[1] - y)
+    wi_c_10deg.append(WI)
+
+    # D65/10°
+    WI = Y + 800.0 * (ill_d65_10[0] - x) + 1700.0 * (ill_d65_10[1] - y)
+    wi_d65_10deg.append(WI)
+
+write_ref('whiteness_c_2deg', wi_c_2deg, 'P4.6 Whiteness Index C/2°')
+write_ref('whiteness_d65_2deg', wi_d65_2deg, 'P4.6 Whiteness Index D65/2°')
+write_ref('whiteness_c_10deg', wi_c_10deg, 'P4.6 Whiteness Index C/10°')
+write_ref('whiteness_d65_10deg', wi_d65_10deg, 'P4.6 Whiteness Index D65/10°')
+
+# CIE 2004 Whiteness (using D65/2° reference)
+cie2004_whiteness = []
+d65_xy_2deg = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+for xyz in TEST_SAMPLES_WY:
+    xy = colour.XYZ_to_xy(xyz)
+    Y = xyz[1]
+    # CIE 2004: W = Y + 800(xn - x) + 1700(yn - y)
+    W = Y + 800 * (d65_xy_2deg[0] - xy[0]) + 1700 * (d65_xy_2deg[1] - xy[1])
+    cie2004_whiteness.append(W)
+
+write_ref('whiteness_cie2004', cie2004_whiteness, 'P4.6 CIE 2004 Whiteness (D65/2°)')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')

@@ -179,6 +179,109 @@ void alwan_luv_to_xyz(alwan_vec3 const *luv, alwan_vec3 const *white_xyz, alwan_
 }
 
 /* ================================================================
+ * XYZ <-> U*V*W* Conversions (CIE 1964 for CRI)
+ * ================================================================ */
+
+/* XYZ to U*V*W* (CIE 1964 uniform color space)
+ * Based on CIE 1960 UCS chromaticity coordinates
+ * U* = 13*W*(u - un), V* = 13*W*(v - vn), W* = 25*Y^(1/3) - 17 */
+void alwan_xyz_to_uvw(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *uvw) {
+    alwan_scalar const X = xyz->v[0];
+    alwan_scalar const Y = xyz->v[1];
+    alwan_scalar const Z = xyz->v[2];
+
+    /* Calculate CIE 1960 UCS chromaticity coordinates (u, v) */
+    alwan_scalar const sum = X + ALWAN_LITERAL(15.0) * Y + ALWAN_LITERAL(3.0) * Z;
+    alwan_scalar u, v;
+    if (ALWAN_FABS(sum) < ALWAN_EPSILON) {
+        u = ALWAN_LITERAL(0.0);
+        v = ALWAN_LITERAL(0.0);
+    } else {
+        u = (ALWAN_LITERAL(4.0) * X) / sum;
+        v = (ALWAN_LITERAL(6.0) * Y) / sum;
+    }
+
+    /* Calculate white point chromaticity */
+    alwan_scalar const Xn = white_xyz->v[0];
+    alwan_scalar const Yn = white_xyz->v[1];
+    alwan_scalar const Zn = white_xyz->v[2];
+    alwan_scalar const sum_n = Xn + ALWAN_LITERAL(15.0) * Yn + ALWAN_LITERAL(3.0) * Zn;
+    alwan_scalar un, vn;
+    if (ALWAN_FABS(sum_n) < ALWAN_EPSILON) {
+        un = ALWAN_LITERAL(0.0);
+        vn = ALWAN_LITERAL(0.0);
+    } else {
+        un = (ALWAN_LITERAL(4.0) * Xn) / sum_n;
+        vn = (ALWAN_LITERAL(6.0) * Yn) / sum_n;
+    }
+
+    /* Calculate W* (1964 lightness) */
+    alwan_scalar W;
+    if (Y < ALWAN_EPSILON) {
+        W = ALWAN_LITERAL(-17.0);
+    } else {
+        W = ALWAN_LITERAL(25.0) * ALWAN_CBRT(Y) - ALWAN_LITERAL(17.0);
+    }
+
+    /* Calculate U* and V* */
+    uvw->v[0] = ALWAN_LITERAL(13.0) * W * (u - un);   /* U* */
+    uvw->v[1] = ALWAN_LITERAL(13.0) * W * (v - vn);   /* V* */
+    uvw->v[2] = W;                                      /* W* */
+}
+
+/* U*V*W* to XYZ (inverse transform) */
+void alwan_uvw_to_xyz(alwan_vec3 const *uvw, alwan_vec3 const *white_xyz, alwan_vec3 *xyz) {
+    alwan_scalar const U_star = uvw->v[0];
+    alwan_scalar const V_star = uvw->v[1];
+    alwan_scalar const W = uvw->v[2];
+
+    /* Calculate Y from W* */
+    alwan_scalar Y;
+    alwan_scalar const W_plus_17 = W + ALWAN_LITERAL(17.0);
+    if (W_plus_17 < ALWAN_EPSILON) {
+        Y = ALWAN_LITERAL(0.0);
+    } else {
+        alwan_scalar const Y_cbrt = W_plus_17 / ALWAN_LITERAL(25.0);
+        Y = Y_cbrt * Y_cbrt * Y_cbrt;
+    }
+
+    /* Calculate white point chromaticity */
+    alwan_scalar const Xn = white_xyz->v[0];
+    alwan_scalar const Yn = white_xyz->v[1];
+    alwan_scalar const Zn = white_xyz->v[2];
+    alwan_scalar const sum_n = Xn + ALWAN_LITERAL(15.0) * Yn + ALWAN_LITERAL(3.0) * Zn;
+    alwan_scalar un, vn;
+    if (ALWAN_FABS(sum_n) < ALWAN_EPSILON) {
+        un = ALWAN_LITERAL(0.0);
+        vn = ALWAN_LITERAL(0.0);
+    } else {
+        un = (ALWAN_LITERAL(4.0) * Xn) / sum_n;
+        vn = (ALWAN_LITERAL(6.0) * Yn) / sum_n;
+    }
+
+    /* Recover u, v from U*, V*, W* */
+    alwan_scalar u, v;
+    if (ALWAN_FABS(W) < ALWAN_EPSILON) {
+        u = un;
+        v = vn;
+    } else {
+        u = U_star / (ALWAN_LITERAL(13.0) * W) + un;
+        v = V_star / (ALWAN_LITERAL(13.0) * W) + vn;
+    }
+
+    /* Calculate X and Z from u, v, Y */
+    if (ALWAN_FABS(v) < ALWAN_EPSILON) {
+        xyz->v[0] = ALWAN_LITERAL(0.0);
+        xyz->v[1] = Y;
+        xyz->v[2] = ALWAN_LITERAL(0.0);
+    } else {
+        xyz->v[0] = (ALWAN_LITERAL(9.0) * u * Y) / (ALWAN_LITERAL(4.0) * v);  /* X */
+        xyz->v[1] = Y;                                                          /* Y */
+        xyz->v[2] = ((ALWAN_LITERAL(12.0) - ALWAN_LITERAL(3.0) * u - ALWAN_LITERAL(20.0) * v) * Y) / (ALWAN_LITERAL(4.0) * v);  /* Z */
+    }
+}
+
+/* ================================================================
  * Lab <-> LCh(ab) Conversions
  * ================================================================ */
 

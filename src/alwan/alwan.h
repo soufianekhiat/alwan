@@ -252,6 +252,13 @@ void alwan_lab_to_xyz(alwan_vec3 const *lab, alwan_vec3 const *white_xyz, alwan_
 void alwan_xyz_to_luv(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *luv);
 void alwan_luv_to_xyz(alwan_vec3 const *luv, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
 
+/* XYZ <-> U*V*W* conversions (CIE 1964 uniform color space for CRI)
+ * Based on CIE 1960 UCS chromaticity diagram
+ * Used specifically for Color Rendering Index calculations
+ * Requires white point in XYZ */
+void alwan_xyz_to_uvw(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *uvw);
+void alwan_uvw_to_xyz(alwan_vec3 const *uvw, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
+
 /* Lab <-> LCh(ab) conversions */
 void alwan_lab_to_lch(alwan_vec3 const *lab, alwan_vec3 *lch);
 void alwan_lch_to_lab(alwan_vec3 const *lch, alwan_vec3 *lab);
@@ -401,6 +408,40 @@ alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *lab1, alwan_vec3 const *l
 alwan_scalar alwan_delta_e_zcam(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
 
 /* ----------------------------------------------------------------
+ * Whiteness & Yellowness Indices
+ * ---------------------------------------------------------------- */
+
+/* Illuminant/Observer pairs for ASTM E313 calculations */
+typedef enum {
+    ALWAN_ASTM_E313_C_2DEG = 0,    /* Illuminant C, CIE 1931 2° observer */
+    ALWAN_ASTM_E313_D65_2DEG = 1,  /* Illuminant D65, CIE 1931 2° observer */
+    ALWAN_ASTM_E313_C_10DEG = 2,   /* Illuminant C, CIE 1964 10° observer */
+    ALWAN_ASTM_E313_D65_10DEG = 3  /* Illuminant D65, CIE 1964 10° observer */
+} alwan_astm_e313_illuminant;
+
+/* ASTM E313 Yellowness Index
+ * xyz: CIE XYZ tristimulus values (normalized to Y=100 for perfect white)
+ * illuminant: illuminant/observer pair (C/2°, D65/2°, C/10°, or D65/10°)
+ * Returns: Yellowness Index (YI) value */
+alwan_scalar alwan_yellowness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_illuminant illuminant);
+
+/* ASTM E313 Whiteness Index
+ * xyz: CIE XYZ tristimulus values (normalized to Y=100 for perfect white)
+ * illuminant: illuminant/observer pair (C/2°, D65/2°, C/10°, or D65/10°)
+ * Returns: Whiteness Index (WI) value */
+alwan_scalar alwan_whiteness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_illuminant illuminant);
+
+/* CIE 2004 Whiteness Index
+ * xy: CIE 1931 chromaticity coordinates (x, y)
+ * Y: CIE Y tristimulus value (luminance factor)
+ * xy_n: reference white chromaticity coordinates
+ * Returns: CIE Whiteness (W) value
+ * Note: Also computes Tint (T), but this function only returns W.
+ *       Tint = 900(xn - x) - 650(yn - y) for 2° observer
+ *       Tint = 1000(xn - x) - 650(yn - y) for 10° observer */
+alwan_scalar alwan_whiteness_cie2004(alwan_vec3 const *xy, alwan_scalar Y, alwan_vec3 const *xy_n);
+
+/* ----------------------------------------------------------------
  * Chromatic Adaptation Transform (CAT)
  * ---------------------------------------------------------------- */
 
@@ -509,6 +550,22 @@ void alwan_spd_destroy(alwan_ctx *ctx, alwan_spd *spd);
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
 // TODO: replace name by an enum
 int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out);
+
+/* Generate blackbody (Planckian) SPD at given temperature
+ * Uses Planck's law to compute spectral radiance
+ * ctx: context
+ * temperature_K: color temperature in Kelvin (typically 1000-25000K)
+ * wavelength_min: starting wavelength (nm)
+ * wavelength_max: ending wavelength (nm)
+ * count: number of samples
+ * out: output SPD structure (values allocated internally)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if temperature out of range */
+int alwan_spd_blackbody(alwan_ctx *ctx,
+                        alwan_scalar temperature_K,
+                        alwan_scalar wavelength_min,
+                        alwan_scalar wavelength_max,
+                        size_t count,
+                        alwan_spd *out);
 
 /* Resample SPD to new wavelength range/count
  * ctx: context
@@ -856,7 +913,44 @@ alwan_scalar alwan_cct_robertson_xy(alwan_vec3 const *xy);
 /* CRI (Color Rendering Index) Ra - average of 8 TCS samples */
 /* Requires SPD (spectral power distribution) */
 /* Returns CRI Ra value [0, 100], or negative on error */
-alwan_scalar alwan_cri_ra(alwan_spd const *test_spd);
+alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd);
+
+/* CQS (Color Quality Scale) - NIST metric using 15 saturated samples */
+/* Returns CQS value [0, 100], or negative on error */
+/* Note: Full implementation requires CMCCAT2000 CAT and VS sample data */
+alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd);
+
+/* TM-30 (IES Method) - Fidelity (Rf) using 99 CES samples */
+/* Returns Rf value [0, 100], or negative on error */
+/* Note: Full implementation requires CIECAM02 and 99 CES sample data */
+alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd);
+
+/* CIE 224:2017 Color Fidelity Index (Rf) using 99 CES samples */
+/* Returns Rf value [0, 100], or negative on error */
+/* Note: Uses same algorithm as TM-30 but per CIE 224:2017 standard */
+alwan_scalar alwan_cie224_rf(alwan_ctx *ctx, alwan_spd const *test_spd);
+
+/* SSI (Spectral Similarity Index) - Academy/SMPTE ST 2122 */
+/* Measures spectral similarity between test and reference light sources */
+/* test_spd: test illuminant SPD
+ * reference_spd: reference illuminant SPD
+ * Returns SSI value [0, 100], where 100 = perfect match, or negative on error */
+alwan_scalar alwan_ssi_calculate(alwan_ctx *ctx, alwan_spd const *test_spd, alwan_spd const *reference_spd);
+
+/* CIE Special Metamerism Index: Change in Illuminant */
+/* Quantifies color mismatch when samples that match under reference illuminant are viewed under test illuminant */
+/* sample_reflectance: reflectance spectrum of sample
+ * reference_reflectance: reflectance spectrum of reference
+ * reference_illuminant: illuminant under which samples match (e.g., D65)
+ * test_illuminant: illuminant under which to evaluate mismatch (e.g., A)
+ * observer: observer type (2° or 10°)
+ * Returns metamerism index (ΔE*ab under test illuminant), or negative on error */
+alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
+                                     alwan_spd const *sample_reflectance,
+                                     alwan_spd const *reference_reflectance,
+                                     alwan_spd const *reference_illuminant,
+                                     alwan_spd const *test_illuminant,
+                                     alwan_observer_type observer);
 
 /* ----------------------------------------------------------------
  * Utility Functions

@@ -349,6 +349,58 @@ int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out) {
     return ALWAN_OK;
 }
 
+/* Generate blackbody (Planckian) SPD using Planck's law
+ * Spectral radiance: L(λ,T) = c1 / (λ^5 * (exp(c2/(λ*T)) - 1))
+ * where c1 = 3.741771e-16 W⋅m², c2 = 1.4388e-2 m⋅K */
+int alwan_spd_blackbody(alwan_ctx *ctx,
+                        alwan_scalar temperature_K,
+                        alwan_scalar wavelength_min,
+                        alwan_scalar wavelength_max,
+                        size_t count,
+                        alwan_spd *out) {
+    if (!out || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Validate temperature range (1000-25000K typical for lighting) */
+    if (temperature_K < ALWAN_LITERAL(1000.0) || temperature_K > ALWAN_LITERAL(25000.0)) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Create SPD structure */
+    int status = alwan_spd_create(ctx, wavelength_min, wavelength_max, count, out);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+
+    /* Planck's law constants */
+    const alwan_scalar c1 = ALWAN_LITERAL(3.741771e-16);  /* W⋅m² (first radiation constant) */
+    const alwan_scalar c2 = ALWAN_LITERAL(1.4388e-2);     /* m⋅K (second radiation constant) */
+
+    /* Calculate wavelength step */
+    alwan_scalar const step = (wavelength_max - wavelength_min) / (alwan_scalar)(count - 1);
+
+    /* Compute Planckian spectral radiance for each wavelength */
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar wavelength_nm = wavelength_min + (alwan_scalar)i * step;
+        alwan_scalar wavelength_m = wavelength_nm * ALWAN_LITERAL(1e-9);  /* Convert nm to meters */
+
+        /* Planck's law: L(λ,T) = c1 / (λ^5 * (exp(c2/(λ*T)) - 1)) */
+        alwan_scalar lambda5 = wavelength_m * wavelength_m * wavelength_m * wavelength_m * wavelength_m;
+        alwan_scalar exponent = c2 / (wavelength_m * temperature_K);
+        alwan_scalar denominator = lambda5 * (ALWAN_EXP(exponent) - ALWAN_LITERAL(1.0));
+
+        /* Avoid division by zero (shouldn't happen with valid wavelengths) */
+        if (ALWAN_FABS(denominator) < ALWAN_EPSILON) {
+            out->values[i] = ALWAN_LITERAL(0.0);
+        } else {
+            out->values[i] = c1 / denominator;
+        }
+    }
+
+    return ALWAN_OK;
+}
+
 /* ----------------------------------------------------------------
  * Observer CMF Loading
  * ---------------------------------------------------------------- */

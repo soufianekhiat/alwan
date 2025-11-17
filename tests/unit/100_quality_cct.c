@@ -93,10 +93,16 @@ static int test_cct_robertson(void) {
 static int test_cri(void) {
     /* CRI calculation is complex and requires full spectral data
      * For now, just verify the API doesn't crash */
-    alwan_scalar result = alwan_cri_ra(NULL);
-    TEST_ASSERT(result < 0, "CRI should return error for NULL input");
+    alwan_ctx *ctx = alwan_create(NULL);
+    alwan_scalar result = alwan_cri_ra(ctx, NULL);
+    TEST_ASSERT(result < 0, "CRI should return error for NULL SPD input");
 
-    printf("  CRI calculation not yet fully implemented\n");
+    result = alwan_cri_ra(NULL, NULL);
+    TEST_ASSERT(result < 0, "CRI should return error for NULL context");
+
+    alwan_destroy(ctx);
+
+    printf("  CRI calculation now implemented\n");
     TEST_PASS("CRI API");
 }
 
