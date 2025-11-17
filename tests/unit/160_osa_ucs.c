@@ -21,7 +21,7 @@ static int test_xyz_osa_ucs_forward(void) {
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
     /* OSA-UCS has looser tolerance due to complex transformations */
-    alwan_scalar const osa_tolerance = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100.0);
+    alwan_scalar const osa_tolerance = ALWAN_LITERAL(0.5);  /* Absolute tolerance */
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_vec3 xyz_in, osa_expected, osa_computed;
@@ -81,8 +81,8 @@ static int test_osa_ucs_inverse_approximate(void) {
     alwan_xyz_to_osa_ucs(&xyz, &osa);
     alwan_osa_ucs_to_xyz(&osa, &xyz_out);
 
-    /* Very loose tolerance for inverse (approximate solution) */
-    alwan_scalar const loose_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100000000.0);
+    /* Very loose absolute tolerance for inverse (approximate solution) */
+    alwan_scalar const loose_tol = ALWAN_LITERAL(20.0);
 
     for (int i = 0; i < 3; i++) {
         alwan_scalar diff = ALWAN_FABS(xyz_out.v[i] - xyz.v[i]);

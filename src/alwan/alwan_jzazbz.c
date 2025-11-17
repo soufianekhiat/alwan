@@ -96,11 +96,17 @@ static alwan_scalar pq_jz_eotf(alwan_scalar encoded) {
  * ---------------------------------------------------------------- */
 
 void alwan_xyz_to_jzazbz(alwan_vec3 const *xyz, alwan_vec3 *jzazbz) {
+    /* Normalize XYZ from Y=100 scale to Y=1 scale for absolute luminance */
+    alwan_vec3 xyz_norm;
+    xyz_norm.v[0] = xyz->v[0] / ALWAN_LITERAL(100.0);
+    xyz_norm.v[1] = xyz->v[1] / ALWAN_LITERAL(100.0);
+    xyz_norm.v[2] = xyz->v[2] / ALWAN_LITERAL(100.0);
+
     /* Step 1: Chromatic adaptation (D65) */
     alwan_vec3 xyz_adapted;
-    xyz_adapted.v[0] = JZAZBZ_B * xyz->v[0] - (JZAZBZ_B - ALWAN_LITERAL(1.0)) * xyz->v[2];
-    xyz_adapted.v[1] = JZAZBZ_G * xyz->v[1] - (JZAZBZ_G - ALWAN_LITERAL(1.0)) * xyz->v[0];
-    xyz_adapted.v[2] = xyz->v[2];
+    xyz_adapted.v[0] = JZAZBZ_B * xyz_norm.v[0] - (JZAZBZ_B - ALWAN_LITERAL(1.0)) * xyz_norm.v[2];
+    xyz_adapted.v[1] = JZAZBZ_G * xyz_norm.v[1] - (JZAZBZ_G - ALWAN_LITERAL(1.0)) * xyz_norm.v[0];
+    xyz_adapted.v[2] = xyz_norm.v[2];
 
     /* Step 2: XYZ (adapted) → LMS */
     alwan_vec3 lms;
@@ -157,9 +163,15 @@ void alwan_jzazbz_to_xyz(alwan_vec3 const *jzazbz, alwan_vec3 *xyz) {
     xyz_adapted.v[2] = LMS_TO_XYZ[6] * lms.v[0] + LMS_TO_XYZ[7] * lms.v[1] + LMS_TO_XYZ[8] * lms.v[2];
 
     /* Step 6: Inverse chromatic adaptation */
-    xyz->v[0] = (xyz_adapted.v[0] + (JZAZBZ_B - ALWAN_LITERAL(1.0)) * xyz_adapted.v[2]) / JZAZBZ_B;
-    xyz->v[1] = (xyz_adapted.v[1] + (JZAZBZ_G - ALWAN_LITERAL(1.0)) * xyz->v[0]) / JZAZBZ_G;
-    xyz->v[2] = xyz_adapted.v[2];
+    alwan_vec3 xyz_norm;
+    xyz_norm.v[0] = (xyz_adapted.v[0] + (JZAZBZ_B - ALWAN_LITERAL(1.0)) * xyz_adapted.v[2]) / JZAZBZ_B;
+    xyz_norm.v[1] = (xyz_adapted.v[1] + (JZAZBZ_G - ALWAN_LITERAL(1.0)) * xyz_norm.v[0]) / JZAZBZ_G;
+    xyz_norm.v[2] = xyz_adapted.v[2];
+
+    /* Scale back to Y=100 */
+    xyz->v[0] = xyz_norm.v[0] * ALWAN_LITERAL(100.0);
+    xyz->v[1] = xyz_norm.v[1] * ALWAN_LITERAL(100.0);
+    xyz->v[2] = xyz_norm.v[2] * ALWAN_LITERAL(100.0);
 }
 
 /* ----------------------------------------------------------------

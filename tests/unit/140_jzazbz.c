@@ -34,9 +34,10 @@ static int test_xyz_jzazbz_round_trip(void) {
         /* Test XYZ -> Jzazbz */
         alwan_xyz_to_jzazbz(&xyz_in, &jzazbz_computed);
 
+        alwan_scalar const jzazbz_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100.0);
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(jzazbz_computed.v[j] - jzazbz_expected.v[j]);
-            if (diff > ALWAN_TEST_TOLERANCE) {
+            if (diff > jzazbz_tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
                        (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);

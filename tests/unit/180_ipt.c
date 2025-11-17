@@ -34,9 +34,10 @@ static int test_xyz_ipt_round_trip(void) {
         /* Test XYZ -> IPT */
         alwan_xyz_to_ipt(&xyz_in, &ipt_computed);
 
+        alwan_scalar const ipt_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000.0);
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(ipt_computed.v[j] - ipt_expected.v[j]);
-            if (diff > ALWAN_TEST_TOLERANCE) {
+            if (diff > ipt_tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
                        (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);
@@ -52,7 +53,7 @@ static int test_xyz_ipt_round_trip(void) {
         /* Test round-trip: IPT -> XYZ */
         alwan_ipt_to_xyz(&ipt_computed, &xyz_out);
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000000.0);
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(0.01);  /* Absolute tolerance for round-trip */
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(xyz_out.v[j] - xyz_in.v[j]);

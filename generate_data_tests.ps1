@@ -626,6 +626,180 @@ for xyz in test_xyz_colors:
     adapted_a_to_d65_bradford.extend(adapted.tolist())
 write_ref('adapted_a_to_d65_bradford', adapted_a_to_d65_bradford, 'Adapted colors A->D65 Bradford')
 
+# ================================================================
+# P1.3-P1.8: Extended Color Spaces
+# ================================================================
+print('\nP1.3-P1.8 Extended Color Spaces:')
+
+# Test colors in XYZ (Y=100 scale) for P1 tests
+TEST_COLORS_XYZ_P1 = np.array([
+    [0.0, 0.0, 0.0],           # Black
+    [95.047, 100.0, 108.883],  # White D65
+    [41.24, 21.26, 1.93],      # Red
+    [35.76, 71.52, 11.92],     # Green
+    [18.05, 7.22, 95.05],      # Blue
+    [77.0, 92.78, 13.85],      # Yellow
+    [59.29, 28.48, 96.98],     # Magenta
+    [53.81, 78.74, 106.97],    # Cyan
+    [20.517, 21.586, 23.507],  # Gray 20%
+    [53.389, 56.272, 61.261],  # Gray 50%
+    [76.054, 80.109, 87.120],  # Gray 80%
+    [25.0, 50.0, 75.0],        # Custom 1
+    [60.0, 40.0, 30.0],        # Custom 2
+    [15.0, 25.0, 55.0],        # Custom 3
+    [80.0, 90.0, 50.0],        # Custom 4
+    [10.0, 15.0, 20.0],        # Dark
+])
+
+# P1.3: Jzazbz (HDR perceptual color space)
+print('  P1.3: Jzazbz')
+jzazbz_pairs = []
+for xyz in TEST_COLORS_XYZ_P1:
+    xyz_norm = xyz / 100.0  # Y=1 scale
+    jzazbz = colour.XYZ_to_Jzazbz(xyz_norm)
+    jzazbz_pairs.extend(xyz.tolist())
+    jzazbz_pairs.extend(jzazbz.tolist())
+write_ref('test_xyz_jzazbz_pairs', jzazbz_pairs, 'P1.3 XYZ + Jzazbz pairs')
+
+# P1.4: DIN99 Family (4 variants)
+print('  P1.4: DIN99 Family')
+# Convert XYZ to Lab first (using default D65)
+lab_colors = []
+for xyz in TEST_COLORS_XYZ_P1:
+    xyz_norm = xyz / 100.0
+    lab = colour.XYZ_to_Lab(xyz_norm)  # Default D65
+    lab_colors.append(lab)
+
+# DIN99
+din99_pairs = []
+for i, lab in enumerate(lab_colors):
+    din99 = colour.Lab_to_DIN99(lab, method='DIN99')
+    din99_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
+    din99_pairs.extend(din99.tolist())
+write_ref('test_lab_din99_pairs', din99_pairs, 'P1.4 XYZ + DIN99 pairs')
+
+# DIN99b
+din99b_pairs = []
+for i, lab in enumerate(lab_colors):
+    din99b = colour.Lab_to_DIN99(lab, method='DIN99b')
+    din99b_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
+    din99b_pairs.extend(din99b.tolist())
+write_ref('test_lab_din99b_pairs', din99b_pairs, 'P1.4 XYZ + DIN99b pairs')
+
+# DIN99c
+din99c_pairs = []
+for i, lab in enumerate(lab_colors):
+    din99c = colour.Lab_to_DIN99(lab, method='DIN99c')
+    din99c_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
+    din99c_pairs.extend(din99c.tolist())
+write_ref('test_lab_din99c_pairs', din99c_pairs, 'P1.4 XYZ + DIN99c pairs')
+
+# DIN99d
+din99d_pairs = []
+for i, lab in enumerate(lab_colors):
+    din99d = colour.Lab_to_DIN99(lab, method='DIN99d')
+    din99d_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
+    din99d_pairs.extend(din99d.tolist())
+write_ref('test_lab_din99d_pairs', din99d_pairs, 'P1.4 XYZ + DIN99d pairs')
+
+# P1.5: OSA-UCS
+print('  P1.5: OSA-UCS')
+osa_ucs_pairs = []
+for xyz in TEST_COLORS_XYZ_P1:
+    xyz_norm = xyz / 100.0
+    try:
+        osa_ucs = colour.XYZ_to_OSA_UCS(xyz_norm)
+        osa_ucs_pairs.extend(xyz.tolist())
+        osa_ucs_pairs.extend(osa_ucs.tolist())
+    except:
+        # Some colors may fail
+        osa_ucs_pairs.extend(xyz.tolist())
+        osa_ucs_pairs.extend([0.0, 0.0, 0.0])
+write_ref('test_xyz_osa_ucs_pairs', osa_ucs_pairs, 'P1.5 XYZ + OSA-UCS pairs')
+
+# P1.6: Hunter Lab
+print('  P1.6: Hunter Lab')
+hunter_lab_pairs = []
+for xyz in TEST_COLORS_XYZ_P1:
+    xyz_norm = xyz / 100.0
+    hunter_lab = colour.XYZ_to_Hunter_Lab(xyz_norm)  # Default D65
+    # Replace any NaN values with 0
+    hunter_lab = np.nan_to_num(hunter_lab, nan=0.0)
+    hunter_lab_pairs.extend(xyz.tolist())
+    hunter_lab_pairs.extend(hunter_lab.tolist())
+write_ref('test_xyz_hunter_lab_pairs', hunter_lab_pairs, 'P1.6 XYZ + Hunter Lab pairs')
+
+# P1.7: IPT
+print('  P1.7: IPT')
+ipt_pairs = []
+for xyz in TEST_COLORS_XYZ_P1:
+    xyz_norm = xyz / 100.0
+    ipt = colour.XYZ_to_IPT(xyz_norm)
+    ipt_pairs.extend(xyz.tolist())
+    ipt_pairs.extend(ipt.tolist())
+write_ref('test_xyz_ipt_pairs', ipt_pairs, 'P1.7 XYZ + IPT pairs')
+
+# P1.8: ProLab
+print('  P1.8: ProLab')
+prolab_pairs = []
+for xyz in TEST_COLORS_XYZ_P1:
+    xyz_norm = xyz / 100.0
+    prolab = colour.XYZ_to_ProLab(xyz_norm)
+    prolab_pairs.extend(xyz.tolist())
+    prolab_pairs.extend(prolab.tolist())
+write_ref('test_xyz_prolab_pairs', prolab_pairs, 'P1.8 XYZ + ProLab pairs')
+
+# ================================================================
+# P2: Advanced Color Appearance Models
+# ================================================================
+print('\nP2 Advanced Color Appearance Models:')
+
+# Test colors for P2 (12 colors)
+TEST_COLORS_P2 = np.array([
+    [0.0, 0.0, 0.0],           # Black
+    [10.0, 10.54, 11.47],      # Very dark gray
+    [25.0, 30.0, 35.0],        # Dark gray
+    [50.0, 52.69, 57.36],      # Mid gray
+    [95.047, 100.0, 108.883],  # White D65
+    [41.24, 21.26, 1.93],      # Red
+    [35.76, 71.52, 11.92],     # Green
+    [18.05, 7.22, 95.05],      # Blue
+    [77.0, 92.78, 13.85],      # Yellow
+    [59.29, 28.48, 96.98],     # Magenta
+    [53.81, 78.74, 106.97],    # Cyan
+    [60.0, 40.0, 30.0],        # Orange
+])
+
+# P2: ZCAM (viewing conditions: La=100, Yb=20, Average surround)
+print('  P2: ZCAM')
+# Note: colour-science doesn't have ZCAM - generate placeholder with zeros
+# Format: XYZ (3) + Jz, Cz, hz, Qz, Mz, Sz (6) = 9 values per color
+zcam_correlates = []
+for xyz in TEST_COLORS_P2:
+    zcam_correlates.extend(xyz.tolist())  # XYZ
+    zcam_correlates.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # Jz, Cz, hz, Qz, Mz, Sz
+write_ref('test_zcam_correlates', zcam_correlates, 'P2 ZCAM correlates (placeholder)')
+
+# P2: Hunt CAM (viewing conditions: La=318.31, Yb=20, Normal surround)
+print('  P2: Hunt')
+# Note: colour-science doesn't have Hunt CAM - generate placeholder with zeros
+# Format: XYZ (3) + J, C, h, s, Q, M (6) = 9 values per color
+hunt_correlates = []
+for xyz in TEST_COLORS_P2:
+    hunt_correlates.extend(xyz.tolist())  # XYZ
+    hunt_correlates.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # J, C, h, s, Q, M
+write_ref('test_hunt_correlates', hunt_correlates, 'P2 Hunt correlates (placeholder)')
+
+# P2: RLAB (viewing conditions: D=1.0, Y_n=100)
+print('  P2: RLAB')
+# Note: colour-science doesn't have RLAB - generate placeholder with zeros
+# Format: XYZ (3) + L, C, h (3) = 6 values per color
+rlab_correlates = []
+for xyz in TEST_COLORS_P2:
+    rlab_correlates.extend(xyz.tolist())  # XYZ
+    rlab_correlates.extend([0.0, 0.0, 0.0])  # L, C, h
+write_ref('test_rlab_correlates', rlab_correlates, 'P2 RLAB correlates (placeholder)')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')

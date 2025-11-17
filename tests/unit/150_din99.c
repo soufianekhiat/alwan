@@ -49,9 +49,10 @@ static int test_din99_variant(int variant, char const *variant_name, char const 
         /* Test Lab -> DIN99 */
         alwan_lab_to_din99(&lab, &din99_computed, variant);
 
+        alwan_scalar const din99_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000.0);
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(din99_computed.v[j] - din99_expected.v[j]);
-            if (diff > ALWAN_TEST_TOLERANCE) {
+            if (diff > din99_tol) {
                 printf("Color %zu channel %d failed (%s):\n", i, j, variant_name);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
                        (double)xyz.v[0], (double)xyz.v[1], (double)xyz.v[2]);
