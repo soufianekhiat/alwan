@@ -1550,6 +1550,144 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate CAT matrices: {e}", file=sys.stderr)
 
+# ================================================================
+# Generate TCS (Test Color Samples) for CRI
+# ================================================================
+print("\nGenerating TCS (Test Color Samples) for CRI...")
+
+try:
+    from colour.quality import SDS_TCS
+    import gzip
+
+    # TCS samples are from CIE 13.3-1995 (14 samples for CRI)
+    tcs_samples = list(SDS_TCS.values())[:14]  # First 14 samples
+
+    # Target wavelength range: 360-830nm @ 5nm intervals (95 samples)
+    target_wavelengths = np.arange(360, 835, 5)
+
+    for i, sd in enumerate(tcs_samples, start=1):
+        # Interpolate to target wavelengths
+        resampled = np.interp(target_wavelengths, sd.wavelengths, sd.values)
+
+        # Write CSV file with ALWAN_LITERAL formatting
+        filename = f'{DATA_DIR}/fixtures/tcs_{i:02d}_reflectance.csv'
+        ensure_dir(filename)
+        with open(filename, 'w') as f:
+            # Write 10 values per line for readability
+            for j in range(0, len(resampled), 10):
+                chunk = resampled[j:j+10]
+                line = ','.join([f'ALWAN_LITERAL({r:.15f})' for r in chunk])
+                if j + 10 < len(resampled):
+                    f.write(line + ',\n')
+                else:
+                    f.write(line + '\n')
+
+    print(f"  Generated {len(tcs_samples)} TCS reflectance files (360-830nm @ 5nm, 95 samples each)")
+
+except Exception as e:
+    print(f"  Warning: Could not generate TCS data: {e}", file=sys.stderr)
+
+# ================================================================
+# Generate VS (Vivid Saturated) samples for CQS
+# ================================================================
+print("\nGenerating VS (Vivid Saturated) samples for CQS...")
+
+try:
+    from colour.quality import SDS_VS
+
+    # Get VS samples from CQS 9.0 dataset (15 saturated Munsell samples)
+    cqs_dataset = SDS_VS.get('NIST CQS 9.0')
+    vs_samples = list(cqs_dataset.values())
+
+    # Target wavelength range: 360-830nm @ 5nm intervals (95 samples)
+    target_wavelengths = np.arange(360, 835, 5)
+
+    for i, sd in enumerate(vs_samples, start=1):
+        # Interpolate to target wavelengths
+        resampled = np.interp(target_wavelengths, sd.wavelengths, sd.values)
+
+        # Write CSV file with ALWAN_LITERAL formatting
+        filename = f'{DATA_DIR}/fixtures/vs_{i:02d}_reflectance.csv'
+        ensure_dir(filename)
+        with open(filename, 'w') as f:
+            # Write 10 values per line for readability
+            for j in range(0, len(resampled), 10):
+                chunk = resampled[j:j+10]
+                line = ','.join([f'ALWAN_LITERAL({r:.15f})' for r in chunk])
+                if j + 10 < len(resampled):
+                    f.write(line + ',\n')
+                else:
+                    f.write(line + '\n')
+
+    print(f"  Generated {len(vs_samples)} VS reflectance files (360-830nm @ 5nm, 95 samples each)")
+
+except Exception as e:
+    print(f"  Warning: Could not generate VS data: {e}", file=sys.stderr)
+
+# ================================================================
+# Generate CES (Color Evaluation Samples) for TM-30 and CIE 224:2017
+# ================================================================
+print("\nGenerating CES (Color Evaluation Samples) for TM-30/CIE 224...")
+
+try:
+    # Path to the CIE 2017 TCS data (5nm resolution)
+    # This is embedded in the colour-science package
+    import os.path
+    import colour
+
+    # Try to find the CES data file
+    colour_path = os.path.dirname(colour.__file__)
+    data_file_5nm = os.path.join(colour_path, 'quality', 'datasets', 'tcs_cfi2017_5_nm.csv.gz')
+    data_file_1nm = os.path.join(colour_path, 'quality', 'datasets', 'tcs_cfi2017_1_nm.csv.gz')
+
+    # Use 5nm data if available, otherwise fall back to 1nm and resample
+    if os.path.exists(data_file_5nm):
+        data_file = data_file_5nm
+    elif os.path.exists(data_file_1nm):
+        data_file = data_file_1nm
+    else:
+        raise FileNotFoundError("Could not find CES dataset in colour-science package")
+
+    # Read the gzipped CSV file
+    with gzip.open(data_file, 'rt') as f:
+        lines = f.readlines()
+
+    # First line is header with wavelengths
+    header = lines[0].strip().split(',')
+    wavelengths = [float(wl) for wl in header[1:]]  # Skip first column (sample name)
+
+    # Parse CES samples (skip header line)
+    ces_samples = []
+    for line in lines[1:]:
+        parts = line.strip().split(',')
+        values = [float(v) for v in parts[1:]]  # Skip sample name
+        ces_samples.append(np.array(values))
+
+    # Target wavelength range: 360-830nm @ 5nm intervals (95 samples)
+    target_wavelengths = np.arange(360, 835, 5)
+
+    for i, values in enumerate(ces_samples, start=1):
+        # Interpolate to target wavelengths
+        resampled = np.interp(target_wavelengths, wavelengths, values)
+
+        # Write CSV file with ALWAN_LITERAL formatting
+        filename = f'{DATA_DIR}/fixtures/ces_{i:02d}_reflectance.csv'
+        ensure_dir(filename)
+        with open(filename, 'w') as f:
+            # Write 10 values per line for readability
+            for j in range(0, len(resampled), 10):
+                chunk = resampled[j:j+10]
+                line = ','.join([f'ALWAN_LITERAL({r:.15f})' for r in chunk])
+                if j + 10 < len(resampled):
+                    f.write(line + ',\n')
+                else:
+                    f.write(line + '\n')
+
+    print(f"  Generated {len(ces_samples)} CES reflectance files (360-830nm @ 5nm, 95 samples each)")
+
+except Exception as e:
+    print(f"  Warning: Could not generate CES data: {e}", file=sys.stderr)
+
 print("\nData generation complete!")
 "@
 

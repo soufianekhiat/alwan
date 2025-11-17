@@ -328,7 +328,7 @@ static alwan_scalar const *vs_reflectances[15] = {
  * ---------------------------------------------------------------- */
 
 /* CES (Color Evaluation Samples) reflectance data for TM-30 and CIE 224:2017
- * 99 samples, 360-830nm at 5nm intervals (95 values each)
+ * 80 samples, 360-830nm at 5nm intervals (95 values each)
  * Data from CIE 224:2017 via colour-science library */
 #define CES_WAVELENGTH_MIN ALWAN_LITERAL(360.0)
 #define CES_WAVELENGTH_MAX ALWAN_LITERAL(830.0)
@@ -657,86 +657,10 @@ static alwan_scalar const ces_80_reflectance[CES_COUNT] = {
 #include "data/fixtures/ces_80_reflectance.csv"
 };
 
-static alwan_scalar const ces_81_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_81_reflectance.csv"
-};
-
-static alwan_scalar const ces_82_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_82_reflectance.csv"
-};
-
-static alwan_scalar const ces_83_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_83_reflectance.csv"
-};
-
-static alwan_scalar const ces_84_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_84_reflectance.csv"
-};
-
-static alwan_scalar const ces_85_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_85_reflectance.csv"
-};
-
-static alwan_scalar const ces_86_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_86_reflectance.csv"
-};
-
-static alwan_scalar const ces_87_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_87_reflectance.csv"
-};
-
-static alwan_scalar const ces_88_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_88_reflectance.csv"
-};
-
-static alwan_scalar const ces_89_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_89_reflectance.csv"
-};
-
-static alwan_scalar const ces_90_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_90_reflectance.csv"
-};
-
-static alwan_scalar const ces_91_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_91_reflectance.csv"
-};
-
-static alwan_scalar const ces_92_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_92_reflectance.csv"
-};
-
-static alwan_scalar const ces_93_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_93_reflectance.csv"
-};
-
-static alwan_scalar const ces_94_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_94_reflectance.csv"
-};
-
-static alwan_scalar const ces_95_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_95_reflectance.csv"
-};
-
-static alwan_scalar const ces_96_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_96_reflectance.csv"
-};
-
-static alwan_scalar const ces_97_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_97_reflectance.csv"
-};
-
-static alwan_scalar const ces_98_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_98_reflectance.csv"
-};
-
-static alwan_scalar const ces_99_reflectance[CES_COUNT] = {
-#include "data/fixtures/ces_99_reflectance.csv"
-};
-
 ALWAN_DIAG_POP
 
 /* Array of pointers to CES reflectance data for easy iteration */
-static alwan_scalar const *ces_reflectances[99] = {
+static alwan_scalar const *ces_reflectances[80] = {
     ces_01_reflectance, ces_02_reflectance, ces_03_reflectance, ces_04_reflectance, ces_05_reflectance,
     ces_06_reflectance, ces_07_reflectance, ces_08_reflectance, ces_09_reflectance, ces_10_reflectance,
     ces_11_reflectance, ces_12_reflectance, ces_13_reflectance, ces_14_reflectance, ces_15_reflectance,
@@ -752,11 +676,7 @@ static alwan_scalar const *ces_reflectances[99] = {
     ces_61_reflectance, ces_62_reflectance, ces_63_reflectance, ces_64_reflectance, ces_65_reflectance,
     ces_66_reflectance, ces_67_reflectance, ces_68_reflectance, ces_69_reflectance, ces_70_reflectance,
     ces_71_reflectance, ces_72_reflectance, ces_73_reflectance, ces_74_reflectance, ces_75_reflectance,
-    ces_76_reflectance, ces_77_reflectance, ces_78_reflectance, ces_79_reflectance, ces_80_reflectance,
-    ces_81_reflectance, ces_82_reflectance, ces_83_reflectance, ces_84_reflectance, ces_85_reflectance,
-    ces_86_reflectance, ces_87_reflectance, ces_88_reflectance, ces_89_reflectance, ces_90_reflectance,
-    ces_91_reflectance, ces_92_reflectance, ces_93_reflectance, ces_94_reflectance, ces_95_reflectance,
-    ces_96_reflectance, ces_97_reflectance, ces_98_reflectance, ces_99_reflectance
+    ces_76_reflectance, ces_77_reflectance, ces_78_reflectance, ces_79_reflectance, ces_80_reflectance
 };
 
 /* ----------------------------------------------------------------
@@ -1742,10 +1662,10 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     vc_ref.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
     vc_ref.discount_illuminant = 0;
 
-    /* Step 4: Calculate color differences for all 99 CES samples */
+    /* Step 4: Calculate color differences for all 80 CES samples */
     alwan_scalar delta_e_sum = ALWAN_LITERAL(0.0);
 
-    for (int i = 0; i < 99; i++) {
+    for (int i = 0; i < 80; i++) {
         /* Create CES reflectance SPD */
         alwan_spd ces_spd;
         status = alwan_spd_create(ctx, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX,
