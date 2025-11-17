@@ -434,3 +434,134 @@ alwan_scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2) 
 
     return ALWAN_SQRT(term1 * term1 + term2 * term2 + term3 * term3 + RT * term2 * term3);
 }
+
+/* ================================================================
+ * P3: Additional Color Difference Metrics
+ * ================================================================ */
+
+/* P3.1: ΔE ITP - ITU-R BT.2124 HDR Color Difference in ICtCp space
+ * Reference: ITU-R Report BT.2124
+ * Formula: ΔE_ITP = K_ITP * sqrt(dI² + 0.25*dCT² + dCP²)
+ * where K_ITP (scalar_factor) is typically 720 */
+alwan_scalar alwan_delta_e_itp(alwan_vec3 const *ictcp1, alwan_vec3 const *ictcp2, alwan_scalar scalar_factor) {
+    alwan_scalar const dI  = ictcp1->v[0] - ictcp2->v[0];   /* Intensity difference */
+    alwan_scalar const dCT = ictcp1->v[1] - ictcp2->v[1];   /* Tritan (blue-yellow) difference */
+    alwan_scalar const dCP = ictcp1->v[2] - ictcp2->v[2];   /* Protan (red-green) difference */
+
+    /* ITU-R BT.2124 formula with tritan weight of 0.25 */
+    return scalar_factor * ALWAN_SQRT(dI * dI + ALWAN_LITERAL(0.25) * dCT * dCT + dCP * dCP);
+}
+
+/* P3.2: ΔE HyAB - Hybrid Delta E
+ * Reference: Sarifuddin, M., & Missaoui, R. (2005)
+ * "A new perceptually uniform color space with associated color similarity measure"
+ * Simplified Euclidean in Lab with adjusted chroma weighting */
+alwan_scalar alwan_delta_e_hyab(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
+    alwan_scalar const L1 = lab1->v[0];
+    alwan_scalar const a1 = lab1->v[1];
+    alwan_scalar const b1 = lab1->v[2];
+    alwan_scalar const L2 = lab2->v[0];
+    alwan_scalar const a2 = lab2->v[1];
+    alwan_scalar const b2 = lab2->v[2];
+
+    alwan_scalar const dL = L1 - L2;
+    alwan_scalar const db = b1 - b2;
+
+    /* Compute chroma values */
+    alwan_scalar const C1 = ALWAN_SQRT(a1 * a1 + b1 * b1);
+    alwan_scalar const C2 = ALWAN_SQRT(a2 * a2 + b2 * b2);
+
+    /* Hybrid metric combines Euclidean with chroma adjustment */
+    alwan_scalar const Cab = (C1 + C2) / ALWAN_LITERAL(2.0);
+    alwan_scalar const G = ALWAN_LITERAL(0.5) * (ALWAN_LITERAL(1.0) - ALWAN_SQRT(
+        (Cab * Cab * Cab * Cab * Cab * Cab * Cab) /
+        ((Cab * Cab * Cab * Cab * Cab * Cab * Cab) + ALWAN_LITERAL(6103515625.0))  /* 25^7 */
+    ));
+
+    alwan_scalar const a1_prime = (ALWAN_LITERAL(1.0) + G) * a1;
+    alwan_scalar const a2_prime = (ALWAN_LITERAL(1.0) + G) * a2;
+
+    alwan_scalar const C1_prime = ALWAN_SQRT(a1_prime * a1_prime + b1 * b1);
+    alwan_scalar const C2_prime = ALWAN_SQRT(a2_prime * a2_prime + b2 * b2);
+    alwan_scalar const dC_prime = C1_prime - C2_prime;
+
+    alwan_scalar const da_prime = a1_prime - a2_prime;
+    alwan_scalar const dH_prime_sq = da_prime * da_prime + db * db - dC_prime * dC_prime;
+
+    return ALWAN_SQRT(dL * dL + dC_prime * dC_prime + (dH_prime_sq > ALWAN_LITERAL(0.0) ? dH_prime_sq : ALWAN_LITERAL(0.0)));
+}
+
+/* P3.3: ΔE DIN99 - Euclidean distance in DIN99 space
+ * DIN99 family spaces are designed for perceptual uniformity
+ * Simple Euclidean distance in the transformed space */
+alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *din99_2) {
+    alwan_scalar const dL = din99_1->v[0] - din99_2->v[0];
+    alwan_scalar const da = din99_1->v[1] - din99_2->v[1];
+    alwan_scalar const db = din99_1->v[2] - din99_2->v[2];
+
+    return ALWAN_SQRT(dL * dL + da * da + db * db);
+}
+
+/* P3.4: ΔE CAM02-LCD - CIECAM02 Large Color Difference
+ * Reference: CIE TC8-01 "Uniform Colour Spaces"
+ * Formula: sqrt((dJ/K_L)² + (dM)² + (dh)²) in UCS space
+ * LCD uses K_L = 1.0, c1 = 0.007, c2 = 0.0053 */
+alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *jab1, alwan_vec3 const *jab2) {
+    alwan_scalar const KL = ALWAN_LITERAL(1.0);     /* Lightness weight */
+    alwan_scalar const c1 = ALWAN_LITERAL(0.007);   /* Chroma weight 1 */
+    alwan_scalar const c2 = ALWAN_LITERAL(0.0053);  /* Chroma weight 2 */
+
+    alwan_scalar const dJ = jab1->v[0] - jab2->v[0];
+    alwan_scalar const da = jab1->v[1] - jab2->v[1];
+    alwan_scalar const db = jab1->v[2] - jab2->v[2];
+
+    alwan_scalar const term1 = dJ / KL;
+    alwan_scalar const term2 = da / (ALWAN_LITERAL(1.0) + c1 * ALWAN_FABS(jab1->v[1]));
+    alwan_scalar const term3 = db / (ALWAN_LITERAL(1.0) + c2 * ALWAN_FABS(jab1->v[2]));
+
+    return ALWAN_SQRT(term1 * term1 + term2 * term2 + term3 * term3);
+}
+
+/* P3.4: ΔE CAM02-SCD - CIECAM02 Small Color Difference
+ * SCD uses tighter parameters for better discrimination of small differences
+ * SCD uses K_L = 2.0, c1 = 0.007, c2 = 0.0363 */
+alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *jab1, alwan_vec3 const *jab2) {
+    alwan_scalar const KL = ALWAN_LITERAL(2.0);     /* Lightness weight (higher for SCD) */
+    alwan_scalar const c1 = ALWAN_LITERAL(0.007);   /* Chroma weight 1 */
+    alwan_scalar const c2 = ALWAN_LITERAL(0.0363);  /* Chroma weight 2 (higher for SCD) */
+
+    alwan_scalar const dJ = jab1->v[0] - jab2->v[0];
+    alwan_scalar const da = jab1->v[1] - jab2->v[1];
+    alwan_scalar const db = jab1->v[2] - jab2->v[2];
+
+    alwan_scalar const term1 = dJ / KL;
+    alwan_scalar const term2 = da / (ALWAN_LITERAL(1.0) + c1 * ALWAN_FABS(jab1->v[1]));
+    alwan_scalar const term3 = db / (ALWAN_LITERAL(1.0) + c2 * ALWAN_FABS(jab1->v[2]));
+
+    return ALWAN_SQRT(term1 * term1 + term2 * term2 + term3 * term3);
+}
+
+/* P3.4: ΔE CAM16-LCD - CAM16 Large Color Difference
+ * Same formula as CAM02-LCD but operates on CAM16 UCS coordinates */
+alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *jab1, alwan_vec3 const *jab2) {
+    /* CAM16-LCD uses same parameters as CAM02-LCD */
+    return alwan_delta_e_cam02_lcd(jab1, jab2);
+}
+
+/* P3.4: ΔE CAM16-SCD - CAM16 Small Color Difference
+ * Same formula as CAM02-SCD but operates on CAM16 UCS coordinates */
+alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *jab1, alwan_vec3 const *jab2) {
+    /* CAM16-SCD uses same parameters as CAM02-SCD */
+    return alwan_delta_e_cam02_scd(jab1, jab2);
+}
+
+/* P3.5: ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space
+ * ZCAM UCS is designed for perceptual uniformity in HDR
+ * Simple Euclidean distance is appropriate */
+alwan_scalar alwan_delta_e_zcam(alwan_vec3 const *jab1, alwan_vec3 const *jab2) {
+    alwan_scalar const dJ = jab1->v[0] - jab2->v[0];
+    alwan_scalar const da = jab1->v[1] - jab2->v[1];
+    alwan_scalar const db = jab1->v[2] - jab2->v[2];
+
+    return ALWAN_SQRT(dJ * dJ + da * da + db * db);
+}

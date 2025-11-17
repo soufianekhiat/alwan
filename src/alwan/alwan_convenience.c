@@ -363,38 +363,64 @@ int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out) {
     alwan_scalar g = rgb->v[1];
     alwan_scalar b = rgb->v[2];
 
-    /* Yc = Kr*R + Kg*G + Kb*B */
-    alwan_scalar yc = kr * r + kg * g + kb * b;
+    /* Step 1: Compute linear Yc */
+    alwan_scalar yc_linear = kr * r + kg * g + kb * b;
 
-    /* Cbc and Crc use different formulas depending on whether B > Yc or R > Yc */
-    /* Handle edge cases (black/white) to avoid division by zero */
-    /* Use tolerance for white/black checks to handle f32 precision issues */
-    alwan_scalar const edge_threshold = ALWAN_LITERAL(0.001);
+    /* Step 2: Apply BT.2020 OETF to Yc, R, and B */
+    /* BT.2020 OETF: E' = 4.5 * E (E < 0.018) or 1.099 * E^0.45 - 0.099 */
+    alwan_scalar const beta = ALWAN_LITERAL(0.018);
+    alwan_scalar const alpha = ALWAN_LITERAL(1.099);
+
+    alwan_scalar yc, r_gamma, b_gamma;
+
+    /* Apply OETF to Yc */
+    if (yc_linear < beta) {
+        yc = ALWAN_LITERAL(4.5) * yc_linear;
+    } else {
+        yc = alpha * ALWAN_POW(yc_linear, ALWAN_LITERAL(0.45)) - (alpha - ALWAN_LITERAL(1.0));
+    }
+
+    /* Apply OETF to R */
+    if (r < beta) {
+        r_gamma = ALWAN_LITERAL(4.5) * r;
+    } else {
+        r_gamma = alpha * ALWAN_POW(r, ALWAN_LITERAL(0.45)) - (alpha - ALWAN_LITERAL(1.0));
+    }
+
+    /* Apply OETF to B */
+    if (b < beta) {
+        b_gamma = ALWAN_LITERAL(4.5) * b;
+    } else {
+        b_gamma = alpha * ALWAN_POW(b, ALWAN_LITERAL(0.45)) - (alpha - ALWAN_LITERAL(1.0));
+    }
+
+    /* Step 3: Compute chroma differences and apply divisors */
+    alwan_scalar diff_b = b_gamma - yc;
+    alwan_scalar diff_r = r_gamma - yc;
+
+    /* Chroma divisors from ITU-R BT.2020 */
     alwan_scalar cbc, crc;
-
-    if (b <= edge_threshold || yc <= edge_threshold) {
-        cbc = ALWAN_LITERAL(0.5);
-    } else if (yc >= (ALWAN_LITERAL(1.0) - edge_threshold)) {
-        cbc = ALWAN_LITERAL(0.5);  /* White: no chroma */
-    } else if (b < yc) {
-        cbc = (b - yc) / (ALWAN_LITERAL(2.0) * yc * (ALWAN_LITERAL(1.0) - kb)) + ALWAN_LITERAL(0.5);
+    if (diff_b <= ALWAN_LITERAL(0.0)) {
+        cbc = diff_b / ALWAN_LITERAL(1.9404);
     } else {
-        cbc = (b - yc) / (ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - yc) * (ALWAN_LITERAL(1.0) - kb)) + ALWAN_LITERAL(0.5);
+        cbc = diff_b / ALWAN_LITERAL(1.5816);
     }
 
-    if (r <= edge_threshold || yc <= edge_threshold) {
-        crc = ALWAN_LITERAL(0.5);
-    } else if (yc >= (ALWAN_LITERAL(1.0) - edge_threshold)) {
-        crc = ALWAN_LITERAL(0.5);  /* White: no chroma */
-    } else if (r < yc) {
-        crc = (r - yc) / (ALWAN_LITERAL(2.0) * yc * (ALWAN_LITERAL(1.0) - kr)) + ALWAN_LITERAL(0.5);
+    if (diff_r <= ALWAN_LITERAL(0.0)) {
+        crc = diff_r / ALWAN_LITERAL(1.7184);
     } else {
-        crc = (r - yc) / (ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - yc) * (ALWAN_LITERAL(1.0) - kr)) + ALWAN_LITERAL(0.5);
+        crc = diff_r / ALWAN_LITERAL(0.9936);
     }
 
-    yccbccrc_out->v[0] = yc;
-    yccbccrc_out->v[1] = cbc;
-    yccbccrc_out->v[2] = crc;
+    /* Step 4: Apply legal range scaling (10-bit: Y: 64-940, C: 64-960) */
+    alwan_scalar const y_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const y_max = ALWAN_LITERAL(940.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const c_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const c_max = ALWAN_LITERAL(960.0) / ALWAN_LITERAL(1023.0);
+
+    yccbccrc_out->v[0] = yc * (y_max - y_min) + y_min;
+    yccbccrc_out->v[1] = cbc * (c_max - c_min) + (c_max + c_min) / ALWAN_LITERAL(2.0);
+    yccbccrc_out->v[2] = crc * (c_max - c_min) + (c_max + c_min) / ALWAN_LITERAL(2.0);
 
     return ALWAN_OK;
 }
@@ -409,27 +435,68 @@ int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out) {
     alwan_scalar const kg = ALWAN_LITERAL(0.6780);
     alwan_scalar const kb = ALWAN_LITERAL(0.0593);
 
-    alwan_scalar yc  = yccbccrc->v[0];
-    alwan_scalar cbc = yccbccrc->v[1] - ALWAN_LITERAL(0.5);
-    alwan_scalar crc = yccbccrc->v[2] - ALWAN_LITERAL(0.5);
+    /* Step 1: Reverse legal range scaling (10-bit: Y: 64-940, C: 64-960) */
+    alwan_scalar const y_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const y_max = ALWAN_LITERAL(940.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const c_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const c_max = ALWAN_LITERAL(960.0) / ALWAN_LITERAL(1023.0);
+    alwan_scalar const c_center = (c_max + c_min) / ALWAN_LITERAL(2.0);
 
-    /* Reconstruct R and B using standard formulas */
-    alwan_scalar r, b;
+    alwan_scalar yc = (yccbccrc->v[0] - y_min) / (y_max - y_min);
+    alwan_scalar cbc = (yccbccrc->v[1] - c_center) / (c_max - c_min);
+    alwan_scalar crc = (yccbccrc->v[2] - c_center) / (c_max - c_min);
+
+    /* Step 2: Reverse chroma divisors */
+    alwan_scalar diff_b, diff_r;
+    if (cbc <= ALWAN_LITERAL(0.0)) {
+        diff_b = cbc * ALWAN_LITERAL(1.9404);
+    } else {
+        diff_b = cbc * ALWAN_LITERAL(1.5816);
+    }
 
     if (crc <= ALWAN_LITERAL(0.0)) {
-        r = yc + crc * ALWAN_LITERAL(2.0) * yc * (ALWAN_LITERAL(1.0) - kr);
+        diff_r = crc * ALWAN_LITERAL(1.7184);
     } else {
-        r = yc + crc * ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - yc) * (ALWAN_LITERAL(1.0) - kr);
+        diff_r = crc * ALWAN_LITERAL(0.9936);
     }
 
-    if (cbc <= ALWAN_LITERAL(0.0)) {
-        b = yc + cbc * ALWAN_LITERAL(2.0) * yc * (ALWAN_LITERAL(1.0) - kb);
+    /* Step 3: Reconstruct gamma-encoded R and B */
+    alwan_scalar r_gamma = yc + diff_r;
+    alwan_scalar b_gamma = yc + diff_b;
+
+    /* Step 4: Apply BT.2020 EOTF to convert back to linear */
+    alwan_scalar const beta = ALWAN_LITERAL(0.018);
+    alwan_scalar const alpha = ALWAN_LITERAL(1.099);
+    alwan_scalar const threshold = ALWAN_LITERAL(4.5) * beta;  /* 0.081 */
+
+    alwan_scalar yc_linear, r, b;
+
+    /* Apply EOTF to Yc */
+    if (yc < threshold) {
+        yc_linear = yc / ALWAN_LITERAL(4.5);
     } else {
-        b = yc + cbc * ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - yc) * (ALWAN_LITERAL(1.0) - kb);
+        yc_linear = ALWAN_POW((yc + (alpha - ALWAN_LITERAL(1.0))) / alpha,
+                              ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.45));
     }
 
-    /* G = (Yc - Kr*R - Kb*B) / Kg */
-    alwan_scalar g = (yc - kr * r - kb * b) / kg;
+    /* Apply EOTF to R */
+    if (r_gamma < threshold) {
+        r = r_gamma / ALWAN_LITERAL(4.5);
+    } else {
+        r = ALWAN_POW((r_gamma + (alpha - ALWAN_LITERAL(1.0))) / alpha,
+                      ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.45));
+    }
+
+    /* Apply EOTF to B */
+    if (b_gamma < threshold) {
+        b = b_gamma / ALWAN_LITERAL(4.5);
+    } else {
+        b = ALWAN_POW((b_gamma + (alpha - ALWAN_LITERAL(1.0))) / alpha,
+                      ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.45));
+    }
+
+    /* Step 5: Reconstruct G from linear Yc = Kr*R + Kg*G + Kb*B */
+    alwan_scalar g = (yc_linear - kr * r - kb * b) / kg;
 
     /* Clamp to valid range - constant luminance can produce out-of-gamut values */
     rgb_out->v[0] = alwan_clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));

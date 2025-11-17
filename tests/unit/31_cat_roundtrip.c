@@ -302,7 +302,7 @@ static int test_bulk_adaptation(void) {
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 
     /* Adapt all colors at once */
-    alwan_scalar adapted_data[15];  /* 5 colors * 3 components */
+    alwan_scalar adapted_data[24];  /* 8 colors * 3 components */
     int status = alwan_xyz_adapt(test_colors_data, num_tests, 3,
                                  &d65_xyz, &d50_xyz,
                                  ALWAN_CAT_BRADFORD,

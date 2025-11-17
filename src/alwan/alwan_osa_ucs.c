@@ -100,8 +100,9 @@ void alwan_xyz_to_osa_ucs(alwan_vec3 const *xyz, alwan_vec3 *osa_ucs) {
     } else {
         Y0_minus_30_cbrt = -ALWAN_POW(-Y0_minus_30, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0));
     }
-    alwan_scalar lambda = ALWAN_LITERAL(5.9) * (Y0_cbrt - ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0)) +
-                          ALWAN_LITERAL(0.042) * Y0_minus_30_cbrt;
+    /* Lambda = 5.9 * (Y0_cbrt - 2/3 + 0.042 * Y0_minus_30_cbrt) */
+    alwan_scalar Y0_es = Y0_cbrt - ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0);
+    alwan_scalar lambda = ALWAN_LITERAL(5.9) * (Y0_es + ALWAN_LITERAL(0.042) * Y0_minus_30_cbrt);
 
     /* Step 4: Transform XYZ to RGB */
     alwan_vec3 rgb;
@@ -121,8 +122,9 @@ void alwan_xyz_to_osa_ucs(alwan_vec3 const *xyz, alwan_vec3 *osa_ucs) {
 
     /* Step 6: Calculate chroma coefficient C */
     alwan_scalar C;
-    if (Y0_cbrt > ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0)) {
-        C = lambda / (ALWAN_LITERAL(5.9) * (Y0_cbrt - ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0)));
+    /* Check for division by zero, not sign of Y0_es */
+    if (ALWAN_FABS(Y0_es) > ALWAN_LITERAL(1e-10)) {
+        C = lambda / (ALWAN_LITERAL(5.9) * Y0_es);
     } else {
         C = ALWAN_LITERAL(1.0);  /* Default for very dark colors */
     }

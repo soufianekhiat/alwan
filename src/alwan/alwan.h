@@ -376,6 +376,30 @@ alwan_scalar alwan_delta_e_cmc(alwan_vec3 const *lab1, alwan_vec3 const *lab2, a
 /* ΔE*00 - CIEDE2000 color difference (most perceptually uniform) */
 alwan_scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
+/* ΔE ITP - ITU-R BT.2124 HDR color difference in ICtCp space (scalar_factor default: 720) */
+alwan_scalar alwan_delta_e_itp(alwan_vec3 const *ictcp1, alwan_vec3 const *ictcp2, alwan_scalar scalar_factor);
+
+/* ΔE HyAB - Hybrid Delta E, improved perceptual metric */
+alwan_scalar alwan_delta_e_hyab(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+
+/* ΔE DIN99 - Euclidean distance in DIN99 space (variant: 0=DIN99, 1=b, 2=c, 3=d) */
+alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *din99_2);
+
+/* ΔE CAM02-LCD - CIECAM02 Large Color Difference in UCS space */
+alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+
+/* ΔE CAM02-SCD - CIECAM02 Small Color Difference in UCS space */
+alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+
+/* ΔE CAM16-LCD - CAM16 Large Color Difference in UCS space */
+alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+
+/* ΔE CAM16-SCD - CAM16 Small Color Difference in UCS space */
+alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+
+/* ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space */
+alwan_scalar alwan_delta_e_zcam(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+
 /* ----------------------------------------------------------------
  * Chromatic Adaptation Transform (CAT)
  * ---------------------------------------------------------------- */

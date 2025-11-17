@@ -27,12 +27,13 @@ static alwan_scalar const MATRIX_Q[16] = {
     ALWAN_LITERAL(0.7554),   ALWAN_LITERAL(3.8666),   ALWAN_LITERAL(1.6739),   ALWAN_LITERAL(1.0)
 };
 
-/* Inverse projective transformation matrix Q^-1 (precomputed for efficiency) */
+/* Inverse projective transformation matrix Q^-1 (precomputed for efficiency)
+ * From colour-science: colour.models.prolab.MATRIX_INVERSE_Q */
 static alwan_scalar const MATRIX_INVERSE_Q[16] = {
-    ALWAN_LITERAL( 0.0013378602649006),   ALWAN_LITERAL( 0.0009782456140351),  ALWAN_LITERAL( 0.0007290529949745),  ALWAN_LITERAL(-0.0024451588739101),
-    ALWAN_LITERAL( 0.0010597944259478),   ALWAN_LITERAL(-0.0000179577699177),  ALWAN_LITERAL( 0.0002529424837956),  ALWAN_LITERAL(-0.0012947791398256),
-    ALWAN_LITERAL( 0.0020485225089390),   ALWAN_LITERAL( 0.0018639467779425),  ALWAN_LITERAL(-0.0018862050941859),  ALWAN_LITERAL(-0.0020262642926956),
-    ALWAN_LITERAL(-0.0010107253464270),  ALWAN_LITERAL(-0.0015164185350877),  ALWAN_LITERAL(-0.0006203389830509),  ALWAN_LITERAL( 0.0031474828645656)
+    ALWAN_LITERAL( 0.0013706328207773),  ALWAN_LITERAL( 0.0013873820295459),  ALWAN_LITERAL( 0.0008160688509916),  ALWAN_LITERAL( 0.0),
+    ALWAN_LITERAL( 0.0013706328207773),  ALWAN_LITERAL(-0.0002431548538006),  ALWAN_LITERAL( 0.0009653291945657),  ALWAN_LITERAL( 0.0),
+    ALWAN_LITERAL( 0.0013706328207773),  ALWAN_LITERAL( 0.0000808345942686),  ALWAN_LITERAL(-0.0031748189744632),  ALWAN_LITERAL(-0.0),
+    ALWAN_LITERAL(-0.0086293671792227),  ALWAN_LITERAL(-0.0002431548538006),  ALWAN_LITERAL( 0.0009653291945657),  ALWAN_LITERAL( 1.0)
 };
 
 /* ----------------------------------------------------------------
@@ -78,10 +79,10 @@ static void apply_projective_transform(alwan_scalar const *matrix,
  * ---------------------------------------------------------------- */
 
 void alwan_xyz_to_prolab(alwan_vec3 const *xyz, alwan_vec3 *prolab) {
-    /* D65 reference white (Y = 100) */
-    alwan_scalar const xn = ALWAN_LITERAL(95.047);
-    alwan_scalar const yn = ALWAN_LITERAL(100.0);
-    alwan_scalar const zn = ALWAN_LITERAL(108.883);
+    /* D65 reference white (Y = 100) - from alwan_internal.h */
+    alwan_scalar const xn = ALWAN_D65_X;
+    alwan_scalar const yn = ALWAN_D65_Y;
+    alwan_scalar const zn = ALWAN_D65_Z;
 
     /* Step 1: Normalize XYZ by reference white (relative XYZ) */
     alwan_vec3 xyz_relative;
@@ -94,10 +95,10 @@ void alwan_xyz_to_prolab(alwan_vec3 const *xyz, alwan_vec3 *prolab) {
 }
 
 void alwan_prolab_to_xyz(alwan_vec3 const *prolab, alwan_vec3 *xyz) {
-    /* D65 reference white (Y = 100) */
-    alwan_scalar const xn = ALWAN_LITERAL(95.047);
-    alwan_scalar const yn = ALWAN_LITERAL(100.0);
-    alwan_scalar const zn = ALWAN_LITERAL(108.883);
+    /* D65 reference white (Y = 100) - from alwan_internal.h */
+    alwan_scalar const xn = ALWAN_D65_X;
+    alwan_scalar const yn = ALWAN_D65_Y;
+    alwan_scalar const zn = ALWAN_D65_Z;
 
     /* Step 1: Apply inverse projective transformation with MATRIX_INVERSE_Q */
     alwan_vec3 xyz_relative;

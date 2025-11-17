@@ -106,6 +106,40 @@ static alwan_scalar srgb_eotf_scalar(alwan_scalar encoded) {
 }
 
 /* ----------------------------------------------------------------
+ * BT.2020 Transfer Functions
+ * ---------------------------------------------------------------- */
+
+/* BT.2020 OETF: linear -> encoded
+ * Formula: E' = 4.5 * E                       if E < 0.018
+ *               1.099 * E^0.45 - 0.099        otherwise
+ * This is the 10-bit system variant (beta=0.018, alpha=1.099) */
+static alwan_scalar bt2020_oetf_scalar(alwan_scalar linear) {
+    alwan_scalar const beta = ALWAN_LITERAL(0.018);
+    alwan_scalar const alpha = ALWAN_LITERAL(1.099);
+
+    if (linear < beta) {
+        return ALWAN_LITERAL(4.5) * linear;
+    } else {
+        return alpha * ALWAN_POW(linear, ALWAN_LITERAL(0.45)) - (alpha - ALWAN_LITERAL(1.0));
+    }
+}
+
+/* BT.2020 EOTF: encoded -> linear
+ * Inverse of the OETF above */
+static alwan_scalar bt2020_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const beta = ALWAN_LITERAL(0.018);
+    alwan_scalar const alpha = ALWAN_LITERAL(1.099);
+    alwan_scalar const threshold = ALWAN_LITERAL(4.5) * beta;  /* 0.081 */
+
+    if (encoded < threshold) {
+        return encoded / ALWAN_LITERAL(4.5);
+    } else {
+        return ALWAN_POW((encoded + (alpha - ALWAN_LITERAL(1.0))) / alpha,
+                         ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.45));
+    }
+}
+
+/* ----------------------------------------------------------------
  * PQ (ST.2084) Transfer Functions - HDR10/HDR10+
  * ---------------------------------------------------------------- */
 
@@ -251,6 +285,8 @@ int alwan_oetf_apply(char const *name,
 
     if (strcmp(name, "srgb") == 0) {
         oetf_fn = srgb_oetf_scalar;
+    } else if (strcmp(name, "bt2020") == 0 || strcmp(name, "bt709") == 0) {
+        oetf_fn = bt2020_oetf_scalar;  /* BT.709 and BT.2020 use same transfer function */
     } else if (strcmp(name, "pq") == 0 || strcmp(name, "st2084") == 0) {
         oetf_fn = pq_oetf_scalar;
     } else if (strcmp(name, "hlg") == 0) {
@@ -283,6 +319,8 @@ int alwan_eotf_apply(char const *name,
 
     if (strcmp(name, "srgb") == 0) {
         eotf_fn = srgb_eotf_scalar;
+    } else if (strcmp(name, "bt2020") == 0 || strcmp(name, "bt709") == 0) {
+        eotf_fn = bt2020_eotf_scalar;  /* BT.709 and BT.2020 use same transfer function */
     } else if (strcmp(name, "pq") == 0 || strcmp(name, "st2084") == 0) {
         eotf_fn = pq_eotf_scalar;
     } else if (strcmp(name, "hlg") == 0) {
