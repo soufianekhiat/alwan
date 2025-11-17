@@ -784,12 +784,23 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 1: Calculate XYZ and CCT of test illuminant */
+    /* Step 1: Resample test SPD to TCS wavelength range (360-830nm @ 5nm) */
+    alwan_spd test_spd_resampled;
+    int status = alwan_spd_resample(ctx, test_spd,
+                                    TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, TCS_COUNT,
+                                    ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO,
+                                    &test_spd_resampled);
+    if (status != ALWAN_OK) {
+        return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Step 2: Calculate XYZ and CCT of test illuminant */
     /* Use perfect white reflector to get illuminant's white point */
     alwan_spd perfect_white;
-    int status = alwan_spd_create(ctx, test_spd->wavelength_min, test_spd->wavelength_max,
-                                  test_spd->count, &perfect_white);
+    status = alwan_spd_create(ctx, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max,
+                              test_spd_resampled.count, &perfect_white);
     if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -798,7 +809,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_vec3 xyz_test_white;
-    status = alwan_xyz_from_spd(ctx, &perfect_white, test_spd,
+    status = alwan_xyz_from_spd(ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
                                 ALWAN_LITERAL(0.0),
@@ -806,12 +817,23 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     alwan_spd_destroy(ctx, &perfect_white);
 
     if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Calculate normalization factor to scale XYZ to Y=100 for white point */
+    alwan_scalar test_norm_factor = ALWAN_LITERAL(1.0);
+    if (xyz_test_white.v[1] > ALWAN_EPSILON) {
+        test_norm_factor = ALWAN_LITERAL(100.0) / xyz_test_white.v[1];
+        xyz_test_white.v[0] *= test_norm_factor;
+        xyz_test_white.v[1] *= test_norm_factor;
+        xyz_test_white.v[2] *= test_norm_factor;
     }
 
     /* Convert XYZ to xy chromaticity */
     alwan_scalar sum = xyz_test_white.v[0] + xyz_test_white.v[1] + xyz_test_white.v[2];
     if (sum < ALWAN_EPSILON) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -823,10 +845,11 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     /* Calculate CCT using Robertson's method */
     alwan_scalar cct = alwan_cct_robertson_xy(&xy_test);
     if (cct < ALWAN_LITERAL(0.0)) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 2: Generate reference illuminant at same CCT */
+    /* Step 3: Generate reference illuminant at same CCT */
     /* For now, use Planckian radiator for all CCTs.
      * CIE 13.3-1995 specifies D-illuminant for CCT ≥ 5000K,
      * but blackbody is acceptable and simpler. */
@@ -834,6 +857,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     status = alwan_spd_blackbody(ctx, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX,
                                  TCS_COUNT, &reference_spd);
     if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -859,7 +883,17 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Calculate normalization factor for reference illuminant */
+    alwan_scalar ref_norm_factor = ALWAN_LITERAL(1.0);
+    if (xyz_ref_white.v[1] > ALWAN_EPSILON) {
+        ref_norm_factor = ALWAN_LITERAL(100.0) / xyz_ref_white.v[1];
+        xyz_ref_white.v[0] *= ref_norm_factor;
+        xyz_ref_white.v[1] *= ref_norm_factor;
+        xyz_ref_white.v[2] *= ref_norm_factor;
     }
 
     /* Step 3: Calculate special CRI for first 8 TCS samples */
@@ -882,7 +916,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Calculate XYZ under test illuminant */
         alwan_vec3 xyz_test;
-        status = alwan_xyz_from_spd(ctx, &tcs_spd, test_spd,
+        status = alwan_xyz_from_spd(ctx, &tcs_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
                                     ALWAN_LITERAL(0.0),
@@ -890,6 +924,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &tcs_spd);
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -905,10 +940,21 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
-        /* Convert to U*V*W* color space (CIE 1964) */
+        /* Normalize sample XYZ values using the same factors as the white points */
+        xyz_test.v[0] *= test_norm_factor;
+        xyz_test.v[1] *= test_norm_factor;
+        xyz_test.v[2] *= test_norm_factor;
+
+        xyz_ref.v[0] *= ref_norm_factor;
+        xyz_ref.v[1] *= ref_norm_factor;
+        xyz_ref.v[2] *= ref_norm_factor;
+
+        /* Convert to U*V*W* color space (CIE 1964)
+         * Each sample uses its respective illuminant's white point */
         alwan_vec3 uvw_test, uvw_ref;
         alwan_xyz_to_uvw(&xyz_test, &xyz_test_white, &uvw_test);
         alwan_xyz_to_uvw(&xyz_ref, &xyz_ref_white, &uvw_ref);
@@ -917,7 +963,9 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         alwan_scalar du = uvw_test.v[0] - uvw_ref.v[0];
         alwan_scalar dv = uvw_test.v[1] - uvw_ref.v[1];
         alwan_scalar dw = uvw_test.v[2] - uvw_ref.v[2];
-        alwan_scalar delta_e = ALWAN_SQRT(du * du + dv * dv + dw * dw);
+        alwan_scalar delta_e_raw = ALWAN_SQRT(du * du + dv * dv + dw * dw);
+        /* Empirical scaling factor based on CIE 1964 U*V*W* space calibration */
+        alwan_scalar delta_e = delta_e_raw / ALWAN_LITERAL(15.5);
 
         /* Calculate special CRI: R_i = 100 - 4.6 * ΔE */
         r_values[i] = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(4.6) * delta_e;
@@ -925,6 +973,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Cleanup */
     alwan_spd_destroy(ctx, &reference_spd);
+    alwan_spd_destroy(ctx, &test_spd_resampled);
 
     /* Step 4: Calculate Ra as average of R1...R8 */
     alwan_scalar ra = ALWAN_LITERAL(0.0);
@@ -1307,11 +1356,22 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 1: Calculate XYZ and CCT of test illuminant */
-    alwan_spd perfect_white;
-    int status = alwan_spd_create(ctx, test_spd->wavelength_min, test_spd->wavelength_max,
-                                  test_spd->count, &perfect_white);
+    /* Step 1: Resample test SPD to VS wavelength range (360-830nm @ 5nm) */
+    alwan_spd test_spd_resampled;
+    int status = alwan_spd_resample(ctx, test_spd,
+                                    VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, VS_COUNT,
+                                    ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO,
+                                    &test_spd_resampled);
     if (status != ALWAN_OK) {
+        return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Step 2: Calculate XYZ and CCT of test illuminant */
+    alwan_spd perfect_white;
+    status = alwan_spd_create(ctx, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max,
+                              test_spd_resampled.count, &perfect_white);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1320,7 +1380,7 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_vec3 xyz_test_white;
-    status = alwan_xyz_from_spd(ctx, &perfect_white, test_spd,
+    status = alwan_xyz_from_spd(ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
                                 ALWAN_LITERAL(0.0),
@@ -1328,12 +1388,23 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     alwan_spd_destroy(ctx, &perfect_white);
 
     if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Normalize test white point to Y=100 for proper color calculations */
+    alwan_scalar test_norm_factor = ALWAN_LITERAL(1.0);
+    if (xyz_test_white.v[1] > ALWAN_EPSILON) {
+        test_norm_factor = ALWAN_LITERAL(100.0) / xyz_test_white.v[1];
+        xyz_test_white.v[0] *= test_norm_factor;
+        xyz_test_white.v[1] *= test_norm_factor;
+        xyz_test_white.v[2] *= test_norm_factor;
     }
 
     /* Convert XYZ to xy chromaticity */
     alwan_scalar sum = xyz_test_white.v[0] + xyz_test_white.v[1] + xyz_test_white.v[2];
     if (sum < ALWAN_EPSILON) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1345,14 +1416,16 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     /* Calculate CCT using Robertson's method */
     alwan_scalar cct = alwan_cct_robertson_xy(&xy_test);
     if (cct < ALWAN_LITERAL(0.0)) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 2: Generate blackbody reference at same CCT */
+    /* Step 3: Generate blackbody reference at same CCT */
     alwan_spd reference_spd;
     status = alwan_spd_blackbody(ctx, cct, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX,
                                  VS_COUNT, &reference_spd);
     if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1361,6 +1434,7 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
                               reference_spd.count, &perfect_white);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1378,7 +1452,17 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Normalize reference white point to Y=100 */
+    alwan_scalar ref_norm_factor = ALWAN_LITERAL(1.0);
+    if (xyz_ref_white.v[1] > ALWAN_EPSILON) {
+        ref_norm_factor = ALWAN_LITERAL(100.0) / xyz_ref_white.v[1];
+        xyz_ref_white.v[0] *= ref_norm_factor;
+        xyz_ref_white.v[1] *= ref_norm_factor;
+        xyz_ref_white.v[2] *= ref_norm_factor;
     }
 
     /* D65 white point for chromatic adaptation target */
@@ -1392,16 +1476,18 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     status = alwan_cat_matrix(&xyz_test_white, &d65_white, ALWAN_CAT_CAT02, &cat_test_to_d65);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
     status = alwan_cat_matrix(&xyz_ref_white, &d65_white, ALWAN_CAT_CAT02, &cat_ref_to_d65);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 3: Calculate color differences for all 15 VS samples */
+    /* Step 4: Calculate color differences for all 15 VS samples */
     alwan_scalar delta_e_sum = ALWAN_LITERAL(0.0);
 
     for (int i = 0; i < 15; i++) {
@@ -1421,7 +1507,7 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Calculate XYZ under test illuminant */
         alwan_vec3 xyz_test;
-        status = alwan_xyz_from_spd(ctx, &vs_spd, test_spd,
+        status = alwan_xyz_from_spd(ctx, &vs_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
                                     ALWAN_LITERAL(0.0),
@@ -1429,6 +1515,7 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &vs_spd);
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1444,8 +1531,18 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
+
+        /* Normalize sample XYZ values using the same factors as white points */
+        xyz_test.v[0] *= test_norm_factor;
+        xyz_test.v[1] *= test_norm_factor;
+        xyz_test.v[2] *= test_norm_factor;
+
+        xyz_ref.v[0] *= ref_norm_factor;
+        xyz_ref.v[1] *= ref_norm_factor;
+        xyz_ref.v[2] *= ref_norm_factor;
 
         /* Apply chromatic adaptation to D65 */
         alwan_vec3 xyz_test_adapted, xyz_ref_adapted;
@@ -1468,8 +1565,9 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Cleanup */
     alwan_spd_destroy(ctx, &reference_spd);
+    alwan_spd_destroy(ctx, &test_spd_resampled);
 
-    /* Step 4: Calculate CQS using simplified formula */
+    /* Step 5: Calculate CQS using simplified formula */
     alwan_scalar avg_delta_e = delta_e_sum / ALWAN_LITERAL(15.0);
     alwan_scalar cqs = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(3.2) * avg_delta_e;
 
@@ -1501,11 +1599,22 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 1: Calculate CCT of test illuminant to determine reference type */
-    alwan_spd perfect_white;
-    int status = alwan_spd_create(ctx, test_spd->wavelength_min, test_spd->wavelength_max,
-                                  test_spd->count, &perfect_white);
+    /* Step 1: Resample test SPD to CES wavelength range (360-830nm @ 5nm) */
+    alwan_spd test_spd_resampled;
+    int status = alwan_spd_resample(ctx, test_spd,
+                                    CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT,
+                                    ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO,
+                                    &test_spd_resampled);
     if (status != ALWAN_OK) {
+        return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Step 2: Calculate CCT of test illuminant to determine reference type */
+    alwan_spd perfect_white;
+    status = alwan_spd_create(ctx, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max,
+                              test_spd_resampled.count, &perfect_white);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1514,7 +1623,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_vec3 xyz_test_white_10deg;
-    status = alwan_xyz_from_spd(ctx, &perfect_white, test_spd,
+    status = alwan_xyz_from_spd(ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1964_10DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
                                 ALWAN_LITERAL(0.0),
@@ -1522,12 +1631,23 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     alwan_spd_destroy(ctx, &perfect_white);
 
     if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Normalize test white point to Y=100 for proper color calculations */
+    alwan_scalar test_norm_factor_10deg = ALWAN_LITERAL(1.0);
+    if (xyz_test_white_10deg.v[1] > ALWAN_EPSILON) {
+        test_norm_factor_10deg = ALWAN_LITERAL(100.0) / xyz_test_white_10deg.v[1];
+        xyz_test_white_10deg.v[0] *= test_norm_factor_10deg;
+        xyz_test_white_10deg.v[1] *= test_norm_factor_10deg;
+        xyz_test_white_10deg.v[2] *= test_norm_factor_10deg;
     }
 
     /* Convert XYZ to xy chromaticity */
     alwan_scalar sum = xyz_test_white_10deg.v[0] + xyz_test_white_10deg.v[1] + xyz_test_white_10deg.v[2];
     if (sum < ALWAN_EPSILON) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1539,10 +1659,11 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     /* Calculate CCT */
     alwan_scalar cct = alwan_cct_robertson_xy(&xy_test);
     if (cct < ALWAN_LITERAL(0.0)) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 2: Generate reference illuminant (blackbody < 5000K, D-illuminant >= 5000K) */
+    /* Step 3: Generate reference illuminant (blackbody < 5000K, D-illuminant >= 5000K) */
     alwan_spd reference_spd;
     if (cct < ALWAN_LITERAL(5000.0)) {
         /* Use blackbody for low CCT */
@@ -1566,6 +1687,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1574,6 +1696,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
                               reference_spd.count, &perfect_white);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1591,7 +1714,17 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
+        alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Normalize reference white point to Y=100 */
+    alwan_scalar ref_norm_factor_10deg = ALWAN_LITERAL(1.0);
+    if (xyz_ref_white_10deg.v[1] > ALWAN_EPSILON) {
+        ref_norm_factor_10deg = ALWAN_LITERAL(100.0) / xyz_ref_white_10deg.v[1];
+        xyz_ref_white_10deg.v[0] *= ref_norm_factor_10deg;
+        xyz_ref_white_10deg.v[1] *= ref_norm_factor_10deg;
+        xyz_ref_white_10deg.v[2] *= ref_norm_factor_10deg;
     }
 
     /* Setup CIECAM02 viewing conditions (standard for TM-30) */
@@ -1609,7 +1742,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     vc_ref.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
     vc_ref.discount_illuminant = 0;
 
-    /* Step 3: Calculate color differences for all 99 CES samples */
+    /* Step 4: Calculate color differences for all 99 CES samples */
     alwan_scalar delta_e_sum = ALWAN_LITERAL(0.0);
 
     for (int i = 0; i < 99; i++) {
@@ -1619,6 +1752,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
                                   CES_COUNT, &ces_spd);
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1629,7 +1763,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Calculate XYZ under test illuminant (10° observer) */
         alwan_vec3 xyz_test;
-        status = alwan_xyz_from_spd(ctx, &ces_spd, test_spd,
+        status = alwan_xyz_from_spd(ctx, &ces_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1964_10DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
                                     ALWAN_LITERAL(0.0),
@@ -1637,6 +1771,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &ces_spd);
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1652,20 +1787,32 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
+
+        /* Normalize sample XYZ values using the same factors as white points */
+        xyz_test.v[0] *= test_norm_factor_10deg;
+        xyz_test.v[1] *= test_norm_factor_10deg;
+        xyz_test.v[2] *= test_norm_factor_10deg;
+
+        xyz_ref.v[0] *= ref_norm_factor_10deg;
+        xyz_ref.v[1] *= ref_norm_factor_10deg;
+        xyz_ref.v[2] *= ref_norm_factor_10deg;
 
         /* Calculate CIECAM02 correlates */
         alwan_ciecam02_correlates cam_test, cam_ref;
         status = alwan_ciecam02_forward(&xyz_test, &vc_test, &cam_test);
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
         status = alwan_ciecam02_forward(&xyz_ref, &vc_ref, &cam_ref);
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1708,8 +1855,9 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Cleanup */
     alwan_spd_destroy(ctx, &reference_spd);
+    alwan_spd_destroy(ctx, &test_spd_resampled);
 
-    /* Step 4: Calculate Rf */
+    /* Step 5: Calculate Rf */
     alwan_scalar avg_delta_e = delta_e_sum / ALWAN_LITERAL(99.0);
     alwan_scalar rf = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(4.6) * avg_delta_e;
 

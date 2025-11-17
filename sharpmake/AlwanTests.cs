@@ -36,6 +36,7 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\111_rgb_convert.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\120_oklab.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\130_ictcp.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\240_quality_rendering.c");
         }
 
         [Configure()]

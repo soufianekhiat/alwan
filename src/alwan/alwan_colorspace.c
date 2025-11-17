@@ -215,12 +215,15 @@ void alwan_xyz_to_uvw(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_
         vn = (ALWAN_LITERAL(6.0) * Yn) / sum_n;
     }
 
-    /* Calculate W* (1964 lightness) */
+    /* Calculate W* (1964 lightness)
+     * W* = 25 * (Y/Yn)^(1/3) - 17
+     * where Y/Yn is the relative luminance */
     alwan_scalar W;
-    if (Y < ALWAN_EPSILON) {
+    if (Yn < ALWAN_EPSILON || Y < ALWAN_EPSILON) {
         W = ALWAN_LITERAL(-17.0);
     } else {
-        W = ALWAN_LITERAL(25.0) * ALWAN_CBRT(Y) - ALWAN_LITERAL(17.0);
+        alwan_scalar Y_ratio = Y / Yn;
+        W = ALWAN_LITERAL(25.0) * ALWAN_CBRT(Y_ratio) - 17;
     }
 
     /* Calculate U* and V* */

@@ -390,8 +390,10 @@ int alwan_spd_blackbody(alwan_ctx *ctx,
         alwan_scalar exponent = c2 / (wavelength_m * temperature_K);
         alwan_scalar denominator = lambda5 * (ALWAN_EXP(exponent) - ALWAN_LITERAL(1.0));
 
-        /* Avoid division by zero (shouldn't happen with valid wavelengths) */
-        if (ALWAN_FABS(denominator) < ALWAN_EPSILON) {
+        /* Avoid division by zero (though should never happen with valid inputs)
+         * Use a much smaller threshold since Planck's law naturally produces tiny denominators
+         * (typically 1e-30 to 1e-28 for visible wavelengths) */
+        if (ALWAN_FABS(denominator) < ALWAN_LITERAL(1e-100)) {
             out->values[i] = ALWAN_LITERAL(0.0);
         } else {
             out->values[i] = c1 / denominator;

@@ -41,6 +41,7 @@ extern int test_200_zcam_main(void);
 extern int test_210_hunt_main(void);
 extern int test_220_delta_e_extended_main(void);
 extern int test_230_whiteness_yellowness_main(void);
+extern int test_240_quality_rendering_main(void);
 
 /* Test registry */
 typedef struct {
@@ -80,6 +81,7 @@ static test_suite const g_test_suites[] = {
     {"210_hunt", test_210_hunt_main},
     {"220_delta_e_extended", test_220_delta_e_extended_main},
     {"230_whiteness_yellowness", test_230_whiteness_yellowness_main},
+    {"240_quality_rendering", test_240_quality_rendering_main},
 };
 
 int main(void) {

@@ -1025,6 +1025,66 @@ for xyz in TEST_SAMPLES_WY:
 
 write_ref('whiteness_cie2004', cie2004_whiteness, 'P4.6 CIE 2004 Whiteness (D65/2°)')
 
+# ================================================================
+# P4.1, P4.2, P4.3, P4.5: Light Quality Metrics (CRI, CQS, TM-30, CIE 224)
+# ================================================================
+print('\nP4 Light Quality Metrics (CRI, CQS, TM-30, CIE 224):')
+
+# Test illuminants for quality metrics
+test_illuminants = [
+    ('D65', colour.SDS_ILLUMINANTS['D65']),
+    ('A', colour.SDS_ILLUMINANTS['A']),
+    ('D50', colour.SDS_ILLUMINANTS['D50']),
+    ('FL2', colour.SDS_ILLUMINANTS['FL2']),  # Cool white fluorescent
+]
+
+# Add some blackbody SPDs at different CCTs
+from colour.colorimetry import sd_blackbody
+bb_ccts = [2700, 4000, 5000, 6500]
+for cct in bb_ccts:
+    bb_spd = sd_blackbody(cct)
+    test_illuminants.append((f'BB{cct}K', bb_spd))
+
+# Calculate quality metrics for each illuminant
+cri_values = []
+cqs_values = []
+tm30_values = []
+
+illuminant_names = []
+for name, spd in test_illuminants:
+    illuminant_names.append(name)
+
+    # CRI (P4.1)
+    try:
+        cri = colour.quality.colour_rendering_index(spd)
+        cri_values.append(cri)
+    except:
+        cri_values.append(0.0)
+
+    # CQS (P4.2)
+    try:
+        cqs = colour.quality.colour_quality_scale(spd)
+        cqs_values.append(cqs)
+    except:
+        cqs_values.append(0.0)
+
+    # TM-30 / CIE 224:2017 (P4.3 / P4.5)
+    try:
+        tm30 = colour.quality.colour_fidelity_index_CIE2017(spd)
+        tm30_values.append(tm30)
+    except:
+        tm30_values.append(0.0)
+
+    print(f'  {name:10s}: CRI={cri_values[-1]:5.1f}  CQS={cqs_values[-1]:5.1f}  TM-30/CIE224={tm30_values[-1]:5.1f}')
+
+write_ref('quality_cri', cri_values, 'P4.1 CRI Ra values for test illuminants')
+write_ref('quality_cqs', cqs_values, 'P4.2 CQS values for test illuminants')
+write_ref('quality_tm30', tm30_values, 'P4.3/P4.5 TM-30 & CIE 224 Rf values')
+
+# Store illuminant names for test documentation
+with open(os.path.join(TEST_REF_DIR, 'quality_illuminant_names.txt'), 'w') as f:
+    f.write('\n'.join(illuminant_names))
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')
