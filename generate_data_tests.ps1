@@ -271,6 +271,115 @@ write_ref('delta_e_cmc', delta_e_cmc, 'Delta E CMC(2:1)')
 write_ref('delta_e_2000', delta_e_2000, 'Delta E 2000')
 
 # ================================================================
+# P3: Extended Delta E Metrics
+# ================================================================
+print('\nP3 Extended Delta E Metrics:')
+
+# Test RGB color pairs for P3 metrics
+p3_rgb_pairs = [
+    ([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),   # Black to white
+    ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),   # Red to green
+    ([0.0, 0.0, 1.0], [1.0, 1.0, 0.0]),   # Blue to yellow
+    ([0.5, 0.5, 0.5], [0.6, 0.5, 0.4]),   # Gray to brownish
+    ([1.0, 0.0, 0.0], [1.0, 0.1, 0.0]),   # Red to slightly orange
+]
+
+# P3.1: Delta E ITP (BT.2100 HDR)
+from colour.difference import delta_E_ITP
+
+delta_e_itp_ictcp1 = []
+delta_e_itp_ictcp2 = []
+delta_e_itp = []
+
+for rgb1, rgb2 in p3_rgb_pairs:
+    ictcp1 = colour.RGB_to_ICtCp(np.array(rgb1))
+    ictcp2 = colour.RGB_to_ICtCp(np.array(rgb2))
+    de_itp = delta_E_ITP(ictcp1, ictcp2)  # Default scalar_factor=720
+
+    delta_e_itp_ictcp1.extend(ictcp1)
+    delta_e_itp_ictcp2.extend(ictcp2)
+    delta_e_itp.append(de_itp)
+
+write_ref('delta_e_itp_ictcp1', delta_e_itp_ictcp1, 'P3.1 ICtCp color 1 for Delta E ITP')
+write_ref('delta_e_itp_ictcp2', delta_e_itp_ictcp2, 'P3.1 ICtCp color 2 for Delta E ITP')
+write_ref('delta_e_itp', delta_e_itp, 'P3.1 Delta E ITP values')
+
+# P3.3: Delta E DIN99
+delta_e_din99_1 = []
+delta_e_din99_2 = []
+delta_e_din99 = []
+
+for rgb1, rgb2 in p3_rgb_pairs:
+    xyz1 = colour.sRGB_to_XYZ(np.array(rgb1))
+    xyz2 = colour.sRGB_to_XYZ(np.array(rgb2))
+    lab1 = colour.XYZ_to_Lab(xyz1)
+    lab2 = colour.XYZ_to_Lab(xyz2)
+    din99_1 = colour.Lab_to_DIN99(lab1)
+    din99_2 = colour.Lab_to_DIN99(lab2)
+    de_din99 = np.sqrt(np.sum((din99_1 - din99_2) ** 2))
+
+    delta_e_din99_1.extend(din99_1)
+    delta_e_din99_2.extend(din99_2)
+    delta_e_din99.append(de_din99)
+
+write_ref('delta_e_din99_1', delta_e_din99_1, 'P3.3 DIN99 color 1')
+write_ref('delta_e_din99_2', delta_e_din99_2, 'P3.3 DIN99 color 2')
+write_ref('delta_e_din99', delta_e_din99, 'P3.3 Delta E DIN99 values')
+
+# P3.6: Delta E ZCAM (Euclidean in Jzazbz)
+delta_e_zcam_jzazbz1 = []
+delta_e_zcam_jzazbz2 = []
+delta_e_zcam = []
+
+for rgb1, rgb2 in p3_rgb_pairs:
+    xyz1 = colour.sRGB_to_XYZ(np.array(rgb1))
+    xyz2 = colour.sRGB_to_XYZ(np.array(rgb2))
+    jzazbz1 = colour.XYZ_to_Jzazbz(xyz1)
+    jzazbz2 = colour.XYZ_to_Jzazbz(xyz2)
+    de_zcam = np.sqrt(np.sum((jzazbz1 - jzazbz2) ** 2))
+
+    delta_e_zcam_jzazbz1.extend(jzazbz1)
+    delta_e_zcam_jzazbz2.extend(jzazbz2)
+    delta_e_zcam.append(de_zcam)
+
+write_ref('delta_e_zcam_jzazbz1', delta_e_zcam_jzazbz1, 'P3.6 Jzazbz color 1 for Delta E ZCAM')
+write_ref('delta_e_zcam_jzazbz2', delta_e_zcam_jzazbz2, 'P3.6 Jzazbz color 2 for Delta E ZCAM')
+write_ref('delta_e_zcam', delta_e_zcam, 'P3.6 Delta E ZCAM values')
+
+# P3.4/P3.5: Delta E CAM02/CAM16 LCD and SCD
+delta_e_cam_lab1 = []
+delta_e_cam_lab2 = []
+delta_e_cam02_lcd = []
+delta_e_cam02_scd = []
+delta_e_cam16_lcd = []
+delta_e_cam16_scd = []
+
+for rgb1, rgb2 in p3_rgb_pairs:
+    xyz1 = colour.sRGB_to_XYZ(np.array(rgb1))
+    xyz2 = colour.sRGB_to_XYZ(np.array(rgb2))
+    lab1 = colour.XYZ_to_Lab(xyz1)
+    lab2 = colour.XYZ_to_Lab(xyz2)
+
+    de_cam02_lcd = colour.difference.delta_E_CAM02LCD(lab1, lab2)
+    de_cam02_scd = colour.difference.delta_E_CAM02SCD(lab1, lab2)
+    de_cam16_lcd = colour.difference.delta_E_CAM16LCD(lab1, lab2)
+    de_cam16_scd = colour.difference.delta_E_CAM16SCD(lab1, lab2)
+
+    delta_e_cam_lab1.extend(lab1)
+    delta_e_cam_lab2.extend(lab2)
+    delta_e_cam02_lcd.append(de_cam02_lcd)
+    delta_e_cam02_scd.append(de_cam02_scd)
+    delta_e_cam16_lcd.append(de_cam16_lcd)
+    delta_e_cam16_scd.append(de_cam16_scd)
+
+write_ref('delta_e_cam_lab1', delta_e_cam_lab1, 'P3.4/P3.5 Lab color 1 for CAM02/CAM16')
+write_ref('delta_e_cam_lab2', delta_e_cam_lab2, 'P3.4/P3.5 Lab color 2 for CAM02/CAM16')
+write_ref('delta_e_cam02_lcd', delta_e_cam02_lcd, 'P3.4 Delta E CAM02-LCD values')
+write_ref('delta_e_cam02_scd', delta_e_cam02_scd, 'P3.4 Delta E CAM02-SCD values')
+write_ref('delta_e_cam16_lcd', delta_e_cam16_lcd, 'P3.5 Delta E CAM16-LCD values')
+write_ref('delta_e_cam16_scd', delta_e_cam16_scd, 'P3.5 Delta E CAM16-SCD values')
+
+# ================================================================
 # Convenience Color Models
 # ================================================================
 print('\nConvenience Color Models:')
@@ -632,9 +741,13 @@ write_ref('adapted_a_to_d65_bradford', adapted_a_to_d65_bradford, 'Adapted color
 print('\nP1.3-P1.8 Extended Color Spaces:')
 
 # Test colors in XYZ (Y=100 scale) for P1 tests
+# Get exact D65 from colour-science for consistency
+d65_xy_p1 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+d65_xyz_p1 = colour.xy_to_XYZ(d65_xy_p1) * 100.0  # Scale to Y=100
+
 TEST_COLORS_XYZ_P1 = np.array([
     [0.0, 0.0, 0.0],           # Black
-    [95.047, 100.0, 108.883],  # White D65
+    d65_xyz_p1.tolist(),       # White D65 (exact from colour-science)
     [41.24, 21.26, 1.93],      # Red
     [35.76, 71.52, 11.92],     # Green
     [18.05, 7.22, 95.05],      # Blue
@@ -760,7 +873,7 @@ TEST_COLORS_P2 = np.array([
     [10.0, 10.54, 11.47],      # Very dark gray
     [25.0, 30.0, 35.0],        # Dark gray
     [50.0, 52.69, 57.36],      # Mid gray
-    [95.047, 100.0, 108.883],  # White D65
+    d65_xyz_p1.tolist(),       # White D65 (exact from colour-science)
     [41.24, 21.26, 1.93],      # Red
     [35.76, 71.52, 11.92],     # Green
     [18.05, 7.22, 95.05],      # Blue
