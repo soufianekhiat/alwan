@@ -218,6 +218,213 @@ static int test_tm30_cie224_match(void) {
     TEST_PASS("TM-30 and CIE 224:2017 return same values");
 }
 
+/* P4.4: SSI (Spectral Similarity Index) Tests */
+
+static int test_ssi_perfect_match(void) {
+    alwan_ctx *ctx = alwan_create(NULL);
+    TEST_ASSERT(ctx != NULL, "Failed to create context");
+
+    alwan_spd d65_spd1, d65_spd2;
+    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd1);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
+    status = alwan_spd_illuminant(ctx, "D65", &d65_spd2);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
+
+    alwan_scalar ssi = alwan_ssi_calculate(ctx, &d65_spd1, &d65_spd2);
+    printf("  D65 vs D65 SSI = %.2f\n", ssi);
+    TEST_ASSERT(ssi >= ALWAN_LITERAL(99.0) && ssi <= ALWAN_LITERAL(101.0),
+                "Perfect match SSI should be ~100");
+
+    alwan_spd_destroy(ctx, &d65_spd1);
+    alwan_spd_destroy(ctx, &d65_spd2);
+    alwan_destroy(ctx);
+    TEST_PASS("SSI perfect match (D65 vs D65)");
+}
+
+static int test_ssi_illuminant_pairs(void) {
+    alwan_ctx *ctx = alwan_create(NULL);
+    TEST_ASSERT(ctx != NULL, "Failed to create context");
+
+    /* Test D65 vs D50 */
+    alwan_spd d65_spd, d50_spd;
+    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
+    status = alwan_spd_illuminant(ctx, "D50", &d50_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create D50 SPD");
+
+    alwan_scalar ssi_d65_d50 = alwan_ssi_calculate(ctx, &d65_spd, &d50_spd);
+    printf("  D65 vs D50 SSI = %.2f\n", ssi_d65_d50);
+    TEST_ASSERT(ssi_d65_d50 >= ALWAN_LITERAL(75.0) && ssi_d65_d50 <= ALWAN_LITERAL(95.0),
+                "D65 vs D50 SSI should be ~84");
+
+    /* Test D65 vs A */
+    alwan_spd a_spd;
+    status = alwan_spd_illuminant(ctx, "A", &a_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create A SPD");
+
+    alwan_scalar ssi_d65_a = alwan_ssi_calculate(ctx, &d65_spd, &a_spd);
+    printf("  D65 vs A SSI = %.2f\n", ssi_d65_a);
+    TEST_ASSERT(ssi_d65_a >= ALWAN_LITERAL(30.0) && ssi_d65_a <= ALWAN_LITERAL(70.0),
+                "D65 vs A SSI should show low similarity");
+
+    /* Test BB6500K vs D65 */
+    alwan_spd bb_spd;
+    status = alwan_spd_blackbody(ctx, ALWAN_LITERAL(6500.0), ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 95, &bb_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create blackbody SPD");
+
+    alwan_scalar ssi_bb_d65 = alwan_ssi_calculate(ctx, &bb_spd, &d65_spd);
+    printf("  BB6500K vs D65 SSI = %.2f\n", ssi_bb_d65);
+    TEST_ASSERT(ssi_bb_d65 >= ALWAN_LITERAL(85.0) && ssi_bb_d65 <= ALWAN_LITERAL(95.0),
+                "BB6500K vs D65 SSI should be ~91");
+
+    alwan_spd_destroy(ctx, &d65_spd);
+    alwan_spd_destroy(ctx, &d50_spd);
+    alwan_spd_destroy(ctx, &a_spd);
+    alwan_spd_destroy(ctx, &bb_spd);
+    alwan_destroy(ctx);
+    TEST_PASS("SSI for various illuminant pairs");
+}
+
+/* P4.7: Metamerism Index Tests */
+
+static int test_metamerism_basic(void) {
+    alwan_ctx *ctx = alwan_create(NULL);
+    TEST_ASSERT(ctx != NULL, "Failed to create context");
+
+    /* Create two simple flat reflectance spectra */
+    alwan_spd refl1, refl2;
+    int status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 95, &refl1);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create reflectance SPD 1");
+    status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 95, &refl2);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create reflectance SPD 2");
+
+    /* Set flat reflectance of 0.5 for both (gray) */
+    for (size_t i = 0; i < 95; i++) {
+        refl1.values[i] = ALWAN_LITERAL(0.5);
+        refl2.values[i] = ALWAN_LITERAL(0.5);
+    }
+
+    /* Get illuminants */
+    alwan_spd d65_spd, a_spd;
+    status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
+    status = alwan_spd_illuminant(ctx, "A", &a_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create A SPD");
+
+    /* Calculate metamerism index (same reflectance, different illuminant) */
+    alwan_scalar mi = alwan_metamerism_index(ctx, &refl1, &refl2, &d65_spd, &a_spd,
+                                             ALWAN_OBSERVER_CIE_1931_2DEG);
+    printf("  Same gray reflectance, D65->A: MI = %.2f\n", mi);
+
+    /* For identical reflectances, MI should be near zero regardless of illuminant */
+    TEST_ASSERT(mi >= ALWAN_LITERAL(0.0) && mi <= ALWAN_LITERAL(0.5),
+                "Identical reflectances should have MI ~0");
+
+    alwan_spd_destroy(ctx, &refl1);
+    alwan_spd_destroy(ctx, &refl2);
+    alwan_spd_destroy(ctx, &d65_spd);
+    alwan_spd_destroy(ctx, &a_spd);
+    alwan_destroy(ctx);
+    TEST_PASS("Metamerism Index basic test");
+}
+
+static int test_metamerism_different_reflectances(void) {
+    alwan_ctx *ctx = alwan_create(NULL);
+    TEST_ASSERT(ctx != NULL, "Failed to create context");
+
+    /* Create two different reflectance spectra */
+    alwan_spd refl1, refl2;
+    int status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 95, &refl1);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create reflectance SPD 1");
+    status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 95, &refl2);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create reflectance SPD 2");
+
+    /* Set different reflectances */
+    for (size_t i = 0; i < 95; i++) {
+        refl1.values[i] = ALWAN_LITERAL(0.3);  /* Darker gray */
+        refl2.values[i] = ALWAN_LITERAL(0.7);  /* Lighter gray */
+    }
+
+    /* Get illuminants */
+    alwan_spd d65_spd, a_spd;
+    status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
+    status = alwan_spd_illuminant(ctx, "A", &a_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create A SPD");
+
+    /* Calculate metamerism index */
+    alwan_scalar mi = alwan_metamerism_index(ctx, &refl1, &refl2, &d65_spd, &a_spd,
+                                             ALWAN_OBSERVER_CIE_1931_2DEG);
+    printf("  Dark vs light gray, D65->A: MI = %.2f\n", mi);
+
+    /* Different reflectances should have significant MI */
+    TEST_ASSERT(mi > ALWAN_LITERAL(10.0),
+                "Different reflectances should have measurable MI");
+
+    alwan_spd_destroy(ctx, &refl1);
+    alwan_spd_destroy(ctx, &refl2);
+    alwan_spd_destroy(ctx, &d65_spd);
+    alwan_spd_destroy(ctx, &a_spd);
+    alwan_destroy(ctx);
+    TEST_PASS("Metamerism Index with different reflectances");
+}
+
+static int test_ssi_null_inputs(void) {
+    alwan_ctx *ctx = alwan_create(NULL);
+    TEST_ASSERT(ctx != NULL, "Failed to create context");
+
+    alwan_spd d65_spd;
+    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
+
+    alwan_scalar result = alwan_ssi_calculate(ctx, NULL, &d65_spd);
+    TEST_ASSERT(result < ALWAN_LITERAL(0.0),
+                "SSI should return error for NULL test SPD");
+
+    result = alwan_ssi_calculate(ctx, &d65_spd, NULL);
+    TEST_ASSERT(result < ALWAN_LITERAL(0.0),
+                "SSI should return error for NULL reference SPD");
+
+    result = alwan_ssi_calculate(NULL, &d65_spd, &d65_spd);
+    TEST_ASSERT(result < ALWAN_LITERAL(0.0),
+                "SSI should return error for NULL context");
+
+    alwan_spd_destroy(ctx, &d65_spd);
+    alwan_destroy(ctx);
+    TEST_PASS("SSI null input handling");
+}
+
+static int test_metamerism_null_inputs(void) {
+    alwan_ctx *ctx = alwan_create(NULL);
+    TEST_ASSERT(ctx != NULL, "Failed to create context");
+
+    alwan_spd refl_spd, d65_spd;
+    int status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 95, &refl_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create reflectance SPD");
+    status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
+
+    alwan_scalar result = alwan_metamerism_index(ctx, NULL, &refl_spd, &d65_spd, &d65_spd,
+                                                 ALWAN_OBSERVER_CIE_1931_2DEG);
+    TEST_ASSERT(result < ALWAN_LITERAL(0.0),
+                "Metamerism should return error for NULL sample reflectance");
+
+    result = alwan_metamerism_index(ctx, &refl_spd, NULL, &d65_spd, &d65_spd,
+                                   ALWAN_OBSERVER_CIE_1931_2DEG);
+    TEST_ASSERT(result < ALWAN_LITERAL(0.0),
+                "Metamerism should return error for NULL reference reflectance");
+
+    result = alwan_metamerism_index(NULL, &refl_spd, &refl_spd, &d65_spd, &d65_spd,
+                                   ALWAN_OBSERVER_CIE_1931_2DEG);
+    TEST_ASSERT(result < ALWAN_LITERAL(0.0),
+                "Metamerism should return error for NULL context");
+
+    alwan_spd_destroy(ctx, &refl_spd);
+    alwan_spd_destroy(ctx, &d65_spd);
+    alwan_destroy(ctx);
+    TEST_PASS("Metamerism null input handling");
+}
+
 static int test_cri_null_inputs(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Failed to create context");
@@ -296,10 +503,16 @@ static int (*tests[])(void) = {
     test_tm30_blackbody,
     test_cie224_d65,
     test_tm30_cie224_match,
+    test_ssi_perfect_match,
+    test_ssi_illuminant_pairs,
+    test_metamerism_basic,
+    test_metamerism_different_reflectances,
     test_cri_null_inputs,
     test_cqs_null_inputs,
     test_tm30_null_inputs,
     test_cie224_null_inputs,
+    test_ssi_null_inputs,
+    test_metamerism_null_inputs,
     NULL
 };
 
