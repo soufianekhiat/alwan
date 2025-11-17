@@ -386,16 +386,16 @@ alwan_scalar alwan_delta_e_hyab(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *din99_2);
 
 /* ΔE CAM02-LCD - CIECAM02 Large Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ΔE CAM02-SCD - CIECAM02 Small Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ΔE CAM16-LCD - CAM16 Large Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ΔE CAM16-SCD - CAM16 Small Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space */
 alwan_scalar alwan_delta_e_zcam(alwan_vec3 const *jab1, alwan_vec3 const *jab2);

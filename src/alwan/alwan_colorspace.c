@@ -508,20 +508,33 @@ alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *di
  * LCD uses K_L = 1.0, c1 = 0.007, c2 = 0.0053
  * Takes Lab input and converts internally via Lab → XYZ → CIECAM02 → UCS */
 alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
-    /* Standard D65 viewing conditions for delta E calculations */
+    /* IEC 61966-2-1:1999 (sRGB) viewing conditions for delta E calculations */
     alwan_ciecam02_viewing_conditions vc;
-    vc.white_xyz.v[0] = ALWAN_LITERAL(0.95045592705167159);
-    vc.white_xyz.v[1] = ALWAN_LITERAL(1.0);
-    vc.white_xyz.v[2] = ALWAN_LITERAL(1.0890577507598784);
-    vc.adapting_luminance = ALWAN_LITERAL(318.31);
-    vc.background_luminance = ALWAN_LITERAL(0.2);
+    vc.white_xyz.v[0] = ALWAN_LITERAL(95.045592705167159);   /* D65 × 100 */
+    vc.white_xyz.v[1] = ALWAN_LITERAL(100.0);
+    vc.white_xyz.v[2] = ALWAN_LITERAL(108.90577507598784);
+    vc.adapting_luminance = ALWAN_LITERAL(64.0) / ALWAN_PI * ALWAN_LITERAL(0.2);  /* ~4.074 cd/m² */
+    vc.background_luminance = ALWAN_LITERAL(20.0);
     vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
     vc.discount_illuminant = 0;
 
-    /* Convert Lab to XYZ */
+    /* Convert Lab to XYZ (using normalized D65 white point for Lab) */
+    alwan_vec3 white_lab;
+    white_lab.v[0] = ALWAN_LITERAL(0.95045592705167159);
+    white_lab.v[1] = ALWAN_LITERAL(1.0);
+    white_lab.v[2] = ALWAN_LITERAL(1.0890577507598784);
+
     alwan_vec3 xyz1, xyz2;
-    alwan_lab_to_xyz(lab1, &vc.white_xyz, &xyz1);
-    alwan_lab_to_xyz(lab2, &vc.white_xyz, &xyz2);
+    alwan_lab_to_xyz(lab1, &white_lab, &xyz1);
+    alwan_lab_to_xyz(lab2, &white_lab, &xyz2);
+
+    /* Scale XYZ to Y=100 range */
+    xyz1.v[0] *= ALWAN_LITERAL(100.0);
+    xyz1.v[1] *= ALWAN_LITERAL(100.0);
+    xyz1.v[2] *= ALWAN_LITERAL(100.0);
+    xyz2.v[0] *= ALWAN_LITERAL(100.0);
+    xyz2.v[1] *= ALWAN_LITERAL(100.0);
+    xyz2.v[2] *= ALWAN_LITERAL(100.0);
 
     /* Convert XYZ to CIECAM02 */
     alwan_ciecam02_correlates cam1, cam2;
@@ -559,20 +572,33 @@ alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *lab1, alwan_vec3 const *l
  * SCD uses K_L = 2.0, c1 = 0.007, c2 = 0.0363
  * Takes Lab input and converts internally via Lab → XYZ → CIECAM02 → UCS */
 alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
-    /* Standard D65 viewing conditions for delta E calculations */
+    /* IEC 61966-2-1:1999 (sRGB) viewing conditions for delta E calculations */
     alwan_ciecam02_viewing_conditions vc;
-    vc.white_xyz.v[0] = ALWAN_LITERAL(0.95045592705167159);
-    vc.white_xyz.v[1] = ALWAN_LITERAL(1.0);
-    vc.white_xyz.v[2] = ALWAN_LITERAL(1.0890577507598784);
-    vc.adapting_luminance = ALWAN_LITERAL(318.31);
-    vc.background_luminance = ALWAN_LITERAL(0.2);
+    vc.white_xyz.v[0] = ALWAN_LITERAL(95.045592705167159);   /* D65 × 100 */
+    vc.white_xyz.v[1] = ALWAN_LITERAL(100.0);
+    vc.white_xyz.v[2] = ALWAN_LITERAL(108.90577507598784);
+    vc.adapting_luminance = ALWAN_LITERAL(64.0) / ALWAN_PI * ALWAN_LITERAL(0.2);  /* ~4.074 cd/m² */
+    vc.background_luminance = ALWAN_LITERAL(20.0);
     vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
     vc.discount_illuminant = 0;
 
-    /* Convert Lab to XYZ */
+    /* Convert Lab to XYZ (using normalized D65 white point for Lab) */
+    alwan_vec3 white_lab;
+    white_lab.v[0] = ALWAN_LITERAL(0.95045592705167159);
+    white_lab.v[1] = ALWAN_LITERAL(1.0);
+    white_lab.v[2] = ALWAN_LITERAL(1.0890577507598784);
+
     alwan_vec3 xyz1, xyz2;
-    alwan_lab_to_xyz(lab1, &vc.white_xyz, &xyz1);
-    alwan_lab_to_xyz(lab2, &vc.white_xyz, &xyz2);
+    alwan_lab_to_xyz(lab1, &white_lab, &xyz1);
+    alwan_lab_to_xyz(lab2, &white_lab, &xyz2);
+
+    /* Scale XYZ to Y=100 range */
+    xyz1.v[0] *= ALWAN_LITERAL(100.0);
+    xyz1.v[1] *= ALWAN_LITERAL(100.0);
+    xyz1.v[2] *= ALWAN_LITERAL(100.0);
+    xyz2.v[0] *= ALWAN_LITERAL(100.0);
+    xyz2.v[1] *= ALWAN_LITERAL(100.0);
+    xyz2.v[2] *= ALWAN_LITERAL(100.0);
 
     /* Convert XYZ to CIECAM02 */
     alwan_ciecam02_correlates cam1, cam2;
@@ -609,20 +635,33 @@ alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *lab1, alwan_vec3 const *l
  * Same formula as CAM02-LCD but uses CAM16 chromatic adaptation
  * Takes Lab input and converts internally via Lab → XYZ → CAM16 → UCS */
 alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
-    /* Standard D65 viewing conditions for delta E calculations */
+    /* IEC 61966-2-1:1999 (sRGB) viewing conditions for delta E calculations */
     alwan_cam16_viewing_conditions vc;
-    vc.white_xyz.v[0] = ALWAN_LITERAL(0.95045592705167159);
-    vc.white_xyz.v[1] = ALWAN_LITERAL(1.0);
-    vc.white_xyz.v[2] = ALWAN_LITERAL(1.0890577507598784);
-    vc.adapting_luminance = ALWAN_LITERAL(318.31);
-    vc.background_luminance = ALWAN_LITERAL(0.2);
+    vc.white_xyz.v[0] = ALWAN_LITERAL(95.045592705167159);   /* D65 × 100 */
+    vc.white_xyz.v[1] = ALWAN_LITERAL(100.0);
+    vc.white_xyz.v[2] = ALWAN_LITERAL(108.90577507598784);
+    vc.adapting_luminance = ALWAN_LITERAL(64.0) / ALWAN_PI * ALWAN_LITERAL(0.2);  /* ~4.074 cd/m² */
+    vc.background_luminance = ALWAN_LITERAL(20.0);
     vc.surround = ALWAN_CAM16_SURROUND_AVERAGE;
     vc.discount_illuminant = 0;
 
-    /* Convert Lab to XYZ */
+    /* Convert Lab to XYZ (using normalized D65 white point for Lab) */
+    alwan_vec3 white_lab;
+    white_lab.v[0] = ALWAN_LITERAL(0.95045592705167159);
+    white_lab.v[1] = ALWAN_LITERAL(1.0);
+    white_lab.v[2] = ALWAN_LITERAL(1.0890577507598784);
+
     alwan_vec3 xyz1, xyz2;
-    alwan_lab_to_xyz(lab1, &vc.white_xyz, &xyz1);
-    alwan_lab_to_xyz(lab2, &vc.white_xyz, &xyz2);
+    alwan_lab_to_xyz(lab1, &white_lab, &xyz1);
+    alwan_lab_to_xyz(lab2, &white_lab, &xyz2);
+
+    /* Scale XYZ to Y=100 range */
+    xyz1.v[0] *= ALWAN_LITERAL(100.0);
+    xyz1.v[1] *= ALWAN_LITERAL(100.0);
+    xyz1.v[2] *= ALWAN_LITERAL(100.0);
+    xyz2.v[0] *= ALWAN_LITERAL(100.0);
+    xyz2.v[1] *= ALWAN_LITERAL(100.0);
+    xyz2.v[2] *= ALWAN_LITERAL(100.0);
 
     /* Convert XYZ to CAM16 */
     alwan_cam16_correlates cam1, cam2;
@@ -659,20 +698,33 @@ alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *lab1, alwan_vec3 const *l
  * Same formula as CAM02-SCD but uses CAM16 chromatic adaptation
  * Takes Lab input and converts internally via Lab → XYZ → CAM16 → UCS */
 alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
-    /* Standard D65 viewing conditions for delta E calculations */
+    /* IEC 61966-2-1:1999 (sRGB) viewing conditions for delta E calculations */
     alwan_cam16_viewing_conditions vc;
-    vc.white_xyz.v[0] = ALWAN_LITERAL(0.95045592705167159);
-    vc.white_xyz.v[1] = ALWAN_LITERAL(1.0);
-    vc.white_xyz.v[2] = ALWAN_LITERAL(1.0890577507598784);
-    vc.adapting_luminance = ALWAN_LITERAL(318.31);
-    vc.background_luminance = ALWAN_LITERAL(0.2);
+    vc.white_xyz.v[0] = ALWAN_LITERAL(95.045592705167159);   /* D65 × 100 */
+    vc.white_xyz.v[1] = ALWAN_LITERAL(100.0);
+    vc.white_xyz.v[2] = ALWAN_LITERAL(108.90577507598784);
+    vc.adapting_luminance = ALWAN_LITERAL(64.0) / ALWAN_PI * ALWAN_LITERAL(0.2);  /* ~4.074 cd/m² */
+    vc.background_luminance = ALWAN_LITERAL(20.0);
     vc.surround = ALWAN_CAM16_SURROUND_AVERAGE;
     vc.discount_illuminant = 0;
 
-    /* Convert Lab to XYZ */
+    /* Convert Lab to XYZ (using normalized D65 white point for Lab) */
+    alwan_vec3 white_lab;
+    white_lab.v[0] = ALWAN_LITERAL(0.95045592705167159);
+    white_lab.v[1] = ALWAN_LITERAL(1.0);
+    white_lab.v[2] = ALWAN_LITERAL(1.0890577507598784);
+
     alwan_vec3 xyz1, xyz2;
-    alwan_lab_to_xyz(lab1, &vc.white_xyz, &xyz1);
-    alwan_lab_to_xyz(lab2, &vc.white_xyz, &xyz2);
+    alwan_lab_to_xyz(lab1, &white_lab, &xyz1);
+    alwan_lab_to_xyz(lab2, &white_lab, &xyz2);
+
+    /* Scale XYZ to Y=100 range */
+    xyz1.v[0] *= ALWAN_LITERAL(100.0);
+    xyz1.v[1] *= ALWAN_LITERAL(100.0);
+    xyz1.v[2] *= ALWAN_LITERAL(100.0);
+    xyz2.v[0] *= ALWAN_LITERAL(100.0);
+    xyz2.v[1] *= ALWAN_LITERAL(100.0);
+    xyz2.v[2] *= ALWAN_LITERAL(100.0);
 
     /* Convert XYZ to CAM16 */
     alwan_cam16_correlates cam1, cam2;
