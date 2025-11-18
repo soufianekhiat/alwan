@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * P1.8: ProLab Color Space (Perceptually Uniform Projective)
+ * ProLab Color Space (Perceptually Uniform Projective)
  *
  * Reference: Konovalenko et al. (2021)
  * "ProLab: A Perceptually Uniform Projective Color Coordinate System"

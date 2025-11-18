@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * P1.1: Oklab & Oklch Color Spaces
+ * Oklab & Oklch Color Spaces
  *
  * Reference: Björn Ottosson (2020)
  * "A perceptual color space for image processing"

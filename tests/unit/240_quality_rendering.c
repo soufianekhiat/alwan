@@ -218,7 +218,7 @@ static int test_tm30_cie224_match(void) {
     TEST_PASS("TM-30 and CIE 224:2017 return same values");
 }
 
-/* P4.4: SSI (Spectral Similarity Index) Tests */
+/* SSI (Spectral Similarity Index) Tests */
 
 static int test_ssi_perfect_match(void) {
     alwan_ctx *ctx = alwan_create(NULL);
@@ -285,7 +285,7 @@ static int test_ssi_illuminant_pairs(void) {
     TEST_PASS("SSI for various illuminant pairs");
 }
 
-/* P4.7: Metamerism Index Tests */
+/* Metamerism Index Tests */
 
 static int test_metamerism_basic(void) {
     alwan_ctx *ctx = alwan_create(NULL);

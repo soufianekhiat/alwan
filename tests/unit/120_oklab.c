@@ -1,5 +1,5 @@
 /*
- * P1.1: Oklab & Oklch Tests
+ * Oklab & Oklch Tests
  */
 
 #include "alwan.h"
@@ -168,7 +168,7 @@ static int test_oklab_known_values(void) {
 
 /* Main test runner for P1.1 */
 int test_120_oklab_main(void) {
-    printf("=== P1.1: Oklab & Oklch Tests ===\n");
+    printf("=== Oklab & Oklch Tests ===\n");
 
     if (test_xyz_oklab_round_trip() != 0) return 1;
     if (test_oklab_oklch_round_trip() != 0) return 2;

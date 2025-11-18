@@ -1,5 +1,5 @@
 /*
- * P1.5: OSA-UCS Tests
+ * OSA-UCS Tests
  */
 
 #include "alwan.h"
@@ -108,7 +108,7 @@ static int test_osa_ucs_inverse_approximate(void) {
  * ---------------------------------------------------------------- */
 
 int test_160_osa_ucs_main(void) {
-    printf("\n=== P1.5: OSA-UCS Tests ===\n");
+    printf("\n=== OSA-UCS Tests ===\n");
 
     int failures = 0;
 

@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * P1.3: Jzazbz & JzCzhz Color Spaces (HDR Perceptual)
+ * Jzazbz & JzCzhz Color Spaces (HDR Perceptual)
  *
  * Reference: Safdar et al. (2017)
  * "Perceptually uniform color space for image signals including

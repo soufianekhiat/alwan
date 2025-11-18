@@ -1,5 +1,5 @@
 /*
- * P1.3: Jzazbz & JzCzhz Tests
+ * Jzazbz & JzCzhz Tests
  */
 
 #include "alwan.h"
@@ -116,7 +116,7 @@ static int test_jzazbz_jzczhz_round_trip(void) {
  * ---------------------------------------------------------------- */
 
 int test_140_jzazbz_main(void) {
-    printf("\n=== P1.3: Jzazbz & JzCzhz Tests ===\n");
+    printf("\n=== Jzazbz & JzCzhz Tests ===\n");
 
     int failures = 0;
 

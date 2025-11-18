@@ -1,5 +1,5 @@
 /*
- * P1.4: DIN99 Family Tests
+ * DIN99 Family Tests
  */
 
 #include "alwan.h"
@@ -98,7 +98,7 @@ static int test_din99_variant(int variant, char const *variant_name, char const 
  * ---------------------------------------------------------------- */
 
 int test_150_din99_main(void) {
-    printf("\n=== P1.4: DIN99 Family Tests ===\n");
+    printf("\n=== DIN99 Family Tests ===\n");
 
     int failures = 0;
 

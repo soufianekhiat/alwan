@@ -138,13 +138,13 @@ typedef enum {
     ALWAN_RGB_SPACE_ACESCG,
     ALWAN_RGB_SPACE_ACESPROXY,
 
-    /* P5.1: Adobe RGB (1998) - Photography/print workflow */
+    /* Adobe RGB (1998) - Photography/print workflow */
     ALWAN_RGB_SPACE_ADOBE_RGB_1998,
 
-    /* P5.2: ProPhoto RGB - Wide gamut professional */
+    /* ProPhoto RGB - Wide gamut professional */
     ALWAN_RGB_SPACE_PROPHOTO_RGB,
 
-    /* P5.3: Cinema/Broadcast spaces */
+    /* Cinema/Broadcast spaces */
     ALWAN_RGB_SPACE_DAVINCI_WIDE_GAMUT,
     ALWAN_RGB_SPACE_BLACKMAGIC_WIDE_GAMUT,
     ALWAN_RGB_SPACE_V_GAMUT,
@@ -156,7 +156,7 @@ typedef enum {
     ALWAN_RGB_SPACE_DCI_P3,
     ALWAN_RGB_SPACE_P3_D65,
 
-    /* P5.4: Legacy spaces */
+    /* Legacy spaces */
     ALWAN_RGB_SPACE_NTSC_1953,
     ALWAN_RGB_SPACE_NTSC_1987,
     ALWAN_RGB_SPACE_PAL_SECAM,
@@ -173,7 +173,49 @@ typedef enum {
     ALWAN_TF_ST2084,       /* Alias for PQ */
     ALWAN_TF_HLG,          /* Hybrid Log-Gamma (BT.2100) */
     ALWAN_TF_BT1886,       /* BT.1886 EOTF only */
-    ALWAN_TF_ACESPROXY     /* ACES Proxy */
+    ALWAN_TF_ACESPROXY,    /* ACES Proxy */
+
+    /* Extended Transfer Functions */
+    /* Sony S-Log Family */
+    ALWAN_TF_SLOG,         /* Sony S-Log */
+    ALWAN_TF_SLOG2,        /* Sony S-Log2 */
+    ALWAN_TF_SLOG3,        /* Sony S-Log3 */
+
+    /* Canon C-Log Family */
+    ALWAN_TF_CLOG,         /* Canon C-Log */
+    ALWAN_TF_CLOG2,        /* Canon C-Log2 */
+    ALWAN_TF_CLOG3,        /* Canon C-Log3 */
+
+    /* Panasonic V-Log */
+    ALWAN_TF_VLOG,         /* Panasonic V-Log */
+
+    /* ARRI LogC Family */
+    ALWAN_TF_LOGC3,        /* ARRI LogC3 */
+    ALWAN_TF_LOGC4,        /* ARRI LogC4 */
+
+    /* Red Log Family */
+    ALWAN_TF_REDLOG,       /* RED REDLog */
+    ALWAN_TF_REDLOGFILM,   /* RED REDLogFilm */
+    ALWAN_TF_LOG3G10,      /* RED Log3G10 */
+
+    /* Blackmagic Film Gen 5 */
+    ALWAN_TF_BMDFILM,      /* Blackmagic Film Gen 5 */
+
+    /* Filmlight T-Log / E-Log */
+    ALWAN_TF_TLOG,         /* Filmlight T-Log */
+    ALWAN_TF_ELOG,         /* Filmlight E-Log */
+
+    /* GoPro Protune */
+    ALWAN_TF_PROTUNE,      /* GoPro Protune */
+
+    /* Standard Gamma Variants */
+    ALWAN_TF_GAMMA22,      /* Gamma 2.2 */
+    ALWAN_TF_GAMMA24,      /* Gamma 2.4 */
+    ALWAN_TF_GAMMA26,      /* Gamma 2.6 */
+    ALWAN_TF_GAMMA28,      /* Gamma 2.8 */
+
+    /* Nikon N-Log */
+    ALWAN_TF_NLOG          /* Nikon N-Log */
 } alwan_transfer_function;
 
 /* Standard illuminant identifiers */
@@ -368,7 +410,7 @@ void alwan_oklab_to_xyz(alwan_vec3 const *oklab, alwan_vec3 *xyz);
 void alwan_oklab_to_oklch(alwan_vec3 const *oklab, alwan_vec3 *oklch);
 void alwan_oklch_to_oklab(alwan_vec3 const *oklch, alwan_vec3 *oklab);
 
-/* Lab <-> DIN99 conversions (P1.4: DIN99 Family - German color difference standards)
+/* Lab <-> DIN99 conversions (DIN99 Family - German color difference standards)
  * - variant: 0 = DIN99/ASTM, 1 = DIN99b, 2 = DIN99c, 3 = DIN99d
  * - All variants provide improved perceptual uniformity over CIE Lab
  * - Input Lab should be D65 adapted
@@ -390,7 +432,7 @@ void alwan_ictcp_to_rgb(alwan_vec3 const *ictcp, alwan_vec3 *rgb, int use_pq);
 void alwan_xyz_to_ictcp(alwan_vec3 const *xyz, alwan_vec3 *ictcp, int use_pq);
 void alwan_ictcp_to_xyz(alwan_vec3 const *ictcp, alwan_vec3 *xyz, int use_pq);
 
-/* Jzazbz <-> XYZ conversions (P1.3: Perceptually uniform HDR color space)
+/* Jzazbz <-> XYZ conversions (Perceptually uniform HDR color space)
  * - XYZ input/output is D65 adapted
  * - Jzazbz: Jz (lightness), az (red-green), bz (yellow-blue)
  */
@@ -403,7 +445,7 @@ void alwan_jzazbz_to_xyz(alwan_vec3 const *jzazbz, alwan_vec3 *xyz);
 void alwan_jzazbz_to_jzczhz(alwan_vec3 const *jzazbz, alwan_vec3 *jzczhz);
 void alwan_jzczhz_to_jzazbz(alwan_vec3 const *jzczhz, alwan_vec3 *jzazbz);
 
-/* Hunter Lab <-> XYZ conversions (P1.6: Earlier Lab-type color space)
+/* Hunter Lab <-> XYZ conversions (Earlier Lab-type color space)
  * - XYZ input/output is D65 adapted by default
  * - Hunter Lab: L (lightness), a (red-green), b (yellow-blue)
  * - Uses square roots instead of cube roots (unlike CIE Lab)
@@ -419,7 +461,7 @@ void alwan_hunter_lab_to_xyz(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz);
 void alwan_xyz_to_hunter_lab_custom(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab, alwan_vec3 const *xyz_n);
 void alwan_hunter_lab_to_xyz_custom(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz, alwan_vec3 const *xyz_n);
 
-/* IPT <-> XYZ conversions (P1.7: Image Processing Transform)
+/* IPT <-> XYZ conversions (Image Processing Transform)
  * - XYZ input/output is D65 adapted
  * - IPT: I (intensity/lightness), P (red-green), T (yellow-blue)
  * - Improved hue uniformity over CIELAB
@@ -434,7 +476,7 @@ void alwan_ipt_to_xyz(alwan_vec3 const *ipt, alwan_vec3 *xyz);
 void alwan_ipt_to_iptch(alwan_vec3 const *ipt, alwan_vec3 *iptch);
 void alwan_iptch_to_ipt(alwan_vec3 const *iptch, alwan_vec3 *ipt);
 
-/* ProLab <-> XYZ conversions (P1.8: Perceptually Uniform Projective)
+/* ProLab <-> XYZ conversions (Perceptually Uniform Projective)
  * - XYZ input/output is D65 adapted by default
  * - ProLab: Uses projective transformation for improved uniformity
  * - Based on Konovalenko et al. (2021)
@@ -448,7 +490,7 @@ void alwan_prolab_to_xyz(alwan_vec3 const *prolab, alwan_vec3 *xyz);
 void alwan_xyz_to_prolab_custom(alwan_vec3 const *xyz, alwan_vec3 *prolab, alwan_vec3 const *xyz_n);
 void alwan_prolab_to_xyz_custom(alwan_vec3 const *prolab, alwan_vec3 *xyz, alwan_vec3 const *xyz_n);
 
-/* OSA-UCS <-> XYZ conversions (P1.5: Optical Society of America Uniform Color Scales)
+/* OSA-UCS <-> XYZ conversions (Optical Society of America Uniform Color Scales)
  * - XYZ input/output is D65 adapted
  * - OSA-UCS: L (lightness), j (yellowness), g (greenness)
  * - Forward transform is exact, inverse is approximate (iterative solution)

@@ -1,5 +1,5 @@
 /*
- * P1.8: ProLab Color Space Tests
+ * ProLab Color Space Tests
  */
 
 #include "alwan.h"
@@ -87,7 +87,7 @@ static int test_xyz_prolab_round_trip(void) {
  * ---------------------------------------------------------------- */
 
 int test_190_prolab_main(void) {
-    printf("\n=== P1.8: ProLab Color Space Tests ===\n");
+    printf("\n=== ProLab Color Space Tests ===\n");
 
     int failures = 0;
 

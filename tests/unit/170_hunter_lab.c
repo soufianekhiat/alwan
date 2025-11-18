@@ -1,5 +1,5 @@
 /*
- * P1.6: Hunter Lab Tests
+ * Hunter Lab Tests
  */
 
 #include "alwan.h"
@@ -90,7 +90,7 @@ static int test_xyz_hunter_lab_round_trip(void) {
  * ---------------------------------------------------------------- */
 
 int test_170_hunter_lab_main(void) {
-    printf("\n=== P1.6: Hunter Lab Tests ===\n");
+    printf("\n=== Hunter Lab Tests ===\n");
 
     int failures = 0;
 

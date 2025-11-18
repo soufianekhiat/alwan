@@ -1,5 +1,5 @@
 /*
- * P1.7: IPT Color Space Tests
+ * IPT Color Space Tests
  */
 
 #include "alwan.h"
@@ -116,7 +116,7 @@ static int test_ipt_iptch_round_trip(void) {
  * ---------------------------------------------------------------- */
 
 int test_180_ipt_main(void) {
-    printf("\n=== P1.7: IPT Color Space Tests ===\n");
+    printf("\n=== IPT Color Space Tests ===\n");
 
     int failures = 0;
 

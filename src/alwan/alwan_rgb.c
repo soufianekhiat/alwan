@@ -280,6 +280,574 @@ static alwan_scalar acesproxy_eotf_scalar(alwan_scalar encoded) {
 }
 
 /* ----------------------------------------------------------------
+ * Extended Transfer Functions
+ * ---------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------
+ * Sony S-Log Family
+ * ---------------------------------------------------------------- */
+
+/* S-Log OETF: linear -> S-Log
+ * Formula from colour-science (Sony S-Log specification)
+ * Reference: SonyCorporation2012a
+ * Note: Scene-referred (in_reflection=True) */
+static alwan_scalar slog_oetf_scalar(alwan_scalar linear) {
+    /* Step 1: Scale input (scene-referred) */
+    alwan_scalar x = linear / ALWAN_LITERAL(0.9);
+
+    /* Step 2: Apply log curve */
+    if (x >= ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.432699) * ALWAN_LOG10(x + ALWAN_LITERAL(0.037584)) + ALWAN_LITERAL(0.646596);
+    } else {
+        return x * ALWAN_LITERAL(5.0) + ALWAN_LITERAL(0.030001222851889303);
+    }
+}
+
+/* S-Log EOTF: S-Log -> linear
+ * Formula from colour-science (Sony S-Log specification)
+ * Reference: SonyCorporation2012a
+ * Note: Scene-referred (out_reflection=True), full range [0,1] */
+static alwan_scalar slog_eotf_scalar(alwan_scalar encoded) {
+    /* Threshold: encoded value for linear=0.0 (full range, not legal range) */
+    alwan_scalar const threshold = ALWAN_LITERAL(0.030001222851889303);
+
+    /* Step 1: Inverse log curve */
+    alwan_scalar x;
+    if (encoded >= threshold) {
+        x = ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - ALWAN_LITERAL(0.646596)) / ALWAN_LITERAL(0.432699)) - ALWAN_LITERAL(0.037584);
+    } else {
+        x = (encoded - ALWAN_LITERAL(0.030001222851889303)) / ALWAN_LITERAL(5.0);
+    }
+
+    /* Step 2: Scale output (scene-referred) */
+    return x * ALWAN_LITERAL(0.9);
+}
+
+/* S-Log2 OETF: linear -> S-Log2
+ * Formula from Sony documentation */
+static alwan_scalar slog2_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        linear = ALWAN_LITERAL(0.0);
+    }
+
+    if (linear < ALWAN_LITERAL(0.01125000)) {
+        return (linear * (ALWAN_LITERAL(0.9) / ALWAN_LITERAL(0.01125000))) + ALWAN_LITERAL(0.1);
+    } else {
+        return ((ALWAN_LITERAL(0.9) * ALWAN_LOG10((linear + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.01125000)) / ALWAN_LOG10(ALWAN_LITERAL(4.0))) + ALWAN_LITERAL(0.1));
+    }
+}
+
+static alwan_scalar slog2_eotf_scalar(alwan_scalar encoded) {
+    if (encoded < ALWAN_LITERAL(0.1)) {
+        encoded = ALWAN_LITERAL(0.1);
+    }
+
+    alwan_scalar threshold = (ALWAN_LITERAL(0.01125000) * (ALWAN_LITERAL(0.9) / ALWAN_LITERAL(0.01125000))) + ALWAN_LITERAL(0.1);
+
+    if (encoded < threshold) {
+        return ((encoded - ALWAN_LITERAL(0.1)) / (ALWAN_LITERAL(0.9) / ALWAN_LITERAL(0.01125000)));
+    } else {
+        return (ALWAN_LITERAL(0.01125000) * ALWAN_POW(ALWAN_LITERAL(4.0), ((encoded - ALWAN_LITERAL(0.1)) / ALWAN_LITERAL(0.9)))) - ALWAN_LITERAL(0.01);
+    }
+}
+
+/* S-Log3 OETF: linear -> S-Log3
+ * Formula from Sony documentation */
+static alwan_scalar slog3_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        linear = ALWAN_LITERAL(0.0);
+    }
+
+    if (linear >= ALWAN_LITERAL(0.01125000)) {
+        return (ALWAN_LITERAL(420.0) + ALWAN_LOG10((linear + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.01125000)) * ALWAN_LITERAL(261.5)) / ALWAN_LITERAL(1023.0);
+    } else {
+        return (linear * (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(0.01125000) + ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(1023.0);
+    }
+}
+
+static alwan_scalar slog3_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar code = encoded * ALWAN_LITERAL(1023.0);
+
+    if (code >= ALWAN_LITERAL(171.2102946929)) {
+        return (ALWAN_POW(ALWAN_LITERAL(10.0), ((code - ALWAN_LITERAL(420.0)) / ALWAN_LITERAL(261.5))) * ALWAN_LITERAL(0.01125000)) - ALWAN_LITERAL(0.01);
+    } else {
+        return ((code - ALWAN_LITERAL(95.0)) / (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0))) * ALWAN_LITERAL(0.01125000);
+    }
+}
+
+/* ----------------------------------------------------------------
+ * Canon C-Log Family
+ * ---------------------------------------------------------------- */
+
+/* C-Log OETF: linear -> C-Log
+ * Formula from Canon documentation */
+static alwan_scalar clog_oetf_scalar(alwan_scalar linear) {
+    alwan_scalar const a = ALWAN_LITERAL(0.529136);
+    alwan_scalar const b = ALWAN_LITERAL(0.0730597);
+    alwan_scalar const c = ALWAN_LITERAL(0.256598);
+    alwan_scalar const d = ALWAN_LITERAL(0.293977);
+
+    if (linear < ALWAN_LITERAL(0.0)) {
+        linear = ALWAN_LITERAL(0.0);
+    }
+
+    return a * ALWAN_LOG10(linear + b) + c + d;
+}
+
+static alwan_scalar clog_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const a = ALWAN_LITERAL(0.529136);
+    alwan_scalar const b = ALWAN_LITERAL(0.0730597);
+    alwan_scalar const c = ALWAN_LITERAL(0.256598);
+    alwan_scalar const d = ALWAN_LITERAL(0.293977);
+
+    return ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - c - d) / a) - b;
+}
+
+/* C-Log2 OETF: linear -> C-Log2
+ * Formula from Canon documentation */
+static alwan_scalar clog2_oetf_scalar(alwan_scalar linear) {
+    alwan_scalar const a = ALWAN_LITERAL(0.281863093);
+    alwan_scalar const b = ALWAN_LITERAL(0.035388128);
+    alwan_scalar const c = ALWAN_LITERAL(0.189671161);
+
+    if (linear < ALWAN_LITERAL(0.0)) {
+        linear = ALWAN_LITERAL(0.0);
+    }
+
+    return a * ALWAN_LOG10(linear + b) + c;
+}
+
+static alwan_scalar clog2_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const a = ALWAN_LITERAL(0.281863093);
+    alwan_scalar const b = ALWAN_LITERAL(0.035388128);
+    alwan_scalar const c = ALWAN_LITERAL(0.189671161);
+
+    return ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - c) / a) - b;
+}
+
+/* Legal range to full range conversion (10-bit)
+ * Legal range: 64-940 (0.062561094819159 - 0.919165268851521)
+ * Full range: 0-1023 (0.0 - 1.0) */
+static alwan_scalar legal_to_full_10bit(alwan_scalar legal) {
+    return (legal - ALWAN_LITERAL(0.062561094819159)) / ALWAN_LITERAL(0.856304985337243);
+}
+
+static alwan_scalar full_to_legal_10bit(alwan_scalar full) {
+    return full * ALWAN_LITERAL(0.856304985337243) + ALWAN_LITERAL(0.062561094819159);
+}
+
+/* C-Log3 OETF: linear -> C-Log3
+ * Formula from colour-science (Canon C-Log3 v1.2 specification)
+ * Reference: CanonInc2012, CanonInc2016
+ * Note: Scene-referred (in_reflection=True), operates in legal range internally */
+static alwan_scalar clog3_oetf_scalar(alwan_scalar linear) {
+    /* Step 1: Scale input (scene-referred) */
+    alwan_scalar x = linear / ALWAN_LITERAL(0.9);
+
+    /* Step 2: Apply 3-region piecewise formula (legal range) */
+    alwan_scalar clog3_legal;
+
+    /* Linear thresholds for 3-region piecewise formula */
+    /* x-value thresholds (before scene-referred scaling): ±0.014 */
+    alwan_scalar const x_threshold_low = ALWAN_LITERAL(-0.014);
+    alwan_scalar const x_threshold_high = ALWAN_LITERAL(0.014);
+
+    if (x < x_threshold_low) {
+        /* Negative region */
+        clog3_legal = ALWAN_LITERAL(-0.36726845) * ALWAN_LOG10(-x * ALWAN_LITERAL(14.98325) + ALWAN_LITERAL(1.0)) + ALWAN_LITERAL(0.12783901);
+    } else if (x <= x_threshold_high) {
+        /* Linear region */
+        clog3_legal = ALWAN_LITERAL(1.9754798) * x + ALWAN_LITERAL(0.12512219);
+    } else {
+        /* Positive logarithmic region */
+        clog3_legal = ALWAN_LITERAL(0.36726845) * ALWAN_LOG10(x * ALWAN_LITERAL(14.98325) + ALWAN_LITERAL(1.0)) + ALWAN_LITERAL(0.12240537);
+    }
+
+    /* Step 3: Convert legal → full range */
+    return legal_to_full_10bit(clog3_legal);
+}
+
+static alwan_scalar clog3_eotf_scalar(alwan_scalar encoded) {
+    /* Step 1: Convert full → legal range */
+    alwan_scalar clog3_legal = full_to_legal_10bit(encoded);
+
+    /* Step 2: Apply inverse 3-region piecewise formula (legal range) */
+    alwan_scalar x;
+
+    alwan_scalar const threshold_low = ALWAN_LITERAL(0.097465473);
+    alwan_scalar const threshold_high = ALWAN_LITERAL(0.15277891);
+
+    if (clog3_legal < threshold_low) {
+        /* Negative region */
+        x = -(ALWAN_POW(ALWAN_LITERAL(10.0), (ALWAN_LITERAL(0.12783901) - clog3_legal) / ALWAN_LITERAL(0.36726845)) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(14.98325);
+    } else if (clog3_legal <= threshold_high) {
+        /* Linear region */
+        x = (clog3_legal - ALWAN_LITERAL(0.12512219)) / ALWAN_LITERAL(1.9754798);
+    } else {
+        /* Positive logarithmic region */
+        x = (ALWAN_POW(ALWAN_LITERAL(10.0), (clog3_legal - ALWAN_LITERAL(0.12240537)) / ALWAN_LITERAL(0.36726845)) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(14.98325);
+    }
+
+    /* Step 3: Scale output (scene-referred) */
+    return x * ALWAN_LITERAL(0.9);
+}
+
+/* ----------------------------------------------------------------
+ * Panasonic V-Log
+ * ---------------------------------------------------------------- */
+
+/* V-Log OETF: linear -> V-Log
+ * Formula from colour-science (Panasonic V-Log specification)
+ * Reference: PanasonicCorporation2014
+ * Note: NO reflection scaling (in_reflection=True means don't scale), operates in legal range internally */
+static alwan_scalar vlog_oetf_scalar(alwan_scalar linear) {
+    /* Constants (legal range) */
+    alwan_scalar const cut1 = ALWAN_LITERAL(0.01);    /* Linear threshold */
+    alwan_scalar const b = ALWAN_LITERAL(0.00873);
+    alwan_scalar const c = ALWAN_LITERAL(0.241514);
+    alwan_scalar const d = ALWAN_LITERAL(0.598206);
+
+    /* Step 1: Apply 2-region piecewise formula (legal range) */
+    alwan_scalar vlog_legal;
+
+    if (linear <= cut1) {
+        /* Linear region (use <= to match decoding threshold and ensure continuity) */
+        vlog_legal = ALWAN_LITERAL(5.6) * linear + ALWAN_LITERAL(0.125);
+    } else {
+        /* Logarithmic region */
+        vlog_legal = c * ALWAN_LOG10(linear + b) + d;
+    }
+
+    /* Step 2: Convert legal → full range */
+    return legal_to_full_10bit(vlog_legal);
+}
+
+static alwan_scalar vlog_eotf_scalar(alwan_scalar encoded) {
+    /* Constants (legal range) */
+    alwan_scalar const cut2 = ALWAN_LITERAL(0.181);   /* Encoded threshold (legal range) */
+    alwan_scalar const b = ALWAN_LITERAL(0.00873);
+    alwan_scalar const c = ALWAN_LITERAL(0.241514);
+    alwan_scalar const d = ALWAN_LITERAL(0.598206);
+
+    /* Step 1: Convert full → legal range */
+    alwan_scalar vlog_legal = full_to_legal_10bit(encoded);
+
+    /* Step 2: Apply inverse 2-region piecewise formula (legal range) */
+    alwan_scalar linear;
+
+    if (vlog_legal <= cut2) {
+        /* Linear region (use <= to match encoding threshold and ensure continuity) */
+        linear = (vlog_legal - ALWAN_LITERAL(0.125)) / ALWAN_LITERAL(5.6);
+    } else {
+        /* Logarithmic region */
+        linear = ALWAN_POW(ALWAN_LITERAL(10.0), (vlog_legal - d) / c) - b;
+    }
+
+    return linear;
+}
+
+/* ----------------------------------------------------------------
+ * ARRI LogC Family
+ * ---------------------------------------------------------------- */
+
+/* LogC3 OETF: linear -> LogC3 (EI 800)
+ * Formula from ARRI documentation */
+static alwan_scalar logc3_oetf_scalar(alwan_scalar linear) {
+    alwan_scalar const a = ALWAN_LITERAL(5.555556);
+    alwan_scalar const b = ALWAN_LITERAL(0.052272);
+    alwan_scalar const c = ALWAN_LITERAL(0.247190);
+    alwan_scalar const d = ALWAN_LITERAL(0.385537);
+    alwan_scalar const e = ALWAN_LITERAL(5.367655);
+    alwan_scalar const f = ALWAN_LITERAL(0.092809);
+
+    if (linear > ALWAN_LITERAL(0.010591)) {
+        return c * ALWAN_LOG10(a * linear + b) + d;
+    } else {
+        return e * linear + f;
+    }
+}
+
+static alwan_scalar logc3_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const a = ALWAN_LITERAL(5.555556);
+    alwan_scalar const b = ALWAN_LITERAL(0.052272);
+    alwan_scalar const c = ALWAN_LITERAL(0.247190);
+    alwan_scalar const d = ALWAN_LITERAL(0.385537);
+    alwan_scalar const e = ALWAN_LITERAL(5.367655);
+    alwan_scalar const f = ALWAN_LITERAL(0.092809);
+
+    alwan_scalar threshold = e * ALWAN_LITERAL(0.010591) + f;
+
+    if (encoded < threshold) {
+        return (encoded - f) / e;
+    } else {
+        return (ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - d) / c) - b) / a;
+    }
+}
+
+/* LogC4 OETF: linear -> LogC4
+ * Formula from ARRI documentation */
+static alwan_scalar logc4_oetf_scalar(alwan_scalar linear) {
+    alwan_scalar const a = ALWAN_LITERAL(14.98325);
+    alwan_scalar const b = ALWAN_LITERAL(0.005494072);
+    alwan_scalar const c = ALWAN_LITERAL(0.0647954);
+    alwan_scalar const d = ALWAN_LITERAL(0.0075);
+    alwan_scalar const e = ALWAN_LITERAL(0.000000089);
+    alwan_scalar const f = ALWAN_LITERAL(0.0);
+
+    if (linear < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+
+    alwan_scalar t = (linear + e) / (linear + d);
+    return (c * ALWAN_LOG10(a * t + b)) + f;
+}
+
+static alwan_scalar logc4_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const a = ALWAN_LITERAL(14.98325);
+    alwan_scalar const b = ALWAN_LITERAL(0.005494072);
+    alwan_scalar const c = ALWAN_LITERAL(0.0647954);
+    alwan_scalar const d = ALWAN_LITERAL(0.0075);
+    alwan_scalar const e = ALWAN_LITERAL(0.000000089);
+    alwan_scalar const f = ALWAN_LITERAL(0.0);
+
+    alwan_scalar s = ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - f) / c);
+    return (d * (s - b) - e * (a * s - b)) / (a * s - b - s + ALWAN_LITERAL(1.0));
+}
+
+/* ----------------------------------------------------------------
+ * RED Log Family
+ * ---------------------------------------------------------------- */
+
+/* REDLog OETF: linear -> REDLog
+ * Formula from RED documentation */
+static alwan_scalar redlog_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        linear = ALWAN_LITERAL(0.0);
+    }
+
+    return (ALWAN_LOG10(linear * ALWAN_LITERAL(0.9) + ALWAN_LITERAL(0.1)) + ALWAN_LITERAL(3.0)) / ALWAN_LITERAL(3.0);
+}
+
+static alwan_scalar redlog_eotf_scalar(alwan_scalar encoded) {
+    return (ALWAN_POW(ALWAN_LITERAL(10.0), encoded * ALWAN_LITERAL(3.0) - ALWAN_LITERAL(3.0)) - ALWAN_LITERAL(0.1)) / ALWAN_LITERAL(0.9);
+}
+
+/* REDLogFilm OETF: linear -> REDLogFilm
+ * Formula from RED documentation */
+static alwan_scalar redlogfilm_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        linear = ALWAN_LITERAL(0.0);
+    }
+
+    return (ALWAN_LOG10(linear * ALWAN_LITERAL(0.8) + ALWAN_LITERAL(0.1)) + ALWAN_LITERAL(3.0)) / ALWAN_LITERAL(3.0);
+}
+
+static alwan_scalar redlogfilm_eotf_scalar(alwan_scalar encoded) {
+    return (ALWAN_POW(ALWAN_LITERAL(10.0), encoded * ALWAN_LITERAL(3.0) - ALWAN_LITERAL(3.0)) - ALWAN_LITERAL(0.1)) / ALWAN_LITERAL(0.8);
+}
+
+/* Log3G10 OETF: linear -> Log3G10
+ * Formula from RED documentation */
+static alwan_scalar log3g10_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    } else if (linear <= ALWAN_LITERAL(0.0)) {
+        return linear * ALWAN_LITERAL(15.1927);
+    } else {
+        return ALWAN_LITERAL(0.224282) * ALWAN_LOG10(linear * ALWAN_LITERAL(155.975327) + ALWAN_LITERAL(1.0)) + ALWAN_LITERAL(0.01);
+    }
+}
+
+static alwan_scalar log3g10_eotf_scalar(alwan_scalar encoded) {
+    if (encoded <= ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    } else if (encoded <= ALWAN_LITERAL(0.0)) {
+        return encoded / ALWAN_LITERAL(15.1927);
+    } else {
+        return (ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.224282)) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(155.975327);
+    }
+}
+
+/* ----------------------------------------------------------------
+ * Blackmagic Film Gen 5
+ * ---------------------------------------------------------------- */
+
+/* Blackmagic Film Gen 5 OETF: linear -> BMDFilm
+ * Formula from Blackmagic documentation */
+static alwan_scalar bmdfilm_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.005)) {
+        return linear * ALWAN_LITERAL(8.283605932);
+    } else {
+        return ALWAN_LITERAL(0.5) * ALWAN_LOG(linear + ALWAN_LITERAL(0.006)) / ALWAN_LOG(ALWAN_LITERAL(2.0)) + ALWAN_LITERAL(0.584);
+    }
+}
+
+static alwan_scalar bmdfilm_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar threshold = ALWAN_LITERAL(0.005) * ALWAN_LITERAL(8.283605932);
+
+    if (encoded < threshold) {
+        return encoded / ALWAN_LITERAL(8.283605932);
+    } else {
+        return ALWAN_POW(ALWAN_LITERAL(2.0), (encoded - ALWAN_LITERAL(0.584)) / ALWAN_LITERAL(0.5)) - ALWAN_LITERAL(0.006);
+    }
+}
+
+/* ----------------------------------------------------------------
+ * Filmlight T-Log / E-Log
+ * ---------------------------------------------------------------- */
+
+/* T-Log OETF: linear -> T-Log
+ * Formula from Filmlight documentation */
+static alwan_scalar tlog_oetf_scalar(alwan_scalar linear) {
+    alwan_scalar const a = ALWAN_LITERAL(0.01);
+    alwan_scalar const b = ALWAN_LITERAL(0.0);
+    alwan_scalar const c = ALWAN_LITERAL(0.33);
+    alwan_scalar const d = ALWAN_LITERAL(0.02);
+
+    if (linear <= a) {
+        return linear / a * d;
+    } else {
+        return c * ALWAN_LOG((linear + b) / a) / ALWAN_LOG(ALWAN_LITERAL(10.0)) + d;
+    }
+}
+
+static alwan_scalar tlog_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const a = ALWAN_LITERAL(0.01);
+    alwan_scalar const b = ALWAN_LITERAL(0.0);
+    alwan_scalar const c = ALWAN_LITERAL(0.33);
+    alwan_scalar const d = ALWAN_LITERAL(0.02);
+
+    if (encoded <= d) {
+        return encoded / d * a;
+    } else {
+        return ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - d) / c) * a - b;
+    }
+}
+
+/* E-Log OETF: linear -> E-Log (Filmlight)
+ * Formula from Filmlight documentation */
+static alwan_scalar elog_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        linear = ALWAN_LITERAL(0.0);
+    }
+
+    return ALWAN_LOG(linear + ALWAN_LITERAL(1.0)) / ALWAN_LOG(ALWAN_LITERAL(10.0)) * ALWAN_LITERAL(0.4) + ALWAN_LITERAL(0.6);
+}
+
+static alwan_scalar elog_eotf_scalar(alwan_scalar encoded) {
+    return ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - ALWAN_LITERAL(0.6)) / ALWAN_LITERAL(0.4)) - ALWAN_LITERAL(1.0);
+}
+
+/* ----------------------------------------------------------------
+ * GoPro Protune
+ * ---------------------------------------------------------------- */
+
+/* Protune OETF: linear -> Protune
+ * Formula from GoPro documentation */
+static alwan_scalar protune_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        linear = ALWAN_LITERAL(0.0);
+    }
+
+    return ALWAN_LOG(linear * ALWAN_LITERAL(112.0) + ALWAN_LITERAL(1.0)) / ALWAN_LOG(ALWAN_LITERAL(113.0));
+}
+
+static alwan_scalar protune_eotf_scalar(alwan_scalar encoded) {
+    return (ALWAN_POW(ALWAN_LITERAL(113.0), encoded) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(112.0);
+}
+
+/* ----------------------------------------------------------------
+ * Standard Gamma Variants
+ * ---------------------------------------------------------------- */
+
+/* Gamma 2.2 */
+static alwan_scalar gamma22_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    return ALWAN_POW(linear, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.2));
+}
+
+static alwan_scalar gamma22_eotf_scalar(alwan_scalar encoded) {
+    if (encoded < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    return ALWAN_POW(encoded, ALWAN_LITERAL(2.2));
+}
+
+/* Gamma 2.4 */
+static alwan_scalar gamma24_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    return ALWAN_POW(linear, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
+}
+
+static alwan_scalar gamma24_eotf_scalar(alwan_scalar encoded) {
+    if (encoded < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    return ALWAN_POW(encoded, ALWAN_LITERAL(2.4));
+}
+
+/* Gamma 2.6 */
+static alwan_scalar gamma26_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    return ALWAN_POW(linear, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
+}
+
+static alwan_scalar gamma26_eotf_scalar(alwan_scalar encoded) {
+    if (encoded < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    return ALWAN_POW(encoded, ALWAN_LITERAL(2.6));
+}
+
+/* Gamma 2.8 */
+static alwan_scalar gamma28_oetf_scalar(alwan_scalar linear) {
+    if (linear < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    return ALWAN_POW(linear, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.8));
+}
+
+static alwan_scalar gamma28_eotf_scalar(alwan_scalar encoded) {
+    if (encoded < ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    return ALWAN_POW(encoded, ALWAN_LITERAL(2.8));
+}
+
+/* ----------------------------------------------------------------
+ * Nikon N-Log
+ * ---------------------------------------------------------------- */
+
+/* N-Log OETF: linear -> N-Log
+ * Formula from Nikon documentation */
+static alwan_scalar nlog_oetf_scalar(alwan_scalar linear) {
+    alwan_scalar const cut = ALWAN_LITERAL(0.00570);
+
+    if (linear < cut) {
+        return ALWAN_LITERAL(150.0) * linear + ALWAN_LITERAL(0.11241);
+    } else {
+        return (ALWAN_LITERAL(0.36) * ALWAN_LOG(linear + ALWAN_LITERAL(0.10033)) / ALWAN_LOG(ALWAN_LITERAL(10.0))) + ALWAN_LITERAL(0.71722);
+    }
+}
+
+static alwan_scalar nlog_eotf_scalar(alwan_scalar encoded) {
+    alwan_scalar const cut = ALWAN_LITERAL(0.00570);
+    alwan_scalar threshold = ALWAN_LITERAL(150.0) * cut + ALWAN_LITERAL(0.11241);
+
+    if (encoded < threshold) {
+        return (encoded - ALWAN_LITERAL(0.11241)) / ALWAN_LITERAL(150.0);
+    } else {
+        return ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - ALWAN_LITERAL(0.71722)) / ALWAN_LITERAL(0.36)) - ALWAN_LITERAL(0.10033);
+    }
+}
+
+/* ----------------------------------------------------------------
  * Transfer Function API
  * ---------------------------------------------------------------- */
 
@@ -314,6 +882,72 @@ int alwan_oetf_apply(alwan_transfer_function tf,
         case ALWAN_TF_BT1886:
             /* BT.1886 only has EOTF, no OETF */
             return ALWAN_E_INVALID;
+
+        /* Extended Transfer Functions */
+        case ALWAN_TF_SLOG:
+            oetf_fn = slog_oetf_scalar;
+            break;
+        case ALWAN_TF_SLOG2:
+            oetf_fn = slog2_oetf_scalar;
+            break;
+        case ALWAN_TF_SLOG3:
+            oetf_fn = slog3_oetf_scalar;
+            break;
+        case ALWAN_TF_CLOG:
+            oetf_fn = clog_oetf_scalar;
+            break;
+        case ALWAN_TF_CLOG2:
+            oetf_fn = clog2_oetf_scalar;
+            break;
+        case ALWAN_TF_CLOG3:
+            oetf_fn = clog3_oetf_scalar;
+            break;
+        case ALWAN_TF_VLOG:
+            oetf_fn = vlog_oetf_scalar;
+            break;
+        case ALWAN_TF_LOGC3:
+            oetf_fn = logc3_oetf_scalar;
+            break;
+        case ALWAN_TF_LOGC4:
+            oetf_fn = logc4_oetf_scalar;
+            break;
+        case ALWAN_TF_REDLOG:
+            oetf_fn = redlog_oetf_scalar;
+            break;
+        case ALWAN_TF_REDLOGFILM:
+            oetf_fn = redlogfilm_oetf_scalar;
+            break;
+        case ALWAN_TF_LOG3G10:
+            oetf_fn = log3g10_oetf_scalar;
+            break;
+        case ALWAN_TF_BMDFILM:
+            oetf_fn = bmdfilm_oetf_scalar;
+            break;
+        case ALWAN_TF_TLOG:
+            oetf_fn = tlog_oetf_scalar;
+            break;
+        case ALWAN_TF_ELOG:
+            oetf_fn = elog_oetf_scalar;
+            break;
+        case ALWAN_TF_PROTUNE:
+            oetf_fn = protune_oetf_scalar;
+            break;
+        case ALWAN_TF_GAMMA22:
+            oetf_fn = gamma22_oetf_scalar;
+            break;
+        case ALWAN_TF_GAMMA24:
+            oetf_fn = gamma24_oetf_scalar;
+            break;
+        case ALWAN_TF_GAMMA26:
+            oetf_fn = gamma26_oetf_scalar;
+            break;
+        case ALWAN_TF_GAMMA28:
+            oetf_fn = gamma28_oetf_scalar;
+            break;
+        case ALWAN_TF_NLOG:
+            oetf_fn = nlog_oetf_scalar;
+            break;
+
         default:
             return ALWAN_E_INVALID;
     }
@@ -359,6 +993,72 @@ int alwan_eotf_apply(alwan_transfer_function tf,
         case ALWAN_TF_ACESPROXY:
             eotf_fn = acesproxy_eotf_scalar;
             break;
+
+        /* Extended Transfer Functions */
+        case ALWAN_TF_SLOG:
+            eotf_fn = slog_eotf_scalar;
+            break;
+        case ALWAN_TF_SLOG2:
+            eotf_fn = slog2_eotf_scalar;
+            break;
+        case ALWAN_TF_SLOG3:
+            eotf_fn = slog3_eotf_scalar;
+            break;
+        case ALWAN_TF_CLOG:
+            eotf_fn = clog_eotf_scalar;
+            break;
+        case ALWAN_TF_CLOG2:
+            eotf_fn = clog2_eotf_scalar;
+            break;
+        case ALWAN_TF_CLOG3:
+            eotf_fn = clog3_eotf_scalar;
+            break;
+        case ALWAN_TF_VLOG:
+            eotf_fn = vlog_eotf_scalar;
+            break;
+        case ALWAN_TF_LOGC3:
+            eotf_fn = logc3_eotf_scalar;
+            break;
+        case ALWAN_TF_LOGC4:
+            eotf_fn = logc4_eotf_scalar;
+            break;
+        case ALWAN_TF_REDLOG:
+            eotf_fn = redlog_eotf_scalar;
+            break;
+        case ALWAN_TF_REDLOGFILM:
+            eotf_fn = redlogfilm_eotf_scalar;
+            break;
+        case ALWAN_TF_LOG3G10:
+            eotf_fn = log3g10_eotf_scalar;
+            break;
+        case ALWAN_TF_BMDFILM:
+            eotf_fn = bmdfilm_eotf_scalar;
+            break;
+        case ALWAN_TF_TLOG:
+            eotf_fn = tlog_eotf_scalar;
+            break;
+        case ALWAN_TF_ELOG:
+            eotf_fn = elog_eotf_scalar;
+            break;
+        case ALWAN_TF_PROTUNE:
+            eotf_fn = protune_eotf_scalar;
+            break;
+        case ALWAN_TF_GAMMA22:
+            eotf_fn = gamma22_eotf_scalar;
+            break;
+        case ALWAN_TF_GAMMA24:
+            eotf_fn = gamma24_eotf_scalar;
+            break;
+        case ALWAN_TF_GAMMA26:
+            eotf_fn = gamma26_eotf_scalar;
+            break;
+        case ALWAN_TF_GAMMA28:
+            eotf_fn = gamma28_eotf_scalar;
+            break;
+        case ALWAN_TF_NLOG:
+            eotf_fn = nlog_eotf_scalar;
+            break;
+
         default:
             return ALWAN_E_INVALID;
     }
@@ -511,7 +1211,7 @@ int alwan_rgb_convert_bulk(alwan_ctx *ctx,
 }
 
 /* ----------------------------------------------------------------
- * P5: RGB Space Descriptor Helper
+ * RGB Space Descriptor Helper
  * ---------------------------------------------------------------- */
 
 #if ALWAN_EMBED_DATA
@@ -580,7 +1280,7 @@ int alwan_rgb_get_space_descriptor(alwan_ctx *ctx, alwan_rgb_space space, alwan_
     /* Load RGB space data from CSV file (8 values: rx,ry,gx,gy,bx,by,wx,wy) */
     /* NOTE: Always uses runtime loading for now. Embedded mode could be added later. */
     char path[512];
-    char const *data_root = (ctx && ctx->runtime_data_root) ? ctx->runtime_data_root : "data";
+    char const *data_root = (ctx && ctx->runtime_data_root) ? ctx->runtime_data_root : "../src/alwan/data";
     snprintf(path, sizeof(path), "%s/rgb_spaces/%s.csv", data_root, filename);
 
     /* Simple CSV loader for RGB space data (8 values) */

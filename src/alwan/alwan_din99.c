@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * P1.4: DIN99 Family (DIN99, DIN99b, DIN99c, DIN99d)
+ * DIN99 Family (DIN99, DIN99b, DIN99c, DIN99d)
  *
  * Reference: DIN 6176:2001-03, ASTM D2244-07
  * German color difference standards with improved uniformity

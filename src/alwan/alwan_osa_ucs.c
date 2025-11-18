@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * P1.5: OSA-UCS Color Space (Optical Society of America Uniform Color Scales)
+ * OSA-UCS Color Space (Optical Society of America Uniform Color Scales)
  *
  * Reference: OSA Uniform Color Scales Committee (1977)
  * "Optical Society of America Uniform Color Scales"

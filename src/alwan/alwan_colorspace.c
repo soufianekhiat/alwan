@@ -542,10 +542,10 @@ alwan_scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2) 
 }
 
 /* ================================================================
- * P3: Additional Color Difference Metrics
+ * Additional Color Difference Metrics
  * ================================================================ */
 
-/* P3.1: ΔE ITP - ITU-R BT.2124 HDR Color Difference in ICtCp space
+/* ΔE ITP - ITU-R BT.2124 HDR Color Difference in ICtCp space
  * Reference: ITU-R Report BT.2124
  * Formula: ΔE_ITP = K_ITP * sqrt(dI² + 0.25*dCT² + dCP²)
  * where K_ITP (scalar_factor) is typically 720 */
@@ -558,7 +558,7 @@ alwan_scalar alwan_delta_e_itp(alwan_vec3 const *ictcp1, alwan_vec3 const *ictcp
     return scalar_factor * ALWAN_SQRT(dI * dI + ALWAN_LITERAL(0.25) * dCT * dCT + dCP * dCP);
 }
 
-/* P3.2: ΔE HyAB - Hybrid Delta E
+/* ΔE HyAB - Hybrid Delta E
  * Reference: Sarifuddin, M., & Missaoui, R. (2005)
  * "A new perceptually uniform color space with associated color similarity measure"
  * Simplified Euclidean in Lab with adjusted chroma weighting */
@@ -597,7 +597,7 @@ alwan_scalar alwan_delta_e_hyab(alwan_vec3 const *lab1, alwan_vec3 const *lab2) 
     return ALWAN_SQRT(dL * dL + dC_prime * dC_prime + (dH_prime_sq > ALWAN_LITERAL(0.0) ? dH_prime_sq : ALWAN_LITERAL(0.0)));
 }
 
-/* P3.3: ΔE DIN99 - Euclidean distance in DIN99 space
+/* ΔE DIN99 - Euclidean distance in DIN99 space
  * DIN99 family spaces are designed for perceptual uniformity
  * Simple Euclidean distance in the transformed space */
 alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *din99_2) {
@@ -608,7 +608,7 @@ alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *di
     return ALWAN_SQRT(dL * dL + da * da + db * db);
 }
 
-/* P3.4: ΔE CAM02-LCD - CIECAM02 Large Color Difference
+/* ΔE CAM02-LCD - CIECAM02 Large Color Difference
  * Reference: CIE TC8-01 "Uniform Colour Spaces"
  * Formula: sqrt((dJ/K_L)² + (dM)² + (dh)²) in UCS space
  * LCD uses K_L = 1.0, c1 = 0.007, c2 = 0.0053
@@ -673,7 +673,7 @@ alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *lab1, alwan_vec3 const *l
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }
 
-/* P3.4: ΔE CAM02-SCD - CIECAM02 Small Color Difference
+/* ΔE CAM02-SCD - CIECAM02 Small Color Difference
  * SCD uses tighter parameters for better discrimination of small differences
  * SCD uses K_L = 2.0, c1 = 0.007, c2 = 0.0363
  * Takes Lab input and converts internally via Lab → XYZ → CIECAM02 → UCS */
@@ -737,7 +737,7 @@ alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *lab1, alwan_vec3 const *l
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }
 
-/* P3.5: ΔE CAM16-LCD - CAM16 Large Color Difference
+/* ΔE CAM16-LCD - CAM16 Large Color Difference
  * Same formula as CAM02-LCD but uses CAM16 chromatic adaptation
  * Takes Lab input and converts internally via Lab → XYZ → CAM16 → UCS */
 alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
@@ -800,7 +800,7 @@ alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *lab1, alwan_vec3 const *l
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }
 
-/* P3.5: ΔE CAM16-SCD - CAM16 Small Color Difference
+/* ΔE CAM16-SCD - CAM16 Small Color Difference
  * Same formula as CAM02-SCD but uses CAM16 chromatic adaptation
  * Takes Lab input and converts internally via Lab → XYZ → CAM16 → UCS */
 alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
@@ -863,7 +863,7 @@ alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *lab1, alwan_vec3 const *l
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }
 
-/* P3.5: ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space
+/* ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space
  * ZCAM UCS is designed for perceptual uniformity in HDR
  * Simple Euclidean distance is appropriate */
 alwan_scalar alwan_delta_e_zcam(alwan_vec3 const *jab1, alwan_vec3 const *jab2) {

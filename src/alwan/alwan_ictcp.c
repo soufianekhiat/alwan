@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Alwan Contributors
  * SPDX-License-Identifier: MIT
  *
- * P1.2: ICtCp (ITU-R BT.2100 HDR Color Space)
+ * ICtCp (ITU-R BT.2100 HDR Color Space)
  *
  * Reference: ITU-R Recommendation BT.2100-3 (02/2025)
  * "Image parameter values for high dynamic range television for use in production and international programme exchange"

@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * P1.6: Hunter Lab Color Space
+ * Hunter Lab Color Space
  *
  * Reference: Hunter (1948), ASTM D 1535
  * Earlier Lab-type color space using square roots instead of cube roots

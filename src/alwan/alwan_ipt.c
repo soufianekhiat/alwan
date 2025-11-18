@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * P1.7: IPT Color Space (Image Processing Transform)
+ * IPT Color Space (Image Processing Transform)
  *
  * Reference: Ebner & Fairchild (1998)
  * "Development and Testing of a Color Space (IPT) with Improved Hue Uniformity"

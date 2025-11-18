@@ -114,13 +114,20 @@ int alwan_data_get_srgb_primaries(alwan_ctx *ctx, alwan_scalar **data, size_t *c
  * Runtime data mode: load from filesystem
  * ---------------------------------------------------------------- */
 
+/* Internal context structure (needed for runtime_data_root access) */
+struct alwan_ctx {
+    alwan_alloc_fn alloc_fn;
+    alwan_free_fn  free_fn;
+    char *runtime_data_root;
+};
+
 /* Helper: construct file path from data root and relative path */
 static void build_path(char *dest, size_t dest_size,
                        char const *data_root, char const *rel_path) {
     if (data_root && data_root[0]) {
         snprintf(dest, dest_size, "%s/%s", data_root, rel_path);
     } else {
-        snprintf(dest, dest_size, "data/%s", rel_path);
+        snprintf(dest, dest_size, "../src/alwan/data/%s", rel_path);
     }
 }
 
@@ -189,43 +196,43 @@ static int load_csv(char const *filepath, alwan_scalar **out_data, size_t *out_c
 
 int alwan_data_get_a(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/a_xy.csv");
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/a_xy.csv");
     return load_csv(path, data, count);
 }
 
 int alwan_data_get_d50(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/d50_xy.csv");
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/d50_xy.csv");
     return load_csv(path, data, count);
 }
 
 int alwan_data_get_d55(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/d55_xy.csv");
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/d55_xy.csv");
     return load_csv(path, data, count);
 }
 
 int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/d60_xy.csv");
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/d60_xy.csv");
     return load_csv(path, data, count);
 }
 
 int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/d65_xy.csv");
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/d65_xy.csv");
     return load_csv(path, data, count);
 }
 
 int alwan_data_get_e(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/e_xy.csv");
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/e_xy.csv");
     return load_csv(path, data, count);
 }
 
 int alwan_data_get_srgb_primaries(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "srgb_primaries_3x2.csv");
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "srgb_primaries_3x2.csv");
     return load_csv(path, data, count);
 }
 

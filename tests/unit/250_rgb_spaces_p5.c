@@ -103,7 +103,7 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
 }
 
 /* ----------------------------------------------------------------
- * P5.1: Adobe RGB (1998)
+ * Adobe RGB (1998)
  * ---------------------------------------------------------------- */
 
 static int test_adobe_rgb_1998(void) {
@@ -140,7 +140,7 @@ static int test_adobe_rgb_1998(void) {
 }
 
 /* ----------------------------------------------------------------
- * P5.2: ProPhoto RGB
+ * ProPhoto RGB
  * ---------------------------------------------------------------- */
 
 static int test_prophoto_rgb(void) {
@@ -177,7 +177,7 @@ static int test_prophoto_rgb(void) {
 }
 
 /* ----------------------------------------------------------------
- * P5.3: Cinema/Broadcast Spaces
+ * Cinema/Broadcast Spaces
  * ---------------------------------------------------------------- */
 
 static int test_cinema_spaces(void) {
@@ -249,7 +249,7 @@ static int test_cinema_spaces(void) {
 }
 
 /* ----------------------------------------------------------------
- * P5.4: Legacy Spaces
+ * Legacy Spaces
  * ---------------------------------------------------------------- */
 
 static int test_legacy_spaces(void) {

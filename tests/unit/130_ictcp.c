@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Alwan Contributors
  * SPDX-License-Identifier: MIT
  *
- * P1.2: ICtCp (ITU-R BT.2100 HDR) Tests
+ * ICtCp (ITU-R BT.2100 HDR) Tests
  */
 
 #include "alwan.h"
@@ -353,7 +353,7 @@ static int test_xyz_to_ictcp_hlg(void) {
  * ---------------------------------------------------------------- */
 
 int test_130_ictcp_main(void) {
-    printf("=== P1.2: ICtCp (BT.2100 HDR) Tests ===\n");
+    printf("=== ICtCp (BT.2100 HDR) Tests ===\n");
 
     int failures = 0;
 
