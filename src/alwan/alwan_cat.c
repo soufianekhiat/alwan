@@ -42,6 +42,73 @@ static void get_cat16_matrix(alwan_mat3x3 *out) {
 }
 
 /* ----------------------------------------------------------------
+ * P7: Extended CAT Matrix Definitions
+ * ---------------------------------------------------------------- */
+
+/* Sharp CAT matrix
+ * Generated from colour-science */
+static void get_sharp_matrix(alwan_mat3x3 *out) {
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_sharp.csv"
+    };
+    memcpy(out->m, data, sizeof(data));
+}
+
+/* Fairchild 1990 CAT matrix
+ * Generated from colour-science */
+static void get_fairchild_matrix(alwan_mat3x3 *out) {
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_fairchild.csv"
+    };
+    memcpy(out->m, data, sizeof(data));
+}
+
+/* CMCCAT97 matrix
+ * Generated from colour-science */
+static void get_cmccat97_matrix(alwan_mat3x3 *out) {
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_cmccat97.csv"
+    };
+    memcpy(out->m, data, sizeof(data));
+}
+
+/* CMCCAT2000 matrix
+ * Generated from colour-science */
+static void get_cmccat2000_matrix(alwan_mat3x3 *out) {
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_cmccat2000.csv"
+    };
+    memcpy(out->m, data, sizeof(data));
+}
+
+/* CAT02 Brill 2008 variant matrix
+ * Generated from colour-science */
+static void get_cat02_brill_2008_matrix(alwan_mat3x3 *out) {
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_cat02_brill_2008.csv"
+    };
+    memcpy(out->m, data, sizeof(data));
+}
+
+/* Bianco 2010 CAT matrix
+ * Generated from colour-science */
+static void get_bianco_2010_matrix(alwan_mat3x3 *out) {
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_bianco_2010.csv"
+    };
+    memcpy(out->m, data, sizeof(data));
+}
+
+/* Bianco PC 2010 CAT matrix
+ * Generated from colour-science */
+static void get_bianco_pc_2010_matrix(alwan_mat3x3 *out) {
+    static alwan_scalar const data[9] = {
+#include "data/matrices/cat_bianco_pc_2010.csv"
+    };
+    memcpy(out->m, data, sizeof(data));
+}
+
+/* ----------------------------------------------------------------
  * CAT Implementation
  * ---------------------------------------------------------------- */
 
@@ -84,6 +151,30 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
         case ALWAN_CAT_CAT16:
             get_cat16_matrix(&M);
             break;
+
+        /* P7: Extended CAT methods */
+        case ALWAN_CAT_SHARP:
+            get_sharp_matrix(&M);
+            break;
+        case ALWAN_CAT_FAIRCHILD:
+            get_fairchild_matrix(&M);
+            break;
+        case ALWAN_CAT_CMCCAT97:
+            get_cmccat97_matrix(&M);
+            break;
+        case ALWAN_CAT_CMCCAT2000:
+            get_cmccat2000_matrix(&M);
+            break;
+        case ALWAN_CAT_CAT02_BRILL_2008:
+            get_cat02_brill_2008_matrix(&M);
+            break;
+        case ALWAN_CAT_BIANCO_2010:
+            get_bianco_2010_matrix(&M);
+            break;
+        case ALWAN_CAT_BIANCO_PC_2010:
+            get_bianco_pc_2010_matrix(&M);
+            break;
+
         default:
             return ALWAN_E_INVALID;
     }

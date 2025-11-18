@@ -1293,6 +1293,55 @@ for i, linear in enumerate(gamma24_test):
     gamma24_ref.extend([linear, gamma24_encoded[i], gamma24_decoded[i]])
 write_ref('tf_gamma24', gamma24_ref, 'P6.4 Gamma 2.4: linear, encoded, decoded triplets')
 
+# ================================================================
+# P7: Advanced Chromatic Adaptation Transforms (CAT)
+# ================================================================
+print('\nP7 Advanced Chromatic Adaptation Transforms:')
+
+# Test colors for adaptation (use same test_xyz_colors)
+# White points are already defined: d65_white_xyz, d50_white_xyz, a_white_xyz, d60_white_xyz
+
+# P7 CAT transforms to test
+p7_transforms = [
+    'Sharp',
+    'Fairchild',
+    'CMCCAT97',
+    'CMCCAT2000',
+    'CAT02 Brill 2008',
+    'Bianco 2010',
+    'Bianco PC 2010'
+]
+
+# Generate CAT matrices for D65->D50 for each P7 method
+for transform_name in p7_transforms:
+    try:
+        # Generate adaptation matrix
+        cat_matrix = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+            d65_white_xyz, d50_white_xyz, transform=transform_name
+        )
+
+        # Flatten matrix to row-major order
+        filename = f"cat_d65_to_d50_{transform_name.lower().replace(' ', '_').replace('-', '_')}"
+        write_ref(filename, cat_matrix.flatten().tolist(), f'P7 CAT {transform_name} D65->D50 matrix')
+
+        # Generate adapted XYZ colors
+        adapted_colors = []
+        for xyz in test_xyz_colors:
+            adapted = colour.adaptation.chromatic_adaptation(
+                xyz, d65_white_xyz, d50_white_xyz, transform=transform_name
+            )
+            adapted_colors.extend(adapted.tolist())
+
+        adapted_filename = f"adapted_d65_to_d50_{transform_name.lower().replace(' ', '_').replace('-', '_')}"
+        write_ref(adapted_filename, adapted_colors, f'P7 XYZ colors adapted D65->D50 using {transform_name}')
+
+        print(f'  Generated {transform_name} CAT reference data')
+    except Exception as e:
+        print(f'  Warning: {transform_name} CAT failed: {e}')
+        # Write empty data
+        filename = f"cat_d65_to_d50_{transform_name.lower().replace(' ', '_').replace('-', '_')}"
+        write_ref(filename, [], f'P7 CAT {transform_name} (not available)')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')

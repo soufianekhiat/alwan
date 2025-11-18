@@ -587,7 +587,16 @@ typedef enum {
     ALWAN_CAT_XYZ_SCALING = 0,  /* Von Kries in XYZ space (simplest) */
     ALWAN_CAT_BRADFORD    = 1,  /* Bradford (most common, used in ICC) */
     ALWAN_CAT_CAT02       = 2,  /* CAT02 (from CIECAM02) */
-    ALWAN_CAT_CAT16       = 3   /* CAT16 (from CAM16) */
+    ALWAN_CAT_CAT16       = 3,  /* CAT16 (from CAM16) */
+
+    /* P7: Extended CAT methods */
+    ALWAN_CAT_SHARP           = 4,  /* Sharp transform */
+    ALWAN_CAT_FAIRCHILD       = 5,  /* Fairchild 1990 */
+    ALWAN_CAT_CMCCAT97        = 6,  /* CMC CAT97 */
+    ALWAN_CAT_CMCCAT2000      = 7,  /* CMC CAT2000 */
+    ALWAN_CAT_CAT02_BRILL_2008 = 8, /* CAT02 Brill 2008 variant */
+    ALWAN_CAT_BIANCO_2010     = 9,  /* Bianco 2010 */
+    ALWAN_CAT_BIANCO_PC_2010  = 10  /* Bianco PC 2010 */
 } alwan_cat_method;
 
 /* Compute chromatic adaptation matrix from source to destination white point
