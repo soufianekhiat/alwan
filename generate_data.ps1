@@ -1999,6 +1999,72 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate CES data: {e}", file=sys.stderr)
 
+# ================================================================
+# P8.4: Generate Camera Sensitivity Data
+# ================================================================
+print("\nGenerating Camera Sensitivity Data (P8.4)...")
+
+try:
+    # Target wavelength range (matching our SPD format)
+    TARGET_WL_MIN = 360
+    TARGET_WL_MAX = 830
+    TARGET_WL_INTERVAL = 1
+
+    # Create camera sensitivities directory
+    os.makedirs(f'{DATA_DIR}/camera_sensitivities', exist_ok=True)
+
+    # Available cameras in colour-science
+    cameras = [
+        ('Nikon 5100 (NPL)', 'nikon_5100'),
+        ('Sigma SDMerill (NPL)', 'sigma_sdmerill')
+    ]
+
+    for camera_name, prefix in cameras:
+        print(f"\n  Generating {camera_name}:")
+
+        # Load camera sensitivity from colour-science
+        msds = colour.MSDS_CAMERA_SENSITIVITIES[camera_name]
+
+        print(f"    Source range: {msds.wavelengths[0]:.0f}-{msds.wavelengths[-1]:.0f}nm")
+        print(f"    Source samples: {len(msds.wavelengths)}")
+
+        # Create target wavelength array
+        target_wl = np.arange(TARGET_WL_MIN, TARGET_WL_MAX + TARGET_WL_INTERVAL, TARGET_WL_INTERVAL)
+
+        # Resample each channel (R, G, B)
+        # msds.values is shape (n_wavelengths, 3) where columns are R, G, B
+        r_values = msds.values[:, 0]
+        g_values = msds.values[:, 1]
+        b_values = msds.values[:, 2]
+
+        # Interpolate to target wavelengths (with zero extrapolation)
+        r_resampled = np.interp(target_wl, msds.wavelengths, r_values, left=0, right=0)
+        g_resampled = np.interp(target_wl, msds.wavelengths, g_values, left=0, right=0)
+        b_resampled = np.interp(target_wl, msds.wavelengths, b_values, left=0, right=0)
+
+        # Save each channel
+        for channel_name, values in [('r', r_resampled), ('g', g_resampled), ('b', b_resampled)]:
+            output_file = f'{DATA_DIR}/camera_sensitivities/{prefix}_{channel_name}.csv'
+
+            # Format as comma-separated values (to match our illuminant format)
+            with open(output_file, 'w') as f:
+                formatted_values = [format_scalar(v) for v in values]
+                for i in range(0, len(formatted_values), 10):
+                    chunk = formatted_values[i:i+10]
+                    if i + 10 < len(formatted_values):
+                        f.write(', '.join(chunk) + ',\n')
+                    else:
+                        f.write(', '.join(chunk))
+
+            print(f"    {output_file} ({len(values)} samples)")
+
+    print(f"  Camera sensitivity data generation complete!")
+
+except Exception as e:
+    print(f"  Warning: Could not generate camera sensitivity data: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+
 print("\nData generation complete!")
 "@
 

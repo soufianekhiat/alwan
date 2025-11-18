@@ -1623,30 +1623,181 @@ for color_name, rgb in test_rgb_colors.items():
     except Exception as e:
         print(f'    Warning: Jakob2019 test for {color_name} failed: {e}')
 
+# ================================================================
+# P8.4: Camera Sensitivities
+# ================================================================
+print('\nP8.4 Camera Sensitivities:')
+
+try:
+    # Get D65 illuminant SPD
+    d65_spd = colour.SDS_ILLUMINANTS['D65']
+
+    # Available cameras
+    cameras = [
+        ('Nikon 5100 (NPL)', 'nikon_5100'),
+        ('Sigma SDMerill (NPL)', 'sigma_sdmerill')
+    ]
+
+    for camera_name, prefix in cameras:
+        try:
+            # Get camera sensitivity from colour-science
+            camera_sens = colour.MSDS_CAMERA_SENSITIVITIES[camera_name]
+
+            # Compute camera RGB for D65 illuminant
+            # camera_sens has shape (wavelengths, 3) with columns [R, G, B]
+            # We need to integrate: RGB = ∫ illuminant(λ) * sensitivity(λ) dλ
+
+            # Align D65 SPD with camera sensitivities wavelength range
+            d65_aligned = d65_spd.copy().align(
+                camera_sens.wavelengths,
+                interpolator=colour.LinearInterpolator,
+                extrapolator=colour.Extrapolator
+            )
+
+            # Compute RGB values
+            rgb = np.zeros(3)
+            for i in range(3):  # R, G, B channels
+                # Multiply illuminant by sensitivity and integrate
+                product = d65_aligned.values * camera_sens.values[:, i]
+                # Trapezoidal integration
+                wavelength_interval = camera_sens.wavelengths[1] - camera_sens.wavelengths[0]
+                rgb[i] = np.trapz(product, dx=wavelength_interval)
+
+            # Write camera RGB reference
+            filename = f'camera_{prefix}_d65_rgb'
+            write_ref(filename, rgb.tolist(), f'P8.4 {camera_name}: D65 camera RGB')
+
+            print(f'  Generated {camera_name} D65 RGB: {rgb}')
+        except Exception as e:
+            print(f'  Warning: {camera_name} test generation failed: {e}')
+            write_ref(f'camera_{prefix}_d65_rgb', [], f'P8.4 {camera_name} (not available)')
+except Exception as e:
+    print(f'  Warning: Camera sensitivity tests failed: {e}')
+
+# ================================================================
+# P8.5: SPD Shape Descriptors
+# ================================================================
+print('\nP8.5 SPD Shape Descriptors:')
+
+def compute_shape_descriptor(spd, name):
+    """Compute shape descriptor for an SPD"""
+    try:
+        values = spd.values
+        wavelengths = spd.wavelengths
+
+        # Peak wavelength and value
+        peak_idx = np.argmax(values)
+        peak_wavelength = wavelengths[peak_idx]
+        peak_value = values[peak_idx]
+
+        # FWHM (Full Width at Half Maximum)
+        half_max = peak_value * 0.5
+
+        # Find left edge
+        left_idx = peak_idx
+        while left_idx > 0 and values[left_idx] >= half_max:
+            left_idx -= 1
+
+        # Find right edge
+        right_idx = peak_idx
+        while right_idx < len(values) - 1 and values[right_idx] >= half_max:
+            right_idx += 1
+
+        # Linear interpolation for more accurate FWHM
+        if left_idx < peak_idx and values[left_idx + 1] != values[left_idx]:
+            t = (half_max - values[left_idx]) / (values[left_idx + 1] - values[left_idx])
+            left_wl = wavelengths[left_idx] + t * (wavelengths[left_idx + 1] - wavelengths[left_idx])
+        else:
+            left_wl = wavelengths[left_idx]
+
+        if right_idx > peak_idx and right_idx > 0 and values[right_idx - 1] != values[right_idx]:
+            t = (half_max - values[right_idx]) / (values[right_idx - 1] - values[right_idx])
+            right_wl = wavelengths[right_idx] + t * (wavelengths[right_idx - 1] - wavelengths[right_idx])
+        else:
+            right_wl = wavelengths[right_idx]
+
+        fwhm = right_wl - left_wl
+
+        # Centroid (weighted mean wavelength)
+        sum_weighted = np.sum(wavelengths * values)
+        sum_values = np.sum(values)
+        centroid = sum_weighted / sum_values if sum_values > 0 else (wavelengths[0] + wavelengths[-1]) / 2
+
+        # Bandwidth (total wavelength range)
+        bandwidth = wavelengths[-1] - wavelengths[0]
+
+        # Return shape descriptor: [peak_wavelength, peak_value, fwhm, centroid, bandwidth]
+        return [peak_wavelength, peak_value, fwhm, centroid, bandwidth]
+    except Exception as e:
+        print(f'    Warning: Shape descriptor for {name} failed: {e}')
+        return [0, 0, 0, 0, 0]
+
+# Test D65 (broad spectrum)
+try:
+    d65_spd = colour.SDS_ILLUMINANTS['D65']
+    d65_shape = compute_shape_descriptor(d65_spd, 'D65')
+    write_ref('shape_d65', d65_shape, 'P8.5 D65 shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
+    print(f'  Generated D65 shape descriptor: peak={d65_shape[0]:.1f}nm, FWHM={d65_shape[2]:.1f}nm')
+except Exception as e:
+    print(f'  Warning: D65 shape descriptor failed: {e}')
+    write_ref('shape_d65', [], 'P8.5 D65 shape (not available)')
+
+# Test LED-B1 (narrow spectrum)
+try:
+    ledb1_spd = colour.SDS_ILLUMINANTS['LED-B1']
+    ledb1_shape = compute_shape_descriptor(ledb1_spd, 'LED-B1')
+    write_ref('shape_led_b1', ledb1_shape, 'P8.5 LED-B1 shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
+    print(f'  Generated LED-B1 shape descriptor: peak={ledb1_shape[0]:.1f}nm, FWHM={ledb1_shape[2]:.1f}nm')
+except Exception as e:
+    print(f'  Warning: LED-B1 shape descriptor failed: {e}')
+    write_ref('shape_led_b1', [], 'P8.5 LED-B1 shape (not available)')
+
+# Test blackbody 6500K
+try:
+    # Generate blackbody SPD at 6500K
+    bb_spd = colour.sd_blackbody(6500, colour.SpectralShape(360, 830, 1))
+    bb_shape = compute_shape_descriptor(bb_spd, 'Blackbody 6500K')
+    write_ref('shape_blackbody_6500k', bb_shape, 'P8.5 Blackbody 6500K shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
+    print(f'  Generated Blackbody 6500K shape descriptor: peak={bb_shape[0]:.1f}nm, FWHM={bb_shape[2]:.1f}nm')
+except Exception as e:
+    print(f'  Warning: Blackbody 6500K shape descriptor failed: {e}')
+    write_ref('shape_blackbody_6500k', [], 'P8.5 Blackbody 6500K shape (not available)')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')
 "@
 
-# Run Python script
+# Write Python script to temp file
 Write-Host ""
 Write-Host "Running Python generator..."
 Write-Host ""
 
-$pythonScript | python -
+$tempScript = [System.IO.Path]::GetTempFileName() + ".py"
+Set-Content -Path $tempScript -Value $pythonScript -Encoding UTF8
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Python script failed with exit code $LASTEXITCODE"
-    exit $LASTEXITCODE
+try {
+    # Run Python script
+    python $tempScript
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Python script failed with exit code $LASTEXITCODE"
+        exit $LASTEXITCODE
+    }
+
+    Write-Host ""
+    Write-Host "========================================"
+    Write-Host "Reference data generation completed successfully!"
+    Write-Host "========================================"
+    Write-Host ""
+    Write-Host "All test expected values are now generated from colour-science."
+    Write-Host "Location: $TEST_REF_DIR"
+    Write-Host ""
+} finally {
+    # Clean up temp file
+    if (Test-Path $tempScript) {
+        Remove-Item $tempScript -Force
+    }
 }
-
-Write-Host ""
-Write-Host "========================================"
-Write-Host "Reference data generation completed successfully!"
-Write-Host "========================================"
-Write-Host ""
-Write-Host "All test expected values are now generated from colour-science."
-Write-Host "Location: $TEST_REF_DIR"
-Write-Host ""
 
 

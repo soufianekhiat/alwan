@@ -693,6 +693,22 @@ typedef enum {
     ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4  /* Stockman & Sharpe 2000 2° cone fundamentals */
 } alwan_observer_type;
 
+/* P8.4: Camera/Sensor spectral sensitivity identifiers */
+typedef enum {
+    ALWAN_CAMERA_NIKON_5100,        /* Nikon D5100 (NPL measured) */
+    ALWAN_CAMERA_SIGMA_SDMERILL     /* Sigma SD Merill (NPL measured) */
+} alwan_camera_sensitivity;
+
+/* P8.5: Spectral shape descriptor
+ * Compact representation of SPD characteristics */
+typedef struct {
+    alwan_scalar peak_wavelength;  /* Peak wavelength (nm) */
+    alwan_scalar peak_value;        /* Peak power/reflectance value */
+    alwan_scalar fwhm;              /* Full width at half maximum (nm) */
+    alwan_scalar centroid;          /* Weighted mean wavelength (nm) */
+    alwan_scalar bandwidth;         /* Total wavelength range (nm) */
+} alwan_spd_shape;
+
 /* Get white point XYZ for a standard illuminant
  * Computes XYZ tristimulus values from illuminant xy chromaticity (Y normalized to 1.0)
  * Returns ALWAN_E_INVALID if illuminant not supported */
@@ -796,6 +812,39 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_integrate_method method,
                        alwan_scalar bandpass_nm,
                        alwan_vec3 *xyz_out);
+
+/* ----------------------------------------------------------------
+ * P8.4: Camera Sensitivities
+ * ---------------------------------------------------------------- */
+
+/* P8.4: Load camera RGB spectral sensitivities
+ * Loads R, G, B sensitivity curves for specified camera
+ * All three output SPDs must be pre-created with desired wavelength range/count
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if camera not supported */
+int alwan_spd_camera_sensitivity(alwan_ctx *ctx,
+                                   alwan_camera_sensitivity camera,
+                                   alwan_spd *spd_r,
+                                   alwan_spd *spd_g,
+                                   alwan_spd *spd_b);
+
+/* P8.4: Compute XYZ from SPD using camera sensitivities
+ * Similar to alwan_xyz_from_spd but uses camera RGB sensitivities instead of standard observer
+ * Returns ALWAN_OK on success */
+int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
+                               alwan_spd const *spd,
+                               alwan_spd const *illuminant,
+                               alwan_camera_sensitivity camera,
+                               alwan_integrate_method method,
+                               alwan_vec3 *xyz_out);
+
+/* ----------------------------------------------------------------
+ * P8.5: Spectral Shape Descriptors
+ * ---------------------------------------------------------------- */
+
+/* P8.5: Analyze SPD shape characteristics
+ * Computes peak wavelength, FWHM, centroid, and bandwidth
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if SPD is invalid */
+int alwan_spd_analyze_shape(alwan_spd const *spd, alwan_spd_shape *shape_out);
 
 /* ----------------------------------------------------------------
  * P8.1: Spectral Upsampling - RGB to Spectrum Conversion

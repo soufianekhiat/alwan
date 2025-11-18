@@ -974,3 +974,294 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
 
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * P8.4: Camera Sensitivity Functions
+ * ---------------------------------------------------------------- */
+
+int alwan_spd_camera_sensitivity(alwan_ctx *ctx,
+                                   alwan_camera_sensitivity camera,
+                                   alwan_spd *spd_r,
+                                   alwan_spd *spd_g,
+                                   alwan_spd *spd_b) {
+    if (!spd_r || !spd_g || !spd_b) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Validate that all SPDs have same wavelength range and count */
+    if (spd_r->wavelength_min != spd_g->wavelength_min || spd_r->wavelength_min != spd_b->wavelength_min ||
+        spd_r->wavelength_max != spd_g->wavelength_max || spd_r->wavelength_max != spd_b->wavelength_max ||
+        spd_r->count != spd_g->count || spd_r->count != spd_b->count) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Expected wavelength range: 360-830nm, 1nm steps = 471 samples */
+    if (spd_r->count != 471) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Load camera sensitivity data from embedded CSV */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+
+    switch (camera) {
+        case ALWAN_CAMERA_NIKON_5100: {
+            static alwan_scalar const data_r[] = {
+#include "data/camera_sensitivities/nikon_5100_r.csv"
+            };
+            static alwan_scalar const data_g[] = {
+#include "data/camera_sensitivities/nikon_5100_g.csv"
+            };
+            static alwan_scalar const data_b[] = {
+#include "data/camera_sensitivities/nikon_5100_b.csv"
+            };
+            size_t const n = sizeof(data_r) / sizeof(data_r[0]);
+            for (size_t i = 0; i < n && i < spd_r->count; i++) {
+                spd_r->values[i] = data_r[i];
+                spd_g->values[i] = data_g[i];
+                spd_b->values[i] = data_b[i];
+            }
+            break;
+        }
+        case ALWAN_CAMERA_SIGMA_SDMERILL: {
+            static alwan_scalar const data_r[] = {
+#include "data/camera_sensitivities/sigma_sdmerill_r.csv"
+            };
+            static alwan_scalar const data_g[] = {
+#include "data/camera_sensitivities/sigma_sdmerill_g.csv"
+            };
+            static alwan_scalar const data_b[] = {
+#include "data/camera_sensitivities/sigma_sdmerill_b.csv"
+            };
+            size_t const n = sizeof(data_r) / sizeof(data_r[0]);
+            for (size_t i = 0; i < n && i < spd_r->count; i++) {
+                spd_r->values[i] = data_r[i];
+                spd_g->values[i] = data_g[i];
+                spd_b->values[i] = data_b[i];
+            }
+            break;
+        }
+        default:
+            return ALWAN_E_INVALID;
+    }
+
+    ALWAN_DIAG_POP
+
+    (void)ctx;  /* Unused for now */
+    return ALWAN_OK;
+}
+
+int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
+                               alwan_spd const *spd,
+                               alwan_spd const *illuminant,
+                               alwan_camera_sensitivity camera,
+                               alwan_integrate_method method,
+                               alwan_vec3 *xyz_out) {
+    if (!spd || !xyz_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Load camera RGB sensitivities */
+    alwan_spd r_sens, g_sens, b_sens;
+    int status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, &r_sens);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+    status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, &g_sens);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &r_sens);
+        return status;
+    }
+    status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, &b_sens);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &r_sens);
+        alwan_spd_destroy(ctx, &g_sens);
+        return status;
+    }
+
+    status = alwan_spd_camera_sensitivity(ctx, camera, &r_sens, &g_sens, &b_sens);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &r_sens);
+        alwan_spd_destroy(ctx, &g_sens);
+        alwan_spd_destroy(ctx, &b_sens);
+        return status;
+    }
+
+    /* Resample sensitivities to match SPD wavelength range */
+    alwan_spd r_resampled, g_resampled, b_resampled;
+    status = alwan_spd_resample(ctx, &r_sens, spd->wavelength_min, spd->wavelength_max,
+                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO,
+                                &r_resampled);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &r_sens);
+        alwan_spd_destroy(ctx, &g_sens);
+        alwan_spd_destroy(ctx, &b_sens);
+        return status;
+    }
+
+    status = alwan_spd_resample(ctx, &g_sens, spd->wavelength_min, spd->wavelength_max,
+                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO,
+                                &g_resampled);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &r_sens);
+        alwan_spd_destroy(ctx, &g_sens);
+        alwan_spd_destroy(ctx, &b_sens);
+        alwan_spd_destroy(ctx, &r_resampled);
+        return status;
+    }
+
+    status = alwan_spd_resample(ctx, &b_sens, spd->wavelength_min, spd->wavelength_max,
+                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO,
+                                &b_resampled);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy(ctx, &r_sens);
+        alwan_spd_destroy(ctx, &g_sens);
+        alwan_spd_destroy(ctx, &b_sens);
+        alwan_spd_destroy(ctx, &r_resampled);
+        alwan_spd_destroy(ctx, &g_resampled);
+        return status;
+    }
+
+    /* Allocate temporary arrays for products */
+    alwan_scalar *prod_r = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
+    alwan_scalar *prod_g = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
+    alwan_scalar *prod_b = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
+
+    if (!prod_r || !prod_g || !prod_b) {
+        if (prod_r) ALWAN_FREE(prod_r);
+        if (prod_g) ALWAN_FREE(prod_g);
+        if (prod_b) ALWAN_FREE(prod_b);
+        alwan_spd_destroy(ctx, &r_sens);
+        alwan_spd_destroy(ctx, &g_sens);
+        alwan_spd_destroy(ctx, &b_sens);
+        alwan_spd_destroy(ctx, &r_resampled);
+        alwan_spd_destroy(ctx, &g_resampled);
+        alwan_spd_destroy(ctx, &b_resampled);
+        return ALWAN_E_NOMEM;
+    }
+
+    /* Compute products: SPD * illuminant * sensitivity */
+    for (size_t i = 0; i < spd->count; i++) {
+        alwan_scalar spd_value = spd->values[i];
+
+        /* If illuminant provided, multiply by it */
+        if (illuminant) {
+            alwan_scalar wavelength = spd_wavelength_at(spd, i);
+            alwan_scalar illum_value = spd_interpolate(illuminant, wavelength, ALWAN_RESAMPLE_LINEAR,
+                                                  ALWAN_EXTRAPOLATE_ZERO);
+            spd_value *= illum_value;
+        }
+
+        prod_r[i] = spd_value * r_resampled.values[i];
+        prod_g[i] = spd_value * g_resampled.values[i];
+        prod_b[i] = spd_value * b_resampled.values[i];
+    }
+
+    /* Integrate to get RGB (stored in XYZ output) */
+    alwan_scalar dx = (spd->wavelength_max - spd->wavelength_min) / (alwan_scalar)(spd->count - 1);
+    if (spd->count == 1) dx = ALWAN_LITERAL(1.0);
+
+    if (method == ALWAN_INTEGRATE_TRAPEZOID) {
+        xyz_out->v[0] = integrate_trapezoid(prod_r, spd->count, dx);
+        xyz_out->v[1] = integrate_trapezoid(prod_g, spd->count, dx);
+        xyz_out->v[2] = integrate_trapezoid(prod_b, spd->count, dx);
+    } else {
+        xyz_out->v[0] = integrate_simpson(prod_r, spd->count, dx);
+        xyz_out->v[1] = integrate_simpson(prod_g, spd->count, dx);
+        xyz_out->v[2] = integrate_simpson(prod_b, spd->count, dx);
+    }
+
+    /* Cleanup */
+    ALWAN_FREE(prod_r);
+    ALWAN_FREE(prod_g);
+    ALWAN_FREE(prod_b);
+    alwan_spd_destroy(ctx, &r_sens);
+    alwan_spd_destroy(ctx, &g_sens);
+    alwan_spd_destroy(ctx, &b_sens);
+    alwan_spd_destroy(ctx, &r_resampled);
+    alwan_spd_destroy(ctx, &g_resampled);
+    alwan_spd_destroy(ctx, &b_resampled);
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * P8.5: Spectral Shape Descriptors
+ * ---------------------------------------------------------------- */
+
+int alwan_spd_analyze_shape(alwan_spd const *spd, alwan_spd_shape *shape_out) {
+    if (!spd || !shape_out || spd->count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Find peak wavelength and value */
+    size_t peak_idx = 0;
+    alwan_scalar peak_val = spd->values[0];
+    for (size_t i = 1; i < spd->count; i++) {
+        if (spd->values[i] > peak_val) {
+            peak_val = spd->values[i];
+            peak_idx = i;
+        }
+    }
+
+    shape_out->peak_value = peak_val;
+    shape_out->peak_wavelength = spd_wavelength_at(spd, peak_idx);
+
+    /* Compute FWHM (Full Width at Half Maximum) */
+    alwan_scalar half_max = peak_val * ALWAN_LITERAL(0.5);
+
+    /* Find left edge (below peak) */
+    size_t left_idx = peak_idx;
+    while (left_idx > 0 && spd->values[left_idx] >= half_max) {
+        left_idx--;
+    }
+
+    /* Find right edge (above peak) */
+    size_t right_idx = peak_idx;
+    while (right_idx < spd->count - 1 && spd->values[right_idx] >= half_max) {
+        right_idx++;
+    }
+
+    /* Linear interpolation for more accurate FWHM edges */
+    alwan_scalar left_wl = spd_wavelength_at(spd, left_idx);
+    if (left_idx < peak_idx && spd->values[left_idx + 1] != spd->values[left_idx]) {
+        alwan_scalar t = (half_max - spd->values[left_idx]) /
+                         (spd->values[left_idx + 1] - spd->values[left_idx]);
+        left_wl = spd_wavelength_at(spd, left_idx) +
+                  t * (spd_wavelength_at(spd, left_idx + 1) - spd_wavelength_at(spd, left_idx));
+    }
+
+    alwan_scalar right_wl = spd_wavelength_at(spd, right_idx);
+    if (right_idx > peak_idx && right_idx > 0 && spd->values[right_idx - 1] != spd->values[right_idx]) {
+        alwan_scalar t = (half_max - spd->values[right_idx]) /
+                         (spd->values[right_idx - 1] - spd->values[right_idx]);
+        right_wl = spd_wavelength_at(spd, right_idx) +
+                   t * (spd_wavelength_at(spd, right_idx - 1) - spd_wavelength_at(spd, right_idx));
+    }
+
+    shape_out->fwhm = right_wl - left_wl;
+    if (shape_out->fwhm < ALWAN_LITERAL(0.0)) {
+        shape_out->fwhm = ALWAN_LITERAL(0.0);
+    }
+
+    /* Compute centroid (weighted mean wavelength) */
+    alwan_scalar sum_weighted = ALWAN_LITERAL(0.0);
+    alwan_scalar sum_values = ALWAN_LITERAL(0.0);
+
+    for (size_t i = 0; i < spd->count; i++) {
+        alwan_scalar wl = spd_wavelength_at(spd, i);
+        sum_weighted += wl * spd->values[i];
+        sum_values += spd->values[i];
+    }
+
+    if (sum_values > ALWAN_LITERAL(0.0)) {
+        shape_out->centroid = sum_weighted / sum_values;
+    } else {
+        shape_out->centroid = (spd->wavelength_min + spd->wavelength_max) * ALWAN_LITERAL(0.5);
+    }
+
+    /* Compute bandwidth (total wavelength range) */
+    shape_out->bandwidth = spd->wavelength_max - spd->wavelength_min;
+
+    return ALWAN_OK;
+}
