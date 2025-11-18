@@ -44,6 +44,7 @@ extern int test_230_whiteness_yellowness_main(void);
 extern int test_240_quality_rendering_main(void);
 extern int test_250_rgb_spaces_p5_main(void);
 extern int test_260_tf_extended_main(void);
+extern int test_270_cat_extended_main(void);
 
 /* Test registry */
 typedef struct {
@@ -86,6 +87,7 @@ static test_suite const g_test_suites[] = {
     {"240_quality_rendering", test_240_quality_rendering_main},
     {"250_rgb_spaces_p5", test_250_rgb_spaces_p5_main},
     {"260_tf_extended", test_260_tf_extended_main},
+    {"270_cat_extended", test_270_cat_extended_main},
 };
 
 int main(void) {

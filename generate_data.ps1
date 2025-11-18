@@ -1586,6 +1586,29 @@ try:
         f.write(','.join(formatted_values) + '\n')
     print(f"  {filename} (3x3 matrix, 9 values)")
 
+    # P7: Extended CAT matrices
+    print("\nGenerating P7 extended CAT matrices...")
+
+    p7_cat_transforms = {
+        'Sharp': 'cat_sharp.csv',
+        'Fairchild': 'cat_fairchild.csv',
+        'CMCCAT97': 'cat_cmccat97.csv',
+        'CMCCAT2000': 'cat_cmccat2000.csv',
+        'CAT02 Brill 2008': 'cat_cat02_brill_2008.csv',
+        'Bianco 2010': 'cat_bianco_2010.csv',
+        'Bianco PC 2010': 'cat_bianco_pc_2010.csv'
+    }
+
+    for transform_name, csv_name in p7_cat_transforms.items():
+        cat_matrix = colour.CHROMATIC_ADAPTATION_TRANSFORMS[transform_name]
+        filename = f'{DATA_DIR}/matrices/{csv_name}'
+        ensure_dir(filename)
+        with open(filename, 'w', newline='') as f:
+            flat_matrix = cat_matrix.flatten()
+            formatted_values = [format_scalar(v) for v in flat_matrix]
+            f.write(','.join(formatted_values) + '\n')
+        print(f"  {filename} (3x3 matrix, 9 values)")
+
 except Exception as e:
     print(f"  Warning: Could not generate CAT matrices: {e}", file=sys.stderr)
 
