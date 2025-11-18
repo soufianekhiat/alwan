@@ -1494,6 +1494,132 @@ for illum_name in illuminant_names:
     except Exception as e:
         print(f"  Warning: Could not generate illuminant {illum_name}: {e}", file=sys.stderr)
 
+# ================================================================
+# P8: Illuminant xy Chromaticity Coordinates
+# ================================================================
+print("\nGenerating Illuminant xy Chromaticity Coordinates...")
+
+# List of illuminants to generate xy coordinates for
+illuminant_xy_names = ['A', 'D50', 'D55', 'D60', 'D65', 'E', 'B', 'C', 'D75']
+
+for illum_name in illuminant_xy_names:
+    try:
+        # Get illuminant SPD from colour-science
+        if illum_name in colour.SDS_ILLUMINANTS:
+            illum_spd = colour.SDS_ILLUMINANTS[illum_name]
+        else:
+            print(f"  Warning: Illuminant {illum_name} not found in colour-science", file=sys.stderr)
+            continue
+
+        # Get CIE 1931 2° Standard Observer
+        cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+
+        # Compute XYZ tristimulus values
+        XYZ = colour.sd_to_XYZ(illum_spd, cmfs)
+
+        # Convert XYZ to xy chromaticity coordinates
+        xy = colour.XYZ_to_xy(XYZ)
+
+        # Write xy coordinates (2 values: x, y)
+        filename = f'{DATA_DIR}/illuminants_xy/{illum_name.lower()}_xy.csv'
+        ensure_dir(filename)
+        with open(filename, 'w', newline='') as f:
+            formatted_values = [format_scalar(v) for v in xy]
+            f.write(','.join(formatted_values) + '\n')
+        print(f"  {filename} (x={xy[0]:.10f}, y={xy[1]:.10f})")
+
+    except Exception as e:
+        print(f"  Warning: Could not generate xy for illuminant {illum_name}: {e}", file=sys.stderr)
+
+# ================================================================
+# P8.1: Spectral Upsampling - Basis Functions
+# ================================================================
+print("\n--- P8.1: Generating Spectral Upsampling Basis Functions ---")
+
+# ----------------------------------------------------------------
+# Smits1999 Basis Spectra
+# ----------------------------------------------------------------
+print("\nGenerating Smits1999 basis spectra...")
+
+try:
+    import colour.recovery.smits1999 as smits
+
+    # Create output directory
+    smits_dir = f'{DATA_DIR}/spectral_basis/smits1999'
+    os.makedirs(smits_dir, exist_ok=True)
+
+    # Get Smits basis spectra
+    smits_sds = smits.SDS_SMITS1999
+    basis_names = ['white', 'cyan', 'magenta', 'yellow', 'red', 'green', 'blue']
+
+    for name in basis_names:
+        if name in smits_sds:
+            sd = smits_sds[name]
+            wavelengths = sd.wavelengths
+            values = sd.values
+
+            # Write wavelengths and values to separate CSV files
+            # Wavelengths file (same for all)
+            if name == 'white':
+                wl_filename = f'{smits_dir}/wavelengths.csv'
+                with open(wl_filename, 'w', newline='') as f:
+                    formatted_wl = [format_scalar(w) for w in wavelengths]
+                    f.write(','.join(formatted_wl) + '\n')
+                print(f"  {wl_filename} ({len(wavelengths)} wavelengths)")
+
+            # Values file
+            val_filename = f'{smits_dir}/{name}.csv'
+            with open(val_filename, 'w', newline='') as f:
+                formatted_vals = [format_scalar(v) for v in values]
+                f.write(','.join(formatted_vals) + '\n')
+            print(f"  {val_filename} ({len(values)} values)")
+        else:
+            print(f"  Warning: {name} basis not found in Smits1999 data", file=sys.stderr)
+
+except Exception as e:
+    print(f"  Error: Could not generate Smits1999 basis spectra: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+
+# ----------------------------------------------------------------
+# Mallett2019 Basis Functions
+# ----------------------------------------------------------------
+print("\nGenerating Mallett2019 basis functions...")
+
+try:
+    import colour.recovery
+
+    # Create output directory
+    mallett_dir = f'{DATA_DIR}/spectral_basis/mallett2019'
+    os.makedirs(mallett_dir, exist_ok=True)
+
+    # Get Mallett2019 sRGB basis functions
+    mallett_basis = colour.recovery.MSDS_BASIS_FUNCTIONS_sRGB_MALLETT2019
+
+    wavelengths = mallett_basis.wavelengths
+    labels = mallett_basis.labels  # ['red', 'green', 'blue']
+
+    # Write wavelengths (same for all basis functions)
+    wl_filename = f'{mallett_dir}/wavelengths.csv'
+    with open(wl_filename, 'w', newline='') as f:
+        formatted_wl = [format_scalar(w) for w in wavelengths]
+        f.write(','.join(formatted_wl) + '\n')
+    print(f"  {wl_filename} ({len(wavelengths)} wavelengths)")
+
+    # Write each basis function (red, green, blue)
+    for idx, label in enumerate(labels):
+        basis_values = mallett_basis.values[:, idx]
+        val_filename = f'{mallett_dir}/{label}.csv'
+        with open(val_filename, 'w', newline='') as f:
+            formatted_vals = [format_scalar(v) for v in basis_values]
+            f.write(','.join(formatted_vals) + '\n')
+        print(f"  {val_filename} ({len(basis_values)} values)")
+
+except Exception as e:
+    print(f"  Error: Could not generate Mallett2019 basis functions: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+
 # ============================================================
 # View Transform Matrices
 # ============================================================

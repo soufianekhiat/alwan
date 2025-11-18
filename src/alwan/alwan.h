@@ -63,22 +63,31 @@ void alwan_destroy(alwan_ctx *ctx);
  * In runtime mode: allocates memory (caller must free with alwan_data_free) */
 
 /* Illuminant A (incandescent tungsten) */
-int alwan_data_get_a(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+int alwan_data_get_illuminant_a(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 /* Illuminant D50 (horizon daylight) */
-int alwan_data_get_d50(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+int alwan_data_get_illuminant_d50(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 /* Illuminant D55 (mid-morning daylight) */
-int alwan_data_get_d55(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+int alwan_data_get_illuminant_d55(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
-/* Illuminant D60 (daylight) */
-int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+/* P8: Illuminant D60 (daylight) */
+int alwan_data_get_illuminant_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 /* Illuminant D65 (noon daylight) */
-int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+int alwan_data_get_illuminant_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 /* Illuminant E (equal energy) */
-int alwan_data_get_e(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+int alwan_data_get_illuminant_e(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+
+/* P8: Illuminant B (direct sunlight) */
+int alwan_data_get_illuminant_b(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+
+/* P8: Illuminant C (average daylight) */
+int alwan_data_get_illuminant_c(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+
+/* P8: Illuminant D75 (daylight 7500K) */
+int alwan_data_get_illuminant_d75(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 // TODO: Add F1-F12 fluorescent illuminant getters once xy data is generated
 
@@ -220,10 +229,14 @@ typedef enum {
 
 /* Standard illuminant identifiers */
 typedef enum {
-    ALWAN_ILLUMINANT_A,    /* Incandescent / Tungsten */
+	ALWAN_ILLUMINANT_A,    /* Incandescent / Tungsten */
+	ALWAN_ILLUMINANT_B,    /* CIE Illuminant B (direct sunlight) */
+	ALWAN_ILLUMINANT_C,    /* CIE Illuminant C (average daylight) */
     ALWAN_ILLUMINANT_D50,  /* Daylight 5000K */
-    ALWAN_ILLUMINANT_D55,  /* Daylight 5500K */
-    ALWAN_ILLUMINANT_D65,  /* Daylight 6500K */
+	ALWAN_ILLUMINANT_D55,  /* Daylight 5500K */
+	ALWAN_ILLUMINANT_D60,  /* Daylight 6000K */
+	ALWAN_ILLUMINANT_D65,  /* Daylight 6500K */
+	ALWAN_ILLUMINANT_D75,  /* Daylight 7500K */
     ALWAN_ILLUMINANT_E,    /* Equal energy */
     ALWAN_ILLUMINANT_F1,   /* Fluorescent */
     ALWAN_ILLUMINANT_F2,
@@ -236,14 +249,15 @@ typedef enum {
     ALWAN_ILLUMINANT_F9,
     ALWAN_ILLUMINANT_F10,
     ALWAN_ILLUMINANT_F11,
-    ALWAN_ILLUMINANT_F12,
-
-    /* P8: Extended illuminants */
-    ALWAN_ILLUMINANT_B,    /* CIE Illuminant B (direct sunlight) */
-    ALWAN_ILLUMINANT_C,    /* CIE Illuminant C (average daylight) */
-    ALWAN_ILLUMINANT_D60,  /* Daylight 6000K */
-    ALWAN_ILLUMINANT_D75   /* Daylight 7500K */
+    ALWAN_ILLUMINANT_F12
 } alwan_illuminant;
+
+/* Enum-based illuminant xy chromaticity accessor
+ * Returns xy chromaticity coordinates for the specified illuminant
+ * Returns 2 values: x, y chromaticity coordinates
+ * Returns ALWAN_E_INVALID if illuminant not supported or xy data not available */
+int alwan_data_get_illuminant_xy(alwan_ctx *ctx, alwan_illuminant illuminant,
+                                   alwan_scalar **data, size_t *count);
 
 /* View transform identifiers */
 typedef enum {
@@ -658,6 +672,13 @@ typedef enum {
     ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4  /* Stockman & Sharpe 2000 2° cone fundamentals */
 } alwan_observer_type;
 
+/* Get white point XYZ for a standard illuminant
+ * Computes XYZ tristimulus values from illuminant xy chromaticity (Y normalized to 1.0)
+ * Returns ALWAN_E_INVALID if illuminant not supported */
+int alwan_illuminant_white_point(alwan_illuminant illuminant,
+                                   alwan_observer_type observer,
+                                   alwan_vec3 *out_xyz);
+
 /* SPD resampling method */
 // TODO: Add nearest (optional: higher-order methods (e.g., spline))
 typedef enum {
@@ -754,6 +775,51 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_integrate_method method,
                        alwan_scalar bandpass_nm,
                        alwan_vec3 *xyz_out);
+
+/* ----------------------------------------------------------------
+ * P8.1: Spectral Upsampling - RGB to Spectrum Conversion
+ * ---------------------------------------------------------------- */
+
+/* Smits1999: RGB to spectrum conversion using basis spectra mixing
+ * Reference: Smits, Brian. "An RGB to Spectrum Conversion for Reflectances" (1999)
+ * ctx: context (for allocation)
+ * rgb: input RGB values (assumed to be in sRGB colorspace, clamped to [0, 1])
+ * out_spd: output spectral power distribution (wavelength range: 380-720nm, 10 samples)
+ * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
+int alwan_rgb_to_spectrum_smits1999(alwan_ctx *ctx,
+                                     alwan_vec3 const *rgb,
+                                     alwan_spd *out_spd);
+
+/* Mallett2019: RGB to spectrum conversion using spectral primary decomposition
+ * Reference: Mallett & Yuksel. "Spectral Primary Decomposition for Rendering with sRGB Reflectance" (2019)
+ * ctx: context (for allocation)
+ * rgb: input RGB values (assumed to be in sRGB colorspace)
+ * out_spd: output spectral power distribution (wavelength range: 380-780nm, 81 samples at 5nm intervals)
+ * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
+int alwan_rgb_to_spectrum_mallett2019(alwan_ctx *ctx,
+                                       alwan_vec3 const *rgb,
+                                       alwan_spd *out_spd);
+
+/* Jakob2019: RGB to spectrum using high-quality basis spectra
+ * Reference: Jakob & Hanika. "A Low-Dimensional Function Space for Efficient Spectral Upsampling" (2019)
+ * ctx: context (for allocation)
+ * rgb: input RGB values (assumed to be in sRGB colorspace, clamped to [0, 1])
+ * out_spd: output spectral power distribution (wavelength range: 360-780nm, 85 samples at 5nm intervals)
+ * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure
+ * Note: This is a simplified implementation using Smits-style algorithm with Jakob2019 basis spectra.
+ *       Full Jakob2019 would use polynomial LUT, but this provides high-quality results. */
+int alwan_rgb_to_spectrum_jakob2019(alwan_ctx *ctx,
+                                      alwan_vec3 const *rgb,
+                                      alwan_spd *out_spd);
+
+/* TODO(P8.1): Meng2015: XYZ to spectrum using optimization
+ * Reference: Meng et al. "Physically Meaningful Rendering using Tristimulus Colours" (2015)
+ * Requires: Iterative optimization solver, computationally intensive
+ * Implementation notes:
+ *   - Uses constrained optimization to find smooth reflectance spectrum
+ *   - Parameters: interval (wavelength spacing), tolerance, max_iterations
+ *   - Slower than Smits/Mallett but produces smooth, physically plausible spectra
+ * Status: NOT YET IMPLEMENTED - requires numerical optimization library */
 
 /* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model

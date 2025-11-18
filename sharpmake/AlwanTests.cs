@@ -48,8 +48,10 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\230_whiteness_yellowness.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\240_quality_rendering.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\250_rgb_spaces_p5.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\260_tf_extended.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\270_cat_extended.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\280_spectral_extended.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\290_rgb_to_spectrum.c");
         }
 
         [Configure()]

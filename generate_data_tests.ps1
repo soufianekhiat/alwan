@@ -1390,6 +1390,184 @@ except Exception as e:
     print(f'  Warning: Stockman & Sharpe observer test failed: {e}')
     write_ref('white_d65_stockman_sharpe_xyz', [], 'P8 Stockman & Sharpe test (not available)')
 
+# ================================================================
+# P8.1: RGB to Spectrum Conversion (Spectral Upsampling)
+# ================================================================
+print('\nP8.1 RGB to Spectrum Conversion (Spectral Upsampling):')
+
+# Test RGB colors for round-trip verification
+# Expanded test set with diverse colors including intermediate values
+test_rgb_colors = {
+    # Primary and secondary colors (extreme values)
+    'white': [1.0, 1.0, 1.0],
+    'black': [0.0, 0.0, 0.0],
+    'red': [1.0, 0.0, 0.0],
+    'green': [0.0, 1.0, 0.0],
+    'blue': [0.0, 0.0, 1.0],
+    'cyan': [0.0, 1.0, 1.0],
+    'magenta': [1.0, 0.0, 1.0],
+    'yellow': [1.0, 1.0, 0.0],
+
+    # Grays (achromatic)
+    'gray10': [0.1, 0.1, 0.1],
+    'gray25': [0.25, 0.25, 0.25],
+    'gray50': [0.5, 0.5, 0.5],
+    'gray75': [0.75, 0.75, 0.75],
+    'gray90': [0.9, 0.9, 0.9],
+
+    # Pastel colors (light, desaturated)
+    'pastel_pink': [1.0, 0.8, 0.85],
+    'pastel_blue': [0.7, 0.85, 1.0],
+    'pastel_green': [0.75, 1.0, 0.8],
+    'pastel_yellow': [1.0, 1.0, 0.7],
+    'pastel_purple': [0.85, 0.75, 1.0],
+
+    # Mid-tone colors (medium saturation and brightness)
+    'orange': [1.0, 0.5, 0.0],
+    'olive': [0.5, 0.5, 0.0],
+    'teal': [0.0, 0.5, 0.5],
+    'purple': [0.5, 0.0, 0.5],
+    'lime': [0.5, 1.0, 0.0],
+    'sky_blue': [0.0, 0.5, 1.0],
+
+    # Dark colors (low brightness)
+    'dark_red': [0.3, 0.0, 0.0],
+    'dark_green': [0.0, 0.3, 0.0],
+    'dark_blue': [0.0, 0.0, 0.3],
+    'brown': [0.4, 0.2, 0.1],
+    'navy': [0.0, 0.0, 0.5],
+    'maroon': [0.5, 0.0, 0.0],
+
+    # Skin tones (important for practical applications)
+    'skin_light': [0.95, 0.8, 0.7],
+    'skin_medium': [0.8, 0.6, 0.45],
+    'skin_tan': [0.7, 0.5, 0.35],
+    'skin_dark': [0.5, 0.35, 0.25],
+
+    # Natural colors
+    'grass_green': [0.3, 0.6, 0.2],
+    'forest_green': [0.13, 0.55, 0.13],
+    'sand': [0.76, 0.7, 0.5],
+    'earth': [0.55, 0.45, 0.3],
+
+    # Vivid/saturated colors (high chroma)
+    'hot_pink': [1.0, 0.08, 0.58],
+    'electric_blue': [0.0, 0.5, 1.0],
+    'neon_green': [0.2, 1.0, 0.2],
+    'bright_orange': [1.0, 0.65, 0.0],
+
+    # Off-white and near-black (edge cases)
+    'off_white': [0.95, 0.95, 0.9],
+    'cream': [1.0, 0.99, 0.82],
+    'ivory': [1.0, 1.0, 0.94],
+    'charcoal': [0.15, 0.15, 0.15],
+
+    # Mixed intermediate values
+    'salmon': [0.98, 0.5, 0.45],
+    'coral': [1.0, 0.5, 0.31],
+    'lavender': [0.9, 0.9, 0.98],
+    'mint': [0.6, 1.0, 0.6],
+    'peach': [1.0, 0.9, 0.71],
+    'rose': [1.0, 0.0, 0.5],
+    'turquoise': [0.25, 0.88, 0.82],
+    'gold': [1.0, 0.84, 0.0],
+
+    # Low saturation colors (near gray)
+    'dusty_rose': [0.7, 0.6, 0.6],
+    'sage': [0.6, 0.7, 0.6],
+    'slate': [0.44, 0.5, 0.56],
+    'taupe': [0.6, 0.55, 0.5],
+}
+
+# Reference illuminant and observer for round-trip testing
+d65_spd = colour.SDS_ILLUMINANTS['D65']
+cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+
+# Smits1999 method tests
+print('  Testing Smits1999 method...')
+for color_name, rgb in test_rgb_colors.items():
+    try:
+        # Convert RGB to spectrum using Smits1999
+        sd_smits = colour.recovery.RGB_to_sd_Smits1999(rgb)
+
+        # Resample to 5nm intervals (380-780nm) for ASTM E308 compliance
+        sd_smits_resampled = sd_smits.copy().align(
+            colour.SpectralShape(380, 780, 5),
+            interpolator=colour.LinearInterpolator,
+            extrapolator=colour.Extrapolator
+        )
+
+        # Convert spectrum back to XYZ (round-trip)
+        xyz_recovered = colour.sd_to_XYZ(sd_smits_resampled, cmfs, d65_spd)
+        xyz_recovered_normalized = xyz_recovered / 100.0  # Normalize to [0, 1] range
+
+        # Also compute expected XYZ directly from RGB (sRGB -> XYZ)
+        xyz_expected = colour.sRGB_to_XYZ(rgb)
+        xyz_expected_normalized = xyz_expected / 100.0
+
+        # Store recovered XYZ from spectrum
+        write_ref(f'smits1999_{color_name}_xyz_recovered', xyz_recovered_normalized.tolist(),
+                  f'P8.1 Smits1999: {color_name} RGB {rgb} -> Spectrum -> XYZ (D65, CIE 1931 2°)')
+
+        # Store expected XYZ for comparison
+        write_ref(f'smits1999_{color_name}_xyz_expected', xyz_expected_normalized.tolist(),
+                  f'P8.1 Smits1999: {color_name} RGB {rgb} -> XYZ direct (sRGB -> XYZ)')
+
+    except Exception as e:
+        print(f'    Warning: Smits1999 test for {color_name} failed: {e}')
+
+# Mallett2019 method tests
+print('  Testing Mallett2019 method...')
+for color_name, rgb in test_rgb_colors.items():
+    try:
+        # Convert RGB to spectrum using Mallett2019
+        sd_mallett = colour.recovery.RGB_to_sd_Mallett2019(rgb)
+
+        # Convert spectrum back to XYZ (round-trip)
+        xyz_recovered = colour.sd_to_XYZ(sd_mallett, cmfs, d65_spd)
+        xyz_recovered_normalized = xyz_recovered / 100.0  # Normalize to [0, 1] range
+
+        # Also compute expected XYZ directly from RGB (sRGB -> XYZ)
+        xyz_expected = colour.sRGB_to_XYZ(rgb)
+        xyz_expected_normalized = xyz_expected / 100.0
+
+        # Store recovered XYZ from spectrum
+        write_ref(f'mallett2019_{color_name}_xyz_recovered', xyz_recovered_normalized.tolist(),
+                  f'P8.1 Mallett2019: {color_name} RGB {rgb} -> Spectrum -> XYZ (D65, CIE 1931 2°)')
+
+        # Store expected XYZ for comparison
+        write_ref(f'mallett2019_{color_name}_xyz_expected', xyz_expected_normalized.tolist(),
+                  f'P8.1 Mallett2019: {color_name} RGB {rgb} -> XYZ direct (sRGB -> XYZ)')
+
+    except Exception as e:
+        print(f'    Warning: Mallett2019 test for {color_name} failed: {e}')
+
+# Jakob2019 method tests
+print('  Testing Jakob2019 method...')
+for color_name, rgb in test_rgb_colors.items():
+    try:
+        # Convert RGB to spectrum using Jakob2019
+        sd_jakob = colour.recovery.RGB_to_sd_Jakob2019(rgb)
+
+        # Convert spectrum back to XYZ (round-trip)
+        xyz_recovered = colour.sd_to_XYZ(sd_jakob, cmfs, d65_spd)
+        xyz_recovered_normalized = xyz_recovered / 100.0  # Normalize to [0, 1] range
+
+        # Also compute expected XYZ directly from RGB (sRGB -> XYZ)
+        xyz_expected = colour.sRGB_to_XYZ(rgb)
+        xyz_expected_normalized = xyz_expected / 100.0
+
+        # Store recovered XYZ from spectrum
+        write_ref(f'jakob2019_{color_name}_xyz_recovered', xyz_recovered_normalized.tolist(),
+                  f'P8.1 Jakob2019: {color_name} RGB {rgb} -> Spectrum -> XYZ (D65, CIE 1931 2°)')
+
+        # Store expected XYZ for comparison
+        write_ref(f'jakob2019_{color_name}_xyz_expected', xyz_expected_normalized.tolist(),
+                  f'P8.1 Jakob2019: {color_name} RGB {rgb} -> XYZ direct (sRGB -> XYZ)')
+
+    except Exception as e:
+        print(f'    Warning: Jakob2019 test for {color_name} failed: {e}')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')
