@@ -682,15 +682,17 @@ typedef struct {
 
 /* Observer type (standard color matching functions) */
 
-// TODO: add other observers (e.g., Stockman & Sharpe (2000) physiological, 2015 XYZF CMF, ...)
 typedef enum {
     ALWAN_OBSERVER_CIE_1931_2DEG = 0,  /* CIE 1931 2° standard observer */
     ALWAN_OBSERVER_CIE_1964_10DEG = 1, /* CIE 1964 10° standard observer */
     ALWAN_OBSERVER_CIE_2012_2DEG = 2,  /* CIE 2012 2° standard observer (physiologically-based) */
     ALWAN_OBSERVER_CIE_2012_10DEG = 3, /* CIE 2012 10° standard observer (physiologically-based) */
 
-    /* P8: Extended observers */
-    ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4  /* Stockman & Sharpe 2000 2° cone fundamentals */
+    /* P8.2: Extended observers */
+    ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4,  /* Stockman & Sharpe 2000 2° cone fundamentals */
+    ALWAN_OBSERVER_CIE_2015_2DEG = 5,         /* CIE 2015 2° cone-fundamental-based observer */
+    ALWAN_OBSERVER_CIE_2015_10DEG = 6,        /* CIE 2015 10° cone-fundamental-based observer */
+    ALWAN_OBSERVER_WRIGHT_GUILD_1931 = 7      /* Wright & Guild 1931 2° RGB CMFs (historical) */
 } alwan_observer_type;
 
 /* P8.4: Camera/Sensor spectral sensitivity identifiers */

@@ -1448,6 +1448,111 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate Stockman & Sharpe 2° CMFs: {e}", file=sys.stderr)
 
+# P8.2: CIE 2015 2° Cone Fundamentals (390-830nm originally, filtered to 360-830nm)
+try:
+    cmfs_2015_2 = colour.MSDS_CMFS['CIE 2015 2 Degree Standard Observer']
+
+    x_bar_2015_2 = cmfs_2015_2.values[:, 0]
+    y_bar_2015_2 = cmfs_2015_2.values[:, 1]
+    z_bar_2015_2 = cmfs_2015_2.values[:, 2]
+    wavelengths_2015_2 = cmfs_2015_2.wavelengths
+
+    # Filter to 360-830nm range (original is 390-830, so pad with zeros for 360-389)
+    target_wl = np.arange(360, 831, 1)
+    x_bar_2015_2_full = np.interp(target_wl, wavelengths_2015_2, x_bar_2015_2, left=0, right=0)
+    y_bar_2015_2_full = np.interp(target_wl, wavelengths_2015_2, y_bar_2015_2, left=0, right=0)
+    z_bar_2015_2_full = np.interp(target_wl, wavelengths_2015_2, z_bar_2015_2, left=0, right=0)
+
+    ensure_dir('src/alwan/data/cmf/cie_2015_2deg_x_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/cie_2015_2deg_x_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in x_bar_2015_2_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/cie_2015_2deg_x_360_830_1nm.csv ({len(x_bar_2015_2_full)} samples)")
+
+    ensure_dir('src/alwan/data/cmf/cie_2015_2deg_y_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/cie_2015_2deg_y_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in y_bar_2015_2_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/cie_2015_2deg_y_360_830_1nm.csv ({len(y_bar_2015_2_full)} samples)")
+
+    ensure_dir('src/alwan/data/cmf/cie_2015_2deg_z_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/cie_2015_2deg_z_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in z_bar_2015_2_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/cie_2015_2deg_z_360_830_1nm.csv ({len(z_bar_2015_2_full)} samples)")
+except Exception as e:
+    print(f"  Warning: Could not generate CIE 2015 2° CMFs: {e}", file=sys.stderr)
+
+# P8.2: CIE 2015 10° Cone Fundamentals (390-830nm originally, filtered to 360-830nm)
+try:
+    cmfs_2015_10 = colour.MSDS_CMFS['CIE 2015 10 Degree Standard Observer']
+
+    x_bar_2015_10 = cmfs_2015_10.values[:, 0]
+    y_bar_2015_10 = cmfs_2015_10.values[:, 1]
+    z_bar_2015_10 = cmfs_2015_10.values[:, 2]
+    wavelengths_2015_10 = cmfs_2015_10.wavelengths
+
+    # Filter to 360-830nm range (original is 390-830, so pad with zeros for 360-389)
+    target_wl = np.arange(360, 831, 1)
+    x_bar_2015_10_full = np.interp(target_wl, wavelengths_2015_10, x_bar_2015_10, left=0, right=0)
+    y_bar_2015_10_full = np.interp(target_wl, wavelengths_2015_10, y_bar_2015_10, left=0, right=0)
+    z_bar_2015_10_full = np.interp(target_wl, wavelengths_2015_10, z_bar_2015_10, left=0, right=0)
+
+    ensure_dir('src/alwan/data/cmf/cie_2015_10deg_x_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/cie_2015_10deg_x_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in x_bar_2015_10_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/cie_2015_10deg_x_360_830_1nm.csv ({len(x_bar_2015_10_full)} samples)")
+
+    ensure_dir('src/alwan/data/cmf/cie_2015_10deg_y_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/cie_2015_10deg_y_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in y_bar_2015_10_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/cie_2015_10deg_y_360_830_1nm.csv ({len(y_bar_2015_10_full)} samples)")
+
+    ensure_dir('src/alwan/data/cmf/cie_2015_10deg_z_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/cie_2015_10deg_z_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in z_bar_2015_10_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/cie_2015_10deg_z_360_830_1nm.csv ({len(z_bar_2015_10_full)} samples)")
+except Exception as e:
+    print(f"  Warning: Could not generate CIE 2015 10° CMFs: {e}", file=sys.stderr)
+
+# P8.2: Wright & Guild 1931 2° RGB CMFs (380-780nm originally, extended to 360-830nm)
+try:
+    cmfs_wg = colour.MSDS_CMFS['Wright & Guild 1931 2 Degree RGB CMFs']
+
+    r_bar_wg = cmfs_wg.values[:, 0]
+    g_bar_wg = cmfs_wg.values[:, 1]
+    b_bar_wg = cmfs_wg.values[:, 2]
+    wavelengths_wg = cmfs_wg.wavelengths
+
+    # Extend to 360-830nm range (original is 380-780, so pad with zeros)
+    target_wl = np.arange(360, 831, 1)
+    r_bar_wg_full = np.interp(target_wl, wavelengths_wg, r_bar_wg, left=0, right=0)
+    g_bar_wg_full = np.interp(target_wl, wavelengths_wg, g_bar_wg, left=0, right=0)
+    b_bar_wg_full = np.interp(target_wl, wavelengths_wg, b_bar_wg, left=0, right=0)
+
+    ensure_dir('src/alwan/data/cmf/wright_guild_1931_r_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/wright_guild_1931_r_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in r_bar_wg_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/wright_guild_1931_r_360_830_1nm.csv ({len(r_bar_wg_full)} samples)")
+
+    ensure_dir('src/alwan/data/cmf/wright_guild_1931_g_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/wright_guild_1931_g_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in g_bar_wg_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/wright_guild_1931_g_360_830_1nm.csv ({len(g_bar_wg_full)} samples)")
+
+    ensure_dir('src/alwan/data/cmf/wright_guild_1931_b_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/wright_guild_1931_b_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in b_bar_wg_full]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/wright_guild_1931_b_360_830_1nm.csv ({len(b_bar_wg_full)} samples)")
+except Exception as e:
+    print(f"  Warning: Could not generate Wright & Guild 1931 RGB CMFs: {e}", file=sys.stderr)
+
 # ================================================================
 # M5: Spectral Data - Illuminant SPDs
 # ================================================================

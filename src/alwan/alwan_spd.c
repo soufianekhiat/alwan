@@ -777,7 +777,7 @@ static int load_observer_cmf(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
-        /* P8: Stockman & Sharpe 2000 2° Cone Fundamentals */
+        /* P8.2: Stockman & Sharpe 2000 2° Cone Fundamentals */
         static alwan_scalar const x_data[] = {
 #include "data/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv"
         };
@@ -793,6 +793,60 @@ static int load_observer_cmf(alwan_ctx *ctx,
             x_bar->values[i] = x_data[i];
             y_bar->values[i] = y_data[i];
             z_bar->values[i] = z_data[i];
+        }
+    } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG) {
+        /* P8.2: CIE 2015 2° Cone Fundamental Observer */
+        static alwan_scalar const x_data[] = {
+#include "data/cmf/cie_2015_2deg_x_360_830_1nm.csv"
+        };
+        static alwan_scalar const y_data[] = {
+#include "data/cmf/cie_2015_2deg_y_360_830_1nm.csv"
+        };
+        static alwan_scalar const z_data[] = {
+#include "data/cmf/cie_2015_2deg_z_360_830_1nm.csv"
+        };
+
+        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
+        for (size_t i = 0; i < n && i < x_bar->count; i++) {
+            x_bar->values[i] = x_data[i];
+            y_bar->values[i] = y_data[i];
+            z_bar->values[i] = z_data[i];
+        }
+    } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG) {
+        /* P8.2: CIE 2015 10° Cone Fundamental Observer */
+        static alwan_scalar const x_data[] = {
+#include "data/cmf/cie_2015_10deg_x_360_830_1nm.csv"
+        };
+        static alwan_scalar const y_data[] = {
+#include "data/cmf/cie_2015_10deg_y_360_830_1nm.csv"
+        };
+        static alwan_scalar const z_data[] = {
+#include "data/cmf/cie_2015_10deg_z_360_830_1nm.csv"
+        };
+
+        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
+        for (size_t i = 0; i < n && i < x_bar->count; i++) {
+            x_bar->values[i] = x_data[i];
+            y_bar->values[i] = y_data[i];
+            z_bar->values[i] = z_data[i];
+        }
+    } else if (observer == ALWAN_OBSERVER_WRIGHT_GUILD_1931) {
+        /* P8.2: Wright & Guild 1931 2° RGB CMFs (historical) */
+        static alwan_scalar const r_data[] = {
+#include "data/cmf/wright_guild_1931_r_360_830_1nm.csv"
+        };
+        static alwan_scalar const g_data[] = {
+#include "data/cmf/wright_guild_1931_g_360_830_1nm.csv"
+        };
+        static alwan_scalar const b_data[] = {
+#include "data/cmf/wright_guild_1931_b_360_830_1nm.csv"
+        };
+
+        size_t const n = sizeof(r_data) / sizeof(r_data[0]);
+        for (size_t i = 0; i < n && i < x_bar->count; i++) {
+            x_bar->values[i] = r_data[i];
+            y_bar->values[i] = g_data[i];
+            z_bar->values[i] = b_data[i];
         }
     } else {
         alwan_spd_destroy(ctx, x_bar);
