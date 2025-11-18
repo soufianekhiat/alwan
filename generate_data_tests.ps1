@@ -1348,9 +1348,13 @@ for transform_name in p7_transforms:
 print('\nP8 Extended Spectral Data (Observers & Illuminants):')
 
 # P8 new illuminants to generate white points for
+# P8.3 additions: D40, D45, D93 (computed from CCT), LED-B1-B5, LED-BH1, LED-V1, LED-V2, LED-RGB1, HP1-HP5
 p8_illuminants = ['B', 'C', 'D60', 'D75']
+p8_led_hp_illuminants = ['LED-B1', 'LED-B2', 'LED-B3', 'LED-B4', 'LED-B5',
+                          'LED-BH1', 'LED-V1', 'LED-V2', 'LED-RGB1',
+                          'HP1', 'HP2', 'HP3', 'HP4', 'HP5']
 
-# Generate white point XYZ for new illuminants using CIE 1931 2° observer
+# Generate white point XYZ for standard P8 illuminants using CIE 1931 2° observer
 for illum_name in p8_illuminants:
     try:
         # Get illuminant SPD from colour-science
@@ -1371,6 +1375,57 @@ for illum_name in p8_illuminants:
     except Exception as e:
         print(f'  Warning: {illum_name} white point generation failed: {e}')
         write_ref(f"white_{illum_name.lower()}_xyz", [], f'P8 {illum_name} white point (not available)')
+
+# P8.3: Generate additional D-series illuminants from CCT
+d_series_cct = {
+    'D40': 4000,
+    'D45': 4500,
+    'D93': 9300,
+}
+
+for d_name, cct in d_series_cct.items():
+    try:
+        # Generate D-series SPD from CCT
+        xy = colour.CCT_to_xy(cct, method='Kang 2002')
+        illum_spd = colour.sd_CIE_illuminant_D_series(xy)
+
+        # Compute white point XYZ using CIE 1931 2° observer
+        cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+        white_xyz = colour.sd_to_XYZ(illum_spd, cmfs)
+
+        # Normalize to Y=1.0
+        white_xyz_normalized = white_xyz / white_xyz[1]
+
+        # Write white point
+        filename = f"white_{d_name.lower()}_xyz"
+        write_ref(filename, white_xyz_normalized.tolist(), f'P8.3 {d_name} white point XYZ (CIE 1931 2°, Y=1.0, {cct}K)')
+
+        print(f'  Generated {d_name} white point XYZ ({cct}K)')
+    except Exception as e:
+        print(f'  Warning: {d_name} white point generation failed: {e}')
+        write_ref(f"white_{d_name.lower()}_xyz", [], f'P8.3 {d_name} white point (not available)')
+
+# P8.3: Generate LED and HP illuminant white points
+for illum_name in p8_led_hp_illuminants:
+    try:
+        # Get illuminant SPD from colour-science
+        illum_spd = colour.SDS_ILLUMINANTS[illum_name]
+
+        # Compute white point XYZ using CIE 1931 2° observer
+        cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+        white_xyz = colour.sd_to_XYZ(illum_spd, cmfs)
+
+        # Normalize to Y=1.0
+        white_xyz_normalized = white_xyz / white_xyz[1]
+
+        # Write white point
+        filename = f"white_{illum_name.lower().replace('-', '_')}_xyz"
+        write_ref(filename, white_xyz_normalized.tolist(), f'P8.3 {illum_name} white point XYZ (CIE 1931 2°, Y=1.0)')
+
+        print(f'  Generated {illum_name} white point XYZ')
+    except Exception as e:
+        print(f'  Warning: {illum_name} white point generation failed: {e}')
+        write_ref(f"white_{illum_name.lower().replace('-', '_')}_xyz", [], f'P8.3 {illum_name} white point (not available)')
 
 # Stockman & Sharpe 2000 2° observer test
 # Generate XYZ values for D65 white using Stockman & Sharpe observer

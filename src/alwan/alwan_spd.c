@@ -416,6 +416,182 @@ int alwan_spd_illuminant(alwan_ctx *ctx, alwan_illuminant ill, alwan_spd *out) {
             break;
         }
 
+        /* P8.3: Additional D-series illuminants */
+        case ALWAN_ILLUMINANT_D40: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/D40_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_D45: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/D45_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_D93: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/D93_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+
+        /* P8.3: LED illuminants */
+        case ALWAN_ILLUMINANT_LED_B1: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-B1_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_LED_B2: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-B2_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_LED_B3: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-B3_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_LED_B4: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-B4_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_LED_B5: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-B5_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_LED_BH1: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-BH1_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_LED_RGB1: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-RGB1_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_LED_V1: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-V1_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_LED_V2: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/LED-V2_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+
+        /* P8.3: High Pressure illuminants */
+        case ALWAN_ILLUMINANT_HP1: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/HP1_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_HP2: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/HP2_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_HP3: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/HP3_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_HP4: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/HP4_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_HP5: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/HP5_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+
         default:
             alwan_spd_destroy(ctx, out);
             return ALWAN_E_INVALID;

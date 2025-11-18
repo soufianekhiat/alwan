@@ -67,6 +67,77 @@ static alwan_scalar const g_d75_xy[] = {
 #include "data/illuminants_xy/d75_xy.csv"
 };
 
+/* P8.3: Additional D-series illuminants */
+static alwan_scalar const g_d40_xy[] = {
+#include "data/illuminants_xy/d40_xy.csv"
+};
+
+static alwan_scalar const g_d45_xy[] = {
+#include "data/illuminants_xy/d45_xy.csv"
+};
+
+static alwan_scalar const g_d93_xy[] = {
+#include "data/illuminants_xy/d93_xy.csv"
+};
+
+/* P8.3: LED illuminants */
+static alwan_scalar const g_led_b1_xy[] = {
+#include "data/illuminants_xy/led-b1_xy.csv"
+};
+
+static alwan_scalar const g_led_b2_xy[] = {
+#include "data/illuminants_xy/led-b2_xy.csv"
+};
+
+static alwan_scalar const g_led_b3_xy[] = {
+#include "data/illuminants_xy/led-b3_xy.csv"
+};
+
+static alwan_scalar const g_led_b4_xy[] = {
+#include "data/illuminants_xy/led-b4_xy.csv"
+};
+
+static alwan_scalar const g_led_b5_xy[] = {
+#include "data/illuminants_xy/led-b5_xy.csv"
+};
+
+static alwan_scalar const g_led_bh1_xy[] = {
+#include "data/illuminants_xy/led-bh1_xy.csv"
+};
+
+static alwan_scalar const g_led_rgb1_xy[] = {
+#include "data/illuminants_xy/led-rgb1_xy.csv"
+};
+
+static alwan_scalar const g_led_v1_xy[] = {
+#include "data/illuminants_xy/led-v1_xy.csv"
+};
+
+static alwan_scalar const g_led_v2_xy[] = {
+#include "data/illuminants_xy/led-v2_xy.csv"
+};
+
+/* P8.3: High Pressure illuminants */
+static alwan_scalar const g_hp1_xy[] = {
+#include "data/illuminants_xy/hp1_xy.csv"
+};
+
+static alwan_scalar const g_hp2_xy[] = {
+#include "data/illuminants_xy/hp2_xy.csv"
+};
+
+static alwan_scalar const g_hp3_xy[] = {
+#include "data/illuminants_xy/hp3_xy.csv"
+};
+
+static alwan_scalar const g_hp4_xy[] = {
+#include "data/illuminants_xy/hp4_xy.csv"
+};
+
+static alwan_scalar const g_hp5_xy[] = {
+#include "data/illuminants_xy/hp5_xy.csv"
+};
+
 /* sRGB primaries (rx, ry, gx, gy, bx, by) */
 static alwan_scalar const g_srgb_primaries_3x2[] = {
 #include "data/srgb_primaries_3x2.csv"
@@ -137,6 +208,128 @@ int alwan_data_get_illuminant_d75(alwan_ctx *ctx, alwan_scalar **data, size_t *c
     return ALWAN_OK;
 }
 
+/* P8.3: Additional D-series illuminants */
+int alwan_data_get_illuminant_d40(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_d40_xy;
+    *count = sizeof(g_d40_xy) / sizeof(g_d40_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_d45(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_d45_xy;
+    *count = sizeof(g_d45_xy) / sizeof(g_d45_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_d93(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_d93_xy;
+    *count = sizeof(g_d93_xy) / sizeof(g_d93_xy[0]);
+    return ALWAN_OK;
+}
+
+/* P8.3: LED illuminants */
+int alwan_data_get_illuminant_led_b1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_b1_xy;
+    *count = sizeof(g_led_b1_xy) / sizeof(g_led_b1_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_led_b2(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_b2_xy;
+    *count = sizeof(g_led_b2_xy) / sizeof(g_led_b2_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_led_b3(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_b3_xy;
+    *count = sizeof(g_led_b3_xy) / sizeof(g_led_b3_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_led_b4(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_b4_xy;
+    *count = sizeof(g_led_b4_xy) / sizeof(g_led_b4_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_led_b5(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_b5_xy;
+    *count = sizeof(g_led_b5_xy) / sizeof(g_led_b5_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_led_bh1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_bh1_xy;
+    *count = sizeof(g_led_bh1_xy) / sizeof(g_led_bh1_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_led_rgb1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_rgb1_xy;
+    *count = sizeof(g_led_rgb1_xy) / sizeof(g_led_rgb1_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_led_v1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_v1_xy;
+    *count = sizeof(g_led_v1_xy) / sizeof(g_led_v1_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_led_v2(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_led_v2_xy;
+    *count = sizeof(g_led_v2_xy) / sizeof(g_led_v2_xy[0]);
+    return ALWAN_OK;
+}
+
+/* P8.3: High Pressure illuminants */
+int alwan_data_get_illuminant_hp1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_hp1_xy;
+    *count = sizeof(g_hp1_xy) / sizeof(g_hp1_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_hp2(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_hp2_xy;
+    *count = sizeof(g_hp2_xy) / sizeof(g_hp2_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_hp3(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_hp3_xy;
+    *count = sizeof(g_hp3_xy) / sizeof(g_hp3_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_hp4(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_hp4_xy;
+    *count = sizeof(g_hp4_xy) / sizeof(g_hp4_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_hp5(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_hp5_xy;
+    *count = sizeof(g_hp5_xy) / sizeof(g_hp5_xy[0]);
+    return ALWAN_OK;
+}
+
 int alwan_data_get_illuminant_xy(alwan_ctx *ctx, alwan_illuminant illuminant,
                                    alwan_scalar **data, size_t *count) {
     switch (illuminant) {
@@ -149,6 +342,24 @@ int alwan_data_get_illuminant_xy(alwan_ctx *ctx, alwan_illuminant illuminant,
         case ALWAN_ILLUMINANT_B:   return alwan_data_get_illuminant_b(ctx, data, count);
         case ALWAN_ILLUMINANT_C:   return alwan_data_get_illuminant_c(ctx, data, count);
         case ALWAN_ILLUMINANT_D75: return alwan_data_get_illuminant_d75(ctx, data, count);
+        /* P8.3: Additional illuminants */
+        case ALWAN_ILLUMINANT_D40: return alwan_data_get_illuminant_d40(ctx, data, count);
+        case ALWAN_ILLUMINANT_D45: return alwan_data_get_illuminant_d45(ctx, data, count);
+        case ALWAN_ILLUMINANT_D93: return alwan_data_get_illuminant_d93(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B1: return alwan_data_get_illuminant_led_b1(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B2: return alwan_data_get_illuminant_led_b2(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B3: return alwan_data_get_illuminant_led_b3(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B4: return alwan_data_get_illuminant_led_b4(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B5: return alwan_data_get_illuminant_led_b5(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_BH1: return alwan_data_get_illuminant_led_bh1(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_RGB1: return alwan_data_get_illuminant_led_rgb1(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_V1: return alwan_data_get_illuminant_led_v1(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_V2: return alwan_data_get_illuminant_led_v2(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP1: return alwan_data_get_illuminant_hp1(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP2: return alwan_data_get_illuminant_hp2(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP3: return alwan_data_get_illuminant_hp3(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP4: return alwan_data_get_illuminant_hp4(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP5: return alwan_data_get_illuminant_hp5(ctx, data, count);
         default:
             return ALWAN_E_INVALID;  /* Unsupported illuminant or no xy data */
     }
@@ -301,6 +512,111 @@ int alwan_data_get_illuminant_d75(alwan_ctx *ctx, alwan_scalar **data, size_t *c
     return load_csv(path, data, count);
 }
 
+/* P8.3: Additional D-series illuminants */
+int alwan_data_get_illuminant_d40(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/d40_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_d45(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/d45_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_d93(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/d93_xy.csv");
+    return load_csv(path, data, count);
+}
+
+/* P8.3: LED illuminants */
+int alwan_data_get_illuminant_led_b1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-b1_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_led_b2(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-b2_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_led_b3(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-b3_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_led_b4(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-b4_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_led_b5(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-b5_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_led_bh1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-bh1_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_led_rgb1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-rgb1_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_led_v1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-v1_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_led_v2(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-v2_xy.csv");
+    return load_csv(path, data, count);
+}
+
+/* P8.3: High Pressure illuminants */
+int alwan_data_get_illuminant_hp1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/hp1_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_hp2(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/hp2_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_hp3(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/hp3_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_hp4(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/hp4_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_illuminant_hp5(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/hp5_xy.csv");
+    return load_csv(path, data, count);
+}
+
 int alwan_data_get_illuminant_xy(alwan_ctx *ctx, alwan_illuminant illuminant,
                                    alwan_scalar **data, size_t *count) {
     switch (illuminant) {
@@ -313,6 +629,24 @@ int alwan_data_get_illuminant_xy(alwan_ctx *ctx, alwan_illuminant illuminant,
         case ALWAN_ILLUMINANT_B:   return alwan_data_get_illuminant_b(ctx, data, count);
         case ALWAN_ILLUMINANT_C:   return alwan_data_get_illuminant_c(ctx, data, count);
         case ALWAN_ILLUMINANT_D75: return alwan_data_get_illuminant_d75(ctx, data, count);
+        /* P8.3: Additional illuminants */
+        case ALWAN_ILLUMINANT_D40: return alwan_data_get_illuminant_d40(ctx, data, count);
+        case ALWAN_ILLUMINANT_D45: return alwan_data_get_illuminant_d45(ctx, data, count);
+        case ALWAN_ILLUMINANT_D93: return alwan_data_get_illuminant_d93(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B1: return alwan_data_get_illuminant_led_b1(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B2: return alwan_data_get_illuminant_led_b2(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B3: return alwan_data_get_illuminant_led_b3(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B4: return alwan_data_get_illuminant_led_b4(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_B5: return alwan_data_get_illuminant_led_b5(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_BH1: return alwan_data_get_illuminant_led_bh1(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_RGB1: return alwan_data_get_illuminant_led_rgb1(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_V1: return alwan_data_get_illuminant_led_v1(ctx, data, count);
+        case ALWAN_ILLUMINANT_LED_V2: return alwan_data_get_illuminant_led_v2(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP1: return alwan_data_get_illuminant_hp1(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP2: return alwan_data_get_illuminant_hp2(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP3: return alwan_data_get_illuminant_hp3(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP4: return alwan_data_get_illuminant_hp4(ctx, data, count);
+        case ALWAN_ILLUMINANT_HP5: return alwan_data_get_illuminant_hp5(ctx, data, count);
         default:
             return ALWAN_E_INVALID;  /* Unsupported illuminant or no xy data */
     }
