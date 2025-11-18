@@ -1457,7 +1457,10 @@ print("\nGenerating Illuminant SPDs...")
 illuminant_names = ['A', 'D50', 'D55', 'D65', 'E',
                     'F1', 'F2', 'F3', 'F4', 'F5', 'F6',
                     'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
-                    'B', 'C', 'D60', 'D75']  # P8: Extended illuminants
+                    'B', 'C', 'D60', 'D75',  # P8.3: Basic extended illuminants
+                    'LED-B1', 'LED-B2', 'LED-B3', 'LED-B4', 'LED-B5',  # P8.3: LED illuminants
+                    'LED-BH1', 'LED-V1', 'LED-V2', 'LED-RGB1',
+                    'HP1', 'HP2', 'HP3', 'HP4', 'HP5']  # P8.3: High Pressure illuminants
 
 for illum_name in illuminant_names:
     try:
@@ -1495,12 +1498,56 @@ for illum_name in illuminant_names:
         print(f"  Warning: Could not generate illuminant {illum_name}: {e}", file=sys.stderr)
 
 # ================================================================
+# P8.3: Additional D-series Illuminants (computed from CCT)
+# ================================================================
+print("\nGenerating additional D-series illuminants (D40, D45, D93)...")
+
+# D-series CCTs to generate
+d_series_to_generate = {
+    'D40': 4000,
+    'D45': 4500,
+    'D93': 9300,
+}
+
+for d_name, cct in d_series_to_generate.items():
+    try:
+        # Compute xy from CCT using Planckian locus
+        xy = colour.CCT_to_xy(cct, method='Kang 2002')
+
+        # Generate D-series SPD from xy chromaticity
+        illum_spd = colour.sd_CIE_illuminant_D_series(xy)
+
+        # Resample to 360-830nm, 1nm steps
+        target_wavelengths = np.arange(360, 831, 1)
+        resampled_values = np.interp(
+            target_wavelengths,
+            illum_spd.wavelengths,
+            illum_spd.values,
+            left=0.0,
+            right=0.0
+        )
+
+        # Write illuminant SPD data
+        filename = f'{DATA_DIR}/illuminants/{d_name}_360_830_1nm.csv'
+        ensure_dir(filename)
+        with open(filename, 'w', newline='') as f:
+            formatted_values = [format_scalar(v) for v in resampled_values]
+            f.write(','.join(formatted_values) + '\n')
+        print(f"  {filename} ({len(resampled_values)} samples, {cct}K)")
+
+    except Exception as e:
+        print(f"  Warning: Could not generate {d_name}: {e}", file=sys.stderr)
+
+# ================================================================
 # P8: Illuminant xy Chromaticity Coordinates
 # ================================================================
 print("\nGenerating Illuminant xy Chromaticity Coordinates...")
 
 # List of illuminants to generate xy coordinates for
-illuminant_xy_names = ['A', 'D50', 'D55', 'D60', 'D65', 'E', 'B', 'C', 'D75']
+illuminant_xy_names = ['A', 'D50', 'D55', 'D60', 'D65', 'E', 'B', 'C', 'D75',
+                       'LED-B1', 'LED-B2', 'LED-B3', 'LED-B4', 'LED-B5',
+                       'LED-BH1', 'LED-V1', 'LED-V2', 'LED-RGB1',
+                       'HP1', 'HP2', 'HP3', 'HP4', 'HP5']
 
 for illum_name in illuminant_xy_names:
     try:
@@ -1530,6 +1577,47 @@ for illum_name in illuminant_xy_names:
 
     except Exception as e:
         print(f"  Warning: Could not generate xy for illuminant {illum_name}: {e}", file=sys.stderr)
+
+# Generate xy coordinates for D40, D45, D93 (from SPDs we just generated)
+print("\nGenerating xy coordinates for D40, D45, D93...")
+for d_name, cct in d_series_to_generate.items():
+    try:
+        # Load the SPD we just generated
+        filename_spd = f'{DATA_DIR}/illuminants/{d_name}_360_830_1nm.csv'
+        with open(filename_spd, 'r') as f:
+            spd_values = [float(v) for v in f.read().strip().split(',')]
+
+        # Create wavelengths array
+        wavelengths = np.arange(360, 831, 1)
+
+        # Get CIE 1931 2° Standard Observer CMF values at these wavelengths
+        cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+
+        # Resample CMF to match our wavelengths
+        x_bar = np.interp(wavelengths, cmfs.wavelengths, cmfs.values[:, 0], left=0, right=0)
+        y_bar = np.interp(wavelengths, cmfs.wavelengths, cmfs.values[:, 1], left=0, right=0)
+        z_bar = np.interp(wavelengths, cmfs.wavelengths, cmfs.values[:, 2], left=0, right=0)
+
+        # Compute XYZ (Simpson integration approximation using trapezoidal)
+        spd_array = np.array(spd_values)
+        X = np.trapz(spd_array * x_bar, wavelengths)
+        Y = np.trapz(spd_array * y_bar, wavelengths)
+        Z = np.trapz(spd_array * z_bar, wavelengths)
+
+        # Normalize and convert to xy
+        XYZ = np.array([X, Y, Z])
+        xy = colour.XYZ_to_xy(XYZ)
+
+        # Write xy coordinates
+        filename_xy = f'{DATA_DIR}/illuminants_xy/{d_name.lower()}_xy.csv'
+        ensure_dir(filename_xy)
+        with open(filename_xy, 'w', newline='') as f:
+            formatted_values = [format_scalar(v) for v in xy]
+            f.write(','.join(formatted_values) + '\n')
+        print(f"  {filename_xy} (x={xy[0]:.10f}, y={xy[1]:.10f})")
+
+    except Exception as e:
+        print(f"  Warning: Could not generate xy for {d_name}: {e}", file=sys.stderr)
 
 # ================================================================
 # P8.1: Spectral Upsampling - Basis Functions

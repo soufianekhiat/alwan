@@ -232,11 +232,14 @@ typedef enum {
 	ALWAN_ILLUMINANT_A,    /* Incandescent / Tungsten */
 	ALWAN_ILLUMINANT_B,    /* CIE Illuminant B (direct sunlight) */
 	ALWAN_ILLUMINANT_C,    /* CIE Illuminant C (average daylight) */
+    ALWAN_ILLUMINANT_D40,  /* Daylight 4000K (P8.3) */
+    ALWAN_ILLUMINANT_D45,  /* Daylight 4500K (P8.3) */
     ALWAN_ILLUMINANT_D50,  /* Daylight 5000K */
 	ALWAN_ILLUMINANT_D55,  /* Daylight 5500K */
 	ALWAN_ILLUMINANT_D60,  /* Daylight 6000K */
 	ALWAN_ILLUMINANT_D65,  /* Daylight 6500K */
 	ALWAN_ILLUMINANT_D75,  /* Daylight 7500K */
+    ALWAN_ILLUMINANT_D93,  /* Daylight 9300K (P8.3) */
     ALWAN_ILLUMINANT_E,    /* Equal energy */
     ALWAN_ILLUMINANT_F1,   /* Fluorescent */
     ALWAN_ILLUMINANT_F2,
@@ -249,7 +252,25 @@ typedef enum {
     ALWAN_ILLUMINANT_F9,
     ALWAN_ILLUMINANT_F10,
     ALWAN_ILLUMINANT_F11,
-    ALWAN_ILLUMINANT_F12
+    ALWAN_ILLUMINANT_F12,
+
+    /* P8.3: LED illuminants */
+    ALWAN_ILLUMINANT_LED_B1,    /* LED B1 (blue-pumped phosphor) */
+    ALWAN_ILLUMINANT_LED_B2,    /* LED B2 */
+    ALWAN_ILLUMINANT_LED_B3,    /* LED B3 */
+    ALWAN_ILLUMINANT_LED_B4,    /* LED B4 */
+    ALWAN_ILLUMINANT_LED_B5,    /* LED B5 */
+    ALWAN_ILLUMINANT_LED_BH1,   /* LED BH1 (high CRI) */
+    ALWAN_ILLUMINANT_LED_RGB1,  /* LED RGB1 (RGB LED mix) */
+    ALWAN_ILLUMINANT_LED_V1,    /* LED V1 (violet-pumped) */
+    ALWAN_ILLUMINANT_LED_V2,    /* LED V2 */
+
+    /* P8.3: High Pressure illuminants */
+    ALWAN_ILLUMINANT_HP1,   /* High Pressure 1 (mercury) */
+    ALWAN_ILLUMINANT_HP2,   /* High Pressure 2 */
+    ALWAN_ILLUMINANT_HP3,   /* High Pressure 3 */
+    ALWAN_ILLUMINANT_HP4,   /* High Pressure 4 */
+    ALWAN_ILLUMINANT_HP5    /* High Pressure 5 */
 } alwan_illuminant;
 
 /* Enum-based illuminant xy chromaticity accessor
