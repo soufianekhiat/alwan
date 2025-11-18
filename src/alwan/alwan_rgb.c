@@ -284,6 +284,21 @@ static alwan_scalar acesproxy_eotf_scalar(alwan_scalar encoded) {
  * ---------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
+ * Legal Range / Full Range Conversion Helpers (10-bit)
+ * ---------------------------------------------------------------- */
+
+/* Legal range to full range conversion (10-bit)
+ * Legal range: 64-940 (0.062561094819159 - 0.919165268851521)
+ * Full range: 0-1023 (0.0 - 1.0) */
+static alwan_scalar legal_to_full_10bit(alwan_scalar legal) {
+    return (legal - ALWAN_LITERAL(0.062561094819159)) / ALWAN_LITERAL(0.856304985337243);
+}
+
+static alwan_scalar full_to_legal_10bit(alwan_scalar full) {
+    return full * ALWAN_LITERAL(0.856304985337243) + ALWAN_LITERAL(0.062561094819159);
+}
+
+/* ----------------------------------------------------------------
  * Sony S-Log Family
  * ---------------------------------------------------------------- */
 
@@ -324,53 +339,54 @@ static alwan_scalar slog_eotf_scalar(alwan_scalar encoded) {
 }
 
 /* S-Log2 OETF: linear -> S-Log2
- * Formula from Sony documentation */
+ * Formula from colour-science: S-Log2 is S-Log with 155/219 scaling
+ * Reference: SonyCorporation2012a */
 static alwan_scalar slog2_oetf_scalar(alwan_scalar linear) {
-    if (linear < ALWAN_LITERAL(0.0)) {
-        linear = ALWAN_LITERAL(0.0);
-    }
-
-    if (linear < ALWAN_LITERAL(0.01125000)) {
-        return (linear * (ALWAN_LITERAL(0.9) / ALWAN_LITERAL(0.01125000))) + ALWAN_LITERAL(0.1);
-    } else {
-        return ((ALWAN_LITERAL(0.9) * ALWAN_LOG10((linear + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.01125000)) / ALWAN_LOG10(ALWAN_LITERAL(4.0))) + ALWAN_LITERAL(0.1));
-    }
+    /* Scale input: S-Log2 = S-Log(x * 155/219) */
+    alwan_scalar scaled = linear * ALWAN_LITERAL(155.0) / ALWAN_LITERAL(219.0);
+    return slog_oetf_scalar(scaled);
 }
 
 static alwan_scalar slog2_eotf_scalar(alwan_scalar encoded) {
-    if (encoded < ALWAN_LITERAL(0.1)) {
-        encoded = ALWAN_LITERAL(0.1);
-    }
-
-    alwan_scalar threshold = (ALWAN_LITERAL(0.01125000) * (ALWAN_LITERAL(0.9) / ALWAN_LITERAL(0.01125000))) + ALWAN_LITERAL(0.1);
-
-    if (encoded < threshold) {
-        return ((encoded - ALWAN_LITERAL(0.1)) / (ALWAN_LITERAL(0.9) / ALWAN_LITERAL(0.01125000)));
-    } else {
-        return (ALWAN_LITERAL(0.01125000) * ALWAN_POW(ALWAN_LITERAL(4.0), ((encoded - ALWAN_LITERAL(0.1)) / ALWAN_LITERAL(0.9)))) - ALWAN_LITERAL(0.01);
-    }
+    /* Decode with S-Log, then scale output: x = S-Log_decode(y) * 219/155 */
+    alwan_scalar decoded = slog_eotf_scalar(encoded);
+    return decoded * ALWAN_LITERAL(219.0) / ALWAN_LITERAL(155.0);
 }
 
 /* S-Log3 OETF: linear -> S-Log3
- * Formula from Sony documentation */
+ * Formula from colour-science (Sony S-Log3 specification)
+ * Formulas produce legal range values, converted to full range
+ * Reference: SonyCorporation2012a */
 static alwan_scalar slog3_oetf_scalar(alwan_scalar linear) {
     if (linear < ALWAN_LITERAL(0.0)) {
         linear = ALWAN_LITERAL(0.0);
     }
 
+    alwan_scalar y_legal;
     if (linear >= ALWAN_LITERAL(0.01125000)) {
-        return (ALWAN_LITERAL(420.0) + ALWAN_LOG10((linear + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.01125000)) * ALWAN_LITERAL(261.5)) / ALWAN_LITERAL(1023.0);
+        /* Logarithmic region: note denominator is (0.18 + 0.01) = 0.19, NOT 0.01125 */
+        y_legal = (ALWAN_LITERAL(420.0) + ALWAN_LOG10((linear + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.19)) * ALWAN_LITERAL(261.5)) / ALWAN_LITERAL(1023.0);
     } else {
-        return (linear * (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(0.01125000) + ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(1023.0);
+        /* Linear region */
+        y_legal = (linear * (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(0.01125000) + ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(1023.0);
     }
+
+    /* Convert from legal range to full range */
+    return legal_to_full_10bit(y_legal);
 }
 
+/* S-Log3 EOTF: S-Log3 -> linear
+ * Formulas operate on legal range values, so convert from full range first */
 static alwan_scalar slog3_eotf_scalar(alwan_scalar encoded) {
-    alwan_scalar code = encoded * ALWAN_LITERAL(1023.0);
+    /* Convert from full range to legal range */
+    alwan_scalar y_legal = full_to_legal_10bit(encoded);
+    alwan_scalar code = y_legal * ALWAN_LITERAL(1023.0);
 
     if (code >= ALWAN_LITERAL(171.2102946929)) {
-        return (ALWAN_POW(ALWAN_LITERAL(10.0), ((code - ALWAN_LITERAL(420.0)) / ALWAN_LITERAL(261.5))) * ALWAN_LITERAL(0.01125000)) - ALWAN_LITERAL(0.01);
+        /* Logarithmic region: note the multiplier is 0.19, not 0.01125 */
+        return (ALWAN_POW(ALWAN_LITERAL(10.0), ((code - ALWAN_LITERAL(420.0)) / ALWAN_LITERAL(261.5))) * ALWAN_LITERAL(0.19)) - ALWAN_LITERAL(0.01);
     } else {
+        /* Linear region */
         return ((code - ALWAN_LITERAL(95.0)) / (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0))) * ALWAN_LITERAL(0.01125000);
     }
 }
@@ -379,61 +395,70 @@ static alwan_scalar slog3_eotf_scalar(alwan_scalar encoded) {
  * Canon C-Log Family
  * ---------------------------------------------------------------- */
 
-/* C-Log OETF: linear -> C-Log
- * Formula from Canon documentation */
+/* C-Log OETF: linear -> C-Log (v1.2)
+ * Formula from colour-science (Canon C-Log v1.2 specification)
+ * Reference: CanonInc2012, CanonInc2016 */
 static alwan_scalar clog_oetf_scalar(alwan_scalar linear) {
-    alwan_scalar const a = ALWAN_LITERAL(0.529136);
-    alwan_scalar const b = ALWAN_LITERAL(0.0730597);
-    alwan_scalar const c = ALWAN_LITERAL(0.256598);
-    alwan_scalar const d = ALWAN_LITERAL(0.293977);
+    /* Constants for C-Log v1.2 */
+    alwan_scalar const a = ALWAN_LITERAL(0.45310179);
+    alwan_scalar const k = ALWAN_LITERAL(10.1596);
+    alwan_scalar const offset = ALWAN_LITERAL(0.12512248);
 
     if (linear < ALWAN_LITERAL(0.0)) {
         linear = ALWAN_LITERAL(0.0);
     }
 
-    return a * ALWAN_LOG10(linear + b) + c + d;
+    /* Scene-referred scaling */
+    alwan_scalar x = linear / ALWAN_LITERAL(0.9);
+
+    /* Encoding: a * log10(k * x + 1) + offset */
+    return a * ALWAN_LOG10(k * x + ALWAN_LITERAL(1.0)) + offset;
 }
 
 static alwan_scalar clog_eotf_scalar(alwan_scalar encoded) {
-    alwan_scalar const a = ALWAN_LITERAL(0.529136);
-    alwan_scalar const b = ALWAN_LITERAL(0.0730597);
-    alwan_scalar const c = ALWAN_LITERAL(0.256598);
-    alwan_scalar const d = ALWAN_LITERAL(0.293977);
+    /* Constants for C-Log v1.2 */
+    alwan_scalar const a = ALWAN_LITERAL(0.45310179);
+    alwan_scalar const k = ALWAN_LITERAL(10.1596);
+    alwan_scalar const offset = ALWAN_LITERAL(0.12512248);
 
-    return ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - c - d) / a) - b;
+    /* Decoding: (10^((encoded - offset) / a) - 1) / k */
+    alwan_scalar x = (ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - offset) / a) - ALWAN_LITERAL(1.0)) / k;
+
+    /* Scene-referred scaling */
+    return x * ALWAN_LITERAL(0.9);
 }
 
-/* C-Log2 OETF: linear -> C-Log2
- * Formula from Canon documentation */
+/* C-Log2 OETF: linear -> C-Log2 (v1.2)
+ * Formula from colour-science (Canon C-Log2 v1.2 specification)
+ * Reference: CanonInc2012, CanonInc2016 */
 static alwan_scalar clog2_oetf_scalar(alwan_scalar linear) {
-    alwan_scalar const a = ALWAN_LITERAL(0.281863093);
-    alwan_scalar const b = ALWAN_LITERAL(0.035388128);
-    alwan_scalar const c = ALWAN_LITERAL(0.189671161);
+    /* Constants for C-Log2 v1.2 */
+    alwan_scalar const a = ALWAN_LITERAL(0.24136077);
+    alwan_scalar const k = ALWAN_LITERAL(87.09937546);
+    alwan_scalar const offset = ALWAN_LITERAL(0.092864125);
 
     if (linear < ALWAN_LITERAL(0.0)) {
         linear = ALWAN_LITERAL(0.0);
     }
 
-    return a * ALWAN_LOG10(linear + b) + c;
+    /* Scene-referred scaling */
+    alwan_scalar x = linear / ALWAN_LITERAL(0.9);
+
+    /* Encoding: a * log10(k * x + 1) + offset */
+    return a * ALWAN_LOG10(k * x + ALWAN_LITERAL(1.0)) + offset;
 }
 
 static alwan_scalar clog2_eotf_scalar(alwan_scalar encoded) {
-    alwan_scalar const a = ALWAN_LITERAL(0.281863093);
-    alwan_scalar const b = ALWAN_LITERAL(0.035388128);
-    alwan_scalar const c = ALWAN_LITERAL(0.189671161);
+    /* Constants for C-Log2 v1.2 */
+    alwan_scalar const a = ALWAN_LITERAL(0.24136077);
+    alwan_scalar const k = ALWAN_LITERAL(87.09937546);
+    alwan_scalar const offset = ALWAN_LITERAL(0.092864125);
 
-    return ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - c) / a) - b;
-}
+    /* Decoding: (10^((encoded - offset) / a) - 1) / k */
+    alwan_scalar x = (ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - offset) / a) - ALWAN_LITERAL(1.0)) / k;
 
-/* Legal range to full range conversion (10-bit)
- * Legal range: 64-940 (0.062561094819159 - 0.919165268851521)
- * Full range: 0-1023 (0.0 - 1.0) */
-static alwan_scalar legal_to_full_10bit(alwan_scalar legal) {
-    return (legal - ALWAN_LITERAL(0.062561094819159)) / ALWAN_LITERAL(0.856304985337243);
-}
-
-static alwan_scalar full_to_legal_10bit(alwan_scalar full) {
-    return full * ALWAN_LITERAL(0.856304985337243) + ALWAN_LITERAL(0.062561094819159);
+    /* Scene-referred scaling */
+    return x * ALWAN_LITERAL(0.9);
 }
 
 /* C-Log3 OETF: linear -> C-Log3

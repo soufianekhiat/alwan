@@ -3,7 +3,10 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Test 260: P6 Extended Transfer Functions (Log curves, gamma variants)
+ * Test 260: Extended Transfer Functions (Log curves, gamma variants)
+ *
+ * Reference values generated from colour-science Python library
+ * via generate_data_tests.ps1
  */
 
 #include "alwan.h"
@@ -28,346 +31,183 @@
 } while(0)
 
 /* ----------------------------------------------------------------
+ * Reference Value Loading
+ * ---------------------------------------------------------------- */
+
+/* Reference data format: triplets of (linear, encoded, decoded) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+
+static alwan_scalar const g_tf_slog[] = {
+#include "reference_values/tf_slog.csv"
+};
+
+static alwan_scalar const g_tf_slog2[] = {
+#include "reference_values/tf_slog2.csv"
+};
+
+static alwan_scalar const g_tf_slog3[] = {
+#include "reference_values/tf_slog3.csv"
+};
+
+static alwan_scalar const g_tf_clog[] = {
+#include "reference_values/tf_clog.csv"
+};
+
+static alwan_scalar const g_tf_clog2[] = {
+#include "reference_values/tf_clog2.csv"
+};
+
+static alwan_scalar const g_tf_clog3[] = {
+#include "reference_values/tf_clog3.csv"
+};
+
+static alwan_scalar const g_tf_vlog[] = {
+#include "reference_values/tf_vlog.csv"
+};
+
+static alwan_scalar const g_tf_gamma22[] = {
+#include "reference_values/tf_gamma22.csv"
+};
+
+static alwan_scalar const g_tf_gamma24[] = {
+#include "reference_values/tf_gamma24.csv"
+};
+
+ALWAN_DIAG_POP
+
+/* ----------------------------------------------------------------
+ * Generic Transfer Function Test Helper
+ * ---------------------------------------------------------------- */
+
+static int test_transfer_function(
+    char const *name,
+    alwan_transfer_function tf,
+    alwan_scalar const *ref_data,
+    size_t num_triplets)
+{
+#if ALWAN_SCALAR_IS_FLOAT
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
+#else
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
+#endif
+
+    int failures = 0;
+
+    for (size_t i = 0; i < num_triplets; i++) {
+        size_t idx = i * 3;
+        alwan_scalar linear_ref = ref_data[idx + 0];
+        alwan_scalar encoded_ref = ref_data[idx + 1];
+        alwan_scalar decoded_ref = ref_data[idx + 2];
+
+        /* Test OETF: linear -> encoded */
+        alwan_scalar encoded_actual;
+        int status = alwan_oetf_apply(tf, &linear_ref, 1, sizeof(alwan_scalar),
+                                      &encoded_actual, sizeof(alwan_scalar));
+
+        if (status != ALWAN_OK) {
+            fprintf(stderr, "  [%s] OETF test %zu: alwan_oetf_apply failed with status %d\n",
+                   name, i, status);
+            failures++;
+            continue;
+        }
+
+        alwan_scalar encode_diff = ALWAN_FABS(encoded_actual - encoded_ref);
+        if (encode_diff >= tolerance) {
+            fprintf(stderr, "  [%s] OETF test %zu: linear=%.6f, expected=%.6f, got=%.6f, diff=%.2e\n",
+                   name, i, linear_ref, encoded_ref, encoded_actual, encode_diff);
+            failures++;
+        }
+
+        /* Test EOTF: encoded -> decoded */
+        alwan_scalar decoded_actual;
+        status = alwan_eotf_apply(tf, &encoded_ref, 1, sizeof(alwan_scalar),
+                                  &decoded_actual, sizeof(alwan_scalar));
+
+        if (status != ALWAN_OK) {
+            fprintf(stderr, "  [%s] EOTF test %zu: alwan_eotf_apply failed with status %d\n",
+                   name, i, status);
+            failures++;
+            continue;
+        }
+
+        alwan_scalar decode_diff = ALWAN_FABS(decoded_actual - decoded_ref);
+        if (decode_diff >= tolerance) {
+            fprintf(stderr, "  [%s] EOTF test %zu: encoded=%.6f, expected=%.6f, got=%.6f, diff=%.2e\n",
+                   name, i, encoded_ref, decoded_ref, decoded_actual, decode_diff);
+            failures++;
+        }
+    }
+
+    if (failures == 0) {
+        printf("[PASS] %s (%zu tests)\n", name, num_triplets * 2);
+        return 0;
+    } else {
+        fprintf(stderr, "[FAIL] %s (%d/%zu tests failed)\n",
+                name, failures, num_triplets * 2);
+        return 1;
+    }
+}
+
+/* ----------------------------------------------------------------
  * Sony S-Log Family Tests
  * ---------------------------------------------------------------- */
 
-static int test_slog_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.001),
-        ALWAN_LITERAL(0.01),
-        ALWAN_LITERAL(0.1),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_SLOG, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "S-Log OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_SLOG, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "S-Log EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        if (diff >= tolerance) {
-            printf("  S-Log round-trip test %zu: linear=%.6f, encoded=%.6f, roundtrip=%.6f, diff=%.2e\n",
-                   i, linear, encoded, roundtrip, diff);
-        }
-        TEST_ASSERT(diff < tolerance, "S-Log round-trip mismatch");
-    }
-
-    TEST_PASS("S-Log round-trip");
+static int test_slog(void) {
+    size_t num_triplets = sizeof(g_tf_slog) / sizeof(g_tf_slog[0]) / 3;
+    return test_transfer_function("S-Log", ALWAN_TF_SLOG, g_tf_slog, num_triplets);
 }
 
-static int test_slog2_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.001),
-        ALWAN_LITERAL(0.01),
-        ALWAN_LITERAL(0.1),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_SLOG2, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "S-Log2 OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_SLOG2, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "S-Log2 EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        TEST_ASSERT(diff < tolerance, "S-Log2 round-trip mismatch");
-    }
-
-    TEST_PASS("S-Log2 round-trip");
+static int test_slog2(void) {
+    size_t num_triplets = sizeof(g_tf_slog2) / sizeof(g_tf_slog2[0]) / 3;
+    return test_transfer_function("S-Log2", ALWAN_TF_SLOG2, g_tf_slog2, num_triplets);
 }
 
-static int test_slog3_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.001),
-        ALWAN_LITERAL(0.01),
-        ALWAN_LITERAL(0.1),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_SLOG3, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "S-Log3 OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_SLOG3, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "S-Log3 EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        TEST_ASSERT(diff < tolerance, "S-Log3 round-trip mismatch");
-    }
-
-    TEST_PASS("S-Log3 round-trip");
+static int test_slog3(void) {
+    size_t num_triplets = sizeof(g_tf_slog3) / sizeof(g_tf_slog3[0]) / 3;
+    return test_transfer_function("S-Log3", ALWAN_TF_SLOG3, g_tf_slog3, num_triplets);
 }
 
 /* ----------------------------------------------------------------
  * Canon C-Log Family Tests
  * ---------------------------------------------------------------- */
 
-static int test_clog_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.001),
-        ALWAN_LITERAL(0.01),
-        ALWAN_LITERAL(0.18),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_CLOG, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "C-Log OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_CLOG, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "C-Log EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        TEST_ASSERT(diff < tolerance, "C-Log round-trip mismatch");
-    }
-
-    TEST_PASS("C-Log round-trip");
+static int test_clog(void) {
+    size_t num_triplets = sizeof(g_tf_clog) / sizeof(g_tf_clog[0]) / 3;
+    return test_transfer_function("C-Log", ALWAN_TF_CLOG, g_tf_clog, num_triplets);
 }
 
-static int test_clog2_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.001),
-        ALWAN_LITERAL(0.01),
-        ALWAN_LITERAL(0.18),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_CLOG2, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "C-Log2 OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_CLOG2, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "C-Log2 EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        TEST_ASSERT(diff < tolerance, "C-Log2 round-trip mismatch");
-    }
-
-    TEST_PASS("C-Log2 round-trip");
+static int test_clog2(void) {
+    size_t num_triplets = sizeof(g_tf_clog2) / sizeof(g_tf_clog2[0]) / 3;
+    return test_transfer_function("C-Log2", ALWAN_TF_CLOG2, g_tf_clog2, num_triplets);
 }
 
-static int test_clog3_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.001),
-        ALWAN_LITERAL(0.01),
-        ALWAN_LITERAL(0.018),
-        ALWAN_LITERAL(0.18),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_CLOG3, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "C-Log3 OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_CLOG3, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "C-Log3 EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        TEST_ASSERT(diff < tolerance, "C-Log3 round-trip mismatch");
-    }
-
-    TEST_PASS("C-Log3 round-trip");
+static int test_clog3(void) {
+    size_t num_triplets = sizeof(g_tf_clog3) / sizeof(g_tf_clog3[0]) / 3;
+    return test_transfer_function("C-Log3", ALWAN_TF_CLOG3, g_tf_clog3, num_triplets);
 }
 
 /* ----------------------------------------------------------------
  * Panasonic V-Log Tests
  * ---------------------------------------------------------------- */
 
-static int test_vlog_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.001),
-        ALWAN_LITERAL(0.01),
-        ALWAN_LITERAL(0.1),
-        ALWAN_LITERAL(0.18),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_VLOG, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "V-Log OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_VLOG, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "V-Log EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        TEST_ASSERT(diff < tolerance, "V-Log round-trip mismatch");
-    }
-
-    TEST_PASS("V-Log round-trip");
+static int test_vlog(void) {
+    size_t num_triplets = sizeof(g_tf_vlog) / sizeof(g_tf_vlog[0]) / 3;
+    return test_transfer_function("V-Log", ALWAN_TF_VLOG, g_tf_vlog, num_triplets);
 }
 
 /* ----------------------------------------------------------------
  * Standard Gamma Variants Tests
  * ---------------------------------------------------------------- */
 
-static int test_gamma22_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.0),
-        ALWAN_LITERAL(0.1),
-        ALWAN_LITERAL(0.18),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_GAMMA22, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "Gamma 2.2 OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_GAMMA22, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "Gamma 2.2 EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        TEST_ASSERT(diff < tolerance, "Gamma 2.2 round-trip mismatch");
-    }
-
-    TEST_PASS("Gamma 2.2 round-trip");
+static int test_gamma22(void) {
+    size_t num_triplets = sizeof(g_tf_gamma22) / sizeof(g_tf_gamma22[0]) / 3;
+    return test_transfer_function("Gamma 2.2", ALWAN_TF_GAMMA22, g_tf_gamma22, num_triplets);
 }
 
-static int test_gamma24_roundtrip(void) {
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.0),
-        ALWAN_LITERAL(0.1),
-        ALWAN_LITERAL(0.18),
-        ALWAN_LITERAL(0.5),
-        ALWAN_LITERAL(1.0)
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
-#endif
-
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
-
-        int status = alwan_oetf_apply(ALWAN_TF_GAMMA24, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "Gamma 2.4 OETF failed");
-
-        status = alwan_eotf_apply(ALWAN_TF_GAMMA24, &encoded, 1, sizeof(alwan_scalar), &roundtrip, sizeof(alwan_scalar));
-        TEST_ASSERT(status == ALWAN_OK, "Gamma 2.4 EOTF failed");
-
-        alwan_scalar diff = ALWAN_FABS(roundtrip - linear);
-        TEST_ASSERT(diff < tolerance, "Gamma 2.4 round-trip mismatch");
-    }
-
-    TEST_PASS("Gamma 2.4 round-trip");
-}
-
-static int test_gamma_known_values(void) {
-    /* Test gamma 2.2: 0.5^(1/2.2) ≈ 0.72974 */
-    alwan_scalar linear = ALWAN_LITERAL(0.5);
-    alwan_scalar expected_encoded = ALWAN_LITERAL(0.72974);
-    alwan_scalar encoded;
-
-    int status = alwan_oetf_apply(ALWAN_TF_GAMMA22, &linear, 1, sizeof(alwan_scalar), &encoded, sizeof(alwan_scalar));
-    TEST_ASSERT(status == ALWAN_OK, "Gamma 2.2 OETF failed");
-
-    alwan_scalar diff = ALWAN_FABS(encoded - expected_encoded);
-    TEST_ASSERT(diff < ALWAN_LITERAL(0.0001), "Gamma 2.2 known value mismatch");
-
-    TEST_PASS("Gamma known values");
+static int test_gamma24(void) {
+    size_t num_triplets = sizeof(g_tf_gamma24) / sizeof(g_tf_gamma24[0]) / 3;
+    return test_transfer_function("Gamma 2.4", ALWAN_TF_GAMMA24, g_tf_gamma24, num_triplets);
 }
 
 /* ----------------------------------------------------------------
@@ -375,28 +215,33 @@ static int test_gamma_known_values(void) {
  * ---------------------------------------------------------------- */
 
 int test_260_tf_extended_main(void) {
+    printf("\n=== Extended Transfer Functions - colour-science validation ===\n\n");
+
     int failures = 0;
 
     /* Sony S-Log Family */
-    failures += test_slog_roundtrip();
-    failures += test_slog2_roundtrip();
-    failures += test_slog3_roundtrip();
+    printf("Sony S-Log Family:\n");
+    failures += test_slog();
+    failures += test_slog2();
+    failures += test_slog3();
 
     /* Canon C-Log Family */
-    failures += test_clog_roundtrip();
-    failures += test_clog2_roundtrip();
-    failures += test_clog3_roundtrip();
+    printf("\nCanon C-Log Family:\n");
+    failures += test_clog();
+    failures += test_clog2();
+    failures += test_clog3();
 
     /* Panasonic V-Log */
-    failures += test_vlog_roundtrip();
+    printf("\nPanasonic V-Log:\n");
+    failures += test_vlog();
 
     /* Standard Gamma Variants */
-    failures += test_gamma22_roundtrip();
-    failures += test_gamma24_roundtrip();
-    failures += test_gamma_known_values();
+    printf("\nGamma Variants:\n");
+    failures += test_gamma22();
+    failures += test_gamma24();
 
     if (failures == 0) {
-        printf("\n=== All P6 extended transfer function tests passed ===\n");
+        printf("\n=== All extended transfer function tests passed ===\n");
         return 0;
     } else {
         fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);

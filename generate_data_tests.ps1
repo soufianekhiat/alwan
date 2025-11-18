@@ -1173,6 +1173,126 @@ except Exception as e:
     # Write empty data
     write_ref('quality_metamerism', [], 'P4.7 Metamerism Index values (not available)')
 
+# ================================================================
+# P6: Extended Transfer Functions
+# ================================================================
+print('\nP6 Extended Transfer Functions:')
+
+# Test input values for transfer functions (linear scene values)
+TF_TEST_VALUES = [0.001, 0.01, 0.1, 0.18, 0.5, 1.0]
+
+# P6.1: Sony S-Log Family
+print('  P6.1: Sony S-Log Family')
+
+# S-Log
+try:
+    slog_encoded = [colour.models.log_encoding_SLog(v, in_reflection=True, out_normalised_code_value=False) for v in TF_TEST_VALUES]
+    slog_decoded = [colour.models.log_decoding_SLog(e, in_normalised_code_value=False, out_reflection=True) for e in slog_encoded]
+    slog_ref = []
+    for i, linear in enumerate(TF_TEST_VALUES):
+        slog_ref.extend([linear, slog_encoded[i], slog_decoded[i]])
+    write_ref('tf_slog', slog_ref, 'P6.1 S-Log: linear, encoded, decoded triplets')
+except Exception as e:
+    print(f'    Warning: S-Log failed: {e}')
+    write_ref('tf_slog', [], 'S-Log (not available)')
+
+# S-Log2
+try:
+    slog2_encoded = [colour.models.log_encoding_SLog2(v, in_reflection=True, out_normalised_code_value=False) for v in TF_TEST_VALUES]
+    slog2_decoded = [colour.models.log_decoding_SLog2(e, in_normalised_code_value=False, out_reflection=True) for e in slog2_encoded]
+    slog2_ref = []
+    for i, linear in enumerate(TF_TEST_VALUES):
+        slog2_ref.extend([linear, slog2_encoded[i], slog2_decoded[i]])
+    write_ref('tf_slog2', slog2_ref, 'P6.1 S-Log2: linear, encoded, decoded triplets')
+except Exception as e:
+    print(f'    Warning: S-Log2 failed: {e}')
+    write_ref('tf_slog2', [], 'S-Log2 (not available)')
+
+# S-Log3
+try:
+    slog3_encoded = [colour.models.log_encoding_SLog3(v, in_reflection=True, out_normalised_code_value=False) for v in TF_TEST_VALUES]
+    slog3_decoded = [colour.models.log_decoding_SLog3(e, in_normalised_code_value=False, out_reflection=True) for e in slog3_encoded]
+    slog3_ref = []
+    for i, linear in enumerate(TF_TEST_VALUES):
+        slog3_ref.extend([linear, slog3_encoded[i], slog3_decoded[i]])
+    write_ref('tf_slog3', slog3_ref, 'P6.1 S-Log3: linear, encoded, decoded triplets')
+except Exception as e:
+    print(f'    Warning: S-Log3 failed: {e}')
+    write_ref('tf_slog3', [], 'S-Log3 (not available)')
+
+# P6.2: Canon C-Log Family
+print('  P6.2: Canon C-Log Family')
+
+# C-Log
+try:
+    clog_encoded = [colour.models.log_encoding_CanonLog(v, in_reflection=True) for v in TF_TEST_VALUES]
+    clog_decoded = [colour.models.log_decoding_CanonLog(e, out_reflection=True) for e in clog_encoded]
+    clog_ref = []
+    for i, linear in enumerate(TF_TEST_VALUES):
+        clog_ref.extend([linear, clog_encoded[i], clog_decoded[i]])
+    write_ref('tf_clog', clog_ref, 'P6.2 C-Log: linear, encoded, decoded triplets')
+except Exception as e:
+    print(f'    Warning: C-Log failed: {e}')
+    write_ref('tf_clog', [], 'C-Log (not available)')
+
+# C-Log2
+try:
+    clog2_encoded = [colour.models.log_encoding_CanonLog2(v, in_reflection=True) for v in TF_TEST_VALUES]
+    clog2_decoded = [colour.models.log_decoding_CanonLog2(e, out_reflection=True) for e in clog2_encoded]
+    clog2_ref = []
+    for i, linear in enumerate(TF_TEST_VALUES):
+        clog2_ref.extend([linear, clog2_encoded[i], clog2_decoded[i]])
+    write_ref('tf_clog2', clog2_ref, 'P6.2 C-Log2: linear, encoded, decoded triplets')
+except Exception as e:
+    print(f'    Warning: C-Log2 failed: {e}')
+    write_ref('tf_clog2', [], 'C-Log2 (not available)')
+
+# C-Log3
+try:
+    clog3_encoded = [colour.models.log_encoding_CanonLog3(v, in_reflection=True, out_normalised_code_value=False) for v in TF_TEST_VALUES]
+    clog3_decoded = [colour.models.log_decoding_CanonLog3(e, in_normalised_code_value=False, out_reflection=True) for e in clog3_encoded]
+    clog3_ref = []
+    for i, linear in enumerate(TF_TEST_VALUES):
+        clog3_ref.extend([linear, clog3_encoded[i], clog3_decoded[i]])
+    write_ref('tf_clog3', clog3_ref, 'P6.2 C-Log3: linear, encoded, decoded triplets')
+except Exception as e:
+    print(f'    Warning: C-Log3 failed: {e}')
+    write_ref('tf_clog3', [], 'C-Log3 (not available)')
+
+# P6.3: Panasonic V-Log
+print('  P6.3: Panasonic V-Log')
+try:
+    vlog_encoded = [colour.models.log_encoding_VLog(v, in_reflection=True, out_normalised_code_value=False) for v in TF_TEST_VALUES]
+    vlog_decoded = [colour.models.log_decoding_VLog(e, in_normalised_code_value=False, out_reflection=True) for e in vlog_encoded]
+    vlog_ref = []
+    for i, linear in enumerate(TF_TEST_VALUES):
+        vlog_ref.extend([linear, vlog_encoded[i], vlog_decoded[i]])
+    write_ref('tf_vlog', vlog_ref, 'P6.3 V-Log: linear, encoded, decoded triplets')
+except Exception as e:
+    print(f'    Warning: V-Log failed: {e}')
+    write_ref('tf_vlog', [], 'V-Log (not available)')
+
+# P6.4: Standard Gamma Variants
+print('  P6.4: Gamma Variants')
+
+# Gamma 2.2
+gamma22_test = [0.0, 0.1, 0.18, 0.5, 1.0]
+gamma22_encoded = [v ** (1.0/2.2) for v in gamma22_test]
+gamma22_decoded = [e ** 2.2 for e in gamma22_encoded]
+gamma22_ref = []
+for i, linear in enumerate(gamma22_test):
+    gamma22_ref.extend([linear, gamma22_encoded[i], gamma22_decoded[i]])
+write_ref('tf_gamma22', gamma22_ref, 'P6.4 Gamma 2.2: linear, encoded, decoded triplets')
+
+# Gamma 2.4
+gamma24_test = [0.0, 0.1, 0.18, 0.5, 1.0]
+gamma24_encoded = [v ** (1.0/2.4) for v in gamma24_test]
+gamma24_decoded = [e ** 2.4 for e in gamma24_encoded]
+gamma24_ref = []
+for i, linear in enumerate(gamma24_test):
+    gamma24_ref.extend([linear, gamma24_encoded[i], gamma24_decoded[i]])
+write_ref('tf_gamma24', gamma24_ref, 'P6.4 Gamma 2.4: linear, encoded, decoded triplets')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')
