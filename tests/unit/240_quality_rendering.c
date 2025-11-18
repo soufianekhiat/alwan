@@ -40,7 +40,7 @@ static int test_cri_d65(void) {
     TEST_ASSERT(ctx != NULL, "Failed to create context");
 
     alwan_spd d65_spd;
-    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
 
     alwan_scalar ra = alwan_cri_ra(ctx, &d65_spd);
@@ -87,7 +87,7 @@ static int test_cri_illuminant_a(void) {
     TEST_ASSERT(ctx != NULL, "Failed to create context");
 
     alwan_spd a_spd;
-    int status = alwan_spd_illuminant(ctx, "A", &a_spd);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_A, &a_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create illuminant A SPD");
 
     alwan_scalar ra = alwan_cri_ra(ctx, &a_spd);
@@ -106,7 +106,7 @@ static int test_cqs_d65(void) {
     TEST_ASSERT(ctx != NULL, "Failed to create context");
 
     alwan_spd d65_spd;
-    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
 
     alwan_scalar cqs = alwan_cqs_calculate(ctx, &d65_spd);
@@ -143,7 +143,7 @@ static int test_tm30_d65(void) {
     TEST_ASSERT(ctx != NULL, "Failed to create context");
 
     alwan_spd d65_spd;
-    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
 
     alwan_scalar rf = alwan_tm30_rf(ctx, &d65_spd);
@@ -181,7 +181,7 @@ static int test_cie224_d65(void) {
     TEST_ASSERT(ctx != NULL, "Failed to create context");
 
     alwan_spd d65_spd;
-    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
 
     alwan_scalar rf = alwan_cie224_rf(ctx, &d65_spd);
@@ -200,7 +200,7 @@ static int test_tm30_cie224_match(void) {
     TEST_ASSERT(ctx != NULL, "Failed to create context");
 
     alwan_spd d65_spd;
-    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
 
     alwan_scalar tm30 = alwan_tm30_rf(ctx, &d65_spd);
@@ -225,9 +225,9 @@ static int test_ssi_perfect_match(void) {
     TEST_ASSERT(ctx != NULL, "Failed to create context");
 
     alwan_spd d65_spd1, d65_spd2;
-    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd1);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd1);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
-    status = alwan_spd_illuminant(ctx, "D65", &d65_spd2);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd2);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
 
     alwan_scalar ssi = alwan_ssi_calculate(ctx, &d65_spd1, &d65_spd2);
@@ -247,9 +247,9 @@ static int test_ssi_illuminant_pairs(void) {
 
     /* Test D65 vs D50 */
     alwan_spd d65_spd, d50_spd;
-    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
-    status = alwan_spd_illuminant(ctx, "D50", &d50_spd);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D50, &d50_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D50 SPD");
 
     alwan_scalar ssi_d65_d50 = alwan_ssi_calculate(ctx, &d65_spd, &d50_spd);
@@ -259,7 +259,7 @@ static int test_ssi_illuminant_pairs(void) {
 
     /* Test D65 vs A */
     alwan_spd a_spd;
-    status = alwan_spd_illuminant(ctx, "A", &a_spd);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_A, &a_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create A SPD");
 
     alwan_scalar ssi_d65_a = alwan_ssi_calculate(ctx, &d65_spd, &a_spd);
@@ -306,9 +306,9 @@ static int test_metamerism_basic(void) {
 
     /* Get illuminants */
     alwan_spd d65_spd, a_spd;
-    status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
-    status = alwan_spd_illuminant(ctx, "A", &a_spd);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_A, &a_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create A SPD");
 
     /* Calculate metamerism index (same reflectance, different illuminant) */
@@ -347,9 +347,9 @@ static int test_metamerism_different_reflectances(void) {
 
     /* Get illuminants */
     alwan_spd d65_spd, a_spd;
-    status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
-    status = alwan_spd_illuminant(ctx, "A", &a_spd);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_A, &a_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create A SPD");
 
     /* Calculate metamerism index */
@@ -374,7 +374,7 @@ static int test_ssi_null_inputs(void) {
     TEST_ASSERT(ctx != NULL, "Failed to create context");
 
     alwan_spd d65_spd;
-    int status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    int status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
 
     alwan_scalar result = alwan_ssi_calculate(ctx, NULL, &d65_spd);
@@ -401,7 +401,7 @@ static int test_metamerism_null_inputs(void) {
     alwan_spd refl_spd, d65_spd;
     int status = alwan_spd_create(ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 95, &refl_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create reflectance SPD");
-    status = alwan_spd_illuminant(ctx, "D65", &d65_spd);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65_spd);
     TEST_ASSERT(status == ALWAN_OK, "Failed to create D65 SPD");
 
     alwan_scalar result = alwan_metamerism_index(ctx, NULL, &refl_spd, &d65_spd, &d65_spd,

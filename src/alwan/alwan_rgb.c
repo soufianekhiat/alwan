@@ -7,6 +7,16 @@
 #include "alwan.h"
 #include "alwan_internal.h"
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Internal context structure (needed for runtime_data_root access) */
+struct alwan_ctx {
+    alwan_alloc_fn alloc_fn;
+    alwan_free_fn  free_fn;
+    char *runtime_data_root;
+    uint32_t flags;
+};
 
 /* ----------------------------------------------------------------
  * Helper: Convert xyY to XYZ (Y=1)
@@ -273,28 +283,39 @@ static alwan_scalar acesproxy_eotf_scalar(alwan_scalar encoded) {
  * Transfer Function API
  * ---------------------------------------------------------------- */
 
-int alwan_oetf_apply(char const *name,
+int alwan_oetf_apply(alwan_transfer_function tf,
                      alwan_scalar const *linear, size_t count, size_t in_stride,
                      alwan_scalar *encoded, size_t out_stride) {
-    if (!name || !linear || !encoded) {
+    if (!linear || !encoded) {
         return ALWAN_E_INVALID;
     }
 
     /* Select transfer function */
     alwan_scalar (*oetf_fn)(alwan_scalar) = NULL;
 
-    if (strcmp(name, "srgb") == 0) {
-        oetf_fn = srgb_oetf_scalar;
-    } else if (strcmp(name, "bt2020") == 0 || strcmp(name, "bt709") == 0) {
-        oetf_fn = bt2020_oetf_scalar;  /* BT.709 and BT.2020 use same transfer function */
-    } else if (strcmp(name, "pq") == 0 || strcmp(name, "st2084") == 0) {
-        oetf_fn = pq_oetf_scalar;
-    } else if (strcmp(name, "hlg") == 0) {
-        oetf_fn = hlg_oetf_scalar;
-    } else if (strcmp(name, "acesproxy") == 0) {
-        oetf_fn = acesproxy_oetf_scalar;
-    } else {
-        return ALWAN_E_INVALID;  /* Unknown transfer function */
+    switch (tf) {
+        case ALWAN_TF_SRGB:
+            oetf_fn = srgb_oetf_scalar;
+            break;
+        case ALWAN_TF_BT709:
+        case ALWAN_TF_BT2020:
+            oetf_fn = bt2020_oetf_scalar;  /* BT.709 and BT.2020 use same transfer function */
+            break;
+        case ALWAN_TF_PQ:
+        case ALWAN_TF_ST2084:
+            oetf_fn = pq_oetf_scalar;
+            break;
+        case ALWAN_TF_HLG:
+            oetf_fn = hlg_oetf_scalar;
+            break;
+        case ALWAN_TF_ACESPROXY:
+            oetf_fn = acesproxy_oetf_scalar;
+            break;
+        case ALWAN_TF_BT1886:
+            /* BT.1886 only has EOTF, no OETF */
+            return ALWAN_E_INVALID;
+        default:
+            return ALWAN_E_INVALID;
     }
 
     /* Apply transfer function to array */
@@ -307,30 +328,39 @@ int alwan_oetf_apply(char const *name,
     return ALWAN_OK;
 }
 
-int alwan_eotf_apply(char const *name,
+int alwan_eotf_apply(alwan_transfer_function tf,
                      alwan_scalar const *encoded, size_t count, size_t in_stride,
                      alwan_scalar *linear, size_t out_stride) {
-    if (!name || !encoded || !linear) {
+    if (!encoded || !linear) {
         return ALWAN_E_INVALID;
     }
 
     /* Select transfer function */
     alwan_scalar (*eotf_fn)(alwan_scalar) = NULL;
 
-    if (strcmp(name, "srgb") == 0) {
-        eotf_fn = srgb_eotf_scalar;
-    } else if (strcmp(name, "bt2020") == 0 || strcmp(name, "bt709") == 0) {
-        eotf_fn = bt2020_eotf_scalar;  /* BT.709 and BT.2020 use same transfer function */
-    } else if (strcmp(name, "pq") == 0 || strcmp(name, "st2084") == 0) {
-        eotf_fn = pq_eotf_scalar;
-    } else if (strcmp(name, "hlg") == 0) {
-        eotf_fn = hlg_eotf_scalar;
-    } else if (strcmp(name, "bt1886") == 0) {
-        eotf_fn = bt1886_eotf_scalar;
-    } else if (strcmp(name, "acesproxy") == 0) {
-        eotf_fn = acesproxy_eotf_scalar;
-    } else {
-        return ALWAN_E_INVALID;  /* Unknown transfer function */
+    switch (tf) {
+        case ALWAN_TF_SRGB:
+            eotf_fn = srgb_eotf_scalar;
+            break;
+        case ALWAN_TF_BT709:
+        case ALWAN_TF_BT2020:
+            eotf_fn = bt2020_eotf_scalar;  /* BT.709 and BT.2020 use same transfer function */
+            break;
+        case ALWAN_TF_PQ:
+        case ALWAN_TF_ST2084:
+            eotf_fn = pq_eotf_scalar;
+            break;
+        case ALWAN_TF_HLG:
+            eotf_fn = hlg_eotf_scalar;
+            break;
+        case ALWAN_TF_BT1886:
+            eotf_fn = bt1886_eotf_scalar;
+            break;
+        case ALWAN_TF_ACESPROXY:
+            eotf_fn = acesproxy_eotf_scalar;
+            break;
+        default:
+            return ALWAN_E_INVALID;
     }
 
     /* Apply transfer function to array */
@@ -476,6 +506,123 @@ int alwan_rgb_convert_bulk(alwan_ctx *ctx,
         /* Convert adapted XYZ to destination RGB */
         alwan_mat3_mulv(&xyz_to_dst, &xyz, &dst_rgb[i]);
     }
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * P5: RGB Space Descriptor Helper
+ * ---------------------------------------------------------------- */
+
+#if ALWAN_EMBED_DATA
+/* Embedded data includes for RGB spaces */
+extern alwan_scalar const g_srgb[];
+extern alwan_scalar const g_bt709[];
+extern alwan_scalar const g_display_p3[];
+extern alwan_scalar const g_bt2020[];
+extern alwan_scalar const g_aces2065_1[];
+extern alwan_scalar const g_acescg[];
+extern alwan_scalar const g_acesproxy[];
+extern alwan_scalar const g_adobe_rgb_1998[];
+extern alwan_scalar const g_prophoto_rgb[];
+extern alwan_scalar const g_davinci_wide_gamut[];
+extern alwan_scalar const g_blackmagic_wide_gamut[];
+extern alwan_scalar const g_v_gamut[];
+extern alwan_scalar const g_s_gamut[];
+extern alwan_scalar const g_s_gamut3[];
+extern alwan_scalar const g_s_gamut3cine[];
+extern alwan_scalar const g_cinema_gamut[];
+extern alwan_scalar const g_redwidegamutrgb[];
+extern alwan_scalar const g_dci_p3[];
+extern alwan_scalar const g_p3_d65[];
+extern alwan_scalar const g_ntsc_1953[];
+extern alwan_scalar const g_ntsc_1987[];
+extern alwan_scalar const g_pal_secam[];
+extern alwan_scalar const g_apple_rgb[];
+extern alwan_scalar const g_colormatch_rgb[];
+#endif
+
+int alwan_rgb_get_space_descriptor(alwan_ctx *ctx, alwan_rgb_space space, alwan_rgb_space_desc *desc) {
+    if (!desc) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Map enum to filename */
+    char const *filename = NULL;
+    switch (space) {
+        case ALWAN_RGB_SPACE_SRGB: filename = "srgb"; break;
+        case ALWAN_RGB_SPACE_BT709: filename = "bt709"; break;
+        case ALWAN_RGB_SPACE_DISPLAY_P3: filename = "display_p3"; break;
+        case ALWAN_RGB_SPACE_BT2020: filename = "bt2020"; break;
+        case ALWAN_RGB_SPACE_ACES2065_1: filename = "aces2065-1"; break;
+        case ALWAN_RGB_SPACE_ACESCG: filename = "acescg"; break;
+        case ALWAN_RGB_SPACE_ACESPROXY: filename = "acesproxy"; break;
+        case ALWAN_RGB_SPACE_ADOBE_RGB_1998: filename = "adobe_rgb_1998"; break;
+        case ALWAN_RGB_SPACE_PROPHOTO_RGB: filename = "prophoto_rgb"; break;
+        case ALWAN_RGB_SPACE_DAVINCI_WIDE_GAMUT: filename = "davinci_wide_gamut"; break;
+        case ALWAN_RGB_SPACE_BLACKMAGIC_WIDE_GAMUT: filename = "blackmagic_wide_gamut"; break;
+        case ALWAN_RGB_SPACE_V_GAMUT: filename = "v-gamut"; break;
+        case ALWAN_RGB_SPACE_S_GAMUT: filename = "s-gamut"; break;
+        case ALWAN_RGB_SPACE_S_GAMUT3: filename = "s-gamut3"; break;
+        case ALWAN_RGB_SPACE_S_GAMUT3_CINE: filename = "s-gamut3cine"; break;
+        case ALWAN_RGB_SPACE_CINEMA_GAMUT: filename = "cinema_gamut"; break;
+        case ALWAN_RGB_SPACE_REDWIDEGAMUTRGB: filename = "redwidegamutrgb"; break;
+        case ALWAN_RGB_SPACE_DCI_P3: filename = "dci-p3"; break;
+        case ALWAN_RGB_SPACE_P3_D65: filename = "p3-d65"; break;
+        case ALWAN_RGB_SPACE_NTSC_1953: filename = "ntsc_1953"; break;
+        case ALWAN_RGB_SPACE_NTSC_1987: filename = "ntsc_1987"; break;
+        case ALWAN_RGB_SPACE_PAL_SECAM: filename = "pal_secam"; break;
+        case ALWAN_RGB_SPACE_APPLE_RGB: filename = "apple_rgb"; break;
+        case ALWAN_RGB_SPACE_COLORMATCH_RGB: filename = "colormatch_rgb"; break;
+        default: return ALWAN_E_INVALID;
+    }
+
+    /* Load RGB space data from CSV file (8 values: rx,ry,gx,gy,bx,by,wx,wy) */
+    /* NOTE: Always uses runtime loading for now. Embedded mode could be added later. */
+    char path[512];
+    char const *data_root = (ctx && ctx->runtime_data_root) ? ctx->runtime_data_root : "data";
+    snprintf(path, sizeof(path), "%s/rgb_spaces/%s.csv", data_root, filename);
+
+    /* Simple CSV loader for RGB space data (8 values) */
+    FILE *f = fopen(path, "r");
+    if (!f) {
+        return ALWAN_E_INVALID;
+    }
+
+    char line[512];
+    if (!fgets(line, sizeof(line), f)) {
+        fclose(f);
+        return ALWAN_E_INVALID;
+    }
+    fclose(f);
+
+    /* Parse 8 comma-separated values */
+    alwan_scalar values[8];
+    char *ptr = line;
+    for (int i = 0; i < 8; i++) {
+        char *end;
+#if ALWAN_SCALAR_IS_FLOAT
+        values[i] = strtof(ptr, &end);
+#else
+        values[i] = strtod(ptr, &end);
+#endif
+        if (end == ptr) {
+            return ALWAN_E_INVALID;  /* Parse error */
+        }
+        ptr = end;
+        if (*ptr == ',') ptr++;  /* Skip comma */
+    }
+
+    /* Copy data to descriptor */
+    for (int i = 0; i < 6; i++) {
+        desc->primaries_xy[i] = values[i];
+    }
+    desc->white_xy[0] = values[6];
+    desc->white_xy[1] = values[7];
+
+    /* Set optional transfer function names to NULL */
+    desc->oetf_name = NULL;
+    desc->eotf_name = NULL;
 
     return ALWAN_OK;
 }

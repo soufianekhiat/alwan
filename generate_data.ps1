@@ -130,35 +130,48 @@ def write_rgb_space_csv(filepath, name, space):
 # Generate illuminant data
 print("Generating illuminants...")
 
+# Create illuminants_xy subdirectory
+ensure_dir(f'{DATA_DIR}/illuminants_xy')
+
 # D65 (2° observer)
 d65 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
-write_xy(f'{DATA_DIR}/d65_xy.csv', d65[0], d65[1])
-print(f"  {DATA_DIR}/d65_xy.csv: {format_scalar(d65[0])}, {format_scalar(d65[1])}")
+write_xy(f'{DATA_DIR}/illuminants_xy/d65_xy.csv', d65[0], d65[1])
+print(f"  {DATA_DIR}/illuminants_xy/d65_xy.csv: {format_scalar(d65[0])}, {format_scalar(d65[1])}")
 
 # D60 (2° observer) - used by ACES
 d60 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D60']
-write_xy(f'{DATA_DIR}/d60_xy.csv', d60[0], d60[1])
-print(f"  {DATA_DIR}/d60_xy.csv: {format_scalar(d60[0])}, {format_scalar(d60[1])}")
+write_xy(f'{DATA_DIR}/illuminants_xy/d60_xy.csv', d60[0], d60[1])
+print(f"  {DATA_DIR}/illuminants_xy/d60_xy.csv: {format_scalar(d60[0])}, {format_scalar(d60[1])}")
 
 # D50 (2° observer) - ICC profile connection space
 d50 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D50']
-write_xy(f'{DATA_DIR}/d50_xy.csv', d50[0], d50[1])
-print(f"  {DATA_DIR}/d50_xy.csv: {format_scalar(d50[0])}, {format_scalar(d50[1])}")
+write_xy(f'{DATA_DIR}/illuminants_xy/d50_xy.csv', d50[0], d50[1])
+print(f"  {DATA_DIR}/illuminants_xy/d50_xy.csv: {format_scalar(d50[0])}, {format_scalar(d50[1])}")
 
 # D55 (2° observer)
 d55 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D55']
-write_xy(f'{DATA_DIR}/d55_xy.csv', d55[0], d55[1])
-print(f"  {DATA_DIR}/d55_xy.csv: {format_scalar(d55[0])}, {format_scalar(d55[1])}")
+write_xy(f'{DATA_DIR}/illuminants_xy/d55_xy.csv', d55[0], d55[1])
+print(f"  {DATA_DIR}/illuminants_xy/d55_xy.csv: {format_scalar(d55[0])}, {format_scalar(d55[1])}")
 
 # Illuminant A (2° observer) - incandescent
 a = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['A']
-write_xy(f'{DATA_DIR}/a_xy.csv', a[0], a[1])
-print(f"  {DATA_DIR}/a_xy.csv: {format_scalar(a[0])}, {format_scalar(a[1])}")
+write_xy(f'{DATA_DIR}/illuminants_xy/a_xy.csv', a[0], a[1])
+print(f"  {DATA_DIR}/illuminants_xy/a_xy.csv: {format_scalar(a[0])}, {format_scalar(a[1])}")
 
 # Illuminant E (2° observer) - equal energy
 e = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['E']
-write_xy(f'{DATA_DIR}/e_xy.csv', e[0], e[1])
-print(f"  {DATA_DIR}/e_xy.csv: {format_scalar(e[0])}, {format_scalar(e[1])}")
+write_xy(f'{DATA_DIR}/illuminants_xy/e_xy.csv', e[0], e[1])
+print(f"  {DATA_DIR}/illuminants_xy/e_xy.csv: {format_scalar(e[0])}, {format_scalar(e[1])}")
+
+# Fluorescent illuminants F1-F12 (2° observer)
+f_illuminants = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12']
+for f_name in f_illuminants:
+    try:
+        f_ill = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer'][f_name]
+        write_xy(f'{DATA_DIR}/illuminants_xy/{f_name.lower()}_xy.csv', f_ill[0], f_ill[1])
+        print(f"  {DATA_DIR}/illuminants_xy/{f_name.lower()}_xy.csv: {format_scalar(f_ill[0])}, {format_scalar(f_ill[1])}")
+    except KeyError:
+        print(f"  Warning: Illuminant {f_name} not found in colour-science library")
 
 # Generate RGB space primaries
 print("\nGenerating RGB space primaries...")
@@ -170,6 +183,7 @@ print(f"  {DATA_DIR}/srgb_primaries_3x2.csv")
 
 # RGB color spaces with full definitions
 rgb_spaces = [
+    # Core spaces (M1)
     ('sRGB', 'sRGB'),
     ('BT.709', 'ITU-R BT.709'),
     ('Display P3', 'Display P3'),
@@ -177,6 +191,31 @@ rgb_spaces = [
     ('ACES2065-1', 'ACES2065-1'),
     ('ACEScg', 'ACEScg'),
     ('ACESproxy', 'ACESproxy'),
+
+    # P5.1: Adobe RGB (1998) - Photography/print workflow
+    ('Adobe RGB 1998', 'Adobe RGB (1998)'),
+
+    # P5.2: ProPhoto RGB / ROMM RGB - Wide gamut professional
+    ('ProPhoto RGB', 'ProPhoto RGB'),
+
+    # P5.3: Cinema/Broadcast spaces - Professional video production
+    ('DaVinci Wide Gamut', 'DaVinci Wide Gamut'),
+    ('Blackmagic Wide Gamut', 'Blackmagic Wide Gamut'),
+    ('V-Gamut', 'V-Gamut'),
+    ('S-Gamut', 'S-Gamut'),
+    ('S-Gamut3', 'S-Gamut3'),
+    ('S-Gamut3.Cine', 'S-Gamut3.Cine'),
+    ('Cinema Gamut', 'Cinema Gamut'),
+    ('REDWideGamutRGB', 'REDWideGamutRGB'),
+    ('DCI-P3', 'DCI-P3'),
+    ('P3-D65', 'P3-D65'),
+
+    # P5.4: Legacy spaces - Historical compatibility
+    ('NTSC 1953', 'NTSC (1953)'),
+    ('NTSC 1987', 'NTSC (1987)'),
+    ('PAL SECAM', 'PAL/SECAM'),
+    ('Apple RGB', 'Apple RGB'),
+    ('ColorMatch RGB', 'ColorMatch RGB'),
 ]
 
 print("\nGenerating RGB space definitions...")

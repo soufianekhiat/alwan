@@ -187,8 +187,8 @@ int alwan_spd_resample(alwan_ctx *ctx,
  * Illuminant Loading
  * ---------------------------------------------------------------- */
 
-int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out) {
-    if (!name || !out) {
+int alwan_spd_illuminant(alwan_ctx *ctx, alwan_illuminant ill, alwan_spd *out) {
+    if (!out) {
         return ALWAN_E_INVALID;
     }
 
@@ -202,145 +202,180 @@ int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-    if (strcmp(name, "A") == 0) {
-        static alwan_scalar const data[] = {
+    switch (ill) {
+        case ALWAN_ILLUMINANT_A: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/A_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "D50") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_D50: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/D50_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "D55") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_D55: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/D55_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "D65") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_D65: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/D65_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "E") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_E: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/E_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F1") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F1: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F1_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F2") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F2: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F2_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F3") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F3: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F3_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F4") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F4: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F4_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F5") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F5: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F5_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F6") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F6: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F6_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F7") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F7: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F7_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F8") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F8: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F8_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F9") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F9: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F9_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F10") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F10: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F10_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F11") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F11: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F11_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else if (strcmp(name, "F12") == 0) {
-        static alwan_scalar const data[] = {
+        case ALWAN_ILLUMINANT_F12: {
+            static alwan_scalar const data[] = {
 #include "data/illuminants/F12_360_830_1nm.csv"
-        };
-        size_t const n = sizeof(data) / sizeof(data[0]);
-        for (size_t i = 0; i < n && i < out->count; i++) {
-            out->values[i] = data[i];
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
         }
-    } else {
-        alwan_spd_destroy(ctx, out);
-        return ALWAN_E_INVALID;
+        default:
+            alwan_spd_destroy(ctx, out);
+            return ALWAN_E_INVALID;
     }
 
     ALWAN_DIAG_POP

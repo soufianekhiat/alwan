@@ -57,15 +57,30 @@ void alwan_destroy(alwan_ctx *ctx);
  * Data Loading
  * ---------------------------------------------------------------- */
 
- // TODO: add other reference illuminants D50, D55, etc.
-
-/* Get D65 illuminant data (2 values: x, y)
+ /* Standard illuminant xy chromaticity data getters
+ * Each returns 2 values: x, y chromaticity coordinates
  * In embedded mode: returns pointer to static data (no deallocation needed)
  * In runtime mode: allocates memory (caller must free with alwan_data_free) */
+
+/* Illuminant A (incandescent tungsten) */
+int alwan_data_get_a(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+
+/* Illuminant D50 (horizon daylight) */
+int alwan_data_get_d50(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+
+/* Illuminant D55 (mid-morning daylight) */
+int alwan_data_get_d55(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+
+/* Illuminant D60 (daylight) */
+int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+
+/* Illuminant D65 (noon daylight) */
 int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
-/* Get D60 illuminant data (2 values: x, y) */
-int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+/* Illuminant E (equal energy) */
+int alwan_data_get_e(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
+
+// TODO: Add F1-F12 fluorescent illuminant getters once xy data is generated
 
 /* Get sRGB primaries (6 values: rx, ry, gx, gy, bx, by) */
 int alwan_data_get_srgb_primaries(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
@@ -112,6 +127,83 @@ void alwan_mat3_identity(alwan_mat3x3 *out);
  * RGB Color Spaces
  * ---------------------------------------------------------------- */
 
+/* RGB color space identifiers */
+typedef enum {
+    /* Core spaces */
+    ALWAN_RGB_SPACE_SRGB,
+    ALWAN_RGB_SPACE_BT709,
+    ALWAN_RGB_SPACE_DISPLAY_P3,
+    ALWAN_RGB_SPACE_BT2020,
+    ALWAN_RGB_SPACE_ACES2065_1,
+    ALWAN_RGB_SPACE_ACESCG,
+    ALWAN_RGB_SPACE_ACESPROXY,
+
+    /* P5.1: Adobe RGB (1998) - Photography/print workflow */
+    ALWAN_RGB_SPACE_ADOBE_RGB_1998,
+
+    /* P5.2: ProPhoto RGB - Wide gamut professional */
+    ALWAN_RGB_SPACE_PROPHOTO_RGB,
+
+    /* P5.3: Cinema/Broadcast spaces */
+    ALWAN_RGB_SPACE_DAVINCI_WIDE_GAMUT,
+    ALWAN_RGB_SPACE_BLACKMAGIC_WIDE_GAMUT,
+    ALWAN_RGB_SPACE_V_GAMUT,
+    ALWAN_RGB_SPACE_S_GAMUT,
+    ALWAN_RGB_SPACE_S_GAMUT3,
+    ALWAN_RGB_SPACE_S_GAMUT3_CINE,
+    ALWAN_RGB_SPACE_CINEMA_GAMUT,
+    ALWAN_RGB_SPACE_REDWIDEGAMUTRGB,
+    ALWAN_RGB_SPACE_DCI_P3,
+    ALWAN_RGB_SPACE_P3_D65,
+
+    /* P5.4: Legacy spaces */
+    ALWAN_RGB_SPACE_NTSC_1953,
+    ALWAN_RGB_SPACE_NTSC_1987,
+    ALWAN_RGB_SPACE_PAL_SECAM,
+    ALWAN_RGB_SPACE_APPLE_RGB,
+    ALWAN_RGB_SPACE_COLORMATCH_RGB
+} alwan_rgb_space;
+
+/* Transfer function identifiers (OETF/EOTF) */
+typedef enum {
+    ALWAN_TF_SRGB,
+    ALWAN_TF_BT709,        /* Same as BT.2020 */
+    ALWAN_TF_BT2020,       /* Same as BT.709 */
+    ALWAN_TF_PQ,           /* Perceptual Quantizer (SMPTE ST 2084) */
+    ALWAN_TF_ST2084,       /* Alias for PQ */
+    ALWAN_TF_HLG,          /* Hybrid Log-Gamma (BT.2100) */
+    ALWAN_TF_BT1886,       /* BT.1886 EOTF only */
+    ALWAN_TF_ACESPROXY     /* ACES Proxy */
+} alwan_transfer_function;
+
+/* Standard illuminant identifiers */
+typedef enum {
+    ALWAN_ILLUMINANT_A,    /* Incandescent / Tungsten */
+    ALWAN_ILLUMINANT_D50,  /* Daylight 5000K */
+    ALWAN_ILLUMINANT_D55,  /* Daylight 5500K */
+    ALWAN_ILLUMINANT_D65,  /* Daylight 6500K */
+    ALWAN_ILLUMINANT_E,    /* Equal energy */
+    ALWAN_ILLUMINANT_F1,   /* Fluorescent */
+    ALWAN_ILLUMINANT_F2,
+    ALWAN_ILLUMINANT_F3,
+    ALWAN_ILLUMINANT_F4,
+    ALWAN_ILLUMINANT_F5,
+    ALWAN_ILLUMINANT_F6,
+    ALWAN_ILLUMINANT_F7,
+    ALWAN_ILLUMINANT_F8,
+    ALWAN_ILLUMINANT_F9,
+    ALWAN_ILLUMINANT_F10,
+    ALWAN_ILLUMINANT_F11,
+    ALWAN_ILLUMINANT_F12
+} alwan_illuminant;
+
+/* View transform identifiers */
+typedef enum {
+    ALWAN_VIEW_ACES_REC709,  /* ACES RRT + ODT Rec.709 */
+    ALWAN_VIEW_AGX,          /* AgX base */
+    ALWAN_VIEW_AGX_PUNCHY    /* AgX punchy variant */
+} alwan_view_transform;
+
 /* RGB space descriptor with primaries, white point, and transfer function names */
 typedef struct {
     alwan_scalar primaries_xy[6];  /* rx, ry, gx, gy, bx, by in CIE xy chromaticity */
@@ -125,6 +217,11 @@ typedef struct {
 int alwan_rgb_derive_matrices(alwan_rgb_space_desc const *desc,
                                alwan_mat3x3 *rgb_to_xyz,
                                alwan_mat3x3 *xyz_to_rgb);
+
+/* Get RGB color space descriptor by enum
+ * Loads primaries and white point from data files and populates descriptor
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if space is invalid */
+int alwan_rgb_get_space_descriptor(alwan_ctx *ctx, alwan_rgb_space space, alwan_rgb_space_desc *desc);
 
 /* ----------------------------------------------------------------
  * RGB Color Space Conversion
@@ -198,18 +295,16 @@ int alwan_gamut_map_xyz_to_rgb(alwan_ctx *ctx,
  * ---------------------------------------------------------------- */
 
 /* Apply Opto-Electronic Transfer Function (linear -> encoded)
- * Supported names: "srgb", "pq"/"st2084", "hlg", "acesproxy"
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
-// TODO: replace name by an enum
-int alwan_oetf_apply(char const *name,
+ * tf: transfer function to apply
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if function not supported */
+int alwan_oetf_apply(alwan_transfer_function tf,
                      alwan_scalar const *linear, size_t count, size_t in_stride,
                      alwan_scalar *encoded, size_t out_stride);
 
 /* Apply Electro-Optical Transfer Function (encoded -> linear)
- * Supported names: "srgb", "pq"/"st2084", "hlg", "bt1886", "acesproxy"
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
-// TODO: replace name by an enum
-int alwan_eotf_apply(char const *name,
+ * tf: transfer function to apply
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if function not supported */
+int alwan_eotf_apply(alwan_transfer_function tf,
                      alwan_scalar const *encoded, size_t count, size_t in_stride,
                      alwan_scalar *linear, size_t out_stride);
 
@@ -219,20 +314,18 @@ int alwan_eotf_apply(char const *name,
 
 /* Apply a view transform (display rendering transform) to RGB data
  * View transforms convert scene-referred RGB to display-referred RGB
- * Supported names: "aces_rec709", "aces_rec2020", "agx", "agx_punchy"
  *
  * ctx: optional context (can be NULL for stateless transforms)
- * name: view transform name
+ * vt: view transform to apply
  * rgb_in: input RGB triplets (scene-referred, typically ACES AP1 or linear)
  * count: number of RGB triplets
  * in_stride: stride between input RGB triplets (in Scalars, typically 3)
  * rgb_out: output RGB triplets (display-referred)
  * out_stride: stride between output RGB triplets (in Scalars, typically 3)
  *
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
-// TODO: replace name by an enum
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if transform not supported */
 int alwan_view_transform_apply(alwan_ctx *ctx,
-                                char const *name,
+                                alwan_view_transform vt,
                                 alwan_scalar const *rgb_in, size_t count, size_t in_stride,
                                 alwan_scalar *rgb_out, size_t out_stride);
 
@@ -545,11 +638,10 @@ void alwan_spd_destroy(alwan_ctx *ctx, alwan_spd *spd);
 
 /* Load standard illuminant SPD
  * ctx: context (for data path and allocation)
- * name: illuminant name ("A", "D50", "D55", "D65", "E", "F1"..."F12")
+ * ill: illuminant to load
  * out: output SPD structure
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not recognized */
-// TODO: replace name by an enum
-int alwan_spd_illuminant(alwan_ctx *ctx, char const *name, alwan_spd *out);
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if illuminant not supported */
+int alwan_spd_illuminant(alwan_ctx *ctx, alwan_illuminant ill, alwan_spd *out);
 
 /* Generate blackbody (Planckian) SPD at given temperature
  * Uses Planck's law to compute spectral radiance

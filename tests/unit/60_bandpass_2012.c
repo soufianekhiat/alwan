@@ -33,7 +33,7 @@ static int test_cie_2012_observers(void) {
 
     /* Load D65 illuminant */
     alwan_spd d65;
-    status = alwan_spd_illuminant(ctx, "D65", &d65);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65);
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Test CIE 2012 2° observer */
@@ -159,7 +159,7 @@ static int test_bandpass_parameter(void) {
 
     /* Load D65 */
     alwan_spd d65;
-    status = alwan_spd_illuminant(ctx, "D65", &d65);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65);
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Test with different bandpass values (currently no-op) */

@@ -60,7 +60,7 @@ static int test_aces_rec709_basic(void) {
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar output[3];
-        int status = alwan_view_transform_apply(NULL, "aces_rec709",
+        int status = alwan_view_transform_apply(NULL, ALWAN_VIEW_ACES_REC709,
                                                 test_inputs[i], 1, 3,
                                                 output, 3);
         TEST_ASSERT(status == ALWAN_OK, "ACES Rec.709 transform failed");
@@ -111,7 +111,7 @@ static int test_agx_basic(void) {
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar output[3];
-        int status = alwan_view_transform_apply(NULL, "agx",
+        int status = alwan_view_transform_apply(NULL, ALWAN_VIEW_AGX,
                                                 test_inputs[i], 1, 3,
                                                 output, 3);
         TEST_ASSERT(status == ALWAN_OK, "AgX transform failed");
@@ -136,13 +136,13 @@ static int test_agx_punchy(void) {
     alwan_scalar base_output[3], punchy_output[3];
 
     /* Apply base AgX */
-    int status = alwan_view_transform_apply(NULL, "agx",
+    int status = alwan_view_transform_apply(NULL, ALWAN_VIEW_AGX,
                                            test_input, 1, 3,
                                            base_output, 3);
     TEST_ASSERT(status == ALWAN_OK, "AgX base transform failed");
 
     /* Apply punchy AgX */
-    status = alwan_view_transform_apply(NULL, "agx_punchy",
+    status = alwan_view_transform_apply(NULL, ALWAN_VIEW_AGX_PUNCHY,
                                        test_input, 1, 3,
                                        punchy_output, 3);
     TEST_ASSERT(status == ALWAN_OK, "AgX punchy transform failed");
@@ -172,7 +172,8 @@ static int test_view_transform_monotonic(void) {
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)}
     };
 
-    char const *transforms[] = {"aces_rec709", "agx", "agx_punchy"};
+    alwan_view_transform transforms[] = {ALWAN_VIEW_ACES_REC709, ALWAN_VIEW_AGX, ALWAN_VIEW_AGX_PUNCHY};
+    char const *transform_names[] = {"aces_rec709", "agx", "agx_punchy"};
     size_t const num_transforms = sizeof(transforms) / sizeof(transforms[0]);
 
     for (size_t t = 0; t < num_transforms; t++) {
@@ -193,7 +194,7 @@ static int test_view_transform_monotonic(void) {
             /* Should be monotonically increasing */
             if (i > 0 && luma <= prev_luma) {
                 printf("  %s: Non-monotonic at step %zu: prev_luma=%.6f, luma=%.6f\n",
-                       transforms[t], i, prev_luma, luma);
+                       transform_names[t], i, prev_luma, luma);
                 TEST_ASSERT(0, "View transform not monotonic");
             }
 
@@ -219,7 +220,7 @@ static int test_bulk_view_transform(void) {
 
     alwan_scalar outputs[12];  /* 4 RGB triplets */
 
-    int status = alwan_view_transform_apply(NULL, "aces_rec709",
+    int status = alwan_view_transform_apply(NULL, ALWAN_VIEW_ACES_REC709,
                                            inputs, 4, 3,
                                            outputs, 3);
     TEST_ASSERT(status == ALWAN_OK, "Bulk view transform failed");
@@ -243,7 +244,7 @@ static int test_view_transform_preserves_hue(void) {
     alwan_scalar red_input[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
     alwan_scalar output[3];
 
-    int status = alwan_view_transform_apply(NULL, "aces_rec709",
+    int status = alwan_view_transform_apply(NULL, ALWAN_VIEW_ACES_REC709,
                                            red_input, 1, 3,
                                            output, 3);
     TEST_ASSERT(status == ALWAN_OK, "View transform failed");
@@ -258,7 +259,7 @@ static int test_view_transform_preserves_hue(void) {
 
     /* Test with green */
     alwan_scalar green_input[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
-    status = alwan_view_transform_apply(NULL, "aces_rec709",
+    status = alwan_view_transform_apply(NULL, ALWAN_VIEW_ACES_REC709,
                                        green_input, 1, 3,
                                        output, 3);
     TEST_ASSERT(status == ALWAN_OK, "View transform failed");
@@ -271,22 +272,16 @@ static int test_view_transform_preserves_hue(void) {
 }
 
 static int test_invalid_view_transform(void) {
-    /* Test that invalid view transform names return error */
+    /* Test that invalid view transform enum values return error */
     alwan_scalar dummy_in[3] = {
         ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)
     };
     alwan_scalar dummy_out[3];
 
-    int status = alwan_view_transform_apply(NULL, "invalid_transform",
+    int status = alwan_view_transform_apply(NULL, (alwan_view_transform)999,
                                            dummy_in, 1, 3,
                                            dummy_out, 3);
-    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid view transform name");
-
-    /* Test with NULL name */
-    status = alwan_view_transform_apply(NULL, NULL,
-                                       dummy_in, 1, 3,
-                                       dummy_out, 3);
-    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject NULL name");
+    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid view transform enum");
 
     TEST_PASS("Invalid view transform rejection");
 }

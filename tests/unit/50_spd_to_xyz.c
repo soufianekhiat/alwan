@@ -61,7 +61,8 @@ static int test_illuminant_loading(void) {
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
     /* Test standard illuminants */
-    char const *illuminants[] = {"A", "D50", "D55", "D65", "E", "F1", "F2"};
+    alwan_illuminant illuminants[] = {ALWAN_ILLUMINANT_A, ALWAN_ILLUMINANT_D50, ALWAN_ILLUMINANT_D55, ALWAN_ILLUMINANT_D65, ALWAN_ILLUMINANT_E, ALWAN_ILLUMINANT_F1, ALWAN_ILLUMINANT_F2};
+    char const *illuminant_names[] = {"A", "D50", "D55", "D65", "E", "F1", "F2"};
     size_t const num_illuminants = sizeof(illuminants) / sizeof(illuminants[0]);
 
     for (size_t i = 0; i < num_illuminants; i++) {
@@ -69,7 +70,7 @@ static int test_illuminant_loading(void) {
         int status = alwan_spd_illuminant(ctx, illuminants[i], &illum);
 
         if (status != ALWAN_OK) {
-            printf("  Warning: Could not load illuminant '%s'\n", illuminants[i]);
+            printf("  Warning: Could not load illuminant '%s'\n", illuminant_names[i]);
             continue;
         }
 
@@ -156,7 +157,7 @@ static int test_xyz_from_constant_spd(void) {
 
     /* Load D65 illuminant */
     alwan_spd d65;
-    status = alwan_spd_illuminant(ctx, "D65", &d65);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &d65);
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Compute XYZ with both integration methods */
@@ -220,7 +221,7 @@ static int test_xyz_both_observers(void) {
 
     /* Load E illuminant (equal energy) */
     alwan_spd illum_e;
-    status = alwan_spd_illuminant(ctx, "E", &illum_e);
+    status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_E, &illum_e);
     TEST_ASSERT(status == ALWAN_OK, "E illuminant loading failed");
 
     /* Test both observers */

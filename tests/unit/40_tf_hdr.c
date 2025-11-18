@@ -54,11 +54,11 @@ static int test_pq_roundtrip(void) {
         alwan_scalar encoded, roundtrip;
 
         /* Forward: linear -> PQ */
-        int status = alwan_oetf_apply("pq", &linear, 1, 1, &encoded, 1);
+        int status = alwan_oetf_apply(ALWAN_TF_PQ, &linear, 1, 1, &encoded, 1);
         TEST_ASSERT(status == ALWAN_OK, "PQ OETF failed");
 
         /* Backward: PQ -> linear */
-        status = alwan_eotf_apply("pq", &encoded, 1, 1, &roundtrip, 1);
+        status = alwan_eotf_apply(ALWAN_TF_PQ, &encoded, 1, 1, &roundtrip, 1);
         TEST_ASSERT(status == ALWAN_OK, "PQ EOTF failed");
 
         /* Check round-trip */
@@ -91,7 +91,7 @@ static int test_hlg_roundtrip(void) {
         alwan_scalar encoded;
 
         /* Forward: scene linear -> HLG */
-        int status = alwan_oetf_apply("hlg", &scene_linear, 1, 1, &encoded, 1);
+        int status = alwan_oetf_apply(ALWAN_TF_HLG, &scene_linear, 1, 1, &encoded, 1);
         TEST_ASSERT(status == ALWAN_OK, "HLG OETF failed");
 
         /* Check encoded is in valid range [0,1] */
@@ -101,7 +101,7 @@ static int test_hlg_roundtrip(void) {
         /* Note: HLG EOTF produces display-referred linear, not scene-referred
          * So we don't test exact round-trip, just that it works */
         alwan_scalar display_linear;
-        status = alwan_eotf_apply("hlg", &encoded, 1, 1, &display_linear, 1);
+        status = alwan_eotf_apply(ALWAN_TF_HLG, &encoded, 1, 1, &display_linear, 1);
         TEST_ASSERT(status == ALWAN_OK, "HLG EOTF failed");
 
         TEST_ASSERT(display_linear >= ALWAN_LITERAL(0.0), "HLG EOTF produced negative value");
@@ -131,7 +131,7 @@ static int test_bt1886_eotf(void) {
         alwan_scalar expected = test_pairs[i][1];
         alwan_scalar result;
 
-        int status = alwan_eotf_apply("bt1886", &encoded, 1, 1, &result, 1);
+        int status = alwan_eotf_apply(ALWAN_TF_BT1886, &encoded, 1, 1, &result, 1);
         TEST_ASSERT(status == ALWAN_OK, "BT.1886 EOTF failed");
 
         alwan_scalar diff = ALWAN_FABS(result - expected);
@@ -163,11 +163,11 @@ static int test_acesproxy_roundtrip(void) {
         alwan_scalar encoded, roundtrip;
 
         /* Forward: ACES linear -> ACESproxy */
-        int status = alwan_oetf_apply("acesproxy", &linear, 1, 1, &encoded, 1);
+        int status = alwan_oetf_apply(ALWAN_TF_ACESPROXY, &linear, 1, 1, &encoded, 1);
         TEST_ASSERT(status == ALWAN_OK, "ACESproxy OETF failed");
 
         /* Backward: ACESproxy -> ACES linear */
-        status = alwan_eotf_apply("acesproxy", &encoded, 1, 1, &roundtrip, 1);
+        status = alwan_eotf_apply(ALWAN_TF_ACESPROXY, &encoded, 1, 1, &roundtrip, 1);
         TEST_ASSERT(status == ALWAN_OK, "ACESproxy EOTF failed");
 
         /* Check round-trip (relative error for log encoding) */
@@ -183,14 +183,14 @@ static int test_acesproxy_roundtrip(void) {
 }
 
 static int test_pq_st2084_alias(void) {
-    /* Test that "pq" and "st2084" are aliases */
+    /* Test that ALWAN_TF_PQ and ALWAN_TF_ST2084 are aliases */
     alwan_scalar linear = ALWAN_LITERAL(1000.0);  /* 1000 cd/m² */
     alwan_scalar encoded_pq, encoded_st2084;
 
-    int status = alwan_oetf_apply("pq", &linear, 1, 1, &encoded_pq, 1);
+    int status = alwan_oetf_apply(ALWAN_TF_PQ, &linear, 1, 1, &encoded_pq, 1);
     TEST_ASSERT(status == ALWAN_OK, "PQ OETF failed");
 
-    status = alwan_oetf_apply("st2084", &linear, 1, 1, &encoded_st2084, 1);
+    status = alwan_oetf_apply(ALWAN_TF_ST2084, &linear, 1, 1, &encoded_st2084, 1);
     TEST_ASSERT(status == ALWAN_OK, "ST.2084 OETF failed");
 
     /* Should produce identical results */
@@ -201,17 +201,17 @@ static int test_pq_st2084_alias(void) {
 }
 
 static int test_invalid_tf_name(void) {
-    /* Test that invalid transfer function names return error */
+    /* Test that invalid transfer function enum values return error */
     alwan_scalar dummy_in = ALWAN_LITERAL(0.5);
     alwan_scalar dummy_out;
 
-    int status = alwan_oetf_apply("invalid_tf", &dummy_in, 1, 1, &dummy_out, 1);
-    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid OETF name");
+    int status = alwan_oetf_apply((alwan_transfer_function)999, &dummy_in, 1, 1, &dummy_out, 1);
+    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid OETF enum");
 
-    status = alwan_eotf_apply("invalid_tf", &dummy_in, 1, 1, &dummy_out, 1);
-    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid EOTF name");
+    status = alwan_eotf_apply((alwan_transfer_function)999, &dummy_in, 1, 1, &dummy_out, 1);
+    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid EOTF enum");
 
-    TEST_PASS("Invalid TF name rejection");
+    TEST_PASS("Invalid TF enum rejection");
 }
 
 /* ----------------------------------------------------------------

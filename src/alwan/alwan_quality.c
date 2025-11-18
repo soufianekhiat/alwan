@@ -1591,7 +1591,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
                                      CES_COUNT, &reference_spd);
     } else {
         /* Use D-illuminant for high CCT - use D65 as approximation */
-        status = alwan_spd_illuminant(ctx, "D65", &reference_spd);
+        status = alwan_spd_illuminant(ctx, ALWAN_ILLUMINANT_D65, &reference_spd);
         if (status == ALWAN_OK) {
             /* Resample to CES wavelength range */
             alwan_spd temp_spd;

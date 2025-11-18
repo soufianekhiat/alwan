@@ -50,12 +50,12 @@ static int test_srgb_round_trip(void) {
     alwan_scalar decoded[9];
 
     /* Encode */
-    int status = alwan_oetf_apply("srgb", test_values, num_values, sizeof(alwan_scalar),
+    int status = alwan_oetf_apply(ALWAN_TF_SRGB, test_values, num_values, sizeof(alwan_scalar),
                                    encoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "sRGB OETF failed");
 
     /* Decode */
-    status = alwan_eotf_apply("srgb", encoded, num_values, sizeof(alwan_scalar),
+    status = alwan_eotf_apply(ALWAN_TF_SRGB, encoded, num_values, sizeof(alwan_scalar),
                               decoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "sRGB EOTF failed");
 
@@ -81,7 +81,7 @@ static int test_srgb_breakpoint(void) {
     alwan_scalar const linear_bp = ALWAN_LITERAL(0.0031308);
     alwan_scalar encoded;
 
-    int status = alwan_oetf_apply("srgb", &linear_bp, 1, sizeof(alwan_scalar),
+    int status = alwan_oetf_apply(ALWAN_TF_SRGB, &linear_bp, 1, sizeof(alwan_scalar),
                                    &encoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "sRGB OETF at breakpoint failed");
 
@@ -111,7 +111,7 @@ static int test_srgb_known_values(void) {
         alwan_scalar encoded, decoded;
 
         /* Test OETF */
-        int status = alwan_oetf_apply("srgb", &known_pairs[i].linear, 1, sizeof(alwan_scalar),
+        int status = alwan_oetf_apply(ALWAN_TF_SRGB, &known_pairs[i].linear, 1, sizeof(alwan_scalar),
                                       &encoded, sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "sRGB OETF failed");
 
@@ -126,7 +126,7 @@ static int test_srgb_known_values(void) {
         }
 
         /* Test EOTF */
-        status = alwan_eotf_apply("srgb", &known_pairs[i].encoded, 1, sizeof(alwan_scalar),
+        status = alwan_eotf_apply(ALWAN_TF_SRGB, &known_pairs[i].encoded, 1, sizeof(alwan_scalar),
                                   &decoded, sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "sRGB EOTF failed");
 
@@ -148,14 +148,14 @@ static int test_srgb_invalid_name(void) {
     alwan_scalar dummy_in = ALWAN_LITERAL(0.5);
     alwan_scalar dummy_out;
 
-    /* Test invalid transfer function name */
-    int status = alwan_oetf_apply("invalid_tf", &dummy_in, 1, sizeof(alwan_scalar),
+    /* Test invalid transfer function enum (cast invalid value to enum) */
+    int status = alwan_oetf_apply((alwan_transfer_function)999, &dummy_in, 1, sizeof(alwan_scalar),
                                    &dummy_out, sizeof(alwan_scalar));
-    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid OETF name");
+    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid OETF enum");
 
-    status = alwan_eotf_apply("invalid_tf", &dummy_in, 1, sizeof(alwan_scalar),
+    status = alwan_eotf_apply((alwan_transfer_function)999, &dummy_in, 1, sizeof(alwan_scalar),
                               &dummy_out, sizeof(alwan_scalar));
-    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid EOTF name");
+    TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid EOTF enum");
 
     TEST_PASS("test_srgb_invalid_name");
 }
@@ -173,12 +173,12 @@ static int test_srgb_dense_lut(void) {
     }
 
     /* Encode */
-    int status = alwan_oetf_apply("srgb", linear, LUT_SIZE, sizeof(alwan_scalar),
+    int status = alwan_oetf_apply(ALWAN_TF_SRGB, linear, LUT_SIZE, sizeof(alwan_scalar),
                                    encoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "Dense LUT OETF failed");
 
     /* Decode */
-    status = alwan_eotf_apply("srgb", encoded, LUT_SIZE, sizeof(alwan_scalar),
+    status = alwan_eotf_apply(ALWAN_TF_SRGB, encoded, LUT_SIZE, sizeof(alwan_scalar),
                               decoded, sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "Dense LUT EOTF failed");
 

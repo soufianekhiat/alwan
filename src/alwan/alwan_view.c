@@ -146,26 +146,30 @@ static void agx_punchy_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_o
  * ---------------------------------------------------------------- */
 
 int alwan_view_transform_apply(alwan_ctx *ctx,
-                                char const *name,
+                                alwan_view_transform vt,
                                 alwan_scalar const *rgb_in, size_t count, size_t in_stride,
                                 alwan_scalar *rgb_out, size_t out_stride) {
     (void)ctx;  /* Unused for stateless transforms */
 
-    if (!name || !rgb_in || !rgb_out) {
+    if (!rgb_in || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
     /* Select view transform */
     void (*transform_fn)(alwan_scalar const *, alwan_scalar *) = NULL;
 
-    if (strcmp(name, "aces_rec709") == 0) {
-        transform_fn = aces_rec709_transform;
-    } else if (strcmp(name, "agx") == 0) {
-        transform_fn = agx_base_transform;
-    } else if (strcmp(name, "agx_punchy") == 0) {
-        transform_fn = agx_punchy_transform;
-    } else {
-        return ALWAN_E_INVALID;  /* Unknown view transform */
+    switch (vt) {
+        case ALWAN_VIEW_ACES_REC709:
+            transform_fn = aces_rec709_transform;
+            break;
+        case ALWAN_VIEW_AGX:
+            transform_fn = agx_base_transform;
+            break;
+        case ALWAN_VIEW_AGX_PUNCHY:
+            transform_fn = agx_punchy_transform;
+            break;
+        default:
+            return ALWAN_E_INVALID;
     }
 
     /* Apply view transform to RGB triplets */

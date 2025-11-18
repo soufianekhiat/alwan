@@ -22,14 +22,34 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-/* D65 white point (x, y) */
-static alwan_scalar const g_d65_xy[] = {
-#include "data/d65_xy.csv"
+/* Illuminant A (x, y) */
+static alwan_scalar const g_a_xy[] = {
+#include "data/illuminants_xy/a_xy.csv"
 };
 
-/* D60 white point (x, y) */
+/* Illuminant D50 (x, y) */
+static alwan_scalar const g_d50_xy[] = {
+#include "data/illuminants_xy/d50_xy.csv"
+};
+
+/* Illuminant D55 (x, y) */
+static alwan_scalar const g_d55_xy[] = {
+#include "data/illuminants_xy/d55_xy.csv"
+};
+
+/* Illuminant D60 (x, y) */
 static alwan_scalar const g_d60_xy[] = {
-#include "data/d60_xy.csv"
+#include "data/illuminants_xy/d60_xy.csv"
+};
+
+/* Illuminant D65 (x, y) */
+static alwan_scalar const g_d65_xy[] = {
+#include "data/illuminants_xy/d65_xy.csv"
+};
+
+/* Illuminant E (x, y) */
+static alwan_scalar const g_e_xy[] = {
+#include "data/illuminants_xy/e_xy.csv"
 };
 
 /* sRGB primaries (rx, ry, gx, gy, bx, by) */
@@ -39,10 +59,24 @@ static alwan_scalar const g_srgb_primaries_3x2[] = {
 
 ALWAN_DIAG_POP
 
-int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+int alwan_data_get_a(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     (void)ctx;  /* Unused in embedded mode */
-    *data = (alwan_scalar *)g_d65_xy;
-    *count = sizeof(g_d65_xy) / sizeof(g_d65_xy[0]);
+    *data = (alwan_scalar *)g_a_xy;
+    *count = sizeof(g_a_xy) / sizeof(g_a_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_d50(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_d50_xy;
+    *count = sizeof(g_d50_xy) / sizeof(g_d50_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_d55(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_d55_xy;
+    *count = sizeof(g_d55_xy) / sizeof(g_d55_xy[0]);
     return ALWAN_OK;
 }
 
@@ -50,6 +84,20 @@ int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     (void)ctx;
     *data = (alwan_scalar *)g_d60_xy;
     *count = sizeof(g_d60_xy) / sizeof(g_d60_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_d65_xy;
+    *count = sizeof(g_d65_xy) / sizeof(g_d65_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_e(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    (void)ctx;
+    *data = (alwan_scalar *)g_e_xy;
+    *count = sizeof(g_e_xy) / sizeof(g_e_xy[0]);
     return ALWAN_OK;
 }
 
@@ -139,15 +187,39 @@ static int load_csv(char const *filepath, alwan_scalar **out_data, size_t *out_c
     return ALWAN_OK;
 }
 
-int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+int alwan_data_get_a(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "d65_xy.csv");
+    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/a_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_d50(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/d50_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_d55(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/d55_xy.csv");
     return load_csv(path, data, count);
 }
 
 int alwan_data_get_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
-    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "d60_xy.csv");
+    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/d60_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/d65_xy.csv");
+    return load_csv(path, data, count);
+}
+
+int alwan_data_get_e(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
+    char path[512];
+    build_path(path, sizeof(path), ctx ? ctx->data_root : NULL, "illuminants_xy/e_xy.csv");
     return load_csv(path, data, count);
 }
 

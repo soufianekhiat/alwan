@@ -36,7 +36,18 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\111_rgb_convert.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\120_oklab.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\130_ictcp.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\140_jzazbz.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\150_din99.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\160_osa_ucs.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\170_hunter_lab.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\180_ipt.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\190_prolab.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\200_zcam.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\210_hunt.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\220_delta_e_extended.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\230_whiteness_yellowness.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\240_quality_rendering.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\250_rgb_spaces_p5.c");
         }
 
         [Configure()]

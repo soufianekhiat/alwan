@@ -18,7 +18,7 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const g_d65_xy[] = {
-#include "data/d65_xy.csv"
+#include "data/illuminants_xy/d65_xy.csv"
 };
 ALWAN_DIAG_POP
 
@@ -53,11 +53,11 @@ ALWAN_DIAG_POP
 static int test_d65_data(void) {
     /* Verify D65 white point data loads correctly from embedded CSV */
 
-    /* Expected values from colour-science (data/d65_xy.csv) */
+    /* Expected values from colour-science (data/illuminants_xy/d65_xy.csv) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_d65[] = {
-#include "data/d65_xy.csv"
+#include "data/illuminants_xy/d65_xy.csv"
     };
     ALWAN_DIAG_POP
 
