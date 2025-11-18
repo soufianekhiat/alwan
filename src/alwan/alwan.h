@@ -236,7 +236,13 @@ typedef enum {
     ALWAN_ILLUMINANT_F9,
     ALWAN_ILLUMINANT_F10,
     ALWAN_ILLUMINANT_F11,
-    ALWAN_ILLUMINANT_F12
+    ALWAN_ILLUMINANT_F12,
+
+    /* P8: Extended illuminants */
+    ALWAN_ILLUMINANT_B,    /* CIE Illuminant B (direct sunlight) */
+    ALWAN_ILLUMINANT_C,    /* CIE Illuminant C (average daylight) */
+    ALWAN_ILLUMINANT_D60,  /* Daylight 6000K */
+    ALWAN_ILLUMINANT_D75   /* Daylight 7500K */
 } alwan_illuminant;
 
 /* View transform identifiers */
@@ -646,7 +652,10 @@ typedef enum {
     ALWAN_OBSERVER_CIE_1931_2DEG = 0,  /* CIE 1931 2° standard observer */
     ALWAN_OBSERVER_CIE_1964_10DEG = 1, /* CIE 1964 10° standard observer */
     ALWAN_OBSERVER_CIE_2012_2DEG = 2,  /* CIE 2012 2° standard observer (physiologically-based) */
-    ALWAN_OBSERVER_CIE_2012_10DEG = 3  /* CIE 2012 10° standard observer (physiologically-based) */
+    ALWAN_OBSERVER_CIE_2012_10DEG = 3, /* CIE 2012 10° standard observer (physiologically-based) */
+
+    /* P8: Extended observers */
+    ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4  /* Stockman & Sharpe 2000 2° cone fundamentals */
 } alwan_observer_type;
 
 /* SPD resampling method */

@@ -373,6 +373,49 @@ int alwan_spd_illuminant(alwan_ctx *ctx, alwan_illuminant ill, alwan_spd *out) {
             }
             break;
         }
+
+        /* P8: Extended illuminants */
+        case ALWAN_ILLUMINANT_B: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/B_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_C: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/C_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_D60: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/D60_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+        case ALWAN_ILLUMINANT_D75: {
+            static alwan_scalar const data[] = {
+#include "data/illuminants/D75_360_830_1nm.csv"
+            };
+            size_t const n = sizeof(data) / sizeof(data[0]);
+            for (size_t i = 0; i < n && i < out->count; i++) {
+                out->values[i] = data[i];
+            }
+            break;
+        }
+
         default:
             alwan_spd_destroy(ctx, out);
             return ALWAN_E_INVALID;
@@ -549,6 +592,24 @@ static int load_observer_cmf(alwan_ctx *ctx,
         };
         static alwan_scalar const z_data[] = {
 #include "data/cmf/cie_2012_10deg_z_360_830_1nm.csv"
+        };
+
+        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
+        for (size_t i = 0; i < n && i < x_bar->count; i++) {
+            x_bar->values[i] = x_data[i];
+            y_bar->values[i] = y_data[i];
+            z_bar->values[i] = z_data[i];
+        }
+    } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
+        /* P8: Stockman & Sharpe 2000 2° Cone Fundamentals */
+        static alwan_scalar const x_data[] = {
+#include "data/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv"
+        };
+        static alwan_scalar const y_data[] = {
+#include "data/cmf/stockman_sharpe_2deg_y_360_830_1nm.csv"
+        };
+        static alwan_scalar const z_data[] = {
+#include "data/cmf/stockman_sharpe_2deg_z_360_830_1nm.csv"
         };
 
         size_t const n = sizeof(x_data) / sizeof(x_data[0]);

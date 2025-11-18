@@ -1414,6 +1414,40 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate CIE 2012 10° CMFs: {e}", file=sys.stderr)
 
+# P8: Stockman & Sharpe 2000 2° Cone Fundamentals (360-830nm, 1nm steps)
+try:
+    cmfs_ss = colour.MSDS_CMFS['Stockman & Sharpe 2 Degree Cone Fundamentals']
+
+    x_bar_ss = cmfs_ss.values[:, 0]
+    y_bar_ss = cmfs_ss.values[:, 1]
+    z_bar_ss = cmfs_ss.values[:, 2]
+    wavelengths_ss = cmfs_ss.wavelengths
+
+    mask_ss = (wavelengths_ss >= 360) & (wavelengths_ss <= 830)
+    x_bar_ss_filtered = x_bar_ss[mask_ss]
+    y_bar_ss_filtered = y_bar_ss[mask_ss]
+    z_bar_ss_filtered = z_bar_ss[mask_ss]
+
+    ensure_dir('src/alwan/data/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in x_bar_ss_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv ({len(x_bar_ss_filtered)} samples)")
+
+    ensure_dir('src/alwan/data/cmf/stockman_sharpe_2deg_y_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/stockman_sharpe_2deg_y_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in y_bar_ss_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/stockman_sharpe_2deg_y_360_830_1nm.csv ({len(y_bar_ss_filtered)} samples)")
+
+    ensure_dir('src/alwan/data/cmf/stockman_sharpe_2deg_z_360_830_1nm.csv')
+    with open('src/alwan/data/cmf/stockman_sharpe_2deg_z_360_830_1nm.csv', 'w', newline='') as f:
+        values = [format_scalar(v) for v in z_bar_ss_filtered]
+        f.write(','.join(values) + '\n')
+    print(f"  {DATA_DIR}/cmf/stockman_sharpe_2deg_z_360_830_1nm.csv ({len(z_bar_ss_filtered)} samples)")
+except Exception as e:
+    print(f"  Warning: Could not generate Stockman & Sharpe 2° CMFs: {e}", file=sys.stderr)
+
 # ================================================================
 # M5: Spectral Data - Illuminant SPDs
 # ================================================================
@@ -1422,7 +1456,8 @@ print("\nGenerating Illuminant SPDs...")
 # List of illuminants to generate
 illuminant_names = ['A', 'D50', 'D55', 'D65', 'E',
                     'F1', 'F2', 'F3', 'F4', 'F5', 'F6',
-                    'F7', 'F8', 'F9', 'F10', 'F11', 'F12']
+                    'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
+                    'B', 'C', 'D60', 'D75']  # P8: Extended illuminants
 
 for illum_name in illuminant_names:
     try:

@@ -1342,6 +1342,54 @@ for transform_name in p7_transforms:
         filename = f"cat_d65_to_d50_{transform_name.lower().replace(' ', '_').replace('-', '_')}"
         write_ref(filename, [], f'P7 CAT {transform_name} (not available)')
 
+# ================================================================
+# P8: Extended Spectral Data (Observers & Illuminants)
+# ================================================================
+print('\nP8 Extended Spectral Data (Observers & Illuminants):')
+
+# P8 new illuminants to generate white points for
+p8_illuminants = ['B', 'C', 'D60', 'D75']
+
+# Generate white point XYZ for new illuminants using CIE 1931 2° observer
+for illum_name in p8_illuminants:
+    try:
+        # Get illuminant SPD from colour-science
+        illum_spd = colour.SDS_ILLUMINANTS[illum_name]
+
+        # Compute white point XYZ using CIE 1931 2° observer
+        cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+        white_xyz = colour.sd_to_XYZ(illum_spd, cmfs)
+
+        # Normalize to Y=1.0 (standard white point format)
+        white_xyz_normalized = white_xyz / white_xyz[1]
+
+        # Write white point
+        filename = f"white_{illum_name.lower()}_xyz"
+        write_ref(filename, white_xyz_normalized.tolist(), f'P8 {illum_name} white point XYZ (CIE 1931 2°, Y=1.0)')
+
+        print(f'  Generated {illum_name} white point XYZ')
+    except Exception as e:
+        print(f'  Warning: {illum_name} white point generation failed: {e}')
+        write_ref(f"white_{illum_name.lower()}_xyz", [], f'P8 {illum_name} white point (not available)')
+
+# Stockman & Sharpe 2000 2° observer test
+# Generate XYZ values for D65 white using Stockman & Sharpe observer
+try:
+    d65_spd = colour.SDS_ILLUMINANTS['D65']
+    ss_cmfs = colour.MSDS_CMFS['Stockman & Sharpe 2 Degree Cone Fundamentals']
+
+    # Compute white point using Stockman & Sharpe
+    white_xyz_ss = colour.sd_to_XYZ(d65_spd, ss_cmfs)
+    white_xyz_ss_normalized = white_xyz_ss / white_xyz_ss[1]
+
+    write_ref('white_d65_stockman_sharpe_xyz', white_xyz_ss_normalized.tolist(),
+              'P8 D65 white point using Stockman & Sharpe 2000 2° (Y=1.0)')
+
+    print('  Generated D65 white point with Stockman & Sharpe observer')
+except Exception as e:
+    print(f'  Warning: Stockman & Sharpe observer test failed: {e}')
+    write_ref('white_d65_stockman_sharpe_xyz', [], 'P8 Stockman & Sharpe test (not available)')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')
