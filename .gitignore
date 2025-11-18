@@ -59,3 +59,4 @@ tmp
 .vs
 tools/*.json
 *.txt
+*.log
