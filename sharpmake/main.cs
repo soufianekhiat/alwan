@@ -3,6 +3,7 @@ using Sharpmake;
 [module: Sharpmake.Include("common.cs")]
 [module: Sharpmake.Include("AlwanLib.cs")]
 [module: Sharpmake.Include("AlwanTests.cs")]
+[module: Sharpmake.Include("RGB2SpecTool.cs")]
 
 namespace Alwan
 {
@@ -38,6 +39,18 @@ namespace Alwan
 
             // Add unified test project
             conf.AddProject<AlwanTestsProject>(target);
+
+            // Add RGB2Spec data generation tool (Release only)
+            if (target.Optimization == Optimization.Release)
+            {
+                // Use standard Target for the tool project
+                var toolTarget = new Target(
+                    target.Platform,
+                    target.DevEnv,
+                    Optimization.Release
+                );
+                conf.AddProject<RGB2SpecToolProject>(toolTarget);
+            }
         }
 
         [Main]

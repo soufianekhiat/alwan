@@ -1,3 +1,6 @@
 [submodule "extern/Sharpmake"]
 	path = extern/Sharpmake
 	url = https://github.com/ubisoft/Sharpmake.git
+[submodule "tools/rgb2spec"]
+	path = tools/rgb2spec
+	url = https://github.com/mitsuba-renderer/rgb2spec.git
