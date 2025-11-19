@@ -52,6 +52,10 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\270_cat_extended.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\280_spectral_extended.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\290_rgb_to_spectrum.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\300_camera_sensitivities.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\310_spd_shape.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\320_gamut_analysis.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\330_vision_perception.c");
         }
 
         [Configure()]

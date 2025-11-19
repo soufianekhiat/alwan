@@ -50,6 +50,7 @@ extern int test_290_rgb_to_spectrum_main(void);
 extern int test_300_camera_sensitivities_main(void);
 extern int test_310_spd_shape_main(void);
 extern int test_320_gamut_analysis_main(void);
+extern int test_330_vision_perception_main(void);
 
 /* Test registry */
 typedef struct {
@@ -98,6 +99,7 @@ static test_suite const g_test_suites[] = {
     {"300_camera_sensitivities", test_300_camera_sensitivities_main},
     {"310_spd_shape", test_310_spd_shape_main},
     {"320_gamut_analysis", test_320_gamut_analysis_main},
+    {"330_vision_perception", test_330_vision_perception_main},
 };
 
 int main(void) {

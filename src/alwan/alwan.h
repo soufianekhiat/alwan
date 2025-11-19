@@ -1361,6 +1361,79 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
                                      alwan_observer_type observer);
 
 /* ----------------------------------------------------------------
+ * P10: Color Vision & Perception
+ * ---------------------------------------------------------------- */
+
+/* P10.1: Color Blindness Simulation (CVD - Color Vision Deficiency) */
+
+/* CVD (Color Vision Deficiency) types */
+typedef enum {
+    ALWAN_CVD_PROTANOPIA = 0,     /* Red-blind (L-cone absent) */
+    ALWAN_CVD_DEUTERANOPIA = 1,   /* Green-blind (M-cone absent) */
+    ALWAN_CVD_TRITANOPIA = 2,     /* Blue-blind (S-cone absent) */
+    ALWAN_CVD_PROTANOMALY = 3,    /* Red-weak (L-cone deficient) */
+    ALWAN_CVD_DEUTERANOMALY = 4,  /* Green-weak (M-cone deficient) */
+    ALWAN_CVD_TRITANOMALY = 5     /* Blue-weak (S-cone deficient) */
+} alwan_cvd_type;
+
+/* Simulate color vision deficiency (color blindness)
+ * rgb_in: input linear RGB color [0, 1]
+ * cvd_type: type of color vision deficiency
+ * severity: severity of deficiency [0, 1] (1.0 = complete, 0.0 = normal vision)
+ *          (only applies to anomalous trichromacy types)
+ * rgb_out: output simulated RGB color as seen by person with CVD
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
+ * Algorithm: Brettel, Viénot & Mollon (1997) simulation using confusion lines */
+int alwan_simulate_cvd(alwan_vec3 const *rgb_in,
+                        alwan_cvd_type cvd_type,
+                        alwan_scalar severity,
+                        alwan_vec3 *rgb_out);
+
+/* P10.2: Luminous Efficiency Functions */
+
+/* Vision type for luminous efficiency */
+typedef enum {
+    ALWAN_VISION_PHOTOPIC = 0,  /* Photopic (daytime, cone-based) - V(λ) */
+    ALWAN_VISION_SCOTOPIC = 1,  /* Scotopic (nighttime, rod-based) - V'(λ) */
+    ALWAN_VISION_MESOPIC = 2    /* Mesopic (twilight, mixed rod/cone) */
+} alwan_vision_type;
+
+/* Get luminous efficiency for a given wavelength and vision type
+ * wavelength: wavelength in nanometers [360, 830]
+ * vision_type: photopic, scotopic, or mesopic
+ * Returns luminous efficiency value [0, 1], or negative on error
+ * Data: CIE photopic V(λ) 1924/1988, CIE scotopic V'(λ) 1951 */
+alwan_scalar alwan_luminous_efficiency(alwan_scalar wavelength, alwan_vision_type vision_type);
+
+/* Calculate photopic luminance from SPD
+ * spd: spectral power distribution
+ * Returns photopic luminance in cd/m², or negative on error */
+alwan_scalar alwan_photopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
+
+/* Calculate scotopic luminance from SPD
+ * spd: spectral power distribution
+ * Returns scotopic luminance in cd/m², or negative on error */
+alwan_scalar alwan_scotopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
+
+/* Calculate mesopic luminance from SPD
+ * spd: spectral power distribution
+ * adaptation_level: adaptation luminance level in cd/m² [0.001, 10]
+ * Returns mesopic luminance in cd/m², or negative on error
+ * Uses CIE 191:2010 mesopic vision model */
+alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
+                                      alwan_spd const *spd,
+                                      alwan_scalar adaptation_level);
+
+/* P10.3: Contrast Sensitivity Function (CSF) */
+
+/* Calculate contrast sensitivity for spatial frequency
+ * spatial_frequency: spatial frequency in cycles per degree [0.1, 60]
+ * luminance: background luminance in cd/m² [0.01, 10000]
+ * Returns contrast sensitivity (1/contrast_threshold), or negative on error
+ * Uses Barten CSF model (1999) */
+alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance);
+
+/* ----------------------------------------------------------------
  * Utility Functions
  * ---------------------------------------------------------------- */
 

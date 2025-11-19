@@ -1987,6 +1987,62 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# ================================================================
+# P10: Color Vision & Perception
+# ================================================================
+
+# P10.1: Color Blindness Simulation (CVD) Reference Data
+print('\nP10: Color Vision & Perception Tests')
+print('Note: CVD simulation uses algorithmic LMS cone transformations')
+print('      Reference data documents expected behavior, not colour-science validation')
+
+try:
+    # Test colors for CVD simulation
+    # These are standard test colors used in color blindness research
+    test_colors_cvd = {
+        'red': [1.0, 0.0, 0.0],
+        'green': [0.0, 1.0, 0.0],
+        'blue': [0.0, 0.0, 1.0],
+        'yellow': [1.0, 1.0, 0.0],
+        'cyan': [0.0, 1.0, 1.0],
+        'magenta': [1.0, 0.0, 1.0],
+        'white': [1.0, 1.0, 1.0],
+        'gray': [0.5, 0.5, 0.5],
+        'orange': [1.0, 0.5, 0.0],
+        'purple': [0.5, 0.0, 0.5]
+    }
+
+    print('\n  P10.1: Color Blindness Simulation')
+    print('  Test colors defined:')
+    print(f'    - {len(test_colors_cvd)} standard colors for CVD testing')
+    print('    - CVD types: Protanopia, Deuteranopia, Tritanopia')
+    print('    - Anomalous types: Protanomaly, Deuteranomaly, Tritanomaly')
+    print('    - Severity range: 0.0 (normal) to 1.0 (complete deficiency)')
+
+    # Write test color count
+    write_ref('cvd_test_color_count', [len(test_colors_cvd)],
+              'P10.1 Number of CVD test colors')
+
+    # Document that CVD uses algorithmic transformation (no reference values needed)
+    # The implementation uses Brettel, Viénot & Mollon (1997) confusion line algorithm
+    print('    Algorithm: Brettel, Viénot & Mollon (1997)')
+    print('    Method: LMS cone space confusion line projection')
+
+    # Write severity test values
+    severity_levels = [0.0, 0.25, 0.5, 0.75, 1.0]
+    write_ref('cvd_severity_test_levels', severity_levels,
+              'P10.1 CVD severity test levels')
+    print(f'    Severity levels for testing: {severity_levels}')
+
+except Exception as e:
+    print(f'  Warning: P10.1 CVD reference data generation failed: {e}')
+
+# P10.2 & P10.3: Stub implementations (no test data needed)
+print('\n  P10.2: Luminous Efficiency Functions')
+print('    Status: Stub implementation (not yet complete)')
+print('  P10.3: Contrast Sensitivity Function')
+print('    Status: Stub implementation (not yet complete)')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')
