@@ -88,49 +88,97 @@ static alwan_scalar const mallett2019_blue[MALLETT2019_WAVELENGTH_COUNT] = {
 };
 
 /* ----------------------------------------------------------------
- * Jakob2019 Basis Spectra Data
+ * Jakob2019 Polynomial LUT Data
  * Based on: Jakob & Hanika. "A Low-Dimensional Function Space for Efficient Spectral Upsampling" (2019)
  * RGB colorspace: sRGB
  * Wavelength range: 360-780nm, 85 samples (5nm intervals)
- * Note: Simplified implementation using pre-computed spectra from XYZ_to_sd_Jakob2019
+ * LUT resolution: 16x16x16 (4,096 entries)
  * ---------------------------------------------------------------- */
 
 #define JAKOB2019_WAVELENGTH_COUNT 85
 #define JAKOB2019_WAVELENGTH_MIN ALWAN_LITERAL(360.0)
 #define JAKOB2019_WAVELENGTH_MAX ALWAN_LITERAL(780.0)
 
-/* Wavelengths (shared across all basis spectra) */
-static alwan_scalar const jakob2019_wavelengths[JAKOB2019_WAVELENGTH_COUNT] = {
-#include "data/spectral_basis/jakob2019/wavelengths.csv"
+/* Jakob2019 polynomial coefficient LUT (64x64x64 resolution for sRGB) */
+#define JAKOB2019_LUT_RES 64
+#define JAKOB2019_LUT_SIZE (JAKOB2019_LUT_RES * JAKOB2019_LUT_RES * JAKOB2019_LUT_RES)
+
+/* sRGB LUT (default) */
+static alwan_scalar const jakob2019_srgb_lut_c0[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c0.csv"
 };
 
-/* Basis spectra: white, cyan, magenta, yellow, red, green, blue */
-static alwan_scalar const jakob2019_white[JAKOB2019_WAVELENGTH_COUNT] = {
-#include "data/spectral_basis/jakob2019/white.csv"
+static alwan_scalar const jakob2019_srgb_lut_c1[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c1.csv"
 };
 
-static alwan_scalar const jakob2019_cyan[JAKOB2019_WAVELENGTH_COUNT] = {
-#include "data/spectral_basis/jakob2019/cyan.csv"
+static alwan_scalar const jakob2019_srgb_lut_c2[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c2.csv"
 };
 
-static alwan_scalar const jakob2019_magenta[JAKOB2019_WAVELENGTH_COUNT] = {
-#include "data/spectral_basis/jakob2019/magenta.csv"
+/* ProPhoto RGB LUT */
+static alwan_scalar const jakob2019_prophoto_lut_c0[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c0_prophotorgb.csv"
 };
 
-static alwan_scalar const jakob2019_yellow[JAKOB2019_WAVELENGTH_COUNT] = {
-#include "data/spectral_basis/jakob2019/yellow.csv"
+static alwan_scalar const jakob2019_prophoto_lut_c1[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c1_prophotorgb.csv"
 };
 
-static alwan_scalar const jakob2019_red[JAKOB2019_WAVELENGTH_COUNT] = {
-#include "data/spectral_basis/jakob2019/red.csv"
+static alwan_scalar const jakob2019_prophoto_lut_c2[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c2_prophotorgb.csv"
 };
 
-static alwan_scalar const jakob2019_green[JAKOB2019_WAVELENGTH_COUNT] = {
-#include "data/spectral_basis/jakob2019/green.csv"
+/* ACES2065-1 LUT */
+static alwan_scalar const jakob2019_aces_lut_c0[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c0_aces2065_1.csv"
 };
 
-static alwan_scalar const jakob2019_blue[JAKOB2019_WAVELENGTH_COUNT] = {
-#include "data/spectral_basis/jakob2019/blue.csv"
+static alwan_scalar const jakob2019_aces_lut_c1[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c1_aces2065_1.csv"
+};
+
+static alwan_scalar const jakob2019_aces_lut_c2[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c2_aces2065_1.csv"
+};
+
+/* Rec.2020 LUT */
+static alwan_scalar const jakob2019_rec2020_lut_c0[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c0_rec2020.csv"
+};
+
+static alwan_scalar const jakob2019_rec2020_lut_c1[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c1_rec2020.csv"
+};
+
+static alwan_scalar const jakob2019_rec2020_lut_c2[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c2_rec2020.csv"
+};
+
+/* eRGB LUT */
+static alwan_scalar const jakob2019_ergb_lut_c0[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c0_ergb.csv"
+};
+
+static alwan_scalar const jakob2019_ergb_lut_c1[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c1_ergb.csv"
+};
+
+static alwan_scalar const jakob2019_ergb_lut_c2[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c2_ergb.csv"
+};
+
+/* CIE XYZ LUT */
+static alwan_scalar const jakob2019_xyz_lut_c0[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c0_xyz.csv"
+};
+
+static alwan_scalar const jakob2019_xyz_lut_c1[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c1_xyz.csv"
+};
+
+static alwan_scalar const jakob2019_xyz_lut_c2[JAKOB2019_LUT_SIZE] = {
+#include "data/spectral_lut/jakob2019/jakob2019_lut_c2_xyz.csv"
 };
 
 /* ----------------------------------------------------------------
@@ -304,15 +352,150 @@ int alwan_rgb_to_spectrum_mallett2019(alwan_ctx *ctx,
 
 /* ----------------------------------------------------------------
  * Jakob2019: RGB to Spectrum Conversion
- * Simplified implementation using Smits-style mixing with Jakob2019 basis spectra
- * Note: This is not the full polynomial LUT approach from the original paper
+ * Uses polynomial LUT-based approach from the original paper
  * ---------------------------------------------------------------- */
 
+/* Trilinear interpolation of Jakob2019 LUT */
+static void jakob2019_lut_sample(alwan_scalar const *lut_c0,
+                                  alwan_scalar const *lut_c1,
+                                  alwan_scalar const *lut_c2,
+                                  alwan_scalar r, alwan_scalar g, alwan_scalar b,
+                                  alwan_scalar *out_c0,
+                                  alwan_scalar *out_c1,
+                                  alwan_scalar *out_c2) {
+    /* Clamp inputs to [0, 1] */
+    r = clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    g = clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    b = clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+
+    /* Scale to LUT resolution */
+    alwan_scalar const res_f = ALWAN_LITERAL(JAKOB2019_LUT_RES - 1);
+    alwan_scalar const rf = r * res_f;
+    alwan_scalar const gf = g * res_f;
+    alwan_scalar const bf = b * res_f;
+
+    /* Integer indices */
+    int const r0 = (int)rf;
+    int const g0 = (int)gf;
+    int const b0 = (int)bf;
+
+    /* Clamp to valid range */
+    int const r1 = (r0 + 1 < JAKOB2019_LUT_RES) ? (r0 + 1) : r0;
+    int const g1 = (g0 + 1 < JAKOB2019_LUT_RES) ? (g0 + 1) : g0;
+    int const b1 = (b0 + 1 < JAKOB2019_LUT_RES) ? (b0 + 1) : b0;
+
+    /* Fractional parts */
+    alwan_scalar const fr = rf - (alwan_scalar)r0;
+    alwan_scalar const fg = gf - (alwan_scalar)g0;
+    alwan_scalar const fb = bf - (alwan_scalar)b0;
+
+    /* LUT indexing: index = r * RES^2 + g * RES + b */
+#define LUT_INDEX(ri, gi, bi) ((ri) * JAKOB2019_LUT_RES * JAKOB2019_LUT_RES + (gi) * JAKOB2019_LUT_RES + (bi))
+
+    /* Sample 8 corners of the cube */
+    int const i000 = LUT_INDEX(r0, g0, b0);
+    int const i001 = LUT_INDEX(r0, g0, b1);
+    int const i010 = LUT_INDEX(r0, g1, b0);
+    int const i011 = LUT_INDEX(r0, g1, b1);
+    int const i100 = LUT_INDEX(r1, g0, b0);
+    int const i101 = LUT_INDEX(r1, g0, b1);
+    int const i110 = LUT_INDEX(r1, g1, b0);
+    int const i111 = LUT_INDEX(r1, g1, b1);
+
+#undef LUT_INDEX
+
+    /* Trilinear interpolation for c0 */
+    alwan_scalar const c0_00 = lut_c0[i000] * (ALWAN_LITERAL(1.0) - fb) + lut_c0[i001] * fb;
+    alwan_scalar const c0_01 = lut_c0[i010] * (ALWAN_LITERAL(1.0) - fb) + lut_c0[i011] * fb;
+    alwan_scalar const c0_10 = lut_c0[i100] * (ALWAN_LITERAL(1.0) - fb) + lut_c0[i101] * fb;
+    alwan_scalar const c0_11 = lut_c0[i110] * (ALWAN_LITERAL(1.0) - fb) + lut_c0[i111] * fb;
+    alwan_scalar const c0_0 = c0_00 * (ALWAN_LITERAL(1.0) - fg) + c0_01 * fg;
+    alwan_scalar const c0_1 = c0_10 * (ALWAN_LITERAL(1.0) - fg) + c0_11 * fg;
+    *out_c0 = c0_0 * (ALWAN_LITERAL(1.0) - fr) + c0_1 * fr;
+
+    /* Trilinear interpolation for c1 */
+    alwan_scalar const c1_00 = lut_c1[i000] * (ALWAN_LITERAL(1.0) - fb) + lut_c1[i001] * fb;
+    alwan_scalar const c1_01 = lut_c1[i010] * (ALWAN_LITERAL(1.0) - fb) + lut_c1[i011] * fb;
+    alwan_scalar const c1_10 = lut_c1[i100] * (ALWAN_LITERAL(1.0) - fb) + lut_c1[i101] * fb;
+    alwan_scalar const c1_11 = lut_c1[i110] * (ALWAN_LITERAL(1.0) - fb) + lut_c1[i111] * fb;
+    alwan_scalar const c1_0 = c1_00 * (ALWAN_LITERAL(1.0) - fg) + c1_01 * fg;
+    alwan_scalar const c1_1 = c1_10 * (ALWAN_LITERAL(1.0) - fg) + c1_11 * fg;
+    *out_c1 = c1_0 * (ALWAN_LITERAL(1.0) - fr) + c1_1 * fr;
+
+    /* Trilinear interpolation for c2 */
+    alwan_scalar const c2_00 = lut_c2[i000] * (ALWAN_LITERAL(1.0) - fb) + lut_c2[i001] * fb;
+    alwan_scalar const c2_01 = lut_c2[i010] * (ALWAN_LITERAL(1.0) - fb) + lut_c2[i011] * fb;
+    alwan_scalar const c2_10 = lut_c2[i100] * (ALWAN_LITERAL(1.0) - fb) + lut_c2[i101] * fb;
+    alwan_scalar const c2_11 = lut_c2[i110] * (ALWAN_LITERAL(1.0) - fb) + lut_c2[i111] * fb;
+    alwan_scalar const c2_0 = c2_00 * (ALWAN_LITERAL(1.0) - fg) + c2_01 * fg;
+    alwan_scalar const c2_1 = c2_10 * (ALWAN_LITERAL(1.0) - fg) + c2_11 * fg;
+    *out_c2 = c2_0 * (ALWAN_LITERAL(1.0) - fr) + c2_1 * fr;
+}
+
+/* Evaluate Jakob2019 polynomial to generate spectrum from coefficients */
+static inline alwan_scalar jakob2019_eval_poly(alwan_scalar c0, alwan_scalar c1, alwan_scalar c2, alwan_scalar wavelength) {
+    /* Polynomial: U = c0 * wavelength^2 + c1 * wavelength + c2 */
+    alwan_scalar const U = c0 * wavelength * wavelength + c1 * wavelength + c2;
+
+    /* Reflectance: R = 0.5 + U / (2 * sqrt(1 + U^2)) */
+    alwan_scalar const U_sq = U * U;
+    alwan_scalar const denom = ALWAN_LITERAL(2.0) * ALWAN_SQRT(ALWAN_LITERAL(1.0) + U_sq);
+    alwan_scalar const R = ALWAN_LITERAL(0.5) + U / denom;
+
+    /* Clamp to [0, 1] */
+    return clamp(R, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+}
+
 int alwan_rgb_to_spectrum_jakob2019(alwan_ctx *ctx,
+                                      alwan_jakob2019_gamut gamut,
                                       alwan_vec3 const *rgb,
                                       alwan_spd *out_spd) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
+    }
+
+    /* Select LUT based on gamut */
+    alwan_scalar const *lut_c0, *lut_c1, *lut_c2;
+
+    switch (gamut) {
+        case ALWAN_JAKOB2019_SRGB:
+            lut_c0 = jakob2019_srgb_lut_c0;
+            lut_c1 = jakob2019_srgb_lut_c1;
+            lut_c2 = jakob2019_srgb_lut_c2;
+            break;
+
+        case ALWAN_JAKOB2019_PROPHOTO_RGB:
+            lut_c0 = jakob2019_prophoto_lut_c0;
+            lut_c1 = jakob2019_prophoto_lut_c1;
+            lut_c2 = jakob2019_prophoto_lut_c2;
+            break;
+
+        case ALWAN_JAKOB2019_ACES2065_1:
+            lut_c0 = jakob2019_aces_lut_c0;
+            lut_c1 = jakob2019_aces_lut_c1;
+            lut_c2 = jakob2019_aces_lut_c2;
+            break;
+
+        case ALWAN_JAKOB2019_REC2020:
+            lut_c0 = jakob2019_rec2020_lut_c0;
+            lut_c1 = jakob2019_rec2020_lut_c1;
+            lut_c2 = jakob2019_rec2020_lut_c2;
+            break;
+
+        case ALWAN_JAKOB2019_ERGB:
+            lut_c0 = jakob2019_ergb_lut_c0;
+            lut_c1 = jakob2019_ergb_lut_c1;
+            lut_c2 = jakob2019_ergb_lut_c2;
+            break;
+
+        case ALWAN_JAKOB2019_XYZ:
+            lut_c0 = jakob2019_xyz_lut_c0;
+            lut_c1 = jakob2019_xyz_lut_c1;
+            lut_c2 = jakob2019_xyz_lut_c2;
+            break;
+
+        default:
+            return ALWAN_E_INVALID;
     }
 
     /* Create output SPD with Jakob2019 wavelength range */
@@ -325,96 +508,17 @@ int alwan_rgb_to_spectrum_jakob2019(alwan_ctx *ctx,
         return status;
     }
 
-    /* Extract RGB components (clamped to [0, 1]) */
-    alwan_scalar r = clamp(rgb->v[0], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    alwan_scalar g = clamp(rgb->v[1], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    alwan_scalar b = clamp(rgb->v[2], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    /* Sample LUT to get polynomial coefficients via trilinear interpolation */
+    alwan_scalar c0, c1, c2;
+    jakob2019_lut_sample(lut_c0, lut_c1, lut_c2, rgb->v[0], rgb->v[1], rgb->v[2], &c0, &c1, &c2);
 
-    /* Use Smits-style algorithm with Jakob2019 basis spectra
-     * This provides Jakob2019 quality spectra with Smits algorithm */
+    /* Evaluate polynomial for each wavelength */
+    alwan_scalar const wl_min = JAKOB2019_WAVELENGTH_MIN;
+    alwan_scalar const wl_step = (JAKOB2019_WAVELENGTH_MAX - JAKOB2019_WAVELENGTH_MIN) / (alwan_scalar)(JAKOB2019_WAVELENGTH_COUNT - 1);
 
-    if (r <= g && r <= b) {
-        /* R is minimum: start with white * R */
-        for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-            out_spd->values[i] = jakob2019_white[i] * r;
-        }
-
-        if (g <= b) {
-            /* Add cyan for (G - R) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_cyan[i] * (g - r);
-            }
-            /* Add blue for (B - G) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_blue[i] * (b - g);
-            }
-        } else {
-            /* Add cyan for (B - R) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_cyan[i] * (b - r);
-            }
-            /* Add green for (G - B) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_green[i] * (g - b);
-            }
-        }
-    } else if (g <= r && g <= b) {
-        /* G is minimum: start with white * G */
-        for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-            out_spd->values[i] = jakob2019_white[i] * g;
-        }
-
-        if (r <= b) {
-            /* Add magenta for (R - G) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_magenta[i] * (r - g);
-            }
-            /* Add blue for (B - R) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_blue[i] * (b - r);
-            }
-        } else {
-            /* Add magenta for (B - G) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_magenta[i] * (b - g);
-            }
-            /* Add red for (R - B) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_red[i] * (r - b);
-            }
-        }
-    } else {
-        /* B is minimum: start with white * B */
-        for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-            out_spd->values[i] = jakob2019_white[i] * b;
-        }
-
-        if (r <= g) {
-            /* Add yellow for (R - B) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_yellow[i] * (r - b);
-            }
-            /* Add green for (G - R) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_green[i] * (g - r);
-            }
-        } else {
-            /* Add yellow for (G - B) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_yellow[i] * (g - b);
-            }
-            /* Add red for (R - G) */
-            for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += jakob2019_red[i] * (r - g);
-            }
-        }
-    }
-
-    /* Clamp negative values */
     for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-        if (out_spd->values[i] < ALWAN_LITERAL(0.0)) {
-            out_spd->values[i] = ALWAN_LITERAL(0.0);
-        }
+        alwan_scalar const wavelength = wl_min + (alwan_scalar)i * wl_step;
+        out_spd->values[i] = jakob2019_eval_poly(c0, c1, c2, wavelength);
     }
 
     return ALWAN_OK;

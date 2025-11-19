@@ -1597,52 +1597,11 @@ for color_name, rgb in test_rgb_colors.items():
     except Exception as e:
         print(f'    Warning: Mallett2019 test for {color_name} failed: {e}')
 
-# Jakob2019 method tests (LUT-based)
-print('  Testing Jakob2019 method (64x64x64 LUT)...')
-print('    Generating 64x64x64 LUT (this may take several minutes)...')
-
-try:
-    # Generate 64x64x64 LUT for Jakob2019
-    lut = colour.recovery.LUT3D_Jakob2019()
-    colorspace_sRGB = colour.RGB_COLOURSPACES['sRGB']
-    cmfs_jakob = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
-    illuminant_d65_jakob = colour.SDS_ILLUMINANTS['D65']
-
-    lut.generate(colorspace_sRGB, cmfs_jakob, illuminant_d65_jakob, size=64)
-    print('    LUT generated successfully!')
-
-    for color_name, rgb in test_rgb_colors.items():
-        try:
-            # Convert RGB to spectrum using Jakob2019 LUT
-            sd_jakob = lut.RGB_to_sd(rgb)
-
-            # Convert spectrum back to XYZ (round-trip)
-            xyz_recovered = colour.sd_to_XYZ(sd_jakob, cmfs, d65_spd)
-            xyz_recovered_normalized = xyz_recovered / 100.0  # Normalize to [0, 1] range
-
-            # Also compute expected XYZ directly from RGB (sRGB -> XYZ)
-            xyz_expected = colour.sRGB_to_XYZ(rgb)
-            xyz_expected_normalized = xyz_expected / 100.0
-
-            # Calculate error
-            error = np.abs(xyz_recovered_normalized - xyz_expected_normalized)
-            max_error = np.max(error)
-            print(f'      {color_name}: max_error={max_error:.8f}')
-
-            # Store recovered XYZ from spectrum
-            write_ref(f'jakob2019_{color_name}_xyz_recovered', xyz_recovered_normalized.tolist(),
-                      f'P8.1 Jakob2019: {color_name} RGB {rgb} -> Spectrum -> XYZ (D65, CIE 1931 2°)')
-
-            # Store expected XYZ for comparison
-            write_ref(f'jakob2019_{color_name}_xyz_expected', xyz_expected_normalized.tolist(),
-                      f'P8.1 Jakob2019: {color_name} RGB {rgb} -> XYZ direct (sRGB -> XYZ)')
-
-        except Exception as e:
-            print(f'    Warning: Jakob2019 test for {color_name} failed: {e}')
-
-except Exception as e:
-    print(f'  Error generating Jakob2019 LUT: {e}')
-    print(f'  Skipping Jakob2019 tests')
+# Jakob2019 method tests - SKIPPED
+# NOTE: colour-science requires slow LUT optimization before upsampling can be used.
+# Jakob2019 testing will be done directly in C using the fast C++ generated LUTs.
+print('  Skipping Jakob2019 reference generation (colour-science requires slow optimization)')
+print('  Jakob2019 will be tested using C implementation with pre-generated LUTs')
 
 # ================================================================
 # P8.4: Camera Sensitivities

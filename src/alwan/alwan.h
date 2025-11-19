@@ -990,15 +990,26 @@ int alwan_rgb_to_spectrum_mallett2019(alwan_ctx *ctx,
                                        alwan_vec3 const *rgb,
                                        alwan_spd *out_spd);
 
-/* Jakob2019: RGB to spectrum using high-quality basis spectra
+/* Jakob2019 gamut enum - specifies which RGB color space to use for spectral upsampling */
+typedef enum {
+	ALWAN_JAKOB2019_SRGB = 0,        /* sRGB (standard RGB, Rec.709 primaries) */
+	ALWAN_JAKOB2019_PROPHOTO_RGB,    /* ProPhoto RGB (wide gamut) */
+	ALWAN_JAKOB2019_ACES2065_1,      /* ACES2065-1 (Academy Color Encoding System) */
+	ALWAN_JAKOB2019_REC2020,         /* Rec.2020 (ITU-R BT.2020, HDR/UHD TV) */
+	ALWAN_JAKOB2019_ERGB,            /* Extended RGB */
+	ALWAN_JAKOB2019_XYZ              /* CIE XYZ */
+} alwan_jakob2019_gamut;
+
+/* Jakob2019: RGB to spectrum using polynomial LUT
  * Reference: Jakob & Hanika. "A Low-Dimensional Function Space for Efficient Spectral Upsampling" (2019)
  * ctx: context (for allocation)
- * rgb: input RGB values (assumed to be in sRGB colorspace, clamped to [0, 1])
+ * gamut: RGB color space / gamut to use for upsampling
+ * rgb: input RGB values (in the specified gamut, clamped to [0, 1])
  * out_spd: output spectral power distribution (wavelength range: 360-780nm, 85 samples at 5nm intervals)
- * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure
- * Note: This is a simplified implementation using Smits-style algorithm with Jakob2019 basis spectra.
- *       Full Jakob2019 would use polynomial LUT, but this provides high-quality results. */
+ * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure, ALWAN_E_INVALID_PARAM if gamut is invalid
+ * Note: Requires pre-generated LUT data for the specified gamut (see generate_data.ps1) */
 int alwan_rgb_to_spectrum_jakob2019(alwan_ctx *ctx,
+                                      alwan_jakob2019_gamut gamut,
                                       alwan_vec3 const *rgb,
                                       alwan_spd *out_spd);
 
