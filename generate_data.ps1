@@ -2170,6 +2170,99 @@ except Exception as e:
     import traceback
     traceback.print_exc(file=sys.stderr)
 
+# ----------------------------------------------------------------
+# P9: Gamut Analysis & Mapping Data
+# ----------------------------------------------------------------
+
+print("")
+print("=" * 80)
+print("P9: Gamut Analysis & Mapping")
+print("=" * 80)
+
+try:
+    import os
+    os.makedirs(f'{DATA_DIR}/gamut', exist_ok=True)
+
+    # ============================================================
+    # P9.1: Pointer's Gamut Boundary
+    # ============================================================
+    print("\n1. Generating Pointer's Gamut boundary data...")
+
+    # Get Pointer's Gamut boundary from colour-science
+    from colour.models import CCS_POINTER_GAMUT_BOUNDARY
+    pointer_boundary = CCS_POINTER_GAMUT_BOUNDARY
+    print(f"  Found {len(pointer_boundary)} boundary points")
+
+    # Save as pairs of x,y values
+    output_file = f'{DATA_DIR}/gamut/pointer_gamut_boundary_xy.csv'
+    with open(output_file, 'w') as f:
+        for i, xy in enumerate(pointer_boundary):
+            x_str = format_scalar(xy[0])
+            y_str = format_scalar(xy[1])
+            if i < len(pointer_boundary) - 1:
+                f.write(f'{x_str}, {y_str},\n')
+            else:
+                f.write(f'{x_str}, {y_str}')
+
+    print(f"  {output_file} ({len(pointer_boundary)} points)")
+
+    # ============================================================
+    # P9.2: Spectral Locus from CIE 1931 2° CMFs
+    # ============================================================
+    print("\n2. Generating Spectral Locus xy data...")
+
+    # Get CIE 1931 2° CMFs (360-830nm, 1nm interval)
+    cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+    wavelengths = cmfs.wavelengths
+    xyz_values = cmfs.values
+
+    # Compute xy chromaticity for each wavelength
+    spectral_locus_data = []
+    for wl_idx in range(len(wavelengths)):
+        xyz = xyz_values[wl_idx]
+        xyz_sum = np.sum(xyz)
+        if xyz_sum > 0:
+            x = xyz[0] / xyz_sum
+            y = xyz[1] / xyz_sum
+            spectral_locus_data.append((wavelengths[wl_idx], x, y))
+
+    print(f"  Computed {len(spectral_locus_data)} spectral locus points")
+    print(f"  Wavelength range: {spectral_locus_data[0][0]:.0f}-{spectral_locus_data[-1][0]:.0f}nm")
+
+    # Save wavelength, x, y triplets
+    output_file = f'{DATA_DIR}/gamut/spectral_locus_xy_360_830_1nm.csv'
+    with open(output_file, 'w') as f:
+        for i, (wl, x, y) in enumerate(spectral_locus_data):
+            wl_str = format_scalar(wl)
+            x_str = format_scalar(x)
+            y_str = format_scalar(y)
+            if i < len(spectral_locus_data) - 1:
+                f.write(f'{wl_str}, {x_str}, {y_str},\n')
+            else:
+                f.write(f'{wl_str}, {x_str}, {y_str}')
+
+    print(f"  {output_file} ({len(spectral_locus_data)} triplets)")
+
+    # Also save just the xy values in a separate file for faster lookup
+    output_file_xy = f'{DATA_DIR}/gamut/spectral_locus_xy_only_360_830_1nm.csv'
+    with open(output_file_xy, 'w') as f:
+        for i, (wl, x, y) in enumerate(spectral_locus_data):
+            x_str = format_scalar(x)
+            y_str = format_scalar(y)
+            if i < len(spectral_locus_data) - 1:
+                f.write(f'{x_str}, {y_str},\n')
+            else:
+                f.write(f'{x_str}, {y_str}')
+
+    print(f"  {output_file_xy} (xy pairs only)")
+
+    print(f"\n  P9 gamut data generation complete!")
+
+except Exception as e:
+    print(f"  Warning: Could not generate P9 gamut data: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+
 print("\nData generation complete!")
 "@
 

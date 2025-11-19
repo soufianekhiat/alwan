@@ -103,6 +103,11 @@ void alwan_data_free(alwan_ctx *ctx, alwan_scalar *data);
  * Math Types
  * ---------------------------------------------------------------- */
 
+/* 2-component vector (for xy chromaticity coordinates) */
+typedef struct {
+    alwan_scalar v[2];
+} alwan_vec2;
+
 /* 3-component vector */
 typedef struct {
     alwan_scalar v[3];
@@ -337,7 +342,13 @@ int alwan_rgb_convert_bulk(alwan_ctx *ctx,
 /* Gamut mapping method */
 typedef enum {
     ALWAN_GAMUT_MAP_CLIP = 0,         /* Simple clipping to [0,1] */
-    ALWAN_GAMUT_MAP_HUE_PRESERVING = 1 /* Project to gamut boundary preserving hue */
+    ALWAN_GAMUT_MAP_HUE_PRESERVING = 1, /* Project to gamut boundary preserving hue */
+    ALWAN_GAMUT_MAP_ADAPTIVE_L0,     /* Adaptive L0 (project toward L=0.5) - P9.5 */
+    ALWAN_GAMUT_MAP_ADAPTIVE_CUSP,   /* Adaptive toward cusp (hue-dependent) - P9.5 */
+    ALWAN_GAMUT_MAP_CHROMA_COMPRESS, /* Chroma compression - P9.5 */
+    ALWAN_GAMUT_MAP_SGCK,            /* SGCK 2004 (Segment-Maximal Gamut Clipping with Knee) - P9.5 */
+    ALWAN_GAMUT_MAP_HPMINDE,         /* HPMINDE (Hue-Preserving Minimum ΔE) - P9.5 */
+    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE /* Lightness Preserving - P9.5 */
 } alwan_gamut_map_method;
 
 /* Estimate RGB gamut volume using Monte Carlo sampling
@@ -847,6 +858,113 @@ int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
  * Computes peak wavelength, FWHM, centroid, and bandwidth
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if SPD is invalid */
 int alwan_spd_analyze_shape(alwan_spd const *spd, alwan_spd_shape *shape_out);
+
+/* ----------------------------------------------------------------
+ * P9: Gamut Analysis & Mapping
+ * ---------------------------------------------------------------- */
+
+/* P9.1: Check if xy chromaticity is within Pointer's Gamut
+ * Pointer's Gamut represents the boundary of real surface colors under illuminant C
+ * xy: CIE 1931 xy chromaticity coordinates
+ * Returns 1 if inside Pointer's Gamut, 0 otherwise */
+int alwan_is_within_pointer_gamut(alwan_vec2 const *xy);
+
+/* P9.1: Get Pointer's Gamut boundary points
+ * Returns array of xy chromaticity coordinates defining the boundary
+ * count_out: receives the number of boundary points (32)
+ * Returns pointer to internal static data (do not free) */
+alwan_vec2 const* alwan_pointer_gamut_boundary(size_t *count_out);
+
+/* P9.2: Get CIE 1931 spectral locus xy chromaticity for a given wavelength
+ * Computes xy chromaticity from CIE 1931 2° observer CMFs for monochromatic light
+ * wavelength: wavelength in nm (360-830nm)
+ * xy_out: output xy chromaticity coordinates
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if wavelength out of range */
+int alwan_spectral_locus_xy(alwan_scalar wavelength, alwan_vec2 *xy_out);
+
+/* P9.3: Compute dominant wavelength for a color
+ * Dominant wavelength is the wavelength of monochromatic light that,
+ * when mixed with the white point, matches the given color's hue
+ * xy: CIE 1931 xy chromaticity coordinates of the color
+ * xy_white: white point xy chromaticity (e.g., illuminant D65)
+ * wavelength_out: receives dominant wavelength in nm (or negative for complementary)
+ * xy_wl_out: receives xy of the spectral locus point (optional, can be NULL)
+ * xy_cw_out: receives xy of the color-white intersection (optional, can be NULL)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if color is on/near the purple line */
+int alwan_dominant_wavelength(alwan_vec2 const *xy,
+                               alwan_vec2 const *xy_white,
+                               alwan_scalar *wavelength_out,
+                               alwan_vec2 *xy_wl_out,
+                               alwan_vec2 *xy_cw_out);
+
+/* P9.3: Compute excitation purity for a color
+ * Excitation purity is the ratio of the distance from the white point to the color,
+ * divided by the distance from the white point to the spectrum locus, along the
+ * line connecting them (0 = white, 1 = spectral/maximum saturation)
+ * xy: CIE 1931 xy chromaticity coordinates of the color
+ * xy_white: white point xy chromaticity (e.g., illuminant D65)
+ * purity_out: receives excitation purity [0-1]
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_excitation_purity(alwan_vec2 const *xy,
+                             alwan_vec2 const *xy_white,
+                             alwan_scalar *purity_out);
+
+/* P9.3: Compute complementary wavelength for a color
+ * Complementary wavelength is used for colors on the purple line (no dominant wavelength)
+ * It is the wavelength on the opposite side of the white point
+ * xy: CIE 1931 xy chromaticity coordinates of the color
+ * xy_white: white point xy chromaticity (e.g., illuminant D65)
+ * wavelength_out: receives complementary wavelength in nm
+ * xy_wl_out: receives xy of the spectral locus point (optional, can be NULL)
+ * xy_cw_out: receives xy of the color-white intersection (optional, can be NULL)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_complementary_wavelength(alwan_vec2 const *xy,
+                                     alwan_vec2 const *xy_white,
+                                     alwan_scalar *wavelength_out,
+                                     alwan_vec2 *xy_wl_out,
+                                     alwan_vec2 *xy_cw_out);
+
+/* P9.6: Compute gamut volume ratio between two RGB color spaces
+ * Computes the ratio of gamut volumes: volume(space1) / volume(space2)
+ * space1: first RGB color space descriptor
+ * space2: second RGB color space descriptor
+ * ratio_out: receives volume ratio
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_gamut_volume_ratio(alwan_rgb_space_desc const *space1,
+                               alwan_rgb_space_desc const *space2,
+                               alwan_scalar *ratio_out);
+
+/* P9.6: Compute gamut coverage percentage between two RGB color spaces
+ * Computes what percentage of space1's gamut is covered by space2's gamut
+ * Uses Monte Carlo sampling to estimate overlap
+ * space1: reference RGB color space (the gamut we're measuring coverage of)
+ * space2: comparison RGB color space (the gamut we're comparing against)
+ * num_samples: number of Monte Carlo samples (recommended: 10000+)
+ * seed: random seed for reproducibility
+ * coverage_out: receives coverage percentage [0-100]
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_gamut_coverage(alwan_rgb_space_desc const *space1,
+                          alwan_rgb_space_desc const *space2,
+                          size_t num_samples,
+                          unsigned int seed,
+                          alwan_scalar *coverage_out);
+
+/* ----------------------------------------------------------------
+ * P9.5: Advanced Gamut Mapping Algorithms
+ * ---------------------------------------------------------------- */
+
+/* P9.5: Map out-of-gamut RGB color to valid gamut
+ * Maps an RGB color (possibly out of [0,1] range) back into valid gamut
+ * using perceptually-aware algorithms
+ * method: gamut mapping algorithm to use
+ * space: RGB color space descriptor (primaries and white point)
+ * rgb_linear: input RGB color in linear (not gamma-corrected) space
+ * rgb_out: receives mapped RGB color (guaranteed in [0,1])
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_gamut_map_advanced(alwan_gamut_map_method method,
+                              alwan_rgb_space_desc const *space,
+                              alwan_vec3 const *rgb_linear,
+                              alwan_vec3 *rgb_out);
 
 /* ----------------------------------------------------------------
  * P8.1: Spectral Upsampling - RGB to Spectrum Conversion
