@@ -53,6 +53,7 @@ extern int test_320_gamut_analysis_main(void);
 extern int test_330_vision_perception_main(void);
 extern int test_340_math_utilities_main(void);
 extern int test_350_reference_data_main(void);
+extern int test_360_color_correction_main(void);
 
 /* Test registry */
 typedef struct {
@@ -104,6 +105,7 @@ static test_suite const g_test_suites[] = {
     {"330_vision_perception", test_330_vision_perception_main},
     {"340_math_utilities", test_340_math_utilities_main},
     {"350_reference_data", test_350_reference_data_main},
+    {"360_color_correction", test_360_color_correction_main},
 };
 
 int main(void) {

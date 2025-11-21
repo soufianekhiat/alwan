@@ -1677,6 +1677,58 @@ int alwan_rgb_space_by_name(char const *name, alwan_scalar primaries[6], alwan_v
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not found */
 int alwan_rgb_space_tf_name(char const *name, char *tf_name, size_t tf_name_size);
 
+/* ================================================================
+ * Color Correction & Grading Tools
+ * ================================================================ */
+
+/* Lift/Gamma/Gain (LGG) color correction
+ * rgb_in: input RGB values (linear, [0,1] for normal range)
+ * lift: lift adjustment per channel (shadows) - typical range [-1, 1]
+ * gamma: gamma adjustment per channel (midtones) - typical range [0.1, 10]
+ * gain: gain adjustment per channel (highlights) - typical range [0, 2]
+ * rgb_out: output RGB values
+ * Formula: rgb_out = ((rgb_in + lift) ^ (1/gamma)) * gain
+ * Returns ALWAN_OK on success */
+int alwan_lgg_apply(alwan_vec3 const *rgb_in, alwan_vec3 const *lift,
+                    alwan_vec3 const *gamma, alwan_vec3 const *gain, alwan_vec3 *rgb_out);
+
+/* Color matrix grading preset types */
+typedef enum {
+    ALWAN_COLOR_MATRIX_SEPIA = 0,           /* Sepia tone effect */
+    ALWAN_COLOR_MATRIX_VINTAGE,             /* Vintage look */
+    ALWAN_COLOR_MATRIX_BLEACH_BYPASS,       /* Bleach bypass effect */
+    ALWAN_COLOR_MATRIX_COOL,                /* Cool tone shift */
+    ALWAN_COLOR_MATRIX_WARM,                /* Warm tone shift */
+    ALWAN_COLOR_MATRIX_MONOCHROME,          /* Black and white */
+    ALWAN_COLOR_MATRIX_NIGHT_VISION         /* Night vision look */
+} alwan_color_matrix_preset;
+
+/* Apply color matrix transformation (custom or preset)
+ * rgb_in: input RGB values
+ * matrix_3x3: 3x3 color transformation matrix
+ * rgb_out: output RGB values
+ * Returns ALWAN_OK on success */
+int alwan_color_matrix_apply(alwan_vec3 const *rgb_in, alwan_mat3x3 const *matrix_3x3,
+                              alwan_vec3 *rgb_out);
+
+/* Get preset color grading matrix
+ * preset: preset type from alwan_color_matrix_preset
+ * matrix_3x3: receives the preset matrix
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID for unknown preset */
+int alwan_color_matrix_get_preset(alwan_color_matrix_preset preset, alwan_mat3x3 *matrix_3x3);
+
+/* Printer lights color correction (film-style)
+ * rgb_in: input RGB values (linear)
+ * red_lights: red printer light adjustment (0-50, default 25)
+ * green_lights: green printer light adjustment (0-50, default 25)
+ * blue_lights: blue printer light adjustment (0-50, default 25)
+ * rgb_out: output RGB values
+ * Each light unit represents approximately 0.025 log exposure change
+ * Returns ALWAN_OK on success */
+int alwan_printer_lights_apply(alwan_vec3 const *rgb_in, alwan_scalar red_lights,
+                                alwan_scalar green_lights, alwan_scalar blue_lights,
+                                alwan_vec3 *rgb_out);
+
 #ifdef __cplusplus
 }
 #endif

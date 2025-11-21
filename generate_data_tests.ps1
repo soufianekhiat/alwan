@@ -767,7 +767,7 @@ TEST_COLORS_XYZ_= np.array([
 #  Jzazbz (HDR perceptual color space)
 print('   Jzazbz')
 jzazbz_pairs = []
-for xyz in TEST_COLORS_XYZ_
+for xyz in TEST_COLORS_XYZ_:
     xyz_norm = xyz / 100.0  # Y=1 scale
     jzazbz = colour.XYZ_to_Jzazbz(xyz_norm)
     jzazbz_pairs.extend(xyz.tolist())
@@ -778,7 +778,7 @@ write_ref('test_xyz_jzazbz_pairs', jzazbz_pairs, 'XYZ + Jzazbz pairs')
 print('   DIN99 Family')
 # Convert XYZ to Lab first (using default D65)
 lab_colors = []
-for xyz in TEST_COLORS_XYZ_
+for xyz in TEST_COLORS_XYZ_:
     xyz_norm = xyz / 100.0
     lab = colour.XYZ_to_Lab(xyz_norm)  # Default D65
     lab_colors.append(lab)
@@ -787,7 +787,7 @@ for xyz in TEST_COLORS_XYZ_
 din99_pairs = []
 for i, lab in enumerate(lab_colors):
     din99 = colour.Lab_to_DIN99(lab, method='DIN99')
-    din99_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
+    din99_pairs.extend(TEST_COLORS_XYZ_[i].tolist())
     din99_pairs.extend(din99.tolist())
 write_ref('test_lab_din99_pairs', din99_pairs, 'XYZ + DIN99 pairs')
 
@@ -795,7 +795,7 @@ write_ref('test_lab_din99_pairs', din99_pairs, 'XYZ + DIN99 pairs')
 din99b_pairs = []
 for i, lab in enumerate(lab_colors):
     din99b = colour.Lab_to_DIN99(lab, method='DIN99b')
-    din99b_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
+    din99b_pairs.extend(TEST_COLORS_XYZ_[i].tolist())
     din99b_pairs.extend(din99b.tolist())
 write_ref('test_lab_din99b_pairs', din99b_pairs, 'XYZ + DIN99b pairs')
 
@@ -803,7 +803,7 @@ write_ref('test_lab_din99b_pairs', din99b_pairs, 'XYZ + DIN99b pairs')
 din99c_pairs = []
 for i, lab in enumerate(lab_colors):
     din99c = colour.Lab_to_DIN99(lab, method='DIN99c')
-    din99c_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
+    din99c_pairs.extend(TEST_COLORS_XYZ_[i].tolist())
     din99c_pairs.extend(din99c.tolist())
 write_ref('test_lab_din99c_pairs', din99c_pairs, 'XYZ + DIN99c pairs')
 
@@ -811,14 +811,14 @@ write_ref('test_lab_din99c_pairs', din99c_pairs, 'XYZ + DIN99c pairs')
 din99d_pairs = []
 for i, lab in enumerate(lab_colors):
     din99d = colour.Lab_to_DIN99(lab, method='DIN99d')
-    din99d_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
+    din99d_pairs.extend(TEST_COLORS_XYZ_[i].tolist())
     din99d_pairs.extend(din99d.tolist())
 write_ref('test_lab_din99d_pairs', din99d_pairs, 'XYZ + DIN99d pairs')
 
 #  OSA-UCS
 print('   OSA-UCS')
 osa_ucs_pairs = []
-for xyz in TEST_COLORS_XYZ_
+for xyz in TEST_COLORS_XYZ_:
     xyz_norm = xyz / 100.0
     try:
         osa_ucs = colour.XYZ_to_OSA_UCS(xyz_norm)
@@ -833,7 +833,7 @@ write_ref('test_xyz_osa_ucs_pairs', osa_ucs_pairs, 'XYZ + OSA-UCS pairs')
 #  Hunter Lab
 print('   Hunter Lab')
 hunter_lab_pairs = []
-for xyz in TEST_COLORS_XYZ_
+for xyz in TEST_COLORS_XYZ_:
     xyz_norm = xyz / 100.0
     hunter_lab = colour.XYZ_to_Hunter_Lab(xyz_norm)  # Default D65
     # Replace any NaN values with 0
@@ -845,7 +845,7 @@ write_ref('test_xyz_hunter_lab_pairs', hunter_lab_pairs, 'XYZ + Hunter Lab pairs
 #  IPT
 print('   IPT')
 ipt_pairs = []
-for xyz in TEST_COLORS_XYZ_
+for xyz in TEST_COLORS_XYZ_:
     xyz_norm = xyz / 100.0
     ipt = colour.XYZ_to_IPT(xyz_norm)
     ipt_pairs.extend(xyz.tolist())
@@ -855,7 +855,7 @@ write_ref('test_xyz_ipt_pairs', ipt_pairs, 'XYZ + IPT pairs')
 #  ProLab
 print('   ProLab')
 prolab_pairs = []
-for xyz in TEST_COLORS_XYZ_
+for xyz in TEST_COLORS_XYZ_:
     xyz_norm = xyz / 100.0
     prolab = colour.XYZ_to_ProLab(xyz_norm)
     prolab_pairs.extend(xyz.tolist())
@@ -888,7 +888,7 @@ print('   ZCAM')
 # Note: colour-science doesn't have ZCAM - generate placeholder with zeros
 # Format: XYZ (3) + Jz, Cz, hz, Qz, Mz, Sz (6) = 9 values per color
 zcam_correlates = []
-for xyz in TEST_COLORS_
+for xyz in TEST_COLORS_:
     zcam_correlates.extend(xyz.tolist())  # XYZ
     zcam_correlates.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # Jz, Cz, hz, Qz, Mz, Sz
 write_ref('test_zcam_correlates', zcam_correlates, 'ZCAM correlates (placeholder)')
@@ -898,7 +898,7 @@ print('   Hunt')
 # Note: colour-science doesn't have Hunt CAM - generate placeholder with zeros
 # Format: XYZ (3) + J, C, h, s, Q, M (6) = 9 values per color
 hunt_correlates = []
-for xyz in TEST_COLORS_
+for xyz in TEST_COLORS_:
     hunt_correlates.extend(xyz.tolist())  # XYZ
     hunt_correlates.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # J, C, h, s, Q, M
 write_ref('test_hunt_correlates', hunt_correlates, 'Hunt correlates (placeholder)')
@@ -908,7 +908,7 @@ print('   RLAB')
 # Note: colour-science doesn't have RLAB - generate placeholder with zeros
 # Format: XYZ (3) + L, C, h (3) = 6 values per color
 rlab_correlates = []
-for xyz in TEST_COLORS_
+for xyz in TEST_COLORS_:
     rlab_correlates.extend(xyz.tolist())  # XYZ
     rlab_correlates.extend([0.0, 0.0, 0.0])  # L, C, h
 write_ref('test_rlab_correlates', rlab_correlates, 'RLAB correlates (placeholder)')
@@ -2105,6 +2105,188 @@ try:
 
 except Exception as e:
     print(f'  Warning: CSF reference data generation failed: {e}')
+    import traceback
+    traceback.print_exc()
+
+# ================================================================
+# Color Correction & Grading Tools Test Reference Data
+# ================================================================
+
+print('\n' + '=' * 80)
+print('Color Correction & Grading Tools Test Reference Data')
+print('=' * 80)
+
+# Lift/Gamma/Gain (LGG) Tests
+print('\nLift/Gamma/Gain (LGG) Tests')
+
+try:
+    # Test 1: LGG neutral (identity)
+    rgb_in = np.array([0.5, 0.5, 0.5])
+    lift = np.array([0.0, 0.0, 0.0])
+    gamma = np.array([1.0, 1.0, 1.0])
+    gain = np.array([1.0, 1.0, 1.0])
+
+    # LGG formula: ((rgb + lift) ^ (1/gamma)) * gain
+    rgb_lifted = rgb_in + lift
+    rgb_lifted = np.maximum(rgb_lifted, 0.0)  # Clamp negative values
+    rgb_gamma = np.power(rgb_lifted, 1.0 / gamma)
+    rgb_out = rgb_gamma * gain
+
+    write_ref('lgg_neutral', rgb_out.tolist(), 'LGG neutral (identity) [R, G, B]')
+
+    # Test 2: LGG lift adjustment
+    rgb_in = np.array([0.2, 0.3, 0.4])
+    lift = np.array([0.1, 0.0, -0.1])
+    gamma = np.array([1.0, 1.0, 1.0])
+    gain = np.array([1.0, 1.0, 1.0])
+
+    rgb_lifted = rgb_in + lift
+    rgb_lifted = np.maximum(rgb_lifted, 0.0)
+    rgb_gamma = np.power(rgb_lifted, 1.0 / gamma)
+    rgb_out = rgb_gamma * gain
+
+    write_ref('lgg_lift', rgb_out.tolist(), 'LGG lift adjustment [R, G, B]')
+
+    # Test 3: LGG gamma adjustment
+    rgb_in = np.array([0.5, 0.5, 0.5])
+    lift = np.array([0.0, 0.0, 0.0])
+    gamma = np.array([2.0, 0.5, 1.0])
+    gain = np.array([1.0, 1.0, 1.0])
+
+    rgb_lifted = rgb_in + lift
+    rgb_lifted = np.maximum(rgb_lifted, 0.0)
+    rgb_gamma = np.power(rgb_lifted, 1.0 / gamma)
+    rgb_out = rgb_gamma * gain
+
+    write_ref('lgg_gamma', rgb_out.tolist(), 'LGG gamma adjustment [R, G, B]')
+
+    # Test 4: LGG gain adjustment
+    rgb_in = np.array([0.5, 0.5, 0.5])
+    lift = np.array([0.0, 0.0, 0.0])
+    gamma = np.array([1.0, 1.0, 1.0])
+    gain = np.array([2.0, 0.5, 1.0])
+
+    rgb_lifted = rgb_in + lift
+    rgb_lifted = np.maximum(rgb_lifted, 0.0)
+    rgb_gamma = np.power(rgb_lifted, 1.0 / gamma)
+    rgb_out = rgb_gamma * gain
+
+    write_ref('lgg_gain', rgb_out.tolist(), 'LGG gain adjustment [R, G, B]')
+
+    # Test 5: LGG combined adjustments
+    rgb_in = np.array([0.3, 0.5, 0.7])
+    lift = np.array([0.1, 0.0, -0.1])
+    gamma = np.array([1.2, 1.0, 0.8])
+    gain = np.array([1.1, 1.0, 0.9])
+
+    rgb_lifted = rgb_in + lift
+    rgb_lifted = np.maximum(rgb_lifted, 0.0)
+    rgb_gamma = np.power(rgb_lifted, 1.0 / gamma)
+    rgb_out = rgb_gamma * gain
+
+    write_ref('lgg_combined', rgb_out.tolist(), 'LGG combined adjustments [R, G, B]')
+
+    print(f'  Generated LGG test reference values:')
+    print(f'    Neutral: {rgb_out}')
+    print(f'    Combined: [{rgb_out[0]:.6f}, {rgb_out[1]:.6f}, {rgb_out[2]:.6f}]')
+
+except Exception as e:
+    print(f'  Warning: LGG reference data generation failed: {e}')
+    import traceback
+    traceback.print_exc()
+
+# Color Matrix Tests
+print('\nColor Matrix Tests')
+
+try:
+    # Sepia matrix (standard sepia tone)
+    sepia_matrix = np.array([
+        [0.393, 0.769, 0.189],
+        [0.349, 0.686, 0.168],
+        [0.272, 0.534, 0.131]
+    ])
+
+    # Test with mid-gray
+    rgb_in = np.array([0.5, 0.5, 0.5])
+    rgb_out = sepia_matrix @ rgb_in
+
+    write_ref('color_matrix_sepia', rgb_out.tolist(), 'Sepia matrix applied to mid-gray [R, G, B]')
+
+    # Monochrome matrix (ITU-R BT.601 luma coefficients)
+    mono_matrix = np.array([
+        [0.299, 0.587, 0.114],
+        [0.299, 0.587, 0.114],
+        [0.299, 0.587, 0.114]
+    ])
+
+    rgb_in = np.array([0.8, 0.4, 0.2])
+    rgb_out = mono_matrix @ rgb_in
+
+    write_ref('color_matrix_monochrome', rgb_out.tolist(), 'Monochrome matrix applied to colored input [R, G, B]')
+
+    print(f'  Generated color matrix test reference values')
+    print(f'    Sepia mid-gray: [{rgb_out[0]:.6f}, {rgb_out[1]:.6f}, {rgb_out[2]:.6f}]')
+
+except Exception as e:
+    print(f'  Warning: Color matrix reference data generation failed: {e}')
+    import traceback
+    traceback.print_exc()
+
+# Printer Lights Tests
+print('\nPrinter Lights Tests')
+
+try:
+    # Printer lights formula: output = input * 10^((25 - lights) * 0.025)
+    default_lights = 25.0
+    log_step = 0.025
+
+    # Test 1: Neutral lights (25, 25, 25) - should be identity
+    rgb_in = np.array([0.5, 0.6, 0.7])
+    red_lights = 25.0
+    green_lights = 25.0
+    blue_lights = 25.0
+
+    red_exp = (default_lights - red_lights) * log_step
+    green_exp = (default_lights - green_lights) * log_step
+    blue_exp = (default_lights - blue_lights) * log_step
+
+    rgb_out = rgb_in * np.power(10.0, np.array([red_exp, green_exp, blue_exp]))
+
+    write_ref('printer_lights_neutral', rgb_out.tolist(), 'Printer lights neutral (25, 25, 25) [R, G, B]')
+
+    # Test 2: Per-channel adjustment (20, 25, 30)
+    rgb_in = np.array([0.3, 0.5, 0.7])
+    red_lights = 20.0
+    green_lights = 25.0
+    blue_lights = 30.0
+
+    red_exp = (default_lights - red_lights) * log_step
+    green_exp = (default_lights - green_lights) * log_step
+    blue_exp = (default_lights - blue_lights) * log_step
+
+    rgb_out = rgb_in * np.power(10.0, np.array([red_exp, green_exp, blue_exp]))
+
+    write_ref('printer_lights_per_channel', rgb_out.tolist(), 'Printer lights per-channel (20, 25, 30) [R, G, B]')
+
+    # Test 3: Exposure adjustment (15, 25, 35)
+    rgb_in = np.array([0.5, 0.5, 0.5])
+    red_lights = 15.0
+    green_lights = 25.0
+    blue_lights = 35.0
+
+    red_exp = (default_lights - red_lights) * log_step
+    green_exp = (default_lights - green_lights) * log_step
+    blue_exp = (default_lights - blue_lights) * log_step
+
+    rgb_out = rgb_in * np.power(10.0, np.array([red_exp, green_exp, blue_exp]))
+
+    write_ref('printer_lights_exposure', rgb_out.tolist(), 'Printer lights exposure adjustment (15, 25, 35) [R, G, B]')
+
+    print(f'  Generated printer lights test reference values')
+    print(f'    Per-channel: [{rgb_out[0]:.6f}, {rgb_out[1]:.6f}, {rgb_out[2]:.6f}]')
+
+except Exception as e:
+    print(f'  Warning: Printer lights reference data generation failed: {e}')
     import traceback
     traceback.print_exc()
 
