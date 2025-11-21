@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * P8.1: Spectral Upsampling - RGB to Spectrum Conversion
+ * Spectral Upsampling - RGB to Spectrum Conversion
  * Implements reflectance recovery methods based on colour-science
  */
 

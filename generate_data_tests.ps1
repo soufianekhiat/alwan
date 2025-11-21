@@ -271,11 +271,11 @@ write_ref('delta_e_cmc', delta_e_cmc, 'Delta E CMC(2:1)')
 write_ref('delta_e_2000', delta_e_2000, 'Delta E 2000')
 
 # ================================================================
-# P3: Extended Delta E Metrics
+#  Extended Delta E Metrics
 # ================================================================
-print('\nP3 Extended Delta E Metrics:')
+print('\nExtended Delta E Metrics:')
 
-# Test RGB color pairs for P3 metrics
+# Test RGB color pairs for metrics
 p3_rgb_pairs = [
     ([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),   # Black to white
     ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),   # Red to green
@@ -284,7 +284,7 @@ p3_rgb_pairs = [
     ([1.0, 0.0, 0.0], [1.0, 0.1, 0.0]),   # Red to slightly orange
 ]
 
-# P3.1: Delta E ITP (BT.2100 HDR)
+#  Delta E ITP (BT.2100 HDR)
 from colour.difference import delta_E_ITP
 
 delta_e_itp_ictcp1 = []
@@ -300,11 +300,11 @@ for rgb1, rgb2 in p3_rgb_pairs:
     delta_e_itp_ictcp2.extend(ictcp2)
     delta_e_itp.append(de_itp)
 
-write_ref('delta_e_itp_ictcp1', delta_e_itp_ictcp1, 'P3.1 ICtCp color 1 for Delta E ITP')
-write_ref('delta_e_itp_ictcp2', delta_e_itp_ictcp2, 'P3.1 ICtCp color 2 for Delta E ITP')
-write_ref('delta_e_itp', delta_e_itp, 'P3.1 Delta E ITP values')
+write_ref('delta_e_itp_ictcp1', delta_e_itp_ictcp1, 'ICtCp color 1 for Delta E ITP')
+write_ref('delta_e_itp_ictcp2', delta_e_itp_ictcp2, 'ICtCp color 2 for Delta E ITP')
+write_ref('delta_e_itp', delta_e_itp, 'Delta E ITP values')
 
-# P3.3: Delta E DIN99
+#  Delta E DIN99
 delta_e_din99_1 = []
 delta_e_din99_2 = []
 delta_e_din99 = []
@@ -322,11 +322,11 @@ for rgb1, rgb2 in p3_rgb_pairs:
     delta_e_din99_2.extend(din99_2)
     delta_e_din99.append(de_din99)
 
-write_ref('delta_e_din99_1', delta_e_din99_1, 'P3.3 DIN99 color 1')
-write_ref('delta_e_din99_2', delta_e_din99_2, 'P3.3 DIN99 color 2')
-write_ref('delta_e_din99', delta_e_din99, 'P3.3 Delta E DIN99 values')
+write_ref('delta_e_din99_1', delta_e_din99_1, 'DIN99 color 1')
+write_ref('delta_e_din99_2', delta_e_din99_2, 'DIN99 color 2')
+write_ref('delta_e_din99', delta_e_din99, 'Delta E DIN99 values')
 
-# P3.6: Delta E ZCAM (Euclidean in Jzazbz)
+#  Delta E ZCAM (Euclidean in Jzazbz)
 delta_e_zcam_jzazbz1 = []
 delta_e_zcam_jzazbz2 = []
 delta_e_zcam = []
@@ -342,11 +342,11 @@ for rgb1, rgb2 in p3_rgb_pairs:
     delta_e_zcam_jzazbz2.extend(jzazbz2)
     delta_e_zcam.append(de_zcam)
 
-write_ref('delta_e_zcam_jzazbz1', delta_e_zcam_jzazbz1, 'P3.6 Jzazbz color 1 for Delta E ZCAM')
-write_ref('delta_e_zcam_jzazbz2', delta_e_zcam_jzazbz2, 'P3.6 Jzazbz color 2 for Delta E ZCAM')
-write_ref('delta_e_zcam', delta_e_zcam, 'P3.6 Delta E ZCAM values')
+write_ref('delta_e_zcam_jzazbz1', delta_e_zcam_jzazbz1, 'Jzazbz color 1 for Delta E ZCAM')
+write_ref('delta_e_zcam_jzazbz2', delta_e_zcam_jzazbz2, 'Jzazbz color 2 for Delta E ZCAM')
+write_ref('delta_e_zcam', delta_e_zcam, 'Delta E ZCAM values')
 
-# P3.4/P3.5: Delta E CAM02/CAM16 LCD and SCD
+#  Delta E CAM02/CAM16 LCD and SCD
 delta_e_cam_lab1 = []
 delta_e_cam_lab2 = []
 delta_e_cam02_lcd = []
@@ -372,12 +372,12 @@ for rgb1, rgb2 in p3_rgb_pairs:
     delta_e_cam16_lcd.append(de_cam16_lcd)
     delta_e_cam16_scd.append(de_cam16_scd)
 
-write_ref('delta_e_cam_lab1', delta_e_cam_lab1, 'P3.4/P3.5 Lab color 1 for CAM02/CAM16')
-write_ref('delta_e_cam_lab2', delta_e_cam_lab2, 'P3.4/P3.5 Lab color 2 for CAM02/CAM16')
-write_ref('delta_e_cam02_lcd', delta_e_cam02_lcd, 'P3.4 Delta E CAM02-LCD values')
-write_ref('delta_e_cam02_scd', delta_e_cam02_scd, 'P3.4 Delta E CAM02-SCD values')
-write_ref('delta_e_cam16_lcd', delta_e_cam16_lcd, 'P3.5 Delta E CAM16-LCD values')
-write_ref('delta_e_cam16_scd', delta_e_cam16_scd, 'P3.5 Delta E CAM16-SCD values')
+write_ref('delta_e_cam_lab1', delta_e_cam_lab1, 'Lab color 1 for CAM02/CAM16')
+write_ref('delta_e_cam_lab2', delta_e_cam_lab2, 'Lab color 2 for CAM02/CAM16')
+write_ref('delta_e_cam02_lcd', delta_e_cam02_lcd, 'Delta E CAM02-LCD values')
+write_ref('delta_e_cam02_scd', delta_e_cam02_scd, 'Delta E CAM02-SCD values')
+write_ref('delta_e_cam16_lcd', delta_e_cam16_lcd, 'Delta E CAM16-LCD values')
+write_ref('delta_e_cam16_scd', delta_e_cam16_scd, 'Delta E CAM16-SCD values')
 
 # ================================================================
 # Convenience Color Models
@@ -497,7 +497,7 @@ for rgb in test_rgb:
 write_ref('rgb_to_ycocg', ycocg_values, 'RGB -> YCoCg')
 
 # ================================================================
-# P1.2: ICtCp (ITU-R BT.2100 HDR) Reference Values
+#  ICtCp (ITU-R BT.2100 HDR) Reference Values
 # ================================================================
 print('\nICtCp (BT.2100 HDR):')
 
@@ -736,16 +736,16 @@ for xyz in test_xyz_colors:
 write_ref('adapted_a_to_d65_bradford', adapted_a_to_d65_bradford, 'Adapted colors A->D65 Bradford')
 
 # ================================================================
-# P1.3-P1.8: Extended Color Spaces
+# Extended Color Spaces
 # ================================================================
-print('\nP1.3-P1.8 Extended Color Spaces:')
+print('\nExtended Color Spaces:')
 
-# Test colors in XYZ (Y=100 scale) for P1 tests
+# Test colors in XYZ (Y=100 scale) for tests
 # Get exact D65 from colour-science for consistency
 d65_xy_p1 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
 d65_xyz_p1 = colour.xy_to_XYZ(d65_xy_p1) * 100.0  # Scale to Y=100
 
-TEST_COLORS_XYZ_P1 = np.array([
+TEST_COLORS_XYZ_= np.array([
     [0.0, 0.0, 0.0],           # Black
     d65_xyz_p1.tolist(),       # White D65 (exact from colour-science)
     [41.24, 21.26, 1.93],      # Red
@@ -764,21 +764,21 @@ TEST_COLORS_XYZ_P1 = np.array([
     [10.0, 15.0, 20.0],        # Dark
 ])
 
-# P1.3: Jzazbz (HDR perceptual color space)
-print('  P1.3: Jzazbz')
+#  Jzazbz (HDR perceptual color space)
+print('   Jzazbz')
 jzazbz_pairs = []
-for xyz in TEST_COLORS_XYZ_P1:
+for xyz in TEST_COLORS_XYZ_
     xyz_norm = xyz / 100.0  # Y=1 scale
     jzazbz = colour.XYZ_to_Jzazbz(xyz_norm)
     jzazbz_pairs.extend(xyz.tolist())
     jzazbz_pairs.extend(jzazbz.tolist())
-write_ref('test_xyz_jzazbz_pairs', jzazbz_pairs, 'P1.3 XYZ + Jzazbz pairs')
+write_ref('test_xyz_jzazbz_pairs', jzazbz_pairs, 'XYZ + Jzazbz pairs')
 
-# P1.4: DIN99 Family (4 variants)
-print('  P1.4: DIN99 Family')
+#  DIN99 Family (4 variants)
+print('   DIN99 Family')
 # Convert XYZ to Lab first (using default D65)
 lab_colors = []
-for xyz in TEST_COLORS_XYZ_P1:
+for xyz in TEST_COLORS_XYZ_
     xyz_norm = xyz / 100.0
     lab = colour.XYZ_to_Lab(xyz_norm)  # Default D65
     lab_colors.append(lab)
@@ -789,7 +789,7 @@ for i, lab in enumerate(lab_colors):
     din99 = colour.Lab_to_DIN99(lab, method='DIN99')
     din99_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
     din99_pairs.extend(din99.tolist())
-write_ref('test_lab_din99_pairs', din99_pairs, 'P1.4 XYZ + DIN99 pairs')
+write_ref('test_lab_din99_pairs', din99_pairs, 'XYZ + DIN99 pairs')
 
 # DIN99b
 din99b_pairs = []
@@ -797,7 +797,7 @@ for i, lab in enumerate(lab_colors):
     din99b = colour.Lab_to_DIN99(lab, method='DIN99b')
     din99b_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
     din99b_pairs.extend(din99b.tolist())
-write_ref('test_lab_din99b_pairs', din99b_pairs, 'P1.4 XYZ + DIN99b pairs')
+write_ref('test_lab_din99b_pairs', din99b_pairs, 'XYZ + DIN99b pairs')
 
 # DIN99c
 din99c_pairs = []
@@ -805,7 +805,7 @@ for i, lab in enumerate(lab_colors):
     din99c = colour.Lab_to_DIN99(lab, method='DIN99c')
     din99c_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
     din99c_pairs.extend(din99c.tolist())
-write_ref('test_lab_din99c_pairs', din99c_pairs, 'P1.4 XYZ + DIN99c pairs')
+write_ref('test_lab_din99c_pairs', din99c_pairs, 'XYZ + DIN99c pairs')
 
 # DIN99d
 din99d_pairs = []
@@ -813,12 +813,12 @@ for i, lab in enumerate(lab_colors):
     din99d = colour.Lab_to_DIN99(lab, method='DIN99d')
     din99d_pairs.extend(TEST_COLORS_XYZ_P1[i].tolist())
     din99d_pairs.extend(din99d.tolist())
-write_ref('test_lab_din99d_pairs', din99d_pairs, 'P1.4 XYZ + DIN99d pairs')
+write_ref('test_lab_din99d_pairs', din99d_pairs, 'XYZ + DIN99d pairs')
 
-# P1.5: OSA-UCS
-print('  P1.5: OSA-UCS')
+#  OSA-UCS
+print('   OSA-UCS')
 osa_ucs_pairs = []
-for xyz in TEST_COLORS_XYZ_P1:
+for xyz in TEST_COLORS_XYZ_
     xyz_norm = xyz / 100.0
     try:
         osa_ucs = colour.XYZ_to_OSA_UCS(xyz_norm)
@@ -828,47 +828,47 @@ for xyz in TEST_COLORS_XYZ_P1:
         # Some colors may fail
         osa_ucs_pairs.extend(xyz.tolist())
         osa_ucs_pairs.extend([0.0, 0.0, 0.0])
-write_ref('test_xyz_osa_ucs_pairs', osa_ucs_pairs, 'P1.5 XYZ + OSA-UCS pairs')
+write_ref('test_xyz_osa_ucs_pairs', osa_ucs_pairs, 'XYZ + OSA-UCS pairs')
 
-# P1.6: Hunter Lab
-print('  P1.6: Hunter Lab')
+#  Hunter Lab
+print('   Hunter Lab')
 hunter_lab_pairs = []
-for xyz in TEST_COLORS_XYZ_P1:
+for xyz in TEST_COLORS_XYZ_
     xyz_norm = xyz / 100.0
     hunter_lab = colour.XYZ_to_Hunter_Lab(xyz_norm)  # Default D65
     # Replace any NaN values with 0
     hunter_lab = np.nan_to_num(hunter_lab, nan=0.0)
     hunter_lab_pairs.extend(xyz.tolist())
     hunter_lab_pairs.extend(hunter_lab.tolist())
-write_ref('test_xyz_hunter_lab_pairs', hunter_lab_pairs, 'P1.6 XYZ + Hunter Lab pairs')
+write_ref('test_xyz_hunter_lab_pairs', hunter_lab_pairs, 'XYZ + Hunter Lab pairs')
 
-# P1.7: IPT
-print('  P1.7: IPT')
+#  IPT
+print('   IPT')
 ipt_pairs = []
-for xyz in TEST_COLORS_XYZ_P1:
+for xyz in TEST_COLORS_XYZ_
     xyz_norm = xyz / 100.0
     ipt = colour.XYZ_to_IPT(xyz_norm)
     ipt_pairs.extend(xyz.tolist())
     ipt_pairs.extend(ipt.tolist())
-write_ref('test_xyz_ipt_pairs', ipt_pairs, 'P1.7 XYZ + IPT pairs')
+write_ref('test_xyz_ipt_pairs', ipt_pairs, 'XYZ + IPT pairs')
 
-# P1.8: ProLab
-print('  P1.8: ProLab')
+#  ProLab
+print('   ProLab')
 prolab_pairs = []
-for xyz in TEST_COLORS_XYZ_P1:
+for xyz in TEST_COLORS_XYZ_
     xyz_norm = xyz / 100.0
     prolab = colour.XYZ_to_ProLab(xyz_norm)
     prolab_pairs.extend(xyz.tolist())
     prolab_pairs.extend(prolab.tolist())
-write_ref('test_xyz_prolab_pairs', prolab_pairs, 'P1.8 XYZ + ProLab pairs')
+write_ref('test_xyz_prolab_pairs', prolab_pairs, 'XYZ + ProLab pairs')
 
 # ================================================================
-# P2: Advanced Color Appearance Models
+#  Advanced Color Appearance Models
 # ================================================================
-print('\nP2 Advanced Color Appearance Models:')
+print('\nAdvanced Color Appearance Models:')
 
-# Test colors for P2 (12 colors)
-TEST_COLORS_P2 = np.array([
+# Test colors for (12 colors)
+TEST_COLORS_= np.array([
     [0.0, 0.0, 0.0],           # Black
     [10.0, 10.54, 11.47],      # Very dark gray
     [25.0, 30.0, 35.0],        # Dark gray
@@ -883,43 +883,43 @@ TEST_COLORS_P2 = np.array([
     [60.0, 40.0, 30.0],        # Orange
 ])
 
-# P2: ZCAM (viewing conditions: La=100, Yb=20, Average surround)
-print('  P2: ZCAM')
+#  ZCAM (viewing conditions: La=100, Yb=20, Average surround)
+print('   ZCAM')
 # Note: colour-science doesn't have ZCAM - generate placeholder with zeros
 # Format: XYZ (3) + Jz, Cz, hz, Qz, Mz, Sz (6) = 9 values per color
 zcam_correlates = []
-for xyz in TEST_COLORS_P2:
+for xyz in TEST_COLORS_
     zcam_correlates.extend(xyz.tolist())  # XYZ
     zcam_correlates.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # Jz, Cz, hz, Qz, Mz, Sz
-write_ref('test_zcam_correlates', zcam_correlates, 'P2 ZCAM correlates (placeholder)')
+write_ref('test_zcam_correlates', zcam_correlates, 'ZCAM correlates (placeholder)')
 
-# P2: Hunt CAM (viewing conditions: La=318.31, Yb=20, Normal surround)
-print('  P2: Hunt')
+#  Hunt CAM (viewing conditions: La=318.31, Yb=20, Normal surround)
+print('   Hunt')
 # Note: colour-science doesn't have Hunt CAM - generate placeholder with zeros
 # Format: XYZ (3) + J, C, h, s, Q, M (6) = 9 values per color
 hunt_correlates = []
-for xyz in TEST_COLORS_P2:
+for xyz in TEST_COLORS_
     hunt_correlates.extend(xyz.tolist())  # XYZ
     hunt_correlates.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # J, C, h, s, Q, M
-write_ref('test_hunt_correlates', hunt_correlates, 'P2 Hunt correlates (placeholder)')
+write_ref('test_hunt_correlates', hunt_correlates, 'Hunt correlates (placeholder)')
 
-# P2: RLAB (viewing conditions: D=1.0, Y_n=100)
-print('  P2: RLAB')
+#  RLAB (viewing conditions: D=1.0, Y_n=100)
+print('   RLAB')
 # Note: colour-science doesn't have RLAB - generate placeholder with zeros
 # Format: XYZ (3) + L, C, h (3) = 6 values per color
 rlab_correlates = []
-for xyz in TEST_COLORS_P2:
+for xyz in TEST_COLORS_
     rlab_correlates.extend(xyz.tolist())  # XYZ
     rlab_correlates.extend([0.0, 0.0, 0.0])  # L, C, h
-write_ref('test_rlab_correlates', rlab_correlates, 'P2 RLAB correlates (placeholder)')
+write_ref('test_rlab_correlates', rlab_correlates, 'RLAB correlates (placeholder)')
 
 # ================================================================
-# P4: Light Quality & Rendering Metrics
+#  Light Quality & Rendering Metrics
 # ================================================================
-print('\nP4 Light Quality & Rendering Metrics:')
+print('\nLight Quality & Rendering Metrics:')
 
-# P4.6: Whiteness & Yellowness Indices
-print('  P4.6: Whiteness & Yellowness Indices')
+#  Whiteness & Yellowness Indices
+print('   Whiteness & Yellowness Indices')
 
 # Test samples for whiteness/yellowness (typical paper/plastic XYZ values)
 # Range from pure white to slightly yellowish/bluish samples
@@ -968,11 +968,11 @@ for xyz in TEST_SAMPLES_WY:
     Cx, Cz = astm_e313_yi_coeffs['D65/10']
     yi_d65_10deg.append(100.0 * (Cx * X - Cz * Z) / Y)
 
-write_ref('whiteness_test_xyz', [v for xyz in TEST_SAMPLES_WY for v in xyz.tolist()], 'P4.6 Test sample XYZ values')
-write_ref('yellowness_c_2deg', yi_c_2deg, 'P4.6 Yellowness Index C/2°')
-write_ref('yellowness_d65_2deg', yi_d65_2deg, 'P4.6 Yellowness Index D65/2°')
-write_ref('yellowness_c_10deg', yi_c_10deg, 'P4.6 Yellowness Index C/10°')
-write_ref('yellowness_d65_10deg', yi_d65_10deg, 'P4.6 Yellowness Index D65/10°')
+write_ref('whiteness_test_xyz', [v for xyz in TEST_SAMPLES_WY for v in xyz.tolist()], 'Test sample XYZ values')
+write_ref('yellowness_c_2deg', yi_c_2deg, 'Yellowness Index C/2°')
+write_ref('yellowness_d65_2deg', yi_d65_2deg, 'Yellowness Index D65/2°')
+write_ref('yellowness_c_10deg', yi_c_10deg, 'Yellowness Index C/10°')
+write_ref('yellowness_d65_10deg', yi_d65_10deg, 'Yellowness Index D65/10°')
 
 # Generate ASTM E313 Whiteness Index
 # Formula: WI = Y + 800(xn - x) + 1700(yn - y)
@@ -1008,10 +1008,10 @@ for xyz in TEST_SAMPLES_WY:
     WI = Y + 800.0 * (ill_d65_10[0] - x) + 1700.0 * (ill_d65_10[1] - y)
     wi_d65_10deg.append(WI)
 
-write_ref('whiteness_c_2deg', wi_c_2deg, 'P4.6 Whiteness Index C/2°')
-write_ref('whiteness_d65_2deg', wi_d65_2deg, 'P4.6 Whiteness Index D65/2°')
-write_ref('whiteness_c_10deg', wi_c_10deg, 'P4.6 Whiteness Index C/10°')
-write_ref('whiteness_d65_10deg', wi_d65_10deg, 'P4.6 Whiteness Index D65/10°')
+write_ref('whiteness_c_2deg', wi_c_2deg, 'Whiteness Index C/2°')
+write_ref('whiteness_d65_2deg', wi_d65_2deg, 'Whiteness Index D65/2°')
+write_ref('whiteness_c_10deg', wi_c_10deg, 'Whiteness Index C/10°')
+write_ref('whiteness_d65_10deg', wi_d65_10deg, 'Whiteness Index D65/10°')
 
 # CIE 2004 Whiteness (using D65/2° reference)
 cie2004_whiteness = []
@@ -1023,12 +1023,12 @@ for xyz in TEST_SAMPLES_WY:
     W = Y + 800 * (d65_xy_2deg[0] - xy[0]) + 1700 * (d65_xy_2deg[1] - xy[1])
     cie2004_whiteness.append(W)
 
-write_ref('whiteness_cie2004', cie2004_whiteness, 'P4.6 CIE 2004 Whiteness (D65/2°)')
+write_ref('whiteness_cie2004', cie2004_whiteness, 'CIE 2004 Whiteness (D65/2°)')
 
 # ================================================================
-# P4.1, P4.2, P4.3, P4.5: Light Quality Metrics (CRI, CQS, TM-30, CIE 224)
+# Light Quality Metrics (CRI, CQS, TM-30, CIE 224)
 # ================================================================
-print('\nP4 Light Quality Metrics (CRI, CQS, TM-30, CIE 224):')
+print('\nLight Quality Metrics (CRI, CQS, TM-30, CIE 224):')
 
 # Test illuminants for quality metrics
 test_illuminants = [
@@ -1054,21 +1054,21 @@ illuminant_names = []
 for name, spd in test_illuminants:
     illuminant_names.append(name)
 
-    # CRI (P4.1)
+    # CRI
     try:
         cri = colour.quality.colour_rendering_index(spd)
         cri_values.append(cri)
     except:
         cri_values.append(0.0)
 
-    # CQS (P4.2)
+    # CQS
     try:
         cqs = colour.quality.colour_quality_scale(spd)
         cqs_values.append(cqs)
     except:
         cqs_values.append(0.0)
 
-    # TM-30 / CIE 224:2017 (P4.3 / P4.5)
+    # TM-30 / CIE 224:2017
     try:
         tm30 = colour.quality.colour_fidelity_index_CIE2017(spd)
         tm30_values.append(tm30)
@@ -1077,18 +1077,18 @@ for name, spd in test_illuminants:
 
     print(f'  {name:10s}: CRI={cri_values[-1]:5.1f}  CQS={cqs_values[-1]:5.1f}  TM-30/CIE224={tm30_values[-1]:5.1f}')
 
-write_ref('quality_cri', cri_values, 'P4.1 CRI Ra values for test illuminants')
-write_ref('quality_cqs', cqs_values, 'P4.2 CQS values for test illuminants')
-write_ref('quality_tm30', tm30_values, 'P4.3/P4.5 TM-30 & CIE 224 Rf values')
+write_ref('quality_cri', cri_values, 'CRI Ra values for test illuminants')
+write_ref('quality_cqs', cqs_values, 'CQS values for test illuminants')
+write_ref('quality_tm30', tm30_values, 'TM-30 & CIE 224 Rf values')
 
 # Store illuminant names for test documentation
 with open(os.path.join(TEST_REF_DIR, 'quality_illuminant_names.txt'), 'w') as f:
     f.write('\n'.join(illuminant_names))
 
 # ================================================================
-# P4.4: SSI (Spectral Similarity Index)
+#  SSI (Spectral Similarity Index)
 # ================================================================
-print('\nP4.4 SSI (Spectral Similarity Index):')
+print('\nSSI (Spectral Similarity Index):')
 
 # Test SSI for various illuminant pairs
 ssi_test_pairs = [
@@ -1111,12 +1111,12 @@ for name, spd1, spd2 in ssi_test_pairs:
         print(f'  {name:20s}: SSI calculation not available ({e})')
         ssi_values.append(100.0)  # Default to perfect match for self-comparison
 
-write_ref('quality_ssi', ssi_values, 'P4.4 SSI values for illuminant pairs')
+write_ref('quality_ssi', ssi_values, 'SSI values for illuminant pairs')
 
 # ================================================================
-# P4.7: Metamerism Index
+#  Metamerism Index
 # ================================================================
-print('\nP4.7 Metamerism Index:')
+print('\nMetamerism Index:')
 
 # For metamerism, we need two reflectance spectra that are a metameric match under one illuminant
 # but differ under another. Let's use some ColorChecker patches.
@@ -1166,23 +1166,23 @@ try:
             print(f'  {desc:40s}: Error - {e}')
             metamerism_values.append(0.0)
 
-    write_ref('quality_metamerism', metamerism_values, 'P4.7 Metamerism Index values')
+    write_ref('quality_metamerism', metamerism_values, 'Metamerism Index values')
 
 except Exception as e:
     print(f'  Warning: Could not generate metamerism test data: {e}')
     # Write empty data
-    write_ref('quality_metamerism', [], 'P4.7 Metamerism Index values (not available)')
+    write_ref('quality_metamerism', [], 'Metamerism Index values (not available)')
 
 # ================================================================
-# P6: Extended Transfer Functions
+#  Extended Transfer Functions
 # ================================================================
-print('\nP6 Extended Transfer Functions:')
+print('\nExtended Transfer Functions:')
 
 # Test input values for transfer functions (linear scene values)
 TF_TEST_VALUES = [0.001, 0.01, 0.1, 0.18, 0.5, 1.0]
 
-# P6.1: Sony S-Log Family
-print('  P6.1: Sony S-Log Family')
+#  Sony S-Log Family
+print('   Sony S-Log Family')
 
 # S-Log
 try:
@@ -1191,7 +1191,7 @@ try:
     slog_ref = []
     for i, linear in enumerate(TF_TEST_VALUES):
         slog_ref.extend([linear, slog_encoded[i], slog_decoded[i]])
-    write_ref('tf_slog', slog_ref, 'P6.1 S-Log: linear, encoded, decoded triplets')
+    write_ref('tf_slog', slog_ref, 'S-Log: linear, encoded, decoded triplets')
 except Exception as e:
     print(f'    Warning: S-Log failed: {e}')
     write_ref('tf_slog', [], 'S-Log (not available)')
@@ -1203,7 +1203,7 @@ try:
     slog2_ref = []
     for i, linear in enumerate(TF_TEST_VALUES):
         slog2_ref.extend([linear, slog2_encoded[i], slog2_decoded[i]])
-    write_ref('tf_slog2', slog2_ref, 'P6.1 S-Log2: linear, encoded, decoded triplets')
+    write_ref('tf_slog2', slog2_ref, 'S-Log2: linear, encoded, decoded triplets')
 except Exception as e:
     print(f'    Warning: S-Log2 failed: {e}')
     write_ref('tf_slog2', [], 'S-Log2 (not available)')
@@ -1215,13 +1215,13 @@ try:
     slog3_ref = []
     for i, linear in enumerate(TF_TEST_VALUES):
         slog3_ref.extend([linear, slog3_encoded[i], slog3_decoded[i]])
-    write_ref('tf_slog3', slog3_ref, 'P6.1 S-Log3: linear, encoded, decoded triplets')
+    write_ref('tf_slog3', slog3_ref, 'S-Log3: linear, encoded, decoded triplets')
 except Exception as e:
     print(f'    Warning: S-Log3 failed: {e}')
     write_ref('tf_slog3', [], 'S-Log3 (not available)')
 
-# P6.2: Canon C-Log Family
-print('  P6.2: Canon C-Log Family')
+#  Canon C-Log Family
+print('   Canon C-Log Family')
 
 # C-Log
 try:
@@ -1230,7 +1230,7 @@ try:
     clog_ref = []
     for i, linear in enumerate(TF_TEST_VALUES):
         clog_ref.extend([linear, clog_encoded[i], clog_decoded[i]])
-    write_ref('tf_clog', clog_ref, 'P6.2 C-Log: linear, encoded, decoded triplets')
+    write_ref('tf_clog', clog_ref, 'C-Log: linear, encoded, decoded triplets')
 except Exception as e:
     print(f'    Warning: C-Log failed: {e}')
     write_ref('tf_clog', [], 'C-Log (not available)')
@@ -1242,7 +1242,7 @@ try:
     clog2_ref = []
     for i, linear in enumerate(TF_TEST_VALUES):
         clog2_ref.extend([linear, clog2_encoded[i], clog2_decoded[i]])
-    write_ref('tf_clog2', clog2_ref, 'P6.2 C-Log2: linear, encoded, decoded triplets')
+    write_ref('tf_clog2', clog2_ref, 'C-Log2: linear, encoded, decoded triplets')
 except Exception as e:
     print(f'    Warning: C-Log2 failed: {e}')
     write_ref('tf_clog2', [], 'C-Log2 (not available)')
@@ -1254,26 +1254,26 @@ try:
     clog3_ref = []
     for i, linear in enumerate(TF_TEST_VALUES):
         clog3_ref.extend([linear, clog3_encoded[i], clog3_decoded[i]])
-    write_ref('tf_clog3', clog3_ref, 'P6.2 C-Log3: linear, encoded, decoded triplets')
+    write_ref('tf_clog3', clog3_ref, 'C-Log3: linear, encoded, decoded triplets')
 except Exception as e:
     print(f'    Warning: C-Log3 failed: {e}')
     write_ref('tf_clog3', [], 'C-Log3 (not available)')
 
-# P6.3: Panasonic V-Log
-print('  P6.3: Panasonic V-Log')
+#  Panasonic V-Log
+print('   Panasonic V-Log')
 try:
     vlog_encoded = [colour.models.log_encoding_VLog(v, in_reflection=True, out_normalised_code_value=False) for v in TF_TEST_VALUES]
     vlog_decoded = [colour.models.log_decoding_VLog(e, in_normalised_code_value=False, out_reflection=True) for e in vlog_encoded]
     vlog_ref = []
     for i, linear in enumerate(TF_TEST_VALUES):
         vlog_ref.extend([linear, vlog_encoded[i], vlog_decoded[i]])
-    write_ref('tf_vlog', vlog_ref, 'P6.3 V-Log: linear, encoded, decoded triplets')
+    write_ref('tf_vlog', vlog_ref, 'V-Log: linear, encoded, decoded triplets')
 except Exception as e:
     print(f'    Warning: V-Log failed: {e}')
     write_ref('tf_vlog', [], 'V-Log (not available)')
 
-# P6.4: Standard Gamma Variants
-print('  P6.4: Gamma Variants')
+#  Standard Gamma Variants
+print('   Gamma Variants')
 
 # Gamma 2.2
 gamma22_test = [0.0, 0.1, 0.18, 0.5, 1.0]
@@ -1282,7 +1282,7 @@ gamma22_decoded = [e ** 2.2 for e in gamma22_encoded]
 gamma22_ref = []
 for i, linear in enumerate(gamma22_test):
     gamma22_ref.extend([linear, gamma22_encoded[i], gamma22_decoded[i]])
-write_ref('tf_gamma22', gamma22_ref, 'P6.4 Gamma 2.2: linear, encoded, decoded triplets')
+write_ref('tf_gamma22', gamma22_ref, 'Gamma 2.2: linear, encoded, decoded triplets')
 
 # Gamma 2.4
 gamma24_test = [0.0, 0.1, 0.18, 0.5, 1.0]
@@ -1291,17 +1291,17 @@ gamma24_decoded = [e ** 2.4 for e in gamma24_encoded]
 gamma24_ref = []
 for i, linear in enumerate(gamma24_test):
     gamma24_ref.extend([linear, gamma24_encoded[i], gamma24_decoded[i]])
-write_ref('tf_gamma24', gamma24_ref, 'P6.4 Gamma 2.4: linear, encoded, decoded triplets')
+write_ref('tf_gamma24', gamma24_ref, 'Gamma 2.4: linear, encoded, decoded triplets')
 
 # ================================================================
-# P7: Advanced Chromatic Adaptation Transforms (CAT)
+#  Advanced Chromatic Adaptation Transforms (CAT)
 # ================================================================
-print('\nP7 Advanced Chromatic Adaptation Transforms:')
+print('\nAdvanced Chromatic Adaptation Transforms:')
 
 # Test colors for adaptation (use same test_xyz_colors)
 # White points are already defined: d65_white_xyz, d50_white_xyz, a_white_xyz, d60_white_xyz
 
-# P7 CAT transforms to test
+# CAT transforms to test
 p7_transforms = [
     'Sharp',
     'Fairchild',
@@ -1312,7 +1312,7 @@ p7_transforms = [
     'Bianco PC 2010'
 ]
 
-# Generate CAT matrices for D65->D50 for each P7 method
+# Generate CAT matrices for D65->D50 for each method
 for transform_name in p7_transforms:
     try:
         # Generate adaptation matrix
@@ -1322,7 +1322,7 @@ for transform_name in p7_transforms:
 
         # Flatten matrix to row-major order
         filename = f"cat_d65_to_d50_{transform_name.lower().replace(' ', '_').replace('-', '_')}"
-        write_ref(filename, cat_matrix.flatten().tolist(), f'P7 CAT {transform_name} D65->D50 matrix')
+        write_ref(filename, cat_matrix.flatten().tolist(), f'CAT {transform_name} D65->D50 matrix')
 
         # Generate adapted XYZ colors
         adapted_colors = []
@@ -1333,28 +1333,28 @@ for transform_name in p7_transforms:
             adapted_colors.extend(adapted.tolist())
 
         adapted_filename = f"adapted_d65_to_d50_{transform_name.lower().replace(' ', '_').replace('-', '_')}"
-        write_ref(adapted_filename, adapted_colors, f'P7 XYZ colors adapted D65->D50 using {transform_name}')
+        write_ref(adapted_filename, adapted_colors, f'XYZ colors adapted D65->D50 using {transform_name}')
 
         print(f'  Generated {transform_name} CAT reference data')
     except Exception as e:
         print(f'  Warning: {transform_name} CAT failed: {e}')
         # Write empty data
         filename = f"cat_d65_to_d50_{transform_name.lower().replace(' ', '_').replace('-', '_')}"
-        write_ref(filename, [], f'P7 CAT {transform_name} (not available)')
+        write_ref(filename, [], f'CAT {transform_name} (not available)')
 
 # ================================================================
-# P8: Extended Spectral Data (Observers & Illuminants)
+#  Extended Spectral Data (Observers & Illuminants)
 # ================================================================
-print('\nP8 Extended Spectral Data (Observers & Illuminants):')
+print('\nExtended Spectral Data (Observers & Illuminants):')
 
-# P8 new illuminants to generate white points for
-# P8.3 additions: D40, D45, D93 (computed from CCT), LED-B1-B5, LED-BH1, LED-V1, LED-V2, LED-RGB1, HP1-HP5
+# new illuminants to generate white points for
+# additions: D40, D45, D93 (computed from CCT), LED-B1-B5, LED-BH1, LED-V1, LED-V2, LED-RGB1, HP1-HP5
 p8_illuminants = ['B', 'C', 'D60', 'D75']
 p8_led_hp_illuminants = ['LED-B1', 'LED-B2', 'LED-B3', 'LED-B4', 'LED-B5',
                           'LED-BH1', 'LED-V1', 'LED-V2', 'LED-RGB1',
                           'HP1', 'HP2', 'HP3', 'HP4', 'HP5']
 
-# Generate white point XYZ for standard P8 illuminants using CIE 1931 2° observer
+# Generate white point XYZ for standard illuminants using CIE 1931 2° observer
 for illum_name in p8_illuminants:
     try:
         # Get illuminant SPD from colour-science
@@ -1369,14 +1369,14 @@ for illum_name in p8_illuminants:
 
         # Write white point
         filename = f"white_{illum_name.lower()}_xyz"
-        write_ref(filename, white_xyz_normalized.tolist(), f'P8 {illum_name} white point XYZ (CIE 1931 2°, Y=1.0)')
+        write_ref(filename, white_xyz_normalized.tolist(), f'{illum_name} white point XYZ (CIE 1931 2°, Y=1.0)')
 
         print(f'  Generated {illum_name} white point XYZ')
     except Exception as e:
         print(f'  Warning: {illum_name} white point generation failed: {e}')
-        write_ref(f"white_{illum_name.lower()}_xyz", [], f'P8 {illum_name} white point (not available)')
+        write_ref(f"white_{illum_name.lower()}_xyz", [], f'{illum_name} white point (not available)')
 
-# P8.3: Generate additional D-series illuminants from CCT
+#  Generate additional D-series illuminants from CCT
 d_series_cct = {
     'D40': 4000,
     'D45': 4500,
@@ -1398,14 +1398,14 @@ for d_name, cct in d_series_cct.items():
 
         # Write white point
         filename = f"white_{d_name.lower()}_xyz"
-        write_ref(filename, white_xyz_normalized.tolist(), f'P8.3 {d_name} white point XYZ (CIE 1931 2°, Y=1.0, {cct}K)')
+        write_ref(filename, white_xyz_normalized.tolist(), f'{d_name} white point XYZ (CIE 1931 2°, Y=1.0, {cct}K)')
 
         print(f'  Generated {d_name} white point XYZ ({cct}K)')
     except Exception as e:
         print(f'  Warning: {d_name} white point generation failed: {e}')
-        write_ref(f"white_{d_name.lower()}_xyz", [], f'P8.3 {d_name} white point (not available)')
+        write_ref(f"white_{d_name.lower()}_xyz", [], f'{d_name} white point (not available)')
 
-# P8.3: Generate LED and HP illuminant white points
+#  Generate LED and HP illuminant white points
 for illum_name in p8_led_hp_illuminants:
     try:
         # Get illuminant SPD from colour-science
@@ -1420,12 +1420,12 @@ for illum_name in p8_led_hp_illuminants:
 
         # Write white point
         filename = f"white_{illum_name.lower().replace('-', '_')}_xyz"
-        write_ref(filename, white_xyz_normalized.tolist(), f'P8.3 {illum_name} white point XYZ (CIE 1931 2°, Y=1.0)')
+        write_ref(filename, white_xyz_normalized.tolist(), f'{illum_name} white point XYZ (CIE 1931 2°, Y=1.0)')
 
         print(f'  Generated {illum_name} white point XYZ')
     except Exception as e:
         print(f'  Warning: {illum_name} white point generation failed: {e}')
-        write_ref(f"white_{illum_name.lower().replace('-', '_')}_xyz", [], f'P8.3 {illum_name} white point (not available)')
+        write_ref(f"white_{illum_name.lower().replace('-', '_')}_xyz", [], f'{illum_name} white point (not available)')
 
 # Stockman & Sharpe 2000 2° observer test
 # Generate XYZ values for D65 white using Stockman & Sharpe observer
@@ -1438,17 +1438,17 @@ try:
     white_xyz_ss_normalized = white_xyz_ss / white_xyz_ss[1]
 
     write_ref('white_d65_stockman_sharpe_xyz', white_xyz_ss_normalized.tolist(),
-              'P8 D65 white point using Stockman & Sharpe 2000 2° (Y=1.0)')
+              'D65 white point using Stockman & Sharpe 2000 2° (Y=1.0)')
 
     print('  Generated D65 white point with Stockman & Sharpe observer')
 except Exception as e:
     print(f'  Warning: Stockman & Sharpe observer test failed: {e}')
-    write_ref('white_d65_stockman_sharpe_xyz', [], 'P8 Stockman & Sharpe test (not available)')
+    write_ref('white_d65_stockman_sharpe_xyz', [], 'Stockman & Sharpe test (not available)')
 
 # ================================================================
-# P8.1: RGB to Spectrum Conversion (Spectral Upsampling)
+#  RGB to Spectrum Conversion (Spectral Upsampling)
 # ================================================================
-print('\nP8.1 RGB to Spectrum Conversion (Spectral Upsampling):')
+print('\nRGB to Spectrum Conversion (Spectral Upsampling):')
 
 # Test RGB colors for round-trip verification
 # Expanded test set with diverse colors including intermediate values
@@ -1562,11 +1562,11 @@ for color_name, rgb in test_rgb_colors.items():
 
         # Store recovered XYZ from spectrum
         write_ref(f'smits1999_{color_name}_xyz_recovered', xyz_recovered_normalized.tolist(),
-                  f'P8.1 Smits1999: {color_name} RGB {rgb} -> Spectrum -> XYZ (D65, CIE 1931 2°)')
+                  f'Smits1999: {color_name} RGB {rgb} -> Spectrum -> XYZ (D65, CIE 1931 2°)')
 
         # Store expected XYZ for comparison
         write_ref(f'smits1999_{color_name}_xyz_expected', xyz_expected_normalized.tolist(),
-                  f'P8.1 Smits1999: {color_name} RGB {rgb} -> XYZ direct (sRGB -> XYZ)')
+                  f'Smits1999: {color_name} RGB {rgb} -> XYZ direct (sRGB -> XYZ)')
 
     except Exception as e:
         print(f'    Warning: Smits1999 test for {color_name} failed: {e}')
@@ -1588,11 +1588,11 @@ for color_name, rgb in test_rgb_colors.items():
 
         # Store recovered XYZ from spectrum
         write_ref(f'mallett2019_{color_name}_xyz_recovered', xyz_recovered_normalized.tolist(),
-                  f'P8.1 Mallett2019: {color_name} RGB {rgb} -> Spectrum -> XYZ (D65, CIE 1931 2°)')
+                  f'Mallett2019: {color_name} RGB {rgb} -> Spectrum -> XYZ (D65, CIE 1931 2°)')
 
         # Store expected XYZ for comparison
         write_ref(f'mallett2019_{color_name}_xyz_expected', xyz_expected_normalized.tolist(),
-                  f'P8.1 Mallett2019: {color_name} RGB {rgb} -> XYZ direct (sRGB -> XYZ)')
+                  f'Mallett2019: {color_name} RGB {rgb} -> XYZ direct (sRGB -> XYZ)')
 
     except Exception as e:
         print(f'    Warning: Mallett2019 test for {color_name} failed: {e}')
@@ -1604,9 +1604,9 @@ print('  Skipping Jakob2019 reference generation (colour-science requires slow o
 print('  Jakob2019 will be tested using C implementation with pre-generated LUTs')
 
 # ================================================================
-# P8.4: Camera Sensitivities
+#  Camera Sensitivities
 # ================================================================
-print('\nP8.4 Camera Sensitivities:')
+print('\nCamera Sensitivities:')
 
 try:
     # Get D65 illuminant SPD
@@ -1645,19 +1645,19 @@ try:
 
             # Write camera RGB reference
             filename = f'camera_{prefix}_d65_rgb'
-            write_ref(filename, rgb.tolist(), f'P8.4 {camera_name}: D65 camera RGB')
+            write_ref(filename, rgb.tolist(), f'{camera_name}: D65 camera RGB')
 
             print(f'  Generated {camera_name} D65 RGB: {rgb}')
         except Exception as e:
             print(f'  Warning: {camera_name} test generation failed: {e}')
-            write_ref(f'camera_{prefix}_d65_rgb', [], f'P8.4 {camera_name} (not available)')
+            write_ref(f'camera_{prefix}_d65_rgb', [], f'{camera_name} (not available)')
 except Exception as e:
     print(f'  Warning: Camera sensitivity tests failed: {e}')
 
 # ================================================================
-# P8.5: SPD Shape Descriptors
+#  SPD Shape Descriptors
 # ================================================================
-print('\nP8.5 SPD Shape Descriptors:')
+print('\nSPD Shape Descriptors:')
 
 def compute_shape_descriptor(spd, name):
     """Compute shape descriptor for an SPD"""
@@ -1716,43 +1716,43 @@ def compute_shape_descriptor(spd, name):
 try:
     d65_spd = colour.SDS_ILLUMINANTS['D65']
     d65_shape = compute_shape_descriptor(d65_spd, 'D65')
-    write_ref('shape_d65', d65_shape, 'P8.5 D65 shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
+    write_ref('shape_d65', d65_shape, 'D65 shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
     print(f'  Generated D65 shape descriptor: peak={d65_shape[0]:.1f}nm, FWHM={d65_shape[2]:.1f}nm')
 except Exception as e:
     print(f'  Warning: D65 shape descriptor failed: {e}')
-    write_ref('shape_d65', [], 'P8.5 D65 shape (not available)')
+    write_ref('shape_d65', [], 'D65 shape (not available)')
 
 # Test LED-B1 (narrow spectrum)
 try:
     ledb1_spd = colour.SDS_ILLUMINANTS['LED-B1']
     ledb1_shape = compute_shape_descriptor(ledb1_spd, 'LED-B1')
-    write_ref('shape_led_b1', ledb1_shape, 'P8.5 LED-B1 shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
+    write_ref('shape_led_b1', ledb1_shape, 'LED-B1 shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
     print(f'  Generated LED-B1 shape descriptor: peak={ledb1_shape[0]:.1f}nm, FWHM={ledb1_shape[2]:.1f}nm')
 except Exception as e:
     print(f'  Warning: LED-B1 shape descriptor failed: {e}')
-    write_ref('shape_led_b1', [], 'P8.5 LED-B1 shape (not available)')
+    write_ref('shape_led_b1', [], 'LED-B1 shape (not available)')
 
 # Test blackbody 6500K
 try:
     # Generate blackbody SPD at 6500K
     bb_spd = colour.sd_blackbody(6500, colour.SpectralShape(360, 830, 1))
     bb_shape = compute_shape_descriptor(bb_spd, 'Blackbody 6500K')
-    write_ref('shape_blackbody_6500k', bb_shape, 'P8.5 Blackbody 6500K shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
+    write_ref('shape_blackbody_6500k', bb_shape, 'Blackbody 6500K shape descriptor [peak_wl, peak_val, fwhm, centroid, bandwidth]')
     print(f'  Generated Blackbody 6500K shape descriptor: peak={bb_shape[0]:.1f}nm, FWHM={bb_shape[2]:.1f}nm')
 except Exception as e:
     print(f'  Warning: Blackbody 6500K shape descriptor failed: {e}')
-    write_ref('shape_blackbody_6500k', [], 'P8.5 Blackbody 6500K shape (not available)')
+    write_ref('shape_blackbody_6500k', [], 'Blackbody 6500K shape (not available)')
 
 # ================================================================
-# P9: Gamut Analysis & Mapping Test Reference Data
+#  Gamut Analysis & Mapping Test Reference Data
 # ================================================================
 
 print('\n' + '=' * 80)
-print('P9: Gamut Analysis & Mapping Test Reference Data')
+print(' Gamut Analysis & Mapping Test Reference Data')
 print('=' * 80)
 
-# P9.1: Pointer's Gamut boundary check
-print('\nP9.1: Pointer\'s Gamut Tests')
+#  Pointer's Gamut boundary check
+print('\n Pointer\'s Gamut Tests')
 
 try:
     from colour.models import CCS_POINTER_GAMUT_BOUNDARY
@@ -1777,17 +1777,17 @@ try:
 
     is_inside_green = point_in_polygon(xy_inside, CCS_POINTER_GAMUT_BOUNDARY)
     write_ref('pointer_gamut_inside_green', [1 if is_inside_green else 0],
-              'P9.1 Is xy=[0.3, 0.5] inside Pointer\'s gamut? (1=yes, 0=no)')
+              'Is xy=[0.3, 0.5] inside Pointer\'s gamut? (1=yes, 0=no)')
 
     # Test point outside (very saturated, near spectral locus)
     xy_outside = np.array([0.1, 0.8])
     is_inside_spectral = point_in_polygon(xy_outside, CCS_POINTER_GAMUT_BOUNDARY)
     write_ref('pointer_gamut_outside_spectral', [1 if is_inside_spectral else 0],
-              'P9.1 Is xy=[0.1, 0.8] inside Pointer\'s gamut? (1=yes, 0=no)')
+              'Is xy=[0.1, 0.8] inside Pointer\'s gamut? (1=yes, 0=no)')
 
     # Boundary count
     write_ref('pointer_gamut_boundary_count', [len(CCS_POINTER_GAMUT_BOUNDARY)],
-              'P9.1 Number of Pointer\'s gamut boundary points')
+              'Number of Pointer\'s gamut boundary points')
 
     print(f'  Generated Pointer\'s gamut tests: {len(CCS_POINTER_GAMUT_BOUNDARY)} boundary points')
     print(f'    xy=[0.3, 0.5]: {"INSIDE" if is_inside_green else "OUTSIDE"}')
@@ -1798,8 +1798,8 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# P9.2: Spectral Locus tests
-print('\nP9.2: Spectral Locus Tests')
+#  Spectral Locus tests
+print('\n Spectral Locus Tests')
 
 try:
     # Get CIE 1931 2° CMFs
@@ -1817,7 +1817,7 @@ try:
             x = xyz[0] / xyz_sum
             y = xyz[1] / xyz_sum
             write_ref(f'spectral_locus_{int(wl)}nm', [x, y],
-                      f'P9.2 Spectral locus xy for {wl}nm')
+                      f'Spectral locus xy for {wl}nm')
             print(f'  {wl:.0f}nm: xy=[{x:.6f}, {y:.6f}]')
 
 except Exception as e:
@@ -1825,8 +1825,8 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# P9.3: Dominant Wavelength & Excitation Purity tests
-print('\nP9.3: Dominant Wavelength & Excitation Purity Tests')
+#  Dominant Wavelength & Excitation Purity tests
+print('\n Dominant Wavelength & Excitation Purity Tests')
 
 try:
     # D65 white point
@@ -1839,16 +1839,16 @@ try:
     xy_wl_green = result[1]
 
     write_ref('dominant_wl_green', [wl_green],
-              'P9.3 Dominant wavelength for xy=[0.3, 0.6] with D65 white [nm]')
+              'Dominant wavelength for xy=[0.3, 0.6] with D65 white [nm]')
     write_ref('dominant_wl_green_xy', [xy_wl_green[0], xy_wl_green[1]],
-              'P9.3 Spectral locus intersection for green [x, y]')
+              'Spectral locus intersection for green [x, y]')
 
     print(f'  Green xy=[0.3, 0.6]: dominant wavelength = {wl_green:.2f}nm')
 
     # Excitation purity
     purity_green = colour.excitation_purity(xy_green, xy_d65)
     write_ref('excitation_purity_green', [purity_green],
-              'P9.3 Excitation purity for xy=[0.3, 0.6] with D65 white [0-1]')
+              'Excitation purity for xy=[0.3, 0.6] with D65 white [0-1]')
     print(f'    Excitation purity = {purity_green:.4f}')
 
     # Test with red
@@ -1857,11 +1857,11 @@ try:
     wl_red = result_red[0]
 
     write_ref('dominant_wl_red', [wl_red],
-              'P9.3 Dominant wavelength for xy=[0.6, 0.3] with D65 white [nm]')
+              'Dominant wavelength for xy=[0.6, 0.3] with D65 white [nm]')
 
     purity_red = colour.excitation_purity(xy_red, xy_d65)
     write_ref('excitation_purity_red', [purity_red],
-              'P9.3 Excitation purity for xy=[0.6, 0.3] with D65 white [0-1]')
+              'Excitation purity for xy=[0.6, 0.3] with D65 white [0-1]')
 
     print(f'  Red xy=[0.6, 0.3]: dominant wavelength = {wl_red:.2f}nm')
     print(f'    Excitation purity = {purity_red:.4f}')
@@ -1872,11 +1872,11 @@ try:
     wl_blue = result_blue[0]
 
     write_ref('dominant_wl_blue', [wl_blue],
-              'P9.3 Dominant wavelength for xy=[0.15, 0.06] with D65 white [nm]')
+              'Dominant wavelength for xy=[0.15, 0.06] with D65 white [nm]')
 
     purity_blue = colour.excitation_purity(xy_blue, xy_d65)
     write_ref('excitation_purity_blue', [purity_blue],
-              'P9.3 Excitation purity for xy=[0.15, 0.06] with D65 white [0-1]')
+              'Excitation purity for xy=[0.15, 0.06] with D65 white [0-1]')
 
     print(f'  Blue xy=[0.15, 0.06]: dominant wavelength = {wl_blue:.2f}nm')
     print(f'    Excitation purity = {purity_blue:.4f}')
@@ -1886,8 +1886,8 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# P9.5: Advanced Gamut Mapping Reference Data
-print('\nP9.5: Advanced Gamut Mapping Tests')
+#  Advanced Gamut Mapping Reference Data
+print('\n Advanced Gamut Mapping Tests')
 print('Note: Reference data based on Oklab gamut mapping implementation')
 
 try:
@@ -1916,15 +1916,15 @@ try:
 
     # Write test metadata
     write_ref('gamut_map_test_count', [len(test_colors)],
-              'P9.5 Number of gamut mapping test colors')
+              'Number of gamut mapping test colors')
 
 except Exception as e:
     print(f'  Warning: Gamut mapping reference data generation failed: {e}')
     import traceback
     traceback.print_exc()
 
-# P9.6: Gamut Coverage Metrics Reference Data
-print('\nP9.6: Gamut Coverage Metrics Tests')
+#  Gamut Coverage Metrics Reference Data
+print('\n Gamut Coverage Metrics Tests')
 
 try:
     # Define color spaces for coverage testing
@@ -1945,18 +1945,18 @@ try:
     expected_bt2020_srgb_ratio = 2.0  # Approximate
 
     write_ref('gamut_volume_ratio_bt2020_srgb_approx', [expected_bt2020_srgb_ratio],
-              'P9.6 Approximate BT.2020/sRGB volume ratio')
+              'Approximate BT.2020/sRGB volume ratio')
 
     # Coverage percentages (approximate expected values)
     # sRGB should be nearly 100% covered by BT.2020
     expected_srgb_by_bt2020 = 100.0
     write_ref('gamut_coverage_srgb_by_bt2020_approx', [expected_srgb_by_bt2020],
-              'P9.6 Approximate sRGB coverage by BT.2020 (%)')
+              'Approximate sRGB coverage by BT.2020 (%)')
 
     # BT.2020 should be approximately 50% covered by sRGB
     expected_bt2020_by_srgb = 50.0
     write_ref('gamut_coverage_bt2020_by_srgb_approx', [expected_bt2020_by_srgb],
-              'P9.6 Approximate BT.2020 coverage by sRGB (%)')
+              'Approximate BT.2020 coverage by sRGB (%)')
 
     print(f'  Expected BT.2020/sRGB ratio: ~{expected_bt2020_srgb_ratio:.1f}x')
     print(f'  Expected sRGB coverage by BT.2020: ~{expected_srgb_by_bt2020:.0f}%')
@@ -1968,11 +1968,11 @@ except Exception as e:
     traceback.print_exc()
 
 # ================================================================
-# P10: Color Vision & Perception
+#  Color Vision & Perception
 # ================================================================
 
-# P10.1: Color Blindness Simulation (CVD) Reference Data
-print('\nP10: Color Vision & Perception Tests')
+#  Color Blindness Simulation (CVD) Reference Data
+print('\n Color Vision & Perception Tests')
 print('Note: CVD simulation uses algorithmic LMS cone transformations')
 print('      Reference data documents expected behavior, not colour-science validation')
 
@@ -1992,7 +1992,7 @@ try:
         'purple': [0.5, 0.0, 0.5]
     }
 
-    print('\n  P10.1: Color Blindness Simulation')
+    print('\n   Color Blindness Simulation')
     print('  Test colors defined:')
     print(f'    - {len(test_colors_cvd)} standard colors for CVD testing')
     print('    - CVD types: Protanopia, Deuteranopia, Tritanopia')
@@ -2001,7 +2001,7 @@ try:
 
     # Write test color count
     write_ref('cvd_test_color_count', [len(test_colors_cvd)],
-              'P10.1 Number of CVD test colors')
+              'Number of CVD test colors')
 
     # Document that CVD uses algorithmic transformation (no reference values needed)
     # The implementation uses Brettel, Viénot & Mollon (1997) confusion line algorithm
@@ -2011,14 +2011,14 @@ try:
     # Write severity test values
     severity_levels = [0.0, 0.25, 0.5, 0.75, 1.0]
     write_ref('cvd_severity_test_levels', severity_levels,
-              'P10.1 CVD severity test levels')
+              'CVD severity test levels')
     print(f'    Severity levels for testing: {severity_levels}')
 
 except Exception as e:
-    print(f'  Warning: P10.1 CVD reference data generation failed: {e}')
+    print(f'  Warning: CVD reference data generation failed: {e}')
 
-# P10.2: Luminous Efficiency Functions
-print('\n  P10.2: Luminous Efficiency Functions')
+#  Luminous Efficiency Functions
+print('\n   Luminous Efficiency Functions')
 print('    Generating photopic and scotopic luminous efficiency reference values')
 
 try:
@@ -2043,9 +2043,9 @@ try:
         photopic_values.append(float(v))
 
     write_ref('photopic_efficiency_wavelengths', test_wavelengths_lum,
-              'P10.2 Test wavelengths for photopic efficiency (nm)')
+              'Test wavelengths for photopic efficiency (nm)')
     write_ref('photopic_efficiency_values', photopic_values,
-              'P10.2 Photopic luminous efficiency V(λ) reference values')
+              'Photopic luminous efficiency V(λ) reference values')
 
     print(f'    - Photopic V(λ): {len(test_wavelengths_lum)} wavelength points')
     print(f'      Peak at 555nm = {photopic_values[test_wavelengths_lum.index(555.0)]:.6f}')
@@ -2061,9 +2061,9 @@ try:
         scotopic_values.append(float(vp))
 
     write_ref('scotopic_efficiency_wavelengths', test_wavelengths_lum,
-              'P10.2 Test wavelengths for scotopic efficiency (nm)')
+              'Test wavelengths for scotopic efficiency (nm)')
     write_ref('scotopic_efficiency_values', scotopic_values,
-              'P10.2 Scotopic luminous efficiency V\'(λ) reference values')
+              'Scotopic luminous efficiency V\'(λ) reference values')
 
     print(f'    - Scotopic V\'(λ): {len(test_wavelengths_lum)} wavelength points')
     print(f'      Peak at 507nm = {scotopic_values[test_wavelengths_lum.index(507.0)]:.6f}')
@@ -2071,12 +2071,12 @@ try:
     print('    Source: CIE standard photopic (1924/1988) and scotopic (1951) observers')
 
 except Exception as e:
-    print(f'  Warning: P10.2 luminous efficiency reference data generation failed: {e}')
+    print(f'  Warning: luminous efficiency reference data generation failed: {e}')
     import traceback
     traceback.print_exc()
 
-# P10.3: Contrast Sensitivity Function
-print('\n  P10.3: Contrast Sensitivity Function')
+#  Contrast Sensitivity Function
+print('\n   Contrast Sensitivity Function')
 print('    Documenting CSF expected behavior (Barten model)')
 
 try:
@@ -2090,9 +2090,9 @@ try:
     test_luminances_csf = [1.0, 10.0, 100.0, 1000.0]
 
     write_ref('csf_test_frequencies', test_frequencies_csf,
-              'P10.3 Test spatial frequencies for CSF (cpd)')
+              'Test spatial frequencies for CSF (cpd)')
     write_ref('csf_test_luminances', test_luminances_csf,
-              'P10.3 Test luminance levels for CSF (cd/m²)')
+              'Test luminance levels for CSF (cd/m²)')
 
     print(f'    - Test frequencies: {len(test_frequencies_csf)} points (0.5-32 cpd)')
     print(f'    - Test luminances: {len(test_luminances_csf)} levels (1-1000 cd/m²)')
@@ -2104,7 +2104,7 @@ try:
     print('    Model: Simplified Barten (1999) CSF')
 
 except Exception as e:
-    print(f'  Warning: P10.3 CSF reference data generation failed: {e}')
+    print(f'  Warning: CSF reference data generation failed: {e}')
     import traceback
     traceback.print_exc()
 

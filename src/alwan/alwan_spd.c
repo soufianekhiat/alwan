@@ -374,7 +374,7 @@ int alwan_spd_illuminant(alwan_ctx *ctx, alwan_illuminant ill, alwan_spd *out) {
             break;
         }
 
-        /* P8: Extended illuminants */
+        /* Extended illuminants */
         case ALWAN_ILLUMINANT_B: {
             static alwan_scalar const data[] = {
 #include "data/illuminants/B_360_830_1nm.csv"
@@ -416,7 +416,7 @@ int alwan_spd_illuminant(alwan_ctx *ctx, alwan_illuminant ill, alwan_spd *out) {
             break;
         }
 
-        /* P8.3: Additional D-series illuminants */
+        /* Additional D-series illuminants */
         case ALWAN_ILLUMINANT_D40: {
             static alwan_scalar const data[] = {
 #include "data/illuminants/D40_360_830_1nm.csv"
@@ -448,7 +448,7 @@ int alwan_spd_illuminant(alwan_ctx *ctx, alwan_illuminant ill, alwan_spd *out) {
             break;
         }
 
-        /* P8.3: LED illuminants */
+        /* LED illuminants */
         case ALWAN_ILLUMINANT_LED_B1: {
             static alwan_scalar const data[] = {
 #include "data/illuminants/LED-B1_360_830_1nm.csv"
@@ -540,7 +540,7 @@ int alwan_spd_illuminant(alwan_ctx *ctx, alwan_illuminant ill, alwan_spd *out) {
             break;
         }
 
-        /* P8.3: High Pressure illuminants */
+        /* High Pressure illuminants */
         case ALWAN_ILLUMINANT_HP1: {
             static alwan_scalar const data[] = {
 #include "data/illuminants/HP1_360_830_1nm.csv"
@@ -777,7 +777,7 @@ static int load_observer_cmf(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
-        /* P8.2: Stockman & Sharpe 2000 2° Cone Fundamentals */
+        /* Stockman & Sharpe 2000 2° Cone Fundamentals */
         static alwan_scalar const x_data[] = {
 #include "data/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv"
         };
@@ -795,7 +795,7 @@ static int load_observer_cmf(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG) {
-        /* P8.2: CIE 2015 2° Cone Fundamental Observer */
+        /* CIE 2015 2° Cone Fundamental Observer */
         static alwan_scalar const x_data[] = {
 #include "data/cmf/cie_2015_2deg_x_360_830_1nm.csv"
         };
@@ -813,7 +813,7 @@ static int load_observer_cmf(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG) {
-        /* P8.2: CIE 2015 10° Cone Fundamental Observer */
+        /* CIE 2015 10° Cone Fundamental Observer */
         static alwan_scalar const x_data[] = {
 #include "data/cmf/cie_2015_10deg_x_360_830_1nm.csv"
         };
@@ -831,7 +831,7 @@ static int load_observer_cmf(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_WRIGHT_GUILD_1931) {
-        /* P8.2: Wright & Guild 1931 2° RGB CMFs (historical) */
+        /* Wright & Guild 1931 2° RGB CMFs (historical) */
         static alwan_scalar const r_data[] = {
 #include "data/cmf/wright_guild_1931_r_360_830_1nm.csv"
         };
@@ -1030,7 +1030,7 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
 }
 
 /* ----------------------------------------------------------------
- * P8.4: Camera Sensitivity Functions
+ * Camera Sensitivity Functions
  * ---------------------------------------------------------------- */
 
 int alwan_spd_camera_sensitivity(alwan_ctx *ctx,
@@ -1240,7 +1240,7 @@ int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
 }
 
 /* ----------------------------------------------------------------
- * P8.5: Spectral Shape Descriptors
+ * Spectral Shape Descriptors
  * ---------------------------------------------------------------- */
 
 int alwan_spd_analyze_shape(alwan_spd const *spd, alwan_spd_shape *shape_out) {

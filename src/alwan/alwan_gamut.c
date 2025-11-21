@@ -188,11 +188,11 @@ int alwan_gamut_map_xyz_to_rgb(alwan_ctx *ctx,
 }
 
 /* ================================================================
- * P9: Gamut Analysis & Mapping
+ * Gamut Analysis & Mapping
  * ================================================================ */
 
 /* ----------------------------------------------------------------
- * P9.1: Pointer's Gamut
+ * Pointer's Gamut
  * ---------------------------------------------------------------- */
 
 /* Pointer's Gamut boundary in CIE 1931 xy chromaticity (32 points)
@@ -242,7 +242,7 @@ alwan_vec2 const* alwan_pointer_gamut_boundary(size_t *count_out) {
 }
 
 /* ----------------------------------------------------------------
- * P9.2: Spectral Locus
+ * Spectral Locus
  * ---------------------------------------------------------------- */
 
 /* CIE 1931 spectral locus xy chromaticity data (360-830nm, 1nm interval, 471 points)
@@ -288,7 +288,7 @@ int alwan_spectral_locus_xy(alwan_scalar wavelength, alwan_vec2 *xy_out) {
 }
 
 /* ----------------------------------------------------------------
- * P9.3: Dominant Wavelength & Excitation Purity
+ * Dominant Wavelength & Excitation Purity
  * ---------------------------------------------------------------- */
 
 /* Compute intersection of line (p1, p2) with spectral locus
@@ -490,7 +490,7 @@ int alwan_complementary_wavelength(alwan_vec2 const *xy,
 }
 
 /* ----------------------------------------------------------------
- * P9.6: Gamut Coverage Metrics
+ * Gamut Coverage Metrics
  * ---------------------------------------------------------------- */
 
 int alwan_gamut_volume_ratio(alwan_rgb_space_desc const *space1,
@@ -591,7 +591,7 @@ int alwan_gamut_coverage(alwan_rgb_space_desc const *space1,
 }
 
 /* ================================================================
- * P9.5: Advanced Gamut Mapping
+ * Advanced Gamut Mapping
  * ================================================================ */
 
 /* Oklab color space conversion (linear RGB <-> Oklab)
@@ -829,7 +829,7 @@ static alwan_scalar alwan_find_gamut_intersection(alwan_scalar a, alwan_scalar b
     return t;
 }
 
-/* P9.5: Gamut mapping implementation */
+/* Gamut mapping implementation */
 int alwan_gamut_map_advanced(alwan_gamut_map_method method,
                               alwan_rgb_space_desc const *space,
                               alwan_vec3 const *rgb_linear,

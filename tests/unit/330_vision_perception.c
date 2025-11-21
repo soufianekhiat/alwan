@@ -1,10 +1,10 @@
 /* ================================================================
- * Test 330: P10 Color Vision & Perception
+ * Test 330: Color Vision & Perception
  * ================================================================
  * Tests for:
- * - P10.1: Color Blindness Simulation (CVD)
- * - P10.2: Luminous Efficiency Functions
- * - P10.3: Contrast Sensitivity Function (CSF)
+ * - Color Blindness Simulation (CVD)
+ * - Luminous Efficiency Functions
+ * - Contrast Sensitivity Function (CSF)
  * ================================================================ */
 
 #include "../../src/alwan/alwan.h"
@@ -32,7 +32,7 @@
 } while(0)
 
 /* ----------------------------------------------------------------
- * P10.1: Color Blindness Simulation Tests
+ * Color Blindness Simulation Tests
  * ---------------------------------------------------------------- */
 
 static int test_cvd_protanopia(void) {
@@ -153,7 +153,7 @@ static int test_cvd_normal_vision(void) {
 }
 
 /* ----------------------------------------------------------------
- * P10.2: Luminous Efficiency Function Tests
+ * Luminous Efficiency Function Tests
  * ---------------------------------------------------------------- */
 
 /* Helper: Load CSV reference values */
@@ -265,7 +265,7 @@ static int test_luminous_efficiency_bounds(void) {
 }
 
 /* ----------------------------------------------------------------
- * P10.3: Contrast Sensitivity Function Tests
+ * Contrast Sensitivity Function Tests
  * ---------------------------------------------------------------- */
 
 static int test_csf_basic(void) {
@@ -331,14 +331,14 @@ static int test_csf_bounds(void) {
 
 int test_330_vision_perception_main(void) {
     printf("\n========================================\n");
-    printf("Test 330: P10 Vision & Perception\n");
+    printf("Test 330: Vision & Perception\n");
     printf("========================================\n\n");
 
     int result;
 
-    /* P10.1: CVD Simulation */
-    printf("P10.1: Color Blindness Simulation\n");
-    printf("----------------------------------\n");
+    /* CVD Simulation */
+    printf("Color Blindness Simulation\n");
+    printf("--------------------------\n");
 
     result = test_cvd_protanopia();
     if (result != 0) return result;
@@ -355,9 +355,9 @@ int test_330_vision_perception_main(void) {
     result = test_cvd_normal_vision();
     if (result != 0) return result;
 
-    /* P10.2: Luminous Efficiency Functions */
-    printf("\nP10.2: Luminous Efficiency Functions\n");
-    printf("-------------------------------------\n");
+    /* Luminous Efficiency Functions */
+    printf("\nLuminous Efficiency Functions\n");
+    printf("-----------------------------\n");
 
     result = test_photopic_efficiency();
     if (result != 0) return result;
@@ -368,9 +368,9 @@ int test_330_vision_perception_main(void) {
     result = test_luminous_efficiency_bounds();
     if (result != 0) return result;
 
-    /* P10.3: Contrast Sensitivity Function */
-    printf("\nP10.3: Contrast Sensitivity Function\n");
-    printf("-------------------------------------\n");
+    /* Contrast Sensitivity Function */
+    printf("\nContrast Sensitivity Function\n");
+    printf("-----------------------------\n");
 
     result = test_csf_basic();
     if (result != 0) return result;
@@ -381,6 +381,6 @@ int test_330_vision_perception_main(void) {
     result = test_csf_bounds();
     if (result != 0) return result;
 
-    printf("\nAll P10 vision & perception tests passed!\n");
+    printf("\nAll vision & perception tests passed!\n");
     return 0;
 }

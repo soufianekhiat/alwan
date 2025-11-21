@@ -52,22 +52,22 @@ static alwan_scalar const g_e_xy[] = {
 #include "data/illuminants_xy/e_xy.csv"
 };
 
-/* P8: Illuminant B (x, y) */
+/* Illuminant B (x, y) */
 static alwan_scalar const g_b_xy[] = {
 #include "data/illuminants_xy/b_xy.csv"
 };
 
-/* P8: Illuminant C (x, y) */
+/* Illuminant C (x, y) */
 static alwan_scalar const g_c_xy[] = {
 #include "data/illuminants_xy/c_xy.csv"
 };
 
-/* P8: Illuminant D75 (x, y) */
+/* Illuminant D75 (x, y) */
 static alwan_scalar const g_d75_xy[] = {
 #include "data/illuminants_xy/d75_xy.csv"
 };
 
-/* P8.3: Additional D-series illuminants */
+/* Additional D-series illuminants */
 static alwan_scalar const g_d40_xy[] = {
 #include "data/illuminants_xy/d40_xy.csv"
 };
@@ -80,7 +80,7 @@ static alwan_scalar const g_d93_xy[] = {
 #include "data/illuminants_xy/d93_xy.csv"
 };
 
-/* P8.3: LED illuminants */
+/* LED illuminants */
 static alwan_scalar const g_led_b1_xy[] = {
 #include "data/illuminants_xy/led-b1_xy.csv"
 };
@@ -117,7 +117,7 @@ static alwan_scalar const g_led_v2_xy[] = {
 #include "data/illuminants_xy/led-v2_xy.csv"
 };
 
-/* P8.3: High Pressure illuminants */
+/* High Pressure illuminants */
 static alwan_scalar const g_hp1_xy[] = {
 #include "data/illuminants_xy/hp1_xy.csv"
 };
@@ -208,7 +208,7 @@ int alwan_data_get_illuminant_d75(alwan_ctx *ctx, alwan_scalar **data, size_t *c
     return ALWAN_OK;
 }
 
-/* P8.3: Additional D-series illuminants */
+/* Additional D-series illuminants */
 int alwan_data_get_illuminant_d40(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     (void)ctx;
     *data = (alwan_scalar *)g_d40_xy;
@@ -230,7 +230,7 @@ int alwan_data_get_illuminant_d93(alwan_ctx *ctx, alwan_scalar **data, size_t *c
     return ALWAN_OK;
 }
 
-/* P8.3: LED illuminants */
+/* LED illuminants */
 int alwan_data_get_illuminant_led_b1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     (void)ctx;
     *data = (alwan_scalar *)g_led_b1_xy;
@@ -294,7 +294,7 @@ int alwan_data_get_illuminant_led_v2(alwan_ctx *ctx, alwan_scalar **data, size_t
     return ALWAN_OK;
 }
 
-/* P8.3: High Pressure illuminants */
+/* High Pressure illuminants */
 int alwan_data_get_illuminant_hp1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     (void)ctx;
     *data = (alwan_scalar *)g_hp1_xy;
@@ -342,7 +342,7 @@ int alwan_data_get_illuminant_xy(alwan_ctx *ctx, alwan_illuminant illuminant,
         case ALWAN_ILLUMINANT_B:   return alwan_data_get_illuminant_b(ctx, data, count);
         case ALWAN_ILLUMINANT_C:   return alwan_data_get_illuminant_c(ctx, data, count);
         case ALWAN_ILLUMINANT_D75: return alwan_data_get_illuminant_d75(ctx, data, count);
-        /* P8.3: Additional illuminants */
+        /* Additional illuminants */
         case ALWAN_ILLUMINANT_D40: return alwan_data_get_illuminant_d40(ctx, data, count);
         case ALWAN_ILLUMINANT_D45: return alwan_data_get_illuminant_d45(ctx, data, count);
         case ALWAN_ILLUMINANT_D93: return alwan_data_get_illuminant_d93(ctx, data, count);
@@ -512,7 +512,7 @@ int alwan_data_get_illuminant_d75(alwan_ctx *ctx, alwan_scalar **data, size_t *c
     return load_csv(path, data, count);
 }
 
-/* P8.3: Additional D-series illuminants */
+/* Additional D-series illuminants */
 int alwan_data_get_illuminant_d40(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
     build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/d40_xy.csv");
@@ -531,7 +531,7 @@ int alwan_data_get_illuminant_d93(alwan_ctx *ctx, alwan_scalar **data, size_t *c
     return load_csv(path, data, count);
 }
 
-/* P8.3: LED illuminants */
+/* LED illuminants */
 int alwan_data_get_illuminant_led_b1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
     build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/led-b1_xy.csv");
@@ -586,7 +586,7 @@ int alwan_data_get_illuminant_led_v2(alwan_ctx *ctx, alwan_scalar **data, size_t
     return load_csv(path, data, count);
 }
 
-/* P8.3: High Pressure illuminants */
+/* High Pressure illuminants */
 int alwan_data_get_illuminant_hp1(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {
     char path[512];
     build_path(path, sizeof(path), ctx ? ctx->runtime_data_root : NULL, "illuminants_xy/hp1_xy.csv");
@@ -629,7 +629,7 @@ int alwan_data_get_illuminant_xy(alwan_ctx *ctx, alwan_illuminant illuminant,
         case ALWAN_ILLUMINANT_B:   return alwan_data_get_illuminant_b(ctx, data, count);
         case ALWAN_ILLUMINANT_C:   return alwan_data_get_illuminant_c(ctx, data, count);
         case ALWAN_ILLUMINANT_D75: return alwan_data_get_illuminant_d75(ctx, data, count);
-        /* P8.3: Additional illuminants */
+        /* Additional illuminants */
         case ALWAN_ILLUMINANT_D40: return alwan_data_get_illuminant_d40(ctx, data, count);
         case ALWAN_ILLUMINANT_D45: return alwan_data_get_illuminant_d45(ctx, data, count);
         case ALWAN_ILLUMINANT_D93: return alwan_data_get_illuminant_d93(ctx, data, count);

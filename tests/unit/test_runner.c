@@ -51,6 +51,8 @@ extern int test_300_camera_sensitivities_main(void);
 extern int test_310_spd_shape_main(void);
 extern int test_320_gamut_analysis_main(void);
 extern int test_330_vision_perception_main(void);
+extern int test_340_math_utilities_main(void);
+extern int test_350_reference_data_main(void);
 
 /* Test registry */
 typedef struct {
@@ -100,6 +102,8 @@ static test_suite const g_test_suites[] = {
     {"310_spd_shape", test_310_spd_shape_main},
     {"320_gamut_analysis", test_320_gamut_analysis_main},
     {"330_vision_perception", test_330_vision_perception_main},
+    {"340_math_utilities", test_340_math_utilities_main},
+    {"350_reference_data", test_350_reference_data_main},
 };
 
 int main(void) {

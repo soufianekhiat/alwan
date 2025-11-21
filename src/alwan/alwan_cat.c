@@ -42,7 +42,7 @@ static void get_cat16_matrix(alwan_mat3x3 *out) {
 }
 
 /* ----------------------------------------------------------------
- * P7: Extended CAT Matrix Definitions
+ * Extended CAT Matrix Definitions
  * ---------------------------------------------------------------- */
 
 /* Sharp CAT matrix
@@ -152,7 +152,7 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
             get_cat16_matrix(&M);
             break;
 
-        /* P7: Extended CAT methods */
+        /* Extended CAT methods */
         case ALWAN_CAT_SHARP:
             get_sharp_matrix(&M);
             break;

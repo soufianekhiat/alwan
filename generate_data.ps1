@@ -192,13 +192,13 @@ rgb_spaces = [
     ('ACEScg', 'ACEScg'),
     ('ACESproxy', 'ACESproxy'),
 
-    # P5.1: Adobe RGB (1998) - Photography/print workflow
+    # Adobe RGB (1998) - Photography/print workflow
     ('Adobe RGB 1998', 'Adobe RGB (1998)'),
 
-    # P5.2: ProPhoto RGB / ROMM RGB - Wide gamut professional
+    # ProPhoto RGB / ROMM RGB - Wide gamut professional
     ('ProPhoto RGB', 'ProPhoto RGB'),
 
-    # P5.3: Cinema/Broadcast spaces - Professional video production
+    # Cinema/Broadcast spaces - Professional video production
     ('DaVinci Wide Gamut', 'DaVinci Wide Gamut'),
     ('Blackmagic Wide Gamut', 'Blackmagic Wide Gamut'),
     ('V-Gamut', 'V-Gamut'),
@@ -210,7 +210,7 @@ rgb_spaces = [
     ('DCI-P3', 'DCI-P3'),
     ('P3-D65', 'P3-D65'),
 
-    # P5.4: Legacy spaces - Historical compatibility
+    # Legacy spaces - Historical compatibility
     ('NTSC 1953', 'NTSC (1953)'),
     ('NTSC 1987', 'NTSC (1987)'),
     ('PAL SECAM', 'PAL/SECAM'),
@@ -1211,9 +1211,9 @@ with open(filename, 'w', newline='') as f:
 print(f"    {filename} ({len(out_of_gamut_colors)} colors)")
 
 # ================================================================
-# P1.1: Oklab & Oklch Test Fixtures
+# Oklab & Oklch Test Fixtures
 # ================================================================
-print("\nGenerating P1.1 Oklab & Oklch test fixtures...")
+print("\nGenerating Oklab & Oklch test fixtures...")
 
 # Test colors in XYZ (D65)
 oklab_test_xyz = [
@@ -1414,7 +1414,7 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate CIE 2012 10° CMFs: {e}", file=sys.stderr)
 
-# P8: Stockman & Sharpe 2000 2° Cone Fundamentals (360-830nm, 1nm steps)
+# Stockman & Sharpe 2000 2° Cone Fundamentals (360-830nm, 1nm steps)
 try:
     cmfs_ss = colour.MSDS_CMFS['Stockman & Sharpe 2 Degree Cone Fundamentals']
 
@@ -1448,7 +1448,7 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate Stockman & Sharpe 2° CMFs: {e}", file=sys.stderr)
 
-# P8.2: CIE 2015 2° Cone Fundamentals (390-830nm originally, filtered to 360-830nm)
+# CIE 2015 2° Cone Fundamentals (390-830nm originally, filtered to 360-830nm)
 try:
     cmfs_2015_2 = colour.MSDS_CMFS['CIE 2015 2 Degree Standard Observer']
 
@@ -1483,7 +1483,7 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate CIE 2015 2° CMFs: {e}", file=sys.stderr)
 
-# P8.2: CIE 2015 10° Cone Fundamentals (390-830nm originally, filtered to 360-830nm)
+# CIE 2015 10° Cone Fundamentals (390-830nm originally, filtered to 360-830nm)
 try:
     cmfs_2015_10 = colour.MSDS_CMFS['CIE 2015 10 Degree Standard Observer']
 
@@ -1518,7 +1518,7 @@ try:
 except Exception as e:
     print(f"  Warning: Could not generate CIE 2015 10° CMFs: {e}", file=sys.stderr)
 
-# P8.2: Wright & Guild 1931 2° RGB CMFs (380-780nm originally, extended to 360-830nm)
+# Wright & Guild 1931 2° RGB CMFs (380-780nm originally, extended to 360-830nm)
 try:
     cmfs_wg = colour.MSDS_CMFS['Wright & Guild 1931 2 Degree RGB CMFs']
 
@@ -1562,10 +1562,10 @@ print("\nGenerating Illuminant SPDs...")
 illuminant_names = ['A', 'D50', 'D55', 'D65', 'E',
                     'F1', 'F2', 'F3', 'F4', 'F5', 'F6',
                     'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
-                    'B', 'C', 'D60', 'D75',  # P8.3: Basic extended illuminants
-                    'LED-B1', 'LED-B2', 'LED-B3', 'LED-B4', 'LED-B5',  # P8.3: LED illuminants
+                    'B', 'C', 'D60', 'D75',  # Basic extended illuminants
+                    'LED-B1', 'LED-B2', 'LED-B3', 'LED-B4', 'LED-B5',  # LED illuminants
                     'LED-BH1', 'LED-V1', 'LED-V2', 'LED-RGB1',
-                    'HP1', 'HP2', 'HP3', 'HP4', 'HP5']  # P8.3: High Pressure illuminants
+                    'HP1', 'HP2', 'HP3', 'HP4', 'HP5']  # High Pressure illuminants
 
 for illum_name in illuminant_names:
     try:
@@ -1603,7 +1603,7 @@ for illum_name in illuminant_names:
         print(f"  Warning: Could not generate illuminant {illum_name}: {e}", file=sys.stderr)
 
 # ================================================================
-# P8.3: Additional D-series Illuminants (computed from CCT)
+# Additional D-series Illuminants (computed from CCT)
 # ================================================================
 print("\nGenerating additional D-series illuminants (D40, D45, D93)...")
 
@@ -1644,7 +1644,7 @@ for d_name, cct in d_series_to_generate.items():
         print(f"  Warning: Could not generate {d_name}: {e}", file=sys.stderr)
 
 # ================================================================
-# P8: Illuminant xy Chromaticity Coordinates
+# Illuminant xy Chromaticity Coordinates
 # ================================================================
 print("\nGenerating Illuminant xy Chromaticity Coordinates...")
 
@@ -1725,9 +1725,9 @@ for d_name, cct in d_series_to_generate.items():
         print(f"  Warning: Could not generate xy for {d_name}: {e}", file=sys.stderr)
 
 # ================================================================
-# P8.1: Spectral Upsampling - Basis Functions
+# Spectral Upsampling - Basis Functions
 # ================================================================
-print("\n--- P8.1: Generating Spectral Upsampling Basis Functions ---")
+print("\n--- Generating Spectral Upsampling Basis Functions ---")
 
 # ----------------------------------------------------------------
 # Smits1999 Basis Spectra
@@ -1816,7 +1816,7 @@ except Exception as e:
 # ============================================================
 # Jakob2019 Polynomial LUT (using native C++ tool)
 # ============================================================
-print("\n--- P8.1: Generating Jakob2019 Polynomial LUTs ---")
+print("\n--- Generating Jakob2019 Polynomial LUTs ---")
 
 # Create output directory
 jakob_dir = f'{DATA_DIR}/spectral_lut/jakob2019'
@@ -1886,6 +1886,16 @@ else:
         return c0_values, c1_values, c2_values
 
     for gamut in gamuts_to_generate:
+        # Check if output files already exist
+        gamut_suffix = '' if gamut == 'sRGB' else f'_{gamut.lower()}'
+        c0_file = f'{jakob_dir}/jakob2019_lut_c0{gamut_suffix}.csv'
+        c1_file = f'{jakob_dir}/jakob2019_lut_c1{gamut_suffix}.csv'
+        c2_file = f'{jakob_dir}/jakob2019_lut_c2{gamut_suffix}.csv'
+
+        if os.path.exists(c0_file) and os.path.exists(c1_file) and os.path.exists(c2_file):
+            print(f"\n{gamut} {resolution}x{resolution}x{resolution} LUT files already exist, skipping generation.")
+            continue
+
         print(f"\nGenerating {gamut} {resolution}x{resolution}x{resolution} LUT...")
 
         # Temporary binary output file
@@ -2076,8 +2086,8 @@ try:
         f.write(','.join(formatted_values) + '\n')
     print(f"  {filename} (3x3 matrix, 9 values)")
 
-    # P7: Extended CAT matrices
-    print("\nGenerating P7 extended CAT matrices...")
+    # Extended CAT matrices
+    print("\nGenerating extended CAT matrices...")
 
     p7_cat_transforms = {
         'Sharp': 'cat_sharp.csv',
@@ -2241,9 +2251,9 @@ except Exception as e:
     print(f"  Warning: Could not generate CES data: {e}", file=sys.stderr)
 
 # ================================================================
-# P8.4: Generate Camera Sensitivity Data
+# Generate Camera Sensitivity Data
 # ================================================================
-print("\nGenerating Camera Sensitivity Data (P8.4)...")
+print("\nGenerating Camera Sensitivity Data...")
 
 try:
     # Target wavelength range (matching our SPD format)
@@ -2307,12 +2317,12 @@ except Exception as e:
     traceback.print_exc(file=sys.stderr)
 
 # ----------------------------------------------------------------
-# P9: Gamut Analysis & Mapping Data
+# Gamut Analysis & Mapping Data
 # ----------------------------------------------------------------
 
 print("")
 print("=" * 80)
-print("P9: Gamut Analysis & Mapping")
+print("Gamut Analysis & Mapping")
 print("=" * 80)
 
 try:
@@ -2320,7 +2330,7 @@ try:
     os.makedirs(f'{DATA_DIR}/gamut', exist_ok=True)
 
     # ============================================================
-    # P9.1: Pointer's Gamut Boundary
+    # Pointer's Gamut Boundary
     # ============================================================
     print("\n1. Generating Pointer's Gamut boundary data...")
 
@@ -2343,7 +2353,7 @@ try:
     print(f"  {output_file} ({len(pointer_boundary)} points)")
 
     # ============================================================
-    # P9.2: Spectral Locus from CIE 1931 2° CMFs
+    # Spectral Locus from CIE 1931 2° CMFs
     # ============================================================
     print("\n2. Generating Spectral Locus xy data...")
 
@@ -2392,10 +2402,76 @@ try:
 
     print(f"  {output_file_xy} (xy pairs only)")
 
-    print(f"\n  P9 gamut data generation complete!")
+    print(f"\n  Gamut data generation complete!")
 
 except Exception as e:
     print(f"  Warning: Could not generate P9 gamut data: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+
+# ================================================================
+# ColorChecker Reference Data
+# ================================================================
+print("\nGenerating ColorChecker reference data...")
+
+try:
+    from colour.characterisation import SDS_COLOURCHECKERS
+
+    # ColorChecker Classic 24-patch data under D50
+    print("  Processing ColorChecker Classic (24 patches)...")
+    cc_classic = SDS_COLOURCHECKERS['ColorChecker N Ohta']
+
+    # Get D50 illuminant
+    d50_ill = colour.SDS_ILLUMINANTS['D50']
+
+    # Convert each patch to XYZ under D50, then to xyY
+    classic_xyy_values = []
+    patches = list(cc_classic.values())
+
+    for i, patch_sd in enumerate(patches):
+        # Convert reflectance to XYZ under D50
+        xyz = colour.sd_to_XYZ(patch_sd, illuminant=d50_ill) / 100.0
+
+        # Convert XYZ to xyY
+        xyy = colour.XYZ_to_xyY(xyz)
+        classic_xyy_values.extend([xyy[0], xyy[1], xyy[2]])
+
+    # Write ColorChecker Classic data (24 patches × 3 values = 72 values)
+    output_file = f'{DATA_DIR}/colorchecker/classic_d50_xyy.csv'
+    ensure_dir(output_file)
+    with open(output_file, 'w') as f:
+        formatted = [format_scalar(v) for v in classic_xyy_values]
+        f.write(','.join(formatted))
+
+    print(f"  {output_file} (24 patches, 72 xyY values)")
+
+    # Try to get ColorChecker SG (140 patches)
+    try:
+        print("  Processing ColorChecker SG (140 patches)...")
+        cc_sg = SDS_COLOURCHECKERS['ColorChecker24 - After November 2014']
+
+        sg_xyy_values = []
+        sg_patches = list(cc_sg.values())
+
+        for patch_sd in sg_patches:
+            xyz = colour.sd_to_XYZ(patch_sd, illuminant=d50_ill) / 100.0
+            xyy = colour.XYZ_to_xyY(xyz)
+            sg_xyy_values.extend([xyy[0], xyy[1], xyy[2]])
+
+        output_file = f'{DATA_DIR}/colorchecker/sg_d50_xyy.csv'
+        ensure_dir(output_file)
+        with open(output_file, 'w') as f:
+            formatted = [format_scalar(v) for v in sg_xyy_values]
+            f.write(','.join(formatted))
+
+        print(f"  {output_file} ({len(sg_patches)} patches, {len(sg_xyy_values)} xyY values)")
+    except Exception as e_sg:
+        print(f"  Note: ColorChecker SG not available in colour-science: {e_sg}")
+
+    print("  ColorChecker data generation complete!")
+
+except Exception as e:
+    print(f"  Warning: Could not generate ColorChecker data: {e}", file=sys.stderr)
     import traceback
     traceback.print_exc(file=sys.stderr)
 

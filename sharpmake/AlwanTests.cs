@@ -56,6 +56,8 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\310_spd_shape.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\320_gamut_analysis.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\330_vision_perception.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\340_math_utilities.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\350_reference_data.c");
         }
 
         [Configure()]

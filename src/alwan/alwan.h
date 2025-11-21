@@ -71,7 +71,7 @@ int alwan_data_get_illuminant_d50(alwan_ctx *ctx, alwan_scalar **data, size_t *c
 /* Illuminant D55 (mid-morning daylight) */
 int alwan_data_get_illuminant_d55(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
-/* P8: Illuminant D60 (daylight) */
+/* Illuminant D60 (daylight) */
 int alwan_data_get_illuminant_d60(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 /* Illuminant D65 (noon daylight) */
@@ -80,13 +80,13 @@ int alwan_data_get_illuminant_d65(alwan_ctx *ctx, alwan_scalar **data, size_t *c
 /* Illuminant E (equal energy) */
 int alwan_data_get_illuminant_e(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
-/* P8: Illuminant B (direct sunlight) */
+/* Illuminant B (direct sunlight) */
 int alwan_data_get_illuminant_b(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
-/* P8: Illuminant C (average daylight) */
+/* Illuminant C (average daylight) */
 int alwan_data_get_illuminant_c(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
-/* P8: Illuminant D75 (daylight 7500K) */
+/* Illuminant D75 (daylight 7500K) */
 int alwan_data_get_illuminant_d75(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
 // TODO: Add F1-F12 fluorescent illuminant getters once xy data is generated
@@ -259,7 +259,7 @@ typedef enum {
     ALWAN_ILLUMINANT_F11,
     ALWAN_ILLUMINANT_F12,
 
-    /* P8.3: LED illuminants */
+    /* LED illuminants */
     ALWAN_ILLUMINANT_LED_B1,    /* LED B1 (blue-pumped phosphor) */
     ALWAN_ILLUMINANT_LED_B2,    /* LED B2 */
     ALWAN_ILLUMINANT_LED_B3,    /* LED B3 */
@@ -270,7 +270,7 @@ typedef enum {
     ALWAN_ILLUMINANT_LED_V1,    /* LED V1 (violet-pumped) */
     ALWAN_ILLUMINANT_LED_V2,    /* LED V2 */
 
-    /* P8.3: High Pressure illuminants */
+    /* High Pressure illuminants */
     ALWAN_ILLUMINANT_HP1,   /* High Pressure 1 (mercury) */
     ALWAN_ILLUMINANT_HP2,   /* High Pressure 2 */
     ALWAN_ILLUMINANT_HP3,   /* High Pressure 3 */
@@ -641,7 +641,7 @@ typedef enum {
     ALWAN_CAT_CAT02       = 2,  /* CAT02 (from CIECAM02) */
     ALWAN_CAT_CAT16       = 3,  /* CAT16 (from CAM16) */
 
-    /* P7: Extended CAT methods */
+    /* Extended CAT methods */
     ALWAN_CAT_SHARP           = 4,  /* Sharp transform */
     ALWAN_CAT_FAIRCHILD       = 5,  /* Fairchild 1990 */
     ALWAN_CAT_CMCCAT97        = 6,  /* CMC CAT97 */
@@ -699,20 +699,20 @@ typedef enum {
     ALWAN_OBSERVER_CIE_2012_2DEG = 2,  /* CIE 2012 2° standard observer (physiologically-based) */
     ALWAN_OBSERVER_CIE_2012_10DEG = 3, /* CIE 2012 10° standard observer (physiologically-based) */
 
-    /* P8.2: Extended observers */
+    /* Extended observers */
     ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4,  /* Stockman & Sharpe 2000 2° cone fundamentals */
     ALWAN_OBSERVER_CIE_2015_2DEG = 5,         /* CIE 2015 2° cone-fundamental-based observer */
     ALWAN_OBSERVER_CIE_2015_10DEG = 6,        /* CIE 2015 10° cone-fundamental-based observer */
     ALWAN_OBSERVER_WRIGHT_GUILD_1931 = 7      /* Wright & Guild 1931 2° RGB CMFs (historical) */
 } alwan_observer_type;
 
-/* P8.4: Camera/Sensor spectral sensitivity identifiers */
+/* Camera/Sensor spectral sensitivity identifiers */
 typedef enum {
     ALWAN_CAMERA_NIKON_5100,        /* Nikon D5100 (NPL measured) */
     ALWAN_CAMERA_SIGMA_SDMERILL     /* Sigma SD Merill (NPL measured) */
 } alwan_camera_sensitivity;
 
-/* P8.5: Spectral shape descriptor
+/* Spectral shape descriptor
  * Compact representation of SPD characteristics */
 typedef struct {
     alwan_scalar peak_wavelength;  /* Peak wavelength (nm) */
@@ -827,10 +827,10 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_vec3 *xyz_out);
 
 /* ----------------------------------------------------------------
- * P8.4: Camera Sensitivities
+ * Camera Sensitivities
  * ---------------------------------------------------------------- */
 
-/* P8.4: Load camera RGB spectral sensitivities
+/* Load camera RGB spectral sensitivities
  * Loads R, G, B sensitivity curves for specified camera
  * All three output SPDs must be pre-created with desired wavelength range/count
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if camera not supported */
@@ -840,7 +840,7 @@ int alwan_spd_camera_sensitivity(alwan_ctx *ctx,
                                    alwan_spd *spd_g,
                                    alwan_spd *spd_b);
 
-/* P8.4: Compute XYZ from SPD using camera sensitivities
+/* Compute XYZ from SPD using camera sensitivities
  * Similar to alwan_xyz_from_spd but uses camera RGB sensitivities instead of standard observer
  * Returns ALWAN_OK on success */
 int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
@@ -851,38 +851,38 @@ int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
                                alwan_vec3 *xyz_out);
 
 /* ----------------------------------------------------------------
- * P8.5: Spectral Shape Descriptors
+ * Spectral Shape Descriptors
  * ---------------------------------------------------------------- */
 
-/* P8.5: Analyze SPD shape characteristics
+/* Analyze SPD shape characteristics
  * Computes peak wavelength, FWHM, centroid, and bandwidth
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if SPD is invalid */
 int alwan_spd_analyze_shape(alwan_spd const *spd, alwan_spd_shape *shape_out);
 
 /* ----------------------------------------------------------------
- * P9: Gamut Analysis & Mapping
+ * Gamut Analysis & Mapping
  * ---------------------------------------------------------------- */
 
-/* P9.1: Check if xy chromaticity is within Pointer's Gamut
+/* Check if xy chromaticity is within Pointer's Gamut
  * Pointer's Gamut represents the boundary of real surface colors under illuminant C
  * xy: CIE 1931 xy chromaticity coordinates
  * Returns 1 if inside Pointer's Gamut, 0 otherwise */
 int alwan_is_within_pointer_gamut(alwan_vec2 const *xy);
 
-/* P9.1: Get Pointer's Gamut boundary points
+/* Get Pointer's Gamut boundary points
  * Returns array of xy chromaticity coordinates defining the boundary
  * count_out: receives the number of boundary points (32)
  * Returns pointer to internal static data (do not free) */
 alwan_vec2 const* alwan_pointer_gamut_boundary(size_t *count_out);
 
-/* P9.2: Get CIE 1931 spectral locus xy chromaticity for a given wavelength
+/* Get CIE 1931 spectral locus xy chromaticity for a given wavelength
  * Computes xy chromaticity from CIE 1931 2° observer CMFs for monochromatic light
  * wavelength: wavelength in nm (360-830nm)
  * xy_out: output xy chromaticity coordinates
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if wavelength out of range */
 int alwan_spectral_locus_xy(alwan_scalar wavelength, alwan_vec2 *xy_out);
 
-/* P9.3: Compute dominant wavelength for a color
+/* Compute dominant wavelength for a color
  * Dominant wavelength is the wavelength of monochromatic light that,
  * when mixed with the white point, matches the given color's hue
  * xy: CIE 1931 xy chromaticity coordinates of the color
@@ -897,7 +897,7 @@ int alwan_dominant_wavelength(alwan_vec2 const *xy,
                                alwan_vec2 *xy_wl_out,
                                alwan_vec2 *xy_cw_out);
 
-/* P9.3: Compute excitation purity for a color
+/* Compute excitation purity for a color
  * Excitation purity is the ratio of the distance from the white point to the color,
  * divided by the distance from the white point to the spectrum locus, along the
  * line connecting them (0 = white, 1 = spectral/maximum saturation)
@@ -909,7 +909,7 @@ int alwan_excitation_purity(alwan_vec2 const *xy,
                              alwan_vec2 const *xy_white,
                              alwan_scalar *purity_out);
 
-/* P9.3: Compute complementary wavelength for a color
+/* Compute complementary wavelength for a color
  * Complementary wavelength is used for colors on the purple line (no dominant wavelength)
  * It is the wavelength on the opposite side of the white point
  * xy: CIE 1931 xy chromaticity coordinates of the color
@@ -924,7 +924,7 @@ int alwan_complementary_wavelength(alwan_vec2 const *xy,
                                      alwan_vec2 *xy_wl_out,
                                      alwan_vec2 *xy_cw_out);
 
-/* P9.6: Compute gamut volume ratio between two RGB color spaces
+/* Compute gamut volume ratio between two RGB color spaces
  * Computes the ratio of gamut volumes: volume(space1) / volume(space2)
  * space1: first RGB color space descriptor
  * space2: second RGB color space descriptor
@@ -934,7 +934,7 @@ int alwan_gamut_volume_ratio(alwan_rgb_space_desc const *space1,
                                alwan_rgb_space_desc const *space2,
                                alwan_scalar *ratio_out);
 
-/* P9.6: Compute gamut coverage percentage between two RGB color spaces
+/* Compute gamut coverage percentage between two RGB color spaces
  * Computes what percentage of space1's gamut is covered by space2's gamut
  * Uses Monte Carlo sampling to estimate overlap
  * space1: reference RGB color space (the gamut we're measuring coverage of)
@@ -950,10 +950,10 @@ int alwan_gamut_coverage(alwan_rgb_space_desc const *space1,
                           alwan_scalar *coverage_out);
 
 /* ----------------------------------------------------------------
- * P9.5: Advanced Gamut Mapping Algorithms
+ * Advanced Gamut Mapping Algorithms
  * ---------------------------------------------------------------- */
 
-/* P9.5: Map out-of-gamut RGB color to valid gamut
+/* Map out-of-gamut RGB color to valid gamut
  * Maps an RGB color (possibly out of [0,1] range) back into valid gamut
  * using perceptually-aware algorithms
  * method: gamut mapping algorithm to use
@@ -967,7 +967,7 @@ int alwan_gamut_map_advanced(alwan_gamut_map_method method,
                               alwan_vec3 *rgb_out);
 
 /* ----------------------------------------------------------------
- * P8.1: Spectral Upsampling - RGB to Spectrum Conversion
+ * Spectral Upsampling - RGB to Spectrum Conversion
  * ---------------------------------------------------------------- */
 
 /* Smits1999: RGB to spectrum conversion using basis spectra mixing
@@ -1372,10 +1372,10 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
                                      alwan_observer_type observer);
 
 /* ----------------------------------------------------------------
- * P10: Color Vision & Perception
+ * Color Vision & Perception
  * ---------------------------------------------------------------- */
 
-/* P10.1: Color Blindness Simulation (CVD - Color Vision Deficiency) */
+/* Color Blindness Simulation (CVD - Color Vision Deficiency) */
 
 /* CVD (Color Vision Deficiency) types */
 typedef enum {
@@ -1400,7 +1400,7 @@ int alwan_simulate_cvd(alwan_vec3 const *rgb_in,
                         alwan_scalar severity,
                         alwan_vec3 *rgb_out);
 
-/* P10.2: Luminous Efficiency Functions */
+/* Luminous Efficiency Functions */
 
 /* Vision type for luminous efficiency */
 typedef enum {
@@ -1435,7 +1435,7 @@ alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
                                       alwan_spd const *spd,
                                       alwan_scalar adaptation_level);
 
-/* P10.3: Contrast Sensitivity Function (CSF) */
+/* Contrast Sensitivity Function (CSF) */
 
 /* Calculate contrast sensitivity for spatial frequency
  * spatial_frequency: spatial frequency in cycles per degree [0.1, 60]
@@ -1490,6 +1490,192 @@ static inline alwan_scalar alwan_saturate(alwan_scalar x) {
 static inline alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scalar t) {
     return (ALWAN_LITERAL(1.0) - t) * a + t * b;
 }
+
+/* ----------------------------------------------------------------
+ * Advanced Mathematical & Utility Functions
+ * ---------------------------------------------------------------- */
+
+/* Interpolation method types */
+typedef enum {
+    ALWAN_INTERP_LINEAR = 0,     /* Linear interpolation (default) */
+    ALWAN_INTERP_CUBIC,           /* Cubic interpolation */
+    ALWAN_INTERP_LANCZOS,         /* Lanczos windowed sinc */
+    ALWAN_INTERP_SPRAGUE,         /* Sprague 5th order (for smooth spectra) */
+    ALWAN_INTERP_LAGRANGE,        /* Lagrange polynomial */
+    ALWAN_INTERP_AKIMA            /* Akima spline (non-overshooting) */
+} alwan_interp_method;
+
+/* Extrapolation method types */
+typedef enum {
+    ALWAN_EXTRAP_CONSTANT = 0,    /* Constant (use boundary value) */
+    ALWAN_EXTRAP_LINEAR,          /* Linear extrapolation */
+    ALWAN_EXTRAP_POLYNOMIAL,      /* Polynomial extrapolation */
+    ALWAN_EXTRAP_EXPONENTIAL,     /* Exponential decay (for SPDs) */
+    ALWAN_EXTRAP_REFLECT,         /* Reflective boundary */
+    ALWAN_EXTRAP_NATURAL          /* Natural neighbor extrapolation */
+} alwan_extrap_method;
+
+/* Color Checker target types */
+typedef enum {
+    ALWAN_COLORCHECKER_CLASSIC = 0,      /* ColorChecker Classic 24-patch */
+    ALWAN_COLORCHECKER_SG,                /* ColorChecker SG 140-patch */
+    ALWAN_COLORCHECKER_DIGITAL_SG,        /* ColorChecker Digital SG */
+    ALWAN_BABELCOLOR_AVERAGE,             /* BabelColor Average */
+    ALWAN_BABELCOLOR_HCT                  /* BabelColor HCT */
+} alwan_colorchecker_type;
+
+/* Advanced Interpolation
+ * Interpolates data points (x_in, y_in) to output points x_out
+ * x_in: input x coordinates (must be sorted ascending)
+ * y_in: input y values
+ * count_in: number of input points
+ * x_out: output x coordinates
+ * y_out: output y values (allocated by caller)
+ * count_out: number of output points
+ * method: interpolation method
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t count_in,
+                       alwan_scalar const *x_out, alwan_scalar *y_out, size_t count_out,
+                       alwan_interp_method method);
+
+/* Enhanced Extrapolation
+ * Extrapolates data points (x_in, y_in) to output points x_out
+ * Uses specified method for points outside the input range
+ * x_in: input x coordinates (must be sorted ascending)
+ * y_in: input y values
+ * count_in: number of input points
+ * x_out: output x coordinates
+ * y_out: output y values (allocated by caller)
+ * count_out: number of output points
+ * method: extrapolation method
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t count_in,
+                       alwan_scalar const *x_out, alwan_scalar *y_out, size_t count_out,
+                       alwan_extrap_method method);
+
+/* CCT and Duv Optimization
+ * Computes Correlated Color Temperature (CCT) and distance from Planckian locus (Duv)
+ * using iterative least-squares optimization
+ * xy: CIE 1931 xy chromaticity coordinates
+ * cct_out: receives CCT in Kelvin
+ * duv_out: receives Duv (distance from Planckian locus, can be NULL)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if xy is invalid
+ * Accuracy: CCT <= 1K, Duv <= 0.0001 */
+int alwan_cct_duv_optimize(alwan_vec2 const *xy, alwan_scalar *cct_out, alwan_scalar *duv_out);
+
+/* Tristimulus Optimization
+ * Finds a spectral power distribution that matches target XYZ tristimulus values
+ * target_xyz: target XYZ tristimulus values
+ * observer: observer type (e.g., CIE 1931 2°)
+ * ctx: context for SPD allocation
+ * spd_out: receives optimized SPD (must be pre-allocated with desired wavelength range)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
+ * Note: Multiple SPDs can match the same XYZ (metamerism), this finds one solution */
+int alwan_optimize_spectrum_for_xyz(alwan_vec3 const *target_xyz,
+                                      alwan_observer_type observer,
+                                      alwan_ctx *ctx,
+                                      alwan_spd *spd_out);
+
+/* 1D Table Interpolation
+ * Interpolates a value from a 1D lookup table
+ * table: 1D LUT array
+ * size: number of elements in table
+ * x: input coordinate [0, 1] (normalized)
+ * method: interpolation method (LINEAR or CUBIC)
+ * Returns interpolated value */
+alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
+                                    alwan_scalar x, alwan_interp_method method);
+
+/* 3D Table Interpolation (Trilinear)
+ * Interpolates RGB values from a 3D lookup table using trilinear method
+ * table: 3D LUT array (R-major: table[r][g][b])
+ * sizes: dimensions [size_r, size_g, size_b]
+ * rgb_in: input RGB coordinates [0, 1] (normalized)
+ * rgb_out: receives interpolated RGB values
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_table_interp_3d_trilinear(alwan_scalar const *table, size_t const sizes[3],
+                                     alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out);
+
+/* 3D Table Interpolation (Tetrahedral)
+ * Interpolates RGB values from a 3D lookup table using tetrahedral method
+ * Tetrahedral is more accurate than trilinear for color transforms
+ * table: 3D LUT array (R-major: table[r][g][b])
+ * sizes: dimensions [size_r, size_g, size_b]
+ * rgb_in: input RGB coordinates [0, 1] (normalized)
+ * rgb_out: receives interpolated RGB values
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_table_interp_3d_tetrahedral(alwan_scalar const *table, size_t const sizes[3],
+                                       alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out);
+
+/* ----------------------------------------------------------------
+ * Data & Reference Sets
+ * ---------------------------------------------------------------- */
+
+/* Munsell Renotation Data
+ * Convert Munsell notation (Hue, Value, Chroma) to XYZ tristimulus values
+ * Uses the Munsell Renotation Data (1943)
+ * hue: Munsell hue [0, 100] (continuous)
+ * value: Munsell value [0, 10]
+ * chroma: Munsell chroma [0, 20+]
+ * illuminant: illuminant for XYZ calculation
+ * xyz: receives XYZ tristimulus values
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chroma,
+                         alwan_illuminant illuminant, alwan_vec3 *xyz);
+
+/* Convert XYZ tristimulus values to Munsell notation (Hue, Value, Chroma)
+ * xyz: XYZ tristimulus values
+ * illuminant: illuminant for XYZ calculation
+ * hue: receives Munsell hue [0, 100]
+ * value: receives Munsell value [0, 10]
+ * chroma: receives Munsell chroma [0, 20+]
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_xyz_to_munsell(alwan_vec3 const *xyz, alwan_illuminant illuminant,
+                         alwan_scalar *hue, alwan_scalar *value, alwan_scalar *chroma);
+
+/* Color Checker Data
+ * Get XYZ tristimulus values for a Color Checker patch
+ * type: Color Checker target type
+ * illuminant: illuminant for XYZ calculation
+ * patch_index: patch index [0, num_patches-1]
+ * xyz: receives XYZ tristimulus values
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_color_checker_data(alwan_colorchecker_type type, alwan_illuminant illuminant,
+                              size_t patch_index, alwan_vec3 *xyz);
+
+/* Get number of patches in a Color Checker target
+ * type: Color Checker target type
+ * Returns number of patches, or 0 on error */
+size_t alwan_color_checker_num_patches(alwan_colorchecker_type type);
+
+/* NCS (Natural Color System) Data
+ * Convert NCS notation to XYZ tristimulus values
+ * ncs_notation: NCS notation string (e.g., "S 1050-Y90R")
+ * xyz: receives XYZ tristimulus values
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_ncs_to_xyz(char const *ncs_notation, alwan_vec3 *xyz);
+
+/* Convert XYZ tristimulus values to NCS notation
+ * xyz: XYZ tristimulus values
+ * ncs_notation: receives NCS notation string (allocated by caller)
+ * notation_size: size of notation buffer (should be >= 32)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_xyz_to_ncs(alwan_vec3 const *xyz, char *ncs_notation, size_t notation_size);
+
+/* Additional RGB Space Definitions
+ * Get RGB space primaries and white point by name
+ * name: RGB space name (e.g., "Adobe RGB", "ProPhoto RGB")
+ * primaries: receives RGB primaries as xy chromaticities (3x2 matrix)
+ * white_point: receives white point xy chromaticity
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not found */
+int alwan_rgb_space_by_name(char const *name, alwan_scalar primaries[6], alwan_vec2 *white_point);
+
+/* Get RGB space transfer function name
+ * name: RGB space name
+ * tf_name: receives transfer function name (allocated by caller)
+ * tf_name_size: size of tf_name buffer (should be >= 32)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not found */
+int alwan_rgb_space_tf_name(char const *name, char *tf_name, size_t tf_name_size);
 
 #ifdef __cplusplus
 }

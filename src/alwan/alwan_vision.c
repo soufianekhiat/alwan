@@ -1,5 +1,5 @@
 /* ================================================================
- * Alwan - P10.1: Color Blindness Simulation
+ * Alwan - Color Blindness Simulation
  * ================================================================
  * Implements color vision deficiency (CVD) simulation based on
  * Brettel, Viénot & Mollon (1997)
@@ -10,7 +10,7 @@
 #include <math.h>
 
 /* ================================================================
- * P10.1: Color Vision Deficiency (CVD) Simulation
+ * Color Vision Deficiency (CVD) Simulation
  * ================================================================ */
 
 /* CVD transformation matrices as flat 9-element arrays
@@ -133,7 +133,7 @@ int alwan_simulate_cvd(alwan_vec3 const *rgb_in,
 }
 
 /* ================================================================
- * P10.2: Luminous Efficiency Functions
+ * Luminous Efficiency Functions
  * ================================================================ */
 
 /* CIE Photopic Luminous Efficiency V(λ) - 1924/1988
@@ -280,7 +280,7 @@ alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
 }
 
 /* ================================================================
- * P10.3: Contrast Sensitivity Function (CSF)
+ * Contrast Sensitivity Function (CSF)
  * ================================================================ */
 
 /* Barten CSF model (1999)
