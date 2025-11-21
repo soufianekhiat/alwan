@@ -10,6 +10,8 @@
 #include "../../src/alwan/alwan.h"
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
+#include <stdlib.h>
 
 /* Use fabs for floating point absolute value */
 #ifndef ALWAN_FABS
@@ -154,51 +156,97 @@ static int test_cvd_normal_vision(void) {
  * P10.2: Luminous Efficiency Function Tests
  * ---------------------------------------------------------------- */
 
+/* Helper: Load CSV reference values */
+static int load_csv_values(const char *filename, alwan_scalar *values, int max_count) {
+    FILE *f = fopen(filename, "r");
+    if (!f) return -1;
+
+    char line[4096];
+    if (!fgets(line, sizeof(line), f)) {
+        fclose(f);
+        return -1;
+    }
+
+    int count = 0;
+    char *token = strtok(line, ",\n");
+    while (token && count < max_count) {
+        values[count] = (alwan_scalar)atof(token);
+        count++;
+        token = strtok(NULL, ",\n");
+    }
+
+    fclose(f);
+    return count;
+}
+
 static int test_photopic_efficiency(void) {
-    /* Test photopic luminous efficiency V(λ) */
-    /* Peak at 555nm should be 1.0 */
-    alwan_scalar v_555 = alwan_luminous_efficiency(ALWAN_LITERAL(555.0), ALWAN_VISION_PHOTOPIC);
+    /* Load reference values from colour-science */
+    alwan_scalar ref_wavelengths[16], ref_values[16];
+    int wl_count = load_csv_values("tests/unit/reference_values/photopic_efficiency_wavelengths.csv",
+                                     ref_wavelengths, 16);
+    int val_count = load_csv_values("tests/unit/reference_values/photopic_efficiency_values.csv",
+                                      ref_values, 16);
 
-    TEST_ASSERT(v_555 > ALWAN_LITERAL(0.99) && v_555 <= ALWAN_LITERAL(1.0),
-                "Photopic peak at 555nm not ~1.0");
+    TEST_ASSERT(wl_count > 0 && wl_count == val_count, "Failed to load photopic reference data");
 
-    /* Should be lower at other wavelengths */
-    alwan_scalar v_450 = alwan_luminous_efficiency(ALWAN_LITERAL(450.0), ALWAN_VISION_PHOTOPIC);
-    alwan_scalar v_650 = alwan_luminous_efficiency(ALWAN_LITERAL(650.0), ALWAN_VISION_PHOTOPIC);
+    /* Test against all reference wavelengths */
+    alwan_scalar max_error = ALWAN_LITERAL(0.0);
+    for (int i = 0; i < wl_count; i++) {
+        alwan_scalar computed = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_PHOTOPIC);
+        alwan_scalar error = ALWAN_FABS(computed - ref_values[i]);
+        if (error > max_error) max_error = error;
 
-    TEST_ASSERT(v_450 < v_555, "450nm efficiency should be < 555nm");
-    TEST_ASSERT(v_650 < v_555, "650nm efficiency should be < 555nm");
-    TEST_ASSERT(v_450 > ALWAN_LITERAL(0.0), "450nm efficiency should be > 0");
-    TEST_ASSERT(v_650 > ALWAN_LITERAL(0.0), "650nm efficiency should be > 0");
+        /* Allow small interpolation error */
+        TEST_ASSERT(error < ALWAN_LITERAL(0.01),
+                    "Photopic efficiency error too large");
+    }
 
-    printf("  Photopic V(λ):\n");
-    printf("    450nm: %.4f\n", v_450);
-    printf("    555nm: %.4f (peak)\n", v_555);
-    printf("    650nm: %.4f\n", v_650);
+    /* Display key values */
+    printf("  Photopic V(λ) validated against colour-science:\n");
+    for (int i = 0; i < wl_count; i++) {
+        if ((int)ref_wavelengths[i] == 450 || (int)ref_wavelengths[i] == 555 ||
+            (int)ref_wavelengths[i] == 650) {
+            alwan_scalar v = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_PHOTOPIC);
+            printf("    %.0fnm: %.4f (ref: %.4f)\n", ref_wavelengths[i], v, ref_values[i]);
+        }
+    }
+    printf("    Max error: %.6f\n", max_error);
 
     TEST_PASS("Photopic luminous efficiency");
 }
 
 static int test_scotopic_efficiency(void) {
-    /* Test scotopic luminous efficiency V'(λ) */
-    /* Peak at ~507nm */
-    alwan_scalar v_505 = alwan_luminous_efficiency(ALWAN_LITERAL(505.0), ALWAN_VISION_SCOTOPIC);
-    alwan_scalar v_510 = alwan_luminous_efficiency(ALWAN_LITERAL(510.0), ALWAN_VISION_SCOTOPIC);
+    /* Load reference values from colour-science */
+    alwan_scalar ref_wavelengths[16], ref_values[16];
+    int wl_count = load_csv_values("tests/unit/reference_values/scotopic_efficiency_wavelengths.csv",
+                                     ref_wavelengths, 16);
+    int val_count = load_csv_values("tests/unit/reference_values/scotopic_efficiency_values.csv",
+                                      ref_values, 16);
 
-    TEST_ASSERT(v_505 > ALWAN_LITERAL(0.9), "Scotopic peak ~507nm should be close to 1.0");
+    TEST_ASSERT(wl_count > 0 && wl_count == val_count, "Failed to load scotopic reference data");
 
-    /* Scotopic vision is more sensitive to blue/green, less to red */
-    alwan_scalar v_450 = alwan_luminous_efficiency(ALWAN_LITERAL(450.0), ALWAN_VISION_SCOTOPIC);
-    alwan_scalar v_650 = alwan_luminous_efficiency(ALWAN_LITERAL(650.0), ALWAN_VISION_SCOTOPIC);
+    /* Test against all reference wavelengths */
+    alwan_scalar max_error = ALWAN_LITERAL(0.0);
+    for (int i = 0; i < wl_count; i++) {
+        alwan_scalar computed = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_SCOTOPIC);
+        alwan_scalar error = ALWAN_FABS(computed - ref_values[i]);
+        if (error > max_error) max_error = error;
 
-    TEST_ASSERT(v_450 > v_650, "Scotopic more sensitive to blue than red");
-    TEST_ASSERT(v_650 < ALWAN_LITERAL(0.01), "Scotopic very insensitive to red (650nm)");
+        /* Allow small interpolation error */
+        TEST_ASSERT(error < ALWAN_LITERAL(0.01),
+                    "Scotopic efficiency error too large");
+    }
 
-    printf("  Scotopic V'(λ):\n");
-    printf("    450nm: %.4f\n", v_450);
-    printf("    505nm: %.4f (near peak)\n", v_505);
-    printf("    510nm: %.4f\n", v_510);
-    printf("    650nm: %.4f (very low)\n", v_650);
+    /* Display key values */
+    printf("  Scotopic V'(λ) validated against colour-science:\n");
+    for (int i = 0; i < wl_count; i++) {
+        if ((int)ref_wavelengths[i] == 450 || (int)ref_wavelengths[i] == 507 ||
+            (int)ref_wavelengths[i] == 650) {
+            alwan_scalar v = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_SCOTOPIC);
+            printf("    %.0fnm: %.4f (ref: %.4f)\n", ref_wavelengths[i], v, ref_values[i]);
+        }
+    }
+    printf("    Max error: %.6f\n", max_error);
 
     TEST_PASS("Scotopic luminous efficiency");
 }
@@ -307,8 +355,31 @@ int test_330_vision_perception_main(void) {
     result = test_cvd_normal_vision();
     if (result != 0) return result;
 
-    /* P10.2 and P10.3: Skipped (not yet implemented) */
-    printf("\nP10.2 and P10.3: Skipped (stub implementations)\n");
+    /* P10.2: Luminous Efficiency Functions */
+    printf("\nP10.2: Luminous Efficiency Functions\n");
+    printf("-------------------------------------\n");
+
+    result = test_photopic_efficiency();
+    if (result != 0) return result;
+
+    result = test_scotopic_efficiency();
+    if (result != 0) return result;
+
+    result = test_luminous_efficiency_bounds();
+    if (result != 0) return result;
+
+    /* P10.3: Contrast Sensitivity Function */
+    printf("\nP10.3: Contrast Sensitivity Function\n");
+    printf("-------------------------------------\n");
+
+    result = test_csf_basic();
+    if (result != 0) return result;
+
+    result = test_csf_luminance_dependence();
+    if (result != 0) return result;
+
+    result = test_csf_bounds();
+    if (result != 0) return result;
 
     printf("\nAll P10 vision & perception tests passed!\n");
     return 0;

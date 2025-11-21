@@ -133,27 +133,139 @@ int alwan_simulate_cvd(alwan_vec3 const *rgb_in,
 }
 
 /* ================================================================
- * P10.2 & P10.3: Stub implementations (to be completed later)
+ * P10.2: Luminous Efficiency Functions
  * ================================================================ */
 
+/* CIE Photopic Luminous Efficiency V(λ) - 1924/1988
+ * Peak sensitivity at 555nm (normalized to 1.0)
+ * Data from CIE 1988 2° Standard Observer */
+static alwan_scalar const PHOTOPIC_V_LAMBDA_WL[] = {
+    ALWAN_LITERAL(380.0), ALWAN_LITERAL(390.0), ALWAN_LITERAL(400.0), ALWAN_LITERAL(410.0),
+    ALWAN_LITERAL(420.0), ALWAN_LITERAL(430.0), ALWAN_LITERAL(440.0), ALWAN_LITERAL(450.0),
+    ALWAN_LITERAL(460.0), ALWAN_LITERAL(470.0), ALWAN_LITERAL(480.0), ALWAN_LITERAL(490.0),
+    ALWAN_LITERAL(500.0), ALWAN_LITERAL(510.0), ALWAN_LITERAL(520.0), ALWAN_LITERAL(530.0),
+    ALWAN_LITERAL(540.0), ALWAN_LITERAL(550.0), ALWAN_LITERAL(555.0), ALWAN_LITERAL(560.0),
+    ALWAN_LITERAL(570.0), ALWAN_LITERAL(580.0), ALWAN_LITERAL(590.0), ALWAN_LITERAL(600.0),
+    ALWAN_LITERAL(610.0), ALWAN_LITERAL(620.0), ALWAN_LITERAL(630.0), ALWAN_LITERAL(640.0),
+    ALWAN_LITERAL(650.0), ALWAN_LITERAL(660.0), ALWAN_LITERAL(670.0), ALWAN_LITERAL(680.0),
+    ALWAN_LITERAL(690.0), ALWAN_LITERAL(700.0), ALWAN_LITERAL(710.0), ALWAN_LITERAL(720.0),
+    ALWAN_LITERAL(730.0), ALWAN_LITERAL(740.0), ALWAN_LITERAL(750.0), ALWAN_LITERAL(760.0),
+    ALWAN_LITERAL(770.0), ALWAN_LITERAL(780.0)
+};
+
+static alwan_scalar const PHOTOPIC_V_LAMBDA[] = {
+    ALWAN_LITERAL(0.00004), ALWAN_LITERAL(0.00012), ALWAN_LITERAL(0.00040), ALWAN_LITERAL(0.00116),
+    ALWAN_LITERAL(0.00400), ALWAN_LITERAL(0.01160), ALWAN_LITERAL(0.02300), ALWAN_LITERAL(0.03800),
+    ALWAN_LITERAL(0.06000), ALWAN_LITERAL(0.09098), ALWAN_LITERAL(0.13902), ALWAN_LITERAL(0.20802),
+    ALWAN_LITERAL(0.32300), ALWAN_LITERAL(0.50300), ALWAN_LITERAL(0.71000), ALWAN_LITERAL(0.86200),
+    ALWAN_LITERAL(0.95400), ALWAN_LITERAL(0.99495), ALWAN_LITERAL(1.00000), ALWAN_LITERAL(0.99500),
+    ALWAN_LITERAL(0.95200), ALWAN_LITERAL(0.87000), ALWAN_LITERAL(0.75700), ALWAN_LITERAL(0.63100),
+    ALWAN_LITERAL(0.50300), ALWAN_LITERAL(0.38100), ALWAN_LITERAL(0.26500), ALWAN_LITERAL(0.17500),
+    ALWAN_LITERAL(0.10700), ALWAN_LITERAL(0.06100), ALWAN_LITERAL(0.03200), ALWAN_LITERAL(0.01700),
+    ALWAN_LITERAL(0.00821), ALWAN_LITERAL(0.00410), ALWAN_LITERAL(0.00209), ALWAN_LITERAL(0.00105),
+    ALWAN_LITERAL(0.00052), ALWAN_LITERAL(0.00025), ALWAN_LITERAL(0.00012), ALWAN_LITERAL(0.00006),
+    ALWAN_LITERAL(0.00003), ALWAN_LITERAL(0.000015)
+};
+
+#define PHOTOPIC_V_COUNT (sizeof(PHOTOPIC_V_LAMBDA_WL) / sizeof(PHOTOPIC_V_LAMBDA_WL[0]))
+
+/* CIE Scotopic Luminous Efficiency V'(λ) - 1951
+ * Peak sensitivity around 507nm (normalized to 1.0)
+ * Data from CIE 1951 Scotopic Observer */
+static alwan_scalar const SCOTOPIC_VP_LAMBDA_WL[] = {
+    ALWAN_LITERAL(380.0), ALWAN_LITERAL(390.0), ALWAN_LITERAL(400.0), ALWAN_LITERAL(410.0),
+    ALWAN_LITERAL(420.0), ALWAN_LITERAL(430.0), ALWAN_LITERAL(440.0), ALWAN_LITERAL(450.0),
+    ALWAN_LITERAL(460.0), ALWAN_LITERAL(470.0), ALWAN_LITERAL(480.0), ALWAN_LITERAL(490.0),
+    ALWAN_LITERAL(500.0), ALWAN_LITERAL(507.0), ALWAN_LITERAL(510.0), ALWAN_LITERAL(520.0),
+    ALWAN_LITERAL(530.0), ALWAN_LITERAL(540.0), ALWAN_LITERAL(550.0), ALWAN_LITERAL(560.0),
+    ALWAN_LITERAL(570.0), ALWAN_LITERAL(580.0), ALWAN_LITERAL(590.0), ALWAN_LITERAL(600.0),
+    ALWAN_LITERAL(610.0), ALWAN_LITERAL(620.0), ALWAN_LITERAL(630.0), ALWAN_LITERAL(640.0),
+    ALWAN_LITERAL(650.0), ALWAN_LITERAL(660.0), ALWAN_LITERAL(670.0), ALWAN_LITERAL(680.0),
+    ALWAN_LITERAL(690.0), ALWAN_LITERAL(700.0), ALWAN_LITERAL(710.0), ALWAN_LITERAL(720.0),
+    ALWAN_LITERAL(730.0), ALWAN_LITERAL(740.0), ALWAN_LITERAL(750.0), ALWAN_LITERAL(760.0),
+    ALWAN_LITERAL(770.0), ALWAN_LITERAL(780.0)
+};
+
+static alwan_scalar const SCOTOPIC_VP_LAMBDA[] = {
+    ALWAN_LITERAL(0.00059), ALWAN_LITERAL(0.00221), ALWAN_LITERAL(0.00929), ALWAN_LITERAL(0.03484),
+    ALWAN_LITERAL(0.09660), ALWAN_LITERAL(0.19840), ALWAN_LITERAL(0.32800), ALWAN_LITERAL(0.45500),
+    ALWAN_LITERAL(0.56700), ALWAN_LITERAL(0.67600), ALWAN_LITERAL(0.79300), ALWAN_LITERAL(0.90400),
+    ALWAN_LITERAL(0.98200), ALWAN_LITERAL(1.00000), ALWAN_LITERAL(0.99700), ALWAN_LITERAL(0.93500),
+    ALWAN_LITERAL(0.81100), ALWAN_LITERAL(0.65000), ALWAN_LITERAL(0.48100), ALWAN_LITERAL(0.32800),
+    ALWAN_LITERAL(0.20700), ALWAN_LITERAL(0.12100), ALWAN_LITERAL(0.06550), ALWAN_LITERAL(0.03315),
+    ALWAN_LITERAL(0.01593), ALWAN_LITERAL(0.00737), ALWAN_LITERAL(0.00334), ALWAN_LITERAL(0.00150),
+    ALWAN_LITERAL(0.00068), ALWAN_LITERAL(0.00031), ALWAN_LITERAL(0.00015), ALWAN_LITERAL(0.00007),
+    ALWAN_LITERAL(0.00004), ALWAN_LITERAL(0.00002), ALWAN_LITERAL(0.00001), ALWAN_LITERAL(0.000005),
+    ALWAN_LITERAL(0.000003), ALWAN_LITERAL(0.000001), ALWAN_LITERAL(0.0000005), ALWAN_LITERAL(0.0000003),
+    ALWAN_LITERAL(0.0000001), ALWAN_LITERAL(0.00000005)
+};
+
+#define SCOTOPIC_VP_COUNT (sizeof(SCOTOPIC_VP_LAMBDA_WL) / sizeof(SCOTOPIC_VP_LAMBDA_WL[0]))
+
+/* Helper: linear interpolation in lookup table */
+static alwan_scalar interpolate_lut(alwan_scalar const *wl_table,
+                                      alwan_scalar const *value_table,
+                                      int count,
+                                      alwan_scalar wavelength) {
+    /* Check bounds */
+    if (wavelength <= wl_table[0]) {
+        return value_table[0];
+    }
+    if (wavelength >= wl_table[count - 1]) {
+        return value_table[count - 1];
+    }
+
+    /* Find bracketing indices */
+    int i;
+    for (i = 0; i < count - 1; i++) {
+        if (wavelength >= wl_table[i] && wavelength <= wl_table[i + 1]) {
+            /* Linear interpolation */
+            alwan_scalar t = (wavelength - wl_table[i]) / (wl_table[i + 1] - wl_table[i]);
+            return value_table[i] + t * (value_table[i + 1] - value_table[i]);
+        }
+    }
+
+    /* Should not reach here */
+    return ALWAN_LITERAL(0.0);
+}
+
 alwan_scalar alwan_luminous_efficiency(alwan_scalar wavelength, alwan_vision_type vision_type) {
-    (void)wavelength;
-    (void)vision_type;
-    /* TODO: Implement luminous efficiency function */
-    return ALWAN_LITERAL(-1.0);
+    /* Validate wavelength range [360, 830] */
+    if (wavelength < ALWAN_LITERAL(360.0) || wavelength > ALWAN_LITERAL(830.0)) {
+        return ALWAN_LITERAL(-1.0);
+    }
+
+    switch (vision_type) {
+        case ALWAN_VISION_PHOTOPIC:
+            return interpolate_lut(PHOTOPIC_V_LAMBDA_WL, PHOTOPIC_V_LAMBDA,
+                                   (int)PHOTOPIC_V_COUNT, wavelength);
+
+        case ALWAN_VISION_SCOTOPIC:
+            return interpolate_lut(SCOTOPIC_VP_LAMBDA_WL, SCOTOPIC_VP_LAMBDA,
+                                   (int)SCOTOPIC_VP_COUNT, wavelength);
+
+        case ALWAN_VISION_MESOPIC:
+            /* For mesopic, we could blend photopic and scotopic
+             * For now, return photopic as a simple approximation */
+            return interpolate_lut(PHOTOPIC_V_LAMBDA_WL, PHOTOPIC_V_LAMBDA,
+                                   (int)PHOTOPIC_V_COUNT, wavelength);
+
+        default:
+            return ALWAN_LITERAL(-1.0);
+    }
 }
 
 alwan_scalar alwan_photopic_luminance(alwan_ctx *ctx, alwan_spd const *spd) {
     (void)ctx;
     (void)spd;
-    /* TODO: Implement photopic luminance */
+    /* TODO: Implement photopic luminance calculation from SPD */
     return ALWAN_LITERAL(-1.0);
 }
 
 alwan_scalar alwan_scotopic_luminance(alwan_ctx *ctx, alwan_spd const *spd) {
     (void)ctx;
     (void)spd;
-    /* TODO: Implement scotopic luminance */
+    /* TODO: Implement scotopic luminance calculation from SPD */
     return ALWAN_LITERAL(-1.0);
 }
 
@@ -163,13 +275,67 @@ alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
     (void)ctx;
     (void)spd;
     (void)adaptation_level;
-    /* TODO: Implement mesopic luminance */
+    /* TODO: Implement mesopic luminance calculation from SPD */
     return ALWAN_LITERAL(-1.0);
 }
 
+/* ================================================================
+ * P10.3: Contrast Sensitivity Function (CSF)
+ * ================================================================ */
+
+/* Barten CSF model (1999)
+ * Computes contrast sensitivity as a function of spatial frequency and luminance
+ * Reference: Barten, P. G. J. (1999). Contrast sensitivity of the human eye
+ *            and its effects on image quality. SPIE Press. */
+
 alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance) {
-    (void)spatial_frequency;
-    (void)luminance;
-    /* TODO: Implement contrast sensitivity function */
-    return ALWAN_LITERAL(-1.0);
+    /* Validate input ranges */
+    if (spatial_frequency < ALWAN_LITERAL(0.1) || spatial_frequency > ALWAN_LITERAL(60.0)) {
+        return ALWAN_LITERAL(-1.0);
+    }
+    if (luminance < ALWAN_LITERAL(0.01) || luminance > ALWAN_LITERAL(10000.0)) {
+        return ALWAN_LITERAL(-1.0);
+    }
+
+    /* Barten CSF model parameters */
+    alwan_scalar const k = ALWAN_LITERAL(3.0);         /* Neural noise factor */
+    alwan_scalar const phi_0 = ALWAN_LITERAL(3.0e-8);  /* Photon noise constant */
+
+    alwan_scalar f = spatial_frequency;
+    alwan_scalar L = luminance;
+
+    /* Simplified Barten CSF model
+     * Returns contrast sensitivity (1/threshold) as a function of
+     * spatial frequency and luminance */
+
+    /* Calculate retinal illuminance E (trolands) from luminance
+     * E ≈ L * pupil_area, where pupil diameter depends on luminance
+     * Simplified model: pupil diameter d ≈ 5 - 3*tanh(0.4*log10(L)) */
+    alwan_scalar log_L = ALWAN_LOG10(L);
+    alwan_scalar d = ALWAN_LITERAL(5.0) - ALWAN_LITERAL(3.0) * ALWAN_TANH(ALWAN_LITERAL(0.4) * log_L);
+    alwan_scalar pupil_area = ALWAN_LITERAL(3.14159265359) * d * d / ALWAN_LITERAL(4.0);
+    alwan_scalar E = L * pupil_area;
+
+    /* Band-pass filter centered around 4-6 cpd
+     * Models lateral inhibition and neural filtering */
+    alwan_scalar low_freq_atten = f / (f + ALWAN_LITERAL(0.5));  /* Low-frequency roll-off */
+    alwan_scalar high_freq_atten = ALWAN_EXP(-ALWAN_LITERAL(0.005) * f * f);  /* High-frequency roll-off */
+    alwan_scalar M_opt = low_freq_atten * high_freq_atten;
+
+    /* Photon noise (inversely proportional to retinal illuminance) */
+    alwan_scalar noise_photon = phi_0 / (E + ALWAN_LITERAL(1e-10));
+
+    /* Neural noise (constant baseline) */
+    alwan_scalar noise_neural = ALWAN_LITERAL(1.0) / k;
+
+    /* Total noise */
+    alwan_scalar noise_total = ALWAN_SQRT(noise_photon * noise_photon + noise_neural * noise_neural);
+
+    /* Contrast sensitivity = signal / noise */
+    alwan_scalar S = (M_opt * E) / (noise_total + ALWAN_LITERAL(1e-10));
+
+    /* Scale to reasonable values (typical CSF peak ~100-500) */
+    S = S * ALWAN_LITERAL(10.0);
+
+    return S;
 }

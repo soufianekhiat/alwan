@@ -2017,11 +2017,96 @@ try:
 except Exception as e:
     print(f'  Warning: P10.1 CVD reference data generation failed: {e}')
 
-# P10.2 & P10.3: Stub implementations (no test data needed)
+# P10.2: Luminous Efficiency Functions
 print('\n  P10.2: Luminous Efficiency Functions')
-print('    Status: Stub implementation (not yet complete)')
-print('  P10.3: Contrast Sensitivity Function')
-print('    Status: Stub implementation (not yet complete)')
+print('    Generating photopic and scotopic luminous efficiency reference values')
+
+try:
+    import colour
+
+    # Test wavelengths for luminous efficiency validation
+    # Cover the full range with key points
+    test_wavelengths_lum = [
+        380.0, 400.0, 450.0, 507.0, 555.0, 600.0, 650.0, 700.0, 780.0
+    ]
+
+    # Photopic luminous efficiency V(λ) - CIE 1924/1988
+    import numpy as np
+
+    # Get the photopic LEF from colour-science
+    photopic_lef = colour.SDS_LEFS['CIE 1924 Photopic Standard Observer']
+
+    photopic_values = []
+    for wl in test_wavelengths_lum:
+        # Interpolate from the LEF data
+        v = np.interp(wl, photopic_lef.wavelengths, photopic_lef.values)
+        photopic_values.append(float(v))
+
+    write_ref('photopic_efficiency_wavelengths', test_wavelengths_lum,
+              'P10.2 Test wavelengths for photopic efficiency (nm)')
+    write_ref('photopic_efficiency_values', photopic_values,
+              'P10.2 Photopic luminous efficiency V(λ) reference values')
+
+    print(f'    - Photopic V(λ): {len(test_wavelengths_lum)} wavelength points')
+    print(f'      Peak at 555nm = {photopic_values[test_wavelengths_lum.index(555.0)]:.6f}')
+
+    # Scotopic luminous efficiency V'(λ) - CIE 1951
+    # Get the scotopic LEF from colour-science
+    scotopic_lef = colour.SDS_LEFS['CIE 1951 Scotopic Standard Observer']
+
+    scotopic_values = []
+    for wl in test_wavelengths_lum:
+        # Interpolate from the LEF data
+        vp = np.interp(wl, scotopic_lef.wavelengths, scotopic_lef.values)
+        scotopic_values.append(float(vp))
+
+    write_ref('scotopic_efficiency_wavelengths', test_wavelengths_lum,
+              'P10.2 Test wavelengths for scotopic efficiency (nm)')
+    write_ref('scotopic_efficiency_values', scotopic_values,
+              'P10.2 Scotopic luminous efficiency V\'(λ) reference values')
+
+    print(f'    - Scotopic V\'(λ): {len(test_wavelengths_lum)} wavelength points')
+    print(f'      Peak at 507nm = {scotopic_values[test_wavelengths_lum.index(507.0)]:.6f}')
+
+    print('    Source: CIE standard photopic (1924/1988) and scotopic (1951) observers')
+
+except Exception as e:
+    print(f'  Warning: P10.2 luminous efficiency reference data generation failed: {e}')
+    import traceback
+    traceback.print_exc()
+
+# P10.3: Contrast Sensitivity Function
+print('\n  P10.3: Contrast Sensitivity Function')
+print('    Documenting CSF expected behavior (Barten model)')
+
+try:
+    # CSF reference behavior - document expected characteristics
+    # CSF is not typically in colour-science, so we document the expected behavior
+
+    # Test spatial frequencies (cycles per degree)
+    test_frequencies_csf = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0]
+
+    # Reference luminance levels (cd/m²)
+    test_luminances_csf = [1.0, 10.0, 100.0, 1000.0]
+
+    write_ref('csf_test_frequencies', test_frequencies_csf,
+              'P10.3 Test spatial frequencies for CSF (cpd)')
+    write_ref('csf_test_luminances', test_luminances_csf,
+              'P10.3 Test luminance levels for CSF (cd/m²)')
+
+    print(f'    - Test frequencies: {len(test_frequencies_csf)} points (0.5-32 cpd)')
+    print(f'    - Test luminances: {len(test_luminances_csf)} levels (1-1000 cd/m²)')
+    print('    Expected behavior:')
+    print('      - Band-pass characteristic (peak around 4-6 cpd)')
+    print('      - Sensitivity increases with luminance')
+    print('      - Low-frequency roll-off due to lateral inhibition')
+    print('      - High-frequency roll-off due to optical/neural limitations')
+    print('    Model: Simplified Barten (1999) CSF')
+
+except Exception as e:
+    print(f'  Warning: P10.3 CSF reference data generation failed: {e}')
+    import traceback
+    traceback.print_exc()
 
 print('\n======================================')
 print('Test reference data generation complete!')
