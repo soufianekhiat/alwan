@@ -575,26 +575,43 @@ int alwan_cct_duv_optimize(alwan_vec2 const *xy, alwan_scalar *cct_out, alwan_sc
     if (cct < ALWAN_LITERAL(1000.0)) cct = ALWAN_LITERAL(1000.0);
     if (cct > ALWAN_LITERAL(25000.0)) cct = ALWAN_LITERAL(25000.0);
 
-    /* Newton-Raphson iteration */
+    /* Newton-Raphson iteration to find minimum Duv (not root!) */
+    /* We're finding where d(Duv²)/d(CCT) = 0 for robustness */
     const int max_iter = 20;
     const alwan_scalar tol = ALWAN_LITERAL(0.01);
     const alwan_scalar h = ALWAN_LITERAL(1.0); /* Finite difference step */
 
     for (int iter = 0; iter < max_iter; iter++) {
+        /* Compute Duv² at three points for first and second derivatives */
+        alwan_scalar duv_minus = compute_duv(x, y, cct - h);
         alwan_scalar duv_current = compute_duv(x, y, cct);
         alwan_scalar duv_plus = compute_duv(x, y, cct + h);
 
-        alwan_scalar derivative = (duv_plus - duv_current) / h;
+        /* Use Duv² for better numerical stability */
+        alwan_scalar f_minus = duv_minus * duv_minus;
+        alwan_scalar f_current = duv_current * duv_current;
+        alwan_scalar f_plus = duv_plus * duv_plus;
 
-        if (ALWAN_FABS(derivative) < ALWAN_LITERAL(1e-10)) break;
+        /* First derivative (central difference) */
+        alwan_scalar first_deriv = (f_plus - f_minus) / (ALWAN_LITERAL(2.0) * h);
 
-        alwan_scalar delta = -duv_current / derivative;
+        /* Second derivative */
+        alwan_scalar second_deriv = (f_plus - ALWAN_LITERAL(2.0) * f_current + f_minus) / (h * h);
+
+        /* Check for convergence or numerical issues */
+        if (ALWAN_FABS(first_deriv) < ALWAN_LITERAL(1e-10)) break;
+        if (ALWAN_FABS(second_deriv) < ALWAN_LITERAL(1e-10)) break;
+
+        /* Newton step for minimization: x_new = x - f'(x)/f''(x) */
+        alwan_scalar delta = -first_deriv / second_deriv;
+
         cct += delta;
 
         /* Clamp */
         if (cct < ALWAN_LITERAL(1000.0)) cct = ALWAN_LITERAL(1000.0);
         if (cct > ALWAN_LITERAL(25000.0)) cct = ALWAN_LITERAL(25000.0);
 
+        /* Check convergence */
         if (ALWAN_FABS(delta) < tol) break;
     }
 

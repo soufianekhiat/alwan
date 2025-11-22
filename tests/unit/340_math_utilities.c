@@ -222,11 +222,12 @@ static int test_cct_d65(void) {
 
     int status = alwan_cct_duv_optimize(&xy_d65, &cct_out, &duv_out);
 
+    /* Print actual values for debugging */
+    printf("  D65: CCT=%.1fK, Duv=%.6f (expected ~6504K, Duv~0)\n", cct_out, duv_out);
+
     TEST_ASSERT(status == ALWAN_OK, "CCT/Duv optimization failed for D65");
     TEST_ASSERT(cct_out >= 6400.0 && cct_out <= 6600.0, "D65 CCT should be ~6504K");
     TEST_ASSERT(ALWAN_FABS(duv_out) < 0.01, "D65 Duv should be near 0");
-
-    printf("  D65: CCT=%.1fK, Duv=%.6f (expected ~6504K, Duv~0)\n", cct_out, duv_out);
 
     TEST_PASS("CCT/Duv optimization for D65");
 }

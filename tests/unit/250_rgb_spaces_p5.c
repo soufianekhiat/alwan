@@ -303,6 +303,59 @@ static int test_legacy_spaces(void) {
 }
 
 /* ----------------------------------------------------------------
+ * Additional RGB spaces
+ * ---------------------------------------------------------------- */
+
+static int test_additional_spaces(void) {
+    alwan_ctx *ctx = alwan_create(NULL);
+    TEST_ASSERT(ctx != NULL, "Failed to create context");
+
+    struct {
+        alwan_rgb_space space;
+        char const *name;
+    } additional_spaces[] = {
+        {ALWAN_RGB_SPACE_ALEXA_WIDE_GAMUT, "ALEXA Wide Gamut"},
+        {ALWAN_RGB_SPACE_P3_D60, "P3-D60"},
+        {ALWAN_RGB_SPACE_LINEAR_SRGB, "Linear sRGB"},
+        {ALWAN_RGB_SPACE_LINEAR_REC2020, "Linear Rec.2020"}
+    };
+
+    for (size_t i = 0; i < sizeof(additional_spaces) / sizeof(additional_spaces[0]); i++) {
+        alwan_rgb_space_desc desc;
+        int status = alwan_rgb_get_space_descriptor(ctx, additional_spaces[i].space, &desc);
+
+        if (status != ALWAN_OK) {
+            fprintf(stderr, "[FAIL] Failed to get %s descriptor (status=%d)\n",
+                    additional_spaces[i].name, status);
+            alwan_destroy(ctx);
+            return 0;
+        }
+
+        /* Validate descriptor */
+        if (!validate_space_descriptor(additional_spaces[i].name, &desc)) {
+            alwan_destroy(ctx);
+            return 0;
+        }
+
+        /* Verify matrices can be derived */
+        if (!test_matrix_derivation(additional_spaces[i].name, &desc)) {
+            alwan_destroy(ctx);
+            return 0;
+        }
+
+        printf("  %s: R(%.4f,%.4f) G(%.4f,%.4f) B(%.4f,%.4f) W(%.4f,%.4f)\n",
+               additional_spaces[i].name,
+               desc.primaries_xy[0], desc.primaries_xy[1],
+               desc.primaries_xy[2], desc.primaries_xy[3],
+               desc.primaries_xy[4], desc.primaries_xy[5],
+               desc.white_xy[0], desc.white_xy[1]);
+    }
+
+    alwan_destroy(ctx);
+    TEST_PASS("Additional high-priority RGB spaces (4 spaces)");
+}
+
+/* ----------------------------------------------------------------
  * Core spaces verification
  * ---------------------------------------------------------------- */
 
@@ -421,6 +474,7 @@ static test_fn const g_tests[] = {
     test_prophoto_rgb,
     test_cinema_spaces,
     test_legacy_spaces,
+    test_additional_spaces,
     test_rgb_space_conversion,
     test_invalid_space_name,
     NULL

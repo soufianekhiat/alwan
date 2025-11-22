@@ -192,6 +192,77 @@ rgb_spaces = [
     ('ACEScg', 'ACEScg'),
     ('ACESproxy', 'ACESproxy'),
 
+    # ACES Family extensions
+    ('ACEScc', 'ACEScc'),
+    ('ACEScct', 'ACEScct'),
+
+    # ARRI Camera Spaces
+    ('ARRI Wide Gamut 3', 'ARRI Wide Gamut 3'),
+    ('ARRI Wide Gamut 4', 'ARRI Wide Gamut 4'),
+
+    # RED Camera Spaces (extended)
+    ('REDcolor', 'REDcolor'),
+    ('REDcolor2', 'REDcolor2'),
+    ('REDcolor3', 'REDcolor3'),
+    ('REDcolor4', 'REDcolor4'),
+    ('DRAGONcolor', 'DRAGONcolor'),
+    ('DRAGONcolor2', 'DRAGONcolor2'),
+
+    # Sony Camera Spaces (extended)
+    ('Venice S-Gamut3', 'Venice S-Gamut3'),
+    ('Venice S-Gamut3.Cine', 'Venice S-Gamut3.Cine'),
+
+    # Historical/Reference
+    ('CIE RGB', 'CIE RGB'),
+
+    # Professional/Photography (extended)
+    ('Adobe Wide Gamut RGB', 'Adobe Wide Gamut RGB'),
+    ('ROMM RGB', 'ROMM RGB'),
+    ('RIMM RGB', 'RIMM RGB'),
+    ('ERIMM RGB', 'ERIMM RGB'),
+
+    # DaVinci/FilmLight
+    ('FilmLight E-Gamut', 'FilmLight E-Gamut'),
+
+    # ========== MEDIUM PRIORITY NEW SPACES ==========
+
+    # Fujifilm Camera Spaces
+    ('F-Gamut', 'F-Gamut'),
+
+    # Nikon Camera Spaces
+    ('N-Gamut', 'N-Gamut'),
+
+    # DJI Camera Spaces
+    ('DJI D-Gamut', 'DJI D-Gamut'),
+
+    # GoPro Camera Spaces
+    ('Protune Native', 'Protune Native'),
+
+    # Legacy Broadcast (extended)
+    ('ITU-R BT.470 - 525', 'ITU-R BT.470 - 525'),
+    ('ITU-R BT.470 - 625', 'ITU-R BT.470 - 625'),
+    ('SMPTE 240M', 'SMPTE 240M'),
+    ('SMPTE C', 'SMPTE C'),
+
+    # Digital Cinema & Mastering
+    ('DCDM XYZ', 'DCDM XYZ'),
+
+    # ========== LOWER PRIORITY NEW SPACES ==========
+
+    # Print/Specialized Spaces
+    ('Best RGB', 'Best RGB'),
+    ('Beta RGB', 'Beta RGB'),
+    ('Don RGB 4', 'Don RGB 4'),
+    ('Ekta Space PS 5', 'Ekta Space PS 5'),
+    ('Max RGB', 'Max RGB'),
+    ('Russell RGB', 'Russell RGB'),
+
+    # Historical/Reference (additional)
+    ('Sharp RGB', 'Sharp RGB'),
+    ('ECI RGB v2', 'ECI RGB v2'),
+
+    # ========== EXISTING SPACES (kept for compatibility) ==========
+
     # Adobe RGB (1998) - Photography/print workflow
     ('Adobe RGB 1998', 'Adobe RGB (1998)'),
 
@@ -216,6 +287,12 @@ rgb_spaces = [
     ('PAL SECAM', 'PAL/SECAM'),
     ('Apple RGB', 'Apple RGB'),
     ('ColorMatch RGB', 'ColorMatch RGB'),
+
+    # Additional RGB spaces
+    ('ALEXA Wide Gamut', 'ALEXA Wide Gamut'),
+    ('P3-D60', 'P3-D60'),
+    ('Linear sRGB', 'sRGB'),  # Same primaries as sRGB, but linear
+    ('Linear Rec.2020', 'ITU-R BT.2020'),  # Same primaries as BT.2020, but linear
 ]
 
 print("\nGenerating RGB space definitions...")

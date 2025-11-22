@@ -10,28 +10,32 @@
 #define TEST_PASS(name) do { return 0; } while(0)
 
 /* ----------------------------------------------------------------
+ * Embedded test data
+ * ---------------------------------------------------------------- */
+
+/* DIN99 variant test data - embedded at compile time */
+static alwan_scalar const g_din99_test_data[] = {
+#include "reference_values/test_lab_din99_pairs.csv"
+};
+
+static alwan_scalar const g_din99b_test_data[] = {
+#include "reference_values/test_lab_din99b_pairs.csv"
+};
+
+static alwan_scalar const g_din99c_test_data[] = {
+#include "reference_values/test_lab_din99c_pairs.csv"
+};
+
+static alwan_scalar const g_din99d_test_data[] = {
+#include "reference_values/test_lab_din99d_pairs.csv"
+};
+
+/* ----------------------------------------------------------------
  * Test Lab <-> DIN99 conversions
  * ---------------------------------------------------------------- */
 
-static int test_din99_variant(int variant, char const *variant_name, char const *csv_file) {
-    static alwan_scalar test_data[16 * 6];  /* Static buffer for data */
-
-    /* Include the CSV file */
-    FILE *f = fopen(csv_file, "r");
-    if (!f) {
-        printf("  [SKIP] Could not open %s\n", csv_file);
-        return 0;
-    }
-
-    size_t count = 0;
-    double temp;
-    while (count < 16 * 6 && fscanf(f, "%lf,", &temp) == 1) {
-        test_data[count] = (alwan_scalar)temp;
-        count++;
-    }
-    fclose(f);
-
-    size_t const num_colors = count / 6;
+static int test_din99_variant(int variant, char const *variant_name, alwan_scalar const *test_data, size_t data_count) {
+    size_t const num_colors = data_count / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_vec3 xyz, lab, din99_expected, din99_computed, lab_out;
@@ -103,16 +107,20 @@ int test_150_din99_main(void) {
     int failures = 0;
 
     printf("Test: Lab <-> DIN99 (variant 0)\n");
-    failures += test_din99_variant(0, "DIN99", "tests/unit/reference_values/test_lab_din99_pairs.csv");
+    failures += test_din99_variant(0, "DIN99", g_din99_test_data,
+                                    sizeof(g_din99_test_data) / sizeof(g_din99_test_data[0]));
 
     printf("Test: Lab <-> DIN99b (variant 1)\n");
-    failures += test_din99_variant(1, "DIN99b", "tests/unit/reference_values/test_lab_din99b_pairs.csv");
+    failures += test_din99_variant(1, "DIN99b", g_din99b_test_data,
+                                    sizeof(g_din99b_test_data) / sizeof(g_din99b_test_data[0]));
 
     printf("Test: Lab <-> DIN99c (variant 2)\n");
-    failures += test_din99_variant(2, "DIN99c", "tests/unit/reference_values/test_lab_din99c_pairs.csv");
+    failures += test_din99_variant(2, "DIN99c", g_din99c_test_data,
+                                    sizeof(g_din99c_test_data) / sizeof(g_din99c_test_data[0]));
 
     printf("Test: Lab <-> DIN99d (variant 3)\n");
-    failures += test_din99_variant(3, "DIN99d", "tests/unit/reference_values/test_lab_din99d_pairs.csv");
+    failures += test_din99_variant(3, "DIN99d", g_din99d_test_data,
+                                    sizeof(g_din99d_test_data) / sizeof(g_din99d_test_data[0]));
 
     if (failures == 0) {
         printf("All DIN99 tests passed!\n");

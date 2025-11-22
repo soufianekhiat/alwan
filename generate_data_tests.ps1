@@ -863,6 +863,104 @@ for xyz in TEST_COLORS_XYZ_:
 write_ref('test_xyz_prolab_pairs', prolab_pairs, 'XYZ + ProLab pairs')
 
 # ================================================================
+# RGB Color Space Round-Trip Conversion Tests
+# ================================================================
+print('\nRGB Color Space Round-Trip Tests:')
+
+# Test RGB colors for round-trip conversion
+test_rgb_roundtrip = [
+    [1.0, 0.0, 0.0],    # Red
+    [0.0, 1.0, 0.0],    # Green
+    [0.0, 0.0, 1.0],    # Blue
+    [1.0, 1.0, 1.0],    # White
+    [0.5, 0.5, 0.5],    # Gray
+    [1.0, 1.0, 0.0],    # Yellow
+    [0.0, 1.0, 1.0],    # Cyan
+    [1.0, 0.0, 1.0],    # Magenta
+]
+
+# List of new RGB spaces to test (from generate_data.ps1)
+rgb_spaces_to_test = [
+    # HIGH PRIORITY
+    ('ACEScc', 'ACEScc'),
+    ('ACEScct', 'ACEScct'),
+    ('ARRI Wide Gamut 3', 'ARRI Wide Gamut 3'),
+    ('ARRI Wide Gamut 4', 'ARRI Wide Gamut 4'),
+    ('REDcolor', 'REDcolor'),
+    ('REDcolor2', 'REDcolor2'),
+    ('REDcolor3', 'REDcolor3'),
+    ('REDcolor4', 'REDcolor4'),
+    ('DRAGONcolor', 'DRAGONcolor'),
+    ('DRAGONcolor2', 'DRAGONcolor2'),
+    ('Venice S-Gamut3', 'Venice S-Gamut3'),
+    ('Venice S-Gamut3.Cine', 'Venice S-Gamut3.Cine'),
+    ('CIE RGB', 'CIE RGB'),
+    ('Adobe Wide Gamut RGB', 'Adobe Wide Gamut RGB'),
+    ('ROMM RGB', 'ROMM RGB'),
+    ('RIMM RGB', 'RIMM RGB'),
+    ('ERIMM RGB', 'ERIMM RGB'),
+    ('FilmLight E-Gamut', 'FilmLight E-Gamut'),
+    # MEDIUM PRIORITY
+    ('F-Gamut', 'F-Gamut'),
+    ('N-Gamut', 'N-Gamut'),
+    ('DJI D-Gamut', 'DJI D-Gamut'),
+    ('Protune Native', 'Protune Native'),
+    ('ITU-R BT.470 - 525', 'ITU-R BT.470 - 525'),
+    ('ITU-R BT.470 - 625', 'ITU-R BT.470 - 625'),
+    ('SMPTE 240M', 'SMPTE 240M'),
+    ('SMPTE C', 'SMPTE C'),
+    ('DCDM XYZ', 'DCDM XYZ'),
+    # LOWER PRIORITY
+    ('Best RGB', 'Best RGB'),
+    ('Beta RGB', 'Beta RGB'),
+    ('Don RGB 4', 'Don RGB 4'),
+    ('Ekta Space PS 5', 'Ekta Space PS 5'),
+    ('Max RGB', 'Max RGB'),
+    ('Russell RGB', 'Russell RGB'),
+    ('Sharp RGB', 'Sharp RGB'),
+    ('ECI RGB v2', 'ECI RGB v2'),
+    # Additional RGB spaces
+    ('ALEXA Wide Gamut', 'ALEXA Wide Gamut'),
+    ('P3-D60', 'P3-D60'),
+    ('Linear sRGB', 'sRGB'),
+    ('Linear Rec.2020', 'ITU-R BT.2020'),
+]
+
+# Generate round-trip tests for each RGB space
+for filename, space_name in rgb_spaces_to_test:
+    try:
+        rgb_space = colour.RGB_COLOURSPACES[space_name]
+        print(f'   {space_name}')
+
+        # RGB -> XYZ -> RGB round-trip
+        roundtrip_values = []
+        for rgb in test_rgb_roundtrip:
+            rgb_arr = np.array(rgb)
+            # RGB to XYZ
+            xyz = colour.RGB_to_XYZ(rgb_arr, rgb_space.whitepoint, rgb_space.whitepoint,
+                                   rgb_space.matrix_RGB_to_XYZ)
+            # XYZ back to RGB
+            rgb_back = colour.XYZ_to_RGB(xyz, rgb_space.whitepoint, rgb_space.whitepoint,
+                                        rgb_space.matrix_XYZ_to_RGB)
+
+            # Store: original RGB (3) + XYZ (3) + recovered RGB (3) = 9 values
+            roundtrip_values.extend(rgb)
+            roundtrip_values.extend(xyz.tolist())
+            roundtrip_values.extend(rgb_back.tolist())
+
+        # Write test data
+        safe_filename = filename.lower().replace(' ', '_').replace('.', '').replace('-', '_')
+        write_ref(f'rgb_space_roundtrip_{safe_filename}', roundtrip_values,
+                 f'{space_name} RGB round-trip (RGB -> XYZ -> RGB)')
+
+    except KeyError:
+        print(f'   WARNING: RGB space "{space_name}" not found in colour-science')
+        continue
+    except Exception as e:
+        print(f'   ERROR generating tests for {space_name}: {e}')
+        continue
+
+# ================================================================
 #  Advanced Color Appearance Models
 # ================================================================
 print('\nAdvanced Color Appearance Models:')

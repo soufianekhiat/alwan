@@ -1239,115 +1239,46 @@ int alwan_rgb_convert_bulk(alwan_ctx *ctx,
  * RGB Space Descriptor Helper
  * ---------------------------------------------------------------- */
 
-#if ALWAN_EMBED_DATA
-/* Embedded data includes for RGB spaces */
-extern alwan_scalar const g_srgb[];
-extern alwan_scalar const g_bt709[];
-extern alwan_scalar const g_display_p3[];
-extern alwan_scalar const g_bt2020[];
-extern alwan_scalar const g_aces2065_1[];
-extern alwan_scalar const g_acescg[];
-extern alwan_scalar const g_acesproxy[];
-extern alwan_scalar const g_adobe_rgb_1998[];
-extern alwan_scalar const g_prophoto_rgb[];
-extern alwan_scalar const g_davinci_wide_gamut[];
-extern alwan_scalar const g_blackmagic_wide_gamut[];
-extern alwan_scalar const g_v_gamut[];
-extern alwan_scalar const g_s_gamut[];
-extern alwan_scalar const g_s_gamut3[];
-extern alwan_scalar const g_s_gamut3cine[];
-extern alwan_scalar const g_cinema_gamut[];
-extern alwan_scalar const g_redwidegamutrgb[];
-extern alwan_scalar const g_dci_p3[];
-extern alwan_scalar const g_p3_d65[];
-extern alwan_scalar const g_ntsc_1953[];
-extern alwan_scalar const g_ntsc_1987[];
-extern alwan_scalar const g_pal_secam[];
-extern alwan_scalar const g_apple_rgb[];
-extern alwan_scalar const g_colormatch_rgb[];
-#endif
+/* ----------------------------------------------------------------
+ * Embedded RGB Space Data
+ * ---------------------------------------------------------------- */
+#include "alwan_rgb_embedded.h"
+
+/* ----------------------------------------------------------------
+ * Get RGB space descriptor by enum
+ * ---------------------------------------------------------------- */
 
 int alwan_rgb_get_space_descriptor(alwan_ctx *ctx, alwan_rgb_space space, alwan_rgb_space_desc *desc) {
     if (!desc) {
         return ALWAN_E_INVALID;
     }
 
-    /* Map enum to filename */
-    char const *filename = NULL;
-    switch (space) {
-        case ALWAN_RGB_SPACE_SRGB: filename = "srgb"; break;
-        case ALWAN_RGB_SPACE_BT709: filename = "bt709"; break;
-        case ALWAN_RGB_SPACE_DISPLAY_P3: filename = "display_p3"; break;
-        case ALWAN_RGB_SPACE_BT2020: filename = "bt2020"; break;
-        case ALWAN_RGB_SPACE_ACES2065_1: filename = "aces2065-1"; break;
-        case ALWAN_RGB_SPACE_ACESCG: filename = "acescg"; break;
-        case ALWAN_RGB_SPACE_ACESPROXY: filename = "acesproxy"; break;
-        case ALWAN_RGB_SPACE_ADOBE_RGB_1998: filename = "adobe_rgb_1998"; break;
-        case ALWAN_RGB_SPACE_PROPHOTO_RGB: filename = "prophoto_rgb"; break;
-        case ALWAN_RGB_SPACE_DAVINCI_WIDE_GAMUT: filename = "davinci_wide_gamut"; break;
-        case ALWAN_RGB_SPACE_BLACKMAGIC_WIDE_GAMUT: filename = "blackmagic_wide_gamut"; break;
-        case ALWAN_RGB_SPACE_V_GAMUT: filename = "v-gamut"; break;
-        case ALWAN_RGB_SPACE_S_GAMUT: filename = "s-gamut"; break;
-        case ALWAN_RGB_SPACE_S_GAMUT3: filename = "s-gamut3"; break;
-        case ALWAN_RGB_SPACE_S_GAMUT3_CINE: filename = "s-gamut3cine"; break;
-        case ALWAN_RGB_SPACE_CINEMA_GAMUT: filename = "cinema_gamut"; break;
-        case ALWAN_RGB_SPACE_REDWIDEGAMUTRGB: filename = "redwidegamutrgb"; break;
-        case ALWAN_RGB_SPACE_DCI_P3: filename = "dci-p3"; break;
-        case ALWAN_RGB_SPACE_P3_D65: filename = "p3-d65"; break;
-        case ALWAN_RGB_SPACE_NTSC_1953: filename = "ntsc_1953"; break;
-        case ALWAN_RGB_SPACE_NTSC_1987: filename = "ntsc_1987"; break;
-        case ALWAN_RGB_SPACE_PAL_SECAM: filename = "pal_secam"; break;
-        case ALWAN_RGB_SPACE_APPLE_RGB: filename = "apple_rgb"; break;
-        case ALWAN_RGB_SPACE_COLORMATCH_RGB: filename = "colormatch_rgb"; break;
-        default: return ALWAN_E_INVALID;
-    }
+#if ALWAN_EMBED_DATA
+    /* Embedded data mode - direct array indexing (enum values map to array indices) */
+    (void)ctx;  /* Unused in embedded mode */
 
-    /* Load RGB space data from CSV file (8 values: rx,ry,gx,gy,bx,by,wx,wy) */
-    /* NOTE: Always uses runtime loading for now. Embedded mode could be added later. */
-    char path[512];
-    char const *data_root = (ctx && ctx->runtime_data_root) ? ctx->runtime_data_root : "../src/alwan/data";
-    snprintf(path, sizeof(path), "%s/rgb_spaces/%s.csv", data_root, filename);
-
-    /* Simple CSV loader for RGB space data (8 values) */
-    FILE *f = fopen(path, "r");
-    if (!f) {
+    /* Bounds check: ensure enum value is within valid array range */
+    if (space < 0 || (size_t)space >= g_rgb_space_data_count) {
         return ALWAN_E_INVALID;
     }
 
-    char line[512];
-    if (!fgets(line, sizeof(line), f)) {
-        fclose(f);
-        return ALWAN_E_INVALID;
-    }
-    fclose(f);
+    /* Direct lookup using enum as index - data format: [rx, ry, gx, gy, bx, by, wx, wy] */
+    alwan_scalar const *rgb_data = g_rgb_space_data[space];
 
-    /* Parse 8 comma-separated values */
-    alwan_scalar values[8];
-    char *ptr = line;
-    for (int i = 0; i < 8; i++) {
-        char *end;
-#if ALWAN_SCALAR_IS_FLOAT
-        values[i] = strtof(ptr, &end);
-#else
-        values[i] = strtod(ptr, &end);
-#endif
-        if (end == ptr) {
-            return ALWAN_E_INVALID;  /* Parse error */
-        }
-        ptr = end;
-        if (*ptr == ',') ptr++;  /* Skip comma */
+    /* Copy primaries (first 6 values) and white point (last 2 values) */
+    for (int j = 0; j < 6; j++) {
+        desc->primaries_xy[j] = rgb_data[j];
     }
-
-    /* Copy data to descriptor */
-    for (int i = 0; i < 6; i++) {
-        desc->primaries_xy[i] = values[i];
-    }
-    desc->white_xy[0] = values[6];
-    desc->white_xy[1] = values[7];
+    desc->white_xy[0] = rgb_data[6];
+    desc->white_xy[1] = rgb_data[7];
 
     /* Set optional transfer function names to NULL */
     desc->oetf_name = NULL;
     desc->eotf_name = NULL;
 
     return ALWAN_OK;
+
+#else
+    #error "Only ALWAN_EMBED_DATA mode is supported. Runtime CSV loading has been removed."
+#endif /* ALWAN_EMBED_DATA */
 }

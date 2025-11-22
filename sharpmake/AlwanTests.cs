@@ -58,6 +58,7 @@ namespace Alwan
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\330_vision_perception.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\340_math_utilities.c");
             SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\350_reference_data.c");
+            SourceFiles.Add(@"[project.SharpmakeCsPath]\..\tests\unit\360_color_correction.c");
         }
 
         [Configure()]

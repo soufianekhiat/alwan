@@ -152,6 +152,73 @@ typedef enum {
     ALWAN_RGB_SPACE_ACESCG,
     ALWAN_RGB_SPACE_ACESPROXY,
 
+    /* ACES Family extensions */
+    ALWAN_RGB_SPACE_ACESCC,         /* ACES Color Correction */
+    ALWAN_RGB_SPACE_ACESCCT,        /* ACES Color Correction with toe */
+
+    /* ARRI Camera Spaces */
+    ALWAN_RGB_SPACE_ARRI_WIDE_GAMUT_3,
+    ALWAN_RGB_SPACE_ARRI_WIDE_GAMUT_4,
+
+    /* RED Camera Spaces (extended) */
+    ALWAN_RGB_SPACE_REDCOLOR,       /* RED Color 1 */
+    ALWAN_RGB_SPACE_REDCOLOR2,      /* RED Color 2 */
+    ALWAN_RGB_SPACE_REDCOLOR3,      /* RED Color 3 */
+    ALWAN_RGB_SPACE_REDCOLOR4,      /* RED Color 4 */
+    ALWAN_RGB_SPACE_DRAGONCOLOR,    /* RED Dragon Color */
+    ALWAN_RGB_SPACE_DRAGONCOLOR2,   /* RED Dragon Color 2 */
+
+    /* Sony Camera Spaces (extended) */
+    ALWAN_RGB_SPACE_VENICE_S_GAMUT3,
+    ALWAN_RGB_SPACE_VENICE_S_GAMUT3_CINE,
+
+    /* Historical/Reference */
+    ALWAN_RGB_SPACE_CIE_RGB,        /* CIE 1931 RGB */
+
+    /* Professional/Photography (extended) */
+    ALWAN_RGB_SPACE_ADOBE_WIDE_GAMUT_RGB,
+    ALWAN_RGB_SPACE_ROMM_RGB,       /* Reference Output Medium Metric RGB */
+    ALWAN_RGB_SPACE_RIMM_RGB,       /* Reference Input Medium Metric RGB */
+    ALWAN_RGB_SPACE_ERIMM_RGB,      /* Extended RIMM RGB */
+
+    /* DaVinci/FilmLight */
+    ALWAN_RGB_SPACE_FILMLIGHT_E_GAMUT,
+
+    /* Fujifilm Camera Spaces */
+    ALWAN_RGB_SPACE_F_GAMUT,
+
+    /* Nikon Camera Spaces */
+    ALWAN_RGB_SPACE_N_GAMUT,
+
+    /* DJI Camera Spaces */
+    ALWAN_RGB_SPACE_DJI_D_GAMUT,
+
+    /* GoPro Camera Spaces */
+    ALWAN_RGB_SPACE_PROTUNE_NATIVE,
+
+    /* Legacy Broadcast (extended) */
+    ALWAN_RGB_SPACE_ITU_R_BT470_525,
+    ALWAN_RGB_SPACE_ITU_R_BT470_625,
+    ALWAN_RGB_SPACE_SMPTE_240M,
+    ALWAN_RGB_SPACE_SMPTE_C,
+
+    /* Digital Cinema & Mastering */
+    ALWAN_RGB_SPACE_DCDM_XYZ,
+
+    /* Print/Specialized Spaces */
+    ALWAN_RGB_SPACE_BEST_RGB,
+    ALWAN_RGB_SPACE_BETA_RGB,
+    ALWAN_RGB_SPACE_DON_RGB_4,
+    ALWAN_RGB_SPACE_EKTA_SPACE_PS5,
+    ALWAN_RGB_SPACE_MAX_RGB,
+    ALWAN_RGB_SPACE_RUSSELL_RGB,
+
+    /* Historical/Reference (additional) */
+    ALWAN_RGB_SPACE_SHARP_RGB,
+    ALWAN_RGB_SPACE_ECI_RGB_V2,
+
+    /* ========== EXISTING SPACES (kept for compatibility) ========== */
+
     /* Adobe RGB (1998) - Photography/print workflow */
     ALWAN_RGB_SPACE_ADOBE_RGB_1998,
 
@@ -175,7 +242,13 @@ typedef enum {
     ALWAN_RGB_SPACE_NTSC_1987,
     ALWAN_RGB_SPACE_PAL_SECAM,
     ALWAN_RGB_SPACE_APPLE_RGB,
-    ALWAN_RGB_SPACE_COLORMATCH_RGB
+    ALWAN_RGB_SPACE_COLORMATCH_RGB,
+
+    /* Additional high-priority spaces (11.1 continued) */
+    ALWAN_RGB_SPACE_ALEXA_WIDE_GAMUT,  /* ARRI ALEXA Wide Gamut */
+    ALWAN_RGB_SPACE_P3_D60,             /* P3 with D60 white point */
+    ALWAN_RGB_SPACE_LINEAR_SRGB,       /* Linear sRGB (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_REC2020     /* Linear Rec.2020 (no transfer function) */
 } alwan_rgb_space;
 
 /* Transfer function identifiers (OETF/EOTF) */

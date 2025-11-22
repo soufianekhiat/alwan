@@ -10,8 +10,6 @@
 #include "../../src/alwan/alwan.h"
 #include <stdio.h>
 #include <math.h>
-#include <string.h>
-#include <stdlib.h>
 
 /* Use fabs for floating point absolute value */
 #ifndef ALWAN_FABS
@@ -156,38 +154,31 @@ static int test_cvd_normal_vision(void) {
  * Luminous Efficiency Function Tests
  * ---------------------------------------------------------------- */
 
-/* Helper: Load CSV reference values */
-static int load_csv_values(const char *filename, alwan_scalar *values, int max_count) {
-    FILE *f = fopen(filename, "r");
-    if (!f) return -1;
+/* Embedded test data - compiled at build time */
+static alwan_scalar const g_photopic_wavelengths[] = {
+#include "reference_values/photopic_efficiency_wavelengths.csv"
+};
 
-    char line[4096];
-    if (!fgets(line, sizeof(line), f)) {
-        fclose(f);
-        return -1;
-    }
+static alwan_scalar const g_photopic_values[] = {
+#include "reference_values/photopic_efficiency_values.csv"
+};
 
-    int count = 0;
-    char *token = strtok(line, ",\n");
-    while (token && count < max_count) {
-        values[count] = (alwan_scalar)atof(token);
-        count++;
-        token = strtok(NULL, ",\n");
-    }
+static alwan_scalar const g_scotopic_wavelengths[] = {
+#include "reference_values/scotopic_efficiency_wavelengths.csv"
+};
 
-    fclose(f);
-    return count;
-}
+static alwan_scalar const g_scotopic_values[] = {
+#include "reference_values/scotopic_efficiency_values.csv"
+};
 
 static int test_photopic_efficiency(void) {
-    /* Load reference values from colour-science */
-    alwan_scalar ref_wavelengths[16], ref_values[16];
-    int wl_count = load_csv_values("tests/unit/reference_values/photopic_efficiency_wavelengths.csv",
-                                     ref_wavelengths, 16);
-    int val_count = load_csv_values("tests/unit/reference_values/photopic_efficiency_values.csv",
-                                      ref_values, 16);
+    /* Use embedded reference values from colour-science */
+    alwan_scalar const *ref_wavelengths = g_photopic_wavelengths;
+    alwan_scalar const *ref_values = g_photopic_values;
+    int wl_count = sizeof(g_photopic_wavelengths) / sizeof(g_photopic_wavelengths[0]);
+    int val_count = sizeof(g_photopic_values) / sizeof(g_photopic_values[0]);
 
-    TEST_ASSERT(wl_count > 0 && wl_count == val_count, "Failed to load photopic reference data");
+    TEST_ASSERT(wl_count > 0 && wl_count == val_count, "Photopic reference data size mismatch");
 
     /* Test against all reference wavelengths */
     alwan_scalar max_error = ALWAN_LITERAL(0.0);
@@ -216,14 +207,13 @@ static int test_photopic_efficiency(void) {
 }
 
 static int test_scotopic_efficiency(void) {
-    /* Load reference values from colour-science */
-    alwan_scalar ref_wavelengths[16], ref_values[16];
-    int wl_count = load_csv_values("tests/unit/reference_values/scotopic_efficiency_wavelengths.csv",
-                                     ref_wavelengths, 16);
-    int val_count = load_csv_values("tests/unit/reference_values/scotopic_efficiency_values.csv",
-                                      ref_values, 16);
+    /* Use embedded reference values from colour-science */
+    alwan_scalar const *ref_wavelengths = g_scotopic_wavelengths;
+    alwan_scalar const *ref_values = g_scotopic_values;
+    int wl_count = sizeof(g_scotopic_wavelengths) / sizeof(g_scotopic_wavelengths[0]);
+    int val_count = sizeof(g_scotopic_values) / sizeof(g_scotopic_values[0]);
 
-    TEST_ASSERT(wl_count > 0 && wl_count == val_count, "Failed to load scotopic reference data");
+    TEST_ASSERT(wl_count > 0 && wl_count == val_count, "Scotopic reference data size mismatch");
 
     /* Test against all reference wavelengths */
     alwan_scalar max_error = ALWAN_LITERAL(0.0);
