@@ -293,6 +293,16 @@ rgb_spaces = [
     ('P3-D60', 'P3-D60'),
     ('Linear sRGB', 'sRGB'),  # Same primaries as sRGB, but linear
     ('Linear Rec.2020', 'ITU-R BT.2020'),  # Same primaries as BT.2020, but linear
+    ('Linear Adobe RGB (1998)', 'Adobe RGB (1998)'),  # Same primaries as Adobe RGB, but linear
+    ('Linear P3-D65', 'P3-D65'),  # Same primaries as P3-D65, but linear
+    ('Linear Display P3', 'Display P3'),  # Same primaries as Display P3, but linear
+    ('Linear ProPhoto RGB', 'ProPhoto RGB'),  # Same primaries as ProPhoto RGB, but linear
+    ('Linear DCI-P3', 'DCI-P3'),  # Same primaries as DCI-P3, but linear
+    ('Linear Adobe Wide Gamut RGB', 'Adobe Wide Gamut RGB'),  # Same primaries as Adobe WG, but linear
+    ('Linear Apple RGB', 'Apple RGB'),  # Same primaries as Apple RGB, but linear
+    ('Linear ColorMatch RGB', 'ColorMatch RGB'),  # Same primaries as ColorMatch RGB, but linear
+    ('Linear P3-D60', 'P3-D60'),  # Same primaries as P3-D60, but linear
+    ('Linear BT470-525', 'ITU-R BT.470 - 525'),  # Same primaries as BT.470-525, but linear
 ]
 
 print("\nGenerating RGB space definitions...")

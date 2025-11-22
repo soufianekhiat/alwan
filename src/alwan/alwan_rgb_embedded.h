@@ -268,6 +268,46 @@ static alwan_scalar const g_linear_rec2020[] = {
 #include "data/rgb_spaces/linear_rec2020.csv"
 };
 
+static alwan_scalar const g_linear_adobe_rgb_1998[] = {
+#include "data/rgb_spaces/linear_adobe_rgb_1998.csv"
+};
+
+static alwan_scalar const g_linear_p3_d65[] = {
+#include "data/rgb_spaces/linear_p3_d65.csv"
+};
+
+static alwan_scalar const g_linear_display_p3[] = {
+#include "data/rgb_spaces/linear_display_p3.csv"
+};
+
+static alwan_scalar const g_linear_prophoto_rgb[] = {
+#include "data/rgb_spaces/linear_prophoto_rgb.csv"
+};
+
+static alwan_scalar const g_linear_dci_p3[] = {
+#include "data/rgb_spaces/linear_dci_p3.csv"
+};
+
+static alwan_scalar const g_linear_adobe_wide_gamut_rgb[] = {
+#include "data/rgb_spaces/linear_adobe_wide_gamut_rgb.csv"
+};
+
+static alwan_scalar const g_linear_apple_rgb[] = {
+#include "data/rgb_spaces/linear_apple_rgb.csv"
+};
+
+static alwan_scalar const g_linear_colormatch_rgb[] = {
+#include "data/rgb_spaces/linear_colormatch_rgb.csv"
+};
+
+static alwan_scalar const g_linear_p3_d60[] = {
+#include "data/rgb_spaces/linear_p3_d60.csv"
+};
+
+static alwan_scalar const g_linear_bt470_525[] = {
+#include "data/rgb_spaces/linear_bt470_525.csv"
+};
+
 ALWAN_DIAG_POP
 
 /* Array of pointers to RGB space data - Order MUST match enum */
@@ -334,7 +374,17 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_alexa_wide_gamut,
     g_p3_d60,
     g_linear_srgb,
-    g_linear_rec2020
+    g_linear_rec2020,
+    g_linear_adobe_rgb_1998,
+    g_linear_p3_d65,
+    g_linear_display_p3,
+    g_linear_prophoto_rgb,
+    g_linear_dci_p3,
+    g_linear_adobe_wide_gamut_rgb,
+    g_linear_apple_rgb,
+    g_linear_colormatch_rgb,
+    g_linear_p3_d60,
+    g_linear_bt470_525
 };
 
 static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]);

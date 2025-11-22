@@ -244,11 +244,21 @@ typedef enum {
     ALWAN_RGB_SPACE_APPLE_RGB,
     ALWAN_RGB_SPACE_COLORMATCH_RGB,
 
-    /* Additional high-priority spaces (11.1 continued) */
-    ALWAN_RGB_SPACE_ALEXA_WIDE_GAMUT,  /* ARRI ALEXA Wide Gamut */
-    ALWAN_RGB_SPACE_P3_D60,             /* P3 with D60 white point */
-    ALWAN_RGB_SPACE_LINEAR_SRGB,       /* Linear sRGB (no transfer function) */
-    ALWAN_RGB_SPACE_LINEAR_REC2020     /* Linear Rec.2020 (no transfer function) */
+    /* Additional RGB spaces */
+    ALWAN_RGB_SPACE_ALEXA_WIDE_GAMUT,       /* ARRI ALEXA Wide Gamut */
+    ALWAN_RGB_SPACE_P3_D60,                  /* P3 with D60 white point */
+    ALWAN_RGB_SPACE_LINEAR_SRGB,            /* Linear sRGB (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_REC2020,         /* Linear Rec.2020 (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_ADOBE_RGB_1998,  /* Linear Adobe RGB (1998) */
+    ALWAN_RGB_SPACE_LINEAR_P3_D65,          /* Linear P3-D65 (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_DISPLAY_P3,      /* Linear Display P3 (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_PROPHOTO_RGB,    /* Linear ProPhoto RGB (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_DCI_P3,          /* Linear DCI-P3 (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_ADOBE_WIDE_GAMUT_RGB,  /* Linear Adobe Wide Gamut RGB */
+    ALWAN_RGB_SPACE_LINEAR_APPLE_RGB,       /* Linear Apple RGB (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_COLORMATCH_RGB,  /* Linear ColorMatch RGB (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_P3_D60,          /* Linear P3-D60 (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_BT470_525        /* Linear BT.470-525 (no transfer function) */
 } alwan_rgb_space;
 
 /* Transfer function identifiers (OETF/EOTF) */

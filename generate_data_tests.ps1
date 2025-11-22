@@ -924,6 +924,16 @@ rgb_spaces_to_test = [
     ('P3-D60', 'P3-D60'),
     ('Linear sRGB', 'sRGB'),
     ('Linear Rec.2020', 'ITU-R BT.2020'),
+    ('Linear Adobe RGB (1998)', 'Adobe RGB (1998)'),
+    ('Linear P3-D65', 'P3-D65'),
+    ('Linear Display P3', 'Display P3'),
+    ('Linear ProPhoto RGB', 'ProPhoto RGB'),
+    ('Linear DCI-P3', 'DCI-P3'),
+    ('Linear Adobe Wide Gamut RGB', 'Adobe Wide Gamut RGB'),
+    ('Linear Apple RGB', 'Apple RGB'),
+    ('Linear ColorMatch RGB', 'ColorMatch RGB'),
+    ('Linear P3-D60', 'P3-D60'),
+    ('Linear BT470-525', 'ITU-R BT.470 - 525'),
 ]
 
 # Generate round-trip tests for each RGB space
