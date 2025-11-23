@@ -902,6 +902,11 @@ rgb_spaces_to_test = [
     ('S-Log3', 'S-Gamut3'),
     ('V-Gamut', 'V-Gamut'),
     ('V-Log', 'V-Gamut'),
+    ('DaVinci Wide Gamut', 'DaVinci Wide Gamut'),
+    ('DaVinci Intermediate', 'DaVinci Wide Gamut'),
+    ('Blackmagic Wide Gamut', 'Blackmagic Wide Gamut'),
+    ('Blackmagic Film', 'Blackmagic Wide Gamut'),
+    ('Blackmagic Film Gen5', 'Blackmagic Wide Gamut'),
     ('Cinema Gamut', 'Cinema Gamut'),
     ('Canon Log', 'Cinema Gamut'),
     ('CIE RGB', 'CIE RGB'),
@@ -910,9 +915,12 @@ rgb_spaces_to_test = [
     ('RIMM RGB', 'RIMM RGB'),
     ('ERIMM RGB', 'ERIMM RGB'),
     ('FilmLight E-Gamut', 'FilmLight E-Gamut'),
+    ('FilmLight T-Log', 'FilmLight E-Gamut'),
     # MEDIUM PRIORITY
     ('F-Gamut', 'F-Gamut'),
+    ('Fujifilm F-Log', 'F-Gamut'),
     ('N-Gamut', 'N-Gamut'),
+    ('N-Log', 'N-Gamut'),
     ('DJI D-Gamut', 'DJI D-Gamut'),
     ('Protune Native', 'Protune Native'),
     ('ITU-R BT.470 - 525', 'ITU-R BT.470 - 525'),
@@ -930,6 +938,9 @@ rgb_spaces_to_test = [
     ('Sharp RGB', 'Sharp RGB'),
     ('ECI RGB v2', 'ECI RGB v2'),
     # Additional RGB spaces
+    ('DCI-P3-P', 'DCI-P3-P'),
+    ('EBU Tech 3213-E', 'EBU Tech. 3213-E'),
+    ('Xtreme RGB', 'Xtreme RGB'),
     ('ALEXA Wide Gamut', 'ARRI Wide Gamut 3'),
     ('P3-D60', 'P3-D60'),  # Custom: P3 primaries with D60 white point
     ('Linear sRGB', 'sRGB'),
@@ -946,6 +957,11 @@ rgb_spaces_to_test = [
     ('Linear BT470_525', 'ITU-R BT.470 - 525'),
     ('Linear BT470_625', 'ITU-R BT.470 - 625'),
     ('Linear SMPTE 240M', 'SMPTE 240M'),
+
+    # Specialized/Standard spaces
+    ('ITU-T H273 22 Unspecified', 'ITU-T H.273 - 22 Unspecified'),
+    ('ITU-T H273 Generic Film', 'ITU-T H.273 - Generic Film'),
+    ('PLASA ANSI E154', 'PLASA ANSI E1.54'),
 ]
 
 # Create custom P3-D60 colorspace (P3 primaries with D60 white point)

@@ -229,14 +229,17 @@ rgb_spaces = [
 
     # DaVinci/FilmLight
     ('FilmLight E-Gamut', 'FilmLight E-Gamut'),
+    ('FilmLight T-Log', 'FilmLight E-Gamut'),  # Same primaries as E-Gamut
 
     # ========== MEDIUM PRIORITY NEW SPACES ==========
 
     # Fujifilm Camera Spaces
     ('F-Gamut', 'F-Gamut'),
+    ('Fujifilm F-Log', 'F-Gamut'),  # Same primaries as F-Gamut
 
     # Nikon Camera Spaces
     ('N-Gamut', 'N-Gamut'),
+    ('N-Log', 'N-Gamut'),  # Same primaries as N-Gamut
 
     # DJI Camera Spaces
     ('DJI D-Gamut', 'DJI D-Gamut'),
@@ -277,7 +280,10 @@ rgb_spaces = [
 
     # Cinema/Broadcast spaces - Professional video production
     ('DaVinci Wide Gamut', 'DaVinci Wide Gamut'),
+    ('DaVinci Intermediate', 'DaVinci Wide Gamut'),  # Same primaries as DaVinci WG
     ('Blackmagic Wide Gamut', 'Blackmagic Wide Gamut'),
+    ('Blackmagic Film', 'Blackmagic Wide Gamut'),  # Same primaries as Blackmagic WG
+    ('Blackmagic Film Gen5', 'Blackmagic Wide Gamut'),  # Same primaries as Blackmagic WG
     ('V-Gamut', 'V-Gamut'),
     ('V-Log', 'V-Gamut'),  # Same primaries as V-Gamut
     ('S-Gamut', 'S-Gamut'),
@@ -287,18 +293,21 @@ rgb_spaces = [
     ('Canon Log', 'Cinema Gamut'),  # Same primaries as Cinema Gamut
     ('REDWideGamutRGB', 'REDWideGamutRGB'),
     ('DCI-P3', 'DCI-P3'),
+    ('DCI-P3-P', 'DCI-P3-P'),  # DCI-P3+ (extended primaries)
     ('P3-D65', 'P3-D65'),
 
     # Legacy spaces - Historical compatibility
     ('NTSC 1953', 'NTSC (1953)'),
     ('NTSC 1987', 'NTSC (1987)'),
     ('PAL SECAM', 'PAL/SECAM'),
+    ('EBU Tech 3213-E', 'EBU Tech. 3213-E'),
     ('Apple RGB', 'Apple RGB'),
     ('ColorMatch RGB', 'ColorMatch RGB'),
 
     # Additional RGB spaces
     ('ALEXA Wide Gamut', 'ARRI Wide Gamut 3'),
     ('P3-D60', 'P3-D60'),  # Custom: P3 primaries with D60 white point
+    ('Xtreme RGB', 'Xtreme RGB'),
     ('Linear sRGB', 'sRGB'),  # Same primaries as sRGB, but linear
     ('Linear Rec.2020', 'ITU-R BT.2020'),  # Same primaries as BT.2020, but linear
     ('Linear Adobe RGB 1998', 'Adobe RGB (1998)'),  # Same primaries as Adobe RGB, but linear
@@ -313,6 +322,11 @@ rgb_spaces = [
     ('Linear BT470_525', 'ITU-R BT.470 - 525'),  # Same primaries as BT.470-525, but linear
     ('Linear BT470_625', 'ITU-R BT.470 - 625'),  # Same primaries as BT.470-625, but linear
     ('Linear SMPTE 240M', 'SMPTE 240M'),  # Same primaries as SMPTE 240M, but linear
+
+    # Specialized/Standard spaces
+    ('ITU-T H273 22 Unspecified', 'ITU-T H.273 - 22 Unspecified'),
+    ('ITU-T H273 Generic Film', 'ITU-T H.273 - Generic Film'),
+    ('PLASA ANSI E154', 'PLASA ANSI E1.54'),
 ]
 
 print("\nGenerating RGB space definitions...")

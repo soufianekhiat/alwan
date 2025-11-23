@@ -189,12 +189,15 @@ typedef enum {
 
     /* DaVinci/FilmLight */
     ALWAN_RGB_SPACE_FILMLIGHT_E_GAMUT,
+    ALWAN_RGB_SPACE_FILMLIGHT_T_LOG,    /* FilmLight T-Log (E-Gamut primaries + T-Log OETF) */
 
     /* Fujifilm Camera Spaces */
     ALWAN_RGB_SPACE_F_GAMUT,
+    ALWAN_RGB_SPACE_FUJIFILM_F_LOG,     /* Fujifilm F-Log (F-Gamut primaries + F-Log OETF) */
 
     /* Nikon Camera Spaces */
     ALWAN_RGB_SPACE_N_GAMUT,
+    ALWAN_RGB_SPACE_N_LOG,              /* N-Log (N-Gamut primaries + N-Log OETF) */
 
     /* DJI Camera Spaces */
     ALWAN_RGB_SPACE_DJI_D_GAMUT,
@@ -233,7 +236,10 @@ typedef enum {
 
     /* Cinema/Broadcast spaces */
     ALWAN_RGB_SPACE_DAVINCI_WIDE_GAMUT,
+    ALWAN_RGB_SPACE_DAVINCI_INTERMEDIATE, /* DaVinci Intermediate (DaVinci WG primaries + intermediate encoding) */
     ALWAN_RGB_SPACE_BLACKMAGIC_WIDE_GAMUT,
+    ALWAN_RGB_SPACE_BLACKMAGIC_FILM,      /* Blackmagic Design Film (Film Generation 1-4) */
+    ALWAN_RGB_SPACE_BLACKMAGIC_FILM_GEN5, /* Blackmagic Film Generation 5 */
     ALWAN_RGB_SPACE_V_GAMUT,
     ALWAN_RGB_SPACE_V_LOG,          /* V-Log (V-Gamut primaries + V-Log OETF) */
     ALWAN_RGB_SPACE_S_GAMUT,
@@ -243,18 +249,21 @@ typedef enum {
     ALWAN_RGB_SPACE_CANON_LOG,      /* Canon Log (Cinema Gamut primaries + Canon Log OETF) */
     ALWAN_RGB_SPACE_REDWIDEGAMUTRGB,
     ALWAN_RGB_SPACE_DCI_P3,
+    ALWAN_RGB_SPACE_DCI_P3_P,           /* DCI-P3+ (extended primaries) */
     ALWAN_RGB_SPACE_P3_D65,
 
     /* Legacy spaces */
     ALWAN_RGB_SPACE_NTSC_1953,
     ALWAN_RGB_SPACE_NTSC_1987,
     ALWAN_RGB_SPACE_PAL_SECAM,
+    ALWAN_RGB_SPACE_EBU_TECH_3213_E,    /* EBU Tech. 3213-E (European Broadcasting Union) */
     ALWAN_RGB_SPACE_APPLE_RGB,
     ALWAN_RGB_SPACE_COLORMATCH_RGB,
 
     /* Additional RGB spaces */
     ALWAN_RGB_SPACE_ALEXA_WIDE_GAMUT,       /* ARRI ALEXA Wide Gamut */
     ALWAN_RGB_SPACE_P3_D60,                  /* P3 with D60 white point */
+    ALWAN_RGB_SPACE_XTREME_RGB,             /* Xtreme RGB (HP/Microsoft extended gamut) */
     ALWAN_RGB_SPACE_LINEAR_SRGB,            /* Linear sRGB (no transfer function) */
     ALWAN_RGB_SPACE_LINEAR_REC2020,         /* Linear Rec.2020 (no transfer function) */
     ALWAN_RGB_SPACE_LINEAR_ADOBE_RGB_1998,  /* Linear Adobe RGB (1998) */
@@ -268,7 +277,12 @@ typedef enum {
     ALWAN_RGB_SPACE_LINEAR_P3_D60,          /* Linear P3-D60 (no transfer function) */
     ALWAN_RGB_SPACE_LINEAR_BT470_525,       /* Linear BT.470-525 (no transfer function) */
     ALWAN_RGB_SPACE_LINEAR_BT470_625,       /* Linear BT.470-625 (no transfer function) */
-    ALWAN_RGB_SPACE_LINEAR_SMPTE_240M       /* Linear SMPTE 240M (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_SMPTE_240M,      /* Linear SMPTE 240M (no transfer function) */
+
+    /* Specialized/Standard spaces */
+    ALWAN_RGB_SPACE_ITU_T_H273_22_UNSPECIFIED,  /* ITU-T H.273 code point 22 (Unspecified) */
+    ALWAN_RGB_SPACE_ITU_T_H273_GENERIC_FILM,    /* ITU-T H.273 Generic Film */
+    ALWAN_RGB_SPACE_PLASA_ANSI_E154             /* PLASA ANSI E1.54 (Entertainment lighting standard) */
 } alwan_rgb_space;
 
 /* Transfer function identifiers (OETF/EOTF) */

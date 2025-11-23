@@ -138,12 +138,24 @@ static alwan_scalar const g_filmlight_e_gamut[] = {
 #include "data/rgb_spaces/filmlight_e-gamut.csv"
 };
 
+static alwan_scalar const g_filmlight_t_log[] = {
+#include "data/rgb_spaces/filmlight_t-log.csv"
+};
+
 static alwan_scalar const g_f_gamut[] = {
 #include "data/rgb_spaces/f-gamut.csv"
 };
 
+static alwan_scalar const g_fujifilm_f_log[] = {
+#include "data/rgb_spaces/fujifilm_f-log.csv"
+};
+
 static alwan_scalar const g_n_gamut[] = {
 #include "data/rgb_spaces/n-gamut.csv"
+};
+
+static alwan_scalar const g_n_log[] = {
+#include "data/rgb_spaces/n-log.csv"
 };
 
 static alwan_scalar const g_dji_d_gamut[] = {
@@ -219,8 +231,20 @@ static alwan_scalar const g_davinci_wide_gamut[] = {
 #include "data/rgb_spaces/davinci_wide_gamut.csv"
 };
 
+static alwan_scalar const g_davinci_intermediate[] = {
+#include "data/rgb_spaces/davinci_intermediate.csv"
+};
+
 static alwan_scalar const g_blackmagic_wide_gamut[] = {
 #include "data/rgb_spaces/blackmagic_wide_gamut.csv"
+};
+
+static alwan_scalar const g_blackmagic_film[] = {
+#include "data/rgb_spaces/blackmagic_film.csv"
+};
+
+static alwan_scalar const g_blackmagic_film_gen5[] = {
+#include "data/rgb_spaces/blackmagic_film_gen5.csv"
 };
 
 static alwan_scalar const g_v_gamut[] = {
@@ -259,6 +283,10 @@ static alwan_scalar const g_dci_p3[] = {
 #include "data/rgb_spaces/dci-p3.csv"
 };
 
+static alwan_scalar const g_dci_p3_p[] = {
+#include "data/rgb_spaces/dci-p3-p.csv"
+};
+
 static alwan_scalar const g_p3_d65[] = {
 #include "data/rgb_spaces/p3-d65.csv"
 };
@@ -273,6 +301,10 @@ static alwan_scalar const g_ntsc_1987[] = {
 
 static alwan_scalar const g_pal_secam[] = {
 #include "data/rgb_spaces/pal_secam.csv"
+};
+
+static alwan_scalar const g_ebu_tech_3213_e[] = {
+#include "data/rgb_spaces/ebu_tech_3213-e.csv"
 };
 
 static alwan_scalar const g_apple_rgb[] = {
@@ -290,6 +322,10 @@ static alwan_scalar const g_alexa_wide_gamut[] = {
 
 static alwan_scalar const g_p3_d60[] = {
 #include "data/rgb_spaces/p3-d60.csv"
+};
+
+static alwan_scalar const g_xtreme_rgb[] = {
+#include "data/rgb_spaces/xtreme_rgb.csv"
 };
 
 static alwan_scalar const g_linear_srgb[] = {
@@ -348,6 +384,18 @@ static alwan_scalar const g_linear_smpte_240m[] = {
 #include "data/rgb_spaces/linear_smpte_240m.csv"
 };
 
+static alwan_scalar const g_itu_t_h273_22_unspecified[] = {
+#include "data/rgb_spaces/itu-t_h273_22_unspecified.csv"
+};
+
+static alwan_scalar const g_itu_t_h273_generic_film[] = {
+#include "data/rgb_spaces/itu-t_h273_generic_film.csv"
+};
+
+static alwan_scalar const g_plasa_ansi_e154[] = {
+#include "data/rgb_spaces/plasa_ansi_e154.csv"
+};
+
 ALWAN_DIAG_POP
 
 /* Array of pointers to RGB space data - Order MUST match enum */
@@ -383,8 +431,11 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_rimm_rgb,
     g_erimm_rgb,
     g_filmlight_e_gamut,
+    g_filmlight_t_log,
     g_f_gamut,
+    g_fujifilm_f_log,
     g_n_gamut,
+    g_n_log,
     g_dji_d_gamut,
     g_protune_native,
     g_itu_r_bt470_525,
@@ -403,7 +454,10 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_adobe_rgb_1998,
     g_prophoto_rgb,
     g_davinci_wide_gamut,
+    g_davinci_intermediate,
     g_blackmagic_wide_gamut,
+    g_blackmagic_film,
+    g_blackmagic_film_gen5,
     g_v_gamut,
     g_v_log,
     g_s_gamut,
@@ -413,14 +467,17 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_canon_log,
     g_redwidegamutrgb,
     g_dci_p3,
+    g_dci_p3_p,
     g_p3_d65,
     g_ntsc_1953,
     g_ntsc_1987,
     g_pal_secam,
+    g_ebu_tech_3213_e,
     g_apple_rgb,
     g_colormatch_rgb,
     g_alexa_wide_gamut,
     g_p3_d60,
+    g_xtreme_rgb,
     g_linear_srgb,
     g_linear_rec2020,
     g_linear_adobe_rgb_1998,
@@ -434,7 +491,10 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_linear_p3_d60,
     g_linear_bt470_525,
     g_linear_bt470_625,
-    g_linear_smpte_240m
+    g_linear_smpte_240m,
+    g_itu_t_h273_22_unspecified,
+    g_itu_t_h273_generic_film,
+    g_plasa_ansi_e154
 };
 
 static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]);
