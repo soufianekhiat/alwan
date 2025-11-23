@@ -169,10 +169,14 @@ typedef enum {
     ALWAN_RGB_SPACE_REDCOLOR4,      /* RED Color 4 */
     ALWAN_RGB_SPACE_DRAGONCOLOR,    /* RED Dragon Color */
     ALWAN_RGB_SPACE_DRAGONCOLOR2,   /* RED Dragon Color 2 */
+    ALWAN_RGB_SPACE_REDLOG,         /* REDLog (REDWideGamutRGB primaries + REDLog OETF) */
 
     /* Sony Camera Spaces (extended) */
     ALWAN_RGB_SPACE_VENICE_S_GAMUT3,
     ALWAN_RGB_SPACE_VENICE_S_GAMUT3_CINE,
+    ALWAN_RGB_SPACE_S_LOG,          /* S-Log (S-Gamut3 primaries + S-Log OETF) */
+    ALWAN_RGB_SPACE_S_LOG2,         /* S-Log2 (S-Gamut3 primaries + S-Log2 OETF) */
+    ALWAN_RGB_SPACE_S_LOG3,         /* S-Log3 (S-Gamut3 primaries + S-Log3 OETF) */
 
     /* Historical/Reference */
     ALWAN_RGB_SPACE_CIE_RGB,        /* CIE 1931 RGB */
@@ -231,10 +235,12 @@ typedef enum {
     ALWAN_RGB_SPACE_DAVINCI_WIDE_GAMUT,
     ALWAN_RGB_SPACE_BLACKMAGIC_WIDE_GAMUT,
     ALWAN_RGB_SPACE_V_GAMUT,
+    ALWAN_RGB_SPACE_V_LOG,          /* V-Log (V-Gamut primaries + V-Log OETF) */
     ALWAN_RGB_SPACE_S_GAMUT,
     ALWAN_RGB_SPACE_S_GAMUT3,
     ALWAN_RGB_SPACE_S_GAMUT3_CINE,
     ALWAN_RGB_SPACE_CINEMA_GAMUT,
+    ALWAN_RGB_SPACE_CANON_LOG,      /* Canon Log (Cinema Gamut primaries + Canon Log OETF) */
     ALWAN_RGB_SPACE_REDWIDEGAMUTRGB,
     ALWAN_RGB_SPACE_DCI_P3,
     ALWAN_RGB_SPACE_P3_D65,

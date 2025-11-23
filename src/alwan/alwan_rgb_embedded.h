@@ -90,12 +90,28 @@ static alwan_scalar const g_dragoncolor2[] = {
 #include "data/rgb_spaces/dragoncolor2.csv"
 };
 
+static alwan_scalar const g_redlog[] = {
+#include "data/rgb_spaces/redlog.csv"
+};
+
 static alwan_scalar const g_venice_s_gamut3[] = {
 #include "data/rgb_spaces/venice_s-gamut3.csv"
 };
 
 static alwan_scalar const g_venice_s_gamut3_cine[] = {
 #include "data/rgb_spaces/venice_s-gamut3cine.csv"
+};
+
+static alwan_scalar const g_s_log[] = {
+#include "data/rgb_spaces/s-log.csv"
+};
+
+static alwan_scalar const g_s_log2[] = {
+#include "data/rgb_spaces/s-log2.csv"
+};
+
+static alwan_scalar const g_s_log3[] = {
+#include "data/rgb_spaces/s-log3.csv"
 };
 
 static alwan_scalar const g_cie_rgb[] = {
@@ -211,6 +227,10 @@ static alwan_scalar const g_v_gamut[] = {
 #include "data/rgb_spaces/v-gamut.csv"
 };
 
+static alwan_scalar const g_v_log[] = {
+#include "data/rgb_spaces/v-log.csv"
+};
+
 static alwan_scalar const g_s_gamut[] = {
 #include "data/rgb_spaces/s-gamut.csv"
 };
@@ -225,6 +245,10 @@ static alwan_scalar const g_s_gamut3_cine[] = {
 
 static alwan_scalar const g_cinema_gamut[] = {
 #include "data/rgb_spaces/cinema_gamut.csv"
+};
+
+static alwan_scalar const g_canon_log[] = {
+#include "data/rgb_spaces/canon_log.csv"
 };
 
 static alwan_scalar const g_redwidegamutrgb[] = {
@@ -347,8 +371,12 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_redcolor4,
     g_dragoncolor,
     g_dragoncolor2,
+    g_redlog,
     g_venice_s_gamut3,
     g_venice_s_gamut3_cine,
+    g_s_log,
+    g_s_log2,
+    g_s_log3,
     g_cie_rgb,
     g_adobe_wide_gamut_rgb,
     g_romm_rgb,
@@ -377,10 +405,12 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_davinci_wide_gamut,
     g_blackmagic_wide_gamut,
     g_v_gamut,
+    g_v_log,
     g_s_gamut,
     g_s_gamut3,
     g_s_gamut3_cine,
     g_cinema_gamut,
+    g_canon_log,
     g_redwidegamutrgb,
     g_dci_p3,
     g_p3_d65,

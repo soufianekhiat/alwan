@@ -209,10 +209,14 @@ rgb_spaces = [
     ('REDcolor4', 'REDcolor4'),
     ('DRAGONcolor', 'DRAGONcolor'),
     ('DRAGONcolor2', 'DRAGONcolor2'),
+    ('REDLog', 'REDWideGamutRGB'),  # Same primaries as REDWideGamutRGB
 
     # Sony Camera Spaces (extended)
     ('Venice S-Gamut3', 'Venice S-Gamut3'),
     ('Venice S-Gamut3.Cine', 'Venice S-Gamut3.Cine'),
+    ('S-Log', 'S-Gamut3'),  # Same primaries as S-Gamut3
+    ('S-Log2', 'S-Gamut3'),  # Same primaries as S-Gamut3
+    ('S-Log3', 'S-Gamut3'),  # Same primaries as S-Gamut3
 
     # Historical/Reference
     ('CIE RGB', 'CIE RGB'),
@@ -275,10 +279,12 @@ rgb_spaces = [
     ('DaVinci Wide Gamut', 'DaVinci Wide Gamut'),
     ('Blackmagic Wide Gamut', 'Blackmagic Wide Gamut'),
     ('V-Gamut', 'V-Gamut'),
+    ('V-Log', 'V-Gamut'),  # Same primaries as V-Gamut
     ('S-Gamut', 'S-Gamut'),
     ('S-Gamut3', 'S-Gamut3'),
     ('S-Gamut3.Cine', 'S-Gamut3.Cine'),
     ('Cinema Gamut', 'Cinema Gamut'),
+    ('Canon Log', 'Cinema Gamut'),  # Same primaries as Cinema Gamut
     ('REDWideGamutRGB', 'REDWideGamutRGB'),
     ('DCI-P3', 'DCI-P3'),
     ('P3-D65', 'P3-D65'),
