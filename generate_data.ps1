@@ -327,6 +327,13 @@ rgb_spaces = [
     ('ITU-T H273 22 Unspecified', 'ITU-T H.273 - 22 Unspecified'),
     ('ITU-T H273 Generic Film', 'ITU-T H.273 - Generic Film'),
     ('PLASA ANSI E154', 'PLASA ANSI E1.54'),
+
+    # Gamma-encoded variants (same primaries as parent, but with simple gamma transfer function)
+    ('Gamma 2.2 Rec.709', 'ITU-R BT.709'),  # Same primaries as BT.709, but with gamma 2.2
+    ('Gamma 2.2 Adobe RGB', 'Adobe RGB (1998)'),  # Same primaries as Adobe RGB, but with gamma 2.2
+    ('Gamma 2.2 P3-D65', 'P3-D65'),  # Same primaries as P3-D65, but with gamma 2.2
+    ('Gamma 2.2 AP1', 'ACEScg'),  # Same primaries as ACEScg (AP1), but with gamma 2.2
+    ('Gamma 1.8 Rec.709', 'ITU-R BT.709'),  # Same primaries as BT.709, but with gamma 1.8
 ]
 
 print("\nGenerating RGB space definitions...")

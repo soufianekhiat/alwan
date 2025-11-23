@@ -396,6 +396,26 @@ static alwan_scalar const g_plasa_ansi_e154[] = {
 #include "data/rgb_spaces/plasa_ansi_e154.csv"
 };
 
+static alwan_scalar const g_gamma22_rec709[] = {
+#include "data/rgb_spaces/gamma_22_rec709.csv"
+};
+
+static alwan_scalar const g_gamma22_adobe_rgb[] = {
+#include "data/rgb_spaces/gamma_22_adobe_rgb.csv"
+};
+
+static alwan_scalar const g_gamma22_p3_d65[] = {
+#include "data/rgb_spaces/gamma_22_p3-d65.csv"
+};
+
+static alwan_scalar const g_gamma22_ap1[] = {
+#include "data/rgb_spaces/gamma_22_ap1.csv"
+};
+
+static alwan_scalar const g_gamma18_rec709[] = {
+#include "data/rgb_spaces/gamma_18_rec709.csv"
+};
+
 ALWAN_DIAG_POP
 
 /* Array of pointers to RGB space data - Order MUST match enum */
@@ -494,7 +514,12 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_linear_smpte_240m,
     g_itu_t_h273_22_unspecified,
     g_itu_t_h273_generic_film,
-    g_plasa_ansi_e154
+    g_plasa_ansi_e154,
+    g_gamma22_rec709,
+    g_gamma22_adobe_rgb,
+    g_gamma22_p3_d65,
+    g_gamma22_ap1,
+    g_gamma18_rec709
 };
 
 static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]);

@@ -282,7 +282,14 @@ typedef enum {
     /* Specialized/Standard spaces */
     ALWAN_RGB_SPACE_ITU_T_H273_22_UNSPECIFIED,  /* ITU-T H.273 code point 22 (Unspecified) */
     ALWAN_RGB_SPACE_ITU_T_H273_GENERIC_FILM,    /* ITU-T H.273 Generic Film */
-    ALWAN_RGB_SPACE_PLASA_ANSI_E154             /* PLASA ANSI E1.54 (Entertainment lighting standard) */
+    ALWAN_RGB_SPACE_PLASA_ANSI_E154,            /* PLASA ANSI E1.54 (Entertainment lighting standard) */
+
+    /* Gamma-encoded variants (simple power-law gamma instead of complex transfer functions) */
+    ALWAN_RGB_SPACE_GAMMA22_REC709,     /* Rec.709 primaries + gamma 2.2 OETF */
+    ALWAN_RGB_SPACE_GAMMA22_ADOBE_RGB,  /* Adobe RGB primaries + gamma 2.2 OETF */
+    ALWAN_RGB_SPACE_GAMMA22_P3_D65,     /* P3-D65 primaries + gamma 2.2 OETF */
+    ALWAN_RGB_SPACE_GAMMA22_AP1,        /* ACEScg (AP1) primaries + gamma 2.2 OETF */
+    ALWAN_RGB_SPACE_GAMMA18_REC709      /* Rec.709 primaries + gamma 1.8 OETF */
 } alwan_rgb_space;
 
 /* Transfer function identifiers (OETF/EOTF) */
