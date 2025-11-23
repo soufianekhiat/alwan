@@ -199,6 +199,8 @@ rgb_spaces = [
     # ARRI Camera Spaces
     ('ARRI Wide Gamut 3', 'ARRI Wide Gamut 3'),
     ('ARRI Wide Gamut 4', 'ARRI Wide Gamut 4'),
+    ('ARRI LogC3', 'ARRI Wide Gamut 3'),  # Same primaries as WG3
+    ('ARRI LogC4', 'ARRI Wide Gamut 4'),  # Same primaries as WG4
 
     # RED Camera Spaces (extended)
     ('REDcolor', 'REDcolor'),
@@ -289,26 +291,40 @@ rgb_spaces = [
     ('ColorMatch RGB', 'ColorMatch RGB'),
 
     # Additional RGB spaces
-    ('ALEXA Wide Gamut', 'ALEXA Wide Gamut'),
-    ('P3-D60', 'P3-D60'),
+    ('ALEXA Wide Gamut', 'ARRI Wide Gamut 3'),
+    ('P3-D60', 'P3-D60'),  # Custom: P3 primaries with D60 white point
     ('Linear sRGB', 'sRGB'),  # Same primaries as sRGB, but linear
     ('Linear Rec.2020', 'ITU-R BT.2020'),  # Same primaries as BT.2020, but linear
-    ('Linear Adobe RGB (1998)', 'Adobe RGB (1998)'),  # Same primaries as Adobe RGB, but linear
-    ('Linear P3-D65', 'P3-D65'),  # Same primaries as P3-D65, but linear
+    ('Linear Adobe RGB 1998', 'Adobe RGB (1998)'),  # Same primaries as Adobe RGB, but linear
+    ('Linear P3_D65', 'P3-D65'),  # Same primaries as P3-D65, but linear
     ('Linear Display P3', 'Display P3'),  # Same primaries as Display P3, but linear
     ('Linear ProPhoto RGB', 'ProPhoto RGB'),  # Same primaries as ProPhoto RGB, but linear
-    ('Linear DCI-P3', 'DCI-P3'),  # Same primaries as DCI-P3, but linear
+    ('Linear DCI_P3', 'DCI-P3'),  # Same primaries as DCI-P3, but linear
     ('Linear Adobe Wide Gamut RGB', 'Adobe Wide Gamut RGB'),  # Same primaries as Adobe WG, but linear
     ('Linear Apple RGB', 'Apple RGB'),  # Same primaries as Apple RGB, but linear
     ('Linear ColorMatch RGB', 'ColorMatch RGB'),  # Same primaries as ColorMatch RGB, but linear
-    ('Linear P3-D60', 'P3-D60'),  # Same primaries as P3-D60, but linear
-    ('Linear BT470-525', 'ITU-R BT.470 - 525'),  # Same primaries as BT.470-525, but linear
+    ('Linear P3_D60', 'P3-D60'),  # Same primaries as P3-D60, but linear
+    ('Linear BT470_525', 'ITU-R BT.470 - 525'),  # Same primaries as BT.470-525, but linear
+    ('Linear BT470_625', 'ITU-R BT.470 - 625'),  # Same primaries as BT.470-625, but linear
+    ('Linear SMPTE 240M', 'SMPTE 240M'),  # Same primaries as SMPTE 240M, but linear
 ]
 
 print("\nGenerating RGB space definitions...")
+
+# Create custom P3-D60 colorspace (P3 primaries with D60 white point)
+import numpy as np
+p3_primaries = np.array([[0.68, 0.32], [0.265, 0.69], [0.15, 0.06]])
+d60_whitepoint = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D60']
+p3_d60_space = colour.RGB_Colourspace('P3-D60', p3_primaries, d60_whitepoint)
+
 for filename, space_name in rgb_spaces:
     try:
-        space = colour.RGB_COLOURSPACES[space_name]
+        # Handle special case for P3-D60
+        if space_name == 'P3-D60':
+            space = p3_d60_space
+        else:
+            space = colour.RGB_COLOURSPACES[space_name]
+
         filepath = f'{DATA_DIR}/rgb_spaces/{filename.lower().replace(" ", "_").replace(".", "")}.csv'
         write_rgb_space_csv(filepath, space_name, space)
 

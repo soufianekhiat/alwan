@@ -159,6 +159,8 @@ typedef enum {
     /* ARRI Camera Spaces */
     ALWAN_RGB_SPACE_ARRI_WIDE_GAMUT_3,
     ALWAN_RGB_SPACE_ARRI_WIDE_GAMUT_4,
+    ALWAN_RGB_SPACE_ARRI_LOGC3,         /* ARRI LogC3 (WG3 primaries + LogC3 OETF) */
+    ALWAN_RGB_SPACE_ARRI_LOGC4,         /* ARRI LogC4 (WG4 primaries + LogC4 OETF) */
 
     /* RED Camera Spaces (extended) */
     ALWAN_RGB_SPACE_REDCOLOR,       /* RED Color 1 */
@@ -258,7 +260,9 @@ typedef enum {
     ALWAN_RGB_SPACE_LINEAR_APPLE_RGB,       /* Linear Apple RGB (no transfer function) */
     ALWAN_RGB_SPACE_LINEAR_COLORMATCH_RGB,  /* Linear ColorMatch RGB (no transfer function) */
     ALWAN_RGB_SPACE_LINEAR_P3_D60,          /* Linear P3-D60 (no transfer function) */
-    ALWAN_RGB_SPACE_LINEAR_BT470_525        /* Linear BT.470-525 (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_BT470_525,       /* Linear BT.470-525 (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_BT470_625,       /* Linear BT.470-625 (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_SMPTE_240M       /* Linear SMPTE 240M (no transfer function) */
 } alwan_rgb_space;
 
 /* Transfer function identifiers (OETF/EOTF) */

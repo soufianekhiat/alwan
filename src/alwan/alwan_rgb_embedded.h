@@ -58,6 +58,14 @@ static alwan_scalar const g_arri_wide_gamut_4[] = {
 #include "data/rgb_spaces/arri_wide_gamut_4.csv"
 };
 
+static alwan_scalar const g_arri_logc3[] = {
+#include "data/rgb_spaces/arri_logc3.csv"
+};
+
+static alwan_scalar const g_arri_logc4[] = {
+#include "data/rgb_spaces/arri_logc4.csv"
+};
+
 static alwan_scalar const g_redcolor[] = {
 #include "data/rgb_spaces/redcolor.csv"
 };
@@ -257,7 +265,7 @@ static alwan_scalar const g_alexa_wide_gamut[] = {
 };
 
 static alwan_scalar const g_p3_d60[] = {
-#include "data/rgb_spaces/p3_d60.csv"
+#include "data/rgb_spaces/p3-d60.csv"
 };
 
 static alwan_scalar const g_linear_srgb[] = {
@@ -308,6 +316,14 @@ static alwan_scalar const g_linear_bt470_525[] = {
 #include "data/rgb_spaces/linear_bt470_525.csv"
 };
 
+static alwan_scalar const g_linear_bt470_625[] = {
+#include "data/rgb_spaces/linear_bt470_625.csv"
+};
+
+static alwan_scalar const g_linear_smpte_240m[] = {
+#include "data/rgb_spaces/linear_smpte_240m.csv"
+};
+
 ALWAN_DIAG_POP
 
 /* Array of pointers to RGB space data - Order MUST match enum */
@@ -323,6 +339,8 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_acescct,
     g_arri_wide_gamut_3,
     g_arri_wide_gamut_4,
+    g_arri_logc3,
+    g_arri_logc4,
     g_redcolor,
     g_redcolor2,
     g_redcolor3,
@@ -384,7 +402,9 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_linear_apple_rgb,
     g_linear_colormatch_rgb,
     g_linear_p3_d60,
-    g_linear_bt470_525
+    g_linear_bt470_525,
+    g_linear_bt470_625,
+    g_linear_smpte_240m
 };
 
 static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]);

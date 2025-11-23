@@ -886,6 +886,8 @@ rgb_spaces_to_test = [
     ('ACEScct', 'ACEScct'),
     ('ARRI Wide Gamut 3', 'ARRI Wide Gamut 3'),
     ('ARRI Wide Gamut 4', 'ARRI Wide Gamut 4'),
+    ('ARRI LogC3', 'ARRI Wide Gamut 3'),
+    ('ARRI LogC4', 'ARRI Wide Gamut 4'),
     ('REDcolor', 'REDcolor'),
     ('REDcolor2', 'REDcolor2'),
     ('REDcolor3', 'REDcolor3'),
@@ -920,26 +922,38 @@ rgb_spaces_to_test = [
     ('Sharp RGB', 'Sharp RGB'),
     ('ECI RGB v2', 'ECI RGB v2'),
     # Additional RGB spaces
-    ('ALEXA Wide Gamut', 'ALEXA Wide Gamut'),
-    ('P3-D60', 'P3-D60'),
+    ('ALEXA Wide Gamut', 'ARRI Wide Gamut 3'),
+    ('P3-D60', 'P3-D60'),  # Custom: P3 primaries with D60 white point
     ('Linear sRGB', 'sRGB'),
     ('Linear Rec.2020', 'ITU-R BT.2020'),
-    ('Linear Adobe RGB (1998)', 'Adobe RGB (1998)'),
-    ('Linear P3-D65', 'P3-D65'),
+    ('Linear Adobe RGB 1998', 'Adobe RGB (1998)'),
+    ('Linear P3_D65', 'P3-D65'),
     ('Linear Display P3', 'Display P3'),
     ('Linear ProPhoto RGB', 'ProPhoto RGB'),
-    ('Linear DCI-P3', 'DCI-P3'),
+    ('Linear DCI_P3', 'DCI-P3'),
     ('Linear Adobe Wide Gamut RGB', 'Adobe Wide Gamut RGB'),
     ('Linear Apple RGB', 'Apple RGB'),
     ('Linear ColorMatch RGB', 'ColorMatch RGB'),
-    ('Linear P3-D60', 'P3-D60'),
-    ('Linear BT470-525', 'ITU-R BT.470 - 525'),
+    ('Linear P3_D60', 'P3-D60'),
+    ('Linear BT470_525', 'ITU-R BT.470 - 525'),
+    ('Linear BT470_625', 'ITU-R BT.470 - 625'),
+    ('Linear SMPTE 240M', 'SMPTE 240M'),
 ]
+
+# Create custom P3-D60 colorspace (P3 primaries with D60 white point)
+import numpy as np
+p3_primaries = np.array([[0.68, 0.32], [0.265, 0.69], [0.15, 0.06]])
+d60_whitepoint = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D60']
+p3_d60_space = colour.RGB_Colourspace('P3-D60', p3_primaries, d60_whitepoint)
 
 # Generate round-trip tests for each RGB space
 for filename, space_name in rgb_spaces_to_test:
     try:
-        rgb_space = colour.RGB_COLOURSPACES[space_name]
+        # Handle special case for P3-D60
+        if space_name == 'P3-D60':
+            rgb_space = p3_d60_space
+        else:
+            rgb_space = colour.RGB_COLOURSPACES[space_name]
         print(f'   {space_name}')
 
         # RGB -> XYZ -> RGB round-trip
