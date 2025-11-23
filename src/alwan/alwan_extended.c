@@ -11,7 +11,7 @@
 #include "alwan_internal.h"
 
 /* ================================================================
- * Matrix Loading Functions (Milestone 1 Extended)
+ * Matrix Loading Functions
  * ================================================================ */
 
 /* LMS to IPT matrix for hdr-IPT
@@ -80,18 +80,48 @@ static void get_icacb_to_lms_matrix(alwan_mat3x3 *out) {
     }
 }
 
-/* XYZ to LMS matrix for hdr-IPT, IgPgTg, and ICaCb
+/* IMPORTANT: Each color space uses its OWN XYZ<->LMS matrix! */
+
+/* XYZ to LMS matrix for hdr-IPT
  * This is MATRIX_IPT_XYZ_TO_LMS from colour-science (NOT the same as standard HPE!)
  * Generated from colour-science */
 static alwan_scalar const M_XYZ_TO_LMS_IPT[9] = {
 #include "data/matrices/xyz_to_lms_ipt.csv"
 };
 
-/* LMS to XYZ inverse matrix for hdr-IPT, IgPgTg, and ICaCb
+/* LMS to XYZ inverse matrix for hdr-IPT
  * This is MATRIX_IPT_LMS_TO_XYZ from colour-science
  * Generated from colour-science */
 static alwan_scalar const M_LMS_TO_XYZ_IPT[9] = {
 #include "data/matrices/lms_to_xyz_ipt.csv"
+};
+
+/* XYZ to LMS matrix for IgPgTg (DIFFERENT from hdr-IPT!)
+ * This is MATRIX_IGPGTG_XYZ_TO_LMS from colour-science
+ * Generated from colour-science */
+static alwan_scalar const M_XYZ_TO_LMS_IGPGTG[9] = {
+#include "data/matrices/xyz_to_lms_igpgtg.csv"
+};
+
+/* LMS to XYZ inverse matrix for IgPgTg
+ * This is MATRIX_IGPGTG_LMS_TO_XYZ from colour-science
+ * Generated from colour-science */
+static alwan_scalar const M_LMS_TO_XYZ_IGPGTG[9] = {
+#include "data/matrices/lms_to_xyz_igpgtg.csv"
+};
+
+/* XYZ to LMS matrix for ICaCb (DIFFERENT from hdr-IPT and IgPgTg!)
+ * This is MATRIX_ICACB_XYZ_TO_LMS from colour-science
+ * Generated from colour-science */
+static alwan_scalar const M_XYZ_TO_LMS_ICACB[9] = {
+#include "data/matrices/xyz_to_lms_icacb.csv"
+};
+
+/* LMS to XYZ inverse matrix for ICaCb
+ * This is MATRIX_ICACB_LMS_TO_XYZ from colour-science
+ * Generated from colour-science */
+static alwan_scalar const M_LMS_TO_XYZ_ICACB[9] = {
+#include "data/matrices/lms_to_xyz_icacb.csv"
 };
 
 /* ================================================================
@@ -109,36 +139,33 @@ void alwan_rgb_to_prismatic(alwan_vec3 const *rgb, alwan_vec3 *prismatic) {
     alwan_scalar b = rgb->v[2];
 
     /* Prismatic color space (Pridmore 2021)
-     * Based on: L (lightness), C (chroma), h (hue)
-     * Conversion follows cylindrical transformation
+     * Represents color as [L, P, Q] where:
+     * - L = max(R,G,B) is the lightness
+     * - P, Q are normalized color components (P = R/sum, Q = G/sum)
+     * - R_component = B/sum = 1 - P - Q (not stored, can be computed)
+     * Reference: colour.RGB_to_Prismatic
      */
 
-    alwan_scalar max_val = alwan_max3(r, g, b);
-    alwan_scalar min_val = alwan_min3(r, g, b);
-    alwan_scalar delta = max_val - min_val;
+    /* L is the maximum value */
+    alwan_scalar L = alwan_max3(r, g, b);
 
-    /* Lightness */
-    alwan_scalar L = (max_val + min_val) / ALWAN_LITERAL(2.0);
+    /* Normalize RGB to sum to 1 */
+    alwan_scalar sum_rgb = r + g + b;
+    alwan_scalar P, Q;
 
-    /* Chroma */
-    alwan_scalar C = delta;
-
-    /* Hue (in degrees) */
-    alwan_scalar h = ALWAN_LITERAL(0.0);
-    if (delta > ALWAN_EPSILON) {
-        if (max_val == r) {
-            h = ALWAN_LITERAL(60.0) * (g - b) / delta;
-            if (g < b) h += ALWAN_LITERAL(360.0);
-        } else if (max_val == g) {
-            h = ALWAN_LITERAL(60.0) * ((b - r) / delta + ALWAN_LITERAL(2.0));
-        } else {
-            h = ALWAN_LITERAL(60.0) * ((r - g) / delta + ALWAN_LITERAL(4.0));
-        }
+    if (sum_rgb < ALWAN_EPSILON) {
+        /* Black point */
+        P = ALWAN_LITERAL(0.0);
+        Q = ALWAN_LITERAL(0.0);
+    } else {
+        P = r / sum_rgb;  /* Normalized R */
+        Q = g / sum_rgb;  /* Normalized G */
+        /* R_component = b / sum_rgb = 1 - P - Q */
     }
 
     prismatic->v[0] = L;
-    prismatic->v[1] = C;
-    prismatic->v[2] = h;
+    prismatic->v[1] = P;
+    prismatic->v[2] = Q;
 }
 
 void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_vec3 *rgb) {
@@ -147,31 +174,33 @@ void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_vec3 *rgb) {
     }
 
     alwan_scalar L = prismatic->v[0];
-    alwan_scalar C = prismatic->v[1];
-    alwan_scalar h = prismatic->v[2];
+    alwan_scalar P = prismatic->v[1];
+    alwan_scalar Q = prismatic->v[2];
 
-    /* Convert back from Prismatic to RGB */
-    alwan_scalar h_prime = h / ALWAN_LITERAL(60.0);
-    alwan_scalar h_mod_2 = h_prime - ALWAN_LITERAL(2.0) * ALWAN_FLOOR(h_prime / ALWAN_LITERAL(2.0));
-    alwan_scalar X = C * (ALWAN_LITERAL(1.0) - ALWAN_FABS(h_mod_2 - ALWAN_LITERAL(1.0)));
+    /* Convert back from Prismatic [L, P, Q] to RGB
+     * R_component = 1 - P - Q (the normalized B value)
+     * sum_rgb = L / max(P, Q, R_component)
+     * RGB = [P, Q, R_component] * sum_rgb
+     * Reference: colour.Prismatic_to_RGB
+     */
 
-    alwan_scalar r1, g1, b1;
-    int h_sector = (int)h_prime;
+    alwan_scalar R_comp = ALWAN_LITERAL(1.0) - P - Q;
 
-    switch (h_sector) {
-        case 0: r1 = C; g1 = X; b1 = ALWAN_LITERAL(0.0); break;
-        case 1: r1 = X; g1 = C; b1 = ALWAN_LITERAL(0.0); break;
-        case 2: r1 = ALWAN_LITERAL(0.0); g1 = C; b1 = X; break;
-        case 3: r1 = ALWAN_LITERAL(0.0); g1 = X; b1 = C; break;
-        case 4: r1 = X; g1 = ALWAN_LITERAL(0.0); b1 = C; break;
-        default: r1 = C; g1 = ALWAN_LITERAL(0.0); b1 = X; break;
+    /* Find max of [P, Q, R_comp] */
+    alwan_scalar max_pqr = alwan_max3(P, Q, R_comp);
+
+    alwan_scalar sum_rgb;
+    if (max_pqr < ALWAN_EPSILON) {
+        /* Black point */
+        sum_rgb = ALWAN_LITERAL(0.0);
+    } else {
+        sum_rgb = L / max_pqr;
     }
 
-    alwan_scalar m = L - C / ALWAN_LITERAL(2.0);
-
-    rgb->v[0] = r1 + m;
-    rgb->v[1] = g1 + m;
-    rgb->v[2] = b1 + m;
+    /* Denormalize to get RGB */
+    rgb->v[0] = P * sum_rgb;
+    rgb->v[1] = Q * sum_rgb;
+    rgb->v[2] = R_comp * sum_rgb;
 }
 
 /* ================================================================
@@ -202,7 +231,7 @@ void alwan_rgb_to_hcl(alwan_vec3 const *rgb, alwan_vec3 *hcl) {
     /* Chroma */
     alwan_scalar C = delta;
 
-    /* Hue (in degrees, normalized to [0, 1]) */
+    /* Hue (in radians) */
     alwan_scalar H = ALWAN_LITERAL(0.0);
     if (delta > ALWAN_EPSILON) {
         if (max_val == r) {
@@ -213,7 +242,8 @@ void alwan_rgb_to_hcl(alwan_vec3 const *rgb, alwan_vec3 *hcl) {
         } else {
             H = (r - g) / delta + ALWAN_LITERAL(4.0);
         }
-        H /= ALWAN_LITERAL(6.0);
+        /* Convert to radians: H * (π/3) */
+        H *= ALWAN_PI / ALWAN_LITERAL(3.0);
     }
 
     hcl->v[0] = H;
@@ -230,8 +260,10 @@ void alwan_hcl_to_rgb(alwan_vec3 const *hcl, alwan_vec3 *rgb) {
     alwan_scalar C = hcl->v[1];
     alwan_scalar L = hcl->v[2];
 
-    /* Convert HCL to RGB */
-    alwan_scalar h_prime = H * ALWAN_LITERAL(6.0);
+    /* Convert HCL to RGB
+     * H is in radians, convert to h_prime by: H * (3/π)
+     */
+    alwan_scalar h_prime = H * ALWAN_LITERAL(3.0) / ALWAN_PI;
     alwan_scalar h_mod_2 = h_prime - ALWAN_LITERAL(2.0) * ALWAN_FLOOR(h_prime / ALWAN_LITERAL(2.0));
     alwan_scalar X = C * (ALWAN_LITERAL(1.0) - ALWAN_FABS(h_mod_2 - ALWAN_LITERAL(1.0)));
 
@@ -278,10 +310,10 @@ void alwan_rgb_to_ihls(alwan_vec3 const *rgb, alwan_vec3 *ihls) {
     alwan_scalar delta = max_val - min_val;
     alwan_scalar sum = max_val + min_val;
 
-    /* Intensity */
-    alwan_scalar I = sum / ALWAN_LITERAL(2.0);
+    /* Lightness (same as Intensity) */
+    alwan_scalar L = sum / ALWAN_LITERAL(2.0);
 
-    /* Hue (in degrees, normalized to [0, 1]) */
+    /* Hue (in radians) */
     alwan_scalar H = ALWAN_LITERAL(0.0);
     if (delta > ALWAN_EPSILON) {
         if (max_val == r) {
@@ -292,17 +324,19 @@ void alwan_rgb_to_ihls(alwan_vec3 const *rgb, alwan_vec3 *ihls) {
         } else {
             H = (r - g) / delta + ALWAN_LITERAL(4.0);
         }
-        H /= ALWAN_LITERAL(6.0);
+        /* Convert to radians: H * (π/3) */
+        H *= ALWAN_PI / ALWAN_LITERAL(3.0);
     }
 
     /* Saturation */
     alwan_scalar S = ALWAN_LITERAL(0.0);
-    if (I > ALWAN_EPSILON && I < ALWAN_LITERAL(1.0)) {
-        S = delta / (ALWAN_LITERAL(1.0) - ALWAN_FABS(ALWAN_LITERAL(2.0) * I - ALWAN_LITERAL(1.0)));
+    if (L > ALWAN_EPSILON && L < ALWAN_LITERAL(1.0)) {
+        S = delta / (ALWAN_LITERAL(1.0) - ALWAN_FABS(ALWAN_LITERAL(2.0) * L - ALWAN_LITERAL(1.0)));
     }
 
-    ihls->v[0] = I;
-    ihls->v[1] = H;
+    /* IHLS format is [H, L, S] */
+    ihls->v[0] = H;
+    ihls->v[1] = L;
     ihls->v[2] = S;
 }
 
@@ -311,13 +345,16 @@ void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_vec3 *rgb) {
         return;
     }
 
-    alwan_scalar I = ihls->v[0];
-    alwan_scalar H = ihls->v[1];
+    /* IHLS format is [H, L, S] */
+    alwan_scalar H = ihls->v[0];
+    alwan_scalar L = ihls->v[1];
     alwan_scalar S = ihls->v[2];
 
-    /* Convert IHLS to RGB */
-    alwan_scalar C = (ALWAN_LITERAL(1.0) - ALWAN_FABS(ALWAN_LITERAL(2.0) * I - ALWAN_LITERAL(1.0))) * S;
-    alwan_scalar h_prime = H * ALWAN_LITERAL(6.0);
+    /* Convert IHLS to RGB
+     * H is in radians, convert to h_prime by: H * (3/π)
+     */
+    alwan_scalar C = (ALWAN_LITERAL(1.0) - ALWAN_FABS(ALWAN_LITERAL(2.0) * L - ALWAN_LITERAL(1.0))) * S;
+    alwan_scalar h_prime = H * ALWAN_LITERAL(3.0) / ALWAN_PI;
     alwan_scalar h_mod_2 = h_prime - ALWAN_LITERAL(2.0) * ALWAN_FLOOR(h_prime / ALWAN_LITERAL(2.0));
     alwan_scalar X = C * (ALWAN_LITERAL(1.0) - ALWAN_FABS(h_mod_2 - ALWAN_LITERAL(1.0)));
 
@@ -333,7 +370,7 @@ void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_vec3 *rgb) {
         default: r1 = C; g1 = ALWAN_LITERAL(0.0); b1 = X; break;
     }
 
-    alwan_scalar m = I - C / ALWAN_LITERAL(2.0);
+    alwan_scalar m = L - C / ALWAN_LITERAL(2.0);
 
     rgb->v[0] = r1 + m;
     rgb->v[1] = g1 + m;
@@ -440,9 +477,9 @@ static alwan_scalar spow(alwan_scalar x, alwan_scalar p) {
 
 /* Michaelis-Menten lightness (Fairchild 2011) for hdr-IPT */
 static alwan_scalar lightness_fairchild2011(alwan_scalar Y, alwan_scalar epsilon) {
-    /* Default Y_s = 0.2, so epsilon = 1.515 * (0.2^0.58) - 0.5 = 0.095676 */
-    /* V_max = 246 for hdr-IPT, K_m = 2^epsilon */
-    alwan_scalar const V_max = ALWAN_LITERAL(246.0);
+    /* XYZ_to_hdr_IPT uses hdr-CIELAB method by default, which uses V_max=247 */
+    /* V_max = 247 for hdr-CIELAB (default in colour-science), K_m = 2^epsilon */
+    alwan_scalar const V_max = ALWAN_LITERAL(247.0);
     alwan_scalar K_m = ALWAN_POW(ALWAN_LITERAL(2.0), epsilon);
 
     /* Y_p = spow(Y, epsilon) - sign-preserving power */
@@ -457,7 +494,7 @@ static alwan_scalar lightness_fairchild2011(alwan_scalar Y, alwan_scalar epsilon
 
 /* Inverse of Michaelis-Menten lightness */
 static alwan_scalar lightness_fairchild2011_inv(alwan_scalar L_hdr, alwan_scalar epsilon) {
-    alwan_scalar const V_max = ALWAN_LITERAL(246.0);
+    alwan_scalar const V_max = ALWAN_LITERAL(247.0);
     alwan_scalar K_m = ALWAN_POW(ALWAN_LITERAL(2.0), epsilon);
 
     /* Solve: L_hdr = (V_max * Y_p) / (K_m + Y_p) + 0.02 */
@@ -565,10 +602,10 @@ void alwan_xyz_to_igpgtg(alwan_vec3 const *xyz, alwan_vec3 *igpgtg) {
         return;
     }
 
-    /* Convert XYZ to LMS using IPT matrix */
+    /* Convert XYZ to LMS using IgPgTg-specific matrix (NOT the IPT matrix!) */
     alwan_mat3x3 M_xyz_to_lms;
     for (int i = 0; i < 9; i++) {
-        M_xyz_to_lms.m[i] = M_XYZ_TO_LMS_IPT[i];
+        M_xyz_to_lms.m[i] = M_XYZ_TO_LMS_IGPGTG[i];
     }
 
     alwan_vec3 lms;
@@ -604,10 +641,10 @@ void alwan_igpgtg_to_xyz(alwan_vec3 const *igpgtg, alwan_vec3 *xyz) {
     lms.v[1] = IGPGTG_LMS_SCALE[1] * spow(lms.v[1], inv_exponent);
     lms.v[2] = IGPGTG_LMS_SCALE[2] * spow(lms.v[2], inv_exponent);
 
-    /* Convert LMS to XYZ using inverse IPT matrix */
+    /* Convert LMS to XYZ using IgPgTg-specific inverse matrix */
     alwan_mat3x3 M_lms_to_xyz;
     for (int i = 0; i < 9; i++) {
-        M_lms_to_xyz.m[i] = M_LMS_TO_XYZ_IPT[i];
+        M_lms_to_xyz.m[i] = M_LMS_TO_XYZ_IGPGTG[i];
     }
     alwan_mat3_mulv(&M_lms_to_xyz, &lms, xyz);
 }
@@ -615,7 +652,7 @@ void alwan_igpgtg_to_xyz(alwan_vec3 const *igpgtg, alwan_vec3 *xyz) {
 /* ================================================================
  * ICaCb (Zhang & Wandell 1996, 1997)
  * XYZ <-> ICaCb conversions
- * Uses HPE matrix for XYZ<->LMS and PQ (ST2084) transfer function
+ * Uses ICaCb-specific XYZ<->LMS matrix and PQ (ST2084) transfer function
  * ================================================================ */
 
 /* PQ (ST2084) constants */
@@ -678,10 +715,10 @@ void alwan_xyz_to_icacb(alwan_vec3 const *xyz, alwan_vec3 *icacb) {
         return;
     }
 
-    /* Convert XYZ to LMS using IPT matrix */
+    /* Convert XYZ to LMS using ICaCb-specific matrix (NOT the IPT matrix!) */
     alwan_mat3x3 M_xyz_to_lms;
     for (int i = 0; i < 9; i++) {
-        M_xyz_to_lms.m[i] = M_XYZ_TO_LMS_IPT[i];
+        M_xyz_to_lms.m[i] = M_XYZ_TO_LMS_ICACB[i];
     }
 
     alwan_vec3 lms;
@@ -715,10 +752,10 @@ void alwan_icacb_to_xyz(alwan_vec3 const *icacb, alwan_vec3 *xyz) {
     lms.v[1] = eotf_st2084(lms.v[1]);
     lms.v[2] = eotf_st2084(lms.v[2]);
 
-    /* Convert LMS to XYZ using inverse IPT matrix */
+    /* Convert LMS to XYZ using ICaCb-specific inverse matrix */
     alwan_mat3x3 M_lms_to_xyz;
     for (int i = 0; i < 9; i++) {
-        M_lms_to_xyz.m[i] = M_LMS_TO_XYZ_IPT[i];
+        M_lms_to_xyz.m[i] = M_LMS_TO_XYZ_ICACB[i];
     }
     alwan_mat3_mulv(&M_lms_to_xyz, &lms, xyz);
 }

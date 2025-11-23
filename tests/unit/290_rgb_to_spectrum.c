@@ -175,7 +175,7 @@ static int test_smits1999_round_trip(char const *color_name,
     TEST_ASSERT(status == ALWAN_OK, "alwan_xyz_from_spd failed");
 
     /* Normalize XYZ: alwan_xyz_from_spd returns unnormalized values
-     * We need to divide by the normalization constant K = ∫ illuminant(λ) * y_bar(λ) dλ
+     * We need to divide by the normalization constant K = integral illuminant(lambda) * y_bar(lambda) dlambda
      * For D65 with CIE 1931 2°, this is approximately 10600 */
     alwan_scalar const K_D65 = ALWAN_LITERAL(10599.3675);  /* Normalization constant for D65 */
     xyz_recovered.v[0] /= K_D65;
@@ -244,7 +244,7 @@ static int test_mallett2019_round_trip(char const *color_name,
     TEST_ASSERT(status == ALWAN_OK, "alwan_xyz_from_spd failed");
 
     /* Normalize XYZ: alwan_xyz_from_spd returns unnormalized values
-     * We need to divide by the normalization constant K = ∫ illuminant(λ) * y_bar(λ) dλ
+     * We need to divide by the normalization constant K = integral illuminant(lambda) * y_bar(lambda) dlambda
      * For D65 with CIE 1931 2°, this is approximately 10600 */
     alwan_scalar const K_D65 = ALWAN_LITERAL(10567.2678);  /* Normalization constant for D65 (Mallett 5nm spacing) */
     xyz_recovered.v[0] /= K_D65;

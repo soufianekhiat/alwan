@@ -2444,10 +2444,10 @@ except Exception as e:
     traceback.print_exc()
 
 # ================================================================
-# Milestone 1: Extended Color Spaces & Models - Test Data Generation
+# Extended Color Spaces & Models - Test Data Generation
 # ================================================================
 print('\n======================================')
-print('Milestone 1: Extended Color Spaces')
+print('Extended Color Spaces')
 print('======================================')
 
 # Test RGB values for color space conversions
@@ -2619,13 +2619,15 @@ try:
     rgb_from_prismatic_flat = []
     for rgb in test_rgb_extended:
         prismatic = colour.RGB_to_Prismatic(rgb)
-        prismatic_flat.extend(prismatic.tolist())
+        # Prismatic has 4 components [L, P, Q, R] but alwan uses vec3
+        # Since P+Q+R=1, we store only [L, P, Q] and compute R=1-P-Q
+        prismatic_flat.extend(prismatic[0:3].tolist())  # Only store L, P, Q
         rgb_back = colour.Prismatic_to_RGB(prismatic)
         rgb_from_prismatic_flat.extend(rgb_back.tolist())
 
-    write_ref('prismatic_from_rgb', prismatic_flat, 'RGB to Prismatic conversions')
+    write_ref('prismatic_from_rgb', prismatic_flat, 'RGB to Prismatic conversions (L,P,Q only)')
     write_ref('rgb_from_prismatic_roundtrip', rgb_from_prismatic_flat, 'Prismatic to RGB round-trip')
-    print(f'  Generated {len(test_rgb_extended)} Prismatic test values')
+    print(f'  Generated {len(test_rgb_extended)} Prismatic test values (3-component)')
 except Exception as e:
     print(f'  Warning: Prismatic test data generation failed: {e}')
 

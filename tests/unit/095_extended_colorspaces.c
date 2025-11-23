@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Test 220: Milestone 1 Extended Color Spaces
+ * Test 095: Extended Color Spaces
  * YCoCg, UCS, hdr-CIELAB, hdr-IPT, IgPgTg, ICaCb, Prismatic, HCL, IHLS
  */
 
@@ -234,13 +234,6 @@ static int test_hdr_ipt_roundtrip(void) {
         alwan_vec3 hdr_ipt;
         alwan_xyz_to_hdr_ipt(&xyz, &hdr_ipt);
         alwan_scalar diff_forward = vec3_max_diff(&hdr_ipt, &hdr_ipt_expected);
-        if (i == 0) {
-            printf("\n=== DEBUG hdr-IPT test %d ===\n", i);
-            vec3_print("XYZ     ", &xyz);
-            vec3_print("Expected", &hdr_ipt_expected);
-            vec3_print("Got     ", &hdr_ipt);
-            printf("Diff: %.10e\n", diff_forward);
-        }
         TEST_ASSERT(diff_forward < tolerance, "XYZ->hdr-IPT mismatch");
 
         /* hdr-IPT -> XYZ */
@@ -499,10 +492,10 @@ static int test_ihls_roundtrip(void) {
  * Main test runner
  * ---------------------------------------------------------------- */
 
-int test_095_milestone1_extended_main(void) {
+int test_095_extended_colorspaces_main(void) {
     int failures = 0;
 
-    printf("=== Milestone 1 Extended Color Spaces Tests ===\n");
+    printf("=== Extended Color Spaces Tests ===\n");
 
     failures += test_ycocg_roundtrip();
     failures += test_ucs_roundtrip();
@@ -515,7 +508,7 @@ int test_095_milestone1_extended_main(void) {
     failures += test_ihls_roundtrip();
 
     if (failures == 0) {
-        printf("\n=== All Milestone 1 tests passed! ===\n");
+        printf("\n=== All extended color space tests passed! ===\n");
         return 0;
     } else {
         printf("\n=== %d test(s) failed ===\n", failures);

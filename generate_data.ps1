@@ -2243,14 +2243,25 @@ except Exception as e:
     print(f"  Warning: Could not generate CAT matrices: {e}", file=sys.stderr)
 
 try:
-    # Milestone 1 Extended Color Space Matrices
-    print("\nGenerating Milestone 1 extended color space matrices...")
+    # Extended Color Space Matrices
+    print("\nGenerating extended color space matrices...")
 
-    # Import IPT matrices from colour-science
+    # Import matrices from colour-science
+    # IMPORTANT: Each color space uses its OWN XYZ<->LMS matrix!
     from colour.models.ipt import MATRIX_IPT_XYZ_TO_LMS, MATRIX_IPT_LMS_TO_XYZ
+    from colour.models.igpgtg import (
+        MATRIX_IGPGTG_XYZ_TO_LMS,
+        MATRIX_IGPGTG_LMS_TO_XYZ,
+        MATRIX_IGPGTG_LMS_P_TO_IGPGTG,
+        MATRIX_IGPGTG_IGPGTG_TO_LMS_P
+    )
+    from colour.models.icacb import (
+        MATRIX_ICACB_XYZ_TO_LMS,
+        MATRIX_ICACB_LMS_TO_XYZ,
+        MATRIX_ICACB_XYZ_TO_LMS_2  # This is LMS_P to ICaCb matrix
+    )
 
-    # XYZ to LMS matrix for hdr-IPT, IgPgTg, ICaCb (NOT the same as HPE!)
-    # All three use the MATRIX_IPT_XYZ_TO_LMS from colour-science
+    # XYZ to LMS matrix for hdr-IPT (NOT the same as HPE!)
     xyz_to_lms_ipt = MATRIX_IPT_XYZ_TO_LMS
     filename = f'{DATA_DIR}/matrices/xyz_to_lms_ipt.csv'
     ensure_dir(filename)
@@ -2258,9 +2269,9 @@ try:
         flat_matrix = xyz_to_lms_ipt.flatten()
         formatted_values = [format_scalar(v) for v in flat_matrix]
         f.write(','.join(formatted_values) + '\n')
-    print(f"  {filename} (XYZ to LMS for hdr-IPT/IgPgTg/ICaCb)")
+    print(f"  {filename} (XYZ to LMS for hdr-IPT)")
 
-    # LMS to XYZ inverse matrix
+    # LMS to XYZ inverse matrix for hdr-IPT
     lms_to_xyz_ipt = MATRIX_IPT_LMS_TO_XYZ
     filename = f'{DATA_DIR}/matrices/lms_to_xyz_ipt.csv'
     ensure_dir(filename)
@@ -2268,7 +2279,7 @@ try:
         flat_matrix = lms_to_xyz_ipt.flatten()
         formatted_values = [format_scalar(v) for v in flat_matrix]
         f.write(','.join(formatted_values) + '\n')
-    print(f"  {filename} (LMS to XYZ for hdr-IPT/IgPgTg/ICaCb)")
+    print(f"  {filename} (LMS to XYZ for hdr-IPT)")
 
     # hdr-IPT matrices
     # LMS to IPT matrix
@@ -2295,47 +2306,79 @@ try:
         f.write(','.join(formatted_values) + '\n')
     print(f"  {filename} (hdr-IPT IPT to LMS)")
 
-    # IgPgTg matrices (use same MATRIX_IPT XYZ<->LMS matrices as hdr-IPT)
-    # LMS to IgPgTg matrix
-    lms_to_igpgtg = np.array([
-        [ 0.5000,  0.5000,  0.0000],
-        [ 3.5000, -3.5000,  0.0000],
-        [ 0.5000,  0.5000, -1.0000]
-    ])
+    # IgPgTg matrices (uses its OWN XYZ<->LMS matrices from colour-science)
+    # XYZ to LMS matrix for IgPgTg (DIFFERENT from hdr-IPT!)
+    xyz_to_lms_igpgtg = MATRIX_IGPGTG_XYZ_TO_LMS
+    filename = f'{DATA_DIR}/matrices/xyz_to_lms_igpgtg.csv'
+    ensure_dir(filename)
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = xyz_to_lms_igpgtg.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (XYZ to LMS for IgPgTg)")
+
+    # LMS to XYZ inverse matrix for IgPgTg
+    lms_to_xyz_igpgtg = MATRIX_IGPGTG_LMS_TO_XYZ
+    filename = f'{DATA_DIR}/matrices/lms_to_xyz_igpgtg.csv'
+    ensure_dir(filename)
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = lms_to_xyz_igpgtg.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (LMS to XYZ for IgPgTg)")
+
+    # LMS_P to IgPgTg matrix from colour-science
+    lms_to_igpgtg = MATRIX_IGPGTG_LMS_P_TO_IGPGTG
     filename = f'{DATA_DIR}/matrices/lms_to_igpgtg.csv'
     ensure_dir(filename)
     with open(filename, 'w', newline='') as f:
         flat_matrix = lms_to_igpgtg.flatten()
         formatted_values = [format_scalar(v) for v in flat_matrix]
         f.write(','.join(formatted_values) + '\n')
-    print(f"  {filename} (IgPgTg LMS to IgPgTg)")
+    print(f"  {filename} (IgPgTg LMS_P to IgPgTg)")
 
-    # IgPgTg to LMS inverse
-    igpgtg_to_lms = np.linalg.inv(lms_to_igpgtg)
+    # IgPgTg to LMS_P inverse from colour-science
+    igpgtg_to_lms = MATRIX_IGPGTG_IGPGTG_TO_LMS_P
     filename = f'{DATA_DIR}/matrices/igpgtg_to_lms.csv'
     ensure_dir(filename)
     with open(filename, 'w', newline='') as f:
         flat_matrix = igpgtg_to_lms.flatten()
         formatted_values = [format_scalar(v) for v in flat_matrix]
         f.write(','.join(formatted_values) + '\n')
-    print(f"  {filename} (IgPgTg IgPgTg to LMS)")
+    print(f"  {filename} (IgPgTg IgPgTg to LMS_P)")
 
-    # ICaCb matrices (use same MATRIX_IPT XYZ<->LMS matrices as hdr-IPT)
-    # LMS to ICaCb matrix
-    lms_to_icacb = np.array([
-        [ 1.0000,  1.0000,  1.0000],
-        [ 1.0000,  1.0000, -2.0000],
-        [ 1.0000, -1.0000,  0.0000]
-    ])
+    # ICaCb matrices (uses its OWN XYZ<->LMS matrices from colour-science)
+    # XYZ to LMS matrix for ICaCb (DIFFERENT from hdr-IPT and IgPgTg!)
+    xyz_to_lms_icacb = MATRIX_ICACB_XYZ_TO_LMS
+    filename = f'{DATA_DIR}/matrices/xyz_to_lms_icacb.csv'
+    ensure_dir(filename)
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = xyz_to_lms_icacb.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (XYZ to LMS for ICaCb)")
+
+    # LMS to XYZ inverse matrix for ICaCb
+    lms_to_xyz_icacb = MATRIX_ICACB_LMS_TO_XYZ
+    filename = f'{DATA_DIR}/matrices/lms_to_xyz_icacb.csv'
+    ensure_dir(filename)
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = lms_to_xyz_icacb.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (LMS to XYZ for ICaCb)")
+
+    # LMS_P to ICaCb matrix from colour-science (MATRIX_ICACB_XYZ_TO_LMS_2)
+    lms_to_icacb = MATRIX_ICACB_XYZ_TO_LMS_2
     filename = f'{DATA_DIR}/matrices/lms_to_icacb.csv'
     ensure_dir(filename)
     with open(filename, 'w', newline='') as f:
         flat_matrix = lms_to_icacb.flatten()
         formatted_values = [format_scalar(v) for v in flat_matrix]
         f.write(','.join(formatted_values) + '\n')
-    print(f"  {filename} (ICaCb LMS to ICaCb)")
+    print(f"  {filename} (ICaCb LMS_P to ICaCb)")
 
-    # ICaCb to LMS inverse
+    # ICaCb to LMS_P inverse
     icacb_to_lms = np.linalg.inv(lms_to_icacb)
     filename = f'{DATA_DIR}/matrices/icacb_to_lms.csv'
     ensure_dir(filename)
@@ -2343,10 +2386,10 @@ try:
         flat_matrix = icacb_to_lms.flatten()
         formatted_values = [format_scalar(v) for v in flat_matrix]
         f.write(','.join(formatted_values) + '\n')
-    print(f"  {filename} (ICaCb ICaCb to LMS)")
+    print(f"  {filename} (ICaCb ICaCb to LMS_P)")
 
 except Exception as e:
-    print(f"  Warning: Could not generate Milestone 1 extended matrices: {e}", file=sys.stderr)
+    print(f"  Warning: Could not generate extended matrices: {e}", file=sys.stderr)
 
 # ================================================================
 # Generate TCS (Test Color Samples) for CRI

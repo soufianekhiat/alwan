@@ -193,7 +193,7 @@ static int test_photopic_efficiency(void) {
     }
 
     /* Display key values */
-    printf("  Photopic V(λ) validated against colour-science:\n");
+    printf("  Photopic V(lambda) validated against colour-science:\n");
     for (int i = 0; i < wl_count; i++) {
         if ((int)ref_wavelengths[i] == 450 || (int)ref_wavelengths[i] == 555 ||
             (int)ref_wavelengths[i] == 650) {
@@ -228,7 +228,7 @@ static int test_scotopic_efficiency(void) {
     }
 
     /* Display key values */
-    printf("  Scotopic V'(λ) validated against colour-science:\n");
+    printf("  Scotopic V'(lambda) validated against colour-science:\n");
     for (int i = 0; i < wl_count; i++) {
         if ((int)ref_wavelengths[i] == 450 || (int)ref_wavelengths[i] == 507 ||
             (int)ref_wavelengths[i] == 650) {
