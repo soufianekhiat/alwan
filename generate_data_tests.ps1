@@ -2443,6 +2443,226 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# ================================================================
+# Milestone 1: Extended Color Spaces & Models - Test Data Generation
+# ================================================================
+print('\n======================================')
+print('Milestone 1: Extended Color Spaces')
+print('======================================')
+
+# Test RGB values for color space conversions
+test_rgb_extended = np.array([
+    [0.0, 0.0, 0.0],     # Black
+    [1.0, 1.0, 1.0],     # White
+    [1.0, 0.0, 0.0],     # Red
+    [0.0, 1.0, 0.0],     # Green
+    [0.0, 0.0, 1.0],     # Blue
+    [0.5, 0.5, 0.5],     # Gray
+    [0.25, 0.75, 0.5],   # Mixed 1
+    [0.8, 0.2, 0.4],     # Mixed 2
+    [0.1, 0.6, 0.9],     # Mixed 3
+    [0.9, 0.3, 0.1],     # Mixed 4
+    [0.3, 0.9, 0.7],     # Mixed 5
+])
+
+# 1.1 YCoCg Color Space
+print('\n1.1 YCoCg Color Space:')
+try:
+    ycocg_flat = []
+    rgb_from_ycocg_flat = []
+    for rgb in test_rgb_extended:
+        ycocg = colour.RGB_to_YCoCg(rgb)
+        ycocg_flat.extend(ycocg.tolist())
+        rgb_back = colour.YCoCg_to_RGB(ycocg)
+        rgb_from_ycocg_flat.extend(rgb_back.tolist())
+
+    write_ref('ycocg_from_rgb', ycocg_flat, 'RGB to YCoCg conversions')
+    write_ref('rgb_from_ycocg_roundtrip', rgb_from_ycocg_flat, 'YCoCg to RGB round-trip')
+    print(f'  Generated {len(test_rgb_extended)} YCoCg test values')
+except Exception as e:
+    print(f'  Warning: YCoCg test data generation failed: {e}')
+    import traceback
+    traceback.print_exc()
+
+# 1.2 YCbCr Color Space (digital, similar to YPbPr analog)
+print('\n1.2 YCbCr Color Space (BT.601, BT.709, BT.2020):')
+try:
+    for standard in ['ITU-R BT.601', 'ITU-R BT.709', 'ITU-R BT.2020']:
+        ycbcr_flat = []
+        rgb_from_ycbcr_flat = []
+        for rgb in test_rgb_extended:
+            ycbcr = colour.RGB_to_YCbCr(rgb, K=colour.WEIGHTS_YCBCR[standard])
+            ycbcr_flat.extend(ycbcr.tolist())
+            rgb_back = colour.YCbCr_to_RGB(ycbcr, K=colour.WEIGHTS_YCBCR[standard])
+            rgb_from_ycbcr_flat.extend(rgb_back.tolist())
+
+        safe_name = standard.lower().replace(' ', '_').replace('.', '').replace('-', '_')
+        write_ref(f'ycbcr_{safe_name}_from_rgb', ycbcr_flat, f'RGB to YCbCr ({standard})')
+        write_ref(f'rgb_from_ycbcr_{safe_name}_roundtrip', rgb_from_ycbcr_flat, f'YCbCr to RGB round-trip ({standard})')
+        print(f'  Generated {len(test_rgb_extended)} YCbCr test values for {standard}')
+except Exception as e:
+    print(f'  Warning: YCbCr test data generation failed: {e}')
+    import traceback
+    traceback.print_exc()
+
+# 1.3 xvYCC (Extended YCbCr) - Skip if not available
+print('\n1.3 xvYCC (Extended YCbCr):')
+print('  Skipped: xvYCC not available in current colour-science version')
+
+# 1.4 CIE UCS 1960 (u, v)
+print('\n1.4 CIE UCS 1960:')
+try:
+    ucs_flat = []
+    xyz_from_ucs_flat = []
+    for xyz in test_xyz_colors:
+        ucs = colour.XYZ_to_UCS(xyz)
+        ucs_flat.extend(ucs.tolist())
+        xyz_back = colour.UCS_to_XYZ(ucs)
+        xyz_from_ucs_flat.extend(xyz_back.tolist())
+
+    write_ref('ucs_from_xyz', ucs_flat, 'XYZ to CIE UCS 1960 conversions')
+    write_ref('xyz_from_ucs_roundtrip', xyz_from_ucs_flat, 'UCS to XYZ round-trip')
+    print(f'  Generated {len(test_xyz_colors)} UCS test values')
+except Exception as e:
+    print(f'  Warning: UCS test data generation failed: {e}')
+    import traceback
+    traceback.print_exc()
+
+# 1.5 hdr-CIELAB
+print('\n1.5 hdr-CIELAB:')
+try:
+    # Test with HDR XYZ values (Y > 100)
+    test_xyz_hdr = np.array([
+        [0.95047, 1.0, 1.08883],           # D65 white (Y=1)
+        [95.047, 100.0, 108.883],          # D65 white (Y=100)
+        [190.094, 200.0, 217.766],         # HDR white (Y=200)
+        [380.188, 400.0, 435.532],         # HDR white (Y=400)
+        [100.0, 50.0, 50.0],               # HDR red
+        [50.0, 150.0, 50.0],               # HDR green
+        [50.0, 50.0, 200.0],               # HDR blue
+    ])
+
+    hdr_lab_flat = []
+    xyz_from_hdr_lab_flat = []
+    for xyz in test_xyz_hdr:
+        hdr_lab = colour.XYZ_to_hdr_CIELab(xyz)
+        hdr_lab_flat.extend(hdr_lab.tolist())
+        xyz_back = colour.hdr_CIELab_to_XYZ(hdr_lab)
+        xyz_from_hdr_lab_flat.extend(xyz_back.tolist())
+
+    write_ref('hdr_lab_from_xyz', hdr_lab_flat, 'XYZ to hdr-CIELAB conversions')
+    write_ref('xyz_from_hdr_lab_roundtrip', xyz_from_hdr_lab_flat, 'hdr-CIELAB to XYZ round-trip')
+    print(f'  Generated {len(test_xyz_hdr)} hdr-CIELAB test values')
+except Exception as e:
+    print(f'  Warning: hdr-CIELAB test data generation failed: {e}')
+
+# 1.6 hdr-IPT
+print('\n1.6 hdr-IPT:')
+try:
+    hdr_ipt_flat = []
+    xyz_from_hdr_ipt_flat = []
+    for xyz in test_xyz_hdr:
+        hdr_ipt = colour.XYZ_to_hdr_IPT(xyz)
+        hdr_ipt_flat.extend(hdr_ipt.tolist())
+        xyz_back = colour.hdr_IPT_to_XYZ(hdr_ipt)
+        xyz_from_hdr_ipt_flat.extend(xyz_back.tolist())
+
+    write_ref('hdr_ipt_from_xyz', hdr_ipt_flat, 'XYZ to hdr-IPT conversions')
+    write_ref('xyz_from_hdr_ipt_roundtrip', xyz_from_hdr_ipt_flat, 'hdr-IPT to XYZ round-trip')
+    print(f'  Generated {len(test_xyz_hdr)} hdr-IPT test values')
+except Exception as e:
+    print(f'  Warning: hdr-IPT test data generation failed: {e}')
+
+# 1.7 IgPgTg Color Space
+print('\n1.7 IgPgTg Color Space:')
+try:
+    igpgtg_flat = []
+    xyz_from_igpgtg_flat = []
+    for xyz in test_xyz_colors:
+        igpgtg = colour.XYZ_to_IgPgTg(xyz)
+        igpgtg_flat.extend(igpgtg.tolist())
+        xyz_back = colour.IgPgTg_to_XYZ(igpgtg)
+        xyz_from_igpgtg_flat.extend(xyz_back.tolist())
+
+    write_ref('igpgtg_from_xyz', igpgtg_flat, 'XYZ to IgPgTg conversions')
+    write_ref('xyz_from_igpgtg_roundtrip', xyz_from_igpgtg_flat, 'IgPgTg to XYZ round-trip')
+    print(f'  Generated {len(test_xyz_colors)} IgPgTg test values')
+except Exception as e:
+    print(f'  Warning: IgPgTg test data generation failed: {e}')
+
+# 1.8 ICaCb Color Space
+print('\n1.8 ICaCb Color Space:')
+try:
+    icacb_flat = []
+    xyz_from_icacb_flat = []
+    for xyz in test_xyz_colors:
+        icacb = colour.XYZ_to_ICaCb(xyz)
+        icacb_flat.extend(icacb.tolist())
+        # Note: ICaCb might not have inverse in colour-science
+        try:
+            xyz_back = colour.ICaCb_to_XYZ(icacb)
+            xyz_from_icacb_flat.extend(xyz_back.tolist())
+        except:
+            pass
+
+    write_ref('icacb_from_xyz', icacb_flat, 'XYZ to ICaCb conversions')
+    if xyz_from_icacb_flat:
+        write_ref('xyz_from_icacb_roundtrip', xyz_from_icacb_flat, 'ICaCb to XYZ round-trip')
+    print(f'  Generated {len(test_xyz_colors)} ICaCb test values')
+except Exception as e:
+    print(f'  Warning: ICaCb test data generation failed: {e}')
+
+# 1.9 Prismatic Color Space
+print('\n1.9 Prismatic Color Space:')
+try:
+    prismatic_flat = []
+    rgb_from_prismatic_flat = []
+    for rgb in test_rgb_extended:
+        prismatic = colour.RGB_to_Prismatic(rgb)
+        prismatic_flat.extend(prismatic.tolist())
+        rgb_back = colour.Prismatic_to_RGB(prismatic)
+        rgb_from_prismatic_flat.extend(rgb_back.tolist())
+
+    write_ref('prismatic_from_rgb', prismatic_flat, 'RGB to Prismatic conversions')
+    write_ref('rgb_from_prismatic_roundtrip', rgb_from_prismatic_flat, 'Prismatic to RGB round-trip')
+    print(f'  Generated {len(test_rgb_extended)} Prismatic test values')
+except Exception as e:
+    print(f'  Warning: Prismatic test data generation failed: {e}')
+
+# 1.10 HCL Color Space (Sarifuddin 2005)
+print('\n1.10 HCL Color Space:')
+try:
+    hcl_flat = []
+    rgb_from_hcl_flat = []
+    for rgb in test_rgb_extended:
+        hcl = colour.RGB_to_HCL(rgb)
+        hcl_flat.extend(hcl.tolist())
+        rgb_back = colour.HCL_to_RGB(hcl)
+        rgb_from_hcl_flat.extend(rgb_back.tolist())
+
+    write_ref('hcl_from_rgb', hcl_flat, 'RGB to HCL conversions')
+    write_ref('rgb_from_hcl_roundtrip', rgb_from_hcl_flat, 'HCL to RGB round-trip')
+    print(f'  Generated {len(test_rgb_extended)} HCL test values')
+except Exception as e:
+    print(f'  Warning: HCL test data generation failed: {e}')
+
+# 1.11 IHLS Color Space
+print('\n1.11 IHLS Color Space:')
+try:
+    ihls_flat = []
+    rgb_from_ihls_flat = []
+    for rgb in test_rgb_extended:
+        ihls = colour.RGB_to_IHLS(rgb)
+        ihls_flat.extend(ihls.tolist())
+        rgb_back = colour.IHLS_to_RGB(ihls)
+        rgb_from_ihls_flat.extend(rgb_back.tolist())
+
+    write_ref('ihls_from_rgb', ihls_flat, 'RGB to IHLS conversions')
+    write_ref('rgb_from_ihls_roundtrip', rgb_from_ihls_flat, 'IHLS to RGB round-trip')
+    print(f'  Generated {len(test_rgb_extended)} IHLS test values')
+except Exception as e:
+    print(f'  Warning: IHLS test data generation failed: {e}')
+
 print('\n======================================')
 print('Test reference data generation complete!')
 print('======================================')

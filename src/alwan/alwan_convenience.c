@@ -505,3 +505,59 @@ int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out) {
 
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * RGB <-> YCoCg (video compression color space)
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_ycocg(alwan_vec3 const *rgb, alwan_vec3 *ycocg_out) {
+    if (!rgb || !ycocg_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_scalar r = rgb->v[0];
+    alwan_scalar g = rgb->v[1];
+    alwan_scalar b = rgb->v[2];
+
+    /* YCoCg transform (H.264/AVC)
+     * Y  =  0.25*R + 0.5*G + 0.25*B
+     * Co =  0.5*R + 0*G - 0.5*B
+     * Cg = -0.25*R + 0.5*G - 0.25*B
+     */
+    alwan_scalar y  = ALWAN_LITERAL(0.25) * r + ALWAN_LITERAL(0.5) * g + ALWAN_LITERAL(0.25) * b;
+    alwan_scalar co = ALWAN_LITERAL(0.5) * r - ALWAN_LITERAL(0.5) * b;
+    alwan_scalar cg = -ALWAN_LITERAL(0.25) * r + ALWAN_LITERAL(0.5) * g - ALWAN_LITERAL(0.25) * b;
+
+    ycocg_out->v[0] = y;
+    ycocg_out->v[1] = co;
+    ycocg_out->v[2] = cg;
+
+    return ALWAN_OK;
+}
+
+int alwan_ycocg_to_rgb(alwan_vec3 const *ycocg, alwan_vec3 *rgb_out) {
+    if (!ycocg || !rgb_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_scalar y  = ycocg->v[0];
+    alwan_scalar co = ycocg->v[1];
+    alwan_scalar cg = ycocg->v[2];
+
+    /* Inverse YCoCg transform
+     * temp = Y - Cg
+     * R = temp + Co
+     * G = Y + Cg
+     * B = temp - Co
+     */
+    alwan_scalar temp = y - cg;
+    alwan_scalar r = temp + co;
+    alwan_scalar g = y + cg;
+    alwan_scalar b = temp - co;
+
+    rgb_out->v[0] = r;
+    rgb_out->v[1] = g;
+    rgb_out->v[2] = b;
+
+    return ALWAN_OK;
+}

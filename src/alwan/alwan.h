@@ -665,6 +665,72 @@ void alwan_prolab_to_xyz_custom(alwan_vec3 const *prolab, alwan_vec3 *xyz, alwan
 void alwan_xyz_to_osa_ucs(alwan_vec3 const *xyz, alwan_vec3 *osa_ucs);
 void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz);
 
+/* CIE 1960 UCS <-> XYZ conversions (Uniform Chromaticity Scale)
+ * - CIE 1960 UCS: u, v chromaticity coordinates + Y luminance
+ * - Used for CCT calculations and color rendering metrics
+ * - Precursor to CIE 1976 u'v' (CIELUV) chromaticity diagram
+ */
+void alwan_xyz_to_ucs(alwan_vec3 const *xyz, alwan_vec3 *ucs);
+void alwan_ucs_to_xyz(alwan_vec3 const *ucs, alwan_vec3 *xyz);
+
+/* hdr-CIELAB <-> XYZ conversions (HDR extension of CIELAB)
+ * - Fairchild & Wyble (2010) HDR-CIELAB model
+ * - Designed for high dynamic range imagery (Y > 100)
+ * - Maintains perceptual uniformity across extended luminance range
+ * - XYZ input/output is D65 adapted, Y can exceed 100
+ */
+void alwan_xyz_to_hdr_cielab(alwan_vec3 const *xyz, alwan_vec3 *hdr_lab);
+void alwan_hdr_cielab_to_xyz(alwan_vec3 const *hdr_lab, alwan_vec3 *xyz);
+
+/* hdr-IPT <-> XYZ conversions (HDR extension of IPT)
+ * - Fairchild (2010) HDR-IPT model
+ * - Extends IPT to high dynamic range
+ * - Better hue preservation than hdr-CIELAB for HDR content
+ * - XYZ input/output is D65 adapted, supports extended luminance
+ */
+void alwan_xyz_to_hdr_ipt(alwan_vec3 const *xyz, alwan_vec3 *hdr_ipt);
+void alwan_hdr_ipt_to_xyz(alwan_vec3 const *hdr_ipt, alwan_vec3 *xyz);
+
+/* IgPgTg <-> XYZ conversions (Improved IPT variant)
+ * - Ebner & Fairchild (1998) improved hue uniformity
+ * - Better than IPT for certain hue angles
+ * - XYZ input/output is D65 adapted
+ */
+void alwan_xyz_to_igpgtg(alwan_vec3 const *xyz, alwan_vec3 *igpgtg);
+void alwan_igpgtg_to_xyz(alwan_vec3 const *igpgtg, alwan_vec3 *xyz);
+
+/* ICaCb <-> XYZ conversions (Image Difference Color Space)
+ * - Zhang & Wandell (1996, 1997)
+ * - Optimized for image difference metrics
+ * - XYZ input/output is D65 adapted
+ */
+void alwan_xyz_to_icacb(alwan_vec3 const *xyz, alwan_vec3 *icacb);
+void alwan_icacb_to_xyz(alwan_vec3 const *icacb, alwan_vec3 *xyz);
+
+/* Prismatic <-> RGB conversions (Pridmore 2021)
+ * - Perceptually uniform cylindrical color space
+ * - P (purity), r (red-green), i (intensity)
+ * - RGB input/output in [0, 1] range
+ */
+void alwan_rgb_to_prismatic(alwan_vec3 const *rgb, alwan_vec3 *prismatic);
+void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_vec3 *rgb);
+
+/* HCL <-> RGB conversions (Sarifuddin 2005)
+ * - Hue-Chroma-Luminance polar coordinate system
+ * - Better perceptual properties than HSL
+ * - RGB input/output in [0, 1] range
+ */
+void alwan_rgb_to_hcl(alwan_vec3 const *rgb, alwan_vec3 *hcl);
+void alwan_hcl_to_rgb(alwan_vec3 const *hcl, alwan_vec3 *rgb);
+
+/* IHLS <-> RGB conversions (Improved HLS - Hanbury 2003)
+ * - Improved Hue-Lightness-Saturation
+ * - Better perceptual properties than standard HSL
+ * - RGB input/output in [0, 1] range
+ */
+void alwan_rgb_to_ihls(alwan_vec3 const *rgb, alwan_vec3 *ihls);
+void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_vec3 *rgb);
+
 /* ----------------------------------------------------------------
  * Color Difference (ΔE) Metrics
  * ---------------------------------------------------------------- */
@@ -1430,6 +1496,13 @@ int alwan_ycbcr_to_rgb(alwan_vec3 const *ycbcr, alwan_ycbcr_standard standard, a
 /* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020) */
 int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out);
 int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out);
+
+/* RGB <-> YCoCg conversions (video compression, real-time graphics)
+ * - Y: luma, Co: orange chrominance, Cg: green chrominance
+ * - Reversible integer transform (exact round-trip with proper scaling)
+ * - Used in H.264/AVC and video codecs */
+int alwan_rgb_to_ycocg(alwan_vec3 const *rgb, alwan_vec3 *ycocg_out);
+int alwan_ycocg_to_rgb(alwan_vec3 const *ycocg, alwan_vec3 *rgb_out);
 
 /* ----------------------------------------------------------------
  * M10: Light Quality & CCT (Correlated Color Temperature)

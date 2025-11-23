@@ -197,6 +197,10 @@ working_dir\AlwanTests.exe
 
 See [alwan_plan.md](alwan_plan.md) for the complete development roadmap.
 
+## Incentive Development
+
+[![Patreon](https://img.shields.io/badge/Patreon-Become%20a%20Patron-f96854?style=for-the-badge&logo=patreon)](https://www.patreon.com/SoufianeKHIAT)
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details
