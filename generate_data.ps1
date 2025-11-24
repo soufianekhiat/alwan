@@ -2236,6 +2236,30 @@ try:
         f.write(','.join(formatted_values) + '\n')
     print(f"  {filename} (3x3 inverse matrix, 9 values)")
 
+    # LLAB XYZ to RGB matrix
+    llab_xyz_to_rgb = np.array([
+        [0.8951, 0.2664, -0.1614],
+        [-0.7502, 1.7135, 0.0367],
+        [0.0389, -0.0685, 1.0296]
+    ])
+    filename = f'{DATA_DIR}/matrices/llab_xyz_to_rgb.csv'
+    ensure_dir(filename)
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = llab_xyz_to_rgb.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 matrix, 9 values)")
+
+    # LLAB RGB to XYZ inverse matrix
+    llab_rgb_to_xyz = np.linalg.inv(llab_xyz_to_rgb)
+    filename = f'{DATA_DIR}/matrices/llab_rgb_to_xyz.csv'
+    ensure_dir(filename)
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = llab_rgb_to_xyz.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 inverse matrix, 9 values)")
+
     # Extended CAT matrices
     print("\nGenerating extended CAT matrices...")
 

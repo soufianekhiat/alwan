@@ -1583,6 +1583,7 @@ int alwan_llab_forward(alwan_vec3 const *xyz,
 /* ATD95 viewing conditions */
 typedef struct {
     alwan_vec3 white_xyz;          /* Reference white in XYZ */
+    alwan_scalar Y_0;              /* Absolute adapting field luminance in cd/m² */
     alwan_scalar sigma;            /* Saturation adjustment parameter */
     alwan_scalar k1;               /* Adaptation parameter 1 */
     alwan_scalar k2;               /* Adaptation parameter 2 */

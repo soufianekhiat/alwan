@@ -1,0 +1,293 @@
+/*
+ * Alwan - Pure C colour science library
+ * Copyright (c) 2025 Soufiane KHIAT
+ * SPDX-License-Identifier: MIT
+ *
+ * Unit tests for LLAB Color Appearance Model
+ */
+
+#include "alwan.h"
+#include "alwan_internal.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Test data from CSV: XYZ_in (3), XYZ_0 (3), XYZ_r (3), Y_b, surround, L, Ch, h, s
+ * Format: 13 values per row */
+static alwan_scalar const test_data[] = {
+#include "reference_values/llab.csv"
+};
+
+static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 13;
+
+/* Helper function to extract a test case from the flat array */
+static void get_test_case(
+    size_t index,
+    alwan_vec3 *xyz_in,
+    alwan_vec3 *xyz_0,
+    alwan_vec3 *xyz_r,
+    alwan_scalar *Y_b,
+    int *surround,
+    alwan_scalar *L_expected,
+    alwan_scalar *Ch_expected,
+    alwan_scalar *h_expected,
+    alwan_scalar *s_expected
+) {
+    size_t offset = index * 13;
+    xyz_in->v[0] = test_data[offset + 0];
+    xyz_in->v[1] = test_data[offset + 1];
+    xyz_in->v[2] = test_data[offset + 2];
+    xyz_0->v[0] = test_data[offset + 3];
+    xyz_0->v[1] = test_data[offset + 4];
+    xyz_0->v[2] = test_data[offset + 5];
+    xyz_r->v[0] = test_data[offset + 6];
+    xyz_r->v[1] = test_data[offset + 7];
+    xyz_r->v[2] = test_data[offset + 8];
+    *Y_b = test_data[offset + 9];
+    *surround = (int)test_data[offset + 10];
+    *L_expected = test_data[offset + 11];
+    *Ch_expected = test_data[offset + 12];
+    /* Note: h and s not in test data yet */
+    *h_expected = ALWAN_LITERAL(0.0);
+    *s_expected = ALWAN_LITERAL(0.0);
+}
+
+/* ----------------------------------------------------------------
+ * Test: LLAB Forward Transform
+ * ---------------------------------------------------------------- */
+static int test_llab_forward(void) {
+    printf("\n=== Testing LLAB Forward Transform ===\n");
+
+    int failed = 0;
+    alwan_scalar const tolerance = ALWAN_LITERAL(0.1);
+
+    for (size_t i = 0; i < num_test_cases; i++) {
+        alwan_vec3 xyz_in, xyz_0, xyz_r;
+        alwan_scalar Y_b;
+        int surround;
+        alwan_scalar L_expected, Ch_expected, h_expected, s_expected;
+
+        get_test_case(i, &xyz_in, &xyz_0, &xyz_r, &Y_b, &surround,
+                     &L_expected, &Ch_expected, &h_expected, &s_expected);
+
+        alwan_llab_viewing_conditions vc;
+        vc.white_xyz = xyz_r;  /* Use reference illuminant as white */
+        vc.xyz_0 = xyz_0;      /* Test condition illuminant */
+        vc.xyz_r = xyz_r;      /* Reference condition illuminant */
+        vc.Y_b = Y_b;
+        vc.surround = (alwan_llab_surround)surround;
+        vc.D_factor = -1;      /* Use automatic D based on surround */
+
+        alwan_llab_correlates result;
+        int status = alwan_llab_forward(&xyz_in, &vc, &result);
+
+        if (status != ALWAN_OK) {
+            printf("  Test %zu: FAILED - Status %d\n", i + 1, status);
+            failed++;
+            continue;
+        }
+
+        /* Check results with tolerance */
+        alwan_scalar L_error = ALWAN_FABS(result.L - L_expected);
+        alwan_scalar Ch_error = ALWAN_FABS(result.Ch - Ch_expected);
+
+        if (L_error > tolerance || Ch_error > tolerance) {
+            printf("  Test %zu: FAILED\n", i + 1);
+            printf("    XYZ_in = [%.2f, %.2f, %.2f]\n",
+                   xyz_in.v[0], xyz_in.v[1], xyz_in.v[2]);
+            printf("    L:  got %.6f, expected %.6f, error = %.6e\n",
+                   result.L, L_expected, L_error);
+            printf("    Ch: got %.6f, expected %.6f, error = %.6e\n",
+                   result.Ch, Ch_expected, Ch_error);
+            failed++;
+        } else {
+            printf("  Test %zu: PASSED (L=%.2f, Ch=%.2f, h=%.1f°)\n",
+                   i + 1, result.L, result.Ch, result.h);
+        }
+    }
+
+    if (failed == 0) {
+        printf("\n✓ All %zu LLAB forward transform tests passed!\n", num_test_cases);
+    } else {
+        printf("\n✗ %d/%zu LLAB forward transform tests failed\n",
+               failed, num_test_cases);
+    }
+
+    return failed;
+}
+
+/* ----------------------------------------------------------------
+ * Test: LLAB Viewing Conditions
+ * ---------------------------------------------------------------- */
+static int test_llab_viewing_conditions(void) {
+    printf("\n=== Testing LLAB Viewing Conditions ===\n");
+
+    int failed = 0;
+
+    /* D65 illuminant */
+    alwan_vec3 d65 = {ALWAN_LITERAL(95.05),
+                      ALWAN_LITERAL(100.0),
+                      ALWAN_LITERAL(108.88)};
+
+    /* Test color: mid-gray */
+    alwan_vec3 xyz = {ALWAN_LITERAL(50.0),
+                      ALWAN_LITERAL(50.0),
+                      ALWAN_LITERAL(50.0)};
+
+    alwan_llab_viewing_conditions vc;
+    vc.white_xyz = d65;
+    vc.xyz_0 = d65;
+    vc.xyz_r = d65;
+    vc.Y_b = ALWAN_LITERAL(20.0);
+    vc.D_factor = -1;  /* Automatic */
+
+    alwan_llab_correlates corr_avg, corr_dim, corr_dark;
+
+    /* Test average surround */
+    vc.surround = ALWAN_LLAB_SURROUND_AVERAGE;
+    int status = alwan_llab_forward(&xyz, &vc, &corr_avg);
+    if (status != ALWAN_OK) {
+        printf("  Average surround: FAILED (status %d)\n", status);
+        failed++;
+    } else {
+        printf("  Average surround: L=%.2f, Ch=%.2f\n",
+               corr_avg.L, corr_avg.Ch);
+    }
+
+    /* Test dim surround */
+    vc.surround = ALWAN_LLAB_SURROUND_DIM;
+    status = alwan_llab_forward(&xyz, &vc, &corr_dim);
+    if (status != ALWAN_OK) {
+        printf("  Dim surround: FAILED (status %d)\n", status);
+        failed++;
+    } else {
+        printf("  Dim surround: L=%.2f, Ch=%.2f\n",
+               corr_dim.L, corr_dim.Ch);
+    }
+
+    /* Test dark surround */
+    vc.surround = ALWAN_LLAB_SURROUND_DARK;
+    status = alwan_llab_forward(&xyz, &vc, &corr_dark);
+    if (status != ALWAN_OK) {
+        printf("  Dark surround: FAILED (status %d)\n", status);
+        failed++;
+    } else {
+        printf("  Dark surround: L=%.2f, Ch=%.2f\n",
+               corr_dark.L, corr_dark.Ch);
+    }
+
+    /* Verify that lightness increases from average to dim to dark
+     * (due to higher F_S values) */
+    if (corr_dark.L > corr_dim.L && corr_dim.L > corr_avg.L) {
+        printf("  ✓ Lightness increases with darker surrounds\n");
+    } else {
+        printf("  ✗ Lightness relationship incorrect\n");
+        failed++;
+    }
+
+    if (failed == 0) {
+        printf("\n✓ All viewing conditions tests passed!\n");
+    } else {
+        printf("\n✗ %d viewing conditions tests failed\n", failed);
+    }
+
+    return failed;
+}
+
+/* ----------------------------------------------------------------
+ * Test: LLAB Achromatic Colors
+ * ---------------------------------------------------------------- */
+static int test_llab_achromatic(void) {
+    printf("\n=== Testing LLAB Achromatic Colors ===\n");
+
+    int failed = 0;
+    alwan_scalar const tolerance = ALWAN_LITERAL(0.1);
+
+    /* D65 illuminant */
+    alwan_vec3 d65 = {ALWAN_LITERAL(95.05),
+                      ALWAN_LITERAL(100.0),
+                      ALWAN_LITERAL(108.88)};
+
+    alwan_llab_viewing_conditions vc;
+    vc.white_xyz = d65;
+    vc.xyz_0 = d65;
+    vc.xyz_r = d65;
+    vc.Y_b = ALWAN_LITERAL(20.0);
+    vc.surround = ALWAN_LLAB_SURROUND_AVERAGE;
+    vc.D_factor = -1;
+
+    /* Test grays from black to white */
+    alwan_scalar const gray_values[] = {
+        ALWAN_LITERAL(0.1), ALWAN_LITERAL(5.0), ALWAN_LITERAL(20.0),
+        ALWAN_LITERAL(50.0), ALWAN_LITERAL(80.0), ALWAN_LITERAL(95.05)
+    };
+    size_t num_grays = sizeof(gray_values) / sizeof(gray_values[0]);
+
+    printf("  Testing %zu gray levels:\n", num_grays);
+
+    alwan_scalar prev_L = ALWAN_LITERAL(0.0);
+    for (size_t i = 0; i < num_grays; i++) {
+        alwan_scalar gray = gray_values[i];
+        alwan_vec3 xyz = {gray, gray, gray * ALWAN_LITERAL(1.08880)};
+
+        alwan_llab_correlates corr;
+        int status = alwan_llab_forward(&xyz, &vc, &corr);
+
+        if (status != ALWAN_OK) {
+            printf("    Gray %.2f: FAILED (status %d)\n", gray, status);
+            failed++;
+            continue;
+        }
+
+        /* Achromatic colors should have very low chroma */
+        if (corr.Ch > tolerance) {
+            printf("    Gray %.2f: Chroma too high (%.6f > %.6f)\n",
+                   gray, corr.Ch, tolerance);
+            failed++;
+        }
+
+        /* Lightness should increase monotonically */
+        if (i > 0 && corr.L <= prev_L) {
+            printf("    Gray %.2f: Lightness not increasing (%.2f <= %.2f)\n",
+                   gray, corr.L, prev_L);
+            failed++;
+        }
+
+        printf("    Gray %.2f: L=%.2f, Ch=%.4f\n", gray, corr.L, corr.Ch);
+        prev_L = corr.L;
+    }
+
+    if (failed == 0) {
+        printf("\n✓ All achromatic tests passed!\n");
+    } else {
+        printf("\n✗ %d achromatic tests failed\n", failed);
+    }
+
+    return failed;
+}
+
+/* ----------------------------------------------------------------
+ * Main Test Runner
+ * ---------------------------------------------------------------- */
+int test_48_llab_main(void) {
+    int failed = 0;
+
+    printf("\n========================================\n");
+    printf("LLAB Color Appearance Model Tests\n");
+    printf("========================================\n");
+
+    failed += test_llab_forward();
+    failed += test_llab_viewing_conditions();
+    failed += test_llab_achromatic();
+
+    if (failed == 0) {
+        printf("\n========================================\n");
+        printf("All LLAB tests PASSED!\n");
+        printf("========================================\n");
+        return 0;
+    } else {
+        printf("\n========================================\n");
+        printf("%d LLAB tests FAILED!\n", failed);
+        printf("========================================\n");
+        return 1;
+    }
+}
