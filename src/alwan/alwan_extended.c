@@ -219,31 +219,47 @@ void alwan_rgb_to_hcl(alwan_vec3 const *rgb, alwan_vec3 *hcl) {
 
     /* HCL color space (Sarifuddin & Missaoui 2005)
      * H: Hue, C: Chroma, L: Luminance
+     * Using the corrected formulas from Sarifuddin 2021
      */
+
+    alwan_scalar const gamma = ALWAN_LITERAL(3.0);
+    alwan_scalar const Y_0 = ALWAN_LITERAL(100.0);
 
     alwan_scalar max_val = alwan_max3(r, g, b);
     alwan_scalar min_val = alwan_min3(r, g, b);
-    alwan_scalar delta = max_val - min_val;
+
+    /* Q factor */
+    alwan_scalar Q = ALWAN_LITERAL(1.0);
+    if (max_val > ALWAN_EPSILON) {
+        Q = ALWAN_EXP((min_val * gamma) / (max_val * Y_0));
+    }
 
     /* Luminance */
-    alwan_scalar L = (max_val + min_val) / ALWAN_LITERAL(2.0);
+    alwan_scalar L = (Q * max_val + (Q - ALWAN_LITERAL(1.0)) * min_val) / ALWAN_LITERAL(2.0);
 
     /* Chroma */
-    alwan_scalar C = delta;
+    alwan_scalar r_g = r - g;
+    alwan_scalar g_b = g - b;
+    alwan_scalar b_r = b - r;
+    alwan_scalar C = Q * (ALWAN_FABS(r_g) + ALWAN_FABS(g_b) + ALWAN_FABS(b_r)) / ALWAN_LITERAL(3.0);
 
-    /* Hue (in radians) */
+    /* Hue - use atan(G_B / R_G), not atan2! */
     alwan_scalar H = ALWAN_LITERAL(0.0);
-    if (delta > ALWAN_EPSILON) {
-        if (max_val == r) {
-            H = (g - b) / delta;
-            if (g < b) H += ALWAN_LITERAL(6.0);
-        } else if (max_val == g) {
-            H = (b - r) / delta + ALWAN_LITERAL(2.0);
+    if (C > ALWAN_EPSILON) {
+        alwan_scalar h_temp = ALWAN_ATAN(g_b / r_g);  /* arctan gives [-π/2, π/2] */
+        alwan_scalar two_h_3 = ALWAN_LITERAL(2.0) * h_temp / ALWAN_LITERAL(3.0);
+        alwan_scalar four_h_3 = ALWAN_LITERAL(4.0) * h_temp / ALWAN_LITERAL(3.0);
+
+        /* Select H based on R-G and G-B signs */
+        if (r_g >= ALWAN_LITERAL(0.0) && g_b >= ALWAN_LITERAL(0.0)) {
+            H = two_h_3;
+        } else if (r_g >= ALWAN_LITERAL(0.0) && g_b < ALWAN_LITERAL(0.0)) {
+            H = four_h_3;
+        } else if (r_g < ALWAN_LITERAL(0.0) && g_b >= ALWAN_LITERAL(0.0)) {
+            H = ALWAN_PI + four_h_3;
         } else {
-            H = (r - g) / delta + ALWAN_LITERAL(4.0);
+            H = two_h_3 - ALWAN_PI;
         }
-        /* Convert to radians: H * (π/3) */
-        H *= ALWAN_PI / ALWAN_LITERAL(3.0);
     }
 
     hcl->v[0] = H;
@@ -260,30 +276,82 @@ void alwan_hcl_to_rgb(alwan_vec3 const *hcl, alwan_vec3 *rgb) {
     alwan_scalar C = hcl->v[1];
     alwan_scalar L = hcl->v[2];
 
-    /* Convert HCL to RGB
-     * H is in radians, convert to h_prime by: H * (3/π)
-     */
-    alwan_scalar h_prime = H * ALWAN_LITERAL(3.0) / ALWAN_PI;
-    alwan_scalar h_mod_2 = h_prime - ALWAN_LITERAL(2.0) * ALWAN_FLOOR(h_prime / ALWAN_LITERAL(2.0));
-    alwan_scalar X = C * (ALWAN_LITERAL(1.0) - ALWAN_FABS(h_mod_2 - ALWAN_LITERAL(1.0)));
+    /* Convert HCL to RGB (Sarifuddin & Missaoui 2005, corrected 2021) */
+    alwan_scalar const gamma = ALWAN_LITERAL(3.0);
+    alwan_scalar const Y_0 = ALWAN_LITERAL(100.0);
 
-    alwan_scalar r1, g1, b1;
-    int h_sector = (int)h_prime;
+    /* Compute Q, Min, Max */
+    alwan_scalar Q = ALWAN_LITERAL(1.0);
+    alwan_scalar Min = ALWAN_LITERAL(0.0);
+    alwan_scalar Max = ALWAN_LITERAL(0.0);
 
-    switch (h_sector) {
-        case 0: r1 = C; g1 = X; b1 = ALWAN_LITERAL(0.0); break;
-        case 1: r1 = X; g1 = C; b1 = ALWAN_LITERAL(0.0); break;
-        case 2: r1 = ALWAN_LITERAL(0.0); g1 = C; b1 = X; break;
-        case 3: r1 = ALWAN_LITERAL(0.0); g1 = X; b1 = C; break;
-        case 4: r1 = X; g1 = ALWAN_LITERAL(0.0); b1 = C; break;
-        default: r1 = C; g1 = ALWAN_LITERAL(0.0); b1 = X; break;
+    if (L > ALWAN_EPSILON) {
+        Q = ALWAN_EXP((ALWAN_LITERAL(1.0) - (ALWAN_LITERAL(3.0) * C) / (ALWAN_LITERAL(4.0) * L)) * gamma / Y_0);
+        alwan_scalar denom = ALWAN_LITERAL(4.0) * Q - ALWAN_LITERAL(2.0);
+        if (ALWAN_FABS(denom) > ALWAN_EPSILON) {
+            Min = (ALWAN_LITERAL(4.0) * L - ALWAN_LITERAL(3.0) * C) / denom;
+        }
+        if (Q > ALWAN_EPSILON) {
+            Max = Min + (ALWAN_LITERAL(3.0) * C) / (ALWAN_LITERAL(2.0) * Q);
+        }
     }
 
-    alwan_scalar m = L - C / ALWAN_LITERAL(2.0);
+    /* Hue-based RGB computation */
+    alwan_scalar r, g, b;
+    alwan_scalar const r_p60 = ALWAN_PI / ALWAN_LITERAL(3.0);  /* 60 degrees */
+    alwan_scalar const r_p120 = ALWAN_LITERAL(2.0) * ALWAN_PI / ALWAN_LITERAL(3.0);  /* 120 degrees */
+    alwan_scalar const r_n60 = -ALWAN_PI / ALWAN_LITERAL(3.0);  /* -60 degrees */
+    alwan_scalar const r_n120 = -ALWAN_LITERAL(2.0) * ALWAN_PI / ALWAN_LITERAL(3.0);  /* -120 degrees */
 
-    rgb->v[0] = r1 + m;
-    rgb->v[1] = g1 + m;
-    rgb->v[2] = b1 + m;
+    if (H >= ALWAN_LITERAL(0.0) && H < r_p60) {
+        /* 0° to 60° */
+        alwan_scalar tan_val = ALWAN_TAN(ALWAN_LITERAL(3.0) * H / ALWAN_LITERAL(2.0));
+        r = Max;
+        g = (Max * tan_val + Min) / (ALWAN_LITERAL(1.0) + tan_val);
+        b = Min;
+    } else if (H >= r_p60 && H < r_p120) {
+        /* 60° to 120° */
+        alwan_scalar tan_val = ALWAN_TAN(ALWAN_LITERAL(3.0) * (H - ALWAN_PI) / ALWAN_LITERAL(4.0));
+        if (ALWAN_FABS(tan_val) > ALWAN_EPSILON) {
+            r = (Max * (ALWAN_LITERAL(1.0) + tan_val) - Min) / tan_val;
+        } else {
+            r = Max;
+        }
+        g = Max;
+        b = Min;
+    } else if (H >= r_p120 && H <= ALWAN_PI) {
+        /* 120° to 180° */
+        alwan_scalar tan_val = ALWAN_TAN(ALWAN_LITERAL(3.0) * (H - ALWAN_PI) / ALWAN_LITERAL(4.0));
+        r = Min;
+        g = Max;
+        b = Max * (ALWAN_LITERAL(1.0) + tan_val) - Min * tan_val;
+    } else if (H >= r_n60 && H < ALWAN_LITERAL(0.0)) {
+        /* -60° to 0° */
+        alwan_scalar tan_val = ALWAN_TAN(ALWAN_LITERAL(3.0) * H / ALWAN_LITERAL(4.0));
+        r = Max;
+        g = Min;
+        b = Min * (ALWAN_LITERAL(1.0) + tan_val) - Max * tan_val;
+    } else if (H >= r_n120 && H < r_n60) {
+        /* -120° to -60° */
+        alwan_scalar tan_val = ALWAN_TAN(ALWAN_LITERAL(3.0) * H / ALWAN_LITERAL(4.0));
+        if (ALWAN_FABS(tan_val) > ALWAN_EPSILON) {
+            r = (Min * (ALWAN_LITERAL(1.0) + tan_val) - Max) / tan_val;
+        } else {
+            r = Min;
+        }
+        g = Min;
+        b = Max;
+    } else {
+        /* -180° to -120° */
+        alwan_scalar tan_val = ALWAN_TAN(ALWAN_LITERAL(3.0) * (H + ALWAN_PI) / ALWAN_LITERAL(2.0));
+        r = Min;
+        g = (Min * tan_val + Max) / (ALWAN_LITERAL(1.0) + tan_val);
+        b = Max;
+    }
+
+    rgb->v[0] = r;
+    rgb->v[1] = g;
+    rgb->v[2] = b;
 }
 
 /* ================================================================
@@ -308,35 +376,45 @@ void alwan_rgb_to_ihls(alwan_vec3 const *rgb, alwan_vec3 *ihls) {
     alwan_scalar max_val = alwan_max3(r, g, b);
     alwan_scalar min_val = alwan_min3(r, g, b);
     alwan_scalar delta = max_val - min_val;
-    alwan_scalar sum = max_val + min_val;
 
-    /* Lightness (same as Intensity) */
-    alwan_scalar L = sum / ALWAN_LITERAL(2.0);
+    /* Transform RGB to YC₁C₂ using MATRIX_RGB_TO_YC_1_C_2
+     * Matrix:
+     *   [  0.2126     0.7152     0.0722  ]
+     *   [  1.0      -0.5       -0.5     ]
+     *   [  0.0      -√3/2       √3/2    ]
+     * where √3/2 = 0.8660254037844386
+     */
+    alwan_scalar Y = ALWAN_LITERAL(0.2126) * r + ALWAN_LITERAL(0.7152) * g + ALWAN_LITERAL(0.0722) * b;
+    alwan_scalar C_1 = r - ALWAN_LITERAL(0.5) * g - ALWAN_LITERAL(0.5) * b;
+    alwan_scalar C_2 = -ALWAN_LITERAL(0.8660254037844386) * g + ALWAN_LITERAL(0.8660254037844386) * b;
 
-    /* Hue (in radians) */
+    /* Compute C = √(C₁² + C₂²) */
+    alwan_scalar C = ALWAN_SQRT(C_1 * C_1 + C_2 * C_2);
+
+    /* Compute hue H using arccos(C₁/C) */
     alwan_scalar H = ALWAN_LITERAL(0.0);
-    if (delta > ALWAN_EPSILON) {
-        if (max_val == r) {
-            H = (g - b) / delta;
-            if (g < b) H += ALWAN_LITERAL(6.0);
-        } else if (max_val == g) {
-            H = (b - r) / delta + ALWAN_LITERAL(2.0);
+    if (C > ALWAN_EPSILON) {
+        alwan_scalar C_1_C = C_1 / C;
+        /* Clamp to [-1, 1] to avoid numerical errors in arccos */
+        if (C_1_C > ALWAN_LITERAL(1.0)) C_1_C = ALWAN_LITERAL(1.0);
+        if (C_1_C < ALWAN_LITERAL(-1.0)) C_1_C = ALWAN_LITERAL(-1.0);
+
+        alwan_scalar H_temp = ALWAN_ACOS(C_1_C);
+
+        /* Adjust based on C₂ sign */
+        if (C_2 <= ALWAN_LITERAL(0.0)) {
+            H = H_temp;
         } else {
-            H = (r - g) / delta + ALWAN_LITERAL(4.0);
+            H = ALWAN_LITERAL(2.0) * ALWAN_PI - H_temp;
         }
-        /* Convert to radians: H * (π/3) */
-        H *= ALWAN_PI / ALWAN_LITERAL(3.0);
     }
 
-    /* Saturation */
-    alwan_scalar S = ALWAN_LITERAL(0.0);
-    if (L > ALWAN_EPSILON && L < ALWAN_LITERAL(1.0)) {
-        S = delta / (ALWAN_LITERAL(1.0) - ALWAN_FABS(ALWAN_LITERAL(2.0) * L - ALWAN_LITERAL(1.0)));
-    }
+    /* Saturation (simple chroma) */
+    alwan_scalar S = delta;
 
-    /* IHLS format is [H, L, S] */
+    /* IHLS format is [H, Y, S] where Y is luminance-weighted intensity */
     ihls->v[0] = H;
-    ihls->v[1] = L;
+    ihls->v[1] = Y;
     ihls->v[2] = S;
 }
 
@@ -345,36 +423,34 @@ void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_vec3 *rgb) {
         return;
     }
 
-    /* IHLS format is [H, L, S] */
+    /* IHLS format is [H, Y, S] */
     alwan_scalar H = ihls->v[0];
-    alwan_scalar L = ihls->v[1];
+    alwan_scalar Y = ihls->v[1];
     alwan_scalar S = ihls->v[2];
 
-    /* Convert IHLS to RGB
-     * H is in radians, convert to h_prime by: H * (3/π)
+    /* Convert IHLS to RGB via YC₁C₂
+     * First compute C from S using: C = (√3 * S) / (2 * sin(2π/3 - H_s))
+     * where H_s = H - floor(H/(π/3)) * (π/3)
      */
-    alwan_scalar C = (ALWAN_LITERAL(1.0) - ALWAN_FABS(ALWAN_LITERAL(2.0) * L - ALWAN_LITERAL(1.0))) * S;
-    alwan_scalar h_prime = H * ALWAN_LITERAL(3.0) / ALWAN_PI;
-    alwan_scalar h_mod_2 = h_prime - ALWAN_LITERAL(2.0) * ALWAN_FLOOR(h_prime / ALWAN_LITERAL(2.0));
-    alwan_scalar X = C * (ALWAN_LITERAL(1.0) - ALWAN_FABS(h_mod_2 - ALWAN_LITERAL(1.0)));
+    alwan_scalar const pi_3 = ALWAN_PI / ALWAN_LITERAL(3.0);
+    alwan_scalar const two_pi_3 = ALWAN_LITERAL(2.0) * ALWAN_PI / ALWAN_LITERAL(3.0);
 
-    alwan_scalar r1, g1, b1;
-    int h_sector = (int)h_prime;
+    alwan_scalar k = ALWAN_FLOOR(H / pi_3);
+    alwan_scalar H_s = H - k * pi_3;
+    alwan_scalar C = (ALWAN_SQRT(ALWAN_LITERAL(3.0)) * S) / (ALWAN_LITERAL(2.0) * ALWAN_SIN(two_pi_3 - H_s));
 
-    switch (h_sector) {
-        case 0: r1 = C; g1 = X; b1 = ALWAN_LITERAL(0.0); break;
-        case 1: r1 = X; g1 = C; b1 = ALWAN_LITERAL(0.0); break;
-        case 2: r1 = ALWAN_LITERAL(0.0); g1 = C; b1 = X; break;
-        case 3: r1 = ALWAN_LITERAL(0.0); g1 = X; b1 = C; break;
-        case 4: r1 = X; g1 = ALWAN_LITERAL(0.0); b1 = C; break;
-        default: r1 = C; g1 = ALWAN_LITERAL(0.0); b1 = X; break;
-    }
+    /* Compute C₁ and C₂ from C and H */
+    alwan_scalar C_1 = C * ALWAN_COS(H);
+    alwan_scalar C_2 = -C * ALWAN_SIN(H);
 
-    alwan_scalar m = L - C / ALWAN_LITERAL(2.0);
-
-    rgb->v[0] = r1 + m;
-    rgb->v[1] = g1 + m;
-    rgb->v[2] = b1 + m;
+    /* Transform [Y, C₁, C₂] to RGB using MATRIX_YC_1_C_2_TO_RGB:
+     *   [[ 1.0         0.787399999999999878      0.371236223088929396]
+     *    [ 1.0        -0.212600000000000039     -0.206114046100696419]
+     *    [ 1.0        -0.212600000000000011      0.948586492278555182]]
+     */
+    rgb->v[0] = Y + ALWAN_LITERAL(0.787399999999999878) * C_1 + ALWAN_LITERAL(0.371236223088929396) * C_2;
+    rgb->v[1] = Y - ALWAN_LITERAL(0.212600000000000039) * C_1 - ALWAN_LITERAL(0.206114046100696419) * C_2;
+    rgb->v[2] = Y - ALWAN_LITERAL(0.212600000000000011) * C_1 + ALWAN_LITERAL(0.948586492278555182) * C_2;
 }
 
 /* ================================================================
@@ -382,9 +458,9 @@ void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_vec3 *rgb) {
  * XYZ <-> hdr-CIELAB conversions
  * ================================================================ */
 
-/* D65 white point for HDR calculations */
+/* D65 white point for HDR calculations (Y=1 scale, matches colour-science) */
 static alwan_vec3 const HDR_D65_WHITE = {
-    { ALWAN_LITERAL(95.047), ALWAN_LITERAL(100.0), ALWAN_LITERAL(108.883) }
+    { ALWAN_LITERAL(0.95045593), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.08905775) }
 };
 
 /* HDR-CIELAB f function (modified for HDR) */
@@ -406,29 +482,67 @@ static alwan_scalar hdr_lab_f_inv(alwan_scalar t, alwan_scalar epsilon, alwan_sc
     }
 }
 
+static alwan_scalar hdr_lightness_fairchild2011(alwan_scalar Y, alwan_scalar epsilon) {
+    /* Fairchild 2011 lightness function using Michaelis-Menten kinetics
+     * L_hdr = (V_max * Y^epsilon) / (K_m + Y^epsilon) + 0.02
+     * where V_max = 247, K_m = 2^epsilon
+     */
+    alwan_scalar const V_max = ALWAN_LITERAL(247.0);
+    alwan_scalar Y_eps = ALWAN_POW(Y, epsilon);
+    alwan_scalar K_m = ALWAN_POW(ALWAN_LITERAL(2.0), epsilon);
+    alwan_scalar L_hdr = (V_max * Y_eps) / (K_m + Y_eps) + ALWAN_LITERAL(0.02);
+    return L_hdr;
+}
+
 void alwan_xyz_to_hdr_cielab(alwan_vec3 const *xyz, alwan_vec3 *hdr_lab) {
     if (!xyz || !hdr_lab) {
         return;
     }
 
-    /* HDR adaptation parameters */
-    alwan_scalar const epsilon = ALWAN_LITERAL(0.008856);
-    alwan_scalar const kappa = ALWAN_LITERAL(903.3);
+    /* hdr-CIELAB Fairchild 2011 parameters (defaults: Y_s=0.2, Y_abs=100) */
+    alwan_scalar const Y_s = ALWAN_LITERAL(0.2);
+    alwan_scalar const Y_abs = ALWAN_LITERAL(100.0);
+
+    /* Compute epsilon exponent */
+    alwan_scalar epsilon = ALWAN_LITERAL(0.58);
+    alwan_scalar sf = ALWAN_LITERAL(1.25) - ALWAN_LITERAL(0.25) * (Y_s / ALWAN_LITERAL(0.184));
+    alwan_scalar lf = ALWAN_LOG(ALWAN_LITERAL(318.0)) / ALWAN_LOG(Y_abs);
+    epsilon /= sf * lf;
 
     /* Normalize by D65 white point */
     alwan_scalar xr = xyz->v[0] / HDR_D65_WHITE.v[0];
     alwan_scalar yr = xyz->v[1] / HDR_D65_WHITE.v[1];
     alwan_scalar zr = xyz->v[2] / HDR_D65_WHITE.v[2];
 
-    /* Apply HDR f function */
-    alwan_scalar fx = hdr_lab_f(xr, epsilon, kappa);
-    alwan_scalar fy = hdr_lab_f(yr, epsilon, kappa);
-    alwan_scalar fz = hdr_lab_f(zr, epsilon, kappa);
+    /* Apply Fairchild 2011 lightness function */
+    alwan_scalar L_hdr = hdr_lightness_fairchild2011(yr, epsilon);
+    alwan_scalar fx = hdr_lightness_fairchild2011(xr, epsilon);
+    alwan_scalar fz = hdr_lightness_fairchild2011(zr, epsilon);
 
     /* Calculate L*, a*, b* */
-    hdr_lab->v[0] = ALWAN_LITERAL(116.0) * fy - ALWAN_LITERAL(16.0);  /* L* */
-    hdr_lab->v[1] = ALWAN_LITERAL(500.0) * (fx - fy);                  /* a* */
-    hdr_lab->v[2] = ALWAN_LITERAL(200.0) * (fy - fz);                  /* b* */
+    hdr_lab->v[0] = L_hdr;  /* L* */
+    hdr_lab->v[1] = ALWAN_LITERAL(5.0) * (fx - L_hdr);  /* a* */
+    hdr_lab->v[2] = ALWAN_LITERAL(2.0) * (L_hdr - fz);  /* b* */
+}
+
+static alwan_scalar hdr_luminance_fairchild2011(alwan_scalar L_hdr, alwan_scalar epsilon) {
+    /* Inverse Fairchild 2011 lightness function
+     * S = ((L_hdr - 0.02) * K_m) / (V_max - (L_hdr - 0.02))
+     * Y = S^(1/epsilon)
+     * where V_max = 247, K_m = 2^epsilon
+     */
+    alwan_scalar const V_max = ALWAN_LITERAL(247.0);
+    alwan_scalar K_m = ALWAN_POW(ALWAN_LITERAL(2.0), epsilon);
+    alwan_scalar v = L_hdr - ALWAN_LITERAL(0.02);
+
+    /* Avoid division by zero */
+    if (ALWAN_FABS(V_max - v) < ALWAN_EPSILON) {
+        return ALWAN_LITERAL(1.0);
+    }
+
+    alwan_scalar S = (v * K_m) / (V_max - v);
+    alwan_scalar Y = ALWAN_POW(S, ALWAN_LITERAL(1.0) / epsilon);
+    return Y;
 }
 
 void alwan_hdr_cielab_to_xyz(alwan_vec3 const *hdr_lab, alwan_vec3 *xyz) {
@@ -436,22 +550,24 @@ void alwan_hdr_cielab_to_xyz(alwan_vec3 const *hdr_lab, alwan_vec3 *xyz) {
         return;
     }
 
-    alwan_scalar const epsilon = ALWAN_LITERAL(0.008856);
-    alwan_scalar const kappa = ALWAN_LITERAL(903.3);
+    /* hdr-CIELAB Fairchild 2011 parameters (defaults: Y_s=0.2, Y_abs=100) */
+    alwan_scalar const Y_s = ALWAN_LITERAL(0.2);
+    alwan_scalar const Y_abs = ALWAN_LITERAL(100.0);
+
+    /* Compute epsilon exponent */
+    alwan_scalar epsilon = ALWAN_LITERAL(0.58);
+    alwan_scalar sf = ALWAN_LITERAL(1.25) - ALWAN_LITERAL(0.25) * (Y_s / ALWAN_LITERAL(0.184));
+    alwan_scalar lf = ALWAN_LOG(ALWAN_LITERAL(318.0)) / ALWAN_LOG(Y_abs);
+    epsilon /= sf * lf;
 
     alwan_scalar L = hdr_lab->v[0];
     alwan_scalar a = hdr_lab->v[1];
     alwan_scalar b = hdr_lab->v[2];
 
-    /* Calculate f values */
-    alwan_scalar fy = (L + ALWAN_LITERAL(16.0)) / ALWAN_LITERAL(116.0);
-    alwan_scalar fx = a / ALWAN_LITERAL(500.0) + fy;
-    alwan_scalar fz = fy - b / ALWAN_LITERAL(200.0);
-
-    /* Apply inverse f function */
-    alwan_scalar xr = hdr_lab_f_inv(fx, epsilon, kappa);
-    alwan_scalar yr = hdr_lab_f_inv(fy, epsilon, kappa);
-    alwan_scalar zr = hdr_lab_f_inv(fz, epsilon, kappa);
+    /* Calculate luminance values using inverse Fairchild 2011 */
+    alwan_scalar yr = hdr_luminance_fairchild2011(L, epsilon);
+    alwan_scalar xr = hdr_luminance_fairchild2011((a + ALWAN_LITERAL(5.0) * L) / ALWAN_LITERAL(5.0), epsilon);
+    alwan_scalar zr = hdr_luminance_fairchild2011((-b + ALWAN_LITERAL(2.0) * L) / ALWAN_LITERAL(2.0), epsilon);
 
     /* Denormalize by D65 white point */
     xyz->v[0] = xr * HDR_D65_WHITE.v[0];

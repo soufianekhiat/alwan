@@ -355,45 +355,33 @@ void alwan_xyz_to_ucs(alwan_vec3 const *xyz, alwan_vec3 *ucs) {
     alwan_scalar const Y = xyz->v[1];
     alwan_scalar const Z = xyz->v[2];
 
-    /* Denominator: D = X + 15Y + 3Z */
-    alwan_scalar const D = X + ALWAN_LITERAL(15.0) * Y + ALWAN_LITERAL(3.0) * Z;
-
-    if (D < ALWAN_EPSILON) {
-        /* Black point: return [0, 0, 0] */
-        ucs->v[0] = ALWAN_LITERAL(0.0);
-        ucs->v[1] = ALWAN_LITERAL(0.0);
-        ucs->v[2] = ALWAN_LITERAL(0.0);
-    } else {
-        /* CIE 1960 UCS chromaticity coordinates
-         * u = 4X / (X + 15Y + 3Z)
-         * v = 6Y / (X + 15Y + 3Z)
-         */
-        ucs->v[0] = (ALWAN_LITERAL(4.0) * X) / D;  /* u */
-        ucs->v[1] = (ALWAN_LITERAL(6.0) * Y) / D;  /* v */
-        ucs->v[2] = Y;                              /* Y (luminance) */
-    }
+    /* CIE 1960 UCS color space (UVW tristimulus values)
+     * U = (2/3) * X
+     * V = Y
+     * W = (1/2) * (-X + 3Y + Z)
+     * Reference: colour.XYZ_to_UCS
+     */
+    ucs->v[0] = (ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0)) * X;  /* U */
+    ucs->v[1] = Y;                                               /* V */
+    ucs->v[2] = (ALWAN_LITERAL(0.5)) * (-X + ALWAN_LITERAL(3.0) * Y + Z);  /* W */
 }
 
 void alwan_ucs_to_xyz(alwan_vec3 const *ucs, alwan_vec3 *xyz) {
-    alwan_scalar const u = ucs->v[0];
-    alwan_scalar const v = ucs->v[1];
-    alwan_scalar const Y = ucs->v[2];
+    alwan_scalar const U = ucs->v[0];
+    alwan_scalar const V = ucs->v[1];
+    alwan_scalar const W = ucs->v[2];
 
-    if (v < ALWAN_EPSILON) {
-        /* Degenerate case */
-        xyz->v[0] = ALWAN_LITERAL(0.0);
-        xyz->v[1] = ALWAN_LITERAL(0.0);
-        xyz->v[2] = ALWAN_LITERAL(0.0);
-    } else {
-        /* Inverse CIE 1960 UCS transform
-         * From: u = 4X/D, v = 6Y/D where D = X + 15Y + 3Z
-         * Solving: X = 1.5 * u * Y / v
-         *          Z = Y * (4 - u - 10v) / (2v)
-         */
-        xyz->v[0] = (ALWAN_LITERAL(1.5) * u * Y) / v;  /* X */
-        xyz->v[1] = Y;                                  /* Y */
-        xyz->v[2] = (Y * (ALWAN_LITERAL(4.0) - u - ALWAN_LITERAL(10.0) * v)) / (ALWAN_LITERAL(2.0) * v);  /* Z */
-    }
+    /* Inverse CIE 1960 UCS transform
+     * From: U = (2/3) * X, V = Y, W = (1/2) * (-X + 3Y + Z)
+     * Solving:
+     *   X = (3/2) * U
+     *   Y = V
+     *   Z = 2W + X - 3Y = 2W + (3/2)U - 3V
+     * Reference: colour.UCS_to_XYZ
+     */
+    xyz->v[0] = (ALWAN_LITERAL(3.0) / ALWAN_LITERAL(2.0)) * U;  /* X */
+    xyz->v[1] = V;                                               /* Y */
+    xyz->v[2] = ALWAN_LITERAL(2.0) * W + xyz->v[0] - ALWAN_LITERAL(3.0) * V;  /* Z */
 }
 
 /* ================================================================

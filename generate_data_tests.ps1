@@ -2531,12 +2531,17 @@ except Exception as e:
 # 1.5 hdr-CIELAB
 print('\n1.5 hdr-CIELAB:')
 try:
+    # Get D65 white point from colour-science
+    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+    d65_xyz_1 = colour.xy_to_XYZ(d65_xy)  # Y=1 scale
+    d65_xyz_100 = d65_xyz_1 * 100          # Y=100 scale
+
     # Test with HDR XYZ values (Y > 100)
     test_xyz_hdr = np.array([
-        [0.95047, 1.0, 1.08883],           # D65 white (Y=1)
-        [95.047, 100.0, 108.883],          # D65 white (Y=100)
-        [190.094, 200.0, 217.766],         # HDR white (Y=200)
-        [380.188, 400.0, 435.532],         # HDR white (Y=400)
+        d65_xyz_1,                          # D65 white (Y=1)
+        d65_xyz_100,                        # D65 white (Y=100)
+        d65_xyz_100 * 2,                    # HDR white (Y=200)
+        d65_xyz_100 * 4,                    # HDR white (Y=400)
         [100.0, 50.0, 50.0],               # HDR red
         [50.0, 150.0, 50.0],               # HDR green
         [50.0, 50.0, 200.0],               # HDR blue
@@ -2549,6 +2554,12 @@ try:
         hdr_lab_flat.extend(hdr_lab.tolist())
         xyz_back = colour.hdr_CIELab_to_XYZ(hdr_lab)
         xyz_from_hdr_lab_flat.extend(xyz_back.tolist())
+
+    # Write test XYZ values to CSV for loading in C tests
+    test_xyz_flat = []
+    for xyz in test_xyz_hdr:
+        test_xyz_flat.extend(xyz.tolist())
+    write_ref('test_xyz_hdr', test_xyz_flat, 'Test XYZ values for hdr-CIELAB and hdr-IPT')
 
     write_ref('hdr_lab_from_xyz', hdr_lab_flat, 'XYZ to hdr-CIELAB conversions')
     write_ref('xyz_from_hdr_lab_roundtrip', xyz_from_hdr_lab_flat, 'hdr-CIELAB to XYZ round-trip')

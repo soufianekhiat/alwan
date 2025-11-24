@@ -47,6 +47,17 @@ void alwan_mat3_mulv(alwan_mat3x3 const *m, alwan_vec3 const *v, alwan_vec3 *out
     memcpy(out, &tmp, sizeof(alwan_vec3));
 }
 
+alwan_scalar alwan_mat3_det(alwan_mat3x3 const *m) {
+    /* Compute determinant using Sarrus' rule (rule of diagonals)
+     * det(M) = m[0] * (m[4] * m[8] - m[5] * m[7])
+     *        - m[1] * (m[3] * m[8] - m[5] * m[6])
+     *        + m[2] * (m[3] * m[7] - m[4] * m[6])
+     */
+    return m->m[0] * (m->m[4] * m->m[8] - m->m[5] * m->m[7]) -
+           m->m[1] * (m->m[3] * m->m[8] - m->m[5] * m->m[6]) +
+           m->m[2] * (m->m[3] * m->m[7] - m->m[4] * m->m[6]);
+}
+
 /* ----------------------------------------------------------------
  * 3x3 Matrix Inversion using Partial-Pivot Gaussian Elimination
  * ---------------------------------------------------------------- */

@@ -54,10 +54,7 @@ int alwan_gamut_volume_mc(alwan_rgb_space_desc const *space,
 
     /* Compute determinant of RGB->XYZ matrix
      * The volume of the RGB gamut in XYZ space is |det(M)| */
-    alwan_scalar const det =
-        rgb_to_xyz.m[0] * (rgb_to_xyz.m[4] * rgb_to_xyz.m[8] - rgb_to_xyz.m[5] * rgb_to_xyz.m[7]) -
-        rgb_to_xyz.m[1] * (rgb_to_xyz.m[3] * rgb_to_xyz.m[8] - rgb_to_xyz.m[5] * rgb_to_xyz.m[6]) +
-        rgb_to_xyz.m[2] * (rgb_to_xyz.m[3] * rgb_to_xyz.m[7] - rgb_to_xyz.m[4] * rgb_to_xyz.m[6]);
+    alwan_scalar const det = alwan_mat3_det(&rgb_to_xyz);
 
     if (ALWAN_FABS(det) < ALWAN_EPSILON) {
         return ALWAN_E_RANGE;

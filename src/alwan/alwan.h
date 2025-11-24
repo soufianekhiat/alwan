@@ -137,6 +137,9 @@ void alwan_mat3_mulv(alwan_mat3x3 const *m, alwan_vec3 const *v, alwan_vec3 *out
 /* Create identity matrix */
 void alwan_mat3_identity(alwan_mat3x3 *out);
 
+/* Compute the determinant of a 3x3 matrix */
+alwan_scalar alwan_mat3_det(alwan_mat3x3 const *m);
+
 /* ----------------------------------------------------------------
  * RGB Color Spaces
  * ---------------------------------------------------------------- */
