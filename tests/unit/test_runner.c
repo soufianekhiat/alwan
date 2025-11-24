@@ -56,6 +56,7 @@ extern int test_42_math_utilities_main(void);
 extern int test_43_reference_data_main(void);
 extern int test_44_color_correction_main(void);
 extern int test_46_hellwig2022_main(void);
+extern int test_47_kim2009_main(void);
 
 /* Test registry */
 typedef struct {
@@ -110,6 +111,7 @@ static test_suite const g_test_suites[] = {
     {"43_reference_data", test_43_reference_data_main},
     {"44_color_correction", test_44_color_correction_main},
     {"46_hellwig2022", test_46_hellwig2022_main},
+    {"47_kim2009", test_47_kim2009_main},
 };
 
 int main(void) {

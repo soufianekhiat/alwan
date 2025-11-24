@@ -2206,6 +2206,16 @@ try:
         f.write(','.join(formatted_values) + '\n')
     print(f"  {filename} (3x3 matrix, 9 values)")
 
+    # CAT02 inverse matrix
+    cat02_inv_matrix = np.linalg.inv(cat02_matrix)
+    filename = f'{DATA_DIR}/matrices/cat_cat02_inv.csv'
+    ensure_dir(filename)
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = cat02_inv_matrix.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 inverse matrix, 9 values)")
+
     # CAT16 matrix
     cat16_matrix = colour.CHROMATIC_ADAPTATION_TRANSFORMS['CAT16']
     filename = f'{DATA_DIR}/matrices/cat_cat16.csv'

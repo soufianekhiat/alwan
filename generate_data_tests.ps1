@@ -660,6 +660,76 @@ for i in range(len(test_xyz_colors)):
     cam16_ucs_jab.extend(jab.tolist())
 write_ref('cam16_ucs_jab', cam16_ucs_jab, 'CAM16-UCS Jab values')
 
+# Hellwig2022 forward transform
+print('\nHellwig2022 Color Appearance Model:')
+hellwig2022_test_data = []
+test_cases_hellwig = [
+    # Test case: XYZ, white_XYZ, La, Yb, surround (0=avg, 1=dim, 2=dark)
+    ([19.01, 20.0, 21.78], d65_white_xyz, 318.31, 20.0, 0),  # Mid-gray, average
+    ([41.24, 21.26, 1.93], d65_white_xyz, 318.31, 20.0, 0),  # Red, average
+    ([35.76, 71.52, 11.92], d65_white_xyz, 318.31, 20.0, 0), # Green, average
+    ([18.05, 7.22, 95.05], d65_white_xyz, 318.31, 20.0, 0),  # Blue, average
+    ([19.01, 20.0, 21.78], d65_white_xyz, 318.31, 20.0, 1),  # Mid-gray, dim
+    ([41.24, 21.26, 1.93], d65_white_xyz, 318.31, 20.0, 2),  # Red, dark
+    (d65_white_xyz, d65_white_xyz, 318.31, 20.0, 0),          # White point
+    ([0.0, 0.0, 0.0], d65_white_xyz, 318.31, 20.0, 0),       # Black
+]
+
+for xyz_in, xyz_w, La, Yb, surround_idx in test_cases_hellwig:
+    xyz_arr = np.array(xyz_in)
+    xyz_w_arr = np.array(xyz_w)
+
+    # Hellwig2022 viewing conditions
+    surround_names = ['Average', 'Dim', 'Dark']
+    surround = colour.VIEWING_CONDITIONS_HELLWIG2022[surround_names[surround_idx]]
+
+    # Forward transform
+    correlates = colour.XYZ_to_Hellwig2022(
+        xyz_arr, xyz_w_arr, La, Yb, surround
+    )
+
+    # Store: XYZ_in(3), XYZ_w(3), La, Yb, surround_idx, J, C, h (total 12 values)
+    hellwig2022_test_data.extend(xyz_arr.tolist())
+    hellwig2022_test_data.extend(xyz_w_arr.tolist())
+    hellwig2022_test_data.extend([La, Yb, float(surround_idx)])
+    hellwig2022_test_data.extend([correlates.J, correlates.C, correlates.h])
+
+write_ref('hellwig2022', hellwig2022_test_data, 'Hellwig2022 test data (XYZ_in, XYZ_w, La, Yb, surround, J, C, h)')
+
+# Kim2009 forward transform
+print('\nKim2009 Color Appearance Model:')
+kim2009_test_data = []
+test_cases_kim = [
+    # Test case: XYZ, white_XYZ, La, Yb
+    ([19.01, 20.0, 21.78], d65_white_xyz, 318.31, 20.0),     # Mid-gray, average
+    ([41.24, 21.26, 1.93], d65_white_xyz, 318.31, 20.0),     # Red, average
+    ([35.76, 71.52, 11.92], d65_white_xyz, 318.31, 20.0),    # Green, average
+    ([18.05, 7.22, 95.05], d65_white_xyz, 318.31, 20.0),     # Blue, average
+    ([19.01, 20.0, 21.78], d65_white_xyz, 318.31, 5.0),      # Mid-gray, dim
+    ([41.24, 21.26, 1.93], d65_white_xyz, 318.31, 0.5),      # Red, dark
+    (d65_white_xyz, d65_white_xyz, 318.31, 20.0),             # White point
+    ([0.1, 0.1, 0.1], d65_white_xyz, 318.31, 20.0),          # Near-black
+]
+
+for xyz_in, xyz_w, La, Yb in test_cases_kim:
+    xyz_arr = np.array(xyz_in)
+    xyz_w_arr = np.array(xyz_w)
+
+    # Kim2009 with default media (CRT) and average surround
+    correlates = colour.XYZ_to_Kim2009(
+        xyz_arr, xyz_w_arr, La,
+        media=colour.MEDIA_PARAMETERS_KIM2009['CRT Displays'],
+        surround=colour.VIEWING_CONDITIONS_KIM2009['Average']
+    )
+
+    # Store: XYZ_in(3), XYZ_w(3), La, Yb, J, C, h (total 12 values)
+    kim2009_test_data.extend(xyz_arr.tolist())
+    kim2009_test_data.extend(xyz_w_arr.tolist())
+    kim2009_test_data.extend([La, Yb])
+    kim2009_test_data.extend([correlates.J, correlates.C, correlates.h])
+
+write_ref('kim2009', kim2009_test_data, 'Kim2009 test data (XYZ_in, XYZ_w, La, Yb, J, C, h)')
+
 # ================================================================
 # Chromatic Adaptation (CAT) Reference Values
 # ================================================================
