@@ -2216,6 +2216,16 @@ try:
         f.write(','.join(formatted_values) + '\n')
     print(f"  {filename} (3x3 matrix, 9 values)")
 
+    # CAT16 inverse matrix
+    cat16_inv_matrix = np.linalg.inv(cat16_matrix)
+    filename = f'{DATA_DIR}/matrices/cat_cat16_inv.csv'
+    ensure_dir(filename)
+    with open(filename, 'w', newline='') as f:
+        flat_matrix = cat16_inv_matrix.flatten()
+        formatted_values = [format_scalar(v) for v in flat_matrix]
+        f.write(','.join(formatted_values) + '\n')
+    print(f"  {filename} (3x3 inverse matrix, 9 values)")
+
     # Extended CAT matrices
     print("\nGenerating extended CAT matrices...")
 

@@ -1465,6 +1465,178 @@ int alwan_hunt_forward(alwan_vec3 const *xyz,
                        alwan_hunt_correlates *out);
 
 /* ----------------------------------------------------------------
+ * Hellwig2022 Color Appearance Model
+ * Based on Hellwig and Fairchild (2022)
+ * Improved CAM16 with Helmholtz-Kohlrausch effect support
+ * ---------------------------------------------------------------- */
+
+/* Hellwig2022 uses same surround conditions as CIECAM02/CAM16 */
+typedef enum {
+    ALWAN_HELLWIG2022_SURROUND_AVERAGE = 0,  /* Average surround (F=1.0, c=0.69, Nc=1.0) */
+    ALWAN_HELLWIG2022_SURROUND_DIM = 1,      /* Dim surround (F=0.9, c=0.59, Nc=0.95) */
+    ALWAN_HELLWIG2022_SURROUND_DARK = 2      /* Dark surround (F=0.8, c=0.525, Nc=0.8) */
+} alwan_hellwig2022_surround;
+
+/* Hellwig2022 viewing conditions */
+typedef struct {
+    alwan_vec3 white_xyz;                      /* Reference white in XYZ (Y typically 100) */
+    alwan_scalar adapting_luminance;           /* Luminance of adapting field (La) in cd/m² */
+    alwan_scalar background_luminance;         /* Relative luminance of background (Yb/Yw, typically 0.2) */
+    alwan_hellwig2022_surround surround;       /* Viewing surround condition */
+    int discount_illuminant;                   /* 1 to discount illuminant, 0 otherwise */
+} alwan_hellwig2022_viewing_conditions;
+
+/* Hellwig2022 appearance correlates */
+typedef struct {
+    alwan_scalar J;  /* Lightness (0-100) */
+    alwan_scalar C;  /* Chroma (0+) */
+    alwan_scalar h;  /* Hue angle (0-360 degrees) */
+    alwan_scalar s;  /* Saturation (0+) */
+    alwan_scalar Q;  /* Brightness (0+) */
+    alwan_scalar M;  /* Colorfulness (0+) */
+    alwan_scalar H;  /* Hue quadrature (0-400) */
+} alwan_hellwig2022_correlates;
+
+/* Hellwig2022 forward transform: XYZ -> appearance correlates */
+int alwan_hellwig2022_forward(alwan_vec3 const *xyz,
+                               alwan_hellwig2022_viewing_conditions const *vc,
+                               alwan_hellwig2022_correlates *out);
+
+/* Hellwig2022 inverse transform: appearance correlates -> XYZ */
+int alwan_hellwig2022_inverse(alwan_hellwig2022_correlates const *correlates,
+                               alwan_hellwig2022_viewing_conditions const *vc,
+                               alwan_vec3 *xyz_out);
+
+/* ----------------------------------------------------------------
+ * Kim2009 Color Appearance Model
+ * Based on Kim, Weyrich and Kautz (2009)
+ * Specialized for rendering applications
+ * ---------------------------------------------------------------- */
+
+/* Kim2009 viewing conditions */
+typedef struct {
+    alwan_vec3 white_xyz;              /* Reference white in XYZ (Y typically 100) */
+    alwan_scalar La;                   /* Adapting luminance (cd/m²) */
+    alwan_scalar Yb;                   /* Background luminance factor */
+    int discount_illuminant;           /* 1 to discount illuminant, 0 otherwise */
+} alwan_kim2009_viewing_conditions;
+
+/* Kim2009 appearance correlates */
+typedef struct {
+    alwan_scalar J;  /* Lightness */
+    alwan_scalar C;  /* Chroma */
+    alwan_scalar h;  /* Hue angle (degrees) */
+} alwan_kim2009_correlates;
+
+/* Kim2009 forward transform: XYZ -> appearance correlates */
+int alwan_kim2009_forward(alwan_vec3 const *xyz,
+                           alwan_kim2009_viewing_conditions const *vc,
+                           alwan_kim2009_correlates *out);
+
+/* Kim2009 inverse transform: appearance correlates -> XYZ */
+int alwan_kim2009_inverse(alwan_kim2009_correlates const *correlates,
+                           alwan_kim2009_viewing_conditions const *vc,
+                           alwan_vec3 *xyz_out);
+
+/* ----------------------------------------------------------------
+ * LLAB Color Appearance Model
+ * Based on Luo, Lo and Kuo (1996)
+ * Cross-media color reproduction model
+ * ---------------------------------------------------------------- */
+
+/* LLAB surround condition */
+typedef enum {
+    ALWAN_LLAB_SURROUND_AVERAGE = 0,  /* Average surround */
+    ALWAN_LLAB_SURROUND_DIM = 1,      /* Dim surround */
+    ALWAN_LLAB_SURROUND_DARK = 2      /* Dark surround */
+} alwan_llab_surround;
+
+/* LLAB viewing conditions */
+typedef struct {
+    alwan_vec3 white_xyz;          /* Reference white in XYZ (Y typically 100) */
+    alwan_vec3 xyz_0;              /* Illuminant of test condition */
+    alwan_vec3 xyz_r;              /* Illuminant of reference condition */
+    alwan_scalar Y_b;              /* Background luminance factor */
+    alwan_llab_surround surround;  /* Viewing surround */
+    int D_factor;                  /* Degree of adaptation (0-1 or auto) */
+} alwan_llab_viewing_conditions;
+
+/* LLAB appearance correlates */
+typedef struct {
+    alwan_scalar L;  /* Lightness */
+    alwan_scalar Ch; /* Chroma */
+    alwan_scalar h;  /* Hue angle (degrees) */
+    alwan_scalar s;  /* Saturation */
+} alwan_llab_correlates;
+
+/* LLAB forward transform: XYZ -> appearance correlates */
+int alwan_llab_forward(alwan_vec3 const *xyz,
+                        alwan_llab_viewing_conditions const *vc,
+                        alwan_llab_correlates *out);
+
+/* ----------------------------------------------------------------
+ * ATD95 Color Vision Model
+ * Based on Guth's ATD (1995)
+ * Advanced temporal dynamics model
+ * ---------------------------------------------------------------- */
+
+/* ATD95 viewing conditions */
+typedef struct {
+    alwan_vec3 white_xyz;          /* Reference white in XYZ */
+    alwan_scalar sigma;            /* Saturation adjustment parameter */
+    alwan_scalar k1;               /* Adaptation parameter 1 */
+    alwan_scalar k2;               /* Adaptation parameter 2 */
+} alwan_atd95_viewing_conditions;
+
+/* ATD95 correlates */
+typedef struct {
+    alwan_scalar H;    /* Hue */
+    alwan_scalar C;    /* Chroma */
+    alwan_scalar Br;   /* Brightness */
+    alwan_scalar A_1;  /* First achromatic response */
+    alwan_scalar T_1;  /* First tritanopic response */
+    alwan_scalar D_1;  /* First deuteranopic response */
+    alwan_scalar A_2;  /* Second achromatic response */
+    alwan_scalar T_2;  /* Second tritanopic response */
+    alwan_scalar D_2;  /* Second deuteranopic response */
+} alwan_atd95_correlates;
+
+/* ATD95 forward transform: XYZ -> correlates */
+int alwan_atd95_forward(alwan_vec3 const *xyz,
+                         alwan_atd95_viewing_conditions const *vc,
+                         alwan_atd95_correlates *out);
+
+/* ----------------------------------------------------------------
+ * Nayatani95 Color Appearance Model
+ * Based on Nayatani et al. (1995)
+ * Japanese color appearance model
+ * ---------------------------------------------------------------- */
+
+/* Nayatani95 viewing conditions */
+typedef struct {
+    alwan_vec3 white_xyz;              /* Reference white in XYZ (Y typically 100) */
+    alwan_scalar L_0;                  /* Absolute luminance of reference white (cd/m²) */
+    alwan_scalar Y_0;                  /* Relative luminance of background */
+    alwan_scalar E_0;                  /* Illuminance of reference field (lux) */
+    alwan_scalar E_0r;                 /* Normalizing factor */
+} alwan_nayatani95_viewing_conditions;
+
+/* Nayatani95 appearance correlates */
+typedef struct {
+    alwan_scalar L_star_N;  /* Perceived lightness */
+    alwan_scalar C;         /* Chroma */
+    alwan_scalar theta;     /* Hue angle (radians) */
+    alwan_scalar S;         /* Saturation */
+    alwan_scalar B_r;       /* Brightness */
+    alwan_scalar L_star_P;  /* Brightness-to-lightness ratio */
+} alwan_nayatani95_correlates;
+
+/* Nayatani95 forward transform: XYZ -> appearance correlates */
+int alwan_nayatani95_forward(alwan_vec3 const *xyz,
+                               alwan_nayatani95_viewing_conditions const *vc,
+                               alwan_nayatani95_correlates *out);
+
+/* ----------------------------------------------------------------
  * M9: Convenience Color Models (HSV, HSL, CMY, CMYK, YCbCr)
  * ---------------------------------------------------------------- */
 
