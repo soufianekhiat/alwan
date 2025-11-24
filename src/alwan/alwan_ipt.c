@@ -17,35 +17,29 @@
  * IPT Constants (Ebner & Fairchild 1998)
  * ---------------------------------------------------------------- */
 
-/* Nonlinearity exponent */
-static alwan_scalar const IPT_EXPONENT = ALWAN_LITERAL(0.43);
+/* Nonlinearity exponent from colour-science */
+static alwan_scalar const IPT_EXPONENT =
+#include "data/ipt_exponent.csv"
+;
 
-/* XYZ (D65) to LMS matrix (Hunt-Pointer-Estevez adapted for D65) */
+/* XYZ (D65) to LMS matrix (Hunt-Pointer-Estevez adapted for D65) from colour-science */
 static alwan_scalar const XYZ_TO_LMS_IPT[9] = {
-    ALWAN_LITERAL( 0.4002),  ALWAN_LITERAL( 0.7075),  ALWAN_LITERAL(-0.0807),
-    ALWAN_LITERAL(-0.2280),  ALWAN_LITERAL( 1.1500),  ALWAN_LITERAL( 0.0612),
-    ALWAN_LITERAL( 0.0000),  ALWAN_LITERAL( 0.0000),  ALWAN_LITERAL( 0.9184)
+#include "data/ipt_xyz_to_lms.csv"
 };
 
-/* LMS to XYZ inverse matrix */
+/* LMS to XYZ inverse matrix from colour-science */
 static alwan_scalar const LMS_TO_XYZ_IPT[9] = {
-    ALWAN_LITERAL( 1.8502429449432054),  ALWAN_LITERAL(-1.1383016378672328),  ALWAN_LITERAL( 0.2384250630894688),
-    ALWAN_LITERAL( 0.3668307319016080),  ALWAN_LITERAL( 0.6438845448402939),  ALWAN_LITERAL(-0.0107152767419020),
-    ALWAN_LITERAL( 0.0000000000000000),  ALWAN_LITERAL( 0.0000000000000000),  ALWAN_LITERAL( 1.0888661444138960)
+#include "data/ipt_lms_to_xyz.csv"
 };
 
-/* LMS' to IPT matrix */
+/* LMS' to IPT matrix from colour-science */
 static alwan_scalar const LMS_P_TO_IPT[9] = {
-    ALWAN_LITERAL( 0.4000),  ALWAN_LITERAL( 0.4000),  ALWAN_LITERAL( 0.2000),
-    ALWAN_LITERAL( 4.4550),  ALWAN_LITERAL(-4.8510),  ALWAN_LITERAL( 0.3960),
-    ALWAN_LITERAL( 0.8056),  ALWAN_LITERAL( 0.3572),  ALWAN_LITERAL(-1.1628)
+#include "data/ipt_lms_p_to_ipt.csv"
 };
 
-/* IPT to LMS' inverse matrix */
+/* IPT to LMS' inverse matrix from colour-science */
 static alwan_scalar const IPT_TO_LMS_P[9] = {
-    ALWAN_LITERAL( 1.0000000000000000),  ALWAN_LITERAL( 0.0975689305146139),  ALWAN_LITERAL( 0.2052264331645916),
-    ALWAN_LITERAL( 1.0000000000000000),  ALWAN_LITERAL(-0.1138764854731155),  ALWAN_LITERAL( 0.1332377424266390),
-    ALWAN_LITERAL( 1.0000000000000000),  ALWAN_LITERAL( 0.0326151099170663),  ALWAN_LITERAL(-0.6768871830691793)
+#include "data/ipt_ipt_to_lms_p.csv"
 };
 
 /* ----------------------------------------------------------------

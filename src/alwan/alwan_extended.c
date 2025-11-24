@@ -377,16 +377,14 @@ void alwan_rgb_to_ihls(alwan_vec3 const *rgb, alwan_vec3 *ihls) {
     alwan_scalar min_val = alwan_min3(r, g, b);
     alwan_scalar delta = max_val - min_val;
 
-    /* Transform RGB to YC₁C₂ using MATRIX_RGB_TO_YC_1_C_2
-     * Matrix:
-     *   [  0.2126     0.7152     0.0722  ]
-     *   [  1.0      -0.5       -0.5     ]
-     *   [  0.0      -√3/2       √3/2    ]
-     * where √3/2 = 0.8660254037844386
-     */
-    alwan_scalar Y = ALWAN_LITERAL(0.2126) * r + ALWAN_LITERAL(0.7152) * g + ALWAN_LITERAL(0.0722) * b;
-    alwan_scalar C_1 = r - ALWAN_LITERAL(0.5) * g - ALWAN_LITERAL(0.5) * b;
-    alwan_scalar C_2 = -ALWAN_LITERAL(0.8660254037844386) * g + ALWAN_LITERAL(0.8660254037844386) * b;
+    /* Transform RGB to YC₁C₂ using MATRIX_RGB_TO_YC_1_C_2 from colour-science */
+    static alwan_scalar const IHLS_RGB_TO_YC1C2[9] = {
+#include "data/ihls_rgb_to_yc1c2.csv"
+    };
+
+    alwan_scalar Y = IHLS_RGB_TO_YC1C2[0] * r + IHLS_RGB_TO_YC1C2[1] * g + IHLS_RGB_TO_YC1C2[2] * b;
+    alwan_scalar C_1 = IHLS_RGB_TO_YC1C2[3] * r + IHLS_RGB_TO_YC1C2[4] * g + IHLS_RGB_TO_YC1C2[5] * b;
+    alwan_scalar C_2 = IHLS_RGB_TO_YC1C2[6] * r + IHLS_RGB_TO_YC1C2[7] * g + IHLS_RGB_TO_YC1C2[8] * b;
 
     /* Compute C = √(C₁² + C₂²) */
     alwan_scalar C = ALWAN_SQRT(C_1 * C_1 + C_2 * C_2);
@@ -443,14 +441,14 @@ void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_vec3 *rgb) {
     alwan_scalar C_1 = C * ALWAN_COS(H);
     alwan_scalar C_2 = -C * ALWAN_SIN(H);
 
-    /* Transform [Y, C₁, C₂] to RGB using MATRIX_YC_1_C_2_TO_RGB:
-     *   [[ 1.0         0.787399999999999878      0.371236223088929396]
-     *    [ 1.0        -0.212600000000000039     -0.206114046100696419]
-     *    [ 1.0        -0.212600000000000011      0.948586492278555182]]
-     */
-    rgb->v[0] = Y + ALWAN_LITERAL(0.787399999999999878) * C_1 + ALWAN_LITERAL(0.371236223088929396) * C_2;
-    rgb->v[1] = Y - ALWAN_LITERAL(0.212600000000000039) * C_1 - ALWAN_LITERAL(0.206114046100696419) * C_2;
-    rgb->v[2] = Y - ALWAN_LITERAL(0.212600000000000011) * C_1 + ALWAN_LITERAL(0.948586492278555182) * C_2;
+    /* Transform [Y, C₁, C₂] to RGB using MATRIX_YC_1_C_2_TO_RGB from colour-science */
+    static alwan_scalar const IHLS_YC1C2_TO_RGB[9] = {
+#include "data/ihls_yc1c2_to_rgb.csv"
+    };
+
+    rgb->v[0] = IHLS_YC1C2_TO_RGB[0] * Y + IHLS_YC1C2_TO_RGB[1] * C_1 + IHLS_YC1C2_TO_RGB[2] * C_2;
+    rgb->v[1] = IHLS_YC1C2_TO_RGB[3] * Y + IHLS_YC1C2_TO_RGB[4] * C_1 + IHLS_YC1C2_TO_RGB[5] * C_2;
+    rgb->v[2] = IHLS_YC1C2_TO_RGB[6] * Y + IHLS_YC1C2_TO_RGB[7] * C_1 + IHLS_YC1C2_TO_RGB[8] * C_2;
 }
 
 /* ================================================================
@@ -458,10 +456,10 @@ void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_vec3 *rgb) {
  * XYZ <-> hdr-CIELAB conversions
  * ================================================================ */
 
-/* D65 white point for HDR calculations (Y=1 scale, matches colour-science) */
-static alwan_vec3 const HDR_D65_WHITE = {
-    { ALWAN_LITERAL(0.95045593), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.08905775) }
-};
+/* D65 white point for HDR calculations (Y=1 scale) from colour-science */
+static alwan_vec3 const HDR_D65_WHITE = {{
+#include "data/hdr_d65_white.csv"
+}};
 
 /* HDR-CIELAB f function (modified for HDR) */
 static alwan_scalar hdr_lab_f(alwan_scalar t, alwan_scalar epsilon, alwan_scalar kappa) {
@@ -706,11 +704,9 @@ void alwan_hdr_ipt_to_xyz(alwan_vec3 const *hdr_ipt, alwan_vec3 *xyz) {
  * Implements scaled nonlinearity: (LMS / scale) ^ 0.427
  * ================================================================ */
 
-/* LMS scaling factors for IgPgTg */
+/* LMS scaling factors for IgPgTg from colour-science */
 static alwan_scalar const IGPGTG_LMS_SCALE[3] = {
-    ALWAN_LITERAL(18.36),
-    ALWAN_LITERAL(21.46),
-    ALWAN_LITERAL(19435.0)
+#include "data/igpgtg_lms_scale.csv"
 };
 
 void alwan_xyz_to_igpgtg(alwan_vec3 const *xyz, alwan_vec3 *igpgtg) {

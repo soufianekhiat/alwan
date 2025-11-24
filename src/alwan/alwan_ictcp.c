@@ -17,64 +17,44 @@
  * ICtCp Transformation Matrices
  * ---------------------------------------------------------------- */
 
-/* BT.2020 RGB to LMS cone response matrix (same for PQ and HLG)
- * From ITU-R BT.2100, converted from integer form [[1688, 2146, 262], [683, 2951, 462], [99, 309, 3688]] / 4096 */
+/* BT.2020 RGB to LMS cone response matrix (same for PQ and HLG) from colour-science */
 static alwan_scalar const RGB_TO_LMS[9] = {
-    ALWAN_LITERAL(0.412109375),     ALWAN_LITERAL(0.52392578125),   ALWAN_LITERAL(0.06396484375),
-    ALWAN_LITERAL(0.166748046875),  ALWAN_LITERAL(0.720458984375),  ALWAN_LITERAL(0.11279296875),
-    ALWAN_LITERAL(0.024169921875),  ALWAN_LITERAL(0.075439453125),  ALWAN_LITERAL(0.900390625)
+#include "data/ictcp_rgb_to_lms.csv"
 };
 
-/* LMS to BT.2020 RGB inverse matrix (computed inverse of RGB_TO_LMS) */
+/* LMS to BT.2020 RGB inverse matrix from colour-science */
 static alwan_scalar const LMS_TO_RGB[9] = {
-    ALWAN_LITERAL(+3.43660669433308),  ALWAN_LITERAL(-2.50645211865627),  ALWAN_LITERAL(+0.06984542432319),
-    ALWAN_LITERAL(-0.79132955559893),  ALWAN_LITERAL(+1.98360045179229),  ALWAN_LITERAL(-0.19227089619336),
-    ALWAN_LITERAL(-0.02594989969059),  ALWAN_LITERAL(-0.09891371471173),  ALWAN_LITERAL(+1.12486361440232)
+#include "data/ictcp_lms_to_rgb.csv"
 };
 
-/* LMS' to ICtCp matrix for PQ (Dolby 2016, ITU-R BT.2100-1 PQ, ITU-R BT.2100-2 PQ)
- * From ITU-R BT.2100, converted from integer form [[2048, 2048, 0], [6610, -13613, 7003], [17933, -17390, -543]] / 4096 */
+/* LMS' to ICtCp matrix for PQ (Dolby 2016, ITU-R BT.2100) from colour-science */
 static alwan_scalar const LMS_P_TO_ICTCP_PQ[9] = {
-    ALWAN_LITERAL(0.5),              ALWAN_LITERAL(0.5),              ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(1.61376953125),    ALWAN_LITERAL(-3.323486328125),  ALWAN_LITERAL(1.709716796875),
-    ALWAN_LITERAL(4.378173828125),   ALWAN_LITERAL(-4.245605468750),  ALWAN_LITERAL(-0.132568359375)
+#include "data/ictcp_lms_p_to_ictcp_pq.csv"
 };
 
-/* ICtCp to LMS' inverse matrix for PQ (proper inverse of LMS_P_TO_ICTCP_PQ) */
+/* ICtCp to LMS' inverse matrix for PQ from colour-science */
 static alwan_scalar const ICTCP_TO_LMS_P_PQ[9] = {
-    ALWAN_LITERAL(+1.0),             ALWAN_LITERAL(+0.00860904030),   ALWAN_LITERAL(+0.11102962631),
-    ALWAN_LITERAL(+1.0),             ALWAN_LITERAL(-0.00860904030),   ALWAN_LITERAL(-0.11102962631),
-    ALWAN_LITERAL(+1.0),             ALWAN_LITERAL(+0.56003133930),   ALWAN_LITERAL(-0.32062717496)
+#include "data/ictcp_ictcp_to_lms_p_pq.csv"
 };
 
-/* LMS' to ICtCp matrix for HLG (ITU-R BT.2100-2 HLG)
- * From ITU-R BT.2100, converted from integer form [[2048, 2048, 0], [3625, -7465, 3840], [9500, -9212, -288]] / 4096 */
+/* LMS' to ICtCp matrix for HLG (ITU-R BT.2100) from colour-science */
 static alwan_scalar const LMS_P_TO_ICTCP_HLG[9] = {
-    ALWAN_LITERAL(0.5),              ALWAN_LITERAL(0.5),              ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(0.885009765625),   ALWAN_LITERAL(-1.822509765625),  ALWAN_LITERAL(0.9375),
-    ALWAN_LITERAL(2.31933593750),    ALWAN_LITERAL(-2.24902343750),   ALWAN_LITERAL(-0.0703125)
+#include "data/ictcp_lms_p_to_ictcp_hlg.csv"
 };
 
-/* ICtCp to LMS' inverse matrix for HLG (proper inverse of LMS_P_TO_ICTCP_HLG) */
+/* ICtCp to LMS' inverse matrix for HLG from colour-science */
 static alwan_scalar const ICTCP_TO_LMS_P_HLG[9] = {
-    ALWAN_LITERAL(+1.0),             ALWAN_LITERAL(+0.01571858088),   ALWAN_LITERAL(+0.20958106627),
-    ALWAN_LITERAL(+1.0),             ALWAN_LITERAL(-0.01571858088),   ALWAN_LITERAL(-0.20958106627),
-    ALWAN_LITERAL(+1.0),             ALWAN_LITERAL(+1.02127107553),   ALWAN_LITERAL(-0.60527449211)
+#include "data/ictcp_ictcp_to_lms_p_hlg.csv"
 };
 
-/* XYZ (D65) to BT.2020 RGB matrix
- * Computed from BT.2020 primaries: R(0.708, 0.292), G(0.170, 0.797), B(0.131, 0.046), White D65(0.3127, 0.3290) */
+/* XYZ (D65) to BT.2020 RGB matrix from colour-science */
 static alwan_scalar const XYZ_TO_BT2020[9] = {
-    ALWAN_LITERAL(+1.71665118797),   ALWAN_LITERAL(-0.35567078377),  ALWAN_LITERAL(-0.25336628137),
-    ALWAN_LITERAL(-0.66668351832),   ALWAN_LITERAL(+1.61648123664),  ALWAN_LITERAL(+0.01576854581),
-    ALWAN_LITERAL(+0.01763985744),   ALWAN_LITERAL(-0.04277061325),  ALWAN_LITERAL(+0.94210312413)
+#include "data/ictcp_xyz_to_bt2020.csv"
 };
 
-/* BT.2020 RGB to XYZ (D65) matrix (inverse of XYZ_TO_BT2020) */
+/* BT.2020 RGB to XYZ (D65) matrix from colour-science */
 static alwan_scalar const BT2020_TO_XYZ[9] = {
-    ALWAN_LITERAL(+0.63695804830),   ALWAN_LITERAL(+0.14461690358),  ALWAN_LITERAL(+0.16888097516),
-    ALWAN_LITERAL(+0.26270021202),   ALWAN_LITERAL(+0.67799807421),  ALWAN_LITERAL(+0.05930171377),
-    ALWAN_LITERAL(+0.00000000000),   ALWAN_LITERAL(+0.02807269011),  ALWAN_LITERAL(+1.06098505791)
+#include "data/ictcp_bt2020_to_xyz.csv"
 };
 
 /* ----------------------------------------------------------------

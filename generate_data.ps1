@@ -2754,6 +2754,125 @@ except Exception as e:
     import traceback
     traceback.print_exc(file=sys.stderr)
 
+# ============================================================================
+# Transformation Matrices for Color Spaces
+# ============================================================================
+print("\nGenerating transformation matrices...")
+
+def write_matrix_csv(filepath, matrix, description):
+    """Write 3x3 matrix to CSV file"""
+    ensure_dir(filepath)
+    import numpy as np
+    flat = np.array(matrix).flatten()
+    with open(filepath, 'w', newline='') as f:
+        f.write(', '.join([format_scalar(x) for x in flat]))
+    print(f"  {filepath}")
+
+def write_vec3_csv(filepath, vec, description):
+    """Write 3-element vector to CSV file"""
+    ensure_dir(filepath)
+    import numpy as np
+    with open(filepath, 'w', newline='') as f:
+        f.write(', '.join([format_scalar(x) for x in vec]))
+    print(f"  {filepath}")
+
+def write_scalar_csv(filepath, value, description):
+    """Write single scalar to CSV file"""
+    ensure_dir(filepath)
+    with open(filepath, 'w', newline='') as f:
+        f.write(format_scalar(value))
+    print(f"  {filepath}")
+
+# IHLS Matrices
+print("  IHLS matrices...")
+try:
+    from colour.models.rgb.hanbury2003 import MATRIX_RGB_TO_YC_1_C_2, MATRIX_YC_1_C_2_TO_RGB
+    write_matrix_csv(f'{DATA_DIR}/ihls_rgb_to_yc1c2.csv', MATRIX_RGB_TO_YC_1_C_2,
+                     "IHLS RGB to YC1C2 transformation matrix")
+    write_matrix_csv(f'{DATA_DIR}/ihls_yc1c2_to_rgb.csv', MATRIX_YC_1_C_2_TO_RGB,
+                     "IHLS YC1C2 to RGB transformation matrix (inverse)")
+except Exception as e:
+    print(f"    Warning: Could not generate IHLS matrices: {e}")
+
+# IgPgTg LMS Scale
+print("  IgPgTg LMS scale...")
+try:
+    import numpy as np
+    IGPGTG_LMS_SCALE = np.array([18.36, 21.46, 19435.0])
+    write_vec3_csv(f'{DATA_DIR}/igpgtg_lms_scale.csv', IGPGTG_LMS_SCALE,
+                   "IgPgTg LMS scaling factors")
+except Exception as e:
+    print(f"    Warning: Could not generate IgPgTg LMS scale: {e}")
+
+# HDR D65 White Point
+print("  HDR D65 white point...")
+try:
+    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+    d65_xyz = colour.xy_to_XYZ(d65_xy)  # Y=1 scale
+    write_vec3_csv(f'{DATA_DIR}/hdr_d65_white.csv', d65_xyz,
+                   "D65 white point for HDR calculations (Y=1 scale)")
+except Exception as e:
+    print(f"    Warning: Could not generate HDR D65 white point: {e}")
+
+# IPT Matrices
+print("  IPT matrices...")
+try:
+    from colour.models.ipt import (
+        MATRIX_IPT_XYZ_TO_LMS,
+        MATRIX_IPT_LMS_TO_XYZ,
+        MATRIX_IPT_LMS_P_TO_IPT,
+        MATRIX_IPT_IPT_TO_LMS_P
+    )
+
+    IPT_EXPONENT = 0.43
+    write_scalar_csv(f'{DATA_DIR}/ipt_exponent.csv', IPT_EXPONENT, "IPT color space exponent")
+    write_matrix_csv(f'{DATA_DIR}/ipt_xyz_to_lms.csv', MATRIX_IPT_XYZ_TO_LMS,
+                     "IPT XYZ to LMS transformation matrix (Hunt-Pointer-Estevez)")
+    write_matrix_csv(f'{DATA_DIR}/ipt_lms_to_xyz.csv', MATRIX_IPT_LMS_TO_XYZ,
+                     "IPT LMS to XYZ transformation matrix (inverse)")
+    write_matrix_csv(f'{DATA_DIR}/ipt_lms_p_to_ipt.csv', MATRIX_IPT_LMS_P_TO_IPT,
+                     "IPT LMS' to IPT transformation matrix")
+    write_matrix_csv(f'{DATA_DIR}/ipt_ipt_to_lms_p.csv', MATRIX_IPT_IPT_TO_LMS_P,
+                     "IPT IPT to LMS' transformation matrix (inverse)")
+except Exception as e:
+    print(f"    Warning: Could not generate IPT matrices: {e}")
+
+# ICtCp Matrices
+print("  ICtCp matrices...")
+try:
+    from colour.models.rgb.ictcp import (
+        MATRIX_ICTCP_RGB_TO_LMS,
+        MATRIX_ICTCP_LMS_TO_RGB,
+        MATRIX_ICTCP_LMS_P_TO_ICTCP,
+        MATRIX_ICTCP_ICTCP_TO_LMS_P,
+        MATRIX_ICTCP_LMS_P_TO_ICTCP_BT2100_HLG_2,
+        MATRIX_ICTCP_ICTCP_TO_LMS_P_BT2100_HLG_2
+    )
+
+    write_matrix_csv(f'{DATA_DIR}/ictcp_rgb_to_lms.csv', MATRIX_ICTCP_RGB_TO_LMS,
+                     "ICtCp RGB to LMS transformation matrix")
+    write_matrix_csv(f'{DATA_DIR}/ictcp_lms_to_rgb.csv', MATRIX_ICTCP_LMS_TO_RGB,
+                     "ICtCp LMS to RGB transformation matrix (inverse)")
+    write_matrix_csv(f'{DATA_DIR}/ictcp_lms_p_to_ictcp_pq.csv', MATRIX_ICTCP_LMS_P_TO_ICTCP,
+                     "ICtCp LMS' to ICtCp PQ transformation matrix")
+    write_matrix_csv(f'{DATA_DIR}/ictcp_ictcp_to_lms_p_pq.csv', MATRIX_ICTCP_ICTCP_TO_LMS_P,
+                     "ICtCp ICtCp PQ to LMS' transformation matrix (inverse)")
+    write_matrix_csv(f'{DATA_DIR}/ictcp_lms_p_to_ictcp_hlg.csv', MATRIX_ICTCP_LMS_P_TO_ICTCP_BT2100_HLG_2,
+                     "ICtCp LMS' to ICtCp HLG transformation matrix")
+    write_matrix_csv(f'{DATA_DIR}/ictcp_ictcp_to_lms_p_hlg.csv', MATRIX_ICTCP_ICTCP_TO_LMS_P_BT2100_HLG_2,
+                     "ICtCp ICtCp HLG to LMS' transformation matrix (inverse)")
+
+    # BT.2020 RGB primaries
+    bt2020 = colour.RGB_COLOURSPACES['ITU-R BT.2020']
+    write_matrix_csv(f'{DATA_DIR}/ictcp_xyz_to_bt2020.csv', bt2020.matrix_XYZ_to_RGB,
+                     "ICtCp XYZ to BT.2020 RGB transformation matrix")
+    write_matrix_csv(f'{DATA_DIR}/ictcp_bt2020_to_xyz.csv', bt2020.matrix_RGB_to_XYZ,
+                     "ICtCp BT.2020 RGB to XYZ transformation matrix")
+except Exception as e:
+    print(f"    Warning: Could not generate ICtCp matrices: {e}")
+
+print("  Transformation matrices generation complete!")
+
 print("\nData generation complete!")
 "@
 
