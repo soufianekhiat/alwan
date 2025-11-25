@@ -260,8 +260,8 @@ static int test_gamut_volume_ratio(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     /* BT.2020 primaries (D65 white point) */
     bt2020.primaries_xy[0] = ALWAN_LITERAL(0.708);
@@ -272,8 +272,8 @@ static int test_gamut_volume_ratio(void) {
     bt2020.primaries_xy[5] = ALWAN_LITERAL(0.046);
     bt2020.white_xy[0] = ALWAN_LITERAL(0.31271);
     bt2020.white_xy[1] = ALWAN_LITERAL(0.32902);
-    bt2020.oetf_name = NULL;
-    bt2020.eotf_name = NULL;
+    bt2020.oetf = ALWAN_TF_LINEAR;
+    bt2020.eotf = ALWAN_TF_LINEAR;
 
     alwan_scalar ratio_bt2020_srgb, ratio_srgb_bt2020;
 
@@ -311,8 +311,8 @@ static int test_gamut_coverage(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     /* BT.2020 primaries (D65 white point) */
     bt2020.primaries_xy[0] = ALWAN_LITERAL(0.708);
@@ -323,8 +323,8 @@ static int test_gamut_coverage(void) {
     bt2020.primaries_xy[5] = ALWAN_LITERAL(0.046);
     bt2020.white_xy[0] = ALWAN_LITERAL(0.31271);
     bt2020.white_xy[1] = ALWAN_LITERAL(0.32902);
-    bt2020.oetf_name = NULL;
-    bt2020.eotf_name = NULL;
+    bt2020.oetf = ALWAN_TF_LINEAR;
+    bt2020.eotf = ALWAN_TF_LINEAR;
 
     alwan_scalar coverage_srgb_by_bt2020, coverage_bt2020_by_srgb;
 
@@ -362,8 +362,8 @@ static int test_gamut_map_simple_clip(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with out-of-gamut color (oversaturated red) */
     alwan_vec3 rgb_in, rgb_out;
@@ -396,8 +396,8 @@ static int test_gamut_map_adaptive_l0(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated green */
     alwan_vec3 rgb_in, rgb_out;
@@ -436,8 +436,8 @@ static int test_gamut_map_adaptive_cusp(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated blue */
     alwan_vec3 rgb_in, rgb_out;
@@ -476,8 +476,8 @@ static int test_gamut_map_chroma_compress(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated cyan */
     alwan_vec3 rgb_in, rgb_out;
@@ -516,8 +516,8 @@ static int test_gamut_map_in_gamut(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with valid in-gamut color */
     alwan_vec3 rgb_in, rgb_out;

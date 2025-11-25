@@ -24,8 +24,8 @@ static alwan_rgb_space_desc get_srgb_desc(void) {
     /* D65 white point */
     desc.white_xy[0] = ALWAN_LITERAL(0.3127);
     desc.white_xy[1] = ALWAN_LITERAL(0.3290);
-    desc.oetf_name = "srgb";
-    desc.eotf_name = "srgb";
+    desc.oetf = ALWAN_TF_SRGB;
+    desc.eotf = ALWAN_TF_SRGB;
     return desc;
 }
 
@@ -41,8 +41,8 @@ static alwan_rgb_space_desc get_display_p3_desc(void) {
     /* D65 white point */
     desc.white_xy[0] = ALWAN_LITERAL(0.3127);
     desc.white_xy[1] = ALWAN_LITERAL(0.3290);
-    desc.oetf_name = NULL;
-    desc.eotf_name = NULL;
+    desc.oetf = ALWAN_TF_LINEAR;
+    desc.eotf = ALWAN_TF_LINEAR;
     return desc;
 }
 
@@ -58,8 +58,8 @@ static alwan_rgb_space_desc get_bt2020_desc(void) {
     /* D65 white point */
     desc.white_xy[0] = ALWAN_LITERAL(0.3127);
     desc.white_xy[1] = ALWAN_LITERAL(0.3290);
-    desc.oetf_name = NULL;
-    desc.eotf_name = NULL;
+    desc.oetf = ALWAN_TF_LINEAR;
+    desc.eotf = ALWAN_TF_LINEAR;
     return desc;
 }
 
@@ -75,8 +75,8 @@ static alwan_rgb_space_desc get_acescg_desc(void) {
     /* D60 white point */
     desc.white_xy[0] = ALWAN_LITERAL(0.32168);
     desc.white_xy[1] = ALWAN_LITERAL(0.33767);
-    desc.oetf_name = NULL;
-    desc.eotf_name = NULL;
+    desc.oetf = ALWAN_TF_LINEAR;
+    desc.eotf = ALWAN_TF_LINEAR;
     return desc;
 }
 

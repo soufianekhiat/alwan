@@ -308,14 +308,14 @@ static int test_ncs_parsing(void) {
  * ---------------------------------------------------------------- */
 
 static int test_rgb_space_lookup(void) {
-    TEST_START("RGB space lookup by name");
+    TEST_START("RGB space lookup by enum");
 
     alwan_scalar primaries[6];
     alwan_vec2 white_point;
     int status;
 
     /* Test sRGB */
-    status = alwan_rgb_space_by_name("sRGB", primaries, &white_point);
+    status = alwan_rgb_space_by_enum(ALWAN_RGB_SPACE_SRGB, primaries, &white_point);
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to find sRGB: error %d", status);
     }
@@ -343,6 +343,16 @@ static int test_rgb_space_various(void) {
     alwan_vec2 white_point;
     int status;
 
+    alwan_rgb_space spaces[] = {
+        ALWAN_RGB_SPACE_ADOBE_RGB_1998,
+        ALWAN_RGB_SPACE_PROPHOTO_RGB,
+        ALWAN_RGB_SPACE_DCI_P3,
+        ALWAN_RGB_SPACE_DISPLAY_P3,
+        ALWAN_RGB_SPACE_BT2020,
+        ALWAN_RGB_SPACE_ACES2065_1,
+        ALWAN_RGB_SPACE_ACESCG,
+    };
+
     char const *space_names[] = {
         "Adobe RGB",
         "ProPhoto RGB",
@@ -353,10 +363,10 @@ static int test_rgb_space_various(void) {
         "ACES AP1",
     };
 
-    size_t num_spaces = sizeof(space_names) / sizeof(space_names[0]);
+    size_t num_spaces = sizeof(spaces) / sizeof(spaces[0]);
 
     for (size_t i = 0; i < num_spaces; i++) {
-        status = alwan_rgb_space_by_name(space_names[i], primaries, &white_point);
+        status = alwan_rgb_space_by_enum(spaces[i], primaries, &white_point);
         if (status != ALWAN_OK) {
             TEST_FAIL("Failed to find %s: error %d", space_names[i], status);
         }
@@ -382,29 +392,29 @@ static int test_rgb_space_various(void) {
 }
 
 static int test_rgb_space_transfer_functions(void) {
-    TEST_START("RGB space transfer function names");
+    TEST_START("RGB space transfer functions");
 
-    char tf_name[64];
+    alwan_transfer_function oetf, eotf;
     int status;
 
     /* Test sRGB */
-    status = alwan_rgb_space_tf_name("sRGB", tf_name, sizeof(tf_name));
+    status = alwan_rgb_space_get_tfs(ALWAN_RGB_SPACE_SRGB, &oetf, &eotf);
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to get sRGB TF: error %d", status);
     }
 
-    if (strcmp(tf_name, "sRGB") != 0) {
-        TEST_FAIL("Expected sRGB TF name 'sRGB', got '%s'", tf_name);
+    if (oetf != ALWAN_TF_SRGB || eotf != ALWAN_TF_SRGB) {
+        TEST_FAIL("Expected sRGB TF, got oetf=%d eotf=%d", oetf, eotf);
     }
 
     /* Test Adobe RGB */
-    status = alwan_rgb_space_tf_name("Adobe RGB", tf_name, sizeof(tf_name));
+    status = alwan_rgb_space_get_tfs(ALWAN_RGB_SPACE_ADOBE_RGB_1998, &oetf, &eotf);
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to get Adobe RGB TF: error %d", status);
     }
 
-    if (strcmp(tf_name, "Gamma 2.2") != 0) {
-        TEST_FAIL("Expected Adobe RGB TF name 'Gamma 2.2', got '%s'", tf_name);
+    if (oetf != ALWAN_TF_GAMMA22 || eotf != ALWAN_TF_GAMMA22) {
+        TEST_FAIL("Expected Gamma 2.2 TF, got oetf=%d eotf=%d", oetf, eotf);
     }
 
     TEST_PASS();
@@ -412,19 +422,20 @@ static int test_rgb_space_transfer_functions(void) {
 }
 
 static int test_rgb_space_not_found(void) {
-    TEST_START("RGB space not found handling");
+    TEST_START("RGB space invalid enum handling");
 
     alwan_scalar primaries[6];
     alwan_vec2 white_point;
     int status;
 
-    status = alwan_rgb_space_by_name("NonexistentSpace", primaries, &white_point);
+    /* Test with out-of-range enum value */
+    status = alwan_rgb_space_by_enum((alwan_rgb_space)9999, primaries, &white_point);
     if (status == ALWAN_OK) {
-        TEST_FAIL("Expected error for nonexistent space");
+        TEST_FAIL("Expected error for invalid space enum");
     }
 
-    char tf_name[64];
-    status = alwan_rgb_space_tf_name("NonexistentSpace", tf_name, sizeof(tf_name));
+    alwan_transfer_function oetf, eotf;
+    status = alwan_rgb_space_get_tfs((alwan_rgb_space)9999, &oetf, &eotf);
     if (status == ALWAN_OK) {
         TEST_FAIL("Expected error for nonexistent space TF");
     }

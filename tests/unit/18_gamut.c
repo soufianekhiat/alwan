@@ -26,8 +26,8 @@ static int test_gamut_volume_srgb(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.3127);
     srgb.white_xy[1] = ALWAN_LITERAL(0.3290);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     alwan_scalar volume;
     int status = alwan_gamut_volume_mc(&srgb, 100000, 42, &volume);
@@ -54,8 +54,8 @@ static int test_gamut_volume_bt2020(void) {
     bt2020.primaries_xy[5] = ALWAN_LITERAL(0.046);
     bt2020.white_xy[0] = ALWAN_LITERAL(0.3127);
     bt2020.white_xy[1] = ALWAN_LITERAL(0.3290);
-    bt2020.oetf_name = NULL;
-    bt2020.eotf_name = NULL;
+    bt2020.oetf = ALWAN_TF_LINEAR;
+    bt2020.eotf = ALWAN_TF_LINEAR;
 
     alwan_scalar volume;
     int status = alwan_gamut_volume_mc(&bt2020, 100000, 42, &volume);
@@ -81,8 +81,8 @@ static int test_gamut_volume_reproducible(void) {
     srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
     srgb.white_xy[0] = ALWAN_LITERAL(0.3127);
     srgb.white_xy[1] = ALWAN_LITERAL(0.3290);
-    srgb.oetf_name = NULL;
-    srgb.eotf_name = NULL;
+    srgb.oetf = ALWAN_TF_LINEAR;
+    srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Same seed should give same result */
     alwan_scalar volume1, volume2;
