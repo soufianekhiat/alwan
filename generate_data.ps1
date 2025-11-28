@@ -78,7 +78,9 @@ $dataScripts = @(
     @{Name="Extended IPT/ICtCp Matrices"; Script="gendata/data/ipt_ictcp_extended.py"; Priority=1},
     @{Name="Extended Color Spaces (IgPgTg/ICAcB/IHLS/HDR/Locus)"; Script="gendata/data/extended_colorspaces.py"; Priority=1},
     @{Name="Comprehensive Missing Data (CAT/Illuminants/Test Samples)"; Script="gendata/data/comprehensive_missing.py"; Priority=1},
-    @{Name="Missing Stubs (F-series/CES/D-series/ARRI)"; Script="gendata/data/missing_stubs.py"; Priority=1}
+    @{Name="Missing Stubs (F-series/CES/D-series/ARRI)"; Script="gendata/data/missing_stubs.py"; Priority=1},
+    @{Name="Camera Sensitivities"; Script="gendata/data/camera_sensitivities.py"; Priority=1},
+    @{Name="RGB Spaces (Complete)"; Script="gendata/data/rgb_spaces_complete.py"; Priority=2}
 )
 
 # Run each data generation script

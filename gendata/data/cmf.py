@@ -53,13 +53,23 @@ def generate_cmfs(output_dir):
             # Save separate component files
             cmf_dir = os.path.join(output_dir, 'cmf')
 
-            x_file = os.path.join(cmf_dir, f'{filename_prefix}_x_{wl_range}.csv')
-            y_file = os.path.join(cmf_dir, f'{filename_prefix}_y_{wl_range}.csv')
-            z_file = os.path.join(cmf_dir, f'{filename_prefix}_z_{wl_range}.csv')
-
-            save_vector(x_bar, x_file, f"{cmf_name} X-bar")
-            save_vector(y_bar, y_file, f"{cmf_name} Y-bar")
-            save_vector(z_bar, z_file, f"{cmf_name} Z-bar")
+            # Wright-Guild uses r/g/b naming (RGB CMFs), others use x/y/z
+            if 'wright_guild' in filename_prefix:
+                # RGB CMF naming
+                r_file = os.path.join(cmf_dir, f'{filename_prefix}_r_{wl_range}.csv')
+                g_file = os.path.join(cmf_dir, f'{filename_prefix}_g_{wl_range}.csv')
+                b_file = os.path.join(cmf_dir, f'{filename_prefix}_b_{wl_range}.csv')
+                save_vector(x_bar, r_file, f"{cmf_name} R-bar")
+                save_vector(y_bar, g_file, f"{cmf_name} G-bar")
+                save_vector(z_bar, b_file, f"{cmf_name} B-bar")
+            else:
+                # XYZ CMF naming
+                x_file = os.path.join(cmf_dir, f'{filename_prefix}_x_{wl_range}.csv')
+                y_file = os.path.join(cmf_dir, f'{filename_prefix}_y_{wl_range}.csv')
+                z_file = os.path.join(cmf_dir, f'{filename_prefix}_z_{wl_range}.csv')
+                save_vector(x_bar, x_file, f"{cmf_name} X-bar")
+                save_vector(y_bar, y_file, f"{cmf_name} Y-bar")
+                save_vector(z_bar, z_file, f"{cmf_name} Z-bar")
 
             print(f"  {filename_prefix}: {len(wavelengths)} samples ({wl_start}-{wl_end}nm @ {wl_step}nm)")
 

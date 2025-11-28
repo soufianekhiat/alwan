@@ -126,6 +126,16 @@ RGB_SPACE_MAPPINGS = {
     'plasa_ansi_e154': 'sRGB',  # Fallback (PLASA not in colour-science)
     'itu-t_h273_22_unspecified': 'sRGB',  # Fallback
     'itu-t_h273_generic_film': 'Cinema Gamut',  # Fallback
+
+    # Additional fallbacks for missing colour-science spaces
+    'davinci_intermediate': 'DaVinci Wide Gamut',  # Fallback
+    'blackmagic_film': 'Blackmagic Wide Gamut',  # Fallback
+    'blackmagic_film_gen5': 'Blackmagic Wide Gamut',  # Fallback
+    'v-log': 'V-Gamut',  # Fallback
+    'canon_log': 'Cinema Gamut',  # Fallback
+    'alexa_wide_gamut': 'ARRI Wide Gamut 3',  # Fallback
+    'p3-d60': 'DCI-P3',  # Fallback
+    'linear_p3_d60': 'DCI-P3',  # Fallback
 }
 
 def generate_all_missing_rgb_spaces(output_dir):

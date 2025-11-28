@@ -1,211 +1,408 @@
 # Alwan
 
-**Alwan** is a small, dependency-free colour science math library in pure C (C11), targeting feature parity with the Python [Colour](https://github.com/colour-science/colour) project (math and data only, no visualization).
+> **Alwan** (ألوان) — Arabic for "colours"
 
-## Design Goals
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/yourusername/alwan)
 
-- **Pure C11** with stable C ABI - no external dependencies
-- **Deterministic & re-entrant** - no global mutable state, all state in explicit context
-- **Allocation control** - all heap usage through overridable `ALWAN_ALLOC`/`ALWAN_FREE` macros
-- **Compile-time scalar** - configurable as `float` or `double` (default: `double`)
-- **Bulk-first API** - transform functions operate over arrays with count/stride/scratch buffers
-- **Portable** - no compiler extensions required, optional SIMD paths
+A small, dependency-free colour science library in pure C11. Alwan provides production-ready colour math for applications that need precise, deterministic colour transformations without the overhead of external dependencies.
 
-## Scope
+---
 
-Alwan focuses on deterministic, high-performance colour math and reference data:
+## Why Alwan?
 
-- **Colour models & conversions**: XYZ, xyY, Lab, Luv, LCh, IPT, JzAzBz, RGB families, YCbCr, HSV, HSL, CMY, CMYK
-- **Chromatic adaptation**: Bradford, CAT02, CAT16, XYZ scaling
-- **Transfer functions**: sRGB, BT.709, BT.1886, ST.2084 (PQ), HLG, log curves (S-Log, C-Log, V-Log)
-- **ACES & AgX pipelines**: ACES2065-1 (AP0), ACEScg (AP1), ACESproxy, RRT+ODT, AgX view transforms
-- **Colour differences**: ΔE76, ΔE94, CMC, ΔE00
-- **Colour appearance**: CIECAM02, CAM16 (forward/inverse, UCS)
-- **Spectral computations**: SPD integration to XYZ, CMFs (CIE 1931/1964/2012), illuminants (A, D, E, F)
-- **Light quality & CCT**: CRI, CQS, SSI, TM-30, CCT estimators (McCamy, Robertson)
-- **Gamut utilities**: Basic gamut mapping, RGB gamut volume/coverage
+**Built for Production**
+- Zero external dependencies — pure C11 with a stable ABI
+- Deterministic results across platforms and builds
+- Full control over memory allocation
 
-**Out of scope**: Plotting, visualization, device I/O, image codecs, camera/OCIO pipelines, GUI, internal threading
+**Performance-First Design**
+- Bulk-first API with stride support for efficient array processing
+- Configurable precision (`float` or `double`) at compile time
+- Optional SIMD paths without sacrificing portability
 
-## Building
+**Scientifically Rigorous**
+- Targeting feature parity with Python's [Colour](https://github.com/colour-science/colour) library
+- Comprehensive reference data (CMFs, illuminants, RGB spaces)
+- Validated against authoritative test fixtures
 
-### Prerequisites
+---
 
-- Visual Studio 2022 (for Windows)
-- .NET 6.0 SDK or later (for building Sharpmake)
-- Git
+## Quick Start
 
-### Quick Start
+**Prerequisites:** Visual Studio 2022, .NET 6.0+ SDK, Git
 
-1. Clone the repository with submodules:
+1. **Clone and bootstrap:**
    ```batch
    git clone --recursive https://github.com/yourusername/alwan.git
    cd alwan
-   ```
-
-2. Run the bootstrap script:
-   ```batch
    bootstrap.bat
    ```
 
-   This will:
-   - Build Sharpmake from source
-   - Copy Sharpmake artifacts to `tools/sharpmake/`
-   - Generate Visual Studio solution files
-
-3. Open the generated solution:
-   ```batch
-   Alwan_vs2022_win64.sln
-   ```
-
-4. Build and run tests from Visual Studio, or use MSBuild:
+2. **Build and test:**
    ```batch
    msbuild Alwan_vs2022_win64.sln /p:Configuration=Debug_f64
+   working_dir\AlwanTests.exe
    ```
 
-### Build Configurations
+3. **Start coding:**
+   ```c
+   #include "alwan.h"
 
-The library supports multiple build configurations combining optimization and scalar precision:
+   alwan_ctx *ctx = alwan_create(NULL);
 
-- **Debug_f32** / **Release_f32**: 32-bit float precision (~7 decimal digits, faster)
-- **Debug_f64** / **Release_f64**: 64-bit double precision (~16 decimal digits, default)
+   // Convert sRGB to CIE Lab
+   alwan_vec3 rgb = {0.5, 0.3, 0.2};
+   alwan_vec3 xyz, lab;
+   alwan_rgb_to_xyz(&rgb, &xyz, 1, 0, 0);
+   alwan_xyz_to_lab(&xyz, &d65_white, &lab, 1, 0, 0);
 
-All configurations are built with:
-- C11 standard (`/std:c11`)
-- Warning level 4 (`/W4`)
-- Warnings as errors (`/WX`)
-- Force C compilation (`/TC`)
+   alwan_destroy(ctx);
+   ```
 
-### Compile-Time Configuration
+---
 
-Configure the library by editing [alwan_config.h](src/alwan/alwan_config.h) or defining macros:
+## Features
+
+### Colour Models & Conversions
+Transform between industry-standard colour spaces:
+- **CIE spaces:** XYZ, xyY, Lab, Luv, LCh, LCh(uv)
+- **Perceptual models:** IPT, ICtCp, JzAzBz, Oklab
+- **RGB families:** sRGB, Adobe RGB, BT.709, BT.2020, Display P3, ACES, and more
+- **Encoding spaces:** HSV, HSL, YCbCr, CMY, CMYK
+
+### Chromatic Adaptation
+Accurate white point adaptation using:
+- Bradford (industry standard)
+- CAT02, CAT16 (CIECAM models)
+- XYZ scaling
+- Custom transform matrices
+
+### Transfer Functions & HDR
+Support for modern display and camera encoding:
+- **SDR:** sRGB, BT.709, BT.1886
+- **HDR:** ST.2084 (PQ), HLG
+- **Log curves:** S-Log, C-Log, V-Log, ARRI LogC
+- **ACES & AgX:** ACES2065-1, ACEScg, ACESproxy, RRT+ODT, AgX view transforms
+
+### Colour Appearance & Quality
+Perceptual modelling and light quality metrics:
+- **Appearance models:** CIECAM02, CAM16 (forward/inverse, UCS variants)
+- **Colour differences:** ΔE76, ΔE94, CMC, ΔE00
+- **Light quality:** CRI, CQS, SSI, TM-30
+- **CCT estimation:** McCamy, Robertson
+
+### Spectral & Gamut Tools
+Low-level colour science operations:
+- SPD integration to tristimulus values
+- CMFs: CIE 1931/1964/2012, Stockman & Sharpe
+- Standard illuminants: A, D-series, E, F-series
+- Gamut mapping, volume calculation, coverage analysis
+
+**Out of scope:** Plotting, device I/O, image codecs, GUI, threading
+
+---
+
+## Design Philosophy
+
+### Pure C, Zero Dependencies
+Built entirely in C11 with no external libraries. The only build dependency is Sharpmake (included as submodule). Deploy a single header and implementation — no package managers, no runtime surprises.
+
+### Deterministic & Re-entrant
+No global mutable state. All state lives in explicit context objects (`alwan_ctx`). Same inputs always produce identical outputs across platforms and builds.
+
+### You Control Memory
+Override allocation with custom `ALWAN_ALLOC`/`ALWAN_FREE` macros. Integrate seamlessly with game engines, embedded systems, or custom allocators.
+
+### Precision Where You Need It
+Choose `float` (7 digits, faster) or `double` (16 digits, default) at compile time. Test tolerances automatically adapt to your chosen precision.
+
+### Built for Arrays
+All transform functions process arrays with configurable stride. Transform entire images or interleaved vertex buffers efficiently without data copies.
+
+---
+
+## Configuration
+
+### Scalar Type
+
+Edit [alwan_config.h](src/alwan/alwan_config.h) or define at compile time:
 
 ```c
-/* Scalar type selection */
 #define ALWAN_SCALAR_IS_FLOAT 0  // 0 = double (default), 1 = float
+```
 
-/* Data embedding mode */
-#define ALWAN_EMBED_DATA 1       // 1 = embed (default), 0 = runtime load
+Build configurations:
+- **Debug_f32** / **Release_f32** — 32-bit float precision
+- **Debug_f64** / **Release_f64** — 64-bit double precision (default)
 
-/* Custom allocation hooks (optional) */
+### Data Embedding
+
+```c
+#define ALWAN_EMBED_DATA 1  // 1 = embed (default), 0 = runtime load
+```
+
+**Embedded mode (default):** Reference data compiled directly into binary. Zero runtime I/O, instant startup.
+
+**Runtime mode:** Load CSV data at initialization. Smaller binary, flexible data updates.
+
+### Custom Allocators
+
+```c
 #define ALWAN_ALLOC(sz, align) my_alloc(sz, align)
 #define ALWAN_FREE(p)          my_free(p)
 ```
 
-### Regenerating Projects
+---
 
-If you modify the Sharpmake scripts (`.cs` files in `sharpmake/`), regenerate projects:
+## API Examples
 
-```batch
-generate_projects.bat
-```
-
-## Data Strategy
-
-Alwan ships reference datasets (CMFs, illuminants, RGB primaries) in a single `/data/` folder as **C-parsable CSV files** containing maximum-precision numeric literals:
-
-```csv
-2.457001234567890,1.466000000000000,0.960000000000000
-```
-
-These files work in both modes:
-
-- **Embedded mode** (`ALWAN_EMBED_DATA=1`, default): Arrays materialized by including CSV directly into initializers, with compiler-specific diagnostic guards to suppress float conversion warnings
-- **Runtime mode** (`ALWAN_EMBED_DATA=0`): Same CSV files loaded at runtime, parsed, and cached in `alwan_ctx`
-
-Files are named to encode identity and sampling, e.g., `cie_1931_2deg_xbar_360_830_1nm.csv`.
-
-## API Overview
+### Context Management
 
 ```c
-/* Context creation with optional configuration */
+// Simple initialization
+alwan_ctx *ctx = alwan_create(NULL);
+
+// Custom configuration
 alwan_ctx *ctx = alwan_create(&(alwan_config){
     .alloc_cb = custom_alloc,
     .free_cb = custom_free,
-    .runtime_data_root = "path/to/data"
+    .runtime_data_root = "path/to/data"  // Only for ALWAN_EMBED_DATA=0
 });
-
-/* Math types: alwan_vec3, alwan_mat3x3 */
-alwan_mat3x3 M, M_inv;
-alwan_mat3_inv(&M, &M_inv);
-
-/* Bulk transforms with stride support */
-alwan_xyz_to_lab(xyz_in, wp, lab_out, count, in_stride, out_stride);
-
-/* Chromatic adaptation */
-alwan_xyz_adapt(ctx, ALWAN_CAT_BRADFORD, src_wp, dst_wp,
-                xyz_in, count, stride, xyz_out, stride);
-
-/* RGB space derivation */
-alwan_rgb_derive_matrices(ctx, &rgb_desc, &rgb_to_xyz, &xyz_to_rgb);
-
-/* Transfer functions & view transforms */
-alwan_oetf_apply(ctx, "srgb", linear, count, stride, encoded, stride);
-alwan_view_transform_apply(ctx, "agx", rgb_in, count, stride, rgb_out, stride);
 
 alwan_destroy(ctx);
 ```
 
-## Project Structure
+### Colour Space Conversions
 
+```c
+// Single colour
+alwan_vec3 rgb = {0.8, 0.2, 0.1};
+alwan_vec3 xyz, lab;
+alwan_rgb_to_xyz(&rgb, &xyz, 1, 0, 0);
+alwan_xyz_to_lab(&xyz, &d65_white, &lab, 1, 0, 0);
+
+// Bulk conversion with stride
+float rgb_data[100 * 3];  // 100 RGB colours
+float lab_data[100 * 3];
+alwan_xyz_to_lab(rgb_data, &d65_white, lab_data, 100, 3, 3);
 ```
-/data/                   # C-parsable CSV datasets (CMFs, illuminants, RGB primaries)
-/src/alwan/              # Library source code (pure C11)
-/tests/unit/             # Unit tests (no external test framework)
-/sharpmake/              # Sharpmake build scripts (.cs files)
-/extern/Sharpmake/       # Sharpmake submodule (only build dependency)
-/projects/               # Generated .vcxproj files (git-ignored)
-/tmp/                    # Build intermediates (git-ignored)
-/tools/sharpmake/        # Sharpmake binaries (generated by bootstrap)
-/working_dir/            # Runtime working directory for executables
+
+### Chromatic Adaptation
+
+```c
+alwan_vec3 xyz_d50 = {0.5, 0.6, 0.4};
+alwan_vec3 xyz_d65;
+
+alwan_xyz_adapt(ctx, ALWAN_CAT_BRADFORD,
+                &d50_white, &d65_white,
+                &xyz_d50, 1, 0, &xyz_d65, 0);
 ```
 
-## Numerical Policies
+### RGB Space Operations
 
-Alwan prioritizes deterministic, numerically stable algorithms:
+```c
+// Derive matrices for custom RGB space
+alwan_rgb_descriptor rgb_desc = {
+    .primaries = {{0.64, 0.33}, {0.30, 0.60}, {0.15, 0.06}},
+    .white_point = {0.3127, 0.3290},
+    .transfer = "srgb"
+};
 
-- **Matrix operations**: 3×3 solve via partial-pivot Gaussian elimination
-- **Transfer functions**: Carefully clamped branches for numerical stability
-- **Spectral integration**: Simpson's rule (even n) with trapezoid fallback
-- **Consistent white-point handling**: All color space conversions use explicit white points
-- **Scalar-aware tolerances**: Test assertions adapt to float (`1e-5`) or double (`1e-12`) precision
+alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
+alwan_rgb_derive_matrices(ctx, &rgb_desc, &rgb_to_xyz, &xyz_to_rgb);
+
+// Convert between RGB spaces
+alwan_rgb_convert(ctx, "srgb", "bt2020", rgb_in, 100, 3, rgb_out, 3);
+```
+
+### Transfer Functions
+
+```c
+// Apply transfer function (OETF: linear → encoded)
+alwan_oetf_apply(ctx, "srgb", linear_rgb, 100, 3, encoded_rgb, 3);
+
+// Inverse transfer function (EOTF: encoded → linear)
+alwan_eotf_apply(ctx, "srgb", encoded_rgb, 100, 3, linear_rgb, 3);
+
+// View transforms for HDR
+alwan_view_transform_apply(ctx, "agx", hdr_rgb, 100, 3, display_rgb, 3);
+```
+
+### Matrix Operations
+
+```c
+alwan_mat3x3 M, M_inv;
+alwan_mat3_inv(&M, &M_inv);
+
+alwan_vec3 v_in = {1.0, 0.5, 0.2};
+alwan_vec3 v_out;
+alwan_mat3_mul_vec3(&M, &v_in, &v_out);
+```
+
+---
+
+## Data Strategy
+
+Alwan ships reference datasets as **C-parsable CSV files** with maximum-precision literals:
+
+```csv
+0.950470000000000,1.000000000000000,1.088830000000000
+```
+
+These files serve dual purposes:
+- **Embedded mode:** Included directly in C array initializers (zero runtime I/O)
+- **Runtime mode:** Parsed and cached at initialization (smaller binary)
+
+Filenames encode identity and sampling: `cie_1931_2deg_xbar_360_830_1nm.csv`
+
+---
+
+## Numerical Stability
+
+Alwan prioritizes correctness and determinism:
+
+- **Matrix operations:** 3×3 inversion via partial-pivot Gaussian elimination
+- **Transfer functions:** Carefully clamped branches to avoid NaN/Inf propagation
+- **Spectral integration:** Simpson's rule with trapezoid fallback
+- **Explicit white points:** All conversions require explicit white point parameters
+- **Precision-aware testing:** Tolerances adapt to `float` (1e-5) or `double` (1e-12)
+
+---
 
 ## Testing
 
-Tests are self-contained C programs with no external test framework dependencies:
+Self-contained test suite with no external framework:
 
-- **Fixtures**: Authoritative reference data generated offline by Python Colour, versioned as CSV
-- **Coverage**: Canonical cases, edge cases, and sweep tests for each module
-- **Validation**: Absolute/relative error thresholds appropriate for scalar type
-- **Test runner**: Single executable runs all test suites consecutively with clear reporting
-
-Run tests from Visual Studio or command line:
 ```batch
 working_dir\AlwanTests.exe
 ```
 
+**Test Strategy:**
+- **Authoritative fixtures:** Reference values from Python Colour library
+- **Comprehensive coverage:** Canonical cases, edge cases, sweeps for each module
+- **Precision-aware validation:** Error thresholds adapt to build configuration
+- **Clear reporting:** Single executable, immediate pass/fail feedback
+
+---
+
+## Project Structure
+
+```
+alwan/
+├── data/                   # Reference datasets (CMFs, illuminants, RGB descriptors)
+├── src/alwan/              # Library source (pure C11)
+│   ├── alwan.h            # Main public API
+│   ├── alwan_config.h     # Compile-time configuration
+│   └── ...
+├── tests/unit/             # Self-contained test suite
+├── sharpmake/              # Build system scripts
+├── extern/Sharpmake/       # Build tool (submodule)
+├── working_dir/            # Test executable output
+└── bootstrap.bat           # One-step setup
+```
+
+---
+
+## Build System
+
+Alwan uses [Sharpmake](https://github.com/ubisoft/Sharpmake) for project generation:
+
+- **No vcpkg/Conan/etc:** Single submodule dependency
+- **Fast incremental builds:** Only regenerate when scripts change
+- **Multi-configuration:** Debug/Release × float32/float64 in one solution
+
+Regenerate projects after modifying `.cs` files:
+```batch
+generate_projects.bat
+```
+
+---
+
 ## Current Status
 
-**Foundation (v0.1-alpha)** - Core infrastructure complete:
+**Foundation Complete**
 
-- Context management with custom allocators
-- 3×3 matrix operations (multiply, inverse with partial-pivot Gaussian elimination)
-- Scalar-aware math API (float/double abstraction with `ALWAN_*` macros)
-- Data embedding with compiler-portable diagnostic guards
-- Sharpmake-driven build system (submodule, no vcpkg)
-- Unified test suite with scalar-adaptive tolerances
+- ✅ Context management with custom allocators
+- ✅ Matrix operations (multiply, inverse)
+- ✅ Scalar abstraction (float/double)
+- ✅ Data embedding with diagnostic guards
+- ✅ Sharpmake build system
+- ✅ Unified test suite
+- ✅ 100+ RGB color spaces
+- ✅ Comprehensive color appearance models (CIECAM02, CAM16, LLAB, Hellwig2022, Kim2009, ATD95)
+- ✅ Modern color spaces (Oklab, JzAzBz, ICtCp)
+- ✅ Advanced color difference metrics (ΔE76, ΔE94, ΔE00, CMC, CAM02-LCD/SCD, CAM16-LCD/SCD)
+- ✅ Light quality metrics (CRI, CQS, SSI, TM-30)
+- ✅ Spectral operations and gamut tools
 
-See [alwan_plan.md](alwan_plan.md) for the complete development roadmap.
-
-## Incentive Development
-
-[![Patreon](https://img.shields.io/badge/Patreon-Become%20a%20Patron-f96854?style=for-the-badge&logo=patreon)](https://www.patreon.com/SoufianeKHIAT)
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details
+---
 
 ## Documentation
 
-- [alwan_design.md](alwan_design.md) - Detailed design documentation
-- [alwan_plan.md](alwan_plan.md) - Development roadmap and milestones
+Comprehensive documentation is available in the [docs/](docs/) folder. Always refer to [alwan.h](src/alwan/alwan.h) for the current API reference.
+
+### 📚 Guides
+
+- **[Getting Started](docs/getting-started.md)** — Installation, first program, basic concepts, and common workflows
+  - Building and running tests
+  - Your first color conversion
+  - Understanding contexts and white points
+  - Common pitfalls and debugging tips
+
+- **[Configuration](docs/configuration.md)** — Compile-time options for precision, data embedding, and custom allocators
+  - Scalar precision (float vs double)
+  - Data embedding mode (embedded mode active; runtime loading available)
+  - Custom memory allocators
+  - Platform-specific settings
+
+- **[Examples](docs/examples.md)** — 13 practical examples covering real-world use cases
+  - Basic color conversions
+  - Image processing workflows
+  - HDR tone mapping
+  - Color grading pipelines
+  - Multi-threading patterns
+  - Error handling
+
+### 🔧 API Reference
+
+Detailed function documentation with signatures, parameters, and usage patterns:
+
+- **[Context Management](docs/api/context.md)** — Library initialization, memory management, lifecycle
+- **[Color Spaces](docs/api/color-spaces.md)** — CIE XYZ/Lab/Luv, RGB conversions, perceptual models (Oklab, JzAzBz, ICtCp)
+- **[Chromatic Adaptation](docs/api/chromatic-adaptation.md)** — White point transforms (Bradford, CAT02, CAT16)
+- **[Transfer Functions](docs/api/transfer-functions.md)** — EOTFs/OETFs for SDR/HDR (sRGB, PQ, HLG, log curves)
+- **[Matrix Operations](docs/api/matrix-operations.md)** — 3×3 matrix math for linear transforms
+- **[Spectral Operations](docs/api/spectral.md)** — SPD integration, CMFs, illuminants
+- **[Color Appearance](docs/api/color-appearance.md)** — CIECAM02, CAM16, LLAB, Hellwig2022, Kim2009, ATD95
+- **[Color Difference](docs/api/color-difference.md)** — ΔE metrics (ΔE76, ΔE94, ΔE00, CMC, CAM02/16-LCD/SCD)
+- **[Gamut Operations](docs/api/gamut.md)** — Gamut mapping and analysis
+
+### 📖 Technical Details
+
+- **[Precision & Limits](docs/precision-and-limits.md)** — Numerical accuracy, error bounds, and performance trade-offs
+  - Float vs double accuracy comparison
+  - Precision-aware test tolerances
+  - Edge case handling (black, achromatic, out-of-gamut)
+  - Accumulation error analysis
+
+- **[Data Management](docs/data-management.md)** — How reference data (CMFs, illuminants, RGB spaces) is handled
+  - Embedded mode (compiled-in data) — default configuration
+  - Runtime mode (load from CSV) — available for flexible deployments
+  - Data format and structure
+  - Memory usage and performance
+
+---
+
+## Contributing
+
+Development is incentivized through Patreon:
+
+[![Patreon](https://img.shields.io/badge/Patreon-Become%20a%20Patron-f96854?style=for-the-badge&logo=patreon)](https://www.patreon.com/SoufianeKHIAT)
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details
