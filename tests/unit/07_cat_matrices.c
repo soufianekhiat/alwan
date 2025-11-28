@@ -64,8 +64,8 @@ static int test_cat_d65_to_d50_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
     alwan_mat3x3 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
@@ -106,8 +106,8 @@ static int test_cat_d50_to_d65_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
     alwan_mat3x3 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
@@ -143,8 +143,8 @@ static int test_cat_a_to_d65_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 a_xyz = {{a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
     alwan_mat3x3 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
@@ -180,8 +180,8 @@ static int test_cat_d65_to_d60_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d60_xyz = {{d60_xyz_data[0], d60_xyz_data[1], d60_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d60_xyz = {d60_xyz_data[0], d60_xyz_data[1], d60_xyz_data[2]};
     alwan_mat3x3 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
@@ -217,8 +217,8 @@ static int test_cat_d65_to_d50_cat02(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
     alwan_mat3x3 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
@@ -254,8 +254,8 @@ static int test_cat_d65_to_d50_cat16(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
     alwan_mat3x3 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
@@ -291,8 +291,8 @@ static int test_cat_d65_to_d50_xyz_scaling(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
     alwan_mat3x3 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 

@@ -46,15 +46,23 @@ static int test_xyz_hunter_lab_round_trip(void) {
         /* Test XYZ -> Hunter Lab */
         alwan_xyz_to_hunter_lab(&xyz_in, &hunter_computed);
 
+        /* Scale the expected values by 10 to match Alwan's L = 10*sqrt(Y) formula
+         * (colour-science uses L = sqrt(Y) convention, returning values in [0,10] range) */
+        alwan_vec3 hunter_scaled = {{
+            hunter_expected.v[0] * ALWAN_LITERAL(10.0),
+            hunter_expected.v[1] * ALWAN_LITERAL(10.0),
+            hunter_expected.v[2] * ALWAN_LITERAL(10.0)
+        }};
+
         alwan_scalar const hunter_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100000.0);
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_FABS(hunter_computed.v[j] - hunter_expected.v[j]);
+            alwan_scalar diff = ALWAN_FABS(hunter_computed.v[j] - hunter_scaled.v[j]);
             if (diff > hunter_tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
                        (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);
-                printf("  Expected Hunter Lab: [%.10f, %.10f, %.10f]\n",
-                       (double)hunter_expected.v[0], (double)hunter_expected.v[1], (double)hunter_expected.v[2]);
+                printf("  Expected Hunter Lab (scaled 10x): [%.10f, %.10f, %.10f]\n",
+                       (double)hunter_scaled.v[0], (double)hunter_scaled.v[1], (double)hunter_scaled.v[2]);
                 printf("  Got Hunter Lab: [%.10f, %.10f, %.10f]\n",
                        (double)hunter_computed.v[0], (double)hunter_computed.v[1], (double)hunter_computed.v[2]);
                 printf("  Diff: %.6e\n", (double)diff);

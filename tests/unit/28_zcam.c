@@ -22,9 +22,9 @@ static int test_zcam_forward(void) {
 
     /* Setup viewing conditions matching reference data */
     alwan_zcam_viewing_conditions vc;
-    vc.xyz_w.v[0] = ALWAN_LITERAL(95.047);
-    vc.xyz_w.v[1] = ALWAN_LITERAL(100.0);
-    vc.xyz_w.v[2] = ALWAN_LITERAL(108.883);
+    vc.xyz_w.x = ALWAN_LITERAL(95.047);
+    vc.xyz_w.y = ALWAN_LITERAL(100.0);
+    vc.xyz_w.z = ALWAN_LITERAL(108.883);
     vc.La = ALWAN_LITERAL(100.0);
     vc.Yb = ALWAN_LITERAL(20.0);
     vc.surround = ALWAN_ZCAM_SURROUND_AVERAGE;
@@ -34,13 +34,13 @@ static int test_zcam_forward(void) {
     alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(1000.0);
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz;
+        alwan_xyz xyz;
         alwan_zcam_correlates expected, computed;
 
         /* Load test data: XYZ (3) + J, C, h, Q, M, s (6) */
-        xyz.v[0] = test_data[i * 9 + 0];
-        xyz.v[1] = test_data[i * 9 + 1];
-        xyz.v[2] = test_data[i * 9 + 2];
+        xyz.x = test_data[i * 9 + 0];
+        xyz.y = test_data[i * 9 + 1];
+        xyz.z = test_data[i * 9 + 2];
 
         expected.Jz = test_data[i * 9 + 3];
         expected.Cz = test_data[i * 9 + 4];
@@ -62,7 +62,7 @@ static int test_zcam_forward(void) {
         if (diff_J > tolerance || diff_C > tolerance || diff_h > tolerance) {
             printf("Color %zu failed:\n", i);
             printf("  XYZ: [%.2f, %.2f, %.2f]\n",
-                   (double)xyz.v[0], (double)xyz.v[1], (double)xyz.v[2]);
+                   (double)xyz.x, (double)xyz.y, (double)xyz.z);
             printf("  Expected Jz=%.4f, Cz=%.4f, hz=%.2f\n",
                    (double)expected.Jz, (double)expected.Cz, (double)expected.hz);
             printf("  Got      Jz=%.4f, Cz=%.4f, hz=%.2f\n",

@@ -55,8 +55,8 @@ static int test_delta_e_itp(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 ictcp1 = {{ictcp1_data[i * 3 + 0], ictcp1_data[i * 3 + 1], ictcp1_data[i * 3 + 2]}};
-        alwan_vec3 ictcp2 = {{ictcp2_data[i * 3 + 0], ictcp2_data[i * 3 + 1], ictcp2_data[i * 3 + 2]}};
+        alwan_ictcp ictcp1 = {ictcp1_data[i * 3 + 0], ictcp1_data[i * 3 + 1], ictcp1_data[i * 3 + 2]};
+        alwan_ictcp ictcp2 = {ictcp2_data[i * 3 + 0], ictcp2_data[i * 3 + 1], ictcp2_data[i * 3 + 2]};
         alwan_scalar expected = de_itp_data[i];
 
         alwan_scalar result = alwan_delta_e_itp(&ictcp1, &ictcp2, ALWAN_LITERAL(720.0));
@@ -127,8 +127,8 @@ static int test_delta_e_zcam(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 jzazbz1 = {{jzazbz1_data[i * 3 + 0], jzazbz1_data[i * 3 + 1], jzazbz1_data[i * 3 + 2]}};
-        alwan_vec3 jzazbz2 = {{jzazbz2_data[i * 3 + 0], jzazbz2_data[i * 3 + 1], jzazbz2_data[i * 3 + 2]}};
+        alwan_jzazbz jzazbz1 = {jzazbz1_data[i * 3 + 0], jzazbz1_data[i * 3 + 1], jzazbz1_data[i * 3 + 2]};
+        alwan_jzazbz jzazbz2 = {jzazbz2_data[i * 3 + 0], jzazbz2_data[i * 3 + 1], jzazbz2_data[i * 3 + 2]};
         alwan_scalar expected = de_zcam_data[i];
 
         alwan_scalar result = alwan_delta_e_zcam(&jzazbz1, &jzazbz2);

@@ -32,9 +32,9 @@ static int test_ciecam02_forward(void) {
 
     /* Standard D65 viewing conditions (average surround) */
     alwan_ciecam02_viewing_conditions vc;
-    vc.white_xyz.v[0] = viewing_params[0];
-    vc.white_xyz.v[1] = viewing_params[1];
-    vc.white_xyz.v[2] = viewing_params[2];
+    vc.white_xyz.x = viewing_params[0];
+    vc.white_xyz.y = viewing_params[1];
+    vc.white_xyz.z = viewing_params[2];
     vc.adapting_luminance = viewing_params[3];
     vc.background_luminance = viewing_params[4];
     vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
@@ -53,10 +53,10 @@ static int test_ciecam02_forward(void) {
 
     /* Test forward transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz;
-        xyz.v[0] = test_xyz[i * 3 + 0];
-        xyz.v[1] = test_xyz[i * 3 + 1];
-        xyz.v[2] = test_xyz[i * 3 + 2];
+        alwan_xyz xyz;
+        xyz.x = test_xyz[i * 3 + 0];
+        xyz.y = test_xyz[i * 3 + 1];
+        xyz.z = test_xyz[i * 3 + 2];
 
         alwan_ciecam02_correlates corr;
         int status = alwan_ciecam02_forward(&xyz, &vc, &corr);
@@ -114,9 +114,9 @@ static int test_ciecam02_inverse(void) {
 #include "reference_values/cam_viewing_conditions.csv"
     };
 
-    vc.white_xyz.v[0] = viewing_params[0];
-    vc.white_xyz.v[1] = viewing_params[1];
-    vc.white_xyz.v[2] = viewing_params[2];
+    vc.white_xyz.x = viewing_params[0];
+    vc.white_xyz.y = viewing_params[1];
+    vc.white_xyz.z = viewing_params[2];
     vc.adapting_luminance = viewing_params[3];
     vc.background_luminance = viewing_params[4];
     vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
@@ -142,15 +142,15 @@ static int test_ciecam02_inverse(void) {
         corr.h = correlates_data[i * 7 + 2];
         /* Other fields not used for inverse */
 
-        alwan_vec3 xyz_out;
+        alwan_xyz xyz_out;
         int status = alwan_ciecam02_inverse(&corr, &vc, &xyz_out);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against expected values */
         alwan_scalar const *expected = &expected_xyz[i * 3];
-        alwan_scalar X_err = ALWAN_FABS(xyz_out.v[0] - expected[0]);
-        alwan_scalar Y_err = ALWAN_FABS(xyz_out.v[1] - expected[1]);
-        alwan_scalar Z_err = ALWAN_FABS(xyz_out.v[2] - expected[2]);
+        alwan_scalar X_err = ALWAN_FABS(xyz_out.x - expected[0]);
+        alwan_scalar Y_err = ALWAN_FABS(xyz_out.y - expected[1]);
+        alwan_scalar Z_err = ALWAN_FABS(xyz_out.z - expected[2]);
 
         TEST_ASSERT(X_err < CORRELATE_TOL, "X mismatch");
         TEST_ASSERT(Y_err < CORRELATE_TOL, "Y mismatch");
@@ -170,9 +170,9 @@ static int test_ciecam02_roundtrip(void) {
 #include "reference_values/cam_viewing_conditions.csv"
     };
 
-    vc.white_xyz.v[0] = viewing_params[0];
-    vc.white_xyz.v[1] = viewing_params[1];
-    vc.white_xyz.v[2] = viewing_params[2];
+    vc.white_xyz.x = viewing_params[0];
+    vc.white_xyz.y = viewing_params[1];
+    vc.white_xyz.z = viewing_params[2];
     vc.adapting_luminance = viewing_params[3];
     vc.background_luminance = viewing_params[4];
     vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
@@ -186,10 +186,10 @@ static int test_ciecam02_roundtrip(void) {
 
     /* Test round-trip for each color */
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz_in;
-        xyz_in.v[0] = test_xyz[i * 3 + 0];
-        xyz_in.v[1] = test_xyz[i * 3 + 1];
-        xyz_in.v[2] = test_xyz[i * 3 + 2];
+        alwan_xyz xyz_in;
+        xyz_in.x = test_xyz[i * 3 + 0];
+        xyz_in.y = test_xyz[i * 3 + 1];
+        xyz_in.z = test_xyz[i * 3 + 2];
 
         /* Forward: XYZ -> correlates */
         alwan_ciecam02_correlates corr;
@@ -197,14 +197,14 @@ static int test_ciecam02_roundtrip(void) {
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Inverse: correlates -> XYZ */
-        alwan_vec3 xyz_out;
+        alwan_xyz xyz_out;
         status = alwan_ciecam02_inverse(&corr, &vc, &xyz_out);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
-        alwan_scalar X_err = ALWAN_FABS(xyz_out.v[0] - xyz_in.v[0]);
-        alwan_scalar Y_err = ALWAN_FABS(xyz_out.v[1] - xyz_in.v[1]);
-        alwan_scalar Z_err = ALWAN_FABS(xyz_out.v[2] - xyz_in.v[2]);
+        alwan_scalar X_err = ALWAN_FABS(xyz_out.x - xyz_in.x);
+        alwan_scalar Y_err = ALWAN_FABS(xyz_out.y - xyz_in.y);
+        alwan_scalar Z_err = ALWAN_FABS(xyz_out.z - xyz_in.z);
 
         TEST_ASSERT(X_err < CORRELATE_TOL, "Round-trip X error too large");
         TEST_ASSERT(Y_err < CORRELATE_TOL, "Round-trip Y error too large");
@@ -223,18 +223,18 @@ static int test_ciecam02_surround_conditions(void) {
 #include "reference_values/cam_viewing_conditions.csv"
     };
 
-    vc.white_xyz.v[0] = viewing_params[0];
-    vc.white_xyz.v[1] = viewing_params[1];
-    vc.white_xyz.v[2] = viewing_params[2];
+    vc.white_xyz.x = viewing_params[0];
+    vc.white_xyz.y = viewing_params[1];
+    vc.white_xyz.z = viewing_params[2];
     vc.adapting_luminance = viewing_params[3];
     vc.background_luminance = viewing_params[4];
     vc.discount_illuminant = 0;
 
     /* Test color: mid-gray */
-    alwan_vec3 xyz;
-    xyz.v[0] = ALWAN_LITERAL(50.0);
-    xyz.v[1] = ALWAN_LITERAL(50.0);
-    xyz.v[2] = ALWAN_LITERAL(50.0);
+    alwan_xyz xyz;
+    xyz.x = ALWAN_LITERAL(50.0);
+    xyz.y = ALWAN_LITERAL(50.0);
+    xyz.z = ALWAN_LITERAL(50.0);
 
     alwan_ciecam02_correlates corr_avg, corr_dim, corr_dark;
 

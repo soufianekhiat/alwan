@@ -37,14 +37,14 @@ static int test_atd95_forward(void) {
         alwan_scalar sigma = test_data[offset + 9];
 
         alwan_atd95_viewing_conditions vc;
-        vc.white_xyz = xyz_w;
+        vc.white_xyz = *(alwan_xyz *)&xyz_w;
         vc.Y_0 = Y_0;
         vc.k1 = k1;
         vc.k2 = k2;
         vc.sigma = sigma;
 
         alwan_atd95_correlates result;
-        int status = alwan_atd95_forward(&xyz_in, &vc, &result);
+        int status = alwan_atd95_forward((alwan_xyz const *)&xyz_in, &vc, &result);
 
         if (status != ALWAN_OK) {
             printf("  Test %zu: FAILED - Status %d\n", i + 1, status);
@@ -85,7 +85,7 @@ static int test_atd95_adaptation(void) {
                       ALWAN_LITERAL(50.0)};
 
     alwan_atd95_viewing_conditions vc;
-    vc.white_xyz = d65;
+    vc.white_xyz = *(alwan_xyz *)&d65;
     vc.Y_0 = ALWAN_LITERAL(318.31);
     vc.sigma = ALWAN_LITERAL(300.0);
 
@@ -94,7 +94,7 @@ static int test_atd95_adaptation(void) {
     /* Test unrelated colors (k1=1, k2=0) */
     vc.k1 = ALWAN_LITERAL(1.0);
     vc.k2 = ALWAN_LITERAL(0.0);
-    int status = alwan_atd95_forward(&xyz, &vc, &corr_unrelated);
+    int status = alwan_atd95_forward((alwan_xyz const *)&xyz, &vc, &corr_unrelated);
     if (status != ALWAN_OK) {
         printf("  Unrelated colors: FAILED (status %d)\n", status);
         failed++;
@@ -106,7 +106,7 @@ static int test_atd95_adaptation(void) {
     /* Test related colors (k1=0, k2=50) */
     vc.k1 = ALWAN_LITERAL(0.0);
     vc.k2 = ALWAN_LITERAL(50.0);
-    status = alwan_atd95_forward(&xyz, &vc, &corr_related);
+    status = alwan_atd95_forward((alwan_xyz const *)&xyz, &vc, &corr_related);
     if (status != ALWAN_OK) {
         printf("  Related colors: FAILED (status %d)\n", status);
         failed++;

@@ -26,7 +26,7 @@ ALWAN_DIAG_POP
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const g_srgb_primaries[] = {
-#include "data/srgb_primaries_3x2.csv"
+#include "data/srgb_primaries_only.csv"
 };
 ALWAN_DIAG_POP
 

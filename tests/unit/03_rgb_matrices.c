@@ -63,7 +63,7 @@ static int test_srgb_matrices(void) {
          srgb_fixture[2], srgb_fixture[3],   /* Green */
          srgb_fixture[4], srgb_fixture[5]},  /* Blue */
         {srgb_fixture[6], srgb_fixture[7]},  /* White */
-        NULL, NULL
+        ALWAN_TF_LINEAR, ALWAN_TF_LINEAR
     };
 
     alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
@@ -116,7 +116,7 @@ static int test_aces_ap0_matrices(void) {
          aces_ap0_fixture[2], aces_ap0_fixture[3],
          aces_ap0_fixture[4], aces_ap0_fixture[5]},
         {aces_ap0_fixture[6], aces_ap0_fixture[7]},
-        NULL, NULL
+        ALWAN_TF_LINEAR, ALWAN_TF_LINEAR
     };
 
     alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
@@ -154,7 +154,7 @@ static int test_aces_ap1_matrices(void) {
          aces_ap1_fixture[2], aces_ap1_fixture[3],
          aces_ap1_fixture[4], aces_ap1_fixture[5]},
         {aces_ap1_fixture[6], aces_ap1_fixture[7]},
-        NULL, NULL
+        ALWAN_TF_LINEAR, ALWAN_TF_LINEAR
     };
 
     alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
@@ -186,7 +186,7 @@ static int test_bt2020_matrices(void) {
          bt2020_fixture[2], bt2020_fixture[3],
          bt2020_fixture[4], bt2020_fixture[5]},
         {bt2020_fixture[6], bt2020_fixture[7]},
-        NULL, NULL
+        ALWAN_TF_LINEAR, ALWAN_TF_LINEAR
     };
 
     alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;

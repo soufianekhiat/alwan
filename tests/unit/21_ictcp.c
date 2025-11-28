@@ -60,7 +60,7 @@ static int test_rgb_to_ictcp_pq(void) {
         rgb.v[2] = test_rgb[i * 3 + 2];
 
         /* Convert RGB -> ICtCp (PQ) */
-        alwan_rgb_to_ictcp(&rgb, &ictcp_computed, 1);
+        alwan_rgb_to_ictcp((alwan_rgb *)&rgb, (alwan_ictcp *)&ictcp_computed, 1);
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -117,10 +117,10 @@ static int test_ictcp_pq_to_rgb_roundtrip(void) {
         rgb_in.v[2] = test_rgb[i * 3 + 2];
 
         /* Forward: RGB -> ICtCp */
-        alwan_rgb_to_ictcp(&rgb_in, &ictcp, 1);
+        alwan_rgb_to_ictcp((alwan_rgb *)&rgb_in, (alwan_ictcp *)&ictcp, 1);
 
         /* Inverse: ICtCp -> RGB */
-        alwan_ictcp_to_rgb(&ictcp, &rgb_out, 1);
+        alwan_ictcp_to_rgb((alwan_ictcp *)&ictcp, (alwan_rgb *)&rgb_out, 1);
 
         /* Check round-trip against colour-science reconstructed values */
         for (int j = 0; j < 3; j++) {
@@ -179,7 +179,7 @@ static int test_rgb_to_ictcp_hlg(void) {
         rgb.v[2] = test_rgb[i * 3 + 2];
 
         /* Convert RGB -> ICtCp (HLG) */
-        alwan_rgb_to_ictcp(&rgb, &ictcp_computed, 0);
+        alwan_rgb_to_ictcp((alwan_rgb *)&rgb, (alwan_ictcp *)&ictcp_computed, 0);
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -236,10 +236,10 @@ static int test_ictcp_hlg_to_rgb_roundtrip(void) {
         rgb_in.v[2] = test_rgb[i * 3 + 2];
 
         /* Forward: RGB -> ICtCp */
-        alwan_rgb_to_ictcp(&rgb_in, &ictcp, 0);
+        alwan_rgb_to_ictcp((alwan_rgb *)&rgb_in, (alwan_ictcp *)&ictcp, 0);
 
         /* Inverse: ICtCp -> RGB */
-        alwan_ictcp_to_rgb(&ictcp, &rgb_out, 0);
+        alwan_ictcp_to_rgb((alwan_ictcp *)&ictcp, (alwan_rgb *)&rgb_out, 0);
 
         /* Check round-trip against colour-science reconstructed values */
         for (int j = 0; j < 3; j++) {
@@ -291,7 +291,7 @@ static int test_xyz_to_ictcp_pq(void) {
         xyz.v[2] = test_xyz[i * 3 + 2];
 
         /* Convert XYZ -> ICtCp (PQ) */
-        alwan_xyz_to_ictcp(&xyz, &ictcp_computed, 1);
+        alwan_xyz_to_ictcp((alwan_xyz *)&xyz, (alwan_ictcp *)&ictcp_computed, 1);
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -330,7 +330,7 @@ static int test_xyz_to_ictcp_hlg(void) {
         xyz.v[2] = test_xyz[i * 3 + 2];
 
         /* Convert XYZ -> ICtCp (HLG) */
-        alwan_xyz_to_ictcp(&xyz, &ictcp_computed, 0);
+        alwan_xyz_to_ictcp((alwan_xyz *)&xyz, (alwan_ictcp *)&ictcp_computed, 0);
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {

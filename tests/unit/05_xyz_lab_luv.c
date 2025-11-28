@@ -65,24 +65,30 @@ static int test_xyz_xyy_roundtrip(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
-        alwan_vec3 xyy_expected = {{xyy_data[i * 3 + 0], xyy_data[i * 3 + 1], xyy_data[i * 3 + 2]}};
+        alwan_xyz xyz;
+        xyz.x = xyz_data[i * 3 + 0];
+        xyz.y = xyz_data[i * 3 + 1];
+        xyz.z = xyz_data[i * 3 + 2];
+        alwan_xyy xyy_expected;
+        xyy_expected.x = xyy_data[i * 3 + 0];
+        xyy_expected.y = xyy_data[i * 3 + 1];
+        xyy_expected.Y = xyy_data[i * 3 + 2];
 
         /* XYZ -> xyY */
-        alwan_vec3 xyy;
+        alwan_xyy xyy;
         alwan_xyz_to_xyy(&xyz, &xyy);
-        alwan_scalar diff_forward = vec3_max_diff(&xyy, &xyy_expected);
+        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&xyy, (alwan_vec3 const *)&xyy_expected);
         if (diff_forward >= tolerance) {
             printf("Test %d: diff=%e (tol=%e)\n", i, diff_forward, tolerance);
-            vec3_print("  Computed", &xyy);
-            vec3_print("  Expected", &xyy_expected);
+            vec3_print("  Computed", (alwan_vec3 const *)&xyy);
+            vec3_print("  Expected", (alwan_vec3 const *)&xyy_expected);
         }
         TEST_ASSERT(diff_forward < tolerance, "XYZ->xyY mismatch");
 
         /* xyY -> XYZ (round-trip) */
-        alwan_vec3 xyz_roundtrip;
+        alwan_xyz xyz_roundtrip;
         alwan_xyy_to_xyz(&xyy, &xyz_roundtrip);
-        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
+        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&xyz, (alwan_vec3 const *)&xyz_roundtrip);
         TEST_ASSERT(diff_roundtrip < tolerance, "xyY->XYZ round-trip mismatch");
     }
 
@@ -104,7 +110,11 @@ static int test_xyz_lab_d65_roundtrip(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 white_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
+    alwan_xyz white_xyz;
+    white_xyz.x = d65_xyz_data[0];
+    white_xyz.y = d65_xyz_data[1];
+    white_xyz.z = d65_xyz_data[2];
+
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
     alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
@@ -113,24 +123,30 @@ static int test_xyz_lab_d65_roundtrip(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
-        alwan_vec3 lab_expected = {{lab_data[i * 3 + 0], lab_data[i * 3 + 1], lab_data[i * 3 + 2]}};
+        alwan_xyz xyz;
+        xyz.x = xyz_data[i * 3 + 0];
+        xyz.y = xyz_data[i * 3 + 1];
+        xyz.z = xyz_data[i * 3 + 2];
+        alwan_lab lab_expected;
+        lab_expected.L = lab_data[i * 3 + 0];
+        lab_expected.a = lab_data[i * 3 + 1];
+        lab_expected.b = lab_data[i * 3 + 2];
 
         /* XYZ -> Lab */
-        alwan_vec3 lab;
+        alwan_lab lab;
         alwan_xyz_to_lab(&xyz, &white_xyz, &lab);
-        alwan_scalar diff_forward = vec3_max_diff(&lab, &lab_expected);
+        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&lab, (alwan_vec3 const *)&lab_expected);
         if (diff_forward >= tolerance) {
             printf("Lab D65 test %d: diff=%e (tol=%e)\n", i, diff_forward, tolerance);
-            vec3_print("  Computed", &lab);
-            vec3_print("  Expected", &lab_expected);
+            vec3_print("  Computed", (alwan_vec3 const *)&lab);
+            vec3_print("  Expected", (alwan_vec3 const *)&lab_expected);
         }
         TEST_ASSERT(diff_forward < tolerance, "XYZ->Lab mismatch (D65)");
 
         /* Lab -> XYZ (round-trip) */
-        alwan_vec3 xyz_roundtrip;
+        alwan_xyz xyz_roundtrip;
         alwan_lab_to_xyz(&lab, &white_xyz, &xyz_roundtrip);
-        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
+        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&xyz, (alwan_vec3 const *)&xyz_roundtrip);
         TEST_ASSERT(diff_roundtrip < tolerance, "Lab->XYZ round-trip mismatch (D65)");
     }
 
@@ -152,7 +168,11 @@ static int test_xyz_lab_d50_roundtrip(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 white_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz white_xyz;
+    white_xyz.x = d50_xyz_data[0];
+    white_xyz.y = d50_xyz_data[1];
+    white_xyz.z = d50_xyz_data[2];
+
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
     alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
@@ -161,19 +181,25 @@ static int test_xyz_lab_d50_roundtrip(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
-        alwan_vec3 lab_expected = {{lab_data[i * 3 + 0], lab_data[i * 3 + 1], lab_data[i * 3 + 2]}};
+        alwan_xyz xyz;
+        xyz.x = xyz_data[i * 3 + 0];
+        xyz.y = xyz_data[i * 3 + 1];
+        xyz.z = xyz_data[i * 3 + 2];
+        alwan_lab lab_expected;
+        lab_expected.L = lab_data[i * 3 + 0];
+        lab_expected.a = lab_data[i * 3 + 1];
+        lab_expected.b = lab_data[i * 3 + 2];
 
         /* XYZ -> Lab */
-        alwan_vec3 lab;
+        alwan_lab lab;
         alwan_xyz_to_lab(&xyz, &white_xyz, &lab);
-        alwan_scalar diff_forward = vec3_max_diff(&lab, &lab_expected);
+        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&lab, (alwan_vec3 const *)&lab_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->Lab mismatch (D50)");
 
         /* Lab -> XYZ (round-trip) */
-        alwan_vec3 xyz_roundtrip;
+        alwan_xyz xyz_roundtrip;
         alwan_lab_to_xyz(&lab, &white_xyz, &xyz_roundtrip);
-        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
+        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&xyz, (alwan_vec3 const *)&xyz_roundtrip);
         TEST_ASSERT(diff_roundtrip < tolerance, "Lab->XYZ round-trip mismatch (D50)");
     }
 
@@ -195,7 +221,11 @@ static int test_xyz_luv_d65_roundtrip(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 white_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
+    alwan_xyz white_xyz;
+    white_xyz.x = d65_xyz_data[0];
+    white_xyz.y = d65_xyz_data[1];
+    white_xyz.z = d65_xyz_data[2];
+
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
     alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
@@ -204,19 +234,25 @@ static int test_xyz_luv_d65_roundtrip(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
-        alwan_vec3 luv_expected = {{luv_data[i * 3 + 0], luv_data[i * 3 + 1], luv_data[i * 3 + 2]}};
+        alwan_xyz xyz;
+        xyz.x = xyz_data[i * 3 + 0];
+        xyz.y = xyz_data[i * 3 + 1];
+        xyz.z = xyz_data[i * 3 + 2];
+        alwan_luv luv_expected;
+        luv_expected.L = luv_data[i * 3 + 0];
+        luv_expected.u = luv_data[i * 3 + 1];
+        luv_expected.v = luv_data[i * 3 + 2];
 
         /* XYZ -> Luv */
-        alwan_vec3 luv;
+        alwan_luv luv;
         alwan_xyz_to_luv(&xyz, &white_xyz, &luv);
-        alwan_scalar diff_forward = vec3_max_diff(&luv, &luv_expected);
+        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&luv, (alwan_vec3 const *)&luv_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->Luv mismatch (D65)");
 
         /* Luv -> XYZ (round-trip) */
-        alwan_vec3 xyz_roundtrip;
+        alwan_xyz xyz_roundtrip;
         alwan_luv_to_xyz(&luv, &white_xyz, &xyz_roundtrip);
-        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz, &xyz_roundtrip);
+        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&xyz, (alwan_vec3 const *)&xyz_roundtrip);
         TEST_ASSERT(diff_roundtrip < tolerance, "Luv->XYZ round-trip mismatch (D65)");
     }
 
@@ -244,22 +280,28 @@ static int test_lab_lch_roundtrip(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 lab = {{lab_data[i * 3 + 0], lab_data[i * 3 + 1], lab_data[i * 3 + 2]}};
-        alwan_vec3 lch_expected = {{lch_data[i * 3 + 0], lch_data[i * 3 + 1], lch_data[i * 3 + 2]}};
+        alwan_lab lab;
+        lab.L = lab_data[i * 3 + 0];
+        lab.a = lab_data[i * 3 + 1];
+        lab.b = lab_data[i * 3 + 2];
+        alwan_lch lch_expected;
+        lch_expected.L = lch_data[i * 3 + 0];
+        lch_expected.C = lch_data[i * 3 + 1];
+        lch_expected.h = lch_data[i * 3 + 2];
 
         /* Lab -> LCh */
-        alwan_vec3 lch;
+        alwan_lch lch;
         alwan_lab_to_lch(&lab, &lch);
 
         /* For achromatic colors (C ≈ 0), hue is undefined - only check L and C */
-        alwan_scalar L_err = ALWAN_FABS(lch.v[0] - lch_expected.v[0]);
-        alwan_scalar C_err = ALWAN_FABS(lch.v[1] - lch_expected.v[1]);
+        alwan_scalar L_err = ALWAN_FABS(lch.L - lch_expected.L);
+        alwan_scalar C_err = ALWAN_FABS(lch.C - lch_expected.C);
         TEST_ASSERT(L_err < tolerance, "Lab->LCh L mismatch");
         TEST_ASSERT(C_err < tolerance, "Lab->LCh C mismatch");
 
         /* Only check hue for chromatic colors */
-        if (lch.v[1] > ALWAN_LITERAL(1.0)) {
-            alwan_scalar h_err = ALWAN_FABS(lch.v[2] - lch_expected.v[2]);
+        if (lch.C > ALWAN_LITERAL(1.0)) {
+            alwan_scalar h_err = ALWAN_FABS(lch.h - lch_expected.h);
             /* Handle hue wraparound */
             if (h_err > ALWAN_LITERAL(180.0)) {
                 h_err = ALWAN_LITERAL(360.0) - h_err;
@@ -268,9 +310,9 @@ static int test_lab_lch_roundtrip(void) {
         }
 
         /* LCh -> Lab (round-trip) */
-        alwan_vec3 lab_roundtrip;
+        alwan_lab lab_roundtrip;
         alwan_lch_to_lab(&lch, &lab_roundtrip);
-        alwan_scalar diff_roundtrip = vec3_max_diff(&lab, &lab_roundtrip);
+        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&lab, (alwan_vec3 const *)&lab_roundtrip);
         TEST_ASSERT(diff_roundtrip < tolerance, "LCh->Lab round-trip mismatch");
     }
 
@@ -298,22 +340,28 @@ static int test_luv_lchuv_roundtrip(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 luv = {{luv_data[i * 3 + 0], luv_data[i * 3 + 1], luv_data[i * 3 + 2]}};
-        alwan_vec3 lchuv_expected = {{lchuv_data[i * 3 + 0], lchuv_data[i * 3 + 1], lchuv_data[i * 3 + 2]}};
+        alwan_luv luv;
+        luv.L = luv_data[i * 3 + 0];
+        luv.u = luv_data[i * 3 + 1];
+        luv.v = luv_data[i * 3 + 2];
+        alwan_lchuv lchuv_expected;
+        lchuv_expected.L = lchuv_data[i * 3 + 0];
+        lchuv_expected.C = lchuv_data[i * 3 + 1];
+        lchuv_expected.h = lchuv_data[i * 3 + 2];
 
         /* Luv -> LCh(uv) */
-        alwan_vec3 lchuv;
+        alwan_lchuv lchuv;
         alwan_luv_to_lchuv(&luv, &lchuv);
 
         /* For achromatic colors (C ≈ 0), hue is undefined - only check L and C */
-        alwan_scalar L_err = ALWAN_FABS(lchuv.v[0] - lchuv_expected.v[0]);
-        alwan_scalar C_err = ALWAN_FABS(lchuv.v[1] - lchuv_expected.v[1]);
+        alwan_scalar L_err = ALWAN_FABS(lchuv.L - lchuv_expected.L);
+        alwan_scalar C_err = ALWAN_FABS(lchuv.C - lchuv_expected.C);
         TEST_ASSERT(L_err < tolerance, "Luv->LChuv L mismatch");
         TEST_ASSERT(C_err < tolerance, "Luv->LChuv C mismatch");
 
         /* Only check hue for chromatic colors */
-        if (lchuv.v[1] > ALWAN_LITERAL(1.0)) {
-            alwan_scalar h_err = ALWAN_FABS(lchuv.v[2] - lchuv_expected.v[2]);
+        if (lchuv.C > ALWAN_LITERAL(1.0)) {
+            alwan_scalar h_err = ALWAN_FABS(lchuv.h - lchuv_expected.h);
             /* Handle hue wraparound */
             if (h_err > ALWAN_LITERAL(180.0)) {
                 h_err = ALWAN_LITERAL(360.0) - h_err;
@@ -322,9 +370,9 @@ static int test_luv_lchuv_roundtrip(void) {
         }
 
         /* LCh(uv) -> Luv (round-trip) */
-        alwan_vec3 luv_roundtrip;
+        alwan_luv luv_roundtrip;
         alwan_lchuv_to_luv(&lchuv, &luv_roundtrip);
-        alwan_scalar diff_roundtrip = vec3_max_diff(&luv, &luv_roundtrip);
+        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&luv, (alwan_vec3 const *)&luv_roundtrip);
         TEST_ASSERT(diff_roundtrip < tolerance, "LCh(uv)->Luv round-trip mismatch");
     }
 

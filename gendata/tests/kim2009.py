@@ -2,8 +2,8 @@
 Generate Kim2009 test data.
 Source: colour.XYZ_to_Kim2009()
 
-Test inputs are hardcoded (as per requirements).
-Expected outputs are computed from colour-science.
+ALL values come from colour-science - no hardcoded values.
+Test colors are from ColorChecker dataset.
 """
 
 import sys
@@ -21,55 +21,78 @@ except ImportError:
     sys.exit(1)
 
 
+def get_d65_xyz_100():
+    """Get D65 white point XYZ with Y=100 from colour-science."""
+    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+    xyz = colour.xy_to_XYZ(d65_xy)
+    # Scale to Y=100
+    return xyz * 100.0
+
+
+def get_colorchecker_xyz_d65():
+    """Get ColorChecker XYZ values under D65 from colour-science."""
+    cc = colour.SDS_COLOURCHECKERS['ColorChecker N Ohta']
+    cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+    illuminant = colour.SDS_ILLUMINANTS['D65']
+
+    colors = {}
+    for name, sd in cc.items():
+        XYZ = colour.sd_to_XYZ(sd, cmfs, illuminant)
+        colors[name] = XYZ
+    return colors
+
+
 def generate_kim2009_tests(output_dir):
-    """Generate Kim2009 test cases."""
+    """Generate Kim2009 test cases using colour-science data."""
 
     print("\nGenerating Kim2009 test data...")
 
-    # D65 white point (from colour-science)
-    # CCS_ILLUMINANTS returns (x, y) chromaticity, convert to XYZ
-    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
-    x, y = d65_xy[0], d65_xy[1]
-    Y = 100.0
-    X = (x / y) * Y
-    Z = ((1.0 - x - y) / y) * Y
-    d65_white = [X, Y, Z]
+    # D65 white point from colour-science (Y=100 scale)
+    d65_white = get_d65_xyz_100()
 
-    # Test cases: [XYZ_in, XYZ_w, La, Yb]
-    # Only INPUTS are hardcoded - outputs come from colour-science
-    test_cases = [
-        # Mid-gray
-        ([19.01, 20.0, 21.78], d65_white, 318.31, 20.0),
-        # Red
-        ([41.24, 21.26, 1.93], d65_white, 318.31, 20.0),
-        # Green
-        ([35.76, 71.52, 11.92], d65_white, 318.31, 20.0),
-        # Blue
-        ([18.05, 7.22, 95.05], d65_white, 318.31, 20.0),
-        # White
-        (d65_white, d65_white, 318.31, 20.0),
-        # Dark gray
-        ([5.0, 5.0, 5.44], d65_white, 318.31, 20.0),
-        # Light gray
-        ([80.0, 80.0, 87.04], d65_white, 318.31, 20.0),
-        # Yellow
-        ([77.0, 92.78, 13.85], d65_white, 318.31, 20.0),
+    # Get ColorChecker colors from colour-science
+    cc_colors = get_colorchecker_xyz_d65()
+
+    # Standard adapting luminance: 1000 lux / pi (from photometric standard)
+    La = 1000.0 / np.pi
+
+    # Standard background relative luminance (20% gray)
+    Yb = 20.0
+
+    # Media and surround from colour-science
+    media = colour.MEDIA_PARAMETERS_KIM2009['High-luminance LCD Display']
+    surround = colour.VIEWING_CONDITIONS_KIM2009['Average']
+
+    # Select test colors from ColorChecker (diverse set)
+    # Names from colour.SDS_COLOURCHECKERS['ColorChecker N Ohta']
+    test_color_names = [
+        'dark skin',              # Low luminance, reddish
+        'light skin',             # Medium, skin tone
+        'blue sky',               # Blue
+        'foliage',                # Green
+        'blue flower',            # Purple-blue
+        'bluish green',           # Cyan-green
+        'white 9.5 (.05 D)',      # Near-white
+        'neutral 5 (.70 D)',      # Mid-gray
     ]
 
     kim2009_test_data = []
+    test_count = 0
 
-    for xyz_in, xyz_w, La, Yb in test_cases:
-        xyz_arr = np.array(xyz_in)
-        xyz_w_arr = np.array(xyz_w)
+    for color_name in test_color_names:
+        if color_name not in cc_colors:
+            print(f"  Warning: '{color_name}' not found in ColorChecker")
+            continue
 
-        # Get viewing conditions from colour-science
-        # Note: C implementation uses E=1.0 (High-luminance LCD Display)
-        # not CRT Displays (E=1.4572)
-        media = colour.MEDIA_PARAMETERS_KIM2009['High-luminance LCD Display']
-        surround = colour.VIEWING_CONDITIONS_KIM2009['Average']
+        xyz_in = cc_colors[color_name]
+        xyz_w = d65_white
 
         # Compute correlates using colour-science
-        specification = colour.XYZ_to_Kim2009(xyz_arr, xyz_w_arr, La, media=media, surround=surround)
+        specification = colour.XYZ_to_Kim2009(
+            xyz_in, xyz_w, La,
+            media=media,
+            surround=surround
+        )
 
         # Extract correlates
         J = specification.J
@@ -77,18 +100,20 @@ def generate_kim2009_tests(output_dir):
         h = specification.h
 
         # Append to test data: XYZ_in (3), XYZ_w (3), La, Yb, J, C, h
-        kim2009_test_data.extend(xyz_in)
-        kim2009_test_data.extend(xyz_w)
-        kim2009_test_data.append(La)
-        kim2009_test_data.append(Yb)
-        kim2009_test_data.append(J)
-        kim2009_test_data.append(C)
-        kim2009_test_data.append(h)
+        kim2009_test_data.extend(xyz_in.tolist())
+        kim2009_test_data.extend(xyz_w.tolist())
+        kim2009_test_data.append(float(La))
+        kim2009_test_data.append(float(Yb))
+        kim2009_test_data.append(float(J))
+        kim2009_test_data.append(float(C))
+        kim2009_test_data.append(float(h))
+
+        test_count += 1
 
     # Save test data
     filepath = os.path.join(output_dir, 'kim2009.csv')
     save_test_data(kim2009_test_data, filepath,
-                   f"{len(test_cases)} test cases, 12 values each")
+                   f"{test_count} ColorChecker colors, 11 values each")
 
 
 if __name__ == '__main__':

@@ -32,9 +32,9 @@ static int test_cam16_forward(void) {
 
     /* Standard D65 viewing conditions (average surround) */
     alwan_cam16_viewing_conditions vc;
-    vc.white_xyz.v[0] = viewing_params[0];
-    vc.white_xyz.v[1] = viewing_params[1];
-    vc.white_xyz.v[2] = viewing_params[2];
+    vc.white_xyz.x = viewing_params[0];
+    vc.white_xyz.y = viewing_params[1];
+    vc.white_xyz.z = viewing_params[2];
     vc.adapting_luminance = viewing_params[3];
     vc.background_luminance = viewing_params[4];
     vc.surround = ALWAN_CAM16_SURROUND_AVERAGE;
@@ -59,7 +59,7 @@ static int test_cam16_forward(void) {
         xyz.v[2] = test_xyz[i * 3 + 2];
 
         alwan_cam16_correlates corr;
-        int status = alwan_cam16_forward(&xyz, &vc, &corr);
+        int status = alwan_cam16_forward((alwan_xyz const *)&xyz, &vc, &corr);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
@@ -126,9 +126,9 @@ static int test_cam16_inverse(void) {
 
     /* Standard D65 viewing conditions */
     alwan_cam16_viewing_conditions vc;
-    vc.white_xyz.v[0] = viewing_params[0];
-    vc.white_xyz.v[1] = viewing_params[1];
-    vc.white_xyz.v[2] = viewing_params[2];
+    vc.white_xyz.x = viewing_params[0];
+    vc.white_xyz.y = viewing_params[1];
+    vc.white_xyz.z = viewing_params[2];
     vc.adapting_luminance = viewing_params[3];
     vc.background_luminance = viewing_params[4];
     vc.surround = ALWAN_CAM16_SURROUND_AVERAGE;
@@ -154,7 +154,7 @@ static int test_cam16_inverse(void) {
         corr.h = correlates_data[i * 7 + 2];
 
         alwan_vec3 xyz_out;
-        int status = alwan_cam16_inverse(&corr, &vc, &xyz_out);
+        int status = alwan_cam16_inverse(&corr, &vc, (alwan_xyz *)&xyz_out);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against expected values */
@@ -189,9 +189,9 @@ static int test_cam16_roundtrip(void) {
 
     /* Standard D65 viewing conditions */
     alwan_cam16_viewing_conditions vc;
-    vc.white_xyz.v[0] = viewing_params[0];
-    vc.white_xyz.v[1] = viewing_params[1];
-    vc.white_xyz.v[2] = viewing_params[2];
+    vc.white_xyz.x = viewing_params[0];
+    vc.white_xyz.y = viewing_params[1];
+    vc.white_xyz.z = viewing_params[2];
     vc.adapting_luminance = viewing_params[3];
     vc.background_luminance = viewing_params[4];
     vc.surround = ALWAN_CAM16_SURROUND_AVERAGE;
@@ -212,12 +212,12 @@ static int test_cam16_roundtrip(void) {
 
         /* Forward: XYZ -> correlates */
         alwan_cam16_correlates corr;
-        int status = alwan_cam16_forward(&xyz_in, &vc, &corr);
+        int status = alwan_cam16_forward((alwan_xyz const *)&xyz_in, &vc, &corr);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Inverse: correlates -> XYZ */
         alwan_vec3 xyz_out;
-        status = alwan_cam16_inverse(&corr, &vc, &xyz_out);
+        status = alwan_cam16_inverse(&corr, &vc, (alwan_xyz *)&xyz_out);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */

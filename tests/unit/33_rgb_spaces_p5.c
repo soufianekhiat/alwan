@@ -357,7 +357,7 @@ static int test_additional_spaces(void) {
     }
 
     alwan_destroy(ctx);
-    TEST_PASS("Additional high-priority RGB spaces (4 spaces)");
+    TEST_PASS("Additional RGB spaces (4 spaces)");
 }
 
 /* ----------------------------------------------------------------
@@ -431,18 +431,18 @@ static int test_rgb_space_conversion(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed to get Adobe RGB 1998 descriptor");
 
     /* Convert a test color: sRGB (1, 0, 0) -> Adobe RGB */
-    alwan_vec3 srgb_red = {{ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};
-    alwan_vec3 adobe_rgb;
+    alwan_rgb srgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb adobe_rgb;
 
     status = alwan_rgb_convert(ctx, &srgb_desc, &adobe_desc, &srgb_red, &adobe_rgb);
     TEST_ASSERT(status == ALWAN_OK, "RGB conversion failed");
 
     printf("  sRGB red (1,0,0) -> Adobe RGB (%.4f,%.4f,%.4f)\n",
-           adobe_rgb.v[0], adobe_rgb.v[1], adobe_rgb.v[2]);
+           adobe_rgb.r, adobe_rgb.g, adobe_rgb.b);
 
     /* Adobe RGB has a wider gamut than sRGB, so sRGB red gets scaled down
      * Expected value is around 0.72 (sRGB red is outside Adobe RGB gamut) */
-    TEST_ASSERT(adobe_rgb.v[0] > ALWAN_LITERAL(0.7) && adobe_rgb.v[0] < ALWAN_LITERAL(0.75),
+    TEST_ASSERT(adobe_rgb.r > ALWAN_LITERAL(0.7) && adobe_rgb.r < ALWAN_LITERAL(0.75),
                 "Adobe RGB red component should be ~0.72");
 
     alwan_destroy(ctx);

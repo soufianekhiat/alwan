@@ -32,7 +32,7 @@ static int test_xyz_jzazbz_round_trip(void) {
         jzazbz_expected.v[2] = test_data[i * 6 + 5];
 
         /* Test XYZ -> Jzazbz */
-        alwan_xyz_to_jzazbz(&xyz_in, &jzazbz_computed);
+        alwan_xyz_to_jzazbz((alwan_xyz *)&xyz_in, (alwan_jzazbz *)&jzazbz_computed);
 
         alwan_scalar const jzazbz_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100.0);
         for (int j = 0; j < 3; j++) {
@@ -51,7 +51,7 @@ static int test_xyz_jzazbz_round_trip(void) {
         }
 
         /* Test round-trip: Jzazbz -> XYZ */
-        alwan_jzazbz_to_xyz(&jzazbz_computed, &xyz_out);
+        alwan_jzazbz_to_xyz((alwan_jzazbz *)&jzazbz_computed, (alwan_xyz *)&xyz_out);
 
         alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000000.0);
 
@@ -85,11 +85,11 @@ static int test_jzazbz_jzczhz_round_trip(void) {
     jzazbz.v[1] = ALWAN_LITERAL(0.0);
     jzazbz.v[2] = ALWAN_LITERAL(0.0);
 
-    alwan_jzazbz_to_jzczhz(&jzazbz, &jzczhz);
+    alwan_jzazbz_to_jzczhz((alwan_jzazbz *)&jzazbz, (alwan_jzczhz *)&jzczhz);
     TEST_ASSERT(ALWAN_FABS(jzczhz.v[0] - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "Jz mismatch");
     TEST_ASSERT(ALWAN_FABS(jzczhz.v[1]) < ALWAN_TEST_TOLERANCE, "Cz should be 0");
 
-    alwan_jzczhz_to_jzazbz(&jzczhz, &jzazbz_out);
+    alwan_jzczhz_to_jzazbz((alwan_jzczhz *)&jzczhz, (alwan_jzazbz *)&jzazbz_out);
     for (int i = 0; i < 3; i++) {
         TEST_ASSERT(ALWAN_FABS(jzazbz_out.v[i] - jzazbz.v[i]) < ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100.0),
                     "Jzazbz round-trip failed");
@@ -100,8 +100,8 @@ static int test_jzazbz_jzczhz_round_trip(void) {
     jzazbz.v[1] = ALWAN_LITERAL(0.1);
     jzazbz.v[2] = ALWAN_LITERAL(0.05);
 
-    alwan_jzazbz_to_jzczhz(&jzazbz, &jzczhz);
-    alwan_jzczhz_to_jzazbz(&jzczhz, &jzazbz_out);
+    alwan_jzazbz_to_jzczhz((alwan_jzazbz *)&jzazbz, (alwan_jzczhz *)&jzczhz);
+    alwan_jzczhz_to_jzazbz((alwan_jzczhz *)&jzczhz, (alwan_jzazbz *)&jzazbz_out);
 
     for (int i = 0; i < 3; i++) {
         alwan_scalar diff = ALWAN_FABS(jzazbz_out.v[i] - jzazbz.v[i]);

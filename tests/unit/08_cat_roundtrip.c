@@ -63,8 +63,8 @@ static int test_adapt_d65_to_d50_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
@@ -120,8 +120,8 @@ static int test_adapt_a_to_d65_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 a_xyz = {{a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
@@ -168,8 +168,8 @@ static int test_roundtrip_d65_d50_d65(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 #if ALWAN_SCALAR_IS_FLOAT
@@ -223,8 +223,8 @@ static int test_roundtrip_all_methods(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     /* Test color: sRGB red in D65 */
     alwan_vec3 original = {{ALWAN_LITERAL(0.412456), ALWAN_LITERAL(0.212673), ALWAN_LITERAL(0.019334)}};
@@ -296,8 +296,8 @@ static int test_bulk_adaptation(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
 

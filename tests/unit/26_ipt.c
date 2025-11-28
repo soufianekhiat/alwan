@@ -32,7 +32,7 @@ static int test_xyz_ipt_round_trip(void) {
         ipt_expected.v[2] = test_data[i * 6 + 5];
 
         /* Test XYZ -> IPT */
-        alwan_xyz_to_ipt(&xyz_in, &ipt_computed);
+        alwan_xyz_to_ipt((alwan_xyz const *)&xyz_in, (alwan_ipt *)&ipt_computed);
 
         alwan_scalar const ipt_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000.0);
         for (int j = 0; j < 3; j++) {
@@ -51,7 +51,7 @@ static int test_xyz_ipt_round_trip(void) {
         }
 
         /* Test round-trip: IPT -> XYZ */
-        alwan_ipt_to_xyz(&ipt_computed, &xyz_out);
+        alwan_ipt_to_xyz((alwan_ipt const *)&ipt_computed, (alwan_xyz *)&xyz_out);
 
         alwan_scalar const roundtrip_tol = ALWAN_LITERAL(0.01);  /* Absolute tolerance for round-trip */
 
@@ -85,11 +85,11 @@ static int test_ipt_iptch_round_trip(void) {
     ipt.v[1] = ALWAN_LITERAL(0.0);
     ipt.v[2] = ALWAN_LITERAL(0.0);
 
-    alwan_ipt_to_iptch(&ipt, &iptch);
+    alwan_ipt_to_iptch((alwan_ipt const *)&ipt, &iptch);
     TEST_ASSERT(ALWAN_FABS(iptch.v[0] - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "I mismatch");
     TEST_ASSERT(ALWAN_FABS(iptch.v[1]) < ALWAN_TEST_TOLERANCE, "C should be 0");
 
-    alwan_iptch_to_ipt(&iptch, &ipt_out);
+    alwan_iptch_to_ipt(&iptch, (alwan_ipt *)&ipt_out);
     for (int i = 0; i < 3; i++) {
         TEST_ASSERT(ALWAN_FABS(ipt_out.v[i] - ipt.v[i]) < ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100.0),
                     "IPT round-trip failed");
@@ -100,8 +100,8 @@ static int test_ipt_iptch_round_trip(void) {
     ipt.v[1] = ALWAN_LITERAL(0.1);
     ipt.v[2] = ALWAN_LITERAL(0.05);
 
-    alwan_ipt_to_iptch(&ipt, &iptch);
-    alwan_iptch_to_ipt(&iptch, &ipt_out);
+    alwan_ipt_to_iptch((alwan_ipt const *)&ipt, &iptch);
+    alwan_iptch_to_ipt(&iptch, (alwan_ipt *)&ipt_out);
 
     for (int i = 0; i < 3; i++) {
         alwan_scalar diff = ALWAN_FABS(ipt_out.v[i] - ipt.v[i]);

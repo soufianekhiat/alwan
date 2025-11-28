@@ -92,26 +92,26 @@ static int test_srgb_to_p3(alwan_ctx *ctx) {
     alwan_rgb_space_desc p3 = get_display_p3_desc();
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 src_rgb, expected_rgb, result_rgb;
-        src_rgb.v[0] = test_data[i * 6 + 0];
-        src_rgb.v[1] = test_data[i * 6 + 1];
-        src_rgb.v[2] = test_data[i * 6 + 2];
-        expected_rgb.v[0] = test_data[i * 6 + 3];
-        expected_rgb.v[1] = test_data[i * 6 + 4];
-        expected_rgb.v[2] = test_data[i * 6 + 5];
+        alwan_rgb src_rgb, expected_rgb, result_rgb;
+        src_rgb.r = test_data[i * 6 + 0];
+        src_rgb.g = test_data[i * 6 + 1];
+        src_rgb.b = test_data[i * 6 + 2];
+        expected_rgb.r = test_data[i * 6 + 3];
+        expected_rgb.g = test_data[i * 6 + 4];
+        expected_rgb.b = test_data[i * 6 + 5];
 
         int status = alwan_rgb_convert(ctx, &srgb, &p3, &src_rgb, &result_rgb);
         TEST_ASSERT(status == ALWAN_OK, "Conversion failed");
 
-        alwan_scalar diff_r = ALWAN_FABS(result_rgb.v[0] - expected_rgb.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(result_rgb.v[1] - expected_rgb.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(result_rgb.v[2] - expected_rgb.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(result_rgb.r - expected_rgb.r);
+        alwan_scalar diff_g = ALWAN_FABS(result_rgb.g - expected_rgb.g);
+        alwan_scalar diff_b = ALWAN_FABS(result_rgb.b - expected_rgb.b);
 
         if (diff_r > RGB_CONVERT_TOLERANCE || diff_g > RGB_CONVERT_TOLERANCE || diff_b > RGB_CONVERT_TOLERANCE) {
             printf("sRGB->P3 color %zu failed:\n", i);
-            printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.v[0], src_rgb.v[1], src_rgb.v[2]);
-            printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.v[0], expected_rgb.v[1], expected_rgb.v[2]);
-            printf("  Got:      [%.6f, %.6f, %.6f]\n", result_rgb.v[0], result_rgb.v[1], result_rgb.v[2]);
+            printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
+            printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);
+            printf("  Got:      [%.6f, %.6f, %.6f]\n", result_rgb.r, result_rgb.g, result_rgb.b);
             printf("  Diff:     [%e, %e, %e]\n", diff_r, diff_g, diff_b);
             TEST_ASSERT(0, "RGB conversion values don't match");
         }
@@ -133,26 +133,26 @@ static int test_srgb_to_bt2020(alwan_ctx *ctx) {
     alwan_rgb_space_desc bt2020 = get_bt2020_desc();
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 src_rgb, expected_rgb, result_rgb;
-        src_rgb.v[0] = test_data[i * 6 + 0];
-        src_rgb.v[1] = test_data[i * 6 + 1];
-        src_rgb.v[2] = test_data[i * 6 + 2];
-        expected_rgb.v[0] = test_data[i * 6 + 3];
-        expected_rgb.v[1] = test_data[i * 6 + 4];
-        expected_rgb.v[2] = test_data[i * 6 + 5];
+        alwan_rgb src_rgb, expected_rgb, result_rgb;
+        src_rgb.r = test_data[i * 6 + 0];
+        src_rgb.g = test_data[i * 6 + 1];
+        src_rgb.b = test_data[i * 6 + 2];
+        expected_rgb.r = test_data[i * 6 + 3];
+        expected_rgb.g = test_data[i * 6 + 4];
+        expected_rgb.b = test_data[i * 6 + 5];
 
         int status = alwan_rgb_convert(ctx, &srgb, &bt2020, &src_rgb, &result_rgb);
         TEST_ASSERT(status == ALWAN_OK, "Conversion failed");
 
-        alwan_scalar diff_r = ALWAN_FABS(result_rgb.v[0] - expected_rgb.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(result_rgb.v[1] - expected_rgb.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(result_rgb.v[2] - expected_rgb.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(result_rgb.r - expected_rgb.r);
+        alwan_scalar diff_g = ALWAN_FABS(result_rgb.g - expected_rgb.g);
+        alwan_scalar diff_b = ALWAN_FABS(result_rgb.b - expected_rgb.b);
 
         if (diff_r > RGB_CONVERT_TOLERANCE || diff_g > RGB_CONVERT_TOLERANCE || diff_b > RGB_CONVERT_TOLERANCE) {
             printf("sRGB->BT2020 color %zu failed:\n", i);
-            printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.v[0], src_rgb.v[1], src_rgb.v[2]);
-            printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.v[0], expected_rgb.v[1], expected_rgb.v[2]);
-            printf("  Got:      [%.6f, %.6f, %.6f]\n", result_rgb.v[0], result_rgb.v[1], result_rgb.v[2]);
+            printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
+            printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);
+            printf("  Got:      [%.6f, %.6f, %.6f]\n", result_rgb.r, result_rgb.g, result_rgb.b);
             printf("  Diff:     [%e, %e, %e]\n", diff_r, diff_g, diff_b);
             TEST_ASSERT(0, "RGB conversion values don't match");
         }
@@ -174,26 +174,26 @@ static int test_srgb_to_acescg(alwan_ctx *ctx) {
     alwan_rgb_space_desc acescg = get_acescg_desc();
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 src_rgb, expected_rgb, result_rgb;
-        src_rgb.v[0] = test_data[i * 6 + 0];
-        src_rgb.v[1] = test_data[i * 6 + 1];
-        src_rgb.v[2] = test_data[i * 6 + 2];
-        expected_rgb.v[0] = test_data[i * 6 + 3];
-        expected_rgb.v[1] = test_data[i * 6 + 4];
-        expected_rgb.v[2] = test_data[i * 6 + 5];
+        alwan_rgb src_rgb, expected_rgb, result_rgb;
+        src_rgb.r = test_data[i * 6 + 0];
+        src_rgb.g = test_data[i * 6 + 1];
+        src_rgb.b = test_data[i * 6 + 2];
+        expected_rgb.r = test_data[i * 6 + 3];
+        expected_rgb.g = test_data[i * 6 + 4];
+        expected_rgb.b = test_data[i * 6 + 5];
 
         int status = alwan_rgb_convert(ctx, &srgb, &acescg, &src_rgb, &result_rgb);
         TEST_ASSERT(status == ALWAN_OK, "Conversion failed");
 
-        alwan_scalar diff_r = ALWAN_FABS(result_rgb.v[0] - expected_rgb.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(result_rgb.v[1] - expected_rgb.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(result_rgb.v[2] - expected_rgb.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(result_rgb.r - expected_rgb.r);
+        alwan_scalar diff_g = ALWAN_FABS(result_rgb.g - expected_rgb.g);
+        alwan_scalar diff_b = ALWAN_FABS(result_rgb.b - expected_rgb.b);
 
         if (diff_r > RGB_CONVERT_TOLERANCE || diff_g > RGB_CONVERT_TOLERANCE || diff_b > RGB_CONVERT_TOLERANCE) {
             printf("sRGB->ACEScg color %zu failed:\n", i);
-            printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.v[0], src_rgb.v[1], src_rgb.v[2]);
-            printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.v[0], expected_rgb.v[1], expected_rgb.v[2]);
-            printf("  Got:      [%.6f, %.6f, %.6f]\n", result_rgb.v[0], result_rgb.v[1], result_rgb.v[2]);
+            printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
+            printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);
+            printf("  Got:      [%.6f, %.6f, %.6f]\n", result_rgb.r, result_rgb.g, result_rgb.b);
             printf("  Diff:     [%e, %e, %e]\n", diff_r, diff_g, diff_b);
             TEST_ASSERT(0, "RGB conversion values don't match");
         }
@@ -209,15 +209,15 @@ static int test_bulk_conversion(alwan_ctx *ctx) {
     alwan_rgb_space_desc p3 = get_display_p3_desc();
 
     /* Test with 5 colors */
-    alwan_vec3 src_colors[5] = {
-        {{ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}},  /* Red */
-        {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)}},  /* Green */
-        {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)}},  /* Blue */
-        {{ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)}},  /* White */
-        {{ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)}}   /* Gray */
+    alwan_rgb src_colors[5] = {
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},  /* Red */
+        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)},  /* Green */
+        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)},  /* Blue */
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},  /* White */
+        {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)}   /* Gray */
     };
-    alwan_vec3 dst_colors_bulk[5];
-    alwan_vec3 dst_colors_single[5];
+    alwan_rgb dst_colors_bulk[5];
+    alwan_rgb dst_colors_single[5];
 
     /* Convert using bulk function */
     int status = alwan_rgb_convert_bulk(ctx, &srgb, &p3, src_colors, dst_colors_bulk, 5);
@@ -231,16 +231,16 @@ static int test_bulk_conversion(alwan_ctx *ctx) {
 
     /* Compare results */
     for (size_t i = 0; i < 5; i++) {
-        alwan_scalar diff_r = ALWAN_FABS(dst_colors_bulk[i].v[0] - dst_colors_single[i].v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(dst_colors_bulk[i].v[1] - dst_colors_single[i].v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(dst_colors_bulk[i].v[2] - dst_colors_single[i].v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(dst_colors_bulk[i].r - dst_colors_single[i].r);
+        alwan_scalar diff_g = ALWAN_FABS(dst_colors_bulk[i].g - dst_colors_single[i].g);
+        alwan_scalar diff_b = ALWAN_FABS(dst_colors_bulk[i].b - dst_colors_single[i].b);
 
         if (diff_r > RGB_CONVERT_TOLERANCE || diff_g > RGB_CONVERT_TOLERANCE || diff_b > RGB_CONVERT_TOLERANCE) {
             printf("Bulk conversion mismatch for color %zu:\n", i);
             printf("  Bulk:   [%.6f, %.6f, %.6f]\n",
-                   dst_colors_bulk[i].v[0], dst_colors_bulk[i].v[1], dst_colors_bulk[i].v[2]);
+                   dst_colors_bulk[i].r, dst_colors_bulk[i].g, dst_colors_bulk[i].b);
             printf("  Single: [%.6f, %.6f, %.6f]\n",
-                   dst_colors_single[i].v[0], dst_colors_single[i].v[1], dst_colors_single[i].v[2]);
+                   dst_colors_single[i].r, dst_colors_single[i].g, dst_colors_single[i].b);
             TEST_ASSERT(0, "Bulk and single conversion results differ");
         }
     }

@@ -32,7 +32,7 @@ static int test_xyz_oklab_round_trip(void) {
         oklab_expected.v[2] = test_data[i * 6 + 5];
 
         /* Test XYZ -> Oklab */
-        alwan_xyz_to_oklab(&xyz_in, &oklab_computed);
+        alwan_xyz_to_oklab((alwan_xyz *)&xyz_in, (alwan_oklab *)&oklab_computed);
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(oklab_computed.v[j] - oklab_expected.v[j]);
@@ -50,7 +50,7 @@ static int test_xyz_oklab_round_trip(void) {
         }
 
         /* Test round-trip: Oklab -> XYZ */
-        alwan_oklab_to_xyz(&oklab_computed, &xyz_out);
+        alwan_oklab_to_xyz((alwan_oklab *)&oklab_computed, (alwan_xyz *)&xyz_out);
 
         /* Relaxed tolerance for round-trip due to cube root operations
          * (1e-5 for double, 1e-2 for float) */
@@ -97,7 +97,7 @@ static int test_oklab_oklch_round_trip(void) {
         oklch_expected.v[2] = test_data[i * 6 + 5];
 
         /* Test Oklab -> Oklch */
-        alwan_oklab_to_oklch(&oklab_in, &oklch_computed);
+        alwan_oklab_to_oklch((alwan_oklab *)&oklab_in, (alwan_oklch *)&oklch_computed);
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(oklch_computed.v[j] - oklch_expected.v[j]);
@@ -117,7 +117,7 @@ static int test_oklab_oklch_round_trip(void) {
         }
 
         /* Test round-trip: Oklch -> Oklab */
-        alwan_oklch_to_oklab(&oklch_computed, &oklab_out);
+        alwan_oklch_to_oklab((alwan_oklch *)&oklch_computed, (alwan_oklab *)&oklab_out);
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(oklab_out.v[j] - oklab_in.v[j]);
@@ -148,7 +148,7 @@ static int test_oklab_known_values(void) {
     /* D65 white should be L=1, a=0, b=0 */
     alwan_vec3 xyz_white = {{ALWAN_LITERAL(0.95047), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.08883)}};
     alwan_vec3 oklab;
-    alwan_xyz_to_oklab(&xyz_white, &oklab);
+    alwan_xyz_to_oklab((alwan_xyz *)&xyz_white, (alwan_oklab *)&oklab);
 
     TEST_ASSERT(ALWAN_FABS(oklab.v[0] - ALWAN_LITERAL(1.0)) < tol, "White L != 1");
     TEST_ASSERT(ALWAN_FABS(oklab.v[1]) < tol, "White a != 0");
@@ -156,7 +156,7 @@ static int test_oklab_known_values(void) {
 
     /* Black should be L=0, a=0, b=0 */
     alwan_vec3 xyz_black = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};
-    alwan_xyz_to_oklab(&xyz_black, &oklab);
+    alwan_xyz_to_oklab((alwan_xyz *)&xyz_black, (alwan_oklab *)&oklab);
 
     TEST_ASSERT(ALWAN_FABS(oklab.v[0]) < tol, "Black L != 0");
     TEST_ASSERT(ALWAN_FABS(oklab.v[1]) < tol, "Black a != 0");

@@ -32,16 +32,16 @@ static alwan_scalar const test_data[] = {
 static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 12;
 
 /* Helper to extract test case from flat array */
-static void get_test_case(size_t index, alwan_vec3 *xyz_in, alwan_vec3 *xyz_w,
+static void get_test_case(size_t index, alwan_xyz *xyz_in, alwan_xyz *xyz_w,
                           alwan_scalar *La, alwan_scalar *Yb, int *surround_idx,
                           alwan_scalar *J_expected, alwan_scalar *C_expected, alwan_scalar *h_expected) {
     size_t offset = index * 12;
-    xyz_in->v[0] = test_data[offset + 0];
-    xyz_in->v[1] = test_data[offset + 1];
-    xyz_in->v[2] = test_data[offset + 2];
-    xyz_w->v[0] = test_data[offset + 3];
-    xyz_w->v[1] = test_data[offset + 4];
-    xyz_w->v[2] = test_data[offset + 5];
+    xyz_in->x = test_data[offset + 0];
+    xyz_in->y = test_data[offset + 1];
+    xyz_in->z = test_data[offset + 2];
+    xyz_w->x = test_data[offset + 3];
+    xyz_w->y = test_data[offset + 4];
+    xyz_w->z = test_data[offset + 5];
     *La = test_data[offset + 6];
     *Yb = test_data[offset + 7];
     *surround_idx = (int)test_data[offset + 8];
@@ -54,7 +54,7 @@ static void get_test_case(size_t index, alwan_vec3 *xyz_in, alwan_vec3 *xyz_w,
 static int test_hellwig2022_forward(void) {
     /* Test forward transform for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_vec3 xyz_in, xyz_w;
+        alwan_xyz xyz_in, xyz_w;
         alwan_scalar La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
@@ -111,7 +111,7 @@ static int test_hellwig2022_forward(void) {
 static int test_hellwig2022_inverse(void) {
     /* Test inverse transform for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_vec3 xyz_in, xyz_w;
+        alwan_xyz xyz_in, xyz_w;
         alwan_scalar La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
@@ -131,22 +131,22 @@ static int test_hellwig2022_inverse(void) {
         corr.h = h_expected;
 
         /* Inverse transform */
-        alwan_vec3 xyz_out;
+        alwan_xyz xyz_out;
         int status = alwan_hellwig2022_inverse(&corr, &vc, &xyz_out);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against input values */
-        alwan_scalar X_err = ALWAN_FABS(xyz_out.v[0] - xyz_in.v[0]);
-        alwan_scalar Y_err = ALWAN_FABS(xyz_out.v[1] - xyz_in.v[1]);
-        alwan_scalar Z_err = ALWAN_FABS(xyz_out.v[2] - xyz_in.v[2]);
+        alwan_scalar X_err = ALWAN_FABS(xyz_out.x - xyz_in.x);
+        alwan_scalar Y_err = ALWAN_FABS(xyz_out.y - xyz_in.y);
+        alwan_scalar Z_err = ALWAN_FABS(xyz_out.z - xyz_in.z);
 
         if (X_err >= CORRELATE_TOL || Y_err >= CORRELATE_TOL || Z_err >= CORRELATE_TOL) {
             printf("  Test %zu: XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i + 1, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Got:      [%.10f, %.10f, %.10f]\n",
-                   (double)xyz_out.v[0], (double)xyz_out.v[1], (double)xyz_out.v[2]);
+                   (double)xyz_out.x, (double)xyz_out.y, (double)xyz_out.z);
             printf("    Expected: [%.10f, %.10f, %.10f]\n",
-                   (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);
+                   (double)xyz_in.x, (double)xyz_in.y, (double)xyz_in.z);
         }
 
         TEST_ASSERT(X_err < CORRELATE_TOL, "X mismatch");
@@ -162,7 +162,7 @@ static int test_hellwig2022_inverse(void) {
 static int test_hellwig2022_roundtrip(void) {
     /* Test round-trip for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_vec3 xyz_in, xyz_w;
+        alwan_xyz xyz_in, xyz_w;
         alwan_scalar La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
@@ -181,22 +181,22 @@ static int test_hellwig2022_roundtrip(void) {
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Inverse: correlates -> XYZ */
-        alwan_vec3 xyz_out;
+        alwan_xyz xyz_out;
         status = alwan_hellwig2022_inverse(&corr, &vc, &xyz_out);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
-        alwan_scalar X_err = ALWAN_FABS(xyz_out.v[0] - xyz_in.v[0]);
-        alwan_scalar Y_err = ALWAN_FABS(xyz_out.v[1] - xyz_in.v[1]);
-        alwan_scalar Z_err = ALWAN_FABS(xyz_out.v[2] - xyz_in.v[2]);
+        alwan_scalar X_err = ALWAN_FABS(xyz_out.x - xyz_in.x);
+        alwan_scalar Y_err = ALWAN_FABS(xyz_out.y - xyz_in.y);
+        alwan_scalar Z_err = ALWAN_FABS(xyz_out.z - xyz_in.z);
 
         if (X_err >= CORRELATE_TOL || Y_err >= CORRELATE_TOL || Z_err >= CORRELATE_TOL) {
             printf("  Test %zu: Round-trip XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i + 1, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Input:  [%.10f, %.10f, %.10f]\n",
-                   (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);
+                   (double)xyz_in.x, (double)xyz_in.y, (double)xyz_in.z);
             printf("    Output: [%.10f, %.10f, %.10f]\n",
-                   (double)xyz_out.v[0], (double)xyz_out.v[1], (double)xyz_out.v[2]);
+                   (double)xyz_out.x, (double)xyz_out.y, (double)xyz_out.z);
         }
 
         TEST_ASSERT(X_err < CORRELATE_TOL, "Round-trip X error too large");
@@ -211,18 +211,18 @@ static int test_hellwig2022_roundtrip(void) {
 /* Test different surround conditions */
 static int test_hellwig2022_surround_conditions(void) {
     alwan_hellwig2022_viewing_conditions vc;
-    vc.white_xyz.v[0] = ALWAN_LITERAL(95.05);
-    vc.white_xyz.v[1] = ALWAN_LITERAL(100.0);
-    vc.white_xyz.v[2] = ALWAN_LITERAL(108.88);
+    vc.white_xyz.x = ALWAN_LITERAL(95.05);
+    vc.white_xyz.y = ALWAN_LITERAL(100.0);
+    vc.white_xyz.z = ALWAN_LITERAL(108.88);
     vc.adapting_luminance = ALWAN_LITERAL(318.31);
     vc.background_luminance = ALWAN_LITERAL(20.0);
     vc.discount_illuminant = 0;
 
     /* Test color: mid-gray */
-    alwan_vec3 xyz;
-    xyz.v[0] = ALWAN_LITERAL(50.0);
-    xyz.v[1] = ALWAN_LITERAL(50.0);
-    xyz.v[2] = ALWAN_LITERAL(50.0);
+    alwan_xyz xyz;
+    xyz.x = ALWAN_LITERAL(50.0);
+    xyz.y = ALWAN_LITERAL(50.0);
+    xyz.z = ALWAN_LITERAL(50.0);
 
     alwan_hellwig2022_correlates corr_avg, corr_dim, corr_dark;
 

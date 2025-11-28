@@ -50,10 +50,10 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
 
         /* Convert XYZ to Lab first (D65) */
         alwan_vec3 D65 = {{ALWAN_D65_X, ALWAN_D65_Y, ALWAN_D65_Z}};
-        alwan_xyz_to_lab(&xyz, &D65, &lab);
+        alwan_xyz_to_lab((alwan_xyz *)&xyz, (alwan_xyz *)&D65, (alwan_lab *)&lab);
 
         /* Test Lab -> DIN99 */
-        alwan_lab_to_din99(&lab, &din99_computed, variant);
+        alwan_lab_to_din99((alwan_lab *)&lab, &din99_computed, variant);
 
         /* Tolerance slightly relaxed to account for numerical precision with atan2/trig operations */
         alwan_scalar const din99_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(15000.0);
@@ -75,7 +75,7 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
         }
 
         /* Test round-trip: DIN99 -> Lab */
-        alwan_din99_to_lab(&din99_computed, &lab_out, variant);
+        alwan_din99_to_lab(&din99_computed, (alwan_lab *)&lab_out, variant);
 
         alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000000.0);
 

@@ -2,8 +2,8 @@
 Generate LLAB test data.
 Source: colour.XYZ_to_LLAB()
 
-Test inputs are hardcoded (as per requirements).
-Expected outputs are computed from colour-science.
+ALL values come from colour-science - no hardcoded values.
+Test colors are from ColorChecker dataset.
 """
 
 import sys
@@ -21,72 +21,106 @@ except ImportError:
     sys.exit(1)
 
 
+def get_d65_xyz_100():
+    """Get D65 white point XYZ with Y=100 from colour-science."""
+    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+    xyz = colour.xy_to_XYZ(d65_xy)
+    # Scale to Y=100
+    return xyz * 100.0
+
+
+def get_colorchecker_xyz_d65():
+    """Get ColorChecker XYZ values under D65 from colour-science."""
+    cc = colour.SDS_COLOURCHECKERS['ColorChecker N Ohta']
+    cmfs = colour.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+    illuminant = colour.SDS_ILLUMINANTS['D65']
+
+    colors = {}
+    for name, sd in cc.items():
+        XYZ = colour.sd_to_XYZ(sd, cmfs, illuminant)
+        colors[name] = XYZ
+    return colors
+
+
+# LLAB surround conditions from colour-science
+LLAB_SURROUNDS = [
+    ('Reference Samples & Images, Average Surround, Subtending > 4', 0),
+    ('Television & VDU Displays, Dim Surround', 1),
+    ('35mm Projection Transparency, Dark Surround', 2),
+]
+
+
 def generate_llab_tests(output_dir):
-    """Generate LLAB test cases."""
+    """Generate LLAB test cases using colour-science data."""
 
     print("\nGenerating LLAB test data...")
 
-    # D65 white point (from colour-science)
-    # CCS_ILLUMINANTS returns (x, y) chromaticity, convert to XYZ
-    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
-    x, y = d65_xy[0], d65_xy[1]
-    Y = 100.0
-    X = (x / y) * Y
-    Z = ((1.0 - x - y) / y) * Y
-    d65_white = [X, Y, Z]
+    # D65 white point from colour-science (Y=100 scale)
+    d65_white = get_d65_xyz_100()
 
-    # LLAB viewing conditions from colour-science
-    surround_names = ['Reference Samples & Images, Average Surround, Subtending > 4',
-                      'Television & VDU Displays, Dim Surround',
-                      '35mm Projection Transparency, Dark Surround']
+    # Get ColorChecker colors from colour-science
+    cc_colors = get_colorchecker_xyz_d65()
 
-    # Test cases: [XYZ_in, XYZ_0, XYZ_r, Y_b, surround_idx]
-    # Only INPUTS are hardcoded - outputs come from colour-science
-    test_cases = [
-        # Mid-gray, average surround, same illuminant
-        ([19.01, 20.0, 21.78], d65_white, d65_white, 20.0, 0),
-        # Red, average surround
-        ([41.24, 21.26, 1.93], d65_white, d65_white, 20.0, 0),
-        # Green, average surround
-        ([35.76, 71.52, 11.92], d65_white, d65_white, 20.0, 0),
-        # Blue, average surround
-        ([18.05, 7.22, 95.05], d65_white, d65_white, 20.0, 0),
-        # White, average surround
-        (d65_white, d65_white, d65_white, 20.0, 0),
-        # Mid-gray, dim surround
-        ([50.0, 50.0, 54.3], d65_white, d65_white, 20.0, 1),
+    # Standard background relative luminance (20% gray)
+    Y_b = 20.0
+
+    # Reference luminance (100 cd/m2 standard)
+    L = 100.0
+
+    # Select test colors from ColorChecker (diverse set)
+    # Names from colour.SDS_COLOURCHECKERS['ColorChecker N Ohta']
+    test_color_names = [
+        'dark skin',              # Low luminance, reddish
+        'light skin',             # Medium, skin tone
+        'blue sky',               # Blue
+        'foliage',                # Green
+        'white 9.5 (.05 D)',      # Near-white
+        'neutral 5 (.70 D)',      # Mid-gray
     ]
 
     llab_test_data = []
+    test_count = 0
 
-    for xyz_in, xyz_0, xyz_r, Y_b, surround_idx in test_cases:
-        xyz_arr = np.array(xyz_in)
-        xyz_0_arr = np.array(xyz_0)
-        xyz_r_arr = np.array(xyz_r)
+    for color_name in test_color_names:
+        if color_name not in cc_colors:
+            print(f"  Warning: '{color_name}' not found in ColorChecker")
+            continue
 
-        # Get surround from colour-science
-        surround = colour.VIEWING_CONDITIONS_LLAB[surround_names[surround_idx]]
+        xyz_in = cc_colors[color_name]
+        xyz_0 = d65_white  # Test condition illuminant
+        xyz_r = d65_white  # Reference condition illuminant
+
+        # Use average surround for most tests, dim for last one
+        surround_idx = 0 if test_count < len(test_color_names) - 1 else 1
+        surround_name, surround_code = LLAB_SURROUNDS[surround_idx]
+        surround = colour.VIEWING_CONDITIONS_LLAB[surround_name]
 
         # Compute correlates using colour-science
-        specification = colour.XYZ_to_LLAB(xyz_arr, xyz_0_arr, Y_b, L=100.0, surround=surround)
+        specification = colour.XYZ_to_LLAB(
+            xyz_in, xyz_0, Y_b,
+            L=L,
+            surround=surround
+        )
 
-        # Extract correlates
-        L = specification.J  # LLAB uses J for lightness in colour-science
-        Ch = specification.C  # Chroma
+        # Extract correlates (LLAB uses J for lightness in colour-science)
+        L_out = specification.J
+        Ch = specification.C
 
         # Append to test data: XYZ_in (3), XYZ_0 (3), XYZ_r (3), Y_b, surround, L, Ch
-        llab_test_data.extend(xyz_in)
-        llab_test_data.extend(xyz_0)
-        llab_test_data.extend(xyz_r)
-        llab_test_data.append(Y_b)
-        llab_test_data.append(float(surround_idx))
-        llab_test_data.append(L)
-        llab_test_data.append(Ch)
+        llab_test_data.extend(xyz_in.tolist())
+        llab_test_data.extend(xyz_0.tolist())
+        llab_test_data.extend(xyz_r.tolist())
+        llab_test_data.append(float(Y_b))
+        llab_test_data.append(float(surround_code))
+        llab_test_data.append(float(L_out))
+        llab_test_data.append(float(Ch))
+
+        test_count += 1
 
     # Save test data
     filepath = os.path.join(output_dir, 'llab.csv')
     save_test_data(llab_test_data, filepath,
-                   f"{len(test_cases)} test cases, 12 values each")
+                   f"{test_count} ColorChecker colors, 13 values each")
 
 
 if __name__ == '__main__':

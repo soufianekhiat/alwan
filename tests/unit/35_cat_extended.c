@@ -138,8 +138,8 @@ static int test_cat_method(
     alwan_scalar const *expected_matrix_data,
     alwan_scalar const *expected_adapted_data)
 {
-    alwan_vec3 d65_xyz = {{d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]}};
-    alwan_vec3 d50_xyz = {{d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]}};
+    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     /* Test 1: CAT matrix D65->D50 */
     alwan_mat3x3 expected_matrix;

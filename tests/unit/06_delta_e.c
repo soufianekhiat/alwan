@@ -59,7 +59,7 @@ static int test_delta_e_76(void) {
         alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
         alwan_scalar expected = de76_data[i];
 
-        alwan_scalar result = alwan_delta_e_76(&lab1, &lab2);
+        alwan_scalar result = alwan_delta_e_76((alwan_lab const *)&lab1, (alwan_lab const *)&lab2);
         alwan_scalar diff = ALWAN_FABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "ΔE*76 mismatch");
@@ -95,7 +95,7 @@ static int test_delta_e_94(void) {
         alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
         alwan_scalar expected = de94_data[i];
 
-        alwan_scalar result = alwan_delta_e_94(&lab1, &lab2);
+        alwan_scalar result = alwan_delta_e_94((alwan_lab const *)&lab1, (alwan_lab const *)&lab2);
         alwan_scalar diff = ALWAN_FABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "ΔE*94 mismatch");
@@ -132,7 +132,7 @@ static int test_delta_e_cmc(void) {
         alwan_scalar expected = de_cmc_data[i];
 
         /* Use default l=2, c=1 (acceptability) */
-        alwan_scalar result = alwan_delta_e_cmc(&lab1, &lab2, ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0));
+        alwan_scalar result = alwan_delta_e_cmc((alwan_lab const *)&lab1, (alwan_lab const *)&lab2, ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0));
         alwan_scalar diff = ALWAN_FABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "ΔE CMC(2:1) mismatch");
@@ -168,7 +168,7 @@ static int test_delta_e_2000(void) {
         alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
         alwan_scalar expected = de2000_data[i];
 
-        alwan_scalar result = alwan_delta_e_2000(&lab1, &lab2);
+        alwan_scalar result = alwan_delta_e_2000((alwan_lab const *)&lab1, (alwan_lab const *)&lab2);
         alwan_scalar diff = ALWAN_FABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "ΔE*00 mismatch");

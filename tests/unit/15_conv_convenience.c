@@ -79,7 +79,7 @@ static int test_hsv_forward(void) {
         rgb.v[2] = test_rgb[i * 3 + 2];
 
         alwan_vec3 hsv;
-        int status = alwan_rgb_to_hsv(&rgb, &hsv);
+        int status = alwan_rgb_to_hsv((alwan_rgb const *)&rgb, (alwan_hsv *)&hsv);
         TEST_ASSERT(status == ALWAN_OK, "RGB to HSV conversion failed");
 
         /* Compare with expected values */
@@ -108,12 +108,13 @@ static int test_hsv_forward(void) {
 static int test_hsv_round_trip(void) {
     /* Test RGB -> HSV -> RGB round-trip */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb_orig;
-        rgb_orig.v[0] = test_rgb[i * 3 + 0];
-        rgb_orig.v[1] = test_rgb[i * 3 + 1];
-        rgb_orig.v[2] = test_rgb[i * 3 + 2];
+        alwan_rgb rgb_orig;
+        rgb_orig.r = test_rgb[i * 3 + 0];
+        rgb_orig.g = test_rgb[i * 3 + 1];
+        rgb_orig.b = test_rgb[i * 3 + 2];
 
-        alwan_vec3 hsv, rgb_recon;
+        alwan_hsv hsv;
+        alwan_rgb rgb_recon;
         int status;
 
         status = alwan_rgb_to_hsv(&rgb_orig, &hsv);
@@ -124,18 +125,18 @@ static int test_hsv_round_trip(void) {
 
         /* Check round-trip accuracy */
         alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.v[0] - rgb_orig.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.v[1] - rgb_orig.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.v[2] - rgb_orig.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.r - rgb_orig.r );
+        alwan_scalar diff_g = ALWAN_FABS( rgb_recon.g - rgb_orig.g );
+        alwan_scalar diff_b = ALWAN_FABS( rgb_recon.b - rgb_orig.b );
 
         if (diff_r > tol || diff_g > tol || diff_b > tol) {
             printf("HSV round-trip failed for color %zu:\n", i);
             printf("  Original RGB: [%.6f, %.6f, %.6f]\n",
-                   rgb_orig.v[0], rgb_orig.v[1], rgb_orig.v[2]);
+                   rgb_orig.r, rgb_orig.g, rgb_orig.b);
             printf("  HSV:          [%.6f, %.6f, %.6f]\n",
-                   hsv.v[0], hsv.v[1], hsv.v[2]);
+                   hsv.h, hsv.s, hsv.v);
             printf("  Recon RGB:    [%.6f, %.6f, %.6f]\n",
-                   rgb_recon.v[0], rgb_recon.v[1], rgb_recon.v[2]);
+                   rgb_recon.r, rgb_recon.g, rgb_recon.b);
             printf("  Diff:         [%e, %e, %e]\n", diff_r, diff_g, diff_b);
             TEST_ASSERT(0, "HSV round-trip tolerance exceeded");
         }
@@ -153,7 +154,7 @@ static int test_hsl_forward(void) {
         rgb.v[2] = test_rgb[i * 3 + 2];
 
         alwan_vec3 hsl;
-        int status = alwan_rgb_to_hsl(&rgb, &hsl);
+        int status = alwan_rgb_to_hsl((alwan_rgb const *)&rgb, (alwan_hsl *)&hsl);
         TEST_ASSERT(status == ALWAN_OK, "RGB to HSL conversion failed");
 
         /* Compare with expected values */
@@ -182,12 +183,13 @@ static int test_hsl_forward(void) {
 static int test_hsl_round_trip(void) {
     /* Test RGB -> HSL -> RGB round-trip */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb_orig;
-        rgb_orig.v[0] = test_rgb[i * 3 + 0];
-        rgb_orig.v[1] = test_rgb[i * 3 + 1];
-        rgb_orig.v[2] = test_rgb[i * 3 + 2];
+        alwan_rgb rgb_orig;
+        rgb_orig.r = test_rgb[i * 3 + 0];
+        rgb_orig.g = test_rgb[i * 3 + 1];
+        rgb_orig.b = test_rgb[i * 3 + 2];
 
-        alwan_vec3 hsl, rgb_recon;
+        alwan_hsl hsl;
+        alwan_rgb rgb_recon;
         int status;
 
         status = alwan_rgb_to_hsl(&rgb_orig, &hsl);
@@ -198,18 +200,18 @@ static int test_hsl_round_trip(void) {
 
         /* Check round-trip accuracy */
         alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.v[0] - rgb_orig.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.v[1] - rgb_orig.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.v[2] - rgb_orig.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.r - rgb_orig.r);
+        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.g - rgb_orig.g);
+        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.b - rgb_orig.b);
 
         if (diff_r > tol || diff_g > tol || diff_b > tol) {
             printf("HSL round-trip failed for color %zu:\n", i);
             printf("  Original RGB: [%.6f, %.6f, %.6f]\n",
-                   rgb_orig.v[0], rgb_orig.v[1], rgb_orig.v[2]);
+                   rgb_orig.r, rgb_orig.g, rgb_orig.b);
             printf("  HSL:          [%.6f, %.6f, %.6f]\n",
-                   hsl.v[0], hsl.v[1], hsl.v[2]);
+                   hsl.h, hsl.s, hsl.l);
             printf("  Recon RGB:    [%.6f, %.6f, %.6f]\n",
-                   rgb_recon.v[0], rgb_recon.v[1], rgb_recon.v[2]);
+                   rgb_recon.r, rgb_recon.g, rgb_recon.b);
             printf("  Diff:         [%e, %e, %e]\n", diff_r, diff_g, diff_b);
             TEST_ASSERT(0, "HSL round-trip tolerance exceeded");
         }
@@ -221,12 +223,12 @@ static int test_hsl_round_trip(void) {
 static int test_cmy_conversions(void) {
     /* Test RGB <-> CMY conversions */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb;
-        rgb.v[0] = test_rgb[i * 3 + 0];
-        rgb.v[1] = test_rgb[i * 3 + 1];
-        rgb.v[2] = test_rgb[i * 3 + 2];
+        alwan_rgb rgb;
+        rgb.r = test_rgb[i * 3 + 0];
+        rgb.g = test_rgb[i * 3 + 1];
+        rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_vec3 cmy;
+        alwan_cmy cmy;
         int status = alwan_rgb_to_cmy(&rgb, &cmy);
         TEST_ASSERT(status == ALWAN_OK, "RGB to CMY failed");
 
@@ -236,26 +238,26 @@ static int test_cmy_conversions(void) {
         alwan_scalar exp_y = expected_cmy[i * 3 + 2];
 
         alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_c = ALWAN_FABS(cmy.v[0] - exp_c);
-        alwan_scalar diff_m = ALWAN_FABS(cmy.v[1] - exp_m);
-        alwan_scalar diff_y = ALWAN_FABS(cmy.v[2] - exp_y);
+        alwan_scalar diff_c = ALWAN_FABS(cmy.c - exp_c);
+        alwan_scalar diff_m = ALWAN_FABS(cmy.m - exp_m);
+        alwan_scalar diff_y = ALWAN_FABS(cmy.y - exp_y);
 
         if (diff_c > tol || diff_m > tol || diff_y > tol) {
             printf("CMY forward test failed for color %zu:\n", i);
-            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.v[0], rgb.v[1], rgb.v[2]);
+            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.r, rgb.g, rgb.b);
             printf("  Expected CMY: [%.6f, %.6f, %.6f]\n", exp_c, exp_m, exp_y);
-            printf("  Got CMY:      [%.6f, %.6f, %.6f]\n", cmy.v[0], cmy.v[1], cmy.v[2]);
+            printf("  Got CMY:      [%.6f, %.6f, %.6f]\n", cmy.c, cmy.m, cmy.y);
             TEST_ASSERT(0, "CMY values don't match expected");
         }
 
         /* Test round-trip */
-        alwan_vec3 rgb_recon;
+        alwan_rgb rgb_recon;
         status = alwan_cmy_to_rgb(&cmy, &rgb_recon);
         TEST_ASSERT(status == ALWAN_OK, "CMY to RGB failed");
 
-        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.v[0] - rgb.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.v[1] - rgb.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.v[2] - rgb.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.r - rgb.r);
+        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.g - rgb.g);
+        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.b - rgb.b);
 
         if (diff_r > tol || diff_g > tol || diff_b > tol) {
             printf("CMY round-trip failed for color %zu\n", i);
@@ -269,10 +271,10 @@ static int test_cmy_conversions(void) {
 static int test_cmyk_conversions(void) {
     /* Test CMY <-> CMYK conversions */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 cmy;
-        cmy.v[0] = expected_cmy[i * 3 + 0];
-        cmy.v[1] = expected_cmy[i * 3 + 1];
-        cmy.v[2] = expected_cmy[i * 3 + 2];
+        alwan_cmy cmy;
+        cmy.c = expected_cmy[i * 3 + 0];
+        cmy.m = expected_cmy[i * 3 + 1];
+        cmy.y = expected_cmy[i * 3 + 2];
 
         alwan_scalar c, m, y, k;
         int status = alwan_cmy_to_cmyk(&cmy, &c, &m, &y, &k);
@@ -292,20 +294,20 @@ static int test_cmyk_conversions(void) {
 
         if (diff_c > tol || diff_m > tol || diff_y > tol || diff_k > tol) {
             printf("CMYK forward test failed for color %zu:\n", i);
-            printf("  CMY: [%.6f, %.6f, %.6f]\n", cmy.v[0], cmy.v[1], cmy.v[2]);
+            printf("  CMY: [%.6f, %.6f, %.6f]\n", cmy.c, cmy.m, cmy.y);
             printf("  Expected CMYK: [%.6f, %.6f, %.6f, %.6f]\n", exp_c, exp_m, exp_y, exp_k);
             printf("  Got CMYK:      [%.6f, %.6f, %.6f, %.6f]\n", c, m, y, k);
             TEST_ASSERT(0, "CMYK values don't match expected");
         }
 
         /* Test round-trip */
-        alwan_vec3 cmy_recon;
+        alwan_cmy cmy_recon;
         status = alwan_cmyk_to_cmy(c, m, y, k, &cmy_recon);
         TEST_ASSERT(status == ALWAN_OK, "CMYK to CMY failed");
 
-        alwan_scalar diff_c2 = ALWAN_FABS(cmy_recon.v[0] - cmy.v[0]);
-        alwan_scalar diff_m2 = ALWAN_FABS(cmy_recon.v[1] - cmy.v[1]);
-        alwan_scalar diff_y2 = ALWAN_FABS(cmy_recon.v[2] - cmy.v[2]);
+        alwan_scalar diff_c2 = ALWAN_FABS(cmy_recon.c - cmy.c);
+        alwan_scalar diff_m2 = ALWAN_FABS(cmy_recon.m - cmy.m);
+        alwan_scalar diff_y2 = ALWAN_FABS(cmy_recon.y - cmy.y);
 
         if (diff_c2 > tol || diff_m2 > tol || diff_y2 > tol) {
             printf("CMYK round-trip failed for color %zu\n", i);
@@ -319,12 +321,12 @@ static int test_cmyk_conversions(void) {
 static int test_ycbcr_bt601(void) {
     /* Test RGB <-> YCbCr (BT.601) */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb;
-        rgb.v[0] = test_rgb[i * 3 + 0];
-        rgb.v[1] = test_rgb[i * 3 + 1];
-        rgb.v[2] = test_rgb[i * 3 + 2];
+        alwan_rgb rgb;
+        rgb.r = test_rgb[i * 3 + 0];
+        rgb.g = test_rgb[i * 3 + 1];
+        rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_vec3 ycbcr;
+        alwan_ycbcr ycbcr;
         int status = alwan_rgb_to_ycbcr(&rgb, ALWAN_YCBCR_BT601, &ycbcr);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YCbCr BT.601 failed");
 
@@ -334,27 +336,27 @@ static int test_ycbcr_bt601(void) {
         alwan_scalar exp_cr = expected_ycbcr_bt601[i * 3 + 2];
 
         alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_y = ALWAN_FABS(ycbcr.v[0] - exp_y);
-        alwan_scalar diff_cb = ALWAN_FABS(ycbcr.v[1] - exp_cb);
-        alwan_scalar diff_cr = ALWAN_FABS(ycbcr.v[2] - exp_cr);
+        alwan_scalar diff_y = ALWAN_FABS(ycbcr.Y - exp_y);
+        alwan_scalar diff_cb = ALWAN_FABS(ycbcr.Cb - exp_cb);
+        alwan_scalar diff_cr = ALWAN_FABS(ycbcr.Cr - exp_cr);
 
         if (diff_y > tol || diff_cb > tol || diff_cr > tol) {
             printf("YCbCr BT.601 forward test failed for color %zu:\n", i);
-            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.v[0], rgb.v[1], rgb.v[2]);
+            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.r, rgb.g, rgb.b);
             printf("  Expected YCbCr: [%.6f, %.6f, %.6f]\n", exp_y, exp_cb, exp_cr);
             printf("  Got YCbCr:      [%.6f, %.6f, %.6f]\n",
-                   ycbcr.v[0], ycbcr.v[1], ycbcr.v[2]);
+                   ycbcr.Y, ycbcr.Cb, ycbcr.Cr);
             TEST_ASSERT(0, "YCbCr BT.601 values don't match");
         }
 
         /* Test round-trip */
-        alwan_vec3 rgb_recon;
+        alwan_rgb rgb_recon;
         status = alwan_ycbcr_to_rgb(&ycbcr, ALWAN_YCBCR_BT601, &rgb_recon);
         TEST_ASSERT(status == ALWAN_OK, "YCbCr to RGB BT.601 failed");
 
-        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.v[0] - rgb.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.v[1] - rgb.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.v[2] - rgb.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.r - rgb.r);
+        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.g - rgb.g);
+        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.b - rgb.b);
 
         if (diff_r > tol || diff_g > tol || diff_b > tol) {
             printf("YCbCr BT.601 round-trip failed for color %zu\n", i);
@@ -368,12 +370,12 @@ static int test_ycbcr_bt601(void) {
 static int test_ycbcr_bt709(void) {
     /* Test RGB <-> YCbCr (BT.709) */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb;
-        rgb.v[0] = test_rgb[i * 3 + 0];
-        rgb.v[1] = test_rgb[i * 3 + 1];
-        rgb.v[2] = test_rgb[i * 3 + 2];
+        alwan_rgb rgb;
+        rgb.r = test_rgb[i * 3 + 0];
+        rgb.g = test_rgb[i * 3 + 1];
+        rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_vec3 ycbcr;
+        alwan_ycbcr ycbcr;
         int status = alwan_rgb_to_ycbcr(&rgb, ALWAN_YCBCR_BT709, &ycbcr);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YCbCr BT.709 failed");
 
@@ -383,27 +385,27 @@ static int test_ycbcr_bt709(void) {
         alwan_scalar exp_cr = expected_ycbcr_bt709[i * 3 + 2];
 
         alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_y = ALWAN_FABS(ycbcr.v[0] - exp_y);
-        alwan_scalar diff_cb = ALWAN_FABS(ycbcr.v[1] - exp_cb);
-        alwan_scalar diff_cr = ALWAN_FABS(ycbcr.v[2] - exp_cr);
+        alwan_scalar diff_y = ALWAN_FABS(ycbcr.Y - exp_y);
+        alwan_scalar diff_cb = ALWAN_FABS(ycbcr.Cb - exp_cb);
+        alwan_scalar diff_cr = ALWAN_FABS(ycbcr.Cr - exp_cr);
 
         if (diff_y > tol || diff_cb > tol || diff_cr > tol) {
             printf("YCbCr BT.709 forward test failed for color %zu:\n", i);
-            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.v[0], rgb.v[1], rgb.v[2]);
+            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.r, rgb.g, rgb.b);
             printf("  Expected YCbCr: [%.6f, %.6f, %.6f]\n", exp_y, exp_cb, exp_cr);
             printf("  Got YCbCr:      [%.6f, %.6f, %.6f]\n",
-                   ycbcr.v[0], ycbcr.v[1], ycbcr.v[2]);
+                   ycbcr.Y, ycbcr.Cb, ycbcr.Cr);
             TEST_ASSERT(0, "YCbCr BT.709 values don't match");
         }
 
         /* Test round-trip */
-        alwan_vec3 rgb_recon;
+        alwan_rgb rgb_recon;
         status = alwan_ycbcr_to_rgb(&ycbcr, ALWAN_YCBCR_BT709, &rgb_recon);
         TEST_ASSERT(status == ALWAN_OK, "YCbCr to RGB BT.709 failed");
 
-        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.v[0] - rgb.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.v[1] - rgb.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.v[2] - rgb.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.r - rgb.r);
+        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.g - rgb.g);
+        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.b - rgb.b);
 
         if (diff_r > tol || diff_g > tol || diff_b > tol) {
             printf("YCbCr BT.709 round-trip failed for color %zu\n", i);
@@ -417,12 +419,12 @@ static int test_ycbcr_bt709(void) {
 static int test_ycbcr_bt2020(void) {
     /* Test RGB <-> YCbCr (BT.2020) */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb;
-        rgb.v[0] = test_rgb[i * 3 + 0];
-        rgb.v[1] = test_rgb[i * 3 + 1];
-        rgb.v[2] = test_rgb[i * 3 + 2];
+        alwan_rgb rgb;
+        rgb.r = test_rgb[i * 3 + 0];
+        rgb.g = test_rgb[i * 3 + 1];
+        rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_vec3 ycbcr;
+        alwan_ycbcr ycbcr;
         int status = alwan_rgb_to_ycbcr(&rgb, ALWAN_YCBCR_BT2020, &ycbcr);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YCbCr BT.2020 failed");
 
@@ -432,27 +434,27 @@ static int test_ycbcr_bt2020(void) {
         alwan_scalar exp_cr = expected_ycbcr_bt2020[i * 3 + 2];
 
         alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_y = ALWAN_FABS(ycbcr.v[0] - exp_y);
-        alwan_scalar diff_cb = ALWAN_FABS(ycbcr.v[1] - exp_cb);
-        alwan_scalar diff_cr = ALWAN_FABS(ycbcr.v[2] - exp_cr);
+        alwan_scalar diff_y = ALWAN_FABS(ycbcr.Y - exp_y);
+        alwan_scalar diff_cb = ALWAN_FABS(ycbcr.Cb - exp_cb);
+        alwan_scalar diff_cr = ALWAN_FABS(ycbcr.Cr - exp_cr);
 
         if (diff_y > tol || diff_cb > tol || diff_cr > tol) {
             printf("YCbCr BT.2020 forward test failed for color %zu:\n", i);
-            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.v[0], rgb.v[1], rgb.v[2]);
+            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.r, rgb.g, rgb.b);
             printf("  Expected YCbCr: [%.6f, %.6f, %.6f]\n", exp_y, exp_cb, exp_cr);
             printf("  Got YCbCr:      [%.6f, %.6f, %.6f]\n",
-                   ycbcr.v[0], ycbcr.v[1], ycbcr.v[2]);
+                   ycbcr.Y, ycbcr.Cb, ycbcr.Cr);
             TEST_ASSERT(0, "YCbCr BT.2020 values don't match");
         }
 
         /* Test round-trip */
-        alwan_vec3 rgb_recon;
+        alwan_rgb rgb_recon;
         status = alwan_ycbcr_to_rgb(&ycbcr, ALWAN_YCBCR_BT2020, &rgb_recon);
         TEST_ASSERT(status == ALWAN_OK, "YCbCr to RGB BT.2020 failed");
 
-        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.v[0] - rgb.v[0]);
-        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.v[1] - rgb.v[1]);
-        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.v[2] - rgb.v[2]);
+        alwan_scalar diff_r = ALWAN_FABS(rgb_recon.r - rgb.r);
+        alwan_scalar diff_g = ALWAN_FABS(rgb_recon.g - rgb.g);
+        alwan_scalar diff_b = ALWAN_FABS(rgb_recon.b - rgb.b);
 
         if (diff_r > tol || diff_g > tol || diff_b > tol) {
             printf("YCbCr BT.2020 round-trip failed for color %zu\n", i);
@@ -467,12 +469,12 @@ static int test_yccbccrc(void) {
     /* Test RGB <-> YcCbcCrc (constant luminance BT.2020) */
     /* Note: YcCbcCrc cannot perfectly round-trip pure colors at RGB boundaries */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb;
-        rgb.v[0] = test_rgb[i * 3 + 0];
-        rgb.v[1] = test_rgb[i * 3 + 1];
-        rgb.v[2] = test_rgb[i * 3 + 2];
+        alwan_rgb rgb;
+        rgb.r = test_rgb[i * 3 + 0];
+        rgb.g = test_rgb[i * 3 + 1];
+        rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_vec3 ycc;
+        alwan_yccbccrc ycc;
         int status = alwan_rgb_to_yccbccrc(&rgb, &ycc);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YcCbcCrc failed");
 
@@ -482,39 +484,39 @@ static int test_yccbccrc(void) {
         alwan_scalar exp_crc = expected_yccbccrc[i * 3 + 2];
 
         alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_yc = ALWAN_FABS(ycc.v[0] - exp_yc);
-        alwan_scalar diff_cbc = ALWAN_FABS(ycc.v[1] - exp_cbc);
-        alwan_scalar diff_crc = ALWAN_FABS(ycc.v[2] - exp_crc);
+        alwan_scalar diff_yc = ALWAN_FABS(ycc.Yc - exp_yc);
+        alwan_scalar diff_cbc = ALWAN_FABS(ycc.Cbc - exp_cbc);
+        alwan_scalar diff_crc = ALWAN_FABS(ycc.Crc - exp_crc);
 
         if (diff_yc > tol || diff_cbc > tol || diff_crc > tol) {
             printf("YcCbcCrc forward test failed for color %zu:\n", i);
-            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.v[0], rgb.v[1], rgb.v[2]);
+            printf("  RGB: [%.6f, %.6f, %.6f]\n", rgb.r, rgb.g, rgb.b);
             printf("  Expected YcCbcCrc: [%.6f, %.6f, %.6f]\n", exp_yc, exp_cbc, exp_crc);
             printf("  Got YcCbcCrc:      [%.6f, %.6f, %.6f]\n",
-                   ycc.v[0], ycc.v[1], ycc.v[2]);
+                   ycc.Yc, ycc.Cbc, ycc.Crc);
             TEST_ASSERT(0, "YcCbcCrc values don't match");
         }
 
         /* Test round-trip for non-boundary colors only */
         /* YcCbcCrc is inherently lossy for pure RGB primaries and secondaries */
-        int is_boundary_color = (rgb.v[0] == 1.0 || rgb.v[1] == 1.0 || rgb.v[2] == 1.0) &&
-                               ((rgb.v[0] == 0.0 ? 1 : 0) + (rgb.v[1] == 0.0 ? 1 : 0) + (rgb.v[2] == 0.0 ? 1 : 0)) >= 1;
+        int is_boundary_color = (rgb.r == 1.0 || rgb.g == 1.0 || rgb.b == 1.0) &&
+                               ((rgb.r == 0.0 ? 1 : 0) + (rgb.g == 0.0 ? 1 : 0) + (rgb.b == 0.0 ? 1 : 0)) >= 1;
 
         if (!is_boundary_color) {
-            alwan_vec3 rgb_recon;
+            alwan_rgb rgb_recon;
             status = alwan_yccbccrc_to_rgb(&ycc, &rgb_recon);
             TEST_ASSERT(status == ALWAN_OK, "YcCbcCrc to RGB failed");
 
-            alwan_scalar diff_r = ALWAN_FABS(rgb_recon.v[0] - rgb.v[0]);
-            alwan_scalar diff_g = ALWAN_FABS(rgb_recon.v[1] - rgb.v[1]);
-            alwan_scalar diff_b = ALWAN_FABS(rgb_recon.v[2] - rgb.v[2]);
+            alwan_scalar diff_r = ALWAN_FABS(rgb_recon.r - rgb.r);
+            alwan_scalar diff_g = ALWAN_FABS(rgb_recon.g - rgb.g);
+            alwan_scalar diff_b = ALWAN_FABS(rgb_recon.b - rgb.b);
 
             if (diff_r > tol || diff_g > tol || diff_b > tol) {
                 printf("YcCbcCrc round-trip failed for color %zu\n", i);
                 printf("  Original:    [%.6f, %.6f, %.6f]\n",
-                       rgb.v[0], rgb.v[1], rgb.v[2]);
+                       rgb.r, rgb.g, rgb.b);
                 printf("  Reconstructed: [%.6f, %.6f, %.6f]\n",
-                       rgb_recon.v[0], rgb_recon.v[1], rgb_recon.v[2]);
+                       rgb_recon.r, rgb_recon.g, rgb_recon.b);
                 printf("  Diff:        [%e, %e, %e]\n", diff_r, diff_g, diff_b);
                 TEST_ASSERT(0, "YcCbcCrc round-trip failed");
             }
