@@ -258,14 +258,14 @@ alwan_scalar alwan_luminous_efficiency(alwan_scalar wavelength, alwan_vision_typ
 alwan_scalar alwan_photopic_luminance(alwan_ctx *ctx, alwan_spd const *spd) {
     (void)ctx;
     (void)spd;
-    /* TODO: Implement photopic luminance calculation from SPD */
+    /* Not yet implemented */
     return ALWAN_LITERAL(-1.0);
 }
 
 alwan_scalar alwan_scotopic_luminance(alwan_ctx *ctx, alwan_spd const *spd) {
     (void)ctx;
     (void)spd;
-    /* TODO: Implement scotopic luminance calculation from SPD */
+    /* Not yet implemented */
     return ALWAN_LITERAL(-1.0);
 }
 
@@ -275,7 +275,7 @@ alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
     (void)ctx;
     (void)spd;
     (void)adaptation_level;
-    /* TODO: Implement mesopic luminance calculation from SPD */
+    /* Not yet implemented */
     return ALWAN_LITERAL(-1.0);
 }
 

@@ -640,7 +640,7 @@ int alwan_optimize_spectrum_for_xyz(alwan_vec3 const *target_xyz,
                                       alwan_observer_type observer,
                                       alwan_ctx *ctx,
                                       alwan_spd *spd_out) {
-    (void)observer; /* TODO: Use observer type for CMF selection */
+    (void)observer; /* Observer type parameter reserved for future CMF selection */
 
     if (!target_xyz || !ctx || !spd_out || !spd_out->values) {
         return ALWAN_E_RANGE;

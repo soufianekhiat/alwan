@@ -143,6 +143,147 @@ static alwan_scalar const g_srgb_primaries_3x2[] = {
 #include "data/srgb_primaries_3x2.csv"
 };
 
+/* ----------------------------------------------------------------
+ * CAT Matrices (Chromatic Adaptation Transform)
+ * ---------------------------------------------------------------- */
+
+/* Bradford CAT matrix (most common, used in ICC profiles) */
+alwan_scalar const g_cat_bradford[9] = {
+#include "data/matrices/cat_bradford.csv"
+};
+
+/* CAT02 matrix (from CIECAM02) */
+alwan_scalar const g_cat_cat02[9] = {
+#include "data/matrices/cat_cat02.csv"
+};
+
+/* CAT16 matrix (from CAM16) */
+alwan_scalar const g_cat_cat16[9] = {
+#include "data/matrices/cat_cat16.csv"
+};
+
+/* Sharp CAT matrix */
+alwan_scalar const g_cat_sharp[9] = {
+#include "data/matrices/cat_sharp.csv"
+};
+
+/* Fairchild 1990 CAT matrix */
+alwan_scalar const g_cat_fairchild[9] = {
+#include "data/matrices/cat_fairchild.csv"
+};
+
+/* CMCCAT97 matrix */
+alwan_scalar const g_cat_cmccat97[9] = {
+#include "data/matrices/cat_cmccat97.csv"
+};
+
+/* CMCCAT2000 matrix */
+alwan_scalar const g_cat_cmccat2000[9] = {
+#include "data/matrices/cat_cmccat2000.csv"
+};
+
+/* CAT02 Brill 2008 variant matrix */
+alwan_scalar const g_cat_cat02_brill_2008[9] = {
+#include "data/matrices/cat_cat02_brill_2008.csv"
+};
+
+/* Bianco 2010 CAT matrix */
+alwan_scalar const g_cat_bianco_2010[9] = {
+#include "data/matrices/cat_bianco_2010.csv"
+};
+
+/* Bianco PC 2010 CAT matrix */
+alwan_scalar const g_cat_bianco_pc_2010[9] = {
+#include "data/matrices/cat_bianco_pc_2010.csv"
+};
+
+/* ----------------------------------------------------------------
+ * CAM Matrices (Color Appearance Models)
+ * ---------------------------------------------------------------- */
+
+/* Hunt-Pointer-Estevez matrix (XYZ to LMS cone response) */
+alwan_scalar const g_hpe[9] = {
+#include "data/matrices/hpe.csv"
+};
+
+/* Inverse Hunt-Pointer-Estevez matrix (LMS to XYZ) */
+alwan_scalar const g_hpe_inv[9] = {
+#include "data/matrices/hpe_inv.csv"
+};
+
+/* ----------------------------------------------------------------
+ * ICtCp Matrices (ITU-R BT.2100 HDR)
+ * ---------------------------------------------------------------- */
+
+/* BT.2020 RGB to LMS cone response matrix */
+alwan_scalar const g_ictcp_rgb_to_lms[9] = {
+#include "data/ictcp_rgb_to_lms.csv"
+};
+
+/* LMS to BT.2020 RGB inverse matrix */
+alwan_scalar const g_ictcp_lms_to_rgb[9] = {
+#include "data/ictcp_lms_to_rgb.csv"
+};
+
+/* LMS' to ICtCp matrix for PQ */
+alwan_scalar const g_ictcp_lms_p_to_ictcp_pq[9] = {
+#include "data/ictcp_lms_p_to_ictcp_pq.csv"
+};
+
+/* ICtCp to LMS' inverse matrix for PQ */
+alwan_scalar const g_ictcp_ictcp_to_lms_p_pq[9] = {
+#include "data/ictcp_ictcp_to_lms_p_pq.csv"
+};
+
+/* LMS' to ICtCp matrix for HLG */
+alwan_scalar const g_ictcp_lms_p_to_ictcp_hlg[9] = {
+#include "data/ictcp_lms_p_to_ictcp_hlg.csv"
+};
+
+/* ICtCp to LMS' inverse matrix for HLG */
+alwan_scalar const g_ictcp_ictcp_to_lms_p_hlg[9] = {
+#include "data/ictcp_ictcp_to_lms_p_hlg.csv"
+};
+
+/* XYZ (D65) to BT.2020 RGB matrix */
+alwan_scalar const g_ictcp_xyz_to_bt2020[9] = {
+#include "data/ictcp_xyz_to_bt2020.csv"
+};
+
+/* BT.2020 RGB to XYZ (D65) matrix */
+alwan_scalar const g_ictcp_bt2020_to_xyz[9] = {
+#include "data/ictcp_bt2020_to_xyz.csv"
+};
+
+/* ----------------------------------------------------------------
+ * IPT Matrices and Constants (Ebner & Fairchild 1998)
+ * ---------------------------------------------------------------- */
+
+/* IPT nonlinearity exponent */
+alwan_scalar const g_ipt_exponent =
+#include "data/ipt_exponent.csv"
+;
+
+/* XYZ (D65) to LMS matrix for IPT */
+alwan_scalar const g_ipt_xyz_to_lms[9] = {
+#include "data/ipt_xyz_to_lms.csv"
+};
+
+/* LMS to XYZ inverse matrix for IPT */
+alwan_scalar const g_ipt_lms_to_xyz[9] = {
+#include "data/ipt_lms_to_xyz.csv"
+};
+
+/* LMS' to IPT matrix */
+alwan_scalar const g_ipt_lms_p_to_ipt[9] = {
+#include "data/ipt_lms_p_to_ipt.csv"
+};
+
+/* IPT to LMS' inverse matrix */
+alwan_scalar const g_ipt_ipt_to_lms_p[9] = {
+#include "data/ipt_ipt_to_lms_p.csv"
+};
+
 ALWAN_DIAG_POP
 
 int alwan_data_get_illuminant_a(alwan_ctx *ctx, alwan_scalar **data, size_t *count) {

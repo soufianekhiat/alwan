@@ -15,15 +15,10 @@
  * CIECAM02 Constants and Helper Functions
  * ---------------------------------------------------------------- */
 
-/* Hunt-Pointer-Estevez (HPE) matrix for XYZ to LMS (cone response) conversion */
-static alwan_scalar const M_HPE[9] = {
-#include "data/matrices/hpe.csv"
-};
-
-/* Inverse HPE matrix for LMS to XYZ conversion */
-static alwan_scalar const M_HPE_inv[9] = {
-#include "data/matrices/hpe_inv.csv"
-};
+/* Hunt-Pointer-Estevez (HPE) matrices for XYZ <-> LMS conversion
+ * Data defined in alwan_data.c */
+#define M_HPE g_hpe
+#define M_HPE_inv g_hpe_inv
 
 /* Get surround parameters F, c, Nc based on surround type */
 static void get_surround_params(alwan_ciecam02_surround surround, alwan_scalar *F, alwan_scalar *c, alwan_scalar *Nc) {
@@ -105,9 +100,9 @@ static alwan_scalar hue_to_quadrature(alwan_scalar h) {
         ALWAN_LITERAL(400.0)
     };
 
-    /* Normalize h to [0, 360) */
-    while (h < ALWAN_LITERAL(0.0)) h += ALWAN_LITERAL(360.0);
-    while (h >= ALWAN_LITERAL(360.0)) h -= ALWAN_LITERAL(360.0);
+    /* Normalize h to [0, 360) - use fmod to avoid infinite loops with infinity */
+    h = ALWAN_FMOD(h, ALWAN_LITERAL(360.0));
+    if (h < ALWAN_LITERAL(0.0)) h += ALWAN_LITERAL(360.0);
 
     /* Find which quadrant h is in */
     int i;
@@ -131,7 +126,7 @@ static alwan_scalar hue_to_quadrature(alwan_scalar h) {
  * CIECAM02 Forward Transform
  * ---------------------------------------------------------------- */
 
-int alwan_ciecam02_forward(alwan_vec3 const *xyz,
+int alwan_ciecam02_forward(alwan_xyz const *xyz,
                             alwan_ciecam02_viewing_conditions const *vc,
                             alwan_ciecam02_correlates *out) {
     if (!xyz || !vc || !out) {
@@ -147,20 +142,20 @@ int alwan_ciecam02_forward(alwan_vec3 const *xyz,
 
     /* Step 3: Transform XYZ to cone responses (LMS) using HPE matrix */
     alwan_scalar RGB[3];
-    RGB[0] = M_HPE[0] * xyz->v[0] + M_HPE[1] * xyz->v[1] + M_HPE[2] * xyz->v[2];
-    RGB[1] = M_HPE[3] * xyz->v[0] + M_HPE[4] * xyz->v[1] + M_HPE[5] * xyz->v[2];
-    RGB[2] = M_HPE[6] * xyz->v[0] + M_HPE[7] * xyz->v[1] + M_HPE[8] * xyz->v[2];
+    RGB[0] = M_HPE[0] * xyz->x + M_HPE[1] * xyz->y + M_HPE[2] * xyz->z;
+    RGB[1] = M_HPE[3] * xyz->x + M_HPE[4] * xyz->y + M_HPE[5] * xyz->z;
+    RGB[2] = M_HPE[6] * xyz->x + M_HPE[7] * xyz->y + M_HPE[8] * xyz->z;
 
     /* Step 4: Transform white point to cone responses */
     alwan_scalar RGB_w[3];
-    RGB_w[0] = M_HPE[0] * vc->white_xyz.v[0] + M_HPE[1] * vc->white_xyz.v[1] + M_HPE[2] * vc->white_xyz.v[2];
-    RGB_w[1] = M_HPE[3] * vc->white_xyz.v[0] + M_HPE[4] * vc->white_xyz.v[1] + M_HPE[5] * vc->white_xyz.v[2];
-    RGB_w[2] = M_HPE[6] * vc->white_xyz.v[0] + M_HPE[7] * vc->white_xyz.v[1] + M_HPE[8] * vc->white_xyz.v[2];
+    RGB_w[0] = M_HPE[0] * vc->white_xyz.x + M_HPE[1] * vc->white_xyz.y + M_HPE[2] * vc->white_xyz.z;
+    RGB_w[1] = M_HPE[3] * vc->white_xyz.x + M_HPE[4] * vc->white_xyz.y + M_HPE[5] * vc->white_xyz.z;
+    RGB_w[2] = M_HPE[6] * vc->white_xyz.x + M_HPE[7] * vc->white_xyz.y + M_HPE[8] * vc->white_xyz.z;
 
     /* Step 5: Compute adapted cone responses (chromatic adaptation) */
     alwan_scalar RGB_c[3];
     for (int i = 0; i < 3; i++) {
-        alwan_scalar D_RGB_div = D * (vc->white_xyz.v[1] / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
+        alwan_scalar D_RGB_div = D * (vc->white_xyz.y / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
         RGB_c[i] = RGB[i] * D_RGB_div;
     }
 
@@ -178,7 +173,7 @@ int alwan_ciecam02_forward(alwan_vec3 const *xyz,
     }
 
     /* Step 7a: Compute Nbb (background induction factor) */
-    alwan_scalar n = vc->background_luminance / vc->white_xyz.v[1];  /* Yb / Yw */
+    alwan_scalar n = vc->background_luminance / vc->white_xyz.y;  /* Yb / Yw */
     alwan_scalar Nbb = ALWAN_LITERAL(0.725) * ALWAN_POW(ALWAN_LITERAL(1.0) / n, ALWAN_LITERAL(0.2));
     alwan_scalar Ncb = Nbb;  /* For CIECAM02, Nbb = Ncb */
 
@@ -200,7 +195,7 @@ int alwan_ciecam02_forward(alwan_vec3 const *xyz,
     /* Step 11: Compute lightness J */
     alwan_scalar RGB_aw[3];
     for (int i = 0; i < 3; i++) {
-        alwan_scalar D_RGB_w_div = D * (vc->white_xyz.v[1] / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
+        alwan_scalar D_RGB_w_div = D * (vc->white_xyz.y / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
         alwan_scalar RGB_cw = RGB_w[i] * D_RGB_w_div;
         RGB_aw[i] = post_adaptation_nonlinear(FL * RGB_cw / ALWAN_LITERAL(100.0));
     }
@@ -244,7 +239,7 @@ int alwan_ciecam02_forward(alwan_vec3 const *xyz,
 
 int alwan_ciecam02_inverse(alwan_ciecam02_correlates const *correlates,
                             alwan_ciecam02_viewing_conditions const *vc,
-                            alwan_vec3 *xyz_out) {
+                            alwan_xyz *xyz_out) {
     if (!correlates || !vc || !xyz_out) {
         return ALWAN_E_INVALID;
     }
@@ -270,18 +265,18 @@ int alwan_ciecam02_inverse(alwan_ciecam02_correlates const *correlates,
 
     /* Step 4: Compute white point adapted cone responses */
     alwan_scalar RGB_w[3];
-    RGB_w[0] = M_HPE[0] * vc->white_xyz.v[0] + M_HPE[1] * vc->white_xyz.v[1] + M_HPE[2] * vc->white_xyz.v[2];
-    RGB_w[1] = M_HPE[3] * vc->white_xyz.v[0] + M_HPE[4] * vc->white_xyz.v[1] + M_HPE[5] * vc->white_xyz.v[2];
-    RGB_w[2] = M_HPE[6] * vc->white_xyz.v[0] + M_HPE[7] * vc->white_xyz.v[1] + M_HPE[8] * vc->white_xyz.v[2];
+    RGB_w[0] = M_HPE[0] * vc->white_xyz.x + M_HPE[1] * vc->white_xyz.y + M_HPE[2] * vc->white_xyz.z;
+    RGB_w[1] = M_HPE[3] * vc->white_xyz.x + M_HPE[4] * vc->white_xyz.y + M_HPE[5] * vc->white_xyz.z;
+    RGB_w[2] = M_HPE[6] * vc->white_xyz.x + M_HPE[7] * vc->white_xyz.y + M_HPE[8] * vc->white_xyz.z;
 
     alwan_scalar RGB_aw[3];
     for (int i = 0; i < 3; i++) {
-        alwan_scalar D_RGB_w_div = D * (vc->white_xyz.v[1] / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
+        alwan_scalar D_RGB_w_div = D * (vc->white_xyz.y / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
         alwan_scalar RGB_cw = RGB_w[i] * D_RGB_w_div;
         RGB_aw[i] = post_adaptation_nonlinear(FL * RGB_cw / ALWAN_LITERAL(100.0));
     }
     /* Compute Nbb and related parameters */
-    alwan_scalar n = vc->background_luminance / vc->white_xyz.v[1];
+    alwan_scalar n = vc->background_luminance / vc->white_xyz.y;
     alwan_scalar Nbb = ALWAN_LITERAL(0.725) * ALWAN_POW(ALWAN_LITERAL(1.0) / n, ALWAN_LITERAL(0.2));
     alwan_scalar Ncb = Nbb;
     alwan_scalar z = ALWAN_LITERAL(1.48) + ALWAN_SQRT(n);
@@ -357,14 +352,14 @@ int alwan_ciecam02_inverse(alwan_ciecam02_correlates const *correlates,
     /* Step 11: Apply inverse chromatic adaptation */
     alwan_scalar RGB[3];
     for (int i = 0; i < 3; i++) {
-        alwan_scalar D_RGB_div = D * (vc->white_xyz.v[1] / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
+        alwan_scalar D_RGB_div = D * (vc->white_xyz.y / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
         RGB[i] = RGB_c[i] / D_RGB_div;
     }
 
     /* Step 12: Transform back to XYZ using inverse HPE matrix */
-    xyz_out->v[0] = M_HPE_inv[0] * RGB[0] + M_HPE_inv[1] * RGB[1] + M_HPE_inv[2] * RGB[2];
-    xyz_out->v[1] = M_HPE_inv[3] * RGB[0] + M_HPE_inv[4] * RGB[1] + M_HPE_inv[5] * RGB[2];
-    xyz_out->v[2] = M_HPE_inv[6] * RGB[0] + M_HPE_inv[7] * RGB[1] + M_HPE_inv[8] * RGB[2];
+    xyz_out->x = M_HPE_inv[0] * RGB[0] + M_HPE_inv[1] * RGB[1] + M_HPE_inv[2] * RGB[2];
+    xyz_out->y = M_HPE_inv[3] * RGB[0] + M_HPE_inv[4] * RGB[1] + M_HPE_inv[5] * RGB[2];
+    xyz_out->z = M_HPE_inv[6] * RGB[0] + M_HPE_inv[7] * RGB[1] + M_HPE_inv[8] * RGB[2];
 
     return ALWAN_OK;
 }
@@ -412,7 +407,7 @@ static void get_cam16_surround_params(alwan_cam16_surround surround, alwan_scala
 }
 
 /* CAM16 forward transform */
-int alwan_cam16_forward(alwan_vec3 const *xyz,
+int alwan_cam16_forward(alwan_xyz const *xyz,
                         alwan_cam16_viewing_conditions const *vc,
                         alwan_cam16_correlates *out) {
     if (!xyz || !vc || !out) {
@@ -428,20 +423,20 @@ int alwan_cam16_forward(alwan_vec3 const *xyz,
 
     /* Step 3: Transform XYZ to cone responses (RGB) using CAT16 matrix */
     alwan_scalar RGB[3];
-    RGB[0] = M_CAT16[0] * xyz->v[0] + M_CAT16[1] * xyz->v[1] + M_CAT16[2] * xyz->v[2];
-    RGB[1] = M_CAT16[3] * xyz->v[0] + M_CAT16[4] * xyz->v[1] + M_CAT16[5] * xyz->v[2];
-    RGB[2] = M_CAT16[6] * xyz->v[0] + M_CAT16[7] * xyz->v[1] + M_CAT16[8] * xyz->v[2];
+    RGB[0] = M_CAT16[0] * xyz->x + M_CAT16[1] * xyz->y + M_CAT16[2] * xyz->z;
+    RGB[1] = M_CAT16[3] * xyz->x + M_CAT16[4] * xyz->y + M_CAT16[5] * xyz->z;
+    RGB[2] = M_CAT16[6] * xyz->x + M_CAT16[7] * xyz->y + M_CAT16[8] * xyz->z;
 
     /* Step 4: Transform white point to cone responses */
     alwan_scalar RGB_w[3];
-    RGB_w[0] = M_CAT16[0] * vc->white_xyz.v[0] + M_CAT16[1] * vc->white_xyz.v[1] + M_CAT16[2] * vc->white_xyz.v[2];
-    RGB_w[1] = M_CAT16[3] * vc->white_xyz.v[0] + M_CAT16[4] * vc->white_xyz.v[1] + M_CAT16[5] * vc->white_xyz.v[2];
-    RGB_w[2] = M_CAT16[6] * vc->white_xyz.v[0] + M_CAT16[7] * vc->white_xyz.v[1] + M_CAT16[8] * vc->white_xyz.v[2];
+    RGB_w[0] = M_CAT16[0] * vc->white_xyz.x + M_CAT16[1] * vc->white_xyz.y + M_CAT16[2] * vc->white_xyz.z;
+    RGB_w[1] = M_CAT16[3] * vc->white_xyz.x + M_CAT16[4] * vc->white_xyz.y + M_CAT16[5] * vc->white_xyz.z;
+    RGB_w[2] = M_CAT16[6] * vc->white_xyz.x + M_CAT16[7] * vc->white_xyz.y + M_CAT16[8] * vc->white_xyz.z;
 
     /* Step 5: Compute adapted cone responses (chromatic adaptation) */
     alwan_scalar RGB_c[3];
     for (int i = 0; i < 3; i++) {
-        alwan_scalar D_RGB_div = D * (vc->white_xyz.v[1] / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
+        alwan_scalar D_RGB_div = D * (vc->white_xyz.y / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
         RGB_c[i] = RGB[i] * D_RGB_div;
     }
 
@@ -459,7 +454,7 @@ int alwan_cam16_forward(alwan_vec3 const *xyz,
     }
 
     /* Step 8: Compute background parameters */
-    alwan_scalar n = vc->background_luminance / vc->white_xyz.v[1];
+    alwan_scalar n = vc->background_luminance / vc->white_xyz.y;
     alwan_scalar Nbb = ALWAN_LITERAL(0.725) * ALWAN_POW(ALWAN_LITERAL(1.0) / n, ALWAN_LITERAL(0.2));
     alwan_scalar Ncb = Nbb;
     alwan_scalar z = ALWAN_LITERAL(1.48) + ALWAN_SQRT(n);
@@ -482,7 +477,7 @@ int alwan_cam16_forward(alwan_vec3 const *xyz,
     /* Step 12: Compute lightness J */
     alwan_scalar RGB_aw[3];
     for (int i = 0; i < 3; i++) {
-        alwan_scalar D_RGB_w_div = D * (vc->white_xyz.v[1] / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
+        alwan_scalar D_RGB_w_div = D * (vc->white_xyz.y / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
         alwan_scalar RGB_cw = RGB_w[i] * D_RGB_w_div;
         RGB_aw[i] = post_adaptation_nonlinear(FL * RGB_cw / ALWAN_LITERAL(100.0));
     }
@@ -522,7 +517,7 @@ int alwan_cam16_forward(alwan_vec3 const *xyz,
 /* CAM16 inverse transform */
 int alwan_cam16_inverse(alwan_cam16_correlates const *correlates,
                         alwan_cam16_viewing_conditions const *vc,
-                        alwan_vec3 *xyz_out) {
+                        alwan_xyz *xyz_out) {
     if (!correlates || !vc || !xyz_out) {
         return ALWAN_E_INVALID;
     }
@@ -548,19 +543,19 @@ int alwan_cam16_inverse(alwan_cam16_correlates const *correlates,
 
     /* Step 4: Compute white point adapted cone responses */
     alwan_scalar RGB_w[3];
-    RGB_w[0] = M_CAT16[0] * vc->white_xyz.v[0] + M_CAT16[1] * vc->white_xyz.v[1] + M_CAT16[2] * vc->white_xyz.v[2];
-    RGB_w[1] = M_CAT16[3] * vc->white_xyz.v[0] + M_CAT16[4] * vc->white_xyz.v[1] + M_CAT16[5] * vc->white_xyz.v[2];
-    RGB_w[2] = M_CAT16[6] * vc->white_xyz.v[0] + M_CAT16[7] * vc->white_xyz.v[1] + M_CAT16[8] * vc->white_xyz.v[2];
+    RGB_w[0] = M_CAT16[0] * vc->white_xyz.x + M_CAT16[1] * vc->white_xyz.y + M_CAT16[2] * vc->white_xyz.z;
+    RGB_w[1] = M_CAT16[3] * vc->white_xyz.x + M_CAT16[4] * vc->white_xyz.y + M_CAT16[5] * vc->white_xyz.z;
+    RGB_w[2] = M_CAT16[6] * vc->white_xyz.x + M_CAT16[7] * vc->white_xyz.y + M_CAT16[8] * vc->white_xyz.z;
 
     alwan_scalar RGB_aw[3];
     for (int i = 0; i < 3; i++) {
-        alwan_scalar D_RGB_w_div = D * (vc->white_xyz.v[1] / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
+        alwan_scalar D_RGB_w_div = D * (vc->white_xyz.y / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
         alwan_scalar RGB_cw = RGB_w[i] * D_RGB_w_div;
         RGB_aw[i] = post_adaptation_nonlinear(FL * RGB_cw / ALWAN_LITERAL(100.0));
     }
 
     /* Compute background parameters */
-    alwan_scalar n = vc->background_luminance / vc->white_xyz.v[1];
+    alwan_scalar n = vc->background_luminance / vc->white_xyz.y;
     alwan_scalar Nbb = ALWAN_LITERAL(0.725) * ALWAN_POW(ALWAN_LITERAL(1.0) / n, ALWAN_LITERAL(0.2));
     alwan_scalar Ncb = Nbb;
     alwan_scalar z = ALWAN_LITERAL(1.48) + ALWAN_SQRT(n);
@@ -636,14 +631,14 @@ int alwan_cam16_inverse(alwan_cam16_correlates const *correlates,
     /* Step 11: Apply inverse chromatic adaptation */
     alwan_scalar RGB[3];
     for (int i = 0; i < 3; i++) {
-        alwan_scalar D_RGB_div = D * (vc->white_xyz.v[1] / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
+        alwan_scalar D_RGB_div = D * (vc->white_xyz.y / RGB_w[i]) + ALWAN_LITERAL(1.0) - D;
         RGB[i] = RGB_c[i] / D_RGB_div;
     }
 
     /* Step 12: Transform back to XYZ using inverse CAT16 matrix */
-    xyz_out->v[0] = M_CAT16_inv[0] * RGB[0] + M_CAT16_inv[1] * RGB[1] + M_CAT16_inv[2] * RGB[2];
-    xyz_out->v[1] = M_CAT16_inv[3] * RGB[0] + M_CAT16_inv[4] * RGB[1] + M_CAT16_inv[5] * RGB[2];
-    xyz_out->v[2] = M_CAT16_inv[6] * RGB[0] + M_CAT16_inv[7] * RGB[1] + M_CAT16_inv[8] * RGB[2];
+    xyz_out->x = M_CAT16_inv[0] * RGB[0] + M_CAT16_inv[1] * RGB[1] + M_CAT16_inv[2] * RGB[2];
+    xyz_out->y = M_CAT16_inv[3] * RGB[0] + M_CAT16_inv[4] * RGB[1] + M_CAT16_inv[5] * RGB[2];
+    xyz_out->z = M_CAT16_inv[6] * RGB[0] + M_CAT16_inv[7] * RGB[1] + M_CAT16_inv[8] * RGB[2];
 
     return ALWAN_OK;
 }

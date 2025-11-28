@@ -101,7 +101,7 @@ static alwan_scalar llab_f(alwan_scalar t, alwan_scalar F_S) {
  * ---------------------------------------------------------------- */
 
 int alwan_llab_forward(
-    alwan_vec3 const *xyz,
+    alwan_xyz const *xyz,
     alwan_llab_viewing_conditions const *vc,
     alwan_llab_correlates *out
 ) {
@@ -121,13 +121,13 @@ int alwan_llab_forward(
     }
 
     /* Step 1: Convert XYZ to RGB (cone responses) */
-    alwan_scalar XYZ_in[3] = {xyz->v[0], xyz->v[1], xyz->v[2]};
+    alwan_scalar XYZ_in[3] = {xyz->x, xyz->y, xyz->z};
     alwan_scalar RGB[3];
     mat3_mul_vec3(M_LLAB_XYZ_TO_RGB, XYZ_in, RGB);
 
     /* Convert reference illuminants to RGB */
-    alwan_scalar XYZ_0[3] = {vc->xyz_0.v[0], vc->xyz_0.v[1], vc->xyz_0.v[2]};
-    alwan_scalar XYZ_r[3] = {vc->xyz_r.v[0], vc->xyz_r.v[1], vc->xyz_r.v[2]};
+    alwan_scalar XYZ_0[3] = {vc->xyz_0.x, vc->xyz_0.y, vc->xyz_0.z};
+    alwan_scalar XYZ_r[3] = {vc->xyz_r.x, vc->xyz_r.y, vc->xyz_r.z};
     alwan_scalar RGB_0[3], RGB_r[3];
     mat3_mul_vec3(M_LLAB_XYZ_TO_RGB, XYZ_0, RGB_0);
     mat3_mul_vec3(M_LLAB_XYZ_TO_RGB, XYZ_r, RGB_r);
@@ -153,9 +153,9 @@ int alwan_llab_forward(
 
     /* Step 4: Compute Lab coordinates with F_S induction factor */
     /* Reference white for Lab calculation (use reference condition illuminant) */
-    alwan_scalar X_n = vc->xyz_r.v[0];
-    alwan_scalar Y_n = vc->xyz_r.v[1];
-    alwan_scalar Z_n = vc->xyz_r.v[2];
+    alwan_scalar X_n = vc->xyz_r.x;
+    alwan_scalar Y_n = vc->xyz_r.y;
+    alwan_scalar Z_n = vc->xyz_r.z;
 
     alwan_scalar f_X = llab_f(XYZ_adapted[0] / X_n, F_S);
     alwan_scalar f_Y = llab_f(XYZ_adapted[1] / Y_n, F_S);

@@ -27,8 +27,13 @@ def generate_kim2009_tests(output_dir):
     print("\nGenerating Kim2009 test data...")
 
     # D65 white point (from colour-science)
-    d65_white_xyz = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
-    d65_white = [d65_white_xyz[0] * 100, d65_white_xyz[1] * 100, d65_white_xyz[2] * 100]
+    # CCS_ILLUMINANTS returns (x, y) chromaticity, convert to XYZ
+    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+    x, y = d65_xy[0], d65_xy[1]
+    Y = 100.0
+    X = (x / y) * Y
+    Z = ((1.0 - x - y) / y) * Y
+    d65_white = [X, Y, Z]
 
     # Test cases: [XYZ_in, XYZ_w, La, Yb]
     # Only INPUTS are hardcoded - outputs come from colour-science
@@ -58,7 +63,9 @@ def generate_kim2009_tests(output_dir):
         xyz_w_arr = np.array(xyz_w)
 
         # Get viewing conditions from colour-science
-        media = colour.MEDIA_PARAMETERS_KIM2009['CRT Displays']
+        # Note: C implementation uses E=1.0 (High-luminance LCD Display)
+        # not CRT Displays (E=1.4572)
+        media = colour.MEDIA_PARAMETERS_KIM2009['High-luminance LCD Display']
         surround = colour.VIEWING_CONDITIONS_KIM2009['Average']
 
         # Compute correlates using colour-science

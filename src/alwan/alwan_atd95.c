@@ -109,7 +109,7 @@ static alwan_scalar final_response(alwan_scalar value) {
  * ---------------------------------------------------------------- */
 
 int alwan_atd95_forward(
-    alwan_vec3 const *xyz,
+    alwan_xyz const *xyz,
     alwan_atd95_viewing_conditions const *vc,
     alwan_atd95_correlates *out
 ) {
@@ -118,13 +118,13 @@ int alwan_atd95_forward(
     }
 
     /* Step 1: Convert XYZ to retinal illuminance for both sample and white */
-    alwan_scalar X_r = xyz_to_retinal_illuminance(xyz->v[0], vc->Y_0);
-    alwan_scalar Y_r = xyz_to_retinal_illuminance(xyz->v[1], vc->Y_0);
-    alwan_scalar Z_r = xyz_to_retinal_illuminance(xyz->v[2], vc->Y_0);
+    alwan_scalar X_r = xyz_to_retinal_illuminance(xyz->x, vc->Y_0);
+    alwan_scalar Y_r = xyz_to_retinal_illuminance(xyz->y, vc->Y_0);
+    alwan_scalar Z_r = xyz_to_retinal_illuminance(xyz->z, vc->Y_0);
 
-    alwan_scalar X_0r = xyz_to_retinal_illuminance(vc->white_xyz.v[0], vc->Y_0);
-    alwan_scalar Y_0r = xyz_to_retinal_illuminance(vc->white_xyz.v[1], vc->Y_0);
-    alwan_scalar Z_0r = xyz_to_retinal_illuminance(vc->white_xyz.v[2], vc->Y_0);
+    alwan_scalar X_0r = xyz_to_retinal_illuminance(vc->white_xyz.x, vc->Y_0);
+    alwan_scalar Y_0r = xyz_to_retinal_illuminance(vc->white_xyz.y, vc->Y_0);
+    alwan_scalar Z_0r = xyz_to_retinal_illuminance(vc->white_xyz.z, vc->Y_0);
 
     /* Step 2: Transform to LMS cone responses */
     alwan_scalar L, M, S, L_0, M_0, S_0;

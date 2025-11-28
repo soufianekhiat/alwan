@@ -49,12 +49,12 @@ static alwan_scalar const M2_inv[9] = {
  * XYZ <-> Oklab
  * ---------------------------------------------------------------- */
 
-void alwan_xyz_to_oklab(alwan_vec3 const *xyz, alwan_vec3 *oklab) {
+void alwan_xyz_to_oklab(alwan_xyz const *xyz, alwan_oklab *oklab) {
     /* Step 1: XYZ (D65) → LMS (cone response) */
     alwan_vec3 lms;
-    lms.v[0] = M1[0] * xyz->v[0] + M1[1] * xyz->v[1] + M1[2] * xyz->v[2];
-    lms.v[1] = M1[3] * xyz->v[0] + M1[4] * xyz->v[1] + M1[5] * xyz->v[2];
-    lms.v[2] = M1[6] * xyz->v[0] + M1[7] * xyz->v[1] + M1[8] * xyz->v[2];
+    lms.v[0] = M1[0] * xyz->x + M1[1] * xyz->y + M1[2] * xyz->z;
+    lms.v[1] = M1[3] * xyz->x + M1[4] * xyz->y + M1[5] * xyz->z;
+    lms.v[2] = M1[6] * xyz->x + M1[7] * xyz->y + M1[8] * xyz->z;
 
     /* Step 2: LMS → LMS' (perceptual, cube root) */
     alwan_vec3 lms_p;
@@ -63,17 +63,17 @@ void alwan_xyz_to_oklab(alwan_vec3 const *xyz, alwan_vec3 *oklab) {
     lms_p.v[2] = ALWAN_CBRT(lms.v[2]);
 
     /* Step 3: LMS' → Lab */
-    oklab->v[0] = M2[0] * lms_p.v[0] + M2[1] * lms_p.v[1] + M2[2] * lms_p.v[2];
-    oklab->v[1] = M2[3] * lms_p.v[0] + M2[4] * lms_p.v[1] + M2[5] * lms_p.v[2];
-    oklab->v[2] = M2[6] * lms_p.v[0] + M2[7] * lms_p.v[1] + M2[8] * lms_p.v[2];
+    oklab->L = M2[0] * lms_p.v[0] + M2[1] * lms_p.v[1] + M2[2] * lms_p.v[2];
+    oklab->a = M2[3] * lms_p.v[0] + M2[4] * lms_p.v[1] + M2[5] * lms_p.v[2];
+    oklab->b = M2[6] * lms_p.v[0] + M2[7] * lms_p.v[1] + M2[8] * lms_p.v[2];
 }
 
-void alwan_oklab_to_xyz(alwan_vec3 const *oklab, alwan_vec3 *xyz) {
+void alwan_oklab_to_xyz(alwan_oklab const *oklab, alwan_xyz *xyz) {
     /* Step 1: Lab → LMS' (perceptual) */
     alwan_vec3 lms_p;
-    lms_p.v[0] = M2_inv[0] * oklab->v[0] + M2_inv[1] * oklab->v[1] + M2_inv[2] * oklab->v[2];
-    lms_p.v[1] = M2_inv[3] * oklab->v[0] + M2_inv[4] * oklab->v[1] + M2_inv[5] * oklab->v[2];
-    lms_p.v[2] = M2_inv[6] * oklab->v[0] + M2_inv[7] * oklab->v[1] + M2_inv[8] * oklab->v[2];
+    lms_p.v[0] = M2_inv[0] * oklab->L + M2_inv[1] * oklab->a + M2_inv[2] * oklab->b;
+    lms_p.v[1] = M2_inv[3] * oklab->L + M2_inv[4] * oklab->a + M2_inv[5] * oklab->b;
+    lms_p.v[2] = M2_inv[6] * oklab->L + M2_inv[7] * oklab->a + M2_inv[8] * oklab->b;
 
     /* Step 2: LMS' → LMS (cube) */
     alwan_vec3 lms;
@@ -82,33 +82,33 @@ void alwan_oklab_to_xyz(alwan_vec3 const *oklab, alwan_vec3 *xyz) {
     lms.v[2] = lms_p.v[2] * lms_p.v[2] * lms_p.v[2];
 
     /* Step 3: LMS → XYZ (D65) */
-    xyz->v[0] = M1_inv[0] * lms.v[0] + M1_inv[1] * lms.v[1] + M1_inv[2] * lms.v[2];
-    xyz->v[1] = M1_inv[3] * lms.v[0] + M1_inv[4] * lms.v[1] + M1_inv[5] * lms.v[2];
-    xyz->v[2] = M1_inv[6] * lms.v[0] + M1_inv[7] * lms.v[1] + M1_inv[8] * lms.v[2];
+    xyz->x = M1_inv[0] * lms.v[0] + M1_inv[1] * lms.v[1] + M1_inv[2] * lms.v[2];
+    xyz->y = M1_inv[3] * lms.v[0] + M1_inv[4] * lms.v[1] + M1_inv[5] * lms.v[2];
+    xyz->z = M1_inv[6] * lms.v[0] + M1_inv[7] * lms.v[1] + M1_inv[8] * lms.v[2];
 }
 
 /* ----------------------------------------------------------------
  * Oklab <-> Oklch (Cylindrical)
  * ---------------------------------------------------------------- */
 
-void alwan_oklab_to_oklch(alwan_vec3 const *oklab, alwan_vec3 *oklch) {
+void alwan_oklab_to_oklch(alwan_oklab const *oklab, alwan_oklch *oklch) {
     /* L stays the same */
-    oklch->v[0] = oklab->v[0];
+    oklch->L = oklab->L;
 
     /* Chroma = sqrt(a^2 + b^2) */
-    oklch->v[1] = ALWAN_SQRT(oklab->v[1] * oklab->v[1] + oklab->v[2] * oklab->v[2]);
+    oklch->C = ALWAN_SQRT(oklab->a * oklab->a + oklab->b * oklab->b);
 
     /* Hue = atan2(b, a) in radians */
-    oklch->v[2] = ALWAN_ATAN2(oklab->v[2], oklab->v[1]);
+    oklch->h = ALWAN_ATAN2(oklab->b, oklab->a);
 }
 
-void alwan_oklch_to_oklab(alwan_vec3 const *oklch, alwan_vec3 *oklab) {
+void alwan_oklch_to_oklab(alwan_oklch const *oklch, alwan_oklab *oklab) {
     /* L stays the same */
-    oklab->v[0] = oklch->v[0];
+    oklab->L = oklch->L;
 
     /* a = C * cos(h) */
-    oklab->v[1] = oklch->v[1] * ALWAN_COS(oklch->v[2]);
+    oklab->a = oklch->C * ALWAN_COS(oklch->h);
 
     /* b = C * sin(h) */
-    oklab->v[2] = oklch->v[1] * ALWAN_SIN(oklch->v[2]);
+    oklab->b = oklch->C * ALWAN_SIN(oklch->h);
 }

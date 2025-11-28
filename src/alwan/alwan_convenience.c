@@ -14,14 +14,14 @@
  * RGB <-> HSV
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_hsv(alwan_vec3 const *rgb, alwan_vec3 *hsv_out) {
+int alwan_rgb_to_hsv(alwan_rgb const *rgb, alwan_hsv *hsv_out) {
     if (!rgb || !hsv_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_scalar r = rgb->v[0];
-    alwan_scalar g = rgb->v[1];
-    alwan_scalar b = rgb->v[2];
+    alwan_scalar r = rgb->r;
+    alwan_scalar g = rgb->g;
+    alwan_scalar b = rgb->b;
 
     alwan_scalar max_val = alwan_max3(r, g, b);
     alwan_scalar min_val = alwan_min3(r, g, b);
@@ -49,27 +49,27 @@ int alwan_rgb_to_hsv(alwan_vec3 const *rgb, alwan_vec3 *hsv_out) {
     /* Normalize H to [0, 1] */
     h /= ALWAN_LITERAL(360.0);
 
-    hsv_out->v[0] = h;
-    hsv_out->v[1] = s;
-    hsv_out->v[2] = v;
+    hsv_out->h = h;
+    hsv_out->s = s;
+    hsv_out->v = v;
 
     return ALWAN_OK;
 }
 
-int alwan_hsv_to_rgb(alwan_vec3 const *hsv, alwan_vec3 *rgb_out) {
+int alwan_hsv_to_rgb(alwan_hsv const *hsv, alwan_rgb *rgb_out) {
     if (!hsv || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_scalar h = hsv->v[0] * ALWAN_LITERAL(360.0);  /* Convert to [0, 360] */
-    alwan_scalar s = hsv->v[1];
-    alwan_scalar v = hsv->v[2];
+    alwan_scalar h = hsv->h * ALWAN_LITERAL(360.0);  /* Convert to [0, 360] */
+    alwan_scalar s = hsv->s;
+    alwan_scalar v = hsv->v;
 
     if (s <= ALWAN_LITERAL(0.0)) {
         /* Achromatic (gray) */
-        rgb_out->v[0] = v;
-        rgb_out->v[1] = v;
-        rgb_out->v[2] = v;
+        rgb_out->r = v;
+        rgb_out->g = v;
+        rgb_out->b = v;
         return ALWAN_OK;
     }
 
@@ -86,12 +86,12 @@ int alwan_hsv_to_rgb(alwan_vec3 const *hsv, alwan_vec3 *rgb_out) {
     alwan_scalar t = v * (ALWAN_LITERAL(1.0) - s * (ALWAN_LITERAL(1.0) - f));
 
     switch (sector) {
-        case 0:  rgb_out->v[0] = v; rgb_out->v[1] = t; rgb_out->v[2] = p; break;
-        case 1:  rgb_out->v[0] = q; rgb_out->v[1] = v; rgb_out->v[2] = p; break;
-        case 2:  rgb_out->v[0] = p; rgb_out->v[1] = v; rgb_out->v[2] = t; break;
-        case 3:  rgb_out->v[0] = p; rgb_out->v[1] = q; rgb_out->v[2] = v; break;
-        case 4:  rgb_out->v[0] = t; rgb_out->v[1] = p; rgb_out->v[2] = v; break;
-        default: rgb_out->v[0] = v; rgb_out->v[1] = p; rgb_out->v[2] = q; break;
+        case 0:  rgb_out->r = v; rgb_out->g = t; rgb_out->b = p; break;
+        case 1:  rgb_out->r = q; rgb_out->g = v; rgb_out->b = p; break;
+        case 2:  rgb_out->r = p; rgb_out->g = v; rgb_out->b = t; break;
+        case 3:  rgb_out->r = p; rgb_out->g = q; rgb_out->b = v; break;
+        case 4:  rgb_out->r = t; rgb_out->g = p; rgb_out->b = v; break;
+        default: rgb_out->r = v; rgb_out->g = p; rgb_out->b = q; break;
     }
 
     return ALWAN_OK;
@@ -101,14 +101,14 @@ int alwan_hsv_to_rgb(alwan_vec3 const *hsv, alwan_vec3 *rgb_out) {
  * RGB <-> HSL
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_hsl(alwan_vec3 const *rgb, alwan_vec3 *hsl_out) {
+int alwan_rgb_to_hsl(alwan_rgb const *rgb, alwan_hsl *hsl_out) {
     if (!rgb || !hsl_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_scalar r = rgb->v[0];
-    alwan_scalar g = rgb->v[1];
-    alwan_scalar b = rgb->v[2];
+    alwan_scalar r = rgb->r;
+    alwan_scalar g = rgb->g;
+    alwan_scalar b = rgb->b;
 
     alwan_scalar max_val = alwan_max3(r, g, b);
     alwan_scalar min_val = alwan_min3(r, g, b);
@@ -143,9 +143,9 @@ int alwan_rgb_to_hsl(alwan_vec3 const *rgb, alwan_vec3 *hsl_out) {
     /* Normalize H to [0, 1] */
     h /= ALWAN_LITERAL(360.0);
 
-    hsl_out->v[0] = h;
-    hsl_out->v[1] = s;
-    hsl_out->v[2] = l;
+    hsl_out->h = h;
+    hsl_out->s = s;
+    hsl_out->l = l;
 
     return ALWAN_OK;
 }
@@ -160,20 +160,20 @@ static alwan_scalar hue_to_rgb(alwan_scalar p, alwan_scalar q, alwan_scalar t) {
     return p;
 }
 
-int alwan_hsl_to_rgb(alwan_vec3 const *hsl, alwan_vec3 *rgb_out) {
+int alwan_hsl_to_rgb(alwan_hsl const *hsl, alwan_rgb *rgb_out) {
     if (!hsl || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_scalar h = hsl->v[0];
-    alwan_scalar s = hsl->v[1];
-    alwan_scalar l = hsl->v[2];
+    alwan_scalar h = hsl->h;
+    alwan_scalar s = hsl->s;
+    alwan_scalar l = hsl->l;
 
     if (s <= ALWAN_LITERAL(0.0)) {
         /* Achromatic */
-        rgb_out->v[0] = l;
-        rgb_out->v[1] = l;
-        rgb_out->v[2] = l;
+        rgb_out->r = l;
+        rgb_out->g = l;
+        rgb_out->b = l;
         return ALWAN_OK;
     }
 
@@ -182,9 +182,9 @@ int alwan_hsl_to_rgb(alwan_vec3 const *hsl, alwan_vec3 *rgb_out) {
                      l + s - l * s;
     alwan_scalar p = ALWAN_LITERAL(2.0) * l - q;
 
-    rgb_out->v[0] = hue_to_rgb(p, q, h + ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0));
-    rgb_out->v[1] = hue_to_rgb(p, q, h);
-    rgb_out->v[2] = hue_to_rgb(p, q, h - ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0));
+    rgb_out->r = hue_to_rgb(p, q, h + ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0));
+    rgb_out->g = hue_to_rgb(p, q, h);
+    rgb_out->b = hue_to_rgb(p, q, h - ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0));
 
     return ALWAN_OK;
 }
@@ -193,26 +193,26 @@ int alwan_hsl_to_rgb(alwan_vec3 const *hsl, alwan_vec3 *rgb_out) {
  * RGB <-> CMY
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_cmy(alwan_vec3 const *rgb, alwan_vec3 *cmy_out) {
+int alwan_rgb_to_cmy(alwan_rgb const *rgb, alwan_cmy *cmy_out) {
     if (!rgb || !cmy_out) {
         return ALWAN_E_INVALID;
     }
 
-    cmy_out->v[0] = ALWAN_LITERAL(1.0) - rgb->v[0];
-    cmy_out->v[1] = ALWAN_LITERAL(1.0) - rgb->v[1];
-    cmy_out->v[2] = ALWAN_LITERAL(1.0) - rgb->v[2];
+    cmy_out->c = ALWAN_LITERAL(1.0) - rgb->r;
+    cmy_out->m = ALWAN_LITERAL(1.0) - rgb->g;
+    cmy_out->y = ALWAN_LITERAL(1.0) - rgb->b;
 
     return ALWAN_OK;
 }
 
-int alwan_cmy_to_rgb(alwan_vec3 const *cmy, alwan_vec3 *rgb_out) {
+int alwan_cmy_to_rgb(alwan_cmy const *cmy, alwan_rgb *rgb_out) {
     if (!cmy || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
-    rgb_out->v[0] = ALWAN_LITERAL(1.0) - cmy->v[0];
-    rgb_out->v[1] = ALWAN_LITERAL(1.0) - cmy->v[1];
-    rgb_out->v[2] = ALWAN_LITERAL(1.0) - cmy->v[2];
+    rgb_out->r = ALWAN_LITERAL(1.0) - cmy->c;
+    rgb_out->g = ALWAN_LITERAL(1.0) - cmy->m;
+    rgb_out->b = ALWAN_LITERAL(1.0) - cmy->y;
 
     return ALWAN_OK;
 }
@@ -221,13 +221,13 @@ int alwan_cmy_to_rgb(alwan_vec3 const *cmy, alwan_vec3 *rgb_out) {
  * CMY <-> CMYK
  * ---------------------------------------------------------------- */
 
-int alwan_cmy_to_cmyk(alwan_vec3 const *cmy, alwan_scalar *c, alwan_scalar *m, alwan_scalar *y, alwan_scalar *k) {
+int alwan_cmy_to_cmyk(alwan_cmy const *cmy, alwan_scalar *c, alwan_scalar *m, alwan_scalar *y, alwan_scalar *k) {
     if (!cmy || !c || !m || !y || !k) {
         return ALWAN_E_INVALID;
     }
 
     /* K is the minimum of CMY */
-    *k = alwan_min3(cmy->v[0], cmy->v[1], cmy->v[2]);
+    *k = alwan_min3(cmy->c, cmy->m, cmy->y);
 
     /* If K = 1, then C = M = Y = 0 */
     if (*k >= ALWAN_LITERAL(1.0)) {
@@ -239,21 +239,21 @@ int alwan_cmy_to_cmyk(alwan_vec3 const *cmy, alwan_scalar *c, alwan_scalar *m, a
 
     /* Otherwise, calculate C, M, Y */
     alwan_scalar denom = ALWAN_LITERAL(1.0) - *k;
-    *c = (cmy->v[0] - *k) / denom;
-    *m = (cmy->v[1] - *k) / denom;
-    *y = (cmy->v[2] - *k) / denom;
+    *c = (cmy->c - *k) / denom;
+    *m = (cmy->m - *k) / denom;
+    *y = (cmy->y - *k) / denom;
 
     return ALWAN_OK;
 }
 
-int alwan_cmyk_to_cmy(alwan_scalar c, alwan_scalar m, alwan_scalar y, alwan_scalar k, alwan_vec3 *cmy_out) {
+int alwan_cmyk_to_cmy(alwan_scalar c, alwan_scalar m, alwan_scalar y, alwan_scalar k, alwan_cmy *cmy_out) {
     if (!cmy_out) {
         return ALWAN_E_INVALID;
     }
 
-    cmy_out->v[0] = c * (ALWAN_LITERAL(1.0) - k) + k;
-    cmy_out->v[1] = m * (ALWAN_LITERAL(1.0) - k) + k;
-    cmy_out->v[2] = y * (ALWAN_LITERAL(1.0) - k) + k;
+    cmy_out->c = c * (ALWAN_LITERAL(1.0) - k) + k;
+    cmy_out->m = m * (ALWAN_LITERAL(1.0) - k) + k;
+    cmy_out->y = y * (ALWAN_LITERAL(1.0) - k) + k;
 
     return ALWAN_OK;
 }
@@ -289,7 +289,7 @@ static void get_ycbcr_coeffs(alwan_ycbcr_standard standard, alwan_scalar *kr, al
     }
 }
 
-int alwan_rgb_to_ycbcr(alwan_vec3 const *rgb, alwan_ycbcr_standard standard, alwan_vec3 *ycbcr_out) {
+int alwan_rgb_to_ycbcr(alwan_rgb const *rgb, alwan_ycbcr_standard standard, alwan_ycbcr *ycbcr_out) {
     if (!rgb || !ycbcr_out) {
         return ALWAN_E_INVALID;
     }
@@ -297,9 +297,9 @@ int alwan_rgb_to_ycbcr(alwan_vec3 const *rgb, alwan_ycbcr_standard standard, alw
     alwan_scalar kr, kg, kb;
     get_ycbcr_coeffs(standard, &kr, &kg, &kb);
 
-    alwan_scalar r = rgb->v[0];
-    alwan_scalar g = rgb->v[1];
-    alwan_scalar b = rgb->v[2];
+    alwan_scalar r = rgb->r;
+    alwan_scalar g = rgb->g;
+    alwan_scalar b = rgb->b;
 
     /* Y' = Kr*R + Kg*G + Kb*B */
     alwan_scalar y = kr * r + kg * g + kb * b;
@@ -310,14 +310,14 @@ int alwan_rgb_to_ycbcr(alwan_vec3 const *rgb, alwan_ycbcr_standard standard, alw
     /* Cr = (R - Y') / (2 * (1 - Kr)) + 0.5 */
     alwan_scalar cr = (r - y) / (ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - kr)) + ALWAN_LITERAL(0.5);
 
-    ycbcr_out->v[0] = y;
-    ycbcr_out->v[1] = cb;
-    ycbcr_out->v[2] = cr;
+    ycbcr_out->Y = y;
+    ycbcr_out->Cb = cb;
+    ycbcr_out->Cr = cr;
 
     return ALWAN_OK;
 }
 
-int alwan_ycbcr_to_rgb(alwan_vec3 const *ycbcr, alwan_ycbcr_standard standard, alwan_vec3 *rgb_out) {
+int alwan_ycbcr_to_rgb(alwan_ycbcr const *ycbcr, alwan_ycbcr_standard standard, alwan_rgb *rgb_out) {
     if (!ycbcr || !rgb_out) {
         return ALWAN_E_INVALID;
     }
@@ -325,9 +325,9 @@ int alwan_ycbcr_to_rgb(alwan_vec3 const *ycbcr, alwan_ycbcr_standard standard, a
     alwan_scalar kr, kg, kb;
     get_ycbcr_coeffs(standard, &kr, &kg, &kb);
 
-    alwan_scalar y  = ycbcr->v[0];
-    alwan_scalar cb = ycbcr->v[1] - ALWAN_LITERAL(0.5);
-    alwan_scalar cr = ycbcr->v[2] - ALWAN_LITERAL(0.5);
+    alwan_scalar y  = ycbcr->Y;
+    alwan_scalar cb = ycbcr->Cb - ALWAN_LITERAL(0.5);
+    alwan_scalar cr = ycbcr->Cr - ALWAN_LITERAL(0.5);
 
     /* R = Y' + Cr * 2 * (1 - Kr) */
     alwan_scalar r = y + cr * ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - kr);
@@ -338,9 +338,9 @@ int alwan_ycbcr_to_rgb(alwan_vec3 const *ycbcr, alwan_ycbcr_standard standard, a
     /* G = (Y' - Kr*R - Kb*B) / Kg */
     alwan_scalar g = (y - kr * r - kb * b) / kg;
 
-    rgb_out->v[0] = alwan_clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    rgb_out->v[1] = alwan_clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    rgb_out->v[2] = alwan_clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    rgb_out->r = alwan_clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    rgb_out->g = alwan_clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    rgb_out->b = alwan_clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
 
     return ALWAN_OK;
 }
@@ -349,7 +349,7 @@ int alwan_ycbcr_to_rgb(alwan_vec3 const *ycbcr, alwan_ycbcr_standard standard, a
  * RGB <-> YcCbcCrc (constant luminance, BT.2020)
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out) {
+int alwan_rgb_to_yccbccrc(alwan_rgb const *rgb, alwan_yccbccrc *yccbccrc_out) {
     if (!rgb || !yccbccrc_out) {
         return ALWAN_E_INVALID;
     }
@@ -359,9 +359,9 @@ int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out) {
     alwan_scalar const kg = ALWAN_LITERAL(0.6780);
     alwan_scalar const kb = ALWAN_LITERAL(0.0593);
 
-    alwan_scalar r = rgb->v[0];
-    alwan_scalar g = rgb->v[1];
-    alwan_scalar b = rgb->v[2];
+    alwan_scalar r = rgb->r;
+    alwan_scalar g = rgb->g;
+    alwan_scalar b = rgb->b;
 
     /* Step 1: Compute linear Yc */
     alwan_scalar yc_linear = kr * r + kg * g + kb * b;
@@ -418,14 +418,14 @@ int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out) {
     alwan_scalar const c_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
     alwan_scalar const c_max = ALWAN_LITERAL(960.0) / ALWAN_LITERAL(1023.0);
 
-    yccbccrc_out->v[0] = yc * (y_max - y_min) + y_min;
-    yccbccrc_out->v[1] = cbc * (c_max - c_min) + (c_max + c_min) / ALWAN_LITERAL(2.0);
-    yccbccrc_out->v[2] = crc * (c_max - c_min) + (c_max + c_min) / ALWAN_LITERAL(2.0);
+    yccbccrc_out->Yc = yc * (y_max - y_min) + y_min;
+    yccbccrc_out->Cbc = cbc * (c_max - c_min) + (c_max + c_min) / ALWAN_LITERAL(2.0);
+    yccbccrc_out->Crc = crc * (c_max - c_min) + (c_max + c_min) / ALWAN_LITERAL(2.0);
 
     return ALWAN_OK;
 }
 
-int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out) {
+int alwan_yccbccrc_to_rgb(alwan_yccbccrc const *yccbccrc, alwan_rgb *rgb_out) {
     if (!yccbccrc || !rgb_out) {
         return ALWAN_E_INVALID;
     }
@@ -442,9 +442,9 @@ int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out) {
     alwan_scalar const c_max = ALWAN_LITERAL(960.0) / ALWAN_LITERAL(1023.0);
     alwan_scalar const c_center = (c_max + c_min) / ALWAN_LITERAL(2.0);
 
-    alwan_scalar yc = (yccbccrc->v[0] - y_min) / (y_max - y_min);
-    alwan_scalar cbc = (yccbccrc->v[1] - c_center) / (c_max - c_min);
-    alwan_scalar crc = (yccbccrc->v[2] - c_center) / (c_max - c_min);
+    alwan_scalar yc = (yccbccrc->Yc - y_min) / (y_max - y_min);
+    alwan_scalar cbc = (yccbccrc->Cbc - c_center) / (c_max - c_min);
+    alwan_scalar crc = (yccbccrc->Crc - c_center) / (c_max - c_min);
 
     /* Step 2: Reverse chroma divisors */
     alwan_scalar diff_b, diff_r;
@@ -499,9 +499,9 @@ int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out) {
     alwan_scalar g = (yc_linear - kr * r - kb * b) / kg;
 
     /* Clamp to valid range - constant luminance can produce out-of-gamut values */
-    rgb_out->v[0] = alwan_clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    rgb_out->v[1] = alwan_clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    rgb_out->v[2] = alwan_clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    rgb_out->r = alwan_clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    rgb_out->g = alwan_clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    rgb_out->b = alwan_clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
 
     return ALWAN_OK;
 }
@@ -510,14 +510,14 @@ int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out) {
  * RGB <-> YCoCg (video compression color space)
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_ycocg(alwan_vec3 const *rgb, alwan_vec3 *ycocg_out) {
+int alwan_rgb_to_ycocg(alwan_rgb const *rgb, alwan_ycocg *ycocg_out) {
     if (!rgb || !ycocg_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_scalar r = rgb->v[0];
-    alwan_scalar g = rgb->v[1];
-    alwan_scalar b = rgb->v[2];
+    alwan_scalar r = rgb->r;
+    alwan_scalar g = rgb->g;
+    alwan_scalar b = rgb->b;
 
     /* YCoCg transform (H.264/AVC)
      * Y  =  0.25*R + 0.5*G + 0.25*B
@@ -528,21 +528,21 @@ int alwan_rgb_to_ycocg(alwan_vec3 const *rgb, alwan_vec3 *ycocg_out) {
     alwan_scalar co = ALWAN_LITERAL(0.5) * r - ALWAN_LITERAL(0.5) * b;
     alwan_scalar cg = -ALWAN_LITERAL(0.25) * r + ALWAN_LITERAL(0.5) * g - ALWAN_LITERAL(0.25) * b;
 
-    ycocg_out->v[0] = y;
-    ycocg_out->v[1] = co;
-    ycocg_out->v[2] = cg;
+    ycocg_out->Y = y;
+    ycocg_out->Co = co;
+    ycocg_out->Cg = cg;
 
     return ALWAN_OK;
 }
 
-int alwan_ycocg_to_rgb(alwan_vec3 const *ycocg, alwan_vec3 *rgb_out) {
+int alwan_ycocg_to_rgb(alwan_ycocg const *ycocg, alwan_rgb *rgb_out) {
     if (!ycocg || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_scalar y  = ycocg->v[0];
-    alwan_scalar co = ycocg->v[1];
-    alwan_scalar cg = ycocg->v[2];
+    alwan_scalar y  = ycocg->Y;
+    alwan_scalar co = ycocg->Co;
+    alwan_scalar cg = ycocg->Cg;
 
     /* Inverse YCoCg transform
      * temp = Y - Cg
@@ -555,9 +555,9 @@ int alwan_ycocg_to_rgb(alwan_vec3 const *ycocg, alwan_vec3 *rgb_out) {
     alwan_scalar g = y + cg;
     alwan_scalar b = temp - co;
 
-    rgb_out->v[0] = r;
-    rgb_out->v[1] = g;
-    rgb_out->v[2] = b;
+    rgb_out->r = r;
+    rgb_out->g = g;
+    rgb_out->b = b;
 
     return ALWAN_OK;
 }

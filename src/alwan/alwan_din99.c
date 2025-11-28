@@ -67,7 +67,7 @@ static alwan_scalar const DIN99_COEFFS[4][8] = {
  * Lab <-> DIN99 Family
  * ---------------------------------------------------------------- */
 
-void alwan_lab_to_din99(alwan_vec3 const *lab, alwan_vec3 *din99, int variant) {
+void alwan_lab_to_din99(alwan_lab const *lab, alwan_vec3 *din99, int variant) {
     if (variant < 0 || variant > 3) return;  /* Invalid variant */
 
     alwan_scalar const *c = DIN99_COEFFS[variant];
@@ -75,10 +75,10 @@ void alwan_lab_to_din99(alwan_vec3 const *lab, alwan_vec3 *din99, int variant) {
     alwan_scalar const k_CH = ALWAN_LITERAL(1.0);  /* Chroma compensation */
 
     /* Calculate DIN99 lightness first */
-    din99->v[0] = c[0] * ALWAN_LOG(ALWAN_LITERAL(1.0) + c[1] * lab->v[0]) * k_E;  /* L99 */
+    din99->v[0] = c[0] * ALWAN_LOG(ALWAN_LITERAL(1.0) + c[1] * lab->L) * k_E;  /* L99 */
 
     /* Check for achromatic colors (very small Lab chroma) to avoid numerical noise */
-    alwan_scalar lab_chroma_sq = lab->v[1] * lab->v[1] + lab->v[2] * lab->v[2];
+    alwan_scalar lab_chroma_sq = lab->a * lab->a + lab->b * lab->b;
     if (lab_chroma_sq < ALWAN_LITERAL(1e-12)) {
         din99->v[1] = ALWAN_LITERAL(0.0);  /* a99 */
         din99->v[2] = ALWAN_LITERAL(0.0);  /* b99 */
@@ -93,8 +93,8 @@ void alwan_lab_to_din99(alwan_vec3 const *lab, alwan_vec3 *din99, int variant) {
     alwan_scalar sin_c3 = ALWAN_SIN(c3_rad);
 
     /* Calculate e and f */
-    alwan_scalar e = cos_c3 * lab->v[1] + sin_c3 * lab->v[2];
-    alwan_scalar f = c[3] * (-sin_c3 * lab->v[1] + cos_c3 * lab->v[2]);
+    alwan_scalar e = cos_c3 * lab->a + sin_c3 * lab->b;
+    alwan_scalar f = c[3] * (-sin_c3 * lab->a + cos_c3 * lab->b);
 
     /* Calculate G */
     alwan_scalar G = ALWAN_SQRT(e * e + f * f);
@@ -108,7 +108,7 @@ void alwan_lab_to_din99(alwan_vec3 const *lab, alwan_vec3 *din99, int variant) {
     din99->v[2] = C99 * ALWAN_SIN(h_ef);  /* b99 */
 }
 
-void alwan_din99_to_lab(alwan_vec3 const *din99, alwan_vec3 *lab, int variant) {
+void alwan_din99_to_lab(alwan_vec3 const *din99, alwan_lab *lab, int variant) {
     if (variant < 0 || variant > 3) return;  /* Invalid variant */
 
     alwan_scalar const *c = DIN99_COEFFS[variant];
@@ -136,7 +136,7 @@ void alwan_din99_to_lab(alwan_vec3 const *din99, alwan_vec3 *lab, int variant) {
     alwan_scalar f = G * ALWAN_SIN(h99);
 
     /* Calculate Lab coordinates */
-    lab->v[1] = e * cos_c3 - (f / c[3]) * sin_c3;  /* a */
-    lab->v[2] = e * sin_c3 + (f / c[3]) * cos_c3;  /* b */
-    lab->v[0] = (ALWAN_EXP(din99->v[0] * k_E / c[0]) - ALWAN_LITERAL(1.0)) / c[1];  /* L */
+    lab->a = e * cos_c3 - (f / c[3]) * sin_c3;  /* a */
+    lab->b = e * sin_c3 + (f / c[3]) * cos_c3;  /* b */
+    lab->L = (ALWAN_EXP(din99->v[0] * k_E / c[0]) - ALWAN_LITERAL(1.0)) / c[1];  /* L */
 }

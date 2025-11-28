@@ -60,3 +60,4 @@ tmp
 tools/*.json
 *.txt
 *.log
+*.pyc

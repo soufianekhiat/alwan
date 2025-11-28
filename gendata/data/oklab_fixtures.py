@@ -51,7 +51,7 @@ def generate_oklab_fixtures(output_dir):
 
     filepath = os.path.join(output_dir, 'fixtures', 'oklab_values.csv')
     save_vector(oklab_data, filepath,
-                f"{len(OKLAB_TEST_XYZ)} colors (XYZ→Oklab, 6 values/color)")
+                f"{len(OKLAB_TEST_XYZ)} colors (XYZ->Oklab, 6 values/color)")
 
 
 def generate_oklch_fixtures(output_dir):
@@ -59,25 +59,21 @@ def generate_oklch_fixtures(output_dir):
 
     print("\nGenerating Oklch fixtures...")
 
-    # Compute Oklch from Oklab
+    # Compute Oklch from Oklab using colour-science
     oklch_data = []
     for xyz in OKLAB_TEST_XYZ:
         oklab = colour.XYZ_to_Oklab(np.array(xyz))
 
-        # Oklab to Oklch: L, C, h
-        L = oklab[0]
-        a = oklab[1]
-        b = oklab[2]
-        C = np.sqrt(a**2 + b**2)
-        h = np.arctan2(b, a)  # radians
+        # Convert Oklab to Oklch using colour-science
+        oklch = colour.Oklab_to_Oklch(oklab)
 
         # Store Oklab input and Oklch output
         oklch_data.extend(oklab.tolist())
-        oklch_data.extend([L, C, h])
+        oklch_data.extend(oklch.tolist())
 
     filepath = os.path.join(output_dir, 'fixtures', 'oklch_values.csv')
     save_vector(oklch_data, filepath,
-                f"{len(OKLAB_TEST_XYZ)} colors (Oklab→Oklch, 6 values/color)")
+                f"{len(OKLAB_TEST_XYZ)} colors (Oklab->Oklch, 6 values/color)")
 
 
 if __name__ == '__main__':

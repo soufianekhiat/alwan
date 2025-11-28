@@ -27,8 +27,13 @@ def generate_hellwig2022_tests(output_dir):
     print("\nGenerating Hellwig2022 test data...")
 
     # D65 white point (from colour-science)
-    d65_white_xyz = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
-    d65_white_xyz = [d65_white_xyz[0], d65_white_xyz[1], d65_white_xyz[2]]
+    # CCS_ILLUMINANTS returns (x, y) chromaticity, convert to XYZ
+    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+    x, y = d65_xy[0], d65_xy[1]
+    Y = 100.0
+    X = (x / y) * Y
+    Z = ((1.0 - x - y) / y) * Y
+    d65_white_xyz = [X, Y, Z]
 
     # Test cases: [XYZ_in, XYZ_w, La, Yb, surround_idx]
     # Only INPUTS are hardcoded - outputs come from colour-science

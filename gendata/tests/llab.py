@@ -27,13 +27,18 @@ def generate_llab_tests(output_dir):
     print("\nGenerating LLAB test data...")
 
     # D65 white point (from colour-science)
-    d65_white_xyz = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
-    d65_white = [d65_white_xyz[0] * 100, d65_white_xyz[1] * 100, d65_white_xyz[2] * 100]
+    # CCS_ILLUMINANTS returns (x, y) chromaticity, convert to XYZ
+    d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+    x, y = d65_xy[0], d65_xy[1]
+    Y = 100.0
+    X = (x / y) * Y
+    Z = ((1.0 - x - y) / y) * Y
+    d65_white = [X, Y, Z]
 
     # LLAB viewing conditions from colour-science
-    surround_names = ['Reference Samples - Average Surround, >4° Subtended',
-                      'Television & VDU - Dim Surround',
-                      'Projected Transparencies - Dark Surround']
+    surround_names = ['Reference Samples & Images, Average Surround, Subtending > 4',
+                      'Television & VDU Displays, Dim Surround',
+                      '35mm Projection Transparency, Dark Surround']
 
     # Test cases: [XYZ_in, XYZ_0, XYZ_r, Y_b, surround_idx]
     # Only INPUTS are hardcoded - outputs come from colour-science

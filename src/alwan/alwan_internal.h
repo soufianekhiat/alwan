@@ -45,6 +45,7 @@
   #define ALWAN_LOG10(x) log10f(x)
   #define ALWAN_FLOOR(x) floorf(x)
   #define ALWAN_CEIL(x)  ceilf(x)
+  #define ALWAN_FMOD(x, y) fmodf(x, y)
   #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-5)
 #else
   #define ALWAN_FABS(x)  fabs(x)
@@ -64,7 +65,49 @@
   #define ALWAN_LOG10(x) log10(x)
   #define ALWAN_FLOOR(x) floor(x)
   #define ALWAN_CEIL(x)  ceil(x)
+  #define ALWAN_FMOD(x, y) fmod(x, y)
   #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-12)
 #endif
+
+/* ----------------------------------------------------------------
+ * Embedded Data (extern declarations)
+ * ---------------------------------------------------------------- */
+
+#if ALWAN_EMBED_DATA
+
+/* CAT matrices (3x3 = 9 elements) */
+extern alwan_scalar const g_cat_bradford[9];
+extern alwan_scalar const g_cat_cat02[9];
+extern alwan_scalar const g_cat_cat16[9];
+extern alwan_scalar const g_cat_sharp[9];
+extern alwan_scalar const g_cat_fairchild[9];
+extern alwan_scalar const g_cat_cmccat97[9];
+extern alwan_scalar const g_cat_cmccat2000[9];
+extern alwan_scalar const g_cat_cat02_brill_2008[9];
+extern alwan_scalar const g_cat_bianco_2010[9];
+extern alwan_scalar const g_cat_bianco_pc_2010[9];
+
+/* CAM matrices (Hunt-Pointer-Estevez) */
+extern alwan_scalar const g_hpe[9];
+extern alwan_scalar const g_hpe_inv[9];
+
+/* ICtCp matrices */
+extern alwan_scalar const g_ictcp_rgb_to_lms[9];
+extern alwan_scalar const g_ictcp_lms_to_rgb[9];
+extern alwan_scalar const g_ictcp_lms_p_to_ictcp_pq[9];
+extern alwan_scalar const g_ictcp_ictcp_to_lms_p_pq[9];
+extern alwan_scalar const g_ictcp_lms_p_to_ictcp_hlg[9];
+extern alwan_scalar const g_ictcp_ictcp_to_lms_p_hlg[9];
+extern alwan_scalar const g_ictcp_xyz_to_bt2020[9];
+extern alwan_scalar const g_ictcp_bt2020_to_xyz[9];
+
+/* IPT matrices and constants */
+extern alwan_scalar const g_ipt_exponent;
+extern alwan_scalar const g_ipt_xyz_to_lms[9];
+extern alwan_scalar const g_ipt_lms_to_xyz[9];
+extern alwan_scalar const g_ipt_lms_p_to_ipt[9];
+extern alwan_scalar const g_ipt_ipt_to_lms_p[9];
+
+#endif /* ALWAN_EMBED_DATA */
 
 #endif /* ALWAN_INTERNAL_H */

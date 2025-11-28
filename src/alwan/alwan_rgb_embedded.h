@@ -315,7 +315,7 @@ static alwan_scalar const g_colormatch_rgb[] = {
 #include "data/rgb_spaces/colormatch_rgb.csv"
 };
 
-/* Additional high-priority spaces (11.1 continued) */
+/* Additional RGB color spaces */
 static alwan_scalar const g_alexa_wide_gamut[] = {
 #include "data/rgb_spaces/alexa_wide_gamut.csv"
 };

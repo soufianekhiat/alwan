@@ -15,47 +15,17 @@
 
 /* ----------------------------------------------------------------
  * ICtCp Transformation Matrices
+ * Data defined in alwan_data.c
  * ---------------------------------------------------------------- */
 
-/* BT.2020 RGB to LMS cone response matrix (same for PQ and HLG) from colour-science */
-static alwan_scalar const RGB_TO_LMS[9] = {
-#include "data/ictcp_rgb_to_lms.csv"
-};
-
-/* LMS to BT.2020 RGB inverse matrix from colour-science */
-static alwan_scalar const LMS_TO_RGB[9] = {
-#include "data/ictcp_lms_to_rgb.csv"
-};
-
-/* LMS' to ICtCp matrix for PQ (Dolby 2016, ITU-R BT.2100) from colour-science */
-static alwan_scalar const LMS_P_TO_ICTCP_PQ[9] = {
-#include "data/ictcp_lms_p_to_ictcp_pq.csv"
-};
-
-/* ICtCp to LMS' inverse matrix for PQ from colour-science */
-static alwan_scalar const ICTCP_TO_LMS_P_PQ[9] = {
-#include "data/ictcp_ictcp_to_lms_p_pq.csv"
-};
-
-/* LMS' to ICtCp matrix for HLG (ITU-R BT.2100) from colour-science */
-static alwan_scalar const LMS_P_TO_ICTCP_HLG[9] = {
-#include "data/ictcp_lms_p_to_ictcp_hlg.csv"
-};
-
-/* ICtCp to LMS' inverse matrix for HLG from colour-science */
-static alwan_scalar const ICTCP_TO_LMS_P_HLG[9] = {
-#include "data/ictcp_ictcp_to_lms_p_hlg.csv"
-};
-
-/* XYZ (D65) to BT.2020 RGB matrix from colour-science */
-static alwan_scalar const XYZ_TO_BT2020[9] = {
-#include "data/ictcp_xyz_to_bt2020.csv"
-};
-
-/* BT.2020 RGB to XYZ (D65) matrix from colour-science */
-static alwan_scalar const BT2020_TO_XYZ[9] = {
-#include "data/ictcp_bt2020_to_xyz.csv"
-};
+#define RGB_TO_LMS g_ictcp_rgb_to_lms
+#define LMS_TO_RGB g_ictcp_lms_to_rgb
+#define LMS_P_TO_ICTCP_PQ g_ictcp_lms_p_to_ictcp_pq
+#define ICTCP_TO_LMS_P_PQ g_ictcp_ictcp_to_lms_p_pq
+#define LMS_P_TO_ICTCP_HLG g_ictcp_lms_p_to_ictcp_hlg
+#define ICTCP_TO_LMS_P_HLG g_ictcp_ictcp_to_lms_p_hlg
+#define XYZ_TO_BT2020 g_ictcp_xyz_to_bt2020
+#define BT2020_TO_XYZ g_ictcp_bt2020_to_xyz
 
 /* ----------------------------------------------------------------
  * Helper Functions
@@ -117,12 +87,12 @@ static alwan_scalar hlg_inverse_oetf(alwan_scalar encoded) {
  * RGB (BT.2020 linear) <-> ICtCp
  * ---------------------------------------------------------------- */
 
-void alwan_rgb_to_ictcp(alwan_vec3 const *rgb, alwan_vec3 *ictcp, int use_pq) {
+void alwan_rgb_to_ictcp(alwan_rgb const *rgb, alwan_ictcp *ictcp, int use_pq) {
     /* Step 1: BT.2020 RGB (linear) → LMS */
     alwan_vec3 lms;
-    lms.v[0] = RGB_TO_LMS[0] * rgb->v[0] + RGB_TO_LMS[1] * rgb->v[1] + RGB_TO_LMS[2] * rgb->v[2];
-    lms.v[1] = RGB_TO_LMS[3] * rgb->v[0] + RGB_TO_LMS[4] * rgb->v[1] + RGB_TO_LMS[5] * rgb->v[2];
-    lms.v[2] = RGB_TO_LMS[6] * rgb->v[0] + RGB_TO_LMS[7] * rgb->v[1] + RGB_TO_LMS[8] * rgb->v[2];
+    lms.v[0] = RGB_TO_LMS[0] * rgb->r + RGB_TO_LMS[1] * rgb->g + RGB_TO_LMS[2] * rgb->b;
+    lms.v[1] = RGB_TO_LMS[3] * rgb->r + RGB_TO_LMS[4] * rgb->g + RGB_TO_LMS[5] * rgb->b;
+    lms.v[2] = RGB_TO_LMS[6] * rgb->r + RGB_TO_LMS[7] * rgb->g + RGB_TO_LMS[8] * rgb->b;
 
     /* Step 2: Apply nonlinear transfer function: LMS → LMS' */
     alwan_vec3 lms_p;
@@ -140,18 +110,18 @@ void alwan_rgb_to_ictcp(alwan_vec3 const *rgb, alwan_vec3 *ictcp, int use_pq) {
 
     /* Step 3: LMS' → ICtCp (matrix depends on PQ vs HLG) */
     alwan_scalar const *M = use_pq ? LMS_P_TO_ICTCP_PQ : LMS_P_TO_ICTCP_HLG;
-    ictcp->v[0] = M[0] * lms_p.v[0] + M[1] * lms_p.v[1] + M[2] * lms_p.v[2];
-    ictcp->v[1] = M[3] * lms_p.v[0] + M[4] * lms_p.v[1] + M[5] * lms_p.v[2];
-    ictcp->v[2] = M[6] * lms_p.v[0] + M[7] * lms_p.v[1] + M[8] * lms_p.v[2];
+    ictcp->I = M[0] * lms_p.v[0] + M[1] * lms_p.v[1] + M[2] * lms_p.v[2];
+    ictcp->Ct = M[3] * lms_p.v[0] + M[4] * lms_p.v[1] + M[5] * lms_p.v[2];
+    ictcp->Cp = M[6] * lms_p.v[0] + M[7] * lms_p.v[1] + M[8] * lms_p.v[2];
 }
 
-void alwan_ictcp_to_rgb(alwan_vec3 const *ictcp, alwan_vec3 *rgb, int use_pq) {
+void alwan_ictcp_to_rgb(alwan_ictcp const *ictcp, alwan_rgb *rgb, int use_pq) {
     /* Step 1: ICtCp → LMS' (matrix depends on PQ vs HLG) */
     alwan_scalar const *M_inv = use_pq ? ICTCP_TO_LMS_P_PQ : ICTCP_TO_LMS_P_HLG;
     alwan_vec3 lms_p;
-    lms_p.v[0] = M_inv[0] * ictcp->v[0] + M_inv[1] * ictcp->v[1] + M_inv[2] * ictcp->v[2];
-    lms_p.v[1] = M_inv[3] * ictcp->v[0] + M_inv[4] * ictcp->v[1] + M_inv[5] * ictcp->v[2];
-    lms_p.v[2] = M_inv[6] * ictcp->v[0] + M_inv[7] * ictcp->v[1] + M_inv[8] * ictcp->v[2];
+    lms_p.v[0] = M_inv[0] * ictcp->I + M_inv[1] * ictcp->Ct + M_inv[2] * ictcp->Cp;
+    lms_p.v[1] = M_inv[3] * ictcp->I + M_inv[4] * ictcp->Ct + M_inv[5] * ictcp->Cp;
+    lms_p.v[2] = M_inv[6] * ictcp->I + M_inv[7] * ictcp->Ct + M_inv[8] * ictcp->Cp;
 
     /* Step 2: Apply inverse transfer function: LMS' → LMS (scene linear) */
     alwan_vec3 lms;
@@ -168,33 +138,33 @@ void alwan_ictcp_to_rgb(alwan_vec3 const *ictcp, alwan_vec3 *rgb, int use_pq) {
     }
 
     /* Step 3: LMS → BT.2020 RGB (linear) */
-    rgb->v[0] = LMS_TO_RGB[0] * lms.v[0] + LMS_TO_RGB[1] * lms.v[1] + LMS_TO_RGB[2] * lms.v[2];
-    rgb->v[1] = LMS_TO_RGB[3] * lms.v[0] + LMS_TO_RGB[4] * lms.v[1] + LMS_TO_RGB[5] * lms.v[2];
-    rgb->v[2] = LMS_TO_RGB[6] * lms.v[0] + LMS_TO_RGB[7] * lms.v[1] + LMS_TO_RGB[8] * lms.v[2];
+    rgb->r = LMS_TO_RGB[0] * lms.v[0] + LMS_TO_RGB[1] * lms.v[1] + LMS_TO_RGB[2] * lms.v[2];
+    rgb->g = LMS_TO_RGB[3] * lms.v[0] + LMS_TO_RGB[4] * lms.v[1] + LMS_TO_RGB[5] * lms.v[2];
+    rgb->b = LMS_TO_RGB[6] * lms.v[0] + LMS_TO_RGB[7] * lms.v[1] + LMS_TO_RGB[8] * lms.v[2];
 }
 
 /* ----------------------------------------------------------------
  * XYZ (D65) <-> ICtCp (via BT.2020 RGB)
  * ---------------------------------------------------------------- */
 
-void alwan_xyz_to_ictcp(alwan_vec3 const *xyz, alwan_vec3 *ictcp, int use_pq) {
+void alwan_xyz_to_ictcp(alwan_xyz const *xyz, alwan_ictcp *ictcp, int use_pq) {
     /* Step 1: XYZ (D65) → BT.2020 RGB (linear) */
-    alwan_vec3 rgb;
-    rgb.v[0] = XYZ_TO_BT2020[0] * xyz->v[0] + XYZ_TO_BT2020[1] * xyz->v[1] + XYZ_TO_BT2020[2] * xyz->v[2];
-    rgb.v[1] = XYZ_TO_BT2020[3] * xyz->v[0] + XYZ_TO_BT2020[4] * xyz->v[1] + XYZ_TO_BT2020[5] * xyz->v[2];
-    rgb.v[2] = XYZ_TO_BT2020[6] * xyz->v[0] + XYZ_TO_BT2020[7] * xyz->v[1] + XYZ_TO_BT2020[8] * xyz->v[2];
+    alwan_rgb rgb;
+    rgb.r = XYZ_TO_BT2020[0] * xyz->x + XYZ_TO_BT2020[1] * xyz->y + XYZ_TO_BT2020[2] * xyz->z;
+    rgb.g = XYZ_TO_BT2020[3] * xyz->x + XYZ_TO_BT2020[4] * xyz->y + XYZ_TO_BT2020[5] * xyz->z;
+    rgb.b = XYZ_TO_BT2020[6] * xyz->x + XYZ_TO_BT2020[7] * xyz->y + XYZ_TO_BT2020[8] * xyz->z;
 
     /* Step 2: BT.2020 RGB → ICtCp */
     alwan_rgb_to_ictcp(&rgb, ictcp, use_pq);
 }
 
-void alwan_ictcp_to_xyz(alwan_vec3 const *ictcp, alwan_vec3 *xyz, int use_pq) {
+void alwan_ictcp_to_xyz(alwan_ictcp const *ictcp, alwan_xyz *xyz, int use_pq) {
     /* Step 1: ICtCp → BT.2020 RGB (linear) */
-    alwan_vec3 rgb;
+    alwan_rgb rgb;
     alwan_ictcp_to_rgb(ictcp, &rgb, use_pq);
 
     /* Step 2: BT.2020 RGB → XYZ (D65) */
-    xyz->v[0] = BT2020_TO_XYZ[0] * rgb.v[0] + BT2020_TO_XYZ[1] * rgb.v[1] + BT2020_TO_XYZ[2] * rgb.v[2];
-    xyz->v[1] = BT2020_TO_XYZ[3] * rgb.v[0] + BT2020_TO_XYZ[4] * rgb.v[1] + BT2020_TO_XYZ[5] * rgb.v[2];
-    xyz->v[2] = BT2020_TO_XYZ[6] * rgb.v[0] + BT2020_TO_XYZ[7] * rgb.v[1] + BT2020_TO_XYZ[8] * rgb.v[2];
+    xyz->x = BT2020_TO_XYZ[0] * rgb.r + BT2020_TO_XYZ[1] * rgb.g + BT2020_TO_XYZ[2] * rgb.b;
+    xyz->y = BT2020_TO_XYZ[3] * rgb.r + BT2020_TO_XYZ[4] * rgb.g + BT2020_TO_XYZ[5] * rgb.b;
+    xyz->z = BT2020_TO_XYZ[6] * rgb.r + BT2020_TO_XYZ[7] * rgb.g + BT2020_TO_XYZ[8] * rgb.b;
 }

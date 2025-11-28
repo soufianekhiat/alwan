@@ -95,12 +95,12 @@ static alwan_scalar pq_jz_eotf(alwan_scalar encoded) {
  * XYZ <-> Jzazbz
  * ---------------------------------------------------------------- */
 
-void alwan_xyz_to_jzazbz(alwan_vec3 const *xyz, alwan_vec3 *jzazbz) {
+void alwan_xyz_to_jzazbz(alwan_xyz const *xyz, alwan_jzazbz *jzazbz) {
     /* Normalize XYZ from Y=100 scale to Y=1 scale for absolute luminance */
     alwan_vec3 xyz_norm;
-    xyz_norm.v[0] = xyz->v[0] / ALWAN_LITERAL(100.0);
-    xyz_norm.v[1] = xyz->v[1] / ALWAN_LITERAL(100.0);
-    xyz_norm.v[2] = xyz->v[2] / ALWAN_LITERAL(100.0);
+    xyz_norm.v[0] = xyz->x / ALWAN_LITERAL(100.0);
+    xyz_norm.v[1] = xyz->y / ALWAN_LITERAL(100.0);
+    xyz_norm.v[2] = xyz->z / ALWAN_LITERAL(100.0);
 
     /* Step 1: Chromatic adaptation (D65) */
     alwan_vec3 xyz_adapted;
@@ -128,21 +128,21 @@ void alwan_xyz_to_jzazbz(alwan_vec3 const *xyz, alwan_vec3 *jzazbz) {
 
     /* Step 5: Calculate Jz from Iz */
     alwan_scalar iz = izazbz.v[0];
-    jzazbz->v[0] = ((ALWAN_LITERAL(1.0) + JZAZBZ_D) * iz) / (ALWAN_LITERAL(1.0) + JZAZBZ_D * iz) - JZAZBZ_D0;
-    jzazbz->v[1] = izazbz.v[1];  /* az */
-    jzazbz->v[2] = izazbz.v[2];  /* bz */
+    jzazbz->Jz = ((ALWAN_LITERAL(1.0) + JZAZBZ_D) * iz) / (ALWAN_LITERAL(1.0) + JZAZBZ_D * iz) - JZAZBZ_D0;
+    jzazbz->az = izazbz.v[1];  /* az */
+    jzazbz->bz = izazbz.v[2];  /* bz */
 }
 
-void alwan_jzazbz_to_xyz(alwan_vec3 const *jzazbz, alwan_vec3 *xyz) {
+void alwan_jzazbz_to_xyz(alwan_jzazbz const *jzazbz, alwan_xyz *xyz) {
     /* Step 1: Recover Iz from Jz */
-    alwan_scalar jz = jzazbz->v[0];
+    alwan_scalar jz = jzazbz->Jz;
     alwan_scalar iz = (jz + JZAZBZ_D0) / (ALWAN_LITERAL(1.0) + JZAZBZ_D - JZAZBZ_D * (jz + JZAZBZ_D0));
 
     /* Step 2: Construct Izazbz */
     alwan_vec3 izazbz;
     izazbz.v[0] = iz;
-    izazbz.v[1] = jzazbz->v[1];  /* az */
-    izazbz.v[2] = jzazbz->v[2];  /* bz */
+    izazbz.v[1] = jzazbz->az;  /* az */
+    izazbz.v[2] = jzazbz->bz;  /* bz */
 
     /* Step 3: Izazbz → LMS' */
     alwan_vec3 lms_p;
@@ -169,33 +169,33 @@ void alwan_jzazbz_to_xyz(alwan_vec3 const *jzazbz, alwan_vec3 *xyz) {
     xyz_norm.v[2] = xyz_adapted.v[2];
 
     /* Scale back to Y=100 */
-    xyz->v[0] = xyz_norm.v[0] * ALWAN_LITERAL(100.0);
-    xyz->v[1] = xyz_norm.v[1] * ALWAN_LITERAL(100.0);
-    xyz->v[2] = xyz_norm.v[2] * ALWAN_LITERAL(100.0);
+    xyz->x = xyz_norm.v[0] * ALWAN_LITERAL(100.0);
+    xyz->y = xyz_norm.v[1] * ALWAN_LITERAL(100.0);
+    xyz->z = xyz_norm.v[2] * ALWAN_LITERAL(100.0);
 }
 
 /* ----------------------------------------------------------------
  * Jzazbz <-> JzCzhz (Cylindrical)
  * ---------------------------------------------------------------- */
 
-void alwan_jzazbz_to_jzczhz(alwan_vec3 const *jzazbz, alwan_vec3 *jzczhz) {
+void alwan_jzazbz_to_jzczhz(alwan_jzazbz const *jzazbz, alwan_jzczhz *jzczhz) {
     /* Jz stays the same */
-    jzczhz->v[0] = jzazbz->v[0];
+    jzczhz->Jz = jzazbz->Jz;
 
     /* Cz = sqrt(az^2 + bz^2) */
-    jzczhz->v[1] = ALWAN_SQRT(jzazbz->v[1] * jzazbz->v[1] + jzazbz->v[2] * jzazbz->v[2]);
+    jzczhz->Cz = ALWAN_SQRT(jzazbz->az * jzazbz->az + jzazbz->bz * jzazbz->bz);
 
     /* hz = atan2(bz, az) in radians */
-    jzczhz->v[2] = ALWAN_ATAN2(jzazbz->v[2], jzazbz->v[1]);
+    jzczhz->hz = ALWAN_ATAN2(jzazbz->bz, jzazbz->az);
 }
 
-void alwan_jzczhz_to_jzazbz(alwan_vec3 const *jzczhz, alwan_vec3 *jzazbz) {
+void alwan_jzczhz_to_jzazbz(alwan_jzczhz const *jzczhz, alwan_jzazbz *jzazbz) {
     /* Jz stays the same */
-    jzazbz->v[0] = jzczhz->v[0];
+    jzazbz->Jz = jzczhz->Jz;
 
     /* az = Cz * cos(hz) */
-    jzazbz->v[1] = jzczhz->v[1] * ALWAN_COS(jzczhz->v[2]);
+    jzazbz->az = jzczhz->Cz * ALWAN_COS(jzczhz->hz);
 
     /* bz = Cz * sin(hz) */
-    jzazbz->v[2] = jzczhz->v[1] * ALWAN_SIN(jzczhz->v[2]);
+    jzazbz->bz = jzczhz->Cz * ALWAN_SIN(jzczhz->hz);
 }

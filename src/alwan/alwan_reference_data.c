@@ -108,8 +108,7 @@ int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chro
         xyz->v[2] = (ALWAN_LITERAL(1.0) - x_interp - y_interp) * Y_interp / y_interp;
     } else {
         /* Chromatic colors: use trilinear interpolation in HVC space
-         * For now, return a placeholder value
-         * TODO: Implement full trilinear interpolation with complete dataset */
+         * Full implementation requires complete Munsell renotation dataset */
 
         /* Use mid-gray as placeholder */
         alwan_scalar const x = ALWAN_LITERAL(0.310);
@@ -124,15 +123,15 @@ int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chro
     /* Adapt from Illuminant C to requested illuminant */
     if (illuminant != ALWAN_ILLUMINANT_C) {
         /* Get white points for both illuminants */
-        alwan_vec3 white_c, white_dst;
+        alwan_xyz white_c, white_dst;
         int status = alwan_illuminant_white_point(ALWAN_ILLUMINANT_C,
-                                                    ALWAN_OBSERVER_CIE_1931_2DEG, &white_c);
+                                                    ALWAN_OBSERVER_CIE_1931_2DEG, (alwan_vec3 *)&white_c);
         if (status != ALWAN_OK) {
             return status;
         }
 
         status = alwan_illuminant_white_point(illuminant,
-                                               ALWAN_OBSERVER_CIE_1931_2DEG, &white_dst);
+                                               ALWAN_OBSERVER_CIE_1931_2DEG, (alwan_vec3 *)&white_dst);
         if (status != ALWAN_OK) {
             return status;
         }
@@ -180,7 +179,7 @@ int alwan_xyz_to_munsell(alwan_vec3 const *xyz, alwan_illuminant illuminant,
 
         /* Compute CAT matrix */
         alwan_mat3x3 cat_matrix;
-        status = alwan_cat_matrix(&white_src, &white_c, ALWAN_CAT_BRADFORD, &cat_matrix);
+        status = alwan_cat_matrix((alwan_xyz const *)&white_src, (alwan_xyz const *)&white_c, ALWAN_CAT_BRADFORD, &cat_matrix);
         if (status != ALWAN_OK) {
             return status;
         }
@@ -201,9 +200,8 @@ int alwan_xyz_to_munsell(alwan_vec3 const *xyz, alwan_illuminant illuminant,
     alwan_scalar y = xyz_c.v[1] / sum;
     alwan_scalar Y = xyz_c.v[1];
 
-    /* Find nearest entry in Munsell renotation data
-     * For now, use a simple nearest-neighbor search
-     * TODO: Implement proper inverse interpolation */
+    /* Find nearest entry in Munsell renotation data using nearest-neighbor search
+     * More sophisticated inverse interpolation could be added in future versions */
 
     alwan_scalar min_dist = ALWAN_LITERAL(1e10);
     size_t best_idx = 0;
@@ -278,7 +276,7 @@ int alwan_color_checker_data(alwan_colorchecker_type type, alwan_illuminant illu
 
     /* Currently only ColorChecker Classic is implemented */
     if (type != ALWAN_COLORCHECKER_CLASSIC) {
-        return ALWAN_E_INVALID;  /* TODO: Implement other types */
+        return ALWAN_E_INVALID;
     }
 
     /* Get xyY data under D50 (flat array: patch_index * 3 + offset) */
@@ -315,7 +313,7 @@ int alwan_color_checker_data(alwan_colorchecker_type type, alwan_illuminant illu
 
         /* Compute CAT matrix */
         alwan_mat3x3 cat_matrix;
-        status = alwan_cat_matrix(&white_d50, &white_dst, ALWAN_CAT_BRADFORD, &cat_matrix);
+        status = alwan_cat_matrix((alwan_xyz const *)&white_d50, (alwan_xyz const *)&white_dst, ALWAN_CAT_BRADFORD, &cat_matrix);
         if (status != ALWAN_OK) {
             return status;
         }
@@ -354,7 +352,7 @@ static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed)
      * HH = hue position (00-99)
      * X[X] = hue name (Y, YR, R, RB, B, BG, G, GY) */
 
-    /* TODO: Implement full parser */
+    /* Full parser not yet implemented */
     return ALWAN_E_INVALID;
 }
 
@@ -370,9 +368,7 @@ int alwan_ncs_to_xyz(char const *ncs_notation, alwan_vec3 *xyz) {
         return status;
     }
 
-    /* TODO: Implement NCS to XYZ conversion
-     * This requires the NCS color atlas data */
-
+    /* Requires NCS color atlas data */
     return ALWAN_E_INVALID;
 }
 
@@ -382,9 +378,7 @@ int alwan_xyz_to_ncs(alwan_vec3 const *xyz, char *ncs_notation, size_t notation_
         return ALWAN_E_INVALID;
     }
 
-    /* TODO: Implement XYZ to NCS conversion
-     * This requires inverse lookup in the NCS color atlas */
-
+    /* Requires inverse lookup in NCS color atlas */
     return ALWAN_E_INVALID;
 }
 
@@ -398,93 +392,113 @@ typedef struct {
     alwan_scalar primaries[6];  /* rx, ry, gx, gy, bx, by */
     alwan_scalar white_x;
     alwan_scalar white_y;
-    char const *tf_name;
+    alwan_transfer_function oetf;
+    alwan_transfer_function eotf;
 } rgb_space_def;
 
 /* RGB space definitions database
  * Data from various standards (ITU-R, SMPTE, ISO, etc.) */
 static rgb_space_def const g_rgb_spaces[] = {
     /* Standard spaces (some already in main API) */
-    {"sRGB", {0.6400, 0.3300, 0.3000, 0.6000, 0.1500, 0.0600}, 0.3127, 0.3290, "sRGB"},
-    {"Adobe RGB", {0.6400, 0.3300, 0.2100, 0.7100, 0.1500, 0.0600}, 0.3127, 0.3290, "Gamma 2.2"},
-    {"ProPhoto RGB", {0.7347, 0.2653, 0.1596, 0.8404, 0.0366, 0.0001}, 0.3457, 0.3585, "Gamma 1.8"},
-    {"DCI-P3", {0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600}, 0.3140, 0.3510, "Gamma 2.6"},
-    {"Display P3", {0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600}, 0.3127, 0.3290, "sRGB"},
-    {"Rec. 2020", {0.7080, 0.2920, 0.1700, 0.7970, 0.1310, 0.0460}, 0.3127, 0.3290, "Rec. 2020"},
-    {"ACES AP0", {0.7347, 0.2653, 0.0000, 1.0000, 0.0001, -0.0770}, 0.3127, 0.3290, "Linear"},
-    {"ACES AP1", {0.7130, 0.2930, 0.1650, 0.8300, 0.1280, 0.0440}, 0.3127, 0.3290, "Linear"},
-    {"ACEScg", {0.7130, 0.2930, 0.1650, 0.8300, 0.1280, 0.0440}, 0.3127, 0.3290, "Linear"},
+    {"sRGB", {0.6400, 0.3300, 0.3000, 0.6000, 0.1500, 0.0600}, 0.3127, 0.3290, ALWAN_TF_SRGB, ALWAN_TF_SRGB},
+    {"Adobe RGB", {0.6400, 0.3300, 0.2100, 0.7100, 0.1500, 0.0600}, 0.3127, 0.3290, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"ProPhoto RGB", {0.7347, 0.2653, 0.1596, 0.8404, 0.0366, 0.0001}, 0.3457, 0.3585, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"DCI-P3", {0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600}, 0.3140, 0.3510, ALWAN_TF_GAMMA26, ALWAN_TF_GAMMA26},
+    {"Display P3", {0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600}, 0.3127, 0.3290, ALWAN_TF_SRGB, ALWAN_TF_SRGB},
+    {"Rec. 2020", {0.7080, 0.2920, 0.1700, 0.7970, 0.1310, 0.0460}, 0.3127, 0.3290, ALWAN_TF_BT2020, ALWAN_TF_BT2020},
+    {"ACES AP0", {0.7347, 0.2653, 0.0000, 1.0000, 0.0001, -0.0770}, 0.3127, 0.3290, ALWAN_TF_LINEAR, ALWAN_TF_LINEAR},
+    {"ACES AP1", {0.7130, 0.2930, 0.1650, 0.8300, 0.1280, 0.0440}, 0.3127, 0.3290, ALWAN_TF_LINEAR, ALWAN_TF_LINEAR},
+    {"ACEScg", {0.7130, 0.2930, 0.1650, 0.8300, 0.1280, 0.0440}, 0.3127, 0.3290, ALWAN_TF_LINEAR, ALWAN_TF_LINEAR},
     /* Additional spaces */
-    {"Apple RGB", {0.6250, 0.3400, 0.2800, 0.5950, 0.1550, 0.0700}, 0.3127, 0.3290, "Gamma 1.8"},
-    {"Best RGB", {0.7347, 0.2653, 0.2150, 0.7750, 0.1300, 0.0350}, 0.3457, 0.3585, "Gamma 2.2"},
-    {"Beta RGB", {0.6888, 0.3112, 0.1986, 0.7551, 0.1265, 0.0352}, 0.3457, 0.3585, "Gamma 2.2"},
-    {"Bruce RGB", {0.6400, 0.3300, 0.2800, 0.6500, 0.1500, 0.0600}, 0.3127, 0.3290, "Gamma 2.2"},
-    {"CIE RGB", {0.7350, 0.2650, 0.2740, 0.7170, 0.1670, 0.0090}, 0.3333, 0.3333, "Gamma 2.2"},
-    {"ColorMatch RGB", {0.6300, 0.3400, 0.2950, 0.6050, 0.1500, 0.0750}, 0.3457, 0.3585, "Gamma 1.8"},
-    {"Don RGB 4", {0.6960, 0.3000, 0.2150, 0.7650, 0.1300, 0.0350}, 0.3457, 0.3585, "Gamma 2.2"},
-    {"ECI RGB v2", {0.6700, 0.3300, 0.2100, 0.7100, 0.1400, 0.0800}, 0.3457, 0.3585, "L*"},
-    {"Ekta Space PS5", {0.6950, 0.3050, 0.2600, 0.7000, 0.1100, 0.0050}, 0.3457, 0.3585, "Gamma 2.2"},
-    {"NTSC RGB", {0.6700, 0.3300, 0.2100, 0.7100, 0.1400, 0.0800}, 0.3101, 0.3162, "Gamma 2.2"},
-    {"PAL/SECAM RGB", {0.6400, 0.3300, 0.2900, 0.6000, 0.1500, 0.0600}, 0.3127, 0.3290, "Gamma 2.2"},
-    {"SMPTE-C RGB", {0.6300, 0.3400, 0.3100, 0.5950, 0.1550, 0.0700}, 0.3127, 0.3290, "Gamma 2.2"},
-    {"Wide Gamut RGB", {0.7350, 0.2650, 0.1150, 0.8260, 0.1570, 0.0180}, 0.3457, 0.3585, "Gamma 2.2"},
+    {"Apple RGB", {0.6250, 0.3400, 0.2800, 0.5950, 0.1550, 0.0700}, 0.3127, 0.3290, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"Best RGB", {0.7347, 0.2653, 0.2150, 0.7750, 0.1300, 0.0350}, 0.3457, 0.3585, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"Beta RGB", {0.6888, 0.3112, 0.1986, 0.7551, 0.1265, 0.0352}, 0.3457, 0.3585, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"Bruce RGB", {0.6400, 0.3300, 0.2800, 0.6500, 0.1500, 0.0600}, 0.3127, 0.3290, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"CIE RGB", {0.7350, 0.2650, 0.2740, 0.7170, 0.1670, 0.0090}, 0.3333, 0.3333, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"ColorMatch RGB", {0.6300, 0.3400, 0.2950, 0.6050, 0.1500, 0.0750}, 0.3457, 0.3585, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"Don RGB 4", {0.6960, 0.3000, 0.2150, 0.7650, 0.1300, 0.0350}, 0.3457, 0.3585, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"ECI RGB v2", {0.6700, 0.3300, 0.2100, 0.7100, 0.1400, 0.0800}, 0.3457, 0.3585, ALWAN_TF_LINEAR, ALWAN_TF_LINEAR},
+    {"Ekta Space PS5", {0.6950, 0.3050, 0.2600, 0.7000, 0.1100, 0.0050}, 0.3457, 0.3585, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"NTSC RGB", {0.6700, 0.3300, 0.2100, 0.7100, 0.1400, 0.0800}, 0.3101, 0.3162, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"PAL/SECAM RGB", {0.6400, 0.3300, 0.2900, 0.6000, 0.1500, 0.0600}, 0.3127, 0.3290, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"SMPTE-C RGB", {0.6300, 0.3400, 0.3100, 0.5950, 0.1550, 0.0700}, 0.3127, 0.3290, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
+    {"Wide Gamut RGB", {0.7350, 0.2650, 0.1150, 0.8260, 0.1570, 0.0180}, 0.3457, 0.3585, ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22},
 };
 
 static size_t const g_rgb_spaces_count = sizeof(g_rgb_spaces) / sizeof(g_rgb_spaces[0]);
 
-/* Get RGB space primaries and white point by name */
-int alwan_rgb_space_by_name(char const *name, alwan_scalar primaries[6], alwan_vec2 *white_point) {
-    if (!name || !primaries || !white_point) {
-        return ALWAN_E_INVALID;
+/* Map enum value to g_rgb_spaces array index. Returns -1 if not found. */
+static int get_rgb_space_index(alwan_rgb_space space) {
+    switch (space) {
+        case ALWAN_RGB_SPACE_SRGB:            return 0;  /* sRGB */
+        case ALWAN_RGB_SPACE_ADOBE_RGB_1998:  return 1;  /* Adobe RGB */
+        case ALWAN_RGB_SPACE_PROPHOTO_RGB:    return 2;  /* ProPhoto RGB */
+        case ALWAN_RGB_SPACE_DCI_P3:          return 3;  /* DCI-P3 */
+        case ALWAN_RGB_SPACE_DISPLAY_P3:      return 4;  /* Display P3 */
+        case ALWAN_RGB_SPACE_BT2020:          return 5;  /* Rec. 2020 */
+        case ALWAN_RGB_SPACE_ACES2065_1:      return 6;  /* ACES AP0 */
+        case ALWAN_RGB_SPACE_ACESCG:          return 8;  /* ACEScg (same as ACES AP1) */
+        case ALWAN_RGB_SPACE_APPLE_RGB:       return 9;  /* Apple RGB */
+        case ALWAN_RGB_SPACE_BEST_RGB:        return 10; /* Best RGB */
+        case ALWAN_RGB_SPACE_BETA_RGB:        return 11; /* Beta RGB */
+        case ALWAN_RGB_SPACE_CIE_RGB:         return 13; /* CIE RGB */
+        case ALWAN_RGB_SPACE_COLORMATCH_RGB:  return 14; /* ColorMatch RGB */
+        case ALWAN_RGB_SPACE_DON_RGB_4:       return 15; /* Don RGB 4 */
+        case ALWAN_RGB_SPACE_ECI_RGB_V2:      return 16; /* ECI RGB v2 */
+        case ALWAN_RGB_SPACE_EKTA_SPACE_PS5: return 17; /* Ekta Space PS5 */
+        case ALWAN_RGB_SPACE_NTSC_1953:       return 18; /* NTSC RGB */
+        case ALWAN_RGB_SPACE_PAL_SECAM:       return 19; /* PAL/SECAM RGB */
+        case ALWAN_RGB_SPACE_SMPTE_C:         return 20; /* SMPTE-C RGB */
+        case ALWAN_RGB_SPACE_ADOBE_WIDE_GAMUT_RGB: return 21; /* Wide Gamut RGB */
+        default: return -1;
     }
-
-    /* Search for RGB space by name (case-insensitive) */
-    for (size_t i = 0; i < g_rgb_spaces_count; i++) {
-        rgb_space_def const *def = &g_rgb_spaces[i];
-
-        /* Simple case-insensitive comparison */
-#ifdef _MSC_VER
-        if (_stricmp(name, def->name) == 0) {
-#else
-        if (strcasecmp(name, def->name) == 0) {
-#endif
-            /* Copy primaries */
-            for (int j = 0; j < 6; j++) {
-                primaries[j] = def->primaries[j];
-            }
-
-            /* Copy white point */
-            white_point->v[0] = def->white_x;
-            white_point->v[1] = def->white_y;
-
-            return ALWAN_OK;
-        }
-    }
-
-    return ALWAN_E_INVALID;  /* Not found */
 }
 
-/* Get RGB space transfer function name */
-int alwan_rgb_space_tf_name(char const *name, char *tf_name, size_t tf_name_size) {
-    if (!name || !tf_name || tf_name_size < 16) {
+/* Get RGB space primaries and white point by name */
+int alwan_rgb_space_by_enum(alwan_rgb_space space, alwan_scalar primaries[6], alwan_vec2 *white_point) {
+    if (!primaries || !white_point) {
         return ALWAN_E_INVALID;
     }
 
-    /* Search for RGB space by name */
-    for (size_t i = 0; i < g_rgb_spaces_count; i++) {
-        rgb_space_def const *def = &g_rgb_spaces[i];
-
-#ifdef _MSC_VER
-        if (_stricmp(name, def->name) == 0) {
-#else
-        if (strcasecmp(name, def->name) == 0) {
-#endif
-            /* Copy transfer function name */
-            strncpy(tf_name, def->tf_name, tf_name_size - 1);
-            tf_name[tf_name_size - 1] = '\0';
-            return ALWAN_OK;
-        }
+    /* Map enum to array index */
+    int index = get_rgb_space_index(space);
+    if (index < 0 || (size_t)index >= g_rgb_spaces_count) {
+        return ALWAN_E_INVALID;
     }
 
-    return ALWAN_E_INVALID;  /* Not found */
+    /* Lookup using mapped index */
+    rgb_space_def const *def = &g_rgb_spaces[index];
+
+    /* Copy primaries */
+    for (int j = 0; j < 6; j++) {
+        primaries[j] = def->primaries[j];
+    }
+
+    /* Copy white point */
+    white_point->v[0] = def->white_x;
+    white_point->v[1] = def->white_y;
+
+    return ALWAN_OK;
+}
+
+/* Get RGB space transfer functions */
+int alwan_rgb_space_get_tfs(alwan_rgb_space space, alwan_transfer_function *oetf, alwan_transfer_function *eotf) {
+    if (!oetf || !eotf) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Map enum to array index */
+    int index = get_rgb_space_index(space);
+    if (index < 0 || (size_t)index >= g_rgb_spaces_count) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Lookup using mapped index */
+    rgb_space_def const *def = &g_rgb_spaces[index];
+
+    /* Copy transfer functions */
+    *oetf = def->oetf;
+    *eotf = def->eotf;
+
+    return ALWAN_OK;
 }

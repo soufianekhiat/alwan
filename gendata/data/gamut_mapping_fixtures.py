@@ -25,6 +25,11 @@ def generate_gamut_mapping_fixtures(output_dir):
 
     print("\nGenerating gamut mapping test fixtures...")
 
+    # Get sRGB luminance weights from colour-science
+    srgb_space = colour.RGB_COLOURSPACES['sRGB']
+    # Y row of RGB_to_XYZ matrix contains luminance weights
+    luminance_weights = srgb_space.matrix_RGB_to_XYZ[1]
+
     # Out-of-gamut test colors (INPUTS - hardcoded)
     # RGB values outside [0,1]
     out_of_gamut_colors = [
@@ -62,8 +67,8 @@ def generate_gamut_mapping_fixtures(output_dir):
         if np.all(rgb_array >= 0) and np.all(rgb_array <= 1):
             mapped = rgb_array
         else:
-            # Compute luminance (sRGB weights)
-            L = 0.2126 * rgb_array[0] + 0.7152 * rgb_array[1] + 0.0722 * rgb_array[2]
+            # Compute luminance using sRGB weights from colour-science
+            L = np.dot(luminance_weights, rgb_array)
             L_clamped = np.clip(L, 0.0, 1.0)
             neutral = np.array([L_clamped, L_clamped, L_clamped])
 

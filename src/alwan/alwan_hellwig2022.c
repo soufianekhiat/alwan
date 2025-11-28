@@ -124,7 +124,7 @@ static alwan_scalar hue_to_quadrature(alwan_scalar h) {
  * Hellwig2022 Forward Transform
  * ---------------------------------------------------------------- */
 
-int alwan_hellwig2022_forward(alwan_vec3 const *xyz,
+int alwan_hellwig2022_forward(alwan_xyz const *xyz,
                                alwan_hellwig2022_viewing_conditions const *vc,
                                alwan_hellwig2022_correlates *out) {
     if (!xyz || !vc || !out) {
@@ -148,21 +148,21 @@ int alwan_hellwig2022_forward(alwan_vec3 const *xyz,
 
     /* Step 3: Transform test color XYZ to RGB using CAT16 */
     alwan_vec3 RGB;
-    RGB.v[0] = M_CAT16[0] * xyz->v[0] + M_CAT16[1] * xyz->v[1] + M_CAT16[2] * xyz->v[2];
-    RGB.v[1] = M_CAT16[3] * xyz->v[0] + M_CAT16[4] * xyz->v[1] + M_CAT16[5] * xyz->v[2];
-    RGB.v[2] = M_CAT16[6] * xyz->v[0] + M_CAT16[7] * xyz->v[1] + M_CAT16[8] * xyz->v[2];
+    RGB.v[0] = M_CAT16[0] * xyz->x + M_CAT16[1] * xyz->y + M_CAT16[2] * xyz->z;
+    RGB.v[1] = M_CAT16[3] * xyz->x + M_CAT16[4] * xyz->y + M_CAT16[5] * xyz->z;
+    RGB.v[2] = M_CAT16[6] * xyz->x + M_CAT16[7] * xyz->y + M_CAT16[8] * xyz->z;
 
     /* Step 4: Transform white point to RGB */
     alwan_vec3 RGB_w;
-    RGB_w.v[0] = M_CAT16[0] * vc->white_xyz.v[0] + M_CAT16[1] * vc->white_xyz.v[1] + M_CAT16[2] * vc->white_xyz.v[2];
-    RGB_w.v[1] = M_CAT16[3] * vc->white_xyz.v[0] + M_CAT16[4] * vc->white_xyz.v[1] + M_CAT16[5] * vc->white_xyz.v[2];
-    RGB_w.v[2] = M_CAT16[6] * vc->white_xyz.v[0] + M_CAT16[7] * vc->white_xyz.v[1] + M_CAT16[8] * vc->white_xyz.v[2];
+    RGB_w.v[0] = M_CAT16[0] * vc->white_xyz.x + M_CAT16[1] * vc->white_xyz.y + M_CAT16[2] * vc->white_xyz.z;
+    RGB_w.v[1] = M_CAT16[3] * vc->white_xyz.x + M_CAT16[4] * vc->white_xyz.y + M_CAT16[5] * vc->white_xyz.z;
+    RGB_w.v[2] = M_CAT16[6] * vc->white_xyz.x + M_CAT16[7] * vc->white_xyz.y + M_CAT16[8] * vc->white_xyz.z;
 
     /* Step 5: Apply chromatic adaptation */
     alwan_vec3 RGB_c;
-    RGB_c.v[0] = (vc->white_xyz.v[1] * D / RGB_w.v[0] + ALWAN_LITERAL(1.0) - D) * RGB.v[0];
-    RGB_c.v[1] = (vc->white_xyz.v[1] * D / RGB_w.v[1] + ALWAN_LITERAL(1.0) - D) * RGB.v[1];
-    RGB_c.v[2] = (vc->white_xyz.v[1] * D / RGB_w.v[2] + ALWAN_LITERAL(1.0) - D) * RGB.v[2];
+    RGB_c.v[0] = (vc->white_xyz.y * D / RGB_w.v[0] + ALWAN_LITERAL(1.0) - D) * RGB.v[0];
+    RGB_c.v[1] = (vc->white_xyz.y * D / RGB_w.v[1] + ALWAN_LITERAL(1.0) - D) * RGB.v[1];
+    RGB_c.v[2] = (vc->white_xyz.y * D / RGB_w.v[2] + ALWAN_LITERAL(1.0) - D) * RGB.v[2];
 
     /* Step 6: Apply nonlinear response compression DIRECTLY to RGB_c */
     /* NOTE: Hellwig2022 does NOT use post-adaptation matrix like CAM16! */
@@ -193,9 +193,9 @@ int alwan_hellwig2022_forward(alwan_vec3 const *xyz,
     /* Step 10: Calculate achromatic response for white point (A_w) */
     /* Transform white point through the pipeline (no post-adaptation matrix) */
     alwan_vec3 RGB_wc;
-    RGB_wc.v[0] = (vc->white_xyz.v[1] * D / RGB_w.v[0] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[0];
-    RGB_wc.v[1] = (vc->white_xyz.v[1] * D / RGB_w.v[1] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[1];
-    RGB_wc.v[2] = (vc->white_xyz.v[1] * D / RGB_w.v[2] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[2];
+    RGB_wc.v[0] = (vc->white_xyz.y * D / RGB_w.v[0] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[0];
+    RGB_wc.v[1] = (vc->white_xyz.y * D / RGB_w.v[1] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[1];
+    RGB_wc.v[2] = (vc->white_xyz.y * D / RGB_w.v[2] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[2];
 
     alwan_scalar R_aw_prime = post_adaptation_nonlinear(RGB_wc.v[0], FL);
     alwan_scalar G_aw_prime = post_adaptation_nonlinear(RGB_wc.v[1], FL);
@@ -211,7 +211,7 @@ int alwan_hellwig2022_forward(alwan_vec3 const *xyz,
                      ALWAN_LITERAL(0.05) * B_a_prime - ALWAN_LITERAL(0.305);
 
     /* Step 12: Calculate base exponential nonlinearity z */
-    alwan_scalar n = vc->background_luminance / vc->white_xyz.v[1];
+    alwan_scalar n = vc->background_luminance / vc->white_xyz.y;
     alwan_scalar z = ALWAN_LITERAL(1.48) + ALWAN_SQRT(n);
 
     /* Step 13: Calculate lightness J */
@@ -241,7 +241,7 @@ int alwan_hellwig2022_forward(alwan_vec3 const *xyz,
 
 int alwan_hellwig2022_inverse(alwan_hellwig2022_correlates const *correlates,
                                alwan_hellwig2022_viewing_conditions const *vc,
-                               alwan_vec3 *xyz_out) {
+                               alwan_xyz *xyz_out) {
     if (!correlates || !vc || !xyz_out) {
         return ALWAN_E_INVALID;
     }
@@ -262,14 +262,14 @@ int alwan_hellwig2022_inverse(alwan_hellwig2022_correlates const *correlates,
 
     /* Step 1: Calculate achromatic response for white point (A_w) - same as forward */
     alwan_vec3 RGB_w;
-    RGB_w.v[0] = M_CAT16[0] * vc->white_xyz.v[0] + M_CAT16[1] * vc->white_xyz.v[1] + M_CAT16[2] * vc->white_xyz.v[2];
-    RGB_w.v[1] = M_CAT16[3] * vc->white_xyz.v[0] + M_CAT16[4] * vc->white_xyz.v[1] + M_CAT16[5] * vc->white_xyz.v[2];
-    RGB_w.v[2] = M_CAT16[6] * vc->white_xyz.v[0] + M_CAT16[7] * vc->white_xyz.v[1] + M_CAT16[8] * vc->white_xyz.v[2];
+    RGB_w.v[0] = M_CAT16[0] * vc->white_xyz.x + M_CAT16[1] * vc->white_xyz.y + M_CAT16[2] * vc->white_xyz.z;
+    RGB_w.v[1] = M_CAT16[3] * vc->white_xyz.x + M_CAT16[4] * vc->white_xyz.y + M_CAT16[5] * vc->white_xyz.z;
+    RGB_w.v[2] = M_CAT16[6] * vc->white_xyz.x + M_CAT16[7] * vc->white_xyz.y + M_CAT16[8] * vc->white_xyz.z;
 
     alwan_vec3 RGB_wc;
-    RGB_wc.v[0] = (vc->white_xyz.v[1] * D / RGB_w.v[0] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[0];
-    RGB_wc.v[1] = (vc->white_xyz.v[1] * D / RGB_w.v[1] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[1];
-    RGB_wc.v[2] = (vc->white_xyz.v[1] * D / RGB_w.v[2] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[2];
+    RGB_wc.v[0] = (vc->white_xyz.y * D / RGB_w.v[0] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[0];
+    RGB_wc.v[1] = (vc->white_xyz.y * D / RGB_w.v[1] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[1];
+    RGB_wc.v[2] = (vc->white_xyz.y * D / RGB_w.v[2] + ALWAN_LITERAL(1.0) - D) * RGB_w.v[2];
 
     /* Apply nonlinear directly to RGB_wc (no post-adaptation matrix in Hellwig2022) */
     alwan_scalar R_aw_prime = post_adaptation_nonlinear(RGB_wc.v[0], FL);
@@ -280,7 +280,7 @@ int alwan_hellwig2022_inverse(alwan_hellwig2022_correlates const *correlates,
                        ALWAN_LITERAL(0.05) * B_aw_prime - ALWAN_LITERAL(0.305);
 
     /* Step 2: Calculate base exponential nonlinearity z */
-    alwan_scalar n = vc->background_luminance / vc->white_xyz.v[1];
+    alwan_scalar n = vc->background_luminance / vc->white_xyz.y;
     alwan_scalar z = ALWAN_LITERAL(1.48) + ALWAN_SQRT(n);
 
     /* Step 3: Compute achromatic response A from lightness J */
@@ -324,14 +324,14 @@ int alwan_hellwig2022_inverse(alwan_hellwig2022_correlates const *correlates,
 
     /* Step 7: Reverse chromatic adaptation (RGB_w already calculated above) */
     alwan_vec3 RGB;
-    RGB.v[0] = RGB_c.v[0] / (vc->white_xyz.v[1] * D / RGB_w.v[0] + ALWAN_LITERAL(1.0) - D);
-    RGB.v[1] = RGB_c.v[1] / (vc->white_xyz.v[1] * D / RGB_w.v[1] + ALWAN_LITERAL(1.0) - D);
-    RGB.v[2] = RGB_c.v[2] / (vc->white_xyz.v[1] * D / RGB_w.v[2] + ALWAN_LITERAL(1.0) - D);
+    RGB.v[0] = RGB_c.v[0] / (vc->white_xyz.y * D / RGB_w.v[0] + ALWAN_LITERAL(1.0) - D);
+    RGB.v[1] = RGB_c.v[1] / (vc->white_xyz.y * D / RGB_w.v[1] + ALWAN_LITERAL(1.0) - D);
+    RGB.v[2] = RGB_c.v[2] / (vc->white_xyz.y * D / RGB_w.v[2] + ALWAN_LITERAL(1.0) - D);
 
     /* Step 8: Transform RGB back to XYZ using inverse CAT16 */
-    xyz_out->v[0] = M_CAT16_inv[0] * RGB.v[0] + M_CAT16_inv[1] * RGB.v[1] + M_CAT16_inv[2] * RGB.v[2];
-    xyz_out->v[1] = M_CAT16_inv[3] * RGB.v[0] + M_CAT16_inv[4] * RGB.v[1] + M_CAT16_inv[5] * RGB.v[2];
-    xyz_out->v[2] = M_CAT16_inv[6] * RGB.v[0] + M_CAT16_inv[7] * RGB.v[1] + M_CAT16_inv[8] * RGB.v[2];
+    xyz_out->x = M_CAT16_inv[0] * RGB.v[0] + M_CAT16_inv[1] * RGB.v[1] + M_CAT16_inv[2] * RGB.v[2];
+    xyz_out->y = M_CAT16_inv[3] * RGB.v[0] + M_CAT16_inv[4] * RGB.v[1] + M_CAT16_inv[5] * RGB.v[2];
+    xyz_out->z = M_CAT16_inv[6] * RGB.v[0] + M_CAT16_inv[7] * RGB.v[1] + M_CAT16_inv[8] * RGB.v[2];
 
     return ALWAN_OK;
 }

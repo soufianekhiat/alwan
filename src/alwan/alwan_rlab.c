@@ -77,7 +77,7 @@ static alwan_scalar get_D_factor(int D_setting) {
  * RLAB Forward Transform: XYZ -> Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_rlab_forward(alwan_vec3 const *xyz,
+int alwan_rlab_forward(alwan_xyz const *xyz,
                        alwan_rlab_viewing_conditions const *vc,
                        alwan_rlab_correlates *out) {
     if (!xyz || !vc || !out) {
@@ -90,20 +90,20 @@ int alwan_rlab_forward(alwan_vec3 const *xyz,
 
     /* Step 1: Convert XYZ to LMS using HPE matrix */
     alwan_vec3 lms, lms_w;
-    lms.v[0] = M_HPE[0] * xyz->v[0] + M_HPE[1] * xyz->v[1] + M_HPE[2] * xyz->v[2];
-    lms.v[1] = M_HPE[3] * xyz->v[0] + M_HPE[4] * xyz->v[1] + M_HPE[5] * xyz->v[2];
-    lms.v[2] = M_HPE[6] * xyz->v[0] + M_HPE[7] * xyz->v[1] + M_HPE[8] * xyz->v[2];
+    lms.v[0] = M_HPE[0] * xyz->x + M_HPE[1] * xyz->y + M_HPE[2] * xyz->z;
+    lms.v[1] = M_HPE[3] * xyz->x + M_HPE[4] * xyz->y + M_HPE[5] * xyz->z;
+    lms.v[2] = M_HPE[6] * xyz->x + M_HPE[7] * xyz->y + M_HPE[8] * xyz->z;
 
-    lms_w.v[0] = M_HPE[0] * vc->xyz_w.v[0] + M_HPE[1] * vc->xyz_w.v[1] + M_HPE[2] * vc->xyz_w.v[2];
-    lms_w.v[1] = M_HPE[3] * vc->xyz_w.v[0] + M_HPE[4] * vc->xyz_w.v[1] + M_HPE[5] * vc->xyz_w.v[2];
-    lms_w.v[2] = M_HPE[6] * vc->xyz_w.v[0] + M_HPE[7] * vc->xyz_w.v[1] + M_HPE[8] * vc->xyz_w.v[2];
+    lms_w.v[0] = M_HPE[0] * vc->xyz_w.x + M_HPE[1] * vc->xyz_w.y + M_HPE[2] * vc->xyz_w.z;
+    lms_w.v[1] = M_HPE[3] * vc->xyz_w.x + M_HPE[4] * vc->xyz_w.y + M_HPE[5] * vc->xyz_w.z;
+    lms_w.v[2] = M_HPE[6] * vc->xyz_w.x + M_HPE[7] * vc->xyz_w.y + M_HPE[8] * vc->xyz_w.z;
 
     /* Step 2: Chromatic adaptation using von Kries-like transform */
     alwan_vec3 lms_adapted;
     for (int i = 0; i < 3; i++) {
         if (lms_w.v[i] > ALWAN_LITERAL(1e-10)) {
-            alwan_scalar Y_Yw = vc->xyz_n.v[1] / vc->xyz_w.v[1];
-            alwan_scalar adapt_factor = (D * (vc->xyz_n.v[1] / lms_w.v[i]) + ALWAN_LITERAL(1.0) - D) / Y_Yw;
+            alwan_scalar Y_Yw = vc->xyz_n.y / vc->xyz_w.y;
+            alwan_scalar adapt_factor = (D * (vc->xyz_n.y / lms_w.v[i]) + ALWAN_LITERAL(1.0) - D) / Y_Yw;
             lms_adapted.v[i] = lms.v[i] * adapt_factor;
         } else {
             lms_adapted.v[i] = lms.v[i];
@@ -161,7 +161,7 @@ int alwan_rlab_forward(alwan_vec3 const *xyz,
 
 int alwan_rlab_inverse(alwan_rlab_correlates const *correlates,
                        alwan_rlab_viewing_conditions const *vc,
-                       alwan_vec3 *xyz) {
+                       alwan_xyz *xyz) {
     if (!correlates || !vc || !xyz) {
         return -1;
     }
@@ -191,15 +191,15 @@ int alwan_rlab_inverse(alwan_rlab_correlates const *correlates,
 
     /* Step 4: Inverse chromatic adaptation */
     alwan_vec3 lms_w;
-    lms_w.v[0] = M_HPE[0] * vc->xyz_w.v[0] + M_HPE[1] * vc->xyz_w.v[1] + M_HPE[2] * vc->xyz_w.v[2];
-    lms_w.v[1] = M_HPE[3] * vc->xyz_w.v[0] + M_HPE[4] * vc->xyz_w.v[1] + M_HPE[5] * vc->xyz_w.v[2];
-    lms_w.v[2] = M_HPE[6] * vc->xyz_w.v[0] + M_HPE[7] * vc->xyz_w.v[1] + M_HPE[8] * vc->xyz_w.v[2];
+    lms_w.v[0] = M_HPE[0] * vc->xyz_w.x + M_HPE[1] * vc->xyz_w.y + M_HPE[2] * vc->xyz_w.z;
+    lms_w.v[1] = M_HPE[3] * vc->xyz_w.x + M_HPE[4] * vc->xyz_w.y + M_HPE[5] * vc->xyz_w.z;
+    lms_w.v[2] = M_HPE[6] * vc->xyz_w.x + M_HPE[7] * vc->xyz_w.y + M_HPE[8] * vc->xyz_w.z;
 
     alwan_vec3 lms;
     for (int i = 0; i < 3; i++) {
         if (lms_w.v[i] > ALWAN_LITERAL(1e-10)) {
-            alwan_scalar Y_Yw = vc->xyz_n.v[1] / vc->xyz_w.v[1];
-            alwan_scalar adapt_factor = (D * (vc->xyz_n.v[1] / lms_w.v[i]) + ALWAN_LITERAL(1.0) - D) / Y_Yw;
+            alwan_scalar Y_Yw = vc->xyz_n.y / vc->xyz_w.y;
+            alwan_scalar adapt_factor = (D * (vc->xyz_n.y / lms_w.v[i]) + ALWAN_LITERAL(1.0) - D) / Y_Yw;
             lms.v[i] = lms_adapted.v[i] / adapt_factor;
         } else {
             lms.v[i] = lms_adapted.v[i];
@@ -208,9 +208,9 @@ int alwan_rlab_inverse(alwan_rlab_correlates const *correlates,
 
     /* Step 5: Convert LMS back to XYZ using inverse HPE matrix */
     /* Need to compute HPE inverse - for now use approximate */
-    xyz->v[0] = ALWAN_LITERAL(0.4002) * lms.v[0] + ALWAN_LITERAL(0.7075) * lms.v[1] - ALWAN_LITERAL(0.0808) * lms.v[2];
-    xyz->v[1] = ALWAN_LITERAL(-0.2280) * lms.v[0] + ALWAN_LITERAL(1.1500) * lms.v[1] + ALWAN_LITERAL(0.0612) * lms.v[2];
-    xyz->v[2] = ALWAN_LITERAL(0.9184) * lms.v[2];
+    xyz->x = ALWAN_LITERAL(0.4002) * lms.v[0] + ALWAN_LITERAL(0.7075) * lms.v[1] - ALWAN_LITERAL(0.0808) * lms.v[2];
+    xyz->y = ALWAN_LITERAL(-0.2280) * lms.v[0] + ALWAN_LITERAL(1.1500) * lms.v[1] + ALWAN_LITERAL(0.0612) * lms.v[2];
+    xyz->z = ALWAN_LITERAL(0.9184) * lms.v[2];
 
     return 0;
 }

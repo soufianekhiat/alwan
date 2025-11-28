@@ -74,18 +74,18 @@ def generate_hsv_hsl_fixtures(output_dir):
 
 
 def generate_cmy_cmyk_fixtures(output_dir):
-    """Generate CMY and CMYK test fixtures using standard formulas."""
+    """Generate CMY and CMYK test fixtures using colour-science."""
 
     print("\nGenerating CMY and CMYK fixtures...")
 
-    # CMY: simple complement
+    # CMY: use colour-science
     cmy_values = []
     for rgb in TEST_RGB_COLORS:
-        cmy = [1.0 - rgb[0], 1.0 - rgb[1], 1.0 - rgb[2]]
+        cmy = colour.RGB_to_CMY(np.array(rgb))
         cmy_values.extend(cmy)
 
     filepath = os.path.join(output_dir, 'fixtures', 'conv_cmy_values.csv')
-    save_vector(cmy_values, filepath, "CMY values (complement formula)")
+    save_vector(cmy_values, filepath, "CMY values (from colour-science)")
 
     # CMYK: standard conversion from CMY
     cmyk_values = []
@@ -111,31 +111,32 @@ def generate_ycbcr_fixtures(output_dir):
 
     print("\nGenerating YCbCr fixtures...")
 
-    # Standard coefficients (NO hardcoding - these are ITU-R specifications)
-    K_BT601 = np.array([0.299, 0.587, 0.114])      # ITU-R BT.601
-    K_BT709 = np.array([0.2126, 0.7152, 0.0722])   # ITU-R BT.709
-    K_BT2020 = np.array([0.2627, 0.6780, 0.0593])  # ITU-R BT.2020
-
+    # Get standard coefficients from colour-science
     standards = [
-        ('conv_ycbcr_bt601.csv', K_BT601, "BT.601"),
-        ('conv_ycbcr_bt709.csv', K_BT709, "BT.709"),
-        ('conv_ycbcr_bt2020.csv', K_BT2020, "BT.2020"),
+        ('conv_ycbcr_bt601.csv', colour.WEIGHTS_YCBCR['ITU-R BT.601'], "BT.601"),
+        ('conv_ycbcr_bt709.csv', colour.WEIGHTS_YCBCR['ITU-R BT.709'], "BT.709"),
+        ('conv_ycbcr_bt2020.csv', colour.WEIGHTS_YCBCR['ITU-R BT.2020'], "BT.2020"),
     ]
 
     for filename, K, std_name in standards:
         ycbcr_values = []
 
         for rgb in TEST_RGB_COLORS:
-            rgb_arr = np.array(rgb)
-            Y = np.dot(K, rgb_arr)
-            Cb = 0.5 * (rgb_arr[2] - Y) / (1.0 - K[2])
-            Cr = 0.5 * (rgb_arr[0] - Y) / (1.0 - K[0])
-
-            # Store as Y, Cb+0.5, Cr+0.5 (offset to [0,1] range)
-            ycbcr_values.extend([Y, Cb + 0.5, Cr + 0.5])
+            # Use colour-science RGB_to_YCbCr with normalized output
+            ycbcr = colour.RGB_to_YCbCr(
+                np.array(rgb),
+                K=K,
+                in_bits=10,
+                in_legal=False,
+                in_int=False,
+                out_bits=10,
+                out_legal=False,
+                out_int=False
+            )
+            ycbcr_values.extend(ycbcr)
 
         filepath = os.path.join(output_dir, 'fixtures', filename)
-        save_vector(ycbcr_values, filepath, f"YCbCr values ({std_name})")
+        save_vector(ycbcr_values, filepath, f"YCbCr values ({std_name}) from colour-science")
 
 
 if __name__ == '__main__':

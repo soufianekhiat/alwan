@@ -137,7 +137,7 @@ static alwan_scalar compute_eccentricity(alwan_scalar h_degrees) {
  * ZCAM Forward Transform: XYZ -> Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_zcam_forward(alwan_vec3 const *xyz,
+int alwan_zcam_forward(alwan_xyz const *xyz,
                        alwan_zcam_viewing_conditions const *vc,
                        alwan_zcam_correlates *out) {
     if (!xyz || !vc || !out) {
@@ -159,15 +159,15 @@ int alwan_zcam_forward(alwan_vec3 const *xyz,
     }
 
     /* Step 1: Compute viewing condition factors */
-    alwan_scalar Fb = ALWAN_SQRT(vc->Yb / vc->xyz_w.v[1]);
+    alwan_scalar Fb = ALWAN_SQRT(vc->Yb / vc->xyz_w.y);
     alwan_scalar FL = ALWAN_LITERAL(0.171) * ALWAN_POW(vc->La, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0)) *
                       (ALWAN_LITERAL(1.0) - ALWAN_EXP(-ALWAN_LITERAL(48.0) / ALWAN_LITERAL(9.0) * vc->La));
 
     /* Step 2: Chromatic adaptation (simplified - using XYZ directly) */
     alwan_vec3 xyz_adapted;
-    xyz_adapted.v[0] = ZCAM_B * xyz->v[0] - (ZCAM_B - ALWAN_LITERAL(1.0)) * xyz->v[2];
-    xyz_adapted.v[1] = ZCAM_G * xyz->v[1] - (ZCAM_G - ALWAN_LITERAL(1.0)) * xyz->v[0];
-    xyz_adapted.v[2] = xyz->v[2];
+    xyz_adapted.v[0] = ZCAM_B * xyz->x - (ZCAM_B - ALWAN_LITERAL(1.0)) * xyz->z;
+    xyz_adapted.v[1] = ZCAM_G * xyz->y - (ZCAM_G - ALWAN_LITERAL(1.0)) * xyz->x;
+    xyz_adapted.v[2] = xyz->z;
 
     /* Step 3: XYZ -> LMS */
     alwan_vec3 lms;
@@ -193,9 +193,9 @@ int alwan_zcam_forward(alwan_vec3 const *xyz,
 
     /* Step 6: Compute white point Izw */
     alwan_vec3 xyz_w_adapted;
-    xyz_w_adapted.v[0] = ZCAM_B * vc->xyz_w.v[0] - (ZCAM_B - ALWAN_LITERAL(1.0)) * vc->xyz_w.v[2];
-    xyz_w_adapted.v[1] = ZCAM_G * vc->xyz_w.v[1] - (ZCAM_G - ALWAN_LITERAL(1.0)) * vc->xyz_w.v[0];
-    xyz_w_adapted.v[2] = vc->xyz_w.v[2];
+    xyz_w_adapted.v[0] = ZCAM_B * vc->xyz_w.x - (ZCAM_B - ALWAN_LITERAL(1.0)) * vc->xyz_w.z;
+    xyz_w_adapted.v[1] = ZCAM_G * vc->xyz_w.y - (ZCAM_G - ALWAN_LITERAL(1.0)) * vc->xyz_w.x;
+    xyz_w_adapted.v[2] = vc->xyz_w.z;
 
     alwan_vec3 lms_w;
     lms_w.v[0] = M_XYZ_TO_LMS[0] * xyz_w_adapted.v[0] + M_XYZ_TO_LMS[1] * xyz_w_adapted.v[1] + M_XYZ_TO_LMS[2] * xyz_w_adapted.v[2];
@@ -271,7 +271,7 @@ int alwan_zcam_forward(alwan_vec3 const *xyz,
 
 int alwan_zcam_inverse(alwan_zcam_correlates const *correlates,
                        alwan_zcam_viewing_conditions const *vc,
-                       alwan_vec3 *xyz) {
+                       alwan_xyz *xyz) {
     if (!correlates || !vc || !xyz) {
         return -1;
     }
@@ -317,9 +317,9 @@ int alwan_zcam_inverse(alwan_zcam_correlates const *correlates,
     xyz_adapted.v[2] = M_LMS_TO_XYZ[6] * lms.v[0] + M_LMS_TO_XYZ[7] * lms.v[1] + M_LMS_TO_XYZ[8] * lms.v[2];
 
     /* Inverse chromatic adaptation (simplified) */
-    xyz->v[2] = xyz_adapted.v[2];
-    xyz->v[0] = (xyz_adapted.v[0] + (ZCAM_B - ALWAN_LITERAL(1.0)) * xyz->v[2]) / ZCAM_B;
-    xyz->v[1] = (xyz_adapted.v[1] + (ZCAM_G - ALWAN_LITERAL(1.0)) * xyz->v[0]) / ZCAM_G;
+    xyz->z = xyz_adapted.v[2];
+    xyz->x = (xyz_adapted.v[0] + (ZCAM_B - ALWAN_LITERAL(1.0)) * xyz->z) / ZCAM_B;
+    xyz->y = (xyz_adapted.v[1] + (ZCAM_G - ALWAN_LITERAL(1.0)) * xyz->x) / ZCAM_G;
 
     return 0;
 }

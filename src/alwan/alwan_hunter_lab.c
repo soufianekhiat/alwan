@@ -44,7 +44,7 @@ static void calculate_hunter_coefficients(alwan_vec3 const *xyz_n,
  * ---------------------------------------------------------------- */
 
 void alwan_xyz_to_hunter_lab(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab) {
-    /* D65 reference white (Y = 100) - from colour-science TVS_ILLUMINANTS_HUNTERLAB */
+    /* D65 reference white (Y = 100 scale) - from colour-science TVS_ILLUMINANTS_HUNTERLAB */
     alwan_scalar const xn = ALWAN_LITERAL(95.02);
     alwan_scalar const yn = ALWAN_LITERAL(100.0);
     alwan_scalar const zn = ALWAN_LITERAL(108.82);
@@ -53,13 +53,8 @@ void alwan_xyz_to_hunter_lab(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab) {
     alwan_scalar ka = HUNTER_KA_D65;
     alwan_scalar kb = HUNTER_KB_D65;
 
-    /* Convert XYZ from Y=100 scale to Y=1 scale to match colour-science */
-    alwan_scalar x_norm = xyz->v[0] / ALWAN_LITERAL(100.0);
-    alwan_scalar y_norm = xyz->v[1] / ALWAN_LITERAL(100.0);
-    alwan_scalar z_norm = xyz->v[2] / ALWAN_LITERAL(100.0);
-
-    /* Calculate ratios (XYZ is now on Y=1 scale, XYZ_n is on Y=100 scale) */
-    alwan_scalar y_ratio = y_norm / yn;
+    /* Calculate ratios - XYZ and XYZ_n both in Y=100 scale */
+    alwan_scalar y_ratio = xyz->v[1] / yn;
     alwan_scalar sqrt_y_ratio = ALWAN_SQRT(y_ratio);
 
     /* Guard against division by zero */
@@ -74,16 +69,16 @@ void alwan_xyz_to_hunter_lab(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab) {
     hunter_lab->v[0] = ALWAN_LITERAL(100.0) * sqrt_y_ratio;
 
     /* a = Ka × ((X/Xn - Y/Yn) / √(Y/Yn)) */
-    alwan_scalar x_ratio = x_norm / xn;
+    alwan_scalar x_ratio = xyz->v[0] / xn;
     hunter_lab->v[1] = ka * (x_ratio - y_ratio) / sqrt_y_ratio;
 
     /* b = Kb × ((Y/Yn - Z/Zn) / √(Y/Yn)) */
-    alwan_scalar z_ratio = z_norm / zn;
+    alwan_scalar z_ratio = xyz->v[2] / zn;
     hunter_lab->v[2] = kb * (y_ratio - z_ratio) / sqrt_y_ratio;
 }
 
 void alwan_hunter_lab_to_xyz(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz) {
-    /* D65 reference white (Y = 100) - from colour-science TVS_ILLUMINANTS_HUNTERLAB */
+    /* D65 reference white (Y = 100 scale) - from colour-science TVS_ILLUMINANTS_HUNTERLAB */
     alwan_scalar const xn = ALWAN_LITERAL(95.02);
     alwan_scalar const yn = ALWAN_LITERAL(100.0);
     alwan_scalar const zn = ALWAN_LITERAL(108.82);
@@ -95,16 +90,16 @@ void alwan_hunter_lab_to_xyz(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz) {
     /* L/100 - from colour-science formula */
     alwan_scalar l_norm = hunter_lab->v[0] / ALWAN_LITERAL(100.0);
 
-    /* Y = (L/100)² × Yn × 100 - converts from Y=1 scale back to Y=100 scale */
-    xyz->v[1] = l_norm * l_norm * yn * ALWAN_LITERAL(100.0);
+    /* Y = (L/100)² × Yn - XYZ in Y=100 scale */
+    xyz->v[1] = l_norm * l_norm * yn;
 
-    /* X = ((a/Ka) × (L/100) + (L/100)²) × Xn × 100 */
+    /* X = ((a/Ka) × (L/100) + (L/100)²) × Xn */
     alwan_scalar a_term = (hunter_lab->v[1] / ka) * l_norm;
-    xyz->v[0] = (a_term + l_norm * l_norm) * xn * ALWAN_LITERAL(100.0);
+    xyz->v[0] = (a_term + l_norm * l_norm) * xn;
 
-    /* Z = -((b/Kb) × (L/100) - (L/100)²) × Zn × 100 */
+    /* Z = -((b/Kb) × (L/100) - (L/100)²) × Zn */
     alwan_scalar b_term = (hunter_lab->v[2] / kb) * l_norm;
-    xyz->v[2] = -(b_term - l_norm * l_norm) * zn * ALWAN_LITERAL(100.0);
+    xyz->v[2] = -(b_term - l_norm * l_norm) * zn;
 }
 
 /* ----------------------------------------------------------------

@@ -173,7 +173,7 @@ static void mat3x3_mul_vec3(
  * ---------------------------------------------------------------- */
 
 int alwan_kim2009_forward(
-    alwan_vec3 const *xyz,
+    alwan_xyz const *xyz,
     alwan_kim2009_viewing_conditions const *vc,
     alwan_kim2009_correlates *out
 ) {
@@ -183,7 +183,7 @@ int alwan_kim2009_forward(
 
     /* Step 1: Get induction factors based on background luminance */
     alwan_scalar F, c, Nc;
-    alwan_scalar Y_w = vc->white_xyz.v[1];
+    alwan_scalar Y_w = vc->white_xyz.y;
     get_induction_factors(vc->Yb, Y_w, &F, &c, &Nc);
 
     /* Step 2: Compute degree of adaptation D */
@@ -191,12 +191,12 @@ int alwan_kim2009_forward(
 
     /* Step 3: CAT02 transform - XYZ to RGB (sharpened cone responses) */
     alwan_scalar RGB[3];
-    alwan_scalar XYZ_in[3] = {xyz->v[0], xyz->v[1], xyz->v[2]};
+    alwan_scalar XYZ_in[3] = {xyz->x, xyz->y, xyz->z};
     mat3x3_mul_vec3(M_CAT02, XYZ_in, RGB);
 
     /* Step 4: CAT02 transform - white point XYZ_w to RGB_w */
     alwan_scalar RGB_w[3];
-    alwan_scalar XYZ_w[3] = {vc->white_xyz.v[0], vc->white_xyz.v[1], vc->white_xyz.v[2]};
+    alwan_scalar XYZ_w[3] = {vc->white_xyz.x, vc->white_xyz.y, vc->white_xyz.z};
     mat3x3_mul_vec3(M_CAT02, XYZ_w, RGB_w);
 
     /* Step 5: Apply chromatic adaptation to get RGB_c and RGB_wc */
@@ -257,8 +257,10 @@ int alwan_kim2009_forward(
                       ALWAN_LITERAL(1.0) * LMS_p[1] -
                       ALWAN_LITERAL(2.0) * LMS_p[2]) / ALWAN_LITERAL(9.0);
 
-    /* Step 13: Chroma C */
-    alwan_scalar C = KIM2009_A_K * ALWAN_POW(a * a + b * b, KIM2009_N_K);
+    /* Step 13: Chroma C
+     * Formula: C = a_k * hypot(a, b)^n_k = a_k * sqrt(a² + b²)^n_k
+     * Which equals: a_k * (a² + b²)^(n_k/2) */
+    alwan_scalar C = KIM2009_A_K * ALWAN_POW(ALWAN_SQRT(a * a + b * b), KIM2009_N_K);
 
     /* Step 14: Hue angle h */
     alwan_scalar h = ALWAN_ATAN2(b, a) * ALWAN_LITERAL(180.0) / ALWAN_PI;
@@ -281,7 +283,7 @@ int alwan_kim2009_forward(
 int alwan_kim2009_inverse(
     alwan_kim2009_correlates const *correlates,
     alwan_kim2009_viewing_conditions const *vc,
-    alwan_vec3 *out
+    alwan_xyz *out
 ) {
     if (!correlates || !vc || !out) {
         return ALWAN_E_INVALID;
@@ -292,7 +294,7 @@ int alwan_kim2009_inverse(
 
     /* Step 1: Get induction factors based on background luminance */
     alwan_scalar F, c, Nc;
-    alwan_scalar Y_w = vc->white_xyz.v[1];
+    alwan_scalar Y_w = vc->white_xyz.y;
     get_induction_factors(vc->Yb, Y_w, &F, &c, &Nc);
 
     /* Step 2: Compute degree of adaptation D */
@@ -300,7 +302,7 @@ int alwan_kim2009_inverse(
 
     /* Step 3: CAT02 transform - white point to RGB_w */
     alwan_scalar RGB_w[3];
-    alwan_scalar XYZ_w[3] = {vc->white_xyz.v[0], vc->white_xyz.v[1], vc->white_xyz.v[2]};
+    alwan_scalar XYZ_w[3] = {vc->white_xyz.x, vc->white_xyz.y, vc->white_xyz.z};
     mat3x3_mul_vec3(M_CAT02, XYZ_w, RGB_w);
 
     /* Step 4: Apply chromatic adaptation to white point */
@@ -399,9 +401,9 @@ int alwan_kim2009_inverse(
     mat3x3_mul_vec3(M_CAT02_inv, RGB, XYZ_out);
 
     /* Fill output XYZ */
-    out->v[0] = XYZ_out[0];
-    out->v[1] = XYZ_out[1];
-    out->v[2] = XYZ_out[2];
+    out->x = XYZ_out[0];
+    out->y = XYZ_out[1];
+    out->z = XYZ_out[2];
 
     return ALWAN_OK;
 }

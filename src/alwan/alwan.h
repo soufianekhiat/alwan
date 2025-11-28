@@ -15,8 +15,6 @@
 extern "C" {
 #endif
 
-// TODO: add support for YPbPr, xvYCC, YCoCg, YUV, etc.
-
 /* ----------------------------------------------------------------
  * Error codes
  * ---------------------------------------------------------------- */
@@ -89,8 +87,6 @@ int alwan_data_get_illuminant_c(alwan_ctx *ctx, alwan_scalar **data, size_t *cou
 /* Illuminant D75 (daylight 7500K) */
 int alwan_data_get_illuminant_d75(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
-// TODO: Add F1-F12 fluorescent illuminant getters once xy data is generated
-
 /* Get sRGB primaries (6 values: rx, ry, gx, gy, bx, by) */
 int alwan_data_get_srgb_primaries(alwan_ctx *ctx, alwan_scalar **data, size_t *count);
 
@@ -113,12 +109,151 @@ typedef struct {
     alwan_scalar v[3];
 } alwan_vec3;
 
-// TODO: add alwan_vec4 for CMYK, alpha channel, etc.
-
 /* 3x3 matrix stored in row-major order: [m00 m01 m02 m10 m11 m12 m20 m21 m22] */
 typedef struct {
     alwan_scalar m[9];
 } alwan_mat3x3;
+
+/* ----------------------------------------------------------------
+ * Semantic Color Types (for type-safe I/O)
+ * ---------------------------------------------------------------- */
+
+/*
+ * Semantic color types provide type safety while maintaining API versatility.
+ * All types are layout-compatible with alwan_vec3, allowing:
+ *   - Direct casting: (alwan_vec3*)&rgb
+ *   - Member pointer passing: alwan_function(&rgb.r, &out.r)
+ *   - Array interpretation: alwan_scalar* ptr = &rgb.r;
+ */
+
+/* RGB color (red, green, blue) - typically linear or encoded depending on context */
+typedef struct {
+    alwan_scalar r, g, b;
+} alwan_rgb;
+
+/* CMYK color (cyan, magenta, yellow, black) - note: uses 4 components, not compatible with vec3 */
+typedef struct {
+    alwan_scalar c, m, y, k;
+} alwan_cmyk;
+
+/* CMY color (cyan, magenta, yellow) */
+typedef struct {
+    alwan_scalar c, m, y;
+} alwan_cmy;
+
+/* HSV color (hue [0-360°], saturation [0-1], value [0-1]) */
+typedef struct {
+    alwan_scalar h, s, v;
+} alwan_hsv;
+
+/* HSL color (hue [0-360°], saturation [0-1], lightness [0-1]) */
+typedef struct {
+    alwan_scalar h, s, l;
+} alwan_hsl;
+
+/* XYZ tristimulus values (CIE 1931) */
+typedef struct {
+    alwan_scalar x, y, z;
+} alwan_xyz;
+
+/* xyY chromaticity + luminance (CIE 1931) */
+typedef struct {
+    alwan_scalar x, y, Y;
+} alwan_xyy;
+
+/* CIE Lab color (L* [0-100], a*, b*) */
+typedef struct {
+    alwan_scalar L, a, b;
+} alwan_lab;
+
+/* CIE Luv color (L* [0-100], u*, v*) */
+typedef struct {
+    alwan_scalar L, u, v;
+} alwan_luv;
+
+/* CIE LCh (cylindrical Lab): Lightness, Chroma, Hue */
+typedef struct {
+    alwan_scalar L, C, h;
+} alwan_lch;
+
+/* CIE LCh(uv) (cylindrical Luv): Lightness, Chroma, Hue */
+typedef struct {
+    alwan_scalar L, C, h;
+} alwan_lchuv;
+
+/* Oklab color space (modern perceptual) */
+typedef struct {
+    alwan_scalar L, a, b;
+} alwan_oklab;
+
+/* Oklch color space (cylindrical Oklab) */
+typedef struct {
+    alwan_scalar L, C, h;
+} alwan_oklch;
+
+/* Jzazbz color space (HDR perceptual) */
+typedef struct {
+    alwan_scalar Jz, az, bz;
+} alwan_jzazbz;
+
+/* JzCzhz (cylindrical Jzazbz) */
+typedef struct {
+    alwan_scalar Jz, Cz, hz;
+} alwan_jzczhz;
+
+/* ICtCp color space (ITU-R BT.2100 HDR) */
+typedef struct {
+    alwan_scalar I, Ct, Cp;
+} alwan_ictcp;
+
+/* IPT color space */
+typedef struct {
+    alwan_scalar I, P, T;
+} alwan_ipt;
+
+/* IgPgTg color space (Ebner & Fairchild 1998) */
+typedef struct {
+    alwan_scalar Ig, Pg, Tg;
+} alwan_igpgtg;
+
+/* ICaCb color space (Zhang & Wandell 1996, 1997) */
+typedef struct {
+    alwan_scalar I, Ca, Cb;
+} alwan_icacb;
+
+/* YCbCr color (luma + chroma) */
+typedef struct {
+    alwan_scalar Y, Cb, Cr;
+} alwan_ycbcr;
+
+/* YCoCg color space (luma + orange-cyan + green-magenta) */
+typedef struct {
+    alwan_scalar Y, Co, Cg;
+} alwan_ycocg;
+
+/* Y'Cb'Cr'c' color space (luma + chroma with reduced range) */
+typedef struct
+{
+    alwan_scalar Yc, Cbc, Crc;
+} alwan_yccbccrc;
+
+/*
+ * Usage examples:
+ *
+ * // Direct function call with semantic types
+ * alwan_rgb rgb_in = {1.0, 0.5, 0.2};
+ * alwan_xyz xyz_out;
+ * alwan_rgb_to_xyz((alwan_vec3*)&rgb_in, (alwan_vec3*)&xyz_out);
+ *
+ * // Member pointer passing
+ * alwan_function(&rgb_in.r, &xyz_out.x);
+ *
+ * // Array access
+ * alwan_scalar* rgb_array = &rgb_in.r;
+ * for (int i = 0; i < 3; i++) {
+ *     rgb_array[i] *= 2.0;
+ * }
+ */
 
 /* ----------------------------------------------------------------
  * Math Operations
@@ -297,6 +432,7 @@ typedef enum {
 
 /* Transfer function identifiers (OETF/EOTF) */
 typedef enum {
+    ALWAN_TF_LINEAR = 0,   /* Linear / Identity (no transfer function) */
     ALWAN_TF_SRGB,
     ALWAN_TF_BT709,        /* Same as BT.2020 */
     ALWAN_TF_BT2020,       /* Same as BT.709 */
@@ -409,12 +545,12 @@ typedef enum {
     ALWAN_VIEW_AGX_PUNCHY    /* AgX punchy variant */
 } alwan_view_transform;
 
-/* RGB space descriptor with primaries, white point, and transfer function names */
+/* RGB space descriptor with primaries, white point, and transfer functions */
 typedef struct {
     alwan_scalar primaries_xy[6];  /* rx, ry, gx, gy, bx, by in CIE xy chromaticity */
     alwan_scalar white_xy[2];       /* wx, wy in CIE xy chromaticity */
-    char const *oetf_name;    /* Optional: name of OETF (e.g., "srgb", "pq") */
-    char const *eotf_name;    /* Optional: name of EOTF (e.g., "srgb", "pq") */
+    alwan_transfer_function oetf;   /* OETF (Opto-Electronic Transfer Function), use ALWAN_TF_LINEAR for none */
+    alwan_transfer_function eotf;   /* EOTF (Electro-Optical Transfer Function), use ALWAN_TF_LINEAR for none */
 } alwan_rgb_space_desc;
 
 /* Derive RGB<->XYZ conversion matrices from primaries and white point
@@ -438,8 +574,8 @@ int alwan_rgb_get_space_descriptor(alwan_ctx *ctx, alwan_rgb_space space, alwan_
 int alwan_rgb_convert(alwan_ctx *ctx,
                       alwan_rgb_space_desc const *src_space,
                       alwan_rgb_space_desc const *dst_space,
-                      alwan_vec3 const *src_rgb,
-                      alwan_vec3 *dst_rgb);
+                      alwan_rgb const *src_rgb,
+                      alwan_rgb *dst_rgb);
 
 /* Bulk RGB color space conversion for arrays of colors
  * More efficient than calling alwan_rgb_convert in a loop
@@ -448,8 +584,8 @@ int alwan_rgb_convert(alwan_ctx *ctx,
 int alwan_rgb_convert_bulk(alwan_ctx *ctx,
                             alwan_rgb_space_desc const *src_space,
                             alwan_rgb_space_desc const *dst_space,
-                            alwan_vec3 const *src_rgb,
-                            alwan_vec3 *dst_rgb,
+                            alwan_rgb const *src_rgb,
+                            alwan_rgb *dst_rgb,
                             size_t count);
 
 /* ----------------------------------------------------------------
@@ -545,16 +681,16 @@ int alwan_view_transform_apply(alwan_ctx *ctx,
  * ---------------------------------------------------------------- */
 
 /* XYZ <-> xyY conversions */
-void alwan_xyz_to_xyy(alwan_vec3 const *xyz, alwan_vec3 *xyy);
-void alwan_xyy_to_xyz(alwan_vec3 const *xyy, alwan_vec3 *xyz);
+void alwan_xyz_to_xyy(alwan_xyz const *xyz, alwan_xyy *xyy);
+void alwan_xyy_to_xyz(alwan_xyy const *xyy, alwan_xyz *xyz);
 
 /* XYZ <-> Lab conversions (requires white point in XYZ) */
-void alwan_xyz_to_lab(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *lab);
-void alwan_lab_to_xyz(alwan_vec3 const *lab, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
+void alwan_xyz_to_lab(alwan_xyz const *xyz, alwan_xyz const *white_xyz, alwan_lab *lab);
+void alwan_lab_to_xyz(alwan_lab const *lab, alwan_xyz const *white_xyz, alwan_xyz *xyz);
 
 /* XYZ <-> Luv conversions (requires white point in XYZ) */
-void alwan_xyz_to_luv(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *luv);
-void alwan_luv_to_xyz(alwan_vec3 const *luv, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
+void alwan_xyz_to_luv(alwan_xyz const *xyz, alwan_xyz const *white_xyz, alwan_luv *luv);
+void alwan_luv_to_xyz(alwan_luv const *luv, alwan_xyz const *white_xyz, alwan_xyz *xyz);
 
 /* XYZ <-> U*V*W* conversions (CIE 1964 uniform color space for CRI)
  * Based on CIE 1960 UCS chromaticity diagram
@@ -564,55 +700,55 @@ void alwan_xyz_to_uvw(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_
 void alwan_uvw_to_xyz(alwan_vec3 const *uvw, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
 
 /* Lab <-> LCh(ab) conversions */
-void alwan_lab_to_lch(alwan_vec3 const *lab, alwan_vec3 *lch);
-void alwan_lch_to_lab(alwan_vec3 const *lch, alwan_vec3 *lab);
+void alwan_lab_to_lch(alwan_lab const *lab, alwan_lch *lch);
+void alwan_lch_to_lab(alwan_lch const *lch, alwan_lab *lab);
 
 /* Luv <-> LCh(uv) conversions */
-void alwan_luv_to_lchuv(alwan_vec3 const *luv, alwan_vec3 *lchuv);
-void alwan_lchuv_to_luv(alwan_vec3 const *lchuv, alwan_vec3 *luv);
+void alwan_luv_to_lchuv(alwan_luv const *luv, alwan_lchuv *lchuv);
+void alwan_lchuv_to_luv(alwan_lchuv const *lchuv, alwan_luv *luv);
 
 /* XYZ <-> Oklab conversions (modern perceptually uniform space, D65 assumed) */
-void alwan_xyz_to_oklab(alwan_vec3 const *xyz, alwan_vec3 *oklab);
-void alwan_oklab_to_xyz(alwan_vec3 const *oklab, alwan_vec3 *xyz);
+void alwan_xyz_to_oklab(alwan_xyz const *xyz, alwan_oklab *oklab);
+void alwan_oklab_to_xyz(alwan_oklab const *oklab, alwan_xyz *xyz);
 
 /* Oklab <-> Oklch conversions (cylindrical Oklab) */
-void alwan_oklab_to_oklch(alwan_vec3 const *oklab, alwan_vec3 *oklch);
-void alwan_oklch_to_oklab(alwan_vec3 const *oklch, alwan_vec3 *oklab);
+void alwan_oklab_to_oklch(alwan_oklab const *oklab, alwan_oklch *oklch);
+void alwan_oklch_to_oklab(alwan_oklch const *oklch, alwan_oklab *oklab);
 
 /* Lab <-> DIN99 conversions (DIN99 Family - German color difference standards)
  * - variant: 0 = DIN99/ASTM, 1 = DIN99b, 2 = DIN99c, 3 = DIN99d
  * - All variants provide improved perceptual uniformity over CIE Lab
  * - Input Lab should be D65 adapted
  */
-void alwan_lab_to_din99(alwan_vec3 const *lab, alwan_vec3 *din99, int variant);
-void alwan_din99_to_lab(alwan_vec3 const *din99, alwan_vec3 *lab, int variant);
+void alwan_lab_to_din99(alwan_lab const *lab, alwan_vec3 *din99, int variant);
+void alwan_din99_to_lab(alwan_vec3 const *din99, alwan_lab *lab, int variant);
 
 /* RGB <-> ICtCp conversions (ITU-R BT.2100 HDR color space)
  * - RGB input/output is linear BT.2020 RGB
  * - use_pq: 1 for PQ (Perceptual Quantizer), 0 for HLG (Hybrid Log-Gamma)
  */
-void alwan_rgb_to_ictcp(alwan_vec3 const *rgb, alwan_vec3 *ictcp, int use_pq);
-void alwan_ictcp_to_rgb(alwan_vec3 const *ictcp, alwan_vec3 *rgb, int use_pq);
+void alwan_rgb_to_ictcp(alwan_rgb const *rgb, alwan_ictcp *ictcp, int use_pq);
+void alwan_ictcp_to_rgb(alwan_ictcp const *ictcp, alwan_rgb *rgb, int use_pq);
 
 /* XYZ <-> ICtCp conversions (via BT.2020 RGB)
  * - XYZ is assumed to be D65 adapted
  * - use_pq: 1 for PQ (Perceptual Quantizer), 0 for HLG (Hybrid Log-Gamma)
  */
-void alwan_xyz_to_ictcp(alwan_vec3 const *xyz, alwan_vec3 *ictcp, int use_pq);
-void alwan_ictcp_to_xyz(alwan_vec3 const *ictcp, alwan_vec3 *xyz, int use_pq);
+void alwan_xyz_to_ictcp(alwan_xyz const *xyz, alwan_ictcp *ictcp, int use_pq);
+void alwan_ictcp_to_xyz(alwan_ictcp const *ictcp, alwan_xyz *xyz, int use_pq);
 
 /* Jzazbz <-> XYZ conversions (Perceptually uniform HDR color space)
  * - XYZ input/output is D65 adapted
  * - Jzazbz: Jz (lightness), az (red-green), bz (yellow-blue)
  */
-void alwan_xyz_to_jzazbz(alwan_vec3 const *xyz, alwan_vec3 *jzazbz);
-void alwan_jzazbz_to_xyz(alwan_vec3 const *jzazbz, alwan_vec3 *xyz);
+void alwan_xyz_to_jzazbz(alwan_xyz const *xyz, alwan_jzazbz *jzazbz);
+void alwan_jzazbz_to_xyz(alwan_jzazbz const *jzazbz, alwan_xyz *xyz);
 
 /* Jzazbz <-> JzCzhz conversions (cylindrical coordinates)
  * - JzCzhz: Jz (lightness), Cz (chroma), hz (hue in radians)
  */
-void alwan_jzazbz_to_jzczhz(alwan_vec3 const *jzazbz, alwan_vec3 *jzczhz);
-void alwan_jzczhz_to_jzazbz(alwan_vec3 const *jzczhz, alwan_vec3 *jzazbz);
+void alwan_jzazbz_to_jzczhz(alwan_jzazbz const *jzazbz, alwan_jzczhz *jzczhz);
+void alwan_jzczhz_to_jzazbz(alwan_jzczhz const *jzczhz, alwan_jzazbz *jzazbz);
 
 /* Hunter Lab <-> XYZ conversions (Earlier Lab-type color space)
  * - XYZ input/output is D65 adapted by default
@@ -636,14 +772,14 @@ void alwan_hunter_lab_to_xyz_custom(alwan_vec3 const *hunter_lab, alwan_vec3 *xy
  * - Improved hue uniformity over CIELAB
  * - Uses power function nonlinearity (exponent 0.43)
  */
-void alwan_xyz_to_ipt(alwan_vec3 const *xyz, alwan_vec3 *ipt);
-void alwan_ipt_to_xyz(alwan_vec3 const *ipt, alwan_vec3 *xyz);
+void alwan_xyz_to_ipt(alwan_xyz const *xyz, alwan_ipt *ipt);
+void alwan_ipt_to_xyz(alwan_ipt const *ipt, alwan_xyz *xyz);
 
 /* IPT <-> IPTch conversions (cylindrical coordinates)
  * - IPTch: I (intensity), C (chroma), h (hue in radians)
  */
-void alwan_ipt_to_iptch(alwan_vec3 const *ipt, alwan_vec3 *iptch);
-void alwan_iptch_to_ipt(alwan_vec3 const *iptch, alwan_vec3 *ipt);
+void alwan_ipt_to_iptch(alwan_ipt const *ipt, alwan_vec3 *iptch);
+void alwan_iptch_to_ipt(alwan_vec3 const *iptch, alwan_ipt *ipt);
 
 /* ProLab <-> XYZ conversions (Perceptually Uniform Projective)
  * - XYZ input/output is D65 adapted by default
@@ -682,8 +818,8 @@ void alwan_ucs_to_xyz(alwan_vec3 const *ucs, alwan_vec3 *xyz);
  * - Maintains perceptual uniformity across extended luminance range
  * - XYZ input/output is D65 adapted, Y can exceed 100
  */
-void alwan_xyz_to_hdr_cielab(alwan_vec3 const *xyz, alwan_vec3 *hdr_lab);
-void alwan_hdr_cielab_to_xyz(alwan_vec3 const *hdr_lab, alwan_vec3 *xyz);
+void alwan_xyz_to_hdr_cielab(alwan_xyz const *xyz, alwan_lab *hdr_lab);
+void alwan_hdr_cielab_to_xyz(alwan_lab const *hdr_lab, alwan_xyz *xyz);
 
 /* hdr-IPT <-> XYZ conversions (HDR extension of IPT)
  * - Fairchild (2010) HDR-IPT model
@@ -691,73 +827,70 @@ void alwan_hdr_cielab_to_xyz(alwan_vec3 const *hdr_lab, alwan_vec3 *xyz);
  * - Better hue preservation than hdr-CIELAB for HDR content
  * - XYZ input/output is D65 adapted, supports extended luminance
  */
-void alwan_xyz_to_hdr_ipt(alwan_vec3 const *xyz, alwan_vec3 *hdr_ipt);
-void alwan_hdr_ipt_to_xyz(alwan_vec3 const *hdr_ipt, alwan_vec3 *xyz);
+void alwan_xyz_to_hdr_ipt(alwan_xyz const *xyz, alwan_ipt *hdr_ipt);
+void alwan_hdr_ipt_to_xyz(alwan_ipt const *hdr_ipt, alwan_xyz *xyz);
 
 /* IgPgTg <-> XYZ conversions (Improved IPT variant)
  * - Ebner & Fairchild (1998) improved hue uniformity
  * - Better than IPT for certain hue angles
  * - XYZ input/output is D65 adapted
  */
-void alwan_xyz_to_igpgtg(alwan_vec3 const *xyz, alwan_vec3 *igpgtg);
-void alwan_igpgtg_to_xyz(alwan_vec3 const *igpgtg, alwan_vec3 *xyz);
+void alwan_xyz_to_igpgtg(alwan_xyz const *xyz, alwan_igpgtg *igpgtg);
+void alwan_igpgtg_to_xyz(alwan_igpgtg const *igpgtg, alwan_xyz *xyz);
 
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics
  * - XYZ input/output is D65 adapted
  */
-void alwan_xyz_to_icacb(alwan_vec3 const *xyz, alwan_vec3 *icacb);
-void alwan_icacb_to_xyz(alwan_vec3 const *icacb, alwan_vec3 *xyz);
+void alwan_xyz_to_icacb(alwan_xyz const *xyz, alwan_icacb *icacb);
+void alwan_icacb_to_xyz(alwan_icacb const *icacb, alwan_xyz *xyz);
 
 /* Prismatic <-> RGB conversions (Pridmore 2021)
  * - Perceptually uniform cylindrical color space
  * - P (purity), r (red-green), i (intensity)
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_prismatic(alwan_vec3 const *rgb, alwan_vec3 *prismatic);
-void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_vec3 *rgb);
+void alwan_rgb_to_prismatic(alwan_rgb const *rgb, alwan_vec3 *prismatic);
+void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_rgb *rgb);
 
 /* HCL <-> RGB conversions (Sarifuddin 2005)
  * - Hue-Chroma-Luminance polar coordinate system
  * - Better perceptual properties than HSL
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_hcl(alwan_vec3 const *rgb, alwan_vec3 *hcl);
-void alwan_hcl_to_rgb(alwan_vec3 const *hcl, alwan_vec3 *rgb);
+void alwan_rgb_to_hcl(alwan_rgb const *rgb, alwan_vec3 *hcl);
+void alwan_hcl_to_rgb(alwan_vec3 const *hcl, alwan_rgb *rgb);
 
 /* IHLS <-> RGB conversions (Improved HLS - Hanbury 2003)
  * - Improved Hue-Lightness-Saturation
  * - Better perceptual properties than standard HSL
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_ihls(alwan_vec3 const *rgb, alwan_vec3 *ihls);
-void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_vec3 *rgb);
+void alwan_rgb_to_ihls(alwan_rgb const *rgb, alwan_vec3 *ihls);
+void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_rgb *rgb);
 
 /* ----------------------------------------------------------------
  * Color Difference (ΔE) Metrics
  * ---------------------------------------------------------------- */
 
- // TODO: comment other names for ΔE metrics ΔE*ab, ...
- // TODO: add ΔE*ITP, ΔE*HyAB
-
 /* ΔE*76 - Euclidean distance in Lab space */
-alwan_scalar alwan_delta_e_76(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_76(alwan_lab const *lab1, alwan_lab const *lab2);
 
 /* ΔE*94 - CIE 1994 color difference (graphic arts defaults: kL=1, K1=0.045, K2=0.015) */
-alwan_scalar alwan_delta_e_94(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_94(alwan_lab const *lab1, alwan_lab const *lab2);
 
 /* ΔE CMC(l:c) - CMC color difference (defaults: l=2, c=1 for acceptability) */
-alwan_scalar alwan_delta_e_cmc(alwan_vec3 const *lab1, alwan_vec3 const *lab2, alwan_scalar l, alwan_scalar c);
+alwan_scalar alwan_delta_e_cmc(alwan_lab const *lab1, alwan_lab const *lab2, alwan_scalar l, alwan_scalar c);
 
 /* ΔE*00 - CIEDE2000 color difference (most perceptually uniform) */
-alwan_scalar alwan_delta_e_2000(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_2000(alwan_lab const *lab1, alwan_lab const *lab2);
 
 /* ΔE ITP - ITU-R BT.2124 HDR color difference in ICtCp space (scalar_factor default: 720) */
-alwan_scalar alwan_delta_e_itp(alwan_vec3 const *ictcp1, alwan_vec3 const *ictcp2, alwan_scalar scalar_factor);
+alwan_scalar alwan_delta_e_itp(alwan_ictcp const *ictcp1, alwan_ictcp const *ictcp2, alwan_scalar scalar_factor);
 
 /* ΔE HyAB - Hybrid Delta E, improved perceptual metric */
-alwan_scalar alwan_delta_e_hyab(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_hyab(alwan_lab const *lab1, alwan_lab const *lab2);
 
 /* ΔE DIN99 - Euclidean distance in DIN99 space (variant: 0=DIN99, 1=b, 2=c, 3=d) */
 alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *din99_2);
@@ -775,7 +908,7 @@ alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *lab1, alwan_vec3 const *l
 alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
 
 /* ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space */
-alwan_scalar alwan_delta_e_zcam(alwan_vec3 const *jab1, alwan_vec3 const *jab2);
+alwan_scalar alwan_delta_e_zcam(alwan_jzazbz const *jab1, alwan_jzazbz const *jab2);
 
 /* ----------------------------------------------------------------
  * Whiteness & Yellowness Indices
@@ -815,8 +948,6 @@ alwan_scalar alwan_whiteness_cie2004(alwan_vec3 const *xy, alwan_scalar Y, alwan
  * Chromatic Adaptation Transform (CAT)
  * ---------------------------------------------------------------- */
 
-// TODO: add comment when chromatic adaptation is an identity etc.
-
 /* Chromatic Adaptation Transform (CAT) method */
 typedef enum {
     ALWAN_CAT_XYZ_SCALING = 0,  /* Von Kries in XYZ space (simplest) */
@@ -840,8 +971,8 @@ typedef enum {
  * method: CAT method (Bradford, CAT02, CAT16, or XYZ scaling)
  * out: output 3x3 adaptation matrix
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if white points are invalid */
-int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
-                     alwan_vec3 const *dst_white_xyz,
+int alwan_cat_matrix(alwan_xyz const *src_white_xyz,
+                     alwan_xyz const *dst_white_xyz,
                      alwan_cat_method method,
                      alwan_mat3x3 *out);
 
@@ -856,8 +987,8 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
  * out_stride: stride for output (in Scalars, typically 3 for packed array)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if parameters are invalid */
 int alwan_xyz_adapt(alwan_scalar const *xyz_in, size_t count, size_t in_stride,
-                    alwan_vec3 const *src_white_xyz,
-                    alwan_vec3 const *dst_white_xyz,
+                    alwan_xyz const *src_white_xyz,
+                    alwan_xyz const *dst_white_xyz,
                     alwan_cat_method method,
                     alwan_scalar *xyz_out, size_t out_stride);
 
@@ -913,15 +1044,12 @@ int alwan_illuminant_white_point(alwan_illuminant illuminant,
                                    alwan_vec3 *out_xyz);
 
 /* SPD resampling method */
-// TODO: Add nearest (optional: higher-order methods (e.g., spline))
 typedef enum {
     ALWAN_RESAMPLE_LINEAR = 0,      /* Linear interpolation */
     ALWAN_RESAMPLE_CATMULL_ROM = 1  /* Catmull-Rom spline (smoother) */
 } alwan_resample_method;
 
 /* SPD extrapolation mode (for values outside measured range) */
-// TODO: add extrapolate with specified constant value
-// TODO: add extrapolate with higher-order methods
 typedef enum {
     ALWAN_EXTRAPOLATE_ZERO = 0,     /* Clamp to zero outside range (default for reflectance) */
     ALWAN_EXTRAPOLATE_CONSTANT = 1, /* Repeat edge values (good for smooth SPDs) */
@@ -929,7 +1057,6 @@ typedef enum {
 } alwan_extrapolate_mode;
 
 /* SPD integration method for computing XYZ */
-// TODO: Add rectangular rule
 typedef enum {
     ALWAN_INTEGRATE_TRAPEZOID = 0,  /* Trapezoidal rule (fast) */
     ALWAN_INTEGRATE_SIMPSON = 1     /* Simpson's rule (more accurate) */
@@ -1196,15 +1323,6 @@ int alwan_rgb_to_spectrum_jakob2019(alwan_ctx *ctx,
                                       alwan_vec3 const *rgb,
                                       alwan_spd *out_spd);
 
-/* TODO(P8.1): Meng2015: XYZ to spectrum using optimization
- * Reference: Meng et al. "Physically Meaningful Rendering using Tristimulus Colours" (2015)
- * Requires: Iterative optimization solver, computationally intensive
- * Implementation notes:
- *   - Uses constrained optimization to find smooth reflectance spectrum
- *   - Parameters: interval (wavelength spacing), tolerance, max_iterations
- *   - Slower than Smits/Mallett but produces smooth, physically plausible spectra
- * Status: NOT YET IMPLEMENTED - requires numerical optimization library */
-
 /* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model
  * ---------------------------------------------------------------- */
@@ -1218,7 +1336,7 @@ typedef enum {
 
 /* CIECAM02 viewing conditions */
 typedef struct {
-    alwan_vec3 white_xyz;                  /* Reference white in XYZ (Y typically 100) */
+    alwan_xyz white_xyz;                   /* Reference white in XYZ (Y typically 100) */
     alwan_scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m² (typically 20% of white Y) */
     alwan_scalar background_luminance;           /* Relative luminance of background (Yb/Yw, typically 0.2 for 20% gray) */
     alwan_ciecam02_surround surround;      /* Viewing surround condition */
@@ -1241,7 +1359,7 @@ typedef struct {
  * vc: viewing conditions
  * out: output appearance correlates (J, C, h, s, Q, M, H)
  * Returns ALWAN_OK on success */
-int alwan_ciecam02_forward(alwan_vec3 const *xyz,
+int alwan_ciecam02_forward(alwan_xyz const *xyz,
                             alwan_ciecam02_viewing_conditions const *vc,
                             alwan_ciecam02_correlates *out);
 
@@ -1253,7 +1371,7 @@ int alwan_ciecam02_forward(alwan_vec3 const *xyz,
  * Returns ALWAN_OK on success */
 int alwan_ciecam02_inverse(alwan_ciecam02_correlates const *correlates,
                             alwan_ciecam02_viewing_conditions const *vc,
-                            alwan_vec3 *xyz_out);
+                            alwan_xyz *xyz_out);
 
 /* ----------------------------------------------------------------
  * CAM16 Color Appearance Model
@@ -1268,7 +1386,7 @@ typedef enum {
 
 /* CAM16 viewing conditions (similar to CIECAM02 but uses CAT16) */
 typedef struct {
-    alwan_vec3 white_xyz;                  /* Reference white in XYZ (Y typically 100) */
+    alwan_xyz white_xyz;                   /* Reference white in XYZ (Y typically 100) */
     alwan_scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m² */
     alwan_scalar background_luminance;           /* Relative luminance of background (Yb/Yw, typically 0.2) */
     alwan_cam16_surround surround;         /* Viewing surround condition */
@@ -1291,7 +1409,7 @@ typedef struct {
  * vc: viewing conditions
  * out: output appearance correlates (J, C, h, s, Q, M, H)
  * Returns ALWAN_OK on success */
-int alwan_cam16_forward(alwan_vec3 const *xyz,
+int alwan_cam16_forward(alwan_xyz const *xyz,
                         alwan_cam16_viewing_conditions const *vc,
                         alwan_cam16_correlates *out);
 
@@ -1303,7 +1421,7 @@ int alwan_cam16_forward(alwan_vec3 const *xyz,
  * Returns ALWAN_OK on success */
 int alwan_cam16_inverse(alwan_cam16_correlates const *correlates,
                         alwan_cam16_viewing_conditions const *vc,
-                        alwan_vec3 *xyz_out);
+                        alwan_xyz *xyz_out);
 
 /* CAM16-UCS (Uniform Color Space) transform for perceptual distance metrics
  * Converts CAM16 JMh to CAM16-UCS Jab for computing perceptual distances
@@ -1336,7 +1454,7 @@ typedef enum {
 
 /* ZCAM viewing conditions */
 typedef struct {
-    alwan_vec3 xyz_w;                  /* White point (absolute XYZ in cd/m²) */
+    alwan_xyz xyz_w;                   /* White point (absolute XYZ in cd/m²) */
     alwan_scalar La;                   /* Adapting luminance (cd/m²) */
     alwan_scalar Yb;                   /* Background luminance factor */
     alwan_zcam_surround surround;      /* Viewing surround condition */
@@ -1361,7 +1479,7 @@ typedef struct {
  * vc: viewing conditions
  * out: computed appearance correlates
  * Returns 0 on success, -1 on error */
-int alwan_zcam_forward(alwan_vec3 const *xyz,
+int alwan_zcam_forward(alwan_xyz const *xyz,
                        alwan_zcam_viewing_conditions const *vc,
                        alwan_zcam_correlates *out);
 
@@ -1373,7 +1491,7 @@ int alwan_zcam_forward(alwan_vec3 const *xyz,
  * Note: Inverse is approximate due to complexity */
 int alwan_zcam_inverse(alwan_zcam_correlates const *correlates,
                        alwan_zcam_viewing_conditions const *vc,
-                       alwan_vec3 *xyz);
+                       alwan_xyz *xyz);
 
 /* ZCAM to UCS (Uniform Color Space) for color difference
  * correlates: input ZCAM correlates
@@ -1397,8 +1515,8 @@ typedef enum {
 
 /* RLAB viewing conditions */
 typedef struct {
-    alwan_vec3 xyz_w;              /* White point (XYZ, Y=100) */
-    alwan_vec3 xyz_n;              /* Reference white (usually D65) */
+    alwan_xyz xyz_w;               /* White point (XYZ, Y=100) */
+    alwan_xyz xyz_n;               /* Reference white (usually D65) */
     alwan_rlab_surround surround;  /* Viewing surround */
     int D_factor;                  /* Discounting factor: 0=auto, 1=hard copy, 2=soft copy, 3=transparency */
 } alwan_rlab_viewing_conditions;
@@ -1415,7 +1533,7 @@ typedef struct {
 
 /* RLAB forward transform: XYZ -> appearance correlates
  * Returns 0 on success, -1 on error */
-int alwan_rlab_forward(alwan_vec3 const *xyz,
+int alwan_rlab_forward(alwan_xyz const *xyz,
                        alwan_rlab_viewing_conditions const *vc,
                        alwan_rlab_correlates *out);
 
@@ -1423,7 +1541,7 @@ int alwan_rlab_forward(alwan_vec3 const *xyz,
  * Returns 0 on success, -1 on error */
 int alwan_rlab_inverse(alwan_rlab_correlates const *correlates,
                        alwan_rlab_viewing_conditions const *vc,
-                       alwan_vec3 *xyz);
+                       alwan_xyz *xyz);
 
 /* ----------------------------------------------------------------
  * Hunt Color Appearance Model
@@ -1440,7 +1558,7 @@ typedef enum {
 
 /* Hunt viewing conditions */
 typedef struct {
-    alwan_vec3 xyz_w;                  /* White point (XYZ, Y=100) */
+    alwan_xyz xyz_w;                   /* White point (XYZ, Y=100) */
     alwan_scalar La;                   /* Adapting luminance (cd/m²) */
     alwan_scalar Yb;                   /* Background luminance factor */
     alwan_hunt_surround surround;      /* Viewing surround */
@@ -1460,7 +1578,7 @@ typedef struct {
 /* Hunt forward transform: XYZ -> appearance correlates
  * Returns 0 on success, -1 on error
  * Note: Hunt inverse is not implemented due to extreme complexity */
-int alwan_hunt_forward(alwan_vec3 const *xyz,
+int alwan_hunt_forward(alwan_xyz const *xyz,
                        alwan_hunt_viewing_conditions const *vc,
                        alwan_hunt_correlates *out);
 
@@ -1479,7 +1597,7 @@ typedef enum {
 
 /* Hellwig2022 viewing conditions */
 typedef struct {
-    alwan_vec3 white_xyz;                      /* Reference white in XYZ (Y typically 100) */
+    alwan_xyz white_xyz;                       /* Reference white in XYZ (Y typically 100) */
     alwan_scalar adapting_luminance;           /* Luminance of adapting field (La) in cd/m² */
     alwan_scalar background_luminance;         /* Relative luminance of background (Yb/Yw, typically 0.2) */
     alwan_hellwig2022_surround surround;       /* Viewing surround condition */
@@ -1498,14 +1616,14 @@ typedef struct {
 } alwan_hellwig2022_correlates;
 
 /* Hellwig2022 forward transform: XYZ -> appearance correlates */
-int alwan_hellwig2022_forward(alwan_vec3 const *xyz,
+int alwan_hellwig2022_forward(alwan_xyz const *xyz,
                                alwan_hellwig2022_viewing_conditions const *vc,
                                alwan_hellwig2022_correlates *out);
 
 /* Hellwig2022 inverse transform: appearance correlates -> XYZ */
 int alwan_hellwig2022_inverse(alwan_hellwig2022_correlates const *correlates,
                                alwan_hellwig2022_viewing_conditions const *vc,
-                               alwan_vec3 *xyz_out);
+                               alwan_xyz *xyz_out);
 
 /* ----------------------------------------------------------------
  * Kim2009 Color Appearance Model
@@ -1515,7 +1633,7 @@ int alwan_hellwig2022_inverse(alwan_hellwig2022_correlates const *correlates,
 
 /* Kim2009 viewing conditions */
 typedef struct {
-    alwan_vec3 white_xyz;              /* Reference white in XYZ (Y typically 100) */
+    alwan_xyz white_xyz;               /* Reference white in XYZ (Y typically 100) */
     alwan_scalar La;                   /* Adapting luminance (cd/m²) */
     alwan_scalar Yb;                   /* Background luminance factor */
     int discount_illuminant;           /* 1 to discount illuminant, 0 otherwise */
@@ -1529,14 +1647,14 @@ typedef struct {
 } alwan_kim2009_correlates;
 
 /* Kim2009 forward transform: XYZ -> appearance correlates */
-int alwan_kim2009_forward(alwan_vec3 const *xyz,
+int alwan_kim2009_forward(alwan_xyz const *xyz,
                            alwan_kim2009_viewing_conditions const *vc,
                            alwan_kim2009_correlates *out);
 
 /* Kim2009 inverse transform: appearance correlates -> XYZ */
 int alwan_kim2009_inverse(alwan_kim2009_correlates const *correlates,
                            alwan_kim2009_viewing_conditions const *vc,
-                           alwan_vec3 *xyz_out);
+                           alwan_xyz *xyz_out);
 
 /* ----------------------------------------------------------------
  * LLAB Color Appearance Model
@@ -1553,9 +1671,9 @@ typedef enum {
 
 /* LLAB viewing conditions */
 typedef struct {
-    alwan_vec3 white_xyz;          /* Reference white in XYZ (Y typically 100) */
-    alwan_vec3 xyz_0;              /* Illuminant of test condition */
-    alwan_vec3 xyz_r;              /* Illuminant of reference condition */
+    alwan_xyz white_xyz;           /* Reference white in XYZ (Y typically 100) */
+    alwan_xyz xyz_0;               /* Illuminant of test condition */
+    alwan_xyz xyz_r;               /* Illuminant of reference condition */
     alwan_scalar Y_b;              /* Background luminance factor */
     alwan_llab_surround surround;  /* Viewing surround */
     int D_factor;                  /* Degree of adaptation (0-1 or auto) */
@@ -1570,7 +1688,7 @@ typedef struct {
 } alwan_llab_correlates;
 
 /* LLAB forward transform: XYZ -> appearance correlates */
-int alwan_llab_forward(alwan_vec3 const *xyz,
+int alwan_llab_forward(alwan_xyz const *xyz,
                         alwan_llab_viewing_conditions const *vc,
                         alwan_llab_correlates *out);
 
@@ -1582,7 +1700,7 @@ int alwan_llab_forward(alwan_vec3 const *xyz,
 
 /* ATD95 viewing conditions */
 typedef struct {
-    alwan_vec3 white_xyz;          /* Reference white in XYZ */
+    alwan_xyz white_xyz;           /* Reference white in XYZ */
     alwan_scalar Y_0;              /* Absolute adapting field luminance in cd/m² */
     alwan_scalar sigma;            /* Saturation adjustment parameter */
     alwan_scalar k1;               /* Adaptation parameter 1 */
@@ -1603,7 +1721,7 @@ typedef struct {
 } alwan_atd95_correlates;
 
 /* ATD95 forward transform: XYZ -> correlates */
-int alwan_atd95_forward(alwan_vec3 const *xyz,
+int alwan_atd95_forward(alwan_xyz const *xyz,
                          alwan_atd95_viewing_conditions const *vc,
                          alwan_atd95_correlates *out);
 
@@ -1615,7 +1733,7 @@ int alwan_atd95_forward(alwan_vec3 const *xyz,
 
 /* Nayatani95 viewing conditions */
 typedef struct {
-    alwan_vec3 white_xyz;              /* Reference white in XYZ (Y typically 100) */
+    alwan_xyz white_xyz;               /* Reference white in XYZ (Y typically 100) */
     alwan_scalar L_0;                  /* Absolute luminance of reference white (cd/m²) */
     alwan_scalar Y_0;                  /* Relative luminance of background */
     alwan_scalar E_0;                  /* Illuminance of reference field (lux) */
@@ -1633,7 +1751,7 @@ typedef struct {
 } alwan_nayatani95_correlates;
 
 /* Nayatani95 forward transform: XYZ -> appearance correlates */
-int alwan_nayatani95_forward(alwan_vec3 const *xyz,
+int alwan_nayatani95_forward(alwan_xyz const *xyz,
                                alwan_nayatani95_viewing_conditions const *vc,
                                alwan_nayatani95_correlates *out);
 
@@ -1642,21 +1760,20 @@ int alwan_nayatani95_forward(alwan_vec3 const *xyz,
  * ---------------------------------------------------------------- */
 
 /* RGB <-> HSV conversions (all values in [0, 1]) */
-int alwan_rgb_to_hsv(alwan_vec3 const *rgb, alwan_vec3 *hsv_out);
-int alwan_hsv_to_rgb(alwan_vec3 const *hsv, alwan_vec3 *rgb_out);
+int alwan_rgb_to_hsv(alwan_rgb const *rgb, alwan_hsv *hsv_out);
+int alwan_hsv_to_rgb(alwan_hsv const *hsv, alwan_rgb *rgb_out);
 
 /* RGB <-> HSL conversions (all values in [0, 1]) */
-int alwan_rgb_to_hsl(alwan_vec3 const *rgb, alwan_vec3 *hsl_out);
-int alwan_hsl_to_rgb(alwan_vec3 const *hsl, alwan_vec3 *rgb_out);
+int alwan_rgb_to_hsl(alwan_rgb const *rgb, alwan_hsl *hsl_out);
+int alwan_hsl_to_rgb(alwan_hsl const *hsl, alwan_rgb *rgb_out);
 
 /* RGB <-> CMY conversions (all values in [0, 1]) */
-int alwan_rgb_to_cmy(alwan_vec3 const *rgb, alwan_vec3 *cmy_out);
-int alwan_cmy_to_rgb(alwan_vec3 const *cmy, alwan_vec3 *rgb_out);
+int alwan_rgb_to_cmy(alwan_rgb const *rgb, alwan_cmy *cmy_out);
+int alwan_cmy_to_rgb(alwan_cmy const *cmy, alwan_rgb *rgb_out);
 
-// TODO: add alwan_vec4 for CMYK output
 /* CMY <-> CMYK conversions (all values in [0, 1]) */
-int alwan_cmy_to_cmyk(alwan_vec3 const *cmy, alwan_scalar *c, alwan_scalar *m, alwan_scalar *y, alwan_scalar *k);
-int alwan_cmyk_to_cmy(alwan_scalar c, alwan_scalar m, alwan_scalar y, alwan_scalar k, alwan_vec3 *cmy_out);
+int alwan_cmy_to_cmyk(alwan_cmy const *cmy, alwan_scalar *c, alwan_scalar *m, alwan_scalar *y, alwan_scalar *k);
+int alwan_cmyk_to_cmy(alwan_scalar c, alwan_scalar m, alwan_scalar y, alwan_scalar k, alwan_cmy *cmy_out);
 
 /* YCbCr standard identifiers */
 typedef enum {
@@ -1666,19 +1783,19 @@ typedef enum {
 } alwan_ycbcr_standard;
 
 /* RGB <-> YCbCr conversions (RGB in [0, 1], YCbCr full range [0, 1]) */
-int alwan_rgb_to_ycbcr(alwan_vec3 const *rgb, alwan_ycbcr_standard standard, alwan_vec3 *ycbcr_out);
-int alwan_ycbcr_to_rgb(alwan_vec3 const *ycbcr, alwan_ycbcr_standard standard, alwan_vec3 *rgb_out);
+int alwan_rgb_to_ycbcr(alwan_rgb const *rgb, alwan_ycbcr_standard standard, alwan_ycbcr *ycbcr_out);
+int alwan_ycbcr_to_rgb(alwan_ycbcr const *ycbcr, alwan_ycbcr_standard standard, alwan_rgb *rgb_out);
 
 /* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020) */
-int alwan_rgb_to_yccbccrc(alwan_vec3 const *rgb, alwan_vec3 *yccbccrc_out);
-int alwan_yccbccrc_to_rgb(alwan_vec3 const *yccbccrc, alwan_vec3 *rgb_out);
+int alwan_rgb_to_yccbccrc(alwan_rgb const *rgb, alwan_yccbccrc *yccbccrc_out);
+int alwan_yccbccrc_to_rgb( alwan_yccbccrc const *yccbccrc, alwan_rgb *rgb_out);
 
 /* RGB <-> YCoCg conversions (video compression, real-time graphics)
  * - Y: luma, Co: orange chrominance, Cg: green chrominance
  * - Reversible integer transform (exact round-trip with proper scaling)
  * - Used in H.264/AVC and video codecs */
-int alwan_rgb_to_ycocg(alwan_vec3 const *rgb, alwan_vec3 *ycocg_out);
-int alwan_ycocg_to_rgb(alwan_vec3 const *ycocg, alwan_vec3 *rgb_out);
+int alwan_rgb_to_ycocg(alwan_rgb const *rgb, alwan_ycocg *ycocg_out);
+int alwan_ycocg_to_rgb(alwan_ycocg const *ycocg, alwan_rgb *rgb_out);
 
 /* ----------------------------------------------------------------
  * M10: Light Quality & CCT (Correlated Color Temperature)
@@ -2026,19 +2143,19 @@ int alwan_ncs_to_xyz(char const *ncs_notation, alwan_vec3 *xyz);
 int alwan_xyz_to_ncs(alwan_vec3 const *xyz, char *ncs_notation, size_t notation_size);
 
 /* Additional RGB Space Definitions
- * Get RGB space primaries and white point by name
- * name: RGB space name (e.g., "Adobe RGB", "ProPhoto RGB")
+ * Get RGB space primaries and white point by enum
+ * space: RGB color space identifier
  * primaries: receives RGB primaries as xy chromaticities (3x2 matrix)
  * white_point: receives white point xy chromaticity
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not found */
-int alwan_rgb_space_by_name(char const *name, alwan_scalar primaries[6], alwan_vec2 *white_point);
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if space is invalid */
+int alwan_rgb_space_by_enum(alwan_rgb_space space, alwan_scalar primaries[6], alwan_vec2 *white_point);
 
-/* Get RGB space transfer function name
- * name: RGB space name
- * tf_name: receives transfer function name (allocated by caller)
- * tf_name_size: size of tf_name buffer (should be >= 32)
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if name not found */
-int alwan_rgb_space_tf_name(char const *name, char *tf_name, size_t tf_name_size);
+/* Get RGB space transfer functions
+ * space: RGB color space identifier
+ * oetf: receives OETF (Opto-Electronic Transfer Function)
+ * eotf: receives EOTF (Electro-Optical Transfer Function)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if space is invalid */
+int alwan_rgb_space_get_tfs(alwan_rgb_space space, alwan_transfer_function *oetf, alwan_transfer_function *eotf);
 
 /* ================================================================
  * Color Correction & Grading Tools

@@ -36,37 +36,37 @@ def generate_robertson_cct_table(output_dir):
     # Compute Planckian locus points in CIE 1960 UCS with slopes
     robertson_table = []
     for i, cct in enumerate(robertson_ccts):
-        # Get xy for blackbody at this CCT from colour-science (NO HARDCODING)
+        # Get xy for blackbody at this CCT from colour-science
         xy = colour.CCT_to_xy(cct)
 
-        # Convert CIE 1931 xy to CIE 1960 UCS uv
-        u = 4 * xy[0] / (12 * xy[1] - 2 * xy[0] + 3)
-        v = 6 * xy[1] / (12 * xy[1] - 2 * xy[0] + 3)
+        # Convert CIE 1931 xy to CIE 1960 UCS uv using colour-science
+        uv = colour.xy_to_UCS_uv(xy)
+        u, v = uv[0], uv[1]
 
         # Compute slopes (du/dT and dv/dT) for interpolation
         # Use finite differences with neighboring points
         if i == 0:
             # Forward difference for first point
             xy_next = colour.CCT_to_xy(robertson_ccts[i+1])
-            u_next = 4 * xy_next[0] / (12 * xy_next[1] - 2 * xy_next[0] + 3)
-            v_next = 6 * xy_next[1] / (12 * xy_next[1] - 2 * xy_next[0] + 3)
+            uv_next = colour.xy_to_UCS_uv(xy_next)
+            u_next, v_next = uv_next[0], uv_next[1]
             du = (u_next - u) / (robertson_ccts[i+1] - cct)
             dv = (v_next - v) / (robertson_ccts[i+1] - cct)
         elif i == len(robertson_ccts) - 1:
             # Backward difference for last point
             xy_prev = colour.CCT_to_xy(robertson_ccts[i-1])
-            u_prev = 4 * xy_prev[0] / (12 * xy_prev[1] - 2 * xy_prev[0] + 3)
-            v_prev = 6 * xy_prev[1] / (12 * xy_prev[1] - 2 * xy_prev[0] + 3)
+            uv_prev = colour.xy_to_UCS_uv(xy_prev)
+            u_prev, v_prev = uv_prev[0], uv_prev[1]
             du = (u - u_prev) / (cct - robertson_ccts[i-1])
             dv = (v - v_prev) / (cct - robertson_ccts[i-1])
         else:
             # Central difference for middle points
             xy_prev = colour.CCT_to_xy(robertson_ccts[i-1])
             xy_next = colour.CCT_to_xy(robertson_ccts[i+1])
-            u_prev = 4 * xy_prev[0] / (12 * xy_prev[1] - 2 * xy_prev[0] + 3)
-            v_prev = 6 * xy_prev[1] / (12 * xy_prev[1] - 2 * xy_prev[0] + 3)
-            u_next = 4 * xy_next[0] / (12 * xy_next[1] - 2 * xy_next[0] + 3)
-            v_next = 6 * xy_next[1] / (12 * xy_next[1] - 2 * xy_next[0] + 3)
+            uv_prev = colour.xy_to_UCS_uv(xy_prev)
+            uv_next = colour.xy_to_UCS_uv(xy_next)
+            u_prev, v_prev = uv_prev[0], uv_prev[1]
+            u_next, v_next = uv_next[0], uv_next[1]
             du = (u_next - u_prev) / (robertson_ccts[i+1] - robertson_ccts[i-1])
             dv = (v_next - v_prev) / (robertson_ccts[i+1] - robertson_ccts[i-1])
 

@@ -38,7 +38,6 @@ static void aces_rec709_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_
     alwan_scalar const d = ALWAN_LITERAL(0.59);
     alwan_scalar const e = ALWAN_LITERAL(0.14);
 
-    // TODO: move ACES_TONEMAP to a common header as a inline function
     /* Tone mapping formula (per-channel) */
     #define ACES_TONEMAP(x) (((x) * (a * (x) + b)) / ((x) * (c * (x) + d) + e))
 

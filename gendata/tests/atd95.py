@@ -64,20 +64,25 @@ def generate_atd95_tests(output_dir):
         # ATD95 returns (A, T1, D, T2) - achromatic, tritanopic, deuteranopic, and second tritanopic signals
         atd = colour.XYZ_to_ATD95(xyz_arr, xyz_0_arr, Y0, k1, k2)
 
-        # Append inputs and outputs: XYZ_in (3), XYZ_0 (3), Y_0, k_1, k_2, A, T1, D, T2
+        # Append inputs and outputs: XYZ_in (3), XYZ_0 (3), Y_0, k_1, k_2, h, C, Q, A_1, T_1, D_1, A_2, T_2, D_2
         test_data.extend(xyz_in)
         test_data.extend(xyz_0)
         test_data.append(Y0)
         test_data.append(k1)
         test_data.append(k2)
-        test_data.append(atd.A)
+        test_data.append(atd.h)
+        test_data.append(atd.C)
+        test_data.append(atd.Q)
+        test_data.append(atd.A_1)
         test_data.append(atd.T_1)
-        test_data.append(atd.D)
+        test_data.append(atd.D_1)
+        test_data.append(atd.A_2)
         test_data.append(atd.T_2)
+        test_data.append(atd.D_2)
 
-    # Save
+    # Save: XYZ_in(3) + XYZ_0(3) + Y_0(1) + k_1(1) + k_2(1) + h(1) + C(1) + Q(1) + A_1(1) + T_1(1) + D_1(1) + A_2(1) + T_2(1) + D_2(1) = 18 values/test
     filepath = os.path.join(output_dir, 'atd95.csv')
-    save_test_data(test_data, filepath, f"{len(test_cases)} test cases, 13 values each")
+    save_test_data(test_data, filepath, f"{len(test_cases)} test cases, 18 values each")
 
 
 if __name__ == '__main__':

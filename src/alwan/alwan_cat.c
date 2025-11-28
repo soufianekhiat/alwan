@@ -11,109 +11,79 @@
 #include <string.h>
 
 /* ----------------------------------------------------------------
- * CAT Matrix Definitions
+ * CAT Matrix Accessors
  * ---------------------------------------------------------------- */
 
 /* Bradford CAT matrix (most common, used in ICC profiles)
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_bradford_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_bradford.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_bradford, sizeof(g_cat_bradford));
 }
 
 /* CAT02 matrix (from CIECAM02)
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_cat02_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_cat02.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_cat02, sizeof(g_cat_cat02));
 }
 
 /* CAT16 matrix (from CAM16)
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_cat16_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_cat16.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_cat16, sizeof(g_cat_cat16));
 }
 
 /* ----------------------------------------------------------------
- * Extended CAT Matrix Definitions
+ * Extended CAT Matrix Accessors
  * ---------------------------------------------------------------- */
 
 /* Sharp CAT matrix
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_sharp_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_sharp.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_sharp, sizeof(g_cat_sharp));
 }
 
 /* Fairchild 1990 CAT matrix
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_fairchild_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_fairchild.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_fairchild, sizeof(g_cat_fairchild));
 }
 
 /* CMCCAT97 matrix
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_cmccat97_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_cmccat97.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_cmccat97, sizeof(g_cat_cmccat97));
 }
 
 /* CMCCAT2000 matrix
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_cmccat2000_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_cmccat2000.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_cmccat2000, sizeof(g_cat_cmccat2000));
 }
 
 /* CAT02 Brill 2008 variant matrix
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_cat02_brill_2008_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_cat02_brill_2008.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_cat02_brill_2008, sizeof(g_cat_cat02_brill_2008));
 }
 
 /* Bianco 2010 CAT matrix
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_bianco_2010_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_bianco_2010.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_bianco_2010, sizeof(g_cat_bianco_2010));
 }
 
 /* Bianco PC 2010 CAT matrix
- * Generated from colour-science */
+ * Data defined in alwan_data.c */
 static void get_bianco_pc_2010_matrix(alwan_mat3x3 *out) {
-    static alwan_scalar const data[9] = {
-#include "data/matrices/cat_bianco_pc_2010.csv"
-    };
-    memcpy(out->m, data, sizeof(data));
+    memcpy(out->m, g_cat_bianco_pc_2010, sizeof(g_cat_bianco_pc_2010));
 }
 
 /* ----------------------------------------------------------------
  * CAT Implementation
  * ---------------------------------------------------------------- */
 
-int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
-                     alwan_vec3 const *dst_white_xyz,
+int alwan_cat_matrix(alwan_xyz const *src_white_xyz,
+                     alwan_xyz const *dst_white_xyz,
                      alwan_cat_method method,
                      alwan_mat3x3 *out) {
     if (!src_white_xyz || !dst_white_xyz || !out) {
@@ -121,16 +91,16 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
     }
 
     /* Validate white points (Y should be close to 1.0, and all components > 0) */
-    if (src_white_xyz->v[1] < ALWAN_EPSILON || dst_white_xyz->v[1] < ALWAN_EPSILON) {
+    if (src_white_xyz->y < ALWAN_EPSILON || dst_white_xyz->y < ALWAN_EPSILON) {
         return ALWAN_E_INVALID;
     }
 
     /* Handle XYZ scaling separately (simplest case) */
     if (method == ALWAN_CAT_XYZ_SCALING) {
         /* XYZ scaling: diagonal matrix of ratios */
-        alwan_scalar const sx = dst_white_xyz->v[0] / src_white_xyz->v[0];
-        alwan_scalar const sy = dst_white_xyz->v[1] / src_white_xyz->v[1];
-        alwan_scalar const sz = dst_white_xyz->v[2] / src_white_xyz->v[2];
+        alwan_scalar const sx = dst_white_xyz->x / src_white_xyz->x;
+        alwan_scalar const sy = dst_white_xyz->y / src_white_xyz->y;
+        alwan_scalar const sz = dst_white_xyz->z / src_white_xyz->z;
 
         out->m[0] = sx;                 out->m[1] = ALWAN_LITERAL(0.0); out->m[2] = ALWAN_LITERAL(0.0);
         out->m[3] = ALWAN_LITERAL(0.0); out->m[4] = sy;                 out->m[5] = ALWAN_LITERAL(0.0);
@@ -181,8 +151,8 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
 
     /* Transform white points to cone response space */
     alwan_vec3 rgb_src, rgb_dst;
-    alwan_mat3_mulv(&M, src_white_xyz, &rgb_src);
-    alwan_mat3_mulv(&M, dst_white_xyz, &rgb_dst);
+    alwan_mat3_mulv(&M, (alwan_vec3 const *)src_white_xyz, &rgb_src);
+    alwan_mat3_mulv(&M, (alwan_vec3 const *)dst_white_xyz, &rgb_dst);
 
     /* Compute diagonal scaling matrix D = diag(rgb_dst ./ rgb_src) */
     alwan_mat3x3 D;
@@ -207,8 +177,8 @@ int alwan_cat_matrix(alwan_vec3 const *src_white_xyz,
 }
 
 int alwan_xyz_adapt(alwan_scalar const *xyz_in, size_t count, size_t in_stride,
-                    alwan_vec3 const *src_white_xyz,
-                    alwan_vec3 const *dst_white_xyz,
+                    alwan_xyz const *src_white_xyz,
+                    alwan_xyz const *dst_white_xyz,
                     alwan_cat_method method,
                     alwan_scalar *xyz_out, size_t out_stride) {
     if (!xyz_in || !xyz_out || !src_white_xyz || !dst_white_xyz) {

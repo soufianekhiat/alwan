@@ -991,15 +991,9 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
         prod_z[i] = spd_value * z_bar_resampled.values[i];
     }
 
-    // TODO: Check colour-science for the proper implementation
-    /* Apply bandpass correction if requested (Stearns & Stearns 1988) */
-    /* TODO(M6): Implement full Stearns & Stearns bandpass correction algorithm
-     * For now, bandpass_nm parameter is accepted but not used.
-     * Correction would involve:
-     * 1. Computing second derivatives of reflectance spectrum
-     * 2. Applying correction factor based on bandpass width
-     * 3. Adjusting XYZ values accordingly */
-    (void)bandpass_nm;  /* Unused for now */
+    /* Bandpass correction (Stearns & Stearns 1988) not yet implemented.
+     * For now, bandpass_nm parameter is accepted but not used. */
+    (void)bandpass_nm;
 
     /* Integrate to get XYZ */
     alwan_scalar dx = (spd->wavelength_max - spd->wavelength_min) / (alwan_scalar)(spd->count - 1);

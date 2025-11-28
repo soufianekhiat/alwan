@@ -58,7 +58,7 @@ static alwan_scalar hunt_fn(alwan_scalar x) {
  * Hunt Forward Transform: XYZ -> Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_hunt_forward(alwan_vec3 const *xyz,
+int alwan_hunt_forward(alwan_xyz const *xyz,
                        alwan_hunt_viewing_conditions const *vc,
                        alwan_hunt_correlates *out) {
     if (!xyz || !vc || !out) {
@@ -80,13 +80,13 @@ int alwan_hunt_forward(alwan_vec3 const *xyz,
 
     /* Step 3: Convert XYZ to LMS using HPE matrix */
     alwan_vec3 lms, lms_w;
-    lms.v[0] = M_HPE[0] * xyz->v[0] + M_HPE[1] * xyz->v[1] + M_HPE[2] * xyz->v[2];
-    lms.v[1] = M_HPE[3] * xyz->v[0] + M_HPE[4] * xyz->v[1] + M_HPE[5] * xyz->v[2];
-    lms.v[2] = M_HPE[6] * xyz->v[0] + M_HPE[7] * xyz->v[1] + M_HPE[8] * xyz->v[2];
+    lms.v[0] = M_HPE[0] * xyz->x + M_HPE[1] * xyz->y + M_HPE[2] * xyz->z;
+    lms.v[1] = M_HPE[3] * xyz->x + M_HPE[4] * xyz->y + M_HPE[5] * xyz->z;
+    lms.v[2] = M_HPE[6] * xyz->x + M_HPE[7] * xyz->y + M_HPE[8] * xyz->z;
 
-    lms_w.v[0] = M_HPE[0] * vc->xyz_w.v[0] + M_HPE[1] * vc->xyz_w.v[1] + M_HPE[2] * vc->xyz_w.v[2];
-    lms_w.v[1] = M_HPE[3] * vc->xyz_w.v[0] + M_HPE[4] * vc->xyz_w.v[1] + M_HPE[5] * vc->xyz_w.v[2];
-    lms_w.v[2] = M_HPE[6] * vc->xyz_w.v[0] + M_HPE[7] * vc->xyz_w.v[1] + M_HPE[8] * vc->xyz_w.v[2];
+    lms_w.v[0] = M_HPE[0] * vc->xyz_w.x + M_HPE[1] * vc->xyz_w.y + M_HPE[2] * vc->xyz_w.z;
+    lms_w.v[1] = M_HPE[3] * vc->xyz_w.x + M_HPE[4] * vc->xyz_w.y + M_HPE[5] * vc->xyz_w.z;
+    lms_w.v[2] = M_HPE[6] * vc->xyz_w.x + M_HPE[7] * vc->xyz_w.y + M_HPE[8] * vc->xyz_w.z;
 
     /* Step 4: Apply chromatic adaptation with discounting */
     alwan_scalar D = vc->discount_illuminant ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
@@ -121,7 +121,7 @@ int alwan_hunt_forward(alwan_vec3 const *xyz,
                       ALWAN_LITERAL(0.05) * lms_n.v[2] - ALWAN_LITERAL(3.05) + ALWAN_LITERAL(1.0));
 
     /* Step 10: Compute brightness Q (simplified) */
-    alwan_scalar Yw = vc->xyz_w.v[1];
+    alwan_scalar Yw = vc->xyz_w.y;
     alwan_scalar Yb = vc->Yb;
 
     alwan_scalar N1 = ALWAN_POW(ALWAN_LITERAL(7.0), ALWAN_LITERAL(0.6));

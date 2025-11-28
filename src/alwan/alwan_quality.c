@@ -1195,12 +1195,12 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
     }
 
     /* Step 1: Compute XYZ for sample under test illuminant */
-    alwan_vec3 xyz_sample_test, xyz_ref_test;
+    alwan_xyz xyz_sample_test, xyz_ref_test;
     int status;
 
     status = alwan_xyz_from_spd(ctx, sample_reflectance, test_illuminant,
                                 observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0),
-                                &xyz_sample_test);
+                                (alwan_vec3 *)&xyz_sample_test);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1208,7 +1208,7 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
     /* Step 2: Compute XYZ for reference under test illuminant */
     status = alwan_xyz_from_spd(ctx, reference_reflectance, test_illuminant,
                                 observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0),
-                                &xyz_ref_test);
+                                (alwan_vec3 *)&xyz_ref_test);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1228,10 +1228,10 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_vec3 xyz_test_white;
+    alwan_xyz xyz_test_white;
     status = alwan_xyz_from_spd(ctx, &perfect_white, test_illuminant,
                                 observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0),
-                                &xyz_test_white);
+                                (alwan_vec3 *)&xyz_test_white);
     alwan_spd_destroy(ctx, &perfect_white);
 
     if (status != ALWAN_OK) {
@@ -1239,12 +1239,12 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
     }
 
     /* Step 4: Convert to CIELAB using test illuminant white point */
-    alwan_vec3 lab_sample, lab_ref;
+    alwan_lab lab_sample, lab_ref;
     alwan_xyz_to_lab(&xyz_sample_test, &xyz_test_white, &lab_sample);
     alwan_xyz_to_lab(&xyz_ref_test, &xyz_test_white, &lab_ref);
 
     /* Step 5: Compute ΔE*ab (1976) */
-    alwan_scalar delta_e = alwan_delta_e_76(&lab_sample, &lab_ref);
+    alwan_scalar delta_e = alwan_delta_e_76((alwan_lab const *)&lab_sample, (alwan_lab const *)&lab_ref);
 
     return delta_e;
 }
@@ -1393,14 +1393,14 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Get chromatic adaptation matrices */
     alwan_mat3x3 cat_test_to_d65, cat_ref_to_d65;
-    status = alwan_cat_matrix(&xyz_test_white, &d65_white, ALWAN_CAT_CAT02, &cat_test_to_d65);
+    status = alwan_cat_matrix((alwan_xyz const *)&xyz_test_white, (alwan_xyz const *)&d65_white, ALWAN_CAT_CAT02, &cat_test_to_d65);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
         alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    status = alwan_cat_matrix(&xyz_ref_white, &d65_white, ALWAN_CAT_CAT02, &cat_ref_to_d65);
+    status = alwan_cat_matrix((alwan_xyz const *)&xyz_ref_white, (alwan_xyz const *)&d65_white, ALWAN_CAT_CAT02, &cat_ref_to_d65);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
         alwan_spd_destroy(ctx, &test_spd_resampled);
@@ -1470,14 +1470,14 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         alwan_mat3_mulv(&cat_ref_to_d65, &xyz_ref, &xyz_ref_adapted);
 
         /* Convert to CIELAB */
-        alwan_vec3 lab_test, lab_ref;
-        alwan_xyz_to_lab(&xyz_test_adapted, &d65_white, &lab_test);
-        alwan_xyz_to_lab(&xyz_ref_adapted, &d65_white, &lab_ref);
+        alwan_lab lab_test, lab_ref;
+        alwan_xyz_to_lab((alwan_xyz const *)&xyz_test_adapted, (alwan_xyz const *)&d65_white, &lab_test);
+        alwan_xyz_to_lab((alwan_xyz const *)&xyz_ref_adapted, (alwan_xyz const *)&d65_white, &lab_ref);
 
         /* Calculate color difference ΔE*ab */
-        alwan_scalar dL = lab_test.v[0] - lab_ref.v[0];
-        alwan_scalar da = lab_test.v[1] - lab_ref.v[1];
-        alwan_scalar db = lab_test.v[2] - lab_ref.v[2];
+        alwan_scalar dL = lab_test.L - lab_ref.L;
+        alwan_scalar da = lab_test.a - lab_ref.a;
+        alwan_scalar db = lab_test.b - lab_ref.b;
         alwan_scalar delta_e = ALWAN_SQRT(dL * dL + da * da + db * db);
 
         delta_e_sum += delta_e;
@@ -1650,13 +1650,17 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     /* Setup CIECAM02 viewing conditions (standard for TM-30) */
     alwan_ciecam02_viewing_conditions vc_test, vc_ref;
 
-    vc_test.white_xyz = xyz_test_white_10deg;
+    vc_test.white_xyz.x = xyz_test_white_10deg.v[0];
+    vc_test.white_xyz.y = xyz_test_white_10deg.v[1];
+    vc_test.white_xyz.z = xyz_test_white_10deg.v[2];
     vc_test.adapting_luminance = ALWAN_LITERAL(100.0);
     vc_test.background_luminance = ALWAN_LITERAL(20.0);
     vc_test.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
     vc_test.discount_illuminant = 0;
 
-    vc_ref.white_xyz = xyz_ref_white_10deg;
+    vc_ref.white_xyz.x = xyz_ref_white_10deg.v[0];
+    vc_ref.white_xyz.y = xyz_ref_white_10deg.v[1];
+    vc_ref.white_xyz.z = xyz_ref_white_10deg.v[2];
     vc_ref.adapting_luminance = ALWAN_LITERAL(100.0);
     vc_ref.background_luminance = ALWAN_LITERAL(20.0);
     vc_ref.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
@@ -1722,14 +1726,14 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Calculate CIECAM02 correlates */
         alwan_ciecam02_correlates cam_test, cam_ref;
-        status = alwan_ciecam02_forward(&xyz_test, &vc_test, &cam_test);
+        status = alwan_ciecam02_forward((alwan_xyz const *)&xyz_test, &vc_test, &cam_test);
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
             alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
-        status = alwan_ciecam02_forward(&xyz_ref, &vc_ref, &cam_ref);
+        status = alwan_ciecam02_forward((alwan_xyz const *)&xyz_ref, &vc_ref, &cam_ref);
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
             alwan_spd_destroy(ctx, &test_spd_resampled);
