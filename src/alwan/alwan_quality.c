@@ -20,7 +20,7 @@
  * Formula: CCT = 437n³ + 3601n² + 6861n + 5517
  * where n = (x - 0.3320) / (0.1858 - y)
  */
-alwan_scalar alwan_cct_mccamy_xy(alwan_vec3 const *xy) {
+alwan_scalar alwan_cct_mccamy_xy(alwan_vec2 const *xy) {
     if (!xy) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -84,7 +84,7 @@ static inline void robertson_get_point(size_t idx,
     *dv  = robertson_table_data[offset + 4];
 }
 
-alwan_scalar alwan_cct_robertson_xy(alwan_vec3 const *xy) {
+alwan_scalar alwan_cct_robertson_xy(alwan_vec2 const *xy) {
     if (!xy) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -728,7 +728,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_vec3 xyz_test_white;
+    alwan_xyz xyz_test_white;
     status = alwan_xyz_from_spd(ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -743,24 +743,23 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Calculate normalization factor to scale XYZ to Y=100 for white point */
     alwan_scalar test_norm_factor = ALWAN_LITERAL(1.0);
-    if (xyz_test_white.v[1] > ALWAN_EPSILON) {
-        test_norm_factor = ALWAN_LITERAL(100.0) / xyz_test_white.v[1];
-        xyz_test_white.v[0] *= test_norm_factor;
-        xyz_test_white.v[1] *= test_norm_factor;
-        xyz_test_white.v[2] *= test_norm_factor;
+    if (xyz_test_white.y > ALWAN_EPSILON) {
+        test_norm_factor = ALWAN_LITERAL(100.0) / xyz_test_white.y;
+        xyz_test_white.x *= test_norm_factor;
+        xyz_test_white.y *= test_norm_factor;
+        xyz_test_white.z *= test_norm_factor;
     }
 
     /* Convert XYZ to xy chromaticity */
-    alwan_scalar sum = xyz_test_white.v[0] + xyz_test_white.v[1] + xyz_test_white.v[2];
+    alwan_scalar sum = xyz_test_white.x + xyz_test_white.y + xyz_test_white.z;
     if (sum < ALWAN_EPSILON) {
         alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_vec3 xy_test;
-    xy_test.v[0] = xyz_test_white.v[0] / sum;
-    xy_test.v[1] = xyz_test_white.v[1] / sum;
-    xy_test.v[2] = ALWAN_LITERAL(0.0);
+    alwan_vec2 xy_test;
+    xy_test.v[0] = xyz_test_white.x / sum;
+    xy_test.v[1] = xyz_test_white.y / sum;
 
     /* Calculate CCT using Robertson's method */
     alwan_scalar cct = alwan_cct_robertson_xy(&xy_test);
@@ -793,7 +792,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_vec3 xyz_ref_white;
+    alwan_xyz xyz_ref_white;
     status = alwan_xyz_from_spd(ctx, &perfect_white, &reference_spd,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -809,11 +808,11 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Calculate normalization factor for reference illuminant */
     alwan_scalar ref_norm_factor = ALWAN_LITERAL(1.0);
-    if (xyz_ref_white.v[1] > ALWAN_EPSILON) {
-        ref_norm_factor = ALWAN_LITERAL(100.0) / xyz_ref_white.v[1];
-        xyz_ref_white.v[0] *= ref_norm_factor;
-        xyz_ref_white.v[1] *= ref_norm_factor;
-        xyz_ref_white.v[2] *= ref_norm_factor;
+    if (xyz_ref_white.y > ALWAN_EPSILON) {
+        ref_norm_factor = ALWAN_LITERAL(100.0) / xyz_ref_white.y;
+        xyz_ref_white.x *= ref_norm_factor;
+        xyz_ref_white.y *= ref_norm_factor;
+        xyz_ref_white.z *= ref_norm_factor;
     }
 
     /* Step 3: Calculate special CRI for first 8 TCS samples */
@@ -835,7 +834,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under test illuminant */
-        alwan_vec3 xyz_test;
+        alwan_xyz xyz_test;
         status = alwan_xyz_from_spd(ctx, &tcs_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -849,7 +848,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under reference illuminant */
-        alwan_vec3 xyz_ref;
+        alwan_xyz xyz_ref;
         status = alwan_xyz_from_spd(ctx, &tcs_spd, &reference_spd,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -865,24 +864,24 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Normalize sample XYZ values using the same factors as the white points */
-        xyz_test.v[0] *= test_norm_factor;
-        xyz_test.v[1] *= test_norm_factor;
-        xyz_test.v[2] *= test_norm_factor;
+        xyz_test.x *= test_norm_factor;
+        xyz_test.y *= test_norm_factor;
+        xyz_test.z *= test_norm_factor;
 
-        xyz_ref.v[0] *= ref_norm_factor;
-        xyz_ref.v[1] *= ref_norm_factor;
-        xyz_ref.v[2] *= ref_norm_factor;
+        xyz_ref.x *= ref_norm_factor;
+        xyz_ref.y *= ref_norm_factor;
+        xyz_ref.z *= ref_norm_factor;
 
         /* Convert to U*V*W* color space (CIE 1964)
          * Each sample uses its respective illuminant's white point */
-        alwan_vec3 uvw_test, uvw_ref;
+        alwan_uvw uvw_test, uvw_ref;
         alwan_xyz_to_uvw(&xyz_test, &xyz_test_white, &uvw_test);
         alwan_xyz_to_uvw(&xyz_ref, &xyz_ref_white, &uvw_ref);
 
         /* Calculate color difference ΔE in U*V*W* space */
-        alwan_scalar du = uvw_test.v[0] - uvw_ref.v[0];
-        alwan_scalar dv = uvw_test.v[1] - uvw_ref.v[1];
-        alwan_scalar dw = uvw_test.v[2] - uvw_ref.v[2];
+        alwan_scalar du = uvw_test.U - uvw_ref.U;
+        alwan_scalar dv = uvw_test.V - uvw_ref.V;
+        alwan_scalar dw = uvw_test.W - uvw_ref.W;
         alwan_scalar delta_e_raw = ALWAN_SQRT(du * du + dv * dv + dw * dw);
         /* Empirical scaling factor based on CIE 1964 U*V*W* space calibration */
         alwan_scalar delta_e = delta_e_raw / ALWAN_LITERAL(15.5);
@@ -933,7 +932,7 @@ static alwan_scalar const astm_e313_white_xy[][2] = {
 /* ASTM E313 Yellowness Index
  * Formula: YI = 100(Cx*X - Cz*Z) / Y
  * where Cx and Cz are coefficients that depend on illuminant/observer */
-alwan_scalar alwan_yellowness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_illuminant illuminant) {
+alwan_scalar alwan_yellowness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -942,9 +941,9 @@ alwan_scalar alwan_yellowness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_i
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_scalar X = xyz->v[0];
-    alwan_scalar Y = xyz->v[1];
-    alwan_scalar Z = xyz->v[2];
+    alwan_scalar X = xyz->x;
+    alwan_scalar Y = xyz->y;
+    alwan_scalar Z = xyz->z;
 
     /* Avoid division by zero */
     if (ALWAN_FABS(Y) < ALWAN_EPSILON) {
@@ -962,7 +961,7 @@ alwan_scalar alwan_yellowness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_i
 /* ASTM E313 Whiteness Index
  * Formula: WI = Y + 800(xn - x) + 1700(yn - y)
  * where xn, yn are the reference white chromaticity coordinates */
-alwan_scalar alwan_whiteness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_illuminant illuminant) {
+alwan_scalar alwan_whiteness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -971,9 +970,9 @@ alwan_scalar alwan_whiteness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_il
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_scalar X = xyz->v[0];
-    alwan_scalar Y = xyz->v[1];
-    alwan_scalar Z = xyz->v[2];
+    alwan_scalar X = xyz->x;
+    alwan_scalar Y = xyz->y;
+    alwan_scalar Z = xyz->z;
 
     /* Convert XYZ to xy chromaticity coordinates */
     alwan_scalar sum = X + Y + Z;
@@ -997,7 +996,7 @@ alwan_scalar alwan_whiteness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_il
 /* CIE 2004 Whiteness Index
  * Formula: W = Y + 800(xn - x) + 1700(yn - y)
  * This is the same formula as ASTM E313, but allows custom reference white */
-alwan_scalar alwan_whiteness_cie2004(alwan_vec3 const *xy, alwan_scalar Y, alwan_vec3 const *xy_n) {
+alwan_scalar alwan_whiteness_cie2004(alwan_vec2 const *xy, alwan_scalar Y, alwan_vec2 const *xy_n) {
     if (!xy || !xy_n) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1200,7 +1199,7 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
 
     status = alwan_xyz_from_spd(ctx, sample_reflectance, test_illuminant,
                                 observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0),
-                                (alwan_vec3 *)&xyz_sample_test);
+                                &xyz_sample_test);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1208,7 +1207,7 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
     /* Step 2: Compute XYZ for reference under test illuminant */
     status = alwan_xyz_from_spd(ctx, reference_reflectance, test_illuminant,
                                 observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0),
-                                (alwan_vec3 *)&xyz_ref_test);
+                                &xyz_ref_test);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1231,7 +1230,7 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
     alwan_xyz xyz_test_white;
     status = alwan_xyz_from_spd(ctx, &perfect_white, test_illuminant,
                                 observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0),
-                                (alwan_vec3 *)&xyz_test_white);
+                                &xyz_test_white);
     alwan_spd_destroy(ctx, &perfect_white);
 
     if (status != ALWAN_OK) {
@@ -1299,7 +1298,7 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_vec3 xyz_test_white;
+    alwan_xyz xyz_test_white;
     status = alwan_xyz_from_spd(ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -1314,24 +1313,23 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Normalize test white point to Y=100 for proper color calculations */
     alwan_scalar test_norm_factor = ALWAN_LITERAL(1.0);
-    if (xyz_test_white.v[1] > ALWAN_EPSILON) {
-        test_norm_factor = ALWAN_LITERAL(100.0) / xyz_test_white.v[1];
-        xyz_test_white.v[0] *= test_norm_factor;
-        xyz_test_white.v[1] *= test_norm_factor;
-        xyz_test_white.v[2] *= test_norm_factor;
+    if (xyz_test_white.y > ALWAN_EPSILON) {
+        test_norm_factor = ALWAN_LITERAL(100.0) / xyz_test_white.y;
+        xyz_test_white.x *= test_norm_factor;
+        xyz_test_white.y *= test_norm_factor;
+        xyz_test_white.z *= test_norm_factor;
     }
 
     /* Convert XYZ to xy chromaticity */
-    alwan_scalar sum = xyz_test_white.v[0] + xyz_test_white.v[1] + xyz_test_white.v[2];
+    alwan_scalar sum = xyz_test_white.x + xyz_test_white.y + xyz_test_white.z;
     if (sum < ALWAN_EPSILON) {
         alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_vec3 xy_test;
-    xy_test.v[0] = xyz_test_white.v[0] / sum;
-    xy_test.v[1] = xyz_test_white.v[1] / sum;
-    xy_test.v[2] = ALWAN_LITERAL(0.0);
+    alwan_vec2 xy_test;
+    xy_test.v[0] = xyz_test_white.x / sum;
+    xy_test.v[1] = xyz_test_white.y / sum;
 
     /* Calculate CCT using Robertson's method */
     alwan_scalar cct = alwan_cct_robertson_xy(&xy_test);
@@ -1362,7 +1360,7 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_vec3 xyz_ref_white;
+    alwan_xyz xyz_ref_white;
     status = alwan_xyz_from_spd(ctx, &perfect_white, &reference_spd,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -1378,29 +1376,29 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Normalize reference white point to Y=100 */
     alwan_scalar ref_norm_factor = ALWAN_LITERAL(1.0);
-    if (xyz_ref_white.v[1] > ALWAN_EPSILON) {
-        ref_norm_factor = ALWAN_LITERAL(100.0) / xyz_ref_white.v[1];
-        xyz_ref_white.v[0] *= ref_norm_factor;
-        xyz_ref_white.v[1] *= ref_norm_factor;
-        xyz_ref_white.v[2] *= ref_norm_factor;
+    if (xyz_ref_white.y > ALWAN_EPSILON) {
+        ref_norm_factor = ALWAN_LITERAL(100.0) / xyz_ref_white.y;
+        xyz_ref_white.x *= ref_norm_factor;
+        xyz_ref_white.y *= ref_norm_factor;
+        xyz_ref_white.z *= ref_norm_factor;
     }
 
     /* D65 white point for chromatic adaptation target */
-    alwan_vec3 d65_white;
-    d65_white.v[0] = ALWAN_D65_X;
-    d65_white.v[1] = ALWAN_D65_Y;
-    d65_white.v[2] = ALWAN_D65_Z;
+    alwan_xyz d65_white;
+    d65_white.x = ALWAN_D65_X;
+    d65_white.y = ALWAN_D65_Y;
+    d65_white.z = ALWAN_D65_Z;
 
     /* Get chromatic adaptation matrices */
     alwan_mat3x3 cat_test_to_d65, cat_ref_to_d65;
-    status = alwan_cat_matrix((alwan_xyz const *)&xyz_test_white, (alwan_xyz const *)&d65_white, ALWAN_CAT_CAT02, &cat_test_to_d65);
+    status = alwan_cat_matrix(&xyz_test_white, &d65_white, ALWAN_CAT_CAT02, &cat_test_to_d65);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
         alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    status = alwan_cat_matrix((alwan_xyz const *)&xyz_ref_white, (alwan_xyz const *)&d65_white, ALWAN_CAT_CAT02, &cat_ref_to_d65);
+    status = alwan_cat_matrix(&xyz_ref_white, &d65_white, ALWAN_CAT_CAT02, &cat_ref_to_d65);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
         alwan_spd_destroy(ctx, &test_spd_resampled);
@@ -1426,7 +1424,7 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under test illuminant */
-        alwan_vec3 xyz_test;
+        alwan_xyz xyz_test;
         status = alwan_xyz_from_spd(ctx, &vs_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1440,7 +1438,7 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under reference illuminant */
-        alwan_vec3 xyz_ref;
+        alwan_xyz xyz_ref;
         status = alwan_xyz_from_spd(ctx, &vs_spd, &reference_spd,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1456,23 +1454,23 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Normalize sample XYZ values using the same factors as white points */
-        xyz_test.v[0] *= test_norm_factor;
-        xyz_test.v[1] *= test_norm_factor;
-        xyz_test.v[2] *= test_norm_factor;
+        xyz_test.x *= test_norm_factor;
+        xyz_test.y *= test_norm_factor;
+        xyz_test.z *= test_norm_factor;
 
-        xyz_ref.v[0] *= ref_norm_factor;
-        xyz_ref.v[1] *= ref_norm_factor;
-        xyz_ref.v[2] *= ref_norm_factor;
+        xyz_ref.x *= ref_norm_factor;
+        xyz_ref.y *= ref_norm_factor;
+        xyz_ref.z *= ref_norm_factor;
 
         /* Apply chromatic adaptation to D65 */
-        alwan_vec3 xyz_test_adapted, xyz_ref_adapted;
-        alwan_mat3_mulv(&cat_test_to_d65, &xyz_test, &xyz_test_adapted);
-        alwan_mat3_mulv(&cat_ref_to_d65, &xyz_ref, &xyz_ref_adapted);
+        alwan_xyz xyz_test_adapted, xyz_ref_adapted;
+        alwan_mat3_mulv(&cat_test_to_d65, (alwan_vec3 const *)&xyz_test, (alwan_vec3 *)&xyz_test_adapted);
+        alwan_mat3_mulv(&cat_ref_to_d65, (alwan_vec3 const *)&xyz_ref, (alwan_vec3 *)&xyz_ref_adapted);
 
         /* Convert to CIELAB */
         alwan_lab lab_test, lab_ref;
-        alwan_xyz_to_lab((alwan_xyz const *)&xyz_test_adapted, (alwan_xyz const *)&d65_white, &lab_test);
-        alwan_xyz_to_lab((alwan_xyz const *)&xyz_ref_adapted, (alwan_xyz const *)&d65_white, &lab_ref);
+        alwan_xyz_to_lab(&xyz_test_adapted, &d65_white, &lab_test);
+        alwan_xyz_to_lab(&xyz_ref_adapted, &d65_white, &lab_ref);
 
         /* Calculate color difference ΔE*ab */
         alwan_scalar dL = lab_test.L - lab_ref.L;
@@ -1542,7 +1540,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_vec3 xyz_test_white_10deg;
+    alwan_xyz xyz_test_white_10deg;
     status = alwan_xyz_from_spd(ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1964_10DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -1557,24 +1555,23 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Normalize test white point to Y=100 for proper color calculations */
     alwan_scalar test_norm_factor_10deg = ALWAN_LITERAL(1.0);
-    if (xyz_test_white_10deg.v[1] > ALWAN_EPSILON) {
-        test_norm_factor_10deg = ALWAN_LITERAL(100.0) / xyz_test_white_10deg.v[1];
-        xyz_test_white_10deg.v[0] *= test_norm_factor_10deg;
-        xyz_test_white_10deg.v[1] *= test_norm_factor_10deg;
-        xyz_test_white_10deg.v[2] *= test_norm_factor_10deg;
+    if (xyz_test_white_10deg.y > ALWAN_EPSILON) {
+        test_norm_factor_10deg = ALWAN_LITERAL(100.0) / xyz_test_white_10deg.y;
+        xyz_test_white_10deg.x *= test_norm_factor_10deg;
+        xyz_test_white_10deg.y *= test_norm_factor_10deg;
+        xyz_test_white_10deg.z *= test_norm_factor_10deg;
     }
 
     /* Convert XYZ to xy chromaticity */
-    alwan_scalar sum = xyz_test_white_10deg.v[0] + xyz_test_white_10deg.v[1] + xyz_test_white_10deg.v[2];
+    alwan_scalar sum = xyz_test_white_10deg.x + xyz_test_white_10deg.y + xyz_test_white_10deg.z;
     if (sum < ALWAN_EPSILON) {
         alwan_spd_destroy(ctx, &test_spd_resampled);
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_vec3 xy_test;
-    xy_test.v[0] = xyz_test_white_10deg.v[0] / sum;
-    xy_test.v[1] = xyz_test_white_10deg.v[1] / sum;
-    xy_test.v[2] = ALWAN_LITERAL(0.0);
+    alwan_vec2 xy_test;
+    xy_test.v[0] = xyz_test_white_10deg.x / sum;
+    xy_test.v[1] = xyz_test_white_10deg.y / sum;
 
     /* Calculate CCT */
     alwan_scalar cct = alwan_cct_robertson_xy(&xy_test);
@@ -1624,7 +1621,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_vec3 xyz_ref_white_10deg;
+    alwan_xyz xyz_ref_white_10deg;
     status = alwan_xyz_from_spd(ctx, &perfect_white, &reference_spd,
                                 ALWAN_OBSERVER_CIE_1964_10DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -1640,27 +1637,27 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Normalize reference white point to Y=100 */
     alwan_scalar ref_norm_factor_10deg = ALWAN_LITERAL(1.0);
-    if (xyz_ref_white_10deg.v[1] > ALWAN_EPSILON) {
-        ref_norm_factor_10deg = ALWAN_LITERAL(100.0) / xyz_ref_white_10deg.v[1];
-        xyz_ref_white_10deg.v[0] *= ref_norm_factor_10deg;
-        xyz_ref_white_10deg.v[1] *= ref_norm_factor_10deg;
-        xyz_ref_white_10deg.v[2] *= ref_norm_factor_10deg;
+    if (xyz_ref_white_10deg.y > ALWAN_EPSILON) {
+        ref_norm_factor_10deg = ALWAN_LITERAL(100.0) / xyz_ref_white_10deg.y;
+        xyz_ref_white_10deg.x *= ref_norm_factor_10deg;
+        xyz_ref_white_10deg.y *= ref_norm_factor_10deg;
+        xyz_ref_white_10deg.z *= ref_norm_factor_10deg;
     }
 
     /* Setup CIECAM02 viewing conditions (standard for TM-30) */
     alwan_ciecam02_viewing_conditions vc_test, vc_ref;
 
-    vc_test.white_xyz.x = xyz_test_white_10deg.v[0];
-    vc_test.white_xyz.y = xyz_test_white_10deg.v[1];
-    vc_test.white_xyz.z = xyz_test_white_10deg.v[2];
+    vc_test.white_xyz.x = xyz_test_white_10deg.x;
+    vc_test.white_xyz.y = xyz_test_white_10deg.y;
+    vc_test.white_xyz.z = xyz_test_white_10deg.z;
     vc_test.adapting_luminance = ALWAN_LITERAL(100.0);
     vc_test.background_luminance = ALWAN_LITERAL(20.0);
     vc_test.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
     vc_test.discount_illuminant = 0;
 
-    vc_ref.white_xyz.x = xyz_ref_white_10deg.v[0];
-    vc_ref.white_xyz.y = xyz_ref_white_10deg.v[1];
-    vc_ref.white_xyz.z = xyz_ref_white_10deg.v[2];
+    vc_ref.white_xyz.x = xyz_ref_white_10deg.x;
+    vc_ref.white_xyz.y = xyz_ref_white_10deg.y;
+    vc_ref.white_xyz.z = xyz_ref_white_10deg.z;
     vc_ref.adapting_luminance = ALWAN_LITERAL(100.0);
     vc_ref.background_luminance = ALWAN_LITERAL(20.0);
     vc_ref.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
@@ -1686,7 +1683,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under test illuminant (10° observer) */
-        alwan_vec3 xyz_test;
+        alwan_xyz xyz_test;
         status = alwan_xyz_from_spd(ctx, &ces_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1964_10DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1700,7 +1697,7 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under reference illuminant (10° observer) */
-        alwan_vec3 xyz_ref;
+        alwan_xyz xyz_ref;
         status = alwan_xyz_from_spd(ctx, &ces_spd, &reference_spd,
                                     ALWAN_OBSERVER_CIE_1964_10DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1716,24 +1713,24 @@ alwan_scalar alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Normalize sample XYZ values using the same factors as white points */
-        xyz_test.v[0] *= test_norm_factor_10deg;
-        xyz_test.v[1] *= test_norm_factor_10deg;
-        xyz_test.v[2] *= test_norm_factor_10deg;
+        xyz_test.x *= test_norm_factor_10deg;
+        xyz_test.y *= test_norm_factor_10deg;
+        xyz_test.z *= test_norm_factor_10deg;
 
-        xyz_ref.v[0] *= ref_norm_factor_10deg;
-        xyz_ref.v[1] *= ref_norm_factor_10deg;
-        xyz_ref.v[2] *= ref_norm_factor_10deg;
+        xyz_ref.x *= ref_norm_factor_10deg;
+        xyz_ref.y *= ref_norm_factor_10deg;
+        xyz_ref.z *= ref_norm_factor_10deg;
 
         /* Calculate CIECAM02 correlates */
         alwan_ciecam02_correlates cam_test, cam_ref;
-        status = alwan_ciecam02_forward((alwan_xyz const *)&xyz_test, &vc_test, &cam_test);
+        status = alwan_ciecam02_forward(&xyz_test, &vc_test, &cam_test);
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
             alwan_spd_destroy(ctx, &test_spd_resampled);
             return ALWAN_LITERAL(-1.0);
         }
 
-        status = alwan_ciecam02_forward((alwan_xyz const *)&xyz_ref, &vc_ref, &cam_ref);
+        status = alwan_ciecam02_forward(&xyz_ref, &vc_ref, &cam_ref);
         if (status != ALWAN_OK) {
             alwan_spd_destroy(ctx, &reference_spd);
             alwan_spd_destroy(ctx, &test_spd_resampled);

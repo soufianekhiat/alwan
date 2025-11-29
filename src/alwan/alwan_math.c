@@ -636,7 +636,7 @@ int alwan_cct_duv_optimize(alwan_vec2 const *xy, alwan_scalar *cct_out, alwan_sc
  * Tristimulus Optimization
  * ---------------------------------------------------------------- */
 
-int alwan_optimize_spectrum_for_xyz(alwan_vec3 const *target_xyz,
+int alwan_optimize_spectrum_for_xyz(alwan_xyz const *target_xyz,
                                       alwan_observer_type observer,
                                       alwan_ctx *ctx,
                                       alwan_spd *spd_out) {
@@ -669,7 +669,7 @@ int alwan_optimize_spectrum_for_xyz(alwan_vec3 const *target_xyz,
 
     /* Simple initial guess: equal weight Gaussians scaled by luminance */
     alwan_scalar weights[7];
-    alwan_scalar luminance = target_xyz->v[1]; /* Y component */
+    alwan_scalar luminance = target_xyz->y; /* Y component */
     for (size_t i = 0; i < num_gaussians; i++) {
         weights[i] = luminance / num_gaussians;
     }
@@ -751,15 +751,15 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
 }
 
 int alwan_table_interp_3d_trilinear(alwan_scalar const *table, size_t const sizes[3],
-                                     alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out) {
+                                     alwan_rgb const *rgb_in, alwan_rgb *rgb_out) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
         return ALWAN_E_RANGE;
     }
 
     /* Clamp input to [0, 1] */
-    alwan_scalar r = rgb_in->v[0];
-    alwan_scalar g = rgb_in->v[1];
-    alwan_scalar b = rgb_in->v[2];
+    alwan_scalar r = rgb_in->r;
+    alwan_scalar g = rgb_in->g;
+    alwan_scalar b = rgb_in->b;
 
     if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
     if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
@@ -817,24 +817,24 @@ int alwan_table_interp_3d_trilinear(alwan_scalar const *table, size_t const size
 
         alwan_scalar result = c0 * (1.0 - b_frac) + c1 * b_frac;
 
-        if (c == 0) rgb_out->v[0] = result;
-        else if (c == 1) rgb_out->v[1] = result;
-        else rgb_out->v[2] = result;
+        if (c == 0) rgb_out->r = result;
+        else if (c == 1) rgb_out->g = result;
+        else rgb_out->b = result;
     }
 
     return ALWAN_OK;
 }
 
 int alwan_table_interp_3d_tetrahedral(alwan_scalar const *table, size_t const sizes[3],
-                                       alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out) {
+                                       alwan_rgb const *rgb_in, alwan_rgb *rgb_out) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
         return ALWAN_E_RANGE;
     }
 
     /* Clamp input to [0, 1] */
-    alwan_scalar r = rgb_in->v[0];
-    alwan_scalar g = rgb_in->v[1];
-    alwan_scalar b = rgb_in->v[2];
+    alwan_scalar r = rgb_in->r;
+    alwan_scalar g = rgb_in->g;
+    alwan_scalar b = rgb_in->b;
 
     if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
     if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
@@ -916,9 +916,9 @@ int alwan_table_interp_3d_tetrahedral(alwan_scalar const *table, size_t const si
 
     #undef GET_VALUE
 
-    rgb_out->v[0] = result[0];
-    rgb_out->v[1] = result[1];
-    rgb_out->v[2] = result[2];
+    rgb_out->r = result[0];
+    rgb_out->g = result[1];
+    rgb_out->b = result[2];
 
     return ALWAN_OK;
 }

@@ -329,17 +329,17 @@ int alwan_zcam_inverse(alwan_zcam_correlates const *correlates,
  * ---------------------------------------------------------------- */
 
 int alwan_zcam_to_ucs(alwan_zcam_correlates const *correlates,
-                      alwan_vec3 *Jab_out) {
+                      alwan_jzazbz *Jab_out) {
     if (!correlates || !Jab_out) {
         return -1;
     }
 
     /* ZCAM UCS uses Jz, Mz, hz to create Jab coordinates */
-    Jab_out->v[0] = correlates->Jz;
+    Jab_out->Jz = correlates->Jz;
 
     alwan_scalar hz_rad = correlates->hz * ALWAN_PI / ALWAN_LITERAL(180.0);
-    Jab_out->v[1] = correlates->Mz * ALWAN_COS(hz_rad);
-    Jab_out->v[2] = correlates->Mz * ALWAN_SIN(hz_rad);
+    Jab_out->az = correlates->Mz * ALWAN_COS(hz_rad);
+    Jab_out->bz = correlates->Mz * ALWAN_SIN(hz_rad);
 
     return 0;
 }

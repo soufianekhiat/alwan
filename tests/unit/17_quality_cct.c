@@ -34,7 +34,7 @@ static int test_cct_mccamy(void) {
     size_t const num_tests = sizeof(test_data) / sizeof(test_data[0]) / 3;
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_vec3 xy;
+        alwan_vec2 xy;
         xy.v[0] = test_data[i * 3 + 0];
         xy.v[1] = test_data[i * 3 + 1];
         alwan_scalar expected_cct = test_data[i * 3 + 2];
@@ -66,7 +66,7 @@ static int test_cct_robertson(void) {
     size_t const num_tests = sizeof(test_data) / sizeof(test_data[0]) / 3;
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_vec3 xy;
+        alwan_vec2 xy;
         xy.v[0] = test_data[i * 3 + 0];
         xy.v[1] = test_data[i * 3 + 1];
         alwan_scalar expected_cct = test_data[i * 3 + 2];

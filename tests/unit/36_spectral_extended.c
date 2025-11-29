@@ -30,17 +30,18 @@
     return 0; \
 } while(0)
 
-static alwan_scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
-    alwan_scalar max_diff = 0;
-    for (int i = 0; i < 3; i++) {
-        alwan_scalar diff = ALWAN_FABS(a->v[i] - b->v[i]);
-        if (diff > max_diff) max_diff = diff;
-    }
+static alwan_scalar vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
+    alwan_scalar diff_x = ALWAN_FABS(a->x - b->x);
+    alwan_scalar diff_y = ALWAN_FABS(a->y - b->y);
+    alwan_scalar diff_z = ALWAN_FABS(a->z - b->z);
+    alwan_scalar max_diff = diff_x;
+    if (diff_y > max_diff) max_diff = diff_y;
+    if (diff_z > max_diff) max_diff = diff_z;
     return max_diff;
 }
 
-static void vec3_print(char const *name, alwan_vec3 const *v) {
-    printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->v[0], v->v[1], v->v[2]);
+static void vec3_print(char const *name, alwan_xyz const *v) {
+    printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->x, v->y, v->z);
 }
 
 /* ----------------------------------------------------------------
@@ -83,8 +84,8 @@ static int test_p8_illuminant_white_point(
     alwan_illuminant illuminant,
     alwan_scalar const *expected_white_xyz)
 {
-    alwan_vec3 expected = {{expected_white_xyz[0], expected_white_xyz[1], expected_white_xyz[2]}};
-    alwan_vec3 computed;
+    alwan_xyz expected = {expected_white_xyz[0], expected_white_xyz[1], expected_white_xyz[2]};
+    alwan_xyz computed;
 
     /* Get white point XYZ using alwan_illuminant_white_point */
     int status = alwan_illuminant_white_point(illuminant, ALWAN_OBSERVER_CIE_1931_2DEG, &computed);
@@ -137,10 +138,10 @@ static int test_illuminant_d75_white(void) {
  * ---------------------------------------------------------------- */
 
 static int test_stockman_sharpe_observer(void) {
-    alwan_vec3 expected = {{white_d65_stockman_sharpe_data[0],
-                            white_d65_stockman_sharpe_data[1],
-                            white_d65_stockman_sharpe_data[2]}};
-    alwan_vec3 computed;
+    alwan_xyz expected = {white_d65_stockman_sharpe_data[0],
+                          white_d65_stockman_sharpe_data[1],
+                          white_d65_stockman_sharpe_data[2]};
+    alwan_xyz computed;
 
     /* Get D65 white point using Stockman & Sharpe observer */
     int status = alwan_illuminant_white_point(ALWAN_ILLUMINANT_D65,

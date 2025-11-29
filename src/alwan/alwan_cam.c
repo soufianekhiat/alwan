@@ -645,7 +645,7 @@ int alwan_cam16_inverse(alwan_cam16_correlates const *correlates,
 
 /* CAM16-UCS forward transform (JMh -> Jab) */
 int alwan_cam16_to_ucs(alwan_cam16_correlates const *correlates,
-                       alwan_vec3 *Jab_out) {
+                       alwan_cam_jab *Jab_out) {
     if (!correlates || !Jab_out) {
         return ALWAN_E_INVALID;
     }
@@ -664,24 +664,24 @@ int alwan_cam16_to_ucs(alwan_cam16_correlates const *correlates,
     alwan_scalar a_prime = M_prime * ALWAN_COS(h_rad);
     alwan_scalar b_prime = M_prime * ALWAN_SIN(h_rad);
 
-    Jab_out->v[0] = J_prime;
-    Jab_out->v[1] = a_prime;
-    Jab_out->v[2] = b_prime;
+    Jab_out->J = J_prime;
+    Jab_out->a = a_prime;
+    Jab_out->b = b_prime;
 
     return ALWAN_OK;
 }
 
 /* CAM16-UCS inverse transform (Jab -> JMh) */
-int alwan_cam16_from_ucs(alwan_vec3 const *Jab,
+int alwan_cam16_from_ucs(alwan_cam_jab const *Jab,
                          alwan_cam16_correlates *correlates_out) {
     if (!Jab || !correlates_out) {
         return ALWAN_E_INVALID;
     }
 
     /* Extract J', a', b' */
-    alwan_scalar J_prime = Jab->v[0];
-    alwan_scalar a_prime = Jab->v[1];
-    alwan_scalar b_prime = Jab->v[2];
+    alwan_scalar J_prime = Jab->J;
+    alwan_scalar a_prime = Jab->a;
+    alwan_scalar b_prime = Jab->b;
 
     /* Compute J from J' */
     alwan_scalar J = J_prime / (ALWAN_LITERAL(1.7) - ALWAN_LITERAL(0.007) * J_prime);

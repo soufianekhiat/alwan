@@ -129,7 +129,7 @@ static alwan_scalar const M_LMS_TO_XYZ_ICACB[9] = {
  * RGB <-> Prismatic conversions
  * ================================================================ */
 
-void alwan_rgb_to_prismatic(alwan_rgb const *rgb, alwan_vec3 *prismatic) {
+void alwan_rgb_to_prismatic(alwan_rgb const *rgb, alwan_prismatic *prismatic) {
     if (!rgb || !prismatic) {
         return;
     }
@@ -139,10 +139,10 @@ void alwan_rgb_to_prismatic(alwan_rgb const *rgb, alwan_vec3 *prismatic) {
     alwan_scalar b = rgb->b;
 
     /* Prismatic color space (Pridmore 2021)
-     * Represents color as [L, P, Q] where:
+     * Represents color as [L, s, h] where:
      * - L = max(R,G,B) is the lightness
-     * - P, Q are normalized color components (P = R/sum, Q = G/sum)
-     * - R_component = B/sum = 1 - P - Q (not stored, can be computed)
+     * - s, h are normalized color components (s = R/sum, h = G/sum)
+     * - R_component = B/sum = 1 - s - h (not stored, can be computed)
      * Reference: colour.RGB_to_Prismatic
      */
 
@@ -151,43 +151,43 @@ void alwan_rgb_to_prismatic(alwan_rgb const *rgb, alwan_vec3 *prismatic) {
 
     /* Normalize RGB to sum to 1 */
     alwan_scalar sum_rgb = r + g + b;
-    alwan_scalar P, Q;
+    alwan_scalar s_val, h_val;
 
     if (sum_rgb < ALWAN_EPSILON) {
         /* Black point */
-        P = ALWAN_LITERAL(0.0);
-        Q = ALWAN_LITERAL(0.0);
+        s_val = ALWAN_LITERAL(0.0);
+        h_val = ALWAN_LITERAL(0.0);
     } else {
-        P = r / sum_rgb;  /* Normalized R */
-        Q = g / sum_rgb;  /* Normalized G */
-        /* R_component = b / sum_rgb = 1 - P - Q */
+        s_val = r / sum_rgb;  /* Normalized R */
+        h_val = g / sum_rgb;  /* Normalized G */
+        /* R_component = b / sum_rgb = 1 - s - h */
     }
 
-    prismatic->v[0] = L;
-    prismatic->v[1] = P;
-    prismatic->v[2] = Q;
+    prismatic->L = L;
+    prismatic->s = s_val;
+    prismatic->h = h_val;
 }
 
-void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_rgb *rgb) {
+void alwan_prismatic_to_rgb(alwan_prismatic const *prismatic, alwan_rgb *rgb) {
     if (!prismatic || !rgb) {
         return;
     }
 
-    alwan_scalar L = prismatic->v[0];
-    alwan_scalar P = prismatic->v[1];
-    alwan_scalar Q = prismatic->v[2];
+    alwan_scalar L = prismatic->L;
+    alwan_scalar s_val = prismatic->s;
+    alwan_scalar h_val = prismatic->h;
 
-    /* Convert back from Prismatic [L, P, Q] to RGB
-     * R_component = 1 - P - Q (the normalized B value)
-     * sum_rgb = L / max(P, Q, R_component)
-     * RGB = [P, Q, R_component] * sum_rgb
+    /* Convert back from Prismatic [L, s, h] to RGB
+     * R_component = 1 - s - h (the normalized B value)
+     * sum_rgb = L / max(s, h, R_component)
+     * RGB = [s, h, R_component] * sum_rgb
      * Reference: colour.Prismatic_to_RGB
      */
 
-    alwan_scalar R_comp = ALWAN_LITERAL(1.0) - P - Q;
+    alwan_scalar R_comp = ALWAN_LITERAL(1.0) - s_val - h_val;
 
-    /* Find max of [P, Q, R_comp] */
-    alwan_scalar max_pqr = alwan_max3(P, Q, R_comp);
+    /* Find max of [s, h, R_comp] */
+    alwan_scalar max_pqr = alwan_max3(s_val, h_val, R_comp);
 
     alwan_scalar sum_rgb;
     if (max_pqr < ALWAN_EPSILON) {
@@ -198,8 +198,8 @@ void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_rgb *rgb) {
     }
 
     /* Denormalize to get RGB */
-    rgb->r = P * sum_rgb;
-    rgb->g = Q * sum_rgb;
+    rgb->r = s_val * sum_rgb;
+    rgb->g = h_val * sum_rgb;
     rgb->b = R_comp * sum_rgb;
 }
 
@@ -208,7 +208,7 @@ void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_rgb *rgb) {
  * RGB <-> HCL conversions
  * ================================================================ */
 
-void alwan_rgb_to_hcl(alwan_rgb const *rgb, alwan_vec3 *hcl) {
+void alwan_rgb_to_hcl(alwan_rgb const *rgb, alwan_hcl *hcl) {
     if (!rgb || !hcl) {
         return;
     }
@@ -262,19 +262,19 @@ void alwan_rgb_to_hcl(alwan_rgb const *rgb, alwan_vec3 *hcl) {
         }
     }
 
-    hcl->v[0] = H;
-    hcl->v[1] = C;
-    hcl->v[2] = L;
+    hcl->H = H;
+    hcl->C = C;
+    hcl->L = L;
 }
 
-void alwan_hcl_to_rgb(alwan_vec3 const *hcl, alwan_rgb *rgb) {
+void alwan_hcl_to_rgb(alwan_hcl const *hcl, alwan_rgb *rgb) {
     if (!hcl || !rgb) {
         return;
     }
 
-    alwan_scalar H = hcl->v[0];
-    alwan_scalar C = hcl->v[1];
-    alwan_scalar L = hcl->v[2];
+    alwan_scalar H = hcl->H;
+    alwan_scalar C = hcl->C;
+    alwan_scalar L = hcl->L;
 
     /* Convert HCL to RGB (Sarifuddin & Missaoui 2005, corrected 2021) */
     alwan_scalar const gamma = ALWAN_LITERAL(3.0);
@@ -359,7 +359,7 @@ void alwan_hcl_to_rgb(alwan_vec3 const *hcl, alwan_rgb *rgb) {
  * RGB <-> IHLS conversions
  * ================================================================ */
 
-void alwan_rgb_to_ihls(alwan_rgb const *rgb, alwan_vec3 *ihls) {
+void alwan_rgb_to_ihls(alwan_rgb const *rgb, alwan_ihls *ihls) {
     if (!rgb || !ihls) {
         return;
     }
@@ -410,21 +410,21 @@ void alwan_rgb_to_ihls(alwan_rgb const *rgb, alwan_vec3 *ihls) {
     /* Saturation (simple chroma) */
     alwan_scalar S = delta;
 
-    /* IHLS format is [H, Y, S] where Y is luminance-weighted intensity */
-    ihls->v[0] = H;
-    ihls->v[1] = Y;
-    ihls->v[2] = S;
+    /* IHLS format is [H, L, S] where L is luminance-weighted intensity */
+    ihls->H = H;
+    ihls->L = Y;
+    ihls->S = S;
 }
 
-void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_rgb *rgb) {
+void alwan_ihls_to_rgb(alwan_ihls const *ihls, alwan_rgb *rgb) {
     if (!ihls || !rgb) {
         return;
     }
 
-    /* IHLS format is [H, Y, S] */
-    alwan_scalar H = ihls->v[0];
-    alwan_scalar Y = ihls->v[1];
-    alwan_scalar S = ihls->v[2];
+    /* IHLS format is [H, L, S] */
+    alwan_scalar H = ihls->H;
+    alwan_scalar Y = ihls->L;
+    alwan_scalar S = ihls->S;
 
     /* Convert IHLS to RGB via YC₁C₂
      * First compute C from S using: C = (√3 * S) / (2 * sin(2π/3 - H_s))

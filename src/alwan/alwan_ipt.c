@@ -105,24 +105,24 @@ void alwan_ipt_to_xyz(alwan_ipt const *ipt, alwan_xyz *xyz) {
  * IPT <-> IPTch (Cylindrical)
  * ---------------------------------------------------------------- */
 
-void alwan_ipt_to_iptch(alwan_ipt const *ipt, alwan_vec3 *iptch) {
+void alwan_ipt_to_iptch(alwan_ipt const *ipt, alwan_iptch *iptch) {
     /* I stays the same */
-    iptch->v[0] = ipt->I;
+    iptch->I = ipt->I;
 
     /* Chroma C = sqrt(P^2 + T^2) */
-    iptch->v[1] = ALWAN_SQRT(ipt->P * ipt->P + ipt->T * ipt->T);
+    iptch->C = ALWAN_SQRT(ipt->P * ipt->P + ipt->T * ipt->T);
 
     /* Hue h = atan2(T, P) in radians */
-    iptch->v[2] = ALWAN_ATAN2(ipt->T, ipt->P);
+    iptch->h = ALWAN_ATAN2(ipt->T, ipt->P);
 }
 
-void alwan_iptch_to_ipt(alwan_vec3 const *iptch, alwan_ipt *ipt) {
+void alwan_iptch_to_ipt(alwan_iptch const *iptch, alwan_ipt *ipt) {
     /* I stays the same */
-    ipt->I = iptch->v[0];
+    ipt->I = iptch->I;
 
     /* P = C * cos(h) */
-    ipt->P = iptch->v[1] * ALWAN_COS(iptch->v[2]);
+    ipt->P = iptch->C * ALWAN_COS(iptch->h);
 
     /* T = C * sin(h) */
-    ipt->T = iptch->v[1] * ALWAN_SIN(iptch->v[2]);
+    ipt->T = iptch->C * ALWAN_SIN(iptch->h);
 }

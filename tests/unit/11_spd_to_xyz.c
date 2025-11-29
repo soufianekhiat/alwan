@@ -161,7 +161,7 @@ static int test_xyz_from_constant_spd(void) {
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Compute XYZ with both integration methods */
-    alwan_vec3 xyz_trap, xyz_simp;
+    alwan_xyz xyz_trap, xyz_simp;
 
     status = alwan_xyz_from_spd(ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
@@ -178,27 +178,27 @@ static int test_xyz_from_constant_spd(void) {
     TEST_ASSERT(status == ALWAN_OK, "XYZ integration (Simpson) failed");
 
     /* Check that XYZ values are positive and reasonable */
-    TEST_ASSERT(xyz_trap.v[0] > ALWAN_LITERAL(0.0), "X (trap) should be positive");
-    TEST_ASSERT(xyz_trap.v[1] > ALWAN_LITERAL(0.0), "Y (trap) should be positive");
-    TEST_ASSERT(xyz_trap.v[2] > ALWAN_LITERAL(0.0), "Z (trap) should be positive");
+    TEST_ASSERT(xyz_trap.x > ALWAN_LITERAL(0.0), "X (trap) should be positive");
+    TEST_ASSERT(xyz_trap.y > ALWAN_LITERAL(0.0), "Y (trap) should be positive");
+    TEST_ASSERT(xyz_trap.z > ALWAN_LITERAL(0.0), "Z (trap) should be positive");
 
-    TEST_ASSERT(xyz_simp.v[0] > ALWAN_LITERAL(0.0), "X (Simpson) should be positive");
-    TEST_ASSERT(xyz_simp.v[1] > ALWAN_LITERAL(0.0), "Y (Simpson) should be positive");
-    TEST_ASSERT(xyz_simp.v[2] > ALWAN_LITERAL(0.0), "Z (Simpson) should be positive");
+    TEST_ASSERT(xyz_simp.x > ALWAN_LITERAL(0.0), "X (Simpson) should be positive");
+    TEST_ASSERT(xyz_simp.y > ALWAN_LITERAL(0.0), "Y (Simpson) should be positive");
+    TEST_ASSERT(xyz_simp.z > ALWAN_LITERAL(0.0), "Z (Simpson) should be positive");
 
     /* Both methods should give similar results (within 10%) */
-    alwan_scalar diff_X = ALWAN_FABS(xyz_trap.v[0] - xyz_simp.v[0]) / xyz_trap.v[0];
-    alwan_scalar diff_Y = ALWAN_FABS(xyz_trap.v[1] - xyz_simp.v[1]) / xyz_trap.v[1];
-    alwan_scalar diff_Z = ALWAN_FABS(xyz_trap.v[2] - xyz_simp.v[2]) / xyz_trap.v[2];
+    alwan_scalar diff_X = ALWAN_FABS(xyz_trap.x - xyz_simp.x) / xyz_trap.x;
+    alwan_scalar diff_Y = ALWAN_FABS(xyz_trap.y - xyz_simp.y) / xyz_trap.y;
+    alwan_scalar diff_Z = ALWAN_FABS(xyz_trap.z - xyz_simp.z) / xyz_trap.z;
 
     TEST_ASSERT(diff_X < ALWAN_LITERAL(0.1), "X values differ too much between methods");
     TEST_ASSERT(diff_Y < ALWAN_LITERAL(0.1), "Y values differ too much between methods");
     TEST_ASSERT(diff_Z < ALWAN_LITERAL(0.1), "Z values differ too much between methods");
 
     printf("  Trapezoid: XYZ = [%.4f, %.4f, %.4f]\n",
-           xyz_trap.v[0], xyz_trap.v[1], xyz_trap.v[2]);
+           xyz_trap.x, xyz_trap.y, xyz_trap.z);
     printf("  Simpson:   XYZ = [%.4f, %.4f, %.4f]\n",
-           xyz_simp.v[0], xyz_simp.v[1], xyz_simp.v[2]);
+           xyz_simp.x, xyz_simp.y, xyz_simp.z);
 
     alwan_spd_destroy(ctx, &reflectance);
     alwan_spd_destroy(ctx, &d65);
@@ -225,7 +225,7 @@ static int test_xyz_both_observers(void) {
     TEST_ASSERT(status == ALWAN_OK, "E illuminant loading failed");
 
     /* Test both observers */
-    alwan_vec3 xyz_2deg, xyz_10deg;
+    alwan_xyz xyz_2deg, xyz_10deg;
 
     status = alwan_xyz_from_spd(ctx, &reflectance, &illum_e,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
@@ -242,18 +242,18 @@ static int test_xyz_both_observers(void) {
     TEST_ASSERT(status == ALWAN_OK, "XYZ with 10° observer failed");
 
     /* Both observers should give positive XYZ */
-    TEST_ASSERT(xyz_2deg.v[0] > ALWAN_LITERAL(0.0), "2° observer X should be positive");
-    TEST_ASSERT(xyz_2deg.v[1] > ALWAN_LITERAL(0.0), "2° observer Y should be positive");
-    TEST_ASSERT(xyz_2deg.v[2] > ALWAN_LITERAL(0.0), "2° observer Z should be positive");
+    TEST_ASSERT(xyz_2deg.x > ALWAN_LITERAL(0.0), "2° observer X should be positive");
+    TEST_ASSERT(xyz_2deg.y > ALWAN_LITERAL(0.0), "2° observer Y should be positive");
+    TEST_ASSERT(xyz_2deg.z > ALWAN_LITERAL(0.0), "2° observer Z should be positive");
 
-    TEST_ASSERT(xyz_10deg.v[0] > ALWAN_LITERAL(0.0), "10° observer X should be positive");
-    TEST_ASSERT(xyz_10deg.v[1] > ALWAN_LITERAL(0.0), "10° observer Y should be positive");
-    TEST_ASSERT(xyz_10deg.v[2] > ALWAN_LITERAL(0.0), "10° observer Z should be positive");
+    TEST_ASSERT(xyz_10deg.x > ALWAN_LITERAL(0.0), "10° observer X should be positive");
+    TEST_ASSERT(xyz_10deg.y > ALWAN_LITERAL(0.0), "10° observer Y should be positive");
+    TEST_ASSERT(xyz_10deg.z > ALWAN_LITERAL(0.0), "10° observer Z should be positive");
 
     printf("  CIE 1931 2°:  XYZ = [%.4f, %.4f, %.4f]\n",
-           xyz_2deg.v[0], xyz_2deg.v[1], xyz_2deg.v[2]);
+           xyz_2deg.x, xyz_2deg.y, xyz_2deg.z);
     printf("  CIE 1964 10°: XYZ = [%.4f, %.4f, %.4f]\n",
-           xyz_10deg.v[0], xyz_10deg.v[1], xyz_10deg.v[2]);
+           xyz_10deg.x, xyz_10deg.y, xyz_10deg.z);
 
     alwan_spd_destroy(ctx, &reflectance);
     alwan_spd_destroy(ctx, &illum_e);

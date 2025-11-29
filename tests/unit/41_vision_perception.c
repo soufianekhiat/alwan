@@ -35,8 +35,8 @@
 
 static int test_cvd_protanopia(void) {
     /* Test protanopia (red-blind) simulation */
-    alwan_vec3 rgb_red = {{ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb rgb_out;
 
     int status = alwan_simulate_cvd(&rgb_red, ALWAN_CVD_PROTANOPIA, ALWAN_LITERAL(1.0), &rgb_out);
 
@@ -44,69 +44,69 @@ static int test_cvd_protanopia(void) {
 
     /* Red should be significantly reduced for protanopes */
     /* Green and blue components may increase */
-    TEST_ASSERT(rgb_out.v[0] >= ALWAN_LITERAL(0.0) && rgb_out.v[0] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
                 "R component out of range");
-    TEST_ASSERT(rgb_out.v[1] >= ALWAN_LITERAL(0.0) && rgb_out.v[1] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.g >= ALWAN_LITERAL(0.0) && rgb_out.g <= ALWAN_LITERAL(1.0),
                 "G component out of range");
-    TEST_ASSERT(rgb_out.v[2] >= ALWAN_LITERAL(0.0) && rgb_out.v[2] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.b >= ALWAN_LITERAL(0.0) && rgb_out.b <= ALWAN_LITERAL(1.0),
                 "B component out of range");
 
     printf("  Protanopia: Red [1.0, 0.0, 0.0] -> [%.3f, %.3f, %.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("Protanopia simulation");
 }
 
 static int test_cvd_deuteranopia(void) {
     /* Test deuteranopia (green-blind) simulation */
-    alwan_vec3 rgb_green = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_green = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb rgb_out;
 
     int status = alwan_simulate_cvd(&rgb_green, ALWAN_CVD_DEUTERANOPIA, ALWAN_LITERAL(1.0), &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to simulate deuteranopia");
 
     /* Green should be confused with other colors for deuteranopes */
-    TEST_ASSERT(rgb_out.v[0] >= ALWAN_LITERAL(0.0) && rgb_out.v[0] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
                 "R component out of range");
-    TEST_ASSERT(rgb_out.v[1] >= ALWAN_LITERAL(0.0) && rgb_out.v[1] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.g >= ALWAN_LITERAL(0.0) && rgb_out.g <= ALWAN_LITERAL(1.0),
                 "G component out of range");
-    TEST_ASSERT(rgb_out.v[2] >= ALWAN_LITERAL(0.0) && rgb_out.v[2] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.b >= ALWAN_LITERAL(0.0) && rgb_out.b <= ALWAN_LITERAL(1.0),
                 "B component out of range");
 
     printf("  Deuteranopia: Green [0.0, 1.0, 0.0] -> [%.3f, %.3f, %.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("Deuteranopia simulation");
 }
 
 static int test_cvd_tritanopia(void) {
     /* Test tritanopia (blue-blind) simulation */
-    alwan_vec3 rgb_blue = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};
+    alwan_rgb rgb_out;
 
     int status = alwan_simulate_cvd(&rgb_blue, ALWAN_CVD_TRITANOPIA, ALWAN_LITERAL(1.0), &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to simulate tritanopia");
 
     /* Blue should be confused with other colors for tritanopes */
-    TEST_ASSERT(rgb_out.v[0] >= ALWAN_LITERAL(0.0) && rgb_out.v[0] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
                 "R component out of range");
-    TEST_ASSERT(rgb_out.v[1] >= ALWAN_LITERAL(0.0) && rgb_out.v[1] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.g >= ALWAN_LITERAL(0.0) && rgb_out.g <= ALWAN_LITERAL(1.0),
                 "G component out of range");
-    TEST_ASSERT(rgb_out.v[2] >= ALWAN_LITERAL(0.0) && rgb_out.v[2] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.b >= ALWAN_LITERAL(0.0) && rgb_out.b <= ALWAN_LITERAL(1.0),
                 "B component out of range");
 
     printf("  Tritanopia: Blue [0.0, 0.0, 1.0] -> [%.3f, %.3f, %.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("Tritanopia simulation");
 }
 
 static int test_cvd_severity(void) {
     /* Test severity parameter for anomalous trichromacy */
-    alwan_vec3 rgb_red = {{ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};
-    alwan_vec3 rgb_mild, rgb_severe;
+    alwan_rgb rgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb rgb_mild, rgb_severe;
 
     /* Mild protanomaly (severity = 0.3) */
     int status1 = alwan_simulate_cvd(&rgb_red, ALWAN_CVD_PROTANOMALY, ALWAN_LITERAL(0.3), &rgb_mild);
@@ -116,36 +116,36 @@ static int test_cvd_severity(void) {
     TEST_ASSERT(status1 == ALWAN_OK && status2 == ALWAN_OK, "Failed to simulate anomalous trichromacy");
 
     /* Severe should deviate more from original than mild */
-    alwan_scalar diff_mild = ALWAN_FABS(rgb_mild.v[0] - rgb_red.v[0]);
-    alwan_scalar diff_severe = ALWAN_FABS(rgb_severe.v[0] - rgb_red.v[0]);
+    alwan_scalar diff_mild = ALWAN_FABS(rgb_mild.r - rgb_red.r);
+    alwan_scalar diff_severe = ALWAN_FABS(rgb_severe.r - rgb_red.r);
 
     TEST_ASSERT(diff_severe >= diff_mild, "Severity parameter not working correctly");
 
     printf("  Protanomaly severity 0.3: [%.3f, %.3f, %.3f]\n",
-           rgb_mild.v[0], rgb_mild.v[1], rgb_mild.v[2]);
+           rgb_mild.r, rgb_mild.g, rgb_mild.b);
     printf("  Protanomaly severity 0.9: [%.3f, %.3f, %.3f]\n",
-           rgb_severe.v[0], rgb_severe.v[1], rgb_severe.v[2]);
+           rgb_severe.r, rgb_severe.g, rgb_severe.b);
 
     TEST_PASS("CVD severity parameter");
 }
 
 static int test_cvd_normal_vision(void) {
     /* Test that severity = 0 returns unchanged color */
-    alwan_vec3 rgb_in = {{ALWAN_LITERAL(0.7), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.5)}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {ALWAN_LITERAL(0.7), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.5)};
+    alwan_rgb rgb_out;
 
     int status = alwan_simulate_cvd(&rgb_in, ALWAN_CVD_PROTANOPIA, ALWAN_LITERAL(0.0), &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed with severity = 0");
 
     /* Should be unchanged */
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[0] - rgb_in.v[0]) < ALWAN_LITERAL(0.001), "R changed with severity=0");
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[1] - rgb_in.v[1]) < ALWAN_LITERAL(0.001), "G changed with severity=0");
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[2] - rgb_in.v[2]) < ALWAN_LITERAL(0.001), "B changed with severity=0");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.r - rgb_in.r) < ALWAN_LITERAL(0.001), "R changed with severity=0");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.g - rgb_in.g) < ALWAN_LITERAL(0.001), "G changed with severity=0");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.b - rgb_in.b) < ALWAN_LITERAL(0.001), "B changed with severity=0");
 
     printf("  Normal vision (severity=0): [%.3f, %.3f, %.3f] -> [%.3f, %.3f, %.3f]\n",
-           rgb_in.v[0], rgb_in.v[1], rgb_in.v[2],
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_in.r, rgb_in.g, rgb_in.b,
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("Normal vision (severity = 0)");
 }

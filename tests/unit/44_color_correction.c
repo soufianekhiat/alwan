@@ -49,19 +49,19 @@ static int test_lgg_neutral(void)
 {
     printf("  TEST: LGG with neutral values (no change)\n");
 
-    alwan_vec3 rgb_in = {{0.5, 0.5, 0.5}};
-    alwan_vec3 lift = {{0.0, 0.0, 0.0}};    /* No lift */
-    alwan_vec3 gamma = {{1.0, 1.0, 1.0}};   /* No gamma change */
-    alwan_vec3 gain = {{1.0, 1.0, 1.0}};    /* No gain */
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb lift = {0.0, 0.0, 0.0};    /* No lift */
+    alwan_rgb gamma = {1.0, 1.0, 1.0};   /* No gamma change */
+    alwan_rgb gain = {1.0, 1.0, 1.0};    /* No gain */
+    alwan_rgb rgb_out;
 
     int status = alwan_lgg_apply(&rgb_in, &lift, &gamma, &gain, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* With neutral values, output should match input */
-    TEST_ASSERT_NEAR(rgb_out.v[0], 0.5, TEST_TOLERANCE, "Red channel should be unchanged");
-    TEST_ASSERT_NEAR(rgb_out.v[1], 0.5, TEST_TOLERANCE, "Green channel should be unchanged");
-    TEST_ASSERT_NEAR(rgb_out.v[2], 0.5, TEST_TOLERANCE, "Blue channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, 0.5, TEST_TOLERANCE, "Red channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, 0.5, TEST_TOLERANCE, "Green channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, 0.5, TEST_TOLERANCE, "Blue channel should be unchanged");
 
     return 0;
 }
@@ -70,19 +70,19 @@ static int test_lgg_lift(void)
 {
     printf("  TEST: LGG lift adjustment (shadows)\n");
 
-    alwan_vec3 rgb_in = {{0.2, 0.3, 0.4}};
-    alwan_vec3 lift = {{0.1, 0.0, -0.1}};   /* Lift red, neutral green, lower blue */
-    alwan_vec3 gamma = {{1.0, 1.0, 1.0}};
-    alwan_vec3 gain = {{1.0, 1.0, 1.0}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.2, 0.3, 0.4};
+    alwan_rgb lift = {0.1, 0.0, -0.1};   /* Lift red, neutral green, lower blue */
+    alwan_rgb gamma = {1.0, 1.0, 1.0};
+    alwan_rgb gain = {1.0, 1.0, 1.0};
+    alwan_rgb rgb_out;
 
     int status = alwan_lgg_apply(&rgb_in, &lift, &gamma, &gain, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* Lift adds to input: (0.2 + 0.1) = 0.3 for red */
-    TEST_ASSERT_NEAR(rgb_out.v[0], 0.3, TEST_TOLERANCE, "Red lifted by 0.1");
-    TEST_ASSERT_NEAR(rgb_out.v[1], 0.3, TEST_TOLERANCE, "Green unchanged");
-    TEST_ASSERT_NEAR(rgb_out.v[2], 0.3, TEST_TOLERANCE, "Blue lowered by 0.1");
+    TEST_ASSERT_NEAR(rgb_out.r, 0.3, TEST_TOLERANCE, "Red lifted by 0.1");
+    TEST_ASSERT_NEAR(rgb_out.g, 0.3, TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, 0.3, TEST_TOLERANCE, "Blue lowered by 0.1");
 
     return 0;
 }
@@ -91,21 +91,21 @@ static int test_lgg_gamma(void)
 {
     printf("  TEST: LGG gamma adjustment (midtones)\n");
 
-    alwan_vec3 rgb_in = {{0.5, 0.5, 0.5}};
-    alwan_vec3 lift = {{0.0, 0.0, 0.0}};
-    alwan_vec3 gamma = {{2.0, 0.5, 1.0}};   /* Darken red, brighten green, neutral blue */
-    alwan_vec3 gain = {{1.0, 1.0, 1.0}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb lift = {0.0, 0.0, 0.0};
+    alwan_rgb gamma = {2.0, 0.5, 1.0};   /* Darken red, brighten green, neutral blue */
+    alwan_rgb gain = {1.0, 1.0, 1.0};
+    alwan_rgb rgb_out;
 
     int status = alwan_lgg_apply(&rgb_in, &lift, &gamma, &gain, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* Gamma 2.0: 0.5^(1/2) = 0.707... */
-    TEST_ASSERT_NEAR(rgb_out.v[0], 0.707106781, 0.0001, "Red darkened (gamma 2.0)");
+    TEST_ASSERT_NEAR(rgb_out.r, 0.707106781, 0.0001, "Red darkened (gamma 2.0)");
     /* Gamma 0.5: 0.5^(1/0.5) = 0.5^2 = 0.25 */
-    TEST_ASSERT_NEAR(rgb_out.v[1], 0.25, TEST_TOLERANCE, "Green brightened (gamma 0.5)");
+    TEST_ASSERT_NEAR(rgb_out.g, 0.25, TEST_TOLERANCE, "Green brightened (gamma 0.5)");
     /* Gamma 1.0: no change */
-    TEST_ASSERT_NEAR(rgb_out.v[2], 0.5, TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, 0.5, TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -114,18 +114,18 @@ static int test_lgg_gain(void)
 {
     printf("  TEST: LGG gain adjustment (highlights)\n");
 
-    alwan_vec3 rgb_in = {{0.5, 0.5, 0.5}};
-    alwan_vec3 lift = {{0.0, 0.0, 0.0}};
-    alwan_vec3 gamma = {{1.0, 1.0, 1.0}};
-    alwan_vec3 gain = {{2.0, 0.5, 1.0}};    /* Double red, halve green, neutral blue */
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb lift = {0.0, 0.0, 0.0};
+    alwan_rgb gamma = {1.0, 1.0, 1.0};
+    alwan_rgb gain = {2.0, 0.5, 1.0};    /* Double red, halve green, neutral blue */
+    alwan_rgb rgb_out;
 
     int status = alwan_lgg_apply(&rgb_in, &lift, &gamma, &gain, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.v[0], 1.0, TEST_TOLERANCE, "Red gain doubled");
-    TEST_ASSERT_NEAR(rgb_out.v[1], 0.25, TEST_TOLERANCE, "Green gain halved");
-    TEST_ASSERT_NEAR(rgb_out.v[2], 0.5, TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, 1.0, TEST_TOLERANCE, "Red gain doubled");
+    TEST_ASSERT_NEAR(rgb_out.g, 0.25, TEST_TOLERANCE, "Green gain halved");
+    TEST_ASSERT_NEAR(rgb_out.b, 0.5, TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -139,19 +139,19 @@ static int test_lgg_combined(void)
 #include "reference_values/lgg_combined.csv"
     };
 
-    alwan_vec3 rgb_in = {{0.3, 0.5, 0.7}};
-    alwan_vec3 lift = {{0.1, 0.0, -0.1}};
-    alwan_vec3 gamma = {{1.2, 1.0, 0.8}};
-    alwan_vec3 gain = {{1.1, 1.0, 0.9}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.3, 0.5, 0.7};
+    alwan_rgb lift = {0.1, 0.0, -0.1};
+    alwan_rgb gamma = {1.2, 1.0, 0.8};
+    alwan_rgb gain = {1.1, 1.0, 0.9};
+    alwan_rgb rgb_out;
 
     int status = alwan_lgg_apply(&rgb_in, &lift, &gamma, &gain, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* Compare with reference values from colour-science */
-    TEST_ASSERT_NEAR(rgb_out.v[0], ref_lgg_combined[0], TEST_TOLERANCE, "Red combined adjustment");
-    TEST_ASSERT_NEAR(rgb_out.v[1], ref_lgg_combined[1], TEST_TOLERANCE, "Green combined adjustment");
-    TEST_ASSERT_NEAR(rgb_out.v[2], ref_lgg_combined[2], TEST_TOLERANCE, "Blue combined adjustment");
+    TEST_ASSERT_NEAR(rgb_out.r, ref_lgg_combined[0], TEST_TOLERANCE, "Red combined adjustment");
+    TEST_ASSERT_NEAR(rgb_out.g, ref_lgg_combined[1], TEST_TOLERANCE, "Green combined adjustment");
+    TEST_ASSERT_NEAR(rgb_out.b, ref_lgg_combined[2], TEST_TOLERANCE, "Blue combined adjustment");
 
     return 0;
 }
@@ -164,17 +164,17 @@ static int test_color_matrix_identity(void)
 {
     printf("  TEST: Color matrix with identity matrix\n");
 
-    alwan_vec3 rgb_in = {{0.5, 0.6, 0.7}};
+    alwan_rgb rgb_in = {0.5, 0.6, 0.7};
     alwan_mat3x3 identity;
     alwan_mat3_identity(&identity);
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_out;
 
     int status = alwan_color_matrix_apply(&rgb_in, &identity, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "Color matrix apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.v[0], 0.5, TEST_TOLERANCE, "Red unchanged");
-    TEST_ASSERT_NEAR(rgb_out.v[1], 0.6, TEST_TOLERANCE, "Green unchanged");
-    TEST_ASSERT_NEAR(rgb_out.v[2], 0.7, TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, 0.5, TEST_TOLERANCE, "Red unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, 0.6, TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, 0.7, TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -193,20 +193,20 @@ static int test_color_matrix_sepia(void)
     TEST_ASSERT(status == ALWAN_OK, "Get sepia preset failed");
 
     /* Test with mid-gray */
-    alwan_vec3 rgb_in = {{0.5, 0.5, 0.5}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb rgb_out;
 
     status = alwan_color_matrix_apply(&rgb_in, &sepia_matrix, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "Apply sepia failed");
 
     /* Compare with reference values from colour-science */
-    TEST_ASSERT_NEAR(rgb_out.v[0], ref_sepia[0], TEST_TOLERANCE, "Sepia red channel");
-    TEST_ASSERT_NEAR(rgb_out.v[1], ref_sepia[1], TEST_TOLERANCE, "Sepia green channel");
-    TEST_ASSERT_NEAR(rgb_out.v[2], ref_sepia[2], TEST_TOLERANCE, "Sepia blue channel");
+    TEST_ASSERT_NEAR(rgb_out.r, ref_sepia[0], TEST_TOLERANCE, "Sepia red channel");
+    TEST_ASSERT_NEAR(rgb_out.g, ref_sepia[1], TEST_TOLERANCE, "Sepia green channel");
+    TEST_ASSERT_NEAR(rgb_out.b, ref_sepia[2], TEST_TOLERANCE, "Sepia blue channel");
 
     /* Sepia should produce warm brownish tones */
-    TEST_ASSERT(rgb_out.v[0] > rgb_out.v[1], "Sepia red > green");
-    TEST_ASSERT(rgb_out.v[1] > rgb_out.v[2], "Sepia green > blue");
+    TEST_ASSERT(rgb_out.r > rgb_out.g, "Sepia red > green");
+    TEST_ASSERT(rgb_out.g > rgb_out.b, "Sepia green > blue");
 
     return 0;
 }
@@ -220,8 +220,8 @@ static int test_color_matrix_monochrome(void)
     TEST_ASSERT(status == ALWAN_OK, "Get monochrome preset failed");
 
     /* Test with colored input */
-    alwan_vec3 rgb_in = {{0.8, 0.4, 0.2}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.8, 0.4, 0.2};
+    alwan_rgb rgb_out;
 
     status = alwan_color_matrix_apply(&rgb_in, &mono_matrix, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "Apply monochrome failed");
@@ -229,9 +229,9 @@ static int test_color_matrix_monochrome(void)
     /* Monochrome should make all channels equal (luminance)
      * Luma = 0.299*R + 0.587*G + 0.114*B = 0.299*0.8 + 0.587*0.4 + 0.114*0.2 ≈ 0.497 */
     alwan_scalar expected_luma = 0.299 * 0.8 + 0.587 * 0.4 + 0.114 * 0.2;
-    TEST_ASSERT_NEAR(rgb_out.v[0], expected_luma, TEST_TOLERANCE, "Monochrome red = luma");
-    TEST_ASSERT_NEAR(rgb_out.v[1], expected_luma, TEST_TOLERANCE, "Monochrome green = luma");
-    TEST_ASSERT_NEAR(rgb_out.v[2], expected_luma, TEST_TOLERANCE, "Monochrome blue = luma");
+    TEST_ASSERT_NEAR(rgb_out.r, expected_luma, TEST_TOLERANCE, "Monochrome red = luma");
+    TEST_ASSERT_NEAR(rgb_out.g, expected_luma, TEST_TOLERANCE, "Monochrome green = luma");
+    TEST_ASSERT_NEAR(rgb_out.b, expected_luma, TEST_TOLERANCE, "Monochrome blue = luma");
 
     return 0;
 }
@@ -241,8 +241,8 @@ static int test_color_matrix_all_presets(void)
     printf("  TEST: All color matrix presets valid\n");
 
     alwan_mat3x3 matrix;
-    alwan_vec3 rgb_in = {{0.5, 0.5, 0.5}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb rgb_out;
 
     /* Test all presets can be retrieved and applied */
     alwan_color_matrix_preset presets[] = {
@@ -274,16 +274,16 @@ static int test_printer_lights_neutral(void)
 {
     printf("  TEST: Printer lights with neutral values (25, 25, 25)\n");
 
-    alwan_vec3 rgb_in = {{0.5, 0.6, 0.7}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.6, 0.7};
+    alwan_rgb rgb_out;
 
     /* Default lights (25) should not change the image */
     int status = alwan_printer_lights_apply(&rgb_in, 25.0, 25.0, 25.0, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.v[0], 0.5, TEST_TOLERANCE, "Red unchanged at neutral");
-    TEST_ASSERT_NEAR(rgb_out.v[1], 0.6, TEST_TOLERANCE, "Green unchanged at neutral");
-    TEST_ASSERT_NEAR(rgb_out.v[2], 0.7, TEST_TOLERANCE, "Blue unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.r, 0.5, TEST_TOLERANCE, "Red unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.g, 0.6, TEST_TOLERANCE, "Green unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.b, 0.7, TEST_TOLERANCE, "Blue unchanged at neutral");
 
     return 0;
 }
@@ -292,8 +292,8 @@ static int test_printer_lights_exposure(void)
 {
     printf("  TEST: Printer lights exposure adjustment\n");
 
-    alwan_vec3 rgb_in = {{0.5, 0.5, 0.5}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb rgb_out;
 
     /* Reducing lights increases exposure (brightens)
      * 25 -> 15 = 10 light reduction = +0.25 log exposure = *1.778... */
@@ -301,11 +301,11 @@ static int test_printer_lights_exposure(void)
     TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
 
     /* Red (15 lights): brighter than input */
-    TEST_ASSERT(rgb_out.v[0] > 0.5, "Red brighter with fewer lights");
+    TEST_ASSERT(rgb_out.r > 0.5, "Red brighter with fewer lights");
     /* Green (25 lights): unchanged */
-    TEST_ASSERT_NEAR(rgb_out.v[1], 0.5, TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, 0.5, TEST_TOLERANCE, "Green unchanged");
     /* Blue (35 lights): darker than input */
-    TEST_ASSERT(rgb_out.v[2] < 0.5, "Blue darker with more lights");
+    TEST_ASSERT(rgb_out.b < 0.5, "Blue darker with more lights");
 
     return 0;
 }
@@ -319,17 +319,17 @@ static int test_printer_lights_per_channel(void)
 #include "reference_values/printer_lights_per_channel.csv"
     };
 
-    alwan_vec3 rgb_in = {{0.3, 0.5, 0.7}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.3, 0.5, 0.7};
+    alwan_rgb rgb_out;
 
     /* Different lights for each channel */
     int status = alwan_printer_lights_apply(&rgb_in, 20.0, 25.0, 30.0, &rgb_out);
     TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
 
     /* Compare with reference values from colour-science */
-    TEST_ASSERT_NEAR(rgb_out.v[0], ref_printer_lights[0], TEST_TOLERANCE, "Red exposure correct");
-    TEST_ASSERT_NEAR(rgb_out.v[1], ref_printer_lights[1], TEST_TOLERANCE, "Green unchanged");
-    TEST_ASSERT_NEAR(rgb_out.v[2], ref_printer_lights[2], TEST_TOLERANCE, "Blue exposure correct");
+    TEST_ASSERT_NEAR(rgb_out.r, ref_printer_lights[0], TEST_TOLERANCE, "Red exposure correct");
+    TEST_ASSERT_NEAR(rgb_out.g, ref_printer_lights[1], TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ref_printer_lights[2], TEST_TOLERANCE, "Blue exposure correct");
 
     return 0;
 }

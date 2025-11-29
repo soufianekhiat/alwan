@@ -78,7 +78,7 @@ static void apply_projective_transform(alwan_scalar const *matrix,
  * XYZ <-> ProLab (D65 Illuminant)
  * ---------------------------------------------------------------- */
 
-void alwan_xyz_to_prolab(alwan_vec3 const *xyz, alwan_vec3 *prolab) {
+void alwan_xyz_to_prolab(alwan_xyz const *xyz, alwan_prolab *prolab) {
     /* D65 reference white (Y = 100) - from alwan_internal.h */
     alwan_scalar const xn = ALWAN_D65_X;
     alwan_scalar const yn = ALWAN_D65_Y;
@@ -86,56 +86,74 @@ void alwan_xyz_to_prolab(alwan_vec3 const *xyz, alwan_vec3 *prolab) {
 
     /* Step 1: Normalize XYZ by reference white (relative XYZ) */
     alwan_vec3 xyz_relative;
-    xyz_relative.v[0] = xyz->v[0] / xn;
-    xyz_relative.v[1] = xyz->v[1] / yn;
-    xyz_relative.v[2] = xyz->v[2] / zn;
+    xyz_relative.v[0] = xyz->x / xn;
+    xyz_relative.v[1] = xyz->y / yn;
+    xyz_relative.v[2] = xyz->z / zn;
 
     /* Step 2: Apply projective transformation with MATRIX_Q */
-    apply_projective_transform(MATRIX_Q, &xyz_relative, prolab);
+    alwan_vec3 prolab_vec;
+    apply_projective_transform(MATRIX_Q, &xyz_relative, &prolab_vec);
+    prolab->L = prolab_vec.v[0];
+    prolab->a = prolab_vec.v[1];
+    prolab->b = prolab_vec.v[2];
 }
 
-void alwan_prolab_to_xyz(alwan_vec3 const *prolab, alwan_vec3 *xyz) {
+void alwan_prolab_to_xyz(alwan_prolab const *prolab, alwan_xyz *xyz) {
     /* D65 reference white (Y = 100) - from alwan_internal.h */
     alwan_scalar const xn = ALWAN_D65_X;
     alwan_scalar const yn = ALWAN_D65_Y;
     alwan_scalar const zn = ALWAN_D65_Z;
 
     /* Step 1: Apply inverse projective transformation with MATRIX_INVERSE_Q */
+    alwan_vec3 prolab_vec;
+    prolab_vec.v[0] = prolab->L;
+    prolab_vec.v[1] = prolab->a;
+    prolab_vec.v[2] = prolab->b;
+
     alwan_vec3 xyz_relative;
-    apply_projective_transform(MATRIX_INVERSE_Q, prolab, &xyz_relative);
+    apply_projective_transform(MATRIX_INVERSE_Q, &prolab_vec, &xyz_relative);
 
     /* Step 2: Denormalize by reference white */
-    xyz->v[0] = xyz_relative.v[0] * xn;
-    xyz->v[1] = xyz_relative.v[1] * yn;
-    xyz->v[2] = xyz_relative.v[2] * zn;
+    xyz->x = xyz_relative.v[0] * xn;
+    xyz->y = xyz_relative.v[1] * yn;
+    xyz->z = xyz_relative.v[2] * zn;
 }
 
 /* ----------------------------------------------------------------
  * XYZ <-> ProLab (Custom Illuminant)
  * ---------------------------------------------------------------- */
 
-void alwan_xyz_to_prolab_custom(alwan_vec3 const *xyz,
-                                 alwan_vec3 *prolab,
-                                 alwan_vec3 const *xyz_n) {
+void alwan_xyz_to_prolab_custom(alwan_xyz const *xyz,
+                                 alwan_prolab *prolab,
+                                 alwan_xyz const *xyz_n) {
     /* Step 1: Normalize XYZ by custom reference white */
     alwan_vec3 xyz_relative;
-    xyz_relative.v[0] = xyz->v[0] / xyz_n->v[0];
-    xyz_relative.v[1] = xyz->v[1] / xyz_n->v[1];
-    xyz_relative.v[2] = xyz->v[2] / xyz_n->v[2];
+    xyz_relative.v[0] = xyz->x / xyz_n->x;
+    xyz_relative.v[1] = xyz->y / xyz_n->y;
+    xyz_relative.v[2] = xyz->z / xyz_n->z;
 
     /* Step 2: Apply projective transformation */
-    apply_projective_transform(MATRIX_Q, &xyz_relative, prolab);
+    alwan_vec3 prolab_vec;
+    apply_projective_transform(MATRIX_Q, &xyz_relative, &prolab_vec);
+    prolab->L = prolab_vec.v[0];
+    prolab->a = prolab_vec.v[1];
+    prolab->b = prolab_vec.v[2];
 }
 
-void alwan_prolab_to_xyz_custom(alwan_vec3 const *prolab,
-                                 alwan_vec3 *xyz,
-                                 alwan_vec3 const *xyz_n) {
+void alwan_prolab_to_xyz_custom(alwan_prolab const *prolab,
+                                 alwan_xyz *xyz,
+                                 alwan_xyz const *xyz_n) {
     /* Step 1: Apply inverse projective transformation */
+    alwan_vec3 prolab_vec;
+    prolab_vec.v[0] = prolab->L;
+    prolab_vec.v[1] = prolab->a;
+    prolab_vec.v[2] = prolab->b;
+
     alwan_vec3 xyz_relative;
-    apply_projective_transform(MATRIX_INVERSE_Q, prolab, &xyz_relative);
+    apply_projective_transform(MATRIX_INVERSE_Q, &prolab_vec, &xyz_relative);
 
     /* Step 2: Denormalize by custom reference white */
-    xyz->v[0] = xyz_relative.v[0] * xyz_n->v[0];
-    xyz->v[1] = xyz_relative.v[1] * xyz_n->v[1];
-    xyz->v[2] = xyz_relative.v[2] * xyz_n->v[2];
+    xyz->x = xyz_relative.v[0] * xyz_n->x;
+    xyz->y = xyz_relative.v[1] * xyz_n->y;
+    xyz->z = xyz_relative.v[2] * xyz_n->z;
 }

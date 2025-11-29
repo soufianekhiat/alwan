@@ -38,22 +38,25 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
     size_t const num_colors = data_count / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz, lab, din99_expected, din99_computed, lab_out;
+        alwan_xyz xyz;
+        alwan_lab lab;
+        alwan_din99 din99_expected, din99_computed;
+        alwan_lab lab_out;
 
         /* Load test data */
-        xyz.v[0] = test_data[i * 6 + 0];
-        xyz.v[1] = test_data[i * 6 + 1];
-        xyz.v[2] = test_data[i * 6 + 2];
-        din99_expected.v[0] = test_data[i * 6 + 3];
-        din99_expected.v[1] = test_data[i * 6 + 4];
-        din99_expected.v[2] = test_data[i * 6 + 5];
+        xyz.x = test_data[i * 6 + 0];
+        xyz.y = test_data[i * 6 + 1];
+        xyz.z = test_data[i * 6 + 2];
+        din99_expected.L99 = test_data[i * 6 + 3];
+        din99_expected.a99 = test_data[i * 6 + 4];
+        din99_expected.b99 = test_data[i * 6 + 5];
 
         /* Convert XYZ to Lab first (D65) */
-        alwan_vec3 D65 = {{ALWAN_D65_X, ALWAN_D65_Y, ALWAN_D65_Z}};
-        alwan_xyz_to_lab((alwan_xyz *)&xyz, (alwan_xyz *)&D65, (alwan_lab *)&lab);
+        alwan_xyz D65 = {ALWAN_D65_X, ALWAN_D65_Y, ALWAN_D65_Z};
+        alwan_xyz_to_lab(&xyz, &D65, &lab);
 
         /* Test Lab -> DIN99 */
-        alwan_lab_to_din99((alwan_lab *)&lab, &din99_computed, variant);
+        alwan_lab_to_din99(&lab, &din99_computed, variant);
 
         /* Tolerance for trig operations */
 #if ALWAN_SCALAR_IS_FLOAT
@@ -61,25 +64,27 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
 #else
         alwan_scalar const din99_tol = ALWAN_LITERAL(1e-7);
 #endif
+        alwan_scalar din99_comp_arr[3] = {din99_computed.L99, din99_computed.a99, din99_computed.b99};
+        alwan_scalar din99_exp_arr[3] = {din99_expected.L99, din99_expected.a99, din99_expected.b99};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_FABS(din99_computed.v[j] - din99_expected.v[j]);
+            alwan_scalar diff = ALWAN_FABS(din99_comp_arr[j] - din99_exp_arr[j]);
             if (diff > din99_tol) {
                 printf("Color %zu channel %d failed (%s):\n", i, j, variant_name);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
-                       (double)xyz.v[0], (double)xyz.v[1], (double)xyz.v[2]);
+                       (double)xyz.x, (double)xyz.y, (double)xyz.z);
                 printf("  Lab: [%.6f, %.6f, %.6f]\n",
-                       (double)lab.v[0], (double)lab.v[1], (double)lab.v[2]);
+                       (double)lab.L, (double)lab.a, (double)lab.b);
                 printf("  Expected DIN99: [%.10f, %.10f, %.10f]\n",
-                       (double)din99_expected.v[0], (double)din99_expected.v[1], (double)din99_expected.v[2]);
+                       (double)din99_exp_arr[0], (double)din99_exp_arr[1], (double)din99_exp_arr[2]);
                 printf("  Got DIN99: [%.10f, %.10f, %.10f]\n",
-                       (double)din99_computed.v[0], (double)din99_computed.v[1], (double)din99_computed.v[2]);
+                       (double)din99_comp_arr[0], (double)din99_comp_arr[1], (double)din99_comp_arr[2]);
                 printf("  Diff: %.6e\n", (double)diff);
                 TEST_ASSERT(0, "DIN99 values don't match");
             }
         }
 
         /* Test round-trip: DIN99 -> Lab */
-        alwan_din99_to_lab(&din99_computed, (alwan_lab *)&lab_out, variant);
+        alwan_din99_to_lab(&din99_computed, &lab_out, variant);
 
 #if ALWAN_SCALAR_IS_FLOAT
         alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
@@ -87,14 +92,16 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
         alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-8);
 #endif
 
+        alwan_scalar lab_arr[3] = {lab.L, lab.a, lab.b};
+        alwan_scalar lab_out_arr[3] = {lab_out.L, lab_out.a, lab_out.b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_FABS(lab_out.v[j] - lab.v[j]);
+            alwan_scalar diff = ALWAN_FABS(lab_out_arr[j] - lab_arr[j]);
             if (diff > roundtrip_tol) {
                 printf("Round-trip color %zu channel %d failed (%s):\n", i, j, variant_name);
                 printf("  Original Lab: [%.6f, %.6f, %.6f]\n",
-                       (double)lab.v[0], (double)lab.v[1], (double)lab.v[2]);
+                       (double)lab_arr[0], (double)lab_arr[1], (double)lab_arr[2]);
                 printf("  Round-trip Lab: [%.6f, %.6f, %.6f]\n",
-                       (double)lab_out.v[0], (double)lab_out.v[1], (double)lab_out.v[2]);
+                       (double)lab_out_arr[0], (double)lab_out_arr[1], (double)lab_out_arr[2]);
                 printf("  Diff: %.6e\n", (double)diff);
                 TEST_ASSERT(0, "Lab round-trip failed");
             }

@@ -123,15 +123,15 @@ static int test_ucs_roundtrip(void) {
         alwan_vec3 xyz_expected = {{xyz_from_ucs_roundtrip[i * 3 + 0], xyz_from_ucs_roundtrip[i * 3 + 1], xyz_from_ucs_roundtrip[i * 3 + 2]}};
 
         /* XYZ -> UCS */
-        alwan_vec3 ucs;
-        alwan_xyz_to_ucs(&xyz, &ucs);
-        alwan_scalar diff_forward = vec3_max_diff(&ucs, &ucs_expected);
+        alwan_ucs ucs;
+        alwan_xyz_to_ucs((alwan_xyz const *)&xyz, &ucs);
+        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&ucs, &ucs_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->UCS mismatch");
 
         /* UCS -> XYZ */
-        alwan_vec3 xyz_out;
+        alwan_xyz xyz_out;
         alwan_ucs_to_xyz(&ucs, &xyz_out);
-        alwan_scalar diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
+        alwan_scalar diff_inverse = vec3_max_diff((alwan_vec3 const *)&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "UCS->XYZ roundtrip mismatch");
     }
 
@@ -365,9 +365,9 @@ static int test_prismatic_roundtrip(void) {
         alwan_vec3 rgb_expected = {{rgb_from_prismatic_roundtrip[i * 3 + 0], rgb_from_prismatic_roundtrip[i * 3 + 1], rgb_from_prismatic_roundtrip[i * 3 + 2]}};
 
         /* RGB -> Prismatic */
-        alwan_vec3 prismatic;
+        alwan_prismatic prismatic;
         alwan_rgb_to_prismatic((alwan_rgb const *)&rgb, &prismatic);
-        alwan_scalar diff_forward = vec3_max_diff(&prismatic, &prismatic_expected);
+        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&prismatic, &prismatic_expected);
         TEST_ASSERT(diff_forward < tolerance, "RGB->Prismatic mismatch");
 
         /* Prismatic -> RGB */
@@ -415,13 +415,13 @@ static int test_hcl_roundtrip(void) {
         alwan_vec3 rgb_expected = {{rgb_from_hcl_roundtrip[i * 3 + 0], rgb_from_hcl_roundtrip[i * 3 + 1], rgb_from_hcl_roundtrip[i * 3 + 2]}};
 
         /* RGB -> HCL */
-        alwan_vec3 hcl;
+        alwan_hcl hcl;
         alwan_rgb_to_hcl((alwan_rgb const *)&rgb, &hcl);
-        alwan_scalar diff_forward = vec3_max_diff(&hcl, &hcl_expected);
+        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&hcl, &hcl_expected);
         if (diff_forward >= tolerance) {
             printf("  HCL test %d FAIL: RGB=[%.3f, %.3f, %.3f]\n", i, rgb.v[0], rgb.v[1], rgb.v[2]);
             printf("    Expected: [%.10f, %.10f, %.10f]\n", hcl_expected.v[0], hcl_expected.v[1], hcl_expected.v[2]);
-            printf("    Got:      [%.10f, %.10f, %.10f]\n", hcl.v[0], hcl.v[1], hcl.v[2]);
+            printf("    Got:      [%.10f, %.10f, %.10f]\n", hcl.H, hcl.C, hcl.L);
             printf("    Diff: %.2e\n", diff_forward);
         }
         TEST_ASSERT(diff_forward < tolerance, "RGB->HCL mismatch");
@@ -471,13 +471,13 @@ static int test_ihls_roundtrip(void) {
         alwan_vec3 rgb_expected = {{rgb_from_ihls_roundtrip[i * 3 + 0], rgb_from_ihls_roundtrip[i * 3 + 1], rgb_from_ihls_roundtrip[i * 3 + 2]}};
 
         /* RGB -> IHLS */
-        alwan_vec3 ihls;
+        alwan_ihls ihls;
         alwan_rgb_to_ihls((alwan_rgb const *)&rgb, &ihls);
-        alwan_scalar diff_forward = vec3_max_diff(&ihls, &ihls_expected);
+        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&ihls, &ihls_expected);
         if (diff_forward >= tolerance) {
             printf("  IHLS test %d FAIL: RGB=[%.3f, %.3f, %.3f]\n", i, rgb.v[0], rgb.v[1], rgb.v[2]);
             printf("    Expected: [%.10f, %.10f, %.10f]\n", ihls_expected.v[0], ihls_expected.v[1], ihls_expected.v[2]);
-            printf("    Got:      [%.10f, %.10f, %.10f]\n", ihls.v[0], ihls.v[1], ihls.v[2]);
+            printf("    Got:      [%.10f, %.10f, %.10f]\n", ihls.H, ihls.L, ihls.S);
             printf("    Diff: %.2e\n", diff_forward);
         }
         TEST_ASSERT(diff_forward < tolerance, "RGB->IHLS mismatch");
@@ -487,7 +487,7 @@ static int test_ihls_roundtrip(void) {
         alwan_ihls_to_rgb(&ihls, (alwan_rgb *)&rgb_out);
         alwan_scalar diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         if (diff_inverse >= tolerance) {
-            printf("  IHLS->RGB test %d FAIL: IHLS=[%.3f, %.3f, %.3f]\n", i, ihls.v[0], ihls.v[1], ihls.v[2]);
+            printf("  IHLS->RGB test %d FAIL: IHLS=[%.3f, %.3f, %.3f]\n", i, ihls.H, ihls.L, ihls.S);
             printf("    Expected RGB: [%.10f, %.10f, %.10f]\n", rgb_expected.v[0], rgb_expected.v[1], rgb_expected.v[2]);
             printf("    Got RGB:      [%.10f, %.10f, %.10f]\n", rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
             printf("    Diff: %.2e\n", diff_inverse);

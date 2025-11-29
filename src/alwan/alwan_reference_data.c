@@ -47,7 +47,7 @@ static size_t const g_munsell_renotation_count =
 /* Convert Munsell HVC to XYZ tristimulus values
  * Uses trilinear interpolation in the Munsell renotation data */
 int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chroma,
-                         alwan_illuminant illuminant, alwan_vec3 *xyz) {
+                         alwan_illuminant illuminant, alwan_xyz *xyz) {
     if (!xyz) {
         return ALWAN_E_INVALID;
     }
@@ -103,9 +103,9 @@ int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chro
             return ALWAN_E_INVALID;
         }
 
-        xyz->v[0] = x_interp * Y_interp / y_interp;
-        xyz->v[1] = Y_interp;
-        xyz->v[2] = (ALWAN_LITERAL(1.0) - x_interp - y_interp) * Y_interp / y_interp;
+        xyz->x = x_interp * Y_interp / y_interp;
+        xyz->y = Y_interp;
+        xyz->z = (ALWAN_LITERAL(1.0) - x_interp - y_interp) * Y_interp / y_interp;
     } else {
         /* Chromatic colors: use trilinear interpolation in HVC space
          * Full implementation requires complete Munsell renotation dataset */
@@ -115,9 +115,9 @@ int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chro
         alwan_scalar const y = ALWAN_LITERAL(0.316);
         alwan_scalar Y = value / ALWAN_LITERAL(10.0);  /* Approximate Y from value */
 
-        xyz->v[0] = x * Y / y;
-        xyz->v[1] = Y;
-        xyz->v[2] = (ALWAN_LITERAL(1.0) - x - y) * Y / y;
+        xyz->x = x * Y / y;
+        xyz->y = Y;
+        xyz->z = (ALWAN_LITERAL(1.0) - x - y) * Y / y;
     }
 
     /* Adapt from Illuminant C to requested illuminant */
@@ -125,13 +125,13 @@ int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chro
         /* Get white points for both illuminants */
         alwan_xyz white_c, white_dst;
         int status = alwan_illuminant_white_point(ALWAN_ILLUMINANT_C,
-                                                    ALWAN_OBSERVER_CIE_1931_2DEG, (alwan_vec3 *)&white_c);
+                                                    ALWAN_OBSERVER_CIE_1931_2DEG, &white_c);
         if (status != ALWAN_OK) {
             return status;
         }
 
         status = alwan_illuminant_white_point(illuminant,
-                                               ALWAN_OBSERVER_CIE_1931_2DEG, (alwan_vec3 *)&white_dst);
+                                               ALWAN_OBSERVER_CIE_1931_2DEG, &white_dst);
         if (status != ALWAN_OK) {
             return status;
         }
@@ -144,8 +144,8 @@ int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chro
         }
 
         /* Apply adaptation */
-        alwan_vec3 xyz_adapted;
-        alwan_mat3_mulv(&cat_matrix, xyz, &xyz_adapted);
+        alwan_xyz xyz_adapted;
+        alwan_mat3_mulv(&cat_matrix, (alwan_vec3 const *)xyz, (alwan_vec3 *)&xyz_adapted);
         *xyz = xyz_adapted;
     }
 
@@ -154,17 +154,17 @@ int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chro
 
 /* Convert XYZ tristimulus values to Munsell HVC notation
  * Uses iterative search in the Munsell renotation data */
-int alwan_xyz_to_munsell(alwan_vec3 const *xyz, alwan_illuminant illuminant,
+int alwan_xyz_to_munsell(alwan_xyz const *xyz, alwan_illuminant illuminant,
                          alwan_scalar *hue, alwan_scalar *value, alwan_scalar *chroma) {
     if (!xyz || !hue || !value || !chroma) {
         return ALWAN_E_INVALID;
     }
 
     /* Adapt to Illuminant C (Munsell renotation data is under Illuminant C) */
-    alwan_vec3 xyz_c;
+    alwan_xyz xyz_c;
     if (illuminant != ALWAN_ILLUMINANT_C) {
         /* Get white points for both illuminants */
-        alwan_vec3 white_src, white_c;
+        alwan_xyz white_src, white_c;
         int status = alwan_illuminant_white_point(illuminant,
                                                     ALWAN_OBSERVER_CIE_1931_2DEG, &white_src);
         if (status != ALWAN_OK) {
@@ -179,26 +179,26 @@ int alwan_xyz_to_munsell(alwan_vec3 const *xyz, alwan_illuminant illuminant,
 
         /* Compute CAT matrix */
         alwan_mat3x3 cat_matrix;
-        status = alwan_cat_matrix((alwan_xyz const *)&white_src, (alwan_xyz const *)&white_c, ALWAN_CAT_BRADFORD, &cat_matrix);
+        status = alwan_cat_matrix(&white_src, &white_c, ALWAN_CAT_BRADFORD, &cat_matrix);
         if (status != ALWAN_OK) {
             return status;
         }
 
         /* Apply adaptation */
-        alwan_mat3_mulv(&cat_matrix, xyz, &xyz_c);
+        alwan_mat3_mulv(&cat_matrix, (alwan_vec3 const *)xyz, (alwan_vec3 *)&xyz_c);
     } else {
         xyz_c = *xyz;
     }
 
     /* Convert XYZ to xyY */
-    alwan_scalar sum = xyz_c.v[0] + xyz_c.v[1] + xyz_c.v[2];
+    alwan_scalar sum = xyz_c.x + xyz_c.y + xyz_c.z;
     if (sum <= ALWAN_LITERAL(0.0)) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_scalar x = xyz_c.v[0] / sum;
-    alwan_scalar y = xyz_c.v[1] / sum;
-    alwan_scalar Y = xyz_c.v[1];
+    alwan_scalar x = xyz_c.x / sum;
+    alwan_scalar y = xyz_c.y / sum;
+    alwan_scalar Y = xyz_c.y;
 
     /* Find nearest entry in Munsell renotation data using nearest-neighbor search
      * More sophisticated inverse interpolation could be added in future versions */
@@ -260,7 +260,7 @@ size_t alwan_color_checker_num_patches(alwan_colorchecker_type type) {
 
 /* Get XYZ tristimulus values for a Color Checker patch */
 int alwan_color_checker_data(alwan_colorchecker_type type, alwan_illuminant illuminant,
-                              size_t patch_index, alwan_vec3 *xyz) {
+                              size_t patch_index, alwan_xyz *xyz) {
     if (!xyz) {
         return ALWAN_E_INVALID;
     }
@@ -290,15 +290,15 @@ int alwan_color_checker_data(alwan_colorchecker_type type, alwan_illuminant illu
         return ALWAN_E_INVALID;
     }
 
-    alwan_vec3 xyz_d50;
-    xyz_d50.v[0] = x * Y / y;
-    xyz_d50.v[1] = Y;
-    xyz_d50.v[2] = (ALWAN_LITERAL(1.0) - x - y) * Y / y;
+    alwan_xyz xyz_d50;
+    xyz_d50.x = x * Y / y;
+    xyz_d50.y = Y;
+    xyz_d50.z = (ALWAN_LITERAL(1.0) - x - y) * Y / y;
 
     /* Adapt from D50 to requested illuminant */
     if (illuminant != ALWAN_ILLUMINANT_D50) {
         /* Get white points for both illuminants */
-        alwan_vec3 white_d50, white_dst;
+        alwan_xyz white_d50, white_dst;
         int status = alwan_illuminant_white_point(ALWAN_ILLUMINANT_D50,
                                                     ALWAN_OBSERVER_CIE_1931_2DEG, &white_d50);
         if (status != ALWAN_OK) {
@@ -313,13 +313,13 @@ int alwan_color_checker_data(alwan_colorchecker_type type, alwan_illuminant illu
 
         /* Compute CAT matrix */
         alwan_mat3x3 cat_matrix;
-        status = alwan_cat_matrix((alwan_xyz const *)&white_d50, (alwan_xyz const *)&white_dst, ALWAN_CAT_BRADFORD, &cat_matrix);
+        status = alwan_cat_matrix(&white_d50, &white_dst, ALWAN_CAT_BRADFORD, &cat_matrix);
         if (status != ALWAN_OK) {
             return status;
         }
 
         /* Apply adaptation */
-        alwan_mat3_mulv(&cat_matrix, &xyz_d50, xyz);
+        alwan_mat3_mulv(&cat_matrix, (alwan_vec3 const *)&xyz_d50, (alwan_vec3 *)xyz);
     } else {
         *xyz = xyz_d50;
     }
@@ -357,7 +357,7 @@ static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed)
 }
 
 /* Convert NCS notation to XYZ tristimulus values */
-int alwan_ncs_to_xyz(char const *ncs_notation, alwan_vec3 *xyz) {
+int alwan_ncs_to_xyz(char const *ncs_notation, alwan_xyz *xyz) {
     if (!ncs_notation || !xyz) {
         return ALWAN_E_INVALID;
     }
@@ -373,7 +373,7 @@ int alwan_ncs_to_xyz(char const *ncs_notation, alwan_vec3 *xyz) {
 }
 
 /* Convert XYZ tristimulus values to NCS notation */
-int alwan_xyz_to_ncs(alwan_vec3 const *xyz, char *ncs_notation, size_t notation_size) {
+int alwan_xyz_to_ncs(alwan_xyz const *xyz, char *ncs_notation, size_t notation_size) {
     if (!xyz || !ncs_notation || notation_size < 16) {
         return ALWAN_E_INVALID;
     }

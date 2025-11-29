@@ -15,8 +15,8 @@
  * Lift/Gamma/Gain (LGG)
  * ================================================================ */
 
-int alwan_lgg_apply(alwan_vec3 const *rgb_in, alwan_vec3 const *lift,
-                    alwan_vec3 const *gamma, alwan_vec3 const *gain, alwan_vec3 *rgb_out)
+int alwan_lgg_apply(alwan_rgb const *rgb_in, alwan_rgb const *lift,
+                    alwan_rgb const *gamma, alwan_rgb const *gain, alwan_rgb *rgb_out)
 {
     if (!rgb_in || !lift || !gamma || !gain || !rgb_out) {
         return ALWAN_E_INVALID;
@@ -24,27 +24,30 @@ int alwan_lgg_apply(alwan_vec3 const *rgb_in, alwan_vec3 const *lift,
 
     /* Apply LGG formula per channel: ((rgb + lift) ^ (1/gamma)) * gain
      * This is a standard color grading formula used in tools like DaVinci Resolve */
-    for (int i = 0; i < 3; i++) {
-        /* Step 1: Apply lift (shadow adjustment) */
-        alwan_scalar lifted = rgb_in->v[i] + lift->v[i];
 
-        /* Step 2: Apply gamma (midtone adjustment)
-         * Clamp to avoid negative values before pow */
-        if (lifted < 0.0) {
-            lifted = 0.0;
-        }
+    /* Process R channel */
+    alwan_scalar lifted_r = rgb_in->r + lift->r;
+    if (lifted_r < 0.0) lifted_r = 0.0;
+    alwan_scalar gamma_r = gamma->r;
+    if (gamma_r <= 0.0001) gamma_r = 0.0001;
+    alwan_scalar gamma_corrected_r = ALWAN_POW(lifted_r, 1.0 / gamma_r);
+    rgb_out->r = gamma_corrected_r * gain->r;
 
-        /* Avoid division by zero or invalid gamma */
-        alwan_scalar gamma_val = gamma->v[i];
-        if (gamma_val <= 0.0001) {
-            gamma_val = 0.0001;  /* Very small positive value */
-        }
+    /* Process G channel */
+    alwan_scalar lifted_g = rgb_in->g + lift->g;
+    if (lifted_g < 0.0) lifted_g = 0.0;
+    alwan_scalar gamma_g = gamma->g;
+    if (gamma_g <= 0.0001) gamma_g = 0.0001;
+    alwan_scalar gamma_corrected_g = ALWAN_POW(lifted_g, 1.0 / gamma_g);
+    rgb_out->g = gamma_corrected_g * gain->g;
 
-        alwan_scalar gamma_corrected = ALWAN_POW(lifted, 1.0 / gamma_val);
-
-        /* Step 3: Apply gain (highlight adjustment) */
-        rgb_out->v[i] = gamma_corrected * gain->v[i];
-    }
+    /* Process B channel */
+    alwan_scalar lifted_b = rgb_in->b + lift->b;
+    if (lifted_b < 0.0) lifted_b = 0.0;
+    alwan_scalar gamma_b = gamma->b;
+    if (gamma_b <= 0.0001) gamma_b = 0.0001;
+    alwan_scalar gamma_corrected_b = ALWAN_POW(lifted_b, 1.0 / gamma_b);
+    rgb_out->b = gamma_corrected_b * gain->b;
 
     return ALWAN_OK;
 }
@@ -53,15 +56,18 @@ int alwan_lgg_apply(alwan_vec3 const *rgb_in, alwan_vec3 const *lift,
  * Color Matrix Grading
  * ================================================================ */
 
-int alwan_color_matrix_apply(alwan_vec3 const *rgb_in, alwan_mat3x3 const *matrix_3x3,
-                              alwan_vec3 *rgb_out)
+int alwan_color_matrix_apply(alwan_rgb const *rgb_in, alwan_mat3x3 const *matrix_3x3,
+                              alwan_rgb *rgb_out)
 {
     if (!rgb_in || !matrix_3x3 || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
-    /* Apply 3x3 matrix transformation */
-    alwan_mat3_mulv(matrix_3x3, rgb_in, rgb_out);
+    /* Apply 3x3 matrix transformation
+     * Result = Matrix * RGB (treating RGB as column vector) */
+    rgb_out->r = matrix_3x3->m[0] * rgb_in->r + matrix_3x3->m[1] * rgb_in->g + matrix_3x3->m[2] * rgb_in->b;
+    rgb_out->g = matrix_3x3->m[3] * rgb_in->r + matrix_3x3->m[4] * rgb_in->g + matrix_3x3->m[5] * rgb_in->b;
+    rgb_out->b = matrix_3x3->m[6] * rgb_in->r + matrix_3x3->m[7] * rgb_in->g + matrix_3x3->m[8] * rgb_in->b;
 
     return ALWAN_OK;
 }
@@ -134,9 +140,9 @@ int alwan_color_matrix_get_preset(alwan_color_matrix_preset preset, alwan_mat3x3
  * Printer Lights
  * ================================================================ */
 
-int alwan_printer_lights_apply(alwan_vec3 const *rgb_in, alwan_scalar red_lights,
+int alwan_printer_lights_apply(alwan_rgb const *rgb_in, alwan_scalar red_lights,
                                 alwan_scalar green_lights, alwan_scalar blue_lights,
-                                alwan_vec3 *rgb_out)
+                                alwan_rgb *rgb_out)
 {
     if (!rgb_in || !rgb_out) {
         return ALWAN_E_INVALID;
@@ -161,9 +167,9 @@ int alwan_printer_lights_apply(alwan_vec3 const *rgb_in, alwan_scalar red_lights
      * 10^x = e^(x * ln(10)) */
     const alwan_scalar ln10 = 2.302585092994046;  /* ln(10) */
 
-    rgb_out->v[0] = rgb_in->v[0] * ALWAN_EXP(red_exposure * ln10);
-    rgb_out->v[1] = rgb_in->v[1] * ALWAN_EXP(green_exposure * ln10);
-    rgb_out->v[2] = rgb_in->v[2] * ALWAN_EXP(blue_exposure * ln10);
+    rgb_out->r = rgb_in->r * ALWAN_EXP(red_exposure * ln10);
+    rgb_out->g = rgb_in->g * ALWAN_EXP(green_exposure * ln10);
+    rgb_out->b = rgb_in->b * ALWAN_EXP(blue_exposure * ln10);
 
     return ALWAN_OK;
 }

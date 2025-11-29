@@ -31,17 +31,25 @@
     return 0; \
 } while(0)
 
-static alwan_scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
+static alwan_scalar vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
     alwan_scalar max_diff = 0;
-    for (int i = 0; i < 3; i++) {
-        alwan_scalar diff = ALWAN_FABS(a->v[i] - b->v[i]);
-        if (diff > max_diff) max_diff = diff;
-    }
+    alwan_scalar diff_x = ALWAN_FABS(a->x - b->x);
+    alwan_scalar diff_y = ALWAN_FABS(a->y - b->y);
+    alwan_scalar diff_z = ALWAN_FABS(a->z - b->z);
+
+    if (diff_x > max_diff) max_diff = diff_x;
+    if (diff_y > max_diff) max_diff = diff_y;
+    if (diff_z > max_diff) max_diff = diff_z;
+
     return max_diff;
 }
 
-static void vec3_print(char const *name, alwan_vec3 const *v) {
-    printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->v[0], v->v[1], v->v[2]);
+static void vec3_print(char const *name, alwan_xyz const *v) {
+    printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->x, v->y, v->z);
+}
+
+static void rgb_print(char const *name, alwan_rgb const *v) {
+    printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->r, v->g, v->b);
 }
 
 /* ----------------------------------------------------------------
@@ -148,11 +156,11 @@ static int test_smits1999_round_trip(char const *color_name,
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_vec3 rgb = {{r, g, b}};
-    alwan_vec3 expected = {{expected_xyz[0], expected_xyz[1], expected_xyz[2]}};
+    alwan_rgb rgb = {r, g, b};
+    alwan_xyz expected = {expected_xyz[0], expected_xyz[1], expected_xyz[2]};
     alwan_spd spectrum = {0};
     alwan_spd illuminant_d65 = {0};
-    alwan_vec3 xyz_recovered;
+    alwan_xyz xyz_recovered;
 
     /* Convert RGB to spectrum using Smits1999 */
     int status = alwan_rgb_to_spectrum_smits1999(ctx, &rgb, &spectrum);
@@ -178,9 +186,9 @@ static int test_smits1999_round_trip(char const *color_name,
      * We need to divide by the normalization constant K = integral illuminant(lambda) * y_bar(lambda) dlambda
      * For D65 with CIE 1931 2°, this is approximately 10600 */
     alwan_scalar const K_D65 = ALWAN_LITERAL(10599.3675);  /* Normalization constant for D65 */
-    xyz_recovered.v[0] /= K_D65;
-    xyz_recovered.v[1] /= K_D65;
-    xyz_recovered.v[2] /= K_D65;
+    xyz_recovered.x /= K_D65;
+    xyz_recovered.y /= K_D65;
+    xyz_recovered.z /= K_D65;
 
     /* Clean up */
     alwan_spd_destroy(ctx, &spectrum);
@@ -194,7 +202,7 @@ static int test_smits1999_round_trip(char const *color_name,
     if (diff >= tolerance) {
         fprintf(stderr, "Round-trip error too large: max_diff = %.6f (tolerance = %.6f)\n",
                 diff, tolerance);
-        vec3_print("  RGB input", &rgb);
+        rgb_print("  RGB input", &rgb);
         vec3_print("  XYZ expected", &expected);
         vec3_print("  XYZ recovered", &xyz_recovered);
         alwan_destroy(ctx);
@@ -217,11 +225,11 @@ static int test_mallett2019_round_trip(char const *color_name,
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_vec3 rgb = {{r, g, b}};
-    alwan_vec3 expected = {{expected_xyz[0], expected_xyz[1], expected_xyz[2]}};
+    alwan_rgb rgb = {r, g, b};
+    alwan_xyz expected = {expected_xyz[0], expected_xyz[1], expected_xyz[2]};
     alwan_spd spectrum = {0};
     alwan_spd illuminant_d65 = {0};
-    alwan_vec3 xyz_recovered;
+    alwan_xyz xyz_recovered;
 
     /* Convert RGB to spectrum using Mallett2019 */
     int status = alwan_rgb_to_spectrum_mallett2019(ctx, &rgb, &spectrum);
@@ -247,9 +255,9 @@ static int test_mallett2019_round_trip(char const *color_name,
      * We need to divide by the normalization constant K = integral illuminant(lambda) * y_bar(lambda) dlambda
      * For D65 with CIE 1931 2°, this is approximately 10600 */
     alwan_scalar const K_D65 = ALWAN_LITERAL(10567.2678);  /* Normalization constant for D65 (Mallett 5nm spacing) */
-    xyz_recovered.v[0] /= K_D65;
-    xyz_recovered.v[1] /= K_D65;
-    xyz_recovered.v[2] /= K_D65;
+    xyz_recovered.x /= K_D65;
+    xyz_recovered.y /= K_D65;
+    xyz_recovered.z /= K_D65;
 
     /* Clean up */
     alwan_spd_destroy(ctx, &spectrum);
@@ -263,7 +271,7 @@ static int test_mallett2019_round_trip(char const *color_name,
     if (diff >= tolerance) {
         fprintf(stderr, "Round-trip error too large: max_diff = %.6f (tolerance = %.6f)\n",
                 diff, tolerance);
-        vec3_print("  RGB input", &rgb);
+        rgb_print("  RGB input", &rgb);
         vec3_print("  XYZ expected", &expected);
         vec3_print("  XYZ recovered", &xyz_recovered);
         alwan_destroy(ctx);
@@ -284,7 +292,7 @@ static int test_jakob2019_structure(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_vec3 rgb = {{ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)}};
+    alwan_rgb rgb = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
     alwan_spd spectrum = {0};
 
     /* Convert RGB to spectrum using Jakob2019 with sRGB gamut */
@@ -316,7 +324,7 @@ static int test_spectrum_structure_smits1999(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_vec3 rgb = {{ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};  /* Red */
+    alwan_rgb rgb = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};  /* Red */
     alwan_spd spectrum = {0};
 
     int status = alwan_rgb_to_spectrum_smits1999(ctx, &rgb, &spectrum);
@@ -343,7 +351,7 @@ static int test_spectrum_structure_mallett2019(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_vec3 rgb = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)}};  /* Green */
+    alwan_rgb rgb = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};  /* Green */
     alwan_spd spectrum = {0};
 
     int status = alwan_rgb_to_spectrum_mallett2019(ctx, &rgb, &spectrum);
@@ -376,7 +384,7 @@ static int test_spectrum_structure_jakob2019(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_vec3 rgb = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)}};  /* Blue */
+    alwan_rgb rgb = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};  /* Blue */
     alwan_spd spectrum = {0};
 
     int status = alwan_rgb_to_spectrum_jakob2019(ctx, ALWAN_JAKOB2019_SRGB, &rgb, &spectrum);

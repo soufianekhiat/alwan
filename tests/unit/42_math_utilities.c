@@ -270,7 +270,7 @@ static int test_cct_off_locus(void) {
 
 static int test_optimize_spectrum(void) {
     /* Test spectrum optimization for target XYZ */
-    alwan_vec3 target_xyz = {{50.0, 50.0, 50.0}};  /* Mid-gray */
+    alwan_xyz target_xyz = {50.0, 50.0, 50.0};  /* Mid-gray */
     alwan_ctx *ctx;
     alwan_spd spd_out;
     alwan_scalar spd_values[81];  /* Allocate storage for SPD values */
@@ -357,18 +357,18 @@ static int test_table_3d_trilinear(void) {
         /* [1,1,1] */ 1.0, 1.0, 1.0
     };
 
-    alwan_vec3 rgb_in = {{0.5, 0.5, 0.5}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb rgb_out;
 
     int status = alwan_table_interp_3d_trilinear(table, sizes, &rgb_in, &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "3D trilinear interpolation failed");
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[0] - 0.5) < TOLERANCE, "R should be ~0.5");
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[1] - 0.5) < TOLERANCE, "G should be ~0.5");
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[2] - 0.5) < TOLERANCE, "B should be ~0.5");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.r - 0.5) < TOLERANCE, "R should be ~0.5");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.g - 0.5) < TOLERANCE, "G should be ~0.5");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.b - 0.5) < TOLERANCE, "B should be ~0.5");
 
     printf("  3D trilinear: [0.5,0.5,0.5] -> [%.3f,%.3f,%.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("3D trilinear interpolation");
 }
@@ -388,18 +388,18 @@ static int test_table_3d_tetrahedral(void) {
         /* [1,1,1] */ 1.0, 1.0, 1.0
     };
 
-    alwan_vec3 rgb_in = {{0.5, 0.5, 0.5}};
-    alwan_vec3 rgb_out;
+    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb rgb_out;
 
     int status = alwan_table_interp_3d_tetrahedral(table, sizes, &rgb_in, &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "3D tetrahedral interpolation failed");
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[0] - 0.5) < TOLERANCE, "R should be ~0.5");
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[1] - 0.5) < TOLERANCE, "G should be ~0.5");
-    TEST_ASSERT(ALWAN_FABS(rgb_out.v[2] - 0.5) < TOLERANCE, "B should be ~0.5");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.r - 0.5) < TOLERANCE, "R should be ~0.5");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.g - 0.5) < TOLERANCE, "G should be ~0.5");
+    TEST_ASSERT(ALWAN_FABS(rgb_out.b - 0.5) < TOLERANCE, "B should be ~0.5");
 
     printf("  3D tetrahedral: [0.5,0.5,0.5] -> [%.3f,%.3f,%.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("3D tetrahedral interpolation");
 }

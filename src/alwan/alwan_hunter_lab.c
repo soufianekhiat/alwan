@@ -29,21 +29,21 @@ static alwan_scalar const HUNTER_KB_D65 = ALWAN_LITERAL(67.20);
  * Helper: Calculate Ka and Kb for custom illuminant
  * ---------------------------------------------------------------- */
 
-static void calculate_hunter_coefficients(alwan_vec3 const *xyz_n,
+static void calculate_hunter_coefficients(alwan_xyz const *xyz_n,
                                           alwan_scalar *ka,
                                           alwan_scalar *kb) {
     /* Ka = 175 × √(Xn / 98.043) */
-    *ka = ALWAN_LITERAL(175.0) * ALWAN_SQRT(xyz_n->v[0] / HUNTER_KA_XN_REF);
+    *ka = ALWAN_LITERAL(175.0) * ALWAN_SQRT(xyz_n->x / HUNTER_KA_XN_REF);
 
     /* Kb = 70 × √(Zn / 118.115) */
-    *kb = ALWAN_LITERAL(70.0) * ALWAN_SQRT(xyz_n->v[2] / HUNTER_KB_ZN_REF);
+    *kb = ALWAN_LITERAL(70.0) * ALWAN_SQRT(xyz_n->z / HUNTER_KB_ZN_REF);
 }
 
 /* ----------------------------------------------------------------
  * XYZ <-> Hunter Lab (D65 Illuminant)
  * ---------------------------------------------------------------- */
 
-void alwan_xyz_to_hunter_lab(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab) {
+void alwan_xyz_to_hunter_lab(alwan_xyz const *xyz, alwan_hunter_lab *hunter_lab) {
     /* D65 reference white (Y = 100 scale) - from colour-science TVS_ILLUMINANTS_HUNTERLAB */
     alwan_scalar const xn = ALWAN_LITERAL(95.02);
     alwan_scalar const yn = ALWAN_LITERAL(100.0);
@@ -54,30 +54,30 @@ void alwan_xyz_to_hunter_lab(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab) {
     alwan_scalar kb = HUNTER_KB_D65;
 
     /* Calculate ratios - XYZ and XYZ_n both in Y=100 scale */
-    alwan_scalar y_ratio = xyz->v[1] / yn;
+    alwan_scalar y_ratio = xyz->y / yn;
     alwan_scalar sqrt_y_ratio = ALWAN_SQRT(y_ratio);
 
     /* Guard against division by zero */
     if (sqrt_y_ratio < ALWAN_LITERAL(1e-10)) {
-        hunter_lab->v[0] = ALWAN_LITERAL(0.0);
-        hunter_lab->v[1] = ALWAN_LITERAL(0.0);
-        hunter_lab->v[2] = ALWAN_LITERAL(0.0);
+        hunter_lab->L = ALWAN_LITERAL(0.0);
+        hunter_lab->a = ALWAN_LITERAL(0.0);
+        hunter_lab->b = ALWAN_LITERAL(0.0);
         return;
     }
 
     /* L = 100 × √(Y/Yn) - colour-science formula */
-    hunter_lab->v[0] = ALWAN_LITERAL(100.0) * sqrt_y_ratio;
+    hunter_lab->L = ALWAN_LITERAL(100.0) * sqrt_y_ratio;
 
     /* a = Ka × ((X/Xn - Y/Yn) / √(Y/Yn)) */
-    alwan_scalar x_ratio = xyz->v[0] / xn;
-    hunter_lab->v[1] = ka * (x_ratio - y_ratio) / sqrt_y_ratio;
+    alwan_scalar x_ratio = xyz->x / xn;
+    hunter_lab->a = ka * (x_ratio - y_ratio) / sqrt_y_ratio;
 
     /* b = Kb × ((Y/Yn - Z/Zn) / √(Y/Yn)) */
-    alwan_scalar z_ratio = xyz->v[2] / zn;
-    hunter_lab->v[2] = kb * (y_ratio - z_ratio) / sqrt_y_ratio;
+    alwan_scalar z_ratio = xyz->z / zn;
+    hunter_lab->b = kb * (y_ratio - z_ratio) / sqrt_y_ratio;
 }
 
-void alwan_hunter_lab_to_xyz(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz) {
+void alwan_hunter_lab_to_xyz(alwan_hunter_lab const *hunter_lab, alwan_xyz *xyz) {
     /* D65 reference white (Y = 100 scale) - from colour-science TVS_ILLUMINANTS_HUNTERLAB */
     alwan_scalar const xn = ALWAN_LITERAL(95.02);
     alwan_scalar const yn = ALWAN_LITERAL(100.0);
@@ -88,73 +88,73 @@ void alwan_hunter_lab_to_xyz(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz) {
     alwan_scalar kb = HUNTER_KB_D65;
 
     /* L/100 - from colour-science formula */
-    alwan_scalar l_norm = hunter_lab->v[0] / ALWAN_LITERAL(100.0);
+    alwan_scalar l_norm = hunter_lab->L / ALWAN_LITERAL(100.0);
 
     /* Y = (L/100)² × Yn - XYZ in Y=100 scale */
-    xyz->v[1] = l_norm * l_norm * yn;
+    xyz->y = l_norm * l_norm * yn;
 
     /* X = ((a/Ka) × (L/100) + (L/100)²) × Xn */
-    alwan_scalar a_term = (hunter_lab->v[1] / ka) * l_norm;
-    xyz->v[0] = (a_term + l_norm * l_norm) * xn;
+    alwan_scalar a_term = (hunter_lab->a / ka) * l_norm;
+    xyz->x = (a_term + l_norm * l_norm) * xn;
 
     /* Z = -((b/Kb) × (L/100) - (L/100)²) × Zn */
-    alwan_scalar b_term = (hunter_lab->v[2] / kb) * l_norm;
-    xyz->v[2] = -(b_term - l_norm * l_norm) * zn;
+    alwan_scalar b_term = (hunter_lab->b / kb) * l_norm;
+    xyz->z = -(b_term - l_norm * l_norm) * zn;
 }
 
 /* ----------------------------------------------------------------
  * XYZ <-> Hunter Lab (Custom Illuminant)
  * ---------------------------------------------------------------- */
 
-void alwan_xyz_to_hunter_lab_custom(alwan_vec3 const *xyz,
-                                     alwan_vec3 *hunter_lab,
-                                     alwan_vec3 const *xyz_n) {
+void alwan_xyz_to_hunter_lab_custom(alwan_xyz const *xyz,
+                                     alwan_hunter_lab *hunter_lab,
+                                     alwan_xyz const *xyz_n) {
     /* Calculate Ka and Kb for the given illuminant */
     alwan_scalar ka, kb;
     calculate_hunter_coefficients(xyz_n, &ka, &kb);
 
     /* Calculate ratios */
-    alwan_scalar y_ratio = xyz->v[1] / xyz_n->v[1];
+    alwan_scalar y_ratio = xyz->y / xyz_n->y;
     alwan_scalar sqrt_y_ratio = ALWAN_SQRT(y_ratio);
 
     /* Guard against division by zero */
     if (sqrt_y_ratio < ALWAN_LITERAL(1e-10)) {
-        hunter_lab->v[0] = ALWAN_LITERAL(0.0);
-        hunter_lab->v[1] = ALWAN_LITERAL(0.0);
-        hunter_lab->v[2] = ALWAN_LITERAL(0.0);
+        hunter_lab->L = ALWAN_LITERAL(0.0);
+        hunter_lab->a = ALWAN_LITERAL(0.0);
+        hunter_lab->b = ALWAN_LITERAL(0.0);
         return;
     }
 
     /* L = 10 × √(Y/Yn) - Hunter Lab uses 0-10 scale for L */
-    hunter_lab->v[0] = ALWAN_LITERAL(10.0) * sqrt_y_ratio;
+    hunter_lab->L = ALWAN_LITERAL(10.0) * sqrt_y_ratio;
 
     /* a = Ka × ((X/Xn - Y/Yn) / √(Y/Yn)) */
-    alwan_scalar x_ratio = xyz->v[0] / xyz_n->v[0];
-    hunter_lab->v[1] = ka * (x_ratio - y_ratio) / sqrt_y_ratio;
+    alwan_scalar x_ratio = xyz->x / xyz_n->x;
+    hunter_lab->a = ka * (x_ratio - y_ratio) / sqrt_y_ratio;
 
     /* b = Kb × ((Y/Yn - Z/Zn) / √(Y/Yn)) */
-    alwan_scalar z_ratio = xyz->v[2] / xyz_n->v[2];
-    hunter_lab->v[2] = kb * (y_ratio - z_ratio) / sqrt_y_ratio;
+    alwan_scalar z_ratio = xyz->z / xyz_n->z;
+    hunter_lab->b = kb * (y_ratio - z_ratio) / sqrt_y_ratio;
 }
 
-void alwan_hunter_lab_to_xyz_custom(alwan_vec3 const *hunter_lab,
-                                     alwan_vec3 *xyz,
-                                     alwan_vec3 const *xyz_n) {
+void alwan_hunter_lab_to_xyz_custom(alwan_hunter_lab const *hunter_lab,
+                                     alwan_xyz *xyz,
+                                     alwan_xyz const *xyz_n) {
     /* Calculate Ka and Kb for the given illuminant */
     alwan_scalar ka, kb;
     calculate_hunter_coefficients(xyz_n, &ka, &kb);
 
     /* L/10 - Hunter Lab uses 0-10 scale for L */
-    alwan_scalar l_norm = hunter_lab->v[0] / ALWAN_LITERAL(10.0);
+    alwan_scalar l_norm = hunter_lab->L / ALWAN_LITERAL(10.0);
 
     /* Y = (L/10)² × Yn */
-    xyz->v[1] = l_norm * l_norm * xyz_n->v[1];
+    xyz->y = l_norm * l_norm * xyz_n->y;
 
     /* X = ((a/Ka) × (L/100) + (L/100)²) × Xn */
-    alwan_scalar a_term = (hunter_lab->v[1] / ka) * l_norm;
-    xyz->v[0] = (a_term + l_norm * l_norm) * xyz_n->v[0];
+    alwan_scalar a_term = (hunter_lab->a / ka) * l_norm;
+    xyz->x = (a_term + l_norm * l_norm) * xyz_n->x;
 
     /* Z = -((b/Kb) × (L/100) - (L/100)²) × Zn */
-    alwan_scalar b_term = (hunter_lab->v[2] / kb) * l_norm;
-    xyz->v[2] = -(b_term - l_norm * l_norm) * xyz_n->v[2];
+    alwan_scalar b_term = (hunter_lab->b / kb) * l_norm;
+    xyz->z = -(b_term - l_norm * l_norm) * xyz_n->z;
 }

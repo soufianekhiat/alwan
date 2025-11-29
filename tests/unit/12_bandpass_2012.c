@@ -37,41 +37,41 @@ static int test_cie_2012_observers(void) {
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Test CIE 2012 2° observer */
-    alwan_vec3 xyz_2012_2deg;
+    alwan_xyz xyz_2012_2deg;
     status = alwan_xyz_from_spd(ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_2012_2DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
                                 ALWAN_LITERAL(0.0),
                                 &xyz_2012_2deg);
     TEST_ASSERT(status == ALWAN_OK, "CIE 2012 2° observer failed");
-    TEST_ASSERT(xyz_2012_2deg.v[0] > ALWAN_LITERAL(0.0), "2012 2° X should be positive");
-    TEST_ASSERT(xyz_2012_2deg.v[1] > ALWAN_LITERAL(0.0), "2012 2° Y should be positive");
-    TEST_ASSERT(xyz_2012_2deg.v[2] > ALWAN_LITERAL(0.0), "2012 2° Z should be positive");
+    TEST_ASSERT(xyz_2012_2deg.x > ALWAN_LITERAL(0.0), "2012 2° X should be positive");
+    TEST_ASSERT(xyz_2012_2deg.y > ALWAN_LITERAL(0.0), "2012 2° Y should be positive");
+    TEST_ASSERT(xyz_2012_2deg.z > ALWAN_LITERAL(0.0), "2012 2° Z should be positive");
 
     /* Test CIE 2012 10° observer */
-    alwan_vec3 xyz_2012_10deg;
+    alwan_xyz xyz_2012_10deg;
     status = alwan_xyz_from_spd(ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_2012_10DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
                                 ALWAN_LITERAL(0.0),
                                 &xyz_2012_10deg);
     TEST_ASSERT(status == ALWAN_OK, "CIE 2012 10° observer failed");
-    TEST_ASSERT(xyz_2012_10deg.v[0] > ALWAN_LITERAL(0.0), "2012 10° X should be positive");
-    TEST_ASSERT(xyz_2012_10deg.v[1] > ALWAN_LITERAL(0.0), "2012 10° Y should be positive");
-    TEST_ASSERT(xyz_2012_10deg.v[2] > ALWAN_LITERAL(0.0), "2012 10° Z should be positive");
+    TEST_ASSERT(xyz_2012_10deg.x > ALWAN_LITERAL(0.0), "2012 10° X should be positive");
+    TEST_ASSERT(xyz_2012_10deg.y > ALWAN_LITERAL(0.0), "2012 10° Y should be positive");
+    TEST_ASSERT(xyz_2012_10deg.z > ALWAN_LITERAL(0.0), "2012 10° Z should be positive");
 
     /* 2° and 10° observers should give slightly different results */
-    alwan_scalar diff_x = ALWAN_FABS(xyz_2012_2deg.v[0] - xyz_2012_10deg.v[0]);
-    alwan_scalar diff_y = ALWAN_FABS(xyz_2012_2deg.v[1] - xyz_2012_10deg.v[1]);
-    alwan_scalar diff_z = ALWAN_FABS(xyz_2012_2deg.v[2] - xyz_2012_10deg.v[2]);
+    alwan_scalar diff_x = ALWAN_FABS(xyz_2012_2deg.x - xyz_2012_10deg.x);
+    alwan_scalar diff_y = ALWAN_FABS(xyz_2012_2deg.y - xyz_2012_10deg.y);
+    alwan_scalar diff_z = ALWAN_FABS(xyz_2012_2deg.z - xyz_2012_10deg.z);
 
     TEST_ASSERT(diff_x + diff_y + diff_z > ALWAN_LITERAL(0.01),
                 "2° and 10° observers should differ");
 
     printf("  CIE 2012 2°:  XYZ = [%.4f, %.4f, %.4f]\n",
-           (double)xyz_2012_2deg.v[0], (double)xyz_2012_2deg.v[1], (double)xyz_2012_2deg.v[2]);
+           (double)xyz_2012_2deg.x, (double)xyz_2012_2deg.y, (double)xyz_2012_2deg.z);
     printf("  CIE 2012 10°: XYZ = [%.4f, %.4f, %.4f]\n",
-           (double)xyz_2012_10deg.v[0], (double)xyz_2012_10deg.v[1], (double)xyz_2012_10deg.v[2]);
+           (double)xyz_2012_10deg.x, (double)xyz_2012_10deg.y, (double)xyz_2012_10deg.z);
 
     alwan_spd_destroy(ctx, &reflectance);
     alwan_spd_destroy(ctx, &d65);
@@ -163,7 +163,7 @@ static int test_bandpass_parameter(void) {
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Test with different bandpass values (currently no-op) */
-    alwan_vec3 xyz_no_bp, xyz_with_bp;
+    alwan_xyz xyz_no_bp, xyz_with_bp;
 
     status = alwan_xyz_from_spd(ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
@@ -180,9 +180,9 @@ static int test_bandpass_parameter(void) {
     TEST_ASSERT(status == ALWAN_OK, "XYZ with bandpass parameter failed");
 
     /* Since bandpass correction is not yet implemented, results should be identical */
-    alwan_scalar diff = ALWAN_FABS(xyz_no_bp.v[0] - xyz_with_bp.v[0]) +
-                  ALWAN_FABS(xyz_no_bp.v[1] - xyz_with_bp.v[1]) +
-                  ALWAN_FABS(xyz_no_bp.v[2] - xyz_with_bp.v[2]);
+    alwan_scalar diff = ALWAN_FABS(xyz_no_bp.x - xyz_with_bp.x) +
+                  ALWAN_FABS(xyz_no_bp.y - xyz_with_bp.y) +
+                  ALWAN_FABS(xyz_no_bp.z - xyz_with_bp.z);
     TEST_ASSERT(diff < ALWAN_EPSILON, "Bandpass parameter should be accepted (impl pending)");
 
     alwan_spd_destroy(ctx, &reflectance);

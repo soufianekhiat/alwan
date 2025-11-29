@@ -133,24 +133,35 @@ static void gamut_map_hue_preserving_single(alwan_vec3 const *rgb_in, alwan_vec3
 }
 
 int alwan_gamut_map(alwan_gamut_map_method method,
-                    alwan_vec3 const *rgb_in,
+                    alwan_rgb const *rgb_in,
                     size_t count,
-                    alwan_vec3 *rgb_out) {
+                    alwan_rgb *rgb_out) {
     if (!rgb_in || !rgb_out || count == 0) {
         return ALWAN_E_INVALID;
     }
 
     for (size_t i = 0; i < count; i++) {
+        /* Convert to vec3 for internal processing */
+        alwan_vec3 rgb_in_vec, rgb_out_vec;
+        rgb_in_vec.v[0] = rgb_in[i].r;
+        rgb_in_vec.v[1] = rgb_in[i].g;
+        rgb_in_vec.v[2] = rgb_in[i].b;
+
         switch (method) {
             case ALWAN_GAMUT_MAP_CLIP:
-                gamut_map_clip_single(&rgb_in[i], &rgb_out[i]);
+                gamut_map_clip_single(&rgb_in_vec, &rgb_out_vec);
                 break;
             case ALWAN_GAMUT_MAP_HUE_PRESERVING:
-                gamut_map_hue_preserving_single(&rgb_in[i], &rgb_out[i]);
+                gamut_map_hue_preserving_single(&rgb_in_vec, &rgb_out_vec);
                 break;
             default:
                 return ALWAN_E_INVALID;
         }
+
+        /* Convert back to rgb */
+        rgb_out[i].r = rgb_out_vec.v[0];
+        rgb_out[i].g = rgb_out_vec.v[1];
+        rgb_out[i].b = rgb_out_vec.v[2];
     }
 
     return ALWAN_OK;
@@ -159,8 +170,8 @@ int alwan_gamut_map(alwan_gamut_map_method method,
 /* Map XYZ to RGB gamut with hue preservation */
 int alwan_gamut_map_xyz_to_rgb(alwan_ctx *ctx,
                                 alwan_rgb_space_desc const *space,
-                                alwan_vec3 const *xyz_in,
-                                alwan_vec3 *rgb_out) {
+                                alwan_xyz const *xyz_in,
+                                alwan_rgb *rgb_out) {
     (void)ctx;  /* Reserved for future use */
 
     if (!space || !xyz_in || !rgb_out) {
@@ -175,11 +186,20 @@ int alwan_gamut_map_xyz_to_rgb(alwan_ctx *ctx,
     }
 
     /* Convert XYZ to RGB (may be out of gamut) */
-    alwan_vec3 rgb_raw;
-    alwan_mat3_mulv(&xyz_to_rgb, xyz_in, &rgb_raw);
+    alwan_vec3 xyz_vec, rgb_raw, rgb_mapped;
+    xyz_vec.v[0] = xyz_in->x;
+    xyz_vec.v[1] = xyz_in->y;
+    xyz_vec.v[2] = xyz_in->z;
+
+    alwan_mat3_mulv(&xyz_to_rgb, &xyz_vec, &rgb_raw);
 
     /* Apply hue-preserving gamut mapping */
-    gamut_map_hue_preserving_single(&rgb_raw, rgb_out);
+    gamut_map_hue_preserving_single(&rgb_raw, &rgb_mapped);
+
+    /* Convert back to rgb */
+    rgb_out->r = rgb_mapped.v[0];
+    rgb_out->g = rgb_mapped.v[1];
+    rgb_out->b = rgb_mapped.v[2];
 
     return ALWAN_OK;
 }
@@ -829,26 +849,32 @@ static alwan_scalar alwan_find_gamut_intersection(alwan_scalar a, alwan_scalar b
 /* Gamut mapping implementation */
 int alwan_gamut_map_advanced(alwan_gamut_map_method method,
                               alwan_rgb_space_desc const *space,
-                              alwan_vec3 const *rgb_linear,
-                              alwan_vec3 *rgb_out) {
+                              alwan_rgb const *rgb_linear,
+                              alwan_rgb *rgb_out) {
     if (!space || !rgb_linear || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
+    /* Convert to vec3 for internal processing */
+    alwan_vec3 rgb_vec;
+    rgb_vec.v[0] = rgb_linear->r;
+    rgb_vec.v[1] = rgb_linear->g;
+    rgb_vec.v[2] = rgb_linear->b;
+
     /* Method 0: Simple clipping */
     if (method == ALWAN_GAMUT_MAP_CLIP) {
-        rgb_out->v[0] = (rgb_linear->v[0] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                        (rgb_linear->v[0] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_linear->v[0];
-        rgb_out->v[1] = (rgb_linear->v[1] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                        (rgb_linear->v[1] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_linear->v[1];
-        rgb_out->v[2] = (rgb_linear->v[2] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                        (rgb_linear->v[2] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_linear->v[2];
+        rgb_out->r = (rgb_linear->r < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                     (rgb_linear->r > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_linear->r;
+        rgb_out->g = (rgb_linear->g < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                     (rgb_linear->g > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_linear->g;
+        rgb_out->b = (rgb_linear->b < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                     (rgb_linear->b > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_linear->b;
         return ALWAN_OK;
     }
 
     /* Convert to Oklab */
     alwan_vec3 oklab;
-    alwan_linear_srgb_to_oklab(rgb_linear, &oklab);
+    alwan_linear_srgb_to_oklab(&rgb_vec, &oklab);
 
     alwan_scalar L = oklab.v[0];
     alwan_scalar a = oklab.v[1];
@@ -857,9 +883,9 @@ int alwan_gamut_map_advanced(alwan_gamut_map_method method,
 
     /* If achromatic or already in gamut, check if simple clip works */
     if (C < ALWAN_LITERAL(0.0001) ||
-        (rgb_linear->v[0] >= ALWAN_LITERAL(0.0) && rgb_linear->v[0] <= ALWAN_LITERAL(1.0) &&
-         rgb_linear->v[1] >= ALWAN_LITERAL(0.0) && rgb_linear->v[1] <= ALWAN_LITERAL(1.0) &&
-         rgb_linear->v[2] >= ALWAN_LITERAL(0.0) && rgb_linear->v[2] <= ALWAN_LITERAL(1.0))) {
+        (rgb_linear->r >= ALWAN_LITERAL(0.0) && rgb_linear->r <= ALWAN_LITERAL(1.0) &&
+         rgb_linear->g >= ALWAN_LITERAL(0.0) && rgb_linear->g <= ALWAN_LITERAL(1.0) &&
+         rgb_linear->b >= ALWAN_LITERAL(0.0) && rgb_linear->b <= ALWAN_LITERAL(1.0))) {
         *rgb_out = *rgb_linear;
         return ALWAN_OK;
     }
@@ -937,15 +963,16 @@ int alwan_gamut_map_advanced(alwan_gamut_map_method method,
     oklab_clipped.v[2] = C_clipped * b_norm;
 
     /* Convert to linear RGB */
-    alwan_oklab_to_linear_srgb(&oklab_clipped, rgb_out);
+    alwan_vec3 rgb_result;
+    alwan_oklab_to_linear_srgb(&oklab_clipped, &rgb_result);
 
-    /* Final safety clamp */
-    rgb_out->v[0] = (rgb_out->v[0] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                    (rgb_out->v[0] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_out->v[0];
-    rgb_out->v[1] = (rgb_out->v[1] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                    (rgb_out->v[1] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_out->v[1];
-    rgb_out->v[2] = (rgb_out->v[2] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                    (rgb_out->v[2] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_out->v[2];
+    /* Final safety clamp and convert to rgb */
+    rgb_out->r = (rgb_result.v[0] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                 (rgb_result.v[0] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[0];
+    rgb_out->g = (rgb_result.v[1] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                 (rgb_result.v[1] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[1];
+    rgb_out->b = (rgb_result.v[2] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                 (rgb_result.v[2] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[2];
 
     return ALWAN_OK;
 }

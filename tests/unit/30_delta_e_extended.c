@@ -91,8 +91,8 @@ static int test_delta_e_din99(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 din99_1 = {{din99_1_data[i * 3 + 0], din99_1_data[i * 3 + 1], din99_1_data[i * 3 + 2]}};
-        alwan_vec3 din99_2 = {{din99_2_data[i * 3 + 0], din99_2_data[i * 3 + 1], din99_2_data[i * 3 + 2]}};
+        alwan_din99 din99_1 = {din99_1_data[i * 3 + 0], din99_1_data[i * 3 + 1], din99_1_data[i * 3 + 2]};
+        alwan_din99 din99_2 = {din99_2_data[i * 3 + 0], din99_2_data[i * 3 + 1], din99_2_data[i * 3 + 2]};
         alwan_scalar expected = de_din99_data[i];
 
         alwan_scalar result = alwan_delta_e_din99(&din99_1, &din99_2);
@@ -162,8 +162,8 @@ static int test_delta_e_cam02_lcd(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 lab1 = {{lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]}};
-        alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
+        alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_cam_jab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_scalar expected = de_cam02_lcd_data[i];
 
         alwan_scalar result = alwan_delta_e_cam02_lcd(&lab1, &lab2);
@@ -201,8 +201,8 @@ static int test_delta_e_cam02_scd(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 lab1 = {{lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]}};
-        alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
+        alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_cam_jab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_scalar expected = de_cam02_scd_data[i];
 
         alwan_scalar result = alwan_delta_e_cam02_scd(&lab1, &lab2);
@@ -238,8 +238,8 @@ static int test_delta_e_cam16_lcd(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 lab1 = {{lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]}};
-        alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
+        alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_cam_jab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_scalar expected = de_cam16_lcd_data[i];
 
         alwan_scalar result = alwan_delta_e_cam16_lcd(&lab1, &lab2);
@@ -275,8 +275,8 @@ static int test_delta_e_cam16_scd(void) {
 #endif
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 lab1 = {{lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]}};
-        alwan_vec3 lab2 = {{lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]}};
+        alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_cam_jab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_scalar expected = de_cam16_scd_data[i];
 
         alwan_scalar result = alwan_delta_e_cam16_scd(&lab1, &lab2);

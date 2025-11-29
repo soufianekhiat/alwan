@@ -48,11 +48,11 @@ static int g_test_passed = 0;
         } \
     } while (0)
 
-#define EXPECT_VEC3_NEAR(a, b, eps) \
+#define EXPECT_XYZ_NEAR(a, b, eps) \
     do { \
-        EXPECT_NEAR((a)->v[0], (b)->v[0], eps); \
-        EXPECT_NEAR((a)->v[1], (b)->v[1], eps); \
-        EXPECT_NEAR((a)->v[2], (b)->v[2], eps); \
+        EXPECT_NEAR((a)->x, (b)->x, eps); \
+        EXPECT_NEAR((a)->y, (b)->y, eps); \
+        EXPECT_NEAR((a)->z, (b)->z, eps); \
     } while (0)
 
 /* ----------------------------------------------------------------
@@ -62,7 +62,7 @@ static int g_test_passed = 0;
 static int test_munsell_neutrals(void) {
     TEST_START("Munsell neutral axis (N0-N10)");
 
-    alwan_vec3 xyz;
+    alwan_xyz xyz;
     int status;
 
     /* N0 (black) */
@@ -70,7 +70,7 @@ static int test_munsell_neutrals(void) {
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N0: error %d", status);
     }
-    EXPECT_NEAR(xyz.v[1], 0.0, EPSILON_LOOSE);  /* Y should be ~0 */
+    EXPECT_NEAR(xyz.y, 0.0, EPSILON_LOOSE);  /* Y should be ~0 */
 
     /* N5 (mid gray) */
     status = alwan_munsell_to_xyz(0.0, 5.0, 0.0, ALWAN_ILLUMINANT_C, &xyz);
@@ -78,14 +78,14 @@ static int test_munsell_neutrals(void) {
         TEST_FAIL("Failed to convert N5: error %d", status);
     }
     /* N5 should have Y ≈ 0.198 (19.8% reflectance) */
-    EXPECT_NEAR(xyz.v[1], 0.198, EPSILON_LOOSE);
+    EXPECT_NEAR(xyz.y, 0.198, EPSILON_LOOSE);
 
     /* N10 (white) */
     status = alwan_munsell_to_xyz(0.0, 10.0, 0.0, ALWAN_ILLUMINANT_C, &xyz);
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N10: error %d", status);
     }
-    EXPECT_NEAR(xyz.v[1], 1.0, EPSILON_LOOSE);  /* Y should be ~1.0 */
+    EXPECT_NEAR(xyz.y, 1.0, EPSILON_LOOSE);  /* Y should be ~1.0 */
 
     TEST_PASS();
     return 0;
@@ -94,7 +94,7 @@ static int test_munsell_neutrals(void) {
 static int test_munsell_chromatic(void) {
     TEST_START("Munsell chromatic colors");
 
-    alwan_vec3 xyz;
+    alwan_xyz xyz;
     int status;
 
     /* 5R 5/10 (medium red with high chroma) */
@@ -103,8 +103,8 @@ static int test_munsell_chromatic(void) {
         TEST_FAIL("Failed to convert 5R 5/10: error %d", status);
     }
     /* Should have reasonable XYZ values */
-    if (xyz.v[0] < 0.0 || xyz.v[1] < 0.0 || xyz.v[2] < 0.0) {
-        TEST_FAIL("Invalid XYZ values: X=%g, Y=%g, Z=%g", xyz.v[0], xyz.v[1], xyz.v[2]);
+    if (xyz.x < 0.0 || xyz.y < 0.0 || xyz.z < 0.0) {
+        TEST_FAIL("Invalid XYZ values: X=%g, Y=%g, Z=%g", xyz.x, xyz.y, xyz.z);
     }
 
     TEST_PASS();
@@ -118,7 +118,7 @@ static int test_munsell_roundtrip(void) {
     alwan_scalar value_in = 5.0;
     alwan_scalar chroma_in = 0.0;
 
-    alwan_vec3 xyz;
+    alwan_xyz xyz;
     int status = alwan_munsell_to_xyz(hue_in, value_in, chroma_in, ALWAN_ILLUMINANT_C, &xyz);
     if (status != ALWAN_OK) {
         TEST_FAIL("Forward conversion failed: error %d", status);
@@ -141,7 +141,7 @@ static int test_munsell_roundtrip(void) {
 static int test_munsell_illuminant_adaptation(void) {
     TEST_START("Munsell illuminant adaptation");
 
-    alwan_vec3 xyz_c, xyz_d65;
+    alwan_xyz xyz_c, xyz_d65;
     int status;
 
     /* Convert N5 under Illuminant C */
@@ -157,9 +157,9 @@ static int test_munsell_illuminant_adaptation(void) {
     }
 
     /* Values should differ due to chromatic adaptation */
-    alwan_scalar diff = fabs(xyz_c.v[0] - xyz_d65.v[0]) +
-                         fabs(xyz_c.v[1] - xyz_d65.v[1]) +
-                         fabs(xyz_c.v[2] - xyz_d65.v[2]);
+    alwan_scalar diff = fabs(xyz_c.x - xyz_d65.x) +
+                         fabs(xyz_c.y - xyz_d65.y) +
+                         fabs(xyz_c.z - xyz_d65.z);
 
     if (diff < EPSILON) {
         TEST_FAIL("Expected chromatic adaptation to change XYZ values");
@@ -195,7 +195,7 @@ static int test_colorchecker_num_patches(void) {
 static int test_colorchecker_classic_patches(void) {
     TEST_START("ColorChecker Classic patch data");
 
-    alwan_vec3 xyz;
+    alwan_xyz xyz;
     int status;
 
     /* Test patch 19 (white) - should have high Y */
@@ -205,8 +205,8 @@ static int test_colorchecker_classic_patches(void) {
         TEST_FAIL("Failed to get white patch: error %d", status);
     }
 
-    if (xyz.v[1] < 0.8) {
-        TEST_FAIL("White patch Y should be > 0.8, got %g", xyz.v[1]);
+    if (xyz.y < 0.8) {
+        TEST_FAIL("White patch Y should be > 0.8, got %g", xyz.y);
     }
 
     /* Test patch 24 (black) - should have low Y */
@@ -216,8 +216,8 @@ static int test_colorchecker_classic_patches(void) {
         TEST_FAIL("Failed to get black patch: error %d", status);
     }
 
-    if (xyz.v[1] > 0.05) {
-        TEST_FAIL("Black patch Y should be < 0.05, got %g", xyz.v[1]);
+    if (xyz.y > 0.05) {
+        TEST_FAIL("Black patch Y should be < 0.05, got %g", xyz.y);
     }
 
     TEST_PASS();
@@ -227,7 +227,7 @@ static int test_colorchecker_classic_patches(void) {
 static int test_colorchecker_illuminant_adaptation(void) {
     TEST_START("ColorChecker illuminant adaptation");
 
-    alwan_vec3 xyz_d50, xyz_d65;
+    alwan_xyz xyz_d50, xyz_d65;
     int status;
 
     /* Get patch under D50 */
@@ -245,9 +245,9 @@ static int test_colorchecker_illuminant_adaptation(void) {
     }
 
     /* Values should differ due to chromatic adaptation */
-    alwan_scalar diff = fabs(xyz_d50.v[0] - xyz_d65.v[0]) +
-                         fabs(xyz_d50.v[1] - xyz_d65.v[1]) +
-                         fabs(xyz_d50.v[2] - xyz_d65.v[2]);
+    alwan_scalar diff = fabs(xyz_d50.x - xyz_d65.x) +
+                         fabs(xyz_d50.y - xyz_d65.y) +
+                         fabs(xyz_d50.z - xyz_d65.z);
 
     if (diff < EPSILON) {
         TEST_FAIL("Expected chromatic adaptation to change XYZ values");
@@ -260,7 +260,7 @@ static int test_colorchecker_illuminant_adaptation(void) {
 static int test_colorchecker_bounds(void) {
     TEST_START("ColorChecker bounds checking");
 
-    alwan_vec3 xyz;
+    alwan_xyz xyz;
     int status;
 
     /* Test out-of-bounds patch index */
@@ -288,7 +288,7 @@ static int test_colorchecker_bounds(void) {
 static int test_ncs_parsing(void) {
     TEST_START("NCS notation parsing");
 
-    alwan_vec3 xyz;
+    alwan_xyz xyz;
     int status;
 
     /* Note: NCS functions are stubs and return ALWAN_E_INVALID */

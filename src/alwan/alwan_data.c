@@ -523,7 +523,7 @@ int alwan_data_get_srgb_primaries(alwan_ctx *ctx, alwan_scalar **data, size_t *c
 
 int alwan_illuminant_white_point(alwan_illuminant illuminant,
                                    alwan_observer_type observer,
-                                   alwan_vec3 *out_xyz) {
+                                   alwan_xyz *out_xyz) {
     if (!out_xyz) {
         return ALWAN_E_INVALID;
     }
@@ -553,9 +553,9 @@ int alwan_illuminant_white_point(alwan_illuminant illuminant,
             return ALWAN_E_INVALID;  /* Invalid chromaticity */
         }
 
-        out_xyz->v[0] = x * Y / y;                    /* X */
-        out_xyz->v[1] = Y;                             /* Y */
-        out_xyz->v[2] = (ALWAN_LITERAL(1.0) - x - y) * Y / y;  /* Z */
+        out_xyz->x = x * Y / y;                    /* X */
+        out_xyz->y = Y;                             /* Y */
+        out_xyz->z = (ALWAN_LITERAL(1.0) - x - y) * Y / y;  /* Z */
 
         return ALWAN_OK;
     }
@@ -568,7 +568,7 @@ int alwan_illuminant_white_point(alwan_illuminant illuminant,
     }
 
     /* Integrate illuminant SPD with observer CMFs to get XYZ */
-    alwan_vec3 xyz_unnormalized;
+    alwan_xyz xyz_unnormalized;
     status = alwan_xyz_from_spd(NULL, &illum_spd, NULL, observer,
                                 ALWAN_INTEGRATE_SIMPSON, ALWAN_LITERAL(0.0),
                                 &xyz_unnormalized);
@@ -580,14 +580,14 @@ int alwan_illuminant_white_point(alwan_illuminant illuminant,
     }
 
     /* Normalize to Y = 1.0 */
-    if (xyz_unnormalized.v[1] <= ALWAN_LITERAL(0.0)) {
+    if (xyz_unnormalized.y <= ALWAN_LITERAL(0.0)) {
         return ALWAN_E_INVALID;  /* Invalid Y value */
     }
 
-    alwan_scalar norm_factor = ALWAN_LITERAL(1.0) / xyz_unnormalized.v[1];
-    out_xyz->v[0] = xyz_unnormalized.v[0] * norm_factor;
-    out_xyz->v[1] = ALWAN_LITERAL(1.0);
-    out_xyz->v[2] = xyz_unnormalized.v[2] * norm_factor;
+    alwan_scalar norm_factor = ALWAN_LITERAL(1.0) / xyz_unnormalized.y;
+    out_xyz->x = xyz_unnormalized.x * norm_factor;
+    out_xyz->y = ALWAN_LITERAL(1.0);
+    out_xyz->z = xyz_unnormalized.z * norm_factor;
 
     return ALWAN_OK;
 }

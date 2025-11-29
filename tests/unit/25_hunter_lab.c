@@ -21,25 +21,26 @@ static int test_xyz_hunter_lab_round_trip(void) {
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz_in, hunter_expected, hunter_computed, xyz_out;
+        alwan_xyz xyz_in, xyz_out;
+        alwan_hunter_lab hunter_expected, hunter_computed;
 
         /* Load test data */
-        xyz_in.v[0] = test_data[i * 6 + 0];
-        xyz_in.v[1] = test_data[i * 6 + 1];
-        xyz_in.v[2] = test_data[i * 6 + 2];
-        hunter_expected.v[0] = test_data[i * 6 + 3];
-        hunter_expected.v[1] = test_data[i * 6 + 4];
-        hunter_expected.v[2] = test_data[i * 6 + 5];
+        xyz_in.x = test_data[i * 6 + 0];
+        xyz_in.y = test_data[i * 6 + 1];
+        xyz_in.z = test_data[i * 6 + 2];
+        hunter_expected.L = test_data[i * 6 + 3];
+        hunter_expected.a = test_data[i * 6 + 4];
+        hunter_expected.b = test_data[i * 6 + 5];
 
         /* Skip black (0,0,0) as it has division by zero issues */
-        if (xyz_in.v[0] < ALWAN_LITERAL(0.01) &&
-            xyz_in.v[1] < ALWAN_LITERAL(0.01) &&
-            xyz_in.v[2] < ALWAN_LITERAL(0.01)) {
+        if (xyz_in.x < ALWAN_LITERAL(0.01) &&
+            xyz_in.y < ALWAN_LITERAL(0.01) &&
+            xyz_in.z < ALWAN_LITERAL(0.01)) {
             continue;
         }
 
         /* Skip black (0,0,0) due to numerical issues with hue */
-        if (xyz_in.v[0] < ALWAN_LITERAL(0.01) && xyz_in.v[1] < ALWAN_LITERAL(0.01) && xyz_in.v[2] < ALWAN_LITERAL(0.01)) {
+        if (xyz_in.x < ALWAN_LITERAL(0.01) && xyz_in.y < ALWAN_LITERAL(0.01) && xyz_in.z < ALWAN_LITERAL(0.01)) {
             continue;
         }
 
@@ -48,27 +49,29 @@ static int test_xyz_hunter_lab_round_trip(void) {
 
         /* Scale the expected values by 10 to match Alwan's L = 10*sqrt(Y) formula
          * (colour-science uses L = sqrt(Y) convention, returning values in [0,10] range) */
-        alwan_vec3 hunter_scaled = {{
-            hunter_expected.v[0] * ALWAN_LITERAL(10.0),
-            hunter_expected.v[1] * ALWAN_LITERAL(10.0),
-            hunter_expected.v[2] * ALWAN_LITERAL(10.0)
-        }};
+        alwan_hunter_lab hunter_scaled = {
+            hunter_expected.L * ALWAN_LITERAL(10.0),
+            hunter_expected.a * ALWAN_LITERAL(10.0),
+            hunter_expected.b * ALWAN_LITERAL(10.0)
+        };
 
 #if ALWAN_SCALAR_IS_FLOAT
         alwan_scalar const hunter_tol = ALWAN_LITERAL(1e-3);
 #else
         alwan_scalar const hunter_tol = ALWAN_LITERAL(1e-8);
 #endif
+        alwan_scalar hunter_comp_arr[3] = {hunter_computed.L, hunter_computed.a, hunter_computed.b};
+        alwan_scalar hunter_scaled_arr[3] = {hunter_scaled.L, hunter_scaled.a, hunter_scaled.b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_FABS(hunter_computed.v[j] - hunter_scaled.v[j]);
+            alwan_scalar diff = ALWAN_FABS(hunter_comp_arr[j] - hunter_scaled_arr[j]);
             if (diff > hunter_tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
-                       (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);
+                       (double)xyz_in.x, (double)xyz_in.y, (double)xyz_in.z);
                 printf("  Expected Hunter Lab (scaled 10x): [%.10f, %.10f, %.10f]\n",
-                       (double)hunter_scaled.v[0], (double)hunter_scaled.v[1], (double)hunter_scaled.v[2]);
+                       (double)hunter_scaled_arr[0], (double)hunter_scaled_arr[1], (double)hunter_scaled_arr[2]);
                 printf("  Got Hunter Lab: [%.10f, %.10f, %.10f]\n",
-                       (double)hunter_computed.v[0], (double)hunter_computed.v[1], (double)hunter_computed.v[2]);
+                       (double)hunter_comp_arr[0], (double)hunter_comp_arr[1], (double)hunter_comp_arr[2]);
                 printf("  Diff: %.6e\n", (double)diff);
                 TEST_ASSERT(0, "Hunter Lab values don't match");
             }
@@ -83,14 +86,16 @@ static int test_xyz_hunter_lab_round_trip(void) {
         alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-10);
 #endif
 
+        alwan_scalar xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
+        alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_FABS(xyz_out.v[j] - xyz_in.v[j]);
+            alwan_scalar diff = ALWAN_FABS(xyz_out_arr[j] - xyz_in_arr[j]);
             if (diff > roundtrip_tol) {
                 printf("Round-trip color %zu channel %d failed:\n", i, j);
                 printf("  Original XYZ: [%.6f, %.6f, %.6f]\n",
-                       (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);
+                       (double)xyz_in_arr[0], (double)xyz_in_arr[1], (double)xyz_in_arr[2]);
                 printf("  Round-trip XYZ: [%.6f, %.6f, %.6f]\n",
-                       (double)xyz_out.v[0], (double)xyz_out.v[1], (double)xyz_out.v[2]);
+                       (double)xyz_out_arr[0], (double)xyz_out_arr[1], (double)xyz_out_arr[2]);
                 printf("  Diff: %.6e\n", (double)diff);
                 TEST_ASSERT(0, "XYZ round-trip failed");
             }

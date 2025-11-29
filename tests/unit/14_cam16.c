@@ -57,13 +57,13 @@ static int test_cam16_forward(void) {
 
     /* Test forward transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz;
-        xyz.v[0] = test_xyz[i * 3 + 0];
-        xyz.v[1] = test_xyz[i * 3 + 1];
-        xyz.v[2] = test_xyz[i * 3 + 2];
+        alwan_xyz xyz;
+        xyz.x = test_xyz[i * 3 + 0];
+        xyz.y = test_xyz[i * 3 + 1];
+        xyz.z = test_xyz[i * 3 + 2];
 
         alwan_cam16_correlates corr;
-        int status = alwan_cam16_forward((alwan_xyz const *)&xyz, &vc, &corr);
+        int status = alwan_cam16_forward(&xyz, &vc, &corr);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
@@ -157,21 +157,21 @@ static int test_cam16_inverse(void) {
         corr.C = correlates_data[i * 7 + 1];
         corr.h = correlates_data[i * 7 + 2];
 
-        alwan_vec3 xyz_out;
-        int status = alwan_cam16_inverse(&corr, &vc, (alwan_xyz *)&xyz_out);
+        alwan_xyz xyz_out;
+        int status = alwan_cam16_inverse(&corr, &vc, &xyz_out);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against expected values */
         alwan_scalar const *expected = &expected_xyz[i * 3];
-        alwan_scalar X_err = ALWAN_FABS(xyz_out.v[0] - expected[0]);
-        alwan_scalar Y_err = ALWAN_FABS(xyz_out.v[1] - expected[1]);
-        alwan_scalar Z_err = ALWAN_FABS(xyz_out.v[2] - expected[2]);
+        alwan_scalar X_err = ALWAN_FABS(xyz_out.x - expected[0]);
+        alwan_scalar Y_err = ALWAN_FABS(xyz_out.y - expected[1]);
+        alwan_scalar Z_err = ALWAN_FABS(xyz_out.z - expected[2]);
 
         if (X_err >= CORRELATE_TOL || Y_err >= CORRELATE_TOL || Z_err >= CORRELATE_TOL) {
             printf("  Color %zu: XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Got:      [%.10f, %.10f, %.10f]\n",
-                   (double)xyz_out.v[0], (double)xyz_out.v[1], (double)xyz_out.v[2]);
+                   (double)xyz_out.x, (double)xyz_out.y, (double)xyz_out.z);
             printf("    Expected: [%.10f, %.10f, %.10f]\n",
                    (double)expected[0], (double)expected[1], (double)expected[2]);
         }
@@ -209,33 +209,33 @@ static int test_cam16_roundtrip(void) {
 
     /* Test round-trip for each color */
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz_in;
-        xyz_in.v[0] = test_xyz[i * 3 + 0];
-        xyz_in.v[1] = test_xyz[i * 3 + 1];
-        xyz_in.v[2] = test_xyz[i * 3 + 2];
+        alwan_xyz xyz_in;
+        xyz_in.x = test_xyz[i * 3 + 0];
+        xyz_in.y = test_xyz[i * 3 + 1];
+        xyz_in.z = test_xyz[i * 3 + 2];
 
         /* Forward: XYZ -> correlates */
         alwan_cam16_correlates corr;
-        int status = alwan_cam16_forward((alwan_xyz const *)&xyz_in, &vc, &corr);
+        int status = alwan_cam16_forward(&xyz_in, &vc, &corr);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Inverse: correlates -> XYZ */
-        alwan_vec3 xyz_out;
-        status = alwan_cam16_inverse(&corr, &vc, (alwan_xyz *)&xyz_out);
+        alwan_xyz xyz_out;
+        status = alwan_cam16_inverse(&corr, &vc, &xyz_out);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
-        alwan_scalar X_err = ALWAN_FABS(xyz_out.v[0] - xyz_in.v[0]);
-        alwan_scalar Y_err = ALWAN_FABS(xyz_out.v[1] - xyz_in.v[1]);
-        alwan_scalar Z_err = ALWAN_FABS(xyz_out.v[2] - xyz_in.v[2]);
+        alwan_scalar X_err = ALWAN_FABS(xyz_out.x - xyz_in.x);
+        alwan_scalar Y_err = ALWAN_FABS(xyz_out.y - xyz_in.y);
+        alwan_scalar Z_err = ALWAN_FABS(xyz_out.z - xyz_in.z);
 
         if (X_err >= CORRELATE_TOL || Y_err >= CORRELATE_TOL || Z_err >= CORRELATE_TOL) {
             printf("  Color %zu: Round-trip XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Input:  [%.10f, %.10f, %.10f]\n",
-                   (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);
+                   (double)xyz_in.x, (double)xyz_in.y, (double)xyz_in.z);
             printf("    Output: [%.10f, %.10f, %.10f]\n",
-                   (double)xyz_out.v[0], (double)xyz_out.v[1], (double)xyz_out.v[2]);
+                   (double)xyz_out.x, (double)xyz_out.y, (double)xyz_out.z);
         }
         TEST_ASSERT(X_err < CORRELATE_TOL, "Round-trip X error too large");
         TEST_ASSERT(Y_err < CORRELATE_TOL, "Round-trip Y error too large");
@@ -271,15 +271,15 @@ static int test_cam16_ucs_forward(void) {
         corr.s = correlates_data[i * 7 + 5];
         corr.H = correlates_data[i * 7 + 6];
 
-        alwan_vec3 jab_out;
+        alwan_cam_jab jab_out;
         int status = alwan_cam16_to_ucs(&corr, &jab_out);
         TEST_ASSERT(status == ALWAN_OK, "CAM16-UCS forward transform failed");
 
         /* Check Jab against expected values */
         alwan_scalar const *expected = &expected_jab[i * 3];
-        alwan_scalar J_err = ALWAN_FABS(jab_out.v[0] - expected[0]);
-        alwan_scalar a_err = ALWAN_FABS(jab_out.v[1] - expected[1]);
-        alwan_scalar b_err = ALWAN_FABS(jab_out.v[2] - expected[2]);
+        alwan_scalar J_err = ALWAN_FABS(jab_out.J - expected[0]);
+        alwan_scalar a_err = ALWAN_FABS(jab_out.a - expected[1]);
+        alwan_scalar b_err = ALWAN_FABS(jab_out.b - expected[2]);
 
         TEST_ASSERT(J_err < CORRELATE_TOL, "J' mismatch");
         TEST_ASSERT(a_err < CORRELATE_TOL, "a' mismatch");
@@ -307,7 +307,7 @@ static int test_cam16_ucs_roundtrip(void) {
         corr_in.h = correlates_data[i * 7 + 2];
 
         /* Forward: JMh -> Jab */
-        alwan_vec3 jab;
+        alwan_cam_jab jab;
         int status = alwan_cam16_to_ucs(&corr_in, &jab);
         TEST_ASSERT(status == ALWAN_OK, "UCS forward transform failed");
 

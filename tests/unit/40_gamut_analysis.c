@@ -366,21 +366,21 @@ static int test_gamut_map_simple_clip(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with out-of-gamut color (oversaturated red) */
-    alwan_vec3 rgb_in, rgb_out;
-    rgb_in.v[0] = ALWAN_LITERAL(1.5);
-    rgb_in.v[1] = ALWAN_LITERAL(-0.2);
-    rgb_in.v[2] = ALWAN_LITERAL(0.1);
+    alwan_rgb rgb_in, rgb_out;
+    rgb_in.r = ALWAN_LITERAL(1.5);
+    rgb_in.g = ALWAN_LITERAL(-0.2);
+    rgb_in.b = ALWAN_LITERAL(0.1);
 
     int status = alwan_gamut_map_advanced(ALWAN_GAMUT_MAP_CLIP, &srgb, &rgb_in, &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to clip RGB color");
-    TEST_ASSERT(rgb_out.v[0] == ALWAN_LITERAL(1.0), "Red component not clipped to 1.0");
-    TEST_ASSERT(rgb_out.v[1] == ALWAN_LITERAL(0.0), "Green component not clipped to 0.0");
-    TEST_ASSERT(rgb_out.v[2] >= ALWAN_LITERAL(0.0) && rgb_out.v[2] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.r == ALWAN_LITERAL(1.0), "Red component not clipped to 1.0");
+    TEST_ASSERT(rgb_out.g == ALWAN_LITERAL(0.0), "Green component not clipped to 0.0");
+    TEST_ASSERT(rgb_out.b >= ALWAN_LITERAL(0.0) && rgb_out.b <= ALWAN_LITERAL(1.0),
                 "Blue component out of range");
 
     printf("  Simple clip: [1.5, -0.2, 0.1] -> [%.3f, %.3f, %.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("Simple gamut clipping");
 }
@@ -400,27 +400,27 @@ static int test_gamut_map_adaptive_l0(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated green */
-    alwan_vec3 rgb_in, rgb_out;
-    rgb_in.v[0] = ALWAN_LITERAL(-0.3);
-    rgb_in.v[1] = ALWAN_LITERAL(1.8);
-    rgb_in.v[2] = ALWAN_LITERAL(-0.5);
+    alwan_rgb rgb_in, rgb_out;
+    rgb_in.r = ALWAN_LITERAL(-0.3);
+    rgb_in.g = ALWAN_LITERAL(1.8);
+    rgb_in.b = ALWAN_LITERAL(-0.5);
 
     int status = alwan_gamut_map_advanced(ALWAN_GAMUT_MAP_ADAPTIVE_L0, &srgb, &rgb_in, &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to map RGB color with adaptive L0");
-    TEST_ASSERT(rgb_out.v[0] >= ALWAN_LITERAL(0.0) && rgb_out.v[0] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
                 "Red component out of range");
-    TEST_ASSERT(rgb_out.v[1] >= ALWAN_LITERAL(0.0) && rgb_out.v[1] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.g >= ALWAN_LITERAL(0.0) && rgb_out.g <= ALWAN_LITERAL(1.0),
                 "Green component out of range");
-    TEST_ASSERT(rgb_out.v[2] >= ALWAN_LITERAL(0.0) && rgb_out.v[2] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.b >= ALWAN_LITERAL(0.0) && rgb_out.b <= ALWAN_LITERAL(1.0),
                 "Blue component out of range");
 
     /* Green should be the dominant component */
-    TEST_ASSERT(rgb_out.v[1] > rgb_out.v[0] && rgb_out.v[1] > rgb_out.v[2],
+    TEST_ASSERT(rgb_out.g > rgb_out.r && rgb_out.g > rgb_out.b,
                 "Green should be dominant component");
 
     printf("  Adaptive L0: [-0.3, 1.8, -0.5] -> [%.3f, %.3f, %.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("Adaptive L0 gamut mapping");
 }
@@ -440,27 +440,27 @@ static int test_gamut_map_adaptive_cusp(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated blue */
-    alwan_vec3 rgb_in, rgb_out;
-    rgb_in.v[0] = ALWAN_LITERAL(-0.1);
-    rgb_in.v[1] = ALWAN_LITERAL(0.2);
-    rgb_in.v[2] = ALWAN_LITERAL(1.9);
+    alwan_rgb rgb_in, rgb_out;
+    rgb_in.r = ALWAN_LITERAL(-0.1);
+    rgb_in.g = ALWAN_LITERAL(0.2);
+    rgb_in.b = ALWAN_LITERAL(1.9);
 
     int status = alwan_gamut_map_advanced(ALWAN_GAMUT_MAP_ADAPTIVE_CUSP, &srgb, &rgb_in, &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to map RGB color with adaptive cusp");
-    TEST_ASSERT(rgb_out.v[0] >= ALWAN_LITERAL(0.0) && rgb_out.v[0] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
                 "Red component out of range");
-    TEST_ASSERT(rgb_out.v[1] >= ALWAN_LITERAL(0.0) && rgb_out.v[1] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.g >= ALWAN_LITERAL(0.0) && rgb_out.g <= ALWAN_LITERAL(1.0),
                 "Green component out of range");
-    TEST_ASSERT(rgb_out.v[2] >= ALWAN_LITERAL(0.0) && rgb_out.v[2] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.b >= ALWAN_LITERAL(0.0) && rgb_out.b <= ALWAN_LITERAL(1.0),
                 "Blue component out of range");
 
     /* Blue should be the dominant component */
-    TEST_ASSERT(rgb_out.v[2] > rgb_out.v[0] && rgb_out.v[2] > rgb_out.v[1],
+    TEST_ASSERT(rgb_out.b > rgb_out.r && rgb_out.b > rgb_out.g,
                 "Blue should be dominant component");
 
     printf("  Adaptive cusp: [-0.1, 0.2, 1.9] -> [%.3f, %.3f, %.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("Adaptive cusp gamut mapping");
 }
@@ -480,27 +480,27 @@ static int test_gamut_map_chroma_compress(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated cyan */
-    alwan_vec3 rgb_in, rgb_out;
-    rgb_in.v[0] = ALWAN_LITERAL(-0.4);
-    rgb_in.v[1] = ALWAN_LITERAL(1.6);
-    rgb_in.v[2] = ALWAN_LITERAL(1.7);
+    alwan_rgb rgb_in, rgb_out;
+    rgb_in.r = ALWAN_LITERAL(-0.4);
+    rgb_in.g = ALWAN_LITERAL(1.6);
+    rgb_in.b = ALWAN_LITERAL(1.7);
 
     int status = alwan_gamut_map_advanced(ALWAN_GAMUT_MAP_CHROMA_COMPRESS, &srgb, &rgb_in, &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to compress chroma");
-    TEST_ASSERT(rgb_out.v[0] >= ALWAN_LITERAL(0.0) && rgb_out.v[0] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
                 "Red component out of range");
-    TEST_ASSERT(rgb_out.v[1] >= ALWAN_LITERAL(0.0) && rgb_out.v[1] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.g >= ALWAN_LITERAL(0.0) && rgb_out.g <= ALWAN_LITERAL(1.0),
                 "Green component out of range");
-    TEST_ASSERT(rgb_out.v[2] >= ALWAN_LITERAL(0.0) && rgb_out.v[2] <= ALWAN_LITERAL(1.0),
+    TEST_ASSERT(rgb_out.b >= ALWAN_LITERAL(0.0) && rgb_out.b <= ALWAN_LITERAL(1.0),
                 "Blue component out of range");
 
     /* Cyan has high G and B, low R */
-    TEST_ASSERT(rgb_out.v[1] > rgb_out.v[0] && rgb_out.v[2] > rgb_out.v[0],
+    TEST_ASSERT(rgb_out.g > rgb_out.r && rgb_out.b > rgb_out.r,
                 "G and B should be higher than R for cyan");
 
     printf("  Chroma compress: [-0.4, 1.6, 1.7] -> [%.3f, %.3f, %.3f]\n",
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("Chroma compression gamut mapping");
 }
@@ -520,26 +520,26 @@ static int test_gamut_map_in_gamut(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with valid in-gamut color */
-    alwan_vec3 rgb_in, rgb_out;
-    rgb_in.v[0] = ALWAN_LITERAL(0.7);
-    rgb_in.v[1] = ALWAN_LITERAL(0.3);
-    rgb_in.v[2] = ALWAN_LITERAL(0.5);
+    alwan_rgb rgb_in, rgb_out;
+    rgb_in.r = ALWAN_LITERAL(0.7);
+    rgb_in.g = ALWAN_LITERAL(0.3);
+    rgb_in.b = ALWAN_LITERAL(0.5);
 
     int status = alwan_gamut_map_advanced(ALWAN_GAMUT_MAP_ADAPTIVE_L0, &srgb, &rgb_in, &rgb_out);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to map in-gamut color");
 
     /* In-gamut color should be mostly preserved */
-    alwan_scalar diff_r = ALWAN_FABS(rgb_out.v[0] - rgb_in.v[0]);
-    alwan_scalar diff_g = ALWAN_FABS(rgb_out.v[1] - rgb_in.v[1]);
-    alwan_scalar diff_b = ALWAN_FABS(rgb_out.v[2] - rgb_in.v[2]);
+    alwan_scalar diff_r = ALWAN_FABS(rgb_out.r - rgb_in.r);
+    alwan_scalar diff_g = ALWAN_FABS(rgb_out.g - rgb_in.g);
+    alwan_scalar diff_b = ALWAN_FABS(rgb_out.b - rgb_in.b);
 
     TEST_ASSERT(diff_r < ALWAN_LITERAL(0.01) && diff_g < ALWAN_LITERAL(0.01) && diff_b < ALWAN_LITERAL(0.01),
                 "In-gamut color should be preserved");
 
     printf("  In-gamut: [%.3f, %.3f, %.3f] -> [%.3f, %.3f, %.3f]\n",
-           rgb_in.v[0], rgb_in.v[1], rgb_in.v[2],
-           rgb_out.v[0], rgb_out.v[1], rgb_out.v[2]);
+           rgb_in.r, rgb_in.g, rgb_in.b,
+           rgb_out.r, rgb_out.g, rgb_out.b);
 
     TEST_PASS("In-gamut color preservation");
 }

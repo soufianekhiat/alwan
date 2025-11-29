@@ -185,10 +185,10 @@ void alwan_luv_to_xyz(alwan_luv const *luv, alwan_xyz const *white_xyz, alwan_xy
 /* XYZ to U*V*W* (CIE 1964 uniform color space)
  * Based on CIE 1960 UCS chromaticity coordinates
  * U* = 13*W*(u - un), V* = 13*W*(v - vn), W* = 25*Y^(1/3) - 17 */
-void alwan_xyz_to_uvw(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *uvw) {
-    alwan_scalar const X = xyz->v[0];
-    alwan_scalar const Y = xyz->v[1];
-    alwan_scalar const Z = xyz->v[2];
+void alwan_xyz_to_uvw(alwan_xyz const *xyz, alwan_xyz const *white_xyz, alwan_uvw *uvw) {
+    alwan_scalar const X = xyz->x;
+    alwan_scalar const Y = xyz->y;
+    alwan_scalar const Z = xyz->z;
 
     /* Calculate CIE 1960 UCS chromaticity coordinates (u, v) */
     alwan_scalar const sum = X + ALWAN_LITERAL(15.0) * Y + ALWAN_LITERAL(3.0) * Z;
@@ -202,9 +202,9 @@ void alwan_xyz_to_uvw(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_
     }
 
     /* Calculate white point chromaticity */
-    alwan_scalar const Xn = white_xyz->v[0];
-    alwan_scalar const Yn = white_xyz->v[1];
-    alwan_scalar const Zn = white_xyz->v[2];
+    alwan_scalar const Xn = white_xyz->x;
+    alwan_scalar const Yn = white_xyz->y;
+    alwan_scalar const Zn = white_xyz->z;
     alwan_scalar const sum_n = Xn + ALWAN_LITERAL(15.0) * Yn + ALWAN_LITERAL(3.0) * Zn;
     alwan_scalar un, vn;
     if (ALWAN_FABS(sum_n) < ALWAN_EPSILON) {
@@ -227,16 +227,16 @@ void alwan_xyz_to_uvw(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_
     }
 
     /* Calculate U* and V* */
-    uvw->v[0] = ALWAN_LITERAL(13.0) * W * (u - un);   /* U* */
-    uvw->v[1] = ALWAN_LITERAL(13.0) * W * (v - vn);   /* V* */
-    uvw->v[2] = W;                                      /* W* */
+    uvw->U = ALWAN_LITERAL(13.0) * W * (u - un);   /* U* */
+    uvw->V = ALWAN_LITERAL(13.0) * W * (v - vn);   /* V* */
+    uvw->W = W;                                      /* W* */
 }
 
 /* U*V*W* to XYZ (inverse transform) */
-void alwan_uvw_to_xyz(alwan_vec3 const *uvw, alwan_vec3 const *white_xyz, alwan_vec3 *xyz) {
-    alwan_scalar const U_star = uvw->v[0];
-    alwan_scalar const V_star = uvw->v[1];
-    alwan_scalar const W = uvw->v[2];
+void alwan_uvw_to_xyz(alwan_uvw const *uvw, alwan_xyz const *white_xyz, alwan_xyz *xyz) {
+    alwan_scalar const U_star = uvw->U;
+    alwan_scalar const V_star = uvw->V;
+    alwan_scalar const W = uvw->W;
 
     /* Calculate Y from W* */
     alwan_scalar Y;
@@ -249,9 +249,9 @@ void alwan_uvw_to_xyz(alwan_vec3 const *uvw, alwan_vec3 const *white_xyz, alwan_
     }
 
     /* Calculate white point chromaticity */
-    alwan_scalar const Xn = white_xyz->v[0];
-    alwan_scalar const Yn = white_xyz->v[1];
-    alwan_scalar const Zn = white_xyz->v[2];
+    alwan_scalar const Xn = white_xyz->x;
+    alwan_scalar const Yn = white_xyz->y;
+    alwan_scalar const Zn = white_xyz->z;
     alwan_scalar const sum_n = Xn + ALWAN_LITERAL(15.0) * Yn + ALWAN_LITERAL(3.0) * Zn;
     alwan_scalar un, vn;
     if (ALWAN_FABS(sum_n) < ALWAN_EPSILON) {
@@ -274,13 +274,13 @@ void alwan_uvw_to_xyz(alwan_vec3 const *uvw, alwan_vec3 const *white_xyz, alwan_
 
     /* Calculate X and Z from u, v, Y */
     if (ALWAN_FABS(v) < ALWAN_EPSILON) {
-        xyz->v[0] = ALWAN_LITERAL(0.0);
-        xyz->v[1] = Y;
-        xyz->v[2] = ALWAN_LITERAL(0.0);
+        xyz->x = ALWAN_LITERAL(0.0);
+        xyz->y = Y;
+        xyz->z = ALWAN_LITERAL(0.0);
     } else {
-        xyz->v[0] = (ALWAN_LITERAL(9.0) * u * Y) / (ALWAN_LITERAL(4.0) * v);  /* X */
-        xyz->v[1] = Y;                                                          /* Y */
-        xyz->v[2] = ((ALWAN_LITERAL(12.0) - ALWAN_LITERAL(3.0) * u - ALWAN_LITERAL(20.0) * v) * Y) / (ALWAN_LITERAL(4.0) * v);  /* Z */
+        xyz->x = (ALWAN_LITERAL(9.0) * u * Y) / (ALWAN_LITERAL(4.0) * v);  /* X */
+        xyz->y = Y;                                                          /* Y */
+        xyz->z = ((ALWAN_LITERAL(12.0) - ALWAN_LITERAL(3.0) * u - ALWAN_LITERAL(20.0) * v) * Y) / (ALWAN_LITERAL(4.0) * v);  /* Z */
     }
 }
 
@@ -350,10 +350,10 @@ void alwan_lchuv_to_luv(alwan_lchuv const *lchuv, alwan_luv *luv) {
  * XYZ <-> CIE 1960 UCS Conversions
  * ================================================================ */
 
-void alwan_xyz_to_ucs(alwan_vec3 const *xyz, alwan_vec3 *ucs) {
-    alwan_scalar const X = xyz->v[0];
-    alwan_scalar const Y = xyz->v[1];
-    alwan_scalar const Z = xyz->v[2];
+void alwan_xyz_to_ucs(alwan_xyz const *xyz, alwan_ucs *ucs) {
+    alwan_scalar const X = xyz->x;
+    alwan_scalar const Y = xyz->y;
+    alwan_scalar const Z = xyz->z;
 
     /* CIE 1960 UCS color space (UVW tristimulus values)
      * U = (2/3) * X
@@ -361,15 +361,15 @@ void alwan_xyz_to_ucs(alwan_vec3 const *xyz, alwan_vec3 *ucs) {
      * W = (1/2) * (-X + 3Y + Z)
      * Reference: colour.XYZ_to_UCS
      */
-    ucs->v[0] = (ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0)) * X;  /* U */
-    ucs->v[1] = Y;                                               /* V */
-    ucs->v[2] = (ALWAN_LITERAL(0.5)) * (-X + ALWAN_LITERAL(3.0) * Y + Z);  /* W */
+    ucs->U = (ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0)) * X;  /* U */
+    ucs->V = Y;                                               /* V */
+    ucs->W = (ALWAN_LITERAL(0.5)) * (-X + ALWAN_LITERAL(3.0) * Y + Z);  /* W */
 }
 
-void alwan_ucs_to_xyz(alwan_vec3 const *ucs, alwan_vec3 *xyz) {
-    alwan_scalar const U = ucs->v[0];
-    alwan_scalar const V = ucs->v[1];
-    alwan_scalar const W = ucs->v[2];
+void alwan_ucs_to_xyz(alwan_ucs const *ucs, alwan_xyz *xyz) {
+    alwan_scalar const U = ucs->U;
+    alwan_scalar const V = ucs->V;
+    alwan_scalar const W = ucs->W;
 
     /* Inverse CIE 1960 UCS transform
      * From: U = (2/3) * X, V = Y, W = (1/2) * (-X + 3Y + Z)
@@ -379,9 +379,9 @@ void alwan_ucs_to_xyz(alwan_vec3 const *ucs, alwan_vec3 *xyz) {
      *   Z = 2W + X - 3Y = 2W + (3/2)U - 3V
      * Reference: colour.UCS_to_XYZ
      */
-    xyz->v[0] = (ALWAN_LITERAL(3.0) / ALWAN_LITERAL(2.0)) * U;  /* X */
-    xyz->v[1] = V;                                               /* Y */
-    xyz->v[2] = ALWAN_LITERAL(2.0) * W + xyz->v[0] - ALWAN_LITERAL(3.0) * V;  /* Z */
+    xyz->x = (ALWAN_LITERAL(3.0) / ALWAN_LITERAL(2.0)) * U;  /* X */
+    xyz->y = V;                                               /* Y */
+    xyz->z = ALWAN_LITERAL(2.0) * W + xyz->x - ALWAN_LITERAL(3.0) * V;  /* Z */
 }
 
 /* ================================================================
@@ -638,265 +638,73 @@ alwan_scalar alwan_delta_e_hyab(alwan_lab const *lab1, alwan_lab const *lab2) {
 /* ΔE DIN99 - Euclidean distance in DIN99 space
  * DIN99 family spaces are designed for perceptual uniformity
  * Simple Euclidean distance in the transformed space */
-alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *din99_2) {
-    alwan_scalar const dL = din99_1->v[0] - din99_2->v[0];
-    alwan_scalar const da = din99_1->v[1] - din99_2->v[1];
-    alwan_scalar const db = din99_1->v[2] - din99_2->v[2];
+alwan_scalar alwan_delta_e_din99(alwan_din99 const *din99_1, alwan_din99 const *din99_2) {
+    alwan_scalar const dL = din99_1->L99 - din99_2->L99;
+    alwan_scalar const da = din99_1->a99 - din99_2->a99;
+    alwan_scalar const db = din99_1->b99 - din99_2->b99;
 
     return ALWAN_SQRT(dL * dL + da * da + db * db);
 }
 
 /* ΔE CAM02-LCD - CIECAM02 Large Color Difference
  * Reference: CIE TC8-01 "Uniform Colour Spaces"
- * Formula: sqrt((dJ/K_L)² + (dM)² + (dh)²) in UCS space
- * LCD uses K_L = 1.0, c1 = 0.007, c2 = 0.0053
- * Takes Lab input and converts internally via Lab → XYZ → CIECAM02 → UCS */
-alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
-    /* IEC 61966-2-1:1999 (sRGB) viewing conditions for delta E calculations */
-    alwan_ciecam02_viewing_conditions vc;
-    vc.white_xyz.x = ALWAN_LITERAL(95.045592705167159);   /* D65 × 100 */
-    vc.white_xyz.y = ALWAN_LITERAL(100.0);
-    vc.white_xyz.z = ALWAN_LITERAL(108.90577507598784);
-    vc.adapting_luminance = ALWAN_LITERAL(64.0) / ALWAN_PI * ALWAN_LITERAL(0.2);  /* ~4.074 cd/m² */
-    vc.background_luminance = ALWAN_LITERAL(20.0);
-    vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
-    vc.discount_illuminant = 0;
-
-    /* Convert Lab to XYZ (using normalized D65 white point for Lab) */
-    alwan_xyz white_lab;
-    white_lab.x = ALWAN_LITERAL(0.95045592705167159);
-    white_lab.y = ALWAN_LITERAL(1.0);
-    white_lab.z = ALWAN_LITERAL(1.0890577507598784);
-
-    alwan_xyz xyz1, xyz2;
-    alwan_lab_to_xyz((alwan_lab const *)lab1, &white_lab, &xyz1);
-    alwan_lab_to_xyz((alwan_lab const *)lab2, &white_lab, &xyz2);
-
-    /* Scale XYZ to Y=100 range */
-    xyz1.x *= ALWAN_LITERAL(100.0);
-    xyz1.y *= ALWAN_LITERAL(100.0);
-    xyz1.z *= ALWAN_LITERAL(100.0);
-    xyz2.x *= ALWAN_LITERAL(100.0);
-    xyz2.y *= ALWAN_LITERAL(100.0);
-    xyz2.z *= ALWAN_LITERAL(100.0);
-
-    /* Convert XYZ to CIECAM02 */
-    alwan_ciecam02_correlates cam1, cam2;
-    alwan_ciecam02_forward(&xyz1, &vc, &cam1);
-    alwan_ciecam02_forward(&xyz2, &vc, &cam2);
-
-    /* Convert to CAM02-LCD UCS coordinates (Jab) */
-    /* CAM02-LCD uses c1=0.007, c2=0.0053, K_L=0.77 */
-    alwan_scalar const c1 = ALWAN_LITERAL(0.007);
-    alwan_scalar const c2 = ALWAN_LITERAL(0.0053);
+ * Formula: sqrt((dJ/K_L)² + (da)² + (db)²) in UCS space
+ * LCD uses K_L = 0.77
+ * Takes Jab coordinates directly (already in CAM02 UCS space) */
+alwan_scalar alwan_delta_e_cam02_lcd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2) {
+    /* CAM02-LCD uses K_L=0.77 */
     alwan_scalar const KL = ALWAN_LITERAL(0.77);
 
-    alwan_scalar const J1_prime = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(100.0) * c1) * cam1.J / (ALWAN_LITERAL(1.0) + c1 * cam1.J);
-    alwan_scalar const M1_prime = (ALWAN_LITERAL(1.0) / c2) * ALWAN_LOG(ALWAN_LITERAL(1.0) + c2 * cam1.M);
-    alwan_scalar const h1_rad = cam1.h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar const a1_prime = M1_prime * ALWAN_COS(h1_rad);
-    alwan_scalar const b1_prime = M1_prime * ALWAN_SIN(h1_rad);
-
-    alwan_scalar const J2_prime = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(100.0) * c1) * cam2.J / (ALWAN_LITERAL(1.0) + c1 * cam2.J);
-    alwan_scalar const M2_prime = (ALWAN_LITERAL(1.0) / c2) * ALWAN_LOG(ALWAN_LITERAL(1.0) + c2 * cam2.M);
-    alwan_scalar const h2_rad = cam2.h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar const a2_prime = M2_prime * ALWAN_COS(h2_rad);
-    alwan_scalar const b2_prime = M2_prime * ALWAN_SIN(h2_rad);
-
     /* Calculate delta E in UCS space - simple Euclidean distance */
-    alwan_scalar const dJ = (J1_prime - J2_prime) / KL;
-    alwan_scalar const da = a1_prime - a2_prime;
-    alwan_scalar const db = b1_prime - b2_prime;
+    alwan_scalar const dJ = (jab1->J - jab2->J) / KL;
+    alwan_scalar const da = jab1->a - jab2->a;
+    alwan_scalar const db = jab1->b - jab2->b;
 
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }
 
 /* ΔE CAM02-SCD - CIECAM02 Small Color Difference
  * SCD uses tighter parameters for better discrimination of small differences
- * SCD uses K_L = 2.0, c1 = 0.007, c2 = 0.0363
- * Takes Lab input and converts internally via Lab → XYZ → CIECAM02 → UCS */
-alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
-    /* IEC 61966-2-1:1999 (sRGB) viewing conditions for delta E calculations */
-    alwan_ciecam02_viewing_conditions vc;
-    vc.white_xyz.x = ALWAN_LITERAL(95.045592705167159);   /* D65 × 100 */
-    vc.white_xyz.y = ALWAN_LITERAL(100.0);
-    vc.white_xyz.z = ALWAN_LITERAL(108.90577507598784);
-    vc.adapting_luminance = ALWAN_LITERAL(64.0) / ALWAN_PI * ALWAN_LITERAL(0.2);  /* ~4.074 cd/m² */
-    vc.background_luminance = ALWAN_LITERAL(20.0);
-    vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
-    vc.discount_illuminant = 0;
-
-    /* Convert Lab to XYZ (using normalized D65 white point for Lab) */
-    alwan_xyz white_lab;
-    white_lab.x = ALWAN_LITERAL(0.95045592705167159);
-    white_lab.y = ALWAN_LITERAL(1.0);
-    white_lab.z = ALWAN_LITERAL(1.0890577507598784);
-
-    alwan_xyz xyz1, xyz2;
-    alwan_lab_to_xyz((alwan_lab const *)lab1, &white_lab, &xyz1);
-    alwan_lab_to_xyz((alwan_lab const *)lab2, &white_lab, &xyz2);
-
-    /* Scale XYZ to Y=100 range */
-    xyz1.x *= ALWAN_LITERAL(100.0);
-    xyz1.y *= ALWAN_LITERAL(100.0);
-    xyz1.z *= ALWAN_LITERAL(100.0);
-    xyz2.x *= ALWAN_LITERAL(100.0);
-    xyz2.y *= ALWAN_LITERAL(100.0);
-    xyz2.z *= ALWAN_LITERAL(100.0);
-
-    /* Convert XYZ to CIECAM02 */
-    alwan_ciecam02_correlates cam1, cam2;
-    alwan_ciecam02_forward(&xyz1, &vc, &cam1);
-    alwan_ciecam02_forward(&xyz2, &vc, &cam2);
-
-    /* Convert to CAM02-SCD UCS coordinates (Jab) */
-    /* CAM02-SCD uses c1=0.007, c2=0.0363, K_L=1.24 */
-    alwan_scalar const c1 = ALWAN_LITERAL(0.007);
-    alwan_scalar const c2 = ALWAN_LITERAL(0.0363);
+ * SCD uses K_L = 1.24
+ * Takes Jab coordinates directly (already in CAM02 UCS space) */
+alwan_scalar alwan_delta_e_cam02_scd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2) {
+    /* CAM02-SCD uses K_L=1.24 */
     alwan_scalar const KL = ALWAN_LITERAL(1.24);
 
-    alwan_scalar const J1_prime = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(100.0) * c1) * cam1.J / (ALWAN_LITERAL(1.0) + c1 * cam1.J);
-    alwan_scalar const M1_prime = (ALWAN_LITERAL(1.0) / c2) * ALWAN_LOG(ALWAN_LITERAL(1.0) + c2 * cam1.M);
-    alwan_scalar const h1_rad = cam1.h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar const a1_prime = M1_prime * ALWAN_COS(h1_rad);
-    alwan_scalar const b1_prime = M1_prime * ALWAN_SIN(h1_rad);
-
-    alwan_scalar const J2_prime = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(100.0) * c1) * cam2.J / (ALWAN_LITERAL(1.0) + c1 * cam2.J);
-    alwan_scalar const M2_prime = (ALWAN_LITERAL(1.0) / c2) * ALWAN_LOG(ALWAN_LITERAL(1.0) + c2 * cam2.M);
-    alwan_scalar const h2_rad = cam2.h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar const a2_prime = M2_prime * ALWAN_COS(h2_rad);
-    alwan_scalar const b2_prime = M2_prime * ALWAN_SIN(h2_rad);
-
     /* Calculate delta E in UCS space - simple Euclidean distance */
-    alwan_scalar const dJ = (J1_prime - J2_prime) / KL;
-    alwan_scalar const da = a1_prime - a2_prime;
-    alwan_scalar const db = b1_prime - b2_prime;
+    alwan_scalar const dJ = (jab1->J - jab2->J) / KL;
+    alwan_scalar const da = jab1->a - jab2->a;
+    alwan_scalar const db = jab1->b - jab2->b;
 
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }
 
 /* ΔE CAM16-LCD - CAM16 Large Color Difference
  * Same formula as CAM02-LCD but uses CAM16 chromatic adaptation
- * Takes Lab input and converts internally via Lab → XYZ → CAM16 → UCS */
-alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
-    /* IEC 61966-2-1:1999 (sRGB) viewing conditions for delta E calculations */
-    alwan_cam16_viewing_conditions vc;
-    vc.white_xyz.x = ALWAN_LITERAL(95.045592705167159);   /* D65 × 100 */
-    vc.white_xyz.y = ALWAN_LITERAL(100.0);
-    vc.white_xyz.z = ALWAN_LITERAL(108.90577507598784);
-    vc.adapting_luminance = ALWAN_LITERAL(64.0) / ALWAN_PI * ALWAN_LITERAL(0.2);  /* ~4.074 cd/m² */
-    vc.background_luminance = ALWAN_LITERAL(20.0);
-    vc.surround = ALWAN_CAM16_SURROUND_AVERAGE;
-    vc.discount_illuminant = 0;
-
-    /* Convert Lab to XYZ (using normalized D65 white point for Lab) */
-    alwan_xyz white_lab;
-    white_lab.x = ALWAN_LITERAL(0.95045592705167159);
-    white_lab.y = ALWAN_LITERAL(1.0);
-    white_lab.z = ALWAN_LITERAL(1.0890577507598784);
-
-    alwan_xyz xyz1, xyz2;
-    alwan_lab_to_xyz((alwan_lab const *)lab1, &white_lab, &xyz1);
-    alwan_lab_to_xyz((alwan_lab const *)lab2, &white_lab, &xyz2);
-
-    /* Scale XYZ to Y=100 range */
-    xyz1.x *= ALWAN_LITERAL(100.0);
-    xyz1.y *= ALWAN_LITERAL(100.0);
-    xyz1.z *= ALWAN_LITERAL(100.0);
-    xyz2.x *= ALWAN_LITERAL(100.0);
-    xyz2.y *= ALWAN_LITERAL(100.0);
-    xyz2.z *= ALWAN_LITERAL(100.0);
-
-    /* Convert XYZ to CAM16 */
-    alwan_cam16_correlates cam1, cam2;
-    alwan_cam16_forward(&xyz1, &vc, &cam1);
-    alwan_cam16_forward(&xyz2, &vc, &cam2);
-
-    /* Convert to CAM16-LCD UCS coordinates (Jab) */
-    /* CAM16-LCD uses same constants as CAM02-LCD: c1=0.007, c2=0.0053, K_L=0.77 */
-    alwan_scalar const c1 = ALWAN_LITERAL(0.007);
-    alwan_scalar const c2 = ALWAN_LITERAL(0.0053);
+ * Takes Jab coordinates directly (already in CAM16 UCS space) */
+alwan_scalar alwan_delta_e_cam16_lcd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2) {
+    /* CAM16-LCD uses same K_L as CAM02-LCD: K_L=0.77 */
     alwan_scalar const KL = ALWAN_LITERAL(0.77);
 
-    alwan_scalar const J1_prime = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(100.0) * c1) * cam1.J / (ALWAN_LITERAL(1.0) + c1 * cam1.J);
-    alwan_scalar const M1_prime = (ALWAN_LITERAL(1.0) / c2) * ALWAN_LOG(ALWAN_LITERAL(1.0) + c2 * cam1.M);
-    alwan_scalar const h1_rad = cam1.h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar const a1_prime = M1_prime * ALWAN_COS(h1_rad);
-    alwan_scalar const b1_prime = M1_prime * ALWAN_SIN(h1_rad);
-
-    alwan_scalar const J2_prime = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(100.0) * c1) * cam2.J / (ALWAN_LITERAL(1.0) + c1 * cam2.J);
-    alwan_scalar const M2_prime = (ALWAN_LITERAL(1.0) / c2) * ALWAN_LOG(ALWAN_LITERAL(1.0) + c2 * cam2.M);
-    alwan_scalar const h2_rad = cam2.h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar const a2_prime = M2_prime * ALWAN_COS(h2_rad);
-    alwan_scalar const b2_prime = M2_prime * ALWAN_SIN(h2_rad);
-
     /* Calculate delta E in UCS space - simple Euclidean distance */
-    alwan_scalar const dJ = (J1_prime - J2_prime) / KL;
-    alwan_scalar const da = a1_prime - a2_prime;
-    alwan_scalar const db = b1_prime - b2_prime;
+    alwan_scalar const dJ = (jab1->J - jab2->J) / KL;
+    alwan_scalar const da = jab1->a - jab2->a;
+    alwan_scalar const db = jab1->b - jab2->b;
 
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }
 
 /* ΔE CAM16-SCD - CAM16 Small Color Difference
  * Same formula as CAM02-SCD but uses CAM16 chromatic adaptation
- * Takes Lab input and converts internally via Lab → XYZ → CAM16 → UCS */
-alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2) {
-    /* IEC 61966-2-1:1999 (sRGB) viewing conditions for delta E calculations */
-    alwan_cam16_viewing_conditions vc;
-    vc.white_xyz.x = ALWAN_LITERAL(95.045592705167159);   /* D65 × 100 */
-    vc.white_xyz.y = ALWAN_LITERAL(100.0);
-    vc.white_xyz.z = ALWAN_LITERAL(108.90577507598784);
-    vc.adapting_luminance = ALWAN_LITERAL(64.0) / ALWAN_PI * ALWAN_LITERAL(0.2);  /* ~4.074 cd/m² */
-    vc.background_luminance = ALWAN_LITERAL(20.0);
-    vc.surround = ALWAN_CAM16_SURROUND_AVERAGE;
-    vc.discount_illuminant = 0;
-
-    /* Convert Lab to XYZ (using normalized D65 white point for Lab) */
-    alwan_xyz white_lab;
-    white_lab.x = ALWAN_LITERAL(0.95045592705167159);
-    white_lab.y = ALWAN_LITERAL(1.0);
-    white_lab.z = ALWAN_LITERAL(1.0890577507598784);
-
-    alwan_xyz xyz1, xyz2;
-    alwan_lab_to_xyz((alwan_lab const *)lab1, &white_lab, &xyz1);
-    alwan_lab_to_xyz((alwan_lab const *)lab2, &white_lab, &xyz2);
-
-    /* Scale XYZ to Y=100 range */
-    xyz1.x *= ALWAN_LITERAL(100.0);
-    xyz1.y *= ALWAN_LITERAL(100.0);
-    xyz1.z *= ALWAN_LITERAL(100.0);
-    xyz2.x *= ALWAN_LITERAL(100.0);
-    xyz2.y *= ALWAN_LITERAL(100.0);
-    xyz2.z *= ALWAN_LITERAL(100.0);
-
-    /* Convert XYZ to CAM16 */
-    alwan_cam16_correlates cam1, cam2;
-    alwan_cam16_forward(&xyz1, &vc, &cam1);
-    alwan_cam16_forward(&xyz2, &vc, &cam2);
-
-    /* Convert to CAM16-SCD UCS coordinates (Jab) */
-    /* CAM16-SCD uses same constants as CAM02-SCD: c1=0.007, c2=0.0363, K_L=1.24 */
-    alwan_scalar const c1 = ALWAN_LITERAL(0.007);
-    alwan_scalar const c2 = ALWAN_LITERAL(0.0363);
+ * Takes Jab coordinates directly (already in CAM16 UCS space) */
+alwan_scalar alwan_delta_e_cam16_scd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2) {
+    /* CAM16-SCD uses same K_L as CAM02-SCD: K_L=1.24 */
     alwan_scalar const KL = ALWAN_LITERAL(1.24);
 
-    alwan_scalar const J1_prime = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(100.0) * c1) * cam1.J / (ALWAN_LITERAL(1.0) + c1 * cam1.J);
-    alwan_scalar const M1_prime = (ALWAN_LITERAL(1.0) / c2) * ALWAN_LOG(ALWAN_LITERAL(1.0) + c2 * cam1.M);
-    alwan_scalar const h1_rad = cam1.h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar const a1_prime = M1_prime * ALWAN_COS(h1_rad);
-    alwan_scalar const b1_prime = M1_prime * ALWAN_SIN(h1_rad);
-
-    alwan_scalar const J2_prime = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(100.0) * c1) * cam2.J / (ALWAN_LITERAL(1.0) + c1 * cam2.J);
-    alwan_scalar const M2_prime = (ALWAN_LITERAL(1.0) / c2) * ALWAN_LOG(ALWAN_LITERAL(1.0) + c2 * cam2.M);
-    alwan_scalar const h2_rad = cam2.h * ALWAN_PI / ALWAN_LITERAL(180.0);
-    alwan_scalar const a2_prime = M2_prime * ALWAN_COS(h2_rad);
-    alwan_scalar const b2_prime = M2_prime * ALWAN_SIN(h2_rad);
-
     /* Calculate delta E in UCS space - simple Euclidean distance */
-    alwan_scalar const dJ = (J1_prime - J2_prime) / KL;
-    alwan_scalar const da = a1_prime - a2_prime;
-    alwan_scalar const db = b1_prime - b2_prime;
+    alwan_scalar const dJ = (jab1->J - jab2->J) / KL;
+    alwan_scalar const da = jab1->a - jab2->a;
+    alwan_scalar const db = jab1->b - jab2->b;
 
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }

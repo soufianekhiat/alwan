@@ -909,7 +909,7 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_observer_type observer,
                        alwan_integrate_method method,
                        alwan_scalar bandpass_nm,
-                       alwan_vec3 *xyz_out) {
+                       alwan_xyz *xyz_out) {
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
@@ -1000,13 +1000,13 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
     if (spd->count == 1) dx = ALWAN_LITERAL(1.0);
 
     if (method == ALWAN_INTEGRATE_TRAPEZOID) {
-        xyz_out->v[0] = integrate_trapezoid(prod_x, spd->count, dx);
-        xyz_out->v[1] = integrate_trapezoid(prod_y, spd->count, dx);
-        xyz_out->v[2] = integrate_trapezoid(prod_z, spd->count, dx);
+        xyz_out->x = integrate_trapezoid(prod_x, spd->count, dx);
+        xyz_out->y = integrate_trapezoid(prod_y, spd->count, dx);
+        xyz_out->z = integrate_trapezoid(prod_z, spd->count, dx);
     } else {
-        xyz_out->v[0] = integrate_simpson(prod_x, spd->count, dx);
-        xyz_out->v[1] = integrate_simpson(prod_y, spd->count, dx);
-        xyz_out->v[2] = integrate_simpson(prod_z, spd->count, dx);
+        xyz_out->x = integrate_simpson(prod_x, spd->count, dx);
+        xyz_out->y = integrate_simpson(prod_y, spd->count, dx);
+        xyz_out->z = integrate_simpson(prod_z, spd->count, dx);
     }
 
     /* Cleanup */
@@ -1104,7 +1104,7 @@ int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
                                alwan_spd const *illuminant,
                                alwan_camera_sensitivity camera,
                                alwan_integrate_method method,
-                               alwan_vec3 *xyz_out) {
+                               alwan_xyz *xyz_out) {
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
@@ -1210,13 +1210,13 @@ int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
     if (spd->count == 1) dx = ALWAN_LITERAL(1.0);
 
     if (method == ALWAN_INTEGRATE_TRAPEZOID) {
-        xyz_out->v[0] = integrate_trapezoid(prod_r, spd->count, dx);
-        xyz_out->v[1] = integrate_trapezoid(prod_g, spd->count, dx);
-        xyz_out->v[2] = integrate_trapezoid(prod_b, spd->count, dx);
+        xyz_out->x = integrate_trapezoid(prod_r, spd->count, dx);
+        xyz_out->y = integrate_trapezoid(prod_g, spd->count, dx);
+        xyz_out->z = integrate_trapezoid(prod_b, spd->count, dx);
     } else {
-        xyz_out->v[0] = integrate_simpson(prod_r, spd->count, dx);
-        xyz_out->v[1] = integrate_simpson(prod_g, spd->count, dx);
-        xyz_out->v[2] = integrate_simpson(prod_b, spd->count, dx);
+        xyz_out->x = integrate_simpson(prod_r, spd->count, dx);
+        xyz_out->y = integrate_simpson(prod_g, spd->count, dx);
+        xyz_out->z = integrate_simpson(prod_b, spd->count, dx);
     }
 
     /* Cleanup */

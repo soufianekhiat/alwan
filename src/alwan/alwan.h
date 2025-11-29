@@ -237,6 +237,61 @@ typedef struct
     alwan_scalar Yc, Cbc, Crc;
 } alwan_yccbccrc;
 
+/* UVW color space (CIE 1964) */
+typedef struct {
+    alwan_scalar U, V, W;
+} alwan_uvw;
+
+/* DIN99 color space */
+typedef struct {
+    alwan_scalar L99, a99, b99;
+} alwan_din99;
+
+/* Hunter Lab color space */
+typedef struct {
+    alwan_scalar L, a, b;
+} alwan_hunter_lab;
+
+/* IPT cylindrical form (I, Chroma, Hue) */
+typedef struct {
+    alwan_scalar I, C, h;
+} alwan_iptch;
+
+/* ProLab color space */
+typedef struct {
+    alwan_scalar L, a, b;
+} alwan_prolab;
+
+/* OSA-UCS color space (Ljg) */
+typedef struct {
+    alwan_scalar L, j, g;
+} alwan_osa_ucs;
+
+/* CIE 1960 UCS color space */
+typedef struct {
+    alwan_scalar U, V, W;
+} alwan_ucs;
+
+/* Prismatic color space */
+typedef struct {
+    alwan_scalar L, s, h;
+} alwan_prismatic;
+
+/* HCL color space (Hue, Chroma, Luminance - in RGB context) */
+typedef struct {
+    alwan_scalar H, C, L;
+} alwan_hcl;
+
+/* IHLS color space (Improved HLS) */
+typedef struct {
+    alwan_scalar H, L, S;
+} alwan_ihls;
+
+/* CAM Jab color (J, a, b - for CAM02/CAM16) */
+typedef struct {
+    alwan_scalar J, a, b;
+} alwan_cam_jab;
+
 /*
  * Usage examples:
  *
@@ -622,9 +677,9 @@ int alwan_gamut_volume_mc(alwan_rgb_space_desc const *space,
  * rgb_out: output RGB colors (mapped to [0,1] gamut)
  * Returns ALWAN_OK on success */
 int alwan_gamut_map(alwan_gamut_map_method method,
-                    alwan_vec3 const *rgb_in,
+                    alwan_rgb const *rgb_in,
                     size_t count,
-                    alwan_vec3 *rgb_out);
+                    alwan_rgb *rgb_out);
 
 /* Map XYZ color to RGB gamut with hue preservation
  * ctx: optional context (can be NULL)
@@ -634,8 +689,8 @@ int alwan_gamut_map(alwan_gamut_map_method method,
  * Returns ALWAN_OK on success */
 int alwan_gamut_map_xyz_to_rgb(alwan_ctx *ctx,
                                 alwan_rgb_space_desc const *space,
-                                alwan_vec3 const *xyz_in,
-                                alwan_vec3 *rgb_out);
+                                alwan_xyz const *xyz_in,
+                                alwan_rgb *rgb_out);
 
 /* ----------------------------------------------------------------
  * Transfer Functions (OETF/EOTF)
@@ -696,8 +751,8 @@ void alwan_luv_to_xyz(alwan_luv const *luv, alwan_xyz const *white_xyz, alwan_xy
  * Based on CIE 1960 UCS chromaticity diagram
  * Used specifically for Color Rendering Index calculations
  * Requires white point in XYZ */
-void alwan_xyz_to_uvw(alwan_vec3 const *xyz, alwan_vec3 const *white_xyz, alwan_vec3 *uvw);
-void alwan_uvw_to_xyz(alwan_vec3 const *uvw, alwan_vec3 const *white_xyz, alwan_vec3 *xyz);
+void alwan_xyz_to_uvw(alwan_xyz const *xyz, alwan_xyz const *white_xyz, alwan_uvw *uvw);
+void alwan_uvw_to_xyz(alwan_uvw const *uvw, alwan_xyz const *white_xyz, alwan_xyz *xyz);
 
 /* Lab <-> LCh(ab) conversions */
 void alwan_lab_to_lch(alwan_lab const *lab, alwan_lch *lch);
@@ -720,8 +775,8 @@ void alwan_oklch_to_oklab(alwan_oklch const *oklch, alwan_oklab *oklab);
  * - All variants provide improved perceptual uniformity over CIE Lab
  * - Input Lab should be D65 adapted
  */
-void alwan_lab_to_din99(alwan_lab const *lab, alwan_vec3 *din99, int variant);
-void alwan_din99_to_lab(alwan_vec3 const *din99, alwan_lab *lab, int variant);
+void alwan_lab_to_din99(alwan_lab const *lab, alwan_din99 *din99, int variant);
+void alwan_din99_to_lab(alwan_din99 const *din99, alwan_lab *lab, int variant);
 
 /* RGB <-> ICtCp conversions (ITU-R BT.2100 HDR color space)
  * - RGB input/output is linear BT.2020 RGB
@@ -756,15 +811,15 @@ void alwan_jzczhz_to_jzazbz(alwan_jzczhz const *jzczhz, alwan_jzazbz *jzazbz);
  * - Uses square roots instead of cube roots (unlike CIE Lab)
  * - Ka and Kb coefficients are illuminant-dependent
  */
-void alwan_xyz_to_hunter_lab(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab);
-void alwan_hunter_lab_to_xyz(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz);
+void alwan_xyz_to_hunter_lab(alwan_xyz const *xyz, alwan_hunter_lab *hunter_lab);
+void alwan_hunter_lab_to_xyz(alwan_hunter_lab const *hunter_lab, alwan_xyz *xyz);
 
 /* Hunter Lab <-> XYZ conversions with custom illuminant
  * - xyz_n: Reference white point (e.g., D50, D65, or custom illuminant)
  * - Ka and Kb are calculated automatically based on xyz_n
  */
-void alwan_xyz_to_hunter_lab_custom(alwan_vec3 const *xyz, alwan_vec3 *hunter_lab, alwan_vec3 const *xyz_n);
-void alwan_hunter_lab_to_xyz_custom(alwan_vec3 const *hunter_lab, alwan_vec3 *xyz, alwan_vec3 const *xyz_n);
+void alwan_xyz_to_hunter_lab_custom(alwan_xyz const *xyz, alwan_hunter_lab *hunter_lab, alwan_xyz const *xyz_n);
+void alwan_hunter_lab_to_xyz_custom(alwan_hunter_lab const *hunter_lab, alwan_xyz *xyz, alwan_xyz const *xyz_n);
 
 /* IPT <-> XYZ conversions (Image Processing Transform)
  * - XYZ input/output is D65 adapted
@@ -778,22 +833,22 @@ void alwan_ipt_to_xyz(alwan_ipt const *ipt, alwan_xyz *xyz);
 /* IPT <-> IPTch conversions (cylindrical coordinates)
  * - IPTch: I (intensity), C (chroma), h (hue in radians)
  */
-void alwan_ipt_to_iptch(alwan_ipt const *ipt, alwan_vec3 *iptch);
-void alwan_iptch_to_ipt(alwan_vec3 const *iptch, alwan_ipt *ipt);
+void alwan_ipt_to_iptch(alwan_ipt const *ipt, alwan_iptch *iptch);
+void alwan_iptch_to_ipt(alwan_iptch const *iptch, alwan_ipt *ipt);
 
 /* ProLab <-> XYZ conversions (Perceptually Uniform Projective)
  * - XYZ input/output is D65 adapted by default
  * - ProLab: Uses projective transformation for improved uniformity
  * - Based on Konovalenko et al. (2021)
  */
-void alwan_xyz_to_prolab(alwan_vec3 const *xyz, alwan_vec3 *prolab);
-void alwan_prolab_to_xyz(alwan_vec3 const *prolab, alwan_vec3 *xyz);
+void alwan_xyz_to_prolab(alwan_xyz const *xyz, alwan_prolab *prolab);
+void alwan_prolab_to_xyz(alwan_prolab const *prolab, alwan_xyz *xyz);
 
 /* ProLab <-> XYZ conversions with custom illuminant
  * - xyz_n: Reference white point (e.g., D50, D65, or custom illuminant)
  */
-void alwan_xyz_to_prolab_custom(alwan_vec3 const *xyz, alwan_vec3 *prolab, alwan_vec3 const *xyz_n);
-void alwan_prolab_to_xyz_custom(alwan_vec3 const *prolab, alwan_vec3 *xyz, alwan_vec3 const *xyz_n);
+void alwan_xyz_to_prolab_custom(alwan_xyz const *xyz, alwan_prolab *prolab, alwan_xyz const *xyz_n);
+void alwan_prolab_to_xyz_custom(alwan_prolab const *prolab, alwan_xyz *xyz, alwan_xyz const *xyz_n);
 
 /* OSA-UCS <-> XYZ conversions (Optical Society of America Uniform Color Scales)
  * - XYZ input/output is D65 adapted
@@ -801,16 +856,16 @@ void alwan_prolab_to_xyz_custom(alwan_vec3 const *prolab, alwan_vec3 *xyz, alwan
  * - Forward transform is exact, inverse is approximate (iterative solution)
  * - Note: Inverse transformation has lower precision than other color spaces
  */
-void alwan_xyz_to_osa_ucs(alwan_vec3 const *xyz, alwan_vec3 *osa_ucs);
-void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz);
+void alwan_xyz_to_osa_ucs(alwan_xyz const *xyz, alwan_osa_ucs *osa_ucs);
+void alwan_osa_ucs_to_xyz(alwan_osa_ucs const *osa_ucs, alwan_xyz *xyz);
 
 /* CIE 1960 UCS <-> XYZ conversions (Uniform Chromaticity Scale)
  * - CIE 1960 UCS: u, v chromaticity coordinates + Y luminance
  * - Used for CCT calculations and color rendering metrics
  * - Precursor to CIE 1976 u'v' (CIELUV) chromaticity diagram
  */
-void alwan_xyz_to_ucs(alwan_vec3 const *xyz, alwan_vec3 *ucs);
-void alwan_ucs_to_xyz(alwan_vec3 const *ucs, alwan_vec3 *xyz);
+void alwan_xyz_to_ucs(alwan_xyz const *xyz, alwan_ucs *ucs);
+void alwan_ucs_to_xyz(alwan_ucs const *ucs, alwan_xyz *xyz);
 
 /* hdr-CIELAB <-> XYZ conversions (HDR extension of CIELAB)
  * - Fairchild & Wyble (2010) HDR-CIELAB model
@@ -851,24 +906,24 @@ void alwan_icacb_to_xyz(alwan_icacb const *icacb, alwan_xyz *xyz);
  * - P (purity), r (red-green), i (intensity)
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_prismatic(alwan_rgb const *rgb, alwan_vec3 *prismatic);
-void alwan_prismatic_to_rgb(alwan_vec3 const *prismatic, alwan_rgb *rgb);
+void alwan_rgb_to_prismatic(alwan_rgb const *rgb, alwan_prismatic *prismatic);
+void alwan_prismatic_to_rgb(alwan_prismatic const *prismatic, alwan_rgb *rgb);
 
 /* HCL <-> RGB conversions (Sarifuddin 2005)
  * - Hue-Chroma-Luminance polar coordinate system
  * - Better perceptual properties than HSL
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_hcl(alwan_rgb const *rgb, alwan_vec3 *hcl);
-void alwan_hcl_to_rgb(alwan_vec3 const *hcl, alwan_rgb *rgb);
+void alwan_rgb_to_hcl(alwan_rgb const *rgb, alwan_hcl *hcl);
+void alwan_hcl_to_rgb(alwan_hcl const *hcl, alwan_rgb *rgb);
 
 /* IHLS <-> RGB conversions (Improved HLS - Hanbury 2003)
  * - Improved Hue-Lightness-Saturation
  * - Better perceptual properties than standard HSL
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_ihls(alwan_rgb const *rgb, alwan_vec3 *ihls);
-void alwan_ihls_to_rgb(alwan_vec3 const *ihls, alwan_rgb *rgb);
+void alwan_rgb_to_ihls(alwan_rgb const *rgb, alwan_ihls *ihls);
+void alwan_ihls_to_rgb(alwan_ihls const *ihls, alwan_rgb *rgb);
 
 /* ----------------------------------------------------------------
  * Color Difference (ΔE) Metrics
@@ -893,19 +948,19 @@ alwan_scalar alwan_delta_e_itp(alwan_ictcp const *ictcp1, alwan_ictcp const *ict
 alwan_scalar alwan_delta_e_hyab(alwan_lab const *lab1, alwan_lab const *lab2);
 
 /* ΔE DIN99 - Euclidean distance in DIN99 space (variant: 0=DIN99, 1=b, 2=c, 3=d) */
-alwan_scalar alwan_delta_e_din99(alwan_vec3 const *din99_1, alwan_vec3 const *din99_2);
+alwan_scalar alwan_delta_e_din99(alwan_din99 const *din99_1, alwan_din99 const *din99_2);
 
 /* ΔE CAM02-LCD - CIECAM02 Large Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam02_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_cam02_lcd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
 
 /* ΔE CAM02-SCD - CIECAM02 Small Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam02_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_cam02_scd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
 
 /* ΔE CAM16-LCD - CAM16 Large Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam16_lcd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_cam16_lcd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
 
 /* ΔE CAM16-SCD - CAM16 Small Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam16_scd(alwan_vec3 const *lab1, alwan_vec3 const *lab2);
+alwan_scalar alwan_delta_e_cam16_scd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
 
 /* ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space */
 alwan_scalar alwan_delta_e_zcam(alwan_jzazbz const *jab1, alwan_jzazbz const *jab2);
@@ -926,13 +981,13 @@ typedef enum {
  * xyz: CIE XYZ tristimulus values (normalized to Y=100 for perfect white)
  * illuminant: illuminant/observer pair (C/2°, D65/2°, C/10°, or D65/10°)
  * Returns: Yellowness Index (YI) value */
-alwan_scalar alwan_yellowness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_illuminant illuminant);
+alwan_scalar alwan_yellowness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant);
 
 /* ASTM E313 Whiteness Index
  * xyz: CIE XYZ tristimulus values (normalized to Y=100 for perfect white)
  * illuminant: illuminant/observer pair (C/2°, D65/2°, C/10°, or D65/10°)
  * Returns: Whiteness Index (WI) value */
-alwan_scalar alwan_whiteness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_illuminant illuminant);
+alwan_scalar alwan_whiteness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant);
 
 /* CIE 2004 Whiteness Index
  * xy: CIE 1931 chromaticity coordinates (x, y)
@@ -942,7 +997,7 @@ alwan_scalar alwan_whiteness_astm_e313(alwan_vec3 const *xyz, alwan_astm_e313_il
  * Note: Also computes Tint (T), but this function only returns W.
  *       Tint = 900(xn - x) - 650(yn - y) for 2° observer
  *       Tint = 1000(xn - x) - 650(yn - y) for 10° observer */
-alwan_scalar alwan_whiteness_cie2004(alwan_vec3 const *xy, alwan_scalar Y, alwan_vec3 const *xy_n);
+alwan_scalar alwan_whiteness_cie2004(alwan_vec2 const *xy, alwan_scalar Y, alwan_vec2 const *xy_n);
 
 /* ----------------------------------------------------------------
  * Chromatic Adaptation Transform (CAT)
@@ -1041,7 +1096,7 @@ typedef struct {
  * Returns ALWAN_E_INVALID if illuminant not supported */
 int alwan_illuminant_white_point(alwan_illuminant illuminant,
                                    alwan_observer_type observer,
-                                   alwan_vec3 *out_xyz);
+                                   alwan_xyz *out_xyz);
 
 /* SPD resampling method */
 typedef enum {
@@ -1134,7 +1189,7 @@ int alwan_xyz_from_spd(alwan_ctx *ctx,
                        alwan_observer_type observer,
                        alwan_integrate_method method,
                        alwan_scalar bandpass_nm,
-                       alwan_vec3 *xyz_out);
+                       alwan_xyz *xyz_out);
 
 /* ----------------------------------------------------------------
  * Camera Sensitivities
@@ -1158,7 +1213,7 @@ int alwan_xyz_from_spd_camera(alwan_ctx *ctx,
                                alwan_spd const *illuminant,
                                alwan_camera_sensitivity camera,
                                alwan_integrate_method method,
-                               alwan_vec3 *xyz_out);
+                               alwan_xyz *xyz_out);
 
 /* ----------------------------------------------------------------
  * Spectral Shape Descriptors
@@ -1273,8 +1328,8 @@ int alwan_gamut_coverage(alwan_rgb_space_desc const *space1,
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 int alwan_gamut_map_advanced(alwan_gamut_map_method method,
                               alwan_rgb_space_desc const *space,
-                              alwan_vec3 const *rgb_linear,
-                              alwan_vec3 *rgb_out);
+                              alwan_rgb const *rgb_linear,
+                              alwan_rgb *rgb_out);
 
 /* ----------------------------------------------------------------
  * Spectral Upsampling - RGB to Spectrum Conversion
@@ -1287,7 +1342,7 @@ int alwan_gamut_map_advanced(alwan_gamut_map_method method,
  * out_spd: output spectral power distribution (wavelength range: 380-720nm, 10 samples)
  * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
 int alwan_rgb_to_spectrum_smits1999(alwan_ctx *ctx,
-                                     alwan_vec3 const *rgb,
+                                     alwan_rgb const *rgb,
                                      alwan_spd *out_spd);
 
 /* Mallett2019: RGB to spectrum conversion using spectral primary decomposition
@@ -1297,7 +1352,7 @@ int alwan_rgb_to_spectrum_smits1999(alwan_ctx *ctx,
  * out_spd: output spectral power distribution (wavelength range: 380-780nm, 81 samples at 5nm intervals)
  * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
 int alwan_rgb_to_spectrum_mallett2019(alwan_ctx *ctx,
-                                       alwan_vec3 const *rgb,
+                                       alwan_rgb const *rgb,
                                        alwan_spd *out_spd);
 
 /* Jakob2019 gamut enum - specifies which RGB color space to use for spectral upsampling */
@@ -1320,7 +1375,7 @@ typedef enum {
  * Note: Requires pre-generated LUT data for the specified gamut (see generate_data.ps1) */
 int alwan_rgb_to_spectrum_jakob2019(alwan_ctx *ctx,
                                       alwan_jakob2019_gamut gamut,
-                                      alwan_vec3 const *rgb,
+                                      alwan_rgb const *rgb,
                                       alwan_spd *out_spd);
 
 /* ----------------------------------------------------------------
@@ -1429,14 +1484,14 @@ int alwan_cam16_inverse(alwan_cam16_correlates const *correlates,
  * Jab_out: output CAM16-UCS coordinates [J', a', b']
  * Returns ALWAN_OK on success */
 int alwan_cam16_to_ucs(alwan_cam16_correlates const *correlates,
-                       alwan_vec3 *Jab_out);
+                       alwan_cam_jab *Jab_out);
 
 /* Inverse CAM16-UCS transform
  * Converts CAM16-UCS Jab back to CAM16 JMh
  * Jab: input CAM16-UCS coordinates [J', a', b']
  * correlates_out: output CAM16 correlates (J, M, h filled; other fields set to 0)
  * Returns ALWAN_OK on success */
-int alwan_cam16_from_ucs(alwan_vec3 const *Jab,
+int alwan_cam16_from_ucs(alwan_cam_jab const *Jab,
                          alwan_cam16_correlates *correlates_out);
 
 /* ----------------------------------------------------------------
@@ -1498,7 +1553,7 @@ int alwan_zcam_inverse(alwan_zcam_correlates const *correlates,
  * Jab_out: output ZCAM-UCS coordinates [Jz, az, bz]
  * Returns 0 on success, -1 on error */
 int alwan_zcam_to_ucs(alwan_zcam_correlates const *correlates,
-                      alwan_vec3 *Jab_out);
+                      alwan_jzazbz *Jab_out);
 
 /* ----------------------------------------------------------------
  * RLAB Color Appearance Model
@@ -1803,11 +1858,11 @@ int alwan_ycocg_to_rgb(alwan_ycocg const *ycocg, alwan_rgb *rgb_out);
 
 /* CCT estimation from chromaticity coordinates (xy) */
 /* McCamy approximation: fast, ~2% accuracy above 2800K */
-alwan_scalar alwan_cct_mccamy_xy(alwan_vec3 const *xy);
+alwan_scalar alwan_cct_mccamy_xy(alwan_vec2 const *xy);
 
 /* Robertson method: accurate, iterative lookup against Planckian locus */
 /* Returns CCT in Kelvin, or negative value on error */
-alwan_scalar alwan_cct_robertson_xy(alwan_vec3 const *xy);
+alwan_scalar alwan_cct_robertson_xy(alwan_vec2 const *xy);
 
 /* CRI (Color Rendering Index) Ra - average of 8 TCS samples */
 /* Requires SPD (spectral power distribution) */
@@ -1875,10 +1930,10 @@ typedef enum {
  * rgb_out: output simulated RGB color as seen by person with CVD
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
  * Algorithm: Brettel, Viénot & Mollon (1997) simulation using confusion lines */
-int alwan_simulate_cvd(alwan_vec3 const *rgb_in,
+int alwan_simulate_cvd(alwan_rgb const *rgb_in,
                         alwan_cvd_type cvd_type,
                         alwan_scalar severity,
-                        alwan_vec3 *rgb_out);
+                        alwan_rgb *rgb_out);
 
 /* Luminous Efficiency Functions */
 
@@ -2051,7 +2106,7 @@ int alwan_cct_duv_optimize(alwan_vec2 const *xy, alwan_scalar *cct_out, alwan_sc
  * spd_out: receives optimized SPD (must be pre-allocated with desired wavelength range)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
  * Note: Multiple SPDs can match the same XYZ (metamerism), this finds one solution */
-int alwan_optimize_spectrum_for_xyz(alwan_vec3 const *target_xyz,
+int alwan_optimize_spectrum_for_xyz(alwan_xyz const *target_xyz,
                                       alwan_observer_type observer,
                                       alwan_ctx *ctx,
                                       alwan_spd *spd_out);
@@ -2074,7 +2129,7 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
  * rgb_out: receives interpolated RGB values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 int alwan_table_interp_3d_trilinear(alwan_scalar const *table, size_t const sizes[3],
-                                     alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out);
+                                     alwan_rgb const *rgb_in, alwan_rgb *rgb_out);
 
 /* 3D Table Interpolation (Tetrahedral)
  * Interpolates RGB values from a 3D lookup table using tetrahedral method
@@ -2085,7 +2140,7 @@ int alwan_table_interp_3d_trilinear(alwan_scalar const *table, size_t const size
  * rgb_out: receives interpolated RGB values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 int alwan_table_interp_3d_tetrahedral(alwan_scalar const *table, size_t const sizes[3],
-                                       alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out);
+                                       alwan_rgb const *rgb_in, alwan_rgb *rgb_out);
 
 /* ----------------------------------------------------------------
  * Data & Reference Sets
@@ -2101,7 +2156,7 @@ int alwan_table_interp_3d_tetrahedral(alwan_scalar const *table, size_t const si
  * xyz: receives XYZ tristimulus values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chroma,
-                         alwan_illuminant illuminant, alwan_vec3 *xyz);
+                         alwan_illuminant illuminant, alwan_xyz *xyz);
 
 /* Convert XYZ tristimulus values to Munsell notation (Hue, Value, Chroma)
  * xyz: XYZ tristimulus values
@@ -2110,7 +2165,7 @@ int alwan_munsell_to_xyz(alwan_scalar hue, alwan_scalar value, alwan_scalar chro
  * value: receives Munsell value [0, 10]
  * chroma: receives Munsell chroma [0, 20+]
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_xyz_to_munsell(alwan_vec3 const *xyz, alwan_illuminant illuminant,
+int alwan_xyz_to_munsell(alwan_xyz const *xyz, alwan_illuminant illuminant,
                          alwan_scalar *hue, alwan_scalar *value, alwan_scalar *chroma);
 
 /* Color Checker Data
@@ -2121,7 +2176,7 @@ int alwan_xyz_to_munsell(alwan_vec3 const *xyz, alwan_illuminant illuminant,
  * xyz: receives XYZ tristimulus values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 int alwan_color_checker_data(alwan_colorchecker_type type, alwan_illuminant illuminant,
-                              size_t patch_index, alwan_vec3 *xyz);
+                              size_t patch_index, alwan_xyz *xyz);
 
 /* Get number of patches in a Color Checker target
  * type: Color Checker target type
@@ -2133,14 +2188,14 @@ size_t alwan_color_checker_num_patches(alwan_colorchecker_type type);
  * ncs_notation: NCS notation string (e.g., "S 1050-Y90R")
  * xyz: receives XYZ tristimulus values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_ncs_to_xyz(char const *ncs_notation, alwan_vec3 *xyz);
+int alwan_ncs_to_xyz(char const *ncs_notation, alwan_xyz *xyz);
 
 /* Convert XYZ tristimulus values to NCS notation
  * xyz: XYZ tristimulus values
  * ncs_notation: receives NCS notation string (allocated by caller)
  * notation_size: size of notation buffer (should be >= 32)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_xyz_to_ncs(alwan_vec3 const *xyz, char *ncs_notation, size_t notation_size);
+int alwan_xyz_to_ncs(alwan_xyz const *xyz, char *ncs_notation, size_t notation_size);
 
 /* Additional RGB Space Definitions
  * Get RGB space primaries and white point by enum
@@ -2169,8 +2224,8 @@ int alwan_rgb_space_get_tfs(alwan_rgb_space space, alwan_transfer_function *oetf
  * rgb_out: output RGB values
  * Formula: rgb_out = ((rgb_in + lift) ^ (1/gamma)) * gain
  * Returns ALWAN_OK on success */
-int alwan_lgg_apply(alwan_vec3 const *rgb_in, alwan_vec3 const *lift,
-                    alwan_vec3 const *gamma, alwan_vec3 const *gain, alwan_vec3 *rgb_out);
+int alwan_lgg_apply(alwan_rgb const *rgb_in, alwan_rgb const *lift,
+                    alwan_rgb const *gamma, alwan_rgb const *gain, alwan_rgb *rgb_out);
 
 /* Color matrix grading preset types */
 typedef enum {
@@ -2188,8 +2243,8 @@ typedef enum {
  * matrix_3x3: 3x3 color transformation matrix
  * rgb_out: output RGB values
  * Returns ALWAN_OK on success */
-int alwan_color_matrix_apply(alwan_vec3 const *rgb_in, alwan_mat3x3 const *matrix_3x3,
-                              alwan_vec3 *rgb_out);
+int alwan_color_matrix_apply(alwan_rgb const *rgb_in, alwan_mat3x3 const *matrix_3x3,
+                              alwan_rgb *rgb_out);
 
 /* Get preset color grading matrix
  * preset: preset type from alwan_color_matrix_preset
@@ -2205,9 +2260,9 @@ int alwan_color_matrix_get_preset(alwan_color_matrix_preset preset, alwan_mat3x3
  * rgb_out: output RGB values
  * Each light unit represents approximately 0.025 log exposure change
  * Returns ALWAN_OK on success */
-int alwan_printer_lights_apply(alwan_vec3 const *rgb_in, alwan_scalar red_lights,
+int alwan_printer_lights_apply(alwan_rgb const *rgb_in, alwan_scalar red_lights,
                                 alwan_scalar green_lights, alwan_scalar blue_lights,
-                                alwan_vec3 *rgb_out);
+                                alwan_rgb *rgb_out);
 
 #ifdef __cplusplus
 }

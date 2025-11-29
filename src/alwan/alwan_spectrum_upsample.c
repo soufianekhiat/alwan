@@ -201,7 +201,7 @@ static inline alwan_scalar clamp(alwan_scalar x, alwan_scalar min, alwan_scalar 
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_to_spectrum_smits1999(alwan_ctx *ctx,
-                                     alwan_vec3 const *rgb,
+                                     alwan_rgb const *rgb,
                                      alwan_spd *out_spd) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
@@ -218,9 +218,9 @@ int alwan_rgb_to_spectrum_smits1999(alwan_ctx *ctx,
     }
 
     /* Extract RGB components (clamped to [0, 1]) */
-    alwan_scalar r = clamp(rgb->v[0], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    alwan_scalar g = clamp(rgb->v[1], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    alwan_scalar b = clamp(rgb->v[2], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    alwan_scalar r = clamp(rgb->r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    alwan_scalar g = clamp(rgb->g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    alwan_scalar b = clamp(rgb->b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
 
     /* Smits1999 algorithm: build spectrum from basis spectra */
     /* Based on colour-science implementation */
@@ -312,7 +312,7 @@ int alwan_rgb_to_spectrum_smits1999(alwan_ctx *ctx,
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_to_spectrum_mallett2019(alwan_ctx *ctx,
-                                       alwan_vec3 const *rgb,
+                                       alwan_rgb const *rgb,
                                        alwan_spd *out_spd) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
@@ -329,9 +329,9 @@ int alwan_rgb_to_spectrum_mallett2019(alwan_ctx *ctx,
     }
 
     /* Extract RGB components */
-    alwan_scalar r = rgb->v[0];
-    alwan_scalar g = rgb->v[1];
-    alwan_scalar b = rgb->v[2];
+    alwan_scalar r = rgb->r;
+    alwan_scalar g = rgb->g;
+    alwan_scalar b = rgb->b;
 
     /* Linear combination: spectrum = R * basis_red + G * basis_green + B * basis_blue */
     for (size_t i = 0; i < MALLETT2019_WAVELENGTH_COUNT; i++) {
@@ -448,7 +448,7 @@ static inline alwan_scalar jakob2019_eval_poly(alwan_scalar c0, alwan_scalar c1,
 
 int alwan_rgb_to_spectrum_jakob2019(alwan_ctx *ctx,
                                       alwan_jakob2019_gamut gamut,
-                                      alwan_vec3 const *rgb,
+                                      alwan_rgb const *rgb,
                                       alwan_spd *out_spd) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
@@ -510,7 +510,7 @@ int alwan_rgb_to_spectrum_jakob2019(alwan_ctx *ctx,
 
     /* Sample LUT to get polynomial coefficients via trilinear interpolation */
     alwan_scalar c0, c1, c2;
-    jakob2019_lut_sample(lut_c0, lut_c1, lut_c2, rgb->v[0], rgb->v[1], rgb->v[2], &c0, &c1, &c2);
+    jakob2019_lut_sample(lut_c0, lut_c1, lut_c2, rgb->r, rgb->g, rgb->b, &c0, &c1, &c2);
 
     /* Evaluate polynomial for each wavelength */
     alwan_scalar const wl_min = JAKOB2019_WAVELENGTH_MIN;

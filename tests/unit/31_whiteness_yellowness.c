@@ -62,7 +62,7 @@ static int test_yellowness_astm_e313(void) {
 
     /* Test all illuminant/observer combinations */
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
+        alwan_xyz xyz = {xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]};
 
         /* C/2° */
         alwan_scalar expected_c_2 = yi_c_2deg_data[i];
@@ -125,7 +125,7 @@ static int test_whiteness_astm_e313(void) {
 
     /* Test all illuminant/observer combinations */
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
+        alwan_xyz xyz = {xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]};
 
         /* C/2° */
         alwan_scalar expected_c_2 = wi_c_2deg_data[i];
@@ -178,16 +178,16 @@ static int test_whiteness_cie2004(void) {
 #endif
 
     /* D65/2° reference white for CIE 2004 */
-    alwan_vec3 xy_n = {{ALWAN_LITERAL(0.3127), ALWAN_LITERAL(0.3290), ALWAN_LITERAL(0.0)}};
+    alwan_vec2 xy_n = {ALWAN_LITERAL(0.3127), ALWAN_LITERAL(0.3290)};
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]}};
+        alwan_xyz xyz = {xyz_data[i * 3 + 0], xyz_data[i * 3 + 1], xyz_data[i * 3 + 2]};
         alwan_scalar expected = wi_cie2004_data[i];
 
         /* Convert XYZ to xy */
-        alwan_scalar sum = xyz.v[0] + xyz.v[1] + xyz.v[2];
-        alwan_vec3 xy = {{xyz.v[0] / sum, xyz.v[1] / sum, ALWAN_LITERAL(0.0)}};
-        alwan_scalar Y = xyz.v[1];
+        alwan_scalar sum = xyz.x + xyz.y + xyz.z;
+        alwan_vec2 xy = {xyz.x / sum, xyz.y / sum};
+        alwan_scalar Y = xyz.y;
 
         alwan_scalar result = alwan_whiteness_cie2004(&xy, Y, &xy_n);
         alwan_scalar diff = ALWAN_FABS(result - expected);

@@ -100,7 +100,7 @@ static int test_xyz_from_spd_camera(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed to load D65 illuminant");
 
     /* Compute camera RGB for D65 */
-    alwan_vec3 rgb_nikon, rgb_sigma;
+    alwan_xyz rgb_nikon, rgb_sigma;
 
     status = alwan_xyz_from_spd_camera(ctx, &d65, NULL, ALWAN_CAMERA_NIKON_5100,
                                         ALWAN_INTEGRATE_TRAPEZOID, &rgb_nikon);
@@ -111,18 +111,18 @@ static int test_xyz_from_spd_camera(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed to compute camera RGB for Sigma SD Merill");
 
     printf("  D65 camera RGB (Nikon 5100): [%.4f, %.4f, %.4f]\n",
-           rgb_nikon.v[0], rgb_nikon.v[1], rgb_nikon.v[2]);
+           rgb_nikon.x, rgb_nikon.y, rgb_nikon.z);
     printf("  D65 camera RGB (Sigma SDM):   [%.4f, %.4f, %.4f]\n",
-           rgb_sigma.v[0], rgb_sigma.v[1], rgb_sigma.v[2]);
+           rgb_sigma.x, rgb_sigma.y, rgb_sigma.z);
 
     /* Verify RGB values are reasonable (all positive, non-zero) */
-    TEST_ASSERT(rgb_nikon.v[0] > ALWAN_LITERAL(0.0), "Nikon R <= 0");
-    TEST_ASSERT(rgb_nikon.v[1] > ALWAN_LITERAL(0.0), "Nikon G <= 0");
-    TEST_ASSERT(rgb_nikon.v[2] > ALWAN_LITERAL(0.0), "Nikon B <= 0");
+    TEST_ASSERT(rgb_nikon.x > ALWAN_LITERAL(0.0), "Nikon R <= 0");
+    TEST_ASSERT(rgb_nikon.y > ALWAN_LITERAL(0.0), "Nikon G <= 0");
+    TEST_ASSERT(rgb_nikon.z > ALWAN_LITERAL(0.0), "Nikon B <= 0");
 
-    TEST_ASSERT(rgb_sigma.v[0] > ALWAN_LITERAL(0.0), "Sigma R <= 0");
-    TEST_ASSERT(rgb_sigma.v[1] > ALWAN_LITERAL(0.0), "Sigma G <= 0");
-    TEST_ASSERT(rgb_sigma.v[2] > ALWAN_LITERAL(0.0), "Sigma B <= 0");
+    TEST_ASSERT(rgb_sigma.x > ALWAN_LITERAL(0.0), "Sigma R <= 0");
+    TEST_ASSERT(rgb_sigma.y > ALWAN_LITERAL(0.0), "Sigma G <= 0");
+    TEST_ASSERT(rgb_sigma.z > ALWAN_LITERAL(0.0), "Sigma B <= 0");
 
     alwan_spd_destroy(ctx, &d65);
     alwan_destroy(ctx);

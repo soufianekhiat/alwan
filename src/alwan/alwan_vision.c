@@ -61,10 +61,10 @@ static void mat3_mulv(alwan_scalar const *M, alwan_vec3 const *v, alwan_vec3 *ou
     out->v[2] = z;
 }
 
-int alwan_simulate_cvd(alwan_vec3 const *rgb_in,
+int alwan_simulate_cvd(alwan_rgb const *rgb_in,
                         alwan_cvd_type cvd_type,
                         alwan_scalar severity,
-                        alwan_vec3 *rgb_out) {
+                        alwan_rgb *rgb_out) {
     if (!rgb_in || !rgb_out) {
         return ALWAN_E_INVALID;
     }
@@ -81,7 +81,7 @@ int alwan_simulate_cvd(alwan_vec3 const *rgb_in,
 
     /* Convert RGB to LMS */
     alwan_vec3 lms;
-    mat3_mulv(RGB_TO_LMS, rgb_in, &lms);
+    mat3_mulv(RGB_TO_LMS, (alwan_vec3 const *)rgb_in, &lms);
 
     /* Apply CVD transformation based on type */
     alwan_vec3 lms_cvd;
@@ -119,15 +119,15 @@ int alwan_simulate_cvd(alwan_vec3 const *rgb_in,
     }
 
     /* Convert LMS back to RGB */
-    mat3_mulv(LMS_TO_RGB, &lms_cvd, rgb_out);
+    mat3_mulv(LMS_TO_RGB, &lms_cvd, (alwan_vec3 *)rgb_out);
 
     /* Clamp to valid RGB range [0, 1] */
-    if (rgb_out->v[0] < ALWAN_LITERAL(0.0)) rgb_out->v[0] = ALWAN_LITERAL(0.0);
-    if (rgb_out->v[0] > ALWAN_LITERAL(1.0)) rgb_out->v[0] = ALWAN_LITERAL(1.0);
-    if (rgb_out->v[1] < ALWAN_LITERAL(0.0)) rgb_out->v[1] = ALWAN_LITERAL(0.0);
-    if (rgb_out->v[1] > ALWAN_LITERAL(1.0)) rgb_out->v[1] = ALWAN_LITERAL(1.0);
-    if (rgb_out->v[2] < ALWAN_LITERAL(0.0)) rgb_out->v[2] = ALWAN_LITERAL(0.0);
-    if (rgb_out->v[2] > ALWAN_LITERAL(1.0)) rgb_out->v[2] = ALWAN_LITERAL(1.0);
+    if (rgb_out->r < ALWAN_LITERAL(0.0)) rgb_out->r = ALWAN_LITERAL(0.0);
+    if (rgb_out->r > ALWAN_LITERAL(1.0)) rgb_out->r = ALWAN_LITERAL(1.0);
+    if (rgb_out->g < ALWAN_LITERAL(0.0)) rgb_out->g = ALWAN_LITERAL(0.0);
+    if (rgb_out->g > ALWAN_LITERAL(1.0)) rgb_out->g = ALWAN_LITERAL(1.0);
+    if (rgb_out->b < ALWAN_LITERAL(0.0)) rgb_out->b = ALWAN_LITERAL(0.0);
+    if (rgb_out->b > ALWAN_LITERAL(1.0)) rgb_out->b = ALWAN_LITERAL(1.0);
 
     return ALWAN_OK;
 }

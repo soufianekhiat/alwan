@@ -65,20 +65,20 @@ static alwan_scalar solve_cubic_for_lambda(alwan_scalar L_osa) {
  * XYZ <-> OSA-UCS
  * ---------------------------------------------------------------- */
 
-void alwan_xyz_to_osa_ucs(alwan_vec3 const *xyz, alwan_vec3 *osa_ucs) {
+void alwan_xyz_to_osa_ucs(alwan_xyz const *xyz, alwan_osa_ucs *osa_ucs) {
     /* Normalize XYZ from Y=100 scale to Y=1 scale */
     alwan_vec3 xyz_norm;
-    xyz_norm.v[0] = xyz->v[0] / ALWAN_LITERAL(100.0);
-    xyz_norm.v[1] = xyz->v[1] / ALWAN_LITERAL(100.0);
-    xyz_norm.v[2] = xyz->v[2] / ALWAN_LITERAL(100.0);
+    xyz_norm.v[0] = xyz->x / ALWAN_LITERAL(100.0);
+    xyz_norm.v[1] = xyz->y / ALWAN_LITERAL(100.0);
+    xyz_norm.v[2] = xyz->z / ALWAN_LITERAL(100.0);
 
     /* Step 1: Convert XYZ to xyY */
     alwan_scalar sum = xyz_norm.v[0] + xyz_norm.v[1] + xyz_norm.v[2];
     if (sum < ALWAN_LITERAL(1e-10)) {
         /* Black point */
-        osa_ucs->v[0] = ALWAN_LITERAL(0.0);  /* L */
-        osa_ucs->v[1] = ALWAN_LITERAL(0.0);  /* j */
-        osa_ucs->v[2] = ALWAN_LITERAL(0.0);  /* g */
+        osa_ucs->L = ALWAN_LITERAL(0.0);  /* L */
+        osa_ucs->j = ALWAN_LITERAL(0.0);  /* j */
+        osa_ucs->g = ALWAN_LITERAL(0.0);  /* g */
         return;
     }
 
@@ -131,26 +131,26 @@ void alwan_xyz_to_osa_ucs(alwan_vec3 const *xyz, alwan_vec3 *osa_ucs) {
 
     /* Step 7: Calculate OSA-UCS coordinates */
     /* L = (lambda - 14.4) / sqrt(2) */
-    osa_ucs->v[0] = (lambda - ALWAN_LITERAL(14.4)) / ALWAN_SQRT(ALWAN_LITERAL(2.0));
+    osa_ucs->L = (lambda - ALWAN_LITERAL(14.4)) / ALWAN_SQRT(ALWAN_LITERAL(2.0));
 
     /* j = C × (1.7×R' + 8.0×G' - 9.7×B') */
-    osa_ucs->v[1] = C * (LMS_TO_OSA_L[0] * rgb_cbrt.v[0] +
+    osa_ucs->j = C * (LMS_TO_OSA_L[0] * rgb_cbrt.v[0] +
                          LMS_TO_OSA_L[1] * rgb_cbrt.v[1] +
                          LMS_TO_OSA_L[2] * rgb_cbrt.v[2]);
 
     /* g = C × (-13.7×R' + 17.7×G' - 4.0×B') */
-    osa_ucs->v[2] = C * (LMS_TO_OSA_J[0] * rgb_cbrt.v[0] +
+    osa_ucs->g = C * (LMS_TO_OSA_J[0] * rgb_cbrt.v[0] +
                          LMS_TO_OSA_J[1] * rgb_cbrt.v[1] +
                          LMS_TO_OSA_J[2] * rgb_cbrt.v[2]);
 }
 
-void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz) {
+void alwan_osa_ucs_to_xyz(alwan_osa_ucs const *osa_ucs, alwan_xyz *xyz) {
     /* OSA-UCS to XYZ requires iterative solution (Newton-Raphson)
      * This is a simplified implementation that provides approximate inverse
      * For high precision, use numerical optimization */
 
     /* Step 1: Calculate Lambda from L */
-    alwan_scalar lambda = solve_cubic_for_lambda(osa_ucs->v[0]);
+    alwan_scalar lambda = solve_cubic_for_lambda(osa_ucs->L);
 
     /* Step 2: Calculate Y0_cbrt from lightness */
     alwan_scalar Y0_cbrt = (lambda / ALWAN_LITERAL(5.9)) + ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0);
@@ -165,9 +165,9 @@ void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz) {
 
     /* Guard against division by zero */
     if (ALWAN_FABS(C) < ALWAN_LITERAL(1e-10)) {
-        xyz->v[0] = ALWAN_LITERAL(0.0);
-        xyz->v[1] = ALWAN_LITERAL(0.0);
-        xyz->v[2] = ALWAN_LITERAL(0.0);
+        xyz->x = ALWAN_LITERAL(0.0);
+        xyz->y = ALWAN_LITERAL(0.0);
+        xyz->z = ALWAN_LITERAL(0.0);
         return;
     }
 
@@ -179,8 +179,8 @@ void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz) {
      * We need a third equation. Use approximation based on lightness:
      * R' + G' + B' ≈ 3 × Y0_cbrt
      */
-    alwan_scalar j_norm = osa_ucs->v[1] / C;
-    alwan_scalar g_norm = osa_ucs->v[2] / C;
+    alwan_scalar j_norm = osa_ucs->j / C;
+    alwan_scalar g_norm = osa_ucs->g / C;
 
     /* Simplified inverse (approximate solution) */
     /* This uses a pseudo-inverse approach */
@@ -214,7 +214,7 @@ void alwan_osa_ucs_to_xyz(alwan_vec3 const *osa_ucs, alwan_vec3 *xyz) {
     }
 
     /* Scale back to Y=100 */
-    xyz->v[0] = xyz_norm.v[0] * ALWAN_LITERAL(100.0);
-    xyz->v[1] = xyz_norm.v[1] * ALWAN_LITERAL(100.0);
-    xyz->v[2] = xyz_norm.v[2] * ALWAN_LITERAL(100.0);
+    xyz->x = xyz_norm.v[0] * ALWAN_LITERAL(100.0);
+    xyz->y = xyz_norm.v[1] * ALWAN_LITERAL(100.0);
+    xyz->z = xyz_norm.v[2] * ALWAN_LITERAL(100.0);
 }
