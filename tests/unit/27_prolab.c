@@ -20,8 +20,12 @@ static int test_xyz_prolab_round_trip(void) {
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
-    /* ProLab uses projective transformation, looser tolerance */
-    alwan_scalar const prolab_tolerance = ALWAN_LITERAL(0.01);  /* Absolute tolerance */
+    /* ProLab uses projective transformation */
+#if ALWAN_SCALAR_IS_FLOAT
+    alwan_scalar const prolab_tolerance = ALWAN_LITERAL(1e-4);
+#else
+    alwan_scalar const prolab_tolerance = ALWAN_LITERAL(1e-8);
+#endif
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_vec3 xyz_in, prolab_expected, prolab_computed, xyz_out;
@@ -62,7 +66,12 @@ static int test_xyz_prolab_round_trip(void) {
         /* Test round-trip: ProLab -> XYZ */
         alwan_prolab_to_xyz(&prolab_computed, &xyz_out);
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(1000000000.0);
+        /* Projective transforms amplify matrix coefficient errors; 2e-7 is practical limit */
+#if ALWAN_SCALAR_IS_FLOAT
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
+#else
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(2e-7);
+#endif
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(xyz_out.v[j] - xyz_in.v[j]);

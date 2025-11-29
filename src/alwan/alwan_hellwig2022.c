@@ -40,7 +40,7 @@ static void get_surround_params(alwan_hellwig2022_surround surround, alwan_scala
         case ALWAN_HELLWIG2022_SURROUND_DIM:
             *F = ALWAN_LITERAL(0.9);
             *c = ALWAN_LITERAL(0.59);
-            *Nc = ALWAN_LITERAL(0.95);
+            *Nc = ALWAN_LITERAL(0.9);
             break;
         case ALWAN_HELLWIG2022_SURROUND_DARK:
             *F = ALWAN_LITERAL(0.8);

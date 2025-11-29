@@ -52,9 +52,12 @@ static int test_xyz_oklab_round_trip(void) {
         /* Test round-trip: Oklab -> XYZ */
         alwan_oklab_to_xyz((alwan_oklab *)&oklab_computed, (alwan_xyz *)&xyz_out);
 
-        /* Relaxed tolerance for round-trip due to cube root operations
-         * (1e-5 for double, 1e-2 for float) */
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000000.0);
+        /* Round-trip tolerance for cube root operations */
+#if ALWAN_SCALAR_IS_FLOAT
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
+#else
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-6);
+#endif
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(xyz_out.v[j] - xyz_in.v[j]);
@@ -142,10 +145,15 @@ static int test_oklab_oklch_round_trip(void) {
  * ---------------------------------------------------------------- */
 
 static int test_oklab_known_values(void) {
-    /* Relaxed tolerance for cube root operations (1e-4 for double, 1e-1 for float) */
-    alwan_scalar const tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100000000.0);
+    /* Tolerance: Oklab M2 matrix has limited precision for a,b channels (~8e-5 error for b)
+     * This is inherent to the Oklab spec, not an implementation bug. */
+#if ALWAN_SCALAR_IS_FLOAT
+    alwan_scalar const tol = ALWAN_LITERAL(1e-4);
+#else
+    alwan_scalar const tol = ALWAN_LITERAL(1e-4);
+#endif
 
-    /* D65 white should be L=1, a=0, b=0 */
+    /* D65 white should be L=1, a=0, b=0 (within matrix precision limits) */
     alwan_vec3 xyz_white = {{ALWAN_LITERAL(0.95047), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.08883)}};
     alwan_vec3 oklab;
     alwan_xyz_to_oklab((alwan_xyz *)&xyz_white, (alwan_oklab *)&oklab);

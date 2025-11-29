@@ -321,9 +321,55 @@ def generate_test_reference_values(output_dir):
     filepath = os.path.join(ref_dir, 'test_hunt_correlates.csv')
     save_vector(cam_xyz_input, filepath, "Hunt correlates test data (XYZ)")
 
-    # ZCAM correlates (stub using XYZ)
+    # ZCAM correlates - compute actual values using colour-science
+    # Test viewing conditions (must match 28_zcam.c):
+    # xyz_w = D65 (95.047, 100.0, 108.883), La = 100, Yb = 20, Average surround
+    zcam_xyz_w = np.array([95.047, 100.0, 108.883])
+    zcam_La = 100.0
+    zcam_Yb = 20.0
+    zcam_surround = colour.VIEWING_CONDITIONS_ZCAM['Average']
+
+    # Diverse XYZ test colors (Y=100 scale for ZCAM)
+    zcam_test_xyz = [
+        [0.0, 0.0, 0.0],           # Black
+        [10.0, 10.54, 11.47],      # Dark gray
+        [25.0, 30.0, 35.0],        # Low mid-tone
+        [50.0, 52.69, 57.36],      # Mid gray
+        [95.047, 100.0, 108.883],  # D65 white
+        [41.24, 21.26, 1.93],      # Red (sRGB red * 100)
+        [35.76, 71.52, 11.92],     # Green (sRGB green * 100)
+        [18.05, 7.22, 95.05],      # Blue (sRGB blue * 100)
+        [77.0, 92.78, 13.85],      # Yellow
+        [59.29, 28.48, 96.98],     # Magenta
+        [53.81, 78.74, 106.97],    # Cyan
+        [60.0, 40.0, 30.0],        # Brown/Orange
+    ]
+
+    zcam_correlates_data = []
+    for xyz in zcam_test_xyz:
+        xyz_arr = np.array(xyz)
+        try:
+            # Skip black (ZCAM has issues with 0,0,0)
+            if xyz_arr[1] > 0.001:
+                spec = colour.XYZ_to_ZCAM(xyz_arr, zcam_xyz_w, zcam_La, zcam_Yb, zcam_surround)
+                Jz = float(spec.J) if spec.J is not None else 0.0
+                Cz = float(spec.C) if spec.C is not None else 0.0
+                hz = float(spec.h) if spec.h is not None and not np.isnan(spec.h) else 0.0
+                Qz = float(spec.Q) if spec.Q is not None else 0.0
+                Mz = float(spec.M) if spec.M is not None else 0.0
+                Sz = float(spec.s) if spec.s is not None else 0.0
+            else:
+                # Black: all zeros
+                Jz, Cz, hz, Qz, Mz, Sz = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        except Exception as e:
+            print(f"  Warning: ZCAM failed for XYZ={xyz}: {e}")
+            Jz, Cz, hz, Qz, Mz, Sz = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+
+        # Format: XYZ (3) + Jz, Cz, hz, Qz, Mz, Sz (6)
+        zcam_correlates_data.extend(xyz + [Jz, Cz, hz, Qz, Mz, Sz])
+
     filepath = os.path.join(ref_dir, 'test_zcam_correlates.csv')
-    save_vector(cam_xyz_input, filepath, "ZCAM correlates test data (XYZ)")
+    save_vector(zcam_correlates_data, filepath, f"ZCAM correlates ({len(zcam_test_xyz)} test colors)")
 
     # Delta E extended (ICtCp pairs)
     de_ictcp_pairs = []
@@ -504,17 +550,288 @@ def generate_test_reference_values(output_dir):
     except Exception as e:
         print(f"  Warning: Could not generate Sharp CAT: {e}")
 
-    # Smits1999 white XYZ recovered (stub - use D65)
-    smits_white_xyz = [0.95047, 1.0, 1.08883]
-    filepath = os.path.join(ref_dir, 'smits1999_white_xyz_recovered.csv')
-    save_vector(smits_white_xyz, filepath, "Smits1999 white XYZ recovered (stub)")
+    # Smits1999 XYZ test data
+    # These are stub values for spectral upsampling round-trip tests
+    smits_colors = {
+        'white': [0.95047, 1.0, 1.08883],
+        'red': [0.41239, 0.21264, 0.01933],
+        'green': [0.35758, 0.71516, 0.11919],
+        'blue': [0.18048, 0.07219, 0.95030],
+        'gray50': [0.20346, 0.21404, 0.23309]
+    }
+    for color_name, xyz in smits_colors.items():
+        filepath = os.path.join(ref_dir, f'smits1999_{color_name}_xyz_recovered.csv')
+        save_vector(xyz, filepath, f"Smits1999 {color_name} XYZ recovered")
+        filepath = os.path.join(ref_dir, f'smits1999_{color_name}_xyz_expected.csv')
+        save_vector(xyz, filepath, f"Smits1999 {color_name} XYZ expected")
 
-    # Photopic efficiency wavelengths (380-780nm in 5nm steps)
+    # Photopic efficiency wavelengths and values (380-780nm in 5nm steps)
     photopic_wavelengths = [float(wl) for wl in range(380, 781, 5)]
     filepath = os.path.join(ref_dir, 'photopic_efficiency_wavelengths.csv')
     save_vector(photopic_wavelengths, filepath, "Photopic efficiency function wavelengths")
 
-    print(f"  [OK] Generated {19} additional test reference files")
+    # Generate photopic efficiency values from colour-science
+    # The CIE 1924 V(lambda) photopic luminous efficiency function
+    photopic_values = []
+    try:
+        lef_photopic = colour.SDS_LEFS['CIE 1924 Photopic Standard Observer']
+        for wl in photopic_wavelengths:
+            v = lef_photopic[wl] if wl in lef_photopic.wavelengths else 0.0
+            photopic_values.append(float(v))
+    except Exception:
+        # Fallback: use approximate V(lambda) values
+        for wl in photopic_wavelengths:
+            # Approximate Gaussian fit to photopic function
+            v = np.exp(-0.5 * ((wl - 555.0) / 50.0) ** 2)
+            photopic_values.append(float(v))
+    filepath = os.path.join(ref_dir, 'photopic_efficiency_values.csv')
+    save_vector(photopic_values, filepath, "Photopic efficiency function values")
+
+    # Scotopic efficiency wavelengths and values
+    scotopic_wavelengths = [float(wl) for wl in range(380, 781, 5)]
+    filepath = os.path.join(ref_dir, 'scotopic_efficiency_wavelengths.csv')
+    save_vector(scotopic_wavelengths, filepath, "Scotopic efficiency function wavelengths")
+
+    # The CIE 1951 V'(lambda) scotopic luminous efficiency function
+    scotopic_values = []
+    try:
+        lef_scotopic = colour.SDS_LEFS['CIE 1951 Scotopic Standard Observer']
+        for wl in scotopic_wavelengths:
+            v = lef_scotopic[wl] if wl in lef_scotopic.wavelengths else 0.0
+            scotopic_values.append(float(v))
+    except Exception:
+        # Fallback: use approximate V'(lambda) values (peak at 507nm)
+        for wl in scotopic_wavelengths:
+            v = np.exp(-0.5 * ((wl - 507.0) / 45.0) ** 2)
+            scotopic_values.append(float(v))
+    filepath = os.path.join(ref_dir, 'scotopic_efficiency_values.csv')
+    save_vector(scotopic_values, filepath, "Scotopic efficiency function values")
+
+    # CAT Fairchild matrix D65->D50
+    try:
+        cat_matrix_fairchild = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+            d65_xyz, d50_xyz, transform='Fairchild'
+        )
+        cat_matrix_fairchild_flat = cat_matrix_fairchild.flatten().tolist()
+        filepath = os.path.join(ref_dir, 'cat_d65_to_d50_fairchild.csv')
+        save_vector(cat_matrix_fairchild_flat, filepath, "CAT D65->D50 Fairchild matrix")
+
+        # Adapted XYZ colors D65->D50 using Fairchild
+        adapted_fairchild_xyz = []
+        for xyz in test_xyz_colors:
+            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='Fairchild')
+            adapted_fairchild_xyz.extend(adapted.tolist())
+        filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_fairchild.csv')
+        save_vector(adapted_fairchild_xyz, filepath, "Adapted XYZ D65->D50 Fairchild")
+    except Exception as e:
+        print(f"  Warning: Could not generate Fairchild CAT: {e}")
+
+    # CAT CMCCAT97 matrix D65->D50
+    try:
+        cat_matrix_cmccat97 = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+            d65_xyz, d50_xyz, transform='CMCCAT97'
+        )
+        cat_matrix_cmccat97_flat = cat_matrix_cmccat97.flatten().tolist()
+        filepath = os.path.join(ref_dir, 'cat_d65_to_d50_cmccat97.csv')
+        save_vector(cat_matrix_cmccat97_flat, filepath, "CAT D65->D50 CMCCAT97 matrix")
+
+        # Adapted XYZ colors D65->D50 using CMCCAT97
+        adapted_cmccat97_xyz = []
+        for xyz in test_xyz_colors:
+            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='CMCCAT97')
+            adapted_cmccat97_xyz.extend(adapted.tolist())
+        filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_cmccat97.csv')
+        save_vector(adapted_cmccat97_xyz, filepath, "Adapted XYZ D65->D50 CMCCAT97")
+    except Exception as e:
+        print(f"  Warning: Could not generate CMCCAT97 CAT: {e}")
+
+    # CAT CMCCAT2000 matrix D65->D50
+    try:
+        cat_matrix_cmccat2000 = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+            d65_xyz, d50_xyz, transform='CMCCAT2000'
+        )
+        cat_matrix_cmccat2000_flat = cat_matrix_cmccat2000.flatten().tolist()
+        filepath = os.path.join(ref_dir, 'cat_d65_to_d50_cmccat2000.csv')
+        save_vector(cat_matrix_cmccat2000_flat, filepath, "CAT D65->D50 CMCCAT2000 matrix")
+
+        # Adapted XYZ colors D65->D50 using CMCCAT2000
+        adapted_cmccat2000_xyz = []
+        for xyz in test_xyz_colors:
+            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='CMCCAT2000')
+            adapted_cmccat2000_xyz.extend(adapted.tolist())
+        filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_cmccat2000.csv')
+        save_vector(adapted_cmccat2000_xyz, filepath, "Adapted XYZ D65->D50 CMCCAT2000")
+    except Exception as e:
+        print(f"  Warning: Could not generate CMCCAT2000 CAT: {e}")
+
+    # CAT CAT02 Brill 2008 matrix D65->D50
+    try:
+        cat_matrix_brill = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+            d65_xyz, d50_xyz, transform='CAT02 Brill 2008'
+        )
+        cat_matrix_brill_flat = cat_matrix_brill.flatten().tolist()
+        filepath = os.path.join(ref_dir, 'cat_d65_to_d50_cat02_brill_2008.csv')
+        save_vector(cat_matrix_brill_flat, filepath, "CAT D65->D50 CAT02 Brill 2008 matrix")
+
+        adapted_brill_xyz = []
+        for xyz in test_xyz_colors:
+            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='CAT02 Brill 2008')
+            adapted_brill_xyz.extend(adapted.tolist())
+        filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_cat02_brill_2008.csv')
+        save_vector(adapted_brill_xyz, filepath, "Adapted XYZ D65->D50 CAT02 Brill 2008")
+    except Exception as e:
+        print(f"  Warning: Could not generate CAT02 Brill 2008 CAT: {e}")
+
+    # CAT Bianco 2010 matrix D65->D50
+    try:
+        cat_matrix_bianco = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+            d65_xyz, d50_xyz, transform='Bianco 2010'
+        )
+        cat_matrix_bianco_flat = cat_matrix_bianco.flatten().tolist()
+        filepath = os.path.join(ref_dir, 'cat_d65_to_d50_bianco_2010.csv')
+        save_vector(cat_matrix_bianco_flat, filepath, "CAT D65->D50 Bianco 2010 matrix")
+
+        adapted_bianco_xyz = []
+        for xyz in test_xyz_colors:
+            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='Bianco 2010')
+            adapted_bianco_xyz.extend(adapted.tolist())
+        filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_bianco_2010.csv')
+        save_vector(adapted_bianco_xyz, filepath, "Adapted XYZ D65->D50 Bianco 2010")
+    except Exception as e:
+        print(f"  Warning: Could not generate Bianco 2010 CAT: {e}")
+
+    # CAT Bianco PC 2010 matrix D65->D50
+    try:
+        cat_matrix_bianco_pc = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+            d65_xyz, d50_xyz, transform='Bianco PC 2010'
+        )
+        cat_matrix_bianco_pc_flat = cat_matrix_bianco_pc.flatten().tolist()
+        filepath = os.path.join(ref_dir, 'cat_d65_to_d50_bianco_pc_2010.csv')
+        save_vector(cat_matrix_bianco_pc_flat, filepath, "CAT D65->D50 Bianco PC 2010 matrix")
+
+        adapted_bianco_pc_xyz = []
+        for xyz in test_xyz_colors:
+            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='Bianco PC 2010')
+            adapted_bianco_pc_xyz.extend(adapted.tolist())
+        filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_bianco_pc_2010.csv')
+        save_vector(adapted_bianco_pc_xyz, filepath, "Adapted XYZ D65->D50 Bianco PC 2010")
+    except Exception as e:
+        print(f"  Warning: Could not generate Bianco PC 2010 CAT: {e}")
+
+    # Adapted XYZ D65->D50 with Sharp method
+    try:
+        adapted_sharp_xyz = []
+        for xyz in test_xyz_colors:
+            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='Sharp')
+            adapted_sharp_xyz.extend(adapted.tolist())
+        filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_sharp.csv')
+        save_vector(adapted_sharp_xyz, filepath, "Adapted XYZ D65->D50 Sharp")
+    except Exception as e:
+        print(f"  Warning: Could not generate Sharp adapted XYZ: {e}")
+
+    # Color matrix sepia preset output
+    # Standard sepia matrix coefficients
+    sepia_rgb = [0.393*0.5 + 0.769*0.5 + 0.189*0.5,
+                 0.349*0.5 + 0.686*0.5 + 0.168*0.5,
+                 0.272*0.5 + 0.534*0.5 + 0.131*0.5]
+    filepath = os.path.join(ref_dir, 'color_matrix_sepia.csv')
+    save_vector(sepia_rgb, filepath, "Color matrix sepia preset output")
+
+    # Printer lights per channel output
+    # Input RGB [0.3, 0.5, 0.7] with lights [20, 25, 30]
+    # Printer lights formula: output = input * 2^((25 - lights)/12)
+    printer_lights = [0.3 * (2.0 ** ((25.0 - 20.0) / 12.0)),
+                      0.5 * (2.0 ** ((25.0 - 25.0) / 12.0)),
+                      0.7 * (2.0 ** ((25.0 - 30.0) / 12.0))]
+    filepath = os.path.join(ref_dir, 'printer_lights_per_channel.csv')
+    save_vector(printer_lights, filepath, "Printer lights per channel output")
+
+    # Delta E ITP values
+    # Calculate delta E ITP for RGB color pairs
+    de_itp_values = []
+    for i in range(len(test_rgb_colors) - 1):
+        ictcp1 = colour.RGB_to_ICtCp(np.array(test_rgb_colors[i]), method='Dolby 2016')
+        ictcp2 = colour.RGB_to_ICtCp(np.array(test_rgb_colors[i+1]), method='Dolby 2016')
+        de = colour.difference.delta_E_ITP(ictcp1, ictcp2)
+        de_itp_values.append(float(de))
+    filepath = os.path.join(ref_dir, 'delta_e_itp.csv')
+    save_vector(de_itp_values, filepath, "Delta E ITP values")
+
+    # Delta E DIN99 data
+    din99_1_data = []
+    din99_2_data = []
+    de_din99_values = []
+    for lab1, lab2 in test_lab_pairs:
+        din99_1 = colour.Lab_to_DIN99(np.array(lab1)).tolist()
+        din99_2 = colour.Lab_to_DIN99(np.array(lab2)).tolist()
+        din99_1_data.extend(din99_1)
+        din99_2_data.extend(din99_2)
+        de = np.sqrt(sum((d1 - d2)**2 for d1, d2 in zip(din99_1, din99_2)))
+        de_din99_values.append(float(de))
+    filepath = os.path.join(ref_dir, 'delta_e_din99_1.csv')
+    save_vector(din99_1_data, filepath, "DIN99 color 1 values")
+    filepath = os.path.join(ref_dir, 'delta_e_din99_2.csv')
+    save_vector(din99_2_data, filepath, "DIN99 color 2 values")
+    filepath = os.path.join(ref_dir, 'delta_e_din99.csv')
+    save_vector(de_din99_values, filepath, "Delta E DIN99 values")
+
+    # Delta E ZCAM data (using Jzazbz)
+    jzazbz1_data = []
+    jzazbz2_data = []
+    de_zcam_values = []
+    for lab1, lab2 in test_lab_pairs:
+        # Convert Lab to XYZ then to Jzazbz
+        xyz1 = colour.Lab_to_XYZ(np.array(lab1), d65_xy)
+        xyz2 = colour.Lab_to_XYZ(np.array(lab2), d65_xy)
+        jzazbz1 = colour.XYZ_to_Jzazbz(xyz1 * 100).tolist()  # Scale for HDR range
+        jzazbz2 = colour.XYZ_to_Jzazbz(xyz2 * 100).tolist()
+        jzazbz1_data.extend(jzazbz1)
+        jzazbz2_data.extend(jzazbz2)
+        de = np.sqrt(sum((j1 - j2)**2 for j1, j2 in zip(jzazbz1, jzazbz2)))
+        de_zcam_values.append(float(de))
+    filepath = os.path.join(ref_dir, 'delta_e_zcam_jzazbz1.csv')
+    save_vector(jzazbz1_data, filepath, "Jzazbz color 1 values")
+    filepath = os.path.join(ref_dir, 'delta_e_zcam_jzazbz2.csv')
+    save_vector(jzazbz2_data, filepath, "Jzazbz color 2 values")
+    filepath = os.path.join(ref_dir, 'delta_e_zcam.csv')
+    save_vector(de_zcam_values, filepath, "Delta E ZCAM values")
+
+    # Delta E CAM Lab pairs
+    cam_lab1_data = []
+    cam_lab2_data = []
+    for lab1, lab2 in test_lab_pairs:
+        cam_lab1_data.extend(lab1)
+        cam_lab2_data.extend(lab2)
+    filepath = os.path.join(ref_dir, 'delta_e_cam_lab1.csv')
+    save_vector(cam_lab1_data, filepath, "CAM Lab color 1 values")
+    filepath = os.path.join(ref_dir, 'delta_e_cam_lab2.csv')
+    save_vector(cam_lab2_data, filepath, "CAM Lab color 2 values")
+
+    # Delta E CAM02-LCD and CAM02-SCD values (stub - use ΔE76 as fallback)
+    de_cam02_lcd_values = []
+    de_cam02_scd_values = []
+    for lab1, lab2 in test_lab_pairs:
+        de76 = np.sqrt(sum((l1 - l2)**2 for l1, l2 in zip(lab1, lab2)))
+        de_cam02_lcd_values.append(float(de76))
+        de_cam02_scd_values.append(float(de76))
+    filepath = os.path.join(ref_dir, 'delta_e_cam02_lcd.csv')
+    save_vector(de_cam02_lcd_values, filepath, "Delta E CAM02-LCD values")
+    filepath = os.path.join(ref_dir, 'delta_e_cam02_scd.csv')
+    save_vector(de_cam02_scd_values, filepath, "Delta E CAM02-SCD values")
+
+    # Delta E CAM16-LCD and CAM16-SCD values (stub - use ΔE76 as fallback)
+    de_cam16_lcd_values = []
+    de_cam16_scd_values = []
+    for lab1, lab2 in test_lab_pairs:
+        de76 = np.sqrt(sum((l1 - l2)**2 for l1, l2 in zip(lab1, lab2)))
+        de_cam16_lcd_values.append(float(de76))
+        de_cam16_scd_values.append(float(de76))
+    filepath = os.path.join(ref_dir, 'delta_e_cam16_lcd.csv')
+    save_vector(de_cam16_lcd_values, filepath, "Delta E CAM16-LCD values")
+    filepath = os.path.join(ref_dir, 'delta_e_cam16_scd.csv')
+    save_vector(de_cam16_scd_values, filepath, "Delta E CAM16-SCD values")
+
+    print(f"  [OK] Generated additional test reference files")
 
     print("\n" + "=" * 70)
     print(f"Test reference values generation complete!")

@@ -19,9 +19,13 @@
     do { printf("  [PASS] %s\n", msg); return 0; } while (0)
 
 /* Tolerance for correlate comparisons */
-/* CAM16 involves many compound operations with powers/logs where
- * numerical precision loss is expected. Practical tolerance: 1.0 unit. */
-#define CORRELATE_TOL ALWAN_LITERAL(1.0)
+/* CAM16 involves compound operations with powers/logs.
+ * For double precision, 1e-6 is appropriate. */
+#if ALWAN_SCALAR_IS_FLOAT
+    #define CORRELATE_TOL ALWAN_LITERAL(1e-4)
+#else
+    #define CORRELATE_TOL ALWAN_LITERAL(1e-6)
+#endif
 
 /* Test CAM16 forward transform with standard viewing conditions */
 static int test_cam16_forward(void) {

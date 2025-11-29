@@ -30,8 +30,12 @@ static int test_zcam_forward(void) {
     vc.surround = ALWAN_ZCAM_SURROUND_AVERAGE;
     vc.discount_illuminant = 0;
 
-    /* Looser tolerance for ZCAM due to complexity */
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(1000.0);
+    /* Tolerance for ZCAM */
+#if ALWAN_SCALAR_IS_FLOAT
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
+#else
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-8);
+#endif
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz;

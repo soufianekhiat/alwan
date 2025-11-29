@@ -55,8 +55,12 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
         /* Test Lab -> DIN99 */
         alwan_lab_to_din99((alwan_lab *)&lab, &din99_computed, variant);
 
-        /* Tolerance slightly relaxed to account for numerical precision with atan2/trig operations */
-        alwan_scalar const din99_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(15000.0);
+        /* Tolerance for trig operations */
+#if ALWAN_SCALAR_IS_FLOAT
+        alwan_scalar const din99_tol = ALWAN_LITERAL(1e-4);
+#else
+        alwan_scalar const din99_tol = ALWAN_LITERAL(1e-7);
+#endif
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(din99_computed.v[j] - din99_expected.v[j]);
             if (diff > din99_tol) {
@@ -77,7 +81,11 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
         /* Test round-trip: DIN99 -> Lab */
         alwan_din99_to_lab(&din99_computed, (alwan_lab *)&lab_out, variant);
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000000.0);
+#if ALWAN_SCALAR_IS_FLOAT
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
+#else
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-8);
+#endif
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(lab_out.v[j] - lab.v[j]);

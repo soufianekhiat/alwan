@@ -58,7 +58,13 @@ static int test_llab_forward(void) {
     printf("\n=== Testing LLAB Forward Transform ===\n");
 
     int failed = 0;
-    alwan_scalar const tolerance = ALWAN_LITERAL(0.1);
+    /* LLAB involves complex chromatic adaptation and response compression.
+     * Implementation differences require ~1e-1 tolerance. */
+#if ALWAN_SCALAR_IS_FLOAT
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-1);
+#else
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-1);
+#endif
 
     for (size_t i = 0; i < num_test_cases; i++) {
         alwan_xyz xyz_in, xyz_0, xyz_r;
@@ -202,7 +208,12 @@ static int test_llab_achromatic(void) {
     printf("\n=== Testing LLAB Achromatic Colors ===\n");
 
     int failed = 0;
-    alwan_scalar const tolerance = ALWAN_LITERAL(0.1);
+    /* Achromatic chroma tolerance */
+#if ALWAN_SCALAR_IS_FLOAT
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-1);
+#else
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-1);
+#endif
 
     /* D65 illuminant */
     alwan_xyz d65;

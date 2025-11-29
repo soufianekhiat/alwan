@@ -19,9 +19,13 @@
     do { printf("  [PASS] %s\n", msg); return 0; } while (0)
 
 /* Tolerance for correlate comparisons */
-/* Hellwig2022 involves many compound operations with powers/logs where
- * numerical precision loss is expected. Practical tolerance: 1.0 unit. */
-#define CORRELATE_TOL ALWAN_LITERAL(1.0)
+/* Hellwig2022 involves compound operations with powers/logs.
+ * Implementation differences require ~1e-2 tolerance. */
+#if ALWAN_SCALAR_IS_FLOAT
+    #define CORRELATE_TOL ALWAN_LITERAL(1e-2)
+#else
+    #define CORRELATE_TOL ALWAN_LITERAL(1e-2)
+#endif
 
 /* Test data from CSV: XYZ_in (3), XYZ_w (3), La, Yb, surround_idx, J, C, h
  * Format: 12 values per row (3+3+1+1+1+3) = 12 scalars per test case */

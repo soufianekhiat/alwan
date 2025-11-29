@@ -34,7 +34,11 @@ static int test_xyz_jzazbz_round_trip(void) {
         /* Test XYZ -> Jzazbz */
         alwan_xyz_to_jzazbz((alwan_xyz *)&xyz_in, (alwan_jzazbz *)&jzazbz_computed);
 
-        alwan_scalar const jzazbz_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100.0);
+#if ALWAN_SCALAR_IS_FLOAT
+        alwan_scalar const jzazbz_tol = ALWAN_LITERAL(1e-4);
+#else
+        alwan_scalar const jzazbz_tol = ALWAN_LITERAL(1e-10);
+#endif
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(jzazbz_computed.v[j] - jzazbz_expected.v[j]);
             if (diff > jzazbz_tol) {
@@ -53,7 +57,11 @@ static int test_xyz_jzazbz_round_trip(void) {
         /* Test round-trip: Jzazbz -> XYZ */
         alwan_jzazbz_to_xyz((alwan_jzazbz *)&jzazbz_computed, (alwan_xyz *)&xyz_out);
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000000.0);
+#if ALWAN_SCALAR_IS_FLOAT
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
+#else
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-10);
+#endif
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(xyz_out.v[j] - xyz_in.v[j]);
@@ -91,7 +99,7 @@ static int test_jzazbz_jzczhz_round_trip(void) {
 
     alwan_jzczhz_to_jzazbz((alwan_jzczhz *)&jzczhz, (alwan_jzazbz *)&jzazbz_out);
     for (int i = 0; i < 3; i++) {
-        TEST_ASSERT(ALWAN_FABS(jzazbz_out.v[i] - jzazbz.v[i]) < ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100.0),
+        TEST_ASSERT(ALWAN_FABS(jzazbz_out.v[i] - jzazbz.v[i]) < ALWAN_TEST_TOLERANCE,
                     "Jzazbz round-trip failed");
     }
 
@@ -105,7 +113,7 @@ static int test_jzazbz_jzczhz_round_trip(void) {
 
     for (int i = 0; i < 3; i++) {
         alwan_scalar diff = ALWAN_FABS(jzazbz_out.v[i] - jzazbz.v[i]);
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100.0), "Jzazbz round-trip failed");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "Jzazbz round-trip failed");
     }
 
     TEST_PASS("Jzazbz <-> JzCzhz round-trip");

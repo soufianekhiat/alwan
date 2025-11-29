@@ -54,7 +54,11 @@ static int test_xyz_hunter_lab_round_trip(void) {
             hunter_expected.v[2] * ALWAN_LITERAL(10.0)
         }};
 
-        alwan_scalar const hunter_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(100000.0);
+#if ALWAN_SCALAR_IS_FLOAT
+        alwan_scalar const hunter_tol = ALWAN_LITERAL(1e-3);
+#else
+        alwan_scalar const hunter_tol = ALWAN_LITERAL(1e-8);
+#endif
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(hunter_computed.v[j] - hunter_scaled.v[j]);
             if (diff > hunter_tol) {
@@ -73,7 +77,11 @@ static int test_xyz_hunter_lab_round_trip(void) {
         /* Test round-trip: Hunter Lab -> XYZ */
         alwan_hunter_lab_to_xyz(&hunter_computed, &xyz_out);
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000000.0);
+#if ALWAN_SCALAR_IS_FLOAT
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
+#else
+        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-10);
+#endif
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_FABS(xyz_out.v[j] - xyz_in.v[j]);

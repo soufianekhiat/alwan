@@ -19,9 +19,13 @@
     do { printf("  [PASS] %s\n", msg); return 0; } while (0)
 
 /* Tolerance for correlate comparisons */
-/* CIECAM02 involves many compound operations with powers/logs where
- * numerical precision loss is expected. Practical tolerance: 2.0 units. */
-#define CORRELATE_TOL ALWAN_LITERAL(2.0)
+/* CIECAM02 involves compound operations with powers/logs.
+ * Implementation differences require ~2.0 tolerance. */
+#if ALWAN_SCALAR_IS_FLOAT
+    #define CORRELATE_TOL ALWAN_LITERAL(2.0)
+#else
+    #define CORRELATE_TOL ALWAN_LITERAL(2.0)
+#endif
 
 /* Test CIECAM02 forward transform with standard viewing conditions */
 static int test_ciecam02_forward(void) {
