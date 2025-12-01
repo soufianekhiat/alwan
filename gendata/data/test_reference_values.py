@@ -234,19 +234,23 @@ def generate_test_reference_values(output_dir):
     filepath = os.path.join(ref_dir, 'test_xyz_oklab_pairs.csv')
     save_vector(oklab_pairs, filepath, "XYZ/Oklab test pairs")
 
-    # Jzazbz (requires absolute luminance, use 100 cd/m²)
+    # Jzazbz - library expects XYZ in 0-100 scale, so we need to scale test XYZ
+    # But test CSV stores XYZ in 0-1 scale, so we need to use XYZ*100 for Jzazbz
+    # and store XYZ*100 in the CSV as well
     jzazbz_pairs = []
     for xyz in modern_test_xyz:
-        jzazbz = colour.XYZ_to_Jzazbz(np.array(xyz) * 100).tolist()
-        jzazbz_pairs.extend(xyz + jzazbz)
+        xyz_100 = [v * 100 for v in xyz]  # Scale to 0-100 for library
+        jzazbz = colour.XYZ_to_Jzazbz(np.array(xyz_100)).tolist()
+        jzazbz_pairs.extend(xyz_100 + jzazbz)  # Store XYZ in 0-100 scale
     filepath = os.path.join(ref_dir, 'test_xyz_jzazbz_pairs.csv')
     save_vector(jzazbz_pairs, filepath, "XYZ/Jzazbz test pairs")
 
-    # IPT
+    # IPT - library expects XYZ in 0-100 scale
     ipt_pairs = []
     for xyz in modern_test_xyz:
-        ipt = colour.XYZ_to_IPT(np.array(xyz)).tolist()
-        ipt_pairs.extend(xyz + ipt)
+        xyz_100 = [v * 100 for v in xyz]  # Scale to 0-100 for library
+        ipt = colour.XYZ_to_IPT(np.array(xyz_100)).tolist()
+        ipt_pairs.extend(xyz_100 + ipt)
     filepath = os.path.join(ref_dir, 'test_xyz_ipt_pairs.csv')
     save_vector(ipt_pairs, filepath, "XYZ/IPT test pairs")
 
@@ -259,56 +263,83 @@ def generate_test_reference_values(output_dir):
     filepath = os.path.join(ref_dir, 'test_lab_din99_pairs.csv')
     save_vector(din99_pairs, filepath, "Lab/DIN99 test pairs")
 
-    # OSA-UCS
+    # OSA-UCS - library expects XYZ in 0-100 scale
     osa_ucs_pairs = []
     for xyz in modern_test_xyz:
-        osa = colour.XYZ_to_OSA_UCS(np.array(xyz)).tolist()
-        osa_ucs_pairs.extend(xyz + osa)
+        xyz_100 = [v * 100 for v in xyz]  # Scale to 0-100 for library
+        osa = colour.XYZ_to_OSA_UCS(np.array(xyz_100)).tolist()
+        osa_ucs_pairs.extend(xyz_100 + osa)
     filepath = os.path.join(ref_dir, 'test_xyz_osa_ucs_pairs.csv')
     save_vector(osa_ucs_pairs, filepath, "XYZ/OSA-UCS test pairs")
 
-    # Hunter Lab (skip black to avoid NaN from division by zero)
+    # Hunter Lab - library expects XYZ in 0-100 scale (skip black to avoid NaN)
     hunter_lab_pairs = []
     for xyz in modern_test_xyz:
+        xyz_100 = [v * 100 for v in xyz]  # Scale to 0-100 for library
         # Skip black (0,0,0) to avoid NaN in Hunter Lab
         if xyz[0] == 0.0 and xyz[1] == 0.0 and xyz[2] == 0.0:
             # Use a very small value instead to avoid division by zero
-            xyz_safe = [1e-10, 1e-10, 1e-10]
+            xyz_safe = [1e-8, 1e-8, 1e-8]
             hunter = colour.XYZ_to_Hunter_Lab(np.array(xyz_safe)).tolist()
         else:
-            hunter = colour.XYZ_to_Hunter_Lab(np.array(xyz)).tolist()
-        hunter_lab_pairs.extend(xyz + hunter)
+            hunter = colour.XYZ_to_Hunter_Lab(np.array(xyz_100)).tolist()
+        hunter_lab_pairs.extend(xyz_100 + hunter)
     filepath = os.path.join(ref_dir, 'test_xyz_hunter_lab_pairs.csv')
     save_vector(hunter_lab_pairs, filepath, "XYZ/Hunter Lab test pairs")
 
-    # ProLab (using Lab as proxy if ProLab not available)
-    try:
-        prolab_pairs = []
-        for xyz in modern_test_xyz:
-            # ProLab may not be in colour-science, use Lab as fallback
-            lab = colour.XYZ_to_Lab(np.array(xyz)).tolist()
-            prolab_pairs.extend(xyz + lab)
-        filepath = os.path.join(ref_dir, 'test_xyz_prolab_pairs.csv')
-        save_vector(prolab_pairs, filepath, "XYZ/ProLab test pairs (Lab fallback)")
-    except:
-        pass
+    # ProLab - library expects XYZ in 0-100 scale
+    prolab_pairs = []
+    for xyz in modern_test_xyz:
+        xyz_100 = [v * 100 for v in xyz]  # Scale to 0-100 for library
+        prolab = colour.XYZ_to_ProLab(np.array(xyz_100)).tolist()
+        prolab_pairs.extend(xyz_100 + prolab)
+    filepath = os.path.join(ref_dir, 'test_xyz_prolab_pairs.csv')
+    save_vector(prolab_pairs, filepath, "XYZ/ProLab test pairs")
 
-    # ICtCp (from RGB)
-    ictcp_pairs = []
-    for rgb in test_rgb_colors:
-        # ICtCp from BT.2020 RGB
+    # ICtCp (from RGB) - use same RGB values as hardcoded in 21_ictcp.c
+    # The test has specific HDR RGB values (including 2.0 and 5.0)
+    ictcp_test_rgb = [
+        [0.0, 0.0, 0.0],      # Black
+        [0.18, 0.18, 0.18],   # 18% gray
+        [1.0, 1.0, 1.0],      # SDR white
+        [1.0, 0.0, 0.0],      # SDR red
+        [0.0, 1.0, 0.0],      # SDR green
+        [0.0, 0.0, 1.0],      # SDR blue
+        [2.0, 2.0, 2.0],      # HDR white
+        [5.0, 5.0, 5.0],      # HDR bright
+    ]
+    ictcp_pq_data = []
+    for rgb in ictcp_test_rgb:
+        # ICtCp from BT.2020 RGB using PQ (Dolby 2016)
         ictcp = colour.RGB_to_ICtCp(np.array(rgb), method='Dolby 2016').tolist()
-        ictcp_pairs.extend(rgb + ictcp)
+        ictcp_pq_data.extend(ictcp)  # Only ICtCp values
     filepath = os.path.join(ref_dir, 'ictcp_pq_from_rgb.csv')
-    save_vector(ictcp_pairs, filepath, "RGB to ICtCp (PQ) test pairs")
+    save_vector(ictcp_pq_data, filepath, "RGB to ICtCp (PQ) expected values")
 
-    # YCoCg (from RGB)
-    ycocg_pairs = []
-    for rgb in test_rgb_colors:
+    # Extended RGB test colors - used by YCoCg, IHLS, HCL, Prismatic tests
+    # These match the hardcoded values in 16_extended_colorspaces.c
+    extended_rgb_colors_early = [
+        [0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0], [0.5, 0.5, 0.5], [0.25, 0.75, 0.5], [0.8, 0.2, 0.4],
+        [0.1, 0.6, 0.9], [0.9, 0.3, 0.1], [0.3, 0.9, 0.7]
+    ]
+
+    # YCoCg (from RGB) - only YCoCg values, RGB is hardcoded in test
+    ycocg_data = []
+    for rgb in extended_rgb_colors_early:
         ycocg = colour.RGB_to_YCoCg(np.array(rgb)).tolist()
-        ycocg_pairs.extend(rgb + ycocg)
+        ycocg_data.extend(ycocg)  # Only YCoCg values
     filepath = os.path.join(ref_dir, 'ycocg_from_rgb.csv')
-    save_vector(ycocg_pairs, filepath, "RGB to YCoCg test pairs")
+    save_vector(ycocg_data, filepath, "RGB to YCoCg expected values")
+
+    # RGB from YCoCg roundtrip - only RGB values
+    rgb_from_ycocg_data = []
+    for rgb in extended_rgb_colors_early:
+        ycocg = colour.RGB_to_YCoCg(np.array(rgb))
+        rgb_back = colour.YCoCg_to_RGB(ycocg).tolist()
+        rgb_from_ycocg_data.extend(rgb_back)  # Only RGB values
+    filepath = os.path.join(ref_dir, 'rgb_from_ycocg_roundtrip.csv')
+    save_vector(rgb_from_ycocg_data, filepath, "YCoCg to RGB roundtrip values")
 
     # CAM correlates (CIECAM02 XYZ input)
     cam_xyz_input = []
@@ -405,14 +436,14 @@ def generate_test_reference_values(output_dir):
     filepath = os.path.join(ref_dir, 'test_lab_din99b_pairs.csv')
     save_vector(din99b_pairs, filepath, "Lab/DIN99b test pairs")
 
-    # RGB from ICtCp (PQ) roundtrip
-    rgb_from_ictcp_data = []
-    for rgb in test_rgb_colors:
+    # RGB from ICtCp (PQ) roundtrip - use same RGB values as test
+    rgb_from_ictcp_pq_data = []
+    for rgb in ictcp_test_rgb:
         ictcp = colour.RGB_to_ICtCp(np.array(rgb), method='Dolby 2016')
         rgb_back = colour.ICtCp_to_RGB(ictcp, method='Dolby 2016').tolist()
-        rgb_from_ictcp_data.extend(ictcp.tolist() + rgb_back)
+        rgb_from_ictcp_pq_data.extend(rgb_back)  # Only RGB values
     filepath = os.path.join(ref_dir, 'rgb_from_ictcp_pq.csv')
-    save_vector(rgb_from_ictcp_data, filepath, "ICtCp to RGB roundtrip test pairs")
+    save_vector(rgb_from_ictcp_pq_data, filepath, "ICtCp PQ to RGB roundtrip values")
 
     # NOTE: adapted_d65_to_d50_bradford.csv is generated by chromatic_adaptation_fixtures.py
     # with 24 values (8 colors x 3 components). Don't overwrite it here.
@@ -435,21 +466,13 @@ def generate_test_reference_values(output_dir):
     filepath = os.path.join(ref_dir, 'delta_e_2000.csv')
     save_vector(de2000_data, filepath, "Delta E 2000 expected values")
 
-    # RGB from YCoCg roundtrip
-    rgb_from_ycocg_data = []
-    for rgb in test_rgb_colors:
-        # YCoCg forward and back using colour-science
-        ycocg = colour.RGB_to_YCoCg(np.array(rgb))
-        rgb_back = colour.YCoCg_to_RGB(ycocg).tolist()
-        rgb_from_ycocg_data.extend(ycocg.tolist() + rgb_back)
-    filepath = os.path.join(ref_dir, 'rgb_from_ycocg_roundtrip.csv')
-    save_vector(rgb_from_ycocg_data, filepath, "YCoCg to RGB roundtrip test pairs")
-
-    # Oklab to OKLCh pairs
+    # Oklab to OKLCh pairs - library uses radians for hue angle
     oklab_oklch_pairs = []
     for xyz in modern_test_xyz[:3]:  # Use first 3
         oklab = colour.XYZ_to_Oklab(np.array(xyz))
-        oklch = colour.Lab_to_LCHab(oklab).tolist()  # LCHab transform works for Oklab too
+        oklch = colour.Oklab_to_Oklch(oklab).tolist()
+        # Convert hue from degrees to radians for library
+        oklch[2] = np.radians(oklch[2])
         oklab_oklch_pairs.extend(oklab.tolist() + oklch)
     filepath = os.path.join(ref_dir, 'test_oklab_oklch_pairs.csv')
     save_vector(oklab_oklch_pairs, filepath, "Oklab/OKLCh test pairs")
@@ -619,7 +642,7 @@ def generate_test_reference_values(output_dir):
         # Adapted XYZ colors D65->D50 using Fairchild
         adapted_fairchild_xyz = []
         for xyz in test_xyz_colors:
-            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='Fairchild')
+            adapted = np.dot(cat_matrix_fairchild, np.array(xyz))
             adapted_fairchild_xyz.extend(adapted.tolist())
         filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_fairchild.csv')
         save_vector(adapted_fairchild_xyz, filepath, "Adapted XYZ D65->D50 Fairchild")
@@ -638,7 +661,7 @@ def generate_test_reference_values(output_dir):
         # Adapted XYZ colors D65->D50 using CMCCAT97
         adapted_cmccat97_xyz = []
         for xyz in test_xyz_colors:
-            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='CMCCAT97')
+            adapted = np.dot(cat_matrix_cmccat97, np.array(xyz))
             adapted_cmccat97_xyz.extend(adapted.tolist())
         filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_cmccat97.csv')
         save_vector(adapted_cmccat97_xyz, filepath, "Adapted XYZ D65->D50 CMCCAT97")
@@ -657,7 +680,7 @@ def generate_test_reference_values(output_dir):
         # Adapted XYZ colors D65->D50 using CMCCAT2000
         adapted_cmccat2000_xyz = []
         for xyz in test_xyz_colors:
-            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='CMCCAT2000')
+            adapted = np.dot(cat_matrix_cmccat2000, np.array(xyz))
             adapted_cmccat2000_xyz.extend(adapted.tolist())
         filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_cmccat2000.csv')
         save_vector(adapted_cmccat2000_xyz, filepath, "Adapted XYZ D65->D50 CMCCAT2000")
@@ -675,7 +698,7 @@ def generate_test_reference_values(output_dir):
 
         adapted_brill_xyz = []
         for xyz in test_xyz_colors:
-            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='CAT02 Brill 2008')
+            adapted = np.dot(cat_matrix_brill, np.array(xyz))
             adapted_brill_xyz.extend(adapted.tolist())
         filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_cat02_brill_2008.csv')
         save_vector(adapted_brill_xyz, filepath, "Adapted XYZ D65->D50 CAT02 Brill 2008")
@@ -693,7 +716,7 @@ def generate_test_reference_values(output_dir):
 
         adapted_bianco_xyz = []
         for xyz in test_xyz_colors:
-            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='Bianco 2010')
+            adapted = np.dot(cat_matrix_bianco, np.array(xyz))
             adapted_bianco_xyz.extend(adapted.tolist())
         filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_bianco_2010.csv')
         save_vector(adapted_bianco_xyz, filepath, "Adapted XYZ D65->D50 Bianco 2010")
@@ -711,7 +734,7 @@ def generate_test_reference_values(output_dir):
 
         adapted_bianco_pc_xyz = []
         for xyz in test_xyz_colors:
-            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='Bianco PC 2010')
+            adapted = np.dot(cat_matrix_bianco_pc, np.array(xyz))
             adapted_bianco_pc_xyz.extend(adapted.tolist())
         filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_bianco_pc_2010.csv')
         save_vector(adapted_bianco_pc_xyz, filepath, "Adapted XYZ D65->D50 Bianco PC 2010")
@@ -720,9 +743,16 @@ def generate_test_reference_values(output_dir):
 
     # Adapted XYZ D65->D50 with Sharp method
     try:
+        cat_matrix_sharp = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+            d65_xyz, d50_xyz, transform='Sharp'
+        )
+        cat_matrix_sharp_flat = cat_matrix_sharp.flatten().tolist()
+        filepath = os.path.join(ref_dir, 'cat_d65_to_d50_sharp.csv')
+        save_vector(cat_matrix_sharp_flat, filepath, "CAT D65->D50 Sharp matrix")
+
         adapted_sharp_xyz = []
         for xyz in test_xyz_colors:
-            adapted = colour.chromatic_adaptation(np.array(xyz), d65_xy, d50_xy, method='Sharp')
+            adapted = np.dot(cat_matrix_sharp, np.array(xyz))
             adapted_sharp_xyz.extend(adapted.tolist())
         filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_sharp.csv')
         save_vector(adapted_sharp_xyz, filepath, "Adapted XYZ D65->D50 Sharp")
@@ -746,14 +776,22 @@ def generate_test_reference_values(output_dir):
     filepath = os.path.join(ref_dir, 'printer_lights_per_channel.csv')
     save_vector(printer_lights, filepath, "Printer lights per channel output")
 
-    # Delta E ITP values
-    # Calculate delta E ITP for RGB color pairs
+    # Delta E ITP data
+    # Calculate delta E ITP for RGB color pairs and save ICtCp values
+    ictcp1_data = []
+    ictcp2_data = []
     de_itp_values = []
     for i in range(len(test_rgb_colors) - 1):
-        ictcp1 = colour.RGB_to_ICtCp(np.array(test_rgb_colors[i]), method='Dolby 2016')
-        ictcp2 = colour.RGB_to_ICtCp(np.array(test_rgb_colors[i+1]), method='Dolby 2016')
-        de = colour.difference.delta_E_ITP(ictcp1, ictcp2)
+        ictcp1 = colour.RGB_to_ICtCp(np.array(test_rgb_colors[i]), method='Dolby 2016').tolist()
+        ictcp2 = colour.RGB_to_ICtCp(np.array(test_rgb_colors[i+1]), method='Dolby 2016').tolist()
+        ictcp1_data.extend(ictcp1)
+        ictcp2_data.extend(ictcp2)
+        de = colour.difference.delta_E_ITP(np.array(ictcp1), np.array(ictcp2))
         de_itp_values.append(float(de))
+    filepath = os.path.join(ref_dir, 'delta_e_itp_ictcp1.csv')
+    save_vector(ictcp1_data, filepath, "ICtCp color 1 values")
+    filepath = os.path.join(ref_dir, 'delta_e_itp_ictcp2.csv')
+    save_vector(ictcp2_data, filepath, "ICtCp color 2 values")
     filepath = os.path.join(ref_dir, 'delta_e_itp.csv')
     save_vector(de_itp_values, filepath, "Delta E ITP values")
 
@@ -776,14 +814,15 @@ def generate_test_reference_values(output_dir):
     save_vector(de_din99_values, filepath, "Delta E DIN99 values")
 
     # Delta E ZCAM data (using Jzazbz)
+    # Library expects XYZ in 0-100 scale
     jzazbz1_data = []
     jzazbz2_data = []
     de_zcam_values = []
     for lab1, lab2 in test_lab_pairs:
-        # Convert Lab to XYZ then to Jzazbz
+        # Convert Lab to XYZ then to Jzazbz (XYZ * 100 for library)
         xyz1 = colour.Lab_to_XYZ(np.array(lab1), d65_xy)
         xyz2 = colour.Lab_to_XYZ(np.array(lab2), d65_xy)
-        jzazbz1 = colour.XYZ_to_Jzazbz(xyz1 * 100).tolist()  # Scale for HDR range
+        jzazbz1 = colour.XYZ_to_Jzazbz(xyz1 * 100).tolist()
         jzazbz2 = colour.XYZ_to_Jzazbz(xyz2 * 100).tolist()
         jzazbz1_data.extend(jzazbz1)
         jzazbz2_data.extend(jzazbz2)
@@ -832,6 +871,652 @@ def generate_test_reference_values(output_dir):
     save_vector(de_cam16_scd_values, filepath, "Delta E CAM16-SCD values")
 
     print(f"  [OK] Generated additional test reference files")
+
+    # =================================================================
+    # 8. Comprehensive missing test reference files
+    # =================================================================
+    print("\n[8/8] Generating comprehensive missing test reference files...")
+
+    # --- RGB to HSL conversion ---
+    rgb_to_hsl_data = []
+    for rgb in test_rgb_colors:
+        hsl = colour.RGB_to_HSL(np.array(rgb)).tolist()
+        rgb_to_hsl_data.extend(hsl)
+    filepath = os.path.join(ref_dir, 'rgb_to_hsl.csv')
+    save_vector(rgb_to_hsl_data, filepath, "RGB to HSL expected values")
+
+    # --- Lab to LCh conversion ---
+    # Use the same XYZ colors as xyz_to_lab_d65.csv, convert to Lab, then to LCh
+    # Test expects only LCh values (L, C, h) since Lab values come from xyz_to_lab_d65.csv
+    lab_to_lch_data = []
+    for xyz in test_xyz_colors:
+        lab = colour.XYZ_to_Lab(np.array(xyz), d65_xy)
+        lch = colour.Lab_to_LCHab(lab).tolist()
+        lab_to_lch_data.extend(lch)  # Only LCh values, not Lab+LCh pairs
+    filepath = os.path.join(ref_dir, 'lab_to_lch.csv')
+    save_vector(lab_to_lch_data, filepath, "Lab to LCh expected values")
+
+    # --- Luv to LChuv conversion ---
+    # Use the same XYZ colors as xyz_to_luv_d65.csv, convert to Luv, then to LChuv
+    # Test expects only LChuv values (L, C, h) since Luv values come from xyz_to_luv_d65.csv
+    luv_to_lchuv_data = []
+    for xyz in test_xyz_colors:
+        luv = colour.XYZ_to_Luv(np.array(xyz), d65_xy)
+        lchuv = colour.Luv_to_LCHuv(luv).tolist()
+        luv_to_lchuv_data.extend(lchuv)  # Only LChuv values
+    filepath = os.path.join(ref_dir, 'luv_to_lchuv.csv')
+    save_vector(luv_to_lchuv_data, filepath, "Luv to LChuv expected values")
+
+    # --- DIN99c and DIN99d pairs ---
+    din99c_pairs = []
+    din99d_pairs = []
+    for lab1, lab2 in test_lab_pairs:
+        din99c = colour.Lab_to_DIN99(np.array(lab1), method='DIN99c').tolist()
+        din99d = colour.Lab_to_DIN99(np.array(lab1), method='DIN99d').tolist()
+        din99c_pairs.extend(lab1 + din99c)
+        din99d_pairs.extend(lab1 + din99d)
+    filepath = os.path.join(ref_dir, 'test_lab_din99c_pairs.csv')
+    save_vector(din99c_pairs, filepath, "Lab/DIN99c test pairs")
+    filepath = os.path.join(ref_dir, 'test_lab_din99d_pairs.csv')
+    save_vector(din99d_pairs, filepath, "Lab/DIN99d test pairs")
+
+    # --- Illuminant A XYZ ---
+    try:
+        a_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['A']
+        a_xyz = colour.xy_to_XYZ(a_xy).tolist()
+        filepath = os.path.join(ref_dir, 'a_xyz.csv')
+        save_vector(a_xyz, filepath, "Illuminant A white point (XYZ)")
+    except Exception as e:
+        print(f"  Warning: Could not generate Illuminant A: {e}")
+
+    # --- D60 illuminant XYZ ---
+    try:
+        d60_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D60']
+        d60_xyz = colour.xy_to_XYZ(d60_xy).tolist()
+        filepath = os.path.join(ref_dir, 'd60_xyz.csv')
+        save_vector(d60_xyz, filepath, "D60 white point (XYZ)")
+    except Exception as e:
+        print(f"  Warning: Could not generate D60: {e}")
+
+    # --- UCS from XYZ ---
+    # Test uses test_xyz_colors.csv for input, expects only UCS output values
+    ucs_from_xyz_data = []
+    for xyz in test_xyz_colors:
+        ucs = colour.XYZ_to_UCS(np.array(xyz)).tolist()
+        ucs_from_xyz_data.extend(ucs)  # Only UCS values
+    filepath = os.path.join(ref_dir, 'ucs_from_xyz.csv')
+    save_vector(ucs_from_xyz_data, filepath, "XYZ to UCS expected values")
+
+    # --- XYZ from UCS roundtrip ---
+    # Test expects only XYZ roundtrip values
+    xyz_from_ucs_data = []
+    for xyz in test_xyz_colors:
+        ucs = colour.XYZ_to_UCS(np.array(xyz))
+        xyz_back = colour.UCS_to_XYZ(ucs).tolist()
+        xyz_from_ucs_data.extend(xyz_back)  # Only XYZ roundtrip values
+    filepath = os.path.join(ref_dir, 'xyz_from_ucs_roundtrip.csv')
+    save_vector(xyz_from_ucs_data, filepath, "UCS to XYZ roundtrip values")
+
+    # --- ICtCp HLG from RGB --- (use same RGB values as ICtCp PQ test)
+    ictcp_hlg_from_rgb_data = []
+    for rgb in ictcp_test_rgb:
+        ictcp_hlg = colour.RGB_to_ICtCp(np.array(rgb), method='ITU-R BT.2100-2 HLG').tolist()
+        ictcp_hlg_from_rgb_data.extend(ictcp_hlg)  # Only ICtCp values
+    filepath = os.path.join(ref_dir, 'ictcp_hlg_from_rgb.csv')
+    save_vector(ictcp_hlg_from_rgb_data, filepath, "RGB to ICtCp (HLG) expected values")
+
+    # --- ICtCp HLG from XYZ --- (test uses test_xyz_colors.csv for input)
+    ictcp_hlg_from_xyz_data = []
+    for xyz in test_xyz_colors:
+        # Convert XYZ to linear RGB (BT.2020) then to ICtCp HLG
+        rgb_linear = colour.XYZ_to_RGB(np.array(xyz), colourspace='ITU-R BT.2020')
+        ictcp_hlg = colour.RGB_to_ICtCp(rgb_linear, method='ITU-R BT.2100-2 HLG').tolist()
+        ictcp_hlg_from_xyz_data.extend(ictcp_hlg)  # Only ICtCp values
+    filepath = os.path.join(ref_dir, 'ictcp_hlg_from_xyz.csv')
+    save_vector(ictcp_hlg_from_xyz_data, filepath, "XYZ to ICtCp (HLG) expected values")
+
+    # --- ICtCp PQ from XYZ --- (test uses test_xyz_colors.csv for input)
+    ictcp_pq_from_xyz_data = []
+    for xyz in test_xyz_colors:
+        rgb_linear = colour.XYZ_to_RGB(np.array(xyz), colourspace='ITU-R BT.2020')
+        ictcp_pq = colour.RGB_to_ICtCp(rgb_linear, method='Dolby 2016').tolist()
+        ictcp_pq_from_xyz_data.extend(ictcp_pq)  # Only ICtCp values
+    filepath = os.path.join(ref_dir, 'ictcp_pq_from_xyz.csv')
+    save_vector(ictcp_pq_from_xyz_data, filepath, "XYZ to ICtCp (PQ) expected values")
+
+    # --- RGB from ICtCp HLG roundtrip --- (use same RGB values as test)
+    rgb_from_ictcp_hlg_data = []
+    for rgb in ictcp_test_rgb:
+        ictcp = colour.RGB_to_ICtCp(np.array(rgb), method='ITU-R BT.2100-2 HLG')
+        rgb_back = colour.ICtCp_to_RGB(ictcp, method='ITU-R BT.2100-2 HLG').tolist()
+        rgb_from_ictcp_hlg_data.extend(rgb_back)  # Only RGB values
+    filepath = os.path.join(ref_dir, 'rgb_from_ictcp_hlg.csv')
+    save_vector(rgb_from_ictcp_hlg_data, filepath, "ICtCp HLG to RGB roundtrip values")
+
+    # --- Transfer functions: S-Log, S-Log2, S-Log3, C-Log, C-Log2, C-Log3, V-Log ---
+    tf_input_values = [float(i) / 10.0 for i in range(11)]  # 0.0 to 1.0 in steps of 0.1
+
+    # S-Log2
+    tf_slog2_data = []
+    for v in tf_input_values:
+        encoded = colour.models.log_encoding_SLog2(v)
+        tf_slog2_data.append(float(encoded))
+    filepath = os.path.join(ref_dir, 'tf_slog2.csv')
+    save_vector(tf_slog2_data, filepath, "S-Log2 transfer function")
+
+    # S-Log3
+    tf_slog3_data = []
+    for v in tf_input_values:
+        encoded = colour.models.log_encoding_SLog3(v)
+        tf_slog3_data.append(float(encoded))
+    filepath = os.path.join(ref_dir, 'tf_slog3.csv')
+    save_vector(tf_slog3_data, filepath, "S-Log3 transfer function")
+
+    # S-Log (original)
+    tf_slog_data = []
+    for v in tf_input_values:
+        encoded = colour.models.log_encoding_SLog(v)
+        tf_slog_data.append(float(encoded))
+    filepath = os.path.join(ref_dir, 'tf_slog.csv')
+    save_vector(tf_slog_data, filepath, "S-Log transfer function")
+
+    # V-Log
+    tf_vlog_data = []
+    for v in tf_input_values:
+        encoded = colour.models.log_encoding_VLog(v)
+        tf_vlog_data.append(float(encoded))
+    filepath = os.path.join(ref_dir, 'tf_vlog.csv')
+    save_vector(tf_vlog_data, filepath, "V-Log transfer function")
+
+    # Canon Log (C-Log)
+    try:
+        tf_clog_data = []
+        for v in tf_input_values:
+            encoded = colour.models.log_encoding_CanonLog(v)
+            tf_clog_data.append(float(encoded))
+        filepath = os.path.join(ref_dir, 'tf_clog.csv')
+        save_vector(tf_clog_data, filepath, "Canon Log transfer function")
+    except Exception as e:
+        print(f"  Warning: Could not generate C-Log: {e}")
+
+    # Canon Log 2
+    try:
+        tf_clog2_data = []
+        for v in tf_input_values:
+            encoded = colour.models.log_encoding_CanonLog2(v)
+            tf_clog2_data.append(float(encoded))
+        filepath = os.path.join(ref_dir, 'tf_clog2.csv')
+        save_vector(tf_clog2_data, filepath, "Canon Log 2 transfer function")
+    except Exception as e:
+        print(f"  Warning: Could not generate C-Log2: {e}")
+
+    # Canon Log 3
+    try:
+        tf_clog3_data = []
+        for v in tf_input_values:
+            encoded = colour.models.log_encoding_CanonLog3(v)
+            tf_clog3_data.append(float(encoded))
+        filepath = os.path.join(ref_dir, 'tf_clog3.csv')
+        save_vector(tf_clog3_data, filepath, "Canon Log 3 transfer function")
+    except Exception as e:
+        print(f"  Warning: Could not generate C-Log3: {e}")
+
+    # Gamma 2.2 and 2.4
+    tf_gamma22_data = []
+    tf_gamma24_data = []
+    for v in tf_input_values:
+        tf_gamma22_data.append(float(v ** (1.0/2.2)) if v > 0 else 0.0)
+        tf_gamma24_data.append(float(v ** (1.0/2.4)) if v > 0 else 0.0)
+    filepath = os.path.join(ref_dir, 'tf_gamma22.csv')
+    save_vector(tf_gamma22_data, filepath, "Gamma 2.2 transfer function")
+    filepath = os.path.join(ref_dir, 'tf_gamma24.csv')
+    save_vector(tf_gamma24_data, filepath, "Gamma 2.4 transfer function")
+
+    # --- CAT adapted colors: D65 to D50 Bradford ---
+    cat_matrix_bradford = colour.adaptation.matrix_chromatic_adaptation_VonKries(
+        d65_xyz, d50_xyz, transform='Bradford'
+    )
+    filepath = os.path.join(ref_dir, 'cat_d65_to_d50_bradford.csv')
+    save_vector(cat_matrix_bradford.flatten().tolist(), filepath, "CAT D65->D50 Bradford matrix")
+
+    adapted_bradford_xyz = []
+    for xyz in test_xyz_colors:
+        adapted = np.dot(cat_matrix_bradford, np.array(xyz))
+        adapted_bradford_xyz.extend(adapted.tolist())
+    filepath = os.path.join(ref_dir, 'adapted_d65_to_d50_bradford.csv')
+    save_vector(adapted_bradford_xyz, filepath, "Adapted XYZ D65->D50 Bradford")
+
+    # --- CAT adapted colors: A to D65 Bradford ---
+    try:
+        a_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['A']
+        a_xyz = colour.xy_to_XYZ(a_xy)
+
+        # CAT matrix A to D65 Bradford
+        cat_a_to_d65 = colour.adaptation.matrix_chromatic_adaptation_VonKries(a_xyz, d65_xyz, transform='Bradford')
+        filepath = os.path.join(ref_dir, 'cat_a_to_d65_bradford.csv')
+        save_vector(cat_a_to_d65.flatten().tolist(), filepath, "CAT A->D65 Bradford matrix")
+
+        adapted_a_to_d65_xyz = []
+        for xyz in test_xyz_colors:
+            adapted = np.dot(cat_a_to_d65, np.array(xyz))
+            adapted_a_to_d65_xyz.extend(adapted.tolist())
+        filepath = os.path.join(ref_dir, 'adapted_a_to_d65_bradford.csv')
+        save_vector(adapted_a_to_d65_xyz, filepath, "Adapted XYZ A->D65 Bradford")
+    except Exception as e:
+        print(f"  Warning: Could not generate A->D65 CAT: {e}")
+
+    # --- CAT D65 to D60 Bradford ---
+    try:
+        d60_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D60']
+        d60_xyz = colour.xy_to_XYZ(d60_xy)
+        cat_d65_to_d60 = colour.adaptation.matrix_chromatic_adaptation_VonKries(d65_xyz, d60_xyz, transform='Bradford')
+        filepath = os.path.join(ref_dir, 'cat_d65_to_d60_bradford.csv')
+        save_vector(cat_d65_to_d60.flatten().tolist(), filepath, "CAT D65->D60 Bradford matrix")
+    except Exception as e:
+        print(f"  Warning: Could not generate D65->D60 CAT: {e}")
+
+    # --- CAT D65 to D50 CAT02 ---
+    cat_d65_to_d50_cat02 = colour.adaptation.matrix_chromatic_adaptation_VonKries(d65_xyz, d50_xyz, transform='CAT02')
+    filepath = os.path.join(ref_dir, 'cat_d65_to_d50_cat02.csv')
+    save_vector(cat_d65_to_d50_cat02.flatten().tolist(), filepath, "CAT D65->D50 CAT02 matrix")
+
+    # --- CAT D65 to D50 CAT16 ---
+    cat_d65_to_d50_cat16 = colour.adaptation.matrix_chromatic_adaptation_VonKries(d65_xyz, d50_xyz, transform='CAT16')
+    filepath = os.path.join(ref_dir, 'cat_d65_to_d50_cat16.csv')
+    save_vector(cat_d65_to_d50_cat16.flatten().tolist(), filepath, "CAT D65->D50 CAT16 matrix")
+
+    # --- CAT D65 to D50 XYZ Scaling ---
+    cat_d65_to_d50_xyz = colour.adaptation.matrix_chromatic_adaptation_VonKries(d65_xyz, d50_xyz, transform='XYZ Scaling')
+    filepath = os.path.join(ref_dir, 'cat_d65_to_d50_xyz_scaling.csv')
+    save_vector(cat_d65_to_d50_xyz.flatten().tolist(), filepath, "CAT D65->D50 XYZ Scaling matrix")
+
+    # --- Whiteness/Yellowness using ASTM E313 ---
+    # Note: ASTM E313 uses coefficients that depend on illuminant and observer
+    # For whiteness, ASTM E313 is: WI = 3.388 * Z - 3 * Y (but scaled by 100)
+    # For yellowness, ASTM E313 uses C_X and C_Z coefficients
+    yellowness_coefs = colour.colorimetry.YELLOWNESS_COEFFICIENTS_ASTME313
+
+    try:
+        # Scale whiteness_xyz to 100 scale (ASTM E313 uses Y=100 scale)
+        whiteness_xyz_scaled = [[v * 100 for v in xyz] for xyz in whiteness_xyz]
+
+        # Whiteness ASTM E313 (same for all illuminants/observers)
+        whiteness_values = []
+        for xyz in whiteness_xyz_scaled:
+            wi = colour.colorimetry.whiteness_ASTME313(np.array(xyz))
+            whiteness_values.append(float(wi))
+
+        # Save whiteness for all combinations (using same values since ASTM E313 whiteness is illuminant-independent)
+        filepath = os.path.join(ref_dir, 'whiteness_c_2deg.csv')
+        save_vector(whiteness_values, filepath, "Whiteness C 2deg values")
+        filepath = os.path.join(ref_dir, 'whiteness_c_10deg.csv')
+        save_vector(whiteness_values, filepath, "Whiteness C 10deg values")
+        filepath = os.path.join(ref_dir, 'whiteness_d65_2deg.csv')
+        save_vector(whiteness_values, filepath, "Whiteness D65 2deg values")
+        filepath = os.path.join(ref_dir, 'whiteness_d65_10deg.csv')
+        save_vector(whiteness_values, filepath, "Whiteness D65 10deg values")
+
+        # Yellowness C 2deg (using CIE 1931 2 Degree Standard Observer, Illuminant C)
+        C_XZ_c_2deg = yellowness_coefs['CIE 1931 2 Degree Standard Observer']['C']
+        yellowness_c_2deg = []
+        for xyz in whiteness_xyz_scaled:
+            yi = colour.colorimetry.yellowness_ASTME313(np.array(xyz), C_XZ_c_2deg)
+            yellowness_c_2deg.append(float(yi))
+        filepath = os.path.join(ref_dir, 'yellowness_c_2deg.csv')
+        save_vector(yellowness_c_2deg, filepath, "Yellowness C 2deg values")
+
+        # Yellowness C 10deg (using CIE 1964 10 Degree Standard Observer, Illuminant C)
+        C_XZ_c_10deg = yellowness_coefs['CIE 1964 10 Degree Standard Observer']['C']
+        yellowness_c_10deg = []
+        for xyz in whiteness_xyz_scaled:
+            yi = colour.colorimetry.yellowness_ASTME313(np.array(xyz), C_XZ_c_10deg)
+            yellowness_c_10deg.append(float(yi))
+        filepath = os.path.join(ref_dir, 'yellowness_c_10deg.csv')
+        save_vector(yellowness_c_10deg, filepath, "Yellowness C 10deg values")
+
+        # Yellowness D65 2deg (using CIE 1931 2 Degree Standard Observer, Illuminant D65)
+        C_XZ_d65_2deg = yellowness_coefs['CIE 1931 2 Degree Standard Observer']['D65']
+        yellowness_d65_2deg = []
+        for xyz in whiteness_xyz_scaled:
+            yi = colour.colorimetry.yellowness_ASTME313(np.array(xyz), C_XZ_d65_2deg)
+            yellowness_d65_2deg.append(float(yi))
+        filepath = os.path.join(ref_dir, 'yellowness_d65_2deg.csv')
+        save_vector(yellowness_d65_2deg, filepath, "Yellowness D65 2deg values")
+
+        # Yellowness D65 10deg (using CIE 1964 10 Degree Standard Observer, Illuminant D65)
+        C_XZ_d65_10deg = yellowness_coefs['CIE 1964 10 Degree Standard Observer']['D65']
+        yellowness_d65_10deg = []
+        for xyz in whiteness_xyz_scaled:
+            yi = colour.colorimetry.yellowness_ASTME313(np.array(xyz), C_XZ_d65_10deg)
+            yellowness_d65_10deg.append(float(yi))
+        filepath = os.path.join(ref_dir, 'yellowness_d65_10deg.csv')
+        save_vector(yellowness_d65_10deg, filepath, "Yellowness D65 10deg values")
+
+    except Exception as e:
+        print(f"  Warning: Could not generate whiteness/yellowness: {e}")
+
+    # --- CIE2004 Whiteness ---
+    try:
+        # CIE 2004 whiteness: W = Y + 800(xn - x) + 1700(yn - y)
+        # where xn, yn are the reference illuminant chromaticity
+        d65_xy_arr = np.array(d65_xy)
+        whiteness_cie2004 = []
+        for xyz in whiteness_xyz:
+            xyz_arr = np.array(xyz)
+            Y = xyz_arr[1] * 100  # Scale to 100
+            xy = colour.XYZ_to_xy(xyz_arr)
+            # CIE 2004 formula
+            wi = Y + 800 * (d65_xy_arr[0] - xy[0]) + 1700 * (d65_xy_arr[1] - xy[1])
+            whiteness_cie2004.append(float(wi))
+        filepath = os.path.join(ref_dir, 'whiteness_cie2004.csv')
+        save_vector(whiteness_cie2004, filepath, "CIE 2004 Whiteness values")
+    except Exception as e:
+        print(f"  Warning: Could not generate CIE2004 whiteness: {e}")
+
+    # --- Smits1999 and Mallett2019 proper round-trip values ---
+    smits_colors_rgb = {
+        'white': np.array([1.0, 1.0, 1.0]),
+        'red': np.array([1.0, 0.0, 0.0]),
+        'green': np.array([0.0, 1.0, 0.0]),
+        'blue': np.array([0.0, 0.0, 1.0]),
+        'gray50': np.array([0.5, 0.5, 0.5]),
+    }
+
+    cmfs = colour.colorimetry.MSDS_CMFS['CIE 1931 2 Degree Standard Observer']
+    d65_sd = colour.SDS_ILLUMINANTS['D65']
+
+    # Smits1999 round-trip
+    for color_name, rgb in smits_colors_rgb.items():
+        # Get spectrum using RGB directly (as the library does)
+        spectrum = colour.recovery.RGB_to_sd_Smits1999(rgb)
+        xyz_recovered = colour.sd_to_XYZ(spectrum, cmfs, d65_sd, method='Integration') / 100.0
+        xyz_expected = colour.sRGB_to_XYZ(rgb)
+
+        filepath = os.path.join(ref_dir, f'smits1999_{color_name}_xyz_recovered.csv')
+        save_vector(xyz_recovered.tolist(), filepath, f"Smits1999 {color_name} XYZ recovered")
+        filepath = os.path.join(ref_dir, f'smits1999_{color_name}_xyz_expected.csv')
+        save_vector(xyz_expected.tolist(), filepath, f"Smits1999 {color_name} XYZ expected")
+
+    # Mallett2019 round-trip
+    for color_name, rgb in smits_colors_rgb.items():
+        spectrum = colour.recovery.RGB_to_sd_Mallett2019(rgb)
+        xyz_recovered = colour.sd_to_XYZ(spectrum, cmfs, d65_sd, method='Integration') / 100.0
+        xyz_expected = colour.sRGB_to_XYZ(rgb)
+
+        filepath = os.path.join(ref_dir, f'mallett2019_{color_name}_xyz_recovered.csv')
+        save_vector(xyz_recovered.tolist(), filepath, f"Mallett2019 {color_name} XYZ recovered")
+        filepath = os.path.join(ref_dir, f'mallett2019_{color_name}_xyz_expected.csv')
+        save_vector(xyz_expected.tolist(), filepath, f"Mallett2019 {color_name} XYZ expected")
+
+    # --- RGB to CMY and CMYK ---
+    rgb_to_cmy_data = []
+    rgb_to_cmyk_data = []
+    for rgb in test_rgb_colors:
+        cmy = colour.RGB_to_CMY(np.array(rgb)).tolist()
+        cmyk = colour.CMY_to_CMYK(np.array(cmy)).tolist()
+        rgb_to_cmy_data.extend(cmy)
+        rgb_to_cmyk_data.extend(cmyk)
+    filepath = os.path.join(ref_dir, 'rgb_to_cmy.csv')
+    save_vector(rgb_to_cmy_data, filepath, "RGB to CMY expected values")
+    filepath = os.path.join(ref_dir, 'rgb_to_cmyk.csv')
+    save_vector(rgb_to_cmyk_data, filepath, "RGB to CMYK expected values")
+
+    # --- YCbCr BT.601, BT.709, BT.2020 (full range to match library) ---
+    ycbcr_standards = [
+        ('ITU-R BT.601', 'bt601'),
+        ('ITU-R BT.709', 'bt709'),
+        ('ITU-R BT.2020', 'bt2020'),
+    ]
+    for std, std_name in ycbcr_standards:
+        ycbcr_data = []
+        for rgb in test_rgb_colors:
+            # Use out_legal=False for full range YCbCr to match library implementation
+            ycbcr = colour.RGB_to_YCbCr(np.array(rgb), K=colour.WEIGHTS_YCBCR[std], out_legal=False).tolist()
+            ycbcr_data.extend(ycbcr)
+        filepath = os.path.join(ref_dir, f'rgb_to_ycbcr_{std_name}.csv')
+        save_vector(ycbcr_data, filepath, f"RGB to YCbCr {std} full-range values")
+
+    # --- YcCbcCrc (BT.2020 constant luminance) ---
+    yccbccrc_data = []
+    for rgb in test_rgb_colors:
+        yccbccrc = colour.RGB_to_YcCbcCrc(np.array(rgb)).tolist()
+        yccbccrc_data.extend(yccbccrc)
+    filepath = os.path.join(ref_dir, 'rgb_to_yccbccrc.csv')
+    save_vector(yccbccrc_data, filepath, "RGB to YcCbcCrc values")
+
+    # --- Extended colorspaces: IgPgTg, ICAcB, hdr-IPT, hdr-Lab, IHLS, HCL, Prismatic ---
+    # IgPgTg - test uses test_xyz_colors.csv for input
+    igpgtg_data = []
+    for xyz in test_xyz_colors:
+        igpgtg = colour.XYZ_to_IgPgTg(np.array(xyz)).tolist()
+        igpgtg_data.extend(igpgtg)  # Only IgPgTg values
+    filepath = os.path.join(ref_dir, 'igpgtg_from_xyz.csv')
+    save_vector(igpgtg_data, filepath, "XYZ to IgPgTg expected values")
+
+    # XYZ from IgPgTg roundtrip - only XYZ values
+    xyz_from_igpgtg_data = []
+    for xyz in test_xyz_colors:
+        igpgtg = colour.XYZ_to_IgPgTg(np.array(xyz))
+        xyz_back = colour.IgPgTg_to_XYZ(igpgtg).tolist()
+        xyz_from_igpgtg_data.extend(xyz_back)  # Only XYZ values
+    filepath = os.path.join(ref_dir, 'xyz_from_igpgtg_roundtrip.csv')
+    save_vector(xyz_from_igpgtg_data, filepath, "IgPgTg to XYZ roundtrip values")
+
+    # ICAcB - test uses test_xyz_colors.csv for input
+    try:
+        icacb_data = []
+        for xyz in test_xyz_colors:
+            icacb = colour.XYZ_to_ICaCb(np.array(xyz)).tolist()
+            icacb_data.extend(icacb)  # Only ICaCb values
+        filepath = os.path.join(ref_dir, 'icacb_from_xyz.csv')
+        save_vector(icacb_data, filepath, "XYZ to ICaCb expected values")
+
+        # XYZ from ICAcB roundtrip - only XYZ values
+        xyz_from_icacb_data = []
+        for xyz in test_xyz_colors:
+            icacb = colour.XYZ_to_ICaCb(np.array(xyz))
+            xyz_back = colour.ICaCb_to_XYZ(icacb).tolist()
+            xyz_from_icacb_data.extend(xyz_back)  # Only XYZ values
+        filepath = os.path.join(ref_dir, 'xyz_from_icacb_roundtrip.csv')
+        save_vector(xyz_from_icacb_data, filepath, "ICaCb to XYZ roundtrip values")
+    except Exception as e:
+        print(f"  Warning: Could not generate ICaCb: {e}")
+
+    # hdr-IPT (HDR IPT) - test uses test_xyz_hdr.csv (XYZ * 100) for input
+    hdr_ipt_data = []
+    for xyz in test_xyz_colors:
+        # Use HDR XYZ values (multiply by 100 for HDR range)
+        hdr_ipt = colour.XYZ_to_hdr_IPT(np.array(xyz) * 100)
+        # Replace NaN with 0 (black causes NaN)
+        hdr_ipt_vals = [0.0 if np.isnan(v) else v for v in hdr_ipt.tolist()]
+        hdr_ipt_data.extend(hdr_ipt_vals)  # Only hdr-IPT values
+    filepath = os.path.join(ref_dir, 'hdr_ipt_from_xyz.csv')
+    save_vector(hdr_ipt_data, filepath, "XYZ to hdr-IPT expected values")
+
+    # XYZ from hdr-IPT roundtrip - only XYZ values
+    xyz_from_hdr_ipt_data = []
+    for xyz in test_xyz_colors:
+        hdr_ipt = colour.XYZ_to_hdr_IPT(np.array(xyz) * 100)
+        xyz_back = colour.hdr_IPT_to_XYZ(hdr_ipt)
+        # Replace NaN with 0 (black causes NaN)
+        xyz_back_vals = [0.0 if np.isnan(v) else v for v in xyz_back.tolist()]
+        xyz_from_hdr_ipt_data.extend(xyz_back_vals)  # Only XYZ values
+    filepath = os.path.join(ref_dir, 'xyz_from_hdr_ipt_roundtrip.csv')
+    save_vector(xyz_from_hdr_ipt_data, filepath, "hdr-IPT to XYZ roundtrip values")
+
+    # hdr-Lab - test uses test_xyz_hdr.csv (XYZ * 100) for input
+    hdr_lab_data = []
+    for xyz in test_xyz_colors:
+        hdr_lab = colour.XYZ_to_hdr_CIELab(np.array(xyz) * 100).tolist()
+        hdr_lab_data.extend(hdr_lab)  # Only hdr-Lab values
+    filepath = os.path.join(ref_dir, 'hdr_lab_from_xyz.csv')
+    save_vector(hdr_lab_data, filepath, "XYZ to hdr-Lab expected values")
+
+    # XYZ from hdr-Lab roundtrip - only XYZ values
+    xyz_from_hdr_lab_data = []
+    for xyz in test_xyz_colors:
+        hdr_lab = colour.XYZ_to_hdr_CIELab(np.array(xyz) * 100)
+        xyz_back = colour.hdr_CIELab_to_XYZ(hdr_lab).tolist()
+        xyz_from_hdr_lab_data.extend(xyz_back)  # Only XYZ values
+    filepath = os.path.join(ref_dir, 'xyz_from_hdr_lab_roundtrip.csv')
+    save_vector(xyz_from_hdr_lab_data, filepath, "hdr-Lab to XYZ roundtrip values")
+
+    # Extended RGB test colors - used by IHLS, HCL, Prismatic tests
+    # These match the hardcoded values in 16_extended_colorspaces.c
+    extended_rgb_colors = [
+        [0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0], [0.5, 0.5, 0.5], [0.25, 0.75, 0.5], [0.8, 0.2, 0.4],
+        [0.1, 0.6, 0.9], [0.9, 0.3, 0.1], [0.3, 0.9, 0.7]
+    ]
+
+    # IHLS - test has hardcoded RGB values, expects only IHLS output
+    ihls_data = []
+    for rgb in extended_rgb_colors:
+        ihls = colour.RGB_to_IHLS(np.array(rgb)).tolist()
+        ihls_data.extend(ihls)  # Only IHLS values
+    filepath = os.path.join(ref_dir, 'ihls_from_rgb.csv')
+    save_vector(ihls_data, filepath, "RGB to IHLS expected values")
+
+    # RGB from IHLS roundtrip - only RGB values
+    rgb_from_ihls_data = []
+    for rgb in extended_rgb_colors:
+        ihls = colour.RGB_to_IHLS(np.array(rgb))
+        rgb_back = colour.IHLS_to_RGB(ihls).tolist()
+        rgb_from_ihls_data.extend(rgb_back)  # Only RGB values
+    filepath = os.path.join(ref_dir, 'rgb_from_ihls_roundtrip.csv')
+    save_vector(rgb_from_ihls_data, filepath, "IHLS to RGB roundtrip values")
+
+    # HCL (CIE LCH-based HCL) - test has hardcoded RGB values, expects only HCL output
+    hcl_data = []
+    for rgb in extended_rgb_colors:
+        hcl = colour.RGB_to_HCL(np.array(rgb)).tolist()
+        hcl_data.extend(hcl)  # Only HCL values
+    filepath = os.path.join(ref_dir, 'hcl_from_rgb.csv')
+    save_vector(hcl_data, filepath, "RGB to HCL expected values")
+
+    # RGB from HCL roundtrip - only RGB values
+    rgb_from_hcl_data = []
+    for rgb in extended_rgb_colors:
+        hcl = colour.RGB_to_HCL(np.array(rgb))
+        rgb_back = colour.HCL_to_RGB(hcl).tolist()
+        rgb_from_hcl_data.extend(rgb_back)  # Only RGB values
+    filepath = os.path.join(ref_dir, 'rgb_from_hcl_roundtrip.csv')
+    save_vector(rgb_from_hcl_data, filepath, "HCL to RGB roundtrip values")
+
+    # Prismatic - test has hardcoded RGB values, expects only Prismatic output
+    # Library uses [L, s, h] = [L, R_norm, G_norm] from colour-science's [L, R, G, B]
+    prismatic_data = []
+    for rgb in extended_rgb_colors:
+        prismatic = colour.RGB_to_Prismatic(np.array(rgb))
+        # Library stores only [L, R_norm, G_norm] (first 3 of 4 components)
+        prismatic_data.extend([prismatic[0], prismatic[1], prismatic[2]])
+    filepath = os.path.join(ref_dir, 'prismatic_from_rgb.csv')
+    save_vector(prismatic_data, filepath, "RGB to Prismatic expected values")
+
+    # RGB from Prismatic roundtrip - only RGB values
+    rgb_from_prismatic_data = []
+    for rgb in extended_rgb_colors:
+        prismatic = colour.RGB_to_Prismatic(np.array(rgb))
+        rgb_back = colour.Prismatic_to_RGB(prismatic).tolist()
+        rgb_from_prismatic_data.extend(rgb_back)  # Only RGB values
+    filepath = os.path.join(ref_dir, 'rgb_from_prismatic_roundtrip.csv')
+    save_vector(rgb_from_prismatic_data, filepath, "Prismatic to RGB roundtrip values")
+
+    # --- HDR XYZ test colors (scaled for HDR colorspaces) ---
+    test_xyz_hdr = []
+    for xyz in test_xyz_colors:
+        # Scale by 100 for HDR range
+        test_xyz_hdr.extend([xyz[0] * 100, xyz[1] * 100, xyz[2] * 100])
+    filepath = os.path.join(ref_dir, 'test_xyz_hdr.csv')
+    save_vector(test_xyz_hdr, filepath, "Test XYZ colors (HDR scale)")
+
+    # --- CAM viewing conditions ---
+    # Store viewing conditions for CIECAM02/CAM16 tests
+    cam_vc = [200.0, 18.0, 20.0]  # L_A, Y_b, surround_c (average)
+    filepath = os.path.join(ref_dir, 'cam_viewing_conditions.csv')
+    save_vector(cam_vc, filepath, "CAM viewing conditions (L_A, Y_b, c)")
+
+    # --- CIECAM02 and CAM16 XYZ reconstructed ---
+    try:
+        ciecam02_xyz_reconstructed = []
+        cam16_xyz_reconstructed = []
+        vc_ciecam02 = colour.VIEWING_CONDITIONS_CIECAM02['Average']
+        vc_cam16 = colour.VIEWING_CONDITIONS_CAM16['Average']
+
+        for xyz in test_xyz_colors[:5]:
+            # CIECAM02
+            spec = colour.XYZ_to_CIECAM02(np.array(xyz), d65_xyz, vc_ciecam02.L_A, vc_ciecam02.Y_b)
+            xyz_back = colour.CIECAM02_to_XYZ(spec.J, spec.C, spec.h, d65_xyz, vc_ciecam02.L_A, vc_ciecam02.Y_b)
+            ciecam02_xyz_reconstructed.extend(xyz_back.tolist())
+
+            # CAM16
+            spec16 = colour.XYZ_to_CAM16(np.array(xyz), d65_xyz, vc_cam16.L_A, vc_cam16.Y_b)
+            xyz_back16 = colour.CAM16_to_XYZ(spec16.J, spec16.C, spec16.h, d65_xyz, vc_cam16.L_A, vc_cam16.Y_b)
+            cam16_xyz_reconstructed.extend(xyz_back16.tolist())
+
+        filepath = os.path.join(ref_dir, 'ciecam02_xyz_reconstructed.csv')
+        save_vector(ciecam02_xyz_reconstructed, filepath, "CIECAM02 XYZ reconstructed")
+        filepath = os.path.join(ref_dir, 'cam16_xyz_reconstructed.csv')
+        save_vector(cam16_xyz_reconstructed, filepath, "CAM16 XYZ reconstructed")
+    except Exception as e:
+        print(f"  Warning: Could not generate CAM XYZ reconstructed: {e}")
+
+    # --- Hunter Lab (using library's D65 illuminant values) ---
+    # Library uses: Xn=95.02, Yn=100, Zn=108.82 from colour-science TVS_ILLUMINANTS_HUNTERLAB
+    hunter_xyz_n = np.array([95.02, 100.0, 108.82])
+    hunter_test_xyz = [
+        [95.02, 100.0, 108.82],    # D65 white (matching library's illuminant)
+        [41.24, 21.26, 1.93],      # Red
+        [35.76, 71.52, 11.92],     # Green
+        [18.05, 7.22, 95.05],      # Blue
+        [77.0, 92.78, 13.85],      # Yellow
+        [59.29, 28.48, 96.98],     # Magenta-ish
+        [53.81, 78.74, 106.97],    # Cyan-ish
+        [20.517, 21.586, 23.507],  # Gray 20%
+        [53.389, 56.272, 61.261],  # Gray 50%
+        [76.054, 80.109, 87.12],   # Gray 70%
+        [25.0, 50.0, 75.0],        # Test 1
+        [60.0, 40.0, 30.0],        # Test 2
+        [15.0, 25.0, 55.0],        # Test 3
+        [80.0, 90.0, 50.0],        # Test 4
+        [10.0, 15.0, 20.0],        # Test 5
+    ]
+    hunter_lab_pairs = []
+    for xyz in hunter_test_xyz:
+        hunter = colour.XYZ_to_Hunter_Lab(np.array(xyz), hunter_xyz_n).tolist()
+        hunter_lab_pairs.extend(xyz + hunter)
+    filepath = os.path.join(ref_dir, 'test_xyz_hunter_lab_pairs.csv')
+    save_vector(hunter_lab_pairs, filepath, "XYZ/Hunter Lab test pairs")
+
+    # XYZ from Hunter Lab roundtrip
+    xyz_from_hunter_lab_data = []
+    for xyz in hunter_test_xyz:
+        hunter = colour.XYZ_to_Hunter_Lab(np.array(xyz), hunter_xyz_n)
+        xyz_back = colour.Hunter_Lab_to_XYZ(hunter, hunter_xyz_n).tolist()
+        xyz_from_hunter_lab_data.extend(hunter.tolist() + xyz_back)
+    filepath = os.path.join(ref_dir, 'xyz_from_hunter_lab_roundtrip.csv')
+    save_vector(xyz_from_hunter_lab_data, filepath, "Hunter Lab to XYZ roundtrip")
+
+    # --- LGG combined output (lift/gamma/gain color grading) ---
+    # Input: [0.5, 0.5, 0.5], lift=[0.1, 0.0, 0.0], gamma=[1.0, 1.0, 1.0], gain=[1.0, 1.0, 0.9]
+    # Formula: ((rgb + lift) ^ (1/gamma)) * gain
+    lgg_input = np.array([0.5, 0.5, 0.5])
+    lgg_lift = np.array([0.1, 0.0, 0.0])
+    lgg_gamma = np.array([1.0, 1.0, 1.0])
+    lgg_gain = np.array([1.0, 1.0, 0.9])
+    lgg_output = ((lgg_input + lgg_lift) ** (1.0 / lgg_gamma)) * lgg_gain
+    filepath = os.path.join(ref_dir, 'lgg_combined.csv')
+    save_vector(lgg_output.tolist(), filepath, "LGG combined output")
+
+    # --- Printer lights per channel (using library formula) ---
+    # Formula: output = input * 10^((25 - lights) * 0.025)
+    pl_input = np.array([0.3, 0.5, 0.7])
+    pl_lights = np.array([20, 25, 30])
+    pl_output = pl_input * np.power(10.0, (25.0 - pl_lights) * 0.025)
+    filepath = os.path.join(ref_dir, 'printer_lights_per_channel.csv')
+    save_vector(pl_output.tolist(), filepath, "Printer lights per channel output")
+
+    print(f"  [OK] Generated comprehensive missing test reference files")
 
     print("\n" + "=" * 70)
     print(f"Test reference values generation complete!")

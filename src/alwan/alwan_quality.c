@@ -959,43 +959,28 @@ alwan_scalar alwan_yellowness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_il
 }
 
 /* ASTM E313 Whiteness Index
- * Formula: WI = Y + 800(xn - x) + 1700(yn - y)
- * where xn, yn are the reference white chromaticity coordinates */
+ * Formula: WI = 3.388 * Z - 3 * Y
+ * Note: This formula does not depend on illuminant/observer, but the parameter
+ * is kept for API consistency with yellowness function */
 alwan_scalar alwan_whiteness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    if (illuminant < 0 || illuminant > ALWAN_ASTM_E313_D65_10DEG) {
-        return ALWAN_LITERAL(-1.0);
-    }
+    (void)illuminant;  /* Not used for ASTM E313 whiteness */
 
-    alwan_scalar X = xyz->x;
     alwan_scalar Y = xyz->y;
     alwan_scalar Z = xyz->z;
 
-    /* Convert XYZ to xy chromaticity coordinates */
-    alwan_scalar sum = X + Y + Z;
-    if (ALWAN_FABS(sum) < ALWAN_EPSILON) {
-        return ALWAN_LITERAL(-1.0);
-    }
-
-    alwan_scalar x = X / sum;
-    alwan_scalar y = Y / sum;
-
-    /* Get reference white chromaticity coordinates */
-    alwan_scalar xn = astm_e313_white_xy[illuminant][0];
-    alwan_scalar yn = astm_e313_white_xy[illuminant][1];
-
-    /* Calculate whiteness index */
-    alwan_scalar WI = Y + ALWAN_LITERAL(800.0) * (xn - x) + ALWAN_LITERAL(1700.0) * (yn - y);
+    /* Calculate whiteness index: WI = 3.388 * Z - 3 * Y */
+    alwan_scalar WI = ALWAN_LITERAL(3.388) * Z - ALWAN_LITERAL(3.0) * Y;
 
     return WI;
 }
 
 /* CIE 2004 Whiteness Index
  * Formula: W = Y + 800(xn - x) + 1700(yn - y)
- * This is the same formula as ASTM E313, but allows custom reference white */
+ * where xn, yn are the reference white chromaticity coordinates */
 alwan_scalar alwan_whiteness_cie2004(alwan_vec2 const *xy, alwan_scalar Y, alwan_vec2 const *xy_n) {
     if (!xy || !xy_n) {
         return ALWAN_LITERAL(-1.0);

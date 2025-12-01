@@ -66,14 +66,11 @@ static alwan_scalar solve_cubic_for_lambda(alwan_scalar L_osa) {
  * ---------------------------------------------------------------- */
 
 void alwan_xyz_to_osa_ucs(alwan_xyz const *xyz, alwan_osa_ucs *osa_ucs) {
-    /* Normalize XYZ from Y=100 scale to Y=1 scale */
-    alwan_vec3 xyz_norm;
-    xyz_norm.v[0] = xyz->x / ALWAN_LITERAL(100.0);
-    xyz_norm.v[1] = xyz->y / ALWAN_LITERAL(100.0);
-    xyz_norm.v[2] = xyz->z / ALWAN_LITERAL(100.0);
+    /* XYZ should be in absolute luminance where Y=100 is white
+     * This matches colour-science's XYZ_to_OSA_UCS behavior */
 
     /* Step 1: Convert XYZ to xyY */
-    alwan_scalar sum = xyz_norm.v[0] + xyz_norm.v[1] + xyz_norm.v[2];
+    alwan_scalar sum = xyz->x + xyz->y + xyz->z;
     if (sum < ALWAN_LITERAL(1e-10)) {
         /* Black point */
         osa_ucs->L = ALWAN_LITERAL(0.0);  /* L */
@@ -82,9 +79,9 @@ void alwan_xyz_to_osa_ucs(alwan_xyz const *xyz, alwan_osa_ucs *osa_ucs) {
         return;
     }
 
-    alwan_scalar x = xyz_norm.v[0] / sum;
-    alwan_scalar y = xyz_norm.v[1] / sum;
-    alwan_scalar Y = xyz_norm.v[1];
+    alwan_scalar x = xyz->x / sum;
+    alwan_scalar y = xyz->y / sum;
+    alwan_scalar Y = xyz->y;
 
     /* Step 2: Calculate Y0 (luminance factor) */
     alwan_scalar Y0 = calculate_Y0(x, y, Y);
@@ -106,9 +103,9 @@ void alwan_xyz_to_osa_ucs(alwan_xyz const *xyz, alwan_osa_ucs *osa_ucs) {
 
     /* Step 4: Transform XYZ to RGB */
     alwan_vec3 rgb;
-    rgb.v[0] = XYZ_TO_RGB_OSA[0] * xyz_norm.v[0] + XYZ_TO_RGB_OSA[1] * xyz_norm.v[1] + XYZ_TO_RGB_OSA[2] * xyz_norm.v[2];
-    rgb.v[1] = XYZ_TO_RGB_OSA[3] * xyz_norm.v[0] + XYZ_TO_RGB_OSA[4] * xyz_norm.v[1] + XYZ_TO_RGB_OSA[5] * xyz_norm.v[2];
-    rgb.v[2] = XYZ_TO_RGB_OSA[6] * xyz_norm.v[0] + XYZ_TO_RGB_OSA[7] * xyz_norm.v[1] + XYZ_TO_RGB_OSA[8] * xyz_norm.v[2];
+    rgb.v[0] = XYZ_TO_RGB_OSA[0] * xyz->x + XYZ_TO_RGB_OSA[1] * xyz->y + XYZ_TO_RGB_OSA[2] * xyz->z;
+    rgb.v[1] = XYZ_TO_RGB_OSA[3] * xyz->x + XYZ_TO_RGB_OSA[4] * xyz->y + XYZ_TO_RGB_OSA[5] * xyz->z;
+    rgb.v[2] = XYZ_TO_RGB_OSA[6] * xyz->x + XYZ_TO_RGB_OSA[7] * xyz->y + XYZ_TO_RGB_OSA[8] * xyz->z;
 
     /* Step 5: Calculate RGB cube roots */
     alwan_vec3 rgb_cbrt;
@@ -200,21 +197,13 @@ void alwan_osa_ucs_to_xyz(alwan_osa_ucs const *osa_ucs, alwan_xyz *xyz) {
         }
     }
 
-    /* Step 6: Transform RGB to XYZ */
-    alwan_vec3 xyz_norm;
-    xyz_norm.v[0] = RGB_TO_XYZ_OSA[0] * rgb.v[0] + RGB_TO_XYZ_OSA[1] * rgb.v[1] + RGB_TO_XYZ_OSA[2] * rgb.v[2];
-    xyz_norm.v[1] = RGB_TO_XYZ_OSA[3] * rgb.v[0] + RGB_TO_XYZ_OSA[4] * rgb.v[1] + RGB_TO_XYZ_OSA[5] * rgb.v[2];
-    xyz_norm.v[2] = RGB_TO_XYZ_OSA[6] * rgb.v[0] + RGB_TO_XYZ_OSA[7] * rgb.v[1] + RGB_TO_XYZ_OSA[8] * rgb.v[2];
+    /* Step 6: Transform RGB to XYZ (output in absolute luminance where Y=100 is white) */
+    xyz->x = RGB_TO_XYZ_OSA[0] * rgb.v[0] + RGB_TO_XYZ_OSA[1] * rgb.v[1] + RGB_TO_XYZ_OSA[2] * rgb.v[2];
+    xyz->y = RGB_TO_XYZ_OSA[3] * rgb.v[0] + RGB_TO_XYZ_OSA[4] * rgb.v[1] + RGB_TO_XYZ_OSA[5] * rgb.v[2];
+    xyz->z = RGB_TO_XYZ_OSA[6] * rgb.v[0] + RGB_TO_XYZ_OSA[7] * rgb.v[1] + RGB_TO_XYZ_OSA[8] * rgb.v[2];
 
     /* Clamp negative values to zero */
-    for (int i = 0; i < 3; i++) {
-        if (xyz_norm.v[i] < ALWAN_LITERAL(0.0)) {
-            xyz_norm.v[i] = ALWAN_LITERAL(0.0);
-        }
-    }
-
-    /* Scale back to Y=100 */
-    xyz->x = xyz_norm.v[0] * ALWAN_LITERAL(100.0);
-    xyz->y = xyz_norm.v[1] * ALWAN_LITERAL(100.0);
-    xyz->z = xyz_norm.v[2] * ALWAN_LITERAL(100.0);
+    if (xyz->x < ALWAN_LITERAL(0.0)) xyz->x = ALWAN_LITERAL(0.0);
+    if (xyz->y < ALWAN_LITERAL(0.0)) xyz->y = ALWAN_LITERAL(0.0);
+    if (xyz->z < ALWAN_LITERAL(0.0)) xyz->z = ALWAN_LITERAL(0.0);
 }

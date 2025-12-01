@@ -304,36 +304,43 @@ static alwan_scalar full_to_legal_10bit(alwan_scalar full) {
 /* S-Log OETF: linear -> S-Log
  * Formula from colour-science (Sony S-Log specification)
  * Reference: SonyCorporation2012a
- * Note: Scene-referred (in_reflection=True) */
+ * Note: Scene-referred (in_reflection=True), normalized code values (legal range) */
 static alwan_scalar slog_oetf_scalar(alwan_scalar linear) {
     /* Step 1: Scale input (scene-referred) */
     alwan_scalar x = linear / ALWAN_LITERAL(0.9);
 
-    /* Step 2: Apply log curve */
+    /* Step 2: Apply log curve (full range) */
+    alwan_scalar y_full;
     if (x >= ALWAN_LITERAL(0.0)) {
-        return ALWAN_LITERAL(0.432699) * ALWAN_LOG10(x + ALWAN_LITERAL(0.037584)) + ALWAN_LITERAL(0.646596);
+        y_full = ALWAN_LITERAL(0.432699) * ALWAN_LOG10(x + ALWAN_LITERAL(0.037584)) + ALWAN_LITERAL(0.616596) + ALWAN_LITERAL(0.03);
     } else {
-        return x * ALWAN_LITERAL(5.0) + ALWAN_LITERAL(0.030001222851889303);
+        y_full = x * ALWAN_LITERAL(5.0) + ALWAN_LITERAL(0.030001222851889303);
     }
+
+    /* Step 3: Convert to legal range (normalized code values) */
+    return full_to_legal_10bit(y_full);
 }
 
 /* S-Log EOTF: S-Log -> linear
  * Formula from colour-science (Sony S-Log specification)
  * Reference: SonyCorporation2012a
- * Note: Scene-referred (out_reflection=True), full range [0,1] */
+ * Note: Scene-referred (out_reflection=True), expects legal range input */
 static alwan_scalar slog_eotf_scalar(alwan_scalar encoded) {
-    /* Threshold: encoded value for linear=0.0 (full range, not legal range) */
+    /* Step 1: Convert from legal range to full range */
+    alwan_scalar y_full = legal_to_full_10bit(encoded);
+
+    /* Threshold: encoded value for linear=0.0 (full range) */
     alwan_scalar const threshold = ALWAN_LITERAL(0.030001222851889303);
 
-    /* Step 1: Inverse log curve */
+    /* Step 2: Inverse log curve */
     alwan_scalar x;
-    if (encoded >= threshold) {
-        x = ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - ALWAN_LITERAL(0.646596)) / ALWAN_LITERAL(0.432699)) - ALWAN_LITERAL(0.037584);
+    if (y_full >= threshold) {
+        x = ALWAN_POW(ALWAN_LITERAL(10.0), (y_full - ALWAN_LITERAL(0.646596)) / ALWAN_LITERAL(0.432699)) - ALWAN_LITERAL(0.037584);
     } else {
-        x = (encoded - ALWAN_LITERAL(0.030001222851889303)) / ALWAN_LITERAL(5.0);
+        x = (y_full - ALWAN_LITERAL(0.030001222851889303)) / ALWAN_LITERAL(5.0);
     }
 
-    /* Step 2: Scale output (scene-referred) */
+    /* Step 3: Scale output (scene-referred) */
     return x * ALWAN_LITERAL(0.9);
 }
 
@@ -354,32 +361,31 @@ static alwan_scalar slog2_eotf_scalar(alwan_scalar encoded) {
 
 /* S-Log3 OETF: linear -> S-Log3
  * Formula from colour-science (Sony S-Log3 specification)
- * Formulas produce legal range values, converted to full range
+ * Outputs normalized code values (legal range)
  * Reference: SonyCorporation2012a */
 static alwan_scalar slog3_oetf_scalar(alwan_scalar linear) {
     if (linear < ALWAN_LITERAL(0.0)) {
         linear = ALWAN_LITERAL(0.0);
     }
 
-    alwan_scalar y_legal;
+    alwan_scalar y;
     if (linear >= ALWAN_LITERAL(0.01125000)) {
         /* Logarithmic region: note denominator is (0.18 + 0.01) = 0.19, NOT 0.01125 */
-        y_legal = (ALWAN_LITERAL(420.0) + ALWAN_LOG10((linear + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.19)) * ALWAN_LITERAL(261.5)) / ALWAN_LITERAL(1023.0);
+        y = (ALWAN_LITERAL(420.0) + ALWAN_LOG10((linear + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.19)) * ALWAN_LITERAL(261.5)) / ALWAN_LITERAL(1023.0);
     } else {
         /* Linear region */
-        y_legal = (linear * (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(0.01125000) + ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(1023.0);
+        y = (linear * (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(0.01125000) + ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(1023.0);
     }
 
-    /* Convert from legal range to full range */
-    return legal_to_full_10bit(y_legal);
+    /* Return normalized code values (legal range) */
+    return y;
 }
 
 /* S-Log3 EOTF: S-Log3 -> linear
- * Formulas operate on legal range values, so convert from full range first */
+ * Expects normalized code values (legal range) as input */
 static alwan_scalar slog3_eotf_scalar(alwan_scalar encoded) {
-    /* Convert from full range to legal range */
-    alwan_scalar y_legal = full_to_legal_10bit(encoded);
-    alwan_scalar code = y_legal * ALWAN_LITERAL(1023.0);
+    /* Input is normalized code values (legal range) */
+    alwan_scalar code = encoded * ALWAN_LITERAL(1023.0);
 
     if (code >= ALWAN_LITERAL(171.2102946929)) {
         /* Logarithmic region: note the multiplier is 0.19, not 0.01125 */
@@ -468,51 +474,50 @@ static alwan_scalar clog3_oetf_scalar(alwan_scalar linear) {
     /* Step 1: Scale input (scene-referred) */
     alwan_scalar x = linear / ALWAN_LITERAL(0.9);
 
-    /* Step 2: Apply 3-region piecewise formula (legal range) */
-    alwan_scalar clog3_legal;
-
+    /* Step 2: Apply 3-region piecewise formula */
     /* Linear thresholds for 3-region piecewise formula */
     /* x-value thresholds (before scene-referred scaling): ±0.014 */
     alwan_scalar const x_threshold_low = ALWAN_LITERAL(-0.014);
     alwan_scalar const x_threshold_high = ALWAN_LITERAL(0.014);
 
+    alwan_scalar y;
+
     if (x < x_threshold_low) {
         /* Negative region */
-        clog3_legal = ALWAN_LITERAL(-0.36726845) * ALWAN_LOG10(-x * ALWAN_LITERAL(14.98325) + ALWAN_LITERAL(1.0)) + ALWAN_LITERAL(0.12783901);
+        y = ALWAN_LITERAL(-0.36726845) * ALWAN_LOG10(-x * ALWAN_LITERAL(14.98325) + ALWAN_LITERAL(1.0)) + ALWAN_LITERAL(0.12783901);
     } else if (x <= x_threshold_high) {
         /* Linear region */
-        clog3_legal = ALWAN_LITERAL(1.9754798) * x + ALWAN_LITERAL(0.12512219);
+        y = ALWAN_LITERAL(1.9754798) * x + ALWAN_LITERAL(0.12512219);
     } else {
         /* Positive logarithmic region */
-        clog3_legal = ALWAN_LITERAL(0.36726845) * ALWAN_LOG10(x * ALWAN_LITERAL(14.98325) + ALWAN_LITERAL(1.0)) + ALWAN_LITERAL(0.12240537);
+        y = ALWAN_LITERAL(0.36726845) * ALWAN_LOG10(x * ALWAN_LITERAL(14.98325) + ALWAN_LITERAL(1.0)) + ALWAN_LITERAL(0.12240537);
     }
 
-    /* Step 3: Convert legal → full range */
-    return legal_to_full_10bit(clog3_legal);
+    /* Return normalized code values (legal range) */
+    return y;
 }
 
 static alwan_scalar clog3_eotf_scalar(alwan_scalar encoded) {
-    /* Step 1: Convert full → legal range */
-    alwan_scalar clog3_legal = full_to_legal_10bit(encoded);
+    /* Input is normalized code values (legal range) */
 
-    /* Step 2: Apply inverse 3-region piecewise formula (legal range) */
+    /* Apply inverse 3-region piecewise formula */
     alwan_scalar x;
 
     alwan_scalar const threshold_low = ALWAN_LITERAL(0.097465473);
     alwan_scalar const threshold_high = ALWAN_LITERAL(0.15277891);
 
-    if (clog3_legal < threshold_low) {
+    if (encoded < threshold_low) {
         /* Negative region */
-        x = -(ALWAN_POW(ALWAN_LITERAL(10.0), (ALWAN_LITERAL(0.12783901) - clog3_legal) / ALWAN_LITERAL(0.36726845)) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(14.98325);
-    } else if (clog3_legal <= threshold_high) {
+        x = -(ALWAN_POW(ALWAN_LITERAL(10.0), (ALWAN_LITERAL(0.12783901) - encoded) / ALWAN_LITERAL(0.36726845)) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(14.98325);
+    } else if (encoded <= threshold_high) {
         /* Linear region */
-        x = (clog3_legal - ALWAN_LITERAL(0.12512219)) / ALWAN_LITERAL(1.9754798);
+        x = (encoded - ALWAN_LITERAL(0.12512219)) / ALWAN_LITERAL(1.9754798);
     } else {
         /* Positive logarithmic region */
-        x = (ALWAN_POW(ALWAN_LITERAL(10.0), (clog3_legal - ALWAN_LITERAL(0.12240537)) / ALWAN_LITERAL(0.36726845)) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(14.98325);
+        x = (ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - ALWAN_LITERAL(0.12240537)) / ALWAN_LITERAL(0.36726845)) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(14.98325);
     }
 
-    /* Step 3: Scale output (scene-referred) */
+    /* Scale output (scene-referred) */
     return x * ALWAN_LITERAL(0.9);
 }
 
@@ -523,48 +528,47 @@ static alwan_scalar clog3_eotf_scalar(alwan_scalar encoded) {
 /* V-Log OETF: linear -> V-Log
  * Formula from colour-science (Panasonic V-Log specification)
  * Reference: PanasonicCorporation2014
- * Note: NO reflection scaling (in_reflection=True means don't scale), operates in legal range internally */
+ * Outputs normalized code values (legal range) */
 static alwan_scalar vlog_oetf_scalar(alwan_scalar linear) {
-    /* Constants (legal range) */
+    /* Constants */
     alwan_scalar const cut1 = ALWAN_LITERAL(0.01);    /* Linear threshold */
     alwan_scalar const b = ALWAN_LITERAL(0.00873);
     alwan_scalar const c = ALWAN_LITERAL(0.241514);
     alwan_scalar const d = ALWAN_LITERAL(0.598206);
 
-    /* Step 1: Apply 2-region piecewise formula (legal range) */
-    alwan_scalar vlog_legal;
+    /* Apply 2-region piecewise formula */
+    alwan_scalar y;
 
     if (linear <= cut1) {
         /* Linear region (use <= to match decoding threshold and ensure continuity) */
-        vlog_legal = ALWAN_LITERAL(5.6) * linear + ALWAN_LITERAL(0.125);
+        y = ALWAN_LITERAL(5.6) * linear + ALWAN_LITERAL(0.125);
     } else {
         /* Logarithmic region */
-        vlog_legal = c * ALWAN_LOG10(linear + b) + d;
+        y = c * ALWAN_LOG10(linear + b) + d;
     }
 
-    /* Step 2: Convert legal → full range */
-    return legal_to_full_10bit(vlog_legal);
+    /* Return normalized code values (legal range) */
+    return y;
 }
 
 static alwan_scalar vlog_eotf_scalar(alwan_scalar encoded) {
-    /* Constants (legal range) */
-    alwan_scalar const cut2 = ALWAN_LITERAL(0.181);   /* Encoded threshold (legal range) */
+    /* Constants */
+    alwan_scalar const cut2 = ALWAN_LITERAL(0.181);   /* Encoded threshold */
     alwan_scalar const b = ALWAN_LITERAL(0.00873);
     alwan_scalar const c = ALWAN_LITERAL(0.241514);
     alwan_scalar const d = ALWAN_LITERAL(0.598206);
 
-    /* Step 1: Convert full → legal range */
-    alwan_scalar vlog_legal = full_to_legal_10bit(encoded);
+    /* Input is normalized code values (legal range) */
 
-    /* Step 2: Apply inverse 2-region piecewise formula (legal range) */
+    /* Apply inverse 2-region piecewise formula */
     alwan_scalar linear;
 
-    if (vlog_legal <= cut2) {
+    if (encoded <= cut2) {
         /* Linear region (use <= to match encoding threshold and ensure continuity) */
-        linear = (vlog_legal - ALWAN_LITERAL(0.125)) / ALWAN_LITERAL(5.6);
+        linear = (encoded - ALWAN_LITERAL(0.125)) / ALWAN_LITERAL(5.6);
     } else {
         /* Logarithmic region */
-        linear = ALWAN_POW(ALWAN_LITERAL(10.0), (vlog_legal - d) / c) - b;
+        linear = ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - d) / c) - b;
     }
 
     return linear;

@@ -54,7 +54,7 @@ def generate_ciecam02_fixtures(output_dir):
     surround = colour.VIEWING_CONDITIONS_CIECAM02['Average']
 
     # Save viewing conditions
-    filepath = os.path.join(output_dir, 'fixtures', 'cam_viewing_conditions.csv')
+    filepath = os.path.join(output_dir, 'reference_values', 'cam_viewing_conditions.csv')
     vc_values = list(XYZ_w) + [L_A, Y_b]
     save_vector(vc_values, filepath, "CAM viewing conditions (XYZ_w, L_A, Y_b)")
 
@@ -65,7 +65,7 @@ def generate_ciecam02_fixtures(output_dir):
     flat_xyz = []
     for xyz in test_xyz:
         flat_xyz.extend(xyz)
-    filepath = os.path.join(output_dir, 'fixtures', 'ciecam02_xyz_input.csv')
+    filepath = os.path.join(output_dir, 'reference_values', 'ciecam02_xyz_input.csv')
     save_vector(flat_xyz, filepath, f"{len(test_xyz)} test XYZ colors")
 
     # Compute CIECAM02 correlates from colour-science
@@ -79,7 +79,7 @@ def generate_ciecam02_fixtures(output_dir):
     flat_corr = []
     for corr in correlates:
         flat_corr.extend(corr)
-    filepath = os.path.join(output_dir, 'fixtures', 'ciecam02_correlates.csv')
+    filepath = os.path.join(output_dir, 'reference_values', 'ciecam02_correlates.csv')
     save_vector(flat_corr, filepath, f"{len(correlates)} CIECAM02 correlates (J,C,h,Q,M,s,H)")
 
     # Test inverse transform: correlates -> XYZ
@@ -89,7 +89,7 @@ def generate_ciecam02_fixtures(output_dir):
         xyz_recon = colour.CIECAM02_to_XYZ(spec, XYZ_w, L_A, Y_b, surround)
         xyz_reconstructed.extend(xyz_recon)
 
-    filepath = os.path.join(output_dir, 'fixtures', 'ciecam02_xyz_reconstructed.csv')
+    filepath = os.path.join(output_dir, 'reference_values', 'ciecam02_xyz_reconstructed.csv')
     save_vector(xyz_reconstructed, filepath, "Reconstructed XYZ (inverse transform)")
 
 
@@ -122,7 +122,7 @@ def generate_cam16_fixtures(output_dir):
     flat_corr = []
     for corr in correlates:
         flat_corr.extend(corr)
-    filepath = os.path.join(output_dir, 'fixtures', 'cam16_correlates.csv')
+    filepath = os.path.join(output_dir, 'reference_values', 'cam16_correlates.csv')
     save_vector(flat_corr, filepath, f"{len(correlates)} CAM16 correlates (J,C,h,Q,M,s,H)")
 
     # Test inverse transform
@@ -132,7 +132,7 @@ def generate_cam16_fixtures(output_dir):
         xyz_recon = colour.CAM16_to_XYZ(spec, XYZ_w, L_A, Y_b, surround)
         xyz_reconstructed.extend(xyz_recon)
 
-    filepath = os.path.join(output_dir, 'fixtures', 'cam16_xyz_reconstructed.csv')
+    filepath = os.path.join(output_dir, 'reference_values', 'cam16_xyz_reconstructed.csv')
     save_vector(xyz_reconstructed, filepath, "Reconstructed XYZ (inverse transform)")
 
     # CAM16-UCS transform
@@ -151,7 +151,7 @@ def generate_cam16_fixtures(output_dir):
 
         ucs_jab.extend([J_prime, a_prime, b_prime])
 
-    filepath = os.path.join(output_dir, 'fixtures', 'cam16_ucs_jab.csv')
+    filepath = os.path.join(output_dir, 'reference_values', 'cam16_ucs_jab.csv')
     save_vector(ucs_jab, filepath, "CAM16-UCS Jab coordinates")
 
 

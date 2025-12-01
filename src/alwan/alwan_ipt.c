@@ -52,17 +52,14 @@ static alwan_scalar ipt_nonlinearity_inverse(alwan_scalar x) {
  * ---------------------------------------------------------------- */
 
 void alwan_xyz_to_ipt(alwan_xyz const *xyz, alwan_ipt *ipt) {
-    /* Normalize XYZ from Y=100 scale to Y=1 scale */
-    alwan_vec3 xyz_norm;
-    xyz_norm.v[0] = xyz->x / ALWAN_LITERAL(100.0);
-    xyz_norm.v[1] = xyz->y / ALWAN_LITERAL(100.0);
-    xyz_norm.v[2] = xyz->z / ALWAN_LITERAL(100.0);
+    /* XYZ should be in 0-100 scale (Y=100 for white)
+     * This matches colour-science's XYZ_to_IPT behavior */
 
     /* Step 1: XYZ (D65) → LMS */
     alwan_vec3 lms;
-    lms.v[0] = XYZ_TO_LMS_IPT[0] * xyz_norm.v[0] + XYZ_TO_LMS_IPT[1] * xyz_norm.v[1] + XYZ_TO_LMS_IPT[2] * xyz_norm.v[2];
-    lms.v[1] = XYZ_TO_LMS_IPT[3] * xyz_norm.v[0] + XYZ_TO_LMS_IPT[4] * xyz_norm.v[1] + XYZ_TO_LMS_IPT[5] * xyz_norm.v[2];
-    lms.v[2] = XYZ_TO_LMS_IPT[6] * xyz_norm.v[0] + XYZ_TO_LMS_IPT[7] * xyz_norm.v[1] + XYZ_TO_LMS_IPT[8] * xyz_norm.v[2];
+    lms.v[0] = XYZ_TO_LMS_IPT[0] * xyz->x + XYZ_TO_LMS_IPT[1] * xyz->y + XYZ_TO_LMS_IPT[2] * xyz->z;
+    lms.v[1] = XYZ_TO_LMS_IPT[3] * xyz->x + XYZ_TO_LMS_IPT[4] * xyz->y + XYZ_TO_LMS_IPT[5] * xyz->z;
+    lms.v[2] = XYZ_TO_LMS_IPT[6] * xyz->x + XYZ_TO_LMS_IPT[7] * xyz->y + XYZ_TO_LMS_IPT[8] * xyz->z;
 
     /* Step 2: Apply nonlinearity: LMS → LMS' */
     alwan_vec3 lms_p;
@@ -89,16 +86,10 @@ void alwan_ipt_to_xyz(alwan_ipt const *ipt, alwan_xyz *xyz) {
     lms.v[1] = ipt_nonlinearity_inverse(lms_p.v[1]);
     lms.v[2] = ipt_nonlinearity_inverse(lms_p.v[2]);
 
-    /* Step 3: LMS → XYZ */
-    alwan_vec3 xyz_norm;
-    xyz_norm.v[0] = LMS_TO_XYZ_IPT[0] * lms.v[0] + LMS_TO_XYZ_IPT[1] * lms.v[1] + LMS_TO_XYZ_IPT[2] * lms.v[2];
-    xyz_norm.v[1] = LMS_TO_XYZ_IPT[3] * lms.v[0] + LMS_TO_XYZ_IPT[4] * lms.v[1] + LMS_TO_XYZ_IPT[5] * lms.v[2];
-    xyz_norm.v[2] = LMS_TO_XYZ_IPT[6] * lms.v[0] + LMS_TO_XYZ_IPT[7] * lms.v[1] + LMS_TO_XYZ_IPT[8] * lms.v[2];
-
-    /* Scale back to Y=100 */
-    xyz->x = xyz_norm.v[0] * ALWAN_LITERAL(100.0);
-    xyz->y = xyz_norm.v[1] * ALWAN_LITERAL(100.0);
-    xyz->z = xyz_norm.v[2] * ALWAN_LITERAL(100.0);
+    /* Step 3: LMS → XYZ (output in same scale as input, absolute luminance) */
+    xyz->x = LMS_TO_XYZ_IPT[0] * lms.v[0] + LMS_TO_XYZ_IPT[1] * lms.v[1] + LMS_TO_XYZ_IPT[2] * lms.v[2];
+    xyz->y = LMS_TO_XYZ_IPT[3] * lms.v[0] + LMS_TO_XYZ_IPT[4] * lms.v[1] + LMS_TO_XYZ_IPT[5] * lms.v[2];
+    xyz->z = LMS_TO_XYZ_IPT[6] * lms.v[0] + LMS_TO_XYZ_IPT[7] * lms.v[1] + LMS_TO_XYZ_IPT[8] * lms.v[2];
 }
 
 /* ----------------------------------------------------------------

@@ -40,8 +40,6 @@ Write-Host "  Output directory: $TEST_DIR" -ForegroundColor Cyan
 Write-Host ""
 
 # Test generation scripts
-# Note: CIECAM02 and CAM16 use fixture data from gendata/data/cam_fixtures.py,
-# not test-specific generators. Only newer CAMs need test generators.
 $testScripts = @(
     @{Name="Test Reference Values"; Script="gendata/data/test_reference_values.py"},
     @{Name="Hellwig2022"; Script="gendata/tests/hellwig2022.py"},
@@ -49,6 +47,23 @@ $testScripts = @(
     @{Name="LLAB"; Script="gendata/tests/llab.py"},
     @{Name="ATD95"; Script="gendata/tests/atd95.py"}
 )
+
+# Run CAM fixtures generator separately (outputs to parent dir)
+Write-Host "Generating CAM fixtures (CIECAM02, CAM16)..." -ForegroundColor Yellow
+try {
+    $output = cmd /c "python gendata/data/cam_fixtures.py tests/unit 2>&1"
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -eq 0) {
+        Write-Host $output
+        Write-Host "  [OK] CAM fixtures generated" -ForegroundColor Green
+    } else {
+        Write-Host "  WARNING: Failed to generate CAM fixtures" -ForegroundColor Red
+        Write-Host $output -ForegroundColor Gray
+    }
+} catch {
+    Write-Host "  WARNING: Failed to generate CAM fixtures: $($_.Exception.Message)" -ForegroundColor Red
+}
+Write-Host ""
 
 # Run each test generation script
 $successCount = 0
