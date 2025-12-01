@@ -38,22 +38,17 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
     size_t const num_colors = data_count / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz;
         alwan_lab lab;
         alwan_din99 din99_expected, din99_computed;
         alwan_lab lab_out;
 
-        /* Load test data */
-        xyz.x = test_data[i * 6 + 0];
-        xyz.y = test_data[i * 6 + 1];
-        xyz.z = test_data[i * 6 + 2];
+        /* Load test data - Lab + DIN99 pairs */
+        lab.L = test_data[i * 6 + 0];
+        lab.a = test_data[i * 6 + 1];
+        lab.b = test_data[i * 6 + 2];
         din99_expected.L99 = test_data[i * 6 + 3];
         din99_expected.a99 = test_data[i * 6 + 4];
         din99_expected.b99 = test_data[i * 6 + 5];
-
-        /* Convert XYZ to Lab first (D65) */
-        alwan_xyz D65 = {ALWAN_D65_X, ALWAN_D65_Y, ALWAN_D65_Z};
-        alwan_xyz_to_lab(&xyz, &D65, &lab);
 
         /* Test Lab -> DIN99 */
         alwan_lab_to_din99(&lab, &din99_computed, variant);
@@ -70,8 +65,6 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
             alwan_scalar diff = ALWAN_FABS(din99_comp_arr[j] - din99_exp_arr[j]);
             if (diff > din99_tol) {
                 printf("Color %zu channel %d failed (%s):\n", i, j, variant_name);
-                printf("  XYZ: [%.6f, %.6f, %.6f]\n",
-                       (double)xyz.x, (double)xyz.y, (double)xyz.z);
                 printf("  Lab: [%.6f, %.6f, %.6f]\n",
                        (double)lab.L, (double)lab.a, (double)lab.b);
                 printf("  Expected DIN99: [%.10f, %.10f, %.10f]\n",

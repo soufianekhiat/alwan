@@ -651,10 +651,14 @@ void alwan_xyz_to_hdr_ipt(alwan_xyz const *xyz, alwan_ipt *hdr_ipt) {
     alwan_vec3 lms;
     alwan_mat3_mulv(&M_xyz_to_lms, (alwan_vec3 const *)xyz, &lms);
 
-    /* Apply Michaelis-Menten lightness to each LMS channel */
-    lms.v[0] = lightness_fairchild2011(lms.v[0], epsilon);
-    lms.v[1] = lightness_fairchild2011(lms.v[1], epsilon);
-    lms.v[2] = lightness_fairchild2011(lms.v[2], epsilon);
+    /* Apply Michaelis-Menten lightness to each LMS channel
+     * colour-science uses: sign(LMS) * abs(lightness(LMS, e))
+     * This ensures black (0,0,0) maps to (0,0,0) in IPT */
+    for (int i = 0; i < 3; i++) {
+        alwan_scalar sign_lms = (lms.v[i] > ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) :
+                                (lms.v[i] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(-1.0) : ALWAN_LITERAL(0.0);
+        lms.v[i] = sign_lms * ALWAN_FABS(lightness_fairchild2011(lms.v[i], epsilon));
+    }
 
     /* Convert to IPT */
     alwan_mat3x3 M_lms_to_ipt;
@@ -684,10 +688,14 @@ void alwan_hdr_ipt_to_xyz(alwan_ipt const *hdr_ipt, alwan_xyz *xyz) {
     alwan_vec3 lms;
     alwan_mat3_mulv(&M_ipt_to_lms, (alwan_vec3 const *)hdr_ipt, &lms);
 
-    /* Apply inverse Michaelis-Menten lightness */
-    lms.v[0] = lightness_fairchild2011_inv(lms.v[0], epsilon);
-    lms.v[1] = lightness_fairchild2011_inv(lms.v[1], epsilon);
-    lms.v[2] = lightness_fairchild2011_inv(lms.v[2], epsilon);
+    /* Apply inverse Michaelis-Menten lightness
+     * colour-science uses: sign(LMS) * abs(luminance(LMS, e))
+     * This maintains sign symmetry with forward transform */
+    for (int i = 0; i < 3; i++) {
+        alwan_scalar sign_lms = (lms.v[i] > ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) :
+                                (lms.v[i] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(-1.0) : ALWAN_LITERAL(0.0);
+        lms.v[i] = sign_lms * ALWAN_FABS(lightness_fairchild2011_inv(lms.v[i], epsilon));
+    }
 
     /* Convert LMS to XYZ using inverse IPT matrix */
     alwan_mat3x3 M_lms_to_xyz;

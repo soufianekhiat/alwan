@@ -4,6 +4,3 @@
 [submodule "tools/rgb2spec"]
 	path = tools/rgb2spec
 	url = https://github.com/mitsuba-renderer/rgb2spec.git
-[submodule "extern/chrono"]
-	path = extern/chrono
-	url = https://github.com/projectchrono/chrono.git

@@ -47,29 +47,21 @@ static int test_xyz_hunter_lab_round_trip(void) {
         /* Test XYZ -> Hunter Lab */
         alwan_xyz_to_hunter_lab(&xyz_in, &hunter_computed);
 
-        /* Scale the expected values by 10 to match Alwan's L = 10*sqrt(Y) formula
-         * (colour-science uses L = sqrt(Y) convention, returning values in [0,10] range) */
-        alwan_hunter_lab hunter_scaled = {
-            hunter_expected.L * ALWAN_LITERAL(10.0),
-            hunter_expected.a * ALWAN_LITERAL(10.0),
-            hunter_expected.b * ALWAN_LITERAL(10.0)
-        };
-
 #if ALWAN_SCALAR_IS_FLOAT
         alwan_scalar const hunter_tol = ALWAN_LITERAL(1e-3);
 #else
         alwan_scalar const hunter_tol = ALWAN_LITERAL(1e-8);
 #endif
         alwan_scalar hunter_comp_arr[3] = {hunter_computed.L, hunter_computed.a, hunter_computed.b};
-        alwan_scalar hunter_scaled_arr[3] = {hunter_scaled.L, hunter_scaled.a, hunter_scaled.b};
+        alwan_scalar hunter_exp_arr[3] = {hunter_expected.L, hunter_expected.a, hunter_expected.b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_FABS(hunter_comp_arr[j] - hunter_scaled_arr[j]);
+            alwan_scalar diff = ALWAN_FABS(hunter_comp_arr[j] - hunter_exp_arr[j]);
             if (diff > hunter_tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
                        (double)xyz_in.x, (double)xyz_in.y, (double)xyz_in.z);
-                printf("  Expected Hunter Lab (scaled 10x): [%.10f, %.10f, %.10f]\n",
-                       (double)hunter_scaled_arr[0], (double)hunter_scaled_arr[1], (double)hunter_scaled_arr[2]);
+                printf("  Expected Hunter Lab: [%.10f, %.10f, %.10f]\n",
+                       (double)hunter_exp_arr[0], (double)hunter_exp_arr[1], (double)hunter_exp_arr[2]);
                 printf("  Got Hunter Lab: [%.10f, %.10f, %.10f]\n",
                        (double)hunter_comp_arr[0], (double)hunter_comp_arr[1], (double)hunter_comp_arr[2]);
                 printf("  Diff: %.6e\n", (double)diff);
