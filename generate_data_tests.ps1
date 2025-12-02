@@ -47,7 +47,8 @@ $testScripts = @(
     @{Name="LLAB"; Script="gendata/tests/llab.py"},
     @{Name="ATD95"; Script="gendata/tests/atd95.py"},
     @{Name="Zhai2018 CAM-UCS Delta E"; Script="gendata/tests/zhai2018_cam_ucs_delta_e.py"},
-    @{Name="Polynomial Color Correction"; Script="gendata/tests/polynomial_color_correction.py"}
+    @{Name="Polynomial Color Correction"; Script="gendata/tests/polynomial_color_correction.py"},
+    @{Name="Rayleigh Scattering"; Script="gendata/tests/rayleigh_scattering.py"}
 )
 
 # Run CAM fixtures generator separately (outputs to parent dir)

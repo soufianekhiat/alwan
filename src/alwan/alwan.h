@@ -2410,6 +2410,54 @@ int alwan_white_balance_from_gray(alwan_rgb const *measured_gray, alwan_rgb *mul
 int alwan_white_balance_apply(alwan_rgb const *rgb, alwan_rgb const *multipliers,
                                alwan_rgb *rgb_out);
 
+/* ================================================================
+ * Optical Phenomena - Rayleigh Scattering
+ * Reference: Bodhaine et al. (1999), colour-science implementation
+ * ================================================================ */
+
+/* Atmospheric parameters for Rayleigh calculations */
+typedef struct {
+    alwan_scalar CO2_concentration;  /* CO2 concentration in ppm (default: 300) */
+    alwan_scalar temperature;        /* Temperature in Kelvin (default: 288.15) */
+    alwan_scalar pressure;           /* Pressure in Pascals (default: 101325) */
+    alwan_scalar latitude;           /* Latitude in degrees (default: 0) */
+    alwan_scalar altitude;           /* Altitude in meters (default: 0) */
+} alwan_atmosphere_params;
+
+/* Initialize atmosphere parameters with defaults
+ * CO2: 300 ppm, T: 288.15 K, P: 101325 Pa, lat: 0, alt: 0 */
+void alwan_atmosphere_params_default(alwan_atmosphere_params *params);
+
+/* Rayleigh scattering cross section per molecule (sigma)
+ * Van de Hulst (1957) method with Bodhaine et al. (1999) corrections
+ * wavelength_nm: wavelength in nanometers
+ * params: atmospheric parameters (use NULL for defaults, only CO2 and temp used)
+ * Returns: cross section in cm^2 */
+alwan_scalar alwan_rayleigh_cross_section(alwan_scalar wavelength_nm,
+                                           alwan_atmosphere_params const *params);
+
+/* Rayleigh optical depth through atmosphere
+ * Computes tau_R(lambda) using Bodhaine et al. (1999) method
+ * wavelength_nm: wavelength in nanometers
+ * params: atmospheric parameters (use NULL for defaults)
+ * Returns: optical depth (dimensionless) */
+alwan_scalar alwan_rayleigh_optical_depth(alwan_scalar wavelength_nm,
+                                           alwan_atmosphere_params const *params);
+
+/* Rayleigh scattering spectral distribution
+ * Fills an array with Rayleigh optical depth values across a wavelength range.
+ * wavelength_start: start wavelength in nm
+ * wavelength_end: end wavelength in nm
+ * wavelength_step: wavelength step in nm
+ * params: atmospheric parameters (use NULL for defaults)
+ * out: output array (must be large enough for (end-start)/step + 1 values)
+ * out_count: receives the number of values written
+ * Returns 0 on success, -1 on error */
+int alwan_rayleigh_spd(alwan_scalar wavelength_start, alwan_scalar wavelength_end,
+                        alwan_scalar wavelength_step,
+                        alwan_atmosphere_params const *params,
+                        alwan_scalar *out, int *out_count);
+
 #ifdef __cplusplus
 }
 #endif
