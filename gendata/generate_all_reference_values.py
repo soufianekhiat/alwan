@@ -39,7 +39,7 @@ from colour.colorimetry import (
 from colour.temperature import CCT_to_xy_CIE_D
 
 # Output directory
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'tests', 'unit', 'reference_values')
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'tests', 'reference_values')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def write_csv(filename, data, comment=None):

@@ -15,7 +15,7 @@ Write-Host "========================================"
 Write-Host ""
 
 # Output directory
-$TEST_DIR = "tests/unit/reference_values"
+$TEST_DIR = "tests/reference_values"
 
 # Check Python
 Write-Host "Checking Python installation..."
@@ -51,7 +51,7 @@ $testScripts = @(
 # Run CAM fixtures generator separately (outputs to parent dir)
 Write-Host "Generating CAM fixtures (CIECAM02, CAM16)..." -ForegroundColor Yellow
 try {
-    $output = cmd /c "python gendata/data/cam_fixtures.py tests/unit 2>&1"
+    $output = cmd /c "python gendata/data/cam_fixtures.py tests 2>&1"
     $exitCode = $LASTEXITCODE
     if ($exitCode -eq 0) {
         Write-Host $output
