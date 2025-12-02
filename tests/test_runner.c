@@ -60,6 +60,7 @@ extern int test_46_kim2009_main(void);
 extern int test_47_llab_main(void);
 extern int test_48_atd95_main(void);
 extern int test_49_rayleigh_scattering_main(void);
+extern int test_50_barten1999_csf_main(void);
 
 /* Test registry */
 typedef struct {
@@ -118,6 +119,7 @@ static test_suite const g_test_suites[] = {
     {"47_llab", test_47_llab_main},
     {"48_atd95", test_48_atd95_main},
     {"49_rayleigh_scattering", test_49_rayleigh_scattering_main},
+    {"50_barten1999_csf", test_50_barten1999_csf_main},
 };
 
 int main(void) {

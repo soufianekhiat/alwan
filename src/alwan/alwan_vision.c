@@ -339,3 +339,141 @@ alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance) {
 
     return S;
 }
+
+/* ================================================================
+ * Barten 1999 Full Model Implementation
+ * Reference: Barten (1999), colour-science implementation
+ * All formulas from colour-science 0.4.6
+ * ================================================================ */
+
+/* Pupil diameter using Barten (1999) method
+ * Formula: d = 5 - 3 * tanh(0.4 * log10(L * X_0 * Y_0 / 40^2)) */
+alwan_scalar alwan_pupil_diameter_barten1999(alwan_scalar L,
+                                              alwan_scalar X_0,
+                                              alwan_scalar Y_0)
+{
+    alwan_scalar Y = (Y_0 < ALWAN_LITERAL(0.0)) ? X_0 : Y_0;
+    alwan_scalar arg = ALWAN_LITERAL(0.4) * ALWAN_LOG10(L * X_0 * Y / ALWAN_LITERAL(1600.0));
+    return ALWAN_LITERAL(5.0) - ALWAN_LITERAL(3.0) * ALWAN_TANH(arg);
+}
+
+/* Retinal illuminance using Barten (1999) method
+ * Formula: E = (pi * d^2 / 4) * L * [Stiles-Crawford correction]
+ * Stiles-Crawford: 1 - (d/9.7)^2 + (d/12.4)^4 */
+alwan_scalar alwan_retinal_illuminance_barten1999(alwan_scalar L,
+                                                   alwan_scalar d,
+                                                   int apply_stiles_crawford)
+{
+    alwan_scalar E = (ALWAN_PI * d * d / ALWAN_LITERAL(4.0)) * L;
+
+    if (apply_stiles_crawford) {
+        alwan_scalar d_97 = d / ALWAN_LITERAL(9.7);
+        alwan_scalar d_124 = d / ALWAN_LITERAL(12.4);
+        E *= ALWAN_LITERAL(1.0) - d_97 * d_97 + d_124 * d_124 * d_124 * d_124;
+    }
+
+    return E;
+}
+
+/* Optical MTF using Barten (1999) method
+ * Formula: M_opt = exp(-2 * pi^2 * sigma^2 * u^2) */
+alwan_scalar alwan_optical_mtf_barten1999(alwan_scalar u, alwan_scalar sigma)
+{
+    return ALWAN_EXP(ALWAN_LITERAL(-2.0) * ALWAN_PI * ALWAN_PI * sigma * sigma * u * u);
+}
+
+/* Standard deviation of line-spread function using Barten (1999) method
+ * Formula: sigma = sqrt(sigma_0^2 + (C_ab * d)^2) = hypot(sigma_0, C_ab * d) */
+alwan_scalar alwan_sigma_barten1999(alwan_scalar sigma_0,
+                                     alwan_scalar C_ab,
+                                     alwan_scalar d)
+{
+    alwan_scalar Cab_d = C_ab * d;
+    return ALWAN_SQRT(sigma_0 * sigma_0 + Cab_d * Cab_d);
+}
+
+/* Maximum angular size using Barten (1999) method
+ * Formula: X = (1/X_0^2 + 1/X_max^2 + u^2/N_max^2)^(-0.5) */
+alwan_scalar alwan_maximum_angular_size_barten1999(alwan_scalar u,
+                                                    alwan_scalar X_0,
+                                                    alwan_scalar X_max,
+                                                    alwan_scalar N_max)
+{
+    alwan_scalar term1 = ALWAN_LITERAL(1.0) / (X_0 * X_0);
+    alwan_scalar term2 = ALWAN_LITERAL(1.0) / (X_max * X_max);
+    alwan_scalar term3 = (u * u) / (N_max * N_max);
+    return ALWAN_POW(term1 + term2 + term3, ALWAN_LITERAL(-0.5));
+}
+
+/* Initialize CSF parameters with defaults from colour-science */
+void alwan_csf_barten1999_params_default(alwan_csf_barten1999_params *params)
+{
+    if (!params) return;
+
+    /* Default sigma using sigma_0=0.5/60, C_ab=0.08/60, d=2.1 */
+    params->sigma = alwan_sigma_barten1999(
+        ALWAN_LITERAL(0.5) / ALWAN_LITERAL(60.0),
+        ALWAN_LITERAL(0.08) / ALWAN_LITERAL(60.0),
+        ALWAN_LITERAL(2.1)
+    );
+    params->k = ALWAN_LITERAL(3.0);
+    params->T = ALWAN_LITERAL(0.1);
+    params->X_0 = ALWAN_LITERAL(60.0);
+    params->Y_0 = ALWAN_LITERAL(-1.0);  /* -1 means use X_0 */
+    params->X_max = ALWAN_LITERAL(12.0);
+    params->Y_max = ALWAN_LITERAL(-1.0);  /* -1 means use X_max */
+    params->N_max = ALWAN_LITERAL(15.0);
+    params->n = ALWAN_LITERAL(0.03);
+    params->p = ALWAN_LITERAL(1.2274e6);
+    /* Default E using L=20, d=2.1, Stiles-Crawford=true */
+    params->E = alwan_retinal_illuminance_barten1999(
+        ALWAN_LITERAL(20.0),
+        ALWAN_LITERAL(2.1),
+        1
+    );
+    params->phi_0 = ALWAN_LITERAL(3.0e-8);
+    params->u_0 = ALWAN_LITERAL(7.0);
+}
+
+/* Full Barten (1999) CSF
+ * Formula: S = (M_opt / k) / sqrt(2/T * M_as * (1/(n*p*E) + phi_0/(1 - exp(-(u/u_0)^2)))) */
+alwan_scalar alwan_csf_barten1999(alwan_scalar u,
+                                   alwan_csf_barten1999_params const *params)
+{
+    alwan_csf_barten1999_params defaults;
+    alwan_csf_barten1999_params const *p;
+
+    if (params) {
+        p = params;
+    } else {
+        alwan_csf_barten1999_params_default(&defaults);
+        p = &defaults;
+    }
+
+    /* Get Y values (use X if Y is -1) */
+    alwan_scalar Y_0 = (p->Y_0 < ALWAN_LITERAL(0.0)) ? p->X_0 : p->Y_0;
+    alwan_scalar Y_max = (p->Y_max < ALWAN_LITERAL(0.0)) ? p->X_max : p->Y_max;
+
+    /* Optical MTF */
+    alwan_scalar M_opt = alwan_optical_mtf_barten1999(u, p->sigma);
+
+    /* Maximum angular size product M_as = 1/(X*Y) */
+    alwan_scalar X = alwan_maximum_angular_size_barten1999(u, p->X_0, p->X_max, p->N_max);
+    alwan_scalar Y = alwan_maximum_angular_size_barten1999(u, Y_0, Y_max, p->N_max);
+    alwan_scalar M_as = ALWAN_LITERAL(1.0) / (X * Y);
+
+    /* Photon noise term */
+    alwan_scalar photon_term = ALWAN_LITERAL(1.0) / (p->n * p->p * p->E);
+
+    /* Neural noise term with lateral inhibition cutoff */
+    alwan_scalar u_ratio = u / p->u_0;
+    alwan_scalar neural_term = p->phi_0 / (ALWAN_LITERAL(1.0) - ALWAN_EXP(-(u_ratio * u_ratio)));
+
+    /* Total noise under square root */
+    alwan_scalar noise = (ALWAN_LITERAL(2.0) / p->T) * M_as * (photon_term + neural_term);
+
+    /* Contrast sensitivity */
+    alwan_scalar S = (M_opt / p->k) / ALWAN_SQRT(noise);
+
+    return S;
+}

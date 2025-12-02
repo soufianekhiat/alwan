@@ -2003,12 +2003,89 @@ alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
 
 /* Contrast Sensitivity Function (CSF) */
 
-/* Calculate contrast sensitivity for spatial frequency
+/* Calculate contrast sensitivity for spatial frequency (simplified model)
  * spatial_frequency: spatial frequency in cycles per degree [0.1, 60]
  * luminance: background luminance in cd/m² [0.01, 10000]
  * Returns contrast sensitivity (1/contrast_threshold), or negative on error
- * Uses Barten CSF model (1999) */
+ * Uses simplified Barten CSF model (1999) */
 alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance);
+
+/* ================================================================
+ * Barten 1999 Full Model - Contrast Sensitivity Functions
+ * Reference: Barten (1999), colour-science implementation
+ * ================================================================ */
+
+/* Pupil diameter using Barten (1999) method
+ * L: Average luminance in cd/m²
+ * X_0: Angular size of object in degrees (x direction)
+ * Y_0: Angular size of object in degrees (y direction), -1 to use X_0
+ * Returns: Pupil diameter in millimeters */
+alwan_scalar alwan_pupil_diameter_barten1999(alwan_scalar L,
+                                              alwan_scalar X_0,
+                                              alwan_scalar Y_0);
+
+/* Retinal illuminance using Barten (1999) method
+ * L: Average luminance in cd/m²
+ * d: Pupil diameter in millimeters
+ * apply_stiles_crawford: Whether to apply Stiles-Crawford correction (1=yes, 0=no)
+ * Returns: Retinal illuminance in Trolands */
+alwan_scalar alwan_retinal_illuminance_barten1999(alwan_scalar L,
+                                                   alwan_scalar d,
+                                                   int apply_stiles_crawford);
+
+/* Optical MTF (Modulation Transfer Function) using Barten (1999) method
+ * u: Spatial frequency in cycles per degree
+ * sigma: Standard deviation of line-spread function (use alwan_sigma_barten1999)
+ * Returns: Optical MTF value [0, 1] */
+alwan_scalar alwan_optical_mtf_barten1999(alwan_scalar u, alwan_scalar sigma);
+
+/* Standard deviation of line-spread function using Barten (1999) method
+ * sigma_0: Constant sigma_0 in degrees (default: 0.5/60 = 0.00833...)
+ * C_ab: Spherical aberration in degrees/mm (default: 0.08/60 = 0.00133...)
+ * d: Pupil diameter in millimeters
+ * Returns: Standard deviation sigma in degrees */
+alwan_scalar alwan_sigma_barten1999(alwan_scalar sigma_0,
+                                     alwan_scalar C_ab,
+                                     alwan_scalar d);
+
+/* Maximum angular size using Barten (1999) method
+ * u: Spatial frequency in cycles per degree
+ * X_0: Angular size of object in degrees
+ * X_max: Maximum angular size of integration area in degrees (default: 12)
+ * N_max: Maximum number of integration cycles (default: 15)
+ * Returns: Maximum angular size in degrees */
+alwan_scalar alwan_maximum_angular_size_barten1999(alwan_scalar u,
+                                                    alwan_scalar X_0,
+                                                    alwan_scalar X_max,
+                                                    alwan_scalar N_max);
+
+/* Full Barten (1999) CSF model parameters */
+typedef struct {
+    alwan_scalar sigma;    /* Line-spread function std dev (degrees) */
+    alwan_scalar k;        /* Signal-to-noise ratio (default: 3.0) */
+    alwan_scalar T;        /* Integration time in seconds (default: 0.1) */
+    alwan_scalar X_0;      /* Angular size x in degrees (default: 60) */
+    alwan_scalar Y_0;      /* Angular size y in degrees (-1 = use X_0) */
+    alwan_scalar X_max;    /* Max integration area x in degrees (default: 12) */
+    alwan_scalar Y_max;    /* Max integration area y in degrees (-1 = use X_max) */
+    alwan_scalar N_max;    /* Max integration cycles (default: 15) */
+    alwan_scalar n;        /* Quantum efficiency (default: 0.03) */
+    alwan_scalar p;        /* Photon conversion factor (default: 1.2274e6) */
+    alwan_scalar E;        /* Retinal illuminance in Trolands */
+    alwan_scalar phi_0;    /* Neural noise spectral density (default: 3e-8) */
+    alwan_scalar u_0;      /* Lateral inhibition cutoff frequency (default: 7) */
+} alwan_csf_barten1999_params;
+
+/* Initialize CSF parameters with defaults
+ * Defaults valid for standard observer, age 20-30, good vision */
+void alwan_csf_barten1999_params_default(alwan_csf_barten1999_params *params);
+
+/* Full Barten (1999) CSF using all parameters
+ * u: Spatial frequency in cycles per degree
+ * params: Model parameters (use NULL for defaults)
+ * Returns: Contrast sensitivity S */
+alwan_scalar alwan_csf_barten1999(alwan_scalar u,
+                                   alwan_csf_barten1999_params const *params);
 
 /* ----------------------------------------------------------------
  * Utility Functions
