@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * M47 Tests: Kim2009 Color Appearance Model
+ * M46 Tests: Kim2009 Color Appearance Model
  */
 
 #include "alwan.h"
@@ -252,8 +252,8 @@ static int test_kim2009_surrounds(void) {
 }
 
 /* Main test runner */
-int test_47_kim2009_main(void) {
-    printf("=== M47: Kim2009 Color Appearance Model Tests ===\n");
+int test_46_kim2009_main(void) {
+    printf("=== M46: Kim2009 Color Appearance Model Tests ===\n");
 
     int failed = 0;
     failed += test_kim2009_forward();

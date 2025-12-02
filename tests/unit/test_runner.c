@@ -55,10 +55,10 @@ extern int test_41_vision_perception_main(void);
 extern int test_42_math_utilities_main(void);
 extern int test_43_reference_data_main(void);
 extern int test_44_color_correction_main(void);
-extern int test_46_hellwig2022_main(void);
-extern int test_47_kim2009_main(void);
-extern int test_48_llab_main(void);
-extern int test_49_atd95_main(void);
+extern int test_45_hellwig2022_main(void);
+extern int test_46_kim2009_main(void);
+extern int test_47_llab_main(void);
+extern int test_48_atd95_main(void);
 
 /* Test registry */
 typedef struct {
@@ -112,10 +112,10 @@ static test_suite const g_test_suites[] = {
     {"42_math_utilities", test_42_math_utilities_main},
     {"43_reference_data", test_43_reference_data_main},
     {"44_color_correction", test_44_color_correction_main},
-    {"46_hellwig2022", test_46_hellwig2022_main},
-    {"47_kim2009", test_47_kim2009_main},
-    {"48_llab", test_48_llab_main},
-    {"49_atd95", test_49_atd95_main},
+    {"45_hellwig2022", test_45_hellwig2022_main},
+    {"46_kim2009", test_46_kim2009_main},
+    {"47_llab", test_47_llab_main},
+    {"48_atd95", test_48_atd95_main},
 };
 
 int main(void) {

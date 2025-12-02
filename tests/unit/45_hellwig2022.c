@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * M46 Tests: Hellwig2022 Color Appearance Model
+ * M45 Tests: Hellwig2022 Color Appearance Model
  */
 
 #include "alwan.h"
@@ -260,8 +260,8 @@ static int test_hellwig2022_surround_conditions(void) {
 }
 
 /* Main test runner */
-int test_46_hellwig2022_main(void) {
-    printf("=== M46: Hellwig2022 Color Appearance Model Tests ===\n");
+int test_45_hellwig2022_main(void) {
+    printf("=== M45: Hellwig2022 Color Appearance Model Tests ===\n");
 
     int failed = 0;
     failed += test_hellwig2022_forward();

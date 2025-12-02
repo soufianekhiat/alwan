@@ -285,7 +285,7 @@ static int test_llab_achromatic(void) {
 /* ----------------------------------------------------------------
  * Main Test Runner
  * ---------------------------------------------------------------- */
-int test_48_llab_main(void) {
+int test_47_llab_main(void) {
     int failed = 0;
 
     printf("\n========================================\n");
