@@ -962,6 +962,14 @@ alwan_scalar alwan_delta_e_cam16_lcd(alwan_cam_jab const *jab1, alwan_cam_jab co
 /* ΔE CAM16-SCD - CAM16 Small Color Difference in UCS space */
 alwan_scalar alwan_delta_e_cam16_scd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
 
+/* ΔE CAM02-UCS - CIECAM02 Uniform Color Space (Luo et al. 2006)
+ * Uses K_L=1.0, c1=0.007, c2=0.0228 for general-purpose color difference */
+alwan_scalar alwan_delta_e_cam02_ucs(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
+
+/* ΔE CAM16-UCS - CAM16 Uniform Color Space (Li et al. 2017)
+ * Uses K_L=1.0, c1=0.007, c2=0.0228 for general-purpose color difference */
+alwan_scalar alwan_delta_e_cam16_ucs(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
+
 /* ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space */
 alwan_scalar alwan_delta_e_zcam(alwan_jzazbz const *jab1, alwan_jzazbz const *jab2);
 
@@ -1017,7 +1025,10 @@ typedef enum {
     ALWAN_CAT_CMCCAT2000      = 7,  /* CMC CAT2000 */
     ALWAN_CAT_CAT02_BRILL_2008 = 8, /* CAT02 Brill 2008 variant */
     ALWAN_CAT_BIANCO_2010     = 9,  /* Bianco 2010 */
-    ALWAN_CAT_BIANCO_PC_2010  = 10  /* Bianco PC 2010 */
+    ALWAN_CAT_BIANCO_PC_2010  = 10, /* Bianco PC 2010 */
+
+    /* Two-step CAT methods */
+    ALWAN_CAT_ZHAI_2018       = 11  /* Zhai & Luo 2018 two-step CAT */
 } alwan_cat_method;
 
 /* Compute chromatic adaptation matrix from source to destination white point
@@ -1046,6 +1057,26 @@ int alwan_xyz_adapt(alwan_scalar const *xyz_in, size_t count, size_t in_stride,
                     alwan_xyz const *dst_white_xyz,
                     alwan_cat_method method,
                     alwan_scalar *xyz_out, size_t out_stride);
+
+/* Zhai & Luo 2018 two-step chromatic adaptation
+ * Adapts XYZ from input illuminant to output illuminant via baseline illuminant
+ * xyz_in: input XYZ color under source illuminant (Y=100 scale)
+ * xyz_src: source illuminant XYZ (Y=100 scale)
+ * xyz_dst: destination illuminant XYZ (Y=100 scale)
+ * D_src: degree of adaptation for source illuminant [0,1] (1=full adaptation)
+ * D_dst: degree of adaptation for destination illuminant [0,1] (1=full adaptation)
+ * xyz_baseline: baseline illuminant XYZ (NULL for equal-energy white [100,100,100])
+ * transform: underlying CAT transform (ALWAN_CAT_CAT02 or ALWAN_CAT_CAT16)
+ * xyz_out: output adapted XYZ color
+ * Returns ALWAN_OK on success */
+int alwan_cat_zhai2018(alwan_xyz const *xyz_in,
+                       alwan_xyz const *xyz_src,
+                       alwan_xyz const *xyz_dst,
+                       alwan_scalar D_src,
+                       alwan_scalar D_dst,
+                       alwan_xyz const *xyz_baseline,
+                       alwan_cat_method transform,
+                       alwan_xyz *xyz_out);
 
 /* ----------------------------------------------------------------
  * Spectral Power Distributions (SPD)

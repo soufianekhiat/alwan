@@ -290,6 +290,76 @@ static int test_delta_e_cam16_scd(void) {
     TEST_PASS("ΔE CAM16-SCD");
 }
 
+static int test_delta_e_cam02_ucs(void) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+    static alwan_scalar const jab1_data[] = {
+#include "reference_values/delta_e_cam_ucs_jab1.csv"
+    };
+    static alwan_scalar const jab2_data[] = {
+#include "reference_values/delta_e_cam_ucs_jab2.csv"
+    };
+    static alwan_scalar const de_cam02_ucs_data[] = {
+#include "reference_values/delta_e_cam02_ucs.csv"
+    };
+    ALWAN_DIAG_POP
+
+    int const num_tests = sizeof(jab1_data) / (3 * sizeof(alwan_scalar));
+#if ALWAN_SCALAR_IS_FLOAT
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
+#else
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
+#endif
+
+    for (int i = 0; i < num_tests; i++) {
+        alwan_cam_jab jab1 = {jab1_data[i * 3 + 0], jab1_data[i * 3 + 1], jab1_data[i * 3 + 2]};
+        alwan_cam_jab jab2 = {jab2_data[i * 3 + 0], jab2_data[i * 3 + 1], jab2_data[i * 3 + 2]};
+        alwan_scalar expected = de_cam02_ucs_data[i];
+
+        alwan_scalar result = alwan_delta_e_cam02_ucs(&jab1, &jab2);
+        alwan_scalar diff = ALWAN_FABS(result - expected);
+
+        TEST_ASSERT(diff < tolerance, "ΔE CAM02-UCS mismatch");
+    }
+
+    TEST_PASS("ΔE CAM02-UCS");
+}
+
+static int test_delta_e_cam16_ucs(void) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
+    static alwan_scalar const jab1_data[] = {
+#include "reference_values/delta_e_cam_ucs_jab1.csv"
+    };
+    static alwan_scalar const jab2_data[] = {
+#include "reference_values/delta_e_cam_ucs_jab2.csv"
+    };
+    static alwan_scalar const de_cam16_ucs_data[] = {
+#include "reference_values/delta_e_cam16_ucs.csv"
+    };
+    ALWAN_DIAG_POP
+
+    int const num_tests = sizeof(jab1_data) / (3 * sizeof(alwan_scalar));
+#if ALWAN_SCALAR_IS_FLOAT
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
+#else
+    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
+#endif
+
+    for (int i = 0; i < num_tests; i++) {
+        alwan_cam_jab jab1 = {jab1_data[i * 3 + 0], jab1_data[i * 3 + 1], jab1_data[i * 3 + 2]};
+        alwan_cam_jab jab2 = {jab2_data[i * 3 + 0], jab2_data[i * 3 + 1], jab2_data[i * 3 + 2]};
+        alwan_scalar expected = de_cam16_ucs_data[i];
+
+        alwan_scalar result = alwan_delta_e_cam16_ucs(&jab1, &jab2);
+        alwan_scalar diff = ALWAN_FABS(result - expected);
+
+        TEST_ASSERT(diff < tolerance, "ΔE CAM16-UCS mismatch");
+    }
+
+    TEST_PASS("ΔE CAM16-UCS");
+}
+
 /* ----------------------------------------------------------------
  * Main test runner
  * ---------------------------------------------------------------- */
@@ -304,6 +374,8 @@ int test_30_delta_e_extended_main(void) {
     failures += test_delta_e_cam02_scd();
     failures += test_delta_e_cam16_lcd();
     failures += test_delta_e_cam16_scd();
+    failures += test_delta_e_cam02_ucs();
+    failures += test_delta_e_cam16_ucs();
 
     if (failures == 0) {
         printf("\n=== All extended ΔE metric tests passed ===\n");

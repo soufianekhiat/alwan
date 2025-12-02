@@ -212,3 +212,80 @@ int alwan_xyz_adapt(alwan_scalar const *xyz_in, size_t count, size_t in_stride,
 
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * Zhai & Luo 2018 Two-Step Chromatic Adaptation
+ * Reference: Zhai, Luo (2018) "Study of chromatic adaptation via
+ *            neutral white matches on different viewing media"
+ *            Optics Express, 26(6), 7724.
+ * ---------------------------------------------------------------- */
+
+int alwan_cat_zhai2018(alwan_xyz const *xyz_in,
+                       alwan_xyz const *xyz_src,
+                       alwan_xyz const *xyz_dst,
+                       alwan_scalar D_src,
+                       alwan_scalar D_dst,
+                       alwan_xyz const *xyz_baseline,
+                       alwan_cat_method transform,
+                       alwan_xyz *xyz_out) {
+    if (!xyz_in || !xyz_src || !xyz_dst || !xyz_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Validate degree of adaptation [0, 1] */
+    if (D_src < ALWAN_LITERAL(0.0) || D_src > ALWAN_LITERAL(1.0) ||
+        D_dst < ALWAN_LITERAL(0.0) || D_dst > ALWAN_LITERAL(1.0)) {
+        return ALWAN_E_RANGE;
+    }
+
+    /* Only CAT02 and CAT16 are supported for Zhai 2018 */
+    if (transform != ALWAN_CAT_CAT02 && transform != ALWAN_CAT_CAT16) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Default baseline illuminant is equal-energy white (E) */
+    alwan_xyz baseline_default = { ALWAN_LITERAL(100.0), ALWAN_LITERAL(100.0), ALWAN_LITERAL(100.0) };
+    alwan_xyz const *xyz_o = xyz_baseline ? xyz_baseline : &baseline_default;
+
+    /* Get the CAT matrix M for the chosen method */
+    alwan_mat3x3 M;
+    if (transform == ALWAN_CAT_CAT02) {
+        memcpy(M.m, g_cat_cat02, sizeof(g_cat_cat02));
+    } else {
+        memcpy(M.m, g_cat_cat16, sizeof(g_cat_cat16));
+    }
+
+    /* Compute M inverse */
+    alwan_mat3x3 M_inv;
+    int status = alwan_mat3_inv(&M, &M_inv);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+
+    /* Transform XYZ to RGB (cone responses) */
+    alwan_vec3 rgb_in, rgb_src, rgb_dst, rgb_o;
+    alwan_mat3_mulv(&M, (alwan_vec3 const *)xyz_in, &rgb_in);
+    alwan_mat3_mulv(&M, (alwan_vec3 const *)xyz_src, &rgb_src);
+    alwan_mat3_mulv(&M, (alwan_vec3 const *)xyz_dst, &rgb_dst);
+    alwan_mat3_mulv(&M, (alwan_vec3 const *)xyz_o, &rgb_o);
+
+    /* Compute D_RGB factors for source and destination
+     * D_RGB = D * (Y_w / Y_o) * (RGB_o / RGB_w) + 1 - D
+     * Simplified when Y_w = Y_o (both = 100): D_RGB = D * (RGB_o / RGB_w) + 1 - D */
+    alwan_vec3 D_rgb_src, D_rgb_dst;
+    for (int i = 0; i < 3; i++) {
+        D_rgb_src.v[i] = D_src * (rgb_o.v[i] / rgb_src.v[i]) + (ALWAN_LITERAL(1.0) - D_src);
+        D_rgb_dst.v[i] = D_dst * (rgb_o.v[i] / rgb_dst.v[i]) + (ALWAN_LITERAL(1.0) - D_dst);
+    }
+
+    /* Apply two-step adaptation: RGB_d = (D_RGB_src / D_RGB_dst) * RGB_in */
+    alwan_vec3 rgb_adapted;
+    for (int i = 0; i < 3; i++) {
+        rgb_adapted.v[i] = (D_rgb_src.v[i] / D_rgb_dst.v[i]) * rgb_in.v[i];
+    }
+
+    /* Transform back to XYZ */
+    alwan_mat3_mulv(&M_inv, &rgb_adapted, (alwan_vec3 *)xyz_out);
+
+    return ALWAN_OK;
+}

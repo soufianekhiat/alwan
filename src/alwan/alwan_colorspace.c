@@ -709,6 +709,38 @@ alwan_scalar alwan_delta_e_cam16_scd(alwan_cam_jab const *jab1, alwan_cam_jab co
     return ALWAN_SQRT(dJ * dJ + da * da + db * db);
 }
 
+/* ΔE CAM02-UCS - CIECAM02 Uniform Color Space (Luo et al. 2006)
+ * General-purpose CAM-based color difference
+ * Uses K_L=1.0 (unlike LCD/SCD which have tuned K_L values)
+ * Reference: Luo, Cui, Rigg (2006) "The development of the CIE 2000 colour-difference formula" */
+alwan_scalar alwan_delta_e_cam02_ucs(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2) {
+    /* CAM02-UCS uses K_L=1.0 */
+    alwan_scalar const KL = ALWAN_LITERAL(1.0);
+
+    /* Calculate delta E in UCS space - simple Euclidean distance */
+    alwan_scalar const dJ = (jab1->J - jab2->J) / KL;
+    alwan_scalar const da = jab1->a - jab2->a;
+    alwan_scalar const db = jab1->b - jab2->b;
+
+    return ALWAN_SQRT(dJ * dJ + da * da + db * db);
+}
+
+/* ΔE CAM16-UCS - CAM16 Uniform Color Space (Li et al. 2017)
+ * General-purpose CAM16-based color difference
+ * Uses K_L=1.0 (unlike LCD/SCD which have tuned K_L values)
+ * Reference: Li, Li, Wang, Zu, Luo, Cui, Melgosa, Brill, Pointer (2017) */
+alwan_scalar alwan_delta_e_cam16_ucs(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2) {
+    /* CAM16-UCS uses K_L=1.0 */
+    alwan_scalar const KL = ALWAN_LITERAL(1.0);
+
+    /* Calculate delta E in UCS space - simple Euclidean distance */
+    alwan_scalar const dJ = (jab1->J - jab2->J) / KL;
+    alwan_scalar const da = jab1->a - jab2->a;
+    alwan_scalar const db = jab1->b - jab2->b;
+
+    return ALWAN_SQRT(dJ * dJ + da * da + db * db);
+}
+
 /* ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space
  * ZCAM UCS is designed for perceptual uniformity in HDR
  * Simple Euclidean distance is appropriate */
