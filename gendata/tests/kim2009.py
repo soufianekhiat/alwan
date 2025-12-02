@@ -20,6 +20,10 @@ except ImportError:
     print("ERROR: colour-science not installed. Run: pip install colour-science")
     sys.exit(1)
 
+# Standard viewing conditions for CAM tests
+# Y_b: Background luminance relative factor (20% gray)
+CAM_Y_b = 20.0  # 20% relative background luminance
+
 
 def get_d65_xyz_100():
     """Get D65 white point XYZ with Y=100 from colour-science."""
@@ -56,8 +60,8 @@ def generate_kim2009_tests(output_dir):
     # Standard adapting luminance: 1000 lux / pi (from photometric standard)
     La = 1000.0 / np.pi
 
-    # Standard background relative luminance (20% gray)
-    Yb = 20.0
+    # Use standard background relative luminance constant
+    Yb = CAM_Y_b
 
     # Media and surround from colour-science
     media = colour.MEDIA_PARAMETERS_KIM2009['High-luminance LCD Display']

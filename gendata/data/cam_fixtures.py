@@ -19,6 +19,12 @@ except ImportError:
     print("ERROR: colour-science not installed. Run: pip install colour-science")
     sys.exit(1)
 
+# Standard viewing conditions for CAM tests (office/sRGB viewing)
+# L_A: Adapting luminance in cd/m² (typical display viewing conditions)
+# Y_b: Background luminance relative factor (20% gray)
+CAM_L_A = 64.0   # cd/m² - typical office viewing adapting luminance
+CAM_Y_b = 20.0   # 20% relative background luminance
+
 
 # Test XYZ colors (inputs - hardcoded, Y=100 scale)
 # Will be computed relative to XYZ_w
@@ -47,15 +53,13 @@ def generate_ciecam02_fixtures(output_dir):
 
     # Scale to Y=100 (standard viewing)
     XYZ_w = d65_xyz * 100
-    L_A = 64.0   # Adapting luminance (cd/m²)
-    Y_b = 20.0   # Background luminance
 
     # Get viewing conditions from colour-science
     surround = colour.VIEWING_CONDITIONS_CIECAM02['Average']
 
-    # Save viewing conditions
+    # Save viewing conditions using defined constants
     filepath = os.path.join(output_dir, 'reference_values', 'cam_viewing_conditions.csv')
-    vc_values = list(XYZ_w) + [L_A, Y_b]
+    vc_values = list(XYZ_w) + [CAM_L_A, CAM_Y_b]
     save_vector(vc_values, filepath, "CAM viewing conditions (XYZ_w, L_A, Y_b)")
 
     # Get test colors
@@ -71,7 +75,7 @@ def generate_ciecam02_fixtures(output_dir):
     # Compute CIECAM02 correlates from colour-science
     correlates = []
     for xyz in test_xyz:
-        spec = colour.XYZ_to_CIECAM02(np.array(xyz), XYZ_w, L_A, Y_b, surround)
+        spec = colour.XYZ_to_CIECAM02(np.array(xyz), XYZ_w, CAM_L_A, CAM_Y_b, surround)
         # Store J, C, h, Q, M, s, H
         correlates.append([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s, spec.H])
 
@@ -86,7 +90,7 @@ def generate_ciecam02_fixtures(output_dir):
     xyz_reconstructed = []
     for corr in correlates:
         spec = colour.CAM_Specification_CIECAM02(J=corr[0], C=corr[1], h=corr[2])
-        xyz_recon = colour.CIECAM02_to_XYZ(spec, XYZ_w, L_A, Y_b, surround)
+        xyz_recon = colour.CIECAM02_to_XYZ(spec, XYZ_w, CAM_L_A, CAM_Y_b, surround)
         xyz_reconstructed.extend(xyz_recon)
 
     filepath = os.path.join(output_dir, 'reference_values', 'ciecam02_xyz_reconstructed.csv')
@@ -104,8 +108,6 @@ def generate_cam16_fixtures(output_dir):
     d65_xyz = colour.xy_to_XYZ(d65_xy)
 
     XYZ_w = d65_xyz * 100
-    L_A = 64.0
-    Y_b = 20.0
 
     surround = colour.VIEWING_CONDITIONS_CAM16['Average']
 
@@ -115,7 +117,7 @@ def generate_cam16_fixtures(output_dir):
     # Compute CAM16 correlates from colour-science
     correlates = []
     for xyz in test_xyz:
-        spec = colour.XYZ_to_CAM16(np.array(xyz), XYZ_w, L_A, Y_b, surround)
+        spec = colour.XYZ_to_CAM16(np.array(xyz), XYZ_w, CAM_L_A, CAM_Y_b, surround)
         correlates.append([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s, spec.H])
 
     # Save correlates
@@ -129,20 +131,23 @@ def generate_cam16_fixtures(output_dir):
     xyz_reconstructed = []
     for corr in correlates:
         spec = colour.CAM_Specification_CAM16(J=corr[0], C=corr[1], h=corr[2])
-        xyz_recon = colour.CAM16_to_XYZ(spec, XYZ_w, L_A, Y_b, surround)
+        xyz_recon = colour.CAM16_to_XYZ(spec, XYZ_w, CAM_L_A, CAM_Y_b, surround)
         xyz_reconstructed.extend(xyz_recon)
 
     filepath = os.path.join(output_dir, 'reference_values', 'cam16_xyz_reconstructed.csv')
     save_vector(xyz_reconstructed, filepath, "Reconstructed XYZ (inverse transform)")
 
     # CAM16-UCS transform
+    # Note: We use the standard CAM16-UCS formulas (Li et al. 2017) applied to the
+    # CAM16 correlates, matching the C implementation's alwan_cam16_to_ucs function.
+    # This is different from colour.XYZ_to_CAM16UCS which computes directly from XYZ.
     ucs_jab = []
     for corr in correlates:
         J = corr[0]
-        M = corr[4]
-        h = corr[2]
+        M = corr[4]  # M is at index 4
+        h = corr[2]  # h is at index 2
 
-        # CAM16-UCS formulas
+        # CAM16-UCS formulas (Li et al. 2017)
         J_prime = 1.7 * J / (1.0 + 0.007 * J)
         M_prime = (1.0 / 0.0228) * np.log(1.0 + 0.0228 * M)
         h_rad = np.radians(h)

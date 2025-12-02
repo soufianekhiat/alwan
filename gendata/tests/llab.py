@@ -20,6 +20,10 @@ except ImportError:
     print("ERROR: colour-science not installed. Run: pip install colour-science")
     sys.exit(1)
 
+# Standard viewing conditions for CAM tests
+# Y_b: Background luminance relative factor (20% gray)
+CAM_Y_b = 20.0  # 20% relative background luminance
+
 
 def get_d65_xyz_100():
     """Get D65 white point XYZ with Y=100 from colour-science."""
@@ -61,8 +65,8 @@ def generate_llab_tests(output_dir):
     # Get ColorChecker colors from colour-science
     cc_colors = get_colorchecker_xyz_d65()
 
-    # Standard background relative luminance (20% gray)
-    Y_b = 20.0
+    # Use standard background relative luminance constant
+    Y_b = CAM_Y_b
 
     # Reference luminance (100 cd/m2 standard)
     L = 100.0

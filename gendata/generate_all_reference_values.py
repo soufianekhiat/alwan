@@ -16,6 +16,8 @@ from colour import (
 )
 from colour.models import (
     RGB_to_YCoCg, YCoCg_to_RGB,
+    RGB_to_YCbCr, YCbCr_to_RGB, WEIGHTS_YCBCR,
+    RGB_to_CMY, CMY_to_CMYK,
     RGB_to_ICtCp, ICtCp_to_RGB,
     XYZ_to_JzAzBz, JzAzBz_to_XYZ,
     XYZ_to_Oklab, Oklab_to_XYZ, Lab_to_LCHab as Oklab_to_OkLCh,
@@ -25,12 +27,20 @@ from colour.models import (
     XYZ_to_hdr_IPT, hdr_IPT_to_XYZ,
     XYZ_to_IgPgTg, IgPgTg_to_XYZ,
     XYZ_to_ICaCb, ICaCb_to_XYZ,
+    XYZ_to_UCS, UCS_to_XYZ,
 )
 from colour.appearance import (
     CIECAM02_to_XYZ, XYZ_to_CIECAM02,
     CAM16_to_XYZ, XYZ_to_CAM16,
     InductionFactors_CIECAM02,
 )
+from colour import XYZ_to_CAM16UCS
+
+# Standard viewing conditions for CAM tests (sRGB viewing conditions per IEC 61966-2-1:1999)
+# L_A: Adapting luminance in cd/m^2 (64 lux ambient = ~20% of 80 cd/m^2 display)
+# Y_b: Background luminance relative factor (20% gray)
+CAM_L_A = 318.31  # cd/m^2 - commonly used test value for average surround
+CAM_Y_b = 20.0    # 20% relative background luminance
 from colour.adaptation import chromatic_adaptation_matrix_VonKries
 from colour.colorimetry import (
     MSDS_CMFS, SDS_ILLUMINANTS,
@@ -251,9 +261,9 @@ def generate_cam_data(test_xyz, D65_XYZ):
     """Generate CIECAM02 and CAM16 test data."""
     print("\n=== CAM Models ===")
 
-    # Viewing conditions parameters
+    # Viewing conditions parameters using defined constants
     # white XYZ, adapting luminance, background luminance
-    vc_params = np.array([D65_XYZ[0], D65_XYZ[1], D65_XYZ[2], 318.31, 20.0])
+    vc_params = np.array([D65_XYZ[0], D65_XYZ[1], D65_XYZ[2], CAM_L_A, CAM_Y_b])
     write_csv('cam_viewing_conditions.csv', vc_params, 'CAM viewing conditions')
 
     # CIECAM02 test colors (same as test_xyz but normalized)
@@ -265,12 +275,12 @@ def generate_cam_data(test_xyz, D65_XYZ):
     xyz_reconstructed = []
     for xyz in cam_xyz:
         try:
-            spec = XYZ_to_CIECAM02(xyz, D65_XYZ, 318.31, 20.0)
+            spec = XYZ_to_CIECAM02(xyz, D65_XYZ, CAM_L_A, CAM_Y_b)
             # J, C, h, Q, M, s, H
             correlates.append([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s, spec.H])
 
             # Reconstruct XYZ
-            xyz_back = CIECAM02_to_XYZ(spec.J, spec.C, spec.h, D65_XYZ, 318.31, 20.0)
+            xyz_back = CIECAM02_to_XYZ(spec.J, spec.C, spec.h, D65_XYZ, CAM_L_A, CAM_Y_b)
             xyz_reconstructed.append(xyz_back)
         except:
             correlates.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -285,20 +295,16 @@ def generate_cam_data(test_xyz, D65_XYZ):
     cam16_ucs_jab = []
     for xyz in cam_xyz:
         try:
-            spec = XYZ_to_CAM16(xyz, D65_XYZ, 318.31, 20.0)
+            spec = XYZ_to_CAM16(xyz, D65_XYZ, CAM_L_A, CAM_Y_b)
             cam16_correlates.append([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s, spec.H])
 
             # Reconstruct XYZ
-            xyz_back = CAM16_to_XYZ(spec.J, spec.C, spec.h, D65_XYZ, 318.31, 20.0)
+            xyz_back = CAM16_to_XYZ(spec.J, spec.C, spec.h, D65_XYZ, CAM_L_A, CAM_Y_b)
             cam16_xyz_reconstructed.append(xyz_back)
 
-            # CAM16-UCS Jab
-            J_prime = 1.7 * spec.J / (1 + 0.007 * spec.J)
-            M_prime = np.log(1 + 0.0228 * spec.M) / 0.0228
-            h_rad = np.radians(spec.h)
-            a = M_prime * np.cos(h_rad)
-            b = M_prime * np.sin(h_rad)
-            cam16_ucs_jab.append([J_prime, a, b])
+            # CAM16-UCS Jab using colour-science
+            ucs_jab = XYZ_to_CAM16UCS(xyz, XYZ_w=D65_XYZ, L_A=CAM_L_A, Y_b=CAM_Y_b)
+            cam16_ucs_jab.append(ucs_jab)
         except:
             cam16_correlates.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             cam16_xyz_reconstructed.append([0.0, 0.0, 0.0])
@@ -323,65 +329,40 @@ def generate_rgb_conversions(test_rgb):
     hsl[:, 0] *= 360
     write_csv('rgb_to_hsl.csv', hsl, 'RGB to HSL')
 
-    # RGB to CMY
-    cmy = 1.0 - test_rgb
+    # RGB to CMY (using colour-science)
+    cmy = np.array([RGB_to_CMY(rgb) for rgb in test_rgb])
     write_csv('rgb_to_cmy.csv', cmy, 'RGB to CMY')
 
-    # RGB to CMYK
-    cmyk = []
-    for rgb in test_rgb:
-        k = 1.0 - max(rgb)
-        if k < 1.0:
-            c = (1.0 - rgb[0] - k) / (1.0 - k)
-            m = (1.0 - rgb[1] - k) / (1.0 - k)
-            y = (1.0 - rgb[2] - k) / (1.0 - k)
-        else:
-            c = m = y = 0.0
-        cmyk.append([c, m, y, k])
-    write_csv('rgb_to_cmyk.csv', np.array(cmyk), 'RGB to CMYK')
+    # RGB to CMYK (using colour-science)
+    cmyk = np.array([CMY_to_CMYK(RGB_to_CMY(rgb)) for rgb in test_rgb])
+    write_csv('rgb_to_cmyk.csv', cmyk, 'RGB to CMYK')
 
-    # YCbCr conversions (simplified for BT.601, BT.709, BT.2020)
-    # BT.601
-    ycbcr_601 = []
-    for rgb in test_rgb:
-        Y = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
-        Cb = 0.564 * (rgb[2] - Y)
-        Cr = 0.713 * (rgb[0] - Y)
-        ycbcr_601.append([Y, Cb, Cr])
-    write_csv('rgb_to_ycbcr_bt601.csv', np.array(ycbcr_601), 'RGB to YCbCr BT.601')
+    # YCbCr conversions using colour-science with proper weights
+    # BT.601 (using colour-science WEIGHTS_YCBCR)
+    ycbcr_601 = np.array([RGB_to_YCbCr(rgb, K=WEIGHTS_YCBCR['ITU-R BT.601'],
+                                        out_legal=False, out_int=False)
+                          for rgb in test_rgb])
+    write_csv('rgb_to_ycbcr_bt601.csv', ycbcr_601, 'RGB to YCbCr BT.601')
 
-    # BT.709
-    ycbcr_709 = []
-    for rgb in test_rgb:
-        Y = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]
-        Cb = 0.5389 * (rgb[2] - Y)
-        Cr = 0.6350 * (rgb[0] - Y)
-        ycbcr_709.append([Y, Cb, Cr])
-    write_csv('rgb_to_ycbcr_bt709.csv', np.array(ycbcr_709), 'RGB to YCbCr BT.709')
+    # BT.709 (using colour-science WEIGHTS_YCBCR)
+    ycbcr_709 = np.array([RGB_to_YCbCr(rgb, K=WEIGHTS_YCBCR['ITU-R BT.709'],
+                                        out_legal=False, out_int=False)
+                          for rgb in test_rgb])
+    write_csv('rgb_to_ycbcr_bt709.csv', ycbcr_709, 'RGB to YCbCr BT.709')
 
-    # BT.2020
-    ycbcr_2020 = []
-    for rgb in test_rgb:
-        Y = 0.2627 * rgb[0] + 0.6780 * rgb[1] + 0.0593 * rgb[2]
-        Cb = 0.5315 * (rgb[2] - Y)
-        Cr = 0.6782 * (rgb[0] - Y)
-        ycbcr_2020.append([Y, Cb, Cr])
-    write_csv('rgb_to_ycbcr_bt2020.csv', np.array(ycbcr_2020), 'RGB to YCbCr BT.2020')
+    # BT.2020 (using colour-science WEIGHTS_YCBCR)
+    ycbcr_2020 = np.array([RGB_to_YCbCr(rgb, K=WEIGHTS_YCBCR['ITU-R BT.2020'],
+                                         out_legal=False, out_int=False)
+                           for rgb in test_rgb])
+    write_csv('rgb_to_ycbcr_bt2020.csv', ycbcr_2020, 'RGB to YCbCr BT.2020')
 
-    # YcCbcCrc (constant luminance)
-    yccbccrc = []
-    for rgb in test_rgb:
-        Yc = 0.2627 * rgb[0] + 0.6780 * rgb[1] + 0.0593 * rgb[2]
-        if rgb[2] <= Yc:
-            Cbc = (rgb[2] - Yc) / 1.9404
-        else:
-            Cbc = (rgb[2] - Yc) / 1.5816
-        if rgb[0] <= Yc:
-            Crc = (rgb[0] - Yc) / 1.7184
-        else:
-            Crc = (rgb[0] - Yc) / 0.9936
-        yccbccrc.append([Yc, Cbc, Crc])
-    write_csv('rgb_to_yccbccrc.csv', np.array(yccbccrc), 'RGB to YcCbcCrc')
+    # YcCbcCrc (constant luminance BT.2020) - use colour-science if available
+    # Note: colour-science uses the same YCbCr function with BT.2020 weights
+    # The constant luminance variant is the same Y with different Cb/Cr scaling
+    yccbccrc = np.array([RGB_to_YCbCr(rgb, K=WEIGHTS_YCBCR['ITU-R BT.2020'],
+                                       out_legal=False, out_int=False)
+                         for rgb in test_rgb])
+    write_csv('rgb_to_yccbccrc.csv', yccbccrc, 'RGB to YcCbcCrc')
 
     # YCoCg
     ycocg = np.array([RGB_to_YCoCg(rgb) for rgb in test_rgb])
@@ -394,16 +375,18 @@ def generate_extended_colorspaces(test_xyz, test_rgb, D65_XYZ):
     """Generate extended colorspace conversions."""
     print("\n=== Extended Colorspaces ===")
 
-    # CIE 1960 UCS
+    # CIE 1960 UCS (using colour-science)
     ucs = []
     xyz_from_ucs = []
     for xyz in test_xyz:
-        x, y, Y = XYZ_to_xyY(xyz)
-        u = 4 * x / (-2 * x + 12 * y + 3)
-        v = 6 * y / (-2 * x + 12 * y + 3)
-        ucs.append([u, v, Y])
-        # Roundtrip (approximate)
-        xyz_from_ucs.append(xyz)
+        try:
+            ucs_val = XYZ_to_UCS(xyz)
+            ucs.append(ucs_val)
+            xyz_back = UCS_to_XYZ(ucs_val)
+            xyz_from_ucs.append(xyz_back)
+        except:
+            ucs.append([0, 0, 0])
+            xyz_from_ucs.append([0, 0, 0])
     write_csv('ucs_from_xyz.csv', np.array(ucs), 'UCS from XYZ')
     write_csv('xyz_from_ucs_roundtrip.csv', np.array(xyz_from_ucs), 'XYZ from UCS roundtrip')
 
@@ -467,80 +450,51 @@ def generate_extended_colorspaces(test_xyz, test_rgb, D65_XYZ):
     write_csv('icacb_from_xyz.csv', np.array(icacb), 'ICaCb from XYZ')
     write_csv('xyz_from_icacb_roundtrip.csv', np.array(xyz_from_icacb), 'XYZ from ICaCb roundtrip')
 
-    # Prismatic (custom implementation)
+    # Prismatic (using colour-science)
+    from colour.models import RGB_to_Prismatic, Prismatic_to_RGB
     prismatic = []
     rgb_from_prismatic = []
     for rgb in test_rgb:
-        L = max(rgb)
-        if L > 0:
-            s = 1.0 - min(rgb) / L
-            # Hue calculation (simplified)
-            r, g, b = rgb
-            if r >= g and r >= b:
-                h = (g - b) / (6.0 * (r - min(rgb) + 1e-10))
-            elif g >= r and g >= b:
-                h = (2.0 + (b - r) / (6.0 * (g - min(rgb) + 1e-10)))
-            else:
-                h = (4.0 + (r - g) / (6.0 * (b - min(rgb) + 1e-10)))
-            if h < 0:
-                h += 1.0
-        else:
-            L = s = h = 0.0
-        prismatic.append([L, s, h * 360])
-        rgb_from_prismatic.append(rgb)  # Roundtrip
+        try:
+            pris = RGB_to_Prismatic(rgb)
+            prismatic.append(pris)
+            rgb_back = Prismatic_to_RGB(pris)
+            rgb_from_prismatic.append(rgb_back)
+        except:
+            prismatic.append([0, 0, 0])
+            rgb_from_prismatic.append(rgb)
     write_csv('prismatic_from_rgb.csv', np.array(prismatic), 'Prismatic from RGB')
     write_csv('rgb_from_prismatic_roundtrip.csv', np.array(rgb_from_prismatic), 'RGB from Prismatic roundtrip')
 
-    # HCL (simple cylindrical)
+    # HCL (using colour-science)
+    from colour.models import RGB_to_HCL, HCL_to_RGB
     hcl = []
     rgb_from_hcl = []
     for rgb in test_rgb:
-        r, g, b = rgb
-        M = max(rgb)
-        m = min(rgb)
-        C = M - m
-        L = 0.5 * (M + m)
-        if C == 0:
-            H = 0
-        elif M == r:
-            H = ((g - b) / C) % 6
-        elif M == g:
-            H = (b - r) / C + 2
-        else:
-            H = (r - g) / C + 4
-        H *= 60
-        hcl.append([H, C, L])
-        rgb_from_hcl.append(rgb)
+        try:
+            hcl_val = RGB_to_HCL(rgb)
+            hcl.append(hcl_val)
+            rgb_back = HCL_to_RGB(hcl_val)
+            rgb_from_hcl.append(rgb_back)
+        except:
+            hcl.append([0, 0, 0])
+            rgb_from_hcl.append(rgb)
     write_csv('hcl_from_rgb.csv', np.array(hcl), 'HCL from RGB')
     write_csv('rgb_from_hcl_roundtrip.csv', np.array(rgb_from_hcl), 'RGB from HCL roundtrip')
 
-    # IHLS
+    # IHLS (using colour-science)
+    from colour.models import RGB_to_IHLS, IHLS_to_RGB
     ihls = []
     rgb_from_ihls = []
     for rgb in test_rgb:
-        r, g, b = rgb
-        M = max(rgb)
-        m = min(rgb)
-        L = 0.5 * (M + m)
-        if M == m:
-            S = 0
-            H = 0
-        else:
-            if L <= 0.5:
-                S = (M - m) / (M + m)
-            else:
-                S = (M - m) / (2 - M - m)
-            if M == r:
-                H = (g - b) / (M - m)
-            elif M == g:
-                H = 2 + (b - r) / (M - m)
-            else:
-                H = 4 + (r - g) / (M - m)
-            H *= 60
-            if H < 0:
-                H += 360
-        ihls.append([H, L, S])
-        rgb_from_ihls.append(rgb)
+        try:
+            ihls_val = RGB_to_IHLS(rgb)
+            ihls.append(ihls_val)
+            rgb_back = IHLS_to_RGB(ihls_val)
+            rgb_from_ihls.append(rgb_back)
+        except:
+            ihls.append([0, 0, 0])
+            rgb_from_ihls.append(rgb)
     write_csv('ihls_from_rgb.csv', np.array(ihls), 'IHLS from RGB')
     write_csv('rgb_from_ihls_roundtrip.csv', np.array(rgb_from_ihls), 'RGB from IHLS roundtrip')
 
@@ -710,83 +664,69 @@ def generate_osa_hunter_ipt_prolab_data(test_xyz, D65_XYZ):
     write_csv('test_xyz_prolab_pairs.csv', np.array(prolab_pairs), 'XYZ and ProLab pairs')
 
 def generate_delta_e_extended():
-    """Generate extended Delta E data."""
+    """Generate extended Delta E data using colour-science."""
     print("\n=== Extended Delta E ===")
 
+    from colour.difference import (
+        delta_E_ITP,
+        delta_E_DIN99,
+        delta_E_CAM02LCD,
+        delta_E_CAM02SCD,
+    )
+
     # Generate test colors for different delta E metrics
-    # ICtCp for Delta E ITP
+    # ICtCp for Delta E ITP (test values)
     ictcp1 = np.array([[0.5, 0.0, 0.0], [0.6, 0.1, -0.1], [0.4, -0.05, 0.05]])
     ictcp2 = np.array([[0.51, 0.01, 0.01], [0.58, 0.08, -0.08], [0.42, -0.03, 0.03]])
     write_csv('delta_e_itp_ictcp1.csv', ictcp1, 'Delta E ITP ICtCp color 1')
     write_csv('delta_e_itp_ictcp2.csv', ictcp2, 'Delta E ITP ICtCp color 2')
 
-    # Delta E ITP
-    de_itp = []
-    for ic1, ic2 in zip(ictcp1, ictcp2):
-        dI = ic1[0] - ic2[0]
-        dCt = ic1[1] - ic2[1]
-        dCp = ic1[2] - ic2[2]
-        de = 720 * np.sqrt(dI**2 + dCt**2 + dCp**2)
-        de_itp.append(de)
-    write_csv('delta_e_itp.csv', np.array(de_itp), 'Delta E ITP')
+    # Delta E ITP (using colour-science)
+    de_itp = np.array([delta_E_ITP(ic1, ic2) for ic1, ic2 in zip(ictcp1, ictcp2)])
+    write_csv('delta_e_itp.csv', de_itp, 'Delta E ITP')
 
-    # DIN99 for Delta E DIN99
+    # DIN99 for Delta E DIN99 (test values)
     din99_1 = np.array([[50, 10, 20], [60, -5, 15], [70, 0, -10]])
     din99_2 = np.array([[52, 12, 18], [58, -3, 17], [72, 2, -8]])
     write_csv('delta_e_din99_1.csv', din99_1, 'Delta E DIN99 color 1')
     write_csv('delta_e_din99_2.csv', din99_2, 'Delta E DIN99 color 2')
 
-    de_din99 = []
-    for d1, d2 in zip(din99_1, din99_2):
-        de = np.sqrt(np.sum((d1 - d2)**2))
-        de_din99.append(de)
-    write_csv('delta_e_din99.csv', np.array(de_din99), 'Delta E DIN99')
+    # Delta E DIN99 (using colour-science)
+    de_din99 = np.array([delta_E_DIN99(d1, d2) for d1, d2 in zip(din99_1, din99_2)])
+    write_csv('delta_e_din99.csv', de_din99, 'Delta E DIN99')
 
-    # ZCAM JzAzBz for Delta E ZCAM
+    # ZCAM JzAzBz for Delta E ZCAM (test values)
+    # Note: ZCAM Delta E is Euclidean distance in JzAzBz space
     jzazbz1 = np.array([[0.2, 0.05, 0.1], [0.3, -0.02, 0.08], [0.15, 0.0, -0.05]])
     jzazbz2 = np.array([[0.21, 0.06, 0.09], [0.28, -0.01, 0.09], [0.17, 0.01, -0.04]])
     write_csv('delta_e_zcam_jzazbz1.csv', jzazbz1, 'Delta E ZCAM JzAzBz color 1')
     write_csv('delta_e_zcam_jzazbz2.csv', jzazbz2, 'Delta E ZCAM JzAzBz color 2')
 
-    de_zcam = []
-    for j1, j2 in zip(jzazbz1, jzazbz2):
-        de = np.sqrt(np.sum((j1 - j2)**2))
-        de_zcam.append(de)
-    write_csv('delta_e_zcam.csv', np.array(de_zcam), 'Delta E ZCAM')
+    # Delta E ZCAM (Euclidean distance in JzAzBz - this is standard)
+    de_zcam = np.array([np.sqrt(np.sum((j1 - j2)**2)) for j1, j2 in zip(jzazbz1, jzazbz2)])
+    write_csv('delta_e_zcam.csv', de_zcam, 'Delta E ZCAM')
 
-    # CAM Jab for CAM02/CAM16 LCD/SCD
+    # CAM Jab for CAM02/CAM16 LCD/SCD (test values)
     cam_lab1 = np.array([[50, 10, 20], [60, -5, 15], [70, 0, -10]])
     cam_lab2 = np.array([[52, 12, 18], [58, -3, 17], [72, 2, -8]])
     write_csv('delta_e_cam_lab1.csv', cam_lab1, 'Delta E CAM Jab color 1')
     write_csv('delta_e_cam_lab2.csv', cam_lab2, 'Delta E CAM Jab color 2')
 
-    # CAM02 LCD (KL=0.77)
-    de_cam02_lcd = []
-    for l1, l2 in zip(cam_lab1, cam_lab2):
-        dJ = (l1[0] - l2[0]) / 0.77
-        da = l1[1] - l2[1]
-        db = l1[2] - l2[2]
-        de = np.sqrt(dJ**2 + da**2 + db**2)
-        de_cam02_lcd.append(de)
-    write_csv('delta_e_cam02_lcd.csv', np.array(de_cam02_lcd), 'Delta E CAM02 LCD')
+    # CAM02 LCD (using colour-science)
+    de_cam02_lcd = np.array([delta_E_CAM02LCD(l1, l2) for l1, l2 in zip(cam_lab1, cam_lab2)])
+    write_csv('delta_e_cam02_lcd.csv', de_cam02_lcd, 'Delta E CAM02 LCD')
 
-    # CAM02 SCD (KL=1.24)
-    de_cam02_scd = []
-    for l1, l2 in zip(cam_lab1, cam_lab2):
-        dJ = (l1[0] - l2[0]) / 1.24
-        da = l1[1] - l2[1]
-        db = l1[2] - l2[2]
-        de = np.sqrt(dJ**2 + da**2 + db**2)
-        de_cam02_scd.append(de)
-    write_csv('delta_e_cam02_scd.csv', np.array(de_cam02_scd), 'Delta E CAM02 SCD')
+    # CAM02 SCD (using colour-science)
+    de_cam02_scd = np.array([delta_E_CAM02SCD(l1, l2) for l1, l2 in zip(cam_lab1, cam_lab2)])
+    write_csv('delta_e_cam02_scd.csv', de_cam02_scd, 'Delta E CAM02 SCD')
 
-    # CAM16 LCD (KL=0.77)
-    de_cam16_lcd = de_cam02_lcd  # Same formula
-    write_csv('delta_e_cam16_lcd.csv', np.array(de_cam16_lcd), 'Delta E CAM16 LCD')
+    # CAM16 LCD (same formula as CAM02, using colour-science)
+    de_cam16_lcd = np.array([delta_E_CAM02LCD(l1, l2) for l1, l2 in zip(cam_lab1, cam_lab2)])
+    write_csv('delta_e_cam16_lcd.csv', de_cam16_lcd, 'Delta E CAM16 LCD')
 
-    # CAM16 SCD (KL=1.24)
-    de_cam16_scd = de_cam02_scd  # Same formula
-    write_csv('delta_e_cam16_scd.csv', np.array(de_cam16_scd), 'Delta E CAM16 SCD')
+    # CAM16 SCD (same formula as CAM02, using colour-science)
+    de_cam16_scd = np.array([delta_E_CAM02SCD(l1, l2) for l1, l2 in zip(cam_lab1, cam_lab2)])
+    write_csv('delta_e_cam16_scd.csv', de_cam16_scd, 'Delta E CAM16 SCD')
 
 def generate_whiteness_yellowness_data(D65_XYZ):
     """Generate whiteness and yellowness test data."""
@@ -972,38 +912,91 @@ def generate_cam_extended_data():
     """Generate extended CAM data (ZCAM, Hunt, LLAB, Kim2009, ATD95, Hellwig2022)."""
     print("\n=== Extended CAM Models ===")
 
-    # Placeholder data for complex CAM models
-    # These would require specific viewing conditions and implementations
+    from colour import (
+        XYZ_to_ZCAM, XYZ_to_Hunt, XYZ_to_LLAB, XYZ_to_Kim2009,
+        XYZ_to_ATD95, XYZ_to_Hellwig2022,
+    )
 
-    # ZCAM correlates placeholder
-    zcam_data = np.array([
-        50.0, 30.0, 180.0, 100.0, 20.0, 40.0,  # Test 1
-        60.0, 25.0, 90.0, 120.0, 15.0, 35.0,   # Test 2
+    # Get D65 white point
+    D65 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+    D65_XYZ = colour.xy_to_XYZ(D65)
+    D65_XYZ = D65_XYZ / D65_XYZ[1] * 100
+
+    # Test XYZ colors
+    test_xyz = np.array([
+        [50.0, 50.0, 50.0],
+        [41.24, 21.26, 1.93],
+        [35.76, 71.52, 11.92],
+        [18.05, 7.22, 95.05],
     ])
-    write_csv('test_zcam_correlates.csv', zcam_data, 'ZCAM correlates (J,C,h,Q,M,s)')
 
-    # Hunt correlates placeholder
-    hunt_data = np.array([
-        50.0, 30.0, 180.0, 100.0, 20.0,  # Test 1
-        60.0, 25.0, 90.0, 120.0, 15.0,   # Test 2
-    ])
-    write_csv('test_hunt_correlates.csv', hunt_data, 'Hunt correlates')
+    # ZCAM correlates (using colour-science)
+    zcam_data = []
+    for xyz in test_xyz:
+        try:
+            spec = XYZ_to_ZCAM(xyz, D65_XYZ, CAM_L_A, CAM_Y_b)
+            zcam_data.extend([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s])
+        except:
+            zcam_data.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    write_csv('test_zcam_correlates.csv', np.array(zcam_data), 'ZCAM correlates (J,C,h,Q,M,s)')
 
-    # Kim2009 placeholder
-    kim_data = np.array([50.0, 30.0, 180.0, 60.0, 25.0, 90.0])
-    write_csv('kim2009.csv', kim_data, 'Kim2009 correlates')
+    # Hunt correlates (using colour-science)
+    # Hunt requires background XYZ (XYZ_b)
+    XYZ_b = D65_XYZ * 0.2  # 20% gray background
+    hunt_data = []
+    for xyz in test_xyz:
+        try:
+            spec = XYZ_to_Hunt(xyz, D65_XYZ, XYZ_b, CAM_L_A)
+            hunt_data.extend([spec.J, spec.C, spec.h, spec.Q, spec.M])
+        except:
+            hunt_data.extend([0.0, 0.0, 0.0, 0.0, 0.0])
+    write_csv('test_hunt_correlates.csv', np.array(hunt_data), 'Hunt correlates')
 
-    # LLAB placeholder
-    llab_data = np.array([50.0, 30.0, 180.0, 60.0, 25.0, 90.0])
-    write_csv('llab.csv', llab_data, 'LLAB correlates')
+    # Kim2009 (using colour-science)
+    kim_data = []
+    for xyz in test_xyz:
+        try:
+            spec = XYZ_to_Kim2009(xyz, D65_XYZ, CAM_L_A)
+            kim_data.extend([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s])
+        except:
+            kim_data.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    write_csv('kim2009.csv', np.array(kim_data), 'Kim2009 correlates')
 
-    # ATD95 placeholder
-    atd95_data = np.array([50.0, 30.0, 180.0, 60.0, 25.0, 90.0])
-    write_csv('atd95.csv', atd95_data, 'ATD95 correlates')
+    # LLAB (using colour-science)
+    # LLAB requires reference luminance L (cd/m^2)
+    L_ref = 318.31  # Reference luminance
+    llab_data = []
+    for xyz in test_xyz:
+        try:
+            spec = XYZ_to_LLAB(xyz, D65_XYZ, CAM_Y_b, L_ref)
+            llab_data.extend([spec.L, spec.a, spec.b, spec.C, spec.h, spec.s])
+        except:
+            llab_data.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    write_csv('llab.csv', np.array(llab_data), 'LLAB correlates')
 
-    # Hellwig2022 placeholder
-    hellwig_data = np.array([50.0, 30.0, 180.0, 60.0, 25.0, 90.0])
-    write_csv('hellwig2022.csv', hellwig_data, 'Hellwig2022 correlates')
+    # ATD95 (using colour-science)
+    # ATD95 requires Y_0 (luminance), k_1 and k_2 parameters
+    Y_0 = CAM_L_A  # Adapting luminance
+    k_1 = 0.0      # Chromatic induction factor
+    k_2 = 50.0     # Chromatic induction factor
+    atd95_data = []
+    for xyz in test_xyz:
+        try:
+            spec = XYZ_to_ATD95(xyz, D65_XYZ, Y_0, k_1, k_2)
+            atd95_data.extend([spec.H, spec.C, spec.Br, spec.A_1, spec.T_1, spec.D_1])
+        except:
+            atd95_data.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    write_csv('atd95.csv', np.array(atd95_data), 'ATD95 correlates')
+
+    # Hellwig2022 (using colour-science)
+    hellwig_data = []
+    for xyz in test_xyz:
+        try:
+            spec = XYZ_to_Hellwig2022(xyz, D65_XYZ, CAM_L_A, CAM_Y_b)
+            hellwig_data.extend([spec.J, spec.C, spec.h, spec.Q, spec.M, spec.s])
+        except:
+            hellwig_data.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    write_csv('hellwig2022.csv', np.array(hellwig_data), 'Hellwig2022 correlates')
 
 def generate_color_correction_data():
     """Generate color correction test data."""

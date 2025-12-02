@@ -20,20 +20,22 @@ except ImportError:
     print("ERROR: colour-science not installed. Run: pip install colour-science")
     sys.exit(1)
 
+# Standard viewing conditions for CAM tests
+# L_A: Adapting luminance in cd/m^2
+# Y_b: Background luminance relative factor (20% gray)
+CAM_L_A = 318.31  # cd/m^2 - commonly used test value for average surround
+CAM_Y_b = 20.0    # 20% relative background luminance
+
 
 def generate_hellwig2022_tests(output_dir):
     """Generate Hellwig2022 test cases."""
 
     print("\nGenerating Hellwig2022 test data...")
 
-    # D65 white point (from colour-science)
-    # CCS_ILLUMINANTS returns (x, y) chromaticity, convert to XYZ
+    # D65 white point (from colour-science, using xy_to_XYZ)
     d65_xy = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
-    x, y = d65_xy[0], d65_xy[1]
-    Y = 100.0
-    X = (x / y) * Y
-    Z = ((1.0 - x - y) / y) * Y
-    d65_white_xyz = [X, Y, Z]
+    d65_xyz = colour.xy_to_XYZ(d65_xy)
+    d65_white_xyz = list(d65_xyz / d65_xyz[1] * 100)  # Normalize to Y=100
 
     # Test cases: [XYZ_in, XYZ_w, La, Yb, surround_idx]
     # Only INPUTS are hardcoded - outputs come from colour-science
@@ -41,21 +43,21 @@ def generate_hellwig2022_tests(output_dir):
 
     test_cases = [
         # Mid-gray, average surround
-        ([19.01, 20.0, 21.78], d65_white_xyz, 318.31, 20.0, 0),
+        ([19.01, 20.0, 21.78], d65_white_xyz, CAM_L_A, CAM_Y_b, 0),
         # Red, average surround
-        ([41.24, 21.26, 1.93], d65_white_xyz, 318.31, 20.0, 0),
+        ([41.24, 21.26, 1.93], d65_white_xyz, CAM_L_A, CAM_Y_b, 0),
         # Green, average surround
-        ([35.76, 71.52, 11.92], d65_white_xyz, 318.31, 20.0, 0),
+        ([35.76, 71.52, 11.92], d65_white_xyz, CAM_L_A, CAM_Y_b, 0),
         # Blue, average surround
-        ([18.05, 7.22, 95.05], d65_white_xyz, 318.31, 20.0, 0),
+        ([18.05, 7.22, 95.05], d65_white_xyz, CAM_L_A, CAM_Y_b, 0),
         # White, average surround
-        (d65_white_xyz, d65_white_xyz, 318.31, 20.0, 0),
+        (d65_white_xyz, d65_white_xyz, CAM_L_A, CAM_Y_b, 0),
         # Mid-gray, dim surround
-        ([19.01, 20.0, 21.78], d65_white_xyz, 318.31, 20.0, 1),
+        ([19.01, 20.0, 21.78], d65_white_xyz, CAM_L_A, CAM_Y_b, 1),
         # Mid-gray, dark surround
-        ([19.01, 20.0, 21.78], d65_white_xyz, 318.31, 20.0, 2),
+        ([19.01, 20.0, 21.78], d65_white_xyz, CAM_L_A, CAM_Y_b, 2),
         # Red, dim surround
-        ([41.24, 21.26, 1.93], d65_white_xyz, 318.31, 20.0, 1),
+        ([41.24, 21.26, 1.93], d65_white_xyz, CAM_L_A, CAM_Y_b, 1),
     ]
 
     hellwig2022_test_data = []
