@@ -16,25 +16,31 @@
 
 /* ----------------------------------------------------------------
  * ProLab Constants (Konovalenko 2021)
+ * Generated from colour-science: colour.models.prolab
  * ---------------------------------------------------------------- */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* Projective transformation matrix Q (4x4 homogeneous coordinates)
  * Normalised cone responses to CIE XYZ tristimulus values */
 static alwan_scalar const MATRIX_Q[16] = {
-    ALWAN_LITERAL(75.54),    ALWAN_LITERAL(486.66),   ALWAN_LITERAL(167.39),   ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(617.72),   ALWAN_LITERAL(-595.45),  ALWAN_LITERAL(-22.27),   ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(48.34),    ALWAN_LITERAL(194.94),   ALWAN_LITERAL(-243.28),  ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(0.7554),   ALWAN_LITERAL(3.8666),   ALWAN_LITERAL(1.6739),   ALWAN_LITERAL(1.0)
+#include "data/prolab_matrix_q.csv"
 };
 
 /* Inverse projective transformation matrix Q^-1 (precomputed for efficiency)
  * From colour-science: colour.models.prolab.MATRIX_INVERSE_Q */
 static alwan_scalar const MATRIX_INVERSE_Q[16] = {
-    ALWAN_LITERAL( 0.0013706328207773),  ALWAN_LITERAL( 0.0013873820295459),  ALWAN_LITERAL( 0.0008160688509916),  ALWAN_LITERAL( 0.0),
-    ALWAN_LITERAL( 0.0013706328207773),  ALWAN_LITERAL(-0.0002431548538006),  ALWAN_LITERAL( 0.0009653291945657),  ALWAN_LITERAL( 0.0),
-    ALWAN_LITERAL( 0.0013706328207773),  ALWAN_LITERAL( 0.0000808345942686),  ALWAN_LITERAL(-0.0031748189744632),  ALWAN_LITERAL(-0.0),
-    ALWAN_LITERAL(-0.0086293671792227),  ALWAN_LITERAL(-0.0002431548538006),  ALWAN_LITERAL( 0.0009653291945657),  ALWAN_LITERAL( 1.0)
+#include "data/prolab_matrix_q_inv.csv"
 };
+
+/* D65 reference white XYZ (Y=1 normalized)
+ * From colour-science: CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65'] */
+static alwan_scalar const D65_WHITE_XYZ[3] = {
+#include "data/white_d65_xyz_y1.csv"
+};
+
+ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
  * Helper: Projective Transformation (4x4 matrix × 3D point)
@@ -79,16 +85,11 @@ static void apply_projective_transform(alwan_scalar const *matrix,
  * ---------------------------------------------------------------- */
 
 void alwan_xyz_to_prolab(alwan_xyz const *xyz, alwan_prolab *prolab) {
-    /* D65 reference white (Y = 100) - from alwan_internal.h */
-    alwan_scalar const xn = ALWAN_D65_X;
-    alwan_scalar const yn = ALWAN_D65_Y;
-    alwan_scalar const zn = ALWAN_D65_Z;
-
-    /* Step 1: Normalize XYZ by reference white (relative XYZ) */
+    /* Step 1: Normalize XYZ by D65 reference white (relative XYZ) */
     alwan_vec3 xyz_relative;
-    xyz_relative.v[0] = xyz->x / xn;
-    xyz_relative.v[1] = xyz->y / yn;
-    xyz_relative.v[2] = xyz->z / zn;
+    xyz_relative.v[0] = xyz->x / D65_WHITE_XYZ[0];
+    xyz_relative.v[1] = xyz->y / D65_WHITE_XYZ[1];
+    xyz_relative.v[2] = xyz->z / D65_WHITE_XYZ[2];
 
     /* Step 2: Apply projective transformation with MATRIX_Q */
     alwan_vec3 prolab_vec;
@@ -99,11 +100,6 @@ void alwan_xyz_to_prolab(alwan_xyz const *xyz, alwan_prolab *prolab) {
 }
 
 void alwan_prolab_to_xyz(alwan_prolab const *prolab, alwan_xyz *xyz) {
-    /* D65 reference white (Y = 100) - from alwan_internal.h */
-    alwan_scalar const xn = ALWAN_D65_X;
-    alwan_scalar const yn = ALWAN_D65_Y;
-    alwan_scalar const zn = ALWAN_D65_Z;
-
     /* Step 1: Apply inverse projective transformation with MATRIX_INVERSE_Q */
     alwan_vec3 prolab_vec;
     prolab_vec.v[0] = prolab->L;
@@ -113,10 +109,10 @@ void alwan_prolab_to_xyz(alwan_prolab const *prolab, alwan_xyz *xyz) {
     alwan_vec3 xyz_relative;
     apply_projective_transform(MATRIX_INVERSE_Q, &prolab_vec, &xyz_relative);
 
-    /* Step 2: Denormalize by reference white */
-    xyz->x = xyz_relative.v[0] * xn;
-    xyz->y = xyz_relative.v[1] * yn;
-    xyz->z = xyz_relative.v[2] * zn;
+    /* Step 2: Denormalize by D65 reference white */
+    xyz->x = xyz_relative.v[0] * D65_WHITE_XYZ[0];
+    xyz->y = xyz_relative.v[1] * D65_WHITE_XYZ[1];
+    xyz->z = xyz_relative.v[2] * D65_WHITE_XYZ[2];
 }
 
 /* ----------------------------------------------------------------

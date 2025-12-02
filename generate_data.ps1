@@ -55,6 +55,7 @@ $dataScripts = @(
     @{Name="HPE Matrix"; Script="gendata/data/hpe_matrix.py"; Priority=1},
     @{Name="LLAB Matrices"; Script="gendata/data/llab_matrices.py"; Priority=1},
     @{Name="IPT Data"; Script="gendata/data/ipt_data.py"; Priority=1},
+    @{Name="ProLab Data"; Script="gendata/data/prolab_data.py"; Priority=1},
     @{Name="ICtCp Matrices"; Script="gendata/data/ictcp_matrices.py"; Priority=1},
     @{Name="ACES Matrices"; Script="gendata/data/aces_matrices.py"; Priority=1},
     @{Name="Illuminants"; Script="gendata/data/illuminants.py"; Priority=1},
