@@ -2295,6 +2295,121 @@ int alwan_printer_lights_apply(alwan_rgb const *rgb_in, alwan_scalar red_lights,
                                 alwan_scalar green_lights, alwan_scalar blue_lights,
                                 alwan_rgb *rgb_out);
 
+/* ================================================================
+ * Camera Profiling / Polynomial Color Correction
+ * Reference: Cheung et al. (2004), Finlayson et al. (2015)
+ * ================================================================ */
+
+/* Cheung 2004 polynomial expansion terms
+ * Values represent the number of terms in the expanded polynomial */
+typedef enum {
+    ALWAN_POLY_CHEUNG_3  = 3,   /* [R, G, B] */
+    ALWAN_POLY_CHEUNG_4  = 4,   /* [R, G, B, 1] */
+    ALWAN_POLY_CHEUNG_5  = 5,   /* [R, G, B, RG, 1] */
+    ALWAN_POLY_CHEUNG_7  = 7,   /* [R, G, B, RG, RB, GB, 1] */
+    ALWAN_POLY_CHEUNG_8  = 8,   /* [R, G, B, RG, RB, GB, RGB, 1] */
+    ALWAN_POLY_CHEUNG_10 = 10,  /* [R, G, B, RG, RB, GB, R², G², B², 1] */
+    ALWAN_POLY_CHEUNG_11 = 11,  /* [R, G, B, RG, RB, GB, R², G², B², RGB, 1] */
+    ALWAN_POLY_CHEUNG_14 = 14,  /* [R, G, B, RG, RB, GB, R², G², B², RGB, R²G, RG², R²B, 1] */
+    ALWAN_POLY_CHEUNG_16 = 16,  /* 16-term expansion */
+    ALWAN_POLY_CHEUNG_17 = 17,  /* 17-term expansion */
+    ALWAN_POLY_CHEUNG_19 = 19,  /* 19-term expansion */
+    ALWAN_POLY_CHEUNG_20 = 20,  /* 20-term expansion */
+    ALWAN_POLY_CHEUNG_22 = 22,  /* 22-term expansion */
+    ALWAN_POLY_CHEUNG_35 = 35   /* Full 35-term expansion (maximum) */
+} alwan_poly_cheung_terms;
+
+/* Polynomial expansion - Cheung 2004 method
+ * Expands RGB to higher-dimensional polynomial space for camera profiling.
+ * rgb: input RGB triplet [0,1]
+ * terms: number of terms (from alwan_poly_cheung_terms)
+ * out: output array (must be at least 'terms' elements)
+ * Returns ALWAN_OK on success */
+int alwan_poly_expand_cheung2004(alwan_rgb const *rgb, alwan_poly_cheung_terms terms,
+                                  alwan_scalar *out);
+
+/* Polynomial expansion - Finlayson 2015 method
+ * rgb: input RGB triplet [0,1]
+ * degree: polynomial degree (1-4)
+ * root_poly: if true, use root-polynomial expansion
+ * out: output array (size depends on degree: 3,6,10,15 for degrees 1,2,3,4)
+ * out_size: receives actual output size
+ * Returns ALWAN_OK on success */
+int alwan_poly_expand_finlayson2015(alwan_rgb const *rgb, int degree, int root_poly,
+                                     alwan_scalar *out, int *out_size);
+
+/* Polynomial expansion - Vandermonde method
+ * a: input array (typically RGB)
+ * a_size: size of input array
+ * degree: polynomial degree
+ * out: output array
+ * out_size: receives actual output size
+ * Returns ALWAN_OK on success */
+int alwan_poly_expand_vandermonde(alwan_scalar const *a, int a_size, int degree,
+                                   alwan_scalar *out, int *out_size);
+
+/* Compute colour correction matrix using Cheung 2004 method
+ * M_T: test (measured) RGB values, Nx3 array (row-major)
+ * M_R: reference RGB values, Nx3 array (row-major)
+ * num_samples: number of color samples (N)
+ * terms: polynomial expansion terms
+ * matrix_out: receives the correction matrix (terms x 3, row-major)
+ * Returns ALWAN_OK on success */
+int alwan_colour_correction_matrix_cheung2004(alwan_scalar const *M_T,
+                                               alwan_scalar const *M_R,
+                                               int num_samples,
+                                               alwan_poly_cheung_terms terms,
+                                               alwan_scalar *matrix_out);
+
+/* Apply colour correction using Cheung 2004 method
+ * rgb: input RGB to correct
+ * matrix: correction matrix from alwan_colour_correction_matrix_cheung2004
+ * terms: must match terms used to compute the matrix
+ * rgb_out: corrected RGB output
+ * Returns ALWAN_OK on success */
+int alwan_colour_correct_cheung2004(alwan_rgb const *rgb, alwan_scalar const *matrix,
+                                     alwan_poly_cheung_terms terms, alwan_rgb *rgb_out);
+
+/* Compute colour correction matrix using Finlayson 2015 method
+ * M_T: test (measured) RGB values, Nx3 array (row-major)
+ * M_R: reference RGB values, Nx3 array (row-major)
+ * num_samples: number of color samples (N)
+ * degree: polynomial degree (1-4)
+ * root_poly: if true, use root-polynomial expansion
+ * matrix_out: receives the correction matrix
+ * matrix_size: receives matrix size
+ * Returns ALWAN_OK on success */
+int alwan_colour_correction_matrix_finlayson2015(alwan_scalar const *M_T,
+                                                  alwan_scalar const *M_R,
+                                                  int num_samples, int degree, int root_poly,
+                                                  alwan_scalar *matrix_out, int *matrix_size);
+
+/* Apply colour correction using Finlayson 2015 method
+ * rgb: input RGB to correct
+ * matrix: correction matrix from alwan_colour_correction_matrix_finlayson2015
+ * degree: must match degree used to compute the matrix
+ * root_poly: must match root_poly used to compute the matrix
+ * rgb_out: corrected RGB output
+ * Returns ALWAN_OK on success */
+int alwan_colour_correct_finlayson2015(alwan_rgb const *rgb, alwan_scalar const *matrix,
+                                        int degree, int root_poly, alwan_rgb *rgb_out);
+
+/* White balance multipliers from neutral gray measurement
+ * Given a measured RGB value that should be neutral gray,
+ * computes the multipliers to normalize it.
+ * measured_gray: measured RGB of a neutral gray target
+ * multipliers_out: receives RGB multipliers (normalized so min = 1.0)
+ * Returns ALWAN_OK on success */
+int alwan_white_balance_from_gray(alwan_rgb const *measured_gray, alwan_rgb *multipliers_out);
+
+/* Apply white balance multipliers
+ * rgb: input RGB
+ * multipliers: RGB multipliers from alwan_white_balance_from_gray
+ * rgb_out: white-balanced RGB output
+ * Returns ALWAN_OK on success */
+int alwan_white_balance_apply(alwan_rgb const *rgb, alwan_rgb const *multipliers,
+                               alwan_rgb *rgb_out);
+
 #ifdef __cplusplus
 }
 #endif

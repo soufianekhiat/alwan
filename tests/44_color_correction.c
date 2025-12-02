@@ -335,6 +335,297 @@ static int test_printer_lights_per_channel(void)
 }
 
 /* ================================================================
+ * Cheung 2004 Polynomial Expansion Tests
+ * ================================================================ */
+
+static int test_cheung2004_expand_basic(void)
+{
+    printf("  TEST: Cheung 2004 polynomial expansion (basic terms)\n");
+
+    /* Reference values from colour-science */
+    static alwan_scalar const ref_input[] = {
+#include "reference_values/cheung2004_input_rgb.csv"
+    };
+    static alwan_scalar const ref_expand_3[] = {
+#include "reference_values/cheung2004_expand_3.csv"
+    };
+    static alwan_scalar const ref_expand_7[] = {
+#include "reference_values/cheung2004_expand_7.csv"
+    };
+    static alwan_scalar const ref_expand_11[] = {
+#include "reference_values/cheung2004_expand_11.csv"
+    };
+
+    int num_samples = 6;
+    alwan_scalar expanded[35];
+
+    /* Test 3-term expansion */
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
+        int status = alwan_poly_expand_cheung2004(&rgb, ALWAN_POLY_CHEUNG_3, expanded);
+        TEST_ASSERT(status == ALWAN_OK, "Cheung2004 expand failed");
+        for (int j = 0; j < 3; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_expand_3[i*3+j], TEST_TOLERANCE,
+                             "Cheung2004 3-term mismatch");
+        }
+    }
+
+    /* Test 7-term expansion */
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
+        int status = alwan_poly_expand_cheung2004(&rgb, ALWAN_POLY_CHEUNG_7, expanded);
+        TEST_ASSERT(status == ALWAN_OK, "Cheung2004 expand failed");
+        for (int j = 0; j < 7; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_expand_7[i*7+j], TEST_TOLERANCE,
+                             "Cheung2004 7-term mismatch");
+        }
+    }
+
+    /* Test 11-term expansion */
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
+        int status = alwan_poly_expand_cheung2004(&rgb, ALWAN_POLY_CHEUNG_11, expanded);
+        TEST_ASSERT(status == ALWAN_OK, "Cheung2004 expand failed");
+        for (int j = 0; j < 11; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_expand_11[i*11+j], TEST_TOLERANCE,
+                             "Cheung2004 11-term mismatch");
+        }
+    }
+
+    return 0;
+}
+
+static int test_cheung2004_expand_full(void)
+{
+    printf("  TEST: Cheung 2004 polynomial expansion (35-term)\n");
+
+    /* Reference values from colour-science */
+    static alwan_scalar const ref_input[] = {
+#include "reference_values/cheung2004_input_rgb.csv"
+    };
+    static alwan_scalar const ref_expand_35[] = {
+#include "reference_values/cheung2004_expand_35.csv"
+    };
+
+    int num_samples = 6;
+    alwan_scalar expanded[35];
+
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
+        int status = alwan_poly_expand_cheung2004(&rgb, ALWAN_POLY_CHEUNG_35, expanded);
+        TEST_ASSERT(status == ALWAN_OK, "Cheung2004 35-term expand failed");
+        for (int j = 0; j < 35; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_expand_35[i*35+j], TEST_TOLERANCE,
+                             "Cheung2004 35-term mismatch");
+        }
+    }
+
+    return 0;
+}
+
+/* ================================================================
+ * Finlayson 2015 Polynomial Expansion Tests
+ * ================================================================ */
+
+static int test_finlayson2015_expand_standard(void)
+{
+    printf("  TEST: Finlayson 2015 standard polynomial expansion\n");
+
+    /* Reference values from colour-science */
+    static alwan_scalar const ref_input[] = {
+#include "reference_values/finlayson2015_input_rgb.csv"
+    };
+    static alwan_scalar const ref_deg2[] = {
+#include "reference_values/finlayson2015_std_deg2.csv"
+    };
+    static alwan_scalar const ref_deg3[] = {
+#include "reference_values/finlayson2015_std_deg3.csv"
+    };
+
+    int num_samples = 4;
+    alwan_scalar expanded[34];
+    int out_size;
+
+    /* Test degree 2 standard expansion (size=9) */
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
+        int status = alwan_poly_expand_finlayson2015(&rgb, 2, 0, expanded, &out_size);
+        TEST_ASSERT(status == ALWAN_OK, "Finlayson2015 expand failed");
+        TEST_ASSERT(out_size == 9, "Finlayson2015 degree 2 should have 9 terms");
+        for (int j = 0; j < 9; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_deg2[i*9+j], TEST_TOLERANCE,
+                             "Finlayson2015 std deg2 mismatch");
+        }
+    }
+
+    /* Test degree 3 standard expansion (size=19) */
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
+        int status = alwan_poly_expand_finlayson2015(&rgb, 3, 0, expanded, &out_size);
+        TEST_ASSERT(status == ALWAN_OK, "Finlayson2015 expand failed");
+        TEST_ASSERT(out_size == 19, "Finlayson2015 degree 3 should have 19 terms");
+        for (int j = 0; j < 19; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_deg3[i*19+j], TEST_TOLERANCE,
+                             "Finlayson2015 std deg3 mismatch");
+        }
+    }
+
+    return 0;
+}
+
+static int test_finlayson2015_expand_root(void)
+{
+    printf("  TEST: Finlayson 2015 root-polynomial expansion\n");
+
+    /* Reference values from colour-science */
+    static alwan_scalar const ref_input[] = {
+#include "reference_values/finlayson2015_input_rgb.csv"
+    };
+    static alwan_scalar const ref_root_deg2[] = {
+#include "reference_values/finlayson2015_root_deg2.csv"
+    };
+    static alwan_scalar const ref_root_deg3[] = {
+#include "reference_values/finlayson2015_root_deg3.csv"
+    };
+
+    int num_samples = 4;
+    alwan_scalar expanded[34];
+    int out_size;
+
+    /* Test degree 2 root-polynomial expansion (size=6) */
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
+        int status = alwan_poly_expand_finlayson2015(&rgb, 2, 1, expanded, &out_size);
+        TEST_ASSERT(status == ALWAN_OK, "Finlayson2015 root expand failed");
+        TEST_ASSERT(out_size == 6, "Finlayson2015 root degree 2 should have 6 terms");
+        for (int j = 0; j < 6; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_root_deg2[i*6+j], TEST_TOLERANCE,
+                             "Finlayson2015 root deg2 mismatch");
+        }
+    }
+
+    /* Test degree 3 root-polynomial expansion (size=13) */
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
+        int status = alwan_poly_expand_finlayson2015(&rgb, 3, 1, expanded, &out_size);
+        TEST_ASSERT(status == ALWAN_OK, "Finlayson2015 root expand failed");
+        TEST_ASSERT(out_size == 13, "Finlayson2015 root degree 3 should have 13 terms");
+        for (int j = 0; j < 13; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_root_deg3[i*13+j], TEST_TOLERANCE,
+                             "Finlayson2015 root deg3 mismatch");
+        }
+    }
+
+    return 0;
+}
+
+/* ================================================================
+ * Vandermonde Expansion Tests
+ * ================================================================ */
+
+static int test_vandermonde_expand(void)
+{
+    printf("  TEST: Vandermonde polynomial expansion\n");
+
+    /* Reference values from colour-science */
+    static alwan_scalar const ref_input[] = {
+#include "reference_values/vandermonde_input.csv"
+    };
+    static alwan_scalar const ref_deg2[] = {
+#include "reference_values/vandermonde_deg2.csv"
+    };
+    static alwan_scalar const ref_deg3[] = {
+#include "reference_values/vandermonde_deg3.csv"
+    };
+
+    int num_samples = 3;
+    alwan_scalar expanded[20];
+    int out_size;
+
+    /* Test degree 2 (size = 3*2 + 1 = 7) */
+    for (int i = 0; i < num_samples; i++) {
+        int status = alwan_poly_expand_vandermonde(&ref_input[i*3], 3, 2, expanded, &out_size);
+        TEST_ASSERT(status == ALWAN_OK, "Vandermonde expand failed");
+        TEST_ASSERT(out_size == 7, "Vandermonde degree 2 should have 7 terms");
+        for (int j = 0; j < 7; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_deg2[i*7+j], TEST_TOLERANCE,
+                             "Vandermonde deg2 mismatch");
+        }
+    }
+
+    /* Test degree 3 (size = 3*3 + 1 = 10) */
+    for (int i = 0; i < num_samples; i++) {
+        int status = alwan_poly_expand_vandermonde(&ref_input[i*3], 3, 3, expanded, &out_size);
+        TEST_ASSERT(status == ALWAN_OK, "Vandermonde expand failed");
+        TEST_ASSERT(out_size == 10, "Vandermonde degree 3 should have 10 terms");
+        for (int j = 0; j < 10; j++) {
+            TEST_ASSERT_NEAR(expanded[j], ref_deg3[i*10+j], TEST_TOLERANCE,
+                             "Vandermonde deg3 mismatch");
+        }
+    }
+
+    return 0;
+}
+
+/* ================================================================
+ * White Balance Tests
+ * ================================================================ */
+
+static int test_white_balance(void)
+{
+    printf("  TEST: White balance from gray card\n");
+
+    /* Reference values from colour-science */
+    static alwan_scalar const ref_grays[] = {
+#include "reference_values/white_balance_input_gray.csv"
+    };
+    static alwan_scalar const ref_multipliers[] = {
+#include "reference_values/white_balance_multipliers.csv"
+    };
+
+    int num_samples = 5;
+
+    for (int i = 0; i < num_samples; i++) {
+        alwan_rgb measured_gray = {ref_grays[i*3], ref_grays[i*3+1], ref_grays[i*3+2]};
+        alwan_rgb multipliers;
+
+        int status = alwan_white_balance_from_gray(&measured_gray, &multipliers);
+        TEST_ASSERT(status == ALWAN_OK, "White balance computation failed");
+
+        TEST_ASSERT_NEAR(multipliers.r, ref_multipliers[i*3], TEST_TOLERANCE,
+                         "White balance R multiplier mismatch");
+        TEST_ASSERT_NEAR(multipliers.g, ref_multipliers[i*3+1], TEST_TOLERANCE,
+                         "White balance G multiplier mismatch");
+        TEST_ASSERT_NEAR(multipliers.b, ref_multipliers[i*3+2], TEST_TOLERANCE,
+                         "White balance B multiplier mismatch");
+    }
+
+    return 0;
+}
+
+static int test_white_balance_apply(void)
+{
+    printf("  TEST: White balance application\n");
+
+    /* Test that applying white balance to the measured gray produces neutral */
+    alwan_rgb measured_gray = {0.5, 0.45, 0.55};
+    alwan_rgb multipliers;
+    alwan_rgb result;
+
+    int status = alwan_white_balance_from_gray(&measured_gray, &multipliers);
+    TEST_ASSERT(status == ALWAN_OK, "White balance computation failed");
+
+    status = alwan_white_balance_apply(&measured_gray, &multipliers, &result);
+    TEST_ASSERT(status == ALWAN_OK, "White balance apply failed");
+
+    /* After applying white balance, all channels should be equal (neutral) */
+    TEST_ASSERT_NEAR(result.r, result.g, TEST_TOLERANCE, "WB result should be neutral (R=G)");
+    TEST_ASSERT_NEAR(result.g, result.b, TEST_TOLERANCE, "WB result should be neutral (G=B)");
+
+    return 0;
+}
+
+/* ================================================================
  * Main Test Runner
  * ================================================================ */
 
@@ -362,6 +653,21 @@ int test_44_color_correction_main(void)
     if (test_printer_lights_neutral()) return 1;
     if (test_printer_lights_exposure()) return 1;
     if (test_printer_lights_per_channel()) return 1;
+
+    /* Cheung 2004 polynomial expansion tests */
+    if (test_cheung2004_expand_basic()) return 1;
+    if (test_cheung2004_expand_full()) return 1;
+
+    /* Finlayson 2015 polynomial expansion tests */
+    if (test_finlayson2015_expand_standard()) return 1;
+    if (test_finlayson2015_expand_root()) return 1;
+
+    /* Vandermonde expansion tests */
+    if (test_vandermonde_expand()) return 1;
+
+    /* White balance tests */
+    if (test_white_balance()) return 1;
+    if (test_white_balance_apply()) return 1;
 
     printf("Test Results: %d/%d passed\n", test_passed, test_count);
     if (test_failed > 0) {
