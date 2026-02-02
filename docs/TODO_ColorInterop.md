@@ -399,7 +399,3 @@ Alwan already supports this via:
 - IEC 61966-2-1: sRGB
 
 ---
-
-**Document Status:** Draft
-**Last Updated:** 2026-02-02
-**Maintainer:** Alwan Project
