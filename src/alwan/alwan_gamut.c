@@ -132,36 +132,48 @@ static void gamut_map_hue_preserving_single(alwan_vec3 const *rgb_in, alwan_vec3
     }
 }
 
-int alwan_gamut_map(alwan_rgb *rgb_out,
+int alwan_gamut_map(alwan_scalar *rgb_out,
                     alwan_gamut_map_method method,
-                    alwan_rgb const *rgb_in,
-                    size_t count) {
+                    alwan_scalar const *rgb_in,
+                    size_t count,
+                    size_t in_stride,
+                    size_t out_stride) {
     if (!rgb_in || !rgb_out || count == 0) {
         return ALWAN_E_INVALID;
     }
 
+    /* Select gamut mapping function */
+    void (*map_fn)(alwan_vec3 const *, alwan_vec3 *) = NULL;
+
+    switch (method) {
+        case ALWAN_GAMUT_MAP_CLIP:
+            map_fn = gamut_map_clip_single;
+            break;
+        case ALWAN_GAMUT_MAP_HUE_PRESERVING:
+            map_fn = gamut_map_hue_preserving_single;
+            break;
+        default:
+            return ALWAN_E_INVALID;
+    }
+
+    /* Apply gamut mapping to array with stride support */
     for (size_t i = 0; i < count; i++) {
-        /* Convert to vec3 for internal processing */
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+
+        /* Load RGB triplet into vec3 */
         alwan_vec3 rgb_in_vec, rgb_out_vec;
-        rgb_in_vec.v[0] = rgb_in[i].r;
-        rgb_in_vec.v[1] = rgb_in[i].g;
-        rgb_in_vec.v[2] = rgb_in[i].b;
+        rgb_in_vec.v[0] = in_ptr[0];
+        rgb_in_vec.v[1] = in_ptr[1];
+        rgb_in_vec.v[2] = in_ptr[2];
 
-        switch (method) {
-            case ALWAN_GAMUT_MAP_CLIP:
-                gamut_map_clip_single(&rgb_in_vec, &rgb_out_vec);
-                break;
-            case ALWAN_GAMUT_MAP_HUE_PRESERVING:
-                gamut_map_hue_preserving_single(&rgb_in_vec, &rgb_out_vec);
-                break;
-            default:
-                return ALWAN_E_INVALID;
-        }
+        /* Apply mapping */
+        map_fn(&rgb_in_vec, &rgb_out_vec);
 
-        /* Convert back to rgb */
-        rgb_out[i].r = rgb_out_vec.v[0];
-        rgb_out[i].g = rgb_out_vec.v[1];
-        rgb_out[i].b = rgb_out_vec.v[2];
+        /* Store result */
+        out_ptr[0] = rgb_out_vec.v[0];
+        out_ptr[1] = rgb_out_vec.v[1];
+        out_ptr[2] = rgb_out_vec.v[2];
     }
 
     return ALWAN_OK;

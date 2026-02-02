@@ -119,7 +119,8 @@ static int test_gamut_map_clip(void) {
         expected.b = test_data[i * 6 + 5];
 
         /* Test clip mapping */
-        int status = alwan_gamut_map(&result, ALWAN_GAMUT_MAP_CLIP, &rgb_in, 1);
+        int status = alwan_gamut_map(&result.r, ALWAN_GAMUT_MAP_CLIP, &rgb_in.r, 1,
+                                      sizeof(alwan_rgb), sizeof(alwan_rgb));
         TEST_ASSERT(status == ALWAN_OK, "Clip mapping failed");
 
         /* Check results */
@@ -166,7 +167,8 @@ static int test_gamut_map_hue_preserving(void) {
         expected.b = test_data[i * 6 + 5];
 
         /* Test hue-preserving mapping */
-        int status = alwan_gamut_map(&result, ALWAN_GAMUT_MAP_HUE_PRESERVING, &rgb_in, 1);
+        int status = alwan_gamut_map(&result.r, ALWAN_GAMUT_MAP_HUE_PRESERVING, &rgb_in.r, 1,
+                                      sizeof(alwan_rgb), sizeof(alwan_rgb));
         TEST_ASSERT(status == ALWAN_OK, "Hue-preserving mapping failed");
 
         /* Check results */
@@ -211,7 +213,8 @@ static int test_gamut_map_monotonicity(void) {
 
     alwan_rgb results[4];
 
-    int status = alwan_gamut_map(results, ALWAN_GAMUT_MAP_HUE_PRESERVING, in_gamut_colors, 4);
+    int status = alwan_gamut_map(&results[0].r, ALWAN_GAMUT_MAP_HUE_PRESERVING, &in_gamut_colors[0].r, 4,
+                                  sizeof(alwan_rgb), sizeof(alwan_rgb));
     TEST_ASSERT(status == ALWAN_OK, "Gamut mapping failed");
 
     for (int i = 0; i < 4; i++) {
