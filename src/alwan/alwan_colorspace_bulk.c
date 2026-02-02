@@ -27,7 +27,7 @@ int alwan_xyz_to_lab_bulk(alwan_scalar *lab_out,
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
         alwan_scalar *out_ptr = (alwan_scalar *)((char *)lab_out + i * out_stride);
 
-        alwan_xyz xyz = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
         alwan_lab lab;
         alwan_xyz_to_lab(&lab, &xyz, white_xyz);
 
@@ -83,7 +83,7 @@ int alwan_xyz_to_luv_bulk(alwan_scalar *luv_out,
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
         alwan_scalar *out_ptr = (alwan_scalar *)((char *)luv_out + i * out_stride);
 
-        alwan_xyz xyz = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
         alwan_luv luv;
         alwan_xyz_to_luv(&luv, &xyz, white_xyz);
 
@@ -246,7 +246,7 @@ int alwan_xyz_to_xyy_bulk(alwan_scalar *xyy_out,
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
         alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyy_out + i * out_stride);
 
-        alwan_xyz xyz = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
         alwan_xyy xyy;
         alwan_xyz_to_xyy(&xyy, &xyz);
 

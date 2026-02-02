@@ -25,7 +25,7 @@ int alwan_ciecam02_forward_bulk(alwan_ciecam02_correlates *correlates_out,
     for (size_t i = 0; i < count; i++) {
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
 
-        alwan_xyz xyz = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
         int status = alwan_ciecam02_forward(&correlates_out[i], &xyz, vc);
         if (status != ALWAN_OK) {
             return status;
@@ -77,7 +77,7 @@ int alwan_cam16_forward_bulk(alwan_cam16_correlates *correlates_out,
     for (size_t i = 0; i < count; i++) {
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
 
-        alwan_xyz xyz = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
         int status = alwan_cam16_forward(&correlates_out[i], &xyz, vc);
         if (status != ALWAN_OK) {
             return status;

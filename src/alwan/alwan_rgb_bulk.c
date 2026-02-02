@@ -51,7 +51,7 @@ int alwan_xyz_to_srgb_bulk(alwan_scalar *rgb_out,
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
         alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
 
-        alwan_xyz xyz = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
         alwan_rgb rgb;
         alwan_xyz_to_srgb(&rgb, &xyz);
 
