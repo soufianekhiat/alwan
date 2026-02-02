@@ -1,0 +1,162 @@
+// Author note: all this ./gendata/* folder was generated with Claude Code.
+
+# Alwan Data Generation
+
+This directory contains Python scripts for generating Alwan's embedded data files and test reference values from colour-science.
+
+## Architecture Principles
+
+1. **No Hardcoded Values** - All matrices, illuminants, and expected test outputs come directly from colour-science
+2. **Only Inputs Hardcoded** - Test inputs and configuration (like RGB space lists) are the only allowed constants
+3. **Single Responsibility** - Each script handles one specific type of data
+
+## Directory Structure
+
+```
+gendata/
+├── common.py                      # Shared utilities (formatting, file I/O)
+├── generate_all_reference_values.py  # Main orchestration script
+├── data/                          # Data generation modules (~39 modules)
+│   ├── aces_matrices.py           # ACES AP0/AP1 transformation matrices
+│   ├── cam_fixtures.py            # CIECAM02 and CAM16 test fixtures
+│   ├── cat_matrices.py            # Chromatic Adaptation Transform matrices
+│   ├── chromatic_adaptation_fixtures.py  # CAT test fixtures
+│   ├── cmf.py                     # Color Matching Functions
+│   ├── convenience_color_models.py  # HSV, HSL, CMY, CMYK, YCbCr
+│   ├── delta_e_fixtures.py        # Delta E test fixtures
+│   ├── extended_colorspaces.py    # Extended color space data
+│   ├── gamut_mapping_fixtures.py  # Gamut mapping tests
+│   ├── illuminants.py             # Illuminant xy coordinates and SPDs
+│   ├── jakob2019_luts.py          # Jakob2019 spectral upsampling LUTs
+│   ├── llab_matrices.py           # LLAB transformation matrices
+│   ├── oklab_fixtures.py          # Oklab & Oklch test values
+│   ├── rgb_spaces.py              # RGB color space definitions
+│   ├── robertson_cct.py           # Robertson CCT lookup table
+│   ├── spectral_upsampling.py     # Smits1999, Mallett2019 basis functions
+│   ├── test_fixtures.py           # General test fixtures
+│   ├── test_reference_values.py   # ZCAM, ATD95, and other CAM fixtures
+│   └── ...                        # Additional data modules
+└── tests/                         # Test data generation (~21 modules)
+    ├── aces_fixed_functions.py    # ACES fixed functions (RedMod, Glow, etc.)
+    ├── aces_gamut_compress20.py   # ACES 2.0 gamut compression tests
+    ├── aces_tonescale_compress20.py  # ACES 2.0 tonescale tests
+    ├── aces1_output_transform.py  # ACES 1.x RRT+ODT test data vs OCIO
+    ├── aces2_output_transform.py  # ACES 2.0 Output Transform test data vs OCIO
+    ├── atd95.py                   # ATD95 CAM test data
+    ├── barten1999_csf.py          # Barten CSF test data
+    ├── cct_cineon.py              # CCT and Cineon test data
+    ├── hellwig2022.py             # Hellwig2022 CAM test data
+    ├── kim2009.py                 # Kim2009 CAM test data
+    ├── llab.py                    # LLAB CAM test data
+    ├── rayleigh_scattering.py     # Rayleigh scattering test data
+    ├── section5_section9.py       # ACES section 5/9 transfer functions
+    └── ...                        # Additional test modules
+```
+
+## Usage
+
+### Generate All Data
+
+```powershell
+python gendata/generate_all_reference_values.py src/alwan/data
+```
+
+### Generate Specific Module
+
+```powershell
+python gendata/data/illuminants.py src/alwan/data
+python gendata/tests/hellwig2022.py src/alwan/data
+```
+
+## Module Categories
+
+### Data Generation (gendata/data/)
+
+| Category | Modules | Description |
+|----------|---------|-------------|
+| **Color Spaces** | `rgb_spaces.py`, `extended_colorspaces.py` | RGB space definitions (30+) |
+| **Illuminants** | `illuminants.py`, `illuminants_extended.py` | Standard and extended illuminants |
+| **CMFs** | `cmf.py` | CIE 1931/1964/2012/2015 observers |
+| **CAT** | `cat_matrices.py`, `cat_cmccat97.py`, `cat_fairchild.py` | Chromatic adaptation matrices |
+| **ACES** | `aces_matrices.py` | ACES AP0/AP1 matrices |
+| **CAM** | `cam_fixtures.py`, `test_reference_values.py` | CIECAM02, CAM16, ZCAM fixtures |
+| **Spectral** | `spectral_upsampling.py`, `jakob2019_luts.py` | Spectral upsampling data |
+| **Delta E** | `delta_e_fixtures.py` | Color difference test pairs |
+| **Convenience** | `convenience_color_models.py`, `oklab_fixtures.py` | HSV, HSL, Oklab, etc. |
+
+### Test Generation (gendata/tests/)
+
+| Category | Modules | Description |
+|----------|---------|-------------|
+| **ACES 1.x** | `aces1_output_transform.py` | RRT+ODT test data (12 presets vs OCIO) |
+| **ACES 2.0** | `aces2_output_transform.py`, `aces_gamut_compress20.py`, `aces_tonescale_compress20.py` | ACES 2.0 pipeline tests |
+| **ACES Fixed** | `aces_fixed_functions.py`, `section5_section9.py` | RedMod, Glow, transfer functions |
+| **CAM Models** | `hellwig2022.py`, `kim2009.py`, `llab.py`, `atd95.py` | Color appearance model tests |
+| **Vision** | `rayleigh_scattering.py`, `barten1999_csf.py` | Vision science tests |
+| **CCT** | `cct_cineon.py` | Color temperature and Cineon tests |
+
+## Module Template
+
+### Data Generation Module
+
+```python
+"""
+Generate [data type] from colour-science.
+Source: colour.[SOURCE_CONSTANT or FUNCTION]
+"""
+
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from common import save_matrix, save_vector
+
+try:
+    import colour
+except ImportError:
+    print("ERROR: colour-science not installed")
+    sys.exit(1)
+
+
+def generate_data(output_dir):
+    """Generate [data type]."""
+    print("\nGenerating [name]...")
+
+    # Get data from colour-science (NO HARDCODED VALUES)
+    data = colour.SOME_CONSTANT
+
+    # Save to file
+    filepath = os.path.join(output_dir, 'subdir', 'file.csv')
+    save_matrix(data, filepath, "Description")
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print("Usage: python module.py <output_dir>")
+        sys.exit(1)
+
+    generate_data(sys.argv[1])
+```
+
+## Benefits
+
+1. **Maintainability** - Each module is ~50-200 lines vs. monolithic scripts
+2. **Testability** - Individual modules can be tested/debugged independently
+3. **Clarity** - Easy to see what data comes from where (no hidden hardcoding)
+4. **Traceability** - Clear separation of inputs (config) vs. data (from colour-science)
+
+## Anti-Pattern: What We Avoid
+
+```python
+# BAD: Where did this come from?
+llab_matrix = np.array([[0.8951, 0.2664, -0.1614], ...])
+
+# GOOD: Clear source!
+from colour.appearance.llab import LLAB_XYZ_TO_RGB_MATRIX
+```
+
+## Notes
+
+- All expected outputs come from colour-science (no hardcoded reference values)
+- ACES test generators validate against OpenColorIO reference implementation
+- colour-science package required: `pip install colour-science`
