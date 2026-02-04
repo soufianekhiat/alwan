@@ -28,26 +28,26 @@ int alwan_lgg_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb_in, alwan_rgb const
 
     /* Process R channel */
     alwan_scalar lifted_r = rgb_in->r + lift->r;
-    if (lifted_r < 0.0) lifted_r = 0.0;
+    if (lifted_r < ALWAN_LITERAL(0.0)) lifted_r = ALWAN_LITERAL(0.0);
     alwan_scalar gamma_r = gamma->r;
-    if (gamma_r <= 0.0001) gamma_r = 0.0001;
-    alwan_scalar gamma_corrected_r = ALWAN_POW(lifted_r, 1.0 / gamma_r);
+    if (gamma_r <= ALWAN_LITERAL(0.0001)) gamma_r = ALWAN_LITERAL(0.0001);
+    alwan_scalar gamma_corrected_r = ALWAN_POW(lifted_r, ALWAN_LITERAL(1.0) / gamma_r);
     rgb_out->r = gamma_corrected_r * gain->r;
 
     /* Process G channel */
     alwan_scalar lifted_g = rgb_in->g + lift->g;
-    if (lifted_g < 0.0) lifted_g = 0.0;
+    if (lifted_g < ALWAN_LITERAL(0.0)) lifted_g = ALWAN_LITERAL(0.0);
     alwan_scalar gamma_g = gamma->g;
-    if (gamma_g <= 0.0001) gamma_g = 0.0001;
-    alwan_scalar gamma_corrected_g = ALWAN_POW(lifted_g, 1.0 / gamma_g);
+    if (gamma_g <= ALWAN_LITERAL(0.0001)) gamma_g = ALWAN_LITERAL(0.0001);
+    alwan_scalar gamma_corrected_g = ALWAN_POW(lifted_g, ALWAN_LITERAL(1.0) / gamma_g);
     rgb_out->g = gamma_corrected_g * gain->g;
 
     /* Process B channel */
     alwan_scalar lifted_b = rgb_in->b + lift->b;
-    if (lifted_b < 0.0) lifted_b = 0.0;
+    if (lifted_b < ALWAN_LITERAL(0.0)) lifted_b = ALWAN_LITERAL(0.0);
     alwan_scalar gamma_b = gamma->b;
-    if (gamma_b <= 0.0001) gamma_b = 0.0001;
-    alwan_scalar gamma_corrected_b = ALWAN_POW(lifted_b, 1.0 / gamma_b);
+    if (gamma_b <= ALWAN_LITERAL(0.0001)) gamma_b = ALWAN_LITERAL(0.0001);
+    alwan_scalar gamma_corrected_b = ALWAN_POW(lifted_b, ALWAN_LITERAL(1.0) / gamma_b);
     rgb_out->b = gamma_corrected_b * gain->b;
 
     return ALWAN_OK;

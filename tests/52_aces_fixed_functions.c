@@ -9,23 +9,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include "../../src/alwan/alwan.h"
+#include "alwan.h"
+#include "alwan_internal.h"
+#include "test_common.h"
 
-/* Test tolerance - match OpenColorIO precision */
-#define TEST_TOLERANCE 1e-5
-
-/* Test assertion macro */
-#define TEST_ASSERT_REL(got, expected, tol, msg) do { \
-    alwan_scalar _got = (got); \
-    alwan_scalar _exp = (expected); \
-    alwan_scalar _diff = (_exp != 0.0) ? fabs((_got - _exp) / _exp) : fabs(_got - _exp); \
-    if (_diff > (tol)) { \
-        printf("FAIL: %s\n  Expected: %.10e, Got: %.10e, RelDiff: %.10e\n", \
-               msg, (double)_exp, (double)_got, (double)_diff); \
-        return 1; \
-    } \
-} while(0)
+/* Test tolerance - match OpenColorIO precision - documented in docs/violations.md */
+#define TEST_TOLERANCE ALWAN_LITERAL(1e-5)
 
 /* ============================================================================
  * Test Input Data (from OpenColorIO)

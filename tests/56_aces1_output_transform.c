@@ -8,6 +8,7 @@
  */
 
 #include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -280,7 +281,7 @@ static int test_roundtrip_rec709(void) {
            rgb_decoded.r, rgb_decoded.g, rgb_decoded.b);
 
     /* Verify inverse produces reasonable output (within 5% for simplified impl) */
-    alwan_scalar rel_err = fabs(rgb_decoded.r - rgb_in.r) / rgb_in.r;
+    alwan_scalar rel_err = ALWAN_ABS(rgb_decoded.r - rgb_in.r) / rgb_in.r;
     if (rel_err > 0.05) {
         TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * 100.0);
     }
@@ -309,7 +310,7 @@ static int test_roundtrip_srgb(void) {
     }
 
     /* Verify inverse produces reasonable output (within 5% for simplified impl) */
-    alwan_scalar rel_err = fabs(rgb_decoded.r - rgb_in.r) / rgb_in.r;
+    alwan_scalar rel_err = ALWAN_ABS(rgb_decoded.r - rgb_in.r) / rgb_in.r;
     if (rel_err > 0.05) {
         TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * 100.0);
     }
@@ -337,9 +338,9 @@ static int test_roundtrip_hdr(void) {
     }
 
     /* Verify inverse produces reasonable output (within 5% for simplified impl) */
-    alwan_scalar rel_err = fabs(rgb_decoded.r - rgb_in.r) / rgb_in.r;
+    alwan_scalar rel_err = ALWAN_ABS(rgb_decoded.r - rgb_in.r) / rgb_in.r;
     if (rel_err > 0.05) {
-        TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * 100.0);
+        TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * ALWAN_LITERAL(100.0));
     }
 
     TEST_PASS();

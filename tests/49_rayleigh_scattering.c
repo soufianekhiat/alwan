@@ -2,58 +2,12 @@
  * Reference: Bodhaine et al. (1999), colour-science implementation
  */
 
-#include "../src/alwan/alwan.h"
+#include "alwan.h"
+#include "alwan_internal.h"
+#define TEST_USE_COUNTERS
+#include "test_common.h"
 #include <stdio.h>
-#include <math.h>
 #include <string.h>
-
-#define TEST_TOLERANCE 1e-10
-#define TEST_TOLERANCE_REL 1e-6
-
-/* Math helper macros */
-#if ALWAN_SCALAR_IS_FLOAT
-  #define TEST_FABS(x) fabsf(x)
-#else
-  #define TEST_FABS(x) fabs(x)
-#endif
-
-static int test_count = 0;
-static int test_passed = 0;
-static int test_failed = 0;
-
-#define TEST_ASSERT(cond, msg) do { \
-    test_count++; \
-    if (!(cond)) { \
-        printf("[FAIL] %s\n", msg); \
-        test_failed++; \
-        return 1; \
-    } \
-    test_passed++; \
-} while(0)
-
-#define TEST_ASSERT_NEAR(a, b, tol, msg) do { \
-    test_count++; \
-    alwan_scalar diff = TEST_FABS((a) - (b)); \
-    if (diff > (tol)) { \
-        printf("[FAIL] %s: expected %.16e, got %.16e (diff=%.16e)\n", msg, (double)(b), (double)(a), (double)diff); \
-        test_failed++; \
-        return 1; \
-    } \
-    test_passed++; \
-} while(0)
-
-#define TEST_ASSERT_REL(a, b, rel_tol, msg) do { \
-    test_count++; \
-    alwan_scalar diff = TEST_FABS((a) - (b)); \
-    alwan_scalar ref = TEST_FABS(b); \
-    alwan_scalar rel_err = (ref > 1e-20) ? diff / ref : diff; \
-    if (rel_err > (rel_tol)) { \
-        printf("[FAIL] %s: expected %.16e, got %.16e (rel_err=%.16e)\n", msg, (double)(b), (double)(a), (double)rel_err); \
-        test_failed++; \
-        return 1; \
-    } \
-    test_passed++; \
-} while(0)
 
 /* ================================================================
  * Reference Data from colour-science
@@ -153,15 +107,15 @@ static int test_atmosphere_params_default(void)
     alwan_atmosphere_params_default(&params);
 
     /* Verify defaults match colour-science constants */
-    TEST_ASSERT_NEAR(params.CO2_concentration, 300.0, 1e-10,
+    TEST_ASSERT_NEAR(params.CO2_concentration, ALWAN_LITERAL(300.0), ALWAN_LITERAL(1e-10),
                      "Default CO2 should be 300 ppm");
-    TEST_ASSERT_NEAR(params.temperature, 288.15, 1e-10,
+    TEST_ASSERT_NEAR(params.temperature, ALWAN_LITERAL(288.15), ALWAN_LITERAL(1e-10),
                      "Default temperature should be 288.15 K");
-    TEST_ASSERT_NEAR(params.pressure, 101325.0, 1e-10,
+    TEST_ASSERT_NEAR(params.pressure, ALWAN_LITERAL(101325.0), ALWAN_LITERAL(1e-10),
                      "Default pressure should be 101325 Pa");
-    TEST_ASSERT_NEAR(params.latitude, 0.0, 1e-10,
+    TEST_ASSERT_NEAR(params.latitude, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-10),
                      "Default latitude should be 0 degrees");
-    TEST_ASSERT_NEAR(params.altitude, 0.0, 1e-10,
+    TEST_ASSERT_NEAR(params.altitude, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-10),
                      "Default altitude should be 0 meters");
 
     return 0;

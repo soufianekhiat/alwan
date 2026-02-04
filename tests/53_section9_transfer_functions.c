@@ -9,40 +9,18 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include "../../src/alwan/alwan.h"
+#include "alwan.h"
+#include "alwan_internal.h"
+#include "test_common.h"
 
-/* Test tolerance for Apple Log - high precision achievable */
-#define TEST_TOLERANCE_APPLE_LOG 1e-5
+/* Test tolerances - documented in docs/violations.md */
+#define TEST_TOLERANCE_APPLE_LOG ALWAN_LITERAL(1e-5)
 
 /* DCDM test tolerance - OCIO uses float32 internal processing which introduces
  * ~1e-6 to 2e-5 precision differences vs our float64 implementation.
  * Both implementations use identical formula: (X * 48/52.37)^(1/2.6) for encoding
  * The difference is purely float32 vs float64 precision in pow() operations. */
-#define TEST_TOLERANCE_DCDM 3e-5
-
-/* Test assertion macro */
-#define TEST_ASSERT_REL(got, expected, tol, msg) do { \
-    alwan_scalar _got = (got); \
-    alwan_scalar _exp = (expected); \
-    alwan_scalar _diff = (_exp != 0.0) ? fabs((_got - _exp) / _exp) : fabs(_got - _exp); \
-    if (_diff > (tol)) { \
-        printf("FAIL: %s\n  Expected: %.10e, Got: %.10e, RelDiff: %.10e\n", \
-               msg, (double)_exp, (double)_got, (double)_diff); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_ASSERT_ABS(got, expected, tol, msg) do { \
-    alwan_scalar _got = (got); \
-    alwan_scalar _exp = (expected); \
-    alwan_scalar _diff = fabs(_got - _exp); \
-    if (_diff > (tol)) { \
-        printf("FAIL: %s\n  Expected: %.10e, Got: %.10e, AbsDiff: %.10e\n", \
-               msg, (double)_exp, (double)_got, (double)_diff); \
-        return 1; \
-    } \
-} while(0)
+#define TEST_TOLERANCE_DCDM ALWAN_LITERAL(3e-5)
 
 /* ============================================================================
  * Apple Log Test Data (from OCIO BuiltinTransform)
@@ -119,7 +97,7 @@ static int test_apple_log_decoding(void) {
     for (size_t i = 0; i < NUM_APPLE_LOG_DECODE; i++) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Apple Log decode [%zu]: encoded=%.2f",
-                 i, (double)apple_log_decode_input[i]);
+                 i, (alwan_scalar)apple_log_decode_input[i]);
         TEST_ASSERT_ABS(decoded[i], apple_log_decode_expected[i], TEST_TOLERANCE_APPLE_LOG, msg);
     }
 

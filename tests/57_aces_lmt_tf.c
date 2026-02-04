@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "../../src/alwan/alwan.h"
+#include "alwan.h"
 #include "../../src/alwan/alwan_internal.h"
 
 #define TEST_ASSERT(cond, msg) do { \

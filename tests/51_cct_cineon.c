@@ -6,37 +6,14 @@
  * Unit tests for CCT methods (Hernandez, Kang) and Cineon transfer function
  */
 
+#include "alwan.h"
+#include "alwan_internal.h"
+#include "test_common.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include "../../src/alwan/alwan.h"
 
-/* Test tolerance */
-#define TEST_TOLERANCE_REL 1e-6
-#define TEST_TOLERANCE_CCT 10.0  /* CCT tolerance in Kelvin for iterative methods */
-
-/* Test assertion macro */
-#define TEST_ASSERT_REL(got, expected, tol, msg) do { \
-    alwan_scalar _got = (got); \
-    alwan_scalar _exp = (expected); \
-    alwan_scalar _diff = (_exp != 0.0) ? fabs((_got - _exp) / _exp) : fabs(_got - _exp); \
-    if (_diff > (tol)) { \
-        printf("FAIL: %s\n  Expected: %.10e, Got: %.10e, RelDiff: %.10e\n", \
-               msg, (double)_exp, (double)_got, (double)_diff); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_ASSERT_ABS(got, expected, tol, msg) do { \
-    alwan_scalar _got = (got); \
-    alwan_scalar _exp = (expected); \
-    alwan_scalar _diff = fabs(_got - _exp); \
-    if (_diff > (tol)) { \
-        printf("FAIL: %s\n  Expected: %.10e, Got: %.10e, AbsDiff: %.10e\n", \
-               msg, (double)_exp, (double)_got, (double)_diff); \
-        return 1; \
-    } \
-} while(0)
+/* CCT tolerance in Kelvin for iterative methods - documented in docs/violations.md */
+#define TEST_TOLERANCE_CCT ALWAN_LITERAL(10.0)
 
 /* ============================================================================
  * Cineon Test Data

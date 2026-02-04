@@ -9,31 +9,19 @@
  * - Table Interpolation Utilities
  * ================================================================ */
 
-#include "../../src/alwan/alwan.h"
+#include "alwan.h"
+#include "alwan_internal.h"
+#include "test_common.h"
 #include <stdio.h>
-#include <math.h>
 #include <string.h>
 #include <stdlib.h>
-
-/* Use fabs for floating point absolute value */
-#ifndef ALWAN_FABS
-#define ALWAN_ABS fabs
-#endif
-
-/* Test macros */
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        printf("  FAIL: %s\n", msg); \
-        return 1; \
-    } \
-} while(0)
 
 #define TEST_PASS(name) do { \
     printf("  PASS: %s\n", name); \
     return 0; \
 } while(0)
 
-#define TOLERANCE 1e-6
+#define TOLERANCE ALWAN_TEST_TOLERANCE
 
 /* ----------------------------------------------------------------
  * Advanced Interpolation Tests
@@ -52,9 +40,9 @@ static int test_interpolation_linear(void) {
     int status = alwan_interpolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_INTERP_LINEAR);
 
     TEST_ASSERT(status == ALWAN_OK, "Linear interpolation failed");
-    TEST_ASSERT(ALWAN_ABS(y_out[0] - 0.5) < TOLERANCE, "y[0.5] should be ~0.5");
-    TEST_ASSERT(ALWAN_ABS(y_out[1] - 1.5) < TOLERANCE, "y[1.5] should be ~1.5");
-    TEST_ASSERT(ALWAN_ABS(y_out[2] - 2.5) < TOLERANCE, "y[2.5] should be ~2.5");
+    TEST_ASSERT(ALWAN_ABS(y_out[0] - ALWAN_LITERAL(0.5)) < TOLERANCE, "y[0.5] should be ~0.5");
+    TEST_ASSERT(ALWAN_ABS(y_out[1] - ALWAN_LITERAL(1.5)) < TOLERANCE, "y[1.5] should be ~1.5");
+    TEST_ASSERT(ALWAN_ABS(y_out[2] - ALWAN_LITERAL(2.5)) < TOLERANCE, "y[2.5] should be ~2.5");
 
     printf("  Linear interpolation: y(0.5)=%.3f, y(1.5)=%.3f, y(2.5)=%.3f\n",
            y_out[0], y_out[1], y_out[2]);
@@ -67,7 +55,7 @@ static int test_interpolation_cubic(void) {
     alwan_scalar x_in[] = {0.0, 0.5, 1.0, 1.5, 2.0};
     alwan_scalar y_in[5];
     for (int i = 0; i < 5; i++) {
-        y_in[i] = sin(x_in[i]);
+        y_in[i] = ALWAN_SIN(x_in[i]);
     }
     size_t count_in = 5;
 
@@ -80,9 +68,9 @@ static int test_interpolation_cubic(void) {
     TEST_ASSERT(status == ALWAN_OK, "Cubic interpolation failed");
 
     /* Cubic should be more accurate than linear for smooth functions */
-    alwan_scalar expected_0 = sin(0.25);
-    alwan_scalar expected_1 = sin(0.75);
-    alwan_scalar expected_2 = sin(1.25);
+    alwan_scalar expected_0 = ALWAN_SIN(0.25);
+    alwan_scalar expected_1 = ALWAN_SIN(0.75);
+    alwan_scalar expected_2 = ALWAN_SIN(1.25);
 
     printf("  Cubic interpolation:\n");
     printf("    y(0.25): %.6f (expected: %.6f, error: %.6f)\n",
@@ -100,8 +88,8 @@ static int test_interpolation_sprague(void) {
     alwan_scalar x_in[10];
     alwan_scalar y_in[10];
     for (int i = 0; i < 10; i++) {
-        x_in[i] = i * 10.0;  /* 0, 10, 20, ..., 90 */
-        y_in[i] = sin(i * 0.2);
+        x_in[i] = i * ALWAN_LITERAL(10.0);  /* 0, 10, 20, ..., 90 */
+        y_in[i] = ALWAN_SIN(i * ALWAN_LITERAL(0.2));
     }
     size_t count_in = 10;
 
@@ -161,8 +149,8 @@ static int test_extrapolation_constant(void) {
     int status = alwan_extrapolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_EXTRAP_CONSTANT);
 
     TEST_ASSERT(status == ALWAN_OK, "Constant extrapolation failed");
-    TEST_ASSERT(ALWAN_ABS(y_out[0] - 2.0) < TOLERANCE, "Left boundary should be 2.0");
-    TEST_ASSERT(ALWAN_ABS(y_out[1] - 8.0) < TOLERANCE, "Right boundary should be 8.0");
+    TEST_ASSERT(ALWAN_ABS(y_out[0] - ALWAN_LITERAL(2.0)) < TOLERANCE, "Left boundary should be 2.0");
+    TEST_ASSERT(ALWAN_ABS(y_out[1] - ALWAN_LITERAL(8.0)) < TOLERANCE, "Right boundary should be 8.0");
 
     printf("  Constant extrapolation: y(0.0)=%.3f, y(5.0)=%.3f\n", y_out[0], y_out[1]);
 
@@ -182,8 +170,8 @@ static int test_extrapolation_linear(void) {
     int status = alwan_extrapolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_EXTRAP_LINEAR);
 
     TEST_ASSERT(status == ALWAN_OK, "Linear extrapolation failed");
-    TEST_ASSERT(ALWAN_ABS(y_out[0] - 0.0) < TOLERANCE, "y(0.0) should be ~0.0");
-    TEST_ASSERT(ALWAN_ABS(y_out[1] - 10.0) < TOLERANCE, "y(5.0) should be ~10.0");
+    TEST_ASSERT(ALWAN_ABS(y_out[0] - ALWAN_LITERAL(0.0)) < TOLERANCE, "y(0.0) should be ~0.0");
+    TEST_ASSERT(ALWAN_ABS(y_out[1] - ALWAN_LITERAL(10.0)) < TOLERANCE, "y(5.0) should be ~10.0");
 
     printf("  Linear extrapolation: y(0.0)=%.3f, y(5.0)=%.3f\n", y_out[0], y_out[1]);
 
@@ -287,8 +275,8 @@ static int test_optimize_spectrum(void) {
 
     TEST_ASSERT(status == ALWAN_OK, "Spectrum optimization failed");
     TEST_ASSERT(spd_out.count == 81, "SPD should have 81 wavelengths");
-    TEST_ASSERT(ALWAN_ABS(spd_out.wavelength_min - 380.0) < TOLERANCE, "Min wavelength should be 380nm");
-    TEST_ASSERT(ALWAN_ABS(spd_out.wavelength_max - 780.0) < TOLERANCE, "Max wavelength should be 780nm");
+    TEST_ASSERT(ALWAN_ABS(spd_out.wavelength_min - ALWAN_LITERAL(380.0)) < TOLERANCE, "Min wavelength should be 380nm");
+    TEST_ASSERT(ALWAN_ABS(spd_out.wavelength_max - ALWAN_LITERAL(780.0)) < TOLERANCE, "Max wavelength should be 780nm");
 
     /* Check that SPD values are non-negative */
     for (size_t i = 0; i < spd_out.count; i++) {
@@ -316,9 +304,9 @@ static int test_table_1d_linear(void) {
     alwan_scalar y1 = alwan_table_interp_1d(table, size, 0.5, ALWAN_INTERP_LINEAR);
     alwan_scalar y2 = alwan_table_interp_1d(table, size, 1.0, ALWAN_INTERP_LINEAR);
 
-    TEST_ASSERT(ALWAN_ABS(y0 - 0.0) < TOLERANCE, "y(0.0) should be 0.0");
-    TEST_ASSERT(ALWAN_ABS(y1 - 2.5) < TOLERANCE, "y(0.5) should be 2.5");
-    TEST_ASSERT(ALWAN_ABS(y2 - 5.0) < TOLERANCE, "y(1.0) should be 5.0");
+    TEST_ASSERT(ALWAN_ABS(y0 - ALWAN_LITERAL(0.0)) < TOLERANCE, "y(0.0) should be 0.0");
+    TEST_ASSERT(ALWAN_ABS(y1 - ALWAN_LITERAL(2.5)) < TOLERANCE, "y(0.5) should be 2.5");
+    TEST_ASSERT(ALWAN_ABS(y2 - ALWAN_LITERAL(5.0)) < TOLERANCE, "y(1.0) should be 5.0");
 
     printf("  1D table linear: y(0.0)=%.3f, y(0.5)=%.3f, y(1.0)=%.3f\n", y0, y1, y2);
 
@@ -363,9 +351,9 @@ static int test_table_3d_trilinear(void) {
     int status = alwan_table_interp_3d_trilinear(&rgb_out, table, sizes, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "3D trilinear interpolation failed");
-    TEST_ASSERT(ALWAN_ABS(rgb_out.r - 0.5) < TOLERANCE, "R should be ~0.5");
-    TEST_ASSERT(ALWAN_ABS(rgb_out.g - 0.5) < TOLERANCE, "G should be ~0.5");
-    TEST_ASSERT(ALWAN_ABS(rgb_out.b - 0.5) < TOLERANCE, "B should be ~0.5");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.r - ALWAN_LITERAL(0.5)) < TOLERANCE, "R should be ~0.5");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.g - ALWAN_LITERAL(0.5)) < TOLERANCE, "G should be ~0.5");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.b - ALWAN_LITERAL(0.5)) < TOLERANCE, "B should be ~0.5");
 
     printf("  3D trilinear: [0.5,0.5,0.5] -> [%.3f,%.3f,%.3f]\n",
            rgb_out.r, rgb_out.g, rgb_out.b);
@@ -394,9 +382,9 @@ static int test_table_3d_tetrahedral(void) {
     int status = alwan_table_interp_3d_tetrahedral(&rgb_out, table, sizes, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "3D tetrahedral interpolation failed");
-    TEST_ASSERT(ALWAN_ABS(rgb_out.r - 0.5) < TOLERANCE, "R should be ~0.5");
-    TEST_ASSERT(ALWAN_ABS(rgb_out.g - 0.5) < TOLERANCE, "G should be ~0.5");
-    TEST_ASSERT(ALWAN_ABS(rgb_out.b - 0.5) < TOLERANCE, "B should be ~0.5");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.r - ALWAN_LITERAL(0.5)) < TOLERANCE, "R should be ~0.5");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.g - ALWAN_LITERAL(0.5)) < TOLERANCE, "G should be ~0.5");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.b - ALWAN_LITERAL(0.5)) < TOLERANCE, "B should be ~0.5");
 
     printf("  3D tetrahedral: [0.5,0.5,0.5] -> [%.3f,%.3f,%.3f]\n",
            rgb_out.r, rgb_out.g, rgb_out.b);

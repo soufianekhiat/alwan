@@ -7,14 +7,10 @@
  * - Contrast Sensitivity Function (CSF)
  * ================================================================ */
 
-#include "../../src/alwan/alwan.h"
+#include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <math.h>
-
-/* Use fabs for floating point absolute value */
-#ifndef ALWAN_FABS
-#define ALWAN_ABS fabs
-#endif
 
 /* Test macros */
 #define TEST_ASSERT(cond, msg) do { \

@@ -8,14 +8,21 @@
  */
 
 #include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
+#if ALWAN_SCALAR_IS_FLOAT
 #define EPSILON 1e-6f
 #define EPSILON_LOOSE 5e-3f
 #define EPSILON_DELTA_E 0.5f
+#else
+#define EPSILON 1e-6
+#define EPSILON_LOOSE 5e-3
+#define EPSILON_DELTA_E 0.5
+#endif
 
 /* Test counter */
 static int g_test_count = 0;
@@ -157,9 +164,9 @@ static int test_munsell_illuminant_adaptation(void) {
     }
 
     /* Values should differ due to chromatic adaptation */
-    alwan_scalar diff = fabs(xyz_c.x - xyz_d65.x) +
-                         fabs(xyz_c.y - xyz_d65.y) +
-                         fabs(xyz_c.z - xyz_d65.z);
+    alwan_scalar diff =  ALWAN_ABS(xyz_c.x - xyz_d65.x) +
+                         ALWAN_ABS(xyz_c.y - xyz_d65.y) +
+                         ALWAN_ABS(xyz_c.z - xyz_d65.z);
 
     if (diff < EPSILON) {
         TEST_FAIL("Expected chromatic adaptation to change XYZ values");
@@ -245,9 +252,9 @@ static int test_colorchecker_illuminant_adaptation(void) {
     }
 
     /* Values should differ due to chromatic adaptation */
-    alwan_scalar diff = fabs(xyz_d50.x - xyz_d65.x) +
-                         fabs(xyz_d50.y - xyz_d65.y) +
-                         fabs(xyz_d50.z - xyz_d65.z);
+    alwan_scalar diff =  ALWAN_ABS(xyz_d50.x - xyz_d65.x) +
+                         ALWAN_ABS(xyz_d50.y - xyz_d65.y) +
+                         ALWAN_ABS(xyz_d50.z - xyz_d65.z);
 
     if (diff < EPSILON) {
         TEST_FAIL("Expected chromatic adaptation to change XYZ values");

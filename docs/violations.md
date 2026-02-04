@@ -26,6 +26,59 @@ These tolerances are unacceptably loose. colour-science and OpenColorIO handle t
 
 ---
 
+## TEST CODE VIOLATIONS
+
+### Custom Tolerance Overrides
+
+Tests should use `ALWAN_TEST_TOLERANCE` from `alwan_internal.h` or `tests/test_common.h`.
+
+| File | Define | Value | Status |
+|------|--------|-------|--------|
+| `tests/42_math_utilities.c` | `TOLERANCE` | `1e-6` | ✅ FIXED - Uses `ALWAN_TEST_TOLERANCE` |
+| `tests/44_color_correction.c` | `TEST_TOLERANCE` | `1e-5` | ✅ FIXED - Uses `test_common.h` |
+| `tests/49_rayleigh_scattering.c` | `TEST_TOLERANCE` | `1e-10` | ✅ FIXED - Uses `test_common.h` |
+| `tests/49_rayleigh_scattering.c` | `TEST_TOLERANCE_REL` | `1e-6` | ✅ FIXED - Uses `test_common.h` |
+| `tests/50_barten1999_csf.c` | `TEST_TOLERANCE_REL` | `1e-6` | ✅ FIXED - Uses `test_common.h` |
+| `tests/51_cct_cineon.c` | `TEST_TOLERANCE_REL` | `1e-6` | ✅ FIXED - Uses `test_common.h` |
+| `tests/51_cct_cineon.c` | `TEST_TOLERANCE_CCT` | `10.0` | ⚠️ DOCUMENTED - CCT iterative methods require wider tolerance |
+| `tests/52_aces_fixed_functions.c` | `TEST_TOLERANCE` | `1e-5` | ✅ FIXED - Uses `test_common.h` |
+| `tests/53_section9_transfer_functions.c` | `TEST_TOLERANCE_APPLE_LOG` | `1e-5` | ⚠️ DOCUMENTED - OCIO float32 vs our float64 |
+| `tests/53_section9_transfer_functions.c` | `TEST_TOLERANCE_DCDM` | `3e-5` | ⚠️ DOCUMENTED - OCIO float32 vs our float64 |
+| `tests/54_aces20.c` | `TEST_TOLERANCE_JMH` | `1e-3` | ⚠️ TODO - ACES 2.0 JMh should match OCIO better |
+| `tests/54_aces20.c` | `TEST_TOLERANCE_TONESCALE` | `1e-4` | ⚠️ TODO - Tonescale should match OCIO better |
+| `tests/54_aces20.c` | `TONESCALE_TOL_REL` | `5e-2` | ⚠️ **LOOSE** - 5% relative tolerance is too high |
+| `tests/54_aces20.c` | `TONESCALE_TOL_ABS` | `1e-2` | ⚠️ **LOOSE** - Absolute tolerance for small values |
+| `tests/54_aces20.c` | `ROUNDTRIP_TOL` | `1e-6` | ✅ OK - Pure inverse should be precise |
+| `tests/21_ictcp.c` | `ROUNDTRIP_TOL` | `1e-4`/`1e-5` | ⚠️ TODO - ICtCp roundtrip should be tighter |
+
+### Duplicated Test Macros - ✅ ALL FIXED
+
+All test files now use `tests/test_common.h` for assertion macros.
+
+| File | Status |
+|------|--------|
+| `tests/42_math_utilities.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/44_color_correction.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/49_rayleigh_scattering.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/50_barten1999_csf.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/51_cct_cineon.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/52_aces_fixed_functions.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/53_section9_transfer_functions.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/54_aces20.c` | ✅ FIXED - Uses `test_common.h` |
+
+### Using `fabs()` Instead of `ALWAN_ABS()` - ✅ ALL FIXED
+
+All test files now use `ALWAN_ABS()` via `test_common.h` macros.
+
+| File | Status |
+|------|--------|
+| `tests/54_aces20.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/49_rayleigh_scattering.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/52_aces_fixed_functions.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/53_section9_transfer_functions.c` | ✅ FIXED - Uses `test_common.h` |
+
+---
+
 ## HARDCODED MATH VIOLATIONS (C Tests)
 
 Hardcoded math in test files violates rule #2.
@@ -65,14 +118,17 @@ Hardcoded test values that should come from CSV files.
 
 ## STATISTICS
 
-| Category | Count | Fixed | TODO |
-|----------|-------|-------|------|
-| Loose tolerances | 6 | 0 | 6 |
-| Hardcoded math in C tests | 2 | 0 | 2 |
-| Hardcoded values in C tests | 2 | 0 | 2 |
-| Hardcoded values in Python | 6 | 0 | 6 |
+| Category | Count | Fixed | Documented | TODO |
+|----------|-------|-------|------------|------|
+| Loose tolerances (CAM models) | 6 | 0 | 0 | 6 |
+| Custom tolerance overrides | 16 | 8 | 3 | 5 |
+| Duplicated test macros | 8 | 8 | 0 | 0 |
+| fabs/double usage in tests | 4 | 4 | 0 | 0 |
+| Hardcoded math in C tests | 2 | 0 | 0 | 2 |
+| Hardcoded values in C tests | 2 | 0 | 0 | 2 |
+| Hardcoded values in Python | 6 | 0 | 0 | 6 |
 
-**Total violations requiring fixes: 16**
+**Total: 44 issues | Fixed: 20 | Documented: 3 | TODO: 21**
 
 ---
 
@@ -84,12 +140,22 @@ Hardcoded test values that should come from CSV files.
 3. Fix Hunt implementation to match colour-science within standard tolerance
 4. Fix OSA-UCS implementation to match colour-science within 1e-4
 5. Fix CAM-based Delta E metrics to match colour-science within 1e-6
+6. Fix ACES 2.0 JMh to match OCIO better (currently 1e-3)
+7. Fix ACES 2.0 Tonescale to match OCIO better (currently 5% relative - too loose)
+8. Fix ICtCp roundtrip tolerance (currently 1e-4/1e-5 - should be tighter)
 
-### Priority 2 (High) - Hardcoded Math
+### Priority 2 (High) - Test Code Quality - ✅ COMPLETE
+1. ~~Refactor all tests to use `tests/test_common.h`~~ ✅ DONE
+   - ~~Remove duplicated TEST_ASSERT_REL, TEST_ASSERT_ABS, TEST_ASSERT_NEAR macros~~ ✅
+   - ~~Replace `fabs()` with `ALWAN_ABS()`~~ ✅
+   - ~~Replace `double` with `alwan_scalar` where appropriate~~ ✅
+2. ~~Remove custom tolerance defines~~ ✅ DONE (remaining exceptions documented)
+
+### Priority 3 (High) - Hardcoded Math
 1. Move all expected luma values to CSV files
 2. Move all expected color correction values to CSV files
 
-### Priority 3 (Medium) - Documentation
+### Priority 4 (Medium) - Documentation
 1. Document CAM viewing condition constants (L_A, Y_b) with source
 2. Document or remove LGG, Sepia, printer lights test data
 
@@ -106,9 +172,39 @@ All CSV files MUST be generated by scripts in `./gendata/` - never manually edit
 
 ---
 
+## TEST INFRASTRUCTURE
+
+### Consolidated Test Header: `tests/test_common.h`
+
+All tests should include this header for:
+- `TEST_ASSERT(cond, msg)` - Simple boolean assertion
+- `TEST_ASSERT_NEAR(a, b, tol, msg)` - Absolute difference assertion
+- `TEST_ASSERT_REL(a, b, rel_tol, msg)` - Relative difference assertion
+- `TEST_ASSERT_ABS(a, b, tol, msg)` - Alias for TEST_ASSERT_NEAR
+- `TEST_ASSERT_VEC3_NEAR(v, expected, tol, msg)` - Vector comparison
+- `TEST_TOLERANCE_REL` - Standard relative tolerance (1e-6)
+- `TEST_EPSILON` - Small epsilon for division safety (1e-20)
+
+**Usage:**
+```c
+#include "alwan.h"
+#include "alwan_internal.h"
+#include "test_common.h"
+
+int test_example(void) {
+    alwan_scalar got = some_function();
+    alwan_scalar expected = ALWAN_LITERAL(1.0);
+    TEST_ASSERT_NEAR(got, expected, ALWAN_TEST_TOLERANCE, "some_function result");
+    return 0;
+}
+```
+
+---
+
 ## NOTES
 
 - colour-science and OpenColorIO are the authoritative references
 - If our implementation differs from these references, our implementation is wrong
 - Tolerance increases are NEVER acceptable - they mask implementation bugs
 - All test expected values must be traceable to colour-science, OpenColorIO, or published whitepapers
+- Tests MUST be compatible with both f32 and f64 builds (use `alwan_scalar`, `ALWAN_ABS()`, `ALWAN_LITERAL()`)

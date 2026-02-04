@@ -86,6 +86,9 @@ namespace Alwan
             if (target.Scalar == ScalarType.Float)
             {
                 conf.Defines.Add("ALWAN_SCALAR_IS_FLOAT=1");
+                // Disable truncation warnings for float builds (double literals to float)
+                conf.AdditionalCompilerOptions.Add("/wd4305");  // truncation from 'double' to 'float'
+                conf.AdditionalCompilerOptions.Add("/wd4244");  // conversion from 'double' to 'float', possible loss of data
             }
             else
             {

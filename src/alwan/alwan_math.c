@@ -203,7 +203,7 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
         switch (method) {
             case ALWAN_INTERP_LINEAR: {
                 /* Linear interpolation */
-                y_out[i] = y_in[idx] * (1.0 - t) + y_in[idx + 1] * t;
+                y_out[i] = y_in[idx] * (ALWAN_LITERAL(1.0) - t) + y_in[idx + 1] * t;
                 break;
             }
 
@@ -326,7 +326,7 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                 /* Akima spline (non-overshooting) */
                 if (count_in < 4) {
                     /* Fall back to linear */
-                    y_out[i] = y_in[idx] * (1.0 - t) + y_in[idx + 1] * t;
+                    y_out[i] = y_in[idx] * (ALWAN_LITERAL(1.0) - t) + y_in[idx + 1] * t;
                 } else {
                     /* Calculate slopes */
                     alwan_scalar m[5];
@@ -349,10 +349,10 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                     alwan_scalar y2 = y_in[idx + 1];
                     alwan_scalar dx = x1 - x0;
 
-                    alwan_scalar h00 = (1.0 + ALWAN_LITERAL(2.0) * t) * (1.0 - t) * (1.0 - t);
-                    alwan_scalar h10 = t * (1.0 - t) * (1.0 - t);
+                    alwan_scalar h00 = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(2.0) * t) * (ALWAN_LITERAL(1.0) - t) * (ALWAN_LITERAL(1.0) - t);
+                    alwan_scalar h10 = t * (ALWAN_LITERAL(1.0) - t) * (ALWAN_LITERAL(1.0) - t);
                     alwan_scalar h01 = t * t * (ALWAN_LITERAL(3.0) - ALWAN_LITERAL(2.0) * t);
-                    alwan_scalar h11 = t * t * (t - 1.0);
+                    alwan_scalar h11 = t * t * (t - ALWAN_LITERAL(1.0));
 
                     y_out[i] = h00 * y1 + h10 * dx * slope + h01 * y2 + h11 * dx * slope;
                 }
@@ -395,7 +395,7 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
             /* Within bounds, use linear interpolation */
             size_t idx = find_interval(x_in, count_in, x);
             alwan_scalar t = (x - x_in[idx]) / (x_in[idx + 1] - x_in[idx]);
-            y_out[i] = y_in[idx] * (1.0 - t) + y_in[idx + 1] * t;
+            y_out[i] = y_in[idx] * (ALWAN_LITERAL(1.0) - t) + y_in[idx + 1] * t;
             continue;
         }
 
@@ -496,7 +496,7 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                 /* Interpolate at reflected position */
                 size_t idx = find_interval(x_in, count_in, x_reflected);
                 alwan_scalar t = (x_reflected - x_in[idx]) / (x_in[idx + 1] - x_in[idx]);
-                y_out[i] = y_in[idx] * (1.0 - t) + y_in[idx + 1] * t;
+                y_out[i] = y_in[idx] * (ALWAN_LITERAL(1.0) - t) + y_in[idx + 1] * t;
                 break;
             }
 
@@ -685,7 +685,7 @@ int alwan_optimize_spectrum_for_xyz(alwan_spd *spd_out,
             value += weights[j] * ALWAN_EXP(ALWAN_LITERAL(-0.5) * dx * dx);
         }
 
-        spd_out->values[i] = (value > 0.0) ? value : 0.0;
+        spd_out->values[i] = (value > ALWAN_LITERAL(0.0)) ? value : ALWAN_LITERAL(0.0);
     }
 
     /* Note: A complete implementation would:
@@ -724,7 +724,7 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
 
     switch (method) {
         case ALWAN_INTERP_LINEAR: {
-            return table[idx] * (1.0 - t) + table[idx + 1] * t;
+            return table[idx] * (ALWAN_LITERAL(1.0) - t) + table[idx + 1] * t;
         }
 
         case ALWAN_INTERP_CUBIC: {
@@ -746,7 +746,7 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
         }
 
         default:
-            return table[idx] * (1.0 - t) + table[idx + 1] * t;
+            return table[idx] * (ALWAN_LITERAL(1.0) - t) + table[idx + 1] * t;
     }
 }
 
@@ -808,15 +808,15 @@ int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
 
     /* Trilinear interpolation */
     for (int c = 0; c < 3; c++) {
-        alwan_scalar c00 = c000[c] * (1.0 - r_frac) + c100[c] * r_frac;
-        alwan_scalar c01 = c001[c] * (1.0 - r_frac) + c101[c] * r_frac;
-        alwan_scalar c10 = c010[c] * (1.0 - r_frac) + c110[c] * r_frac;
-        alwan_scalar c11 = c011[c] * (1.0 - r_frac) + c111[c] * r_frac;
+        alwan_scalar c00 = c000[c] * (ALWAN_LITERAL(1.0) - r_frac) + c100[c] * r_frac;
+        alwan_scalar c01 = c001[c] * (ALWAN_LITERAL(1.0) - r_frac) + c101[c] * r_frac;
+        alwan_scalar c10 = c010[c] * (ALWAN_LITERAL(1.0) - r_frac) + c110[c] * r_frac;
+        alwan_scalar c11 = c011[c] * (ALWAN_LITERAL(1.0) - r_frac) + c111[c] * r_frac;
 
-        alwan_scalar c0 = c00 * (1.0 - g_frac) + c10 * g_frac;
-        alwan_scalar c1 = c01 * (1.0 - g_frac) + c11 * g_frac;
+        alwan_scalar c0 = c00 * (ALWAN_LITERAL(1.0) - g_frac) + c10 * g_frac;
+        alwan_scalar c1 = c01 * (ALWAN_LITERAL(1.0) - g_frac) + c11 * g_frac;
 
-        alwan_scalar result = c0 * (1.0 - b_frac) + c1 * b_frac;
+        alwan_scalar result = c0 * (ALWAN_LITERAL(1.0) - b_frac) + c1 * b_frac;
 
         if (c == 0) rgb_out->r = result;
         else if (c == 1) rgb_out->g = result;

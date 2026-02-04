@@ -2,46 +2,12 @@
  * Reference: Barten (1999), colour-science implementation
  */
 
-#include "../src/alwan/alwan.h"
+#include "alwan.h"
+#include "alwan_internal.h"
+#define TEST_USE_COUNTERS
+#include "test_common.h"
 #include <stdio.h>
-#include <math.h>
 #include <string.h>
-
-#define TEST_TOLERANCE_REL 1e-6
-
-/* Math helper macros */
-#if ALWAN_SCALAR_IS_FLOAT
-  #define TEST_FABS(x) fabsf(x)
-#else
-  #define TEST_FABS(x) fabs(x)
-#endif
-
-static int test_count = 0;
-static int test_passed = 0;
-static int test_failed = 0;
-
-#define TEST_ASSERT(cond, msg) do { \
-    test_count++; \
-    if (!(cond)) { \
-        printf("[FAIL] %s\n", msg); \
-        test_failed++; \
-        return 1; \
-    } \
-    test_passed++; \
-} while(0)
-
-#define TEST_ASSERT_REL(a, b, rel_tol, msg) do { \
-    test_count++; \
-    alwan_scalar diff = TEST_FABS((a) - (b)); \
-    alwan_scalar ref = TEST_FABS(b); \
-    alwan_scalar rel_err = (ref > 1e-20) ? diff / ref : diff; \
-    if (rel_err > (rel_tol)) { \
-        printf("[FAIL] %s: expected %.10e, got %.10e (rel_err=%.10e)\n", msg, (double)(b), (double)(a), (double)rel_err); \
-        test_failed++; \
-        return 1; \
-    } \
-    test_passed++; \
-} while(0)
 
 /* ================================================================
  * Reference Data from colour-science
@@ -414,15 +380,15 @@ static int test_params_default(void)
     alwan_csf_barten1999_params_default(&params);
 
     /* Check known defaults from colour-science */
-    TEST_ASSERT_REL(params.k, 3.0, 1e-10, "Default k should be 3.0");
-    TEST_ASSERT_REL(params.T, 0.1, 1e-10, "Default T should be 0.1");
-    TEST_ASSERT_REL(params.X_0, 60.0, 1e-10, "Default X_0 should be 60");
-    TEST_ASSERT_REL(params.X_max, 12.0, 1e-10, "Default X_max should be 12");
-    TEST_ASSERT_REL(params.N_max, 15.0, 1e-10, "Default N_max should be 15");
-    TEST_ASSERT_REL(params.n, 0.03, 1e-10, "Default n should be 0.03");
-    TEST_ASSERT_REL(params.p, 1.2274e6, 1e-4, "Default p should be 1.2274e6");
-    TEST_ASSERT_REL(params.phi_0, 3.0e-8, 1e-15, "Default phi_0 should be 3e-8");
-    TEST_ASSERT_REL(params.u_0, 7.0, 1e-10, "Default u_0 should be 7");
+    TEST_ASSERT_REL(params.k, ALWAN_LITERAL(3.0), ALWAN_LITERAL(1e-10), "Default k should be 3.0");
+    TEST_ASSERT_REL(params.T, ALWAN_LITERAL(0.1), ALWAN_LITERAL(1e-10), "Default T should be 0.1");
+    TEST_ASSERT_REL(params.X_0, ALWAN_LITERAL(60.0), ALWAN_LITERAL(1e-10), "Default X_0 should be 60");
+    TEST_ASSERT_REL(params.X_max, ALWAN_LITERAL(12.0), ALWAN_LITERAL(1e-10), "Default X_max should be 12");
+    TEST_ASSERT_REL(params.N_max, ALWAN_LITERAL(15.0), ALWAN_LITERAL(1e-10), "Default N_max should be 15");
+    TEST_ASSERT_REL(params.n, ALWAN_LITERAL(0.03), ALWAN_LITERAL(1e-10), "Default n should be 0.03");
+    TEST_ASSERT_REL(params.p, ALWAN_LITERAL(1.2274e6), ALWAN_LITERAL(1e-4), "Default p should be 1.2274e6");
+    TEST_ASSERT_REL(params.phi_0, ALWAN_LITERAL(3.0e-8), ALWAN_LITERAL(1e-15), "Default phi_0 should be 3e-8");
+    TEST_ASSERT_REL(params.u_0, ALWAN_LITERAL(7.0), ALWAN_LITERAL(1e-10), "Default u_0 should be 7");
 
     /* Sigma should be computed from sigma_0=0.5/60, C_ab=0.08/60, d=2.1 */
     alwan_scalar expected_sigma = alwan_sigma_barten1999(0.5/60, 0.08/60, 2.1);

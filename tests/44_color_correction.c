@@ -1,45 +1,17 @@
 /* Test suite for Color Correction & Grading Tools */
 
-#include "../../src/alwan/alwan.h"
+#include "alwan.h"
+#include "alwan_internal.h"
+#define TEST_USE_COUNTERS
+#include "test_common.h"
 #include <stdio.h>
-#include <math.h>
 #include <string.h>
 
-#define TEST_TOLERANCE 1e-5
+/* Use ALWAN_POW from alwan_internal.h for pow operations */
+#define TEST_POW ALWAN_POW
 
-/* Math helper macros */
-#if ALWAN_SCALAR_IS_FLOAT
-  #define TEST_FABS(x) fabsf(x)
-  #define TEST_POW(x, y) powf(x, y)
-#else
-  #define TEST_FABS(x) fabs(x)
-  #define TEST_POW(x, y) pow(x, y)
-#endif
-
-static int test_count = 0;
-static int test_passed = 0;
-static int test_failed = 0;
-
-#define TEST_ASSERT(cond, msg) do { \
-    test_count++; \
-    if (!(cond)) { \
-        printf("[FAIL] %s\n", msg); \
-        test_failed++; \
-        return 1; \
-    } \
-    test_passed++; \
-} while(0)
-
-#define TEST_ASSERT_NEAR(a, b, tol, msg) do { \
-    test_count++; \
-    alwan_scalar diff = TEST_FABS((a) - (b)); \
-    if (diff > (tol)) { \
-        printf("[FAIL] %s: expected %.10f, got %.10f (diff=%.10f)\n", msg, (double)(b), (double)(a), (double)diff); \
-        test_failed++; \
-        return 1; \
-    } \
-    test_passed++; \
-} while(0)
+/* Test tolerance - documented in docs/violations.md */
+#define TEST_TOLERANCE ALWAN_LITERAL(1e-5)
 
 /* ================================================================
  * Lift/Gamma/Gain Tests
@@ -59,9 +31,9 @@ static int test_lgg_neutral(void)
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* With neutral values, output should match input */
-    TEST_ASSERT_NEAR(rgb_out.r, 0.5, TEST_TOLERANCE, "Red channel should be unchanged");
-    TEST_ASSERT_NEAR(rgb_out.g, 0.5, TEST_TOLERANCE, "Green channel should be unchanged");
-    TEST_ASSERT_NEAR(rgb_out.b, 0.5, TEST_TOLERANCE, "Blue channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Red channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Green channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Blue channel should be unchanged");
 
     return 0;
 }
@@ -80,9 +52,9 @@ static int test_lgg_lift(void)
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* Lift adds to input: (0.2 + 0.1) = 0.3 for red */
-    TEST_ASSERT_NEAR(rgb_out.r, 0.3, TEST_TOLERANCE, "Red lifted by 0.1");
-    TEST_ASSERT_NEAR(rgb_out.g, 0.3, TEST_TOLERANCE, "Green unchanged");
-    TEST_ASSERT_NEAR(rgb_out.b, 0.3, TEST_TOLERANCE, "Blue lowered by 0.1");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.3), TEST_TOLERANCE, "Red lifted by 0.1");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.3), TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.3), TEST_TOLERANCE, "Blue lowered by 0.1");
 
     return 0;
 }
@@ -101,11 +73,11 @@ static int test_lgg_gamma(void)
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* Gamma 2.0: 0.5^(1/2) = 0.707... */
-    TEST_ASSERT_NEAR(rgb_out.r, 0.707106781, 0.0001, "Red darkened (gamma 2.0)");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.707106781), ALWAN_LITERAL(0.0001), "Red darkened (gamma 2.0)");
     /* Gamma 0.5: 0.5^(1/0.5) = 0.5^2 = 0.25 */
-    TEST_ASSERT_NEAR(rgb_out.g, 0.25, TEST_TOLERANCE, "Green brightened (gamma 0.5)");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.25), TEST_TOLERANCE, "Green brightened (gamma 0.5)");
     /* Gamma 1.0: no change */
-    TEST_ASSERT_NEAR(rgb_out.b, 0.5, TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -123,9 +95,9 @@ static int test_lgg_gain(void)
     int status = alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.r, 1.0, TEST_TOLERANCE, "Red gain doubled");
-    TEST_ASSERT_NEAR(rgb_out.g, 0.25, TEST_TOLERANCE, "Green gain halved");
-    TEST_ASSERT_NEAR(rgb_out.b, 0.5, TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(1.0), TEST_TOLERANCE, "Red gain doubled");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.25), TEST_TOLERANCE, "Green gain halved");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -172,9 +144,9 @@ static int test_color_matrix_identity(void)
     int status = alwan_color_matrix_apply(&rgb_out, &rgb_in, &identity);
     TEST_ASSERT(status == ALWAN_OK, "Color matrix apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.r, 0.5, TEST_TOLERANCE, "Red unchanged");
-    TEST_ASSERT_NEAR(rgb_out.g, 0.6, TEST_TOLERANCE, "Green unchanged");
-    TEST_ASSERT_NEAR(rgb_out.b, 0.7, TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Red unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.6), TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.7), TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -281,9 +253,9 @@ static int test_printer_lights_neutral(void)
     int status = alwan_printer_lights_apply(&rgb_out, &rgb_in, 25.0, 25.0, 25.0);
     TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.r, 0.5, TEST_TOLERANCE, "Red unchanged at neutral");
-    TEST_ASSERT_NEAR(rgb_out.g, 0.6, TEST_TOLERANCE, "Green unchanged at neutral");
-    TEST_ASSERT_NEAR(rgb_out.b, 0.7, TEST_TOLERANCE, "Blue unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Red unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.6), TEST_TOLERANCE, "Green unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.7), TEST_TOLERANCE, "Blue unchanged at neutral");
 
     return 0;
 }
@@ -301,11 +273,11 @@ static int test_printer_lights_exposure(void)
     TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
 
     /* Red (15 lights): brighter than input */
-    TEST_ASSERT(rgb_out.r > 0.5, "Red brighter with fewer lights");
+    TEST_ASSERT(rgb_out.r > ALWAN_LITERAL(0.5), "Red brighter with fewer lights");
     /* Green (25 lights): unchanged */
-    TEST_ASSERT_NEAR(rgb_out.g, 0.5, TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Green unchanged");
     /* Blue (35 lights): darker than input */
-    TEST_ASSERT(rgb_out.b < 0.5, "Blue darker with more lights");
+    TEST_ASSERT(rgb_out.b < ALWAN_LITERAL(0.5), "Blue darker with more lights");
 
     return 0;
 }

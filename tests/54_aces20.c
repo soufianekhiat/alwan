@@ -12,36 +12,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include "../../src/alwan/alwan.h"
+#include "alwan.h"
+#include "alwan_internal.h"
+#include "test_common.h"
 
-/* Test tolerance - ACES 2.0 involves complex color appearance model
- * OCIO uses float32 internal processing, we use float64 */
-#define TEST_TOLERANCE_JMH 1e-3
-#define TEST_TOLERANCE_TONESCALE 1e-4
-
-/* Test assertion macros */
-#define TEST_ASSERT_REL(got, expected, tol, msg) do { \
-    alwan_scalar _got = (got); \
-    alwan_scalar _exp = (expected); \
-    alwan_scalar _diff = (_exp != 0.0) ? fabs((_got - _exp) / _exp) : fabs(_got - _exp); \
-    if (_diff > (tol)) { \
-        printf("FAIL: %s\n  Expected: %.10e, Got: %.10e, RelDiff: %.10e\n", \
-               msg, (double)_exp, (double)_got, (double)_diff); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_ASSERT_ABS(got, expected, tol, msg) do { \
-    alwan_scalar _got = (got); \
-    alwan_scalar _exp = (expected); \
-    alwan_scalar _diff = fabs(_got - _exp); \
-    if (_diff > (tol)) { \
-        printf("FAIL: %s\n  Expected: %.10e, Got: %.10e, AbsDiff: %.10e\n", \
-               msg, (double)_exp, (double)_got, (double)_diff); \
-        return 1; \
-    } \
-} while(0)
+/* ACES 2.0 tolerances - OCIO uses float32 internal processing
+ * TODO: These are documented violations - see docs/violations.md */
+#define TEST_TOLERANCE_JMH ALWAN_LITERAL(1e-3)
+#define TEST_TOLERANCE_TONESCALE ALWAN_LITERAL(1e-4)
 
 /* ============================================================================
  * RGB to JMh20 Test Data (from OCIO BuiltinTransform)
@@ -120,10 +98,10 @@ static int test_rgb_to_jmh20(void) {
         /* Check J component */
         char msg[256];
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] J: RGB=(%.3f, %.3f, %.3f)",
-                 i, (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b);
+                 i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b);
 
         /* Use absolute tolerance for small values, relative for large */
-        if (fabs(rgb_to_jmh_expected[i][0]) > 1.0) {
+        if (ALWAN_ABS(rgb_to_jmh_expected[i][0]) > ALWAN_LITERAL(1.0)) {
             TEST_ASSERT_REL(jmh_out.v[0], rgb_to_jmh_expected[i][0], TEST_TOLERANCE_JMH, msg);
         } else {
             TEST_ASSERT_ABS(jmh_out.v[0], rgb_to_jmh_expected[i][0], TEST_TOLERANCE_JMH, msg);
@@ -131,8 +109,8 @@ static int test_rgb_to_jmh20(void) {
 
         /* Check M component */
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] M: RGB=(%.3f, %.3f, %.3f)",
-                 i, (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b);
-        if (fabs(rgb_to_jmh_expected[i][1]) > 1.0) {
+                 i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b);
+        if (ALWAN_ABS(rgb_to_jmh_expected[i][1]) > ALWAN_LITERAL(1.0)) {
             TEST_ASSERT_REL(jmh_out.v[1], rgb_to_jmh_expected[i][1], TEST_TOLERANCE_JMH, msg);
         } else {
             TEST_ASSERT_ABS(jmh_out.v[1], rgb_to_jmh_expected[i][1], TEST_TOLERANCE_JMH, msg);
@@ -140,17 +118,17 @@ static int test_rgb_to_jmh20(void) {
 
         /* Check h component (hue in degrees) */
         /* Skip hue check if M is near zero (achromatic - hue is undefined) */
-        if (rgb_to_jmh_expected[i][1] > 0.01) {
+        if (rgb_to_jmh_expected[i][1] > ALWAN_LITERAL(0.01)) {
             snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] h: RGB=(%.3f, %.3f, %.3f)",
-                     i, (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b);
+                     i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b);
             /* Handle hue wraparound at 0/360 boundary */
-            alwan_scalar h_diff = fabs(jmh_out.v[2] - rgb_to_jmh_expected[i][2]);
-            if (h_diff > 180.0) {
-                h_diff = 360.0 - h_diff;
+            alwan_scalar h_diff = ALWAN_ABS(jmh_out.v[2] - rgb_to_jmh_expected[i][2]);
+            if (h_diff > ALWAN_LITERAL(180.0)) {
+                h_diff = ALWAN_LITERAL(360.0) - h_diff;
             }
-            if (h_diff > 5.0) {  /* Allow 5 degree tolerance for hue */
+            if (h_diff > ALWAN_LITERAL(5.0)) {  /* Allow 5 degree tolerance for hue */
                 printf("FAIL: %s\n  Expected: %.2f, Got: %.2f, Diff: %.2f\n",
-                       msg, (double)rgb_to_jmh_expected[i][2], (double)jmh_out.v[2], (double)h_diff);
+                       msg, (alwan_scalar)rgb_to_jmh_expected[i][2], (alwan_scalar)jmh_out.v[2], (alwan_scalar)h_diff);
                 return 1;
             }
         }
@@ -207,20 +185,20 @@ static int test_tonescale_compress20(void) {
 
         for (int c = 0; c < 3; c++) {
             alwan_scalar diff;
-            if (fabs(exp[c]) > 0.1) {
-                diff = fabs((got[c] - exp[c]) / exp[c]);  /* Relative */
+            if (ALWAN_ABS(exp[c]) > 0.1) {
+                diff = ALWAN_ABS((got[c] - exp[c]) / exp[c]);  /* Relative */
                 if (diff > TONESCALE_TOL_REL) {
                     printf("FAIL [%zu] %s: in=(%.3f,%.3f,%.3f) expected=%.6f got=%.6f relErr=%.4f\n",
-                           i, channels[c], (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b,
-                           (double)exp[c], (double)got[c], (double)diff);
+                           i, channels[c], (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
+                           (alwan_scalar)exp[c], (alwan_scalar)got[c], (alwan_scalar)diff);
                     channel_fail = 1;
                 }
             } else {
-                diff = fabs(got[c] - exp[c]);  /* Absolute */
+                diff = ALWAN_ABS(got[c] - exp[c]);  /* Absolute */
                 if (diff > TONESCALE_TOL_ABS) {
                     printf("FAIL [%zu] %s: in=(%.3f,%.3f,%.3f) expected=%.6f got=%.6f absErr=%.6f\n",
-                           i, channels[c], (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b,
-                           (double)exp[c], (double)got[c], (double)diff);
+                           i, channels[c], (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
+                           (alwan_scalar)exp[c], (alwan_scalar)got[c], (alwan_scalar)diff);
                     channel_fail = 1;
                 }
             }
@@ -276,15 +254,15 @@ static int test_jmh_roundtrip(void) {
         }
 
         /* Compare roundtrip result with original */
-        alwan_scalar diff_r = fabs(rgb_out.r - rgb_in.r);
-        alwan_scalar diff_g = fabs(rgb_out.g - rgb_in.g);
-        alwan_scalar diff_b = fabs(rgb_out.b - rgb_in.b);
+        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - rgb_in.r);
+        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - rgb_in.g);
+        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - rgb_in.b);
 
         if (diff_r > ROUNDTRIP_TOL || diff_g > ROUNDTRIP_TOL || diff_b > ROUNDTRIP_TOL) {
             printf("FAIL [%zu]: in=(%.6f,%.6f,%.6f) out=(%.6f,%.6f,%.6f) diff=(%.2e,%.2e,%.2e)\n",
-                   i, (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b,
-                   (double)rgb_out.r, (double)rgb_out.g, (double)rgb_out.b,
-                   (double)diff_r, (double)diff_g, (double)diff_b);
+                   i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
+                   (alwan_scalar)rgb_out.r, (alwan_scalar)rgb_out.g, (alwan_scalar)rgb_out.b,
+                   (alwan_scalar)diff_r, (alwan_scalar)diff_g, (alwan_scalar)diff_b);
             failed++;
         } else {
             passed++;
@@ -349,15 +327,15 @@ static int test_gamut_compress20(void) {
         alwan_scalar exp_g = gamut_compress_expected_1000[i][1];
         alwan_scalar exp_b = gamut_compress_expected_1000[i][2];
 
-        alwan_scalar diff_r = fabs(rgb_out.r - exp_r);
-        alwan_scalar diff_g = fabs(rgb_out.g - exp_g);
-        alwan_scalar diff_b = fabs(rgb_out.b - exp_b);
+        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - exp_r);
+        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - exp_g);
+        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - exp_b);
 
         if (diff_r > GAMUT_COMPRESS_TOL || diff_g > GAMUT_COMPRESS_TOL || diff_b > GAMUT_COMPRESS_TOL) {
             printf("FAIL [%zu]: in=(%.4f,%.4f,%.4f) exp=(%.4f,%.4f,%.4f) got=(%.4f,%.4f,%.4f)\n",
-                   i, (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b,
-                   (double)exp_r, (double)exp_g, (double)exp_b,
-                   (double)rgb_out.r, (double)rgb_out.g, (double)rgb_out.b);
+                   i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
+                   (alwan_scalar)exp_r, (alwan_scalar)exp_g, (alwan_scalar)exp_b,
+                   (alwan_scalar)rgb_out.r, (alwan_scalar)rgb_out.g, (alwan_scalar)rgb_out.b);
             failed++;
         } else {
             passed++;

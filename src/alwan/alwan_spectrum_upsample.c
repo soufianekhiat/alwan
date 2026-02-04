@@ -369,7 +369,7 @@ static void jakob2019_lut_sample(alwan_scalar const *lut_c0,
     b = clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
 
     /* Scale to LUT resolution */
-    alwan_scalar const res_f = ALWAN_LITERAL(JAKOB2019_LUT_RES - 1);
+    alwan_scalar const res_f = (alwan_scalar)(JAKOB2019_LUT_RES - 1);
     alwan_scalar const rf = r * res_f;
     alwan_scalar const gf = g * res_f;
     alwan_scalar const bf = b * res_f;
