@@ -126,7 +126,7 @@ static int test_apple_log_encoding(void) {
         snprintf(msg, sizeof(msg), "Apple Log encode [%zu]: linear=%.4f",
                  i, (double)apple_log_encode_input[i]);
         /* For very large values (HDR), use relative tolerance; for small values, absolute */
-        if (fabs(apple_log_encode_expected[i]) > 0.01) {
+        if (ALWAN_ABS(apple_log_encode_expected[i]) > ALWAN_LITERAL(0.01)) {
             TEST_ASSERT_REL(encoded[i], apple_log_encode_expected[i], TEST_TOLERANCE_APPLE_LOG, msg);
         } else {
             TEST_ASSERT_ABS(encoded[i], apple_log_encode_expected[i], TEST_TOLERANCE_APPLE_LOG, msg);
@@ -162,7 +162,7 @@ static int test_dcdm_encoding(void) {
         snprintf(msg, sizeof(msg), "DCDM encode [%zu]: linear=%.4f",
                  i, (double)dcdm_encode_input[i]);
         /* For very large values, use relative tolerance; for small values, absolute */
-        if (fabs(dcdm_encode_expected[i]) > 0.01) {
+        if (ALWAN_ABS(dcdm_encode_expected[i]) > ALWAN_LITERAL(0.01)) {
             TEST_ASSERT_REL(encoded[i], dcdm_encode_expected[i], TEST_TOLERANCE_DCDM, msg);
         } else {
             TEST_ASSERT_ABS(encoded[i], dcdm_encode_expected[i], TEST_TOLERANCE_DCDM, msg);
@@ -194,7 +194,7 @@ static int test_dcdm_decoding(void) {
         snprintf(msg, sizeof(msg), "DCDM decode [%zu]: encoded=%.2f",
                  i, (double)dcdm_decode_input[i]);
         /* For very large values, use relative tolerance; for small values, absolute */
-        if (fabs(dcdm_decode_expected[i]) > 0.01) {
+        if (ALWAN_ABS(dcdm_decode_expected[i]) > ALWAN_LITERAL(0.01)) {
             TEST_ASSERT_REL(decoded[i], dcdm_decode_expected[i], TEST_TOLERANCE_DCDM, msg);
         } else {
             TEST_ASSERT_ABS(decoded[i], dcdm_decode_expected[i], TEST_TOLERANCE_DCDM, msg);
