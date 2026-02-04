@@ -43,7 +43,7 @@ static int g_test_passed = 0;
 
 #define EXPECT_NEAR(a, b, eps) \
     do { \
-        alwan_scalar diff = (alwan_scalar)fabs((double)(a) - (double)(b)); \
+        alwan_scalar diff = ALWAN_ABS((a) - (b)); \
         if (diff > (eps)) { \
             TEST_FAIL("Expected %g, got %g (diff %g > %g)", \
                       (double)(b), (double)(a), (double)diff, (double)(eps)); \
@@ -463,8 +463,9 @@ static int test_neutral_axis_consistency(void) {
         }
 
         /* Neutral input should produce neutral output */
-        alwan_scalar max_diff = (alwan_scalar)fmax(fabs(rgb_out.r - rgb_out.g),
-                                                    fabs(rgb_out.g - rgb_out.b));
+        alwan_scalar diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
+        alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
+        alwan_scalar max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
         if (max_diff > EPSILON) {
             TEST_FAIL("Gray %zu produced non-neutral output: (%g, %g, %g)",
                       i, rgb_out.r, rgb_out.g, rgb_out.b);

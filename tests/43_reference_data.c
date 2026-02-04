@@ -48,7 +48,7 @@ static int g_test_passed = 0;
 
 #define EXPECT_NEAR(a, b, eps) \
     do { \
-        alwan_scalar diff = (alwan_scalar)fabs((a) - (b)); \
+        alwan_scalar diff = ALWAN_ABS((a) - (b)); \
         if (diff > (eps)) { \
             TEST_FAIL("Expected %g, got %g (diff %g > %g)", \
                       (double)(b), (double)(a), (double)diff, (double)(eps)); \

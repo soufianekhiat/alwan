@@ -8,6 +8,7 @@
  */
 
 #include "alwan.h"
+#include "alwan_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +42,7 @@ static int g_test_passed = 0;
 
 #define EXPECT_NEAR(a, b, eps) \
     do { \
-        alwan_scalar diff = (alwan_scalar)fabs((double)(a) - (double)(b)); \
+        alwan_scalar diff = ALWAN_ABS((a) - (b)); \
         if (diff > (eps)) { \
             TEST_FAIL("Expected %g, got %g (diff %g > %g)", \
                       (double)(b), (double)(a), (double)diff, (double)(eps)); \
@@ -281,9 +282,11 @@ static int test_output_transform_cinema_p3dci(void) {
     }
 
     /* For neutral gray, all channels should be similar (achromatic) */
-    double max_diff = fabs(rgb_out.r - rgb_out.g);
-    if (fabs(rgb_out.g - rgb_out.b) > max_diff) max_diff = fabs(rgb_out.g - rgb_out.b);
-    if (fabs(rgb_out.r - rgb_out.b) > max_diff) max_diff = fabs(rgb_out.r - rgb_out.b);
+    alwan_scalar max_diff = ALWAN_ABS(rgb_out.r - rgb_out.g);
+    alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
+    alwan_scalar diff_rb = ALWAN_ABS(rgb_out.r - rgb_out.b);
+    if (diff_gb > max_diff) max_diff = diff_gb;
+    if (diff_rb > max_diff) max_diff = diff_rb;
 
     if (max_diff > 0.05) {
         TEST_FAIL("P3-DCI neutral gray not achromatic: (%g, %g, %g), max diff: %g",
@@ -508,8 +511,9 @@ static int test_neutral_axis_consistency(void) {
         }
 
         /* Neutral input should produce neutral output */
-        alwan_scalar max_diff = (alwan_scalar)fmax(fabs(rgb_out.r - rgb_out.g),
-                                                    fabs(rgb_out.g - rgb_out.b));
+        alwan_scalar diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
+        alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
+        alwan_scalar max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
         if (max_diff > EPSILON) {
             TEST_FAIL("Gray %zu produced non-neutral output: (%g, %g, %g)",
                       i, rgb_out.r, rgb_out.g, rgb_out.b);
@@ -572,9 +576,9 @@ static int compare_preset_vs_ocio(
             continue;
         }
 
-        alwan_scalar diff_r = (alwan_scalar)fabs((double)rgb_out.r - (double)ocio_ref[i][0]);
-        alwan_scalar diff_g = (alwan_scalar)fabs((double)rgb_out.g - (double)ocio_ref[i][1]);
-        alwan_scalar diff_b = (alwan_scalar)fabs((double)rgb_out.b - (double)ocio_ref[i][2]);
+        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - ocio_ref[i][0]);
+        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - ocio_ref[i][1]);
+        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - ocio_ref[i][2]);
         alwan_scalar max_diff = diff_r > diff_g ? diff_r : diff_g;
         max_diff = max_diff > diff_b ? max_diff : diff_b;
 
@@ -643,9 +647,9 @@ static int test_ocio_reference_comparison(void) {
             continue;
         }
 
-        alwan_scalar diff_r = (alwan_scalar)fabs((double)rgb_out.r - (double)neutral_tests[p].ref[idx][0]);
-        alwan_scalar diff_g = (alwan_scalar)fabs((double)rgb_out.g - (double)neutral_tests[p].ref[idx][1]);
-        alwan_scalar diff_b = (alwan_scalar)fabs((double)rgb_out.b - (double)neutral_tests[p].ref[idx][2]);
+        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - neutral_tests[p].ref[idx][0]);
+        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - neutral_tests[p].ref[idx][1]);
+        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - neutral_tests[p].ref[idx][2]);
         alwan_scalar max_diff = diff_r > diff_g ? diff_r : diff_g;
         max_diff = max_diff > diff_b ? max_diff : diff_b;
 

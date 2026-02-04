@@ -68,14 +68,17 @@ All test files now use `tests/test_common.h` for assertion macros.
 
 ### Using `fabs()` Instead of `ALWAN_ABS()` - ✅ ALL FIXED
 
-All test files now use `ALWAN_ABS()` via `test_common.h` macros.
+All test files now use `ALWAN_ABS()` via `test_common.h` macros or directly.
 
 | File | Status |
 |------|--------|
-| `tests/54_aces20.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/43_reference_data.c` | ✅ FIXED - Uses `ALWAN_ABS()` |
 | `tests/49_rayleigh_scattering.c` | ✅ FIXED - Uses `test_common.h` |
 | `tests/52_aces_fixed_functions.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/53_section9_transfer_functions.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/53_section9_transfer_functions.c` | ✅ FIXED - Uses `ALWAN_ABS()` |
+| `tests/54_aces20.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/55_aces2_output_transform.c` | ✅ FIXED - Uses `ALWAN_ABS()` |
+| `tests/56_aces1_output_transform.c` | ✅ FIXED - Uses `ALWAN_ABS()` |
 
 ---
 
@@ -123,12 +126,12 @@ Hardcoded test values that should come from CSV files.
 | Loose tolerances (CAM models) | 6 | 0 | 0 | 6 |
 | Custom tolerance overrides | 16 | 8 | 3 | 5 |
 | Duplicated test macros | 8 | 8 | 0 | 0 |
-| fabs/double usage in tests | 4 | 4 | 0 | 0 |
+| fabs/double usage in tests | 7 | 7 | 0 | 0 |
 | Hardcoded math in C tests | 2 | 0 | 0 | 2 |
 | Hardcoded values in C tests | 2 | 0 | 0 | 2 |
 | Hardcoded values in Python | 6 | 0 | 0 | 6 |
 
-**Total: 44 issues | Fixed: 20 | Documented: 3 | TODO: 21**
+**Total: 47 issues | Fixed: 23 | Documented: 3 | TODO: 21**
 
 ---
 
