@@ -59,5 +59,8 @@ tmp
 .vs
 tools/*.json
 *.txt
+!CMakeLists.txt
 *.log
 *.pyc
+/build
+/build_*
