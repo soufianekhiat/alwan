@@ -15,7 +15,18 @@ include(CheckCCompilerFlag)
 option(ALWAN_EMBED_DATA "Embed CSV datasets into the library binary" ON)
 option(ALWAN_SCALAR_IS_FLOAT "Use float (f32) instead of double (f64)" OFF)
 option(ALWAN_ENABLE_WARNINGS "Enable compiler warnings" ON)
-option(ALWAN_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
+
+# f64 builds are strict by default, f32 builds are permissive by default.
+set(_ALWAN_WARNINGS_AS_ERRORS_DEFAULT ON)
+if(ALWAN_SCALAR_IS_FLOAT)
+  set(_ALWAN_WARNINGS_AS_ERRORS_DEFAULT OFF)
+endif()
+option(
+  ALWAN_WARNINGS_AS_ERRORS
+  "Treat warnings as errors (default: ON for f64, OFF for f32)"
+  ${_ALWAN_WARNINGS_AS_ERRORS_DEFAULT}
+)
+
 option(ALWAN_DISABLE_STRICT_ALIASING "Compile with -fno-strict-aliasing on GCC/Clang" ON)
 option(ALWAN_INSTALL "Enable install rules" ON)
 option(ALWAN_INSTALL_PKGCONFIG "Install pkg-config .pc file" ON)
@@ -225,4 +236,3 @@ if(ALWAN_INSTALL)
     )
   endif()
 endif()
-
