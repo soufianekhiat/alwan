@@ -7,23 +7,8 @@
  * - Contrast Sensitivity Function (CSF)
  * ================================================================ */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <math.h>
-
-/* Test macros */
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        printf("  FAIL: %s\n", msg); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_PASS(name) do { \
-    printf("  PASS: %s\n", name); \
-    return 0; \
-} while(0)
 
 /* ----------------------------------------------------------------
  * Color Blindness Simulation Tests

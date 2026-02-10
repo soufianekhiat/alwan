@@ -2,12 +2,7 @@
  * IPT Color Space Tests
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
-
-#define TEST_ASSERT(cond, msg) do { if (!(cond)) { printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); return 1; } } while(0)
-#define TEST_PASS(name) do { return 0; } while(0)
+#include "test_common.h"
 
 /* ----------------------------------------------------------------
  * Test XYZ <-> IPT conversions
@@ -100,14 +95,14 @@ static int test_ipt_iptch_round_trip(void) {
     ipt.T = ALWAN_LITERAL(0.0);
 
     alwan_ipt_to_iptch(&iptch, &ipt);
-    TEST_ASSERT(ALWAN_ABS(iptch.I - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "I mismatch");
-    TEST_ASSERT(ALWAN_ABS(iptch.C) < ALWAN_TEST_TOLERANCE, "C should be 0");
+    TEST_ASSERT(ALWAN_ABS(iptch.I - ALWAN_LITERAL(0.5)) < TEST_TOLERANCE, "I mismatch");
+    TEST_ASSERT(ALWAN_ABS(iptch.C) < TEST_TOLERANCE, "C should be 0");
 
     alwan_iptch_to_ipt(&ipt_out, &iptch);
     alwan_scalar ipt_arr[3] = {ipt.I, ipt.P, ipt.T};
     alwan_scalar ipt_out_arr[3] = {ipt_out.I, ipt_out.P, ipt_out.T};
     for (int i = 0; i < 3; i++) {
-        TEST_ASSERT(ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]) < ALWAN_TEST_TOLERANCE,
+        TEST_ASSERT(ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]) < TEST_TOLERANCE,
                     "IPT round-trip failed");
     }
 
@@ -123,7 +118,7 @@ static int test_ipt_iptch_round_trip(void) {
     ipt_out_arr[0] = ipt_out.I; ipt_out_arr[1] = ipt_out.P; ipt_out_arr[2] = ipt_out.T;
     for (int i = 0; i < 3; i++) {
         alwan_scalar diff = ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]);
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "IPT round-trip failed");
+        TEST_ASSERT(diff < TEST_TOLERANCE, "IPT round-trip failed");
     }
 
     TEST_PASS("IPT <-> IPTch round-trip");

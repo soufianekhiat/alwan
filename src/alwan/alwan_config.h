@@ -40,6 +40,15 @@
 #endif
 
 /* ----------------------------------------------------------------
+ * Memory copy hook (overrideable at compile time)
+ * Used for safe type punning between layout-compatible color types
+ * ---------------------------------------------------------------- */
+#ifndef ALWAN_MEMCPY
+# include <string.h>
+# define ALWAN_MEMCPY(dst, src, sz) memcpy((dst), (src), (sz))
+#endif
+
+/* ----------------------------------------------------------------
  * Allocation hooks (overrideable at compile time)
  * ---------------------------------------------------------------- */
 

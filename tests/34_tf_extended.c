@@ -9,26 +9,8 @@
  * via generate_data_tests.ps1
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
-
-/* ----------------------------------------------------------------
- * Test helpers
- * ---------------------------------------------------------------- */
-
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_PASS(name) do { \
-    printf("[PASS] %s\n", name); \
-    return 0; \
-} while(0)
 
 /* ----------------------------------------------------------------
  * Reference Value Loading
@@ -86,11 +68,7 @@ static int test_transfer_function(
     alwan_scalar const *ref_data,
     size_t num_triplets)
 {
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     int failures = 0;
 

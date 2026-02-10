@@ -14,17 +14,35 @@
  * ---------------------------------------------------------------- */
 
 void *alwan_default_alloc(size_t size, size_t align) {
-    (void)align;  /* Most platforms don't need special alignment for our use */
+    /* Normalize alignment to be valid for aligned allocation functions.
+     * Alignment must be power of 2 and >= sizeof(void*) for _aligned_malloc/aligned_alloc */
 #if defined(_WIN32) && defined(_MSC_VER)
+    /* On Windows, always use _aligned_malloc with normalized alignment
+     * so that _aligned_free is always correct */
+    if (align < sizeof(void *)) {
+        align = sizeof(void *);
+    }
+    /* Ensure power of 2 */
+    if ((align & (align - 1)) != 0) {
+        /* Round up to next power of 2 */
+        size_t p = sizeof(void *);
+        while (p < align) p *= 2;
+        align = p;
+    }
     return _aligned_malloc(size, align);
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+    /* For small or invalid alignments, use plain malloc */
+    if (align < sizeof(void *) || (align & (align - 1)) != 0) {
+        return malloc(size);
+    }
     /* C11 aligned_alloc requires size to be a multiple of align */
-    if (align > 0 && (size % align) != 0) {
+    if ((size % align) != 0) {
         size = ((size + align - 1) / align) * align;
     }
     return aligned_alloc(align, size);
 #else
     /* Fallback to malloc - suitable for doubles/floats */
+    (void)align;
     return malloc(size);
 #endif
 }

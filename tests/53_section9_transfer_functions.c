@@ -13,14 +13,6 @@
 #include "alwan_internal.h"
 #include "test_common.h"
 
-/* Test tolerances - documented in docs/violations.md */
-#define TEST_TOLERANCE_APPLE_LOG ALWAN_LITERAL(1e-5)
-
-/* DCDM test tolerance - OCIO uses float32 internal processing which introduces
- * ~1e-6 to 2e-5 precision differences vs our float64 implementation.
- * Both implementations use identical formula: (X * 48/52.37)^(1/2.6) for encoding
- * The difference is purely float32 vs float64 precision in pow() operations. */
-#define TEST_TOLERANCE_DCDM ALWAN_LITERAL(3e-5)
 
 /* ============================================================================
  * Apple Log Test Data (from OCIO BuiltinTransform)
@@ -98,7 +90,7 @@ static int test_apple_log_decoding(void) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Apple Log decode [%zu]: encoded=%.2f",
                  i, (alwan_scalar)apple_log_decode_input[i]);
-        TEST_ASSERT_ABS(decoded[i], apple_log_decode_expected[i], TEST_TOLERANCE_APPLE_LOG, msg);
+        TEST_ASSERT_ABS(decoded[i], apple_log_decode_expected[i], TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu decoding tests\n", NUM_APPLE_LOG_DECODE);
@@ -127,9 +119,9 @@ static int test_apple_log_encoding(void) {
                  i, (double)apple_log_encode_input[i]);
         /* For very large values (HDR), use relative tolerance; for small values, absolute */
         if (ALWAN_ABS(apple_log_encode_expected[i]) > ALWAN_LITERAL(0.01)) {
-            TEST_ASSERT_REL(encoded[i], apple_log_encode_expected[i], TEST_TOLERANCE_APPLE_LOG, msg);
+            TEST_ASSERT_REL(encoded[i], apple_log_encode_expected[i], TEST_TOLERANCE, msg);
         } else {
-            TEST_ASSERT_ABS(encoded[i], apple_log_encode_expected[i], TEST_TOLERANCE_APPLE_LOG, msg);
+            TEST_ASSERT_ABS(encoded[i], apple_log_encode_expected[i], TEST_TOLERANCE, msg);
         }
     }
 
@@ -163,9 +155,9 @@ static int test_dcdm_encoding(void) {
                  i, (double)dcdm_encode_input[i]);
         /* For very large values, use relative tolerance; for small values, absolute */
         if (ALWAN_ABS(dcdm_encode_expected[i]) > ALWAN_LITERAL(0.01)) {
-            TEST_ASSERT_REL(encoded[i], dcdm_encode_expected[i], TEST_TOLERANCE_DCDM, msg);
+            TEST_ASSERT_REL(encoded[i], dcdm_encode_expected[i], TEST_TOLERANCE, msg);
         } else {
-            TEST_ASSERT_ABS(encoded[i], dcdm_encode_expected[i], TEST_TOLERANCE_DCDM, msg);
+            TEST_ASSERT_ABS(encoded[i], dcdm_encode_expected[i], TEST_TOLERANCE, msg);
         }
     }
 
@@ -195,9 +187,9 @@ static int test_dcdm_decoding(void) {
                  i, (double)dcdm_decode_input[i]);
         /* For very large values, use relative tolerance; for small values, absolute */
         if (ALWAN_ABS(dcdm_decode_expected[i]) > ALWAN_LITERAL(0.01)) {
-            TEST_ASSERT_REL(decoded[i], dcdm_decode_expected[i], TEST_TOLERANCE_DCDM, msg);
+            TEST_ASSERT_REL(decoded[i], dcdm_decode_expected[i], TEST_TOLERANCE, msg);
         } else {
-            TEST_ASSERT_ABS(decoded[i], dcdm_decode_expected[i], TEST_TOLERANCE_DCDM, msg);
+            TEST_ASSERT_ABS(decoded[i], dcdm_decode_expected[i], TEST_TOLERANCE, msg);
         }
     }
 

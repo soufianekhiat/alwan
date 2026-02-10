@@ -80,8 +80,9 @@ int alwan_simulate_cvd(alwan_rgb *rgb_out,
     }
 
     /* Convert RGB to LMS */
-    alwan_vec3 lms;
-    mat3_mulv(RGB_TO_LMS, (alwan_vec3 const *)rgb_in, &lms);
+    alwan_vec3 lms, vec_in;
+    ALWAN_MEMCPY(&vec_in, rgb_in, sizeof(alwan_vec3));
+    mat3_mulv(RGB_TO_LMS, &vec_in, &lms);
 
     /* Apply CVD transformation based on type */
     alwan_vec3 lms_cvd;
@@ -119,7 +120,9 @@ int alwan_simulate_cvd(alwan_rgb *rgb_out,
     }
 
     /* Convert LMS back to RGB */
-    mat3_mulv(LMS_TO_RGB, &lms_cvd, (alwan_vec3 *)rgb_out);
+    alwan_vec3 vec_out;
+    mat3_mulv(LMS_TO_RGB, &lms_cvd, &vec_out);
+    ALWAN_MEMCPY(rgb_out, &vec_out, sizeof(alwan_vec3));
 
     /* Clamp to valid RGB range [0, 1] */
     if (rgb_out->r < ALWAN_LITERAL(0.0)) rgb_out->r = ALWAN_LITERAL(0.0);

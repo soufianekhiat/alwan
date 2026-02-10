@@ -540,7 +540,7 @@ int alwan_gamut_volume_ratio(alwan_scalar *ratio_out,
 
     /* Avoid division by zero */
     if (ALWAN_ABS(volume2) < ALWAN_EPSILON) {
-        return ALWAN_E_RANGE;
+        return ALWAN_E_DIVZERO;
     }
 
     *ratio_out = volume1 / volume2;

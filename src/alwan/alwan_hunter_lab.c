@@ -150,11 +150,11 @@ void alwan_hunter_lab_to_xyz_custom(alwan_xyz *xyz,
     /* Y = (L/10)² × Yn */
     xyz->y = l_norm * l_norm * xyz_n->y;
 
-    /* X = ((a/Ka) × (L/100) + (L/100)²) × Xn */
+    /* X = ((a/Ka) × (L/10) + (L/10)²) × Xn */
     alwan_scalar a_term = (hunter_lab->a / ka) * l_norm;
     xyz->x = (a_term + l_norm * l_norm) * xyz_n->x;
 
-    /* Z = -((b/Kb) × (L/100) - (L/100)²) × Zn */
+    /* Z = -((b/Kb) × (L/10) - (L/10)²) × Zn */
     alwan_scalar b_term = (hunter_lab->b / kb) * l_norm;
     xyz->z = -(b_term - l_norm * l_norm) * xyz_n->z;
 }

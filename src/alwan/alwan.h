@@ -23,7 +23,8 @@ typedef enum {
     ALWAN_E_INVALID = -1, /* Invalid argument */
     ALWAN_E_NODATA = -2,  /* Data not found or not loaded */
     ALWAN_E_RANGE  = -3,  /* Value out of valid range */
-    ALWAN_E_NOMEM  = -4   /* Memory allocation failed */
+    ALWAN_E_NOMEM  = -4,  /* Memory allocation failed */
+    ALWAN_E_DIVZERO = -5  /* Division by zero would occur */
 } alwan_status;
 
 /* ----------------------------------------------------------------
@@ -121,9 +122,14 @@ typedef struct {
 /*
  * Semantic color types provide type safety while maintaining API versatility.
  * All types are layout-compatible with alwan_vec3, allowing:
- *   - Direct casting: (alwan_vec3*)&rgb
+ *   - Safe copy via ALWAN_MEMCPY: ALWAN_MEMCPY(&vec, &rgb, sizeof(alwan_vec3))
  *   - Member pointer passing: alwan_function(&rgb.r, &out.r)
  *   - Array interpretation: alwan_scalar* ptr = &rgb.r;
+ *
+ * STRICT ALIASING NOTE:
+ * Direct casting between semantic types (e.g., (alwan_vec3*)&rgb) may violate
+ * C strict aliasing rules. Use ALWAN_MEMCPY for guaranteed safety. The library
+ * internally uses ALWAN_MEMCPY which can be overridden in alwan_config.h.
  */
 
 /* RGB color (red, green, blue) - typically linear or encoded depending on context */
@@ -298,12 +304,13 @@ typedef struct {
  * // Direct function call with semantic types
  * alwan_rgb rgb_in = {1.0, 0.5, 0.2};
  * alwan_xyz xyz_out;
- * alwan_rgb_to_xyz((alwan_vec3*)&rgb_in, (alwan_vec3*)&xyz_out);
+ * alwan_srgb_to_xyz(&xyz_out, &rgb_in);
  *
- * // Member pointer passing
- * alwan_function(&rgb_in.r, &xyz_out.x);
+ * // Safe conversion via ALWAN_MEMCPY
+ * alwan_vec3 vec;
+ * ALWAN_MEMCPY(&vec, &rgb_in, sizeof(alwan_vec3));
  *
- * // Array access
+ * // Array access (same type)
  * alwan_scalar* rgb_array = &rgb_in.r;
  * for (int i = 0; i < 3; i++) {
  *     rgb_array[i] *= 2.0;

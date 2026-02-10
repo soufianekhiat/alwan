@@ -99,7 +99,10 @@ int alwan_rgb_to_xyz(alwan_xyz *xyz,
     }
 
     /* Apply RGB -> XYZ matrix */
-    alwan_mat3_mulv((alwan_vec3 *)xyz, &rgb_to_xyz_mat, (alwan_vec3 const *)rgb);
+    alwan_vec3 vec_in, vec_out;
+    ALWAN_MEMCPY(&vec_in, rgb, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&vec_out, &rgb_to_xyz_mat, &vec_in);
+    ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3));
 
     return ALWAN_OK;
 }
@@ -119,7 +122,10 @@ int alwan_xyz_to_rgb(alwan_rgb *rgb,
     }
 
     /* Apply XYZ -> RGB matrix */
-    alwan_mat3_mulv((alwan_vec3 *)rgb, &xyz_to_rgb_mat, (alwan_vec3 const *)xyz);
+    alwan_vec3 vec_in, vec_out;
+    ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&vec_out, &xyz_to_rgb_mat, &vec_in);
+    ALWAN_MEMCPY(rgb, &vec_out, sizeof(alwan_vec3));
 
     return ALWAN_OK;
 }
@@ -1654,8 +1660,9 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
     if (status != ALWAN_OK) return status;
 
     /* Convert source RGB to XYZ */
-    alwan_vec3 xyz;
-    alwan_mat3_mulv(&xyz, &src_to_xyz, (alwan_vec3 const *)src_rgb);
+    alwan_vec3 xyz, vec_in;
+    ALWAN_MEMCPY(&vec_in, src_rgb, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&xyz, &src_to_xyz, &vec_in);
 
     /* Check if chromatic adaptation is needed */
     alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
@@ -1691,7 +1698,9 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
     }
 
     /* Convert adapted XYZ to destination RGB */
-    alwan_mat3_mulv((alwan_vec3 *)dst_rgb, &xyz_to_dst, &xyz);
+    alwan_vec3 vec_out;
+    alwan_mat3_mulv(&vec_out, &xyz_to_dst, &xyz);
+    ALWAN_MEMCPY(dst_rgb, &vec_out, sizeof(alwan_vec3));
 
     return ALWAN_OK;
 }
@@ -1741,7 +1750,7 @@ int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb,
         alwan_xyy_to_xyz(&dst_white_xyz, &dst_white_xyy);
 
         /* Compute CAT matrix once */
-        status = alwan_cat_matrix(&cat_matrix, (alwan_xyz const *)&src_white_xyz, (alwan_xyz const *)&dst_white_xyz,
+        status = alwan_cat_matrix(&cat_matrix, &src_white_xyz, &dst_white_xyz,
                                   ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
     }
@@ -1749,8 +1758,9 @@ int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb,
     /* Convert all colors */
     for (size_t i = 0; i < count; i++) {
         /* Convert source RGB to XYZ */
-        alwan_vec3 xyz;
-        alwan_mat3_mulv(&xyz, &src_to_xyz, (alwan_vec3 const *)&src_rgb[i]);
+        alwan_vec3 xyz, vec_in;
+        ALWAN_MEMCPY(&vec_in, &src_rgb[i], sizeof(alwan_vec3));
+        alwan_mat3_mulv(&xyz, &src_to_xyz, &vec_in);
 
         /* Apply chromatic adaptation if needed */
         if (need_adaptation && ctx) {
@@ -1760,7 +1770,9 @@ int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb,
         }
 
         /* Convert adapted XYZ to destination RGB */
-        alwan_mat3_mulv((alwan_vec3 *)&dst_rgb[i], &xyz_to_dst, &xyz);
+        alwan_vec3 vec_out;
+        alwan_mat3_mulv(&vec_out, &xyz_to_dst, &xyz);
+        ALWAN_MEMCPY(&dst_rgb[i], &vec_out, sizeof(alwan_vec3));
     }
 
     return ALWAN_OK;

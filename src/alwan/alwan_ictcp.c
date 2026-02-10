@@ -34,28 +34,28 @@
 /* Apply PQ OETF (linear to encoded) to a single value */
 static alwan_scalar pq_oetf(alwan_scalar linear) {
     alwan_scalar encoded;
-    alwan_oetf_apply(&encoded, ALWAN_TF_PQ, &linear, 1, 1, 1);
+    alwan_oetf_apply(&encoded, ALWAN_TF_PQ, &linear, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
     return encoded;
 }
 
 /* Apply PQ EOTF (encoded to linear) to a single value */
 static alwan_scalar pq_eotf(alwan_scalar encoded) {
     alwan_scalar linear;
-    alwan_eotf_apply(&linear, ALWAN_TF_PQ, &encoded, 1, 1, 1);
+    alwan_eotf_apply(&linear, ALWAN_TF_PQ, &encoded, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
     return linear;
 }
 
 /* Apply HLG OETF (scene linear to encoded) to a single value */
 static alwan_scalar hlg_oetf(alwan_scalar linear) {
     alwan_scalar encoded;
-    alwan_oetf_apply(&encoded, ALWAN_TF_HLG, &linear, 1, 1, 1);
+    alwan_oetf_apply(&encoded, ALWAN_TF_HLG, &linear, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
     return encoded;
 }
 
 /* Apply HLG EOTF (encoded to display linear) to a single value */
 static alwan_scalar hlg_eotf(alwan_scalar encoded) {
     alwan_scalar linear;
-    alwan_eotf_apply(&linear, ALWAN_TF_HLG, &encoded, 1, 1, 1);
+    alwan_eotf_apply(&linear, ALWAN_TF_HLG, &encoded, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
     return linear;
 }
 

@@ -648,8 +648,9 @@ void alwan_xyz_to_hdr_ipt(alwan_ipt *hdr_ipt, alwan_xyz const *xyz) {
         M_xyz_to_lms.m[i] = M_XYZ_TO_LMS_IPT[i];
     }
 
-    alwan_vec3 lms;
-    alwan_mat3_mulv(&lms, &M_xyz_to_lms, (alwan_vec3 const *)xyz);
+    alwan_vec3 lms, vec_in;
+    ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&lms, &M_xyz_to_lms, &vec_in);
 
     /* Apply Michaelis-Menten lightness to each LMS channel
      * colour-science uses: sign(LMS) * abs(lightness(LMS, e))
@@ -663,7 +664,9 @@ void alwan_xyz_to_hdr_ipt(alwan_ipt *hdr_ipt, alwan_xyz const *xyz) {
     /* Convert to IPT */
     alwan_mat3x3 M_lms_to_ipt;
     get_lms_to_ipt_hdr_matrix(&M_lms_to_ipt);
-    alwan_mat3_mulv((alwan_vec3 *)hdr_ipt, &M_lms_to_ipt, &lms);
+    alwan_vec3 vec_out;
+    alwan_mat3_mulv(&vec_out, &M_lms_to_ipt, &lms);
+    ALWAN_MEMCPY(hdr_ipt, &vec_out, sizeof(alwan_vec3));
 }
 
 void alwan_hdr_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *hdr_ipt) {
@@ -685,8 +688,9 @@ void alwan_hdr_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *hdr_ipt) {
     alwan_mat3x3 M_ipt_to_lms;
     get_ipt_to_lms_hdr_matrix(&M_ipt_to_lms);
 
-    alwan_vec3 lms;
-    alwan_mat3_mulv(&lms, &M_ipt_to_lms, (alwan_vec3 const *)hdr_ipt);
+    alwan_vec3 lms, vec_in;
+    ALWAN_MEMCPY(&vec_in, hdr_ipt, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&lms, &M_ipt_to_lms, &vec_in);
 
     /* Apply inverse Michaelis-Menten lightness
      * colour-science uses: sign(LMS) * abs(luminance(LMS, e))
@@ -702,7 +706,9 @@ void alwan_hdr_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *hdr_ipt) {
     for (int i = 0; i < 9; i++) {
         M_lms_to_xyz.m[i] = M_LMS_TO_XYZ_IPT[i];
     }
-    alwan_mat3_mulv((alwan_vec3 *)xyz, &M_lms_to_xyz, &lms);
+    alwan_vec3 vec_out;
+    alwan_mat3_mulv(&vec_out, &M_lms_to_xyz, &lms);
+    ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3));
 }
 
 /* ================================================================
@@ -728,8 +734,9 @@ void alwan_xyz_to_igpgtg(alwan_igpgtg *igpgtg, alwan_xyz const *xyz) {
         M_xyz_to_lms.m[i] = M_XYZ_TO_LMS_IGPGTG[i];
     }
 
-    alwan_vec3 lms;
-    alwan_mat3_mulv(&lms, &M_xyz_to_lms, (alwan_vec3 const *)xyz);
+    alwan_vec3 lms, vec_in;
+    ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&lms, &M_xyz_to_lms, &vec_in);
 
     /* Apply scaled nonlinearity: (LMS / scale) ^ 0.427 */
     alwan_scalar const exponent = ALWAN_LITERAL(0.427);
@@ -740,7 +747,9 @@ void alwan_xyz_to_igpgtg(alwan_igpgtg *igpgtg, alwan_xyz const *xyz) {
     /* Convert to IgPgTg */
     alwan_mat3x3 M_lms_to_igpgtg;
     get_lms_to_igpgtg_matrix(&M_lms_to_igpgtg);
-    alwan_mat3_mulv((alwan_vec3 *)igpgtg, &M_lms_to_igpgtg, &lms);
+    alwan_vec3 vec_out;
+    alwan_mat3_mulv(&vec_out, &M_lms_to_igpgtg, &lms);
+    ALWAN_MEMCPY(igpgtg, &vec_out, sizeof(alwan_vec3));
 }
 
 void alwan_igpgtg_to_xyz(alwan_xyz *xyz, alwan_igpgtg const *igpgtg) {
@@ -752,8 +761,9 @@ void alwan_igpgtg_to_xyz(alwan_xyz *xyz, alwan_igpgtg const *igpgtg) {
     alwan_mat3x3 M_igpgtg_to_lms;
     get_igpgtg_to_lms_matrix(&M_igpgtg_to_lms);
 
-    alwan_vec3 lms;
-    alwan_mat3_mulv(&lms, &M_igpgtg_to_lms, (alwan_vec3 const *)igpgtg);
+    alwan_vec3 lms, vec_in;
+    ALWAN_MEMCPY(&vec_in, igpgtg, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&lms, &M_igpgtg_to_lms, &vec_in);
 
     /* Apply inverse scaled nonlinearity: scale * (LMS_p ^ (1/0.427)) */
     alwan_scalar const inv_exponent = ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.427);
@@ -766,7 +776,9 @@ void alwan_igpgtg_to_xyz(alwan_xyz *xyz, alwan_igpgtg const *igpgtg) {
     for (int i = 0; i < 9; i++) {
         M_lms_to_xyz.m[i] = M_LMS_TO_XYZ_IGPGTG[i];
     }
-    alwan_mat3_mulv((alwan_vec3 *)xyz, &M_lms_to_xyz, &lms);
+    alwan_vec3 vec_out;
+    alwan_mat3_mulv(&vec_out, &M_lms_to_xyz, &lms);
+    ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3));
 }
 
 /* ================================================================
@@ -841,8 +853,9 @@ void alwan_xyz_to_icacb(alwan_icacb *icacb, alwan_xyz const *xyz) {
         M_xyz_to_lms.m[i] = M_XYZ_TO_LMS_ICACB[i];
     }
 
-    alwan_vec3 lms;
-    alwan_mat3_mulv(&lms, &M_xyz_to_lms, (alwan_vec3 const *)xyz);
+    alwan_vec3 lms, vec_in;
+    ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&lms, &M_xyz_to_lms, &vec_in);
 
     /* Apply PQ (ST2084) inverse EOTF to each LMS channel */
     lms.v[0] = eotf_inverse_st2084(lms.v[0]);
@@ -852,7 +865,9 @@ void alwan_xyz_to_icacb(alwan_icacb *icacb, alwan_xyz const *xyz) {
     /* Convert to ICaCb */
     alwan_mat3x3 M_lms_to_icacb;
     get_lms_to_icacb_matrix(&M_lms_to_icacb);
-    alwan_mat3_mulv((alwan_vec3 *)icacb, &M_lms_to_icacb, &lms);
+    alwan_vec3 vec_out;
+    alwan_mat3_mulv(&vec_out, &M_lms_to_icacb, &lms);
+    ALWAN_MEMCPY(icacb, &vec_out, sizeof(alwan_vec3));
 }
 
 void alwan_icacb_to_xyz(alwan_xyz *xyz, alwan_icacb const *icacb) {
@@ -864,8 +879,9 @@ void alwan_icacb_to_xyz(alwan_xyz *xyz, alwan_icacb const *icacb) {
     alwan_mat3x3 M_icacb_to_lms;
     get_icacb_to_lms_matrix(&M_icacb_to_lms);
 
-    alwan_vec3 lms;
-    alwan_mat3_mulv(&lms, &M_icacb_to_lms, (alwan_vec3 const *)icacb);
+    alwan_vec3 lms, vec_in;
+    ALWAN_MEMCPY(&vec_in, icacb, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&lms, &M_icacb_to_lms, &vec_in);
 
     /* Apply PQ (ST2084) EOTF (inverse of inverse EOTF) */
     lms.v[0] = eotf_st2084(lms.v[0]);
@@ -877,5 +893,7 @@ void alwan_icacb_to_xyz(alwan_xyz *xyz, alwan_icacb const *icacb) {
     for (int i = 0; i < 9; i++) {
         M_lms_to_xyz.m[i] = M_LMS_TO_XYZ_ICACB[i];
     }
-    alwan_mat3_mulv((alwan_vec3 *)xyz, &M_lms_to_xyz, &lms);
+    alwan_vec3 vec_out;
+    alwan_mat3_mulv(&vec_out, &M_lms_to_xyz, &lms);
+    ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3));
 }

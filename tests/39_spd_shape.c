@@ -8,27 +8,9 @@
  * Tests spectral shape descriptor calculations (peak, FWHM, centroid, bandwidth)
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
 #include <string.h>
-
-/* ----------------------------------------------------------------
- * Test helpers
- * ---------------------------------------------------------------- */
-
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_PASS(name) do { \
-    printf("[PASS] %s\n", name); \
-    return 0; \
-} while(0)
 
 /* ----------------------------------------------------------------
  * Test: Shape descriptor for broad spectrum (D65)

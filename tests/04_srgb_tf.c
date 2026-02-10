@@ -6,26 +6,8 @@
  * Test 04: sRGB transfer functions (OETF/EOTF)
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
-
-/* ----------------------------------------------------------------
- * Test helpers
- * ---------------------------------------------------------------- */
-
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_PASS(name) do { \
-    printf("[PASS] %s\n", name); \
-    return 0; \
-} while(0)
 
 /* ----------------------------------------------------------------
  * Tests
@@ -62,7 +44,7 @@ static int test_srgb_round_trip(void) {
     /* Verify round-trip */
     for (size_t i = 0; i < num_values; i++) {
         alwan_scalar diff = ALWAN_ABS(decoded[i] - test_values[i]);
-        if (diff > ALWAN_TEST_TOLERANCE) {
+        if (diff > TEST_TOLERANCE) {
             printf("Round-trip failed at index %zu:\n", i);
             printf("  Input:   %.8f\n", test_values[i]);
             printf("  Encoded: %.8f\n", encoded[i]);
@@ -116,7 +98,7 @@ static int test_srgb_known_values(void) {
         TEST_ASSERT(status == ALWAN_OK, "sRGB OETF failed");
 
         alwan_scalar oetf_diff = ALWAN_ABS(encoded - known_pairs[i].encoded);
-        if (oetf_diff > ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
+        if (oetf_diff > TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
             printf("OETF mismatch at pair %zu:\n", i);
             printf("  Linear:   %.8f\n", known_pairs[i].linear);
             printf("  Expected: %.8f\n", known_pairs[i].encoded);
@@ -131,7 +113,7 @@ static int test_srgb_known_values(void) {
         TEST_ASSERT(status == ALWAN_OK, "sRGB EOTF failed");
 
         alwan_scalar eotf_diff = ALWAN_ABS(decoded - known_pairs[i].linear);
-        if (eotf_diff > ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
+        if (eotf_diff > TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
             printf("EOTF mismatch at pair %zu:\n", i);
             printf("  Encoded:  %.8f\n", known_pairs[i].encoded);
             printf("  Expected: %.8f\n", known_pairs[i].linear);
@@ -190,7 +172,7 @@ static int test_srgb_dense_lut(void) {
     }
 
     printf("  Dense LUT max round-trip error: %e\n", max_diff);
-    TEST_ASSERT(max_diff < ALWAN_TEST_TOLERANCE, "Dense LUT round-trip failed");
+    TEST_ASSERT(max_diff < TEST_TOLERANCE, "Dense LUT round-trip failed");
 
     TEST_PASS("test_srgb_dense_lut");
     #undef LUT_SIZE

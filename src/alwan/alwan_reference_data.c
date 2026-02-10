@@ -145,7 +145,10 @@ int alwan_munsell_to_xyz(alwan_xyz *xyz, alwan_scalar hue, alwan_scalar value, a
 
         /* Apply adaptation */
         alwan_xyz xyz_adapted;
-        alwan_mat3_mulv((alwan_vec3 *)&xyz_adapted, &cat_matrix, (alwan_vec3 const *)xyz);
+        alwan_vec3 vec_in, vec_out;
+        ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3));
+        alwan_mat3_mulv(&vec_out, &cat_matrix, &vec_in);
+        ALWAN_MEMCPY(&xyz_adapted, &vec_out, sizeof(alwan_vec3));
         *xyz = xyz_adapted;
     }
 
@@ -185,7 +188,10 @@ int alwan_xyz_to_munsell(alwan_scalar *hue, alwan_scalar *value, alwan_scalar *c
         }
 
         /* Apply adaptation */
-        alwan_mat3_mulv((alwan_vec3 *)&xyz_c, &cat_matrix, (alwan_vec3 const *)xyz);
+        alwan_vec3 vec_in, vec_out;
+        ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3));
+        alwan_mat3_mulv(&vec_out, &cat_matrix, &vec_in);
+        ALWAN_MEMCPY(&xyz_c, &vec_out, sizeof(alwan_vec3));
     } else {
         xyz_c = *xyz;
     }
@@ -319,7 +325,10 @@ int alwan_color_checker_data(alwan_xyz *xyz, alwan_colorchecker_type type, alwan
         }
 
         /* Apply adaptation */
-        alwan_mat3_mulv((alwan_vec3 *)xyz, &cat_matrix, (alwan_vec3 const *)&xyz_d50);
+        alwan_vec3 vec_in, vec_out;
+        ALWAN_MEMCPY(&vec_in, &xyz_d50, sizeof(alwan_vec3));
+        alwan_mat3_mulv(&vec_out, &cat_matrix, &vec_in);
+        ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3));
     } else {
         *xyz = xyz_d50;
     }

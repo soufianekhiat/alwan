@@ -6,9 +6,7 @@
  * Unit tests for ATD95 Color Vision Model
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
 
 /* Test data from CSV: XYZ_in (3), XYZ_w (3), Y_0, k1, k2, sigma, H, C, Br
@@ -37,14 +35,16 @@ static int test_atd95_forward(void) {
         alwan_scalar sigma = test_data[offset + 9];
 
         alwan_atd95_viewing_conditions vc;
-        vc.white_xyz = *(alwan_xyz *)&xyz_w;
+        ALWAN_MEMCPY(&vc.white_xyz, &xyz_w, sizeof(alwan_xyz));
         vc.Y_0 = Y_0;
         vc.k1 = k1;
         vc.k2 = k2;
         vc.sigma = sigma;
 
+        alwan_xyz xyz_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz_in, sizeof(alwan_xyz));
         alwan_atd95_correlates result;
-        int status = alwan_atd95_forward(&result, (alwan_xyz const *)&xyz_in, &vc);
+        int status = alwan_atd95_forward(&result, &xyz_typed, &vc);
 
         if (status != ALWAN_OK) {
             printf("  Test %zu: FAILED - Status %d\n", i + 1, status);
@@ -85,7 +85,7 @@ static int test_atd95_adaptation(void) {
                       ALWAN_LITERAL(50.0)};
 
     alwan_atd95_viewing_conditions vc;
-    vc.white_xyz = *(alwan_xyz *)&d65;
+    ALWAN_MEMCPY(&vc.white_xyz, &d65, sizeof(alwan_xyz));
     vc.Y_0 = ALWAN_LITERAL(318.31);
     vc.sigma = ALWAN_LITERAL(300.0);
 
@@ -94,7 +94,9 @@ static int test_atd95_adaptation(void) {
     /* Test unrelated colors (k1=1, k2=0) */
     vc.k1 = ALWAN_LITERAL(1.0);
     vc.k2 = ALWAN_LITERAL(0.0);
-    int status = alwan_atd95_forward(&corr_unrelated, (alwan_xyz const *)&xyz, &vc);
+    alwan_xyz xyz_typed;
+    ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_xyz));
+    int status = alwan_atd95_forward(&corr_unrelated, &xyz_typed, &vc);
     if (status != ALWAN_OK) {
         printf("  Unrelated colors: FAILED (status %d)\n", status);
         failed++;
@@ -106,7 +108,7 @@ static int test_atd95_adaptation(void) {
     /* Test related colors (k1=0, k2=50) */
     vc.k1 = ALWAN_LITERAL(0.0);
     vc.k2 = ALWAN_LITERAL(50.0);
-    status = alwan_atd95_forward(&corr_related, (alwan_xyz const *)&xyz, &vc);
+    status = alwan_atd95_forward(&corr_related, &xyz_typed, &vc);
     if (status != ALWAN_OK) {
         printf("  Related colors: FAILED (status %d)\n", status);
         failed++;

@@ -2,12 +2,7 @@
  * Jzazbz & JzCzhz Tests
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
-
-#define TEST_ASSERT(cond, msg) do { if (!(cond)) { printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); return 1; } } while(0)
-#define TEST_PASS(name) do { return 0; } while(0)
+#include "test_common.h"
 
 /* ----------------------------------------------------------------
  * Test XYZ <-> Jzazbz conversions
@@ -138,15 +133,15 @@ static int test_jzazbz_jzczhz_round_trip(void) {
     jzazbz.bz = ALWAN_LITERAL(0.0);
 
     alwan_jzazbz_to_jzczhz(&jzczhz, &jzazbz);
-    TEST_ASSERT(ALWAN_ABS(jzczhz.Jz - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "Jz mismatch");
-    TEST_ASSERT(ALWAN_ABS(jzczhz.Cz) < ALWAN_TEST_TOLERANCE, "Cz should be 0");
+    TEST_ASSERT(ALWAN_ABS(jzczhz.Jz - ALWAN_LITERAL(0.5)) < TEST_TOLERANCE, "Jz mismatch");
+    TEST_ASSERT(ALWAN_ABS(jzczhz.Cz) < TEST_TOLERANCE, "Cz should be 0");
 
     alwan_jzczhz_to_jzazbz(&jzazbz_out, &jzczhz);
-    TEST_ASSERT(ALWAN_ABS(jzazbz_out.Jz - jzazbz.Jz) < ALWAN_TEST_TOLERANCE,
+    TEST_ASSERT(ALWAN_ABS(jzazbz_out.Jz - jzazbz.Jz) < TEST_TOLERANCE,
                 "Jzazbz round-trip failed (Jz)");
-    TEST_ASSERT(ALWAN_ABS(jzazbz_out.az - jzazbz.az) < ALWAN_TEST_TOLERANCE,
+    TEST_ASSERT(ALWAN_ABS(jzazbz_out.az - jzazbz.az) < TEST_TOLERANCE,
                 "Jzazbz round-trip failed (az)");
-    TEST_ASSERT(ALWAN_ABS(jzazbz_out.bz - jzazbz.bz) < ALWAN_TEST_TOLERANCE,
+    TEST_ASSERT(ALWAN_ABS(jzazbz_out.bz - jzazbz.bz) < TEST_TOLERANCE,
                 "Jzazbz round-trip failed (bz)");
 
     /* Test 2: Chromatic color */
@@ -161,9 +156,9 @@ static int test_jzazbz_jzczhz_round_trip(void) {
     alwan_scalar diff_az = ALWAN_ABS(jzazbz_out.az - jzazbz.az);
     alwan_scalar diff_bz = ALWAN_ABS(jzazbz_out.bz - jzazbz.bz);
 
-    TEST_ASSERT(diff_Jz < ALWAN_TEST_TOLERANCE, "Jzazbz round-trip failed (Jz)");
-    TEST_ASSERT(diff_az < ALWAN_TEST_TOLERANCE, "Jzazbz round-trip failed (az)");
-    TEST_ASSERT(diff_bz < ALWAN_TEST_TOLERANCE, "Jzazbz round-trip failed (bz)");
+    TEST_ASSERT(diff_Jz < TEST_TOLERANCE, "Jzazbz round-trip failed (Jz)");
+    TEST_ASSERT(diff_az < TEST_TOLERANCE, "Jzazbz round-trip failed (az)");
+    TEST_ASSERT(diff_bz < TEST_TOLERANCE, "Jzazbz round-trip failed (bz)");
 
     TEST_PASS("Jzazbz <-> JzCzhz round-trip");
 }

@@ -150,9 +150,11 @@ int alwan_cat_matrix(alwan_mat3x3 *out,
     }
 
     /* Transform white points to cone response space */
-    alwan_vec3 rgb_src, rgb_dst;
-    alwan_mat3_mulv(&rgb_src, &M, (alwan_vec3 const *)src_white_xyz);
-    alwan_mat3_mulv(&rgb_dst, &M, (alwan_vec3 const *)dst_white_xyz);
+    alwan_vec3 rgb_src, rgb_dst, vec_src, vec_dst;
+    ALWAN_MEMCPY(&vec_src, src_white_xyz, sizeof(alwan_vec3));
+    ALWAN_MEMCPY(&vec_dst, dst_white_xyz, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&rgb_src, &M, &vec_src);
+    alwan_mat3_mulv(&rgb_dst, &M, &vec_dst);
 
     /* Compute diagonal scaling matrix D = diag(rgb_dst ./ rgb_src) */
     alwan_mat3x3 D;
@@ -267,10 +269,15 @@ int alwan_cat_zhai2018(alwan_xyz *xyz_out,
 
     /* Transform XYZ to RGB (cone responses) */
     alwan_vec3 rgb_in, rgb_src, rgb_dst, rgb_o;
-    alwan_mat3_mulv(&rgb_in, &M, (alwan_vec3 const *)xyz_in);
-    alwan_mat3_mulv(&rgb_src, &M, (alwan_vec3 const *)xyz_src);
-    alwan_mat3_mulv(&rgb_dst, &M, (alwan_vec3 const *)xyz_dst);
-    alwan_mat3_mulv(&rgb_o, &M, (alwan_vec3 const *)xyz_o);
+    alwan_vec3 vec_in, vec_src, vec_dst, vec_o;
+    ALWAN_MEMCPY(&vec_in, xyz_in, sizeof(alwan_vec3));
+    ALWAN_MEMCPY(&vec_src, xyz_src, sizeof(alwan_vec3));
+    ALWAN_MEMCPY(&vec_dst, xyz_dst, sizeof(alwan_vec3));
+    ALWAN_MEMCPY(&vec_o, xyz_o, sizeof(alwan_vec3));
+    alwan_mat3_mulv(&rgb_in, &M, &vec_in);
+    alwan_mat3_mulv(&rgb_src, &M, &vec_src);
+    alwan_mat3_mulv(&rgb_dst, &M, &vec_dst);
+    alwan_mat3_mulv(&rgb_o, &M, &vec_o);
 
     /* Compute D_RGB factors for source and destination
      * D_RGB = D * (Y_w / Y_o) * (RGB_o / RGB_w) + 1 - D
@@ -288,7 +295,9 @@ int alwan_cat_zhai2018(alwan_xyz *xyz_out,
     }
 
     /* Transform back to XYZ */
-    alwan_mat3_mulv((alwan_vec3 *)xyz_out, &M_inv, &rgb_adapted);
+    alwan_vec3 vec_out;
+    alwan_mat3_mulv(&vec_out, &M_inv, &rgb_adapted);
+    ALWAN_MEMCPY(xyz_out, &vec_out, sizeof(alwan_vec3));
 
     return ALWAN_OK;
 }

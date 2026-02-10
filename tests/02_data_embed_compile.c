@@ -6,9 +6,7 @@
  * Test 02: Data embedding - CSV inclusion with diagnostic guards
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 
 /* ----------------------------------------------------------------
  * Embed CSV data with diagnostic guards
@@ -31,22 +29,6 @@ static alwan_scalar const g_srgb_primaries[] = {
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
- * Test helpers
- * ---------------------------------------------------------------- */
-
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_PASS(name) do { \
-    printf("[PASS] %s\n", name); \
-    return 0; \
-} while(0)
-
-/* ----------------------------------------------------------------
  * Tests
  * ---------------------------------------------------------------- */
 
@@ -67,8 +49,8 @@ static int test_d65_data(void) {
     printf("  D65 x: %.17g (diff %e)\n", g_d65_xy[0], diff_x);
     printf("  D65 y: %.17g (diff %e)\n", g_d65_xy[1], diff_y);
 
-    TEST_ASSERT(diff_x < ALWAN_TEST_TOLERANCE, "D65 x value mismatch");
-    TEST_ASSERT(diff_y < ALWAN_TEST_TOLERANCE, "D65 y value mismatch");
+    TEST_ASSERT(diff_x < TEST_TOLERANCE, "D65 x value mismatch");
+    TEST_ASSERT(diff_y < TEST_TOLERANCE, "D65 y value mismatch");
 
     TEST_PASS("test_d65_data");
 }

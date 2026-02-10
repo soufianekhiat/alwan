@@ -7,13 +7,8 @@
  * Tests convenience API for loading RGB space descriptors
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <math.h>
-
-#define TEST_ASSERT(cond, msg) do { if (!(cond)) { printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); return 1; } } while(0)
-#define TEST_PASS(name) do { return 0; } while(0)
 
 /* Test helper: validate RGB space descriptor has valid values */
 static int validate_space_descriptor(char const *name, alwan_rgb_space_desc const *desc) {
@@ -87,11 +82,7 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
     offdiag_err += ALWAN_ABS(identity.m[6]);
     offdiag_err += ALWAN_ABS(identity.m[7]);
 
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar tol = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar tol = ALWAN_LITERAL(1e-12);
-#endif
+    alwan_scalar tol = TEST_TOLERANCE;
 
     if (diag_err > tol || offdiag_err > tol) {
         fprintf(stderr, "[FAIL] %s: Matrix inversion error too large (diag=%e, offdiag=%e)\n",

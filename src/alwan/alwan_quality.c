@@ -1371,7 +1371,7 @@ alwan_scalar alwan_metamerism_index(alwan_ctx *ctx,
     alwan_xyz_to_lab(&lab_ref, &xyz_ref_test, &xyz_test_white);
 
     /* Step 5: Compute ΔE*ab (1976) */
-    alwan_scalar delta_e = alwan_delta_e_76((alwan_lab const *)&lab_sample, (alwan_lab const *)&lab_ref);
+    alwan_scalar delta_e = alwan_delta_e_76(&lab_sample, &lab_ref);
 
     return delta_e;
 }
@@ -1587,8 +1587,13 @@ alwan_scalar alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Apply chromatic adaptation to D65 */
         alwan_xyz xyz_test_adapted, xyz_ref_adapted;
-        alwan_mat3_mulv((alwan_vec3 *)&xyz_test_adapted, &cat_test_to_d65, (alwan_vec3 const *)&xyz_test);
-        alwan_mat3_mulv((alwan_vec3 *)&xyz_ref_adapted, &cat_ref_to_d65, (alwan_vec3 const *)&xyz_ref);
+        alwan_vec3 vec_in, vec_out;
+        ALWAN_MEMCPY(&vec_in, &xyz_test, sizeof(alwan_vec3));
+        alwan_mat3_mulv(&vec_out, &cat_test_to_d65, &vec_in);
+        ALWAN_MEMCPY(&xyz_test_adapted, &vec_out, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&vec_in, &xyz_ref, sizeof(alwan_vec3));
+        alwan_mat3_mulv(&vec_out, &cat_ref_to_d65, &vec_in);
+        ALWAN_MEMCPY(&xyz_ref_adapted, &vec_out, sizeof(alwan_vec3));
 
         /* Convert to CIELAB */
         alwan_lab lab_test, lab_ref;

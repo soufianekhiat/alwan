@@ -2,12 +2,7 @@
  * Hunter Lab Tests
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
-
-#define TEST_ASSERT(cond, msg) do { if (!(cond)) { printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); return 1; } } while(0)
-#define TEST_PASS(name) do { return 0; } while(0)
+#include "test_common.h"
 
 /* ----------------------------------------------------------------
  * Test XYZ <-> Hunter Lab conversions

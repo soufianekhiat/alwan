@@ -6,9 +6,7 @@
  * Unit tests for LLAB Color Appearance Model
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
 
 /* Test data from CSV: XYZ_in (3), XYZ_0 (3), XYZ_r (3), Y_b, surround, L, Ch, h, s

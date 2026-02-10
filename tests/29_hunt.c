@@ -2,12 +2,7 @@
  * Hunt Color Appearance Model Tests
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
-
-#define TEST_ASSERT(cond, msg) do { if (!(cond)) { printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); return 1; } } while(0)
-#define TEST_PASS(name) do { return 0; } while(0)
+#include "test_common.h"
 
 /* ----------------------------------------------------------------
  * Test Hunt forward transform with reference data
@@ -31,7 +26,7 @@ static int test_hunt_forward(void) {
     vc.discount_illuminant = 0;
 
     /* Looser tolerance for Hunt due to complexity */
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE * ALWAN_LITERAL(10000.0);
+    alwan_scalar const tolerance = TEST_TOLERANCE * ALWAN_LITERAL(10000.0);
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz;

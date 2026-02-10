@@ -575,7 +575,7 @@ static int least_squares_solve(alwan_scalar const *A, alwan_scalar const *b,
 
         /* Check for singular matrix */
         if (ALWAN_ABS(aug[col * (n + 3) + col]) < 1e-12) {
-            return ALWAN_E_INVALID;  /* Singular matrix */
+            return ALWAN_E_DIVZERO;  /* Singular matrix */
         }
 
         /* Eliminate column */
@@ -755,7 +755,7 @@ int alwan_white_balance_from_gray(alwan_rgb *multipliers_out, alwan_rgb const *m
     if (measured_gray->b < min_val) min_val = measured_gray->b;
 
     if (min_val <= 0.0) {
-        return ALWAN_E_INVALID;  /* Cannot compute multipliers from zero/negative */
+        return ALWAN_E_DIVZERO;  /* Cannot compute multipliers from zero/negative */
     }
 
     /* Multipliers normalize each channel relative to the minimum */

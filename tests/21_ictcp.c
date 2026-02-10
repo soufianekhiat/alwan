@@ -40,7 +40,11 @@ static int test_rgb_to_ictcp_pq(void) {
         rgb.v[2] = test_rgb[i * 3 + 2];
 
         /* Convert RGB -> ICtCp (PQ) */
-        alwan_rgb_to_ictcp((alwan_ictcp *)&ictcp_computed, (alwan_rgb *)&rgb, 1);
+        alwan_rgb rgb_typed;
+        alwan_ictcp ictcp_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
+        alwan_rgb_to_ictcp(&ictcp_typed, &rgb_typed, 1);
+        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3));
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -97,10 +101,17 @@ static int test_ictcp_pq_to_rgb_roundtrip(void) {
         rgb_in.v[2] = test_rgb[i * 3 + 2];
 
         /* Forward: RGB -> ICtCp */
-        alwan_rgb_to_ictcp((alwan_ictcp *)&ictcp, (alwan_rgb *)&rgb_in, 1);
+        alwan_rgb rgb_in_typed;
+        alwan_ictcp ictcp_typed;
+        ALWAN_MEMCPY(&rgb_in_typed, &rgb_in, sizeof(alwan_vec3));
+        alwan_rgb_to_ictcp(&ictcp_typed, &rgb_in_typed, 1);
+        ALWAN_MEMCPY(&ictcp, &ictcp_typed, sizeof(alwan_vec3));
 
         /* Inverse: ICtCp -> RGB */
-        alwan_ictcp_to_rgb((alwan_rgb *)&rgb_out, (alwan_ictcp *)&ictcp, 1);
+        alwan_rgb rgb_out_typed;
+        ALWAN_MEMCPY(&ictcp_typed, &ictcp, sizeof(alwan_vec3));
+        alwan_ictcp_to_rgb(&rgb_out_typed, &ictcp_typed, 1);
+        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
 
         /* Check round-trip against colour-science reconstructed values */
         for (int j = 0; j < 3; j++) {
@@ -159,7 +170,11 @@ static int test_rgb_to_ictcp_hlg(void) {
         rgb.v[2] = test_rgb[i * 3 + 2];
 
         /* Convert RGB -> ICtCp (HLG) */
-        alwan_rgb_to_ictcp((alwan_ictcp *)&ictcp_computed, (alwan_rgb *)&rgb, 0);
+        alwan_rgb rgb_typed;
+        alwan_ictcp ictcp_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
+        alwan_rgb_to_ictcp(&ictcp_typed, &rgb_typed, 0);
+        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3));
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -216,10 +231,17 @@ static int test_ictcp_hlg_to_rgb_roundtrip(void) {
         rgb_in.v[2] = test_rgb[i * 3 + 2];
 
         /* Forward: RGB -> ICtCp */
-        alwan_rgb_to_ictcp((alwan_ictcp *)&ictcp, (alwan_rgb *)&rgb_in, 0);
+        alwan_rgb rgb_in_typed;
+        alwan_ictcp ictcp_typed;
+        ALWAN_MEMCPY(&rgb_in_typed, &rgb_in, sizeof(alwan_vec3));
+        alwan_rgb_to_ictcp(&ictcp_typed, &rgb_in_typed, 0);
+        ALWAN_MEMCPY(&ictcp, &ictcp_typed, sizeof(alwan_vec3));
 
         /* Inverse: ICtCp -> RGB */
-        alwan_ictcp_to_rgb((alwan_rgb *)&rgb_out, (alwan_ictcp *)&ictcp, 0);
+        alwan_rgb rgb_out_typed;
+        ALWAN_MEMCPY(&ictcp_typed, &ictcp, sizeof(alwan_vec3));
+        alwan_ictcp_to_rgb(&rgb_out_typed, &ictcp_typed, 0);
+        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
 
         /* Check round-trip against colour-science reconstructed values */
         for (int j = 0; j < 3; j++) {
@@ -271,7 +293,11 @@ static int test_xyz_to_ictcp_pq(void) {
         xyz.v[2] = test_xyz[i * 3 + 2];
 
         /* Convert XYZ -> ICtCp (PQ) */
-        alwan_xyz_to_ictcp((alwan_ictcp *)&ictcp_computed, (alwan_xyz *)&xyz, 1);
+        alwan_xyz xyz_typed;
+        alwan_ictcp ictcp_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
+        alwan_xyz_to_ictcp(&ictcp_typed, &xyz_typed, 1);
+        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3));
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -310,7 +336,11 @@ static int test_xyz_to_ictcp_hlg(void) {
         xyz.v[2] = test_xyz[i * 3 + 2];
 
         /* Convert XYZ -> ICtCp (HLG) */
-        alwan_xyz_to_ictcp((alwan_ictcp *)&ictcp_computed, (alwan_xyz *)&xyz, 0);
+        alwan_xyz xyz_typed;
+        alwan_ictcp ictcp_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
+        alwan_xyz_to_ictcp(&ictcp_typed, &xyz_typed, 0);
+        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3));
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {

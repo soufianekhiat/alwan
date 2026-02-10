@@ -6,27 +6,13 @@
  * Test 05: XYZ/xyY/Lab/Luv/LCh color space conversions
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
 #include <string.h>
 
 /* ----------------------------------------------------------------
  * Test helpers
  * ---------------------------------------------------------------- */
-
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_PASS(name) do { \
-    printf("[PASS] %s\n", name); \
-    return 0; \
-} while(0)
 
 static alwan_scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
     alwan_scalar max_diff = 0;
@@ -77,18 +63,24 @@ static int test_xyz_xyy_roundtrip(void) {
         /* XYZ -> xyY */
         alwan_xyy xyy;
         alwan_xyz_to_xyy(&xyy, &xyz);
-        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&xyy, (alwan_vec3 const *)&xyy_expected);
+        alwan_vec3 xyy_vec, xyy_expected_vec;
+        ALWAN_MEMCPY(&xyy_vec, &xyy, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&xyy_expected_vec, &xyy_expected, sizeof(alwan_vec3));
+        alwan_scalar diff_forward = vec3_max_diff(&xyy_vec, &xyy_expected_vec);
         if (diff_forward >= tolerance) {
             printf("Test %d: diff=%e (tol=%e)\n", i, diff_forward, tolerance);
-            vec3_print("  Computed", (alwan_vec3 const *)&xyy);
-            vec3_print("  Expected", (alwan_vec3 const *)&xyy_expected);
+            vec3_print("  Computed", &xyy_vec);
+            vec3_print("  Expected", &xyy_expected_vec);
         }
         TEST_ASSERT(diff_forward < tolerance, "XYZ->xyY mismatch");
 
         /* xyY -> XYZ (round-trip) */
         alwan_xyz xyz_roundtrip;
         alwan_xyy_to_xyz(&xyz_roundtrip, &xyy);
-        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&xyz, (alwan_vec3 const *)&xyz_roundtrip);
+        alwan_vec3 xyz_vec, xyz_roundtrip_vec;
+        ALWAN_MEMCPY(&xyz_vec, &xyz, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&xyz_roundtrip_vec, &xyz_roundtrip, sizeof(alwan_vec3));
+        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "xyY->XYZ round-trip mismatch");
     }
 
@@ -135,18 +127,24 @@ static int test_xyz_lab_d65_roundtrip(void) {
         /* XYZ -> Lab */
         alwan_lab lab;
         alwan_xyz_to_lab(&lab, &xyz, &white_xyz);
-        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&lab, (alwan_vec3 const *)&lab_expected);
+        alwan_vec3 lab_vec, lab_expected_vec;
+        ALWAN_MEMCPY(&lab_vec, &lab, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&lab_expected_vec, &lab_expected, sizeof(alwan_vec3));
+        alwan_scalar diff_forward = vec3_max_diff(&lab_vec, &lab_expected_vec);
         if (diff_forward >= tolerance) {
             printf("Lab D65 test %d: diff=%e (tol=%e)\n", i, diff_forward, tolerance);
-            vec3_print("  Computed", (alwan_vec3 const *)&lab);
-            vec3_print("  Expected", (alwan_vec3 const *)&lab_expected);
+            vec3_print("  Computed", &lab_vec);
+            vec3_print("  Expected", &lab_expected_vec);
         }
         TEST_ASSERT(diff_forward < tolerance, "XYZ->Lab mismatch (D65)");
 
         /* Lab -> XYZ (round-trip) */
         alwan_xyz xyz_roundtrip;
         alwan_lab_to_xyz(&xyz_roundtrip, &lab, &white_xyz);
-        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&xyz, (alwan_vec3 const *)&xyz_roundtrip);
+        alwan_vec3 xyz_vec, xyz_roundtrip_vec;
+        ALWAN_MEMCPY(&xyz_vec, &xyz, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&xyz_roundtrip_vec, &xyz_roundtrip, sizeof(alwan_vec3));
+        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "Lab->XYZ round-trip mismatch (D65)");
     }
 
@@ -193,13 +191,19 @@ static int test_xyz_lab_d50_roundtrip(void) {
         /* XYZ -> Lab */
         alwan_lab lab;
         alwan_xyz_to_lab(&lab, &xyz, &white_xyz);
-        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&lab, (alwan_vec3 const *)&lab_expected);
+        alwan_vec3 lab_vec, lab_expected_vec;
+        ALWAN_MEMCPY(&lab_vec, &lab, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&lab_expected_vec, &lab_expected, sizeof(alwan_vec3));
+        alwan_scalar diff_forward = vec3_max_diff(&lab_vec, &lab_expected_vec);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->Lab mismatch (D50)");
 
         /* Lab -> XYZ (round-trip) */
         alwan_xyz xyz_roundtrip;
         alwan_lab_to_xyz(&xyz_roundtrip, &lab, &white_xyz);
-        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&xyz, (alwan_vec3 const *)&xyz_roundtrip);
+        alwan_vec3 xyz_vec, xyz_roundtrip_vec;
+        ALWAN_MEMCPY(&xyz_vec, &xyz, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&xyz_roundtrip_vec, &xyz_roundtrip, sizeof(alwan_vec3));
+        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "Lab->XYZ round-trip mismatch (D50)");
     }
 
@@ -246,13 +250,19 @@ static int test_xyz_luv_d65_roundtrip(void) {
         /* XYZ -> Luv */
         alwan_luv luv;
         alwan_xyz_to_luv(&luv, &xyz, &white_xyz);
-        alwan_scalar diff_forward = vec3_max_diff((alwan_vec3 const *)&luv, (alwan_vec3 const *)&luv_expected);
+        alwan_vec3 luv_vec, luv_expected_vec;
+        ALWAN_MEMCPY(&luv_vec, &luv, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&luv_expected_vec, &luv_expected, sizeof(alwan_vec3));
+        alwan_scalar diff_forward = vec3_max_diff(&luv_vec, &luv_expected_vec);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->Luv mismatch (D65)");
 
         /* Luv -> XYZ (round-trip) */
         alwan_xyz xyz_roundtrip;
         alwan_luv_to_xyz(&xyz_roundtrip, &luv, &white_xyz);
-        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&xyz, (alwan_vec3 const *)&xyz_roundtrip);
+        alwan_vec3 xyz_vec, xyz_roundtrip_vec;
+        ALWAN_MEMCPY(&xyz_vec, &xyz, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&xyz_roundtrip_vec, &xyz_roundtrip, sizeof(alwan_vec3));
+        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "Luv->XYZ round-trip mismatch (D65)");
     }
 
@@ -312,7 +322,10 @@ static int test_lab_lch_roundtrip(void) {
         /* LCh -> Lab (round-trip) */
         alwan_lab lab_roundtrip;
         alwan_lch_to_lab(&lab_roundtrip, &lch);
-        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&lab, (alwan_vec3 const *)&lab_roundtrip);
+        alwan_vec3 lab_vec, lab_roundtrip_vec;
+        ALWAN_MEMCPY(&lab_vec, &lab, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&lab_roundtrip_vec, &lab_roundtrip, sizeof(alwan_vec3));
+        alwan_scalar diff_roundtrip = vec3_max_diff(&lab_vec, &lab_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "LCh->Lab round-trip mismatch");
     }
 
@@ -372,7 +385,10 @@ static int test_luv_lchuv_roundtrip(void) {
         /* LCh(uv) -> Luv (round-trip) */
         alwan_luv luv_roundtrip;
         alwan_lchuv_to_luv(&luv_roundtrip, &lchuv);
-        alwan_scalar diff_roundtrip = vec3_max_diff((alwan_vec3 const *)&luv, (alwan_vec3 const *)&luv_roundtrip);
+        alwan_vec3 luv_vec, luv_roundtrip_vec;
+        ALWAN_MEMCPY(&luv_vec, &luv, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&luv_roundtrip_vec, &luv_roundtrip, sizeof(alwan_vec3));
+        alwan_scalar diff_roundtrip = vec3_max_diff(&luv_vec, &luv_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "LCh(uv)->Luv round-trip mismatch");
     }
 

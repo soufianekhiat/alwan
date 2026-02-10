@@ -133,6 +133,12 @@ int alwan_ciecam02_forward(alwan_ciecam02_correlates *out,
         return ALWAN_E_INVALID;
     }
 
+    /* Validate viewing conditions to prevent division by zero */
+    if (vc->white_xyz.y <= ALWAN_LITERAL(0.0) ||
+        vc->background_luminance <= ALWAN_LITERAL(0.0)) {
+        return ALWAN_E_DIVZERO;
+    }
+
     /* Step 1: Get surround parameters */
     alwan_scalar F, c, Nc;
     get_surround_params(vc->surround, &F, &c, &Nc);
@@ -242,6 +248,12 @@ int alwan_ciecam02_inverse(alwan_xyz *xyz_out,
                             alwan_ciecam02_viewing_conditions const *vc) {
     if (!xyz_out || !correlates || !vc) {
         return ALWAN_E_INVALID;
+    }
+
+    /* Validate viewing conditions to prevent division by zero */
+    if (vc->white_xyz.y <= ALWAN_LITERAL(0.0) ||
+        vc->background_luminance <= ALWAN_LITERAL(0.0)) {
+        return ALWAN_E_DIVZERO;
     }
 
     /* Extract J, C, h from correlates */
@@ -414,6 +426,12 @@ int alwan_cam16_forward(alwan_cam16_correlates *out,
         return ALWAN_E_INVALID;
     }
 
+    /* Validate viewing conditions to prevent division by zero */
+    if (vc->white_xyz.y <= ALWAN_LITERAL(0.0) ||
+        vc->background_luminance <= ALWAN_LITERAL(0.0)) {
+        return ALWAN_E_DIVZERO;
+    }
+
     /* Step 1: Get surround parameters */
     alwan_scalar F, c, Nc;
     get_cam16_surround_params(vc->surround, &F, &c, &Nc);
@@ -520,6 +538,12 @@ int alwan_cam16_inverse(alwan_xyz *xyz_out,
                         alwan_cam16_viewing_conditions const *vc) {
     if (!xyz_out || !correlates || !vc) {
         return ALWAN_E_INVALID;
+    }
+
+    /* Validate viewing conditions to prevent division by zero */
+    if (vc->white_xyz.y <= ALWAN_LITERAL(0.0) ||
+        vc->background_luminance <= ALWAN_LITERAL(0.0)) {
+        return ALWAN_E_DIVZERO;
     }
 
     /* Extract J, C, h from correlates */

@@ -123,10 +123,16 @@ void alwan_xyz_to_prolab_custom(alwan_prolab *prolab,
                                  alwan_xyz const *xyz,
                                  alwan_xyz const *xyz_n) {
     /* Step 1: Normalize XYZ by custom reference white */
+    /* Guard against division by zero - use small epsilon */
+    alwan_scalar const eps = ALWAN_LITERAL(1e-10);
+    alwan_scalar xn = (ALWAN_ABS(xyz_n->x) > eps) ? xyz_n->x : eps;
+    alwan_scalar yn = (ALWAN_ABS(xyz_n->y) > eps) ? xyz_n->y : eps;
+    alwan_scalar zn = (ALWAN_ABS(xyz_n->z) > eps) ? xyz_n->z : eps;
+
     alwan_vec3 xyz_relative;
-    xyz_relative.v[0] = xyz->x / xyz_n->x;
-    xyz_relative.v[1] = xyz->y / xyz_n->y;
-    xyz_relative.v[2] = xyz->z / xyz_n->z;
+    xyz_relative.v[0] = xyz->x / xn;
+    xyz_relative.v[1] = xyz->y / yn;
+    xyz_relative.v[2] = xyz->z / zn;
 
     /* Step 2: Apply projective transformation */
     alwan_vec3 prolab_vec;
