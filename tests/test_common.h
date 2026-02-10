@@ -32,15 +32,44 @@ static int test_failed = 0;
 
 /* ============================================================================
  * Standard Test Tolerance
- * Use ALWAN_TEST_TOLERANCE from alwan_internal.h as the base tolerance.
- * Tests should NOT define their own tolerances unless absolutely necessary.
+ * All tests MUST use TEST_TOLERANCE. Do NOT define local tolerances.
+ * This is intentionally strict - if tests fail, fix the implementation.
  * ============================================================================ */
 
-/* Relative tolerance for comparing floating point values */
-#define TEST_TOLERANCE_REL ALWAN_LITERAL(1e-6)
+/* Standard tolerance for absolute comparisons (f32: 1e-5, f64: 1e-12) */
+#define TEST_TOLERANCE ALWAN_TEST_TOLERANCE
 
 /* Small epsilon for avoiding division by zero in relative comparisons */
 #define TEST_EPSILON ALWAN_LITERAL(1e-20)
+
+/* ============================================================================
+ * Basic Test Flow Macros
+ * ============================================================================ */
+
+/* Mark test as passed and return success (silent) */
+#define TEST_PASS(name) do { \
+    TEST_PASS_INCR(); \
+    return 0; \
+} while(0)
+
+/* Mark test as passed with message (verbose) */
+#define TEST_PASS_MSG() do { \
+    printf("    [PASS]\n"); \
+    TEST_PASS_INCR(); \
+} while(0)
+
+/* Print failure message and return failure */
+#define TEST_FAIL(msg, ...) do { \
+    printf("[FAIL] " msg "\n", ##__VA_ARGS__); \
+    TEST_FAIL_INCR(); \
+    return 1; \
+} while(0)
+
+/* Print test name at start */
+#define TEST_START(name) do { \
+    printf("  TEST: %s\n", name); \
+    TEST_COUNT_INCR(); \
+} while(0)
 
 /* ============================================================================
  * Basic Assertion Macros
@@ -50,7 +79,7 @@ static int test_failed = 0;
 #define TEST_ASSERT(cond, msg) do { \
     TEST_COUNT_INCR(); \
     if (!(cond)) { \
-        printf("[FAIL] %s\n", msg); \
+        printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); \
         TEST_FAIL_INCR(); \
         return 1; \
     } \
@@ -93,6 +122,34 @@ static int test_failed = 0;
 
 /* Absolute difference assertion (alias for TEST_ASSERT_NEAR) */
 #define TEST_ASSERT_ABS(a, b, tol, msg) TEST_ASSERT_NEAR(a, b, tol, msg)
+
+/* Simpler version - auto-generates location in error message */
+#define TEST_CHECK_NEAR(a, b, tol) do { \
+    alwan_scalar _a = (alwan_scalar)(a); \
+    alwan_scalar _b = (alwan_scalar)(b); \
+    alwan_scalar _tol = (tol); \
+    alwan_scalar _diff = ALWAN_ABS(_a - _b); \
+    if (_diff > _tol) { \
+        printf("[FAIL] %s:%d: expected %g, got %g (diff %g > %g)\n", \
+               __FILE__, __LINE__, (double)_b, (double)_a, (double)_diff, (double)_tol); \
+        TEST_FAIL_INCR(); \
+        return 1; \
+    } \
+} while(0)
+
+/* XYZ struct comparison (pointers) */
+#define TEST_CHECK_XYZ_NEAR(a, b, tol) do { \
+    TEST_CHECK_NEAR((a)->x, (b)->x, tol); \
+    TEST_CHECK_NEAR((a)->y, (b)->y, tol); \
+    TEST_CHECK_NEAR((a)->z, (b)->z, tol); \
+} while(0)
+
+/* RGB struct comparison (values) */
+#define TEST_CHECK_RGB_NEAR(a, b, tol) do { \
+    TEST_CHECK_NEAR((a).r, (b).r, tol); \
+    TEST_CHECK_NEAR((a).g, (b).g, tol); \
+    TEST_CHECK_NEAR((a).b, (b).b, tol); \
+} while(0)
 
 /* ============================================================================
  * Vector Assertion Macros

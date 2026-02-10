@@ -7,60 +7,11 @@
  * Tests: Munsell, Color Checker, NCS, RGB Space Definitions
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#define TEST_USE_COUNTERS
+#include "test_common.h"
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-#if ALWAN_SCALAR_IS_FLOAT
-#define EPSILON 1e-6f
-#define EPSILON_LOOSE 5e-3f
-#define EPSILON_DELTA_E 0.5f
-#else
-#define EPSILON 1e-6
-#define EPSILON_LOOSE 5e-3
-#define EPSILON_DELTA_E 0.5
-#endif
-
-/* Test counter */
-static int g_test_count = 0;
-static int g_test_passed = 0;
-
-#define TEST_START(name) \
-    do { \
-        printf("  TEST: %s\n", name); \
-        g_test_count++; \
-    } while (0)
-
-#define TEST_PASS() \
-    do { \
-        printf("    [PASS]\n"); \
-        g_test_passed++; \
-    } while (0)
-
-#define TEST_FAIL(msg, ...) \
-    do { \
-        printf("    [FAIL] " msg "\n", ##__VA_ARGS__); \
-        return 1; \
-    } while (0)
-
-#define EXPECT_NEAR(a, b, eps) \
-    do { \
-        alwan_scalar diff = ALWAN_ABS((a) - (b)); \
-        if (diff > (eps)) { \
-            TEST_FAIL("Expected %g, got %g (diff %g > %g)", \
-                      (double)(b), (double)(a), (double)diff, (double)(eps)); \
-        } \
-    } while (0)
-
-#define EXPECT_XYZ_NEAR(a, b, eps) \
-    do { \
-        EXPECT_NEAR((a)->x, (b)->x, eps); \
-        EXPECT_NEAR((a)->y, (b)->y, eps); \
-        EXPECT_NEAR((a)->z, (b)->z, eps); \
-    } while (0)
 
 /* ----------------------------------------------------------------
  * Munsell Renotation Data Tests
@@ -77,7 +28,7 @@ static int test_munsell_neutrals(void) {
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N0: error %d", status);
     }
-    EXPECT_NEAR(xyz.y, 0.0, EPSILON_LOOSE);  /* Y should be ~0 */
+    TEST_CHECK_NEAR(xyz.y, 0.0, TEST_TOLERANCE);  /* Y should be ~0 */
 
     /* N5 (mid gray) */
     status = alwan_munsell_to_xyz(&xyz, 0.0, 5.0, 0.0, ALWAN_ILLUMINANT_C);
@@ -85,16 +36,16 @@ static int test_munsell_neutrals(void) {
         TEST_FAIL("Failed to convert N5: error %d", status);
     }
     /* N5 should have Y ≈ 0.198 (19.8% reflectance) */
-    EXPECT_NEAR(xyz.y, 0.198, EPSILON_LOOSE);
+    TEST_CHECK_NEAR(xyz.y, 0.198, TEST_TOLERANCE);
 
     /* N10 (white) */
     status = alwan_munsell_to_xyz(&xyz, 0.0, 10.0, 0.0, ALWAN_ILLUMINANT_C);
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N10: error %d", status);
     }
-    EXPECT_NEAR(xyz.y, 1.0, EPSILON_LOOSE);  /* Y should be ~1.0 */
+    TEST_CHECK_NEAR(xyz.y, 1.0, TEST_TOLERANCE);  /* Y should be ~1.0 */
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -114,7 +65,7 @@ static int test_munsell_chromatic(void) {
         TEST_FAIL("Invalid XYZ values: X=%g, Y=%g, Z=%g", xyz.x, xyz.y, xyz.z);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -138,10 +89,10 @@ static int test_munsell_roundtrip(void) {
     }
 
     /* For neutral colors, hue is undefined, so only check value and chroma */
-    EXPECT_NEAR(value_out, value_in, 0.5);    /* Allow 0.5 Munsell value units tolerance */
-    EXPECT_NEAR(chroma_out, chroma_in, 1.0);  /* Allow 1.0 chroma units tolerance */
+    TEST_CHECK_NEAR(value_out, value_in, 0.5);    /* Allow 0.5 Munsell value units tolerance */
+    TEST_CHECK_NEAR(chroma_out, chroma_in, 1.0);  /* Allow 1.0 chroma units tolerance */
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -168,11 +119,11 @@ static int test_munsell_illuminant_adaptation(void) {
                          ALWAN_ABS(xyz_c.y - xyz_d65.y) +
                          ALWAN_ABS(xyz_c.z - xyz_d65.z);
 
-    if (diff < EPSILON) {
+    if (diff < TEST_TOLERANCE) {
         TEST_FAIL("Expected chromatic adaptation to change XYZ values");
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -195,7 +146,7 @@ static int test_colorchecker_num_patches(void) {
         TEST_FAIL("ColorChecker SG should have 140 patches, got %zu", count);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -227,7 +178,7 @@ static int test_colorchecker_classic_patches(void) {
         TEST_FAIL("Black patch Y should be < 0.05, got %g", xyz.y);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -256,11 +207,11 @@ static int test_colorchecker_illuminant_adaptation(void) {
                          ALWAN_ABS(xyz_d50.y - xyz_d65.y) +
                          ALWAN_ABS(xyz_d50.z - xyz_d65.z);
 
-    if (diff < EPSILON) {
+    if (diff < TEST_TOLERANCE) {
         TEST_FAIL("Expected chromatic adaptation to change XYZ values");
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -284,7 +235,7 @@ static int test_colorchecker_bounds(void) {
         TEST_FAIL("Expected error for invalid type");
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -306,7 +257,7 @@ static int test_ncs_parsing(void) {
     }
 
     printf("    [SKIP] NCS implementation pending\n");
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -328,18 +279,18 @@ static int test_rgb_space_lookup(void) {
     }
 
     /* Verify sRGB primaries */
-    EXPECT_NEAR(primaries[0], 0.6400, EPSILON);  /* Red x */
-    EXPECT_NEAR(primaries[1], 0.3300, EPSILON);  /* Red y */
-    EXPECT_NEAR(primaries[2], 0.3000, EPSILON);  /* Green x */
-    EXPECT_NEAR(primaries[3], 0.6000, EPSILON);  /* Green y */
-    EXPECT_NEAR(primaries[4], 0.1500, EPSILON);  /* Blue x */
-    EXPECT_NEAR(primaries[5], 0.0600, EPSILON);  /* Blue y */
+    TEST_CHECK_NEAR(primaries[0], 0.6400, TEST_TOLERANCE);  /* Red x */
+    TEST_CHECK_NEAR(primaries[1], 0.3300, TEST_TOLERANCE);  /* Red y */
+    TEST_CHECK_NEAR(primaries[2], 0.3000, TEST_TOLERANCE);  /* Green x */
+    TEST_CHECK_NEAR(primaries[3], 0.6000, TEST_TOLERANCE);  /* Green y */
+    TEST_CHECK_NEAR(primaries[4], 0.1500, TEST_TOLERANCE);  /* Blue x */
+    TEST_CHECK_NEAR(primaries[5], 0.0600, TEST_TOLERANCE);  /* Blue y */
 
     /* Verify D65 white point */
-    EXPECT_NEAR(white_point.v[0], 0.3127, EPSILON_LOOSE);
-    EXPECT_NEAR(white_point.v[1], 0.3290, EPSILON_LOOSE);
+    TEST_CHECK_NEAR(white_point.v[0], 0.3127, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(white_point.v[1], 0.3290, TEST_TOLERANCE);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -394,7 +345,7 @@ static int test_rgb_space_various(void) {
         }
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -424,7 +375,7 @@ static int test_rgb_space_transfer_functions(void) {
         TEST_FAIL("Expected Gamma 2.2 TF, got oetf=%d eotf=%d", oetf, eotf);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -447,7 +398,7 @@ static int test_rgb_space_not_found(void) {
         TEST_FAIL("Expected error for nonexistent space TF");
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -460,8 +411,8 @@ int test_43_reference_data_main(void) {
     printf("Test Suite 350: Reference Data\n");
     printf("========================================\n\n");
 
-    g_test_count = 0;
-    g_test_passed = 0;
+    test_count = 0;
+    test_passed = 0;
 
     /* Munsell Renotation Data */
     printf("Munsell Renotation Data\n");
@@ -493,8 +444,8 @@ int test_43_reference_data_main(void) {
     if (test_rgb_space_not_found()) return 1;
 
     printf("\n========================================\n");
-    printf("Test Results: %d/%d passed\n", g_test_passed, g_test_count);
+    printf("Test Results: %d/%d passed\n", test_passed, test_count);
     printf("========================================\n");
 
-    return (g_test_passed == g_test_count) ? 0 : 1;
+    return (test_passed == test_count) ? 0 : 1;
 }

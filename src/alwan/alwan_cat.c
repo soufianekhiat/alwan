@@ -193,22 +193,24 @@ int alwan_xyz_adapt(alwan_scalar *xyz_out,
         return status;
     }
 
-    /* Apply to all colors */
+    /* Apply to all colors (strides are in bytes) */
     for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
         alwan_vec3 xyz_input, xyz_adapted;
 
         /* Load input color */
-        xyz_input.v[0] = xyz_in[i * in_stride + 0];
-        xyz_input.v[1] = xyz_in[i * in_stride + 1];
-        xyz_input.v[2] = xyz_in[i * in_stride + 2];
+        xyz_input.v[0] = in_ptr[0];
+        xyz_input.v[1] = in_ptr[1];
+        xyz_input.v[2] = in_ptr[2];
 
         /* Apply adaptation matrix */
         alwan_mat3_mulv(&xyz_adapted, &cat_mat, &xyz_input);
 
         /* Store output color */
-        xyz_out[i * out_stride + 0] = xyz_adapted.v[0];
-        xyz_out[i * out_stride + 1] = xyz_adapted.v[1];
-        xyz_out[i * out_stride + 2] = xyz_adapted.v[2];
+        out_ptr[0] = xyz_adapted.v[0];
+        out_ptr[1] = xyz_adapted.v[1];
+        out_ptr[2] = xyz_adapted.v[2];
     }
 
     return ALWAN_OK;

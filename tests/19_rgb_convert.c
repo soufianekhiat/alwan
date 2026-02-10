@@ -2,14 +2,7 @@
  * RGB-to-RGB Conversion Tests
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
-
-#define TEST_ASSERT(cond, msg) do { if (!(cond)) { printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); return 1; } } while(0)
-#define TEST_PASS(name) do { return 0; } while(0)
-
-#define RGB_CONVERT_TOLERANCE ALWAN_LITERAL(2e-4)  /* Relaxed for multiple matrix ops and CAT */
+#include "test_common.h"
 
 /* Test RGB space descriptors */
 static alwan_rgb_space_desc get_srgb_desc(void) {
@@ -107,7 +100,7 @@ static int test_srgb_to_p3(alwan_ctx *ctx) {
         alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
         alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
-        if (diff_r > RGB_CONVERT_TOLERANCE || diff_g > RGB_CONVERT_TOLERANCE || diff_b > RGB_CONVERT_TOLERANCE) {
+        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
             printf("sRGB->P3 color %zu failed:\n", i);
             printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
             printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);
@@ -148,7 +141,7 @@ static int test_srgb_to_bt2020(alwan_ctx *ctx) {
         alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
         alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
-        if (diff_r > RGB_CONVERT_TOLERANCE || diff_g > RGB_CONVERT_TOLERANCE || diff_b > RGB_CONVERT_TOLERANCE) {
+        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
             printf("sRGB->BT2020 color %zu failed:\n", i);
             printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
             printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);
@@ -189,7 +182,7 @@ static int test_srgb_to_acescg(alwan_ctx *ctx) {
         alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
         alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
-        if (diff_r > RGB_CONVERT_TOLERANCE || diff_g > RGB_CONVERT_TOLERANCE || diff_b > RGB_CONVERT_TOLERANCE) {
+        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
             printf("sRGB->ACEScg color %zu failed:\n", i);
             printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
             printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);
@@ -235,7 +228,7 @@ static int test_bulk_conversion(alwan_ctx *ctx) {
         alwan_scalar diff_g = ALWAN_ABS(dst_colors_bulk[i].g - dst_colors_single[i].g);
         alwan_scalar diff_b = ALWAN_ABS(dst_colors_bulk[i].b - dst_colors_single[i].b);
 
-        if (diff_r > RGB_CONVERT_TOLERANCE || diff_g > RGB_CONVERT_TOLERANCE || diff_b > RGB_CONVERT_TOLERANCE) {
+        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
             printf("Bulk conversion mismatch for color %zu:\n", i);
             printf("  Bulk:   [%.6f, %.6f, %.6f]\n",
                    dst_colors_bulk[i].r, dst_colors_bulk[i].g, dst_colors_bulk[i].b);

@@ -6,24 +6,8 @@
  * M10 Tests: Light Quality & CCT
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
-
-/* Test helpers */
-#define TEST_ASSERT(cond, msg) \
-    do { if (!(cond)) { printf("FAIL: %s\n", msg); return 1; } } while (0)
-
-#define TEST_PASS(msg) \
-    do { printf("  [PASS] %s\n", msg); return 0; } while (0)
-
-/* Tolerance for CCT comparisons */
-/* CCT methods have inherent approximation errors:
- * - McCamy: ~2% error above 2800K
- * - Robertson: generally <1% error
- * Using 5% tolerance to account for edge cases */
-#define CCT_RELATIVE_TOL ALWAN_LITERAL(0.05)
 
 /* Test CCT estimation using McCamy's approximation */
 static int test_cct_mccamy(void) {
@@ -44,7 +28,7 @@ static int test_cct_mccamy(void) {
 
         alwan_scalar rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
 
-        if (rel_err > CCT_RELATIVE_TOL) {
+        if (rel_err > TEST_TOLERANCE) {
             printf("  Test %zu: xy=[%.5f, %.5f]\n", i, xy.v[0], xy.v[1]);
             printf("    Expected CCT: %.1f K\n", expected_cct);
             printf("    Got CCT:      %.1f K\n", cct);
@@ -76,7 +60,7 @@ static int test_cct_robertson(void) {
 
         alwan_scalar rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
 
-        if (rel_err > CCT_RELATIVE_TOL) {
+        if (rel_err > TEST_TOLERANCE) {
             printf("  Test %zu: xy=[%.5f, %.5f]\n", i, xy.v[0], xy.v[1]);
             printf("    Expected CCT: %.1f K\n", expected_cct);
             printf("    Got CCT:      %.1f K\n", cct);

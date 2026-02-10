@@ -6,30 +6,8 @@
  * Test 32: P4 Light Quality & Rendering Metrics
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
-
-/* ----------------------------------------------------------------
- * Test helpers
- * ---------------------------------------------------------------- */
-
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_PASS(name) do { \
-    printf("[PASS] %s\n", name); \
-    return 0; \
-} while(0)
-
-/* Quality metrics can vary based on implementation details
- * Using generous tolerance for cross-library validation */
-#define QUALITY_METRIC_TOL ALWAN_LITERAL(5.0)
 
 /* ----------------------------------------------------------------
  * Tests

@@ -171,7 +171,7 @@ static int test_pupil_diameter_default(void)
         alwan_scalar d = alwan_pupil_diameter_barten1999(luminances[i], 60, 60);
         char msg[64];
         sprintf(msg, "Pupil at L=%.2f", luminances[i]);
-        TEST_ASSERT_REL(d, ref_pupil_default[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(d, ref_pupil_default[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -185,7 +185,7 @@ static int test_pupil_diameter_angular(void)
         alwan_scalar d = alwan_pupil_diameter_barten1999(100, angular_sizes[i], angular_sizes[i]);
         char msg[64];
         sprintf(msg, "Pupil at X_0=%.0f", angular_sizes[i]);
-        TEST_ASSERT_REL(d, ref_pupil_angular[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(d, ref_pupil_angular[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -199,7 +199,7 @@ static int test_retinal_illuminance_sc(void)
         alwan_scalar E = alwan_retinal_illuminance_barten1999(luminances[i], pupil_diameters[i], 1);
         char msg[64];
         sprintf(msg, "Retinal at L=%.2f, d=%.1f (SC)", luminances[i], pupil_diameters[i]);
-        TEST_ASSERT_REL(E, ref_retinal_sc[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(E, ref_retinal_sc[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -213,7 +213,7 @@ static int test_retinal_illuminance_no_sc(void)
         alwan_scalar E = alwan_retinal_illuminance_barten1999(luminances[i], pupil_diameters[i], 0);
         char msg[64];
         sprintf(msg, "Retinal at L=%.2f, d=%.1f (no SC)", luminances[i], pupil_diameters[i]);
-        TEST_ASSERT_REL(E, ref_retinal_no_sc[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(E, ref_retinal_no_sc[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -227,7 +227,7 @@ static int test_optical_mtf_default(void)
         alwan_scalar M = alwan_optical_mtf_barten1999(frequencies[i], 0.01);
         char msg[64];
         sprintf(msg, "MTF at u=%.1f", frequencies[i]);
-        TEST_ASSERT_REL(M, ref_mtf_default[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(M, ref_mtf_default[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -241,7 +241,7 @@ static int test_optical_mtf_vary_sigma(void)
         alwan_scalar M = alwan_optical_mtf_barten1999(4, sigmas[i]);
         char msg[64];
         sprintf(msg, "MTF at sigma=%.4f", sigmas[i]);
-        TEST_ASSERT_REL(M, ref_mtf_u4[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(M, ref_mtf_u4[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -263,7 +263,7 @@ static int test_sigma_default(void)
         alwan_scalar s = alwan_sigma_barten1999(sigma_0, C_ab, d);
         char msg[64];
         sprintf(msg, "Sigma at d=%.1f", d);
-        TEST_ASSERT_REL(s, ref_sigma_default[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(s, ref_sigma_default[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -277,7 +277,7 @@ static int test_max_angular_size_default(void)
         alwan_scalar X = alwan_maximum_angular_size_barten1999(frequencies[i], 60, 12, 15);
         char msg[64];
         sprintf(msg, "Max angular at u=%.1f", frequencies[i]);
-        TEST_ASSERT_REL(X, ref_max_angular_default[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(X, ref_max_angular_default[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -291,7 +291,7 @@ static int test_max_angular_size_vary_X0(void)
         alwan_scalar X = alwan_maximum_angular_size_barten1999(4, X_0_values[i], 12, 15);
         char msg[64];
         sprintf(msg, "Max angular at X_0=%.0f", X_0_values[i]);
-        TEST_ASSERT_REL(X, ref_max_angular_vary_X0[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(X, ref_max_angular_vary_X0[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -305,7 +305,7 @@ static int test_csf_default(void)
         alwan_scalar S = alwan_csf_barten1999(csf_frequencies[i], NULL);
         char msg[64];
         sprintf(msg, "CSF at u=%.1f", csf_frequencies[i]);
-        TEST_ASSERT_REL(S, ref_csf_default[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(S, ref_csf_default[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -323,7 +323,7 @@ static int test_csf_vary_E(void)
         alwan_scalar S = alwan_csf_barten1999(4, &params);
         char msg[64];
         sprintf(msg, "CSF at E=%.0f", E_values[i]);
-        TEST_ASSERT_REL(S, ref_csf_vary_E[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(S, ref_csf_vary_E[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -341,7 +341,7 @@ static int test_csf_vary_sigma(void)
         alwan_scalar S = alwan_csf_barten1999(4, &params);
         char msg[64];
         sprintf(msg, "CSF at sigma=%.4f", csf_sigma_values[i]);
-        TEST_ASSERT_REL(S, ref_csf_vary_sigma[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(S, ref_csf_vary_sigma[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -366,7 +366,7 @@ static int test_csf_full_workflow(void)
         alwan_scalar S = alwan_csf_barten1999(csf_frequencies[i], &params);
         char msg[64];
         sprintf(msg, "CSF L=100 at u=%.1f", csf_frequencies[i]);
-        TEST_ASSERT_REL(S, ref_csf_L100[i], TEST_TOLERANCE_REL, msg);
+        TEST_ASSERT_REL(S, ref_csf_L100[i], TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -392,11 +392,11 @@ static int test_params_default(void)
 
     /* Sigma should be computed from sigma_0=0.5/60, C_ab=0.08/60, d=2.1 */
     alwan_scalar expected_sigma = alwan_sigma_barten1999(0.5/60, 0.08/60, 2.1);
-    TEST_ASSERT_REL(params.sigma, expected_sigma, TEST_TOLERANCE_REL, "Default sigma");
+    TEST_ASSERT_REL(params.sigma, expected_sigma, TEST_TOLERANCE, "Default sigma");
 
     /* E should be computed from L=20, d=2.1, SC=true */
     alwan_scalar expected_E = alwan_retinal_illuminance_barten1999(20, 2.1, 1);
-    TEST_ASSERT_REL(params.E, expected_E, TEST_TOLERANCE_REL, "Default E");
+    TEST_ASSERT_REL(params.E, expected_E, TEST_TOLERANCE, "Default E");
 
     return 0;
 }

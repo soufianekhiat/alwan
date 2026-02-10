@@ -172,10 +172,10 @@ int alwan_view_transform_apply(alwan_scalar *rgb_out,
             return ALWAN_E_INVALID;
     }
 
-    /* Apply view transform to RGB triplets */
+    /* Apply view transform to RGB triplets (strides are in bytes) */
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = rgb_in + i * in_stride;
-        alwan_scalar *out_ptr = rgb_out + i * out_stride;
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
 
         transform_fn(in_ptr, out_ptr);
     }

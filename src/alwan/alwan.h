@@ -896,9 +896,9 @@ int alwan_eotf_apply(alwan_scalar *linear,
  * vt: view transform to apply
  * rgb_in: input RGB triplets (scene-referred, typically ACES AP1 or linear)
  * count: number of RGB triplets
- * in_stride: stride between input RGB triplets (in Scalars, typically 3)
+ * in_stride: stride between input RGB triplets (in bytes, typically 3*sizeof(alwan_scalar))
  * rgb_out: output RGB triplets (display-referred)
- * out_stride: stride between output RGB triplets (in Scalars, typically 3)
+ * out_stride: stride between output RGB triplets (in bytes, typically 3*sizeof(alwan_scalar))
  *
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if transform not supported */
 int alwan_view_transform_apply(alwan_scalar *rgb_out,
@@ -1436,12 +1436,12 @@ int alwan_cat_matrix(alwan_mat3x3 *out,
 /* Apply chromatic adaptation to XYZ colors (bulk operation)
  * xyz_in: input XYZ colors (stride in_stride between consecutive colors)
  * count: number of colors to transform
- * in_stride: stride for input (in Scalars, typically 3 for packed array)
+ * in_stride: stride for input (in bytes, typically 3*sizeof(alwan_scalar) for packed array)
  * src_white_xyz: source white point in XYZ
  * dst_white_xyz: destination white point in XYZ
  * method: CAT method
  * xyz_out: output XYZ colors (stride out_stride between consecutive colors)
- * out_stride: stride for output (in Scalars, typically 3 for packed array)
+ * out_stride: stride for output (in bytes, typically 3*sizeof(alwan_scalar) for packed array)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if parameters are invalid */
 int alwan_xyz_adapt(alwan_scalar *xyz_out,
                     alwan_xyz const *src_white_xyz,

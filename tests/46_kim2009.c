@@ -6,22 +6,8 @@
  * M46 Tests: Kim2009 Color Appearance Model
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
-
-/* Test helpers */
-#define TEST_ASSERT(cond, msg) \
-    do { if (!(cond)) { printf("FAIL: %s\n", msg); return 1; } } while (0)
-
-#define TEST_PASS(msg) \
-    do { printf("  [PASS] %s\n", msg); return 0; } while (0)
-
-/* Tolerance for correlate comparisons */
-/* Kim2009 involves power laws and logarithms where numerical precision
- * loss is expected. Practical tolerance: 1.0 unit. */
-#define CORRELATE_TOL ALWAN_LITERAL(1.0)
 
 /* Test data from CSV: XYZ_in (3), XYZ_w (3), La, Yb, J, C, h
  * Format: 11 values per row (3+3+1+1+3) = 11 scalars per test case */
@@ -79,24 +65,24 @@ static int test_kim2009_forward(void) {
             h_err = ALWAN_LITERAL(360.0) - h_err;
         }
 
-        if (J_err >= CORRELATE_TOL) {
+        if (J_err >= TEST_TOLERANCE) {
             printf("  Test %zu: J error = %.10e (got %.10f, expected %.10f)\n",
                    i + 1, (double)J_err, (double)corr.J, (double)J_expected);
         }
-        if (C_err >= CORRELATE_TOL) {
+        if (C_err >= TEST_TOLERANCE) {
             printf("  Test %zu: C error = %.10e (got %.10f, expected %.10f)\n",
                    i + 1, (double)C_err, (double)corr.C, (double)C_expected);
         }
-        if (h_err >= CORRELATE_TOL && corr.C > ALWAN_LITERAL(1.0)) {
+        if (h_err >= TEST_TOLERANCE && corr.C > ALWAN_LITERAL(1.0)) {
             printf("  Test %zu: h error = %.10e (got %.10f, expected %.10f)\n",
                    i + 1, (double)h_err, (double)corr.h, (double)h_expected);
         }
 
-        TEST_ASSERT(J_err < CORRELATE_TOL, "J mismatch");
-        TEST_ASSERT(C_err < CORRELATE_TOL, "C mismatch");
+        TEST_ASSERT(J_err < TEST_TOLERANCE, "J mismatch");
+        TEST_ASSERT(C_err < TEST_TOLERANCE, "C mismatch");
         /* For achromatic colors (C ≈ 0), hue is undefined - skip hue check */
         if (corr.C > ALWAN_LITERAL(1.0)) {
-            TEST_ASSERT(h_err < CORRELATE_TOL, "h mismatch");
+            TEST_ASSERT(h_err < TEST_TOLERANCE, "h mismatch");
         }
     }
 
@@ -135,7 +121,7 @@ static int test_kim2009_inverse(void) {
         alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
         alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
-        if (X_err >= CORRELATE_TOL || Y_err >= CORRELATE_TOL || Z_err >= CORRELATE_TOL) {
+        if (X_err >= TEST_TOLERANCE || Y_err >= TEST_TOLERANCE || Z_err >= TEST_TOLERANCE) {
             printf("  Test %zu: XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i + 1, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Got:      [%.10f, %.10f, %.10f]\n",
@@ -144,9 +130,9 @@ static int test_kim2009_inverse(void) {
                    (double)xyz_in.x, (double)xyz_in.y, (double)xyz_in.z);
         }
 
-        TEST_ASSERT(X_err < CORRELATE_TOL, "X mismatch");
-        TEST_ASSERT(Y_err < CORRELATE_TOL, "Y mismatch");
-        TEST_ASSERT(Z_err < CORRELATE_TOL, "Z mismatch");
+        TEST_ASSERT(X_err < TEST_TOLERANCE, "X mismatch");
+        TEST_ASSERT(Y_err < TEST_TOLERANCE, "Y mismatch");
+        TEST_ASSERT(Z_err < TEST_TOLERANCE, "Z mismatch");
     }
 
     printf("  Tested %zu colors\n", num_test_cases);
@@ -183,7 +169,7 @@ static int test_kim2009_roundtrip(void) {
         alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
         alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
-        if (X_err >= CORRELATE_TOL || Y_err >= CORRELATE_TOL || Z_err >= CORRELATE_TOL) {
+        if (X_err >= TEST_TOLERANCE || Y_err >= TEST_TOLERANCE || Z_err >= TEST_TOLERANCE) {
             printf("  Test %zu: Round-trip XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i + 1, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Input:  [%.10f, %.10f, %.10f]\n",
@@ -192,9 +178,9 @@ static int test_kim2009_roundtrip(void) {
                    (double)xyz_out.x, (double)xyz_out.y, (double)xyz_out.z);
         }
 
-        TEST_ASSERT(X_err < CORRELATE_TOL, "Round-trip X error too large");
-        TEST_ASSERT(Y_err < CORRELATE_TOL, "Round-trip Y error too large");
-        TEST_ASSERT(Z_err < CORRELATE_TOL, "Round-trip Z error too large");
+        TEST_ASSERT(X_err < TEST_TOLERANCE, "Round-trip X error too large");
+        TEST_ASSERT(Y_err < TEST_TOLERANCE, "Round-trip Y error too large");
+        TEST_ASSERT(Z_err < TEST_TOLERANCE, "Round-trip Z error too large");
     }
 
     printf("  Tested %zu colors\n", num_test_cases);

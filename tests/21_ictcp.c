@@ -6,27 +6,7 @@
  * ICtCp (ITU-R BT.2100 HDR) Tests
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
-
-/* Test helpers */
-#define TEST_ASSERT(cond, msg) \
-    do { if (!(cond)) { printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); return 1; } } while(0)
-
-#define TEST_PASS(name) \
-    do { printf("  [PASS] %s\n", name); return 0; } while(0)
-
-/* Tolerance for ICtCp tests
- * Per P1.2 acceptance: precision <= 1e-6
- * PQ and HLG involve complex transfer functions, so we use relaxed tolerance */
-#if ALWAN_SCALAR_IS_FLOAT
-    #define ICTCP_TOL ALWAN_LITERAL(1e-5)      /* Float: relaxed due to precision */
-    #define ROUNDTRIP_TOL ALWAN_LITERAL(1e-4)  /* Round-trip: more relaxed for float */
-#else
-    #define ICTCP_TOL ALWAN_LITERAL(1e-6)      /* Double: meets P1.2 spec */
-    #define ROUNDTRIP_TOL ALWAN_LITERAL(1e-5)  /* Round-trip: slightly relaxed */
-#endif
+#include "test_common.h"
 
 /* ----------------------------------------------------------------
  * Test RGB (BT.2020) <-> ICtCp with PQ
@@ -67,7 +47,7 @@ static int test_rgb_to_ictcp_pq(void) {
             alwan_scalar expected = expected_ictcp[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
-            if (diff >= ICTCP_TOL) {
+            if (diff >= TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
                 printf("    RGB: [%.6f, %.6f, %.6f]\n",
                        (double)rgb.v[0], (double)rgb.v[1], (double)rgb.v[2]);
@@ -127,7 +107,7 @@ static int test_ictcp_pq_to_rgb_roundtrip(void) {
             alwan_scalar expected = expected_rgb_reconstructed[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(rgb_out.v[j] - expected);
 
-            if (diff >= ROUNDTRIP_TOL) {
+            if (diff >= TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
                 printf("    Original RGB: [%.6f, %.6f, %.6f]\n",
                        (double)rgb_in.v[0], (double)rgb_in.v[1], (double)rgb_in.v[2]);
@@ -186,7 +166,7 @@ static int test_rgb_to_ictcp_hlg(void) {
             alwan_scalar expected = expected_ictcp[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
-            if (diff >= ICTCP_TOL) {
+            if (diff >= TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
                 printf("    RGB: [%.6f, %.6f, %.6f]\n",
                        (double)rgb.v[0], (double)rgb.v[1], (double)rgb.v[2]);
@@ -246,7 +226,7 @@ static int test_ictcp_hlg_to_rgb_roundtrip(void) {
             alwan_scalar expected = expected_rgb_reconstructed[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(rgb_out.v[j] - expected);
 
-            if (diff >= ROUNDTRIP_TOL) {
+            if (diff >= TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
                 printf("    Original RGB: [%.6f, %.6f, %.6f]\n",
                        (double)rgb_in.v[0], (double)rgb_in.v[1], (double)rgb_in.v[2]);
@@ -298,7 +278,7 @@ static int test_xyz_to_ictcp_pq(void) {
             alwan_scalar expected = expected_ictcp[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
-            if (diff >= ICTCP_TOL) {
+            if (diff >= TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed (diff: %.6e)\n", i, j, (double)diff);
                 TEST_ASSERT(0, "XYZ -> ICtCp (PQ) failed");
             }
@@ -337,7 +317,7 @@ static int test_xyz_to_ictcp_hlg(void) {
             alwan_scalar expected = expected_ictcp[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
-            if (diff >= ICTCP_TOL) {
+            if (diff >= TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed (diff: %.6e)\n", i, j, (double)diff);
                 TEST_ASSERT(0, "XYZ -> ICtCp (HLG) failed");
             }

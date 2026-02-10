@@ -9,7 +9,7 @@
 #ifndef ALWAN_INTERNAL_H
 #define ALWAN_INTERNAL_H
 
-#include "alwan_config.h"
+#include "alwan.h"  /* For alwan_alloc_fn, alwan_free_fn, alwan_scalar */
 #include <math.h>
 
 /* Mathematical constants */
@@ -68,6 +68,34 @@
   #define ALWAN_FMOD(x, y) fmod(x, y)
   #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-12)
 #endif
+
+/* ----------------------------------------------------------------
+ * Internal context structure (shared across modules)
+ * ---------------------------------------------------------------- */
+
+struct alwan_ctx {
+    /* Allocation callbacks */
+    alwan_alloc_fn alloc_fn;
+    alwan_free_fn  free_fn;
+
+    /* Configuration */
+    char *runtime_data_root;  /* Owned copy (if non-NULL) */
+    uint32_t flags;
+
+    /* Future: data cache, registry, etc. */
+};
+
+/* ----------------------------------------------------------------
+ * Safe allocation helper (overflow protection)
+ * ---------------------------------------------------------------- */
+
+/* Check for multiplication overflow before allocation.
+ * Returns 0 if overflow would occur, otherwise returns the safe size. */
+static inline size_t alwan_safe_array_size(size_t count, size_t elem_size) {
+    if (elem_size == 0) return 0;
+    if (count > SIZE_MAX / elem_size) return 0;  /* Overflow */
+    return count * elem_size;
+}
 
 /* ----------------------------------------------------------------
  * Embedded Data (extern declarations)

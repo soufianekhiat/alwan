@@ -7,54 +7,11 @@
  * Tests: Unified Output Transform API with all presets
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#define TEST_USE_COUNTERS
+#include "test_common.h"
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-/* Tolerance for ACES 2.0 output transforms */
-#define EPSILON 1e-4f
-#define EPSILON_LOOSE 1e-3f
-
-/* Test counter */
-static int g_test_count = 0;
-static int g_test_passed = 0;
-
-#define TEST_START(name) \
-    do { \
-        printf("  TEST: %s\n", name); \
-        g_test_count++; \
-    } while (0)
-
-#define TEST_PASS() \
-    do { \
-        printf("    [PASS]\n"); \
-        g_test_passed++; \
-    } while (0)
-
-#define TEST_FAIL(msg, ...) \
-    do { \
-        printf("    [FAIL] " msg "\n", ##__VA_ARGS__); \
-        return 1; \
-    } while (0)
-
-#define EXPECT_NEAR(a, b, eps) \
-    do { \
-        alwan_scalar diff = ALWAN_ABS((a) - (b)); \
-        if (diff > (eps)) { \
-            TEST_FAIL("Expected %g, got %g (diff %g > %g)", \
-                      (double)(b), (double)(a), (double)diff, (double)(eps)); \
-        } \
-    } while (0)
-
-#define EXPECT_RGB_NEAR(a, b, eps) \
-    do { \
-        EXPECT_NEAR((a).r, (b).r, eps); \
-        EXPECT_NEAR((a).g, (b).g, eps); \
-        EXPECT_NEAR((a).b, (b).b, eps); \
-    } while (0)
 
 /* ----------------------------------------------------------------
  * Test RGB Inputs (must match gendata/tests/aces2_output_transform.py)
@@ -149,10 +106,10 @@ static int test_output_transform_basic_rec709(void) {
     }
 
     /* Neutral input should produce neutral output */
-    EXPECT_NEAR(rgb_out.r, rgb_out.g, EPSILON);
-    EXPECT_NEAR(rgb_out.g, rgb_out.b, EPSILON);
+    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, TEST_TOLERANCE);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -168,10 +125,10 @@ static int test_output_transform_basic_srgb(void) {
     }
 
     /* Neutral should stay neutral */
-    EXPECT_NEAR(rgb_out.r, rgb_out.g, EPSILON);
-    EXPECT_NEAR(rgb_out.g, rgb_out.b, EPSILON);
+    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, TEST_TOLERANCE);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -191,7 +148,7 @@ static int test_output_transform_basic_p3(void) {
         TEST_FAIL("Output out of valid range: %g", rgb_out.r);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -211,7 +168,7 @@ static int test_output_transform_hdr_pq(void) {
         TEST_FAIL("PQ white mapped to unexpected value: %g", rgb_out.r);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -231,7 +188,7 @@ static int test_output_transform_hdr_hlg(void) {
         TEST_FAIL("HLG output out of valid range: %g", rgb_out.r);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -260,7 +217,7 @@ static int test_output_transform_cinema_dcdm(void) {
 
     printf("    DCDM output (X'Y'Z'): (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -300,7 +257,7 @@ static int test_output_transform_cinema_p3dci(void) {
 
     printf("    P3-DCI output (gamma 2.6): (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -343,7 +300,7 @@ static int test_roundtrip_rec709(void) {
                   rgb_decoded.r, rgb_decoded.g, rgb_decoded.b);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -374,7 +331,7 @@ static int test_roundtrip_hdr(void) {
         TEST_FAIL("Inverse produced negative values");
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -394,11 +351,11 @@ static int test_black_preserves(void) {
     }
 
     /* Black should map to black (or very close to it) */
-    EXPECT_NEAR(rgb_out.r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
-    EXPECT_NEAR(rgb_out.g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
-    EXPECT_NEAR(rgb_out.b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
+    TEST_CHECK_NEAR(rgb_out.r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
+    TEST_CHECK_NEAR(rgb_out.g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
+    TEST_CHECK_NEAR(rgb_out.b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -421,7 +378,7 @@ static int test_negative_input_handling(void) {
         printf("    [INFO] Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -441,7 +398,7 @@ static int test_hdr_bright_handling(void) {
         TEST_FAIL("HDR output exceeds 1.0: (%g, %g, %g)", rgb_out.r, rgb_out.g, rgb_out.b);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -484,7 +441,7 @@ static int test_all_presets_valid(void) {
         printf("    [OK] %s: (%g, %g, %g)\n", preset_names[i], rgb_out.r, rgb_out.g, rgb_out.b);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -514,13 +471,13 @@ static int test_neutral_axis_consistency(void) {
         alwan_scalar diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
         alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
         alwan_scalar max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
-        if (max_diff > EPSILON) {
+        if (max_diff > TEST_TOLERANCE) {
             TEST_FAIL("Gray %zu produced non-neutral output: (%g, %g, %g)",
                       i, rgb_out.r, rgb_out.g, rgb_out.b);
         }
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -543,7 +500,7 @@ static int test_monotonic_luminance(void) {
                   out_low.r, out_mid.r, out_high.r);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -668,7 +625,7 @@ static int test_ocio_reference_comparison(void) {
         TEST_FAIL("Neutral value comparison failed: %d errors", total_errors);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -681,8 +638,8 @@ int test_55_aces2_output_transform_main(void) {
     printf("Test Suite 55: ACES 2.0 Output Transform\n");
     printf("========================================\n\n");
 
-    g_test_count = 0;
-    g_test_passed = 0;
+    test_count = 0;
+    test_passed = 0;
 
     /* Basic API Tests */
     printf("Basic API Tests\n");
@@ -725,8 +682,8 @@ int test_55_aces2_output_transform_main(void) {
     if (test_ocio_reference_comparison()) return 1;
 
     printf("\n========================================\n");
-    printf("Test Results: %d/%d passed\n", g_test_passed, g_test_count);
+    printf("Test Results: %d/%d passed\n", test_passed, test_count);
     printf("========================================\n");
 
-    return (g_test_passed == g_test_count) ? 0 : 1;
+    return (test_passed == test_count) ? 0 : 1;
 }

@@ -5,6 +5,7 @@
  */
 
 #include "alwan.h"
+#include "alwan_internal.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -63,21 +64,7 @@ void *alwan_default_realloc(void *ptr, size_t old_size, size_t new_size, size_t 
     return new_ptr;
 }
 
-/* ----------------------------------------------------------------
- * Internal context structure
- * ---------------------------------------------------------------- */
-
-struct alwan_ctx {
-    /* Allocation callbacks */
-    alwan_alloc_fn alloc_fn;
-    alwan_free_fn  free_fn;
-
-    /* Configuration */
-    char *runtime_data_root;  /* Owned copy (if non-NULL) */
-    uint32_t flags;
-
-    /* Future: data cache, registry, etc. */
-};
+/* struct alwan_ctx is defined in alwan_internal.h */
 
 /* ----------------------------------------------------------------
  * Context API

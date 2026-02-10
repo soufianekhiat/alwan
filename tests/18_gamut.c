@@ -2,14 +2,7 @@
  * M11: Gamut Utilities & Mapping Tests
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
-
-#define TEST_ASSERT(cond, msg) do { if (!(cond)) { printf("[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); return 1; } } while(0)
-#define TEST_PASS(name) do { return 0; } while(0)
-
-#define GAMUT_MAP_TOLERANCE ALWAN_LITERAL(1e-6)
+#include "test_common.h"
 
 /* ----------------------------------------------------------------
  * Test gamut volume estimation (Monte Carlo)
@@ -89,7 +82,7 @@ static int test_gamut_volume_reproducible(void) {
     alwan_gamut_volume_mc(&volume1, &srgb, 100000, 123);
     alwan_gamut_volume_mc(&volume2, &srgb, 100000, 123);
 
-    TEST_ASSERT(ALWAN_ABS(volume1 - volume2) < ALWAN_EPSILON,
+    TEST_ASSERT(ALWAN_ABS(volume1 - volume2) < TEST_TOLERANCE,
                 "Same seed should produce identical results");
 
     printf("  Reproducibility verified\n");
@@ -129,7 +122,7 @@ static int test_gamut_map_clip(void) {
         alwan_scalar const rgb_in_arr[3] = {rgb_in.r, rgb_in.g, rgb_in.b};
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(result_arr[j] - expected_arr[j]);
-            if (diff > GAMUT_MAP_TOLERANCE) {
+            if (diff > TEST_TOLERANCE) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  Input: [%.6f, %.6f, %.6f]\n",
                        (double)rgb_in_arr[0], (double)rgb_in_arr[1], (double)rgb_in_arr[2]);

@@ -23,8 +23,14 @@ int alwan_spd_create(alwan_spd *out,
         return ALWAN_E_INVALID;
     }
 
+    /* Check for allocation size overflow */
+    size_t alloc_size = alwan_safe_array_size(count, sizeof(alwan_scalar));
+    if (alloc_size == 0) {
+        return ALWAN_E_NOMEM;  /* Overflow would occur */
+    }
+
     /* Allocate values array */
-    alwan_scalar *values = (alwan_scalar *)ALWAN_ALLOC(count * sizeof(alwan_scalar), sizeof(alwan_scalar));
+    alwan_scalar *values = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
     if (!values) {
         return ALWAN_E_NOMEM;
     }
@@ -953,10 +959,20 @@ int alwan_xyz_from_spd(alwan_xyz *xyz_out,
         return status;
     }
 
-    /* Allocate temporary arrays for products */
-    alwan_scalar *prod_x = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
-    alwan_scalar *prod_y = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
-    alwan_scalar *prod_z = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
+    /* Allocate temporary arrays for products (with overflow protection) */
+    size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(alwan_scalar));
+    if (alloc_size == 0) {
+        alwan_spd_destroy(ctx, &x_bar);
+        alwan_spd_destroy(ctx, &y_bar);
+        alwan_spd_destroy(ctx, &z_bar);
+        alwan_spd_destroy(ctx, &x_bar_resampled);
+        alwan_spd_destroy(ctx, &y_bar_resampled);
+        alwan_spd_destroy(ctx, &z_bar_resampled);
+        return ALWAN_E_NOMEM;
+    }
+    alwan_scalar *prod_x = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
+    alwan_scalar *prod_y = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
+    alwan_scalar *prod_z = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
 
     if (!prod_x || !prod_y || !prod_z) {
         if (prod_x) ALWAN_FREE(prod_x);
@@ -1164,10 +1180,20 @@ int alwan_xyz_from_spd_camera(alwan_xyz *xyz_out,
         return status;
     }
 
-    /* Allocate temporary arrays for products */
-    alwan_scalar *prod_r = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
-    alwan_scalar *prod_g = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
-    alwan_scalar *prod_b = (alwan_scalar *)ALWAN_ALLOC(spd->count * sizeof(alwan_scalar), sizeof(alwan_scalar));
+    /* Allocate temporary arrays for products (with overflow protection) */
+    size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(alwan_scalar));
+    if (alloc_size == 0) {
+        alwan_spd_destroy(ctx, &r_sens);
+        alwan_spd_destroy(ctx, &g_sens);
+        alwan_spd_destroy(ctx, &b_sens);
+        alwan_spd_destroy(ctx, &r_resampled);
+        alwan_spd_destroy(ctx, &g_resampled);
+        alwan_spd_destroy(ctx, &b_resampled);
+        return ALWAN_E_NOMEM;
+    }
+    alwan_scalar *prod_r = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
+    alwan_scalar *prod_g = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
+    alwan_scalar *prod_b = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
 
     if (!prod_r || !prod_g || !prod_b) {
         if (prod_r) ALWAN_FREE(prod_r);

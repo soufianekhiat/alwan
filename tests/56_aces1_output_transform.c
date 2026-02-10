@@ -7,55 +7,11 @@
  * Tests: Complete ACES 1.3 RRT+ODT pipeline with all presets
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#define TEST_USE_COUNTERS
+#include "test_common.h"
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-/* Tolerance for ACES 1.x output transforms */
-#define EPSILON 1e-4f
-#define EPSILON_LOOSE 1e-3f
-#define EPSILON_VERY_LOOSE 1e-2f  /* For HDR round-trips */
-
-/* Test counter */
-static int g_test_count = 0;
-static int g_test_passed = 0;
-
-#define TEST_START(name) \
-    do { \
-        printf("  TEST: %s\n", name); \
-        g_test_count++; \
-    } while (0)
-
-#define TEST_PASS() \
-    do { \
-        printf("    [PASS]\n"); \
-        g_test_passed++; \
-    } while (0)
-
-#define TEST_FAIL(msg, ...) \
-    do { \
-        printf("    [FAIL] " msg "\n", ##__VA_ARGS__); \
-        return 1; \
-    } while (0)
-
-#define EXPECT_NEAR(a, b, eps) \
-    do { \
-        alwan_scalar diff = ALWAN_ABS((a) - (b)); \
-        if (diff > (eps)) { \
-            TEST_FAIL("Expected %g, got %g (diff %g > %g)", \
-                      (double)(b), (double)(a), (double)diff, (double)(eps)); \
-        } \
-    } while (0)
-
-#define EXPECT_RGB_NEAR(a, b, eps) \
-    do { \
-        EXPECT_NEAR((a).r, (b).r, eps); \
-        EXPECT_NEAR((a).g, (b).g, eps); \
-        EXPECT_NEAR((a).b, (b).b, eps); \
-    } while (0)
 
 /* ----------------------------------------------------------------
  * Test RGB Inputs (must match gendata/tests/aces1_output_transform.py)
@@ -132,12 +88,12 @@ static int test_output_transform_basic_rec709(void) {
     }
 
     /* Neutral input should produce neutral output */
-    EXPECT_NEAR(rgb_out.r, rgb_out.g, EPSILON);
-    EXPECT_NEAR(rgb_out.g, rgb_out.b, EPSILON);
+    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, TEST_TOLERANCE);
 
     printf("    Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -153,12 +109,12 @@ static int test_output_transform_basic_srgb(void) {
     }
 
     /* Neutral should stay neutral */
-    EXPECT_NEAR(rgb_out.r, rgb_out.g, EPSILON);
-    EXPECT_NEAR(rgb_out.g, rgb_out.b, EPSILON);
+    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, TEST_TOLERANCE);
 
     printf("    Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -180,7 +136,7 @@ static int test_output_transform_basic_p3(void) {
 
     printf("    Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -202,7 +158,7 @@ static int test_output_transform_hdr_pq(void) {
 
     printf("    Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -224,7 +180,7 @@ static int test_output_transform_cinema_dcdm(void) {
 
     printf("    Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -246,7 +202,7 @@ static int test_output_transform_cinema_p3dci(void) {
 
     printf("    Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -287,7 +243,7 @@ static int test_roundtrip_rec709(void) {
     }
     printf("    Roundtrip relative error: %.2f%%\n", rel_err * 100.0);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -315,7 +271,7 @@ static int test_roundtrip_srgb(void) {
         TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * 100.0);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -343,7 +299,7 @@ static int test_roundtrip_hdr(void) {
         TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * ALWAN_LITERAL(100.0));
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -363,11 +319,11 @@ static int test_black_preserves(void) {
     }
 
     /* Black should map to black (or very close to it) */
-    EXPECT_NEAR(rgb_out.r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
-    EXPECT_NEAR(rgb_out.g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
-    EXPECT_NEAR(rgb_out.b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
+    TEST_CHECK_NEAR(rgb_out.r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
+    TEST_CHECK_NEAR(rgb_out.g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
+    TEST_CHECK_NEAR(rgb_out.b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01));
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -386,7 +342,7 @@ static int test_negative_input_handling(void) {
     printf("    [INFO] Negative input: (1.0, -0.2, 0.5) -> (%g, %g, %g)\n",
            rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -408,7 +364,7 @@ static int test_hdr_bright_handling(void) {
 
     printf("    [INFO] HDR output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -436,7 +392,7 @@ static int test_all_presets_valid(void) {
         printf("    [OK] %s: (%g, %g, %g)\n", g_preset_names[i], rgb_out.r, rgb_out.g, rgb_out.b);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -466,13 +422,13 @@ static int test_neutral_axis_consistency(void) {
         alwan_scalar diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
         alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
         alwan_scalar max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
-        if (max_diff > EPSILON) {
+        if (max_diff > TEST_TOLERANCE) {
             TEST_FAIL("Gray %zu produced non-neutral output: (%g, %g, %g)",
                       i, rgb_out.r, rgb_out.g, rgb_out.b);
         }
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -497,7 +453,7 @@ static int test_monotonic_luminance(void) {
 
     printf("    Low: %g, Mid: %g, High: %g\n", out_low.r, out_mid.r, out_high.r);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -523,7 +479,7 @@ static int test_glow_effect(void) {
 
     printf("    Dark input -> %g, Mid input -> %g\n", out_dark.r, out_mid.r);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -544,7 +500,7 @@ static int test_red_modifier(void) {
         TEST_FAIL("Red output invalid: %g", rgb_out.r);
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -573,7 +529,7 @@ static int test_hdr_luminance_levels(void) {
         TEST_FAIL("HDR outputs out of range");
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -600,7 +556,7 @@ static int test_cinema_white_points(void) {
         TEST_FAIL("Cinema outputs have invalid values");
     }
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -629,16 +585,16 @@ static int test_gamut_comp13_inverse(void) {
     }
 
     /* Check roundtrip */
-    EXPECT_NEAR(rgb_recovered.r, rgb_in.r, EPSILON_LOOSE);
-    EXPECT_NEAR(rgb_recovered.g, rgb_in.g, EPSILON_LOOSE);
-    EXPECT_NEAR(rgb_recovered.b, rgb_in.b, EPSILON_LOOSE);
+    TEST_CHECK_NEAR(rgb_recovered.r, rgb_in.r, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_recovered.g, rgb_in.g, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_recovered.b, rgb_in.b, TEST_TOLERANCE);
 
     printf("    In: (%g, %g, %g) -> Comp: (%g, %g, %g) -> Recov: (%g, %g, %g)\n",
            rgb_in.r, rgb_in.g, rgb_in.b,
            rgb_compressed.r, rgb_compressed.g, rgb_compressed.b,
            rgb_recovered.r, rgb_recovered.g, rgb_recovered.b);
 
-    TEST_PASS();
+    TEST_PASS_MSG();
     return 0;
 }
 
@@ -651,8 +607,8 @@ int test_56_aces1_output_transform_main(void) {
     printf("Test Suite 56: ACES 1.x Output Transform\n");
     printf("========================================\n\n");
 
-    g_test_count = 0;
-    g_test_passed = 0;
+    test_count = 0;
+    test_passed = 0;
 
     /* Basic API Tests */
     printf("Basic API Tests\n");
@@ -711,8 +667,8 @@ int test_56_aces1_output_transform_main(void) {
     if (test_gamut_comp13_inverse()) return 1;
 
     printf("\n========================================\n");
-    printf("Test Results: %d/%d passed\n", g_test_passed, g_test_count);
+    printf("Test Results: %d/%d passed\n", test_passed, test_count);
     printf("========================================\n");
 
-    return (g_test_passed == g_test_count) ? 0 : 1;
+    return (test_passed == test_count) ? 0 : 1;
 }

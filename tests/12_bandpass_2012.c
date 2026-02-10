@@ -6,17 +6,8 @@
  * M6 Tests: CIE 2012 observers, extrapolation, bandpass correction
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
-
-/* Test helpers */
-#define TEST_ASSERT(cond, msg) \
-    do { if (!(cond)) { printf("FAIL: %s\n", msg); return 1; } } while (0)
-
-#define TEST_PASS(msg) \
-    do { printf("  [PASS] %s\n", msg); return 0; } while (0)
 
 /* Test CIE 2012 observers */
 static int test_cie_2012_observers(void) {
@@ -176,7 +167,7 @@ static int test_bandpass_parameter(void) {
     alwan_scalar diff = ALWAN_ABS(xyz_no_bp.x - xyz_with_bp.x) +
                   ALWAN_ABS(xyz_no_bp.y - xyz_with_bp.y) +
                   ALWAN_ABS(xyz_no_bp.z - xyz_with_bp.z);
-    TEST_ASSERT(diff < ALWAN_EPSILON, "Bandpass parameter should be accepted (impl pending)");
+    TEST_ASSERT(diff < TEST_TOLERANCE, "Bandpass parameter should be accepted (impl pending)");
 
     alwan_spd_destroy(ctx, &reflectance);
     alwan_spd_destroy(ctx, &d65);

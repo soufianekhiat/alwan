@@ -10,16 +10,8 @@
  * Reference data generated from OpenColorIO 2.5.0
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "alwan.h"
-#include "alwan_internal.h"
 #include "test_common.h"
-
-/* ACES 2.0 tolerances - OCIO uses float32 internal processing
- * TODO: These are documented violations - see docs/violations.md */
-#define TEST_TOLERANCE_JMH ALWAN_LITERAL(1e-3)
-#define TEST_TOLERANCE_TONESCALE ALWAN_LITERAL(1e-4)
+#include <stdlib.h>
 
 /* ============================================================================
  * RGB to JMh20 Test Data (from OCIO BuiltinTransform)
@@ -102,18 +94,18 @@ static int test_rgb_to_jmh20(void) {
 
         /* Use absolute tolerance for small values, relative for large */
         if (ALWAN_ABS(rgb_to_jmh_expected[i][0]) > ALWAN_LITERAL(1.0)) {
-            TEST_ASSERT_REL(jmh_out.v[0], rgb_to_jmh_expected[i][0], TEST_TOLERANCE_JMH, msg);
+            TEST_ASSERT_REL(jmh_out.v[0], rgb_to_jmh_expected[i][0], TEST_TOLERANCE, msg);
         } else {
-            TEST_ASSERT_ABS(jmh_out.v[0], rgb_to_jmh_expected[i][0], TEST_TOLERANCE_JMH, msg);
+            TEST_ASSERT_ABS(jmh_out.v[0], rgb_to_jmh_expected[i][0], TEST_TOLERANCE, msg);
         }
 
         /* Check M component */
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] M: RGB=(%.3f, %.3f, %.3f)",
                  i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b);
         if (ALWAN_ABS(rgb_to_jmh_expected[i][1]) > ALWAN_LITERAL(1.0)) {
-            TEST_ASSERT_REL(jmh_out.v[1], rgb_to_jmh_expected[i][1], TEST_TOLERANCE_JMH, msg);
+            TEST_ASSERT_REL(jmh_out.v[1], rgb_to_jmh_expected[i][1], TEST_TOLERANCE, msg);
         } else {
-            TEST_ASSERT_ABS(jmh_out.v[1], rgb_to_jmh_expected[i][1], TEST_TOLERANCE_JMH, msg);
+            TEST_ASSERT_ABS(jmh_out.v[1], rgb_to_jmh_expected[i][1], TEST_TOLERANCE, msg);
         }
 
         /* Check h component (hue in degrees) */
@@ -221,7 +213,6 @@ static int test_tonescale_compress20(void) {
  * Tests that JMh_to_RGB20 is the proper inverse of RGB_to_JMh20.
  * ============================================================================ */
 
-#define ROUNDTRIP_TOL 1e-6  /* Should be very precise since it's a pure inverse */
 
 static int test_jmh_roundtrip(void) {
     printf("  Testing JMh roundtrip (RGB -> JMh -> RGB)...\n");
@@ -258,7 +249,7 @@ static int test_jmh_roundtrip(void) {
         alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - rgb_in.g);
         alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - rgb_in.b);
 
-        if (diff_r > ROUNDTRIP_TOL || diff_g > ROUNDTRIP_TOL || diff_b > ROUNDTRIP_TOL) {
+        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
             printf("FAIL [%zu]: in=(%.6f,%.6f,%.6f) out=(%.6f,%.6f,%.6f) diff=(%.2e,%.2e,%.2e)\n",
                    i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
                    (alwan_scalar)rgb_out.r, (alwan_scalar)rgb_out.g, (alwan_scalar)rgb_out.b,
@@ -280,7 +271,6 @@ static int test_jmh_roundtrip(void) {
  * For AP1 limit primaries (wide gamut), colors pass through unchanged.
  * ============================================================================ */
 
-#define GAMUT_COMPRESS_TOL 1e-4  /* Tight tolerance since it's mostly identity */
 
 static int test_gamut_compress20(void) {
     printf("  Testing GamutCompress20 at 1000 nits...\n");
@@ -331,7 +321,7 @@ static int test_gamut_compress20(void) {
         alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - exp_g);
         alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - exp_b);
 
-        if (diff_r > GAMUT_COMPRESS_TOL || diff_g > GAMUT_COMPRESS_TOL || diff_b > GAMUT_COMPRESS_TOL) {
+        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
             printf("FAIL [%zu]: in=(%.4f,%.4f,%.4f) exp=(%.4f,%.4f,%.4f) got=(%.4f,%.4f,%.4f)\n",
                    i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
                    (alwan_scalar)exp_r, (alwan_scalar)exp_g, (alwan_scalar)exp_b,

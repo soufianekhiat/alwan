@@ -7,14 +7,8 @@
  * Reference: OpenColorIO (PyOpenColorIO)
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "alwan.h"
-#include "alwan_internal.h"
 #include "test_common.h"
-
-/* Test tolerance - match OpenColorIO precision - documented in docs/violations.md */
-#define TEST_TOLERANCE ALWAN_LITERAL(1e-5)
+#include <stdlib.h>
 
 /* ============================================================================
  * Test Input Data (from OpenColorIO)

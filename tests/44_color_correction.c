@@ -1,17 +1,8 @@
 /* Test suite for Color Correction & Grading Tools */
 
-#include "alwan.h"
-#include "alwan_internal.h"
 #define TEST_USE_COUNTERS
 #include "test_common.h"
-#include <stdio.h>
 #include <string.h>
-
-/* Use ALWAN_POW from alwan_internal.h for pow operations */
-#define TEST_POW ALWAN_POW
-
-/* Test tolerance - documented in docs/violations.md */
-#define TEST_TOLERANCE ALWAN_LITERAL(1e-5)
 
 /* ================================================================
  * Lift/Gamma/Gain Tests

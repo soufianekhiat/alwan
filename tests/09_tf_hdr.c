@@ -6,27 +6,10 @@
  * Test 09: HDR Transfer Functions (PQ, HLG, BT.1886, ACESproxy)
  */
 
-#include "alwan.h"
-#include "alwan_internal.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
 #include <string.h>
 
-/* ----------------------------------------------------------------
- * Test helpers
- * ---------------------------------------------------------------- */
-
-#define TEST_ASSERT(cond, msg) do { \
-    if (!(cond)) { \
-        fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, msg); \
-        return 1; \
-    } \
-} while(0)
-
-#define TEST_PASS(name) do { \
-    printf("[PASS] %s\n", name); \
-    return 0; \
-} while(0)
 
 /* ----------------------------------------------------------------
  * Tests
@@ -195,7 +178,7 @@ static int test_pq_st2084_alias(void) {
 
     /* Should produce identical results */
     alwan_scalar diff = ALWAN_ABS(encoded_pq - encoded_st2084);
-    TEST_ASSERT(diff < ALWAN_EPSILON, "PQ and ST.2084 should be aliases");
+    TEST_ASSERT(diff < TEST_TOLERANCE, "PQ and ST.2084 should be aliases");
 
     TEST_PASS("PQ/ST.2084 alias");
 }

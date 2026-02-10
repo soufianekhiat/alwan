@@ -10,13 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Internal context structure (needed for runtime_data_root access) */
-struct alwan_ctx {
-    alwan_alloc_fn alloc_fn;
-    alwan_free_fn  free_fn;
-    char *runtime_data_root;
-    uint32_t flags;
-};
+/* struct alwan_ctx is defined in alwan_internal.h */
 
 /* ----------------------------------------------------------------
  * Helper: Convert xyY to XYZ (Y=1)
@@ -719,25 +713,34 @@ static alwan_scalar redlogfilm_eotf_scalar(alwan_scalar encoded) {
 }
 
 /* Log3G10 OETF: linear -> Log3G10
- * Formula from RED documentation */
+ * Formula from RED whitepaper (915-0187 Rev-C)
+ * Constants: a=0.224282, b=155.975327, c=0.01, g=15.1927 */
 static alwan_scalar log3g10_oetf_scalar(alwan_scalar linear) {
-    if (linear < ALWAN_LITERAL(0.0)) {
-        return ALWAN_LITERAL(0.0);
-    } else if (linear <= ALWAN_LITERAL(0.0)) {
-        return linear * ALWAN_LITERAL(15.1927);
-    } else {
-        return ALWAN_LITERAL(0.224282) * ALWAN_LOG10(linear * ALWAN_LITERAL(155.975327) + ALWAN_LITERAL(1.0)) + ALWAN_LITERAL(0.01);
+    alwan_scalar const a = ALWAN_LITERAL(0.224282);
+    alwan_scalar const b = ALWAN_LITERAL(155.975327);
+    alwan_scalar const c = ALWAN_LITERAL(0.01);
+    alwan_scalar const g = ALWAN_LITERAL(15.1927);
+
+    alwan_scalar x = linear + c;
+    if (x < ALWAN_LITERAL(0.0)) {
+        return x * g;  /* Linear segment for negative values */
     }
+    return a * ALWAN_LOG10(x * b + ALWAN_LITERAL(1.0));
 }
 
+/* Log3G10 EOTF: Log3G10 -> linear
+ * Inverse of OETF formula from RED whitepaper (915-0187 Rev-C)
+ * Constants: a=0.224282, b=155.975327, c=0.01, g=15.1927 */
 static alwan_scalar log3g10_eotf_scalar(alwan_scalar encoded) {
-    if (encoded <= ALWAN_LITERAL(0.0)) {
-        return ALWAN_LITERAL(0.0);
-    } else if (encoded <= ALWAN_LITERAL(0.0)) {
-        return encoded / ALWAN_LITERAL(15.1927);
-    } else {
-        return (ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.224282)) - ALWAN_LITERAL(1.0)) / ALWAN_LITERAL(155.975327);
+    alwan_scalar const a = ALWAN_LITERAL(0.224282);
+    alwan_scalar const b = ALWAN_LITERAL(155.975327);
+    alwan_scalar const c = ALWAN_LITERAL(0.01);
+    alwan_scalar const g = ALWAN_LITERAL(15.1927);
+
+    if (encoded < ALWAN_LITERAL(0.0)) {
+        return (encoded / g) - c;  /* Inverse of linear segment */
     }
+    return (ALWAN_POW(ALWAN_LITERAL(10.0), encoded / a) - ALWAN_LITERAL(1.0)) / b - c;
 }
 
 /* ----------------------------------------------------------------
