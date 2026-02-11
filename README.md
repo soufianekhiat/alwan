@@ -8,6 +8,8 @@
 
 A small, dependency-free colour science library in pure C11. Alwan provides production-ready colour math for applications that need precise, deterministic colour transformations without the overhead of external dependencies.
 
+**Alwan is a colour science library, not a colour management library.** It provides the mathematical foundations — colour space conversions, chromatic adaptation, appearance models, spectral operations — but does not handle ICC profiles, device characterization, rendering intents, or profile connection spaces. For ICC workflow support, use Alwan for the underlying math and a dedicated library (e.g. LittleCMS) for profile I/O.
+
 ---
 
 ## Why Alwan?
