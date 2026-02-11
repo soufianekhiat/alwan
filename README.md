@@ -50,10 +50,13 @@ A small, dependency-free colour science library in pure C11. Alwan provides prod
    alwan_ctx *ctx = alwan_create(NULL);
 
    // Convert sRGB to CIE Lab (output parameters first)
-   alwan_vec3 rgb = {0.5, 0.3, 0.2};
-   alwan_vec3 xyz, lab;
-   alwan_srgb_to_xyz(&xyz, &rgb, 1, 0, 0);
-   alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz, 1, 0, 0);
+   alwan_rgb rgb = {0.5, 0.3, 0.2};
+   alwan_xyz xyz;
+   alwan_lab lab;
+   alwan_xyz d65 = {0.95047, 1.0, 1.08883};
+
+   alwan_srgb_to_xyz(&xyz, &rgb);
+   alwan_xyz_to_lab(&lab, &xyz, &d65);
 
    alwan_destroy(ctx);
    ```
@@ -187,27 +190,32 @@ alwan_destroy(ctx);
 
 ```c
 // Single colour (output first)
-alwan_vec3 rgb = {0.8, 0.2, 0.1};
-alwan_vec3 xyz, lab;
-alwan_srgb_to_xyz(&xyz, &rgb, 1, 0, 0);
-alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz, 1, 0, 0);
+alwan_rgb rgb = {0.8, 0.2, 0.1};
+alwan_xyz xyz;
+alwan_lab lab;
+alwan_xyz d65 = {0.95047, 1.0, 1.08883};
+
+alwan_srgb_to_xyz(&xyz, &rgb);
+alwan_xyz_to_lab(&lab, &xyz, &d65);
 
 // Bulk conversion with stride (output first)
-alwan_vec3 xyz_data[100];
-alwan_vec3 lab_data[100];
-alwan_xyz_to_lab(lab_data, xyz_data, &alwan_d65_xyz, 100, sizeof(alwan_vec3), sizeof(alwan_vec3));
+alwan_xyz xyz_data[100];
+alwan_lab lab_data[100];
+alwan_xyz_to_lab_bulk((alwan_scalar*)lab_data, (alwan_scalar*)xyz_data, &d65,
+                      100, sizeof(alwan_xyz), sizeof(alwan_lab));
 ```
 
 ### Chromatic Adaptation
 
 ```c
-alwan_vec3 xyz_d50 = {0.5, 0.6, 0.4};
-alwan_vec3 xyz_d65;
+alwan_xyz d50 = {0.96422, 1.0, 0.82521};
+alwan_xyz d65 = {0.95047, 1.0, 1.08883};
+alwan_xyz xyz_in = {0.5, 0.6, 0.4};
+alwan_xyz xyz_out;
 
-// Output first, then context, then inputs
-alwan_cat_adapt(&xyz_d65, ALWAN_CAT_BRADFORD,
-                &alwan_d50_xyz, &alwan_d65_xyz,
-                &xyz_d50, 1, 0, 0);
+// Adapt from D50 to D65 using Bradford
+alwan_cat_adapt((alwan_scalar*)&xyz_out, &d50, &d65, ALWAN_CAT_BRADFORD,
+                (alwan_scalar*)&xyz_in, 1, sizeof(alwan_xyz), sizeof(alwan_xyz));
 ```
 
 ### RGB Space Operations
@@ -215,31 +223,37 @@ alwan_cat_adapt(&xyz_d65, ALWAN_CAT_BRADFORD,
 ```c
 // Derive matrices for custom RGB space (outputs first)
 alwan_rgb_space_desc rgb_desc = {
-    .primaries = {{0.64, 0.33}, {0.30, 0.60}, {0.15, 0.06}},
-    .white = {0.3127, 0.3290}
+    .primaries_xy = {0.64, 0.33, 0.30, 0.60, 0.15, 0.06},  // rx,ry, gx,gy, bx,by
+    .white_xy = {0.3127, 0.3290},
+    .oetf = ALWAN_TF_LINEAR,
+    .eotf = ALWAN_TF_LINEAR
 };
 
 alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
 alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, &rgb_desc);
 
 // Convert between RGB spaces (output first)
-alwan_vec3 rgb_in[100], rgb_out[100];
-alwan_rgb_convert(rgb_out, ctx, ALWAN_RGB_SRGB, ALWAN_RGB_BT2020,
-                  rgb_in, 100, sizeof(alwan_vec3), sizeof(alwan_vec3));
+alwan_rgb_space_desc srgb_desc, bt2020_desc;
+alwan_rgb_get_space_descriptor(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
+alwan_rgb_get_space_descriptor(&bt2020_desc, ctx, ALWAN_RGB_SPACE_BT2020);
+
+alwan_rgb rgb_in = {0.8, 0.3, 0.2};
+alwan_rgb rgb_out;
+alwan_rgb_convert(&rgb_out, ctx, &srgb_desc, &bt2020_desc, &rgb_in);
 ```
 
 ### Transfer Functions
 
 ```c
-alwan_vec3 linear_rgb[100], encoded_rgb[100];
+alwan_scalar linear_rgb[300], encoded_rgb[300];  // 100 RGB triplets
 
 // Apply transfer function (OETF: linear → encoded) - output first
-alwan_oetf_apply(encoded_rgb, ALWAN_TF_SRGB, linear_rgb, 100,
-                 sizeof(alwan_vec3), sizeof(alwan_vec3));
+alwan_oetf_apply(encoded_rgb, ALWAN_TF_SRGB, linear_rgb, 300,
+                 sizeof(alwan_scalar), sizeof(alwan_scalar));
 
 // Inverse transfer function (EOTF: encoded → linear) - output first
-alwan_eotf_apply(linear_rgb, ALWAN_TF_SRGB, encoded_rgb, 100,
-                 sizeof(alwan_vec3), sizeof(alwan_vec3));
+alwan_eotf_apply(linear_rgb, ALWAN_TF_SRGB, encoded_rgb, 300,
+                 sizeof(alwan_scalar), sizeof(alwan_scalar));
 ```
 
 ### Matrix Operations
