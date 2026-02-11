@@ -86,9 +86,10 @@ Opaque context structure. Internal details are not exposed.
 
 ```c
 typedef struct {
-    void* (*alloc_cb)(size_t size, size_t align);
-    void (*free_cb)(void *ptr);
-    const char *runtime_data_root;
+    alwan_alloc_fn alloc_cb;          // Optional custom allocator (NULL = default)
+    alwan_free_fn  free_cb;           // Optional custom deallocator (NULL = default)
+    char const *runtime_data_root;    // Optional data path for ALWAN_EMBED_DATA=0
+    uint32_t flags;                   // Reserved for future use (must be 0)
 } alwan_config;
 ```
 
@@ -240,11 +241,16 @@ alwan_destroy(ctx);
 // Create one shared context
 alwan_ctx *shared_ctx = alwan_create(NULL);
 
+// Get descriptors once (thread-safe read)
+alwan_rgb_space_desc srgb_desc, bt2020_desc;
+alwan_rgb_get_space_descriptor(&srgb_desc, shared_ctx, ALWAN_RGB_SPACE_SRGB);
+alwan_rgb_get_space_descriptor(&bt2020_desc, shared_ctx, ALWAN_RGB_SPACE_BT2020);
+
 // Use from multiple threads (read-only operations)
 #pragma omp parallel for
 for (int i = 0; i < n; i++) {
     // Safe: read-only color space conversion
-    alwan_rgb_convert(&out[i], shared_ctx, "srgb", "bt2020", &rgb[i], 1, 0, 0);
+    alwan_rgb_convert(&out[i], shared_ctx, &srgb_desc, &bt2020_desc, &rgb[i]);
 }
 
 alwan_destroy(shared_ctx);
@@ -341,8 +347,8 @@ Most API functions handle `NULL` context gracefully:
 alwan_destroy(NULL);  // Safe, does nothing
 
 // Functions requiring context will return error
-alwan_result r = alwan_rgb_convert(NULL, ...);
-// r == ALWAN_ERROR_INVALID_PARAMETER
+int status = alwan_rgb_convert(&rgb_out, NULL, &src_desc, &dst_desc, &rgb_in);
+// status == ALWAN_E_INVALID
 ```
 
 ---

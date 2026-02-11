@@ -63,28 +63,40 @@ alwan_xyz_to_lab(
 ```
 
 ### Stride Support
-Most transform functions support stride parameters for processing interleaved data:
-- **Stride = 0**: Tightly packed array (equivalent to stride = sizeof(type))
-- **Stride = N**: N bytes between consecutive elements
+Bulk functions support stride parameters for processing interleaved data:
+- **Stride in bytes**: Distance between consecutive elements
+- Typically `3*sizeof(alwan_scalar)` for packed RGB/XYZ data
 
 Example with stride:
 ```c
 // RGB data interleaved with alpha: RGBARGBARGBA...
-float rgba_data[100 * 4];
-alwan_oetf_apply(rgba_data, ctx, "srgb", rgba_data, 100, 16, 16);
-//               ^^^^^^^^                                ^^ ^^
-//          output first                    strides at end (bytes)
+alwan_scalar rgba_data[100 * 4];
+alwan_scalar encoded[100 * 4];
+
+// Process only RGB channels, skip alpha (stride = 4 * sizeof(alwan_scalar))
+alwan_oetf_apply(encoded, ALWAN_TF_SRGB, rgba_data, 100,
+                 4 * sizeof(alwan_scalar),   // in_stride (skip alpha)
+                 4 * sizeof(alwan_scalar));  // out_stride
 ```
 
 ### Error Handling
 Most functions return status codes:
-- `ALWAN_SUCCESS` (0) — Operation completed successfully
-- `ALWAN_ERROR_*` — Specific error codes
+- `ALWAN_OK` (0) — Operation completed successfully
+- `ALWAN_E_INVALID` (-1) — Invalid argument
+- `ALWAN_E_NODATA` (-2) — Data not found
+- `ALWAN_E_RANGE` (-3) — Value out of range
+- `ALWAN_E_NOMEM` (-4) — Memory allocation failed
+- `ALWAN_E_DIVZERO` (-5) — Division by zero
 
 Check return values for operations that can fail:
 ```c
-alwan_result result = alwan_rgb_convert(ctx, "srgb", "bt2020", ...);
-if (result != ALWAN_SUCCESS) {
+alwan_rgb_space_desc src_desc, dst_desc;
+alwan_rgb_get_space_descriptor(&src_desc, ctx, ALWAN_RGB_SPACE_SRGB);
+alwan_rgb_get_space_descriptor(&dst_desc, ctx, ALWAN_RGB_SPACE_BT2020);
+
+alwan_rgb rgb_out;
+int status = alwan_rgb_convert(&rgb_out, ctx, &src_desc, &dst_desc, &rgb_in);
+if (status != ALWAN_OK) {
     // Handle error
 }
 ```
@@ -104,27 +116,53 @@ if (result != ALWAN_SUCCESS) {
 // Scalar type (float or double based on ALWAN_SCALAR_IS_FLOAT)
 typedef ALWAN_SCALAR alwan_scalar;
 
-// 3D vector
+// 2-component vector (for xy chromaticity coordinates)
 typedef struct {
-    alwan_scalar x, y, z;
+    alwan_scalar v[2];
+} alwan_vec2;
+
+// 3-component vector (generic)
+typedef struct {
+    alwan_scalar v[3];
 } alwan_vec3;
 
-// 3×3 matrix (row-major)
+// 3×3 matrix (row-major, flat array)
 typedef struct {
-    alwan_scalar m[3][3];
+    alwan_scalar m[9];  // [m00 m01 m02 m10 m11 m12 m20 m21 m22]
 } alwan_mat3x3;
 
-// Library context
+// Library context (opaque)
 typedef struct alwan_ctx alwan_ctx;
 
-// Result codes
+// Status codes
 typedef enum {
-    ALWAN_SUCCESS = 0,
-    ALWAN_ERROR_INVALID_PARAMETER,
-    ALWAN_ERROR_OUT_OF_MEMORY,
-    ALWAN_ERROR_NOT_FOUND,
-    ALWAN_ERROR_UNSUPPORTED
-} alwan_result;
+    ALWAN_OK       =  0,  // Success
+    ALWAN_E_INVALID = -1, // Invalid argument
+    ALWAN_E_NODATA = -2,  // Data not found or not loaded
+    ALWAN_E_RANGE  = -3,  // Value out of valid range
+    ALWAN_E_NOMEM  = -4,  // Memory allocation failed
+    ALWAN_E_DIVZERO = -5  // Division by zero would occur
+} alwan_status;
+```
+
+### Semantic Color Types
+
+Alwan uses semantic types for type safety (all layout-compatible with `alwan_vec3`):
+
+```c
+typedef struct { alwan_scalar r, g, b; } alwan_rgb;
+typedef struct { alwan_scalar x, y, z; } alwan_xyz;
+typedef struct { alwan_scalar L, a, b; } alwan_lab;
+typedef struct { alwan_scalar L, u, v; } alwan_luv;
+typedef struct { alwan_scalar L, C, h; } alwan_lch;
+typedef struct { alwan_scalar L, a, b; } alwan_oklab;
+typedef struct { alwan_scalar L, C, h; } alwan_oklch;
+typedef struct { alwan_scalar Jz, az, bz; } alwan_jzazbz;
+typedef struct { alwan_scalar I, Ct, Cp; } alwan_ictcp;
+typedef struct { alwan_scalar h, s, v; } alwan_hsv;
+typedef struct { alwan_scalar h, s, l; } alwan_hsl;
+typedef struct { alwan_scalar Y, Cb, Cr; } alwan_ycbcr;
+// ... and more
 ```
 
 ### Configuration Types
@@ -132,43 +170,68 @@ typedef enum {
 ```c
 // Context configuration
 typedef struct {
-    void* (*alloc_cb)(size_t size, size_t align);
-    void (*free_cb)(void *ptr);
-    const char *runtime_data_root;  // Only for ALWAN_EMBED_DATA=0
+    alwan_alloc_fn alloc_cb;          // Optional custom allocator (NULL = default)
+    alwan_free_fn  free_cb;           // Optional custom deallocator (NULL = default)
+    char const *runtime_data_root;    // Optional data path for ALWAN_EMBED_DATA=0
+    uint32_t flags;                   // Reserved for future use (must be 0)
 } alwan_config;
 
 // RGB space descriptor
 typedef struct {
-    alwan_vec2 primaries[3];  // R, G, B chromaticity
-    alwan_vec2 white_point;   // White point chromaticity
-    const char *transfer;     // Transfer function name
-} alwan_rgb_descriptor;
+    alwan_scalar primaries_xy[6];  // rx, ry, gx, gy, bx, by in CIE xy chromaticity
+    alwan_scalar white_xy[2];       // wx, wy in CIE xy chromaticity
+    alwan_transfer_function oetf;   // OETF (use ALWAN_TF_LINEAR for none)
+    alwan_transfer_function eotf;   // EOTF (use ALWAN_TF_LINEAR for none)
+} alwan_rgb_space_desc;
 
-// Chromatic adaptation transform types
+// Chromatic adaptation transform methods
 typedef enum {
-    ALWAN_CAT_BRADFORD,
-    ALWAN_CAT_CAT02,
-    ALWAN_CAT_CAT16,
-    ALWAN_CAT_XYZ_SCALING
-} alwan_cat_type;
+    ALWAN_CAT_XYZ_SCALING = 0,
+    ALWAN_CAT_BRADFORD    = 1,
+    ALWAN_CAT_VON_KRIES   = 2,
+    ALWAN_CAT_CAT02       = 3,
+    ALWAN_CAT_CAT16       = 4,
+    ALWAN_CAT_CMCCAT97    = 5,
+    ALWAN_CAT_CMCCAT2000  = 6,
+    ALWAN_CAT_SHARP       = 7,
+    ALWAN_CAT_BIANCO_SCHETTINI_2010 = 8,
+    ALWAN_CAT_FAIRCHILD   = 9,
+    ALWAN_CAT_HUNT_POINTER_ESTEVEZ = 10,
+    ALWAN_CAT_ZHAI_2018   = 11
+} alwan_cat_method;
 ```
 
 ---
 
-## Constants & Standard Values
+## Standard Illuminants
 
-### Standard Illuminants (D65, D50, etc.)
+Illuminant data is accessed via data getter functions:
+
 ```c
-extern const alwan_vec3 alwan_d65_xyz;  // D65 white point in XYZ
-extern const alwan_vec3 alwan_d50_xyz;  // D50 white point in XYZ
-extern const alwan_vec3 alwan_a_xyz;    // Illuminant A in XYZ
-extern const alwan_vec3 alwan_e_xyz;    // Equal energy illuminant
+alwan_scalar *data;
+size_t count;
+
+// Get D65 illuminant xy chromaticity
+alwan_data_get_illuminant_d65(&data, &count, ctx);
+// data[0] = x, data[1] = y
+
+// Get illuminant by enum
+alwan_data_get_illuminant_xy(&data, &count, ctx, ALWAN_ILLUMINANT_D50);
 ```
 
-### Common Chromaticities
+### Common Illuminant Values (Y=1.0 normalized XYZ)
+
+| Illuminant | X | Y | Z |
+|-----------|-----|-----|-----|
+| D65 | 0.95047 | 1.00000 | 1.08883 |
+| D50 | 0.96422 | 1.00000 | 0.82521 |
+| A | 1.09850 | 1.00000 | 0.35585 |
+| E | 1.00000 | 1.00000 | 1.00000 |
+
+**Note:** Create white point XYZ values directly:
 ```c
-extern const alwan_vec2 alwan_d65_xy;   // D65 in xy
-extern const alwan_vec2 alwan_d50_xy;   // D50 in xy
+alwan_xyz d65_white = {0.95047, 1.0, 1.08883};
+alwan_xyz d50_white = {0.96422, 1.0, 0.82521};
 ```
 
 ---
@@ -185,12 +248,17 @@ Alwan is designed for multi-threaded use with the following guarantees:
 ```c
 // Create one context per thread, or use read-only context shared across threads
 alwan_ctx *ctx = alwan_create(NULL);
+alwan_xyz d65_white = {0.95047, 1.0, 1.08883};
 
-// Safe to call from multiple threads
+// Safe to call from multiple threads (single-element functions are re-entrant)
 #pragma omp parallel for
 for (int i = 0; i < n; i++) {
-    alwan_xyz_to_lab(&lab[i], &xyz[i], &d65, 1, 0, 0);
+    alwan_xyz_to_lab(&lab[i], &xyz[i], &d65_white);
 }
+
+// Or use bulk functions for better performance
+alwan_xyz_to_lab_bulk((alwan_scalar*)lab, (alwan_scalar*)xyz, &d65_white,
+                      n, sizeof(alwan_lab), sizeof(alwan_xyz));
 
 alwan_destroy(ctx);
 ```
@@ -204,14 +272,17 @@ Always prefer bulk operations over single-element loops:
 
 **Slow:**
 ```c
+alwan_xyz d65_white = {0.95047, 1.0, 1.08883};
 for (int i = 0; i < 1000; i++) {
-    alwan_xyz_to_lab(&lab[i], &xyz[i], &d65, 1, 0, 0);
+    alwan_xyz_to_lab(&lab[i], &xyz[i], &d65_white);
 }
 ```
 
 **Fast:**
 ```c
-alwan_xyz_to_lab(lab, xyz, &d65, 1000, sizeof(alwan_vec3), sizeof(alwan_vec3));
+alwan_xyz d65_white = {0.95047, 1.0, 1.08883};
+alwan_xyz_to_lab_bulk((alwan_scalar*)lab, (alwan_scalar*)xyz, &d65_white,
+                      1000, sizeof(alwan_xyz), sizeof(alwan_lab));
 ```
 
 ### Precision Selection

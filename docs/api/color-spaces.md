@@ -12,609 +12,282 @@ Alwan supports conversions between:
 - **RGB families:** sRGB, Adobe RGB, BT.709, BT.2020, Display P3, ACES, and more
 - **Encoding spaces:** HSV, HSL, YCbCr, CMY, CMYK, HCL, IHLS
 
-All conversion functions support bulk operations with stride for efficient array processing.
+**API Pattern:** Single-element functions use semantic types. Bulk functions use `alwan_scalar*` with strides.
 
 ---
 
 ## CIE XYZ Conversions
 
-### alwan_xyz_to_lab
+### alwan_xyz_to_lab / alwan_xyz_to_lab_bulk
 
 ```c
-alwan_result alwan_xyz_to_lab(
-    alwan_vec3 *lab,              // Output first
-    const alwan_vec3 *xyz,
-    const alwan_vec3 *white_point,
-    size_t count,
-    size_t xyz_stride,
-    size_t lab_stride
-);
+// Single element
+void alwan_xyz_to_lab(alwan_lab *lab, alwan_xyz const *xyz, alwan_xyz const *white_xyz);
+
+// Bulk with strides (in bytes)
+int alwan_xyz_to_lab_bulk(alwan_scalar *lab_out, alwan_scalar const *xyz_in,
+                          alwan_xyz const *white_xyz, size_t count,
+                          size_t in_stride, size_t out_stride);
 ```
-
-Converts CIE XYZ to CIE Lab (L\*a\*b\*).
-
-**Parameters:**
-- `xyz` — Input XYZ values (tristimulus values, Y is luminance)
-- `white_point` — Reference white point in XYZ (e.g., `&alwan_d65_xyz`)
-- `lab` — Output Lab values
-- `count` — Number of colors to convert
-- `xyz_stride` — Byte stride between XYZ values (0 = packed)
-- `lab_stride` — Byte stride between Lab values (0 = packed)
-
-**Input ranges:**
-- XYZ: [0, ∞) for each component
-- White point: Any valid XYZ with Y ≈ 1.0
-
-**Output ranges:**
-- L: [0, 100] (lightness)
-- a: [-128, 127] typical, unbounded
-- b: [-128, 127] typical, unbounded
 
 **Example:**
 ```c
-alwan_vec3 xyz = {0.5, 0.6, 0.4};
-alwan_vec3 lab;
-alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz, 1, 0, 0);  // Output first
-printf("Lab: L=%.2f, a=%.2f, b=%.2f\n", lab.x, lab.y, lab.z);
+alwan_xyz xyz = {0.5, 0.6, 0.4};
+alwan_xyz d65 = {0.95047, 1.0, 1.08883};
+alwan_lab lab;
+alwan_xyz_to_lab(&lab, &xyz, &d65);
+printf("Lab: L=%.2f, a=%.2f, b=%.2f\n", lab.L, lab.a, lab.b);
 ```
-
-**Precision:**
-- Float: ±0.001 typical error
-- Double: ±1e-10 typical error
 
 ---
 
-### alwan_lab_to_xyz
+### alwan_lab_to_xyz / alwan_lab_to_xyz_bulk
 
 ```c
-alwan_result alwan_lab_to_xyz(
-    alwan_vec3 *xyz,              // Output first
-    const alwan_vec3 *lab,
-    const alwan_vec3 *white_point,
-    size_t count,
-    size_t lab_stride,
-    size_t xyz_stride
-);
+void alwan_lab_to_xyz(alwan_xyz *xyz, alwan_lab const *lab, alwan_xyz const *white_xyz);
+int alwan_lab_to_xyz_bulk(alwan_scalar *xyz_out, alwan_scalar const *lab_in,
+                          alwan_xyz const *white_xyz, size_t count,
+                          size_t in_stride, size_t out_stride);
 ```
-
-Converts CIE Lab (L\*a\*b\*) to CIE XYZ.
-
-**Parameters:** (same structure as `alwan_xyz_to_lab`)
-
-**Input ranges:**
-- L: [0, 100]
-- a, b: Unbounded (typically [-128, 127])
-
-**Output ranges:**
-- XYZ: [0, ∞) for each component
-
-**Note:** Inverse of `alwan_xyz_to_lab` with same white point.
 
 ---
 
-### alwan_xyz_to_luv
+### alwan_xyz_to_luv / alwan_xyz_to_luv_bulk
 
 ```c
-alwan_result alwan_xyz_to_luv(
-    alwan_vec3 *luv,              // Output first
-    const alwan_vec3 *xyz,
-    const alwan_vec3 *white_point,
-    size_t count,
-    size_t xyz_stride,
-    size_t luv_stride
-);
+void alwan_xyz_to_luv(alwan_luv *luv, alwan_xyz const *xyz, alwan_xyz const *white_xyz);
+int alwan_xyz_to_luv_bulk(alwan_scalar *luv_out, alwan_scalar const *xyz_in,
+                          alwan_xyz const *white_xyz, size_t count,
+                          size_t in_stride, size_t out_stride);
 ```
-
-Converts CIE XYZ to CIE Luv (L\*u\*v\*).
-
-**Output ranges:**
-- L: [0, 100]
-- u, v: Unbounded (typically [-100, 100])
-
-**Use case:** Luv is more perceptually uniform than XYZ, alternative to Lab.
 
 ---
 
-### alwan_luv_to_xyz
+### alwan_luv_to_xyz / alwan_luv_to_xyz_bulk
 
 ```c
-alwan_result alwan_luv_to_xyz(
-    alwan_vec3 *xyz,              // Output first
-    const alwan_vec3 *luv,
-    const alwan_vec3 *white_point,
-    size_t count,
-    size_t luv_stride,
-    size_t xyz_stride
-);
+void alwan_luv_to_xyz(alwan_xyz *xyz, alwan_luv const *luv, alwan_xyz const *white_xyz);
+int alwan_luv_to_xyz_bulk(alwan_scalar *xyz_out, alwan_scalar const *luv_in,
+                          alwan_xyz const *white_xyz, size_t count,
+                          size_t in_stride, size_t out_stride);
 ```
-
-Converts CIE Luv back to XYZ.
 
 ---
 
-### alwan_xyz_to_xyy
+### alwan_xyz_to_xyy / alwan_xyy_to_xyz
 
 ```c
-alwan_result alwan_xyz_to_xyy(
-    alwan_vec3 *xyy,              // Output first
-    const alwan_vec3 *xyz,
-    size_t count,
-    size_t xyz_stride,
-    size_t xyy_stride
-);
+void alwan_xyz_to_xyy(alwan_xyy *xyy, alwan_xyz const *xyz);
+void alwan_xyy_to_xyz(alwan_xyz *xyz, alwan_xyy const *xyy);
 ```
-
-Converts XYZ to xyY (chromaticity + luminance).
-
-**Output format:**
-- x: x chromaticity coordinate [0, 1]
-- y: y chromaticity coordinate [0, 1]
-- Y: Luminance [0, ∞)
-
-**Special case:** Black (X=Y=Z=0) maps to (x=0, y=0, Y=0)
-
----
-
-### alwan_xyy_to_xyz
-
-```c
-alwan_result alwan_xyy_to_xyz(
-    alwan_vec3 *xyz,              // Output first
-    const alwan_vec3 *xyy,
-    size_t count,
-    size_t xyy_stride,
-    size_t xyz_stride
-);
-```
-
-Converts xyY back to XYZ.
 
 ---
 
 ## Cylindrical Representations
 
-### alwan_lab_to_lch
+### alwan_lab_to_lch / alwan_lch_to_lab
 
 ```c
-alwan_result alwan_lab_to_lch(
-    alwan_vec3 *lch,              // Output first
-    const alwan_vec3 *lab,
-    size_t count,
-    size_t lab_stride,
-    size_t lch_stride
-);
+void alwan_lab_to_lch(alwan_lch *lch, alwan_lab const *lab);
+void alwan_lch_to_lab(alwan_lab *lab, alwan_lch const *lch);
+
+// Bulk versions
+int alwan_lab_to_lch_bulk(alwan_scalar *lch_out, alwan_scalar const *lab_in,
+                          size_t count, size_t in_stride, size_t out_stride);
+int alwan_lch_to_lab_bulk(alwan_scalar *lab_out, alwan_scalar const *lch_in,
+                          size_t count, size_t in_stride, size_t out_stride);
 ```
 
-Converts Lab to LCh(ab) (cylindrical Lab).
-
-**Output format:**
-- L: [0, 100] (same as Lab)
-- C: [0, ∞) (chroma, sqrt(a² + b²))
-- h: [0, 360) (hue angle in degrees)
-
-**Use case:** Easier hue manipulation than Cartesian Lab.
+**Output format:** L: [0, 100], C: [0, ∞), h: [0, 360) degrees
 
 ---
 
-### alwan_lch_to_lab
+### alwan_luv_to_lchuv / alwan_lchuv_to_luv
 
 ```c
-alwan_result alwan_lch_to_lab(
-    alwan_vec3 *lab,              // Output first
-    const alwan_vec3 *lch,
-    size_t count,
-    size_t lch_stride,
-    size_t lab_stride
-);
+void alwan_luv_to_lchuv(alwan_lchuv *lchuv, alwan_luv const *luv);
+void alwan_lchuv_to_luv(alwan_luv *luv, alwan_lchuv const *lchuv);
+
+// Bulk versions available
 ```
-
-Converts LCh(ab) back to Lab.
-
----
-
-### alwan_luv_to_lchuv
-
-```c
-alwan_result alwan_luv_to_lchuv(
-    alwan_vec3 *lchuv,            // Output first
-    const alwan_vec3 *luv,
-    size_t count,
-    size_t luv_stride,
-    size_t lchuv_stride
-);
-```
-
-Converts Luv to LCh(uv) (cylindrical Luv).
-
----
-
-### alwan_lchuv_to_luv
-
-```c
-alwan_result alwan_lchuv_to_luv(
-    alwan_vec3 *luv,              // Output first
-    const alwan_vec3 *lchuv,
-    size_t count,
-    size_t lchuv_stride,
-    size_t luv_stride
-);
-```
-
-Converts LCh(uv) back to Luv.
 
 ---
 
 ## Modern Perceptual Models
 
-### alwan_xyz_to_oklab
+### alwan_xyz_to_oklab / alwan_oklab_to_xyz
 
 ```c
-alwan_result alwan_xyz_to_oklab(
-    alwan_vec3 *oklab,            // Output first
-    const alwan_vec3 *xyz,
-    size_t count,
-    size_t xyz_stride,
-    size_t oklab_stride
-);
+void alwan_xyz_to_oklab(alwan_oklab *oklab, alwan_xyz const *xyz);
+void alwan_oklab_to_xyz(alwan_xyz *xyz, alwan_oklab const *oklab);
+
+// Bulk versions
+int alwan_xyz_to_oklab_bulk(alwan_scalar *oklab_out, alwan_scalar const *xyz_in,
+                            size_t count, size_t in_stride, size_t out_stride);
 ```
 
-Converts XYZ to Oklab (perceptually uniform, better than Lab for graphics).
-
-**Output ranges:**
-- L: [0, 1] (normalized lightness)
-- a, b: [-0.5, 0.5] typical range
-
-**Advantages over Lab:**
-- Better hue linearity
-- Better chroma uniformity
-- Simpler math (no cube root approximations)
-
-**Use case:** Modern color grading, UI color manipulation
+**Advantages over Lab:** Better hue linearity, better chroma uniformity.
 
 ---
 
-### alwan_oklab_to_xyz
+### alwan_oklab_to_oklch / alwan_oklch_to_oklab
 
 ```c
-alwan_result alwan_oklab_to_xyz(
-    alwan_vec3 *xyz,              // Output first
-    const alwan_vec3 *oklab,
-    size_t count,
-    size_t oklab_stride,
-    size_t xyz_stride
-);
+void alwan_oklab_to_oklch(alwan_oklch *oklch, alwan_oklab const *oklab);
+void alwan_oklch_to_oklab(alwan_oklab *oklab, alwan_oklch const *oklch);
 ```
-
-Converts Oklab back to XYZ.
 
 ---
 
-### alwan_oklab_to_oklch
+### alwan_xyz_to_jzazbz / alwan_jzazbz_to_xyz
 
 ```c
-alwan_result alwan_oklab_to_oklch(
-    alwan_vec3 *oklch,            // Output first
-    const alwan_vec3 *oklab,
-    size_t count,
-    size_t oklab_stride,
-    size_t oklch_stride
-);
+void alwan_xyz_to_jzazbz(alwan_jzazbz *jzazbz, alwan_xyz const *xyz);
+void alwan_jzazbz_to_xyz(alwan_xyz *xyz, alwan_jzazbz const *jzazbz);
 ```
 
-Converts Oklab to Oklch (cylindrical Oklab).
-
-**Output format:**
-- L: [0, 1]
-- C: [0, ~0.4] (chroma)
-- h: [0, 360) (hue in degrees)
+**Use case:** HDR color difference calculations, tone mapping.
 
 ---
 
-### alwan_xyz_to_jzazbz
+### alwan_xyz_to_ipt / alwan_ipt_to_xyz
 
 ```c
-alwan_result alwan_xyz_to_jzazbz(
-    alwan_vec3 *jzazbz,           // Output first
-    const alwan_vec3 *xyz,
-    size_t count,
-    size_t xyz_stride,
-    size_t jzazbz_stride
-);
+void alwan_xyz_to_ipt(alwan_ipt *ipt, alwan_xyz const *xyz);
+void alwan_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *ipt);
 ```
-
-Converts XYZ to JzAzBz (perceptually uniform for HDR).
-
-**Use case:** HDR color difference calculations, tone mapping
-
-**Output ranges:**
-- Jz: [0, ~0.17] for SDR, higher for HDR
-- Az, Bz: [-0.5, 0.5] typical
 
 ---
 
-### alwan_xyz_to_ipt
+### alwan_xyz_to_ictcp / alwan_ictcp_to_xyz
 
 ```c
-alwan_result alwan_xyz_to_ipt(
-    alwan_vec3 *ipt,              // Output first
-    const alwan_vec3 *xyz,
-    size_t count,
-    size_t xyz_stride,
-    size_t ipt_stride
-);
+void alwan_xyz_to_ictcp(alwan_ictcp *ictcp, alwan_xyz const *xyz,
+                        alwan_transfer_function tf);  // ALWAN_TF_PQ or ALWAN_TF_HLG
+void alwan_ictcp_to_xyz(alwan_xyz *xyz, alwan_ictcp const *ictcp,
+                        alwan_transfer_function tf);
 ```
-
-Converts XYZ to IPT (image processing transform).
-
-**Use case:** Hue-preserving image manipulation
-
----
-
-### alwan_xyz_to_ictcp
-
-```c
-alwan_result alwan_xyz_to_ictcp(
-    alwan_vec3 *ictcp,            // Output first
-    const alwan_vec3 *xyz,
-    const char *transfer,  // "pq" or "hlg"
-    size_t count,
-    size_t xyz_stride,
-    size_t ictcp_stride
-);
-```
-
-Converts XYZ to ICtCp (HDR color space used in BT.2100).
-
-**Parameters:**
-- `transfer` — Transfer function: `"pq"` (ST.2084) or `"hlg"` (Hybrid Log-Gamma)
-
-**Use case:** HDR video processing, broadcast
 
 ---
 
 ## RGB Conversions
 
-### alwan_rgb_to_xyz
+### alwan_rgb_to_xyz / alwan_xyz_to_rgb
 
 ```c
-alwan_result alwan_rgb_to_xyz(
-    alwan_vec3 *xyz,              // Output first
-    const alwan_vec3 *rgb,
-    size_t count,
-    size_t rgb_stride,
-    size_t xyz_stride
-);
+int alwan_rgb_to_xyz(alwan_xyz *xyz, alwan_rgb_space_desc const *space, alwan_rgb const *rgb);
+int alwan_xyz_to_rgb(alwan_rgb *rgb, alwan_rgb_space_desc const *space, alwan_xyz const *xyz);
 ```
-
-Converts linear RGB to XYZ using the current RGB space (typically sRGB).
-
-**Input:** Linear RGB [0, 1] for SDR, [0, ∞) for HDR
-
-**Note:** Assumes sRGB primaries by default. For other spaces, use `alwan_rgb_convert()` or derive custom matrices.
-
----
-
-### alwan_xyz_to_rgb
-
-```c
-alwan_result alwan_xyz_to_rgb(
-    alwan_vec3 *rgb,              // Output first
-    const alwan_vec3 *xyz,
-    size_t count,
-    size_t xyz_stride,
-    size_t rgb_stride
-);
-```
-
-Converts XYZ to linear RGB.
 
 ---
 
 ### alwan_rgb_convert
 
 ```c
-alwan_result alwan_rgb_convert(
-    alwan_vec3 *rgb_out,          // Output first
-    alwan_ctx *ctx,
-    const char *src_space,
-    const char *dst_space,
-    const alwan_vec3 *rgb_in,
-    size_t count,
-    size_t in_stride,
-    size_t out_stride
-);
+int alwan_rgb_convert(alwan_rgb *dst_rgb, alwan_ctx *ctx,
+                      alwan_rgb_space_desc const *src_space,
+                      alwan_rgb_space_desc const *dst_space,
+                      alwan_rgb const *src_rgb);
+
+// Bulk version
+int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb, alwan_ctx *ctx,
+                           alwan_rgb_space_desc const *src_space,
+                           alwan_rgb_space_desc const *dst_space,
+                           alwan_rgb const *src_rgb, size_t count);
 ```
-
-Converts between different RGB color spaces.
-
-**Parameters:**
-- `rgb_out` — Output RGB values (linear)
-- `ctx` — Library context
-- `src_space` — Source RGB space name (e.g., `"srgb"`, `"bt2020"`)
-- `dst_space` — Destination RGB space name
-- `rgb_in` — Input RGB values (linear)
-- `count` — Number of colors
-- `in_stride` — Input stride in bytes
-- `out_stride` — Output stride in bytes
-
-**Supported spaces:**
-- `"srgb"` — sRGB / IEC 61966-2-1
-- `"bt709"` — ITU-R BT.709 (HDTV)
-- `"bt2020"` — ITU-R BT.2020 (UHDTV)
-- `"display_p3"` — Apple Display P3
-- `"dci_p3"` — DCI-P3 (digital cinema)
-- `"adobe_rgb"` — Adobe RGB (1998)
-- `"prophoto_rgb"` — ProPhoto RGB
-- `"aces2065_1"` — ACES 2065-1 (AP0)
-- `"acescg"` — ACEScg (AP1)
-- Many more (see RGB spaces reference)
 
 **Example:**
 ```c
-alwan_vec3 srgb[100];
-alwan_vec3 bt2020[100];
-alwan_rgb_convert(bt2020, ctx, "srgb", "bt2020", srgb, 100, 12, 12);
+alwan_rgb_space_desc srgb_desc, bt2020_desc;
+alwan_rgb_get_space_descriptor(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
+alwan_rgb_get_space_descriptor(&bt2020_desc, ctx, ALWAN_RGB_SPACE_BT2020);
+
+alwan_rgb rgb_in = {0.8, 0.3, 0.2};
+alwan_rgb rgb_out;
+alwan_rgb_convert(&rgb_out, ctx, &srgb_desc, &bt2020_desc, &rgb_in);
+```
+
+---
+
+## sRGB Convenience Functions
+
+Direct conversions for sRGB (D65 white point):
+
+```c
+int alwan_srgb_to_xyz(alwan_xyz *xyz, alwan_rgb const *rgb);
+int alwan_xyz_to_srgb(alwan_rgb *rgb, alwan_xyz const *xyz);
+int alwan_srgb_to_lab(alwan_lab *lab, alwan_rgb const *rgb);
+int alwan_lab_to_srgb(alwan_rgb *rgb, alwan_lab const *lab);
+int alwan_srgb_to_oklab(alwan_oklab *oklab, alwan_rgb const *rgb);
+int alwan_oklab_to_srgb(alwan_rgb *rgb, alwan_oklab const *oklab);
+
+// Bulk versions with strides
+int alwan_srgb_to_xyz_bulk(alwan_scalar *xyz_out, alwan_scalar const *rgb_in,
+                           size_t count, size_t in_stride, size_t out_stride);
 ```
 
 ---
 
 ## Encoding Spaces
 
-### alwan_rgb_to_hsv
+### alwan_rgb_to_hsv / alwan_hsv_to_rgb
 
 ```c
-alwan_result alwan_rgb_to_hsv(
-    alwan_vec3 *hsv,              // Output first
-    const alwan_vec3 *rgb,
-    size_t count,
-    size_t rgb_stride,
-    size_t hsv_stride
-);
+void alwan_rgb_to_hsv(alwan_hsv *hsv, alwan_rgb const *rgb);
+void alwan_hsv_to_rgb(alwan_rgb *rgb, alwan_hsv const *hsv);
 ```
 
-Converts RGB to HSV (Hue, Saturation, Value).
-
-**Input:** RGB [0, 1]
-
-**Output:**
-- H: [0, 360) degrees
-- S: [0, 1]
-- V: [0, 1]
-
-**Use case:** Color picking, image adjustment
+**Output:** H: [0, 360), S: [0, 1], V: [0, 1]
 
 ---
 
-### alwan_hsv_to_rgb
+### alwan_rgb_to_hsl / alwan_hsl_to_rgb
 
 ```c
-alwan_result alwan_hsv_to_rgb(
-    alwan_vec3 *rgb,              // Output first
-    const alwan_vec3 *hsv,
-    size_t count,
-    size_t hsv_stride,
-    size_t rgb_stride
-);
+void alwan_rgb_to_hsl(alwan_hsl *hsl, alwan_rgb const *rgb);
+void alwan_hsl_to_rgb(alwan_rgb *rgb, alwan_hsl const *hsl);
 ```
-
-Converts HSV back to RGB.
 
 ---
 
-### alwan_rgb_to_hsl
+### alwan_rgb_to_ycbcr / alwan_ycbcr_to_rgb
 
 ```c
-alwan_result alwan_rgb_to_hsl(
-    alwan_vec3 *hsl,              // Output first
-    const alwan_vec3 *rgb,
-    size_t count,
-    size_t rgb_stride,
-    size_t hsl_stride
-);
+void alwan_rgb_to_ycbcr(alwan_ycbcr *ycbcr, alwan_rgb const *rgb, int standard);
+void alwan_ycbcr_to_rgb(alwan_rgb *rgb, alwan_ycbcr const *ycbcr, int standard);
 ```
 
-Converts RGB to HSL (Hue, Saturation, Lightness).
-
-**Output:**
-- H: [0, 360) degrees
-- S: [0, 1]
-- L: [0, 1]
-
----
-
-### alwan_rgb_to_ycbcr
-
-```c
-alwan_result alwan_rgb_to_ycbcr(
-    alwan_vec3 *ycbcr,            // Output first
-    const char *standard,  // "bt601", "bt709", or "bt2020"
-    const alwan_vec3 *rgb,
-    size_t count,
-    size_t rgb_stride,
-    size_t ycbcr_stride
-);
-```
-
-Converts RGB to YCbCr.
-
-**Parameters:**
-- `standard` — Video standard: `"bt601"`, `"bt709"`, or `"bt2020"`
-
-**Output ranges:**
-- Y: [0, 1]
-- Cb, Cr: [-0.5, 0.5]
-
-**Use case:** Video compression, broadcast
+**Standards:** 0=BT.601, 1=BT.709, 2=BT.2020
 
 ---
 
 ## Bulk Operations
 
-All conversion functions support efficient bulk processing:
+Always prefer bulk operations over single-element loops:
 
 ```c
-// Convert 1 million colors (output first)
-alwan_vec3 *xyz = malloc(1000000 * sizeof(alwan_vec3));
-alwan_vec3 *lab = malloc(1000000 * sizeof(alwan_vec3));
+alwan_xyz d65 = {0.95047, 1.0, 1.08883};
 
-alwan_xyz_to_lab(lab, xyz, &alwan_d65_xyz, 1000000,
-                 sizeof(alwan_vec3), sizeof(alwan_vec3));
-```
+// Slow: single-element loop
+for (int i = 0; i < 1000; i++) {
+    alwan_xyz_to_lab(&lab[i], &xyz[i], &d65);
+}
 
-**Performance:** Bulk operations are optimized and may use SIMD on supported platforms.
-
----
-
-## Stride Usage
-
-Process interleaved or non-contiguous data:
-
-```c
-// RGBA data: [R,G,B,A, R,G,B,A, ...]
-float rgba[1000 * 4];
-
-// Convert only RGB, skip alpha (output first)
-alwan_vec3 *rgb = (alwan_vec3*)rgba;
-alwan_vec3 *lab = malloc(1000 * sizeof(alwan_vec3));
-
-alwan_xyz_to_lab(lab, rgb, &alwan_d65_xyz, 1000,
-                 4 * sizeof(float),    // Input: skip alpha
-                 sizeof(alwan_vec3));  // Output: packed
+// Fast: bulk with strides (in bytes)
+alwan_xyz_to_lab_bulk((alwan_scalar*)lab, (alwan_scalar*)xyz, &d65,
+                      1000, sizeof(alwan_xyz), sizeof(alwan_lab));
 ```
 
 ---
 
 ## Error Codes
 
-- `ALWAN_SUCCESS` — Conversion successful
-- `ALWAN_ERROR_INVALID_PARAMETER` — NULL pointer or invalid count
-- `ALWAN_ERROR_NOT_FOUND` — RGB space name not found (rgb_convert)
-- `ALWAN_ERROR_OUT_OF_RANGE` — Input values outside valid domain (rare)
-
----
-
-## Precision & Limits
-
-### Numerical Accuracy
-
-| Conversion | Float Error | Double Error |
-|-----------|-------------|--------------|
-| XYZ ↔ Lab | ±0.001 | ±1e-10 |
-| XYZ ↔ Luv | ±0.001 | ±1e-10 |
-| Lab ↔ LCh | ±0.01° | ±1e-8° |
-| RGB ↔ XYZ | ±0.0001 | ±1e-12 |
-| RGB ↔ HSV | ±0.1° | ±1e-6° |
-
-### Special Cases
-
-**Black (0, 0, 0):**
-- Lab: (0, 0, 0)
-- LCh: (0, 0, undefined hue)
-- HSV: (undefined, 0, 0)
-
-**Achromatic colors:**
-- LCh hue: Undefined (preserved as 0)
-- HSV hue: Undefined (preserved as 0)
+- `ALWAN_OK` (0) — Success
+- `ALWAN_E_INVALID` (-1) — Invalid parameter
+- `ALWAN_E_NODATA` (-2) — Data not found
+- `ALWAN_E_RANGE` (-3) — Value out of range
+- `ALWAN_E_NOMEM` (-4) — Allocation failed
+- `ALWAN_E_DIVZERO` (-5) — Division by zero
 
 ---
 
@@ -622,5 +295,4 @@ alwan_xyz_to_lab(lab, rgb, &alwan_d65_xyz, 1000,
 
 - [Chromatic Adaptation](chromatic-adaptation.md) — White point transforms
 - [Transfer Functions](transfer-functions.md) — Encoding/decoding
-- [Precision & Limits](../precision-and-limits.md) — Numerical details
 - [Examples](../examples.md) — Usage examples
