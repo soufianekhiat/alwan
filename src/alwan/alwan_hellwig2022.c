@@ -17,14 +17,20 @@
  * ---------------------------------------------------------------- */
 
 /* CAT16 matrix for chromatic adaptation (same as CAM16, from colour-science) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_CAT16[9] = {
 #include "data/matrices/cat_cat16.csv"
 };
+ALWAN_DIAG_POP
 
 /* Inverse CAT16 matrix (from colour-science) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_CAT16_inv[9] = {
 #include "data/matrices/cat_cat16_inv.csv"
 };
+ALWAN_DIAG_POP
 
 /* NOTE: Hellwig2022 does NOT use a post-adaptation matrix like CAM16.
  * Nonlinear compression is applied directly to the chromatically adapted RGB_c values. */

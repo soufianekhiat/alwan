@@ -7,7 +7,6 @@
  * Tests: Munsell, Color Checker, NCS, RGB Space Definitions
  */
 
-#define TEST_USE_COUNTERS
 #include "test_common.h"
 #include <stdlib.h>
 #include <string.h>

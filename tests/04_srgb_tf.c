@@ -210,7 +210,7 @@ int test_04_srgb_tf_main(void) {
             passed++;
         } else {
             failed++;
-            fprintf(stderr, "[FAIL] Test '%s' failed\n", tests[i].name);
+            printf("[FAIL] Test '%s' failed\n", tests[i].name);
         }
     }
 

@@ -84,7 +84,7 @@ static int test_transfer_function(
                                       sizeof(alwan_scalar));
 
         if (status != ALWAN_OK) {
-            fprintf(stderr, "  [%s] OETF test %zu: alwan_oetf_apply failed with status %d\n",
+            printf("  [%s] OETF test %zu: alwan_oetf_apply failed with status %d\n",
                    name, i, status);
             failures++;
             continue;
@@ -92,7 +92,7 @@ static int test_transfer_function(
 
         alwan_scalar encode_diff = ALWAN_ABS(encoded_actual - encoded_ref);
         if (encode_diff >= tolerance) {
-            fprintf(stderr, "  [%s] OETF test %zu: linear=%.6f, expected=%.6f, got=%.6f, diff=%.2e\n",
+            printf("  [%s] OETF test %zu: linear=%.6f, expected=%.6f, got=%.6f, diff=%.2e\n",
                    name, i, linear_ref, encoded_ref, encoded_actual, encode_diff);
             failures++;
         }
@@ -103,7 +103,7 @@ static int test_transfer_function(
                                   sizeof(alwan_scalar));
 
         if (status != ALWAN_OK) {
-            fprintf(stderr, "  [%s] EOTF test %zu: alwan_eotf_apply failed with status %d\n",
+            printf("  [%s] EOTF test %zu: alwan_eotf_apply failed with status %d\n",
                    name, i, status);
             failures++;
             continue;
@@ -111,7 +111,7 @@ static int test_transfer_function(
 
         alwan_scalar decode_diff = ALWAN_ABS(decoded_actual - decoded_ref);
         if (decode_diff >= tolerance) {
-            fprintf(stderr, "  [%s] EOTF test %zu: encoded=%.6f, expected=%.6f, got=%.6f, diff=%.2e\n",
+            printf("  [%s] EOTF test %zu: encoded=%.6f, expected=%.6f, got=%.6f, diff=%.2e\n",
                    name, i, encoded_ref, decoded_ref, decoded_actual, decode_diff);
             failures++;
         }
@@ -121,7 +121,7 @@ static int test_transfer_function(
         printf("[PASS] %s (%zu tests)\n", name, num_triplets * 2);
         return 0;
     } else {
-        fprintf(stderr, "[FAIL] %s (%d/%zu tests failed)\n",
+        printf("[FAIL] %s (%d/%zu tests failed)\n",
                 name, failures, num_triplets * 2);
         return 1;
     }
@@ -222,7 +222,7 @@ int test_34_tf_extended_main(void) {
         printf("\n=== All extended transfer function tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);
+        printf("\n=== %d test(s) failed ===\n", failures);
         return 1;
     }
 }

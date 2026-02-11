@@ -7,7 +7,6 @@
  * Tests: Complete ACES 1.3 RRT+ODT pipeline with all presets
  */
 
-#define TEST_USE_COUNTERS
 #include "test_common.h"
 #include <stdlib.h>
 #include <string.h>

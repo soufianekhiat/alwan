@@ -11,9 +11,12 @@
 
 /* Test data from CSV: XYZ_in (3), XYZ_w (3), La, Yb, J, C, h
  * Format: 11 values per row (3+3+1+1+3) = 11 scalars per test case */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const test_data[] = {
 #include "reference_values/kim2009.csv"
 };
+ALWAN_DIAG_POP
 
 static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 11;
 

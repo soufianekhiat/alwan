@@ -12,9 +12,12 @@
 /* Test CIECAM02 forward transform with standard viewing conditions */
 static int test_ciecam02_forward(void) {
     /* Load viewing conditions from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Standard D65 viewing conditions (average surround) */
     alwan_ciecam02_viewing_conditions vc;
@@ -27,15 +30,21 @@ static int test_ciecam02_forward(void) {
     vc.discount_illuminant = 0;
 
     /* Load test XYZ colors */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_xyz[] = {
 #include "reference_values/ciecam02_xyz_input.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
     /* Load expected correlates (J, C, h, Q, M, s, H for each color) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_correlates[] = {
 #include "reference_values/ciecam02_correlates.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Test forward transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
@@ -96,9 +105,12 @@ static int test_ciecam02_inverse(void) {
     /* Standard D65 viewing conditions */
     alwan_ciecam02_viewing_conditions vc;
     /* Load viewing conditions from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
+    ALWAN_DIAG_POP
 
     vc.white_xyz.x = viewing_params[0];
     vc.white_xyz.y = viewing_params[1];
@@ -109,15 +121,21 @@ static int test_ciecam02_inverse(void) {
     vc.discount_illuminant = 0;
 
     /* Load correlates (J, C, h) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const correlates_data[] = {
 #include "reference_values/ciecam02_correlates.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_colors = sizeof(correlates_data) / sizeof(correlates_data[0]) / 7;
 
     /* Load expected reconstructed XYZ */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_xyz[] = {
 #include "reference_values/ciecam02_xyz_reconstructed.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Test inverse transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
@@ -152,9 +170,12 @@ static int test_ciecam02_roundtrip(void) {
     /* Standard D65 viewing conditions */
     alwan_ciecam02_viewing_conditions vc;
     /* Load viewing conditions from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
+    ALWAN_DIAG_POP
 
     vc.white_xyz.x = viewing_params[0];
     vc.white_xyz.y = viewing_params[1];
@@ -165,9 +186,12 @@ static int test_ciecam02_roundtrip(void) {
     vc.discount_illuminant = 0;
 
     /* Load test XYZ colors */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_xyz[] = {
 #include "reference_values/ciecam02_xyz_input.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
     /* Test round-trip for each color */
@@ -205,9 +229,12 @@ static int test_ciecam02_roundtrip(void) {
 static int test_ciecam02_surround_conditions(void) {
     alwan_ciecam02_viewing_conditions vc;
     /* Load viewing conditions from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
+    ALWAN_DIAG_POP
 
     vc.white_xyz.x = viewing_params[0];
     vc.white_xyz.y = viewing_params[1];

@@ -221,7 +221,7 @@ int test_03_rgb_matrices_main(void) {
             passed++;
         } else {
             failed++;
-            fprintf(stderr, "[FAIL] Test '%s' failed\n", tests[i].name);
+            printf("[FAIL] Test '%s' failed\n", tests[i].name);
         }
     }
 

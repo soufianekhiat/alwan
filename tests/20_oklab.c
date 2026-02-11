@@ -9,9 +9,12 @@
  * ---------------------------------------------------------------- */
 
 static int test_xyz_oklab_round_trip(void) {
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "reference_values/test_xyz_oklab_pairs.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
@@ -89,9 +92,12 @@ static int test_xyz_oklab_round_trip(void) {
  * ---------------------------------------------------------------- */
 
 static int test_oklab_oklch_round_trip(void) {
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "reference_values/test_oklab_oklch_pairs.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 

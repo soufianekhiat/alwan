@@ -4,7 +4,6 @@
 
 #include "alwan.h"
 #include "alwan_internal.h"
-#define TEST_USE_COUNTERS
 #include "test_common.h"
 #include <stdio.h>
 #include <string.h>
@@ -15,149 +14,230 @@
  * ================================================================ */
 
 /* Luminance values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar luminances[] = {
 #include "reference_values/barten_luminances.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_LUMINANCES (sizeof(luminances) / sizeof(luminances[0]))
 
 /* Angular sizes */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar angular_sizes[] = {
 #include "reference_values/barten_angular_sizes.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_ANGULAR_SIZES (sizeof(angular_sizes) / sizeof(angular_sizes[0]))
 
 /* Pupil diameters */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar pupil_diameters[] = {
 #include "reference_values/barten_pupil_diameters.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_PUPIL_DIAMETERS (sizeof(pupil_diameters) / sizeof(pupil_diameters[0]))
 
 /* Spatial frequencies */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar frequencies[] = {
 #include "reference_values/barten_frequencies.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_FREQUENCIES (sizeof(frequencies) / sizeof(frequencies[0]))
 
 /* Sigma values for MTF tests */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar sigmas[] = {
 #include "reference_values/barten_sigmas.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_SIGMAS (sizeof(sigmas) / sizeof(sigmas[0]))
 
 /* CSF frequencies (extended range) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar csf_frequencies[] = {
 #include "reference_values/barten_csf_frequencies.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_CSF_FREQUENCIES (sizeof(csf_frequencies) / sizeof(csf_frequencies[0]))
 
 /* Reference pupil diameter with defaults (L varies, X_0=Y_0=60) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_pupil_default[] = {
 #include "reference_values/barten_pupil_diameter_default.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference pupil diameter with varying angular size (L=100) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_pupil_angular[] = {
 #include "reference_values/barten_pupil_diameter_angular.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference retinal illuminance with Stiles-Crawford */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_retinal_sc[] = {
 #include "reference_values/barten_retinal_illuminance_sc.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference retinal illuminance without Stiles-Crawford */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_retinal_no_sc[] = {
 #include "reference_values/barten_retinal_illuminance_no_sc.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference retinal illuminance at fixed L=100 */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_retinal_fixed_L[] = {
 #include "reference_values/barten_retinal_illuminance_fixed_L.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference MTF with default sigma=0.01 */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_mtf_default[] = {
 #include "reference_values/barten_mtf_default.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference MTF at u=4 with varying sigma */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_mtf_u4[] = {
 #include "reference_values/barten_mtf_u4.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference sigma with defaults */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_sigma_default[] = {
 #include "reference_values/barten_sigma_default.csv"
 };
+ALWAN_DIAG_POP
 
 /* Sigma_0 values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar sigma_0_values[] = {
 #include "reference_values/barten_sigma_0_values.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_SIGMA_0 (sizeof(sigma_0_values) / sizeof(sigma_0_values[0]))
 
 /* Reference sigma with varying sigma_0 */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_sigma_vary_s0[] = {
 #include "reference_values/barten_sigma_vary_s0.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference max angular size with defaults */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_max_angular_default[] = {
 #include "reference_values/barten_max_angular_size_default.csv"
 };
+ALWAN_DIAG_POP
 
 /* X_0 values for max angular size tests */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar X_0_values[] = {
 #include "reference_values/barten_X_0_values.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_X_0 (sizeof(X_0_values) / sizeof(X_0_values[0]))
 
 /* Reference max angular size with varying X_0 */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_max_angular_vary_X0[] = {
 #include "reference_values/barten_max_angular_size_vary_X0.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference CSF with defaults */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_csf_default[] = {
 #include "reference_values/barten_csf_default.csv"
 };
+ALWAN_DIAG_POP
 
 /* Retinal illuminance values for CSF tests */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar E_values[] = {
 #include "reference_values/barten_E_values.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_E_VALUES (sizeof(E_values) / sizeof(E_values[0]))
 
 /* Reference CSF at u=4 with varying E */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_csf_vary_E[] = {
 #include "reference_values/barten_csf_vary_E.csv"
 };
+ALWAN_DIAG_POP
 
 /* Sigma values for CSF tests */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar csf_sigma_values[] = {
 #include "reference_values/barten_csf_sigma_values.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_CSF_SIGMAS (sizeof(csf_sigma_values) / sizeof(csf_sigma_values[0]))
 
 /* Reference CSF at u=4 with varying sigma */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_csf_vary_sigma[] = {
 #include "reference_values/barten_csf_vary_sigma.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference CSF at L=1 */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_csf_L1[] = {
 #include "reference_values/barten_csf_L1.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference CSF at L=10 */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_csf_L10[] = {
 #include "reference_values/barten_csf_L10.csv"
 };
+ALWAN_DIAG_POP
 
 /* Reference CSF at L=100 */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_csf_L100[] = {
 #include "reference_values/barten_csf_L100.csv"
 };
+ALWAN_DIAG_POP
 
 /* ================================================================
  * Test Functions

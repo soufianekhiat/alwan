@@ -515,7 +515,7 @@ int test_32_quality_rendering_main(void) {
         printf("\n=== All P4 quality tests passed (%d/%d) ===\n", passed, total);
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d/%d P4 quality test(s) failed ===\n",
+        printf("\n=== %d/%d P4 quality test(s) failed ===\n",
                 total - passed, total);
         return 1;
     }

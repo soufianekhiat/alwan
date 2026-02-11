@@ -17,9 +17,12 @@
 /* LMS to IPT matrix for hdr-IPT
  * Generated from colour-science */
 static void get_lms_to_ipt_hdr_matrix(alwan_mat3x3 *out) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const data[9] = {
 #include "data/matrices/lms_to_ipt_hdr.csv"
     };
+    ALWAN_DIAG_POP
     for (int i = 0; i < 9; i++) {
         out->m[i] = data[i];
     }
@@ -28,9 +31,12 @@ static void get_lms_to_ipt_hdr_matrix(alwan_mat3x3 *out) {
 /* IPT to LMS inverse matrix for hdr-IPT
  * Generated from colour-science */
 static void get_ipt_to_lms_hdr_matrix(alwan_mat3x3 *out) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const data[9] = {
 #include "data/matrices/ipt_to_lms_hdr.csv"
     };
+    ALWAN_DIAG_POP
     for (int i = 0; i < 9; i++) {
         out->m[i] = data[i];
     }
@@ -39,9 +45,12 @@ static void get_ipt_to_lms_hdr_matrix(alwan_mat3x3 *out) {
 /* LMS to IgPgTg matrix
  * Generated from colour-science */
 static void get_lms_to_igpgtg_matrix(alwan_mat3x3 *out) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const data[9] = {
 #include "data/matrices/lms_to_igpgtg.csv"
     };
+    ALWAN_DIAG_POP
     for (int i = 0; i < 9; i++) {
         out->m[i] = data[i];
     }
@@ -50,9 +59,12 @@ static void get_lms_to_igpgtg_matrix(alwan_mat3x3 *out) {
 /* IgPgTg to LMS inverse matrix
  * Generated from colour-science */
 static void get_igpgtg_to_lms_matrix(alwan_mat3x3 *out) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const data[9] = {
 #include "data/matrices/igpgtg_to_lms.csv"
     };
+    ALWAN_DIAG_POP
     for (int i = 0; i < 9; i++) {
         out->m[i] = data[i];
     }
@@ -61,9 +73,12 @@ static void get_igpgtg_to_lms_matrix(alwan_mat3x3 *out) {
 /* LMS to ICaCb matrix
  * Generated from colour-science */
 static void get_lms_to_icacb_matrix(alwan_mat3x3 *out) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const data[9] = {
 #include "data/matrices/lms_to_icacb.csv"
     };
+    ALWAN_DIAG_POP
     for (int i = 0; i < 9; i++) {
         out->m[i] = data[i];
     }
@@ -72,9 +87,12 @@ static void get_lms_to_icacb_matrix(alwan_mat3x3 *out) {
 /* ICaCb to LMS inverse matrix
  * Generated from colour-science */
 static void get_icacb_to_lms_matrix(alwan_mat3x3 *out) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const data[9] = {
 #include "data/matrices/icacb_to_lms.csv"
     };
+    ALWAN_DIAG_POP
     for (int i = 0; i < 9; i++) {
         out->m[i] = data[i];
     }
@@ -85,44 +103,62 @@ static void get_icacb_to_lms_matrix(alwan_mat3x3 *out) {
 /* XYZ to LMS matrix for hdr-IPT
  * This is MATRIX_IPT_XYZ_TO_LMS from colour-science (NOT the same as standard HPE!)
  * Generated from colour-science */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_XYZ_TO_LMS_IPT[9] = {
 #include "data/matrices/xyz_to_lms_ipt.csv"
 };
+ALWAN_DIAG_POP
 
 /* LMS to XYZ inverse matrix for hdr-IPT
  * This is MATRIX_IPT_LMS_TO_XYZ from colour-science
  * Generated from colour-science */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_LMS_TO_XYZ_IPT[9] = {
 #include "data/matrices/lms_to_xyz_ipt.csv"
 };
+ALWAN_DIAG_POP
 
 /* XYZ to LMS matrix for IgPgTg (DIFFERENT from hdr-IPT!)
  * This is MATRIX_IGPGTG_XYZ_TO_LMS from colour-science
  * Generated from colour-science */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_XYZ_TO_LMS_IGPGTG[9] = {
 #include "data/matrices/xyz_to_lms_igpgtg.csv"
 };
+ALWAN_DIAG_POP
 
 /* LMS to XYZ inverse matrix for IgPgTg
  * This is MATRIX_IGPGTG_LMS_TO_XYZ from colour-science
  * Generated from colour-science */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_LMS_TO_XYZ_IGPGTG[9] = {
 #include "data/matrices/lms_to_xyz_igpgtg.csv"
 };
+ALWAN_DIAG_POP
 
 /* XYZ to LMS matrix for ICaCb (DIFFERENT from hdr-IPT and IgPgTg!)
  * This is MATRIX_ICACB_XYZ_TO_LMS from colour-science
  * Generated from colour-science */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_XYZ_TO_LMS_ICACB[9] = {
 #include "data/matrices/xyz_to_lms_icacb.csv"
 };
+ALWAN_DIAG_POP
 
 /* LMS to XYZ inverse matrix for ICaCb
  * This is MATRIX_ICACB_LMS_TO_XYZ from colour-science
  * Generated from colour-science */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_LMS_TO_XYZ_ICACB[9] = {
 #include "data/matrices/lms_to_xyz_icacb.csv"
 };
+ALWAN_DIAG_POP
 
 /* ================================================================
  * Prismatic Color Space (Pridmore 2021)
@@ -378,9 +414,12 @@ void alwan_rgb_to_ihls(alwan_ihls *ihls, alwan_rgb const *rgb) {
     alwan_scalar delta = max_val - min_val;
 
     /* Transform RGB to YC₁C₂ using MATRIX_RGB_TO_YC_1_C_2 from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const IHLS_RGB_TO_YC1C2[9] = {
 #include "data/ihls_rgb_to_yc1c2.csv"
     };
+    ALWAN_DIAG_POP
 
     alwan_scalar Y = IHLS_RGB_TO_YC1C2[0] * r + IHLS_RGB_TO_YC1C2[1] * g + IHLS_RGB_TO_YC1C2[2] * b;
     alwan_scalar C_1 = IHLS_RGB_TO_YC1C2[3] * r + IHLS_RGB_TO_YC1C2[4] * g + IHLS_RGB_TO_YC1C2[5] * b;
@@ -442,9 +481,12 @@ void alwan_ihls_to_rgb(alwan_rgb *rgb, alwan_ihls const *ihls) {
     alwan_scalar C_2 = -C * ALWAN_SIN(H);
 
     /* Transform [Y, C₁, C₂] to RGB using MATRIX_YC_1_C_2_TO_RGB from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const IHLS_YC1C2_TO_RGB[9] = {
 #include "data/ihls_yc1c2_to_rgb.csv"
     };
+    ALWAN_DIAG_POP
 
     rgb->r = IHLS_YC1C2_TO_RGB[0] * Y + IHLS_YC1C2_TO_RGB[1] * C_1 + IHLS_YC1C2_TO_RGB[2] * C_2;
     rgb->g = IHLS_YC1C2_TO_RGB[3] * Y + IHLS_YC1C2_TO_RGB[4] * C_1 + IHLS_YC1C2_TO_RGB[5] * C_2;
@@ -457,9 +499,12 @@ void alwan_ihls_to_rgb(alwan_rgb *rgb, alwan_ihls const *ihls) {
  * ================================================================ */
 
 /* D65 white point for HDR calculations (Y=1 scale) from colour-science */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_xyz const HDR_D65_WHITE = {
 #include "data/hdr_d65_white.csv"
 };
+ALWAN_DIAG_POP
 
 /* HDR-CIELAB f function (modified for HDR) */
 static alwan_scalar hdr_lab_f(alwan_scalar t, alwan_scalar epsilon, alwan_scalar kappa) {
@@ -719,9 +764,12 @@ void alwan_hdr_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *hdr_ipt) {
  * ================================================================ */
 
 /* LMS scaling factors for IgPgTg from colour-science */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const IGPGTG_LMS_SCALE[3] = {
 #include "data/igpgtg_lms_scale.csv"
 };
+ALWAN_DIAG_POP
 
 void alwan_xyz_to_igpgtg(alwan_igpgtg *igpgtg, alwan_xyz const *xyz) {
     if (!xyz || !igpgtg) {

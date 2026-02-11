@@ -22,14 +22,20 @@
  * ---------------------------------------------------------------- */
 
 /* LLAB XYZ to RGB matrix (cone response) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_LLAB_XYZ_TO_RGB[] = {
 #include "data/matrices/llab_xyz_to_rgb.csv"
 };
+ALWAN_DIAG_POP
 
 /* LLAB RGB to XYZ inverse matrix */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_LLAB_RGB_TO_XYZ[] = {
 #include "data/matrices/llab_rgb_to_xyz.csv"
 };
+ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
  * LLAB Constants and Parameters

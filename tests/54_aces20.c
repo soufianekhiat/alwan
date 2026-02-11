@@ -18,39 +18,54 @@
  * ============================================================================ */
 
 /* RGB input values (AP1 primaries) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const rgb_to_jmh_input[][3] = {
 #include "reference_values/aces_ff_test_rgb_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_RGB_TO_JMH (sizeof(rgb_to_jmh_input) / sizeof(rgb_to_jmh_input[0]))
 
 /* Expected JMh values from OCIO */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const rgb_to_jmh_expected[][3] = {
 #include "reference_values/aces_rgb_to_jmh20_output.csv"
 };
+ALWAN_DIAG_POP
 
 /* ============================================================================
  * TonescaleCompress20 Test Data at 1000 nits
  * ============================================================================ */
 
 /* Same RGB input as above */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const tonescale_input[][3] = {
 #include "reference_values/aces_ff_test_rgb_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_TONESCALE (sizeof(tonescale_input) / sizeof(tonescale_input[0]))
 
 /* Expected tonescale output from OCIO at 1000 nits */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const tonescale_expected_1000[][3] = {
 #include "reference_values/aces_tonescale20_1000_output.csv"
 };
+ALWAN_DIAG_POP
 
 /* ============================================================================
  * GamutCompress20 Test Data at 1000 nits
  * ============================================================================ */
 
 /* Expected GamutCompress output from OCIO at 1000 nits (RGB domain) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const gamut_compress_expected_1000[][3] = {
 #include "reference_values/aces_gamut_compress20_1000_output.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_GAMUT_COMPRESS (sizeof(gamut_compress_expected_1000) / sizeof(gamut_compress_expected_1000[0]))
 
 /* ============================================================================

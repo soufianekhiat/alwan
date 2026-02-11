@@ -175,7 +175,7 @@ int test_36_spectral_extended_main(void) {
         printf("\n=== All P8 spectral tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d P8 spectral test(s) failed ===\n", failures);
+        printf("\n=== %d P8 spectral test(s) failed ===\n", failures);
         return 1;
     }
 }

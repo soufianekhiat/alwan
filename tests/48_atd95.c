@@ -11,9 +11,12 @@
 
 /* Test data from CSV: XYZ_in (3), XYZ_w (3), Y_0, k1, k2, sigma, H, C, Br
  * Format: 13 values per row */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const test_data[] = {
 #include "reference_values/atd95.csv"
 };
+ALWAN_DIAG_POP
 
 static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 13;
 

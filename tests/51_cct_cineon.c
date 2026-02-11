@@ -17,56 +17,80 @@
  * ============================================================================ */
 
 /* Cineon linear input values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const cineon_linear_input[] = {
 #include "reference_values/cineon_linear_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_CINEON_LINEAR (sizeof(cineon_linear_input) / sizeof(cineon_linear_input[0]))
 
 /* Expected encoded values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const cineon_encoded_expected[] = {
 #include "reference_values/cineon_encoded.csv"
 };
+ALWAN_DIAG_POP
 
 /* Cineon encoded input values for decoding test */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const cineon_encoded_input[] = {
 #include "reference_values/cineon_encoded_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_CINEON_ENCODED (sizeof(cineon_encoded_input) / sizeof(cineon_encoded_input[0]))
 
 /* Expected decoded values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const cineon_decoded_expected[] = {
 #include "reference_values/cineon_decoded.csv"
 };
+ALWAN_DIAG_POP
 
 /* ============================================================================
  * CCT Hernandez Test Data
  * ============================================================================ */
 
 /* Hernandez xy input coordinates */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const hernandez_xy_input[] = {
 #include "reference_values/cct_hernandez_xy_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_HERNANDEZ_XY (sizeof(hernandez_xy_input) / sizeof(hernandez_xy_input[0]) / 2)
 
 /* Expected CCT values from Hernandez */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const hernandez_cct_expected[] = {
 #include "reference_values/cct_hernandez_output.csv"
 };
+ALWAN_DIAG_POP
 
 /* ============================================================================
  * CCT Kang Test Data
  * ============================================================================ */
 
 /* Kang CCT input values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const kang_cct_input[] = {
 #include "reference_values/cct_kang_cct_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_KANG_CCT (sizeof(kang_cct_input) / sizeof(kang_cct_input[0]))
 
 /* Expected xy output from Kang forward */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const kang_xy_expected[] = {
 #include "reference_values/cct_kang_xy_output.csv"
 };
+ALWAN_DIAG_POP
 
 /* ============================================================================
  * Test Functions

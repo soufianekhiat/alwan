@@ -1334,9 +1334,11 @@ alwan_scalar alwan_delta_e_zcam(alwan_jzazbz const *jab1, alwan_jzazbz const *ja
 
 /* Batch ΔE*76 - Euclidean distance in Lab space
  * delta_e_out: output ΔE values (count elements)
- * lab1_in: first array of Lab colors (stride in1_stride between colors)
- * lab2_in: second array of Lab colors (stride in2_stride between colors)
+ * lab1_in: first array of Lab colors
+ * lab2_in: second array of Lab colors
  * count: number of color pairs to compare
+ * in1_stride: stride for lab1_in in bytes (typically 3*sizeof(alwan_scalar))
+ * in2_stride: stride for lab2_in in bytes (typically 3*sizeof(alwan_scalar))
  * Returns ALWAN_OK on success */
 int alwan_delta_e_76_batch(alwan_scalar *delta_e_out,
                            alwan_scalar const *lab1_in,
@@ -1345,7 +1347,8 @@ int alwan_delta_e_76_batch(alwan_scalar *delta_e_out,
                            size_t in1_stride,
                            size_t in2_stride);
 
-/* Batch ΔE*00 - CIEDE2000 color difference */
+/* Batch ΔE*00 - CIEDE2000 color difference
+ * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(alwan_scalar)) */
 int alwan_delta_e_2000_batch(alwan_scalar *delta_e_out,
                              alwan_scalar const *lab1_in,
                              alwan_scalar const *lab2_in,
@@ -1353,7 +1356,8 @@ int alwan_delta_e_2000_batch(alwan_scalar *delta_e_out,
                              size_t in1_stride,
                              size_t in2_stride);
 
-/* Batch ΔE*94 - CIE 1994 color difference */
+/* Batch ΔE*94 - CIE 1994 color difference
+ * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(alwan_scalar)) */
 int alwan_delta_e_94_batch(alwan_scalar *delta_e_out,
                            alwan_scalar const *lab1_in,
                            alwan_scalar const *lab2_in,
@@ -1361,7 +1365,8 @@ int alwan_delta_e_94_batch(alwan_scalar *delta_e_out,
                            size_t in1_stride,
                            size_t in2_stride);
 
-/* Batch ΔE CMC(l:c) - CMC color difference */
+/* Batch ΔE CMC(l:c) - CMC color difference
+ * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(alwan_scalar)) */
 int alwan_delta_e_cmc_batch(alwan_scalar *delta_e_out,
                             alwan_scalar const *lab1_in,
                             alwan_scalar const *lab2_in,

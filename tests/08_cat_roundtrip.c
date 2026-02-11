@@ -334,7 +334,7 @@ int test_08_cat_roundtrip_main(void) {
         printf("\n=== All CAT round-trip tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);
+        printf("\n=== %d test(s) failed ===\n", failures);
         return 1;
     }
 }

@@ -11,9 +11,12 @@
 
 /* Test data from CSV: XYZ_in (3), XYZ_w (3), La, Yb, surround_idx, J, C, h
  * Format: 12 values per row (3+3+1+1+1+3) = 12 scalars per test case */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const test_data[] = {
 #include "reference_values/hellwig2022.csv"
 };
+ALWAN_DIAG_POP
 
 static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 12;
 

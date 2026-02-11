@@ -236,7 +236,7 @@ int test_35_cat_extended_main(void) {
         printf("\n=== All P7 CAT tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d P7 CAT test(s) failed ===\n", failures);
+        printf("\n=== %d P7 CAT test(s) failed ===\n", failures);
         return 1;
     }
 }

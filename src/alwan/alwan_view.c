@@ -21,9 +21,12 @@
 static void aces_rec709_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
     /* Input is ACEScg (AP1), convert to ACES2065-1 (AP0) */
     /* AP1 to AP0 matrix (generated from colour-science) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ap1_to_ap0[9] = {
 #include "data/matrices/aces_ap1_to_ap0.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Transform to AP0 */
     alwan_scalar ap0_r = ap1_to_ap0[0] * rgb_in[0] + ap1_to_ap0[1] * rgb_in[1] + ap1_to_ap0[2] * rgb_in[2];
@@ -50,9 +53,12 @@ static void aces_rec709_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_
     /* ODT: Convert from ACES to Rec.709
      * Simplified matrix (AP0 to Rec.709 with Bradford chromatic adaptation D60->D65)
      * Generated from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const odt_matrix[9] = {
 #include "data/matrices/aces_odt_rec709.csv"
     };
+    ALWAN_DIAG_POP
 
     rgb_out[0] = odt_matrix[0] * rrt_r + odt_matrix[1] * rrt_g + odt_matrix[2] * rrt_b;
     rgb_out[1] = odt_matrix[3] * rrt_r + odt_matrix[4] * rrt_g + odt_matrix[5] * rrt_b;

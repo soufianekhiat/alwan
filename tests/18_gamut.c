@@ -94,9 +94,12 @@ static int test_gamut_volume_reproducible(void) {
  * ---------------------------------------------------------------- */
 
 static int test_gamut_map_clip(void) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "data/fixtures/gamut_map_clip.csv"
     };
+    ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
@@ -140,9 +143,12 @@ static int test_gamut_map_clip(void) {
 }
 
 static int test_gamut_map_hue_preserving(void) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "data/fixtures/gamut_map_hue_preserving.csv"
     };
+    ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
     /* Relaxed tolerance for hue-preserving (involves iterative algorithm) */

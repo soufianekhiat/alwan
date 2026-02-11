@@ -12,9 +12,12 @@
 /* Test CCT estimation using McCamy's approximation */
 static int test_cct_mccamy(void) {
     /* Load test cases: x, y, expected_cct */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "data/fixtures/cct_test_cases.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_tests = sizeof(test_data) / sizeof(test_data[0]) / 3;
 
     for (size_t i = 0; i < num_tests; i++) {
@@ -44,9 +47,12 @@ static int test_cct_mccamy(void) {
 /* Test CCT estimation using Robertson's method */
 static int test_cct_robertson(void) {
     /* Load test cases: x, y, expected_cct */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "data/fixtures/cct_test_cases.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_tests = sizeof(test_data) / sizeof(test_data[0]) / 3;
 
     for (size_t i = 0; i < num_tests; i++) {

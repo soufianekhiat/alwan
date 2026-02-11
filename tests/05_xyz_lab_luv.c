@@ -413,7 +413,7 @@ int test_05_xyz_lab_luv_main(void) {
         printf("\n=== All color space conversion tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);
+        printf("\n=== %d test(s) failed ===\n", failures);
         return 1;
     }
 }

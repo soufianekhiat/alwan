@@ -282,7 +282,7 @@ int test_10_view_transforms_main(void) {
         printf("\n=== All view transform tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);
+        printf("\n=== %d test(s) failed ===\n", failures);
         return 1;
     }
 }

@@ -18,9 +18,12 @@
  * ---------------------------------------------------------------- */
 
 /* Hunt-Pointer-Estevez matrix for XYZ to LMS conversion */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_HPE[9] = {
 #include "data/matrices/hpe.csv"
 };
+ALWAN_DIAG_POP
 
 /* RLAB reference space transformation matrix */
 static alwan_scalar const M_RLAB[9] = {

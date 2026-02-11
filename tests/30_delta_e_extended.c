@@ -363,7 +363,7 @@ int test_30_delta_e_extended_main(void) {
         printf("\n=== All extended ΔE metric tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);
+        printf("\n=== %d test(s) failed ===\n", failures);
         return 1;
     }
 }

@@ -16,7 +16,7 @@ static int validate_space_descriptor(char const *name, alwan_rgb_space_desc cons
      * Note: Wide-gamut spaces can have primaries outside [0,1] (e.g., ACES, DaVinci, RED) */
     for (int i = 0; i < 6; i++) {
         if (desc->primaries_xy[i] < ALWAN_LITERAL(-0.2) || desc->primaries_xy[i] > ALWAN_LITERAL(1.5)) {
-            fprintf(stderr, "[FAIL] %s: Primary[%d] = %f out of reasonable range [-0.2,1.5]\n",
+            printf("[FAIL] %s: Primary[%d] = %f out of reasonable range [-0.2,1.5]\n",
                     name, i, desc->primaries_xy[i]);
             return 0;
         }
@@ -25,7 +25,7 @@ static int validate_space_descriptor(char const *name, alwan_rgb_space_desc cons
     /* Check white point is within valid range */
     if (desc->white_xy[0] < ALWAN_LITERAL(0.0) || desc->white_xy[0] > ALWAN_LITERAL(1.0) ||
         desc->white_xy[1] < ALWAN_LITERAL(0.0) || desc->white_xy[1] > ALWAN_LITERAL(1.0)) {
-        fprintf(stderr, "[FAIL] %s: White point (%f, %f) out of range [0,1]\n",
+        printf("[FAIL] %s: White point (%f, %f) out of range [0,1]\n",
                 name, desc->white_xy[0], desc->white_xy[1]);
         return 0;
     }
@@ -36,7 +36,7 @@ static int validate_space_descriptor(char const *name, alwan_rgb_space_desc cons
         alwan_scalar x = desc->primaries_xy[i * 2];
         alwan_scalar y = desc->primaries_xy[i * 2 + 1];
         if (x + y > ALWAN_LITERAL(1.7)) {  /* Allow wide-gamut extended primaries */
-            fprintf(stderr, "[WARNING] %s: Primary[%d] x+y = %f > 1.7 (extended/imaginary primary)\n",
+            printf("[WARNING] %s: Primary[%d] x+y = %f > 1.7 (extended/imaginary primary)\n",
                     name, i, x + y);
             /* Don't fail - some spaces like RED, DaVinci, and Cinema Gamut use extended primaries */
         }
@@ -45,7 +45,7 @@ static int validate_space_descriptor(char const *name, alwan_rgb_space_desc cons
     alwan_scalar wx = desc->white_xy[0];
     alwan_scalar wy = desc->white_xy[1];
     if (wx + wy > ALWAN_LITERAL(1.01)) {  /* White point should be valid */
-        fprintf(stderr, "[FAIL] %s: White point x+y = %f > 1\n",
+        printf("[FAIL] %s: White point x+y = %f > 1\n",
                 name, wx + wy);
         return 0;
     }
@@ -59,7 +59,7 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
     int status = alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, desc);
 
     if (status != ALWAN_OK) {
-        fprintf(stderr, "[FAIL] %s: Failed to derive matrices (status=%d)\n", name, status);
+        printf("[FAIL] %s: Failed to derive matrices (status=%d)\n", name, status);
         return 0;
     }
 
@@ -85,7 +85,7 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
     alwan_scalar tol = TEST_TOLERANCE;
 
     if (diag_err > tol || offdiag_err > tol) {
-        fprintf(stderr, "[FAIL] %s: Matrix inversion error too large (diag=%e, offdiag=%e)\n",
+        printf("[FAIL] %s: Matrix inversion error too large (diag=%e, offdiag=%e)\n",
                 name, diag_err, offdiag_err);
         return 0;
     }
@@ -196,7 +196,7 @@ static int test_cinema_spaces(void) {
         int status = alwan_rgb_get_space_descriptor(&desc, ctx, cinema_spaces[i].space);
 
         if (status != ALWAN_OK) {
-            fprintf(stderr, "[FAIL] Failed to get %s descriptor (status=%d)\n",
+            printf("[FAIL] Failed to get %s descriptor (status=%d)\n",
                     cinema_spaces[i].name, status);
             alwan_destroy(ctx);
             return 0;
@@ -263,7 +263,7 @@ static int test_legacy_spaces(void) {
         int status = alwan_rgb_get_space_descriptor(&desc, ctx, legacy_spaces[i].space);
 
         if (status != ALWAN_OK) {
-            fprintf(stderr, "[FAIL] Failed to get %s descriptor (status=%d)\n",
+            printf("[FAIL] Failed to get %s descriptor (status=%d)\n",
                     legacy_spaces[i].name, status);
             alwan_destroy(ctx);
             return 0;
@@ -316,7 +316,7 @@ static int test_additional_spaces(void) {
         int status = alwan_rgb_get_space_descriptor(&desc, ctx, additional_spaces[i].space);
 
         if (status != ALWAN_OK) {
-            fprintf(stderr, "[FAIL] Failed to get %s descriptor (status=%d)\n",
+            printf("[FAIL] Failed to get %s descriptor (status=%d)\n",
                     additional_spaces[i].name, status);
             alwan_destroy(ctx);
             return 0;
@@ -377,7 +377,7 @@ static int test_core_spaces(void) {
         int status = alwan_rgb_get_space_descriptor(&desc, ctx, core_spaces[i].space);
 
         if (status != ALWAN_OK) {
-            fprintf(stderr, "[FAIL] Failed to get %s descriptor (status=%d)\n",
+            printf("[FAIL] Failed to get %s descriptor (status=%d)\n",
                     core_spaces[i].name, status);
             alwan_destroy(ctx);
             return 0;
@@ -495,7 +495,7 @@ int test_33_rgb_spaces_p5_main(void) {
         printf("\n=== All P5 RGB space tests passed (%d/%d) ===\n", passed, total);
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d/%d P5 RGB space test(s) failed ===\n",
+        printf("\n=== %d/%d P5 RGB space test(s) failed ===\n",
                 total - passed, total);
         return 1;
     }

@@ -18,9 +18,12 @@
  * ---------------------------------------------------------------- */
 
 /* Hunt-Pointer-Estevez matrix */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_HPE[9] = {
 #include "data/matrices/hpe.csv"
 };
+ALWAN_DIAG_POP
 
 /* Viewing condition parameters (Nc, Nb) */
 static void get_hunt_params(alwan_hunt_surround surround,

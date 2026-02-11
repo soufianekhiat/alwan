@@ -227,9 +227,12 @@ int alwan_gamut_map_xyz_to_rgb(alwan_rgb *rgb_out,
 /* Pointer's Gamut boundary in CIE 1931 xy chromaticity (32 points)
  * Data from MacAdam (1935), reanalyzed for Illuminant C
  * Source: colour-science CCS_POINTER_GAMUT_BOUNDARY */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_vec2 const POINTER_GAMUT_BOUNDARY[32] = {
 #include "data/gamut/pointer_gamut_boundary_xy.csv"
 };
+ALWAN_DIAG_POP
 
 /* Check if a point is inside a 2D polygon using ray casting algorithm
  * Returns 1 if inside, 0 if outside */
@@ -276,9 +279,12 @@ alwan_vec2 const* alwan_pointer_gamut_boundary(size_t *count_out) {
 
 /* CIE 1931 spectral locus xy chromaticity data (360-830nm, 1nm interval, 471 points)
  * Computed from CIE 1931 2° observer CMFs */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_vec2 const SPECTRAL_LOCUS_XY[471] = {
 #include "data/gamut/spectral_locus_xy_only_360_830_1nm.csv"
 };
+ALWAN_DIAG_POP
 
 #define SPECTRAL_LOCUS_WL_MIN ALWAN_LITERAL(360.0)
 #define SPECTRAL_LOCUS_WL_MAX ALWAN_LITERAL(830.0)

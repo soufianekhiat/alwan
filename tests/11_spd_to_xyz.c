@@ -256,7 +256,7 @@ int test_11_spd_to_xyz_main(void) {
         printf("\n=== All SPD tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);
+        printf("\n=== %d test(s) failed ===\n", failures);
         return 1;
     }
 }

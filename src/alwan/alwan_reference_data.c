@@ -242,9 +242,12 @@ int alwan_xyz_to_munsell(alwan_scalar *hue, alwan_scalar *value, alwan_scalar *c
 /* ColorChecker Classic 24-patch data (D50, xyY)
  * Generated from colour-science SDS_COLOURCHECKERS['ColorChecker N Ohta']
  * Format: 24 patches × 3 values (x, y, Y) = 72 values total */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const g_colorchecker_classic_d50_xyY[] = {
 #include "data/colorchecker/classic_d50_xyy.csv"
 };
+ALWAN_DIAG_POP
 
 /* Get number of patches in a Color Checker target */
 size_t alwan_color_checker_num_patches(alwan_colorchecker_type type) {

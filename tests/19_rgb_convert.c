@@ -75,9 +75,12 @@ static alwan_rgb_space_desc get_acescg_desc(void) {
 
 /* Test sRGB to Display P3 conversion (same white point) */
 static int test_srgb_to_p3(alwan_ctx *ctx) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "data/fixtures/rgb_convert_srgb_to_p3.csv"
     };
+    ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;  /* 6 values per color (src + dst RGB) */
 
@@ -116,9 +119,12 @@ static int test_srgb_to_p3(alwan_ctx *ctx) {
 
 /* Test sRGB to BT.2020 conversion (same white point, wider gamut) */
 static int test_srgb_to_bt2020(alwan_ctx *ctx) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "data/fixtures/rgb_convert_srgb_to_bt2020.csv"
     };
+    ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
@@ -157,9 +163,12 @@ static int test_srgb_to_bt2020(alwan_ctx *ctx) {
 
 /* Test sRGB to ACEScg conversion (different white point, needs CAT) */
 static int test_srgb_to_acescg(alwan_ctx *ctx) {
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "data/fixtures/rgb_convert_srgb_to_acescg.csv"
     };
+    ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 

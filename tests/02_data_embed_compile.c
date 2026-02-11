@@ -71,7 +71,7 @@ static int test_srgb_primaries(void) {
     for (int i = 0; i < 6; i++) {
         alwan_scalar diff = ALWAN_ABS(g_srgb_primaries[i] - expected[i]);
         if (diff > 1e-5) {
-            fprintf(stderr, "  Primary [%d] mismatch: %f vs %f (diff %e)\n",
+            printf("  Primary [%d] mismatch: %f vs %f (diff %e)\n",
                     i, g_srgb_primaries[i], expected[i], diff);
             TEST_ASSERT(0, "sRGB primary value mismatch");
         }
@@ -125,7 +125,7 @@ int test_02_data_embed_main(void) {
             passed++;
         } else {
             failed++;
-            fprintf(stderr, "[FAIL] Test '%s' failed\n", tests[i].name);
+            printf("[FAIL] Test '%s' failed\n", tests[i].name);
         }
     }
 

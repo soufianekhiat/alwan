@@ -12,9 +12,12 @@
 /* Test CAM16 forward transform with standard viewing conditions */
 static int test_cam16_forward(void) {
     /* Load viewing conditions from fixture (XYZ_w, L_A, Y_b) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Standard D65 viewing conditions (average surround) */
     alwan_cam16_viewing_conditions vc;
@@ -27,15 +30,21 @@ static int test_cam16_forward(void) {
     vc.discount_illuminant = 0;
 
     /* Load test XYZ colors (same as CIECAM02) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_xyz[] = {
 #include "reference_values/ciecam02_xyz_input.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
     /* Load expected correlates (J, C, h, Q, M, s, H for each color) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_correlates[] = {
 #include "reference_values/cam16_correlates.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Test forward transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
@@ -106,9 +115,12 @@ static int test_cam16_forward(void) {
 /* Test CAM16 inverse transform */
 static int test_cam16_inverse(void) {
     /* Load viewing conditions from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Standard D65 viewing conditions */
     alwan_cam16_viewing_conditions vc;
@@ -121,15 +133,21 @@ static int test_cam16_inverse(void) {
     vc.discount_illuminant = 0;
 
     /* Load correlates (J, C, h) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const correlates_data[] = {
 #include "reference_values/cam16_correlates.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_colors = sizeof(correlates_data) / sizeof(correlates_data[0]) / 7;
 
     /* Load expected reconstructed XYZ */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_xyz[] = {
 #include "reference_values/cam16_xyz_reconstructed.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Test inverse transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
@@ -169,9 +187,12 @@ static int test_cam16_inverse(void) {
 /* Test CAM16 round-trip (XYZ -> correlates -> XYZ) */
 static int test_cam16_roundtrip(void) {
     /* Load viewing conditions from fixture */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Standard D65 viewing conditions */
     alwan_cam16_viewing_conditions vc;
@@ -184,9 +205,12 @@ static int test_cam16_roundtrip(void) {
     vc.discount_illuminant = 0;
 
     /* Load test XYZ colors */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_xyz[] = {
 #include "reference_values/ciecam02_xyz_input.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
     /* Test round-trip for each color */
@@ -231,15 +255,21 @@ static int test_cam16_roundtrip(void) {
 /* Test CAM16-UCS forward transform (JMh -> Jab) */
 static int test_cam16_ucs_forward(void) {
     /* Load CAM16 correlates */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const correlates_data[] = {
 #include "reference_values/cam16_correlates.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_colors = sizeof(correlates_data) / sizeof(correlates_data[0]) / 7;
 
     /* Load expected CAM16-UCS Jab coordinates */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_jab[] = {
 #include "reference_values/cam16_ucs_jab.csv"
     };
+    ALWAN_DIAG_POP
 
     /* Test UCS transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
@@ -275,9 +305,12 @@ static int test_cam16_ucs_forward(void) {
 /* Test CAM16-UCS round-trip (JMh -> Jab -> JMh) */
 static int test_cam16_ucs_roundtrip(void) {
     /* Load CAM16 correlates */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const correlates_data[] = {
 #include "reference_values/cam16_correlates.csv"
     };
+    ALWAN_DIAG_POP
     size_t const num_colors = sizeof(correlates_data) / sizeof(correlates_data[0]) / 7;
 
     /* Test UCS round-trip for each color */

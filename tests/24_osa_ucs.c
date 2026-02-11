@@ -9,9 +9,12 @@
  * ---------------------------------------------------------------- */
 
 static int test_xyz_osa_ucs_forward(void) {
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_data[] = {
 #include "reference_values/test_xyz_osa_ucs_pairs.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 

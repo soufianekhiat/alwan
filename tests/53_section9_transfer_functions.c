@@ -19,52 +19,76 @@
  * ============================================================================ */
 
 /* Apple Log encoded input values (0-1 range) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const apple_log_decode_input[] = {
 #include "reference_values/apple_log_decode_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_APPLE_LOG_DECODE (sizeof(apple_log_decode_input) / sizeof(apple_log_decode_input[0]))
 
 /* Expected linear values after decoding */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const apple_log_decode_expected[] = {
 #include "reference_values/apple_log_decode_output.csv"
 };
+ALWAN_DIAG_POP
 
 /* Linear input values for encoding */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const apple_log_encode_input[] = {
 #include "reference_values/apple_log_encode_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_APPLE_LOG_ENCODE (sizeof(apple_log_encode_input) / sizeof(apple_log_encode_input[0]))
 
 /* Expected Apple Log encoded values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const apple_log_encode_expected[] = {
 #include "reference_values/apple_log_encode_output.csv"
 };
+ALWAN_DIAG_POP
 
 /* ============================================================================
  * DCDM Test Data (from OCIO BuiltinTransform)
  * ============================================================================ */
 
 /* Linear input values for DCDM encoding */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const dcdm_encode_input[] = {
 #include "reference_values/dcdm_encode_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_DCDM_ENCODE (sizeof(dcdm_encode_input) / sizeof(dcdm_encode_input[0]))
 
 /* Expected DCDM encoded values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const dcdm_encode_expected[] = {
 #include "reference_values/dcdm_encode_output.csv"
 };
+ALWAN_DIAG_POP
 
 /* DCDM encoded input values for decoding */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const dcdm_decode_input[] = {
 #include "reference_values/dcdm_decode_input.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_DCDM_DECODE (sizeof(dcdm_decode_input) / sizeof(dcdm_decode_input[0]))
 
 /* Expected linear values after decoding */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const dcdm_decode_expected[] = {
 #include "reference_values/dcdm_decode_output.csv"
 };
+ALWAN_DIAG_POP
 
 /* ============================================================================
  * Apple Log Tests

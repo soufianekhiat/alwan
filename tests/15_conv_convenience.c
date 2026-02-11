@@ -10,41 +10,68 @@
 #include <stdlib.h>
 
 /* Test fixtures: RGB input and expected values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const test_rgb[] = {
 #include "reference_values/test_rgb_colors.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const expected_hsv[] = {
 #include "reference_values/rgb_to_hsv.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const expected_hsl[] = {
 #include "reference_values/rgb_to_hsl.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const expected_cmy[] = {
 #include "reference_values/rgb_to_cmy.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const expected_cmyk[] = {
 #include "reference_values/rgb_to_cmyk.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const expected_ycbcr_bt601[] = {
 #include "reference_values/rgb_to_ycbcr_bt601.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const expected_ycbcr_bt709[] = {
 #include "reference_values/rgb_to_ycbcr_bt709.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const expected_ycbcr_bt2020[] = {
 #include "reference_values/rgb_to_ycbcr_bt2020.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const expected_yccbccrc[] = {
 #include "reference_values/rgb_to_yccbccrc.csv"
 };
+ALWAN_DIAG_POP
 
 #define NUM_TEST_COLORS 11
 

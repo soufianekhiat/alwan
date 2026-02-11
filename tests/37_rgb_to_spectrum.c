@@ -182,7 +182,7 @@ static int test_smits1999_round_trip(char const *color_name,
     alwan_scalar diff = vec3_max_diff(&xyz_recovered, &expected);
 
     if (diff >= tolerance) {
-        fprintf(stderr, "Round-trip error too large: max_diff = %.6f (tolerance = %.6f)\n",
+        printf("Round-trip error too large: max_diff = %.6f (tolerance = %.6f)\n",
                 diff, tolerance);
         rgb_print("  RGB input", &rgb);
         vec3_print("  XYZ expected", &expected);
@@ -251,7 +251,7 @@ static int test_mallett2019_round_trip(char const *color_name,
     alwan_scalar diff = vec3_max_diff(&xyz_recovered, &expected);
 
     if (diff >= tolerance) {
-        fprintf(stderr, "Round-trip error too large: max_diff = %.6f (tolerance = %.6f)\n",
+        printf("Round-trip error too large: max_diff = %.6f (tolerance = %.6f)\n",
                 diff, tolerance);
         rgb_print("  RGB input", &rgb);
         vec3_print("  XYZ expected", &expected);

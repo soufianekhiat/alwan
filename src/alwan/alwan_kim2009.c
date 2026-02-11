@@ -20,24 +20,36 @@
  * ---------------------------------------------------------------- */
 
 /* CAT02 matrix for chromatic adaptation transform (from colour-science) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_CAT02[9] = {
 #include "data/matrices/cat_cat02.csv"
 };
+ALWAN_DIAG_POP
 
 /* Inverse CAT02 matrix (from colour-science) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_CAT02_inv[9] = {
 #include "data/matrices/cat_cat02_inv.csv"
 };
+ALWAN_DIAG_POP
 
 /* Hunt-Pointer-Estevez (HPE) matrix for XYZ to LMS conversion (from colour-science) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_HPE[9] = {
 #include "data/matrices/hpe.csv"
 };
+ALWAN_DIAG_POP
 
 /* Inverse HPE matrix for LMS to XYZ conversion (from colour-science) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_HPE_inv[9] = {
 #include "data/matrices/hpe_inv.csv"
 };
+ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
  * Kim2009 Mathematical Constants

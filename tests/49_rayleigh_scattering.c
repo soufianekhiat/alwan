@@ -4,7 +4,6 @@
 
 #include "alwan.h"
 #include "alwan_internal.h"
-#define TEST_USE_COUNTERS
 #include "test_common.h"
 #include <stdio.h>
 #include <string.h>
@@ -15,84 +14,129 @@
  * ================================================================ */
 
 /* Wavelengths in nm */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar wavelengths_nm[] = {
 #include "reference_values/rayleigh_wavelengths_nm.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_WAVELENGTHS (sizeof(wavelengths_nm) / sizeof(wavelengths_nm[0]))
 
 /* Cross section with default params (cm^2) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_cross_section_default[] = {
 #include "reference_values/rayleigh_cross_section_default.csv"
 };
+ALWAN_DIAG_POP
 
 /* Optical depth with default params */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_optical_depth_default[] = {
 #include "reference_values/rayleigh_optical_depth_default.csv"
 };
+ALWAN_DIAG_POP
 
 /* CO2 concentration levels */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar co2_levels[] = {
 #include "reference_values/rayleigh_co2_levels.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_CO2_LEVELS (sizeof(co2_levels) / sizeof(co2_levels[0]))
 
 /* Cross section at 555nm for different CO2 levels */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_cross_section_co2_555nm[] = {
 #include "reference_values/rayleigh_cross_section_co2_555nm.csv"
 };
+ALWAN_DIAG_POP
 
 /* Pressure levels (Pa) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar pressures[] = {
 #include "reference_values/rayleigh_pressures.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_PRESSURES (sizeof(pressures) / sizeof(pressures[0]))
 
 /* Optical depth at 555nm for different pressures */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_optical_depth_pressure_555nm[] = {
 #include "reference_values/rayleigh_optical_depth_pressure_555nm.csv"
 };
+ALWAN_DIAG_POP
 
 /* Latitudes (degrees) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar latitudes[] = {
 #include "reference_values/rayleigh_latitudes.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_LATITUDES (sizeof(latitudes) / sizeof(latitudes[0]))
 
 /* Optical depth at 555nm for different latitudes */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_optical_depth_latitude_555nm[] = {
 #include "reference_values/rayleigh_optical_depth_latitude_555nm.csv"
 };
+ALWAN_DIAG_POP
 
 /* Altitudes (meters) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar altitudes[] = {
 #include "reference_values/rayleigh_altitudes.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_ALTITUDES (sizeof(altitudes) / sizeof(altitudes[0]))
 
 /* Optical depth at 555nm for different altitudes */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_optical_depth_altitude_555nm[] = {
 #include "reference_values/rayleigh_optical_depth_altitude_555nm.csv"
 };
+ALWAN_DIAG_POP
 
 /* Combined parameter test results */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_optical_depth_combined[] = {
 #include "reference_values/rayleigh_optical_depth_combined.csv"
 };
+ALWAN_DIAG_POP
 
 /* Combined params: lat, alt pairs (Paris, Denver, high altitude) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar combined_params[] = {
 #include "reference_values/rayleigh_combined_params.csv"
 };
+ALWAN_DIAG_POP
 
 /* SPD parameters: start, end, step */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar spd_params[] = {
 #include "reference_values/rayleigh_spd_params.csv"
 };
+ALWAN_DIAG_POP
 
 /* SPD reference values */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ref_spd_default[] = {
 #include "reference_values/rayleigh_spd_default.csv"
 };
+ALWAN_DIAG_POP
 #define NUM_SPD_VALUES (sizeof(ref_spd_default) / sizeof(ref_spd_default[0]))
 
 /* ================================================================

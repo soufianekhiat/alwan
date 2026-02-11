@@ -125,7 +125,7 @@ int test_00_context_main(void) {
             passed++;
         } else {
             failed++;
-            fprintf(stderr, "[FAIL] Test '%s' failed\n", tests[i].name);
+            printf("[FAIL] Test '%s' failed\n", tests[i].name);
         }
     }
 

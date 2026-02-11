@@ -9,21 +9,21 @@
  * ---------------------------------------------------------------- */
 
 /* DIN99 variant test data - embedded at compile time */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const g_din99_test_data[] = {
 #include "reference_values/test_lab_din99_pairs.csv"
 };
-
 static alwan_scalar const g_din99b_test_data[] = {
 #include "reference_values/test_lab_din99b_pairs.csv"
 };
-
 static alwan_scalar const g_din99c_test_data[] = {
 #include "reference_values/test_lab_din99c_pairs.csv"
 };
-
 static alwan_scalar const g_din99d_test_data[] = {
 #include "reference_values/test_lab_din99d_pairs.csv"
 };
+ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
  * Test Lab <-> DIN99 conversions

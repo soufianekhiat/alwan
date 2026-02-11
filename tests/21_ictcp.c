@@ -25,9 +25,12 @@ static int test_rgb_to_ictcp_pq(void) {
         ALWAN_LITERAL(5.0), ALWAN_LITERAL(5.0), ALWAN_LITERAL(5.0)       /* HDR bright */
     };
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_ictcp[] = {
 #include "reference_values/ictcp_pq_from_rgb.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_rgb) / sizeof(test_rgb[0]) / 3;
 
@@ -86,9 +89,12 @@ static int test_ictcp_pq_to_rgb_roundtrip(void) {
         ALWAN_LITERAL(5.0), ALWAN_LITERAL(5.0), ALWAN_LITERAL(5.0)
     };
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_rgb_reconstructed[] = {
 #include "reference_values/rgb_from_ictcp_pq.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_rgb) / sizeof(test_rgb[0]) / 3;
 
@@ -155,9 +161,12 @@ static int test_rgb_to_ictcp_hlg(void) {
         ALWAN_LITERAL(5.0), ALWAN_LITERAL(5.0), ALWAN_LITERAL(5.0)
     };
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_ictcp[] = {
 #include "reference_values/ictcp_hlg_from_rgb.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_rgb) / sizeof(test_rgb[0]) / 3;
 
@@ -216,9 +225,12 @@ static int test_ictcp_hlg_to_rgb_roundtrip(void) {
         ALWAN_LITERAL(5.0), ALWAN_LITERAL(5.0), ALWAN_LITERAL(5.0)
     };
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_rgb_reconstructed[] = {
 #include "reference_values/rgb_from_ictcp_hlg.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_rgb) / sizeof(test_rgb[0]) / 3;
 
@@ -274,13 +286,19 @@ static int test_ictcp_hlg_to_rgb_roundtrip(void) {
 
 static int test_xyz_to_ictcp_pq(void) {
     /* Load standard test XYZ colors */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_xyz[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_ictcp[] = {
 #include "reference_values/ictcp_pq_from_xyz.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
@@ -317,13 +335,19 @@ static int test_xyz_to_ictcp_pq(void) {
 
 static int test_xyz_to_ictcp_hlg(void) {
     /* Load standard test XYZ colors */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const test_xyz[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const expected_ictcp[] = {
 #include "reference_values/ictcp_hlg_from_xyz.csv"
     };
+ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 

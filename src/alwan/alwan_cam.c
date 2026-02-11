@@ -381,9 +381,12 @@ int alwan_ciecam02_inverse(alwan_xyz *xyz_out,
  * ---------------------------------------------------------------- */
 
 /* CAM16 adaptation matrix (CAT16) for XYZ to LMS conversion */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const M_CAT16[9] = {
 #include "data/matrices/cat_cat16.csv"
 };
+ALWAN_DIAG_POP
 
 /* Inverse CAT16 matrix for LMS to XYZ conversion */
 static alwan_scalar const M_CAT16_inv[9] = {

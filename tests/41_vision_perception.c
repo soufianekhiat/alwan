@@ -136,21 +136,33 @@ static int test_cvd_normal_vision(void) {
  * ---------------------------------------------------------------- */
 
 /* Embedded test data - compiled at build time */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const g_photopic_wavelengths[] = {
 #include "reference_values/photopic_efficiency_wavelengths.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const g_photopic_values[] = {
 #include "reference_values/photopic_efficiency_values.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const g_scotopic_wavelengths[] = {
 #include "reference_values/scotopic_efficiency_wavelengths.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const g_scotopic_values[] = {
 #include "reference_values/scotopic_efficiency_values.csv"
 };
+ALWAN_DIAG_POP
 
 static int test_photopic_efficiency(void) {
     /* Use embedded reference values from colour-science */

@@ -1,6 +1,5 @@
 /* Test suite for Color Correction & Grading Tools */
 
-#define TEST_USE_COUNTERS
 #include "test_common.h"
 #include <string.h>
 
@@ -98,9 +97,12 @@ static int test_lgg_combined(void)
     printf("  TEST: LGG combined adjustments\n");
 
     /* Reference values from colour-science (generate_data_tests.ps1) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_lgg_combined[] = {
 #include "reference_values/lgg_combined.csv"
     };
+    ALWAN_DIAG_POP
 
     alwan_rgb rgb_in = {0.3, 0.5, 0.7};
     alwan_rgb lift = {0.1, 0.0, -0.1};
@@ -147,9 +149,12 @@ static int test_color_matrix_sepia(void)
     printf("  TEST: Sepia color matrix preset\n");
 
     /* Reference values from colour-science (generate_data_tests.ps1) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_sepia[] = {
 #include "reference_values/color_matrix_sepia.csv"
     };
+    ALWAN_DIAG_POP
 
     alwan_mat3x3 sepia_matrix;
     int status = alwan_color_matrix_get_preset(&sepia_matrix, ALWAN_COLOR_MATRIX_SEPIA);
@@ -278,9 +283,12 @@ static int test_printer_lights_per_channel(void)
     printf("  TEST: Printer lights per-channel control\n");
 
     /* Reference values from colour-science (generate_data_tests.ps1) */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_printer_lights[] = {
 #include "reference_values/printer_lights_per_channel.csv"
     };
+    ALWAN_DIAG_POP
 
     alwan_rgb rgb_in = {0.3, 0.5, 0.7};
     alwan_rgb rgb_out;
@@ -306,6 +314,8 @@ static int test_cheung2004_expand_basic(void)
     printf("  TEST: Cheung 2004 polynomial expansion (basic terms)\n");
 
     /* Reference values from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_input[] = {
 #include "reference_values/cheung2004_input_rgb.csv"
     };
@@ -318,6 +328,7 @@ static int test_cheung2004_expand_basic(void)
     static alwan_scalar const ref_expand_11[] = {
 #include "reference_values/cheung2004_expand_11.csv"
     };
+    ALWAN_DIAG_POP
 
     int num_samples = 6;
     alwan_scalar expanded[35];
@@ -363,12 +374,15 @@ static int test_cheung2004_expand_full(void)
     printf("  TEST: Cheung 2004 polynomial expansion (35-term)\n");
 
     /* Reference values from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_input[] = {
 #include "reference_values/cheung2004_input_rgb.csv"
     };
     static alwan_scalar const ref_expand_35[] = {
 #include "reference_values/cheung2004_expand_35.csv"
     };
+    ALWAN_DIAG_POP
 
     int num_samples = 6;
     alwan_scalar expanded[35];
@@ -395,6 +409,8 @@ static int test_finlayson2015_expand_standard(void)
     printf("  TEST: Finlayson 2015 standard polynomial expansion\n");
 
     /* Reference values from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_input[] = {
 #include "reference_values/finlayson2015_input_rgb.csv"
     };
@@ -404,6 +420,7 @@ static int test_finlayson2015_expand_standard(void)
     static alwan_scalar const ref_deg3[] = {
 #include "reference_values/finlayson2015_std_deg3.csv"
     };
+    ALWAN_DIAG_POP
 
     int num_samples = 4;
     alwan_scalar expanded[34];
@@ -441,6 +458,8 @@ static int test_finlayson2015_expand_root(void)
     printf("  TEST: Finlayson 2015 root-polynomial expansion\n");
 
     /* Reference values from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_input[] = {
 #include "reference_values/finlayson2015_input_rgb.csv"
     };
@@ -450,6 +469,7 @@ static int test_finlayson2015_expand_root(void)
     static alwan_scalar const ref_root_deg3[] = {
 #include "reference_values/finlayson2015_root_deg3.csv"
     };
+    ALWAN_DIAG_POP
 
     int num_samples = 4;
     alwan_scalar expanded[34];
@@ -491,6 +511,8 @@ static int test_vandermonde_expand(void)
     printf("  TEST: Vandermonde polynomial expansion\n");
 
     /* Reference values from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_input[] = {
 #include "reference_values/vandermonde_input.csv"
     };
@@ -500,6 +522,7 @@ static int test_vandermonde_expand(void)
     static alwan_scalar const ref_deg3[] = {
 #include "reference_values/vandermonde_deg3.csv"
     };
+    ALWAN_DIAG_POP
 
     int num_samples = 3;
     alwan_scalar expanded[20];
@@ -539,12 +562,15 @@ static int test_white_balance(void)
     printf("  TEST: White balance from gray card\n");
 
     /* Reference values from colour-science */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ref_grays[] = {
 #include "reference_values/white_balance_input_gray.csv"
     };
     static alwan_scalar const ref_multipliers[] = {
 #include "reference_values/white_balance_multipliers.csv"
     };
+    ALWAN_DIAG_POP
 
     int num_samples = 5;
 

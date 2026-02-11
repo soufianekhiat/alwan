@@ -179,7 +179,7 @@ static int test_dlog_known_values(void) {
         alwan_oetf_apply(&encoded, ALWAN_TF_DLOG, &known_pairs[i].linear, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
         alwan_scalar diff = ALWAN_ABS(encoded - known_pairs[i].encoded);
         if (diff >= TEST_TOLERANCE) {
-            fprintf(stderr, "D-Log: linear=%g, expected=%g, got=%g, diff=%g\n",
+            printf("D-Log: linear=%g, expected=%g, got=%g, diff=%g\n",
                     (double)known_pairs[i].linear, (double)known_pairs[i].encoded, (double)encoded, (double)diff);
         }
         TEST_ASSERT(diff < TEST_TOLERANCE, "D-Log known value exceeded");
@@ -513,7 +513,7 @@ int test_57_aces_lmt_tf_main(void) {
     int failed = 0, passed = 0;
     size_t const num_tests = sizeof(tests) / sizeof(tests[0]);
     for (size_t i = 0; i < num_tests; i++) {
-        if (tests[i].fn() == 0) passed++; else { failed++; fprintf(stderr, "[FAIL] Test '%s' failed\n", tests[i].name); }
+        if (tests[i].fn() == 0) passed++; else { failed++; printf("[FAIL] Test '%s' failed\n", tests[i].name); }
     }
     printf("\n========================================\n");
     printf("Results: %d passed, %d failed (out of %zu)\n", passed, failed, num_tests);

@@ -14,21 +14,15 @@
 #include <stdio.h>
 
 /* ============================================================================
- * Test Counters (optional - define TEST_USE_COUNTERS before including)
+ * Test Counters
  * ============================================================================ */
 
-#ifdef TEST_USE_COUNTERS
 static int test_count = 0;
 static int test_passed = 0;
 static int test_failed = 0;
 #define TEST_COUNT_INCR() (test_count++)
 #define TEST_PASS_INCR() (test_passed++)
 #define TEST_FAIL_INCR() (test_failed++)
-#else
-#define TEST_COUNT_INCR() ((void)0)
-#define TEST_PASS_INCR() ((void)0)
-#define TEST_FAIL_INCR() ((void)0)
-#endif
 
 /* ============================================================================
  * Standard Test Tolerance

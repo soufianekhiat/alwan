@@ -25,38 +25,62 @@
 #define SMITS1999_WAVELENGTH_MAX ALWAN_LITERAL(720.0)
 
 /* Wavelengths (shared across all basis spectra) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const smits1999_wavelengths[SMITS1999_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/smits1999/wavelengths.csv"
 };
+ALWAN_DIAG_POP
 
 /* Basis spectra: white, cyan, magenta, yellow, red, green, blue */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const smits1999_white[SMITS1999_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/smits1999/white.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const smits1999_cyan[SMITS1999_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/smits1999/cyan.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const smits1999_magenta[SMITS1999_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/smits1999/magenta.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const smits1999_yellow[SMITS1999_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/smits1999/yellow.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const smits1999_red[SMITS1999_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/smits1999/red.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const smits1999_green[SMITS1999_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/smits1999/green.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const smits1999_blue[SMITS1999_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/smits1999/blue.csv"
 };
+ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
  * Mallett2019 Basis Functions Data
@@ -70,22 +94,34 @@ static alwan_scalar const smits1999_blue[SMITS1999_WAVELENGTH_COUNT] = {
 #define MALLETT2019_WAVELENGTH_MAX ALWAN_LITERAL(780.0)
 
 /* Wavelengths (shared across all basis functions) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const mallett2019_wavelengths[MALLETT2019_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/mallett2019/wavelengths.csv"
 };
+ALWAN_DIAG_POP
 
 /* Basis functions: red, green, blue */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const mallett2019_red[MALLETT2019_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/mallett2019/red.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const mallett2019_green[MALLETT2019_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/mallett2019/green.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const mallett2019_blue[MALLETT2019_WAVELENGTH_COUNT] = {
 #include "data/spectral_basis/mallett2019/blue.csv"
 };
+ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
  * Jakob2019 Polynomial LUT Data
@@ -104,82 +140,136 @@ static alwan_scalar const mallett2019_blue[MALLETT2019_WAVELENGTH_COUNT] = {
 #define JAKOB2019_LUT_SIZE (JAKOB2019_LUT_RES * JAKOB2019_LUT_RES * JAKOB2019_LUT_RES)
 
 /* sRGB LUT (default) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_srgb_lut_c0[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c0.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_srgb_lut_c1[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c1.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_srgb_lut_c2[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c2.csv"
 };
+ALWAN_DIAG_POP
 
 /* ProPhoto RGB LUT */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_prophoto_lut_c0[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c0_prophotorgb.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_prophoto_lut_c1[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c1_prophotorgb.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_prophoto_lut_c2[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c2_prophotorgb.csv"
 };
+ALWAN_DIAG_POP
 
 /* ACES2065-1 LUT */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_aces_lut_c0[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c0_aces2065_1.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_aces_lut_c1[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c1_aces2065_1.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_aces_lut_c2[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c2_aces2065_1.csv"
 };
+ALWAN_DIAG_POP
 
 /* Rec.2020 LUT */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_rec2020_lut_c0[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c0_rec2020.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_rec2020_lut_c1[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c1_rec2020.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_rec2020_lut_c2[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c2_rec2020.csv"
 };
+ALWAN_DIAG_POP
 
 /* eRGB LUT */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_ergb_lut_c0[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c0_ergb.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_ergb_lut_c1[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c1_ergb.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_ergb_lut_c2[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c2_ergb.csv"
 };
+ALWAN_DIAG_POP
 
 /* CIE XYZ LUT */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_xyz_lut_c0[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c0_xyz.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_xyz_lut_c1[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c1_xyz.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const jakob2019_xyz_lut_c2[JAKOB2019_LUT_SIZE] = {
 #include "data/spectral_lut/jakob2019/jakob2019_lut_c2_xyz.csv"
 };
+ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
  * Helper Functions

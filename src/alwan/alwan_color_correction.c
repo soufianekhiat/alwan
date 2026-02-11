@@ -611,9 +611,14 @@ int alwan_colour_correction_matrix_cheung2004(alwan_scalar *matrix_out,
         return ALWAN_E_INVALID;
     }
 
-    /* Build expanded matrix from test values */
-    alwan_scalar *A = (alwan_scalar *)malloc(num_samples * terms * sizeof(alwan_scalar));
-    if (!A) return ALWAN_E_INVALID;
+    /* Build expanded matrix from test values (with overflow protection) */
+    size_t row_size = alwan_safe_array_size((size_t)terms, sizeof(alwan_scalar));
+    if (row_size == 0) return ALWAN_E_NOMEM;
+    size_t alloc_size = alwan_safe_array_size((size_t)num_samples, row_size);
+    if (alloc_size == 0) return ALWAN_E_NOMEM;
+
+    alwan_scalar *A = (alwan_scalar *)malloc(alloc_size);
+    if (!A) return ALWAN_E_NOMEM;
 
     for (int i = 0; i < num_samples; i++) {
         alwan_rgb rgb;
@@ -685,9 +690,14 @@ int alwan_colour_correction_matrix_finlayson2015(alwan_scalar *matrix_out, int *
         return ALWAN_E_INVALID;
     }
 
-    /* Build expanded matrix */
-    alwan_scalar *A = (alwan_scalar *)malloc(num_samples * exp_size * sizeof(alwan_scalar));
-    if (!A) return ALWAN_E_INVALID;
+    /* Build expanded matrix (with overflow protection) */
+    size_t row_size = alwan_safe_array_size((size_t)exp_size, sizeof(alwan_scalar));
+    if (row_size == 0) return ALWAN_E_NOMEM;
+    size_t alloc_size = alwan_safe_array_size((size_t)num_samples, row_size);
+    if (alloc_size == 0) return ALWAN_E_NOMEM;
+
+    alwan_scalar *A = (alwan_scalar *)malloc(alloc_size);
+    if (!A) return ALWAN_E_NOMEM;
 
     for (int i = 0; i < num_samples; i++) {
         alwan_rgb rgb;

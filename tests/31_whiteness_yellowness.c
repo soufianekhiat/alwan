@@ -51,7 +51,7 @@ static int test_yellowness_astm_e313(void) {
         alwan_scalar result_c_2 = alwan_yellowness_astm_e313(&xyz, ALWAN_ASTM_E313_C_2DEG);
         alwan_scalar diff_c_2 = ALWAN_ABS(result_c_2 - expected_c_2);
         if (diff_c_2 >= tolerance) {
-            fprintf(stderr, "Sample %d: Expected %.15f, Got %.15f, Diff %.15e\n", i, expected_c_2, result_c_2, diff_c_2);
+            printf("Sample %d: Expected %.15f, Got %.15f, Diff %.15e\n", i, expected_c_2, result_c_2, diff_c_2);
         }
         TEST_ASSERT(diff_c_2 < tolerance, "Yellowness C/2° mismatch");
 
@@ -114,7 +114,7 @@ static int test_whiteness_astm_e313(void) {
         alwan_scalar result_c_2 = alwan_whiteness_astm_e313(&xyz, ALWAN_ASTM_E313_C_2DEG);
         alwan_scalar diff_c_2 = ALWAN_ABS(result_c_2 - expected_c_2);
         if (diff_c_2 >= tolerance) {
-            fprintf(stderr, "Sample %d: Expected %.15f, Got %.15f, Diff %.15e\n", i, expected_c_2, result_c_2, diff_c_2);
+            printf("Sample %d: Expected %.15f, Got %.15f, Diff %.15e\n", i, expected_c_2, result_c_2, diff_c_2);
         }
         TEST_ASSERT(diff_c_2 < tolerance, "Whiteness C/2° mismatch");
 
@@ -195,7 +195,7 @@ int test_31_whiteness_yellowness_main(void) {
         printf("\n=== All whiteness & yellowness tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);
+        printf("\n=== %d test(s) failed ===\n", failures);
         return 1;
     }
 }

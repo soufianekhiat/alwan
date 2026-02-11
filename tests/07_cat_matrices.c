@@ -318,7 +318,7 @@ int test_07_cat_matrices_main(void) {
         printf("\n=== All CAT matrix tests passed ===\n");
         return 0;
     } else {
-        fprintf(stderr, "\n=== %d test(s) failed ===\n", failures);
+        printf("\n=== %d test(s) failed ===\n", failures);
         return 1;
     }
 }
