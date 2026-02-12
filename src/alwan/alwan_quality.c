@@ -1,14 +1,14 @@
-/*
- * Alwan - Pure C colour science library
- * Copyright (c) 2025 Soufiane KHIAT
- * SPDX-License-Identifier: MIT
+/* ================================================================
+ * Alwan - Light Quality & CCT
+ * Thin wrapper — per-pixel CCT/whiteness formulas in alwan_quality_core.h
  *
- * M10: Light Quality & CCT
- * CCT estimation (McCamy, Robertson) and CRI
- */
+ * Only table lookups (Robertson), Newton-Raphson loops (Kang inverse),
+ * CRI/CQS/SSI/TM-30 workflows, and data tables live here.
+ * ================================================================ */
 
 #include "alwan.h"
 #include "alwan_internal.h"
+#include "alwan_quality_core.h"
 #include <math.h>
 
 /* ----------------------------------------------------------------
@@ -25,30 +25,12 @@ alwan_scalar alwan_cct_mccamy_xy(alwan_vec2 const *xy) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_scalar x = xy->v[0];
-    alwan_scalar y = xy->v[1];
-
-    /* Epicenter of the Planckian locus in CIE xy */
-    alwan_scalar const x_e = ALWAN_LITERAL(0.3320);
-    alwan_scalar const y_e = ALWAN_LITERAL(0.1858);
-
-    /* Avoid division by zero */
-    alwan_scalar denom = y_e - y;
+    alwan_scalar denom = ALWAN_LITERAL(0.1858) - xy->v[1];
     if (ALWAN_ABS(denom) < ALWAN_EPSILON) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_scalar n = (x - x_e) / denom;
-    alwan_scalar n2 = n * n;
-    alwan_scalar n3 = n2 * n;
-
-    /* McCamy's formula: CCT = 437n³ + 3601n² + 6861n + 5517 */
-    alwan_scalar cct = ALWAN_LITERAL(437.0) * n3 +
-                       ALWAN_LITERAL(3601.0) * n2 +
-                       ALWAN_LITERAL(6861.0) * n +
-                       ALWAN_LITERAL(5517.0);
-
-    return cct;
+    return alwan_cct_mccamy_v(xy->v[0], xy->v[1]);
 }
 
 /* Robertson's method for CCT from CIE 1960 UCS uv coordinates
@@ -163,37 +145,12 @@ alwan_scalar alwan_cct_robertson_xy(alwan_vec2 const *xy) {
 alwan_scalar alwan_cct_hernandez_xy(alwan_vec2 const *xy) {
     if (!xy) return ALWAN_LITERAL(-1.0);
 
-    alwan_scalar x = xy->v[0];
-    alwan_scalar y = xy->v[1];
-
-    /* n = (x - 0.3366) / (y - 0.1735) */
-    alwan_scalar denom = y - ALWAN_LITERAL(0.1735);
+    alwan_scalar denom = xy->v[1] - ALWAN_LITERAL(0.1735);
     if (ALWAN_ABS(denom) < ALWAN_LITERAL(1e-10)) {
-        return ALWAN_LITERAL(-1.0);  /* Avoid division by zero */
-    }
-    alwan_scalar n = (x - ALWAN_LITERAL(0.3366)) / denom;
-
-    /* CCT = -949.86315 + 6253.80338 * exp(-n/0.92159)
-     *       + 28.70599 * exp(-n/0.20039) + 0.00004 * exp(-n/0.07125) */
-    alwan_scalar cct = ALWAN_LITERAL(-949.86315)
-        + ALWAN_LITERAL(6253.80338) * ALWAN_EXP(-n / ALWAN_LITERAL(0.92159))
-        + ALWAN_LITERAL(28.70599) * ALWAN_EXP(-n / ALWAN_LITERAL(0.20039))
-        + ALWAN_LITERAL(0.00004) * ALWAN_EXP(-n / ALWAN_LITERAL(0.07125));
-
-    /* Extended formula for CCT > 50000K */
-    if (cct > ALWAN_LITERAL(50000.0)) {
-        denom = y - ALWAN_LITERAL(0.1691);
-        if (ALWAN_ABS(denom) < ALWAN_LITERAL(1e-10)) {
-            return ALWAN_LITERAL(-1.0);
-        }
-        n = (x - ALWAN_LITERAL(0.3356)) / denom;
-
-        cct = ALWAN_LITERAL(36284.48953)
-            + ALWAN_LITERAL(0.00228) * ALWAN_EXP(-n / ALWAN_LITERAL(0.07861))
-            + ALWAN_LITERAL(5.4535e-36) * ALWAN_EXP(-n / ALWAN_LITERAL(0.01543));
+        return ALWAN_LITERAL(-1.0);
     }
 
-    return cct;
+    return alwan_cct_hernandez_v(xy->v[0], xy->v[1]);
 }
 
 /* Kang 2002: CCT to xy (forward transform)
@@ -202,46 +159,7 @@ alwan_scalar alwan_cct_hernandez_xy(alwan_vec2 const *xy) {
 void alwan_cct_to_xy_kang(alwan_vec2 *xy_out, alwan_scalar cct) {
     if (!xy_out) return;
 
-    alwan_scalar T = cct;
-    alwan_scalar T2 = T * T;
-    alwan_scalar T3 = T2 * T;
-
-    alwan_scalar x;
-    if (T <= ALWAN_LITERAL(4000.0)) {
-        x = ALWAN_LITERAL(-0.2661239e9) / T3
-          - ALWAN_LITERAL(0.2343589e6) / T2
-          + ALWAN_LITERAL(0.8776956e3) / T
-          + ALWAN_LITERAL(0.179910);
-    } else {
-        x = ALWAN_LITERAL(-3.0258469e9) / T3
-          + ALWAN_LITERAL(2.1070379e6) / T2
-          + ALWAN_LITERAL(0.2226347e3) / T
-          + ALWAN_LITERAL(0.24039);
-    }
-
-    alwan_scalar x2 = x * x;
-    alwan_scalar x3 = x2 * x;
-
-    alwan_scalar y;
-    if (T <= ALWAN_LITERAL(2222.0)) {
-        y = ALWAN_LITERAL(-1.1063814) * x3
-          - ALWAN_LITERAL(1.34811020) * x2
-          + ALWAN_LITERAL(2.18555832) * x
-          - ALWAN_LITERAL(0.20219683);
-    } else if (T <= ALWAN_LITERAL(4000.0)) {
-        y = ALWAN_LITERAL(-0.9549476) * x3
-          - ALWAN_LITERAL(1.37418593) * x2
-          + ALWAN_LITERAL(2.09137015) * x
-          - ALWAN_LITERAL(0.16748867);
-    } else {
-        y = ALWAN_LITERAL(3.0817580) * x3
-          - ALWAN_LITERAL(5.8733867) * x2
-          + ALWAN_LITERAL(3.75112997) * x
-          - ALWAN_LITERAL(0.37001483);
-    }
-
-    xy_out->v[0] = x;
-    xy_out->v[1] = y;
+    *xy_out = alwan_cct_to_xy_kang_v(cct);
 }
 
 /* Kang 2002: xy to CCT (inverse, uses Newton-Raphson iteration)
@@ -1101,9 +1019,7 @@ alwan_scalar alwan_yellowness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_il
     alwan_scalar Cx = astm_e313_yi_coeffs[illuminant][0];
     alwan_scalar Cz = astm_e313_yi_coeffs[illuminant][1];
 
-    alwan_scalar YI = ALWAN_LITERAL(100.0) * (Cx * X - Cz * Z) / Y;
-
-    return YI;
+    return alwan_yellowness_astm_e313_v(X, Y, Z, Cx, Cz);
 }
 
 /* ASTM E313 Whiteness Index
@@ -1117,13 +1033,7 @@ alwan_scalar alwan_whiteness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_ill
 
     (void)illuminant;  /* Not used for ASTM E313 whiteness */
 
-    alwan_scalar Y = xyz->y;
-    alwan_scalar Z = xyz->z;
-
-    /* Calculate whiteness index: WI = 3.388 * Z - 3 * Y */
-    alwan_scalar WI = ALWAN_LITERAL(3.388) * Z - ALWAN_LITERAL(3.0) * Y;
-
-    return WI;
+    return alwan_whiteness_astm_e313_v(xyz->y, xyz->z);
 }
 
 /* CIE 2004 Whiteness Index
@@ -1134,15 +1044,7 @@ alwan_scalar alwan_whiteness_cie2004(alwan_vec2 const *xy, alwan_scalar Y, alwan
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_scalar x = xy->v[0];
-    alwan_scalar y = xy->v[1];
-    alwan_scalar xn = xy_n->v[0];
-    alwan_scalar yn = xy_n->v[1];
-
-    /* Calculate whiteness index */
-    alwan_scalar W = Y + ALWAN_LITERAL(800.0) * (xn - x) + ALWAN_LITERAL(1700.0) * (yn - y);
-
-    return W;
+    return alwan_whiteness_cie2004_v(xy->v[0], xy->v[1], Y, xy_n->v[0], xy_n->v[1]);
 }
 
 /* ----------------------------------------------------------------

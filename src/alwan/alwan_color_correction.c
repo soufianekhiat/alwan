@@ -1,13 +1,14 @@
-/* alwan_color_correction.c - Color correction and grading tools
+/* ================================================================
+ * Alwan - Color Correction & Grading
+ * Thin wrapper — per-pixel math in alwan_color_correction_core.h
  *
- * Implements:
- * - Lift/Gamma/Gain (LGG)
- * - Color matrix grading presets
- * - Printer lights correction
- */
+ * Only enum dispatch, pointer validation, memory allocation,
+ * and loop-based solvers live here.
+ * ================================================================ */
 
 #include "alwan.h"
 #include "alwan_internal.h"
+#include "alwan_color_correction_core.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,32 +24,7 @@ int alwan_lgg_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb_in, alwan_rgb const
         return ALWAN_E_INVALID;
     }
 
-    /* Apply LGG formula per channel: ((rgb + lift) ^ (1/gamma)) * gain
-     * This is a standard color grading formula used in tools like DaVinci Resolve */
-
-    /* Process R channel */
-    alwan_scalar lifted_r = rgb_in->r + lift->r;
-    if (lifted_r < ALWAN_LITERAL(0.0)) lifted_r = ALWAN_LITERAL(0.0);
-    alwan_scalar gamma_r = gamma->r;
-    if (gamma_r <= ALWAN_LITERAL(0.0001)) gamma_r = ALWAN_LITERAL(0.0001);
-    alwan_scalar gamma_corrected_r = ALWAN_POW(lifted_r, ALWAN_LITERAL(1.0) / gamma_r);
-    rgb_out->r = gamma_corrected_r * gain->r;
-
-    /* Process G channel */
-    alwan_scalar lifted_g = rgb_in->g + lift->g;
-    if (lifted_g < ALWAN_LITERAL(0.0)) lifted_g = ALWAN_LITERAL(0.0);
-    alwan_scalar gamma_g = gamma->g;
-    if (gamma_g <= ALWAN_LITERAL(0.0001)) gamma_g = ALWAN_LITERAL(0.0001);
-    alwan_scalar gamma_corrected_g = ALWAN_POW(lifted_g, ALWAN_LITERAL(1.0) / gamma_g);
-    rgb_out->g = gamma_corrected_g * gain->g;
-
-    /* Process B channel */
-    alwan_scalar lifted_b = rgb_in->b + lift->b;
-    if (lifted_b < ALWAN_LITERAL(0.0)) lifted_b = ALWAN_LITERAL(0.0);
-    alwan_scalar gamma_b = gamma->b;
-    if (gamma_b <= ALWAN_LITERAL(0.0001)) gamma_b = ALWAN_LITERAL(0.0001);
-    alwan_scalar gamma_corrected_b = ALWAN_POW(lifted_b, ALWAN_LITERAL(1.0) / gamma_b);
-    rgb_out->b = gamma_corrected_b * gain->b;
+    *rgb_out = alwan_lgg_apply_v(*rgb_in, *lift, *gamma, *gain);
 
     return ALWAN_OK;
 }
@@ -64,11 +40,7 @@ int alwan_color_matrix_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb_in,
         return ALWAN_E_INVALID;
     }
 
-    /* Apply 3x3 matrix transformation
-     * Result = Matrix * RGB (treating RGB as column vector) */
-    rgb_out->r = matrix_3x3->m[0] * rgb_in->r + matrix_3x3->m[1] * rgb_in->g + matrix_3x3->m[2] * rgb_in->b;
-    rgb_out->g = matrix_3x3->m[3] * rgb_in->r + matrix_3x3->m[4] * rgb_in->g + matrix_3x3->m[5] * rgb_in->b;
-    rgb_out->b = matrix_3x3->m[6] * rgb_in->r + matrix_3x3->m[7] * rgb_in->g + matrix_3x3->m[8] * rgb_in->b;
+    *rgb_out = alwan_color_matrix_apply_v(*rgb_in, *matrix_3x3);
 
     return ALWAN_OK;
 }
@@ -149,28 +121,7 @@ int alwan_printer_lights_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb_in,
         return ALWAN_E_INVALID;
     }
 
-    /* Printer lights formula: Each light unit represents ~0.025 log exposure change
-     * Default is 25 lights (neutral)
-     * Formula: output = input * 10^((25 - lights) * 0.025)
-     *
-     * This mimics film printing where changing printer light values
-     * adjusts the exposure logarithmically */
-
-    const alwan_scalar default_lights = 25.0;
-    const alwan_scalar log_step = 0.025;  /* Log exposure per light unit */
-
-    /* Compute exposure multipliers for each channel */
-    alwan_scalar red_exposure = (default_lights - red_lights) * log_step;
-    alwan_scalar green_exposure = (default_lights - green_lights) * log_step;
-    alwan_scalar blue_exposure = (default_lights - blue_lights) * log_step;
-
-    /* Apply exposure change: multiply by 10^exposure
-     * 10^x = e^(x * ln(10)) */
-    const alwan_scalar ln10 = 2.302585092994046;  /* ln(10) */
-
-    rgb_out->r = rgb_in->r * ALWAN_EXP(red_exposure * ln10);
-    rgb_out->g = rgb_in->g * ALWAN_EXP(green_exposure * ln10);
-    rgb_out->b = rgb_in->b * ALWAN_EXP(blue_exposure * ln10);
+    *rgb_out = alwan_printer_lights_apply_v(*rgb_in, red_lights, green_lights, blue_lights);
 
     return ALWAN_OK;
 }
@@ -758,20 +709,16 @@ int alwan_white_balance_from_gray(alwan_rgb *multipliers_out, alwan_rgb const *m
         return ALWAN_E_INVALID;
     }
 
-    /* Compute multipliers to normalize measured gray to neutral
-     * The smallest channel gets multiplier = 1.0 */
+    /* Check for zero/negative channels */
     alwan_scalar min_val = measured_gray->r;
     if (measured_gray->g < min_val) min_val = measured_gray->g;
     if (measured_gray->b < min_val) min_val = measured_gray->b;
 
     if (min_val <= 0.0) {
-        return ALWAN_E_DIVZERO;  /* Cannot compute multipliers from zero/negative */
+        return ALWAN_E_DIVZERO;
     }
 
-    /* Multipliers normalize each channel relative to the minimum */
-    multipliers_out->r = min_val / measured_gray->r;
-    multipliers_out->g = min_val / measured_gray->g;
-    multipliers_out->b = min_val / measured_gray->b;
+    *multipliers_out = alwan_white_balance_from_gray_v(*measured_gray);
 
     return ALWAN_OK;
 }
@@ -783,9 +730,7 @@ int alwan_white_balance_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb,
         return ALWAN_E_INVALID;
     }
 
-    rgb_out->r = rgb->r * multipliers->r;
-    rgb_out->g = rgb->g * multipliers->g;
-    rgb_out->b = rgb->b * multipliers->b;
+    *rgb_out = alwan_white_balance_apply_v(*rgb, *multipliers);
 
     return ALWAN_OK;
 }

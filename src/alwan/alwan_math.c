@@ -6,136 +6,41 @@
 
 #include "alwan.h"
 #include "alwan_internal.h"
+#include "alwan_math_core.h"
 #include <string.h>
 
 /* ----------------------------------------------------------------
- * 3x3 Matrix Operations
+ * 3x3 Matrix Operations — delegated to alwan_math_core.h
  * Matrix layout (row-major): [m00 m01 m02 m10 m11 m12 m20 m21 m22]
  * Index: m->m[row*3 + col]
  * ---------------------------------------------------------------- */
 
 void alwan_mat3_identity(alwan_mat3x3 *out) {
-    memset(out->m, 0, sizeof(out->m));
-    out->m[0] = out->m[4] = out->m[8] = ALWAN_LITERAL(1.0);
+    *out = alwan_mat3_identity_v();
 }
 
 void alwan_mat3_mul(alwan_mat3x3 *out, alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
-    alwan_mat3x3 tmp;
-
-    for (int row = 0; row < 3; row++) {
-        for (int col = 0; col < 3; col++) {
-            alwan_scalar sum = 0;
-            for (int k = 0; k < 3; k++) {
-                sum += a->m[row * 3 + k] * b->m[k * 3 + col];
-            }
-            tmp.m[row * 3 + col] = sum;
-        }
-    }
-
-    memcpy(out, &tmp, sizeof(alwan_mat3x3));
+    *out = alwan_mat3_mul_v(*a, *b);
 }
 
 void alwan_mat3_mulv(alwan_vec3 *out, alwan_mat3x3 const *m, alwan_vec3 const *v) {
-    alwan_vec3 tmp;
-
-    for (int row = 0; row < 3; row++) {
-        tmp.v[row] = m->m[row * 3 + 0] * v->v[0] +
-                     m->m[row * 3 + 1] * v->v[1] +
-                     m->m[row * 3 + 2] * v->v[2];
-    }
-
-    memcpy(out, &tmp, sizeof(alwan_vec3));
+    *out = alwan_mat3_mulv_v(*m, *v);
 }
 
 alwan_scalar alwan_mat3_det(alwan_mat3x3 const *m) {
-    /* Compute determinant using Sarrus' rule (rule of diagonals)
-     * det(M) = m[0] * (m[4] * m[8] - m[5] * m[7])
-     *        - m[1] * (m[3] * m[8] - m[5] * m[6])
-     *        + m[2] * (m[3] * m[7] - m[4] * m[6])
-     */
-    return m->m[0] * (m->m[4] * m->m[8] - m->m[5] * m->m[7]) -
-           m->m[1] * (m->m[3] * m->m[8] - m->m[5] * m->m[6]) +
-           m->m[2] * (m->m[3] * m->m[7] - m->m[4] * m->m[6]);
+    return alwan_mat3_det_v(*m);
 }
 
 /* ----------------------------------------------------------------
- * 3x3 Matrix Inversion using Partial-Pivot Gaussian Elimination
+ * 3x3 Matrix Inversion — delegated to alwan_math_core.h
  * ---------------------------------------------------------------- */
 
 int alwan_mat3_inv(alwan_mat3x3 *out, alwan_mat3x3 const *m) {
-    /* Create augmented matrix [M | I] */
-    alwan_scalar aug[3][6];
-
-    /* Initialize with input matrix on left, identity on right */
-    for (int row = 0; row < 3; row++) {
-        for (int col = 0; col < 3; col++) {
-            aug[row][col] = m->m[row * 3 + col];
-        }
-        aug[row][3] = (row == 0) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
-        aug[row][4] = (row == 1) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
-        aug[row][5] = (row == 2) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
+    alwan_scalar det = alwan_mat3_det_v(*m);
+    if (ALWAN_ABS(det) < ALWAN_EPSILON) {
+        return ALWAN_E_RANGE;
     }
-
-    /* Forward elimination with partial pivoting */
-    for (int col = 0; col < 3; col++) {
-        /* Find pivot row */
-        int pivot_row = col;
-        alwan_scalar max_val = ALWAN_ABS(aug[col][col]);
-
-        for (int row = col + 1; row < 3; row++) {
-            alwan_scalar val = ALWAN_ABS(aug[row][col]);
-            if (val > max_val) {
-                max_val = val;
-                pivot_row = row;
-            }
-        }
-
-        /* Check for singularity */
-        if (max_val < ALWAN_EPSILON) {
-            return ALWAN_E_RANGE;  /* Matrix is singular or near-singular */
-        }
-
-        /* Swap rows if needed */
-        if (pivot_row != col) {
-            for (int k = 0; k < 6; k++) {
-                alwan_scalar tmp = aug[col][k];
-                aug[col][k] = aug[pivot_row][k];
-                aug[pivot_row][k] = tmp;
-            }
-        }
-
-        /* Scale pivot row */
-        alwan_scalar pivot = aug[col][col];
-        for (int k = 0; k < 6; k++) {
-            aug[col][k] /= pivot;
-        }
-
-        /* Eliminate column in rows below */
-        for (int row = col + 1; row < 3; row++) {
-            alwan_scalar factor = aug[row][col];
-            for (int k = 0; k < 6; k++) {
-                aug[row][k] -= factor * aug[col][k];
-            }
-        }
-    }
-
-    /* Back substitution */
-    for (int col = 2; col >= 0; col--) {
-        for (int row = col - 1; row >= 0; row--) {
-            alwan_scalar factor = aug[row][col];
-            for (int k = 0; k < 6; k++) {
-                aug[row][k] -= factor * aug[col][k];
-            }
-        }
-    }
-
-    /* Extract inverse from right side of augmented matrix */
-    for (int row = 0; row < 3; row++) {
-        for (int col = 0; col < 3; col++) {
-            out->m[row * 3 + col] = aug[row][col + 3];
-        }
-    }
-
+    *out = alwan_mat3_inv_v(*m);
     return ALWAN_OK;
 }
 
@@ -161,14 +66,9 @@ static size_t find_interval(alwan_scalar const *x_in, size_t count, alwan_scalar
     return left;
 }
 
-/* Lanczos windowed sinc kernel */
+/* Lanczos kernel wrapper — math in alwan_math_core.h */
 static alwan_scalar lanczos_kernel(alwan_scalar x, int a) {
-    if (x == 0.0) return 1.0;
-    if (ALWAN_ABS(x) >= a) return 0.0;
-
-    alwan_scalar pi_x = ALWAN_PI * x;
-    alwan_scalar pi_x_a = pi_x / a;
-    return (ALWAN_SIN(pi_x) / pi_x) * (ALWAN_SIN(pi_x_a) / pi_x_a);
+    return alwan_lanczos_kernel_v(x, (alwan_scalar)a);
 }
 
 /* ----------------------------------------------------------------
@@ -208,21 +108,13 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
             }
 
             case ALWAN_INTERP_CUBIC: {
-                /* Catmull-Rom cubic spline */
+                /* Catmull-Rom cubic spline — math in alwan_math_core.h */
                 alwan_scalar y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
                 alwan_scalar y1 = y_in[idx];
                 alwan_scalar y2 = y_in[idx + 1];
                 alwan_scalar y3 = (idx + 2 < count_in) ? y_in[idx + 2] : y_in[idx + 1];
 
-                alwan_scalar t2 = t * t;
-                alwan_scalar t3 = t2 * t;
-
-                y_out[i] = ALWAN_LITERAL(0.5) * (
-                    (ALWAN_LITERAL(2.0) * y1) +
-                    (-y0 + y2) * t +
-                    (ALWAN_LITERAL(2.0) * y0 - ALWAN_LITERAL(5.0) * y1 + ALWAN_LITERAL(4.0) * y2 - y3) * t2 +
-                    (-y0 + ALWAN_LITERAL(3.0) * y1 - ALWAN_LITERAL(3.0) * y2 + y3) * t3
-                );
+                y_out[i] = alwan_catmull_rom_v(y0, y1, y2, y3, t);
                 break;
             }
 
@@ -251,21 +143,13 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
             case ALWAN_INTERP_SPRAGUE: {
                 /* Sprague 5th order interpolation (for smooth spectra) */
                 if (count_in < 6) {
-                    /* Fall back to cubic */
+                    /* Fall back to cubic — math in alwan_math_core.h */
                     alwan_scalar y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
                     alwan_scalar y1 = y_in[idx];
                     alwan_scalar y2 = y_in[idx + 1];
                     alwan_scalar y3 = (idx + 2 < count_in) ? y_in[idx + 2] : y_in[idx + 1];
 
-                    alwan_scalar t2 = t * t;
-                    alwan_scalar t3 = t2 * t;
-
-                    y_out[i] = ALWAN_LITERAL(0.5) * (
-                        (ALWAN_LITERAL(2.0) * y1) +
-                        (-y0 + y2) * t +
-                        (ALWAN_LITERAL(2.0) * y0 - ALWAN_LITERAL(5.0) * y1 + ALWAN_LITERAL(4.0) * y2 - y3) * t2 +
-                        (-y0 + ALWAN_LITERAL(3.0) * y1 - ALWAN_LITERAL(3.0) * y2 + y3) * t3
-                    );
+                    y_out[i] = alwan_catmull_rom_v(y0, y1, y2, y3, t);
                 } else {
                     /* Sprague coefficients for 6 points */
                     alwan_scalar y[6];
@@ -518,57 +402,9 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
  * CCT and Duv Optimization
  * ---------------------------------------------------------------- */
 
-/* Planckian locus (x, y) from CCT using Hernández-Andrés 1999 approximation */
-static void cct_to_xy_planckian(alwan_scalar cct, alwan_scalar *x_out, alwan_scalar *y_out) {
-    alwan_scalar T = cct;
-    alwan_scalar T2 = T * T;
-    alwan_scalar T3 = T2 * T;
-
-    alwan_scalar x;
-    if (T <= ALWAN_LITERAL(4000.0)) {
-        x = ALWAN_LITERAL(-0.2661239e9) / T3 - ALWAN_LITERAL(0.2343589e6) / T2 + ALWAN_LITERAL(0.8776956e3) / T + ALWAN_LITERAL(0.179910);
-    } else {
-        x = ALWAN_LITERAL(-3.0258469e9) / T3 + ALWAN_LITERAL(2.1070379e6) / T2 + ALWAN_LITERAL(0.2226347e3) / T + ALWAN_LITERAL(0.240390);
-    }
-
-    alwan_scalar x2 = x * x;
-    alwan_scalar x3 = x2 * x;
-
-    alwan_scalar y;
-    if (T <= ALWAN_LITERAL(2222.0)) {
-        y = ALWAN_LITERAL(-1.1063814) * x3 - ALWAN_LITERAL(1.34811020) * x2 + ALWAN_LITERAL(2.18555832) * x - ALWAN_LITERAL(0.20219683);
-    } else if (T <= ALWAN_LITERAL(4000.0)) {
-        y = ALWAN_LITERAL(-0.9549476) * x3 - ALWAN_LITERAL(1.37418593) * x2 + ALWAN_LITERAL(2.09137015) * x - ALWAN_LITERAL(0.16748867);
-    } else {
-        y = ALWAN_LITERAL(3.0817580) * x3 - ALWAN_LITERAL(5.87338670) * x2 + ALWAN_LITERAL(3.75112997) * x - ALWAN_LITERAL(0.37001483);
-    }
-
-    *x_out = x;
-    *y_out = y;
-}
-
-/* Distance from point to Planckian locus (Duv) */
+/* CCT helpers — thin wrappers, math in alwan_math_core.h */
 static alwan_scalar compute_duv(alwan_scalar x, alwan_scalar y, alwan_scalar cct) {
-    alwan_scalar x_p, y_p;
-    cct_to_xy_planckian(cct, &x_p, &y_p);
-
-    /* Convert to uv for perceptually uniform distance */
-    alwan_scalar u = ALWAN_LITERAL(4.0) * x / (ALWAN_LITERAL(-2.0) * x + ALWAN_LITERAL(12.0) * y + ALWAN_LITERAL(3.0));
-    alwan_scalar v = ALWAN_LITERAL(6.0) * y / (ALWAN_LITERAL(-2.0) * x + ALWAN_LITERAL(12.0) * y + ALWAN_LITERAL(3.0));
-
-    alwan_scalar u_p = ALWAN_LITERAL(4.0) * x_p / (ALWAN_LITERAL(-2.0) * x_p + ALWAN_LITERAL(12.0) * y_p + ALWAN_LITERAL(3.0));
-    alwan_scalar v_p = ALWAN_LITERAL(6.0) * y_p / (ALWAN_LITERAL(-2.0) * x_p + ALWAN_LITERAL(12.0) * y_p + ALWAN_LITERAL(3.0));
-
-    alwan_scalar du = u - u_p;
-    alwan_scalar dv = v - v_p;
-
-    return ALWAN_SQRT(du * du + dv * dv);
-}
-
-/* McCamy's formula for initial CCT estimate */
-static alwan_scalar mccamy_cct_estimate(alwan_scalar x, alwan_scalar y) {
-    alwan_scalar n = (x - ALWAN_LITERAL(0.3320)) / (ALWAN_LITERAL(0.1858) - y);
-    return ALWAN_LITERAL(449.0) * n * n * n + ALWAN_LITERAL(3525.0) * n * n + ALWAN_LITERAL(6823.3) * n + ALWAN_LITERAL(5520.33);
+    return alwan_compute_duv_v(x, y, cct);
 }
 
 int alwan_cct_duv_optimize(alwan_scalar *cct_out, alwan_scalar *duv_out, alwan_vec2 const *xy) {
@@ -580,7 +416,7 @@ int alwan_cct_duv_optimize(alwan_scalar *cct_out, alwan_scalar *duv_out, alwan_v
     alwan_scalar y = xy->v[1];
 
     /* Initial CCT estimate using McCamy's formula */
-    alwan_scalar cct = mccamy_cct_estimate(x, y);
+    alwan_scalar cct = alwan_mccamy_cct_v(x, y);
 
     /* Clamp to reasonable range */
     if (cct < ALWAN_LITERAL(1000.0)) cct = ALWAN_LITERAL(1000.0);
@@ -728,21 +564,13 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
         }
 
         case ALWAN_INTERP_CUBIC: {
-            /* Catmull-Rom cubic */
+            /* Catmull-Rom cubic — math in alwan_math_core.h */
             alwan_scalar y0 = (idx > 0) ? table[idx - 1] : table[idx];
             alwan_scalar y1 = table[idx];
             alwan_scalar y2 = table[idx + 1];
             alwan_scalar y3 = (idx + 2 < size) ? table[idx + 2] : table[idx + 1];
 
-            alwan_scalar t2 = t * t;
-            alwan_scalar t3 = t2 * t;
-
-            return ALWAN_LITERAL(0.5) * (
-                (ALWAN_LITERAL(2.0) * y1) +
-                (-y0 + y2) * t +
-                (ALWAN_LITERAL(2.0) * y0 - ALWAN_LITERAL(5.0) * y1 + ALWAN_LITERAL(4.0) * y2 - y3) * t2 +
-                (-y0 + ALWAN_LITERAL(3.0) * y1 - ALWAN_LITERAL(3.0) * y2 + y3) * t3
-            );
+            return alwan_catmull_rom_v(y0, y1, y2, y3, t);
         }
 
         default:

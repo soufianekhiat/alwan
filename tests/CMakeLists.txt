@@ -59,6 +59,7 @@ add_executable(
   55_aces2_output_transform.c
   56_aces1_output_transform.c
   57_aces_lmt_tf.c
+  58_core_headers.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

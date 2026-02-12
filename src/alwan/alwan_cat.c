@@ -4,14 +4,20 @@
  * SPDX-License-Identifier: MIT
  *
  * Chromatic Adaptation Transform (CAT) implementation
+ *
+ * This .c wrapper resolves the CAT enum to matrices loaded from
+ * embedded global data and delegates the math to the _v() core
+ * functions defined in alwan_cat_core.h.
  */
 
 #include "alwan.h"
 #include "alwan_internal.h"
+#include "alwan_cat_core.h"
 #include <string.h>
 
 /* ----------------------------------------------------------------
  * CAT Matrix Accessors
+ * Load cone-response matrices from embedded global data arrays.
  * ---------------------------------------------------------------- */
 
 /* Bradford CAT matrix (most common, used in ICC profiles)
@@ -79,7 +85,9 @@ static void get_bianco_pc_2010_matrix(alwan_mat3x3 *out) {
 }
 
 /* ----------------------------------------------------------------
- * CAT Implementation
+ * CAT Matrix Computation
+ * Resolves the CAT enum to a cone-response matrix M, then
+ * delegates to core value-returning functions.
  * ---------------------------------------------------------------- */
 
 int alwan_cat_matrix(alwan_mat3x3 *out,
@@ -95,17 +103,9 @@ int alwan_cat_matrix(alwan_mat3x3 *out,
         return ALWAN_E_INVALID;
     }
 
-    /* Handle XYZ scaling separately (simplest case) */
+    /* Handle XYZ scaling separately (simplest case -- no cone-response matrix) */
     if (method == ALWAN_CAT_XYZ_SCALING) {
-        /* XYZ scaling: diagonal matrix of ratios */
-        alwan_scalar const sx = dst_white_xyz->x / src_white_xyz->x;
-        alwan_scalar const sy = dst_white_xyz->y / src_white_xyz->y;
-        alwan_scalar const sz = dst_white_xyz->z / src_white_xyz->z;
-
-        out->m[0] = sx;                 out->m[1] = ALWAN_LITERAL(0.0); out->m[2] = ALWAN_LITERAL(0.0);
-        out->m[3] = ALWAN_LITERAL(0.0); out->m[4] = sy;                 out->m[5] = ALWAN_LITERAL(0.0);
-        out->m[6] = ALWAN_LITERAL(0.0); out->m[7] = ALWAN_LITERAL(0.0); out->m[8] = sz;
-
+        *out = alwan_cat_xyz_scaling_v(*src_white_xyz, *dst_white_xyz);
         return ALWAN_OK;
     }
 
@@ -149,20 +149,6 @@ int alwan_cat_matrix(alwan_mat3x3 *out,
             return ALWAN_E_INVALID;
     }
 
-    /* Transform white points to cone response space */
-    alwan_vec3 rgb_src, rgb_dst, vec_src, vec_dst;
-    ALWAN_MEMCPY(&vec_src, src_white_xyz, sizeof(alwan_vec3));
-    ALWAN_MEMCPY(&vec_dst, dst_white_xyz, sizeof(alwan_vec3));
-    alwan_mat3_mulv(&rgb_src, &M, &vec_src);
-    alwan_mat3_mulv(&rgb_dst, &M, &vec_dst);
-
-    /* Compute diagonal scaling matrix D = diag(rgb_dst ./ rgb_src) */
-    alwan_mat3x3 D;
-    memset(&D, 0, sizeof(D));
-    D.m[0] = rgb_dst.v[0] / rgb_src.v[0];  /* D[0,0] */
-    D.m[4] = rgb_dst.v[1] / rgb_src.v[1];  /* D[1,1] */
-    D.m[8] = rgb_dst.v[2] / rgb_src.v[2];  /* D[2,2] */
-
     /* Compute M^-1 */
     alwan_mat3x3 M_inv;
     int status = alwan_mat3_inv(&M_inv, &M);
@@ -170,13 +156,19 @@ int alwan_cat_matrix(alwan_mat3x3 *out,
         return status;
     }
 
-    /* Compute adaptation matrix: M_adapt = M^-1 * D * M */
-    alwan_mat3x3 temp;
-    alwan_mat3_mul(&temp, &D, &M);        /* temp = D * M */
-    alwan_mat3_mul(out, &M_inv, &temp);   /* out = M^-1 * temp */
+    /* Delegate to core: M_adapt = M^-1 * diag(rgb_dst / rgb_src) * M */
+    *out = alwan_cat_matrix_v(M, M_inv, *src_white_xyz, *dst_white_xyz);
 
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * Bulk Chromatic Adaptation
+ * Computes the adaptation matrix once, then applies it to every
+ * element in a stride-based buffer.  This loop stays in the .c
+ * file because it is a bulk operation that cannot live in a
+ * header-only core.
+ * ---------------------------------------------------------------- */
 
 int alwan_xyz_adapt(alwan_scalar *xyz_out,
                     alwan_xyz const *src_white_xyz,
@@ -199,20 +191,20 @@ int alwan_xyz_adapt(alwan_scalar *xyz_out,
     for (size_t i = 0; i < count; i++) {
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
         alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
-        alwan_vec3 xyz_input, xyz_adapted;
 
-        /* Load input color */
-        xyz_input.v[0] = in_ptr[0];
-        xyz_input.v[1] = in_ptr[1];
-        xyz_input.v[2] = in_ptr[2];
+        /* Build an alwan_xyz from the strided input */
+        alwan_xyz xyz_input;
+        xyz_input.x = in_ptr[0];
+        xyz_input.y = in_ptr[1];
+        xyz_input.z = in_ptr[2];
 
-        /* Apply adaptation matrix */
-        alwan_mat3_mulv(&xyz_adapted, &cat_mat, &xyz_input);
+        /* Delegate to core single-color adaptation */
+        alwan_xyz xyz_adapted = alwan_cat_adapt_v(cat_mat, xyz_input);
 
         /* Store output color */
-        out_ptr[0] = xyz_adapted.v[0];
-        out_ptr[1] = xyz_adapted.v[1];
-        out_ptr[2] = xyz_adapted.v[2];
+        out_ptr[0] = xyz_adapted.x;
+        out_ptr[1] = xyz_adapted.y;
+        out_ptr[2] = xyz_adapted.z;
     }
 
     return ALWAN_OK;
@@ -255,9 +247,9 @@ int alwan_cat_zhai2018(alwan_xyz *xyz_out,
     /* Get the CAT matrix M for the chosen method */
     alwan_mat3x3 M;
     if (transform == ALWAN_CAT_CAT02) {
-        memcpy(M.m, g_cat_cat02, sizeof(g_cat_cat02));
+        get_cat02_matrix(&M);
     } else {
-        memcpy(M.m, g_cat_cat16, sizeof(g_cat_cat16));
+        get_cat16_matrix(&M);
     }
 
     /* Compute M inverse */
@@ -267,37 +259,9 @@ int alwan_cat_zhai2018(alwan_xyz *xyz_out,
         return status;
     }
 
-    /* Transform XYZ to RGB (cone responses) */
-    alwan_vec3 rgb_in, rgb_src, rgb_dst, rgb_o;
-    alwan_vec3 vec_in, vec_src, vec_dst, vec_o;
-    ALWAN_MEMCPY(&vec_in, xyz_in, sizeof(alwan_vec3));
-    ALWAN_MEMCPY(&vec_src, xyz_src, sizeof(alwan_vec3));
-    ALWAN_MEMCPY(&vec_dst, xyz_dst, sizeof(alwan_vec3));
-    ALWAN_MEMCPY(&vec_o, xyz_o, sizeof(alwan_vec3));
-    alwan_mat3_mulv(&rgb_in, &M, &vec_in);
-    alwan_mat3_mulv(&rgb_src, &M, &vec_src);
-    alwan_mat3_mulv(&rgb_dst, &M, &vec_dst);
-    alwan_mat3_mulv(&rgb_o, &M, &vec_o);
-
-    /* Compute D_RGB factors for source and destination
-     * D_RGB = D * (Y_w / Y_o) * (RGB_o / RGB_w) + 1 - D
-     * Simplified when Y_w = Y_o (both = 100): D_RGB = D * (RGB_o / RGB_w) + 1 - D */
-    alwan_vec3 D_rgb_src, D_rgb_dst;
-    for (int i = 0; i < 3; i++) {
-        D_rgb_src.v[i] = D_src * (rgb_o.v[i] / rgb_src.v[i]) + (ALWAN_LITERAL(1.0) - D_src);
-        D_rgb_dst.v[i] = D_dst * (rgb_o.v[i] / rgb_dst.v[i]) + (ALWAN_LITERAL(1.0) - D_dst);
-    }
-
-    /* Apply two-step adaptation: RGB_d = (D_RGB_src / D_RGB_dst) * RGB_in */
-    alwan_vec3 rgb_adapted;
-    for (int i = 0; i < 3; i++) {
-        rgb_adapted.v[i] = (D_rgb_src.v[i] / D_rgb_dst.v[i]) * rgb_in.v[i];
-    }
-
-    /* Transform back to XYZ */
-    alwan_vec3 vec_out;
-    alwan_mat3_mulv(&vec_out, &M_inv, &rgb_adapted);
-    ALWAN_MEMCPY(xyz_out, &vec_out, sizeof(alwan_vec3));
+    /* Delegate to core two-step adaptation */
+    *xyz_out = alwan_cat_zhai2018_v(M, M_inv, *xyz_in, *xyz_src, *xyz_dst,
+                                    D_src, D_dst, *xyz_o);
 
     return ALWAN_OK;
 }

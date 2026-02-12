@@ -4,12 +4,18 @@
  * SPDX-License-Identifier: MIT
  *
  * M11: Gamut Utilities & Mapping
+ * Thin wrapper — per-pixel math in alwan_gamut_core.h
+ *
+ * Only NULL-param defaults, enum dispatch, bulk loops, data tables,
+ * and polygon/locus lookups live here.
  */
 
 #include "alwan.h"
 #include "alwan_internal.h"
+#include "alwan_gamut_core.h"
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 /* ----------------------------------------------------------------
  * Random number generation (simple LCG for reproducibility)
@@ -70,17 +76,9 @@ int alwan_gamut_volume_mc(alwan_scalar *volume,
  * M11: Gamut Mapping
  * ---------------------------------------------------------------- */
 
-/* Clip RGB to [0,1] range */
+/* Clip RGB to [0,1] range — delegates to core */
 static void gamut_map_clip_single(alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out) {
-    for (int i = 0; i < 3; i++) {
-        if (rgb_in->v[i] < ALWAN_LITERAL(0.0)) {
-            rgb_out->v[i] = ALWAN_LITERAL(0.0);
-        } else if (rgb_in->v[i] > ALWAN_LITERAL(1.0)) {
-            rgb_out->v[i] = ALWAN_LITERAL(1.0);
-        } else {
-            rgb_out->v[i] = rgb_in->v[i];
-        }
-    }
+    *rgb_out = gamut_clip_v(*rgb_in);
 }
 
 /* Hue-preserving gamut mapping: scale towards neutral until in gamut */
@@ -633,235 +631,33 @@ int alwan_gamut_coverage(alwan_scalar *coverage_out,
  * Based on Bjorn Ottosson's Oklab (2020)
  * https://bottosson.github.io/posts/oklab/ */
 
-/* Linear sRGB -> Oklab */
+/* Linear sRGB -> Oklab — delegates to core */
 static void alwan_linear_srgb_to_oklab(alwan_vec3 const *rgb, alwan_vec3 *oklab) {
-    /* Transform matrix from linear sRGB to LMS cone response */
-    alwan_scalar l = ALWAN_LITERAL(0.4122214708) * rgb->v[0] +
-                     ALWAN_LITERAL(0.5363325363) * rgb->v[1] +
-                     ALWAN_LITERAL(0.0514459929) * rgb->v[2];
-    alwan_scalar m = ALWAN_LITERAL(0.2119034982) * rgb->v[0] +
-                     ALWAN_LITERAL(0.6806995451) * rgb->v[1] +
-                     ALWAN_LITERAL(0.1073969566) * rgb->v[2];
-    alwan_scalar s = ALWAN_LITERAL(0.0883024619) * rgb->v[0] +
-                     ALWAN_LITERAL(0.2817188376) * rgb->v[1] +
-                     ALWAN_LITERAL(0.6299787005) * rgb->v[2];
-
-    /* Nonlinear transformation (cube root) */
-    alwan_scalar l_ = ALWAN_CBRT(l);
-    alwan_scalar m_ = ALWAN_CBRT(m);
-    alwan_scalar s_ = ALWAN_CBRT(s);
-
-    /* Transform to Lab */
-    oklab->v[0] = ALWAN_LITERAL(0.2104542553) * l_ +
-                  ALWAN_LITERAL(0.7936177850) * m_ -
-                  ALWAN_LITERAL(0.0040720468) * s_;
-    oklab->v[1] = ALWAN_LITERAL(1.9779984951) * l_ -
-                  ALWAN_LITERAL(2.4285922050) * m_ +
-                  ALWAN_LITERAL(0.4505937099) * s_;
-    oklab->v[2] = ALWAN_LITERAL(0.0259040371) * l_ +
-                  ALWAN_LITERAL(0.7827717662) * m_ -
-                  ALWAN_LITERAL(0.8086757660) * s_;
+    *oklab = gamut_linear_srgb_to_oklab_v(*rgb);
 }
 
-/* Oklab -> Linear sRGB */
+/* Oklab -> Linear sRGB — delegates to core */
 static void alwan_oklab_to_linear_srgb(alwan_vec3 const *oklab, alwan_vec3 *rgb) {
-    /* Transform from Lab to LMS' */
-    alwan_scalar l_ = oklab->v[0] + ALWAN_LITERAL(0.3963377774) * oklab->v[1] +
-                      ALWAN_LITERAL(0.2158037573) * oklab->v[2];
-    alwan_scalar m_ = oklab->v[0] - ALWAN_LITERAL(0.1055613458) * oklab->v[1] -
-                      ALWAN_LITERAL(0.0638541728) * oklab->v[2];
-    alwan_scalar s_ = oklab->v[0] - ALWAN_LITERAL(0.0894841775) * oklab->v[1] -
-                      ALWAN_LITERAL(1.2914855480) * oklab->v[2];
-
-    /* Inverse nonlinear transformation (cube) */
-    alwan_scalar l = l_ * l_ * l_;
-    alwan_scalar m = m_ * m_ * m_;
-    alwan_scalar s = s_ * s_ * s_;
-
-    /* Transform from LMS to linear sRGB */
-    rgb->v[0] = +ALWAN_LITERAL(4.0767416621) * l -
-                ALWAN_LITERAL(3.3077115913) * m +
-                ALWAN_LITERAL(0.2309699292) * s;
-    rgb->v[1] = -ALWAN_LITERAL(1.2684380046) * l +
-                ALWAN_LITERAL(2.6097574011) * m -
-                ALWAN_LITERAL(0.3413193965) * s;
-    rgb->v[2] = -ALWAN_LITERAL(0.0041960863) * l -
-                ALWAN_LITERAL(0.7034186147) * m +
-                ALWAN_LITERAL(1.7076147010) * s;
+    *rgb = gamut_oklab_to_linear_srgb_v(*oklab);
 }
 
-/* Compute maximum saturation for a given hue in Oklab */
+/* Compute maximum saturation for a given hue — delegates to core */
 static alwan_scalar alwan_compute_max_saturation(alwan_scalar a, alwan_scalar b) {
-    /* Get chroma direction */
-    alwan_scalar k0, k1, k2, k3, k4, wl, wm, ws;
-
-    if (-ALWAN_LITERAL(1.88170328) * a - ALWAN_LITERAL(0.80936493) * b > ALWAN_LITERAL(1.0)) {
-        /* Red zone */
-        k0 = +ALWAN_LITERAL(1.19086277); k1 = +ALWAN_LITERAL(1.76576728);
-        k2 = +ALWAN_LITERAL(0.59662641); k3 = +ALWAN_LITERAL(0.75515197);
-        k4 = +ALWAN_LITERAL(0.56771245);
-        wl = +ALWAN_LITERAL(4.0767416621); wm = -ALWAN_LITERAL(3.3077115913);
-        ws = +ALWAN_LITERAL(0.2309699292);
-    } else if (ALWAN_LITERAL(1.81444104) * a - ALWAN_LITERAL(1.19445276) * b > ALWAN_LITERAL(1.0)) {
-        /* Green zone */
-        k0 = +ALWAN_LITERAL(0.73956515); k1 = -ALWAN_LITERAL(0.45954404);
-        k2 = +ALWAN_LITERAL(0.08285427); k3 = +ALWAN_LITERAL(0.12541070);
-        k4 = +ALWAN_LITERAL(0.14503204);
-        wl = -ALWAN_LITERAL(1.2684380046); wm = +ALWAN_LITERAL(2.6097574011);
-        ws = -ALWAN_LITERAL(0.3413193965);
-    } else {
-        /* Blue zone */
-        k0 = +ALWAN_LITERAL(1.35733652); k1 = -ALWAN_LITERAL(0.00915799);
-        k2 = -ALWAN_LITERAL(1.15130210); k3 = -ALWAN_LITERAL(0.50559606);
-        k4 = +ALWAN_LITERAL(0.00692167);
-        wl = -ALWAN_LITERAL(0.0041960863); wm = -ALWAN_LITERAL(0.7034186147);
-        ws = +ALWAN_LITERAL(1.7076147010);
-    }
-
-    /* Approximate max saturation using a polynomial */
-    alwan_scalar S = k0 + k1 * a + k2 * b + k3 * a * a + k4 * a * b;
-
-    /* Refine using one iteration (simplified) */
-    {
-        alwan_scalar k_l = +ALWAN_LITERAL(0.3963377774) * a + ALWAN_LITERAL(0.2158037573) * b;
-        alwan_scalar k_m = -ALWAN_LITERAL(0.1055613458) * a - ALWAN_LITERAL(0.0638541728) * b;
-        alwan_scalar k_s = -ALWAN_LITERAL(0.0894841775) * a - ALWAN_LITERAL(1.2914855480) * b;
-
-        {
-            alwan_scalar l_ = ALWAN_LITERAL(1.0) + S * k_l;
-            alwan_scalar m_ = ALWAN_LITERAL(1.0) + S * k_m;
-            alwan_scalar s_ = ALWAN_LITERAL(1.0) + S * k_s;
-
-            alwan_scalar l = l_ * l_ * l_;
-            alwan_scalar m = m_ * m_ * m_;
-            alwan_scalar s = s_ * s_ * s_;
-
-            alwan_scalar l_dS = ALWAN_LITERAL(3.0) * k_l * l_ * l_;
-            alwan_scalar m_dS = ALWAN_LITERAL(3.0) * k_m * m_ * m_;
-            alwan_scalar s_dS = ALWAN_LITERAL(3.0) * k_s * s_ * s_;
-
-            alwan_scalar f = wl * l + wm * m + ws * s;
-            alwan_scalar f_dS = wl * l_dS + wm * m_dS + ws * s_dS;
-
-            S = S - f / f_dS;
-        }
-    }
-
-    return S;
+    return gamut_compute_max_saturation_v(a, b);
 }
 
-/* Find gamut cusp (L, C) for a given hue */
+/* Find gamut cusp — delegates to core */
 static void alwan_find_cusp(alwan_scalar a, alwan_scalar b, alwan_scalar *L_cusp, alwan_scalar *C_cusp) {
-    /* Compute maximum saturation */
-    alwan_scalar S_cusp = alwan_compute_max_saturation(a, b);
-
-    /* Convert to Oklab at cusp */
-    alwan_vec3 oklab_cusp;
-    oklab_cusp.v[0] = ALWAN_LITERAL(1.0);  /* L = 1 initially */
-    oklab_cusp.v[1] = S_cusp * a;
-    oklab_cusp.v[2] = S_cusp * b;
-
-    /* Convert to RGB to get actual L */
-    alwan_vec3 rgb_cusp;
-    alwan_oklab_to_linear_srgb(&oklab_cusp, &rgb_cusp);
-
-    /* Find maximum RGB component */
-    alwan_scalar max_rgb = rgb_cusp.v[0];
-    if (rgb_cusp.v[1] > max_rgb) max_rgb = rgb_cusp.v[1];
-    if (rgb_cusp.v[2] > max_rgb) max_rgb = rgb_cusp.v[2];
-
-    /* Scale to make max component = 1 */
-    *L_cusp = ALWAN_CBRT(ALWAN_LITERAL(1.0) / max_rgb);
-    *C_cusp = *L_cusp * S_cusp;
+    alwan_vec2 cusp = gamut_find_cusp_v(a, b);
+    *L_cusp = cusp.v[0];
+    *C_cusp = cusp.v[1];
 }
 
-/* Find intersection of gamut boundary with a line from L0,C0 */
+/* Find intersection of gamut boundary — delegates to core */
 static alwan_scalar alwan_find_gamut_intersection(alwan_scalar a, alwan_scalar b,
                                                     alwan_scalar L1, alwan_scalar C1,
                                                     alwan_scalar L0, alwan_scalar C0) {
-    /* Find the cusp for this hue */
-    alwan_scalar L_cusp, C_cusp;
-    alwan_find_cusp(a, b, &L_cusp, &C_cusp);
-
-    /* Solve for t where the line intersects the gamut boundary */
-    alwan_scalar t;
-    if (((L1 - L0) * C_cusp - (C1 - C0) * L_cusp) <= ALWAN_LITERAL(0.0)) {
-        /* Lower part - use simpler approximation */
-        t = C_cusp * L0 / (C1 * L_cusp + C_cusp * (L0 - L1));
-    } else {
-        /* Upper part */
-        t = C_cusp * (L0 - ALWAN_LITERAL(1.0)) / (C1 * (L_cusp - ALWAN_LITERAL(1.0)) +
-                                                    C_cusp * (L0 - L1));
-
-        /* Refine with one iteration */
-        {
-            alwan_scalar dL = L1 - L0;
-            alwan_scalar dC = C1 - C0;
-
-            alwan_scalar L = L0 * (ALWAN_LITERAL(1.0) - t) + t * L1;
-            alwan_scalar C = t * C1;
-
-            alwan_scalar k_l = +ALWAN_LITERAL(0.3963377774) * a + ALWAN_LITERAL(0.2158037573) * b;
-            alwan_scalar k_m = -ALWAN_LITERAL(0.1055613458) * a - ALWAN_LITERAL(0.0638541728) * b;
-            alwan_scalar k_s = -ALWAN_LITERAL(0.0894841775) * a - ALWAN_LITERAL(1.2914855480) * b;
-
-            alwan_scalar l_ = L + C * k_l;
-            alwan_scalar m_ = L + C * k_m;
-            alwan_scalar s_ = L + C * k_s;
-
-            alwan_scalar l = l_ * l_ * l_;
-            alwan_scalar m = m_ * m_ * m_;
-            alwan_scalar s = s_ * s_ * s_;
-
-            alwan_scalar ldt = ALWAN_LITERAL(3.0) * dL * l_ * l_;
-            alwan_scalar mdt = ALWAN_LITERAL(3.0) * dL * m_ * m_;
-            alwan_scalar sdt = ALWAN_LITERAL(3.0) * dL * s_ * s_;
-
-            alwan_scalar ldt2 = ALWAN_LITERAL(3.0) * dC * l_ * l_;
-            alwan_scalar mdt2 = ALWAN_LITERAL(3.0) * dC * m_ * m_;
-            alwan_scalar sdt2 = ALWAN_LITERAL(3.0) * dC * s_ * s_;
-
-            alwan_scalar r = ALWAN_LITERAL(4.0767416621) * l - ALWAN_LITERAL(3.3077115913) * m +
-                            ALWAN_LITERAL(0.2309699292) * s - ALWAN_LITERAL(1.0);
-            alwan_scalar r1 = ALWAN_LITERAL(4.0767416621) * ldt - ALWAN_LITERAL(3.3077115913) * mdt +
-                             ALWAN_LITERAL(0.2309699292) * sdt;
-            alwan_scalar r2 = ALWAN_LITERAL(4.0767416621) * ldt2 - ALWAN_LITERAL(3.3077115913) * mdt2 +
-                             ALWAN_LITERAL(0.2309699292) * sdt2;
-
-            alwan_scalar u_r = r1 / (r1 - r2);
-            alwan_scalar t_r = -r / r1;
-
-            alwan_scalar g = -ALWAN_LITERAL(1.2684380046) * l + ALWAN_LITERAL(2.6097574011) * m -
-                            ALWAN_LITERAL(0.3413193965) * s - ALWAN_LITERAL(1.0);
-            alwan_scalar g1 = -ALWAN_LITERAL(1.2684380046) * ldt + ALWAN_LITERAL(2.6097574011) * mdt -
-                             ALWAN_LITERAL(0.3413193965) * sdt;
-            alwan_scalar g2 = -ALWAN_LITERAL(1.2684380046) * ldt2 + ALWAN_LITERAL(2.6097574011) * mdt2 -
-                             ALWAN_LITERAL(0.3413193965) * sdt2;
-
-            alwan_scalar u_g = g1 / (g1 - g2);
-            alwan_scalar t_g = -g / g1;
-
-            alwan_scalar b_val = -ALWAN_LITERAL(0.0041960863) * l - ALWAN_LITERAL(0.7034186147) * m +
-                                ALWAN_LITERAL(1.7076147010) * s - ALWAN_LITERAL(1.0);
-            alwan_scalar b1 = -ALWAN_LITERAL(0.0041960863) * ldt - ALWAN_LITERAL(0.7034186147) * mdt +
-                             ALWAN_LITERAL(1.7076147010) * sdt;
-            alwan_scalar b2 = -ALWAN_LITERAL(0.0041960863) * ldt2 - ALWAN_LITERAL(0.7034186147) * mdt2 +
-                             ALWAN_LITERAL(1.7076147010) * sdt2;
-
-            alwan_scalar u_b = b1 / (b1 - b2);
-            alwan_scalar t_b = -b_val / b1;
-
-            /* Find the constraint that's hit first */
-            t_r = (u_r >= ALWAN_LITERAL(0.0)) ? t_r : ALWAN_LITERAL(10000.0);
-            t_g = (u_g >= ALWAN_LITERAL(0.0)) ? t_g : ALWAN_LITERAL(10000.0);
-            t_b = (u_b >= ALWAN_LITERAL(0.0)) ? t_b : ALWAN_LITERAL(10000.0);
-
-            t += (t_r < t_g && t_r < t_b) ? t_r :
-                 (t_g < t_b) ? t_g : t_b;
-        }
-    }
-
-    return t;
+    return gamut_find_intersection_v(a, b, L1, C1, L0, C0);
 }
 
 /* Gamut mapping implementation */

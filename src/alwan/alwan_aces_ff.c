@@ -4,29 +4,34 @@
  * SPDX-License-Identifier: MIT
  *
  * ACES Fixed Functions (RRT Components)
+ * Thin wrapper — per-pixel math in alwan_aces_ff_core.h
+ *
+ * Only init functions, table generation, enum dispatch, and public API live here.
  * Reference: OpenColorIO FixedFunctionOpCPU.cpp
  */
 
 #include "alwan.h"
 #include "alwan_internal.h"
 #include <math.h>
+#include "alwan_aces_ff_core.h"
+
+/* Typedefs for backward compatibility with local struct names */
+typedef aces2_JMhParams JMhParams;
+typedef aces2_TSParams TSParams;
+typedef aces2_GamutCuspEntry GamutCuspEntry;
+typedef aces2_GamutCompressParams GamutCompressParams;
+typedef aces2_HueDependentGamutParams HueDependentGamutParams;
 
 /* ----------------------------------------------------------------
  * Internal helper functions
  * ---------------------------------------------------------------- */
 
 static alwan_scalar min3(alwan_scalar a, alwan_scalar b, alwan_scalar c) {
-    alwan_scalar m = a;
-    if (b < m) m = b;
-    if (c < m) m = c;
-    return m;
+    return alwan_min3(a, b, c);
 }
 
 static alwan_scalar max3(alwan_scalar a, alwan_scalar b, alwan_scalar c) {
-    alwan_scalar m = a;
-    if (b > m) m = b;
-    if (c > m) m = c;
-    return m;
+    return alwan_max3(a, b, c);
 }
 
 /* ----------------------------------------------------------------
@@ -36,46 +41,13 @@ static alwan_scalar max3(alwan_scalar a, alwan_scalar b, alwan_scalar c) {
 /* Saturation weight calculation */
 static alwan_scalar calc_sat_weight(alwan_scalar red, alwan_scalar grn, alwan_scalar blu,
                                      alwan_scalar noise_limit) {
-    alwan_scalar min_val = min3(red, grn, blu);
-    alwan_scalar max_val = max3(red, grn, blu);
-
-    /* Clamp to avoid negative values */
-    alwan_scalar clamped_max = max_val > ALWAN_LITERAL(1e-10) ? max_val : ALWAN_LITERAL(1e-10);
-    alwan_scalar clamped_min = min_val > ALWAN_LITERAL(1e-10) ? min_val : ALWAN_LITERAL(1e-10);
-    alwan_scalar denom = max_val > noise_limit ? max_val : noise_limit;
-
-    alwan_scalar sat = (clamped_max - clamped_min) / denom;
-    return sat;
+    return aces_calc_sat_weight_v(red, grn, blu, noise_limit);
 }
 
 /* Hue weight calculation using B-spline */
 static alwan_scalar calc_hue_weight(alwan_scalar red, alwan_scalar grn, alwan_scalar blu,
                                      alwan_scalar inv_width) {
-    static const alwan_scalar sqrt3 = ALWAN_LITERAL(1.7320508075688772);
-
-    alwan_scalar a = ALWAN_LITERAL(2.0) * red - (grn + blu);
-    alwan_scalar b = sqrt3 * (grn - blu);
-    alwan_scalar hue = ALWAN_ATAN2(b, a);
-
-    alwan_scalar knot_coord = hue * inv_width + ALWAN_LITERAL(2.0);
-    int j = (int)knot_coord;
-
-    /* B-spline matrix coefficients */
-    static const alwan_scalar M[4][4] = {
-        { ALWAN_LITERAL(0.25),  ALWAN_LITERAL(0.00),  ALWAN_LITERAL(0.00),  ALWAN_LITERAL(0.00)},
-        {ALWAN_LITERAL(-0.75),  ALWAN_LITERAL(0.75),  ALWAN_LITERAL(0.75),  ALWAN_LITERAL(0.25)},
-        { ALWAN_LITERAL(0.75), ALWAN_LITERAL(-1.50),  ALWAN_LITERAL(0.00),  ALWAN_LITERAL(1.00)},
-        {ALWAN_LITERAL(-0.25),  ALWAN_LITERAL(0.75), ALWAN_LITERAL(-0.75),  ALWAN_LITERAL(0.25)}
-    };
-
-    alwan_scalar f_H = ALWAN_LITERAL(0.0);
-    if (j >= 0 && j < 4) {
-        alwan_scalar t = knot_coord - (alwan_scalar)j;
-        const alwan_scalar *coefs = M[j];
-        f_H = coefs[3] + t * (coefs[2] + t * (coefs[1] + t * coefs[0]));
-    }
-
-    return f_H;
+    return aces_calc_hue_weight_v(red, grn, blu, inv_width);
 }
 
 /* ----------------------------------------------------------------
@@ -176,23 +148,12 @@ int alwan_aces_redmod10(alwan_rgb *rgb_out, alwan_rgb const *rgb_in) {
 
 /* YC (luminance with chroma weighting) calculation */
 static alwan_scalar rgb_to_yc(alwan_scalar red, alwan_scalar grn, alwan_scalar blu) {
-    static const alwan_scalar YC_RADIUS_WEIGHT = ALWAN_LITERAL(1.75);
-
-    /* Chroma = sqrt(blu*(blu-grn) + grn*(grn-red) + red*(red-blu)) */
-    alwan_scalar chroma = ALWAN_SQRT(blu * (blu - grn) + grn * (grn - red) + red * (red - blu));
-    alwan_scalar YC = (blu + grn + red + YC_RADIUS_WEIGHT * chroma) / ALWAN_LITERAL(3.0);
-
-    return YC;
+    return aces_rgb_to_yc_v(red, grn, blu);
 }
 
 /* Sigmoid shaper for saturation */
 static alwan_scalar sigmoid_shaper(alwan_scalar sat) {
-    alwan_scalar x = (sat - ALWAN_LITERAL(0.4)) * ALWAN_LITERAL(5.0);
-    alwan_scalar sign = (x >= ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(-1.0);
-    alwan_scalar t = ALWAN_LITERAL(1.0) - ALWAN_LITERAL(0.5) * sign * x;
-    if (t < ALWAN_LITERAL(0.0)) t = ALWAN_LITERAL(0.0);
-    alwan_scalar s = (ALWAN_LITERAL(1.0) + sign * (ALWAN_LITERAL(1.0) - t * t)) * ALWAN_LITERAL(0.5);
-    return s;
+    return aces_sigmoid_shaper_v(sat);
 }
 
 /* Internal glow implementation with configurable parameters */
@@ -323,38 +284,19 @@ void alwan_aces_gamut_comp13_params_default(alwan_aces_gamut_comp13_params *para
 
 /* Compression function (forward direction) */
 static alwan_scalar compress_dist(alwan_scalar dist, alwan_scalar thr, alwan_scalar scale, alwan_scalar power) {
-    alwan_scalar nd = (dist - thr) / scale;
-    alwan_scalar p = ALWAN_POW(nd, power);
-    return thr + scale * nd / ALWAN_POW(ALWAN_LITERAL(1.0) + p, ALWAN_LITERAL(1.0) / power);
+    return aces_compress_dist_v(dist, thr, scale, power);
 }
 
 /* Per-channel gamut compression */
 static alwan_scalar gamut_comp_channel(alwan_scalar val, alwan_scalar ach,
                                         alwan_scalar thr, alwan_scalar scale, alwan_scalar power) {
-    if (ach == ALWAN_LITERAL(0.0)) {
-        return ALWAN_LITERAL(0.0);
-    }
-
-    alwan_scalar dist = (ach - val) / ALWAN_ABS(ach);
-
-    if (dist < thr) {
-        return val;
-    }
-
-    alwan_scalar compr_dist = compress_dist(dist, thr, scale, power);
-    alwan_scalar compr = ach - compr_dist * ALWAN_ABS(ach);
-
-    return compr;
+    return aces_gamut_comp_channel_v(val, ach, thr, scale, power);
 }
 
 /* Compute scale from limit, threshold and power.
  * The scale ensures the compression function passes through (1, lim). */
 static alwan_scalar calc_gamut_comp_scale(alwan_scalar lim, alwan_scalar thr, alwan_scalar power) {
-    /* scale = (lim - thr) / pow(pow((1-thr)/(lim-thr), -power) - 1, 1/power) */
-    alwan_scalar base = (ALWAN_LITERAL(1.0) - thr) / (lim - thr);
-    alwan_scalar inner = ALWAN_POW(base, -power) - ALWAN_LITERAL(1.0);
-    alwan_scalar denom = ALWAN_POW(inner, ALWAN_LITERAL(1.0) / power);
-    return (lim - thr) / denom;
+    return aces_calc_gamut_comp_scale_v(lim, thr, power);
 }
 
 int alwan_aces_gamut_comp13(alwan_rgb *rgb_out,
@@ -384,36 +326,13 @@ int alwan_aces_gamut_comp13(alwan_rgb *rgb_out,
 /* Decompression function (inverse direction)
  * Given compressed distance, recover original distance */
 static alwan_scalar uncompress_dist(alwan_scalar compressed_dist, alwan_scalar thr, alwan_scalar scale, alwan_scalar power) {
-    alwan_scalar ndc = (compressed_dist - thr) / scale;
-    if (ndc <= ALWAN_LITERAL(0.0)) {
-        return compressed_dist;
-    }
-    alwan_scalar p = ALWAN_POW(ndc, power);
-    /* Avoid division by zero when p >= 1 */
-    if (p >= ALWAN_LITERAL(1.0)) {
-        return thr + scale * ndc * ALWAN_LITERAL(100.0); /* Large value */
-    }
-    alwan_scalar nd = ndc / ALWAN_POW(ALWAN_LITERAL(1.0) - p, ALWAN_LITERAL(1.0) / power);
-    return thr + scale * nd;
+    return aces_uncompress_dist_v(compressed_dist, thr, scale, power);
 }
 
 /* Per-channel gamut decompression (inverse) */
 static alwan_scalar gamut_decomp_channel(alwan_scalar val, alwan_scalar ach,
                                           alwan_scalar thr, alwan_scalar scale, alwan_scalar power) {
-    if (ach == ALWAN_LITERAL(0.0)) {
-        return ALWAN_LITERAL(0.0);
-    }
-
-    alwan_scalar dist = (ach - val) / ALWAN_ABS(ach);
-
-    if (dist < thr) {
-        return val;
-    }
-
-    alwan_scalar decompr_dist = uncompress_dist(dist, thr, scale, power);
-    alwan_scalar decompr = ach - decompr_dist * ALWAN_ABS(ach);
-
-    return decompr;
+    return aces_gamut_decomp_channel_v(val, ach, thr, scale, power);
 }
 
 int alwan_aces_gamut_comp13_inv(alwan_rgb *rgb_out,
@@ -459,46 +378,22 @@ static const alwan_scalar ACES1_RRT_GLOW_MID = ALWAN_LITERAL(0.08);
 
 /* Calculate saturation as (max - min) / max */
 static alwan_scalar aces1_saturation(alwan_scalar r, alwan_scalar g, alwan_scalar b) {
-    alwan_scalar mx = alwan_max3(r, g, b);
-    alwan_scalar mn = alwan_min3(r, g, b);
-    if (mx <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return (mx - mn) / mx;
+    return aces1_saturation_v(r, g, b);
 }
 
 /* Convert RGB to hue in degrees [0, 360) */
 static alwan_scalar aces1_rgb_to_hue(alwan_scalar r, alwan_scalar g, alwan_scalar b) {
-    alwan_scalar mx = alwan_max3(r, g, b);
-    alwan_scalar mn = alwan_min3(r, g, b);
-    alwan_scalar chroma = mx - mn;
-
-    if (chroma <= ALWAN_LITERAL(1e-10)) return ALWAN_LITERAL(0.0);
-
-    alwan_scalar hue;
-    if (mx == r) {
-        hue = (g - b) / chroma;
-        if (hue < ALWAN_LITERAL(0.0)) hue += ALWAN_LITERAL(6.0);
-    } else if (mx == g) {
-        hue = ALWAN_LITERAL(2.0) + (b - r) / chroma;
-    } else {
-        hue = ALWAN_LITERAL(4.0) + (r - g) / chroma;
-    }
-    return hue * ALWAN_LITERAL(60.0);
+    return aces1_rgb_to_hue_v(r, g, b);
 }
 
 /* Center hue around a target hue */
 static alwan_scalar aces1_center_hue(alwan_scalar hue, alwan_scalar center) {
-    alwan_scalar centered = hue - center;
-    if (centered < ALWAN_LITERAL(-180.0)) centered += ALWAN_LITERAL(360.0);
-    if (centered > ALWAN_LITERAL(180.0)) centered -= ALWAN_LITERAL(360.0);
-    return centered;
+    return aces1_center_hue_v(hue, center);
 }
 
 /* Cubic basis shaper - smooth falloff from center */
 static alwan_scalar aces1_cubic_basis_shaper(alwan_scalar x, alwan_scalar width) {
-    alwan_scalar t = x / width;
-    if (t < ALWAN_LITERAL(-1.0) || t > ALWAN_LITERAL(1.0)) return ALWAN_LITERAL(0.0);
-    alwan_scalar t2 = t * t;
-    return ALWAN_LITERAL(1.0) - ALWAN_LITERAL(3.0) * t2 + ALWAN_LITERAL(2.0) * t2 * ALWAN_ABS(t);
+    return aces1_cubic_basis_shaper_v(x, width);
 }
 
 /* AP0 to AP1 matrix */
@@ -532,48 +427,7 @@ static const alwan_scalar ACES1_D65_TO_D60[9] = {
 /* Segmented spline function for RRT tone scale
  * This is a simplified version - full implementation would use LUTs */
 static alwan_scalar aces1_segmented_spline_c5(alwan_scalar x) {
-    /* Simplified ACES RRT tone curve approximation
-     * Based on segmented spline with 5 control points */
-    static const alwan_scalar c_coefs[6] = {
-        ALWAN_LITERAL(-4.0),      /* coefs[0] */
-        ALWAN_LITERAL(-4.0),      /* coefs[1] */
-        ALWAN_LITERAL(-3.1573765773),  /* coefs[2] */
-        ALWAN_LITERAL(-0.4852499958),  /* coefs[3] */
-        ALWAN_LITERAL( 1.8477324706),  /* coefs[4] */
-        ALWAN_LITERAL( 1.8477324706)   /* coefs[5] */
-    };
-
-    /* Pre-computed: 0.18 * 2^(-15) = 0.18 / 32768 = 5.4931640625e-6 */
-    static const alwan_scalar min_pt_x = ALWAN_LITERAL(5.4931640625e-6);
-    static const alwan_scalar min_pt_y = ALWAN_LITERAL(0.0001);
-    static const alwan_scalar mid_pt_x = ALWAN_LITERAL(0.18);
-    static const alwan_scalar mid_pt_y = ALWAN_LITERAL(4.8);
-    /* Pre-computed: 0.18 * 2^18 = 0.18 * 262144 = 47185.92 */
-    static const alwan_scalar max_pt_x = ALWAN_LITERAL(47185.92);
-    static const alwan_scalar max_pt_y = ALWAN_LITERAL(48.0);  /* SDR peak nits */
-
-    alwan_scalar log_x = ALWAN_LOG10(alwan_max(x, ALWAN_LITERAL(1e-10)));
-    alwan_scalar log_min = ALWAN_LOG10(min_pt_x);
-    alwan_scalar log_mid = ALWAN_LOG10(mid_pt_x);
-    alwan_scalar log_max = ALWAN_LOG10(max_pt_x);
-
-    alwan_scalar t;
-    if (log_x <= log_min) {
-        return min_pt_y;
-    } else if (log_x >= log_max) {
-        return max_pt_y;
-    } else if (log_x < log_mid) {
-        t = (log_x - log_min) / (log_mid - log_min);
-        /* Cubic interpolation using Hermite basis */
-        alwan_scalar t2 = t * t;
-        alwan_scalar t3 = t2 * t;
-        return min_pt_y + (mid_pt_y - min_pt_y) * (ALWAN_LITERAL(3.0) * t2 - ALWAN_LITERAL(2.0) * t3);
-    } else {
-        t = (log_x - log_mid) / (log_max - log_mid);
-        alwan_scalar t2 = t * t;
-        alwan_scalar t3 = t2 * t;
-        return mid_pt_y + (max_pt_y - mid_pt_y) * (ALWAN_LITERAL(3.0) * t2 - ALWAN_LITERAL(2.0) * t3);
-    }
+    return aces1_segmented_spline_c5_v(x);
 }
 
 /* ACES 1.x RRT core (simplified) */
@@ -608,9 +462,9 @@ static void aces1_rrt_core(alwan_rgb const *ap1_in, alwan_rgb *rrt_out) {
 
 /* Matrix multiply helper */
 static void mat3_mul_vec3_aces1(alwan_scalar const *m, alwan_rgb const *v, alwan_rgb *out) {
-    out->r = m[0] * v->r + m[1] * v->g + m[2] * v->b;
-    out->g = m[3] * v->r + m[4] * v->g + m[5] * v->b;
-    out->b = m[6] * v->r + m[7] * v->g + m[8] * v->b;
+    alwan_vec3 vec = {{v->r, v->g, v->b}};
+    alwan_vec3 res = aces_mat3_mul_vec3_v((alwan_mat3x3 const *)m, vec);
+    out->r = res.v[0]; out->g = res.v[1]; out->b = res.v[2];
 }
 
 /* Output primaries matrices */
@@ -640,38 +494,22 @@ static const alwan_scalar ACES1_AP1_TO_XYZ_D60[9] = {
 
 /* Apply BT.1886 EOTF inverse (gamma 2.4) */
 static alwan_scalar bt1886_oetf(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return ALWAN_POW(x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
+    return aces_bt1886_oetf_v(x);
 }
 
 /* Apply sRGB OETF */
 static alwan_scalar srgb_oetf(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    if (x <= ALWAN_LITERAL(0.0031308)) {
-        return x * ALWAN_LITERAL(12.92);
-    }
-    return ALWAN_LITERAL(1.055) * ALWAN_POW(x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4)) - ALWAN_LITERAL(0.055);
+    return aces_srgb_oetf_v(x);
 }
 
 /* Apply Gamma 2.6 OETF (cinema) */
 static alwan_scalar gamma26_oetf(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return ALWAN_POW(x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
+    return aces_gamma26_oetf_v(x);
 }
 
 /* PQ (ST.2084) OETF */
 static alwan_scalar pq_oetf(alwan_scalar Y, alwan_scalar peak_nits) {
-    static const alwan_scalar m1 = ALWAN_LITERAL(0.1593017578125);
-    static const alwan_scalar m2 = ALWAN_LITERAL(78.84375);
-    static const alwan_scalar c1 = ALWAN_LITERAL(0.8359375);
-    static const alwan_scalar c2 = ALWAN_LITERAL(18.8515625);
-    static const alwan_scalar c3 = ALWAN_LITERAL(18.6875);
-
-    alwan_scalar L = alwan_max(Y * peak_nits / ALWAN_LITERAL(10000.0), ALWAN_LITERAL(0.0));
-    alwan_scalar Lm1 = ALWAN_POW(L, m1);
-    alwan_scalar num = c1 + c2 * Lm1;
-    alwan_scalar den = ALWAN_LITERAL(1.0) + c3 * Lm1;
-    return ALWAN_POW(num / den, m2);
+    return aces_pq_oetf_v(Y, peak_nits);
 }
 
 int alwan_aces1_output_transform(alwan_rgb *rgb_out,
@@ -793,36 +631,19 @@ int alwan_aces1_output_transform(alwan_rgb *rgb_out,
 
 /* Inverse EOTF functions */
 static alwan_scalar bt1886_eotf(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return ALWAN_POW(x, ALWAN_LITERAL(2.4));
+    return aces_bt1886_eotf_v(x);
 }
 
 static alwan_scalar srgb_eotf(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    if (x <= ALWAN_LITERAL(0.04045)) {
-        return x / ALWAN_LITERAL(12.92);
-    }
-    return ALWAN_POW((x + ALWAN_LITERAL(0.055)) / ALWAN_LITERAL(1.055), ALWAN_LITERAL(2.4));
+    return aces_srgb_eotf_v(x);
 }
 
 static alwan_scalar gamma26_eotf(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return ALWAN_POW(x, ALWAN_LITERAL(2.6));
+    return aces_gamma26_eotf_v(x);
 }
 
 static alwan_scalar pq_eotf(alwan_scalar E, alwan_scalar peak_nits) {
-    static const alwan_scalar m1 = ALWAN_LITERAL(0.1593017578125);
-    static const alwan_scalar m2 = ALWAN_LITERAL(78.84375);
-    static const alwan_scalar c1 = ALWAN_LITERAL(0.8359375);
-    static const alwan_scalar c2 = ALWAN_LITERAL(18.8515625);
-    static const alwan_scalar c3 = ALWAN_LITERAL(18.6875);
-
-    alwan_scalar Em2 = ALWAN_POW(alwan_max(E, ALWAN_LITERAL(0.0)), ALWAN_LITERAL(1.0) / m2);
-    alwan_scalar num = alwan_max(Em2 - c1, ALWAN_LITERAL(0.0));
-    alwan_scalar den = c2 - c3 * Em2;
-    if (den <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    alwan_scalar Y = ALWAN_POW(num / den, ALWAN_LITERAL(1.0) / m1);
-    return Y * ALWAN_LITERAL(10000.0) / peak_nits;
+    return aces_pq_eotf_v(E, peak_nits);
 }
 
 /* Inverse XYZ to output primaries matrices */
@@ -852,62 +673,7 @@ static const alwan_scalar ACES1_XYZ_D60_TO_AP1[9] = {
 
 /* Inverse RRT (simplified) */
 static alwan_scalar aces1_segmented_spline_c5_inv(alwan_scalar y) {
-    /* Newton-Raphson iteration to find x such that spline(x) = y * 48 */
-    /* y is in display range (0-1), convert to nits (0-48) for spline lookup */
-    static const alwan_scalar min_pt_x = ALWAN_LITERAL(5.4931640625e-6);
-    static const alwan_scalar min_pt_y = ALWAN_LITERAL(0.0001);
-    static const alwan_scalar mid_pt_x = ALWAN_LITERAL(0.18);
-    static const alwan_scalar mid_pt_y = ALWAN_LITERAL(4.8);
-    static const alwan_scalar max_pt_x = ALWAN_LITERAL(47185.92);
-    static const alwan_scalar max_pt_y = ALWAN_LITERAL(48.0);
-
-    alwan_scalar target_nits = y * ALWAN_LITERAL(48.0);
-
-    /* Clamp to valid range */
-    if (target_nits <= min_pt_y) return min_pt_x;
-    if (target_nits >= max_pt_y) return max_pt_x;
-
-    /* Initial guess: interpolate in log space for better starting point */
-    alwan_scalar x;
-    if (target_nits <= mid_pt_y) {
-        /* Lower half: log-linear interpolation between min and mid */
-        alwan_scalar t = (target_nits - min_pt_y) / (mid_pt_y - min_pt_y);
-        alwan_scalar log_min = ALWAN_LOG10(min_pt_x);
-        alwan_scalar log_mid = ALWAN_LOG10(mid_pt_x);
-        x = ALWAN_POW(ALWAN_LITERAL(10.0), log_min + t * (log_mid - log_min));
-    } else {
-        /* Upper half: log-linear interpolation between mid and max */
-        alwan_scalar t = (target_nits - mid_pt_y) / (max_pt_y - mid_pt_y);
-        alwan_scalar log_mid = ALWAN_LOG10(mid_pt_x);
-        alwan_scalar log_max = ALWAN_LOG10(max_pt_x);
-        x = ALWAN_POW(ALWAN_LITERAL(10.0), log_mid + t * (log_max - log_mid));
-    }
-
-    /* Newton iterations with bounds checking */
-    for (int i = 0; i < 30; i++) {
-        alwan_scalar fx = aces1_segmented_spline_c5(x) - target_nits;
-        if (ALWAN_ABS(fx) < ALWAN_LITERAL(1e-10)) break;
-
-        /* Numerical derivative with adaptive step */
-        alwan_scalar h = alwan_max(ALWAN_ABS(x) * ALWAN_LITERAL(1e-6), ALWAN_LITERAL(1e-12));
-        alwan_scalar dfx = (aces1_segmented_spline_c5(x + h) - aces1_segmented_spline_c5(x - h)) / (ALWAN_LITERAL(2.0) * h);
-        if (ALWAN_ABS(dfx) < ALWAN_LITERAL(1e-12)) break;
-
-        alwan_scalar dx = fx / dfx;
-
-        /* Damping: limit step size to prevent overshooting */
-        if (ALWAN_ABS(dx) > x * ALWAN_LITERAL(0.5)) {
-            dx = (dx > ALWAN_LITERAL(0.0)) ? x * ALWAN_LITERAL(0.5) : -x * ALWAN_LITERAL(0.5);
-        }
-
-        x = x - dx;
-
-        /* Clamp to valid range */
-        if (x < min_pt_x) x = min_pt_x;
-        if (x > max_pt_x) x = max_pt_x;
-    }
-
-    return x;
+    return aces1_segmented_spline_c5_inv_v(y);
 }
 
 static void aces1_rrt_core_inv(alwan_rgb const *rrt_in, alwan_rgb *ap1_out) {
@@ -1124,9 +890,6 @@ static const alwan_scalar ACES2_CHROMA_NORM_SIN[4] = {
     ALWAN_LITERAL(9.19364),  ALWAN_LITERAL(77.12896)
 };
 
-/* Reach table size (one per degree of hue) */
-#define ACES2_REACH_TABLE_SIZE 360
-
 /* Base cone response to Aab matrix (before scaling)
  * Row 0: [2, 1, 1/20]         - Achromatic channel
  * Row 1: [1, -12/11, 1/11]    - Red-green opponent
@@ -1149,76 +912,29 @@ static void primaries_to_rgb_to_xyz(alwan_scalar rx, alwan_scalar ry,
                                      alwan_scalar wx, alwan_scalar wy,
                                      alwan_scalar Y,
                                      alwan_scalar out[9]) {
-    /* Compute XYZ values from chromaticities */
-    alwan_scalar rX = rx / ry;
-    alwan_scalar rY = ALWAN_LITERAL(1.0);
-    alwan_scalar rZ = (ALWAN_LITERAL(1.0) - rx - ry) / ry;
-
-    alwan_scalar gX = gx / gy;
-    alwan_scalar gY = ALWAN_LITERAL(1.0);
-    alwan_scalar gZ = (ALWAN_LITERAL(1.0) - gx - gy) / gy;
-
-    alwan_scalar bX = bx / by;
-    alwan_scalar bY = ALWAN_LITERAL(1.0);
-    alwan_scalar bZ = (ALWAN_LITERAL(1.0) - bx - by) / by;
-
-    /* White point XYZ */
-    alwan_scalar wX = wx * Y / wy;
-    alwan_scalar wY = Y;
-    alwan_scalar wZ = (ALWAN_LITERAL(1.0) - wx - wy) * Y / wy;
-
-    /* Compute scale factors using Cramer's rule */
-    alwan_scalar d = rX * (bY * gZ - gY * bZ) - gX * (bY * rZ - rY * bZ) + bX * (gY * rZ - rY * gZ);
-
-    alwan_scalar Sr = (wX * (bY * gZ - gY * bZ) - gX * (bY * wZ - wY * bZ) + bX * (gY * wZ - wY * gZ)) / d;
-    alwan_scalar Sg = (rX * (bY * wZ - wY * bZ) - wX * (bY * rZ - rY * bZ) + bX * (wY * rZ - rY * wZ)) / d;
-    alwan_scalar Sb = (rX * (wY * gZ - gY * wZ) - gX * (wY * rZ - rY * wZ) + wX * (gY * rZ - rY * gZ)) / d;
-
-    /* Build RGB to XYZ matrix */
-    out[0] = Sr * rX; out[1] = Sg * gX; out[2] = Sb * bX;
-    out[3] = Sr * rY; out[4] = Sg * gY; out[5] = Sb * bY;
-    out[6] = Sr * rZ; out[7] = Sg * gZ; out[8] = Sb * bZ;
+    alwan_mat3x3 result = aces_primaries_to_rgb_to_xyz_v(rx, ry, gx, gy, bx, by, wx, wy, Y);
+    for (int i = 0; i < 9; i++) out[i] = result.m[i];
 }
 
 /* Invert 3x3 matrix */
 static int invert_mat3(alwan_scalar const m[9], alwan_scalar out[9]) {
-    alwan_scalar det = m[0] * (m[4] * m[8] - m[5] * m[7])
-                     - m[1] * (m[3] * m[8] - m[5] * m[6])
-                     + m[2] * (m[3] * m[7] - m[4] * m[6]);
-
-    if (ALWAN_ABS(det) < ALWAN_LITERAL(1e-10)) return -1;
-
-    alwan_scalar inv_det = ALWAN_LITERAL(1.0) / det;
-
-    out[0] = (m[4] * m[8] - m[5] * m[7]) * inv_det;
-    out[1] = (m[2] * m[7] - m[1] * m[8]) * inv_det;
-    out[2] = (m[1] * m[5] - m[2] * m[4]) * inv_det;
-    out[3] = (m[5] * m[6] - m[3] * m[8]) * inv_det;
-    out[4] = (m[0] * m[8] - m[2] * m[6]) * inv_det;
-    out[5] = (m[2] * m[3] - m[0] * m[5]) * inv_det;
-    out[6] = (m[3] * m[7] - m[4] * m[6]) * inv_det;
-    out[7] = (m[1] * m[6] - m[0] * m[7]) * inv_det;
-    out[8] = (m[0] * m[4] - m[1] * m[3]) * inv_det;
-
+    alwan_mat3x3 result = aces_invert_mat3_v((alwan_mat3x3 const *)m);
+    for (int i = 0; i < 9; i++) out[i] = result.m[i];
+    /* Core version returns zero matrix on failure */
     return 0;
 }
 
 /* Multiply 3x3 matrices: out = a * b */
 static void mult_mat3(alwan_scalar const a[9], alwan_scalar const b[9], alwan_scalar out[9]) {
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            out[i * 3 + j] = a[i * 3 + 0] * b[0 * 3 + j]
-                           + a[i * 3 + 1] * b[1 * 3 + j]
-                           + a[i * 3 + 2] * b[2 * 3 + j];
-        }
-    }
+    alwan_mat3x3 result = aces_mult_mat3_v((alwan_mat3x3 const *)a, (alwan_mat3x3 const *)b);
+    for (int i = 0; i < 9; i++) out[i] = result.m[i];
 }
 
 /* Multiply vector by matrix: out = m * v */
 static void mult_vec_mat3(alwan_scalar const v[3], alwan_scalar const m[9], alwan_scalar out[3]) {
-    out[0] = v[0] * m[0] + v[1] * m[1] + v[2] * m[2];
-    out[1] = v[0] * m[3] + v[1] * m[4] + v[2] * m[5];
-    out[2] = v[0] * m[6] + v[1] * m[7] + v[2] * m[8];
+    alwan_vec3 vec = {{v[0], v[1], v[2]}};
+    alwan_vec3 result = aces_mult_vec_mat3_v(vec, (alwan_mat3x3 const *)m);
+    out[0] = result.v[0]; out[1] = result.v[1]; out[2] = result.v[2];
 }
 
 /* ----------------------------------------------------------------
@@ -1228,13 +944,7 @@ static void mult_vec_mat3(alwan_scalar const v[3], alwan_scalar const m[9], alwa
  * ---------------------------------------------------------------- */
 
 static alwan_scalar post_adaptation_cone_response_compression_fwd(alwan_scalar v) {
-    alwan_scalar abs_v = ALWAN_ABS(v);
-    if (abs_v < ALWAN_LITERAL(1e-10)) return ALWAN_LITERAL(0.0);
-
-    alwan_scalar F_L_Y = ALWAN_POW(abs_v, ALWAN_LITERAL(0.42));
-    alwan_scalar Ra = F_L_Y / (CAM_NL_OFFSET + F_L_Y);
-
-    return (v >= ALWAN_LITERAL(0.0)) ? Ra : -Ra;
+    return aces_cone_response_fwd_v(v);
 }
 
 /* ----------------------------------------------------------------
@@ -1244,26 +954,12 @@ static alwan_scalar post_adaptation_cone_response_compression_fwd(alwan_scalar v
 
 static alwan_scalar toe_fwd(alwan_scalar x, alwan_scalar limit,
                             alwan_scalar k1_in, alwan_scalar k2_in) {
-    if (x > limit) return x;
-
-    alwan_scalar k2 = (k2_in > ALWAN_LITERAL(0.001)) ? k2_in : ALWAN_LITERAL(0.001);
-    alwan_scalar k1 = ALWAN_SQRT(k1_in * k1_in + k2 * k2);
-    alwan_scalar k3 = (limit + k1) / (limit + k2);
-    alwan_scalar minus_b = k3 * x - k1;
-    alwan_scalar minus_ac = k2 * k3 * x;
-
-    return ALWAN_LITERAL(0.5) * (minus_b + ALWAN_SQRT(minus_b * minus_b + ALWAN_LITERAL(4.0) * minus_ac));
+    return aces_toe_fwd_v(x, limit, k1_in, k2_in);
 }
 
 static alwan_scalar toe_inv(alwan_scalar x, alwan_scalar limit,
                             alwan_scalar k1_in, alwan_scalar k2_in) {
-    if (x > limit) return x;
-
-    alwan_scalar k2 = (k2_in > ALWAN_LITERAL(0.001)) ? k2_in : ALWAN_LITERAL(0.001);
-    alwan_scalar k1 = ALWAN_SQRT(k1_in * k1_in + k2 * k2);
-    alwan_scalar k3 = (limit + k1) / (limit + k2);
-
-    return (x * x + k1 * x) / (k3 * (x + k2));
+    return aces_toe_inv_v(x, limit, k1_in, k2_in);
 }
 
 /* ----------------------------------------------------------------
@@ -1272,48 +968,13 @@ static alwan_scalar toe_inv(alwan_scalar x, alwan_scalar limit,
  * ---------------------------------------------------------------- */
 
 static alwan_scalar chroma_compress_norm(alwan_scalar h_rad, alwan_scalar scale) {
-    /* Compute trig values for hue angle */
-    alwan_scalar cos_hr1 = ALWAN_COS(h_rad);
-    alwan_scalar sin_hr1 = ALWAN_SIN(h_rad);
-
-    /* Compute higher harmonics using trig identities */
-    /* cos(2h) = 2*cos²(h) - 1 */
-    alwan_scalar cos_hr2 = ALWAN_LITERAL(2.0) * cos_hr1 * cos_hr1 - ALWAN_LITERAL(1.0);
-    /* sin(2h) = 2*sin(h)*cos(h) */
-    alwan_scalar sin_hr2 = ALWAN_LITERAL(2.0) * cos_hr1 * sin_hr1;
-    /* cos(3h) = 4*cos³(h) - 3*cos(h) */
-    alwan_scalar cos_hr3 = ALWAN_LITERAL(4.0) * cos_hr1 * cos_hr1 * cos_hr1 - ALWAN_LITERAL(3.0) * cos_hr1;
-    /* sin(3h) = 3*sin(h) - 4*sin³(h) */
-    alwan_scalar sin_hr3 = ALWAN_LITERAL(3.0) * sin_hr1 - ALWAN_LITERAL(4.0) * sin_hr1 * sin_hr1 * sin_hr1;
-
-    /* Fourier sum: weighted combination of harmonics */
-    alwan_scalar M = ACES2_CHROMA_NORM_COS[0] * cos_hr1
-                   + ACES2_CHROMA_NORM_COS[1] * cos_hr2
-                   + ACES2_CHROMA_NORM_COS[2] * cos_hr3
-                   + ACES2_CHROMA_NORM_SIN[0] * sin_hr1
-                   + ACES2_CHROMA_NORM_SIN[1] * sin_hr2
-                   + ACES2_CHROMA_NORM_SIN[2] * sin_hr3
-                   + ACES2_CHROMA_NORM_SIN[3];  /* DC offset */
-
-    return M * scale;
+    return aces_chroma_compress_norm_v(h_rad, scale);
 }
 
 /* ----------------------------------------------------------------
  * ACES 2.0: JMhParams computation
  * Computes all matrices and parameters needed for RGB to JMh conversion
  * ---------------------------------------------------------------- */
-
-typedef struct {
-    alwan_scalar MATRIX_RGB_to_CAM16_c[9];
-    alwan_scalar MATRIX_cone_response_to_Aab[9];
-    alwan_scalar MATRIX_CAM16_to_RGB[9];  /* Inverse of MATRIX_RGB_to_CAM16_c */
-    alwan_scalar MATRIX_Aab_to_cone[9];   /* Inverse of MATRIX_cone_response_to_Aab */
-    alwan_scalar cz;      /* model gamma */
-    alwan_scalar inv_cz;
-    alwan_scalar A_w_J;   /* achromatic response of white */
-    alwan_scalar inv_A_w_J;
-    alwan_scalar F_L_n;   /* luminance-normalized adaptation factor */
-} JMhParams;
 
 /* Chroma compression parameters (computed from peak luminance) */
 typedef struct {
@@ -1449,18 +1110,9 @@ static void init_JMhParams(alwan_aces_primaries const *primaries, JMhParams *p) 
  * ---------------------------------------------------------------- */
 
 static void RGB_to_Aab(alwan_scalar const rgb[3], JMhParams const *p, alwan_scalar aab[3]) {
-    /* Transform to adapted CAM16 cone response */
-    alwan_scalar rgb_m[3];
-    mult_vec_mat3(rgb, p->MATRIX_RGB_to_CAM16_c, rgb_m);
-
-    /* Apply post-adaptation cone response compression */
-    alwan_scalar rgb_a[3];
-    rgb_a[0] = post_adaptation_cone_response_compression_fwd(rgb_m[0]);
-    rgb_a[1] = post_adaptation_cone_response_compression_fwd(rgb_m[1]);
-    rgb_a[2] = post_adaptation_cone_response_compression_fwd(rgb_m[2]);
-
-    /* Transform to Aab opponent color space */
-    mult_vec_mat3(rgb_a, p->MATRIX_cone_response_to_Aab, aab);
+    alwan_vec3 in = {{rgb[0], rgb[1], rgb[2]}};
+    alwan_vec3 out = aces2_rgb_to_aab_v(in, p);
+    aab[0] = out.v[0]; aab[1] = out.v[1]; aab[2] = out.v[2];
 }
 
 /* ----------------------------------------------------------------
@@ -1471,29 +1123,9 @@ static void RGB_to_Aab(alwan_scalar const rgb[3], JMhParams const *p, alwan_scal
  * ---------------------------------------------------------------- */
 
 static void Aab_to_JMh(alwan_scalar const aab[3], JMhParams const *p, alwan_scalar jmh[3]) {
-    /* Handle achromatic black */
-    if (aab[0] <= ALWAN_LITERAL(0.0)) {
-        jmh[0] = ALWAN_LITERAL(0.0);
-        jmh[1] = ALWAN_LITERAL(0.0);
-        jmh[2] = ALWAN_LITERAL(0.0);
-        return;
-    }
-
-    /* J = J_scale * A^cz */
-    jmh[0] = J_SCALE * ALWAN_POW(aab[0], p->cz);
-
-    /* M = sqrt(a^2 + b^2) */
-    jmh[1] = ALWAN_SQRT(aab[1] * aab[1] + aab[2] * aab[2]);
-
-    /* h = atan2(b, a) converted to degrees */
-    alwan_scalar h_rad = ALWAN_ATAN2(aab[2], aab[1]);
-    alwan_scalar h_deg = h_rad * ALWAN_LITERAL(180.0) / ALWAN_LITERAL(3.14159265358979323846);
-
-    /* Wrap to [0, 360) */
-    if (h_deg < ALWAN_LITERAL(0.0)) {
-        h_deg += ALWAN_LITERAL(360.0);
-    }
-    jmh[2] = h_deg;
+    alwan_vec3 in = {{aab[0], aab[1], aab[2]}};
+    alwan_vec3 out = aces2_aab_to_jmh_v(in, p);
+    jmh[0] = out.v[0]; jmh[1] = out.v[1]; jmh[2] = out.v[2];
 }
 
 /* ----------------------------------------------------------------
@@ -1504,18 +1136,7 @@ static void Aab_to_JMh(alwan_scalar const aab[3], JMhParams const *p, alwan_scal
  * ---------------------------------------------------------------- */
 
 static alwan_scalar post_adaptation_cone_response_compression_inv(alwan_scalar Ra) {
-    alwan_scalar sign = (Ra >= ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(-1.0);
-    alwan_scalar Ra_abs = ALWAN_ABS(Ra);
-
-    /* Clamp to avoid division by zero */
-    if (Ra_abs < ALWAN_LITERAL(1e-10)) return ALWAN_LITERAL(0.0);
-    alwan_scalar Ra_lim = (Ra_abs < ALWAN_LITERAL(0.99)) ? Ra_abs : ALWAN_LITERAL(0.99);
-
-    /* Inverse formula: Rc = (cam_nl_offset * Ra / (1 - Ra))^(1/0.42) */
-    alwan_scalar F_L_Y = CAM_NL_OFFSET * Ra_lim / (ALWAN_LITERAL(1.0) - Ra_lim);
-    alwan_scalar Rc = ALWAN_POW(F_L_Y, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.42));
-
-    return sign * Rc;
+    return aces_cone_response_inv_v(Ra);
 }
 
 /* ----------------------------------------------------------------
@@ -1526,23 +1147,9 @@ static alwan_scalar post_adaptation_cone_response_compression_inv(alwan_scalar R
  * ---------------------------------------------------------------- */
 
 static void JMh_to_Aab(alwan_scalar const jmh[3], JMhParams const *p, alwan_scalar aab[3]) {
-    /* Handle black */
-    if (jmh[0] <= ALWAN_LITERAL(0.0)) {
-        aab[0] = ALWAN_LITERAL(0.0);
-        aab[1] = ALWAN_LITERAL(0.0);
-        aab[2] = ALWAN_LITERAL(0.0);
-        return;
-    }
-
-    /* A = (J / J_scale)^(1/cz) */
-    aab[0] = ALWAN_POW(jmh[0] / J_SCALE, p->inv_cz);
-
-    /* Convert hue from degrees to radians */
-    alwan_scalar h_rad = jmh[2] * ALWAN_LITERAL(3.14159265358979323846) / ALWAN_LITERAL(180.0);
-
-    /* a = M * cos(h), b = M * sin(h) */
-    aab[1] = jmh[1] * ALWAN_COS(h_rad);
-    aab[2] = jmh[1] * ALWAN_SIN(h_rad);
+    alwan_vec3 in = {{jmh[0], jmh[1], jmh[2]}};
+    alwan_vec3 out = aces2_jmh_to_aab_v(in, p);
+    aab[0] = out.v[0]; aab[1] = out.v[1]; aab[2] = out.v[2];
 }
 
 /* ----------------------------------------------------------------
@@ -1551,18 +1158,9 @@ static void JMh_to_Aab(alwan_scalar const jmh[3], JMhParams const *p, alwan_scal
  * ---------------------------------------------------------------- */
 
 static void Aab_to_RGB(alwan_scalar const aab[3], JMhParams const *p, alwan_scalar rgb[3]) {
-    /* Step 1: Transform Aab to compressed cone response using precomputed inverse */
-    alwan_scalar rgb_a[3];
-    mult_vec_mat3(aab, p->MATRIX_Aab_to_cone, rgb_a);
-
-    /* Step 2: Apply inverse compression to get adapted cone response */
-    alwan_scalar rgb_m[3];
-    rgb_m[0] = post_adaptation_cone_response_compression_inv(rgb_a[0]);
-    rgb_m[1] = post_adaptation_cone_response_compression_inv(rgb_a[1]);
-    rgb_m[2] = post_adaptation_cone_response_compression_inv(rgb_a[2]);
-
-    /* Step 3: Transform to output RGB using precomputed inverse */
-    mult_vec_mat3(rgb_m, p->MATRIX_CAM16_to_RGB, rgb);
+    alwan_vec3 in = {{aab[0], aab[1], aab[2]}};
+    alwan_vec3 out = aces2_aab_to_rgb_v(in, p);
+    rgb[0] = out.v[0]; rgb[1] = out.v[1]; rgb[2] = out.v[2];
 }
 
 /* ----------------------------------------------------------------
@@ -1578,28 +1176,11 @@ static void Aab_to_RGB(alwan_scalar const aab[3], JMhParams const *p, alwan_scal
  * ---------------------------------------------------------------- */
 
 static alwan_scalar J_to_Y(alwan_scalar J, JMhParams const *p) {
-    if (J <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-
-    /* Step 1: A = (J / J_scale)^(1/cz) */
-    alwan_scalar A = ALWAN_POW(J / J_SCALE, p->inv_cz);
-
-    /* Step 2: Y = inverse_cone_response(A_w_J * A) / F_L_n */
-    alwan_scalar Ra = p->A_w_J * A;
-    alwan_scalar Y = post_adaptation_cone_response_compression_inv(Ra) / p->F_L_n;
-
-    return Y;
+    return aces2_j_to_y_v(J, p);
 }
 
 static alwan_scalar Y_to_J(alwan_scalar Y, JMhParams const *p) {
-    if (Y <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-
-    /* Step 1: Ra = compression(Y * F_L_n) */
-    alwan_scalar Ra = post_adaptation_cone_response_compression_fwd(Y * p->F_L_n);
-
-    /* Step 2: J = J_scale * (Ra / A_w_J)^cz */
-    alwan_scalar J = J_SCALE * ALWAN_POW(Ra * p->inv_A_w_J, p->cz);
-
-    return J;
+    return aces2_y_to_j_v(Y, p);
 }
 
 /* Forward declaration for use in TonescaleCompress20 */
@@ -1610,16 +1191,6 @@ void alwan_aces_primaries_ap1_default(alwan_aces_primaries *primaries);
  * Reference: ACES CTL Lib.Academy.Tonescale.ctl
  * Full pipeline: RGB -> JMh -> tonescale J -> JMh -> RGB
  * ---------------------------------------------------------------- */
-
-typedef struct {
-    alwan_scalar n;       /* peak luminance */
-    alwan_scalar n_r;     /* reference white luminance (100 nits) */
-    alwan_scalar g;       /* contrast/surround factor (1.15) */
-    alwan_scalar t_1;     /* toe compensation (0.04) */
-    alwan_scalar s_2;     /* derived scale parameter */
-    alwan_scalar u_2;     /* derived parameter */
-    alwan_scalar m_2;     /* derived multiplier */
-} TSParams;
 
 static void init_TSParams(alwan_scalar peak_luminance, TSParams *ts) {
     /* Constants from ACES CTL */
@@ -1661,10 +1232,7 @@ static void init_TSParams(alwan_scalar peak_luminance, TSParams *ts) {
 }
 
 static alwan_scalar tonescale_fwd(alwan_scalar x, TSParams const *ts) {
-    alwan_scalar x_clamped = (x > ALWAN_LITERAL(0.0)) ? x : ALWAN_LITERAL(0.0);
-    alwan_scalar f = ts->m_2 * ALWAN_POW(x_clamped / (x_clamped + ts->s_2), ts->g);
-    alwan_scalar h = (f > ALWAN_LITERAL(0.0)) ? (f * f / (f + ts->t_1)) : ALWAN_LITERAL(0.0);
-    return h * ts->n_r;
+    return aces2_tonescale_fwd_v(x, ts);
 }
 
 /* ----------------------------------------------------------------
@@ -1967,9 +1535,6 @@ static const alwan_scalar GAMUT_CUSP_MID_BLEND = ALWAN_LITERAL(1.3);
 static const alwan_scalar GAMUT_FOCUS_DISTANCE = ALWAN_LITERAL(1.35);
 static const alwan_scalar GAMUT_FOCUS_ADJUST_GAIN_INV = ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.55);
 
-/* Cusp table size (one entry per degree of hue, plus 2 for wrap-around) */
-#define ACES2_CUSP_TABLE_SIZE 362
-
 /* Number of gamut corners (R, Y, G, C, B, M) */
 #define ACES2_CUSP_CORNER_COUNT 6
 
@@ -1980,58 +1545,13 @@ static const alwan_scalar GAMUT_LOWER_HULL_GAMMA = ALWAN_LITERAL(1.14);
  * ACES 2.0: Gamut Compression Parameter Structures
  * ---------------------------------------------------------------- */
 
-/* Cusp table entry: [J, M, gamma_top_inv] */
-typedef struct {
-    alwan_scalar J;
-    alwan_scalar M;
-    alwan_scalar gamma_top_inv;
-} GamutCuspEntry;
-
-/* Full gamut compression parameters */
-typedef struct {
-    alwan_scalar limit_J_max;
-    alwan_scalar mid_J;
-    alwan_scalar focus_dist;
-    alwan_scalar lower_hull_gamma_inv;
-    alwan_scalar model_gamma_inv;
-    alwan_scalar reach_max_M;
-    GamutCuspEntry cusp_table[ACES2_CUSP_TABLE_SIZE];
-    alwan_scalar reach_m_table[ACES2_REACH_TABLE_SIZE];
-    alwan_scalar hue_table[ACES2_CUSP_TABLE_SIZE];
-} GamutCompressParams;
-
-/* Hue-dependent parameters for a single color */
-typedef struct {
-    alwan_scalar cusp_J;
-    alwan_scalar cusp_M;
-    alwan_scalar gamma_top_inv;
-    alwan_scalar gamma_bottom_inv;
-    alwan_scalar focus_J;
-    alwan_scalar analytical_threshold;
-} HueDependentGamutParams;
-
 /* ----------------------------------------------------------------
  * ACES 2.0: Smooth minimum function (smin)
  * Creates smooth transition between two boundaries
  * ---------------------------------------------------------------- */
 
 static alwan_scalar smin_scaled(alwan_scalar a, alwan_scalar b, alwan_scalar cusp_M) {
-    /* Smooth minimum using cubic polynomial blending */
-    alwan_scalar s = cusp_M * GAMUT_SMOOTH_CUSPS;
-    alwan_scalar x = a - b;
-    alwan_scalar sign = (x >= ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(-1.0);
-    alwan_scalar abs_x = ALWAN_ABS(x);
-
-    if (abs_x >= s) {
-        return (a < b) ? a : b;
-    }
-
-    /* Cubic blend: (|x| - s)^2 * (|x| + s) / (4*s^2) + min(a,b) */
-    alwan_scalar t = (abs_x - s) / (ALWAN_LITERAL(2.0) * s);
-    alwan_scalar blend = t * t * (abs_x + s) / (ALWAN_LITERAL(2.0) * s);
-    alwan_scalar min_val = (a < b) ? a : b;
-
-    return min_val + blend * sign;
+    return aces2_smin_scaled_v(a, b, cusp_M);
 }
 
 /* ----------------------------------------------------------------
@@ -2039,51 +1559,21 @@ static alwan_scalar smin_scaled(alwan_scalar a, alwan_scalar b, alwan_scalar cus
  * ---------------------------------------------------------------- */
 
 static alwan_scalar reinhard_fwd(alwan_scalar x) {
-    return x / (ALWAN_LITERAL(1.0) + x);
+    return aces2_reinhard_fwd_v(x);
 }
 
 static alwan_scalar reinhard_inv(alwan_scalar x) {
-    return x / (ALWAN_LITERAL(1.0) - x);
+    return aces2_reinhard_inv_v(x);
 }
 
 static alwan_scalar remap_M_fwd(alwan_scalar M, alwan_scalar gamut_boundary_M,
                                  alwan_scalar reach_boundary_M) {
-    alwan_scalar boundary_ratio = gamut_boundary_M / reach_boundary_M;
-    alwan_scalar proportion = (boundary_ratio > GAMUT_COMPRESSION_THRESHOLD)
-                             ? boundary_ratio : GAMUT_COMPRESSION_THRESHOLD;
-    alwan_scalar threshold = proportion * gamut_boundary_M;
-
-    if (M <= threshold || proportion >= ALWAN_LITERAL(1.0)) {
-        return M;
-    }
-
-    alwan_scalar m_offset = M - threshold;
-    alwan_scalar gamut_offset = gamut_boundary_M - threshold;
-    alwan_scalar reach_offset = reach_boundary_M - threshold;
-    alwan_scalar scale = reach_offset / ((reach_offset / gamut_offset) - ALWAN_LITERAL(1.0));
-    alwan_scalar nd = m_offset / scale;
-
-    return threshold + scale * reinhard_fwd(nd);
+    return aces2_remap_m_fwd_v(M, gamut_boundary_M, reach_boundary_M);
 }
 
 static alwan_scalar remap_M_inv(alwan_scalar M, alwan_scalar gamut_boundary_M,
                                  alwan_scalar reach_boundary_M) {
-    alwan_scalar boundary_ratio = gamut_boundary_M / reach_boundary_M;
-    alwan_scalar proportion = (boundary_ratio > GAMUT_COMPRESSION_THRESHOLD)
-                             ? boundary_ratio : GAMUT_COMPRESSION_THRESHOLD;
-    alwan_scalar threshold = proportion * gamut_boundary_M;
-
-    if (M <= threshold || proportion >= ALWAN_LITERAL(1.0)) {
-        return M;
-    }
-
-    alwan_scalar m_offset = M - threshold;
-    alwan_scalar gamut_offset = gamut_boundary_M - threshold;
-    alwan_scalar reach_offset = reach_boundary_M - threshold;
-    alwan_scalar scale = reach_offset / ((reach_offset / gamut_offset) - ALWAN_LITERAL(1.0));
-    alwan_scalar nd = m_offset / scale;
-
-    return threshold + scale * reinhard_inv(nd);
+    return aces2_remap_m_inv_v(M, gamut_boundary_M, reach_boundary_M);
 }
 
 /* ----------------------------------------------------------------
@@ -2092,25 +1582,12 @@ static alwan_scalar remap_M_inv(alwan_scalar M, alwan_scalar gamut_boundary_M,
 
 static alwan_scalar compute_focus_J(alwan_scalar cusp_J, alwan_scalar mid_J,
                                      alwan_scalar limit_J_max) {
-    alwan_scalar blend = GAMUT_CUSP_MID_BLEND - (cusp_J / limit_J_max);
-    if (blend > ALWAN_LITERAL(1.0)) blend = ALWAN_LITERAL(1.0);
-    return cusp_J + blend * (mid_J - cusp_J);
+    return aces2_compute_focus_j_v(cusp_J, mid_J, limit_J_max);
 }
 
 static alwan_scalar get_focus_gain(alwan_scalar J, alwan_scalar analytical_threshold,
                                     alwan_scalar limit_J_max, alwan_scalar focus_dist) {
-    alwan_scalar gain = limit_J_max * focus_dist;
-
-    if (J > analytical_threshold) {
-        alwan_scalar denom = limit_J_max - J;
-        if (denom < ALWAN_LITERAL(0.0001)) denom = ALWAN_LITERAL(0.0001);
-        alwan_scalar gain_adj = ALWAN_LN((limit_J_max - analytical_threshold) / denom)
-                              / ALWAN_LN(ALWAN_LITERAL(10.0));
-        gain_adj = gain_adj * gain_adj + ALWAN_LITERAL(1.0);
-        gain = gain * gain_adj;
-    }
-
-    return gain;
+    return aces2_get_focus_gain_v(J, analytical_threshold, limit_J_max, focus_dist);
 }
 
 /* ----------------------------------------------------------------
@@ -2120,24 +1597,7 @@ static alwan_scalar get_focus_gain(alwan_scalar J, alwan_scalar analytical_thres
 static alwan_scalar solve_J_intersect(alwan_scalar J, alwan_scalar M,
                                        alwan_scalar focus_J, alwan_scalar max_J,
                                        alwan_scalar slope_gain) {
-    alwan_scalar M_scaled = M / slope_gain;
-    alwan_scalar a = M_scaled / focus_J;
-
-    if (J < focus_J) {
-        /* Below focus: quadratic with positive root */
-        alwan_scalar b = ALWAN_LITERAL(1.0) - M_scaled;
-        alwan_scalar c = -J;
-        alwan_scalar det = b * b - ALWAN_LITERAL(4.0) * a * c;
-        alwan_scalar root = ALWAN_SQRT(det);
-        return -ALWAN_LITERAL(2.0) * c / (b + root);
-    } else {
-        /* Above focus: quadratic with adjusted coefficients */
-        alwan_scalar b = -(ALWAN_LITERAL(1.0) + M_scaled + max_J * a);
-        alwan_scalar c = max_J * M_scaled + J;
-        alwan_scalar det = b * b - ALWAN_LITERAL(4.0) * a * c;
-        alwan_scalar root = ALWAN_SQRT(det);
-        return -ALWAN_LITERAL(2.0) * c / (b - root);
-    }
+    return aces2_solve_j_intersect_v(J, M, focus_J, max_J, slope_gain);
 }
 
 /* ----------------------------------------------------------------
@@ -2148,11 +1608,7 @@ static alwan_scalar compute_compression_vector_slope(alwan_scalar J_intersect,
                                                       alwan_scalar focus_J,
                                                       alwan_scalar limit_J_max,
                                                       alwan_scalar slope_gain) {
-    if (J_intersect < focus_J) {
-        return slope_gain * (ALWAN_LITERAL(1.0) - J_intersect / focus_J);
-    } else {
-        return slope_gain * (J_intersect - focus_J) / (limit_J_max - focus_J);
-    }
+    return aces2_compression_vector_slope_v(J_intersect, focus_J, limit_J_max, slope_gain);
 }
 
 /* ----------------------------------------------------------------
@@ -2166,32 +1622,7 @@ static alwan_scalar estimate_line_boundary_M(alwan_scalar J_intersect_source,
                                               alwan_scalar cusp_J,
                                               alwan_scalar cusp_M,
                                               alwan_scalar J_intersect_cusp) {
-    /* Handle degenerate case where cusp_J == J_intersect_cusp
-     * This happens for reach boundary when cusp is at limit_J_max */
-    alwan_scalar denom = J_intersect_cusp - cusp_J;
-    if (ALWAN_ABS(denom) < ALWAN_LITERAL(1e-6)) {
-        /* Use simplified model: boundary is a line from origin to (cusp_J, cusp_M) */
-        if (cusp_J > ALWAN_LITERAL(0.0)) {
-            return cusp_M * J_intersect_source / cusp_J;
-        }
-        return cusp_M;
-    }
-
-    /* Distance from cusp J to intersection J */
-    alwan_scalar t = (J_intersect_source - cusp_J) / denom;
-    if (t < ALWAN_LITERAL(0.0)) t = ALWAN_LITERAL(0.0);
-    if (t > ALWAN_LITERAL(1.0)) t = ALWAN_LITERAL(1.0);
-
-    /* Approximate boundary M using gamma curve */
-    alwan_scalar M_boundary = cusp_M * ALWAN_POW(t, gamma_inv);
-
-    /* Adjust for slope */
-    alwan_scalar J_diff = ALWAN_ABS(J_intersect_source - cusp_J);
-    if (slope != ALWAN_LITERAL(0.0)) {
-        M_boundary = M_boundary + J_diff / ALWAN_ABS(slope);
-    }
-
-    return M_boundary;
+    return aces2_estimate_line_boundary_m_v(J_intersect_source, slope, gamma_inv, cusp_J, cusp_M, J_intersect_cusp);
 }
 
 /* ----------------------------------------------------------------
@@ -2207,22 +1638,7 @@ static alwan_scalar find_gamut_boundary_intersection(alwan_scalar cusp_J,
                                                       alwan_scalar J_intersect_source,
                                                       alwan_scalar slope,
                                                       alwan_scalar J_intersect_cusp) {
-    /* Lower hull boundary (J < cusp_J) */
-    alwan_scalar M_boundary_lower = estimate_line_boundary_M(
-        J_intersect_source, slope, gamma_bottom_inv,
-        cusp_J, cusp_M, J_intersect_cusp);
-
-    /* Upper hull boundary (J > cusp_J), computed with flipped J coordinates */
-    alwan_scalar f_J_intersect_cusp = limit_J_max - J_intersect_cusp;
-    alwan_scalar f_J_intersect_source = limit_J_max - J_intersect_source;
-    alwan_scalar f_cusp_J = limit_J_max - cusp_J;
-
-    alwan_scalar M_boundary_upper = estimate_line_boundary_M(
-        f_J_intersect_source, -slope, gamma_top_inv,
-        f_cusp_J, cusp_M, f_J_intersect_cusp);
-
-    /* Smooth blend between lower and upper boundaries */
-    return smin_scaled(M_boundary_lower, M_boundary_upper, cusp_M);
+    return aces2_find_gamut_boundary_v(cusp_J, cusp_M, limit_J_max, gamma_top_inv, gamma_bottom_inv, J_intersect_source, slope, J_intersect_cusp);
 }
 
 /* ----------------------------------------------------------------
@@ -2446,47 +1862,8 @@ static void compress_gamut_fwd(alwan_scalar J, alwan_scalar M, alwan_scalar h,
                                 GamutCompressParams const *gcp,
                                 HueDependentGamutParams const *hdp,
                                 alwan_scalar *J_out, alwan_scalar *M_out) {
-    (void)h;  /* hue is preserved, used only in hdp lookup */
-
-    /* Compute focus gain */
-    alwan_scalar slope_gain = get_focus_gain(J, hdp->analytical_threshold,
-                                              gcp->limit_J_max, gcp->focus_dist);
-
-    /* Solve for J intersection */
-    alwan_scalar J_intersect = solve_J_intersect(J, M, hdp->focus_J,
-                                                  gcp->limit_J_max, slope_gain);
-
-    /* Compute compression vector slope */
-    alwan_scalar gamut_slope = compute_compression_vector_slope(
-        J_intersect, hdp->focus_J, gcp->limit_J_max, slope_gain);
-
-    /* Find J intersection for cusp */
-    alwan_scalar J_intersect_cusp = solve_J_intersect(
-        hdp->cusp_J, hdp->cusp_M, hdp->focus_J, gcp->limit_J_max, slope_gain);
-
-    /* Find gamut boundary M */
-    alwan_scalar gamut_boundary_M = find_gamut_boundary_intersection(
-        hdp->cusp_J, hdp->cusp_M, gcp->limit_J_max,
-        hdp->gamma_top_inv, hdp->gamma_bottom_inv,
-        J_intersect, gamut_slope, J_intersect_cusp);
-
-    if (gamut_boundary_M <= ALWAN_LITERAL(0.0)) {
-        *J_out = J;
-        *M_out = ALWAN_LITERAL(0.0);
-        return;
-    }
-
-    /* Estimate reach boundary M */
-    alwan_scalar reach_boundary_M = estimate_line_boundary_M(
-        J_intersect, gamut_slope, gcp->model_gamma_inv,
-        gcp->limit_J_max, gcp->reach_max_M, gcp->limit_J_max);
-
-    /* Remap M */
-    alwan_scalar remapped_M = remap_M_fwd(M, gamut_boundary_M, reach_boundary_M);
-
-    /* Compute output J and M */
-    *J_out = J_intersect + remapped_M * gamut_slope;
-    *M_out = remapped_M;
+    alwan_vec2 result = aces2_compress_gamut_fwd_v(J, M, h, gcp, hdp);
+    *J_out = result.v[0]; *M_out = result.v[1];
 }
 
 /* ----------------------------------------------------------------
@@ -2497,47 +1874,8 @@ static void compress_gamut_inv(alwan_scalar J, alwan_scalar M, alwan_scalar h,
                                 GamutCompressParams const *gcp,
                                 HueDependentGamutParams const *hdp,
                                 alwan_scalar *J_out, alwan_scalar *M_out) {
-    (void)h;  /* hue is preserved, used only in hdp lookup */
-
-    /* Compute focus gain (using input J) */
-    alwan_scalar slope_gain = get_focus_gain(J, hdp->analytical_threshold,
-                                              gcp->limit_J_max, gcp->focus_dist);
-
-    /* Solve for J intersection */
-    alwan_scalar J_intersect = solve_J_intersect(J, M, hdp->focus_J,
-                                                  gcp->limit_J_max, slope_gain);
-
-    /* Compute compression vector slope */
-    alwan_scalar gamut_slope = compute_compression_vector_slope(
-        J_intersect, hdp->focus_J, gcp->limit_J_max, slope_gain);
-
-    /* Find J intersection for cusp */
-    alwan_scalar J_intersect_cusp = solve_J_intersect(
-        hdp->cusp_J, hdp->cusp_M, hdp->focus_J, gcp->limit_J_max, slope_gain);
-
-    /* Find gamut boundary M */
-    alwan_scalar gamut_boundary_M = find_gamut_boundary_intersection(
-        hdp->cusp_J, hdp->cusp_M, gcp->limit_J_max,
-        hdp->gamma_top_inv, hdp->gamma_bottom_inv,
-        J_intersect, gamut_slope, J_intersect_cusp);
-
-    if (gamut_boundary_M <= ALWAN_LITERAL(0.0)) {
-        *J_out = J;
-        *M_out = ALWAN_LITERAL(0.0);
-        return;
-    }
-
-    /* Estimate reach boundary M */
-    alwan_scalar reach_boundary_M = estimate_line_boundary_M(
-        J_intersect, gamut_slope, gcp->model_gamma_inv,
-        gcp->limit_J_max, gcp->reach_max_M, gcp->limit_J_max);
-
-    /* Inverse remap M */
-    alwan_scalar remapped_M = remap_M_inv(M, gamut_boundary_M, reach_boundary_M);
-
-    /* Compute output J and M */
-    *J_out = J_intersect + remapped_M * gamut_slope;
-    *M_out = remapped_M;
+    alwan_vec2 result = aces2_compress_gamut_inv_v(J, M, h, gcp, hdp);
+    *J_out = result.v[0]; *M_out = result.v[1];
 }
 
 /* ----------------------------------------------------------------

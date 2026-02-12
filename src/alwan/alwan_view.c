@@ -4,10 +4,14 @@
  * SPDX-License-Identifier: MIT
  *
  * View Transforms (Display Rendering)
+ * Thin wrapper — per-pixel math in alwan_view_core.h
+ *
+ * Only matrix data loading, enum dispatch, and bulk loops live here.
  */
 
 #include "alwan.h"
 #include "alwan_internal.h"
+#include "alwan_view_core.h"
 #include <string.h>
 
 /* ----------------------------------------------------------------
@@ -33,22 +37,10 @@ static void aces_rec709_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_
     alwan_scalar ap0_g = ap1_to_ap0[3] * rgb_in[0] + ap1_to_ap0[4] * rgb_in[1] + ap1_to_ap0[5] * rgb_in[2];
     alwan_scalar ap0_b = ap1_to_ap0[6] * rgb_in[0] + ap1_to_ap0[7] * rgb_in[1] + ap1_to_ap0[8] * rgb_in[2];
 
-    /* Apply simplified RRT tone curve (approximation of full RRT)
-     * Using a simplified S-curve that mimics ACES behavior */
-    alwan_scalar const a = ALWAN_LITERAL(2.51);
-    alwan_scalar const b = ALWAN_LITERAL(0.03);
-    alwan_scalar const c = ALWAN_LITERAL(2.43);
-    alwan_scalar const d = ALWAN_LITERAL(0.59);
-    alwan_scalar const e = ALWAN_LITERAL(0.14);
-
-    /* Tone mapping formula (per-channel) */
-    #define ACES_TONEMAP(x) (((x) * (a * (x) + b)) / ((x) * (c * (x) + d) + e))
-
-    alwan_scalar rrt_r = ACES_TONEMAP(ap0_r);
-    alwan_scalar rrt_g = ACES_TONEMAP(ap0_g);
-    alwan_scalar rrt_b = ACES_TONEMAP(ap0_b);
-
-    #undef ACES_TONEMAP
+    /* Apply simplified RRT tone curve — delegates to core */
+    alwan_scalar rrt_r = alwan_aces_tonemap_v(ap0_r);
+    alwan_scalar rrt_g = alwan_aces_tonemap_v(ap0_g);
+    alwan_scalar rrt_b = alwan_aces_tonemap_v(ap0_b);
 
     /* ODT: Convert from ACES to Rec.709
      * Simplified matrix (AP0 to Rec.709 with Bradford chromatic adaptation D60->D65)
@@ -79,41 +71,13 @@ static void aces_rec709_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_
  * Input: Linear RGB (typically BT.709/sRGB primaries)
  * Output: Display-ready RGB [0,1] */
 static void agx_base_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
-    /* AgX uses a log-based encoding similar to Rec.1886 but with better highlights */
+    /* AgX log-encode + curve — delegates to core */
+    alwan_scalar const agx_min = ALWAN_LITERAL(-12.47393);
+    alwan_scalar const agx_max = ALWAN_LITERAL(  4.026069);
 
-    /* Punchy grade parameters (base variant) */
-    alwan_scalar const agx_min = ALWAN_LITERAL(-12.47393);  /* Minimum EV */
-    alwan_scalar const agx_max = ALWAN_LITERAL(  4.026069); /* Maximum EV */
-
-    /* Process each channel */
     for (int i = 0; i < 3; i++) {
-        alwan_scalar x = rgb_in[i];
-
-        /* Protect against log(0) */
-        if (x < ALWAN_LITERAL(1e-10)) {
-            rgb_out[i] = ALWAN_LITERAL(0.0);
-            continue;
-        }
-
-        /* Convert to log2 (exposure value) */
-        alwan_scalar log_x = ALWAN_LOG2(x);
-
-        /* Normalize to [0,1] based on AgX range */
-        alwan_scalar normalized = (log_x - agx_min) / (agx_max - agx_min);
-        normalized = alwan_saturate(normalized);
-
-        /* Apply AgX curve (sigmoid-like function for smooth rolloff) */
-        /* Simplified polynomial approximation of AgX Look */
-        alwan_scalar t = normalized;
-        alwan_scalar t2 = t * t;
-        alwan_scalar t3 = t2 * t;
-
-        /* AgX curve coefficients (approximation) */
-        alwan_scalar result = ALWAN_LITERAL(-0.0653) * t3
-                      + ALWAN_LITERAL( 1.2528) * t2
-                      + ALWAN_LITERAL(-0.1865) * t;
-
-        rgb_out[i] = alwan_saturate(result);
+        alwan_scalar t = alwan_agx_log_encode_v(rgb_in[i], agx_min, agx_max);
+        rgb_out[i] = alwan_agx_curve_v(t);
     }
 }
 
@@ -123,27 +87,11 @@ static void agx_punchy_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_o
     /* First apply base AgX */
     agx_base_transform(rgb_in, rgb_out);
 
-    /* Apply punchy grade: increase contrast and saturation */
-    alwan_scalar const contrast = ALWAN_LITERAL(1.15);
-    alwan_scalar const saturation = ALWAN_LITERAL(1.2);
-
-    /* Calculate luminance (Rec.709 weights) */
-    alwan_scalar luma = ALWAN_LITERAL(0.2126) * rgb_out[0]
-                + ALWAN_LITERAL(0.7152) * rgb_out[1]
-                + ALWAN_LITERAL(0.0722) * rgb_out[2];
-
-    /* Apply contrast around mid-gray */
-    alwan_scalar const mid_gray = ALWAN_LITERAL(0.18);
-    for (int i = 0; i < 3; i++) {
-        /* Saturation boost */
-        rgb_out[i] = luma + (rgb_out[i] - luma) * saturation;
-
-        /* Contrast boost */
-        rgb_out[i] = mid_gray + (rgb_out[i] - mid_gray) * contrast;
-
-        /* Clamp */
-        rgb_out[i] = alwan_saturate(rgb_out[i]);
-    }
+    /* Apply punchy grade — delegates to core */
+    alwan_vec3 base;
+    base.v[0] = rgb_out[0]; base.v[1] = rgb_out[1]; base.v[2] = rgb_out[2];
+    alwan_vec3 graded = alwan_agx_punchy_grade_v(base);
+    rgb_out[0] = graded.v[0]; rgb_out[1] = graded.v[1]; rgb_out[2] = graded.v[2];
 }
 
 /* ----------------------------------------------------------------

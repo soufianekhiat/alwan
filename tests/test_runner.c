@@ -68,6 +68,7 @@ extern int test_54_aces20_main(void);
 extern int test_55_aces2_output_transform_main(void);
 extern int test_56_aces1_output_transform_main(void);
 extern int test_57_aces_lmt_tf_main(void);
+extern int test_58_core_headers_main(void);
 
 /* Test registry */
 typedef struct {
@@ -134,6 +135,7 @@ static test_suite const g_test_suites[] = {
     {"55_aces2_output_transform", test_55_aces2_output_transform_main},
     {"56_aces1_output_transform", test_56_aces1_output_transform_main},
     {"57_aces_lmt_tf", test_57_aces_lmt_tf_main},
+    {"58_core_headers", test_58_core_headers_main},
 };
 
 int main(void) {
