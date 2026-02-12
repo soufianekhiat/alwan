@@ -9,9 +9,7 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-#if defined(_MSC_VER)
-__pragma(warning( disable: 4211 ))  /* nonstandard extension: redefined extern to static */
-#endif
+ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC
 
 /* Core RGB spaces - Order MUST match enum in alwan.h */
 static alwan_scalar const g_srgb[] = {

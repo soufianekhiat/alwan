@@ -59,8 +59,10 @@
 # define ALWAN_LITERAL(x) (x)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
-  /* Halide backend: alwan_scalar is Halide::Expr, defined by user before including.
+  /* Halide backend
    * ALWAN_SCALAR_IS_FLOAT selects Float(32) vs Float(64) precision. */
+# include <Halide.h>
+  typedef Halide::Expr alwan_scalar;
 # ifndef ALWAN_SCALAR_IS_FLOAT
 #   define ALWAN_SCALAR_IS_FLOAT 1  /* default: float for GPU pipelines */
 # endif
@@ -87,12 +89,15 @@
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
 # define ALWAN_INLINE    static inline
 # define ALWAN_CONSTEXPR static const
+# define ALWAN_TYPE_DEF  typedef
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
 # define ALWAN_INLINE    inline
 # define ALWAN_CONSTEXPR static const
+# define ALWAN_TYPE_DEF
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
 # define ALWAN_INLINE    inline
 # define ALWAN_CONSTEXPR static const
+# define ALWAN_TYPE_DEF  typedef
 #endif
 
 /* ================================================================
@@ -271,28 +276,33 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #   define ALWAN_DIAG_PUSH __pragma(warning(push))
 #   define ALWAN_DIAG_POP  __pragma(warning(pop))
 #   define ALWAN_DIAG_DISABLE_FLOAT_CONV __pragma(warning(disable: 4244 4305))
+#   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC __pragma(warning(disable: 4211))
 # elif defined(__clang__)
 #   define ALWAN_DIAG_PUSH _Pragma("clang diagnostic push")
 #   define ALWAN_DIAG_POP  _Pragma("clang diagnostic pop")
 #   define ALWAN_DIAG_DISABLE_FLOAT_CONV \
       _Pragma("clang diagnostic ignored \"-Wimplicit-float-conversion\"") \
       _Pragma("clang diagnostic ignored \"-Wdouble-promotion\"")
+#   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC /* no equivalent in clang */
 # elif defined(__GNUC__)
 #   define ALWAN_DIAG_PUSH _Pragma("GCC diagnostic push")
 #   define ALWAN_DIAG_POP  _Pragma("GCC diagnostic pop")
 #   define ALWAN_DIAG_DISABLE_FLOAT_CONV \
       _Pragma("GCC diagnostic ignored \"-Wfloat-conversion\"") \
       _Pragma("GCC diagnostic ignored \"-Wdouble-promotion\"")
+#   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC /* no equivalent in GCC */
 # else
 #   define ALWAN_DIAG_PUSH
 #   define ALWAN_DIAG_POP
 #   define ALWAN_DIAG_DISABLE_FLOAT_CONV
+#   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC
 # endif
 #else
   /* HLSL/Halide: no diagnostic pragmas */
 # define ALWAN_DIAG_PUSH
 # define ALWAN_DIAG_POP
 # define ALWAN_DIAG_DISABLE_FLOAT_CONV
+# define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC
 #endif
 
 /* ================================================================
