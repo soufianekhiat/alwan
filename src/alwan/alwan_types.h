@@ -31,6 +31,11 @@ ALWAN_TYPE_DEF struct {
     alwan_scalar m[9];
 } alwan_mat3x3;
 
+/* 4x4 matrix stored in row-major order */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar m[16];
+} alwan_mat4x4;
+
 /* ----------------------------------------------------------------
  * Semantic Color Types (for type-safe I/O)
  * ---------------------------------------------------------------- */

@@ -23,46 +23,46 @@ ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* hdr-IPT matrices */
-static alwan_scalar const ALWAN_EXT_LMS_TO_IPT_HDR[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_LMS_TO_IPT_HDR = {{
 #include "../data/matrices/lms_to_ipt_hdr.csv"
-};
-static alwan_scalar const ALWAN_EXT_IPT_TO_LMS_HDR[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_IPT_TO_LMS_HDR = {{
 #include "../data/matrices/ipt_to_lms_hdr.csv"
-};
-static alwan_scalar const ALWAN_EXT_XYZ_TO_LMS_IPT[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_XYZ_TO_LMS_IPT = {{
 #include "../data/matrices/xyz_to_lms_ipt.csv"
-};
-static alwan_scalar const ALWAN_EXT_LMS_TO_XYZ_IPT[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_LMS_TO_XYZ_IPT = {{
 #include "../data/matrices/lms_to_xyz_ipt.csv"
-};
+}};
 
 /* IgPgTg matrices */
-static alwan_scalar const ALWAN_EXT_LMS_TO_IGPGTG[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_LMS_TO_IGPGTG = {{
 #include "../data/matrices/lms_to_igpgtg.csv"
-};
-static alwan_scalar const ALWAN_EXT_IGPGTG_TO_LMS[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_IGPGTG_TO_LMS = {{
 #include "../data/matrices/igpgtg_to_lms.csv"
-};
-static alwan_scalar const ALWAN_EXT_XYZ_TO_LMS_IGPGTG[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_XYZ_TO_LMS_IGPGTG = {{
 #include "../data/matrices/xyz_to_lms_igpgtg.csv"
-};
-static alwan_scalar const ALWAN_EXT_LMS_TO_XYZ_IGPGTG[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_LMS_TO_XYZ_IGPGTG = {{
 #include "../data/matrices/lms_to_xyz_igpgtg.csv"
-};
+}};
 
 /* ICaCb matrices */
-static alwan_scalar const ALWAN_EXT_LMS_TO_ICACB[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_LMS_TO_ICACB = {{
 #include "../data/matrices/lms_to_icacb.csv"
-};
-static alwan_scalar const ALWAN_EXT_ICACB_TO_LMS[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_ICACB_TO_LMS = {{
 #include "../data/matrices/icacb_to_lms.csv"
-};
-static alwan_scalar const ALWAN_EXT_XYZ_TO_LMS_ICACB[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_XYZ_TO_LMS_ICACB = {{
 #include "../data/matrices/xyz_to_lms_icacb.csv"
-};
-static alwan_scalar const ALWAN_EXT_LMS_TO_XYZ_ICACB[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_LMS_TO_XYZ_ICACB = {{
 #include "../data/matrices/lms_to_xyz_icacb.csv"
-};
+}};
 
 /* IgPgTg LMS scaling factors */
 static alwan_scalar const ALWAN_EXT_IGPGTG_LMS_SCALE[3] = {
@@ -75,12 +75,12 @@ static alwan_scalar const ALWAN_EXT_HDR_D65_WHITE[3] = {
 };
 
 /* IHLS matrices */
-static alwan_scalar const ALWAN_EXT_IHLS_RGB_TO_YC1C2[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_IHLS_RGB_TO_YC1C2 = {{
 #include "../data/ihls_rgb_to_yc1c2.csv"
-};
-static alwan_scalar const ALWAN_EXT_IHLS_YC1C2_TO_RGB[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ALWAN_EXT_IHLS_YC1C2_TO_RGB = {{
 #include "../data/ihls_yc1c2_to_rgb.csv"
-};
+}};
 
 ALWAN_DIAG_POP
 
@@ -259,14 +259,9 @@ ALWAN_INLINE alwan_ipt alwan_xyz_to_hdr_ipt_v(alwan_xyz xyz) {
     alwan_scalar epsilon = ALWAN_LITERAL(0.59) / (sf * lf);
 
     /* XYZ -> LMS via IPT matrix */
-    alwan_mat3x3 m;
-    m.m[0] = ALWAN_EXT_XYZ_TO_LMS_IPT[0]; m.m[1] = ALWAN_EXT_XYZ_TO_LMS_IPT[1]; m.m[2] = ALWAN_EXT_XYZ_TO_LMS_IPT[2];
-    m.m[3] = ALWAN_EXT_XYZ_TO_LMS_IPT[3]; m.m[4] = ALWAN_EXT_XYZ_TO_LMS_IPT[4]; m.m[5] = ALWAN_EXT_XYZ_TO_LMS_IPT[5];
-    m.m[6] = ALWAN_EXT_XYZ_TO_LMS_IPT[6]; m.m[7] = ALWAN_EXT_XYZ_TO_LMS_IPT[7]; m.m[8] = ALWAN_EXT_XYZ_TO_LMS_IPT[8];
-
     alwan_vec3 vec_in;
     vec_in.v[0] = xyz.x; vec_in.v[1] = xyz.y; vec_in.v[2] = xyz.z;
-    alwan_vec3 lms = alwan_mat3_mulv_v(m, vec_in);
+    alwan_vec3 lms = alwan_mat3_mulv_v(ALWAN_EXT_XYZ_TO_LMS_IPT, vec_in);
 
     /* Apply sign(LMS) * |lightness(LMS, e)| */
     alwan_scalar sign0 = ALWAN_SELECT(lms.v[0] > ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0),
@@ -281,12 +276,7 @@ ALWAN_INLINE alwan_ipt alwan_xyz_to_hdr_ipt_v(alwan_xyz xyz) {
     lms.v[2] = sign2 * ALWAN_ABS(alwan_lightness_fairchild2011_v(lms.v[2], epsilon));
 
     /* LMS -> IPT */
-    alwan_mat3x3 m2;
-    m2.m[0] = ALWAN_EXT_LMS_TO_IPT_HDR[0]; m2.m[1] = ALWAN_EXT_LMS_TO_IPT_HDR[1]; m2.m[2] = ALWAN_EXT_LMS_TO_IPT_HDR[2];
-    m2.m[3] = ALWAN_EXT_LMS_TO_IPT_HDR[3]; m2.m[4] = ALWAN_EXT_LMS_TO_IPT_HDR[4]; m2.m[5] = ALWAN_EXT_LMS_TO_IPT_HDR[5];
-    m2.m[6] = ALWAN_EXT_LMS_TO_IPT_HDR[6]; m2.m[7] = ALWAN_EXT_LMS_TO_IPT_HDR[7]; m2.m[8] = ALWAN_EXT_LMS_TO_IPT_HDR[8];
-
-    alwan_vec3 out = alwan_mat3_mulv_v(m2, lms);
+    alwan_vec3 out = alwan_mat3_mulv_v(ALWAN_EXT_LMS_TO_IPT_HDR, lms);
     result.I = out.v[0]; result.P = out.v[1]; result.T = out.v[2];
     return result;
 }
@@ -299,14 +289,9 @@ ALWAN_INLINE alwan_xyz alwan_hdr_ipt_to_xyz_v(alwan_ipt hdr_ipt) {
     alwan_scalar epsilon = ALWAN_LITERAL(0.59) / (sf * lf);
 
     /* IPT -> LMS */
-    alwan_mat3x3 m;
-    m.m[0] = ALWAN_EXT_IPT_TO_LMS_HDR[0]; m.m[1] = ALWAN_EXT_IPT_TO_LMS_HDR[1]; m.m[2] = ALWAN_EXT_IPT_TO_LMS_HDR[2];
-    m.m[3] = ALWAN_EXT_IPT_TO_LMS_HDR[3]; m.m[4] = ALWAN_EXT_IPT_TO_LMS_HDR[4]; m.m[5] = ALWAN_EXT_IPT_TO_LMS_HDR[5];
-    m.m[6] = ALWAN_EXT_IPT_TO_LMS_HDR[6]; m.m[7] = ALWAN_EXT_IPT_TO_LMS_HDR[7]; m.m[8] = ALWAN_EXT_IPT_TO_LMS_HDR[8];
-
     alwan_vec3 vec_in;
     vec_in.v[0] = hdr_ipt.I; vec_in.v[1] = hdr_ipt.P; vec_in.v[2] = hdr_ipt.T;
-    alwan_vec3 lms = alwan_mat3_mulv_v(m, vec_in);
+    alwan_vec3 lms = alwan_mat3_mulv_v(ALWAN_EXT_IPT_TO_LMS_HDR, vec_in);
 
     /* Apply sign(LMS) * |luminance(LMS, e)| */
     alwan_scalar sign0 = ALWAN_SELECT(lms.v[0] > ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0),
@@ -321,12 +306,7 @@ ALWAN_INLINE alwan_xyz alwan_hdr_ipt_to_xyz_v(alwan_ipt hdr_ipt) {
     lms.v[2] = sign2 * ALWAN_ABS(alwan_luminance_fairchild2011_v(lms.v[2], epsilon));
 
     /* LMS -> XYZ */
-    alwan_mat3x3 m2;
-    m2.m[0] = ALWAN_EXT_LMS_TO_XYZ_IPT[0]; m2.m[1] = ALWAN_EXT_LMS_TO_XYZ_IPT[1]; m2.m[2] = ALWAN_EXT_LMS_TO_XYZ_IPT[2];
-    m2.m[3] = ALWAN_EXT_LMS_TO_XYZ_IPT[3]; m2.m[4] = ALWAN_EXT_LMS_TO_XYZ_IPT[4]; m2.m[5] = ALWAN_EXT_LMS_TO_XYZ_IPT[5];
-    m2.m[6] = ALWAN_EXT_LMS_TO_XYZ_IPT[6]; m2.m[7] = ALWAN_EXT_LMS_TO_XYZ_IPT[7]; m2.m[8] = ALWAN_EXT_LMS_TO_XYZ_IPT[8];
-
-    alwan_vec3 out = alwan_mat3_mulv_v(m2, lms);
+    alwan_vec3 out = alwan_mat3_mulv_v(ALWAN_EXT_LMS_TO_XYZ_IPT, lms);
     result.x = out.v[0]; result.y = out.v[1]; result.z = out.v[2];
     return result;
 }
@@ -339,14 +319,9 @@ ALWAN_INLINE alwan_igpgtg alwan_xyz_to_igpgtg_v(alwan_xyz xyz) {
     alwan_igpgtg result;
 
     /* XYZ -> LMS */
-    alwan_mat3x3 m;
-    m.m[0] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[0]; m.m[1] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[1]; m.m[2] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[2];
-    m.m[3] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[3]; m.m[4] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[4]; m.m[5] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[5];
-    m.m[6] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[6]; m.m[7] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[7]; m.m[8] = ALWAN_EXT_XYZ_TO_LMS_IGPGTG[8];
-
     alwan_vec3 vec_in;
     vec_in.v[0] = xyz.x; vec_in.v[1] = xyz.y; vec_in.v[2] = xyz.z;
-    alwan_vec3 lms = alwan_mat3_mulv_v(m, vec_in);
+    alwan_vec3 lms = alwan_mat3_mulv_v(ALWAN_EXT_XYZ_TO_LMS_IGPGTG, vec_in);
 
     /* Scaled nonlinearity: spow(LMS / scale, 0.427) */
     alwan_scalar const exponent = ALWAN_LITERAL(0.427);
@@ -355,12 +330,7 @@ ALWAN_INLINE alwan_igpgtg alwan_xyz_to_igpgtg_v(alwan_xyz xyz) {
     lms.v[2] = alwan_spow_v(lms.v[2] / ALWAN_EXT_IGPGTG_LMS_SCALE[2], exponent);
 
     /* LMS -> IgPgTg */
-    alwan_mat3x3 m2;
-    m2.m[0] = ALWAN_EXT_LMS_TO_IGPGTG[0]; m2.m[1] = ALWAN_EXT_LMS_TO_IGPGTG[1]; m2.m[2] = ALWAN_EXT_LMS_TO_IGPGTG[2];
-    m2.m[3] = ALWAN_EXT_LMS_TO_IGPGTG[3]; m2.m[4] = ALWAN_EXT_LMS_TO_IGPGTG[4]; m2.m[5] = ALWAN_EXT_LMS_TO_IGPGTG[5];
-    m2.m[6] = ALWAN_EXT_LMS_TO_IGPGTG[6]; m2.m[7] = ALWAN_EXT_LMS_TO_IGPGTG[7]; m2.m[8] = ALWAN_EXT_LMS_TO_IGPGTG[8];
-
-    alwan_vec3 out = alwan_mat3_mulv_v(m2, lms);
+    alwan_vec3 out = alwan_mat3_mulv_v(ALWAN_EXT_LMS_TO_IGPGTG, lms);
     result.Ig = out.v[0]; result.Pg = out.v[1]; result.Tg = out.v[2];
     return result;
 }
@@ -369,14 +339,9 @@ ALWAN_INLINE alwan_xyz alwan_igpgtg_to_xyz_v(alwan_igpgtg igpgtg) {
     alwan_xyz result;
 
     /* IgPgTg -> LMS */
-    alwan_mat3x3 m;
-    m.m[0] = ALWAN_EXT_IGPGTG_TO_LMS[0]; m.m[1] = ALWAN_EXT_IGPGTG_TO_LMS[1]; m.m[2] = ALWAN_EXT_IGPGTG_TO_LMS[2];
-    m.m[3] = ALWAN_EXT_IGPGTG_TO_LMS[3]; m.m[4] = ALWAN_EXT_IGPGTG_TO_LMS[4]; m.m[5] = ALWAN_EXT_IGPGTG_TO_LMS[5];
-    m.m[6] = ALWAN_EXT_IGPGTG_TO_LMS[6]; m.m[7] = ALWAN_EXT_IGPGTG_TO_LMS[7]; m.m[8] = ALWAN_EXT_IGPGTG_TO_LMS[8];
-
     alwan_vec3 vec_in;
     vec_in.v[0] = igpgtg.Ig; vec_in.v[1] = igpgtg.Pg; vec_in.v[2] = igpgtg.Tg;
-    alwan_vec3 lms = alwan_mat3_mulv_v(m, vec_in);
+    alwan_vec3 lms = alwan_mat3_mulv_v(ALWAN_EXT_IGPGTG_TO_LMS, vec_in);
 
     /* Inverse scaled nonlinearity: scale * spow(LMS, 1/0.427) */
     alwan_scalar const inv_exponent = ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.427);
@@ -385,12 +350,7 @@ ALWAN_INLINE alwan_xyz alwan_igpgtg_to_xyz_v(alwan_igpgtg igpgtg) {
     lms.v[2] = ALWAN_EXT_IGPGTG_LMS_SCALE[2] * alwan_spow_v(lms.v[2], inv_exponent);
 
     /* LMS -> XYZ */
-    alwan_mat3x3 m2;
-    m2.m[0] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[0]; m2.m[1] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[1]; m2.m[2] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[2];
-    m2.m[3] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[3]; m2.m[4] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[4]; m2.m[5] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[5];
-    m2.m[6] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[6]; m2.m[7] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[7]; m2.m[8] = ALWAN_EXT_LMS_TO_XYZ_IGPGTG[8];
-
-    alwan_vec3 out = alwan_mat3_mulv_v(m2, lms);
+    alwan_vec3 out = alwan_mat3_mulv_v(ALWAN_EXT_LMS_TO_XYZ_IGPGTG, lms);
     result.x = out.v[0]; result.y = out.v[1]; result.z = out.v[2];
     return result;
 }
@@ -403,14 +363,9 @@ ALWAN_INLINE alwan_icacb alwan_xyz_to_icacb_v(alwan_xyz xyz) {
     alwan_icacb result;
 
     /* XYZ -> LMS */
-    alwan_mat3x3 m;
-    m.m[0] = ALWAN_EXT_XYZ_TO_LMS_ICACB[0]; m.m[1] = ALWAN_EXT_XYZ_TO_LMS_ICACB[1]; m.m[2] = ALWAN_EXT_XYZ_TO_LMS_ICACB[2];
-    m.m[3] = ALWAN_EXT_XYZ_TO_LMS_ICACB[3]; m.m[4] = ALWAN_EXT_XYZ_TO_LMS_ICACB[4]; m.m[5] = ALWAN_EXT_XYZ_TO_LMS_ICACB[5];
-    m.m[6] = ALWAN_EXT_XYZ_TO_LMS_ICACB[6]; m.m[7] = ALWAN_EXT_XYZ_TO_LMS_ICACB[7]; m.m[8] = ALWAN_EXT_XYZ_TO_LMS_ICACB[8];
-
     alwan_vec3 vec_in;
     vec_in.v[0] = xyz.x; vec_in.v[1] = xyz.y; vec_in.v[2] = xyz.z;
-    alwan_vec3 lms = alwan_mat3_mulv_v(m, vec_in);
+    alwan_vec3 lms = alwan_mat3_mulv_v(ALWAN_EXT_XYZ_TO_LMS_ICACB, vec_in);
 
     /* PQ inverse EOTF */
     lms.v[0] = alwan_eotf_inverse_st2084_v(lms.v[0]);
@@ -418,12 +373,7 @@ ALWAN_INLINE alwan_icacb alwan_xyz_to_icacb_v(alwan_xyz xyz) {
     lms.v[2] = alwan_eotf_inverse_st2084_v(lms.v[2]);
 
     /* LMS -> ICaCb */
-    alwan_mat3x3 m2;
-    m2.m[0] = ALWAN_EXT_LMS_TO_ICACB[0]; m2.m[1] = ALWAN_EXT_LMS_TO_ICACB[1]; m2.m[2] = ALWAN_EXT_LMS_TO_ICACB[2];
-    m2.m[3] = ALWAN_EXT_LMS_TO_ICACB[3]; m2.m[4] = ALWAN_EXT_LMS_TO_ICACB[4]; m2.m[5] = ALWAN_EXT_LMS_TO_ICACB[5];
-    m2.m[6] = ALWAN_EXT_LMS_TO_ICACB[6]; m2.m[7] = ALWAN_EXT_LMS_TO_ICACB[7]; m2.m[8] = ALWAN_EXT_LMS_TO_ICACB[8];
-
-    alwan_vec3 out = alwan_mat3_mulv_v(m2, lms);
+    alwan_vec3 out = alwan_mat3_mulv_v(ALWAN_EXT_LMS_TO_ICACB, lms);
     result.I = out.v[0]; result.Ca = out.v[1]; result.Cb = out.v[2];
     return result;
 }
@@ -432,14 +382,9 @@ ALWAN_INLINE alwan_xyz alwan_icacb_to_xyz_v(alwan_icacb icacb) {
     alwan_xyz result;
 
     /* ICaCb -> LMS */
-    alwan_mat3x3 m;
-    m.m[0] = ALWAN_EXT_ICACB_TO_LMS[0]; m.m[1] = ALWAN_EXT_ICACB_TO_LMS[1]; m.m[2] = ALWAN_EXT_ICACB_TO_LMS[2];
-    m.m[3] = ALWAN_EXT_ICACB_TO_LMS[3]; m.m[4] = ALWAN_EXT_ICACB_TO_LMS[4]; m.m[5] = ALWAN_EXT_ICACB_TO_LMS[5];
-    m.m[6] = ALWAN_EXT_ICACB_TO_LMS[6]; m.m[7] = ALWAN_EXT_ICACB_TO_LMS[7]; m.m[8] = ALWAN_EXT_ICACB_TO_LMS[8];
-
     alwan_vec3 vec_in;
     vec_in.v[0] = icacb.I; vec_in.v[1] = icacb.Ca; vec_in.v[2] = icacb.Cb;
-    alwan_vec3 lms = alwan_mat3_mulv_v(m, vec_in);
+    alwan_vec3 lms = alwan_mat3_mulv_v(ALWAN_EXT_ICACB_TO_LMS, vec_in);
 
     /* PQ EOTF */
     lms.v[0] = alwan_eotf_st2084_v(lms.v[0]);
@@ -447,12 +392,7 @@ ALWAN_INLINE alwan_xyz alwan_icacb_to_xyz_v(alwan_icacb icacb) {
     lms.v[2] = alwan_eotf_st2084_v(lms.v[2]);
 
     /* LMS -> XYZ */
-    alwan_mat3x3 m2;
-    m2.m[0] = ALWAN_EXT_LMS_TO_XYZ_ICACB[0]; m2.m[1] = ALWAN_EXT_LMS_TO_XYZ_ICACB[1]; m2.m[2] = ALWAN_EXT_LMS_TO_XYZ_ICACB[2];
-    m2.m[3] = ALWAN_EXT_LMS_TO_XYZ_ICACB[3]; m2.m[4] = ALWAN_EXT_LMS_TO_XYZ_ICACB[4]; m2.m[5] = ALWAN_EXT_LMS_TO_XYZ_ICACB[5];
-    m2.m[6] = ALWAN_EXT_LMS_TO_XYZ_ICACB[6]; m2.m[7] = ALWAN_EXT_LMS_TO_XYZ_ICACB[7]; m2.m[8] = ALWAN_EXT_LMS_TO_XYZ_ICACB[8];
-
-    alwan_vec3 out = alwan_mat3_mulv_v(m2, lms);
+    alwan_vec3 out = alwan_mat3_mulv_v(ALWAN_EXT_LMS_TO_XYZ_ICACB, lms);
     result.x = out.v[0]; result.y = out.v[1]; result.z = out.v[2];
     return result;
 }
@@ -627,9 +567,11 @@ ALWAN_INLINE alwan_ihls alwan_rgb_to_ihls_v(alwan_rgb rgb) {
     alwan_scalar delta = max_val - min_val;
 
     /* Y, C1, C2 via matrix multiply */
-    alwan_scalar Y  = ALWAN_EXT_IHLS_RGB_TO_YC1C2[0] * rgb.r + ALWAN_EXT_IHLS_RGB_TO_YC1C2[1] * rgb.g + ALWAN_EXT_IHLS_RGB_TO_YC1C2[2] * rgb.b;
-    alwan_scalar C_1 = ALWAN_EXT_IHLS_RGB_TO_YC1C2[3] * rgb.r + ALWAN_EXT_IHLS_RGB_TO_YC1C2[4] * rgb.g + ALWAN_EXT_IHLS_RGB_TO_YC1C2[5] * rgb.b;
-    alwan_scalar C_2 = ALWAN_EXT_IHLS_RGB_TO_YC1C2[6] * rgb.r + ALWAN_EXT_IHLS_RGB_TO_YC1C2[7] * rgb.g + ALWAN_EXT_IHLS_RGB_TO_YC1C2[8] * rgb.b;
+    alwan_vec3 in_v = {{rgb.r, rgb.g, rgb.b}};
+    alwan_vec3 out_v = alwan_mat3_mulv_v(ALWAN_EXT_IHLS_RGB_TO_YC1C2, in_v);
+    alwan_scalar Y  = out_v.v[0];
+    alwan_scalar C_1 = out_v.v[1];
+    alwan_scalar C_2 = out_v.v[2];
 
     alwan_scalar C_mag = ALWAN_SQRT(C_1 * C_1 + C_2 * C_2);
 
@@ -670,9 +612,11 @@ ALWAN_INLINE alwan_rgb alwan_ihls_to_rgb_v(alwan_ihls ihls) {
     alwan_scalar C_1 = C_mag * ALWAN_COS(H);
     alwan_scalar C_2 = -C_mag * ALWAN_SIN(H);
 
-    result.r = ALWAN_EXT_IHLS_YC1C2_TO_RGB[0] * Y + ALWAN_EXT_IHLS_YC1C2_TO_RGB[1] * C_1 + ALWAN_EXT_IHLS_YC1C2_TO_RGB[2] * C_2;
-    result.g = ALWAN_EXT_IHLS_YC1C2_TO_RGB[3] * Y + ALWAN_EXT_IHLS_YC1C2_TO_RGB[4] * C_1 + ALWAN_EXT_IHLS_YC1C2_TO_RGB[5] * C_2;
-    result.b = ALWAN_EXT_IHLS_YC1C2_TO_RGB[6] * Y + ALWAN_EXT_IHLS_YC1C2_TO_RGB[7] * C_1 + ALWAN_EXT_IHLS_YC1C2_TO_RGB[8] * C_2;
+    alwan_vec3 in_v = {{Y, C_1, C_2}};
+    alwan_vec3 out_v = alwan_mat3_mulv_v(ALWAN_EXT_IHLS_YC1C2_TO_RGB, in_v);
+    result.r = out_v.v[0];
+    result.g = out_v.v[1];
+    result.b = out_v.v[2];
 
     return result;
 }

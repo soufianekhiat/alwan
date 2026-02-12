@@ -17,7 +17,7 @@
  * Identity Matrix
  * ================================================================ */
 
-ALWAN_INLINE alwan_mat3x3 alwan_mat3_identity_v(void) {
+ALWAN_INLINE alwan_mat3x3 alwan_mat3_identity_v() {
     alwan_mat3x3 out;
     out.m[0] = ALWAN_LITERAL(1.0);
     out.m[1] = ALWAN_LITERAL(0.0);
@@ -45,14 +45,6 @@ ALWAN_INLINE alwan_scalar alwan_mat3_det_v(alwan_mat3x3 m) {
  * Matrix-Vector Multiplication (Unrolled)
  * ================================================================ */
 
-#if ALWAN_BACKEND == ALWAN_BACKEND_HLSL
-
-ALWAN_INLINE alwan_vec3 alwan_mat3_mulv_v(alwan_mat3x3 m, alwan_vec3 v) {
-    return mul(m, v);
-}
-
-#else
-
 ALWAN_INLINE alwan_vec3 alwan_mat3_mulv_v(alwan_mat3x3 m, alwan_vec3 v) {
     alwan_vec3 out;
     out.v[0] = m.m[0] * v.v[0] + m.m[1] * v.v[1] + m.m[2] * v.v[2];
@@ -61,19 +53,9 @@ ALWAN_INLINE alwan_vec3 alwan_mat3_mulv_v(alwan_mat3x3 m, alwan_vec3 v) {
     return out;
 }
 
-#endif
-
 /* ================================================================
  * Matrix-Matrix Multiplication (Unrolled)
  * ================================================================ */
-
-#if ALWAN_BACKEND == ALWAN_BACKEND_HLSL
-
-ALWAN_INLINE alwan_mat3x3 alwan_mat3_mul_v(alwan_mat3x3 a, alwan_mat3x3 b) {
-    return mul(a, b);
-}
-
-#else
 
 ALWAN_INLINE alwan_mat3x3 alwan_mat3_mul_v(alwan_mat3x3 a, alwan_mat3x3 b) {
     alwan_mat3x3 out;
@@ -92,8 +74,6 @@ ALWAN_INLINE alwan_mat3x3 alwan_mat3_mul_v(alwan_mat3x3 a, alwan_mat3x3 b) {
     return out;
 }
 
-#endif
-
 /* ================================================================
  * Matrix Inverse (Cofactor/Adjugate method, unrolled)
  * Returns identity on singular input (det ≈ 0).
@@ -111,8 +91,8 @@ ALWAN_INLINE alwan_mat3x3 alwan_mat3_inv_v(alwan_mat3x3 m) {
     alwan_scalar c21 = m.m[2] * m.m[3] - m.m[0] * m.m[5];
     alwan_scalar c22 = m.m[0] * m.m[4] - m.m[1] * m.m[3];
 
-    /* Determinant via first row expansion */
-    alwan_scalar det = m.m[0] * c00 + m.m[1] * c01 + m.m[2] * c02;
+    /* Determinant via reuse of alwan_mat3_det_v */
+    alwan_scalar det = alwan_mat3_det_v(m);
 
     /* Guard: if singular, return identity */
     alwan_scalar inv_det = ALWAN_SELECT(ALWAN_ABS(det) < ALWAN_EPSILON,

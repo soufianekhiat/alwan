@@ -90,14 +90,51 @@
 # define ALWAN_INLINE    static inline
 # define ALWAN_CONSTEXPR static const
 # define ALWAN_TYPE_DEF  typedef
+# define ALWAN_UNUSED(x) (void)(x)
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
 # define ALWAN_INLINE    inline
 # define ALWAN_CONSTEXPR static const
 # define ALWAN_TYPE_DEF
+# define ALWAN_UNUSED(x)
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
 # define ALWAN_INLINE    inline
 # define ALWAN_CONSTEXPR static const
 # define ALWAN_TYPE_DEF  typedef
+# define ALWAN_UNUSED(x) (void)(x)
+#endif
+
+/* ================================================================
+ * 1.3.1 Parameter Passing Macros
+ *
+ * Abstraction for passing large types (mat3x3) and output params:
+ *   C/Halide : const pointer for input, pointer for output + deref
+ *   HLSL     : in/out qualifiers + direct access
+ *
+ * Usage:
+ *   void foo(ALWAN_PARAM_MAT3_IN m, ALWAN_PARAM_SCALAR_OUT s) {
+ *       alwan_scalar a = ALWAN_REF(m).m[0];
+ *       ALWAN_REF(s) = a;
+ *   }
+ *   alwan_mat3x3 mat; alwan_scalar out;
+ *   foo(ALWAN_ADDR(mat), ALWAN_ADDR(out));
+ * ================================================================ */
+
+#if ALWAN_BACKEND == ALWAN_BACKEND_HLSL
+  /* HLSL: in/out qualifiers, direct member access */
+# define ALWAN_PARAM_MAT3_IN    alwan_mat3x3
+# define ALWAN_PARAM_MAT3_OUT   out alwan_mat3x3
+# define ALWAN_PARAM_VEC3_OUT   out alwan_vec3
+# define ALWAN_PARAM_SCALAR_OUT out alwan_scalar
+# define ALWAN_REF(p)           (p)
+# define ALWAN_ADDR(x)          (x)
+#else
+  /* C/Halide: pointer parameters, dereference access */
+# define ALWAN_PARAM_MAT3_IN    alwan_mat3x3 const *
+# define ALWAN_PARAM_MAT3_OUT   alwan_mat3x3 *
+# define ALWAN_PARAM_VEC3_OUT   alwan_vec3 *
+# define ALWAN_PARAM_SCALAR_OUT alwan_scalar *
+# define ALWAN_REF(p)           (*(p))
+# define ALWAN_ADDR(x)          (&(x))
 #endif
 
 /* ================================================================

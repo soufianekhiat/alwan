@@ -14,45 +14,46 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ================================================================
  * CVD Transformation Matrices
  * ================================================================ */
 
 /* sRGB to LMS matrix */
-static alwan_scalar const CVD_RGB_TO_LMS[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_RGB_TO_LMS = {{
     ALWAN_LITERAL(0.31399022), ALWAN_LITERAL(0.63951294), ALWAN_LITERAL(0.04649755),
     ALWAN_LITERAL(0.15537241), ALWAN_LITERAL(0.75789446), ALWAN_LITERAL(0.08670142),
     ALWAN_LITERAL(0.01775239), ALWAN_LITERAL(0.10944209), ALWAN_LITERAL(0.87256922)
-};
+}};
 
 /* LMS to sRGB matrix */
-static alwan_scalar const CVD_LMS_TO_RGB[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_LMS_TO_RGB = {{
     ALWAN_LITERAL(5.47221206),  ALWAN_LITERAL(-4.6419601),  ALWAN_LITERAL(0.16963708),
     ALWAN_LITERAL(-1.1252419),  ALWAN_LITERAL(2.29317094),  ALWAN_LITERAL(-0.1678952),
     ALWAN_LITERAL(0.02980165),  ALWAN_LITERAL(-0.19318073), ALWAN_LITERAL(1.16364789)
-};
+}};
 
 /* Protanopia (L-cone absent) - red-blind */
-static alwan_scalar const CVD_PROTANOPIA[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_PROTANOPIA = {{
     ALWAN_LITERAL(0.0),     ALWAN_LITERAL(2.02344),  ALWAN_LITERAL(-2.52581),
     ALWAN_LITERAL(0.0),     ALWAN_LITERAL(1.0),      ALWAN_LITERAL(0.0),
     ALWAN_LITERAL(0.0),     ALWAN_LITERAL(0.0),      ALWAN_LITERAL(1.0)
-};
+}};
 
 /* Deuteranopia (M-cone absent) - green-blind */
-static alwan_scalar const CVD_DEUTERANOPIA[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_DEUTERANOPIA = {{
     ALWAN_LITERAL(1.0),      ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
     ALWAN_LITERAL(0.494207), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.24827),
     ALWAN_LITERAL(0.0),      ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)
-};
+}};
 
 /* Tritanopia (S-cone absent) - blue-blind */
-static alwan_scalar const CVD_TRITANOPIA[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_TRITANOPIA = {{
     ALWAN_LITERAL(1.0),       ALWAN_LITERAL(0.0),      ALWAN_LITERAL(0.0),
     ALWAN_LITERAL(0.0),       ALWAN_LITERAL(1.0),      ALWAN_LITERAL(0.0),
     ALWAN_LITERAL(-0.395913), ALWAN_LITERAL(0.801109), ALWAN_LITERAL(0.0)
-};
+}};
 
 /* ================================================================
  * Generic CVD Simulation (takes CVD matrix as parameter)
@@ -62,27 +63,25 @@ static alwan_scalar const CVD_TRITANOPIA[9] = {
  */
 
 ALWAN_INLINE alwan_rgb alwan_simulate_cvd_matrix_v(alwan_rgb rgb,
-                                                    alwan_scalar const *cvd_matrix,
+                                                    alwan_mat3x3 cvd_matrix,
                                                     alwan_scalar severity) {
     alwan_rgb result;
 
     /* Clamp severity to [0, 1] */
     severity = alwan_clamp(severity, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
 
-    /* RGB -> LMS (unrolled matrix multiply) */
-    alwan_scalar l = CVD_RGB_TO_LMS[0] * rgb.r + CVD_RGB_TO_LMS[1] * rgb.g + CVD_RGB_TO_LMS[2] * rgb.b;
-    alwan_scalar m = CVD_RGB_TO_LMS[3] * rgb.r + CVD_RGB_TO_LMS[4] * rgb.g + CVD_RGB_TO_LMS[5] * rgb.b;
-    alwan_scalar s = CVD_RGB_TO_LMS[6] * rgb.r + CVD_RGB_TO_LMS[7] * rgb.g + CVD_RGB_TO_LMS[8] * rgb.b;
+    /* RGB -> LMS */
+    alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
+    alwan_vec3 lms = alwan_mat3_mulv_v(CVD_RGB_TO_LMS, rgb_v);
 
-    /* Apply CVD transformation in LMS space (unrolled matrix multiply) */
-    alwan_scalar lc = cvd_matrix[0] * l + cvd_matrix[1] * m + cvd_matrix[2] * s;
-    alwan_scalar mc = cvd_matrix[3] * l + cvd_matrix[4] * m + cvd_matrix[5] * s;
-    alwan_scalar sc = cvd_matrix[6] * l + cvd_matrix[7] * m + cvd_matrix[8] * s;
+    /* Apply CVD transformation in LMS space */
+    alwan_vec3 lms_cvd = alwan_mat3_mulv_v(cvd_matrix, lms);
 
     /* LMS -> RGB (unrolled matrix multiply) */
-    alwan_scalar cr = CVD_LMS_TO_RGB[0] * lc + CVD_LMS_TO_RGB[1] * mc + CVD_LMS_TO_RGB[2] * sc;
-    alwan_scalar cg = CVD_LMS_TO_RGB[3] * lc + CVD_LMS_TO_RGB[4] * mc + CVD_LMS_TO_RGB[5] * sc;
-    alwan_scalar cb = CVD_LMS_TO_RGB[6] * lc + CVD_LMS_TO_RGB[7] * mc + CVD_LMS_TO_RGB[8] * sc;
+    alwan_vec3 cvd_rgb = alwan_mat3_mulv_v(CVD_LMS_TO_RGB, lms_cvd);
+    alwan_scalar cr = cvd_rgb.v[0];
+    alwan_scalar cg = cvd_rgb.v[1];
+    alwan_scalar cb = cvd_rgb.v[2];
 
     /* Interpolate with original: out = lerp(rgb_in, cvd_rgb, severity) */
     result.r = alwan_lerp(rgb.r, cr, severity);

@@ -20,6 +20,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * RLAB Correlates (value-returning variant)
@@ -36,27 +37,27 @@ typedef struct {
 /* Hunt-Pointer-Estevez matrix for XYZ -> LMS conversion (via CSV) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const RLAB_M_HPE[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 RLAB_M_HPE = {{
 #include "../data/matrices/hpe.csv"
-};
-static alwan_scalar const RLAB_M_HPE_INV[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 RLAB_M_HPE_INV = {{
 #include "../data/matrices/hpe_inv.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* RLAB reference space transformation matrix */
-static alwan_scalar const RLAB_M_RLAB[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 RLAB_M_RLAB = {{
     ALWAN_LITERAL( 1.9569), ALWAN_LITERAL(-1.1882), ALWAN_LITERAL( 0.2313),
     ALWAN_LITERAL( 0.3612), ALWAN_LITERAL( 0.6388), ALWAN_LITERAL( 0.0000),
     ALWAN_LITERAL( 0.0000), ALWAN_LITERAL( 0.0000), ALWAN_LITERAL( 1.0000)
-};
+}};
 
 /* Inverse RLAB matrix (precomputed) */
-static alwan_scalar const RLAB_M_RLAB_INV[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 RLAB_M_RLAB_INV = {{
     ALWAN_LITERAL( 0.4002176356618033), ALWAN_LITERAL( 0.7075374888303094), ALWAN_LITERAL(-0.0807549572842153),
     ALWAN_LITERAL( 0.2264148854595820), ALWAN_LITERAL( 1.1653895504761134), ALWAN_LITERAL(-0.0528716718777167),
     ALWAN_LITERAL( 0.0000000000000000), ALWAN_LITERAL( 0.0000000000000000), ALWAN_LITERAL( 1.0000000000000000)
-};
+}};
 
 /* ================================================================
  * RLAB Forward: XYZ -> Correlates
@@ -76,17 +77,17 @@ ALWAN_INLINE alwan_rlab_v_correlates alwan_rlab_forward_v(
 {
     alwan_rlab_v_correlates result;
 
-    /* Step 1: XYZ -> LMS using HPE matrix (unrolled 3x) */
-    alwan_scalar lms_0 = RLAB_M_HPE[0] * xyz.x + RLAB_M_HPE[1] * xyz.y + RLAB_M_HPE[2] * xyz.z;
-    alwan_scalar lms_1 = RLAB_M_HPE[3] * xyz.x + RLAB_M_HPE[4] * xyz.y + RLAB_M_HPE[5] * xyz.z;
-    alwan_scalar lms_2 = RLAB_M_HPE[6] * xyz.x + RLAB_M_HPE[7] * xyz.y + RLAB_M_HPE[8] * xyz.z;
+    /* Step 1: XYZ -> LMS using HPE matrix */
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 lms_v = alwan_mat3_mulv_v(RLAB_M_HPE, xyz_v);
+    alwan_scalar lms_0 = lms_v.v[0]; alwan_scalar lms_1 = lms_v.v[1]; alwan_scalar lms_2 = lms_v.v[2];
 
-    /* White point XYZ -> LMS_w (unrolled 3x) */
-    alwan_scalar lms_w0 = RLAB_M_HPE[0] * xyz_w.x + RLAB_M_HPE[1] * xyz_w.y + RLAB_M_HPE[2] * xyz_w.z;
-    alwan_scalar lms_w1 = RLAB_M_HPE[3] * xyz_w.x + RLAB_M_HPE[4] * xyz_w.y + RLAB_M_HPE[5] * xyz_w.z;
-    alwan_scalar lms_w2 = RLAB_M_HPE[6] * xyz_w.x + RLAB_M_HPE[7] * xyz_w.y + RLAB_M_HPE[8] * xyz_w.z;
+    /* White point XYZ -> LMS_w */
+    alwan_vec3 xyz_w_v = {{xyz_w.x, xyz_w.y, xyz_w.z}};
+    alwan_vec3 lms_w_v = alwan_mat3_mulv_v(RLAB_M_HPE, xyz_w_v);
+    alwan_scalar lms_w0 = lms_w_v.v[0]; alwan_scalar lms_w1 = lms_w_v.v[1]; alwan_scalar lms_w2 = lms_w_v.v[2];
 
-    /* Step 2: Chromatic adaptation (unrolled 3 channels) */
+    /* Step 2: Chromatic adaptation */
     alwan_scalar Y_Yw = xyz_n.y / xyz_w.y;
 
     alwan_scalar adapt_0 = ALWAN_SELECT(lms_w0 > ALWAN_LITERAL(1e-10),
@@ -104,10 +105,10 @@ ALWAN_INLINE alwan_rlab_v_correlates alwan_rlab_forward_v(
         ALWAN_LITERAL(1.0));
     alwan_scalar lms_a2 = lms_2 * adapt_2;
 
-    /* Step 3: LMS_adapted -> RLAB reference space (M_RLAB matrix multiply, unrolled) */
-    alwan_scalar xyz_ref_0 = RLAB_M_RLAB[0] * lms_a0 + RLAB_M_RLAB[1] * lms_a1 + RLAB_M_RLAB[2] * lms_a2;
-    alwan_scalar xyz_ref_1 = RLAB_M_RLAB[3] * lms_a0 + RLAB_M_RLAB[4] * lms_a1 + RLAB_M_RLAB[5] * lms_a2;
-    alwan_scalar xyz_ref_2 = RLAB_M_RLAB[6] * lms_a0 + RLAB_M_RLAB[7] * lms_a1 + RLAB_M_RLAB[8] * lms_a2;
+    /* Step 3: LMS_adapted -> RLAB reference space */
+    alwan_vec3 lms_a_v = {{lms_a0, lms_a1, lms_a2}};
+    alwan_vec3 xyz_ref_v = alwan_mat3_mulv_v(RLAB_M_RLAB, lms_a_v);
+    alwan_scalar xyz_ref_0 = xyz_ref_v.v[0]; alwan_scalar xyz_ref_1 = xyz_ref_v.v[1]; alwan_scalar xyz_ref_2 = xyz_ref_v.v[2];
 
     /* Clamp negatives (unrolled 3x) */
     xyz_ref_0 = ALWAN_SELECT(xyz_ref_0 < ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), xyz_ref_0);
@@ -168,15 +169,15 @@ ALWAN_INLINE alwan_xyz alwan_rlab_inverse_v(
     alwan_scalar xyz_ref_1 = ALWAN_POW(ALWAN_ABS(xyz_ref_sigma_1), inv_sigma);
     alwan_scalar xyz_ref_2 = ALWAN_POW(ALWAN_ABS(xyz_ref_sigma_2), inv_sigma);
 
-    /* Step 3: RLAB_INV matrix * xyz_ref -> lms_adapted (unrolled) */
-    alwan_scalar lms_a0 = RLAB_M_RLAB_INV[0] * xyz_ref_0 + RLAB_M_RLAB_INV[1] * xyz_ref_1 + RLAB_M_RLAB_INV[2] * xyz_ref_2;
-    alwan_scalar lms_a1 = RLAB_M_RLAB_INV[3] * xyz_ref_0 + RLAB_M_RLAB_INV[4] * xyz_ref_1 + RLAB_M_RLAB_INV[5] * xyz_ref_2;
-    alwan_scalar lms_a2 = RLAB_M_RLAB_INV[6] * xyz_ref_0 + RLAB_M_RLAB_INV[7] * xyz_ref_1 + RLAB_M_RLAB_INV[8] * xyz_ref_2;
+    /* Step 3: RLAB_INV matrix * xyz_ref -> lms_adapted */
+    alwan_vec3 xyz_ref_v = {{xyz_ref_0, xyz_ref_1, xyz_ref_2}};
+    alwan_vec3 lms_a_v = alwan_mat3_mulv_v(RLAB_M_RLAB_INV, xyz_ref_v);
+    alwan_scalar lms_a0 = lms_a_v.v[0]; alwan_scalar lms_a1 = lms_a_v.v[1]; alwan_scalar lms_a2 = lms_a_v.v[2];
 
-    /* Step 4: White point XYZ -> LMS_w (unrolled 3x) */
-    alwan_scalar lms_w0 = RLAB_M_HPE[0] * xyz_w.x + RLAB_M_HPE[1] * xyz_w.y + RLAB_M_HPE[2] * xyz_w.z;
-    alwan_scalar lms_w1 = RLAB_M_HPE[3] * xyz_w.x + RLAB_M_HPE[4] * xyz_w.y + RLAB_M_HPE[5] * xyz_w.z;
-    alwan_scalar lms_w2 = RLAB_M_HPE[6] * xyz_w.x + RLAB_M_HPE[7] * xyz_w.y + RLAB_M_HPE[8] * xyz_w.z;
+    /* Step 4: White point XYZ -> LMS_w */
+    alwan_vec3 xyz_w_v = {{xyz_w.x, xyz_w.y, xyz_w.z}};
+    alwan_vec3 lms_w_v = alwan_mat3_mulv_v(RLAB_M_HPE, xyz_w_v);
+    alwan_scalar lms_w0 = lms_w_v.v[0]; alwan_scalar lms_w1 = lms_w_v.v[1]; alwan_scalar lms_w2 = lms_w_v.v[2];
 
     /* Step 5: Inverse chromatic adaptation (unrolled 3 channels) */
     alwan_scalar Y_Yw = xyz_n.y / xyz_w.y;
@@ -196,10 +197,10 @@ ALWAN_INLINE alwan_xyz alwan_rlab_inverse_v(
         ALWAN_LITERAL(1.0));
     alwan_scalar lms_2 = lms_a2 / adapt_2;
 
-    /* Step 6: LMS -> XYZ using HPE inverse (via CSV) */
-    result.x = RLAB_M_HPE_INV[0] * lms_0 + RLAB_M_HPE_INV[1] * lms_1 + RLAB_M_HPE_INV[2] * lms_2;
-    result.y = RLAB_M_HPE_INV[3] * lms_0 + RLAB_M_HPE_INV[4] * lms_1 + RLAB_M_HPE_INV[5] * lms_2;
-    result.z = RLAB_M_HPE_INV[6] * lms_0 + RLAB_M_HPE_INV[7] * lms_1 + RLAB_M_HPE_INV[8] * lms_2;
+    /* Step 6: LMS -> XYZ using HPE inverse */
+    alwan_vec3 lms_v = {{lms_0, lms_1, lms_2}};
+    alwan_vec3 xyz_out_v = alwan_mat3_mulv_v(RLAB_M_HPE_INV, lms_v);
+    result.x = xyz_out_v.v[0]; result.y = xyz_out_v.v[1]; result.z = xyz_out_v.v[2];
 
     return result;
 }

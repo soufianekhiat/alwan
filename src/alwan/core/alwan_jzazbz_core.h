@@ -14,6 +14,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * Jzazbz Constants (Safdar 2017)
@@ -40,18 +41,18 @@ static alwan_scalar const JZAZBZ_V_D0 = ALWAN_LITERAL(1.6295499532821566e-11);
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const JZAZBZ_V_XYZ_TO_LMS[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 JZAZBZ_V_XYZ_TO_LMS = {{
 #include "../data/matrices/jzazbz_xyz_to_lms.csv"
-};
-static alwan_scalar const JZAZBZ_V_LMS_TO_XYZ[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 JZAZBZ_V_LMS_TO_XYZ = {{
 #include "../data/matrices/jzazbz_lms_to_xyz.csv"
-};
-static alwan_scalar const JZAZBZ_V_LMS_P_TO_IZAZBZ[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 JZAZBZ_V_LMS_P_TO_IZAZBZ = {{
 #include "../data/matrices/jzazbz_lms_p_to_izazbz.csv"
-};
-static alwan_scalar const JZAZBZ_V_IZAZBZ_TO_LMS_P[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 JZAZBZ_V_IZAZBZ_TO_LMS_P = {{
 #include "../data/matrices/jzazbz_izazbz_to_lms_p.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -92,9 +93,11 @@ ALWAN_INLINE alwan_jzazbz alwan_xyz_to_jzazbz_v(alwan_xyz xyz) {
     alwan_scalar za = xyz.z;
 
     /* Step 2: XYZ (adapted) -> LMS via matrix */
-    alwan_scalar l = JZAZBZ_V_XYZ_TO_LMS[0] * xa + JZAZBZ_V_XYZ_TO_LMS[1] * ya + JZAZBZ_V_XYZ_TO_LMS[2] * za;
-    alwan_scalar m = JZAZBZ_V_XYZ_TO_LMS[3] * xa + JZAZBZ_V_XYZ_TO_LMS[4] * ya + JZAZBZ_V_XYZ_TO_LMS[5] * za;
-    alwan_scalar s = JZAZBZ_V_XYZ_TO_LMS[6] * xa + JZAZBZ_V_XYZ_TO_LMS[7] * ya + JZAZBZ_V_XYZ_TO_LMS[8] * za;
+    alwan_vec3 xa_v = {{xa, ya, za}};
+    alwan_vec3 lms_v = alwan_mat3_mulv_v(JZAZBZ_V_XYZ_TO_LMS, xa_v);
+    alwan_scalar l = lms_v.v[0];
+    alwan_scalar m = lms_v.v[1];
+    alwan_scalar s = lms_v.v[2];
 
     /* Step 3: PQ OETF: LMS -> LMS' */
     alwan_scalar lp = pq_jz_oetf_v(l);
@@ -102,9 +105,11 @@ ALWAN_INLINE alwan_jzazbz alwan_xyz_to_jzazbz_v(alwan_xyz xyz) {
     alwan_scalar sp = pq_jz_oetf_v(s);
 
     /* Step 4: LMS' -> Izazbz via matrix */
-    alwan_scalar iz = JZAZBZ_V_LMS_P_TO_IZAZBZ[0] * lp + JZAZBZ_V_LMS_P_TO_IZAZBZ[1] * mp + JZAZBZ_V_LMS_P_TO_IZAZBZ[2] * sp;
-    alwan_scalar az = JZAZBZ_V_LMS_P_TO_IZAZBZ[3] * lp + JZAZBZ_V_LMS_P_TO_IZAZBZ[4] * mp + JZAZBZ_V_LMS_P_TO_IZAZBZ[5] * sp;
-    alwan_scalar bz = JZAZBZ_V_LMS_P_TO_IZAZBZ[6] * lp + JZAZBZ_V_LMS_P_TO_IZAZBZ[7] * mp + JZAZBZ_V_LMS_P_TO_IZAZBZ[8] * sp;
+    alwan_vec3 lms_p_v = {{lp, mp, sp}};
+    alwan_vec3 izazbz_v = alwan_mat3_mulv_v(JZAZBZ_V_LMS_P_TO_IZAZBZ, lms_p_v);
+    alwan_scalar iz = izazbz_v.v[0];
+    alwan_scalar az = izazbz_v.v[1];
+    alwan_scalar bz = izazbz_v.v[2];
 
     /* Step 5: Calculate Jz from Iz */
     result.Jz = ((ALWAN_LITERAL(1.0) + JZAZBZ_V_D) * iz) / (ALWAN_LITERAL(1.0) + JZAZBZ_V_D * iz) - JZAZBZ_V_D0;
@@ -131,9 +136,11 @@ ALWAN_INLINE alwan_xyz alwan_jzazbz_to_xyz_v(alwan_jzazbz jzazbz) {
     alwan_scalar b = jzazbz.bz;
 
     /* Step 3: Izazbz -> LMS' via matrix */
-    alwan_scalar lp = JZAZBZ_V_IZAZBZ_TO_LMS_P[0] * i + JZAZBZ_V_IZAZBZ_TO_LMS_P[1] * a + JZAZBZ_V_IZAZBZ_TO_LMS_P[2] * b;
-    alwan_scalar mp = JZAZBZ_V_IZAZBZ_TO_LMS_P[3] * i + JZAZBZ_V_IZAZBZ_TO_LMS_P[4] * a + JZAZBZ_V_IZAZBZ_TO_LMS_P[5] * b;
-    alwan_scalar sp = JZAZBZ_V_IZAZBZ_TO_LMS_P[6] * i + JZAZBZ_V_IZAZBZ_TO_LMS_P[7] * a + JZAZBZ_V_IZAZBZ_TO_LMS_P[8] * b;
+    alwan_vec3 izazbz_v = {{i, a, b}};
+    alwan_vec3 lms_p_v = alwan_mat3_mulv_v(JZAZBZ_V_IZAZBZ_TO_LMS_P, izazbz_v);
+    alwan_scalar lp = lms_p_v.v[0];
+    alwan_scalar mp = lms_p_v.v[1];
+    alwan_scalar sp = lms_p_v.v[2];
 
     /* Step 4: PQ EOTF: LMS' -> LMS */
     alwan_scalar l = pq_jz_eotf_v(lp);
@@ -141,9 +148,11 @@ ALWAN_INLINE alwan_xyz alwan_jzazbz_to_xyz_v(alwan_jzazbz jzazbz) {
     alwan_scalar s = pq_jz_eotf_v(sp);
 
     /* Step 5: LMS -> XYZ (adapted) via matrix */
-    alwan_scalar xa = JZAZBZ_V_LMS_TO_XYZ[0] * l + JZAZBZ_V_LMS_TO_XYZ[1] * m + JZAZBZ_V_LMS_TO_XYZ[2] * s;
-    alwan_scalar ya = JZAZBZ_V_LMS_TO_XYZ[3] * l + JZAZBZ_V_LMS_TO_XYZ[4] * m + JZAZBZ_V_LMS_TO_XYZ[5] * s;
-    alwan_scalar za = JZAZBZ_V_LMS_TO_XYZ[6] * l + JZAZBZ_V_LMS_TO_XYZ[7] * m + JZAZBZ_V_LMS_TO_XYZ[8] * s;
+    alwan_vec3 lms_v = {{l, m, s}};
+    alwan_vec3 xa_v = alwan_mat3_mulv_v(JZAZBZ_V_LMS_TO_XYZ, lms_v);
+    alwan_scalar xa = xa_v.v[0];
+    alwan_scalar ya = xa_v.v[1];
+    alwan_scalar za = xa_v.v[2];
 
     /* Step 6: Inverse chromatic adaptation */
     result.x = (xa + (JZAZBZ_V_B - ALWAN_LITERAL(1.0)) * za) / JZAZBZ_V_B;

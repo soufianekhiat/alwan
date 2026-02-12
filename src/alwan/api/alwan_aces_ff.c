@@ -463,7 +463,7 @@ static void aces1_rrt_core(alwan_rgb const *ap1_in, alwan_rgb *rrt_out) {
 /* Matrix multiply helper */
 static void mat3_mul_vec3_aces1(alwan_scalar const *m, alwan_rgb const *v, alwan_rgb *out) {
     alwan_vec3 vec = {{v->r, v->g, v->b}};
-    alwan_vec3 res = aces_mat3_mul_vec3_v((alwan_mat3x3 const *)m, vec);
+    alwan_vec3 res = alwan_mat3_mulv_v(*(alwan_mat3x3 const *)m, vec);
     out->r = res.v[0]; out->g = res.v[1]; out->b = res.v[2];
 }
 
@@ -918,22 +918,21 @@ static void primaries_to_rgb_to_xyz(alwan_scalar rx, alwan_scalar ry,
 
 /* Invert 3x3 matrix */
 static int invert_mat3(alwan_scalar const m[9], alwan_scalar out[9]) {
-    alwan_mat3x3 result = aces_invert_mat3_v((alwan_mat3x3 const *)m);
+    alwan_mat3x3 result = alwan_mat3_inv_v(*(alwan_mat3x3 const *)m);
     for (int i = 0; i < 9; i++) out[i] = result.m[i];
-    /* Core version returns zero matrix on failure */
     return 0;
 }
 
 /* Multiply 3x3 matrices: out = a * b */
 static void mult_mat3(alwan_scalar const a[9], alwan_scalar const b[9], alwan_scalar out[9]) {
-    alwan_mat3x3 result = aces_mult_mat3_v((alwan_mat3x3 const *)a, (alwan_mat3x3 const *)b);
+    alwan_mat3x3 result = alwan_mat3_mul_v(*(alwan_mat3x3 const *)a, *(alwan_mat3x3 const *)b);
     for (int i = 0; i < 9; i++) out[i] = result.m[i];
 }
 
 /* Multiply vector by matrix: out = m * v */
 static void mult_vec_mat3(alwan_scalar const v[3], alwan_scalar const m[9], alwan_scalar out[3]) {
     alwan_vec3 vec = {{v[0], v[1], v[2]}};
-    alwan_vec3 result = aces_mult_vec_mat3_v(vec, (alwan_mat3x3 const *)m);
+    alwan_vec3 result = alwan_mat3_mulv_v(*(alwan_mat3x3 const *)m, vec);
     out[0] = result.v[0]; out[1] = result.v[1]; out[2] = result.v[2];
 }
 
@@ -1048,19 +1047,19 @@ static void init_JMhParams(alwan_aces_primaries const *primaries, JMhParams *p) 
     }
 
     /* Apply chromatic adaptation: diag(D_RGB) @ rgb_to_cam16_base */
-    p->MATRIX_RGB_to_CAM16_c[0] = D_RGB[0] * rgb_to_cam16_base[0];
-    p->MATRIX_RGB_to_CAM16_c[1] = D_RGB[0] * rgb_to_cam16_base[1];
-    p->MATRIX_RGB_to_CAM16_c[2] = D_RGB[0] * rgb_to_cam16_base[2];
-    p->MATRIX_RGB_to_CAM16_c[3] = D_RGB[1] * rgb_to_cam16_base[3];
-    p->MATRIX_RGB_to_CAM16_c[4] = D_RGB[1] * rgb_to_cam16_base[4];
-    p->MATRIX_RGB_to_CAM16_c[5] = D_RGB[1] * rgb_to_cam16_base[5];
-    p->MATRIX_RGB_to_CAM16_c[6] = D_RGB[2] * rgb_to_cam16_base[6];
-    p->MATRIX_RGB_to_CAM16_c[7] = D_RGB[2] * rgb_to_cam16_base[7];
-    p->MATRIX_RGB_to_CAM16_c[8] = D_RGB[2] * rgb_to_cam16_base[8];
+    p->MATRIX_RGB_to_CAM16_c.m[0] = D_RGB[0] * rgb_to_cam16_base[0];
+    p->MATRIX_RGB_to_CAM16_c.m[1] = D_RGB[0] * rgb_to_cam16_base[1];
+    p->MATRIX_RGB_to_CAM16_c.m[2] = D_RGB[0] * rgb_to_cam16_base[2];
+    p->MATRIX_RGB_to_CAM16_c.m[3] = D_RGB[1] * rgb_to_cam16_base[3];
+    p->MATRIX_RGB_to_CAM16_c.m[4] = D_RGB[1] * rgb_to_cam16_base[4];
+    p->MATRIX_RGB_to_CAM16_c.m[5] = D_RGB[1] * rgb_to_cam16_base[5];
+    p->MATRIX_RGB_to_CAM16_c.m[6] = D_RGB[2] * rgb_to_cam16_base[6];
+    p->MATRIX_RGB_to_CAM16_c.m[7] = D_RGB[2] * rgb_to_cam16_base[7];
+    p->MATRIX_RGB_to_CAM16_c.m[8] = D_RGB[2] * rgb_to_cam16_base[8];
 
     /* Compute white in adapted CAM16 space */
     alwan_scalar white_cam16[3];
-    mult_vec_mat3(white_rgb, p->MATRIX_RGB_to_CAM16_c, white_cam16);
+    mult_vec_mat3(white_rgb, p->MATRIX_RGB_to_CAM16_c.m, white_cam16);
 
     /* Apply post-adaptation compression to white */
     alwan_scalar rgb_a_w[3];
@@ -1083,15 +1082,15 @@ static void init_JMhParams(alwan_aces_primaries const *primaries, JMhParams *p) 
      */
     alwan_scalar ab_scale = ALWAN_LITERAL(43.0) * ACES2_SURROUND_N_c;
 
-    p->MATRIX_cone_response_to_Aab[0] = cone_to_aab[0] / A_w;
-    p->MATRIX_cone_response_to_Aab[1] = cone_to_aab[1] / A_w;
-    p->MATRIX_cone_response_to_Aab[2] = cone_to_aab[2] / A_w;
-    p->MATRIX_cone_response_to_Aab[3] = cone_to_aab[3] * ab_scale;
-    p->MATRIX_cone_response_to_Aab[4] = cone_to_aab[4] * ab_scale;
-    p->MATRIX_cone_response_to_Aab[5] = cone_to_aab[5] * ab_scale;
-    p->MATRIX_cone_response_to_Aab[6] = cone_to_aab[6] * ab_scale;
-    p->MATRIX_cone_response_to_Aab[7] = cone_to_aab[7] * ab_scale;
-    p->MATRIX_cone_response_to_Aab[8] = cone_to_aab[8] * ab_scale;
+    p->MATRIX_cone_response_to_Aab.m[0] = cone_to_aab[0] / A_w;
+    p->MATRIX_cone_response_to_Aab.m[1] = cone_to_aab[1] / A_w;
+    p->MATRIX_cone_response_to_Aab.m[2] = cone_to_aab[2] / A_w;
+    p->MATRIX_cone_response_to_Aab.m[3] = cone_to_aab[3] * ab_scale;
+    p->MATRIX_cone_response_to_Aab.m[4] = cone_to_aab[4] * ab_scale;
+    p->MATRIX_cone_response_to_Aab.m[5] = cone_to_aab[5] * ab_scale;
+    p->MATRIX_cone_response_to_Aab.m[6] = cone_to_aab[6] * ab_scale;
+    p->MATRIX_cone_response_to_Aab.m[7] = cone_to_aab[7] * ab_scale;
+    p->MATRIX_cone_response_to_Aab.m[8] = cone_to_aab[8] * ab_scale;
 
     /* A_w_J is the achromatic response to F_L (for J normalization) */
     p->A_w_J = post_adaptation_cone_response_compression_fwd(F_L);
@@ -1101,8 +1100,8 @@ static void init_JMhParams(alwan_aces_primaries const *primaries, JMhParams *p) 
     p->F_L_n = F_L_n;
 
     /* Compute and store inverse matrices for Aab_to_RGB conversion */
-    invert_mat3(p->MATRIX_RGB_to_CAM16_c, p->MATRIX_CAM16_to_RGB);
-    invert_mat3(p->MATRIX_cone_response_to_Aab, p->MATRIX_Aab_to_cone);
+    p->MATRIX_CAM16_to_RGB = alwan_mat3_inv_v(p->MATRIX_RGB_to_CAM16_c);
+    p->MATRIX_Aab_to_cone = alwan_mat3_inv_v(p->MATRIX_cone_response_to_Aab);
 }
 
 /* ----------------------------------------------------------------

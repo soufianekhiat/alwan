@@ -14,6 +14,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * Oklab Transformation Matrices
@@ -22,18 +23,18 @@
 /* XYZ (D65) to LMS cone response matrix (M1) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const OKLAB_M1[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 OKLAB_M1 = {{
 #include "../data/matrices/oklab_m1.csv"
-};
-static alwan_scalar const OKLAB_M2[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 OKLAB_M2 = {{
 #include "../data/matrices/oklab_m2.csv"
-};
-static alwan_scalar const OKLAB_M1_INV[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 OKLAB_M1_INV = {{
 #include "../data/matrices/oklab_m1_inv.csv"
-};
-static alwan_scalar const OKLAB_M2_INV[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 OKLAB_M2_INV = {{
 #include "../data/matrices/oklab_m2_inv.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -44,9 +45,11 @@ ALWAN_INLINE alwan_oklab alwan_xyz_to_oklab_v(alwan_xyz xyz) {
     alwan_oklab result;
 
     /* Step 1: XYZ -> LMS via M1 matrix */
-    alwan_scalar l = OKLAB_M1[0] * xyz.x + OKLAB_M1[1] * xyz.y + OKLAB_M1[2] * xyz.z;
-    alwan_scalar m = OKLAB_M1[3] * xyz.x + OKLAB_M1[4] * xyz.y + OKLAB_M1[5] * xyz.z;
-    alwan_scalar s = OKLAB_M1[6] * xyz.x + OKLAB_M1[7] * xyz.y + OKLAB_M1[8] * xyz.z;
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 lms_v = alwan_mat3_mulv_v(OKLAB_M1, xyz_v);
+    alwan_scalar l = lms_v.v[0];
+    alwan_scalar m = lms_v.v[1];
+    alwan_scalar s = lms_v.v[2];
 
     /* Step 2: LMS -> LMS' via cube root */
     alwan_scalar l_ = ALWAN_CBRT(l);
@@ -54,9 +57,11 @@ ALWAN_INLINE alwan_oklab alwan_xyz_to_oklab_v(alwan_xyz xyz) {
     alwan_scalar s_ = ALWAN_CBRT(s);
 
     /* Step 3: LMS' -> Lab via M2 matrix */
-    result.L = OKLAB_M2[0] * l_ + OKLAB_M2[1] * m_ + OKLAB_M2[2] * s_;
-    result.a = OKLAB_M2[3] * l_ + OKLAB_M2[4] * m_ + OKLAB_M2[5] * s_;
-    result.b = OKLAB_M2[6] * l_ + OKLAB_M2[7] * m_ + OKLAB_M2[8] * s_;
+    alwan_vec3 lms_p_v = {{l_, m_, s_}};
+    alwan_vec3 lab_v = alwan_mat3_mulv_v(OKLAB_M2, lms_p_v);
+    result.L = lab_v.v[0];
+    result.a = lab_v.v[1];
+    result.b = lab_v.v[2];
 
     return result;
 }
@@ -69,9 +74,11 @@ ALWAN_INLINE alwan_xyz alwan_oklab_to_xyz_v(alwan_oklab oklab) {
     alwan_xyz result;
 
     /* Step 1: Lab -> LMS' via M2_INV matrix */
-    alwan_scalar l_ = OKLAB_M2_INV[0] * oklab.L + OKLAB_M2_INV[1] * oklab.a + OKLAB_M2_INV[2] * oklab.b;
-    alwan_scalar m_ = OKLAB_M2_INV[3] * oklab.L + OKLAB_M2_INV[4] * oklab.a + OKLAB_M2_INV[5] * oklab.b;
-    alwan_scalar s_ = OKLAB_M2_INV[6] * oklab.L + OKLAB_M2_INV[7] * oklab.a + OKLAB_M2_INV[8] * oklab.b;
+    alwan_vec3 lab_v = {{oklab.L, oklab.a, oklab.b}};
+    alwan_vec3 lms_p_v = alwan_mat3_mulv_v(OKLAB_M2_INV, lab_v);
+    alwan_scalar l_ = lms_p_v.v[0];
+    alwan_scalar m_ = lms_p_v.v[1];
+    alwan_scalar s_ = lms_p_v.v[2];
 
     /* Step 2: LMS' -> LMS via cube */
     alwan_scalar l = l_ * l_ * l_;
@@ -79,9 +86,11 @@ ALWAN_INLINE alwan_xyz alwan_oklab_to_xyz_v(alwan_oklab oklab) {
     alwan_scalar s = s_ * s_ * s_;
 
     /* Step 3: LMS -> XYZ via M1_INV matrix */
-    result.x = OKLAB_M1_INV[0] * l + OKLAB_M1_INV[1] * m + OKLAB_M1_INV[2] * s;
-    result.y = OKLAB_M1_INV[3] * l + OKLAB_M1_INV[4] * m + OKLAB_M1_INV[5] * s;
-    result.z = OKLAB_M1_INV[6] * l + OKLAB_M1_INV[7] * m + OKLAB_M1_INV[8] * s;
+    alwan_vec3 lms_v = {{l, m, s}};
+    alwan_vec3 xyz_v = alwan_mat3_mulv_v(OKLAB_M1_INV, lms_v);
+    result.x = xyz_v.v[0];
+    result.y = xyz_v.v[1];
+    result.z = xyz_v.v[2];
 
     return result;
 }

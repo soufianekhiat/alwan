@@ -19,6 +19,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * Hellwig2022 Correlates (value-returning variant)
@@ -40,12 +41,12 @@ typedef struct {
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const HW22_V_M_CAT16[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 HW22_V_M_CAT16 = {{
 #include "../data/matrices/cat_cat16.csv"
-};
-static alwan_scalar const HW22_V_M_CAT16_INV[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 HW22_V_M_CAT16_INV = {{
 #include "../data/matrices/cat_cat16_inv.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -180,17 +181,19 @@ ALWAN_INLINE alwan_scalar hw22_hue_to_quadrature_v(alwan_scalar h) {
 ALWAN_INLINE alwan_scalar hw22_compute_Aw_v(
     alwan_scalar white_x, alwan_scalar white_y, alwan_scalar white_z,
     alwan_scalar D, alwan_scalar FL,
-    alwan_scalar *RGB_w0_out, alwan_scalar *RGB_w1_out, alwan_scalar *RGB_w2_out)
+    ALWAN_PARAM_SCALAR_OUT RGB_w0_out, ALWAN_PARAM_SCALAR_OUT RGB_w1_out, ALWAN_PARAM_SCALAR_OUT RGB_w2_out)
 {
     /* White point XYZ -> RGB via CAT16 */
-    alwan_scalar RGB_w0 = HW22_V_M_CAT16[0] * white_x + HW22_V_M_CAT16[1] * white_y + HW22_V_M_CAT16[2] * white_z;
-    alwan_scalar RGB_w1 = HW22_V_M_CAT16[3] * white_x + HW22_V_M_CAT16[4] * white_y + HW22_V_M_CAT16[5] * white_z;
-    alwan_scalar RGB_w2 = HW22_V_M_CAT16[6] * white_x + HW22_V_M_CAT16[7] * white_y + HW22_V_M_CAT16[8] * white_z;
+    alwan_vec3 white_v = {{white_x, white_y, white_z}};
+    alwan_vec3 RGB_w_v = alwan_mat3_mulv_v(HW22_V_M_CAT16, white_v);
+    alwan_scalar RGB_w0 = RGB_w_v.v[0];
+    alwan_scalar RGB_w1 = RGB_w_v.v[1];
+    alwan_scalar RGB_w2 = RGB_w_v.v[2];
 
     /* Store for caller */
-    *RGB_w0_out = RGB_w0;
-    *RGB_w1_out = RGB_w1;
-    *RGB_w2_out = RGB_w2;
+    ALWAN_REF(RGB_w0_out) = RGB_w0;
+    ALWAN_REF(RGB_w1_out) = RGB_w1;
+    ALWAN_REF(RGB_w2_out) = RGB_w2;
 
     /* Chromatic adaptation of white (D_R/Y_w simplifies to D + 1 - D = 1 for each channel when source == white) */
     alwan_scalar RGB_wc0 = (white_y * D / RGB_w0 + ALWAN_ONE - D) * RGB_w0;
@@ -241,12 +244,14 @@ ALWAN_INLINE alwan_hellwig2022_v_correlates alwan_hellwig2022_forward_v(
     /* Step 3: White-point achromatic response A_w and white RGB_w */
     alwan_scalar RGB_w0, RGB_w1, RGB_w2;
     alwan_scalar A_w = hw22_compute_Aw_v(white_x, white_y, white_z, D, FL,
-                                         &RGB_w0, &RGB_w1, &RGB_w2);
+                                         ALWAN_ADDR(RGB_w0), ALWAN_ADDR(RGB_w1), ALWAN_ADDR(RGB_w2));
 
     /* Step 4: Transform test color XYZ -> RGB via CAT16 */
-    alwan_scalar RGB0 = HW22_V_M_CAT16[0] * xyz.x + HW22_V_M_CAT16[1] * xyz.y + HW22_V_M_CAT16[2] * xyz.z;
-    alwan_scalar RGB1 = HW22_V_M_CAT16[3] * xyz.x + HW22_V_M_CAT16[4] * xyz.y + HW22_V_M_CAT16[5] * xyz.z;
-    alwan_scalar RGB2 = HW22_V_M_CAT16[6] * xyz.x + HW22_V_M_CAT16[7] * xyz.y + HW22_V_M_CAT16[8] * xyz.z;
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 RGB_v = alwan_mat3_mulv_v(HW22_V_M_CAT16, xyz_v);
+    alwan_scalar RGB0 = RGB_v.v[0];
+    alwan_scalar RGB1 = RGB_v.v[1];
+    alwan_scalar RGB2 = RGB_v.v[2];
 
     /* Step 5: Chromatic adaptation */
     alwan_scalar RGB_c0 = (white_y * D / RGB_w0 + ALWAN_ONE - D) * RGB0;
@@ -338,7 +343,7 @@ ALWAN_INLINE alwan_xyz alwan_hellwig2022_inverse_v(
     /* Step 3: White-point achromatic response A_w and white RGB_w */
     alwan_scalar RGB_w0, RGB_w1, RGB_w2;
     alwan_scalar A_w = hw22_compute_Aw_v(white_x, white_y, white_z, D, FL,
-                                         &RGB_w0, &RGB_w1, &RGB_w2);
+                                         ALWAN_ADDR(RGB_w0), ALWAN_ADDR(RGB_w1), ALWAN_ADDR(RGB_w2));
 
     /* Step 4: Base exponential nonlinearity z */
     alwan_scalar n = Y_b / Y_w;
@@ -379,9 +384,11 @@ ALWAN_INLINE alwan_xyz alwan_hellwig2022_inverse_v(
     alwan_scalar RGB2 = RGB_c2 / (white_y * D / RGB_w2 + ALWAN_ONE - D);
 
     /* Step 10: RGB -> XYZ via inverse CAT16 */
-    result.x = HW22_V_M_CAT16_INV[0] * RGB0 + HW22_V_M_CAT16_INV[1] * RGB1 + HW22_V_M_CAT16_INV[2] * RGB2;
-    result.y = HW22_V_M_CAT16_INV[3] * RGB0 + HW22_V_M_CAT16_INV[4] * RGB1 + HW22_V_M_CAT16_INV[5] * RGB2;
-    result.z = HW22_V_M_CAT16_INV[6] * RGB0 + HW22_V_M_CAT16_INV[7] * RGB1 + HW22_V_M_CAT16_INV[8] * RGB2;
+    alwan_vec3 RGB_inv_v = {{RGB0, RGB1, RGB2}};
+    alwan_vec3 xyz_out_v = alwan_mat3_mulv_v(HW22_V_M_CAT16_INV, RGB_inv_v);
+    result.x = xyz_out_v.v[0];
+    result.y = xyz_out_v.v[1];
+    result.z = xyz_out_v.v[2];
 
     return result;
 }

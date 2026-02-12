@@ -14,6 +14,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * OSA-UCS Transformation Matrices
@@ -21,16 +22,16 @@
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const XYZ_TO_RGB_OSA[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 XYZ_TO_RGB_OSA = {{
     ALWAN_LITERAL( 0.7990),  ALWAN_LITERAL( 0.4194), ALWAN_LITERAL(-0.1648),
     ALWAN_LITERAL(-0.4493),  ALWAN_LITERAL( 1.3265), ALWAN_LITERAL( 0.0927),
     ALWAN_LITERAL(-0.1149),  ALWAN_LITERAL( 0.3394), ALWAN_LITERAL( 0.7170)
-};
-static alwan_scalar const RGB_TO_XYZ_OSA[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 RGB_TO_XYZ_OSA = {{
     ALWAN_LITERAL( 1.2671437106783715),  ALWAN_LITERAL(-0.3952805953175470), ALWAN_LITERAL( 0.2076207506990453),
     ALWAN_LITERAL( 0.4270169237547476),  ALWAN_LITERAL( 0.7698457624019271), ALWAN_LITERAL(-0.0557814606555453),
     ALWAN_LITERAL( 0.0000000000000000),  ALWAN_LITERAL(-0.1414598390909057), ALWAN_LITERAL( 1.4194042205296260)
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -77,10 +78,10 @@ ALWAN_INLINE alwan_osa_ucs alwan_xyz_to_osa_ucs_v(alwan_xyz xyz) {
     alwan_scalar Y0_es = Y0_cbrt - ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0);
     alwan_scalar lambda = ALWAN_LITERAL(5.9) * (Y0_es + ALWAN_LITERAL(0.042) * Y0_minus_30_cbrt);
 
-    /* Step 4: Transform XYZ to RGB (unrolled matrix multiply) */
-    alwan_scalar r = XYZ_TO_RGB_OSA[0] * xyz.x + XYZ_TO_RGB_OSA[1] * xyz.y + XYZ_TO_RGB_OSA[2] * xyz.z;
-    alwan_scalar g = XYZ_TO_RGB_OSA[3] * xyz.x + XYZ_TO_RGB_OSA[4] * xyz.y + XYZ_TO_RGB_OSA[5] * xyz.z;
-    alwan_scalar b = XYZ_TO_RGB_OSA[6] * xyz.x + XYZ_TO_RGB_OSA[7] * xyz.y + XYZ_TO_RGB_OSA[8] * xyz.z;
+    /* Step 4: Transform XYZ to RGB */
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 rgb_v = alwan_mat3_mulv_v(XYZ_TO_RGB_OSA, xyz_v);
+    alwan_scalar r = rgb_v.v[0]; alwan_scalar g = rgb_v.v[1]; alwan_scalar b = rgb_v.v[2];
 
     /* Step 5: Sign-preserving cube root for each RGB channel */
     alwan_scalar r_cbrt = alwan_spow_cbrt_v(r);
@@ -147,10 +148,10 @@ ALWAN_INLINE alwan_xyz alwan_osa_ucs_to_xyz_v(alwan_osa_ucs osa) {
                                       b_cbrt * b_cbrt * b_cbrt,
                                       -((-b_cbrt) * (-b_cbrt) * (-b_cbrt)));
 
-    /* Step 6: RGB to XYZ (unrolled matrix multiply) */
-    alwan_scalar out_x = RGB_TO_XYZ_OSA[0] * r_lin + RGB_TO_XYZ_OSA[1] * g_lin + RGB_TO_XYZ_OSA[2] * b_lin;
-    alwan_scalar out_y = RGB_TO_XYZ_OSA[3] * r_lin + RGB_TO_XYZ_OSA[4] * g_lin + RGB_TO_XYZ_OSA[5] * b_lin;
-    alwan_scalar out_z = RGB_TO_XYZ_OSA[6] * r_lin + RGB_TO_XYZ_OSA[7] * g_lin + RGB_TO_XYZ_OSA[8] * b_lin;
+    /* Step 6: RGB to XYZ */
+    alwan_vec3 lin_v = {{r_lin, g_lin, b_lin}};
+    alwan_vec3 xyz_out_v = alwan_mat3_mulv_v(RGB_TO_XYZ_OSA, lin_v);
+    alwan_scalar out_x = xyz_out_v.v[0]; alwan_scalar out_y = xyz_out_v.v[1]; alwan_scalar out_z = xyz_out_v.v[2];
 
     /* Clamp negatives */
     out_x = ALWAN_SELECT(out_x < ALWAN_ZERO, ALWAN_ZERO, out_x);

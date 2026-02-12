@@ -18,6 +18,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * Kim2009 Result Struct
@@ -66,19 +67,19 @@ typedef struct {
 /* CAT02 matrix for chromatic adaptation transform */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const KIM2009_V_M_CAT02[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 KIM2009_V_M_CAT02 = {{
 #include "../data/matrices/cat_cat02.csv"
-};
-static alwan_scalar const KIM2009_V_M_CAT02_INV[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 KIM2009_V_M_CAT02_INV = {{
 #include "../data/matrices/cat_cat02_inv.csv"
-};
+}};
 /* Hunt-Pointer-Estevez (HPE) matrix for XYZ to LMS conversion */
-static alwan_scalar const KIM2009_V_M_HPE[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 KIM2009_V_M_HPE = {{
 #include "../data/matrices/hpe.csv"
-};
-static alwan_scalar const KIM2009_V_M_HPE_INV[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 KIM2009_V_M_HPE_INV = {{
 #include "../data/matrices/hpe_inv.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -107,14 +108,18 @@ ALWAN_INLINE alwan_kim2009_v_correlates alwan_kim2009_forward_v(
     alwan_kim2009_v_correlates result;
 
     /* Step 1: CAT02 transform - XYZ to RGB (sharpened cone responses) */
-    alwan_scalar R   = KIM2009_V_M_CAT02[0] * xyz.x + KIM2009_V_M_CAT02[1] * xyz.y + KIM2009_V_M_CAT02[2] * xyz.z;
-    alwan_scalar G   = KIM2009_V_M_CAT02[3] * xyz.x + KIM2009_V_M_CAT02[4] * xyz.y + KIM2009_V_M_CAT02[5] * xyz.z;
-    alwan_scalar B   = KIM2009_V_M_CAT02[6] * xyz.x + KIM2009_V_M_CAT02[7] * xyz.y + KIM2009_V_M_CAT02[8] * xyz.z;
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 rgb_v = alwan_mat3_mulv_v(KIM2009_V_M_CAT02, xyz_v);
+    alwan_scalar R   = rgb_v.v[0];
+    alwan_scalar G   = rgb_v.v[1];
+    alwan_scalar B   = rgb_v.v[2];
 
     /* Step 2: CAT02 transform - white point XYZ_w to RGB_w */
-    alwan_scalar R_w = KIM2009_V_M_CAT02[0] * white_x + KIM2009_V_M_CAT02[1] * white_y + KIM2009_V_M_CAT02[2] * white_z;
-    alwan_scalar G_w = KIM2009_V_M_CAT02[3] * white_x + KIM2009_V_M_CAT02[4] * white_y + KIM2009_V_M_CAT02[5] * white_z;
-    alwan_scalar B_w = KIM2009_V_M_CAT02[6] * white_x + KIM2009_V_M_CAT02[7] * white_y + KIM2009_V_M_CAT02[8] * white_z;
+    alwan_vec3 white_v = {{white_x, white_y, white_z}};
+    alwan_vec3 rgbw_v = alwan_mat3_mulv_v(KIM2009_V_M_CAT02, white_v);
+    alwan_scalar R_w = rgbw_v.v[0];
+    alwan_scalar G_w = rgbw_v.v[1];
+    alwan_scalar B_w = rgbw_v.v[2];
 
     /* Step 3: Chromatic adaptation factors */
     alwan_scalar fac_R = D * (white_y / R_w) + (ALWAN_ONE - D);
@@ -130,23 +135,31 @@ ALWAN_INLINE alwan_kim2009_v_correlates alwan_kim2009_forward_v(
     alwan_scalar B_wc = B_w * fac_B;
 
     /* Step 5: Inverse CAT02 to adapted XYZ_c */
-    alwan_scalar Xc = KIM2009_V_M_CAT02_INV[0] * R_c + KIM2009_V_M_CAT02_INV[1] * G_c + KIM2009_V_M_CAT02_INV[2] * B_c;
-    alwan_scalar Yc = KIM2009_V_M_CAT02_INV[3] * R_c + KIM2009_V_M_CAT02_INV[4] * G_c + KIM2009_V_M_CAT02_INV[5] * B_c;
-    alwan_scalar Zc = KIM2009_V_M_CAT02_INV[6] * R_c + KIM2009_V_M_CAT02_INV[7] * G_c + KIM2009_V_M_CAT02_INV[8] * B_c;
+    alwan_vec3 rgbc_v = {{R_c, G_c, B_c}};
+    alwan_vec3 xyzc_v = alwan_mat3_mulv_v(KIM2009_V_M_CAT02_INV, rgbc_v);
+    alwan_scalar Xc = xyzc_v.v[0];
+    alwan_scalar Yc = xyzc_v.v[1];
+    alwan_scalar Zc = xyzc_v.v[2];
 
     /* Step 6: Inverse CAT02 to adapted XYZ_wc */
-    alwan_scalar Xwc = KIM2009_V_M_CAT02_INV[0] * R_wc + KIM2009_V_M_CAT02_INV[1] * G_wc + KIM2009_V_M_CAT02_INV[2] * B_wc;
-    alwan_scalar Ywc = KIM2009_V_M_CAT02_INV[3] * R_wc + KIM2009_V_M_CAT02_INV[4] * G_wc + KIM2009_V_M_CAT02_INV[5] * B_wc;
-    alwan_scalar Zwc = KIM2009_V_M_CAT02_INV[6] * R_wc + KIM2009_V_M_CAT02_INV[7] * G_wc + KIM2009_V_M_CAT02_INV[8] * B_wc;
+    alwan_vec3 rgbwc_v = {{R_wc, G_wc, B_wc}};
+    alwan_vec3 xyzwc_v = alwan_mat3_mulv_v(KIM2009_V_M_CAT02_INV, rgbwc_v);
+    alwan_scalar Xwc = xyzwc_v.v[0];
+    alwan_scalar Ywc = xyzwc_v.v[1];
+    alwan_scalar Zwc = xyzwc_v.v[2];
 
     /* Step 7: HPE transform - convert to cone fundamentals LMS and LMS_w */
-    alwan_scalar L   = KIM2009_V_M_HPE[0] * Xc  + KIM2009_V_M_HPE[1] * Yc  + KIM2009_V_M_HPE[2] * Zc;
-    alwan_scalar M   = KIM2009_V_M_HPE[3] * Xc  + KIM2009_V_M_HPE[4] * Yc  + KIM2009_V_M_HPE[5] * Zc;
-    alwan_scalar S   = KIM2009_V_M_HPE[6] * Xc  + KIM2009_V_M_HPE[7] * Yc  + KIM2009_V_M_HPE[8] * Zc;
+    alwan_vec3 xyzc_in = {{Xc, Yc, Zc}};
+    alwan_vec3 lms_v = alwan_mat3_mulv_v(KIM2009_V_M_HPE, xyzc_in);
+    alwan_scalar L   = lms_v.v[0];
+    alwan_scalar M   = lms_v.v[1];
+    alwan_scalar S   = lms_v.v[2];
 
-    alwan_scalar L_w = KIM2009_V_M_HPE[0] * Xwc + KIM2009_V_M_HPE[1] * Ywc + KIM2009_V_M_HPE[2] * Zwc;
-    alwan_scalar M_w = KIM2009_V_M_HPE[3] * Xwc + KIM2009_V_M_HPE[4] * Ywc + KIM2009_V_M_HPE[5] * Zwc;
-    alwan_scalar S_w = KIM2009_V_M_HPE[6] * Xwc + KIM2009_V_M_HPE[7] * Ywc + KIM2009_V_M_HPE[8] * Zwc;
+    alwan_vec3 xyzwc_in = {{Xwc, Ywc, Zwc}};
+    alwan_vec3 lmsw_v = alwan_mat3_mulv_v(KIM2009_V_M_HPE, xyzwc_in);
+    alwan_scalar L_w = lmsw_v.v[0];
+    alwan_scalar M_w = lmsw_v.v[1];
+    alwan_scalar S_w = lmsw_v.v[2];
 
     /* Step 8: Cone response - power law with additive term (n_c = 0.57) */
     alwan_scalar La_nc = ALWAN_POW(La, KIM2009_V_N_C);
@@ -228,9 +241,11 @@ ALWAN_INLINE alwan_xyz alwan_kim2009_inverse_v(
     alwan_xyz result;
 
     /* Step 1: CAT02 transform - white point to RGB_w */
-    alwan_scalar R_w = KIM2009_V_M_CAT02[0] * white_x + KIM2009_V_M_CAT02[1] * white_y + KIM2009_V_M_CAT02[2] * white_z;
-    alwan_scalar G_w = KIM2009_V_M_CAT02[3] * white_x + KIM2009_V_M_CAT02[4] * white_y + KIM2009_V_M_CAT02[5] * white_z;
-    alwan_scalar B_w = KIM2009_V_M_CAT02[6] * white_x + KIM2009_V_M_CAT02[7] * white_y + KIM2009_V_M_CAT02[8] * white_z;
+    alwan_vec3 white_v = {{white_x, white_y, white_z}};
+    alwan_vec3 rgbw_v = alwan_mat3_mulv_v(KIM2009_V_M_CAT02, white_v);
+    alwan_scalar R_w = rgbw_v.v[0];
+    alwan_scalar G_w = rgbw_v.v[1];
+    alwan_scalar B_w = rgbw_v.v[2];
 
     /* Step 2: Chromatic adaptation factors for white */
     alwan_scalar fac_R = D * (white_y / R_w) + (ALWAN_ONE - D);
@@ -243,14 +258,18 @@ ALWAN_INLINE alwan_xyz alwan_kim2009_inverse_v(
     alwan_scalar B_wc = B_w * fac_B;
 
     /* Step 4: Inverse CAT02 to adapted XYZ_wc */
-    alwan_scalar Xwc = KIM2009_V_M_CAT02_INV[0] * R_wc + KIM2009_V_M_CAT02_INV[1] * G_wc + KIM2009_V_M_CAT02_INV[2] * B_wc;
-    alwan_scalar Ywc = KIM2009_V_M_CAT02_INV[3] * R_wc + KIM2009_V_M_CAT02_INV[4] * G_wc + KIM2009_V_M_CAT02_INV[5] * B_wc;
-    alwan_scalar Zwc = KIM2009_V_M_CAT02_INV[6] * R_wc + KIM2009_V_M_CAT02_INV[7] * G_wc + KIM2009_V_M_CAT02_INV[8] * B_wc;
+    alwan_vec3 rgbwc_v = {{R_wc, G_wc, B_wc}};
+    alwan_vec3 xyzwc_v = alwan_mat3_mulv_v(KIM2009_V_M_CAT02_INV, rgbwc_v);
+    alwan_scalar Xwc = xyzwc_v.v[0];
+    alwan_scalar Ywc = xyzwc_v.v[1];
+    alwan_scalar Zwc = xyzwc_v.v[2];
 
     /* Step 5: HPE transform - white to LMS_w */
-    alwan_scalar L_w = KIM2009_V_M_HPE[0] * Xwc + KIM2009_V_M_HPE[1] * Ywc + KIM2009_V_M_HPE[2] * Zwc;
-    alwan_scalar M_w = KIM2009_V_M_HPE[3] * Xwc + KIM2009_V_M_HPE[4] * Ywc + KIM2009_V_M_HPE[5] * Zwc;
-    alwan_scalar S_w = KIM2009_V_M_HPE[6] * Xwc + KIM2009_V_M_HPE[7] * Ywc + KIM2009_V_M_HPE[8] * Zwc;
+    alwan_vec3 xyzwc_in = {{Xwc, Ywc, Zwc}};
+    alwan_vec3 lmsw_v = alwan_mat3_mulv_v(KIM2009_V_M_HPE, xyzwc_in);
+    alwan_scalar L_w = lmsw_v.v[0];
+    alwan_scalar M_w = lmsw_v.v[1];
+    alwan_scalar S_w = lmsw_v.v[2];
 
     /* Step 6: Cone response for white */
     alwan_scalar La_nc = ALWAN_POW(La, KIM2009_V_N_C);
@@ -322,14 +341,18 @@ ALWAN_INLINE alwan_xyz alwan_kim2009_inverse_v(
     Sv = ALWAN_SELECT(ALWAN_ABS(den_S) < ALWAN_EPSILON, ALWAN_ZERO, Sv);
 
     /* Step 13: Inverse HPE transform - LMS to adapted XYZ_c */
-    alwan_scalar Xc = KIM2009_V_M_HPE_INV[0] * Lv + KIM2009_V_M_HPE_INV[1] * Mv + KIM2009_V_M_HPE_INV[2] * Sv;
-    alwan_scalar Yc = KIM2009_V_M_HPE_INV[3] * Lv + KIM2009_V_M_HPE_INV[4] * Mv + KIM2009_V_M_HPE_INV[5] * Sv;
-    alwan_scalar Zc = KIM2009_V_M_HPE_INV[6] * Lv + KIM2009_V_M_HPE_INV[7] * Mv + KIM2009_V_M_HPE_INV[8] * Sv;
+    alwan_vec3 lms_v = {{Lv, Mv, Sv}};
+    alwan_vec3 xyzc_v = alwan_mat3_mulv_v(KIM2009_V_M_HPE_INV, lms_v);
+    alwan_scalar Xc = xyzc_v.v[0];
+    alwan_scalar Yc = xyzc_v.v[1];
+    alwan_scalar Zc = xyzc_v.v[2];
 
     /* Step 14: CAT02 transform - XYZ_c to RGB_c */
-    alwan_scalar R_c = KIM2009_V_M_CAT02[0] * Xc + KIM2009_V_M_CAT02[1] * Yc + KIM2009_V_M_CAT02[2] * Zc;
-    alwan_scalar G_c = KIM2009_V_M_CAT02[3] * Xc + KIM2009_V_M_CAT02[4] * Yc + KIM2009_V_M_CAT02[5] * Zc;
-    alwan_scalar B_c = KIM2009_V_M_CAT02[6] * Xc + KIM2009_V_M_CAT02[7] * Yc + KIM2009_V_M_CAT02[8] * Zc;
+    alwan_vec3 xyzc_in = {{Xc, Yc, Zc}};
+    alwan_vec3 rgbc_v = alwan_mat3_mulv_v(KIM2009_V_M_CAT02, xyzc_in);
+    alwan_scalar R_c = rgbc_v.v[0];
+    alwan_scalar G_c = rgbc_v.v[1];
+    alwan_scalar B_c = rgbc_v.v[2];
 
     /* Step 15: Inverse chromatic adaptation - RGB_c to RGB */
     alwan_scalar R_out = R_c / fac_R;
@@ -337,9 +360,11 @@ ALWAN_INLINE alwan_xyz alwan_kim2009_inverse_v(
     alwan_scalar B_out = B_c / fac_B;
 
     /* Step 16: Inverse CAT02 - RGB to XYZ */
-    result.x = KIM2009_V_M_CAT02_INV[0] * R_out + KIM2009_V_M_CAT02_INV[1] * G_out + KIM2009_V_M_CAT02_INV[2] * B_out;
-    result.y = KIM2009_V_M_CAT02_INV[3] * R_out + KIM2009_V_M_CAT02_INV[4] * G_out + KIM2009_V_M_CAT02_INV[5] * B_out;
-    result.z = KIM2009_V_M_CAT02_INV[6] * R_out + KIM2009_V_M_CAT02_INV[7] * G_out + KIM2009_V_M_CAT02_INV[8] * B_out;
+    alwan_vec3 rgb_out_v = {{R_out, G_out, B_out}};
+    alwan_vec3 xyz_out_v = alwan_mat3_mulv_v(KIM2009_V_M_CAT02_INV, rgb_out_v);
+    result.x = xyz_out_v.v[0];
+    result.y = xyz_out_v.v[1];
+    result.z = xyz_out_v.v[2];
 
     return result;
 }

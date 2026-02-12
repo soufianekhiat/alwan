@@ -131,7 +131,7 @@ ALWAN_INLINE alwan_atd95_v_correlates alwan_atd95_forward_v(
     alwan_scalar M_0 = atd95_spow_response_v(M0_linear, ALWAN_ONE,       ATD95_V_M_OFFSET, ATD95_V_M_EXP);
     alwan_scalar S_0 = atd95_spow_response_v(S0_linear, ATD95_V_S_SCALE, ATD95_V_S_OFFSET, ATD95_V_S_EXP);
     /* White point adapted responses reserved for full adaptation model */
-    (void)L_0; (void)M_0; (void)S_0;
+    ALWAN_UNUSED(L_0); ALWAN_UNUSED(M_0); ALWAN_UNUSED(S_0);
 
     /* Step 3: Compute adapted responses using k1, k2 */
     alwan_scalar X_ar = k1 * X_r + k2 * X_0r;

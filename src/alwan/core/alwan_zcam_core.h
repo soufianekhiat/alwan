@@ -16,6 +16,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * ZCAM Result Struct
@@ -60,32 +61,32 @@ ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* XYZ to LMS matrix (from Jzazbz) */
-static alwan_scalar const ZCAM_V_XYZ_TO_LMS[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ZCAM_V_XYZ_TO_LMS = {{
     ALWAN_LITERAL( 0.41478972), ALWAN_LITERAL( 0.579999),  ALWAN_LITERAL( 0.014648),
     ALWAN_LITERAL(-0.20151),    ALWAN_LITERAL( 1.120649),  ALWAN_LITERAL( 0.0531008),
     ALWAN_LITERAL(-0.0166008),  ALWAN_LITERAL( 0.2648),    ALWAN_LITERAL( 0.6684799)
-};
+}};
 
 /* LMS' to Izazbz matrix */
-static alwan_scalar const ZCAM_V_LMS_P_TO_IZAZBZ[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ZCAM_V_LMS_P_TO_IZAZBZ = {{
     ALWAN_LITERAL( 0.5),       ALWAN_LITERAL( 0.5),       ALWAN_LITERAL( 0.0),
     ALWAN_LITERAL( 3.524),     ALWAN_LITERAL(-4.066708),   ALWAN_LITERAL( 0.542708),
     ALWAN_LITERAL( 0.199076),  ALWAN_LITERAL( 1.096799),   ALWAN_LITERAL(-1.295875)
-};
+}};
 
 /* Inverse: LMS to XYZ */
-static alwan_scalar const ZCAM_V_LMS_TO_XYZ[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ZCAM_V_LMS_TO_XYZ = {{
     ALWAN_LITERAL( 1.9242264357876069),  ALWAN_LITERAL(-1.0047923125953657), ALWAN_LITERAL( 0.0376514040306180),
     ALWAN_LITERAL( 0.3503167620949991),  ALWAN_LITERAL( 0.7264811939316552), ALWAN_LITERAL(-0.0653844229480850),
     ALWAN_LITERAL(-0.0909828109828476),  ALWAN_LITERAL(-0.3127282905230740), ALWAN_LITERAL( 1.5227665613052603)
-};
+}};
 
 /* Inverse: Izazbz to LMS' */
-static alwan_scalar const ZCAM_V_IZAZBZ_TO_LMS_P[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ZCAM_V_IZAZBZ_TO_LMS_P = {{
     ALWAN_LITERAL( 1.0000000000000000),  ALWAN_LITERAL( 0.1386050432715393), ALWAN_LITERAL( 0.0580473161561189),
     ALWAN_LITERAL( 1.0000000000000000),  ALWAN_LITERAL(-0.1386050432715393), ALWAN_LITERAL(-0.0580473161561189),
     ALWAN_LITERAL( 1.0000000000000000),  ALWAN_LITERAL(-0.0960192420263190), ALWAN_LITERAL(-0.8118918960560390)
-};
+}};
 
 ALWAN_DIAG_POP
 
@@ -173,7 +174,7 @@ ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_v(
     alwan_zcam_v_correlates result;
 
     /* c, Nc, F reserved for full ZCAM surround model */
-    (void)c; (void)Nc; (void)F;
+    ALWAN_UNUSED(c); ALWAN_UNUSED(Nc); ALWAN_UNUSED(F);
 
     /* Step 1: Viewing condition factors */
     alwan_scalar Fb = ALWAN_SQRT(Y_b / Y_w);
@@ -187,9 +188,11 @@ ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_v(
     alwan_scalar za = xyz.z;
 
     /* Step 3: Adapted XYZ -> LMS */
-    alwan_scalar l = ZCAM_V_XYZ_TO_LMS[0] * xa + ZCAM_V_XYZ_TO_LMS[1] * ya + ZCAM_V_XYZ_TO_LMS[2] * za;
-    alwan_scalar m = ZCAM_V_XYZ_TO_LMS[3] * xa + ZCAM_V_XYZ_TO_LMS[4] * ya + ZCAM_V_XYZ_TO_LMS[5] * za;
-    alwan_scalar s = ZCAM_V_XYZ_TO_LMS[6] * xa + ZCAM_V_XYZ_TO_LMS[7] * ya + ZCAM_V_XYZ_TO_LMS[8] * za;
+    alwan_vec3 in_v = {{xa, ya, za}};
+    alwan_vec3 out_v = alwan_mat3_mulv_v(ZCAM_V_XYZ_TO_LMS, in_v);
+    alwan_scalar l = out_v.v[0];
+    alwan_scalar m = out_v.v[1];
+    alwan_scalar s = out_v.v[2];
 
     /* Step 4: PQ nonlinearity: LMS -> LMS' */
     alwan_scalar lp = zcam_pq_forward_v(l);
@@ -197,24 +200,30 @@ ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_v(
     alwan_scalar sp = zcam_pq_forward_v(s);
 
     /* Step 5: LMS' -> Izazbz */
-    alwan_scalar Iz = ZCAM_V_LMS_P_TO_IZAZBZ[0] * lp + ZCAM_V_LMS_P_TO_IZAZBZ[1] * mp + ZCAM_V_LMS_P_TO_IZAZBZ[2] * sp;
-    alwan_scalar az = ZCAM_V_LMS_P_TO_IZAZBZ[3] * lp + ZCAM_V_LMS_P_TO_IZAZBZ[4] * mp + ZCAM_V_LMS_P_TO_IZAZBZ[5] * sp;
-    alwan_scalar bz = ZCAM_V_LMS_P_TO_IZAZBZ[6] * lp + ZCAM_V_LMS_P_TO_IZAZBZ[7] * mp + ZCAM_V_LMS_P_TO_IZAZBZ[8] * sp;
+    alwan_vec3 in_v2 = {{lp, mp, sp}};
+    alwan_vec3 out_v2 = alwan_mat3_mulv_v(ZCAM_V_LMS_P_TO_IZAZBZ, in_v2);
+    alwan_scalar Iz = out_v2.v[0];
+    alwan_scalar az = out_v2.v[1];
+    alwan_scalar bz = out_v2.v[2];
 
     /* Step 6: White point -> Izw */
     alwan_scalar xaw = ZCAM_V_B * xyz_w.x - (ZCAM_V_B - ALWAN_ONE) * xyz_w.z;
     alwan_scalar yaw = ZCAM_V_G * xyz_w.y - (ZCAM_V_G - ALWAN_ONE) * xyz_w.x;
     alwan_scalar zaw = xyz_w.z;
 
-    alwan_scalar lw = ZCAM_V_XYZ_TO_LMS[0] * xaw + ZCAM_V_XYZ_TO_LMS[1] * yaw + ZCAM_V_XYZ_TO_LMS[2] * zaw;
-    alwan_scalar mw = ZCAM_V_XYZ_TO_LMS[3] * xaw + ZCAM_V_XYZ_TO_LMS[4] * yaw + ZCAM_V_XYZ_TO_LMS[5] * zaw;
-    alwan_scalar sw = ZCAM_V_XYZ_TO_LMS[6] * xaw + ZCAM_V_XYZ_TO_LMS[7] * yaw + ZCAM_V_XYZ_TO_LMS[8] * zaw;
+    alwan_vec3 in_vw = {{xaw, yaw, zaw}};
+    alwan_vec3 out_vw = alwan_mat3_mulv_v(ZCAM_V_XYZ_TO_LMS, in_vw);
+    alwan_scalar lw = out_vw.v[0];
+    alwan_scalar mw = out_vw.v[1];
+    alwan_scalar sw = out_vw.v[2];
 
     alwan_scalar lwp = zcam_pq_forward_v(lw);
     alwan_scalar mwp = zcam_pq_forward_v(mw);
     alwan_scalar swp = zcam_pq_forward_v(sw);
 
-    alwan_scalar Izw = ZCAM_V_LMS_P_TO_IZAZBZ[0] * lwp + ZCAM_V_LMS_P_TO_IZAZBZ[1] * mwp + ZCAM_V_LMS_P_TO_IZAZBZ[2] * swp;
+    alwan_vec3 in_vwp = {{lwp, mwp, swp}};
+    alwan_vec3 out_vwp = alwan_mat3_mulv_v(ZCAM_V_LMS_P_TO_IZAZBZ, in_vwp);
+    alwan_scalar Izw = out_vwp.v[0];
 
     /* Step 7: Hue angle (degrees, [0, 360)) */
     alwan_scalar hz_raw = ALWAN_ATAN2(bz, az) * ALWAN_LITERAL(180.0) / ALWAN_PI;
@@ -305,8 +314,8 @@ ALWAN_INLINE alwan_xyz alwan_zcam_inverse_v(
     alwan_xyz result;
 
     /* Viewing condition params reserved for full ZCAM inverse model */
-    (void)xyz_w; (void)Fs; (void)c; (void)Nc; (void)F;
-    (void)La; (void)Y_b; (void)Y_w;
+    ALWAN_UNUSED(xyz_w); ALWAN_UNUSED(Fs); ALWAN_UNUSED(c); ALWAN_UNUSED(Nc); ALWAN_UNUSED(F);
+    ALWAN_UNUSED(La); ALWAN_UNUSED(Y_b); ALWAN_UNUSED(Y_w);
 
     /* Step 1: Convert Jz to Iz (Jz is on 0-100 scale, normalize first) */
     alwan_scalar Iz = zcam_jz_to_iz_v(correlates.Jz / ALWAN_LITERAL(100.0));
@@ -323,9 +332,11 @@ ALWAN_INLINE alwan_xyz alwan_zcam_inverse_v(
     alwan_scalar bz = chroma_mag * ALWAN_SIN(hz_rad);
 
     /* Step 3: Izazbz -> LMS' */
-    alwan_scalar lp = ZCAM_V_IZAZBZ_TO_LMS_P[0] * Iz + ZCAM_V_IZAZBZ_TO_LMS_P[1] * az + ZCAM_V_IZAZBZ_TO_LMS_P[2] * bz;
-    alwan_scalar mp = ZCAM_V_IZAZBZ_TO_LMS_P[3] * Iz + ZCAM_V_IZAZBZ_TO_LMS_P[4] * az + ZCAM_V_IZAZBZ_TO_LMS_P[5] * bz;
-    alwan_scalar sp = ZCAM_V_IZAZBZ_TO_LMS_P[6] * Iz + ZCAM_V_IZAZBZ_TO_LMS_P[7] * az + ZCAM_V_IZAZBZ_TO_LMS_P[8] * bz;
+    alwan_vec3 in_v = {{Iz, az, bz}};
+    alwan_vec3 out_v = alwan_mat3_mulv_v(ZCAM_V_IZAZBZ_TO_LMS_P, in_v);
+    alwan_scalar lp = out_v.v[0];
+    alwan_scalar mp = out_v.v[1];
+    alwan_scalar sp = out_v.v[2];
 
     /* Step 4: Inverse PQ: LMS' -> LMS */
     alwan_scalar l = zcam_pq_inverse_v(lp);
@@ -333,9 +344,11 @@ ALWAN_INLINE alwan_xyz alwan_zcam_inverse_v(
     alwan_scalar s = zcam_pq_inverse_v(sp);
 
     /* Step 5: LMS -> adapted XYZ */
-    alwan_scalar xa = ZCAM_V_LMS_TO_XYZ[0] * l + ZCAM_V_LMS_TO_XYZ[1] * m + ZCAM_V_LMS_TO_XYZ[2] * s;
-    alwan_scalar ya = ZCAM_V_LMS_TO_XYZ[3] * l + ZCAM_V_LMS_TO_XYZ[4] * m + ZCAM_V_LMS_TO_XYZ[5] * s;
-    alwan_scalar za = ZCAM_V_LMS_TO_XYZ[6] * l + ZCAM_V_LMS_TO_XYZ[7] * m + ZCAM_V_LMS_TO_XYZ[8] * s;
+    alwan_vec3 in_v2 = {{l, m, s}};
+    alwan_vec3 out_v2 = alwan_mat3_mulv_v(ZCAM_V_LMS_TO_XYZ, in_v2);
+    alwan_scalar xa = out_v2.v[0];
+    alwan_scalar ya = out_v2.v[1];
+    alwan_scalar za = out_v2.v[2];
 
     /* Step 6: Inverse chromatic adaptation */
     result.z = za;

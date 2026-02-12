@@ -14,6 +14,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * IPT Transformation Data
@@ -26,21 +27,21 @@ static alwan_scalar const IPT_V_EXPONENT = {
 #include "../data/ipt_exponent.csv"
 };
 
-static alwan_scalar const IPT_V_XYZ_TO_LMS[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 IPT_V_XYZ_TO_LMS = {{
 #include "../data/ipt_xyz_to_lms.csv"
-};
+}};
 
-static alwan_scalar const IPT_V_LMS_TO_XYZ[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 IPT_V_LMS_TO_XYZ = {{
 #include "../data/ipt_lms_to_xyz.csv"
-};
+}};
 
-static alwan_scalar const IPT_V_LMS_P_TO_IPT[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 IPT_V_LMS_P_TO_IPT = {{
 #include "../data/ipt_lms_p_to_ipt.csv"
-};
+}};
 
-static alwan_scalar const IPT_V_IPT_TO_LMS_P[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 IPT_V_IPT_TO_LMS_P = {{
 #include "../data/ipt_ipt_to_lms_p.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -70,9 +71,11 @@ ALWAN_INLINE alwan_ipt alwan_xyz_to_ipt_v(alwan_xyz xyz) {
     alwan_ipt result;
 
     /* Step 1: XYZ -> LMS via matrix */
-    alwan_scalar l = IPT_V_XYZ_TO_LMS[0] * xyz.x + IPT_V_XYZ_TO_LMS[1] * xyz.y + IPT_V_XYZ_TO_LMS[2] * xyz.z;
-    alwan_scalar m = IPT_V_XYZ_TO_LMS[3] * xyz.x + IPT_V_XYZ_TO_LMS[4] * xyz.y + IPT_V_XYZ_TO_LMS[5] * xyz.z;
-    alwan_scalar s = IPT_V_XYZ_TO_LMS[6] * xyz.x + IPT_V_XYZ_TO_LMS[7] * xyz.y + IPT_V_XYZ_TO_LMS[8] * xyz.z;
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 lms_v = alwan_mat3_mulv_v(IPT_V_XYZ_TO_LMS, xyz_v);
+    alwan_scalar l = lms_v.v[0];
+    alwan_scalar m = lms_v.v[1];
+    alwan_scalar s = lms_v.v[2];
 
     /* Step 2: LMS -> LMS' via nonlinearity */
     alwan_scalar l_ = ipt_nonlinearity_v(l);
@@ -80,9 +83,11 @@ ALWAN_INLINE alwan_ipt alwan_xyz_to_ipt_v(alwan_xyz xyz) {
     alwan_scalar s_ = ipt_nonlinearity_v(s);
 
     /* Step 3: LMS' -> IPT via matrix */
-    result.I = IPT_V_LMS_P_TO_IPT[0] * l_ + IPT_V_LMS_P_TO_IPT[1] * m_ + IPT_V_LMS_P_TO_IPT[2] * s_;
-    result.P = IPT_V_LMS_P_TO_IPT[3] * l_ + IPT_V_LMS_P_TO_IPT[4] * m_ + IPT_V_LMS_P_TO_IPT[5] * s_;
-    result.T = IPT_V_LMS_P_TO_IPT[6] * l_ + IPT_V_LMS_P_TO_IPT[7] * m_ + IPT_V_LMS_P_TO_IPT[8] * s_;
+    alwan_vec3 lms_p_v = {{l_, m_, s_}};
+    alwan_vec3 ipt_v = alwan_mat3_mulv_v(IPT_V_LMS_P_TO_IPT, lms_p_v);
+    result.I = ipt_v.v[0];
+    result.P = ipt_v.v[1];
+    result.T = ipt_v.v[2];
 
     return result;
 }
@@ -95,9 +100,11 @@ ALWAN_INLINE alwan_xyz alwan_ipt_to_xyz_v(alwan_ipt ipt) {
     alwan_xyz result;
 
     /* Step 1: IPT -> LMS' via inverse matrix */
-    alwan_scalar l_ = IPT_V_IPT_TO_LMS_P[0] * ipt.I + IPT_V_IPT_TO_LMS_P[1] * ipt.P + IPT_V_IPT_TO_LMS_P[2] * ipt.T;
-    alwan_scalar m_ = IPT_V_IPT_TO_LMS_P[3] * ipt.I + IPT_V_IPT_TO_LMS_P[4] * ipt.P + IPT_V_IPT_TO_LMS_P[5] * ipt.T;
-    alwan_scalar s_ = IPT_V_IPT_TO_LMS_P[6] * ipt.I + IPT_V_IPT_TO_LMS_P[7] * ipt.P + IPT_V_IPT_TO_LMS_P[8] * ipt.T;
+    alwan_vec3 ipt_v = {{ipt.I, ipt.P, ipt.T}};
+    alwan_vec3 lms_p_v = alwan_mat3_mulv_v(IPT_V_IPT_TO_LMS_P, ipt_v);
+    alwan_scalar l_ = lms_p_v.v[0];
+    alwan_scalar m_ = lms_p_v.v[1];
+    alwan_scalar s_ = lms_p_v.v[2];
 
     /* Step 2: LMS' -> LMS via inverse nonlinearity */
     alwan_scalar l = ipt_nonlinearity_inverse_v(l_);
@@ -105,9 +112,11 @@ ALWAN_INLINE alwan_xyz alwan_ipt_to_xyz_v(alwan_ipt ipt) {
     alwan_scalar s = ipt_nonlinearity_inverse_v(s_);
 
     /* Step 3: LMS -> XYZ via inverse matrix */
-    result.x = IPT_V_LMS_TO_XYZ[0] * l + IPT_V_LMS_TO_XYZ[1] * m + IPT_V_LMS_TO_XYZ[2] * s;
-    result.y = IPT_V_LMS_TO_XYZ[3] * l + IPT_V_LMS_TO_XYZ[4] * m + IPT_V_LMS_TO_XYZ[5] * s;
-    result.z = IPT_V_LMS_TO_XYZ[6] * l + IPT_V_LMS_TO_XYZ[7] * m + IPT_V_LMS_TO_XYZ[8] * s;
+    alwan_vec3 lms_v = {{l, m, s}};
+    alwan_vec3 xyz_v = alwan_mat3_mulv_v(IPT_V_LMS_TO_XYZ, lms_v);
+    result.x = xyz_v.v[0];
+    result.y = xyz_v.v[1];
+    result.z = xyz_v.v[2];
 
     return result;
 }

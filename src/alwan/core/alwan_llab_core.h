@@ -15,6 +15,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * LLAB Output Type
@@ -30,16 +31,16 @@ typedef struct {
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const LLAB_XYZ_TO_RGB[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 LLAB_XYZ_TO_RGB = {{
 #include "../data/matrices/llab_xyz_to_rgb.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const LLAB_RGB_TO_XYZ[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 LLAB_RGB_TO_XYZ = {{
 #include "../data/matrices/llab_rgb_to_xyz.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -92,19 +93,19 @@ ALWAN_INLINE alwan_llab_v_correlates alwan_llab_forward_v(
     alwan_llab_v_correlates result;
 
     /* Step 1: Convert XYZ to RGB (cone responses) */
-    alwan_scalar R = LLAB_XYZ_TO_RGB[0] * xyz.x + LLAB_XYZ_TO_RGB[1] * xyz.y + LLAB_XYZ_TO_RGB[2] * xyz.z;
-    alwan_scalar G = LLAB_XYZ_TO_RGB[3] * xyz.x + LLAB_XYZ_TO_RGB[4] * xyz.y + LLAB_XYZ_TO_RGB[5] * xyz.z;
-    alwan_scalar B = LLAB_XYZ_TO_RGB[6] * xyz.x + LLAB_XYZ_TO_RGB[7] * xyz.y + LLAB_XYZ_TO_RGB[8] * xyz.z;
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 rgb_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_v);
+    alwan_scalar R = rgb_v.v[0]; alwan_scalar G = rgb_v.v[1]; alwan_scalar B = rgb_v.v[2];
 
     /* Convert test illuminant to RGB */
-    alwan_scalar R_0 = LLAB_XYZ_TO_RGB[0] * xyz_0.x + LLAB_XYZ_TO_RGB[1] * xyz_0.y + LLAB_XYZ_TO_RGB[2] * xyz_0.z;
-    alwan_scalar G_0 = LLAB_XYZ_TO_RGB[3] * xyz_0.x + LLAB_XYZ_TO_RGB[4] * xyz_0.y + LLAB_XYZ_TO_RGB[5] * xyz_0.z;
-    alwan_scalar B_0 = LLAB_XYZ_TO_RGB[6] * xyz_0.x + LLAB_XYZ_TO_RGB[7] * xyz_0.y + LLAB_XYZ_TO_RGB[8] * xyz_0.z;
+    alwan_vec3 xyz_0_v = {{xyz_0.x, xyz_0.y, xyz_0.z}};
+    alwan_vec3 rgb_0_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_0_v);
+    alwan_scalar R_0 = rgb_0_v.v[0]; alwan_scalar G_0 = rgb_0_v.v[1]; alwan_scalar B_0 = rgb_0_v.v[2];
 
     /* Convert reference illuminant to RGB */
-    alwan_scalar R_r = LLAB_XYZ_TO_RGB[0] * xyz_r.x + LLAB_XYZ_TO_RGB[1] * xyz_r.y + LLAB_XYZ_TO_RGB[2] * xyz_r.z;
-    alwan_scalar G_r = LLAB_XYZ_TO_RGB[3] * xyz_r.x + LLAB_XYZ_TO_RGB[4] * xyz_r.y + LLAB_XYZ_TO_RGB[5] * xyz_r.z;
-    alwan_scalar B_r = LLAB_XYZ_TO_RGB[6] * xyz_r.x + LLAB_XYZ_TO_RGB[7] * xyz_r.y + LLAB_XYZ_TO_RGB[8] * xyz_r.z;
+    alwan_vec3 xyz_r_v = {{xyz_r.x, xyz_r.y, xyz_r.z}};
+    alwan_vec3 rgb_r_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_r_v);
+    alwan_scalar R_r = rgb_r_v.v[0]; alwan_scalar G_r = rgb_r_v.v[1]; alwan_scalar B_r = rgb_r_v.v[2];
 
     /* Step 2: BFD chromatic adaptation */
 
@@ -122,9 +123,9 @@ ALWAN_INLINE alwan_llab_v_correlates alwan_llab_forward_v(
     alwan_scalar B_adapted = B_adapted_factor * ALWAN_POW(B, beta);
 
     /* Step 3: Convert adapted RGB back to XYZ */
-    alwan_scalar X_adapted = LLAB_RGB_TO_XYZ[0] * R_adapted + LLAB_RGB_TO_XYZ[1] * G_adapted + LLAB_RGB_TO_XYZ[2] * B_adapted;
-    alwan_scalar Y_adapted = LLAB_RGB_TO_XYZ[3] * R_adapted + LLAB_RGB_TO_XYZ[4] * G_adapted + LLAB_RGB_TO_XYZ[5] * B_adapted;
-    alwan_scalar Z_adapted = LLAB_RGB_TO_XYZ[6] * R_adapted + LLAB_RGB_TO_XYZ[7] * G_adapted + LLAB_RGB_TO_XYZ[8] * B_adapted;
+    alwan_vec3 adapted_v = {{R_adapted, G_adapted, B_adapted}};
+    alwan_vec3 xyz_adapted_v = alwan_mat3_mulv_v(LLAB_RGB_TO_XYZ, adapted_v);
+    alwan_scalar X_adapted = xyz_adapted_v.v[0]; alwan_scalar Y_adapted = xyz_adapted_v.v[1]; alwan_scalar Z_adapted = xyz_adapted_v.v[2];
 
     /* Step 4: Compute Lab coordinates with F_S induction factor */
     /* Reference white for Lab calculation (use reference condition illuminant) */

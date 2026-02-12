@@ -15,6 +15,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * Hunt Appearance Correlates (local result struct)
@@ -35,9 +36,9 @@ typedef struct {
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const HUNT_V_M_HPE[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 HUNT_V_M_HPE = {{
 #include "../data/matrices/hpe.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -81,7 +82,7 @@ ALWAN_INLINE alwan_hunt_v_correlates alwan_hunt_forward_v(
     alwan_hunt_v_correlates result;
 
     /* Nc, Nb reserved for full Hunt surround model */
-    (void)Nc; (void)Nb;
+    ALWAN_UNUSED(Nc); ALWAN_UNUSED(Nb);
 
     /* Step 1: Compute adaptation factor k */
     alwan_scalar k = ALWAN_ONE / (ALWAN_LITERAL(5.0) * La + ALWAN_ONE);
@@ -93,16 +94,20 @@ ALWAN_INLINE alwan_hunt_v_correlates alwan_hunt_forward_v(
                       ALWAN_POW(ALWAN_LITERAL(5.0) * La, ALWAN_ONE / ALWAN_LITERAL(3.0));
 
     /* Step 3: Convert XYZ to LMS using HPE matrix (test stimulus) */
-    alwan_scalar lms_l = HUNT_V_M_HPE[0] * xyz.x + HUNT_V_M_HPE[1] * xyz.y + HUNT_V_M_HPE[2] * xyz.z;
-    alwan_scalar lms_m = HUNT_V_M_HPE[3] * xyz.x + HUNT_V_M_HPE[4] * xyz.y + HUNT_V_M_HPE[5] * xyz.z;
-    alwan_scalar lms_s = HUNT_V_M_HPE[6] * xyz.x + HUNT_V_M_HPE[7] * xyz.y + HUNT_V_M_HPE[8] * xyz.z;
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 lms = alwan_mat3_mulv_v(HUNT_V_M_HPE, xyz_v);
+    alwan_scalar lms_l = lms.v[0];
+    alwan_scalar lms_m = lms.v[1];
+    alwan_scalar lms_s = lms.v[2];
 
     /* Convert XYZ to LMS using HPE matrix (white point) */
-    alwan_scalar lms_w_l = HUNT_V_M_HPE[0] * xyz_w_x + HUNT_V_M_HPE[1] * xyz_w_y + HUNT_V_M_HPE[2] * xyz_w_z;
-    alwan_scalar lms_w_m = HUNT_V_M_HPE[3] * xyz_w_x + HUNT_V_M_HPE[4] * xyz_w_y + HUNT_V_M_HPE[5] * xyz_w_z;
-    alwan_scalar lms_w_s = HUNT_V_M_HPE[6] * xyz_w_x + HUNT_V_M_HPE[7] * xyz_w_y + HUNT_V_M_HPE[8] * xyz_w_z;
+    alwan_vec3 xyz_w_v = {{xyz_w_x, xyz_w_y, xyz_w_z}};
+    alwan_vec3 lms_w = alwan_mat3_mulv_v(HUNT_V_M_HPE, xyz_w_v);
+    alwan_scalar lms_w_l = lms_w.v[0];
+    alwan_scalar lms_w_m = lms_w.v[1];
+    alwan_scalar lms_w_s = lms_w.v[2];
     /* White point LMS reserved for full chromatic adaptation model */
-    (void)lms_w_l; (void)lms_w_m; (void)lms_w_s;
+    ALWAN_UNUSED(lms_w_l); ALWAN_UNUSED(lms_w_m); ALWAN_UNUSED(lms_w_s);
 
     /* Step 4: Apply chromatic adaptation with discounting
      * D=1 -> full discount, D=0 -> no discount

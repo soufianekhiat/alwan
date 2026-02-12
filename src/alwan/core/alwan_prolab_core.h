@@ -24,14 +24,14 @@ ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* Projective transformation matrix Q (4x4 homogeneous coordinates) */
-static alwan_scalar const ALWAN_PROLAB_MATRIX_Q[16] = {
+ALWAN_CONSTEXPR alwan_mat4x4 ALWAN_PROLAB_MATRIX_Q = {{
 #include "../data/prolab_matrix_q.csv"
-};
+}};
 
 /* Inverse projective transformation matrix Q^-1 */
-static alwan_scalar const ALWAN_PROLAB_MATRIX_Q_INV[16] = {
+ALWAN_CONSTEXPR alwan_mat4x4 ALWAN_PROLAB_MATRIX_Q_INV = {{
 #include "../data/prolab_matrix_q_inv.csv"
-};
+}};
 
 /* D65 reference white XYZ (Y=1 normalized) */
 static alwan_scalar const ALWAN_PROLAB_D65_WHITE[3] = {
@@ -44,14 +44,14 @@ ALWAN_DIAG_POP
  * Helper: 4x4 projective transform (value-returning)
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_vec3 alwan_apply_projective_v(alwan_scalar const *matrix, alwan_vec3 input) {
+ALWAN_INLINE alwan_vec3 alwan_apply_projective_v(alwan_mat4x4 matrix, alwan_vec3 input) {
     alwan_vec3 result;
 
     /* Unrolled 4x4 matrix * [x, y, z, 1] */
-    alwan_scalar r0 = matrix[0]  * input.v[0] + matrix[1]  * input.v[1] + matrix[2]  * input.v[2] + matrix[3];
-    alwan_scalar r1 = matrix[4]  * input.v[0] + matrix[5]  * input.v[1] + matrix[6]  * input.v[2] + matrix[7];
-    alwan_scalar r2 = matrix[8]  * input.v[0] + matrix[9]  * input.v[1] + matrix[10] * input.v[2] + matrix[11];
-    alwan_scalar w  = matrix[12] * input.v[0] + matrix[13] * input.v[1] + matrix[14] * input.v[2] + matrix[15];
+    alwan_scalar r0 = matrix.m[0]  * input.v[0] + matrix.m[1]  * input.v[1] + matrix.m[2]  * input.v[2] + matrix.m[3];
+    alwan_scalar r1 = matrix.m[4]  * input.v[0] + matrix.m[5]  * input.v[1] + matrix.m[6]  * input.v[2] + matrix.m[7];
+    alwan_scalar r2 = matrix.m[8]  * input.v[0] + matrix.m[9]  * input.v[1] + matrix.m[10] * input.v[2] + matrix.m[11];
+    alwan_scalar w  = matrix.m[12] * input.v[0] + matrix.m[13] * input.v[1] + matrix.m[14] * input.v[2] + matrix.m[15];
 
     /* Division guard: if |w| < 1e-10, return input as fallback */
     alwan_scalar abs_w = ALWAN_ABS(w);
@@ -62,7 +62,7 @@ ALWAN_INLINE alwan_vec3 alwan_apply_projective_v(alwan_scalar const *matrix, alw
     result.v[1] = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), input.v[1], r1 * inv_w);
     result.v[2] = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), input.v[2], r2 * inv_w);
 
-    (void)safe;
+    ALWAN_UNUSED(safe);
     return result;
 }
 

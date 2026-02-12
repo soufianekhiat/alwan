@@ -15,6 +15,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_math_core.h"
 
 /* ================================================================
  * Constants
@@ -43,10 +44,10 @@ ALWAN_CONSTEXPR alwan_scalar ACES2_CHROMA_NORM_SIN_V[4] = {
  * ================================================================ */
 
 typedef struct {
-    alwan_scalar MATRIX_RGB_to_CAM16_c[9];
-    alwan_scalar MATRIX_cone_response_to_Aab[9];
-    alwan_scalar MATRIX_CAM16_to_RGB[9];
-    alwan_scalar MATRIX_Aab_to_cone[9];
+    alwan_mat3x3 MATRIX_RGB_to_CAM16_c;
+    alwan_mat3x3 MATRIX_cone_response_to_Aab;
+    alwan_mat3x3 MATRIX_CAM16_to_RGB;
+    alwan_mat3x3 MATRIX_Aab_to_cone;
     alwan_scalar cz;
     alwan_scalar inv_cz;
     alwan_scalar A_w_J;
@@ -456,77 +457,29 @@ ALWAN_INLINE alwan_mat3x3 aces_primaries_to_rgb_to_xyz_v(alwan_scalar rx, alwan_
     alwan_scalar wY = Y;
     alwan_scalar wZ = (ALWAN_LITERAL(1.0) - wx - wy) * Y / wy;
 
-    alwan_scalar d = rX * (bY * gZ - gY * bZ) - gX * (bY * rZ - rY * bZ) + bX * (gY * rZ - rY * gZ);
+    /* Build chromaticity matrix and white point vector */
+    alwan_mat3x3 M;
+    M.m[0] = rX; M.m[1] = gX; M.m[2] = bX;
+    M.m[3] = rY; M.m[4] = gY; M.m[5] = bY;
+    M.m[6] = rZ; M.m[7] = gZ; M.m[8] = bZ;
 
-    alwan_scalar Sr = (wX * (bY * gZ - gY * bZ) - gX * (bY * wZ - wY * bZ) + bX * (gY * wZ - wY * gZ)) / d;
-    alwan_scalar Sg = (rX * (bY * wZ - wY * bZ) - wX * (bY * rZ - rY * bZ) + bX * (wY * rZ - rY * wZ)) / d;
-    alwan_scalar Sb = (rX * (wY * gZ - gY * wZ) - gX * (wY * rZ - rY * wZ) + wX * (gY * rZ - rY * gZ)) / d;
+    /* Solve for scaling factors: S = M^-1 * W */
+    alwan_vec3 W = {{wX, wY, wZ}};
+    alwan_vec3 S = alwan_mat3_mulv_v(alwan_mat3_inv_v(M), W);
 
-    out.m[0] = Sr * rX; out.m[1] = Sg * gX; out.m[2] = Sb * bX;
-    out.m[3] = Sr * rY; out.m[4] = Sg * gY; out.m[5] = Sb * bY;
-    out.m[6] = Sr * rZ; out.m[7] = Sg * gZ; out.m[8] = Sb * bZ;
-
-    return out;
-}
-
-/* Invert 3x3 matrix (det==0 returns zero matrix) */
-ALWAN_INLINE alwan_mat3x3 aces_invert_mat3_v(alwan_mat3x3 const *m) {
-    alwan_mat3x3 out;
-
-    alwan_scalar det = m->m[0] * (m->m[4] * m->m[8] - m->m[5] * m->m[7])
-                     - m->m[1] * (m->m[3] * m->m[8] - m->m[5] * m->m[6])
-                     + m->m[2] * (m->m[3] * m->m[7] - m->m[4] * m->m[6]);
-
-    if (ALWAN_ABS(det) < ALWAN_LITERAL(1e-10)) {
-        for (int i = 0; i < 9; i++) out.m[i] = ALWAN_LITERAL(0.0);
-        return out;
-    }
-
-    alwan_scalar inv_det = ALWAN_LITERAL(1.0) / det;
-
-    out.m[0] = (m->m[4] * m->m[8] - m->m[5] * m->m[7]) * inv_det;
-    out.m[1] = (m->m[2] * m->m[7] - m->m[1] * m->m[8]) * inv_det;
-    out.m[2] = (m->m[1] * m->m[5] - m->m[2] * m->m[4]) * inv_det;
-    out.m[3] = (m->m[5] * m->m[6] - m->m[3] * m->m[8]) * inv_det;
-    out.m[4] = (m->m[0] * m->m[8] - m->m[2] * m->m[6]) * inv_det;
-    out.m[5] = (m->m[2] * m->m[3] - m->m[0] * m->m[5]) * inv_det;
-    out.m[6] = (m->m[3] * m->m[7] - m->m[4] * m->m[6]) * inv_det;
-    out.m[7] = (m->m[1] * m->m[6] - m->m[0] * m->m[7]) * inv_det;
-    out.m[8] = (m->m[0] * m->m[4] - m->m[1] * m->m[3]) * inv_det;
+    /* Build RGB-to-XYZ matrix: columns of M scaled by S */
+    out.m[0] = S.v[0] * rX; out.m[1] = S.v[1] * gX; out.m[2] = S.v[2] * bX;
+    out.m[3] = S.v[0] * rY; out.m[4] = S.v[1] * gY; out.m[5] = S.v[2] * bY;
+    out.m[6] = S.v[0] * rZ; out.m[7] = S.v[1] * gZ; out.m[8] = S.v[2] * bZ;
 
     return out;
 }
 
-/* Multiply 3x3 matrices: result = a * b */
-ALWAN_INLINE alwan_mat3x3 aces_mult_mat3_v(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
-    alwan_mat3x3 out;
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            out.m[i * 3 + j] = a->m[i * 3 + 0] * b->m[0 * 3 + j]
-                              + a->m[i * 3 + 1] * b->m[1 * 3 + j]
-                              + a->m[i * 3 + 2] * b->m[2 * 3 + j];
-        }
-    }
-    return out;
-}
-
-/* Multiply vector by matrix: result = v * m (row-vector convention) */
-ALWAN_INLINE alwan_vec3 aces_mult_vec_mat3_v(alwan_vec3 v, alwan_mat3x3 const *m) {
-    alwan_vec3 out;
-    out.v[0] = v.v[0] * m->m[0] + v.v[1] * m->m[1] + v.v[2] * m->m[2];
-    out.v[1] = v.v[0] * m->m[3] + v.v[1] * m->m[4] + v.v[2] * m->m[5];
-    out.v[2] = v.v[0] * m->m[6] + v.v[1] * m->m[7] + v.v[2] * m->m[8];
-    return out;
-}
-
-/* Multiply matrix by vector: result = m * v (column-vector convention) */
-ALWAN_INLINE alwan_vec3 aces_mat3_mul_vec3_v(alwan_mat3x3 const *m, alwan_vec3 v) {
-    alwan_vec3 out;
-    out.v[0] = m->m[0] * v.v[0] + m->m[1] * v.v[1] + m->m[2] * v.v[2];
-    out.v[1] = m->m[3] * v.v[0] + m->m[4] * v.v[1] + m->m[5] * v.v[2];
-    out.v[2] = m->m[6] * v.v[0] + m->m[7] * v.v[1] + m->m[8] * v.v[2];
-    return out;
-}
+/* Matrix operations: use alwan_math_core.h helpers
+ * alwan_mat3_inv_v(m)     - 3x3 matrix inverse
+ * alwan_mat3_mul_v(a, b)  - 3x3 matrix multiply
+ * alwan_mat3_mulv_v(m, v) - 3x3 matrix * vector
+ */
 
 /* ================================================================
  * ACES2 CAM Helpers
@@ -610,20 +563,14 @@ ALWAN_INLINE alwan_scalar aces_chroma_compress_norm_v(alwan_scalar h_rad, alwan_
 
 /* RGB to Aab (adapted opponent color space) */
 ALWAN_INLINE alwan_vec3 aces2_rgb_to_aab_v(alwan_vec3 rgb, aces2_JMhParams const *p) {
-    alwan_mat3x3 mat_rgb_to_cam16;
-    for (int i = 0; i < 9; i++) mat_rgb_to_cam16.m[i] = p->MATRIX_RGB_to_CAM16_c[i];
-
-    alwan_vec3 rgb_m = aces_mult_vec_mat3_v(rgb, &mat_rgb_to_cam16);
+    alwan_vec3 rgb_m = alwan_mat3_mulv_v(p->MATRIX_RGB_to_CAM16_c, rgb);
 
     alwan_vec3 rgb_a;
     rgb_a.v[0] = aces_cone_response_fwd_v(rgb_m.v[0]);
     rgb_a.v[1] = aces_cone_response_fwd_v(rgb_m.v[1]);
     rgb_a.v[2] = aces_cone_response_fwd_v(rgb_m.v[2]);
 
-    alwan_mat3x3 mat_cone_to_aab;
-    for (int i = 0; i < 9; i++) mat_cone_to_aab.m[i] = p->MATRIX_cone_response_to_Aab[i];
-
-    return aces_mult_vec_mat3_v(rgb_a, &mat_cone_to_aab);
+    return alwan_mat3_mulv_v(p->MATRIX_cone_response_to_Aab, rgb_a);
 }
 
 /* Aab to JMh (lightness, colorfulness, hue) */
@@ -674,20 +621,14 @@ ALWAN_INLINE alwan_vec3 aces2_jmh_to_aab_v(alwan_vec3 jmh, aces2_JMhParams const
 
 /* Aab to RGB (inverse) */
 ALWAN_INLINE alwan_vec3 aces2_aab_to_rgb_v(alwan_vec3 aab, aces2_JMhParams const *p) {
-    alwan_mat3x3 mat_aab_to_cone;
-    for (int i = 0; i < 9; i++) mat_aab_to_cone.m[i] = p->MATRIX_Aab_to_cone[i];
-
-    alwan_vec3 rgb_a = aces_mult_vec_mat3_v(aab, &mat_aab_to_cone);
+    alwan_vec3 rgb_a = alwan_mat3_mulv_v(p->MATRIX_Aab_to_cone, aab);
 
     alwan_vec3 rgb_m;
     rgb_m.v[0] = aces_cone_response_inv_v(rgb_a.v[0]);
     rgb_m.v[1] = aces_cone_response_inv_v(rgb_a.v[1]);
     rgb_m.v[2] = aces_cone_response_inv_v(rgb_a.v[2]);
 
-    alwan_mat3x3 mat_cam16_to_rgb;
-    for (int i = 0; i < 9; i++) mat_cam16_to_rgb.m[i] = p->MATRIX_CAM16_to_RGB[i];
-
-    return aces_mult_vec_mat3_v(rgb_m, &mat_cam16_to_rgb);
+    return alwan_mat3_mulv_v(p->MATRIX_CAM16_to_RGB, rgb_m);
 }
 
 /* J to Y conversion */
@@ -910,7 +851,7 @@ ALWAN_INLINE alwan_vec2 aces2_compress_gamut_fwd_v(alwan_scalar J, alwan_scalar 
                                                     aces2_GamutCompressParams const *gcp,
                                                     aces2_HueDependentGamutParams const *hdp) {
     alwan_vec2 result;
-    (void)h;
+    ALWAN_UNUSED(h);
 
     alwan_scalar slope_gain = aces2_get_focus_gain_v(J, hdp->analytical_threshold,
                                                       gcp->limit_J_max, gcp->focus_dist);
@@ -951,7 +892,7 @@ ALWAN_INLINE alwan_vec2 aces2_compress_gamut_inv_v(alwan_scalar J, alwan_scalar 
                                                     aces2_GamutCompressParams const *gcp,
                                                     aces2_HueDependentGamutParams const *hdp) {
     alwan_vec2 result;
-    (void)h;
+    ALWAN_UNUSED(h);
 
     alwan_scalar slope_gain = aces2_get_focus_gain_v(J, hdp->analytical_threshold,
                                                       gcp->limit_J_max, gcp->focus_dist);

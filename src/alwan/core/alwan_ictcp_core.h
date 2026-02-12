@@ -15,6 +15,7 @@
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
 #include "alwan_core.h"
+#include "alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * ICtCp Transformation Matrices
@@ -22,30 +23,30 @@
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const ICTCP_RGB_TO_LMS[9] = {
+ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_RGB_TO_LMS = {{
 #include "../data/ictcp_rgb_to_lms.csv"
-};
-static alwan_scalar const ICTCP_LMS_TO_RGB[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_LMS_TO_RGB = {{
 #include "../data/ictcp_lms_to_rgb.csv"
-};
-static alwan_scalar const ICTCP_LMS_P_TO_ICTCP_PQ[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_LMS_P_TO_ICTCP_PQ = {{
 #include "../data/ictcp_lms_p_to_ictcp_pq.csv"
-};
-static alwan_scalar const ICTCP_ICTCP_TO_LMS_P_PQ[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_ICTCP_TO_LMS_P_PQ = {{
 #include "../data/ictcp_ictcp_to_lms_p_pq.csv"
-};
-static alwan_scalar const ICTCP_LMS_P_TO_ICTCP_HLG[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_LMS_P_TO_ICTCP_HLG = {{
 #include "../data/ictcp_lms_p_to_ictcp_hlg.csv"
-};
-static alwan_scalar const ICTCP_ICTCP_TO_LMS_P_HLG[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_ICTCP_TO_LMS_P_HLG = {{
 #include "../data/ictcp_ictcp_to_lms_p_hlg.csv"
-};
-static alwan_scalar const ICTCP_XYZ_TO_BT2020[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_XYZ_TO_BT2020 = {{
 #include "../data/ictcp_xyz_to_bt2020.csv"
-};
-static alwan_scalar const ICTCP_BT2020_TO_XYZ[9] = {
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_BT2020_TO_XYZ = {{
 #include "../data/ictcp_bt2020_to_xyz.csv"
-};
+}};
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
@@ -73,9 +74,11 @@ ALWAN_INLINE alwan_ictcp alwan_rgb_to_ictcp_pq_v(alwan_rgb rgb) {
     alwan_ictcp result;
 
     /* Step 1: BT.2020 RGB (linear) -> LMS */
-    alwan_scalar l = ICTCP_RGB_TO_LMS[0] * rgb.r + ICTCP_RGB_TO_LMS[1] * rgb.g + ICTCP_RGB_TO_LMS[2] * rgb.b;
-    alwan_scalar m = ICTCP_RGB_TO_LMS[3] * rgb.r + ICTCP_RGB_TO_LMS[4] * rgb.g + ICTCP_RGB_TO_LMS[5] * rgb.b;
-    alwan_scalar s = ICTCP_RGB_TO_LMS[6] * rgb.r + ICTCP_RGB_TO_LMS[7] * rgb.g + ICTCP_RGB_TO_LMS[8] * rgb.b;
+    alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
+    alwan_vec3 lms = alwan_mat3_mulv_v(ICTCP_RGB_TO_LMS, rgb_v);
+    alwan_scalar l = lms.v[0];
+    alwan_scalar m = lms.v[1];
+    alwan_scalar s = lms.v[2];
 
     /* Step 2: LMS -> LMS' via PQ OETF */
     alwan_scalar lp = alwan_pq_oetf(l);
@@ -83,9 +86,11 @@ ALWAN_INLINE alwan_ictcp alwan_rgb_to_ictcp_pq_v(alwan_rgb rgb) {
     alwan_scalar sp = alwan_pq_oetf(s);
 
     /* Step 3: LMS' -> ICtCp via PQ matrix */
-    result.I  = ICTCP_LMS_P_TO_ICTCP_PQ[0] * lp + ICTCP_LMS_P_TO_ICTCP_PQ[1] * mp + ICTCP_LMS_P_TO_ICTCP_PQ[2] * sp;
-    result.Ct = ICTCP_LMS_P_TO_ICTCP_PQ[3] * lp + ICTCP_LMS_P_TO_ICTCP_PQ[4] * mp + ICTCP_LMS_P_TO_ICTCP_PQ[5] * sp;
-    result.Cp = ICTCP_LMS_P_TO_ICTCP_PQ[6] * lp + ICTCP_LMS_P_TO_ICTCP_PQ[7] * mp + ICTCP_LMS_P_TO_ICTCP_PQ[8] * sp;
+    alwan_vec3 lms_p = {{lp, mp, sp}};
+    alwan_vec3 ictcp = alwan_mat3_mulv_v(ICTCP_LMS_P_TO_ICTCP_PQ, lms_p);
+    result.I  = ictcp.v[0];
+    result.Ct = ictcp.v[1];
+    result.Cp = ictcp.v[2];
 
     return result;
 }
@@ -98,9 +103,11 @@ ALWAN_INLINE alwan_rgb alwan_ictcp_pq_to_rgb_v(alwan_ictcp ictcp) {
     alwan_rgb result;
 
     /* Step 1: ICtCp -> LMS' via PQ inverse matrix */
-    alwan_scalar lp = ICTCP_ICTCP_TO_LMS_P_PQ[0] * ictcp.I + ICTCP_ICTCP_TO_LMS_P_PQ[1] * ictcp.Ct + ICTCP_ICTCP_TO_LMS_P_PQ[2] * ictcp.Cp;
-    alwan_scalar mp = ICTCP_ICTCP_TO_LMS_P_PQ[3] * ictcp.I + ICTCP_ICTCP_TO_LMS_P_PQ[4] * ictcp.Ct + ICTCP_ICTCP_TO_LMS_P_PQ[5] * ictcp.Cp;
-    alwan_scalar sp = ICTCP_ICTCP_TO_LMS_P_PQ[6] * ictcp.I + ICTCP_ICTCP_TO_LMS_P_PQ[7] * ictcp.Ct + ICTCP_ICTCP_TO_LMS_P_PQ[8] * ictcp.Cp;
+    alwan_vec3 ictcp_v = {{ictcp.I, ictcp.Ct, ictcp.Cp}};
+    alwan_vec3 lms_p = alwan_mat3_mulv_v(ICTCP_ICTCP_TO_LMS_P_PQ, ictcp_v);
+    alwan_scalar lp = lms_p.v[0];
+    alwan_scalar mp = lms_p.v[1];
+    alwan_scalar sp = lms_p.v[2];
 
     /* Step 2: LMS' -> LMS via PQ EOTF */
     alwan_scalar l = alwan_pq_eotf(lp);
@@ -108,9 +115,11 @@ ALWAN_INLINE alwan_rgb alwan_ictcp_pq_to_rgb_v(alwan_ictcp ictcp) {
     alwan_scalar s = alwan_pq_eotf(sp);
 
     /* Step 3: LMS -> BT.2020 RGB (linear) */
-    result.r = ICTCP_LMS_TO_RGB[0] * l + ICTCP_LMS_TO_RGB[1] * m + ICTCP_LMS_TO_RGB[2] * s;
-    result.g = ICTCP_LMS_TO_RGB[3] * l + ICTCP_LMS_TO_RGB[4] * m + ICTCP_LMS_TO_RGB[5] * s;
-    result.b = ICTCP_LMS_TO_RGB[6] * l + ICTCP_LMS_TO_RGB[7] * m + ICTCP_LMS_TO_RGB[8] * s;
+    alwan_vec3 lms_v = {{l, m, s}};
+    alwan_vec3 rgb = alwan_mat3_mulv_v(ICTCP_LMS_TO_RGB, lms_v);
+    result.r = rgb.v[0];
+    result.g = rgb.v[1];
+    result.b = rgb.v[2];
 
     return result;
 }
@@ -123,9 +132,11 @@ ALWAN_INLINE alwan_ictcp alwan_rgb_to_ictcp_hlg_v(alwan_rgb rgb) {
     alwan_ictcp result;
 
     /* Step 1: BT.2020 RGB (linear) -> LMS */
-    alwan_scalar l = ICTCP_RGB_TO_LMS[0] * rgb.r + ICTCP_RGB_TO_LMS[1] * rgb.g + ICTCP_RGB_TO_LMS[2] * rgb.b;
-    alwan_scalar m = ICTCP_RGB_TO_LMS[3] * rgb.r + ICTCP_RGB_TO_LMS[4] * rgb.g + ICTCP_RGB_TO_LMS[5] * rgb.b;
-    alwan_scalar s = ICTCP_RGB_TO_LMS[6] * rgb.r + ICTCP_RGB_TO_LMS[7] * rgb.g + ICTCP_RGB_TO_LMS[8] * rgb.b;
+    alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
+    alwan_vec3 lms = alwan_mat3_mulv_v(ICTCP_RGB_TO_LMS, rgb_v);
+    alwan_scalar l = lms.v[0];
+    alwan_scalar m = lms.v[1];
+    alwan_scalar s = lms.v[2];
 
     /* Step 2: LMS -> LMS' via HLG OETF */
     alwan_scalar lp = alwan_hlg_oetf(l);
@@ -133,9 +144,11 @@ ALWAN_INLINE alwan_ictcp alwan_rgb_to_ictcp_hlg_v(alwan_rgb rgb) {
     alwan_scalar sp = alwan_hlg_oetf(s);
 
     /* Step 3: LMS' -> ICtCp via HLG matrix */
-    result.I  = ICTCP_LMS_P_TO_ICTCP_HLG[0] * lp + ICTCP_LMS_P_TO_ICTCP_HLG[1] * mp + ICTCP_LMS_P_TO_ICTCP_HLG[2] * sp;
-    result.Ct = ICTCP_LMS_P_TO_ICTCP_HLG[3] * lp + ICTCP_LMS_P_TO_ICTCP_HLG[4] * mp + ICTCP_LMS_P_TO_ICTCP_HLG[5] * sp;
-    result.Cp = ICTCP_LMS_P_TO_ICTCP_HLG[6] * lp + ICTCP_LMS_P_TO_ICTCP_HLG[7] * mp + ICTCP_LMS_P_TO_ICTCP_HLG[8] * sp;
+    alwan_vec3 lms_p = {{lp, mp, sp}};
+    alwan_vec3 ictcp = alwan_mat3_mulv_v(ICTCP_LMS_P_TO_ICTCP_HLG, lms_p);
+    result.I  = ictcp.v[0];
+    result.Ct = ictcp.v[1];
+    result.Cp = ictcp.v[2];
 
     return result;
 }
@@ -148,9 +161,11 @@ ALWAN_INLINE alwan_rgb alwan_ictcp_hlg_to_rgb_v(alwan_ictcp ictcp) {
     alwan_rgb result;
 
     /* Step 1: ICtCp -> LMS' via HLG inverse matrix */
-    alwan_scalar lp = ICTCP_ICTCP_TO_LMS_P_HLG[0] * ictcp.I + ICTCP_ICTCP_TO_LMS_P_HLG[1] * ictcp.Ct + ICTCP_ICTCP_TO_LMS_P_HLG[2] * ictcp.Cp;
-    alwan_scalar mp = ICTCP_ICTCP_TO_LMS_P_HLG[3] * ictcp.I + ICTCP_ICTCP_TO_LMS_P_HLG[4] * ictcp.Ct + ICTCP_ICTCP_TO_LMS_P_HLG[5] * ictcp.Cp;
-    alwan_scalar sp = ICTCP_ICTCP_TO_LMS_P_HLG[6] * ictcp.I + ICTCP_ICTCP_TO_LMS_P_HLG[7] * ictcp.Ct + ICTCP_ICTCP_TO_LMS_P_HLG[8] * ictcp.Cp;
+    alwan_vec3 ictcp_v = {{ictcp.I, ictcp.Ct, ictcp.Cp}};
+    alwan_vec3 lms_p = alwan_mat3_mulv_v(ICTCP_ICTCP_TO_LMS_P_HLG, ictcp_v);
+    alwan_scalar lp = lms_p.v[0];
+    alwan_scalar mp = lms_p.v[1];
+    alwan_scalar sp = lms_p.v[2];
 
     /* Step 2: LMS' -> LMS via HLG inverse OETF (NOT EOTF - no system gamma) */
     alwan_scalar l = alwan_hlg_inverse_oetf_v(lp);
@@ -158,9 +173,11 @@ ALWAN_INLINE alwan_rgb alwan_ictcp_hlg_to_rgb_v(alwan_ictcp ictcp) {
     alwan_scalar s = alwan_hlg_inverse_oetf_v(sp);
 
     /* Step 3: LMS -> BT.2020 RGB (linear) */
-    result.r = ICTCP_LMS_TO_RGB[0] * l + ICTCP_LMS_TO_RGB[1] * m + ICTCP_LMS_TO_RGB[2] * s;
-    result.g = ICTCP_LMS_TO_RGB[3] * l + ICTCP_LMS_TO_RGB[4] * m + ICTCP_LMS_TO_RGB[5] * s;
-    result.b = ICTCP_LMS_TO_RGB[6] * l + ICTCP_LMS_TO_RGB[7] * m + ICTCP_LMS_TO_RGB[8] * s;
+    alwan_vec3 lms_v = {{l, m, s}};
+    alwan_vec3 rgb = alwan_mat3_mulv_v(ICTCP_LMS_TO_RGB, lms_v);
+    result.r = rgb.v[0];
+    result.g = rgb.v[1];
+    result.b = rgb.v[2];
 
     return result;
 }
@@ -171,10 +188,12 @@ ALWAN_INLINE alwan_rgb alwan_ictcp_hlg_to_rgb_v(alwan_ictcp ictcp) {
 
 ALWAN_INLINE alwan_ictcp alwan_xyz_to_ictcp_pq_v(alwan_xyz xyz) {
     /* Step 1: XYZ (D65) -> BT.2020 RGB (linear) */
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 rgb_v = alwan_mat3_mulv_v(ICTCP_XYZ_TO_BT2020, xyz_v);
     alwan_rgb rgb;
-    rgb.r = ICTCP_XYZ_TO_BT2020[0] * xyz.x + ICTCP_XYZ_TO_BT2020[1] * xyz.y + ICTCP_XYZ_TO_BT2020[2] * xyz.z;
-    rgb.g = ICTCP_XYZ_TO_BT2020[3] * xyz.x + ICTCP_XYZ_TO_BT2020[4] * xyz.y + ICTCP_XYZ_TO_BT2020[5] * xyz.z;
-    rgb.b = ICTCP_XYZ_TO_BT2020[6] * xyz.x + ICTCP_XYZ_TO_BT2020[7] * xyz.y + ICTCP_XYZ_TO_BT2020[8] * xyz.z;
+    rgb.r = rgb_v.v[0];
+    rgb.g = rgb_v.v[1];
+    rgb.b = rgb_v.v[2];
 
     /* Step 2: BT.2020 RGB -> ICtCp (PQ) */
     return alwan_rgb_to_ictcp_pq_v(rgb);
@@ -191,9 +210,11 @@ ALWAN_INLINE alwan_xyz alwan_ictcp_pq_to_xyz_v(alwan_ictcp ictcp) {
     alwan_rgb rgb = alwan_ictcp_pq_to_rgb_v(ictcp);
 
     /* Step 2: BT.2020 RGB -> XYZ (D65) */
-    result.x = ICTCP_BT2020_TO_XYZ[0] * rgb.r + ICTCP_BT2020_TO_XYZ[1] * rgb.g + ICTCP_BT2020_TO_XYZ[2] * rgb.b;
-    result.y = ICTCP_BT2020_TO_XYZ[3] * rgb.r + ICTCP_BT2020_TO_XYZ[4] * rgb.g + ICTCP_BT2020_TO_XYZ[5] * rgb.b;
-    result.z = ICTCP_BT2020_TO_XYZ[6] * rgb.r + ICTCP_BT2020_TO_XYZ[7] * rgb.g + ICTCP_BT2020_TO_XYZ[8] * rgb.b;
+    alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
+    alwan_vec3 xyz = alwan_mat3_mulv_v(ICTCP_BT2020_TO_XYZ, rgb_v);
+    result.x = xyz.v[0];
+    result.y = xyz.v[1];
+    result.z = xyz.v[2];
 
     return result;
 }
@@ -204,10 +225,12 @@ ALWAN_INLINE alwan_xyz alwan_ictcp_pq_to_xyz_v(alwan_ictcp ictcp) {
 
 ALWAN_INLINE alwan_ictcp alwan_xyz_to_ictcp_hlg_v(alwan_xyz xyz) {
     /* Step 1: XYZ (D65) -> BT.2020 RGB (linear) */
+    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3 rgb_v = alwan_mat3_mulv_v(ICTCP_XYZ_TO_BT2020, xyz_v);
     alwan_rgb rgb;
-    rgb.r = ICTCP_XYZ_TO_BT2020[0] * xyz.x + ICTCP_XYZ_TO_BT2020[1] * xyz.y + ICTCP_XYZ_TO_BT2020[2] * xyz.z;
-    rgb.g = ICTCP_XYZ_TO_BT2020[3] * xyz.x + ICTCP_XYZ_TO_BT2020[4] * xyz.y + ICTCP_XYZ_TO_BT2020[5] * xyz.z;
-    rgb.b = ICTCP_XYZ_TO_BT2020[6] * xyz.x + ICTCP_XYZ_TO_BT2020[7] * xyz.y + ICTCP_XYZ_TO_BT2020[8] * xyz.z;
+    rgb.r = rgb_v.v[0];
+    rgb.g = rgb_v.v[1];
+    rgb.b = rgb_v.v[2];
 
     /* Step 2: BT.2020 RGB -> ICtCp (HLG) */
     return alwan_rgb_to_ictcp_hlg_v(rgb);
@@ -224,9 +247,11 @@ ALWAN_INLINE alwan_xyz alwan_ictcp_hlg_to_xyz_v(alwan_ictcp ictcp) {
     alwan_rgb rgb = alwan_ictcp_hlg_to_rgb_v(ictcp);
 
     /* Step 2: BT.2020 RGB -> XYZ (D65) */
-    result.x = ICTCP_BT2020_TO_XYZ[0] * rgb.r + ICTCP_BT2020_TO_XYZ[1] * rgb.g + ICTCP_BT2020_TO_XYZ[2] * rgb.b;
-    result.y = ICTCP_BT2020_TO_XYZ[3] * rgb.r + ICTCP_BT2020_TO_XYZ[4] * rgb.g + ICTCP_BT2020_TO_XYZ[5] * rgb.b;
-    result.z = ICTCP_BT2020_TO_XYZ[6] * rgb.r + ICTCP_BT2020_TO_XYZ[7] * rgb.g + ICTCP_BT2020_TO_XYZ[8] * rgb.b;
+    alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
+    alwan_vec3 xyz = alwan_mat3_mulv_v(ICTCP_BT2020_TO_XYZ, rgb_v);
+    result.x = xyz.v[0];
+    result.y = xyz.v[1];
+    result.z = xyz.v[2];
 
     return result;
 }
