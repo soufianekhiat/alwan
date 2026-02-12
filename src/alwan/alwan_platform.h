@@ -78,6 +78,15 @@
 
 #endif
 
+/* ================================================================
+ * 1.2.1 Integer Type Abstractions (C backend only)
+ * ================================================================ */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
+# include <stdint.h>
+  typedef uint16_t alwan_uint16;
+  typedef uint8_t  alwan_uint8;
+#endif
+
 /* Common literal shortcuts */
 #define ALWAN_ZERO ALWAN_LITERAL(0.0)
 #define ALWAN_ONE  ALWAN_LITERAL(1.0)

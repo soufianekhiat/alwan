@@ -81,6 +81,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_quality.c
   src/alwan/api/alwan_rayleigh.c
   src/alwan/api/alwan_reference_data.c
+  src/alwan/api/alwan_normalize.c
   src/alwan/api/alwan_rgb.c
   src/alwan/bulk/alwan_rgb_bulk.c
   src/alwan/api/alwan_rlab.c

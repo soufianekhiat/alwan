@@ -264,7 +264,7 @@ typedef enum {
     ALWAN_RGB_SPACE_ALEXA_WIDE_GAMUT,       /* ARRI ALEXA Wide Gamut */
     ALWAN_RGB_SPACE_P3_D60,                  /* P3 with D60 white point */
     ALWAN_RGB_SPACE_XTREME_RGB,             /* Xtreme RGB (HP/Microsoft extended gamut) */
-    ALWAN_RGB_SPACE_LINEAR_SRGB,            /* Linear sRGB (no transfer function) */
+    ALWAN_RGB_SPACE_LINEAR_REC709,          /* Linear Rec.709 (no transfer function) */
     ALWAN_RGB_SPACE_LINEAR_REC2020,         /* Linear Rec.2020 (no transfer function) */
     ALWAN_RGB_SPACE_LINEAR_ADOBE_RGB_1998,  /* Linear Adobe RGB (1998) */
     ALWAN_RGB_SPACE_LINEAR_P3_D65,          /* Linear P3-D65 (no transfer function) */
@@ -289,8 +289,17 @@ typedef enum {
     ALWAN_RGB_SPACE_GAMMA22_ADOBE_RGB,  /* Adobe RGB primaries + gamma 2.2 OETF */
     ALWAN_RGB_SPACE_GAMMA22_P3_D65,     /* P3-D65 primaries + gamma 2.2 OETF */
     ALWAN_RGB_SPACE_GAMMA22_AP1,        /* ACEScg (AP1) primaries + gamma 2.2 OETF */
-    ALWAN_RGB_SPACE_GAMMA18_REC709      /* Rec.709 primaries + gamma 1.8 OETF */
+    ALWAN_RGB_SPACE_GAMMA18_REC709,     /* Rec.709 primaries + gamma 1.8 OETF */
+
+    /* ColorInterop Display Color Spaces (Section 2.1) */
+    ALWAN_RGB_SPACE_REC1886_REC709,     /* Rec.709 primaries + BT.1886 EOTF (gamma 2.4) */
+    ALWAN_RGB_SPACE_REC2100_PQ,         /* Rec.2020 primaries + PQ (SMPTE ST.2084) */
+    ALWAN_RGB_SPACE_REC2100_HLG,        /* Rec.2020 primaries + HLG (BT.2100) */
+    ALWAN_RGB_SPACE_DISPLAY_P3_HDR      /* Display P3 primaries + PQ (SMPTE ST.2084) */
 } alwan_rgb_space;
+
+/* Backward compatibility alias */
+#define ALWAN_RGB_SPACE_LINEAR_SRGB ALWAN_RGB_SPACE_LINEAR_REC709
 
 /* Transfer function identifiers (OETF/EOTF) */
 typedef enum {
@@ -675,6 +684,13 @@ int alwan_eotf_apply(alwan_scalar *linear,
                      alwan_transfer_function tf,
                      alwan_scalar const *encoded,
                      size_t count, size_t in_stride, size_t out_stride);
+
+/* ----------------------------------------------------------------
+ * Integer-to-Float Normalization (ColorInterop §1.5)
+ * Uses (2^N - 1) normalization. Supported bit depths: 8, 10, 12, 16.
+ * ---------------------------------------------------------------- */
+int alwan_uint_to_float(alwan_scalar *out, alwan_uint16 const *in, int bit_depth, size_t count);
+int alwan_float_to_uint(alwan_uint16 *out, alwan_scalar const *in, int bit_depth, size_t count);
 
 /* ----------------------------------------------------------------
  * View Transforms (Display Rendering)

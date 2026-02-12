@@ -552,6 +552,134 @@ int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb,
 #include "../alwan_rgb_embedded.h"
 
 /* ----------------------------------------------------------------
+ * Transfer Function Lookup Table
+ * Maps each alwan_rgb_space enum index to its {oetf, eotf} pair.
+ * Order MUST match the alwan_rgb_space enum.
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    alwan_transfer_function oetf;
+    alwan_transfer_function eotf;
+} alwan_tf_pair;
+
+static alwan_tf_pair const g_rgb_space_tf[] = {
+    /* [0]  SRGB                     */ { ALWAN_TF_SRGB,     ALWAN_TF_SRGB     },
+    /* [1]  BT709                    */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [2]  DISPLAY_P3               */ { ALWAN_TF_SRGB,     ALWAN_TF_SRGB     },
+    /* [3]  BT2020                   */ { ALWAN_TF_BT2020,   ALWAN_TF_BT2020   },
+    /* [4]  ACES2065_1               */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [5]  ACESCG                   */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [6]  ACESPROXY                */ { ALWAN_TF_ACESPROXY,ALWAN_TF_ACESPROXY},
+    /* [7]  ACESCC                   */ { ALWAN_TF_ACESCC,   ALWAN_TF_ACESCC   },
+    /* [8]  ACESCCT                  */ { ALWAN_TF_ACESCCT,  ALWAN_TF_ACESCCT  },
+    /* [9]  ARRI_WIDE_GAMUT_3        */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [10] ARRI_WIDE_GAMUT_4        */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [11] ARRI_LOGC3               */ { ALWAN_TF_LOGC3,    ALWAN_TF_LOGC3    },
+    /* [12] ARRI_LOGC4               */ { ALWAN_TF_LOGC4,    ALWAN_TF_LOGC4    },
+    /* [13] REDCOLOR                 */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [14] REDCOLOR2                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [15] REDCOLOR3                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [16] REDCOLOR4                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [17] DRAGONCOLOR              */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [18] DRAGONCOLOR2             */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [19] REDLOG                   */ { ALWAN_TF_REDLOG,   ALWAN_TF_REDLOG   },
+    /* [20] VENICE_S_GAMUT3          */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [21] VENICE_S_GAMUT3_CINE     */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [22] S_LOG                    */ { ALWAN_TF_SLOG,     ALWAN_TF_SLOG     },
+    /* [23] S_LOG2                   */ { ALWAN_TF_SLOG2,    ALWAN_TF_SLOG2    },
+    /* [24] S_LOG3                   */ { ALWAN_TF_SLOG3,    ALWAN_TF_SLOG3    },
+    /* [25] CIE_RGB                  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [26] ADOBE_WIDE_GAMUT_RGB     */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [27] ROMM_RGB                 */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [28] RIMM_RGB                 */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [29] ERIMM_RGB                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [30] FILMLIGHT_E_GAMUT        */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [31] FILMLIGHT_T_LOG          */ { ALWAN_TF_TLOG,     ALWAN_TF_TLOG     },
+    /* [32] F_GAMUT                  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [33] FUJIFILM_F_LOG           */ { ALWAN_TF_FLOG,     ALWAN_TF_FLOG     },
+    /* [34] N_GAMUT                  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [35] N_LOG                    */ { ALWAN_TF_NLOG,     ALWAN_TF_NLOG     },
+    /* [36] DJI_D_GAMUT             */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [37] PROTUNE_NATIVE           */ { ALWAN_TF_PROTUNE,  ALWAN_TF_PROTUNE  },
+    /* [38] ITU_R_BT470_525          */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [39] ITU_R_BT470_625          */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [40] SMPTE_240M               */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [41] SMPTE_C                  */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [42] DCDM_XYZ                 */ { ALWAN_TF_DCDM,     ALWAN_TF_DCDM     },
+    /* [43] BEST_RGB                 */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [44] BETA_RGB                 */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [45] DON_RGB_4                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [46] EKTA_SPACE_PS5           */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [47] MAX_RGB                  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [48] RUSSELL_RGB              */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [49] SHARP_RGB                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [50] ECI_RGB_V2               */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [51] ADOBE_RGB_1998           */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
+    /* [52] PROPHOTO_RGB             */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [53] DAVINCI_WIDE_GAMUT       */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [54] DAVINCI_INTERMEDIATE     */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [55] BLACKMAGIC_WIDE_GAMUT    */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [56] BLACKMAGIC_FILM          */ { ALWAN_TF_BMDFILM4, ALWAN_TF_BMDFILM4 },
+    /* [57] BLACKMAGIC_FILM_GEN5     */ { ALWAN_TF_BMDFILM,  ALWAN_TF_BMDFILM  },
+    /* [58] V_GAMUT                  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [59] V_LOG                    */ { ALWAN_TF_VLOG,     ALWAN_TF_VLOG     },
+    /* [60] S_GAMUT                  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [61] S_GAMUT3                 */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [62] S_GAMUT3_CINE            */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [63] CINEMA_GAMUT             */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [64] CANON_LOG                */ { ALWAN_TF_CLOG,     ALWAN_TF_CLOG     },
+    /* [65] REDWIDEGAMUTRGB          */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [66] DCI_P3                   */ { ALWAN_TF_GAMMA26,  ALWAN_TF_GAMMA26  },
+    /* [67] DCI_P3_P                 */ { ALWAN_TF_GAMMA26,  ALWAN_TF_GAMMA26  },
+    /* [68] P3_D65                   */ { ALWAN_TF_SRGB,     ALWAN_TF_SRGB     },
+    /* [69] NTSC_1953                */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [70] NTSC_1987                */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [71] PAL_SECAM                */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [72] EBU_TECH_3213_E          */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [73] APPLE_RGB                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [74] COLORMATCH_RGB           */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [75] ALEXA_WIDE_GAMUT         */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [76] P3_D60                   */ { ALWAN_TF_GAMMA26,  ALWAN_TF_GAMMA26  },
+    /* [77] XTREME_RGB               */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [78] LINEAR_REC709            */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [79] LINEAR_REC2020           */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [80] LINEAR_ADOBE_RGB_1998    */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [81] LINEAR_P3_D65            */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [82] LINEAR_DISPLAY_P3        */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [83] LINEAR_PROPHOTO_RGB      */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [84] LINEAR_DCI_P3            */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [85] LINEAR_ADOBE_WIDE_GAMUT  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [86] LINEAR_APPLE_RGB         */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [87] LINEAR_COLORMATCH_RGB    */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [88] LINEAR_P3_D60            */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [89] LINEAR_BT470_525         */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [90] LINEAR_BT470_625         */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [91] LINEAR_SMPTE_240M        */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [92] ITU_T_H273_22_UNSPEC     */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [93] ITU_T_H273_GENERIC_FILM  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [94] PLASA_ANSI_E154          */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [95] GAMMA22_REC709           */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
+    /* [96] GAMMA22_ADOBE_RGB        */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
+    /* [97] GAMMA22_P3_D65           */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
+    /* [98] GAMMA22_AP1              */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
+    /* [99] GAMMA18_REC709           */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* ColorInterop Display Color Spaces */
+    /* [100] REC1886_REC709          */ { ALWAN_TF_BT709,    ALWAN_TF_BT1886   },
+    /* [101] REC2100_PQ              */ { ALWAN_TF_PQ,       ALWAN_TF_PQ       },
+    /* [102] REC2100_HLG             */ { ALWAN_TF_HLG,      ALWAN_TF_HLG      },
+    /* [103] DISPLAY_P3_HDR          */ { ALWAN_TF_PQ,       ALWAN_TF_PQ       },
+};
+
+/* Static assert: TF table must match embedded data array size */
+#if ALWAN_EMBED_DATA
+_Static_assert(
+    sizeof(g_rgb_space_tf) / sizeof(g_rgb_space_tf[0]) ==
+    sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]),
+    "g_rgb_space_tf[] and g_rgb_space_data[] size mismatch"
+);
+#endif
+
+/* ----------------------------------------------------------------
  * Get RGB space descriptor by enum
  * ---------------------------------------------------------------- */
 
@@ -579,9 +707,9 @@ int alwan_rgb_get_space_descriptor(alwan_rgb_space_desc *desc, alwan_ctx *ctx, a
     desc->white_xy[0] = rgb_data[6];
     desc->white_xy[1] = rgb_data[7];
 
-    /* Set transfer functions to linear (identity) by default */
-    desc->oetf = ALWAN_TF_LINEAR;
-    desc->eotf = ALWAN_TF_LINEAR;
+    /* Look up transfer functions from the TF table */
+    desc->oetf = g_rgb_space_tf[space].oetf;
+    desc->eotf = g_rgb_space_tf[space].eotf;
 
     return ALWAN_OK;
 
