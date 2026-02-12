@@ -305,14 +305,14 @@ ALWAN_INLINE alwan_xyz alwan_kim2009_inverse_v(
      *   [a]  =  [ 11/11 -12/11  1/11  ] [M']
      *   [b]     [  1/9    1/9  -2/9   ] [S']
      *
-     * Inverse yields:
-     *   L' = A + 0.3215 * a + 0.2053 * b
-     *   M' = A - 0.6351 * a - 0.1860 * b
-     *   S' = A - 0.1568 * a - 4.4904 * b
+     * det = 23/99.  Exact inverse (rational):
+     *   L' = A + (451/1403)*a + (288/1403)*b
+     *   M' = A - (891/1403)*a - (261/1403)*b
+     *   S' = A - (220/1403)*a - (6300/1403)*b
      */
-    alwan_scalar Lp = A_val + ALWAN_LITERAL(0.3215) * opp_a + ALWAN_LITERAL(0.2053) * opp_b;
-    alwan_scalar Mp = A_val - ALWAN_LITERAL(0.6351) * opp_a - ALWAN_LITERAL(0.1860) * opp_b;
-    alwan_scalar Sp = A_val - ALWAN_LITERAL(0.1568) * opp_a - ALWAN_LITERAL(4.4904) * opp_b;
+    alwan_scalar Lp = A_val + (ALWAN_LITERAL(451.0) / ALWAN_LITERAL(1403.0)) * opp_a + (ALWAN_LITERAL(288.0) / ALWAN_LITERAL(1403.0)) * opp_b;
+    alwan_scalar Mp = A_val - (ALWAN_LITERAL(891.0) / ALWAN_LITERAL(1403.0)) * opp_a - (ALWAN_LITERAL(261.0) / ALWAN_LITERAL(1403.0)) * opp_b;
+    alwan_scalar Sp = A_val - (ALWAN_LITERAL(220.0) / ALWAN_LITERAL(1403.0)) * opp_a - (ALWAN_LITERAL(6300.0) / ALWAN_LITERAL(1403.0)) * opp_b;
 
     /* Step 12: Recover absolute cone responses LMS from LMS_p
      * LMS = [(-La^nc * LMS_p) / (LMS_p - 1)]^(1/nc)

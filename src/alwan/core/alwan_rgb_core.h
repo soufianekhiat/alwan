@@ -25,12 +25,13 @@
 
 ALWAN_INLINE alwan_vec3 alwan_xy_to_xyz_v(alwan_scalar x, alwan_scalar y) {
     alwan_vec3 result;
-    alwan_scalar safe_y = ALWAN_SELECT(y < ALWAN_EPSILON, ALWAN_ONE, y);
+    alwan_scalar abs_y = ALWAN_ABS(y);
+    alwan_scalar safe_y = ALWAN_SELECT(abs_y < ALWAN_EPSILON, ALWAN_ONE, y);
     alwan_scalar Y = ALWAN_ONE;
 
-    result.v[0] = ALWAN_SELECT(y < ALWAN_EPSILON, ALWAN_ZERO, (x / safe_y) * Y);
-    result.v[1] = ALWAN_SELECT(y < ALWAN_EPSILON, ALWAN_ZERO, Y);
-    result.v[2] = ALWAN_SELECT(y < ALWAN_EPSILON, ALWAN_ZERO,
+    result.v[0] = ALWAN_SELECT(abs_y < ALWAN_EPSILON, ALWAN_ZERO, (x / safe_y) * Y);
+    result.v[1] = ALWAN_SELECT(abs_y < ALWAN_EPSILON, ALWAN_ZERO, Y);
+    result.v[2] = ALWAN_SELECT(abs_y < ALWAN_EPSILON, ALWAN_ZERO,
                                ((ALWAN_ONE - x - y) / safe_y) * Y);
     return result;
 }

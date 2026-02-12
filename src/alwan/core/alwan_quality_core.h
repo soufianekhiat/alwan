@@ -14,9 +14,14 @@
 #include "../alwan_types.h"
 
 /* ================================================================
- * CCT: McCamy's approximation from xy
- * CCT = 437n^3 + 3601n^2 + 6861n + 5517
+ * CCT: McCamy's approximation from xy  (McCamy 1992)
+ * CCT = 449n^3 + 3525n^2 + 6823.3n + 5520.33
  * where n = (x - 0.3320) / (0.1858 - y)
+ *
+ * Sign convention: n is negated compared to the original paper
+ * (which uses n = (x-0.3320)/(y-0.1858)); negating n transforms
+ * the original {-449, 3525, -6823.3, 5520.33} to the coefficients
+ * below.
  * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_cct_mccamy_v(alwan_scalar x, alwan_scalar y) {
@@ -24,10 +29,10 @@ ALWAN_INLINE alwan_scalar alwan_cct_mccamy_v(alwan_scalar x, alwan_scalar y) {
     alwan_scalar n2 = n * n;
     alwan_scalar n3 = n2 * n;
 
-    return ALWAN_LITERAL(437.0) * n3 +
-           ALWAN_LITERAL(3601.0) * n2 +
-           ALWAN_LITERAL(6861.0) * n +
-           ALWAN_LITERAL(5517.0);
+    return ALWAN_LITERAL(449.0) * n3 +
+           ALWAN_LITERAL(3525.0) * n2 +
+           ALWAN_LITERAL(6823.3) * n +
+           ALWAN_LITERAL(5520.33);
 }
 
 /* ================================================================

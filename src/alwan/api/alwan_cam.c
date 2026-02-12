@@ -92,7 +92,7 @@ int alwan_ciecam02_forward(alwan_ciecam02_correlates *out,
     alwan_cam_derived_params p = cam_compute_derived_params_v(
         F, vc->adapting_luminance, vc->background_luminance,
         vc->white_xyz.y, (alwan_scalar)vc->discount_illuminant,
-        vc->white_xyz, CAM_M_HPE);
+        vc->white_xyz, CAM_M_CAT02, CAM_M_CAT02_INV, CAM_M_HPE, 1);
 
     alwan_ciecam02_v_correlates result = alwan_ciecam02_forward_v(
         *xyz, vc->white_xyz,
@@ -131,7 +131,7 @@ int alwan_ciecam02_inverse(alwan_xyz *xyz_out,
     alwan_cam_derived_params p = cam_compute_derived_params_v(
         F, vc->adapting_luminance, vc->background_luminance,
         vc->white_xyz.y, (alwan_scalar)vc->discount_illuminant,
-        vc->white_xyz, CAM_M_HPE);
+        vc->white_xyz, CAM_M_CAT02, CAM_M_CAT02_INV, CAM_M_HPE, 1);
 
     *xyz_out = alwan_ciecam02_inverse_v(
         correlates->J, correlates->C, correlates->h,
@@ -163,7 +163,7 @@ int alwan_cam16_forward(alwan_cam16_correlates *out,
     alwan_cam_derived_params p = cam_compute_derived_params_v(
         F, vc->adapting_luminance, vc->background_luminance,
         vc->white_xyz.y, (alwan_scalar)vc->discount_illuminant,
-        vc->white_xyz, CAM_M_CAT16);
+        vc->white_xyz, CAM_M_CAT16, CAM_M_CAT16_INV, CAM_M_CAT16, 0);
 
     alwan_cam16_v_correlates result = alwan_cam16_forward_v(
         *xyz, vc->white_xyz,
@@ -202,7 +202,7 @@ int alwan_cam16_inverse(alwan_xyz *xyz_out,
     alwan_cam_derived_params p = cam_compute_derived_params_v(
         F, vc->adapting_luminance, vc->background_luminance,
         vc->white_xyz.y, (alwan_scalar)vc->discount_illuminant,
-        vc->white_xyz, CAM_M_CAT16);
+        vc->white_xyz, CAM_M_CAT16, CAM_M_CAT16_INV, CAM_M_CAT16, 0);
 
     *xyz_out = alwan_cam16_inverse_v(
         correlates->J, correlates->C, correlates->h,

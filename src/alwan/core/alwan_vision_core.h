@@ -79,9 +79,9 @@ ALWAN_INLINE alwan_rgb alwan_simulate_cvd_matrix_v(alwan_rgb rgb,
 
     /* LMS -> RGB (unrolled matrix multiply) */
     alwan_vec3 cvd_rgb = alwan_mat3_mulv_v(CVD_LMS_TO_RGB, lms_cvd);
-    alwan_scalar cr = cvd_rgb.v[0];
-    alwan_scalar cg = cvd_rgb.v[1];
-    alwan_scalar cb = cvd_rgb.v[2];
+    alwan_scalar cr = alwan_saturate(cvd_rgb.v[0]);
+    alwan_scalar cg = alwan_saturate(cvd_rgb.v[1]);
+    alwan_scalar cb = alwan_saturate(cvd_rgb.v[2]);
 
     /* Interpolate with original: out = lerp(rgb_in, cvd_rgb, severity) */
     result.r = alwan_lerp(rgb.r, cr, severity);

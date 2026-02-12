@@ -37,7 +37,7 @@ typedef struct {
  * Transformation Matrices
  * ---------------------------------------------------------------- */
 
-/* Hunt-Pointer-Estevez (HPE) matrix for CIECAM02 XYZ <-> LMS */
+/* Hunt-Pointer-Estevez (HPE) matrix for CIECAM02 opponent signals */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 ALWAN_CONSTEXPR alwan_mat3x3 CAM_M_HPE = {{
@@ -45,6 +45,21 @@ ALWAN_CONSTEXPR alwan_mat3x3 CAM_M_HPE = {{
 }};
 ALWAN_CONSTEXPR alwan_mat3x3 CAM_M_HPE_INV = {{
 #include "../data/matrices/hpe_inv.csv"
+}};
+/* CAT02 matrix for CIECAM02 chromatic adaptation */
+ALWAN_CONSTEXPR alwan_mat3x3 CAM_M_CAT02 = {{
+#include "../data/matrices/cat_cat02.csv"
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 CAM_M_CAT02_INV = {{
+#include "../data/matrices/cat_cat02_inv.csv"
+}};
+/* Precomputed M_HPE * M_CAT02^-1 for CIECAM02 (matches colour-science) */
+ALWAN_CONSTEXPR alwan_mat3x3 CAM_M_HPE_CAT02_INV = {{
+#include "../data/matrices/hpe_cat02_inv.csv"
+}};
+/* Inverse: M_CAT02 * M_HPE^-1 */
+ALWAN_CONSTEXPR alwan_mat3x3 CAM_M_CAT02_HPE_INV = {{
+#include "../data/matrices/hpe_cat02_inv_inv.csv"
 }};
 /* CAT16 matrix for CAM16 XYZ <-> LMS */
 ALWAN_CONSTEXPR alwan_mat3x3 CAM_M_CAT16 = {{
@@ -125,8 +140,10 @@ typedef struct {
 } alwan_cam_derived_params;
 
 /* Compute all derived viewing condition parameters from scalars.
- * M_cat is a 3x3 matrix
- * (HPE for CIECAM02, CAT16 for CAM16). */
+ * M_cat: chromatic adaptation matrix (CAT02 for CIECAM02, CAT16 for CAM16)
+ * M_cat_inv: inverse of M_cat (only used for CIECAM02 two-step process)
+ * M_hpe: HPE matrix (only used for CIECAM02; pass NULL-equivalent for CAM16)
+ * use_hpe: if nonzero, apply M_hpe * M_cat_inv after adaptation (CIECAM02) */
 ALWAN_INLINE alwan_cam_derived_params cam_compute_derived_params_v(
     alwan_scalar F,
     alwan_scalar La,
@@ -134,7 +151,10 @@ ALWAN_INLINE alwan_cam_derived_params cam_compute_derived_params_v(
     alwan_scalar Yw,
     alwan_scalar discount_illuminant,
     alwan_xyz white_xyz,
-    alwan_mat3x3 M_cat
+    alwan_mat3x3 M_cat,
+    alwan_mat3x3 M_cat_inv,
+    alwan_mat3x3 M_hpe,
+    int use_hpe
 ) {
     alwan_cam_derived_params p;
 
@@ -157,21 +177,23 @@ ALWAN_INLINE alwan_cam_derived_params cam_compute_derived_params_v(
     /* Achromatic response of the white point A_w */
     alwan_vec3 white_v = {{white_xyz.x, white_xyz.y, white_xyz.z}};
     alwan_vec3 lms_w = alwan_mat3_mulv_v(M_cat, white_v);
-    alwan_scalar R_w = lms_w.v[0];
-    alwan_scalar G_w = lms_w.v[1];
-    alwan_scalar B_w = lms_w.v[2];
 
-    alwan_scalar D_R_w = p.D * (Yw / R_w) + ALWAN_ONE - p.D;
-    alwan_scalar D_G_w = p.D * (Yw / G_w) + ALWAN_ONE - p.D;
-    alwan_scalar D_B_w = p.D * (Yw / B_w) + ALWAN_ONE - p.D;
+    alwan_scalar D_R_w = p.D * (Yw / lms_w.v[0]) + ALWAN_ONE - p.D;
+    alwan_scalar D_G_w = p.D * (Yw / lms_w.v[1]) + ALWAN_ONE - p.D;
+    alwan_scalar D_B_w = p.D * (Yw / lms_w.v[2]) + ALWAN_ONE - p.D;
 
-    alwan_scalar R_cw = R_w * D_R_w;
-    alwan_scalar G_cw = G_w * D_G_w;
-    alwan_scalar B_cw = B_w * D_B_w;
+    alwan_vec3 rgb_cw = {{lms_w.v[0] * D_R_w, lms_w.v[1] * D_G_w, lms_w.v[2] * D_B_w}};
 
-    alwan_scalar R_aw = cam_post_adaptation_nonlinear_v(p.FL * R_cw / ALWAN_LITERAL(100.0));
-    alwan_scalar G_aw = cam_post_adaptation_nonlinear_v(p.FL * G_cw / ALWAN_LITERAL(100.0));
-    alwan_scalar B_aw = cam_post_adaptation_nonlinear_v(p.FL * B_cw / ALWAN_LITERAL(100.0));
+    /* For CIECAM02: convert adapted white from CAT02 space to HPE space */
+    alwan_vec3 hpe_w = rgb_cw;
+    if (use_hpe) {
+        alwan_vec3 xyz_cw = alwan_mat3_mulv_v(M_cat_inv, rgb_cw);
+        hpe_w = alwan_mat3_mulv_v(M_hpe, xyz_cw);
+    }
+
+    alwan_scalar R_aw = cam_post_adaptation_nonlinear_v(p.FL * hpe_w.v[0] / ALWAN_LITERAL(100.0));
+    alwan_scalar G_aw = cam_post_adaptation_nonlinear_v(p.FL * hpe_w.v[1] / ALWAN_LITERAL(100.0));
+    alwan_scalar B_aw = cam_post_adaptation_nonlinear_v(p.FL * hpe_w.v[2] / ALWAN_LITERAL(100.0));
 
     p.A_w = (ALWAN_LITERAL(2.0) * R_aw + G_aw +
              ALWAN_LITERAL(0.05) * B_aw - ALWAN_LITERAL(0.305)) * p.Nbb;
@@ -313,33 +335,28 @@ ALWAN_INLINE alwan_ciecam02_v_correlates alwan_ciecam02_forward_v(
     alwan_ciecam02_v_correlates result;
     ALWAN_UNUSED(F); /* F already folded into pre-computed D */
 
-    /* Step 1: XYZ -> LMS via HPE matrix (stimulus) */
+    /* Step 1: XYZ -> cone responses via CAT02 matrix */
     alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
-    alwan_vec3 lms = alwan_mat3_mulv_v(CAM_M_HPE, xyz_v);
-    alwan_scalar R = lms.v[0];
-    alwan_scalar G = lms.v[1];
-    alwan_scalar B = lms.v[2];
+    alwan_vec3 rgb_cat = alwan_mat3_mulv_v(CAM_M_CAT02, xyz_v);
 
-    /* Step 2: XYZ -> LMS via HPE matrix (white point) */
+    /* Step 2: White point cone responses via CAT02 */
     alwan_vec3 white_v = {{white_xyz.x, white_xyz.y, white_xyz.z}};
-    alwan_vec3 lms_w = alwan_mat3_mulv_v(CAM_M_HPE, white_v);
-    alwan_scalar R_w = lms_w.v[0];
-    alwan_scalar G_w = lms_w.v[1];
-    alwan_scalar B_w = lms_w.v[2];
+    alwan_vec3 rgb_cat_w = alwan_mat3_mulv_v(CAM_M_CAT02, white_v);
 
-    /* Step 3: Chromatic adaptation */
-    alwan_scalar D_R = D * (white_xyz.y / R_w) + ALWAN_ONE - D;
-    alwan_scalar D_G = D * (white_xyz.y / G_w) + ALWAN_ONE - D;
-    alwan_scalar D_B = D * (white_xyz.y / B_w) + ALWAN_ONE - D;
+    /* Step 3: Chromatic adaptation in CAT02 space */
+    alwan_scalar D_R = D * (white_xyz.y / rgb_cat_w.v[0]) + ALWAN_ONE - D;
+    alwan_scalar D_G = D * (white_xyz.y / rgb_cat_w.v[1]) + ALWAN_ONE - D;
+    alwan_scalar D_B = D * (white_xyz.y / rgb_cat_w.v[2]) + ALWAN_ONE - D;
 
-    alwan_scalar R_c = R * D_R;
-    alwan_scalar G_c = G * D_G;
-    alwan_scalar B_c = B * D_B;
+    alwan_vec3 rgb_c = {{rgb_cat.v[0] * D_R, rgb_cat.v[1] * D_G, rgb_cat.v[2] * D_B}};
 
-    /* Step 4: Post-adaptation nonlinear response compression */
-    alwan_scalar R_a = cam_post_adaptation_nonlinear_v(FL * R_c / ALWAN_LITERAL(100.0));
-    alwan_scalar G_a = cam_post_adaptation_nonlinear_v(FL * G_c / ALWAN_LITERAL(100.0));
-    alwan_scalar B_a = cam_post_adaptation_nonlinear_v(FL * B_c / ALWAN_LITERAL(100.0));
+    /* Step 4: Convert adapted signals to HPE space using precomputed M_HPE * M_CAT02^-1 */
+    alwan_vec3 hpe = alwan_mat3_mulv_v(CAM_M_HPE_CAT02_INV, rgb_c);
+
+    /* Step 5: Post-adaptation nonlinear response compression */
+    alwan_scalar R_a = cam_post_adaptation_nonlinear_v(FL * hpe.v[0] / ALWAN_LITERAL(100.0));
+    alwan_scalar G_a = cam_post_adaptation_nonlinear_v(FL * hpe.v[1] / ALWAN_LITERAL(100.0));
+    alwan_scalar B_a = cam_post_adaptation_nonlinear_v(FL * hpe.v[2] / ALWAN_LITERAL(100.0));
 
     /* Step 5: Achromatic response A */
     alwan_scalar A = (ALWAN_LITERAL(2.0) * R_a + G_a +
@@ -355,7 +372,7 @@ ALWAN_INLINE alwan_ciecam02_v_correlates alwan_ciecam02_forward_v(
     alwan_scalar h = h_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;
     h = ALWAN_SELECT(h < ALWAN_ZERO, h + ALWAN_LITERAL(360.0), h);
 
-    /* Step 8: Eccentricity et */
+    /* Step 8: Eccentricity et (match colour-science: radians(h) + 2) */
     alwan_scalar et = ALWAN_LITERAL(0.25) * (ALWAN_COS(h * ALWAN_PI / ALWAN_LITERAL(180.0) + ALWAN_LITERAL(2.0)) + ALWAN_LITERAL(3.8));
 
     /* Step 9: Hue quadrature H */
@@ -372,16 +389,16 @@ ALWAN_INLINE alwan_ciecam02_v_correlates alwan_ciecam02_forward_v(
     alwan_scalar t_val = (ALWAN_LITERAL(50000.0) / ALWAN_LITERAL(13.0) * Nc * Ncb * et *
                 ALWAN_SQRT(a * a + b * b)) /
                (R_a + G_a + ALWAN_LITERAL(21.0) / ALWAN_LITERAL(20.0) * B_a);
-    alwan_scalar C = ALWAN_POW(t_val, ALWAN_LITERAL(0.9)) *
+    alwan_scalar C_val = ALWAN_POW(t_val, ALWAN_LITERAL(0.9)) *
                ALWAN_SQRT(J / ALWAN_LITERAL(100.0)) *
                ALWAN_POW(ALWAN_LITERAL(1.64) - ALWAN_POW(ALWAN_LITERAL(0.29), n), ALWAN_LITERAL(0.73));
 
     /* Step 13: Colorfulness M and saturation s */
-    alwan_scalar M = C * ALWAN_POW(FL, ALWAN_LITERAL(0.25));
+    alwan_scalar M = C_val * ALWAN_POW(FL, ALWAN_LITERAL(0.25));
     alwan_scalar s = ALWAN_LITERAL(100.0) * ALWAN_SQRT(M / Q);
 
     result.J = J;
-    result.C = C;
+    result.C = C_val;
     result.h = h;
     result.s = s;
     result.Q = Q;
@@ -438,29 +455,27 @@ ALWAN_INLINE alwan_xyz alwan_ciecam02_inverse_v(
     alwan_scalar G_a = (ALWAN_LITERAL(460.0) * P_2 - ALWAN_LITERAL(891.0) * a - ALWAN_LITERAL(261.0) * b) / ALWAN_LITERAL(1403.0);
     alwan_scalar B_a = (ALWAN_LITERAL(460.0) * P_2 - ALWAN_LITERAL(220.0) * a - ALWAN_LITERAL(6300.0) * b) / ALWAN_LITERAL(1403.0);
 
-    /* Step 6: Inverse post-adaptation nonlinearity */
-    alwan_scalar R_c = ALWAN_LITERAL(100.0) / FL * cam_post_adaptation_nonlinear_inv_v(R_a);
-    alwan_scalar G_c = ALWAN_LITERAL(100.0) / FL * cam_post_adaptation_nonlinear_inv_v(G_a);
-    alwan_scalar B_c = ALWAN_LITERAL(100.0) / FL * cam_post_adaptation_nonlinear_inv_v(B_a);
+    /* Step 6: Inverse post-adaptation nonlinearity (HPE signals) */
+    alwan_scalar R_hpe = ALWAN_LITERAL(100.0) / FL * cam_post_adaptation_nonlinear_inv_v(R_a);
+    alwan_scalar G_hpe = ALWAN_LITERAL(100.0) / FL * cam_post_adaptation_nonlinear_inv_v(G_a);
+    alwan_scalar B_hpe = ALWAN_LITERAL(100.0) / FL * cam_post_adaptation_nonlinear_inv_v(B_a);
 
-    /* Step 7: Inverse chromatic adaptation */
+    /* Step 7: HPE -> CAT02 space using precomputed M_CAT02 * M_HPE^-1 */
+    alwan_vec3 hpe_v = {{R_hpe, G_hpe, B_hpe}};
+    alwan_vec3 rgb_c = alwan_mat3_mulv_v(CAM_M_CAT02_HPE_INV, hpe_v);
+
+    /* Step 8: Inverse chromatic adaptation in CAT02 space */
     alwan_vec3 white_v = {{white_xyz.x, white_xyz.y, white_xyz.z}};
-    alwan_vec3 lms_w = alwan_mat3_mulv_v(CAM_M_HPE, white_v);
-    alwan_scalar R_w = lms_w.v[0];
-    alwan_scalar G_w = lms_w.v[1];
-    alwan_scalar B_w = lms_w.v[2];
+    alwan_vec3 rgb_cat_w = alwan_mat3_mulv_v(CAM_M_CAT02, white_v);
 
-    alwan_scalar D_R = D * (white_xyz.y / R_w) + ALWAN_ONE - D;
-    alwan_scalar D_G = D * (white_xyz.y / G_w) + ALWAN_ONE - D;
-    alwan_scalar D_B = D * (white_xyz.y / B_w) + ALWAN_ONE - D;
+    alwan_scalar D_R = D * (white_xyz.y / rgb_cat_w.v[0]) + ALWAN_ONE - D;
+    alwan_scalar D_G = D * (white_xyz.y / rgb_cat_w.v[1]) + ALWAN_ONE - D;
+    alwan_scalar D_B = D * (white_xyz.y / rgb_cat_w.v[2]) + ALWAN_ONE - D;
 
-    alwan_scalar R = R_c / D_R;
-    alwan_scalar G = G_c / D_G;
-    alwan_scalar B = B_c / D_B;
+    alwan_vec3 rgb_cat = {{rgb_c.v[0] / D_R, rgb_c.v[1] / D_G, rgb_c.v[2] / D_B}};
 
-    /* Step 8: LMS -> XYZ via inverse HPE matrix */
-    alwan_vec3 lms_inv = {{R, G, B}};
-    alwan_vec3 xyz_out = alwan_mat3_mulv_v(CAM_M_HPE_INV, lms_inv);
+    /* Step 9: CAT02 -> XYZ via inverse CAT02 matrix */
+    alwan_vec3 xyz_out = alwan_mat3_mulv_v(CAM_M_CAT02_INV, rgb_cat);
     result.x = xyz_out.v[0];
     result.y = xyz_out.v[1];
     result.z = xyz_out.v[2];
@@ -533,7 +548,7 @@ ALWAN_INLINE alwan_cam16_v_correlates alwan_cam16_forward_v(
     alwan_scalar h = h_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;
     h = ALWAN_SELECT(h < ALWAN_ZERO, h + ALWAN_LITERAL(360.0), h);
 
-    /* Step 8: Eccentricity et */
+    /* Step 8: Eccentricity et (match colour-science: radians(h) + 2) */
     alwan_scalar et = ALWAN_LITERAL(0.25) * (ALWAN_COS(h * ALWAN_PI / ALWAN_LITERAL(180.0) + ALWAN_LITERAL(2.0)) + ALWAN_LITERAL(3.8));
 
     /* Step 9: Hue quadrature H */
@@ -550,16 +565,16 @@ ALWAN_INLINE alwan_cam16_v_correlates alwan_cam16_forward_v(
     alwan_scalar t_val = (ALWAN_LITERAL(50000.0) / ALWAN_LITERAL(13.0) * Nc * Ncb * et *
                 ALWAN_SQRT(a * a + b * b)) /
                (R_a + G_a + ALWAN_LITERAL(21.0) / ALWAN_LITERAL(20.0) * B_a);
-    alwan_scalar C = ALWAN_POW(t_val, ALWAN_LITERAL(0.9)) *
+    alwan_scalar C_val = ALWAN_POW(t_val, ALWAN_LITERAL(0.9)) *
                ALWAN_SQRT(J / ALWAN_LITERAL(100.0)) *
                ALWAN_POW(ALWAN_LITERAL(1.64) - ALWAN_POW(ALWAN_LITERAL(0.29), n), ALWAN_LITERAL(0.73));
 
     /* Step 13: Colorfulness M and saturation s */
-    alwan_scalar M = C * ALWAN_POW(FL, ALWAN_LITERAL(0.25));
+    alwan_scalar M = C_val * ALWAN_POW(FL, ALWAN_LITERAL(0.25));
     alwan_scalar s = ALWAN_LITERAL(100.0) * ALWAN_SQRT(M / Q);
 
     result.J = J;
-    result.C = C;
+    result.C = C_val;
     result.h = h;
     result.s = s;
     result.Q = Q;

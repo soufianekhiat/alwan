@@ -156,7 +156,9 @@ static int test_cat_method(
 
     status = alwan_xyz_adapt(adapted_xyz,
                              &d65_xyz, &d50_xyz, method,
-                             test_xyz_data, num_test_colors, 3, 3);
+                             test_xyz_data, num_test_colors,
+                             3 * sizeof(alwan_scalar),
+                             3 * sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "alwan_xyz_adapt failed");
 
     int color_failures = 0;
