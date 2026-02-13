@@ -38,11 +38,21 @@ def generate_rgb_conversion_fixtures(output_dir):
     ]
 
     # Get RGB color space definitions from colour-science (NO HARDCODING)
-    srgb = colour.RGB_COLOURSPACES['sRGB']
-    bt709 = colour.RGB_COLOURSPACES['ITU-R BT.709']
-    display_p3 = colour.RGB_COLOURSPACES['Display P3']
-    bt2020 = colour.RGB_COLOURSPACES['ITU-R BT.2020']
-    aces_ap1 = colour.RGB_COLOURSPACES['ACEScg']
+    # Use derived matrices (computed from primaries at full precision) instead of
+    # pre-defined rounded matrices from standards. This matches alwan's approach
+    # of computing NPM from primaries, and avoids ~1e-4 errors from sRGB's
+    # 4-decimal-place IEC 61966-2-1 matrix coefficients.
+    def use_derived(name):
+        cs = colour.RGB_COLOURSPACES[name].copy()
+        cs.use_derived_matrix_RGB_to_XYZ = True
+        cs.use_derived_matrix_XYZ_to_RGB = True
+        return cs
+
+    srgb = use_derived('sRGB')
+    bt709 = use_derived('ITU-R BT.709')
+    display_p3 = use_derived('Display P3')
+    bt2020 = use_derived('ITU-R BT.2020')
+    aces_ap1 = use_derived('ACEScg')
 
     # Test case 1: sRGB to Display P3 (same white point D65, no CAT needed)
     print("  sRGB -> Display P3...")

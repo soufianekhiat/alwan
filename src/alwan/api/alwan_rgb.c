@@ -424,8 +424,9 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
     if (status != ALWAN_OK) return status;
 
     /* Convert source RGB to XYZ */
-    alwan_vec3 xyz, vec_in;
+    alwan_vec3 vec_in;
     ALWAN_MEMCPY(&vec_in, src_rgb, sizeof(alwan_vec3));
+    alwan_vec3 xyz;
     alwan_mat3_mulv(&xyz, &src_to_xyz, &vec_in);
 
     /* Check if chromatic adaptation is needed */

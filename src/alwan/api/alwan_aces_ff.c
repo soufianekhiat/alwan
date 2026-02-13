@@ -397,32 +397,36 @@ static alwan_scalar aces1_cubic_basis_shaper(alwan_scalar x, alwan_scalar width)
 }
 
 /* AP0 to AP1 matrix */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_AP0_TO_AP1[9] = {
-    ALWAN_LITERAL( 1.4514393161), ALWAN_LITERAL(-0.2365107469), ALWAN_LITERAL(-0.2149285693),
-    ALWAN_LITERAL(-0.0765537734), ALWAN_LITERAL( 1.1762296998), ALWAN_LITERAL(-0.0996759264),
-    ALWAN_LITERAL( 0.0083161484), ALWAN_LITERAL(-0.0060324498), ALWAN_LITERAL( 0.9977163014)
+#include "../data/matrices/aces_ap0_to_ap1.csv"
 };
+ALWAN_DIAG_POP
 
 /* AP1 to AP0 matrix */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_AP1_TO_AP0[9] = {
-    ALWAN_LITERAL( 0.6954522414), ALWAN_LITERAL( 0.1406786965), ALWAN_LITERAL( 0.1638690622),
-    ALWAN_LITERAL( 0.0447945634), ALWAN_LITERAL( 0.8596711185), ALWAN_LITERAL( 0.0955343182),
-    ALWAN_LITERAL(-0.0055258826), ALWAN_LITERAL( 0.0040252103), ALWAN_LITERAL( 1.0015006723)
+#include "../data/matrices/aces_ap1_to_ap0.csv"
 };
+ALWAN_DIAG_POP
 
 /* D60 to D65 chromatic adaptation (Bradford) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_D60_TO_D65[9] = {
-    ALWAN_LITERAL( 0.98722400), ALWAN_LITERAL(-0.00611327), ALWAN_LITERAL( 0.01595330),
-    ALWAN_LITERAL(-0.00759836), ALWAN_LITERAL( 1.00186000), ALWAN_LITERAL( 0.00533002),
-    ALWAN_LITERAL( 0.00307257), ALWAN_LITERAL(-0.00509595), ALWAN_LITERAL( 1.08168000)
+#include "../data/matrices/aces_d60_to_d65_bradford.csv"
 };
+ALWAN_DIAG_POP
 
 /* D65 to D60 chromatic adaptation (Bradford) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_D65_TO_D60[9] = {
-    ALWAN_LITERAL( 1.01303000), ALWAN_LITERAL( 0.00610531), ALWAN_LITERAL(-0.01497100),
-    ALWAN_LITERAL( 0.00769823), ALWAN_LITERAL( 0.99816500), ALWAN_LITERAL(-0.00503203),
-    ALWAN_LITERAL(-0.00284131), ALWAN_LITERAL( 0.00468516), ALWAN_LITERAL( 0.92450700)
+#include "../data/matrices/aces_d65_to_d60_bradford.csv"
 };
+ALWAN_DIAG_POP
 
 /* Segmented spline function for RRT tone scale
  * This is a simplified version - full implementation would use LUTs */
@@ -468,29 +472,33 @@ static void mat3_mul_vec3_aces1(alwan_scalar const *m, alwan_rgb const *v, alwan
 }
 
 /* Output primaries matrices */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_XYZ_TO_REC709[9] = {
-    ALWAN_LITERAL( 3.2404541621), ALWAN_LITERAL(-1.5371385940), ALWAN_LITERAL(-0.4985314095),
-    ALWAN_LITERAL(-0.9692660305), ALWAN_LITERAL( 1.8760108454), ALWAN_LITERAL( 0.0415560175),
-    ALWAN_LITERAL( 0.0556434309), ALWAN_LITERAL(-0.2040259135), ALWAN_LITERAL( 1.0572251882)
+#include "../data/matrices/aces_xyz_to_rec709.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_XYZ_TO_P3D65[9] = {
-    ALWAN_LITERAL( 2.4934969119), ALWAN_LITERAL(-0.9313836179), ALWAN_LITERAL(-0.4027107845),
-    ALWAN_LITERAL(-0.8294889696), ALWAN_LITERAL( 1.7626640603), ALWAN_LITERAL( 0.0236246858),
-    ALWAN_LITERAL( 0.0358458302), ALWAN_LITERAL(-0.0761723893), ALWAN_LITERAL( 0.9568845240)
+#include "../data/matrices/aces_xyz_to_p3d65.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_XYZ_TO_REC2020[9] = {
-    ALWAN_LITERAL( 1.7166511880), ALWAN_LITERAL(-0.3556707838), ALWAN_LITERAL(-0.2533662814),
-    ALWAN_LITERAL(-0.6666843518), ALWAN_LITERAL( 1.6164812366), ALWAN_LITERAL( 0.0157685458),
-    ALWAN_LITERAL( 0.0176398574), ALWAN_LITERAL(-0.0427706133), ALWAN_LITERAL( 0.9421031212)
+#include "../data/matrices/aces_xyz_to_rec2020.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_AP1_TO_XYZ_D60[9] = {
-    ALWAN_LITERAL( 0.6624541811), ALWAN_LITERAL( 0.1340042065), ALWAN_LITERAL( 0.1561876870),
-    ALWAN_LITERAL( 0.2722287168), ALWAN_LITERAL( 0.6740817658), ALWAN_LITERAL( 0.0536895174),
-    ALWAN_LITERAL(-0.0055746495), ALWAN_LITERAL( 0.0040607335), ALWAN_LITERAL( 1.0103391003)
+#include "../data/matrices/aces_ap1_to_xyz_d60.csv"
 };
+ALWAN_DIAG_POP
 
 /* Apply BT.1886 EOTF inverse (gamma 2.4) */
 static alwan_scalar bt1886_oetf(alwan_scalar x) {
@@ -647,29 +655,33 @@ static alwan_scalar pq_eotf(alwan_scalar E, alwan_scalar peak_nits) {
 }
 
 /* Inverse XYZ to output primaries matrices */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_REC709_TO_XYZ[9] = {
-    ALWAN_LITERAL(0.4123907993), ALWAN_LITERAL(0.3575843394), ALWAN_LITERAL(0.1804807884),
-    ALWAN_LITERAL(0.2126390059), ALWAN_LITERAL(0.7151686788), ALWAN_LITERAL(0.0721923154),
-    ALWAN_LITERAL(0.0193308187), ALWAN_LITERAL(0.1191947798), ALWAN_LITERAL(0.9505321522)
+#include "../data/matrices/aces_rec709_to_xyz.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_P3D65_TO_XYZ[9] = {
-    ALWAN_LITERAL(0.4865709486), ALWAN_LITERAL(0.2656676932), ALWAN_LITERAL(0.1982172852),
-    ALWAN_LITERAL(0.2289745641), ALWAN_LITERAL(0.6917385218), ALWAN_LITERAL(0.0792869141),
-    ALWAN_LITERAL(0.0000000000), ALWAN_LITERAL(0.0451133819), ALWAN_LITERAL(1.0439443689)
+#include "../data/matrices/aces_p3d65_to_xyz.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_REC2020_TO_XYZ[9] = {
-    ALWAN_LITERAL(0.6369580483), ALWAN_LITERAL(0.1446169036), ALWAN_LITERAL(0.1688809752),
-    ALWAN_LITERAL(0.2627002120), ALWAN_LITERAL(0.6779980715), ALWAN_LITERAL(0.0593017165),
-    ALWAN_LITERAL(0.0000000000), ALWAN_LITERAL(0.0280726930), ALWAN_LITERAL(1.0609850577)
+#include "../data/matrices/aces_rec2020_to_xyz.csv"
 };
+ALWAN_DIAG_POP
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static const alwan_scalar ACES1_XYZ_D60_TO_AP1[9] = {
-    ALWAN_LITERAL( 1.6410233797), ALWAN_LITERAL(-0.3248032942), ALWAN_LITERAL(-0.2364246952),
-    ALWAN_LITERAL(-0.6636628587), ALWAN_LITERAL( 1.6153315917), ALWAN_LITERAL( 0.0167563477),
-    ALWAN_LITERAL( 0.0117218943), ALWAN_LITERAL(-0.0082844420), ALWAN_LITERAL( 0.9883948585)
+#include "../data/matrices/aces_xyz_d60_to_ap1.csv"
 };
+ALWAN_DIAG_POP
 
 /* Inverse RRT (simplified) */
 static alwan_scalar aces1_segmented_spline_c5_inv(alwan_scalar y) {
@@ -2171,9 +2183,9 @@ static int get_output_config(alwan_aces2_output output, aces2_output_config *con
 
 /* D60 to D65 chromatic adaptation matrix (Bradford) */
 static const alwan_scalar g_d60_to_d65_bradford[9] = {
-    ALWAN_LITERAL( 0.98722400), ALWAN_LITERAL(-0.00611327), ALWAN_LITERAL( 0.01595330),
-    ALWAN_LITERAL(-0.00759836), ALWAN_LITERAL( 1.00186000), ALWAN_LITERAL( 0.00533002),
-    ALWAN_LITERAL( 0.00307257), ALWAN_LITERAL(-0.00509595), ALWAN_LITERAL( 1.08168000)
+    ALWAN_LITERAL( 0.98722400870301763), ALWAN_LITERAL(-0.00611322860685689), ALWAN_LITERAL( 0.01595328833591263),
+    ALWAN_LITERAL(-0.00759837181166235), ALWAN_LITERAL( 1.00186148473965364), ALWAN_LITERAL( 0.00533003579138894),
+    ALWAN_LITERAL( 0.00307257705853153), ALWAN_LITERAL(-0.00509596151113058), ALWAN_LITERAL( 1.08168060306579528)
 };
 
 /* D65 to D60 chromatic adaptation matrix (Bradford, inverse) */
@@ -2755,9 +2767,9 @@ static alwan_scalar const BLUE_FIX_MATRIX[9] = {
 };
 
 static alwan_scalar const BLUE_FIX_MATRIX_INV[9] = {
-    ALWAN_LITERAL(1.0631770724),  ALWAN_LITERAL(0.0233955757),  ALWAN_LITERAL(-0.0865726482),
-    ALWAN_LITERAL(-0.0106337301), ALWAN_LITERAL(1.2063240281),  ALWAN_LITERAL(-0.1956902980),
-    ALWAN_LITERAL(-0.0005908868), ALWAN_LITERAL(0.0010524818),  ALWAN_LITERAL(0.9995384055)
+    ALWAN_LITERAL(1.0631770724326068),  ALWAN_LITERAL(0.0233955757076458),  ALWAN_LITERAL(-0.0865726481835390),
+    ALWAN_LITERAL(-0.0106337301402402), ALWAN_LITERAL(1.2063240280839118),  ALWAN_LITERAL(-0.1956902980415168),
+    ALWAN_LITERAL(-0.0005908868078512), ALWAN_LITERAL(0.0010524817807910),  ALWAN_LITERAL(0.9995384055268296)
 };
 
 int alwan_aces_blue_light_fix(alwan_rgb *rgb_out, alwan_rgb const *rgb_in) {
@@ -2821,7 +2833,7 @@ static int glow_inv_impl(alwan_rgb const *rgb_in, alwan_scalar glow_gain_param,
 
     /* Iterative refinement: apply forward and correct by dividing by scale.
      * This converges quickly because rgb_out = rgb_in * scale, so rgb_in = rgb_out / scale */
-    for (int iter = 0; iter < 8; ++iter) {
+    for (int iter = 0; iter < 16; ++iter) {
         alwan_scalar YC_iter = rgb_to_yc(red, grn, blu);
         alwan_scalar sat_iter = calc_sat_weight(red, grn, blu, REDMOD_NOISE_LIMIT);
         alwan_scalar s_iter = sigmoid_shaper(sat_iter);
@@ -2848,7 +2860,7 @@ static int glow_inv_impl(alwan_rgb const *rgb_in, alwan_scalar glow_gain_param,
         alwan_scalar max_err = ALWAN_ABS(err_r);
         if (ALWAN_ABS(err_g) > max_err) max_err = ALWAN_ABS(err_g);
         if (ALWAN_ABS(err_b) > max_err) max_err = ALWAN_ABS(err_b);
-        if (max_err < ALWAN_LITERAL(1e-14)) break;
+        if (max_err < ALWAN_LITERAL(1e-15)) break;
 
         /* Correct using forward scale factor */
         if (ALWAN_ABS(fwd_scale) > ALWAN_LITERAL(1e-10)) {
@@ -2907,13 +2919,13 @@ int alwan_aces_redmod10_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in) {
          * Forward: r' = r + f_H * f_S * (P - r) * k = r * (1 - f_H * f_S * k) + f_H * f_S * P * k
          * Derivative: dr'/dr ≈ 1 - f_H * f_S * k (ignoring d(f_H)/dr and d(f_S)/dr)
          * Newton: r_new = r - (f(r) - target) / f'(r) */
-        for (int iter = 0; iter < 8; ++iter) {
+        for (int iter = 0; iter < 16; ++iter) {
             alwan_scalar f_H_iter = calc_hue_weight(red, grn, blu, REDMOD10_INV_WIDTH);
             alwan_scalar f_S_iter = calc_sat_weight(red, grn, blu, REDMOD_NOISE_LIMIT);
             alwan_scalar mod = f_H_iter * f_S_iter * one_minus_scale;
             alwan_scalar red_fwd = red + mod * (REDMOD10_PIVOT - red);
             alwan_scalar error = red_fwd - red_target;
-            if (ALWAN_ABS(error) < ALWAN_LITERAL(1e-14)) break;
+            if (ALWAN_ABS(error) < ALWAN_LITERAL(1e-15)) break;
             /* Approximate derivative: 1 - f_H * f_S * k */
             alwan_scalar deriv = ALWAN_LITERAL(1.0) - mod;
             if (ALWAN_ABS(deriv) > ALWAN_LITERAL(1e-10)) {
@@ -2984,13 +2996,13 @@ int alwan_aces_redmod03_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in) {
         }
 
         /* Iterative refinement using Newton's method */
-        for (int iter = 0; iter < 8; ++iter) {
+        for (int iter = 0; iter < 16; ++iter) {
             alwan_scalar f_H_iter = calc_hue_weight(red, grn, blu, REDMOD03_INV_WIDTH);
             alwan_scalar f_S_iter = calc_sat_weight(red, grn, blu, REDMOD_NOISE_LIMIT);
             alwan_scalar mod = f_H_iter * f_S_iter * one_minus_scale;
             alwan_scalar red_fwd = red + mod * (REDMOD03_PIVOT - red);
             alwan_scalar error = red_fwd - red_target;
-            if (ALWAN_ABS(error) < ALWAN_LITERAL(1e-14)) break;
+            if (ALWAN_ABS(error) < ALWAN_LITERAL(1e-15)) break;
             /* Approximate derivative: 1 - f_H * f_S * k */
             alwan_scalar deriv = ALWAN_LITERAL(1.0) - mod;
             if (ALWAN_ABS(deriv) > ALWAN_LITERAL(1e-10)) {
