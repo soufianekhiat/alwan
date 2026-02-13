@@ -2111,9 +2111,16 @@ typedef enum {
 int alwan_rgb_to_ycbcr(alwan_ycbcr *ycbcr_out, alwan_rgb const *rgb, alwan_ycbcr_standard standard);
 int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr_standard standard);
 
-/* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020) */
-int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb);
-int alwan_yccbccrc_to_rgb(alwan_rgb *rgb_out, alwan_yccbccrc const *yccbccrc);
+/* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020)
+ * bit_depth: 8, 10, 12, or 16 — controls legal range scaling */
+int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb, int bit_depth);
+int alwan_yccbccrc_to_rgb(alwan_rgb *rgb_out, alwan_yccbccrc const *yccbccrc, int bit_depth);
+
+/* YCbCr legal <-> full range conversion
+ * Converts between full-range [0,1] and legal/narrow range with proper chroma centering.
+ * bit_depth: 8, 10, 12, or 16 */
+int alwan_ycbcr_full_to_legal(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_depth);
+int alwan_ycbcr_legal_to_full(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_depth);
 
 /* RGB <-> YCoCg conversions (video compression, real-time graphics)
  * - Y: luma, Co: orange chrominance, Cg: green chrominance

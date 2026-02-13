@@ -492,7 +492,7 @@ static int test_yccbccrc(void) {
         rgb.b = test_rgb[i * 3 + 2];
 
         alwan_yccbccrc ycc;
-        int status = alwan_rgb_to_yccbccrc(&ycc, &rgb);
+        int status = alwan_rgb_to_yccbccrc(&ycc, &rgb, 10);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YcCbcCrc failed");
 
         /* Compare with expected */
@@ -521,7 +521,7 @@ static int test_yccbccrc(void) {
 
         if (!is_boundary_color) {
             alwan_rgb rgb_recon;
-            status = alwan_yccbccrc_to_rgb(&rgb_recon, &ycc);
+            status = alwan_yccbccrc_to_rgb(&rgb_recon, &ycc, 10);
             TEST_ASSERT(status == ALWAN_OK, "YcCbcCrc to RGB failed");
 
             alwan_scalar diff_r = ALWAN_ABS(rgb_recon.r - rgb.r);

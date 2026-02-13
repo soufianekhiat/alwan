@@ -132,15 +132,27 @@ int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr
  * RGB <-> YcCbcCrc — delegated to alwan_convenience_core.h
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb) {
+int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb, int bit_depth) {
     if (!rgb || !yccbccrc_out) return ALWAN_E_INVALID;
-    *yccbccrc_out = alwan_rgb_to_yccbccrc_v(*rgb);
+    *yccbccrc_out = alwan_rgb_to_yccbccrc_v(*rgb, bit_depth);
     return ALWAN_OK;
 }
 
-int alwan_yccbccrc_to_rgb(alwan_rgb *rgb_out, alwan_yccbccrc const *yccbccrc) {
+int alwan_yccbccrc_to_rgb(alwan_rgb *rgb_out, alwan_yccbccrc const *yccbccrc, int bit_depth) {
     if (!yccbccrc || !rgb_out) return ALWAN_E_INVALID;
-    *rgb_out = alwan_yccbccrc_to_rgb_v(*yccbccrc);
+    *rgb_out = alwan_yccbccrc_to_rgb_v(*yccbccrc, bit_depth);
+    return ALWAN_OK;
+}
+
+int alwan_ycbcr_full_to_legal(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_depth) {
+    if (!in || !out) return ALWAN_E_INVALID;
+    *out = alwan_ycbcr_full_to_legal_v(*in, bit_depth);
+    return ALWAN_OK;
+}
+
+int alwan_ycbcr_legal_to_full(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_depth) {
+    if (!in || !out) return ALWAN_E_INVALID;
+    *out = alwan_ycbcr_legal_to_full_v(*in, bit_depth);
     return ALWAN_OK;
 }
 

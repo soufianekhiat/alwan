@@ -251,10 +251,39 @@ ALWAN_INLINE alwan_rgb alwan_ycbcr_to_rgb_kr_kb_v(alwan_ycbcr ycbcr, alwan_scala
 }
 
 /* ----------------------------------------------------------------
- * RGB <-> YcCbcCrc (BT.2020 constant luminance, value-returning)
+ * Legal range constants for a given bit depth (8, 10, 12, 16).
+ * Y range:  [16*s, 235*s] / (2^N-1)
+ * Cb/Cr range: [16*s, 240*s] / (2^N-1)
+ * where s = 2^(N-8).
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_yccbccrc alwan_rgb_to_yccbccrc_v(alwan_rgb rgb) {
+typedef struct {
+    alwan_scalar y_min, y_max, c_min, c_max;
+} alwan_legal_range;
+
+ALWAN_INLINE alwan_legal_range alwan_legal_range_from_bit_depth(int bit_depth) {
+    alwan_legal_range r;
+    alwan_scalar max_val, scale;
+    switch (bit_depth) {
+        case  8: max_val = ALWAN_LITERAL(255.0);   scale = ALWAN_LITERAL(1.0);   break;
+        case 10: max_val = ALWAN_LITERAL(1023.0);  scale = ALWAN_LITERAL(4.0);   break;
+        case 12: max_val = ALWAN_LITERAL(4095.0);  scale = ALWAN_LITERAL(16.0);  break;
+        case 16: max_val = ALWAN_LITERAL(65535.0); scale = ALWAN_LITERAL(256.0); break;
+        default: max_val = ALWAN_LITERAL(1023.0);  scale = ALWAN_LITERAL(4.0);   break;
+    }
+    r.y_min = ALWAN_LITERAL(16.0)  * scale / max_val;
+    r.y_max = ALWAN_LITERAL(235.0) * scale / max_val;
+    r.c_min = ALWAN_LITERAL(16.0)  * scale / max_val;
+    r.c_max = ALWAN_LITERAL(240.0) * scale / max_val;
+    return r;
+}
+
+/* ----------------------------------------------------------------
+ * RGB <-> YcCbcCrc (BT.2020 constant luminance, value-returning)
+ * bit_depth: 8, 10, 12, or 16 — controls legal range scaling
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_yccbccrc alwan_rgb_to_yccbccrc_v(alwan_rgb rgb, int bit_depth) {
     alwan_yccbccrc result;
 
     alwan_scalar const kr = ALWAN_LITERAL(0.2627);
@@ -289,20 +318,17 @@ ALWAN_INLINE alwan_yccbccrc alwan_rgb_to_yccbccrc_v(alwan_rgb rgb) {
                                     diff_r / ALWAN_LITERAL(1.7184),
                                     diff_r / ALWAN_LITERAL(0.9936));
 
-    /* Legal range scaling (10-bit) */
-    alwan_scalar const y_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar const y_max = ALWAN_LITERAL(940.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar const c_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar const c_max = ALWAN_LITERAL(960.0) / ALWAN_LITERAL(1023.0);
+    /* Legal range scaling */
+    alwan_legal_range lr = alwan_legal_range_from_bit_depth(bit_depth);
 
-    result.Yc  = yc * (y_max - y_min) + y_min;
-    result.Cbc = cbc * (c_max - c_min) + (c_max + c_min) / ALWAN_LITERAL(2.0);
-    result.Crc = crc * (c_max - c_min) + (c_max + c_min) / ALWAN_LITERAL(2.0);
+    result.Yc  = yc * (lr.y_max - lr.y_min) + lr.y_min;
+    result.Cbc = cbc * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
+    result.Crc = crc * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
 
     return result;
 }
 
-ALWAN_INLINE alwan_rgb alwan_yccbccrc_to_rgb_v(alwan_yccbccrc yccbccrc) {
+ALWAN_INLINE alwan_rgb alwan_yccbccrc_to_rgb_v(alwan_yccbccrc yccbccrc, int bit_depth) {
     alwan_rgb result;
 
     alwan_scalar const kr = ALWAN_LITERAL(0.2627);
@@ -310,15 +336,12 @@ ALWAN_INLINE alwan_rgb alwan_yccbccrc_to_rgb_v(alwan_yccbccrc yccbccrc) {
     alwan_scalar const kb = ALWAN_LITERAL(0.0593);
 
     /* Reverse legal range scaling */
-    alwan_scalar const y_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar const y_max = ALWAN_LITERAL(940.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar const c_min = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar const c_max = ALWAN_LITERAL(960.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar const c_center = (c_max + c_min) / ALWAN_LITERAL(2.0);
+    alwan_legal_range lr = alwan_legal_range_from_bit_depth(bit_depth);
+    alwan_scalar c_center = (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
 
-    alwan_scalar yc = (yccbccrc.Yc - y_min) / (y_max - y_min);
-    alwan_scalar cbc = (yccbccrc.Cbc - c_center) / (c_max - c_min);
-    alwan_scalar crc = (yccbccrc.Crc - c_center) / (c_max - c_min);
+    alwan_scalar yc = (yccbccrc.Yc - lr.y_min) / (lr.y_max - lr.y_min);
+    alwan_scalar cbc = (yccbccrc.Cbc - c_center) / (lr.c_max - lr.c_min);
+    alwan_scalar crc = (yccbccrc.Crc - c_center) / (lr.c_max - lr.c_min);
 
     /* Reverse chroma divisors */
     alwan_scalar diff_b = ALWAN_SELECT(cbc <= ALWAN_LITERAL(0.0),
@@ -355,6 +378,30 @@ ALWAN_INLINE alwan_rgb alwan_yccbccrc_to_rgb_v(alwan_yccbccrc yccbccrc) {
     result.g = alwan_clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
     result.b = alwan_clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
 
+    return result;
+}
+
+/* ----------------------------------------------------------------
+ * YCbCr legal <-> full range (luma + chroma with centering)
+ * bit_depth: 8, 10, 12, or 16
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_ycbcr alwan_ycbcr_full_to_legal_v(alwan_ycbcr ycbcr, int bit_depth) {
+    alwan_legal_range lr = alwan_legal_range_from_bit_depth(bit_depth);
+    alwan_ycbcr result;
+    result.Y  = ycbcr.Y  * (lr.y_max - lr.y_min) + lr.y_min;
+    result.Cb = ycbcr.Cb * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
+    result.Cr = ycbcr.Cr * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
+    return result;
+}
+
+ALWAN_INLINE alwan_ycbcr alwan_ycbcr_legal_to_full_v(alwan_ycbcr ycbcr, int bit_depth) {
+    alwan_legal_range lr = alwan_legal_range_from_bit_depth(bit_depth);
+    alwan_scalar c_center = (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
+    alwan_ycbcr result;
+    result.Y  = (ycbcr.Y  - lr.y_min) / (lr.y_max - lr.y_min);
+    result.Cb = (ycbcr.Cb - c_center) / (lr.c_max - lr.c_min);
+    result.Cr = (ycbcr.Cr - c_center) / (lr.c_max - lr.c_min);
     return result;
 }
 

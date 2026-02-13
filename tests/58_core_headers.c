@@ -549,14 +549,14 @@ static int test_yccbccrc_v_roundtrip(void) {
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_yccbccrc yccbccrc_v = alwan_rgb_to_yccbccrc_v(rgb);
-    alwan_rgb back_v = alwan_yccbccrc_to_rgb_v(yccbccrc_v);
+    alwan_yccbccrc yccbccrc_v = alwan_rgb_to_yccbccrc_v(rgb, 10);
+    alwan_rgb back_v = alwan_yccbccrc_to_rgb_v(yccbccrc_v, 10);
 
     /* pointer variant */
     alwan_yccbccrc yccbccrc_p;
-    alwan_rgb_to_yccbccrc(&yccbccrc_p, &rgb);
+    alwan_rgb_to_yccbccrc(&yccbccrc_p, &rgb, 10);
     alwan_rgb back_p;
-    alwan_yccbccrc_to_rgb(&back_p, &yccbccrc_p);
+    alwan_yccbccrc_to_rgb(&back_p, &yccbccrc_p, 10);
 
     TEST_ASSERT_NEAR(yccbccrc_v.Yc, yccbccrc_p.Yc, TEST_TOLERANCE, "yccbccrc Yc");
     TEST_ASSERT_NEAR(yccbccrc_v.Cbc, yccbccrc_p.Cbc, TEST_TOLERANCE, "yccbccrc Cbc");
