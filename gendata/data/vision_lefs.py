@@ -73,6 +73,9 @@ def generate_vision_lefs(output_dir):
 
 
 if __name__ == '__main__':
-    output_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'alwan', 'data')
+    if len(sys.argv) != 2:
+        print("Usage: python vision_lefs.py <output_dir>")
+        sys.exit(1)
+
+    output_dir = sys.argv[1]
     generate_vision_lefs(output_dir)
-    print("\nDone.")

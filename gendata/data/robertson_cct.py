@@ -1,10 +1,9 @@
 """
-Generate Robertson CCT lookup table (Planckian locus in CIE 1960 UCS).
-Source: colour.CCT_to_xy()
+Generate Robertson 1968 isotemperature line table.
+Source: colour.temperature.robertson1968.DATA_ISOTEMPERATURE_LINES_ROBERTSON1968
 
-This table is used by the Robertson method for accurate CCT estimation.
-CCT values (inputs) are hardcoded configuration.
-Planckian locus coordinates are computed from colour-science.
+Table format: 31 entries, 4 values each (reciprocal_mrd, u, v, slope).
+Used by: alwan_quality.c (alwan_cct_robertson_xy)
 """
 
 import sys
@@ -12,81 +11,37 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import numpy as np
-from common import format_scalar, ensure_dir
+from common import save_vector
 
 try:
     import colour
+    from colour.temperature.robertson1968 import DATA_ISOTEMPERATURE_LINES_ROBERTSON1968
 except ImportError:
     print("ERROR: colour-science not installed. Run: pip install colour-science")
     sys.exit(1)
 
 
 def generate_robertson_cct_table(output_dir):
-    """Generate Robertson CCT lookup table."""
+    """Generate Robertson 1968 isotemperature line table."""
 
     print("\nGenerating Robertson CCT lookup table...")
 
-    # CCT values for lookup table (Kelvin) - CONFIGURATION (inputs)
-    robertson_ccts = [
-        1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500,
-        6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000,
-        12000, 15000, 20000
-    ]
+    # Extract the standard 31-entry Robertson table from colour-science
+    # Each entry is (r, u, v, t) where:
+    #   r = reciprocal mega-reciprocal degrees (MRD^-1)
+    #   u, v = CIE 1960 UCS coordinates on Planckian locus
+    #   t = slope of isotemperature line in (u, v) space
+    table = DATA_ISOTEMPERATURE_LINES_ROBERTSON1968
+    assert len(table) == 31, f"Expected 31 entries, got {len(table)}"
 
-    # Compute Planckian locus points in CIE 1960 UCS with slopes
-    robertson_table = []
-    for i, cct in enumerate(robertson_ccts):
-        # Get xy for blackbody at this CCT from colour-science
-        xy = colour.CCT_to_xy(cct)
+    # Flatten to [r0, u0, v0, t0, r1, u1, v1, t1, ...]
+    flat = []
+    for entry in table:
+        flat.extend([float(entry[0]), float(entry[1]), float(entry[2]), float(entry[3])])
 
-        # Convert CIE 1931 xy to CIE 1960 UCS uv using colour-science
-        uv = colour.xy_to_UCS_uv(xy)
-        u, v = uv[0], uv[1]
-
-        # Compute slopes (du/dT and dv/dT) for interpolation
-        # Use finite differences with neighboring points
-        if i == 0:
-            # Forward difference for first point
-            xy_next = colour.CCT_to_xy(robertson_ccts[i+1])
-            uv_next = colour.xy_to_UCS_uv(xy_next)
-            u_next, v_next = uv_next[0], uv_next[1]
-            du = (u_next - u) / (robertson_ccts[i+1] - cct)
-            dv = (v_next - v) / (robertson_ccts[i+1] - cct)
-        elif i == len(robertson_ccts) - 1:
-            # Backward difference for last point
-            xy_prev = colour.CCT_to_xy(robertson_ccts[i-1])
-            uv_prev = colour.xy_to_UCS_uv(xy_prev)
-            u_prev, v_prev = uv_prev[0], uv_prev[1]
-            du = (u - u_prev) / (cct - robertson_ccts[i-1])
-            dv = (v - v_prev) / (cct - robertson_ccts[i-1])
-        else:
-            # Central difference for middle points
-            xy_prev = colour.CCT_to_xy(robertson_ccts[i-1])
-            xy_next = colour.CCT_to_xy(robertson_ccts[i+1])
-            uv_prev = colour.xy_to_UCS_uv(xy_prev)
-            uv_next = colour.xy_to_UCS_uv(xy_next)
-            u_prev, v_prev = uv_prev[0], uv_prev[1]
-            u_next, v_next = uv_next[0], uv_next[1]
-            du = (u_next - u_prev) / (robertson_ccts[i+1] - robertson_ccts[i-1])
-            dv = (v_next - v_prev) / (robertson_ccts[i+1] - robertson_ccts[i-1])
-
-        robertson_table.append([cct, u, v, du, dv])
-
-    # Write Robertson table as single-line CSV for C embedding
-    # Format: cct1,u1,v1,du1,dv1,cct2,u2,v2,du2,dv2,...
-    # Use fixed-point notation to avoid scientific notation issues in C compilation
     filepath = os.path.join(output_dir, 'fixtures', 'robertson_cct_locus.csv')
-    ensure_dir(filepath)
-
-    with open(filepath, 'w', newline='') as f:
-        all_values = []
-        for row in robertson_table:
-            # Format with enough precision, avoiding scientific notation
-            formatted_values = [f'{v:.17f}' if abs(v) < 1.0 else format_scalar(v) for v in row]
-            all_values.extend(formatted_values)
-        f.write(','.join(all_values) + '\n')
-
-    print(f"  {filepath} ({len(robertson_table)} CCT points, {len(all_values)} values)")
+    save_vector(flat, filepath,
+                f"{len(table)} Robertson 1968 isotemperature lines (r, u, v, t)")
 
 
 if __name__ == '__main__':
