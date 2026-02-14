@@ -451,6 +451,9 @@ typedef struct {
     alwan_scalar white_xy[2];       /* wx, wy in CIE xy chromaticity */
     alwan_transfer_function oetf;   /* OETF (Opto-Electronic Transfer Function), use ALWAN_TF_LINEAR for none */
     alwan_transfer_function eotf;   /* EOTF (Electro-Optical Transfer Function), use ALWAN_TF_LINEAR for none */
+    alwan_mat3x3 rgb_to_xyz;       /* precomputed RGB->XYZ NPM, valid when has_matrices != 0 */
+    alwan_mat3x3 xyz_to_rgb;       /* precomputed XYZ->RGB inverse NPM, valid when has_matrices != 0 */
+    int has_matrices;               /* non-zero if rgb_to_xyz/xyz_to_rgb are valid */
 } alwan_rgb_space_desc;
 
 /* Derive RGB<->XYZ conversion matrices from primaries and white point

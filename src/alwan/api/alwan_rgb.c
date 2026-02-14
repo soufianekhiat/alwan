@@ -54,17 +54,21 @@ int alwan_rgb_to_xyz(alwan_xyz *xyz,
         return ALWAN_E_INVALID;
     }
 
-    /* Derive conversion matrices */
-    alwan_mat3x3 rgb_to_xyz_mat, xyz_to_rgb_mat;
-    int status = alwan_rgb_derive_matrices(&rgb_to_xyz_mat, &xyz_to_rgb_mat, space);
-    if (status != ALWAN_OK) {
-        return status;
+    alwan_mat3x3 const *mat;
+    alwan_mat3x3 derived_rgb_to_xyz, derived_xyz_to_rgb;
+
+    if (space->has_matrices) {
+        mat = &space->rgb_to_xyz;
+    } else {
+        int status = alwan_rgb_derive_matrices(&derived_rgb_to_xyz, &derived_xyz_to_rgb, space);
+        if (status != ALWAN_OK) return status;
+        mat = &derived_rgb_to_xyz;
     }
 
     /* Apply RGB -> XYZ matrix */
     alwan_vec3 vec_in, vec_out;
     ALWAN_MEMCPY(&vec_in, rgb, sizeof(alwan_vec3));
-    alwan_mat3_mulv(&vec_out, &rgb_to_xyz_mat, &vec_in);
+    alwan_mat3_mulv(&vec_out, mat, &vec_in);
     ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3));
 
     return ALWAN_OK;
@@ -77,17 +81,21 @@ int alwan_xyz_to_rgb(alwan_rgb *rgb,
         return ALWAN_E_INVALID;
     }
 
-    /* Derive conversion matrices */
-    alwan_mat3x3 rgb_to_xyz_mat, xyz_to_rgb_mat;
-    int status = alwan_rgb_derive_matrices(&rgb_to_xyz_mat, &xyz_to_rgb_mat, space);
-    if (status != ALWAN_OK) {
-        return status;
+    alwan_mat3x3 const *mat;
+    alwan_mat3x3 derived_rgb_to_xyz, derived_xyz_to_rgb;
+
+    if (space->has_matrices) {
+        mat = &space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices(&derived_rgb_to_xyz, &derived_xyz_to_rgb, space);
+        if (status != ALWAN_OK) return status;
+        mat = &derived_xyz_to_rgb;
     }
 
     /* Apply XYZ -> RGB matrix */
     alwan_vec3 vec_in, vec_out;
     ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3));
-    alwan_mat3_mulv(&vec_out, &xyz_to_rgb_mat, &vec_in);
+    alwan_mat3_mulv(&vec_out, mat, &vec_in);
     ALWAN_MEMCPY(rgb, &vec_out, sizeof(alwan_vec3));
 
     return ALWAN_OK;
@@ -413,15 +421,25 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
         return ALWAN_E_INVALID;
     }
 
-    /* Derive conversion matrices for both spaces */
+    /* Get conversion matrices for both spaces */
     alwan_mat3x3 src_to_xyz, xyz_to_src;
     alwan_mat3x3 dst_to_xyz, xyz_to_dst;
 
-    int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
-    if (status != ALWAN_OK) return status;
+    if (src_space->has_matrices) {
+        src_to_xyz = src_space->rgb_to_xyz;
+        xyz_to_src = src_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        if (status != ALWAN_OK) return status;
+    }
 
-    status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
-    if (status != ALWAN_OK) return status;
+    if (dst_space->has_matrices) {
+        dst_to_xyz = dst_space->rgb_to_xyz;
+        xyz_to_dst = dst_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        if (status != ALWAN_OK) return status;
+    }
 
     /* Convert source RGB to XYZ */
     alwan_vec3 vec_in;
@@ -435,6 +453,7 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
     alwan_scalar dy = src_space->white_xy[1] - dst_space->white_xy[1];
     int need_adaptation = (ALWAN_ABS(dx) > tolerance || ALWAN_ABS(dy) > tolerance);
 
+    int status;
     if (need_adaptation && ctx) {
         /* Perform chromatic adaptation using Bradford CAT */
         alwan_xyy src_white_xyy, dst_white_xyy;
@@ -481,15 +500,25 @@ int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb,
         return ALWAN_E_INVALID;
     }
 
-    /* Derive conversion matrices once for all colors */
+    /* Get conversion matrices once for all colors */
     alwan_mat3x3 src_to_xyz, xyz_to_src;
     alwan_mat3x3 dst_to_xyz, xyz_to_dst;
 
-    int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
-    if (status != ALWAN_OK) return status;
+    if (src_space->has_matrices) {
+        src_to_xyz = src_space->rgb_to_xyz;
+        xyz_to_src = src_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        if (status != ALWAN_OK) return status;
+    }
 
-    status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
-    if (status != ALWAN_OK) return status;
+    if (dst_space->has_matrices) {
+        dst_to_xyz = dst_space->rgb_to_xyz;
+        xyz_to_dst = dst_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        if (status != ALWAN_OK) return status;
+    }
 
     /* Check if chromatic adaptation is needed */
     alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
@@ -515,8 +544,8 @@ int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb,
         alwan_xyy_to_xyz(&dst_white_xyz, &dst_white_xyy);
 
         /* Compute CAT matrix once */
-        status = alwan_cat_matrix(&cat_matrix, &src_white_xyz, &dst_white_xyz,
-                                  ALWAN_CAT_BRADFORD);
+        int status = alwan_cat_matrix(&cat_matrix, &src_white_xyz, &dst_white_xyz,
+                                      ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
     }
 
@@ -551,6 +580,7 @@ int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb,
  * Embedded RGB Space Data
  * ---------------------------------------------------------------- */
 #include "../alwan_rgb_embedded.h"
+#include "../alwan_rgb_matrices_embedded.h"
 
 /* ----------------------------------------------------------------
  * Transfer Function Lookup Table
@@ -711,6 +741,14 @@ int alwan_rgb_get_space_descriptor(alwan_rgb_space_desc *desc, alwan_ctx *ctx, a
     /* Look up transfer functions from the TF table */
     desc->oetf = g_rgb_space_tf[space].oetf;
     desc->eotf = g_rgb_space_tf[space].eotf;
+
+    /* Load precomputed matrices */
+    alwan_scalar const *mat_data = g_rgb_space_matrices[space];
+    for (int j = 0; j < 9; j++) {
+        desc->rgb_to_xyz.m[j] = mat_data[j];
+        desc->xyz_to_rgb.m[j] = mat_data[j + 9];
+    }
+    desc->has_matrices = 1;
 
     return ALWAN_OK;
 

@@ -37,7 +37,7 @@ Write-Host ""
 
 # Create output directories
 Write-Host "Creating output directories..."
-$subdirs = @("cmf", "illuminants", "illuminants_xy", "illuminants_spd", "matrices", "rgb_spaces", "fixtures", "vision")
+$subdirs = @("cmf", "illuminants", "illuminants_xy", "illuminants_spd", "matrices", "rgb_spaces", "rgb_matrices", "fixtures", "vision")
 foreach ($subdir in $subdirs) {
     $path = "$DATA_DIR/$subdir"
     if (-not (Test-Path $path)) {
@@ -64,6 +64,7 @@ $dataScripts = @(
     @{Name="Illuminants (Extended)"; Script="gendata/data/illuminants_extended.py"; Priority=1},
     @{Name="Color Matching Functions"; Script="gendata/data/cmf.py"; Priority=1},
     @{Name="RGB Color Spaces"; Script="gendata/data/rgb_spaces.py"; Priority=1},
+    @{Name="RGB Space Matrices"; Script="gendata/data/rgb_matrices.py"; Priority=1},
     @{Name="ARRI LogC3"; Script="gendata/data/arri_logc3.py"; Priority=1},
     @{Name="Reference Data"; Script="gendata/data/reference_data.py"; Priority=1},
     @{Name="Test Fixtures (Color Spaces)"; Script="gendata/data/test_fixtures.py"; Priority=1},
