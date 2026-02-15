@@ -133,23 +133,6 @@ _Static_assert(
 );
 
 /* ----------------------------------------------------------------
- * Helpers
- * ---------------------------------------------------------------- */
-
-/* Check if any primary has y~0 (degenerate chromaticity).
- * alwan_rgb_derive_matrices cannot compute valid matrices for these
- * spaces (e.g. DCDM XYZ, Max RGB) because xy->XYZ requires y != 0.
- * The embedded matrices from colour-science handle these correctly. */
-static int has_degenerate_primaries(alwan_rgb_space_desc const *desc) {
-    for (int i = 0; i < 3; i++) {
-        alwan_scalar y = desc->primaries_xy[i * 2 + 1];
-        if (ALWAN_ABS(y) < ALWAN_LITERAL(1e-6))
-            return 1;
-    }
-    return 0;
-}
-
-/* ----------------------------------------------------------------
  * Test RGB values (linear, in [0,1] range)
  * ---------------------------------------------------------------- */
 
@@ -193,12 +176,6 @@ static int test_rgb_to_xyz_embedded_vs_derived(void) {
         int status = alwan_rgb_get_space_descriptor(&embedded, ctx, (alwan_rgb_space)s);
         if (status != ALWAN_OK) {
             printf("  [SKIP] %s: get_space_descriptor failed (%d)\n", g_space_names[s], status);
-            continue;
-        }
-
-        /* Skip spaces with degenerate primaries (y~0) - derivation cannot handle these */
-        if (has_degenerate_primaries(&embedded)) {
-            printf("  [SKIP] %s: degenerate primaries (y~0)\n", g_space_names[s]);
             continue;
         }
 
@@ -264,8 +241,6 @@ static int test_xyz_to_rgb_embedded_vs_derived(void) {
         alwan_rgb_space_desc embedded;
         int status = alwan_rgb_get_space_descriptor(&embedded, ctx, (alwan_rgb_space)s);
         if (status != ALWAN_OK) continue;
-
-        if (has_degenerate_primaries(&embedded)) continue;
 
         alwan_rgb_space_desc derived;
         memcpy(derived.primaries_xy, embedded.primaries_xy, sizeof(derived.primaries_xy));

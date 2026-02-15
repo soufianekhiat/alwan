@@ -56,17 +56,19 @@ ALWAN_INLINE alwan_rgb_matrices alwan_rgb_derive_matrices_v(
 {
     alwan_rgb_matrices result;
 
-    /* Convert primaries and white point from xy to XYZ (Y=1) */
-    alwan_vec3 R_XYZ = alwan_xy_to_xyz_v(rx, ry);
-    alwan_vec3 G_XYZ = alwan_xy_to_xyz_v(gx, gy);
-    alwan_vec3 B_XYZ = alwan_xy_to_xyz_v(bx, by);
-    alwan_vec3 W_XYZ = alwan_xy_to_xyz_v(wx, wy);
-
-    /* Form matrix M from primaries (columns are R, G, B) — row-major */
+    /* Build chromaticity matrix P directly from (x, y, 1-x-y).
+     * Unlike the XYZ-with-Y=1 approach (x/y, 1, (1-x-y)/y), this
+     * avoids division by y and handles primaries with y=0
+     * (e.g. DCDM XYZ, Max RGB, Xtreme RGB). */
     alwan_mat3x3 M;
-    M.m[0] = R_XYZ.v[0]; M.m[1] = G_XYZ.v[0]; M.m[2] = B_XYZ.v[0];
-    M.m[3] = R_XYZ.v[1]; M.m[4] = G_XYZ.v[1]; M.m[5] = B_XYZ.v[1];
-    M.m[6] = R_XYZ.v[2]; M.m[7] = G_XYZ.v[2]; M.m[8] = B_XYZ.v[2];
+    M.m[0] = rx; M.m[1] = gx; M.m[2] = bx;
+    M.m[3] = ry; M.m[4] = gy; M.m[5] = by;
+    M.m[6] = ALWAN_ONE - rx - ry;
+    M.m[7] = ALWAN_ONE - gx - gy;
+    M.m[8] = ALWAN_ONE - bx - by;
+
+    /* White point XYZ (Y=1) — white point always has y > 0 */
+    alwan_vec3 W_XYZ = alwan_xy_to_xyz_v(wx, wy);
 
     /* Solve for scale factors: S = M^-1 * W */
     alwan_mat3x3 M_inv = alwan_mat3_inv_v(M);
