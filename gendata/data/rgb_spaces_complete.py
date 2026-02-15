@@ -119,8 +119,8 @@ RGB_SPACE_MAPPINGS = {
     'fujifilm_f-log': 'DCI-P3',  # Fallback (Fujifilm not in colour-science)
     'n-gamut': 'N-Gamut',
     'n-log': 'N-Gamut',  # Fallback
-    'dji_d-gamut': 'DCI-P3',  # Fallback (DJI not in colour-science)
-    'protune_native': 'sRGB',  # Fallback (GoPro not in colour-science)
+    'dji_d-gamut': 'DJI D-Gamut',
+    'protune_native': 'Protune Native',
     'rimm_rgb': 'RIMM RGB',
     'erimm_rgb': 'ERIMM RGB',
     'plasa_ansi_e154': 'sRGB',  # Fallback (PLASA not in colour-science)

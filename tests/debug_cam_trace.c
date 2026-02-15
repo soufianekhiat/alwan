@@ -52,6 +52,7 @@ int main(void) {
 
     /* Step 6: FL */
     alwan_scalar n = Y_b / XYZ_w.y;
+    (void)n;  /* Used in full CIECAM02 for N_bb/N_cb, not needed in this trace */
     alwan_scalar k = 1.0 / (5.0 * L_A + 1.0);
     alwan_scalar k4 = k*k*k*k;
     alwan_scalar FL = 0.2 * k4 * (5.0 * L_A) + 0.1 * (1.0 - k4) * (1.0 - k4) * pow(5.0 * L_A, 1.0/3.0);

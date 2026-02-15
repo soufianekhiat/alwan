@@ -14,6 +14,9 @@ namespace Alwan
 
             // Include all test files plus the test runner
             SourceFilesExtensions.Add(".c");
+
+            // Exclude standalone debug tools (have their own main())
+            SourceFilesExcludeRegex.Add(@"debug_.*\.c$");
         }
 
         [Configure()]

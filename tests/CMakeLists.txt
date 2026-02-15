@@ -61,6 +61,7 @@ add_executable(
   57_aces_lmt_tf.c
   58_core_headers.c
   59_colorinterop.c
+  60_rgb_xyz_embedded.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)
