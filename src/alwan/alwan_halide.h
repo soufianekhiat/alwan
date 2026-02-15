@@ -28,7 +28,7 @@
 
 /* Force Halide backend */
 #ifndef ALWAN_BACKEND
-#define ALWAN_BACKEND 2
+#define ALWAN_BACKEND 3
 #endif
 
 /* Platform: includes <Halide.h>, typedefs alwan_scalar = Halide::Expr,

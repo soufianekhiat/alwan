@@ -7,7 +7,7 @@
  * Single source of truth for backend detection, scalar type,
  * math macros, branchless SELECT, utility functions, and constants.
  *
- * Backends: 0 = C, 1 = HLSL, 2 = Halide
+ * Backends: 0 = C, 1 = HLSL, 2 = GLSL, 3 = Halide
  */
 
 #ifndef ALWAN_PLATFORM_H
@@ -19,11 +19,14 @@
 
 #define ALWAN_BACKEND_C      0
 #define ALWAN_BACKEND_HLSL   1
-#define ALWAN_BACKEND_HALIDE 2
+#define ALWAN_BACKEND_GLSL   2
+#define ALWAN_BACKEND_HALIDE 3
 
 #ifndef ALWAN_BACKEND
 # if defined(__HLSL_VERSION)
 #   define ALWAN_BACKEND ALWAN_BACKEND_HLSL
+# elif defined(GL_core_profile) || defined(GL_es_profile)
+#   define ALWAN_BACKEND ALWAN_BACKEND_GLSL
 # elif defined(HALIDE_HALIDERUNTIME_H)
 #   define ALWAN_BACKEND ALWAN_BACKEND_HALIDE
 # else
@@ -56,6 +59,12 @@
 # define ALWAN_SCALAR_IS_FLOAT 1
   typedef float  alwan_scalar;
 # define ALWAN_EPSILON 1e-6f
+# define ALWAN_LITERAL(x) (x)
+
+#elif ALWAN_BACKEND == ALWAN_BACKEND_GLSL
+  /* GLSL backend */
+# define ALWAN_SCALAR_IS_FLOAT 1
+# define ALWAN_EPSILON 1e-6
 # define ALWAN_LITERAL(x) (x)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
@@ -105,6 +114,11 @@
 # define ALWAN_CONSTEXPR static const
 # define ALWAN_TYPE_DEF
 # define ALWAN_UNUSED(x)
+#elif ALWAN_BACKEND == ALWAN_BACKEND_GLSL
+# define ALWAN_INLINE
+# define ALWAN_CONSTEXPR const
+# define ALWAN_TYPE_DEF
+# define ALWAN_UNUSED(x)
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
 # define ALWAN_INLINE    inline
 # define ALWAN_CONSTEXPR static const
@@ -128,8 +142,8 @@
  *   foo(ALWAN_ADDR(mat), ALWAN_ADDR(out));
  * ================================================================ */
 
-#if ALWAN_BACKEND == ALWAN_BACKEND_HLSL
-  /* HLSL: in/out qualifiers, direct member access */
+#if ALWAN_BACKEND == ALWAN_BACKEND_HLSL || ALWAN_BACKEND == ALWAN_BACKEND_GLSL
+  /* HLSL/GLSL: in/out qualifiers, direct member access */
 # define ALWAN_PARAM_MAT3_IN    alwan_mat3x3
 # define ALWAN_PARAM_MAT3_OUT   out alwan_mat3x3
 # define ALWAN_PARAM_VEC3_OUT   out alwan_vec3
@@ -213,6 +227,27 @@
 # define ALWAN_FLOOR(x)     floor(x)
 # define ALWAN_CEIL(x)      ceil(x)
 # define ALWAN_FMOD(x, y)   fmod(x, y)
+
+#elif ALWAN_BACKEND == ALWAN_BACKEND_GLSL
+  /* GLSL backend: intrinsics */
+# define ALWAN_ABS(x)       abs(x)
+# define ALWAN_SQRT(x)      sqrt(x)
+# define ALWAN_CBRT(x)      pow(x, 1.0 / 3.0)
+# define ALWAN_SIN(x)       sin(x)
+# define ALWAN_COS(x)       cos(x)
+# define ALWAN_TAN(x)       tan(x)
+# define ALWAN_TANH(x)      tanh(x)
+# define ALWAN_ATAN(x)      atan(x)
+# define ALWAN_ACOS(x)      acos(x)
+# define ALWAN_ATAN2(y, x)  atan(y, x)
+# define ALWAN_POW(x, y)    pow(x, y)
+# define ALWAN_EXP(x)       exp(x)
+# define ALWAN_LN(x)        log(x)
+# define ALWAN_LOG2(x)      log2(x)
+# define ALWAN_LOG10(x)     (log(x) / log(10.0))
+# define ALWAN_FLOOR(x)     floor(x)
+# define ALWAN_CEIL(x)      ceil(x)
+# define ALWAN_FMOD(x, y)   mod(x, y)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
   /* Halide backend: uses ALWAN_HALIDE_FLOAT_BITS for constant precision */
@@ -300,6 +335,16 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 # define alwan_saturate(x)     saturate(x)
 # define alwan_lerp(a, b, t)   lerp(a, b, t)
 
+#elif ALWAN_BACKEND == ALWAN_BACKEND_GLSL
+  /* GLSL: map to builtins */
+# define alwan_min(a, b)       min(a, b)
+# define alwan_max(a, b)       max(a, b)
+# define alwan_min3(a, b, c)   min(min(a, b), c)
+# define alwan_max3(a, b, c)   max(max(a, b), c)
+# define alwan_clamp(x, lo, hi) clamp(x, lo, hi)
+# define alwan_saturate(x)     clamp(x, 0.0, 1.0)
+# define alwan_lerp(a, b, t)   mix(a, b, t)
+
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
   /* Halide: map to Halide functions */
 # define alwan_min(a, b)       Halide::min(a, b)
@@ -344,7 +389,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC
 # endif
 #else
-  /* HLSL/Halide: no diagnostic pragmas */
+  /* HLSL/GLSL/Halide: no diagnostic pragmas */
 # define ALWAN_DIAG_PUSH
 # define ALWAN_DIAG_POP
 # define ALWAN_DIAG_DISABLE_FLOAT_CONV

@@ -6,7 +6,7 @@ This document describes future development plans for the Alwan color science lib
 
 ## Table of Contents
 
-1. [Cross-Platform API (C, HLSL, Halide)](#cross-platform-api-c-hlsl-halide)
+1. [Cross-Platform API (C, HLSL, GLSL, Halide)](#cross-platform-api-c-hlsl-glsl-halide)
 2. [Missing API Functions](#missing-api-functions)
 3. [Syntactic Sugar](#syntactic-sugar)
 4. [Infrastructure](#infrastructure)
@@ -14,7 +14,7 @@ This document describes future development plans for the Alwan color science lib
 
 ---
 
-## Cross-Platform API (C, HLSL, Halide)
+## Cross-Platform API (C, HLSL, GLSL, Halide)
 
 ### Current State
 
@@ -29,14 +29,14 @@ The codebase already has good foundations for abstraction:
 
 ### Key Challenges
 
-| Feature | C | HLSL | Halide |
-|---------|---|------|--------|
-| Scalar type | `float`/`double` | `float` | `Halide::Expr` |
-| Branching | `if/else` | Discouraged (divergence) | `select()` only |
-| Pointers | Yes | No | No (Func/Buffer) |
-| Loops | Yes | Limited unrolling | Schedules |
-| Math | `math.h` | Intrinsics | `Halide::` functions |
-| Memory | Dynamic | No | Compile-time |
+| Feature | C | HLSL | GLSL | Halide |
+|---------|---|------|------|--------|
+| Scalar type | `float`/`double` | `float` | `float` | `Halide::Expr` |
+| Branching | `if/else` | Discouraged (divergence) | Discouraged (divergence) | `select()` only |
+| Pointers | Yes | No | No | No (Func/Buffer) |
+| Loops | Yes | Limited unrolling | Limited unrolling | Schedules |
+| Math | `math.h` | Intrinsics | Builtins | `Halide::` functions |
+| Memory | Dynamic | No | No | Compile-time |
 
 ---
 
@@ -49,7 +49,7 @@ This header defines the cross-platform abstraction layer:
 ```c
 /*
  * alwan_platform.h - Cross-platform abstraction layer
- * Supports: C, HLSL, Halide
+ * Supports: C, HLSL, GLSL, Halide
  */
 
 #ifndef ALWAN_PLATFORM_H
@@ -60,6 +60,8 @@ This header defines the cross-platform abstraction layer:
  * ================================================================ */
 
 #if defined(ALWAN_BACKEND_HALIDE)
+    #define ALWAN_BACKEND 3
+#elif defined(GL_core_profile) || defined(GL_es_profile)
     #define ALWAN_BACKEND 2
 #elif defined(ALWAN_BACKEND_HLSL) || defined(__HLSL_VERSION)
     #define ALWAN_BACKEND 1
@@ -71,7 +73,7 @@ This header defines the cross-platform abstraction layer:
  * Scalar Type Abstraction
  * ================================================================ */
 
-#if ALWAN_BACKEND == 2  /* Halide */
+#if ALWAN_BACKEND == 3  /* Halide */
     #include <Halide.h>
     typedef Halide::Expr alwan_scalar;
     typedef Halide::Expr alwan_bool;
@@ -99,7 +101,7 @@ This header defines the cross-platform abstraction layer:
  * Literal Construction
  * ================================================================ */
 
-#if ALWAN_BACKEND == 2  /* Halide */
+#if ALWAN_BACKEND == 3  /* Halide */
     #define ALWAN_LITERAL(x) Halide::Expr(x)
     #define ALWAN_ZERO       Halide::Expr(0.0f)
     #define ALWAN_ONE        Halide::Expr(1.0f)
@@ -123,7 +125,7 @@ This header defines the cross-platform abstraction layer:
  * Math Functions Abstraction
  * ================================================================ */
 
-#if ALWAN_BACKEND == 2  /* Halide */
+#if ALWAN_BACKEND == 3  /* Halide */
     #define ALWAN_SQRT(x)     Halide::sqrt(x)
     #define ALWAN_CBRT(x)     Halide::pow((x), ALWAN_LITERAL(1.0/3.0))
     #define ALWAN_POW(x, y)   Halide::pow((x), (y))
@@ -173,7 +175,7 @@ This header defines the cross-platform abstraction layer:
  * Branchless Select (Critical for HLSL/Halide)
  * ================================================================ */
 
-#if ALWAN_BACKEND == 2  /* Halide */
+#if ALWAN_BACKEND == 3  /* Halide */
     #define ALWAN_SELECT(cond, true_val, false_val) \
         Halide::select((cond), (true_val), (false_val))
     #define ALWAN_IF(cond, true_val, false_val) \
@@ -196,7 +198,7 @@ This header defines the cross-platform abstraction layer:
  * Vector Type Abstraction
  * ================================================================ */
 
-#if ALWAN_BACKEND == 2  /* Halide */
+#if ALWAN_BACKEND == 3  /* Halide */
     /* Halide uses Tuple for multi-value returns */
     typedef struct {
         Halide::Expr x, y, z;
@@ -233,7 +235,7 @@ This header defines the cross-platform abstraction layer:
  * Matrix Type Abstraction
  * ================================================================ */
 
-#if ALWAN_BACKEND == 2  /* Halide */
+#if ALWAN_BACKEND == 3  /* Halide */
     typedef struct {
         Halide::Expr m[9];
     } alwan_mat3x3;
@@ -249,7 +251,7 @@ This header defines the cross-platform abstraction layer:
  * Utility Macros (Branchless)
  * ================================================================ */
 
-#if ALWAN_BACKEND == 2  /* Halide */
+#if ALWAN_BACKEND == 3  /* Halide */
     #define alwan_min(a, b)    Halide::min((a), (b))
     #define alwan_max(a, b)    Halide::max((a), (b))
     #define alwan_clamp(x, lo, hi) Halide::clamp((x), (lo), (hi))
@@ -377,7 +379,7 @@ HLSL has native matrix support. Provide backend-specific alternatives:
     #define alwan_mat3_mulv(out, m, v) (out) = mul((m), (v))
     #define alwan_mat3_mul(out, a, b)  (out) = mul((a), (b))
 
-#elif ALWAN_BACKEND == 2  /* Halide - unrolled */
+#elif ALWAN_BACKEND == 3  /* Halide - unrolled */
     ALWAN_INLINE alwan_vec3 alwan_mat3_mulv_v(alwan_mat3x3 m, alwan_vec3 v) {
         alwan_vec3 result;
         result.x = m.m[0]*v.x + m.m[1]*v.y + m.m[2]*v.z;
@@ -401,6 +403,9 @@ src/alwan/
 ├── alwan_config.h         # Existing (minimal changes)
 ├── alwan_types.h          # NEW: Platform-aware type definitions
 ├── alwan_core.h           # NEW: Branchless pure math functions (header-only)
+├── alwan_hlsl.h           # HLSL backend bootstrap
+├── alwan_glsl.h           # GLSL backend bootstrap
+├── alwan_halide.h         # Halide backend bootstrap
 ├── alwan.h                # Existing public API (C-only features)
 ├── alwan_internal.h       # Existing
 └── *.c                    # C implementations (ALWAN_BACKEND == 0 only)
@@ -688,7 +693,7 @@ Runtime data loading mode (`ALWAN_EMBED_DATA=0`) is not supported. Currently onl
 - [ ] Add `alwan_gamut_map_perceptual()` convenience wrapper
 - [ ] Add `alwan_gamut_map_hue_preserving()` convenience wrapper
 
-### Cross-Platform (HLSL/Halide)
+### Cross-Platform (HLSL/GLSL/Halide)
 
 - [x] Create `alwan_platform.h` with backend detection and math macros
 - [x] Create `alwan_types.h` with platform-aware `alwan_vec2`, `alwan_vec3`, `alwan_mat3x3`
@@ -700,7 +705,9 @@ Runtime data loading mode (`ALWAN_EMBED_DATA=0`) is not supported. Currently onl
   - CAMs: `cam` (CIECAM02/CAM16), `hunt`, `hellwig2022`, `zcam`, `kim2009`, `llab`, `rlab`, `atd95`
   - Processing: `rgb` (25+ transfer functions), `cat`, `color_correction`, `vision`, `math`, `quality`, `rayleigh`, `gamut`, `view`, `aces_ff`
 - [x] Unroll/remove loops in matrix ops — `alwan_math_core.h`: identity, det, mulv, mul, inv all unrolled
+- [x] Add GLSL backend (`alwan_glsl.h` + platform layer support)
 - [ ] Test with HLSL shader
+- [ ] Test with GLSL shader
 - [ ] Test with Halide generator
 
 ### Infrastructure

@@ -52,10 +52,10 @@ ALWAN_TYPE_DEF struct {
  * C strict aliasing rules. Use ALWAN_MEMCPY for guaranteed safety. The library
  * internally uses ALWAN_MEMCPY which can be overridden in alwan_config.h.
  *
- * HLSL NOTE:
- * In HLSL, ALWAN_TYPE_DEF expands to nothing so these become plain structs
- * (the tag is the type name). This gives proper named member access (.J, .a, .b)
- * instead of float3 swizzle (.x, .y, .z).
+ * HLSL/GLSL NOTE:
+ * In HLSL and GLSL, ALWAN_TYPE_DEF expands to nothing so these become plain
+ * structs (the tag is the type name). This gives proper named member access
+ * (.J, .a, .b) instead of float3 swizzle (.x, .y, .z).
  */
 
 /* RGB color (red, green, blue) - typically linear or encoded depending on context */
