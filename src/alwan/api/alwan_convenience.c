@@ -171,3 +171,26 @@ int alwan_ycocg_to_rgb(alwan_rgb *rgb_out, alwan_ycocg const *ycocg) {
     *rgb_out = alwan_ycocg_to_rgb_v(*ycocg);
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * RGB <-> HWB — delegated to alwan_convenience_core.h
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_hwb(alwan_scalar *hwb_out, alwan_rgb const *rgb) {
+    if (!rgb || !hwb_out) return ALWAN_E_INVALID;
+    alwan_hwb result = alwan_rgb_to_hwb_v(*rgb);
+    hwb_out[0] = result.h;
+    hwb_out[1] = result.w;
+    hwb_out[2] = result.b;
+    return ALWAN_OK;
+}
+
+int alwan_hwb_to_rgb(alwan_rgb *rgb_out, alwan_scalar const *hwb_in) {
+    if (!rgb_out || !hwb_in) return ALWAN_E_INVALID;
+    alwan_hwb hwb;
+    hwb.h = hwb_in[0];
+    hwb.w = hwb_in[1];
+    hwb.b = hwb_in[2];
+    *rgb_out = alwan_hwb_to_rgb_v(hwb);
+    return ALWAN_OK;
+}

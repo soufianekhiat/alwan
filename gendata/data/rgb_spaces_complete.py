@@ -116,7 +116,7 @@ RGB_SPACE_MAPPINGS = {
     's-log3': 'S-Gamut3',  # Fallback
     'filmlight_t-log': 'FilmLight E-Gamut',  # Fallback
     'f-gamut': 'F-Gamut',
-    'fujifilm_f-log': 'DCI-P3',  # Fallback (Fujifilm not in colour-science)
+    'fujifilm_f-log': 'F-Gamut',  # Fallback (Fujifilm not in colour-science)
     'n-gamut': 'N-Gamut',
     'n-log': 'N-Gamut',  # Fallback
     'dji_d-gamut': 'DJI D-Gamut',
@@ -134,8 +134,16 @@ RGB_SPACE_MAPPINGS = {
     'v-log': 'V-Gamut',  # Fallback
     'canon_log': 'Cinema Gamut',  # Fallback
     'alexa_wide_gamut': 'ARRI Wide Gamut 3',  # Fallback
-    'p3-d60': 'DCI-P3',  # Fallback
-    'linear_p3_d60': 'DCI-P3',  # Fallback
+    'p3-d60': 'P3-D60',  # Fallback
+    'linear_p3_d60': 'P3-D60',  # Fallback
+}
+
+# Manual primaries overrides for spaces not in colour-science
+# Format: 'space_name': (rx, ry, gx, gy, bx, by, wx, wy)
+MANUAL_PRIMARIES = {
+    'DJI D-Gamut': (0.71, 0.31, 0.21, 0.88, 0.09, -0.08, 0.3127, 0.3290),  # D65
+    # TODO: GoPro Protune Native - no public spec available, using sRGB fallback
+    # TODO: PLASA ANSI E1.54 - need to source standard document
 }
 
 def generate_all_missing_rgb_spaces(output_dir):
@@ -160,21 +168,27 @@ def generate_all_missing_rgb_spaces(output_dir):
             continue
 
         try:
-            # Get the color space from colour-science
-            cs = colour.RGB_COLOURSPACES[cs_name]
-            primaries = cs.primaries
-            whitepoint = cs.whitepoint
+            # Check if we have manual primaries override
+            if cs_name in MANUAL_PRIMARIES:
+                data = list(MANUAL_PRIMARIES[cs_name])
+                save_vector(data, filepath, f"{filename_base} (manual primaries)")
+                generated += 1
+            else:
+                # Get the color space from colour-science
+                cs = colour.RGB_COLOURSPACES[cs_name]
+                primaries = cs.primaries
+                whitepoint = cs.whitepoint
 
-            # Flatten to 8 values: Rx, Ry, Gx, Gy, Bx, By, Wx, Wy
-            data = [
-                primaries[0][0], primaries[0][1],  # Red xy
-                primaries[1][0], primaries[1][1],  # Green xy
-                primaries[2][0], primaries[2][1],  # Blue xy
-                whitepoint[0], whitepoint[1]       # White xy
-            ]
+                # Flatten to 8 values: Rx, Ry, Gx, Gy, Bx, By, Wx, Wy
+                data = [
+                    primaries[0][0], primaries[0][1],  # Red xy
+                    primaries[1][0], primaries[1][1],  # Green xy
+                    primaries[2][0], primaries[2][1],  # Blue xy
+                    whitepoint[0], whitepoint[1]       # White xy
+                ]
 
-            save_vector(data, filepath, f"{filename_base} (from {cs_name})")
-            generated += 1
+                save_vector(data, filepath, f"{filename_base} (from {cs_name})")
+                generated += 1
 
         except KeyError:
             failed.append((filename_base, cs_name))

@@ -1876,3 +1876,31 @@ alwan_scalar alwan_cie224_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
      */
     return alwan_tm30_rf(ctx, test_spd);
 }
+
+/* ----------------------------------------------------------------
+ * Weber & Michelson Contrast
+ * ---------------------------------------------------------------- */
+
+int alwan_weber_contrast(alwan_scalar *result, alwan_scalar L_target, alwan_scalar L_bg) {
+    if (!result) return ALWAN_E_INVALID;
+    *result = alwan_weber_contrast_v(L_target, L_bg);
+    return ALWAN_OK;
+}
+
+int alwan_michelson_contrast(alwan_scalar *result, alwan_scalar L_max, alwan_scalar L_min) {
+    if (!result) return ALWAN_E_INVALID;
+    *result = alwan_michelson_contrast_v(L_max, L_min);
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * D-Series Illuminant from CCT
+ * ---------------------------------------------------------------- */
+
+int alwan_d_series_illuminant_xy(alwan_vec2 *xy_out, alwan_scalar cct) {
+    if (!xy_out) return ALWAN_E_INVALID;
+    if (cct < ALWAN_LITERAL(4000.0) || cct > ALWAN_LITERAL(25000.0))
+        return ALWAN_E_RANGE;
+    *xy_out = alwan_d_series_xy_v(cct);
+    return ALWAN_OK;
+}

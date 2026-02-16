@@ -62,6 +62,14 @@ add_executable(
   58_core_headers.c
   59_colorinterop.c
   60_rgb_xyz_embedded.c
+  61_sigmoid_agx_bt2446.c
+  62_hdr_utilities.c
+  63_cam18sl.c
+  64_cam20u.c
+  65_hero_wavelength.c
+  66_belcour2023.c
+  67_hwb_gamma_dseries.c
+  68_ohno_contrast_dicom.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

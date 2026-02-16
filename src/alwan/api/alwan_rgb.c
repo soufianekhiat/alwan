@@ -756,3 +756,31 @@ int alwan_rgb_get_space_descriptor(alwan_rgb_space_desc *desc, alwan_ctx *ctx, a
     #error "Only ALWAN_EMBED_DATA mode is supported. Runtime CSV loading has been removed."
 #endif /* ALWAN_EMBED_DATA */
 }
+
+/* ----------------------------------------------------------------
+ * Arbitrary Gamma OETF/EOTF
+ * ---------------------------------------------------------------- */
+
+int alwan_gamma_oetf(alwan_scalar *out, alwan_scalar const *in,
+                      alwan_scalar gamma, size_t count,
+                      size_t in_stride, size_t out_stride) {
+    if (!out || !in) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)out + i * out_stride);
+        *out_ptr = alwan_gamma_oetf_v(*in_ptr, gamma);
+    }
+    return ALWAN_OK;
+}
+
+int alwan_gamma_eotf(alwan_scalar *out, alwan_scalar const *in,
+                      alwan_scalar gamma, size_t count,
+                      size_t in_stride, size_t out_stride) {
+    if (!out || !in) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)out + i * out_stride);
+        *out_ptr = alwan_gamma_eotf_v(*in_ptr, gamma);
+    }
+    return ALWAN_OK;
+}

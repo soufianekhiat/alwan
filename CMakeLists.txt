@@ -87,6 +87,8 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_rlab.c
   src/alwan/api/alwan_spd.c
   src/alwan/api/alwan_spectrum_upsample.c
+  src/alwan/api/alwan_hdr.c
+  src/alwan/api/alwan_spectral_hero.c
   src/alwan/api/alwan_view.c
   src/alwan/api/alwan_vision.c
   src/alwan/api/alwan_zcam.c

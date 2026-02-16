@@ -13,6 +13,8 @@
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_cam_core.h"
+#include "../core/alwan_cam18sl_core.h"
+#include "../core/alwan_cam20u_core.h"
 
 /* ----------------------------------------------------------------
  * Helper Functions (enum resolution - not cross-platform)
@@ -247,6 +249,96 @@ int alwan_cam16_from_ucs(alwan_cam16_correlates *correlates_out,
     correlates_out->Q = result.Q;
     correlates_out->M = result.M;
     correlates_out->H = result.H;
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * CAM18sl Forward Transform
+ * ---------------------------------------------------------------- */
+
+int alwan_cam18sl_forward(alwan_cam18sl_correlates *out,
+                           alwan_xyz const *xyz,
+                           alwan_scalar Y_b) {
+    if (!out || !xyz) return ALWAN_E_INVALID;
+
+    alwan_cam18sl_v_correlates result = alwan_cam18sl_forward_v(*xyz, Y_b);
+
+    out->Q = result.Q;
+    out->C = result.C;
+    out->h = result.h;
+    out->M = result.M;
+    out->a = result.a;
+    out->b = result.b;
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * CAM18sl Inverse Transform
+ * ---------------------------------------------------------------- */
+
+int alwan_cam18sl_inverse(alwan_xyz *xyz_out,
+                           alwan_cam18sl_correlates const *correlates,
+                           alwan_scalar Y_b) {
+    if (!xyz_out || !correlates) return ALWAN_E_INVALID;
+
+    alwan_cam18sl_v_correlates vc;
+    vc.Q = correlates->Q;
+    vc.C = correlates->C;
+    vc.h = correlates->h;
+    vc.M = correlates->M;
+    vc.a = correlates->a;
+    vc.b = correlates->b;
+
+    *xyz_out = alwan_cam18sl_inverse_v(vc, Y_b);
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * CAM20u Forward Transform
+ * ---------------------------------------------------------------- */
+
+int alwan_cam20u_forward(alwan_cam20u_correlates *out,
+                          alwan_xyz const *xyz,
+                          alwan_scalar Y_b,
+                          alwan_scalar L_a) {
+    if (!out || !xyz) return ALWAN_E_INVALID;
+
+    alwan_cam20u_v_correlates result = alwan_cam20u_forward_v(*xyz, Y_b, L_a);
+
+    out->Q = result.Q;
+    out->M = result.M;
+    out->h = result.h;
+    out->C = result.C;
+    out->s = result.s;
+    out->a = result.a;
+    out->b = result.b;
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * CAM20u Inverse Transform
+ * ---------------------------------------------------------------- */
+
+int alwan_cam20u_inverse(alwan_xyz *xyz_out,
+                          alwan_cam20u_correlates const *correlates,
+                          alwan_scalar Y_b,
+                          alwan_scalar L_a) {
+    if (!xyz_out || !correlates) return ALWAN_E_INVALID;
+
+    alwan_cam20u_v_correlates vc;
+    vc.Q = correlates->Q;
+    vc.M = correlates->M;
+    vc.h = correlates->h;
+    vc.C = correlates->C;
+    vc.s = correlates->s;
+    vc.a = correlates->a;
+    vc.b = correlates->b;
+
+    *xyz_out = alwan_cam20u_inverse_v(vc, Y_b, L_a);
 
     return ALWAN_OK;
 }

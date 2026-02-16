@@ -430,4 +430,55 @@ ALWAN_INLINE alwan_cmy alwan_cmyk_to_cmy_v(alwan_cmyk cmyk) {
     return result;
 }
 
+/* ----------------------------------------------------------------
+ * RGB <-> HWB (Hue, Whiteness, Blackness)
+ * CSS Color Level 4 color model
+ * H in [0, 1] (0 = 0 degrees, 1 = 360 degrees)
+ * W = whiteness [0, 1], B = blackness [0, 1]
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    alwan_scalar h, w, b;
+} alwan_hwb;
+
+/* HSV -> HWB: W = (1-S)*V, B = 1-V, H = H */
+ALWAN_INLINE alwan_hwb alwan_hsv_to_hwb_v(alwan_hsv hsv) {
+    alwan_hwb result;
+    result.h = hsv.h;
+    result.w = (ALWAN_ONE - hsv.s) * hsv.v;
+    result.b = ALWAN_ONE - hsv.v;
+    return result;
+}
+
+/* HWB -> HSV: V = 1-B, S = 1-W/(1-B), H = H */
+ALWAN_INLINE alwan_hsv alwan_hwb_to_hsv_v(alwan_hwb hwb) {
+    alwan_hsv result;
+    result.h = hwb.h;
+    result.v = ALWAN_ONE - hwb.b;
+
+    /* When W+B >= 1, the color is a shade of gray: S=0, V=W/(W+B) */
+    alwan_scalar wb_sum = hwb.w + hwb.b;
+    alwan_scalar safe_v = ALWAN_SELECT(result.v < ALWAN_LITERAL(1e-10),
+                                        ALWAN_LITERAL(1e-10), result.v);
+    result.s = ALWAN_SELECT(wb_sum >= ALWAN_ONE,
+                            ALWAN_ZERO,
+                            ALWAN_ONE - hwb.w / safe_v);
+    result.v = ALWAN_SELECT(wb_sum >= ALWAN_ONE,
+                            hwb.w / wb_sum,
+                            result.v);
+    return result;
+}
+
+/* RGB -> HWB (via HSV intermediate) */
+ALWAN_INLINE alwan_hwb alwan_rgb_to_hwb_v(alwan_rgb rgb) {
+    alwan_hsv hsv = alwan_rgb_to_hsv_v(rgb);
+    return alwan_hsv_to_hwb_v(hsv);
+}
+
+/* HWB -> RGB (via HSV intermediate) */
+ALWAN_INLINE alwan_rgb alwan_hwb_to_rgb_v(alwan_hwb hwb) {
+    alwan_hsv hsv = alwan_hwb_to_hsv_v(hwb);
+    return alwan_hsv_to_rgb_v(hsv);
+}
+
 #endif /* ALWAN_CONVENIENCE_CORE_H */

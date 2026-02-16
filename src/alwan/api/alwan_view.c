@@ -12,6 +12,7 @@
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_view_core.h"
+#include "../core/alwan_hdr_core.h"
 #include <string.h>
 
 /* ----------------------------------------------------------------
@@ -63,22 +64,42 @@ static void aces_rec709_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_
 }
 
 /* ----------------------------------------------------------------
- * AgX View Transform
+ * AgX View Transform (Full Pipeline with Inset/Outset Matrices)
  * ---------------------------------------------------------------- */
 
+/* AgX inset matrix: BT.709 -> AgX log-encoding space */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_scalar const agx_inset_matrix[9] = {
+#include "../data/matrices/agx_inset.csv"
+};
+static alwan_scalar const agx_outset_matrix[9] = {
+#include "../data/matrices/agx_outset.csv"
+};
+ALWAN_DIAG_POP
+
 /* AgX Base Transform
- * A modern film emulation curve with good highlight rolloff
+ * Full pipeline: inset matrix -> log encode -> sigmoid curve -> outset matrix
  * Input: Linear RGB (typically BT.709/sRGB primaries)
  * Output: Display-ready RGB [0,1] */
 static void agx_base_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    /* Apply inset matrix */
+    alwan_scalar inset_r = agx_inset_matrix[0] * rgb_in[0] + agx_inset_matrix[1] * rgb_in[1] + agx_inset_matrix[2] * rgb_in[2];
+    alwan_scalar inset_g = agx_inset_matrix[3] * rgb_in[0] + agx_inset_matrix[4] * rgb_in[1] + agx_inset_matrix[5] * rgb_in[2];
+    alwan_scalar inset_b = agx_inset_matrix[6] * rgb_in[0] + agx_inset_matrix[7] * rgb_in[1] + agx_inset_matrix[8] * rgb_in[2];
+
     /* AgX log-encode + curve — delegates to core */
     alwan_scalar const agx_min = ALWAN_LITERAL(-12.47393);
     alwan_scalar const agx_max = ALWAN_LITERAL(  4.026069);
 
-    for (int i = 0; i < 3; i++) {
-        alwan_scalar t = alwan_agx_log_encode_v(rgb_in[i], agx_min, agx_max);
-        rgb_out[i] = alwan_agx_curve_v(t);
-    }
+    alwan_scalar curve_r = alwan_agx_curve_v(alwan_agx_log_encode_v(inset_r, agx_min, agx_max));
+    alwan_scalar curve_g = alwan_agx_curve_v(alwan_agx_log_encode_v(inset_g, agx_min, agx_max));
+    alwan_scalar curve_b = alwan_agx_curve_v(alwan_agx_log_encode_v(inset_b, agx_min, agx_max));
+
+    /* Apply outset matrix */
+    rgb_out[0] = alwan_saturate(agx_outset_matrix[0] * curve_r + agx_outset_matrix[1] * curve_g + agx_outset_matrix[2] * curve_b);
+    rgb_out[1] = alwan_saturate(agx_outset_matrix[3] * curve_r + agx_outset_matrix[4] * curve_g + agx_outset_matrix[5] * curve_b);
+    rgb_out[2] = alwan_saturate(agx_outset_matrix[6] * curve_r + agx_outset_matrix[7] * curve_g + agx_outset_matrix[8] * curve_b);
 }
 
 /* AgX Punchy Variant
@@ -92,6 +113,42 @@ static void agx_punchy_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_o
     base.v[0] = rgb_out[0]; base.v[1] = rgb_out[1]; base.v[2] = rgb_out[2];
     alwan_vec3 graded = alwan_agx_punchy_grade_v(base);
     rgb_out[0] = graded.v[0]; rgb_out[1] = graded.v[1]; rgb_out[2] = graded.v[2];
+}
+
+/* AgX Golden Variant
+ * Warm highlights, cool shadows — cinematic look */
+static void agx_golden_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    /* First apply base AgX */
+    agx_base_transform(rgb_in, rgb_out);
+
+    /* Apply golden grade — delegates to core */
+    alwan_vec3 base;
+    base.v[0] = rgb_out[0]; base.v[1] = rgb_out[1]; base.v[2] = rgb_out[2];
+    alwan_vec3 graded = alwan_agx_golden_grade_v(base);
+    rgb_out[0] = graded.v[0]; rgb_out[1] = graded.v[1]; rgb_out[2] = graded.v[2];
+}
+
+/* ----------------------------------------------------------------
+ * BT.2446 Method A HDR<->SDR
+ * ---------------------------------------------------------------- */
+
+static void bt2446a_hdr_to_sdr_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    /* Operates on luminance channel after Yxy decomposition */
+    alwan_scalar L_hdr = ALWAN_LITERAL(1000.0);
+    alwan_scalar L_sdr = ALWAN_LITERAL(100.0);
+
+    for (int i = 0; i < 3; i++) {
+        rgb_out[i] = alwan_bt2446a_forward_v(rgb_in[i], L_hdr, L_sdr);
+    }
+}
+
+static void bt2446a_sdr_to_hdr_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    alwan_scalar L_hdr = ALWAN_LITERAL(1000.0);
+    alwan_scalar L_sdr = ALWAN_LITERAL(100.0);
+
+    for (int i = 0; i < 3; i++) {
+        rgb_out[i] = alwan_bt2446a_inverse_v(rgb_in[i], L_hdr, L_sdr);
+    }
 }
 
 /* ----------------------------------------------------------------
@@ -121,6 +178,15 @@ int alwan_view_transform_apply(alwan_scalar *rgb_out,
             break;
         case ALWAN_VIEW_AGX_PUNCHY:
             transform_fn = agx_punchy_transform;
+            break;
+        case ALWAN_VIEW_AGX_GOLDEN:
+            transform_fn = agx_golden_transform;
+            break;
+        case ALWAN_VIEW_BT2446A_HDR_TO_SDR:
+            transform_fn = bt2446a_hdr_to_sdr_transform;
+            break;
+        case ALWAN_VIEW_BT2446A_SDR_TO_HDR:
+            transform_fn = bt2446a_sdr_to_hdr_transform;
             break;
         default:
             return ALWAN_E_INVALID;

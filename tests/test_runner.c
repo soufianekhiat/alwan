@@ -71,6 +71,14 @@ extern int test_57_aces_lmt_tf_main(void);
 extern int test_58_core_headers_main(void);
 extern int test_59_colorinterop_main(void);
 extern int test_60_rgb_xyz_embedded_main(void);
+extern int test_61_sigmoid_agx_bt2446_main(void);
+extern int test_62_hdr_utilities_main(void);
+extern int test_63_cam18sl_main(void);
+extern int test_64_cam20u_main(void);
+extern int test_65_hero_wavelength_main(void);
+extern int test_66_belcour2023_main(void);
+extern int test_67_hwb_gamma_dseries_main(void);
+extern int test_68_ohno_contrast_dicom_main(void);
 
 /* Test registry */
 typedef struct {
@@ -140,6 +148,14 @@ static test_suite const g_test_suites[] = {
     {"58_core_headers", test_58_core_headers_main},
     {"59_colorinterop", test_59_colorinterop_main},
     {"60_rgb_xyz_embedded", test_60_rgb_xyz_embedded_main},
+    {"61_sigmoid_agx_bt2446", test_61_sigmoid_agx_bt2446_main},
+    {"62_hdr_utilities", test_62_hdr_utilities_main},
+    {"63_cam18sl", test_63_cam18sl_main},
+    {"64_cam20u", test_64_cam20u_main},
+    {"65_hero_wavelength", test_65_hero_wavelength_main},
+    {"66_belcour2023", test_66_belcour2023_main},
+    {"67_hwb_gamma_dseries", test_67_hwb_gamma_dseries_main},
+    {"68_ohno_contrast_dicom", test_68_ohno_contrast_dicom_main},
 };
 
 int main(void) {

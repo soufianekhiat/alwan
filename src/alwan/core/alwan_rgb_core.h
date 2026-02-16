@@ -862,4 +862,100 @@ ALWAN_INLINE alwan_scalar alwan_adx16_eotf(alwan_scalar encoded) {
     return encoded * ALWAN_LITERAL(65535.0) / ALWAN_LITERAL(25600.0) - ALWAN_LITERAL(0.5);
 }
 
+/* ================================================================
+ * Arbitrary Gamma Transfer Function
+ *
+ * Simple power-law gamma encoding/decoding with arbitrary exponent.
+ * OETF: linear -> encoded = pow(max(0, linear), 1/gamma)
+ * EOTF: encoded -> linear = pow(max(0, encoded), gamma)
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_gamma_oetf_v(alwan_scalar linear, alwan_scalar gamma) {
+    alwan_scalar safe = ALWAN_SELECT(linear < ALWAN_ZERO, ALWAN_ZERO, linear);
+    return ALWAN_POW(safe, ALWAN_ONE / gamma);
+}
+
+ALWAN_INLINE alwan_scalar alwan_gamma_eotf_v(alwan_scalar encoded, alwan_scalar gamma) {
+    alwan_scalar safe = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded);
+    return ALWAN_POW(safe, gamma);
+}
+
+/* ================================================================
+ * DICOM GSDF (Grayscale Standard Display Function)
+ *
+ * DICOM Part 14: maps between luminance (cd/m2) and JND index.
+ * Used for medical imaging display calibration.
+ *
+ * OETF: luminance -> JND index
+ * EOTF: JND index -> luminance
+ *
+ * Polynomial coefficients from DICOM PS3.14 Table B-1:
+ * log10(L) = a + b*log10(j) + c*(log10(j))^2 + d*(log10(j))^3 + ...
+ * where j = JND index, L = luminance
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_dicom_gsdf_eotf_v(alwan_scalar jnd) {
+    /* JND index to luminance (cd/m2)
+     * DICOM PS3.14 Barten model: rational polynomial in ln(jnd)
+     * log10(L) = (a + c*ln(j) + e*ln(j)^2 + g*ln(j)^3 + m*ln(j)^4)
+     *          / (1 + b*ln(j) + d*ln(j)^2 + f*ln(j)^3 + h*ln(j)^4 + k*ln(j)^5)
+     */
+    alwan_scalar const a = ALWAN_LITERAL(-1.3011877);
+    alwan_scalar const b = ALWAN_LITERAL(-2.5840191e-2);
+    alwan_scalar const c = ALWAN_LITERAL( 8.0242636e-2);
+    alwan_scalar const d = ALWAN_LITERAL(-1.0320229e-1);
+    alwan_scalar const e = ALWAN_LITERAL( 1.3646699e-1);
+    alwan_scalar const f = ALWAN_LITERAL( 2.8745620e-2);
+    alwan_scalar const g = ALWAN_LITERAL(-2.5468404e-2);
+    alwan_scalar const h = ALWAN_LITERAL(-3.1978977e-3);
+    alwan_scalar const k = ALWAN_LITERAL( 1.2992634e-4);
+    alwan_scalar const m = ALWAN_LITERAL( 1.3635334e-3);
+
+    alwan_scalar safe_jnd = ALWAN_SELECT(jnd < ALWAN_LITERAL(1.0),
+                                          ALWAN_LITERAL(1.0), jnd);
+    alwan_scalar lj = ALWAN_LN(safe_jnd);
+    alwan_scalar lj2 = lj * lj;
+    alwan_scalar lj3 = lj2 * lj;
+    alwan_scalar lj4 = lj2 * lj2;
+    alwan_scalar lj5 = lj4 * lj;
+
+    alwan_scalar numer = a + c * lj + e * lj2 + g * lj3 + m * lj4;
+    alwan_scalar denom = ALWAN_ONE + b * lj + d * lj2 + f * lj3
+                        + h * lj4 + k * lj5;
+    alwan_scalar safe_denom = ALWAN_SELECT(ALWAN_ABS(denom) < ALWAN_LITERAL(1e-10),
+                                            ALWAN_LITERAL(1e-10), denom);
+
+    alwan_scalar log_L = numer / safe_denom;
+
+    return ALWAN_POW(ALWAN_LITERAL(10.0), log_L);
+}
+
+ALWAN_INLINE alwan_scalar alwan_dicom_gsdf_oetf_v(alwan_scalar luminance) {
+    /* Luminance (cd/m2) to JND index */
+    /* Coefficients from DICOM PS3.14 inverse */
+    alwan_scalar const a = ALWAN_LITERAL( 71.498068);
+    alwan_scalar const b = ALWAN_LITERAL( 94.593053);
+    alwan_scalar const c = ALWAN_LITERAL( 41.912053);
+    alwan_scalar const d = ALWAN_LITERAL(  9.8247004);
+    alwan_scalar const e = ALWAN_LITERAL(  0.28175407);
+    alwan_scalar const f = ALWAN_LITERAL( -1.1878455);
+    alwan_scalar const g = ALWAN_LITERAL( -0.18014349);
+    alwan_scalar const h = ALWAN_LITERAL(  0.14710899);
+    alwan_scalar const k = ALWAN_LITERAL( -0.017046845);
+
+    alwan_scalar safe_L = ALWAN_SELECT(luminance < ALWAN_LITERAL(0.05),
+                                        ALWAN_LITERAL(0.05), luminance);
+    alwan_scalar ll = ALWAN_LOG10(safe_L);
+    alwan_scalar ll2 = ll * ll;
+    alwan_scalar ll3 = ll2 * ll;
+    alwan_scalar ll4 = ll2 * ll2;
+
+    alwan_scalar jnd = a + b * ll + c * ll2 + d * ll3
+                      + e * ll4 + f * ll2 * ll3
+                      + g * ll3 * ll3 + h * ll3 * ll4
+                      + k * ll4 * ll4;
+
+    return ALWAN_SELECT(jnd < ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), jnd);
+}
+
 #endif /* ALWAN_RGB_CORE_H */
