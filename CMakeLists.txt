@@ -30,7 +30,6 @@ option(
 option(ALWAN_DISABLE_STRICT_ALIASING "Compile with -fno-strict-aliasing on GCC/Clang" ON)
 option(ALWAN_INSTALL "Enable install rules" ON)
 option(ALWAN_INSTALL_PKGCONFIG "Install pkg-config .pc file" ON)
-option(ALWAN_BUILD_RGB2SPEC "Build tools/rgb2spec submodule (third-party)" OFF)
 
 set(ALWAN_DEBUG_POSTFIX "d" CACHE STRING "Debug postfix for output names (e.g. 'd' -> alwand)")
 set(ALWAN_DEBUG_PREFIX "" CACHE STRING "Debug prefix for output names (e.g. 'dbg_' -> dbg_alwan)")
@@ -170,10 +169,6 @@ if(BUILD_TESTING)
     DEPENDS alwan_tests
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
-endif()
-
-if(ALWAN_BUILD_RGB2SPEC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/rgb2spec/CMakeLists.txt")
-  add_subdirectory(tools/rgb2spec)
 endif()
 
 if(ALWAN_INSTALL)
