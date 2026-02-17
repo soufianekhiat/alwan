@@ -84,7 +84,8 @@ $dataScripts = @(
     @{Name="Comprehensive Missing Data (CAT/Illuminants/Test Samples)"; Script="../alwan_gendata/data/comprehensive_missing.py"; Priority=1},
     @{Name="Missing Stubs (F-series/CES/D-series/ARRI)"; Script="../alwan_gendata/data/missing_stubs.py"; Priority=1},
     @{Name="Camera Sensitivities"; Script="../alwan_gendata/data/camera_sensitivities.py"; Priority=1},
-    @{Name="RGB Spaces (Complete)"; Script="../alwan_gendata/data/rgb_spaces_complete.py"; Priority=2}
+    @{Name="RGB Spaces (Complete)"; Script="../alwan_gendata/data/rgb_spaces_complete.py"; Priority=2},
+    @{Name="AgX Matrices"; Script="../alwan_gendata/data/agx_matrices.py"; Priority=1}
 )
 
 # Run each data generation script
