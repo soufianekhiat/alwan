@@ -40,11 +40,7 @@ static int test_ycocg_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(ycocg_from_rgb) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     /* Test RGB inputs (from generate_data_tests.ps1) */
     alwan_scalar const test_rgb[][3] = {
@@ -99,11 +95,7 @@ static int test_ucs_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(ucs_from_xyz) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
@@ -151,12 +143,7 @@ static int test_hdr_cielab_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(test_xyz_hdr) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    /* Relax tolerance slightly for Michaelis-Menten kinetics floating point accumulation */
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_hdr[i * 3 + 0], test_xyz_hdr[i * 3 + 1], test_xyz_hdr[i * 3 + 2]}};
@@ -210,12 +197,7 @@ static int test_hdr_ipt_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(test_xyz_hdr) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    /* Relax tolerance slightly for Michaelis-Menten kinetics floating point accumulation */
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_hdr[i * 3 + 0], test_xyz_hdr[i * 3 + 1], test_xyz_hdr[i * 3 + 2]}};
@@ -263,11 +245,7 @@ static int test_igpgtg_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(igpgtg_from_xyz) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
@@ -315,11 +293,7 @@ static int test_icacb_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(icacb_from_xyz) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
@@ -371,11 +345,7 @@ static int test_prismatic_roundtrip(void) {
     };
 
     int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
@@ -427,11 +397,7 @@ static int test_hcl_roundtrip(void) {
     };
 
     int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
@@ -489,11 +455,7 @@ static int test_ihls_roundtrip(void) {
     };
 
     int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};

@@ -11,45 +11,17 @@
 
 ---
 
-## TOLERANCE VIOLATIONS
+## TOLERANCE VIOLATIONS - ✅ ALL FIXED
 
-These tolerances are unacceptably loose. colour-science and OpenColorIO handle the same complexity - no justification is acceptable.
-
-| File | Line | Tolerance | Required Action |
-|------|------|-----------|-----------------|
-| `tests/13_ciecam02.c` | 25-27 | `CORRELATE_TOL = 2.0` | **FIX IMPLEMENTATION** - Reduce to 1e-4 or tighter |
-| `tests/13_ciecam02.c` | 103-105 | `CORRELATE_TOL * 10.0` for Q, M, s | **FIX IMPLEMENTATION** - These multipliers mask implementation bugs |
-| `tests/14_cam16.c` | 103-117 | `CORRELATE_TOL * 10.0` and `* 100.0` | **FIX IMPLEMENTATION** - Remove multipliers |
-| `tests/29_hunt.c` | 34 | `tolerance * 10000.0` | **FIX IMPLEMENTATION** - This is 10,000x the base tolerance |
-| `tests/24_osa_ucs.c` | 24 | `0.5` absolute | **FIX IMPLEMENTATION** - OSA-UCS L range is 0-10, this is 5% error |
-| `tests/30_delta_e_extended.c` | 161, 200, 237, 274 | `3e-2` | **FIX IMPLEMENTATION** - CAM-based Delta E should match colour-science |
+All local tolerances have been removed. Every test now uses the single global `TEST_TOLERANCE` (`ALWAN_TEST_TOLERANCE` from `alwan_internal.h`). No local `#define` tolerances, no `#if ALWAN_SCALAR_IS_FLOAT` tolerance blocks, no multiplied tolerances. Tests that fail with the global tolerance expose implementation bugs that need fixing.
 
 ---
 
 ## TEST CODE VIOLATIONS
 
-### Custom Tolerance Overrides
+### Custom Tolerance Overrides - ✅ ALL FIXED
 
-Tests should use `ALWAN_TEST_TOLERANCE` from `alwan_internal.h` or `tests/test_common.h`.
-
-| File | Define | Value | Status |
-|------|--------|-------|--------|
-| `tests/42_math_utilities.c` | `TOLERANCE` | `1e-6` | ✅ FIXED - Uses `ALWAN_TEST_TOLERANCE` |
-| `tests/44_color_correction.c` | `TEST_TOLERANCE` | `1e-5` | ✅ FIXED - Uses `test_common.h` |
-| `tests/49_rayleigh_scattering.c` | `TEST_TOLERANCE` | `1e-10` | ✅ FIXED - Uses `test_common.h` |
-| `tests/49_rayleigh_scattering.c` | `TEST_TOLERANCE_REL` | `1e-6` | ✅ FIXED - Uses `test_common.h` |
-| `tests/50_barten1999_csf.c` | `TEST_TOLERANCE_REL` | `1e-6` | ✅ FIXED - Uses `test_common.h` |
-| `tests/51_cct_cineon.c` | `TEST_TOLERANCE_REL` | `1e-6` | ✅ FIXED - Uses `test_common.h` |
-| `tests/51_cct_cineon.c` | `TEST_TOLERANCE_CCT` | `10.0` | ⚠️ DOCUMENTED - CCT iterative methods require wider tolerance |
-| `tests/52_aces_fixed_functions.c` | `TEST_TOLERANCE` | `1e-5` | ✅ FIXED - Uses `test_common.h` |
-| `tests/53_section9_transfer_functions.c` | `TEST_TOLERANCE_APPLE_LOG` | `1e-5` | ⚠️ DOCUMENTED - OCIO float32 vs our float64 |
-| `tests/53_section9_transfer_functions.c` | `TEST_TOLERANCE_DCDM` | `3e-5` | ⚠️ DOCUMENTED - OCIO float32 vs our float64 |
-| `tests/54_aces20.c` | `TEST_TOLERANCE_JMH` | `1e-3` | ⚠️ TODO - ACES 2.0 JMh should match OCIO better |
-| `tests/54_aces20.c` | `TEST_TOLERANCE_TONESCALE` | `1e-4` | ⚠️ TODO - Tonescale should match OCIO better |
-| `tests/54_aces20.c` | `TONESCALE_TOL_REL` | `5e-2` | ⚠️ **LOOSE** - 5% relative tolerance is too high |
-| `tests/54_aces20.c` | `TONESCALE_TOL_ABS` | `1e-2` | ⚠️ **LOOSE** - Absolute tolerance for small values |
-| `tests/54_aces20.c` | `ROUNDTRIP_TOL` | `1e-6` | ✅ OK - Pure inverse should be precise |
-| `tests/21_ictcp.c` | `ROUNDTRIP_TOL` | `1e-4`/`1e-5` | ⚠️ TODO - ICtCp roundtrip should be tighter |
+All tests now use `ALWAN_TEST_TOLERANCE` from `test_common.h`. No local tolerance overrides remain.
 
 ### Duplicated Test Macros - ✅ ALL FIXED
 
@@ -235,15 +207,15 @@ These are manufacturer-specific camera log curve parameters. Each set should hav
 
 | Category | Count | Fixed | Documented | TODO |
 |----------|-------|-------|------------|------|
-| Loose tolerances (CAM models) | 6 | 0 | 0 | 6 |
-| Custom tolerance overrides | 16 | 8 | 3 | 5 |
+| Loose tolerances (CAM models) | 6 | 6 | 0 | 0 |
+| Custom tolerance overrides | 16 | 16 | 0 | 0 |
 | Duplicated test macros | 8 | 8 | 0 | 0 |
 | fabs/double usage in tests | 7 | 7 | 0 | 0 |
 | Hardcoded math in C tests | 2 | 0 | 0 | 2 |
 | Hardcoded values in C tests | 2 | 0 | 0 | 2 |
 | Hardcoded values in Python | 6 | 0 | 0 | 6 |
 
-**Test/Script subtotal: 47 issues | Fixed: 23 | Documented: 3 | TODO: 21**
+**Test/Script subtotal: 47 issues | Fixed: 37 | Documented: 0 | TODO: 10**
 
 ### Source Code Violations (Hardcoded Values)
 
@@ -260,21 +232,21 @@ These are manufacturer-specific camera log curve parameters. Each set should hav
 
 ### Grand Total
 
-**116 issues | Fixed/OK: 28 | Documented: 3 | TODO: 85**
+**116 issues | Fixed/OK: 42 | Documented: 0 | TODO: 74**
 
 ---
 
 ## FIX PRIORITY
 
-### Priority 1 (Critical) - Tolerance Violations
-1. Fix CIECAM02 implementation to match colour-science within 1e-4
-2. Fix CAM16 implementation to match colour-science within 1e-4
-3. Fix Hunt implementation to match colour-science within standard tolerance
-4. Fix OSA-UCS implementation to match colour-science within 1e-4
-5. Fix CAM-based Delta E metrics to match colour-science within 1e-6
-6. Fix ACES 2.0 JMh to match OCIO better (currently 1e-3)
-7. Fix ACES 2.0 Tonescale to match OCIO better (currently 5% relative - too loose)
-8. Fix ICtCp roundtrip tolerance (currently 1e-4/1e-5 - should be tighter)
+### Priority 1 (Critical) - Tolerance Violations - ✅ TESTS ENFORCED
+All local tolerances removed. Tests now use global `TEST_TOLERANCE`. Failing tests expose implementation bugs to fix:
+1. CIECAM02 Q/M/s correlates
+2. CAM16 Q/M/s correlates
+3. Hunt forward transform
+4. OSA-UCS forward and inverse
+5. CAM-based Delta E (CAM02-LCD/SCD, CAM16-LCD/SCD)
+6. ACES 2.0 TonescaleCompress, JMh hue precision
+7. Spectral upsampling round-trip (Smits1999, Mallett2019)
 
 ### Priority 2 (High) - Inline Matrices → CSV (Category A)
 1. Generate CVD matrices (Brettel 1997) via colour-science `CVD_MATRICES_BRETTEL1997` → CSV
@@ -306,7 +278,9 @@ These are manufacturer-specific camera log curve parameters. Each set should hav
 
 ### Priority 7 (Low) - Test Code Quality - ✅ COMPLETE
 1. ~~Refactor all tests to use `tests/test_common.h`~~ ✅ DONE
-2. ~~Remove custom tolerance defines~~ ✅ DONE (remaining exceptions documented)
+2. ~~Remove custom tolerance defines~~ ✅ DONE
+3. ~~Remove all `#if ALWAN_SCALAR_IS_FLOAT` tolerance blocks~~ ✅ DONE
+4. ~~Remove all tolerance multipliers (10x, 100x, 10000x)~~ ✅ DONE
 
 ### Priority 8 (Low) - Test Hardcoded Values
 1. Move all expected luma values to CSV files
@@ -337,7 +311,6 @@ All tests should include this header for:
 - `TEST_ASSERT_REL(a, b, rel_tol, msg)` - Relative difference assertion
 - `TEST_ASSERT_ABS(a, b, tol, msg)` - Alias for TEST_ASSERT_NEAR
 - `TEST_ASSERT_VEC3_NEAR(v, expected, tol, msg)` - Vector comparison
-- `TEST_TOLERANCE_REL` - Standard relative tolerance (1e-6)
 - `TEST_EPSILON` - Small epsilon for division safety (1e-20)
 
 **Usage:**

@@ -89,13 +89,13 @@ static int test_ciecam02_forward(void) {
             TEST_ASSERT(h_err < TEST_TOLERANCE, "h mismatch");
         }
 
-        /* Also check Q, M, s (with slightly relaxed tolerance due to compound calculations) */
+        /* Also check Q, M, s */
         alwan_scalar Q_err = ALWAN_ABS(corr.Q - expected[3]);
         alwan_scalar M_err = ALWAN_ABS(corr.M - expected[4]);
         alwan_scalar s_err = ALWAN_ABS(corr.s - expected[5]);
-        TEST_ASSERT(Q_err < TEST_TOLERANCE * ALWAN_LITERAL(10.0), "Q mismatch");
-        TEST_ASSERT(M_err < TEST_TOLERANCE * ALWAN_LITERAL(10.0), "M mismatch");
-        TEST_ASSERT(s_err < TEST_TOLERANCE * ALWAN_LITERAL(10.0), "s mismatch");
+        TEST_ASSERT(Q_err < TEST_TOLERANCE, "Q mismatch");
+        TEST_ASSERT(M_err < TEST_TOLERANCE, "M mismatch");
+        TEST_ASSERT(s_err < TEST_TOLERANCE, "s mismatch");
     }
 
     printf("  Tested %zu colors\n", num_colors);

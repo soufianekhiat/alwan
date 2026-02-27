@@ -33,11 +33,7 @@ ALWAN_DIAG_POP
         /* Test XYZ -> Jzazbz */
         alwan_xyz_to_jzazbz(&jzazbz_computed, &xyz_in);
 
-#if ALWAN_SCALAR_IS_FLOAT
-        alwan_scalar const jzazbz_tol = ALWAN_LITERAL(1e-4);
-#else
-        alwan_scalar const jzazbz_tol = ALWAN_LITERAL(1e-10);
-#endif
+        alwan_scalar const jzazbz_tol = TEST_TOLERANCE;
         alwan_scalar diff_Jz = ALWAN_ABS(jzazbz_computed.Jz - jzazbz_expected.Jz);
         alwan_scalar diff_az = ALWAN_ABS(jzazbz_computed.az - jzazbz_expected.az);
         alwan_scalar diff_bz = ALWAN_ABS(jzazbz_computed.bz - jzazbz_expected.bz);
@@ -79,11 +75,7 @@ ALWAN_DIAG_POP
         /* Test round-trip: Jzazbz -> XYZ */
         alwan_jzazbz_to_xyz(&xyz_out, &jzazbz_computed);
 
-#if ALWAN_SCALAR_IS_FLOAT
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
-#else
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-10);
-#endif
+        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
 
         alwan_scalar diff_x = ALWAN_ABS(xyz_out.x - xyz_in.x);
         alwan_scalar diff_y = ALWAN_ABS(xyz_out.y - xyz_in.y);

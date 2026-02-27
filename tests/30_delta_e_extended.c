@@ -7,8 +7,6 @@
  */
 
 #include "test_common.h"
-#include <stdlib.h>
-#include <string.h>
 
 /* ----------------------------------------------------------------
  * Tests
@@ -30,11 +28,6 @@ static int test_delta_e_itp(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(ictcp1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-7);
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_ictcp ictcp1 = {ictcp1_data[i * 3 + 0], ictcp1_data[i * 3 + 1], ictcp1_data[i * 3 + 2]};
@@ -44,7 +37,7 @@ static int test_delta_e_itp(void) {
         alwan_scalar result = alwan_delta_e_itp(&ictcp1, &ictcp2, ALWAN_LITERAL(720.0));
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE ITP mismatch");
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE ITP mismatch");
     }
 
     TEST_PASS("ΔE ITP (BT.2100 HDR)");
@@ -66,11 +59,6 @@ static int test_delta_e_din99(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(din99_1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-9);
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_din99 din99_1 = {din99_1_data[i * 3 + 0], din99_1_data[i * 3 + 1], din99_1_data[i * 3 + 2]};
@@ -80,7 +68,7 @@ static int test_delta_e_din99(void) {
         alwan_scalar result = alwan_delta_e_din99(&din99_1, &din99_2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE DIN99 mismatch");
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE DIN99 mismatch");
     }
 
     TEST_PASS("ΔE DIN99");
@@ -102,11 +90,6 @@ static int test_delta_e_zcam(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(jzazbz1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-8);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_jzazbz jzazbz1 = {jzazbz1_data[i * 3 + 0], jzazbz1_data[i * 3 + 1], jzazbz1_data[i * 3 + 2]};
@@ -116,7 +99,7 @@ static int test_delta_e_zcam(void) {
         alwan_scalar result = alwan_delta_e_zcam(&jzazbz1, &jzazbz2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE ZCAM mismatch");
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE ZCAM mismatch");
     }
 
     TEST_PASS("ΔE ZCAM (Jzazbz UCS)");
@@ -137,11 +120,6 @@ static int test_delta_e_cam02_lcd(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(3e-2);  /* Relaxed due to multiple conversions and viewing conditions */
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -151,11 +129,7 @@ static int test_delta_e_cam02_lcd(void) {
         alwan_scalar result = alwan_delta_e_cam02_lcd(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        /* NOTE: CAM02-LCD has known precision issues with certain color pairs (tests 1-3)
-         * that require further investigation of colour-science implementation details.
-         * Test 0 and 4 pass with reasonable precision. Skipping assertion for now. */
-        (void)diff;
-        (void)tolerance;
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE CAM02-LCD mismatch");
     }
 
     TEST_PASS("ΔE CAM02-LCD");
@@ -176,11 +150,6 @@ static int test_delta_e_cam02_scd(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(3e-2);  /* Relaxed due to multiple conversions and viewing conditions */
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -190,9 +159,7 @@ static int test_delta_e_cam02_scd(void) {
         alwan_scalar result = alwan_delta_e_cam02_scd(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        /* NOTE: See CAM02-LCD note above */
-        (void)diff;
-        (void)tolerance;
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE CAM02-SCD mismatch");
     }
 
     TEST_PASS("ΔE CAM02-SCD");
@@ -213,11 +180,6 @@ static int test_delta_e_cam16_lcd(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(3e-2);  /* Relaxed due to multiple conversions and viewing conditions */
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -227,9 +189,7 @@ static int test_delta_e_cam16_lcd(void) {
         alwan_scalar result = alwan_delta_e_cam16_lcd(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        /* NOTE: See CAM02-LCD note above */
-        (void)diff;
-        (void)tolerance;
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE CAM16-LCD mismatch");
     }
 
     TEST_PASS("ΔE CAM16-LCD");
@@ -250,11 +210,6 @@ static int test_delta_e_cam16_scd(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(3e-2);  /* Relaxed due to multiple conversions and viewing conditions */
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -264,9 +219,7 @@ static int test_delta_e_cam16_scd(void) {
         alwan_scalar result = alwan_delta_e_cam16_scd(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        /* NOTE: See CAM02-LCD note above */
-        (void)diff;
-        (void)tolerance;
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE CAM16-SCD mismatch");
     }
 
     TEST_PASS("ΔE CAM16-SCD");
@@ -287,11 +240,6 @@ static int test_delta_e_cam02_ucs(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(jab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_cam_jab jab1 = {jab1_data[i * 3 + 0], jab1_data[i * 3 + 1], jab1_data[i * 3 + 2]};
@@ -301,7 +249,7 @@ static int test_delta_e_cam02_ucs(void) {
         alwan_scalar result = alwan_delta_e_cam02_ucs(&jab1, &jab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE CAM02-UCS mismatch");
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE CAM02-UCS mismatch");
     }
 
     TEST_PASS("ΔE CAM02-UCS");
@@ -322,11 +270,6 @@ static int test_delta_e_cam16_ucs(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(jab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
 
     for (int i = 0; i < num_tests; i++) {
         alwan_cam_jab jab1 = {jab1_data[i * 3 + 0], jab1_data[i * 3 + 1], jab1_data[i * 3 + 2]};
@@ -336,7 +279,7 @@ static int test_delta_e_cam16_ucs(void) {
         alwan_scalar result = alwan_delta_e_cam16_ucs(&jab1, &jab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE CAM16-UCS mismatch");
+        TEST_ASSERT(diff < TEST_TOLERANCE, "ΔE CAM16-UCS mismatch");
     }
 
     TEST_PASS("ΔE CAM16-UCS");

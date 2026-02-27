@@ -93,21 +93,21 @@ static int test_cam16_forward(void) {
         alwan_scalar Q_err = ALWAN_ABS(corr.Q - expected[3]);
         alwan_scalar M_err = ALWAN_ABS(corr.M - expected[4]);
         alwan_scalar s_err = ALWAN_ABS(corr.s - expected[5]);
-        if (Q_err >= TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
+        if (Q_err >= TEST_TOLERANCE) {
             printf("  Color %zu: Q error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)Q_err, (double)corr.Q, (double)expected[3]);
         }
-        if (M_err >= TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
+        if (M_err >= TEST_TOLERANCE) {
             printf("  Color %zu: M error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)M_err, (double)corr.M, (double)expected[4]);
         }
-        if (s_err >= TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
+        if (s_err >= TEST_TOLERANCE) {
             printf("  Color %zu: s error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)s_err, (double)corr.s, (double)expected[5]);
         }
-        TEST_ASSERT(Q_err < TEST_TOLERANCE * ALWAN_LITERAL(100.0), "Q mismatch");
-        TEST_ASSERT(M_err < TEST_TOLERANCE * ALWAN_LITERAL(100.0), "M mismatch");
-        TEST_ASSERT(s_err < TEST_TOLERANCE * ALWAN_LITERAL(100.0), "s mismatch");
+        TEST_ASSERT(Q_err < TEST_TOLERANCE, "Q mismatch");
+        TEST_ASSERT(M_err < TEST_TOLERANCE, "M mismatch");
+        TEST_ASSERT(s_err < TEST_TOLERANCE, "s mismatch");
     }
 
     printf("  Tested %zu colors\n", num_colors);

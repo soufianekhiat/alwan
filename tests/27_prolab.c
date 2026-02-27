@@ -18,12 +18,7 @@ ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
-    /* ProLab uses projective transformation */
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const prolab_tolerance = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const prolab_tolerance = ALWAN_LITERAL(1e-8);
-#endif
+    alwan_scalar const prolab_tolerance = TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz_in, xyz_out;
@@ -67,12 +62,7 @@ ALWAN_DIAG_POP
         /* Test round-trip: ProLab -> XYZ */
         alwan_prolab_to_xyz(&xyz_out, &prolab_computed);
 
-        /* Projective transforms amplify matrix coefficient errors; 2e-7 is practical limit */
-#if ALWAN_SCALAR_IS_FLOAT
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
-#else
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(2e-7);
-#endif
+        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
 
         alwan_scalar xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
         alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};

@@ -131,16 +131,8 @@ static int test_cat_method(
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, method);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const matrix_tolerance = ALWAN_LITERAL(1e-4);
-    alwan_scalar const adapted_tolerance = ALWAN_LITERAL(1e-5);
-#else
-    /* P7 CAT matrices have limited precision (~4-5 decimal places) in colour-science,
-     * leading to numerical error accumulation during matrix operations (M^-1 * D * M).
-     * Use tolerances appropriate for this precision level. */
-    alwan_scalar const matrix_tolerance = ALWAN_LITERAL(5e-4);
-    alwan_scalar const adapted_tolerance = ALWAN_LITERAL(1e-8);
-#endif
+    alwan_scalar const matrix_tolerance = TEST_TOLERANCE;
+    alwan_scalar const adapted_tolerance = TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     if (diff >= matrix_tolerance) {

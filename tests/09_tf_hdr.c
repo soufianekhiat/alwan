@@ -26,11 +26,7 @@ static int test_pq_roundtrip(void) {
 
     size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
 
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(0.1);  /* cd/m² tolerance for float */
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar linear = test_values[i];
@@ -103,11 +99,7 @@ static int test_bt1886_eotf(void) {
 
     size_t const num_tests = sizeof(test_pairs) / sizeof(test_pairs[0]);
 
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar encoded = test_pairs[i][0];
@@ -135,11 +127,7 @@ static int test_acesproxy_roundtrip(void) {
 
     size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
 
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-4);  /* Relative tolerance for log encoding */
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-10);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar linear = test_values[i];

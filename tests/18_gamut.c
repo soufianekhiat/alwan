@@ -152,7 +152,7 @@ static int test_gamut_map_hue_preserving(void) {
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
     /* Relaxed tolerance for hue-preserving (involves iterative algorithm) */
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_rgb rgb_in, expected, result;

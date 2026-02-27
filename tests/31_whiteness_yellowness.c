@@ -36,11 +36,7 @@ static int test_yellowness_astm_e313(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-9);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     /* Test all illuminant/observer combinations */
     for (int i = 0; i < num_tests; i++) {
@@ -99,11 +95,7 @@ static int test_whiteness_astm_e313(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-9);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     /* Test all illuminant/observer combinations */
     for (int i = 0; i < num_tests; i++) {
@@ -153,11 +145,7 @@ static int test_whiteness_cie2004(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-9);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     /* D65/2° reference white for CIE 2004 */
     alwan_vec2 xy_n = {ALWAN_LITERAL(0.3127), ALWAN_LITERAL(0.3290)};

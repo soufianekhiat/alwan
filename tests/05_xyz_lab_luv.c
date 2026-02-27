@@ -44,11 +44,7 @@ static int test_xyz_xyy_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -108,11 +104,7 @@ static int test_xyz_lab_d65_roundtrip(void) {
     white_xyz.z = d65_xyz_data[2];
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -172,11 +164,7 @@ static int test_xyz_lab_d50_roundtrip(void) {
     white_xyz.z = d50_xyz_data[2];
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -231,11 +219,7 @@ static int test_xyz_luv_d65_roundtrip(void) {
     white_xyz.z = d65_xyz_data[2];
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -282,12 +266,7 @@ static int test_lab_lch_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    /* Relaxed tolerance for trigonometric functions (atan2) - different math libraries */
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-8);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab;
@@ -345,12 +324,7 @@ static int test_luv_lchuv_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(luv_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    /* Relaxed tolerance for trigonometric functions (atan2) - different math libraries */
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-8);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_luv luv;

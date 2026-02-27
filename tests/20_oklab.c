@@ -62,12 +62,7 @@ ALWAN_DIAG_POP
             ALWAN_MEMCPY(&xyz_out, &xyz_typed, sizeof(alwan_vec3));
         }
 
-        /* Round-trip tolerance for cube root operations */
-#if ALWAN_SCALAR_IS_FLOAT
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
-#else
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-6);
-#endif
+        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(xyz_out.v[j] - xyz_in.v[j]);
@@ -123,8 +118,7 @@ ALWAN_DIAG_POP
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(oklch_computed.v[j] - oklch_expected.v[j]);
-            /* Slightly relaxed tolerance for hue (angular) */
-            alwan_scalar tol = (j == 2) ? TEST_TOLERANCE * ALWAN_LITERAL(10.0) : TEST_TOLERANCE;
+            alwan_scalar tol = TEST_TOLERANCE;
             if (diff > tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  Oklab: [%.6f, %.6f, %.6f]\n",
@@ -170,13 +164,7 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 static int test_oklab_known_values(void) {
-    /* Tolerance: Oklab M2 matrix has limited precision for a,b channels (~8e-5 error for b)
-     * This is inherent to the Oklab spec, not an implementation bug. */
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tol = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tol = ALWAN_LITERAL(1e-4);
-#endif
+    alwan_scalar const tol = TEST_TOLERANCE;
 
     /* D65 white should be L=1, a=0, b=0 (within matrix precision limits) */
     alwan_vec3 xyz_white = {{ALWAN_LITERAL(0.95047), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.08883)}};

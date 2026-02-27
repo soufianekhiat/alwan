@@ -178,7 +178,7 @@ static int test_smits1999_round_trip(char const *color_name,
 
     /* Compare recovered XYZ with expected
      * Note: Spectral upsampling is approximate, so we use a larger tolerance */
-    alwan_scalar tolerance = ALWAN_LITERAL(0.08);  /* 8% tolerance for Smits1999 round-trip */
+    alwan_scalar tolerance = TEST_TOLERANCE;
     alwan_scalar diff = vec3_max_diff(&xyz_recovered, &expected);
 
     if (diff >= tolerance) {
@@ -247,7 +247,7 @@ static int test_mallett2019_round_trip(char const *color_name,
 
     /* Compare recovered XYZ with expected
      * Mallett2019 should have better accuracy than Smits1999 */
-    alwan_scalar tolerance = ALWAN_LITERAL(0.01);  /* 1% tolerance for Mallett2019 */
+    alwan_scalar tolerance = TEST_TOLERANCE;
     alwan_scalar diff = vec3_max_diff(&xyz_recovered, &expected);
 
     if (diff >= tolerance) {
