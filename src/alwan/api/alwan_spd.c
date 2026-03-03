@@ -682,10 +682,11 @@ static int load_observer_cmf(alwan_ctx *ctx,
         wl_max = ALWAN_LITERAL(830.0);
         count = 471;
     } else {
-        /* CIE 2012/2015: 390-830nm, 1nm steps = 441 samples */
-        wl_min = ALWAN_LITERAL(390.0);
+        /* CIE 2012/2015, Stockman & Sharpe: 360-830nm, 1nm steps = 471 samples
+         * CSVs cover 360-830nm with leading zeros before 390nm. */
+        wl_min = ALWAN_LITERAL(360.0);
         wl_max = ALWAN_LITERAL(830.0);
-        count = 441;
+        count = 471;
     }
 
     int status;

@@ -15,41 +15,66 @@
  * Tests
  * ---------------------------------------------------------------- */
 
-static int test_pq_roundtrip(void) {
-    /* Test PQ (ST.2084) round-trip: linear -> PQ -> linear */
-    alwan_scalar test_values[] = {
-        ALWAN_LITERAL(0.0),       /* Black */
-        ALWAN_LITERAL(100.0),     /* SDR white (100 cd/m²) */
-        ALWAN_LITERAL(1000.0),    /* HDR mid */
-        ALWAN_LITERAL(10000.0)    /* Peak white */
-    };
-
-    size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
-
+static int test_pq_forward_inverse(void) {
+    /* Test PQ (ST.2084) OETF and EOTF against reference values.
+     * Reference: SMPTE ST 2084, computed with double precision Python. */
     alwan_scalar const tolerance = TEST_TOLERANCE;
 
-    for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar linear = test_values[i];
-        alwan_scalar encoded, roundtrip;
+    /* Test OETF: linear cd/m² -> PQ code value */
+    {
+        static alwan_scalar const oetf_input[] = {
+            ALWAN_LITERAL(0.0),
+            ALWAN_LITERAL(100.0),
+            ALWAN_LITERAL(1000.0),
+            ALWAN_LITERAL(4000.0),
+            ALWAN_LITERAL(10000.0)
+        };
+        static alwan_scalar const oetf_expected[] = {
+            ALWAN_LITERAL(7.30955902578396645900e-07),
+            ALWAN_LITERAL(5.08078421517399014817e-01),
+            ALWAN_LITERAL(7.51827096247041026800e-01),
+            ALWAN_LITERAL(9.02572393310937304278e-01),
+            ALWAN_LITERAL(1.0)
+        };
+        size_t const n = sizeof(oetf_input) / sizeof(oetf_input[0]);
 
-        /* Forward: linear -> PQ */
-        int status = alwan_oetf_apply(&encoded, ALWAN_TF_PQ, &linear, 1, 1, 1);
-        TEST_ASSERT(status == ALWAN_OK, "PQ OETF failed");
-
-        /* Backward: PQ -> linear */
-        status = alwan_eotf_apply(&roundtrip, ALWAN_TF_PQ, &encoded, 1, 1, 1);
-        TEST_ASSERT(status == ALWAN_OK, "PQ EOTF failed");
-
-        /* Check round-trip */
-        alwan_scalar diff = ALWAN_ABS(roundtrip - linear);
-        if (diff >= tolerance) {
-            printf("  PQ round-trip test %zu: linear=%.2f, encoded=%.6f, roundtrip=%.2f, diff=%.2e\n",
-                   i, linear, encoded, roundtrip, diff);
+        for (size_t i = 0; i < n; i++) {
+            alwan_scalar encoded;
+            int status = alwan_oetf_apply(&encoded, ALWAN_TF_PQ, &oetf_input[i], 1, 1, 1);
+            TEST_ASSERT(status == ALWAN_OK, "PQ OETF failed");
+            alwan_scalar diff = ALWAN_ABS(encoded - oetf_expected[i]);
+            TEST_ASSERT(diff < tolerance, "PQ OETF value mismatch");
         }
-        TEST_ASSERT(diff < tolerance, "PQ round-trip mismatch");
     }
 
-    TEST_PASS("PQ round-trip");
+    /* Test EOTF: PQ code value -> linear cd/m² */
+    {
+        static alwan_scalar const eotf_input[] = {
+            ALWAN_LITERAL(0.0),
+            ALWAN_LITERAL(0.25),
+            ALWAN_LITERAL(0.5),
+            ALWAN_LITERAL(0.75),
+            ALWAN_LITERAL(1.0)
+        };
+        static alwan_scalar const eotf_expected[] = {
+            ALWAN_LITERAL(0.0),
+            ALWAN_LITERAL(5.15417600983300694395e+00),
+            ALWAN_LITERAL(9.22457089940652679161e+01),
+            ALWAN_LITERAL(9.83377855587027511319e+02),
+            ALWAN_LITERAL(1.0e+04)
+        };
+        size_t const n = sizeof(eotf_input) / sizeof(eotf_input[0]);
+
+        for (size_t i = 0; i < n; i++) {
+            alwan_scalar decoded;
+            int status = alwan_eotf_apply(&decoded, ALWAN_TF_PQ, &eotf_input[i], 1, 1, 1);
+            TEST_ASSERT(status == ALWAN_OK, "PQ EOTF failed");
+            alwan_scalar diff = ALWAN_ABS(decoded - eotf_expected[i]);
+            TEST_ASSERT(diff < tolerance, "PQ EOTF value mismatch");
+        }
+    }
+
+    TEST_PASS("PQ forward/inverse");
 }
 
 static int test_hlg_roundtrip(void) {
@@ -93,7 +118,7 @@ static int test_bt1886_eotf(void) {
     /* Test BT.1886 EOTF (simple gamma 2.4) */
     alwan_scalar test_pairs[][2] = {
         {ALWAN_LITERAL(0.0),  ALWAN_LITERAL(0.0)},
-        {ALWAN_LITERAL(0.5),  ALWAN_LITERAL(0.18946)},  /* 0.5^2.4 ≈ 0.18946 */
+        {ALWAN_LITERAL(0.5),  ALWAN_LITERAL(1.89464570813799776383e-01)},  /* 0.5^2.4 */
         {ALWAN_LITERAL(1.0),  ALWAN_LITERAL(1.0)}
     };
 
@@ -192,7 +217,7 @@ static int test_invalid_tf_name(void) {
 int test_09_tf_hdr_main(void) {
     int failures = 0;
 
-    failures += test_pq_roundtrip();
+    failures += test_pq_forward_inverse();
     failures += test_hlg_roundtrip();
     failures += test_bt1886_eotf();
     failures += test_acesproxy_roundtrip();

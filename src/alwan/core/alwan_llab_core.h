@@ -92,50 +92,59 @@ ALWAN_INLINE alwan_llab_v_correlates alwan_llab_forward_v(
 ) {
     alwan_llab_v_correlates result;
 
-    /* Step 1: Convert XYZ to RGB (cone responses) */
-    alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
-    alwan_vec3 rgb_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_v);
+    /* Store original sample Y for re-scaling after adaptation */
+    alwan_scalar Y_sample = xyz.y;
+
+    /* Step 1: Normalize XYZ by Y, then convert to RGB (cone responses)
+     * This produces chromaticity-like cone responses, independent of luminance.
+     * Reference: colour-science XYZ_to_RGB_LLAB divides by Y before matrix multiply. */
+    alwan_scalar Y_s_inv = ALWAN_SELECT(ALWAN_ABS(Y_sample) > ALWAN_EPSILON,
+                                         ALWAN_LITERAL(1.0) / Y_sample, ALWAN_LITERAL(1.0));
+    alwan_vec3 xyz_norm = {{xyz.x * Y_s_inv, ALWAN_LITERAL(1.0), xyz.z * Y_s_inv}};
+    alwan_vec3 rgb_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_norm);
     alwan_scalar R = rgb_v.v[0]; alwan_scalar G = rgb_v.v[1]; alwan_scalar B = rgb_v.v[2];
 
-    /* Convert test illuminant to RGB */
-    alwan_vec3 xyz_0_v = {{xyz_0.x, xyz_0.y, xyz_0.z}};
-    alwan_vec3 rgb_0_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_0_v);
+    /* Normalize test illuminant by its Y, then convert to RGB */
+    alwan_scalar Y0_inv = ALWAN_SELECT(ALWAN_ABS(xyz_0.y) > ALWAN_EPSILON,
+                                        ALWAN_LITERAL(1.0) / xyz_0.y, ALWAN_LITERAL(1.0));
+    alwan_vec3 xyz_0_norm = {{xyz_0.x * Y0_inv, ALWAN_LITERAL(1.0), xyz_0.z * Y0_inv}};
+    alwan_vec3 rgb_0_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_0_norm);
     alwan_scalar R_0 = rgb_0_v.v[0]; alwan_scalar G_0 = rgb_0_v.v[1]; alwan_scalar B_0 = rgb_0_v.v[2];
 
-    /* Convert reference illuminant to RGB */
-    alwan_vec3 xyz_r_v = {{xyz_r.x, xyz_r.y, xyz_r.z}};
-    alwan_vec3 rgb_r_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_r_v);
+    /* Normalize reference illuminant by its Y, then convert to RGB */
+    alwan_scalar Yr_inv = ALWAN_SELECT(ALWAN_ABS(xyz_r.y) > ALWAN_EPSILON,
+                                        ALWAN_LITERAL(1.0) / xyz_r.y, ALWAN_LITERAL(1.0));
+    alwan_vec3 xyz_r_norm = {{xyz_r.x * Yr_inv, ALWAN_LITERAL(1.0), xyz_r.z * Yr_inv}};
+    alwan_vec3 rgb_r_v = alwan_mat3_mulv_v(LLAB_XYZ_TO_RGB, xyz_r_norm);
     alwan_scalar R_r = rgb_r_v.v[0]; alwan_scalar G_r = rgb_r_v.v[1]; alwan_scalar B_r = rgb_r_v.v[2];
 
     /* Step 2: BFD chromatic adaptation */
 
     /* R channel: linear adaptation */
-    alwan_scalar ratio_R = R_r / R_0;
-    alwan_scalar R_adapted = (D * ratio_R + (ALWAN_LITERAL(1.0) - D)) * R;
+    alwan_scalar R_adapted = (D * (R_r / R_0) + (ALWAN_LITERAL(1.0) - D)) * R;
 
     /* G channel: linear adaptation */
-    alwan_scalar ratio_G = G_r / G_0;
-    alwan_scalar G_adapted = (D * ratio_G + (ALWAN_LITERAL(1.0) - D)) * G;
+    alwan_scalar G_adapted = (D * (G_r / G_0) + (ALWAN_LITERAL(1.0) - D)) * G;
 
-    /* B channel: nonlinear adaptation with power function */
+    /* B channel: nonlinear adaptation with power function
+     * beta = (B_0 / B_r)^0.0834
+     * B_adapted = (D * B_r / B_0^beta + 1-D) * B^beta */
     alwan_scalar beta = ALWAN_POW(B_0 / B_r, LLAB_V_BETA_EXP);
-    alwan_scalar B_adapted_factor = D * ALWAN_POW(B_r / B_0, beta) + (ALWAN_LITERAL(1.0) - D);
-    alwan_scalar B_adapted = B_adapted_factor * ALWAN_POW(B, beta);
+    alwan_scalar B_adapted = (D * B_r / ALWAN_POW(B_0, beta) + (ALWAN_LITERAL(1.0) - D))
+                             * ALWAN_POW(B, beta);
 
-    /* Step 3: Convert adapted RGB back to XYZ */
-    alwan_vec3 adapted_v = {{R_adapted, G_adapted, B_adapted}};
+    /* Step 3: Re-scale adapted RGB by sample Y, then convert back to XYZ */
+    alwan_vec3 adapted_v = {{R_adapted * Y_sample, G_adapted * Y_sample, B_adapted * Y_sample}};
     alwan_vec3 xyz_adapted_v = alwan_mat3_mulv_v(LLAB_RGB_TO_XYZ, adapted_v);
-    alwan_scalar X_adapted = xyz_adapted_v.v[0]; alwan_scalar Y_adapted = xyz_adapted_v.v[1]; alwan_scalar Z_adapted = xyz_adapted_v.v[2];
+    alwan_scalar X_adapted = xyz_adapted_v.v[0];
+    alwan_scalar Y_adapted = xyz_adapted_v.v[1];
+    alwan_scalar Z_adapted = xyz_adapted_v.v[2];
 
-    /* Step 4: Compute Lab coordinates with F_S induction factor */
-    /* Reference white for Lab calculation (use reference condition illuminant) */
-    alwan_scalar X_n = xyz_r.x;
-    alwan_scalar Y_n = xyz_r.y;
-    alwan_scalar Z_n = xyz_r.z;
-
-    alwan_scalar f_X = llab_f_v(X_adapted / X_n, F_S);
-    alwan_scalar f_Y = llab_f_v(Y_adapted / Y_n, F_S);
-    alwan_scalar f_Z = llab_f_v(Z_adapted / Z_n, F_S);
+    /* Step 4: Compute Lab coordinates with F_S induction factor
+     * Reference white: hardcoded D65 values per colour-science convention */
+    alwan_scalar f_X = llab_f_v(X_adapted / ALWAN_LITERAL(95.05), F_S);
+    alwan_scalar f_Y = llab_f_v(Y_adapted / ALWAN_LITERAL(100.0), F_S);
+    alwan_scalar f_Z = llab_f_v(Z_adapted / ALWAN_LITERAL(108.88), F_S);
 
     /* Compute z factor for lightness modulation */
     alwan_scalar z = ALWAN_LITERAL(1.0) + F_L * ALWAN_SQRT(Y_b / ALWAN_LITERAL(100.0));

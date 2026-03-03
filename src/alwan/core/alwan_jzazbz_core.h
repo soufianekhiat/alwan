@@ -111,8 +111,9 @@ ALWAN_INLINE alwan_jzazbz alwan_xyz_to_jzazbz_v(alwan_xyz xyz) {
     alwan_scalar az = izazbz_v.v[1];
     alwan_scalar bz = izazbz_v.v[2];
 
-    /* Step 5: Calculate Jz from Iz */
-    result.Jz = ((ALWAN_LITERAL(1.0) + JZAZBZ_V_D) * iz) / (ALWAN_LITERAL(1.0) + JZAZBZ_V_D * iz) - JZAZBZ_V_D0;
+    /* Step 5: Calculate Jz from Iz (clamp to non-negative: lightness cannot be negative) */
+    alwan_scalar jz_raw = ((ALWAN_LITERAL(1.0) + JZAZBZ_V_D) * iz) / (ALWAN_LITERAL(1.0) + JZAZBZ_V_D * iz) - JZAZBZ_V_D0;
+    result.Jz = ALWAN_SELECT(jz_raw < ALWAN_ZERO, ALWAN_ZERO, jz_raw);
     result.az = az;
     result.bz = bz;
 
