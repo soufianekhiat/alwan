@@ -47,7 +47,9 @@ static int test_aces_rec709_basic(void) {
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_ACES_REC709,
-                                                test_inputs[i], 1, 3, 3);
+                                                test_inputs[i], 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "ACES Rec.709 transform failed");
 
         /* Output must be in [0,1] range for display-referred RGB */
@@ -97,7 +99,9 @@ static int test_agx_basic(void) {
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_AGX,
-                                                test_inputs[i], 1, 3, 3);
+                                                test_inputs[i], 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "AgX transform failed");
 
         /* Output must be in [0,1] range */
@@ -121,12 +125,16 @@ static int test_agx_punchy(void) {
 
     /* Apply base AgX */
     int status = alwan_view_transform_apply(base_output, NULL, ALWAN_VIEW_AGX,
-                                           test_input, 1, 3, 3);
+                                           test_input, 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "AgX base transform failed");
 
     /* Apply punchy AgX */
     status = alwan_view_transform_apply(punchy_output, NULL, ALWAN_VIEW_AGX_PUNCHY,
-                                       test_input, 1, 3, 3);
+                                       test_input, 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "AgX punchy transform failed");
 
     /* Both should be in [0,1] range */
@@ -164,7 +172,9 @@ static int test_view_transform_monotonic(void) {
         for (size_t i = 0; i < 3; i++) {
             alwan_scalar output[3];
             int status = alwan_view_transform_apply(output, NULL, transforms[t],
-                                                   inputs[i], 1, 3, 3);
+                                                   inputs[i], 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
             TEST_ASSERT(status == ALWAN_OK, "View transform failed");
 
             /* Calculate luminance (Rec.709 weights) */
@@ -202,7 +212,9 @@ static int test_bulk_view_transform(void) {
     alwan_scalar outputs[12];  /* 4 RGB triplets */
 
     int status = alwan_view_transform_apply(outputs, NULL, ALWAN_VIEW_ACES_REC709,
-                                           inputs, 4, 3, 3);
+                                           inputs, 4,
+                                           3 * sizeof(alwan_scalar),
+                                           3 * sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "Bulk view transform failed");
 
     /* Verify all outputs are in [0,1] range */
@@ -225,7 +237,9 @@ static int test_view_transform_preserves_hue(void) {
     alwan_scalar output[3];
 
     int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_ACES_REC709,
-                                           red_input, 1, 3, 3);
+                                           red_input, 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "View transform failed");
 
     /* Red channel should dominate */
@@ -239,7 +253,9 @@ static int test_view_transform_preserves_hue(void) {
     /* Test with green */
     alwan_scalar green_input[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
     status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_ACES_REC709,
-                                       green_input, 1, 3, 3);
+                                       green_input, 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "View transform failed");
 
     /* Green channel should dominate */
@@ -257,7 +273,9 @@ static int test_invalid_view_transform(void) {
     alwan_scalar dummy_out[3];
 
     int status = alwan_view_transform_apply(dummy_out, NULL, (alwan_view_transform)999,
-                                           dummy_in, 1, 3, 3);
+                                           dummy_in, 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid view transform enum");
 
     TEST_PASS("Invalid view transform rejection");

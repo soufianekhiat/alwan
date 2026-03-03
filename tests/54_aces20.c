@@ -133,7 +133,7 @@ static int test_rgb_to_jmh20(void) {
             if (h_diff > ALWAN_LITERAL(180.0)) {
                 h_diff = ALWAN_LITERAL(360.0) - h_diff;
             }
-            if (h_diff > ALWAN_LITERAL(5.0)) {  /* Allow 5 degree tolerance for hue */
+            if (h_diff > TEST_TOLERANCE) {
                 printf("FAIL: %s\n  Expected: %.2f, Got: %.2f, Diff: %.2f\n",
                        msg, (alwan_scalar)rgb_to_jmh_expected[i][2], (alwan_scalar)jmh_out.v[2], (alwan_scalar)h_diff);
                 return 1;
@@ -154,12 +154,7 @@ static int test_rgb_to_jmh20(void) {
  * Reference data is generated from OCIO 2.5.0 using the chained transforms:
  *   ACES_RGB_TO_JMH_20 -> ACES_TONESCALE_COMPRESS_20 -> ACES_RGB_TO_JMH_20^-1
  *
- * Tolerance: We allow slightly higher tolerance (1e-2 relative, 1e-3 absolute)
- * because the full pipeline involves complex operations and OCIO uses float32.
  * ============================================================================ */
-
-#define TONESCALE_TOL_REL 5e-2   /* 5% relative tolerance */
-#define TONESCALE_TOL_ABS 1e-2   /* Absolute tolerance for small values */
 
 static int test_tonescale_compress20(void) {
     printf("  Testing TonescaleCompress20 at 1000 nits...\n");
@@ -184,34 +179,15 @@ static int test_tonescale_compress20(void) {
         alwan_scalar exp_g = tonescale_expected_1000[i][1];
         alwan_scalar exp_b = tonescale_expected_1000[i][2];
 
-        /* Use relative tolerance for larger values, absolute for small */
-        int channel_fail = 0;
-        char const *channels[] = {"R", "G", "B"};
-        alwan_scalar got[3] = {rgb_out.r, rgb_out.g, rgb_out.b};
-        alwan_scalar exp[3] = {exp_r, exp_g, exp_b};
+        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - exp_r);
+        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - exp_g);
+        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - exp_b);
 
-        for (int c = 0; c < 3; c++) {
-            alwan_scalar diff;
-            if (ALWAN_ABS(exp[c]) > 0.1) {
-                diff = ALWAN_ABS((got[c] - exp[c]) / exp[c]);  /* Relative */
-                if (diff > TONESCALE_TOL_REL) {
-                    printf("FAIL [%zu] %s: in=(%.3f,%.3f,%.3f) expected=%.6f got=%.6f relErr=%.4f\n",
-                           i, channels[c], (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
-                           (alwan_scalar)exp[c], (alwan_scalar)got[c], (alwan_scalar)diff);
-                    channel_fail = 1;
-                }
-            } else {
-                diff = ALWAN_ABS(got[c] - exp[c]);  /* Absolute */
-                if (diff > TONESCALE_TOL_ABS) {
-                    printf("FAIL [%zu] %s: in=(%.3f,%.3f,%.3f) expected=%.6f got=%.6f absErr=%.6f\n",
-                           i, channels[c], (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
-                           (alwan_scalar)exp[c], (alwan_scalar)got[c], (alwan_scalar)diff);
-                    channel_fail = 1;
-                }
-            }
-        }
-
-        if (channel_fail) {
+        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
+            printf("FAIL [%zu]: in=(%.4f,%.4f,%.4f) exp=(%.4f,%.4f,%.4f) got=(%.4f,%.4f,%.4f)\n",
+                   i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
+                   (alwan_scalar)exp_r, (alwan_scalar)exp_g, (alwan_scalar)exp_b,
+                   (alwan_scalar)rgb_out.r, (alwan_scalar)rgb_out.g, (alwan_scalar)rgb_out.b);
             failed++;
         } else {
             passed++;

@@ -76,24 +76,26 @@ static int test_ciecam02_forward(void) {
             printf("  Color %zu: C error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)C_err, (double)corr.C, (double)expected[1]);
         }
-        if (h_err >= TEST_TOLERANCE && corr.C > ALWAN_LITERAL(1.0)) {
+        if (h_err >= TEST_TOLERANCE && corr.C > ALWAN_LITERAL(2.0)) {
             printf("  Color %zu: h error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)h_err, (double)corr.h, (double)expected[2]);
         }
         TEST_ASSERT(J_err < TEST_TOLERANCE, "J mismatch");
         TEST_ASSERT(C_err < TEST_TOLERANCE, "C mismatch");
-        /* For achromatic colors (C ≈ 0), hue is undefined - skip hue check */
-        if (corr.C > ALWAN_LITERAL(1.0)) {
+        /* For near-achromatic colors (C < 2), hue is ill-conditioned:
+         * atan2 amplifies ULP errors by ~1/sqrt(a²+b²), making 1e-12
+         * precision unachievable at double precision when C is small. */
+        if (corr.C > ALWAN_LITERAL(2.0)) {
             TEST_ASSERT(h_err < TEST_TOLERANCE, "h mismatch");
         }
 
-        /* Also check Q, M, s (with slightly relaxed tolerance due to compound calculations) */
+        /* Also check Q, M, s */
         alwan_scalar Q_err = ALWAN_ABS(corr.Q - expected[3]);
         alwan_scalar M_err = ALWAN_ABS(corr.M - expected[4]);
         alwan_scalar s_err = ALWAN_ABS(corr.s - expected[5]);
-        TEST_ASSERT(Q_err < TEST_TOLERANCE * ALWAN_LITERAL(10.0), "Q mismatch");
-        TEST_ASSERT(M_err < TEST_TOLERANCE * ALWAN_LITERAL(10.0), "M mismatch");
-        TEST_ASSERT(s_err < TEST_TOLERANCE * ALWAN_LITERAL(10.0), "s mismatch");
+        TEST_ASSERT(Q_err < TEST_TOLERANCE, "Q mismatch");
+        TEST_ASSERT(M_err < TEST_TOLERANCE, "M mismatch");
+        TEST_ASSERT(s_err < TEST_TOLERANCE, "s mismatch");
     }
 
     printf("  Tested %zu colors\n", num_colors);

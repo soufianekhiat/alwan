@@ -9,9 +9,7 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-#if defined(_MSC_VER)
-__pragma(warning( disable: 4211 ))  /* nonstandard extension: redefined extern to static */
-#endif
+ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC
 
 /* Core RGB spaces - Order MUST match enum in alwan.h */
 static alwan_scalar const g_srgb[] = {
@@ -328,7 +326,7 @@ static alwan_scalar const g_xtreme_rgb[] = {
 #include "data/rgb_spaces/xtreme_rgb.csv"
 };
 
-static alwan_scalar const g_linear_srgb[] = {
+static alwan_scalar const g_linear_rec709[] = {
 #include "data/rgb_spaces/linear_srgb.csv"
 };
 
@@ -416,6 +414,20 @@ static alwan_scalar const g_gamma18_rec709[] = {
 #include "data/rgb_spaces/gamma_18_rec709.csv"
 };
 
+/* ColorInterop Display Color Spaces */
+static alwan_scalar const g_rec1886_rec709[] = {
+#include "data/rgb_spaces/bt709.csv"
+};
+static alwan_scalar const g_rec2100_pq[] = {
+#include "data/rgb_spaces/bt2020.csv"
+};
+static alwan_scalar const g_rec2100_hlg[] = {
+#include "data/rgb_spaces/bt2020.csv"
+};
+static alwan_scalar const g_display_p3_hdr[] = {
+#include "data/rgb_spaces/display_p3.csv"
+};
+
 ALWAN_DIAG_POP
 
 /* Array of pointers to RGB space data - Order MUST match enum */
@@ -498,7 +510,7 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_alexa_wide_gamut,
     g_p3_d60,
     g_xtreme_rgb,
-    g_linear_srgb,
+    g_linear_rec709,
     g_linear_rec2020,
     g_linear_adobe_rgb_1998,
     g_linear_p3_d65,
@@ -519,7 +531,11 @@ static alwan_scalar const * const g_rgb_space_data[] = {
     g_gamma22_adobe_rgb,
     g_gamma22_p3_d65,
     g_gamma22_ap1,
-    g_gamma18_rec709
+    g_gamma18_rec709,
+    g_rec1886_rec709,
+    g_rec2100_pq,
+    g_rec2100_hlg,
+    g_display_p3_hdr
 };
 
 static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]);

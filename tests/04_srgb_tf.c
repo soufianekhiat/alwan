@@ -98,7 +98,7 @@ static int test_srgb_known_values(void) {
         TEST_ASSERT(status == ALWAN_OK, "sRGB OETF failed");
 
         alwan_scalar oetf_diff = ALWAN_ABS(encoded - known_pairs[i].encoded);
-        if (oetf_diff > TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
+        if (oetf_diff > TEST_TOLERANCE) {
             printf("OETF mismatch at pair %zu:\n", i);
             printf("  Linear:   %.8f\n", known_pairs[i].linear);
             printf("  Expected: %.8f\n", known_pairs[i].encoded);
@@ -113,7 +113,7 @@ static int test_srgb_known_values(void) {
         TEST_ASSERT(status == ALWAN_OK, "sRGB EOTF failed");
 
         alwan_scalar eotf_diff = ALWAN_ABS(decoded - known_pairs[i].linear);
-        if (eotf_diff > TEST_TOLERANCE * ALWAN_LITERAL(10.0)) {
+        if (eotf_diff > TEST_TOLERANCE) {
             printf("EOTF mismatch at pair %zu:\n", i);
             printf("  Encoded:  %.8f\n", known_pairs[i].encoded);
             printf("  Expected: %.8f\n", known_pairs[i].linear);

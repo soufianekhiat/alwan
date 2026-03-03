@@ -53,11 +53,7 @@ static int test_adapt_d65_to_d50_bradford(void) {
     alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 input_xyz = {{test_colors_data[i * 3 + 0],
@@ -72,7 +68,9 @@ static int test_adapt_d65_to_d50_bradford(void) {
         int status = alwan_xyz_adapt(adapted.v,
                                      &d65_xyz, &d50_xyz,
                                      ALWAN_CAT_BRADFORD,
-                                     input_xyz.v, 1, 3, 3);
+                                     input_xyz.v, 1,
+                                     3 * sizeof(alwan_scalar),
+                                     3 * sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "Adaptation failed");
 
         alwan_scalar diff = vec3_max_diff(&adapted, &expected);
@@ -110,11 +108,7 @@ static int test_adapt_a_to_d65_bradford(void) {
     alwan_xyz a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 input_xyz = {{test_colors_data[i * 3 + 0],
@@ -129,7 +123,9 @@ static int test_adapt_a_to_d65_bradford(void) {
         int status = alwan_xyz_adapt(adapted.v,
                                      &a_xyz, &d65_xyz,
                                      ALWAN_CAT_BRADFORD,
-                                     input_xyz.v, 1, 3, 3);
+                                     input_xyz.v, 1,
+                                     3 * sizeof(alwan_scalar),
+                                     3 * sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "Adaptation failed");
 
         alwan_scalar diff = vec3_max_diff(&adapted, &expected);
@@ -158,11 +154,7 @@ static int test_roundtrip_d65_d50_d65(void) {
     alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 original = {{test_colors_data[i * 3 + 0],
@@ -174,7 +166,9 @@ static int test_roundtrip_d65_d50_d65(void) {
         int status = alwan_xyz_adapt(adapted_to_d50.v,
                                      &d65_xyz, &d50_xyz,
                                      ALWAN_CAT_BRADFORD,
-                                     original.v, 1, 3, 3);
+                                     original.v, 1,
+                                     3 * sizeof(alwan_scalar),
+                                     3 * sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "D65->D50 adaptation failed");
 
         /* D50 -> D65 (back) */
@@ -182,7 +176,9 @@ static int test_roundtrip_d65_d50_d65(void) {
         status = alwan_xyz_adapt(roundtrip.v,
                                  &d50_xyz, &d65_xyz,
                                  ALWAN_CAT_BRADFORD,
-                                 adapted_to_d50.v, 1, 3, 3);
+                                 adapted_to_d50.v, 1,
+                                 3 * sizeof(alwan_scalar),
+                                 3 * sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "D50->D65 adaptation failed");
 
         alwan_scalar diff = vec3_max_diff(&original, &roundtrip);
@@ -215,11 +211,7 @@ static int test_roundtrip_all_methods(void) {
     /* Test color: sRGB red in D65 */
     alwan_vec3 original = {{ALWAN_LITERAL(0.412456), ALWAN_LITERAL(0.212673), ALWAN_LITERAL(0.019334)}};
 
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     /* Test all methods */
     alwan_cat_method methods[] = {
@@ -241,7 +233,9 @@ static int test_roundtrip_all_methods(void) {
         int status = alwan_xyz_adapt(adapted.v,
                                      &d65_xyz, &d50_xyz,
                                      methods[m],
-                                     original.v, 1, 3, 3);
+                                     original.v, 1,
+                                     3 * sizeof(alwan_scalar),
+                                     3 * sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "Forward adaptation failed");
 
         /* Backward */
@@ -249,7 +243,9 @@ static int test_roundtrip_all_methods(void) {
         status = alwan_xyz_adapt(roundtrip.v,
                                  &d50_xyz, &d65_xyz,
                                  methods[m],
-                                 adapted.v, 1, 3, 3);
+                                 adapted.v, 1,
+                                 3 * sizeof(alwan_scalar),
+                                 3 * sizeof(alwan_scalar));
         TEST_ASSERT(status == ALWAN_OK, "Backward adaptation failed");
 
         alwan_scalar diff = vec3_max_diff(&original, &roundtrip);
@@ -292,14 +288,12 @@ static int test_bulk_adaptation(void) {
     int status = alwan_xyz_adapt(adapted_data,
                                  &d65_xyz, &d50_xyz,
                                  ALWAN_CAT_BRADFORD,
-                                 test_colors_data, num_tests, 3, 3);
+                                 test_colors_data, num_tests,
+                                 3 * sizeof(alwan_scalar),
+                                 3 * sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "Bulk adaptation failed");
 
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(5e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-11);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     /* Verify all results */
     for (int i = 0; i < num_tests; i++) {

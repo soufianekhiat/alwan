@@ -59,6 +59,17 @@ add_executable(
   55_aces2_output_transform.c
   56_aces1_output_transform.c
   57_aces_lmt_tf.c
+  58_core_headers.c
+  59_colorinterop.c
+  60_rgb_xyz_embedded.c
+  61_sigmoid_agx_bt2446.c
+  62_hdr_utilities.c
+  63_cam18sl.c
+  64_cam20u.c
+  65_hero_wavelength.c
+  66_belcour2023.c
+  67_hwb_gamma_dseries.c
+  68_ohno_contrast_dicom.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

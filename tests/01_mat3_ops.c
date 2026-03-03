@@ -155,8 +155,7 @@ static int test_inverse_random_seed(void) {
         alwan_mat3_mul(&result, &M, &M_inv);
         alwan_scalar diff = mat3_max_diff(&I, &result);
 
-        /* Use 10x tolerance for random matrices (more numerically unstable) */
-        alwan_scalar random_tolerance = TEST_TOLERANCE * ALWAN_LITERAL(10.0);
+        alwan_scalar random_tolerance = TEST_TOLERANCE;
         if (diff > random_tolerance) {
             printf("Trial %d failed with diff %e\n", trial, diff);
             mat3_print("M", &M);

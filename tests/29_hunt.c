@@ -28,8 +28,7 @@ ALWAN_DIAG_POP
     vc.surround = ALWAN_HUNT_SURROUND_NORMAL;
     vc.discount_illuminant = 0;
 
-    /* Looser tolerance for Hunt due to complexity */
-    alwan_scalar const tolerance = TEST_TOLERANCE * ALWAN_LITERAL(10000.0);
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz;

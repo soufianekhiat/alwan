@@ -62,12 +62,7 @@ ALWAN_DIAG_POP
             ALWAN_MEMCPY(&xyz_out, &xyz_typed, sizeof(alwan_vec3));
         }
 
-        /* Round-trip tolerance for cube root operations */
-#if ALWAN_SCALAR_IS_FLOAT
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
-#else
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-6);
-#endif
+        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(xyz_out.v[j] - xyz_in.v[j]);
@@ -123,8 +118,7 @@ ALWAN_DIAG_POP
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(oklch_computed.v[j] - oklch_expected.v[j]);
-            /* Slightly relaxed tolerance for hue (angular) */
-            alwan_scalar tol = (j == 2) ? TEST_TOLERANCE * ALWAN_LITERAL(10.0) : TEST_TOLERANCE;
+            alwan_scalar tol = TEST_TOLERANCE;
             if (diff > tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  Oklab: [%.6f, %.6f, %.6f]\n",
@@ -170,15 +164,11 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 static int test_oklab_known_values(void) {
-    /* Tolerance: Oklab M2 matrix has limited precision for a,b channels (~8e-5 error for b)
-     * This is inherent to the Oklab spec, not an implementation bug. */
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tol = ALWAN_LITERAL(1e-4);
-#else
-    alwan_scalar const tol = ALWAN_LITERAL(1e-4);
-#endif
+    alwan_scalar const tol = TEST_TOLERANCE;
 
-    /* D65 white should be L=1, a=0, b=0 (within matrix precision limits) */
+    /* D65 white in Oklab: reference values computed from the Oklab M1/M2 matrices.
+     * Note: Oklab matrices are designed for sRGB (1,1,1) -> L=1; an arbitrary D65
+     * XYZ approximation won't give exactly (1, 0, 0) due to matrix coefficient precision. */
     alwan_vec3 xyz_white = {{ALWAN_LITERAL(0.95047), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.08883)}};
     alwan_vec3 oklab;
     {
@@ -189,9 +179,9 @@ static int test_oklab_known_values(void) {
         ALWAN_MEMCPY(&oklab, &oklab_typed, sizeof(alwan_vec3));
     }
 
-    TEST_ASSERT(ALWAN_ABS(oklab.v[0] - ALWAN_LITERAL(1.0)) < tol, "White L != 1");
-    TEST_ASSERT(ALWAN_ABS(oklab.v[1]) < tol, "White a != 0");
-    TEST_ASSERT(ALWAN_ABS(oklab.v[2]) < tol, "White b != 0");
+    TEST_ASSERT(ALWAN_ABS(oklab.v[0] - ALWAN_LITERAL(9.99999809520289439924e-01)) < tol, "White L mismatch");
+    TEST_ASSERT(ALWAN_ABS(oklab.v[1] - ALWAN_LITERAL(-1.00917549680779039534e-05)) < tol, "White a mismatch");
+    TEST_ASSERT(ALWAN_ABS(oklab.v[2] - ALWAN_LITERAL(-8.61087800451548757152e-05)) < tol, "White b mismatch");
 
     /* Black should be L=0, a=0, b=0 */
     alwan_vec3 xyz_black = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};

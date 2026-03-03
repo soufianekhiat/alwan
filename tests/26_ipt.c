@@ -33,11 +33,7 @@ ALWAN_DIAG_POP
         /* Test XYZ -> IPT */
         alwan_xyz_to_ipt(&ipt_computed, &xyz_in);
 
-#if ALWAN_SCALAR_IS_FLOAT
-        alwan_scalar const ipt_tol = ALWAN_LITERAL(1e-4);
-#else
-        alwan_scalar const ipt_tol = ALWAN_LITERAL(1e-8);
-#endif
+        alwan_scalar const ipt_tol = TEST_TOLERANCE;
         alwan_scalar ipt_comp_arr[3] = {ipt_computed.I, ipt_computed.P, ipt_computed.T};
         alwan_scalar ipt_exp_arr[3] = {ipt_expected.I, ipt_expected.P, ipt_expected.T};
         for (int j = 0; j < 3; j++) {
@@ -58,11 +54,7 @@ ALWAN_DIAG_POP
         /* Test round-trip: IPT -> XYZ */
         alwan_ipt_to_xyz(&xyz_out, &ipt_computed);
 
-#if ALWAN_SCALAR_IS_FLOAT
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-4);
-#else
-        alwan_scalar const roundtrip_tol = ALWAN_LITERAL(1e-10);
-#endif
+        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
 
         alwan_scalar xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
         alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};

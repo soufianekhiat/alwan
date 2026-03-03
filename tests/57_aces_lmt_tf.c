@@ -43,9 +43,9 @@ static int test_blue_light_fix_effect(void) {
 
 static int test_acescc_known_values(void) {
     struct { alwan_scalar linear; alwan_scalar encoded; } known_pairs[] = {
-        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.4135884)},
-        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(-0.3584474886)},
-        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.5547945205)},
+        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.41358840249244228)},
+        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(-0.35844748858447484)},
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.55479452054794520)},
     };
     size_t num_pairs = sizeof(known_pairs) / sizeof(known_pairs[0]);
     for (size_t i = 0; i < num_pairs; i++) {
@@ -72,9 +72,9 @@ static int test_acescc_roundtrip(void) {
 
 static int test_acescct_known_values(void) {
     struct { alwan_scalar linear; alwan_scalar encoded; } known_pairs[] = {
-        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.4135884)},
+        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.41358840249244228)},
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0729055341958355)},
-        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.5547945205)},
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.55479452054794520)},
     };
     size_t num_pairs = sizeof(known_pairs) / sizeof(known_pairs[0]);
     for (size_t i = 0; i < num_pairs; i++) {
@@ -170,7 +170,7 @@ static int test_dlog_known_values(void) {
     struct { alwan_scalar linear; alwan_scalar encoded; } known_pairs[] = {
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0929)},             /* Linear region: 6.025 * 0 + 0.0929 */
         {ALWAN_LITERAL(0.001), ALWAN_LITERAL(0.098925)},         /* Linear region: 6.025 * 0.001 + 0.0929 */
-        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.3987645562)},      /* Log region: 18% gray */
+        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.39876455618933060)}, /* Log region: 18% gray */
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.584555)},           /* Log region: diffuse white */
     };
     size_t num_pairs = sizeof(known_pairs) / sizeof(known_pairs[0]);

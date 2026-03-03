@@ -30,7 +30,6 @@ option(
 option(ALWAN_DISABLE_STRICT_ALIASING "Compile with -fno-strict-aliasing on GCC/Clang" ON)
 option(ALWAN_INSTALL "Enable install rules" ON)
 option(ALWAN_INSTALL_PKGCONFIG "Install pkg-config .pc file" ON)
-option(ALWAN_BUILD_RGB2SPEC "Build tools/rgb2spec submodule (third-party)" OFF)
 
 set(ALWAN_DEBUG_POSTFIX "d" CACHE STRING "Debug postfix for output names (e.g. 'd' -> alwand)")
 set(ALWAN_DEBUG_PREFIX "" CACHE STRING "Debug prefix for output names (e.g. 'dbg_' -> dbg_alwan)")
@@ -47,48 +46,51 @@ endif()
 set(_ALWAN_EMBED_DATA_VALUE 1)
 
 set(ALWAN_SOURCES
-  src/alwan/alwan_aces_ff.c
-  src/alwan/alwan_atd95.c
-  src/alwan/alwan_cam.c
-  src/alwan/alwan_cam_bulk.c
-  src/alwan/alwan_cat.c
-  src/alwan/alwan_color_correction.c
-  src/alwan/alwan_colorspace.c
-  src/alwan/alwan_colorspace_bulk.c
-  src/alwan/alwan_context.c
-  src/alwan/alwan_convenience.c
-  src/alwan/alwan_convenience_bulk.c
-  src/alwan/alwan_data.c
-  src/alwan/alwan_din99.c
-  src/alwan/alwan_extended.c
-  src/alwan/alwan_gamut.c
-  src/alwan/alwan_hellwig2022.c
-  src/alwan/alwan_hunt.c
-  src/alwan/alwan_hunter_lab.c
-  src/alwan/alwan_ictcp.c
-  src/alwan/alwan_ictcp_bulk.c
-  src/alwan/alwan_ipt.c
-  src/alwan/alwan_ipt_bulk.c
-  src/alwan/alwan_jzazbz.c
-  src/alwan/alwan_jzazbz_bulk.c
-  src/alwan/alwan_kim2009.c
-  src/alwan/alwan_llab.c
-  src/alwan/alwan_math.c
-  src/alwan/alwan_oklab.c
-  src/alwan/alwan_oklab_bulk.c
-  src/alwan/alwan_osa_ucs.c
-  src/alwan/alwan_prolab.c
-  src/alwan/alwan_quality.c
-  src/alwan/alwan_rayleigh.c
-  src/alwan/alwan_reference_data.c
-  src/alwan/alwan_rgb.c
-  src/alwan/alwan_rgb_bulk.c
-  src/alwan/alwan_rlab.c
-  src/alwan/alwan_spd.c
-  src/alwan/alwan_spectrum_upsample.c
-  src/alwan/alwan_view.c
-  src/alwan/alwan_vision.c
-  src/alwan/alwan_zcam.c
+  src/alwan/api/alwan_aces_ff.c
+  src/alwan/api/alwan_atd95.c
+  src/alwan/api/alwan_cam.c
+  src/alwan/bulk/alwan_cam_bulk.c
+  src/alwan/api/alwan_cat.c
+  src/alwan/api/alwan_color_correction.c
+  src/alwan/api/alwan_colorspace.c
+  src/alwan/bulk/alwan_colorspace_bulk.c
+  src/alwan/api/alwan_context.c
+  src/alwan/api/alwan_convenience.c
+  src/alwan/bulk/alwan_convenience_bulk.c
+  src/alwan/api/alwan_data.c
+  src/alwan/api/alwan_din99.c
+  src/alwan/api/alwan_extended.c
+  src/alwan/api/alwan_gamut.c
+  src/alwan/api/alwan_hellwig2022.c
+  src/alwan/api/alwan_hunt.c
+  src/alwan/api/alwan_hunter_lab.c
+  src/alwan/api/alwan_ictcp.c
+  src/alwan/bulk/alwan_ictcp_bulk.c
+  src/alwan/api/alwan_ipt.c
+  src/alwan/bulk/alwan_ipt_bulk.c
+  src/alwan/api/alwan_jzazbz.c
+  src/alwan/bulk/alwan_jzazbz_bulk.c
+  src/alwan/api/alwan_kim2009.c
+  src/alwan/api/alwan_llab.c
+  src/alwan/api/alwan_math.c
+  src/alwan/api/alwan_oklab.c
+  src/alwan/bulk/alwan_oklab_bulk.c
+  src/alwan/api/alwan_osa_ucs.c
+  src/alwan/api/alwan_prolab.c
+  src/alwan/api/alwan_quality.c
+  src/alwan/api/alwan_rayleigh.c
+  src/alwan/api/alwan_reference_data.c
+  src/alwan/api/alwan_normalize.c
+  src/alwan/api/alwan_rgb.c
+  src/alwan/bulk/alwan_rgb_bulk.c
+  src/alwan/api/alwan_rlab.c
+  src/alwan/api/alwan_spd.c
+  src/alwan/api/alwan_spectrum_upsample.c
+  src/alwan/api/alwan_hdr.c
+  src/alwan/api/alwan_spectral_hero.c
+  src/alwan/api/alwan_view.c
+  src/alwan/api/alwan_vision.c
+  src/alwan/api/alwan_zcam.c
 )
 
 add_library(alwan ${ALWAN_SOURCES})
@@ -169,10 +171,6 @@ if(BUILD_TESTING)
   )
 endif()
 
-if(ALWAN_BUILD_RGB2SPEC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/rgb2spec/CMakeLists.txt")
-  add_subdirectory(tools/rgb2spec)
-endif()
-
 if(ALWAN_INSTALL)
   install(
     TARGETS alwan
@@ -200,7 +198,7 @@ if(ALWAN_INSTALL)
   )
 
   configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/AlwanConfig.cmake.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/buildsystem/cmake/AlwanConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/AlwanConfig.cmake"
     INSTALL_DESTINATION ${ALWAN_CMAKE_INSTALL_DIR}
   )
@@ -225,7 +223,7 @@ if(ALWAN_INSTALL)
     endif()
 
     configure_file(
-      "${CMAKE_CURRENT_SOURCE_DIR}/cmake/alwan.pc.in"
+      "${CMAKE_CURRENT_SOURCE_DIR}/buildsystem/cmake/alwan.pc.in"
       "${CMAKE_CURRENT_BINARY_DIR}/alwan.pc"
       @ONLY
     )

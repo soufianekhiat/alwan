@@ -30,11 +30,7 @@ static int test_delta_e_76(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -66,11 +62,7 @@ static int test_delta_e_94(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -102,11 +94,7 @@ static int test_delta_e_cmc(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-5);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -139,11 +127,7 @@ static int test_delta_e_2000(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-6);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-12);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};

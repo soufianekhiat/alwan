@@ -61,11 +61,7 @@ static int test_llab_forward(void) {
     int failed = 0;
     /* LLAB involves complex chromatic adaptation and response compression.
      * Implementation differences require ~1e-1 tolerance. */
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-1);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-1);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_test_cases; i++) {
         alwan_xyz xyz_in, xyz_0, xyz_r;
@@ -210,11 +206,7 @@ static int test_llab_achromatic(void) {
 
     int failed = 0;
     /* Achromatic chroma tolerance */
-#if ALWAN_SCALAR_IS_FLOAT
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-1);
-#else
-    alwan_scalar const tolerance = ALWAN_LITERAL(1e-1);
-#endif
+    alwan_scalar const tolerance = TEST_TOLERANCE;
 
     /* D65 illuminant */
     alwan_xyz d65;
