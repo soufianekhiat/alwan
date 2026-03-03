@@ -318,6 +318,14 @@ ALWAN_INLINE alwan_scalar alwan_delta_e_76_v(alwan_lab lab1, alwan_lab lab2) {
     return ALWAN_SQRT(dL * dL + da * da + db * db);
 }
 
+/* dE OK: Euclidean distance in Oklab space (CSS Color Level 4 JND criterion) */
+ALWAN_INLINE alwan_scalar alwan_delta_e_ok_v(alwan_oklab a, alwan_oklab b) {
+    alwan_scalar dL = a.L - b.L;
+    alwan_scalar da = a.a - b.a;
+    alwan_scalar db = a.b - b.b;
+    return ALWAN_SQRT(dL * dL + da * da + db * db);
+}
+
 /* dE ITP: ITU-R BT.2124 HDR Color Difference in ICtCp space */
 ALWAN_INLINE alwan_scalar alwan_delta_e_itp_v(alwan_ictcp ictcp1, alwan_ictcp ictcp2, alwan_scalar scalar_factor) {
     alwan_scalar dI  = ictcp1.I  - ictcp2.I;

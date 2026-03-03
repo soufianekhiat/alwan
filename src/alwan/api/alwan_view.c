@@ -152,6 +152,18 @@ static void bt2446a_sdr_to_hdr_transform(alwan_scalar const *rgb_in, alwan_scala
 }
 
 /* ----------------------------------------------------------------
+ * Khronos PBR Neutral Tone Mapping
+ * ---------------------------------------------------------------- */
+
+static void khronos_pbr_neutral_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    alwan_vec3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
+    alwan_vec3 out_v = alwan_khronos_pbr_neutral_v(in_v);
+    rgb_out[0] = out_v.v[0];
+    rgb_out[1] = out_v.v[1];
+    rgb_out[2] = out_v.v[2];
+}
+
+/* ----------------------------------------------------------------
  * View Transform API
  * ---------------------------------------------------------------- */
 
@@ -187,6 +199,9 @@ int alwan_view_transform_apply(alwan_scalar *rgb_out,
             break;
         case ALWAN_VIEW_BT2446A_SDR_TO_HDR:
             transform_fn = bt2446a_sdr_to_hdr_transform;
+            break;
+        case ALWAN_VIEW_KHRONOS_PBR_NEUTRAL:
+            transform_fn = khronos_pbr_neutral_transform;
             break;
         default:
             return ALWAN_E_INVALID;

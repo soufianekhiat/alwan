@@ -136,4 +136,60 @@ ALWAN_INLINE alwan_vec3 alwan_agx_golden_grade_v(alwan_vec3 rgb) {
     return result;
 }
 
+/* ================================================================
+ * Khronos PBR Neutral Tone Mapping
+ *
+ * Released May 2024 for e-commerce / product visualization.
+ * Colors below ~0.76 linear pass through; above it, a soft
+ * rolloff compresses highlights with slight desaturation.
+ *
+ * Reference: https://github.com/KhronosGroup/ToneMapping/tree/main/PBR_Neutral
+ * ================================================================ */
+
+ALWAN_INLINE alwan_vec3 alwan_khronos_pbr_neutral_v(alwan_vec3 color) {
+    alwan_vec3 result;
+    alwan_scalar const start_compression = ALWAN_LITERAL(0.8) - ALWAN_LITERAL(0.04);
+    alwan_scalar const desaturation = ALWAN_LITERAL(0.15);
+
+    /* Compute offset from min channel */
+    alwan_scalar x = color.v[0];
+    x = ALWAN_SELECT(color.v[1] < x, color.v[1], x);
+    x = ALWAN_SELECT(color.v[2] < x, color.v[2], x);
+    alwan_scalar offset = ALWAN_SELECT(x < ALWAN_LITERAL(0.08),
+                                        x - ALWAN_LITERAL(6.25) * x * x,
+                                        ALWAN_LITERAL(0.04));
+    color.v[0] -= offset;
+    color.v[1] -= offset;
+    color.v[2] -= offset;
+
+    /* Find peak channel */
+    alwan_scalar peak = color.v[0];
+    peak = ALWAN_SELECT(color.v[1] > peak, color.v[1], peak);
+    peak = ALWAN_SELECT(color.v[2] > peak, color.v[2], peak);
+
+    /* Below start_compression: pass-through */
+    if (peak < start_compression) {
+        return color;
+    }
+
+    /* Soft rolloff */
+    {
+        alwan_scalar const d = ALWAN_LITERAL(1.0) - start_compression;
+        alwan_scalar new_peak = ALWAN_LITERAL(1.0) - d * d / (peak + d - start_compression);
+        alwan_scalar scale = new_peak / peak;
+        color.v[0] *= scale;
+        color.v[1] *= scale;
+        color.v[2] *= scale;
+
+        /* Desaturation */
+        alwan_scalar g = ALWAN_LITERAL(1.0) - ALWAN_LITERAL(1.0) /
+                         (desaturation * (peak - new_peak) + ALWAN_LITERAL(1.0));
+        result.v[0] = color.v[0] + (new_peak - color.v[0]) * g;
+        result.v[1] = color.v[1] + (new_peak - color.v[1]) * g;
+        result.v[2] = color.v[2] + (new_peak - color.v[2]) * g;
+    }
+
+    return result;
+}
+
 #endif /* ALWAN_VIEW_CORE_H */

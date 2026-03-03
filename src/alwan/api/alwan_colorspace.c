@@ -120,6 +120,10 @@ alwan_scalar alwan_delta_e_76(alwan_lab const *lab1, alwan_lab const *lab2) {
     return alwan_delta_e_76_v(*lab1, *lab2);
 }
 
+alwan_scalar alwan_delta_e_ok(alwan_oklab const *a, alwan_oklab const *b) {
+    return alwan_delta_e_ok_v(*a, *b);
+}
+
 alwan_scalar alwan_delta_e_94(alwan_lab const *lab1, alwan_lab const *lab2) {
     return alwan_delta_e_94_v(*lab1, *lab2);
 }

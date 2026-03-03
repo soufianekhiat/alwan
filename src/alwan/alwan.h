@@ -445,7 +445,8 @@ typedef enum {
     ALWAN_VIEW_AGX_PUNCHY,         /* AgX punchy variant (high contrast + saturation) */
     ALWAN_VIEW_AGX_GOLDEN,         /* AgX golden variant (warm highlights, cool shadows) */
     ALWAN_VIEW_BT2446A_HDR_TO_SDR, /* BT.2446 Method A: HDR to SDR tone mapping */
-    ALWAN_VIEW_BT2446A_SDR_TO_HDR  /* BT.2446 Method A: SDR to HDR inverse mapping */
+    ALWAN_VIEW_BT2446A_SDR_TO_HDR,  /* BT.2446 Method A: SDR to HDR inverse mapping */
+    ALWAN_VIEW_KHRONOS_PBR_NEUTRAL  /* Khronos PBR Neutral tone mapping (glTF/WebGL) */
 } alwan_view_transform;
 
 /* RGB space descriptor with primaries, white point, and transfer functions */
@@ -670,6 +671,19 @@ int alwan_gamut_map_xyz_to_rgb(alwan_rgb *rgb_out,
                                 alwan_ctx *ctx,
                                 alwan_rgb_space_desc const *space,
                                 alwan_xyz const *xyz_in);
+
+/* CSS Color Level 4 §13.2 OKLCh gamut mapping (binary search on chroma)
+ * Maps out-of-gamut linear sRGB to in-gamut linear sRGB using OKLCh binary search
+ * with deltaEOK JND criterion (threshold 0.02)
+ * rgb_out: output in-gamut linear sRGB triplets
+ * rgb_in: input linear sRGB triplets (may be out of gamut)
+ * count: number of RGB triplets
+ * in_stride, out_stride: stride in bytes */
+int alwan_css_gamut_map(alwan_scalar *rgb_out,
+                        alwan_scalar const *rgb_in,
+                        size_t count,
+                        size_t in_stride,
+                        size_t out_stride);
 
 /* ----------------------------------------------------------------
  * Transfer Functions (OETF/EOTF)
@@ -1091,6 +1105,9 @@ void alwan_ihls_to_rgb(alwan_rgb *rgb, alwan_ihls const *ihls);
 
 /* ΔE*76 - Euclidean distance in Lab space */
 alwan_scalar alwan_delta_e_76(alwan_lab const *lab1, alwan_lab const *lab2);
+
+/* ΔE OK - Euclidean distance in Oklab space (CSS Color Level 4 JND criterion) */
+alwan_scalar alwan_delta_e_ok(alwan_oklab const *a, alwan_oklab const *b);
 
 /* ΔE*94 - CIE 1994 color difference (graphic arts defaults: kL=1, K1=0.045, K2=0.015) */
 alwan_scalar alwan_delta_e_94(alwan_lab const *lab1, alwan_lab const *lab2);

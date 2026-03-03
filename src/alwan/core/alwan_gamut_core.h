@@ -16,6 +16,8 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_oklab_core.h"
+#include "alwan_colorspace_core.h"
 
 /* ================================================================
  * RGB clamp to [0,1]
@@ -267,6 +269,106 @@ ALWAN_INLINE alwan_scalar gamut_find_intersection_v(alwan_scalar a, alwan_scalar
     }
 
     return t;
+}
+
+/* ================================================================
+ * CSS Color Level 4 §13.2 Gamut Mapping
+ *
+ * Binary search on chroma in OKLCh, holding L and h constant.
+ * Convergence criterion: deltaEOK < JND threshold (0.02).
+ *
+ * Input/output: linear sRGB as alwan_vec3.
+ *
+ * Reference: https://www.w3.org/TR/css-color-4/#css-gamut-mapping
+ * ================================================================ */
+
+ALWAN_INLINE int gamut_css_in_gamut_v(alwan_vec3 rgb) {
+    return rgb.v[0] >= -ALWAN_EPSILON && rgb.v[0] <= ALWAN_LITERAL(1.0) + ALWAN_EPSILON &&
+           rgb.v[1] >= -ALWAN_EPSILON && rgb.v[1] <= ALWAN_LITERAL(1.0) + ALWAN_EPSILON &&
+           rgb.v[2] >= -ALWAN_EPSILON && rgb.v[2] <= ALWAN_LITERAL(1.0) + ALWAN_EPSILON;
+}
+
+ALWAN_INLINE alwan_vec3 gamut_css_map_v(alwan_vec3 origin) {
+    alwan_scalar const JND = ALWAN_LITERAL(0.02);
+    int const MAX_ITER = 30;
+
+    /* If already in gamut, return as-is */
+    if (gamut_css_in_gamut_v(origin)) {
+        return origin;
+    }
+
+    /* Convert to Oklab then OKLCh */
+    alwan_vec3 oklab = gamut_linear_srgb_to_oklab_v(origin);
+    alwan_oklab ok;
+    ok.L = oklab.v[0]; ok.a = oklab.v[1]; ok.b = oklab.v[2];
+    alwan_oklch lch = alwan_oklab_to_oklch_v(ok);
+
+    /* Clamp L to [0, 1] */
+    if (lch.L >= ALWAN_LITERAL(1.0)) {
+        alwan_vec3 white = {{ALWAN_ONE, ALWAN_ONE, ALWAN_ONE}};
+        return white;
+    }
+    if (lch.L <= ALWAN_LITERAL(0.0)) {
+        alwan_vec3 black = {{ALWAN_ZERO, ALWAN_ZERO, ALWAN_ZERO}};
+        return black;
+    }
+
+    /* Binary search on chroma */
+    {
+        alwan_scalar lo = ALWAN_LITERAL(0.0);
+        alwan_scalar hi = lch.C;
+        alwan_oklch trial = lch;
+        int i;
+
+        for (i = 0; i < MAX_ITER; i++) {
+            trial.C = (lo + hi) * ALWAN_LITERAL(0.5);
+
+            /* OKLCh -> Oklab -> linear sRGB */
+            alwan_oklab trial_oklab = alwan_oklch_to_oklab_v(trial);
+            alwan_vec3 trial_oklab_v;
+            trial_oklab_v.v[0] = trial_oklab.L;
+            trial_oklab_v.v[1] = trial_oklab.a;
+            trial_oklab_v.v[2] = trial_oklab.b;
+            alwan_vec3 trial_rgb = gamut_oklab_to_linear_srgb_v(trial_oklab_v);
+
+            /* Clip to [0,1] */
+            alwan_vec3 clipped = gamut_clip_v(trial_rgb);
+
+            /* Convert clipped back to Oklab for comparison */
+            alwan_vec3 clipped_oklab = gamut_linear_srgb_to_oklab_v(clipped);
+            alwan_oklab clipped_ok;
+            clipped_ok.L = clipped_oklab.v[0];
+            clipped_ok.a = clipped_oklab.v[1];
+            clipped_ok.b = clipped_oklab.v[2];
+
+            /* Compute deltaEOK between unclipped and clipped */
+            alwan_scalar de = alwan_delta_e_ok_v(trial_oklab, clipped_ok);
+
+            if (de - JND < ALWAN_EPSILON) {
+                if (gamut_css_in_gamut_v(trial_rgb)) {
+                    break;
+                }
+                hi = trial.C;
+            } else {
+                hi = trial.C;
+            }
+
+            if (hi - lo < ALWAN_LITERAL(1e-12)) {
+                break;
+            }
+        }
+
+        /* Final reconstruction */
+        {
+            alwan_oklab final_oklab = alwan_oklch_to_oklab_v(trial);
+            alwan_vec3 final_oklab_v;
+            final_oklab_v.v[0] = final_oklab.L;
+            final_oklab_v.v[1] = final_oklab.a;
+            final_oklab_v.v[2] = final_oklab.b;
+            alwan_vec3 final_rgb = gamut_oklab_to_linear_srgb_v(final_oklab_v);
+            return gamut_clip_v(final_rgb);
+        }
+    }
 }
 
 #endif /* ALWAN_GAMUT_CORE_H */

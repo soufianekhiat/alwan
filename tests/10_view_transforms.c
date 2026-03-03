@@ -154,6 +154,72 @@ static int test_agx_punchy(void) {
     TEST_PASS("AgX punchy variant");
 }
 
+static int test_khronos_pbr_neutral_basic(void) {
+    /* Test Khronos PBR Neutral tone mapping */
+    alwan_scalar test_inputs[][3] = {
+        /* Black */
+        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
+        /* Middle gray (0.18) — below switch point, should pass through */
+        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
+        /* Below switch point (0.5) */
+        {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)},
+        /* Bright white (1.0) — above switch point */
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
+        /* Over-bright (4.0) — tests tone mapping compression */
+        {ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0)},
+        /* Pure red (scene-referred) */
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}
+    };
+
+    size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
+
+    for (size_t i = 0; i < num_tests; i++) {
+        alwan_scalar output[3];
+        int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_KHRONOS_PBR_NEUTRAL,
+                                                test_inputs[i], 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
+        TEST_ASSERT(status == ALWAN_OK, "Khronos PBR Neutral transform failed");
+
+        /* Output must be in [0,1] range for display-referred RGB */
+        if (!is_in_range_01(output)) {
+            printf("  Test %zu: output out of range [%.6f %.6f %.6f]\n",
+                   i, output[0], output[1], output[2]);
+        }
+        TEST_ASSERT(is_in_range_01(output), "Khronos PBR Neutral output not in [0,1] range");
+
+        /* Black input should produce near-black output */
+        if (i == 0) {
+            alwan_scalar max_val = output[0];
+            if (output[1] > max_val) max_val = output[1];
+            if (output[2] > max_val) max_val = output[2];
+            TEST_ASSERT(max_val < ALWAN_LITERAL(0.01), "Black input should produce near-black output");
+        }
+
+        /* Below switch point (~0.76): output = input - offset
+         * For achromatic 0.18, x=0.18, offset = 0.18 - 6.25*0.18^0.18 = 0.18 - 0.2025 < 0
+         * Actually: since x=0.18 > 0.08, offset = 0.04
+         * So output ≈ 0.18 - 0.04 = 0.14 (achromatic, peak < start_compression) */
+        if (i == 1) {
+            alwan_scalar expected = ALWAN_LITERAL(0.18) - ALWAN_LITERAL(0.04);
+            alwan_scalar diff = ALWAN_ABS(output[0] - expected) +
+                          ALWAN_ABS(output[1] - expected) +
+                          ALWAN_ABS(output[2] - expected);
+            TEST_ASSERT(diff < ALWAN_LITERAL(0.01), "Below switch point should apply offset only");
+        }
+
+        /* Over-bright input should be tone-mapped to [0,1] */
+        if (i == 4) {
+            TEST_ASSERT(output[0] <= ALWAN_LITERAL(1.0) &&
+                       output[1] <= ALWAN_LITERAL(1.0) &&
+                       output[2] <= ALWAN_LITERAL(1.0),
+                       "Over-bright values should be tone-mapped");
+        }
+    }
+
+    TEST_PASS("Khronos PBR Neutral basic tests");
+}
+
 static int test_view_transform_monotonic(void) {
     /* Test that view transforms are monotonic: brighter input -> brighter output */
     alwan_scalar inputs[][3] = {
@@ -162,8 +228,8 @@ static int test_view_transform_monotonic(void) {
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)}
     };
 
-    alwan_view_transform transforms[] = {ALWAN_VIEW_ACES_REC709, ALWAN_VIEW_AGX, ALWAN_VIEW_AGX_PUNCHY};
-    char const *transform_names[] = {"aces_rec709", "agx", "agx_punchy"};
+    alwan_view_transform transforms[] = {ALWAN_VIEW_ACES_REC709, ALWAN_VIEW_AGX, ALWAN_VIEW_AGX_PUNCHY, ALWAN_VIEW_KHRONOS_PBR_NEUTRAL};
+    char const *transform_names[] = {"aces_rec709", "agx", "agx_punchy", "khronos_pbr_neutral"};
     size_t const num_transforms = sizeof(transforms) / sizeof(transforms[0]);
 
     for (size_t t = 0; t < num_transforms; t++) {
@@ -291,6 +357,7 @@ int test_10_view_transforms_main(void) {
     failures += test_aces_rec709_basic();
     failures += test_agx_basic();
     failures += test_agx_punchy();
+    failures += test_khronos_pbr_neutral_basic();
     failures += test_view_transform_monotonic();
     failures += test_bulk_view_transform();
     failures += test_view_transform_preserves_hue();

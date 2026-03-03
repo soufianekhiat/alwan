@@ -229,6 +229,73 @@ static int test_gamut_map_monotonicity(void) {
     TEST_PASS("Gamut mapping monotonicity");
 }
 
+static int test_css_gamut_map(void) {
+    size_t const stride = 3 * sizeof(alwan_scalar);
+
+    /* In-gamut passthrough: (0.5, 0.3, 0.7) should be unchanged */
+    {
+        alwan_scalar in[3] = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.7)};
+        alwan_scalar out[3];
+        int status = alwan_css_gamut_map(out, in, 1, stride, stride);
+        TEST_ASSERT(status == ALWAN_OK, "CSS gamut map in-gamut status");
+        TEST_CHECK_NEAR(out[0], in[0], ALWAN_LITERAL(1e-10));
+        TEST_CHECK_NEAR(out[1], in[1], ALWAN_LITERAL(1e-10));
+        TEST_CHECK_NEAR(out[2], in[2], ALWAN_LITERAL(1e-10));
+    }
+
+    /* Black and white passthrough */
+    {
+        alwan_scalar black[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_scalar white[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+        alwan_scalar out[3];
+
+        int status = alwan_css_gamut_map(out, black, 1, stride, stride);
+        TEST_ASSERT(status == ALWAN_OK, "CSS gamut map black status");
+        TEST_CHECK_NEAR(out[0], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-10));
+        TEST_CHECK_NEAR(out[1], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-10));
+        TEST_CHECK_NEAR(out[2], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-10));
+
+        status = alwan_css_gamut_map(out, white, 1, stride, stride);
+        TEST_ASSERT(status == ALWAN_OK, "CSS gamut map white status");
+        TEST_CHECK_NEAR(out[0], ALWAN_LITERAL(1.0), ALWAN_LITERAL(1e-10));
+        TEST_CHECK_NEAR(out[1], ALWAN_LITERAL(1.0), ALWAN_LITERAL(1e-10));
+        TEST_CHECK_NEAR(out[2], ALWAN_LITERAL(1.0), ALWAN_LITERAL(1e-10));
+    }
+
+    /* Out-of-gamut: result must be in [0,1] */
+    {
+        alwan_scalar in[3] = {ALWAN_LITERAL(1.5), ALWAN_LITERAL(-0.2), ALWAN_LITERAL(0.8)};
+        alwan_scalar out[3];
+        int status = alwan_css_gamut_map(out, in, 1, stride, stride);
+        TEST_ASSERT(status == ALWAN_OK, "CSS gamut map out-of-gamut status");
+        TEST_ASSERT(out[0] >= ALWAN_LITERAL(0.0) && out[0] <= ALWAN_LITERAL(1.0), "CSS R in gamut");
+        TEST_ASSERT(out[1] >= ALWAN_LITERAL(0.0) && out[1] <= ALWAN_LITERAL(1.0), "CSS G in gamut");
+        TEST_ASSERT(out[2] >= ALWAN_LITERAL(0.0) && out[2] <= ALWAN_LITERAL(1.0), "CSS B in gamut");
+    }
+
+    /* Bulk: 3 colors at once */
+    {
+        alwan_scalar in[] = {
+            ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5),
+            ALWAN_LITERAL(2.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
+            ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(2.0)
+        };
+        alwan_scalar out[9];
+        int status = alwan_css_gamut_map(out, in, 3, stride, stride);
+        TEST_ASSERT(status == ALWAN_OK, "CSS gamut map bulk status");
+        for (int j = 0; j < 9; j++) {
+            TEST_ASSERT(out[j] >= ALWAN_LITERAL(0.0) && out[j] <= ALWAN_LITERAL(1.0),
+                        "CSS bulk output in gamut");
+        }
+        /* First triplet was in-gamut, should pass through */
+        TEST_CHECK_NEAR(out[0], ALWAN_LITERAL(0.5), ALWAN_LITERAL(1e-10));
+        TEST_CHECK_NEAR(out[1], ALWAN_LITERAL(0.5), ALWAN_LITERAL(1e-10));
+        TEST_CHECK_NEAR(out[2], ALWAN_LITERAL(0.5), ALWAN_LITERAL(1e-10));
+    }
+
+    TEST_PASS("CSS Color 4 gamut mapping");
+}
+
 /* Main test runner for M11 */
 int test_18_gamut_main(void) {
     printf("=== M11: Gamut Utilities & Mapping Tests ===\n");
@@ -239,6 +306,7 @@ int test_18_gamut_main(void) {
     if (test_gamut_map_clip() != 0) return 4;
     if (test_gamut_map_hue_preserving() != 0) return 5;
     if (test_gamut_map_monotonicity() != 0) return 6;
+    if (test_css_gamut_map() != 0) return 7;
 
     printf("\n=== All M11 tests passed ===\n");
     return 0;
