@@ -203,32 +203,13 @@ int alwan_aces_glow10(alwan_rgb *rgb_out, alwan_rgb const *rgb_in) {
  * Reference: OCIO FixedFunctionOpCPU.cpp - Renderer_ACES_DarkToDim10_Fwd
  * ---------------------------------------------------------------- */
 
-/* DarkToDim gamma (as exponent directly, not gamma-1) */
-#define DARK_TO_DIM_GAMMA ALWAN_LITERAL(-0.0189)  /* 0.9811 - 1.0 */
-
 int alwan_aces_dark_to_dim10(alwan_rgb *rgb_out, alwan_rgb const *rgb_in) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-
-    alwan_scalar red = rgb_in->r;
-    alwan_scalar grn = rgb_in->g;
-    alwan_scalar blu = rgb_in->b;
-
-    static const alwan_scalar MIN_LUM = ALWAN_LITERAL(1e-10);
-
-    /* ACEScg luminance coefficients */
-    static const alwan_scalar Y_r = ALWAN_LITERAL(0.27222871678091454);
-    static const alwan_scalar Y_g = ALWAN_LITERAL(0.67408176581114831);
-    static const alwan_scalar Y_b = ALWAN_LITERAL(0.053689517407937051);
-
-    alwan_scalar Y = Y_r * red + Y_g * grn + Y_b * blu;
-    if (Y < MIN_LUM) Y = MIN_LUM;
-
-    alwan_scalar Ypow_over_Y = ALWAN_POW(Y, DARK_TO_DIM_GAMMA);
-
-    rgb_out->r = red * Ypow_over_Y;
-    rgb_out->g = grn * Ypow_over_Y;
-    rgb_out->b = blu * Ypow_over_Y;
-
+    alwan_vec3 in_v = {{rgb_in->r, rgb_in->g, rgb_in->b}};
+    alwan_vec3 out_v = aces_dark_to_dim10_v(in_v);
+    rgb_out->r = out_v.v[0];
+    rgb_out->g = out_v.v[1];
+    rgb_out->b = out_v.v[2];
     return ALWAN_OK;
 }
 
@@ -239,30 +220,11 @@ int alwan_aces_dark_to_dim10(alwan_rgb *rgb_out, alwan_rgb const *rgb_in) {
 
 int alwan_rec2100_surround(alwan_rgb *rgb_out, alwan_rgb const *rgb_in, alwan_scalar gamma) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-
-    alwan_scalar red = rgb_in->r;
-    alwan_scalar grn = rgb_in->g;
-    alwan_scalar blu = rgb_in->b;
-
-    static const alwan_scalar MIN_LUM = ALWAN_LITERAL(1e-4);
-
-    /* BT.2020/2100 luminance coefficients */
-    static const alwan_scalar Y_r = ALWAN_LITERAL(0.2627);
-    static const alwan_scalar Y_g = ALWAN_LITERAL(0.6780);
-    static const alwan_scalar Y_b = ALWAN_LITERAL(0.0593);
-
-    alwan_scalar Y = Y_r * red + Y_g * grn + Y_b * blu;
-    Y = ALWAN_ABS(Y);
-    if (Y < MIN_LUM) Y = MIN_LUM;
-
-    /* gamma parameter is gamma - 1, so we use it directly as exponent */
-    alwan_scalar m_gamma = gamma - ALWAN_LITERAL(1.0);
-    alwan_scalar Ypow_over_Y = ALWAN_POW(Y, m_gamma);
-
-    rgb_out->r = red * Ypow_over_Y;
-    rgb_out->g = grn * Ypow_over_Y;
-    rgb_out->b = blu * Ypow_over_Y;
-
+    alwan_vec3 in_v = {{rgb_in->r, rgb_in->g, rgb_in->b}};
+    alwan_vec3 out_v = aces_rec2100_surround_v(in_v, gamma);
+    rgb_out->r = out_v.v[0];
+    rgb_out->g = out_v.v[1];
+    rgb_out->b = out_v.v[2];
     return ALWAN_OK;
 }
 
@@ -2320,9 +2282,9 @@ int alwan_aces2_output_transform(alwan_rgb *rgb_out,
         alwan_scalar z_clamped = xyz[2] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : xyz[2];
 
         /* Step 8: Apply gamma 2.6 encoding */
-        rgb_out->r = ALWAN_POW(x_clamped, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
-        rgb_out->g = ALWAN_POW(y_clamped, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
-        rgb_out->b = ALWAN_POW(z_clamped, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
+        rgb_out->r = aces_gamma26_oetf_v(x_clamped);
+        rgb_out->g = aces_gamma26_oetf_v(y_clamped);
+        rgb_out->b = aces_gamma26_oetf_v(z_clamped);
 
         return ALWAN_OK;
     }
@@ -2392,9 +2354,9 @@ int alwan_aces2_output_transform(alwan_rgb *rgb_out,
         alwan_scalar b_clamped = p3[2] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (p3[2] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : p3[2]);
 
         /* Step 8: Apply gamma 2.6 encoding */
-        rgb_out->r = ALWAN_POW(r_clamped, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
-        rgb_out->g = ALWAN_POW(g_clamped, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
-        rgb_out->b = ALWAN_POW(b_clamped, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
+        rgb_out->r = aces_gamma26_oetf_v(r_clamped);
+        rgb_out->g = aces_gamma26_oetf_v(g_clamped);
+        rgb_out->b = aces_gamma26_oetf_v(b_clamped);
 
         return ALWAN_OK;
     }
@@ -2563,9 +2525,9 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
 
         /* Step 1: Decode gamma 2.6 */
         alwan_scalar xyz[3];
-        xyz[0] = ALWAN_POW(rgb_in->r, ALWAN_LITERAL(2.6));
-        xyz[1] = ALWAN_POW(rgb_in->g, ALWAN_LITERAL(2.6));
-        xyz[2] = ALWAN_POW(rgb_in->b, ALWAN_LITERAL(2.6));
+        xyz[0] = aces_gamma26_eotf_v(rgb_in->r);
+        xyz[1] = aces_gamma26_eotf_v(rgb_in->g);
+        xyz[2] = aces_gamma26_eotf_v(rgb_in->b);
 
         /* Step 2: De-normalize from equal-energy white to D60
          * This is the inverse of the forward transform's normalization */
@@ -2614,9 +2576,9 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
 
         /* Step 1: Decode gamma 2.6 */
         alwan_scalar p3_linear[3];
-        p3_linear[0] = ALWAN_POW(rgb_in->r, ALWAN_LITERAL(2.6));
-        p3_linear[1] = ALWAN_POW(rgb_in->g, ALWAN_LITERAL(2.6));
-        p3_linear[2] = ALWAN_POW(rgb_in->b, ALWAN_LITERAL(2.6));
+        p3_linear[0] = aces_gamma26_eotf_v(rgb_in->r);
+        p3_linear[1] = aces_gamma26_eotf_v(rgb_in->g);
+        p3_linear[2] = aces_gamma26_eotf_v(rgb_in->b);
 
         /* Step 2: P3 to XYZ (D65) */
         static const alwan_scalar P3_D65_TO_XYZ[9] = {
@@ -3106,47 +3068,14 @@ int alwan_aces_lmt_apply(alwan_rgb *rgb_out,
                          alwan_aces_lmt_params const *params) {
     if (!rgb_out || !rgb_in || !params) return ALWAN_E_INVALID;
 
-    /* ACEScg luminance coefficients (AP1) */
-    static alwan_scalar const LUM_R = ALWAN_LITERAL(0.27222871678091454);
-    static alwan_scalar const LUM_G = ALWAN_LITERAL(0.67408176581114831);
-    static alwan_scalar const LUM_B = ALWAN_LITERAL(0.053689517407937051);
-
-    alwan_scalar r = rgb_in->r;
-    alwan_scalar g = rgb_in->g;
-    alwan_scalar b = rgb_in->b;
-
-    /* Step 1: Apply Slope (gain) */
-    r *= params->slope[0];
-    g *= params->slope[1];
-    b *= params->slope[2];
-
-    /* Step 2: Apply Offset */
-    r += params->offset[0];
-    g += params->offset[1];
-    b += params->offset[2];
-
-    /* Step 3: Apply Power (gamma) - only for positive values */
-    if (r > ALWAN_LITERAL(0.0)) {
-        r = ALWAN_POW(r, params->power[0]);
-    }
-    if (g > ALWAN_LITERAL(0.0)) {
-        g = ALWAN_POW(g, params->power[1]);
-    }
-    if (b > ALWAN_LITERAL(0.0)) {
-        b = ALWAN_POW(b, params->power[2]);
-    }
-
-    /* Step 4: Apply Saturation adjustment */
-    if (params->saturation != ALWAN_LITERAL(1.0)) {
-        alwan_scalar lum = LUM_R * r + LUM_G * g + LUM_B * b;
-        r = lum + params->saturation * (r - lum);
-        g = lum + params->saturation * (g - lum);
-        b = lum + params->saturation * (b - lum);
-    }
-
-    rgb_out->r = r;
-    rgb_out->g = g;
-    rgb_out->b = b;
+    alwan_vec3 in_v = {{rgb_in->r, rgb_in->g, rgb_in->b}};
+    alwan_vec3 slope_v = {{params->slope[0], params->slope[1], params->slope[2]}};
+    alwan_vec3 offset_v = {{params->offset[0], params->offset[1], params->offset[2]}};
+    alwan_vec3 power_v = {{params->power[0], params->power[1], params->power[2]}};
+    alwan_vec3 out_v = aces_lmt_apply_v(in_v, slope_v, offset_v, power_v, params->saturation);
+    rgb_out->r = out_v.v[0];
+    rgb_out->g = out_v.v[1];
+    rgb_out->b = out_v.v[2];
 
     return ALWAN_OK;
 }

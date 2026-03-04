@@ -928,4 +928,83 @@ ALWAN_INLINE alwan_vec2 aces2_compress_gamut_inv_v(alwan_scalar J, alwan_scalar 
     return result;
 }
 
+/* ================================================================
+ * Surround Compensation
+ * ================================================================ */
+
+/* ACES DarkToDim10 — surround compensation (dark surround to dim surround)
+ * Reference: OCIO FixedFunctionOpCPU.cpp - Renderer_ACES_DarkToDim10_Fwd */
+ALWAN_INLINE alwan_vec3 aces_dark_to_dim10_v(alwan_vec3 rgb) {
+    alwan_scalar const MIN_LUM = ALWAN_LITERAL(1e-10);
+    alwan_scalar const Y_r = ALWAN_LITERAL(0.27222871678091454);
+    alwan_scalar const Y_g = ALWAN_LITERAL(0.67408176581114831);
+    alwan_scalar const Y_b = ALWAN_LITERAL(0.053689517407937051);
+    alwan_scalar const GAMMA = ALWAN_LITERAL(-0.0189);  /* 0.9811 - 1.0 */
+
+    alwan_scalar Y = Y_r * rgb.v[0] + Y_g * rgb.v[1] + Y_b * rgb.v[2];
+    if (Y < MIN_LUM) Y = MIN_LUM;
+    alwan_scalar scale = ALWAN_POW(Y, GAMMA);
+
+    alwan_vec3 result;
+    result.v[0] = rgb.v[0] * scale;
+    result.v[1] = rgb.v[1] * scale;
+    result.v[2] = rgb.v[2] * scale;
+    return result;
+}
+
+/* Rec.2100 Surround adjustment
+ * Reference: OCIO FixedFunctionOpCPU.cpp - Renderer_REC2100_Surround
+ * gamma: surround factor (e.g. 0.9811 for dark-to-dim) */
+ALWAN_INLINE alwan_vec3 aces_rec2100_surround_v(alwan_vec3 rgb, alwan_scalar gamma) {
+    alwan_scalar const MIN_LUM = ALWAN_LITERAL(1e-4);
+    alwan_scalar const Y_r = ALWAN_LITERAL(0.2627);
+    alwan_scalar const Y_g = ALWAN_LITERAL(0.6780);
+    alwan_scalar const Y_b = ALWAN_LITERAL(0.0593);
+
+    alwan_scalar Y = Y_r * rgb.v[0] + Y_g * rgb.v[1] + Y_b * rgb.v[2];
+    Y = ALWAN_ABS(Y);
+    if (Y < MIN_LUM) Y = MIN_LUM;
+    alwan_scalar m_gamma = gamma - ALWAN_LITERAL(1.0);
+    alwan_scalar scale = ALWAN_POW(Y, m_gamma);
+
+    alwan_vec3 result;
+    result.v[0] = rgb.v[0] * scale;
+    result.v[1] = rgb.v[1] * scale;
+    result.v[2] = rgb.v[2] * scale;
+    return result;
+}
+
+/* ================================================================
+ * Look Modification Transform (LMT)
+ * ================================================================ */
+
+/* ACES LMT: Slope/Offset/Power + Saturation per-pixel transform
+ * slope, offset, power: per-channel SOP parameters
+ * saturation: global saturation adjustment (1.0 = no change) */
+ALWAN_INLINE alwan_vec3 aces_lmt_apply_v(alwan_vec3 rgb,
+                                          alwan_vec3 slope, alwan_vec3 offset, alwan_vec3 power,
+                                          alwan_scalar saturation) {
+    alwan_scalar const LUM_R = ALWAN_LITERAL(0.27222871678091454);
+    alwan_scalar const LUM_G = ALWAN_LITERAL(0.67408176581114831);
+    alwan_scalar const LUM_B = ALWAN_LITERAL(0.053689517407937051);
+
+    alwan_scalar r = rgb.v[0] * slope.v[0] + offset.v[0];
+    alwan_scalar g = rgb.v[1] * slope.v[1] + offset.v[1];
+    alwan_scalar b = rgb.v[2] * slope.v[2] + offset.v[2];
+
+    if (r > ALWAN_LITERAL(0.0)) r = ALWAN_POW(r, power.v[0]);
+    if (g > ALWAN_LITERAL(0.0)) g = ALWAN_POW(g, power.v[1]);
+    if (b > ALWAN_LITERAL(0.0)) b = ALWAN_POW(b, power.v[2]);
+
+    if (saturation != ALWAN_LITERAL(1.0)) {
+        alwan_scalar lum = LUM_R * r + LUM_G * g + LUM_B * b;
+        r = lum + saturation * (r - lum);
+        g = lum + saturation * (g - lum);
+        b = lum + saturation * (b - lum);
+    }
+
+    alwan_vec3 result = {{r, g, b}};
+    return result;
+}
+
 #endif /* ALWAN_ACES_FF_CORE_H */
