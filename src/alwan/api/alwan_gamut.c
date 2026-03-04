@@ -790,3 +790,31 @@ int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
 
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * CSS Color Level 4 §13.2 Gamut Mapping
+ * Thin wrapper — per-pixel math in alwan_gamut_core.h
+ * ---------------------------------------------------------------- */
+
+int alwan_css_gamut_map(alwan_scalar *rgb_out,
+                        alwan_scalar const *rgb_in,
+                        size_t count,
+                        size_t in_stride,
+                        size_t out_stride) {
+    if (!rgb_in || !rgb_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+
+        alwan_vec3 origin = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
+        alwan_vec3 mapped = gamut_css_map_v(origin);
+        out_ptr[0] = mapped.v[0];
+        out_ptr[1] = mapped.v[1];
+        out_ptr[2] = mapped.v[2];
+    }
+
+    return ALWAN_OK;
+}

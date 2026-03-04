@@ -8,6 +8,7 @@
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
+#include "../core/alwan_spd_core.h"
 #include <string.h>
 
 /* ----------------------------------------------------------------
@@ -633,10 +634,6 @@ int alwan_spd_blackbody(alwan_spd *out,
         return status;
     }
 
-    /* Planck's law constants */
-    const alwan_scalar c1 = ALWAN_LITERAL(3.741771e-16);  /* W⋅m² (first radiation constant) */
-    const alwan_scalar c2 = ALWAN_LITERAL(1.4388e-2);     /* m⋅K (second radiation constant) */
-
     /* Calculate wavelength step */
     alwan_scalar const step = (wavelength_max - wavelength_min) / (alwan_scalar)(count - 1);
 
@@ -644,20 +641,7 @@ int alwan_spd_blackbody(alwan_spd *out,
     for (size_t i = 0; i < count; i++) {
         alwan_scalar wavelength_nm = wavelength_min + (alwan_scalar)i * step;
         alwan_scalar wavelength_m = wavelength_nm * ALWAN_LITERAL(1e-9);  /* Convert nm to meters */
-
-        /* Planck's law: L(λ,T) = c1 / (λ^5 * (exp(c2/(λ*T)) - 1)) */
-        alwan_scalar lambda5 = wavelength_m * wavelength_m * wavelength_m * wavelength_m * wavelength_m;
-        alwan_scalar exponent = c2 / (wavelength_m * temperature_K);
-        alwan_scalar denominator = lambda5 * (ALWAN_EXP(exponent) - ALWAN_LITERAL(1.0));
-
-        /* Avoid division by zero (though should never happen with valid inputs)
-         * Use a much smaller threshold since Planck's law naturally produces tiny denominators
-         * (typically 1e-30 to 1e-28 for visible wavelengths) */
-        if (ALWAN_ABS(denominator) < ALWAN_LITERAL(1e-100)) {
-            out->values[i] = ALWAN_LITERAL(0.0);
-        } else {
-            out->values[i] = c1 / denominator;
-        }
+        out->values[i] = spd_planck_radiance_v(wavelength_m, temperature_K);
     }
 
     return ALWAN_OK;

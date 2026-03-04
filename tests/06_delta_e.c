@@ -143,6 +143,45 @@ static int test_delta_e_2000(void) {
     TEST_PASS("ΔE*00 (CIEDE2000)");
 }
 
+static int test_delta_e_ok(void) {
+    /* Test deltaEOK: Euclidean distance in Oklab space */
+
+    /* Identical colors should give 0 */
+    {
+        alwan_oklab a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.05)};
+        alwan_scalar result = alwan_delta_e_ok(&a, &a);
+        TEST_ASSERT_NEAR(result, ALWAN_LITERAL(0.0), TEST_TOLERANCE, "deltaEOK identical");
+    }
+
+    /* Known pair: dL=0.1, da=0.2, db=0.3 → sqrt(0.01+0.04+0.09) = sqrt(0.14) */
+    {
+        alwan_oklab a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_oklab b = {ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.3)};
+        alwan_scalar expected = ALWAN_SQRT(ALWAN_LITERAL(0.14));
+        alwan_scalar result = alwan_delta_e_ok(&a, &b);
+        TEST_ASSERT_NEAR(result, expected, TEST_TOLERANCE, "deltaEOK known pair");
+    }
+
+    /* Symmetry: dE(a,b) == dE(b,a) */
+    {
+        alwan_oklab a = {ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.05), ALWAN_LITERAL(-0.1)};
+        alwan_oklab b = {ALWAN_LITERAL(0.3), ALWAN_LITERAL(-0.02), ALWAN_LITERAL(0.15)};
+        alwan_scalar d1 = alwan_delta_e_ok(&a, &b);
+        alwan_scalar d2 = alwan_delta_e_ok(&b, &a);
+        TEST_ASSERT_NEAR(d1, d2, TEST_TOLERANCE, "deltaEOK symmetry");
+    }
+
+    /* Non-negativity */
+    {
+        alwan_oklab a = {ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.3), ALWAN_LITERAL(0.2)};
+        alwan_oklab b = {ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.1)};
+        alwan_scalar result = alwan_delta_e_ok(&a, &b);
+        TEST_ASSERT(result >= ALWAN_LITERAL(0.0), "deltaEOK non-negative");
+    }
+
+    TEST_PASS("ΔE OK (Oklab Euclidean)");
+}
+
 /* ----------------------------------------------------------------
  * Main test runner
  * ---------------------------------------------------------------- */
@@ -154,6 +193,7 @@ int test_06_delta_e_main(void) {
     failures += test_delta_e_94();
     failures += test_delta_e_cmc();
     failures += test_delta_e_2000();
+    failures += test_delta_e_ok();
 
     if (failures == 0) {
         printf("\n=== All ΔE metric tests passed ===\n");
