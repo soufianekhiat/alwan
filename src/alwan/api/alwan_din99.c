@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * DIN99 Family (DIN99, DIN99b, DIN99c, DIN99d)
- * Thin wrapper -- logic in alwan_din99_core.h
+ * See alwan_din99_core.h
  *
  * Reference: DIN 6176:2001-03, ASTM D2244-07
  */

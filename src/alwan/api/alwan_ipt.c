@@ -9,7 +9,7 @@
  * "Development and Testing of a Color Space (IPT) with Improved Hue Uniformity"
  * https://www.researchgate.net/publication/221677980
  *
- * Implementation delegated to alwan_ipt_core.h (single source of truth).
+ * See alwan_ipt_core.h.
  */
 
 #include "../alwan.h"

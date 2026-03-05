@@ -70,7 +70,7 @@ static alwan_scalar const HW22_V_HQ_I[4] = {
 };
 
 /* ----------------------------------------------------------------
- * Helper: Branchless degree of adaptation D
+ * Branchless degree of adaptation D
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar hw22_compute_D_v(alwan_scalar F, alwan_scalar La, alwan_scalar discount) {
@@ -81,7 +81,7 @@ ALWAN_INLINE alwan_scalar hw22_compute_D_v(alwan_scalar F, alwan_scalar La, alwa
 }
 
 /* ----------------------------------------------------------------
- * Helper: Luminance level adaptation factor FL
+ * Luminance level adaptation factor FL
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar hw22_compute_FL_v(alwan_scalar La) {
@@ -93,7 +93,7 @@ ALWAN_INLINE alwan_scalar hw22_compute_FL_v(alwan_scalar La) {
 }
 
 /* ----------------------------------------------------------------
- * Helper: Post-adaptation nonlinear response compression
+ * Post-adaptation nonlinear response compression
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar hw22_post_adaptation_nonlinear_v(alwan_scalar x, alwan_scalar FL) {
@@ -105,7 +105,7 @@ ALWAN_INLINE alwan_scalar hw22_post_adaptation_nonlinear_v(alwan_scalar x, alwan
 }
 
 /* ----------------------------------------------------------------
- * Helper: Inverse post-adaptation nonlinear response
+ * Inverse post-adaptation nonlinear response
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar hw22_post_adaptation_nonlinear_inv_v(alwan_scalar x, alwan_scalar FL) {
@@ -118,7 +118,7 @@ ALWAN_INLINE alwan_scalar hw22_post_adaptation_nonlinear_inv_v(alwan_scalar x, a
 }
 
 /* ----------------------------------------------------------------
- * Helper: Hellwig2022 Fourier series eccentricity factor
+ * Hellwig2022 Fourier series eccentricity factor
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar hw22_eccentricity_v(alwan_scalar h_rad) {
@@ -137,7 +137,7 @@ ALWAN_INLINE alwan_scalar hw22_eccentricity_v(alwan_scalar h_rad) {
 }
 
 /* ----------------------------------------------------------------
- * Helper: Hue angle to hue quadrature H (branchless, unrolled)
+ * Hue angle to hue quadrature H (branchless, unrolled)
  *
  * Uses ALWAN_SELECT to evaluate all four quadrants and pick the
  * correct one based on which range h falls into.
@@ -173,7 +173,7 @@ ALWAN_INLINE alwan_scalar hw22_hue_to_quadrature_v(alwan_scalar h) {
 }
 
 /* ----------------------------------------------------------------
- * Helper: Compute white-point achromatic response A_w and
+ * Compute white-point achromatic response A_w and
  *         adapted white RGB_w in CAT16 space.
  *         Shared between forward and inverse.
  * ---------------------------------------------------------------- */

@@ -1,9 +1,8 @@
 /* ================================================================
  * Alwan - Color Vision & Perception
- * Thin wrapper -- logic in alwan_vision_core.h
  *
- * Only enum resolution and LUT-based spectral lookups live here;
- * all per-pixel math delegated to core.
+ * Enum resolution and LUT-based spectral lookups live here;
+ * per-pixel math in alwan_vision_core.h.
  * ================================================================ */
 
 #include "../alwan.h"
@@ -50,7 +49,7 @@ int alwan_simulate_cvd(alwan_rgb *rgb_out,
 
 /* ================================================================
  * Luminous Efficiency Functions
- * LUT-based spectral lookup -- uses linear search loop, stays in .c
+ * Luminous Efficiency Functions (LUT-based)
  * ================================================================ */
 
 /* CIE 1924 Photopic V(lambda) - interleaved {wavelength, value} pairs
@@ -134,7 +133,6 @@ alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx, alwan_spd const *spd,
 
 /* ================================================================
  * Contrast Sensitivity Function (CSF)
- * Thin wrappers -- math in alwan_vision_core.h
  * ================================================================ */
 
 alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance) {

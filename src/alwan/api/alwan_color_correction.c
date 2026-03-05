@@ -1,6 +1,6 @@
 /* ================================================================
  * Alwan - Color Correction & Grading
- * Thin wrapper -- per-pixel math in alwan_color_correction_core.h
+ * Per-pixel math in alwan_color_correction_core.h
  *
  * Only enum dispatch, pointer validation, memory allocation,
  * and loop-based solvers live here.

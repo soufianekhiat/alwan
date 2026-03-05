@@ -8,7 +8,7 @@
  * a high dynamic range uniform colour space"
  * Reference: Optics Express 29(4), 6036-6052
  *
- * Implementation delegated to alwan_zcam_core.h (single source of truth).
+ * See alwan_zcam_core.h.
  */
 
 #include "../alwan.h"

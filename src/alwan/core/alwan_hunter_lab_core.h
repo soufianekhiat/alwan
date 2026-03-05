@@ -33,7 +33,7 @@
 #define ALWAN_HUNTER_D65_ZN  ALWAN_LITERAL(108.82)
 
 /* ----------------------------------------------------------------
- * Helper: Calculate Ka and Kb for custom illuminant (value-returning)
+ * Calculate Ka and Kb for custom illuminant (value-returning)
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_vec2 alwan_hunter_coefficients_v(alwan_xyz xyz_n) {

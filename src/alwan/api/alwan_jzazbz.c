@@ -10,7 +10,7 @@
  *  high dynamic range and wide gamut"
  * https://opg.optica.org/oe/fulltext.cfm?uri=oe-25-13-15131
  *
- * Implementation delegated to alwan_jzazbz_core.h (single source of truth).
+ * See alwan_jzazbz_core.h.
  */
 
 #include "../alwan.h"

@@ -50,7 +50,7 @@ ALWAN_CONSTEXPR alwan_mat3x3 ICTCP_BT2020_TO_XYZ = {{
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
- * Helper: HLG Inverse OETF (branchless)
+ * HLG Inverse OETF (branchless)
  * Mathematical inverse of HLG OETF, NOT the same as HLG EOTF
  * (HLG EOTF includes system gamma 1.2)
  * ---------------------------------------------------------------- */

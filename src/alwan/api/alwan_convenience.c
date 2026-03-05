@@ -5,7 +5,7 @@
  *
  * M9: Convenience Color Model Conversions
  * HSV, HSL, CMY, CMYK, YCbCr, YcCbcCrc
- * Thin wrappers -- core logic in alwan_convenience_core.h
+ * See alwan_convenience_core.h
  */
 
 #include "../alwan.h"
@@ -13,7 +13,7 @@
 #include "../core/alwan_convenience_core.h"
 
 /* ----------------------------------------------------------------
- * RGB <-> HSV -- delegated to alwan_convenience_core.h
+ * RGB <-> HSV
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_to_hsv(alwan_hsv *hsv_out, alwan_rgb const *rgb) {
@@ -29,7 +29,7 @@ int alwan_hsv_to_rgb(alwan_rgb *rgb_out, alwan_hsv const *hsv) {
 }
 
 /* ----------------------------------------------------------------
- * RGB <-> HSL -- delegated to alwan_convenience_core.h
+ * RGB <-> HSL
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_to_hsl(alwan_hsl *hsl_out, alwan_rgb const *rgb) {
@@ -45,7 +45,7 @@ int alwan_hsl_to_rgb(alwan_rgb *rgb_out, alwan_hsl const *hsl) {
 }
 
 /* ----------------------------------------------------------------
- * RGB <-> CMY -- delegated to alwan_convenience_core.h
+ * RGB <-> CMY
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_to_cmy(alwan_cmy *cmy_out, alwan_rgb const *rgb) {
@@ -61,7 +61,7 @@ int alwan_cmy_to_rgb(alwan_rgb *rgb_out, alwan_cmy const *cmy) {
 }
 
 /* ----------------------------------------------------------------
- * CMY <-> CMYK -- delegated to alwan_convenience_core.h
+ * CMY <-> CMYK
  * ---------------------------------------------------------------- */
 
 int alwan_cmy_to_cmyk(alwan_scalar *c, alwan_scalar *m, alwan_scalar *y, alwan_scalar *k, alwan_cmy const *cmy) {
@@ -87,7 +87,7 @@ int alwan_cmyk_to_cmy(alwan_cmy *cmy_out, alwan_scalar c, alwan_scalar m, alwan_
 }
 
 /* ----------------------------------------------------------------
- * RGB <-> YCbCr -- delegated to alwan_convenience_core.h
+ * RGB <-> YCbCr
  * The .c wrapper resolves the enum to kr/kb.
  * ---------------------------------------------------------------- */
 
@@ -110,7 +110,7 @@ int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr
 }
 
 /* ----------------------------------------------------------------
- * RGB <-> YcCbcCrc -- delegated to alwan_convenience_core.h
+ * RGB <-> YcCbcCrc
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb, int bit_depth) {
@@ -138,7 +138,7 @@ int alwan_ycbcr_legal_to_full(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_d
 }
 
 /* ----------------------------------------------------------------
- * RGB <-> YCoCg -- delegated to alwan_convenience_core.h
+ * RGB <-> YCoCg
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_to_ycocg(alwan_ycocg *ycocg_out, alwan_rgb const *rgb) {
@@ -154,7 +154,7 @@ int alwan_ycocg_to_rgb(alwan_rgb *rgb_out, alwan_ycocg const *ycocg) {
 }
 
 /* ----------------------------------------------------------------
- * RGB <-> HWB -- delegated to alwan_convenience_core.h
+ * RGB <-> HWB
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_to_hwb(alwan_scalar *hwb_out, alwan_rgb const *rgb) {

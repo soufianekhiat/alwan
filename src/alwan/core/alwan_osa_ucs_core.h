@@ -31,7 +31,7 @@ ALWAN_CONSTEXPR alwan_mat3x3 RGB_TO_XYZ_OSA = {{
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
- * Helper: Sign-preserving cube root
+ * Sign-preserving cube root
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar alwan_spow_cbrt_v(alwan_scalar val) {

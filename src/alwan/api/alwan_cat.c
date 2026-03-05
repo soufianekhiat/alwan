@@ -87,7 +87,7 @@ static void get_bianco_pc_2010_matrix(alwan_mat3x3 *out) {
 /* ----------------------------------------------------------------
  * CAT Matrix Computation
  * Resolves the CAT enum to a cone-response matrix M, then
- * delegates to core value-returning functions.
+ * calls the core value-returning functions.
  * ---------------------------------------------------------------- */
 
 int alwan_cat_matrix(alwan_mat3x3 *out,

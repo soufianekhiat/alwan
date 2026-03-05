@@ -1,6 +1,6 @@
 /* ================================================================
  * Alwan - Light Quality & CCT
- * Thin wrapper -- per-pixel CCT/whiteness formulas in alwan_quality_core.h
+ * CCT/whiteness formulas in alwan_quality_core.h
  *
  * Only table lookups (Robertson), Newton-Raphson loops (Kang inverse),
  * CRI/CQS/SSI/TM-30 workflows, and data tables live here.

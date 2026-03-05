@@ -7,7 +7,7 @@
  * Based on Hellwig and Fairchild (2022)
  * "Predicting lightness, chroma, and hue using IAM and CAM frameworks"
  *
- * Thin wrapper: resolves surround enum, delegates to alwan_hellwig2022_core.h
+ * Resolves surround enum; see alwan_hellwig2022_core.h
  */
 
 #include "../alwan.h"

@@ -7,7 +7,7 @@
  *
  * Reference: ITU-R Recommendation BT.2100-3 (02/2025)
  *
- * Implementation delegated to alwan_ictcp_core.h (single source of truth).
+ * See alwan_ictcp_core.h.
  */
 
 #include "../alwan.h"

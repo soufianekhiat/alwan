@@ -7,7 +7,7 @@
  * Based on: Hunt (1991, 1995)
  * "Revised colour-appearance model for related and unrelated colours"
  *
- * Implementation delegated to alwan_hunt_core.h (single source of truth).
+ * See alwan_hunt_core.h.
  * Surround parameter resolution (Nc, Nb) kept here since enums
  * are not cross-platform.
  */

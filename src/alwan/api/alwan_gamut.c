@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * M11: Gamut Utilities & Mapping
- * Thin wrapper -- per-pixel math in alwan_gamut_core.h
+ * Per-pixel math in alwan_gamut_core.h
  *
  * Only NULL-param defaults, enum dispatch, bulk loops, data tables,
  * and polygon/locus lookups live here.
@@ -76,7 +76,7 @@ int alwan_gamut_volume_mc(alwan_scalar *volume,
  * M11: Gamut Mapping
  * ---------------------------------------------------------------- */
 
-/* Clip RGB to [0,1] range -- delegates to core */
+/* Clip RGB to [0,1] range */
 static void gamut_map_clip_single(alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out) {
     *rgb_out = gamut_clip_v(*rgb_in);
 }
@@ -631,29 +631,29 @@ int alwan_gamut_coverage(alwan_scalar *coverage_out,
  * Based on Bjorn Ottosson's Oklab (2020)
  * https://bottosson.github.io/posts/oklab/ */
 
-/* Linear sRGB -> Oklab -- delegates to core */
+/* Linear sRGB -> Oklab */
 static void alwan_linear_srgb_to_oklab(alwan_vec3 const *rgb, alwan_vec3 *oklab) {
     *oklab = gamut_linear_srgb_to_oklab_v(*rgb);
 }
 
-/* Oklab -> Linear sRGB -- delegates to core */
+/* Oklab -> Linear sRGB */
 static void alwan_oklab_to_linear_srgb(alwan_vec3 const *oklab, alwan_vec3 *rgb) {
     *rgb = gamut_oklab_to_linear_srgb_v(*oklab);
 }
 
-/* Compute maximum saturation for a given hue -- delegates to core */
+/* Compute maximum saturation for a given hue */
 static alwan_scalar alwan_compute_max_saturation(alwan_scalar a, alwan_scalar b) {
     return gamut_compute_max_saturation_v(a, b);
 }
 
-/* Find gamut cusp -- delegates to core */
+/* Find gamut cusp */
 static void alwan_find_cusp(alwan_scalar a, alwan_scalar b, alwan_scalar *L_cusp, alwan_scalar *C_cusp) {
     alwan_vec2 cusp = gamut_find_cusp_v(a, b);
     *L_cusp = cusp.v[0];
     *C_cusp = cusp.v[1];
 }
 
-/* Find intersection of gamut boundary -- delegates to core */
+/* Find intersection of gamut boundary */
 static alwan_scalar alwan_find_gamut_intersection(alwan_scalar a, alwan_scalar b,
                                                     alwan_scalar L1, alwan_scalar C1,
                                                     alwan_scalar L0, alwan_scalar C0) {
@@ -793,7 +793,7 @@ int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
 
 /* ----------------------------------------------------------------
  * CSS Color Level 4 §13.2 Gamut Mapping
- * Thin wrapper -- per-pixel math in alwan_gamut_core.h
+ * Per-pixel math in alwan_gamut_core.h
  * ---------------------------------------------------------------- */
 
 int alwan_css_gamut_map(alwan_scalar *rgb_out,

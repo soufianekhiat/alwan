@@ -7,7 +7,7 @@
  *
  * Reference: OSA Uniform Color Scales Committee (1977)
  *
- * Implementation delegated to alwan_osa_ucs_core.h (single source of truth).
+ * See alwan_osa_ucs_core.h.
  */
 
 #include "../alwan.h"

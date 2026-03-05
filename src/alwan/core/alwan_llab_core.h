@@ -57,7 +57,7 @@ static alwan_scalar const LLAB_V_CHROMA_CONST = ALWAN_LITERAL(0.05);
 static alwan_scalar const LLAB_V_BETA_EXP = ALWAN_LITERAL(0.0834);
 
 /* ----------------------------------------------------------------
- * Helper: LLAB f(t) with F_S induction factor
+ * LLAB f(t) with F_S induction factor
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar llab_f_v(alwan_scalar t, alwan_scalar F_S) {

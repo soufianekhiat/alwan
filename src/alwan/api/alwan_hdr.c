@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * HDR Pipeline Utilities
- * Thin wrapper -- per-pixel math in alwan_hdr_core.h
+ * Per-pixel math in alwan_hdr_core.h
  *
  * HLG OOTF, MaxCLL, MaxFALL, BT.2408 reference white.
  */

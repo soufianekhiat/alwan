@@ -20,7 +20,7 @@
 #include "alwan_math_core.h"
 
 /* ================================================================
- * Helper: xy chromaticity to XYZ (Y=1)
+ * xy chromaticity to XYZ (Y=1)
  * ================================================================ */
 
 ALWAN_INLINE alwan_vec3 alwan_xy_to_xyz_v(alwan_scalar x, alwan_scalar y) {

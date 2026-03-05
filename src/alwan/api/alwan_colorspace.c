@@ -9,7 +9,7 @@
 #include "../core/alwan_colorspace_core.h"
 
 /* ================================================================
- * XYZ <-> xyY -- delegated to alwan_colorspace_core.h
+ * XYZ <-> xyY
  * ================================================================ */
 
 void alwan_xyz_to_xyy(alwan_xyy *xyy, alwan_xyz const *xyz) {
@@ -21,7 +21,7 @@ void alwan_xyy_to_xyz(alwan_xyz *xyz, alwan_xyy const *xyy) {
 }
 
 /* ================================================================
- * XYZ <-> Lab -- delegated to alwan_colorspace_core.h
+ * XYZ <-> Lab
  * ================================================================ */
 
 void alwan_xyz_to_lab(alwan_lab *lab, alwan_xyz const *xyz, alwan_xyz const *white_xyz) {
@@ -33,7 +33,7 @@ void alwan_lab_to_xyz(alwan_xyz *xyz, alwan_lab const *lab, alwan_xyz const *whi
 }
 
 /* ================================================================
- * XYZ <-> Luv -- delegated to alwan_colorspace_core.h
+ * XYZ <-> Luv
  * ================================================================ */
 
 void alwan_xyz_to_luv(alwan_luv *luv, alwan_xyz const *xyz, alwan_xyz const *white_xyz) {
@@ -45,7 +45,7 @@ void alwan_luv_to_xyz(alwan_xyz *xyz, alwan_luv const *luv, alwan_xyz const *whi
 }
 
 /* ================================================================
- * XYZ <-> U*V*W* -- delegated to alwan_colorspace_core.h
+ * XYZ <-> U*V*W*
  * ================================================================ */
 
 void alwan_xyz_to_uvw(alwan_uvw *uvw, alwan_xyz const *xyz, alwan_xyz const *white_xyz) {
@@ -57,7 +57,7 @@ void alwan_uvw_to_xyz(alwan_xyz *xyz, alwan_uvw const *uvw, alwan_xyz const *whi
 }
 
 /* ================================================================
- * Lab <-> LCh(ab) -- delegated to alwan_colorspace_core.h
+ * Lab <-> LCh(ab)
  * ================================================================ */
 
 void alwan_lab_to_lch(alwan_lch *lch, alwan_lab const *lab) {
@@ -69,7 +69,7 @@ void alwan_lch_to_lab(alwan_lab *lab, alwan_lch const *lch) {
 }
 
 /* ================================================================
- * Luv <-> LCh(uv) -- delegated to alwan_colorspace_core.h
+ * Luv <-> LCh(uv)
  * ================================================================ */
 
 void alwan_luv_to_lchuv(alwan_lchuv *lchuv, alwan_luv const *luv) {
@@ -81,7 +81,7 @@ void alwan_lchuv_to_luv(alwan_luv *luv, alwan_lchuv const *lchuv) {
 }
 
 /* ================================================================
- * Direct XYZ <-> Cylindrical -- delegated to alwan_colorspace_core.h
+ * Direct XYZ <-> Cylindrical
  * ================================================================ */
 
 void alwan_xyz_to_lch(alwan_lch *lch, alwan_xyz const *xyz, alwan_xyz const *white_xyz) {
@@ -101,7 +101,7 @@ void alwan_lchuv_to_xyz(alwan_xyz *xyz, alwan_lchuv const *lchuv, alwan_xyz cons
 }
 
 /* ================================================================
- * XYZ <-> CIE 1960 UCS -- delegated to alwan_colorspace_core.h
+ * XYZ <-> CIE 1960 UCS
  * ================================================================ */
 
 void alwan_xyz_to_ucs(alwan_ucs *ucs, alwan_xyz const *xyz) {

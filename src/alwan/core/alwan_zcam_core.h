@@ -60,7 +60,7 @@ static alwan_scalar const ZCAM_V_PQ_D0 = ALWAN_LITERAL(1.6295499532821566e-11);
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-/* XYZ to LMS matrix -- shared with Jzazbz (Safdar 2017, single source of truth) */
+/* XYZ to LMS matrix -- shared with Jzazbz (Safdar 2017) */
 ALWAN_CONSTEXPR alwan_mat3x3 ZCAM_V_XYZ_TO_LMS = {{
 #include "../data/matrices/jzazbz_xyz_to_lms.csv"
 }};

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * View Transforms (Display Rendering)
- * Thin wrapper -- per-pixel math in alwan_view_core.h
+ * Per-pixel math in alwan_view_core.h
  *
  * Only matrix data loading, enum dispatch, and bulk loops live here.
  */
@@ -38,7 +38,7 @@ static void aces_rec709_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_
     alwan_scalar ap0_g = ap1_to_ap0[3] * rgb_in[0] + ap1_to_ap0[4] * rgb_in[1] + ap1_to_ap0[5] * rgb_in[2];
     alwan_scalar ap0_b = ap1_to_ap0[6] * rgb_in[0] + ap1_to_ap0[7] * rgb_in[1] + ap1_to_ap0[8] * rgb_in[2];
 
-    /* Apply simplified RRT tone curve -- delegates to core */
+    /* Apply simplified RRT tone curve */
     alwan_scalar rrt_r = alwan_aces_tonemap_v(ap0_r);
     alwan_scalar rrt_g = alwan_aces_tonemap_v(ap0_g);
     alwan_scalar rrt_b = alwan_aces_tonemap_v(ap0_b);
@@ -88,7 +88,7 @@ static void agx_base_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out
     alwan_scalar inset_g = agx_inset_matrix[3] * rgb_in[0] + agx_inset_matrix[4] * rgb_in[1] + agx_inset_matrix[5] * rgb_in[2];
     alwan_scalar inset_b = agx_inset_matrix[6] * rgb_in[0] + agx_inset_matrix[7] * rgb_in[1] + agx_inset_matrix[8] * rgb_in[2];
 
-    /* AgX log-encode + curve -- delegates to core */
+    /* AgX log-encode + curve */
     alwan_scalar const agx_min = ALWAN_LITERAL(-12.47393);
     alwan_scalar const agx_max = ALWAN_LITERAL(  4.026069);
 
@@ -108,7 +108,7 @@ static void agx_punchy_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_o
     /* First apply base AgX */
     agx_base_transform(rgb_in, rgb_out);
 
-    /* Apply punchy grade -- delegates to core */
+    /* Apply punchy grade */
     alwan_vec3 base;
     base.v[0] = rgb_out[0]; base.v[1] = rgb_out[1]; base.v[2] = rgb_out[2];
     alwan_vec3 graded = alwan_agx_punchy_grade_v(base);
@@ -121,7 +121,7 @@ static void agx_golden_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_o
     /* First apply base AgX */
     agx_base_transform(rgb_in, rgb_out);
 
-    /* Apply golden grade -- delegates to core */
+    /* Apply golden grade */
     alwan_vec3 base;
     base.v[0] = rgb_out[0]; base.v[1] = rgb_out[1]; base.v[2] = rgb_out[2];
     alwan_vec3 graded = alwan_agx_golden_grade_v(base);

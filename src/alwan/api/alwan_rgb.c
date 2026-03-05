@@ -5,8 +5,7 @@
  *
  * RGB Color Spaces, Transfer Functions, and Matrix Derivation
  *
- * Transfer function implementations delegated to alwan_rgb_core.h
- * and alwan_core.h (single source of truth).
+ * Transfer functions in alwan_rgb_core.h and alwan_core.h.
  */
 
 #include "../alwan.h"
@@ -21,7 +20,6 @@
 
 /* ----------------------------------------------------------------
  * RGB Matrix Derivation
- * Thin wrapper -- math in alwan_rgb_core.h
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_derive_matrices(alwan_mat3x3 *rgb_to_xyz,

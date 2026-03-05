@@ -60,7 +60,7 @@ void alwan_spd_destroy(alwan_ctx *ctx, alwan_spd *spd) {
 }
 
 /* ----------------------------------------------------------------
- * Helper: Get wavelength at index
+ * Get wavelength at index
  * ---------------------------------------------------------------- */
 
 static inline alwan_scalar spd_wavelength_at(alwan_spd const *spd, size_t index) {
@@ -71,7 +71,7 @@ static inline alwan_scalar spd_wavelength_at(alwan_spd const *spd, size_t index)
     return spd->wavelength_min + t * (spd->wavelength_max - spd->wavelength_min);
 }
 
-/* Helper: Interpolate SPD value at wavelength with extrapolation */
+/* Interpolate SPD value at wavelength with extrapolation */
 static alwan_scalar spd_interpolate(alwan_spd const *spd, alwan_scalar wavelength,
                                alwan_resample_method method,
                                alwan_extrapolate_mode extrapolate) {

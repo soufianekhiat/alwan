@@ -9,7 +9,7 @@
  * - Guth, S. L. (1995). Further applications of the ATD model for color vision.
  * - Fairchild, M. D. (2013). Color Appearance Models (3rd ed.). Wiley.
  *
- * Implementation delegated to alwan_atd95_core.h (single source of truth).
+ * See alwan_atd95_core.h.
  */
 
 #include "../alwan.h"

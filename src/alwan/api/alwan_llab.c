@@ -12,7 +12,7 @@
  *   Color Research & Application, 21(6), 412-429.
  * - Fairchild, M. D. (2013). Color Appearance Models (3rd ed.). Wiley.
  *
- * Implementation delegated to alwan_llab_core.h (single source of truth).
+ * See alwan_llab_core.h.
  */
 
 #include "../alwan.h"

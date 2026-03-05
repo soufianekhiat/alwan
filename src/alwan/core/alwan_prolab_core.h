@@ -41,7 +41,7 @@ static alwan_scalar const ALWAN_PROLAB_D65_WHITE[3] = {
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
- * Helper: 4x4 projective transform (value-returning)
+ * 4x4 projective transform (value-returning)
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_vec3 alwan_apply_projective_v(alwan_mat4x4 matrix, alwan_vec3 input) {

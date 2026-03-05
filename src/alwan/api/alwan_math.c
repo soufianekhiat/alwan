@@ -10,7 +10,7 @@
 #include <string.h>
 
 /* ----------------------------------------------------------------
- * 3x3 Matrix Operations -- delegated to alwan_math_core.h
+ * 3x3 Matrix Operations
  * Matrix layout (row-major): [m00 m01 m02 m10 m11 m12 m20 m21 m22]
  * Index: m->m[row*3 + col]
  * ---------------------------------------------------------------- */
@@ -32,7 +32,7 @@ alwan_scalar alwan_mat3_det(alwan_mat3x3 const *m) {
 }
 
 /* ----------------------------------------------------------------
- * 3x3 Matrix Inversion -- delegated to alwan_math_core.h
+ * 3x3 Matrix Inversion
  * ---------------------------------------------------------------- */
 
 int alwan_mat3_inv(alwan_mat3x3 *out, alwan_mat3x3 const *m) {
@@ -66,7 +66,7 @@ static size_t find_interval(alwan_scalar const *x_in, size_t count, alwan_scalar
     return left;
 }
 
-/* Lanczos kernel wrapper -- math in alwan_math_core.h */
+/* Lanczos kernel */
 static alwan_scalar lanczos_kernel(alwan_scalar x, int a) {
     return alwan_lanczos_kernel_v(x, (alwan_scalar)a);
 }
@@ -108,7 +108,7 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
             }
 
             case ALWAN_INTERP_CUBIC: {
-                /* Catmull-Rom cubic spline -- math in alwan_math_core.h */
+                /* Catmull-Rom cubic spline */
                 alwan_scalar y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
                 alwan_scalar y1 = y_in[idx];
                 alwan_scalar y2 = y_in[idx + 1];
@@ -143,7 +143,7 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
             case ALWAN_INTERP_SPRAGUE: {
                 /* Sprague 5th order interpolation (for smooth spectra) */
                 if (count_in < 6) {
-                    /* Fall back to cubic -- math in alwan_math_core.h */
+                    /* Fall back to cubic */
                     alwan_scalar y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
                     alwan_scalar y1 = y_in[idx];
                     alwan_scalar y2 = y_in[idx + 1];
@@ -402,7 +402,7 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
  * CCT and Duv Optimization
  * ---------------------------------------------------------------- */
 
-/* CCT helpers -- thin wrappers, math in alwan_math_core.h */
+/* CCT helpers */
 static alwan_scalar compute_duv(alwan_scalar x, alwan_scalar y, alwan_scalar cct) {
     return alwan_compute_duv_v(x, y, cct);
 }
@@ -564,7 +564,7 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
         }
 
         case ALWAN_INTERP_CUBIC: {
-            /* Catmull-Rom cubic -- math in alwan_math_core.h */
+            /* Catmull-Rom cubic */
             alwan_scalar y0 = (idx > 0) ? table[idx - 1] : table[idx];
             alwan_scalar y1 = table[idx];
             alwan_scalar y2 = table[idx + 1];

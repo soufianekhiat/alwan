@@ -7,7 +7,7 @@
  * Based on: Kim, M. H., Weyrich, T., & Kautz, J. (2009). Modeling Human Color Perception
  * under Extended Luminance Levels. ACM Transactions on Graphics, 28(3), 27:1-27:9.
  *
- * Thin wrapper that resolves viewing conditions and delegates to alwan_kim2009_core.h.
+ * Resolves viewing conditions; see alwan_kim2009_core.h.
  */
 
 #include "../alwan.h"

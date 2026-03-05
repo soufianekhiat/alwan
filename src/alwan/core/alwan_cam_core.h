@@ -93,7 +93,7 @@ static alwan_scalar const CAM_HQ_H_i[5] = {
 };
 
 /* ----------------------------------------------------------------
- * Helper: Compute degree of adaptation D
+ * Compute degree of adaptation D
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar cam_compute_D_v(
@@ -108,7 +108,7 @@ ALWAN_INLINE alwan_scalar cam_compute_D_v(
 }
 
 /* ----------------------------------------------------------------
- * Helper: Post-adaptation nonlinear response compression
+ * Post-adaptation nonlinear response compression
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar cam_post_adaptation_nonlinear_v(alwan_scalar x) {
@@ -119,7 +119,7 @@ ALWAN_INLINE alwan_scalar cam_post_adaptation_nonlinear_v(alwan_scalar x) {
 }
 
 /* ----------------------------------------------------------------
- * Helper: Inverse post-adaptation nonlinear response
+ * Inverse post-adaptation nonlinear response
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_scalar cam_post_adaptation_nonlinear_inv_v(alwan_scalar x) {
@@ -202,7 +202,7 @@ ALWAN_INLINE alwan_cam_derived_params cam_compute_derived_params_v(
 }
 
 /* ----------------------------------------------------------------
- * Helper: Hue angle to hue quadrature H (branchless, unrolled)
+ * Hue angle to hue quadrature H (branchless, unrolled)
  *
  * h must be in [0, 360). Uses nested ALWAN_SELECT for sector
  * selection across 5 sectors.
@@ -252,7 +252,7 @@ ALWAN_INLINE alwan_scalar cam_hue_to_quadrature_v(alwan_scalar h) {
 }
 
 /* ----------------------------------------------------------------
- * Helper: Inverse opponent colour dimensions
+ * Inverse opponent colour dimensions
  *
  * Given t, h (radians), Nc, Ncb, et, A, Nbb, P_3, compute a and b.
  * Uses ALWAN_SELECT instead of if/else for branchless path.

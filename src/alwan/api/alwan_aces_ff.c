@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * ACES Fixed Functions (RRT Components)
- * Thin wrapper -- per-pixel math in alwan_aces_ff_core.h
+ * Per-pixel math in alwan_aces_ff_core.h
  *
  * Only init functions, table generation, enum dispatch, and public API live here.
  * Reference: OpenColorIO FixedFunctionOpCPU.cpp
@@ -811,7 +811,7 @@ int alwan_aces1_output_transform_inv(alwan_rgb *rgb_out,
 }
 
 /* ----------------------------------------------------------------
- * ACES Primaries (single source of truth)
+ * ACES Primaries
  * Reference: Academy S-2014-003, S-2016-001
  * ---------------------------------------------------------------- */
 
@@ -869,7 +869,7 @@ static const alwan_scalar ACES2_CHROMA_EXPAND = ALWAN_LITERAL(1.3);
 static const alwan_scalar ACES2_CHROMA_EXPAND_FACT = ALWAN_LITERAL(0.69);
 static const alwan_scalar ACES2_CHROMA_EXPAND_THR = ALWAN_LITERAL(0.5);
 
-/* Fourier coefficients -- use single source of truth from core header (CSV-loaded) */
+/* Fourier coefficients -- alias core CSV-loaded arrays */
 #define ACES2_CHROMA_NORM_COS ACES2_CHROMA_NORM_COS_V
 #define ACES2_CHROMA_NORM_SIN ACES2_CHROMA_NORM_SIN_V
 

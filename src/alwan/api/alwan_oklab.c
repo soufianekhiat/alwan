@@ -9,7 +9,7 @@
  * "A perceptual color space for image processing"
  * https://bottosson.github.io/posts/oklab/
  *
- * Implementation delegated to alwan_oklab_core.h (single source of truth).
+ * See alwan_oklab_core.h.
  */
 
 #include "../alwan.h"

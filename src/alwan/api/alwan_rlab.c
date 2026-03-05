@@ -8,7 +8,7 @@
  * "RLAB: a color appearance space for color reproduction"
  * "Refinement of the RLAB color space"
  *
- * Implementation delegated to alwan_rlab_core.h (single source of truth).
+ * See alwan_rlab_core.h.
  * Enum resolution (get_sigma, get_D_factor) kept here since enums
  * are not cross-platform.
  */

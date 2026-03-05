@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * ProLab Color Space (Perceptually Uniform Projective)
- * Thin wrapper -- logic in alwan_prolab_core.h
+ * See alwan_prolab_core.h
  *
  * Reference: Konovalenko et al. (2021)
  */

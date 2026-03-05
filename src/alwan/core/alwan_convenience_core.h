@@ -145,7 +145,7 @@ ALWAN_INLINE alwan_rgb alwan_hsv_to_rgb_v(alwan_hsv hsv) {
  * Hue in [0, 1] (0 = 0 degrees, 1 = 360 degrees)
  * ---------------------------------------------------------------- */
 
-/* Helper: hue sector interpolation (already branchless) */
+/* hue sector interpolation (already branchless) */
 ALWAN_INLINE alwan_scalar alwan_hue_to_rgb_v(alwan_scalar p, alwan_scalar q, alwan_scalar t) {
     t = ALWAN_SELECT(t < ALWAN_LITERAL(0.0), t + ALWAN_LITERAL(1.0), t);
     t = ALWAN_SELECT(t > ALWAN_LITERAL(1.0), t - ALWAN_LITERAL(1.0), t);
