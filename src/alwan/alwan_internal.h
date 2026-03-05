@@ -88,20 +88,20 @@ static inline void alwan__get_ycbcr_coeffs(alwan_ycbcr_standard standard,
                                             alwan_scalar *kr, alwan_scalar *kb) {
     switch (standard) {
         case ALWAN_YCBCR_BT601:
-            *kr = ALWAN_LITERAL(0.299);
-            *kb = ALWAN_LITERAL(0.114);
+            *kr = ALWAN_LUMA_KR_BT601;
+            *kb = ALWAN_LUMA_KB_BT601;
             break;
         case ALWAN_YCBCR_BT709:
-            *kr = ALWAN_LITERAL(0.2126);
-            *kb = ALWAN_LITERAL(0.0722);
+            *kr = ALWAN_LUMA_KR_BT709;
+            *kb = ALWAN_LUMA_KB_BT709;
             break;
         case ALWAN_YCBCR_BT2020:
-            *kr = ALWAN_LITERAL(0.2627);
-            *kb = ALWAN_LITERAL(0.0593);
+            *kr = ALWAN_LUMA_KR_BT2020;
+            *kb = ALWAN_LUMA_KB_BT2020;
             break;
         default:
-            *kr = ALWAN_LITERAL(0.2126);
-            *kb = ALWAN_LITERAL(0.0722);
+            *kr = ALWAN_LUMA_KR_BT709;
+            *kb = ALWAN_LUMA_KB_BT709;
             break;
     }
 }

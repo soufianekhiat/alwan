@@ -92,7 +92,8 @@ $dataScripts = @(
     @{Name="SSI Weights"; Script="../alwan_gendata/data/ssi_weights.py"; Priority=1},
     @{Name="CVD Matrices (Viénot 1999)"; Script="../alwan_gendata/data/cvd_matrices.py"; Priority=1},
     @{Name="OSA-UCS Matrices"; Script="../alwan_gendata/data/osa_ucs_matrices.py"; Priority=1},
-    @{Name="ACES2 Fourier Coefficients"; Script="../alwan_gendata/data/aces2_fourier.py"; Priority=1}
+    @{Name="ACES2 Fourier Coefficients"; Script="../alwan_gendata/data/aces2_fourier.py"; Priority=1},
+    @{Name="RLAB Matrices"; Script="../alwan_gendata/data/rlab_matrices.py"; Priority=1}
 )
 
 # Run each data generation script

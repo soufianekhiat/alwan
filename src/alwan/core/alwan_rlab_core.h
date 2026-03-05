@@ -45,18 +45,14 @@ ALWAN_CONSTEXPR alwan_mat3x3 RLAB_M_HPE_INV = {{
 }};
 ALWAN_DIAG_POP
 
-/* RLAB reference space transformation matrix */
+/* RLAB reference space transformation matrix (Fairchild 1996, from colour-science) */
 ALWAN_CONSTEXPR alwan_mat3x3 RLAB_M_RLAB = {{
-    ALWAN_LITERAL( 1.9569), ALWAN_LITERAL(-1.1882), ALWAN_LITERAL( 0.2313),
-    ALWAN_LITERAL( 0.3612), ALWAN_LITERAL( 0.6388), ALWAN_LITERAL( 0.0000),
-    ALWAN_LITERAL( 0.0000), ALWAN_LITERAL( 0.0000), ALWAN_LITERAL( 1.0000)
+#include "../data/matrices/rlab_m.csv"
 }};
 
-/* Inverse RLAB matrix (precomputed) */
+/* Inverse RLAB matrix (computed from colour-science MATRIX_R) */
 ALWAN_CONSTEXPR alwan_mat3x3 RLAB_M_RLAB_INV = {{
-    ALWAN_LITERAL( 0.4002176356618033), ALWAN_LITERAL( 0.7075374888303094), ALWAN_LITERAL(-0.0807549572842153),
-    ALWAN_LITERAL( 0.2264148854595820), ALWAN_LITERAL( 1.1653895504761134), ALWAN_LITERAL(-0.0528716718777167),
-    ALWAN_LITERAL( 0.0000000000000000), ALWAN_LITERAL( 0.0000000000000000), ALWAN_LITERAL( 1.0000000000000000)
+#include "../data/matrices/rlab_m_inv.csv"
 }};
 
 /* ================================================================

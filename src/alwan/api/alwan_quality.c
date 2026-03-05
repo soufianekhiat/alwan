@@ -1029,7 +1029,7 @@ static alwan_scalar const astm_e313_yi_coeffs[][2] = {
  * Values from colour-science library (CCS_ILLUMINANTS) */
 static alwan_scalar const astm_e313_white_xy[][2] = {
     {ALWAN_LITERAL(0.31006), ALWAN_LITERAL(0.31616)},  /* C/2° */
-    {ALWAN_LITERAL(0.31270), ALWAN_LITERAL(0.32900)},  /* D65/2° */
+    {ALWAN_D65_x, ALWAN_D65_y},                        /* D65/2° */
     {ALWAN_LITERAL(0.31039), ALWAN_LITERAL(0.31905)},  /* C/10° */
     {ALWAN_LITERAL(0.31382), ALWAN_LITERAL(0.33100)}   /* D65/10° */
 };

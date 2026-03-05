@@ -20,10 +20,10 @@
  * V' = 12.92 * V              if V <= 0.0031308
  *      1.055 * V^(1/2.4) - 0.055  otherwise */
 ALWAN_INLINE alwan_scalar alwan_srgb_oetf(alwan_scalar linear) {
-    alwan_scalar linear_result = ALWAN_LITERAL(12.92) * linear;
-    alwan_scalar gamma_result  = ALWAN_LITERAL(1.055)
-        * ALWAN_POW(linear, ALWAN_ONE / ALWAN_LITERAL(2.4)) - ALWAN_LITERAL(0.055);
-    return ALWAN_SELECT(linear <= ALWAN_LITERAL(0.0031308),
+    alwan_scalar linear_result = ALWAN_SRGB_LINEAR_GAIN * linear;
+    alwan_scalar gamma_result  = ALWAN_SRGB_A
+        * ALWAN_POW(linear, ALWAN_ONE / ALWAN_SRGB_GAMMA) - ALWAN_SRGB_B;
+    return ALWAN_SELECT(linear <= ALWAN_SRGB_OETF_THRESH,
                         linear_result, gamma_result);
 }
 
@@ -31,11 +31,11 @@ ALWAN_INLINE alwan_scalar alwan_srgb_oetf(alwan_scalar linear) {
  * V = V' / 12.92              if V' <= 0.04045
  *     ((V' + 0.055) / 1.055)^2.4  otherwise */
 ALWAN_INLINE alwan_scalar alwan_srgb_eotf(alwan_scalar encoded) {
-    alwan_scalar linear_result = encoded / ALWAN_LITERAL(12.92);
+    alwan_scalar linear_result = encoded / ALWAN_SRGB_LINEAR_GAIN;
     alwan_scalar gamma_result  = ALWAN_POW(
-        (encoded + ALWAN_LITERAL(0.055)) / ALWAN_LITERAL(1.055),
-        ALWAN_LITERAL(2.4));
-    return ALWAN_SELECT(encoded <= ALWAN_LITERAL(0.04045),
+        (encoded + ALWAN_SRGB_B) / ALWAN_SRGB_A,
+        ALWAN_SRGB_GAMMA);
+    return ALWAN_SELECT(encoded <= ALWAN_SRGB_EOTF_THRESH,
                         linear_result, gamma_result);
 }
 

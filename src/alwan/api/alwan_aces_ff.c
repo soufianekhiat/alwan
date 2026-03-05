@@ -811,6 +811,21 @@ int alwan_aces1_output_transform_inv(alwan_rgb *rgb_out,
 }
 
 /* ----------------------------------------------------------------
+ * ACES Primaries (single source of truth)
+ * Reference: Academy S-2014-003, S-2016-001
+ * ---------------------------------------------------------------- */
+
+/* ACES AP1 (ACEScg) primaries — D60 white */
+static const alwan_scalar AP1_RED_x   = ALWAN_LITERAL(0.713);
+static const alwan_scalar AP1_RED_y   = ALWAN_LITERAL(0.293);
+static const alwan_scalar AP1_GREEN_x = ALWAN_LITERAL(0.165);
+static const alwan_scalar AP1_GREEN_y = ALWAN_LITERAL(0.830);
+static const alwan_scalar AP1_BLUE_x  = ALWAN_LITERAL(0.128);
+static const alwan_scalar AP1_BLUE_y  = ALWAN_LITERAL(0.044);
+static const alwan_scalar AP1_WHITE_x = ALWAN_LITERAL(0.32168);
+static const alwan_scalar AP1_WHITE_y = ALWAN_LITERAL(0.33767);
+
+/* ----------------------------------------------------------------
  * ACES 2.0: Constants and Viewing Conditions
  * Reference: ACES CTL Lib.Academy.OutputTransform.ctl
  * ---------------------------------------------------------------- */
@@ -835,9 +850,9 @@ static const alwan_scalar ACES2_SURROUND_F = ALWAN_LITERAL(0.9);
 static const alwan_scalar ACES2_SURROUND_C = ALWAN_LITERAL(0.59);
 static const alwan_scalar ACES2_SURROUND_N_c = ALWAN_LITERAL(0.9);
 
-/* CAM16 nonlinearity constants */
+/* CAM16 nonlinearity constants (use core header for OFFSET) */
 static const alwan_scalar CAM_NL_Y_REF = ALWAN_LITERAL(100.0);
-static const alwan_scalar CAM_NL_OFFSET = ALWAN_LITERAL(27.13);  /* 0.2713 * 100 */
+static const alwan_scalar CAM_NL_OFFSET = ACES_CAM_NL_OFFSET;
 static const alwan_scalar CAM_NL_SCALE = ALWAN_LITERAL(400.0);   /* 4.0 * 100.0 */
 
 /* Lightness scale factor (J_scale = 100) */
@@ -854,15 +869,9 @@ static const alwan_scalar ACES2_CHROMA_EXPAND = ALWAN_LITERAL(1.3);
 static const alwan_scalar ACES2_CHROMA_EXPAND_FACT = ALWAN_LITERAL(0.69);
 static const alwan_scalar ACES2_CHROMA_EXPAND_THR = ALWAN_LITERAL(0.5);
 
-/* Fourier coefficients for chroma_compress_norm (from OCIO Transform.cpp) */
-static const alwan_scalar ACES2_CHROMA_NORM_COS[4] = {
-    ALWAN_LITERAL(11.34072), ALWAN_LITERAL(16.46899),
-    ALWAN_LITERAL(7.88380),  ALWAN_LITERAL(0.0)
-};
-static const alwan_scalar ACES2_CHROMA_NORM_SIN[4] = {
-    ALWAN_LITERAL(14.66441), ALWAN_LITERAL(-6.37224),
-    ALWAN_LITERAL(9.19364),  ALWAN_LITERAL(77.12896)
-};
+/* Fourier coefficients — use single source of truth from core header (CSV-loaded) */
+#define ACES2_CHROMA_NORM_COS ACES2_CHROMA_NORM_COS_V
+#define ACES2_CHROMA_NORM_SIN ACES2_CHROMA_NORM_SIN_V
 
 /* Base cone response to Aab matrix (before scaling)
  * Row 0: [2, 1, 1/20]         - Achromatic channel
@@ -1432,14 +1441,14 @@ int alwan_aces_tonescale_compress20(alwan_rgb *rgb_out,
 
 void alwan_aces_primaries_ap1_default(alwan_aces_primaries *primaries) {
     if (!primaries) return;
-    primaries->red_x = ALWAN_LITERAL(0.713);
-    primaries->red_y = ALWAN_LITERAL(0.293);
-    primaries->green_x = ALWAN_LITERAL(0.165);
-    primaries->green_y = ALWAN_LITERAL(0.830);
-    primaries->blue_x = ALWAN_LITERAL(0.128);
-    primaries->blue_y = ALWAN_LITERAL(0.044);
-    primaries->white_x = ALWAN_LITERAL(0.32168);
-    primaries->white_y = ALWAN_LITERAL(0.33767);
+    primaries->red_x   = AP1_RED_x;
+    primaries->red_y   = AP1_RED_y;
+    primaries->green_x = AP1_GREEN_x;
+    primaries->green_y = AP1_GREEN_y;
+    primaries->blue_x  = AP1_BLUE_x;
+    primaries->blue_y  = AP1_BLUE_y;
+    primaries->white_x = AP1_WHITE_x;
+    primaries->white_y = AP1_WHITE_y;
 }
 
 int alwan_aces_rgb_to_jmh20(alwan_vec3 *jmh_out,
@@ -1501,10 +1510,10 @@ int alwan_aces_jmh_to_rgb20(alwan_rgb *rgb_out,
  * Reference: OpenColorIO/src/OpenColorIO/ops/fixedfunction/ACES2/Common.h
  * ---------------------------------------------------------------- */
 
-static const alwan_scalar GAMUT_COMPRESSION_THRESHOLD = ALWAN_LITERAL(0.75);
-static const alwan_scalar GAMUT_SMOOTH_CUSPS = ALWAN_LITERAL(0.12);
+static const alwan_scalar GAMUT_COMPRESSION_THRESHOLD = ACES_GAMUT_COMPRESSION_THRESHOLD;
+static const alwan_scalar GAMUT_SMOOTH_CUSPS = ACES_GAMUT_SMOOTH_CUSPS;
 static const alwan_scalar GAMUT_FOCUS_GAIN_BLEND = ALWAN_LITERAL(0.3);
-static const alwan_scalar GAMUT_CUSP_MID_BLEND = ALWAN_LITERAL(1.3);
+static const alwan_scalar GAMUT_CUSP_MID_BLEND = ACES_GAMUT_CUSP_MID_BLEND;
 static const alwan_scalar GAMUT_FOCUS_DISTANCE = ALWAN_LITERAL(1.35);
 static const alwan_scalar GAMUT_FOCUS_ADJUST_GAIN_INV = ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.55);
 
@@ -1859,12 +1868,12 @@ static void compress_gamut_inv(alwan_scalar J, alwan_scalar M, alwan_scalar h,
 /* Check if primaries are approximately equal to AP1 */
 static int primaries_are_ap1(alwan_aces_primaries const *p) {
     static const alwan_scalar tol = ALWAN_LITERAL(0.001);
-    return ALWAN_ABS(p->red_x - ALWAN_LITERAL(0.713)) < tol &&
-           ALWAN_ABS(p->red_y - ALWAN_LITERAL(0.293)) < tol &&
-           ALWAN_ABS(p->green_x - ALWAN_LITERAL(0.165)) < tol &&
-           ALWAN_ABS(p->green_y - ALWAN_LITERAL(0.830)) < tol &&
-           ALWAN_ABS(p->blue_x - ALWAN_LITERAL(0.128)) < tol &&
-           ALWAN_ABS(p->blue_y - ALWAN_LITERAL(0.044)) < tol;
+    return ALWAN_ABS(p->red_x - AP1_RED_x) < tol &&
+           ALWAN_ABS(p->red_y - AP1_RED_y) < tol &&
+           ALWAN_ABS(p->green_x - AP1_GREEN_x) < tol &&
+           ALWAN_ABS(p->green_y - AP1_GREEN_y) < tol &&
+           ALWAN_ABS(p->blue_x - AP1_BLUE_x) < tol &&
+           ALWAN_ABS(p->blue_y - AP1_BLUE_y) < tol;
 }
 
 int alwan_aces_gamut_compress20(alwan_vec3 *jmh_out,
@@ -2019,21 +2028,21 @@ static void primaries_rec709(alwan_aces_primaries *p) {
     p->red_x = ALWAN_LITERAL(0.64);   p->red_y = ALWAN_LITERAL(0.33);
     p->green_x = ALWAN_LITERAL(0.30); p->green_y = ALWAN_LITERAL(0.60);
     p->blue_x = ALWAN_LITERAL(0.15);  p->blue_y = ALWAN_LITERAL(0.06);
-    p->white_x = ALWAN_LITERAL(0.3127); p->white_y = ALWAN_LITERAL(0.3290);
+    p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
 static void primaries_p3_d65(alwan_aces_primaries *p) {
     p->red_x = ALWAN_LITERAL(0.680);  p->red_y = ALWAN_LITERAL(0.320);
     p->green_x = ALWAN_LITERAL(0.265); p->green_y = ALWAN_LITERAL(0.690);
     p->blue_x = ALWAN_LITERAL(0.150);  p->blue_y = ALWAN_LITERAL(0.060);
-    p->white_x = ALWAN_LITERAL(0.3127); p->white_y = ALWAN_LITERAL(0.3290);
+    p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
 static void primaries_rec2020(alwan_aces_primaries *p) {
     p->red_x = ALWAN_LITERAL(0.708);  p->red_y = ALWAN_LITERAL(0.292);
     p->green_x = ALWAN_LITERAL(0.170); p->green_y = ALWAN_LITERAL(0.797);
     p->blue_x = ALWAN_LITERAL(0.131);  p->blue_y = ALWAN_LITERAL(0.046);
-    p->white_x = ALWAN_LITERAL(0.3127); p->white_y = ALWAN_LITERAL(0.3290);
+    p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
 static void primaries_p3_dci(alwan_aces_primaries *p) {
@@ -2171,10 +2180,10 @@ static void compute_ap1_to_limit_matrix(alwan_aces_primaries const *limit,
     /* AP1 (ACEScg) primaries - ACES white point D60 */
     alwan_scalar ap1_to_xyz[9];
     primaries_to_rgb_to_xyz(
-        ALWAN_LITERAL(0.713), ALWAN_LITERAL(0.293),
-        ALWAN_LITERAL(0.165), ALWAN_LITERAL(0.830),
-        ALWAN_LITERAL(0.128), ALWAN_LITERAL(0.044),
-        ALWAN_LITERAL(0.32168), ALWAN_LITERAL(0.33767),
+        AP1_RED_x,   AP1_RED_y,
+        AP1_GREEN_x, AP1_GREEN_y,
+        AP1_BLUE_x,  AP1_BLUE_y,
+        AP1_WHITE_x, AP1_WHITE_y,
         ALWAN_LITERAL(1.0),
         ap1_to_xyz
     );
@@ -2419,10 +2428,8 @@ int alwan_aces2_output_transform_custom(alwan_rgb *rgb_out,
 
     /* Step 7: Apply D60 to D65 chromatic adaptation if needed
      * (for D65-based output transforms like Rec.709, P3-D65, Rec.2020) */
-    alwan_scalar d65_wx = ALWAN_LITERAL(0.3127);
-    alwan_scalar d65_wy = ALWAN_LITERAL(0.3290);
-    int needs_cat = (ALWAN_ABS(limit_primaries->white_x - d65_wx) < ALWAN_LITERAL(0.01) &&
-                     ALWAN_ABS(limit_primaries->white_y - d65_wy) < ALWAN_LITERAL(0.01));
+    int needs_cat = (ALWAN_ABS(limit_primaries->white_x - ALWAN_D65_x) < ALWAN_LITERAL(0.01) &&
+                     ALWAN_ABS(limit_primaries->white_y - ALWAN_D65_y) < ALWAN_LITERAL(0.01));
 
     alwan_rgb rgb_adapted;
     if (needs_cat) {
@@ -2648,10 +2655,8 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
     alwan_rgb rgb_linear = {linear[0], linear[1], linear[2]};
 
     /* Step 2: Apply D65 to D60 chromatic adaptation if needed */
-    alwan_scalar d65_wx = ALWAN_LITERAL(0.3127);
-    alwan_scalar d65_wy = ALWAN_LITERAL(0.3290);
-    int needs_cat = (ALWAN_ABS(config.primaries.white_x - d65_wx) < ALWAN_LITERAL(0.01) &&
-                     ALWAN_ABS(config.primaries.white_y - d65_wy) < ALWAN_LITERAL(0.01));
+    int needs_cat = (ALWAN_ABS(config.primaries.white_x - ALWAN_D65_x) < ALWAN_LITERAL(0.01) &&
+                     ALWAN_ABS(config.primaries.white_y - ALWAN_D65_y) < ALWAN_LITERAL(0.01));
 
     alwan_rgb rgb_d60;
     if (needs_cat) {

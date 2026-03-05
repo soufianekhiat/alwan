@@ -33,9 +33,9 @@ ALWAN_INLINE alwan_rgb alwan_hlg_ootf_v(alwan_rgb E,
     alwan_scalar alpha = Lw;
 
     /* BT.2100 luma coefficients for BT.2020 */
-    alwan_scalar Ys = ALWAN_LITERAL(0.2627) * E.r
-                    + ALWAN_LITERAL(0.6780) * E.g
-                    + ALWAN_LITERAL(0.0593) * E.b;
+    alwan_scalar Ys = ALWAN_LUMA_KR_BT2020 * E.r
+                    + ALWAN_LUMA_KG_BT2020 * E.g
+                    + ALWAN_LUMA_KB_BT2020 * E.b;
 
     alwan_scalar Ys_safe = ALWAN_SELECT(Ys < ALWAN_LITERAL(1e-12),
                                          ALWAN_LITERAL(1e-12), Ys);
@@ -60,9 +60,9 @@ ALWAN_INLINE alwan_rgb alwan_hlg_ootf_inv_v(alwan_rgb Fd,
     alwan_scalar alpha = Lw;
 
     /* Display-linear luma */
-    alwan_scalar Yd = ALWAN_LITERAL(0.2627) * Fd.r
-                    + ALWAN_LITERAL(0.6780) * Fd.g
-                    + ALWAN_LITERAL(0.0593) * Fd.b;
+    alwan_scalar Yd = ALWAN_LUMA_KR_BT2020 * Fd.r
+                    + ALWAN_LUMA_KG_BT2020 * Fd.g
+                    + ALWAN_LUMA_KB_BT2020 * Fd.b;
 
     alwan_scalar Yd_safe = ALWAN_SELECT(Yd < ALWAN_LITERAL(1e-12),
                                          ALWAN_LITERAL(1e-12), Yd);

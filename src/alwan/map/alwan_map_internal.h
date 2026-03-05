@@ -344,12 +344,12 @@ ALWAN_INLINE alwan_simd alwan__lab_f_inv_simd(alwan_simd t) {
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
-    alwan_simd thresh = alwan_simd_set1((alwan_simd_lane)0.04045);
-    alwan_simd lo     = alwan_simd_mul(v, alwan_simd_set1((alwan_simd_lane)(1.0 / 12.92)));
+    alwan_simd thresh = alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_EOTF_THRESH);
+    alwan_simd lo     = alwan_simd_mul(v, alwan_simd_set1((alwan_simd_lane)(1.0 / ALWAN_SRGB_LINEAR_GAIN)));
     alwan_simd hi_base = alwan_simd_mul(
-        alwan_simd_add(v, alwan_simd_set1((alwan_simd_lane)0.055)),
-        alwan_simd_set1((alwan_simd_lane)(1.0 / 1.055)));
-    alwan_simd hi     = alwan_simd_pow(hi_base, alwan_simd_set1((alwan_simd_lane)2.4));
+        alwan_simd_add(v, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_B)),
+        alwan_simd_set1((alwan_simd_lane)(1.0 / ALWAN_SRGB_A)));
+    alwan_simd hi     = alwan_simd_pow(hi_base, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_GAMMA));
 
     alwan_simd_mask mask = alwan_simd_cmple(v, thresh);
     return alwan_simd_select(mask, lo, hi);
@@ -361,13 +361,13 @@ ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd alwan__srgb_oetf_simd(alwan_simd v) {
-    alwan_simd thresh = alwan_simd_set1((alwan_simd_lane)0.0031308);
-    alwan_simd lo     = alwan_simd_mul(v, alwan_simd_set1((alwan_simd_lane)12.92));
+    alwan_simd thresh = alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_OETF_THRESH);
+    alwan_simd lo     = alwan_simd_mul(v, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_LINEAR_GAIN));
     alwan_simd hi     = alwan_simd_sub(
         alwan_simd_mul(
-            alwan_simd_set1((alwan_simd_lane)1.055),
-            alwan_simd_pow(v, alwan_simd_set1((alwan_simd_lane)(1.0 / 2.4)))),
-        alwan_simd_set1((alwan_simd_lane)0.055));
+            alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_A),
+            alwan_simd_pow(v, alwan_simd_set1((alwan_simd_lane)(1.0 / ALWAN_SRGB_GAMMA)))),
+        alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_B));
 
     alwan_simd_mask mask = alwan_simd_cmple(v, thresh);
     return alwan_simd_select(mask, lo, hi);

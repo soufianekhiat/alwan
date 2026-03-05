@@ -81,9 +81,9 @@ ALWAN_INLINE alwan_vec3 alwan_agx_punchy_grade_v(alwan_vec3 rgb) {
     alwan_scalar const saturation = ALWAN_LITERAL(1.2);
     alwan_scalar const mid_gray   = ALWAN_LITERAL(0.18);
 
-    alwan_scalar luma = ALWAN_LITERAL(0.2126) * rgb.v[0]
-                      + ALWAN_LITERAL(0.7152) * rgb.v[1]
-                      + ALWAN_LITERAL(0.0722) * rgb.v[2];
+    alwan_scalar luma = ALWAN_LUMA_KR_BT709 * rgb.v[0]
+                      + ALWAN_LUMA_KG_BT709 * rgb.v[1]
+                      + ALWAN_LUMA_KB_BT709 * rgb.v[2];
 
     result.v[0] = alwan_saturate(mid_gray + (luma + (rgb.v[0] - luma) * saturation - mid_gray) * contrast);
     result.v[1] = alwan_saturate(mid_gray + (luma + (rgb.v[1] - luma) * saturation - mid_gray) * contrast);
@@ -102,9 +102,9 @@ ALWAN_INLINE alwan_vec3 alwan_agx_punchy_grade_v(alwan_vec3 rgb) {
 ALWAN_INLINE alwan_vec3 alwan_agx_golden_grade_v(alwan_vec3 rgb) {
     alwan_vec3 result;
 
-    alwan_scalar luma = ALWAN_LITERAL(0.2126) * rgb.v[0]
-                      + ALWAN_LITERAL(0.7152) * rgb.v[1]
-                      + ALWAN_LITERAL(0.0722) * rgb.v[2];
+    alwan_scalar luma = ALWAN_LUMA_KR_BT709 * rgb.v[0]
+                      + ALWAN_LUMA_KG_BT709 * rgb.v[1]
+                      + ALWAN_LUMA_KB_BT709 * rgb.v[2];
 
     /* Golden: warm highlights, cool shadows */
     /* Highlights: shift toward warm (increase R, slight G, decrease B) */

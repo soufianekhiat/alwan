@@ -286,9 +286,9 @@ ALWAN_INLINE alwan_legal_range alwan_legal_range_from_bit_depth(int bit_depth) {
 ALWAN_INLINE alwan_yccbccrc alwan_rgb_to_yccbccrc_v(alwan_rgb rgb, int bit_depth) {
     alwan_yccbccrc result;
 
-    alwan_scalar const kr = ALWAN_LITERAL(0.2627);
-    alwan_scalar const kg = ALWAN_LITERAL(0.6780);
-    alwan_scalar const kb = ALWAN_LITERAL(0.0593);
+    alwan_scalar const kr = ALWAN_LUMA_KR_BT2020;
+    alwan_scalar const kg = ALWAN_LUMA_KG_BT2020;
+    alwan_scalar const kb = ALWAN_LUMA_KB_BT2020;
 
     /* Linear Yc */
     alwan_scalar yc_linear = kr * rgb.r + kg * rgb.g + kb * rgb.b;
@@ -331,9 +331,9 @@ ALWAN_INLINE alwan_yccbccrc alwan_rgb_to_yccbccrc_v(alwan_rgb rgb, int bit_depth
 ALWAN_INLINE alwan_rgb alwan_yccbccrc_to_rgb_v(alwan_yccbccrc yccbccrc, int bit_depth) {
     alwan_rgb result;
 
-    alwan_scalar const kr = ALWAN_LITERAL(0.2627);
-    alwan_scalar const kg = ALWAN_LITERAL(0.6780);
-    alwan_scalar const kb = ALWAN_LITERAL(0.0593);
+    alwan_scalar const kr = ALWAN_LUMA_KR_BT2020;
+    alwan_scalar const kg = ALWAN_LUMA_KG_BT2020;
+    alwan_scalar const kb = ALWAN_LUMA_KB_BT2020;
 
     /* Reverse legal range scaling */
     alwan_legal_range lr = alwan_legal_range_from_bit_depth(bit_depth);

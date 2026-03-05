@@ -410,9 +410,38 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 /* Standard illuminant D65 white point (Y=100 scale)
  * From colour-science: CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
  * xy = [0.31270, 0.32900] -> XYZ = [95.04559271, 100.00000000, 108.90577508] */
+#define ALWAN_D65_x  ALWAN_LITERAL(0.31270)
+#define ALWAN_D65_y  ALWAN_LITERAL(0.32900)
 #define ALWAN_D65_X  ALWAN_LITERAL(95.04559271)
 #define ALWAN_D65_Y  ALWAN_LITERAL(100.0)
 #define ALWAN_D65_Z  ALWAN_LITERAL(108.90577508)
+
+/* ITU luma coefficients (kr, kg, kb) — single source of truth
+ * kg = 1 - kr - kb for each standard */
+#define ALWAN_LUMA_KR_BT601   ALWAN_LITERAL(0.299)
+#define ALWAN_LUMA_KG_BT601   ALWAN_LITERAL(0.587)
+#define ALWAN_LUMA_KB_BT601   ALWAN_LITERAL(0.114)
+
+#define ALWAN_LUMA_KR_BT709   ALWAN_LITERAL(0.2126)
+#define ALWAN_LUMA_KG_BT709   ALWAN_LITERAL(0.7152)
+#define ALWAN_LUMA_KB_BT709   ALWAN_LITERAL(0.0722)
+
+#define ALWAN_LUMA_KR_BT2020  ALWAN_LITERAL(0.2627)
+#define ALWAN_LUMA_KG_BT2020  ALWAN_LITERAL(0.6780)
+#define ALWAN_LUMA_KB_BT2020  ALWAN_LITERAL(0.0593)
+
+/* ACES AP1 luminance coefficients (Y row of AP1-to-XYZ matrix) */
+#define ALWAN_LUMA_KR_AP1     ALWAN_LITERAL(0.27222871678091454)
+#define ALWAN_LUMA_KG_AP1     ALWAN_LITERAL(0.67408176581114831)
+#define ALWAN_LUMA_KB_AP1     ALWAN_LITERAL(0.053689517407937051)
+
+/* sRGB transfer function constants (IEC 61966-2-1) */
+#define ALWAN_SRGB_EOTF_THRESH  ALWAN_LITERAL(0.04045)
+#define ALWAN_SRGB_OETF_THRESH  ALWAN_LITERAL(0.0031308)
+#define ALWAN_SRGB_LINEAR_GAIN  ALWAN_LITERAL(12.92)
+#define ALWAN_SRGB_GAMMA        ALWAN_LITERAL(2.4)
+#define ALWAN_SRGB_A            ALWAN_LITERAL(1.055)
+#define ALWAN_SRGB_B            ALWAN_LITERAL(0.055)
 
 /* Test tolerance (depends on scalar precision) */
 #if ALWAN_SCALAR_IS_FLOAT

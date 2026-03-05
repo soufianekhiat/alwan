@@ -92,9 +92,9 @@ static void gamut_map_hue_preserving_single(alwan_vec3 const *rgb_in, alwan_vec3
     }
 
     /* Find the neutral point (luminance-preserving gray) */
-    alwan_scalar const L = ALWAN_LITERAL(0.2126) * rgb_in->v[0] +
-                           ALWAN_LITERAL(0.7152) * rgb_in->v[1] +
-                           ALWAN_LITERAL(0.0722) * rgb_in->v[2];
+    alwan_scalar const L = ALWAN_LUMA_KR_BT709 * rgb_in->v[0] +
+                           ALWAN_LUMA_KG_BT709 * rgb_in->v[1] +
+                           ALWAN_LUMA_KB_BT709 * rgb_in->v[2];
 
     /* Clamp L to [0,1] */
     alwan_scalar const L_clamped = (L < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
