@@ -12,30 +12,7 @@
 #include "alwan_map_internal.h"
 #include "../core/alwan_convenience_core.h"
 
-/* ----------------------------------------------------------------
- * YCbCr coefficient resolution (same as alwan_convenience.c)
- * ---------------------------------------------------------------- */
-
-static void get_ycbcr_coeffs(alwan_ycbcr_standard standard, alwan_scalar *kr, alwan_scalar *kb) {
-    switch (standard) {
-        case ALWAN_YCBCR_BT601:
-            *kr = ALWAN_LITERAL(0.299);
-            *kb = ALWAN_LITERAL(0.114);
-            break;
-        case ALWAN_YCBCR_BT709:
-            *kr = ALWAN_LITERAL(0.2126);
-            *kb = ALWAN_LITERAL(0.0722);
-            break;
-        case ALWAN_YCBCR_BT2020:
-            *kr = ALWAN_LITERAL(0.2627);
-            *kb = ALWAN_LITERAL(0.0593);
-            break;
-        default:
-            *kr = ALWAN_LITERAL(0.2126);
-            *kb = ALWAN_LITERAL(0.0722);
-            break;
-    }
-}
+/* YCbCr coefficients resolved via alwan__get_ycbcr_coeffs() in alwan_internal.h */
 
 /* ----------------------------------------------------------------
  * RGB <-> CMY
@@ -224,7 +201,7 @@ int alwan_rgb_to_ycbcr_map(alwan_scalar *ycbcr_out, alwan_scalar const *rgb_in,
                             size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !ycbcr_out || count == 0) return ALWAN_E_INVALID;
     alwan_scalar kr, kb;
-    get_ycbcr_coeffs(standard, &kr, &kb);
+    alwan__get_ycbcr_coeffs(standard, &kr, &kb);
 
     for (size_t i = 0; i < count; i++) {
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
@@ -241,7 +218,7 @@ int alwan_ycbcr_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *ycbcr_in,
                             size_t count, size_t in_stride, size_t out_stride) {
     if (!ycbcr_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
     alwan_scalar kr, kb;
-    get_ycbcr_coeffs(standard, &kr, &kb);
+    alwan__get_ycbcr_coeffs(standard, &kr, &kb);
 
     for (size_t i = 0; i < count; i++) {
         alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)ycbcr_in + i * in_stride);

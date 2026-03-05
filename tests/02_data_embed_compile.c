@@ -70,7 +70,7 @@ static int test_srgb_primaries(void) {
 
     for (int i = 0; i < 6; i++) {
         alwan_scalar diff = ALWAN_ABS(g_srgb_primaries[i] - expected[i]);
-        if (diff > 1e-5) {
+        if (diff > TEST_TOLERANCE) {
             printf("  Primary [%d] mismatch: %f vs %f (diff %e)\n",
                     i, g_srgb_primaries[i], expected[i], diff);
             TEST_ASSERT(0, "sRGB primary value mismatch");

@@ -257,8 +257,8 @@ static int test_cct_methods_comparison(void) {
     printf("      Kang:      %.2f K\n", (double)cct_kang);
 
     /* All methods should be close to 6500K for D65 */
-    alwan_scalar expected_d65 = 6500.0;
-    alwan_scalar tolerance = 150.0;  /* 150K tolerance for D65 (Kang method varies more) */
+    alwan_scalar expected_d65 = ALWAN_LITERAL(6500.0);
+    alwan_scalar tolerance = ALWAN_LITERAL(150.0);  /* 150K tolerance for D65 (Kang method varies more) */
 
     TEST_ASSERT_ABS(cct_mccamy, expected_d65, tolerance, "McCamy D65");
     TEST_ASSERT_ABS(cct_robertson, expected_d65, tolerance, "Robertson D65");

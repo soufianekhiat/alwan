@@ -80,4 +80,30 @@ extern alwan_scalar const g_ipt_ipt_to_lms_p[9];
 
 #endif /* ALWAN_EMBED_DATA */
 
+/* ----------------------------------------------------------------
+ * YCbCr coefficient resolution (shared between api and map)
+ * ---------------------------------------------------------------- */
+
+static inline void alwan__get_ycbcr_coeffs(alwan_ycbcr_standard standard,
+                                            alwan_scalar *kr, alwan_scalar *kb) {
+    switch (standard) {
+        case ALWAN_YCBCR_BT601:
+            *kr = ALWAN_LITERAL(0.299);
+            *kb = ALWAN_LITERAL(0.114);
+            break;
+        case ALWAN_YCBCR_BT709:
+            *kr = ALWAN_LITERAL(0.2126);
+            *kb = ALWAN_LITERAL(0.0722);
+            break;
+        case ALWAN_YCBCR_BT2020:
+            *kr = ALWAN_LITERAL(0.2627);
+            *kb = ALWAN_LITERAL(0.0593);
+            break;
+        default:
+            *kr = ALWAN_LITERAL(0.2126);
+            *kb = ALWAN_LITERAL(0.0722);
+            break;
+    }
+}
+
 #endif /* ALWAN_INTERNAL_H */

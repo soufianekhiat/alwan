@@ -221,7 +221,7 @@ static int test_gamut_map_monotonicity(void) {
         alwan_scalar const input_arr[3] = {in_gamut_colors[i].r, in_gamut_colors[i].g, in_gamut_colors[i].b};
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(result_arr[j] - input_arr[j]);
-            TEST_ASSERT(diff < ALWAN_LITERAL(1e-6), "In-gamut color was changed");
+            TEST_ASSERT(diff < ALWAN_LITERAL(1e-10), "In-gamut color was changed");
         }
     }
 

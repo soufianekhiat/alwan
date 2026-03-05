@@ -1099,26 +1099,23 @@ alwan_scalar alwan_whiteness_cie2004(alwan_vec2 const *xy, alwan_scalar Y, alwan
 #define SSI_BIN_COUNT 30
 
 /* Integration weights for 10nm binning (trapezoidal rule) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_scalar const ssi_bin_weights[11] = {
-    ALWAN_LITERAL(0.5), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0),
-    ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0),
-    ALWAN_LITERAL(0.5)
+#include "../data/ssi_bin_weights.csv"
 };
 
-/* SSI spectral weights (30 values for 10nm bins from 380-670nm) */
+/* SSI spectral weights (30 values for 10nm bins from 380-670nm)
+ * Source: Academy S-2018-001 / SMPTE ST 2122 */
 static alwan_scalar const ssi_spectral_weights[SSI_BIN_COUNT] = {
-    ALWAN_LITERAL(0.5333), ALWAN_LITERAL(0.5333), ALWAN_LITERAL(0.5333), ALWAN_LITERAL(0.6000), ALWAN_LITERAL(0.6667),
-    ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333),
-    ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333),
-    ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333),
-    ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333),
-    ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.7333), ALWAN_LITERAL(0.6667), ALWAN_LITERAL(0.6000), ALWAN_LITERAL(0.5333)
+#include "../data/ssi_spectral_weights.csv"
 };
 
 /* Convolution kernel for smoothing: [0.22, 0.56, 0.22] */
 static alwan_scalar const ssi_smooth_kernel[3] = {
-    ALWAN_LITERAL(0.22), ALWAN_LITERAL(0.56), ALWAN_LITERAL(0.22)
+#include "../data/ssi_smooth_kernel.csv"
 };
+ALWAN_DIAG_POP
 
 /* Academy Spectral Similarity Index (SSI) calculation
  * Based on SMPTE ST 2122 and Academy S-2018-001

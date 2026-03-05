@@ -120,8 +120,10 @@ static int test_spectral_locus_interpolation(void) {
     alwan_scalar diff_x = ALWAN_ABS(xy_500_5.v[0] - xy_500.v[0]);
     alwan_scalar diff_y = ALWAN_ABS(xy_500_5.v[1] - xy_500.v[1]);
 
-    TEST_ASSERT(diff_x < ALWAN_LITERAL(0.1), "Interpolation x diff too large");
-    TEST_ASSERT(diff_y < ALWAN_LITERAL(0.1), "Interpolation y diff too large");
+    /* Spectral locus xy changes ~0.002/nm at 500nm; 0.5nm step should give diff ~0.001.
+     * Use 0.05 as sanity bound (tighter than original 0.1 but allows for CMF spacing). */
+    TEST_ASSERT(diff_x < ALWAN_LITERAL(0.05), "Interpolation x diff too large");
+    TEST_ASSERT(diff_y < ALWAN_LITERAL(0.05), "Interpolation y diff too large");
     TEST_ASSERT(diff_x > ALWAN_LITERAL(0.0) || diff_y > ALWAN_LITERAL(0.0),
                 "Interpolation resulted in identical values");
 
@@ -271,7 +273,7 @@ static int test_gamut_volume_ratio(void) {
 
     /* Ratios should be reciprocals */
     alwan_scalar product = ratio_bt2020_srgb * ratio_srgb_bt2020;
-    TEST_ASSERT(ALWAN_ABS(product - ALWAN_LITERAL(1.0)) < ALWAN_LITERAL(0.01),
+    TEST_ASSERT(ALWAN_ABS(product - ALWAN_LITERAL(1.0)) < ALWAN_LITERAL(1e-6),
                 "Ratios should be reciprocals");
 
     printf("  BT.2020 / sRGB volume ratio: %.4f\n", ratio_bt2020_srgb);

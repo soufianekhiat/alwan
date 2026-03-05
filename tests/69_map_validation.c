@@ -12,6 +12,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* D65 white point from CSV (Y=1 normalized) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_scalar const g_d65_xyz_y1[] = {
+#include "reference_values/test_d65_white.csv"
+};
+ALWAN_DIAG_POP
+
 /* ----------------------------------------------------------------
  * Grid generation
  * ---------------------------------------------------------------- */
@@ -378,7 +386,7 @@ static int test_white_point_maps(void) {
     alwan_scalar *ref_out = (alwan_scalar *)malloc(MAP_COUNT * stride);
     if (!grid || !map_out || !ref_out) { free(grid); free(map_out); free(ref_out); TEST_FAIL("malloc"); }
 
-    alwan_xyz d65; d65.x = ALWAN_LITERAL(0.95047); d65.y = ALWAN_LITERAL(1.0); d65.z = ALWAN_LITERAL(1.08883);
+    alwan_xyz d65; d65.x = g_d65_xyz_y1[0]; d65.y = g_d65_xyz_y1[1]; d65.z = g_d65_xyz_y1[2];
 
     generate_unit_grid(grid);
 
@@ -631,9 +639,9 @@ static int test_ciecam02_maps(void) {
     }
 
     alwan_ciecam02_viewing_conditions vc;
-    vc.white_xyz.x = ALWAN_LITERAL(95.047);
-    vc.white_xyz.y = ALWAN_LITERAL(100.0);
-    vc.white_xyz.z = ALWAN_LITERAL(108.883);
+    vc.white_xyz.x = g_d65_xyz_y1[0] * ALWAN_LITERAL(100.0);
+    vc.white_xyz.y = g_d65_xyz_y1[1] * ALWAN_LITERAL(100.0);
+    vc.white_xyz.z = g_d65_xyz_y1[2] * ALWAN_LITERAL(100.0);
     vc.adapting_luminance = ALWAN_LITERAL(64.0);
     vc.background_luminance = ALWAN_LITERAL(0.2);
     vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
@@ -687,9 +695,9 @@ static int test_cam16_maps(void) {
     }
 
     alwan_cam16_viewing_conditions vc;
-    vc.white_xyz.x = ALWAN_LITERAL(95.047);
-    vc.white_xyz.y = ALWAN_LITERAL(100.0);
-    vc.white_xyz.z = ALWAN_LITERAL(108.883);
+    vc.white_xyz.x = g_d65_xyz_y1[0] * ALWAN_LITERAL(100.0);
+    vc.white_xyz.y = g_d65_xyz_y1[1] * ALWAN_LITERAL(100.0);
+    vc.white_xyz.z = g_d65_xyz_y1[2] * ALWAN_LITERAL(100.0);
     vc.adapting_luminance = ALWAN_LITERAL(64.0);
     vc.background_luminance = ALWAN_LITERAL(0.2);
     vc.surround = ALWAN_CAM16_SURROUND_AVERAGE;
@@ -954,7 +962,7 @@ static int test_ex_white_point_maps(void) {
     }
 
     generate_mapex_grid(grid);
-    alwan_xyz d65; d65.x = ALWAN_LITERAL(0.95047); d65.y = ALWAN_LITERAL(1.0); d65.z = ALWAN_LITERAL(1.08883);
+    alwan_xyz d65; d65.x = g_d65_xyz_y1[0]; d65.y = g_d65_xyz_y1[1]; d65.z = g_d65_xyz_y1[2];
 
     typedef int (*fn_w)(alwan_scalar *, alwan_scalar const *, alwan_xyz const *, size_t, size_t, size_t);
     typedef int (*fn_w_ex)(void *, alwan_pixel_format, void const *, alwan_pixel_format,

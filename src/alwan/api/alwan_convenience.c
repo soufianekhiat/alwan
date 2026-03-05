@@ -91,31 +91,12 @@ int alwan_cmyk_to_cmy(alwan_cmy *cmy_out, alwan_scalar c, alwan_scalar m, alwan_
  * The .c wrapper resolves the enum to kr/kb.
  * ---------------------------------------------------------------- */
 
-static void get_ycbcr_coeffs(alwan_ycbcr_standard standard, alwan_scalar *kr, alwan_scalar *kb) {
-    switch (standard) {
-        case ALWAN_YCBCR_BT601:
-            *kr = ALWAN_LITERAL(0.299);
-            *kb = ALWAN_LITERAL(0.114);
-            break;
-        case ALWAN_YCBCR_BT709:
-            *kr = ALWAN_LITERAL(0.2126);
-            *kb = ALWAN_LITERAL(0.0722);
-            break;
-        case ALWAN_YCBCR_BT2020:
-            *kr = ALWAN_LITERAL(0.2627);
-            *kb = ALWAN_LITERAL(0.0593);
-            break;
-        default:
-            *kr = ALWAN_LITERAL(0.2126);
-            *kb = ALWAN_LITERAL(0.0722);
-            break;
-    }
-}
+/* YCbCr coefficients resolved via alwan__get_ycbcr_coeffs() in alwan_internal.h */
 
 int alwan_rgb_to_ycbcr(alwan_ycbcr *ycbcr_out, alwan_rgb const *rgb, alwan_ycbcr_standard standard) {
     if (!rgb || !ycbcr_out) return ALWAN_E_INVALID;
     alwan_scalar kr, kb;
-    get_ycbcr_coeffs(standard, &kr, &kb);
+    alwan__get_ycbcr_coeffs(standard, &kr, &kb);
     *ycbcr_out = alwan_rgb_to_ycbcr_kr_kb_v(*rgb, kr, kb);
     return ALWAN_OK;
 }
@@ -123,7 +104,7 @@ int alwan_rgb_to_ycbcr(alwan_ycbcr *ycbcr_out, alwan_rgb const *rgb, alwan_ycbcr
 int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr_standard standard) {
     if (!ycbcr || !rgb_out) return ALWAN_E_INVALID;
     alwan_scalar kr, kb;
-    get_ycbcr_coeffs(standard, &kr, &kb);
+    alwan__get_ycbcr_coeffs(standard, &kr, &kb);
     *rgb_out = alwan_ycbcr_to_rgb_kr_kb_v(*ycbcr, kr, kb);
     return ALWAN_OK;
 }

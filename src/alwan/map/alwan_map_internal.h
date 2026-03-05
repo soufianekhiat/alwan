@@ -119,6 +119,10 @@
 #define ALWAN_TILE_H       32
 #define ALWAN_TILE_PIXELS (ALWAN_TILE_W * ALWAN_TILE_H)  /* 4096 */
 
+/* Near-zero guards for SIMD divide-by-zero protection */
+#define ALWAN_MAP_DIV_GUARD    1e-10   /* For chromaticity / xyY denominators */
+#define ALWAN_MAP_PQ_DIV_GUARD 1e-30   /* For PQ EOTF denominator (tiny, avoids denormals) */
+
 /* ----------------------------------------------------------------
  * Tile Load: AoS strided input -> flat SoA arrays
  * ---------------------------------------------------------------- */
@@ -408,7 +412,7 @@ ALWAN_INLINE alwan_simd alwan__pq_eotf_simd(alwan_simd v) {
     num = alwan_simd_select(alwan_simd_cmplt(num, zero), zero, num);
     alwan_simd den = alwan_simd_sub(c2, alwan_simd_mul(c3, Ep));
     /* Avoid div-by-zero: if |den| < eps, result is 0 */
-    alwan_simd const eps = alwan_simd_set1((alwan_simd_lane)1e-30);
+    alwan_simd const eps = alwan_simd_set1((alwan_simd_lane)ALWAN_MAP_PQ_DIV_GUARD);
     alwan_simd_mask safe = alwan_simd_cmpgt(alwan_simd_abs(den), eps);
     alwan_simd ratio = alwan_simd_select(safe, alwan_simd_div(num, den), zero);
     ratio = alwan_simd_select(alwan_simd_cmplt(ratio, zero), zero, ratio);
@@ -450,7 +454,7 @@ ALWAN_INLINE alwan_simd alwan__pq_jz_eotf_simd(alwan_simd v) {
     alwan_simd const c3    = alwan_simd_set1((alwan_simd_lane)18.6875);
     alwan_simd const ten_k = alwan_simd_set1((alwan_simd_lane)10000.0);
     alwan_simd const zero  = alwan_simd_zero();
-    alwan_simd const eps   = alwan_simd_set1((alwan_simd_lane)1e-30);
+    alwan_simd const eps   = alwan_simd_set1((alwan_simd_lane)ALWAN_MAP_PQ_DIV_GUARD);
 
     alwan_simd_mask pos = alwan_simd_cmpgt(v, zero);
     alwan_simd enc = alwan_simd_select(pos, v, zero);

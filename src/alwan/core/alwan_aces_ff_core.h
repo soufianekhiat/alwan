@@ -29,15 +29,17 @@
 #define ACES2_REACH_TABLE_SIZE 360
 #define ACES2_CUSP_TABLE_SIZE 362
 
-/* Fourier coefficient arrays for chroma_compress_norm */
+/* Fourier coefficient arrays for chroma_compress_norm
+ * Source: ACES2 Output Transform (OpenColorIO FixedFunction ACES2/Transform.cpp) */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 ALWAN_CONSTEXPR alwan_scalar ACES2_CHROMA_NORM_COS_V[4] = {
-    ALWAN_LITERAL(11.34072), ALWAN_LITERAL(16.46899),
-    ALWAN_LITERAL(7.88380),  ALWAN_LITERAL(0.0)
+#include "../data/aces2_chroma_norm_cos.csv"
 };
 ALWAN_CONSTEXPR alwan_scalar ACES2_CHROMA_NORM_SIN_V[4] = {
-    ALWAN_LITERAL(14.66441), ALWAN_LITERAL(-6.37224),
-    ALWAN_LITERAL(9.19364),  ALWAN_LITERAL(77.12896)
+#include "../data/aces2_chroma_norm_sin.csv"
 };
+ALWAN_DIAG_POP
 
 /* ================================================================
  * Struct Definitions

@@ -59,8 +59,6 @@ static int test_llab_forward(void) {
     printf("\n=== Testing LLAB Forward Transform ===\n");
 
     int failed = 0;
-    /* LLAB involves complex chromatic adaptation and response compression.
-     * Implementation differences require ~1e-1 tolerance. */
     alwan_scalar const tolerance = TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_test_cases; i++) {

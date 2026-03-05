@@ -85,7 +85,14 @@ $dataScripts = @(
     @{Name="Missing Stubs (F-series/CES/D-series/ARRI)"; Script="../alwan_gendata/data/missing_stubs.py"; Priority=1},
     @{Name="Camera Sensitivities"; Script="../alwan_gendata/data/camera_sensitivities.py"; Priority=1},
     @{Name="RGB Spaces (Complete)"; Script="../alwan_gendata/data/rgb_spaces_complete.py"; Priority=2},
-    @{Name="AgX Matrices"; Script="../alwan_gendata/data/agx_matrices.py"; Priority=1}
+    @{Name="AgX Matrices"; Script="../alwan_gendata/data/agx_matrices.py"; Priority=1},
+    @{Name="Planckian Locus (Krystek 1985)"; Script="../alwan_gendata/data/planckian_locus_krystek.py"; Priority=1},
+    @{Name="Munsell Renotation Data"; Script="../alwan_gendata/data/munsell_renotation.py"; Priority=2},
+    @{Name="RGB Spaces Lookup Table"; Script="../alwan_gendata/data/rgb_spaces_lookup.py"; Priority=2},
+    @{Name="SSI Weights"; Script="../alwan_gendata/data/ssi_weights.py"; Priority=1},
+    @{Name="CVD Matrices (Viénot 1999)"; Script="../alwan_gendata/data/cvd_matrices.py"; Priority=1},
+    @{Name="OSA-UCS Matrices"; Script="../alwan_gendata/data/osa_ucs_matrices.py"; Priority=1},
+    @{Name="ACES2 Fourier Coefficients"; Script="../alwan_gendata/data/aces2_fourier.py"; Priority=1}
 )
 
 # Run each data generation script

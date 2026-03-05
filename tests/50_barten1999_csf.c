@@ -466,8 +466,8 @@ static int test_params_default(void)
     TEST_ASSERT_REL(params.X_max, ALWAN_LITERAL(12.0), ALWAN_LITERAL(1e-10), "Default X_max should be 12");
     TEST_ASSERT_REL(params.N_max, ALWAN_LITERAL(15.0), ALWAN_LITERAL(1e-10), "Default N_max should be 15");
     TEST_ASSERT_REL(params.n, ALWAN_LITERAL(0.03), ALWAN_LITERAL(1e-10), "Default n should be 0.03");
-    TEST_ASSERT_REL(params.p, ALWAN_LITERAL(1.2274e6), ALWAN_LITERAL(1e-4), "Default p should be 1.2274e6");
-    TEST_ASSERT_REL(params.phi_0, ALWAN_LITERAL(3.0e-8), ALWAN_LITERAL(1e-15), "Default phi_0 should be 3e-8");
+    TEST_ASSERT_REL(params.p, ALWAN_LITERAL(1.2274e6), ALWAN_LITERAL(1e-10), "Default p should be 1.2274e6");
+    TEST_ASSERT_REL(params.phi_0, ALWAN_LITERAL(3.0e-8), ALWAN_LITERAL(1e-10), "Default phi_0 should be 3e-8");
     TEST_ASSERT_REL(params.u_0, ALWAN_LITERAL(7.0), ALWAN_LITERAL(1e-10), "Default u_0 should be 7");
 
     /* Sigma should be computed from sigma_0=0.5/60, C_ab=0.08/60, d=2.1 */

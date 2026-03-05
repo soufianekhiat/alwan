@@ -88,8 +88,8 @@ static int test_munsell_roundtrip(void) {
     }
 
     /* For neutral colors, hue is undefined, so only check value and chroma */
-    TEST_CHECK_NEAR(value_out, value_in, 0.5);    /* Allow 0.5 Munsell value units tolerance */
-    TEST_CHECK_NEAR(chroma_out, chroma_in, 1.0);  /* Allow 1.0 chroma units tolerance */
+    TEST_CHECK_NEAR(value_out, value_in, ALWAN_LITERAL(0.5));    /* Allow 0.5 Munsell value units tolerance */
+    TEST_CHECK_NEAR(chroma_out, chroma_in, ALWAN_LITERAL(1.0));  /* Allow 1.0 chroma units tolerance */
 
     TEST_PASS_MSG();
     return 0;

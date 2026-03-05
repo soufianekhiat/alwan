@@ -150,12 +150,12 @@ int alwan_xyz_to_luv_map(alwan_scalar *luv_out,
     size_t const W = ALWAN_SIMD_WIDTH;
     /* Precompute white point u'n, v'n as scalars, broadcast */
     alwan_simd_lane wdn = (alwan_simd_lane)(white_xyz->x + 15.0 * white_xyz->y + 3.0 * white_xyz->z);
-    alwan_simd_lane upn = (wdn > 1e-10) ? (alwan_simd_lane)(4.0 * white_xyz->x) / wdn : 0.0;
-    alwan_simd_lane vpn = (wdn > 1e-10) ? (alwan_simd_lane)(9.0 * white_xyz->y) / wdn : 0.0;
+    alwan_simd_lane upn = (wdn > ALWAN_MAP_DIV_GUARD) ? (alwan_simd_lane)(4.0 * white_xyz->x) / wdn : 0.0;
+    alwan_simd_lane vpn = (wdn > ALWAN_MAP_DIV_GUARD) ? (alwan_simd_lane)(9.0 * white_xyz->y) / wdn : 0.0;
     alwan_simd v_upn = alwan_simd_set1(upn);
     alwan_simd v_vpn = alwan_simd_set1(vpn);
     alwan_simd v_inv_wy = alwan_simd_set1(1.0 / (alwan_simd_lane)white_xyz->y);
-    alwan_simd v_eps = alwan_simd_set1(1e-10);
+    alwan_simd v_eps = alwan_simd_set1(ALWAN_MAP_DIV_GUARD);
     alwan_simd v_zero = alwan_simd_zero();
 
     size_t processed = 0;
@@ -227,12 +227,12 @@ int alwan_luv_to_xyz_map(alwan_scalar *xyz_out,
 #if ALWAN_SIMD_WIDTH > 1
     size_t const W = ALWAN_SIMD_WIDTH;
     alwan_simd_lane wdn = (alwan_simd_lane)(white_xyz->x + 15.0 * white_xyz->y + 3.0 * white_xyz->z);
-    alwan_simd_lane upn = (wdn > 1e-10) ? (alwan_simd_lane)(4.0 * white_xyz->x) / wdn : 0.0;
-    alwan_simd_lane vpn = (wdn > 1e-10) ? (alwan_simd_lane)(9.0 * white_xyz->y) / wdn : 0.0;
+    alwan_simd_lane upn = (wdn > ALWAN_MAP_DIV_GUARD) ? (alwan_simd_lane)(4.0 * white_xyz->x) / wdn : 0.0;
+    alwan_simd_lane vpn = (wdn > ALWAN_MAP_DIV_GUARD) ? (alwan_simd_lane)(9.0 * white_xyz->y) / wdn : 0.0;
     alwan_simd v_upn = alwan_simd_set1(upn);
     alwan_simd v_vpn = alwan_simd_set1(vpn);
     alwan_simd v_wy  = alwan_simd_set1((alwan_simd_lane)white_xyz->y);
-    alwan_simd v_eps = alwan_simd_set1(1e-10);
+    alwan_simd v_eps = alwan_simd_set1(ALWAN_MAP_DIV_GUARD);
     alwan_simd v_zero = alwan_simd_zero();
 
     size_t processed = 0;
@@ -537,7 +537,7 @@ int alwan_xyz_to_xyy_map(alwan_scalar *xyy_out,
 
 #if ALWAN_SIMD_WIDTH > 1
     size_t const W = ALWAN_SIMD_WIDTH;
-    alwan_simd v_eps = alwan_simd_set1(1e-10);
+    alwan_simd v_eps = alwan_simd_set1(ALWAN_MAP_DIV_GUARD);
     alwan_simd v_zero = alwan_simd_zero();
     size_t processed = 0;
     while (processed < count) {
@@ -591,7 +591,7 @@ int alwan_xyy_to_xyz_map(alwan_scalar *xyz_out,
 
 #if ALWAN_SIMD_WIDTH > 1
     size_t const W = ALWAN_SIMD_WIDTH;
-    alwan_simd v_eps = alwan_simd_set1(1e-10);
+    alwan_simd v_eps = alwan_simd_set1(ALWAN_MAP_DIV_GUARD);
     alwan_simd v_zero = alwan_simd_zero();
     size_t processed = 0;
     while (processed < count) {

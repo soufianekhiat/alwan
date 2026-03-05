@@ -18,42 +18,38 @@
 
 /* ================================================================
  * CVD Transformation Matrices
+ * Based on Brettel, Vienot & Mollon (1997)
  * ================================================================ */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* sRGB to LMS matrix */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_RGB_TO_LMS = {{
-    ALWAN_LITERAL(0.31399022), ALWAN_LITERAL(0.63951294), ALWAN_LITERAL(0.04649755),
-    ALWAN_LITERAL(0.15537241), ALWAN_LITERAL(0.75789446), ALWAN_LITERAL(0.08670142),
-    ALWAN_LITERAL(0.01775239), ALWAN_LITERAL(0.10944209), ALWAN_LITERAL(0.87256922)
+#include "../data/matrices/cvd_rgb_to_lms.csv"
 }};
 
 /* LMS to sRGB matrix */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_LMS_TO_RGB = {{
-    ALWAN_LITERAL(5.47221206),  ALWAN_LITERAL(-4.6419601),  ALWAN_LITERAL(0.16963708),
-    ALWAN_LITERAL(-1.1252419),  ALWAN_LITERAL(2.29317094),  ALWAN_LITERAL(-0.1678952),
-    ALWAN_LITERAL(0.02980165),  ALWAN_LITERAL(-0.19318073), ALWAN_LITERAL(1.16364789)
+#include "../data/matrices/cvd_lms_to_rgb.csv"
 }};
 
 /* Protanopia (L-cone absent) - red-blind */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_PROTANOPIA = {{
-    ALWAN_LITERAL(0.0),     ALWAN_LITERAL(2.02344),  ALWAN_LITERAL(-2.52581),
-    ALWAN_LITERAL(0.0),     ALWAN_LITERAL(1.0),      ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(0.0),     ALWAN_LITERAL(0.0),      ALWAN_LITERAL(1.0)
+#include "../data/matrices/cvd_protanopia.csv"
 }};
 
 /* Deuteranopia (M-cone absent) - green-blind */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_DEUTERANOPIA = {{
-    ALWAN_LITERAL(1.0),      ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(0.494207), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.24827),
-    ALWAN_LITERAL(0.0),      ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)
+#include "../data/matrices/cvd_deuteranopia.csv"
 }};
 
 /* Tritanopia (S-cone absent) - blue-blind */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_TRITANOPIA = {{
-    ALWAN_LITERAL(1.0),       ALWAN_LITERAL(0.0),      ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(0.0),       ALWAN_LITERAL(1.0),      ALWAN_LITERAL(0.0),
-    ALWAN_LITERAL(-0.395913), ALWAN_LITERAL(0.801109), ALWAN_LITERAL(0.0)
+#include "../data/matrices/cvd_tritanopia.csv"
 }};
+
+ALWAN_DIAG_POP
 
 /* ================================================================
  * Generic CVD Simulation (takes CVD matrix as parameter)

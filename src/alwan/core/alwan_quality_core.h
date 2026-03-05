@@ -202,6 +202,23 @@ ALWAN_INLINE alwan_vec2 alwan_d_series_xy_v(alwan_scalar cct) {
 }
 
 /* ================================================================
+ * Krystek 1985 Planckian locus rational polynomial coefficients
+ * u(T) = (k_u[0] + k_u[1]*T + k_u[2]*T^2) / (k_u[3] + k_u[4]*T + k_u[5]*T^2)
+ * v(T) = (k_v[0] + k_v[1]*T + k_v[2]*T^2) / (k_v[3] + k_v[4]*T + k_v[5]*T^2)
+ * Valid range: 1000K - 15000K
+ * Reference: Krystek, M. (1985). Color Research & Application, 10(1), 38-40.
+ * ================================================================ */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+ALWAN_CONSTEXPR alwan_scalar KRYSTEK_U_COEFFS[6] = {
+#include "../data/planckian_locus_krystek_u.csv"
+};
+ALWAN_CONSTEXPR alwan_scalar KRYSTEK_V_COEFFS[6] = {
+#include "../data/planckian_locus_krystek_v.csv"
+};
+ALWAN_DIAG_POP
+
+/* ================================================================
  * Ohno 2013 CCT from CIE 1960 UCS (u, v)
  *
  * Practical triangular/parabolic solver.
@@ -234,19 +251,13 @@ ALWAN_INLINE alwan_scalar alwan_cct_ohno2013_v(alwan_scalar u, alwan_scalar v) {
         + ALWAN_LITERAL(0.00004)    * ALWAN_EXP(-n / ALWAN_LITERAL(0.07125));
 
     /* Ohno refinement: compute Planckian locus u,v at the estimated CCT
-     * and at CCT +/- delta, then triangular solver */
-    /* Planckian locus approximation:
-     * u_p = (0.860117757 + 1.54118254e-4*T + 1.28641212e-7*T^2) /
-     *       (1 + 8.42420235e-4*T + 7.08145163e-7*T^2)
-     * v_p = (0.317398726 + 4.22806245e-5*T + 4.20481691e-8*T^2) /
-     *       (1 + -2.89741816e-5*T + 1.61456053e-7*T^2)
-     */
+     * using Krystek 1985 rational polynomial approximation */
     alwan_scalar T = cct;
     alwan_scalar T2 = T * T;
-    alwan_scalar u_p = (ALWAN_LITERAL(0.860117757)  + ALWAN_LITERAL(1.54118254e-4) * T + ALWAN_LITERAL(1.28641212e-7) * T2) /
-                       (ALWAN_ONE + ALWAN_LITERAL(8.42420235e-4) * T + ALWAN_LITERAL(7.08145163e-7) * T2);
-    alwan_scalar v_p = (ALWAN_LITERAL(0.317398726)  + ALWAN_LITERAL(4.22806245e-5) * T + ALWAN_LITERAL(4.20481691e-8) * T2) /
-                       (ALWAN_ONE - ALWAN_LITERAL(2.89741816e-5) * T + ALWAN_LITERAL(1.61456053e-7) * T2);
+    alwan_scalar u_p = (KRYSTEK_U_COEFFS[0] + KRYSTEK_U_COEFFS[1] * T + KRYSTEK_U_COEFFS[2] * T2) /
+                       (KRYSTEK_U_COEFFS[3] + KRYSTEK_U_COEFFS[4] * T + KRYSTEK_U_COEFFS[5] * T2);
+    alwan_scalar v_p = (KRYSTEK_V_COEFFS[0] + KRYSTEK_V_COEFFS[1] * T + KRYSTEK_V_COEFFS[2] * T2) /
+                       (KRYSTEK_V_COEFFS[3] + KRYSTEK_V_COEFFS[4] * T + KRYSTEK_V_COEFFS[5] * T2);
 
     /* Duv: signed distance from Planckian locus */
     alwan_scalar du = u - u_p;

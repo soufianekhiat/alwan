@@ -185,7 +185,7 @@ static int test_tm30_cie224_match(void) {
     alwan_scalar cie224 = alwan_cie224_rf(ctx, &d65_spd);
 
     alwan_scalar diff = ALWAN_ABS(tm30 - cie224);
-    TEST_ASSERT(diff < ALWAN_LITERAL(0.01),
+    TEST_ASSERT(diff < TEST_TOLERANCE,
                 "TM-30 and CIE 224 should return identical values");
 
     printf("  TM-30 Rf = %.4f, CIE 224 Rf = %.4f, diff = %.6f\n",

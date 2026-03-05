@@ -26,9 +26,9 @@ static int test_cam18sl_roundtrip(void) {
 
     alwan_xyz xyz_rt = alwan_cam18sl_inverse_v(fwd, Y_b);
 
-    TEST_ASSERT_NEAR(xyz_rt.x, xyz_in.x, ALWAN_LITERAL(1e-2), "cam18sl rt X");
-    TEST_ASSERT_NEAR(xyz_rt.y, xyz_in.y, ALWAN_LITERAL(1e-2), "cam18sl rt Y");
-    TEST_ASSERT_NEAR(xyz_rt.z, xyz_in.z, ALWAN_LITERAL(1e-2), "cam18sl rt Z");
+    TEST_ASSERT_NEAR(xyz_rt.x, xyz_in.x, ALWAN_LITERAL(1e-6), "cam18sl rt X");
+    TEST_ASSERT_NEAR(xyz_rt.y, xyz_in.y, ALWAN_LITERAL(1e-6), "cam18sl rt Y");
+    TEST_ASSERT_NEAR(xyz_rt.z, xyz_in.z, ALWAN_LITERAL(1e-6), "cam18sl rt Z");
 
     TEST_PASS("cam18sl roundtrip");
 }
@@ -86,7 +86,7 @@ static int test_cam18sl_api(void) {
     alwan_xyz xyz_rt;
     status = alwan_cam18sl_inverse(&xyz_rt, &out, Y_b);
     TEST_ASSERT(status == ALWAN_OK, "cam18sl inverse api failed");
-    TEST_ASSERT_NEAR(xyz_rt.x, xyz_in.x, ALWAN_LITERAL(1e-2), "cam18sl api rt X");
+    TEST_ASSERT_NEAR(xyz_rt.x, xyz_in.x, ALWAN_LITERAL(1e-6), "cam18sl api rt X");
 
     TEST_PASS("cam18sl api");
 }
