@@ -205,52 +205,6 @@ static int test_srgb_to_acescg(alwan_ctx *ctx) {
     TEST_PASS("sRGB to ACEScg");
 }
 
-/* Test bulk conversion */
-static int test_bulk_conversion(alwan_ctx *ctx) {
-    alwan_rgb_space_desc srgb = get_srgb_desc();
-    alwan_rgb_space_desc p3 = get_display_p3_desc();
-
-    /* Test with 5 colors */
-    alwan_rgb src_colors[5] = {
-        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},  /* Red */
-        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)},  /* Green */
-        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)},  /* Blue */
-        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},  /* White */
-        {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)}   /* Gray */
-    };
-    alwan_rgb dst_colors_bulk[5];
-    alwan_rgb dst_colors_single[5];
-
-    /* Convert using bulk function */
-    int status = alwan_rgb_convert_bulk(dst_colors_bulk, ctx, &srgb, &p3, src_colors, 5);
-    TEST_ASSERT(status == ALWAN_OK, "Bulk conversion failed");
-
-    /* Convert using single function for comparison */
-    for (size_t i = 0; i < 5; i++) {
-        status = alwan_rgb_convert(&dst_colors_single[i], ctx, &srgb, &p3, &src_colors[i]);
-        TEST_ASSERT(status == ALWAN_OK, "Single conversion failed");
-    }
-
-    /* Compare results */
-    for (size_t i = 0; i < 5; i++) {
-        alwan_scalar diff_r = ALWAN_ABS(dst_colors_bulk[i].r - dst_colors_single[i].r);
-        alwan_scalar diff_g = ALWAN_ABS(dst_colors_bulk[i].g - dst_colors_single[i].g);
-        alwan_scalar diff_b = ALWAN_ABS(dst_colors_bulk[i].b - dst_colors_single[i].b);
-
-        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
-            printf("Bulk conversion mismatch for color %zu:\n", i);
-            printf("  Bulk:   [%.6f, %.6f, %.6f]\n",
-                   dst_colors_bulk[i].r, dst_colors_bulk[i].g, dst_colors_bulk[i].b);
-            printf("  Single: [%.6f, %.6f, %.6f]\n",
-                   dst_colors_single[i].r, dst_colors_single[i].g, dst_colors_single[i].b);
-            TEST_ASSERT(0, "Bulk and single conversion results differ");
-        }
-    }
-
-    printf("  Tested 5 colors in bulk\n");
-    TEST_PASS("Bulk conversion");
-}
-
 /* Main test runner for RGB convert */
 int test_19_rgb_convert_main(void) {
     printf("=== RGB-to-RGB Conversion Tests ===\n");
@@ -266,7 +220,6 @@ int test_19_rgb_convert_main(void) {
     failures += test_srgb_to_p3(ctx);
     failures += test_srgb_to_bt2020(ctx);
     failures += test_srgb_to_acescg(ctx);
-    failures += test_bulk_conversion(ctx);
 
     alwan_destroy(ctx);
 

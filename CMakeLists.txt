@@ -49,14 +49,14 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_aces_ff.c
   src/alwan/api/alwan_atd95.c
   src/alwan/api/alwan_cam.c
-  src/alwan/bulk/alwan_cam_bulk.c
+  src/alwan/map/alwan_cam_map.c
   src/alwan/api/alwan_cat.c
   src/alwan/api/alwan_color_correction.c
   src/alwan/api/alwan_colorspace.c
-  src/alwan/bulk/alwan_colorspace_bulk.c
+  src/alwan/map/alwan_colorspace_map.c
   src/alwan/api/alwan_context.c
   src/alwan/api/alwan_convenience.c
-  src/alwan/bulk/alwan_convenience_bulk.c
+  src/alwan/map/alwan_convenience_map.c
   src/alwan/api/alwan_data.c
   src/alwan/api/alwan_din99.c
   src/alwan/api/alwan_extended.c
@@ -65,16 +65,16 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_hunt.c
   src/alwan/api/alwan_hunter_lab.c
   src/alwan/api/alwan_ictcp.c
-  src/alwan/bulk/alwan_ictcp_bulk.c
+  src/alwan/map/alwan_ictcp_map.c
   src/alwan/api/alwan_ipt.c
-  src/alwan/bulk/alwan_ipt_bulk.c
+  src/alwan/map/alwan_ipt_map.c
   src/alwan/api/alwan_jzazbz.c
-  src/alwan/bulk/alwan_jzazbz_bulk.c
+  src/alwan/map/alwan_jzazbz_map.c
   src/alwan/api/alwan_kim2009.c
   src/alwan/api/alwan_llab.c
   src/alwan/api/alwan_math.c
   src/alwan/api/alwan_oklab.c
-  src/alwan/bulk/alwan_oklab_bulk.c
+  src/alwan/map/alwan_oklab_map.c
   src/alwan/api/alwan_osa_ucs.c
   src/alwan/api/alwan_prolab.c
   src/alwan/api/alwan_quality.c
@@ -82,7 +82,8 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_reference_data.c
   src/alwan/api/alwan_normalize.c
   src/alwan/api/alwan_rgb.c
-  src/alwan/bulk/alwan_rgb_bulk.c
+  src/alwan/map/alwan_rgb_map.c
+  src/alwan/map/alwan_typed_map.c
   src/alwan/api/alwan_rlab.c
   src/alwan/api/alwan_spd.c
   src/alwan/api/alwan_spectrum_upsample.c

@@ -262,40 +262,6 @@ static int test_view_transform_monotonic(void) {
     TEST_PASS("View transform monotonicity");
 }
 
-static int test_bulk_view_transform(void) {
-    /* Test bulk processing of multiple RGB triplets */
-    alwan_scalar inputs[] = {
-        /* RGB triplet 0: black */
-        ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
-        /* RGB triplet 1: gray */
-        ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18),
-        /* RGB triplet 2: white */
-        ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0),
-        /* RGB triplet 3: red */
-        ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)
-    };
-
-    alwan_scalar outputs[12];  /* 4 RGB triplets */
-
-    int status = alwan_view_transform_apply(outputs, NULL, ALWAN_VIEW_ACES_REC709,
-                                           inputs, 4,
-                                           3 * sizeof(alwan_scalar),
-                                           3 * sizeof(alwan_scalar));
-    TEST_ASSERT(status == ALWAN_OK, "Bulk view transform failed");
-
-    /* Verify all outputs are in [0,1] range */
-    for (int i = 0; i < 4; i++) {
-        alwan_scalar const *rgb = &outputs[i * 3];
-        if (!is_in_range_01(rgb)) {
-            printf("  Output %d out of range: [%.6f %.6f %.6f]\n",
-                   i, rgb[0], rgb[1], rgb[2]);
-        }
-        TEST_ASSERT(is_in_range_01(rgb), "Bulk output not in [0,1] range");
-    }
-
-    TEST_PASS("Bulk view transform");
-}
-
 static int test_view_transform_preserves_hue(void) {
     /* Test that view transforms roughly preserve hue for saturated colors */
     /* For pure red, output should have R > G and R > B */
@@ -359,7 +325,6 @@ int test_10_view_transforms_main(void) {
     failures += test_agx_punchy();
     failures += test_khronos_pbr_neutral_basic();
     failures += test_view_transform_monotonic();
-    failures += test_bulk_view_transform();
     failures += test_view_transform_preserves_hue();
     failures += test_invalid_view_transform();
 

@@ -63,7 +63,7 @@ static int test_adapt_d65_to_d50_bradford(void) {
                                  expected_adapted_data[i * 3 + 1],
                                  expected_adapted_data[i * 3 + 2]}};
 
-        /* Adapt using bulk function */
+        /* Adapt using map function */
         alwan_vec3 adapted;
         int status = alwan_xyz_adapt(adapted.v,
                                      &d65_xyz, &d50_xyz,
@@ -118,7 +118,7 @@ static int test_adapt_a_to_d65_bradford(void) {
                                  expected_adapted_data[i * 3 + 1],
                                  expected_adapted_data[i * 3 + 2]}};
 
-        /* Adapt using bulk function */
+        /* Adapt using map function */
         alwan_vec3 adapted;
         int status = alwan_xyz_adapt(adapted.v,
                                      &a_xyz, &d65_xyz,
@@ -260,57 +260,6 @@ static int test_roundtrip_all_methods(void) {
     TEST_PASS("Round-trip all methods");
 }
 
-static int test_bulk_adaptation(void) {
-    /* Load white points */
-    ALWAN_DIAG_PUSH
-    ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
-#include "reference_values/test_d65_white.csv"
-    };
-    static alwan_scalar const d50_xyz_data[] = {
-#include "reference_values/test_d50_white.csv"
-    };
-    static alwan_scalar const test_colors_data[] = {
-#include "reference_values/test_xyz_colors.csv"
-    };
-    static alwan_scalar const expected_adapted_data[] = {
-#include "reference_values/adapted_d65_to_d50_bradford.csv"
-    };
-    ALWAN_DIAG_POP
-
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
-
-    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-
-    /* Adapt all colors at once */
-    alwan_scalar adapted_data[24];  /* 8 colors * 3 components */
-    int status = alwan_xyz_adapt(adapted_data,
-                                 &d65_xyz, &d50_xyz,
-                                 ALWAN_CAT_BRADFORD,
-                                 test_colors_data, num_tests,
-                                 3 * sizeof(alwan_scalar),
-                                 3 * sizeof(alwan_scalar));
-    TEST_ASSERT(status == ALWAN_OK, "Bulk adaptation failed");
-
-    alwan_scalar const tolerance = TEST_TOLERANCE;
-
-    /* Verify all results */
-    for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 computed = {{adapted_data[i * 3 + 0],
-                                 adapted_data[i * 3 + 1],
-                                 adapted_data[i * 3 + 2]}};
-        alwan_vec3 expected = {{expected_adapted_data[i * 3 + 0],
-                                 expected_adapted_data[i * 3 + 1],
-                                 expected_adapted_data[i * 3 + 2]}};
-
-        alwan_scalar diff = vec3_max_diff(&computed, &expected);
-        TEST_ASSERT(diff < tolerance, "Bulk adaptation result mismatch");
-    }
-
-    TEST_PASS("Bulk adaptation");
-}
-
 /* ----------------------------------------------------------------
  * Main test runner
  * ---------------------------------------------------------------- */
@@ -322,7 +271,6 @@ int test_08_cat_roundtrip_main(void) {
     failures += test_adapt_a_to_d65_bradford();
     failures += test_roundtrip_d65_d50_d65();
     failures += test_roundtrip_all_methods();
-    failures += test_bulk_adaptation();
 
     if (failures == 0) {
         printf("\n=== All CAT round-trip tests passed ===\n");

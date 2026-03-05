@@ -235,12 +235,9 @@ static int test_roundtrip_rec709(void) {
            rgb_encoded.r, rgb_encoded.g, rgb_encoded.b,
            rgb_decoded.r, rgb_decoded.g, rgb_decoded.b);
 
-    /* Verify inverse produces reasonable output (within 5% for simplified impl) */
-    alwan_scalar rel_err = ALWAN_ABS(rgb_decoded.r - rgb_in.r) / rgb_in.r;
-    if (rel_err > 0.05) {
-        TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * 100.0);
-    }
-    printf("    Roundtrip relative error: %.2f%%\n", rel_err * 100.0);
+    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, TEST_TOLERANCE, "Roundtrip R");
+    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, TEST_TOLERANCE, "Roundtrip G");
+    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, TEST_TOLERANCE, "Roundtrip B");
 
     TEST_PASS_MSG();
     return 0;
@@ -264,11 +261,9 @@ static int test_roundtrip_srgb(void) {
         TEST_FAIL("Inverse transform failed with error %d", status);
     }
 
-    /* Verify inverse produces reasonable output (within 5% for simplified impl) */
-    alwan_scalar rel_err = ALWAN_ABS(rgb_decoded.r - rgb_in.r) / rgb_in.r;
-    if (rel_err > 0.05) {
-        TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * 100.0);
-    }
+    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, TEST_TOLERANCE, "Roundtrip R");
+    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, TEST_TOLERANCE, "Roundtrip G");
+    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, TEST_TOLERANCE, "Roundtrip B");
 
     TEST_PASS_MSG();
     return 0;
@@ -292,11 +287,9 @@ static int test_roundtrip_hdr(void) {
         TEST_FAIL("Inverse transform failed with error %d", status);
     }
 
-    /* Verify inverse produces reasonable output (within 5% for simplified impl) */
-    alwan_scalar rel_err = ALWAN_ABS(rgb_decoded.r - rgb_in.r) / rgb_in.r;
-    if (rel_err > 0.05) {
-        TEST_FAIL("Roundtrip relative error too large: %.1f%%", rel_err * ALWAN_LITERAL(100.0));
-    }
+    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, TEST_TOLERANCE, "Roundtrip R");
+    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, TEST_TOLERANCE, "Roundtrip G");
+    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, TEST_TOLERANCE, "Roundtrip B");
 
     TEST_PASS_MSG();
     return 0;

@@ -70,6 +70,7 @@ add_executable(
   66_belcour2023.c
   67_hwb_gamma_dseries.c
   68_ohno_contrast_dicom.c
+  69_map_validation.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

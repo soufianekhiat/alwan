@@ -489,8 +489,8 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
     return ALWAN_OK;
 }
 
-/* Bulk RGB color space conversion */
-int alwan_rgb_convert_bulk(alwan_rgb *dst_rgb,
+/* Map RGB color space conversion */
+int alwan_rgb_convert_map(alwan_rgb *dst_rgb,
                             alwan_ctx *ctx,
                             alwan_rgb_space_desc const *src_space,
                             alwan_rgb_space_desc const *dst_space,

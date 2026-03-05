@@ -757,7 +757,7 @@ int alwan_table_interp_3d_tetrahedral(alwan_rgb *rgb_out,
  * Bulk Matrix-Vector Transform
  * ---------------------------------------------------------------- */
 
-int alwan_mat3_transform_bulk(alwan_scalar *vec_out,
+int alwan_mat3_transform_map(alwan_scalar *vec_out,
                               alwan_mat3x3 const *matrix,
                               alwan_scalar const *vec_in,
                               size_t count,
