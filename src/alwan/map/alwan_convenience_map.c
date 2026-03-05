@@ -17,14 +17,6 @@
 
 #if ALWAN_SIMD_WIDTH > 1
 
-ALWAN_INLINE alwan_simd alwan__simd_min3(alwan_simd a, alwan_simd b, alwan_simd c) {
-    return alwan_simd_min(a, alwan_simd_min(b, c));
-}
-
-ALWAN_INLINE alwan_simd alwan__simd_max3(alwan_simd a, alwan_simd b, alwan_simd c) {
-    return alwan_simd_max(a, alwan_simd_max(b, c));
-}
-
 /* hue_to_rgb helper for HSL -> RGB */
 ALWAN_INLINE alwan_simd alwan__hue_to_rgb_simd(alwan_simd p, alwan_simd q, alwan_simd t) {
     alwan_simd zero = alwan_simd_set1(0.0);

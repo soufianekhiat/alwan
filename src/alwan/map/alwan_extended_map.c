@@ -1,0 +1,499 @@
+/*
+ * Alwan - Pure C colour science library
+ * Copyright (c) 2025 Soufiane KHIAT
+ * SPDX-License-Identifier: MIT
+ *
+ * Map Extended Color Space Conversions
+ * IgPgTg, ICaCb, hdr-CIELAB, hdr-IPT, UCS, UVW, Hunter Lab, ProLab,
+ * OSA-UCS, Prismatic, HCL, IHLS, DIN99
+ */
+
+#include "../alwan.h"
+#include "../alwan_internal.h"
+#include "alwan_map_internal.h"
+#include "../core/alwan_extended_core.h"
+#include "../core/alwan_colorspace_core.h"
+#include "../core/alwan_din99_core.h"
+#include "../core/alwan_hunter_lab_core.h"
+#include "../core/alwan_prolab_core.h"
+#include "../core/alwan_osa_ucs_core.h"
+
+/* ----------------------------------------------------------------
+ * XYZ <-> IgPgTg
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_igpgtg_map(alwan_scalar *igpgtg_out, alwan_scalar const *xyz_in,
+                             size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !igpgtg_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)igpgtg_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_igpgtg r = alwan_xyz_to_igpgtg_v(xyz);
+        out_ptr[0] = r.Ig; out_ptr[1] = r.Pg; out_ptr[2] = r.Tg;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_igpgtg_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *igpgtg_in,
+                             size_t count, size_t in_stride, size_t out_stride) {
+    if (!igpgtg_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)igpgtg_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_igpgtg igpgtg = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_igpgtg_to_xyz_v(igpgtg);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * XYZ <-> ICaCb
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_icacb_map(alwan_scalar *icacb_out, alwan_scalar const *xyz_in,
+                            size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !icacb_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)icacb_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_icacb r = alwan_xyz_to_icacb_v(xyz);
+        out_ptr[0] = r.I; out_ptr[1] = r.Ca; out_ptr[2] = r.Cb;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_icacb_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *icacb_in,
+                            size_t count, size_t in_stride, size_t out_stride) {
+    if (!icacb_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)icacb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_icacb icacb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_icacb_to_xyz_v(icacb);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * XYZ <-> hdr-CIELAB
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_hdr_cielab_map(alwan_scalar *hdr_lab_out, alwan_scalar const *xyz_in,
+                                 size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !hdr_lab_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hdr_lab_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_lab r = alwan_xyz_to_hdr_cielab_v(xyz);
+        out_ptr[0] = r.L; out_ptr[1] = r.a; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_hdr_cielab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hdr_lab_in,
+                                 size_t count, size_t in_stride, size_t out_stride) {
+    if (!hdr_lab_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hdr_lab_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_lab hdr_lab = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_hdr_cielab_to_xyz_v(hdr_lab);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * XYZ <-> hdr-IPT
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_hdr_ipt_map(alwan_scalar *hdr_ipt_out, alwan_scalar const *xyz_in,
+                               size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !hdr_ipt_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hdr_ipt_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_ipt r = alwan_xyz_to_hdr_ipt_v(xyz);
+        out_ptr[0] = r.I; out_ptr[1] = r.P; out_ptr[2] = r.T;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_hdr_ipt_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hdr_ipt_in,
+                               size_t count, size_t in_stride, size_t out_stride) {
+    if (!hdr_ipt_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hdr_ipt_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_ipt hdr_ipt = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_hdr_ipt_to_xyz_v(hdr_ipt);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * XYZ <-> CIE 1960 UCS
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_ucs_map(alwan_scalar *ucs_out, alwan_scalar const *xyz_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !ucs_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)ucs_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_ucs r = alwan_xyz_to_ucs_v(xyz);
+        out_ptr[0] = r.U; out_ptr[1] = r.V; out_ptr[2] = r.W;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_ucs_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *ucs_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!ucs_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)ucs_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_ucs ucs = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_ucs_to_xyz_v(ucs);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * XYZ <-> OSA-UCS
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_osa_ucs_map(alwan_scalar *osa_out, alwan_scalar const *xyz_in,
+                              size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !osa_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)osa_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_osa_ucs r = alwan_xyz_to_osa_ucs_v(xyz);
+        out_ptr[0] = r.L; out_ptr[1] = r.j; out_ptr[2] = r.g;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_osa_ucs_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *osa_in,
+                              size_t count, size_t in_stride, size_t out_stride) {
+    if (!osa_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)osa_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_osa_ucs osa = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_osa_ucs_to_xyz_v(osa);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * XYZ <-> Hunter Lab
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_hunter_lab_map(alwan_scalar *hl_out, alwan_scalar const *xyz_in,
+                                 size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !hl_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hl_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_hunter_lab r = alwan_xyz_to_hunter_lab_v(xyz);
+        out_ptr[0] = r.L; out_ptr[1] = r.a; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_hunter_lab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hl_in,
+                                 size_t count, size_t in_stride, size_t out_stride) {
+    if (!hl_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hl_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_hunter_lab hl = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_hunter_lab_to_xyz_v(hl);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_xyz_to_hunter_lab_custom_map(alwan_scalar *hl_out, alwan_scalar const *xyz_in,
+                                        alwan_xyz const *white_xyz,
+                                        size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !hl_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hl_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_hunter_lab r = alwan_xyz_to_hunter_lab_custom_v(xyz, *white_xyz);
+        out_ptr[0] = r.L; out_ptr[1] = r.a; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_hunter_lab_to_xyz_custom_map(alwan_scalar *xyz_out, alwan_scalar const *hl_in,
+                                        alwan_xyz const *white_xyz,
+                                        size_t count, size_t in_stride, size_t out_stride) {
+    if (!hl_in || !xyz_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hl_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_hunter_lab hl = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_hunter_lab_to_xyz_custom_v(hl, *white_xyz);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * XYZ <-> ProLab
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_prolab_map(alwan_scalar *prolab_out, alwan_scalar const *xyz_in,
+                             size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !prolab_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)prolab_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_prolab r = alwan_xyz_to_prolab_v(xyz);
+        out_ptr[0] = r.L; out_ptr[1] = r.a; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_prolab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *prolab_in,
+                             size_t count, size_t in_stride, size_t out_stride) {
+    if (!prolab_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)prolab_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_prolab prolab = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_prolab_to_xyz_v(prolab);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_xyz_to_prolab_custom_map(alwan_scalar *prolab_out, alwan_scalar const *xyz_in,
+                                    alwan_xyz const *white_xyz,
+                                    size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !prolab_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)prolab_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_prolab r = alwan_xyz_to_prolab_custom_v(xyz, *white_xyz);
+        out_ptr[0] = r.L; out_ptr[1] = r.a; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_prolab_to_xyz_custom_map(alwan_scalar *xyz_out, alwan_scalar const *prolab_in,
+                                    alwan_xyz const *white_xyz,
+                                    size_t count, size_t in_stride, size_t out_stride) {
+    if (!prolab_in || !xyz_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)prolab_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_prolab prolab = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_prolab_to_xyz_custom_v(prolab, *white_xyz);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * XYZ <-> UVW (with white point)
+ * ---------------------------------------------------------------- */
+
+int alwan_xyz_to_uvw_map(alwan_scalar *uvw_out, alwan_scalar const *xyz_in,
+                          alwan_xyz const *white_xyz,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!xyz_in || !uvw_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)uvw_out + i * out_stride);
+        alwan_xyz xyz = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_uvw r = alwan_xyz_to_uvw_v(xyz, *white_xyz);
+        out_ptr[0] = r.U; out_ptr[1] = r.V; out_ptr[2] = r.W;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_uvw_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *uvw_in,
+                          alwan_xyz const *white_xyz,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!uvw_in || !xyz_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)uvw_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_uvw uvw = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_xyz r = alwan_uvw_to_xyz_v(uvw, *white_xyz);
+        out_ptr[0] = r.x; out_ptr[1] = r.y; out_ptr[2] = r.z;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * RGB <-> Prismatic
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_prismatic_map(alwan_scalar *prismatic_out, alwan_scalar const *rgb_in,
+                                size_t count, size_t in_stride, size_t out_stride) {
+    if (!rgb_in || !prismatic_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)prismatic_out + i * out_stride);
+        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_prismatic r = alwan_rgb_to_prismatic_v(rgb);
+        out_ptr[0] = r.L; out_ptr[1] = r.s; out_ptr[2] = r.h;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_prismatic_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *prismatic_in,
+                                size_t count, size_t in_stride, size_t out_stride) {
+    if (!prismatic_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)prismatic_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+        alwan_prismatic prismatic = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_rgb r = alwan_prismatic_to_rgb_v(prismatic);
+        out_ptr[0] = r.r; out_ptr[1] = r.g; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * RGB <-> HCL
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_hcl_map(alwan_scalar *hcl_out, alwan_scalar const *rgb_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!rgb_in || !hcl_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hcl_out + i * out_stride);
+        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_hcl r = alwan_rgb_to_hcl_v(rgb);
+        out_ptr[0] = r.H; out_ptr[1] = r.C; out_ptr[2] = r.L;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_hcl_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *hcl_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!hcl_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hcl_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+        alwan_hcl hcl = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_rgb r = alwan_hcl_to_rgb_v(hcl);
+        out_ptr[0] = r.r; out_ptr[1] = r.g; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * RGB <-> IHLS
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_ihls_map(alwan_scalar *ihls_out, alwan_scalar const *rgb_in,
+                           size_t count, size_t in_stride, size_t out_stride) {
+    if (!rgb_in || !ihls_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)ihls_out + i * out_stride);
+        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_ihls r = alwan_rgb_to_ihls_v(rgb);
+        out_ptr[0] = r.H; out_ptr[1] = r.L; out_ptr[2] = r.S;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_ihls_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *ihls_in,
+                           size_t count, size_t in_stride, size_t out_stride) {
+    if (!ihls_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)ihls_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+        alwan_ihls ihls = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_rgb r = alwan_ihls_to_rgb_v(ihls);
+        out_ptr[0] = r.r; out_ptr[1] = r.g; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * Lab <-> DIN99 (with int variant)
+ * ---------------------------------------------------------------- */
+
+int alwan_lab_to_din99_map(alwan_scalar *din99_out, alwan_scalar const *lab_in,
+                            int variant,
+                            size_t count, size_t in_stride, size_t out_stride) {
+    if (!lab_in || !din99_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)lab_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)din99_out + i * out_stride);
+        alwan_lab lab = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_din99 r = alwan_lab_to_din99_v(lab, variant);
+        out_ptr[0] = r.L99; out_ptr[1] = r.a99; out_ptr[2] = r.b99;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_din99_to_lab_map(alwan_scalar *lab_out, alwan_scalar const *din99_in,
+                            int variant,
+                            size_t count, size_t in_stride, size_t out_stride) {
+    if (!din99_in || !lab_out || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)din99_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)lab_out + i * out_stride);
+        alwan_din99 din99 = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_lab r = alwan_din99_to_lab_v(din99, variant);
+        out_ptr[0] = r.L; out_ptr[1] = r.a; out_ptr[2] = r.b;
+    }
+    return ALWAN_OK;
+}

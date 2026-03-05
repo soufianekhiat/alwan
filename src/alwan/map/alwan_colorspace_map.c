@@ -10,6 +10,7 @@
 #include "../alwan_internal.h"
 #include "alwan_map_internal.h"
 #include "../core/alwan_colorspace_core.h"
+#include "../core/alwan_math_core.h"
 
 /* ----------------------------------------------------------------
  * Map XYZ <-> Lab Conversions
@@ -638,3 +639,4 @@ int alwan_xyy_to_xyz_map(alwan_scalar *xyz_out,
 #endif
     return ALWAN_OK;
 }
+

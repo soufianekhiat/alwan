@@ -766,15 +766,7 @@ static size_t mapex_typed_stride(alwan_pixel_format fmt) {
 }
 
 static alwan_scalar mapex_tol(alwan_pixel_format fmt) {
-    switch (fmt) {
-    case ALWAN_PIXEL_U8:  return ALWAN_LITERAL(0.005);
-    case ALWAN_PIXEL_U16: return ALWAN_LITERAL(5e-5) + MAP_TOLERANCE;
-    case ALWAN_PIXEL_F32: {
-        alwan_scalar q = ALWAN_LITERAL(1e-5);
-        return q > MAP_TOLERANCE ? q : MAP_TOLERANCE;
-    }
-    case ALWAN_PIXEL_F64: return MAP_TOLERANCE;
-    }
+    (void)fmt;
     return MAP_TOLERANCE;
 }
 
@@ -806,13 +798,9 @@ static int compare_mapex(alwan_scalar const *ex_out, alwan_scalar const *ref_out
             if (is_int && (r[c] < ALWAN_LITERAL(0.0) || r[c] > ALWAN_LITERAL(1.0)))
                 continue;
             alwan_scalar diff = ALWAN_ABS(e[c] - r[c]);
-            /* Use max(abs_tol, rel_tol * |ref|) to handle large output ranges */
-            alwan_scalar effective_tol = tol;
-            alwan_scalar rel = tol * ALWAN_ABS(r[c]);
-            if (rel > effective_tol) effective_tol = rel;
-            if (diff > effective_tol) {
-                printf("[FAIL] %s [%s]: pixel %zu ch %d: ex=%.16e ref=%.16e diff=%.16e tol=%.16e\n",
-                       name, mapex_fmt_name(fmt), i, c, (double)e[c], (double)r[c], (double)diff, (double)effective_tol);
+            if (diff > tol) {
+                printf("[FAIL] %s [%s]: pixel %zu ch %d: ex=%.16e ref=%.16e diff=%.16e\n",
+                       name, mapex_fmt_name(fmt), i, c, (double)e[c], (double)r[c], (double)diff);
                 return 1;
             }
         }
@@ -1121,17 +1109,7 @@ static int test_ex_cam_maps(void) {
         size_t ts = mapex_typed_stride(fmt);
         alwan_scalar tol = mapex_tol(fmt);
 
-        /* CAM forward tolerance: input quantization gets amplified */
-        alwan_scalar cam_fwd_tol;
-        switch (fmt) {
-        case ALWAN_PIXEL_U8:  cam_fwd_tol = ALWAN_LITERAL(5.0); break;
-        case ALWAN_PIXEL_U16: cam_fwd_tol = ALWAN_LITERAL(0.1); break;
-        case ALWAN_PIXEL_F32: {
-            alwan_scalar q = ALWAN_LITERAL(5e-3);
-            cam_fwd_tol = q > MAP_TOLERANCE ? q : MAP_TOLERANCE;
-        } break;
-        default: cam_fwd_tol = MAP_TOLERANCE; break;
-        }
+        alwan_scalar cam_fwd_tol = MAP_TOLERANCE;
 
         alwan_scatter3(typed_xyz, fmt, grid, MAPEX_COUNT, ss, ts);
 

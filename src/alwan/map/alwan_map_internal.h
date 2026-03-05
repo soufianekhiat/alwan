@@ -508,6 +508,18 @@ ALWAN_INLINE alwan_simd alwan__hlg_eotf_simd(alwan_simd v) {
     return alwan_simd_select(alwan_simd_cmple(E, half), lo, hi);
 }
 
+/* ----------------------------------------------------------------
+ * SIMD min3 / max3 helpers (used by HSV, HSL, HWB kernels)
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd alwan__simd_min3(alwan_simd a, alwan_simd b, alwan_simd c) {
+    return alwan_simd_min(a, alwan_simd_min(b, c));
+}
+
+ALWAN_INLINE alwan_simd alwan__simd_max3(alwan_simd a, alwan_simd b, alwan_simd c) {
+    return alwan_simd_max(a, alwan_simd_max(b, c));
+}
+
 #endif /* ALWAN_SIMD_WIDTH > 1 */
 
 /* ----------------------------------------------------------------
@@ -641,6 +653,93 @@ int name(void *out, alwan_pixel_format out_fmt, \
         OutT dst_; \
         int st_ = core(&dst_, &src_); \
         if (st_ != ALWAN_OK) return st_; \
+        alwan_scalar dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
+        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
+    } \
+    return ALWAN_OK; \
+}
+
+/* ----------------------------------------------------------------
+ * _ex macro: core returns value (not pointer-based), no extra params
+ * core signature: OutT core(InT src)
+ * ---------------------------------------------------------------- */
+
+#define ALWAN_MAP3_EX_V(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
+int name(void *out, alwan_pixel_format out_fmt, \
+         void const *in, alwan_pixel_format in_fmt, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    for (size_t ii_ = 0; ii_ < count; ii_++) { \
+        alwan_scalar sv_[3]; \
+        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
+        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
+        OutT dst_ = core(src_); \
+        alwan_scalar dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
+        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
+    } \
+    return ALWAN_OK; \
+}
+
+/* ----------------------------------------------------------------
+ * _ex macro: core returns value, with white point param
+ * core signature: OutT core(InT src, InT2 white)
+ * ---------------------------------------------------------------- */
+
+#define ALWAN_MAP3_EX_V_WHITE(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
+int name(void *out, alwan_pixel_format out_fmt, \
+         void const *in, alwan_pixel_format in_fmt, \
+         alwan_xyz const *white_xyz, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in || !out || !white_xyz || count == 0) return ALWAN_E_INVALID; \
+    for (size_t ii_ = 0; ii_ < count; ii_++) { \
+        alwan_scalar sv_[3]; \
+        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
+        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
+        OutT dst_ = core(src_, *white_xyz); \
+        alwan_scalar dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
+        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
+    } \
+    return ALWAN_OK; \
+}
+
+/* ----------------------------------------------------------------
+ * _ex macro: core returns value, with int param
+ * core signature: OutT core(InT src, int param)
+ * ---------------------------------------------------------------- */
+
+#define ALWAN_MAP3_EX_V_INT(name, InT, OutT, core, extra_type, extra_name, fi0, fi1, fi2, fo0, fo1, fo2) \
+int name(void *out, alwan_pixel_format out_fmt, \
+         void const *in, alwan_pixel_format in_fmt, \
+         extra_type extra_name, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    for (size_t ii_ = 0; ii_ < count; ii_++) { \
+        alwan_scalar sv_[3]; \
+        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
+        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
+        OutT dst_ = core(src_, extra_name); \
+        alwan_scalar dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
+        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
+    } \
+    return ALWAN_OK; \
+}
+
+/* ----------------------------------------------------------------
+ * _ex macro: core returns value, with alwan_scalar param
+ * core signature: OutT core(InT src, alwan_scalar param)
+ * ---------------------------------------------------------------- */
+
+#define ALWAN_MAP3_EX_V_SCALAR(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
+int name(void *out, alwan_pixel_format out_fmt, \
+         void const *in, alwan_pixel_format in_fmt, \
+         alwan_scalar param, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    for (size_t ii_ = 0; ii_ < count; ii_++) { \
+        alwan_scalar sv_[3]; \
+        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
+        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
+        OutT dst_ = core(src_, param); \
         alwan_scalar dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
         alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
     } \

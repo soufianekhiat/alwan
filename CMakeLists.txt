@@ -53,13 +53,16 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_cat.c
   src/alwan/api/alwan_color_correction.c
   src/alwan/api/alwan_colorspace.c
+  src/alwan/map/alwan_color_correction_map.c
   src/alwan/map/alwan_colorspace_map.c
   src/alwan/api/alwan_context.c
   src/alwan/api/alwan_convenience.c
   src/alwan/map/alwan_convenience_map.c
+  src/alwan/map/alwan_convenience_extra_map.c
   src/alwan/api/alwan_data.c
   src/alwan/api/alwan_din99.c
   src/alwan/api/alwan_extended.c
+  src/alwan/map/alwan_extended_map.c
   src/alwan/api/alwan_gamut.c
   src/alwan/api/alwan_hellwig2022.c
   src/alwan/api/alwan_hunt.c
@@ -91,6 +94,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_spectral_hero.c
   src/alwan/api/alwan_view.c
   src/alwan/api/alwan_vision.c
+  src/alwan/map/alwan_vision_map.c
   src/alwan/api/alwan_zcam.c
 )
 
