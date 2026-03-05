@@ -2518,7 +2518,7 @@ int alwan_rgb_to_ycbcr(alwan_ycbcr *ycbcr_out, alwan_rgb const *rgb, alwan_ycbcr
 int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr_standard standard);
 
 /* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020)
- * bit_depth: 8, 10, 12, or 16 — controls legal range scaling */
+ * bit_depth: 8, 10, 12, or 16 -- controls legal range scaling */
 int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb, int bit_depth);
 int alwan_yccbccrc_to_rgb(alwan_rgb *rgb_out, alwan_yccbccrc const *yccbccrc, int bit_depth);
 

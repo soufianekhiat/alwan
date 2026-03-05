@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * CIECAM02 & CAM16 Color Appearance Models
- * Thin wrapper — logic in alwan_cam_core.h
+ * Thin wrapper -- logic in alwan_cam_core.h
  *
  * Only enum resolution (surround -> F/c/Nc) lives here;
  * all derived-parameter computation delegated to core.

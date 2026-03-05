@@ -21,7 +21,7 @@
 
 /* ----------------------------------------------------------------
  * RGB Matrix Derivation
- * Thin wrapper — math in alwan_rgb_core.h
+ * Thin wrapper -- math in alwan_rgb_core.h
  * ---------------------------------------------------------------- */
 
 int alwan_rgb_derive_matrices(alwan_mat3x3 *rgb_to_xyz,

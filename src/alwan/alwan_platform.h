@@ -416,7 +416,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_D65_Y  ALWAN_LITERAL(100.0)
 #define ALWAN_D65_Z  ALWAN_LITERAL(108.90577508)
 
-/* ITU luma coefficients (kr, kg, kb) — single source of truth
+/* ITU luma coefficients (kr, kg, kb) -- single source of truth
  * kg = 1 - kr - kb for each standard */
 #define ALWAN_LUMA_KR_BT601   ALWAN_LITERAL(0.299)
 #define ALWAN_LUMA_KG_BT601   ALWAN_LITERAL(0.587)

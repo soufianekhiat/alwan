@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * Hero Wavelength Spectral Sampling
- * Thin wrapper — per-sample math in alwan_hero_wavelength_core.h
+ * Thin wrapper -- per-sample math in alwan_hero_wavelength_core.h
  */
 
 #include "../alwan.h"

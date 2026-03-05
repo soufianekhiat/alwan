@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * Hunter Lab Color Space
- * Thin wrapper — logic in alwan_hunter_lab_core.h
+ * Thin wrapper -- logic in alwan_hunter_lab_core.h
  *
  * Reference: Hunter (1948), ASTM D 1535
  */

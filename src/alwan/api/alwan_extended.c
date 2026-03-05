@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * M1: Extended Color Spaces & Models
- * Thin wrapper — logic in alwan_extended_core.h
+ * Thin wrapper -- logic in alwan_extended_core.h
  */
 
 #include "../alwan.h"

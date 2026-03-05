@@ -107,7 +107,7 @@ ALWAN_INLINE alwan_rgb alwan_simulate_tritanopia_v(alwan_rgb rgb, alwan_scalar s
 }
 
 /* ================================================================
- * Contrast Sensitivity Function (CSF) — Barten 1999
+ * Contrast Sensitivity Function (CSF) -- Barten 1999
  * Reference: Barten, P. G. J. (1999). Contrast sensitivity of the
  *            human eye and its effects on image quality. SPIE Press.
  * ================================================================ */

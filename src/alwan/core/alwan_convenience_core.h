@@ -280,7 +280,7 @@ ALWAN_INLINE alwan_legal_range alwan_legal_range_from_bit_depth(int bit_depth) {
 
 /* ----------------------------------------------------------------
  * RGB <-> YcCbcCrc (BT.2020 constant luminance, value-returning)
- * bit_depth: 8, 10, 12, or 16 — controls legal range scaling
+ * bit_depth: 8, 10, 12, or 16 -- controls legal range scaling
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_yccbccrc alwan_rgb_to_yccbccrc_v(alwan_rgb rgb, int bit_depth) {

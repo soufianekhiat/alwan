@@ -934,7 +934,7 @@ ALWAN_INLINE alwan_vec2 aces2_compress_gamut_inv_v(alwan_scalar J, alwan_scalar 
  * Surround Compensation
  * ================================================================ */
 
-/* ACES DarkToDim10 — surround compensation (dark surround to dim surround)
+/* ACES DarkToDim10 -- surround compensation (dark surround to dim surround)
  * Reference: OCIO FixedFunctionOpCPU.cpp - Renderer_ACES_DarkToDim10_Fwd */
 ALWAN_INLINE alwan_vec3 aces_dark_to_dim10_v(alwan_vec3 rgb) {
     alwan_scalar const MIN_LUM = ALWAN_LITERAL(1e-10);

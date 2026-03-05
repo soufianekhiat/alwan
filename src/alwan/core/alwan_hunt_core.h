@@ -58,7 +58,7 @@ ALWAN_INLINE alwan_scalar hunt_fn_v(alwan_scalar x) {
 /* ----------------------------------------------------------------
  * Hunt Forward Transform: XYZ -> Correlates (value-returning)
  *
- * Parameters (all scalars — the .c wrapper resolves enums):
+ * Parameters (all scalars -- the .c wrapper resolves enums):
  *   xyz       : Test stimulus in CIE XYZ
  *   xyz_w_x/y/z : White point XYZ (Y=100)
  *   La        : Adapting luminance (cd/m^2)

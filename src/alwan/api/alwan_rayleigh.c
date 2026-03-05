@@ -1,6 +1,6 @@
 /* ================================================================
  * Alwan - Rayleigh Scattering
- * Thin wrapper — per-pixel math in alwan_rayleigh_core.h
+ * Thin wrapper -- per-pixel math in alwan_rayleigh_core.h
  *
  * Only NULL-param defaults and the SPD loop live here.
  * ================================================================ */
@@ -22,7 +22,7 @@ void alwan_atmosphere_params_default(alwan_atmosphere_params *params)
     }
 }
 
-/* Rayleigh scattering cross section — delegates to core */
+/* Rayleigh scattering cross section -- delegates to core */
 alwan_scalar alwan_rayleigh_cross_section(alwan_scalar wavelength_nm,
                                            alwan_atmosphere_params const *params)
 {
@@ -37,7 +37,7 @@ alwan_scalar alwan_rayleigh_cross_section(alwan_scalar wavelength_nm,
                                      params->temperature);
 }
 
-/* Rayleigh optical depth — delegates to core */
+/* Rayleigh optical depth -- delegates to core */
 alwan_scalar alwan_rayleigh_optical_depth(alwan_scalar wavelength_nm,
                                            alwan_atmosphere_params const *params)
 {
@@ -55,7 +55,7 @@ alwan_scalar alwan_rayleigh_optical_depth(alwan_scalar wavelength_nm,
                                      params->altitude);
 }
 
-/* Rayleigh scattering spectral distribution — loop stays in .c */
+/* Rayleigh scattering spectral distribution -- loop stays in .c */
 int alwan_rayleigh_spd(alwan_scalar wavelength_start, alwan_scalar wavelength_end,
                         alwan_scalar wavelength_step,
                         alwan_atmosphere_params const *params,

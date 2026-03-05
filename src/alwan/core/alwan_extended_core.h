@@ -122,7 +122,7 @@ ALWAN_INLINE alwan_scalar alwan_luminance_fairchild2011_v(alwan_scalar L_hdr, al
 }
 
 /* ================================================================
- * Helper: PQ (ST2084) inverse EOTF — C -> N
+ * Helper: PQ (ST2084) inverse EOTF -- C -> N
  * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_eotf_inverse_st2084_v(alwan_scalar C) {
@@ -140,7 +140,7 @@ ALWAN_INLINE alwan_scalar alwan_eotf_inverse_st2084_v(alwan_scalar C) {
 }
 
 /* ================================================================
- * Helper: PQ (ST2084) EOTF — N -> C
+ * Helper: PQ (ST2084) EOTF -- N -> C
  * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_eotf_st2084_v(alwan_scalar N) {

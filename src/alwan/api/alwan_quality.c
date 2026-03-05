@@ -1,6 +1,6 @@
 /* ================================================================
  * Alwan - Light Quality & CCT
- * Thin wrapper — per-pixel CCT/whiteness formulas in alwan_quality_core.h
+ * Thin wrapper -- per-pixel CCT/whiteness formulas in alwan_quality_core.h
  *
  * Only table lookups (Robertson), Newton-Raphson loops (Kang inverse),
  * CRI/CQS/SSI/TM-30 workflows, and data tables live here.
@@ -167,8 +167,8 @@ alwan_scalar alwan_cct_kang_xy(alwan_vec2 const *xy) {
     if (cct > ALWAN_LITERAL(25000.0)) cct = ALWAN_LITERAL(25000.0);
 
     /* Newton-Raphson on f(T) = x(T) - x_target = 0.
-     * x(T) is evaluated by calling alwan_cct_to_xy_kang_v() — the SAME
-     * function used in the forward transform — so that at T=T_exact the
+     * x(T) is evaluated by calling alwan_cct_to_xy_kang_v() -- the SAME
+     * function used in the forward transform -- so that at T=T_exact the
      * residual is exactly zero in floating point (no forward/inverse
      * code-path mismatch). */
     for (int iter = 0; iter < 50; iter++) {

@@ -36,7 +36,7 @@ ALWAN_INLINE alwan_scalar rayleigh_molecular_density_v(alwan_scalar temperature)
 }
 
 /* ================================================================
- * Air Refraction Index — Peck & Reeder (1972)
+ * Air Refraction Index -- Peck & Reeder (1972)
  * wavelength in micrometers
  * ================================================================ */
 
@@ -49,7 +49,7 @@ ALWAN_INLINE alwan_scalar rayleigh_refraction_peck1972_v(alwan_scalar wl_um) {
 }
 
 /* ================================================================
- * Air Refraction Index — Bodhaine (1999)
+ * Air Refraction Index -- Bodhaine (1999)
  * wavelength in micrometers, CO2 in ppm
  * ================================================================ */
 
@@ -81,7 +81,7 @@ ALWAN_INLINE alwan_scalar rayleigh_O2_depolarisation_v(alwan_scalar wl_um) {
 }
 
 /* ================================================================
- * Air depolarisation F(air) — Bodhaine (1999)
+ * Air depolarisation F(air) -- Bodhaine (1999)
  * wavelength in micrometers, CO2 in ppm
  * ================================================================ */
 
@@ -107,7 +107,7 @@ ALWAN_INLINE alwan_scalar rayleigh_mean_molecular_weight_v(alwan_scalar CO2_ppm)
 }
 
 /* ================================================================
- * Gravity — List (1968)
+ * Gravity -- List (1968)
  * latitude in degrees, altitude in meters
  * Returns gravity in cm/s^2 (gal)
  * ================================================================ */

@@ -67,14 +67,14 @@ ALWAN_INLINE alwan_rgb_matrices alwan_rgb_derive_matrices_v(
     M.m[7] = ALWAN_ONE - gx - gy;
     M.m[8] = ALWAN_ONE - bx - by;
 
-    /* White point XYZ (Y=1) — white point always has y > 0 */
+    /* White point XYZ (Y=1) -- white point always has y > 0 */
     alwan_vec3 W_XYZ = alwan_xy_to_xyz_v(wx, wy);
 
     /* Solve for scale factors: S = M^-1 * W */
     alwan_mat3x3 M_inv = alwan_mat3_inv_v(M);
     alwan_vec3 S = alwan_mat3_mulv_v(M_inv, W_XYZ);
 
-    /* RGB->XYZ = M * diag(S) — scale each column by corresponding S */
+    /* RGB->XYZ = M * diag(S) -- scale each column by corresponding S */
     result.rgb_to_xyz.m[0] = M.m[0] * S.v[0];
     result.rgb_to_xyz.m[1] = M.m[1] * S.v[1];
     result.rgb_to_xyz.m[2] = M.m[2] * S.v[2];

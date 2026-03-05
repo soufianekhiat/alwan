@@ -127,7 +127,7 @@ ALWAN_INLINE alwan_scalar alwan_whiteness_cie2004_v(
 /* ================================================================
  * ASTM E313 Yellowness Index
  * YI = 100 * (Cx * X - Cz * Z) / Y
- * (Cx, Cz depend on illuminant — resolved in .c)
+ * (Cx, Cz depend on illuminant -- resolved in .c)
  * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_yellowness_astm_e313_v(

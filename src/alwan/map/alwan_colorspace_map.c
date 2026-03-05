@@ -135,7 +135,7 @@ int alwan_lab_to_xyz_map(alwan_scalar *xyz_out,
 
 /* ----------------------------------------------------------------
  * Map XYZ <-> Luv Conversions
- * Complex select patterns — vectorized with per-element SIMD selects
+ * Complex select patterns -- vectorized with per-element SIMD selects
  * ---------------------------------------------------------------- */
 
 int alwan_xyz_to_luv_map(alwan_scalar *luv_out,
