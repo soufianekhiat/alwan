@@ -33,7 +33,7 @@ ALWAN_DIAG_POP
         /* Test XYZ -> IPT */
         alwan_xyz_to_ipt(&ipt_computed, &xyz_in);
 
-        alwan_scalar const ipt_tol = TEST_TOLERANCE;
+        alwan_scalar const ipt_tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar ipt_comp_arr[3] = {ipt_computed.I, ipt_computed.P, ipt_computed.T};
         alwan_scalar ipt_exp_arr[3] = {ipt_expected.I, ipt_expected.P, ipt_expected.T};
         for (int j = 0; j < 3; j++) {
@@ -54,7 +54,7 @@ ALWAN_DIAG_POP
         /* Test round-trip: IPT -> XYZ */
         alwan_ipt_to_xyz(&xyz_out, &ipt_computed);
 
-        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
+        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
         alwan_scalar xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
         alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};
@@ -90,14 +90,14 @@ static int test_ipt_iptch_round_trip(void) {
     ipt.T = ALWAN_LITERAL(0.0);
 
     alwan_ipt_to_iptch(&iptch, &ipt);
-    TEST_ASSERT(ALWAN_ABS(iptch.I - ALWAN_LITERAL(0.5)) < TEST_TOLERANCE, "I mismatch");
-    TEST_ASSERT(ALWAN_ABS(iptch.C) < TEST_TOLERANCE, "C should be 0");
+    TEST_ASSERT(ALWAN_ABS(iptch.I - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "I mismatch");
+    TEST_ASSERT(ALWAN_ABS(iptch.C) < ALWAN_TEST_TOLERANCE, "C should be 0");
 
     alwan_iptch_to_ipt(&ipt_out, &iptch);
     alwan_scalar ipt_arr[3] = {ipt.I, ipt.P, ipt.T};
     alwan_scalar ipt_out_arr[3] = {ipt_out.I, ipt_out.P, ipt_out.T};
     for (int i = 0; i < 3; i++) {
-        TEST_ASSERT(ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]) < TEST_TOLERANCE,
+        TEST_ASSERT(ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]) < ALWAN_TEST_TOLERANCE,
                     "IPT round-trip failed");
     }
 
@@ -113,7 +113,7 @@ static int test_ipt_iptch_round_trip(void) {
     ipt_out_arr[0] = ipt_out.I; ipt_out_arr[1] = ipt_out.P; ipt_out_arr[2] = ipt_out.T;
     for (int i = 0; i < 3; i++) {
         alwan_scalar diff = ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]);
-        TEST_ASSERT(diff < TEST_TOLERANCE, "IPT round-trip failed");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "IPT round-trip failed");
     }
 
     TEST_PASS("IPT <-> IPTch round-trip");

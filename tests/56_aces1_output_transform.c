@@ -87,8 +87,8 @@ static int test_output_transform_basic_rec709(void) {
     }
 
     /* Neutral input should produce neutral output */
-    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, TEST_TOLERANCE);
-    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, ALWAN_TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, ALWAN_TEST_TOLERANCE);
 
     printf("    Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
@@ -108,8 +108,8 @@ static int test_output_transform_basic_srgb(void) {
     }
 
     /* Neutral should stay neutral */
-    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, TEST_TOLERANCE);
-    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, ALWAN_TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, ALWAN_TEST_TOLERANCE);
 
     printf("    Output: (%g, %g, %g)\n", rgb_out.r, rgb_out.g, rgb_out.b);
 
@@ -235,9 +235,9 @@ static int test_roundtrip_rec709(void) {
            rgb_encoded.r, rgb_encoded.g, rgb_encoded.b,
            rgb_decoded.r, rgb_decoded.g, rgb_decoded.b);
 
-    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, TEST_TOLERANCE, "Roundtrip R");
-    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, TEST_TOLERANCE, "Roundtrip G");
-    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, TEST_TOLERANCE, "Roundtrip B");
+    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "Roundtrip R");
+    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "Roundtrip G");
+    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "Roundtrip B");
 
     TEST_PASS_MSG();
     return 0;
@@ -261,9 +261,9 @@ static int test_roundtrip_srgb(void) {
         TEST_FAIL("Inverse transform failed with error %d", status);
     }
 
-    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, TEST_TOLERANCE, "Roundtrip R");
-    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, TEST_TOLERANCE, "Roundtrip G");
-    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, TEST_TOLERANCE, "Roundtrip B");
+    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "Roundtrip R");
+    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "Roundtrip G");
+    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "Roundtrip B");
 
     TEST_PASS_MSG();
     return 0;
@@ -287,9 +287,9 @@ static int test_roundtrip_hdr(void) {
         TEST_FAIL("Inverse transform failed with error %d", status);
     }
 
-    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, TEST_TOLERANCE, "Roundtrip R");
-    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, TEST_TOLERANCE, "Roundtrip G");
-    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, TEST_TOLERANCE, "Roundtrip B");
+    TEST_ASSERT_REL(rgb_decoded.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "Roundtrip R");
+    TEST_ASSERT_REL(rgb_decoded.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "Roundtrip G");
+    TEST_ASSERT_REL(rgb_decoded.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "Roundtrip B");
 
     TEST_PASS_MSG();
     return 0;
@@ -414,7 +414,7 @@ static int test_neutral_axis_consistency(void) {
         alwan_scalar diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
         alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
         alwan_scalar max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
-        if (max_diff > TEST_TOLERANCE) {
+        if (max_diff > ALWAN_TEST_TOLERANCE) {
             TEST_FAIL("Gray %zu produced non-neutral output: (%g, %g, %g)",
                       i, rgb_out.r, rgb_out.g, rgb_out.b);
         }
@@ -577,9 +577,9 @@ static int test_gamut_comp13_inverse(void) {
     }
 
     /* Check roundtrip */
-    TEST_CHECK_NEAR(rgb_recovered.r, rgb_in.r, TEST_TOLERANCE);
-    TEST_CHECK_NEAR(rgb_recovered.g, rgb_in.g, TEST_TOLERANCE);
-    TEST_CHECK_NEAR(rgb_recovered.b, rgb_in.b, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_recovered.r, rgb_in.r, ALWAN_TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_recovered.g, rgb_in.g, ALWAN_TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_recovered.b, rgb_in.b, ALWAN_TEST_TOLERANCE);
 
     printf("    In: (%g, %g, %g) -> Comp: (%g, %g, %g) -> Recov: (%g, %g, %g)\n",
            rgb_in.r, rgb_in.g, rgb_in.b,

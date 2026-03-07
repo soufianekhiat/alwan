@@ -85,8 +85,10 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_reference_data.c
   src/alwan/api/alwan_normalize.c
   src/alwan/api/alwan_rgb.c
+  src/alwan/map/alwan_mat3_map.c
   src/alwan/map/alwan_rgb_map.c
   src/alwan/map/alwan_typed_map.c
+  src/alwan/map/alwan_typed_planar_map.c
   src/alwan/api/alwan_rlab.c
   src/alwan/api/alwan_spd.c
   src/alwan/api/alwan_spectrum_upsample.c

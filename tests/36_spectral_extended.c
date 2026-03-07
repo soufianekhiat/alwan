@@ -78,7 +78,7 @@ static int test_p8_illuminant_white_point(
      * - Alwan: SPDs at 360-830nm 1nm intervals (471 samples), Simpson integration
      * - colour-science: SPDs at varying intervals, ASTM E308 method
      * Expect differences up to ~1e-3 in normalized white point coordinates */
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = vec3_max_diff(&computed, &expected);
     if (diff >= tolerance) {
@@ -132,7 +132,7 @@ static int test_stockman_sharpe_observer(void) {
      * - Alwan: D65 SPD at 360-830nm 1nm intervals (471 samples), Simpson integration
      * - colour-science: D65 SPD at 300-780nm 5nm intervals (97 samples), ASTM E308 method
      * The Stockman & Sharpe CMFs have subtle differences that compound with SPD integration */
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = vec3_max_diff(&computed, &expected);
     if (diff >= tolerance) {

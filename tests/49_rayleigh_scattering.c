@@ -173,7 +173,7 @@ static int test_cross_section_default(void)
         alwan_scalar sigma = alwan_rayleigh_cross_section(wavelengths_nm[i], NULL);
         char msg[64];
         sprintf(msg, "Cross section at %.0f nm", wavelengths_nm[i]);
-        TEST_ASSERT_REL(sigma, ref_cross_section_default[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(sigma, ref_cross_section_default[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -191,7 +191,7 @@ static int test_cross_section_co2(void)
         alwan_scalar sigma = alwan_rayleigh_cross_section(555.0, &params);
         char msg[64];
         sprintf(msg, "Cross section at CO2 = %.0f ppm", co2_levels[i]);
-        TEST_ASSERT_REL(sigma, ref_cross_section_co2_555nm[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(sigma, ref_cross_section_co2_555nm[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -205,7 +205,7 @@ static int test_optical_depth_default(void)
         alwan_scalar depth = alwan_rayleigh_optical_depth(wavelengths_nm[i], NULL);
         char msg[64];
         sprintf(msg, "Optical depth at %.0f nm", wavelengths_nm[i]);
-        TEST_ASSERT_REL(depth, ref_optical_depth_default[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(depth, ref_optical_depth_default[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -223,7 +223,7 @@ static int test_optical_depth_pressure(void)
         alwan_scalar depth = alwan_rayleigh_optical_depth(555.0, &params);
         char msg[64];
         sprintf(msg, "Optical depth at P = %.0f Pa", pressures[i]);
-        TEST_ASSERT_REL(depth, ref_optical_depth_pressure_555nm[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(depth, ref_optical_depth_pressure_555nm[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -241,7 +241,7 @@ static int test_optical_depth_latitude(void)
         alwan_scalar depth = alwan_rayleigh_optical_depth(555.0, &params);
         char msg[64];
         sprintf(msg, "Optical depth at lat = %.0f deg", latitudes[i]);
-        TEST_ASSERT_REL(depth, ref_optical_depth_latitude_555nm[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(depth, ref_optical_depth_latitude_555nm[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -259,7 +259,7 @@ static int test_optical_depth_altitude(void)
         alwan_scalar depth = alwan_rayleigh_optical_depth(555.0, &params);
         char msg[64];
         sprintf(msg, "Optical depth at alt = %.0f m", altitudes[i]);
-        TEST_ASSERT_REL(depth, ref_optical_depth_altitude_555nm[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(depth, ref_optical_depth_altitude_555nm[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -279,7 +279,7 @@ static int test_optical_depth_combined(void)
         alwan_scalar depth = alwan_rayleigh_optical_depth(555.0, &params);
         char msg[64];
         sprintf(msg, "Optical depth at %s", locations[i]);
-        TEST_ASSERT_REL(depth, ref_optical_depth_combined[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(depth, ref_optical_depth_combined[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     return 0;
@@ -307,7 +307,7 @@ static int test_spd(void)
     for (int i = 0; i < out_count; i++) {
         char msg[64];
         sprintf(msg, "SPD value at index %d", i);
-        TEST_ASSERT_REL(out[i], ref_spd_default[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(out[i], ref_spd_default[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     return 0;

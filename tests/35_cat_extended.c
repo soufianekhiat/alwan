@@ -131,8 +131,8 @@ static int test_cat_method(
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, method);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const matrix_tolerance = TEST_TOLERANCE;
-    alwan_scalar const adapted_tolerance = TEST_TOLERANCE;
+    alwan_scalar const matrix_tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_scalar const adapted_tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     if (diff >= matrix_tolerance) {

@@ -120,9 +120,9 @@ static int test_cvd_normal_vision(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed with severity = 0");
 
     /* Should be unchanged */
-    TEST_ASSERT(ALWAN_ABS(rgb_out.r - rgb_in.r) < TEST_TOLERANCE, "R changed with severity=0");
-    TEST_ASSERT(ALWAN_ABS(rgb_out.g - rgb_in.g) < TEST_TOLERANCE, "G changed with severity=0");
-    TEST_ASSERT(ALWAN_ABS(rgb_out.b - rgb_in.b) < TEST_TOLERANCE, "B changed with severity=0");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.r - rgb_in.r) < ALWAN_TEST_TOLERANCE, "R changed with severity=0");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.g - rgb_in.g) < ALWAN_TEST_TOLERANCE, "G changed with severity=0");
+    TEST_ASSERT(ALWAN_ABS(rgb_out.b - rgb_in.b) < ALWAN_TEST_TOLERANCE, "B changed with severity=0");
 
     printf("  Normal vision (severity=0): [%.3f, %.3f, %.3f] -> [%.3f, %.3f, %.3f]\n",
            rgb_in.r, rgb_in.g, rgb_in.b,

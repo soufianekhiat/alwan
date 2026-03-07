@@ -68,46 +68,46 @@ static int test_cam16_forward(void) {
             h_err = ALWAN_LITERAL(360.0) - h_err;
         }
 
-        if (J_err >= TEST_TOLERANCE) {
+        if (J_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: J error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)J_err, (double)corr.J, (double)expected[0]);
         }
-        if (C_err >= TEST_TOLERANCE) {
+        if (C_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: C error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)C_err, (double)corr.C, (double)expected[1]);
         }
-        if (h_err >= TEST_TOLERANCE && corr.C > ALWAN_LITERAL(2.0)) {
+        if (h_err >= ALWAN_TEST_TOLERANCE && corr.C > ALWAN_LITERAL(2.0)) {
             printf("  Color %zu: h error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)h_err, (double)corr.h, (double)expected[2]);
         }
-        TEST_ASSERT(J_err < TEST_TOLERANCE, "J mismatch");
-        TEST_ASSERT(C_err < TEST_TOLERANCE, "C mismatch");
+        TEST_ASSERT(J_err < ALWAN_TEST_TOLERANCE, "J mismatch");
+        TEST_ASSERT(C_err < ALWAN_TEST_TOLERANCE, "C mismatch");
         /* For near-achromatic colors (C < 2), hue is ill-conditioned:
          * atan2 amplifies ULP errors by ~1/sqrt(a²+b²), making 1e-12
          * precision unachievable at double precision when C is small. */
         if (corr.C > ALWAN_LITERAL(2.0)) {
-            TEST_ASSERT(h_err < TEST_TOLERANCE, "h mismatch");
+            TEST_ASSERT(h_err < ALWAN_TEST_TOLERANCE, "h mismatch");
         }
 
         /* Also check Q, M, s */
         alwan_scalar Q_err = ALWAN_ABS(corr.Q - expected[3]);
         alwan_scalar M_err = ALWAN_ABS(corr.M - expected[4]);
         alwan_scalar s_err = ALWAN_ABS(corr.s - expected[5]);
-        if (Q_err >= TEST_TOLERANCE) {
+        if (Q_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: Q error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)Q_err, (double)corr.Q, (double)expected[3]);
         }
-        if (M_err >= TEST_TOLERANCE) {
+        if (M_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: M error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)M_err, (double)corr.M, (double)expected[4]);
         }
-        if (s_err >= TEST_TOLERANCE) {
+        if (s_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: s error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)s_err, (double)corr.s, (double)expected[5]);
         }
-        TEST_ASSERT(Q_err < TEST_TOLERANCE, "Q mismatch");
-        TEST_ASSERT(M_err < TEST_TOLERANCE, "M mismatch");
-        TEST_ASSERT(s_err < TEST_TOLERANCE, "s mismatch");
+        TEST_ASSERT(Q_err < ALWAN_TEST_TOLERANCE, "Q mismatch");
+        TEST_ASSERT(M_err < ALWAN_TEST_TOLERANCE, "M mismatch");
+        TEST_ASSERT(s_err < ALWAN_TEST_TOLERANCE, "s mismatch");
     }
 
     printf("  Tested %zu colors\n", num_colors);
@@ -169,7 +169,7 @@ static int test_cam16_inverse(void) {
         alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - expected[1]);
         alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - expected[2]);
 
-        if (X_err >= TEST_TOLERANCE || Y_err >= TEST_TOLERANCE || Z_err >= TEST_TOLERANCE) {
+        if (X_err >= ALWAN_TEST_TOLERANCE || Y_err >= ALWAN_TEST_TOLERANCE || Z_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Got:      [%.10f, %.10f, %.10f]\n",
@@ -177,9 +177,9 @@ static int test_cam16_inverse(void) {
             printf("    Expected: [%.10f, %.10f, %.10f]\n",
                    (double)expected[0], (double)expected[1], (double)expected[2]);
         }
-        TEST_ASSERT(X_err < TEST_TOLERANCE, "X mismatch");
-        TEST_ASSERT(Y_err < TEST_TOLERANCE, "Y mismatch");
-        TEST_ASSERT(Z_err < TEST_TOLERANCE, "Z mismatch");
+        TEST_ASSERT(X_err < ALWAN_TEST_TOLERANCE, "X mismatch");
+        TEST_ASSERT(Y_err < ALWAN_TEST_TOLERANCE, "Y mismatch");
+        TEST_ASSERT(Z_err < ALWAN_TEST_TOLERANCE, "Z mismatch");
     }
 
     printf("  Tested %zu colors\n", num_colors);
@@ -237,7 +237,7 @@ static int test_cam16_roundtrip(void) {
         alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
         alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
-        if (X_err >= TEST_TOLERANCE || Y_err >= TEST_TOLERANCE || Z_err >= TEST_TOLERANCE) {
+        if (X_err >= ALWAN_TEST_TOLERANCE || Y_err >= ALWAN_TEST_TOLERANCE || Z_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: Round-trip XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Input:  [%.10f, %.10f, %.10f]\n",
@@ -245,9 +245,9 @@ static int test_cam16_roundtrip(void) {
             printf("    Output: [%.10f, %.10f, %.10f]\n",
                    (double)xyz_out.x, (double)xyz_out.y, (double)xyz_out.z);
         }
-        TEST_ASSERT(X_err < TEST_TOLERANCE, "Round-trip X error too large");
-        TEST_ASSERT(Y_err < TEST_TOLERANCE, "Round-trip Y error too large");
-        TEST_ASSERT(Z_err < TEST_TOLERANCE, "Round-trip Z error too large");
+        TEST_ASSERT(X_err < ALWAN_TEST_TOLERANCE, "Round-trip X error too large");
+        TEST_ASSERT(Y_err < ALWAN_TEST_TOLERANCE, "Round-trip Y error too large");
+        TEST_ASSERT(Z_err < ALWAN_TEST_TOLERANCE, "Round-trip Z error too large");
     }
 
     printf("  Tested %zu colors\n", num_colors);
@@ -295,9 +295,9 @@ static int test_cam16_ucs_forward(void) {
         alwan_scalar a_err = ALWAN_ABS(jab_out.a - expected[1]);
         alwan_scalar b_err = ALWAN_ABS(jab_out.b - expected[2]);
 
-        TEST_ASSERT(J_err < TEST_TOLERANCE, "J' mismatch");
-        TEST_ASSERT(a_err < TEST_TOLERANCE, "a' mismatch");
-        TEST_ASSERT(b_err < TEST_TOLERANCE, "b' mismatch");
+        TEST_ASSERT(J_err < ALWAN_TEST_TOLERANCE, "J' mismatch");
+        TEST_ASSERT(a_err < ALWAN_TEST_TOLERANCE, "a' mismatch");
+        TEST_ASSERT(b_err < ALWAN_TEST_TOLERANCE, "b' mismatch");
     }
 
     printf("  Tested %zu colors\n", num_colors);
@@ -343,9 +343,9 @@ static int test_cam16_ucs_roundtrip(void) {
             h_err = ALWAN_LITERAL(360.0) - h_err;
         }
 
-        TEST_ASSERT(J_err < TEST_TOLERANCE, "Round-trip J error too large");
-        TEST_ASSERT(M_err < TEST_TOLERANCE, "Round-trip M error too large");
-        TEST_ASSERT(h_err < TEST_TOLERANCE, "Round-trip h error too large");
+        TEST_ASSERT(J_err < ALWAN_TEST_TOLERANCE, "Round-trip J error too large");
+        TEST_ASSERT(M_err < ALWAN_TEST_TOLERANCE, "Round-trip M error too large");
+        TEST_ASSERT(h_err < ALWAN_TEST_TOLERANCE, "Round-trip h error too large");
     }
 
     printf("  Tested %zu colors\n", num_colors);

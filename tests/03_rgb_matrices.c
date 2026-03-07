@@ -82,7 +82,7 @@ static int test_srgb_matrices(void) {
     alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
 
     diff = mat3_max_diff(&I, &result);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "sRGB round-trip failed");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "sRGB round-trip failed");
 
     TEST_PASS("test_srgb_matrices");
 }
@@ -121,7 +121,7 @@ static int test_aces_ap0_matrices(void) {
     alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
 
     alwan_scalar diff = mat3_max_diff(&I, &result);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "ACES AP0 round-trip failed");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ACES AP0 round-trip failed");
 
     TEST_PASS("test_aces_ap0_matrices");
 }
@@ -153,7 +153,7 @@ static int test_aces_ap1_matrices(void) {
     alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
 
     alwan_scalar diff = mat3_max_diff(&I, &result);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "ACES AP1 round-trip failed");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ACES AP1 round-trip failed");
 
     TEST_PASS("test_aces_ap1_matrices");
 }
@@ -185,7 +185,7 @@ static int test_bt2020_matrices(void) {
     alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
 
     alwan_scalar diff = mat3_max_diff(&I, &result);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "BT.2020 round-trip failed");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "BT.2020 round-trip failed");
 
     TEST_PASS("test_bt2020_matrices");
 }

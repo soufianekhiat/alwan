@@ -21,9 +21,9 @@ static int test_lgg_neutral(void)
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* With neutral values, output should match input */
-    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Red channel should be unchanged");
-    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Green channel should be unchanged");
-    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Blue channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Red channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Green channel should be unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Blue channel should be unchanged");
 
     return 0;
 }
@@ -42,9 +42,9 @@ static int test_lgg_lift(void)
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* Lift adds to input: (0.2 + 0.1) = 0.3 for red */
-    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.3), TEST_TOLERANCE, "Red lifted by 0.1");
-    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.3), TEST_TOLERANCE, "Green unchanged");
-    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.3), TEST_TOLERANCE, "Blue lowered by 0.1");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.3), ALWAN_TEST_TOLERANCE, "Red lifted by 0.1");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.3), ALWAN_TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.3), ALWAN_TEST_TOLERANCE, "Blue lowered by 0.1");
 
     return 0;
 }
@@ -65,9 +65,9 @@ static int test_lgg_gamma(void)
     /* Gamma 2.0: 0.5^(1/2) = 0.707... */
     TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.707106781), ALWAN_LITERAL(0.0001), "Red darkened (gamma 2.0)");
     /* Gamma 0.5: 0.5^(1/0.5) = 0.5^2 = 0.25 */
-    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.25), TEST_TOLERANCE, "Green brightened (gamma 0.5)");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.25), ALWAN_TEST_TOLERANCE, "Green brightened (gamma 0.5)");
     /* Gamma 1.0: no change */
-    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -85,9 +85,9 @@ static int test_lgg_gain(void)
     int status = alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(1.0), TEST_TOLERANCE, "Red gain doubled");
-    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.25), TEST_TOLERANCE, "Green gain halved");
-    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "Red gain doubled");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.25), ALWAN_TEST_TOLERANCE, "Green gain halved");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -114,9 +114,9 @@ static int test_lgg_combined(void)
     TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
 
     /* Compare with reference values from colour-science */
-    TEST_ASSERT_NEAR(rgb_out.r, ref_lgg_combined[0], TEST_TOLERANCE, "Red combined adjustment");
-    TEST_ASSERT_NEAR(rgb_out.g, ref_lgg_combined[1], TEST_TOLERANCE, "Green combined adjustment");
-    TEST_ASSERT_NEAR(rgb_out.b, ref_lgg_combined[2], TEST_TOLERANCE, "Blue combined adjustment");
+    TEST_ASSERT_NEAR(rgb_out.r, ref_lgg_combined[0], ALWAN_TEST_TOLERANCE, "Red combined adjustment");
+    TEST_ASSERT_NEAR(rgb_out.g, ref_lgg_combined[1], ALWAN_TEST_TOLERANCE, "Green combined adjustment");
+    TEST_ASSERT_NEAR(rgb_out.b, ref_lgg_combined[2], ALWAN_TEST_TOLERANCE, "Blue combined adjustment");
 
     return 0;
 }
@@ -137,9 +137,9 @@ static int test_color_matrix_identity(void)
     int status = alwan_color_matrix_apply(&rgb_out, &rgb_in, &identity);
     TEST_ASSERT(status == ALWAN_OK, "Color matrix apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Red unchanged");
-    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.6), TEST_TOLERANCE, "Green unchanged");
-    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.7), TEST_TOLERANCE, "Blue unchanged");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Red unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.6), ALWAN_TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.7), ALWAN_TEST_TOLERANCE, "Blue unchanged");
 
     return 0;
 }
@@ -168,9 +168,9 @@ static int test_color_matrix_sepia(void)
     TEST_ASSERT(status == ALWAN_OK, "Apply sepia failed");
 
     /* Compare with reference values from colour-science */
-    TEST_ASSERT_NEAR(rgb_out.r, ref_sepia[0], TEST_TOLERANCE, "Sepia red channel");
-    TEST_ASSERT_NEAR(rgb_out.g, ref_sepia[1], TEST_TOLERANCE, "Sepia green channel");
-    TEST_ASSERT_NEAR(rgb_out.b, ref_sepia[2], TEST_TOLERANCE, "Sepia blue channel");
+    TEST_ASSERT_NEAR(rgb_out.r, ref_sepia[0], ALWAN_TEST_TOLERANCE, "Sepia red channel");
+    TEST_ASSERT_NEAR(rgb_out.g, ref_sepia[1], ALWAN_TEST_TOLERANCE, "Sepia green channel");
+    TEST_ASSERT_NEAR(rgb_out.b, ref_sepia[2], ALWAN_TEST_TOLERANCE, "Sepia blue channel");
 
     /* Sepia should produce warm brownish tones */
     TEST_ASSERT(rgb_out.r > rgb_out.g, "Sepia red > green");
@@ -197,9 +197,9 @@ static int test_color_matrix_monochrome(void)
     /* Monochrome should make all channels equal (luminance)
      * Luma = 0.299*R + 0.587*G + 0.114*B = 0.299*0.8 + 0.587*0.4 + 0.114*0.2 ≈ 0.497 */
     alwan_scalar expected_luma = 0.299 * 0.8 + 0.587 * 0.4 + 0.114 * 0.2;
-    TEST_ASSERT_NEAR(rgb_out.r, expected_luma, TEST_TOLERANCE, "Monochrome red = luma");
-    TEST_ASSERT_NEAR(rgb_out.g, expected_luma, TEST_TOLERANCE, "Monochrome green = luma");
-    TEST_ASSERT_NEAR(rgb_out.b, expected_luma, TEST_TOLERANCE, "Monochrome blue = luma");
+    TEST_ASSERT_NEAR(rgb_out.r, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome red = luma");
+    TEST_ASSERT_NEAR(rgb_out.g, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome green = luma");
+    TEST_ASSERT_NEAR(rgb_out.b, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome blue = luma");
 
     return 0;
 }
@@ -249,9 +249,9 @@ static int test_printer_lights_neutral(void)
     int status = alwan_printer_lights_apply(&rgb_out, &rgb_in, 25.0, 25.0, 25.0);
     TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
 
-    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Red unchanged at neutral");
-    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.6), TEST_TOLERANCE, "Green unchanged at neutral");
-    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.7), TEST_TOLERANCE, "Blue unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Red unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.6), ALWAN_TEST_TOLERANCE, "Green unchanged at neutral");
+    TEST_ASSERT_NEAR(rgb_out.b, ALWAN_LITERAL(0.7), ALWAN_TEST_TOLERANCE, "Blue unchanged at neutral");
 
     return 0;
 }
@@ -271,7 +271,7 @@ static int test_printer_lights_exposure(void)
     /* Red (15 lights): brighter than input */
     TEST_ASSERT(rgb_out.r > ALWAN_LITERAL(0.5), "Red brighter with fewer lights");
     /* Green (25 lights): unchanged */
-    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.5), TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Green unchanged");
     /* Blue (35 lights): darker than input */
     TEST_ASSERT(rgb_out.b < ALWAN_LITERAL(0.5), "Blue darker with more lights");
 
@@ -298,9 +298,9 @@ static int test_printer_lights_per_channel(void)
     TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
 
     /* Compare with reference values from colour-science */
-    TEST_ASSERT_NEAR(rgb_out.r, ref_printer_lights[0], TEST_TOLERANCE, "Red exposure correct");
-    TEST_ASSERT_NEAR(rgb_out.g, ref_printer_lights[1], TEST_TOLERANCE, "Green unchanged");
-    TEST_ASSERT_NEAR(rgb_out.b, ref_printer_lights[2], TEST_TOLERANCE, "Blue exposure correct");
+    TEST_ASSERT_NEAR(rgb_out.r, ref_printer_lights[0], ALWAN_TEST_TOLERANCE, "Red exposure correct");
+    TEST_ASSERT_NEAR(rgb_out.g, ref_printer_lights[1], ALWAN_TEST_TOLERANCE, "Green unchanged");
+    TEST_ASSERT_NEAR(rgb_out.b, ref_printer_lights[2], ALWAN_TEST_TOLERANCE, "Blue exposure correct");
 
     return 0;
 }
@@ -339,7 +339,7 @@ static int test_cheung2004_expand_basic(void)
         int status = alwan_poly_expand_cheung2004(expanded, &rgb, ALWAN_POLY_CHEUNG_3);
         TEST_ASSERT(status == ALWAN_OK, "Cheung2004 expand failed");
         for (int j = 0; j < 3; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_expand_3[i*3+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_expand_3[i*3+j], ALWAN_TEST_TOLERANCE,
                              "Cheung2004 3-term mismatch");
         }
     }
@@ -350,7 +350,7 @@ static int test_cheung2004_expand_basic(void)
         int status = alwan_poly_expand_cheung2004(expanded, &rgb, ALWAN_POLY_CHEUNG_7);
         TEST_ASSERT(status == ALWAN_OK, "Cheung2004 expand failed");
         for (int j = 0; j < 7; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_expand_7[i*7+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_expand_7[i*7+j], ALWAN_TEST_TOLERANCE,
                              "Cheung2004 7-term mismatch");
         }
     }
@@ -361,7 +361,7 @@ static int test_cheung2004_expand_basic(void)
         int status = alwan_poly_expand_cheung2004(expanded, &rgb, ALWAN_POLY_CHEUNG_11);
         TEST_ASSERT(status == ALWAN_OK, "Cheung2004 expand failed");
         for (int j = 0; j < 11; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_expand_11[i*11+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_expand_11[i*11+j], ALWAN_TEST_TOLERANCE,
                              "Cheung2004 11-term mismatch");
         }
     }
@@ -392,7 +392,7 @@ static int test_cheung2004_expand_full(void)
         int status = alwan_poly_expand_cheung2004(expanded, &rgb, ALWAN_POLY_CHEUNG_35);
         TEST_ASSERT(status == ALWAN_OK, "Cheung2004 35-term expand failed");
         for (int j = 0; j < 35; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_expand_35[i*35+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_expand_35[i*35+j], ALWAN_TEST_TOLERANCE,
                              "Cheung2004 35-term mismatch");
         }
     }
@@ -433,7 +433,7 @@ static int test_finlayson2015_expand_standard(void)
         TEST_ASSERT(status == ALWAN_OK, "Finlayson2015 expand failed");
         TEST_ASSERT(out_size == 9, "Finlayson2015 degree 2 should have 9 terms");
         for (int j = 0; j < 9; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_deg2[i*9+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_deg2[i*9+j], ALWAN_TEST_TOLERANCE,
                              "Finlayson2015 std deg2 mismatch");
         }
     }
@@ -445,7 +445,7 @@ static int test_finlayson2015_expand_standard(void)
         TEST_ASSERT(status == ALWAN_OK, "Finlayson2015 expand failed");
         TEST_ASSERT(out_size == 19, "Finlayson2015 degree 3 should have 19 terms");
         for (int j = 0; j < 19; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_deg3[i*19+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_deg3[i*19+j], ALWAN_TEST_TOLERANCE,
                              "Finlayson2015 std deg3 mismatch");
         }
     }
@@ -482,7 +482,7 @@ static int test_finlayson2015_expand_root(void)
         TEST_ASSERT(status == ALWAN_OK, "Finlayson2015 root expand failed");
         TEST_ASSERT(out_size == 6, "Finlayson2015 root degree 2 should have 6 terms");
         for (int j = 0; j < 6; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_root_deg2[i*6+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_root_deg2[i*6+j], ALWAN_TEST_TOLERANCE,
                              "Finlayson2015 root deg2 mismatch");
         }
     }
@@ -494,7 +494,7 @@ static int test_finlayson2015_expand_root(void)
         TEST_ASSERT(status == ALWAN_OK, "Finlayson2015 root expand failed");
         TEST_ASSERT(out_size == 13, "Finlayson2015 root degree 3 should have 13 terms");
         for (int j = 0; j < 13; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_root_deg3[i*13+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_root_deg3[i*13+j], ALWAN_TEST_TOLERANCE,
                              "Finlayson2015 root deg3 mismatch");
         }
     }
@@ -534,7 +534,7 @@ static int test_vandermonde_expand(void)
         TEST_ASSERT(status == ALWAN_OK, "Vandermonde expand failed");
         TEST_ASSERT(out_size == 7, "Vandermonde degree 2 should have 7 terms");
         for (int j = 0; j < 7; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_deg2[i*7+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_deg2[i*7+j], ALWAN_TEST_TOLERANCE,
                              "Vandermonde deg2 mismatch");
         }
     }
@@ -545,7 +545,7 @@ static int test_vandermonde_expand(void)
         TEST_ASSERT(status == ALWAN_OK, "Vandermonde expand failed");
         TEST_ASSERT(out_size == 10, "Vandermonde degree 3 should have 10 terms");
         for (int j = 0; j < 10; j++) {
-            TEST_ASSERT_NEAR(expanded[j], ref_deg3[i*10+j], TEST_TOLERANCE,
+            TEST_ASSERT_NEAR(expanded[j], ref_deg3[i*10+j], ALWAN_TEST_TOLERANCE,
                              "Vandermonde deg3 mismatch");
         }
     }
@@ -581,11 +581,11 @@ static int test_white_balance(void)
         int status = alwan_white_balance_from_gray(&multipliers, &measured_gray);
         TEST_ASSERT(status == ALWAN_OK, "White balance computation failed");
 
-        TEST_ASSERT_NEAR(multipliers.r, ref_multipliers[i*3], TEST_TOLERANCE,
+        TEST_ASSERT_NEAR(multipliers.r, ref_multipliers[i*3], ALWAN_TEST_TOLERANCE,
                          "White balance R multiplier mismatch");
-        TEST_ASSERT_NEAR(multipliers.g, ref_multipliers[i*3+1], TEST_TOLERANCE,
+        TEST_ASSERT_NEAR(multipliers.g, ref_multipliers[i*3+1], ALWAN_TEST_TOLERANCE,
                          "White balance G multiplier mismatch");
-        TEST_ASSERT_NEAR(multipliers.b, ref_multipliers[i*3+2], TEST_TOLERANCE,
+        TEST_ASSERT_NEAR(multipliers.b, ref_multipliers[i*3+2], ALWAN_TEST_TOLERANCE,
                          "White balance B multiplier mismatch");
     }
 
@@ -608,8 +608,8 @@ static int test_white_balance_apply(void)
     TEST_ASSERT(status == ALWAN_OK, "White balance apply failed");
 
     /* After applying white balance, all channels should be equal (neutral) */
-    TEST_ASSERT_NEAR(result.r, result.g, TEST_TOLERANCE, "WB result should be neutral (R=G)");
-    TEST_ASSERT_NEAR(result.g, result.b, TEST_TOLERANCE, "WB result should be neutral (G=B)");
+    TEST_ASSERT_NEAR(result.r, result.g, ALWAN_TEST_TOLERANCE, "WB result should be neutral (R=G)");
+    TEST_ASSERT_NEAR(result.g, result.b, ALWAN_TEST_TOLERANCE, "WB result should be neutral (G=B)");
 
     return 0;
 }

@@ -153,7 +153,7 @@ Defined in `alwan_map_internal.h`. Process `ALWAN_SIMD_WIDTH` pixels per call.
 alwan__mat3_mul_simd(&out_x, &out_y, &out_z, &matrix, in_x, in_y, in_z)
 ```
 
-3x3 matrix times [x,y,z] for W pixels. Used by all matrix-based color space conversions and `alwan_mat3_transform_map`.
+3x3 matrix times [x,y,z] for W pixels. Used by all matrix-based color space conversions and `alwan_mat3_transform_map_interleave`.
 
 ### Transfer functions
 
@@ -273,7 +273,7 @@ ALWAN_TILE_KERNEL_3TO3(name, InT, OutT, core_fn,
 ALWAN_MAP3_TILED(in_ptr, in_stride, out_ptr, out_stride, count, kernel_fn)
 ```
 
-### _map_ex function generation
+### _map_interleave_ex function generation
 
 ```c
 ALWAN_MAP3_EX(name, InT, OutT, core_fn, ...)           // basic 3->3
@@ -299,14 +299,14 @@ src/alwan/simd/
 
 src/alwan/map/
     alwan_map_internal.h     # SIMD building blocks, tile helpers, macros
-    alwan_rgb_map.c          # sRGB convenience map implementations
-    alwan_colorspace_map.c   # CIE colorspace maps
-    alwan_oklab_map.c        # Oklab/OkLCh maps
-    alwan_convenience_map.c  # HSV, HSL, CMY, YCoCg, HWB maps
-    alwan_ictcp_map.c        # ICtCp maps
-    alwan_ipt_map.c          # IPT maps
-    alwan_jzazbz_map.c       # Jzazbz/JzCzhz maps
-    alwan_cam_map.c          # CIECAM02, CAM16 maps
-    alwan_math_map.c         # mat3 transform map
-    alwan_typed_map.c        # all _map_ex instantiations (macro-generated)
+    alwan_rgb_map_interleave.c          # sRGB convenience map implementations
+    alwan_colorspace_map_interleave.c   # CIE colorspace maps
+    alwan_oklab_map_interleave.c        # Oklab/OkLCh maps
+    alwan_convenience_map_interleave.c  # HSV, HSL, CMY, YCoCg, HWB maps
+    alwan_ictcp_map_interleave.c        # ICtCp maps
+    alwan_ipt_map_interleave.c          # IPT maps
+    alwan_jzazbz_map_interleave.c       # Jzazbz/JzCzhz maps
+    alwan_cam_map_interleave.c          # CIECAM02, CAM16 maps
+    alwan_math_map_interleave.c         # mat3 transform map
+    alwan_typed_map_interleave.c        # all _map_interleave_ex instantiations (macro-generated)
 ```

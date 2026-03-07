@@ -18,7 +18,7 @@ ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
-    alwan_scalar const prolab_tolerance = TEST_TOLERANCE;
+    alwan_scalar const prolab_tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz_in;

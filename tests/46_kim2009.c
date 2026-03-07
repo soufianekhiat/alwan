@@ -68,24 +68,24 @@ static int test_kim2009_forward(void) {
             h_err = ALWAN_LITERAL(360.0) - h_err;
         }
 
-        if (J_err >= TEST_TOLERANCE) {
+        if (J_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: J error = %.10e (got %.10f, expected %.10f)\n",
                    i + 1, (double)J_err, (double)corr.J, (double)J_expected);
         }
-        if (C_err >= TEST_TOLERANCE) {
+        if (C_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: C error = %.10e (got %.10f, expected %.10f)\n",
                    i + 1, (double)C_err, (double)corr.C, (double)C_expected);
         }
-        if (h_err >= TEST_TOLERANCE && corr.C > ALWAN_LITERAL(1.0)) {
+        if (h_err >= ALWAN_TEST_TOLERANCE && corr.C > ALWAN_LITERAL(1.0)) {
             printf("  Test %zu: h error = %.10e (got %.10f, expected %.10f)\n",
                    i + 1, (double)h_err, (double)corr.h, (double)h_expected);
         }
 
-        TEST_ASSERT(J_err < TEST_TOLERANCE, "J mismatch");
-        TEST_ASSERT(C_err < TEST_TOLERANCE, "C mismatch");
+        TEST_ASSERT(J_err < ALWAN_TEST_TOLERANCE, "J mismatch");
+        TEST_ASSERT(C_err < ALWAN_TEST_TOLERANCE, "C mismatch");
         /* For achromatic colors (C ≈ 0), hue is undefined - skip hue check */
         if (corr.C > ALWAN_LITERAL(1.0)) {
-            TEST_ASSERT(h_err < TEST_TOLERANCE, "h mismatch");
+            TEST_ASSERT(h_err < ALWAN_TEST_TOLERANCE, "h mismatch");
         }
     }
 
@@ -124,7 +124,7 @@ static int test_kim2009_inverse(void) {
         alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
         alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
-        if (X_err >= TEST_TOLERANCE || Y_err >= TEST_TOLERANCE || Z_err >= TEST_TOLERANCE) {
+        if (X_err >= ALWAN_TEST_TOLERANCE || Y_err >= ALWAN_TEST_TOLERANCE || Z_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i + 1, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Got:      [%.10f, %.10f, %.10f]\n",
@@ -133,9 +133,9 @@ static int test_kim2009_inverse(void) {
                    (double)xyz_in.x, (double)xyz_in.y, (double)xyz_in.z);
         }
 
-        TEST_ASSERT(X_err < TEST_TOLERANCE, "X mismatch");
-        TEST_ASSERT(Y_err < TEST_TOLERANCE, "Y mismatch");
-        TEST_ASSERT(Z_err < TEST_TOLERANCE, "Z mismatch");
+        TEST_ASSERT(X_err < ALWAN_TEST_TOLERANCE, "X mismatch");
+        TEST_ASSERT(Y_err < ALWAN_TEST_TOLERANCE, "Y mismatch");
+        TEST_ASSERT(Z_err < ALWAN_TEST_TOLERANCE, "Z mismatch");
     }
 
     printf("  Tested %zu colors\n", num_test_cases);
@@ -172,7 +172,7 @@ static int test_kim2009_roundtrip(void) {
         alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
         alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
-        if (X_err >= TEST_TOLERANCE || Y_err >= TEST_TOLERANCE || Z_err >= TEST_TOLERANCE) {
+        if (X_err >= ALWAN_TEST_TOLERANCE || Y_err >= ALWAN_TEST_TOLERANCE || Z_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: Round-trip XYZ errors = [%.10e, %.10e, %.10e]\n",
                    i + 1, (double)X_err, (double)Y_err, (double)Z_err);
             printf("    Input:  [%.10f, %.10f, %.10f]\n",
@@ -181,9 +181,9 @@ static int test_kim2009_roundtrip(void) {
                    (double)xyz_out.x, (double)xyz_out.y, (double)xyz_out.z);
         }
 
-        TEST_ASSERT(X_err < TEST_TOLERANCE, "Round-trip X error too large");
-        TEST_ASSERT(Y_err < TEST_TOLERANCE, "Round-trip Y error too large");
-        TEST_ASSERT(Z_err < TEST_TOLERANCE, "Round-trip Z error too large");
+        TEST_ASSERT(X_err < ALWAN_TEST_TOLERANCE, "Round-trip X error too large");
+        TEST_ASSERT(Y_err < ALWAN_TEST_TOLERANCE, "Round-trip Y error too large");
+        TEST_ASSERT(Z_err < ALWAN_TEST_TOLERANCE, "Round-trip Z error too large");
     }
 
     printf("  Tested %zu colors\n", num_test_cases);

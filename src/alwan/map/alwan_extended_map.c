@@ -22,7 +22,7 @@
  * XYZ <-> IgPgTg
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_igpgtg_map(alwan_scalar *igpgtg_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_igpgtg_map_interleave(alwan_scalar *igpgtg_out, alwan_scalar const *xyz_in,
                              size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !igpgtg_out || count == 0) return ALWAN_E_INVALID;
 
@@ -36,7 +36,7 @@ int alwan_xyz_to_igpgtg_map(alwan_scalar *igpgtg_out, alwan_scalar const *xyz_in
     return ALWAN_OK;
 }
 
-int alwan_igpgtg_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *igpgtg_in,
+int alwan_igpgtg_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *igpgtg_in,
                              size_t count, size_t in_stride, size_t out_stride) {
     if (!igpgtg_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -54,7 +54,7 @@ int alwan_igpgtg_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *igpgtg_in
  * XYZ <-> ICaCb
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_icacb_map(alwan_scalar *icacb_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_icacb_map_interleave(alwan_scalar *icacb_out, alwan_scalar const *xyz_in,
                             size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !icacb_out || count == 0) return ALWAN_E_INVALID;
 
@@ -68,7 +68,7 @@ int alwan_xyz_to_icacb_map(alwan_scalar *icacb_out, alwan_scalar const *xyz_in,
     return ALWAN_OK;
 }
 
-int alwan_icacb_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *icacb_in,
+int alwan_icacb_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *icacb_in,
                             size_t count, size_t in_stride, size_t out_stride) {
     if (!icacb_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -86,7 +86,7 @@ int alwan_icacb_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *icacb_in,
  * XYZ <-> hdr-CIELAB
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_hdr_cielab_map(alwan_scalar *hdr_lab_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_hdr_cielab_map_interleave(alwan_scalar *hdr_lab_out, alwan_scalar const *xyz_in,
                                  size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !hdr_lab_out || count == 0) return ALWAN_E_INVALID;
 
@@ -100,7 +100,7 @@ int alwan_xyz_to_hdr_cielab_map(alwan_scalar *hdr_lab_out, alwan_scalar const *x
     return ALWAN_OK;
 }
 
-int alwan_hdr_cielab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hdr_lab_in,
+int alwan_hdr_cielab_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *hdr_lab_in,
                                  size_t count, size_t in_stride, size_t out_stride) {
     if (!hdr_lab_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -118,7 +118,7 @@ int alwan_hdr_cielab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hdr_l
  * XYZ <-> hdr-IPT
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_hdr_ipt_map(alwan_scalar *hdr_ipt_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_hdr_ipt_map_interleave(alwan_scalar *hdr_ipt_out, alwan_scalar const *xyz_in,
                                size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !hdr_ipt_out || count == 0) return ALWAN_E_INVALID;
 
@@ -132,7 +132,7 @@ int alwan_xyz_to_hdr_ipt_map(alwan_scalar *hdr_ipt_out, alwan_scalar const *xyz_
     return ALWAN_OK;
 }
 
-int alwan_hdr_ipt_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hdr_ipt_in,
+int alwan_hdr_ipt_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *hdr_ipt_in,
                                size_t count, size_t in_stride, size_t out_stride) {
     if (!hdr_ipt_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -150,7 +150,7 @@ int alwan_hdr_ipt_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hdr_ipt_
  * XYZ <-> CIE 1960 UCS
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_ucs_map(alwan_scalar *ucs_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_ucs_map_interleave(alwan_scalar *ucs_out, alwan_scalar const *xyz_in,
                           size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !ucs_out || count == 0) return ALWAN_E_INVALID;
 
@@ -164,7 +164,7 @@ int alwan_xyz_to_ucs_map(alwan_scalar *ucs_out, alwan_scalar const *xyz_in,
     return ALWAN_OK;
 }
 
-int alwan_ucs_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *ucs_in,
+int alwan_ucs_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *ucs_in,
                           size_t count, size_t in_stride, size_t out_stride) {
     if (!ucs_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -182,7 +182,7 @@ int alwan_ucs_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *ucs_in,
  * XYZ <-> OSA-UCS
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_osa_ucs_map(alwan_scalar *osa_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_osa_ucs_map_interleave(alwan_scalar *osa_out, alwan_scalar const *xyz_in,
                               size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !osa_out || count == 0) return ALWAN_E_INVALID;
 
@@ -196,7 +196,7 @@ int alwan_xyz_to_osa_ucs_map(alwan_scalar *osa_out, alwan_scalar const *xyz_in,
     return ALWAN_OK;
 }
 
-int alwan_osa_ucs_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *osa_in,
+int alwan_osa_ucs_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *osa_in,
                               size_t count, size_t in_stride, size_t out_stride) {
     if (!osa_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -214,7 +214,7 @@ int alwan_osa_ucs_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *osa_in,
  * XYZ <-> Hunter Lab
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_hunter_lab_map(alwan_scalar *hl_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_hunter_lab_map_interleave(alwan_scalar *hl_out, alwan_scalar const *xyz_in,
                                  size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !hl_out || count == 0) return ALWAN_E_INVALID;
 
@@ -228,7 +228,7 @@ int alwan_xyz_to_hunter_lab_map(alwan_scalar *hl_out, alwan_scalar const *xyz_in
     return ALWAN_OK;
 }
 
-int alwan_hunter_lab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hl_in,
+int alwan_hunter_lab_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *hl_in,
                                  size_t count, size_t in_stride, size_t out_stride) {
     if (!hl_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -242,7 +242,7 @@ int alwan_hunter_lab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *hl_in
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_hunter_lab_custom_map(alwan_scalar *hl_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_hunter_lab_custom_map_interleave(alwan_scalar *hl_out, alwan_scalar const *xyz_in,
                                         alwan_xyz const *white_xyz,
                                         size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !hl_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
@@ -257,7 +257,7 @@ int alwan_xyz_to_hunter_lab_custom_map(alwan_scalar *hl_out, alwan_scalar const 
     return ALWAN_OK;
 }
 
-int alwan_hunter_lab_to_xyz_custom_map(alwan_scalar *xyz_out, alwan_scalar const *hl_in,
+int alwan_hunter_lab_to_xyz_custom_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *hl_in,
                                         alwan_xyz const *white_xyz,
                                         size_t count, size_t in_stride, size_t out_stride) {
     if (!hl_in || !xyz_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
@@ -276,7 +276,7 @@ int alwan_hunter_lab_to_xyz_custom_map(alwan_scalar *xyz_out, alwan_scalar const
  * XYZ <-> ProLab
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_prolab_map(alwan_scalar *prolab_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_prolab_map_interleave(alwan_scalar *prolab_out, alwan_scalar const *xyz_in,
                              size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !prolab_out || count == 0) return ALWAN_E_INVALID;
 
@@ -290,7 +290,7 @@ int alwan_xyz_to_prolab_map(alwan_scalar *prolab_out, alwan_scalar const *xyz_in
     return ALWAN_OK;
 }
 
-int alwan_prolab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *prolab_in,
+int alwan_prolab_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *prolab_in,
                              size_t count, size_t in_stride, size_t out_stride) {
     if (!prolab_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -304,7 +304,7 @@ int alwan_prolab_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *prolab_in
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_prolab_custom_map(alwan_scalar *prolab_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_prolab_custom_map_interleave(alwan_scalar *prolab_out, alwan_scalar const *xyz_in,
                                     alwan_xyz const *white_xyz,
                                     size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !prolab_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
@@ -319,7 +319,7 @@ int alwan_xyz_to_prolab_custom_map(alwan_scalar *prolab_out, alwan_scalar const 
     return ALWAN_OK;
 }
 
-int alwan_prolab_to_xyz_custom_map(alwan_scalar *xyz_out, alwan_scalar const *prolab_in,
+int alwan_prolab_to_xyz_custom_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *prolab_in,
                                     alwan_xyz const *white_xyz,
                                     size_t count, size_t in_stride, size_t out_stride) {
     if (!prolab_in || !xyz_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
@@ -338,7 +338,7 @@ int alwan_prolab_to_xyz_custom_map(alwan_scalar *xyz_out, alwan_scalar const *pr
  * XYZ <-> UVW (with white point)
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_to_uvw_map(alwan_scalar *uvw_out, alwan_scalar const *xyz_in,
+int alwan_xyz_to_uvw_map_interleave(alwan_scalar *uvw_out, alwan_scalar const *xyz_in,
                           alwan_xyz const *white_xyz,
                           size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !uvw_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
@@ -353,7 +353,7 @@ int alwan_xyz_to_uvw_map(alwan_scalar *uvw_out, alwan_scalar const *xyz_in,
     return ALWAN_OK;
 }
 
-int alwan_uvw_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *uvw_in,
+int alwan_uvw_to_xyz_map_interleave(alwan_scalar *xyz_out, alwan_scalar const *uvw_in,
                           alwan_xyz const *white_xyz,
                           size_t count, size_t in_stride, size_t out_stride) {
     if (!uvw_in || !xyz_out || !white_xyz || count == 0) return ALWAN_E_INVALID;
@@ -372,7 +372,7 @@ int alwan_uvw_to_xyz_map(alwan_scalar *xyz_out, alwan_scalar const *uvw_in,
  * RGB <-> Prismatic
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_prismatic_map(alwan_scalar *prismatic_out, alwan_scalar const *rgb_in,
+int alwan_rgb_to_prismatic_map_interleave(alwan_scalar *prismatic_out, alwan_scalar const *rgb_in,
                                 size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !prismatic_out || count == 0) return ALWAN_E_INVALID;
 
@@ -386,7 +386,7 @@ int alwan_rgb_to_prismatic_map(alwan_scalar *prismatic_out, alwan_scalar const *
     return ALWAN_OK;
 }
 
-int alwan_prismatic_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *prismatic_in,
+int alwan_prismatic_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *prismatic_in,
                                 size_t count, size_t in_stride, size_t out_stride) {
     if (!prismatic_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
@@ -404,7 +404,7 @@ int alwan_prismatic_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *prisma
  * RGB <-> HCL
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_hcl_map(alwan_scalar *hcl_out, alwan_scalar const *rgb_in,
+int alwan_rgb_to_hcl_map_interleave(alwan_scalar *hcl_out, alwan_scalar const *rgb_in,
                           size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !hcl_out || count == 0) return ALWAN_E_INVALID;
 
@@ -418,7 +418,7 @@ int alwan_rgb_to_hcl_map(alwan_scalar *hcl_out, alwan_scalar const *rgb_in,
     return ALWAN_OK;
 }
 
-int alwan_hcl_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *hcl_in,
+int alwan_hcl_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *hcl_in,
                           size_t count, size_t in_stride, size_t out_stride) {
     if (!hcl_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
@@ -436,7 +436,7 @@ int alwan_hcl_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *hcl_in,
  * RGB <-> IHLS
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_ihls_map(alwan_scalar *ihls_out, alwan_scalar const *rgb_in,
+int alwan_rgb_to_ihls_map_interleave(alwan_scalar *ihls_out, alwan_scalar const *rgb_in,
                            size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !ihls_out || count == 0) return ALWAN_E_INVALID;
 
@@ -450,7 +450,7 @@ int alwan_rgb_to_ihls_map(alwan_scalar *ihls_out, alwan_scalar const *rgb_in,
     return ALWAN_OK;
 }
 
-int alwan_ihls_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *ihls_in,
+int alwan_ihls_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *ihls_in,
                            size_t count, size_t in_stride, size_t out_stride) {
     if (!ihls_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
@@ -468,7 +468,7 @@ int alwan_ihls_to_rgb_map(alwan_scalar *rgb_out, alwan_scalar const *ihls_in,
  * Lab <-> DIN99 (with int variant)
  * ---------------------------------------------------------------- */
 
-int alwan_lab_to_din99_map(alwan_scalar *din99_out, alwan_scalar const *lab_in,
+int alwan_lab_to_din99_map_interleave(alwan_scalar *din99_out, alwan_scalar const *lab_in,
                             int variant,
                             size_t count, size_t in_stride, size_t out_stride) {
     if (!lab_in || !din99_out || count == 0) return ALWAN_E_INVALID;
@@ -483,7 +483,7 @@ int alwan_lab_to_din99_map(alwan_scalar *din99_out, alwan_scalar const *lab_in,
     return ALWAN_OK;
 }
 
-int alwan_din99_to_lab_map(alwan_scalar *lab_out, alwan_scalar const *din99_in,
+int alwan_din99_to_lab_map_interleave(alwan_scalar *lab_out, alwan_scalar const *din99_in,
                             int variant,
                             size_t count, size_t in_stride, size_t out_stride) {
     if (!din99_in || !lab_out || count == 0) return ALWAN_E_INVALID;
@@ -497,3 +497,67 @@ int alwan_din99_to_lab_map(alwan_scalar *lab_out, alwan_scalar const *din99_in,
     }
     return ALWAN_OK;
 }
+
+/* ================================================================
+ * Planar Map Variants
+ * ================================================================ */
+
+/* XYZ <-> IgPgTg */
+ALWAN_MAP3_PLANAR_V(alwan_xyz_to_igpgtg_map_planar,  alwan_xyz,    alwan_igpgtg, alwan_xyz_to_igpgtg_v,  x,y,z, Ig,Pg,Tg)
+ALWAN_MAP3_PLANAR_V(alwan_igpgtg_to_xyz_map_planar,  alwan_igpgtg, alwan_xyz,    alwan_igpgtg_to_xyz_v,  Ig,Pg,Tg, x,y,z)
+
+/* XYZ <-> ICaCb */
+ALWAN_MAP3_PLANAR_V(alwan_xyz_to_icacb_map_planar,   alwan_xyz,    alwan_icacb,  alwan_xyz_to_icacb_v,   x,y,z, I,Ca,Cb)
+ALWAN_MAP3_PLANAR_V(alwan_icacb_to_xyz_map_planar,   alwan_icacb,  alwan_xyz,    alwan_icacb_to_xyz_v,   I,Ca,Cb, x,y,z)
+
+/* XYZ <-> hdr-CIELAB */
+ALWAN_MAP3_PLANAR_V(alwan_xyz_to_hdr_cielab_map_planar, alwan_xyz, alwan_lab,    alwan_xyz_to_hdr_cielab_v, x,y,z, L,a,b)
+ALWAN_MAP3_PLANAR_V(alwan_hdr_cielab_to_xyz_map_planar, alwan_lab, alwan_xyz,    alwan_hdr_cielab_to_xyz_v, L,a,b, x,y,z)
+
+/* XYZ <-> hdr-IPT */
+ALWAN_MAP3_PLANAR_V(alwan_xyz_to_hdr_ipt_map_planar, alwan_xyz,    alwan_ipt,    alwan_xyz_to_hdr_ipt_v, x,y,z, I,P,T)
+ALWAN_MAP3_PLANAR_V(alwan_hdr_ipt_to_xyz_map_planar, alwan_ipt,    alwan_xyz,    alwan_hdr_ipt_to_xyz_v, I,P,T, x,y,z)
+
+/* XYZ <-> UCS */
+ALWAN_MAP3_PLANAR_V(alwan_xyz_to_ucs_map_planar,     alwan_xyz,    alwan_ucs,    alwan_xyz_to_ucs_v,     x,y,z, U,V,W)
+ALWAN_MAP3_PLANAR_V(alwan_ucs_to_xyz_map_planar,     alwan_ucs,    alwan_xyz,    alwan_ucs_to_xyz_v,     U,V,W, x,y,z)
+
+/* XYZ <-> OSA-UCS */
+ALWAN_MAP3_PLANAR_V(alwan_xyz_to_osa_ucs_map_planar, alwan_xyz,    alwan_osa_ucs, alwan_xyz_to_osa_ucs_v, x,y,z, L,j,g)
+ALWAN_MAP3_PLANAR_V(alwan_osa_ucs_to_xyz_map_planar, alwan_osa_ucs, alwan_xyz,   alwan_osa_ucs_to_xyz_v, L,j,g, x,y,z)
+
+/* XYZ <-> Hunter Lab */
+ALWAN_MAP3_PLANAR_V(alwan_xyz_to_hunter_lab_map_planar,  alwan_xyz,       alwan_hunter_lab, alwan_xyz_to_hunter_lab_v,  x,y,z, L,a,b)
+ALWAN_MAP3_PLANAR_V(alwan_hunter_lab_to_xyz_map_planar,  alwan_hunter_lab, alwan_xyz,       alwan_hunter_lab_to_xyz_v,  L,a,b, x,y,z)
+
+/* XYZ <-> Hunter Lab custom */
+ALWAN_MAP3_PLANAR_V_WHITE(alwan_xyz_to_hunter_lab_custom_map_planar,  alwan_xyz,       alwan_hunter_lab, alwan_xyz_to_hunter_lab_custom_v,  x,y,z, L,a,b)
+ALWAN_MAP3_PLANAR_V_WHITE(alwan_hunter_lab_to_xyz_custom_map_planar,  alwan_hunter_lab, alwan_xyz,       alwan_hunter_lab_to_xyz_custom_v,  L,a,b, x,y,z)
+
+/* XYZ <-> ProLab */
+ALWAN_MAP3_PLANAR_V(alwan_xyz_to_prolab_map_planar,  alwan_xyz,    alwan_prolab, alwan_xyz_to_prolab_v,  x,y,z, L,a,b)
+ALWAN_MAP3_PLANAR_V(alwan_prolab_to_xyz_map_planar,  alwan_prolab, alwan_xyz,    alwan_prolab_to_xyz_v,  L,a,b, x,y,z)
+
+/* XYZ <-> ProLab custom */
+ALWAN_MAP3_PLANAR_V_WHITE(alwan_xyz_to_prolab_custom_map_planar,  alwan_xyz,    alwan_prolab, alwan_xyz_to_prolab_custom_v,  x,y,z, L,a,b)
+ALWAN_MAP3_PLANAR_V_WHITE(alwan_prolab_to_xyz_custom_map_planar,  alwan_prolab, alwan_xyz,    alwan_prolab_to_xyz_custom_v,  L,a,b, x,y,z)
+
+/* XYZ <-> UVW */
+ALWAN_MAP3_PLANAR_V_WHITE(alwan_xyz_to_uvw_map_planar, alwan_xyz, alwan_uvw, alwan_xyz_to_uvw_v, x,y,z, U,V,W)
+ALWAN_MAP3_PLANAR_V_WHITE(alwan_uvw_to_xyz_map_planar, alwan_uvw, alwan_xyz, alwan_uvw_to_xyz_v, U,V,W, x,y,z)
+
+/* RGB <-> Prismatic */
+ALWAN_MAP3_PLANAR_V(alwan_rgb_to_prismatic_map_planar,  alwan_rgb,       alwan_prismatic, alwan_rgb_to_prismatic_v,  r,g,b, L,s,h)
+ALWAN_MAP3_PLANAR_V(alwan_prismatic_to_rgb_map_planar,  alwan_prismatic, alwan_rgb,       alwan_prismatic_to_rgb_v,  L,s,h, r,g,b)
+
+/* RGB <-> HCL */
+ALWAN_MAP3_PLANAR_V(alwan_rgb_to_hcl_map_planar,  alwan_rgb, alwan_hcl, alwan_rgb_to_hcl_v,  r,g,b, H,C,L)
+ALWAN_MAP3_PLANAR_V(alwan_hcl_to_rgb_map_planar,  alwan_hcl, alwan_rgb, alwan_hcl_to_rgb_v,  H,C,L, r,g,b)
+
+/* RGB <-> IHLS */
+ALWAN_MAP3_PLANAR_V(alwan_rgb_to_ihls_map_planar, alwan_rgb,  alwan_ihls, alwan_rgb_to_ihls_v, r,g,b, H,L,S)
+ALWAN_MAP3_PLANAR_V(alwan_ihls_to_rgb_map_planar, alwan_ihls, alwan_rgb,  alwan_ihls_to_rgb_v, H,L,S, r,g,b)
+
+/* Lab <-> DIN99 */
+ALWAN_MAP3_PLANAR_V_INT(alwan_lab_to_din99_map_planar, alwan_lab,   alwan_din99, alwan_lab_to_din99_v, int, variant, L,a,b, L99,a99,b99)
+ALWAN_MAP3_PLANAR_V_INT(alwan_din99_to_lab_map_planar, alwan_din99, alwan_lab,   alwan_din99_to_lab_v, int, variant, L99,a99,b99, L,a,b)

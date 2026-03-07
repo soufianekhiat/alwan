@@ -28,7 +28,7 @@ ALWAN_DIAG_POP
     vc.surround = ALWAN_ZCAM_SURROUND_AVERAGE;
     vc.discount_illuminant = 0;
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz;

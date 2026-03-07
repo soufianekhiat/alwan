@@ -82,7 +82,7 @@ static int test_gamut_volume_reproducible(void) {
     alwan_gamut_volume_mc(&volume1, &srgb, 100000, 123);
     alwan_gamut_volume_mc(&volume2, &srgb, 100000, 123);
 
-    TEST_ASSERT(ALWAN_ABS(volume1 - volume2) < TEST_TOLERANCE,
+    TEST_ASSERT(ALWAN_ABS(volume1 - volume2) < ALWAN_TEST_TOLERANCE,
                 "Same seed should produce identical results");
 
     printf("  Reproducibility verified\n");
@@ -115,7 +115,7 @@ static int test_gamut_map_clip(void) {
         expected.b = test_data[i * 6 + 5];
 
         /* Test clip mapping */
-        int status = alwan_gamut_map(&result.r, ALWAN_GAMUT_MAP_CLIP, &rgb_in.r, 1,
+        int status = alwan_gamut_map_interleave(&result.r, ALWAN_GAMUT_MAP_CLIP, &rgb_in.r, 1,
                                       sizeof(alwan_rgb), sizeof(alwan_rgb));
         TEST_ASSERT(status == ALWAN_OK, "Clip mapping failed");
 
@@ -125,7 +125,7 @@ static int test_gamut_map_clip(void) {
         alwan_scalar const rgb_in_arr[3] = {rgb_in.r, rgb_in.g, rgb_in.b};
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(result_arr[j] - expected_arr[j]);
-            if (diff > TEST_TOLERANCE) {
+            if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  Input: [%.6f, %.6f, %.6f]\n",
                        (double)rgb_in_arr[0], (double)rgb_in_arr[1], (double)rgb_in_arr[2]);
@@ -152,7 +152,7 @@ static int test_gamut_map_hue_preserving(void) {
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
     /* Relaxed tolerance for hue-preserving (involves iterative algorithm) */
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_rgb rgb_in, expected, result;
@@ -166,7 +166,7 @@ static int test_gamut_map_hue_preserving(void) {
         expected.b = test_data[i * 6 + 5];
 
         /* Test hue-preserving mapping */
-        int status = alwan_gamut_map(&result.r, ALWAN_GAMUT_MAP_HUE_PRESERVING, &rgb_in.r, 1,
+        int status = alwan_gamut_map_interleave(&result.r, ALWAN_GAMUT_MAP_HUE_PRESERVING, &rgb_in.r, 1,
                                       sizeof(alwan_rgb), sizeof(alwan_rgb));
         TEST_ASSERT(status == ALWAN_OK, "Hue-preserving mapping failed");
 
@@ -212,7 +212,7 @@ static int test_gamut_map_monotonicity(void) {
 
     alwan_rgb results[4];
 
-    int status = alwan_gamut_map(&results[0].r, ALWAN_GAMUT_MAP_HUE_PRESERVING, &in_gamut_colors[0].r, 4,
+    int status = alwan_gamut_map_interleave(&results[0].r, ALWAN_GAMUT_MAP_HUE_PRESERVING, &in_gamut_colors[0].r, 4,
                                   sizeof(alwan_rgb), sizeof(alwan_rgb));
     TEST_ASSERT(status == ALWAN_OK, "Gamut mapping failed");
 
@@ -229,14 +229,14 @@ static int test_gamut_map_monotonicity(void) {
     TEST_PASS("Gamut mapping monotonicity");
 }
 
-static int test_css_gamut_map(void) {
+static int test_css_gamut_map_interleave(void) {
     size_t const stride = 3 * sizeof(alwan_scalar);
 
     /* In-gamut passthrough: (0.5, 0.3, 0.7) should be unchanged */
     {
         alwan_scalar in[3] = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.7)};
         alwan_scalar out[3];
-        int status = alwan_css_gamut_map(out, in, 1, stride, stride);
+        int status = alwan_css_gamut_map_interleave(out, in, 1, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map in-gamut status");
         TEST_CHECK_NEAR(out[0], in[0], ALWAN_LITERAL(1e-10));
         TEST_CHECK_NEAR(out[1], in[1], ALWAN_LITERAL(1e-10));
@@ -249,13 +249,13 @@ static int test_css_gamut_map(void) {
         alwan_scalar white[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
         alwan_scalar out[3];
 
-        int status = alwan_css_gamut_map(out, black, 1, stride, stride);
+        int status = alwan_css_gamut_map_interleave(out, black, 1, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map black status");
         TEST_CHECK_NEAR(out[0], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-10));
         TEST_CHECK_NEAR(out[1], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-10));
         TEST_CHECK_NEAR(out[2], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-10));
 
-        status = alwan_css_gamut_map(out, white, 1, stride, stride);
+        status = alwan_css_gamut_map_interleave(out, white, 1, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map white status");
         TEST_CHECK_NEAR(out[0], ALWAN_LITERAL(1.0), ALWAN_LITERAL(1e-10));
         TEST_CHECK_NEAR(out[1], ALWAN_LITERAL(1.0), ALWAN_LITERAL(1e-10));
@@ -266,7 +266,7 @@ static int test_css_gamut_map(void) {
     {
         alwan_scalar in[3] = {ALWAN_LITERAL(1.5), ALWAN_LITERAL(-0.2), ALWAN_LITERAL(0.8)};
         alwan_scalar out[3];
-        int status = alwan_css_gamut_map(out, in, 1, stride, stride);
+        int status = alwan_css_gamut_map_interleave(out, in, 1, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map out-of-gamut status");
         TEST_ASSERT(out[0] >= ALWAN_LITERAL(0.0) && out[0] <= ALWAN_LITERAL(1.0), "CSS R in gamut");
         TEST_ASSERT(out[1] >= ALWAN_LITERAL(0.0) && out[1] <= ALWAN_LITERAL(1.0), "CSS G in gamut");
@@ -281,7 +281,7 @@ static int test_css_gamut_map(void) {
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(2.0)
         };
         alwan_scalar out[9];
-        int status = alwan_css_gamut_map(out, in, 3, stride, stride);
+        int status = alwan_css_gamut_map_interleave(out, in, 3, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map bulk status");
         for (int j = 0; j < 9; j++) {
             TEST_ASSERT(out[j] >= ALWAN_LITERAL(0.0) && out[j] <= ALWAN_LITERAL(1.0),
@@ -306,7 +306,7 @@ int test_18_gamut_main(void) {
     if (test_gamut_map_clip() != 0) return 4;
     if (test_gamut_map_hue_preserving() != 0) return 5;
     if (test_gamut_map_monotonicity() != 0) return 6;
-    if (test_css_gamut_map() != 0) return 7;
+    if (test_css_gamut_map_interleave() != 0) return 7;
 
     printf("\n=== All M11 tests passed ===\n");
     return 0;

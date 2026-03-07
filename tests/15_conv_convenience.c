@@ -100,7 +100,7 @@ static int test_hsv_forward(void) {
         alwan_scalar exp_s = expected_hsv[i * 3 + 1];
         alwan_scalar exp_v = expected_hsv[i * 3 + 2];
 
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_h = ALWAN_ABS(hsv.v[0] - exp_h);
         alwan_scalar diff_s = ALWAN_ABS(hsv.v[1] - exp_s);
         alwan_scalar diff_v = ALWAN_ABS(hsv.v[2] - exp_v);
@@ -137,7 +137,7 @@ static int test_hsv_round_trip(void) {
         TEST_ASSERT(status == ALWAN_OK, "HSV to RGB failed");
 
         /* Check round-trip accuracy */
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_r = ALWAN_ABS(rgb_recon.r - rgb_orig.r );
         alwan_scalar diff_g = ALWAN_ABS( rgb_recon.g - rgb_orig.g );
         alwan_scalar diff_b = ALWAN_ABS( rgb_recon.b - rgb_orig.b );
@@ -179,7 +179,7 @@ static int test_hsl_forward(void) {
         alwan_scalar exp_s = expected_hsl[i * 3 + 1];
         alwan_scalar exp_l = expected_hsl[i * 3 + 2];
 
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_h = ALWAN_ABS(hsl.v[0] - exp_h);
         alwan_scalar diff_s = ALWAN_ABS(hsl.v[1] - exp_s);
         alwan_scalar diff_l = ALWAN_ABS(hsl.v[2] - exp_l);
@@ -216,7 +216,7 @@ static int test_hsl_round_trip(void) {
         TEST_ASSERT(status == ALWAN_OK, "HSL to RGB failed");
 
         /* Check round-trip accuracy */
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_r = ALWAN_ABS(rgb_recon.r - rgb_orig.r);
         alwan_scalar diff_g = ALWAN_ABS(rgb_recon.g - rgb_orig.g);
         alwan_scalar diff_b = ALWAN_ABS(rgb_recon.b - rgb_orig.b);
@@ -254,7 +254,7 @@ static int test_cmy_conversions(void) {
         alwan_scalar exp_m = expected_cmy[i * 3 + 1];
         alwan_scalar exp_y = expected_cmy[i * 3 + 2];
 
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_c = ALWAN_ABS(cmy.c - exp_c);
         alwan_scalar diff_m = ALWAN_ABS(cmy.m - exp_m);
         alwan_scalar diff_y = ALWAN_ABS(cmy.y - exp_y);
@@ -303,7 +303,7 @@ static int test_cmyk_conversions(void) {
         alwan_scalar exp_y = expected_cmyk[i * 4 + 2];
         alwan_scalar exp_k = expected_cmyk[i * 4 + 3];
 
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_c = ALWAN_ABS(c - exp_c);
         alwan_scalar diff_m = ALWAN_ABS(m - exp_m);
         alwan_scalar diff_y = ALWAN_ABS(y - exp_y);
@@ -352,7 +352,7 @@ static int test_ycbcr_bt601(void) {
         alwan_scalar exp_cb = expected_ycbcr_bt601[i * 3 + 1];
         alwan_scalar exp_cr = expected_ycbcr_bt601[i * 3 + 2];
 
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_y = ALWAN_ABS(ycbcr.Y - exp_y);
         alwan_scalar diff_cb = ALWAN_ABS(ycbcr.Cb - exp_cb);
         alwan_scalar diff_cr = ALWAN_ABS(ycbcr.Cr - exp_cr);
@@ -401,7 +401,7 @@ static int test_ycbcr_bt709(void) {
         alwan_scalar exp_cb = expected_ycbcr_bt709[i * 3 + 1];
         alwan_scalar exp_cr = expected_ycbcr_bt709[i * 3 + 2];
 
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_y = ALWAN_ABS(ycbcr.Y - exp_y);
         alwan_scalar diff_cb = ALWAN_ABS(ycbcr.Cb - exp_cb);
         alwan_scalar diff_cr = ALWAN_ABS(ycbcr.Cr - exp_cr);
@@ -450,7 +450,7 @@ static int test_ycbcr_bt2020(void) {
         alwan_scalar exp_cb = expected_ycbcr_bt2020[i * 3 + 1];
         alwan_scalar exp_cr = expected_ycbcr_bt2020[i * 3 + 2];
 
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_y = ALWAN_ABS(ycbcr.Y - exp_y);
         alwan_scalar diff_cb = ALWAN_ABS(ycbcr.Cb - exp_cb);
         alwan_scalar diff_cr = ALWAN_ABS(ycbcr.Cr - exp_cr);
@@ -500,7 +500,7 @@ static int test_yccbccrc(void) {
         alwan_scalar exp_cbc = expected_yccbccrc[i * 3 + 1];
         alwan_scalar exp_crc = expected_yccbccrc[i * 3 + 2];
 
-        alwan_scalar tol = TEST_TOLERANCE;
+        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar diff_yc = ALWAN_ABS(ycc.Yc - exp_yc);
         alwan_scalar diff_cbc = ALWAN_ABS(ycc.Cbc - exp_cbc);
         alwan_scalar diff_crc = ALWAN_ABS(ycc.Crc - exp_crc);

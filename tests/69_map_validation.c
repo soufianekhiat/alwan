@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: MIT
  *
  * Test suite 69: Map Validation
- * Validates that _map (batch/SIMD) functions produce identical results
- * to their single-pixel counterparts within TEST_TOLERANCE.
+ * Validates that _map_interleave (batch/SIMD) functions produce identical results
+ * to their single-pixel counterparts within ALWAN_TEST_TOLERANCE.
  */
 
 #include "test_common.h"
@@ -92,7 +92,7 @@ static int compare_arrays_tol(alwan_scalar const *map_out, alwan_scalar const *r
 
 static int compare_arrays(alwan_scalar const *map_out, alwan_scalar const *ref,
                           size_t count, size_t stride, char const *name) {
-    return compare_arrays_tol(map_out, ref, count, stride, name, TEST_TOLERANCE);
+    return compare_arrays_tol(map_out, ref, count, stride, name, ALWAN_TEST_TOLERANCE);
 }
 
 /* ----------------------------------------------------------------
@@ -111,44 +111,44 @@ static int test_oklab_maps(void) {
     generate_unit_grid(grid);
 
     /* XYZ -> OkLab */
-    alwan_xyz_to_oklab_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_xyz_to_oklab_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
         alwan_oklab r; alwan_xyz_to_oklab(&r, &xyz);
         ref_out[i*3+0] = r.L; ref_out[i*3+1] = r.a; ref_out[i*3+2] = r.b;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_oklab_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_oklab_map_interleave")) goto fail;
 
     /* OkLab -> XYZ */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_oklab_to_xyz_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_oklab_to_xyz_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_oklab ok; ok.L = grid[i*3+0]; ok.a = grid[i*3+1]; ok.b = grid[i*3+2];
         alwan_xyz r; alwan_oklab_to_xyz(&r, &ok);
         ref_out[i*3+0] = r.x; ref_out[i*3+1] = r.y; ref_out[i*3+2] = r.z;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "oklab_to_xyz_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "oklab_to_xyz_map_interleave")) goto fail;
 
     /* OkLab -> OkLCh */
     generate_unit_grid(grid);
-    alwan_xyz_to_oklab_map(grid, grid, MAP_COUNT, stride, stride);
-    alwan_oklab_to_oklch_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_xyz_to_oklab_map_interleave(grid, grid, MAP_COUNT, stride, stride);
+    alwan_oklab_to_oklch_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_oklab ok; ok.L = grid[i*3+0]; ok.a = grid[i*3+1]; ok.b = grid[i*3+2];
         alwan_oklch r; alwan_oklab_to_oklch(&r, &ok);
         ref_out[i*3+0] = r.L; ref_out[i*3+1] = r.C; ref_out[i*3+2] = r.h;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "oklab_to_oklch_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "oklab_to_oklch_map_interleave")) goto fail;
 
     /* OkLCh -> OkLab */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_oklch_to_oklab_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_oklch_to_oklab_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_oklch lch; lch.L = grid[i*3+0]; lch.C = grid[i*3+1]; lch.h = grid[i*3+2];
         alwan_oklab r; alwan_oklch_to_oklab(&r, &lch);
         ref_out[i*3+0] = r.L; ref_out[i*3+1] = r.a; ref_out[i*3+2] = r.b;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "oklch_to_oklab_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "oklch_to_oklab_map_interleave")) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -168,43 +168,43 @@ static int test_lab_lch_maps(void) {
     generate_lab_grid(grid);
 
     /* Lab -> LCh */
-    alwan_lab_to_lch_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_lab_to_lch_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_lab lab; lab.L = grid[i*3+0]; lab.a = grid[i*3+1]; lab.b = grid[i*3+2];
         alwan_lch lch; alwan_lab_to_lch(&lch, &lab);
         ref_out[i*3+0] = lch.L; ref_out[i*3+1] = lch.C; ref_out[i*3+2] = lch.h;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lab_to_lch_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lab_to_lch_map_interleave")) goto fail;
 
     /* LCh -> Lab */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_lch_to_lab_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_lch_to_lab_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_lch lch; lch.L = grid[i*3+0]; lch.C = grid[i*3+1]; lch.h = grid[i*3+2];
         alwan_lab lab; alwan_lch_to_lab(&lab, &lch);
         ref_out[i*3+0] = lab.L; ref_out[i*3+1] = lab.a; ref_out[i*3+2] = lab.b;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lch_to_lab_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lch_to_lab_map_interleave")) goto fail;
 
     /* Luv -> LChuv */
     generate_lab_grid(grid);
-    alwan_luv_to_lchuv_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_luv_to_lchuv_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_luv luv; luv.L = grid[i*3+0]; luv.u = grid[i*3+1]; luv.v = grid[i*3+2];
         alwan_lchuv lchuv; alwan_luv_to_lchuv(&lchuv, &luv);
         ref_out[i*3+0] = lchuv.L; ref_out[i*3+1] = lchuv.C; ref_out[i*3+2] = lchuv.h;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "luv_to_lchuv_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "luv_to_lchuv_map_interleave")) goto fail;
 
     /* LChuv -> Luv */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_lchuv_to_luv_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_lchuv_to_luv_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_lchuv lchuv; lchuv.L = grid[i*3+0]; lchuv.C = grid[i*3+1]; lchuv.h = grid[i*3+2];
         alwan_luv luv; alwan_lchuv_to_luv(&luv, &lchuv);
         ref_out[i*3+0] = luv.L; ref_out[i*3+1] = luv.u; ref_out[i*3+2] = luv.v;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lchuv_to_luv_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lchuv_to_luv_map_interleave")) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -224,23 +224,23 @@ static int test_xyy_maps(void) {
     generate_unit_grid(grid);
 
     /* XYZ -> xyY */
-    alwan_xyz_to_xyy_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_xyz_to_xyy_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
         alwan_xyy xyy; alwan_xyz_to_xyy(&xyy, &xyz);
         ref_out[i*3+0] = xyy.x; ref_out[i*3+1] = xyy.y; ref_out[i*3+2] = xyy.Y;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_xyy_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_xyy_map_interleave")) goto fail;
 
     /* xyY -> XYZ */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_xyy_to_xyz_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_xyy_to_xyz_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_xyy xyy; xyy.x = grid[i*3+0]; xyy.y = grid[i*3+1]; xyy.Y = grid[i*3+2];
         alwan_xyz xyz; alwan_xyy_to_xyz(&xyz, &xyy);
         ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyy_to_xyz_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyy_to_xyz_map_interleave")) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -260,43 +260,43 @@ static int test_hsv_hsl_maps(void) {
     generate_unit_grid(grid);
 
     /* RGB -> HSV */
-    alwan_rgb_to_hsv_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_rgb_to_hsv_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_rgb rgb; rgb.r = grid[i*3+0]; rgb.g = grid[i*3+1]; rgb.b = grid[i*3+2];
         alwan_hsv hsv; alwan_rgb_to_hsv(&hsv, &rgb);
         ref_out[i*3+0] = hsv.h; ref_out[i*3+1] = hsv.s; ref_out[i*3+2] = hsv.v;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "rgb_to_hsv_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "rgb_to_hsv_map_interleave")) goto fail;
 
     /* HSV -> RGB */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_hsv_to_rgb_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_hsv_to_rgb_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_hsv hsv; hsv.h = grid[i*3+0]; hsv.s = grid[i*3+1]; hsv.v = grid[i*3+2];
         alwan_rgb rgb; alwan_hsv_to_rgb(&rgb, &hsv);
         ref_out[i*3+0] = rgb.r; ref_out[i*3+1] = rgb.g; ref_out[i*3+2] = rgb.b;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "hsv_to_rgb_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "hsv_to_rgb_map_interleave")) goto fail;
 
     /* RGB -> HSL */
     generate_unit_grid(grid);
-    alwan_rgb_to_hsl_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_rgb_to_hsl_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_rgb rgb; rgb.r = grid[i*3+0]; rgb.g = grid[i*3+1]; rgb.b = grid[i*3+2];
         alwan_hsl hsl; alwan_rgb_to_hsl(&hsl, &rgb);
         ref_out[i*3+0] = hsl.h; ref_out[i*3+1] = hsl.s; ref_out[i*3+2] = hsl.l;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "rgb_to_hsl_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "rgb_to_hsl_map_interleave")) goto fail;
 
     /* HSL -> RGB */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_hsl_to_rgb_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_hsl_to_rgb_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_hsl hsl; hsl.h = grid[i*3+0]; hsl.s = grid[i*3+1]; hsl.l = grid[i*3+2];
         alwan_rgb rgb; alwan_hsl_to_rgb(&rgb, &hsl);
         ref_out[i*3+0] = rgb.r; ref_out[i*3+1] = rgb.g; ref_out[i*3+2] = rgb.b;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "hsl_to_rgb_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "hsl_to_rgb_map_interleave")) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -306,7 +306,7 @@ fail:
 
 /* ----------------------------------------------------------------
  * sRGB convenience maps
- * Validate _map vs _map with count=1 (single-pixel functions not implemented)
+ * Validate _map_interleave vs _map_interleave with count=1 (single-pixel functions not implemented)
  * ---------------------------------------------------------------- */
 
 static int test_srgb_convenience_maps(void) {
@@ -321,51 +321,51 @@ static int test_srgb_convenience_maps(void) {
     generate_unit_grid(grid);
 
     /* sRGB -> XYZ: compare map against per-pixel map(count=1) */
-    alwan_srgb_to_xyz_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_srgb_to_xyz_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_srgb_to_xyz_map(&ref_out[i*3], &grid[i*3], 1, stride, stride);
+        alwan_srgb_to_xyz_map_interleave(&ref_out[i*3], &grid[i*3], 1, stride, stride);
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "srgb_to_xyz_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "srgb_to_xyz_map_interleave")) goto fail;
 
     /* XYZ -> sRGB */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_xyz_to_srgb_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_xyz_to_srgb_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_xyz_to_srgb_map(&ref_out[i*3], &grid[i*3], 1, stride, stride);
+        alwan_xyz_to_srgb_map_interleave(&ref_out[i*3], &grid[i*3], 1, stride, stride);
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_srgb_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_srgb_map_interleave")) goto fail;
 
     /* sRGB -> Lab */
     generate_unit_grid(grid);
-    alwan_srgb_to_lab_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_srgb_to_lab_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_srgb_to_lab_map(&ref_out[i*3], &grid[i*3], 1, stride, stride);
+        alwan_srgb_to_lab_map_interleave(&ref_out[i*3], &grid[i*3], 1, stride, stride);
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "srgb_to_lab_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "srgb_to_lab_map_interleave")) goto fail;
 
     /* Lab -> sRGB */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_lab_to_srgb_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_lab_to_srgb_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_lab_to_srgb_map(&ref_out[i*3], &grid[i*3], 1, stride, stride);
+        alwan_lab_to_srgb_map_interleave(&ref_out[i*3], &grid[i*3], 1, stride, stride);
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lab_to_srgb_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lab_to_srgb_map_interleave")) goto fail;
 
     /* sRGB -> OkLab */
     generate_unit_grid(grid);
-    alwan_srgb_to_oklab_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_srgb_to_oklab_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_srgb_to_oklab_map(&ref_out[i*3], &grid[i*3], 1, stride, stride);
+        alwan_srgb_to_oklab_map_interleave(&ref_out[i*3], &grid[i*3], 1, stride, stride);
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "srgb_to_oklab_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "srgb_to_oklab_map_interleave")) goto fail;
 
     /* OkLab -> sRGB */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_oklab_to_srgb_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_oklab_to_srgb_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_oklab_to_srgb_map(&ref_out[i*3], &grid[i*3], 1, stride, stride);
+        alwan_oklab_to_srgb_map_interleave(&ref_out[i*3], &grid[i*3], 1, stride, stride);
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "oklab_to_srgb_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "oklab_to_srgb_map_interleave")) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -391,43 +391,43 @@ static int test_white_point_maps(void) {
     generate_unit_grid(grid);
 
     /* XYZ -> Lab */
-    alwan_xyz_to_lab_map(map_out, grid, &d65, MAP_COUNT, stride, stride);
+    alwan_xyz_to_lab_map_interleave(map_out, grid, &d65, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
         alwan_lab lab; alwan_xyz_to_lab(&lab, &xyz, &d65);
         ref_out[i*3+0] = lab.L; ref_out[i*3+1] = lab.a; ref_out[i*3+2] = lab.b;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_lab_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_lab_map_interleave")) goto fail;
 
     /* Lab -> XYZ */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_lab_to_xyz_map(map_out, grid, &d65, MAP_COUNT, stride, stride);
+    alwan_lab_to_xyz_map_interleave(map_out, grid, &d65, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_lab lab; lab.L = grid[i*3+0]; lab.a = grid[i*3+1]; lab.b = grid[i*3+2];
         alwan_xyz xyz; alwan_lab_to_xyz(&xyz, &lab, &d65);
         ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lab_to_xyz_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "lab_to_xyz_map_interleave")) goto fail;
 
     /* XYZ -> Luv */
     generate_unit_grid(grid);
-    alwan_xyz_to_luv_map(map_out, grid, &d65, MAP_COUNT, stride, stride);
+    alwan_xyz_to_luv_map_interleave(map_out, grid, &d65, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
         alwan_luv luv; alwan_xyz_to_luv(&luv, &xyz, &d65);
         ref_out[i*3+0] = luv.L; ref_out[i*3+1] = luv.u; ref_out[i*3+2] = luv.v;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_luv_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "xyz_to_luv_map_interleave")) goto fail;
 
     /* Luv -> XYZ */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_luv_to_xyz_map(map_out, grid, &d65, MAP_COUNT, stride, stride);
+    alwan_luv_to_xyz_map_interleave(map_out, grid, &d65, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_luv luv; luv.L = grid[i*3+0]; luv.u = grid[i*3+1]; luv.v = grid[i*3+2];
         alwan_xyz xyz; alwan_luv_to_xyz(&xyz, &luv, &d65);
         ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "luv_to_xyz_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "luv_to_xyz_map_interleave")) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -451,47 +451,47 @@ static int test_ictcp_maps(void) {
     for (int use_pq = 0; use_pq <= 1; use_pq++) {
         /* RGB -> ICtCp */
         generate_unit_grid(grid);
-        alwan_rgb_to_ictcp_map(map_out, grid, use_pq, MAP_COUNT, stride, stride);
+        alwan_rgb_to_ictcp_map_interleave(map_out, grid, use_pq, MAP_COUNT, stride, stride);
         for (size_t i = 0; i < MAP_COUNT; i++) {
             alwan_rgb rgb; rgb.r = grid[i*3+0]; rgb.g = grid[i*3+1]; rgb.b = grid[i*3+2];
             alwan_ictcp ictcp; alwan_rgb_to_ictcp(&ictcp, &rgb, use_pq);
             ref_out[i*3+0] = ictcp.I; ref_out[i*3+1] = ictcp.Ct; ref_out[i*3+2] = ictcp.Cp;
         }
         if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride,
-                           use_pq ? "rgb_to_ictcp_map PQ" : "rgb_to_ictcp_map HLG", MAP_TOLERANCE)) goto fail;
+                           use_pq ? "rgb_to_ictcp_map_interleave PQ" : "rgb_to_ictcp_map_interleave HLG", MAP_TOLERANCE)) goto fail;
 
         /* ICtCp -> RGB */
         memcpy(grid, ref_out, MAP_COUNT * stride);
-        alwan_ictcp_to_rgb_map(map_out, grid, use_pq, MAP_COUNT, stride, stride);
+        alwan_ictcp_to_rgb_map_interleave(map_out, grid, use_pq, MAP_COUNT, stride, stride);
         for (size_t i = 0; i < MAP_COUNT; i++) {
             alwan_ictcp ictcp; ictcp.I = grid[i*3+0]; ictcp.Ct = grid[i*3+1]; ictcp.Cp = grid[i*3+2];
             alwan_rgb rgb; alwan_ictcp_to_rgb(&rgb, &ictcp, use_pq);
             ref_out[i*3+0] = rgb.r; ref_out[i*3+1] = rgb.g; ref_out[i*3+2] = rgb.b;
         }
         if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride,
-                           use_pq ? "ictcp_to_rgb_map PQ" : "ictcp_to_rgb_map HLG", MAP_TOLERANCE)) goto fail;
+                           use_pq ? "ictcp_to_rgb_map_interleave PQ" : "ictcp_to_rgb_map_interleave HLG", MAP_TOLERANCE)) goto fail;
 
         /* XYZ -> ICtCp */
         generate_unit_grid(grid);
-        alwan_xyz_to_ictcp_map(map_out, grid, use_pq, MAP_COUNT, stride, stride);
+        alwan_xyz_to_ictcp_map_interleave(map_out, grid, use_pq, MAP_COUNT, stride, stride);
         for (size_t i = 0; i < MAP_COUNT; i++) {
             alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
             alwan_ictcp ictcp; alwan_xyz_to_ictcp(&ictcp, &xyz, use_pq);
             ref_out[i*3+0] = ictcp.I; ref_out[i*3+1] = ictcp.Ct; ref_out[i*3+2] = ictcp.Cp;
         }
         if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride,
-                           use_pq ? "xyz_to_ictcp_map PQ" : "xyz_to_ictcp_map HLG", MAP_TOLERANCE)) goto fail;
+                           use_pq ? "xyz_to_ictcp_map_interleave PQ" : "xyz_to_ictcp_map_interleave HLG", MAP_TOLERANCE)) goto fail;
 
         /* ICtCp -> XYZ */
         memcpy(grid, ref_out, MAP_COUNT * stride);
-        alwan_ictcp_to_xyz_map(map_out, grid, use_pq, MAP_COUNT, stride, stride);
+        alwan_ictcp_to_xyz_map_interleave(map_out, grid, use_pq, MAP_COUNT, stride, stride);
         for (size_t i = 0; i < MAP_COUNT; i++) {
             alwan_ictcp ictcp; ictcp.I = grid[i*3+0]; ictcp.Ct = grid[i*3+1]; ictcp.Cp = grid[i*3+2];
             alwan_xyz xyz; alwan_ictcp_to_xyz(&xyz, &ictcp, use_pq);
             ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
         }
         if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride,
-                           use_pq ? "ictcp_to_xyz_map PQ" : "ictcp_to_xyz_map HLG", MAP_TOLERANCE)) goto fail;
+                           use_pq ? "ictcp_to_xyz_map_interleave PQ" : "ictcp_to_xyz_map_interleave HLG", MAP_TOLERANCE)) goto fail;
     }
 
     free(grid); free(map_out); free(ref_out);
@@ -516,44 +516,44 @@ static int test_jzazbz_maps(void) {
     generate_unit_grid(grid);
 
     /* XYZ -> JzAzBz */
-    alwan_xyz_to_jzazbz_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_xyz_to_jzazbz_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
         alwan_jzazbz jz; alwan_xyz_to_jzazbz(&jz, &xyz);
         ref_out[i*3+0] = jz.Jz; ref_out[i*3+1] = jz.az; ref_out[i*3+2] = jz.bz;
     }
-    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "xyz_to_jzazbz_map", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "xyz_to_jzazbz_map_interleave", MAP_TOLERANCE)) goto fail;
 
     /* JzAzBz -> XYZ */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_jzazbz_to_xyz_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_jzazbz_to_xyz_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_jzazbz jz; jz.Jz = grid[i*3+0]; jz.az = grid[i*3+1]; jz.bz = grid[i*3+2];
         alwan_xyz xyz; alwan_jzazbz_to_xyz(&xyz, &jz);
         ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
     }
-    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "jzazbz_to_xyz_map", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "jzazbz_to_xyz_map_interleave", MAP_TOLERANCE)) goto fail;
 
     /* JzAzBz -> JzCzhz */
     generate_unit_grid(grid);
-    alwan_xyz_to_jzazbz_map(grid, grid, MAP_COUNT, stride, stride);
-    alwan_jzazbz_to_jzczhz_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_xyz_to_jzazbz_map_interleave(grid, grid, MAP_COUNT, stride, stride);
+    alwan_jzazbz_to_jzczhz_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_jzazbz jz; jz.Jz = grid[i*3+0]; jz.az = grid[i*3+1]; jz.bz = grid[i*3+2];
         alwan_jzczhz jzch; alwan_jzazbz_to_jzczhz(&jzch, &jz);
         ref_out[i*3+0] = jzch.Jz; ref_out[i*3+1] = jzch.Cz; ref_out[i*3+2] = jzch.hz;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "jzazbz_to_jzczhz_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "jzazbz_to_jzczhz_map_interleave")) goto fail;
 
     /* JzCzhz -> JzAzBz */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_jzczhz_to_jzazbz_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_jzczhz_to_jzazbz_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_jzczhz jzch; jzch.Jz = grid[i*3+0]; jzch.Cz = grid[i*3+1]; jzch.hz = grid[i*3+2];
         alwan_jzazbz jz; alwan_jzczhz_to_jzazbz(&jz, &jzch);
         ref_out[i*3+0] = jz.Jz; ref_out[i*3+1] = jz.az; ref_out[i*3+2] = jz.bz;
     }
-    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "jzczhz_to_jzazbz_map")) goto fail;
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "jzczhz_to_jzazbz_map_interleave")) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -577,23 +577,23 @@ static int test_ipt_maps(void) {
     generate_unit_grid(grid);
 
     /* XYZ -> IPT */
-    alwan_xyz_to_ipt_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_xyz_to_ipt_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
         alwan_ipt ipt; alwan_xyz_to_ipt(&ipt, &xyz);
         ref_out[i*3+0] = ipt.I; ref_out[i*3+1] = ipt.P; ref_out[i*3+2] = ipt.T;
     }
-    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "xyz_to_ipt_map", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "xyz_to_ipt_map_interleave", MAP_TOLERANCE)) goto fail;
 
     /* IPT -> XYZ */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_ipt_to_xyz_map(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_ipt_to_xyz_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
         alwan_ipt ipt; ipt.I = grid[i*3+0]; ipt.P = grid[i*3+1]; ipt.T = grid[i*3+2];
         alwan_xyz xyz; alwan_ipt_to_xyz(&xyz, &ipt);
         ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
     }
-    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "ipt_to_xyz_map", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "ipt_to_xyz_map_interleave", MAP_TOLERANCE)) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -650,7 +650,7 @@ static int test_ciecam02_maps(void) {
     generate_cam_grid(grid);
 
     /* Forward map */
-    alwan_ciecam02_forward_map(map_corr, grid, &vc, CAM_COUNT, stride);
+    alwan_ciecam02_forward_map_interleave(map_corr, grid, &vc, CAM_COUNT, stride);
     for (size_t i = 0; i < CAM_COUNT; i++) {
         alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
         alwan_ciecam02_forward(&ref_corr[i], &xyz, &vc);
@@ -661,18 +661,18 @@ static int test_ciecam02_maps(void) {
         alwan_scalar dh = ALWAN_ABS(map_corr[i].h - ref_corr[i].h);
         alwan_scalar max_d = dJ; if (dC > max_d) max_d = dC; if (dh > max_d) max_d = dh;
         if (max_d > MAP_TOLERANCE) {
-            printf("[FAIL] ciecam02_forward_map: pixel %zu: diff=%.16e\n", i, (double)max_d);
+            printf("[FAIL] ciecam02_forward_map_interleave: pixel %zu: diff=%.16e\n", i, (double)max_d);
             goto fail;
         }
     }
 
     /* Inverse map */
-    alwan_ciecam02_inverse_map(map_xyz, ref_corr, &vc, CAM_COUNT, stride);
+    alwan_ciecam02_inverse_map_interleave(map_xyz, ref_corr, &vc, CAM_COUNT, stride);
     for (size_t i = 0; i < CAM_COUNT; i++) {
         alwan_xyz xyz; alwan_ciecam02_inverse(&xyz, &ref_corr[i], &vc);
         ref_xyz[i*3+0] = xyz.x; ref_xyz[i*3+1] = xyz.y; ref_xyz[i*3+2] = xyz.z;
     }
-    if (compare_arrays_tol(map_xyz, ref_xyz, CAM_COUNT, stride, "ciecam02_inverse_map", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_xyz, ref_xyz, CAM_COUNT, stride, "ciecam02_inverse_map_interleave", MAP_TOLERANCE)) goto fail;
 
     free(grid); free(map_corr); free(ref_corr); free(map_xyz); free(ref_xyz);
     TEST_PASS_MSG(); return 0;
@@ -706,7 +706,7 @@ static int test_cam16_maps(void) {
     generate_cam_grid(grid);
 
     /* Forward map */
-    alwan_cam16_forward_map(map_corr, grid, &vc, CAM_COUNT, stride);
+    alwan_cam16_forward_map_interleave(map_corr, grid, &vc, CAM_COUNT, stride);
     for (size_t i = 0; i < CAM_COUNT; i++) {
         alwan_xyz xyz; xyz.x = grid[i*3+0]; xyz.y = grid[i*3+1]; xyz.z = grid[i*3+2];
         alwan_cam16_forward(&ref_corr[i], &xyz, &vc);
@@ -717,18 +717,18 @@ static int test_cam16_maps(void) {
         alwan_scalar dh = ALWAN_ABS(map_corr[i].h - ref_corr[i].h);
         alwan_scalar max_d = dJ; if (dC > max_d) max_d = dC; if (dh > max_d) max_d = dh;
         if (max_d > MAP_TOLERANCE) {
-            printf("[FAIL] cam16_forward_map: pixel %zu: diff=%.16e\n", i, (double)max_d);
+            printf("[FAIL] cam16_forward_map_interleave: pixel %zu: diff=%.16e\n", i, (double)max_d);
             goto fail;
         }
     }
 
     /* Inverse map */
-    alwan_cam16_inverse_map(map_xyz, ref_corr, &vc, CAM_COUNT, stride);
+    alwan_cam16_inverse_map_interleave(map_xyz, ref_corr, &vc, CAM_COUNT, stride);
     for (size_t i = 0; i < CAM_COUNT; i++) {
         alwan_xyz xyz; alwan_cam16_inverse(&xyz, &ref_corr[i], &vc);
         ref_xyz[i*3+0] = xyz.x; ref_xyz[i*3+1] = xyz.y; ref_xyz[i*3+2] = xyz.z;
     }
-    if (compare_arrays_tol(map_xyz, ref_xyz, CAM_COUNT, stride, "cam16_inverse_map", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_xyz, ref_xyz, CAM_COUNT, stride, "cam16_inverse_map_interleave", MAP_TOLERANCE)) goto fail;
 
     free(grid); free(map_corr); free(ref_corr); free(map_xyz); free(ref_xyz);
     TEST_PASS_MSG(); return 0;
@@ -737,10 +737,10 @@ fail:
 }
 
 /* ----------------------------------------------------------------
- * Group H: _map_ex typed format validation
+ * Group H: _map_interleave_ex typed format validation
  *
- * Tests that _map_ex functions (typed pixel I/O) produce results
- * matching the scalar _map functions across all pixel formats.
+ * Tests that _map_interleave_ex functions (typed pixel I/O) produce results
+ * matching the scalar _map_interleave functions across all pixel formats.
  * For integer formats, the reference uses the same quantized input
  * to isolate output quantization error only.
  * ---------------------------------------------------------------- */
@@ -792,7 +792,7 @@ static void generate_mapex_grid(alwan_scalar *out) {
     }
 }
 
-/* Compare _map_ex output vs _map reference.
+/* Compare _map_interleave_ex output vs _map_interleave reference.
  * For integer formats, skip pixels where reference is outside [0,1]
  * because clamping makes comparison meaningless. */
 static int compare_mapex(alwan_scalar const *ex_out, alwan_scalar const *ref_out,
@@ -869,28 +869,28 @@ static int run_mapex3(mapex_entry3 const *entries, size_t n,
 /* ---- H1: Simple 3->3 maps ---- */
 
 static int test_ex_simple_maps(void) {
-    TEST_START("_map_ex: Simple 3->3 (OkLab, Lab/LCh, xyY, JzAzBz, IPT)");
+    TEST_START("_map_interleave_ex: Simple 3->3 (OkLab, Lab/LCh, xyY, JzAzBz, IPT)");
     alwan_scalar *grid = (alwan_scalar *)malloc(MAPEX_COUNT * 3 * sizeof(alwan_scalar));
     if (!grid) { TEST_FAIL("malloc"); }
     generate_mapex_grid(grid);
 
     static const mapex_entry3 entries[] = {
-        {"xyz_to_oklab",      alwan_xyz_to_oklab_map,      alwan_xyz_to_oklab_map_ex},
-        {"oklab_to_xyz",      alwan_oklab_to_xyz_map,      alwan_oklab_to_xyz_map_ex},
-        {"oklab_to_oklch",    alwan_oklab_to_oklch_map,    alwan_oklab_to_oklch_map_ex},
-        {"oklch_to_oklab",    alwan_oklch_to_oklab_map,    alwan_oklch_to_oklab_map_ex},
-        {"lab_to_lch",        alwan_lab_to_lch_map,        alwan_lab_to_lch_map_ex},
-        {"lch_to_lab",        alwan_lch_to_lab_map,        alwan_lch_to_lab_map_ex},
-        {"luv_to_lchuv",      alwan_luv_to_lchuv_map,      alwan_luv_to_lchuv_map_ex},
-        {"lchuv_to_luv",      alwan_lchuv_to_luv_map,      alwan_lchuv_to_luv_map_ex},
-        {"xyz_to_xyy",        alwan_xyz_to_xyy_map,        alwan_xyz_to_xyy_map_ex},
-        {"xyy_to_xyz",        alwan_xyy_to_xyz_map,        alwan_xyy_to_xyz_map_ex},
-        {"xyz_to_jzazbz",    alwan_xyz_to_jzazbz_map,    alwan_xyz_to_jzazbz_map_ex},
-        {"jzazbz_to_xyz",    alwan_jzazbz_to_xyz_map,    alwan_jzazbz_to_xyz_map_ex},
-        {"jzazbz_to_jzczhz", alwan_jzazbz_to_jzczhz_map, alwan_jzazbz_to_jzczhz_map_ex},
-        {"jzczhz_to_jzazbz", alwan_jzczhz_to_jzazbz_map, alwan_jzczhz_to_jzazbz_map_ex},
-        {"xyz_to_ipt",        alwan_xyz_to_ipt_map,        alwan_xyz_to_ipt_map_ex},
-        {"ipt_to_xyz",        alwan_ipt_to_xyz_map,        alwan_ipt_to_xyz_map_ex},
+        {"xyz_to_oklab",      alwan_xyz_to_oklab_map_interleave,      alwan_xyz_to_oklab_map_interleave_ex},
+        {"oklab_to_xyz",      alwan_oklab_to_xyz_map_interleave,      alwan_oklab_to_xyz_map_interleave_ex},
+        {"oklab_to_oklch",    alwan_oklab_to_oklch_map_interleave,    alwan_oklab_to_oklch_map_interleave_ex},
+        {"oklch_to_oklab",    alwan_oklch_to_oklab_map_interleave,    alwan_oklch_to_oklab_map_interleave_ex},
+        {"lab_to_lch",        alwan_lab_to_lch_map_interleave,        alwan_lab_to_lch_map_interleave_ex},
+        {"lch_to_lab",        alwan_lch_to_lab_map_interleave,        alwan_lch_to_lab_map_interleave_ex},
+        {"luv_to_lchuv",      alwan_luv_to_lchuv_map_interleave,      alwan_luv_to_lchuv_map_interleave_ex},
+        {"lchuv_to_luv",      alwan_lchuv_to_luv_map_interleave,      alwan_lchuv_to_luv_map_interleave_ex},
+        {"xyz_to_xyy",        alwan_xyz_to_xyy_map_interleave,        alwan_xyz_to_xyy_map_interleave_ex},
+        {"xyy_to_xyz",        alwan_xyy_to_xyz_map_interleave,        alwan_xyy_to_xyz_map_interleave_ex},
+        {"xyz_to_jzazbz",    alwan_xyz_to_jzazbz_map_interleave,    alwan_xyz_to_jzazbz_map_interleave_ex},
+        {"jzazbz_to_xyz",    alwan_jzazbz_to_xyz_map_interleave,    alwan_jzazbz_to_xyz_map_interleave_ex},
+        {"jzazbz_to_jzczhz", alwan_jzazbz_to_jzczhz_map_interleave, alwan_jzazbz_to_jzczhz_map_interleave_ex},
+        {"jzczhz_to_jzazbz", alwan_jzczhz_to_jzazbz_map_interleave, alwan_jzczhz_to_jzazbz_map_interleave_ex},
+        {"xyz_to_ipt",        alwan_xyz_to_ipt_map_interleave,        alwan_xyz_to_ipt_map_interleave_ex},
+        {"ipt_to_xyz",        alwan_ipt_to_xyz_map_interleave,        alwan_ipt_to_xyz_map_interleave_ex},
     };
 
     int r = run_mapex3(entries, sizeof(entries) / sizeof(entries[0]), grid);
@@ -902,18 +902,18 @@ static int test_ex_simple_maps(void) {
 /* ---- H2: sRGB convenience maps ---- */
 
 static int test_ex_srgb_maps(void) {
-    TEST_START("_map_ex: sRGB convenience (srgb<->xyz, srgb<->lab, srgb<->oklab)");
+    TEST_START("_map_interleave_ex: sRGB convenience (srgb<->xyz, srgb<->lab, srgb<->oklab)");
     alwan_scalar *grid = (alwan_scalar *)malloc(MAPEX_COUNT * 3 * sizeof(alwan_scalar));
     if (!grid) { TEST_FAIL("malloc"); }
     generate_mapex_grid(grid);
 
     static const mapex_entry3 entries[] = {
-        {"srgb_to_xyz",   alwan_srgb_to_xyz_map,   alwan_srgb_to_xyz_map_ex},
-        {"xyz_to_srgb",   alwan_xyz_to_srgb_map,   alwan_xyz_to_srgb_map_ex},
-        {"srgb_to_lab",   alwan_srgb_to_lab_map,   alwan_srgb_to_lab_map_ex},
-        {"lab_to_srgb",   alwan_lab_to_srgb_map,   alwan_lab_to_srgb_map_ex},
-        {"srgb_to_oklab", alwan_srgb_to_oklab_map, alwan_srgb_to_oklab_map_ex},
-        {"oklab_to_srgb", alwan_oklab_to_srgb_map, alwan_oklab_to_srgb_map_ex},
+        {"srgb_to_xyz",   alwan_srgb_to_xyz_map_interleave,   alwan_srgb_to_xyz_map_interleave_ex},
+        {"xyz_to_srgb",   alwan_xyz_to_srgb_map_interleave,   alwan_xyz_to_srgb_map_interleave_ex},
+        {"srgb_to_lab",   alwan_srgb_to_lab_map_interleave,   alwan_srgb_to_lab_map_interleave_ex},
+        {"lab_to_srgb",   alwan_lab_to_srgb_map_interleave,   alwan_lab_to_srgb_map_interleave_ex},
+        {"srgb_to_oklab", alwan_srgb_to_oklab_map_interleave, alwan_srgb_to_oklab_map_interleave_ex},
+        {"oklab_to_srgb", alwan_oklab_to_srgb_map_interleave, alwan_oklab_to_srgb_map_interleave_ex},
     };
 
     int r = run_mapex3(entries, sizeof(entries) / sizeof(entries[0]), grid);
@@ -925,16 +925,16 @@ static int test_ex_srgb_maps(void) {
 /* ---- H3: HSV/HSL maps ---- */
 
 static int test_ex_hsv_hsl_maps(void) {
-    TEST_START("_map_ex: HSV/HSL (rgb<->hsv, rgb<->hsl)");
+    TEST_START("_map_interleave_ex: HSV/HSL (rgb<->hsv, rgb<->hsl)");
     alwan_scalar *grid = (alwan_scalar *)malloc(MAPEX_COUNT * 3 * sizeof(alwan_scalar));
     if (!grid) { TEST_FAIL("malloc"); }
     generate_mapex_grid(grid);
 
     static const mapex_entry3 entries[] = {
-        {"rgb_to_hsv", alwan_rgb_to_hsv_map, alwan_rgb_to_hsv_map_ex},
-        {"hsv_to_rgb", alwan_hsv_to_rgb_map, alwan_hsv_to_rgb_map_ex},
-        {"rgb_to_hsl", alwan_rgb_to_hsl_map, alwan_rgb_to_hsl_map_ex},
-        {"hsl_to_rgb", alwan_hsl_to_rgb_map, alwan_hsl_to_rgb_map_ex},
+        {"rgb_to_hsv", alwan_rgb_to_hsv_map_interleave, alwan_rgb_to_hsv_map_interleave_ex},
+        {"hsv_to_rgb", alwan_hsv_to_rgb_map_interleave, alwan_hsv_to_rgb_map_interleave_ex},
+        {"rgb_to_hsl", alwan_rgb_to_hsl_map_interleave, alwan_rgb_to_hsl_map_interleave_ex},
+        {"hsl_to_rgb", alwan_hsl_to_rgb_map_interleave, alwan_hsl_to_rgb_map_interleave_ex},
     };
 
     int r = run_mapex3(entries, sizeof(entries) / sizeof(entries[0]), grid);
@@ -946,7 +946,7 @@ static int test_ex_hsv_hsl_maps(void) {
 /* ---- H4: White point maps ---- */
 
 static int test_ex_white_point_maps(void) {
-    TEST_START("_map_ex: White point (xyz<->lab, xyz<->luv with D65)");
+    TEST_START("_map_interleave_ex: White point (xyz<->lab, xyz<->luv with D65)");
 
     size_t const ss = 3 * sizeof(alwan_scalar);
     size_t const mt = 3 * sizeof(double);
@@ -969,10 +969,10 @@ static int test_ex_white_point_maps(void) {
                             alwan_xyz const *, size_t, size_t, size_t);
 
     struct { char const *name; fn_w map; fn_w_ex map_ex; } entries[] = {
-        {"xyz_to_lab", alwan_xyz_to_lab_map, alwan_xyz_to_lab_map_ex},
-        {"lab_to_xyz", alwan_lab_to_xyz_map, alwan_lab_to_xyz_map_ex},
-        {"xyz_to_luv", alwan_xyz_to_luv_map, alwan_xyz_to_luv_map_ex},
-        {"luv_to_xyz", alwan_luv_to_xyz_map, alwan_luv_to_xyz_map_ex},
+        {"xyz_to_lab", alwan_xyz_to_lab_map_interleave, alwan_xyz_to_lab_map_interleave_ex},
+        {"lab_to_xyz", alwan_lab_to_xyz_map_interleave, alwan_lab_to_xyz_map_interleave_ex},
+        {"xyz_to_luv", alwan_xyz_to_luv_map_interleave, alwan_xyz_to_luv_map_interleave_ex},
+        {"luv_to_xyz", alwan_luv_to_xyz_map_interleave, alwan_luv_to_xyz_map_interleave_ex},
     };
 
     for (int e = 0; e < 4; e++) {
@@ -1007,7 +1007,7 @@ fail:
 /* ---- H5: ICtCp maps (PQ + HLG) ---- */
 
 static int test_ex_ictcp_maps(void) {
-    TEST_START("_map_ex: ICtCp (rgb/xyz<->ictcp, PQ+HLG)");
+    TEST_START("_map_interleave_ex: ICtCp (rgb/xyz<->ictcp, PQ+HLG)");
 
     size_t const ss = 3 * sizeof(alwan_scalar);
     size_t const mt = 3 * sizeof(double);
@@ -1029,10 +1029,10 @@ static int test_ex_ictcp_maps(void) {
                              int, size_t, size_t, size_t);
 
     struct { char const *name; fn_pq map; fn_pq_ex map_ex; } entries[] = {
-        {"rgb_to_ictcp",  alwan_rgb_to_ictcp_map,  alwan_rgb_to_ictcp_map_ex},
-        {"ictcp_to_rgb",  alwan_ictcp_to_rgb_map,  alwan_ictcp_to_rgb_map_ex},
-        {"xyz_to_ictcp",  alwan_xyz_to_ictcp_map,  alwan_xyz_to_ictcp_map_ex},
-        {"ictcp_to_xyz",  alwan_ictcp_to_xyz_map,  alwan_ictcp_to_xyz_map_ex},
+        {"rgb_to_ictcp",  alwan_rgb_to_ictcp_map_interleave,  alwan_rgb_to_ictcp_map_interleave_ex},
+        {"ictcp_to_rgb",  alwan_ictcp_to_rgb_map_interleave,  alwan_ictcp_to_rgb_map_interleave_ex},
+        {"xyz_to_ictcp",  alwan_xyz_to_ictcp_map_interleave,  alwan_xyz_to_ictcp_map_interleave_ex},
+        {"ictcp_to_xyz",  alwan_ictcp_to_xyz_map_interleave,  alwan_ictcp_to_xyz_map_interleave_ex},
     };
 
     for (int pq = 0; pq <= 1; pq++) {
@@ -1072,7 +1072,7 @@ fail:
 /* ---- H6: CAM maps ---- */
 
 static int test_ex_cam_maps(void) {
-    TEST_START("_map_ex: CAM (CIECAM02/CAM16 forward/inverse)");
+    TEST_START("_map_interleave_ex: CAM (CIECAM02/CAM16 forward/inverse)");
 
     size_t const ss = 3 * sizeof(alwan_scalar);
     size_t const mt = 3 * sizeof(double);
@@ -1126,30 +1126,30 @@ static int test_ex_cam_maps(void) {
         /* Forward reference (on quantized input for int formats) */
         if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
             alwan_collect3(qgrid, typed_xyz, fmt, MAPEX_COUNT, ts, ss);
-            alwan_ciecam02_forward_map(c02_ref, qgrid, &vc02, MAPEX_COUNT, ss);
+            alwan_ciecam02_forward_map_interleave(c02_ref, qgrid, &vc02, MAPEX_COUNT, ss);
         } else {
-            alwan_ciecam02_forward_map(c02_ref, grid, &vc02, MAPEX_COUNT, ss);
+            alwan_ciecam02_forward_map_interleave(c02_ref, grid, &vc02, MAPEX_COUNT, ss);
         }
 
-        /* Forward _map_ex */
-        alwan_ciecam02_forward_map_ex(c02_ex, typed_xyz, fmt, &vc02, MAPEX_COUNT, ts);
+        /* Forward _map_interleave_ex */
+        alwan_ciecam02_forward_map_interleave_ex(c02_ex, typed_xyz, fmt, &vc02, MAPEX_COUNT, ts);
         for (size_t i = 0; i < MAPEX_COUNT; i++) {
             alwan_scalar dJ = ALWAN_ABS(c02_ex[i].J - c02_ref[i].J);
             alwan_scalar dC = ALWAN_ABS(c02_ex[i].C - c02_ref[i].C);
             alwan_scalar dh = ALWAN_ABS(c02_ex[i].h - c02_ref[i].h);
             alwan_scalar max_d = dJ; if (dC > max_d) max_d = dC; if (dh > max_d) max_d = dh;
             if (max_d > cam_fwd_tol) {
-                printf("[FAIL] ciecam02_forward_map_ex [%s]: pixel %zu: diff=%.6e (tol=%.6e)\n",
+                printf("[FAIL] ciecam02_forward_map_interleave_ex [%s]: pixel %zu: diff=%.6e (tol=%.6e)\n",
                        mapex_fmt_name(fmt), i, (double)max_d, (double)cam_fwd_tol);
                 goto fail;
             }
         }
 
         /* Inverse reference */
-        alwan_ciecam02_inverse_map(ref_xyz, c02_ref, &vc02, MAPEX_COUNT, ss);
+        alwan_ciecam02_inverse_map_interleave(ref_xyz, c02_ref, &vc02, MAPEX_COUNT, ss);
 
-        /* Inverse _map_ex (correlates in, typed XYZ out) */
-        alwan_ciecam02_inverse_map_ex(typed_xyz, fmt, c02_ref, &vc02, MAPEX_COUNT, ts);
+        /* Inverse _map_interleave_ex (correlates in, typed XYZ out) */
+        alwan_ciecam02_inverse_map_interleave_ex(typed_xyz, fmt, c02_ref, &vc02, MAPEX_COUNT, ts);
         alwan_collect3(ex_xyz, typed_xyz, fmt, MAPEX_COUNT, ts, ss);
         if (compare_mapex(ex_xyz, ref_xyz, MAPEX_COUNT, ss,
                           "ciecam02_inverse", tol, fmt)) goto fail;
@@ -1159,27 +1159,27 @@ static int test_ex_cam_maps(void) {
         alwan_scatter3(typed_xyz, fmt, grid, MAPEX_COUNT, ss, ts);
 
         if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
-            alwan_cam16_forward_map(c16_ref, qgrid, &vc16, MAPEX_COUNT, ss);
+            alwan_cam16_forward_map_interleave(c16_ref, qgrid, &vc16, MAPEX_COUNT, ss);
         } else {
-            alwan_cam16_forward_map(c16_ref, grid, &vc16, MAPEX_COUNT, ss);
+            alwan_cam16_forward_map_interleave(c16_ref, grid, &vc16, MAPEX_COUNT, ss);
         }
 
-        alwan_cam16_forward_map_ex(c16_ex, typed_xyz, fmt, &vc16, MAPEX_COUNT, ts);
+        alwan_cam16_forward_map_interleave_ex(c16_ex, typed_xyz, fmt, &vc16, MAPEX_COUNT, ts);
         for (size_t i = 0; i < MAPEX_COUNT; i++) {
             alwan_scalar dJ = ALWAN_ABS(c16_ex[i].J - c16_ref[i].J);
             alwan_scalar dC = ALWAN_ABS(c16_ex[i].C - c16_ref[i].C);
             alwan_scalar dh = ALWAN_ABS(c16_ex[i].h - c16_ref[i].h);
             alwan_scalar max_d = dJ; if (dC > max_d) max_d = dC; if (dh > max_d) max_d = dh;
             if (max_d > cam_fwd_tol) {
-                printf("[FAIL] cam16_forward_map_ex [%s]: pixel %zu: diff=%.6e (tol=%.6e)\n",
+                printf("[FAIL] cam16_forward_map_interleave_ex [%s]: pixel %zu: diff=%.6e (tol=%.6e)\n",
                        mapex_fmt_name(fmt), i, (double)max_d, (double)cam_fwd_tol);
                 goto fail;
             }
         }
 
-        alwan_cam16_inverse_map(ref_xyz, c16_ref, &vc16, MAPEX_COUNT, ss);
+        alwan_cam16_inverse_map_interleave(ref_xyz, c16_ref, &vc16, MAPEX_COUNT, ss);
 
-        alwan_cam16_inverse_map_ex(typed_xyz, fmt, c16_ref, &vc16, MAPEX_COUNT, ts);
+        alwan_cam16_inverse_map_interleave_ex(typed_xyz, fmt, c16_ref, &vc16, MAPEX_COUNT, ts);
         alwan_collect3(ex_xyz, typed_xyz, fmt, MAPEX_COUNT, ts, ss);
         if (compare_mapex(ex_xyz, ref_xyz, MAPEX_COUNT, ss,
                           "cam16_inverse", tol, fmt)) goto fail;
@@ -1245,8 +1245,8 @@ int test_69_map_validation_main(void) {
     if (test_ciecam02_maps()) return 1;
     if (test_cam16_maps()) return 1;
 
-    /* Group H: _map_ex typed format validation */
-    printf("\nGroup H: _map_ex typed format validation\n");
+    /* Group H: _map_interleave_ex typed format validation */
+    printf("\nGroup H: _map_interleave_ex typed format validation\n");
     printf("--------------------------------\n");
     if (test_ex_simple_maps()) return 1;
     if (test_ex_srgb_maps()) return 1;

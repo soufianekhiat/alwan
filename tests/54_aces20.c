@@ -109,18 +109,18 @@ static int test_rgb_to_jmh20(void) {
 
         /* Use absolute tolerance for small values, relative for large */
         if (ALWAN_ABS(rgb_to_jmh_expected[i][0]) > ALWAN_LITERAL(1.0)) {
-            TEST_ASSERT_REL(jmh_out.v[0], rgb_to_jmh_expected[i][0], TEST_TOLERANCE, msg);
+            TEST_ASSERT_REL(jmh_out.v[0], rgb_to_jmh_expected[i][0], ALWAN_TEST_TOLERANCE, msg);
         } else {
-            TEST_ASSERT_ABS(jmh_out.v[0], rgb_to_jmh_expected[i][0], TEST_TOLERANCE, msg);
+            TEST_ASSERT_ABS(jmh_out.v[0], rgb_to_jmh_expected[i][0], ALWAN_TEST_TOLERANCE, msg);
         }
 
         /* Check M component */
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] M: RGB=(%.3f, %.3f, %.3f)",
                  i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b);
         if (ALWAN_ABS(rgb_to_jmh_expected[i][1]) > ALWAN_LITERAL(1.0)) {
-            TEST_ASSERT_REL(jmh_out.v[1], rgb_to_jmh_expected[i][1], TEST_TOLERANCE, msg);
+            TEST_ASSERT_REL(jmh_out.v[1], rgb_to_jmh_expected[i][1], ALWAN_TEST_TOLERANCE, msg);
         } else {
-            TEST_ASSERT_ABS(jmh_out.v[1], rgb_to_jmh_expected[i][1], TEST_TOLERANCE, msg);
+            TEST_ASSERT_ABS(jmh_out.v[1], rgb_to_jmh_expected[i][1], ALWAN_TEST_TOLERANCE, msg);
         }
 
         /* Check h component (hue in degrees) */
@@ -133,7 +133,7 @@ static int test_rgb_to_jmh20(void) {
             if (h_diff > ALWAN_LITERAL(180.0)) {
                 h_diff = ALWAN_LITERAL(360.0) - h_diff;
             }
-            if (h_diff > TEST_TOLERANCE) {
+            if (h_diff > ALWAN_TEST_TOLERANCE) {
                 printf("FAIL: %s\n  Expected: %.2f, Got: %.2f, Diff: %.2f\n",
                        msg, (alwan_scalar)rgb_to_jmh_expected[i][2], (alwan_scalar)jmh_out.v[2], (alwan_scalar)h_diff);
                 return 1;
@@ -183,7 +183,7 @@ static int test_tonescale_compress20(void) {
         alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - exp_g);
         alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - exp_b);
 
-        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
+        if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("FAIL [%zu]: in=(%.4f,%.4f,%.4f) exp=(%.4f,%.4f,%.4f) got=(%.4f,%.4f,%.4f)\n",
                    i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
                    (alwan_scalar)exp_r, (alwan_scalar)exp_g, (alwan_scalar)exp_b,
@@ -240,7 +240,7 @@ static int test_jmh_roundtrip(void) {
         alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - rgb_in.g);
         alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - rgb_in.b);
 
-        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
+        if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("FAIL [%zu]: in=(%.6f,%.6f,%.6f) out=(%.6f,%.6f,%.6f) diff=(%.2e,%.2e,%.2e)\n",
                    i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
                    (alwan_scalar)rgb_out.r, (alwan_scalar)rgb_out.g, (alwan_scalar)rgb_out.b,
@@ -312,7 +312,7 @@ static int test_gamut_compress20(void) {
         alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - exp_g);
         alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - exp_b);
 
-        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
+        if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("FAIL [%zu]: in=(%.4f,%.4f,%.4f) exp=(%.4f,%.4f,%.4f) got=(%.4f,%.4f,%.4f)\n",
                    i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
                    (alwan_scalar)exp_r, (alwan_scalar)exp_g, (alwan_scalar)exp_b,

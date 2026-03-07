@@ -103,7 +103,7 @@ static int test_srgb_to_p3(alwan_ctx *ctx) {
         alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
         alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
-        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
+        if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("sRGB->P3 color %zu failed:\n", i);
             printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
             printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);
@@ -147,7 +147,7 @@ static int test_srgb_to_bt2020(alwan_ctx *ctx) {
         alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
         alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
-        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
+        if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("sRGB->BT2020 color %zu failed:\n", i);
             printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
             printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);
@@ -191,7 +191,7 @@ static int test_srgb_to_acescg(alwan_ctx *ctx) {
         alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
         alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
-        if (diff_r > TEST_TOLERANCE || diff_g > TEST_TOLERANCE || diff_b > TEST_TOLERANCE) {
+        if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("sRGB->ACEScg color %zu failed:\n", i);
             printf("  Source: [%.6f, %.6f, %.6f]\n", src_rgb.r, src_rgb.g, src_rgb.b);
             printf("  Expected: [%.6f, %.6f, %.6f]\n", expected_rgb.r, expected_rgb.g, expected_rgb.b);

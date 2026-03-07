@@ -16,7 +16,7 @@
  * Map CIECAM02 Conversions
  * ---------------------------------------------------------------- */
 
-int alwan_ciecam02_forward_map(alwan_ciecam02_correlates *correlates_out,
+int alwan_ciecam02_forward_map_interleave(alwan_ciecam02_correlates *correlates_out,
                                 alwan_scalar const *xyz_in,
                                 alwan_ciecam02_viewing_conditions const *vc,
                                 size_t count, size_t in_stride) {
@@ -48,7 +48,7 @@ int alwan_ciecam02_forward_map(alwan_ciecam02_correlates *correlates_out,
     return ALWAN_OK;
 }
 
-int alwan_ciecam02_inverse_map(alwan_scalar *xyz_out,
+int alwan_ciecam02_inverse_map_interleave(alwan_scalar *xyz_out,
                                 alwan_ciecam02_correlates const *correlates_in,
                                 alwan_ciecam02_viewing_conditions const *vc,
                                 size_t count, size_t out_stride) {
@@ -86,7 +86,7 @@ int alwan_ciecam02_inverse_map(alwan_scalar *xyz_out,
  * Map CAM16 Conversions
  * ---------------------------------------------------------------- */
 
-int alwan_cam16_forward_map(alwan_cam16_correlates *correlates_out,
+int alwan_cam16_forward_map_interleave(alwan_cam16_correlates *correlates_out,
                              alwan_scalar const *xyz_in,
                              alwan_cam16_viewing_conditions const *vc,
                              size_t count, size_t in_stride) {
@@ -118,7 +118,7 @@ int alwan_cam16_forward_map(alwan_cam16_correlates *correlates_out,
     return ALWAN_OK;
 }
 
-int alwan_cam16_inverse_map(alwan_scalar *xyz_out,
+int alwan_cam16_inverse_map_interleave(alwan_scalar *xyz_out,
                              alwan_cam16_correlates const *correlates_in,
                              alwan_cam16_viewing_conditions const *vc,
                              size_t count, size_t out_stride) {

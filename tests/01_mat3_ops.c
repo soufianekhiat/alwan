@@ -44,7 +44,7 @@ static int test_identity(void) {
     /* I * I = I */
     alwan_mat3_mul(&result, &I, &I);
     alwan_scalar diff = mat3_max_diff(&I, &result);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "I * I != I");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "I * I != I");
 
     TEST_PASS("test_identity");
 }
@@ -58,7 +58,7 @@ static int test_multiply(void) {
     alwan_mat3_mul(&result, &A, &I);
 
     alwan_scalar diff = mat3_max_diff(&A, &result);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "A * I != A");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "A * I != A");
 
     TEST_PASS("test_multiply");
 }
@@ -72,12 +72,12 @@ static int test_inverse_identity(void) {
 
     /* I^-1 should be I */
     alwan_scalar diff = mat3_max_diff(&I, &I_inv);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "I^-1 != I");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "I^-1 != I");
 
     /* I * I^-1 = I */
     alwan_mat3_mul(&result, &I, &I_inv);
     diff = mat3_max_diff(&I, &result);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "I * I^-1 != I");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "I * I^-1 != I");
 
     TEST_PASS("test_inverse_identity");
 }
@@ -100,7 +100,7 @@ static int test_inverse_general(void) {
     alwan_mat3_mul(&result, &M, &M_inv);
     alwan_scalar diff = mat3_max_diff(&I, &result);
 
-    if (diff > TEST_TOLERANCE) {
+    if (diff > ALWAN_TEST_TOLERANCE) {
         mat3_print("M", &M);
         mat3_print("M_inv", &M_inv);
         mat3_print("M * M_inv", &result);
@@ -108,7 +108,7 @@ static int test_inverse_general(void) {
         printf("Max diff: %e\n", diff);
     }
 
-    TEST_ASSERT(diff < TEST_TOLERANCE, "M * M^-1 != I (tolerance exceeded)");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "M * M^-1 != I (tolerance exceeded)");
 
     TEST_PASS("test_inverse_general");
 }
@@ -155,7 +155,7 @@ static int test_inverse_random_seed(void) {
         alwan_mat3_mul(&result, &M, &M_inv);
         alwan_scalar diff = mat3_max_diff(&I, &result);
 
-        alwan_scalar random_tolerance = TEST_TOLERANCE;
+        alwan_scalar random_tolerance = ALWAN_TEST_TOLERANCE;
         if (diff > random_tolerance) {
             printf("Trial %d failed with diff %e\n", trial, diff);
             mat3_print("M", &M);
@@ -180,9 +180,9 @@ static int test_mat3_mulv(void) {
 
     alwan_mat3_mulv(&result, &M, &v);
 
-    TEST_ASSERT(ALWAN_ABS(result.v[0] - ALWAN_LITERAL(1.0)) < TEST_TOLERANCE, "Mv[0] != 1");
-    TEST_ASSERT(ALWAN_ABS(result.v[1] - ALWAN_LITERAL(2.0)) < TEST_TOLERANCE, "Mv[1] != 2");
-    TEST_ASSERT(ALWAN_ABS(result.v[2] - ALWAN_LITERAL(3.0)) < TEST_TOLERANCE, "Mv[2] != 3");
+    TEST_ASSERT(ALWAN_ABS(result.v[0] - ALWAN_LITERAL(1.0)) < ALWAN_TEST_TOLERANCE, "Mv[0] != 1");
+    TEST_ASSERT(ALWAN_ABS(result.v[1] - ALWAN_LITERAL(2.0)) < ALWAN_TEST_TOLERANCE, "Mv[1] != 2");
+    TEST_ASSERT(ALWAN_ABS(result.v[2] - ALWAN_LITERAL(3.0)) < ALWAN_TEST_TOLERANCE, "Mv[2] != 3");
 
     TEST_PASS("test_mat3_mulv");
 }

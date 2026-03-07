@@ -18,7 +18,7 @@
 static int test_pq_forward_inverse(void) {
     /* Test PQ (ST.2084) OETF and EOTF against reference values.
      * Reference: SMPTE ST 2084, computed with double precision Python. */
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     /* Test OETF: linear cd/m² -> PQ code value */
     {
@@ -124,7 +124,7 @@ static int test_bt1886_eotf(void) {
 
     size_t const num_tests = sizeof(test_pairs) / sizeof(test_pairs[0]);
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar encoded = test_pairs[i][0];
@@ -152,7 +152,7 @@ static int test_acesproxy_roundtrip(void) {
 
     size_t const num_tests = sizeof(test_values) / sizeof(test_values[0]);
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_scalar linear = test_values[i];
@@ -191,7 +191,7 @@ static int test_pq_st2084_alias(void) {
 
     /* Should produce identical results */
     alwan_scalar diff = ALWAN_ABS(encoded_pq - encoded_st2084);
-    TEST_ASSERT(diff < TEST_TOLERANCE, "PQ and ST.2084 should be aliases");
+    TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "PQ and ST.2084 should be aliases");
 
     TEST_PASS("PQ/ST.2084 alias");
 }

@@ -82,7 +82,7 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
     offdiag_err += ALWAN_ABS(identity.m[6]);
     offdiag_err += ALWAN_ABS(identity.m[7]);
 
-    alwan_scalar tol = TEST_TOLERANCE;
+    alwan_scalar tol = ALWAN_TEST_TOLERANCE;
 
     if (diag_err > tol || offdiag_err > tol) {
         printf("[FAIL] %s: Matrix inversion error too large (diag=%e, offdiag=%e)\n",
@@ -117,7 +117,7 @@ static int test_adobe_rgb_1998(void) {
     alwan_scalar d65_x = ALWAN_LITERAL(0.3127);
     alwan_scalar d65_y = ALWAN_LITERAL(0.3290);
     alwan_scalar white_err = ALWAN_ABS(desc.white_xy[0] - d65_x) + ALWAN_ABS(desc.white_xy[1] - d65_y);
-    TEST_ASSERT(white_err < TEST_TOLERANCE,
+    TEST_ASSERT(white_err < ALWAN_TEST_TOLERANCE,
                 "Adobe RGB 1998 should have D65 white point");
 
     printf("  Adobe RGB 1998: R(%.4f,%.4f) G(%.4f,%.4f) B(%.4f,%.4f) W(%.4f,%.4f)\n",
@@ -154,7 +154,7 @@ static int test_prophoto_rgb(void) {
     alwan_scalar d50_x = ALWAN_LITERAL(0.3457);
     alwan_scalar d50_y = ALWAN_LITERAL(0.3585);
     alwan_scalar white_err = ALWAN_ABS(desc.white_xy[0] - d50_x) + ALWAN_ABS(desc.white_xy[1] - d50_y);
-    TEST_ASSERT(white_err < TEST_TOLERANCE,
+    TEST_ASSERT(white_err < ALWAN_TEST_TOLERANCE,
                 "ProPhoto RGB should have D50 white point");
 
     printf("  ProPhoto RGB: R(%.4f,%.4f) G(%.4f,%.4f) B(%.4f,%.4f) W(%.4f,%.4f)\n",

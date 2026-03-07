@@ -59,7 +59,7 @@ static int test_llab_forward(void) {
     printf("\n=== Testing LLAB Forward Transform ===\n");
 
     int failed = 0;
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_test_cases; i++) {
         alwan_xyz xyz_in, xyz_0, xyz_r;
@@ -204,7 +204,7 @@ static int test_llab_achromatic(void) {
 
     int failed = 0;
     /* Achromatic chroma tolerance */
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     /* D65 illuminant */
     alwan_xyz d65;

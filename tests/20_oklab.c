@@ -40,7 +40,7 @@ ALWAN_DIAG_POP
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(oklab_computed.v[j] - oklab_expected.v[j]);
-            if (diff > TEST_TOLERANCE) {
+            if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
                        (double)xyz_in.v[0], (double)xyz_in.v[1], (double)xyz_in.v[2]);
@@ -62,7 +62,7 @@ ALWAN_DIAG_POP
             ALWAN_MEMCPY(&xyz_out, &xyz_typed, sizeof(alwan_vec3));
         }
 
-        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
+        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(xyz_out.v[j] - xyz_in.v[j]);
@@ -118,7 +118,7 @@ ALWAN_DIAG_POP
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(oklch_computed.v[j] - oklch_expected.v[j]);
-            alwan_scalar tol = TEST_TOLERANCE;
+            alwan_scalar tol = ALWAN_TEST_TOLERANCE;
             if (diff > tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  Oklab: [%.6f, %.6f, %.6f]\n",
@@ -143,7 +143,7 @@ ALWAN_DIAG_POP
 
         for (int j = 0; j < 3; j++) {
             alwan_scalar diff = ALWAN_ABS(oklab_out.v[j] - oklab_in.v[j]);
-            if (diff > TEST_TOLERANCE) {
+            if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("Round-trip color %zu channel %d failed:\n", i, j);
                 printf("  Original Oklab: [%.6f, %.6f, %.6f]\n",
                        (double)oklab_in.v[0], (double)oklab_in.v[1], (double)oklab_in.v[2]);
@@ -164,7 +164,7 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 static int test_oklab_known_values(void) {
-    alwan_scalar const tol = TEST_TOLERANCE;
+    alwan_scalar const tol = ALWAN_TEST_TOLERANCE;
 
     /* D65 white in Oklab: reference values computed from the Oklab M1/M2 matrices.
      * Note: Oklab matrices are designed for sRGB (1,1,1) -> L=1; an arbitrary D65

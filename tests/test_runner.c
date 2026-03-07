@@ -80,6 +80,7 @@ extern int test_66_belcour2023_main(void);
 extern int test_67_hwb_gamma_dseries_main(void);
 extern int test_68_ohno_contrast_dicom_main(void);
 extern int test_69_map_validation_main(void);
+extern int test_70_planar_map_main(void);
 
 /* Test registry */
 typedef struct {
@@ -158,6 +159,7 @@ static test_suite const g_test_suites[] = {
     {"67_hwb_gamma_dseries", test_67_hwb_gamma_dseries_main},
     {"68_ohno_contrast_dicom", test_68_ohno_contrast_dicom_main},
     {"69_map_validation", test_69_map_validation_main},
+    {"70_planar_map", test_70_planar_map_main},
 };
 
 int main(void) {

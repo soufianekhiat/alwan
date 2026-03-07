@@ -45,7 +45,7 @@ ALWAN_DIAG_POP
         /* Test XYZ -> Hunter Lab */
         alwan_xyz_to_hunter_lab(&hunter_computed, &xyz_in);
 
-        alwan_scalar const hunter_tol = TEST_TOLERANCE;
+        alwan_scalar const hunter_tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar hunter_comp_arr[3] = {hunter_computed.L, hunter_computed.a, hunter_computed.b};
         alwan_scalar hunter_exp_arr[3] = {hunter_expected.L, hunter_expected.a, hunter_expected.b};
         for (int j = 0; j < 3; j++) {
@@ -66,7 +66,7 @@ ALWAN_DIAG_POP
         /* Test round-trip: Hunter Lab -> XYZ */
         alwan_hunter_lab_to_xyz(&xyz_out, &hunter_computed);
 
-        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
+        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
         alwan_scalar xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
         alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};

@@ -48,7 +48,7 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
         /* Test Lab -> DIN99 */
         alwan_lab_to_din99(&din99_computed, &lab, variant);
 
-        alwan_scalar const din99_tol = TEST_TOLERANCE;
+        alwan_scalar const din99_tol = ALWAN_TEST_TOLERANCE;
         alwan_scalar din99_comp_arr[3] = {din99_computed.L99, din99_computed.a99, din99_computed.b99};
         alwan_scalar din99_exp_arr[3] = {din99_expected.L99, din99_expected.a99, din99_expected.b99};
         for (int j = 0; j < 3; j++) {
@@ -69,7 +69,7 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
         /* Test round-trip: DIN99 -> Lab */
         alwan_din99_to_lab(&lab_out, &din99_computed, variant);
 
-        alwan_scalar const roundtrip_tol = TEST_TOLERANCE;
+        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
         alwan_scalar lab_arr[3] = {lab.L, lab.a, lab.b};
         alwan_scalar lab_out_arr[3] = {lab_out.L, lab_out.a, lab_out.b};

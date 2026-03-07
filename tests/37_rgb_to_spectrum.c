@@ -230,7 +230,7 @@ static int test_smits1999_round_trip(char const *color_name,
     TEST_ASSERT(status == ALWAN_OK, "spectrum_to_normalized_xyz failed");
 
     /* Compare recovered XYZ with expected */
-    alwan_scalar tolerance = TEST_TOLERANCE;
+    alwan_scalar tolerance = ALWAN_TEST_TOLERANCE;
     alwan_scalar diff = vec3_max_diff(&xyz_recovered, &expected);
 
     if (diff >= tolerance) {
@@ -274,7 +274,7 @@ static int test_mallett2019_round_trip(char const *color_name,
     TEST_ASSERT(status == ALWAN_OK, "spectrum_to_normalized_xyz failed");
 
     /* Compare recovered XYZ with expected */
-    alwan_scalar tolerance = TEST_TOLERANCE;
+    alwan_scalar tolerance = ALWAN_TEST_TOLERANCE;
     alwan_scalar diff = vec3_max_diff(&xyz_recovered, &expected);
 
     if (diff >= tolerance) {

@@ -18,7 +18,7 @@ ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
-    alwan_scalar const osa_tolerance = TEST_TOLERANCE;
+    alwan_scalar const osa_tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz_in;
@@ -82,7 +82,7 @@ static int test_osa_ucs_inverse_approximate(void) {
     alwan_xyz_to_osa_ucs(&osa, &xyz);
     alwan_osa_ucs_to_xyz(&xyz_out, &osa);
 
-    alwan_scalar const loose_tol = TEST_TOLERANCE;
+    alwan_scalar const loose_tol = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar xyz_arr[3] = {xyz.x, xyz.y, xyz.z};
     alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};

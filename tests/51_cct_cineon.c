@@ -114,7 +114,7 @@ static int test_cineon_encoding(void) {
     for (size_t i = 0; i < NUM_CINEON_LINEAR; i++) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Cineon encode [%zu]: linear=%.4f", i, (double)cineon_linear_input[i]);
-        TEST_ASSERT_REL(encoded[i], cineon_encoded_expected[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(encoded[i], cineon_encoded_expected[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu encoding tests\n", NUM_CINEON_LINEAR);
@@ -139,7 +139,7 @@ static int test_cineon_decoding(void) {
     for (size_t i = 0; i < NUM_CINEON_ENCODED; i++) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Cineon decode [%zu]: encoded=%.4f", i, (double)cineon_encoded_input[i]);
-        TEST_ASSERT_REL(decoded[i], cineon_decoded_expected[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(decoded[i], cineon_decoded_expected[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu decoding tests\n", NUM_CINEON_ENCODED);
@@ -160,7 +160,7 @@ static int test_cineon_roundtrip(void) {
     for (size_t i = 0; i < NUM_CINEON_LINEAR; i++) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Cineon roundtrip [%zu]: original=%.4f", i, (double)cineon_linear_input[i]);
-        TEST_ASSERT_REL(roundtrip[i], cineon_linear_input[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(roundtrip[i], cineon_linear_input[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu roundtrip tests\n", NUM_CINEON_LINEAR);
@@ -180,7 +180,7 @@ static int test_cct_hernandez(void) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Hernandez CCT [%zu]: xy=(%.4f, %.4f)",
                  i, (double)xy.v[0], (double)xy.v[1]);
-        TEST_ASSERT_REL(cct, hernandez_cct_expected[i], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(cct, hernandez_cct_expected[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu Hernandez tests\n", NUM_HERNANDEZ_XY);
@@ -202,8 +202,8 @@ static int test_cct_kang_forward(void) {
         snprintf(msg_x, sizeof(msg_x), "Kang xy.x [%zu]: CCT=%.0fK", i, (double)cct);
         snprintf(msg_y, sizeof(msg_y), "Kang xy.y [%zu]: CCT=%.0fK", i, (double)cct);
 
-        TEST_ASSERT_REL(xy.v[0], expected_x, TEST_TOLERANCE, msg_x);
-        TEST_ASSERT_REL(xy.v[1], expected_y, TEST_TOLERANCE, msg_y);
+        TEST_ASSERT_REL(xy.v[0], expected_x, ALWAN_TEST_TOLERANCE, msg_x);
+        TEST_ASSERT_REL(xy.v[1], expected_y, ALWAN_TEST_TOLERANCE, msg_y);
     }
 
     printf("    PASS: %zu Kang forward tests\n", NUM_KANG_CCT);
@@ -231,7 +231,7 @@ static int test_cct_kang_inverse(void) {
         snprintf(msg, sizeof(msg), "Kang inverse [%zu]: original CCT=%.0fK", i, (double)original_cct);
 
         /* Use absolute tolerance for CCT (iterative method) */
-        TEST_ASSERT_ABS(recovered_cct, original_cct, TEST_TOLERANCE, msg);
+        TEST_ASSERT_ABS(recovered_cct, original_cct, ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: Kang inverse tests\n");

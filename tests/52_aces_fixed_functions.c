@@ -122,11 +122,11 @@ static int test_aces_redmod03(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RedMod03 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, redmod03_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, redmod03_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "RedMod03 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, redmod03_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, redmod03_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "RedMod03 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, redmod03_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, redmod03_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu RedMod03 tests\n", NUM_TEST_RGB);
@@ -152,11 +152,11 @@ static int test_aces_redmod10(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RedMod10 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, redmod10_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, redmod10_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "RedMod10 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, redmod10_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, redmod10_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "RedMod10 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, redmod10_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, redmod10_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu RedMod10 tests\n", NUM_TEST_RGB);
@@ -182,11 +182,11 @@ static int test_aces_glow03(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Glow03 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, glow03_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, glow03_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "Glow03 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, glow03_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, glow03_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "Glow03 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, glow03_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, glow03_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu Glow03 tests\n", NUM_TEST_RGB);
@@ -212,11 +212,11 @@ static int test_aces_glow10(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Glow10 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, glow10_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, glow10_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "Glow10 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, glow10_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, glow10_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "Glow10 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, glow10_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, glow10_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu Glow10 tests\n", NUM_TEST_RGB);
@@ -242,11 +242,11 @@ static int test_aces_dark_to_dim10(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "DarkToDim10 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, dark_to_dim10_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, dark_to_dim10_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "DarkToDim10 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, dark_to_dim10_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, dark_to_dim10_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "DarkToDim10 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, dark_to_dim10_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, dark_to_dim10_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu DarkToDim10 tests\n", NUM_TEST_RGB);
@@ -276,11 +276,11 @@ static int test_aces_gamut_comp13(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "GamutComp13 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, gamut_comp13_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, gamut_comp13_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "GamutComp13 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, gamut_comp13_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, gamut_comp13_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "GamutComp13 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, gamut_comp13_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, gamut_comp13_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu GamutComp13 tests\n", NUM_TEST_RGB);
@@ -309,11 +309,11 @@ static int test_rec2100_surround(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Rec2100_Surround [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, rec2100_surround_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, rec2100_surround_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "Rec2100_Surround [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, rec2100_surround_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, rec2100_surround_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "Rec2100_Surround [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, rec2100_surround_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, rec2100_surround_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu Rec2100_Surround tests\n", NUM_TEST_RGB);
@@ -342,11 +342,11 @@ static int test_aces_tonescale_compress20(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "TonescaleCompress20 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, tonescale_compress20_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, tonescale_compress20_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "TonescaleCompress20 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, tonescale_compress20_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, tonescale_compress20_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "TonescaleCompress20 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, tonescale_compress20_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, tonescale_compress20_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu TonescaleCompress20 tests\n", NUM_TEST_RGB);
@@ -376,11 +376,11 @@ static int test_aces_rgb_to_jmh20(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] J", i);
-        TEST_ASSERT_REL(jmh_out.v[0], rgb_to_jmh20_expected[i * 3], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(jmh_out.v[0], rgb_to_jmh20_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] M", i);
-        TEST_ASSERT_REL(jmh_out.v[1], rgb_to_jmh20_expected[i * 3 + 1], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(jmh_out.v[1], rgb_to_jmh20_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] h", i);
-        TEST_ASSERT_REL(jmh_out.v[2], rgb_to_jmh20_expected[i * 3 + 2], TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(jmh_out.v[2], rgb_to_jmh20_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
     }
 
     printf("    PASS: %zu RGB_to_JMh20 tests\n", NUM_TEST_RGB);

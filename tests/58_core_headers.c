@@ -98,13 +98,13 @@ static int test_oklab_v_roundtrip(void) {
     alwan_oklab_to_xyz(&back_p, &ok_p);
 
     /* Compare _v vs pointer results */
-    TEST_ASSERT_NEAR(ok_v.L, ok_p.L, TEST_TOLERANCE, "oklab L");
-    TEST_ASSERT_NEAR(ok_v.a, ok_p.a, TEST_TOLERANCE, "oklab a");
-    TEST_ASSERT_NEAR(ok_v.b, ok_p.b, TEST_TOLERANCE, "oklab b");
+    TEST_ASSERT_NEAR(ok_v.L, ok_p.L, ALWAN_TEST_TOLERANCE, "oklab L");
+    TEST_ASSERT_NEAR(ok_v.a, ok_p.a, ALWAN_TEST_TOLERANCE, "oklab a");
+    TEST_ASSERT_NEAR(ok_v.b, ok_p.b, ALWAN_TEST_TOLERANCE, "oklab b");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "xyz round-trip x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "xyz round-trip y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "xyz round-trip z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "xyz round-trip x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "xyz round-trip y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "xyz round-trip z");
 
     TEST_PASS("oklab_v_roundtrip");
 }
@@ -129,13 +129,13 @@ static int test_oklch_v_roundtrip(void) {
     alwan_oklab back_p;
     alwan_oklch_to_oklab(&back_p, &lch_p);
 
-    TEST_ASSERT_NEAR(lch_v.L, lch_p.L, TEST_TOLERANCE, "oklch L");
-    TEST_ASSERT_NEAR(lch_v.C, lch_p.C, TEST_TOLERANCE, "oklch C");
-    TEST_ASSERT_NEAR(lch_v.h, lch_p.h, TEST_TOLERANCE, "oklch h");
+    TEST_ASSERT_NEAR(lch_v.L, lch_p.L, ALWAN_TEST_TOLERANCE, "oklch L");
+    TEST_ASSERT_NEAR(lch_v.C, lch_p.C, ALWAN_TEST_TOLERANCE, "oklch C");
+    TEST_ASSERT_NEAR(lch_v.h, lch_p.h, ALWAN_TEST_TOLERANCE, "oklch h");
 
-    TEST_ASSERT_NEAR(back_v.L, back_p.L, TEST_TOLERANCE, "oklch->oklab L");
-    TEST_ASSERT_NEAR(back_v.a, back_p.a, TEST_TOLERANCE, "oklch->oklab a");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "oklch->oklab b");
+    TEST_ASSERT_NEAR(back_v.L, back_p.L, ALWAN_TEST_TOLERANCE, "oklch->oklab L");
+    TEST_ASSERT_NEAR(back_v.a, back_p.a, ALWAN_TEST_TOLERANCE, "oklch->oklab a");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "oklch->oklab b");
 
     TEST_PASS("oklch_v_roundtrip");
 }
@@ -162,13 +162,13 @@ static int test_jzazbz_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_jzazbz_to_xyz(&back_p, &jz_p);
 
-    TEST_ASSERT_NEAR(jz_v.Jz, jz_p.Jz, TEST_TOLERANCE, "Jz");
-    TEST_ASSERT_NEAR(jz_v.az, jz_p.az, TEST_TOLERANCE, "az");
-    TEST_ASSERT_NEAR(jz_v.bz, jz_p.bz, TEST_TOLERANCE, "bz");
+    TEST_ASSERT_NEAR(jz_v.Jz, jz_p.Jz, ALWAN_TEST_TOLERANCE, "Jz");
+    TEST_ASSERT_NEAR(jz_v.az, jz_p.az, ALWAN_TEST_TOLERANCE, "az");
+    TEST_ASSERT_NEAR(jz_v.bz, jz_p.bz, ALWAN_TEST_TOLERANCE, "bz");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "jz xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "jz xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "jz xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "jz xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "jz xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "jz xyz z");
 
     TEST_PASS("jzazbz_v_roundtrip");
 }
@@ -193,13 +193,13 @@ static int test_jzczhz_v_roundtrip(void) {
     alwan_jzazbz back_p;
     alwan_jzczhz_to_jzazbz(&back_p, &jzczhz_p);
 
-    TEST_ASSERT_NEAR(jzczhz_v.Jz, jzczhz_p.Jz, TEST_TOLERANCE, "JzCzhz Jz");
-    TEST_ASSERT_NEAR(jzczhz_v.Cz, jzczhz_p.Cz, TEST_TOLERANCE, "JzCzhz Cz");
-    TEST_ASSERT_NEAR(jzczhz_v.hz, jzczhz_p.hz, TEST_TOLERANCE, "JzCzhz hz");
+    TEST_ASSERT_NEAR(jzczhz_v.Jz, jzczhz_p.Jz, ALWAN_TEST_TOLERANCE, "JzCzhz Jz");
+    TEST_ASSERT_NEAR(jzczhz_v.Cz, jzczhz_p.Cz, ALWAN_TEST_TOLERANCE, "JzCzhz Cz");
+    TEST_ASSERT_NEAR(jzczhz_v.hz, jzczhz_p.hz, ALWAN_TEST_TOLERANCE, "JzCzhz hz");
 
-    TEST_ASSERT_NEAR(back_v.Jz, back_p.Jz, TEST_TOLERANCE, "jzczhz->jz Jz");
-    TEST_ASSERT_NEAR(back_v.az, back_p.az, TEST_TOLERANCE, "jzczhz->jz az");
-    TEST_ASSERT_NEAR(back_v.bz, back_p.bz, TEST_TOLERANCE, "jzczhz->jz bz");
+    TEST_ASSERT_NEAR(back_v.Jz, back_p.Jz, ALWAN_TEST_TOLERANCE, "jzczhz->jz Jz");
+    TEST_ASSERT_NEAR(back_v.az, back_p.az, ALWAN_TEST_TOLERANCE, "jzczhz->jz az");
+    TEST_ASSERT_NEAR(back_v.bz, back_p.bz, ALWAN_TEST_TOLERANCE, "jzczhz->jz bz");
 
     TEST_PASS("jzczhz_v_roundtrip");
 }
@@ -224,13 +224,13 @@ static int test_xyy_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_xyy_to_xyz(&back_p, &xyy_p);
 
-    TEST_ASSERT_NEAR(xyy_v.x, xyy_p.x, TEST_TOLERANCE, "xyy x");
-    TEST_ASSERT_NEAR(xyy_v.y, xyy_p.y, TEST_TOLERANCE, "xyy y");
-    TEST_ASSERT_NEAR(xyy_v.Y, xyy_p.Y, TEST_TOLERANCE, "xyy Y");
+    TEST_ASSERT_NEAR(xyy_v.x, xyy_p.x, ALWAN_TEST_TOLERANCE, "xyy x");
+    TEST_ASSERT_NEAR(xyy_v.y, xyy_p.y, ALWAN_TEST_TOLERANCE, "xyy y");
+    TEST_ASSERT_NEAR(xyy_v.Y, xyy_p.Y, ALWAN_TEST_TOLERANCE, "xyy Y");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "xyy->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "xyy->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "xyy->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "xyy->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "xyy->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "xyy->xyz z");
 
     TEST_PASS("xyy_v_roundtrip");
 }
@@ -256,13 +256,13 @@ static int test_lab_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_lab_to_xyz(&back_p, &lab_p, &wp);
 
-    TEST_ASSERT_NEAR(lab_v.L, lab_p.L, TEST_TOLERANCE, "lab L");
-    TEST_ASSERT_NEAR(lab_v.a, lab_p.a, TEST_TOLERANCE, "lab a");
-    TEST_ASSERT_NEAR(lab_v.b, lab_p.b, TEST_TOLERANCE, "lab b");
+    TEST_ASSERT_NEAR(lab_v.L, lab_p.L, ALWAN_TEST_TOLERANCE, "lab L");
+    TEST_ASSERT_NEAR(lab_v.a, lab_p.a, ALWAN_TEST_TOLERANCE, "lab a");
+    TEST_ASSERT_NEAR(lab_v.b, lab_p.b, ALWAN_TEST_TOLERANCE, "lab b");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "lab->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "lab->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "lab->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "lab->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "lab->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "lab->xyz z");
 
     TEST_PASS("lab_v_roundtrip");
 }
@@ -283,13 +283,13 @@ static int test_lch_v_roundtrip(void) {
     alwan_lab back_p;
     alwan_lch_to_lab(&back_p, &lch_p);
 
-    TEST_ASSERT_NEAR(lch_v.L, lch_p.L, TEST_TOLERANCE, "lch L");
-    TEST_ASSERT_NEAR(lch_v.C, lch_p.C, TEST_TOLERANCE, "lch C");
-    TEST_ASSERT_NEAR(lch_v.h, lch_p.h, TEST_TOLERANCE, "lch h");
+    TEST_ASSERT_NEAR(lch_v.L, lch_p.L, ALWAN_TEST_TOLERANCE, "lch L");
+    TEST_ASSERT_NEAR(lch_v.C, lch_p.C, ALWAN_TEST_TOLERANCE, "lch C");
+    TEST_ASSERT_NEAR(lch_v.h, lch_p.h, ALWAN_TEST_TOLERANCE, "lch h");
 
-    TEST_ASSERT_NEAR(back_v.L, back_p.L, TEST_TOLERANCE, "lch->lab L");
-    TEST_ASSERT_NEAR(back_v.a, back_p.a, TEST_TOLERANCE, "lch->lab a");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "lch->lab b");
+    TEST_ASSERT_NEAR(back_v.L, back_p.L, ALWAN_TEST_TOLERANCE, "lch->lab L");
+    TEST_ASSERT_NEAR(back_v.a, back_p.a, ALWAN_TEST_TOLERANCE, "lch->lab a");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "lch->lab b");
 
     TEST_PASS("lch_v_roundtrip");
 }
@@ -315,13 +315,13 @@ static int test_luv_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_luv_to_xyz(&back_p, &luv_p, &wp);
 
-    TEST_ASSERT_NEAR(luv_v.L, luv_p.L, TEST_TOLERANCE, "luv L");
-    TEST_ASSERT_NEAR(luv_v.u, luv_p.u, TEST_TOLERANCE, "luv u");
-    TEST_ASSERT_NEAR(luv_v.v, luv_p.v, TEST_TOLERANCE, "luv v");
+    TEST_ASSERT_NEAR(luv_v.L, luv_p.L, ALWAN_TEST_TOLERANCE, "luv L");
+    TEST_ASSERT_NEAR(luv_v.u, luv_p.u, ALWAN_TEST_TOLERANCE, "luv u");
+    TEST_ASSERT_NEAR(luv_v.v, luv_p.v, ALWAN_TEST_TOLERANCE, "luv v");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "luv->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "luv->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "luv->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "luv->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "luv->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "luv->xyz z");
 
     TEST_PASS("luv_v_roundtrip");
 }
@@ -346,13 +346,13 @@ static int test_ipt_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_ipt_to_xyz(&back_p, &ipt_p);
 
-    TEST_ASSERT_NEAR(ipt_v.I, ipt_p.I, TEST_TOLERANCE, "ipt I");
-    TEST_ASSERT_NEAR(ipt_v.P, ipt_p.P, TEST_TOLERANCE, "ipt P");
-    TEST_ASSERT_NEAR(ipt_v.T, ipt_p.T, TEST_TOLERANCE, "ipt T");
+    TEST_ASSERT_NEAR(ipt_v.I, ipt_p.I, ALWAN_TEST_TOLERANCE, "ipt I");
+    TEST_ASSERT_NEAR(ipt_v.P, ipt_p.P, ALWAN_TEST_TOLERANCE, "ipt P");
+    TEST_ASSERT_NEAR(ipt_v.T, ipt_p.T, ALWAN_TEST_TOLERANCE, "ipt T");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "ipt->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "ipt->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "ipt->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "ipt->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "ipt->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "ipt->xyz z");
 
     TEST_PASS("ipt_v_roundtrip");
 }
@@ -376,13 +376,13 @@ static int test_iptch_v_roundtrip(void) {
     alwan_ipt back_p;
     alwan_iptch_to_ipt(&back_p, &iptch_p);
 
-    TEST_ASSERT_NEAR(iptch_v.I, iptch_p.I, TEST_TOLERANCE, "iptch I");
-    TEST_ASSERT_NEAR(iptch_v.C, iptch_p.C, TEST_TOLERANCE, "iptch C");
-    TEST_ASSERT_NEAR(iptch_v.h, iptch_p.h, TEST_TOLERANCE, "iptch h");
+    TEST_ASSERT_NEAR(iptch_v.I, iptch_p.I, ALWAN_TEST_TOLERANCE, "iptch I");
+    TEST_ASSERT_NEAR(iptch_v.C, iptch_p.C, ALWAN_TEST_TOLERANCE, "iptch C");
+    TEST_ASSERT_NEAR(iptch_v.h, iptch_p.h, ALWAN_TEST_TOLERANCE, "iptch h");
 
-    TEST_ASSERT_NEAR(back_v.I, back_p.I, TEST_TOLERANCE, "iptch->ipt I");
-    TEST_ASSERT_NEAR(back_v.P, back_p.P, TEST_TOLERANCE, "iptch->ipt P");
-    TEST_ASSERT_NEAR(back_v.T, back_p.T, TEST_TOLERANCE, "iptch->ipt T");
+    TEST_ASSERT_NEAR(back_v.I, back_p.I, ALWAN_TEST_TOLERANCE, "iptch->ipt I");
+    TEST_ASSERT_NEAR(back_v.P, back_p.P, ALWAN_TEST_TOLERANCE, "iptch->ipt P");
+    TEST_ASSERT_NEAR(back_v.T, back_p.T, ALWAN_TEST_TOLERANCE, "iptch->ipt T");
 
     TEST_PASS("iptch_v_roundtrip");
 }
@@ -467,13 +467,13 @@ static int test_hsv_v_roundtrip(void) {
     alwan_rgb back_p;
     alwan_hsv_to_rgb(&back_p, &hsv_p);
 
-    TEST_ASSERT_NEAR(hsv_v.h, hsv_p.h, TEST_TOLERANCE, "hsv h");
-    TEST_ASSERT_NEAR(hsv_v.s, hsv_p.s, TEST_TOLERANCE, "hsv s");
-    TEST_ASSERT_NEAR(hsv_v.v, hsv_p.v, TEST_TOLERANCE, "hsv v");
+    TEST_ASSERT_NEAR(hsv_v.h, hsv_p.h, ALWAN_TEST_TOLERANCE, "hsv h");
+    TEST_ASSERT_NEAR(hsv_v.s, hsv_p.s, ALWAN_TEST_TOLERANCE, "hsv s");
+    TEST_ASSERT_NEAR(hsv_v.v, hsv_p.v, ALWAN_TEST_TOLERANCE, "hsv v");
 
-    TEST_ASSERT_NEAR(back_v.r, back_p.r, TEST_TOLERANCE, "hsv->rgb r");
-    TEST_ASSERT_NEAR(back_v.g, back_p.g, TEST_TOLERANCE, "hsv->rgb g");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "hsv->rgb b");
+    TEST_ASSERT_NEAR(back_v.r, back_p.r, ALWAN_TEST_TOLERANCE, "hsv->rgb r");
+    TEST_ASSERT_NEAR(back_v.g, back_p.g, ALWAN_TEST_TOLERANCE, "hsv->rgb g");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "hsv->rgb b");
 
     TEST_PASS("hsv_v_roundtrip");
 }
@@ -496,13 +496,13 @@ static int test_hsl_v_roundtrip(void) {
     alwan_rgb back_p;
     alwan_hsl_to_rgb(&back_p, &hsl_p);
 
-    TEST_ASSERT_NEAR(hsl_v.h, hsl_p.h, TEST_TOLERANCE, "hsl h");
-    TEST_ASSERT_NEAR(hsl_v.s, hsl_p.s, TEST_TOLERANCE, "hsl s");
-    TEST_ASSERT_NEAR(hsl_v.l, hsl_p.l, TEST_TOLERANCE, "hsl l");
+    TEST_ASSERT_NEAR(hsl_v.h, hsl_p.h, ALWAN_TEST_TOLERANCE, "hsl h");
+    TEST_ASSERT_NEAR(hsl_v.s, hsl_p.s, ALWAN_TEST_TOLERANCE, "hsl s");
+    TEST_ASSERT_NEAR(hsl_v.l, hsl_p.l, ALWAN_TEST_TOLERANCE, "hsl l");
 
-    TEST_ASSERT_NEAR(back_v.r, back_p.r, TEST_TOLERANCE, "hsl->rgb r");
-    TEST_ASSERT_NEAR(back_v.g, back_p.g, TEST_TOLERANCE, "hsl->rgb g");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "hsl->rgb b");
+    TEST_ASSERT_NEAR(back_v.r, back_p.r, ALWAN_TEST_TOLERANCE, "hsl->rgb r");
+    TEST_ASSERT_NEAR(back_v.g, back_p.g, ALWAN_TEST_TOLERANCE, "hsl->rgb g");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "hsl->rgb b");
 
     TEST_PASS("hsl_v_roundtrip");
 }
@@ -529,13 +529,13 @@ static int test_ycbcr_v_roundtrip(void) {
     alwan_rgb back_p;
     alwan_ycbcr_to_rgb(&back_p, &ycbcr_p, ALWAN_YCBCR_BT709);
 
-    TEST_ASSERT_NEAR(ycbcr_v.Y, ycbcr_p.Y, TEST_TOLERANCE, "ycbcr Y");
-    TEST_ASSERT_NEAR(ycbcr_v.Cb, ycbcr_p.Cb, TEST_TOLERANCE, "ycbcr Cb");
-    TEST_ASSERT_NEAR(ycbcr_v.Cr, ycbcr_p.Cr, TEST_TOLERANCE, "ycbcr Cr");
+    TEST_ASSERT_NEAR(ycbcr_v.Y, ycbcr_p.Y, ALWAN_TEST_TOLERANCE, "ycbcr Y");
+    TEST_ASSERT_NEAR(ycbcr_v.Cb, ycbcr_p.Cb, ALWAN_TEST_TOLERANCE, "ycbcr Cb");
+    TEST_ASSERT_NEAR(ycbcr_v.Cr, ycbcr_p.Cr, ALWAN_TEST_TOLERANCE, "ycbcr Cr");
 
-    TEST_ASSERT_NEAR(back_v.r, back_p.r, TEST_TOLERANCE, "ycbcr->rgb r");
-    TEST_ASSERT_NEAR(back_v.g, back_p.g, TEST_TOLERANCE, "ycbcr->rgb g");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "ycbcr->rgb b");
+    TEST_ASSERT_NEAR(back_v.r, back_p.r, ALWAN_TEST_TOLERANCE, "ycbcr->rgb r");
+    TEST_ASSERT_NEAR(back_v.g, back_p.g, ALWAN_TEST_TOLERANCE, "ycbcr->rgb g");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "ycbcr->rgb b");
 
     TEST_PASS("ycbcr_v_roundtrip");
 }
@@ -558,13 +558,13 @@ static int test_yccbccrc_v_roundtrip(void) {
     alwan_rgb back_p;
     alwan_yccbccrc_to_rgb(&back_p, &yccbccrc_p, 10);
 
-    TEST_ASSERT_NEAR(yccbccrc_v.Yc, yccbccrc_p.Yc, TEST_TOLERANCE, "yccbccrc Yc");
-    TEST_ASSERT_NEAR(yccbccrc_v.Cbc, yccbccrc_p.Cbc, TEST_TOLERANCE, "yccbccrc Cbc");
-    TEST_ASSERT_NEAR(yccbccrc_v.Crc, yccbccrc_p.Crc, TEST_TOLERANCE, "yccbccrc Crc");
+    TEST_ASSERT_NEAR(yccbccrc_v.Yc, yccbccrc_p.Yc, ALWAN_TEST_TOLERANCE, "yccbccrc Yc");
+    TEST_ASSERT_NEAR(yccbccrc_v.Cbc, yccbccrc_p.Cbc, ALWAN_TEST_TOLERANCE, "yccbccrc Cbc");
+    TEST_ASSERT_NEAR(yccbccrc_v.Crc, yccbccrc_p.Crc, ALWAN_TEST_TOLERANCE, "yccbccrc Crc");
 
-    TEST_ASSERT_NEAR(back_v.r, back_p.r, TEST_TOLERANCE, "yccbccrc->rgb r");
-    TEST_ASSERT_NEAR(back_v.g, back_p.g, TEST_TOLERANCE, "yccbccrc->rgb g");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "yccbccrc->rgb b");
+    TEST_ASSERT_NEAR(back_v.r, back_p.r, ALWAN_TEST_TOLERANCE, "yccbccrc->rgb r");
+    TEST_ASSERT_NEAR(back_v.g, back_p.g, ALWAN_TEST_TOLERANCE, "yccbccrc->rgb g");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "yccbccrc->rgb b");
 
     TEST_PASS("yccbccrc_v_roundtrip");
 }
@@ -591,13 +591,13 @@ static int test_din99_v_roundtrip(void) {
     alwan_lab back_p;
     alwan_din99_to_lab(&back_p, &din99_p, 0);
 
-    TEST_ASSERT_NEAR(din99_v.L99, din99_p.L99, TEST_TOLERANCE, "din99 L99");
-    TEST_ASSERT_NEAR(din99_v.a99, din99_p.a99, TEST_TOLERANCE, "din99 a99");
-    TEST_ASSERT_NEAR(din99_v.b99, din99_p.b99, TEST_TOLERANCE, "din99 b99");
+    TEST_ASSERT_NEAR(din99_v.L99, din99_p.L99, ALWAN_TEST_TOLERANCE, "din99 L99");
+    TEST_ASSERT_NEAR(din99_v.a99, din99_p.a99, ALWAN_TEST_TOLERANCE, "din99 a99");
+    TEST_ASSERT_NEAR(din99_v.b99, din99_p.b99, ALWAN_TEST_TOLERANCE, "din99 b99");
 
-    TEST_ASSERT_NEAR(back_v.L, back_p.L, TEST_TOLERANCE, "din99->lab L");
-    TEST_ASSERT_NEAR(back_v.a, back_p.a, TEST_TOLERANCE, "din99->lab a");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "din99->lab b");
+    TEST_ASSERT_NEAR(back_v.L, back_p.L, ALWAN_TEST_TOLERANCE, "din99->lab L");
+    TEST_ASSERT_NEAR(back_v.a, back_p.a, ALWAN_TEST_TOLERANCE, "din99->lab a");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "din99->lab b");
 
     TEST_PASS("din99_v_roundtrip");
 }
@@ -624,13 +624,13 @@ static int test_hunter_lab_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_hunter_lab_to_xyz(&back_p, &hl_p);
 
-    TEST_ASSERT_NEAR(hl_v.L, hl_p.L, TEST_TOLERANCE, "hunter_lab L");
-    TEST_ASSERT_NEAR(hl_v.a, hl_p.a, TEST_TOLERANCE, "hunter_lab a");
-    TEST_ASSERT_NEAR(hl_v.b, hl_p.b, TEST_TOLERANCE, "hunter_lab b");
+    TEST_ASSERT_NEAR(hl_v.L, hl_p.L, ALWAN_TEST_TOLERANCE, "hunter_lab L");
+    TEST_ASSERT_NEAR(hl_v.a, hl_p.a, ALWAN_TEST_TOLERANCE, "hunter_lab a");
+    TEST_ASSERT_NEAR(hl_v.b, hl_p.b, ALWAN_TEST_TOLERANCE, "hunter_lab b");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "hunter_lab->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "hunter_lab->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "hunter_lab->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "hunter_lab->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "hunter_lab->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "hunter_lab->xyz z");
 
     TEST_PASS("hunter_lab_v_roundtrip");
 }
@@ -657,13 +657,13 @@ static int test_prolab_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_prolab_to_xyz(&back_p, &pl_p);
 
-    TEST_ASSERT_NEAR(pl_v.L, pl_p.L, TEST_TOLERANCE, "prolab L");
-    TEST_ASSERT_NEAR(pl_v.a, pl_p.a, TEST_TOLERANCE, "prolab a");
-    TEST_ASSERT_NEAR(pl_v.b, pl_p.b, TEST_TOLERANCE, "prolab b");
+    TEST_ASSERT_NEAR(pl_v.L, pl_p.L, ALWAN_TEST_TOLERANCE, "prolab L");
+    TEST_ASSERT_NEAR(pl_v.a, pl_p.a, ALWAN_TEST_TOLERANCE, "prolab a");
+    TEST_ASSERT_NEAR(pl_v.b, pl_p.b, ALWAN_TEST_TOLERANCE, "prolab b");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "prolab->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "prolab->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "prolab->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "prolab->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "prolab->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "prolab->xyz z");
 
     TEST_PASS("prolab_v_roundtrip");
 }
@@ -690,13 +690,13 @@ static int test_prismatic_v_roundtrip(void) {
     alwan_rgb back_p;
     alwan_prismatic_to_rgb(&back_p, &pris_p);
 
-    TEST_ASSERT_NEAR(pris_v.L, pris_p.L, TEST_TOLERANCE, "prismatic L");
-    TEST_ASSERT_NEAR(pris_v.s, pris_p.s, TEST_TOLERANCE, "prismatic s");
-    TEST_ASSERT_NEAR(pris_v.h, pris_p.h, TEST_TOLERANCE, "prismatic h");
+    TEST_ASSERT_NEAR(pris_v.L, pris_p.L, ALWAN_TEST_TOLERANCE, "prismatic L");
+    TEST_ASSERT_NEAR(pris_v.s, pris_p.s, ALWAN_TEST_TOLERANCE, "prismatic s");
+    TEST_ASSERT_NEAR(pris_v.h, pris_p.h, ALWAN_TEST_TOLERANCE, "prismatic h");
 
-    TEST_ASSERT_NEAR(back_v.r, back_p.r, TEST_TOLERANCE, "prismatic->rgb r");
-    TEST_ASSERT_NEAR(back_v.g, back_p.g, TEST_TOLERANCE, "prismatic->rgb g");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "prismatic->rgb b");
+    TEST_ASSERT_NEAR(back_v.r, back_p.r, ALWAN_TEST_TOLERANCE, "prismatic->rgb r");
+    TEST_ASSERT_NEAR(back_v.g, back_p.g, ALWAN_TEST_TOLERANCE, "prismatic->rgb g");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "prismatic->rgb b");
 
     TEST_PASS("prismatic_v_roundtrip");
 }
@@ -719,13 +719,13 @@ static int test_hcl_v_roundtrip(void) {
     alwan_rgb back_p;
     alwan_hcl_to_rgb(&back_p, &hcl_p);
 
-    TEST_ASSERT_NEAR(hcl_v.H, hcl_p.H, TEST_TOLERANCE, "hcl H");
-    TEST_ASSERT_NEAR(hcl_v.C, hcl_p.C, TEST_TOLERANCE, "hcl C");
-    TEST_ASSERT_NEAR(hcl_v.L, hcl_p.L, TEST_TOLERANCE, "hcl L");
+    TEST_ASSERT_NEAR(hcl_v.H, hcl_p.H, ALWAN_TEST_TOLERANCE, "hcl H");
+    TEST_ASSERT_NEAR(hcl_v.C, hcl_p.C, ALWAN_TEST_TOLERANCE, "hcl C");
+    TEST_ASSERT_NEAR(hcl_v.L, hcl_p.L, ALWAN_TEST_TOLERANCE, "hcl L");
 
-    TEST_ASSERT_NEAR(back_v.r, back_p.r, TEST_TOLERANCE, "hcl->rgb r");
-    TEST_ASSERT_NEAR(back_v.g, back_p.g, TEST_TOLERANCE, "hcl->rgb g");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "hcl->rgb b");
+    TEST_ASSERT_NEAR(back_v.r, back_p.r, ALWAN_TEST_TOLERANCE, "hcl->rgb r");
+    TEST_ASSERT_NEAR(back_v.g, back_p.g, ALWAN_TEST_TOLERANCE, "hcl->rgb g");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "hcl->rgb b");
 
     TEST_PASS("hcl_v_roundtrip");
 }
@@ -748,13 +748,13 @@ static int test_ihls_v_roundtrip(void) {
     alwan_rgb back_p;
     alwan_ihls_to_rgb(&back_p, &ihls_p);
 
-    TEST_ASSERT_NEAR(ihls_v.H, ihls_p.H, TEST_TOLERANCE, "ihls H");
-    TEST_ASSERT_NEAR(ihls_v.L, ihls_p.L, TEST_TOLERANCE, "ihls L");
-    TEST_ASSERT_NEAR(ihls_v.S, ihls_p.S, TEST_TOLERANCE, "ihls S");
+    TEST_ASSERT_NEAR(ihls_v.H, ihls_p.H, ALWAN_TEST_TOLERANCE, "ihls H");
+    TEST_ASSERT_NEAR(ihls_v.L, ihls_p.L, ALWAN_TEST_TOLERANCE, "ihls L");
+    TEST_ASSERT_NEAR(ihls_v.S, ihls_p.S, ALWAN_TEST_TOLERANCE, "ihls S");
 
-    TEST_ASSERT_NEAR(back_v.r, back_p.r, TEST_TOLERANCE, "ihls->rgb r");
-    TEST_ASSERT_NEAR(back_v.g, back_p.g, TEST_TOLERANCE, "ihls->rgb g");
-    TEST_ASSERT_NEAR(back_v.b, back_p.b, TEST_TOLERANCE, "ihls->rgb b");
+    TEST_ASSERT_NEAR(back_v.r, back_p.r, ALWAN_TEST_TOLERANCE, "ihls->rgb r");
+    TEST_ASSERT_NEAR(back_v.g, back_p.g, ALWAN_TEST_TOLERANCE, "ihls->rgb g");
+    TEST_ASSERT_NEAR(back_v.b, back_p.b, ALWAN_TEST_TOLERANCE, "ihls->rgb b");
 
     TEST_PASS("ihls_v_roundtrip");
 }
@@ -781,13 +781,13 @@ static int test_hdr_cielab_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_hdr_cielab_to_xyz(&back_p, &hdr_p);
 
-    TEST_ASSERT_NEAR(hdr_v.L, hdr_p.L, TEST_TOLERANCE, "hdr_cielab L");
-    TEST_ASSERT_NEAR(hdr_v.a, hdr_p.a, TEST_TOLERANCE, "hdr_cielab a");
-    TEST_ASSERT_NEAR(hdr_v.b, hdr_p.b, TEST_TOLERANCE, "hdr_cielab b");
+    TEST_ASSERT_NEAR(hdr_v.L, hdr_p.L, ALWAN_TEST_TOLERANCE, "hdr_cielab L");
+    TEST_ASSERT_NEAR(hdr_v.a, hdr_p.a, ALWAN_TEST_TOLERANCE, "hdr_cielab a");
+    TEST_ASSERT_NEAR(hdr_v.b, hdr_p.b, ALWAN_TEST_TOLERANCE, "hdr_cielab b");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "hdr_cielab->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "hdr_cielab->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "hdr_cielab->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "hdr_cielab->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "hdr_cielab->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "hdr_cielab->xyz z");
 
     TEST_PASS("hdr_cielab_v_roundtrip");
 }
@@ -810,13 +810,13 @@ static int test_hdr_ipt_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_hdr_ipt_to_xyz(&back_p, &hdr_p);
 
-    TEST_ASSERT_NEAR(hdr_v.I, hdr_p.I, TEST_TOLERANCE, "hdr_ipt I");
-    TEST_ASSERT_NEAR(hdr_v.P, hdr_p.P, TEST_TOLERANCE, "hdr_ipt P");
-    TEST_ASSERT_NEAR(hdr_v.T, hdr_p.T, TEST_TOLERANCE, "hdr_ipt T");
+    TEST_ASSERT_NEAR(hdr_v.I, hdr_p.I, ALWAN_TEST_TOLERANCE, "hdr_ipt I");
+    TEST_ASSERT_NEAR(hdr_v.P, hdr_p.P, ALWAN_TEST_TOLERANCE, "hdr_ipt P");
+    TEST_ASSERT_NEAR(hdr_v.T, hdr_p.T, ALWAN_TEST_TOLERANCE, "hdr_ipt T");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "hdr_ipt->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "hdr_ipt->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "hdr_ipt->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "hdr_ipt->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "hdr_ipt->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "hdr_ipt->xyz z");
 
     TEST_PASS("hdr_ipt_v_roundtrip");
 }
@@ -839,13 +839,13 @@ static int test_igpgtg_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_igpgtg_to_xyz(&back_p, &ig_p);
 
-    TEST_ASSERT_NEAR(ig_v.Ig, ig_p.Ig, TEST_TOLERANCE, "igpgtg Ig");
-    TEST_ASSERT_NEAR(ig_v.Pg, ig_p.Pg, TEST_TOLERANCE, "igpgtg Pg");
-    TEST_ASSERT_NEAR(ig_v.Tg, ig_p.Tg, TEST_TOLERANCE, "igpgtg Tg");
+    TEST_ASSERT_NEAR(ig_v.Ig, ig_p.Ig, ALWAN_TEST_TOLERANCE, "igpgtg Ig");
+    TEST_ASSERT_NEAR(ig_v.Pg, ig_p.Pg, ALWAN_TEST_TOLERANCE, "igpgtg Pg");
+    TEST_ASSERT_NEAR(ig_v.Tg, ig_p.Tg, ALWAN_TEST_TOLERANCE, "igpgtg Tg");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "igpgtg->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "igpgtg->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "igpgtg->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "igpgtg->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "igpgtg->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "igpgtg->xyz z");
 
     TEST_PASS("igpgtg_v_roundtrip");
 }
@@ -868,13 +868,13 @@ static int test_icacb_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_icacb_to_xyz(&back_p, &ic_p);
 
-    TEST_ASSERT_NEAR(ic_v.I, ic_p.I, TEST_TOLERANCE, "icacb I");
-    TEST_ASSERT_NEAR(ic_v.Ca, ic_p.Ca, TEST_TOLERANCE, "icacb Ca");
-    TEST_ASSERT_NEAR(ic_v.Cb, ic_p.Cb, TEST_TOLERANCE, "icacb Cb");
+    TEST_ASSERT_NEAR(ic_v.I, ic_p.I, ALWAN_TEST_TOLERANCE, "icacb I");
+    TEST_ASSERT_NEAR(ic_v.Ca, ic_p.Ca, ALWAN_TEST_TOLERANCE, "icacb Ca");
+    TEST_ASSERT_NEAR(ic_v.Cb, ic_p.Cb, ALWAN_TEST_TOLERANCE, "icacb Cb");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "icacb->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "icacb->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "icacb->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "icacb->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "icacb->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "icacb->xyz z");
 
     TEST_PASS("icacb_v_roundtrip");
 }
@@ -901,13 +901,13 @@ static int test_ucs_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_ucs_to_xyz(&back_p, &ucs_p);
 
-    TEST_ASSERT_NEAR(ucs_v.U, ucs_p.U, TEST_TOLERANCE, "ucs U");
-    TEST_ASSERT_NEAR(ucs_v.V, ucs_p.V, TEST_TOLERANCE, "ucs V");
-    TEST_ASSERT_NEAR(ucs_v.W, ucs_p.W, TEST_TOLERANCE, "ucs W");
+    TEST_ASSERT_NEAR(ucs_v.U, ucs_p.U, ALWAN_TEST_TOLERANCE, "ucs U");
+    TEST_ASSERT_NEAR(ucs_v.V, ucs_p.V, ALWAN_TEST_TOLERANCE, "ucs V");
+    TEST_ASSERT_NEAR(ucs_v.W, ucs_p.W, ALWAN_TEST_TOLERANCE, "ucs W");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "ucs->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "ucs->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "ucs->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "ucs->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "ucs->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "ucs->xyz z");
 
     TEST_PASS("ucs_v_roundtrip");
 }
@@ -935,13 +935,13 @@ static int test_uvw_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_uvw_to_xyz(&back_p, &uvw_p, &wp);
 
-    TEST_ASSERT_NEAR(uvw_v.U, uvw_p.U, TEST_TOLERANCE, "uvw U");
-    TEST_ASSERT_NEAR(uvw_v.V, uvw_p.V, TEST_TOLERANCE, "uvw V");
-    TEST_ASSERT_NEAR(uvw_v.W, uvw_p.W, TEST_TOLERANCE, "uvw W");
+    TEST_ASSERT_NEAR(uvw_v.U, uvw_p.U, ALWAN_TEST_TOLERANCE, "uvw U");
+    TEST_ASSERT_NEAR(uvw_v.V, uvw_p.V, ALWAN_TEST_TOLERANCE, "uvw V");
+    TEST_ASSERT_NEAR(uvw_v.W, uvw_p.W, ALWAN_TEST_TOLERANCE, "uvw W");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "uvw->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "uvw->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "uvw->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "uvw->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "uvw->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "uvw->xyz z");
 
     TEST_PASS("uvw_v_roundtrip");
 }
@@ -969,13 +969,13 @@ static int test_xyz_lch_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_lch_to_xyz(&back_p, &lch_p, &wp);
 
-    TEST_ASSERT_NEAR(lch_v.L, lch_p.L, TEST_TOLERANCE, "xyz_lch L");
-    TEST_ASSERT_NEAR(lch_v.C, lch_p.C, TEST_TOLERANCE, "xyz_lch C");
-    TEST_ASSERT_NEAR(lch_v.h, lch_p.h, TEST_TOLERANCE, "xyz_lch h");
+    TEST_ASSERT_NEAR(lch_v.L, lch_p.L, ALWAN_TEST_TOLERANCE, "xyz_lch L");
+    TEST_ASSERT_NEAR(lch_v.C, lch_p.C, ALWAN_TEST_TOLERANCE, "xyz_lch C");
+    TEST_ASSERT_NEAR(lch_v.h, lch_p.h, ALWAN_TEST_TOLERANCE, "xyz_lch h");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "xyz_lch->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "xyz_lch->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "xyz_lch->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "xyz_lch->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "xyz_lch->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "xyz_lch->xyz z");
 
     TEST_PASS("xyz_lch_v_roundtrip");
 }
@@ -1003,13 +1003,13 @@ static int test_xyz_lchuv_v_roundtrip(void) {
     alwan_xyz back_p;
     alwan_lchuv_to_xyz(&back_p, &lchuv_p, &wp);
 
-    TEST_ASSERT_NEAR(lchuv_v.L, lchuv_p.L, TEST_TOLERANCE, "xyz_lchuv L");
-    TEST_ASSERT_NEAR(lchuv_v.C, lchuv_p.C, TEST_TOLERANCE, "xyz_lchuv C");
-    TEST_ASSERT_NEAR(lchuv_v.h, lchuv_p.h, TEST_TOLERANCE, "xyz_lchuv h");
+    TEST_ASSERT_NEAR(lchuv_v.L, lchuv_p.L, ALWAN_TEST_TOLERANCE, "xyz_lchuv L");
+    TEST_ASSERT_NEAR(lchuv_v.C, lchuv_p.C, ALWAN_TEST_TOLERANCE, "xyz_lchuv C");
+    TEST_ASSERT_NEAR(lchuv_v.h, lchuv_p.h, ALWAN_TEST_TOLERANCE, "xyz_lchuv h");
 
-    TEST_ASSERT_NEAR(back_v.x, back_p.x, TEST_TOLERANCE, "xyz_lchuv->xyz x");
-    TEST_ASSERT_NEAR(back_v.y, back_p.y, TEST_TOLERANCE, "xyz_lchuv->xyz y");
-    TEST_ASSERT_NEAR(back_v.z, back_p.z, TEST_TOLERANCE, "xyz_lchuv->xyz z");
+    TEST_ASSERT_NEAR(back_v.x, back_p.x, ALWAN_TEST_TOLERANCE, "xyz_lchuv->xyz x");
+    TEST_ASSERT_NEAR(back_v.y, back_p.y, ALWAN_TEST_TOLERANCE, "xyz_lchuv->xyz y");
+    TEST_ASSERT_NEAR(back_v.z, back_p.z, ALWAN_TEST_TOLERANCE, "xyz_lchuv->xyz z");
 
     TEST_PASS("xyz_lchuv_v_roundtrip");
 }
@@ -1037,7 +1037,7 @@ static int test_delta_e_76_v(void) {
     /* pointer variant */
     alwan_scalar de_p = alwan_delta_e_76(&lab1, &lab2);
 
-    TEST_ASSERT_NEAR(de_v, de_p, TEST_TOLERANCE, "delta_e_76");
+    TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_76");
 
     TEST_PASS("delta_e_76_v");
 }
@@ -1061,7 +1061,7 @@ static int test_delta_e_94_v(void) {
     /* pointer variant */
     alwan_scalar de_p = alwan_delta_e_94(&lab1, &lab2);
 
-    TEST_ASSERT_NEAR(de_v, de_p, TEST_TOLERANCE, "delta_e_94");
+    TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_94");
 
     TEST_PASS("delta_e_94_v");
 }
@@ -1085,7 +1085,7 @@ static int test_delta_e_2000_v(void) {
     /* pointer variant */
     alwan_scalar de_p = alwan_delta_e_2000(&lab1, &lab2);
 
-    TEST_ASSERT_NEAR(de_v, de_p, TEST_TOLERANCE, "delta_e_2000");
+    TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_2000");
 
     TEST_PASS("delta_e_2000_v");
 }
@@ -1112,7 +1112,7 @@ static int test_delta_e_cmc_v(void) {
     /* pointer variant */
     alwan_scalar de_p = alwan_delta_e_cmc(&lab1, &lab2, l, c);
 
-    TEST_ASSERT_NEAR(de_v, de_p, TEST_TOLERANCE, "delta_e_cmc");
+    TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_cmc");
 
     TEST_PASS("delta_e_cmc_v");
 }
@@ -1127,7 +1127,7 @@ static int test_delta_e_cam02_lcd_v(void) {
     alwan_cam_jab jab2; jab2.J = ALWAN_LITERAL(60.0); jab2.a = ALWAN_LITERAL(15.0); jab2.b = ALWAN_LITERAL(5.0);
     alwan_scalar de_v = alwan_delta_e_cam02_lcd_v(jab1, jab2);
     alwan_scalar de_p = alwan_delta_e_cam02_lcd(&jab1, &jab2);
-    TEST_ASSERT_NEAR(de_v, de_p, TEST_TOLERANCE, "cam02_lcd");
+    TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "cam02_lcd");
     TEST_PASS("delta_e_cam02_lcd_v");
 }
 
@@ -1137,7 +1137,7 @@ static int test_delta_e_cam16_ucs_v(void) {
     alwan_cam_jab jab2; jab2.J = ALWAN_LITERAL(60.0); jab2.a = ALWAN_LITERAL(15.0); jab2.b = ALWAN_LITERAL(5.0);
     alwan_scalar de_v = alwan_delta_e_cam16_ucs_v(jab1, jab2);
     alwan_scalar de_p = alwan_delta_e_cam16_ucs(&jab1, &jab2);
-    TEST_ASSERT_NEAR(de_v, de_p, TEST_TOLERANCE, "cam16_ucs");
+    TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "cam16_ucs");
     TEST_PASS("delta_e_cam16_ucs_v");
 }
 
@@ -1197,16 +1197,16 @@ static int test_mat3_inv_v(void) {
     for (int i = 0; i < 9; i++) {
         char label[32];
         sprintf(label, "inv[%d]", i);
-        TEST_ASSERT_NEAR(inv_v.m[i], inv_p.m[i], TEST_TOLERANCE, label);
+        TEST_ASSERT_NEAR(inv_v.m[i], inv_p.m[i], ALWAN_TEST_TOLERANCE, label);
     }
 
     /* Verify M * M^-1 ≈ I */
     alwan_mat3x3 product = alwan_mat3_mul_v(m, inv_v);
-    TEST_ASSERT_NEAR(product.m[0], ALWAN_LITERAL(1.0), TEST_TOLERANCE, "M*Minv[0,0]");
-    TEST_ASSERT_NEAR(product.m[4], ALWAN_LITERAL(1.0), TEST_TOLERANCE, "M*Minv[1,1]");
-    TEST_ASSERT_NEAR(product.m[8], ALWAN_LITERAL(1.0), TEST_TOLERANCE, "M*Minv[2,2]");
-    TEST_ASSERT_NEAR(product.m[1], ALWAN_LITERAL(0.0), TEST_TOLERANCE, "M*Minv[0,1]");
-    TEST_ASSERT_NEAR(product.m[3], ALWAN_LITERAL(0.0), TEST_TOLERANCE, "M*Minv[1,0]");
+    TEST_ASSERT_NEAR(product.m[0], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[0,0]");
+    TEST_ASSERT_NEAR(product.m[4], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[1,1]");
+    TEST_ASSERT_NEAR(product.m[8], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[2,2]");
+    TEST_ASSERT_NEAR(product.m[1], ALWAN_LITERAL(0.0), ALWAN_TEST_TOLERANCE, "M*Minv[0,1]");
+    TEST_ASSERT_NEAR(product.m[3], ALWAN_LITERAL(0.0), ALWAN_TEST_TOLERANCE, "M*Minv[1,0]");
 
     TEST_PASS("mat3_inv_v");
 }
@@ -1226,9 +1226,9 @@ static int test_ictcp_pq_v_roundtrip(void) {
     alwan_ictcp ictcp = alwan_rgb_to_ictcp_pq_v(rgb_in);
     alwan_rgb rgb_out = alwan_ictcp_pq_to_rgb_v(ictcp);
 
-    TEST_ASSERT_NEAR(rgb_out.r, rgb_in.r, TEST_TOLERANCE, "r");
-    TEST_ASSERT_NEAR(rgb_out.g, rgb_in.g, TEST_TOLERANCE, "g");
-    TEST_ASSERT_NEAR(rgb_out.b, rgb_in.b, TEST_TOLERANCE, "b");
+    TEST_ASSERT_NEAR(rgb_out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
+    TEST_ASSERT_NEAR(rgb_out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
+    TEST_ASSERT_NEAR(rgb_out.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "b");
     TEST_PASS("ictcp_pq_v_roundtrip");
 }
 
@@ -1246,9 +1246,9 @@ static int test_ictcp_hlg_v_roundtrip(void) {
     alwan_ictcp ictcp = alwan_rgb_to_ictcp_hlg_v(rgb_in);
     alwan_rgb rgb_out = alwan_ictcp_hlg_to_rgb_v(ictcp);
 
-    TEST_ASSERT_NEAR(rgb_out.r, rgb_in.r, TEST_TOLERANCE, "r");
-    TEST_ASSERT_NEAR(rgb_out.g, rgb_in.g, TEST_TOLERANCE, "g");
-    TEST_ASSERT_NEAR(rgb_out.b, rgb_in.b, TEST_TOLERANCE, "b");
+    TEST_ASSERT_NEAR(rgb_out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
+    TEST_ASSERT_NEAR(rgb_out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
+    TEST_ASSERT_NEAR(rgb_out.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "b");
     TEST_PASS("ictcp_hlg_v_roundtrip");
 }
 
@@ -1403,15 +1403,15 @@ static int test_cvd_v_identity(void) {
     alwan_rgb out_d = alwan_simulate_deuteranopia_v(rgb_in, ALWAN_ZERO);
     alwan_rgb out_t = alwan_simulate_tritanopia_v(rgb_in, ALWAN_ZERO);
 
-    TEST_ASSERT_NEAR(out_p.r, rgb_in.r, TEST_TOLERANCE, "protan r");
-    TEST_ASSERT_NEAR(out_p.g, rgb_in.g, TEST_TOLERANCE, "protan g");
-    TEST_ASSERT_NEAR(out_p.b, rgb_in.b, TEST_TOLERANCE, "protan b");
-    TEST_ASSERT_NEAR(out_d.r, rgb_in.r, TEST_TOLERANCE, "deutan r");
-    TEST_ASSERT_NEAR(out_d.g, rgb_in.g, TEST_TOLERANCE, "deutan g");
-    TEST_ASSERT_NEAR(out_d.b, rgb_in.b, TEST_TOLERANCE, "deutan b");
-    TEST_ASSERT_NEAR(out_t.r, rgb_in.r, TEST_TOLERANCE, "tritan r");
-    TEST_ASSERT_NEAR(out_t.g, rgb_in.g, TEST_TOLERANCE, "tritan g");
-    TEST_ASSERT_NEAR(out_t.b, rgb_in.b, TEST_TOLERANCE, "tritan b");
+    TEST_ASSERT_NEAR(out_p.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "protan r");
+    TEST_ASSERT_NEAR(out_p.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "protan g");
+    TEST_ASSERT_NEAR(out_p.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "protan b");
+    TEST_ASSERT_NEAR(out_d.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "deutan r");
+    TEST_ASSERT_NEAR(out_d.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "deutan g");
+    TEST_ASSERT_NEAR(out_d.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "deutan b");
+    TEST_ASSERT_NEAR(out_t.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "tritan r");
+    TEST_ASSERT_NEAR(out_t.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "tritan g");
+    TEST_ASSERT_NEAR(out_t.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "tritan b");
     TEST_PASS("cvd_v_identity");
 }
 
@@ -1434,9 +1434,9 @@ static int test_lgg_v_identity(void) {
 
     alwan_rgb out = alwan_lgg_apply_v(rgb_in, lift, gamma, gain);
 
-    TEST_ASSERT_NEAR(out.r, rgb_in.r, TEST_TOLERANCE, "r");
-    TEST_ASSERT_NEAR(out.g, rgb_in.g, TEST_TOLERANCE, "g");
-    TEST_ASSERT_NEAR(out.b, rgb_in.b, TEST_TOLERANCE, "b");
+    TEST_ASSERT_NEAR(out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
+    TEST_ASSERT_NEAR(out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
+    TEST_ASSERT_NEAR(out.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "b");
     TEST_PASS("lgg_v_identity");
 }
 
@@ -1455,9 +1455,9 @@ static int test_color_matrix_v_identity(void) {
     alwan_mat3x3 id = alwan_mat3_identity_v();
     alwan_rgb out = alwan_color_matrix_apply_v(rgb_in, id);
 
-    TEST_ASSERT_NEAR(out.r, rgb_in.r, TEST_TOLERANCE, "r");
-    TEST_ASSERT_NEAR(out.g, rgb_in.g, TEST_TOLERANCE, "g");
-    TEST_ASSERT_NEAR(out.b, rgb_in.b, TEST_TOLERANCE, "b");
+    TEST_ASSERT_NEAR(out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
+    TEST_ASSERT_NEAR(out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
+    TEST_ASSERT_NEAR(out.b, rgb_in.b, ALWAN_TEST_TOLERANCE, "b");
     TEST_PASS("color_matrix_v_identity");
 }
 
@@ -1475,9 +1475,9 @@ static int test_cat_v_identity(void) {
 
     /* XYZ scaling: same white -> identity matrix */
     alwan_mat3x3 cat_id = alwan_cat_xyz_scaling_v(d65, d65);
-    TEST_ASSERT_NEAR(cat_id.m[0], ALWAN_ONE, TEST_TOLERANCE, "xyz_scaling[0]");
-    TEST_ASSERT_NEAR(cat_id.m[4], ALWAN_ONE, TEST_TOLERANCE, "xyz_scaling[4]");
-    TEST_ASSERT_NEAR(cat_id.m[8], ALWAN_ONE, TEST_TOLERANCE, "xyz_scaling[8]");
+    TEST_ASSERT_NEAR(cat_id.m[0], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[0]");
+    TEST_ASSERT_NEAR(cat_id.m[4], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[4]");
+    TEST_ASSERT_NEAR(cat_id.m[8], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[8]");
 
     /* Apply identity adaptation to a test color */
     alwan_xyz test_in;
@@ -1486,9 +1486,9 @@ static int test_cat_v_identity(void) {
     test_in.z = ALWAN_LITERAL(0.8);
 
     alwan_xyz test_out = alwan_cat_adapt_v(cat_id, test_in);
-    TEST_ASSERT_NEAR(test_out.x, test_in.x, TEST_TOLERANCE, "adapt x");
-    TEST_ASSERT_NEAR(test_out.y, test_in.y, TEST_TOLERANCE, "adapt y");
-    TEST_ASSERT_NEAR(test_out.z, test_in.z, TEST_TOLERANCE, "adapt z");
+    TEST_ASSERT_NEAR(test_out.x, test_in.x, ALWAN_TEST_TOLERANCE, "adapt x");
+    TEST_ASSERT_NEAR(test_out.y, test_in.y, ALWAN_TEST_TOLERANCE, "adapt y");
+    TEST_ASSERT_NEAR(test_out.z, test_in.z, ALWAN_TEST_TOLERANCE, "adapt z");
     TEST_PASS("cat_v_identity");
 }
 

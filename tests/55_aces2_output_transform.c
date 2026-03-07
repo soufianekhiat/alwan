@@ -129,8 +129,8 @@ static int test_output_transform_basic_rec709(void) {
     }
 
     /* Neutral input should produce neutral output */
-    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, TEST_TOLERANCE);
-    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, ALWAN_TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, ALWAN_TEST_TOLERANCE);
 
     TEST_PASS_MSG();
     return 0;
@@ -148,8 +148,8 @@ static int test_output_transform_basic_srgb(void) {
     }
 
     /* Neutral should stay neutral */
-    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, TEST_TOLERANCE);
-    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.r, rgb_out.g, ALWAN_TEST_TOLERANCE);
+    TEST_CHECK_NEAR(rgb_out.g, rgb_out.b, ALWAN_TEST_TOLERANCE);
 
     TEST_PASS_MSG();
     return 0;
@@ -494,7 +494,7 @@ static int test_neutral_axis_consistency(void) {
         alwan_scalar diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
         alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
         alwan_scalar max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
-        if (max_diff > TEST_TOLERANCE) {
+        if (max_diff > ALWAN_TEST_TOLERANCE) {
             TEST_FAIL("Gray %zu produced non-neutral output: (%g, %g, %g)",
                       i, rgb_out.r, rgb_out.g, rgb_out.b);
         }

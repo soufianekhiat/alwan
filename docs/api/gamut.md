@@ -33,10 +33,10 @@ typedef enum {
 
 ## Functions
 
-### alwan_gamut_map
+### alwan_gamut_map_interleave
 
 ```c
-int alwan_gamut_map(
+int alwan_gamut_map_interleave(
     alwan_scalar *rgb_out,            // Output mapped RGB
     alwan_gamut_map_method method,
     alwan_scalar const *rgb_in,       // Input (may be out of gamut)
@@ -52,7 +52,7 @@ Maps RGB colors to [0,1] gamut using specified method.
 ```c
 alwan_rgb rgb_in = {1.2, 0.5, -0.1};  // Out of gamut
 alwan_rgb rgb_out;
-alwan_gamut_map((alwan_scalar*)&rgb_out, ALWAN_GAMUT_MAP_CLIP,
+alwan_gamut_map_interleave((alwan_scalar*)&rgb_out, ALWAN_GAMUT_MAP_CLIP,
                 (alwan_scalar*)&rgb_in, 1,
                 sizeof(alwan_rgb), sizeof(alwan_rgb));
 // rgb_out = {1.0, 0.5, 0.0}

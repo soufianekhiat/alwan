@@ -53,7 +53,7 @@ static int test_adapt_d65_to_d50_bradford(void) {
     alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 input_xyz = {{test_colors_data[i * 3 + 0],
@@ -108,7 +108,7 @@ static int test_adapt_a_to_d65_bradford(void) {
     alwan_xyz a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 input_xyz = {{test_colors_data[i * 3 + 0],
@@ -154,7 +154,7 @@ static int test_roundtrip_d65_d50_d65(void) {
     alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 original = {{test_colors_data[i * 3 + 0],
@@ -211,7 +211,7 @@ static int test_roundtrip_all_methods(void) {
     /* Test color: sRGB red in D65 */
     alwan_vec3 original = {{ALWAN_LITERAL(0.412456), ALWAN_LITERAL(0.212673), ALWAN_LITERAL(0.019334)}};
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     /* Test all methods */
     alwan_cat_method methods[] = {

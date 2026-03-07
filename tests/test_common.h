@@ -24,15 +24,6 @@ static int test_failed = 0;
 #define TEST_PASS_INCR() (test_passed++)
 #define TEST_FAIL_INCR() (test_failed++)
 
-/* ============================================================================
- * Standard Test Tolerance
- * All tests MUST use TEST_TOLERANCE. Do NOT define local tolerances.
- * This is intentionally strict - if tests fail, fix the implementation.
- * ============================================================================ */
-
-/* Standard tolerance for absolute comparisons (f32: 1e-5, f64: 1e-12) */
-#define TEST_TOLERANCE ALWAN_TEST_TOLERANCE
-
 /* Small epsilon for avoiding division by zero in relative comparisons */
 #define TEST_EPSILON ALWAN_LITERAL(1e-20)
 

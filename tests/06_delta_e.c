@@ -30,7 +30,7 @@ static int test_delta_e_76(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -62,7 +62,7 @@ static int test_delta_e_94(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -94,7 +94,7 @@ static int test_delta_e_cmc(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -127,7 +127,7 @@ static int test_delta_e_2000(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
@@ -150,7 +150,7 @@ static int test_delta_e_ok(void) {
     {
         alwan_oklab a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.05)};
         alwan_scalar result = alwan_delta_e_ok(&a, &a);
-        TEST_ASSERT_NEAR(result, ALWAN_LITERAL(0.0), TEST_TOLERANCE, "deltaEOK identical");
+        TEST_ASSERT_NEAR(result, ALWAN_LITERAL(0.0), ALWAN_TEST_TOLERANCE, "deltaEOK identical");
     }
 
     /* Known pair: dL=0.1, da=0.2, db=0.3 → sqrt(0.01+0.04+0.09) = sqrt(0.14) */
@@ -159,7 +159,7 @@ static int test_delta_e_ok(void) {
         alwan_oklab b = {ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.3)};
         alwan_scalar expected = ALWAN_SQRT(ALWAN_LITERAL(0.14));
         alwan_scalar result = alwan_delta_e_ok(&a, &b);
-        TEST_ASSERT_NEAR(result, expected, TEST_TOLERANCE, "deltaEOK known pair");
+        TEST_ASSERT_NEAR(result, expected, ALWAN_TEST_TOLERANCE, "deltaEOK known pair");
     }
 
     /* Symmetry: dE(a,b) == dE(b,a) */
@@ -168,7 +168,7 @@ static int test_delta_e_ok(void) {
         alwan_oklab b = {ALWAN_LITERAL(0.3), ALWAN_LITERAL(-0.02), ALWAN_LITERAL(0.15)};
         alwan_scalar d1 = alwan_delta_e_ok(&a, &b);
         alwan_scalar d2 = alwan_delta_e_ok(&b, &a);
-        TEST_ASSERT_NEAR(d1, d2, TEST_TOLERANCE, "deltaEOK symmetry");
+        TEST_ASSERT_NEAR(d1, d2, ALWAN_TEST_TOLERANCE, "deltaEOK symmetry");
     }
 
     /* Non-negativity */

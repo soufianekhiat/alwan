@@ -27,7 +27,7 @@ static int test_munsell_neutrals(void) {
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N0: error %d", status);
     }
-    TEST_CHECK_NEAR(xyz.y, 0.0, TEST_TOLERANCE);  /* Y should be ~0 */
+    TEST_CHECK_NEAR(xyz.y, 0.0, ALWAN_TEST_TOLERANCE);  /* Y should be ~0 */
 
     /* N5 (mid gray) */
     status = alwan_munsell_to_xyz(&xyz, 0.0, 5.0, 0.0, ALWAN_ILLUMINANT_C);
@@ -35,14 +35,14 @@ static int test_munsell_neutrals(void) {
         TEST_FAIL("Failed to convert N5: error %d", status);
     }
     /* N5 should have Y ≈ 0.198 (19.8% reflectance) */
-    TEST_CHECK_NEAR(xyz.y, 0.198, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(xyz.y, 0.198, ALWAN_TEST_TOLERANCE);
 
     /* N10 (white) */
     status = alwan_munsell_to_xyz(&xyz, 0.0, 10.0, 0.0, ALWAN_ILLUMINANT_C);
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N10: error %d", status);
     }
-    TEST_CHECK_NEAR(xyz.y, 1.0, TEST_TOLERANCE);  /* Y should be ~1.0 */
+    TEST_CHECK_NEAR(xyz.y, 1.0, ALWAN_TEST_TOLERANCE);  /* Y should be ~1.0 */
 
     TEST_PASS_MSG();
     return 0;
@@ -118,7 +118,7 @@ static int test_munsell_illuminant_adaptation(void) {
                          ALWAN_ABS(xyz_c.y - xyz_d65.y) +
                          ALWAN_ABS(xyz_c.z - xyz_d65.z);
 
-    if (diff < TEST_TOLERANCE) {
+    if (diff < ALWAN_TEST_TOLERANCE) {
         TEST_FAIL("Expected chromatic adaptation to change XYZ values");
     }
 
@@ -206,7 +206,7 @@ static int test_colorchecker_illuminant_adaptation(void) {
                          ALWAN_ABS(xyz_d50.y - xyz_d65.y) +
                          ALWAN_ABS(xyz_d50.z - xyz_d65.z);
 
-    if (diff < TEST_TOLERANCE) {
+    if (diff < ALWAN_TEST_TOLERANCE) {
         TEST_FAIL("Expected chromatic adaptation to change XYZ values");
     }
 
@@ -278,16 +278,16 @@ static int test_rgb_space_lookup(void) {
     }
 
     /* Verify sRGB primaries */
-    TEST_CHECK_NEAR(primaries[0], 0.6400, TEST_TOLERANCE);  /* Red x */
-    TEST_CHECK_NEAR(primaries[1], 0.3300, TEST_TOLERANCE);  /* Red y */
-    TEST_CHECK_NEAR(primaries[2], 0.3000, TEST_TOLERANCE);  /* Green x */
-    TEST_CHECK_NEAR(primaries[3], 0.6000, TEST_TOLERANCE);  /* Green y */
-    TEST_CHECK_NEAR(primaries[4], 0.1500, TEST_TOLERANCE);  /* Blue x */
-    TEST_CHECK_NEAR(primaries[5], 0.0600, TEST_TOLERANCE);  /* Blue y */
+    TEST_CHECK_NEAR(primaries[0], 0.6400, ALWAN_TEST_TOLERANCE);  /* Red x */
+    TEST_CHECK_NEAR(primaries[1], 0.3300, ALWAN_TEST_TOLERANCE);  /* Red y */
+    TEST_CHECK_NEAR(primaries[2], 0.3000, ALWAN_TEST_TOLERANCE);  /* Green x */
+    TEST_CHECK_NEAR(primaries[3], 0.6000, ALWAN_TEST_TOLERANCE);  /* Green y */
+    TEST_CHECK_NEAR(primaries[4], 0.1500, ALWAN_TEST_TOLERANCE);  /* Blue x */
+    TEST_CHECK_NEAR(primaries[5], 0.0600, ALWAN_TEST_TOLERANCE);  /* Blue y */
 
     /* Verify D65 white point */
-    TEST_CHECK_NEAR(white_point.v[0], 0.3127, TEST_TOLERANCE);
-    TEST_CHECK_NEAR(white_point.v[1], 0.3290, TEST_TOLERANCE);
+    TEST_CHECK_NEAR(white_point.v[0], 0.3127, ALWAN_TEST_TOLERANCE);
+    TEST_CHECK_NEAR(white_point.v[1], 0.3290, ALWAN_TEST_TOLERANCE);
 
     TEST_PASS_MSG();
     return 0;

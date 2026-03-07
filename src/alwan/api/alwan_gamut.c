@@ -130,7 +130,7 @@ static void gamut_map_hue_preserving_single(alwan_vec3 const *rgb_in, alwan_vec3
     }
 }
 
-int alwan_gamut_map(alwan_scalar *rgb_out,
+int alwan_gamut_map_interleave(alwan_scalar *rgb_out,
                     alwan_gamut_map_method method,
                     alwan_scalar const *rgb_in,
                     size_t count,
@@ -796,7 +796,7 @@ int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
  * Per-pixel math in alwan_gamut_core.h
  * ---------------------------------------------------------------- */
 
-int alwan_css_gamut_map(alwan_scalar *rgb_out,
+int alwan_css_gamut_map_interleave(alwan_scalar *rgb_out,
                         alwan_scalar const *rgb_in,
                         size_t count,
                         size_t in_stride,

@@ -54,7 +54,7 @@ ALWAN_DIAG_POP
             alwan_scalar expected = expected_ictcp[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
-            if (diff >= TEST_TOLERANCE) {
+            if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
                 printf("    RGB: [%.6f, %.6f, %.6f]\n",
                        (double)rgb.v[0], (double)rgb.v[1], (double)rgb.v[2]);
@@ -124,7 +124,7 @@ ALWAN_DIAG_POP
             alwan_scalar expected = expected_rgb_reconstructed[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(rgb_out.v[j] - expected);
 
-            if (diff >= TEST_TOLERANCE) {
+            if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
                 printf("    Original RGB: [%.6f, %.6f, %.6f]\n",
                        (double)rgb_in.v[0], (double)rgb_in.v[1], (double)rgb_in.v[2]);
@@ -190,7 +190,7 @@ ALWAN_DIAG_POP
             alwan_scalar expected = expected_ictcp[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
-            if (diff >= TEST_TOLERANCE) {
+            if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
                 printf("    RGB: [%.6f, %.6f, %.6f]\n",
                        (double)rgb.v[0], (double)rgb.v[1], (double)rgb.v[2]);
@@ -260,7 +260,7 @@ ALWAN_DIAG_POP
             alwan_scalar expected = expected_rgb_reconstructed[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(rgb_out.v[j] - expected);
 
-            if (diff >= TEST_TOLERANCE) {
+            if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
                 printf("    Original RGB: [%.6f, %.6f, %.6f]\n",
                        (double)rgb_in.v[0], (double)rgb_in.v[1], (double)rgb_in.v[2]);
@@ -322,7 +322,7 @@ ALWAN_DIAG_POP
             alwan_scalar expected = expected_ictcp[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
-            if (diff >= TEST_TOLERANCE) {
+            if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed (diff: %.6e)\n", i, j, (double)diff);
                 TEST_ASSERT(0, "XYZ -> ICtCp (PQ) failed");
             }
@@ -371,7 +371,7 @@ ALWAN_DIAG_POP
             alwan_scalar expected = expected_ictcp[i * 3 + j];
             alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
-            if (diff >= TEST_TOLERANCE) {
+            if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed (diff: %.6e)\n", i, j, (double)diff);
                 TEST_ASSERT(0, "XYZ -> ICtCp (HLG) failed");
             }

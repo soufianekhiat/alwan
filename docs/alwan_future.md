@@ -641,13 +641,13 @@ Convenience wrappers that can be implemented using existing functions.
 
 ```c
 // alwan_gamut_clip - shortcut for:
-alwan_gamut_map(&rgb_out, ALWAN_GAMUT_MAP_CLIP, &rgb_in, count);
+alwan_gamut_map_interleave(&rgb_out, ALWAN_GAMUT_MAP_CLIP, &rgb_in, count);
 
 // alwan_gamut_map_perceptual - shortcut for:
-alwan_gamut_map(&rgb_out, ALWAN_GAMUT_MAP_PERCEPTUAL, &rgb_in, count);
+alwan_gamut_map_interleave(&rgb_out, ALWAN_GAMUT_MAP_PERCEPTUAL, &rgb_in, count);
 
 // alwan_gamut_map_hue_preserving - shortcut for:
-alwan_gamut_map(&rgb_out, ALWAN_GAMUT_MAP_HUE_PRESERVING, &rgb_in, count);
+alwan_gamut_map_interleave(&rgb_out, ALWAN_GAMUT_MAP_HUE_PRESERVING, &rgb_in, count);
 ```
 
 ---

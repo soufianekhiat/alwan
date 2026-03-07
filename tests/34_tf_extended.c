@@ -68,7 +68,7 @@ static int test_transfer_function(
     alwan_scalar const *ref_data,
     size_t num_triplets)
 {
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     int failures = 0;
 

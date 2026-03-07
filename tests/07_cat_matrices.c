@@ -60,7 +60,7 @@ static int test_cat_d65_to_d50_bradford(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     if (diff >= tolerance) {
@@ -98,7 +98,7 @@ static int test_cat_d50_to_d65_bradford(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d50_xyz, &d65_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D50->D65 Bradford matrix mismatch");
@@ -131,7 +131,7 @@ static int test_cat_a_to_d65_bradford(void) {
     int status = alwan_cat_matrix(&computed_matrix, &a_xyz, &d65_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "A->D65 Bradford matrix mismatch");
@@ -164,7 +164,7 @@ static int test_cat_d65_to_d60_bradford(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d60_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D65->D60 Bradford matrix mismatch");
@@ -197,7 +197,7 @@ static int test_cat_d65_to_d50_cat02(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_CAT02);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D65->D50 CAT02 matrix mismatch");
@@ -230,7 +230,7 @@ static int test_cat_d65_to_d50_cat16(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_CAT16);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D65->D50 CAT16 matrix mismatch");
@@ -263,7 +263,7 @@ static int test_cat_d65_to_d50_xyz_scaling(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_XYZ_SCALING);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D65->D50 XYZ Scaling matrix mismatch");

@@ -31,7 +31,7 @@ static int test_cct_mccamy(void) {
 
         alwan_scalar rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
 
-        if (rel_err > TEST_TOLERANCE) {
+        if (rel_err > ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: xy=[%.5f, %.5f]\n", i, xy.v[0], xy.v[1]);
             printf("    Expected CCT: %.1f K\n", expected_cct);
             printf("    Got CCT:      %.1f K\n", cct);
@@ -66,7 +66,7 @@ static int test_cct_robertson(void) {
 
         alwan_scalar rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
 
-        if (rel_err > TEST_TOLERANCE) {
+        if (rel_err > ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: xy=[%.5f, %.5f]\n", i, xy.v[0], xy.v[1]);
             printf("    Expected CCT: %.1f K\n", expected_cct);
             printf("    Got CCT:      %.1f K\n", cct);

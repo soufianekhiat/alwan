@@ -49,8 +49,8 @@ static int test_d65_data(void) {
     printf("  D65 x: %.17g (diff %e)\n", g_d65_xy[0], diff_x);
     printf("  D65 y: %.17g (diff %e)\n", g_d65_xy[1], diff_y);
 
-    TEST_ASSERT(diff_x < TEST_TOLERANCE, "D65 x value mismatch");
-    TEST_ASSERT(diff_y < TEST_TOLERANCE, "D65 y value mismatch");
+    TEST_ASSERT(diff_x < ALWAN_TEST_TOLERANCE, "D65 x value mismatch");
+    TEST_ASSERT(diff_y < ALWAN_TEST_TOLERANCE, "D65 y value mismatch");
 
     TEST_PASS("test_d65_data");
 }
@@ -70,7 +70,7 @@ static int test_srgb_primaries(void) {
 
     for (int i = 0; i < 6; i++) {
         alwan_scalar diff = ALWAN_ABS(g_srgb_primaries[i] - expected[i]);
-        if (diff > TEST_TOLERANCE) {
+        if (diff > ALWAN_TEST_TOLERANCE) {
             printf("  Primary [%d] mismatch: %f vs %f (diff %e)\n",
                     i, g_srgb_primaries[i], expected[i], diff);
             TEST_ASSERT(0, "sRGB primary value mismatch");

@@ -44,7 +44,7 @@ static int test_xyz_xyy_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -104,7 +104,7 @@ static int test_xyz_lab_d65_roundtrip(void) {
     white_xyz.z = d65_xyz_data[2];
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -164,7 +164,7 @@ static int test_xyz_lab_d50_roundtrip(void) {
     white_xyz.z = d50_xyz_data[2];
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -219,7 +219,7 @@ static int test_xyz_luv_d65_roundtrip(void) {
     white_xyz.z = d65_xyz_data[2];
 
     int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -266,7 +266,7 @@ static int test_lab_lch_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(lab_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab;
@@ -324,7 +324,7 @@ static int test_luv_lchuv_roundtrip(void) {
     ALWAN_DIAG_POP
 
     int const num_tests = sizeof(luv_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = TEST_TOLERANCE;
+    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_luv luv;

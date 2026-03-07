@@ -15,7 +15,7 @@
  * CVD Simulation Map (dispatches by type)
  * ---------------------------------------------------------------- */
 
-int alwan_simulate_cvd_map(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
+int alwan_simulate_cvd_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
                             alwan_cvd_type cvd_type, alwan_scalar severity,
                             size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
@@ -51,7 +51,7 @@ int alwan_simulate_cvd_map(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
  * Individual CVD Type Map Functions
  * ---------------------------------------------------------------- */
 
-int alwan_simulate_protanopia_map(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
+int alwan_simulate_protanopia_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
                                    alwan_scalar severity,
                                    size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
@@ -66,7 +66,7 @@ int alwan_simulate_protanopia_map(alwan_scalar *rgb_out, alwan_scalar const *rgb
     return ALWAN_OK;
 }
 
-int alwan_simulate_deuteranopia_map(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
+int alwan_simulate_deuteranopia_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
                                      alwan_scalar severity,
                                      size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
@@ -81,7 +81,7 @@ int alwan_simulate_deuteranopia_map(alwan_scalar *rgb_out, alwan_scalar const *r
     return ALWAN_OK;
 }
 
-int alwan_simulate_tritanopia_map(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
+int alwan_simulate_tritanopia_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
                                    alwan_scalar severity,
                                    size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
@@ -95,3 +95,47 @@ int alwan_simulate_tritanopia_map(alwan_scalar *rgb_out, alwan_scalar const *rgb
     }
     return ALWAN_OK;
 }
+
+/* ================================================================
+ * Planar Map Variants
+ * ================================================================ */
+
+int alwan_simulate_cvd_map_planar(alwan_scalar *out0, alwan_scalar *out1, alwan_scalar *out2,
+                                    alwan_scalar const *in0, alwan_scalar const *in1, alwan_scalar const *in2,
+                                    alwan_cvd_type cvd_type, alwan_scalar severity,
+                                    size_t count, size_t in_stride, size_t out_stride) {
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb rgb = {
+            *(alwan_scalar const *)((char const *)in0 + i * in_stride),
+            *(alwan_scalar const *)((char const *)in1 + i * in_stride),
+            *(alwan_scalar const *)((char const *)in2 + i * in_stride)
+        };
+        alwan_rgb r;
+        switch (cvd_type) {
+        case ALWAN_CVD_PROTANOPIA:
+        case ALWAN_CVD_PROTANOMALY:
+            r = alwan_simulate_protanopia_v(rgb, severity);
+            break;
+        case ALWAN_CVD_DEUTERANOPIA:
+        case ALWAN_CVD_DEUTERANOMALY:
+            r = alwan_simulate_deuteranopia_v(rgb, severity);
+            break;
+        case ALWAN_CVD_TRITANOPIA:
+        case ALWAN_CVD_TRITANOMALY:
+            r = alwan_simulate_tritanopia_v(rgb, severity);
+            break;
+        default:
+            r = rgb;
+            break;
+        }
+        *(alwan_scalar *)((char *)out0 + i * out_stride) = r.r;
+        *(alwan_scalar *)((char *)out1 + i * out_stride) = r.g;
+        *(alwan_scalar *)((char *)out2 + i * out_stride) = r.b;
+    }
+    return ALWAN_OK;
+}
+
+ALWAN_MAP3_PLANAR_V_SCALAR(alwan_simulate_protanopia_map_planar,   alwan_rgb, alwan_rgb, alwan_simulate_protanopia_v,   r,g,b, r,g,b)
+ALWAN_MAP3_PLANAR_V_SCALAR(alwan_simulate_deuteranopia_map_planar, alwan_rgb, alwan_rgb, alwan_simulate_deuteranopia_v, r,g,b, r,g,b)
+ALWAN_MAP3_PLANAR_V_SCALAR(alwan_simulate_tritanopia_map_planar,   alwan_rgb, alwan_rgb, alwan_simulate_tritanopia_v,   r,g,b, r,g,b)
