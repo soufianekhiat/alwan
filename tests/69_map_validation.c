@@ -12,13 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* D65 white point from CSV (Y=1 normalized) */
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_d65_xyz_y1[] = {
-#include "reference_values/test_d65_white.csv"
-};
-ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
  * Grid generation
@@ -749,28 +742,8 @@ fail:
 #define MAPEX_COUNT_1D ((255 / MAPEX_STEP) + 1)  /* 18 */
 #define MAPEX_COUNT (MAPEX_COUNT_1D * MAPEX_COUNT_1D * MAPEX_COUNT_1D)  /* 5832 */
 
-static const alwan_pixel_format MAPEX_FMTS[4] = {
-    ALWAN_PIXEL_U8, ALWAN_PIXEL_U16, ALWAN_PIXEL_F32, ALWAN_PIXEL_F64
-};
-
-static const char *mapex_fmt_name(alwan_pixel_format fmt) {
-    switch (fmt) {
-    case ALWAN_PIXEL_U8:  return "U8";
-    case ALWAN_PIXEL_U16: return "U16";
-    case ALWAN_PIXEL_F32: return "F32";
-    case ALWAN_PIXEL_F64: return "F64";
-    }
-    return "?";
-}
-
 static size_t mapex_typed_stride(alwan_pixel_format fmt) {
-    switch (fmt) {
-    case ALWAN_PIXEL_U8:  return 3 * sizeof(uint8_t);
-    case ALWAN_PIXEL_U16: return 3 * sizeof(uint16_t);
-    case ALWAN_PIXEL_F32: return 3 * sizeof(float);
-    case ALWAN_PIXEL_F64: return 3 * sizeof(double);
-    }
-    return 0;
+    return 3 * test_fmt_elem_size(fmt);
 }
 
 static alwan_scalar mapex_tol(alwan_pixel_format fmt) {
@@ -808,7 +781,7 @@ static int compare_mapex(alwan_scalar const *ex_out, alwan_scalar const *ref_out
             alwan_scalar diff = ALWAN_ABS(e[c] - r[c]);
             if (diff > tol) {
                 printf("[FAIL] %s [%s]: pixel %zu ch %d: ex=%.16e ref=%.16e diff=%.16e\n",
-                       name, mapex_fmt_name(fmt), i, c, (double)e[c], (double)r[c], (double)diff);
+                       name, test_fmt_name(fmt), i, c, (double)e[c], (double)r[c], (double)diff);
                 return 1;
             }
         }
@@ -839,7 +812,7 @@ static int run_mapex3(mapex_entry3 const *entries, size_t n,
     }
     for (size_t e = 0; e < n; e++) {
         for (int f = 0; f < 4; f++) {
-            alwan_pixel_format fmt = MAPEX_FMTS[f];
+            alwan_pixel_format fmt = TEST_PIXEL_FMTS[f];
             size_t ts = mapex_typed_stride(fmt);
             alwan_scalar tol = mapex_tol(fmt);
 
@@ -977,7 +950,7 @@ static int test_ex_white_point_maps(void) {
 
     for (int e = 0; e < 4; e++) {
         for (int f = 0; f < 4; f++) {
-            alwan_pixel_format fmt = MAPEX_FMTS[f];
+            alwan_pixel_format fmt = TEST_PIXEL_FMTS[f];
             size_t ts = mapex_typed_stride(fmt);
             alwan_scalar tol = mapex_tol(fmt);
 
@@ -1038,7 +1011,7 @@ static int test_ex_ictcp_maps(void) {
     for (int pq = 0; pq <= 1; pq++) {
         for (int e = 0; e < 4; e++) {
             for (int f = 0; f < 4; f++) {
-                alwan_pixel_format fmt = MAPEX_FMTS[f];
+                alwan_pixel_format fmt = TEST_PIXEL_FMTS[f];
                 size_t ts = mapex_typed_stride(fmt);
                 alwan_scalar tol = mapex_tol(fmt);
 
@@ -1113,7 +1086,7 @@ static int test_ex_cam_maps(void) {
     vc16.discount_illuminant = 0;
 
     for (int f = 0; f < 4; f++) {
-        alwan_pixel_format fmt = MAPEX_FMTS[f];
+        alwan_pixel_format fmt = TEST_PIXEL_FMTS[f];
         size_t ts = mapex_typed_stride(fmt);
         alwan_scalar tol = mapex_tol(fmt);
 
@@ -1140,7 +1113,7 @@ static int test_ex_cam_maps(void) {
             alwan_scalar max_d = dJ; if (dC > max_d) max_d = dC; if (dh > max_d) max_d = dh;
             if (max_d > cam_fwd_tol) {
                 printf("[FAIL] ciecam02_forward_map_interleave_ex [%s]: pixel %zu: diff=%.6e (tol=%.6e)\n",
-                       mapex_fmt_name(fmt), i, (double)max_d, (double)cam_fwd_tol);
+                       test_fmt_name(fmt), i, (double)max_d, (double)cam_fwd_tol);
                 goto fail;
             }
         }
@@ -1172,7 +1145,7 @@ static int test_ex_cam_maps(void) {
             alwan_scalar max_d = dJ; if (dC > max_d) max_d = dC; if (dh > max_d) max_d = dh;
             if (max_d > cam_fwd_tol) {
                 printf("[FAIL] cam16_forward_map_interleave_ex [%s]: pixel %zu: diff=%.6e (tol=%.6e)\n",
-                       mapex_fmt_name(fmt), i, (double)max_d, (double)cam_fwd_tol);
+                       test_fmt_name(fmt), i, (double)max_d, (double)cam_fwd_tol);
                 goto fail;
             }
         }

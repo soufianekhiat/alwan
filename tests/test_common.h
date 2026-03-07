@@ -12,6 +12,7 @@
 #include "alwan.h"
 #include "alwan_internal.h"
 #include <stdio.h>
+#include <stdint.h>
 
 /* ============================================================================
  * Test Counters
@@ -186,6 +187,76 @@ static inline alwan_scalar test_rel_error(alwan_scalar got, alwan_scalar expecte
     alwan_scalar diff = ALWAN_ABS(got - expected);
     alwan_scalar ref = ALWAN_ABS(expected);
     return (ref > TEST_EPSILON) ? diff / ref : diff;
+}
+
+/* ============================================================================
+ * D65 White Point (Y=1 normalized)
+ * ============================================================================ */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_scalar const g_d65_xyz_y1[] = {
+#include "reference_values/test_d65_white.csv"
+};
+ALWAN_DIAG_POP
+
+/* ============================================================================
+ * Pixel Format Helpers
+ * ============================================================================ */
+
+static alwan_pixel_format const TEST_PIXEL_FMTS[4] = {
+    ALWAN_PIXEL_U8, ALWAN_PIXEL_U16, ALWAN_PIXEL_F32, ALWAN_PIXEL_F64
+};
+
+static inline char const *test_fmt_name(alwan_pixel_format fmt) {
+    switch (fmt) {
+    case ALWAN_PIXEL_U8:  return "U8";
+    case ALWAN_PIXEL_U16: return "U16";
+    case ALWAN_PIXEL_F32: return "F32";
+    case ALWAN_PIXEL_F64: return "F64";
+    }
+    return "?";
+}
+
+static inline size_t test_fmt_elem_size(alwan_pixel_format fmt) {
+    switch (fmt) {
+    case ALWAN_PIXEL_U8:  return sizeof(uint8_t);
+    case ALWAN_PIXEL_U16: return sizeof(uint16_t);
+    case ALWAN_PIXEL_F32: return sizeof(float);
+    case ALWAN_PIXEL_F64: return sizeof(double);
+    }
+    return 0;
+}
+
+/* Scatter: alwan_scalar → typed (single channel, clamped to [0,1] for int) */
+static inline void test_scatter1(void *out, alwan_pixel_format fmt,
+                                  alwan_scalar const *in, size_t count) {
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar v = in[i];
+        switch (fmt) {
+        case ALWAN_PIXEL_U8:  ((uint8_t *)out)[i]  = (v < 0) ? 0 : (v > 1) ? 255
+                                : (uint8_t)(v * 255 + 0.5); break;
+        case ALWAN_PIXEL_U16: ((uint16_t *)out)[i] = (v < 0) ? 0 : (v > 1) ? 65535
+                                : (uint16_t)(v * 65535 + 0.5); break;
+        case ALWAN_PIXEL_F32: ((float *)out)[i]    = (float)v; break;
+        case ALWAN_PIXEL_F64: ((double *)out)[i]   = (double)v; break;
+        }
+    }
+}
+
+/* Collect: typed → alwan_scalar (single channel) */
+static inline void test_collect1(alwan_scalar *out, void const *in,
+                                  alwan_pixel_format fmt, size_t count) {
+    for (size_t i = 0; i < count; i++) {
+        switch (fmt) {
+        case ALWAN_PIXEL_U8:  out[i] = (alwan_scalar)((uint8_t const *)in)[i]
+                                / ALWAN_LITERAL(255.0); break;
+        case ALWAN_PIXEL_U16: out[i] = (alwan_scalar)((uint16_t const *)in)[i]
+                                / ALWAN_LITERAL(65535.0); break;
+        case ALWAN_PIXEL_F32: out[i] = (alwan_scalar)((float const *)in)[i]; break;
+        case ALWAN_PIXEL_F64: out[i] = (alwan_scalar)((double const *)in)[i]; break;
+        }
+    }
 }
 
 #endif /* ALWAN_TEST_COMMON_H */

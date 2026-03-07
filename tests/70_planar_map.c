@@ -15,15 +15,6 @@
 #include "test_common.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-
-/* D65 white point from CSV (Y=1 normalized) */
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_d65_xyz_y1[] = {
-#include "reference_values/test_d65_white.csv"
-};
-ALWAN_DIAG_POP
 
 /* ================================================================
  * Grid generation (format-independent)
@@ -88,29 +79,6 @@ static alwan_scalar tol_for_fmt(alwan_pixel_format fmt) {
     return TOL_SIMD;
 }
 
-static char const *fmt_name(alwan_pixel_format fmt) {
-    switch (fmt) {
-    case ALWAN_PIXEL_U8:  return "U8";
-    case ALWAN_PIXEL_U16: return "U16";
-    case ALWAN_PIXEL_F32: return "F32";
-    case ALWAN_PIXEL_F64: return "F64";
-    }
-    return "?";
-}
-
-static size_t fmt_elem_size(alwan_pixel_format fmt) {
-    switch (fmt) {
-    case ALWAN_PIXEL_U8:  return sizeof(uint8_t);
-    case ALWAN_PIXEL_U16: return sizeof(uint16_t);
-    case ALWAN_PIXEL_F32: return sizeof(float);
-    case ALWAN_PIXEL_F64: return sizeof(double);
-    }
-    return 0;
-}
-
-static alwan_pixel_format const PM_FMTS[4] = {
-    ALWAN_PIXEL_U8, ALWAN_PIXEL_U16, ALWAN_PIXEL_F32, ALWAN_PIXEL_F64
-};
 
 /* ================================================================
  * Comparison helpers
@@ -225,38 +193,6 @@ static void pm_free(pm_buf *b) {
     } \
 } while(0)
 
-/* ================================================================
- * Typed planar scatter/collect (for _ex tests)
- * ================================================================ */
-
-static void scatter1(void *out, alwan_pixel_format fmt,
-                      alwan_scalar const *in, size_t count) {
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar v = in[i];
-        switch (fmt) {
-        case ALWAN_PIXEL_U8:  ((uint8_t *)out)[i]  = (v < 0) ? 0 : (v > 1) ? 255
-                                : (uint8_t)(v * 255 + 0.5); break;
-        case ALWAN_PIXEL_U16: ((uint16_t *)out)[i] = (v < 0) ? 0 : (v > 1) ? 65535
-                                : (uint16_t)(v * 65535 + 0.5); break;
-        case ALWAN_PIXEL_F32: ((float *)out)[i]    = (float)v; break;
-        case ALWAN_PIXEL_F64: ((double *)out)[i]   = (double)v; break;
-        }
-    }
-}
-
-static void collect1(alwan_scalar *out, void const *in,
-                      alwan_pixel_format fmt, size_t count) {
-    for (size_t i = 0; i < count; i++) {
-        switch (fmt) {
-        case ALWAN_PIXEL_U8:  out[i] = (alwan_scalar)((uint8_t const *)in)[i]
-                                / ALWAN_LITERAL(255.0); break;
-        case ALWAN_PIXEL_U16: out[i] = (alwan_scalar)((uint16_t const *)in)[i]
-                                / ALWAN_LITERAL(65535.0); break;
-        case ALWAN_PIXEL_F32: out[i] = (alwan_scalar)((float const *)in)[i]; break;
-        case ALWAN_PIXEL_F64: out[i] = (alwan_scalar)((double const *)in)[i]; break;
-        }
-    }
-}
 
 /* ================================================================
  * Macros: _v (per-pixel API) vs _map_planar
@@ -1089,7 +1025,7 @@ static int cmp_ex(alwan_scalar const *ex0, alwan_scalar const *ex1, alwan_scalar
         }
         if (mx > tol) {
             printf("[FAIL] %s [%s]: pixel %zu ch max: err=%.6e (tol=%.6e)\n",
-                   name, fmt_name(fmt), i, (double)mx, (double)tol);
+                   name, test_fmt_name(fmt), i, (double)mx, (double)tol);
             return 1;
         }
     }
@@ -1140,22 +1076,22 @@ static int run_pex3(pex_entry3 const *entries, size_t n, alwan_scalar const *gri
 
     for (size_t e = 0; e < n; e++) {
         for (int f = 0; f < 4; f++) {
-            alwan_pixel_format fmt = PM_FMTS[f];
-            size_t es = fmt_elem_size(fmt);
+            alwan_pixel_format fmt = TEST_PIXEL_FMTS[f];
+            size_t es = test_fmt_elem_size(fmt);
             alwan_scalar tol = tol_for_fmt(fmt);
 
             /* Scatter planar input to typed */
-            scatter1(ti0, fmt, qi0, count);
-            scatter1(ti1, fmt, qi1, count);
-            scatter1(ti2, fmt, qi2, count);
+            test_scatter1(ti0, fmt, qi0, count);
+            test_scatter1(ti1, fmt, qi1, count);
+            test_scatter1(ti2, fmt, qi2, count);
 
             /* Collect quantized input and run reference on that.
              * For U8/U16 this compensates for integer quantization; for F32
              * (when alwan_scalar is double) it compensates for float32
              * precision loss — critical for nonlinear functions like PQ. */
-            collect1(ref0, ti0, fmt, count);
-            collect1(ref1, ti1, fmt, count);
-            collect1(ref2, ti2, fmt, count);
+            test_collect1(ref0, ti0, fmt, count);
+            test_collect1(ref1, ti1, fmt, count);
+            test_collect1(ref2, ti2, fmt, count);
             for (size_t i = 0; i < count; i++) {
                 qgrid[i*3+0] = ref0[i]; qgrid[i*3+1] = ref1[i]; qgrid[i*3+2] = ref2[i];
             }
@@ -1169,9 +1105,9 @@ static int run_pex3(pex_entry3 const *entries, size_t n, alwan_scalar const *gri
             entries[e].planar_ex(to0, to1, to2, fmt, ti0, ti1, ti2, fmt, count, es, es);
 
             /* Collect typed output to scalar */
-            collect1(ex0, to0, fmt, count);
-            collect1(ex1, to1, fmt, count);
-            collect1(ex2, to2, fmt, count);
+            test_collect1(ex0, to0, fmt, count);
+            test_collect1(ex1, to1, fmt, count);
+            test_collect1(ex2, to2, fmt, count);
 
             if (cmp_ex(ex0, ex1, ex2, ref0, ref1, ref2, count, entries[e].name, tol, fmt)) {
                 free(ref0); free(ref1); free(ref2); free(ex0); free(ex1); free(ex2);
