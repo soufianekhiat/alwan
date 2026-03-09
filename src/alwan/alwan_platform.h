@@ -69,9 +69,14 @@
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
   /* Halide backend
-   * ALWAN_SCALAR_IS_FLOAT selects Float(32) vs Float(64) precision. */
+   * ALWAN_SCALAR_IS_FLOAT selects Float(32) vs Float(64) precision.
+   *
+   * alwan_halide_scalar inherits from Halide::Expr and adds an implicit
+   * constructor from double so that bare numeric literals in CSV data files
+   * (e.g. #include "data/matrices/oklab_m2.csv") can initialise
+   * alwan_scalar arrays and structs without wrapping every value in
+   * ALWAN_LITERAL(). */
 # include <Halide.h>
-  typedef Halide::Expr alwan_scalar;
 # ifndef ALWAN_SCALAR_IS_FLOAT
 #   define ALWAN_SCALAR_IS_FLOAT 1  /* default: float for GPU pipelines */
 # endif
@@ -84,6 +89,16 @@
 #   define ALWAN_HALIDE_FLOAT_BITS 64
 #   define ALWAN_LITERAL(x) Halide::Internal::make_const(Halide::Float(64), (x))
 # endif
+
+  struct alwan_halide_scalar : Halide::Expr {
+      using Halide::Expr::Expr;
+      alwan_halide_scalar() = default;
+      alwan_halide_scalar(double v)
+          : Halide::Expr(Halide::Internal::make_const(
+                Halide::Float(ALWAN_HALIDE_FLOAT_BITS), v)) {}
+      alwan_halide_scalar(const Halide::Expr& e) : Halide::Expr(e) {}
+  };
+  typedef alwan_halide_scalar alwan_scalar;
 
 #endif
 
