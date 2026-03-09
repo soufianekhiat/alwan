@@ -112,13 +112,46 @@ typedef enum {
 
 ---
 
+## Arbitrary Gamma
+
+```c
+int alwan_gamma_oetf(alwan_scalar *out, alwan_scalar const *in,
+                     alwan_scalar gamma, size_t count,
+                     size_t in_stride, size_t out_stride);
+
+int alwan_gamma_eotf(alwan_scalar *out, alwan_scalar const *in,
+                     alwan_scalar gamma, size_t count,
+                     size_t in_stride, size_t out_stride);
+```
+
+Apply arbitrary gamma values not covered by the enum. OETF: `pow(in, 1/gamma)`, EOTF: `pow(in, gamma)`.
+
+---
+
+## Bit Depth Conversion
+
+```c
+int alwan_uint_to_float(alwan_scalar *out, alwan_uint16 const *in,
+                        int bit_depth, size_t count);
+int alwan_float_to_uint(alwan_uint16 *out, alwan_scalar const *in,
+                        int bit_depth, size_t count);
+```
+
+Convert between integer code values and floating-point [0, 1] range. Supports arbitrary bit depths.
+
+---
+
 ## View Transform Enum
 
 ```c
 typedef enum {
-    ALWAN_VIEW_ACES_REC709,  // ACES RRT + ODT Rec.709
-    ALWAN_VIEW_AGX,          // AgX base
-    ALWAN_VIEW_AGX_PUNCHY    // AgX punchy variant
+    ALWAN_VIEW_ACES_REC709,         // ACES RRT + ODT Rec.709
+    ALWAN_VIEW_AGX,                 // AgX base
+    ALWAN_VIEW_AGX_PUNCHY,          // AgX punchy variant
+    ALWAN_VIEW_AGX_GOLDEN,          // AgX golden (warm highlights, cool shadows)
+    ALWAN_VIEW_BT2446A_HDR_TO_SDR,  // BT.2446 Method A: HDR to SDR
+    ALWAN_VIEW_BT2446A_SDR_TO_HDR,  // BT.2446 Method A: SDR to HDR
+    ALWAN_VIEW_KHRONOS_PBR_NEUTRAL  // Khronos PBR Neutral (glTF/WebGL)
 } alwan_view_transform;
 ```
 

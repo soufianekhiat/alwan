@@ -52,6 +52,16 @@ This document describes the valid ranges for each channel of every color space s
 
 **Notes:** Hue is normalized to [0, 1] instead of degrees. Multiply by 360 for degrees.
 
+### HWB (CSS Color Level 4)
+
+| Channel | Range | Description |
+|---------|-------|-------------|
+| `H` | [0, 1] | Hue (normalized, same as HSV/HSL) |
+| `W` | [0, 1] | Whiteness |
+| `B` | [0, 1] | Blackness |
+
+**Notes:** W + B can exceed 1.0 (colors are normalized). Derived from HSV. Part of CSS Color Level 4 specification.
+
 ### CMY (`alwan_cmy`)
 
 | Channel | Range | Description |

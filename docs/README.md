@@ -19,10 +19,18 @@ Complete reference documentation for the Alwan colour science library.
 - **[Chromatic Adaptation](api/chromatic-adaptation.md)** — White point adaptation transforms
 - **[Transfer Functions](api/transfer-functions.md)** — Encoding/decoding curves and view transforms
 - **[Matrix Operations](api/matrix-operations.md)** — 3×3 matrix math
-- **[Spectral Operations](api/spectral.md)** — Spectral power distribution calculations
-- **[Color Appearance Models](api/color-appearance.md)** — CIECAM02, CAM16
-- **[Color Difference](api/color-difference.md)** — ΔE metrics
-- **[Gamut Operations](api/gamut.md)** — Gamut mapping and analysis
+- **[Spectral Operations](api/spectral.md)** — SPD lifecycle, integration, resampling, and upsampling
+- **[Color Appearance Models](api/color-appearance.md)** — CIECAM02, CAM16, ZCAM, and 7 more CAMs
+- **[Color Difference](api/color-difference.md)** — ΔE metrics (76, 94, 2000, CMC, ITP, HyAb, DIN99, CAM UCS)
+- **[Gamut Operations](api/gamut.md)** — Gamut mapping, volume, coverage, and colorimetric analysis
+- **[ACES Pipeline](api/aces.md)** — ACES 1.x and 2.0 output transforms, LMTs, fixed functions
+- **[HDR Utilities](api/hdr.md)** — HLG OOTF, MaxCLL/MaxFALL, contrast metrics, arbitrary gamma
+- **[Color Correction & Grading](api/color-correction.md)** — LGG, color matrix, printer lights, white balance, camera profiling
+- **[Color Vision Deficiency](api/color-vision-deficiency.md)** — CVD simulation (Brettel 1997)
+- **[CCT & Light Quality](api/cct-light-quality.md)** — CCT estimation, CRI, CQS, TM-30, SSI, whiteness/yellowness
+- **[Vision Science](api/vision.md)** — Barten CSF, luminous efficiency, pupil response
+- **[Atmospheric Optics](api/atmosphere.md)** — Rayleigh scattering (Bodhaine 1999)
+- **[Reference Data](api/reference-data.md)** — Munsell, ColorChecker, NCS, interpolation, LUT
 
 ### Technical Details
 - **[Precision & Limits](precision-and-limits.md)** — Numerical accuracy, tolerances, and constraints

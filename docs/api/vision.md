@@ -294,9 +294,58 @@ for (int region = 0; region < num_regions; region++) {
 
 ---
 
+## Luminous Efficiency & Luminance
+
+### Vision Types
+
+```c
+typedef enum {
+    ALWAN_VISION_PHOTOPIC = 0,  /* Daytime, cone-based - V(lambda) */
+    ALWAN_VISION_SCOTOPIC = 1,  /* Nighttime, rod-based - V'(lambda) */
+    ALWAN_VISION_MESOPIC = 2    /* Twilight, mixed rod/cone */
+} alwan_vision_type;
+```
+
+### alwan_luminous_efficiency
+
+```c
+alwan_scalar alwan_luminous_efficiency(alwan_scalar wavelength,
+                                       alwan_vision_type vision_type);
+```
+
+Get luminous efficiency for a wavelength [360, 830] nm. Returns value [0, 1]. Data: CIE photopic V(lambda) 1924/1988, CIE scotopic V'(lambda) 1951.
+
+### alwan_photopic_luminance / alwan_scotopic_luminance
+
+```c
+alwan_scalar alwan_photopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
+alwan_scalar alwan_scotopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
+```
+
+Calculate photopic or scotopic luminance from an SPD. Returns luminance in cd/m^2.
+
+### alwan_mesopic_luminance
+
+```c
+alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx, alwan_spd const *spd,
+                                     alwan_scalar adaptation_level);
+```
+
+Calculate mesopic luminance using CIE 191:2010 model. `adaptation_level` is the adaptation luminance in cd/m^2 [0.001, 10].
+
+### alwan_csf (simplified)
+
+```c
+alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance);
+```
+
+Simplified contrast sensitivity function. Quick estimate without full Barten parameterization.
+
+---
+
 ## Rayleigh Scattering
 
-See the spectral operations documentation for Rayleigh scattering functions:
+See [Atmospheric Optics](atmosphere.md) for Rayleigh scattering functions:
 - `alwan_rayleigh_cross_section()` — Molecular cross section
 - `alwan_rayleigh_optical_depth()` — Atmospheric optical depth
 - `alwan_rayleigh_spd()` — Scattered light spectrum
@@ -331,6 +380,7 @@ The default parameters match colour-science's implementation:
 
 ## See Also
 
-- [Spectral Operations](spectral.md) — Rayleigh scattering
+- [Atmospheric Optics](atmosphere.md) — Rayleigh scattering
+- [Spectral Operations](spectral.md) — SPD operations
 - [Color Appearance](color-appearance.md) — Perceptual color models
 - [Color Difference](color-difference.md) — Visibility of color differences

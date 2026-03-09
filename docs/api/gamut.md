@@ -99,6 +99,93 @@ alwan_gamut_volume_mc(&volume, &srgb_desc, 100000, 42);
 
 ---
 
+### alwan_gamut_map_advanced
+
+```c
+int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
+                             alwan_gamut_map_method method,
+                             alwan_rgb_space_desc const *space,
+                             alwan_rgb const *rgb_linear);
+```
+
+Advanced gamut mapping with awareness of the target RGB space's gamut boundary.
+
+---
+
+### alwan_css_gamut_map_interleave
+
+```c
+int alwan_css_gamut_map_interleave(alwan_scalar *rgb_out,
+                                   alwan_rgb_space_desc const *space,
+                                   alwan_scalar const *rgb_in,
+                                   size_t count, size_t in_stride,
+                                   size_t out_stride);
+```
+
+CSS Color Level 4 gamut mapping algorithm. Maps out-of-gamut colors using the binary search algorithm specified in the CSS Color Level 4 specification.
+
+---
+
+### alwan_gamut_volume_ratio
+
+```c
+int alwan_gamut_volume_ratio(alwan_scalar *ratio_out,
+                             alwan_rgb_space_desc const *space1,
+                             alwan_rgb_space_desc const *space2);
+```
+
+Calculate the volume ratio between two RGB gamuts.
+
+---
+
+### alwan_gamut_coverage
+
+```c
+int alwan_gamut_coverage(alwan_scalar *coverage_out,
+                         alwan_rgb_space_desc const *space1,
+                         alwan_rgb_space_desc const *space2,
+                         size_t num_samples, unsigned int seed);
+```
+
+Estimate how much of `space1`'s gamut is covered by `space2` using Monte Carlo sampling.
+
+---
+
+### Pointer's Gamut
+
+```c
+int alwan_is_within_pointer_gamut(alwan_vec2 const *xy);
+```
+
+Test whether an xy chromaticity falls within Pointer's gamut (the gamut of real surface colors).
+
+---
+
+### Dominant Wavelength & Excitation Purity
+
+```c
+int alwan_spectral_locus_xy(alwan_vec2 *xy_out, alwan_scalar wavelength);
+
+int alwan_dominant_wavelength(alwan_scalar *wavelength_out,
+                              alwan_vec2 *xy_wl_out, alwan_vec2 *xy_cw_out,
+                              alwan_vec2 const *xy, alwan_vec2 const *xy_white);
+
+int alwan_excitation_purity(alwan_scalar *purity_out,
+                            alwan_vec2 const *xy, alwan_vec2 const *xy_white);
+
+int alwan_complementary_wavelength(alwan_scalar *wavelength_out,
+                                    alwan_vec2 *xy_wl_out, alwan_vec2 *xy_cw_out,
+                                    alwan_vec2 const *xy, alwan_vec2 const *xy_white);
+```
+
+Colorimetric analysis functions:
+- **Spectral locus**: Get the xy chromaticity of a monochromatic wavelength
+- **Dominant wavelength**: Find the spectral color that matches the hue of a given color
+- **Excitation purity**: Measure how saturated a color is (0 = white, 1 = spectral)
+- **Complementary wavelength**: Find the wavelength complementary to a given color
+
+---
+
 ## Manual Gamut Checking
 
 Check if RGB is within [0,1] bounds:
