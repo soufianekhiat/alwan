@@ -728,7 +728,7 @@ int alwan_gamut_map_xyz_to_rgb(alwan_rgb *rgb_out,
                                 alwan_rgb_space_desc const *space,
                                 alwan_xyz const *xyz_in);
 
-/* CSS Color Level 4 §13.2 OKLCh gamut mapping (binary search on chroma)
+/* CSS Color Level 4 Section 13.2 OKLCh gamut mapping (binary search on chroma)
  * Maps out-of-gamut linear sRGB to in-gamut linear sRGB using OKLCh binary search
  * with deltaEOK JND criterion (threshold 0.02)
  * rgb_out: output in-gamut linear sRGB triplets
@@ -762,7 +762,7 @@ int alwan_eotf_apply(alwan_scalar *linear,
                      size_t count, size_t in_stride, size_t out_stride);
 
 /* ----------------------------------------------------------------
- * Integer-to-Float Normalization (ColorInterop §1.5)
+ * Integer-to-Float Normalization (ColorInterop Section 1.5)
  * Uses (2^N - 1) normalization. Supported bit depths: 8, 10, 12, 16.
  * ---------------------------------------------------------------- */
 int alwan_uint_to_float(alwan_scalar *out, alwan_uint16 const *in, int bit_depth, size_t count);
@@ -2015,7 +2015,7 @@ typedef enum {
 /* CIECAM02 viewing conditions */
 typedef struct {
     alwan_xyz white_xyz;                   /* Reference white in XYZ (Y typically 100) */
-    alwan_scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m² (typically 20% of white Y) */
+    alwan_scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m^2 (typically 20% of white Y) */
     alwan_scalar background_luminance;           /* Relative luminance of background (Yb/Yw, typically 0.2 for 20% gray) */
     alwan_ciecam02_surround surround;      /* Viewing surround condition */
     int discount_illuminant;               /* 1 to discount illuminant, 0 otherwise (affects D) */
@@ -2065,7 +2065,7 @@ typedef enum {
 /* CAM16 viewing conditions (similar to CIECAM02 but uses CAT16) */
 typedef struct {
     alwan_xyz white_xyz;                   /* Reference white in XYZ (Y typically 100) */
-    alwan_scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m² */
+    alwan_scalar adapting_luminance;             /* Luminance of adapting field (La) in cd/m^2 */
     alwan_scalar background_luminance;           /* Relative luminance of background (Yb/Yw, typically 0.2) */
     alwan_cam16_surround surround;         /* Viewing surround condition */
     int discount_illuminant;               /* 1 to discount illuminant, 0 otherwise */
@@ -2173,7 +2173,7 @@ int alwan_cam16_from_ucs(alwan_cam16_correlates *correlates_out,
 /* ----------------------------------------------------------------
  * ZCAM - HDR Color Appearance Model
  * Based on Safdar et al. (2021), uses Jzazbz color space
- * Supports HDR luminance range 0.001-10,000 cd/m²
+ * Supports HDR luminance range 0.001-10,000 cd/m^2
  * ---------------------------------------------------------------- */
 
 /* ZCAM surround condition */
@@ -2185,8 +2185,8 @@ typedef enum {
 
 /* ZCAM viewing conditions */
 typedef struct {
-    alwan_xyz xyz_w;                   /* White point (absolute XYZ in cd/m²) */
-    alwan_scalar La;                   /* Adapting luminance (cd/m²) */
+    alwan_xyz xyz_w;                   /* White point (absolute XYZ in cd/m^2) */
+    alwan_scalar La;                   /* Adapting luminance (cd/m^2) */
     alwan_scalar Yb;                   /* Background luminance factor */
     alwan_zcam_surround surround;      /* Viewing surround condition */
     int discount_illuminant;           /* 1 to discount illuminant, 0 otherwise */
@@ -2206,7 +2206,7 @@ typedef struct {
 } alwan_zcam_correlates;
 
 /* ZCAM forward transform: XYZ -> appearance correlates
- * xyz: absolute XYZ tristimulus values (cd/m²)
+ * xyz: absolute XYZ tristimulus values (cd/m^2)
  * vc: viewing conditions
  * out: computed appearance correlates
  * Returns 0 on success, -1 on error */
@@ -2217,7 +2217,7 @@ int alwan_zcam_forward(alwan_zcam_correlates *out,
 /* ZCAM inverse transform: appearance correlates -> XYZ (approximate)
  * correlates: appearance correlates
  * vc: viewing conditions
- * xyz: output XYZ tristimulus values (cd/m²)
+ * xyz: output XYZ tristimulus values (cd/m^2)
  * Returns 0 on success, -1 on error
  * Note: Inverse is approximate due to complexity */
 int alwan_zcam_inverse(alwan_xyz *xyz,
@@ -2290,7 +2290,7 @@ typedef enum {
 /* Hunt viewing conditions */
 typedef struct {
     alwan_xyz xyz_w;                   /* White point (XYZ, Y=100) */
-    alwan_scalar La;                   /* Adapting luminance (cd/m²) */
+    alwan_scalar La;                   /* Adapting luminance (cd/m^2) */
     alwan_scalar Yb;                   /* Background luminance factor */
     alwan_hunt_surround surround;      /* Viewing surround */
     int discount_illuminant;           /* 1 to discount illuminant, 0 otherwise */
@@ -2329,7 +2329,7 @@ typedef enum {
 /* Hellwig2022 viewing conditions */
 typedef struct {
     alwan_xyz white_xyz;                       /* Reference white in XYZ (Y typically 100) */
-    alwan_scalar adapting_luminance;           /* Luminance of adapting field (La) in cd/m² */
+    alwan_scalar adapting_luminance;           /* Luminance of adapting field (La) in cd/m^2 */
     alwan_scalar background_luminance;         /* Relative luminance of background (Yb/Yw, typically 0.2) */
     alwan_hellwig2022_surround surround;       /* Viewing surround condition */
     int discount_illuminant;                   /* 1 to discount illuminant, 0 otherwise */
@@ -2365,7 +2365,7 @@ int alwan_hellwig2022_inverse(alwan_xyz *xyz_out,
 /* Kim2009 viewing conditions */
 typedef struct {
     alwan_xyz white_xyz;               /* Reference white in XYZ (Y typically 100) */
-    alwan_scalar La;                   /* Adapting luminance (cd/m²) */
+    alwan_scalar La;                   /* Adapting luminance (cd/m^2) */
     alwan_scalar Yb;                   /* Background luminance factor */
     int discount_illuminant;           /* 1 to discount illuminant, 0 otherwise */
 } alwan_kim2009_viewing_conditions;
@@ -2432,7 +2432,7 @@ int alwan_llab_forward(alwan_llab_correlates *out,
 /* ATD95 viewing conditions */
 typedef struct {
     alwan_xyz white_xyz;           /* Reference white in XYZ */
-    alwan_scalar Y_0;              /* Absolute adapting field luminance in cd/m² */
+    alwan_scalar Y_0;              /* Absolute adapting field luminance in cd/m^2 */
     alwan_scalar sigma;            /* Saturation adjustment parameter */
     alwan_scalar k1;               /* Adaptation parameter 1 */
     alwan_scalar k2;               /* Adaptation parameter 2 */
@@ -2465,7 +2465,7 @@ int alwan_atd95_forward(alwan_atd95_correlates *out,
 /* Nayatani95 viewing conditions */
 typedef struct {
     alwan_xyz white_xyz;               /* Reference white in XYZ (Y typically 100) */
-    alwan_scalar L_0;                  /* Absolute luminance of reference white (cd/m²) */
+    alwan_scalar L_0;                  /* Absolute luminance of reference white (cd/m^2) */
     alwan_scalar Y_0;                  /* Relative luminance of background */
     alwan_scalar E_0;                  /* Illuminance of reference field (lux) */
     alwan_scalar E_0r;                 /* Normalizing factor */
@@ -2767,7 +2767,7 @@ typedef enum {
  *          (only applies to anomalous trichromacy types)
  * rgb_out: output simulated RGB color as seen by person with CVD
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
- * Algorithm: Brettel, Viénot & Mollon (1997) simulation using confusion lines */
+ * Algorithm: Brettel, Vienot & Mollon (1997) simulation using confusion lines */
 int alwan_simulate_cvd(alwan_rgb *rgb_out,
                         alwan_rgb const *rgb_in,
                         alwan_cvd_type cvd_type,
@@ -2807,8 +2807,8 @@ int alwan_simulate_tritanopia_map_interleave_ex(void *out, alwan_pixel_format ou
 
 /* Vision type for luminous efficiency */
 typedef enum {
-    ALWAN_VISION_PHOTOPIC = 0,  /* Photopic (daytime, cone-based) - V(λ) */
-    ALWAN_VISION_SCOTOPIC = 1,  /* Scotopic (nighttime, rod-based) - V'(λ) */
+    ALWAN_VISION_PHOTOPIC = 0,  /* Photopic (daytime, cone-based) - V(lambda) */
+    ALWAN_VISION_SCOTOPIC = 1,  /* Scotopic (nighttime, rod-based) - V'(lambda) */
     ALWAN_VISION_MESOPIC = 2    /* Mesopic (twilight, mixed rod/cone) */
 } alwan_vision_type;
 
@@ -2816,23 +2816,23 @@ typedef enum {
  * wavelength: wavelength in nanometers [360, 830]
  * vision_type: photopic, scotopic, or mesopic
  * Returns luminous efficiency value [0, 1], or negative on error
- * Data: CIE photopic V(λ) 1924/1988, CIE scotopic V'(λ) 1951 */
+ * Data: CIE photopic V(lambda) 1924/1988, CIE scotopic V'(lambda) 1951 */
 alwan_scalar alwan_luminous_efficiency(alwan_scalar wavelength, alwan_vision_type vision_type);
 
 /* Calculate photopic luminance from SPD
  * spd: spectral power distribution
- * Returns photopic luminance in cd/m², or negative on error */
+ * Returns photopic luminance in cd/m^2, or negative on error */
 alwan_scalar alwan_photopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
 
 /* Calculate scotopic luminance from SPD
  * spd: spectral power distribution
- * Returns scotopic luminance in cd/m², or negative on error */
+ * Returns scotopic luminance in cd/m^2, or negative on error */
 alwan_scalar alwan_scotopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
 
 /* Calculate mesopic luminance from SPD
  * spd: spectral power distribution
- * adaptation_level: adaptation luminance level in cd/m² [0.001, 10]
- * Returns mesopic luminance in cd/m², or negative on error
+ * adaptation_level: adaptation luminance level in cd/m^2 [0.001, 10]
+ * Returns mesopic luminance in cd/m^2, or negative on error
  * Uses CIE 191:2010 mesopic vision model */
 alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
                                       alwan_spd const *spd,
@@ -2842,7 +2842,7 @@ alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
 
 /* Calculate contrast sensitivity for spatial frequency (simplified model)
  * spatial_frequency: spatial frequency in cycles per degree [0.1, 60]
- * luminance: background luminance in cd/m² [0.01, 10000]
+ * luminance: background luminance in cd/m^2 [0.01, 10000]
  * Returns contrast sensitivity (1/contrast_threshold), or negative on error
  * Uses simplified Barten CSF model (1999) */
 alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance);
@@ -2853,7 +2853,7 @@ alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance);
  * ================================================================ */
 
 /* Pupil diameter using Barten (1999) method
- * L: Average luminance in cd/m²
+ * L: Average luminance in cd/m^2
  * X_0: Angular size of object in degrees (x direction)
  * Y_0: Angular size of object in degrees (y direction), -1 to use X_0
  * Returns: Pupil diameter in millimeters */
@@ -2862,7 +2862,7 @@ alwan_scalar alwan_pupil_diameter_barten1999(alwan_scalar L,
                                               alwan_scalar Y_0);
 
 /* Retinal illuminance using Barten (1999) method
- * L: Average luminance in cd/m²
+ * L: Average luminance in cd/m^2
  * d: Pupil diameter in millimeters
  * apply_stiles_crawford: Whether to apply Stiles-Crawford correction (1=yes, 0=no)
  * Returns: Retinal illuminance in Trolands */
@@ -3207,9 +3207,9 @@ typedef enum {
     ALWAN_POLY_CHEUNG_5  = 5,   /* [R, G, B, RG, 1] */
     ALWAN_POLY_CHEUNG_7  = 7,   /* [R, G, B, RG, RB, GB, 1] */
     ALWAN_POLY_CHEUNG_8  = 8,   /* [R, G, B, RG, RB, GB, RGB, 1] */
-    ALWAN_POLY_CHEUNG_10 = 10,  /* [R, G, B, RG, RB, GB, R², G², B², 1] */
-    ALWAN_POLY_CHEUNG_11 = 11,  /* [R, G, B, RG, RB, GB, R², G², B², RGB, 1] */
-    ALWAN_POLY_CHEUNG_14 = 14,  /* [R, G, B, RG, RB, GB, R², G², B², RGB, R²G, RG², R²B, 1] */
+    ALWAN_POLY_CHEUNG_10 = 10,  /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, 1] */
+    ALWAN_POLY_CHEUNG_11 = 11,  /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, RGB, 1] */
+    ALWAN_POLY_CHEUNG_14 = 14,  /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, RGB, R^2G, RG^2, R^2B, 1] */
     ALWAN_POLY_CHEUNG_16 = 16,  /* 16-term expansion */
     ALWAN_POLY_CHEUNG_17 = 17,  /* 17-term expansion */
     ALWAN_POLY_CHEUNG_19 = 19,  /* 19-term expansion */

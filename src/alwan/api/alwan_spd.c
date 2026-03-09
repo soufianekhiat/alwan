@@ -611,8 +611,8 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
 }
 
 /* Generate blackbody (Planckian) SPD using Planck's law
- * Spectral radiance: L(λ,T) = c1 / (λ^5 * (exp(c2/(λ*T)) - 1))
- * where c1 = 3.741771e-16 W⋅m², c2 = 1.4388e-2 m⋅K */
+ * Spectral radiance: L(lambda,T) = c1 / (lambda^5 * (exp(c2/(lambda*T)) - 1))
+ * where c1 = 3.741771e-16 W*m^2, c2 = 1.4388e-2 m*K */
 int alwan_spd_blackbody(alwan_spd *out,
                         alwan_ctx *ctx,
                         alwan_scalar temperature_K,

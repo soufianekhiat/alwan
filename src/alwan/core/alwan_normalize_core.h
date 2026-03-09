@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Header-only Integer-to-Float Normalization (ColorInterop §1.5)
+ * Header-only Integer-to-Float Normalization (ColorInterop Section 1.5)
  * Value-returning inline functions for the C backend.
  *
  * Supported bit depths: 8, 10, 12, 16.

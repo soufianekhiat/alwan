@@ -117,7 +117,7 @@ This document describes the valid ranges for each channel of every color space s
 | `y` | [0, +inf[ | Y tristimulus (luminance, 1.0 = reference white) |
 | `z` | [0, +inf[ | Z tristimulus (typical ~1.09 for D65 white) |
 
-**Notes:** Y is often normalized to 1.0 or 100.0 depending on convention. For absolute luminance, Y is in cd/m².
+**Notes:** Y is often normalized to 1.0 or 100.0 depending on convention. For absolute luminance, Y is in cd/m^2.
 
 ### xyY (`alwan_xyy`)
 
@@ -225,9 +225,9 @@ This document describes the valid ranges for each channel of every color space s
 |---------|-------|-------------|
 | `L` | [0, 1] | Lightness |
 | `C` | [0, +inf[ | Chroma |
-| `h` | [-π, π] | Hue angle in radians |
+| `h` | [-pi, pi] | Hue angle in radians |
 
-**Notes:** Hue is in radians (output of `atan2`). Convert to degrees with `h * 180 / π`.
+**Notes:** Hue is in radians (output of `atan2`). Convert to degrees with `h * 180 / pi`.
 
 ### Jzazbz (`alwan_jzazbz`)
 
@@ -237,7 +237,7 @@ This document describes the valid ranges for each channel of every color space s
 | `az` | ~[-0.5, 0.5] | Red-green axis |
 | `bz` | ~[-0.5, 0.5] | Yellow-blue axis |
 
-**Notes:** HDR perceptual space. Jz uses PQ transfer and can represent 0–10,000 cd/m².
+**Notes:** HDR perceptual space. Jz uses PQ transfer and can represent 0-10,000 cd/m^2.
 
 ### JzCzhz (`alwan_jzczhz`) — Cylindrical Jzazbz
 
@@ -245,9 +245,9 @@ This document describes the valid ranges for each channel of every color space s
 |---------|-------|-------------|
 | `Jz` | [0, 1] | Lightness |
 | `Cz` | [0, +inf[ | Chroma |
-| `hz` | [-π, π] | Hue angle in radians |
+| `hz` | [-pi, pi] | Hue angle in radians |
 
-**Notes:** Hue is in radians (output of `atan2`). Convert to degrees with `hz * 180 / π`.
+**Notes:** Hue is in radians (output of `atan2`). Convert to degrees with `hz * 180 / pi`.
 
 ### ICtCp (`alwan_ictcp`)
 
@@ -275,9 +275,9 @@ This document describes the valid ranges for each channel of every color space s
 |---------|-------|-------------|
 | `I` | [0, 1] | Intensity |
 | `C` | [0, +inf[ | Chroma |
-| `h` | [-π, π] | Hue angle in radians |
+| `h` | [-pi, pi] | Hue angle in radians |
 
-**Notes:** Hue is in radians (output of `atan2`). Convert to degrees with `h * 180 / π`.
+**Notes:** Hue is in radians (output of `atan2`). Convert to degrees with `h * 180 / pi`.
 
 ### IgPgTg (`alwan_igpgtg`)
 
@@ -377,7 +377,7 @@ All CAMs output perceptual correlates that depend on viewing conditions.
 | `Kz` | [0, 100] | Blackness |
 | `Wz` | [0, 100] | Whiteness |
 
-**Notes:** HDR color appearance model supporting 0.001–10,000 cd/m².
+**Notes:** HDR color appearance model supporting 0.001-10,000 cd/m^2.
 
 ### Hellwig2022 (`alwan_hellwig2022_correlates`)
 
@@ -459,7 +459,7 @@ All CAMs output perceptual correlates that depend on viewing conditions.
 |---------|-------|-------------|
 | `L_star_N` | [0, 100] | Perceived lightness |
 | `C` | [0, +inf[ | Chroma |
-| `theta` | [0, 2π[ | Hue angle in radians |
+| `theta` | [0, 2pi[ | Hue angle in radians |
 | `S` | [0, +inf[ | Saturation |
 | `B_r` | [0, +inf[ | Brightness |
 | `L_star_P` | [0, +inf[ | Brightness-to-lightness ratio |
@@ -482,7 +482,7 @@ All CAMs output perceptual correlates that depend on viewing conditions.
 
 | Channel | Range | Description |
 |---------|-------|-------------|
-| `H` | [-π, π] | Hue angle in radians |
+| `H` | [-pi, pi] | Hue angle in radians |
 | `C` | [0, +inf[ | Chroma |
 | `L` | [0, 1] | Luminance |
 
@@ -492,11 +492,11 @@ All CAMs output perceptual correlates that depend on viewing conditions.
 
 | Channel | Range | Description |
 |---------|-------|-------------|
-| `H` | [0, 2π[ | Hue angle in radians |
+| `H` | [0, 2pi[ | Hue angle in radians |
 | `L` | [0, 1] | Lightness (Y luminance) |
 | `S` | [0, 1] | Saturation (delta = max - min) |
 
-**Notes:** Hanbury (2003) Improved HLS. Hue is in radians [0, 2π[.
+**Notes:** Hanbury (2003) Improved HLS. Hue is in radians [0, 2pi[.
 
 ---
 
@@ -509,17 +509,17 @@ All CAMs output perceptual correlates that depend on viewing conditions.
 | **Luv** | CIE | [0, 100] | unbounded | — | — |
 | **LCh(uv)** | CIE | [0, 100] | [0, +inf[ | [0, 360[ | degrees |
 | **Oklab** | Modern | [0, 1] | ~±0.4 | — | — |
-| **Oklch** | Modern | [0, 1] | [0, +inf[ | [-π, π] | radians |
+| **Oklch** | Modern | [0, 1] | [0, +inf[ | [-pi, pi] | radians |
 | **Jzazbz** | HDR | [0, 1] | ~±0.5 | — | — |
-| **JzCzhz** | HDR | [0, 1] | [0, +inf[ | [-π, π] | radians |
+| **JzCzhz** | HDR | [0, 1] | [0, +inf[ | [-pi, pi] | radians |
 | **ICtCp** | HDR | [0, 1] | ~±0.5 | — | — |
-| **IPTch** | Modern | [0, 1] | [0, +inf[ | [-π, π] | radians |
+| **IPTch** | Modern | [0, 1] | [0, +inf[ | [-pi, pi] | radians |
 | **CIECAM02** | CAM | [0, 100] | [0, +inf[ | [0, 360[ | degrees |
 | **CAM16** | CAM | [0, 100] | [0, +inf[ | [0, 360[ | degrees |
 | **ZCAM** | HDR CAM | [0, 100] | [0, +inf[ | [0, 360[ | degrees |
 | **HSV/HSL** | Device | [0, 1] | [0, 1] | [0, 1] | normalized |
-| **HCL** | Specialized | [0, 1] | [0, +inf[ | [-π, π] | radians |
-| **IHLS** | Specialized | [0, 1] | [0, 1] | [0, 2π[ | radians |
+| **HCL** | Specialized | [0, 1] | [0, +inf[ | [-pi, pi] | radians |
+| **IHLS** | Specialized | [0, 1] | [0, 1] | [0, 2pi[ | radians |
 
 ---
 
@@ -529,7 +529,7 @@ All CAMs output perceptual correlates that depend on viewing conditions.
 2. **Wide-gamut colors:** Lab a\*/b\* may exceed ±128
 3. **Negative RGB:** Indicates out-of-gamut for destination space
 4. **Chroma unbounded:** CAM chroma values depend on viewing conditions
-5. **Hue discontinuity:** Hue wraps at its maximum (360°, 2π, or 1.0 depending on space)
+5. **Hue discontinuity:** Hue wraps at its maximum (360°, 2pi, or 1.0 depending on space)
 
 ## Hue Convention Summary
 
@@ -538,8 +538,8 @@ Alwan uses different hue conventions depending on the color space:
 | Convention | Spaces | Conversion |
 |------------|--------|------------|
 | **Degrees [0, 360[** | LCh(ab), LCh(uv), CIECAM02, CAM16, ZCAM, Hellwig2022, Hunt, Kim2009, LLAB, ATD95, RLAB | — |
-| **Radians [-π, π]** | Oklch, JzCzhz, IPTch, HCL | `degrees = h * 180 / π` |
-| **Radians [0, 2π[** | IHLS, Nayatani95 | `degrees = h * 180 / π` |
+| **Radians [-pi, pi]** | Oklch, JzCzhz, IPTch, HCL | `degrees = h * 180 / pi` |
+| **Radians [0, 2pi[** | IHLS, Nayatani95 | `degrees = h * 180 / pi` |
 | **Normalized [0, 1]** | HSV, HSL | `degrees = h * 360` |
 | **Not a hue** | Prismatic | `s` and `h` are normalized RGB ratios |
 

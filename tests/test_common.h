@@ -228,7 +228,7 @@ static inline size_t test_fmt_elem_size(alwan_pixel_format fmt) {
     return 0;
 }
 
-/* Scatter: alwan_scalar → typed (single channel, clamped to [0,1] for int) */
+/* Scatter: alwan_scalar -> typed (single channel, clamped to [0,1] for int) */
 static inline void test_scatter1(void *out, alwan_pixel_format fmt,
                                   alwan_scalar const *in, size_t count) {
     for (size_t i = 0; i < count; i++) {
@@ -244,7 +244,7 @@ static inline void test_scatter1(void *out, alwan_pixel_format fmt,
     }
 }
 
-/* Collect: typed → alwan_scalar (single channel) */
+/* Collect: typed -> alwan_scalar (single channel) */
 static inline void test_collect1(alwan_scalar *out, void const *in,
                                   alwan_pixel_format fmt, size_t count) {
     for (size_t i = 0; i < count; i++) {

@@ -83,7 +83,7 @@ static int test_cam16_forward(void) {
         TEST_ASSERT(J_err < ALWAN_TEST_TOLERANCE, "J mismatch");
         TEST_ASSERT(C_err < ALWAN_TEST_TOLERANCE, "C mismatch");
         /* For near-achromatic colors (C < 2), hue is ill-conditioned:
-         * atan2 amplifies ULP errors by ~1/sqrt(a²+b²), making 1e-12
+         * atan2 amplifies ULP errors by ~1/sqrt(a^2+b^2), making 1e-12
          * precision unachievable at double precision when C is small. */
         if (corr.C > ALWAN_LITERAL(2.0)) {
             TEST_ASSERT(h_err < ALWAN_TEST_TOLERANCE, "h mismatch");

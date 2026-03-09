@@ -20,6 +20,8 @@
 #  include "alwan_simd_avx.h"
 #elif defined(__SSE2__) || defined(_M_X64) || defined(_M_AMD64)
 #  include "alwan_simd_sse2.h"
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+#  include "alwan_simd_neon.h"
 #else
 #  include "alwan_simd_scalar.h"
 #endif

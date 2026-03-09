@@ -76,7 +76,7 @@ ALWAN_INLINE alwan_mat3x3 alwan_mat3_mul_v(alwan_mat3x3 a, alwan_mat3x3 b) {
 
 /* ================================================================
  * Matrix Inverse (Cofactor/Adjugate method, unrolled)
- * Returns identity on singular input (det ≈ 0).
+ * Returns identity on singular input (det ~= 0).
  * ================================================================ */
 
 ALWAN_INLINE alwan_mat3x3 alwan_mat3_inv_v(alwan_mat3x3 m) {
@@ -156,7 +156,7 @@ ALWAN_INLINE alwan_scalar alwan_catmull_rom_v(
  * CCT / Planckian Locus Helpers
  * ================================================================ */
 
-/* Planckian locus xy from CCT (Hernández-Andrés 1999 approximation, branchless) */
+/* Planckian locus xy from CCT (Hernandez-Andres 1999 approximation, branchless) */
 ALWAN_INLINE alwan_vec2 alwan_cct_to_xy_planckian_v(alwan_scalar cct) {
     alwan_vec2 result;
     alwan_scalar T = cct;

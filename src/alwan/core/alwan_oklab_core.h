@@ -6,7 +6,7 @@
  * Header-only Oklab & Oklch Color Spaces
  * Value-returning variants for cross-platform (C/HLSL/Halide) use.
  *
- * Reference: Björn Ottosson (2020)
+ * Reference: Bjorn Ottosson (2020)
  */
 
 #ifndef ALWAN_OKLAB_CORE_H

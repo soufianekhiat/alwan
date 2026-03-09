@@ -92,6 +92,226 @@ int alwan_oklab_to_srgb(alwan_rgb *rgb, alwan_oklab const *oklab) {
 }
 
 /* ----------------------------------------------------------------
+ * SIMD+scalar kernels for sRGB convenience conversions
+ * ---------------------------------------------------------------- */
+
+static void alwan__srgb_to_xyz_kernel(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2,
+                                       alwan_simd_lane const *i0, alwan_simd_lane const *i1, alwan_simd_lane const *i2,
+                                       size_t n) {
+    size_t i = 0;
+#if ALWAN_SIMD_WIDTH > 1
+    size_t const W = ALWAN_SIMD_WIDTH;
+    for (; i + W <= n; i += W) {
+        alwan_simd vr = alwan__srgb_eotf_simd(alwan_simd_load(&i0[i]));
+        alwan_simd vg = alwan__srgb_eotf_simd(alwan_simd_load(&i1[i]));
+        alwan_simd vb = alwan__srgb_eotf_simd(alwan_simd_load(&i2[i]));
+        alwan_simd ox, oy, oz;
+        alwan__mat3_mul_simd(&ox, &oy, &oz, &SRGB_TO_XYZ, vr, vg, vb);
+        alwan_simd_store(&o0[i], ox);
+        alwan_simd_store(&o1[i], oy);
+        alwan_simd_store(&o2[i], oz);
+    }
+#endif
+    for (; i < n; i++) {
+        alwan_scalar r = alwan_srgb_eotf((alwan_scalar)i0[i]);
+        alwan_scalar g = alwan_srgb_eotf((alwan_scalar)i1[i]);
+        alwan_scalar b = alwan_srgb_eotf((alwan_scalar)i2[i]);
+        alwan_vec3 v = {{r, g, b}};
+        alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
+        o0[i] = (alwan_simd_lane)xyz.v[0]; o1[i] = (alwan_simd_lane)xyz.v[1]; o2[i] = (alwan_simd_lane)xyz.v[2];
+    }
+}
+
+static void alwan__xyz_to_srgb_kernel(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2,
+                                       alwan_simd_lane const *i0, alwan_simd_lane const *i1, alwan_simd_lane const *i2,
+                                       size_t n) {
+    size_t i = 0;
+#if ALWAN_SIMD_WIDTH > 1
+    size_t const W = ALWAN_SIMD_WIDTH;
+    for (; i + W <= n; i += W) {
+        alwan_simd vx = alwan_simd_load(&i0[i]);
+        alwan_simd vy = alwan_simd_load(&i1[i]);
+        alwan_simd vz = alwan_simd_load(&i2[i]);
+        alwan_simd lr, lg, lb;
+        alwan__mat3_mul_simd(&lr, &lg, &lb, &XYZ_TO_SRGB, vx, vy, vz);
+        alwan_simd_store(&o0[i], alwan__srgb_oetf_simd(lr));
+        alwan_simd_store(&o1[i], alwan__srgb_oetf_simd(lg));
+        alwan_simd_store(&o2[i], alwan__srgb_oetf_simd(lb));
+    }
+#endif
+    for (; i < n; i++) {
+        alwan_vec3 v = {{(alwan_scalar)i0[i], (alwan_scalar)i1[i], (alwan_scalar)i2[i]}};
+        alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
+        o0[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[0]);
+        o1[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[1]);
+        o2[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[2]);
+    }
+}
+
+static void alwan__srgb_to_lab_kernel(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2,
+                                       alwan_simd_lane const *i0, alwan_simd_lane const *i1, alwan_simd_lane const *i2,
+                                       size_t n) {
+    size_t i = 0;
+#if ALWAN_SIMD_WIDTH > 1
+    size_t const W = ALWAN_SIMD_WIDTH;
+    alwan_simd inv_wx = alwan_simd_set1(1.0 / (alwan_simd_lane)D65_WP_Y1[0]);
+    alwan_simd inv_wy = alwan_simd_set1(1.0 / (alwan_simd_lane)D65_WP_Y1[1]);
+    alwan_simd inv_wz = alwan_simd_set1(1.0 / (alwan_simd_lane)D65_WP_Y1[2]);
+    for (; i + W <= n; i += W) {
+        /* sRGB EOTF */
+        alwan_simd vr = alwan__srgb_eotf_simd(alwan_simd_load(&i0[i]));
+        alwan_simd vg = alwan__srgb_eotf_simd(alwan_simd_load(&i1[i]));
+        alwan_simd vb = alwan__srgb_eotf_simd(alwan_simd_load(&i2[i]));
+        /* sRGB -> XYZ */
+        alwan_simd vx, vy, vz;
+        alwan__mat3_mul_simd(&vx, &vy, &vz, &SRGB_TO_XYZ, vr, vg, vb);
+        /* XYZ -> Lab */
+        alwan_simd fx = alwan__lab_f_simd(alwan_simd_mul(vx, inv_wx));
+        alwan_simd fy = alwan__lab_f_simd(alwan_simd_mul(vy, inv_wy));
+        alwan_simd fz = alwan__lab_f_simd(alwan_simd_mul(vz, inv_wz));
+        alwan_simd oL = alwan_simd_fmsub(alwan_simd_set1(116.0), fy, alwan_simd_set1(16.0));
+        alwan_simd oa = alwan_simd_mul(alwan_simd_set1(500.0), alwan_simd_sub(fx, fy));
+        alwan_simd ob = alwan_simd_mul(alwan_simd_set1(200.0), alwan_simd_sub(fy, fz));
+        alwan_simd_store(&o0[i], oL);
+        alwan_simd_store(&o1[i], oa);
+        alwan_simd_store(&o2[i], ob);
+    }
+#endif
+    for (; i < n; i++) {
+        alwan_scalar r = alwan_srgb_eotf((alwan_scalar)i0[i]);
+        alwan_scalar g = alwan_srgb_eotf((alwan_scalar)i1[i]);
+        alwan_scalar b = alwan_srgb_eotf((alwan_scalar)i2[i]);
+        alwan_vec3 v = {{r, g, b}};
+        alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
+        alwan_xyz wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
+        alwan_xyz xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
+        alwan_lab lab = alwan_xyz_to_lab_v(xyz_s, wp);
+        o0[i] = (alwan_simd_lane)lab.L; o1[i] = (alwan_simd_lane)lab.a; o2[i] = (alwan_simd_lane)lab.b;
+    }
+}
+
+static void alwan__lab_to_srgb_kernel(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2,
+                                       alwan_simd_lane const *i0, alwan_simd_lane const *i1, alwan_simd_lane const *i2,
+                                       size_t n) {
+    size_t i = 0;
+#if ALWAN_SIMD_WIDTH > 1
+    size_t const W = ALWAN_SIMD_WIDTH;
+    alwan_simd wx = alwan_simd_set1((alwan_simd_lane)D65_WP_Y1[0]);
+    alwan_simd wy = alwan_simd_set1((alwan_simd_lane)D65_WP_Y1[1]);
+    alwan_simd wz = alwan_simd_set1((alwan_simd_lane)D65_WP_Y1[2]);
+    for (; i + W <= n; i += W) {
+        alwan_simd vL = alwan_simd_load(&i0[i]);
+        alwan_simd va = alwan_simd_load(&i1[i]);
+        alwan_simd vb = alwan_simd_load(&i2[i]);
+        /* Lab -> XYZ */
+        alwan_simd fy = alwan_simd_mul(alwan_simd_add(vL, alwan_simd_set1(16.0)),
+                                                 alwan_simd_set1(1.0 / 116.0));
+        alwan_simd fx = alwan_simd_fmadd(va, alwan_simd_set1(1.0 / 500.0), fy);
+        alwan_simd fz = alwan_simd_sub(fy, alwan_simd_mul(vb, alwan_simd_set1(1.0 / 200.0)));
+        alwan_simd vx = alwan_simd_mul(alwan__lab_f_inv_simd(fx), wx);
+        alwan_simd vy = alwan_simd_mul(alwan__lab_f_inv_simd(fy), wy);
+        alwan_simd vz = alwan_simd_mul(alwan__lab_f_inv_simd(fz), wz);
+        /* XYZ -> sRGB */
+        alwan_simd lr, lg, lb;
+        alwan__mat3_mul_simd(&lr, &lg, &lb, &XYZ_TO_SRGB, vx, vy, vz);
+        alwan_simd_store(&o0[i], alwan__srgb_oetf_simd(lr));
+        alwan_simd_store(&o1[i], alwan__srgb_oetf_simd(lg));
+        alwan_simd_store(&o2[i], alwan__srgb_oetf_simd(lb));
+    }
+#endif
+    for (; i < n; i++) {
+        alwan_lab lab = {(alwan_scalar)i0[i], (alwan_scalar)i1[i], (alwan_scalar)i2[i]};
+        alwan_xyz wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
+        alwan_xyz xyz = alwan_lab_to_xyz_v(lab, wp);
+        alwan_vec3 v = {{xyz.x, xyz.y, xyz.z}};
+        alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
+        o0[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[0]);
+        o1[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[1]);
+        o2[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[2]);
+    }
+}
+
+static void alwan__srgb_to_oklab_kernel(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2,
+                                         alwan_simd_lane const *i0, alwan_simd_lane const *i1, alwan_simd_lane const *i2,
+                                         size_t n) {
+    size_t i = 0;
+#if ALWAN_SIMD_WIDTH > 1
+    size_t const W = ALWAN_SIMD_WIDTH;
+    for (; i + W <= n; i += W) {
+        /* sRGB EOTF */
+        alwan_simd vr = alwan__srgb_eotf_simd(alwan_simd_load(&i0[i]));
+        alwan_simd vg = alwan__srgb_eotf_simd(alwan_simd_load(&i1[i]));
+        alwan_simd vb = alwan__srgb_eotf_simd(alwan_simd_load(&i2[i]));
+        /* sRGB -> XYZ */
+        alwan_simd vx, vy, vz;
+        alwan__mat3_mul_simd(&vx, &vy, &vz, &SRGB_TO_XYZ, vr, vg, vb);
+        /* XYZ -> LMS (OKLAB M1) */
+        alwan_simd vl, vm, vs;
+        alwan__mat3_mul_simd(&vl, &vm, &vs, &OKLAB_M1, vx, vy, vz);
+        /* cbrt */
+        vl = alwan_simd_cbrt(vl);
+        vm = alwan_simd_cbrt(vm);
+        vs = alwan_simd_cbrt(vs);
+        /* LMS' -> Lab (OKLAB M2) */
+        alwan_simd oL, oa, ob;
+        alwan__mat3_mul_simd(&oL, &oa, &ob, &OKLAB_M2, vl, vm, vs);
+        alwan_simd_store(&o0[i], oL);
+        alwan_simd_store(&o1[i], oa);
+        alwan_simd_store(&o2[i], ob);
+    }
+#endif
+    for (; i < n; i++) {
+        alwan_scalar r = alwan_srgb_eotf((alwan_scalar)i0[i]);
+        alwan_scalar g = alwan_srgb_eotf((alwan_scalar)i1[i]);
+        alwan_scalar b = alwan_srgb_eotf((alwan_scalar)i2[i]);
+        alwan_vec3 v = {{r, g, b}};
+        alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
+        alwan_xyz xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
+        alwan_oklab ok = alwan_xyz_to_oklab_v(xyz_s);
+        o0[i] = (alwan_simd_lane)ok.L; o1[i] = (alwan_simd_lane)ok.a; o2[i] = (alwan_simd_lane)ok.b;
+    }
+}
+
+static void alwan__oklab_to_srgb_kernel(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2,
+                                         alwan_simd_lane const *i0, alwan_simd_lane const *i1, alwan_simd_lane const *i2,
+                                         size_t n) {
+    size_t i = 0;
+#if ALWAN_SIMD_WIDTH > 1
+    size_t const W = ALWAN_SIMD_WIDTH;
+    for (; i + W <= n; i += W) {
+        alwan_simd vL = alwan_simd_load(&i0[i]);
+        alwan_simd va = alwan_simd_load(&i1[i]);
+        alwan_simd vb = alwan_simd_load(&i2[i]);
+        /* Lab -> LMS' (OKLAB M2_INV) */
+        alwan_simd lp, mp, sp;
+        alwan__mat3_mul_simd(&lp, &mp, &sp, &OKLAB_M2_INV, vL, va, vb);
+        /* cube */
+        alwan_simd vl = alwan_simd_mul(lp, alwan_simd_mul(lp, lp));
+        alwan_simd vm = alwan_simd_mul(mp, alwan_simd_mul(mp, mp));
+        alwan_simd vs = alwan_simd_mul(sp, alwan_simd_mul(sp, sp));
+        /* LMS -> XYZ (OKLAB M1_INV) */
+        alwan_simd vx, vy, vz;
+        alwan__mat3_mul_simd(&vx, &vy, &vz, &OKLAB_M1_INV, vl, vm, vs);
+        /* XYZ -> sRGB */
+        alwan_simd lr, lg, lb;
+        alwan__mat3_mul_simd(&lr, &lg, &lb, &XYZ_TO_SRGB, vx, vy, vz);
+        alwan_simd_store(&o0[i], alwan__srgb_oetf_simd(lr));
+        alwan_simd_store(&o1[i], alwan__srgb_oetf_simd(lg));
+        alwan_simd_store(&o2[i], alwan__srgb_oetf_simd(lb));
+    }
+#endif
+    for (; i < n; i++) {
+        alwan_oklab ok = {(alwan_scalar)i0[i], (alwan_scalar)i1[i], (alwan_scalar)i2[i]};
+        alwan_xyz xyz = alwan_oklab_to_xyz_v(ok);
+        alwan_vec3 v = {{xyz.x, xyz.y, xyz.z}};
+        alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
+        o0[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[0]);
+        o1[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[1]);
+        o2[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[2]);
+    }
+}
+
+/* ----------------------------------------------------------------
  * Map sRGB Convenience Conversions - True SIMD vectorized
  * ---------------------------------------------------------------- */
 
@@ -100,55 +320,16 @@ int alwan_srgb_to_xyz_map_interleave(alwan_scalar *xyz_out,
                            size_t count,
                            size_t in_stride,
                            size_t out_stride) {
-    if (!rgb_in || !xyz_out || count == 0) {
-        return ALWAN_E_INVALID;
-    }
+    if (!rgb_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED(rgb_in, in_stride, xyz_out, out_stride, count, alwan__srgb_to_xyz_kernel);
+    return ALWAN_OK;
+}
 
-#if ALWAN_SIMD_WIDTH > 1
-    size_t const W = ALWAN_SIMD_WIDTH;
-    size_t processed = 0;
-    while (processed < count) {
-        size_t tile = count - processed;
-        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
-        alwan__load_tile_aos3(c0, c1, c2, rgb_in, processed, in_stride, tile);
-
-        size_t i = 0;
-        for (; i + W <= tile; i += W) {
-            alwan_simd vr = alwan__srgb_eotf_simd(alwan_simd_load(&c0[i]));
-            alwan_simd vg = alwan__srgb_eotf_simd(alwan_simd_load(&c1[i]));
-            alwan_simd vb = alwan__srgb_eotf_simd(alwan_simd_load(&c2[i]));
-            alwan_simd ox, oy, oz;
-            alwan__mat3_mul_simd(&ox, &oy, &oz, &SRGB_TO_XYZ, vr, vg, vb);
-            alwan_simd_store(&c0[i], ox);
-            alwan_simd_store(&c1[i], oy);
-            alwan_simd_store(&c2[i], oz);
-        }
-        for (; i < tile; i++) {
-            alwan_scalar r = alwan_srgb_eotf((alwan_scalar)c0[i]);
-            alwan_scalar g = alwan_srgb_eotf((alwan_scalar)c1[i]);
-            alwan_scalar b = alwan_srgb_eotf((alwan_scalar)c2[i]);
-            alwan_vec3 v = {{r, g, b}};
-            alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
-            c0[i] = (alwan_simd_lane)xyz.v[0]; c1[i] = (alwan_simd_lane)xyz.v[1]; c2[i] = (alwan_simd_lane)xyz.v[2];
-        }
-
-        alwan__store_tile_aos3(xyz_out, processed, out_stride, c0, c1, c2, tile);
-        processed += tile;
-    }
-#else
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
-        alwan_scalar r = alwan_srgb_eotf(in_ptr[0]);
-        alwan_scalar g = alwan_srgb_eotf(in_ptr[1]);
-        alwan_scalar b = alwan_srgb_eotf(in_ptr[2]);
-        alwan_vec3 v = {{r, g, b}};
-        alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
-        out_ptr[0] = xyz.v[0]; out_ptr[1] = xyz.v[1]; out_ptr[2] = xyz.v[2];
-    }
-#endif
-
+int alwan_srgb_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                              void const *in, alwan_pixel_format in_fmt,
+                              size_t count, size_t in_stride, size_t out_stride) {
+    if (!in || !out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED_EX(in, in_fmt, in_stride, out, out_fmt, out_stride, count, alwan__srgb_to_xyz_kernel);
     return ALWAN_OK;
 }
 
@@ -157,53 +338,16 @@ int alwan_xyz_to_srgb_map_interleave(alwan_scalar *rgb_out,
                            size_t count,
                            size_t in_stride,
                            size_t out_stride) {
-    if (!xyz_in || !rgb_out || count == 0) {
-        return ALWAN_E_INVALID;
-    }
+    if (!xyz_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED(xyz_in, in_stride, rgb_out, out_stride, count, alwan__xyz_to_srgb_kernel);
+    return ALWAN_OK;
+}
 
-#if ALWAN_SIMD_WIDTH > 1
-    size_t const W = ALWAN_SIMD_WIDTH;
-    size_t processed = 0;
-    while (processed < count) {
-        size_t tile = count - processed;
-        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
-        alwan__load_tile_aos3(c0, c1, c2, xyz_in, processed, in_stride, tile);
-
-        size_t i = 0;
-        for (; i + W <= tile; i += W) {
-            alwan_simd vx = alwan_simd_load(&c0[i]);
-            alwan_simd vy = alwan_simd_load(&c1[i]);
-            alwan_simd vz = alwan_simd_load(&c2[i]);
-            alwan_simd lr, lg, lb;
-            alwan__mat3_mul_simd(&lr, &lg, &lb, &XYZ_TO_SRGB, vx, vy, vz);
-            alwan_simd_store(&c0[i], alwan__srgb_oetf_simd(lr));
-            alwan_simd_store(&c1[i], alwan__srgb_oetf_simd(lg));
-            alwan_simd_store(&c2[i], alwan__srgb_oetf_simd(lb));
-        }
-        for (; i < tile; i++) {
-            alwan_vec3 v = {{(alwan_scalar)c0[i], (alwan_scalar)c1[i], (alwan_scalar)c2[i]}};
-            alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
-            c0[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[0]);
-            c1[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[1]);
-            c2[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[2]);
-        }
-
-        alwan__store_tile_aos3(rgb_out, processed, out_stride, c0, c1, c2, tile);
-        processed += tile;
-    }
-#else
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
-        alwan_vec3 v = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
-        alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
-        out_ptr[0] = alwan_srgb_oetf(lin.v[0]);
-        out_ptr[1] = alwan_srgb_oetf(lin.v[1]);
-        out_ptr[2] = alwan_srgb_oetf(lin.v[2]);
-    }
-#endif
-
+int alwan_xyz_to_srgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                              void const *in, alwan_pixel_format in_fmt,
+                              size_t count, size_t in_stride, size_t out_stride) {
+    if (!in || !out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED_EX(in, in_fmt, in_stride, out, out_fmt, out_stride, count, alwan__xyz_to_srgb_kernel);
     return ALWAN_OK;
 }
 
@@ -212,73 +356,16 @@ int alwan_srgb_to_lab_map_interleave(alwan_scalar *lab_out,
                            size_t count,
                            size_t in_stride,
                            size_t out_stride) {
-    if (!rgb_in || !lab_out || count == 0) {
-        return ALWAN_E_INVALID;
-    }
+    if (!rgb_in || !lab_out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED(rgb_in, in_stride, lab_out, out_stride, count, alwan__srgb_to_lab_kernel);
+    return ALWAN_OK;
+}
 
-#if ALWAN_SIMD_WIDTH > 1
-    size_t const W = ALWAN_SIMD_WIDTH;
-    alwan_simd inv_wx = alwan_simd_set1(1.0 / (alwan_simd_lane)D65_WP_Y1[0]);
-    alwan_simd inv_wy = alwan_simd_set1(1.0 / (alwan_simd_lane)D65_WP_Y1[1]);
-    alwan_simd inv_wz = alwan_simd_set1(1.0 / (alwan_simd_lane)D65_WP_Y1[2]);
-    size_t processed = 0;
-    while (processed < count) {
-        size_t tile = count - processed;
-        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
-        alwan__load_tile_aos3(c0, c1, c2, rgb_in, processed, in_stride, tile);
-
-        size_t i = 0;
-        for (; i + W <= tile; i += W) {
-            /* sRGB EOTF */
-            alwan_simd vr = alwan__srgb_eotf_simd(alwan_simd_load(&c0[i]));
-            alwan_simd vg = alwan__srgb_eotf_simd(alwan_simd_load(&c1[i]));
-            alwan_simd vb = alwan__srgb_eotf_simd(alwan_simd_load(&c2[i]));
-            /* sRGB -> XYZ */
-            alwan_simd vx, vy, vz;
-            alwan__mat3_mul_simd(&vx, &vy, &vz, &SRGB_TO_XYZ, vr, vg, vb);
-            /* XYZ -> Lab */
-            alwan_simd fx = alwan__lab_f_simd(alwan_simd_mul(vx, inv_wx));
-            alwan_simd fy = alwan__lab_f_simd(alwan_simd_mul(vy, inv_wy));
-            alwan_simd fz = alwan__lab_f_simd(alwan_simd_mul(vz, inv_wz));
-            alwan_simd oL = alwan_simd_fmsub(alwan_simd_set1(116.0), fy, alwan_simd_set1(16.0));
-            alwan_simd oa = alwan_simd_mul(alwan_simd_set1(500.0), alwan_simd_sub(fx, fy));
-            alwan_simd ob = alwan_simd_mul(alwan_simd_set1(200.0), alwan_simd_sub(fy, fz));
-            alwan_simd_store(&c0[i], oL);
-            alwan_simd_store(&c1[i], oa);
-            alwan_simd_store(&c2[i], ob);
-        }
-        for (; i < tile; i++) {
-            alwan_scalar r = alwan_srgb_eotf((alwan_scalar)c0[i]);
-            alwan_scalar g = alwan_srgb_eotf((alwan_scalar)c1[i]);
-            alwan_scalar b = alwan_srgb_eotf((alwan_scalar)c2[i]);
-            alwan_vec3 v = {{r, g, b}};
-            alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
-            alwan_xyz wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
-            alwan_xyz xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
-            alwan_lab lab = alwan_xyz_to_lab_v(xyz_s, wp);
-            c0[i] = (alwan_simd_lane)lab.L; c1[i] = (alwan_simd_lane)lab.a; c2[i] = (alwan_simd_lane)lab.b;
-        }
-
-        alwan__store_tile_aos3(lab_out, processed, out_stride, c0, c1, c2, tile);
-        processed += tile;
-    }
-#else
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)lab_out + i * out_stride);
-        alwan_scalar r = alwan_srgb_eotf(in_ptr[0]);
-        alwan_scalar g = alwan_srgb_eotf(in_ptr[1]);
-        alwan_scalar b = alwan_srgb_eotf(in_ptr[2]);
-        alwan_vec3 v = {{r, g, b}};
-        alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
-        alwan_xyz wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
-        alwan_xyz xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
-        alwan_lab lab = alwan_xyz_to_lab_v(xyz_s, wp);
-        out_ptr[0] = lab.L; out_ptr[1] = lab.a; out_ptr[2] = lab.b;
-    }
-#endif
-
+int alwan_srgb_to_lab_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                              void const *in, alwan_pixel_format in_fmt,
+                              size_t count, size_t in_stride, size_t out_stride) {
+    if (!in || !out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED_EX(in, in_fmt, in_stride, out, out_fmt, out_stride, count, alwan__srgb_to_lab_kernel);
     return ALWAN_OK;
 }
 
@@ -287,71 +374,16 @@ int alwan_lab_to_srgb_map_interleave(alwan_scalar *rgb_out,
                            size_t count,
                            size_t in_stride,
                            size_t out_stride) {
-    if (!lab_in || !rgb_out || count == 0) {
-        return ALWAN_E_INVALID;
-    }
+    if (!lab_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED(lab_in, in_stride, rgb_out, out_stride, count, alwan__lab_to_srgb_kernel);
+    return ALWAN_OK;
+}
 
-#if ALWAN_SIMD_WIDTH > 1
-    size_t const W = ALWAN_SIMD_WIDTH;
-    alwan_simd wx = alwan_simd_set1((alwan_simd_lane)D65_WP_Y1[0]);
-    alwan_simd wy = alwan_simd_set1((alwan_simd_lane)D65_WP_Y1[1]);
-    alwan_simd wz = alwan_simd_set1((alwan_simd_lane)D65_WP_Y1[2]);
-    size_t processed = 0;
-    while (processed < count) {
-        size_t tile = count - processed;
-        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
-        alwan__load_tile_aos3(c0, c1, c2, lab_in, processed, in_stride, tile);
-
-        size_t i = 0;
-        for (; i + W <= tile; i += W) {
-            alwan_simd vL = alwan_simd_load(&c0[i]);
-            alwan_simd va = alwan_simd_load(&c1[i]);
-            alwan_simd vb = alwan_simd_load(&c2[i]);
-            /* Lab -> XYZ */
-            alwan_simd fy = alwan_simd_mul(alwan_simd_add(vL, alwan_simd_set1(16.0)),
-                                                     alwan_simd_set1(1.0 / 116.0));
-            alwan_simd fx = alwan_simd_fmadd(va, alwan_simd_set1(1.0 / 500.0), fy);
-            alwan_simd fz = alwan_simd_sub(fy, alwan_simd_mul(vb, alwan_simd_set1(1.0 / 200.0)));
-            alwan_simd vx = alwan_simd_mul(alwan__lab_f_inv_simd(fx), wx);
-            alwan_simd vy = alwan_simd_mul(alwan__lab_f_inv_simd(fy), wy);
-            alwan_simd vz = alwan_simd_mul(alwan__lab_f_inv_simd(fz), wz);
-            /* XYZ -> sRGB */
-            alwan_simd lr, lg, lb;
-            alwan__mat3_mul_simd(&lr, &lg, &lb, &XYZ_TO_SRGB, vx, vy, vz);
-            alwan_simd_store(&c0[i], alwan__srgb_oetf_simd(lr));
-            alwan_simd_store(&c1[i], alwan__srgb_oetf_simd(lg));
-            alwan_simd_store(&c2[i], alwan__srgb_oetf_simd(lb));
-        }
-        for (; i < tile; i++) {
-            alwan_lab lab = {(alwan_scalar)c0[i], (alwan_scalar)c1[i], (alwan_scalar)c2[i]};
-            alwan_xyz wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
-            alwan_xyz xyz = alwan_lab_to_xyz_v(lab, wp);
-            alwan_vec3 v = {{xyz.x, xyz.y, xyz.z}};
-            alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
-            c0[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[0]);
-            c1[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[1]);
-            c2[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[2]);
-        }
-
-        alwan__store_tile_aos3(rgb_out, processed, out_stride, c0, c1, c2, tile);
-        processed += tile;
-    }
-#else
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)lab_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
-        alwan_lab lab = {in_ptr[0], in_ptr[1], in_ptr[2]};
-        alwan_xyz wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
-        alwan_xyz xyz = alwan_lab_to_xyz_v(lab, wp);
-        alwan_vec3 v = {{xyz.x, xyz.y, xyz.z}};
-        alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
-        out_ptr[0] = alwan_srgb_oetf(lin.v[0]);
-        out_ptr[1] = alwan_srgb_oetf(lin.v[1]);
-        out_ptr[2] = alwan_srgb_oetf(lin.v[2]);
-    }
-#endif
-
+int alwan_lab_to_srgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                              void const *in, alwan_pixel_format in_fmt,
+                              size_t count, size_t in_stride, size_t out_stride) {
+    if (!in || !out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED_EX(in, in_fmt, in_stride, out, out_fmt, out_stride, count, alwan__lab_to_srgb_kernel);
     return ALWAN_OK;
 }
 
@@ -360,71 +392,16 @@ int alwan_srgb_to_oklab_map_interleave(alwan_scalar *oklab_out,
                              size_t count,
                              size_t in_stride,
                              size_t out_stride) {
-    if (!rgb_in || !oklab_out || count == 0) {
-        return ALWAN_E_INVALID;
-    }
+    if (!rgb_in || !oklab_out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED(rgb_in, in_stride, oklab_out, out_stride, count, alwan__srgb_to_oklab_kernel);
+    return ALWAN_OK;
+}
 
-#if ALWAN_SIMD_WIDTH > 1
-    size_t const W = ALWAN_SIMD_WIDTH;
-    size_t processed = 0;
-    while (processed < count) {
-        size_t tile = count - processed;
-        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
-        alwan__load_tile_aos3(c0, c1, c2, rgb_in, processed, in_stride, tile);
-
-        size_t i = 0;
-        for (; i + W <= tile; i += W) {
-            /* sRGB EOTF */
-            alwan_simd vr = alwan__srgb_eotf_simd(alwan_simd_load(&c0[i]));
-            alwan_simd vg = alwan__srgb_eotf_simd(alwan_simd_load(&c1[i]));
-            alwan_simd vb = alwan__srgb_eotf_simd(alwan_simd_load(&c2[i]));
-            /* sRGB -> XYZ */
-            alwan_simd vx, vy, vz;
-            alwan__mat3_mul_simd(&vx, &vy, &vz, &SRGB_TO_XYZ, vr, vg, vb);
-            /* XYZ -> LMS (OKLAB M1) */
-            alwan_simd vl, vm, vs;
-            alwan__mat3_mul_simd(&vl, &vm, &vs, &OKLAB_M1, vx, vy, vz);
-            /* cbrt */
-            vl = alwan_simd_cbrt(vl);
-            vm = alwan_simd_cbrt(vm);
-            vs = alwan_simd_cbrt(vs);
-            /* LMS' -> Lab (OKLAB M2) */
-            alwan_simd oL, oa, ob;
-            alwan__mat3_mul_simd(&oL, &oa, &ob, &OKLAB_M2, vl, vm, vs);
-            alwan_simd_store(&c0[i], oL);
-            alwan_simd_store(&c1[i], oa);
-            alwan_simd_store(&c2[i], ob);
-        }
-        for (; i < tile; i++) {
-            alwan_scalar r = alwan_srgb_eotf((alwan_scalar)c0[i]);
-            alwan_scalar g = alwan_srgb_eotf((alwan_scalar)c1[i]);
-            alwan_scalar b = alwan_srgb_eotf((alwan_scalar)c2[i]);
-            alwan_vec3 v = {{r, g, b}};
-            alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
-            alwan_xyz xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
-            alwan_oklab ok = alwan_xyz_to_oklab_v(xyz_s);
-            c0[i] = (alwan_simd_lane)ok.L; c1[i] = (alwan_simd_lane)ok.a; c2[i] = (alwan_simd_lane)ok.b;
-        }
-
-        alwan__store_tile_aos3(oklab_out, processed, out_stride, c0, c1, c2, tile);
-        processed += tile;
-    }
-#else
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)oklab_out + i * out_stride);
-        alwan_scalar r = alwan_srgb_eotf(in_ptr[0]);
-        alwan_scalar g = alwan_srgb_eotf(in_ptr[1]);
-        alwan_scalar b = alwan_srgb_eotf(in_ptr[2]);
-        alwan_vec3 v = {{r, g, b}};
-        alwan_vec3 xyz = alwan_mat3_mulv_v(SRGB_TO_XYZ, v);
-        alwan_xyz xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
-        alwan_oklab ok = alwan_xyz_to_oklab_v(xyz_s);
-        out_ptr[0] = ok.L; out_ptr[1] = ok.a; out_ptr[2] = ok.b;
-    }
-#endif
-
+int alwan_srgb_to_oklab_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                                void const *in, alwan_pixel_format in_fmt,
+                                size_t count, size_t in_stride, size_t out_stride) {
+    if (!in || !out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED_EX(in, in_fmt, in_stride, out, out_fmt, out_stride, count, alwan__srgb_to_oklab_kernel);
     return ALWAN_OK;
 }
 
@@ -433,68 +410,16 @@ int alwan_oklab_to_srgb_map_interleave(alwan_scalar *rgb_out,
                              size_t count,
                              size_t in_stride,
                              size_t out_stride) {
-    if (!oklab_in || !rgb_out || count == 0) {
-        return ALWAN_E_INVALID;
-    }
+    if (!oklab_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED(oklab_in, in_stride, rgb_out, out_stride, count, alwan__oklab_to_srgb_kernel);
+    return ALWAN_OK;
+}
 
-#if ALWAN_SIMD_WIDTH > 1
-    size_t const W = ALWAN_SIMD_WIDTH;
-    size_t processed = 0;
-    while (processed < count) {
-        size_t tile = count - processed;
-        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
-        alwan__load_tile_aos3(c0, c1, c2, oklab_in, processed, in_stride, tile);
-
-        size_t i = 0;
-        for (; i + W <= tile; i += W) {
-            alwan_simd vL = alwan_simd_load(&c0[i]);
-            alwan_simd va = alwan_simd_load(&c1[i]);
-            alwan_simd vb = alwan_simd_load(&c2[i]);
-            /* Lab -> LMS' (OKLAB M2_INV) */
-            alwan_simd lp, mp, sp;
-            alwan__mat3_mul_simd(&lp, &mp, &sp, &OKLAB_M2_INV, vL, va, vb);
-            /* cube */
-            alwan_simd vl = alwan_simd_mul(lp, alwan_simd_mul(lp, lp));
-            alwan_simd vm = alwan_simd_mul(mp, alwan_simd_mul(mp, mp));
-            alwan_simd vs = alwan_simd_mul(sp, alwan_simd_mul(sp, sp));
-            /* LMS -> XYZ (OKLAB M1_INV) */
-            alwan_simd vx, vy, vz;
-            alwan__mat3_mul_simd(&vx, &vy, &vz, &OKLAB_M1_INV, vl, vm, vs);
-            /* XYZ -> sRGB */
-            alwan_simd lr, lg, lb;
-            alwan__mat3_mul_simd(&lr, &lg, &lb, &XYZ_TO_SRGB, vx, vy, vz);
-            alwan_simd_store(&c0[i], alwan__srgb_oetf_simd(lr));
-            alwan_simd_store(&c1[i], alwan__srgb_oetf_simd(lg));
-            alwan_simd_store(&c2[i], alwan__srgb_oetf_simd(lb));
-        }
-        for (; i < tile; i++) {
-            alwan_oklab ok = {(alwan_scalar)c0[i], (alwan_scalar)c1[i], (alwan_scalar)c2[i]};
-            alwan_xyz xyz = alwan_oklab_to_xyz_v(ok);
-            alwan_vec3 v = {{xyz.x, xyz.y, xyz.z}};
-            alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
-            c0[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[0]);
-            c1[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[1]);
-            c2[i] = (alwan_simd_lane)alwan_srgb_oetf(lin.v[2]);
-        }
-
-        alwan__store_tile_aos3(rgb_out, processed, out_stride, c0, c1, c2, tile);
-        processed += tile;
-    }
-#else
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)oklab_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
-        alwan_oklab ok = {in_ptr[0], in_ptr[1], in_ptr[2]};
-        alwan_xyz xyz = alwan_oklab_to_xyz_v(ok);
-        alwan_vec3 v = {{xyz.x, xyz.y, xyz.z}};
-        alwan_vec3 lin = alwan_mat3_mulv_v(XYZ_TO_SRGB, v);
-        out_ptr[0] = alwan_srgb_oetf(lin.v[0]);
-        out_ptr[1] = alwan_srgb_oetf(lin.v[1]);
-        out_ptr[2] = alwan_srgb_oetf(lin.v[2]);
-    }
-#endif
-
+int alwan_oklab_to_srgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                                void const *in, alwan_pixel_format in_fmt,
+                                size_t count, size_t in_stride, size_t out_stride) {
+    if (!in || !out || count == 0) return ALWAN_E_INVALID;
+    ALWAN_MAP3_TILED_EX(in, in_fmt, in_stride, out, out_fmt, out_stride, count, alwan__oklab_to_srgb_kernel);
     return ALWAN_OK;
 }
 

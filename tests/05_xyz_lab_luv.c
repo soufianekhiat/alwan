@@ -282,7 +282,7 @@ static int test_lab_lch_roundtrip(void) {
         alwan_lch lch;
         alwan_lab_to_lch(&lch, &lab);
 
-        /* For achromatic colors (C ≈ 0), hue is undefined - only check L and C */
+        /* For achromatic colors (C ~= 0), hue is undefined - only check L and C */
         alwan_scalar L_err = ALWAN_ABS(lch.L - lch_expected.L);
         alwan_scalar C_err = ALWAN_ABS(lch.C - lch_expected.C);
         TEST_ASSERT(L_err < tolerance, "Lab->LCh L mismatch");
@@ -340,7 +340,7 @@ static int test_luv_lchuv_roundtrip(void) {
         alwan_lchuv lchuv;
         alwan_luv_to_lchuv(&lchuv, &luv);
 
-        /* For achromatic colors (C ≈ 0), hue is undefined - only check L and C */
+        /* For achromatic colors (C ~= 0), hue is undefined - only check L and C */
         alwan_scalar L_err = ALWAN_ABS(lchuv.L - lchuv_expected.L);
         alwan_scalar C_err = ALWAN_ABS(lchuv.C - lchuv_expected.C);
         TEST_ASSERT(L_err < tolerance, "Luv->LChuv L mismatch");

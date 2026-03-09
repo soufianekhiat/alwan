@@ -153,7 +153,7 @@ static int test_delta_e_ok(void) {
         TEST_ASSERT_NEAR(result, ALWAN_LITERAL(0.0), ALWAN_TEST_TOLERANCE, "deltaEOK identical");
     }
 
-    /* Known pair: dL=0.1, da=0.2, db=0.3 → sqrt(0.01+0.04+0.09) = sqrt(0.14) */
+    /* Known pair: dL=0.1, da=0.2, db=0.3 -> sqrt(0.01+0.04+0.09) = sqrt(0.14) */
     {
         alwan_oklab a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
         alwan_oklab b = {ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.3)};

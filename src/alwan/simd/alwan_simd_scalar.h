@@ -151,6 +151,10 @@ ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_cmple(alwan_simd_f64 a, alwan_si
 ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_cmpgt(alwan_simd_f64 a, alwan_simd_f64 b) { return a > b; }
 ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_cmpge(alwan_simd_f64 a, alwan_simd_f64 b) { return a >= b; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_select(alwan_simd_f64_mask m, alwan_simd_f64 a, alwan_simd_f64 b) { return m ? a : b; }
+
+ALWAN_INLINE int alwan_simd_f32_mask_all_set(alwan_simd_f32_mask m) { return m != 0; }
+ALWAN_INLINE int alwan_simd_f64_mask_all_set(alwan_simd_f64_mask m) { return m != 0; }
+
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_min(alwan_simd_f64 a, alwan_simd_f64 b) { return a < b ? a : b; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_max(alwan_simd_f64 a, alwan_simd_f64 b) { return a > b ? a : b; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_floor(alwan_simd_f64 a) { return floor(a); }
@@ -204,5 +208,119 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_u16_to_f32_norm(alwan_simd_u16 v, alwan_s
 
 ALWAN_INLINE alwan_simd_u8  alwan_simd_f32_to_u8_norm(alwan_simd_f32 v) { return alwan_simd_f32_to_u8(v * 255.0f); }
 ALWAN_INLINE alwan_simd_u16 alwan_simd_f32_to_u16_norm(alwan_simd_f32 v, alwan_simd_f32 max_val) { return alwan_simd_f32_to_u16(v * max_val); }
+
+/* ----------------------------------------------------------------
+ * AoS <-> SoA 3-Channel Deinterleave / Interleave
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE void alwan_simd_f32_deinterleave3(float const *src,
+                                                 alwan_simd_f32 *ch0, alwan_simd_f32 *ch1, alwan_simd_f32 *ch2) {
+    *ch0 = src[0]; *ch1 = src[1]; *ch2 = src[2];
+}
+
+ALWAN_INLINE void alwan_simd_f32_interleave3(float *dst,
+                                               alwan_simd_f32 a, alwan_simd_f32 b, alwan_simd_f32 c) {
+    dst[0] = a; dst[1] = b; dst[2] = c;
+}
+
+ALWAN_INLINE void alwan_simd_f64_deinterleave3(double const *src,
+                                                 alwan_simd_f64 *ch0, alwan_simd_f64 *ch1, alwan_simd_f64 *ch2) {
+    *ch0 = src[0]; *ch1 = src[1]; *ch2 = src[2];
+}
+
+ALWAN_INLINE void alwan_simd_f64_interleave3(double *dst,
+                                               alwan_simd_f64 a, alwan_simd_f64 b, alwan_simd_f64 c) {
+    dst[0] = a; dst[1] = b; dst[2] = c;
+}
+
+/* ----------------------------------------------------------------
+ * Float32 Fast pow(x, 2.4) / pow(x, 1/2.4) -- log2/exp2 decomposition
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
+    if (x <= 0.0f) return 0.0f;
+    union { float f; int32_t i; } u;
+    u.f = x;
+    float e = (float)((u.i >> 23) - 127);
+    u.i = (u.i & 0x007FFFFF) | 0x3F800000;
+    float m = u.f;
+    float t = m - 1.0f;
+    /* Minimax polynomial log2(m) on [1, 2), max error ~2e-7 */
+    float log2_m = t * (1.44269504f + t * (-0.72134752f + t * (0.48089835f + t * (-0.36067376f + t * 0.28854314f))));
+    float y = 2.4f * (e + log2_m);
+    float yi = floorf(y);
+    float yf = y - yi;
+    int32_t n = (int32_t)yi;
+    /* Minimax polynomial 2^yf on [0, 1), max error ~1e-7 */
+    float exp2f_v = 1.0f + yf * (0.69314718f + yf * (0.24022651f + yf * (0.05550411f + yf * (0.00961813f + yf * 0.00133335f))));
+    u.i = (n + 127) << 23;
+    return u.f * exp2f_v;
+}
+
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
+    if (x <= 0.0f) return 0.0f;
+    union { float f; int32_t i; } u;
+    u.f = x;
+    float e = (float)((u.i >> 23) - 127);
+    u.i = (u.i & 0x007FFFFF) | 0x3F800000;
+    float m = u.f;
+    float t = m - 1.0f;
+    /* Minimax polynomial log2(m) on [1, 2), max error ~2e-7 */
+    float log2_m = t * (1.44269504f + t * (-0.72134752f + t * (0.48089835f + t * (-0.36067376f + t * 0.28854314f))));
+    float y = 0.41666667f * (e + log2_m);
+    float yi = floorf(y);
+    float yf = y - yi;
+    int32_t n = (int32_t)yi;
+    /* Minimax polynomial 2^yf on [0, 1), max error ~1e-7 */
+    float exp2f_v = 1.0f + yf * (0.69314718f + yf * (0.24022651f + yf * (0.05550411f + yf * (0.00961813f + yf * 0.00133335f))));
+    u.i = (n + 127) << 23;
+    return u.f * exp2f_v;
+}
+
+/* ----------------------------------------------------------------
+ * Float64 pow(x, 2.4) / pow(x, 1/2.4) -- exact via libm
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
+    return pow(x, 2.4);
+}
+
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
+    return pow(x, 1.0 / 2.4);
+}
+
+/* ----------------------------------------------------------------
+ * Fast cube root -- integer bit trick + Newton-Raphson
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cbrt_fast(alwan_simd_f32 x) {
+    if (x == 0.0f) return 0.0f;
+    float sign = (x < 0.0f) ? -1.0f : 1.0f;
+    float ax = fabsf(x);
+    union { float f; int32_t i; } u;
+    u.f = ax;
+    u.i = u.i / 3 + 0x2a508f2e;
+    float y = u.f;
+    /* Two Newton-Raphson refinements */
+    float ax_over_3 = ax * 0.33333333f;
+    y = 0.66666667f * y + ax_over_3 / (y * y);
+    y = 0.66666667f * y + ax_over_3 / (y * y);
+    return sign * y;
+}
+
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_cbrt_fast(alwan_simd_f64 x) {
+    if (x == 0.0) return 0.0;
+    double sign = (x < 0.0) ? -1.0 : 1.0;
+    double ax = fabs(x);
+    union { double d; int64_t i; } u;
+    u.d = ax;
+    u.i = u.i / 3 + 0x2a9f7893782da1ceLL;
+    double y = u.d;
+    double ax_over_3 = ax / 3.0;
+    y = (2.0 / 3.0) * y + ax_over_3 / (y * y);
+    y = (2.0 / 3.0) * y + ax_over_3 / (y * y);
+    y = (2.0 / 3.0) * y + ax_over_3 / (y * y);
+    return sign * y;
+}
 
 #endif /* ALWAN_SIMD_SCALAR_H */

@@ -201,10 +201,10 @@ alwan_mat3_mulv(&xyz_out_v, &adapt_matrix, &xyz_in_v);
 
 | Transform | Accuracy | Speed | Use Case |
 |-----------|----------|-------|----------|
-| **Bradford** | ★★★★★ | ★★★★☆ | General purpose, industry standard |
-| **CAT02** | ★★★★☆ | ★★★★☆ | CIECAM02, perceptual |
-| **CAT16** | ★★★★★ | ★★★★☆ | CAM16, most accurate |
-| **XYZ Scaling** | ★★☆☆☆ | ★★★★★ | Simple, legacy |
+| **Bradford** | 5/5 | 4/5 | General purpose, industry standard |
+| **CAT02** | 4/5 | 4/5 | CIECAM02, perceptual |
+| **CAT16** | 5/5 | 4/5 | CAM16, most accurate |
+| **XYZ Scaling** | 2/5 | 5/5 | Simple, legacy |
 
 **Recommendation:** Use Bradford for most applications unless working with specific color appearance models.
 

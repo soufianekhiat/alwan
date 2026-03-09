@@ -13,6 +13,7 @@
 #include "../alwan_platform.h"
 #include "../alwan.h"
 #include <stdint.h>
+#include <string.h>
 
 /* ================================================================
  * Type-Generic SIMD Aliases
@@ -63,6 +64,12 @@
     #define alwan_simd_cmpgt        alwan_simd_f32_cmpgt
     #define alwan_simd_cmpge        alwan_simd_f32_cmpge
     #define alwan_simd_select       alwan_simd_f32_select
+    #define alwan_simd_pow24        alwan_simd_f32_pow24
+    #define alwan_simd_pow_inv24    alwan_simd_f32_pow_inv24
+    #define alwan_simd_cbrt_fast    alwan_simd_f32_cbrt_fast
+    #define alwan_simd_deinterleave3 alwan_simd_f32_deinterleave3
+    #define alwan_simd_interleave3   alwan_simd_f32_interleave3
+    #define alwan_simd_mask_all_set  alwan_simd_f32_mask_all_set
 #else
     #define ALWAN_SIMD_WIDTH        ALWAN_SIMD_F64_WIDTH
     typedef double                  alwan_simd_lane;
@@ -104,6 +111,12 @@
     #define alwan_simd_cmpgt        alwan_simd_f64_cmpgt
     #define alwan_simd_cmpge        alwan_simd_f64_cmpge
     #define alwan_simd_select       alwan_simd_f64_select
+    #define alwan_simd_pow24        alwan_simd_f64_pow24
+    #define alwan_simd_pow_inv24    alwan_simd_f64_pow_inv24
+    #define alwan_simd_cbrt_fast    alwan_simd_f64_cbrt_fast
+    #define alwan_simd_deinterleave3 alwan_simd_f64_deinterleave3
+    #define alwan_simd_interleave3   alwan_simd_f64_interleave3
+    #define alwan_simd_mask_all_set  alwan_simd_f64_mask_all_set
 #endif
 
 /* ----------------------------------------------------------------
@@ -115,9 +128,16 @@
  *   f64: 96 KB -> fits in L2, partially in L1
  * ---------------------------------------------------------------- */
 
+/* Halve tile for f64 to keep scratch within 48 KB (L1-friendly) */
+#if ALWAN_SCALAR_IS_FLOAT
 #define ALWAN_TILE_W      128
 #define ALWAN_TILE_H       32
-#define ALWAN_TILE_PIXELS (ALWAN_TILE_W * ALWAN_TILE_H)  /* 4096 */
+#define ALWAN_TILE_PIXELS (ALWAN_TILE_W * ALWAN_TILE_H)  /* 4096, 48 KB scratch */
+#else
+#define ALWAN_TILE_W       64
+#define ALWAN_TILE_H       32
+#define ALWAN_TILE_PIXELS (ALWAN_TILE_W * ALWAN_TILE_H)  /* 2048, 48 KB scratch */
+#endif
 
 /* Near-zero guards for SIMD divide-by-zero protection */
 #define ALWAN_MAP_DIV_GUARD    1e-10   /* For chromaticity / xyY denominators */
@@ -130,11 +150,31 @@
 ALWAN_INLINE void alwan__load_tile_aos3(alwan_simd_lane *ch0, alwan_simd_lane *ch1, alwan_simd_lane *ch2,
                                          alwan_scalar const *base, size_t offset,
                                          size_t stride, size_t tile_count) {
-    for (size_t j = 0; j < tile_count; j++) {
-        alwan_scalar const *p = (alwan_scalar const *)((char const *)base + (offset + j) * stride);
-        ch0[j] = (alwan_simd_lane)p[0];
-        ch1[j] = (alwan_simd_lane)p[1];
-        ch2[j] = (alwan_simd_lane)p[2];
+    if (stride == 3 * sizeof(alwan_scalar)) {
+        /* Packed AoS: use SIMD deinterleave for contiguous RGB data */
+        alwan_simd_lane const *src = (alwan_simd_lane const *)base + offset * 3;
+        size_t j = 0;
+#if ALWAN_SIMD_WIDTH > 1
+        for (; j + ALWAN_SIMD_WIDTH <= tile_count; j += ALWAN_SIMD_WIDTH) {
+            alwan_simd c0, c1, c2;
+            alwan_simd_deinterleave3(src + j * 3, &c0, &c1, &c2);
+            alwan_simd_store(&ch0[j], c0);
+            alwan_simd_store(&ch1[j], c1);
+            alwan_simd_store(&ch2[j], c2);
+        }
+#endif
+        for (; j < tile_count; j++) {
+            ch0[j] = src[j * 3 + 0];
+            ch1[j] = src[j * 3 + 1];
+            ch2[j] = src[j * 3 + 2];
+        }
+    } else {
+        for (size_t j = 0; j < tile_count; j++) {
+            alwan_scalar const *p = (alwan_scalar const *)((char const *)base + (offset + j) * stride);
+            ch0[j] = (alwan_simd_lane)p[0];
+            ch1[j] = (alwan_simd_lane)p[1];
+            ch2[j] = (alwan_simd_lane)p[2];
+        }
     }
 }
 
@@ -145,11 +185,30 @@ ALWAN_INLINE void alwan__load_tile_aos3(alwan_simd_lane *ch0, alwan_simd_lane *c
 ALWAN_INLINE void alwan__store_tile_aos3(alwan_scalar *base, size_t offset, size_t stride,
                                           alwan_simd_lane const *ch0, alwan_simd_lane const *ch1, alwan_simd_lane const *ch2,
                                           size_t tile_count) {
-    for (size_t j = 0; j < tile_count; j++) {
-        alwan_scalar *p = (alwan_scalar *)((char *)base + (offset + j) * stride);
-        p[0] = (alwan_scalar)ch0[j];
-        p[1] = (alwan_scalar)ch1[j];
-        p[2] = (alwan_scalar)ch2[j];
+    if (stride == 3 * sizeof(alwan_scalar)) {
+        /* Packed AoS: use SIMD interleave for contiguous RGB data */
+        alwan_simd_lane *dst = (alwan_simd_lane *)base + offset * 3;
+        size_t j = 0;
+#if ALWAN_SIMD_WIDTH > 1
+        for (; j + ALWAN_SIMD_WIDTH <= tile_count; j += ALWAN_SIMD_WIDTH) {
+            alwan_simd c0 = alwan_simd_load(&ch0[j]);
+            alwan_simd c1 = alwan_simd_load(&ch1[j]);
+            alwan_simd c2 = alwan_simd_load(&ch2[j]);
+            alwan_simd_interleave3(dst + j * 3, c0, c1, c2);
+        }
+#endif
+        for (; j < tile_count; j++) {
+            dst[j * 3 + 0] = ch0[j];
+            dst[j * 3 + 1] = ch1[j];
+            dst[j * 3 + 2] = ch2[j];
+        }
+    } else {
+        for (size_t j = 0; j < tile_count; j++) {
+            alwan_scalar *p = (alwan_scalar *)((char *)base + (offset + j) * stride);
+            p[0] = (alwan_scalar)ch0[j];
+            p[1] = (alwan_scalar)ch1[j];
+            p[2] = (alwan_scalar)ch2[j];
+        }
     }
 }
 
@@ -283,10 +342,17 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
 ALWAN_INLINE void alwan__load_tile_planar3(alwan_simd_lane *ch0, alwan_simd_lane *ch1, alwan_simd_lane *ch2,
                                             alwan_scalar const *in0, alwan_scalar const *in1, alwan_scalar const *in2,
                                             size_t offset, size_t stride, size_t tile_count) {
-    for (size_t j = 0; j < tile_count; j++) {
-        ch0[j] = (alwan_simd_lane)*(alwan_scalar const *)((char const *)in0 + (offset + j) * stride);
-        ch1[j] = (alwan_simd_lane)*(alwan_scalar const *)((char const *)in1 + (offset + j) * stride);
-        ch2[j] = (alwan_simd_lane)*(alwan_scalar const *)((char const *)in2 + (offset + j) * stride);
+    if (stride == sizeof(alwan_scalar)) {
+        /* Packed planar: contiguous channel data, use memcpy */
+        memcpy(ch0, in0 + offset, tile_count * sizeof(alwan_simd_lane));
+        memcpy(ch1, in1 + offset, tile_count * sizeof(alwan_simd_lane));
+        memcpy(ch2, in2 + offset, tile_count * sizeof(alwan_simd_lane));
+    } else {
+        for (size_t j = 0; j < tile_count; j++) {
+            ch0[j] = (alwan_simd_lane)*(alwan_scalar const *)((char const *)in0 + (offset + j) * stride);
+            ch1[j] = (alwan_simd_lane)*(alwan_scalar const *)((char const *)in1 + (offset + j) * stride);
+            ch2[j] = (alwan_simd_lane)*(alwan_scalar const *)((char const *)in2 + (offset + j) * stride);
+        }
     }
 }
 
@@ -298,10 +364,17 @@ ALWAN_INLINE void alwan__store_tile_planar3(alwan_scalar *out0, alwan_scalar *ou
                                              size_t offset, size_t stride,
                                              alwan_simd_lane const *ch0, alwan_simd_lane const *ch1, alwan_simd_lane const *ch2,
                                              size_t tile_count) {
-    for (size_t j = 0; j < tile_count; j++) {
-        *(alwan_scalar *)((char *)out0 + (offset + j) * stride) = (alwan_scalar)ch0[j];
-        *(alwan_scalar *)((char *)out1 + (offset + j) * stride) = (alwan_scalar)ch1[j];
-        *(alwan_scalar *)((char *)out2 + (offset + j) * stride) = (alwan_scalar)ch2[j];
+    if (stride == sizeof(alwan_scalar)) {
+        /* Packed planar: contiguous channel data, use memcpy */
+        memcpy(out0 + offset, ch0, tile_count * sizeof(alwan_simd_lane));
+        memcpy(out1 + offset, ch1, tile_count * sizeof(alwan_simd_lane));
+        memcpy(out2 + offset, ch2, tile_count * sizeof(alwan_simd_lane));
+    } else {
+        for (size_t j = 0; j < tile_count; j++) {
+            *(alwan_scalar *)((char *)out0 + (offset + j) * stride) = (alwan_scalar)ch0[j];
+            *(alwan_scalar *)((char *)out1 + (offset + j) * stride) = (alwan_scalar)ch1[j];
+            *(alwan_scalar *)((char *)out2 + (offset + j) * stride) = (alwan_scalar)ch2[j];
+        }
     }
 }
 
@@ -392,7 +465,7 @@ ALWAN_INLINE alwan_simd alwan__lab_f_simd(alwan_simd t) {
     alwan_simd kappa  = alwan_simd_set1((alwan_simd_lane)(24389.0 / (27.0 * 116.0)));
     alwan_simd offset = alwan_simd_set1((alwan_simd_lane)(16.0 / 116.0));
 
-    alwan_simd cbrt_result   = alwan_simd_cbrt(t);
+    alwan_simd cbrt_result   = alwan_simd_cbrt_fast(t);
     alwan_simd linear_result = alwan_simd_fmadd(kappa, t, offset);
 
     alwan_simd_mask mask = alwan_simd_cmpgt(t, delta3);
@@ -423,13 +496,17 @@ ALWAN_INLINE alwan_simd alwan__lab_f_inv_simd(alwan_simd t) {
 
 ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
     alwan_simd thresh = alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_EOTF_THRESH);
+    alwan_simd_mask mask = alwan_simd_cmple(v, thresh);
     alwan_simd lo     = alwan_simd_mul(v, alwan_simd_set1((alwan_simd_lane)(1.0 / ALWAN_SRGB_LINEAR_GAIN)));
+
+    /* Early-out: skip pow24 when all lanes are in the linear region */
+    if (alwan_simd_mask_all_set(mask))
+        return lo;
+
     alwan_simd hi_base = alwan_simd_mul(
         alwan_simd_add(v, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_B)),
         alwan_simd_set1((alwan_simd_lane)(1.0 / ALWAN_SRGB_A)));
-    alwan_simd hi     = alwan_simd_pow(hi_base, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_GAMMA));
-
-    alwan_simd_mask mask = alwan_simd_cmple(v, thresh);
+    alwan_simd hi     = alwan_simd_pow24(hi_base);
     return alwan_simd_select(mask, lo, hi);
 }
 
@@ -444,7 +521,7 @@ ALWAN_INLINE alwan_simd alwan__srgb_oetf_simd(alwan_simd v) {
     alwan_simd hi     = alwan_simd_sub(
         alwan_simd_mul(
             alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_A),
-            alwan_simd_pow(v, alwan_simd_set1((alwan_simd_lane)(1.0 / ALWAN_SRGB_GAMMA)))),
+            alwan_simd_pow_inv24(v)),
         alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_B));
 
     alwan_simd_mask mask = alwan_simd_cmple(v, thresh);
@@ -452,7 +529,7 @@ ALWAN_INLINE alwan_simd alwan__srgb_oetf_simd(alwan_simd v) {
 }
 
 /* ----------------------------------------------------------------
- * PQ OETF (Standard SMPTE ST 2084): linear (0-10000 cd/m²) -> encoded
+ * PQ OETF (Standard SMPTE ST 2084): linear (0-10000 cd/m^2) -> encoded
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd alwan__pq_oetf_simd(alwan_simd v) {
@@ -472,7 +549,7 @@ ALWAN_INLINE alwan_simd alwan__pq_oetf_simd(alwan_simd v) {
 }
 
 /* ----------------------------------------------------------------
- * PQ EOTF (Standard SMPTE ST 2084): encoded -> linear (0-10000 cd/m²)
+ * PQ EOTF (Standard SMPTE ST 2084): encoded -> linear (0-10000 cd/m^2)
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd alwan__pq_eotf_simd(alwan_simd v) {
@@ -664,6 +741,39 @@ static int name(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2, \
             { int st_ = kernel(co0_, co1_, co2_, ci0_, ci1_, ci2_, tile_); \
               if (st_ != ALWAN_OK) return st_; } \
             alwan__store_tile_aos3((out_base), off_, (out_s), co0_, co1_, co2_, tile_); \
+            off_ += tile_; \
+        } \
+    } while (0)
+
+/* Typed (_ex) tiled loop: typed void* in/out with format-aware tile load/store.
+ * The kernel operates on alwan_simd_lane SoA buffers in-place. */
+#define ALWAN_MAP3_TILED_EX(in_ptr, in_fmt, in_s, out_ptr, out_fmt, out_s, cnt, kernel) \
+    do { \
+        size_t off_ = 0; \
+        while (off_ < (cnt)) { \
+            size_t tile_ = (cnt) - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
+            alwan_simd_lane ci0_[ALWAN_TILE_PIXELS], ci1_[ALWAN_TILE_PIXELS], ci2_[ALWAN_TILE_PIXELS]; \
+            alwan_simd_lane co0_[ALWAN_TILE_PIXELS], co1_[ALWAN_TILE_PIXELS], co2_[ALWAN_TILE_PIXELS]; \
+            alwan__load_tile_typed_3(ci0_, ci1_, ci2_, (in_ptr), (in_fmt), off_, (in_s), tile_); \
+            kernel(co0_, co1_, co2_, ci0_, ci1_, ci2_, tile_); \
+            alwan__store_tile_typed_3((out_ptr), (out_fmt), off_, (out_s), co0_, co1_, co2_, tile_); \
+            off_ += tile_; \
+        } \
+    } while (0)
+
+/* Planar tiled loop */
+#define ALWAN_MAP3_TILED_PLANAR(in0, in1, in2, in_s, out0, out1, out2, out_s, cnt, kernel) \
+    do { \
+        size_t off_ = 0; \
+        while (off_ < (cnt)) { \
+            size_t tile_ = (cnt) - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
+            alwan_simd_lane ci0_[ALWAN_TILE_PIXELS], ci1_[ALWAN_TILE_PIXELS], ci2_[ALWAN_TILE_PIXELS]; \
+            alwan_simd_lane co0_[ALWAN_TILE_PIXELS], co1_[ALWAN_TILE_PIXELS], co2_[ALWAN_TILE_PIXELS]; \
+            alwan__load_tile_planar3(ci0_, ci1_, ci2_, (in0), (in1), (in2), off_, (in_s), tile_); \
+            kernel(co0_, co1_, co2_, ci0_, ci1_, ci2_, tile_); \
+            alwan__store_tile_planar3((out0), (out1), (out2), off_, (out_s), co0_, co1_, co2_, tile_); \
             off_ += tile_; \
         } \
     } while (0)

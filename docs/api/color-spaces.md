@@ -98,7 +98,7 @@ int alwan_lch_to_lab_bulk(alwan_scalar *lab_out, alwan_scalar const *lch_in,
                           size_t count, size_t in_stride, size_t out_stride);
 ```
 
-**Output format:** L: [0, 100], C: [0, ∞), h: [0, 360) degrees
+**Output format:** L: [0, 100], C: [0, inf), h: [0, 360) degrees
 
 ---
 

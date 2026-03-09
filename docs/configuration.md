@@ -2,7 +2,7 @@
 
 Compile-time configuration options for Alwan.
 
-> **⚠️ Runtime Data Loading:** Runtime data loading mode (`ALWAN_EMBED_DATA=0`) is not yet fully implemented in v0.1-alpha. Currently, only embedded mode (`ALWAN_EMBED_DATA=1`, default) is supported.
+> **/!\ Runtime Data Loading:** Runtime data loading mode (`ALWAN_EMBED_DATA=0`) is not yet fully implemented in v0.1-alpha. Currently, only embedded mode (`ALWAN_EMBED_DATA=1`, default) is supported.
 
 ---
 
@@ -77,14 +77,14 @@ Controls how reference data (CMFs, illuminants, RGB spaces) is included.
 ### Embedded Mode (ALWAN_EMBED_DATA=1)
 
 **Advantages:**
-- ✓ Zero I/O at runtime
-- ✓ Instant initialization
-- ✓ No file dependencies
-- ✓ Works in sandboxed environments
+- Yes Zero I/O at runtime
+- Yes Instant initialization
+- Yes No file dependencies
+- Yes Works in sandboxed environments
 
 **Disadvantages:**
-- ✗ Larger binary size (~2-5 MB)
-- ✗ Data updates require recompilation
+- No Larger binary size (~2-5 MB)
+- No Data updates require recompilation
 
 **Binary size impact:**
 | Component | Size |
@@ -107,14 +107,14 @@ alwan_ctx *ctx = alwan_create(NULL);
 ### Runtime Mode (ALWAN_EMBED_DATA=0)
 
 **Advantages:**
-- ✓ Smaller binary size
-- ✓ Data can be updated without recompiling
-- ✓ Faster linking during development
+- Yes Smaller binary size
+- Yes Data can be updated without recompiling
+- Yes Faster linking during development
 
 **Disadvantages:**
-- ✗ Requires file I/O at initialization (~10-50 ms)
-- ✗ CSV files must be deployed with binary
-- ✗ Potential for missing/corrupt data errors
+- No Requires file I/O at initialization (~10-50 ms)
+- No CSV files must be deployed with binary
+- No Potential for missing/corrupt data errors
 
 **Required:** Set `runtime_data_root` in config:
 ```c
@@ -239,7 +239,7 @@ void tracked_free(void *ptr) {
 #define ALWAN_FREE(ptr) ((void)0)  // No-op for stack
 ```
 
-⚠️ **Warning:** Stack allocators are risky for runtime data loading mode.
+/!\ **Warning:** Stack allocators are risky for runtime data loading mode.
 
 ---
 
@@ -343,7 +343,7 @@ Debug symbols = No
 /fp:fast         # Allow FP optimizations (may reduce accuracy)
 ```
 
-⚠️ Use `/fp:fast` only if accuracy loss is acceptable.
+/!\ Use `/fp:fast` only if accuracy loss is acceptable.
 
 ---
 

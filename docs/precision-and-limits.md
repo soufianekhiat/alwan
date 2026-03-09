@@ -16,8 +16,8 @@ Alwan supports two precision modes, selected at compile time:
 
 **Properties:**
 - **Precision:** ~7 decimal digits
-- **Range:** ±3.4 × 10³⁸
-- **Epsilon:** ~1.2 × 10⁻⁷
+- **Range:** ±3.4 × 10^38
+- **Epsilon:** ~1.2 × 10^-7
 - **Performance:** 2× faster on typical hardware
 
 **Use cases:**
@@ -44,8 +44,8 @@ Alwan supports two precision modes, selected at compile time:
 
 **Properties:**
 - **Precision:** ~16 decimal digits
-- **Range:** ±1.8 × 10³⁰⁸
-- **Epsilon:** ~2.2 × 10⁻¹⁶
+- **Range:** ±1.8 × 10^308
+- **Epsilon:** ~2.2 × 10^-16
 - **Performance:** Baseline
 
 **Use cases:**
@@ -67,18 +67,18 @@ Alwan supports two precision modes, selected at compile time:
 ## Precision Selection Guide
 
 ### Choose Float When:
-- ✓ Working with 8-bit or 10-bit images
-- ✓ Real-time rendering (>30 fps requirement)
-- ✓ Memory bandwidth is limited
-- ✓ Processing millions of colors per frame
-- ✓ Errors < 0.001 are acceptable
+- Yes Working with 8-bit or 10-bit images
+- Yes Real-time rendering (>30 fps requirement)
+- Yes Memory bandwidth is limited
+- Yes Processing millions of colors per frame
+- Yes Errors < 0.001 are acceptable
 
 ### Choose Double When:
-- ✓ Scientific accuracy required
-- ✓ Validating implementations
-- ✓ HDR with >12-bit precision
-- ✓ Chaining many conversions
-- ✓ Need for bit-exact reproducibility
+- Yes Scientific accuracy required
+- Yes Validating implementations
+- Yes HDR with >12-bit precision
+- Yes Chaining many conversions
+- Yes Need for bit-exact reproducibility
 
 ---
 
@@ -88,8 +88,8 @@ Alwan supports two precision modes, selected at compile time:
 
 **Matrix Inversion:**
 - Uses partial-pivot Gaussian elimination
-- Condition number < 10⁶: Stable
-- Condition number > 10¹⁰: May be inaccurate
+- Condition number < 10^6: Stable
+- Condition number > 10^10: May be inaccurate
 
 **Example:**
 ```c
@@ -201,10 +201,10 @@ endif()
 
 | Use Case | Need Determinism? |
 |----------|-------------------|
-| Unit tests with exact tolerances | ✓ Yes |
-| Regression testing across builds | ✓ Yes |
-| Multi-platform CI/CD | ✓ Yes |
-| Reference implementation validation | ✓ Yes |
+| Unit tests with exact tolerances | Yes Yes |
+| Regression testing across builds | Yes Yes |
+| Multi-platform CI/CD | Yes Yes |
+| Reference implementation validation | Yes Yes |
 | Real-time game rendering | Usually not |
 | One-off image processing | Usually not |
 
@@ -221,7 +221,7 @@ All transfer functions include careful clamping to avoid:
 
 **Example (sRGB):**
 ```c
-// Input clamped to [0, ∞) before processing
+// Input clamped to [0, inf) before processing
 // Output guaranteed in [0, 1] for valid inputs
 ```
 
@@ -238,11 +238,11 @@ All transfer functions include careful clamping to avoid:
 
 **Simpson's Rule:**
 - Used for even-count sample arrays
-- Accuracy: O(h⁴) where h is step size
+- Accuracy: O(h^4) where h is step size
 
 **Trapezoidal Rule:**
 - Fallback for odd-count arrays
-- Accuracy: O(h²)
+- Accuracy: O(h^2)
 
 **Typical errors:**
 | CMF | Float | Double |
@@ -257,7 +257,7 @@ All transfer functions include careful clamping to avoid:
 
 ### XYZ
 
-**Valid domain:** [0, ∞) for each component
+**Valid domain:** [0, inf) for each component
 
 **Typical ranges:**
 - X: [0, 0.95] for surface colors under D65
@@ -288,7 +288,7 @@ All transfer functions include careful clamping to avoid:
 
 **Valid domain:**
 - SDR: [0, 1] for each component
-- HDR: [0, ∞)
+- HDR: [0, inf)
 
 **Out-of-range handling:**
 - Negative: Represents out-of-gamut colors (preserved)
@@ -370,7 +370,7 @@ alwan_rgb_to_hsv(&hsv, &gray, 1, 0, 0);  // Output first
 
 ### Out-of-Gamut Colors
 
-Colors outside the RGB cube [0,1]³:
+Colors outside the RGB cube [0,1]^3:
 
 **Detection:**
 ```c
@@ -397,7 +397,7 @@ bool is_in_gamut(const alwan_vec3 *rgb) {
 | XYZ → Lab | Y < 1e-10 | Returns L=0, a=0, b=0 |
 | Lab → LCh | C < 1e-10 | h = 0 (undefined) |
 | RGB → HSV | max < 1e-10 | H = S = 0 |
-| Division | divisor < ε | Clamped to ε |
+| Division | divisor < eps | Clamped to eps |
 
 ---
 
@@ -407,7 +407,7 @@ bool is_in_gamut(const alwan_vec3 *rgb) {
 
 | Function | Max Value (Float) | Max Value (Double) |
 |----------|-------------------|-------------------|
-| XYZ → Lab | 10⁶ | 10¹⁵ |
+| XYZ → Lab | 10^6 | 10^15 |
 | PQ EOTF | 10,000 nits | 10,000 nits |
 | HLG EOTF | 1,000 nits | 1,000 nits |
 

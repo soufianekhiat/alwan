@@ -34,7 +34,7 @@ static int test_munsell_neutrals(void) {
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N5: error %d", status);
     }
-    /* N5 should have Y ≈ 0.198 (19.8% reflectance) */
+    /* N5 should have Y ~= 0.198 (19.8% reflectance) */
     TEST_CHECK_NEAR(xyz.y, 0.198, ALWAN_TEST_TOLERANCE);
 
     /* N10 (white) */

@@ -49,24 +49,13 @@ int alwan_scatter3(void *out, alwan_pixel_format out_fmt,
 }
 
 /* ----------------------------------------------------------------
- * sRGB Convenience _ex (pattern A: simple 3->3)
+ * sRGB Convenience _ex: moved to alwan_rgb_map.c (SIMD-accelerated)
  * ---------------------------------------------------------------- */
-
-ALWAN_MAP3_EX(alwan_srgb_to_xyz_map_interleave_ex,   alwan_rgb,   alwan_xyz,   alwan_srgb_to_xyz,   r,g,b, x,y,z)
-ALWAN_MAP3_EX(alwan_xyz_to_srgb_map_interleave_ex,   alwan_xyz,   alwan_rgb,   alwan_xyz_to_srgb,   x,y,z, r,g,b)
-ALWAN_MAP3_EX(alwan_srgb_to_lab_map_interleave_ex,   alwan_rgb,   alwan_lab,   alwan_srgb_to_lab,   r,g,b, L,a,b)
-ALWAN_MAP3_EX(alwan_lab_to_srgb_map_interleave_ex,   alwan_lab,   alwan_rgb,   alwan_lab_to_srgb,   L,a,b, r,g,b)
-ALWAN_MAP3_EX(alwan_srgb_to_oklab_map_interleave_ex, alwan_rgb,   alwan_oklab, alwan_srgb_to_oklab, r,g,b, L,a,b)
-ALWAN_MAP3_EX(alwan_oklab_to_srgb_map_interleave_ex, alwan_oklab, alwan_rgb,   alwan_oklab_to_srgb, L,a,b, r,g,b)
 
 /* ----------------------------------------------------------------
  * Color Space _ex (pattern B: with white_xyz)
+ * XYZ<->Lab, XYZ<->Luv: moved to alwan_colorspace_map.c (SIMD-accelerated)
  * ---------------------------------------------------------------- */
-
-ALWAN_MAP3_EX_WHITE(alwan_xyz_to_lab_map_interleave_ex, alwan_xyz, alwan_lab, alwan_xyz_to_lab, x,y,z, L,a,b)
-ALWAN_MAP3_EX_WHITE(alwan_lab_to_xyz_map_interleave_ex, alwan_lab, alwan_xyz, alwan_lab_to_xyz, L,a,b, x,y,z)
-ALWAN_MAP3_EX_WHITE(alwan_xyz_to_luv_map_interleave_ex, alwan_xyz, alwan_luv, alwan_xyz_to_luv, x,y,z, L,u,v)
-ALWAN_MAP3_EX_WHITE(alwan_luv_to_xyz_map_interleave_ex, alwan_luv, alwan_xyz, alwan_luv_to_xyz, L,u,v, x,y,z)
 
 /* Color Space _ex (pattern A: simple 3->3) */
 
@@ -78,11 +67,9 @@ ALWAN_MAP3_EX(alwan_xyz_to_xyy_map_interleave_ex,    alwan_xyz,   alwan_xyy,   a
 ALWAN_MAP3_EX(alwan_xyy_to_xyz_map_interleave_ex,    alwan_xyy,   alwan_xyz,   alwan_xyy_to_xyz,     x,y,Y, x,y,z)
 
 /* ----------------------------------------------------------------
- * Oklab _ex (pattern A)
+ * Oklab _ex: XYZ<->Oklab moved to alwan_oklab_map.c (SIMD-accelerated)
  * ---------------------------------------------------------------- */
 
-ALWAN_MAP3_EX(alwan_xyz_to_oklab_map_interleave_ex,   alwan_xyz,   alwan_oklab, alwan_xyz_to_oklab,   x,y,z, L,a,b)
-ALWAN_MAP3_EX(alwan_oklab_to_xyz_map_interleave_ex,   alwan_oklab, alwan_xyz,   alwan_oklab_to_xyz,   L,a,b, x,y,z)
 ALWAN_MAP3_EX(alwan_oklab_to_oklch_map_interleave_ex, alwan_oklab, alwan_oklch, alwan_oklab_to_oklch, L,a,b, L,C,h)
 ALWAN_MAP3_EX(alwan_oklch_to_oklab_map_interleave_ex, alwan_oklch, alwan_oklab, alwan_oklch_to_oklab, L,C,h, L,a,b)
 

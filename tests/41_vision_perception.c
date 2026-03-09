@@ -300,8 +300,8 @@ static int test_csf_bounds(void) {
 
     TEST_ASSERT(csf_low_freq < ALWAN_LITERAL(0.0), "Should reject freq < 0.1 cpd");
     TEST_ASSERT(csf_high_freq < ALWAN_LITERAL(0.0), "Should reject freq > 60 cpd");
-    TEST_ASSERT(csf_low_lum < ALWAN_LITERAL(0.0), "Should reject lum < 0.01 cd/m²");
-    TEST_ASSERT(csf_high_lum < ALWAN_LITERAL(0.0), "Should reject lum > 10000 cd/m²");
+    TEST_ASSERT(csf_low_lum < ALWAN_LITERAL(0.0), "Should reject lum < 0.01 cd/m^2");
+    TEST_ASSERT(csf_high_lum < ALWAN_LITERAL(0.0), "Should reject lum > 10000 cd/m^2");
 
     printf("  Out-of-range parameters correctly rejected\n");
 

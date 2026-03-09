@@ -193,7 +193,7 @@ int alwan_poly_expand_cheung2004(alwan_scalar *out, alwan_rgb const *rgb,
             break;
 
         case ALWAN_POLY_CHEUNG_10:
-            /* [R, G, B, RG, RB, GB, R², G², B², 1] */
+            /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, 1] */
             out[0] = R; out[1] = G; out[2] = B;
             out[3] = RG; out[4] = RB; out[5] = GB;
             out[6] = R2; out[7] = G2; out[8] = B2;
@@ -201,7 +201,7 @@ int alwan_poly_expand_cheung2004(alwan_scalar *out, alwan_rgb const *rgb,
             break;
 
         case ALWAN_POLY_CHEUNG_11:
-            /* [R, G, B, RG, RB, GB, R², G², B², RGB, 1] */
+            /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, RGB, 1] */
             out[0] = R; out[1] = G; out[2] = B;
             out[3] = RG; out[4] = RB; out[5] = GB;
             out[6] = R2; out[7] = G2; out[8] = B2;
@@ -210,7 +210,7 @@ int alwan_poly_expand_cheung2004(alwan_scalar *out, alwan_rgb const *rgb,
             break;
 
         case ALWAN_POLY_CHEUNG_14:
-            /* [R, G, B, RG, RB, GB, R², G², B², RGB, R³, G³, B³, 1] */
+            /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, RGB, R^3, G^3, B^3, 1] */
             out[0] = R; out[1] = G; out[2] = B;
             out[3] = RG; out[4] = RB; out[5] = GB;
             out[6] = R2; out[7] = G2; out[8] = B2;
@@ -220,7 +220,7 @@ int alwan_poly_expand_cheung2004(alwan_scalar *out, alwan_rgb const *rgb,
             break;
 
         case ALWAN_POLY_CHEUNG_16:
-            /* [R, G, B, RG, RB, GB, R², G², B², RGB, R²G, G²B, RB², R³, G³, B³] */
+            /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, RGB, R^2G, G^2B, RB^2, R^3, G^3, B^3] */
             out[0] = R; out[1] = G; out[2] = B;
             out[3] = RG; out[4] = RB; out[5] = GB;
             out[6] = R2; out[7] = G2; out[8] = B2;
@@ -230,7 +230,7 @@ int alwan_poly_expand_cheung2004(alwan_scalar *out, alwan_rgb const *rgb,
             break;
 
         case ALWAN_POLY_CHEUNG_17:
-            /* [R, G, B, RG, RB, GB, R², G², B², RGB, R²G, G²B, RB², R³, G³, B³, 1] */
+            /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, RGB, R^2G, G^2B, RB^2, R^3, G^3, B^3, 1] */
             out[0] = R; out[1] = G; out[2] = B;
             out[3] = RG; out[4] = RB; out[5] = GB;
             out[6] = R2; out[7] = G2; out[8] = B2;
@@ -241,7 +241,7 @@ int alwan_poly_expand_cheung2004(alwan_scalar *out, alwan_rgb const *rgb,
             break;
 
         case ALWAN_POLY_CHEUNG_19:
-            /* [R, G, B, RG, RB, GB, R², G², B², RGB, R²G, G²B, RB², R²B, RG², GB², R³, G³, B³] */
+            /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, RGB, R^2G, G^2B, RB^2, R^2B, RG^2, GB^2, R^3, G^3, B^3] */
             out[0] = R; out[1] = G; out[2] = B;
             out[3] = RG; out[4] = RB; out[5] = GB;
             out[6] = R2; out[7] = G2; out[8] = B2;
@@ -264,7 +264,7 @@ int alwan_poly_expand_cheung2004(alwan_scalar *out, alwan_rgb const *rgb,
             break;
 
         case ALWAN_POLY_CHEUNG_22:
-            /* [R, G, B, RG, RB, GB, R², G², B², RGB, R²G, G²B, RB², R²B, RG², GB², R³, G³, B³, R²GB, RG²B, RGB²] */
+            /* [R, G, B, RG, RB, GB, R^2, G^2, B^2, RGB, R^2G, G^2B, RB^2, R^2B, RG^2, GB^2, R^3, G^3, B^3, R^2GB, RG^2B, RGB^2] */
             out[0] = R; out[1] = G; out[2] = B;
             out[3] = RG; out[4] = RB; out[5] = GB;
             out[6] = R2; out[7] = G2; out[8] = B2;
@@ -333,26 +333,26 @@ int alwan_poly_expand_finlayson2015(alwan_scalar *out, int *out_size,
 
         if (degree >= 3) {
             /* Degree 3 root: cube root of products (ordering matches colour-science) */
-            out[idx++] = ALWAN_POW(G * G * R, 1.0 / 3.0);  /* cbrt(G²R) */
-            out[idx++] = ALWAN_POW(B * B * G, 1.0 / 3.0);  /* cbrt(B²G) */
-            out[idx++] = ALWAN_POW(B * B * R, 1.0 / 3.0);  /* cbrt(B²R) */
-            out[idx++] = ALWAN_POW(R * R * G, 1.0 / 3.0);  /* cbrt(R²G) */
-            out[idx++] = ALWAN_POW(G * G * B, 1.0 / 3.0);  /* cbrt(G²B) */
-            out[idx++] = ALWAN_POW(R * R * B, 1.0 / 3.0);  /* cbrt(R²B) */
+            out[idx++] = ALWAN_POW(G * G * R, 1.0 / 3.0);  /* cbrt(G^2R) */
+            out[idx++] = ALWAN_POW(B * B * G, 1.0 / 3.0);  /* cbrt(B^2G) */
+            out[idx++] = ALWAN_POW(B * B * R, 1.0 / 3.0);  /* cbrt(B^2R) */
+            out[idx++] = ALWAN_POW(R * R * G, 1.0 / 3.0);  /* cbrt(R^2G) */
+            out[idx++] = ALWAN_POW(G * G * B, 1.0 / 3.0);  /* cbrt(G^2B) */
+            out[idx++] = ALWAN_POW(R * R * B, 1.0 / 3.0);  /* cbrt(R^2B) */
             out[idx++] = ALWAN_POW(R * G * B, 1.0 / 3.0);  /* cbrt(RGB) */
         }
 
         if (degree >= 4) {
             /* Degree 4 root: fourth root of products (ordering matches colour-science) */
-            out[idx++] = ALWAN_POW(R * R * R * G, 0.25);  /* qrt(R³G) */
-            out[idx++] = ALWAN_POW(R * R * R * B, 0.25);  /* qrt(R³B) */
-            out[idx++] = ALWAN_POW(G * G * G * R, 0.25);  /* qrt(G³R) */
-            out[idx++] = ALWAN_POW(G * G * G * B, 0.25);  /* qrt(G³B) */
-            out[idx++] = ALWAN_POW(B * B * B * R, 0.25);  /* qrt(B³R) */
-            out[idx++] = ALWAN_POW(B * B * B * G, 0.25);  /* qrt(B³G) */
-            out[idx++] = ALWAN_POW(R * R * G * B, 0.25);  /* qrt(R²GB) */
-            out[idx++] = ALWAN_POW(G * G * R * B, 0.25);  /* qrt(G²RB) */
-            out[idx++] = ALWAN_POW(B * B * R * G, 0.25);  /* qrt(B²RG) */
+            out[idx++] = ALWAN_POW(R * R * R * G, 0.25);  /* qrt(R^3G) */
+            out[idx++] = ALWAN_POW(R * R * R * B, 0.25);  /* qrt(R^3B) */
+            out[idx++] = ALWAN_POW(G * G * G * R, 0.25);  /* qrt(G^3R) */
+            out[idx++] = ALWAN_POW(G * G * G * B, 0.25);  /* qrt(G^3B) */
+            out[idx++] = ALWAN_POW(B * B * B * R, 0.25);  /* qrt(B^3R) */
+            out[idx++] = ALWAN_POW(B * B * B * G, 0.25);  /* qrt(B^3G) */
+            out[idx++] = ALWAN_POW(R * R * G * B, 0.25);  /* qrt(R^2GB) */
+            out[idx++] = ALWAN_POW(G * G * R * B, 0.25);  /* qrt(G^2RB) */
+            out[idx++] = ALWAN_POW(B * B * R * G, 0.25);  /* qrt(B^2RG) */
         }
 
         *out_size = idx;
@@ -381,32 +381,32 @@ int alwan_poly_expand_finlayson2015(alwan_scalar *out, int *out_size,
             out[idx++] = R * R * R;
             out[idx++] = G * G * G;
             out[idx++] = B * B * B;
-            out[idx++] = G * G * R;  /* G²R */
-            out[idx++] = B * B * G;  /* B²G */
-            out[idx++] = B * B * R;  /* B²R */
-            out[idx++] = R * R * G;  /* R²G */
-            out[idx++] = G * G * B;  /* G²B */
-            out[idx++] = R * R * B;  /* R²B */
+            out[idx++] = G * G * R;  /* G^2R */
+            out[idx++] = B * B * G;  /* B^2G */
+            out[idx++] = B * B * R;  /* B^2R */
+            out[idx++] = R * R * G;  /* R^2G */
+            out[idx++] = G * G * B;  /* G^2B */
+            out[idx++] = R * R * B;  /* R^2B */
             out[idx++] = R * G * B;
         }
 
         if (degree >= 4) {
             /* Degree 4: fourth powers and mixed (ordering matches colour-science) */
-            out[idx++] = R * R * R * R;   /* R⁴ */
-            out[idx++] = G * G * G * G;   /* G⁴ */
-            out[idx++] = B * B * B * B;   /* B⁴ */
-            out[idx++] = R * R * R * G;   /* R³G */
-            out[idx++] = R * R * R * B;   /* R³B */
-            out[idx++] = G * G * G * R;   /* G³R */
-            out[idx++] = G * G * G * B;   /* G³B */
-            out[idx++] = B * B * B * R;   /* B³R */
-            out[idx++] = B * B * B * G;   /* B³G */
-            out[idx++] = R * R * G * G;   /* R²G² */
-            out[idx++] = G * G * B * B;   /* G²B² */
-            out[idx++] = R * R * B * B;   /* R²B² */
-            out[idx++] = R * R * G * B;   /* R²GB */
-            out[idx++] = G * G * R * B;   /* G²RB */
-            out[idx++] = B * B * R * G;   /* B²RG */
+            out[idx++] = R * R * R * R;   /* R^4 */
+            out[idx++] = G * G * G * G;   /* G^4 */
+            out[idx++] = B * B * B * B;   /* B^4 */
+            out[idx++] = R * R * R * G;   /* R^3G */
+            out[idx++] = R * R * R * B;   /* R^3B */
+            out[idx++] = G * G * G * R;   /* G^3R */
+            out[idx++] = G * G * G * B;   /* G^3B */
+            out[idx++] = B * B * B * R;   /* B^3R */
+            out[idx++] = B * B * B * G;   /* B^3G */
+            out[idx++] = R * R * G * G;   /* R^2G^2 */
+            out[idx++] = G * G * B * B;   /* G^2B^2 */
+            out[idx++] = R * R * B * B;   /* R^2B^2 */
+            out[idx++] = R * R * G * B;   /* R^2GB */
+            out[idx++] = G * G * R * B;   /* G^2RB */
+            out[idx++] = B * B * R * G;   /* B^2RG */
         }
 
         *out_size = idx;

@@ -195,7 +195,7 @@ static int test_color_matrix_monochrome(void)
     TEST_ASSERT(status == ALWAN_OK, "Apply monochrome failed");
 
     /* Monochrome should make all channels equal (luminance)
-     * Luma = 0.299*R + 0.587*G + 0.114*B = 0.299*0.8 + 0.587*0.4 + 0.114*0.2 ≈ 0.497 */
+     * Luma = 0.299*R + 0.587*G + 0.114*B = 0.299*0.8 + 0.587*0.4 + 0.114*0.2 ~= 0.497 */
     alwan_scalar expected_luma = 0.299 * 0.8 + 0.587 * 0.4 + 0.114 * 0.2;
     TEST_ASSERT_NEAR(rgb_out.r, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome red = luma");
     TEST_ASSERT_NEAR(rgb_out.g, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome green = luma");

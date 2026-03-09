@@ -29,7 +29,7 @@ Apply HLG Opto-Optical Transfer Function (scene-to-display). Converts scene-line
 
 **Parameters:**
 - `in` — Scene-referred linear RGB
-- `Lw` — Nominal peak display luminance in cd/m² (default: 1000)
+- `Lw` — Nominal peak display luminance in cd/m^2 (default: 1000)
 - `gamma_sys` — System gamma (default: 1.2)
 
 ### alwan_hlg_ootf_inv

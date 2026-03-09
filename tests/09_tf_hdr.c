@@ -20,7 +20,7 @@ static int test_pq_forward_inverse(void) {
      * Reference: SMPTE ST 2084, computed with double precision Python. */
     alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
 
-    /* Test OETF: linear cd/m² -> PQ code value */
+    /* Test OETF: linear cd/m^2 -> PQ code value */
     {
         static alwan_scalar const oetf_input[] = {
             ALWAN_LITERAL(0.0),
@@ -47,7 +47,7 @@ static int test_pq_forward_inverse(void) {
         }
     }
 
-    /* Test EOTF: PQ code value -> linear cd/m² */
+    /* Test EOTF: PQ code value -> linear cd/m^2 */
     {
         static alwan_scalar const eotf_input[] = {
             ALWAN_LITERAL(0.0),
@@ -180,7 +180,7 @@ static int test_acesproxy_roundtrip(void) {
 
 static int test_pq_st2084_alias(void) {
     /* Test that ALWAN_TF_PQ and ALWAN_TF_ST2084 are aliases */
-    alwan_scalar linear = ALWAN_LITERAL(1000.0);  /* 1000 cd/m² */
+    alwan_scalar linear = ALWAN_LITERAL(1000.0);  /* 1000 cd/m^2 */
     alwan_scalar encoded_pq, encoded_st2084;
 
     int status = alwan_oetf_apply(&encoded_pq, ALWAN_TF_PQ, &linear, 1, 1, 1);

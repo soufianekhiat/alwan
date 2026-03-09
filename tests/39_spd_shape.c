@@ -145,7 +145,7 @@ static int test_shape_descriptor_blackbody(void) {
     printf("    Bandwidth:       %.2f nm\n", shape.bandwidth);
 
     /* Blackbody at 6500K follows Wien's displacement law:
-     * Peak wavelength ≈ 2898 / T(K) µm = 2898 / 6500 ≈ 0.446 µm = 446 nm
+     * Peak wavelength ~= 2898 / T(K) um = 2898 / 6500 ~= 0.446 um = 446 nm
      * Peak should be in blue-green range */
 
     TEST_ASSERT(shape.peak_wavelength >= ALWAN_LITERAL(400.0) &&

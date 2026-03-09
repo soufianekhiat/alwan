@@ -11,7 +11,7 @@
 
 ---
 
-## TOLERANCE VIOLATIONS - ✅ ALL FIXED
+## TOLERANCE VIOLATIONS - [x] ALL FIXED
 
 All local tolerances have been removed. Every test now uses the single global `TEST_TOLERANCE` (`ALWAN_TEST_TOLERANCE` from `alwan_internal.h`). No local `#define` tolerances, no `#if ALWAN_SCALAR_IS_FLOAT` tolerance blocks, no multiplied tolerances. Tests that fail with the global tolerance expose implementation bugs that need fixing.
 
@@ -19,38 +19,38 @@ All local tolerances have been removed. Every test now uses the single global `T
 
 ## TEST CODE VIOLATIONS
 
-### Custom Tolerance Overrides - ✅ ALL FIXED
+### Custom Tolerance Overrides - [x] ALL FIXED
 
 All tests now use `ALWAN_TEST_TOLERANCE` from `test_common.h`. No local tolerance overrides remain.
 
-### Duplicated Test Macros - ✅ ALL FIXED
+### Duplicated Test Macros - [x] ALL FIXED
 
 All test files now use `tests/test_common.h` for assertion macros.
 
 | File | Status |
 |------|--------|
-| `tests/42_math_utilities.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/44_color_correction.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/49_rayleigh_scattering.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/50_barten1999_csf.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/51_cct_cineon.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/52_aces_fixed_functions.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/53_section9_transfer_functions.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/54_aces20.c` | ✅ FIXED - Uses `test_common.h` |
+| `tests/42_math_utilities.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/44_color_correction.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/49_rayleigh_scattering.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/50_barten1999_csf.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/51_cct_cineon.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/52_aces_fixed_functions.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/53_section9_transfer_functions.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/54_aces20.c` | [x] FIXED - Uses `test_common.h` |
 
-### Using `fabs()` Instead of `ALWAN_ABS()` - ✅ ALL FIXED
+### Using `fabs()` Instead of `ALWAN_ABS()` - [x] ALL FIXED
 
 All test files now use `ALWAN_ABS()` via `test_common.h` macros or directly.
 
 | File | Status |
 |------|--------|
-| `tests/43_reference_data.c` | ✅ FIXED - Uses `ALWAN_ABS()` |
-| `tests/49_rayleigh_scattering.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/52_aces_fixed_functions.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/53_section9_transfer_functions.c` | ✅ FIXED - Uses `ALWAN_ABS()` |
-| `tests/54_aces20.c` | ✅ FIXED - Uses `test_common.h` |
-| `tests/55_aces2_output_transform.c` | ✅ FIXED - Uses `ALWAN_ABS()` |
-| `tests/56_aces1_output_transform.c` | ✅ FIXED - Uses `ALWAN_ABS()` |
+| `tests/43_reference_data.c` | [x] FIXED - Uses `ALWAN_ABS()` |
+| `tests/49_rayleigh_scattering.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/52_aces_fixed_functions.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/53_section9_transfer_functions.c` | [x] FIXED - Uses `ALWAN_ABS()` |
+| `tests/54_aces20.c` | [x] FIXED - Uses `test_common.h` |
+| `tests/55_aces2_output_transform.c` | [x] FIXED - Uses `ALWAN_ABS()` |
+| `tests/56_aces1_output_transform.c` | [x] FIXED - Uses `ALWAN_ABS()` |
 
 ---
 
@@ -163,9 +163,9 @@ These are manufacturer-specific camera log curve parameters. Each set should hav
 | File | Line(s) | Value(s) | Context | Required Action |
 |------|---------|----------|---------|-----------------|
 | `alwan_vision_core.h` | 230-247 | `0.5, -0.005, 3.0e-8, 3.0, 10.0` | CSF simple model low/high rolloff, noise, scaling | **TODO** - Document as "Barten-inspired simplified" or cite source |
-| `alwan_vision_core.h` | 127-141 | `0.4, 1600.0, 5.0, 3.0, 9.7, 12.4` | Barten 1999 pupil & Stiles-Crawford | ✅ Documented in formula comment |
+| `alwan_vision_core.h` | 127-141 | `0.4, 1600.0, 5.0, 3.0, 9.7, 12.4` | Barten 1999 pupil & Stiles-Crawford | [x] Documented in formula comment |
 | `alwan_vision.c` | 222-238 | `0.5/60, 0.08/60, 2.1, 3.0, 0.1, 60.0, 12.0, 15.0, 0.03, 1.2274e6, 3.0e-8, 7.0` | Barten 1999 CSF default parameters | **TODO** - Cite Barten (1999) Table X.X |
-| `alwan_math_core.h` | 187-204 | Planckian locus polynomial coefficients | Hernández-Andrés et al. (1999) | ✅ Referenced in comment |
+| `alwan_math_core.h` | 187-204 | Planckian locus polynomial coefficients | Hernández-Andrés et al. (1999) | [x] Referenced in comment |
 | `alwan_math_core.h` | 234-236 | McCamy CCT: `0.3320, 0.1858, 449, 3525, 6823.3, 5520.33` | McCamy (1992) | **TODO** - Cite McCamy (1992) Color Res. Appl. |
 | `alwan_math.c` | 490-498 | Gaussian centers `420, 470, 520, 570, 600, 630, 680` + widths `40.0` | SPD optimization | **TODO** - Document basis for Gaussian center/width selection |
 | `alwan_math.c` | 422-429 | CCT search: `1000, 25000, 20, 0.01, 1.0` | CCT optimization bounds | **TODO** - Document valid range per CIE standard |
@@ -174,15 +174,15 @@ These are manufacturer-specific camera log curve parameters. Each set should hav
 | `alwan_extended_core.h` | 257-259 | hdr-IPT: `0.59, 1.25, 0.25, 0.184, 318.0` | Fairchild (2011) | **TODO** - Cite Fairchild (2011) |
 | `alwan_extended_core.h` | 352 | IgPgTg: `0.427` exponent | Ebner & Fairchild (1998) | **TODO** - Cite Ebner & Fairchild (1998) |
 | `alwan_extended_core.h` | 467-468 | HCL: `gamma=3.0, Y_0=100.0` | Sarifuddin (2005) | **TODO** - Cite Sarifuddin & Missaoui (2005) |
-| `alwan_aces_ff_core.h` | 21-28 | `ACES_CAM_NL_OFFSET=0.1`, `ACES_J_SCALE=100.0`, etc. | ACES 2.0 constants | ✅ Named constants from OCIO |
+| `alwan_aces_ff_core.h` | 21-28 | `ACES_CAM_NL_OFFSET=0.1`, `ACES_J_SCALE=100.0`, etc. | ACES 2.0 constants | [x] Named constants from OCIO |
 | `alwan_aces_ff_core.h` | 30-38 | Fourier chroma normalization arrays (4+4 coefficients) | ACES 2.0 chroma compress | **TODO** - Reference acesdev repo commit |
 
 ### Category F: Photopic/Scotopic LUTs — Should Be CSV Data
 
 | File | Lines | Data | Source |
 |------|-------|------|--------|
-| `alwan_vision.c` | 56-65 | `PHOTOPIC_V_DATA[]` — CIE photopic luminous efficiency values | CIE 1924 V(λ) | ✅ FIXED - Now `#include "data/vision/photopic_v_lambda.csv"`, generated by `gendata/data/vision_lefs.py` |
-| `alwan_vision.c` | 67-76 | `SCOTOPIC_VP_DATA[]` — CIE scotopic luminous efficiency values | CIE 1951 V'(λ) | ✅ FIXED - Now `#include "data/vision/scotopic_vp_lambda.csv"`, generated by `gendata/data/vision_lefs.py` |
+| `alwan_vision.c` | 56-65 | `PHOTOPIC_V_DATA[]` — CIE photopic luminous efficiency values | CIE 1924 V(λ) | [x] FIXED - Now `#include "data/vision/photopic_v_lambda.csv"`, generated by `gendata/data/vision_lefs.py` |
+| `alwan_vision.c` | 67-76 | `SCOTOPIC_VP_DATA[]` — CIE scotopic luminous efficiency values | CIE 1951 V'(λ) | [x] FIXED - Now `#include "data/vision/scotopic_vp_lambda.csv"`, generated by `gendata/data/vision_lefs.py` |
 
 ---
 
@@ -238,7 +238,7 @@ These are manufacturer-specific camera log curve parameters. Each set should hav
 
 ## FIX PRIORITY
 
-### Priority 1 (Critical) - Tolerance Violations - ✅ TESTS ENFORCED
+### Priority 1 (Critical) - Tolerance Violations - [x] TESTS ENFORCED
 All local tolerances removed. Tests now use global `TEST_TOLERANCE`. Failing tests expose implementation bugs to fix:
 1. CIECAM02 Q/M/s correlates
 2. CAM16 Q/M/s correlates
@@ -255,9 +255,9 @@ All local tolerances removed. Tests now use global `TEST_TOLERANCE`. Failing tes
 4. Generate ACES tonemap + AgX curve coefficients → CSV or document source
 5. Document color correction preset matrices (Sepia, Vintage, etc.) as artistic presets
 
-### Priority 3 (High) - Photopic/Scotopic LUTs → CSV (Category F) - ✅ COMPLETE
-1. ~~Move `PHOTOPIC_V_LAMBDA[42]` to `data/vision/photopic_v_lambda.csv`~~ ✅ DONE
-2. ~~Move `SCOTOPIC_VP_LAMBDA[42]` to `data/vision/scotopic_vp_lambda.csv`~~ ✅ DONE
+### Priority 3 (High) - Photopic/Scotopic LUTs → CSV (Category F) - [x] COMPLETE
+1. ~~Move `PHOTOPIC_V_LAMBDA[42]` to `data/vision/photopic_v_lambda.csv`~~ [x] DONE
+2. ~~Move `SCOTOPIC_VP_LAMBDA[42]` to `data/vision/scotopic_vp_lambda.csv`~~ [x] DONE
 
 ### Priority 4 (High) - Transfer Function Source Docs (Category B)
 1. Add spec citation comments to all 27 camera log transfer functions in `alwan_rgb_core.h`
@@ -276,11 +276,11 @@ All local tolerances removed. Tests now use global `TEST_TOLERANCE`. Failing tes
 5. Cite Ebner & Fairchild (1998) for IgPgTg exponent
 6. Reference acesdev repo for ACES 2.0 Fourier chroma arrays
 
-### Priority 7 (Low) - Test Code Quality - ✅ COMPLETE
-1. ~~Refactor all tests to use `tests/test_common.h`~~ ✅ DONE
-2. ~~Remove custom tolerance defines~~ ✅ DONE
-3. ~~Remove all `#if ALWAN_SCALAR_IS_FLOAT` tolerance blocks~~ ✅ DONE
-4. ~~Remove all tolerance multipliers (10x, 100x, 10000x)~~ ✅ DONE
+### Priority 7 (Low) - Test Code Quality - [x] COMPLETE
+1. ~~Refactor all tests to use `tests/test_common.h`~~ [x] DONE
+2. ~~Remove custom tolerance defines~~ [x] DONE
+3. ~~Remove all `#if ALWAN_SCALAR_IS_FLOAT` tolerance blocks~~ [x] DONE
+4. ~~Remove all tolerance multipliers (10x, 100x, 10000x)~~ [x] DONE
 
 ### Priority 8 (Low) - Test Hardcoded Values
 1. Move all expected luma values to CSV files

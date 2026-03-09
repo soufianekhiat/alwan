@@ -67,7 +67,7 @@ static int test_srgb_breakpoint(void) {
                                    sizeof(alwan_scalar), sizeof(alwan_scalar));
     TEST_ASSERT(status == ALWAN_OK, "sRGB OETF at breakpoint failed");
 
-    /* Expected encoded value: 12.92 * 0.0031308 ≈ 0.04045 */
+    /* Expected encoded value: 12.92 * 0.0031308 ~= 0.04045 */
     alwan_scalar expected = ALWAN_LITERAL(0.04045);
     alwan_scalar diff = ALWAN_ABS(encoded - expected);
 

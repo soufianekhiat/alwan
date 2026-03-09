@@ -2,7 +2,7 @@
 
 How Alwan handles reference datasets (CMFs, illuminants, RGB spaces).
 
-> **⚠️ IMPLEMENTATION STATUS:**
+> **/!\ IMPLEMENTATION STATUS:**
 > **Runtime Mode (`ALWAN_EMBED_DATA=0`):** NOT YET IMPLEMENTED in v0.1-alpha
 > **Embedded Mode (`ALWAN_EMBED_DATA=1`):** SUPPORTED (default)
 >
@@ -46,7 +46,7 @@ All data is stored as **C-parsable CSV files** with maximum-precision numeric li
 ```
 
 **Examples:**
-- `cie_1931_2deg_x_360_830_1nm.csv` — CIE 1931 2° X̄ CMF, 360-830nm, 1nm steps
+- `cie_1931_2deg_x_360_830_1nm.csv` — CIE 1931 2° X_bar CMF, 360-830nm, 1nm steps
 - `D65_360_830_1nm.csv` — D65 illuminant SPD, 360-830nm, 1nm steps
 - `srgb.csv` — sRGB color space descriptor
 
@@ -79,34 +79,34 @@ static const alwan_scalar cie_1931_xbar[] = {
 
 ### Advantages
 
-✓ **Zero runtime I/O**
+Yes **Zero runtime I/O**
 - No file system access required
 - Instant initialization (< 1 μs)
 - Works in sandboxed environments
 
-✓ **Deterministic**
+Yes **Deterministic**
 - Data always available
 - No missing file errors
 - Consistent across deployments
 
-✓ **Self-contained**
+Yes **Self-contained**
 - Single binary deployment
 - No external data dependencies
 - Works on systems without file access
 
-✓ **Fast**
+Yes **Fast**
 - Data in read-only memory
 - No parsing overhead
 - Cache-friendly access patterns
 
 ### Disadvantages
 
-✗ **Larger binary**
+No **Larger binary**
 - Adds ~1-2 MB to executable size
 - May increase load times slightly
 - More memory mapped at startup
 
-✗ **No runtime updates**
+No **No runtime updates**
 - Data changes require recompilation
 - Cannot update tables without rebuild
 
@@ -151,28 +151,28 @@ Data is loaded from CSV files during `alwan_create()`:
 
 ### Advantages
 
-✓ **Smaller binary**
+Yes **Smaller binary**
 - Executable ~2 MB smaller
 - Faster linking during development
 - Less disk space for distribution
 
-✓ **Updatable data**
+Yes **Updatable data**
 - Can update tables without recompiling
 - Easy to patch incorrect data
 - Support for custom datasets
 
-✓ **Flexible deployment**
+Yes **Flexible deployment**
 - Can provide different data sets per platform
 - Easy to test with modified reference data
 
 ### Disadvantages
 
-✗ **Requires file I/O**
+No **Requires file I/O**
 - Initialization takes 10-50 ms
 - Can fail if files missing/corrupt
 - Needs file system access
 
-✗ **Deployment complexity**
+No **Deployment complexity**
 - Must ship CSV files alongside binary
 - Need to handle data directory paths
 - Potential for version mismatches
@@ -263,18 +263,18 @@ if (!ctx) {
 ## Mode Selection Guide
 
 ### Choose Embedded Mode When:
-- ✓ Deployment simplicity is important
-- ✓ Binary size < 10 MB is acceptable
-- ✓ Data never needs updates
-- ✓ Running in sandboxed environment
-- ✓ Startup time is critical
+- Yes Deployment simplicity is important
+- Yes Binary size < 10 MB is acceptable
+- Yes Data never needs updates
+- Yes Running in sandboxed environment
+- Yes Startup time is critical
 
 ### Choose Runtime Mode When:
-- ✓ Binary size must be minimal
-- ✓ Data may need updates
-- ✓ Development iteration speed matters
-- ✓ Supporting custom datasets
-- ✓ 50 ms init time is acceptable
+- Yes Binary size must be minimal
+- Yes Data may need updates
+- Yes Development iteration speed matters
+- Yes Supporting custom datasets
+- Yes 50 ms init time is acceptable
 
 ---
 
@@ -285,8 +285,8 @@ if (!ctx) {
 **Size:** ~500 KB embedded, 18 files
 
 **Sets:**
-- CIE 1931 2° (X̄, Ȳ, Z̄)
-- CIE 1964 10° (X̄₁₀, Ȳ₁₀, Z̄₁₀)
+- CIE 1931 2° (X_bar, Y_bar, Z_bar)
+- CIE 1964 10° (X_bar_10, Y_bar_10, Z_bar_10)
 - CIE 2012 2° (updated 1931)
 - CIE 2012 10° (updated 1964)
 - CIE 2015 2°/10° (final revision)

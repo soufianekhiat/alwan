@@ -16,11 +16,11 @@
 /* Planck's law: spectral radiance at a given wavelength and temperature
  * wavelength_m:   wavelength in metres
  * temperature_K:  blackbody temperature in Kelvin
- * Returns:        spectral radiance in W·sr⁻¹·m⁻³ */
+ * Returns:        spectral radiance in W*sr^-1*m^-3 */
 ALWAN_INLINE alwan_scalar spd_planck_radiance_v(alwan_scalar wavelength_m,
                                                  alwan_scalar temperature_K) {
-    alwan_scalar const c1 = ALWAN_LITERAL(3.741771e-16);  /* W·m² (first radiation constant) */
-    alwan_scalar const c2 = ALWAN_LITERAL(1.4388e-2);     /* m·K  (second radiation constant) */
+    alwan_scalar const c1 = ALWAN_LITERAL(3.741771e-16);  /* W*m^2 (first radiation constant) */
+    alwan_scalar const c2 = ALWAN_LITERAL(1.4388e-2);     /* m*K  (second radiation constant) */
     alwan_scalar lambda5 = wavelength_m * wavelength_m * wavelength_m
                          * wavelength_m * wavelength_m;
     alwan_scalar exponent = c2 / (wavelength_m * temperature_K);

@@ -332,10 +332,10 @@ alwan_xyz_to_lab(&lab, &xyz, NULL, 1, 0, 0);  // Error!
 ### 3. Validate Input Ranges
 
 Color values should be in expected ranges:
-- **RGB (linear)**: [0, 1] for SDR, [0, ∞) for HDR
+- **RGB (linear)**: [0, 1] for SDR, [0, inf) for HDR
 - **RGB (encoded)**: [0, 1]
-- **Lab**: L∈[0,100], a∈[-128,127], b∈[-128,127]
-- **XYZ**: [0, ∞)
+- **Lab**: L in [0,100], a in [-128,127], b in [-128,127]
+- **XYZ**: [0, inf)
 
 ### 4. Check Stride Calculations
 

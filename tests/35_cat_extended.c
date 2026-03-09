@@ -103,7 +103,7 @@ static alwan_scalar const adapted_bianco_pc_2010_data[] = {
 #include "reference_values/adapted_d65_to_d50_bianco_pc_2010.csv"
 };
 
-/* Test XYZ colors (6 colors × 3 components) */
+/* Test XYZ colors (6 colors x 3 components) */
 static alwan_scalar const test_xyz_data[] = {
 #include "reference_values/test_xyz_colors.csv"
 };

@@ -86,7 +86,7 @@ static int test_hellwig2022_forward(void) {
 
         TEST_ASSERT(J_err < ALWAN_TEST_TOLERANCE, "J mismatch");
         TEST_ASSERT(C_err < ALWAN_TEST_TOLERANCE, "C mismatch");
-        /* For achromatic colors (C ≈ 0), hue is undefined - skip hue check */
+        /* For achromatic colors (C ~= 0), hue is undefined - skip hue check */
         if (corr.C > ALWAN_LITERAL(1.0)) {
             TEST_ASSERT(h_err < ALWAN_TEST_TOLERANCE, "h mismatch");
         }

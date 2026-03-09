@@ -63,7 +63,7 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
         return 0;
     }
 
-    /* Verify matrices are inverses: M * M^-1 ≈ I */
+    /* Verify matrices are inverses: M * M^-1 ~= I */
     alwan_mat3x3 identity;
     alwan_mat3_mul(&identity, &rgb_to_xyz, &xyz_to_rgb);
 

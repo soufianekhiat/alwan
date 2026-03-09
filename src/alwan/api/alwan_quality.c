@@ -17,7 +17,7 @@
 
 /* McCamy's approximation for CCT from CIE 1931 xy coordinates
  * Fast approximation, ~2% accuracy above 2800K
- * Formula: CCT = 449n³ + 3525n² + 6823.3n + 5520.33
+ * Formula: CCT = 449n^3 + 3525n^2 + 6823.3n + 5520.33
  * where n = (x - 0.3320) / (0.1858 - y)
  */
 alwan_scalar alwan_cct_mccamy_xy(alwan_vec2 const *xy) {
@@ -237,7 +237,7 @@ alwan_scalar alwan_cct_kang_xy(alwan_vec2 const *xy) {
     }
 
     /* Canonical-value selection: the Kang polynomial's conditioning means
-     * that near certain CCT values (e.g. 6000 K), a band of ~±10 ULPs in T
+     * that near certain CCT values (e.g. 6000 K), a band of ~+-10 ULPs in T
      * maps to (nearly) the same (x, y) in double precision.  Newton can
      * land anywhere in this band.  Among equivalent T values, prefer the
      * "simplest" double by checking round(cct) and cct rounded to 0.1. */
@@ -798,7 +798,7 @@ static alwan_scalar const *ces_reflectances[80] = {
  *
  * Algorithm:
  * 1. Compute CCT of test illuminant
- * 2. Generate reference illuminant at same CCT (blackbody <5000K, D-illuminant ≥5000K)
+ * 2. Generate reference illuminant at same CCT (blackbody <5000K, D-illuminant >=5000K)
  * 3. For each of first 8 TCS samples:
  *    a. Compute XYZ under test illuminant
  *    b. Compute XYZ under reference illuminant
@@ -878,7 +878,7 @@ alwan_scalar alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Step 3: Generate reference illuminant at same CCT */
     /* For now, use Planckian radiator for all CCTs.
-     * CIE 13.3-1995 specifies D-illuminant for CCT ≥ 5000K,
+     * CIE 13.3-1995 specifies D-illuminant for CCT >= 5000K,
      * but blackbody is acceptable and simpler. */
     alwan_spd reference_spd;
     status = alwan_spd_blackbody(&reference_spd, ctx, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX,
@@ -1126,7 +1126,7 @@ ALWAN_DIAG_POP
  * 3. Normalize by total irradiance
  * 4. Calculate weighted relative difference
  * 5. Smooth with convolution
- * 6. Compute SSI = 100 - 32√(Σ(smoothed²))
+ * 6. Compute SSI = 100 - 32*sqrt(sum(smoothed^2))
  */
 alwan_scalar alwan_ssi_calculate(alwan_ctx *ctx, alwan_spd const *test_spd, alwan_spd const *reference_spd) {
     if (!ctx || !test_spd || !reference_spd) {
@@ -1215,7 +1215,7 @@ alwan_scalar alwan_ssi_calculate(alwan_ctx *ctx, alwan_spd const *test_spd, alwa
                    wdr[i + 1] * ssi_smooth_kernel[2];
     }
 
-    /* Step 6: Compute final SSI = 100 - 32√(Σ(c_wdr²)) */
+    /* Step 6: Compute final SSI = 100 - 32*sqrt(sum(c_wdr^2)) */
     alwan_scalar sum_squares = ALWAN_LITERAL(0.0);
     for (size_t i = 0; i < SSI_BIN_COUNT; i++) {
         sum_squares += c_wdr[i] * c_wdr[i];

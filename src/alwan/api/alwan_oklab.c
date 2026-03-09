@@ -5,7 +5,7 @@
  *
  * Oklab & Oklch Color Spaces
  *
- * Reference: Björn Ottosson (2020)
+ * Reference: Bjorn Ottosson (2020)
  * "A perceptual color space for image processing"
  * https://bottosson.github.io/posts/oklab/
  *

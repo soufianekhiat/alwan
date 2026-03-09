@@ -88,7 +88,7 @@ Defined in `alwan_simd_types.h`. Width = number of lanes per SIMD register for e
 ### 3.1 ISA Implication Chain
 
 ```
-SSE2 ⊂ SSE3 ⊂ SSSE3 ⊂ SSE4.1 ⊂ SSE4.2 ⊂ AVX ⊂ AVX2
+SSE2 < SSE3 < SSSE3 < SSE4.1 < SSE4.2 < AVX < AVX2
 ```
 
 AVX implies SSE4.2 (and everything below). So the AVX and AVX2 backends can freely use all SSE4.1 instructions without additional guards. The progressive `#ifdef` upgrades only matter within the SSE2 backend, where `__SSE3__`, `__SSSE3__`, `__SSE4_1__` may or may not be defined depending on compiler flags.

@@ -169,7 +169,7 @@ Get the XYZ white point for a standard illuminant, normalized to Y=1.0.
 alwan_xyz d65_white;
 alwan_illuminant_white_point(&d65_white, ALWAN_ILLUMINANT_D65,
                              ALWAN_OBSERVER_CIE_1931_2DEG);
-/* d65_white ≈ {0.9505, 1.0000, 1.0890} */
+/* d65_white ~= {0.9505, 1.0000, 1.0890} */
 ```
 
 ---

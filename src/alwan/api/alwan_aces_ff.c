@@ -2884,7 +2884,7 @@ int alwan_aces_redmod10_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in) {
 
         /* Iterative refinement using Newton's method.
          * Forward: r' = r + f_H * f_S * (P - r) * k = r * (1 - f_H * f_S * k) + f_H * f_S * P * k
-         * Derivative: dr'/dr ≈ 1 - f_H * f_S * k (ignoring d(f_H)/dr and d(f_S)/dr)
+         * Derivative: dr'/dr ~= 1 - f_H * f_S * k (ignoring d(f_H)/dr and d(f_S)/dr)
          * Newton: r_new = r - (f(r) - target) / f'(r) */
         for (int iter = 0; iter < 16; ++iter) {
             alwan_scalar f_H_iter = calc_hue_weight(red, grn, blu, REDMOD10_INV_WIDTH);

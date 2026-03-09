@@ -28,7 +28,7 @@ Color appearance models (CAMs) predict how colors appear under varying viewing c
 ```c
 typedef struct {
     alwan_vec3 white_point;       // Adapting white point (XYZ)
-    alwan_scalar la;              // Adapting luminance (cd/m²)
+    alwan_scalar la;              // Adapting luminance (cd/m^2)
     alwan_scalar yb;              // Background relative luminance
     alwan_scalar surround;        // Surround: 0.8 (avg), 0.9 (dim), 1.0 (dark)
     alwan_scalar f;               // Luminance level: 0.8 (avg), 0.9 (dim), 1.0 (dark)
@@ -120,7 +120,7 @@ Match colors across different viewing conditions:
 // Display viewed in dim office
 alwan_cam_viewing_conditions dim_office = {
     .white_point = alwan_d65_xyz,
-    .la = 64.0,   // cd/m²
+    .la = 64.0,   // cd/m^2
     .yb = 0.2,    // 20% gray background
     .surround = 0.9,
     .f = 0.9,
@@ -131,7 +131,7 @@ alwan_cam_viewing_conditions dim_office = {
 // Bright print viewed in bright gallery
 alwan_cam_viewing_conditions bright_print = {
     .white_point = alwan_d50_xyz,
-    .la = 318.0,  // cd/m²
+    .la = 318.0,  // cd/m^2
     .yb = 0.2,
     .surround = 0.8,
     .f = 0.8,

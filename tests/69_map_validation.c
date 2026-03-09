@@ -747,8 +747,12 @@ static size_t mapex_typed_stride(alwan_pixel_format fmt) {
 }
 
 static alwan_scalar mapex_tol(alwan_pixel_format fmt) {
-    (void)fmt;
-    return MAP_TOLERANCE;
+    /* Output quantization adds up to 0.5 LSB of rounding error. */
+    switch (fmt) {
+    case ALWAN_PIXEL_U8:  return ALWAN_LITERAL(0.5) / ALWAN_LITERAL(255.0) + MAP_TOLERANCE;
+    case ALWAN_PIXEL_U16: return ALWAN_LITERAL(0.5) / ALWAN_LITERAL(65535.0) + MAP_TOLERANCE;
+    default:              return MAP_TOLERANCE;
+    }
 }
 
 static void generate_mapex_grid(alwan_scalar *out) {
@@ -767,11 +771,14 @@ static void generate_mapex_grid(alwan_scalar *out) {
 
 /* Compare _map_interleave_ex output vs _map_interleave reference.
  * For integer formats, skip pixels where reference is outside [0,1]
- * because clamping makes comparison meaningless. */
+ * because clamping makes comparison meaningless.
+ * For F32, use relative tolerance since output magnitudes vary widely
+ * (e.g. PQ inverse can produce XYZ > 10000). */
 static int compare_mapex(alwan_scalar const *ex_out, alwan_scalar const *ref_out,
                           size_t count, size_t stride, char const *name,
                           alwan_scalar tol, alwan_pixel_format fmt) {
     int is_int = (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16);
+    int is_f32 = (fmt == ALWAN_PIXEL_F32);
     for (size_t i = 0; i < count; i++) {
         alwan_scalar const *e = (alwan_scalar const *)((char const *)ex_out + i * stride);
         alwan_scalar const *r = (alwan_scalar const *)((char const *)ref_out + i * stride);
@@ -779,7 +786,14 @@ static int compare_mapex(alwan_scalar const *ex_out, alwan_scalar const *ref_out
             if (is_int && (r[c] < ALWAN_LITERAL(0.0) || r[c] > ALWAN_LITERAL(1.0)))
                 continue;
             alwan_scalar diff = ALWAN_ABS(e[c] - r[c]);
-            if (diff > tol) {
+            alwan_scalar actual_tol = tol;
+            if (is_f32) {
+                /* F32 round-trip error is proportional to magnitude (~FLT_EPSILON) */
+                alwan_scalar mag = ALWAN_ABS(r[c]);
+                if (mag > ALWAN_LITERAL(1.0))
+                    actual_tol = mag * ALWAN_LITERAL(1e-6) + tol;
+            }
+            if (diff > actual_tol) {
                 printf("[FAIL] %s [%s]: pixel %zu ch %d: ex=%.16e ref=%.16e diff=%.16e\n",
                        name, test_fmt_name(fmt), i, c, (double)e[c], (double)r[c], (double)diff);
                 return 1;
@@ -818,9 +832,9 @@ static int run_mapex3(mapex_entry3 const *entries, size_t n,
 
             alwan_scatter3(tin, fmt, grid, MAPEX_COUNT, ss, ts);
 
-            /* For integer formats, run reference on quantized input
+            /* For lossy formats, run reference on quantized input
              * to isolate output quantization error only */
-            if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
+            if (fmt != ALWAN_PIXEL_F64) {
                 alwan_collect3(qgrid, tin, fmt, MAPEX_COUNT, ts, ss);
                 entries[e].map(ref, qgrid, MAPEX_COUNT, ss, ss);
             } else {
@@ -956,7 +970,7 @@ static int test_ex_white_point_maps(void) {
 
             alwan_scatter3(tin, fmt, grid, MAPEX_COUNT, ss, ts);
 
-            if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
+            if (fmt != ALWAN_PIXEL_F64) {
                 alwan_collect3(qgrid, tin, fmt, MAPEX_COUNT, ts, ss);
                 entries[e].map(ref, qgrid, &d65, MAPEX_COUNT, ss, ss);
             } else {
@@ -1017,7 +1031,7 @@ static int test_ex_ictcp_maps(void) {
 
                 alwan_scatter3(tin, fmt, grid, MAPEX_COUNT, ss, ts);
 
-                if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
+                if (fmt != ALWAN_PIXEL_F64) {
                     alwan_collect3(qgrid, tin, fmt, MAPEX_COUNT, ts, ss);
                     entries[e].map(ref, qgrid, pq, MAPEX_COUNT, ss, ss);
                 } else {
@@ -1096,8 +1110,8 @@ static int test_ex_cam_maps(void) {
 
         /* --- CIECAM02 --- */
 
-        /* Forward reference (on quantized input for int formats) */
-        if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
+        /* Forward reference (on quantized input for lossy formats) */
+        if (fmt != ALWAN_PIXEL_F64) {
             alwan_collect3(qgrid, typed_xyz, fmt, MAPEX_COUNT, ts, ss);
             alwan_ciecam02_forward_map_interleave(c02_ref, qgrid, &vc02, MAPEX_COUNT, ss);
         } else {
@@ -1131,7 +1145,7 @@ static int test_ex_cam_maps(void) {
 
         alwan_scatter3(typed_xyz, fmt, grid, MAPEX_COUNT, ss, ts);
 
-        if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
+        if (fmt != ALWAN_PIXEL_F64) {
             alwan_cam16_forward_map_interleave(c16_ref, qgrid, &vc16, MAPEX_COUNT, ss);
         } else {
             alwan_cam16_forward_map_interleave(c16_ref, grid, &vc16, MAPEX_COUNT, ss);

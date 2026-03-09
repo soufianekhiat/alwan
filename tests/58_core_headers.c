@@ -1200,7 +1200,7 @@ static int test_mat3_inv_v(void) {
         TEST_ASSERT_NEAR(inv_v.m[i], inv_p.m[i], ALWAN_TEST_TOLERANCE, label);
     }
 
-    /* Verify M * M^-1 ≈ I */
+    /* Verify M * M^-1 ~= I */
     alwan_mat3x3 product = alwan_mat3_mul_v(m, inv_v);
     TEST_ASSERT_NEAR(product.m[0], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[0,0]");
     TEST_ASSERT_NEAR(product.m[4], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[1,1]");

@@ -159,13 +159,13 @@ static int test_khronos_pbr_neutral_basic(void) {
     alwan_scalar test_inputs[][3] = {
         /* Black */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
-        /* Middle gray (0.18) — below switch point, should pass through */
+        /* Middle gray (0.18) -- below switch point, should pass through */
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
         /* Below switch point (0.5) */
         {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)},
-        /* Bright white (1.0) — above switch point */
+        /* Bright white (1.0) -- above switch point */
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
-        /* Over-bright (4.0) — tests tone mapping compression */
+        /* Over-bright (4.0) -- tests tone mapping compression */
         {ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0)},
         /* Pure red (scene-referred) */
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}
@@ -199,7 +199,7 @@ static int test_khronos_pbr_neutral_basic(void) {
         /* Below switch point (~0.76): output = input - offset
          * For achromatic 0.18, x=0.18, offset = 0.18 - 6.25*0.18^0.18 = 0.18 - 0.2025 < 0
          * Actually: since x=0.18 > 0.08, offset = 0.04
-         * So output ≈ 0.18 - 0.04 = 0.14 (achromatic, peak < start_compression) */
+         * So output ~= 0.18 - 0.04 = 0.14 (achromatic, peak < start_compression) */
         if (i == 1) {
             alwan_scalar expected = ALWAN_LITERAL(0.18) - ALWAN_LITERAL(0.04);
             alwan_scalar diff = ALWAN_ABS(output[0] - expected) +

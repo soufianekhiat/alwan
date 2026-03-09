@@ -53,8 +53,8 @@ static void generate_lab_grid(alwan_scalar *out) {
 /* ================================================================
  * Tolerances (type-dependent)
  *
- * _v vs _map_planar: both scalar per-pixel, should be exact → ALWAN_TEST_TOLERANCE
- * _v vs _map_interleave / interleave vs planar: SIMD fmadd rounding → TOL_SIMD
+ * _v vs _map_planar: both scalar per-pixel, should be exact -> ALWAN_TEST_TOLERANCE
+ * _v vs _map_interleave / interleave vs planar: SIMD fmadd rounding -> TOL_SIMD
  * _ex tests: quantization + precision per pixel format
  * ================================================================ */
 
@@ -1088,7 +1088,7 @@ static int run_pex3(pex_entry3 const *entries, size_t n, alwan_scalar const *gri
             /* Collect quantized input and run reference on that.
              * For U8/U16 this compensates for integer quantization; for F32
              * (when alwan_scalar is double) it compensates for float32
-             * precision loss — critical for nonlinear functions like PQ. */
+             * precision loss -- critical for nonlinear functions like PQ. */
             test_collect1(ref0, ti0, fmt, count);
             test_collect1(ref1, ti1, fmt, count);
             test_collect1(ref2, ti2, fmt, count);

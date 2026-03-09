@@ -33,6 +33,11 @@
 #  define ALWAN_SIMD_UINT16_WIDTH   8
 #  define ALWAN_SIMD_F32_WIDTH      4
 #  define ALWAN_SIMD_F64_WIDTH      2
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+#  define ALWAN_SIMD_UINT8_WIDTH   16
+#  define ALWAN_SIMD_UINT16_WIDTH   8
+#  define ALWAN_SIMD_F32_WIDTH      4
+#  define ALWAN_SIMD_F64_WIDTH      2
 #else
 #  define ALWAN_SIMD_UINT8_WIDTH    1
 #  define ALWAN_SIMD_UINT16_WIDTH   1
@@ -95,6 +100,23 @@
    typedef __m128i  alwan_simd_i32;
    typedef __m128   alwan_simd_f32_mask;
    typedef __m128d  alwan_simd_f64_mask;
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+#  include <arm_neon.h>
+   typedef float32x4_t  alwan_simd_f32;
+#  if defined(__aarch64__)
+   typedef float64x2_t  alwan_simd_f64;
+#  else
+   typedef double        alwan_simd_f64;   /* ARMv7: no f64 SIMD, scalar fallback */
+#  endif
+   typedef uint8x16_t   alwan_simd_u8;
+   typedef uint16x8_t   alwan_simd_u16;
+   typedef int32x4_t    alwan_simd_i32;
+   typedef uint32x4_t   alwan_simd_f32_mask;
+#  if defined(__aarch64__)
+   typedef uint64x2_t   alwan_simd_f64_mask;
+#  else
+   typedef uint64_t     alwan_simd_f64_mask; /* ARMv7: scalar mask */
+#  endif
 #else
    typedef float    alwan_simd_f32;
    typedef double   alwan_simd_f64;

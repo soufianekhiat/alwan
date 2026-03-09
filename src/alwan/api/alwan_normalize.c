@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Integer-to-Float Normalization (ColorInterop §1.5)
+ * Integer-to-Float Normalization (ColorInterop Section 1.5)
  * Batch API for converting between integer code values and normalized floats.
  */
 

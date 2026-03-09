@@ -413,7 +413,7 @@ ALWAN_INLINE alwan_cmyk alwan_cmy_to_cmyk_v(alwan_cmy cmy) {
     alwan_cmyk result;
     alwan_scalar k = alwan_min3(cmy.c, cmy.m, cmy.y);
     alwan_scalar denom = ALWAN_LITERAL(1.0) - k;
-    /* When k >= 1, CMY are all 1 → pure black, c=m=y=0 */
+    /* When k >= 1, CMY are all 1 -> pure black, c=m=y=0 */
     result.c = ALWAN_SELECT(k >= ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), (cmy.c - k) / denom);
     result.m = ALWAN_SELECT(k >= ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), (cmy.m - k) / denom);
     result.y = ALWAN_SELECT(k >= ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), (cmy.y - k) / denom);

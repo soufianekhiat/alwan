@@ -64,7 +64,7 @@ alwan_rgb simulated;
 
 /* How does pure red look to someone with deuteranopia? */
 alwan_simulate_cvd(&simulated, &red, ALWAN_CVD_DEUTERANOPIA, 1.0);
-/* simulated ≈ {0.63, 0.63, 0.0} — red and green are confused */
+/* simulated ~= {0.63, 0.63, 0.0} -- red and green are confused */
 
 /* Partial red-weakness (50% severity) */
 alwan_simulate_cvd(&simulated, &red, ALWAN_CVD_PROTANOMALY, 0.5);

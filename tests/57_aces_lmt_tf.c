@@ -296,7 +296,7 @@ static int test_ap0_ap1_roundtrip(void) {
     int status = alwan_aces2_output_transform(&result, &gray, ALWAN_ACES2_OUT_SRGB_100NIT);
     TEST_ASSERT(status == ALWAN_OK, "ACES2 output transform failed");
 
-    /* Check that output is neutral (R≈G≈B) */
+    /* Check that output is neutral (R~=G~=B) */
     alwan_scalar max_diff = ALWAN_ABS(result.r - result.g);
     alwan_scalar diff2 = ALWAN_ABS(result.g - result.b);
     if (diff2 > max_diff) max_diff = diff2;

@@ -220,7 +220,7 @@ ALWAN_INLINE alwan_scalar alwan_csf_simple_v(
     alwan_scalar f = spatial_frequency;
     alwan_scalar L = luminance;
 
-    /* Pupil diameter: d ≈ 5 - 3*tanh(0.4*log10(L)) */
+    /* Pupil diameter: d ~= 5 - 3*tanh(0.4*log10(L)) */
     alwan_scalar log_L = ALWAN_LOG10(L);
     alwan_scalar d = ALWAN_LITERAL(5.0) - ALWAN_LITERAL(3.0) * ALWAN_TANH(ALWAN_LITERAL(0.4) * log_L);
     alwan_scalar pupil_area = ALWAN_PI * d * d / ALWAN_LITERAL(4.0);

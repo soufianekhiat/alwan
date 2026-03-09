@@ -469,6 +469,9 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_select(alwan_simd_f64_mask m, alwan_s
 #endif
 }
 
+ALWAN_INLINE int alwan_simd_f32_mask_all_set(alwan_simd_f32_mask m) { return _mm_movemask_ps(m) == 0xF; }
+ALWAN_INLINE int alwan_simd_f64_mask_all_set(alwan_simd_f64_mask m) { return _mm_movemask_pd(m) == 0x3; }
+
 /* ----------------------------------------------------------------
  * Float64 Min / Max / Clamp
  * ---------------------------------------------------------------- */
@@ -478,6 +481,11 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_max(alwan_simd_f64 a, alwan_simd_f64 
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_clamp(alwan_simd_f64 v, alwan_simd_f64 lo, alwan_simd_f64 hi) {
     return _mm_min_pd(_mm_max_pd(v, lo), hi);
+}
+
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum(alwan_simd_f64 a) {
+    __m128d t = _mm_shuffle_pd(a, a, 1);
+    return _mm_add_pd(a, t);
 }
 
 /* ----------------------------------------------------------------
@@ -596,6 +604,242 @@ ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_shuffle(alwan_simd_u8 v, alwan_simd_u8 
         rb[i] = (mb[i] & 0x80) ? 0 : vb[mb[i] & 0x0F];
     return _mm_load_si128((const __m128i *)rb);
 #endif
+}
+
+/* ----------------------------------------------------------------
+ * AoS <-> SoA 3-Channel Deinterleave / Interleave
+ * ---------------------------------------------------------------- */
+
+/* f32: load 4 RGB pixels (12 floats) -> 3 x __m128 SoA */
+ALWAN_INLINE void alwan_simd_f32_deinterleave3(float const *src,
+                                                 alwan_simd_f32 *ch0, alwan_simd_f32 *ch1, alwan_simd_f32 *ch2) {
+    __m128 v0 = _mm_loadu_ps(src);      /* a0 b0 c0 a1 */
+    __m128 v1 = _mm_loadu_ps(src + 4);  /* b1 c1 a2 b2 */
+    __m128 v2 = _mm_loadu_ps(src + 8);  /* c2 a3 b3 c3 */
+
+    __m128 t0 = _mm_shuffle_ps(v0, v1, _MM_SHUFFLE(1, 0, 2, 1)); /* b0 c0 b1 c1 */
+    __m128 t1 = _mm_shuffle_ps(v1, v2, _MM_SHUFFLE(2, 1, 3, 2)); /* a2 b2 a3 b3 */
+
+    *ch0 = _mm_shuffle_ps(v0, t1, _MM_SHUFFLE(2, 0, 3, 0)); /* a0 a1 a2 a3 */
+    *ch1 = _mm_shuffle_ps(t0, t1, _MM_SHUFFLE(3, 1, 2, 0)); /* b0 b1 b2 b3 */
+    *ch2 = _mm_shuffle_ps(t0, v2, _MM_SHUFFLE(3, 0, 3, 1)); /* c0 c1 c2 c3 */
+}
+
+/* f32: store 3 x __m128 SoA -> 4 RGB pixels (12 floats) */
+ALWAN_INLINE void alwan_simd_f32_interleave3(float *dst,
+                                               alwan_simd_f32 a, alwan_simd_f32 b, alwan_simd_f32 c) {
+    __m128 u0 = _mm_unpacklo_ps(a, b);  /* a0 b0 a1 b1 */
+    __m128 u1 = _mm_unpackhi_ps(a, b);  /* a2 b2 a3 b3 */
+    __m128 bc_hi = _mm_unpackhi_ps(b, c); /* b2 c2 b3 c3 */
+
+    /* v0 = [a0, b0, c0, a1] */
+    __m128 tc = _mm_shuffle_ps(c, u0, _MM_SHUFFLE(2, 2, 0, 0));
+    __m128 v0 = _mm_shuffle_ps(u0, tc, _MM_SHUFFLE(2, 0, 1, 0));
+    _mm_storeu_ps(dst, v0);
+
+    /* v1 = [b1, c1, a2, b2] */
+    __m128 tc2 = _mm_shuffle_ps(u0, c, _MM_SHUFFLE(1, 1, 3, 3));
+    __m128 v1 = _mm_shuffle_ps(tc2, u1, _MM_SHUFFLE(1, 0, 2, 0));
+    _mm_storeu_ps(dst + 4, v1);
+
+    /* v2 = [c2, a3, b3, c3] */
+    __m128 tc3 = _mm_shuffle_ps(bc_hi, u1, _MM_SHUFFLE(2, 2, 1, 1));
+    __m128 v2 = _mm_shuffle_ps(tc3, bc_hi, _MM_SHUFFLE(3, 2, 2, 0));
+    _mm_storeu_ps(dst + 8, v2);
+}
+
+/* f64: load 2 RGB pixels (6 doubles) -> 3 x __m128d SoA */
+ALWAN_INLINE void alwan_simd_f64_deinterleave3(double const *src,
+                                                 alwan_simd_f64 *ch0, alwan_simd_f64 *ch1, alwan_simd_f64 *ch2) {
+    __m128d v0 = _mm_loadu_pd(src);      /* a0 b0 */
+    __m128d v1 = _mm_loadu_pd(src + 2);  /* c0 a1 */
+    __m128d v2 = _mm_loadu_pd(src + 4);  /* b1 c1 */
+
+    *ch0 = _mm_shuffle_pd(v0, v1, 0x2); /* a0 a1 */
+    *ch1 = _mm_shuffle_pd(v0, v2, 0x1); /* b0 b1 */
+    *ch2 = _mm_shuffle_pd(v1, v2, 0x2); /* c0 c1 */
+}
+
+/* f64: store 3 x __m128d SoA -> 2 RGB pixels (6 doubles) */
+ALWAN_INLINE void alwan_simd_f64_interleave3(double *dst,
+                                               alwan_simd_f64 a, alwan_simd_f64 b, alwan_simd_f64 c) {
+    _mm_storeu_pd(dst,     _mm_shuffle_pd(a, b, 0x0)); /* a0 b0 */
+    _mm_storeu_pd(dst + 2, _mm_shuffle_pd(c, a, 0x2)); /* c0 a1 */
+    _mm_storeu_pd(dst + 4, _mm_shuffle_pd(b, c, 0x3)); /* b1 c1 */
+}
+
+/* ================================================================
+ * Fast Approximation Functions
+ * ================================================================ */
+
+/* ----------------------------------------------------------------
+ * Float32 pow(x, 2.4) -- fast vectorized via exp2(2.4 * log2(x))
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
+#if ALWAN_HAS_SVML
+    return _mm_pow_ps(x, _mm_set1_ps(2.4f));
+#else
+    __m128 zero = _mm_setzero_ps();
+    __m128 v = _mm_max_ps(x, zero);
+    __m128 is_pos = _mm_cmpgt_ps(v, zero);
+
+    /* log2(v) via IEEE 754 decomposition */
+    __m128i iv = _mm_castps_si128(v);
+    __m128i exp_i = _mm_sub_epi32(_mm_srli_epi32(iv, 23), _mm_set1_epi32(127));
+    __m128 e = _mm_cvtepi32_ps(exp_i);
+    __m128i mant_bits = _mm_or_si128(
+        _mm_and_si128(iv, _mm_set1_epi32(0x007FFFFF)),
+        _mm_set1_epi32(0x3F800000));
+    __m128 m = _mm_castsi128_ps(mant_bits);
+
+    /* Minimax polynomial log2(m) on [1, 2) */
+    __m128 t = _mm_sub_ps(m, _mm_set1_ps(1.0f));
+    __m128 log2_m = _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(1.44269504f),
+                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(-0.72134752f),
+                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(0.48089835f),
+                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(-0.36067376f),
+                    _mm_mul_ps(t, _mm_set1_ps(0.28854314f))))))))));
+
+    __m128 y = _mm_mul_ps(_mm_set1_ps(2.4f), _mm_add_ps(e, log2_m));
+
+    /* exp2(y) */
+    __m128 yi = alwan_simd_f32_floor(y);
+    __m128 yf = _mm_sub_ps(y, yi);
+    __m128i n = _mm_cvttps_epi32(yi);
+
+    /* Minimax polynomial 2^yf on [0, 1) */
+    __m128 exp2f = _mm_add_ps(_mm_set1_ps(1.0f),
+                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.69314718f),
+                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.24022651f),
+                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.05550411f),
+                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.00961813f),
+                   _mm_mul_ps(yf, _mm_set1_ps(0.00133335f)))))))))));
+
+    __m128i scale_i = _mm_slli_epi32(_mm_add_epi32(n, _mm_set1_epi32(127)), 23);
+    __m128 scale = _mm_castsi128_ps(scale_i);
+    __m128 result = _mm_mul_ps(scale, exp2f);
+    return _mm_and_ps(is_pos, result);
+#endif
+}
+
+/* ----------------------------------------------------------------
+ * Float32 pow(x, 1/2.4) -- fast vectorized via exp2((1/2.4) * log2(x))
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
+#if ALWAN_HAS_SVML
+    return _mm_pow_ps(x, _mm_set1_ps(1.0f / 2.4f));
+#else
+    __m128 zero = _mm_setzero_ps();
+    __m128 v = _mm_max_ps(x, zero);
+    __m128 is_pos = _mm_cmpgt_ps(v, zero);
+
+    /* log2(v) via IEEE 754 decomposition */
+    __m128i iv = _mm_castps_si128(v);
+    __m128i exp_i = _mm_sub_epi32(_mm_srli_epi32(iv, 23), _mm_set1_epi32(127));
+    __m128 e = _mm_cvtepi32_ps(exp_i);
+    __m128i mant_bits = _mm_or_si128(
+        _mm_and_si128(iv, _mm_set1_epi32(0x007FFFFF)),
+        _mm_set1_epi32(0x3F800000));
+    __m128 m = _mm_castsi128_ps(mant_bits);
+
+    /* Minimax polynomial log2(m) on [1, 2) */
+    __m128 t = _mm_sub_ps(m, _mm_set1_ps(1.0f));
+    __m128 log2_m = _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(1.44269504f),
+                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(-0.72134752f),
+                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(0.48089835f),
+                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(-0.36067376f),
+                    _mm_mul_ps(t, _mm_set1_ps(0.28854314f))))))))));
+
+    __m128 y = _mm_mul_ps(_mm_set1_ps(0.41666667f), _mm_add_ps(e, log2_m));
+
+    /* exp2(y) */
+    __m128 yi = alwan_simd_f32_floor(y);
+    __m128 yf = _mm_sub_ps(y, yi);
+    __m128i n = _mm_cvttps_epi32(yi);
+
+    /* Minimax polynomial 2^yf on [0, 1) */
+    __m128 exp2f = _mm_add_ps(_mm_set1_ps(1.0f),
+                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.69314718f),
+                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.24022651f),
+                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.05550411f),
+                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.00961813f),
+                   _mm_mul_ps(yf, _mm_set1_ps(0.00133335f)))))))))));
+
+    __m128i scale_i = _mm_slli_epi32(_mm_add_epi32(n, _mm_set1_epi32(127)), 23);
+    __m128 scale = _mm_castsi128_ps(scale_i);
+    __m128 result = _mm_mul_ps(scale, exp2f);
+    return _mm_and_ps(is_pos, result);
+#endif
+}
+
+/* ----------------------------------------------------------------
+ * Float64 pow(x, 2.4) -- forward to alwan_simd_f64_pow
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
+    return alwan_simd_f64_pow(x, _mm_set1_pd(2.4));
+}
+
+/* ----------------------------------------------------------------
+ * Float64 pow(x, 1/2.4) -- forward to alwan_simd_f64_pow
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
+    return alwan_simd_f64_pow(x, _mm_set1_pd(1.0 / 2.4));
+}
+
+/* ----------------------------------------------------------------
+ * Float32 cbrt (fast approximation)
+ * Integer bit trick + two Newton-Raphson refinements
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cbrt_fast(alwan_simd_f32 x) {
+#if ALWAN_HAS_SVML
+    return _mm_cbrt_ps(x);
+#else
+    __m128 zero = _mm_setzero_ps();
+    __m128 sign_mask = _mm_set1_ps(-0.0f);
+    __m128 sign = _mm_and_ps(x, sign_mask);
+    __m128 ax = _mm_andnot_ps(sign_mask, x);
+    __m128 is_nonzero = _mm_cmpgt_ps(ax, zero);
+
+    /* Initial estimate via integer bit trick (scalarized for SSE2 portability) */
+    ALWAN_ALIGN(16) float av[4], yv[4];
+    _mm_store_ps(av, ax);
+    for (int k = 0; k < 4; k++) {
+        union { float f; int32_t i; } u;
+        u.f = av[k];
+        u.i = u.i / 3 + 0x2a508f2e;
+        yv[k] = u.f;
+    }
+    __m128 y = _mm_load_ps(yv);
+
+    /* Two Newton-Raphson refinements: y = 2/3 * y + x/(3*y^2) */
+    __m128 two_thirds = _mm_set1_ps(0.66666667f);
+    __m128 one_third = _mm_set1_ps(0.33333333f);
+    __m128 y2, ax_3;
+    ax_3 = _mm_mul_ps(ax, one_third);
+
+    y2 = _mm_mul_ps(y, y);
+    y = _mm_add_ps(_mm_mul_ps(two_thirds, y), _mm_div_ps(ax_3, y2));
+
+    y2 = _mm_mul_ps(y, y);
+    y = _mm_add_ps(_mm_mul_ps(two_thirds, y), _mm_div_ps(ax_3, y2));
+
+    /* Restore sign and zero mask */
+    y = _mm_or_ps(y, sign);
+    return _mm_and_ps(y, is_nonzero);
+#endif
+}
+
+/* ----------------------------------------------------------------
+ * Float64 cbrt (fast) -- forward to alwan_simd_f64_cbrt
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_cbrt_fast(alwan_simd_f64 x) {
+    return alwan_simd_f64_cbrt(x);
 }
 
 #endif /* ALWAN_SIMD_SSE2_H */

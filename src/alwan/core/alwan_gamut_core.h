@@ -272,7 +272,7 @@ ALWAN_INLINE alwan_scalar gamut_find_intersection_v(alwan_scalar a, alwan_scalar
 }
 
 /* ================================================================
- * CSS Color Level 4 §13.2 Gamut Mapping
+ * CSS Color Level 4 Section 13.2 Gamut Mapping
  *
  * Binary search on chroma in OKLCh, holding L and h constant.
  * Convergence criterion: deltaEOK < JND threshold (0.02).

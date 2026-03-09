@@ -12,17 +12,17 @@ This document tracks compliance with the ASWF Color Interop Forum recommendation
 
 ### 1.1 Core Scene-Referred Color Spaces
 
-**Status:** ✅ Partially Implemented
+**Status:** [x] Partially Implemented
 
 Alwan already has most of these spaces, but needs interop ID mapping:
 
 | Space | Interop ID | Current Alwan Enum | Status |
 |-------|-----------|-------------------|--------|
-| ACEScg | `lin_ap1_scene` | `ALWAN_RGB_SPACE_ACESCG` | ✅ Exists |
-| ACES2065-1 | `lin_ap0_scene` | `ALWAN_RGB_SPACE_ACES2065_1` | ✅ Exists |
-| Linear Rec.709 | `lin_rec709_scene` | `ALWAN_RGB_SPACE_LINEAR_SRGB` | ✅ Exists |
-| Linear P3-D65 | `lin_p3d65_scene` | `ALWAN_RGB_SPACE_LINEAR_P3_D65` | ✅ Exists |
-| sRGB Rec.709 | `srgb_rec709_scene` | `ALWAN_RGB_SPACE_SRGB` | ✅ Exists |
+| ACEScg | `lin_ap1_scene` | `ALWAN_RGB_SPACE_ACESCG` | [x] Exists |
+| ACES2065-1 | `lin_ap0_scene` | `ALWAN_RGB_SPACE_ACES2065_1` | [x] Exists |
+| Linear Rec.709 | `lin_rec709_scene` | `ALWAN_RGB_SPACE_LINEAR_SRGB` | [x] Exists |
+| Linear P3-D65 | `lin_p3d65_scene` | `ALWAN_RGB_SPACE_LINEAR_P3_D65` | [x] Exists |
+| sRGB Rec.709 | `srgb_rec709_scene` | `ALWAN_RGB_SPACE_SRGB` | [x] Exists |
 
 **TODO:**
 - [ ] Add interop ID to enum mapping system
@@ -32,7 +32,7 @@ Alwan already has most of these spaces, but needs interop ID mapping:
 
 ### 1.2 Extended Range Value Handling
 
-**Status:** ⚠️ Needs Verification
+**Status:** /!\ Needs Verification
 
 The spec requires:
 - Values > 1.0: Evaluate transfer function directly (no clamping)
@@ -46,7 +46,7 @@ The spec requires:
 
 ### 1.3 Chromatic Adaptation
 
-**Status:** ✅ Implemented (needs verification)
+**Status:** [x] Implemented (needs verification)
 
 The spec requires: **Bradford cone primaries for von Kries adaptation**
 
@@ -60,7 +60,7 @@ Current implementation:
 
 ### 1.4 Non-Color Data Handling
 
-**Status:** ❌ Not Implemented
+**Status:** [ ] Not Implemented
 
 The spec requires two special designations:
 - **"Data"**: For non-color data (normals, displacement, roughness, etc.) - no conversions applied
@@ -81,7 +81,7 @@ The spec requires two special designations:
 
 ### 1.5 Integer to Float Normalization
 
-**Status:** ❌ Not Implemented
+**Status:** [ ] Not Implemented
 
 The spec requires: Normalize by dividing by (2^N - 1), not 2^N
 
@@ -99,7 +99,7 @@ The spec requires: Normalize by dividing by (2^N - 1), not 2^N
 
 ### 1.6 Naming Convention Support
 
-**Status:** ❌ Not Implemented
+**Status:** [ ] Not Implemented
 
 The spec uses compact names: `[transfer]_[primaries]_[imagestate]`
 
@@ -130,19 +130,19 @@ Examples:
 
 ### 2.1 Core Display-Referred Color Spaces
 
-**Status:** ⚠️ Partially Implemented
+**Status:** /!\ Partially Implemented
 
 | Space | Interop ID | Current Alwan Enum | Status |
 |-------|-----------|-------------------|--------|
-| sRGB | `srgb_rec709_display` | `ALWAN_RGB_SPACE_SRGB` | ✅ Exists |
-| Display P3 | `srgb_p3d65_display` | `ALWAN_RGB_SPACE_DISPLAY_P3` | ✅ Exists |
-| Rec.1886 Rec.709 | `rec1886_rec709_display` | ❌ Missing | Need to add |
-| Linear Rec.709 | `lin_rec709_display` | `ALWAN_RGB_SPACE_LINEAR_SRGB` | ✅ Exists |
-| Rec.2100-PQ | `pq_rec2020_display` | ❌ Missing | Need to add |
-| Rec.2100-HLG | `hlg_rec2020_display` | ❌ Missing | Need to add |
-| Display P3 HDR | `pq_p3d65_display` | ❌ Missing | Need to add |
-| Linear P3-D65 | `lin_p3d65_display` | `ALWAN_RGB_SPACE_LINEAR_DISPLAY_P3` | ✅ Exists |
-| Linear Rec.2020 | `lin_rec2020_display` | `ALWAN_RGB_SPACE_LINEAR_REC2020` | ✅ Exists |
+| sRGB | `srgb_rec709_display` | `ALWAN_RGB_SPACE_SRGB` | [x] Exists |
+| Display P3 | `srgb_p3d65_display` | `ALWAN_RGB_SPACE_DISPLAY_P3` | [x] Exists |
+| Rec.1886 Rec.709 | `rec1886_rec709_display` | [ ] Missing | Need to add |
+| Linear Rec.709 | `lin_rec709_display` | `ALWAN_RGB_SPACE_LINEAR_SRGB` | [x] Exists |
+| Rec.2100-PQ | `pq_rec2020_display` | [ ] Missing | Need to add |
+| Rec.2100-HLG | `hlg_rec2020_display` | [ ] Missing | Need to add |
+| Display P3 HDR | `pq_p3d65_display` | [ ] Missing | Need to add |
+| Linear P3-D65 | `lin_p3d65_display` | `ALWAN_RGB_SPACE_LINEAR_DISPLAY_P3` | [x] Exists |
+| Linear Rec.2020 | `lin_rec2020_display` | `ALWAN_RGB_SPACE_LINEAR_REC2020` | [x] Exists |
 
 **TODO:**
 - [ ] Add missing display color spaces:
@@ -157,7 +157,7 @@ Examples:
 
 ### 2.2 OETF vs EOTF Clarification
 
-**Status:** ⚠️ Needs Documentation
+**Status:** /!\ Needs Documentation
 
 The spec emphasizes:
 - **Display spaces use EOTFs** (Electro-Optical Transfer Functions)
@@ -173,13 +173,13 @@ Current issue: `alwan_rgb_space_desc` has both `oetf` and `eotf` fields, but usa
   int alwan_transfer_function_validate_symmetry(
       alwan_transfer_function tf, alwan_scalar tolerance);
   ```
-- [ ] Add unit tests verifying OETF(EOTF(x)) ≈ x for all transfer functions
+- [ ] Add unit tests verifying OETF(EOTF(x)) ~= x for all transfer functions
 - [ ] Document which spaces are display vs scene vs camera
 - [ ] Update `alwan_rgb_space_desc` documentation with usage examples
 
 ### 2.3 Integer Video Signal Encoding
 
-**Status:** ❌ Not Implemented
+**Status:** [ ] Not Implemented
 
 The spec requires support for both:
 - **Full range**: 0-255 for 8-bit
@@ -208,7 +208,7 @@ The spec requires support for both:
 
 ### 2.4 Display Space Metadata
 
-**Status:** ❌ Not Implemented
+**Status:** [ ] Not Implemented
 
 The spec designates certain spaces as "Basic" for novice users:
 - **SDR Basic**: sRGB, Rec.1886 Rec.709, Display P3
@@ -233,7 +233,7 @@ The spec designates certain spaces as "Basic" for novice users:
 
 ### 2.5 Extended Range Documentation
 
-**Status:** ⚠️ Needs Documentation
+**Status:** /!\ Needs Documentation
 
 The spec states:
 - Linear display spaces support values < 0.0 (out-of-gamut) and > 1.0 (HDR)
@@ -252,7 +252,7 @@ The spec states:
 
 ### 3.1 Unified Interop ID System
 
-**Status:** ❌ Not Implemented
+**Status:** [ ] Not Implemented
 
 Both specs use the same interop ID naming convention. Need unified API.
 
@@ -275,7 +275,7 @@ Both specs use the same interop ID naming convention. Need unified API.
 
 ### 3.2 OpenColorIO Compatibility
 
-**Status:** ❌ Not Implemented
+**Status:** [ ] Not Implemented
 
 The specs reference OCIO configs as reference implementations.
 
@@ -290,7 +290,7 @@ The specs reference OCIO configs as reference implementations.
 
 ### 3.3 Custom Color Space Support
 
-**Status:** ✅ Implemented
+**Status:** [x] Implemented
 
 The spec states: "It is highly recommended that projects support the ability to define and interchange custom color space encodings."
 

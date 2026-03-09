@@ -425,7 +425,7 @@ ALWAN_INLINE alwan_hcl alwan_rgb_to_hcl_v(alwan_rgb rgb) {
     alwan_scalar C = Q * (ALWAN_ABS(r_g) + ALWAN_ABS(g_b) + ALWAN_ABS(b_r)) / ALWAN_LITERAL(3.0);
 
     /* Hue with 4-way sector branching via nested ALWAN_SELECT */
-    /* When r_g ≈ 0 but g_b != 0, atan(g_b/r_g) = ±π/2 */
+    /* When r_g ~= 0 but g_b != 0, atan(g_b/r_g) = +-pi/2 */
     alwan_scalar h_temp = ALWAN_SELECT(ALWAN_ABS(r_g) < ALWAN_EPSILON,
                                        ALWAN_SELECT(g_b >= ALWAN_LITERAL(0.0),
                                                     ALWAN_PI / ALWAN_LITERAL(2.0),

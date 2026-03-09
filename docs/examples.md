@@ -88,7 +88,7 @@ int main(void) {
     if (srgb.x < 0 || srgb.x > 1 ||
         srgb.y < 0 || srgb.y > 1 ||
         srgb.z < 0 || srgb.z > 1) {
-        printf("⚠ Out of sRGB gamut! Clipping...\n");
+        printf("/!\\ Out of sRGB gamut! Clipping...\n");
         clip_to_gamut(&srgb);
     }
 

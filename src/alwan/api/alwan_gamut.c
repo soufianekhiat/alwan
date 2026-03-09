@@ -792,7 +792,7 @@ int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
 }
 
 /* ----------------------------------------------------------------
- * CSS Color Level 4 §13.2 Gamut Mapping
+ * CSS Color Level 4 Section 13.2 Gamut Mapping
  * Per-pixel math in alwan_gamut_core.h
  * ---------------------------------------------------------------- */
 

@@ -32,7 +32,7 @@ The Barten 1999 model predicts human contrast sensitivity as a function of spati
 
 ```c
 alwan_scalar alwan_pupil_diameter_barten1999(
-    alwan_scalar L,      // Luminance (cd/m²)
+    alwan_scalar L,      // Luminance (cd/m^2)
     alwan_scalar X_0,    // Angular size X (degrees)
     alwan_scalar Y_0     // Angular size Y (degrees), -1 to use X_0
 );
@@ -43,7 +43,7 @@ Calculate pupil diameter based on luminance and stimulus angular size.
 **Formula:** `d = 5 - 3 * tanh(0.4 * log10(L * X_0 * Y_0 / 1600))`
 
 **Parameters:**
-- `L` — Adapting luminance in cd/m² (typical: 0.01 to 10000)
+- `L` — Adapting luminance in cd/m^2 (typical: 0.01 to 10000)
 - `X_0` — Horizontal angular size in degrees (default: 60)
 - `Y_0` — Vertical angular size in degrees (-1 means use X_0)
 
@@ -51,9 +51,9 @@ Calculate pupil diameter based on luminance and stimulus angular size.
 
 **Example:**
 ```c
-// Pupil size for 100 cd/m² display, 60° field of view
+// Pupil size for 100 cd/m^2 display, 60° field of view
 alwan_scalar d = alwan_pupil_diameter_barten1999(100.0, 60.0, 60.0);
-// d ≈ 3.2 mm
+// d ~= 3.2 mm
 ```
 
 ---
@@ -62,7 +62,7 @@ alwan_scalar d = alwan_pupil_diameter_barten1999(100.0, 60.0, 60.0);
 
 ```c
 alwan_scalar alwan_retinal_illuminance_barten1999(
-    alwan_scalar L,                    // Luminance (cd/m²)
+    alwan_scalar L,                    // Luminance (cd/m^2)
     alwan_scalar d,                    // Pupil diameter (mm)
     int apply_stiles_crawford          // 1 = apply correction, 0 = skip
 );
@@ -70,12 +70,12 @@ alwan_scalar alwan_retinal_illuminance_barten1999(
 
 Calculate retinal illuminance in Trolands, optionally with Stiles-Crawford effect correction.
 
-**Formula (without Stiles-Crawford):** `E = (π * d² / 4) * L`
+**Formula (without Stiles-Crawford):** `E = (pi * d^2 / 4) * L`
 
-**Formula (with Stiles-Crawford):** `E = (π * d² / 4) * L * [1 - (d/9.7)² + (d/12.4)⁴]`
+**Formula (with Stiles-Crawford):** `E = (pi * d^2 / 4) * L * [1 - (d/9.7)^2 + (d/12.4)^4]`
 
 **Parameters:**
-- `L` — Luminance in cd/m²
+- `L` — Luminance in cd/m^2
 - `d` — Pupil diameter in mm
 - `apply_stiles_crawford` — Apply directional sensitivity correction (1 = yes)
 
@@ -85,7 +85,7 @@ Calculate retinal illuminance in Trolands, optionally with Stiles-Crawford effec
 ```c
 // Retinal illuminance with Stiles-Crawford correction
 alwan_scalar E = alwan_retinal_illuminance_barten1999(100.0, 3.2, 1);
-// E ≈ 750 Td
+// E ~= 750 Td
 ```
 
 ---
@@ -101,7 +101,7 @@ alwan_scalar alwan_optical_mtf_barten1999(
 
 Calculate the optical modulation transfer function representing blur from the eye's optics.
 
-**Formula:** `M_opt = exp(-2 * π² * σ² * u²)`
+**Formula:** `M_opt = exp(-2 * pi^2 * sigma^2 * u^2)`
 
 **Parameters:**
 - `u` — Spatial frequency in cycles per degree
@@ -113,7 +113,7 @@ Calculate the optical modulation transfer function representing blur from the ey
 ```c
 // MTF at 10 cycles/degree with typical optical blur
 alwan_scalar mtf = alwan_optical_mtf_barten1999(10.0, 0.0133);
-// mtf ≈ 0.65
+// mtf ~= 0.65
 ```
 
 ---
@@ -130,7 +130,7 @@ alwan_scalar alwan_sigma_barten1999(
 
 Calculate the standard deviation of the line-spread function combining base optical blur and pupil-dependent aberrations.
 
-**Formula:** `σ = sqrt(σ₀² + (C_ab * d)²)`
+**Formula:** `sigma = sqrt(sigma_0^2 + (C_ab * d)^2)`
 
 **Parameters:**
 - `sigma_0` — Base optical sigma in degrees (default: 0.5/60 = 0.00833)
@@ -144,7 +144,7 @@ Calculate the standard deviation of the line-spread function combining base opti
 alwan_scalar sigma_0 = 0.5 / 60.0;   // 0.5 arcminutes
 alwan_scalar C_ab = 0.08 / 60.0;     // 0.08 arcminutes/mm
 alwan_scalar sigma = alwan_sigma_barten1999(sigma_0, C_ab, 4.0);
-// sigma ≈ 0.0099 degrees
+// sigma ~= 0.0099 degrees
 ```
 
 ---
@@ -162,7 +162,7 @@ alwan_scalar alwan_maximum_angular_size_barten1999(
 
 Calculate the effective angular size for spatial integration.
 
-**Formula:** `X = (1/X₀² + 1/X_max² + u²/N_max²)^(-0.5)`
+**Formula:** `X = (1/X_0^2 + 1/X_max^2 + u^2/N_max^2)^(-0.5)`
 
 **Parameters:**
 - `u` — Spatial frequency in cycles per degree
@@ -215,7 +215,7 @@ Compute contrast sensitivity at a given spatial frequency using the full Barten 
 **Example:**
 ```c
 // Full workflow: luminance → pupil → sigma, E → CSF
-alwan_scalar L = 100.0;  // 100 cd/m² display
+alwan_scalar L = 100.0;  // 100 cd/m^2 display
 
 // Calculate optical parameters
 alwan_scalar d = alwan_pupil_diameter_barten1999(L, 60.0, 60.0);
