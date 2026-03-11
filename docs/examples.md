@@ -67,9 +67,9 @@ Convert wide-gamut BT.2020 to sRGB with clipping.
 #include <stdio.h>
 
 void clip_to_gamut(alwan_vec3 *rgb) {
-    rgb->x = fmax(0.0, fmin(1.0, rgb->x));
-    rgb->y = fmax(0.0, fmin(1.0, rgb->y));
-    rgb->z = fmax(0.0, fmin(1.0, rgb->z));
+    rgb->x = alwan_clamp(rgb->x, 0.0, 1.0);
+    rgb->y = alwan_clamp(rgb->y, 0.0, 1.0);
+    rgb->z = alwan_clamp(rgb->z, 0.0, 1.0);
 }
 
 int main(void) {
@@ -85,9 +85,9 @@ int main(void) {
     printf("BT.2020: (%.3f, %.3f, %.3f)\n", bt2020.x, bt2020.y, bt2020.z);
     printf("sRGB (raw): (%.3f, %.3f, %.3f)\n", srgb.x, srgb.y, srgb.z);
 
-    if (srgb.x < 0 || srgb.x > 1 ||
-        srgb.y < 0 || srgb.y > 1 ||
-        srgb.z < 0 || srgb.z > 1) {
+    if (srgb.x < 0.0 || srgb.x > 1.0 ||
+        srgb.y < 0.0 || srgb.y > 1.0 ||
+        srgb.z < 0.0 || srgb.z > 1.0) {
         printf("/!\\ Out of sRGB gamut! Clipping...\n");
         clip_to_gamut(&srgb);
     }
@@ -264,12 +264,12 @@ int main(void) {
     alwan_xyz_to_ictcp(&ictcp2, &xyz2, "pq", 1, 0, 0);
 
     // Calculate ΔE in ICtCp
-    float dI = ictcp1.x - ictcp2.x;
-    float dCt = ictcp1.y - ictcp2.y;
-    float dCp = ictcp1.z - ictcp2.z;
-    float delta_e_ictcp = sqrt(dI*dI + dCt*dCt + dCp*dCp);
+    alwan_scalar dI = ictcp1.x - ictcp2.x;
+    alwan_scalar dCt = ictcp1.y - ictcp2.y;
+    alwan_scalar dCp = ictcp1.z - ictcp2.z;
+    alwan_scalar delta_e_ictcp = ALWAN_SQRT(dI*dI + dCt*dCt + dCp*dCp);
 
-    printf("HDR Color Difference (ΔE ICtCp): %.4f\n", delta_e_ictcp);
+    printf("HDR Color Difference (ΔE ICtCp): %.4f\n", (double)delta_e_ictcp);
 
     alwan_destroy(ctx);
     return 0;
@@ -282,49 +282,35 @@ int main(void) {
 
 ### Example 7: Lift-Gamma-Gain Adjustment
 
-Implement color grading controls.
+Apply color grading controls using the batch API.
 
 ```c
 #include "alwan.h"
-
-// Lift-Gamma-Gain adjustment
-void apply_lgg(alwan_vec3 *rgb, alwan_vec3 lift, alwan_vec3 gamma, alwan_vec3 gain) {
-    // Lift: add offset (affects shadows)
-    rgb->x = rgb->x + lift.x;
-    rgb->y = rgb->y + lift.y;
-    rgb->z = rgb->z + lift.z;
-
-    // Gamma: power function (affects midtones)
-    rgb->x = pow(fmax(0, rgb->x), 1.0 / gamma.x);
-    rgb->y = pow(fmax(0, rgb->y), 1.0 / gamma.y);
-    rgb->z = pow(fmax(0, rgb->z), 1.0 / gamma.z);
-
-    // Gain: multiply (affects highlights)
-    rgb->x *= gain.x;
-    rgb->y *= gain.y;
-    rgb->z *= gain.z;
-}
+#include <stdlib.h>
+#include <stdio.h>
 
 int main(void) {
-    alwan_ctx *ctx = alwan_create(NULL);
-
     // Sample image data (linear RGB)
-    alwan_vec3 image[1920 * 1080];
+    size_t n = 1920 * 1080;
+    size_t stride = 3 * sizeof(alwan_scalar);
+    alwan_scalar *image = malloc(n * stride);
+
     // ... load image ...
 
     // Color grading parameters
-    alwan_vec3 lift = {0.05, 0.02, 0.0};    // Warm shadows
-    alwan_vec3 gamma = {1.1, 1.0, 0.9};     // Desaturate midtones
-    alwan_vec3 gain = {1.1, 1.0, 0.95};     // Warm highlights
+    alwan_rgb lift  = {0.05, 0.02, 0.0};     // Warm shadows
+    alwan_rgb gamma = {1.1,  1.0,  0.9};     // Adjust midtones
+    alwan_rgb gain  = {1.1,  1.0,  0.95};    // Warm highlights
 
-    // Apply grading
-    for (int i = 0; i < 1920 * 1080; i++) {
-        apply_lgg(&image[i], lift, gamma, gain);
-    }
+    // Apply LGG in one batch call (in-place)
+    alwan_lgg_apply_map_interleave(
+        image, image, &lift, &gamma, &gain,
+        n, stride, stride
+    );
 
     printf("Applied lift-gamma-gain color grading\n");
 
-    alwan_destroy(ctx);
+    free(image);
     return 0;
 }
 ```
@@ -679,9 +665,813 @@ int main(void) {
 
 ---
 
+## Library Integrations
+
+Real-world examples showing zero-copy interop between alwan and common image/media libraries, using alwan's stride-based batch API.
+
+---
+
+### stb_image — Load JPEG and Convert to OkLab
+
+`stbi_load` returns contiguous interleaved RGB with no padding. Use `_map_interleave_ex` for direct U8 input.
+
+```c
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#include <alwan/alwan.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int w, h, ch;
+    unsigned char *img = stbi_load("photo.jpg", &w, &h, &ch, 3);
+    if (!img) return 1;
+
+    size_t n = (size_t)w * h;
+
+    /* stb_image: packed RGB u8, stride = 3 bytes */
+    float *oklab = malloc(n * 3 * sizeof(float));
+
+    alwan_srgb_to_oklab_map_interleave_ex(
+        oklab, ALWAN_PIXEL_F32,
+        img,   ALWAN_PIXEL_U8,
+        n, 3, 12  /* in_stride=3 (u8 RGB), out_stride=12 (f32 triplet) */
+    );
+
+    /* oklab[] now contains OkLab for every pixel */
+
+    free(oklab);
+    stbi_image_free(img);
+    return 0;
+}
+```
+
+#### stb_image — HDR to JzAzBz
+
+`stbi_loadf` returns packed float32 RGB. Use `ALWAN_PIXEL_F32` with 12-byte strides.
+
+```c
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#include <alwan/alwan.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int w, h, ch;
+    float *hdr = stbi_loadf("scene.hdr", &w, &h, &ch, 3);
+    if (!hdr) return 1;
+
+    size_t n = (size_t)w * h;
+
+    /* HDR is scene-linear. Go straight to JzAzBz (perceptual HDR space).
+     * First: linear sRGB/BT.709 -> XYZ, then XYZ -> JzAzBz */
+    float *xyz = malloc(n * 3 * sizeof(float));
+    float *jab = malloc(n * 3 * sizeof(float));
+
+    alwan_mat3x3 srgb_npm = {{
+        0.4123907993, 0.3575843394, 0.1804807884,
+        0.2126390059, 0.7151686788, 0.0721923154,
+        0.0193308187, 0.1191947798, 0.9505321522
+    }};
+
+    alwan_mat3_transform_map_interleave_ex(
+        xyz, ALWAN_PIXEL_F32,
+        &srgb_npm,
+        hdr, ALWAN_PIXEL_F32,
+        n, 12, 12
+    );
+    alwan_xyz_to_jzazbz_map_interleave_ex(
+        jab, ALWAN_PIXEL_F32,
+        xyz, ALWAN_PIXEL_F32,
+        n, 12, 12
+    );
+
+    free(xyz);
+    free(jab);
+    stbi_image_free(hdr);
+    return 0;
+}
+```
+
+---
+
+### libraw — RAW Decode to CIE Lab
+
+libraw's `dcraw_make_mem_image()` returns contiguous interleaved RGB (8 or 16 bit). Use `ALWAN_PIXEL_U16` for 16-bit output.
+
+```c
+#include <libraw/libraw.h>
+#include <alwan/alwan.h>
+#include <stdlib.h>
+
+int main(int argc, char **argv)
+{
+    libraw_data_t *raw = libraw_init(0);
+    libraw_open_file(raw, argv[1]);
+    libraw_unpack(raw);
+
+    /* Output 16-bit linear RGB (no gamma curve applied) */
+    raw->params.output_bps = 16;
+    raw->params.gamm[0] = raw->params.gamm[1] = 1.0;  /* linear */
+    raw->params.no_auto_bright = 1;
+
+    libraw_dcraw_process(raw);
+    libraw_processed_image_t *img = libraw_dcraw_make_mem_image(raw, NULL);
+
+    size_t n = (size_t)img->width * img->height;
+
+    /* Packed RGB u16, stride = 6 bytes */
+    alwan_xyz white = { 0.95047, 1.0, 1.08883 };
+    float *lab = malloc(n * 3 * sizeof(float));
+
+    /* u16 sRGB -> Lab in one step */
+    alwan_srgb_to_lab_map_interleave_ex(
+        lab,        ALWAN_PIXEL_F32,
+        img->data,  ALWAN_PIXEL_U16,
+        n, 6, 12
+    );
+
+    /* Apply white balance correction using camera multipliers */
+    float *xyz = malloc(n * 3 * sizeof(float));
+    alwan_srgb_to_xyz_map_interleave_ex(
+        xyz,        ALWAN_PIXEL_F32,
+        img->data,  ALWAN_PIXEL_U16,
+        n, 6, 12
+    );
+
+    alwan_rgb wb = {
+        raw->color.cam_mul[0] / raw->color.cam_mul[1],
+        1.0,
+        raw->color.cam_mul[2] / raw->color.cam_mul[1]
+    };
+    alwan_white_balance_apply_map_interleave(
+        xyz, xyz, &wb, n,
+        3 * sizeof(float), 3 * sizeof(float)
+    );
+
+    free(xyz);
+    free(lab);
+    libraw_dcraw_free_mem(img);
+    libraw_recycle(raw);
+    libraw_close(raw);
+    return 0;
+}
+```
+
+---
+
+### OpenColorIO — OCIO + Alwan Pipeline
+
+OCIO's `PackedImageDesc` uses float32 with configurable strides. Run the OCIO transform first, then feed into alwan for perceptual analysis.
+
+```cpp
+#include <OpenColorIO/OpenColorIO.h>
+#include <alwan/alwan.h>
+#include <cstdlib>
+
+namespace OCIO = OCIO_NAMESPACE;
+
+int main()
+{
+    int w = 1920, h = 1080;
+    size_t n = (size_t)w * h;
+    float *pixels = (float *)calloc(n * 4, sizeof(float));  /* RGBA f32 */
+
+    /* -- OCIO: ACEScg -> sRGB ------------------------------------- */
+    OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromEnv();
+    OCIO::ConstProcessorRcPtr proc =
+        config->getProcessor("ACES - ACEScg", "Output - sRGB");
+    OCIO::ConstCPUProcessorRcPtr cpu = proc->getDefaultCPUProcessor();
+
+    OCIO::PackedImageDesc desc(
+        pixels, w, h, 4,
+        OCIO::AutoStride, OCIO::AutoStride, OCIO::AutoStride
+    );
+    cpu->apply(desc);  /* in-place ACEScg -> sRGB */
+
+    /* -- Alwan: sRGB -> OkLab with RGBA stride (skip alpha) ------- */
+    float *oklab = (float *)malloc(n * 3 * sizeof(float));
+
+    alwan_srgb_to_oklab_map_interleave_ex(
+        oklab,  ALWAN_PIXEL_F32,
+        pixels, ALWAN_PIXEL_F32,
+        n,
+        4 * sizeof(float),   /* in_stride: RGBA, alpha skipped */
+        3 * sizeof(float)    /* out_stride: packed OkLab */
+    );
+
+    /* oklab[] ready for gamut analysis, delta E, etc. */
+
+    free(oklab);
+    free(pixels);
+    return 0;
+}
+```
+
+#### OCIO PlanarImageDesc — Alwan Planar API
+
+For planar workflows (compositing, Nuke-style), combine OCIO `PlanarImageDesc` with alwan's `_map_planar` functions.
+
+```cpp
+#include <OpenColorIO/OpenColorIO.h>
+#include <alwan/alwan.h>
+#include <cstdlib>
+
+namespace OCIO = OCIO_NAMESPACE;
+
+int main()
+{
+    int w = 1920, h = 1080;
+    size_t n = (size_t)w * h;
+    size_t plane_bytes = n * sizeof(float);
+
+    float *r = (float *)malloc(plane_bytes);
+    float *g = (float *)malloc(plane_bytes);
+    float *b = (float *)malloc(plane_bytes);
+
+    /* ... fill r, g, b planes ... */
+
+    /* OCIO planar transform: linear -> sRGB */
+    OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromEnv();
+    OCIO::ConstProcessorRcPtr proc = config->getProcessor("linear", "sRGB");
+    OCIO::ConstCPUProcessorRcPtr cpu = proc->getDefaultCPUProcessor();
+
+    OCIO::PlanarImageDesc desc(r, g, b, nullptr, w, h);
+    cpu->apply(desc);
+
+    /* Alwan planar: sRGB -> Lab */
+    float *lp = (float *)malloc(plane_bytes);
+    float *ap = (float *)malloc(plane_bytes);
+    float *bp = (float *)malloc(plane_bytes);
+
+    alwan_srgb_to_lab_map_planar_ex(
+        lp, ap, bp,  ALWAN_PIXEL_F32,
+        r,  g,  b,   ALWAN_PIXEL_F32,
+        n,
+        sizeof(float), sizeof(float)
+    );
+
+    free(lp); free(ap); free(bp);
+    free(r); free(g); free(b);
+    return 0;
+}
+```
+
+---
+
+### OpenEXR — Per-Channel Reading with Planar Conversion
+
+OpenEXR stores channels independently. Read each channel plane, then use alwan's planar API.
+
+```cpp
+#include <OpenEXR/ImfInputFile.h>
+#include <OpenEXR/ImfChannelList.h>
+#include <OpenEXR/ImfFrameBuffer.h>
+#include <alwan/alwan.h>
+#include <vector>
+
+int main()
+{
+    Imf::InputFile file("scene.exr");
+    Imath::Box2i dw = file.header().dataWindow();
+    int w = dw.max.x - dw.min.x + 1;
+    int h = dw.max.y - dw.min.y + 1;
+    size_t n = (size_t)w * h;
+
+    /* Allocate per-channel float buffers (OpenEXR half -> float on read) */
+    std::vector<float> r(n), g(n), b(n);
+
+    Imf::FrameBuffer fb;
+    size_t xs = sizeof(float);
+    size_t ys = sizeof(float) * w;
+    float *base_r = r.data() - dw.min.x - (size_t)dw.min.y * w;
+    float *base_g = g.data() - dw.min.x - (size_t)dw.min.y * w;
+    float *base_b = b.data() - dw.min.x - (size_t)dw.min.y * w;
+
+    fb.insert("R", Imf::Slice(Imf::FLOAT, (char *)base_r, xs, ys));
+    fb.insert("G", Imf::Slice(Imf::FLOAT, (char *)base_g, xs, ys));
+    fb.insert("B", Imf::Slice(Imf::FLOAT, (char *)base_b, xs, ys));
+
+    file.setFrameBuffer(fb);
+    file.readPixels(dw.min.y, dw.max.y);
+
+    /* EXR data is scene-linear. Convert to ICtCp (PQ) for HDR analysis.
+     * Assumes BT.2020 primaries (common for VFX EXR). */
+    std::vector<float> ic(n), ct(n), cp(n);
+
+    alwan_rgb_to_ictcp_map_planar(
+        (alwan_scalar *)ic.data(),
+        (alwan_scalar *)ct.data(),
+        (alwan_scalar *)cp.data(),
+        (alwan_scalar const *)r.data(),
+        (alwan_scalar const *)g.data(),
+        (alwan_scalar const *)b.data(),
+        1,   /* use_pq = true (ST 2084) */
+        n,
+        sizeof(float), sizeof(float)
+    );
+
+    return 0;
+}
+```
+
+#### OpenEXR — Writing Lab as EXR Channels
+
+```cpp
+#include <OpenEXR/ImfOutputFile.h>
+#include <OpenEXR/ImfHeader.h>
+#include <OpenEXR/ImfChannelList.h>
+#include <alwan/alwan.h>
+#include <vector>
+
+void write_lab_exr(const char *path, const float *lab, int w, int h)
+{
+    size_t n = (size_t)w * h;
+
+    /* Deinterleave Lab triplets into separate planes for EXR */
+    std::vector<float> lp(n), ap(n), bp(n);
+    for (size_t i = 0; i < n; ++i) {
+        lp[i] = lab[i * 3 + 0];
+        ap[i] = lab[i * 3 + 1];
+        bp[i] = lab[i * 3 + 2];
+    }
+
+    Imf::Header hdr(w, h);
+    hdr.channels().insert("L", Imf::Channel(Imf::FLOAT));
+    hdr.channels().insert("a", Imf::Channel(Imf::FLOAT));
+    hdr.channels().insert("b", Imf::Channel(Imf::FLOAT));
+
+    Imf::FrameBuffer fb;
+    size_t xs = sizeof(float), ys = sizeof(float) * w;
+    fb.insert("L", Imf::Slice(Imf::FLOAT, (char *)lp.data(), xs, ys));
+    fb.insert("a", Imf::Slice(Imf::FLOAT, (char *)ap.data(), xs, ys));
+    fb.insert("b", Imf::Slice(Imf::FLOAT, (char *)bp.data(), xs, ys));
+
+    Imf::OutputFile out(path, hdr);
+    out.setFrameBuffer(fb);
+    out.writePixels(h);
+}
+```
+
+#### OpenEXR — Tiled Reading with Per-Tile Processing
+
+EXR tiles are an I/O concept (compression blocks), not a pixel layout. Each tile decompresses into a contiguous region addressed through the same `FrameBuffer` slices. Process tiles individually for cache efficiency.
+
+```cpp
+#include <OpenEXR/ImfTiledInputFile.h>
+#include <OpenEXR/ImfChannelList.h>
+#include <OpenEXR/ImfFrameBuffer.h>
+#include <alwan/alwan.h>
+#include <vector>
+#include <cstring>
+
+int main()
+{
+    Imf::TiledInputFile file("scene_tiled.exr");
+    Imath::Box2i dw = file.header().dataWindow();
+    int img_w = dw.max.x - dw.min.x + 1;
+    int img_h = dw.max.y - dw.min.y + 1;
+    int tw = file.tileXSize();
+    int th = file.tileYSize();
+
+    /* Full-image planar buffers for reading */
+    std::vector<float> r(img_w * img_h), g(img_w * img_h), b(img_w * img_h);
+
+    Imf::FrameBuffer fb;
+    size_t xs = sizeof(float);
+    size_t ys = sizeof(float) * img_w;
+    float *base_r = r.data() - dw.min.x - (size_t)dw.min.y * img_w;
+    float *base_g = g.data() - dw.min.x - (size_t)dw.min.y * img_w;
+    float *base_b = b.data() - dw.min.x - (size_t)dw.min.y * img_w;
+
+    fb.insert("R", Imf::Slice(Imf::FLOAT, (char *)base_r, xs, ys));
+    fb.insert("G", Imf::Slice(Imf::FLOAT, (char *)base_g, xs, ys));
+    fb.insert("B", Imf::Slice(Imf::FLOAT, (char *)base_b, xs, ys));
+
+    file.setFrameBuffer(fb);
+    file.readTiles(0, file.numXTiles(0) - 1, 0, file.numYTiles(0) - 1);
+
+    /* Process tile by tile — better cache locality for large images */
+    std::vector<float> oklab_l(img_w * img_h);
+    std::vector<float> oklab_a(img_w * img_h);
+    std::vector<float> oklab_b(img_w * img_h);
+
+    int nx = file.numXTiles(0);
+    int ny = file.numYTiles(0);
+
+    for (int ty = 0; ty < ny; ++ty) {
+        for (int tx = 0; tx < nx; ++tx) {
+            /* Compute tile bounds, clamped to image edges */
+            int x0 = tx * tw;
+            int y0 = ty * th;
+            int x1 = alwan_min(x0 + tw, img_w);
+            int y1 = alwan_min(y0 + th, img_h);
+            int tile_w = x1 - x0;
+
+            /* Process each row of the tile */
+            for (int y = y0; y < y1; ++y) {
+                size_t off = (size_t)y * img_w + x0;
+
+                alwan_srgb_to_oklab_map_planar(
+                    (alwan_scalar *)&oklab_l[off],
+                    (alwan_scalar *)&oklab_a[off],
+                    (alwan_scalar *)&oklab_b[off],
+                    (alwan_scalar const *)&r[off],
+                    (alwan_scalar const *)&g[off],
+                    (alwan_scalar const *)&b[off],
+                    tile_w,
+                    sizeof(float), sizeof(float)
+                );
+            }
+        }
+    }
+
+    return 0;
+}
+```
+
+---
+
+### OpenCV — BGR Mat Processing
+
+OpenCV uses BGR order and may pad rows. Swap B/R first, then use `cv::Mat::step[0]` as row stride.
+
+```cpp
+#include <opencv2/opencv.hpp>
+#include <alwan/alwan.h>
+#include <vector>
+
+int main()
+{
+    cv::Mat img = cv::imread("photo.png", cv::IMREAD_COLOR);   /* BGR u8 */
+    cv::Mat rgb;
+    cv::cvtColor(img, rgb, cv::COLOR_BGR2RGB);                  /* -> RGB u8 */
+
+    int w = rgb.cols, h = rgb.rows;
+    size_t n = (size_t)w * h;
+
+    std::vector<float> oklab(n * 3);
+
+    if (rgb.isContinuous()) {
+        /* No row padding — process entire image at once */
+        alwan_srgb_to_oklab_map_interleave_ex(
+            oklab.data(), ALWAN_PIXEL_F32,
+            rgb.data,     ALWAN_PIXEL_U8,
+            n, 3, 12
+        );
+    } else {
+        /* Row padding present — process row by row */
+        for (int y = 0; y < h; ++y) {
+            alwan_srgb_to_oklab_map_interleave_ex(
+                oklab.data() + y * w * 3, ALWAN_PIXEL_F32,
+                rgb.ptr(y),               ALWAN_PIXEL_U8,
+                w, 3, 12
+            );
+        }
+    }
+
+    return 0;
+}
+```
+
+#### OpenCV — Delta E 2000 Heatmap
+
+Compute per-pixel color difference between two images.
+
+```cpp
+#include <opencv2/opencv.hpp>
+#include <alwan/alwan.h>
+#include <vector>
+
+int main()
+{
+    cv::Mat ref_bgr  = cv::imread("reference.png");
+    cv::Mat test_bgr = cv::imread("test.png");
+    cv::Mat ref_rgb, test_rgb;
+    cv::cvtColor(ref_bgr,  ref_rgb,  cv::COLOR_BGR2RGB);
+    cv::cvtColor(test_bgr, test_rgb, cv::COLOR_BGR2RGB);
+
+    int w = ref_rgb.cols, h = ref_rgb.rows;
+    size_t n = (size_t)w * h;
+
+    /* sRGB u8 -> Lab */
+    std::vector<alwan_scalar> lab_ref(n * 3), lab_test(n * 3);
+    size_t s = 3 * sizeof(alwan_scalar);
+
+    alwan_srgb_to_lab_map_interleave_ex(
+        lab_ref.data(),  ALWAN_PIXEL_SCALAR,
+        ref_rgb.data,    ALWAN_PIXEL_U8,
+        n, 3, s
+    );
+    alwan_srgb_to_lab_map_interleave_ex(
+        lab_test.data(), ALWAN_PIXEL_SCALAR,
+        test_rgb.data,   ALWAN_PIXEL_U8,
+        n, 3, s
+    );
+
+    /* Per-pixel delta E 2000 */
+    cv::Mat de_map(h, w, CV_32FC1);
+    for (size_t i = 0; i < n; ++i) {
+        alwan_lab a = { lab_ref[i*3],  lab_ref[i*3+1],  lab_ref[i*3+2] };
+        alwan_lab b = { lab_test[i*3], lab_test[i*3+1], lab_test[i*3+2] };
+        de_map.at<float>((int)(i / w), (int)(i % w)) =
+            (float)alwan_delta_e_2000(&a, &b);
+    }
+
+    /* Visualize */
+    cv::normalize(de_map, de_map, 0, 255, cv::NORM_MINMAX);
+    de_map.convertTo(de_map, CV_8UC1);
+    cv::Mat heatmap;
+    cv::applyColorMap(de_map, heatmap, cv::COLORMAP_JET);
+    cv::imwrite("delta_e_heatmap.png", heatmap);
+
+    return 0;
+}
+```
+
+---
+
+### FFmpeg — Video Frame Color Pipeline
+
+FFmpeg frames use per-plane `data[]`/`linesize[]`. For planar formats, process row-by-row with alwan's planar API.
+
+#### Planar GBR Float (AV_PIX_FMT_GBRPF32)
+
+```c
+#include <libavutil/frame.h>
+#include <alwan/alwan.h>
+#include <stdlib.h>
+
+void process_gbrp_frame(AVFrame *frame)
+{
+    int w = frame->width, h = frame->height;
+    size_t n = (size_t)w * h;
+
+    /* GBRP order: data[0]=G, data[1]=B, data[2]=R */
+    float *oklab_l = malloc(n * sizeof(float));
+    float *oklab_a = malloc(n * sizeof(float));
+    float *oklab_b = malloc(n * sizeof(float));
+
+    for (int y = 0; y < h; ++y) {
+        float *row_g = (float *)((char *)frame->data[0] + y * frame->linesize[0]);
+        float *row_b = (float *)((char *)frame->data[1] + y * frame->linesize[1]);
+        float *row_r = (float *)((char *)frame->data[2] + y * frame->linesize[2]);
+
+        /* Note: reorder G,B,R -> R,G,B for alwan */
+        alwan_srgb_to_oklab_map_planar(
+            (alwan_scalar *)(oklab_l + y * w),
+            (alwan_scalar *)(oklab_a + y * w),
+            (alwan_scalar *)(oklab_b + y * w),
+            (alwan_scalar const *)row_r,
+            (alwan_scalar const *)row_g,
+            (alwan_scalar const *)row_b,
+            w, sizeof(float), sizeof(float)
+        );
+    }
+
+    free(oklab_l); free(oklab_a); free(oklab_b);
+}
+```
+
+#### Packed RGB24 (AV_PIX_FMT_RGB24)
+
+```c
+#include <libavutil/frame.h>
+#include <alwan/alwan.h>
+#include <stdlib.h>
+
+void convert_rgb24_to_lab(AVFrame *frame)
+{
+    int w = frame->width, h = frame->height;
+    int linesize = frame->linesize[0];  /* may include padding */
+    uint8_t *data = frame->data[0];
+
+    float *lab = malloc((size_t)w * h * 3 * sizeof(float));
+
+    if (linesize == w * 3) {
+        /* No padding: process entire frame at once */
+        alwan_srgb_to_lab_map_interleave_ex(
+            lab,  ALWAN_PIXEL_F32,
+            data, ALWAN_PIXEL_U8,
+            (size_t)w * h, 3, 12
+        );
+    } else {
+        /* Row padding: process row by row */
+        for (int y = 0; y < h; ++y) {
+            alwan_srgb_to_lab_map_interleave_ex(
+                lab + y * w * 3,     ALWAN_PIXEL_F32,
+                data + y * linesize, ALWAN_PIXEL_U8,
+                w, 3, 12
+            );
+        }
+    }
+
+    free(lab);
+}
+```
+
+---
+
+### Halide — Planar Buffer Pipeline
+
+Halide stores pixels in planar layout by default: `dim(0)=x`, `dim(1)=y`, `dim(2)=channel`. Strides are in elements, not bytes.
+
+```cpp
+#include <Halide.h>
+#include <HalideBuffer.h>
+#include <alwan/alwan.h>
+
+int main()
+{
+    Halide::Runtime::Buffer<float> input =
+        Halide::Tools::load_image("input.png");
+
+    int w = input.width(), h = input.height();
+    size_t n = (size_t)w * h;
+
+    /* Default planar: stride(0)=1, stride(1)=w, stride(2)=w*h
+     * Each channel plane is contiguous in memory */
+    float *r_in = &input(0, 0, 0);
+    float *g_in = &input(0, 0, 1);
+    float *b_in = &input(0, 0, 2);
+
+    /* Output: same planar layout */
+    Halide::Runtime::Buffer<float> output(w, h, 3);
+    float *r_out = &output(0, 0, 0);
+    float *g_out = &output(0, 0, 1);
+    float *b_out = &output(0, 0, 2);
+
+    /* sRGB -> OkLab (planar API)
+     * Halide strides are elements; alwan expects bytes */
+    alwan_srgb_to_oklab_map_planar_ex(
+        r_out, g_out, b_out, ALWAN_PIXEL_F32,
+        r_in,  g_in,  b_in,  ALWAN_PIXEL_F32,
+        n,
+        sizeof(float),  /* contiguous within each plane */
+        sizeof(float)
+    );
+
+    /* CVD simulation (deuteranopia, 80% severity) on linear RGB planes */
+    Halide::Runtime::Buffer<float> cvd(w, h, 3);
+
+    alwan_simulate_deuteranopia_map_planar(
+        (alwan_scalar *)&cvd(0, 0, 0),
+        (alwan_scalar *)&cvd(0, 0, 1),
+        (alwan_scalar *)&cvd(0, 0, 2),
+        (alwan_scalar const *)r_in,
+        (alwan_scalar const *)g_in,
+        (alwan_scalar const *)b_in,
+        0.8,   /* severity */
+        n, sizeof(float), sizeof(float)
+    );
+
+    Halide::Tools::save_image(cvd, "cvd_output.png");
+    return 0;
+}
+```
+
+---
+
+### Complete Pipeline — ACES VFX Workflow
+
+End-to-end: read EXR (ACEScg), grade with alwan, output through ACES view transform.
+
+```cpp
+#include <OpenEXR/ImfInputFile.h>
+#include <OpenEXR/ImfFrameBuffer.h>
+#include <alwan/alwan.h>
+#include <cstdlib>
+#include <cstring>
+
+int main()
+{
+    /* -- Read EXR (interleaved) ------------------------------------ */
+    Imf::InputFile file("shot.exr");
+    Imath::Box2i dw = file.header().dataWindow();
+    int w = dw.max.x - dw.min.x + 1;
+    int h = dw.max.y - dw.min.y + 1;
+    size_t n = (size_t)w * h;
+    size_t stride = 3 * sizeof(alwan_scalar);
+
+    alwan_scalar *pixels = (alwan_scalar *)malloc(n * stride);
+    char *base = (char *)(pixels) - stride * (dw.min.x + (size_t)dw.min.y * w);
+
+    Imf::FrameBuffer fb;
+    fb.insert("R", Imf::Slice(Imf::FLOAT, base,                         stride, stride * w));
+    fb.insert("G", Imf::Slice(Imf::FLOAT, base + sizeof(alwan_scalar),   stride, stride * w));
+    fb.insert("B", Imf::Slice(Imf::FLOAT, base + 2*sizeof(alwan_scalar), stride, stride * w));
+    file.setFrameBuffer(fb);
+    file.readPixels(dw.min.y, dw.max.y);
+
+    /* -- Create alwan context -------------------------------------- */
+    alwan_ctx *ctx = alwan_create(NULL);
+
+    /* -- White balance --------------------------------------------- */
+    alwan_rgb wb = { 1.05, 1.0, 0.92 };
+    alwan_white_balance_apply_map_interleave(
+        pixels, pixels, &wb, n, stride, stride
+    );
+
+    /* -- Lift/Gamma/Gain color grade ------------------------------- */
+    alwan_rgb lift  = { 0.01,  0.005, 0.02 };
+    alwan_rgb gamma = { 0.98,  1.0,   1.02 };
+    alwan_rgb gain  = { 1.1,   1.05,  0.95 };
+
+    alwan_lgg_apply_map_interleave(
+        pixels, pixels, &lift, &gamma, &gain, n, stride, stride
+    );
+
+    /* -- ACEScg -> ACES 2065-1 via matrix -------------------------- */
+    alwan_rgb_space_desc acescg, aces2065;
+    alwan_rgb_get_space_descriptor(&acescg,   ctx, ALWAN_RGB_SPACE_ACESCG);
+    alwan_rgb_get_space_descriptor(&aces2065, ctx, ALWAN_RGB_SPACE_ACES2065_1);
+
+    alwan_mat3x3 acescg_to_aces;
+    alwan_mat3_mul(&acescg_to_aces, &aces2065.xyz_to_rgb, &acescg.rgb_to_xyz);
+    alwan_mat3_transform_map_interleave(
+        pixels, &acescg_to_aces, pixels, n, stride, stride
+    );
+
+    /* -- ACES view transform (RRT+ODT) ----------------------------- */
+    alwan_view_transform_apply(
+        pixels, ctx, ALWAN_VIEW_ACES_SDR, pixels, n, stride, stride
+    );
+
+    /* -- sRGB OETF for display output ------------------------------ */
+    alwan_oetf_apply(
+        pixels, ALWAN_TF_SRGB, pixels,
+        n * 3, sizeof(alwan_scalar), sizeof(alwan_scalar)
+    );
+
+    /* pixels[] is now display-referred sRGB */
+
+    free(pixels);
+    alwan_destroy(ctx);
+    return 0;
+}
+```
+
+---
+
+### Collect/Scatter — Custom Format Pipelines
+
+Use `alwan_collect3` and `alwan_scatter3` to bridge typed pixel formats in multi-step pipelines.
+
+```c
+#include <alwan/alwan.h>
+#include <stdlib.h>
+
+/* Pipeline: u8 sRGB input -> Lab analysis -> gamut map -> u16 sRGB output */
+void process_pipeline(void *out_u16, const void *in_u8, size_t count)
+{
+    size_t s = 3 * sizeof(alwan_scalar);
+    alwan_scalar *rgb = malloc(count * s);
+    alwan_scalar *lab = malloc(count * s);
+    alwan_xyz white = { 0.95047, 1.0, 1.08883 };
+
+    /* 1. Collect u8 -> alwan_scalar */
+    alwan_collect3(rgb, in_u8, ALWAN_PIXEL_U8, count, 3, s);
+
+    /* 2. sRGB EOTF (decode gamma) */
+    alwan_eotf_apply(rgb, ALWAN_TF_SRGB, rgb,
+                     count * 3, sizeof(alwan_scalar), sizeof(alwan_scalar));
+
+    /* 3. Linear RGB -> XYZ -> Lab */
+    alwan_mat3x3 npm = {{
+        0.4123907993, 0.3575843394, 0.1804807884,
+        0.2126390059, 0.7151686788, 0.0721923154,
+        0.0193308187, 0.1191947798, 0.9505321522
+    }};
+    alwan_mat3_transform_map_interleave(rgb, &npm, rgb, count, s, s);
+    alwan_xyz_to_lab_map_interleave(lab, rgb, &white, count, s, s);
+
+    /* 4. Lab -> XYZ -> linear RGB -> gamut clip */
+    alwan_lab_to_xyz_map_interleave(rgb, lab, &white, count, s, s);
+    alwan_mat3x3 npm_inv;
+    alwan_mat3_inv(&npm_inv, &npm);
+    alwan_mat3_transform_map_interleave(rgb, &npm_inv, rgb, count, s, s);
+    alwan_gamut_map_interleave(rgb, ALWAN_GAMUT_MAP_CLIP, rgb, count, s, s);
+
+    /* 5. sRGB OETF (encode gamma) */
+    alwan_oetf_apply(rgb, ALWAN_TF_SRGB, rgb,
+                     count * 3, sizeof(alwan_scalar), sizeof(alwan_scalar));
+
+    /* 6. Scatter alwan_scalar -> u16 */
+    alwan_scatter3(out_u16, ALWAN_PIXEL_U16, rgb, count, s, 6);
+
+    free(lab);
+    free(rgb);
+}
+```
+
+---
+
 ## See Also
 
 - [API Reference](api/) — Detailed function documentation
+- [Map API](api/map.md) — Batch processing and stride details
 - [Getting Started](getting-started.md) — Basic usage guide
 - [Configuration](configuration.md) — Build options
+- [Library Memory Layouts](lib_mem.md) — Per-library pixel layout reference
 - [Precision & Limits](precision-and-limits.md) — Numerical details
