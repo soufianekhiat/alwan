@@ -2510,6 +2510,34 @@ int alwan_hsv_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsv const *hsv);
 int alwan_linear_srgb_to_hsl(alwan_hsl *hsl_out, alwan_rgb const *rgb);
 int alwan_hsl_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsl const *hsl);
 
+/*
+ * RGB <-> HSP conversions (all values in [0, 1])
+ * HSP: Hue, Saturation, Perceived brightness
+ * Reference: Darel Rex Finley (2006), http://alienryderflex.com/hsp.html
+ * P = sqrt(Pr*R^2 + Pg*G^2 + Pb*B^2) with BT.601 weights.
+ * H and S identical to HSV. Used by DaVinci Resolve. */
+int alwan_rgb_to_hsp(alwan_hsp *hsp_out, alwan_rgb const *rgb);
+int alwan_hsp_to_rgb(alwan_rgb *rgb_out, alwan_hsp const *hsp);
+
+/*
+ * RGB <-> HSPLog conversions (all values in [0, 1])
+ * HSPLog: HSP with logarithmic saturation stretching.
+ * S_log = log10(1 + 9*S), expanding low saturation values.
+ * Designed for log/flat-encoded footage.
+ * Inspired by Nobe Color Remap / DaVinci Resolve "HSP Log".
+ * NOTE: No published specification exists; see alwan_types.h. */
+int alwan_rgb_to_hsplog(alwan_hsplog *hsplog_out, alwan_rgb const *rgb);
+int alwan_hsplog_to_rgb(alwan_rgb *rgb_out, alwan_hsplog const *hsplog);
+
+/*
+ * RGB <-> HSY conversions (all values in [0, 1])
+ * HSY: Hue, Saturation, Luma (weighted linear luma)
+ * Reference: Kuzma Shapran "HCY" (chilliant.com); Krita KoColorConversions.cpp
+ * Y = BT.601 weighted luma, S uses luma-aware max_sat remapping.
+ * Used by DaVinci Resolve. */
+int alwan_rgb_to_hsy(alwan_hsy *hsy_out, alwan_rgb const *rgb);
+int alwan_hsy_to_rgb(alwan_rgb *rgb_out, alwan_hsy const *hsy);
+
 /* RGB <-> CMY conversions (all values in [0, 1]) */
 int alwan_rgb_to_cmy(alwan_cmy *cmy_out, alwan_rgb const *rgb);
 int alwan_cmy_to_rgb(alwan_rgb *rgb_out, alwan_cmy const *cmy);
@@ -2620,6 +2648,45 @@ int alwan_hsl_to_rgb_map_interleave(alwan_scalar *rgb_out,
                           size_t in_stride,
                           size_t out_stride);
 
+/* Map HSP conversions */
+int alwan_rgb_to_hsp_map_interleave(alwan_scalar *hsp_out,
+                          alwan_scalar const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+int alwan_hsp_to_rgb_map_interleave(alwan_scalar *rgb_out,
+                          alwan_scalar const *hsp_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+/* Map HSPLog conversions */
+int alwan_rgb_to_hsplog_map_interleave(alwan_scalar *hsplog_out,
+                          alwan_scalar const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+int alwan_hsplog_to_rgb_map_interleave(alwan_scalar *rgb_out,
+                          alwan_scalar const *hsplog_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+/* Map HSY conversions */
+int alwan_rgb_to_hsy_map_interleave(alwan_scalar *hsy_out,
+                          alwan_scalar const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+int alwan_hsy_to_rgb_map_interleave(alwan_scalar *rgb_out,
+                          alwan_scalar const *hsy_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
 /* Typed convenience HSV/HSL map functions (_ex variants) */
 int alwan_rgb_to_hsv_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              void const *in, alwan_pixel_format in_fmt,
@@ -2631,6 +2698,26 @@ int alwan_rgb_to_hsl_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              void const *in, alwan_pixel_format in_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
 int alwan_hsl_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+
+/* Typed HSP/HSPLog/HSY map functions (_ex variants) */
+int alwan_rgb_to_hsp_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsp_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_rgb_to_hsplog_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsplog_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_rgb_to_hsy_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsy_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              void const *in, alwan_pixel_format in_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
 

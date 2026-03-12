@@ -54,7 +54,11 @@ Comparison of **Alwan** (C colour science library) against three reference proje
 | YCbCr (BT.601/709/2020) | Y | Y | -- | -- |
 | YcCbcCrc (const. luma) | Y | -- | -- | -- |
 | YCoCg | Y | -- | -- | -- |
-| HWB | -- | Y | -- | -- |
+| HWB | Y | Y | -- | -- |
+| HSP (perceived brightness) | Y | -- | -- | -- |
+| HSPLog (log saturation HSP) | Y | -- | -- | -- |
+| HSY (luma-weighted) | Y | -- | -- | -- |
+| Relative Luminance (multi-standard) | Y | Y | -- | -- |
 
 ### 1.3 RGB Working Spaces
 

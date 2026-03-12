@@ -256,6 +256,28 @@ No extra parameters:
 | `alwan_hwb_to_rgb_map_interleave` | HWB -> RGB |
 | `alwan_hsv_to_hwb_map_interleave` | HSV -> HWB |
 | `alwan_hwb_to_hsv_map_interleave` | HWB -> HSV |
+| `alwan_rgb_to_hsp_map_interleave` | RGB -> HSP (perceived brightness) |
+| `alwan_hsp_to_rgb_map_interleave` | HSP -> RGB |
+| `alwan_rgb_to_hsplog_map_interleave` | RGB -> HSPLog (log saturation HSP) |
+| `alwan_hsplog_to_rgb_map_interleave` | HSPLog -> RGB |
+| `alwan_rgb_to_hsy_map_interleave` | RGB -> HSY (luma-weighted) |
+| `alwan_hsy_to_rgb_map_interleave` | HSY -> RGB |
+| `alwan_linear_srgb_to_hsv_map_interleave` | Linear sRGB -> HSV |
+| `alwan_hsv_to_linear_srgb_map_interleave` | HSV -> Linear sRGB |
+| `alwan_linear_srgb_to_hsl_map_interleave` | Linear sRGB -> HSL |
+| `alwan_hsl_to_linear_srgb_map_interleave` | HSL -> Linear sRGB |
+
+With `alwan_luma_standard standard` (3-channel input, 1-channel output):
+
+| Function | Direction | Extra param |
+|----------|-----------|-------------|
+| `alwan_relative_luminance_map_interleave` | RGB -> Y | `alwan_luma_standard` |
+
+With `alwan_rgb_space_desc const *space` (3-channel input, 1-channel output):
+
+| Function | Direction | Extra param |
+|----------|-----------|-------------|
+| `alwan_relative_luminance_space_map_interleave` | RGB -> Y | `alwan_rgb_space_desc` |
 
 With `alwan_ycbcr_standard standard`:
 

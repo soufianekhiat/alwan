@@ -78,6 +78,54 @@ int alwan_hsl_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsl const *hsl) {
 }
 
 /* ----------------------------------------------------------------
+ * RGB <-> HSP
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_hsp(alwan_hsp *hsp_out, alwan_rgb const *rgb) {
+    if (!rgb || !hsp_out) return ALWAN_E_INVALID;
+    *hsp_out = alwan_rgb_to_hsp_v(*rgb);
+    return ALWAN_OK;
+}
+
+int alwan_hsp_to_rgb(alwan_rgb *rgb_out, alwan_hsp const *hsp) {
+    if (!hsp || !rgb_out) return ALWAN_E_INVALID;
+    *rgb_out = alwan_hsp_to_rgb_v(*hsp);
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * RGB <-> HSPLog
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_hsplog(alwan_hsplog *hsplog_out, alwan_rgb const *rgb) {
+    if (!rgb || !hsplog_out) return ALWAN_E_INVALID;
+    *hsplog_out = alwan_rgb_to_hsplog_v(*rgb);
+    return ALWAN_OK;
+}
+
+int alwan_hsplog_to_rgb(alwan_rgb *rgb_out, alwan_hsplog const *hsplog) {
+    if (!hsplog || !rgb_out) return ALWAN_E_INVALID;
+    *rgb_out = alwan_hsplog_to_rgb_v(*hsplog);
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * RGB <-> HSY
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_hsy(alwan_hsy *hsy_out, alwan_rgb const *rgb) {
+    if (!rgb || !hsy_out) return ALWAN_E_INVALID;
+    *hsy_out = alwan_rgb_to_hsy_v(*rgb);
+    return ALWAN_OK;
+}
+
+int alwan_hsy_to_rgb(alwan_rgb *rgb_out, alwan_hsy const *hsy) {
+    if (!hsy || !rgb_out) return ALWAN_E_INVALID;
+    *rgb_out = alwan_hsy_to_rgb_v(*hsy);
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
  * RGB <-> CMY
  * ---------------------------------------------------------------- */
 

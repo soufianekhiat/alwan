@@ -776,6 +776,108 @@ int alwan_hsl_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, al
     return ALWAN_OK;
 }
 
+/* ----------------------------------------------------------------
+ * RGB -> HSP
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_hsp_map_interleave(alwan_scalar *hsp_out, alwan_scalar const *rgb_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!rgb_in || !hsp_out || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hsp_out + i * out_stride);
+        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_hsp hsp = alwan_rgb_to_hsp_v(rgb);
+        out_ptr[0] = hsp.h; out_ptr[1] = hsp.s; out_ptr[2] = hsp.p;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * HSP -> RGB
+ * ---------------------------------------------------------------- */
+
+int alwan_hsp_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *hsp_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!hsp_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hsp_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+        alwan_hsp hsp = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_rgb rgb = alwan_hsp_to_rgb_v(hsp);
+        out_ptr[0] = rgb.r; out_ptr[1] = rgb.g; out_ptr[2] = rgb.b;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * RGB -> HSPLog
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_hsplog_map_interleave(alwan_scalar *hsplog_out, alwan_scalar const *rgb_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!rgb_in || !hsplog_out || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hsplog_out + i * out_stride);
+        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_hsplog hsplog = alwan_rgb_to_hsplog_v(rgb);
+        out_ptr[0] = hsplog.h; out_ptr[1] = hsplog.s; out_ptr[2] = hsplog.p;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * HSPLog -> RGB
+ * ---------------------------------------------------------------- */
+
+int alwan_hsplog_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *hsplog_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!hsplog_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hsplog_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+        alwan_hsplog hsplog = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_rgb rgb = alwan_hsplog_to_rgb_v(hsplog);
+        out_ptr[0] = rgb.r; out_ptr[1] = rgb.g; out_ptr[2] = rgb.b;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * RGB -> HSY
+ * ---------------------------------------------------------------- */
+
+int alwan_rgb_to_hsy_map_interleave(alwan_scalar *hsy_out, alwan_scalar const *rgb_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!rgb_in || !hsy_out || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hsy_out + i * out_stride);
+        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_hsy hsy = alwan_rgb_to_hsy_v(rgb);
+        out_ptr[0] = hsy.h; out_ptr[1] = hsy.s; out_ptr[2] = hsy.y;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * HSY -> RGB
+ * ---------------------------------------------------------------- */
+
+int alwan_hsy_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *hsy_in,
+                          size_t count, size_t in_stride, size_t out_stride) {
+    if (!hsy_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hsy_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+        alwan_hsy hsy = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        alwan_rgb rgb = alwan_hsy_to_rgb_v(hsy);
+        out_ptr[0] = rgb.r; out_ptr[1] = rgb.g; out_ptr[2] = rgb.b;
+    }
+    return ALWAN_OK;
+}
+
 /* ================================================================
  * Linear sRGB <-> HSV/HSL (chains sRGB OETF/EOTF with HSV/HSL)
  * ================================================================ */

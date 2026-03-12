@@ -108,6 +108,17 @@ ALWAN_MAP3_EX_STATUS(alwan_rgb_to_hsl_map_interleave_ex, alwan_rgb, alwan_hsl, a
 ALWAN_MAP3_EX_STATUS(alwan_hsl_to_rgb_map_interleave_ex, alwan_hsl, alwan_rgb, alwan_hsl_to_rgb, h,s,l, r,g,b)
 
 /* ----------------------------------------------------------------
+ * HSP/HSY _ex
+ * ---------------------------------------------------------------- */
+
+ALWAN_MAP3_EX_STATUS(alwan_rgb_to_hsp_map_interleave_ex, alwan_rgb, alwan_hsp, alwan_rgb_to_hsp, r,g,b, h,s,p)
+ALWAN_MAP3_EX_STATUS(alwan_hsp_to_rgb_map_interleave_ex, alwan_hsp, alwan_rgb, alwan_hsp_to_rgb, h,s,p, r,g,b)
+ALWAN_MAP3_EX_STATUS(alwan_rgb_to_hsplog_map_interleave_ex, alwan_rgb, alwan_hsplog, alwan_rgb_to_hsplog, r,g,b, h,s,p)
+ALWAN_MAP3_EX_STATUS(alwan_hsplog_to_rgb_map_interleave_ex, alwan_hsplog, alwan_rgb, alwan_hsplog_to_rgb, h,s,p, r,g,b)
+ALWAN_MAP3_EX_STATUS(alwan_rgb_to_hsy_map_interleave_ex, alwan_rgb, alwan_hsy, alwan_rgb_to_hsy, r,g,b, h,s,y)
+ALWAN_MAP3_EX_STATUS(alwan_hsy_to_rgb_map_interleave_ex, alwan_hsy, alwan_rgb, alwan_hsy_to_rgb, h,s,y, r,g,b)
+
+/* ----------------------------------------------------------------
  * Linear sRGB <-> HSV/HSL _ex
  * ---------------------------------------------------------------- */
 

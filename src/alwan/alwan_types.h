@@ -83,6 +83,44 @@ ALWAN_TYPE_DEF struct {
     alwan_scalar h, s, l;
 } alwan_hsl;
 
+/*
+ * HSP color (hue [0-1], saturation [0-1], perceived brightness [0-1])
+ * Reference: Darel Rex Finley (2006), "HSP Color Model - Alternative to
+ * HSV (HSB) and HSL", http://alienryderflex.com/hsp.html
+ * P = sqrt(Pr*R^2 + Pg*G^2 + Pb*B^2) with BT.601 weights (0.299, 0.587, 0.114).
+ * H and S are identical to HSV. Used by DaVinci Resolve.
+ */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar h, s, p;
+} alwan_hsp;
+
+/*
+ * HSPLog color (hue [0-1], saturation [0-1], perceived brightness [0-1])
+ * HSP with logarithmic saturation stretching: S_log = log10(1 + 9*S).
+ * Expands low saturation values — designed for log/flat-encoded footage.
+ * Inspired by Nobe Color Remap (Time in Pixels) / DaVinci Resolve "HSP Log".
+ *
+ * NOTE: No published specification exists for this model. The formula
+ * used here (log10 saturation remap) is a reasonable interpretation of
+ * the "logarithmic saturation stretching of HSP" description. The actual
+ * DaVinci Resolve implementation is proprietary (Blackmagic Design).
+ */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar h, s, p;
+} alwan_hsplog;
+
+/*
+ * HSY color (hue [0-1], saturation [0-1], luma [0-1])
+ * Reference: Kuzma Shapran, "HCY color space" (chilliant.com);
+ * Krita KoColorConversions.cpp (KDE, LGPL-2.1+).
+ * Y = weighted linear luma (BT.601: 0.299*R + 0.587*G + 0.114*B).
+ * H identical to HSV. S uses luma-aware max_sat remapping per hue sector.
+ * Used by DaVinci Resolve.
+ */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar h, s, y;
+} alwan_hsy;
+
 /* XYZ tristimulus values (CIE 1931) */
 ALWAN_TYPE_DEF struct {
     alwan_scalar x, y, z;

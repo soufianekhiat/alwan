@@ -83,6 +83,8 @@ extern int test_69_map_validation_main(void);
 extern int test_70_planar_map_main(void);
 extern int test_71_linear_srgb_hsv_hsl_main(void);
 extern int test_72_relative_luminance_main(void);
+extern int test_73_hsp_hsy_main(void);
+extern int test_74_hsplog_main(void);
 
 /* Test registry */
 typedef struct {
@@ -164,6 +166,8 @@ static test_suite const g_test_suites[] = {
     {"70_planar_map", test_70_planar_map_main},
     {"71_linear_srgb_hsv_hsl", test_71_linear_srgb_hsv_hsl_main},
     {"72_relative_luminance", test_72_relative_luminance_main},
+    {"73_hsp_hsy", test_73_hsp_hsy_main},
+    {"74_hsplog", test_74_hsplog_main},
 };
 
 int main(void) {

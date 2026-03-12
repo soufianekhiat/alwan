@@ -74,6 +74,8 @@ add_executable(
   70_planar_map.c
   71_linear_srgb_hsv_hsl.c
   72_relative_luminance.c
+  73_hsp_hsy.c
+  74_hsplog.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

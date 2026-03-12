@@ -52,6 +52,36 @@ This document describes the valid ranges for each channel of every color space s
 
 **Notes:** Hue is normalized to [0, 1] instead of degrees. Multiply by 360 for degrees.
 
+### HSP (`alwan_hsp`)
+
+| Channel | Range | Description |
+|---------|-------|-------------|
+| `h` | [0, 1] | Hue (normalized, same as HSV) |
+| `s` | [0, 1] | Saturation (identical to HSV) |
+| `p` | [0, 1] | Perceived brightness (sqrt of weighted sum of squares) |
+
+**Notes:** P = sqrt(0.299*R^2 + 0.587*G^2 + 0.114*B^2) using BT.601 weights. Reference: Darel Rex Finley (2006). Used by DaVinci Resolve.
+
+### HSPLog (`alwan_hsplog`)
+
+| Channel | Range | Description |
+|---------|-------|-------------|
+| `h` | [0, 1] | Hue (normalized, same as HSV/HSP) |
+| `s` | [0, 1] | Saturation (log-stretched: log10(1 + 9*S)) |
+| `p` | [0, 1] | Perceived brightness (identical to HSP) |
+
+**Notes:** HSP with logarithmic saturation stretching. S_log = log10(1 + 9*S) expands low saturation values — designed for log/flat footage. Inspired by Nobe Color Remap / DaVinci Resolve "HSP Log". No published specification exists; the formula is a reasonable interpretation.
+
+### HSY (`alwan_hsy`)
+
+| Channel | Range | Description |
+|---------|-------|-------------|
+| `h` | [0, 1] | Hue (normalized, same as HSV) |
+| `s` | [0, 1] | Saturation (luma-aware, remapped per hue sector) |
+| `y` | [0, 1] | Luma (BT.601 weighted: 0.299*R + 0.587*G + 0.114*B) |
+
+**Notes:** Saturation uses luma-aware max_sat remapping. Reference: Kuzma Shapran "HCY" (chilliant.com), Krita KoColorConversions.cpp. Used by DaVinci Resolve.
+
 ### HWB (CSS Color Level 4)
 
 | Channel | Range | Description |

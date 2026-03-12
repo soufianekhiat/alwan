@@ -309,7 +309,7 @@ All transfer functions include careful clamping to avoid:
 ### HSV / HSL
 
 **Valid domain:**
-- H: [0, 360) degrees (wraps around)
+- H: [0, 1] (normalized; multiply by 360 for degrees, wraps around)
 - S: [0, 1]
 - V/L: [0, 1]
 
@@ -317,6 +317,39 @@ All transfer functions include careful clamping to avoid:
 - S = 0: Hue is undefined (achromatic)
 - V = 0 (HSV): Black, hue undefined
 - L = 0 or L = 1 (HSL): Black/white, hue undefined
+
+---
+
+### HSP (Perceived Brightness)
+
+**Valid domain:**
+- H: [0, 1] (normalized, identical to HSV)
+- S: [0, 1] (identical to HSV)
+- P: [0, 1] (perceived brightness)
+
+**Notes:** P = sqrt(0.299*R^2 + 0.587*G^2 + 0.114*B^2). Round-trip accuracy is within 1e-6.
+
+---
+
+### HSPLog (Log Saturation HSP)
+
+**Valid domain:**
+- H: [0, 1] (normalized, identical to HSV/HSP)
+- S: [0, 1] (log-stretched: log10(1 + 9*S))
+- P: [0, 1] (perceived brightness, identical to HSP)
+
+**Notes:** Logarithmic saturation stretching of HSP. S_log = log10(1 + 9*S) expands low saturations for log/flat footage. Round-trip accuracy is within 1e-6. No published specification; formula is an approximation.
+
+---
+
+### HSY (Luma-Weighted)
+
+**Valid domain:**
+- H: [0, 1] (normalized, identical to HSV)
+- S: [0, 1] (luma-aware saturation)
+- Y: [0, 1] (BT.601 weighted luma)
+
+**Notes:** Y preserves exact BT.601 luma through round-trip. Saturation uses max_sat remapping per hue sector.
 
 ---
 

@@ -169,7 +169,11 @@ typedef struct { alwan_scalar Jz, az, bz; } alwan_jzazbz;
 typedef struct { alwan_scalar I, Ct, Cp; } alwan_ictcp;
 typedef struct { alwan_scalar h, s, v; } alwan_hsv;
 typedef struct { alwan_scalar h, s, l; } alwan_hsl;
+typedef struct { alwan_scalar h, s, p; } alwan_hsp;   // Perceived brightness (Finley 2006)
+typedef struct { alwan_scalar h, s, p; } alwan_hsplog; // HSP with log saturation stretching
+typedef struct { alwan_scalar h, s, y; } alwan_hsy;   // Luma-weighted (chilliant HCY)
 typedef struct { alwan_scalar Y, Cb, Cr; } alwan_ycbcr;
+typedef struct { alwan_scalar Y, Co, Cg; } alwan_ycocg;
 // ... and more
 ```
 
