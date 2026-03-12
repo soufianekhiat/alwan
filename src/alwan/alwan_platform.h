@@ -517,6 +517,541 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_SRGB_A            ALWAN_LITERAL(1.055)
 #define ALWAN_SRGB_B            ALWAN_LITERAL(0.055)
 
+/* ================================================================
+ * 1.9 Channel Range Constants
+ *
+ * Min/max defines for each color space channel with finite bounds.
+ * Channels with unbounded ranges (e.g. Lab a*, b*) have no define.
+ * Source of truth: docs/ranges.md
+ * ================================================================ */
+
+/* --- Device-Dependent Spaces --- */
+
+/* RGB [0, 1] per channel (SDR in-gamut) */
+#define ALWAN_RGB_R_MIN   ALWAN_ZERO
+#define ALWAN_RGB_R_MAX   ALWAN_ONE
+#define ALWAN_RGB_G_MIN   ALWAN_ZERO
+#define ALWAN_RGB_G_MAX   ALWAN_ONE
+#define ALWAN_RGB_B_MIN   ALWAN_ZERO
+#define ALWAN_RGB_B_MAX   ALWAN_ONE
+
+/* HSV [0, 1] per channel (hue normalized) */
+#define ALWAN_HSV_H_MIN   ALWAN_ZERO
+#define ALWAN_HSV_H_MAX   ALWAN_ONE
+#define ALWAN_HSV_S_MIN   ALWAN_ZERO
+#define ALWAN_HSV_S_MAX   ALWAN_ONE
+#define ALWAN_HSV_V_MIN   ALWAN_ZERO
+#define ALWAN_HSV_V_MAX   ALWAN_ONE
+
+/* HSL [0, 1] per channel (hue normalized) */
+#define ALWAN_HSL_H_MIN   ALWAN_ZERO
+#define ALWAN_HSL_H_MAX   ALWAN_ONE
+#define ALWAN_HSL_S_MIN   ALWAN_ZERO
+#define ALWAN_HSL_S_MAX   ALWAN_ONE
+#define ALWAN_HSL_L_MIN   ALWAN_ZERO
+#define ALWAN_HSL_L_MAX   ALWAN_ONE
+
+/* HSP [0, 1] per channel */
+#define ALWAN_HSP_H_MIN   ALWAN_ZERO
+#define ALWAN_HSP_H_MAX   ALWAN_ONE
+#define ALWAN_HSP_S_MIN   ALWAN_ZERO
+#define ALWAN_HSP_S_MAX   ALWAN_ONE
+#define ALWAN_HSP_P_MIN   ALWAN_ZERO
+#define ALWAN_HSP_P_MAX   ALWAN_ONE
+
+/* HSPLog [0, 1] per channel (log-stretched saturation) */
+#define ALWAN_HSPLOG_H_MIN ALWAN_ZERO
+#define ALWAN_HSPLOG_H_MAX ALWAN_ONE
+#define ALWAN_HSPLOG_S_MIN ALWAN_ZERO
+#define ALWAN_HSPLOG_S_MAX ALWAN_ONE
+#define ALWAN_HSPLOG_P_MIN ALWAN_ZERO
+#define ALWAN_HSPLOG_P_MAX ALWAN_ONE
+
+/* HSY [0, 1] per channel */
+#define ALWAN_HSY_H_MIN   ALWAN_ZERO
+#define ALWAN_HSY_H_MAX   ALWAN_ONE
+#define ALWAN_HSY_S_MIN   ALWAN_ZERO
+#define ALWAN_HSY_S_MAX   ALWAN_ONE
+#define ALWAN_HSY_Y_MIN   ALWAN_ZERO
+#define ALWAN_HSY_Y_MAX   ALWAN_ONE
+
+/* HWB [0, 1] per channel */
+#define ALWAN_HWB_H_MIN   ALWAN_ZERO
+#define ALWAN_HWB_H_MAX   ALWAN_ONE
+#define ALWAN_HWB_W_MIN   ALWAN_ZERO
+#define ALWAN_HWB_W_MAX   ALWAN_ONE
+#define ALWAN_HWB_B_MIN   ALWAN_ZERO
+#define ALWAN_HWB_B_MAX   ALWAN_ONE
+
+/* CMY [0, 1] per channel */
+#define ALWAN_CMY_C_MIN   ALWAN_ZERO
+#define ALWAN_CMY_C_MAX   ALWAN_ONE
+#define ALWAN_CMY_M_MIN   ALWAN_ZERO
+#define ALWAN_CMY_M_MAX   ALWAN_ONE
+#define ALWAN_CMY_Y_MIN   ALWAN_ZERO
+#define ALWAN_CMY_Y_MAX   ALWAN_ONE
+
+/* CMYK [0, 1] per channel */
+#define ALWAN_CMYK_C_MIN  ALWAN_ZERO
+#define ALWAN_CMYK_C_MAX  ALWAN_ONE
+#define ALWAN_CMYK_M_MIN  ALWAN_ZERO
+#define ALWAN_CMYK_M_MAX  ALWAN_ONE
+#define ALWAN_CMYK_Y_MIN  ALWAN_ZERO
+#define ALWAN_CMYK_Y_MAX  ALWAN_ONE
+#define ALWAN_CMYK_K_MIN  ALWAN_ZERO
+#define ALWAN_CMYK_K_MAX  ALWAN_ONE
+
+/* YCbCr: Y [0,1], Cb/Cr [-0.5, 0.5] */
+#define ALWAN_YCBCR_Y_MIN  ALWAN_ZERO
+#define ALWAN_YCBCR_Y_MAX  ALWAN_ONE
+#define ALWAN_YCBCR_CB_MIN ALWAN_LITERAL(-0.5)
+#define ALWAN_YCBCR_CB_MAX ALWAN_LITERAL(0.5)
+#define ALWAN_YCBCR_CR_MIN ALWAN_LITERAL(-0.5)
+#define ALWAN_YCBCR_CR_MAX ALWAN_LITERAL(0.5)
+
+/* YCoCg: Y [0,1], Co/Cg [-0.5, 0.5] */
+#define ALWAN_YCOCG_Y_MIN  ALWAN_ZERO
+#define ALWAN_YCOCG_Y_MAX  ALWAN_ONE
+#define ALWAN_YCOCG_CO_MIN ALWAN_LITERAL(-0.5)
+#define ALWAN_YCOCG_CO_MAX ALWAN_LITERAL(0.5)
+#define ALWAN_YCOCG_CG_MIN ALWAN_LITERAL(-0.5)
+#define ALWAN_YCOCG_CG_MAX ALWAN_LITERAL(0.5)
+
+/* YcCbcCrc: Yc [0,1], Cbc/Crc [-0.5, 0.5] */
+#define ALWAN_YCCBCCRC_YC_MIN  ALWAN_ZERO
+#define ALWAN_YCCBCCRC_YC_MAX  ALWAN_ONE
+#define ALWAN_YCCBCCRC_CBC_MIN ALWAN_LITERAL(-0.5)
+#define ALWAN_YCCBCCRC_CBC_MAX ALWAN_LITERAL(0.5)
+#define ALWAN_YCCBCCRC_CRC_MIN ALWAN_LITERAL(-0.5)
+#define ALWAN_YCCBCCRC_CRC_MAX ALWAN_LITERAL(0.5)
+
+/* Prismatic [0, 1] per channel */
+#define ALWAN_PRISMATIC_L_MIN ALWAN_ZERO
+#define ALWAN_PRISMATIC_L_MAX ALWAN_ONE
+#define ALWAN_PRISMATIC_S_MIN ALWAN_ZERO
+#define ALWAN_PRISMATIC_S_MAX ALWAN_ONE
+#define ALWAN_PRISMATIC_H_MIN ALWAN_ZERO
+#define ALWAN_PRISMATIC_H_MAX ALWAN_ONE
+
+/* IHLS: H [0, 2pi), L [0,1], S [0,1] */
+#define ALWAN_IHLS_H_MIN  ALWAN_ZERO
+#define ALWAN_IHLS_H_MAX  (ALWAN_LITERAL(2.0) * ALWAN_PI)
+#define ALWAN_IHLS_L_MIN  ALWAN_ZERO
+#define ALWAN_IHLS_L_MAX  ALWAN_ONE
+#define ALWAN_IHLS_S_MIN  ALWAN_ZERO
+#define ALWAN_IHLS_S_MAX  ALWAN_ONE
+
+/* --- CIE Colorimetric Spaces --- */
+
+/* XYZ: all [0, +inf) — only MIN defined */
+#define ALWAN_XYZ_X_MIN   ALWAN_ZERO
+#define ALWAN_XYZ_Y_MIN   ALWAN_ZERO
+#define ALWAN_XYZ_Z_MIN   ALWAN_ZERO
+
+/* xyY: x,y [0,1], Y [0, +inf) */
+#define ALWAN_XYY_X_MIN   ALWAN_ZERO
+#define ALWAN_XYY_X_MAX   ALWAN_ONE
+#define ALWAN_XYY_Y_MIN   ALWAN_ZERO
+#define ALWAN_XYY_Y_MAX   ALWAN_ONE
+#define ALWAN_XYY_YL_MIN  ALWAN_ZERO  /* Y (luminance), no upper bound */
+
+/* Lab: L [0, 100], a/b unbounded */
+#define ALWAN_LAB_L_MIN   ALWAN_ZERO
+#define ALWAN_LAB_L_MAX   ALWAN_LITERAL(100.0)
+
+/* Luv: L [0, 100], u/v unbounded */
+#define ALWAN_LUV_L_MIN   ALWAN_ZERO
+#define ALWAN_LUV_L_MAX   ALWAN_LITERAL(100.0)
+
+/* LCh(ab): L [0, 100], C [0, +inf), h [0, 360) */
+#define ALWAN_LCH_L_MIN   ALWAN_ZERO
+#define ALWAN_LCH_L_MAX   ALWAN_LITERAL(100.0)
+#define ALWAN_LCH_C_MIN   ALWAN_ZERO
+#define ALWAN_LCH_H_MIN   ALWAN_ZERO
+#define ALWAN_LCH_H_MAX   ALWAN_LITERAL(360.0)
+
+/* LCh(uv): L [0, 100], C [0, +inf), h [0, 360) */
+#define ALWAN_LCHUV_L_MIN ALWAN_ZERO
+#define ALWAN_LCHUV_L_MAX ALWAN_LITERAL(100.0)
+#define ALWAN_LCHUV_C_MIN ALWAN_ZERO
+#define ALWAN_LCHUV_H_MIN ALWAN_ZERO
+#define ALWAN_LCHUV_H_MAX ALWAN_LITERAL(360.0)
+
+/* UCS (CIE 1960): U,V [0,1], W [0, +inf) */
+#define ALWAN_UCS_U_MIN   ALWAN_ZERO
+#define ALWAN_UCS_U_MAX   ALWAN_ONE
+#define ALWAN_UCS_V_MIN   ALWAN_ZERO
+#define ALWAN_UCS_V_MAX   ALWAN_ONE
+#define ALWAN_UCS_W_MIN   ALWAN_ZERO
+
+/* UVW (CIE 1964): U,V unbounded, W [0, +inf) */
+#define ALWAN_UVW_W_MIN   ALWAN_ZERO
+
+/* Hunter Lab: L [0, 100], a/b unbounded */
+#define ALWAN_HUNTER_LAB_L_MIN ALWAN_ZERO
+#define ALWAN_HUNTER_LAB_L_MAX ALWAN_LITERAL(100.0)
+
+/* DIN99: L99 [0, 100], a99/b99 unbounded */
+#define ALWAN_DIN99_L_MIN ALWAN_ZERO
+#define ALWAN_DIN99_L_MAX ALWAN_LITERAL(100.0)
+
+/* --- Modern Perceptual Spaces --- */
+
+/* Oklab: L [0, 1], a/b unbounded */
+#define ALWAN_OKLAB_L_MIN ALWAN_ZERO
+#define ALWAN_OKLAB_L_MAX ALWAN_ONE
+
+/* Oklch: L [0, 1], C [0, +inf), h [-pi, pi] */
+#define ALWAN_OKLCH_L_MIN ALWAN_ZERO
+#define ALWAN_OKLCH_L_MAX ALWAN_ONE
+#define ALWAN_OKLCH_C_MIN ALWAN_ZERO
+#define ALWAN_OKLCH_H_MIN (-ALWAN_PI)
+#define ALWAN_OKLCH_H_MAX ALWAN_PI
+
+/* Jzazbz: Jz [0, 1], az/bz unbounded */
+#define ALWAN_JZAZBZ_JZ_MIN ALWAN_ZERO
+#define ALWAN_JZAZBZ_JZ_MAX ALWAN_ONE
+
+/* JzCzhz: Jz [0, 1], Cz [0, +inf), hz [-pi, pi] */
+#define ALWAN_JZCZHZ_JZ_MIN ALWAN_ZERO
+#define ALWAN_JZCZHZ_JZ_MAX ALWAN_ONE
+#define ALWAN_JZCZHZ_CZ_MIN ALWAN_ZERO
+#define ALWAN_JZCZHZ_HZ_MIN (-ALWAN_PI)
+#define ALWAN_JZCZHZ_HZ_MAX ALWAN_PI
+
+/* ICtCp: I [0, 1], Ct/Cp unbounded */
+#define ALWAN_ICTCP_I_MIN ALWAN_ZERO
+#define ALWAN_ICTCP_I_MAX ALWAN_ONE
+
+/* IPT: I [0, 1], P/T unbounded */
+#define ALWAN_IPT_I_MIN   ALWAN_ZERO
+#define ALWAN_IPT_I_MAX   ALWAN_ONE
+
+/* IPTch: I [0, 1], C [0, +inf), h [-pi, pi] */
+#define ALWAN_IPTCH_I_MIN ALWAN_ZERO
+#define ALWAN_IPTCH_I_MAX ALWAN_ONE
+#define ALWAN_IPTCH_C_MIN ALWAN_ZERO
+#define ALWAN_IPTCH_H_MIN (-ALWAN_PI)
+#define ALWAN_IPTCH_H_MAX ALWAN_PI
+
+/* IgPgTg: Ig [0, 1], Pg/Tg unbounded */
+#define ALWAN_IGPGTG_IG_MIN ALWAN_ZERO
+#define ALWAN_IGPGTG_IG_MAX ALWAN_ONE
+
+/* ICaCb: I [0, +inf), Ca/Cb unbounded */
+#define ALWAN_ICACB_I_MIN ALWAN_ZERO
+
+/* ProLab: L [0, 100], a/b unbounded */
+#define ALWAN_PROLAB_L_MIN ALWAN_ZERO
+#define ALWAN_PROLAB_L_MAX ALWAN_LITERAL(100.0)
+
+/* HCL: H [-pi, pi], C [0, +inf), L [0, 1] */
+#define ALWAN_HCL_H_MIN  (-ALWAN_PI)
+#define ALWAN_HCL_H_MAX  ALWAN_PI
+#define ALWAN_HCL_C_MIN  ALWAN_ZERO
+#define ALWAN_HCL_L_MIN  ALWAN_ZERO
+#define ALWAN_HCL_L_MAX  ALWAN_ONE
+
+/* --- Color Appearance Models --- */
+
+/* CIECAM02: J [0,100], C [0,+inf), h [0,360), H [0,400] */
+#define ALWAN_CIECAM02_J_MIN ALWAN_ZERO
+#define ALWAN_CIECAM02_J_MAX ALWAN_LITERAL(100.0)
+#define ALWAN_CIECAM02_C_MIN ALWAN_ZERO
+#define ALWAN_CIECAM02_H_MIN ALWAN_ZERO
+#define ALWAN_CIECAM02_H_MAX ALWAN_LITERAL(360.0)
+#define ALWAN_CIECAM02_S_MIN ALWAN_ZERO
+#define ALWAN_CIECAM02_Q_MIN ALWAN_ZERO
+#define ALWAN_CIECAM02_M_MIN ALWAN_ZERO
+#define ALWAN_CIECAM02_HQ_MIN ALWAN_ZERO
+#define ALWAN_CIECAM02_HQ_MAX ALWAN_LITERAL(400.0)
+
+/* CAM16: J [0,100], C [0,+inf), h [0,360), H [0,400] */
+#define ALWAN_CAM16_J_MIN ALWAN_ZERO
+#define ALWAN_CAM16_J_MAX ALWAN_LITERAL(100.0)
+#define ALWAN_CAM16_C_MIN ALWAN_ZERO
+#define ALWAN_CAM16_H_MIN ALWAN_ZERO
+#define ALWAN_CAM16_H_MAX ALWAN_LITERAL(360.0)
+#define ALWAN_CAM16_S_MIN ALWAN_ZERO
+#define ALWAN_CAM16_Q_MIN ALWAN_ZERO
+#define ALWAN_CAM16_M_MIN ALWAN_ZERO
+#define ALWAN_CAM16_HQ_MIN ALWAN_ZERO
+#define ALWAN_CAM16_HQ_MAX ALWAN_LITERAL(400.0)
+
+/* ZCAM: Jz [0,100], hz [0,360), Kz [0,100], Wz [0,100] */
+#define ALWAN_ZCAM_JZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_JZ_MAX ALWAN_LITERAL(100.0)
+#define ALWAN_ZCAM_CZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_HZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_HZ_MAX ALWAN_LITERAL(360.0)
+#define ALWAN_ZCAM_QZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_MZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_SZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_VZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_KZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_KZ_MAX ALWAN_LITERAL(100.0)
+#define ALWAN_ZCAM_WZ_MIN ALWAN_ZERO
+#define ALWAN_ZCAM_WZ_MAX ALWAN_LITERAL(100.0)
+
+/* Hellwig2022: J [0,100], h [0,360) */
+#define ALWAN_HELLWIG2022_J_MIN ALWAN_ZERO
+#define ALWAN_HELLWIG2022_J_MAX ALWAN_LITERAL(100.0)
+#define ALWAN_HELLWIG2022_C_MIN ALWAN_ZERO
+#define ALWAN_HELLWIG2022_H_MIN ALWAN_ZERO
+#define ALWAN_HELLWIG2022_H_MAX ALWAN_LITERAL(360.0)
+#define ALWAN_HELLWIG2022_S_MIN ALWAN_ZERO
+#define ALWAN_HELLWIG2022_Q_MIN ALWAN_ZERO
+#define ALWAN_HELLWIG2022_M_MIN ALWAN_ZERO
+
+/* Hunt: J [0,100], h [0,360) */
+#define ALWAN_HUNT_J_MIN  ALWAN_ZERO
+#define ALWAN_HUNT_J_MAX  ALWAN_LITERAL(100.0)
+#define ALWAN_HUNT_C_MIN  ALWAN_ZERO
+#define ALWAN_HUNT_H_MIN  ALWAN_ZERO
+#define ALWAN_HUNT_H_MAX  ALWAN_LITERAL(360.0)
+#define ALWAN_HUNT_S_MIN  ALWAN_ZERO
+#define ALWAN_HUNT_Q_MIN  ALWAN_ZERO
+#define ALWAN_HUNT_M_MIN  ALWAN_ZERO
+
+/* Kim2009: J [0,100], h [0,360) */
+#define ALWAN_KIM2009_J_MIN ALWAN_ZERO
+#define ALWAN_KIM2009_J_MAX ALWAN_LITERAL(100.0)
+#define ALWAN_KIM2009_C_MIN ALWAN_ZERO
+#define ALWAN_KIM2009_H_MIN ALWAN_ZERO
+#define ALWAN_KIM2009_H_MAX ALWAN_LITERAL(360.0)
+
+/* LLAB: L [0,100], h [0,360) */
+#define ALWAN_LLAB_L_MIN  ALWAN_ZERO
+#define ALWAN_LLAB_L_MAX  ALWAN_LITERAL(100.0)
+#define ALWAN_LLAB_CH_MIN ALWAN_ZERO
+#define ALWAN_LLAB_H_MIN  ALWAN_ZERO
+#define ALWAN_LLAB_H_MAX  ALWAN_LITERAL(360.0)
+#define ALWAN_LLAB_S_MIN  ALWAN_ZERO
+
+/* ATD95: H [0,360) */
+#define ALWAN_ATD95_H_MIN ALWAN_ZERO
+#define ALWAN_ATD95_H_MAX ALWAN_LITERAL(360.0)
+#define ALWAN_ATD95_C_MIN ALWAN_ZERO
+#define ALWAN_ATD95_BR_MIN ALWAN_ZERO
+
+/* RLAB: L [0,100], h [0,360) */
+#define ALWAN_RLAB_L_MIN  ALWAN_ZERO
+#define ALWAN_RLAB_L_MAX  ALWAN_LITERAL(100.0)
+#define ALWAN_RLAB_C_MIN  ALWAN_ZERO
+#define ALWAN_RLAB_H_MIN  ALWAN_ZERO
+#define ALWAN_RLAB_H_MAX  ALWAN_LITERAL(360.0)
+#define ALWAN_RLAB_S_MIN  ALWAN_ZERO
+
+/* Nayatani95: L*N [0,100], theta [0, 2pi) */
+#define ALWAN_NAYATANI95_L_MIN     ALWAN_ZERO
+#define ALWAN_NAYATANI95_L_MAX     ALWAN_LITERAL(100.0)
+#define ALWAN_NAYATANI95_C_MIN     ALWAN_ZERO
+#define ALWAN_NAYATANI95_THETA_MIN ALWAN_ZERO
+#define ALWAN_NAYATANI95_THETA_MAX (ALWAN_LITERAL(2.0) * ALWAN_PI)
+#define ALWAN_NAYATANI95_S_MIN     ALWAN_ZERO
+#define ALWAN_NAYATANI95_BR_MIN    ALWAN_ZERO
+
+/* ================================================================
+ * 1.10 Range Normalization
+ *
+ * When ALWAN_NORMALIZE_RANGES is 1, API functions rescale bounded
+ * output channels to [0, 1] and expect [0, 1] inputs for those
+ * channels. Core (_v) functions are NOT affected.
+ * Unbounded channels (e.g. Lab a*, chroma) are NOT rescaled.
+ * Default: 0 (disabled — original mathematical ranges).
+ * ================================================================ */
+
+#ifndef ALWAN_NORMALIZE_RANGES
+# define ALWAN_NORMALIZE_RANGES 1
+#endif
+
+#define ALWAN__TWOPI (ALWAN_LITERAL(2.0) * ALWAN_PI)
+
+#if ALWAN_NORMALIZE_RANGES
+
+/* Lab: L [0,100] -> [0,1] */
+#define ALWAN_NORM_LAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_LAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+
+/* Luv: L [0,100] -> [0,1] */
+#define ALWAN_NORM_LUV(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_LUV(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+
+/* LCh(ab): L [0,100] -> [0,1], h [0,360) -> [0,1] */
+#define ALWAN_NORM_LCH(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_LCH(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
+/* LCh(uv): L [0,100] -> [0,1], h [0,360) -> [0,1] */
+#define ALWAN_NORM_LCHUV(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_LCHUV(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
+/* Oklch: h [-pi, pi] -> [0,1] (L already [0,1]) */
+#define ALWAN_NORM_OKLCH(p)   do { (p)->h = ((p)->h + ALWAN_PI) / ALWAN__TWOPI; } while(0)
+#define ALWAN_DENORM_OKLCH(p) do { (p)->h = (p)->h * ALWAN__TWOPI - ALWAN_PI; } while(0)
+
+/* JzCzhz: hz [-pi, pi] -> [0,1] (Jz already [0,1]) */
+#define ALWAN_NORM_JZCZHZ(p)   do { (p)->hz = ((p)->hz + ALWAN_PI) / ALWAN__TWOPI; } while(0)
+#define ALWAN_DENORM_JZCZHZ(p) do { (p)->hz = (p)->hz * ALWAN__TWOPI - ALWAN_PI; } while(0)
+
+/* IPTch: h [-pi, pi] -> [0,1] (I already [0,1]) */
+#define ALWAN_NORM_IPTCH(p)   do { (p)->h = ((p)->h + ALWAN_PI) / ALWAN__TWOPI; } while(0)
+#define ALWAN_DENORM_IPTCH(p) do { (p)->h = (p)->h * ALWAN__TWOPI - ALWAN_PI; } while(0)
+
+/* YCbCr: Cb [-0.5,0.5] -> [0,1], Cr [-0.5,0.5] -> [0,1] */
+#define ALWAN_NORM_YCBCR(p)   do { (p)->Cb += ALWAN_LITERAL(0.5); (p)->Cr += ALWAN_LITERAL(0.5); } while(0)
+#define ALWAN_DENORM_YCBCR(p) do { (p)->Cb -= ALWAN_LITERAL(0.5); (p)->Cr -= ALWAN_LITERAL(0.5); } while(0)
+
+/* YCoCg: Co [-0.5,0.5] -> [0,1], Cg [-0.5,0.5] -> [0,1] */
+#define ALWAN_NORM_YCOCG(p)   do { (p)->Co += ALWAN_LITERAL(0.5); (p)->Cg += ALWAN_LITERAL(0.5); } while(0)
+#define ALWAN_DENORM_YCOCG(p) do { (p)->Co -= ALWAN_LITERAL(0.5); (p)->Cg -= ALWAN_LITERAL(0.5); } while(0)
+
+/* YcCbcCrc: Cbc [-0.5,0.5] -> [0,1], Crc [-0.5,0.5] -> [0,1] */
+#define ALWAN_NORM_YCCBCCRC(p)   do { (p)->Cbc += ALWAN_LITERAL(0.5); (p)->Crc += ALWAN_LITERAL(0.5); } while(0)
+#define ALWAN_DENORM_YCCBCCRC(p) do { (p)->Cbc -= ALWAN_LITERAL(0.5); (p)->Crc -= ALWAN_LITERAL(0.5); } while(0)
+
+/* HCL: H [-pi, pi] -> [0,1] (L already [0,1]) */
+#define ALWAN_NORM_HCL(p)   do { (p)->H = ((p)->H + ALWAN_PI) / ALWAN__TWOPI; } while(0)
+#define ALWAN_DENORM_HCL(p) do { (p)->H = (p)->H * ALWAN__TWOPI - ALWAN_PI; } while(0)
+
+/* IHLS: H [0, 2pi) -> [0,1] */
+#define ALWAN_NORM_IHLS(p)   do { (p)->H /= ALWAN__TWOPI; } while(0)
+#define ALWAN_DENORM_IHLS(p) do { (p)->H *= ALWAN__TWOPI; } while(0)
+
+/* DIN99: L99 [0,100] -> [0,1] */
+#define ALWAN_NORM_DIN99(p)   do { (p)->L99 *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_DIN99(p) do { (p)->L99 *= ALWAN_LITERAL(100.0); } while(0)
+
+/* Hunter Lab: L [0,100] -> [0,1] */
+#define ALWAN_NORM_HUNTER_LAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_HUNTER_LAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+
+/* ProLab: L [0,100] -> [0,1] */
+#define ALWAN_NORM_PROLAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_PROLAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+
+/* CAM Jab (UCS): J [0,100] -> [0,1] */
+#define ALWAN_NORM_CAM_JAB(p)   do { (p)->J *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_CAM_JAB(p) do { (p)->J *= ALWAN_LITERAL(100.0); } while(0)
+
+/* CIECAM02: J [0,100] -> [0,1], h [0,360) -> [0,1], H [0,400] -> [0,1] */
+#define ALWAN_NORM_CIECAM02(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
+    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); } while(0)
+#define ALWAN_DENORM_CIECAM02(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
+    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
+
+/* CAM16: J [0,100] -> [0,1], h [0,360) -> [0,1], H [0,400] -> [0,1] */
+#define ALWAN_NORM_CAM16(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
+    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); } while(0)
+#define ALWAN_DENORM_CAM16(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
+    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
+
+/* ZCAM: Jz [0,100] -> [0,1], hz [0,360) -> [0,1], Kz [0,100] -> [0,1], Wz [0,100] -> [0,1] */
+#define ALWAN_NORM_ZCAM(p)   do { (p)->Jz *= ALWAN_LITERAL(0.01); \
+    (p)->hz /= ALWAN_LITERAL(360.0); (p)->Kz *= ALWAN_LITERAL(0.01); \
+    (p)->Wz *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_ZCAM(p) do { (p)->Jz *= ALWAN_LITERAL(100.0); \
+    (p)->hz *= ALWAN_LITERAL(360.0); (p)->Kz *= ALWAN_LITERAL(100.0); \
+    (p)->Wz *= ALWAN_LITERAL(100.0); } while(0)
+
+/* Hellwig2022: J [0,100] -> [0,1], h [0,360) -> [0,1], H [0,400] -> [0,1] */
+#define ALWAN_NORM_HELLWIG2022(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
+    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); } while(0)
+#define ALWAN_DENORM_HELLWIG2022(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
+    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
+
+/* Hunt: J [0,100] -> [0,1], h [0,360) -> [0,1] */
+#define ALWAN_NORM_HUNT(p)   do { (p)->J *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_HUNT(p) do { (p)->J *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
+/* Kim2009: J [0,100] -> [0,1], h [0,360) -> [0,1] */
+#define ALWAN_NORM_KIM2009(p)   do { (p)->J *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_KIM2009(p) do { (p)->J *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
+/* LLAB: L [0,100] -> [0,1], h [0,360) -> [0,1] */
+#define ALWAN_NORM_LLAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_LLAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
+/* ATD95: H [0,360) -> [0,1] */
+#define ALWAN_NORM_ATD95(p)   do { (p)->H /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_ATD95(p) do { (p)->H *= ALWAN_LITERAL(360.0); } while(0)
+
+/* RLAB: L [0,100] -> [0,1], h [0,360) -> [0,1] */
+#define ALWAN_NORM_RLAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_RLAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
+/* Nayatani95: L_star_N [0,100] -> [0,1], theta [0,2pi) -> [0,1] */
+#define ALWAN_NORM_NAYATANI95(p)   do { (p)->L_star_N *= ALWAN_LITERAL(0.01); (p)->theta /= ALWAN__TWOPI; } while(0)
+#define ALWAN_DENORM_NAYATANI95(p) do { (p)->L_star_N *= ALWAN_LITERAL(100.0); (p)->theta *= ALWAN__TWOPI; } while(0)
+
+/* CAM18sl: h [0,360) -> [0,1] */
+#define ALWAN_NORM_CAM18SL(p)   do { (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_CAM18SL(p) do { (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
+/* CAM20u: h [0,360) -> [0,1] */
+#define ALWAN_NORM_CAM20U(p)   do { (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_CAM20U(p) do { (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
+#else /* ALWAN_NORMALIZE_RANGES == 0: all no-ops */
+
+#define ALWAN_NORM_LAB(p)           ((void)0)
+#define ALWAN_DENORM_LAB(p)         ((void)0)
+#define ALWAN_NORM_LUV(p)           ((void)0)
+#define ALWAN_DENORM_LUV(p)         ((void)0)
+#define ALWAN_NORM_LCH(p)           ((void)0)
+#define ALWAN_DENORM_LCH(p)         ((void)0)
+#define ALWAN_NORM_LCHUV(p)         ((void)0)
+#define ALWAN_DENORM_LCHUV(p)       ((void)0)
+#define ALWAN_NORM_OKLCH(p)         ((void)0)
+#define ALWAN_DENORM_OKLCH(p)       ((void)0)
+#define ALWAN_NORM_JZCZHZ(p)        ((void)0)
+#define ALWAN_DENORM_JZCZHZ(p)      ((void)0)
+#define ALWAN_NORM_IPTCH(p)         ((void)0)
+#define ALWAN_DENORM_IPTCH(p)       ((void)0)
+#define ALWAN_NORM_YCBCR(p)         ((void)0)
+#define ALWAN_DENORM_YCBCR(p)       ((void)0)
+#define ALWAN_NORM_YCOCG(p)         ((void)0)
+#define ALWAN_DENORM_YCOCG(p)       ((void)0)
+#define ALWAN_NORM_YCCBCCRC(p)      ((void)0)
+#define ALWAN_DENORM_YCCBCCRC(p)    ((void)0)
+#define ALWAN_NORM_HCL(p)           ((void)0)
+#define ALWAN_DENORM_HCL(p)         ((void)0)
+#define ALWAN_NORM_IHLS(p)          ((void)0)
+#define ALWAN_DENORM_IHLS(p)        ((void)0)
+#define ALWAN_NORM_DIN99(p)         ((void)0)
+#define ALWAN_DENORM_DIN99(p)       ((void)0)
+#define ALWAN_NORM_HUNTER_LAB(p)    ((void)0)
+#define ALWAN_DENORM_HUNTER_LAB(p)  ((void)0)
+#define ALWAN_NORM_PROLAB(p)        ((void)0)
+#define ALWAN_DENORM_PROLAB(p)      ((void)0)
+#define ALWAN_NORM_CAM_JAB(p)       ((void)0)
+#define ALWAN_DENORM_CAM_JAB(p)     ((void)0)
+#define ALWAN_NORM_CIECAM02(p)      ((void)0)
+#define ALWAN_DENORM_CIECAM02(p)    ((void)0)
+#define ALWAN_NORM_CAM16(p)         ((void)0)
+#define ALWAN_DENORM_CAM16(p)       ((void)0)
+#define ALWAN_NORM_ZCAM(p)          ((void)0)
+#define ALWAN_DENORM_ZCAM(p)        ((void)0)
+#define ALWAN_NORM_HELLWIG2022(p)   ((void)0)
+#define ALWAN_DENORM_HELLWIG2022(p) ((void)0)
+#define ALWAN_NORM_HUNT(p)          ((void)0)
+#define ALWAN_DENORM_HUNT(p)        ((void)0)
+#define ALWAN_NORM_KIM2009(p)       ((void)0)
+#define ALWAN_DENORM_KIM2009(p)     ((void)0)
+#define ALWAN_NORM_LLAB(p)          ((void)0)
+#define ALWAN_DENORM_LLAB(p)        ((void)0)
+#define ALWAN_NORM_ATD95(p)         ((void)0)
+#define ALWAN_DENORM_ATD95(p)       ((void)0)
+#define ALWAN_NORM_RLAB(p)          ((void)0)
+#define ALWAN_DENORM_RLAB(p)        ((void)0)
+#define ALWAN_NORM_NAYATANI95(p)    ((void)0)
+#define ALWAN_DENORM_NAYATANI95(p)  ((void)0)
+#define ALWAN_NORM_CAM18SL(p)       ((void)0)
+#define ALWAN_DENORM_CAM18SL(p)     ((void)0)
+#define ALWAN_NORM_CAM20U(p)        ((void)0)
+#define ALWAN_DENORM_CAM20U(p)      ((void)0)
+
+#endif /* ALWAN_NORMALIZE_RANGES */
+
 /* Test tolerance (depends on scalar precision) */
 #if ALWAN_SCALAR_IS_FLOAT
 # define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-5)

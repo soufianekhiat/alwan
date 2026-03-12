@@ -39,5 +39,7 @@ int alwan_atd95_forward(
     out->T_2 = v.T_2;
     out->D_2 = v.D_2;
 
+    ALWAN_NORM_ATD95(out);
+
     return ALWAN_OK;
 }

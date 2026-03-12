@@ -1273,4 +1273,31 @@ int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
     return ALWAN_OK; \
 }
 
+/* ================================================================
+ * Normalization helpers for planar channel data
+ *
+ * Applied between kernel and store (forward) or between load and
+ * kernel (inverse) when ALWAN_NORMALIZE_RANGES is enabled.
+ * Compiled away entirely when normalization is off (default).
+ * ================================================================ */
+
+#if ALWAN_NORMALIZE_RANGES
+ALWAN_INLINE void alwan__norm_lane_mul(alwan_simd_lane *d, size_t n, alwan_simd_lane factor) {
+    for (size_t i = 0; i < n; i++) d[i] *= factor;
+}
+ALWAN_INLINE void alwan__norm_lane_add(alwan_simd_lane *d, size_t n, alwan_simd_lane offset) {
+    for (size_t i = 0; i < n; i++) d[i] += offset;
+}
+ALWAN_INLINE void alwan__norm_lane_affine(alwan_simd_lane *d, size_t n, alwan_simd_lane scale, alwan_simd_lane offset) {
+    for (size_t i = 0; i < n; i++) d[i] = d[i] * scale + offset;
+}
+#define ALWAN_MAP_NORM_MUL(d, n, f)    alwan__norm_lane_mul((d), (n), (alwan_simd_lane)(f))
+#define ALWAN_MAP_NORM_ADD(d, n, o)    alwan__norm_lane_add((d), (n), (alwan_simd_lane)(o))
+#define ALWAN_MAP_NORM_AFFINE(d, n, s, o) alwan__norm_lane_affine((d), (n), (alwan_simd_lane)(s), (alwan_simd_lane)(o))
+#else
+#define ALWAN_MAP_NORM_MUL(d, n, f)    ((void)0)
+#define ALWAN_MAP_NORM_ADD(d, n, o)    ((void)0)
+#define ALWAN_MAP_NORM_AFFINE(d, n, s, o) ((void)0)
+#endif
+
 #endif /* ALWAN_MAP_INTERNAL_H */

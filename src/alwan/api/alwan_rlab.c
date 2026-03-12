@@ -65,6 +65,8 @@ int alwan_rlab_forward(alwan_rlab_correlates *out,
     out->C = result.C;
     out->s = result.s;
 
+    ALWAN_NORM_RLAB(out);
+
     return 0;
 }
 
@@ -79,16 +81,19 @@ int alwan_rlab_inverse(alwan_xyz *xyz,
         return -1;
     }
 
+    alwan_rlab_correlates tmp = *correlates;
+    ALWAN_DENORM_RLAB(&tmp);
+
     alwan_scalar sigma = get_sigma(vc->surround);
     alwan_scalar D     = get_D_factor(vc->D_factor);
 
     alwan_rlab_v_correlates vc_in;
-    vc_in.L = correlates->L;
-    vc_in.a = correlates->a;
-    vc_in.b = correlates->b;
-    vc_in.h = correlates->h;
-    vc_in.C = correlates->C;
-    vc_in.s = correlates->s;
+    vc_in.L = tmp.L;
+    vc_in.a = tmp.a;
+    vc_in.b = tmp.b;
+    vc_in.h = tmp.h;
+    vc_in.C = tmp.C;
+    vc_in.s = tmp.s;
 
     *xyz = alwan_rlab_inverse_v(vc_in, vc->xyz_w, vc->xyz_n, sigma, D);
 

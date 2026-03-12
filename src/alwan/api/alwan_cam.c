@@ -106,6 +106,8 @@ int alwan_ciecam02_forward(alwan_ciecam02_correlates *out,
     out->M = result.M;
     out->H = result.H;
 
+    ALWAN_NORM_CIECAM02(out);
+
     return ALWAN_OK;
 }
 
@@ -125,6 +127,9 @@ int alwan_ciecam02_inverse(alwan_xyz *xyz_out,
         return ALWAN_E_DIVZERO;
     }
 
+    alwan_ciecam02_correlates tmp = *correlates;
+    ALWAN_DENORM_CIECAM02(&tmp);
+
     alwan_scalar F, c, Nc;
     get_surround_params(vc->surround, &F, &c, &Nc);
 
@@ -134,7 +139,7 @@ int alwan_ciecam02_inverse(alwan_xyz *xyz_out,
         vc->white_xyz, CAM_M_CAT02, CAM_M_CAT02_INV, CAM_M_HPE, 1);
 
     *xyz_out = alwan_ciecam02_inverse_v(
-        correlates->J, correlates->C, correlates->h,
+        tmp.J, tmp.C, tmp.h,
         vc->white_xyz,
         F, c, Nc, p.D, p.FL, p.n, p.Nbb, p.Ncb, p.z, p.A_w);
 
@@ -177,6 +182,8 @@ int alwan_cam16_forward(alwan_cam16_correlates *out,
     out->M = result.M;
     out->H = result.H;
 
+    ALWAN_NORM_CAM16(out);
+
     return ALWAN_OK;
 }
 
@@ -196,6 +203,9 @@ int alwan_cam16_inverse(alwan_xyz *xyz_out,
         return ALWAN_E_DIVZERO;
     }
 
+    alwan_cam16_correlates tmp = *correlates;
+    ALWAN_DENORM_CAM16(&tmp);
+
     alwan_scalar F, c, Nc;
     get_cam16_surround_params(vc->surround, &F, &c, &Nc);
 
@@ -205,7 +215,7 @@ int alwan_cam16_inverse(alwan_xyz *xyz_out,
         vc->white_xyz, CAM_M_CAT16, CAM_M_CAT16_INV, CAM_M_CAT16, 0);
 
     *xyz_out = alwan_cam16_inverse_v(
-        correlates->J, correlates->C, correlates->h,
+        tmp.J, tmp.C, tmp.h,
         vc->white_xyz,
         F, c, Nc, p.D, p.FL, p.n, p.Nbb, p.Ncb, p.z, p.A_w);
 
@@ -222,7 +232,10 @@ int alwan_cam16_to_ucs(alwan_cam_jab *Jab_out,
         return ALWAN_E_INVALID;
     }
 
-    *Jab_out = alwan_cam16_to_ucs_v(correlates->J, correlates->M, correlates->h);
+    alwan_cam16_correlates tmp = *correlates;
+    ALWAN_DENORM_CAM16(&tmp);
+    *Jab_out = alwan_cam16_to_ucs_v(tmp.J, tmp.M, tmp.h);
+    ALWAN_NORM_CAM_JAB(Jab_out);
 
     return ALWAN_OK;
 }
@@ -237,8 +250,10 @@ int alwan_cam16_from_ucs(alwan_cam16_correlates *correlates_out,
         return ALWAN_E_INVALID;
     }
 
+    alwan_cam_jab tmp = *Jab;
+    ALWAN_DENORM_CAM_JAB(&tmp);
     alwan_cam16_v_correlates result = alwan_cam16_from_ucs_v(
-        Jab->J, Jab->a, Jab->b);
+        tmp.J, tmp.a, tmp.b);
 
     correlates_out->J = result.J;
     correlates_out->C = result.C;
@@ -247,6 +262,8 @@ int alwan_cam16_from_ucs(alwan_cam16_correlates *correlates_out,
     correlates_out->Q = result.Q;
     correlates_out->M = result.M;
     correlates_out->H = result.H;
+
+    ALWAN_NORM_CAM16(correlates_out);
 
     return ALWAN_OK;
 }
@@ -269,6 +286,8 @@ int alwan_cam18sl_forward(alwan_cam18sl_correlates *out,
     out->a = result.a;
     out->b = result.b;
 
+    ALWAN_NORM_CAM18SL(out);
+
     return ALWAN_OK;
 }
 
@@ -281,13 +300,16 @@ int alwan_cam18sl_inverse(alwan_xyz *xyz_out,
                            alwan_scalar Y_b) {
     if (!xyz_out || !correlates) return ALWAN_E_INVALID;
 
+    alwan_cam18sl_correlates tmp = *correlates;
+    ALWAN_DENORM_CAM18SL(&tmp);
+
     alwan_cam18sl_v_correlates vc;
-    vc.Q = correlates->Q;
-    vc.C = correlates->C;
-    vc.h = correlates->h;
-    vc.M = correlates->M;
-    vc.a = correlates->a;
-    vc.b = correlates->b;
+    vc.Q = tmp.Q;
+    vc.C = tmp.C;
+    vc.h = tmp.h;
+    vc.M = tmp.M;
+    vc.a = tmp.a;
+    vc.b = tmp.b;
 
     *xyz_out = alwan_cam18sl_inverse_v(vc, Y_b);
 
@@ -314,6 +336,8 @@ int alwan_cam20u_forward(alwan_cam20u_correlates *out,
     out->a = result.a;
     out->b = result.b;
 
+    ALWAN_NORM_CAM20U(out);
+
     return ALWAN_OK;
 }
 
@@ -327,14 +351,17 @@ int alwan_cam20u_inverse(alwan_xyz *xyz_out,
                           alwan_scalar L_a) {
     if (!xyz_out || !correlates) return ALWAN_E_INVALID;
 
+    alwan_cam20u_correlates tmp = *correlates;
+    ALWAN_DENORM_CAM20U(&tmp);
+
     alwan_cam20u_v_correlates vc;
-    vc.Q = correlates->Q;
-    vc.M = correlates->M;
-    vc.h = correlates->h;
-    vc.C = correlates->C;
-    vc.s = correlates->s;
-    vc.a = correlates->a;
-    vc.b = correlates->b;
+    vc.Q = tmp.Q;
+    vc.M = tmp.M;
+    vc.h = tmp.h;
+    vc.C = tmp.C;
+    vc.s = tmp.s;
+    vc.a = tmp.a;
+    vc.b = tmp.b;
 
     *xyz_out = alwan_cam20u_inverse_v(vc, Y_b, L_a);
 

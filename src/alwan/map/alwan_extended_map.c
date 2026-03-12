@@ -408,12 +408,21 @@ int alwan_rgb_to_hcl_map_interleave(alwan_scalar *hcl_out, alwan_scalar const *r
                           size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !hcl_out || count == 0) return ALWAN_E_INVALID;
 
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)hcl_out + i * out_stride);
-        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
-        alwan_hcl r = alwan_rgb_to_hcl_v(rgb);
-        out_ptr[0] = r.H; out_ptr[1] = r.C; out_ptr[2] = r.L;
+    size_t processed = 0;
+    while (processed < count) {
+        size_t tile = count - processed;
+        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
+        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
+        ALWAN_ALIGN(32) alwan_simd_lane d0[ALWAN_TILE_PIXELS], d1[ALWAN_TILE_PIXELS], d2[ALWAN_TILE_PIXELS];
+        alwan__load_tile_aos3(c0, c1, c2, rgb_in, processed, in_stride, tile);
+        for (size_t i = 0; i < tile; i++) {
+            alwan_rgb rgb = {(alwan_scalar)c0[i], (alwan_scalar)c1[i], (alwan_scalar)c2[i]};
+            alwan_hcl r = alwan_rgb_to_hcl_v(rgb);
+            d0[i] = (alwan_simd_lane)r.H; d1[i] = (alwan_simd_lane)r.C; d2[i] = (alwan_simd_lane)r.L;
+        }
+        ALWAN_MAP_NORM_AFFINE(d0, tile, 0.15915494309189533577, 0.5);
+        alwan__store_tile_aos3(hcl_out, processed, out_stride, d0, d1, d2, tile);
+        processed += tile;
     }
     return ALWAN_OK;
 }
@@ -422,12 +431,21 @@ int alwan_hcl_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *h
                           size_t count, size_t in_stride, size_t out_stride) {
     if (!hcl_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)hcl_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
-        alwan_hcl hcl = {in_ptr[0], in_ptr[1], in_ptr[2]};
-        alwan_rgb r = alwan_hcl_to_rgb_v(hcl);
-        out_ptr[0] = r.r; out_ptr[1] = r.g; out_ptr[2] = r.b;
+    size_t processed = 0;
+    while (processed < count) {
+        size_t tile = count - processed;
+        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
+        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
+        ALWAN_ALIGN(32) alwan_simd_lane d0[ALWAN_TILE_PIXELS], d1[ALWAN_TILE_PIXELS], d2[ALWAN_TILE_PIXELS];
+        alwan__load_tile_aos3(c0, c1, c2, hcl_in, processed, in_stride, tile);
+        ALWAN_MAP_NORM_AFFINE(c0, tile, 6.28318530717958647692, -3.14159265358979323846);
+        for (size_t i = 0; i < tile; i++) {
+            alwan_hcl hcl = {(alwan_scalar)c0[i], (alwan_scalar)c1[i], (alwan_scalar)c2[i]};
+            alwan_rgb r = alwan_hcl_to_rgb_v(hcl);
+            d0[i] = (alwan_simd_lane)r.r; d1[i] = (alwan_simd_lane)r.g; d2[i] = (alwan_simd_lane)r.b;
+        }
+        alwan__store_tile_aos3(rgb_out, processed, out_stride, d0, d1, d2, tile);
+        processed += tile;
     }
     return ALWAN_OK;
 }
@@ -440,12 +458,21 @@ int alwan_rgb_to_ihls_map_interleave(alwan_scalar *ihls_out, alwan_scalar const 
                            size_t count, size_t in_stride, size_t out_stride) {
     if (!rgb_in || !ihls_out || count == 0) return ALWAN_E_INVALID;
 
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)ihls_out + i * out_stride);
-        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
-        alwan_ihls r = alwan_rgb_to_ihls_v(rgb);
-        out_ptr[0] = r.H; out_ptr[1] = r.L; out_ptr[2] = r.S;
+    size_t processed = 0;
+    while (processed < count) {
+        size_t tile = count - processed;
+        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
+        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
+        ALWAN_ALIGN(32) alwan_simd_lane d0[ALWAN_TILE_PIXELS], d1[ALWAN_TILE_PIXELS], d2[ALWAN_TILE_PIXELS];
+        alwan__load_tile_aos3(c0, c1, c2, rgb_in, processed, in_stride, tile);
+        for (size_t i = 0; i < tile; i++) {
+            alwan_rgb rgb = {(alwan_scalar)c0[i], (alwan_scalar)c1[i], (alwan_scalar)c2[i]};
+            alwan_ihls r = alwan_rgb_to_ihls_v(rgb);
+            d0[i] = (alwan_simd_lane)r.H; d1[i] = (alwan_simd_lane)r.L; d2[i] = (alwan_simd_lane)r.S;
+        }
+        ALWAN_MAP_NORM_MUL(d0, tile, 0.15915494309189533577);
+        alwan__store_tile_aos3(ihls_out, processed, out_stride, d0, d1, d2, tile);
+        processed += tile;
     }
     return ALWAN_OK;
 }
@@ -454,12 +481,21 @@ int alwan_ihls_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *
                            size_t count, size_t in_stride, size_t out_stride) {
     if (!ihls_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
-    for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)ihls_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
-        alwan_ihls ihls = {in_ptr[0], in_ptr[1], in_ptr[2]};
-        alwan_rgb r = alwan_ihls_to_rgb_v(ihls);
-        out_ptr[0] = r.r; out_ptr[1] = r.g; out_ptr[2] = r.b;
+    size_t processed = 0;
+    while (processed < count) {
+        size_t tile = count - processed;
+        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
+        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
+        ALWAN_ALIGN(32) alwan_simd_lane d0[ALWAN_TILE_PIXELS], d1[ALWAN_TILE_PIXELS], d2[ALWAN_TILE_PIXELS];
+        alwan__load_tile_aos3(c0, c1, c2, ihls_in, processed, in_stride, tile);
+        ALWAN_MAP_NORM_MUL(c0, tile, 6.28318530717958647692);
+        for (size_t i = 0; i < tile; i++) {
+            alwan_ihls ihls = {(alwan_scalar)c0[i], (alwan_scalar)c1[i], (alwan_scalar)c2[i]};
+            alwan_rgb r = alwan_ihls_to_rgb_v(ihls);
+            d0[i] = (alwan_simd_lane)r.r; d1[i] = (alwan_simd_lane)r.g; d2[i] = (alwan_simd_lane)r.b;
+        }
+        alwan__store_tile_aos3(rgb_out, processed, out_stride, d0, d1, d2, tile);
+        processed += tile;
     }
     return ALWAN_OK;
 }

@@ -179,14 +179,17 @@ int alwan_rgb_to_ycbcr(alwan_ycbcr *ycbcr_out, alwan_rgb const *rgb, alwan_ycbcr
     alwan_scalar kr, kb;
     alwan__get_ycbcr_coeffs(standard, &kr, &kb);
     *ycbcr_out = alwan_rgb_to_ycbcr_kr_kb_v(*rgb, kr, kb);
+    ALWAN_NORM_YCBCR(ycbcr_out);
     return ALWAN_OK;
 }
 
 int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr_standard standard) {
     if (!ycbcr || !rgb_out) return ALWAN_E_INVALID;
+    alwan_ycbcr tmp = *ycbcr;
+    ALWAN_DENORM_YCBCR(&tmp);
     alwan_scalar kr, kb;
     alwan__get_ycbcr_coeffs(standard, &kr, &kb);
-    *rgb_out = alwan_ycbcr_to_rgb_kr_kb_v(*ycbcr, kr, kb);
+    *rgb_out = alwan_ycbcr_to_rgb_kr_kb_v(tmp, kr, kb);
     return ALWAN_OK;
 }
 
@@ -197,24 +200,33 @@ int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr
 int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb, int bit_depth) {
     if (!rgb || !yccbccrc_out) return ALWAN_E_INVALID;
     *yccbccrc_out = alwan_rgb_to_yccbccrc_v(*rgb, bit_depth);
+    ALWAN_NORM_YCCBCCRC(yccbccrc_out);
     return ALWAN_OK;
 }
 
 int alwan_yccbccrc_to_rgb(alwan_rgb *rgb_out, alwan_yccbccrc const *yccbccrc, int bit_depth) {
     if (!yccbccrc || !rgb_out) return ALWAN_E_INVALID;
-    *rgb_out = alwan_yccbccrc_to_rgb_v(*yccbccrc, bit_depth);
+    alwan_yccbccrc tmp = *yccbccrc;
+    ALWAN_DENORM_YCCBCCRC(&tmp);
+    *rgb_out = alwan_yccbccrc_to_rgb_v(tmp, bit_depth);
     return ALWAN_OK;
 }
 
 int alwan_ycbcr_full_to_legal(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_depth) {
     if (!in || !out) return ALWAN_E_INVALID;
-    *out = alwan_ycbcr_full_to_legal_v(*in, bit_depth);
+    alwan_ycbcr tmp = *in;
+    ALWAN_DENORM_YCBCR(&tmp);
+    *out = alwan_ycbcr_full_to_legal_v(tmp, bit_depth);
+    ALWAN_NORM_YCBCR(out);
     return ALWAN_OK;
 }
 
 int alwan_ycbcr_legal_to_full(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_depth) {
     if (!in || !out) return ALWAN_E_INVALID;
-    *out = alwan_ycbcr_legal_to_full_v(*in, bit_depth);
+    alwan_ycbcr tmp = *in;
+    ALWAN_DENORM_YCBCR(&tmp);
+    *out = alwan_ycbcr_legal_to_full_v(tmp, bit_depth);
+    ALWAN_NORM_YCBCR(out);
     return ALWAN_OK;
 }
 
@@ -225,12 +237,15 @@ int alwan_ycbcr_legal_to_full(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_d
 int alwan_rgb_to_ycocg(alwan_ycocg *ycocg_out, alwan_rgb const *rgb) {
     if (!rgb || !ycocg_out) return ALWAN_E_INVALID;
     *ycocg_out = alwan_rgb_to_ycocg_v(*rgb);
+    ALWAN_NORM_YCOCG(ycocg_out);
     return ALWAN_OK;
 }
 
 int alwan_ycocg_to_rgb(alwan_rgb *rgb_out, alwan_ycocg const *ycocg) {
     if (!ycocg || !rgb_out) return ALWAN_E_INVALID;
-    *rgb_out = alwan_ycocg_to_rgb_v(*ycocg);
+    alwan_ycocg tmp = *ycocg;
+    ALWAN_DENORM_YCOCG(&tmp);
+    *rgb_out = alwan_ycocg_to_rgb_v(tmp);
     return ALWAN_OK;
 }
 

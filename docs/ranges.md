@@ -8,6 +8,8 @@ This document describes the valid ranges for each channel of every color space s
 - `]-inf, +inf[` — Fully unbounded
 - **Typical** — Common working range (actual values may exceed)
 
+> **Compile-time range normalization:** When `ALWAN_NORMALIZE_RANGES=1` is defined, all bounded output channels are rescaled to `[0, 1]`. Unbounded channels are untouched. See [Range Normalization](#range-normalization) for details.
+
 ---
 
 ## Table of Contents
@@ -550,6 +552,100 @@ All CAMs output perceptual correlates that depend on viewing conditions.
 | **HSV/HSL** | Device | [0, 1] | [0, 1] | [0, 1] | normalized |
 | **HCL** | Specialized | [0, 1] | [0, +inf[ | [-pi, pi] | radians |
 | **IHLS** | Specialized | [0, 1] | [0, 1] | [0, 2pi[ | radians |
+
+---
+
+## Range Normalization
+
+When `ALWAN_NORMALIZE_RANGES=1` is defined at compile time (default is `0`), all **bounded** output channels produced by the API are rescaled to `[0, 1]`. Unbounded channels (like Lab `a`/`b`, chroma, saturation, brightness, colorfulness) are **not** affected.
+
+Normalization is applied at the API boundary (`.c` wrapper functions). Core `_v` functions are never modified — they always return native-range values.
+
+### Normalized Range Table
+
+The following table shows the native range and the normalized range for every channel that is affected:
+
+| Space | Channel | Native Range | Normalized Formula | Normalized Range |
+|-------|---------|-------------|-------------------|-----------------|
+| **Lab** | L | [0, 100] | L × 0.01 | [0, 1] |
+| **Luv** | L | [0, 100] | L × 0.01 | [0, 1] |
+| **LCh(ab)** | L | [0, 100] | L × 0.01 | [0, 1] |
+| **LCh(ab)** | h | [0, 360) | h / 360 | [0, 1) |
+| **LCh(uv)** | L | [0, 100] | L × 0.01 | [0, 1] |
+| **LCh(uv)** | h | [0, 360) | h / 360 | [0, 1) |
+| **Oklch** | h | [-π, π] | (h + π) / (2π) | [0, 1] |
+| **JzCzhz** | hz | [-π, π] | (hz + π) / (2π) | [0, 1] |
+| **IPTch** | h | [-π, π] | (h + π) / (2π) | [0, 1] |
+| **YCbCr** | Cb | [-0.5, 0.5] | Cb + 0.5 | [0, 1] |
+| **YCbCr** | Cr | [-0.5, 0.5] | Cr + 0.5 | [0, 1] |
+| **YCoCg** | Co | [-0.5, 0.5] | Co + 0.5 | [0, 1] |
+| **YCoCg** | Cg | [-0.5, 0.5] | Cg + 0.5 | [0, 1] |
+| **YcCbcCrc** | Cbc | [-0.5, 0.5] | Cbc + 0.5 | [0, 1] |
+| **YcCbcCrc** | Crc | [-0.5, 0.5] | Crc + 0.5 | [0, 1] |
+| **HCL** | H | [-π, π] | (H + π) / (2π) | [0, 1] |
+| **IHLS** | H | [0, 2π) | H / (2π) | [0, 1) |
+| **DIN99** | L99 | [0, 100] | L99 × 0.01 | [0, 1] |
+| **Hunter Lab** | L | [0, 100] | L × 0.01 | [0, 1] |
+| **ProLab** | L | [0, 100] | L × 0.01 | [0, 1] |
+| **CAM Jab** | J | [0, 100] | J × 0.01 | [0, 1] |
+| **CIECAM02** | J | [0, 100] | J × 0.01 | [0, 1] |
+| **CIECAM02** | h | [0, 360) | h / 360 | [0, 1) |
+| **CIECAM02** | H | [0, 400] | H / 400 | [0, 1] |
+| **CAM16** | J | [0, 100] | J × 0.01 | [0, 1] |
+| **CAM16** | h | [0, 360) | h / 360 | [0, 1) |
+| **CAM16** | H | [0, 400] | H / 400 | [0, 1] |
+| **ZCAM** | Jz | [0, 100] | Jz × 0.01 | [0, 1] |
+| **ZCAM** | hz | [0, 360) | hz / 360 | [0, 1) |
+| **Hellwig2022** | J | [0, 100] | J × 0.01 | [0, 1] |
+| **Hellwig2022** | h | [0, 360) | h / 360 | [0, 1) |
+| **Hellwig2022** | H | [0, 400] | H / 400 | [0, 1] |
+| **Hunt** | J | [0, 100] | J × 0.01 | [0, 1] |
+| **Hunt** | h | [0, 360) | h / 360 | [0, 1) |
+| **Kim2009** | J | [0, 100] | J × 0.01 | [0, 1] |
+| **Kim2009** | h | [0, 360) | h / 360 | [0, 1) |
+| **LLAB** | L | [0, 100] | L × 0.01 | [0, 1] |
+| **LLAB** | h | [0, 360) | h / 360 | [0, 1) |
+| **ATD95** | H | [0, 360) | H / 360 | [0, 1) |
+| **RLAB** | L | [0, 100] | L × 0.01 | [0, 1] |
+| **RLAB** | h | [0, 360) | h / 360 | [0, 1) |
+| **Nayatani95** | L_star_N | [0, 100] | L_star_N × 0.01 | [0, 1] |
+| **Nayatani95** | theta | [0, 2π) | theta / (2π) | [0, 1) |
+| **CAM18sl** | h | [0, 360) | h / 360 | [0, 1) |
+| **CAM20u** | h | [0, 360) | h / 360 | [0, 1) |
+
+### Channels NOT affected by normalization
+
+The following channel types are **never** normalized (they remain in their native range regardless of `ALWAN_NORMALIZE_RANGES`):
+
+- **Unbounded a/b axes**: Lab a\*/b\*, Oklab a/b, Jzazbz az/bz, DIN99 a99/b99, ProLab a/b, Hunter Lab a/b, RLAB a/b, ICtCp Ct/Cp, IPT P/T, IgPgTg Pg/Tg, ICaCb Ca/Cb, CAM Jab a/b, UVW U/V, ATD95 A/T/D
+- **Unbounded chroma/saturation/brightness/colorfulness**: All C, s, Q, M channels in CAMs
+- **Spaces already in [0, 1]**: RGB, HSV, HSL, HSP, HSPLog, HSY, CMY, CMYK, HWB, Prismatic, Oklab L, IPT I, Jzazbz Jz, ICtCp I
+- **Semi-bounded**: XYZ, xyY Y, UCS, YCbCr Y, YCoCg Y, YcCbcCrc Yc, OSA-UCS all channels
+
+### Usage
+
+```c
+/* Compile with -DALWAN_NORMALIZE_RANGES=1 */
+
+alwan_lab lab;
+alwan_xyz_to_lab(&lab, &xyz, &white);
+/* With normalization ON:  lab.L is in [0, 1], lab.a and lab.b unchanged */
+/* With normalization OFF: lab.L is in [0, 100], as usual */
+
+alwan_lch lch;
+alwan_xyz_to_lch(&lch, &xyz, &white);
+/* With normalization ON:  lch.L in [0, 1], lch.C unchanged, lch.h in [0, 1) */
+/* With normalization OFF: lch.L in [0, 100], lch.C unchanged, lch.h in [0, 360) */
+```
+
+Inverse functions accept normalized input and denormalize before processing:
+```c
+alwan_lab lab = {0.5, 25.0, -15.0};  /* L=0.5 means L*=50 when normalized */
+alwan_xyz xyz;
+alwan_lab_to_xyz(&xyz, &lab, &white); /* Automatically denormalizes L */
+```
+
+Delta-E functions denormalize both inputs before computing the metric, so results are identical regardless of the normalization flag.
 
 ---
 

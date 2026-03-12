@@ -76,5 +76,7 @@ int alwan_llab_forward(
     out->h  = v.h;
     out->s  = v.s;
 
+    ALWAN_NORM_LLAB(out);
+
     return ALWAN_OK;
 }

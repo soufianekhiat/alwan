@@ -77,6 +77,8 @@ int alwan_hunt_forward(alwan_hunt_correlates *out,
     out->Q = result.Q;
     out->M = result.M;
 
+    ALWAN_NORM_HUNT(out);
+
     return 0;
 }
 

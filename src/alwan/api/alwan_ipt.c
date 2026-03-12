@@ -26,8 +26,11 @@ void alwan_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *ipt) {
 
 void alwan_ipt_to_iptch(alwan_iptch *iptch, alwan_ipt const *ipt) {
     *iptch = alwan_ipt_to_iptch_v(*ipt);
+    ALWAN_NORM_IPTCH(iptch);
 }
 
 void alwan_iptch_to_ipt(alwan_ipt *ipt, alwan_iptch const *iptch) {
-    *ipt = alwan_iptch_to_ipt_v(*iptch);
+    alwan_iptch tmp = *iptch;
+    ALWAN_DENORM_IPTCH(&tmp);
+    *ipt = alwan_iptch_to_ipt_v(tmp);
 }

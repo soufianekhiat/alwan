@@ -82,6 +82,8 @@ int alwan_zcam_forward(alwan_zcam_correlates *out,
     out->Kz = v.Kz;
     out->Wz = v.Wz;
 
+    ALWAN_NORM_ZCAM(out);
+
     return 0;
 }
 
@@ -96,21 +98,24 @@ int alwan_zcam_inverse(alwan_xyz *xyz,
         return -1;
     }
 
+    alwan_zcam_correlates tmp = *correlates;
+    ALWAN_DENORM_ZCAM(&tmp);
+
     /* Resolve surround enum to scalar parameters */
     alwan_scalar Fs, c, Nc, F;
     get_zcam_surround_params(vc->surround, &Fs, &c, &Nc, &F);
 
     /* Build value-type correlates from public struct */
     alwan_zcam_v_correlates v;
-    v.Jz = correlates->Jz;
-    v.Cz = correlates->Cz;
-    v.hz = correlates->hz;
-    v.Qz = correlates->Qz;
-    v.Mz = correlates->Mz;
-    v.Sz = correlates->Sz;
-    v.Vz = correlates->Vz;
-    v.Kz = correlates->Kz;
-    v.Wz = correlates->Wz;
+    v.Jz = tmp.Jz;
+    v.Cz = tmp.Cz;
+    v.hz = tmp.hz;
+    v.Qz = tmp.Qz;
+    v.Mz = tmp.Mz;
+    v.Sz = tmp.Sz;
+    v.Vz = tmp.Vz;
+    v.Kz = tmp.Kz;
+    v.Wz = tmp.Wz;
 
     /* Delegate to value-returning core */
     *xyz = alwan_zcam_inverse_v(
@@ -131,11 +136,15 @@ int alwan_zcam_to_ucs(alwan_jzazbz *Jab_out,
         return -1;
     }
 
+    /* Denormalize input correlates */
+    alwan_zcam_correlates tmp = *correlates;
+    ALWAN_DENORM_ZCAM(&tmp);
+
     /* Build value-type correlates (only Jz, Mz, hz needed) */
     alwan_zcam_v_correlates v;
-    v.Jz = correlates->Jz;
-    v.Mz = correlates->Mz;
-    v.hz = correlates->hz;
+    v.Jz = tmp.Jz;
+    v.Mz = tmp.Mz;
+    v.hz = tmp.hz;
     v.Cz = ALWAN_LITERAL(0.0);
     v.Qz = ALWAN_LITERAL(0.0);
     v.Sz = ALWAN_LITERAL(0.0);

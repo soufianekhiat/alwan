@@ -178,6 +178,7 @@ int alwan_oklab_to_oklch_map_interleave(alwan_scalar *oklch_out, alwan_scalar co
             c0[i] = (alwan_simd_lane)r.L; c1[i] = (alwan_simd_lane)r.C; c2[i] = (alwan_simd_lane)r.h;
         }
 
+        ALWAN_MAP_NORM_AFFINE(c2, tile, 0.15915494309189533577, 0.5);
         alwan__store_tile_aos3(oklch_out, processed, out_stride, c0, c1, c2, tile);
         processed += tile;
     }
@@ -205,6 +206,7 @@ int alwan_oklch_to_oklab_map_interleave(alwan_scalar *oklab_out, alwan_scalar co
         if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
         ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
         alwan__load_tile_aos3(c0, c1, c2, oklch_in, processed, in_stride, tile);
+        ALWAN_MAP_NORM_AFFINE(c2, tile, 6.28318530717958647692, -3.14159265358979323846);
 
         size_t i = 0;
         for (; i + W <= tile; i += W) {
@@ -310,6 +312,7 @@ int alwan_oklab_to_oklch_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1
             c0[i] = (alwan_simd_lane)r.L; c1[i] = (alwan_simd_lane)r.C; c2[i] = (alwan_simd_lane)r.h;
         }
 
+        ALWAN_MAP_NORM_AFFINE(c2, tile, 0.15915494309189533577, 0.5);
         alwan__store_tile_planar3(out_ch0, out_ch1, out_ch2, processed, out_stride, c0, c1, c2, tile);
         processed += tile;
     }
@@ -342,6 +345,7 @@ int alwan_oklch_to_oklab_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1
         if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
         ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
         alwan__load_tile_planar3(c0, c1, c2, in_ch0, in_ch1, in_ch2, processed, in_stride, tile);
+        ALWAN_MAP_NORM_AFFINE(c2, tile, 6.28318530717958647692, -3.14159265358979323846);
 
         size_t i = 0;
         for (; i + W <= tile; i += W) {

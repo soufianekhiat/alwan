@@ -26,8 +26,11 @@ void alwan_oklab_to_xyz(alwan_xyz *xyz, alwan_oklab const *oklab) {
 
 void alwan_oklab_to_oklch(alwan_oklch *oklch, alwan_oklab const *oklab) {
     *oklch = alwan_oklab_to_oklch_v(*oklab);
+    ALWAN_NORM_OKLCH(oklch);
 }
 
 void alwan_oklch_to_oklab(alwan_oklab *oklab, alwan_oklch const *oklch) {
-    *oklab = alwan_oklch_to_oklab_v(*oklch);
+    alwan_oklch tmp = *oklch;
+    ALWAN_DENORM_OKLCH(&tmp);
+    *oklab = alwan_oklch_to_oklab_v(tmp);
 }

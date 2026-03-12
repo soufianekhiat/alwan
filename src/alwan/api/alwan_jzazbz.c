@@ -27,8 +27,11 @@ void alwan_jzazbz_to_xyz(alwan_xyz *xyz, alwan_jzazbz const *jzazbz) {
 
 void alwan_jzazbz_to_jzczhz(alwan_jzczhz *jzczhz, alwan_jzazbz const *jzazbz) {
     *jzczhz = alwan_jzazbz_to_jzczhz_v(*jzazbz);
+    ALWAN_NORM_JZCZHZ(jzczhz);
 }
 
 void alwan_jzczhz_to_jzazbz(alwan_jzazbz *jzazbz, alwan_jzczhz const *jzczhz) {
-    *jzazbz = alwan_jzczhz_to_jzazbz_v(*jzczhz);
+    alwan_jzczhz tmp = *jzczhz;
+    ALWAN_DENORM_JZCZHZ(&tmp);
+    *jzazbz = alwan_jzczhz_to_jzazbz_v(tmp);
 }

@@ -108,6 +108,8 @@ int alwan_kim2009_forward(
     out->C = result.C;
     out->h = result.h;
 
+    ALWAN_NORM_KIM2009(out);
+
     return ALWAN_OK;
 }
 
@@ -124,6 +126,9 @@ int alwan_kim2009_inverse(
         return ALWAN_E_INVALID;
     }
 
+    alwan_kim2009_correlates tmp = *correlates;
+    ALWAN_DENORM_KIM2009(&tmp);
+
     /* Resolve viewing condition parameters */
     alwan_scalar F, c, Nc;
     alwan_scalar Y_w = vc->white_xyz.y;
@@ -136,9 +141,9 @@ int alwan_kim2009_inverse(
 
     /* Build core correlates struct */
     alwan_kim2009_v_correlates v_correlates;
-    v_correlates.J = correlates->J;
-    v_correlates.C = correlates->C;
-    v_correlates.h = correlates->h;
+    v_correlates.J = tmp.J;
+    v_correlates.C = tmp.C;
+    v_correlates.h = tmp.h;
 
     /* Delegate to core */
     *out = alwan_kim2009_inverse_v(

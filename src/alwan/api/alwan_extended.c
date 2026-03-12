@@ -32,11 +32,14 @@ void alwan_prismatic_to_rgb(alwan_rgb *rgb, alwan_prismatic const *prismatic) {
 void alwan_rgb_to_hcl(alwan_hcl *hcl, alwan_rgb const *rgb) {
     if (!hcl || !rgb) return;
     *hcl = alwan_rgb_to_hcl_v(*rgb);
+    ALWAN_NORM_HCL(hcl);
 }
 
 void alwan_hcl_to_rgb(alwan_rgb *rgb, alwan_hcl const *hcl) {
     if (!rgb || !hcl) return;
-    *rgb = alwan_hcl_to_rgb_v(*hcl);
+    alwan_hcl tmp = *hcl;
+    ALWAN_DENORM_HCL(&tmp);
+    *rgb = alwan_hcl_to_rgb_v(tmp);
 }
 
 /* ================================================================
@@ -46,11 +49,14 @@ void alwan_hcl_to_rgb(alwan_rgb *rgb, alwan_hcl const *hcl) {
 void alwan_rgb_to_ihls(alwan_ihls *ihls, alwan_rgb const *rgb) {
     if (!ihls || !rgb) return;
     *ihls = alwan_rgb_to_ihls_v(*rgb);
+    ALWAN_NORM_IHLS(ihls);
 }
 
 void alwan_ihls_to_rgb(alwan_rgb *rgb, alwan_ihls const *ihls) {
     if (!rgb || !ihls) return;
-    *rgb = alwan_ihls_to_rgb_v(*ihls);
+    alwan_ihls tmp = *ihls;
+    ALWAN_DENORM_IHLS(&tmp);
+    *rgb = alwan_ihls_to_rgb_v(tmp);
 }
 
 /* ================================================================

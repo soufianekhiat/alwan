@@ -78,6 +78,8 @@ int alwan_hellwig2022_forward(alwan_hellwig2022_correlates *out,
     out->M = v.M;
     out->H = v.H;
 
+    ALWAN_NORM_HELLWIG2022(out);
+
     return ALWAN_OK;
 }
 
@@ -92,15 +94,18 @@ int alwan_hellwig2022_inverse(alwan_xyz *xyz_out,
         return ALWAN_E_INVALID;
     }
 
+    alwan_hellwig2022_correlates tmp = *correlates;
+    ALWAN_DENORM_HELLWIG2022(&tmp);
+
     /* Resolve surround enum to scalar parameters */
     alwan_scalar F, c, Nc;
     get_surround_params(vc->surround, &F, &c, &Nc);
 
     /* Build core correlates from public correlates (only J, C, h needed for inverse) */
     alwan_hellwig2022_v_correlates v_corr;
-    v_corr.J = correlates->J;
-    v_corr.C = correlates->C;
-    v_corr.h = correlates->h;
+    v_corr.J = tmp.J;
+    v_corr.C = tmp.C;
+    v_corr.h = tmp.h;
     v_corr.s = ALWAN_LITERAL(0.0);
     v_corr.Q = ALWAN_LITERAL(0.0);
     v_corr.M = ALWAN_LITERAL(0.0);
