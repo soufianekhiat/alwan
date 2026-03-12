@@ -10,6 +10,7 @@
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
+#include "../core/alwan_core.h"
 #include "../core/alwan_convenience_core.h"
 
 /* ----------------------------------------------------------------
@@ -41,6 +42,38 @@ int alwan_rgb_to_hsl(alwan_hsl *hsl_out, alwan_rgb const *rgb) {
 int alwan_hsl_to_rgb(alwan_rgb *rgb_out, alwan_hsl const *hsl) {
     if (!hsl || !rgb_out) return ALWAN_E_INVALID;
     *rgb_out = alwan_hsl_to_rgb_v(*hsl);
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * Linear sRGB <-> HSV
+ * ---------------------------------------------------------------- */
+
+int alwan_linear_srgb_to_hsv(alwan_hsv *hsv_out, alwan_rgb const *rgb) {
+    if (!rgb || !hsv_out) return ALWAN_E_INVALID;
+    *hsv_out = alwan_linear_srgb_to_hsv_v(*rgb);
+    return ALWAN_OK;
+}
+
+int alwan_hsv_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsv const *hsv) {
+    if (!hsv || !rgb_out) return ALWAN_E_INVALID;
+    *rgb_out = alwan_hsv_to_linear_srgb_v(*hsv);
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * Linear sRGB <-> HSL
+ * ---------------------------------------------------------------- */
+
+int alwan_linear_srgb_to_hsl(alwan_hsl *hsl_out, alwan_rgb const *rgb) {
+    if (!rgb || !hsl_out) return ALWAN_E_INVALID;
+    *hsl_out = alwan_linear_srgb_to_hsl_v(*rgb);
+    return ALWAN_OK;
+}
+
+int alwan_hsl_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsl const *hsl) {
+    if (!hsl || !rgb_out) return ALWAN_E_INVALID;
+    *rgb_out = alwan_hsl_to_linear_srgb_v(*hsl);
     return ALWAN_OK;
 }
 

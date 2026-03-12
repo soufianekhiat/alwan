@@ -57,6 +57,8 @@ ALWAN_INLINE alwan_rgb alwan_ycocg_to_rgb_v(alwan_ycocg ycocg) {
 
 /* ----------------------------------------------------------------
  * RGB <-> HSV (value-returning)
+ * Operates on encoded (display-referred) sRGB values in [0,1].
+ * For linear input, apply alwan_srgb_oetf first.
  * Hue in [0, 1] (0 = 0 degrees, 1 = 360 degrees)
  * ---------------------------------------------------------------- */
 
@@ -142,6 +144,8 @@ ALWAN_INLINE alwan_rgb alwan_hsv_to_rgb_v(alwan_hsv hsv) {
 
 /* ----------------------------------------------------------------
  * RGB <-> HSL (value-returning)
+ * Operates on encoded (display-referred) sRGB values in [0,1].
+ * For linear input, apply alwan_srgb_oetf first.
  * Hue in [0, 1] (0 = 0 degrees, 1 = 360 degrees)
  * ---------------------------------------------------------------- */
 
@@ -480,5 +484,56 @@ ALWAN_INLINE alwan_rgb alwan_hwb_to_rgb_v(alwan_hwb hwb) {
     alwan_hsv hsv = alwan_hwb_to_hsv_v(hwb);
     return alwan_hsv_to_rgb_v(hsv);
 }
+
+/* ----------------------------------------------------------------
+ * Linear sRGB <-> HSV (value-returning)
+ * Chains sRGB OETF/EOTF with HSV conversion.
+ * Input/output is linear (scene-referred) sRGB.
+ * Requires alwan_core.h for alwan_srgb_oetf / alwan_srgb_eotf.
+ * ---------------------------------------------------------------- */
+
+#ifdef ALWAN_CORE_H
+
+ALWAN_INLINE alwan_hsv alwan_linear_srgb_to_hsv_v(alwan_rgb linear) {
+    alwan_rgb encoded;
+    encoded.r = alwan_srgb_oetf(linear.r);
+    encoded.g = alwan_srgb_oetf(linear.g);
+    encoded.b = alwan_srgb_oetf(linear.b);
+    return alwan_rgb_to_hsv_v(encoded);
+}
+
+ALWAN_INLINE alwan_rgb alwan_hsv_to_linear_srgb_v(alwan_hsv hsv) {
+    alwan_rgb encoded = alwan_hsv_to_rgb_v(hsv);
+    alwan_rgb linear;
+    linear.r = alwan_srgb_eotf(encoded.r);
+    linear.g = alwan_srgb_eotf(encoded.g);
+    linear.b = alwan_srgb_eotf(encoded.b);
+    return linear;
+}
+
+/* ----------------------------------------------------------------
+ * Linear sRGB <-> HSL (value-returning)
+ * Chains sRGB OETF/EOTF with HSL conversion.
+ * Input/output is linear (scene-referred) sRGB.
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_hsl alwan_linear_srgb_to_hsl_v(alwan_rgb linear) {
+    alwan_rgb encoded;
+    encoded.r = alwan_srgb_oetf(linear.r);
+    encoded.g = alwan_srgb_oetf(linear.g);
+    encoded.b = alwan_srgb_oetf(linear.b);
+    return alwan_rgb_to_hsl_v(encoded);
+}
+
+ALWAN_INLINE alwan_rgb alwan_hsl_to_linear_srgb_v(alwan_hsl hsl) {
+    alwan_rgb encoded = alwan_hsl_to_rgb_v(hsl);
+    alwan_rgb linear;
+    linear.r = alwan_srgb_eotf(encoded.r);
+    linear.g = alwan_srgb_eotf(encoded.g);
+    linear.b = alwan_srgb_eotf(encoded.b);
+    return linear;
+}
+
+#endif /* ALWAN_CORE_H */
 
 #endif /* ALWAN_CONVENIENCE_CORE_H */

@@ -72,6 +72,7 @@ add_executable(
   68_ohno_contrast_dicom.c
   69_map_validation.c
   70_planar_map.c
+  71_linear_srgb_hsv_hsl.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

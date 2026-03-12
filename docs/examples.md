@@ -869,6 +869,56 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 }
 ```
 
+### HLSL — Linear sRGB to HSV/HSL Round-Trip
+
+`alwan_rgb_to_hsv_v` and `alwan_hsl_to_rgb_v` operate on **encoded (display-referred) sRGB** values in [0,1] — this is the traditional definition where HSV/HSL hue, saturation and lightness match what a user sees on screen. Decode with `alwan_srgb_eotf` first if your input is linear.
+
+```hlsl
+#include "alwan_hlsl.h"
+#include "core/alwan_core.h"
+#include "core/alwan_convenience_core.h"
+
+Texture2D<float4> InputTex  : register(t0);
+RWTexture2D<float4> OutputTex : register(u0);
+
+cbuffer Params : register(b0)
+{
+    float saturation_mult;   /* e.g. 1.2 for +20% */
+    float lightness_offset;  /* e.g. 0.05 for slight lift */
+};
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float4 px = InputTex[id.xy];
+
+    /* Input is linear sRGB from the renderer.
+     * Encode to display sRGB first — HSV/HSL are defined on encoded values. */
+    alwan_rgb encoded;
+    encoded.r = alwan_srgb_oetf(px.r);
+    encoded.g = alwan_srgb_oetf(px.g);
+    encoded.b = alwan_srgb_oetf(px.b);
+
+    /* Encoded sRGB -> HSL: adjust saturation and lightness */
+    alwan_hsl hsl = alwan_rgb_to_hsl_v(encoded);  /* operates on encoded sRGB [0,1] */
+    hsl.s = alwan_clamp(hsl.s * saturation_mult, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    hsl.l = alwan_clamp(hsl.l + lightness_offset, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    encoded = alwan_hsl_to_rgb_v(hsl);             /* returns encoded sRGB [0,1] */
+
+    /* Decode back to linear for the rest of the pipeline */
+    alwan_rgb linear_out;
+    linear_out.r = alwan_srgb_eotf(encoded.r);
+    linear_out.g = alwan_srgb_eotf(encoded.g);
+    linear_out.b = alwan_srgb_eotf(encoded.b);
+
+    OutputTex[id.xy] = float4(linear_out.r, linear_out.g, linear_out.b, px.a);
+}
+```
+
+Same pattern for HSV — use `alwan_rgb_to_hsv_v` / `alwan_hsv_to_rgb_v` on encoded sRGB to adjust hue (`.h`, range [0,1] mapping to [0°,360°]) and value (`.v`).
+
+---
+
 ### GLSL — Fragment Shader OkLab Hue Shift
 
 The same core headers work in GLSL. Include `alwan_glsl.h` instead.

@@ -2490,13 +2490,25 @@ int alwan_nayatani95_forward(alwan_nayatani95_correlates *out,
  * M9: Convenience Color Models (HSV, HSL, CMY, CMYK, YCbCr)
  * ---------------------------------------------------------------- */
 
-/* RGB <-> HSV conversions (all values in [0, 1]) */
+/* RGB <-> HSV conversions (all values in [0, 1])
+ * Operates on encoded (display-referred) sRGB. For linear input, apply sRGB OETF first. */
 int alwan_rgb_to_hsv(alwan_hsv *hsv_out, alwan_rgb const *rgb);
 int alwan_hsv_to_rgb(alwan_rgb *rgb_out, alwan_hsv const *hsv);
 
-/* RGB <-> HSL conversions (all values in [0, 1]) */
+/* RGB <-> HSL conversions (all values in [0, 1])
+ * Operates on encoded (display-referred) sRGB. For linear input, apply sRGB OETF first. */
 int alwan_rgb_to_hsl(alwan_hsl *hsl_out, alwan_rgb const *rgb);
 int alwan_hsl_to_rgb(alwan_rgb *rgb_out, alwan_hsl const *hsl);
+
+/* Linear sRGB <-> HSV conversions
+ * Applies sRGB OETF/EOTF internally so the caller works in linear light. */
+int alwan_linear_srgb_to_hsv(alwan_hsv *hsv_out, alwan_rgb const *rgb);
+int alwan_hsv_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsv const *hsv);
+
+/* Linear sRGB <-> HSL conversions
+ * Applies sRGB OETF/EOTF internally so the caller works in linear light. */
+int alwan_linear_srgb_to_hsl(alwan_hsl *hsl_out, alwan_rgb const *rgb);
+int alwan_hsl_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsl const *hsl);
 
 /* RGB <-> CMY conversions (all values in [0, 1]) */
 int alwan_rgb_to_cmy(alwan_cmy *cmy_out, alwan_rgb const *rgb);
@@ -2570,6 +2582,46 @@ int alwan_rgb_to_hsl_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              void const *in, alwan_pixel_format in_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
 int alwan_hsl_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+
+/* Map linear sRGB <-> HSV conversions */
+int alwan_linear_srgb_to_hsv_map_interleave(alwan_scalar *hsv_out,
+                          alwan_scalar const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+int alwan_hsv_to_linear_srgb_map_interleave(alwan_scalar *rgb_out,
+                          alwan_scalar const *hsv_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+/* Map linear sRGB <-> HSL conversions */
+int alwan_linear_srgb_to_hsl_map_interleave(alwan_scalar *hsl_out,
+                          alwan_scalar const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+int alwan_hsl_to_linear_srgb_map_interleave(alwan_scalar *rgb_out,
+                          alwan_scalar const *hsl_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+
+/* Typed linear sRGB <-> HSV/HSL map functions (_ex variants) */
+int alwan_linear_srgb_to_hsv_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsv_to_linear_srgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_linear_srgb_to_hsl_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
+                             void const *in, alwan_pixel_format in_fmt,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsl_to_linear_srgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              void const *in, alwan_pixel_format in_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
 

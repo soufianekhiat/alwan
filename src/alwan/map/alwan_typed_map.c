@@ -108,6 +108,15 @@ ALWAN_MAP3_EX_STATUS(alwan_rgb_to_hsl_map_interleave_ex, alwan_rgb, alwan_hsl, a
 ALWAN_MAP3_EX_STATUS(alwan_hsl_to_rgb_map_interleave_ex, alwan_hsl, alwan_rgb, alwan_hsl_to_rgb, h,s,l, r,g,b)
 
 /* ----------------------------------------------------------------
+ * Linear sRGB <-> HSV/HSL _ex
+ * ---------------------------------------------------------------- */
+
+ALWAN_MAP3_EX_STATUS(alwan_linear_srgb_to_hsv_map_interleave_ex, alwan_rgb, alwan_hsv, alwan_linear_srgb_to_hsv, r,g,b, h,s,v)
+ALWAN_MAP3_EX_STATUS(alwan_hsv_to_linear_srgb_map_interleave_ex, alwan_hsv, alwan_rgb, alwan_hsv_to_linear_srgb, h,s,v, r,g,b)
+ALWAN_MAP3_EX_STATUS(alwan_linear_srgb_to_hsl_map_interleave_ex, alwan_rgb, alwan_hsl, alwan_linear_srgb_to_hsl, r,g,b, h,s,l)
+ALWAN_MAP3_EX_STATUS(alwan_hsl_to_linear_srgb_map_interleave_ex, alwan_hsl, alwan_rgb, alwan_hsl_to_linear_srgb, h,s,l, r,g,b)
+
+/* ----------------------------------------------------------------
  * Convenience extra _ex (CMY, YCoCg, HWB - using _v core functions)
  * ---------------------------------------------------------------- */
 
