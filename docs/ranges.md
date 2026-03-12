@@ -8,7 +8,7 @@ This document describes the valid ranges for each channel of every color space s
 - `]-inf, +inf[` — Fully unbounded
 - **Typical** — Common working range (actual values may exceed)
 
-> **Compile-time range normalization:** When `ALWAN_NORMALIZE_RANGES=1` is defined, all bounded output channels are rescaled to `[0, 1]`. Unbounded channels are untouched. See [Range Normalization](#range-normalization) for details.
+> **Compile-time range normalization:** `ALWAN_NORMALIZE_RANGES` is **enabled by default** (`1`). All bounded output channels are rescaled to `[0, 1]`. Unbounded channels are untouched. Define `ALWAN_NORMALIZE_RANGES=0` to use original mathematical ranges. See [Range Normalization](#range-normalization) for details.
 
 ---
 
@@ -557,7 +557,7 @@ All CAMs output perceptual correlates that depend on viewing conditions.
 
 ## Range Normalization
 
-When `ALWAN_NORMALIZE_RANGES=1` is defined at compile time (default is `0`), all **bounded** output channels produced by the API are rescaled to `[0, 1]`. Unbounded channels (like Lab `a`/`b`, chroma, saturation, brightness, colorfulness) are **not** affected.
+Range normalization is **enabled by default** (`ALWAN_NORMALIZE_RANGES=1`). All **bounded** output channels produced by the API are rescaled to `[0, 1]`. Unbounded channels (like Lab `a`/`b`, chroma, saturation, brightness, colorfulness) are **not** affected. Define `ALWAN_NORMALIZE_RANGES=0` at compile time to use original mathematical ranges.
 
 Normalization is applied at the API boundary (`.c` wrapper functions). Core `_v` functions are never modified — they always return native-range values.
 

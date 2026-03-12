@@ -98,6 +98,10 @@ namespace Alwan
             // Data embedding (default: embed)
             conf.Defines.Add("ALWAN_EMBED_DATA=1");
 
+            // Disable range normalization for tests (test references use native mathematical ranges).
+            // Library header defaults to ALWAN_NORMALIZE_RANGES=1 for end users.
+            conf.Defines.Add("ALWAN_NORMALIZE_RANGES=0");
+
             // Optimization settings
             if (target.Optimization == Optimization.Debug)
             {

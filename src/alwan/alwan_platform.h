@@ -858,7 +858,8 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  * output channels to [0, 1] and expect [0, 1] inputs for those
  * channels. Core (_v) functions are NOT affected.
  * Unbounded channels (e.g. Lab a*, chroma) are NOT rescaled.
- * Default: 0 (disabled — original mathematical ranges).
+ * Default: 1 (enabled — bounded channels normalized to [0, 1]).
+ * Define ALWAN_NORMALIZE_RANGES=0 before including alwan.h to disable.
  * ================================================================ */
 
 #ifndef ALWAN_NORMALIZE_RANGES

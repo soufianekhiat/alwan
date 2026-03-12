@@ -168,7 +168,10 @@ if(ALWAN_DISABLE_STRICT_ALIASING AND NOT MSVC)
   endif()
 endif()
 
+# Library defaults to ALWAN_NORMALIZE_RANGES=1 (set in alwan_platform.h).
+# Override to 0 when testing — test references use native mathematical ranges.
 if(BUILD_TESTING)
+  target_compile_definitions(alwan PRIVATE ALWAN_NORMALIZE_RANGES=0)
   add_subdirectory(tests)
   add_custom_target(
     check

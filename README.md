@@ -4,7 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/yourusername/alwan)
+[![Windows f64](https://github.com/soufianekhiat/alwan/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/soufianekhiat/alwan/actions/workflows/ci-windows.yml)
+[![Linux f64](https://github.com/soufianekhiat/alwan/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/soufianekhiat/alwan/actions/workflows/ci-linux.yml)
+[![macOS f64](https://github.com/soufianekhiat/alwan/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/soufianekhiat/alwan/actions/workflows/ci-macos.yml)
 
 A small, dependency-free colour science library in pure C11. Alwan provides production-ready colour math for applications that need precise, deterministic colour transformations without the overhead of external dependencies.
 

@@ -82,6 +82,7 @@ target_link_libraries(alwan_tests PRIVATE Alwan::alwan)
 target_include_directories(alwan_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/src/alwan")
 set_target_properties(alwan_tests PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED YES C_EXTENSIONS NO)
 
+target_compile_definitions(alwan_tests PRIVATE ALWAN_NORMALIZE_RANGES=0)
 if(MSVC)
   target_compile_definitions(alwan_tests PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX)
 endif()
