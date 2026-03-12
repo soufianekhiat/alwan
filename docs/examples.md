@@ -14,6 +14,8 @@ Practical examples demonstrating common Alwan use cases.
 6. [Custom Allocators](#custom-allocators)
 7. [Multi-threading](#multi-threading)
 8. [Error Handling](#error-handling)
+9. [Shader Usage (HLSL/GLSL)](#shader-usage-hlslglsl)
+10. [Library Integrations](#library-integrations)
 
 ---
 
@@ -665,6 +667,275 @@ int main(void) {
 
 ---
 
+## Shader Usage (HLSL/GLSL)
+
+Alwan's core headers (`*_core.h`) are GPU-compatible: all functions are `ALWAN_INLINE`, branchless via `ALWAN_SELECT`, and use portable math macros (`ALWAN_POW`, `ALWAN_SQRT`, `ALWAN_LITERAL`, etc.). Include the backend bootstrap (`alwan_hlsl.h` or `alwan_glsl.h`) followed by whichever `*_core.h` modules you need.
+
+In HLSL/GLSL, `alwan_scalar` = `float`, `alwan_vec3` maps to `float3`/`vec3`, `alwan_mat3x3` maps to `float3x3`/`mat3`, and all semantic types (`alwan_rgb`, `alwan_oklab`, ...) are plain structs with named members.
+
+---
+
+### HLSL — sRGB Decode + OkLab in a Compute Shader
+
+```hlsl
+#include "alwan_hlsl.h"
+#include "core/alwan_core.h"
+#include "core/alwan_oklab_core.h"
+#include "core/alwan_colorspace_core.h"
+
+RWTexture2D<float4> InputTex  : register(u0);
+RWTexture2D<float4> OutputTex : register(u1);
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float4 rgba = InputTex[id.xy];
+
+    /* sRGB EOTF per channel (encoded -> linear) */
+    alwan_rgb linear_rgb;
+    linear_rgb.r = alwan_srgb_eotf(rgba.r);
+    linear_rgb.g = alwan_srgb_eotf(rgba.g);
+    linear_rgb.b = alwan_srgb_eotf(rgba.b);
+
+    /* Linear sRGB -> XYZ (D65) via NPM (from CSV data) */
+    alwan_vec3 rgb_v = {{linear_rgb.r, linear_rgb.g, linear_rgb.b}};
+    ALWAN_CONSTEXPR alwan_mat3x3 srgb_npm = {{
+    #include "data/matrices/aces_rec709_to_xyz.csv"
+    }};
+    alwan_vec3 xyz_v = alwan_mat3_mulv_v(srgb_npm, rgb_v);
+
+    /* XYZ -> OkLab */
+    alwan_xyz xyz = {xyz_v.v[0], xyz_v.v[1], xyz_v.v[2]};
+    alwan_oklab lab = alwan_xyz_to_oklab_v(xyz);
+
+    OutputTex[id.xy] = float4(lab.L, lab.a, lab.b, rgba.a);
+}
+```
+
+### HLSL — AgX Tone Mapping (Full-Screen Pass)
+
+```hlsl
+#include "alwan_hlsl.h"
+#include "core/alwan_core.h"
+#include "core/alwan_view_core.h"
+
+Texture2D<float4> SceneHDR : register(t0);
+RWTexture2D<float4> Display : register(u0);
+
+/* AgX matrices from CSV data */
+ALWAN_CONSTEXPR alwan_mat3x3 AGX_INSET = {{
+#include "data/matrices/agx_inset.csv"
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 AGX_OUTSET = {{
+#include "data/matrices/agx_outset.csv"
+}};
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float4 hdr = SceneHDR[id.xy];
+    alwan_vec3 rgb = {{alwan_max(hdr.r, ALWAN_LITERAL(0.0)),
+                       alwan_max(hdr.g, ALWAN_LITERAL(0.0)),
+                       alwan_max(hdr.b, ALWAN_LITERAL(0.0))}};
+
+    /* 1. Inset matrix (rotate into AgX working space) */
+    alwan_vec3 agx = alwan_mat3_mulv_v(AGX_INSET, rgb);
+
+    /* 2. Log2 encoding to normalized [0,1] */
+    alwan_scalar min_ev = ALWAN_LITERAL(-12.47393);
+    alwan_scalar max_ev = ALWAN_LITERAL(4.026069);
+    agx.v[0] = alwan_agx_log_encode_v(agx.v[0], min_ev, max_ev);
+    agx.v[1] = alwan_agx_log_encode_v(agx.v[1], min_ev, max_ev);
+    agx.v[2] = alwan_agx_log_encode_v(agx.v[2], min_ev, max_ev);
+
+    /* 3. Sigmoid curve (per channel) */
+    agx.v[0] = alwan_agx_curve_v(agx.v[0]);
+    agx.v[1] = alwan_agx_curve_v(agx.v[1]);
+    agx.v[2] = alwan_agx_curve_v(agx.v[2]);
+
+    /* 4. Outset matrix (recover display-referred RGB) */
+    alwan_vec3 display_rgb = alwan_mat3_mulv_v(AGX_OUTSET, agx);
+
+    /* 5. sRGB OETF for display */
+    display_rgb.v[0] = alwan_srgb_oetf(alwan_clamp(display_rgb.v[0], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)));
+    display_rgb.v[1] = alwan_srgb_oetf(alwan_clamp(display_rgb.v[1], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)));
+    display_rgb.v[2] = alwan_srgb_oetf(alwan_clamp(display_rgb.v[2], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)));
+
+    Display[id.xy] = float4(display_rgb.v[0], display_rgb.v[1], display_rgb.v[2], hdr.a);
+}
+```
+
+### HLSL — Color Grading (LGG + White Balance)
+
+```hlsl
+#include "alwan_hlsl.h"
+#include "core/alwan_core.h"
+#include "core/alwan_color_correction_core.h"
+
+Texture2D<float4> LinearInput : register(t0);
+RWTexture2D<float4> GradedOutput : register(u0);
+
+cbuffer GradeParams : register(b0)
+{
+    float3 cb_lift;
+    float3 cb_gamma;
+    float3 cb_gain;
+    float3 cb_wb_multipliers;
+};
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float4 px = LinearInput[id.xy];
+
+    /* White balance (multiply by per-channel factors) */
+    alwan_rgb rgb = {px.r * cb_wb_multipliers.x,
+                     px.g * cb_wb_multipliers.y,
+                     px.b * cb_wb_multipliers.z};
+
+    /* Lift/Gamma/Gain (core function — branchless via ALWAN_SELECT) */
+    alwan_rgb lift  = {cb_lift.x,  cb_lift.y,  cb_lift.z};
+    alwan_rgb gamma = {cb_gamma.x, cb_gamma.y, cb_gamma.z};
+    alwan_rgb gain  = {cb_gain.x,  cb_gain.y,  cb_gain.z};
+
+    alwan_rgb graded = alwan_lgg_apply_v(rgb, lift, gamma, gain);
+
+    GradedOutput[id.xy] = float4(graded.r, graded.g, graded.b, px.a);
+}
+```
+
+### HLSL — PQ (HDR10) Encoding
+
+```hlsl
+#include "alwan_hlsl.h"
+#include "core/alwan_core.h"
+
+Texture2D<float4> LinearHDR : register(t0);
+RWTexture2D<float4> PQOutput : register(u0);
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float4 px = LinearHDR[id.xy];
+
+    /* Scene-linear (0-10000 cd/m2) -> PQ code values */
+    float r_pq = alwan_pq_oetf(px.r);
+    float g_pq = alwan_pq_oetf(px.g);
+    float b_pq = alwan_pq_oetf(px.b);
+
+    PQOutput[id.xy] = float4(r_pq, g_pq, b_pq, px.a);
+}
+```
+
+### HLSL — Color Vision Deficiency Simulation
+
+```hlsl
+#include "alwan_hlsl.h"
+#include "core/alwan_core.h"
+#include "core/alwan_vision_core.h"
+
+Texture2D<float4> InputTex : register(t0);
+RWTexture2D<float4> OutputTex : register(u0);
+
+cbuffer CVDParams : register(b0)
+{
+    float severity;  /* 0.0 = normal, 1.0 = full dichromacy */
+    int cvd_type;    /* 0 = protanopia, 1 = deuteranopia, 2 = tritanopia */
+};
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float4 px = InputTex[id.xy];
+
+    /* Decode sRGB -> linear */
+    alwan_rgb linear_rgb;
+    linear_rgb.r = alwan_srgb_eotf(px.r);
+    linear_rgb.g = alwan_srgb_eotf(px.g);
+    linear_rgb.b = alwan_srgb_eotf(px.b);
+
+    /* Simulate CVD on linear RGB (select type by constant buffer) */
+    alwan_rgb simulated = linear_rgb;
+    if (cvd_type == 0) simulated = alwan_simulate_protanopia_v(linear_rgb, severity);
+    if (cvd_type == 1) simulated = alwan_simulate_deuteranopia_v(linear_rgb, severity);
+    if (cvd_type == 2) simulated = alwan_simulate_tritanopia_v(linear_rgb, severity);
+
+    /* Re-encode to sRGB */
+    simulated.r = alwan_srgb_oetf(simulated.r);
+    simulated.g = alwan_srgb_oetf(simulated.g);
+    simulated.b = alwan_srgb_oetf(simulated.b);
+
+    OutputTex[id.xy] = float4(simulated.r, simulated.g, simulated.b, px.a);
+}
+```
+
+### GLSL — Fragment Shader OkLab Hue Shift
+
+The same core headers work in GLSL. Include `alwan_glsl.h` instead.
+
+```glsl
+#include "alwan_glsl.h"
+#include "core/alwan_core.h"
+#include "core/alwan_oklab_core.h"
+
+uniform sampler2D u_texture;
+uniform float u_hue_shift;  /* radians */
+
+in vec2 v_texcoord;
+out vec4 frag_color;
+
+void main()
+{
+    vec4 px = texture(u_texture, v_texcoord);
+
+    /* sRGB EOTF (decode) */
+    alwan_rgb linear_rgb;
+    linear_rgb.r = alwan_srgb_eotf(px.r);
+    linear_rgb.g = alwan_srgb_eotf(px.g);
+    linear_rgb.b = alwan_srgb_eotf(px.b);
+
+    /* Linear sRGB -> XYZ -> OkLab -> OkLCh */
+    alwan_vec3 rgb_v;
+    rgb_v.v[0] = linear_rgb.r;
+    rgb_v.v[1] = linear_rgb.g;
+    rgb_v.v[2] = linear_rgb.b;
+
+    ALWAN_CONSTEXPR alwan_mat3x3 srgb_npm = {{
+    #include "data/matrices/aces_rec709_to_xyz.csv"
+    }};
+    alwan_vec3 xyz_v = alwan_mat3_mulv_v(srgb_npm, rgb_v);
+
+    alwan_xyz xyz;
+    xyz.x = xyz_v.v[0]; xyz.y = xyz_v.v[1]; xyz.z = xyz_v.v[2];
+
+    alwan_oklab lab = alwan_xyz_to_oklab_v(xyz);
+    alwan_oklch lch = alwan_oklab_to_oklch_v(lab);
+
+    /* Shift hue */
+    lch.h = lch.h + u_hue_shift;
+
+    /* OkLCh -> OkLab -> XYZ -> linear sRGB */
+    lab = alwan_oklch_to_oklab_v(lch);
+    xyz = alwan_oklab_to_xyz_v(lab);
+
+    xyz_v.v[0] = xyz.x; xyz_v.v[1] = xyz.y; xyz_v.v[2] = xyz.z;
+
+    ALWAN_CONSTEXPR alwan_mat3x3 srgb_npm_inv = {{
+    #include "data/matrices/aces_xyz_to_rec709.csv"
+    }};
+    alwan_vec3 out_v = alwan_mat3_mulv_v(srgb_npm_inv, xyz_v);
+
+    /* Gamut clamp + sRGB OETF */
+    float r = alwan_srgb_oetf(alwan_clamp(out_v.v[0], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)));
+    float g = alwan_srgb_oetf(alwan_clamp(out_v.v[1], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)));
+    float b = alwan_srgb_oetf(alwan_clamp(out_v.v[2], ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)));
+
+    frag_color = vec4(r, g, b, px.a);
+}
+```
+
+---
+
 ## Library Integrations
 
 Real-world examples showing zero-copy interop between alwan and common image/media libraries, using alwan's stride-based batch API.
@@ -729,11 +1000,12 @@ int main(void)
     float *xyz = malloc(n * 3 * sizeof(float));
     float *jab = malloc(n * 3 * sizeof(float));
 
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     alwan_mat3x3 srgb_npm = {{
-        0.4123907993, 0.3575843394, 0.1804807884,
-        0.2126390059, 0.7151686788, 0.0721923154,
-        0.0193308187, 0.1191947798, 0.9505321522
+    #include "data/matrices/aces_rec709_to_xyz.csv"
     }};
+    ALWAN_DIAG_POP
 
     alwan_mat3_transform_map_interleave_ex(
         xyz, ALWAN_PIXEL_F32,
@@ -1438,11 +1710,12 @@ void process_pipeline(void *out_u16, const void *in_u8, size_t count)
                      count * 3, sizeof(alwan_scalar), sizeof(alwan_scalar));
 
     /* 3. Linear RGB -> XYZ -> Lab */
+    ALWAN_DIAG_PUSH
+    ALWAN_DIAG_DISABLE_FLOAT_CONV
     alwan_mat3x3 npm = {{
-        0.4123907993, 0.3575843394, 0.1804807884,
-        0.2126390059, 0.7151686788, 0.0721923154,
-        0.0193308187, 0.1191947798, 0.9505321522
+    #include "data/matrices/aces_rec709_to_xyz.csv"
     }};
+    ALWAN_DIAG_POP
     alwan_mat3_transform_map_interleave(rgb, &npm, rgb, count, s, s);
     alwan_xyz_to_lab_map_interleave(lab, rgb, &white, count, s, s);
 
