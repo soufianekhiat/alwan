@@ -816,12 +816,12 @@ int alwan_aces1_output_transform_inv(alwan_rgb *rgb_out,
  * ---------------------------------------------------------------- */
 
 /* ACES AP1 (ACEScg) primaries -- D60 white */
-static const alwan_scalar AP1_RED_x   = ALWAN_LITERAL(0.713);
-static const alwan_scalar AP1_RED_y   = ALWAN_LITERAL(0.293);
-static const alwan_scalar AP1_GREEN_x = ALWAN_LITERAL(0.165);
-static const alwan_scalar AP1_GREEN_y = ALWAN_LITERAL(0.830);
-static const alwan_scalar AP1_BLUE_x  = ALWAN_LITERAL(0.128);
-static const alwan_scalar AP1_BLUE_y  = ALWAN_LITERAL(0.044);
+static const alwan_scalar AP1_RED_x   = ALWAN_AP1_RED_x;
+static const alwan_scalar AP1_RED_y   = ALWAN_AP1_RED_y;
+static const alwan_scalar AP1_GREEN_x = ALWAN_AP1_GREEN_x;
+static const alwan_scalar AP1_GREEN_y = ALWAN_AP1_GREEN_y;
+static const alwan_scalar AP1_BLUE_x  = ALWAN_AP1_BLUE_x;
+static const alwan_scalar AP1_BLUE_y  = ALWAN_AP1_BLUE_y;
 static const alwan_scalar AP1_WHITE_x = ALWAN_LITERAL(0.32168);
 static const alwan_scalar AP1_WHITE_y = ALWAN_LITERAL(0.33767);
 
@@ -2025,30 +2025,30 @@ typedef struct {
 
 /* Standard primaries definitions */
 static void primaries_rec709(alwan_aces_primaries *p) {
-    p->red_x = ALWAN_LITERAL(0.64);   p->red_y = ALWAN_LITERAL(0.33);
-    p->green_x = ALWAN_LITERAL(0.30); p->green_y = ALWAN_LITERAL(0.60);
-    p->blue_x = ALWAN_LITERAL(0.15);  p->blue_y = ALWAN_LITERAL(0.06);
+    p->red_x = ALWAN_BT709_RED_x;     p->red_y = ALWAN_BT709_RED_y;
+    p->green_x = ALWAN_BT709_GREEN_x; p->green_y = ALWAN_BT709_GREEN_y;
+    p->blue_x = ALWAN_BT709_BLUE_x;   p->blue_y = ALWAN_BT709_BLUE_y;
     p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
 static void primaries_p3_d65(alwan_aces_primaries *p) {
-    p->red_x = ALWAN_LITERAL(0.680);  p->red_y = ALWAN_LITERAL(0.320);
-    p->green_x = ALWAN_LITERAL(0.265); p->green_y = ALWAN_LITERAL(0.690);
-    p->blue_x = ALWAN_LITERAL(0.150);  p->blue_y = ALWAN_LITERAL(0.060);
+    p->red_x = ALWAN_P3_RED_x;     p->red_y = ALWAN_P3_RED_y;
+    p->green_x = ALWAN_P3_GREEN_x; p->green_y = ALWAN_P3_GREEN_y;
+    p->blue_x = ALWAN_P3_BLUE_x;   p->blue_y = ALWAN_P3_BLUE_y;
     p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
 static void primaries_rec2020(alwan_aces_primaries *p) {
-    p->red_x = ALWAN_LITERAL(0.708);  p->red_y = ALWAN_LITERAL(0.292);
-    p->green_x = ALWAN_LITERAL(0.170); p->green_y = ALWAN_LITERAL(0.797);
-    p->blue_x = ALWAN_LITERAL(0.131);  p->blue_y = ALWAN_LITERAL(0.046);
+    p->red_x = ALWAN_BT2020_RED_x;     p->red_y = ALWAN_BT2020_RED_y;
+    p->green_x = ALWAN_BT2020_GREEN_x; p->green_y = ALWAN_BT2020_GREEN_y;
+    p->blue_x = ALWAN_BT2020_BLUE_x;   p->blue_y = ALWAN_BT2020_BLUE_y;
     p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
 static void primaries_p3_dci(alwan_aces_primaries *p) {
-    p->red_x = ALWAN_LITERAL(0.680);  p->red_y = ALWAN_LITERAL(0.320);
-    p->green_x = ALWAN_LITERAL(0.265); p->green_y = ALWAN_LITERAL(0.690);
-    p->blue_x = ALWAN_LITERAL(0.150);  p->blue_y = ALWAN_LITERAL(0.060);
+    p->red_x = ALWAN_P3_RED_x;     p->red_y = ALWAN_P3_RED_y;
+    p->green_x = ALWAN_P3_GREEN_x; p->green_y = ALWAN_P3_GREEN_y;
+    p->blue_x = ALWAN_P3_BLUE_x;   p->blue_y = ALWAN_P3_BLUE_y;
     /* DCI white point */
     p->white_x = ALWAN_LITERAL(0.314); p->white_y = ALWAN_LITERAL(0.351);
 }

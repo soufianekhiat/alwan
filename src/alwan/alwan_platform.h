@@ -431,6 +431,40 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_D65_Y  ALWAN_LITERAL(100.0)
 #define ALWAN_D65_Z  ALWAN_LITERAL(108.90577508)
 
+/* Standard RGB primaries (CIE xy chromaticity) */
+
+/* ITU-R BT.709 / sRGB primaries */
+#define ALWAN_BT709_RED_x     ALWAN_LITERAL(0.64)
+#define ALWAN_BT709_RED_y     ALWAN_LITERAL(0.33)
+#define ALWAN_BT709_GREEN_x   ALWAN_LITERAL(0.30)
+#define ALWAN_BT709_GREEN_y   ALWAN_LITERAL(0.60)
+#define ALWAN_BT709_BLUE_x    ALWAN_LITERAL(0.15)
+#define ALWAN_BT709_BLUE_y    ALWAN_LITERAL(0.06)
+
+/* ITU-R BT.2020 primaries */
+#define ALWAN_BT2020_RED_x    ALWAN_LITERAL(0.708)
+#define ALWAN_BT2020_RED_y    ALWAN_LITERAL(0.292)
+#define ALWAN_BT2020_GREEN_x  ALWAN_LITERAL(0.170)
+#define ALWAN_BT2020_GREEN_y  ALWAN_LITERAL(0.797)
+#define ALWAN_BT2020_BLUE_x   ALWAN_LITERAL(0.131)
+#define ALWAN_BT2020_BLUE_y   ALWAN_LITERAL(0.046)
+
+/* Display P3 / P3-D65 primaries */
+#define ALWAN_P3_RED_x        ALWAN_LITERAL(0.680)
+#define ALWAN_P3_RED_y        ALWAN_LITERAL(0.320)
+#define ALWAN_P3_GREEN_x      ALWAN_LITERAL(0.265)
+#define ALWAN_P3_GREEN_y      ALWAN_LITERAL(0.690)
+#define ALWAN_P3_BLUE_x       ALWAN_LITERAL(0.150)
+#define ALWAN_P3_BLUE_y       ALWAN_LITERAL(0.060)
+
+/* ACES AP1 / ACEScg primaries */
+#define ALWAN_AP1_RED_x       ALWAN_LITERAL(0.713)
+#define ALWAN_AP1_RED_y       ALWAN_LITERAL(0.293)
+#define ALWAN_AP1_GREEN_x     ALWAN_LITERAL(0.165)
+#define ALWAN_AP1_GREEN_y     ALWAN_LITERAL(0.830)
+#define ALWAN_AP1_BLUE_x      ALWAN_LITERAL(0.128)
+#define ALWAN_AP1_BLUE_y      ALWAN_LITERAL(0.044)
+
 /* ITU luma coefficients (kr, kg, kb)
  * kg = 1 - kr - kb for each standard */
 #define ALWAN_LUMA_KR_BT601   ALWAN_LITERAL(0.299)

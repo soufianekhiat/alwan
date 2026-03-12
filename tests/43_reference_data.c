@@ -278,12 +278,12 @@ static int test_rgb_space_lookup(void) {
     }
 
     /* Verify sRGB primaries */
-    TEST_CHECK_NEAR(primaries[0], 0.6400, ALWAN_TEST_TOLERANCE);  /* Red x */
-    TEST_CHECK_NEAR(primaries[1], 0.3300, ALWAN_TEST_TOLERANCE);  /* Red y */
-    TEST_CHECK_NEAR(primaries[2], 0.3000, ALWAN_TEST_TOLERANCE);  /* Green x */
-    TEST_CHECK_NEAR(primaries[3], 0.6000, ALWAN_TEST_TOLERANCE);  /* Green y */
-    TEST_CHECK_NEAR(primaries[4], 0.1500, ALWAN_TEST_TOLERANCE);  /* Blue x */
-    TEST_CHECK_NEAR(primaries[5], 0.0600, ALWAN_TEST_TOLERANCE);  /* Blue y */
+    TEST_CHECK_NEAR(primaries[0], ALWAN_BT709_RED_x, ALWAN_TEST_TOLERANCE);    /* Red x */
+    TEST_CHECK_NEAR(primaries[1], ALWAN_BT709_RED_y, ALWAN_TEST_TOLERANCE);    /* Red y */
+    TEST_CHECK_NEAR(primaries[2], ALWAN_BT709_GREEN_x, ALWAN_TEST_TOLERANCE);  /* Green x */
+    TEST_CHECK_NEAR(primaries[3], ALWAN_BT709_GREEN_y, ALWAN_TEST_TOLERANCE);  /* Green y */
+    TEST_CHECK_NEAR(primaries[4], ALWAN_BT709_BLUE_x, ALWAN_TEST_TOLERANCE);   /* Blue x */
+    TEST_CHECK_NEAR(primaries[5], ALWAN_BT709_BLUE_y, ALWAN_TEST_TOLERANCE);   /* Blue y */
 
     /* Verify D65 white point */
     TEST_CHECK_NEAR(white_point.v[0], 0.3127, ALWAN_TEST_TOLERANCE);

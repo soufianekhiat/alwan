@@ -236,24 +236,24 @@ static int test_gamut_volume_ratio(void) {
     alwan_rgb_space_desc srgb, bt2020;
 
     /* sRGB primaries (D65 white point) - primaries_xy[6]: rx, ry, gx, gy, bx, by */
-    srgb.primaries_xy[0] = ALWAN_LITERAL(0.64);
-    srgb.primaries_xy[1] = ALWAN_LITERAL(0.33);
-    srgb.primaries_xy[2] = ALWAN_LITERAL(0.30);
-    srgb.primaries_xy[3] = ALWAN_LITERAL(0.60);
-    srgb.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
+    srgb.primaries_xy[0] = ALWAN_BT709_RED_x;
+    srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x;
+    srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;
+    srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
     srgb.oetf = ALWAN_TF_LINEAR;
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* BT.2020 primaries (D65 white point) */
-    bt2020.primaries_xy[0] = ALWAN_LITERAL(0.708);
-    bt2020.primaries_xy[1] = ALWAN_LITERAL(0.292);
-    bt2020.primaries_xy[2] = ALWAN_LITERAL(0.170);
-    bt2020.primaries_xy[3] = ALWAN_LITERAL(0.797);
-    bt2020.primaries_xy[4] = ALWAN_LITERAL(0.131);
-    bt2020.primaries_xy[5] = ALWAN_LITERAL(0.046);
+    bt2020.primaries_xy[0] = ALWAN_BT2020_RED_x;
+    bt2020.primaries_xy[1] = ALWAN_BT2020_RED_y;
+    bt2020.primaries_xy[2] = ALWAN_BT2020_GREEN_x;
+    bt2020.primaries_xy[3] = ALWAN_BT2020_GREEN_y;
+    bt2020.primaries_xy[4] = ALWAN_BT2020_BLUE_x;
+    bt2020.primaries_xy[5] = ALWAN_BT2020_BLUE_y;
     bt2020.white_xy[0] = ALWAN_LITERAL(0.31271);
     bt2020.white_xy[1] = ALWAN_LITERAL(0.32902);
     bt2020.oetf = ALWAN_TF_LINEAR;
@@ -287,24 +287,24 @@ static int test_gamut_coverage(void) {
     alwan_rgb_space_desc srgb, bt2020;
 
     /* sRGB primaries (D65 white point) - primaries_xy[6]: rx, ry, gx, gy, bx, by */
-    srgb.primaries_xy[0] = ALWAN_LITERAL(0.64);
-    srgb.primaries_xy[1] = ALWAN_LITERAL(0.33);
-    srgb.primaries_xy[2] = ALWAN_LITERAL(0.30);
-    srgb.primaries_xy[3] = ALWAN_LITERAL(0.60);
-    srgb.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
+    srgb.primaries_xy[0] = ALWAN_BT709_RED_x;
+    srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x;
+    srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;
+    srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
     srgb.oetf = ALWAN_TF_LINEAR;
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* BT.2020 primaries (D65 white point) */
-    bt2020.primaries_xy[0] = ALWAN_LITERAL(0.708);
-    bt2020.primaries_xy[1] = ALWAN_LITERAL(0.292);
-    bt2020.primaries_xy[2] = ALWAN_LITERAL(0.170);
-    bt2020.primaries_xy[3] = ALWAN_LITERAL(0.797);
-    bt2020.primaries_xy[4] = ALWAN_LITERAL(0.131);
-    bt2020.primaries_xy[5] = ALWAN_LITERAL(0.046);
+    bt2020.primaries_xy[0] = ALWAN_BT2020_RED_x;
+    bt2020.primaries_xy[1] = ALWAN_BT2020_RED_y;
+    bt2020.primaries_xy[2] = ALWAN_BT2020_GREEN_x;
+    bt2020.primaries_xy[3] = ALWAN_BT2020_GREEN_y;
+    bt2020.primaries_xy[4] = ALWAN_BT2020_BLUE_x;
+    bt2020.primaries_xy[5] = ALWAN_BT2020_BLUE_y;
     bt2020.white_xy[0] = ALWAN_LITERAL(0.31271);
     bt2020.white_xy[1] = ALWAN_LITERAL(0.32902);
     bt2020.oetf = ALWAN_TF_LINEAR;
@@ -338,12 +338,12 @@ static int test_gamut_coverage(void) {
 static int test_gamut_map_simple_clip(void) {
     /* Test simple clipping method */
     alwan_rgb_space_desc srgb;
-    srgb.primaries_xy[0] = ALWAN_LITERAL(0.64);
-    srgb.primaries_xy[1] = ALWAN_LITERAL(0.33);
-    srgb.primaries_xy[2] = ALWAN_LITERAL(0.30);
-    srgb.primaries_xy[3] = ALWAN_LITERAL(0.60);
-    srgb.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
+    srgb.primaries_xy[0] = ALWAN_BT709_RED_x;
+    srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x;
+    srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;
+    srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
     srgb.oetf = ALWAN_TF_LINEAR;
@@ -372,12 +372,12 @@ static int test_gamut_map_simple_clip(void) {
 static int test_gamut_map_adaptive_l0(void) {
     /* Test adaptive L0 method */
     alwan_rgb_space_desc srgb;
-    srgb.primaries_xy[0] = ALWAN_LITERAL(0.64);
-    srgb.primaries_xy[1] = ALWAN_LITERAL(0.33);
-    srgb.primaries_xy[2] = ALWAN_LITERAL(0.30);
-    srgb.primaries_xy[3] = ALWAN_LITERAL(0.60);
-    srgb.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
+    srgb.primaries_xy[0] = ALWAN_BT709_RED_x;
+    srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x;
+    srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;
+    srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
     srgb.oetf = ALWAN_TF_LINEAR;
@@ -412,12 +412,12 @@ static int test_gamut_map_adaptive_l0(void) {
 static int test_gamut_map_adaptive_cusp(void) {
     /* Test adaptive cusp method */
     alwan_rgb_space_desc srgb;
-    srgb.primaries_xy[0] = ALWAN_LITERAL(0.64);
-    srgb.primaries_xy[1] = ALWAN_LITERAL(0.33);
-    srgb.primaries_xy[2] = ALWAN_LITERAL(0.30);
-    srgb.primaries_xy[3] = ALWAN_LITERAL(0.60);
-    srgb.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
+    srgb.primaries_xy[0] = ALWAN_BT709_RED_x;
+    srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x;
+    srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;
+    srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
     srgb.oetf = ALWAN_TF_LINEAR;
@@ -452,12 +452,12 @@ static int test_gamut_map_adaptive_cusp(void) {
 static int test_gamut_map_chroma_compress(void) {
     /* Test chroma compression method */
     alwan_rgb_space_desc srgb;
-    srgb.primaries_xy[0] = ALWAN_LITERAL(0.64);
-    srgb.primaries_xy[1] = ALWAN_LITERAL(0.33);
-    srgb.primaries_xy[2] = ALWAN_LITERAL(0.30);
-    srgb.primaries_xy[3] = ALWAN_LITERAL(0.60);
-    srgb.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
+    srgb.primaries_xy[0] = ALWAN_BT709_RED_x;
+    srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x;
+    srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;
+    srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
     srgb.oetf = ALWAN_TF_LINEAR;
@@ -492,12 +492,12 @@ static int test_gamut_map_chroma_compress(void) {
 static int test_gamut_map_in_gamut(void) {
     /* Test that in-gamut colors are preserved */
     alwan_rgb_space_desc srgb;
-    srgb.primaries_xy[0] = ALWAN_LITERAL(0.64);
-    srgb.primaries_xy[1] = ALWAN_LITERAL(0.33);
-    srgb.primaries_xy[2] = ALWAN_LITERAL(0.30);
-    srgb.primaries_xy[3] = ALWAN_LITERAL(0.60);
-    srgb.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    srgb.primaries_xy[5] = ALWAN_LITERAL(0.06);
+    srgb.primaries_xy[0] = ALWAN_BT709_RED_x;
+    srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x;
+    srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;
+    srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
     srgb.white_xy[0] = ALWAN_LITERAL(0.31271);
     srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
     srgb.oetf = ALWAN_TF_LINEAR;

@@ -58,9 +58,9 @@ static int test_d65_data(void) {
 static int test_srgb_primaries(void) {
     /* Verify sRGB primary chromaticities (ITU-R BT.709) */
     alwan_scalar const expected[] = {
-        ALWAN_LITERAL(0.64), ALWAN_LITERAL(0.33),  /* Red */
-        ALWAN_LITERAL(0.30), ALWAN_LITERAL(0.60),  /* Green */
-        ALWAN_LITERAL(0.15), ALWAN_LITERAL(0.06)   /* Blue */
+        ALWAN_BT709_RED_x, ALWAN_BT709_RED_y,      /* Red */
+        ALWAN_BT709_GREEN_x, ALWAN_BT709_GREEN_y,  /* Green */
+        ALWAN_BT709_BLUE_x, ALWAN_BT709_BLUE_y     /* Blue */
     };
 
     printf("  sRGB primaries (r, g, b):\n");

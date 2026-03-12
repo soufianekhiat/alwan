@@ -7,14 +7,12 @@
 /* Test RGB space descriptors */
 static alwan_rgb_space_desc get_srgb_desc(void) {
     alwan_rgb_space_desc desc;
-    /* sRGB primaries: R(0.64, 0.33), G(0.30, 0.60), B(0.15, 0.06) */
-    desc.primaries_xy[0] = ALWAN_LITERAL(0.64);
-    desc.primaries_xy[1] = ALWAN_LITERAL(0.33);
-    desc.primaries_xy[2] = ALWAN_LITERAL(0.30);
-    desc.primaries_xy[3] = ALWAN_LITERAL(0.60);
-    desc.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    desc.primaries_xy[5] = ALWAN_LITERAL(0.06);
-    /* D65 white point */
+    desc.primaries_xy[0] = ALWAN_BT709_RED_x;
+    desc.primaries_xy[1] = ALWAN_BT709_RED_y;
+    desc.primaries_xy[2] = ALWAN_BT709_GREEN_x;
+    desc.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    desc.primaries_xy[4] = ALWAN_BT709_BLUE_x;
+    desc.primaries_xy[5] = ALWAN_BT709_BLUE_y;
     desc.white_xy[0] = ALWAN_LITERAL(0.3127);
     desc.white_xy[1] = ALWAN_LITERAL(0.3290);
     desc.oetf = ALWAN_TF_SRGB;
@@ -24,14 +22,12 @@ static alwan_rgb_space_desc get_srgb_desc(void) {
 
 static alwan_rgb_space_desc get_display_p3_desc(void) {
     alwan_rgb_space_desc desc;
-    /* Display P3 primaries: R(0.68, 0.32), G(0.265, 0.69), B(0.15, 0.06) */
-    desc.primaries_xy[0] = ALWAN_LITERAL(0.68);
-    desc.primaries_xy[1] = ALWAN_LITERAL(0.32);
-    desc.primaries_xy[2] = ALWAN_LITERAL(0.265);
-    desc.primaries_xy[3] = ALWAN_LITERAL(0.69);
-    desc.primaries_xy[4] = ALWAN_LITERAL(0.15);
-    desc.primaries_xy[5] = ALWAN_LITERAL(0.06);
-    /* D65 white point */
+    desc.primaries_xy[0] = ALWAN_P3_RED_x;
+    desc.primaries_xy[1] = ALWAN_P3_RED_y;
+    desc.primaries_xy[2] = ALWAN_P3_GREEN_x;
+    desc.primaries_xy[3] = ALWAN_P3_GREEN_y;
+    desc.primaries_xy[4] = ALWAN_P3_BLUE_x;
+    desc.primaries_xy[5] = ALWAN_P3_BLUE_y;
     desc.white_xy[0] = ALWAN_LITERAL(0.3127);
     desc.white_xy[1] = ALWAN_LITERAL(0.3290);
     desc.oetf = ALWAN_TF_LINEAR;
@@ -41,14 +37,12 @@ static alwan_rgb_space_desc get_display_p3_desc(void) {
 
 static alwan_rgb_space_desc get_bt2020_desc(void) {
     alwan_rgb_space_desc desc;
-    /* BT.2020 primaries: R(0.708, 0.292), G(0.170, 0.797), B(0.131, 0.046) */
-    desc.primaries_xy[0] = ALWAN_LITERAL(0.708);
-    desc.primaries_xy[1] = ALWAN_LITERAL(0.292);
-    desc.primaries_xy[2] = ALWAN_LITERAL(0.170);
-    desc.primaries_xy[3] = ALWAN_LITERAL(0.797);
-    desc.primaries_xy[4] = ALWAN_LITERAL(0.131);
-    desc.primaries_xy[5] = ALWAN_LITERAL(0.046);
-    /* D65 white point */
+    desc.primaries_xy[0] = ALWAN_BT2020_RED_x;
+    desc.primaries_xy[1] = ALWAN_BT2020_RED_y;
+    desc.primaries_xy[2] = ALWAN_BT2020_GREEN_x;
+    desc.primaries_xy[3] = ALWAN_BT2020_GREEN_y;
+    desc.primaries_xy[4] = ALWAN_BT2020_BLUE_x;
+    desc.primaries_xy[5] = ALWAN_BT2020_BLUE_y;
     desc.white_xy[0] = ALWAN_LITERAL(0.3127);
     desc.white_xy[1] = ALWAN_LITERAL(0.3290);
     desc.oetf = ALWAN_TF_LINEAR;
@@ -58,13 +52,12 @@ static alwan_rgb_space_desc get_bt2020_desc(void) {
 
 static alwan_rgb_space_desc get_acescg_desc(void) {
     alwan_rgb_space_desc desc;
-    /* ACEScg (AP1) primaries: R(0.713, 0.293), G(0.165, 0.830), B(0.128, 0.044) */
-    desc.primaries_xy[0] = ALWAN_LITERAL(0.713);
-    desc.primaries_xy[1] = ALWAN_LITERAL(0.293);
-    desc.primaries_xy[2] = ALWAN_LITERAL(0.165);
-    desc.primaries_xy[3] = ALWAN_LITERAL(0.830);
-    desc.primaries_xy[4] = ALWAN_LITERAL(0.128);
-    desc.primaries_xy[5] = ALWAN_LITERAL(0.044);
+    desc.primaries_xy[0] = ALWAN_AP1_RED_x;
+    desc.primaries_xy[1] = ALWAN_AP1_RED_y;
+    desc.primaries_xy[2] = ALWAN_AP1_GREEN_x;
+    desc.primaries_xy[3] = ALWAN_AP1_GREEN_y;
+    desc.primaries_xy[4] = ALWAN_AP1_BLUE_x;
+    desc.primaries_xy[5] = ALWAN_AP1_BLUE_y;
     /* D60 white point */
     desc.white_xy[0] = ALWAN_LITERAL(0.32168);
     desc.white_xy[1] = ALWAN_LITERAL(0.33767);
