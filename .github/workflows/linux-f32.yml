@@ -1,0 +1,13 @@
+name: Linux f32
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cmake -B build -DALWAN_SCALAR_IS_FLOAT=ON -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=OFF
+      - run: cmake --build build --config Release
