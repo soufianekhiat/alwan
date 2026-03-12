@@ -82,6 +82,7 @@ extern int test_68_ohno_contrast_dicom_main(void);
 extern int test_69_map_validation_main(void);
 extern int test_70_planar_map_main(void);
 extern int test_71_linear_srgb_hsv_hsl_main(void);
+extern int test_72_relative_luminance_main(void);
 
 /* Test registry */
 typedef struct {
@@ -162,6 +163,7 @@ static test_suite const g_test_suites[] = {
     {"69_map_validation", test_69_map_validation_main},
     {"70_planar_map", test_70_planar_map_main},
     {"71_linear_srgb_hsv_hsl", test_71_linear_srgb_hsv_hsl_main},
+    {"72_relative_luminance", test_72_relative_luminance_main},
 };
 
 int main(void) {

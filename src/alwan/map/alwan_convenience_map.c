@@ -831,3 +831,45 @@ int alwan_hsl_to_linear_srgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar 
     }
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * Relative Luminance map (3->1)
+ * ---------------------------------------------------------------- */
+
+int alwan_relative_luminance_map_interleave(alwan_scalar *Y_out,
+                                            alwan_scalar const *rgb_in,
+                                            size_t count,
+                                            alwan_luma_standard standard,
+                                            size_t in_stride,
+                                            size_t out_stride) {
+    if (!rgb_in || !Y_out || count == 0) return ALWAN_E_INVALID;
+    alwan_scalar kr, kg, kb;
+    alwan__get_luma_coeffs((int)standard, &kr, &kg, &kb);
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)Y_out + i * out_stride);
+        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        *out_ptr = alwan_relative_luminance_v(rgb, kr, kg, kb);
+    }
+    return ALWAN_OK;
+}
+
+int alwan_relative_luminance_space_map_interleave(alwan_scalar *Y_out,
+                                                   alwan_scalar const *rgb_in,
+                                                   size_t count,
+                                                   alwan_rgb_space_desc const *space,
+                                                   size_t in_stride,
+                                                   size_t out_stride) {
+    if (!rgb_in || !Y_out || count == 0 || !space) return ALWAN_E_INVALID;
+    if (!space->has_matrices) return ALWAN_E_INVALID;
+    alwan_scalar kr = space->rgb_to_xyz.m[3];
+    alwan_scalar kg = space->rgb_to_xyz.m[4];
+    alwan_scalar kb = space->rgb_to_xyz.m[5];
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)Y_out + i * out_stride);
+        alwan_rgb rgb = {in_ptr[0], in_ptr[1], in_ptr[2]};
+        *out_ptr = alwan_relative_luminance_v(rgb, kr, kg, kb);
+    }
+    return ALWAN_OK;
+}

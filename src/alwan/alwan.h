@@ -2546,6 +2546,55 @@ int alwan_ycbcr_legal_to_full(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_d
  * - Used in H.264/AVC and video codecs */
 int alwan_rgb_to_ycocg(alwan_ycocg *ycocg_out, alwan_rgb const *rgb);
 
+/* ----------------------------------------------------------------
+ * Relative Luminance (Y)
+ * Computes Y = kr*R + kg*G + kb*B for a given standard or color space.
+ * Input RGB must be linear (scene-referred). For encoded RGB, apply EOTF first.
+ * ---------------------------------------------------------------- */
+
+/* Luma/luminance standard identifiers */
+typedef enum {
+    ALWAN_LUMA_BT601,       /* ITU-R BT.601 (SD) */
+    ALWAN_LUMA_BT709,       /* ITU-R BT.709 / sRGB (HD) */
+    ALWAN_LUMA_BT2020,      /* ITU-R BT.2020 (UHD) */
+    ALWAN_LUMA_ACES_AP1,    /* ACES AP1 / ACEScg */
+    ALWAN_LUMA_ACES_AP0,    /* ACES AP0 / ACES2065-1 */
+    ALWAN_LUMA_DISPLAY_P3,  /* Display P3 / P3-D65 */
+    ALWAN_LUMA_DCI_P3,      /* DCI-P3 (theater) */
+    ALWAN_LUMA_ADOBE_RGB,   /* Adobe RGB (1998) */
+    ALWAN_LUMA_PROPHOTO_RGB /* ProPhoto RGB / ROMM RGB */
+} alwan_luma_standard;
+
+/* Per-pixel relative luminance from standard enum */
+int alwan_relative_luminance(alwan_scalar *Y_out,
+                             alwan_rgb const *rgb,
+                             alwan_luma_standard standard);
+
+/* Per-pixel relative luminance from explicit coefficients */
+int alwan_relative_luminance_kr_kb(alwan_scalar *Y_out,
+                                   alwan_rgb const *rgb,
+                                   alwan_scalar kr, alwan_scalar kb);
+
+/* Per-pixel relative luminance from RGB space descriptor (extracts Y row from NPM) */
+int alwan_relative_luminance_space(alwan_scalar *Y_out,
+                                   alwan_rgb const *rgb,
+                                   alwan_rgb_space_desc const *space);
+
+/* Batch relative luminance (3-channel input, 1-channel output) */
+int alwan_relative_luminance_map_interleave(alwan_scalar *Y_out,
+                                            alwan_scalar const *rgb_in,
+                                            size_t count,
+                                            alwan_luma_standard standard,
+                                            size_t in_stride,
+                                            size_t out_stride);
+
+int alwan_relative_luminance_space_map_interleave(alwan_scalar *Y_out,
+                                                   alwan_scalar const *rgb_in,
+                                                   size_t count,
+                                                   alwan_rgb_space_desc const *space,
+                                                   size_t in_stride,
+                                                   size_t out_stride);
+
 /* Mapconvenience color model conversions */
 int alwan_rgb_to_hsv_map_interleave(alwan_scalar *hsv_out,
                           alwan_scalar const *rgb_in,

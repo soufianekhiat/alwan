@@ -486,6 +486,19 @@ ALWAN_INLINE alwan_rgb alwan_hwb_to_rgb_v(alwan_hwb hwb) {
 }
 
 /* ----------------------------------------------------------------
+ * Relative Luminance (value-returning)
+ * Y = kr*R + kg*G + kb*B
+ * Input RGB must be linear (scene-referred).
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_scalar alwan_relative_luminance_v(alwan_rgb rgb,
+                                                      alwan_scalar kr,
+                                                      alwan_scalar kg,
+                                                      alwan_scalar kb) {
+    return kr * rgb.r + kg * rgb.g + kb * rgb.b;
+}
+
+/* ----------------------------------------------------------------
  * Linear sRGB <-> HSV (value-returning)
  * Chains sRGB OETF/EOTF with HSV conversion.
  * Input/output is linear (scene-referred) sRGB.

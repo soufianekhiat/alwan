@@ -106,4 +106,65 @@ static inline void alwan__get_ycbcr_coeffs(alwan_ycbcr_standard standard,
     }
 }
 
+/* ----------------------------------------------------------------
+ * Luma coefficient resolution (alwan_luma_standard -> kr, kg, kb)
+ * ---------------------------------------------------------------- */
+
+static inline void alwan__get_luma_coeffs(int standard,
+                                           alwan_scalar *kr, alwan_scalar *kg,
+                                           alwan_scalar *kb) {
+    switch (standard) {
+        case 0: /* ALWAN_LUMA_BT601 */
+            *kr = ALWAN_LUMA_KR_BT601;
+            *kg = ALWAN_LUMA_KG_BT601;
+            *kb = ALWAN_LUMA_KB_BT601;
+            break;
+        case 1: /* ALWAN_LUMA_BT709 */
+            *kr = ALWAN_LUMA_KR_BT709;
+            *kg = ALWAN_LUMA_KG_BT709;
+            *kb = ALWAN_LUMA_KB_BT709;
+            break;
+        case 2: /* ALWAN_LUMA_BT2020 */
+            *kr = ALWAN_LUMA_KR_BT2020;
+            *kg = ALWAN_LUMA_KG_BT2020;
+            *kb = ALWAN_LUMA_KB_BT2020;
+            break;
+        case 3: /* ALWAN_LUMA_ACES_AP1 */
+            *kr = ALWAN_LUMA_KR_AP1;
+            *kg = ALWAN_LUMA_KG_AP1;
+            *kb = ALWAN_LUMA_KB_AP1;
+            break;
+        case 4: /* ALWAN_LUMA_ACES_AP0 */
+            *kr = ALWAN_LUMA_KR_AP0;
+            *kg = ALWAN_LUMA_KG_AP0;
+            *kb = ALWAN_LUMA_KB_AP0;
+            break;
+        case 5: /* ALWAN_LUMA_DISPLAY_P3 */
+            *kr = ALWAN_LUMA_KR_P3;
+            *kg = ALWAN_LUMA_KG_P3;
+            *kb = ALWAN_LUMA_KB_P3;
+            break;
+        case 6: /* ALWAN_LUMA_DCI_P3 */
+            *kr = ALWAN_LUMA_KR_DCIP3;
+            *kg = ALWAN_LUMA_KG_DCIP3;
+            *kb = ALWAN_LUMA_KB_DCIP3;
+            break;
+        case 7: /* ALWAN_LUMA_ADOBE_RGB */
+            *kr = ALWAN_LUMA_KR_ADOBE;
+            *kg = ALWAN_LUMA_KG_ADOBE;
+            *kb = ALWAN_LUMA_KB_ADOBE;
+            break;
+        case 8: /* ALWAN_LUMA_PROPHOTO_RGB */
+            *kr = ALWAN_LUMA_KR_PROPHOTO;
+            *kg = ALWAN_LUMA_KG_PROPHOTO;
+            *kb = ALWAN_LUMA_KB_PROPHOTO;
+            break;
+        default:
+            *kr = ALWAN_LUMA_KR_BT709;
+            *kg = ALWAN_LUMA_KG_BT709;
+            *kb = ALWAN_LUMA_KB_BT709;
+            break;
+    }
+}
+
 #endif /* ALWAN_INTERNAL_H */

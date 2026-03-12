@@ -208,3 +208,39 @@ int alwan_hwb_to_rgb(alwan_rgb *rgb_out, alwan_scalar const *hwb_in) {
     *rgb_out = alwan_hwb_to_rgb_v(hwb);
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * Relative Luminance
+ * ---------------------------------------------------------------- */
+
+int alwan_relative_luminance(alwan_scalar *Y_out,
+                             alwan_rgb const *rgb,
+                             alwan_luma_standard standard) {
+    if (!rgb || !Y_out) return ALWAN_E_INVALID;
+    alwan_scalar kr, kg, kb;
+    alwan__get_luma_coeffs((int)standard, &kr, &kg, &kb);
+    *Y_out = alwan_relative_luminance_v(*rgb, kr, kg, kb);
+    return ALWAN_OK;
+}
+
+int alwan_relative_luminance_kr_kb(alwan_scalar *Y_out,
+                                   alwan_rgb const *rgb,
+                                   alwan_scalar kr, alwan_scalar kb) {
+    if (!rgb || !Y_out) return ALWAN_E_INVALID;
+    alwan_scalar kg = ALWAN_LITERAL(1.0) - kr - kb;
+    *Y_out = alwan_relative_luminance_v(*rgb, kr, kg, kb);
+    return ALWAN_OK;
+}
+
+int alwan_relative_luminance_space(alwan_scalar *Y_out,
+                                   alwan_rgb const *rgb,
+                                   alwan_rgb_space_desc const *space) {
+    if (!rgb || !Y_out || !space) return ALWAN_E_INVALID;
+    if (!space->has_matrices) return ALWAN_E_INVALID;
+    /* Y row of the RGB-to-XYZ NPM (row-major: m[3], m[4], m[5]) */
+    alwan_scalar kr = space->rgb_to_xyz.m[3];
+    alwan_scalar kg = space->rgb_to_xyz.m[4];
+    alwan_scalar kb = space->rgb_to_xyz.m[5];
+    *Y_out = alwan_relative_luminance_v(*rgb, kr, kg, kb);
+    return ALWAN_OK;
+}
