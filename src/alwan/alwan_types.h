@@ -261,4 +261,40 @@ ALWAN_TYPE_DEF struct {
     alwan_scalar J, a, b;
 } alwan_cam_jab;
 
+/* HSLuv color (hue [0-360], saturation [0-100], lightness [0-100])
+ * Human-friendly HSL mapped through CIE LCHuv (Boronine) */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar h, s, l;
+} alwan_hsluv;
+
+/* HPLuv color (hue [0-360], saturation [0-100], lightness [0-100])
+ * Pastel variant of HSLuv — all (h,s,l) triples are in sRGB gamut */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar h, s, l;
+} alwan_hpluv;
+
+/* Okhsl color (hue [0-1], saturation [0-1], lightness [0-1])
+ * Perceptually uniform HSL in Oklab space (Ottosson 2021) */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar h, s, l;
+} alwan_okhsl;
+
+/* Okhsv color (hue [0-1], saturation [0-1], value [0-1])
+ * Perceptually uniform HSV in Oklab space (Ottosson 2021) */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar h, s, v;
+} alwan_okhsv;
+
+/* Cubehelix color (hue [degrees], saturation [0-inf], lightness [0-1])
+ * Monotonic-luminance helical scheme (Green 2011) */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar h, s, l;
+} alwan_cubehelix;
+
+/* HLC color (hue [0-360], lightness [0-100], chroma)
+ * Cylindrical CIELAB with (H, L, C) ordering */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar H, L, C;
+} alwan_hlc;
+
 #endif /* ALWAN_TYPES_H */

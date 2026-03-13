@@ -1290,6 +1290,50 @@ void alwan_hcl_to_rgb(alwan_rgb *rgb, alwan_hcl const *hcl);
 void alwan_rgb_to_ihls(alwan_ihls *ihls, alwan_rgb const *rgb);
 void alwan_ihls_to_rgb(alwan_rgb *rgb, alwan_ihls const *ihls);
 
+/* HLC <-> LCH conversions (cylindrical CIELAB, H-L-C ordering)
+ * Pure reordering of CIE LCH(ab): H=[0-360], L=[0-100], C=[0-~181]
+ * Reference: CIE 015:2004 */
+void alwan_lch_to_hlc(alwan_hlc *hlc, alwan_lch const *lch);
+void alwan_hlc_to_lch(alwan_lch *lch, alwan_hlc const *hlc);
+
+/* Cubehelix <-> sRGB conversions (Green 2011)
+ * Monotonic-luminance helical scheme for data visualization
+ * h: hue [degrees], s: saturation [0+], l: lightness [0-1]
+ * Reference: Green, D.A., 2011, BASI, 39, 289 */
+void alwan_cubehelix_to_rgb(alwan_rgb *rgb, alwan_cubehelix const *ch);
+void alwan_rgb_to_cubehelix(alwan_cubehelix *ch, alwan_rgb const *rgb);
+
+/* HSLuv <-> sRGB conversions (Boronine)
+ * Human-friendly HSL via CIE LCHuv with sRGB gamut boundary
+ * h: [0-360], s: [0-100] (% of max chroma at h,l), l: [0-100]
+ * Input/output sRGB is encoded (with OETF), [0-1]
+ * Reference: https://www.hsluv.org/ */
+void alwan_hsluv_to_srgb(alwan_rgb *rgb, alwan_hsluv const *hsluv);
+void alwan_srgb_to_hsluv(alwan_hsluv *hsluv, alwan_rgb const *srgb);
+
+/* HPLuv <-> sRGB conversions (Boronine)
+ * Pastel variant of HSLuv: all (h,s,l) triples guaranteed in sRGB gamut
+ * Uses minimum chroma across all hues at given lightness
+ * Reference: https://www.hsluv.org/ */
+void alwan_hpluv_to_srgb(alwan_rgb *rgb, alwan_hpluv const *hpluv);
+void alwan_srgb_to_hpluv(alwan_hpluv *hpluv, alwan_rgb const *srgb);
+
+/* Okhsl <-> sRGB conversions (Ottosson 2021)
+ * Perceptually uniform HSL in Oklab space
+ * h: [0-1], s: [0-1], l: [0-1]
+ * Input/output sRGB is encoded (with OETF), [0-1]
+ * Reference: https://bottosson.github.io/posts/colorpicker/ */
+void alwan_okhsl_to_srgb(alwan_rgb *rgb, alwan_okhsl const *okhsl);
+void alwan_srgb_to_okhsl(alwan_okhsl *okhsl, alwan_rgb const *srgb);
+
+/* Okhsv <-> sRGB conversions (Ottosson 2021)
+ * Perceptually uniform HSV in Oklab space
+ * h: [0-1], s: [0-1], v: [0-1]
+ * Input/output sRGB is encoded (with OETF), [0-1]
+ * Reference: https://bottosson.github.io/posts/colorpicker/ */
+void alwan_okhsv_to_srgb(alwan_rgb *rgb, alwan_okhsv const *okhsv);
+void alwan_srgb_to_okhsv(alwan_okhsv *okhsv, alwan_rgb const *srgb);
+
 /* ----------------------------------------------------------------
  * Extended Colorspace Batch Map Functions
  * ---------------------------------------------------------------- */

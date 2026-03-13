@@ -86,6 +86,7 @@ extern int test_72_relative_luminance_main(void);
 extern int test_73_hsp_hsy_main(void);
 extern int test_74_hsplog_main(void);
 extern int test_75_image_convert_main(void);
+extern int test_76_convenience_models_main(void);
 
 /* Test registry */
 typedef struct {
@@ -170,6 +171,7 @@ static test_suite const g_test_suites[] = {
     {"73_hsp_hsy", test_73_hsp_hsy_main},
     {"74_hsplog", test_74_hsplog_main},
     {"75_image_convert", test_75_image_convert_main},
+    {"76_convenience_models", test_76_convenience_models_main},
 };
 
 int main(void) {
