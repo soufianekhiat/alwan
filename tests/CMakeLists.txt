@@ -83,6 +83,7 @@ add_executable(
   79_lut_bake_export.c
   80_interop_clf.c
   81_video_signal.c
+  82_machado_cvd.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

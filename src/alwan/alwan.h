@@ -3061,6 +3061,12 @@ typedef enum {
     ALWAN_CVD_TRITANOMALY = 5     /* Blue-weak (S-cone deficient) */
 } alwan_cvd_type;
 
+/* CVD simulation model selection */
+typedef enum {
+    ALWAN_CVD_MODEL_BRETTEL = 0,    /* Brettel, Vienot & Mollon 1997 (confusion lines) */
+    ALWAN_CVD_MODEL_MACHADO = 1     /* Machado, Oliveira & Fernandes 2009 (cone shift) */
+} alwan_cvd_model;
+
 /* Simulate color vision deficiency (color blindness)
  * rgb_in: input linear RGB color [0, 1]
  * cvd_type: type of color vision deficiency
@@ -3103,6 +3109,38 @@ int alwan_simulate_tritanopia_map_interleave_ex(void *out, alwan_pixel_format ou
                                        void const *in, alwan_pixel_format in_fmt,
                                        alwan_scalar severity,
                                        size_t count, size_t in_stride, size_t out_stride);
+
+/* Machado 2009 CVD Simulation
+ * Models anomalous trichromacy via cone spectral sensitivity shifting.
+ * More physiologically accurate than Brettel for partial deficiency.
+ * Uses precomputed sRGB->sRGB 3x3 matrices at 11 severity levels,
+ * interpolated for continuous parameterization.
+ *
+ * Reference: Machado, Oliveira & Fernandes (2009), IEEE TVCG 15(6).
+ *
+ * cvd_type: PROTANOPIA/PROTANOMALY -> protan, DEUTERANOPIA/DEUTERANOMALY -> deutan,
+ *           TRITANOPIA/TRITANOMALY -> tritan
+ * severity: [0, 1] where 0 = normal vision, 1 = full dichromacy */
+int alwan_simulate_cvd_machado(alwan_rgb *rgb_out,
+                                alwan_rgb const *rgb_in,
+                                alwan_cvd_type cvd_type,
+                                alwan_scalar severity);
+
+/* Model-selectable CVD simulation (dispatches to Brettel or Machado) */
+int alwan_simulate_cvd_ex(alwan_rgb *rgb_out,
+                           alwan_rgb const *rgb_in,
+                           alwan_cvd_type cvd_type,
+                           alwan_scalar severity,
+                           alwan_cvd_model model);
+
+/* Machado 2009 batch map functions */
+int alwan_simulate_cvd_machado_map_interleave(alwan_scalar *rgb_out,
+                                               alwan_scalar const *rgb_in,
+                                               alwan_cvd_type cvd_type,
+                                               alwan_scalar severity,
+                                               size_t count,
+                                               size_t in_stride,
+                                               size_t out_stride);
 
 /* Luminous Efficiency Functions */
 

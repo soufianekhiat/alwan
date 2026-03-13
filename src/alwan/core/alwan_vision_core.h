@@ -6,7 +6,8 @@
  * Header-only Color Vision Deficiency (CVD) Simulation
  * Value-returning variants for cross-platform (C/HLSL/Halide) use.
  *
- * Based on Brettel, Vienot & Mollon (1997)
+ * Brettel, Vienot & Mollon (1997) — confusion-line projection
+ * Machado, Oliveira & Fernandes (2009) — cone spectral shift
  */
 
 #ifndef ALWAN_VISION_CORE_H
@@ -104,6 +105,185 @@ ALWAN_INLINE alwan_rgb alwan_simulate_deuteranopia_v(alwan_rgb rgb, alwan_scalar
 /* Tritanopia simulation (S-cone deficiency, blue-blind) */
 ALWAN_INLINE alwan_rgb alwan_simulate_tritanopia_v(alwan_rgb rgb, alwan_scalar severity) {
     return alwan_simulate_cvd_matrix_v(rgb, CVD_TRITANOPIA, severity);
+}
+
+/* ================================================================
+ * Machado, Oliveira & Fernandes (2009) CVD Simulation
+ *
+ * Unlike Brettel which operates in LMS space, Machado produces
+ * direct sRGB->sRGB 3x3 matrices at precomputed severity levels.
+ * For arbitrary severity, linearly interpolate between the two
+ * nearest precomputed matrices (0.0, 0.1, ..., 1.0).
+ *
+ * Reference: Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F.
+ *            (2009). IEEE TVCG, 15(6), 1291-1298.
+ * ================================================================ */
+
+/* 11 precomputed matrices per CVD type (severity 0.0 to 1.0, step 0.1) */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+
+ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_PROTAN[11] = {
+    {{
+#include "../data/matrices/machado2009_protan_00.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_01.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_02.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_03.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_04.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_05.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_06.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_07.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_08.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_09.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_protan_10.csv"
+    }},
+};
+
+ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_DEUTAN[11] = {
+    {{
+#include "../data/matrices/machado2009_deutan_00.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_01.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_02.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_03.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_04.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_05.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_06.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_07.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_08.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_09.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_deutan_10.csv"
+    }},
+};
+
+ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_TRITAN[11] = {
+    {{
+#include "../data/matrices/machado2009_tritan_00.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_01.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_02.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_03.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_04.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_05.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_06.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_07.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_08.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_09.csv"
+    }},
+    {{
+#include "../data/matrices/machado2009_tritan_10.csv"
+    }},
+};
+
+ALWAN_DIAG_POP
+
+/* Interpolate a Machado matrix from the 11-element LUT at arbitrary severity.
+ * severity is clamped to [0, 1].  Returns the interpolated 3x3 matrix. */
+ALWAN_INLINE alwan_mat3x3 alwan_machado_interpolate_v(
+    alwan_mat3x3 const *lut, alwan_scalar severity)
+{
+    severity = alwan_clamp(severity, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+
+    alwan_scalar idx_f = severity * ALWAN_LITERAL(10.0);
+    int lo = (int)idx_f;
+    if (lo >= 10) lo = 9;
+    int hi = lo + 1;
+    alwan_scalar t = idx_f - (alwan_scalar)lo;
+
+    /* Element-wise linear interpolation between lut[lo] and lut[hi] */
+    alwan_mat3x3 result;
+    int i;
+    for (i = 0; i < 9; i++) {
+        result.m[i] = alwan_lerp(lut[lo].m[i], lut[hi].m[i], t);
+    }
+    return result;
+}
+
+/* Machado 2009 CVD simulation (value-returning).
+ * Applies the interpolated sRGB->sRGB matrix directly — no LMS decomposition. */
+ALWAN_INLINE alwan_rgb alwan_simulate_cvd_machado_v(
+    alwan_rgb rgb, alwan_mat3x3 const *lut, alwan_scalar severity)
+{
+    alwan_mat3x3 mat = alwan_machado_interpolate_v(lut, severity);
+    alwan_vec3 v = {{rgb.r, rgb.g, rgb.b}};
+    alwan_vec3 out = alwan_mat3_mulv_v(mat, v);
+
+    alwan_rgb result;
+    result.r = alwan_saturate(out.v[0]);
+    result.g = alwan_saturate(out.v[1]);
+    result.b = alwan_saturate(out.v[2]);
+    return result;
+}
+
+/* Named Machado 2009 simulation functions */
+
+ALWAN_INLINE alwan_rgb alwan_simulate_machado_protan_v(alwan_rgb rgb, alwan_scalar severity) {
+    return alwan_simulate_cvd_machado_v(rgb, MACHADO_PROTAN, severity);
+}
+
+ALWAN_INLINE alwan_rgb alwan_simulate_machado_deutan_v(alwan_rgb rgb, alwan_scalar severity) {
+    return alwan_simulate_cvd_machado_v(rgb, MACHADO_DEUTAN, severity);
+}
+
+ALWAN_INLINE alwan_rgb alwan_simulate_machado_tritan_v(alwan_rgb rgb, alwan_scalar severity) {
+    return alwan_simulate_cvd_machado_v(rgb, MACHADO_TRITAN, severity);
 }
 
 /* ================================================================
