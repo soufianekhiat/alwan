@@ -96,6 +96,9 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_spectral_hero.c
   src/alwan/api/alwan_view.c
   src/alwan/api/alwan_vision.c
+  src/alwan/api/alwan_lut.c
+  src/alwan/api/alwan_export.c
+  src/alwan/api/alwan_import.c
   src/alwan/map/alwan_vision_map.c
   src/alwan/api/alwan_zcam.c
 )
