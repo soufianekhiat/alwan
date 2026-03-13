@@ -28,6 +28,16 @@ static int test_failed = 0;
 /* Small epsilon for avoiding division by zero in relative comparisons */
 #define TEST_EPSILON ALWAN_LITERAL(1e-20)
 
+/* Default relative tolerance for numerical comparisons.
+ * Looser than ALWAN_TEST_TOLERANCE — suitable for multi-step pipelines
+ * (LUT sampling, video encode/decode, CLF roundtrips) where accumulated
+ * floating-point error is expected. */
+#if ALWAN_SCALAR_IS_FLOAT
+#  define TEST_REL_EPSILON ALWAN_LITERAL(1e-5)
+#else
+#  define TEST_REL_EPSILON ALWAN_LITERAL(1e-10)
+#endif
+
 /* ============================================================================
  * Basic Test Flow Macros
  * ============================================================================ */

@@ -7,26 +7,10 @@
  *          precision comparison vs direct conversion functions
  */
 
-#include "alwan.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-
-#if ALWAN_SCALAR_IS_FLOAT
-#  define TOL 1e-4
-#else
-#  define TOL 1e-10
-#endif
-
-#define ASSERT_NEAR(a, b, t) do { \
-    double _a = (double)(a), _b = (double)(b); \
-    if (fabs(_a - _b) > (t)) { \
-        printf("  FAIL: %s = %.12f, expected %.12f (diff %.2e) at %s:%d\n", \
-               #a, _a, _b, fabs(_a - _b), __FILE__, __LINE__); \
-        return 1; \
-    } \
-} while(0)
 
 /* ----------------------------------------------------------------
  * Test: 3D LUT baking (identity transform)
@@ -57,9 +41,9 @@ static int test_bake_3dlut_identity(void) {
         for (int g = 0; g < size; g++) {
             for (int r = 0; r < size; r++) {
                 size_t idx = ((size_t)b * size * size + (size_t)g * size + r) * 3;
-                ASSERT_NEAR(lut[idx + 0], r * inv, TOL);
-                ASSERT_NEAR(lut[idx + 1], g * inv, TOL);
-                ASSERT_NEAR(lut[idx + 2], b * inv, TOL);
+                TEST_CHECK_NEAR(lut[idx + 0], r * inv, TEST_REL_EPSILON);
+                TEST_CHECK_NEAR(lut[idx + 1], g * inv, TEST_REL_EPSILON);
+                TEST_CHECK_NEAR(lut[idx + 2], b * inv, TEST_REL_EPSILON);
             }
         }
     }
@@ -89,7 +73,7 @@ static int test_bake_1dlut(void) {
 
     for (int i = 0; i < size; i++) {
         alwan_scalar expected = (alwan_scalar)i / (alwan_scalar)(size - 1);
-        ASSERT_NEAR(lut[i], expected, TOL);
+        TEST_CHECK_NEAR(lut[i], expected, TEST_REL_EPSILON);
     }
 
     /* sRGB OETF: should be monotonically increasing */
@@ -100,7 +84,7 @@ static int test_bake_1dlut(void) {
         return 1;
     }
 
-    ASSERT_NEAR(lut[0], 0.0, TOL);
+    TEST_CHECK_NEAR(lut[0], 0.0, TEST_REL_EPSILON);
     for (int i = 1; i < size; i++) {
         if (lut[i] < lut[i - 1] - 1e-15) {
             printf("  FAIL: sRGB OETF not monotonic at index %d\n", i);
@@ -168,7 +152,7 @@ static int test_lut_2d_roundtrip(void) {
 
     /* Verify roundtrip */
     for (size_t i = 0; i < total3d; i++) {
-        ASSERT_NEAR(roundtrip[i], lut3d[i], 1e-15);
+        TEST_CHECK_NEAR(roundtrip[i], lut3d[i], 1e-15);
     }
 
     free(lut3d);
@@ -211,27 +195,27 @@ static int test_lut_2d_layout(void) {
 
     /* (0,0) = black */
     p = lut2d;
-    ASSERT_NEAR(p[0], 0.0, 1e-15);
-    ASSERT_NEAR(p[1], 0.0, 1e-15);
-    ASSERT_NEAR(p[2], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[0], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[1], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[2], 0.0, 1e-15);
 
     /* (size-1, 0) = red */
     p = lut2d + (size_t)(size - 1) * 3;
-    ASSERT_NEAR(p[0], 1.0, 1e-15);
-    ASSERT_NEAR(p[1], 0.0, 1e-15);
-    ASSERT_NEAR(p[2], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[0], 1.0, 1e-15);
+    TEST_CHECK_NEAR(p[1], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[2], 0.0, 1e-15);
 
     /* (size, 0) = first R, first G, second B slice */
     p = lut2d + (size_t)size * 3;
-    ASSERT_NEAR(p[0], 0.0, 1e-15);
-    ASSERT_NEAR(p[1], 0.0, 1e-15);
-    ASSERT_NEAR(p[2], inv, 1e-15);
+    TEST_CHECK_NEAR(p[0], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[1], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[2], inv, 1e-15);
 
     /* (0, size-1) = green */
     p = lut2d + (size_t)(size - 1) * w * 3;
-    ASSERT_NEAR(p[0], 0.0, 1e-15);
-    ASSERT_NEAR(p[1], 1.0, 1e-15);
-    ASSERT_NEAR(p[2], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[0], 0.0, 1e-15);
+    TEST_CHECK_NEAR(p[1], 1.0, 1e-15);
+    TEST_CHECK_NEAR(p[2], 0.0, 1e-15);
 
     free(lut3d);
     free(lut2d);
@@ -273,7 +257,7 @@ static int test_bake_2dlut(void) {
 
     /* Both should produce identical results */
     for (size_t i = 0; i < total2d; i++) {
-        ASSERT_NEAR(lut2d_direct[i], lut2d_indirect[i], TOL);
+        TEST_CHECK_NEAR(lut2d_direct[i], lut2d_indirect[i], TEST_REL_EPSILON);
     }
 
     free(lut2d_direct);
@@ -305,29 +289,29 @@ static int test_lut3d_sample(void) {
     alwan_rgb in, out;
     in.r = 0.5; in.g = 0.25; in.b = 0.75;
     alwan_lut3d_sample(&out, lut, &in, size);
-    ASSERT_NEAR(out.r, 0.5, TOL);
-    ASSERT_NEAR(out.g, 0.25, TOL);
-    ASSERT_NEAR(out.b, 0.75, TOL);
+    TEST_CHECK_NEAR(out.r, 0.5, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out.g, 0.25, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out.b, 0.75, TEST_REL_EPSILON);
 
     /* Sample at corners */
     in.r = 0.0; in.g = 0.0; in.b = 0.0;
     alwan_lut3d_sample(&out, lut, &in, size);
-    ASSERT_NEAR(out.r, 0.0, TOL);
-    ASSERT_NEAR(out.g, 0.0, TOL);
-    ASSERT_NEAR(out.b, 0.0, TOL);
+    TEST_CHECK_NEAR(out.r, 0.0, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out.g, 0.0, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out.b, 0.0, TEST_REL_EPSILON);
 
     in.r = 1.0; in.g = 1.0; in.b = 1.0;
     alwan_lut3d_sample(&out, lut, &in, size);
-    ASSERT_NEAR(out.r, 1.0, TOL);
-    ASSERT_NEAR(out.g, 1.0, TOL);
-    ASSERT_NEAR(out.b, 1.0, TOL);
+    TEST_CHECK_NEAR(out.r, 1.0, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out.g, 1.0, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out.b, 1.0, TEST_REL_EPSILON);
 
     /* Sample at non-grid point — interpolation should still be close to identity */
     in.r = 0.37; in.g = 0.62; in.b = 0.11;
     alwan_lut3d_sample(&out, lut, &in, size);
-    ASSERT_NEAR(out.r, 0.37, 0.001);
-    ASSERT_NEAR(out.g, 0.62, 0.001);
-    ASSERT_NEAR(out.b, 0.11, 0.001);
+    TEST_CHECK_NEAR(out.r, 0.37, 0.001);
+    TEST_CHECK_NEAR(out.g, 0.62, 0.001);
+    TEST_CHECK_NEAR(out.b, 0.11, 0.001);
 
     free(lut);
     alwan_destroy(ctx);
@@ -380,7 +364,7 @@ static int test_cube_roundtrip(void) {
 
     /* Compare (within text serialization precision) */
     for (size_t i = 0; i < total * 3; i++) {
-        ASSERT_NEAR(lut_in[i], lut_out[i], 1e-9);
+        TEST_CHECK_NEAR(lut_in[i], lut_out[i], 1e-9);
     }
 
     remove(path);
@@ -453,7 +437,7 @@ static int test_cube_buffer_export(void) {
     }
 
     for (size_t i = 0; i < total * 3; i++) {
-        ASSERT_NEAR(lut2[i], lut[i], 1e-9);
+        TEST_CHECK_NEAR(lut2[i], lut[i], 1e-9);
     }
 
     free(lut);
@@ -490,9 +474,9 @@ static int test_bake_3dlut_view(void) {
     }
 
     /* Black should stay black */
-    ASSERT_NEAR(lut_view[0], 0.0, TOL);
-    ASSERT_NEAR(lut_view[1], 0.0, TOL);
-    ASSERT_NEAR(lut_view[2], 0.0, TOL);
+    TEST_CHECK_NEAR(lut_view[0], 0.0, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(lut_view[1], 0.0, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(lut_view[2], 0.0, TEST_REL_EPSILON);
 
     /* White should be compressed */
     size_t white_idx = (total - 1) * 3;
@@ -596,15 +580,15 @@ static int test_bake_cross_space(void) {
     }
 
     /* Black -> black */
-    ASSERT_NEAR(lut[0], 0.0, TOL);
-    ASSERT_NEAR(lut[1], 0.0, TOL);
-    ASSERT_NEAR(lut[2], 0.0, TOL);
+    TEST_CHECK_NEAR(lut[0], 0.0, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(lut[1], 0.0, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(lut[2], 0.0, TEST_REL_EPSILON);
 
     /* White -> white (both share D65) */
     size_t white_idx = (total - 1) * 3;
-    ASSERT_NEAR(lut[white_idx + 0], 1.0, 0.01);
-    ASSERT_NEAR(lut[white_idx + 1], 1.0, 0.01);
-    ASSERT_NEAR(lut[white_idx + 2], 1.0, 0.01);
+    TEST_CHECK_NEAR(lut[white_idx + 0], 1.0, 0.01);
+    TEST_CHECK_NEAR(lut[white_idx + 1], 1.0, 0.01);
+    TEST_CHECK_NEAR(lut[white_idx + 2], 1.0, 0.01);
 
     /* sRGB red primary should be less saturated in P3 gamut */
     size_t red_idx = (size_t)(size - 1) * 3;
@@ -697,7 +681,7 @@ static int test_cube_import_and_sample(void) {
 
     /* Verify imported data matches baked (within .cube text precision) */
     for (size_t i = 0; i < total * 3; i++) {
-        ASSERT_NEAR(lut_imported[i], lut_baked[i], 1e-9);
+        TEST_CHECK_NEAR(lut_imported[i], lut_baked[i], 1e-9);
     }
 
     /* Test grid-point sampling: LUT should match full pipeline at grid points */
@@ -714,9 +698,9 @@ static int test_cube_import_and_sample(void) {
         alwan_lut3d_sample(&lut_out, lut_imported, &test_colors[c], size);
         full_pipeline_convert(&pipeline_out, ctx, &srgb, &p3, &test_colors[c]);
 
-        ASSERT_NEAR(lut_out.r, pipeline_out.r, 1e-6);
-        ASSERT_NEAR(lut_out.g, pipeline_out.g, 1e-6);
-        ASSERT_NEAR(lut_out.b, pipeline_out.b, 1e-6);
+        TEST_CHECK_NEAR(lut_out.r, pipeline_out.r, 1e-6);
+        TEST_CHECK_NEAR(lut_out.g, pipeline_out.g, 1e-6);
+        TEST_CHECK_NEAR(lut_out.b, pipeline_out.b, 1e-6);
     }
 
     remove(path);
@@ -749,7 +733,7 @@ static int test_1d_linear_sample(void) {
         alwan_scalar t = (alwan_scalar)i / (alwan_scalar)(size - 1);
         alwan_scalar sampled;
         alwan_lut1d_sample(&sampled, lut, t, size);
-        ASSERT_NEAR(sampled, lut[i], 1e-15);
+        TEST_CHECK_NEAR(sampled, lut[i], 1e-15);
     }
 
     /* Sample at midpoints between grid entries — should be average */
@@ -758,21 +742,21 @@ static int test_1d_linear_sample(void) {
         alwan_scalar sampled;
         alwan_lut1d_sample(&sampled, lut, t, size);
         alwan_scalar expected = (lut[i] + lut[i + 1]) * 0.5;
-        ASSERT_NEAR(sampled, expected, 1e-12);
+        TEST_CHECK_NEAR(sampled, expected, 1e-12);
     }
 
     /* Clamp test: below 0 should return lut[0] */
     {
         alwan_scalar sampled;
         alwan_lut1d_sample(&sampled, lut, -0.5, size);
-        ASSERT_NEAR(sampled, lut[0], 1e-15);
+        TEST_CHECK_NEAR(sampled, lut[0], 1e-15);
     }
 
     /* Clamp test: above 1 should return lut[size-1] */
     {
         alwan_scalar sampled;
         alwan_lut1d_sample(&sampled, lut, 1.5, size);
-        ASSERT_NEAR(sampled, lut[size - 1], 1e-15);
+        TEST_CHECK_NEAR(sampled, lut[size - 1], 1e-15);
     }
 
     free(lut);
@@ -881,9 +865,9 @@ static int test_2d_sample_matches_3d(void) {
         alwan_lut2d_sample(&out2d, lut2d, &test_colors[i], size);
 
         /* 2D and 3D sampling should produce identical results */
-        ASSERT_NEAR(out2d.r, out3d.r, 1e-14);
-        ASSERT_NEAR(out2d.g, out3d.g, 1e-14);
-        ASSERT_NEAR(out2d.b, out3d.b, 1e-14);
+        TEST_CHECK_NEAR(out2d.r, out3d.r, 1e-14);
+        TEST_CHECK_NEAR(out2d.g, out3d.g, 1e-14);
+        TEST_CHECK_NEAR(out2d.b, out3d.b, 1e-14);
     }
 
     free(lut3d);
@@ -920,18 +904,18 @@ static int test_2d_bake_and_sample(void) {
     alwan_lut3d_sample(&out3d, lut3d, &gray, size);
     alwan_lut2d_sample(&out2d, lut2d, &gray, size);
 
-    ASSERT_NEAR(out2d.r, out3d.r, TOL);
-    ASSERT_NEAR(out2d.g, out3d.g, TOL);
-    ASSERT_NEAR(out2d.b, out3d.b, TOL);
+    TEST_CHECK_NEAR(out2d.r, out3d.r, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out2d.g, out3d.g, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out2d.b, out3d.b, TEST_REL_EPSILON);
 
     /* Sample at off-grid point */
     alwan_rgb color = {0.37, 0.82, 0.15};
     alwan_lut3d_sample(&out3d, lut3d, &color, size);
     alwan_lut2d_sample(&out2d, lut2d, &color, size);
 
-    ASSERT_NEAR(out2d.r, out3d.r, TOL);
-    ASSERT_NEAR(out2d.g, out3d.g, TOL);
-    ASSERT_NEAR(out2d.b, out3d.b, TOL);
+    TEST_CHECK_NEAR(out2d.r, out3d.r, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out2d.g, out3d.g, TEST_REL_EPSILON);
+    TEST_CHECK_NEAR(out2d.b, out3d.b, TEST_REL_EPSILON);
 
     free(lut3d);
     free(lut2d);
@@ -1068,7 +1052,7 @@ static int test_cube_1d_import_sample(void) {
 
     /* Verify imported data matches baked (within text precision) */
     for (int i = 0; i < size; i++) {
-        ASSERT_NEAR(lut_imported[i], lut_baked[i], 1e-9);
+        TEST_CHECK_NEAR(lut_imported[i], lut_baked[i], 1e-9);
     }
 
     /* Sample through imported LUT at various points and verify monotonicity */
@@ -1198,16 +1182,16 @@ static int test_trilinear_manual(void) {
     alwan_rgb in = {0.0, 0.0, 0.0};
     alwan_rgb out;
     alwan_lut3d_sample(&out, lut, &in, size);
-    ASSERT_NEAR(out.r, 0.0, 1e-15);
-    ASSERT_NEAR(out.g, 0.0, 1e-15);
-    ASSERT_NEAR(out.b, 0.0, 1e-15);
+    TEST_CHECK_NEAR(out.r, 0.0, 1e-15);
+    TEST_CHECK_NEAR(out.g, 0.0, 1e-15);
+    TEST_CHECK_NEAR(out.b, 0.0, 1e-15);
 
     /* At corner (1,1,1) = (1,1,1) */
     in.r = 1.0; in.g = 1.0; in.b = 1.0;
     alwan_lut3d_sample(&out, lut, &in, size);
-    ASSERT_NEAR(out.r, 1.0, 1e-15);
-    ASSERT_NEAR(out.g, 1.0, 1e-15);
-    ASSERT_NEAR(out.b, 1.0, 1e-15);
+    TEST_CHECK_NEAR(out.r, 1.0, 1e-15);
+    TEST_CHECK_NEAR(out.g, 1.0, 1e-15);
+    TEST_CHECK_NEAR(out.b, 1.0, 1e-15);
 
     /* At midpoint (0.5, 0.5, 0.5): trilinear of (R^2, G^2, B^2)
      * With corners at 0 and 1, trilinear interp at 0.5 gives:
@@ -1216,9 +1200,9 @@ static int test_trilinear_manual(void) {
      */
     in.r = 0.5; in.g = 0.5; in.b = 0.5;
     alwan_lut3d_sample(&out, lut, &in, size);
-    ASSERT_NEAR(out.r, 0.5, 1e-14);
-    ASSERT_NEAR(out.g, 0.5, 1e-14);
-    ASSERT_NEAR(out.b, 0.5, 1e-14);
+    TEST_CHECK_NEAR(out.r, 0.5, 1e-14);
+    TEST_CHECK_NEAR(out.g, 0.5, 1e-14);
+    TEST_CHECK_NEAR(out.b, 0.5, 1e-14);
 
     /* At (0.25, 0.75, 0.5):
      * R channel: interp between R=0^2=0 and R=1^2=1 with frac=0.25 -> 0.25
@@ -1227,9 +1211,9 @@ static int test_trilinear_manual(void) {
      */
     in.r = 0.25; in.g = 0.75; in.b = 0.5;
     alwan_lut3d_sample(&out, lut, &in, size);
-    ASSERT_NEAR(out.r, 0.25, 1e-14);
-    ASSERT_NEAR(out.g, 0.75, 1e-14);
-    ASSERT_NEAR(out.b, 0.5,  1e-14);
+    TEST_CHECK_NEAR(out.r, 0.25, 1e-14);
+    TEST_CHECK_NEAR(out.g, 0.75, 1e-14);
+    TEST_CHECK_NEAR(out.b, 0.5,  1e-14);
 
     printf("  PASS\n");
     return 0;

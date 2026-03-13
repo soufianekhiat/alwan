@@ -167,4 +167,112 @@ static inline void alwan__get_luma_coeffs(int standard,
     }
 }
 
+/* ----------------------------------------------------------------
+ * Transfer function resolution (enum -> function pointer)
+ *
+ * Shared resolver for all modules that need to dispatch on
+ * alwan_transfer_function.  Avoids duplicating the 40-case switch
+ * in alwan_rgb.c, alwan_rgb_map.c, alwan_video.c, alwan_clf.c, etc.
+ * ---------------------------------------------------------------- */
+
+#include "core/alwan_rgb_core.h"
+
+typedef alwan_scalar (*alwan_tf_fn)(alwan_scalar);
+
+static inline alwan_tf_fn alwan__resolve_oetf(alwan_transfer_function tf) {
+    switch (tf) {
+    case ALWAN_TF_LINEAR:     return alwan_linear_identity;
+    case ALWAN_TF_SRGB:       return alwan_srgb_oetf;
+    case ALWAN_TF_BT709:      return alwan_bt2020_oetf;
+    case ALWAN_TF_BT2020:     return alwan_bt2020_oetf;
+    case ALWAN_TF_PQ:         return alwan_pq_oetf;
+    case ALWAN_TF_ST2084:     return alwan_pq_oetf;
+    case ALWAN_TF_HLG:        return alwan_hlg_oetf;
+    case ALWAN_TF_BT1886:     return alwan_gamma24_oetf;
+    case ALWAN_TF_ACESPROXY:  return alwan_acesproxy_oetf;
+    case ALWAN_TF_ACESCC:     return alwan_acescc_oetf;
+    case ALWAN_TF_ACESCCT:    return alwan_acescct_oetf;
+    case ALWAN_TF_SLOG:       return alwan_slog_oetf;
+    case ALWAN_TF_SLOG2:      return alwan_slog2_oetf;
+    case ALWAN_TF_SLOG3:      return alwan_slog3_oetf;
+    case ALWAN_TF_CLOG:       return alwan_clog_oetf;
+    case ALWAN_TF_CLOG2:      return alwan_clog2_oetf;
+    case ALWAN_TF_CLOG3:      return alwan_clog3_oetf;
+    case ALWAN_TF_VLOG:       return alwan_vlog_oetf;
+    case ALWAN_TF_LOGC3:      return alwan_logc3_oetf;
+    case ALWAN_TF_LOGC4:      return alwan_logc4_oetf;
+    case ALWAN_TF_REDLOG:     return alwan_redlog_oetf;
+    case ALWAN_TF_REDLOGFILM: return alwan_redlogfilm_oetf;
+    case ALWAN_TF_LOG3G10:    return alwan_log3g10_oetf;
+    case ALWAN_TF_BMDFILM:    return alwan_bmdfilm_oetf;
+    case ALWAN_TF_BMDFILM4:   return alwan_bmdfilm4_oetf;
+    case ALWAN_TF_TLOG:       return alwan_tlog_oetf;
+    case ALWAN_TF_ELOG:       return alwan_elog_oetf;
+    case ALWAN_TF_PROTUNE:    return alwan_protune_oetf;
+    case ALWAN_TF_GAMMA22:    return alwan_gamma22_oetf;
+    case ALWAN_TF_GAMMA24:    return alwan_gamma24_oetf;
+    case ALWAN_TF_GAMMA26:    return alwan_gamma26_oetf;
+    case ALWAN_TF_GAMMA28:    return alwan_gamma28_oetf;
+    case ALWAN_TF_NLOG:       return alwan_nlog_oetf;
+    case ALWAN_TF_CINEON:     return alwan_cineon_oetf;
+    case ALWAN_TF_APPLE_LOG:  return alwan_apple_log_oetf;
+    case ALWAN_TF_FLOG:       return alwan_flog_oetf;
+    case ALWAN_TF_FLOG2:      return alwan_flog2_oetf;
+    case ALWAN_TF_LLOG:       return alwan_llog_oetf;
+    case ALWAN_TF_DLOG:       return alwan_dlog_oetf;
+    case ALWAN_TF_DCDM:       return alwan_dcdm_oetf;
+    case ALWAN_TF_ADX10:      return alwan_adx10_oetf;
+    case ALWAN_TF_ADX16:      return alwan_adx16_oetf;
+    default:                  return NULL;
+    }
+}
+
+static inline alwan_tf_fn alwan__resolve_eotf(alwan_transfer_function tf) {
+    switch (tf) {
+    case ALWAN_TF_LINEAR:     return alwan_linear_identity;
+    case ALWAN_TF_SRGB:       return alwan_srgb_eotf;
+    case ALWAN_TF_BT709:      return alwan_bt2020_eotf;
+    case ALWAN_TF_BT2020:     return alwan_bt2020_eotf;
+    case ALWAN_TF_PQ:         return alwan_pq_eotf;
+    case ALWAN_TF_ST2084:     return alwan_pq_eotf;
+    case ALWAN_TF_HLG:        return alwan_hlg_eotf;
+    case ALWAN_TF_BT1886:     return alwan_bt1886_eotf;
+    case ALWAN_TF_ACESPROXY:  return alwan_acesproxy_eotf;
+    case ALWAN_TF_ACESCC:     return alwan_acescc_eotf;
+    case ALWAN_TF_ACESCCT:    return alwan_acescct_eotf;
+    case ALWAN_TF_SLOG:       return alwan_slog_eotf;
+    case ALWAN_TF_SLOG2:      return alwan_slog2_eotf;
+    case ALWAN_TF_SLOG3:      return alwan_slog3_eotf;
+    case ALWAN_TF_CLOG:       return alwan_clog_eotf;
+    case ALWAN_TF_CLOG2:      return alwan_clog2_eotf;
+    case ALWAN_TF_CLOG3:      return alwan_clog3_eotf;
+    case ALWAN_TF_VLOG:       return alwan_vlog_eotf;
+    case ALWAN_TF_LOGC3:      return alwan_logc3_eotf;
+    case ALWAN_TF_LOGC4:      return alwan_logc4_eotf;
+    case ALWAN_TF_REDLOG:     return alwan_redlog_eotf;
+    case ALWAN_TF_REDLOGFILM: return alwan_redlogfilm_eotf;
+    case ALWAN_TF_LOG3G10:    return alwan_log3g10_eotf;
+    case ALWAN_TF_BMDFILM:    return alwan_bmdfilm_eotf;
+    case ALWAN_TF_BMDFILM4:   return alwan_bmdfilm4_eotf;
+    case ALWAN_TF_TLOG:       return alwan_tlog_eotf;
+    case ALWAN_TF_ELOG:       return alwan_elog_eotf;
+    case ALWAN_TF_PROTUNE:    return alwan_protune_eotf;
+    case ALWAN_TF_GAMMA22:    return alwan_gamma22_eotf;
+    case ALWAN_TF_GAMMA24:    return alwan_gamma24_eotf;
+    case ALWAN_TF_GAMMA26:    return alwan_gamma26_eotf;
+    case ALWAN_TF_GAMMA28:    return alwan_gamma28_eotf;
+    case ALWAN_TF_NLOG:       return alwan_nlog_eotf;
+    case ALWAN_TF_CINEON:     return alwan_cineon_eotf;
+    case ALWAN_TF_APPLE_LOG:  return alwan_apple_log_eotf;
+    case ALWAN_TF_FLOG:       return alwan_flog_eotf;
+    case ALWAN_TF_FLOG2:      return alwan_flog2_eotf;
+    case ALWAN_TF_LLOG:       return alwan_llog_eotf;
+    case ALWAN_TF_DLOG:       return alwan_dlog_eotf;
+    case ALWAN_TF_DCDM:       return alwan_dcdm_eotf;
+    case ALWAN_TF_ADX10:      return alwan_adx10_eotf;
+    case ALWAN_TF_ADX16:      return alwan_adx16_eotf;
+    default:                  return NULL;
+    }
+}
+
 #endif /* ALWAN_INTERNAL_H */

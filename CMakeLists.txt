@@ -102,6 +102,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_interop.c
   src/alwan/api/alwan_clf.c
   src/alwan/api/alwan_half.c
+  src/alwan/api/alwan_video.c
   src/alwan/map/alwan_vision_map.c
   src/alwan/api/alwan_zcam.c
 )

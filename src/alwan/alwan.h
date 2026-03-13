@@ -38,6 +38,12 @@ typedef enum {
     ALWAN_PIXEL_F16 = 4   /* IEEE 754 binary16 (half-float)     */
 } alwan_pixel_format;
 
+/* Video signal range */
+typedef enum {
+    ALWAN_VIDEO_RANGE_FULL   = 0,  /* 0 to (2^N - 1) */
+    ALWAN_VIDEO_RANGE_NARROW = 1   /* 16*2^(N-8) to 235*2^(N-8) (SMPTE) */
+} alwan_video_range;
+
 /* ----------------------------------------------------------------
  * Data semantic classification (Color Interop Forum)
  *
@@ -4974,6 +4980,42 @@ int alwan_clf_export_view_buffer(char *buf, size_t buf_size, size_t *bytes_writt
                                   alwan_view_transform view,
                                   char const *id, char const *name,
                                   int lut_size);
+
+/* ----------------------------------------------------------------
+ * Video Signal Encoding / Decoding
+ *
+ * Combines transfer function + range scaling + quantization.
+ * Pipeline: encode = linear -> OETF -> range scale -> quantize
+ *           decode = dequantize -> range unscale -> EOTF -> linear
+ * ---------------------------------------------------------------- */
+
+/* Encode: linear RGB -> video signal (TF + range + quantization).
+ * out: output buffer (3-channel packed pixels in out_fmt)
+ * out_fmt: output pixel format (U8, U16, F32, F64)
+ * rgb_linear: input linear RGB triplets (count * 3 alwan_scalars)
+ * count: number of pixels
+ * ctx: context for space descriptor lookup
+ * space: RGB color space (determines OETF)
+ * range: ALWAN_VIDEO_RANGE_FULL or ALWAN_VIDEO_RANGE_NARROW
+ * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from out_fmt */
+int alwan_video_encode(void *out, alwan_pixel_format out_fmt,
+                       alwan_scalar const *rgb_linear, size_t count,
+                       alwan_ctx *ctx, alwan_rgb_space space,
+                       alwan_video_range range, int bit_depth);
+
+/* Decode: video signal -> linear RGB.
+ * rgb_linear: output linear RGB triplets (count * 3 alwan_scalars)
+ * in: input buffer (3-channel packed pixels in in_fmt)
+ * in_fmt: input pixel format (U8, U16, F32, F64)
+ * count: number of pixels
+ * ctx: context for space descriptor lookup
+ * space: RGB color space (determines EOTF)
+ * range: ALWAN_VIDEO_RANGE_FULL or ALWAN_VIDEO_RANGE_NARROW
+ * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from in_fmt */
+int alwan_video_decode(alwan_scalar *rgb_linear,
+                       void const *in, alwan_pixel_format in_fmt, size_t count,
+                       alwan_ctx *ctx, alwan_rgb_space space,
+                       alwan_video_range range, int bit_depth);
 
 #ifdef __cplusplus
 }
