@@ -7,26 +7,10 @@
  *          float16 conversion, data semantic enum
  */
 
-#include "alwan.h"
-#include <stdio.h>
+#include "test_common.h"
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-
-#if ALWAN_SCALAR_IS_FLOAT
-#  define TOL 1e-4
-#else
-#  define TOL 1e-10
-#endif
-
-#define ASSERT_NEAR(a, b, t) do { \
-    double _a = (double)(a), _b = (double)(b); \
-    if (fabs(_a - _b) > (t)) { \
-        printf("  FAIL: %s = %.12f, expected %.12f (diff %.2e) at %s:%d\n", \
-               #a, _a, _b, fabs(_a - _b), __FILE__, __LINE__); \
-        return 1; \
-    } \
-} while(0)
 
 /* ----------------------------------------------------------------
  * Test: Interop ID parse (string -> enum)
