@@ -77,6 +77,7 @@ add_executable(
   73_hsp_hsy.c
   74_hsplog.c
   75_image_convert.c
+  76_convenience_models.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)
