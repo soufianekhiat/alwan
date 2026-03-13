@@ -4697,6 +4697,176 @@ int alwan_color_matrix_apply_map_planar_ex(void *out0, void *out1, void *out2, a
 int alwan_printer_lights_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, alwan_scalar red_lights, alwan_scalar green_lights, alwan_scalar blue_lights, size_t count, size_t in_stride, size_t out_stride);
 int alwan_white_balance_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, alwan_rgb const *multipliers, size_t count, size_t in_stride, size_t out_stride);
 
+/* ----------------------------------------------------------------
+ * LUT Baking
+ * ---------------------------------------------------------------- */
+
+/* Bake a 3D LUT by sampling an RGB color space conversion pipeline.
+ * out: buffer of size^3 * 3 alwan_scalars (R-fastest, then G, then B)
+ * size: cube edge length (e.g. 17, 33, 65)
+ * ctx: context for chromatic adaptation (may be NULL if white points match)
+ * src_space: source RGB color space descriptor
+ * dst_space: destination RGB color space descriptor
+ * Returns ALWAN_OK on success */
+int alwan_bake_3dlut(alwan_scalar *out, int size,
+                     alwan_ctx *ctx,
+                     alwan_rgb_space_desc const *src_space,
+                     alwan_rgb_space_desc const *dst_space);
+
+/* Bake a 3D LUT with a view transform applied after color space conversion.
+ * The pipeline is: EOTF(src) -> combined matrix -> view transform -> OETF(dst)
+ * vt: view transform to apply (use -1 or cast for no transform)
+ * Returns ALWAN_OK on success */
+int alwan_bake_3dlut_view(alwan_scalar *out, int size,
+                          alwan_ctx *ctx,
+                          alwan_rgb_space_desc const *src_space,
+                          alwan_rgb_space_desc const *dst_space,
+                          alwan_view_transform vt);
+
+/* Bake a 1D LUT by sampling a transfer function.
+ * out: buffer of size alwan_scalars
+ * size: number of samples (e.g. 256, 1024, 4096)
+ * tf: transfer function to sample
+ * encode: non-zero for OETF (linear->encoded), zero for EOTF (encoded->linear)
+ * Returns ALWAN_OK on success */
+int alwan_bake_1dlut(alwan_scalar *out, int size,
+                     alwan_transfer_function tf,
+                     int encode);
+
+/* ----------------------------------------------------------------
+ * 2D LUT (Flattened 3D LUT for GPU Textures)
+ *
+ * A size^3 3D LUT is flattened into a 2D image:
+ *   width  = size * size (N blue slices side-by-side)
+ *   height = size
+ * Each slice is a constant-B plane; x = R, y = G.
+ * Standard game engine convention (Unreal, Unity).
+ * ---------------------------------------------------------------- */
+
+/* Get the 2D image dimensions for a flattened 3D LUT.
+ * size: 3D LUT edge length
+ * width: output image width  (= size * size)
+ * height: output image height (= size) */
+void alwan_lut2d_dimensions(int size, int *width, int *height);
+
+/* Flatten a 3D LUT into a 2D image buffer.
+ * out: buffer of (size*size) * size * 3 alwan_scalars (row-major, RGB interleaved)
+ * lut3d: source 3D LUT (size^3 * 3, R-fastest)
+ * size: cube edge length
+ * Returns ALWAN_OK on success */
+int alwan_lut3d_to_2d(alwan_scalar *out,
+                       alwan_scalar const *lut3d,
+                       int size);
+
+/* Unflatten a 2D image buffer back to a 3D LUT.
+ * out: buffer of size^3 * 3 alwan_scalars (R-fastest)
+ * lut2d: source 2D image (size*size width, size height, RGB interleaved)
+ * size: cube edge length
+ * Returns ALWAN_OK on success */
+int alwan_lut2d_to_3d(alwan_scalar *out,
+                       alwan_scalar const *lut2d,
+                       int size);
+
+/* Bake directly into a 2D image buffer (convenience: bake 3D + flatten).
+ * out: buffer of (size*size) * size * 3 alwan_scalars
+ * size: cube edge length
+ * Returns ALWAN_OK on success */
+int alwan_bake_2dlut(alwan_scalar *out, int size,
+                     alwan_ctx *ctx,
+                     alwan_rgb_space_desc const *src_space,
+                     alwan_rgb_space_desc const *dst_space);
+
+/* 1D LUT linear interpolation.
+ * result: output interpolated value
+ * lut: 1D LUT data (size entries)
+ * t: input [0,1] coordinate
+ * size: number of entries
+ * Returns ALWAN_OK on success */
+int alwan_lut1d_sample(alwan_scalar *result,
+                        alwan_scalar const *lut,
+                        alwan_scalar t,
+                        int size);
+
+/* 2D LUT sampling (flattened 3D strip).
+ * Trilinear interpolation on the 2D strip layout, matching GPU
+ * texture sampling for game engine color grading LUTs.
+ * result: output interpolated RGB
+ * lut2d: 2D LUT data ((size*size) * size * 3, row-major RGB interleaved)
+ * rgb: input [0,1] coordinate
+ * size: cube edge length
+ * Returns ALWAN_OK on success */
+int alwan_lut2d_sample(alwan_rgb *result,
+                        alwan_scalar const *lut2d,
+                        alwan_rgb const *rgb,
+                        int size);
+
+/* 3D LUT trilinear interpolation.
+ * result: output interpolated RGB
+ * lut: 3D LUT data (size^3 * 3, R-fastest)
+ * rgb: input [0,1] coordinate
+ * size: cube edge length
+ * Returns ALWAN_OK on success */
+int alwan_lut3d_sample(alwan_rgb *result,
+                        alwan_scalar const *lut,
+                        alwan_rgb const *rgb,
+                        int size);
+
+/* ----------------------------------------------------------------
+ * .cube File Import / Export
+ * ---------------------------------------------------------------- */
+
+/* Export a 3D LUT to a .cube file.
+ * path: output file path
+ * lut: 3D LUT data (size^3 * 3, R-fastest)
+ * size: cube edge length
+ * title: optional title string (NULL for no title) */
+int alwan_cube_export_3d(char const *path,
+                          alwan_scalar const *lut,
+                          int size,
+                          char const *title);
+
+/* Export a 1D LUT to a .cube file.
+ * path: output file path
+ * lut: 1D LUT data (size values)
+ * size: number of entries
+ * title: optional title string (NULL for no title) */
+int alwan_cube_export_1d(char const *path,
+                          alwan_scalar const *lut,
+                          int size,
+                          char const *title);
+
+/* Export a 3D LUT to a .cube format in a memory buffer.
+ * buf: output buffer
+ * buf_size: buffer capacity
+ * bytes_written: actual bytes written (output)
+ * Returns ALWAN_E_RANGE if buffer too small */
+int alwan_cube_export_3d_buffer(char *buf, size_t buf_size, size_t *bytes_written,
+                                 alwan_scalar const *lut,
+                                 int size,
+                                 char const *title);
+
+/* Import a 3D LUT from a .cube file.
+ * lut: output buffer (caller must allocate: size^3 * 3 alwan_scalars)
+ * out_size: receives the cube edge length
+ * path: input file path */
+int alwan_cube_import_3d(alwan_scalar *lut, int *out_size,
+                          char const *path);
+
+/* Import a 1D LUT from a .cube file.
+ * lut: output buffer (caller must allocate: size alwan_scalars)
+ * out_size: receives the number of entries
+ * path: input file path */
+int alwan_cube_import_1d(alwan_scalar *lut, int *out_size,
+                          char const *path);
+
+/* Import a 3D LUT from a .cube format memory buffer.
+ * lut: output buffer (caller must allocate: size^3 * 3 alwan_scalars)
+ * out_size: receives the cube edge length
+ * buf: input buffer
+ * buf_len: buffer length */
+int alwan_cube_import_3d_buffer(alwan_scalar *lut, int *out_size,
+                                 char const *buf, size_t buf_len);
+
 #ifdef __cplusplus
 }
 #endif

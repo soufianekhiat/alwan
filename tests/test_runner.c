@@ -89,6 +89,7 @@ extern int test_75_image_convert_main(void);
 extern int test_76_convenience_models_main(void);
 extern int test_77_accessibility_contrast_main(void);
 extern int test_78_hdr_ecosystem_main(void);
+extern int test_79_lut_bake_export_main(void);
 
 /* Test registry */
 typedef struct {
@@ -176,6 +177,7 @@ static test_suite const g_test_suites[] = {
     {"76_convenience_models", test_76_convenience_models_main},
     {"77_accessibility_contrast", test_77_accessibility_contrast_main},
     {"78_hdr_ecosystem", test_78_hdr_ecosystem_main},
+    {"79_lut_bake_export", test_79_lut_bake_export_main},
 };
 
 int main(void) {

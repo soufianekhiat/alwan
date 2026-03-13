@@ -310,11 +310,6 @@ ALWAN_INLINE alwan_scalar alwan_apca_contrast_v(alwan_rgb srgb_text,
     Ytxt = ALWAN_SELECT(Ytxt < blkThrs, Ytxt + ALWAN_POW(diffTxt, blkClmp), Ytxt);
     Ybg  = ALWAN_SELECT(Ybg  < blkThrs, Ybg  + ALWAN_POW(diffBg,  blkClmp), Ybg);
 
-    /* Minimum luminance difference check */
-    alwan_scalar const deltaYmin = ALWAN_LITERAL(0.0005);
-    alwan_scalar absDiff = Ybg - Ytxt;
-    absDiff = ALWAN_SELECT(absDiff < ALWAN_ZERO, -absDiff, absDiff);
-
     /* Polarity-dependent exponents and output scaling */
     alwan_scalar const normBG  = ALWAN_LITERAL(0.56);
     alwan_scalar const normTXT = ALWAN_LITERAL(0.57);
