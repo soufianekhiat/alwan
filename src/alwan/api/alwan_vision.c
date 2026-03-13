@@ -48,6 +48,54 @@ int alwan_simulate_cvd(alwan_rgb *rgb_out,
 }
 
 /* ================================================================
+ * Machado 2009 CVD Simulation
+ * ================================================================ */
+
+int alwan_simulate_cvd_machado(alwan_rgb *rgb_out,
+                                alwan_rgb const *rgb_in,
+                                alwan_cvd_type cvd_type,
+                                alwan_scalar severity) {
+    if (!rgb_in || !rgb_out) return ALWAN_E_INVALID;
+
+    alwan_rgb result;
+
+    switch (cvd_type) {
+        case ALWAN_CVD_PROTANOPIA:
+        case ALWAN_CVD_PROTANOMALY:
+            result = alwan_simulate_machado_protan_v(*rgb_in, severity);
+            break;
+        case ALWAN_CVD_DEUTERANOPIA:
+        case ALWAN_CVD_DEUTERANOMALY:
+            result = alwan_simulate_machado_deutan_v(*rgb_in, severity);
+            break;
+        case ALWAN_CVD_TRITANOPIA:
+        case ALWAN_CVD_TRITANOMALY:
+            result = alwan_simulate_machado_tritan_v(*rgb_in, severity);
+            break;
+        default:
+            return ALWAN_E_INVALID;
+    }
+
+    *rgb_out = result;
+    return ALWAN_OK;
+}
+
+int alwan_simulate_cvd_ex(alwan_rgb *rgb_out,
+                           alwan_rgb const *rgb_in,
+                           alwan_cvd_type cvd_type,
+                           alwan_scalar severity,
+                           alwan_cvd_model model) {
+    switch (model) {
+        case ALWAN_CVD_MODEL_BRETTEL:
+            return alwan_simulate_cvd(rgb_out, rgb_in, cvd_type, severity);
+        case ALWAN_CVD_MODEL_MACHADO:
+            return alwan_simulate_cvd_machado(rgb_out, rgb_in, cvd_type, severity);
+        default:
+            return ALWAN_E_INVALID;
+    }
+}
+
+/* ================================================================
  * Luminous Efficiency Functions
  * Luminous Efficiency Functions (LUT-based)
  * ================================================================ */

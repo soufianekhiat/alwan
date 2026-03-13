@@ -139,3 +139,50 @@ int alwan_simulate_cvd_map_planar(alwan_scalar *out0, alwan_scalar *out1, alwan_
 ALWAN_MAP3_PLANAR_V_SCALAR(alwan_simulate_protanopia_map_planar,   alwan_rgb, alwan_rgb, alwan_simulate_protanopia_v,   r,g,b, r,g,b)
 ALWAN_MAP3_PLANAR_V_SCALAR(alwan_simulate_deuteranopia_map_planar, alwan_rgb, alwan_rgb, alwan_simulate_deuteranopia_v, r,g,b, r,g,b)
 ALWAN_MAP3_PLANAR_V_SCALAR(alwan_simulate_tritanopia_map_planar,   alwan_rgb, alwan_rgb, alwan_simulate_tritanopia_v,   r,g,b, r,g,b)
+
+/* ----------------------------------------------------------------
+ * Machado 2009 CVD Batch Map
+ * ---------------------------------------------------------------- */
+
+int alwan_simulate_cvd_machado_map_interleave(alwan_scalar *rgb_out,
+                                               alwan_scalar const *rgb_in,
+                                               alwan_cvd_type cvd_type,
+                                               alwan_scalar severity,
+                                               size_t count,
+                                               size_t in_stride,
+                                               size_t out_stride) {
+    if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+
+    /* Select LUT once outside the loop */
+    alwan_mat3x3 const *lut;
+    switch (cvd_type) {
+    case ALWAN_CVD_PROTANOPIA:
+    case ALWAN_CVD_PROTANOMALY:
+        lut = MACHADO_PROTAN;
+        break;
+    case ALWAN_CVD_DEUTERANOPIA:
+    case ALWAN_CVD_DEUTERANOMALY:
+        lut = MACHADO_DEUTAN;
+        break;
+    case ALWAN_CVD_TRITANOPIA:
+    case ALWAN_CVD_TRITANOMALY:
+        lut = MACHADO_TRITAN;
+        break;
+    default:
+        return ALWAN_E_INVALID;
+    }
+
+    /* Interpolate matrix once (severity is constant across batch) */
+    alwan_mat3x3 mat = alwan_machado_interpolate_v(lut, severity);
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)rgb_in + i * in_stride);
+        alwan_scalar *out_ptr = (alwan_scalar *)((char *)rgb_out + i * out_stride);
+        alwan_vec3 v = {{in_ptr[0], in_ptr[1], in_ptr[2]}};
+        alwan_vec3 r = alwan_mat3_mulv_v(mat, v);
+        out_ptr[0] = alwan_saturate(r.v[0]);
+        out_ptr[1] = alwan_saturate(r.v[1]);
+        out_ptr[2] = alwan_saturate(r.v[2]);
+    }
+    return ALWAN_OK;
+}
