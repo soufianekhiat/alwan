@@ -21,7 +21,7 @@
 /* Apple Log encoded input values (0-1 range) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const apple_log_decode_input[] = {
+static alwan_f64 const apple_log_decode_input[] = {
 #include "reference_values/apple_log_decode_input.csv"
 };
 ALWAN_DIAG_POP
@@ -30,7 +30,7 @@ ALWAN_DIAG_POP
 /* Expected linear values after decoding */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const apple_log_decode_expected[] = {
+static alwan_f64 const apple_log_decode_expected[] = {
 #include "reference_values/apple_log_decode_output.csv"
 };
 ALWAN_DIAG_POP
@@ -38,7 +38,7 @@ ALWAN_DIAG_POP
 /* Linear input values for encoding */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const apple_log_encode_input[] = {
+static alwan_f64 const apple_log_encode_input[] = {
 #include "reference_values/apple_log_encode_input.csv"
 };
 ALWAN_DIAG_POP
@@ -47,7 +47,7 @@ ALWAN_DIAG_POP
 /* Expected Apple Log encoded values */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const apple_log_encode_expected[] = {
+static alwan_f64 const apple_log_encode_expected[] = {
 #include "reference_values/apple_log_encode_output.csv"
 };
 ALWAN_DIAG_POP
@@ -59,7 +59,7 @@ ALWAN_DIAG_POP
 /* Linear input values for DCDM encoding */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const dcdm_encode_input[] = {
+static alwan_f64 const dcdm_encode_input[] = {
 #include "reference_values/dcdm_encode_input.csv"
 };
 ALWAN_DIAG_POP
@@ -68,7 +68,7 @@ ALWAN_DIAG_POP
 /* Expected DCDM encoded values */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const dcdm_encode_expected[] = {
+static alwan_f64 const dcdm_encode_expected[] = {
 #include "reference_values/dcdm_encode_output.csv"
 };
 ALWAN_DIAG_POP
@@ -76,7 +76,7 @@ ALWAN_DIAG_POP
 /* DCDM encoded input values for decoding */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const dcdm_decode_input[] = {
+static alwan_f64 const dcdm_decode_input[] = {
 #include "reference_values/dcdm_decode_input.csv"
 };
 ALWAN_DIAG_POP
@@ -85,7 +85,7 @@ ALWAN_DIAG_POP
 /* Expected linear values after decoding */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const dcdm_decode_expected[] = {
+static alwan_f64 const dcdm_decode_expected[] = {
 #include "reference_values/dcdm_decode_output.csv"
 };
 ALWAN_DIAG_POP
@@ -97,13 +97,13 @@ ALWAN_DIAG_POP
 static int test_apple_log_decoding(void) {
     printf("  Testing Apple Log decoding (EOTF)...\n");
 
-    alwan_scalar decoded[NUM_APPLE_LOG_DECODE];
+    alwan_f64 decoded[NUM_APPLE_LOG_DECODE];
 
     /* Apply Apple Log decoding (EOTF) */
     int result = alwan_eotf_apply(decoded, ALWAN_TF_APPLE_LOG,
                                   apple_log_decode_input,
                                   NUM_APPLE_LOG_DECODE,
-                                  sizeof(alwan_scalar), sizeof(alwan_scalar));
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
     if (result != 0) {
         printf("FAIL: alwan_eotf_apply returned error %d\n", result);
         return 1;
@@ -113,7 +113,7 @@ static int test_apple_log_decoding(void) {
     for (size_t i = 0; i < NUM_APPLE_LOG_DECODE; i++) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Apple Log decode [%zu]: encoded=%.2f",
-                 i, (alwan_scalar)apple_log_decode_input[i]);
+                 i, (alwan_f64)apple_log_decode_input[i]);
         TEST_ASSERT_ABS(decoded[i], apple_log_decode_expected[i], ALWAN_TEST_TOLERANCE, msg);
     }
 
@@ -124,13 +124,13 @@ static int test_apple_log_decoding(void) {
 static int test_apple_log_encoding(void) {
     printf("  Testing Apple Log encoding (OETF)...\n");
 
-    alwan_scalar encoded[NUM_APPLE_LOG_ENCODE];
+    alwan_f64 encoded[NUM_APPLE_LOG_ENCODE];
 
     /* Apply Apple Log encoding (OETF) */
     int result = alwan_oetf_apply(encoded, ALWAN_TF_APPLE_LOG,
                                   apple_log_encode_input,
                                   NUM_APPLE_LOG_ENCODE,
-                                  sizeof(alwan_scalar), sizeof(alwan_scalar));
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
     if (result != 0) {
         printf("FAIL: alwan_oetf_apply returned error %d\n", result);
         return 1;
@@ -160,13 +160,13 @@ static int test_apple_log_encoding(void) {
 static int test_dcdm_encoding(void) {
     printf("  Testing DCDM encoding (OETF)...\n");
 
-    alwan_scalar encoded[NUM_DCDM_ENCODE];
+    alwan_f64 encoded[NUM_DCDM_ENCODE];
 
     /* Apply DCDM encoding (OETF) */
     int result = alwan_oetf_apply(encoded, ALWAN_TF_DCDM,
                                   dcdm_encode_input,
                                   NUM_DCDM_ENCODE,
-                                  sizeof(alwan_scalar), sizeof(alwan_scalar));
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
     if (result != 0) {
         printf("FAIL: alwan_oetf_apply returned error %d\n", result);
         return 1;
@@ -192,13 +192,13 @@ static int test_dcdm_encoding(void) {
 static int test_dcdm_decoding(void) {
     printf("  Testing DCDM decoding (EOTF)...\n");
 
-    alwan_scalar decoded[NUM_DCDM_DECODE];
+    alwan_f64 decoded[NUM_DCDM_DECODE];
 
     /* Apply DCDM decoding (EOTF) */
     int result = alwan_eotf_apply(decoded, ALWAN_TF_DCDM,
                                   dcdm_decode_input,
                                   NUM_DCDM_DECODE,
-                                  sizeof(alwan_scalar), sizeof(alwan_scalar));
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
     if (result != 0) {
         printf("FAIL: alwan_eotf_apply returned error %d\n", result);
         return 1;

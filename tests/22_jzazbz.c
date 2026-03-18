@@ -11,7 +11,7 @@
 static int test_xyz_jzazbz_round_trip(void) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "reference_values/test_xyz_jzazbz_pairs.csv"
     };
 ALWAN_DIAG_POP
@@ -33,10 +33,10 @@ ALWAN_DIAG_POP
         /* Test XYZ -> Jzazbz */
         alwan_xyz_to_jzazbz(&jzazbz_computed, &xyz_in);
 
-        alwan_scalar const jzazbz_tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_Jz = ALWAN_ABS(jzazbz_computed.Jz - jzazbz_expected.Jz);
-        alwan_scalar diff_az = ALWAN_ABS(jzazbz_computed.az - jzazbz_expected.az);
-        alwan_scalar diff_bz = ALWAN_ABS(jzazbz_computed.bz - jzazbz_expected.bz);
+        alwan_f64 const jzazbz_tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 diff_Jz = ALWAN_ABS(jzazbz_computed.Jz - jzazbz_expected.Jz);
+        alwan_f64 diff_az = ALWAN_ABS(jzazbz_computed.az - jzazbz_expected.az);
+        alwan_f64 diff_bz = ALWAN_ABS(jzazbz_computed.bz - jzazbz_expected.bz);
 
         if (diff_Jz > jzazbz_tol) {
             printf("Color %zu Jz channel failed:\n", i);
@@ -116,9 +116,9 @@ static int test_jzazbz_jzczhz_round_trip(void) {
     alwan_jzazbz_to_jzczhz(&jzczhz, &jzazbz);
     alwan_jzczhz_to_jzazbz(&jzazbz_out, &jzczhz);
 
-    alwan_scalar diff_Jz = ALWAN_ABS(jzazbz_out.Jz - jzazbz.Jz);
-    alwan_scalar diff_az = ALWAN_ABS(jzazbz_out.az - jzazbz.az);
-    alwan_scalar diff_bz = ALWAN_ABS(jzazbz_out.bz - jzazbz.bz);
+    alwan_f64 diff_Jz = ALWAN_ABS(jzazbz_out.Jz - jzazbz.Jz);
+    alwan_f64 diff_az = ALWAN_ABS(jzazbz_out.az - jzazbz.az);
+    alwan_f64 diff_bz = ALWAN_ABS(jzazbz_out.bz - jzazbz.bz);
 
     TEST_ASSERT(diff_Jz < ALWAN_TEST_TOLERANCE, "Jzazbz round-trip failed (Jz)");
     TEST_ASSERT(diff_az < ALWAN_TEST_TOLERANCE, "Jzazbz round-trip failed (az)");

@@ -15,21 +15,17 @@ namespace Alwan
             Name = "Alwan";
             IsFileNameToLower = false;
 
-            // Add targets for both float and double precision
             AddTargets(new AlwanTarget(
                 Platform.win64,
                 DevEnv.vs2022,
-                Optimization.Debug | Optimization.Release,
-                ScalarType.Float | ScalarType.Double
+                Optimization.Debug | Optimization.Release
             ));
         }
 
         [Configure]
         public void ConfigureAll(Configuration conf, AlwanTarget target)
         {
-            // Make solution configuration names unique by including scalar type
-            string scalarSuffix = (target.Scalar == ScalarType.Float) ? "_f32" : "_f64";
-            conf.Name = "[target.Optimization]" + scalarSuffix;
+            conf.Name = "[target.Optimization]";
 
             conf.SolutionFileName = "[solution.Name]_[target.DevEnv]_[target.Platform]";
             conf.SolutionPath = @"[solution.SharpmakeCsPath]\..\..\..";

@@ -11,14 +11,14 @@
 static int test_xyz_prolab_round_trip(void) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "reference_values/test_xyz_prolab_pairs.csv"
     };
 ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
-    alwan_scalar const prolab_tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const prolab_tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz_in;
@@ -42,10 +42,10 @@ ALWAN_DIAG_POP
         /* Test XYZ -> ProLab */
         alwan_xyz_to_prolab(&prolab_computed, &xyz_in);
 
-        alwan_scalar prolab_comp_arr[3] = {prolab_computed.L, prolab_computed.a, prolab_computed.b};
-        alwan_scalar prolab_exp_arr[3] = {prolab_expected.L, prolab_expected.a, prolab_expected.b};
+        alwan_f64 prolab_comp_arr[3] = {prolab_computed.L, prolab_computed.a, prolab_computed.b};
+        alwan_f64 prolab_exp_arr[3] = {prolab_expected.L, prolab_expected.a, prolab_expected.b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(prolab_comp_arr[j] - prolab_exp_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(prolab_comp_arr[j] - prolab_exp_arr[j]);
             if (diff > prolab_tolerance) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",

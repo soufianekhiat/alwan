@@ -14,20 +14,29 @@
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
 
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
 /* ================================================================
- * Generic Sigmoid
- *
- * Piece-wise power curve with smooth join at pivot:
- *   For x < pivot:  y = pivot * pow(x / pivot, toe_power)
- *   For x >= pivot: y = 1 - (1 - pivot) * pow((1 - x) / (1 - pivot), shoulder_power)
- *
- * slope scales the input around the pivot before applying the curve.
- * Parameters:
- *   x              - input value (typically [0,1])
- *   pivot          - midpoint of the sigmoid (default 0.18)
- *   slope          - contrast / gain around pivot (default 1.0)
- *   toe_power      - power exponent for the toe region (< pivot)
- *   shoulder_power - power exponent for the shoulder region (>= pivot)
+ * Dual-Precision: emit f32 and f64 variants from shared .inc
+ * ================================================================ */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
+
+/* f32 pass */
+#include "alwan_core_f32_setup.h"
+#include "alwan_sigmoid_core.inc"
+#include "alwan_core_teardown.h"
+
+/* f64 pass */
+#include "alwan_core_f64_setup.h"
+#include "alwan_sigmoid_core.inc"
+#include "alwan_core_teardown.h"
+
+ALWAN_DIAG_POP
+
+#else /* HLSL / GLSL / Halide */
+/* ================================================================
+ * GPU Backends: Single-precision only (original code)
  * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_sigmoid_v(alwan_scalar x,
@@ -53,12 +62,6 @@ ALWAN_INLINE alwan_scalar alwan_sigmoid_v(alwan_scalar x,
     return ALWAN_SELECT(clamped < safe_pivot, toe_result, shoulder_result);
 }
 
-/* ================================================================
- * Generic Sigmoid Inverse
- *
- * Analytical inverse of the piece-wise power sigmoid.
- * ================================================================ */
-
 ALWAN_INLINE alwan_scalar alwan_sigmoid_inv_v(alwan_scalar y,
                                                alwan_scalar pivot,
                                                alwan_scalar slope,
@@ -83,5 +86,7 @@ ALWAN_INLINE alwan_scalar alwan_sigmoid_inv_v(alwan_scalar y,
     /* Undo the slope scaling: scaled = pivot + (x - pivot) * slope => x = pivot + (scaled - pivot) / slope */
     return pivot + (x_scaled - pivot) / safe_slope;
 }
+
+#endif
 
 #endif /* ALWAN_SIGMOID_CORE_H */

@@ -89,7 +89,7 @@ static int test_spd_resampling(void) {
 
     /* Fill with simple ramp */
     for (size_t i = 0; i < src.count; i++) {
-        src.values[i] = (alwan_scalar)i / (alwan_scalar)(src.count - 1);
+        src.values[i] = (alwan_f64)i / (alwan_f64)(src.count - 1);
     }
 
     /* Resample to 420-680nm, 5nm steps (linear) */
@@ -167,9 +167,9 @@ static int test_xyz_from_constant_spd(void) {
     TEST_ASSERT(xyz_simp.z > ALWAN_LITERAL(0.0), "Z (Simpson) should be positive");
 
     /* Both methods should give similar results (within 10%) */
-    alwan_scalar diff_X = ALWAN_ABS(xyz_trap.x - xyz_simp.x) / xyz_trap.x;
-    alwan_scalar diff_Y = ALWAN_ABS(xyz_trap.y - xyz_simp.y) / xyz_trap.y;
-    alwan_scalar diff_Z = ALWAN_ABS(xyz_trap.z - xyz_simp.z) / xyz_trap.z;
+    alwan_f64 diff_X = ALWAN_ABS(xyz_trap.x - xyz_simp.x) / xyz_trap.x;
+    alwan_f64 diff_Y = ALWAN_ABS(xyz_trap.y - xyz_simp.y) / xyz_trap.y;
+    alwan_f64 diff_Z = ALWAN_ABS(xyz_trap.z - xyz_simp.z) / xyz_trap.z;
 
     TEST_ASSERT(diff_X < ALWAN_LITERAL(0.1), "X values differ too much between methods");
     TEST_ASSERT(diff_Y < ALWAN_LITERAL(0.1), "Y values differ too much between methods");

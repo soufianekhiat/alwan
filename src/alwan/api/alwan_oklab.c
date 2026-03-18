@@ -16,21 +16,13 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_oklab_core.h"
 
-void alwan_xyz_to_oklab(alwan_oklab *oklab, alwan_xyz const *xyz) {
-    *oklab = alwan_xyz_to_oklab_v(*xyz);
-}
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_oklab_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
 
-void alwan_oklab_to_xyz(alwan_xyz *xyz, alwan_oklab const *oklab) {
-    *xyz = alwan_oklab_to_xyz_v(*oklab);
-}
-
-void alwan_oklab_to_oklch(alwan_oklch *oklch, alwan_oklab const *oklab) {
-    *oklch = alwan_oklab_to_oklch_v(*oklab);
-    ALWAN_NORM_OKLCH(oklch);
-}
-
-void alwan_oklch_to_oklab(alwan_oklab *oklab, alwan_oklch const *oklch) {
-    alwan_oklch tmp = *oklch;
-    ALWAN_DENORM_OKLCH(&tmp);
-    *oklab = alwan_oklch_to_oklab_v(tmp);
-}
+#include "alwan_api_f64_setup.h"
+#include "alwan_oklab_impl.inc"
+#include "alwan_api_teardown.h"

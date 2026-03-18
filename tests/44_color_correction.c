@@ -17,8 +17,7 @@ static int test_lgg_neutral(void)
     alwan_rgb gain = {1.0, 1.0, 1.0};    /* No gain */
     alwan_rgb rgb_out;
 
-    int status = alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
-    TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
+    alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
 
     /* With neutral values, output should match input */
     TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Red channel should be unchanged");
@@ -38,8 +37,7 @@ static int test_lgg_lift(void)
     alwan_rgb gain = {1.0, 1.0, 1.0};
     alwan_rgb rgb_out;
 
-    int status = alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
-    TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
+    alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
 
     /* Lift adds to input: (0.2 + 0.1) = 0.3 for red */
     TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.3), ALWAN_TEST_TOLERANCE, "Red lifted by 0.1");
@@ -59,8 +57,7 @@ static int test_lgg_gamma(void)
     alwan_rgb gain = {1.0, 1.0, 1.0};
     alwan_rgb rgb_out;
 
-    int status = alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
-    TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
+    alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
 
     /* Gamma 2.0: 0.5^(1/2) = 0.707... */
     TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.707106781), ALWAN_LITERAL(0.0001), "Red darkened (gamma 2.0)");
@@ -82,8 +79,7 @@ static int test_lgg_gain(void)
     alwan_rgb gain = {2.0, 0.5, 1.0};    /* Double red, halve green, neutral blue */
     alwan_rgb rgb_out;
 
-    int status = alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
-    TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
+    alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
 
     TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "Red gain doubled");
     TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.25), ALWAN_TEST_TOLERANCE, "Green gain halved");
@@ -99,7 +95,7 @@ static int test_lgg_combined(void)
     /* Reference values from colour-science (generate_data_tests.ps1) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_lgg_combined[] = {
+    static alwan_f64 const ref_lgg_combined[] = {
 #include "reference_values/lgg_combined.csv"
     };
     ALWAN_DIAG_POP
@@ -110,8 +106,7 @@ static int test_lgg_combined(void)
     alwan_rgb gain = {1.1, 1.0, 0.9};
     alwan_rgb rgb_out;
 
-    int status = alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
-    TEST_ASSERT(status == ALWAN_OK, "LGG apply failed");
+    alwan_lgg_apply(&rgb_out, &rgb_in, &lift, &gamma, &gain);
 
     /* Compare with reference values from colour-science */
     TEST_ASSERT_NEAR(rgb_out.r, ref_lgg_combined[0], ALWAN_TEST_TOLERANCE, "Red combined adjustment");
@@ -134,8 +129,7 @@ static int test_color_matrix_identity(void)
     alwan_mat3_identity(&identity);
     alwan_rgb rgb_out;
 
-    int status = alwan_color_matrix_apply(&rgb_out, &rgb_in, &identity);
-    TEST_ASSERT(status == ALWAN_OK, "Color matrix apply failed");
+    alwan_color_matrix_apply(&rgb_out, &rgb_in, &identity);
 
     TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Red unchanged");
     TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.6), ALWAN_TEST_TOLERANCE, "Green unchanged");
@@ -151,7 +145,7 @@ static int test_color_matrix_sepia(void)
     /* Reference values from colour-science (generate_data_tests.ps1) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_sepia[] = {
+    static alwan_f64 const ref_sepia[] = {
 #include "reference_values/color_matrix_sepia.csv"
     };
     ALWAN_DIAG_POP
@@ -164,8 +158,7 @@ static int test_color_matrix_sepia(void)
     alwan_rgb rgb_in = {0.5, 0.5, 0.5};
     alwan_rgb rgb_out;
 
-    status = alwan_color_matrix_apply(&rgb_out, &rgb_in, &sepia_matrix);
-    TEST_ASSERT(status == ALWAN_OK, "Apply sepia failed");
+    alwan_color_matrix_apply(&rgb_out, &rgb_in, &sepia_matrix);
 
     /* Compare with reference values from colour-science */
     TEST_ASSERT_NEAR(rgb_out.r, ref_sepia[0], ALWAN_TEST_TOLERANCE, "Sepia red channel");
@@ -191,12 +184,11 @@ static int test_color_matrix_monochrome(void)
     alwan_rgb rgb_in = {0.8, 0.4, 0.2};
     alwan_rgb rgb_out;
 
-    status = alwan_color_matrix_apply(&rgb_out, &rgb_in, &mono_matrix);
-    TEST_ASSERT(status == ALWAN_OK, "Apply monochrome failed");
+    alwan_color_matrix_apply(&rgb_out, &rgb_in, &mono_matrix);
 
     /* Monochrome should make all channels equal (luminance)
      * Luma = 0.299*R + 0.587*G + 0.114*B = 0.299*0.8 + 0.587*0.4 + 0.114*0.2 ~= 0.497 */
-    alwan_scalar expected_luma = 0.299 * 0.8 + 0.587 * 0.4 + 0.114 * 0.2;
+    alwan_f64 expected_luma = 0.299 * 0.8 + 0.587 * 0.4 + 0.114 * 0.2;
     TEST_ASSERT_NEAR(rgb_out.r, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome red = luma");
     TEST_ASSERT_NEAR(rgb_out.g, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome green = luma");
     TEST_ASSERT_NEAR(rgb_out.b, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome blue = luma");
@@ -227,8 +219,7 @@ static int test_color_matrix_all_presets(void)
         int status = alwan_color_matrix_get_preset(&matrix, presets[i]);
         TEST_ASSERT(status == ALWAN_OK, "Get preset failed");
 
-        status = alwan_color_matrix_apply(&rgb_out, &rgb_in, &matrix);
-        TEST_ASSERT(status == ALWAN_OK, "Apply preset failed");
+        alwan_color_matrix_apply(&rgb_out, &rgb_in, &matrix);
     }
 
     return 0;
@@ -246,8 +237,7 @@ static int test_printer_lights_neutral(void)
     alwan_rgb rgb_out;
 
     /* Default lights (25) should not change the image */
-    int status = alwan_printer_lights_apply(&rgb_out, &rgb_in, 25.0, 25.0, 25.0);
-    TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
+    alwan_printer_lights_apply(&rgb_out, &rgb_in, 25.0, 25.0, 25.0);
 
     TEST_ASSERT_NEAR(rgb_out.r, ALWAN_LITERAL(0.5), ALWAN_TEST_TOLERANCE, "Red unchanged at neutral");
     TEST_ASSERT_NEAR(rgb_out.g, ALWAN_LITERAL(0.6), ALWAN_TEST_TOLERANCE, "Green unchanged at neutral");
@@ -265,8 +255,7 @@ static int test_printer_lights_exposure(void)
 
     /* Reducing lights increases exposure (brightens)
      * 25 -> 15 = 10 light reduction = +0.25 log exposure = *1.778... */
-    int status = alwan_printer_lights_apply(&rgb_out, &rgb_in, 15.0, 25.0, 35.0);
-    TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
+    alwan_printer_lights_apply(&rgb_out, &rgb_in, 15.0, 25.0, 35.0);
 
     /* Red (15 lights): brighter than input */
     TEST_ASSERT(rgb_out.r > ALWAN_LITERAL(0.5), "Red brighter with fewer lights");
@@ -285,7 +274,7 @@ static int test_printer_lights_per_channel(void)
     /* Reference values from colour-science (generate_data_tests.ps1) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_printer_lights[] = {
+    static alwan_f64 const ref_printer_lights[] = {
 #include "reference_values/printer_lights_per_channel.csv"
     };
     ALWAN_DIAG_POP
@@ -294,8 +283,7 @@ static int test_printer_lights_per_channel(void)
     alwan_rgb rgb_out;
 
     /* Different lights for each channel */
-    int status = alwan_printer_lights_apply(&rgb_out, &rgb_in, 20.0, 25.0, 30.0);
-    TEST_ASSERT(status == ALWAN_OK, "Printer lights apply failed");
+    alwan_printer_lights_apply(&rgb_out, &rgb_in, 20.0, 25.0, 30.0);
 
     /* Compare with reference values from colour-science */
     TEST_ASSERT_NEAR(rgb_out.r, ref_printer_lights[0], ALWAN_TEST_TOLERANCE, "Red exposure correct");
@@ -316,22 +304,22 @@ static int test_cheung2004_expand_basic(void)
     /* Reference values from colour-science */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_input[] = {
+    static alwan_f64 const ref_input[] = {
 #include "reference_values/cheung2004_input_rgb.csv"
     };
-    static alwan_scalar const ref_expand_3[] = {
+    static alwan_f64 const ref_expand_3[] = {
 #include "reference_values/cheung2004_expand_3.csv"
     };
-    static alwan_scalar const ref_expand_7[] = {
+    static alwan_f64 const ref_expand_7[] = {
 #include "reference_values/cheung2004_expand_7.csv"
     };
-    static alwan_scalar const ref_expand_11[] = {
+    static alwan_f64 const ref_expand_11[] = {
 #include "reference_values/cheung2004_expand_11.csv"
     };
     ALWAN_DIAG_POP
 
     int num_samples = 6;
-    alwan_scalar expanded[35];
+    alwan_f64 expanded[35];
 
     /* Test 3-term expansion */
     for (int i = 0; i < num_samples; i++) {
@@ -376,16 +364,16 @@ static int test_cheung2004_expand_full(void)
     /* Reference values from colour-science */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_input[] = {
+    static alwan_f64 const ref_input[] = {
 #include "reference_values/cheung2004_input_rgb.csv"
     };
-    static alwan_scalar const ref_expand_35[] = {
+    static alwan_f64 const ref_expand_35[] = {
 #include "reference_values/cheung2004_expand_35.csv"
     };
     ALWAN_DIAG_POP
 
     int num_samples = 6;
-    alwan_scalar expanded[35];
+    alwan_f64 expanded[35];
 
     for (int i = 0; i < num_samples; i++) {
         alwan_rgb rgb = {ref_input[i*3], ref_input[i*3+1], ref_input[i*3+2]};
@@ -411,19 +399,19 @@ static int test_finlayson2015_expand_standard(void)
     /* Reference values from colour-science */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_input[] = {
+    static alwan_f64 const ref_input[] = {
 #include "reference_values/finlayson2015_input_rgb.csv"
     };
-    static alwan_scalar const ref_deg2[] = {
+    static alwan_f64 const ref_deg2[] = {
 #include "reference_values/finlayson2015_std_deg2.csv"
     };
-    static alwan_scalar const ref_deg3[] = {
+    static alwan_f64 const ref_deg3[] = {
 #include "reference_values/finlayson2015_std_deg3.csv"
     };
     ALWAN_DIAG_POP
 
     int num_samples = 4;
-    alwan_scalar expanded[34];
+    alwan_f64 expanded[34];
     int out_size;
 
     /* Test degree 2 standard expansion (size=9) */
@@ -460,19 +448,19 @@ static int test_finlayson2015_expand_root(void)
     /* Reference values from colour-science */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_input[] = {
+    static alwan_f64 const ref_input[] = {
 #include "reference_values/finlayson2015_input_rgb.csv"
     };
-    static alwan_scalar const ref_root_deg2[] = {
+    static alwan_f64 const ref_root_deg2[] = {
 #include "reference_values/finlayson2015_root_deg2.csv"
     };
-    static alwan_scalar const ref_root_deg3[] = {
+    static alwan_f64 const ref_root_deg3[] = {
 #include "reference_values/finlayson2015_root_deg3.csv"
     };
     ALWAN_DIAG_POP
 
     int num_samples = 4;
-    alwan_scalar expanded[34];
+    alwan_f64 expanded[34];
     int out_size;
 
     /* Test degree 2 root-polynomial expansion (size=6) */
@@ -513,19 +501,19 @@ static int test_vandermonde_expand(void)
     /* Reference values from colour-science */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_input[] = {
+    static alwan_f64 const ref_input[] = {
 #include "reference_values/vandermonde_input.csv"
     };
-    static alwan_scalar const ref_deg2[] = {
+    static alwan_f64 const ref_deg2[] = {
 #include "reference_values/vandermonde_deg2.csv"
     };
-    static alwan_scalar const ref_deg3[] = {
+    static alwan_f64 const ref_deg3[] = {
 #include "reference_values/vandermonde_deg3.csv"
     };
     ALWAN_DIAG_POP
 
     int num_samples = 3;
-    alwan_scalar expanded[20];
+    alwan_f64 expanded[20];
     int out_size;
 
     /* Test degree 2 (size = 3*2 + 1 = 7) */
@@ -564,10 +552,10 @@ static int test_white_balance(void)
     /* Reference values from colour-science */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ref_grays[] = {
+    static alwan_f64 const ref_grays[] = {
 #include "reference_values/white_balance_input_gray.csv"
     };
-    static alwan_scalar const ref_multipliers[] = {
+    static alwan_f64 const ref_multipliers[] = {
 #include "reference_values/white_balance_multipliers.csv"
     };
     ALWAN_DIAG_POP
@@ -578,8 +566,7 @@ static int test_white_balance(void)
         alwan_rgb measured_gray = {ref_grays[i*3], ref_grays[i*3+1], ref_grays[i*3+2]};
         alwan_rgb multipliers;
 
-        int status = alwan_white_balance_from_gray(&multipliers, &measured_gray);
-        TEST_ASSERT(status == ALWAN_OK, "White balance computation failed");
+        alwan_white_balance_from_gray(&multipliers, &measured_gray);
 
         TEST_ASSERT_NEAR(multipliers.r, ref_multipliers[i*3], ALWAN_TEST_TOLERANCE,
                          "White balance R multiplier mismatch");
@@ -601,11 +588,9 @@ static int test_white_balance_apply(void)
     alwan_rgb multipliers;
     alwan_rgb result;
 
-    int status = alwan_white_balance_from_gray(&multipliers, &measured_gray);
-    TEST_ASSERT(status == ALWAN_OK, "White balance computation failed");
+    alwan_white_balance_from_gray(&multipliers, &measured_gray);
 
-    status = alwan_white_balance_apply(&result, &measured_gray, &multipliers);
-    TEST_ASSERT(status == ALWAN_OK, "White balance apply failed");
+    alwan_white_balance_apply(&result, &measured_gray, &multipliers);
 
     /* After applying white balance, all channels should be equal (neutral) */
     TEST_ASSERT_NEAR(result.r, result.g, ALWAN_TEST_TOLERANCE, "WB result should be neutral (R=G)");

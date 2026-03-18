@@ -20,39 +20,39 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-static alwan_scalar const g_tf_slog[] = {
+static alwan_f64 const g_tf_slog[] = {
 #include "reference_values/tf_slog.csv"
 };
 
-static alwan_scalar const g_tf_slog2[] = {
+static alwan_f64 const g_tf_slog2[] = {
 #include "reference_values/tf_slog2.csv"
 };
 
-static alwan_scalar const g_tf_slog3[] = {
+static alwan_f64 const g_tf_slog3[] = {
 #include "reference_values/tf_slog3.csv"
 };
 
-static alwan_scalar const g_tf_clog[] = {
+static alwan_f64 const g_tf_clog[] = {
 #include "reference_values/tf_clog.csv"
 };
 
-static alwan_scalar const g_tf_clog2[] = {
+static alwan_f64 const g_tf_clog2[] = {
 #include "reference_values/tf_clog2.csv"
 };
 
-static alwan_scalar const g_tf_clog3[] = {
+static alwan_f64 const g_tf_clog3[] = {
 #include "reference_values/tf_clog3.csv"
 };
 
-static alwan_scalar const g_tf_vlog[] = {
+static alwan_f64 const g_tf_vlog[] = {
 #include "reference_values/tf_vlog.csv"
 };
 
-static alwan_scalar const g_tf_gamma22[] = {
+static alwan_f64 const g_tf_gamma22[] = {
 #include "reference_values/tf_gamma22.csv"
 };
 
-static alwan_scalar const g_tf_gamma24[] = {
+static alwan_f64 const g_tf_gamma24[] = {
 #include "reference_values/tf_gamma24.csv"
 };
 
@@ -65,23 +65,23 @@ ALWAN_DIAG_POP
 static int test_transfer_function(
     char const *name,
     alwan_transfer_function tf,
-    alwan_scalar const *ref_data,
+    alwan_f64 const *ref_data,
     size_t num_triplets)
 {
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     int failures = 0;
 
     for (size_t i = 0; i < num_triplets; i++) {
         size_t idx = i * 3;
-        alwan_scalar linear_ref = ref_data[idx + 0];
-        alwan_scalar encoded_ref = ref_data[idx + 1];
-        alwan_scalar decoded_ref = ref_data[idx + 2];
+        alwan_f64 linear_ref = ref_data[idx + 0];
+        alwan_f64 encoded_ref = ref_data[idx + 1];
+        alwan_f64 decoded_ref = ref_data[idx + 2];
 
         /* Test OETF: linear -> encoded */
-        alwan_scalar encoded_actual;
-        int status = alwan_oetf_apply(&encoded_actual, tf, &linear_ref, 1, sizeof(alwan_scalar),
-                                      sizeof(alwan_scalar));
+        alwan_f64 encoded_actual;
+        int status = alwan_oetf_apply(&encoded_actual, tf, &linear_ref, 1, sizeof(alwan_f64),
+                                      sizeof(alwan_f64));
 
         if (status != ALWAN_OK) {
             printf("  [%s] OETF test %zu: alwan_oetf_apply failed with status %d\n",
@@ -90,7 +90,7 @@ static int test_transfer_function(
             continue;
         }
 
-        alwan_scalar encode_diff = ALWAN_ABS(encoded_actual - encoded_ref);
+        alwan_f64 encode_diff = ALWAN_ABS(encoded_actual - encoded_ref);
         if (encode_diff >= tolerance) {
             printf("  [%s] OETF test %zu: linear=%.6f, expected=%.6f, got=%.6f, diff=%.2e\n",
                    name, i, linear_ref, encoded_ref, encoded_actual, encode_diff);
@@ -98,9 +98,9 @@ static int test_transfer_function(
         }
 
         /* Test EOTF: encoded -> decoded */
-        alwan_scalar decoded_actual;
-        status = alwan_eotf_apply(&decoded_actual, tf, &encoded_ref, 1, sizeof(alwan_scalar),
-                                  sizeof(alwan_scalar));
+        alwan_f64 decoded_actual;
+        status = alwan_eotf_apply(&decoded_actual, tf, &encoded_ref, 1, sizeof(alwan_f64),
+                                  sizeof(alwan_f64));
 
         if (status != ALWAN_OK) {
             printf("  [%s] EOTF test %zu: alwan_eotf_apply failed with status %d\n",
@@ -109,7 +109,7 @@ static int test_transfer_function(
             continue;
         }
 
-        alwan_scalar decode_diff = ALWAN_ABS(decoded_actual - decoded_ref);
+        alwan_f64 decode_diff = ALWAN_ABS(decoded_actual - decoded_ref);
         if (decode_diff >= tolerance) {
             printf("  [%s] EOTF test %zu: encoded=%.6f, expected=%.6f, got=%.6f, diff=%.2e\n",
                    name, i, encoded_ref, decoded_ref, decoded_actual, decode_diff);

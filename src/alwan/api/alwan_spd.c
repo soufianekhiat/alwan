@@ -17,21 +17,21 @@
 
 int alwan_spd_create(alwan_spd *out,
                      alwan_ctx *ctx,
-                     alwan_scalar wavelength_min,
-                     alwan_scalar wavelength_max,
+                     alwan_f64 wavelength_min,
+                     alwan_f64 wavelength_max,
                      size_t count) {
     if (!out || count == 0 || wavelength_min >= wavelength_max) {
         return ALWAN_E_INVALID;
     }
 
     /* Check for allocation size overflow */
-    size_t alloc_size = alwan_safe_array_size(count, sizeof(alwan_scalar));
+    size_t alloc_size = alwan_safe_array_size(count, sizeof(alwan_f64));
     if (alloc_size == 0) {
         return ALWAN_E_NOMEM;  /* Overflow would occur */
     }
 
     /* Allocate values array */
-    alwan_scalar *values = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
+    alwan_f64 *values = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
     if (!values) {
         return ALWAN_E_NOMEM;
     }
@@ -63,16 +63,16 @@ void alwan_spd_destroy(alwan_ctx *ctx, alwan_spd *spd) {
  * Get wavelength at index
  * ---------------------------------------------------------------- */
 
-static inline alwan_scalar spd_wavelength_at(alwan_spd const *spd, size_t index) {
+static inline alwan_f64 spd_wavelength_at(alwan_spd const *spd, size_t index) {
     if (spd->count <= 1) {
         return spd->wavelength_min;
     }
-    alwan_scalar t = (alwan_scalar)index / (alwan_scalar)(spd->count - 1);
+    alwan_f64 t = (alwan_f64)index / (alwan_f64)(spd->count - 1);
     return spd->wavelength_min + t * (spd->wavelength_max - spd->wavelength_min);
 }
 
 /* Interpolate SPD value at wavelength with extrapolation */
-static alwan_scalar spd_interpolate(alwan_spd const *spd, alwan_scalar wavelength,
+static alwan_f64 spd_interpolate(alwan_spd const *spd, alwan_f64 wavelength,
                                alwan_resample_method method,
                                alwan_extrapolate_mode extrapolate) {
     /* Handle out-of-range wavelengths based on extrapolation mode */
@@ -86,9 +86,9 @@ static alwan_scalar spd_interpolate(alwan_spd const *spd, alwan_scalar wavelengt
             if (spd->count < 2) {
                 return spd->values[0];
             }
-            alwan_scalar wl0 = spd_wavelength_at(spd, 0);
-            alwan_scalar wl1 = spd_wavelength_at(spd, 1);
-            alwan_scalar slope = (spd->values[1] - spd->values[0]) / (wl1 - wl0);
+            alwan_f64 wl0 = spd_wavelength_at(spd, 0);
+            alwan_f64 wl1 = spd_wavelength_at(spd, 1);
+            alwan_f64 slope = (spd->values[1] - spd->values[0]) / (wl1 - wl0);
             return spd->values[0] + slope * (wavelength - wl0);
         }
     }
@@ -104,9 +104,9 @@ static alwan_scalar spd_interpolate(alwan_spd const *spd, alwan_scalar wavelengt
                 return spd->values[spd->count - 1];
             }
             size_t n = spd->count;
-            alwan_scalar wl_n2 = spd_wavelength_at(spd, n - 2);
-            alwan_scalar wl_n1 = spd_wavelength_at(spd, n - 1);
-            alwan_scalar slope = (spd->values[n - 1] - spd->values[n - 2]) / (wl_n1 - wl_n2);
+            alwan_f64 wl_n2 = spd_wavelength_at(spd, n - 2);
+            alwan_f64 wl_n1 = spd_wavelength_at(spd, n - 1);
+            alwan_f64 slope = (spd->values[n - 1] - spd->values[n - 2]) / (wl_n1 - wl_n2);
             return spd->values[n - 1] + slope * (wavelength - wl_n1);
         }
     }
@@ -120,35 +120,35 @@ static alwan_scalar spd_interpolate(alwan_spd const *spd, alwan_scalar wavelengt
     }
 
     /* Find fractional index */
-    alwan_scalar span = spd->wavelength_max - spd->wavelength_min;
-    alwan_scalar t = (wavelength - spd->wavelength_min) / span;
-    alwan_scalar f_index = t * (alwan_scalar)(spd->count - 1);
+    alwan_f64 span = spd->wavelength_max - spd->wavelength_min;
+    alwan_f64 t = (wavelength - spd->wavelength_min) / span;
+    alwan_f64 f_index = t * (alwan_f64)(spd->count - 1);
 
     /* Clamp to valid range */
     if (f_index <= ALWAN_LITERAL(0.0)) {
         return spd->values[0];
     }
-    if (f_index >= (alwan_scalar)(spd->count - 1)) {
+    if (f_index >= (alwan_f64)(spd->count - 1)) {
         return spd->values[spd->count - 1];
     }
 
     size_t i0 = (size_t)f_index;
-    alwan_scalar frac = f_index - (alwan_scalar)i0;
+    alwan_f64 frac = f_index - (alwan_f64)i0;
 
     if (method == ALWAN_RESAMPLE_LINEAR) {
         /* Linear interpolation */
         return spd->values[i0] * (ALWAN_LITERAL(1.0) - frac) + spd->values[i0 + 1] * frac;
     } else {
         /* Catmull-Rom spline interpolation */
-        alwan_scalar p0 = (i0 > 0) ? spd->values[i0 - 1] : spd->values[i0];
-        alwan_scalar p1 = spd->values[i0];
-        alwan_scalar p2 = spd->values[i0 + 1];
-        alwan_scalar p3 = (i0 + 2 < spd->count) ? spd->values[i0 + 2] : spd->values[i0 + 1];
+        alwan_f64 p0 = (i0 > 0) ? spd->values[i0 - 1] : spd->values[i0];
+        alwan_f64 p1 = spd->values[i0];
+        alwan_f64 p2 = spd->values[i0 + 1];
+        alwan_f64 p3 = (i0 + 2 < spd->count) ? spd->values[i0 + 2] : spd->values[i0 + 1];
 
-        alwan_scalar t2 = frac * frac;
-        alwan_scalar t3 = t2 * frac;
+        alwan_f64 t2 = frac * frac;
+        alwan_f64 t3 = t2 * frac;
 
-        alwan_scalar result = ALWAN_LITERAL(0.5) * (
+        alwan_f64 result = ALWAN_LITERAL(0.5) * (
             (ALWAN_LITERAL(2.0) * p1) +
             (-p0 + p2) * frac +
             (ALWAN_LITERAL(2.0) * p0 - ALWAN_LITERAL(5.0) * p1 + ALWAN_LITERAL(4.0) * p2 - p3) * t2 +
@@ -166,8 +166,8 @@ static alwan_scalar spd_interpolate(alwan_spd const *spd, alwan_scalar wavelengt
 int alwan_spd_resample(alwan_spd *dst,
                        alwan_ctx *ctx,
                        alwan_spd const *src,
-                       alwan_scalar wavelength_min,
-                       alwan_scalar wavelength_max,
+                       alwan_f64 wavelength_min,
+                       alwan_f64 wavelength_max,
                        size_t count,
                        alwan_resample_method method,
                        alwan_extrapolate_mode extrapolate) {
@@ -183,7 +183,7 @@ int alwan_spd_resample(alwan_spd *dst,
 
     /* Resample each point */
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar wavelength = spd_wavelength_at(dst, i);
+        alwan_f64 wavelength = spd_wavelength_at(dst, i);
         dst->values[i] = spd_interpolate(src, wavelength, method, extrapolate);
     }
 
@@ -211,7 +211,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
 
     switch (ill) {
         case ALWAN_ILLUMINANT_A: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/A_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -221,7 +221,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_D50: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/D50_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -231,7 +231,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_D55: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/D55_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -241,7 +241,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_D65: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/D65_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -251,7 +251,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_E: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/E_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -261,7 +261,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F1: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F1_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -271,7 +271,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F2: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F2_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -281,7 +281,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F3: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F3_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -291,7 +291,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F4: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F4_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -301,7 +301,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F5: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F5_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -311,7 +311,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F6: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F6_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -321,7 +321,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F7: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F7_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -331,7 +331,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F8: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F8_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -341,7 +341,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F9: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F9_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -351,7 +351,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F10: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F10_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -361,7 +361,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F11: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F11_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -371,7 +371,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_F12: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/F12_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -383,7 +383,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
 
         /* Extended illuminants */
         case ALWAN_ILLUMINANT_B: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/B_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -393,7 +393,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_C: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/C_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -403,7 +403,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_D60: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/D60_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -413,7 +413,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_D75: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/D75_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -425,7 +425,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
 
         /* Additional D-series illuminants */
         case ALWAN_ILLUMINANT_D40: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/D40_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -435,7 +435,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_D45: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/D45_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -445,7 +445,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_D93: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/D93_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -457,7 +457,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
 
         /* LED illuminants */
         case ALWAN_ILLUMINANT_LED_B1: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-B1_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -467,7 +467,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_LED_B2: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-B2_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -477,7 +477,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_LED_B3: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-B3_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -487,7 +487,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_LED_B4: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-B4_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -497,7 +497,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_LED_B5: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-B5_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -507,7 +507,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_LED_BH1: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-BH1_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -517,7 +517,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_LED_RGB1: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-RGB1_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -527,7 +527,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_LED_V1: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-V1_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -537,7 +537,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_LED_V2: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/LED-V2_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -549,7 +549,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
 
         /* High Pressure illuminants */
         case ALWAN_ILLUMINANT_HP1: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/HP1_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -559,7 +559,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_HP2: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/HP2_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -569,7 +569,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_HP3: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/HP3_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -579,7 +579,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_HP4: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/HP4_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -589,7 +589,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
             break;
         }
         case ALWAN_ILLUMINANT_HP5: {
-            static alwan_scalar const data[] = {
+            static alwan_f64 const data[] = {
 #include "../data/illuminants/HP5_360_830_1nm.csv"
             };
             size_t const n = sizeof(data) / sizeof(data[0]);
@@ -615,9 +615,9 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
  * where c1 = 3.741771e-16 W*m^2, c2 = 1.4388e-2 m*K */
 int alwan_spd_blackbody(alwan_spd *out,
                         alwan_ctx *ctx,
-                        alwan_scalar temperature_K,
-                        alwan_scalar wavelength_min,
-                        alwan_scalar wavelength_max,
+                        alwan_f64 temperature_K,
+                        alwan_f64 wavelength_min,
+                        alwan_f64 wavelength_max,
                         size_t count) {
     if (!out || count == 0) {
         return ALWAN_E_INVALID;
@@ -635,13 +635,13 @@ int alwan_spd_blackbody(alwan_spd *out,
     }
 
     /* Calculate wavelength step */
-    alwan_scalar const step = (wavelength_max - wavelength_min) / (alwan_scalar)(count - 1);
+    alwan_f64 const step = (wavelength_max - wavelength_min) / (alwan_f64)(count - 1);
 
     /* Compute Planckian spectral radiance for each wavelength */
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar wavelength_nm = wavelength_min + (alwan_scalar)i * step;
-        alwan_scalar wavelength_m = wavelength_nm * ALWAN_LITERAL(1e-9);  /* Convert nm to meters */
-        out->values[i] = spd_planck_radiance_v(wavelength_m, temperature_K);
+        alwan_f64 wavelength_nm = wavelength_min + (alwan_f64)i * step;
+        alwan_f64 wavelength_m = wavelength_nm * ALWAN_LITERAL(1e-9);  /* Convert nm to meters */
+        out->values[i] = spd_planck_radiance_f64_v(wavelength_m, temperature_K);
     }
 
     return ALWAN_OK;
@@ -657,7 +657,7 @@ static int load_observer_cmf(alwan_ctx *ctx,
                               alwan_spd *y_bar,
                               alwan_spd *z_bar) {
     /* Determine wavelength range and sample count based on observer */
-    alwan_scalar wl_min, wl_max;
+    alwan_f64 wl_min, wl_max;
     size_t count;
 
     if (observer == ALWAN_OBSERVER_CIE_1931_2DEG || observer == ALWAN_OBSERVER_CIE_1964_10DEG) {
@@ -697,13 +697,13 @@ static int load_observer_cmf(alwan_ctx *ctx,
 
     if (observer == ALWAN_OBSERVER_CIE_1931_2DEG) {
         /* CIE 1931 2° Standard Observer */
-        static alwan_scalar const x_data[] = {
+        static alwan_f64 const x_data[] = {
 #include "../data/cmf/cie_1931_2deg_x_360_830_1nm.csv"
         };
-        static alwan_scalar const y_data[] = {
+        static alwan_f64 const y_data[] = {
 #include "../data/cmf/cie_1931_2deg_y_360_830_1nm.csv"
         };
-        static alwan_scalar const z_data[] = {
+        static alwan_f64 const z_data[] = {
 #include "../data/cmf/cie_1931_2deg_z_360_830_1nm.csv"
         };
 
@@ -715,13 +715,13 @@ static int load_observer_cmf(alwan_ctx *ctx,
         }
     } else if (observer == ALWAN_OBSERVER_CIE_1964_10DEG) {
         /* CIE 1964 10° Standard Observer */
-        static alwan_scalar const x_data[] = {
+        static alwan_f64 const x_data[] = {
 #include "../data/cmf/cie_1964_10deg_x_360_830_1nm.csv"
         };
-        static alwan_scalar const y_data[] = {
+        static alwan_f64 const y_data[] = {
 #include "../data/cmf/cie_1964_10deg_y_360_830_1nm.csv"
         };
-        static alwan_scalar const z_data[] = {
+        static alwan_f64 const z_data[] = {
 #include "../data/cmf/cie_1964_10deg_z_360_830_1nm.csv"
         };
 
@@ -733,13 +733,13 @@ static int load_observer_cmf(alwan_ctx *ctx,
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2012_2DEG) {
         /* CIE 2012/2015 2° Standard Observer (390-830nm) */
-        static alwan_scalar const x_data[] = {
+        static alwan_f64 const x_data[] = {
 #include "../data/cmf/cie_2012_2deg_x_360_830_1nm.csv"
         };
-        static alwan_scalar const y_data[] = {
+        static alwan_f64 const y_data[] = {
 #include "../data/cmf/cie_2012_2deg_y_360_830_1nm.csv"
         };
-        static alwan_scalar const z_data[] = {
+        static alwan_f64 const z_data[] = {
 #include "../data/cmf/cie_2012_2deg_z_360_830_1nm.csv"
         };
 
@@ -751,13 +751,13 @@ static int load_observer_cmf(alwan_ctx *ctx,
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2012_10DEG) {
         /* CIE 2012/2015 10° Standard Observer (390-830nm) */
-        static alwan_scalar const x_data[] = {
+        static alwan_f64 const x_data[] = {
 #include "../data/cmf/cie_2012_10deg_x_360_830_1nm.csv"
         };
-        static alwan_scalar const y_data[] = {
+        static alwan_f64 const y_data[] = {
 #include "../data/cmf/cie_2012_10deg_y_360_830_1nm.csv"
         };
-        static alwan_scalar const z_data[] = {
+        static alwan_f64 const z_data[] = {
 #include "../data/cmf/cie_2012_10deg_z_360_830_1nm.csv"
         };
 
@@ -769,13 +769,13 @@ static int load_observer_cmf(alwan_ctx *ctx,
         }
     } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
         /* Stockman & Sharpe 2000 2° Cone Fundamentals */
-        static alwan_scalar const x_data[] = {
+        static alwan_f64 const x_data[] = {
 #include "../data/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv"
         };
-        static alwan_scalar const y_data[] = {
+        static alwan_f64 const y_data[] = {
 #include "../data/cmf/stockman_sharpe_2deg_y_360_830_1nm.csv"
         };
-        static alwan_scalar const z_data[] = {
+        static alwan_f64 const z_data[] = {
 #include "../data/cmf/stockman_sharpe_2deg_z_360_830_1nm.csv"
         };
 
@@ -787,13 +787,13 @@ static int load_observer_cmf(alwan_ctx *ctx,
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG) {
         /* CIE 2015 2° Cone Fundamental Observer */
-        static alwan_scalar const x_data[] = {
+        static alwan_f64 const x_data[] = {
 #include "../data/cmf/cie_2015_2deg_x_360_830_1nm.csv"
         };
-        static alwan_scalar const y_data[] = {
+        static alwan_f64 const y_data[] = {
 #include "../data/cmf/cie_2015_2deg_y_360_830_1nm.csv"
         };
-        static alwan_scalar const z_data[] = {
+        static alwan_f64 const z_data[] = {
 #include "../data/cmf/cie_2015_2deg_z_360_830_1nm.csv"
         };
 
@@ -805,13 +805,13 @@ static int load_observer_cmf(alwan_ctx *ctx,
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG) {
         /* CIE 2015 10° Cone Fundamental Observer */
-        static alwan_scalar const x_data[] = {
+        static alwan_f64 const x_data[] = {
 #include "../data/cmf/cie_2015_10deg_x_360_830_1nm.csv"
         };
-        static alwan_scalar const y_data[] = {
+        static alwan_f64 const y_data[] = {
 #include "../data/cmf/cie_2015_10deg_y_360_830_1nm.csv"
         };
-        static alwan_scalar const z_data[] = {
+        static alwan_f64 const z_data[] = {
 #include "../data/cmf/cie_2015_10deg_z_360_830_1nm.csv"
         };
 
@@ -823,13 +823,13 @@ static int load_observer_cmf(alwan_ctx *ctx,
         }
     } else if (observer == ALWAN_OBSERVER_WRIGHT_GUILD_1931) {
         /* Wright & Guild 1931 2° RGB CMFs (historical) */
-        static alwan_scalar const r_data[] = {
+        static alwan_f64 const r_data[] = {
 #include "../data/cmf/wright_guild_1931_r_360_830_1nm.csv"
         };
-        static alwan_scalar const g_data[] = {
+        static alwan_f64 const g_data[] = {
 #include "../data/cmf/wright_guild_1931_g_360_830_1nm.csv"
         };
-        static alwan_scalar const b_data[] = {
+        static alwan_f64 const b_data[] = {
 #include "../data/cmf/wright_guild_1931_b_360_830_1nm.csv"
         };
 
@@ -855,11 +855,11 @@ static int load_observer_cmf(alwan_ctx *ctx,
  * ---------------------------------------------------------------- */
 
 /* Trapezoidal integration */
-static alwan_scalar integrate_trapezoid(alwan_scalar const *values, size_t count, alwan_scalar dx) {
+static alwan_f64 integrate_trapezoid(alwan_f64 const *values, size_t count, alwan_f64 dx) {
     if (count == 0) return ALWAN_LITERAL(0.0);
     if (count == 1) return values[0] * dx;
 
-    alwan_scalar sum = ALWAN_LITERAL(0.5) * (values[0] + values[count - 1]);
+    alwan_f64 sum = ALWAN_LITERAL(0.5) * (values[0] + values[count - 1]);
     for (size_t i = 1; i < count - 1; i++) {
         sum += values[i];
     }
@@ -867,7 +867,7 @@ static alwan_scalar integrate_trapezoid(alwan_scalar const *values, size_t count
 }
 
 /* Simpson's 1/3 rule integration */
-static alwan_scalar integrate_simpson(alwan_scalar const *values, size_t count, alwan_scalar dx) {
+static alwan_f64 integrate_simpson(alwan_f64 const *values, size_t count, alwan_f64 dx) {
     if (count == 0) return ALWAN_LITERAL(0.0);
     if (count == 1) return values[0] * dx;
     if (count == 2) return ALWAN_LITERAL(0.5) * (values[0] + values[1]) * dx;
@@ -877,14 +877,14 @@ static alwan_scalar integrate_simpson(alwan_scalar const *values, size_t count, 
     int use_trapezoid_last = (count % 2 == 0);
     if (use_trapezoid_last) n--;
 
-    alwan_scalar sum = values[0] + values[n - 1];
+    alwan_f64 sum = values[0] + values[n - 1];
     for (size_t i = 1; i < n - 1; i += 2) {
         sum += ALWAN_LITERAL(4.0) * values[i];
     }
     for (size_t i = 2; i < n - 1; i += 2) {
         sum += ALWAN_LITERAL(2.0) * values[i];
     }
-    alwan_scalar result = sum * dx / ALWAN_LITERAL(3.0);
+    alwan_f64 result = sum * dx / ALWAN_LITERAL(3.0);
 
     /* Add last interval with trapezoid if needed */
     if (use_trapezoid_last) {
@@ -900,7 +900,7 @@ int alwan_xyz_from_spd(alwan_xyz *xyz_out,
                        alwan_spd const *illuminant,
                        alwan_observer_type observer,
                        alwan_integrate_method method,
-                       alwan_scalar bandpass_nm) {
+                       alwan_f64 bandpass_nm) {
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
@@ -945,7 +945,7 @@ int alwan_xyz_from_spd(alwan_xyz *xyz_out,
     }
 
     /* Allocate temporary arrays for products (with overflow protection) */
-    size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(alwan_scalar));
+    size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(alwan_f64));
     if (alloc_size == 0) {
         alwan_spd_destroy(ctx, &x_bar);
         alwan_spd_destroy(ctx, &y_bar);
@@ -955,9 +955,9 @@ int alwan_xyz_from_spd(alwan_xyz *xyz_out,
         alwan_spd_destroy(ctx, &z_bar_resampled);
         return ALWAN_E_NOMEM;
     }
-    alwan_scalar *prod_x = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
-    alwan_scalar *prod_y = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
-    alwan_scalar *prod_z = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
+    alwan_f64 *prod_x = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
+    alwan_f64 *prod_y = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
+    alwan_f64 *prod_z = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
 
     if (!prod_x || !prod_y || !prod_z) {
         if (prod_x) ALWAN_FREE(prod_x);
@@ -974,12 +974,12 @@ int alwan_xyz_from_spd(alwan_xyz *xyz_out,
 
     /* Compute products: SPD * illuminant * CMF */
     for (size_t i = 0; i < spd->count; i++) {
-        alwan_scalar spd_value = spd->values[i];
+        alwan_f64 spd_value = spd->values[i];
 
         /* If illuminant provided, multiply by it */
         if (illuminant) {
-            alwan_scalar wavelength = spd_wavelength_at(spd, i);
-            alwan_scalar illum_value = spd_interpolate(illuminant, wavelength, ALWAN_RESAMPLE_LINEAR,
+            alwan_f64 wavelength = spd_wavelength_at(spd, i);
+            alwan_f64 illum_value = spd_interpolate(illuminant, wavelength, ALWAN_RESAMPLE_LINEAR,
                                                   ALWAN_EXTRAPOLATE_ZERO);
             spd_value *= illum_value;
         }
@@ -994,7 +994,7 @@ int alwan_xyz_from_spd(alwan_xyz *xyz_out,
     (void)bandpass_nm;
 
     /* Integrate to get XYZ */
-    alwan_scalar dx = (spd->wavelength_max - spd->wavelength_min) / (alwan_scalar)(spd->count - 1);
+    alwan_f64 dx = (spd->wavelength_max - spd->wavelength_min) / (alwan_f64)(spd->count - 1);
     if (spd->count == 1) dx = ALWAN_LITERAL(1.0);
 
     if (method == ALWAN_INTEGRATE_TRAPEZOID) {
@@ -1052,13 +1052,13 @@ int alwan_spd_camera_sensitivity(alwan_spd *spd_r,
 
     switch (camera) {
         case ALWAN_CAMERA_NIKON_5100: {
-            static alwan_scalar const data_r[] = {
+            static alwan_f64 const data_r[] = {
 #include "../data/camera_sensitivities/nikon_5100_r.csv"
             };
-            static alwan_scalar const data_g[] = {
+            static alwan_f64 const data_g[] = {
 #include "../data/camera_sensitivities/nikon_5100_g.csv"
             };
-            static alwan_scalar const data_b[] = {
+            static alwan_f64 const data_b[] = {
 #include "../data/camera_sensitivities/nikon_5100_b.csv"
             };
             size_t const n = sizeof(data_r) / sizeof(data_r[0]);
@@ -1070,13 +1070,13 @@ int alwan_spd_camera_sensitivity(alwan_spd *spd_r,
             break;
         }
         case ALWAN_CAMERA_SIGMA_SDMERILL: {
-            static alwan_scalar const data_r[] = {
+            static alwan_f64 const data_r[] = {
 #include "../data/camera_sensitivities/sigma_sdmerill_r.csv"
             };
-            static alwan_scalar const data_g[] = {
+            static alwan_f64 const data_g[] = {
 #include "../data/camera_sensitivities/sigma_sdmerill_g.csv"
             };
-            static alwan_scalar const data_b[] = {
+            static alwan_f64 const data_b[] = {
 #include "../data/camera_sensitivities/sigma_sdmerill_b.csv"
             };
             size_t const n = sizeof(data_r) / sizeof(data_r[0]);
@@ -1166,7 +1166,7 @@ int alwan_xyz_from_spd_camera(alwan_xyz *xyz_out,
     }
 
     /* Allocate temporary arrays for products (with overflow protection) */
-    size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(alwan_scalar));
+    size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(alwan_f64));
     if (alloc_size == 0) {
         alwan_spd_destroy(ctx, &r_sens);
         alwan_spd_destroy(ctx, &g_sens);
@@ -1176,9 +1176,9 @@ int alwan_xyz_from_spd_camera(alwan_xyz *xyz_out,
         alwan_spd_destroy(ctx, &b_resampled);
         return ALWAN_E_NOMEM;
     }
-    alwan_scalar *prod_r = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
-    alwan_scalar *prod_g = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
-    alwan_scalar *prod_b = (alwan_scalar *)ALWAN_ALLOC(alloc_size, sizeof(alwan_scalar));
+    alwan_f64 *prod_r = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
+    alwan_f64 *prod_g = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
+    alwan_f64 *prod_b = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
 
     if (!prod_r || !prod_g || !prod_b) {
         if (prod_r) ALWAN_FREE(prod_r);
@@ -1195,12 +1195,12 @@ int alwan_xyz_from_spd_camera(alwan_xyz *xyz_out,
 
     /* Compute products: SPD * illuminant * sensitivity */
     for (size_t i = 0; i < spd->count; i++) {
-        alwan_scalar spd_value = spd->values[i];
+        alwan_f64 spd_value = spd->values[i];
 
         /* If illuminant provided, multiply by it */
         if (illuminant) {
-            alwan_scalar wavelength = spd_wavelength_at(spd, i);
-            alwan_scalar illum_value = spd_interpolate(illuminant, wavelength, ALWAN_RESAMPLE_LINEAR,
+            alwan_f64 wavelength = spd_wavelength_at(spd, i);
+            alwan_f64 illum_value = spd_interpolate(illuminant, wavelength, ALWAN_RESAMPLE_LINEAR,
                                                   ALWAN_EXTRAPOLATE_ZERO);
             spd_value *= illum_value;
         }
@@ -1211,7 +1211,7 @@ int alwan_xyz_from_spd_camera(alwan_xyz *xyz_out,
     }
 
     /* Integrate to get RGB (stored in XYZ output) */
-    alwan_scalar dx = (spd->wavelength_max - spd->wavelength_min) / (alwan_scalar)(spd->count - 1);
+    alwan_f64 dx = (spd->wavelength_max - spd->wavelength_min) / (alwan_f64)(spd->count - 1);
     if (spd->count == 1) dx = ALWAN_LITERAL(1.0);
 
     if (method == ALWAN_INTEGRATE_TRAPEZOID) {
@@ -1249,7 +1249,7 @@ int alwan_spd_analyze_shape(alwan_spd_shape *shape_out, alwan_spd const *spd) {
 
     /* Find peak wavelength and value */
     size_t peak_idx = 0;
-    alwan_scalar peak_val = spd->values[0];
+    alwan_f64 peak_val = spd->values[0];
     for (size_t i = 1; i < spd->count; i++) {
         if (spd->values[i] > peak_val) {
             peak_val = spd->values[i];
@@ -1261,7 +1261,7 @@ int alwan_spd_analyze_shape(alwan_spd_shape *shape_out, alwan_spd const *spd) {
     shape_out->peak_wavelength = spd_wavelength_at(spd, peak_idx);
 
     /* Compute FWHM (Full Width at Half Maximum) */
-    alwan_scalar half_max = peak_val * ALWAN_LITERAL(0.5);
+    alwan_f64 half_max = peak_val * ALWAN_LITERAL(0.5);
 
     /* Find left edge (below peak) */
     size_t left_idx = peak_idx;
@@ -1276,17 +1276,17 @@ int alwan_spd_analyze_shape(alwan_spd_shape *shape_out, alwan_spd const *spd) {
     }
 
     /* Linear interpolation for more accurate FWHM edges */
-    alwan_scalar left_wl = spd_wavelength_at(spd, left_idx);
+    alwan_f64 left_wl = spd_wavelength_at(spd, left_idx);
     if (left_idx < peak_idx && spd->values[left_idx + 1] != spd->values[left_idx]) {
-        alwan_scalar t = (half_max - spd->values[left_idx]) /
+        alwan_f64 t = (half_max - spd->values[left_idx]) /
                          (spd->values[left_idx + 1] - spd->values[left_idx]);
         left_wl = spd_wavelength_at(spd, left_idx) +
                   t * (spd_wavelength_at(spd, left_idx + 1) - spd_wavelength_at(spd, left_idx));
     }
 
-    alwan_scalar right_wl = spd_wavelength_at(spd, right_idx);
+    alwan_f64 right_wl = spd_wavelength_at(spd, right_idx);
     if (right_idx > peak_idx && right_idx > 0 && spd->values[right_idx - 1] != spd->values[right_idx]) {
-        alwan_scalar t = (half_max - spd->values[right_idx]) /
+        alwan_f64 t = (half_max - spd->values[right_idx]) /
                          (spd->values[right_idx - 1] - spd->values[right_idx]);
         right_wl = spd_wavelength_at(spd, right_idx) +
                    t * (spd_wavelength_at(spd, right_idx - 1) - spd_wavelength_at(spd, right_idx));
@@ -1298,11 +1298,11 @@ int alwan_spd_analyze_shape(alwan_spd_shape *shape_out, alwan_spd const *spd) {
     }
 
     /* Compute centroid (weighted mean wavelength) */
-    alwan_scalar sum_weighted = ALWAN_LITERAL(0.0);
-    alwan_scalar sum_values = ALWAN_LITERAL(0.0);
+    alwan_f64 sum_weighted = ALWAN_LITERAL(0.0);
+    alwan_f64 sum_values = ALWAN_LITERAL(0.0);
 
     for (size_t i = 0; i < spd->count; i++) {
-        alwan_scalar wl = spd_wavelength_at(spd, i);
+        alwan_f64 wl = spd_wavelength_at(spd, i);
         sum_weighted += wl * spd->values[i];
         sum_values += spd->values[i];
     }

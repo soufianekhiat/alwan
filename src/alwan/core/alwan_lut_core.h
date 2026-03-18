@@ -13,12 +13,29 @@
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
 
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
 /* ================================================================
- * 3D LUT coordinate generation
- *
- * Given a 1D index into a flattened size^3 cube, produce the
- * normalized [0,1] RGB coordinate.
- * Layout: R varies fastest, then G, then B (standard .cube order).
+ * Dual-Precision: emit f32 and f64 variants from shared .inc
+ * ================================================================ */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
+
+/* f32 pass */
+#include "alwan_core_f32_setup.h"
+#include "alwan_lut_core.inc"
+#include "alwan_core_teardown.h"
+
+/* f64 pass */
+#include "alwan_core_f64_setup.h"
+#include "alwan_lut_core.inc"
+#include "alwan_core_teardown.h"
+
+ALWAN_DIAG_POP
+
+#else /* HLSL / GLSL / Halide */
+/* ================================================================
+ * GPU Backends: Single-precision only (original code)
  * ================================================================ */
 
 ALWAN_INLINE alwan_vec3 alwan_lut3d_index_to_rgb_v(size_t index, int size) {
@@ -33,42 +50,21 @@ ALWAN_INLINE alwan_vec3 alwan_lut3d_index_to_rgb_v(size_t index, int size) {
     return result;
 }
 
-/* ================================================================
- * 1D LUT coordinate generation
- * ================================================================ */
-
 ALWAN_INLINE alwan_scalar alwan_lut1d_index_to_val_v(size_t index, int size) {
     return (alwan_scalar)index / (alwan_scalar)(size - 1);
 }
-
-/* ================================================================
- * 2D LUT layout (flattened 3D LUT into 2D texture)
- *
- * A 3D LUT of size N is flattened into a 2D image where:
- * - N slices are arranged horizontally (strip layout)
- * - Image width  = N * N
- * - Image height = N
- *
- * Each slice is a Blue-plane at constant B index.
- * Within each slice: x = R (column), y = G (row from bottom).
- *
- * Game engines (Unreal, Unity) use this convention for
- * color grading LUT textures.
- * ================================================================ */
 
 ALWAN_INLINE void alwan_lut2d_dimensions_v(int size, int *width, int *height) {
     *width  = size * size;
     *height = size;
 }
 
-/* Convert a 3D index (r, g, b each in [0, size-1]) to a 2D pixel coordinate */
 ALWAN_INLINE void alwan_lut3d_to_2d_v(int r, int g, int b, int size,
                                         int *px, int *py) {
     *px = b * size + r;
     *py = g;
 }
 
-/* Convert a 2D pixel coordinate back to 3D index */
 ALWAN_INLINE void alwan_lut2d_to_3d_v(int px, int py, int size,
                                         int *r, int *g, int *b) {
     *b = px / size;
@@ -76,21 +72,11 @@ ALWAN_INLINE void alwan_lut2d_to_3d_v(int px, int py, int size,
     *g = py;
 }
 
-/* ================================================================
- * 1D LUT linear interpolation
- *
- * Sample a 1D LUT with linear interpolation.
- * lut: N-element array
- * t: input [0,1] coordinate
- * size: number of entries
- * ================================================================ */
-
 ALWAN_INLINE alwan_scalar alwan_lut1d_sample_v(alwan_scalar const *lut,
                                                  alwan_scalar t,
                                                  int size) {
     alwan_scalar const max_idx = (alwan_scalar)(size - 1);
 
-    /* Clamp to [0,1] */
     alwan_scalar tc = ALWAN_SELECT(t < ALWAN_ZERO, ALWAN_ZERO, t);
     tc = ALWAN_SELECT(tc > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), tc) * max_idx;
 
@@ -102,26 +88,12 @@ ALWAN_INLINE alwan_scalar alwan_lut1d_sample_v(alwan_scalar const *lut,
     return lut[i0] * (ALWAN_LITERAL(1.0) - frac) + lut[i1] * frac;
 }
 
-/* ================================================================
- * 2D LUT bilinear sampling (flattened 3D strip)
- *
- * Sample a 2D strip LUT (horizontal blue slices) using the same
- * trilinear logic as 3D, but reading from the 2D memory layout.
- * This matches how game engines (Unreal/Unity) sample color
- * grading LUT textures on the GPU.
- *
- * lut2d: (size*size) * size * 3 array (row-major, RGB interleaved)
- * rgb: input [0,1] RGB coordinate
- * size: cube edge length
- * ================================================================ */
-
 ALWAN_INLINE alwan_vec3 alwan_lut2d_sample_v(alwan_scalar const *lut2d,
                                                alwan_vec3 rgb,
                                                int size) {
     alwan_scalar const max_idx = (alwan_scalar)(size - 1);
     int const w = size * size;
 
-    /* Clamp to [0,1] and scale to LUT coordinates */
     alwan_scalar rf = ALWAN_SELECT(rgb.v[0] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[0]);
     alwan_scalar gf = ALWAN_SELECT(rgb.v[1] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[1]);
     alwan_scalar bf = ALWAN_SELECT(rgb.v[2] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[2]);
@@ -129,19 +101,16 @@ ALWAN_INLINE alwan_vec3 alwan_lut2d_sample_v(alwan_scalar const *lut2d,
     gf = ALWAN_SELECT(gf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), gf) * max_idx;
     bf = ALWAN_SELECT(bf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), bf) * max_idx;
 
-    /* Integer indices */
     int r0 = (int)rf; int g0 = (int)gf; int b0 = (int)bf;
     int r1 = r0 + 1;  int g1 = g0 + 1;  int b1 = b0 + 1;
     if (r1 >= size) r1 = size - 1;
     if (g1 >= size) g1 = size - 1;
     if (b1 >= size) b1 = size - 1;
 
-    /* Fractional parts */
     alwan_scalar fr = rf - (alwan_scalar)r0;
     alwan_scalar fg = gf - (alwan_scalar)g0;
     alwan_scalar fb = bf - (alwan_scalar)b0;
 
-    /* 2D layout: px = B*size + R, py = G */
     #define LUT2D_AT(rr, gg, bb) \
         (lut2d + ((size_t)(gg) * (size_t)w + (size_t)(bb) * (size_t)size + (size_t)(rr)) * 3)
 
@@ -156,7 +125,6 @@ ALWAN_INLINE alwan_vec3 alwan_lut2d_sample_v(alwan_scalar const *lut2d,
 
     #undef LUT2D_AT
 
-    /* Trilinear interpolation per channel */
     alwan_vec3 result;
     for (int ch = 0; ch < 3; ch++) {
         alwan_scalar c00 = c000[ch] * (ALWAN_LITERAL(1.0) - fr) + c100[ch] * fr;
@@ -173,21 +141,11 @@ ALWAN_INLINE alwan_vec3 alwan_lut2d_sample_v(alwan_scalar const *lut2d,
     return result;
 }
 
-/* ================================================================
- * 3D LUT trilinear interpolation
- *
- * Sample a 3D LUT with trilinear interpolation.
- * lut: N^3 * 3 array (R-fastest, G, B-slowest)
- * rgb: input [0,1] coordinate
- * size: cube edge length
- * ================================================================ */
-
 ALWAN_INLINE alwan_vec3 alwan_lut3d_sample_v(alwan_scalar const *lut,
                                                alwan_vec3 rgb,
                                                int size) {
     alwan_scalar const max_idx = (alwan_scalar)(size - 1);
 
-    /* Scale to LUT coordinates */
     alwan_scalar rf = ALWAN_SELECT(rgb.v[0] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[0]);
     alwan_scalar gf = ALWAN_SELECT(rgb.v[1] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[1]);
     alwan_scalar bf = ALWAN_SELECT(rgb.v[2] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[2]);
@@ -195,19 +153,16 @@ ALWAN_INLINE alwan_vec3 alwan_lut3d_sample_v(alwan_scalar const *lut,
     gf = ALWAN_SELECT(gf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), gf) * max_idx;
     bf = ALWAN_SELECT(bf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), bf) * max_idx;
 
-    /* Integer indices */
     int r0 = (int)rf; int g0 = (int)gf; int b0 = (int)bf;
     int r1 = r0 + 1;  int g1 = g0 + 1;  int b1 = b0 + 1;
     if (r1 >= size) r1 = size - 1;
     if (g1 >= size) g1 = size - 1;
     if (b1 >= size) b1 = size - 1;
 
-    /* Fractional parts */
     alwan_scalar fr = rf - (alwan_scalar)r0;
     alwan_scalar fg = gf - (alwan_scalar)g0;
     alwan_scalar fb = bf - (alwan_scalar)b0;
 
-    /* 8 corner lookups (R-fastest layout) */
     #define LUT3D_AT(rr, gg, bb) \
         (lut + ((size_t)(bb) * (size_t)size * (size_t)size + \
                 (size_t)(gg) * (size_t)size + (size_t)(rr)) * 3)
@@ -223,7 +178,6 @@ ALWAN_INLINE alwan_vec3 alwan_lut3d_sample_v(alwan_scalar const *lut,
 
     #undef LUT3D_AT
 
-    /* Trilinear interpolation per channel */
     alwan_vec3 result;
     for (int ch = 0; ch < 3; ch++) {
         alwan_scalar c00 = c000[ch] * (ALWAN_LITERAL(1.0) - fr) + c100[ch] * fr;
@@ -239,5 +193,7 @@ ALWAN_INLINE alwan_vec3 alwan_lut3d_sample_v(alwan_scalar const *lut,
 
     return result;
 }
+
+#endif
 
 #endif /* ALWAN_LUT_CORE_H */

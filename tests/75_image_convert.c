@@ -20,10 +20,10 @@ static int ref_image_pixel(alwan_rgb *out, alwan_ctx *ctx,
                            alwan_rgb_space_desc const *dst_space,
                            alwan_rgb const *in) {
     /* Decode source: EOTF (encoded -> linear) */
-    alwan_scalar linear_src[3];
+    alwan_f64 linear_src[3];
     alwan_eotf_apply(linear_src, src_space->eotf,
-                     (alwan_scalar const *)in, 3,
-                     sizeof(alwan_scalar), sizeof(alwan_scalar));
+                     (alwan_f64 const *)in, 3,
+                     sizeof(alwan_f64), sizeof(alwan_f64));
 
     /* Convert linear src -> linear dst */
     alwan_rgb lin_in = {linear_src[0], linear_src[1], linear_src[2]};
@@ -32,11 +32,11 @@ static int ref_image_pixel(alwan_rgb *out, alwan_ctx *ctx,
     if (status != ALWAN_OK) return status;
 
     /* Encode destination: OETF (linear -> encoded) */
-    alwan_scalar linear_dst[3] = {lin_out.r, lin_out.g, lin_out.b};
-    alwan_scalar encoded_dst[3];
+    alwan_f64 linear_dst[3] = {lin_out.r, lin_out.g, lin_out.b};
+    alwan_f64 encoded_dst[3];
     alwan_oetf_apply(encoded_dst, dst_space->oetf,
                      linear_dst, 3,
-                     sizeof(alwan_scalar), sizeof(alwan_scalar));
+                     sizeof(alwan_f64), sizeof(alwan_f64));
 
     out->r = encoded_dst[0];
     out->g = encoded_dst[1];
@@ -60,11 +60,11 @@ static int test_image_convert_same_wp(void) {
 
     /* 4x2 image */
     size_t const W = 4, H = 2;
-    alwan_scalar src[4 * 2 * 3];
-    alwan_scalar dst[4 * 2 * 3];
+    alwan_f64 src[4 * 2 * 3];
+    alwan_f64 dst[4 * 2 * 3];
 
     /* Fill with known sRGB-encoded values */
-    alwan_scalar const colors[][3] = {
+    alwan_f64 const colors[][3] = {
         {0.0, 0.0, 0.0},
         {1.0, 1.0, 1.0},
         {0.8, 0.2, 0.1},
@@ -80,11 +80,11 @@ static int test_image_convert_same_wp(void) {
         src[i * 3 + 2] = colors[i][2];
     }
 
-    size_t row_stride = W * 3 * sizeof(alwan_scalar);
+    size_t row_stride = W * 3 * sizeof(alwan_f64);
 
     int status = alwan_image_convert(
-        dst, ALWAN_PIXEL_SCALAR, row_stride,
-        src, ALWAN_PIXEL_SCALAR, row_stride,
+        dst, ALWAN_PIXEL_F64, row_stride,
+        src, ALWAN_PIXEL_F64, row_stride,
         W, H, ctx, &srgb, &p3);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert returned error");
@@ -124,10 +124,10 @@ static int test_image_convert_diff_wp(void) {
     alwan_rgb_get_space_descriptor(&acescg, ctx, ALWAN_RGB_SPACE_ACESCG);
 
     size_t const W = 3, H = 1;
-    alwan_scalar src[3 * 3];
-    alwan_scalar dst[3 * 3];
+    alwan_f64 src[3 * 3];
+    alwan_f64 dst[3 * 3];
 
-    alwan_scalar const colors[][3] = {
+    alwan_f64 const colors[][3] = {
         {0.5, 0.3, 0.2},
         {0.1, 0.9, 0.5},
         {0.8, 0.8, 0.8},
@@ -138,11 +138,11 @@ static int test_image_convert_diff_wp(void) {
         src[i * 3 + 2] = colors[i][2];
     }
 
-    size_t row_stride = W * 3 * sizeof(alwan_scalar);
+    size_t row_stride = W * 3 * sizeof(alwan_f64);
 
     int status = alwan_image_convert(
-        dst, ALWAN_PIXEL_SCALAR, row_stride,
-        src, ALWAN_PIXEL_SCALAR, row_stride,
+        dst, ALWAN_PIXEL_F64, row_stride,
+        src, ALWAN_PIXEL_F64, row_stride,
         W, H, ctx, &srgb, &acescg);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert returned error");
@@ -212,23 +212,23 @@ static int test_image_convert_u8_to_f32(void) {
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert U8->F32 returned error");
 
     /* Verify against reference: normalize U8, EOTF, convert, OETF */
-    alwan_scalar const f32_tol = ALWAN_LITERAL(1e-5);
+    alwan_f64 const f32_tol = ALWAN_LITERAL(1e-5);
     for (size_t i = 0; i < W * H; i++) {
         alwan_rgb rgb_in = {
-            (alwan_scalar)pixels[i][0] / ALWAN_LITERAL(255.0),
-            (alwan_scalar)pixels[i][1] / ALWAN_LITERAL(255.0),
-            (alwan_scalar)pixels[i][2] / ALWAN_LITERAL(255.0)
+            (alwan_f64)pixels[i][0] / ALWAN_LITERAL(255.0),
+            (alwan_f64)pixels[i][1] / ALWAN_LITERAL(255.0),
+            (alwan_f64)pixels[i][2] / ALWAN_LITERAL(255.0)
         };
         alwan_rgb rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &bt2020, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "U8->F32 pixel %zu R", i);
-        TEST_ASSERT_NEAR((alwan_scalar)dst_f32[i * 3 + 0], rgb_ref.r, f32_tol, msg);
+        TEST_ASSERT_NEAR((alwan_f64)dst_f32[i * 3 + 0], rgb_ref.r, f32_tol, msg);
         snprintf(msg, sizeof(msg), "U8->F32 pixel %zu G", i);
-        TEST_ASSERT_NEAR((alwan_scalar)dst_f32[i * 3 + 1], rgb_ref.g, f32_tol, msg);
+        TEST_ASSERT_NEAR((alwan_f64)dst_f32[i * 3 + 1], rgb_ref.g, f32_tol, msg);
         snprintf(msg, sizeof(msg), "U8->F32 pixel %zu B", i);
-        TEST_ASSERT_NEAR((alwan_scalar)dst_f32[i * 3 + 2], rgb_ref.b, f32_tol, msg);
+        TEST_ASSERT_NEAR((alwan_f64)dst_f32[i * 3 + 2], rgb_ref.b, f32_tol, msg);
     }
 
     alwan_destroy(ctx);
@@ -281,26 +281,26 @@ static int test_image_convert_row_stride(void) {
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert padded returned error");
 
     /* Verify each pixel */
-    alwan_scalar const f32_tol = ALWAN_LITERAL(1e-5);
+    alwan_f64 const f32_tol = ALWAN_LITERAL(1e-5);
     for (size_t y = 0; y < H; y++) {
         float const *dst_row = (float const *)(dst_buf + y * padded_row);
         for (size_t x = 0; x < W; x++) {
             size_t idx = y * W + x;
             alwan_rgb rgb_in = {
-                (alwan_scalar)test_colors[idx][0],
-                (alwan_scalar)test_colors[idx][1],
-                (alwan_scalar)test_colors[idx][2]
+                (alwan_f64)test_colors[idx][0],
+                (alwan_f64)test_colors[idx][1],
+                (alwan_f64)test_colors[idx][2]
             };
             alwan_rgb rgb_ref;
             ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
 
             char msg[128];
             snprintf(msg, sizeof(msg), "padded [%zu,%zu] R", y, x);
-            TEST_ASSERT_NEAR((alwan_scalar)dst_row[x * 3 + 0], rgb_ref.r, f32_tol, msg);
+            TEST_ASSERT_NEAR((alwan_f64)dst_row[x * 3 + 0], rgb_ref.r, f32_tol, msg);
             snprintf(msg, sizeof(msg), "padded [%zu,%zu] G", y, x);
-            TEST_ASSERT_NEAR((alwan_scalar)dst_row[x * 3 + 1], rgb_ref.g, f32_tol, msg);
+            TEST_ASSERT_NEAR((alwan_f64)dst_row[x * 3 + 1], rgb_ref.g, f32_tol, msg);
             snprintf(msg, sizeof(msg), "padded [%zu,%zu] B", y, x);
-            TEST_ASSERT_NEAR((alwan_scalar)dst_row[x * 3 + 2], rgb_ref.b, f32_tol, msg);
+            TEST_ASSERT_NEAR((alwan_f64)dst_row[x * 3 + 2], rgb_ref.b, f32_tol, msg);
         }
     }
 
@@ -326,15 +326,15 @@ static int test_image_convert_in_place(void) {
     alwan_rgb_get_space_descriptor(&p3, ctx, ALWAN_RGB_SPACE_P3_D65);
 
     size_t const W = 3, H = 1;
-    alwan_scalar buf[3 * 3];
-    alwan_scalar const colors[][3] = {
+    alwan_f64 buf[3 * 3];
+    alwan_f64 const colors[][3] = {
         {0.8, 0.2, 0.1},
         {0.3, 0.7, 0.5},
         {0.5, 0.5, 0.5},
     };
 
     /* Compute reference first */
-    alwan_scalar ref[3 * 3];
+    alwan_f64 ref[3 * 3];
     for (size_t i = 0; i < W; i++) {
         alwan_rgb rgb_in = {colors[i][0], colors[i][1], colors[i][2]};
         alwan_rgb rgb_ref;
@@ -351,10 +351,10 @@ static int test_image_convert_in_place(void) {
         buf[i * 3 + 2] = colors[i][2];
     }
 
-    size_t row_stride = W * 3 * sizeof(alwan_scalar);
+    size_t row_stride = W * 3 * sizeof(alwan_f64);
     int status = alwan_image_convert(
-        buf, ALWAN_PIXEL_SCALAR, row_stride,
-        buf, ALWAN_PIXEL_SCALAR, row_stride,
+        buf, ALWAN_PIXEL_F64, row_stride,
+        buf, ALWAN_PIXEL_F64, row_stride,
         W, H, ctx, &srgb, &p3);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert in-place returned error");
@@ -381,26 +381,26 @@ static int test_image_convert_errors(void) {
     TEST_START("image_convert error handling");
 
     alwan_rgb_space_desc srgb = {0};
-    alwan_scalar buf[9];
+    alwan_f64 buf[9];
 
     /* NULL dst */
-    TEST_ASSERT(alwan_image_convert(NULL, ALWAN_PIXEL_SCALAR, 24,
-        buf, ALWAN_PIXEL_SCALAR, 24, 1, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_image_convert(NULL, ALWAN_PIXEL_F64, 24,
+        buf, ALWAN_PIXEL_F64, 24, 1, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
         "NULL dst should fail");
 
     /* NULL src */
-    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_SCALAR, 24,
-        NULL, ALWAN_PIXEL_SCALAR, 24, 1, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_F64, 24,
+        NULL, ALWAN_PIXEL_F64, 24, 1, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
         "NULL src should fail");
 
     /* zero width */
-    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_SCALAR, 24,
-        buf, ALWAN_PIXEL_SCALAR, 24, 0, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_F64, 24,
+        buf, ALWAN_PIXEL_F64, 24, 0, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
         "zero width should fail");
 
     /* zero height */
-    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_SCALAR, 24,
-        buf, ALWAN_PIXEL_SCALAR, 24, 1, 0, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_F64, 24,
+        buf, ALWAN_PIXEL_F64, 24, 1, 0, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
         "zero height should fail");
 
     TEST_PASS_MSG();
@@ -422,11 +422,11 @@ static int test_image_convert_rgba_straight(void) {
     alwan_rgb_get_space_descriptor(&p3, ctx, ALWAN_RGB_SPACE_P3_D65);
 
     size_t const W = 3, H = 1;
-    alwan_scalar src[3 * 4]; /* 3 pixels x 4 channels */
-    alwan_scalar dst[3 * 4];
+    alwan_f64 src[3 * 4]; /* 3 pixels x 4 channels */
+    alwan_f64 dst[3 * 4];
 
     /* RGBA pixels with varying alpha */
-    alwan_scalar const pixels[][4] = {
+    alwan_f64 const pixels[][4] = {
         {0.8, 0.2, 0.1, 1.0},   /* fully opaque */
         {0.3, 0.7, 0.5, 0.5},   /* semi-transparent */
         {0.5, 0.5, 0.5, 0.0},   /* fully transparent */
@@ -438,10 +438,10 @@ static int test_image_convert_rgba_straight(void) {
         src[i * 4 + 3] = pixels[i][3];
     }
 
-    size_t row_stride = W * 4 * sizeof(alwan_scalar);
+    size_t row_stride = W * 4 * sizeof(alwan_f64);
     int status = alwan_image_convert_rgba(
-        dst, ALWAN_PIXEL_SCALAR, row_stride,
-        src, ALWAN_PIXEL_SCALAR, row_stride,
+        dst, ALWAN_PIXEL_F64, row_stride,
+        src, ALWAN_PIXEL_F64, row_stride,
         W, H, ctx, &srgb, &p3, ALWAN_ALPHA_STRAIGHT);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert_rgba returned error");
@@ -485,11 +485,11 @@ static int test_image_convert_rgba_premul(void) {
     alwan_rgb_get_space_descriptor(&p3, ctx, ALWAN_RGB_SPACE_P3_D65);
 
     size_t const W = 3, H = 1;
-    alwan_scalar src[3 * 4];
-    alwan_scalar dst[3 * 4];
+    alwan_f64 src[3 * 4];
+    alwan_f64 dst[3 * 4];
 
     /* Straight RGBA values to build premultiplied from */
-    alwan_scalar const straight[][4] = {
+    alwan_f64 const straight[][4] = {
         {0.8, 0.2, 0.1, 1.0},   /* opaque: premul == straight */
         {0.4, 0.8, 0.6, 0.5},   /* semi: premul = straight * 0.5 */
         {0.0, 0.0, 0.0, 0.0},   /* zero alpha: RGB must be 0 */
@@ -497,17 +497,17 @@ static int test_image_convert_rgba_premul(void) {
 
     /* Store as premultiplied */
     for (size_t i = 0; i < W; i++) {
-        alwan_scalar a = straight[i][3];
+        alwan_f64 a = straight[i][3];
         src[i * 4 + 0] = straight[i][0] * a;
         src[i * 4 + 1] = straight[i][1] * a;
         src[i * 4 + 2] = straight[i][2] * a;
         src[i * 4 + 3] = a;
     }
 
-    size_t row_stride = W * 4 * sizeof(alwan_scalar);
+    size_t row_stride = W * 4 * sizeof(alwan_f64);
     int status = alwan_image_convert_rgba(
-        dst, ALWAN_PIXEL_SCALAR, row_stride,
-        src, ALWAN_PIXEL_SCALAR, row_stride,
+        dst, ALWAN_PIXEL_F64, row_stride,
+        src, ALWAN_PIXEL_F64, row_stride,
         W, H, ctx, &srgb, &p3, ALWAN_ALPHA_PREMULTIPLIED);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert_rgba premul returned error");
@@ -515,7 +515,7 @@ static int test_image_convert_rgba_premul(void) {
     /* For each pixel: unpremul -> convert -> repremul.
      * Reference: convert the straight RGB, then repremultiply. */
     for (size_t i = 0; i < W; i++) {
-        alwan_scalar a = straight[i][3];
+        alwan_f64 a = straight[i][3];
         char msg[128];
 
         if (a > ALWAN_LITERAL(0.0)) {
@@ -590,27 +590,27 @@ static int test_image_convert_rgba_u8_f32(void) {
 
     TEST_ASSERT(status == ALWAN_OK, "rgba U8->F32 returned error");
 
-    alwan_scalar const f32_tol = ALWAN_LITERAL(1e-5);
+    alwan_f64 const f32_tol = ALWAN_LITERAL(1e-5);
     for (size_t i = 0; i < W; i++) {
         alwan_rgb rgb_in = {
-            (alwan_scalar)u8_pixels[i][0] / ALWAN_LITERAL(255.0),
-            (alwan_scalar)u8_pixels[i][1] / ALWAN_LITERAL(255.0),
-            (alwan_scalar)u8_pixels[i][2] / ALWAN_LITERAL(255.0)
+            (alwan_f64)u8_pixels[i][0] / ALWAN_LITERAL(255.0),
+            (alwan_f64)u8_pixels[i][1] / ALWAN_LITERAL(255.0),
+            (alwan_f64)u8_pixels[i][2] / ALWAN_LITERAL(255.0)
         };
         alwan_rgb rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
 
-        alwan_scalar expected_alpha = (alwan_scalar)u8_pixels[i][3] / ALWAN_LITERAL(255.0);
+        alwan_f64 expected_alpha = (alwan_f64)u8_pixels[i][3] / ALWAN_LITERAL(255.0);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "rgba U8->F32 pixel %zu R", i);
-        TEST_ASSERT_NEAR((alwan_scalar)dst_f32[i * 4 + 0], rgb_ref.r, f32_tol, msg);
+        TEST_ASSERT_NEAR((alwan_f64)dst_f32[i * 4 + 0], rgb_ref.r, f32_tol, msg);
         snprintf(msg, sizeof(msg), "rgba U8->F32 pixel %zu G", i);
-        TEST_ASSERT_NEAR((alwan_scalar)dst_f32[i * 4 + 1], rgb_ref.g, f32_tol, msg);
+        TEST_ASSERT_NEAR((alwan_f64)dst_f32[i * 4 + 1], rgb_ref.g, f32_tol, msg);
         snprintf(msg, sizeof(msg), "rgba U8->F32 pixel %zu B", i);
-        TEST_ASSERT_NEAR((alwan_scalar)dst_f32[i * 4 + 2], rgb_ref.b, f32_tol, msg);
+        TEST_ASSERT_NEAR((alwan_f64)dst_f32[i * 4 + 2], rgb_ref.b, f32_tol, msg);
         snprintf(msg, sizeof(msg), "rgba U8->F32 pixel %zu A", i);
-        TEST_ASSERT_NEAR((alwan_scalar)dst_f32[i * 4 + 3], expected_alpha, f32_tol, msg);
+        TEST_ASSERT_NEAR((alwan_f64)dst_f32[i * 4 + 3], expected_alpha, f32_tol, msg);
     }
 
     alwan_destroy(ctx);
@@ -633,15 +633,15 @@ static int test_image_convert_rgba_in_place(void) {
     alwan_rgb_get_space_descriptor(&p3, ctx, ALWAN_RGB_SPACE_P3_D65);
 
     size_t const W = 2, H = 1;
-    alwan_scalar buf[2 * 4];
+    alwan_f64 buf[2 * 4];
 
-    alwan_scalar const pixels[][4] = {
+    alwan_f64 const pixels[][4] = {
         {0.8, 0.2, 0.1, 0.75},
         {0.3, 0.7, 0.5, 1.0},
     };
 
     /* Compute reference first */
-    alwan_scalar ref[2 * 4];
+    alwan_f64 ref[2 * 4];
     for (size_t i = 0; i < W; i++) {
         alwan_rgb rgb_in = {pixels[i][0], pixels[i][1], pixels[i][2]};
         alwan_rgb rgb_ref;
@@ -660,10 +660,10 @@ static int test_image_convert_rgba_in_place(void) {
         buf[i * 4 + 3] = pixels[i][3];
     }
 
-    size_t row_stride = W * 4 * sizeof(alwan_scalar);
+    size_t row_stride = W * 4 * sizeof(alwan_f64);
     int status = alwan_image_convert_rgba(
-        buf, ALWAN_PIXEL_SCALAR, row_stride,
-        buf, ALWAN_PIXEL_SCALAR, row_stride,
+        buf, ALWAN_PIXEL_F64, row_stride,
+        buf, ALWAN_PIXEL_F64, row_stride,
         W, H, ctx, &srgb, &p3, ALWAN_ALPHA_STRAIGHT);
 
     TEST_ASSERT(status == ALWAN_OK, "rgba in-place returned error");

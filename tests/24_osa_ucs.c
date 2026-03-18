@@ -11,14 +11,14 @@
 static int test_xyz_osa_ucs_forward(void) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "reference_values/test_xyz_osa_ucs_pairs.csv"
     };
 ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
-    alwan_scalar const osa_tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const osa_tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz_in;
@@ -42,10 +42,10 @@ ALWAN_DIAG_POP
         /* Test XYZ -> OSA-UCS */
         alwan_xyz_to_osa_ucs(&osa_computed, &xyz_in);
 
-        alwan_scalar osa_comp_arr[3] = {osa_computed.L, osa_computed.j, osa_computed.g};
-        alwan_scalar osa_exp_arr[3] = {osa_expected.L, osa_expected.j, osa_expected.g};
+        alwan_f64 osa_comp_arr[3] = {osa_computed.L, osa_computed.j, osa_computed.g};
+        alwan_f64 osa_exp_arr[3] = {osa_expected.L, osa_expected.j, osa_expected.g};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(osa_comp_arr[j] - osa_exp_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(osa_comp_arr[j] - osa_exp_arr[j]);
             if (diff > osa_tolerance) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
@@ -82,12 +82,12 @@ static int test_osa_ucs_inverse_approximate(void) {
     alwan_xyz_to_osa_ucs(&osa, &xyz);
     alwan_osa_ucs_to_xyz(&xyz_out, &osa);
 
-    alwan_scalar const loose_tol = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const loose_tol = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar xyz_arr[3] = {xyz.x, xyz.y, xyz.z};
-    alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};
+    alwan_f64 xyz_arr[3] = {xyz.x, xyz.y, xyz.z};
+    alwan_f64 xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};
     for (int i = 0; i < 3; i++) {
-        alwan_scalar diff = ALWAN_ABS(xyz_out_arr[i] - xyz_arr[i]);
+        alwan_f64 diff = ALWAN_ABS(xyz_out_arr[i] - xyz_arr[i]);
         if (diff > loose_tol) {
             printf("Inverse approximation test failed:\n");
             printf("  Original XYZ: [%.6f, %.6f, %.6f]\n",

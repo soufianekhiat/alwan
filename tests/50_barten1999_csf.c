@@ -16,7 +16,7 @@
 /* Luminance values */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar luminances[] = {
+static const alwan_f64 luminances[] = {
 #include "reference_values/barten_luminances.csv"
 };
 ALWAN_DIAG_POP
@@ -25,7 +25,7 @@ ALWAN_DIAG_POP
 /* Angular sizes */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar angular_sizes[] = {
+static const alwan_f64 angular_sizes[] = {
 #include "reference_values/barten_angular_sizes.csv"
 };
 ALWAN_DIAG_POP
@@ -34,7 +34,7 @@ ALWAN_DIAG_POP
 /* Pupil diameters */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar pupil_diameters[] = {
+static const alwan_f64 pupil_diameters[] = {
 #include "reference_values/barten_pupil_diameters.csv"
 };
 ALWAN_DIAG_POP
@@ -43,7 +43,7 @@ ALWAN_DIAG_POP
 /* Spatial frequencies */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar frequencies[] = {
+static const alwan_f64 frequencies[] = {
 #include "reference_values/barten_frequencies.csv"
 };
 ALWAN_DIAG_POP
@@ -52,7 +52,7 @@ ALWAN_DIAG_POP
 /* Sigma values for MTF tests */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar sigmas[] = {
+static const alwan_f64 sigmas[] = {
 #include "reference_values/barten_sigmas.csv"
 };
 ALWAN_DIAG_POP
@@ -61,7 +61,7 @@ ALWAN_DIAG_POP
 /* CSF frequencies (extended range) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar csf_frequencies[] = {
+static const alwan_f64 csf_frequencies[] = {
 #include "reference_values/barten_csf_frequencies.csv"
 };
 ALWAN_DIAG_POP
@@ -70,7 +70,7 @@ ALWAN_DIAG_POP
 /* Reference pupil diameter with defaults (L varies, X_0=Y_0=60) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_pupil_default[] = {
+static const alwan_f64 ref_pupil_default[] = {
 #include "reference_values/barten_pupil_diameter_default.csv"
 };
 ALWAN_DIAG_POP
@@ -78,7 +78,7 @@ ALWAN_DIAG_POP
 /* Reference pupil diameter with varying angular size (L=100) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_pupil_angular[] = {
+static const alwan_f64 ref_pupil_angular[] = {
 #include "reference_values/barten_pupil_diameter_angular.csv"
 };
 ALWAN_DIAG_POP
@@ -86,7 +86,7 @@ ALWAN_DIAG_POP
 /* Reference retinal illuminance with Stiles-Crawford */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_retinal_sc[] = {
+static const alwan_f64 ref_retinal_sc[] = {
 #include "reference_values/barten_retinal_illuminance_sc.csv"
 };
 ALWAN_DIAG_POP
@@ -94,7 +94,7 @@ ALWAN_DIAG_POP
 /* Reference retinal illuminance without Stiles-Crawford */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_retinal_no_sc[] = {
+static const alwan_f64 ref_retinal_no_sc[] = {
 #include "reference_values/barten_retinal_illuminance_no_sc.csv"
 };
 ALWAN_DIAG_POP
@@ -102,7 +102,7 @@ ALWAN_DIAG_POP
 /* Reference retinal illuminance at fixed L=100 */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_retinal_fixed_L[] = {
+static const alwan_f64 ref_retinal_fixed_L[] = {
 #include "reference_values/barten_retinal_illuminance_fixed_L.csv"
 };
 ALWAN_DIAG_POP
@@ -110,7 +110,7 @@ ALWAN_DIAG_POP
 /* Reference MTF with default sigma=0.01 */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_mtf_default[] = {
+static const alwan_f64 ref_mtf_default[] = {
 #include "reference_values/barten_mtf_default.csv"
 };
 ALWAN_DIAG_POP
@@ -118,7 +118,7 @@ ALWAN_DIAG_POP
 /* Reference MTF at u=4 with varying sigma */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_mtf_u4[] = {
+static const alwan_f64 ref_mtf_u4[] = {
 #include "reference_values/barten_mtf_u4.csv"
 };
 ALWAN_DIAG_POP
@@ -126,7 +126,7 @@ ALWAN_DIAG_POP
 /* Reference sigma with defaults */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_sigma_default[] = {
+static const alwan_f64 ref_sigma_default[] = {
 #include "reference_values/barten_sigma_default.csv"
 };
 ALWAN_DIAG_POP
@@ -134,7 +134,7 @@ ALWAN_DIAG_POP
 /* Sigma_0 values */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar sigma_0_values[] = {
+static const alwan_f64 sigma_0_values[] = {
 #include "reference_values/barten_sigma_0_values.csv"
 };
 ALWAN_DIAG_POP
@@ -143,7 +143,7 @@ ALWAN_DIAG_POP
 /* Reference sigma with varying sigma_0 */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_sigma_vary_s0[] = {
+static const alwan_f64 ref_sigma_vary_s0[] = {
 #include "reference_values/barten_sigma_vary_s0.csv"
 };
 ALWAN_DIAG_POP
@@ -151,7 +151,7 @@ ALWAN_DIAG_POP
 /* Reference max angular size with defaults */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_max_angular_default[] = {
+static const alwan_f64 ref_max_angular_default[] = {
 #include "reference_values/barten_max_angular_size_default.csv"
 };
 ALWAN_DIAG_POP
@@ -159,7 +159,7 @@ ALWAN_DIAG_POP
 /* X_0 values for max angular size tests */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar X_0_values[] = {
+static const alwan_f64 X_0_values[] = {
 #include "reference_values/barten_X_0_values.csv"
 };
 ALWAN_DIAG_POP
@@ -168,7 +168,7 @@ ALWAN_DIAG_POP
 /* Reference max angular size with varying X_0 */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_max_angular_vary_X0[] = {
+static const alwan_f64 ref_max_angular_vary_X0[] = {
 #include "reference_values/barten_max_angular_size_vary_X0.csv"
 };
 ALWAN_DIAG_POP
@@ -176,7 +176,7 @@ ALWAN_DIAG_POP
 /* Reference CSF with defaults */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_csf_default[] = {
+static const alwan_f64 ref_csf_default[] = {
 #include "reference_values/barten_csf_default.csv"
 };
 ALWAN_DIAG_POP
@@ -184,7 +184,7 @@ ALWAN_DIAG_POP
 /* Retinal illuminance values for CSF tests */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar E_values[] = {
+static const alwan_f64 E_values[] = {
 #include "reference_values/barten_E_values.csv"
 };
 ALWAN_DIAG_POP
@@ -193,7 +193,7 @@ ALWAN_DIAG_POP
 /* Reference CSF at u=4 with varying E */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_csf_vary_E[] = {
+static const alwan_f64 ref_csf_vary_E[] = {
 #include "reference_values/barten_csf_vary_E.csv"
 };
 ALWAN_DIAG_POP
@@ -201,7 +201,7 @@ ALWAN_DIAG_POP
 /* Sigma values for CSF tests */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar csf_sigma_values[] = {
+static const alwan_f64 csf_sigma_values[] = {
 #include "reference_values/barten_csf_sigma_values.csv"
 };
 ALWAN_DIAG_POP
@@ -210,7 +210,7 @@ ALWAN_DIAG_POP
 /* Reference CSF at u=4 with varying sigma */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_csf_vary_sigma[] = {
+static const alwan_f64 ref_csf_vary_sigma[] = {
 #include "reference_values/barten_csf_vary_sigma.csv"
 };
 ALWAN_DIAG_POP
@@ -218,7 +218,7 @@ ALWAN_DIAG_POP
 /* Reference CSF at L=1 */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_csf_L1[] = {
+static const alwan_f64 ref_csf_L1[] = {
 #include "reference_values/barten_csf_L1.csv"
 };
 ALWAN_DIAG_POP
@@ -226,7 +226,7 @@ ALWAN_DIAG_POP
 /* Reference CSF at L=10 */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_csf_L10[] = {
+static const alwan_f64 ref_csf_L10[] = {
 #include "reference_values/barten_csf_L10.csv"
 };
 ALWAN_DIAG_POP
@@ -234,7 +234,7 @@ ALWAN_DIAG_POP
 /* Reference CSF at L=100 */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_csf_L100[] = {
+static const alwan_f64 ref_csf_L100[] = {
 #include "reference_values/barten_csf_L100.csv"
 };
 ALWAN_DIAG_POP
@@ -248,7 +248,7 @@ static int test_pupil_diameter_default(void)
     printf("  TEST: Pupil diameter with default angular size\n");
 
     for (size_t i = 0; i < NUM_LUMINANCES; i++) {
-        alwan_scalar d = alwan_pupil_diameter_barten1999(luminances[i], 60, 60);
+        alwan_f64 d = alwan_pupil_diameter_barten1999(luminances[i], 60, 60);
         char msg[64];
         sprintf(msg, "Pupil at L=%.2f", luminances[i]);
         TEST_ASSERT_REL(d, ref_pupil_default[i], ALWAN_TEST_TOLERANCE, msg);
@@ -262,7 +262,7 @@ static int test_pupil_diameter_angular(void)
     printf("  TEST: Pupil diameter with varying angular size\n");
 
     for (size_t i = 0; i < NUM_ANGULAR_SIZES; i++) {
-        alwan_scalar d = alwan_pupil_diameter_barten1999(100, angular_sizes[i], angular_sizes[i]);
+        alwan_f64 d = alwan_pupil_diameter_barten1999(100, angular_sizes[i], angular_sizes[i]);
         char msg[64];
         sprintf(msg, "Pupil at X_0=%.0f", angular_sizes[i]);
         TEST_ASSERT_REL(d, ref_pupil_angular[i], ALWAN_TEST_TOLERANCE, msg);
@@ -276,7 +276,7 @@ static int test_retinal_illuminance_sc(void)
     printf("  TEST: Retinal illuminance with Stiles-Crawford\n");
 
     for (size_t i = 0; i < NUM_PUPIL_DIAMETERS; i++) {
-        alwan_scalar E = alwan_retinal_illuminance_barten1999(luminances[i], pupil_diameters[i], 1);
+        alwan_f64 E = alwan_retinal_illuminance_barten1999(luminances[i], pupil_diameters[i], 1);
         char msg[64];
         sprintf(msg, "Retinal at L=%.2f, d=%.1f (SC)", luminances[i], pupil_diameters[i]);
         TEST_ASSERT_REL(E, ref_retinal_sc[i], ALWAN_TEST_TOLERANCE, msg);
@@ -290,7 +290,7 @@ static int test_retinal_illuminance_no_sc(void)
     printf("  TEST: Retinal illuminance without Stiles-Crawford\n");
 
     for (size_t i = 0; i < NUM_PUPIL_DIAMETERS; i++) {
-        alwan_scalar E = alwan_retinal_illuminance_barten1999(luminances[i], pupil_diameters[i], 0);
+        alwan_f64 E = alwan_retinal_illuminance_barten1999(luminances[i], pupil_diameters[i], 0);
         char msg[64];
         sprintf(msg, "Retinal at L=%.2f, d=%.1f (no SC)", luminances[i], pupil_diameters[i]);
         TEST_ASSERT_REL(E, ref_retinal_no_sc[i], ALWAN_TEST_TOLERANCE, msg);
@@ -304,7 +304,7 @@ static int test_optical_mtf_default(void)
     printf("  TEST: Optical MTF with default sigma\n");
 
     for (size_t i = 0; i < NUM_FREQUENCIES; i++) {
-        alwan_scalar M = alwan_optical_mtf_barten1999(frequencies[i], 0.01);
+        alwan_f64 M = alwan_optical_mtf_barten1999(frequencies[i], 0.01);
         char msg[64];
         sprintf(msg, "MTF at u=%.1f", frequencies[i]);
         TEST_ASSERT_REL(M, ref_mtf_default[i], ALWAN_TEST_TOLERANCE, msg);
@@ -318,7 +318,7 @@ static int test_optical_mtf_vary_sigma(void)
     printf("  TEST: Optical MTF at u=4 with varying sigma\n");
 
     for (size_t i = 0; i < NUM_SIGMAS; i++) {
-        alwan_scalar M = alwan_optical_mtf_barten1999(4, sigmas[i]);
+        alwan_f64 M = alwan_optical_mtf_barten1999(4, sigmas[i]);
         char msg[64];
         sprintf(msg, "MTF at sigma=%.4f", sigmas[i]);
         TEST_ASSERT_REL(M, ref_mtf_u4[i], ALWAN_TEST_TOLERANCE, msg);
@@ -328,19 +328,19 @@ static int test_optical_mtf_vary_sigma(void)
 }
 
 /* Pupil diameters used for sigma tests (different from retinal illuminance tests) */
-static const alwan_scalar sigma_pupil_diameters[] = {1.0, 1.5, 2.0, 2.1, 2.5, 3.0, 4.0, 5.0};
+static const alwan_f64 sigma_pupil_diameters[] = {1.0, 1.5, 2.0, 2.1, 2.5, 3.0, 4.0, 5.0};
 #define NUM_SIGMA_PUPIL_DIAMETERS (sizeof(sigma_pupil_diameters) / sizeof(sigma_pupil_diameters[0]))
 
 static int test_sigma_default(void)
 {
     printf("  TEST: Sigma with default parameters\n");
 
-    alwan_scalar sigma_0 = 0.5 / 60;
-    alwan_scalar C_ab = 0.08 / 60;
+    alwan_f64 sigma_0 = 0.5 / 60;
+    alwan_f64 C_ab = 0.08 / 60;
 
     for (size_t i = 0; i < NUM_SIGMA_PUPIL_DIAMETERS; i++) {
-        alwan_scalar d = sigma_pupil_diameters[i];
-        alwan_scalar s = alwan_sigma_barten1999(sigma_0, C_ab, d);
+        alwan_f64 d = sigma_pupil_diameters[i];
+        alwan_f64 s = alwan_sigma_barten1999(sigma_0, C_ab, d);
         char msg[64];
         sprintf(msg, "Sigma at d=%.1f", d);
         TEST_ASSERT_REL(s, ref_sigma_default[i], ALWAN_TEST_TOLERANCE, msg);
@@ -354,7 +354,7 @@ static int test_max_angular_size_default(void)
     printf("  TEST: Maximum angular size with defaults\n");
 
     for (size_t i = 0; i < NUM_FREQUENCIES; i++) {
-        alwan_scalar X = alwan_maximum_angular_size_barten1999(frequencies[i], 60, 12, 15);
+        alwan_f64 X = alwan_maximum_angular_size_barten1999(frequencies[i], 60, 12, 15);
         char msg[64];
         sprintf(msg, "Max angular at u=%.1f", frequencies[i]);
         TEST_ASSERT_REL(X, ref_max_angular_default[i], ALWAN_TEST_TOLERANCE, msg);
@@ -368,7 +368,7 @@ static int test_max_angular_size_vary_X0(void)
     printf("  TEST: Maximum angular size with varying X_0\n");
 
     for (size_t i = 0; i < NUM_X_0; i++) {
-        alwan_scalar X = alwan_maximum_angular_size_barten1999(4, X_0_values[i], 12, 15);
+        alwan_f64 X = alwan_maximum_angular_size_barten1999(4, X_0_values[i], 12, 15);
         char msg[64];
         sprintf(msg, "Max angular at X_0=%.0f", X_0_values[i]);
         TEST_ASSERT_REL(X, ref_max_angular_vary_X0[i], ALWAN_TEST_TOLERANCE, msg);
@@ -382,7 +382,7 @@ static int test_csf_default(void)
     printf("  TEST: CSF with default parameters\n");
 
     for (size_t i = 0; i < NUM_CSF_FREQUENCIES; i++) {
-        alwan_scalar S = alwan_csf_barten1999(csf_frequencies[i], NULL);
+        alwan_f64 S = alwan_csf_barten1999(csf_frequencies[i], NULL);
         char msg[64];
         sprintf(msg, "CSF at u=%.1f", csf_frequencies[i]);
         TEST_ASSERT_REL(S, ref_csf_default[i], ALWAN_TEST_TOLERANCE, msg);
@@ -400,7 +400,7 @@ static int test_csf_vary_E(void)
 
     for (size_t i = 0; i < NUM_E_VALUES; i++) {
         params.E = E_values[i];
-        alwan_scalar S = alwan_csf_barten1999(4, &params);
+        alwan_f64 S = alwan_csf_barten1999(4, &params);
         char msg[64];
         sprintf(msg, "CSF at E=%.0f", E_values[i]);
         TEST_ASSERT_REL(S, ref_csf_vary_E[i], ALWAN_TEST_TOLERANCE, msg);
@@ -418,7 +418,7 @@ static int test_csf_vary_sigma(void)
 
     for (size_t i = 0; i < NUM_CSF_SIGMAS; i++) {
         params.sigma = csf_sigma_values[i];
-        alwan_scalar S = alwan_csf_barten1999(4, &params);
+        alwan_f64 S = alwan_csf_barten1999(4, &params);
         char msg[64];
         sprintf(msg, "CSF at sigma=%.4f", csf_sigma_values[i]);
         TEST_ASSERT_REL(S, ref_csf_vary_sigma[i], ALWAN_TEST_TOLERANCE, msg);
@@ -432,10 +432,10 @@ static int test_csf_full_workflow(void)
     printf("  TEST: CSF full workflow (L -> d -> sigma, E -> CSF)\n");
 
     /* Test at L=100 */
-    alwan_scalar L = 100;
-    alwan_scalar d = alwan_pupil_diameter_barten1999(L, 60, 60);
-    alwan_scalar sigma = alwan_sigma_barten1999(0.5/60, 0.08/60, d);
-    alwan_scalar E = alwan_retinal_illuminance_barten1999(L, d, 1);
+    alwan_f64 L = 100;
+    alwan_f64 d = alwan_pupil_diameter_barten1999(L, 60, 60);
+    alwan_f64 sigma = alwan_sigma_barten1999(0.5/60, 0.08/60, d);
+    alwan_f64 E = alwan_retinal_illuminance_barten1999(L, d, 1);
 
     alwan_csf_barten1999_params params;
     alwan_csf_barten1999_params_default(&params);
@@ -443,7 +443,7 @@ static int test_csf_full_workflow(void)
     params.E = E;
 
     for (size_t i = 0; i < NUM_CSF_FREQUENCIES; i++) {
-        alwan_scalar S = alwan_csf_barten1999(csf_frequencies[i], &params);
+        alwan_f64 S = alwan_csf_barten1999(csf_frequencies[i], &params);
         char msg[64];
         sprintf(msg, "CSF L=100 at u=%.1f", csf_frequencies[i]);
         TEST_ASSERT_REL(S, ref_csf_L100[i], ALWAN_TEST_TOLERANCE, msg);
@@ -471,11 +471,11 @@ static int test_params_default(void)
     TEST_ASSERT_REL(params.u_0, ALWAN_LITERAL(7.0), ALWAN_LITERAL(1e-10), "Default u_0 should be 7");
 
     /* Sigma should be computed from sigma_0=0.5/60, C_ab=0.08/60, d=2.1 */
-    alwan_scalar expected_sigma = alwan_sigma_barten1999(0.5/60, 0.08/60, 2.1);
+    alwan_f64 expected_sigma = alwan_sigma_barten1999(0.5/60, 0.08/60, 2.1);
     TEST_ASSERT_REL(params.sigma, expected_sigma, ALWAN_TEST_TOLERANCE, "Default sigma");
 
     /* E should be computed from L=20, d=2.1, SC=true */
-    alwan_scalar expected_E = alwan_retinal_illuminance_barten1999(20, 2.1, 1);
+    alwan_f64 expected_E = alwan_retinal_illuminance_barten1999(20, 2.1, 1);
     TEST_ASSERT_REL(params.E, expected_E, ALWAN_TEST_TOLERANCE, "Default E");
 
     return 0;

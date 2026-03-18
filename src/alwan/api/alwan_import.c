@@ -38,7 +38,7 @@ static int is_comment_or_empty(char const *line) {
     return (*s == '#' || *s == '\0' || *s == '\n' || *s == '\r');
 }
 
-int alwan_cube_import_3d(alwan_scalar *lut, int *out_size,
+int alwan_cube_import_3d(alwan_f64 *lut, int *out_size,
                           char const *path) {
     if (!lut || !out_size || !path) return ALWAN_E_INVALID;
 
@@ -87,9 +87,9 @@ int alwan_cube_import_3d(alwan_scalar *lut, int *out_size,
             return ALWAN_E_RANGE; /* too many data points */
         }
 
-        lut[data_count * 3 + 0] = (alwan_scalar)r;
-        lut[data_count * 3 + 1] = (alwan_scalar)g;
-        lut[data_count * 3 + 2] = (alwan_scalar)b;
+        lut[data_count * 3 + 0] = (alwan_f64)r;
+        lut[data_count * 3 + 1] = (alwan_f64)g;
+        lut[data_count * 3 + 2] = (alwan_f64)b;
         data_count++;
     }
 
@@ -104,7 +104,7 @@ int alwan_cube_import_3d(alwan_scalar *lut, int *out_size,
     return ALWAN_OK;
 }
 
-int alwan_cube_import_1d(alwan_scalar *lut, int *out_size,
+int alwan_cube_import_1d(alwan_f64 *lut, int *out_size,
                           char const *path) {
     if (!lut || !out_size || !path) return ALWAN_E_INVALID;
 
@@ -150,7 +150,7 @@ int alwan_cube_import_1d(alwan_scalar *lut, int *out_size,
         }
 
         /* Average of R, G, B for 1D (they're usually identical) */
-        lut[data_count] = (alwan_scalar)((r + g + b) / 3.0);
+        lut[data_count] = (alwan_f64)((r + g + b) / 3.0);
         data_count++;
     }
 
@@ -167,7 +167,7 @@ int alwan_cube_import_1d(alwan_scalar *lut, int *out_size,
  * Import from memory buffer
  * ---------------------------------------------------------------- */
 
-int alwan_cube_import_3d_buffer(alwan_scalar *lut, int *out_size,
+int alwan_cube_import_3d_buffer(alwan_f64 *lut, int *out_size,
                                  char const *buf, size_t buf_len) {
     if (!lut || !out_size || !buf || buf_len == 0) return ALWAN_E_INVALID;
 
@@ -214,9 +214,9 @@ int alwan_cube_import_3d_buffer(alwan_scalar *lut, int *out_size,
         size_t total = (size_t)size * (size_t)size * (size_t)size;
         if (data_count >= total) return ALWAN_E_RANGE;
 
-        lut[data_count * 3 + 0] = (alwan_scalar)r;
-        lut[data_count * 3 + 1] = (alwan_scalar)g;
-        lut[data_count * 3 + 2] = (alwan_scalar)b;
+        lut[data_count * 3 + 0] = (alwan_f64)r;
+        lut[data_count * 3 + 1] = (alwan_f64)g;
+        lut[data_count * 3 + 2] = (alwan_f64)b;
         data_count++;
     }
 

@@ -14,7 +14,7 @@ static int test_cam16_forward(void) {
     /* Load viewing conditions from fixture (XYZ_w, L_A, Y_b) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const viewing_params[] = {
+    static alwan_f64 const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
     ALWAN_DIAG_POP
@@ -32,7 +32,7 @@ static int test_cam16_forward(void) {
     /* Load test XYZ colors (same as CIECAM02) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz[] = {
+    static alwan_f64 const test_xyz[] = {
 #include "reference_values/ciecam02_xyz_input.csv"
     };
     ALWAN_DIAG_POP
@@ -41,7 +41,7 @@ static int test_cam16_forward(void) {
     /* Load expected correlates (J, C, h, Q, M, s, H for each color) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_correlates[] = {
+    static alwan_f64 const expected_correlates[] = {
 #include "reference_values/cam16_correlates.csv"
     };
     ALWAN_DIAG_POP
@@ -58,10 +58,10 @@ static int test_cam16_forward(void) {
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
-        alwan_scalar const *expected = &expected_correlates[i * 7];
-        alwan_scalar J_err = ALWAN_ABS(corr.J - expected[0]);
-        alwan_scalar C_err = ALWAN_ABS(corr.C - expected[1]);
-        alwan_scalar h_err = ALWAN_ABS(corr.h - expected[2]);
+        alwan_f64 const *expected = &expected_correlates[i * 7];
+        alwan_f64 J_err = ALWAN_ABS(corr.J - expected[0]);
+        alwan_f64 C_err = ALWAN_ABS(corr.C - expected[1]);
+        alwan_f64 h_err = ALWAN_ABS(corr.h - expected[2]);
 
         /* Handle hue wraparound (360° = 0°) */
         if (h_err > ALWAN_LITERAL(180.0)) {
@@ -90,9 +90,9 @@ static int test_cam16_forward(void) {
         }
 
         /* Also check Q, M, s */
-        alwan_scalar Q_err = ALWAN_ABS(corr.Q - expected[3]);
-        alwan_scalar M_err = ALWAN_ABS(corr.M - expected[4]);
-        alwan_scalar s_err = ALWAN_ABS(corr.s - expected[5]);
+        alwan_f64 Q_err = ALWAN_ABS(corr.Q - expected[3]);
+        alwan_f64 M_err = ALWAN_ABS(corr.M - expected[4]);
+        alwan_f64 s_err = ALWAN_ABS(corr.s - expected[5]);
         if (Q_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: Q error = %.10e (got %.10f, expected %.10f)\n",
                    i, (double)Q_err, (double)corr.Q, (double)expected[3]);
@@ -119,7 +119,7 @@ static int test_cam16_inverse(void) {
     /* Load viewing conditions from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const viewing_params[] = {
+    static alwan_f64 const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
     ALWAN_DIAG_POP
@@ -137,7 +137,7 @@ static int test_cam16_inverse(void) {
     /* Load correlates (J, C, h) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const correlates_data[] = {
+    static alwan_f64 const correlates_data[] = {
 #include "reference_values/cam16_correlates.csv"
     };
     ALWAN_DIAG_POP
@@ -146,7 +146,7 @@ static int test_cam16_inverse(void) {
     /* Load expected reconstructed XYZ */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_xyz[] = {
+    static alwan_f64 const expected_xyz[] = {
 #include "reference_values/cam16_xyz_reconstructed.csv"
     };
     ALWAN_DIAG_POP
@@ -164,10 +164,10 @@ static int test_cam16_inverse(void) {
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against expected values */
-        alwan_scalar const *expected = &expected_xyz[i * 3];
-        alwan_scalar X_err = ALWAN_ABS(xyz_out.x - expected[0]);
-        alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - expected[1]);
-        alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - expected[2]);
+        alwan_f64 const *expected = &expected_xyz[i * 3];
+        alwan_f64 X_err = ALWAN_ABS(xyz_out.x - expected[0]);
+        alwan_f64 Y_err = ALWAN_ABS(xyz_out.y - expected[1]);
+        alwan_f64 Z_err = ALWAN_ABS(xyz_out.z - expected[2]);
 
         if (X_err >= ALWAN_TEST_TOLERANCE || Y_err >= ALWAN_TEST_TOLERANCE || Z_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: XYZ errors = [%.10e, %.10e, %.10e]\n",
@@ -191,7 +191,7 @@ static int test_cam16_roundtrip(void) {
     /* Load viewing conditions from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const viewing_params[] = {
+    static alwan_f64 const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
     ALWAN_DIAG_POP
@@ -209,7 +209,7 @@ static int test_cam16_roundtrip(void) {
     /* Load test XYZ colors */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz[] = {
+    static alwan_f64 const test_xyz[] = {
 #include "reference_values/ciecam02_xyz_input.csv"
     };
     ALWAN_DIAG_POP
@@ -233,9 +233,9 @@ static int test_cam16_roundtrip(void) {
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
-        alwan_scalar X_err = ALWAN_ABS(xyz_out.x - xyz_in.x);
-        alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
-        alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
+        alwan_f64 X_err = ALWAN_ABS(xyz_out.x - xyz_in.x);
+        alwan_f64 Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
+        alwan_f64 Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
         if (X_err >= ALWAN_TEST_TOLERANCE || Y_err >= ALWAN_TEST_TOLERANCE || Z_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Color %zu: Round-trip XYZ errors = [%.10e, %.10e, %.10e]\n",
@@ -259,7 +259,7 @@ static int test_cam16_ucs_forward(void) {
     /* Load CAM16 correlates */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const correlates_data[] = {
+    static alwan_f64 const correlates_data[] = {
 #include "reference_values/cam16_correlates.csv"
     };
     ALWAN_DIAG_POP
@@ -268,7 +268,7 @@ static int test_cam16_ucs_forward(void) {
     /* Load expected CAM16-UCS Jab coordinates */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_jab[] = {
+    static alwan_f64 const expected_jab[] = {
 #include "reference_values/cam16_ucs_jab.csv"
     };
     ALWAN_DIAG_POP
@@ -290,10 +290,10 @@ static int test_cam16_ucs_forward(void) {
         TEST_ASSERT(status == ALWAN_OK, "CAM16-UCS forward transform failed");
 
         /* Check Jab against expected values */
-        alwan_scalar const *expected = &expected_jab[i * 3];
-        alwan_scalar J_err = ALWAN_ABS(jab_out.J - expected[0]);
-        alwan_scalar a_err = ALWAN_ABS(jab_out.a - expected[1]);
-        alwan_scalar b_err = ALWAN_ABS(jab_out.b - expected[2]);
+        alwan_f64 const *expected = &expected_jab[i * 3];
+        alwan_f64 J_err = ALWAN_ABS(jab_out.J - expected[0]);
+        alwan_f64 a_err = ALWAN_ABS(jab_out.a - expected[1]);
+        alwan_f64 b_err = ALWAN_ABS(jab_out.b - expected[2]);
 
         TEST_ASSERT(J_err < ALWAN_TEST_TOLERANCE, "J' mismatch");
         TEST_ASSERT(a_err < ALWAN_TEST_TOLERANCE, "a' mismatch");
@@ -309,7 +309,7 @@ static int test_cam16_ucs_roundtrip(void) {
     /* Load CAM16 correlates */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const correlates_data[] = {
+    static alwan_f64 const correlates_data[] = {
 #include "reference_values/cam16_correlates.csv"
     };
     ALWAN_DIAG_POP
@@ -334,9 +334,9 @@ static int test_cam16_ucs_roundtrip(void) {
         TEST_ASSERT(status == ALWAN_OK, "UCS inverse transform failed");
 
         /* Check round-trip error */
-        alwan_scalar J_err = ALWAN_ABS(corr_out.J - corr_in.J);
-        alwan_scalar M_err = ALWAN_ABS(corr_out.M - corr_in.M);
-        alwan_scalar h_err = ALWAN_ABS(corr_out.h - corr_in.h);
+        alwan_f64 J_err = ALWAN_ABS(corr_out.J - corr_in.J);
+        alwan_f64 M_err = ALWAN_ABS(corr_out.M - corr_in.M);
+        alwan_f64 h_err = ALWAN_ABS(corr_out.h - corr_in.h);
 
         /* Handle hue wraparound */
         if (h_err > ALWAN_LITERAL(180.0)) {

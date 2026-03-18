@@ -16,30 +16,13 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_atd95_core.h"
 
-int alwan_atd95_forward(
-    alwan_atd95_correlates *out,
-    alwan_xyz const *xyz,
-    alwan_atd95_viewing_conditions const *vc
-) {
-    if (!xyz || !vc || !out) {
-        return ALWAN_E_INVALID;
-    }
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_atd95_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
 
-    alwan_atd95_v_correlates v = alwan_atd95_forward_v(
-        *xyz, vc->white_xyz, vc->Y_0, vc->k1, vc->k2, vc->sigma
-    );
-
-    out->H   = v.H;
-    out->C   = v.C;
-    out->Br  = v.Br;
-    out->A_1 = v.A_1;
-    out->T_1 = v.T_1;
-    out->D_1 = v.D_1;
-    out->A_2 = v.A_2;
-    out->T_2 = v.T_2;
-    out->D_2 = v.D_2;
-
-    ALWAN_NORM_ATD95(out);
-
-    return ALWAN_OK;
-}
+#include "alwan_api_f64_setup.h"
+#include "alwan_atd95_impl.inc"
+#include "alwan_api_teardown.h"

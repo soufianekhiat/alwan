@@ -13,11 +13,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-static alwan_scalar vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
-    alwan_scalar max_diff = 0;
-    alwan_scalar diff_x = ALWAN_ABS(a->x - b->x);
-    alwan_scalar diff_y = ALWAN_ABS(a->y - b->y);
-    alwan_scalar diff_z = ALWAN_ABS(a->z - b->z);
+static alwan_f64 vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
+    alwan_f64 max_diff = 0;
+    alwan_f64 diff_x = ALWAN_ABS(a->x - b->x);
+    alwan_f64 diff_y = ALWAN_ABS(a->y - b->y);
+    alwan_f64 diff_z = ALWAN_ABS(a->z - b->z);
 
     if (diff_x > max_diff) max_diff = diff_x;
     if (diff_y > max_diff) max_diff = diff_y;
@@ -42,84 +42,84 @@ ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* Smits1999 test data */
-static alwan_scalar const smits1999_white_xyz_recovered[] = {
+static alwan_f64 const smits1999_white_xyz_recovered[] = {
 #include "reference_values/smits1999_white_xyz_recovered.csv"
 };
 
-static alwan_scalar const smits1999_white_xyz_expected[] = {
+static alwan_f64 const smits1999_white_xyz_expected[] = {
 #include "reference_values/smits1999_white_xyz_expected.csv"
 };
 
-static alwan_scalar const smits1999_red_xyz_recovered[] = {
+static alwan_f64 const smits1999_red_xyz_recovered[] = {
 #include "reference_values/smits1999_red_xyz_recovered.csv"
 };
 
-static alwan_scalar const smits1999_red_xyz_expected[] = {
+static alwan_f64 const smits1999_red_xyz_expected[] = {
 #include "reference_values/smits1999_red_xyz_expected.csv"
 };
 
-static alwan_scalar const smits1999_green_xyz_recovered[] = {
+static alwan_f64 const smits1999_green_xyz_recovered[] = {
 #include "reference_values/smits1999_green_xyz_recovered.csv"
 };
 
-static alwan_scalar const smits1999_green_xyz_expected[] = {
+static alwan_f64 const smits1999_green_xyz_expected[] = {
 #include "reference_values/smits1999_green_xyz_expected.csv"
 };
 
-static alwan_scalar const smits1999_blue_xyz_recovered[] = {
+static alwan_f64 const smits1999_blue_xyz_recovered[] = {
 #include "reference_values/smits1999_blue_xyz_recovered.csv"
 };
 
-static alwan_scalar const smits1999_blue_xyz_expected[] = {
+static alwan_f64 const smits1999_blue_xyz_expected[] = {
 #include "reference_values/smits1999_blue_xyz_expected.csv"
 };
 
-static alwan_scalar const smits1999_gray50_xyz_recovered[] = {
+static alwan_f64 const smits1999_gray50_xyz_recovered[] = {
 #include "reference_values/smits1999_gray50_xyz_recovered.csv"
 };
 
-static alwan_scalar const smits1999_gray50_xyz_expected[] = {
+static alwan_f64 const smits1999_gray50_xyz_expected[] = {
 #include "reference_values/smits1999_gray50_xyz_expected.csv"
 };
 
 /* Mallett2019 test data */
-static alwan_scalar const mallett2019_white_xyz_recovered[] = {
+static alwan_f64 const mallett2019_white_xyz_recovered[] = {
 #include "reference_values/mallett2019_white_xyz_recovered.csv"
 };
 
-static alwan_scalar const mallett2019_white_xyz_expected[] = {
+static alwan_f64 const mallett2019_white_xyz_expected[] = {
 #include "reference_values/mallett2019_white_xyz_expected.csv"
 };
 
-static alwan_scalar const mallett2019_red_xyz_recovered[] = {
+static alwan_f64 const mallett2019_red_xyz_recovered[] = {
 #include "reference_values/mallett2019_red_xyz_recovered.csv"
 };
 
-static alwan_scalar const mallett2019_red_xyz_expected[] = {
+static alwan_f64 const mallett2019_red_xyz_expected[] = {
 #include "reference_values/mallett2019_red_xyz_expected.csv"
 };
 
-static alwan_scalar const mallett2019_green_xyz_recovered[] = {
+static alwan_f64 const mallett2019_green_xyz_recovered[] = {
 #include "reference_values/mallett2019_green_xyz_recovered.csv"
 };
 
-static alwan_scalar const mallett2019_green_xyz_expected[] = {
+static alwan_f64 const mallett2019_green_xyz_expected[] = {
 #include "reference_values/mallett2019_green_xyz_expected.csv"
 };
 
-static alwan_scalar const mallett2019_blue_xyz_recovered[] = {
+static alwan_f64 const mallett2019_blue_xyz_recovered[] = {
 #include "reference_values/mallett2019_blue_xyz_recovered.csv"
 };
 
-static alwan_scalar const mallett2019_blue_xyz_expected[] = {
+static alwan_f64 const mallett2019_blue_xyz_expected[] = {
 #include "reference_values/mallett2019_blue_xyz_expected.csv"
 };
 
-static alwan_scalar const mallett2019_gray50_xyz_recovered[] = {
+static alwan_f64 const mallett2019_gray50_xyz_recovered[] = {
 #include "reference_values/mallett2019_gray50_xyz_recovered.csv"
 };
 
-static alwan_scalar const mallett2019_gray50_xyz_expected[] = {
+static alwan_f64 const mallett2019_gray50_xyz_expected[] = {
 #include "reference_values/mallett2019_gray50_xyz_expected.csv"
 };
 
@@ -152,8 +152,8 @@ static int spectrum_to_normalized_xyz(alwan_xyz *xyz_out, alwan_ctx *ctx,
      * colour-science integrates over the intersection of (spectrum, CMFs, D65) ranges.
      * Since CMFs (360-830nm) and D65 (360-830nm) both cover the spectrum range,
      * the intersection equals the spectrum's own range. Do NOT extrapolate beyond. */
-    alwan_scalar wl_min = spectrum->wavelength_min;
-    alwan_scalar wl_max = spectrum->wavelength_max;
+    alwan_f64 wl_min = spectrum->wavelength_min;
+    alwan_f64 wl_max = spectrum->wavelength_max;
     size_t count_1nm = (size_t)(wl_max - wl_min) + 1;
 
     status = alwan_spd_resample(&spectrum_1nm, ctx, spectrum,
@@ -210,8 +210,8 @@ static int spectrum_to_normalized_xyz(alwan_xyz *xyz_out, alwan_ctx *ctx,
  * ---------------------------------------------------------------- */
 
 static int test_smits1999_round_trip(char const *color_name,
-                                      alwan_scalar r, alwan_scalar g, alwan_scalar b,
-                                      alwan_scalar const *expected_xyz) {
+                                      alwan_f64 r, alwan_f64 g, alwan_f64 b,
+                                      alwan_f64 const *expected_xyz) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
@@ -230,8 +230,8 @@ static int test_smits1999_round_trip(char const *color_name,
     TEST_ASSERT(status == ALWAN_OK, "spectrum_to_normalized_xyz failed");
 
     /* Compare recovered XYZ with expected */
-    alwan_scalar tolerance = ALWAN_TEST_TOLERANCE;
-    alwan_scalar diff = vec3_max_diff(&xyz_recovered, &expected);
+    alwan_f64 tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 diff = vec3_max_diff(&xyz_recovered, &expected);
 
     if (diff >= tolerance) {
         printf("Round-trip error too large: max_diff = %.6f (tolerance = %.6f)\n",
@@ -254,8 +254,8 @@ static int test_smits1999_round_trip(char const *color_name,
  * ---------------------------------------------------------------- */
 
 static int test_mallett2019_round_trip(char const *color_name,
-                                        alwan_scalar r, alwan_scalar g, alwan_scalar b,
-                                        alwan_scalar const *expected_xyz) {
+                                        alwan_f64 r, alwan_f64 g, alwan_f64 b,
+                                        alwan_f64 const *expected_xyz) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
@@ -274,8 +274,8 @@ static int test_mallett2019_round_trip(char const *color_name,
     TEST_ASSERT(status == ALWAN_OK, "spectrum_to_normalized_xyz failed");
 
     /* Compare recovered XYZ with expected */
-    alwan_scalar tolerance = ALWAN_TEST_TOLERANCE;
-    alwan_scalar diff = vec3_max_diff(&xyz_recovered, &expected);
+    alwan_f64 tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 diff = vec3_max_diff(&xyz_recovered, &expected);
 
     if (diff >= tolerance) {
         printf("Round-trip error too large: max_diff = %.6f (tolerance = %.6f)\n",

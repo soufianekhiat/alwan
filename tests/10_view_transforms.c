@@ -14,7 +14,7 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static int is_in_range_01(alwan_scalar const *rgb) {
+static int is_in_range_01(alwan_f64 const *rgb) {
     for (int i = 0; i < 3; i++) {
         if (rgb[i] < ALWAN_LITERAL(0.0) || rgb[i] > ALWAN_LITERAL(1.0)) {
             return 0;
@@ -29,7 +29,7 @@ static int is_in_range_01(alwan_scalar const *rgb) {
 
 static int test_aces_rec709_basic(void) {
     /* Test ACES RRT+ODT for Rec.709 with typical scene-referred values */
-    alwan_scalar test_inputs[][3] = {
+    alwan_f64 test_inputs[][3] = {
         /* Black */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         /* Middle gray (0.18) */
@@ -45,11 +45,11 @@ static int test_aces_rec709_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar output[3];
+        alwan_f64 output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_ACES_REC709,
                                                 test_inputs[i], 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "ACES Rec.709 transform failed");
 
         /* Output must be in [0,1] range for display-referred RGB */
@@ -61,7 +61,7 @@ static int test_aces_rec709_basic(void) {
 
         /* Black input should produce near-black output */
         if (i == 0) {
-            alwan_scalar max_val = output[0];
+            alwan_f64 max_val = output[0];
             if (output[1] > max_val) max_val = output[1];
             if (output[2] > max_val) max_val = output[2];
             TEST_ASSERT(max_val < ALWAN_LITERAL(0.01), "Black input should produce near-black output");
@@ -81,7 +81,7 @@ static int test_aces_rec709_basic(void) {
 
 static int test_agx_basic(void) {
     /* Test AgX base transform with typical linear RGB values */
-    alwan_scalar test_inputs[][3] = {
+    alwan_f64 test_inputs[][3] = {
         /* Black */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         /* Very dark */
@@ -97,11 +97,11 @@ static int test_agx_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar output[3];
+        alwan_f64 output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_AGX,
                                                 test_inputs[i], 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "AgX transform failed");
 
         /* Output must be in [0,1] range */
@@ -117,24 +117,24 @@ static int test_agx_basic(void) {
 
 static int test_agx_punchy(void) {
     /* Test AgX punchy variant produces higher contrast than base */
-    alwan_scalar test_input[3] = {
+    alwan_f64 test_input[3] = {
         ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)
     };
 
-    alwan_scalar base_output[3], punchy_output[3];
+    alwan_f64 base_output[3], punchy_output[3];
 
     /* Apply base AgX */
     int status = alwan_view_transform_apply(base_output, NULL, ALWAN_VIEW_AGX,
                                            test_input, 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
     TEST_ASSERT(status == ALWAN_OK, "AgX base transform failed");
 
     /* Apply punchy AgX */
     status = alwan_view_transform_apply(punchy_output, NULL, ALWAN_VIEW_AGX_PUNCHY,
                                        test_input, 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
     TEST_ASSERT(status == ALWAN_OK, "AgX punchy transform failed");
 
     /* Both should be in [0,1] range */
@@ -143,7 +143,7 @@ static int test_agx_punchy(void) {
 
     /* Punchy variant should produce different results (higher contrast) */
     /* We can't predict exact differences, but they shouldn't be identical */
-    alwan_scalar diff = ALWAN_ABS(base_output[0] - punchy_output[0]) +
+    alwan_f64 diff = ALWAN_ABS(base_output[0] - punchy_output[0]) +
                   ALWAN_ABS(base_output[1] - punchy_output[1]) +
                   ALWAN_ABS(base_output[2] - punchy_output[2]);
 
@@ -156,7 +156,7 @@ static int test_agx_punchy(void) {
 
 static int test_khronos_pbr_neutral_basic(void) {
     /* Test Khronos PBR Neutral tone mapping */
-    alwan_scalar test_inputs[][3] = {
+    alwan_f64 test_inputs[][3] = {
         /* Black */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         /* Middle gray (0.18) -- below switch point, should pass through */
@@ -174,11 +174,11 @@ static int test_khronos_pbr_neutral_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar output[3];
+        alwan_f64 output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_KHRONOS_PBR_NEUTRAL,
                                                 test_inputs[i], 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Khronos PBR Neutral transform failed");
 
         /* Output must be in [0,1] range for display-referred RGB */
@@ -190,7 +190,7 @@ static int test_khronos_pbr_neutral_basic(void) {
 
         /* Black input should produce near-black output */
         if (i == 0) {
-            alwan_scalar max_val = output[0];
+            alwan_f64 max_val = output[0];
             if (output[1] > max_val) max_val = output[1];
             if (output[2] > max_val) max_val = output[2];
             TEST_ASSERT(max_val < ALWAN_LITERAL(0.01), "Black input should produce near-black output");
@@ -201,8 +201,8 @@ static int test_khronos_pbr_neutral_basic(void) {
          * Actually: since x=0.18 > 0.08, offset = 0.04
          * So output ~= 0.18 - 0.04 = 0.14 (achromatic, peak < start_compression) */
         if (i == 1) {
-            alwan_scalar expected = ALWAN_LITERAL(0.18) - ALWAN_LITERAL(0.04);
-            alwan_scalar diff = ALWAN_ABS(output[0] - expected) +
+            alwan_f64 expected = ALWAN_LITERAL(0.18) - ALWAN_LITERAL(0.04);
+            alwan_f64 diff = ALWAN_ABS(output[0] - expected) +
                           ALWAN_ABS(output[1] - expected) +
                           ALWAN_ABS(output[2] - expected);
             TEST_ASSERT(diff < ALWAN_LITERAL(0.01), "Below switch point should apply offset only");
@@ -222,7 +222,7 @@ static int test_khronos_pbr_neutral_basic(void) {
 
 static int test_reinhard_ext_basic(void) {
     /* Test Reinhard Extended with typical scene-referred values */
-    alwan_scalar test_inputs[][3] = {
+    alwan_f64 test_inputs[][3] = {
         /* Black */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         /* Middle gray */
@@ -237,11 +237,11 @@ static int test_reinhard_ext_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar output[3];
+        alwan_f64 output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_REINHARD_EXT,
                                                 test_inputs[i], 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Reinhard Extended transform failed");
         TEST_ASSERT(is_in_range_01(output), "Reinhard Extended output not in [0,1] range");
 
@@ -259,7 +259,7 @@ static int test_reinhard_ext_basic(void) {
 
 static int test_uchimura_basic(void) {
     /* Test Uchimura / Gran Turismo tone mapper */
-    alwan_scalar test_inputs[][3] = {
+    alwan_f64 test_inputs[][3] = {
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
@@ -269,11 +269,11 @@ static int test_uchimura_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar output[3];
+        alwan_f64 output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_UCHIMURA,
                                                 test_inputs[i], 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Uchimura transform failed");
         TEST_ASSERT(is_in_range_01(output), "Uchimura output not in [0,1] range");
 
@@ -289,15 +289,15 @@ static int test_uchimura_basic(void) {
     }
 
     /* Test that default parameters produce a smooth curve */
-    alwan_scalar prev = ALWAN_LITERAL(-1.0);
+    alwan_f64 prev = ALWAN_LITERAL(-1.0);
     for (int k = 0; k <= 100; k++) {
-        alwan_scalar x = ALWAN_LITERAL(0.05) * (alwan_scalar)k;
-        alwan_scalar input[3] = {x, x, x};
-        alwan_scalar output[3];
+        alwan_f64 x = ALWAN_LITERAL(0.05) * (alwan_f64)k;
+        alwan_f64 input[3] = {x, x, x};
+        alwan_f64 output[3];
         alwan_view_transform_apply(output, NULL, ALWAN_VIEW_UCHIMURA,
                                    input, 1,
-                                   3 * sizeof(alwan_scalar),
-                                   3 * sizeof(alwan_scalar));
+                                   3 * sizeof(alwan_f64),
+                                   3 * sizeof(alwan_f64));
         TEST_ASSERT(output[0] >= prev, "Uchimura: curve should be monotonic");
         prev = output[0];
     }
@@ -307,7 +307,7 @@ static int test_uchimura_basic(void) {
 
 static int test_lottes_basic(void) {
     /* Test Lottes / AMD Cauldron tone mapper */
-    alwan_scalar test_inputs[][3] = {
+    alwan_f64 test_inputs[][3] = {
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
@@ -318,23 +318,23 @@ static int test_lottes_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar output[3];
+        alwan_f64 output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_LOTTES,
                                                 test_inputs[i], 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Lottes transform failed");
         TEST_ASSERT(is_in_range_01(output), "Lottes output not in [0,1] range");
     }
 
     /* Verify mid-gray mapping: midIn=0.18 should map to approximately midOut=0.267 */
     {
-        alwan_scalar mid_in[3] = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-        alwan_scalar mid_out[3];
+        alwan_f64 mid_in[3] = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+        alwan_f64 mid_out[3];
         alwan_view_transform_apply(mid_out, NULL, ALWAN_VIEW_LOTTES,
                                    mid_in, 1,
-                                   3 * sizeof(alwan_scalar),
-                                   3 * sizeof(alwan_scalar));
+                                   3 * sizeof(alwan_f64),
+                                   3 * sizeof(alwan_f64));
         /* Should be near 0.267 (the configured midOut) */
         TEST_ASSERT(ALWAN_ABS(mid_out[0] - ALWAN_LITERAL(0.267)) < ALWAN_LITERAL(0.02),
                     "Lottes: 0.18 should map near 0.267");
@@ -342,12 +342,12 @@ static int test_lottes_basic(void) {
 
     /* Hue preservation: R channel should remain dominant */
     {
-        alwan_scalar sat_in[3] = {ALWAN_LITERAL(2.0), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1)};
-        alwan_scalar sat_out[3];
+        alwan_f64 sat_in[3] = {ALWAN_LITERAL(2.0), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1)};
+        alwan_f64 sat_out[3];
         alwan_view_transform_apply(sat_out, NULL, ALWAN_VIEW_LOTTES,
                                    sat_in, 1,
-                                   3 * sizeof(alwan_scalar),
-                                   3 * sizeof(alwan_scalar));
+                                   3 * sizeof(alwan_f64),
+                                   3 * sizeof(alwan_f64));
         TEST_ASSERT(sat_out[0] > sat_out[1] && sat_out[1] > sat_out[2],
                     "Lottes: hue ordering should be preserved");
     }
@@ -357,7 +357,7 @@ static int test_lottes_basic(void) {
 
 static int test_tony_mcmapface_basic(void) {
     /* Test Tony McMapface (Somewhat Boring Display Transform) */
-    alwan_scalar test_inputs[][3] = {
+    alwan_f64 test_inputs[][3] = {
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
@@ -368,11 +368,11 @@ static int test_tony_mcmapface_basic(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_scalar output[3];
+        alwan_f64 output[3];
         int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_TONY_MCMAPFACE,
                                                 test_inputs[i], 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Tony McMapface transform failed");
         TEST_ASSERT(is_in_range_01(output), "Tony McMapface output not in [0,1] range");
 
@@ -387,12 +387,12 @@ static int test_tony_mcmapface_basic(void) {
 
     /* Bright saturated red: R should still dominate (hue-preserving) */
     {
-        alwan_scalar bright_red[3] = {ALWAN_LITERAL(3.0), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)};
-        alwan_scalar out[3];
+        alwan_f64 bright_red[3] = {ALWAN_LITERAL(3.0), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)};
+        alwan_f64 out[3];
         alwan_view_transform_apply(out, NULL, ALWAN_VIEW_TONY_MCMAPFACE,
                                    bright_red, 1,
-                                   3 * sizeof(alwan_scalar),
-                                   3 * sizeof(alwan_scalar));
+                                   3 * sizeof(alwan_f64),
+                                   3 * sizeof(alwan_f64));
         TEST_ASSERT(out[0] > out[1] && out[0] > out[2],
                     "Tony McMapface: red hue should be preserved");
     }
@@ -402,7 +402,7 @@ static int test_tony_mcmapface_basic(void) {
 
 static int test_view_transform_monotonic(void) {
     /* Test that view transforms are monotonic: brighter input -> brighter output */
-    alwan_scalar inputs[][3] = {
+    alwan_f64 inputs[][3] = {
         {ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)},
         {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)}
@@ -422,18 +422,18 @@ static int test_view_transform_monotonic(void) {
     size_t const num_transforms = sizeof(transforms) / sizeof(transforms[0]);
 
     for (size_t t = 0; t < num_transforms; t++) {
-        alwan_scalar prev_luma = ALWAN_LITERAL(-1.0);
+        alwan_f64 prev_luma = ALWAN_LITERAL(-1.0);
 
         for (size_t i = 0; i < 3; i++) {
-            alwan_scalar output[3];
+            alwan_f64 output[3];
             int status = alwan_view_transform_apply(output, NULL, transforms[t],
                                                    inputs[i], 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
             TEST_ASSERT(status == ALWAN_OK, "View transform failed");
 
             /* Calculate luminance (Rec.709 weights) */
-            alwan_scalar luma = ALWAN_LITERAL(0.2126) * output[0] +
+            alwan_f64 luma = ALWAN_LITERAL(0.2126) * output[0] +
                          ALWAN_LITERAL(0.7152) * output[1] +
                          ALWAN_LITERAL(0.0722) * output[2];
 
@@ -454,13 +454,13 @@ static int test_view_transform_monotonic(void) {
 static int test_view_transform_preserves_hue(void) {
     /* Test that view transforms roughly preserve hue for saturated colors */
     /* For pure red, output should have R > G and R > B */
-    alwan_scalar red_input[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    alwan_scalar output[3];
+    alwan_f64 red_input[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_f64 output[3];
 
     int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_ACES_REC709,
                                            red_input, 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
     TEST_ASSERT(status == ALWAN_OK, "View transform failed");
 
     /* Red channel should dominate */
@@ -472,11 +472,11 @@ static int test_view_transform_preserves_hue(void) {
                 "Red hue not preserved");
 
     /* Test with green */
-    alwan_scalar green_input[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
+    alwan_f64 green_input[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
     status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_ACES_REC709,
                                        green_input, 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
     TEST_ASSERT(status == ALWAN_OK, "View transform failed");
 
     /* Green channel should dominate */
@@ -488,15 +488,15 @@ static int test_view_transform_preserves_hue(void) {
 
 static int test_invalid_view_transform(void) {
     /* Test that invalid view transform enum values return error */
-    alwan_scalar dummy_in[3] = {
+    alwan_f64 dummy_in[3] = {
         ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)
     };
-    alwan_scalar dummy_out[3];
+    alwan_f64 dummy_out[3];
 
     int status = alwan_view_transform_apply(dummy_out, NULL, (alwan_view_transform)999,
                                            dummy_in, 1,
-                                                3 * sizeof(alwan_scalar),
-                                                3 * sizeof(alwan_scalar));
+                                                3 * sizeof(alwan_f64),
+                                                3 * sizeof(alwan_f64));
     TEST_ASSERT(status == ALWAN_E_INVALID, "Should reject invalid view transform enum");
 
     TEST_PASS("Invalid view transform rejection");

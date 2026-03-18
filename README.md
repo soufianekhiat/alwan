@@ -145,17 +145,12 @@ This matches common C patterns (like `memcpy`) and improves code readability.
 
 ## Configuration
 
-### Scalar Type
+### Precision
 
-Edit [alwan_config.h](src/alwan/alwan_config.h) or define at compile time:
-
-```c
-#define ALWAN_SCALAR_IS_FLOAT 0  // 0 = double (default), 1 = float
-```
+The library always compiles both `_f32` and `_f64` function variants. Unsuffixed names (`alwan_xyz`, `alwan_xyz_to_oklab_v`, etc.) always use double (`_f64`). Use explicit `_f32` / `_f64` suffixes to select precision at the call site.
 
 Build configurations:
-- **Debug_f32** / **Release_f32** — 32-bit float precision
-- **Debug_f64** / **Release_f64** — 64-bit double precision (default)
+- **Debug** / **Release**
 
 ### Data Embedding
 

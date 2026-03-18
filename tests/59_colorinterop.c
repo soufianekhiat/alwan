@@ -145,7 +145,7 @@ static int test_normalization_roundtrip(void) {
         /* Test 0 -> 0.0 */
         {
             alwan_uint16 in_val = 0;
-            alwan_scalar out_f;
+            alwan_f64 out_f;
             int status = alwan_uint_to_float(&out_f, &in_val, bd, 1);
             TEST_ASSERT(status == ALWAN_OK, "uint_to_float failed");
             TEST_ASSERT_NEAR(out_f, ALWAN_ZERO, ALWAN_EPSILON, "0 -> 0.0");
@@ -154,7 +154,7 @@ static int test_normalization_roundtrip(void) {
         /* Test max -> 1.0 */
         {
             alwan_uint16 in_val = max_v;
-            alwan_scalar out_f;
+            alwan_f64 out_f;
             int status = alwan_uint_to_float(&out_f, &in_val, bd, 1);
             TEST_ASSERT(status == ALWAN_OK, "uint_to_float failed");
             TEST_ASSERT_NEAR(out_f, ALWAN_ONE, ALWAN_EPSILON, "max -> 1.0");
@@ -164,7 +164,7 @@ static int test_normalization_roundtrip(void) {
         {
             alwan_uint16 in_vals[] = { 0, 1, (alwan_uint16)(max_v / 2), (alwan_uint16)(max_v - 1), max_v };
             size_t n = sizeof(in_vals) / sizeof(in_vals[0]);
-            alwan_scalar floats[5];
+            alwan_f64 floats[5];
             alwan_uint16 out_vals[5];
 
             int s1 = alwan_uint_to_float(floats, in_vals, bd, n);
@@ -196,19 +196,19 @@ static int test_normalization_values(void) {
     /* 8-bit: 128/255 != 0.5 (verify it's not naive /256) */
     {
         alwan_uint16 in_val = 128;
-        alwan_scalar out_f;
+        alwan_f64 out_f;
         alwan_uint_to_float(&out_f, &in_val, 8, 1);
-        alwan_scalar expected = ALWAN_LITERAL(128.0) / ALWAN_LITERAL(255.0);
+        alwan_f64 expected = ALWAN_LITERAL(128.0) / ALWAN_LITERAL(255.0);
         TEST_ASSERT_NEAR(out_f, expected, ALWAN_EPSILON, "128/255");
         /* Must NOT equal 0.5 */
-        alwan_scalar half = ALWAN_LITERAL(0.5);
-        alwan_scalar diff = ALWAN_ABS(out_f - half);
+        alwan_f64 half = ALWAN_LITERAL(0.5);
+        alwan_f64 diff = ALWAN_ABS(out_f - half);
         TEST_ASSERT(diff > ALWAN_LITERAL(0.001), "128/255 must not equal 0.5");
     }
 
     /* Clamping: values > 1.0 clamp to max */
     {
-        alwan_scalar over = ALWAN_LITERAL(1.5);
+        alwan_f64 over = ALWAN_LITERAL(1.5);
         alwan_uint16 out_val;
         alwan_float_to_uint(&out_val, &over, 8, 1);
         TEST_ASSERT(out_val == 255, "1.5 -> 255 (clamped)");
@@ -216,7 +216,7 @@ static int test_normalization_values(void) {
 
     /* Clamping: values < 0.0 clamp to 0 */
     {
-        alwan_scalar under = ALWAN_LITERAL(-0.5);
+        alwan_f64 under = ALWAN_LITERAL(-0.5);
         alwan_uint16 out_val;
         alwan_float_to_uint(&out_val, &under, 8, 1);
         TEST_ASSERT(out_val == 0, "-0.5 -> 0 (clamped)");
@@ -225,7 +225,7 @@ static int test_normalization_values(void) {
     /* Invalid bit depth */
     {
         alwan_uint16 in_val = 0;
-        alwan_scalar out_f;
+        alwan_f64 out_f;
         int status = alwan_uint_to_float(&out_f, &in_val, 7, 1);
         TEST_ASSERT(status == ALWAN_E_INVALID, "bit_depth=7 should fail");
     }

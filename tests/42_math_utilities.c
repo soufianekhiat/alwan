@@ -19,12 +19,12 @@
 
 static int test_interpolation_linear(void) {
     /* Test linear interpolation on simple data */
-    alwan_scalar x_in[] = {0.0, 1.0, 2.0, 3.0};
-    alwan_scalar y_in[] = {0.0, 1.0, 2.0, 3.0};
+    alwan_f64 x_in[] = {0.0, 1.0, 2.0, 3.0};
+    alwan_f64 y_in[] = {0.0, 1.0, 2.0, 3.0};
     size_t count_in = 4;
 
-    alwan_scalar x_out[] = {0.5, 1.5, 2.5};
-    alwan_scalar y_out[3];
+    alwan_f64 x_out[] = {0.5, 1.5, 2.5};
+    alwan_f64 y_out[3];
     size_t count_out = 3;
 
     int status = alwan_interpolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_INTERP_LINEAR);
@@ -42,15 +42,15 @@ static int test_interpolation_linear(void) {
 
 static int test_interpolation_cubic(void) {
     /* Test cubic interpolation on sine wave */
-    alwan_scalar x_in[] = {0.0, 0.5, 1.0, 1.5, 2.0};
-    alwan_scalar y_in[5];
+    alwan_f64 x_in[] = {0.0, 0.5, 1.0, 1.5, 2.0};
+    alwan_f64 y_in[5];
     for (int i = 0; i < 5; i++) {
         y_in[i] = ALWAN_SIN(x_in[i]);
     }
     size_t count_in = 5;
 
-    alwan_scalar x_out[] = {0.25, 0.75, 1.25};
-    alwan_scalar y_out[3];
+    alwan_f64 x_out[] = {0.25, 0.75, 1.25};
+    alwan_f64 y_out[3];
     size_t count_out = 3;
 
     int status = alwan_interpolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_INTERP_CUBIC);
@@ -58,9 +58,9 @@ static int test_interpolation_cubic(void) {
     TEST_ASSERT(status == ALWAN_OK, "Cubic interpolation failed");
 
     /* Cubic should be more accurate than linear for smooth functions */
-    alwan_scalar expected_0 = ALWAN_SIN(0.25);
-    alwan_scalar expected_1 = ALWAN_SIN(0.75);
-    alwan_scalar expected_2 = ALWAN_SIN(1.25);
+    alwan_f64 expected_0 = ALWAN_SIN(0.25);
+    alwan_f64 expected_1 = ALWAN_SIN(0.75);
+    alwan_f64 expected_2 = ALWAN_SIN(1.25);
 
     printf("  Cubic interpolation:\n");
     printf("    y(0.25): %.6f (expected: %.6f, error: %.6f)\n",
@@ -75,16 +75,16 @@ static int test_interpolation_cubic(void) {
 
 static int test_interpolation_sprague(void) {
     /* Test Sprague interpolation (5th order) */
-    alwan_scalar x_in[10];
-    alwan_scalar y_in[10];
+    alwan_f64 x_in[10];
+    alwan_f64 y_in[10];
     for (int i = 0; i < 10; i++) {
         x_in[i] = i * ALWAN_LITERAL(10.0);  /* 0, 10, 20, ..., 90 */
         y_in[i] = ALWAN_SIN(i * ALWAN_LITERAL(0.2));
     }
     size_t count_in = 10;
 
-    alwan_scalar x_out[] = {25.0, 45.0, 65.0};
-    alwan_scalar y_out[3];
+    alwan_f64 x_out[] = {25.0, 45.0, 65.0};
+    alwan_f64 y_out[3];
     size_t count_out = 3;
 
     int status = alwan_interpolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_INTERP_SPRAGUE);
@@ -99,12 +99,12 @@ static int test_interpolation_sprague(void) {
 
 static int test_interpolation_akima(void) {
     /* Test Akima spline (non-overshooting) */
-    alwan_scalar x_in[] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
-    alwan_scalar y_in[] = {0.0, 1.0, 0.0, 1.0, 0.0, 1.0};  /* Oscillating */
+    alwan_f64 x_in[] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
+    alwan_f64 y_in[] = {0.0, 1.0, 0.0, 1.0, 0.0, 1.0};  /* Oscillating */
     size_t count_in = 6;
 
-    alwan_scalar x_out[] = {0.5, 1.5, 2.5, 3.5, 4.5};
-    alwan_scalar y_out[5];
+    alwan_f64 x_out[] = {0.5, 1.5, 2.5, 3.5, 4.5};
+    alwan_f64 y_out[5];
     size_t count_out = 5;
 
     int status = alwan_interpolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_INTERP_AKIMA);
@@ -128,12 +128,12 @@ static int test_interpolation_akima(void) {
 
 static int test_extrapolation_constant(void) {
     /* Test constant extrapolation */
-    alwan_scalar x_in[] = {1.0, 2.0, 3.0, 4.0};
-    alwan_scalar y_in[] = {2.0, 4.0, 6.0, 8.0};
+    alwan_f64 x_in[] = {1.0, 2.0, 3.0, 4.0};
+    alwan_f64 y_in[] = {2.0, 4.0, 6.0, 8.0};
     size_t count_in = 4;
 
-    alwan_scalar x_out[] = {0.0, 5.0};  /* Outside range */
-    alwan_scalar y_out[2];
+    alwan_f64 x_out[] = {0.0, 5.0};  /* Outside range */
+    alwan_f64 y_out[2];
     size_t count_out = 2;
 
     int status = alwan_extrapolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_EXTRAP_CONSTANT);
@@ -149,12 +149,12 @@ static int test_extrapolation_constant(void) {
 
 static int test_extrapolation_linear(void) {
     /* Test linear extrapolation */
-    alwan_scalar x_in[] = {1.0, 2.0, 3.0, 4.0};
-    alwan_scalar y_in[] = {2.0, 4.0, 6.0, 8.0};
+    alwan_f64 x_in[] = {1.0, 2.0, 3.0, 4.0};
+    alwan_f64 y_in[] = {2.0, 4.0, 6.0, 8.0};
     size_t count_in = 4;
 
-    alwan_scalar x_out[] = {0.0, 5.0};  /* Outside range */
-    alwan_scalar y_out[2];
+    alwan_f64 x_out[] = {0.0, 5.0};  /* Outside range */
+    alwan_f64 y_out[2];
     size_t count_out = 2;
 
     int status = alwan_extrapolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_EXTRAP_LINEAR);
@@ -170,12 +170,12 @@ static int test_extrapolation_linear(void) {
 
 static int test_extrapolation_exponential(void) {
     /* Test exponential extrapolation (for SPDs) */
-    alwan_scalar x_in[] = {400.0, 500.0, 600.0, 700.0};
-    alwan_scalar y_in[] = {1.0, 0.5, 0.25, 0.125};  /* Exponential decay */
+    alwan_f64 x_in[] = {400.0, 500.0, 600.0, 700.0};
+    alwan_f64 y_in[] = {1.0, 0.5, 0.25, 0.125};  /* Exponential decay */
     size_t count_in = 4;
 
-    alwan_scalar x_out[] = {300.0, 800.0};  /* Outside range */
-    alwan_scalar y_out[2];
+    alwan_f64 x_out[] = {300.0, 800.0};  /* Outside range */
+    alwan_f64 y_out[2];
     size_t count_out = 2;
 
     int status = alwan_extrapolate(x_in, y_in, count_in, x_out, y_out, count_out, ALWAN_EXTRAP_EXPONENTIAL);
@@ -196,7 +196,7 @@ static int test_extrapolation_exponential(void) {
 static int test_cct_d65(void) {
     /* Test CCT/Duv optimization for D65 (6504K) */
     alwan_vec2 xy_d65 = {{0.31271, 0.32902}};  /* D65 chromaticity */
-    alwan_scalar cct_out, duv_out;
+    alwan_f64 cct_out, duv_out;
 
     int status = alwan_cct_duv_optimize(&cct_out, &duv_out, &xy_d65);
 
@@ -213,7 +213,7 @@ static int test_cct_d65(void) {
 static int test_cct_a(void) {
     /* Test CCT/Duv optimization for Illuminant A (2856K) */
     alwan_vec2 xy_a = {{0.44757, 0.40745}};  /* Illuminant A chromaticity */
-    alwan_scalar cct_out, duv_out;
+    alwan_f64 cct_out, duv_out;
 
     int status = alwan_cct_duv_optimize(&cct_out, &duv_out, &xy_a);
 
@@ -229,7 +229,7 @@ static int test_cct_a(void) {
 static int test_cct_off_locus(void) {
     /* Test CCT/Duv for point off Planckian locus */
     alwan_vec2 xy_off = {{0.35, 0.40}};  /* Arbitrary point */
-    alwan_scalar cct_out, duv_out;
+    alwan_f64 cct_out, duv_out;
 
     int status = alwan_cct_duv_optimize(&cct_out, &duv_out, &xy_off);
 
@@ -251,7 +251,7 @@ static int test_optimize_spectrum(void) {
     alwan_xyz target_xyz = {50.0, 50.0, 50.0};  /* Mid-gray */
     alwan_ctx *ctx;
     alwan_spd spd_out;
-    alwan_scalar spd_values[81];  /* Allocate storage for SPD values */
+    alwan_f64 spd_values[81];  /* Allocate storage for SPD values */
     int status;
 
     /* Initialize SPD with storage */
@@ -287,12 +287,12 @@ static int test_optimize_spectrum(void) {
 
 static int test_table_1d_linear(void) {
     /* Test 1D table interpolation (linear) */
-    alwan_scalar table[] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
+    alwan_f64 table[] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
     size_t size = 6;
 
-    alwan_scalar y0 = alwan_table_interp_1d(table, size, 0.0, ALWAN_INTERP_LINEAR);
-    alwan_scalar y1 = alwan_table_interp_1d(table, size, 0.5, ALWAN_INTERP_LINEAR);
-    alwan_scalar y2 = alwan_table_interp_1d(table, size, 1.0, ALWAN_INTERP_LINEAR);
+    alwan_f64 y0 = alwan_table_interp_1d(table, size, 0.0, ALWAN_INTERP_LINEAR);
+    alwan_f64 y1 = alwan_table_interp_1d(table, size, 0.5, ALWAN_INTERP_LINEAR);
+    alwan_f64 y2 = alwan_table_interp_1d(table, size, 1.0, ALWAN_INTERP_LINEAR);
 
     TEST_ASSERT(ALWAN_ABS(y0 - ALWAN_LITERAL(0.0)) < ALWAN_TEST_TOLERANCE, "y(0.0) should be 0.0");
     TEST_ASSERT(ALWAN_ABS(y1 - ALWAN_LITERAL(2.5)) < ALWAN_TEST_TOLERANCE, "y(0.5) should be 2.5");
@@ -305,10 +305,10 @@ static int test_table_1d_linear(void) {
 
 static int test_table_1d_cubic(void) {
     /* Test 1D table interpolation (cubic) */
-    alwan_scalar table[] = {0.0, 1.0, 4.0, 9.0, 16.0, 25.0};  /* x^2 */
+    alwan_f64 table[] = {0.0, 1.0, 4.0, 9.0, 16.0, 25.0};  /* x^2 */
     size_t size = 6;
 
-    alwan_scalar y = alwan_table_interp_1d(table, size, 0.5, ALWAN_INTERP_CUBIC);
+    alwan_f64 y = alwan_table_interp_1d(table, size, 0.5, ALWAN_INTERP_CUBIC);
 
     /* Cubic should approximate x^2 better than linear */
     printf("  1D table cubic: y(0.5)=%.3f\n", y);
@@ -324,7 +324,7 @@ static int test_table_3d_trilinear(void) {
     /* Test 3D trilinear interpolation */
     /* Simple 2x2x2 identity LUT */
     size_t sizes[3] = {2, 2, 2};
-    alwan_scalar table[2 * 2 * 2 * 3] = {
+    alwan_f64 table[2 * 2 * 2 * 3] = {
         /* [0,0,0] */ 0.0, 0.0, 0.0,
         /* [1,0,0] */ 1.0, 0.0, 0.0,
         /* [0,1,0] */ 0.0, 1.0, 0.0,
@@ -355,7 +355,7 @@ static int test_table_3d_tetrahedral(void) {
     /* Test 3D tetrahedral interpolation */
     /* Simple 2x2x2 identity LUT */
     size_t sizes[3] = {2, 2, 2};
-    alwan_scalar table[2 * 2 * 2 * 3] = {
+    alwan_f64 table[2 * 2 * 2 * 3] = {
         /* [0,0,0] */ 0.0, 0.0, 0.0,
         /* [1,0,0] */ 1.0, 0.0, 0.0,
         /* [0,1,0] */ 0.0, 1.0, 0.0,

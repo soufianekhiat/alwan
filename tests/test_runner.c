@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+char g_current_test[256] = "";
+
 /* Forward declarations of test main functions */
 extern int test_00_context_main(void);
 extern int test_01_mat3_ops_main(void);
@@ -94,6 +96,7 @@ extern int test_79_lut_bake_export_main(void);
 extern int test_80_interop_clf_main(void);
 extern int test_81_video_signal_main(void);
 extern int test_82_machado_cvd_main(void);
+extern int test_83_dual_precision_main(void);
 
 /* Test registry */
 typedef struct {
@@ -185,6 +188,7 @@ static test_suite const g_test_suites[] = {
     {"80_interop_clf", test_80_interop_clf_main},
     {"81_video_signal", test_81_video_signal_main},
     {"82_machado_cvd", test_82_machado_cvd_main},
+    {"83_dual_precision", test_83_dual_precision_main},
 };
 
 static int suite_matches(char const *name, char const *filter) {
@@ -220,6 +224,7 @@ int main(int argc, char **argv) {
     int total_passed = 0;
     int total_skipped = 0;
     char const *failed_names[sizeof(g_test_suites) / sizeof(g_test_suites[0])];
+    char failed_tests[sizeof(g_test_suites) / sizeof(g_test_suites[0])][256];
 
     for (size_t i = 0; i < num_suites; i++) {
         /* If filters provided, check if this suite matches any */
@@ -246,6 +251,7 @@ int main(int argc, char **argv) {
             printf("[PASS] Test suite '%s' passed\n", g_test_suites[i].name);
         } else {
             failed_names[total_failed] = g_test_suites[i].name;
+            snprintf(failed_tests[total_failed], 256, "%s", g_current_test);
             total_failed++;
             printf("[FAIL] Test suite '%s' failed with code %d\n",
                    g_test_suites[i].name, result);
@@ -264,9 +270,13 @@ int main(int argc, char **argv) {
     printf("========================================\n");
 
     if (total_failed > 0) {
-        printf("\nFailed suites:\n");
-        for (int f = 0; f < total_failed; f++)
-            printf("  - %s\n", failed_names[f]);
+        printf("\nFailed tests:\n");
+        for (int f = 0; f < total_failed; f++) {
+            if (failed_tests[f][0])
+                printf("  - %s: %s\n", failed_names[f], failed_tests[f]);
+            else
+                printf("  - %s\n", failed_names[f]);
+        }
         printf("\n");
         return 1;
     } else {

@@ -20,7 +20,7 @@
 /* RGB input values (AP1 primaries) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const rgb_to_jmh_input[][3] = {
+static alwan_f64 const rgb_to_jmh_input[][3] = {
 #include "reference_values/aces_ff_test_rgb_input.csv"
 };
 ALWAN_DIAG_POP
@@ -29,7 +29,7 @@ ALWAN_DIAG_POP
 /* Expected JMh values from OCIO */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const rgb_to_jmh_expected[][3] = {
+static alwan_f64 const rgb_to_jmh_expected[][3] = {
 #include "reference_values/aces_rgb_to_jmh20_output.csv"
 };
 ALWAN_DIAG_POP
@@ -41,7 +41,7 @@ ALWAN_DIAG_POP
 /* Same RGB input as above */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const tonescale_input[][3] = {
+static alwan_f64 const tonescale_input[][3] = {
 #include "reference_values/aces_ff_test_rgb_input.csv"
 };
 ALWAN_DIAG_POP
@@ -50,7 +50,7 @@ ALWAN_DIAG_POP
 /* Expected tonescale output from OCIO at 1000 nits */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const tonescale_expected_1000[][3] = {
+static alwan_f64 const tonescale_expected_1000[][3] = {
 #include "reference_values/aces_tonescale20_1000_output.csv"
 };
 ALWAN_DIAG_POP
@@ -62,7 +62,7 @@ ALWAN_DIAG_POP
 /* Expected GamutCompress output from OCIO at 1000 nits (RGB domain) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const gamut_compress_expected_1000[][3] = {
+static alwan_f64 const gamut_compress_expected_1000[][3] = {
 #include "reference_values/aces_gamut_compress20_1000_output.csv"
 };
 ALWAN_DIAG_POP
@@ -86,11 +86,7 @@ static int test_rgb_to_jmh20(void) {
         alwan_rgb rgb_in = {rgb_to_jmh_input[i][0], rgb_to_jmh_input[i][1], rgb_to_jmh_input[i][2]};
         alwan_vec3 jmh_out;
 
-        int result = alwan_aces_rgb_to_jmh20(&jmh_out, &rgb_in, &primaries);
-        if (result != 0) {
-            printf("FAIL: alwan_aces_rgb_to_jmh20 returned error %d for input [%zu]\n", result, i);
-            return 1;
-        }
+        alwan_aces_rgb_to_jmh20(&jmh_out, &rgb_in, &primaries);
 
         /* Skip NaN expected values (black point edge cases) */
         if (rgb_to_jmh_expected[i][0] == 0.0 && rgb_to_jmh_expected[i][1] == 0.0 &&
@@ -105,7 +101,7 @@ static int test_rgb_to_jmh20(void) {
         /* Check J component */
         char msg[256];
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] J: RGB=(%.3f, %.3f, %.3f)",
-                 i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b);
+                 i, (alwan_f64)rgb_in.r, (alwan_f64)rgb_in.g, (alwan_f64)rgb_in.b);
 
         /* Use absolute tolerance for small values, relative for large */
         if (ALWAN_ABS(rgb_to_jmh_expected[i][0]) > ALWAN_LITERAL(1.0)) {
@@ -116,7 +112,7 @@ static int test_rgb_to_jmh20(void) {
 
         /* Check M component */
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] M: RGB=(%.3f, %.3f, %.3f)",
-                 i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b);
+                 i, (alwan_f64)rgb_in.r, (alwan_f64)rgb_in.g, (alwan_f64)rgb_in.b);
         if (ALWAN_ABS(rgb_to_jmh_expected[i][1]) > ALWAN_LITERAL(1.0)) {
             TEST_ASSERT_REL(jmh_out.v[1], rgb_to_jmh_expected[i][1], ALWAN_TEST_TOLERANCE, msg);
         } else {
@@ -127,15 +123,15 @@ static int test_rgb_to_jmh20(void) {
         /* Skip hue check if M is near zero (achromatic - hue is undefined) */
         if (rgb_to_jmh_expected[i][1] > ALWAN_LITERAL(0.01)) {
             snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] h: RGB=(%.3f, %.3f, %.3f)",
-                     i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b);
+                     i, (alwan_f64)rgb_in.r, (alwan_f64)rgb_in.g, (alwan_f64)rgb_in.b);
             /* Handle hue wraparound at 0/360 boundary */
-            alwan_scalar h_diff = ALWAN_ABS(jmh_out.v[2] - rgb_to_jmh_expected[i][2]);
+            alwan_f64 h_diff = ALWAN_ABS(jmh_out.v[2] - rgb_to_jmh_expected[i][2]);
             if (h_diff > ALWAN_LITERAL(180.0)) {
                 h_diff = ALWAN_LITERAL(360.0) - h_diff;
             }
             if (h_diff > ALWAN_TEST_TOLERANCE) {
                 printf("FAIL: %s\n  Expected: %.2f, Got: %.2f, Diff: %.2f\n",
-                       msg, (alwan_scalar)rgb_to_jmh_expected[i][2], (alwan_scalar)jmh_out.v[2], (alwan_scalar)h_diff);
+                       msg, (alwan_f64)rgb_to_jmh_expected[i][2], (alwan_f64)jmh_out.v[2], (alwan_f64)h_diff);
                 return 1;
             }
         }
@@ -159,7 +155,7 @@ static int test_rgb_to_jmh20(void) {
 static int test_tonescale_compress20(void) {
     printf("  Testing TonescaleCompress20 at 1000 nits...\n");
 
-    alwan_scalar const PEAK_LUMINANCE = 1000.0;
+    alwan_f64 const PEAK_LUMINANCE = 1000.0;
     int passed = 0;
     int failed = 0;
 
@@ -167,24 +163,19 @@ static int test_tonescale_compress20(void) {
         alwan_rgb rgb_in = {tonescale_input[i][0], tonescale_input[i][1], tonescale_input[i][2]};
         alwan_rgb rgb_out;
 
-        int result = alwan_aces_tonescale_compress20(&rgb_out, &rgb_in, PEAK_LUMINANCE);
-        if (result != 0) {
-            printf("FAIL: alwan_aces_tonescale_compress20 returned error %d for input [%zu]\n", result, i);
-            failed++;
-            continue;
-        }
+        alwan_aces_tonescale_compress20(&rgb_out, &rgb_in, PEAK_LUMINANCE);
 
         /* Compare against OCIO reference */
-        alwan_scalar exp_r = tonescale_expected_1000[i][0];
-        alwan_scalar exp_g = tonescale_expected_1000[i][1];
-        alwan_scalar exp_b = tonescale_expected_1000[i][2];
+        alwan_f64 exp_r = tonescale_expected_1000[i][0];
+        alwan_f64 exp_g = tonescale_expected_1000[i][1];
+        alwan_f64 exp_b = tonescale_expected_1000[i][2];
 
-        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - exp_r);
-        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - exp_g);
-        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - exp_b);
+        alwan_f64 diff_r = ALWAN_ABS(rgb_out.r - exp_r);
+        alwan_f64 diff_g = ALWAN_ABS(rgb_out.g - exp_g);
+        alwan_f64 diff_b = ALWAN_ABS(rgb_out.b - exp_b);
 
         /* OCIO reference data is float32 — use relaxed tolerance */
-        alwan_scalar const ocio_tol = ALWAN_LITERAL(1e-4);
+        alwan_f64 const ocio_tol = ALWAN_LITERAL(1e-4);
         if (diff_r > ocio_tol || diff_g > ocio_tol || diff_b > ocio_tol) {
             printf("FAIL [%zu]: in=(%.4f,%.4f,%.4f) exp=(%.12e,%.12e,%.12e) got=(%.12e,%.12e,%.12e) diff=(%.2e,%.2e,%.2e)\n",
                    i, (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b,
@@ -223,31 +214,21 @@ static int test_jmh_roundtrip(void) {
         alwan_rgb rgb_out;
 
         /* Forward: RGB -> JMh */
-        int result = alwan_aces_rgb_to_jmh20(&jmh, &rgb_in, &primaries);
-        if (result != 0) {
-            printf("FAIL: rgb_to_jmh20 error %d for input [%zu]\n", result, i);
-            failed++;
-            continue;
-        }
+        alwan_aces_rgb_to_jmh20(&jmh, &rgb_in, &primaries);
 
         /* Inverse: JMh -> RGB */
-        result = alwan_aces_jmh_to_rgb20(&rgb_out, &jmh, &primaries);
-        if (result != 0) {
-            printf("FAIL: jmh_to_rgb20 error %d for input [%zu]\n", result, i);
-            failed++;
-            continue;
-        }
+        alwan_aces_jmh_to_rgb20(&rgb_out, &jmh, &primaries);
 
         /* Compare roundtrip result with original */
-        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - rgb_in.r);
-        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - rgb_in.g);
-        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - rgb_in.b);
+        alwan_f64 diff_r = ALWAN_ABS(rgb_out.r - rgb_in.r);
+        alwan_f64 diff_g = ALWAN_ABS(rgb_out.g - rgb_in.g);
+        alwan_f64 diff_b = ALWAN_ABS(rgb_out.b - rgb_in.b);
 
         if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("FAIL [%zu]: in=(%.6f,%.6f,%.6f) out=(%.6f,%.6f,%.6f) diff=(%.2e,%.2e,%.2e)\n",
-                   i, (alwan_scalar)rgb_in.r, (alwan_scalar)rgb_in.g, (alwan_scalar)rgb_in.b,
-                   (alwan_scalar)rgb_out.r, (alwan_scalar)rgb_out.g, (alwan_scalar)rgb_out.b,
-                   (alwan_scalar)diff_r, (alwan_scalar)diff_g, (alwan_scalar)diff_b);
+                   i, (alwan_f64)rgb_in.r, (alwan_f64)rgb_in.g, (alwan_f64)rgb_in.b,
+                   (alwan_f64)rgb_out.r, (alwan_f64)rgb_out.g, (alwan_f64)rgb_out.b,
+                   (alwan_f64)diff_r, (alwan_f64)diff_g, (alwan_f64)diff_b);
             failed++;
         } else {
             passed++;
@@ -269,7 +250,7 @@ static int test_jmh_roundtrip(void) {
 static int test_gamut_compress20(void) {
     printf("  Testing GamutCompress20 at 1000 nits...\n");
 
-    alwan_scalar const PEAK_LUMINANCE = 1000.0;
+    alwan_f64 const PEAK_LUMINANCE = 1000.0;
     alwan_aces_primaries primaries;
     alwan_aces_primaries_ap1_default(&primaries);
 
@@ -281,42 +262,27 @@ static int test_gamut_compress20(void) {
 
         /* Convert RGB -> JMh */
         alwan_vec3 jmh_in;
-        int result = alwan_aces_rgb_to_jmh20(&jmh_in, &rgb_in, &primaries);
-        if (result != 0) {
-            printf("FAIL: rgb_to_jmh20 error %d for input [%zu]\n", result, i);
-            failed++;
-            continue;
-        }
+        alwan_aces_rgb_to_jmh20(&jmh_in, &rgb_in, &primaries);
 
         /* Apply GamutCompress */
         alwan_vec3 jmh_out;
-        result = alwan_aces_gamut_compress20(&jmh_out, &jmh_in, PEAK_LUMINANCE, &primaries);
-        if (result != 0) {
-            printf("FAIL: gamut_compress20 error %d for input [%zu]\n", result, i);
-            failed++;
-            continue;
-        }
+        alwan_aces_gamut_compress20(&jmh_out, &jmh_in, PEAK_LUMINANCE, &primaries);
 
         /* Convert JMh -> RGB */
         alwan_rgb rgb_out;
-        result = alwan_aces_jmh_to_rgb20(&rgb_out, &jmh_out, &primaries);
-        if (result != 0) {
-            printf("FAIL: jmh_to_rgb20 error %d for input [%zu]\n", result, i);
-            failed++;
-            continue;
-        }
+        alwan_aces_jmh_to_rgb20(&rgb_out, &jmh_out, &primaries);
 
         /* Compare against OCIO reference */
-        alwan_scalar exp_r = gamut_compress_expected_1000[i][0];
-        alwan_scalar exp_g = gamut_compress_expected_1000[i][1];
-        alwan_scalar exp_b = gamut_compress_expected_1000[i][2];
+        alwan_f64 exp_r = gamut_compress_expected_1000[i][0];
+        alwan_f64 exp_g = gamut_compress_expected_1000[i][1];
+        alwan_f64 exp_b = gamut_compress_expected_1000[i][2];
 
-        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - exp_r);
-        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - exp_g);
-        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - exp_b);
+        alwan_f64 diff_r = ALWAN_ABS(rgb_out.r - exp_r);
+        alwan_f64 diff_g = ALWAN_ABS(rgb_out.g - exp_g);
+        alwan_f64 diff_b = ALWAN_ABS(rgb_out.b - exp_b);
 
         /* OCIO reference data is float32 — use relaxed tolerance */
-        alwan_scalar const ocio_tol = ALWAN_LITERAL(1e-4);
+        alwan_f64 const ocio_tol = ALWAN_LITERAL(1e-4);
         if (diff_r > ocio_tol || diff_g > ocio_tol || diff_b > ocio_tol) {
             printf("FAIL [%zu]: in=(%.4f,%.4f,%.4f) exp=(%.12e,%.12e,%.12e) got=(%.12e,%.12e,%.12e) diff=(%.2e,%.2e,%.2e)\n",
                    i, (double)rgb_in.r, (double)rgb_in.g, (double)rgb_in.b,

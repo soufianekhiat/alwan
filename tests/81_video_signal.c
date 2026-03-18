@@ -21,7 +21,7 @@ static int test_full_range_u8_roundtrip(void) {
     alwan_ctx *ctx = alwan_create(NULL);
 
     /* Linear values that produce clean sRGB code values */
-    alwan_scalar linear_in[9] = {
+    alwan_f64 linear_in[9] = {
         0.0, 0.0, 0.0,       /* black */
         1.0, 1.0, 1.0,       /* white */
         0.21586, 0.21586, 0.21586  /* ~50% sRGB (code ~128) */
@@ -53,7 +53,7 @@ static int test_full_range_u8_roundtrip(void) {
     }
 
     /* Decode back to linear */
-    alwan_scalar decoded[9];
+    alwan_f64 decoded[9];
     status = alwan_video_decode(decoded, encoded, ALWAN_PIXEL_U8, 3,
                                  ctx, ALWAN_RGB_SPACE_SRGB,
                                  ALWAN_VIDEO_RANGE_FULL, 8);
@@ -91,7 +91,7 @@ static int test_narrow_range_u8(void) {
 
     alwan_ctx *ctx = alwan_create(NULL);
 
-    alwan_scalar linear_in[6] = {
+    alwan_f64 linear_in[6] = {
         0.0, 0.0, 0.0,   /* black */
         1.0, 1.0, 1.0    /* white */
     };
@@ -122,7 +122,7 @@ static int test_narrow_range_u8(void) {
     }
 
     /* Decode roundtrip */
-    alwan_scalar decoded[6];
+    alwan_f64 decoded[6];
     status = alwan_video_decode(decoded, encoded, ALWAN_PIXEL_U8, 2,
                                  ctx, ALWAN_RGB_SPACE_SRGB,
                                  ALWAN_VIDEO_RANGE_NARROW, 8);
@@ -149,7 +149,7 @@ static int test_narrow_range_10bit(void) {
 
     alwan_ctx *ctx = alwan_create(NULL);
 
-    alwan_scalar linear_in[6] = {
+    alwan_f64 linear_in[6] = {
         0.0, 0.0, 0.0,
         1.0, 1.0, 1.0
     };
@@ -180,7 +180,7 @@ static int test_narrow_range_10bit(void) {
     }
 
     /* Roundtrip */
-    alwan_scalar decoded[6];
+    alwan_f64 decoded[6];
     status = alwan_video_decode(decoded, encoded, ALWAN_PIXEL_U16, 2,
                                  ctx, ALWAN_RGB_SPACE_SRGB,
                                  ALWAN_VIDEO_RANGE_NARROW, 10);
@@ -207,7 +207,7 @@ static int test_narrow_range_12bit(void) {
 
     alwan_ctx *ctx = alwan_create(NULL);
 
-    alwan_scalar linear_in[6] = {
+    alwan_f64 linear_in[6] = {
         0.0, 0.0, 0.0,
         1.0, 1.0, 1.0
     };
@@ -251,7 +251,7 @@ static int test_full_range_10bit(void) {
 
     alwan_ctx *ctx = alwan_create(NULL);
 
-    alwan_scalar linear_in[6] = {
+    alwan_f64 linear_in[6] = {
         0.0, 0.0, 0.0,
         1.0, 1.0, 1.0
     };
@@ -281,7 +281,7 @@ static int test_full_range_10bit(void) {
     }
 
     /* Roundtrip */
-    alwan_scalar decoded[6];
+    alwan_f64 decoded[6];
     status = alwan_video_decode(decoded, encoded, ALWAN_PIXEL_U16, 2,
                                  ctx, ALWAN_RGB_SPACE_SRGB,
                                  ALWAN_VIDEO_RANGE_FULL, 10);
@@ -307,7 +307,7 @@ static int test_float_narrow_range(void) {
 
     alwan_ctx *ctx = alwan_create(NULL);
 
-    alwan_scalar linear_in[6] = {
+    alwan_f64 linear_in[6] = {
         0.0, 0.0, 0.0,
         1.0, 1.0, 1.0
     };
@@ -333,7 +333,7 @@ static int test_float_narrow_range(void) {
     }
 
     /* Roundtrip via float decode */
-    alwan_scalar decoded[6];
+    alwan_f64 decoded[6];
     status = alwan_video_decode(decoded, encoded, ALWAN_PIXEL_F32, 2,
                                  ctx, ALWAN_RGB_SPACE_SRGB,
                                  ALWAN_VIDEO_RANGE_NARROW, 8);
@@ -359,7 +359,7 @@ static int test_pq_roundtrip(void) {
 
     alwan_ctx *ctx = alwan_create(NULL);
 
-    alwan_scalar linear_in[9] = {
+    alwan_f64 linear_in[9] = {
         0.0, 0.0, 0.0,
         0.5, 0.5, 0.5,
         1.0, 1.0, 1.0
@@ -391,7 +391,7 @@ static int test_pq_roundtrip(void) {
     }
 
     /* Decode */
-    alwan_scalar decoded[9];
+    alwan_f64 decoded[9];
     status = alwan_video_decode(decoded, encoded, ALWAN_PIXEL_F64, 3,
                                  ctx, ALWAN_RGB_SPACE_REC2100_PQ,
                                  ALWAN_VIDEO_RANGE_FULL, 0);
@@ -422,7 +422,7 @@ static int test_display_p3_roundtrip(void) {
 
     alwan_ctx *ctx = alwan_create(NULL);
 
-    alwan_scalar linear_in[15] = {
+    alwan_f64 linear_in[15] = {
         0.0, 0.0, 0.0,
         0.1, 0.2, 0.3,
         0.5, 0.5, 0.5,
@@ -441,7 +441,7 @@ static int test_display_p3_roundtrip(void) {
         return 1;
     }
 
-    alwan_scalar decoded[15];
+    alwan_f64 decoded[15];
     status = alwan_video_decode(decoded, encoded, ALWAN_PIXEL_F64, 5,
                                  ctx, ALWAN_RGB_SPACE_DISPLAY_P3,
                                  ALWAN_VIDEO_RANGE_FULL, 0);
@@ -468,7 +468,7 @@ static int test_narrow_roundtrip_multi_depth(void) {
 
     alwan_ctx *ctx = alwan_create(NULL);
 
-    alwan_scalar linear_in[9] = {
+    alwan_f64 linear_in[9] = {
         0.1, 0.3, 0.5,
         0.7, 0.2, 0.9,
         0.0, 1.0, 0.5
@@ -493,7 +493,7 @@ static int test_narrow_roundtrip_multi_depth(void) {
                 return 1;
             }
 
-            alwan_scalar decoded[9];
+            alwan_f64 decoded[9];
             status = alwan_video_decode(decoded, enc8, ALWAN_PIXEL_U8, 3,
                                          ctx, ALWAN_RGB_SPACE_SRGB,
                                          ALWAN_VIDEO_RANGE_NARROW, 8);
@@ -524,7 +524,7 @@ static int test_narrow_roundtrip_multi_depth(void) {
                 return 1;
             }
 
-            alwan_scalar decoded[9];
+            alwan_f64 decoded[9];
             status = alwan_video_decode(decoded, encoded, ALWAN_PIXEL_U16, 3,
                                          ctx, ALWAN_RGB_SPACE_SRGB,
                                          ALWAN_VIDEO_RANGE_NARROW, bit_depth);
@@ -562,7 +562,7 @@ static int test_video_null_checks(void) {
     printf("  test_video_null_checks...\n");
 
     alwan_ctx *ctx = alwan_create(NULL);
-    alwan_scalar linear[3] = {0.5, 0.5, 0.5};
+    alwan_f64 linear[3] = {0.5, 0.5, 0.5};
     uint8_t buf[3];
 
     if (alwan_video_encode(NULL, ALWAN_PIXEL_U8, linear, 1,

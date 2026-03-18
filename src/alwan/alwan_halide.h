@@ -14,8 +14,7 @@
  *   - alwan_vec2, alwan_vec3, alwan_mat3x3 are struct { alwan_scalar v[N]; }
  *   - All semantic color types (alwan_rgb, alwan_xyz, ...) are structs
  *
- * Default precision is Float(32). Define ALWAN_SCALAR_IS_FLOAT to 0
- * before including this header for Float(64).
+ * Halide supports both Float(32) and Float(64); instantiate with the appropriate Halide type.
  *
  * Then include whichever *_core.h modules you need:
  *   #include "alwan_halide.h"

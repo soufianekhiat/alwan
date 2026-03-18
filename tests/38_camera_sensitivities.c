@@ -33,7 +33,7 @@ static int test_camera_sensitivity_loading(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed to load Nikon 5100 sensitivities");
 
     /* Verify sensitivities are normalized (max value should be ~1.0) */
-    alwan_scalar r_max = 0, g_max = 0, b_max = 0;
+    alwan_f64 r_max = 0, g_max = 0, b_max = 0;
     for (size_t i = 0; i < r_sens.count; i++) {
         if (r_sens.values[i] > r_max) r_max = r_sens.values[i];
         if (g_sens.values[i] > g_max) g_max = g_sens.values[i];

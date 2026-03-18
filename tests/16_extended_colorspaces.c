@@ -11,10 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static alwan_scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
-    alwan_scalar max_diff = 0;
+static alwan_f64 vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
+    alwan_f64 max_diff = 0;
     for (int i = 0; i < 3; i++) {
-        alwan_scalar diff = ALWAN_ABS(a->v[i] - b->v[i]);
+        alwan_f64 diff = ALWAN_ABS(a->v[i] - b->v[i]);
         if (diff > max_diff) max_diff = diff;
     }
     return max_diff;
@@ -31,19 +31,19 @@ static void vec3_print(char const *name, alwan_vec3 const *v) {
 static int test_ycocg_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ycocg_from_rgb[] = {
+    static alwan_f64 const ycocg_from_rgb[] = {
 #include "reference_values/ycocg_from_rgb.csv"
     };
-    static alwan_scalar const rgb_from_ycocg_roundtrip[] = {
+    static alwan_f64 const rgb_from_ycocg_roundtrip[] = {
 #include "reference_values/rgb_from_ycocg_roundtrip.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(ycocg_from_rgb) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(ycocg_from_rgb) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     /* Test RGB inputs (from generate_data_tests.ps1) */
-    alwan_scalar const test_rgb[][3] = {
+    alwan_f64 const test_rgb[][3] = {
         {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0},
         {0.0, 0.0, 1.0}, {0.5, 0.5, 0.5}, {0.25, 0.75, 0.5}, {0.8, 0.2, 0.4},
         {0.1, 0.6, 0.9}, {0.9, 0.3, 0.1}, {0.3, 0.9, 0.7}
@@ -61,7 +61,7 @@ static int test_ycocg_roundtrip(void) {
         ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
         alwan_rgb_to_ycocg(&ycocg_typed, &rgb_typed);
         ALWAN_MEMCPY(&ycocg, &ycocg_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&ycocg, &ycocg_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&ycocg, &ycocg_expected);
         TEST_ASSERT(diff_forward < tolerance, "RGB->YCoCg mismatch");
 
         /* YCoCg -> RGB */
@@ -69,7 +69,7 @@ static int test_ycocg_roundtrip(void) {
         alwan_rgb rgb_out_typed;
         alwan_ycocg_to_rgb(&rgb_out_typed, &ycocg_typed);
         ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         TEST_ASSERT(diff_inverse < tolerance, "YCoCg->RGB roundtrip mismatch");
     }
 
@@ -83,19 +83,19 @@ static int test_ycocg_roundtrip(void) {
 static int test_ucs_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz_colors[] = {
+    static alwan_f64 const test_xyz_colors[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const ucs_from_xyz[] = {
+    static alwan_f64 const ucs_from_xyz[] = {
 #include "reference_values/ucs_from_xyz.csv"
     };
-    static alwan_scalar const xyz_from_ucs_roundtrip[] = {
+    static alwan_f64 const xyz_from_ucs_roundtrip[] = {
 #include "reference_values/xyz_from_ucs_roundtrip.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(ucs_from_xyz) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(ucs_from_xyz) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
@@ -109,7 +109,7 @@ static int test_ucs_roundtrip(void) {
         alwan_xyz_to_ucs(&ucs, &xyz_typed);
         alwan_vec3 ucs_vec;
         ALWAN_MEMCPY(&ucs_vec, &ucs, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&ucs_vec, &ucs_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&ucs_vec, &ucs_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->UCS mismatch");
 
         /* UCS -> XYZ */
@@ -117,7 +117,7 @@ static int test_ucs_roundtrip(void) {
         alwan_ucs_to_xyz(&xyz_out, &ucs);
         alwan_vec3 xyz_out_vec;
         ALWAN_MEMCPY(&xyz_out_vec, &xyz_out, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&xyz_out_vec, &xyz_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&xyz_out_vec, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "UCS->XYZ roundtrip mismatch");
     }
 
@@ -131,19 +131,19 @@ static int test_ucs_roundtrip(void) {
 static int test_hdr_cielab_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const hdr_lab_from_xyz[] = {
+    static alwan_f64 const hdr_lab_from_xyz[] = {
 #include "reference_values/hdr_lab_from_xyz.csv"
     };
-    static alwan_scalar const xyz_from_hdr_lab_roundtrip[] = {
+    static alwan_f64 const xyz_from_hdr_lab_roundtrip[] = {
 #include "reference_values/xyz_from_hdr_lab_roundtrip.csv"
     };
-    static alwan_scalar const test_xyz_hdr[] = {
+    static alwan_f64 const test_xyz_hdr[] = {
 #include "reference_values/test_xyz_hdr.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(test_xyz_hdr) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(test_xyz_hdr) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_hdr[i * 3 + 0], test_xyz_hdr[i * 3 + 1], test_xyz_hdr[i * 3 + 2]}};
@@ -157,7 +157,7 @@ static int test_hdr_cielab_roundtrip(void) {
         ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
         alwan_xyz_to_hdr_cielab(&hdr_lab_typed, &xyz_typed);
         ALWAN_MEMCPY(&hdr_lab, &hdr_lab_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&hdr_lab, &hdr_lab_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&hdr_lab, &hdr_lab_expected);
         if (diff_forward >= tolerance && i == 0) {
             printf("  hdr-CIELAB test %d FAIL:\n", i);
             printf("    Expected: [%.10f, %.10f, %.10f]\n", hdr_lab_expected.v[0], hdr_lab_expected.v[1], hdr_lab_expected.v[2]);
@@ -171,7 +171,7 @@ static int test_hdr_cielab_roundtrip(void) {
         alwan_xyz xyz_out_typed;
         alwan_hdr_cielab_to_xyz(&xyz_out_typed, &hdr_lab_typed);
         ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "hdr-CIELAB->XYZ roundtrip mismatch");
     }
 
@@ -185,19 +185,19 @@ static int test_hdr_cielab_roundtrip(void) {
 static int test_hdr_ipt_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const hdr_ipt_from_xyz[] = {
+    static alwan_f64 const hdr_ipt_from_xyz[] = {
 #include "reference_values/hdr_ipt_from_xyz.csv"
     };
-    static alwan_scalar const xyz_from_hdr_ipt_roundtrip[] = {
+    static alwan_f64 const xyz_from_hdr_ipt_roundtrip[] = {
 #include "reference_values/xyz_from_hdr_ipt_roundtrip.csv"
     };
-    static alwan_scalar const test_xyz_hdr[] = {
+    static alwan_f64 const test_xyz_hdr[] = {
 #include "reference_values/test_xyz_hdr.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(test_xyz_hdr) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(test_xyz_hdr) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_hdr[i * 3 + 0], test_xyz_hdr[i * 3 + 1], test_xyz_hdr[i * 3 + 2]}};
@@ -211,7 +211,7 @@ static int test_hdr_ipt_roundtrip(void) {
         ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
         alwan_xyz_to_hdr_ipt(&hdr_ipt_typed, &xyz_typed);
         ALWAN_MEMCPY(&hdr_ipt, &hdr_ipt_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&hdr_ipt, &hdr_ipt_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&hdr_ipt, &hdr_ipt_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->hdr-IPT mismatch");
 
         /* hdr-IPT -> XYZ */
@@ -219,7 +219,7 @@ static int test_hdr_ipt_roundtrip(void) {
         alwan_xyz xyz_out_typed;
         alwan_hdr_ipt_to_xyz(&xyz_out_typed, &hdr_ipt_typed);
         ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "hdr-IPT->XYZ roundtrip mismatch");
     }
 
@@ -233,19 +233,19 @@ static int test_hdr_ipt_roundtrip(void) {
 static int test_igpgtg_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz_colors[] = {
+    static alwan_f64 const test_xyz_colors[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const igpgtg_from_xyz[] = {
+    static alwan_f64 const igpgtg_from_xyz[] = {
 #include "reference_values/igpgtg_from_xyz.csv"
     };
-    static alwan_scalar const xyz_from_igpgtg_roundtrip[] = {
+    static alwan_f64 const xyz_from_igpgtg_roundtrip[] = {
 #include "reference_values/xyz_from_igpgtg_roundtrip.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(igpgtg_from_xyz) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(igpgtg_from_xyz) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
@@ -259,7 +259,7 @@ static int test_igpgtg_roundtrip(void) {
         ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
         alwan_xyz_to_igpgtg(&igpgtg_typed, &xyz_typed);
         ALWAN_MEMCPY(&igpgtg, &igpgtg_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&igpgtg, &igpgtg_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&igpgtg, &igpgtg_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->IgPgTg mismatch");
 
         /* IgPgTg -> XYZ */
@@ -267,7 +267,7 @@ static int test_igpgtg_roundtrip(void) {
         alwan_xyz xyz_out_typed;
         alwan_igpgtg_to_xyz(&xyz_out_typed, &igpgtg_typed);
         ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "IgPgTg->XYZ roundtrip mismatch");
     }
 
@@ -281,19 +281,19 @@ static int test_igpgtg_roundtrip(void) {
 static int test_icacb_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz_colors[] = {
+    static alwan_f64 const test_xyz_colors[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const icacb_from_xyz[] = {
+    static alwan_f64 const icacb_from_xyz[] = {
 #include "reference_values/icacb_from_xyz.csv"
     };
-    static alwan_scalar const xyz_from_icacb_roundtrip[] = {
+    static alwan_f64 const xyz_from_icacb_roundtrip[] = {
 #include "reference_values/xyz_from_icacb_roundtrip.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(icacb_from_xyz) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(icacb_from_xyz) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
@@ -307,7 +307,7 @@ static int test_icacb_roundtrip(void) {
         ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
         alwan_xyz_to_icacb(&icacb_typed, &xyz_typed);
         ALWAN_MEMCPY(&icacb, &icacb_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&icacb, &icacb_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&icacb, &icacb_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->ICaCb mismatch");
 
         /* ICaCb -> XYZ */
@@ -315,7 +315,7 @@ static int test_icacb_roundtrip(void) {
         alwan_xyz xyz_out_typed;
         alwan_icacb_to_xyz(&xyz_out_typed, &icacb_typed);
         ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "ICaCb->XYZ roundtrip mismatch");
     }
 
@@ -329,23 +329,23 @@ static int test_icacb_roundtrip(void) {
 static int test_prismatic_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const prismatic_from_rgb[] = {
+    static alwan_f64 const prismatic_from_rgb[] = {
 #include "reference_values/prismatic_from_rgb.csv"
     };
-    static alwan_scalar const rgb_from_prismatic_roundtrip[] = {
+    static alwan_f64 const rgb_from_prismatic_roundtrip[] = {
 #include "reference_values/rgb_from_prismatic_roundtrip.csv"
     };
     ALWAN_DIAG_POP
 
     /* Test RGB inputs */
-    alwan_scalar const test_rgb[][3] = {
+    alwan_f64 const test_rgb[][3] = {
         {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0},
         {0.0, 0.0, 1.0}, {0.5, 0.5, 0.5}, {0.25, 0.75, 0.5}, {0.8, 0.2, 0.4},
         {0.1, 0.6, 0.9}, {0.9, 0.3, 0.1}, {0.3, 0.9, 0.7}
     };
 
-    int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
@@ -359,7 +359,7 @@ static int test_prismatic_roundtrip(void) {
         alwan_rgb_to_prismatic(&prismatic, &rgb_typed);
         alwan_vec3 prismatic_vec;
         ALWAN_MEMCPY(&prismatic_vec, &prismatic, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&prismatic_vec, &prismatic_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&prismatic_vec, &prismatic_expected);
         TEST_ASSERT(diff_forward < tolerance, "RGB->Prismatic mismatch");
 
         /* Prismatic -> RGB */
@@ -367,7 +367,7 @@ static int test_prismatic_roundtrip(void) {
         alwan_rgb rgb_out_typed;
         alwan_prismatic_to_rgb(&rgb_out_typed, &prismatic);
         ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         TEST_ASSERT(diff_inverse < tolerance, "Prismatic->RGB roundtrip mismatch");
     }
 
@@ -381,23 +381,23 @@ static int test_prismatic_roundtrip(void) {
 static int test_hcl_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const hcl_from_rgb[] = {
+    static alwan_f64 const hcl_from_rgb[] = {
 #include "reference_values/hcl_from_rgb.csv"
     };
-    static alwan_scalar const rgb_from_hcl_roundtrip[] = {
+    static alwan_f64 const rgb_from_hcl_roundtrip[] = {
 #include "reference_values/rgb_from_hcl_roundtrip.csv"
     };
     ALWAN_DIAG_POP
 
     /* Test RGB inputs */
-    alwan_scalar const test_rgb[][3] = {
+    alwan_f64 const test_rgb[][3] = {
         {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0},
         {0.0, 0.0, 1.0}, {0.5, 0.5, 0.5}, {0.25, 0.75, 0.5}, {0.8, 0.2, 0.4},
         {0.1, 0.6, 0.9}, {0.9, 0.3, 0.1}, {0.3, 0.9, 0.7}
     };
 
-    int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
@@ -411,7 +411,7 @@ static int test_hcl_roundtrip(void) {
         alwan_rgb_to_hcl(&hcl, &rgb_typed);
         alwan_vec3 hcl_vec;
         ALWAN_MEMCPY(&hcl_vec, &hcl, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&hcl_vec, &hcl_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&hcl_vec, &hcl_expected);
         if (diff_forward >= tolerance) {
             printf("  HCL test %d FAIL: RGB=[%.3f, %.3f, %.3f]\n", i, rgb.v[0], rgb.v[1], rgb.v[2]);
             printf("    Expected: [%.10f, %.10f, %.10f]\n", hcl_expected.v[0], hcl_expected.v[1], hcl_expected.v[2]);
@@ -425,7 +425,7 @@ static int test_hcl_roundtrip(void) {
         alwan_rgb rgb_out_typed;
         alwan_hcl_to_rgb(&rgb_out_typed, &hcl);
         ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         TEST_ASSERT(diff_inverse < tolerance, "HCL->RGB roundtrip mismatch");
     }
 
@@ -439,23 +439,23 @@ static int test_hcl_roundtrip(void) {
 static int test_ihls_roundtrip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const ihls_from_rgb[] = {
+    static alwan_f64 const ihls_from_rgb[] = {
 #include "reference_values/ihls_from_rgb.csv"
     };
-    static alwan_scalar const rgb_from_ihls_roundtrip[] = {
+    static alwan_f64 const rgb_from_ihls_roundtrip[] = {
 #include "reference_values/rgb_from_ihls_roundtrip.csv"
     };
     ALWAN_DIAG_POP
 
     /* Test RGB inputs */
-    alwan_scalar const test_rgb[][3] = {
+    alwan_f64 const test_rgb[][3] = {
         {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0},
         {0.0, 0.0, 1.0}, {0.5, 0.5, 0.5}, {0.25, 0.75, 0.5}, {0.8, 0.2, 0.4},
         {0.1, 0.6, 0.9}, {0.9, 0.3, 0.1}, {0.3, 0.9, 0.7}
     };
 
-    int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(test_rgb) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
@@ -469,7 +469,7 @@ static int test_ihls_roundtrip(void) {
         alwan_rgb_to_ihls(&ihls, &rgb_typed);
         alwan_vec3 ihls_vec;
         ALWAN_MEMCPY(&ihls_vec, &ihls, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&ihls_vec, &ihls_expected);
+        alwan_f64 diff_forward = vec3_max_diff(&ihls_vec, &ihls_expected);
         if (diff_forward >= tolerance) {
             printf("  IHLS test %d FAIL: RGB=[%.3f, %.3f, %.3f]\n", i, rgb.v[0], rgb.v[1], rgb.v[2]);
             printf("    Expected: [%.10f, %.10f, %.10f]\n", ihls_expected.v[0], ihls_expected.v[1], ihls_expected.v[2]);
@@ -483,7 +483,7 @@ static int test_ihls_roundtrip(void) {
         alwan_rgb rgb_out_typed;
         alwan_ihls_to_rgb(&rgb_out_typed, &ihls);
         ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
-        alwan_scalar diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
+        alwan_f64 diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         if (diff_inverse >= tolerance) {
             printf("  IHLS->RGB test %d FAIL: IHLS=[%.3f, %.3f, %.3f]\n", i, ihls.H, ihls.L, ihls.S);
             printf("    Expected RGB: [%.10f, %.10f, %.10f]\n", rgb_expected.v[0], rgb_expected.v[1], rgb_expected.v[2]);

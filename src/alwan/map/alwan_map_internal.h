@@ -16,61 +16,9 @@
 #include <string.h>
 
 /* ================================================================
- * Type-Generic SIMD Aliases
- *
- * Maps generic names to f32 or f64 based on ALWAN_SCALAR_IS_FLOAT.
- * All map functions use these instead of alwan_simd_f32_* directly,
- * so the same code works at full precision for both float and double.
+ * Type-Generic SIMD Aliases (always f64)
  * ================================================================ */
 
-#if ALWAN_SCALAR_IS_FLOAT
-    #define ALWAN_SIMD_WIDTH        ALWAN_SIMD_F32_WIDTH
-    typedef float                   alwan_simd_lane;
-    typedef alwan_simd_f32          alwan_simd;
-    typedef alwan_simd_f32_mask     alwan_simd_mask;
-    #define alwan_simd_set1(v)      alwan_simd_f32_set1(v)
-    #define alwan_simd_zero         alwan_simd_f32_zero
-    #define alwan_simd_load         alwan_simd_f32_load
-    #define alwan_simd_store        alwan_simd_f32_store
-    #define alwan_simd_add          alwan_simd_f32_add
-    #define alwan_simd_sub          alwan_simd_f32_sub
-    #define alwan_simd_mul          alwan_simd_f32_mul
-    #define alwan_simd_div          alwan_simd_f32_div
-    #define alwan_simd_neg          alwan_simd_f32_neg
-    #define alwan_simd_abs          alwan_simd_f32_abs
-    #define alwan_simd_fmadd        alwan_simd_f32_fmadd
-    #define alwan_simd_fmsub        alwan_simd_f32_fmsub
-    #define alwan_simd_sqrt         alwan_simd_f32_sqrt
-    #define alwan_simd_cbrt         alwan_simd_f32_cbrt
-    #define alwan_simd_pow          alwan_simd_f32_pow
-    #define alwan_simd_exp          alwan_simd_f32_exp
-    #define alwan_simd_log          alwan_simd_f32_log
-    #define alwan_simd_log2         alwan_simd_f32_log2
-    #define alwan_simd_log10        alwan_simd_f32_log10
-    #define alwan_simd_sin          alwan_simd_f32_sin
-    #define alwan_simd_cos          alwan_simd_f32_cos
-    #define alwan_simd_atan2        alwan_simd_f32_atan2
-    #define alwan_simd_floor        alwan_simd_f32_floor
-    #define alwan_simd_ceil         alwan_simd_f32_ceil
-    #define alwan_simd_round        alwan_simd_f32_round
-    #define alwan_simd_trunc        alwan_simd_f32_trunc
-    #define alwan_simd_min          alwan_simd_f32_min
-    #define alwan_simd_max          alwan_simd_f32_max
-    #define alwan_simd_clamp        alwan_simd_f32_clamp
-    #define alwan_simd_rcp          alwan_simd_f32_rcp
-    #define alwan_simd_cmpeq        alwan_simd_f32_cmpeq
-    #define alwan_simd_cmplt        alwan_simd_f32_cmplt
-    #define alwan_simd_cmple        alwan_simd_f32_cmple
-    #define alwan_simd_cmpgt        alwan_simd_f32_cmpgt
-    #define alwan_simd_cmpge        alwan_simd_f32_cmpge
-    #define alwan_simd_select       alwan_simd_f32_select
-    #define alwan_simd_pow24        alwan_simd_f32_pow24
-    #define alwan_simd_pow_inv24    alwan_simd_f32_pow_inv24
-    #define alwan_simd_cbrt_fast    alwan_simd_f32_cbrt_fast
-    #define alwan_simd_deinterleave3 alwan_simd_f32_deinterleave3
-    #define alwan_simd_interleave3   alwan_simd_f32_interleave3
-    #define alwan_simd_mask_all_set  alwan_simd_f32_mask_all_set
-#else
     #define ALWAN_SIMD_WIDTH        ALWAN_SIMD_F64_WIDTH
     typedef double                  alwan_simd_lane;
     typedef alwan_simd_f64          alwan_simd;
@@ -117,7 +65,6 @@
     #define alwan_simd_deinterleave3 alwan_simd_f64_deinterleave3
     #define alwan_simd_interleave3   alwan_simd_f64_interleave3
     #define alwan_simd_mask_all_set  alwan_simd_f64_mask_all_set
-#endif
 
 /* ----------------------------------------------------------------
  * Tile Constants
@@ -128,23 +75,13 @@
  *   f64: 96 KB -> fits in L2, partially in L1
  * ---------------------------------------------------------------- */
 
-/* Halve tile for f64 to keep scratch within 48 KB (L1-friendly) */
-#if ALWAN_SCALAR_IS_FLOAT
-#define ALWAN_TILE_W      128
-#define ALWAN_TILE_H       32
-#define ALWAN_TILE_PIXELS (ALWAN_TILE_W * ALWAN_TILE_H)  /* 4096, 48 KB scratch */
-#else
+/* Tile: 64 x 32 = 2048 pixels, 48 KB f64 scratch */
 #define ALWAN_TILE_W       64
 #define ALWAN_TILE_H       32
-#define ALWAN_TILE_PIXELS (ALWAN_TILE_W * ALWAN_TILE_H)  /* 2048, 48 KB scratch */
-#endif
+#define ALWAN_TILE_PIXELS (ALWAN_TILE_W * ALWAN_TILE_H)
 
-/* Pixel format that matches the native alwan_scalar type */
-#if ALWAN_SCALAR_IS_FLOAT
-#define ALWAN_NATIVE_PIXEL_FMT  ALWAN_PIXEL_F32
-#else
+/* Pixel format matching alwan_scalar (always double) */
 #define ALWAN_NATIVE_PIXEL_FMT  ALWAN_PIXEL_F64
-#endif
 
 /* Near-zero guards for SIMD divide-by-zero protection */
 #define ALWAN_MAP_DIV_GUARD    1e-10   /* For chromaticity / xyY denominators */
@@ -381,17 +318,10 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
                                             void const *base, alwan_pixel_format fmt,
                                             size_t offset, size_t stride, size_t n) {
     /* Fast path: native scalar format → use SIMD deinterleave */
-#ifdef ALWAN_SCALAR_IS_FLOAT
-    if (fmt == ALWAN_PIXEL_F32) {
-        alwan__load_tile_aos3(ch0, ch1, ch2, (alwan_scalar const *)base, offset, stride, n);
-        return;
-    }
-#else
     if (fmt == ALWAN_PIXEL_F64) {
         alwan__load_tile_aos3(ch0, ch1, ch2, (alwan_scalar const *)base, offset, stride, n);
         return;
     }
-#endif
     size_t j;
     switch (fmt) {
     case ALWAN_PIXEL_U8: {
@@ -404,18 +334,6 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
                 __m128i const shuf_r = _mm_setr_epi8(0,3,6,9, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1);
                 __m128i const shuf_g = _mm_setr_epi8(1,4,7,10, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1);
                 __m128i const shuf_b = _mm_setr_epi8(2,5,8,11, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1);
-#if ALWAN_SCALAR_IS_FLOAT
-                __m128 const inv128 = _mm_set1_ps(1.0f / 255.0f);
-                for (; j + 4 <= n; j += 4) {
-                    __m128i raw = _mm_loadu_si128((const __m128i *)(src + j * 3));
-                    __m128 rf = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_r))), inv128);
-                    __m128 gf = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_g))), inv128);
-                    __m128 bf = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_b))), inv128);
-                    _mm_storeu_ps(&ch0[j], rf);
-                    _mm_storeu_ps(&ch1[j], gf);
-                    _mm_storeu_ps(&ch2[j], bf);
-                }
-#else
                 __m256d const inv256d = _mm256_set1_pd(1.0 / 255.0);
                 for (; j + 4 <= n; j += 4) {
                     __m128i raw = _mm_loadu_si128((const __m128i *)(src + j * 3));
@@ -426,7 +344,6 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
                     _mm256_storeu_pd(&ch1[j], _mm256_mul_pd(_mm256_cvtepi32_pd(gi32), inv256d));
                     _mm256_storeu_pd(&ch2[j], _mm256_mul_pd(_mm256_cvtepi32_pd(bi32), inv256d));
                 }
-#endif
             }
 #endif
             for (; j < n; j++) {
@@ -478,21 +395,6 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
             j = 0;
 #if defined(__AVX2__)
             {
-#if ALWAN_SCALAR_IS_FLOAT
-                for (; j + 4 <= n; j += 4) {
-                    uint16_t const *sp = src_u16 + j * 3;
-                    __m128i h0 = _mm_loadu_si128((const __m128i *)sp);
-                    __m128i h1 = _mm_loadl_epi64((const __m128i *)(sp + 8));
-                    __m128 f0 = _mm_cvtph_ps(h0);
-                    __m128 f1 = _mm_cvtph_ps(_mm_srli_si128(h0, 8));
-                    __m128 f2 = _mm_cvtph_ps(h1);
-                    __m128 t0 = _mm_shuffle_ps(f0, f1, _MM_SHUFFLE(1, 0, 2, 1));
-                    __m128 t1 = _mm_shuffle_ps(f1, f2, _MM_SHUFFLE(2, 1, 3, 2));
-                    _mm_storeu_ps(&ch0[j], _mm_shuffle_ps(f0, t1, _MM_SHUFFLE(2, 0, 3, 0)));
-                    _mm_storeu_ps(&ch1[j], _mm_shuffle_ps(t0, t1, _MM_SHUFFLE(3, 1, 2, 0)));
-                    _mm_storeu_ps(&ch2[j], _mm_shuffle_ps(t0, f2, _MM_SHUFFLE(3, 0, 3, 1)));
-                }
-#else
                 for (; j + 4 <= n; j += 4) {
                     uint16_t const *sp = src_u16 + j * 3;
                     __m128i h0 = _mm_loadu_si128((const __m128i *)sp);
@@ -509,7 +411,6 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
                     _mm256_storeu_pd(&ch1[j], _mm256_cvtps_pd(gf));
                     _mm256_storeu_pd(&ch2[j], _mm256_cvtps_pd(bf));
                 }
-#endif
             }
 #endif
             for (; j < n; j++) {
@@ -536,17 +437,10 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
                                              alwan_simd_lane const *ch0, alwan_simd_lane const *ch1, alwan_simd_lane const *ch2,
                                              size_t n) {
     /* Fast path: native scalar format → use SIMD interleave */
-#ifdef ALWAN_SCALAR_IS_FLOAT
-    if (fmt == ALWAN_PIXEL_F32) {
-        alwan__store_tile_aos3((alwan_scalar *)base, offset, stride, ch0, ch1, ch2, n);
-        return;
-    }
-#else
     if (fmt == ALWAN_PIXEL_F64) {
         alwan__store_tile_aos3((alwan_scalar *)base, offset, stride, ch0, ch1, ch2, n);
         return;
     }
-#endif
     size_t j;
     switch (fmt) {
     case ALWAN_PIXEL_U8: {
@@ -559,15 +453,9 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
                 __m128 const half128 = _mm_set1_ps(0.5f);
                 __m128i const shuf_out = _mm_setr_epi8(0,4,8, 1,5,9, 2,6,10, 3,7,11, -1,-1,-1,-1);
                 for (; j + 4 <= n; j += 4) {
-#if ALWAN_SCALAR_IS_FLOAT
-                    __m128 rf = _mm_loadu_ps(&ch0[j]);
-                    __m128 gf = _mm_loadu_ps(&ch1[j]);
-                    __m128 bf = _mm_loadu_ps(&ch2[j]);
-#else
                     __m128 rf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch0[j]));
                     __m128 gf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch1[j]));
                     __m128 bf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch2[j]));
-#endif
                     __m128i ri32 = _mm_cvttps_epi32(_mm_add_ps(_mm_mul_ps(rf, scale128), half128));
                     __m128i gi32 = _mm_cvttps_epi32(_mm_add_ps(_mm_mul_ps(gf, scale128), half128));
                     __m128i bi32 = _mm_cvttps_epi32(_mm_add_ps(_mm_mul_ps(bf, scale128), half128));
@@ -630,15 +518,9 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
 #if defined(__AVX2__)
             {
                 for (; j + 4 <= n; j += 4) {
-#if ALWAN_SCALAR_IS_FLOAT
-                    __m128 rf = _mm_loadu_ps(&ch0[j]);
-                    __m128 gf = _mm_loadu_ps(&ch1[j]);
-                    __m128 bf = _mm_loadu_ps(&ch2[j]);
-#else
                     __m128 rf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch0[j]));
                     __m128 gf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch1[j]));
                     __m128 bf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch2[j]));
-#endif
                     /* SoA → AoS interleave */
                     __m128 u0 = _mm_unpacklo_ps(rf, gf);
                     __m128 u1 = _mm_unpackhi_ps(rf, gf);
@@ -788,18 +670,6 @@ ALWAN_INLINE void alwan__load_tile_typed_aos(alwan_scalar *dst,
             j = 0;
 #if defined(__AVX2__)
             {
-#if ALWAN_SCALAR_IS_FLOAT
-                __m128 const inv128 = _mm_set1_ps(1.0f / 255.0f);
-                for (; j + 4 <= n; j += 4) {
-                    __m128i raw = _mm_loadu_si128((const __m128i *)(src_u8 + j * 3));
-                    __m128 f0 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(raw)), inv128);
-                    __m128 f1 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 4))), inv128);
-                    __m128 f2 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 8))), inv128);
-                    _mm_storeu_ps(&dst[j * 3], f0);
-                    _mm_storeu_ps(&dst[j * 3 + 4], f1);
-                    _mm_storeu_ps(&dst[j * 3 + 8], f2);
-                }
-#else
                 __m256d const inv256d = _mm256_set1_pd(1.0 / 255.0);
                 for (; j + 4 <= n; j += 4) {
                     __m128i raw = _mm_loadu_si128((const __m128i *)(src_u8 + j * 3));
@@ -807,7 +677,6 @@ ALWAN_INLINE void alwan__load_tile_typed_aos(alwan_scalar *dst,
                     _mm256_storeu_pd(&dst[j * 3 + 4], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 4))), inv256d));
                     _mm256_storeu_pd(&dst[j * 3 + 8], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 8))), inv256d));
                 }
-#endif
             }
 #endif
             for (; j < n; j++) {
@@ -834,18 +703,6 @@ ALWAN_INLINE void alwan__load_tile_typed_aos(alwan_scalar *dst,
             uint16_t const *src_u16 = (uint16_t const *)src + offset * 3;
             j = 0;
 #if defined(__AVX2__)
-#if ALWAN_SCALAR_IS_FLOAT
-            for (; j + 4 <= n; j += 4) {
-                __m128i h0 = _mm_loadu_si128((const __m128i *)(src_u16 + j * 3));
-                __m128i h1 = _mm_loadl_epi64((const __m128i *)(src_u16 + j * 3 + 8));
-                __m128 f0 = _mm_cvtph_ps(h0);
-                __m128 f1 = _mm_cvtph_ps(_mm_srli_si128(h0, 8));
-                __m128 f2 = _mm_cvtph_ps(h1);
-                _mm_storeu_ps(&dst[j * 3], f0);
-                _mm_storeu_ps(&dst[j * 3 + 4], f1);
-                _mm_storeu_ps(&dst[j * 3 + 8], f2);
-            }
-#else
             for (; j + 4 <= n; j += 4) {
                 __m128i h0 = _mm_loadu_si128((const __m128i *)(src_u16 + j * 3));
                 __m128i h1 = _mm_loadl_epi64((const __m128i *)(src_u16 + j * 3 + 8));
@@ -856,7 +713,6 @@ ALWAN_INLINE void alwan__load_tile_typed_aos(alwan_scalar *dst,
                 _mm256_storeu_pd(&dst[j * 3 + 4], _mm256_cvtps_pd(f1));
                 _mm256_storeu_pd(&dst[j * 3 + 8], _mm256_cvtps_pd(f2));
             }
-#endif
 #endif
             for (; j < n; j++) {
                 dst[j * 3 + 0] = (alwan_scalar)alwan__f16_to_f32(src_u16[j * 3 + 0]);
@@ -901,15 +757,9 @@ ALWAN_INLINE void alwan__store_tile_typed_aos(void *dst, alwan_pixel_format fmt,
                 __m128 const zero128 = _mm_setzero_ps();
                 __m128 const max128 = _mm_set1_ps(255.0f);
                 for (; j + 4 <= n; j += 4) {
-#if ALWAN_SCALAR_IS_FLOAT
-                    __m128 f0 = _mm_loadu_ps(&src[j * 3]);
-                    __m128 f1 = _mm_loadu_ps(&src[j * 3 + 4]);
-                    __m128 f2 = _mm_loadu_ps(&src[j * 3 + 8]);
-#else
                     __m128 f0 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3]));
                     __m128 f1 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3 + 4]));
                     __m128 f2 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3 + 8]));
-#endif
                     f0 = _mm_min_ps(_mm_max_ps(_mm_add_ps(_mm_mul_ps(f0, scale128), half128), zero128), max128);
                     f1 = _mm_min_ps(_mm_max_ps(_mm_add_ps(_mm_mul_ps(f1, scale128), half128), zero128), max128);
                     f2 = _mm_min_ps(_mm_max_ps(_mm_add_ps(_mm_mul_ps(f2, scale128), half128), zero128), max128);
@@ -960,15 +810,9 @@ ALWAN_INLINE void alwan__store_tile_typed_aos(void *dst, alwan_pixel_format fmt,
             j = 0;
 #if defined(__AVX2__)
             for (; j + 4 <= n; j += 4) {
-#if ALWAN_SCALAR_IS_FLOAT
-                __m128 f0 = _mm_loadu_ps(&src[j * 3]);
-                __m128 f1 = _mm_loadu_ps(&src[j * 3 + 4]);
-                __m128 f2 = _mm_loadu_ps(&src[j * 3 + 8]);
-#else
                 __m128 f0 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3]));
                 __m128 f1 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3 + 4]));
                 __m128 f2 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3 + 8]));
-#endif
                 __m128i h0 = _mm_cvtps_ph(f0, _MM_FROUND_TO_NEAREST_INT);
                 __m128i h1 = _mm_cvtps_ph(f1, _MM_FROUND_TO_NEAREST_INT);
                 __m128i h2 = _mm_cvtps_ph(f2, _MM_FROUND_TO_NEAREST_INT);
@@ -1016,16 +860,6 @@ ALWAN_INLINE void alwan__load_tile_typed_ch(alwan_scalar *dst,
             uint8_t const *src_u8 = (uint8_t const *)src + offset;
             j = 0;
 #if defined(__AVX2__)
-#if ALWAN_SCALAR_IS_FLOAT
-            {
-                __m256 const inv256 = _mm256_set1_ps(1.0f / 255.0f);
-                for (; j + 8 <= n; j += 8) {
-                    __m128i raw = _mm_loadl_epi64((const __m128i *)(src_u8 + j));
-                    __m256 f = _mm256_mul_ps(_mm256_cvtepi32_ps(_mm256_cvtepu8_epi32(raw)), inv256);
-                    _mm256_storeu_ps(&dst[j], f);
-                }
-            }
-#else
             {
                 __m256d const inv256d = _mm256_set1_pd(1.0 / 255.0);
                 for (; j + 4 <= n; j += 4) {
@@ -1034,7 +868,6 @@ ALWAN_INLINE void alwan__load_tile_typed_ch(alwan_scalar *dst,
                     _mm256_storeu_pd(&dst[j], _mm256_mul_pd(_mm256_cvtepi32_pd(i32), inv256d));
                 }
             }
-#endif
 #endif
             for (; j < n; j++)
                 dst[j] = (alwan_scalar)src_u8[j] * inv;
@@ -1053,14 +886,6 @@ ALWAN_INLINE void alwan__load_tile_typed_ch(alwan_scalar *dst,
             uint16_t const *src_u16 = (uint16_t const *)src + offset;
             j = 0;
 #if defined(__AVX2__)
-#if ALWAN_SCALAR_IS_FLOAT
-            {
-                for (; j + 8 <= n; j += 8) {
-                    __m128i h = _mm_loadu_si128((const __m128i *)(src_u16 + j));
-                    _mm256_storeu_ps(&dst[j], _mm256_cvtph_ps(h));
-                }
-            }
-#else
             {
                 for (; j + 4 <= n; j += 4) {
                     __m128i h = _mm_loadl_epi64((const __m128i *)(src_u16 + j));
@@ -1068,7 +893,6 @@ ALWAN_INLINE void alwan__load_tile_typed_ch(alwan_scalar *dst,
                     _mm256_storeu_pd(&dst[j], _mm256_cvtps_pd(f));
                 }
             }
-#endif
 #endif
             for (; j < n; j++)
                 dst[j] = (alwan_scalar)alwan__f16_to_f32(src_u16[j]);
@@ -1098,22 +922,6 @@ ALWAN_INLINE void alwan__store_tile_typed_ch(void *dst, alwan_pixel_format fmt,
             uint8_t *dst_u8 = (uint8_t *)dst + offset;
             j = 0;
 #if defined(__AVX2__)
-#if ALWAN_SCALAR_IS_FLOAT
-            {
-                __m256 const scale256 = _mm256_set1_ps(255.0f);
-                __m256 const half256 = _mm256_set1_ps(0.5f);
-                __m256 const zero256 = _mm256_setzero_ps();
-                __m256 const max256 = _mm256_set1_ps(255.0f);
-                for (; j + 8 <= n; j += 8) {
-                    __m256 f = _mm256_loadu_ps(&src[j]);
-                    f = _mm256_min_ps(_mm256_max_ps(_mm256_add_ps(_mm256_mul_ps(f, scale256), half256), zero256), max256);
-                    __m256i i32 = _mm256_cvttps_epi32(f);
-                    __m128i lo16 = _mm_packs_epi32(_mm256_castsi256_si128(i32), _mm256_extracti128_si256(i32, 1));
-                    __m128i u8 = _mm_packus_epi16(lo16, _mm_setzero_si128());
-                    _mm_storel_epi64((__m128i *)(dst_u8 + j), u8);
-                }
-            }
-#else
             {
                 __m256d const scale256d = _mm256_set1_pd(255.0);
                 __m256d const half256d = _mm256_set1_pd(0.5);
@@ -1128,7 +936,6 @@ ALWAN_INLINE void alwan__store_tile_typed_ch(void *dst, alwan_pixel_format fmt,
                     *(uint32_t *)(dst_u8 + j) = (uint32_t)_mm_cvtsi128_si32(u8);
                 }
             }
-#endif
 #endif
             for (; j < n; j++) {
                 alwan_scalar v = src[j] * ALWAN_LITERAL(255.0) + ALWAN_LITERAL(0.5);
@@ -1158,14 +965,6 @@ ALWAN_INLINE void alwan__store_tile_typed_ch(void *dst, alwan_pixel_format fmt,
             uint16_t *dst_u16 = (uint16_t *)dst + offset;
             j = 0;
 #if defined(__AVX2__)
-#if ALWAN_SCALAR_IS_FLOAT
-            {
-                for (; j + 8 <= n; j += 8) {
-                    __m256 f = _mm256_loadu_ps(&src[j]);
-                    _mm_storeu_si128((__m128i *)(dst_u16 + j), _mm256_cvtps_ph(f, _MM_FROUND_TO_NEAREST_INT));
-                }
-            }
-#else
             {
                 for (; j + 4 <= n; j += 4) {
                     __m256d d = _mm256_loadu_pd(&src[j]);
@@ -1174,7 +973,6 @@ ALWAN_INLINE void alwan__store_tile_typed_ch(void *dst, alwan_pixel_format fmt,
                     _mm_storel_epi64((__m128i *)(dst_u16 + j), h);
                 }
             }
-#endif
 #endif
             for (; j < n; j++)
                 dst_u16[j] = alwan__f32_to_f16((float)src[j]);
@@ -1193,6 +991,40 @@ ALWAN_INLINE void alwan__store_tile_typed_ch(void *dst, alwan_pixel_format fmt,
     } break;
     }
 }
+
+/* ================================================================
+ * Precision-specific tile load/store (always available for dual dispatch)
+ *
+ * alwan__load_tile_typed_ch_f32  / _f64   — planar single-channel
+ * alwan__store_tile_typed_ch_f32 / _f64   — planar single-channel
+ * alwan__load_tile_typed_aos_f32 / _f64   — AoS interleaved
+ * alwan__store_tile_typed_aos_f32/ _f64   — AoS interleaved
+ * ================================================================ */
+
+#define ALWAN_TILE_PIXELS_F32  4096
+#define ALWAN_TILE_PIXELS_F64  2048
+
+/* f32 tile helpers */
+#define ALWAN_TILE_T       float
+#define ALWAN_TILE_SUFFIX  _f32
+#define ALWAN_TILE_IS_F32  1
+#define ALWAN_TILE_LIT(x)  x##f
+#include "alwan_tile_typed_gen.inc"
+#undef ALWAN_TILE_T
+#undef ALWAN_TILE_SUFFIX
+#undef ALWAN_TILE_IS_F32
+#undef ALWAN_TILE_LIT
+
+/* f64 tile helpers */
+#define ALWAN_TILE_T       double
+#define ALWAN_TILE_SUFFIX  _f64
+#define ALWAN_TILE_IS_F32  0
+#define ALWAN_TILE_LIT(x)  x
+#include "alwan_tile_typed_gen.inc"
+#undef ALWAN_TILE_T
+#undef ALWAN_TILE_SUFFIX
+#undef ALWAN_TILE_IS_F32
+#undef ALWAN_TILE_LIT
 
 /* ================================================================
  * SIMD Building Blocks
@@ -2297,13 +2129,409 @@ int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
 }
 
 /* ================================================================
- * Gamut map kernels (alwan_gamut_map.c)
+ * Dual-dispatch delegation macros (Phase 4)
+ *
+ * Route _ex functions to f32 or f64 native pipeline:
+ *   F32+F32 -> direct call to fn_f32 (zero overhead)
+ *   F64+F64 -> direct call to fn_f64 (zero overhead)
+ *   F64 input or output -> f64 tiled pipeline
+ *   Everything else (U8/U16/F16/F32) -> f32 tiled pipeline
  * ================================================================ */
 
-void alwan__gamut_clip_kernel(alwan_simd_lane *c0, alwan_simd_lane *c1, alwan_simd_lane *c2,
-                              size_t n);
-void alwan__css_gamut_map_kernel(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2,
-                                 alwan_simd_lane const *i0, alwan_simd_lane const *i1, alwan_simd_lane const *i2,
-                                 size_t n);
+/* -- Planar dual-dispatch: basic 3-channel ---------------------- */
+
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
+int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
+         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out0, (float *)out1, (float *)out2, \
+                      (float const *)in0, (float const *)in1, (float const *)in2, \
+                      count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out0, (double *)out1, (double *)out2, \
+                      (double const *)in0, (double const *)in1, (double const *)in2, \
+                      count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
+            ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
+            alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f64(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, tile_, sizeof(double), sizeof(double)); \
+            alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } else { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
+            ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
+            alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f32(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, tile_, sizeof(float), sizeof(float)); \
+            alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+
+/* -- Planar dual-dispatch: with white_xyz ----------------------- */
+
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
+int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
+         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
+         alwan_xyz const *white_xyz, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !white_xyz || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) { \
+        alwan_xyz_f32 w_ = {(float)white_xyz->x, (float)white_xyz->y, (float)white_xyz->z}; \
+        return fn_f32((float *)out0, (float *)out1, (float *)out2, \
+                      (float const *)in0, (float const *)in1, (float const *)in2, \
+                      &w_, count, in_stride, out_stride); \
+    } \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) { \
+        alwan_xyz_f64 w_ = {(double)white_xyz->x, (double)white_xyz->y, (double)white_xyz->z}; \
+        return fn_f64((double *)out0, (double *)out1, (double *)out2, \
+                      (double const *)in0, (double const *)in1, (double const *)in2, \
+                      &w_, count, in_stride, out_stride); \
+    } \
+    if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) { \
+        alwan_xyz_f64 w_ = {(double)white_xyz->x, (double)white_xyz->y, (double)white_xyz->z}; \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
+            ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
+            alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f64(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, &w_, tile_, sizeof(double), sizeof(double)); \
+            alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } else { \
+        alwan_xyz_f32 w_ = {(float)white_xyz->x, (float)white_xyz->y, (float)white_xyz->z}; \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
+            ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
+            alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f32(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, &w_, tile_, sizeof(float), sizeof(float)); \
+            alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+
+/* -- Planar dual-dispatch: with extra typed param (int/enum) ---- */
+
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
+int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
+         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
+         extra_type extra_name, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out0, (float *)out1, (float *)out2, \
+                      (float const *)in0, (float const *)in1, (float const *)in2, \
+                      extra_name, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out0, (double *)out1, (double *)out2, \
+                      (double const *)in0, (double const *)in1, (double const *)in2, \
+                      extra_name, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
+            ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
+            alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f64(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, extra_name, tile_, sizeof(double), sizeof(double)); \
+            alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } else { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
+            ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
+            alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f32(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, extra_name, tile_, sizeof(float), sizeof(float)); \
+            alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+
+/* -- Planar dual-dispatch: with alwan_scalar param -------------- */
+
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
+int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
+         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
+         alwan_scalar param, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out0, (float *)out1, (float *)out2, \
+                      (float const *)in0, (float const *)in1, (float const *)in2, \
+                      (float)param, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out0, (double *)out1, (double *)out2, \
+                      (double const *)in0, (double const *)in1, (double const *)in2, \
+                      (double)param, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
+            ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
+            alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f64(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, (double)param, tile_, sizeof(double), sizeof(double)); \
+            alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } else { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
+            ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
+            alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f32(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, (float)param, tile_, sizeof(float), sizeof(float)); \
+            alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+
+/* -- Interleave dual-dispatch: basic 3-channel ------------------ */
+
+#define ALWAN_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
+int name(void *out, alwan_pixel_format out_fmt, \
+         void const *in, alwan_pixel_format in_fmt, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out, (float const *)in, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out, (double const *)in, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f64(obuf_, ibuf_, tile_, 3 * sizeof(double), 3 * sizeof(double)); \
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } else { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f32(obuf_, ibuf_, tile_, 3 * sizeof(float), 3 * sizeof(float)); \
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+
+/* -- Interleave dual-dispatch: with white_xyz ------------------- */
+
+#define ALWAN_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
+int name(void *out, alwan_pixel_format out_fmt, \
+         void const *in, alwan_pixel_format in_fmt, \
+         alwan_xyz const *white_xyz, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in || !out || !white_xyz || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) { \
+        alwan_xyz_f32 w_ = {(float)white_xyz->x, (float)white_xyz->y, (float)white_xyz->z}; \
+        return fn_f32((float *)out, (float const *)in, &w_, count, in_stride, out_stride); \
+    } \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) { \
+        alwan_xyz_f64 w_ = {(double)white_xyz->x, (double)white_xyz->y, (double)white_xyz->z}; \
+        return fn_f64((double *)out, (double const *)in, &w_, count, in_stride, out_stride); \
+    } \
+    if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) { \
+        alwan_xyz_f64 w_ = {(double)white_xyz->x, (double)white_xyz->y, (double)white_xyz->z}; \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f64(obuf_, ibuf_, &w_, tile_, 3 * sizeof(double), 3 * sizeof(double)); \
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } else { \
+        alwan_xyz_f32 w_ = {(float)white_xyz->x, (float)white_xyz->y, (float)white_xyz->z}; \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f32(obuf_, ibuf_, &w_, tile_, 3 * sizeof(float), 3 * sizeof(float)); \
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+
+/* -- Interleave dual-dispatch: with extra typed param (int/enum) */
+
+#define ALWAN_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
+int name(void *out, alwan_pixel_format out_fmt, \
+         void const *in, alwan_pixel_format in_fmt, \
+         extra_type extra_name, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out, (float const *)in, extra_name, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out, (double const *)in, extra_name, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f64(obuf_, ibuf_, extra_name, tile_, 3 * sizeof(double), 3 * sizeof(double)); \
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } else { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f32(obuf_, ibuf_, extra_name, tile_, 3 * sizeof(float), 3 * sizeof(float)); \
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+
+/* -- Interleave dual-dispatch: with alwan_scalar param ---------- */
+
+#define ALWAN_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
+int name(void *out, alwan_pixel_format out_fmt, \
+         void const *in, alwan_pixel_format in_fmt, \
+         alwan_scalar param, \
+         size_t count, size_t in_stride, size_t out_stride) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out, (float const *)in, (float)param, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out, (double const *)in, (double)param, count, in_stride, out_stride); \
+    if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f64(obuf_, ibuf_, (double)param, tile_, 3 * sizeof(double), 3 * sizeof(double)); \
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } else { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f32(obuf_, ibuf_, (float)param, tile_, 3 * sizeof(float), 3 * sizeof(float)); \
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+
+/* ================================================================
+ * Gamut map kernels (alwan_gamut_map.c) - dual precision
+ * ================================================================ */
+
+void alwan__gamut_clip_kernel_f32(float *c0, float *c1, float *c2, size_t n);
+void alwan__gamut_clip_kernel_f64(double *c0, double *c1, double *c2, size_t n);
+void alwan__css_gamut_map_kernel_f32(float *o0, float *o1, float *o2,
+                                      float const *i0, float const *i1, float const *i2, size_t n);
+void alwan__css_gamut_map_kernel_f64(double *o0, double *o1, double *o2,
+                                      double const *i0, double const *i1, double const *i2, size_t n);
+
+/* Backward-compatible aliases (compile-time selected) */
+#define alwan__gamut_clip_kernel      alwan__gamut_clip_kernel_f64
+#define alwan__css_gamut_map_kernel   alwan__css_gamut_map_kernel_f64
+
+/* Forward declarations for all _f32/_f64 map_planar / map_interleave variants */
+#include "alwan_map_fwd.h"
 
 #endif /* ALWAN_MAP_INTERNAL_H */

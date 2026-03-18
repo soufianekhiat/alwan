@@ -33,8 +33,8 @@ static int validate_space_descriptor(char const *name, alwan_rgb_space_desc cons
     /* Check that x + y <= 1 (valid chromaticity constraint)
      * Note: Some wide-gamut spaces may have x+y > 1 due to extended/imaginary primaries */
     for (int i = 0; i < 3; i++) {
-        alwan_scalar x = desc->primaries_xy[i * 2];
-        alwan_scalar y = desc->primaries_xy[i * 2 + 1];
+        alwan_f64 x = desc->primaries_xy[i * 2];
+        alwan_f64 y = desc->primaries_xy[i * 2 + 1];
         if (x + y > ALWAN_LITERAL(1.7)) {  /* Allow wide-gamut extended primaries */
             printf("[WARNING] %s: Primary[%d] x+y = %f > 1.7 (extended/imaginary primary)\n",
                     name, i, x + y);
@@ -42,8 +42,8 @@ static int validate_space_descriptor(char const *name, alwan_rgb_space_desc cons
         }
     }
 
-    alwan_scalar wx = desc->white_xy[0];
-    alwan_scalar wy = desc->white_xy[1];
+    alwan_f64 wx = desc->white_xy[0];
+    alwan_f64 wy = desc->white_xy[1];
     if (wx + wy > ALWAN_LITERAL(1.01)) {  /* White point should be valid */
         printf("[FAIL] %s: White point x+y = %f > 1\n",
                 name, wx + wy);
@@ -68,13 +68,13 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
     alwan_mat3_mul(&identity, &rgb_to_xyz, &xyz_to_rgb);
 
     /* Check diagonal is ~1 */
-    alwan_scalar diag_err = 0.0;
+    alwan_f64 diag_err = 0.0;
     diag_err += ALWAN_ABS(identity.m[0] - ALWAN_LITERAL(1.0));
     diag_err += ALWAN_ABS(identity.m[4] - ALWAN_LITERAL(1.0));
     diag_err += ALWAN_ABS(identity.m[8] - ALWAN_LITERAL(1.0));
 
     /* Check off-diagonal is ~0 */
-    alwan_scalar offdiag_err = 0.0;
+    alwan_f64 offdiag_err = 0.0;
     offdiag_err += ALWAN_ABS(identity.m[1]);
     offdiag_err += ALWAN_ABS(identity.m[2]);
     offdiag_err += ALWAN_ABS(identity.m[3]);
@@ -82,7 +82,7 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
     offdiag_err += ALWAN_ABS(identity.m[6]);
     offdiag_err += ALWAN_ABS(identity.m[7]);
 
-    alwan_scalar tol = ALWAN_TEST_TOLERANCE;
+    alwan_f64 tol = ALWAN_TEST_TOLERANCE;
 
     if (diag_err > tol || offdiag_err > tol) {
         printf("[FAIL] %s: Matrix inversion error too large (diag=%e, offdiag=%e)\n",
@@ -114,9 +114,9 @@ static int test_adobe_rgb_1998(void) {
                 "Adobe RGB 1998 matrix derivation failed");
 
     /* Adobe RGB 1998 should have D65 white point */
-    alwan_scalar d65_x = ALWAN_LITERAL(0.3127);
-    alwan_scalar d65_y = ALWAN_LITERAL(0.3290);
-    alwan_scalar white_err = ALWAN_ABS(desc.white_xy[0] - d65_x) + ALWAN_ABS(desc.white_xy[1] - d65_y);
+    alwan_f64 d65_x = ALWAN_LITERAL(0.3127);
+    alwan_f64 d65_y = ALWAN_LITERAL(0.3290);
+    alwan_f64 white_err = ALWAN_ABS(desc.white_xy[0] - d65_x) + ALWAN_ABS(desc.white_xy[1] - d65_y);
     TEST_ASSERT(white_err < ALWAN_TEST_TOLERANCE,
                 "Adobe RGB 1998 should have D65 white point");
 
@@ -151,9 +151,9 @@ static int test_prophoto_rgb(void) {
                 "ProPhoto RGB matrix derivation failed");
 
     /* ProPhoto RGB should have D50 white point */
-    alwan_scalar d50_x = ALWAN_LITERAL(0.3457);
-    alwan_scalar d50_y = ALWAN_LITERAL(0.3585);
-    alwan_scalar white_err = ALWAN_ABS(desc.white_xy[0] - d50_x) + ALWAN_ABS(desc.white_xy[1] - d50_y);
+    alwan_f64 d50_x = ALWAN_LITERAL(0.3457);
+    alwan_f64 d50_y = ALWAN_LITERAL(0.3585);
+    alwan_f64 white_err = ALWAN_ABS(desc.white_xy[0] - d50_x) + ALWAN_ABS(desc.white_xy[1] - d50_y);
     TEST_ASSERT(white_err < ALWAN_TEST_TOLERANCE,
                 "ProPhoto RGB should have D50 white point");
 

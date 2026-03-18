@@ -10,6 +10,17 @@
 #include "../core/alwan_rayleigh_core.h"
 #include <math.h>
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_rayleigh_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_rayleigh_impl.inc"
+#include "alwan_api_teardown.h"
+
 /* Initialize atmosphere parameters with defaults */
 void alwan_atmosphere_params_default(alwan_atmosphere_params *params)
 {
@@ -23,7 +34,7 @@ void alwan_atmosphere_params_default(alwan_atmosphere_params *params)
 }
 
 /* Rayleigh scattering cross section */
-alwan_scalar alwan_rayleigh_cross_section(alwan_scalar wavelength_nm,
+alwan_f64 alwan_rayleigh_cross_section(alwan_f64 wavelength_nm,
                                            alwan_atmosphere_params const *params)
 {
     alwan_atmosphere_params defaults;
@@ -32,13 +43,13 @@ alwan_scalar alwan_rayleigh_cross_section(alwan_scalar wavelength_nm,
         params = &defaults;
     }
 
-    return rayleigh_cross_section_v(wavelength_nm,
+    return rayleigh_cross_section_f64_v(wavelength_nm,
                                      params->CO2_concentration,
                                      params->temperature);
 }
 
 /* Rayleigh optical depth */
-alwan_scalar alwan_rayleigh_optical_depth(alwan_scalar wavelength_nm,
+alwan_f64 alwan_rayleigh_optical_depth(alwan_f64 wavelength_nm,
                                            alwan_atmosphere_params const *params)
 {
     alwan_atmosphere_params defaults;
@@ -47,7 +58,7 @@ alwan_scalar alwan_rayleigh_optical_depth(alwan_scalar wavelength_nm,
         params = &defaults;
     }
 
-    return rayleigh_optical_depth_v(wavelength_nm,
+    return rayleigh_optical_depth_f64_v(wavelength_nm,
                                      params->CO2_concentration,
                                      params->temperature,
                                      params->pressure,
@@ -56,12 +67,12 @@ alwan_scalar alwan_rayleigh_optical_depth(alwan_scalar wavelength_nm,
 }
 
 /* Rayleigh scattering spectral distribution */
-int alwan_rayleigh_spd(alwan_scalar wavelength_start, alwan_scalar wavelength_end,
-                        alwan_scalar wavelength_step,
+int alwan_rayleigh_spd(alwan_f64 wavelength_start, alwan_f64 wavelength_end,
+                        alwan_f64 wavelength_step,
                         alwan_atmosphere_params const *params,
-                        alwan_scalar *out, int *out_count)
+                        alwan_f64 *out, int *out_count)
 {
-    alwan_scalar wl;
+    alwan_f64 wl;
     int count = 0;
 
     if (!out || !out_count) {

@@ -17,7 +17,7 @@
 /* Test RGB input values */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const test_rgb_input[] = {
+static alwan_f64 const test_rgb_input[] = {
 #include "reference_values/aces_ff_test_rgb_input.csv"
 };
 ALWAN_DIAG_POP
@@ -30,7 +30,7 @@ ALWAN_DIAG_POP
 /* ACES RedMod03 output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const redmod03_expected[] = {
+static alwan_f64 const redmod03_expected[] = {
 #include "reference_values/aces_redmod03_output.csv"
 };
 ALWAN_DIAG_POP
@@ -38,7 +38,7 @@ ALWAN_DIAG_POP
 /* ACES RedMod10 output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const redmod10_expected[] = {
+static alwan_f64 const redmod10_expected[] = {
 #include "reference_values/aces_redmod10_output.csv"
 };
 ALWAN_DIAG_POP
@@ -46,7 +46,7 @@ ALWAN_DIAG_POP
 /* ACES Glow03 output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const glow03_expected[] = {
+static alwan_f64 const glow03_expected[] = {
 #include "reference_values/aces_glow03_output.csv"
 };
 ALWAN_DIAG_POP
@@ -54,7 +54,7 @@ ALWAN_DIAG_POP
 /* ACES Glow10 output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const glow10_expected[] = {
+static alwan_f64 const glow10_expected[] = {
 #include "reference_values/aces_glow10_output.csv"
 };
 ALWAN_DIAG_POP
@@ -62,7 +62,7 @@ ALWAN_DIAG_POP
 /* ACES DarkToDim10 output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const dark_to_dim10_expected[] = {
+static alwan_f64 const dark_to_dim10_expected[] = {
 #include "reference_values/aces_dark_to_dim10_output.csv"
 };
 ALWAN_DIAG_POP
@@ -70,7 +70,7 @@ ALWAN_DIAG_POP
 /* ACES GamutComp13 output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const gamut_comp13_expected[] = {
+static alwan_f64 const gamut_comp13_expected[] = {
 #include "reference_values/aces_gamut_comp13_output.csv"
 };
 ALWAN_DIAG_POP
@@ -78,7 +78,7 @@ ALWAN_DIAG_POP
 /* Rec2100 Surround output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const rec2100_surround_expected[] = {
+static alwan_f64 const rec2100_surround_expected[] = {
 #include "reference_values/rec2100_surround_output.csv"
 };
 ALWAN_DIAG_POP
@@ -86,7 +86,7 @@ ALWAN_DIAG_POP
 /* ACES TonescaleCompress20 output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const tonescale_compress20_expected[] = {
+static alwan_f64 const tonescale_compress20_expected[] = {
 #include "reference_values/aces_tonescale_compress20_output.csv"
 };
 ALWAN_DIAG_POP
@@ -94,7 +94,7 @@ ALWAN_DIAG_POP
 /* ACES RGB to JMh20 output */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const rgb_to_jmh20_expected[] = {
+static alwan_f64 const rgb_to_jmh20_expected[] = {
 #include "reference_values/aces_rgb_to_jmh20_output.csv"
 };
 ALWAN_DIAG_POP
@@ -114,11 +114,7 @@ static int test_aces_redmod03(void) {
         };
         alwan_rgb rgb_out;
 
-        int result = alwan_aces_redmod03(&rgb_out, &rgb_in);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_aces_redmod03 returned error %d\n", result);
-            return 1;
-        }
+        alwan_aces_redmod03(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RedMod03 [%zu] R", i);
@@ -144,11 +140,7 @@ static int test_aces_redmod10(void) {
         };
         alwan_rgb rgb_out;
 
-        int result = alwan_aces_redmod10(&rgb_out, &rgb_in);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_aces_redmod10 returned error %d\n", result);
-            return 1;
-        }
+        alwan_aces_redmod10(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RedMod10 [%zu] R", i);
@@ -174,11 +166,7 @@ static int test_aces_glow03(void) {
         };
         alwan_rgb rgb_out;
 
-        int result = alwan_aces_glow03(&rgb_out, &rgb_in);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_aces_glow03 returned error %d\n", result);
-            return 1;
-        }
+        alwan_aces_glow03(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Glow03 [%zu] R", i);
@@ -204,11 +192,7 @@ static int test_aces_glow10(void) {
         };
         alwan_rgb rgb_out;
 
-        int result = alwan_aces_glow10(&rgb_out, &rgb_in);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_aces_glow10 returned error %d\n", result);
-            return 1;
-        }
+        alwan_aces_glow10(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Glow10 [%zu] R", i);
@@ -234,11 +218,7 @@ static int test_aces_dark_to_dim10(void) {
         };
         alwan_rgb rgb_out;
 
-        int result = alwan_aces_dark_to_dim10(&rgb_out, &rgb_in);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_aces_dark_to_dim10 returned error %d\n", result);
-            return 1;
-        }
+        alwan_aces_dark_to_dim10(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "DarkToDim10 [%zu] R", i);
@@ -268,11 +248,7 @@ static int test_aces_gamut_comp13(void) {
         };
         alwan_rgb rgb_out;
 
-        int result = alwan_aces_gamut_comp13(&rgb_out, &rgb_in, &params);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_aces_gamut_comp13 returned error %d\n", result);
-            return 1;
-        }
+        alwan_aces_gamut_comp13(&rgb_out, &rgb_in, &params);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "GamutComp13 [%zu] R", i);
@@ -291,7 +267,7 @@ static int test_rec2100_surround(void) {
     printf("  Testing Rec2100 Surround...\n");
 
     /* Use standard gamma for dim surround */
-    alwan_scalar gamma = 0.78;
+    alwan_f64 gamma = 0.78;
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
         alwan_rgb rgb_in = {
@@ -301,11 +277,7 @@ static int test_rec2100_surround(void) {
         };
         alwan_rgb rgb_out;
 
-        int result = alwan_rec2100_surround(&rgb_out, &rgb_in, gamma);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_rec2100_surround returned error %d\n", result);
-            return 1;
-        }
+        alwan_rec2100_surround(&rgb_out, &rgb_in, gamma);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Rec2100_Surround [%zu] R", i);
@@ -324,7 +296,7 @@ static int test_aces_tonescale_compress20(void) {
     printf("  Testing ACES TonescaleCompress20...\n");
 
     /* Use 1000 nits peak luminance */
-    alwan_scalar peak_luminance = 1000.0;
+    alwan_f64 peak_luminance = 1000.0;
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
         alwan_rgb rgb_in = {
@@ -334,11 +306,7 @@ static int test_aces_tonescale_compress20(void) {
         };
         alwan_rgb rgb_out;
 
-        int result = alwan_aces_tonescale_compress20(&rgb_out, &rgb_in, peak_luminance);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_aces_tonescale_compress20 returned error %d\n", result);
-            return 1;
-        }
+        alwan_aces_tonescale_compress20(&rgb_out, &rgb_in, peak_luminance);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "TonescaleCompress20 [%zu] R", i);
@@ -368,11 +336,7 @@ static int test_aces_rgb_to_jmh20(void) {
         };
         alwan_vec3 jmh_out;
 
-        int result = alwan_aces_rgb_to_jmh20(&jmh_out, &rgb_in, &primaries);
-        if (result != ALWAN_OK) {
-            printf("FAIL: alwan_aces_rgb_to_jmh20 returned error %d\n", result);
-            return 1;
-        }
+        alwan_aces_rgb_to_jmh20(&jmh_out, &rgb_in, &primaries);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] J", i);

@@ -13,10 +13,10 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_scalar mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
-    alwan_scalar max_diff = 0;
+static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
+    alwan_f64 max_diff = 0;
     for (int i = 0; i < 9; i++) {
-        alwan_scalar diff = ALWAN_ABS(a->m[i] - b->m[i]);
+        alwan_f64 diff = ALWAN_ABS(a->m[i] - b->m[i]);
         if (diff > max_diff) max_diff = diff;
     }
     return max_diff;
@@ -43,7 +43,7 @@ static int test_identity(void) {
 
     /* I * I = I */
     alwan_mat3_mul(&result, &I, &I);
-    alwan_scalar diff = mat3_max_diff(&I, &result);
+    alwan_f64 diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "I * I != I");
 
     TEST_PASS("test_identity");
@@ -57,7 +57,7 @@ static int test_multiply(void) {
     alwan_mat3_identity(&I);
     alwan_mat3_mul(&result, &A, &I);
 
-    alwan_scalar diff = mat3_max_diff(&A, &result);
+    alwan_f64 diff = mat3_max_diff(&A, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "A * I != A");
 
     TEST_PASS("test_multiply");
@@ -71,7 +71,7 @@ static int test_inverse_identity(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed to invert identity matrix");
 
     /* I^-1 should be I */
-    alwan_scalar diff = mat3_max_diff(&I, &I_inv);
+    alwan_f64 diff = mat3_max_diff(&I, &I_inv);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "I^-1 != I");
 
     /* I * I^-1 = I */
@@ -98,7 +98,7 @@ static int test_inverse_general(void) {
 
     /* M * M^-1 should equal I */
     alwan_mat3_mul(&result, &M, &M_inv);
-    alwan_scalar diff = mat3_max_diff(&I, &result);
+    alwan_f64 diff = mat3_max_diff(&I, &result);
 
     if (diff > ALWAN_TEST_TOLERANCE) {
         mat3_print("M", &M);
@@ -138,7 +138,7 @@ static int test_inverse_random_seed(void) {
 
         /* Generate random matrix with reasonable values */
         for (int i = 0; i < 9; i++) {
-            M.m[i] = (alwan_scalar)(rand() % 100 - 50) / ALWAN_LITERAL(10.0);
+            M.m[i] = (alwan_f64)(rand() % 100 - 50) / ALWAN_LITERAL(10.0);
         }
 
         /* Ensure it's not singular by adding to diagonal */
@@ -153,9 +153,9 @@ static int test_inverse_random_seed(void) {
 
         /* M * M^-1 = I */
         alwan_mat3_mul(&result, &M, &M_inv);
-        alwan_scalar diff = mat3_max_diff(&I, &result);
+        alwan_f64 diff = mat3_max_diff(&I, &result);
 
-        alwan_scalar random_tolerance = ALWAN_TEST_TOLERANCE;
+        alwan_f64 random_tolerance = ALWAN_TEST_TOLERANCE;
         if (diff > random_tolerance) {
             printf("Trial %d failed with diff %e\n", trial, diff);
             mat3_print("M", &M);

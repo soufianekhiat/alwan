@@ -13,19 +13,8 @@ include(CTest) # provides BUILD_TESTING
 include(CheckCCompilerFlag)
 
 option(ALWAN_EMBED_DATA "Embed CSV datasets into the library binary" ON)
-option(ALWAN_SCALAR_IS_FLOAT "Use float (f32) instead of double (f64)" OFF)
 option(ALWAN_ENABLE_WARNINGS "Enable compiler warnings" ON)
-
-# f64 builds are strict by default, f32 builds are permissive by default.
-set(_ALWAN_WARNINGS_AS_ERRORS_DEFAULT ON)
-if(ALWAN_SCALAR_IS_FLOAT)
-  set(_ALWAN_WARNINGS_AS_ERRORS_DEFAULT OFF)
-endif()
-option(
-  ALWAN_WARNINGS_AS_ERRORS
-  "Treat warnings as errors (default: ON for f64, OFF for f32)"
-  ${_ALWAN_WARNINGS_AS_ERRORS_DEFAULT}
-)
+option(ALWAN_WARNINGS_AS_ERRORS "Treat warnings as errors" ON)
 
 option(ALWAN_DISABLE_STRICT_ALIASING "Compile with -fno-strict-aliasing on GCC/Clang" ON)
 set(ALWAN_SIMD_ARCH "" CACHE STRING "SIMD instruction set: SSE2, AVX, AVX2, or native (empty = compiler default)")
@@ -38,11 +27,6 @@ set(ALWAN_DEBUG_PREFIX "" CACHE STRING "Debug prefix for output names (e.g. 'dbg
 
 if(NOT ALWAN_EMBED_DATA)
   message(FATAL_ERROR "ALWAN_EMBED_DATA=OFF is not supported in this repository (runtime loader removed).")
-endif()
-
-set(_ALWAN_SCALAR_IS_FLOAT_VALUE 0)
-if(ALWAN_SCALAR_IS_FLOAT)
-  set(_ALWAN_SCALAR_IS_FLOAT_VALUE 1)
 endif()
 
 set(_ALWAN_EMBED_DATA_VALUE 1)
@@ -141,7 +125,6 @@ target_include_directories(
 target_compile_definitions(
   alwan
   PUBLIC
-    ALWAN_SCALAR_IS_FLOAT=${_ALWAN_SCALAR_IS_FLOAT_VALUE}
     ALWAN_EMBED_DATA=${_ALWAN_EMBED_DATA_VALUE}
 )
 

@@ -32,11 +32,7 @@ static int test_failed = 0;
  * Looser than ALWAN_TEST_TOLERANCE — suitable for multi-step pipelines
  * (LUT sampling, video encode/decode, CLF roundtrips) where accumulated
  * floating-point error is expected. */
-#if ALWAN_SCALAR_IS_FLOAT
-#  define TEST_REL_EPSILON ALWAN_LITERAL(1e-5)
-#else
-#  define TEST_REL_EPSILON ALWAN_LITERAL(1e-10)
-#endif
+#define TEST_REL_EPSILON ALWAN_LITERAL(1e-10)
 
 /* ============================================================================
  * SIMD tolerance
@@ -46,21 +42,13 @@ static int test_failed = 0;
  * rounding from scalar evaluation.  This tolerance accepts those
  * differences while still validating algorithmic correctness.
  * ============================================================================ */
-#if ALWAN_SCALAR_IS_FLOAT
-#  define ALWAN_SIMD_TOLERANCE ALWAN_LITERAL(5e-3)
-#else
-#  define ALWAN_SIMD_TOLERANCE ALWAN_LITERAL(1e-8)
-#endif
+#define ALWAN_SIMD_TOLERANCE ALWAN_LITERAL(1e-8)
 
 /* PQ (perceptual quantizer) transfer functions have extremely steep curves
  * that amplify tiny SIMD rounding differences by orders of magnitude,
  * especially near zero.  This wider tolerance is for colorspaces that use
  * PQ internally (HDR IPT, HDR CIELAB, ICtCp, JzAzBz, IgPgTg). */
-#if ALWAN_SCALAR_IS_FLOAT
-#  define ALWAN_SIMD_PQ_TOLERANCE ALWAN_LITERAL(5e-2)
-#else
-#  define ALWAN_SIMD_PQ_TOLERANCE ALWAN_LITERAL(1e-6)
-#endif
+#define ALWAN_SIMD_PQ_TOLERANCE ALWAN_LITERAL(1e-6)
 
 /* ============================================================================
  * Minimum pixel count for SIMD coverage
@@ -94,9 +82,13 @@ static int test_failed = 0;
     return 1; \
 } while(0)
 
+/* Tracks the last test started — captured by the runner when a suite fails. */
+extern char g_current_test[256];
+
 /* Print test name at start */
 #define TEST_START(name) do { \
     printf("  TEST: %s\n", name); \
+    snprintf(g_current_test, sizeof(g_current_test), "%s", name); \
     TEST_COUNT_INCR(); \
 } while(0)
 

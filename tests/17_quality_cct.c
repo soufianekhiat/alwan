@@ -14,7 +14,7 @@ static int test_cct_mccamy(void) {
     /* Load test cases: x, y, expected_cct */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "data/fixtures/cct_test_cases.csv"
     };
     ALWAN_DIAG_POP
@@ -24,12 +24,12 @@ static int test_cct_mccamy(void) {
         alwan_vec2 xy;
         xy.v[0] = test_data[i * 3 + 0];
         xy.v[1] = test_data[i * 3 + 1];
-        alwan_scalar expected_cct = test_data[i * 3 + 2];
+        alwan_f64 expected_cct = test_data[i * 3 + 2];
 
-        alwan_scalar cct = alwan_cct_mccamy_xy(&xy);
+        alwan_f64 cct = alwan_cct_mccamy_xy(&xy);
         TEST_ASSERT(cct > 0, "McCamy CCT should be positive");
 
-        alwan_scalar rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
+        alwan_f64 rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
 
         if (rel_err > ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: xy=[%.5f, %.5f]\n", i, xy.v[0], xy.v[1]);
@@ -49,7 +49,7 @@ static int test_cct_robertson(void) {
     /* Load test cases: x, y, expected_cct (Robertson 1968 reference) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "data/fixtures/cct_robertson_test_cases.csv"
     };
     ALWAN_DIAG_POP
@@ -59,12 +59,12 @@ static int test_cct_robertson(void) {
         alwan_vec2 xy;
         xy.v[0] = test_data[i * 3 + 0];
         xy.v[1] = test_data[i * 3 + 1];
-        alwan_scalar expected_cct = test_data[i * 3 + 2];
+        alwan_f64 expected_cct = test_data[i * 3 + 2];
 
-        alwan_scalar cct = alwan_cct_robertson_xy(&xy);
+        alwan_f64 cct = alwan_cct_robertson_xy(&xy);
         TEST_ASSERT(cct > 0, "Robertson CCT should be positive");
 
-        alwan_scalar rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
+        alwan_f64 rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
 
         if (rel_err > ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: xy=[%.5f, %.5f]\n", i, xy.v[0], xy.v[1]);
@@ -84,7 +84,7 @@ static int test_cri(void) {
     /* CRI calculation is complex and requires full spectral data
      * For now, just verify the API doesn't crash */
     alwan_ctx *ctx = alwan_create(NULL);
-    alwan_scalar result = alwan_cri_ra(ctx, NULL);
+    alwan_f64 result = alwan_cri_ra(ctx, NULL);
     TEST_ASSERT(result < 0, "CRI should return error for NULL SPD input");
 
     result = alwan_cri_ra(NULL, NULL);

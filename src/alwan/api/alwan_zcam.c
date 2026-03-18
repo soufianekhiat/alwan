@@ -15,13 +15,24 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_zcam_core.h"
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_zcam_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_zcam_impl.inc"
+#include "alwan_api_teardown.h"
+
 /* ----------------------------------------------------------------
  * Surround Enum Resolution (kept in the .c wrapper)
  * ---------------------------------------------------------------- */
 
 static void get_zcam_surround_params(alwan_zcam_surround surround,
-                                     alwan_scalar *Fs, alwan_scalar *c,
-                                     alwan_scalar *Nc, alwan_scalar *F) {
+                                     alwan_f64 *Fs, alwan_f64 *c,
+                                     alwan_f64 *Nc, alwan_f64 *F) {
     switch (surround) {
         case ALWAN_ZCAM_SURROUND_AVERAGE:
             *Fs = ALWAN_LITERAL(1.0);
@@ -62,11 +73,11 @@ int alwan_zcam_forward(alwan_zcam_correlates *out,
     }
 
     /* Resolve surround enum to scalar parameters */
-    alwan_scalar Fs, c, Nc, F;
+    alwan_f64 Fs, c, Nc, F;
     get_zcam_surround_params(vc->surround, &Fs, &c, &Nc, &F);
 
     /* Delegate to value-returning core */
-    alwan_zcam_v_correlates v = alwan_zcam_forward_v(
+    alwan_zcam_v_correlates_f64 v = alwan_zcam_forward_f64_v(
         *xyz, vc->xyz_w,
         Fs, c, Nc, F,
         vc->La, vc->Yb, vc->xyz_w.y);
@@ -102,11 +113,11 @@ int alwan_zcam_inverse(alwan_xyz *xyz,
     ALWAN_DENORM_ZCAM(&tmp);
 
     /* Resolve surround enum to scalar parameters */
-    alwan_scalar Fs, c, Nc, F;
+    alwan_f64 Fs, c, Nc, F;
     get_zcam_surround_params(vc->surround, &Fs, &c, &Nc, &F);
 
     /* Build value-type correlates from public struct */
-    alwan_zcam_v_correlates v;
+    alwan_zcam_v_correlates_f64 v;
     v.Jz = tmp.Jz;
     v.Cz = tmp.Cz;
     v.hz = tmp.hz;
@@ -118,7 +129,7 @@ int alwan_zcam_inverse(alwan_xyz *xyz,
     v.Wz = tmp.Wz;
 
     /* Delegate to value-returning core */
-    *xyz = alwan_zcam_inverse_v(
+    *xyz = alwan_zcam_inverse_f64_v(
         v, vc->xyz_w,
         Fs, c, Nc, F,
         vc->La, vc->Yb, vc->xyz_w.y);
@@ -141,7 +152,7 @@ int alwan_zcam_to_ucs(alwan_jzazbz *Jab_out,
     ALWAN_DENORM_ZCAM(&tmp);
 
     /* Build value-type correlates (only Jz, Mz, hz needed) */
-    alwan_zcam_v_correlates v;
+    alwan_zcam_v_correlates_f64 v;
     v.Jz = tmp.Jz;
     v.Mz = tmp.Mz;
     v.hz = tmp.hz;
@@ -153,7 +164,7 @@ int alwan_zcam_to_ucs(alwan_jzazbz *Jab_out,
     v.Wz = ALWAN_LITERAL(0.0);
 
     /* Delegate to value-returning core */
-    *Jab_out = alwan_zcam_to_ucs_v(v);
+    *Jab_out = alwan_zcam_to_ucs_f64_v(v);
 
     return 0;
 }

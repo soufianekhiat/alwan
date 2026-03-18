@@ -13,7 +13,7 @@
  * Format: 13 values per row */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const test_data[] = {
+static alwan_f64 const test_data[] = {
 #include "reference_values/llab.csv"
 };
 ALWAN_DIAG_POP
@@ -26,12 +26,12 @@ static void get_test_case(
     alwan_xyz *xyz_in,
     alwan_xyz *xyz_0,
     alwan_xyz *xyz_r,
-    alwan_scalar *Y_b,
+    alwan_f64 *Y_b,
     int *surround,
-    alwan_scalar *L_expected,
-    alwan_scalar *Ch_expected,
-    alwan_scalar *h_expected,
-    alwan_scalar *s_expected
+    alwan_f64 *L_expected,
+    alwan_f64 *Ch_expected,
+    alwan_f64 *h_expected,
+    alwan_f64 *s_expected
 ) {
     size_t offset = index * 13;
     xyz_in->x = test_data[offset + 0];
@@ -59,13 +59,13 @@ static int test_llab_forward(void) {
     printf("\n=== Testing LLAB Forward Transform ===\n");
 
     int failed = 0;
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_test_cases; i++) {
         alwan_xyz xyz_in, xyz_0, xyz_r;
-        alwan_scalar Y_b;
+        alwan_f64 Y_b;
         int surround;
-        alwan_scalar L_expected, Ch_expected, h_expected, s_expected;
+        alwan_f64 L_expected, Ch_expected, h_expected, s_expected;
 
         get_test_case(i, &xyz_in, &xyz_0, &xyz_r, &Y_b, &surround,
                      &L_expected, &Ch_expected, &h_expected, &s_expected);
@@ -88,8 +88,8 @@ static int test_llab_forward(void) {
         }
 
         /* Check results with tolerance */
-        alwan_scalar L_error = ALWAN_ABS(result.L - L_expected);
-        alwan_scalar Ch_error = ALWAN_ABS(result.Ch - Ch_expected);
+        alwan_f64 L_error = ALWAN_ABS(result.L - L_expected);
+        alwan_f64 Ch_error = ALWAN_ABS(result.Ch - Ch_expected);
 
         if (L_error > tolerance || Ch_error > tolerance) {
             printf("  Test %zu: FAILED\n", i + 1);
@@ -204,7 +204,7 @@ static int test_llab_achromatic(void) {
 
     int failed = 0;
     /* Achromatic chroma tolerance */
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     /* D65 illuminant */
     alwan_xyz d65;
@@ -221,7 +221,7 @@ static int test_llab_achromatic(void) {
     vc.D_factor = -1;
 
     /* Test grays from black to white */
-    alwan_scalar const gray_values[] = {
+    alwan_f64 const gray_values[] = {
         ALWAN_LITERAL(0.1), ALWAN_LITERAL(5.0), ALWAN_LITERAL(20.0),
         ALWAN_LITERAL(50.0), ALWAN_LITERAL(80.0), ALWAN_LITERAL(95.05)
     };
@@ -229,9 +229,9 @@ static int test_llab_achromatic(void) {
 
     printf("  Testing %zu gray levels:\n", num_grays);
 
-    alwan_scalar prev_L = ALWAN_LITERAL(0.0);
+    alwan_f64 prev_L = ALWAN_LITERAL(0.0);
     for (size_t i = 0; i < num_grays; i++) {
-        alwan_scalar gray = gray_values[i];
+        alwan_f64 gray = gray_values[i];
         alwan_xyz xyz;
         xyz.x = gray;
         xyz.y = gray;

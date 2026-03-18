@@ -14,10 +14,13 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_osa_ucs_core.h"
 
-void alwan_xyz_to_osa_ucs(alwan_osa_ucs *osa_ucs, alwan_xyz const *xyz) {
-    *osa_ucs = alwan_xyz_to_osa_ucs_v(*xyz);
-}
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_osa_ucs_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
 
-void alwan_osa_ucs_to_xyz(alwan_xyz *xyz, alwan_osa_ucs const *osa_ucs) {
-    *xyz = alwan_osa_ucs_to_xyz_v(*osa_ucs);
-}
+#include "alwan_api_f64_setup.h"
+#include "alwan_osa_ucs_impl.inc"
+#include "alwan_api_teardown.h"

@@ -14,10 +14,10 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
-    alwan_scalar max_diff = 0;
+static alwan_f64 vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
+    alwan_f64 max_diff = 0;
     for (int i = 0; i < 3; i++) {
-        alwan_scalar diff = ALWAN_ABS(a->v[i] - b->v[i]);
+        alwan_f64 diff = ALWAN_ABS(a->v[i] - b->v[i]);
         if (diff > max_diff) max_diff = diff;
     }
     return max_diff;
@@ -35,16 +35,16 @@ static int test_xyz_xyy_roundtrip(void) {
     /* Load XYZ test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const xyz_data[] = {
+    static alwan_f64 const xyz_data[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const xyy_data[] = {
+    static alwan_f64 const xyy_data[] = {
 #include "reference_values/xyz_to_xyy.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -62,7 +62,7 @@ static int test_xyz_xyy_roundtrip(void) {
         alwan_vec3 xyy_vec, xyy_expected_vec;
         ALWAN_MEMCPY(&xyy_vec, &xyy, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&xyy_expected_vec, &xyy_expected, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&xyy_vec, &xyy_expected_vec);
+        alwan_f64 diff_forward = vec3_max_diff(&xyy_vec, &xyy_expected_vec);
         if (diff_forward >= tolerance) {
             printf("Test %d: diff=%e (tol=%e)\n", i, diff_forward, tolerance);
             vec3_print("  Computed", &xyy_vec);
@@ -76,7 +76,7 @@ static int test_xyz_xyy_roundtrip(void) {
         alwan_vec3 xyz_vec, xyz_roundtrip_vec;
         ALWAN_MEMCPY(&xyz_vec, &xyz, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&xyz_roundtrip_vec, &xyz_roundtrip, sizeof(alwan_vec3));
-        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
+        alwan_f64 diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "xyY->XYZ round-trip mismatch");
     }
 
@@ -87,13 +87,13 @@ static int test_xyz_lab_d65_roundtrip(void) {
     /* Load white point and test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const xyz_data[] = {
+    static alwan_f64 const xyz_data[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const lab_data[] = {
+    static alwan_f64 const lab_data[] = {
 #include "reference_values/xyz_to_lab_d65.csv"
     };
     ALWAN_DIAG_POP
@@ -103,8 +103,8 @@ static int test_xyz_lab_d65_roundtrip(void) {
     white_xyz.y = d65_xyz_data[1];
     white_xyz.z = d65_xyz_data[2];
 
-    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -122,7 +122,7 @@ static int test_xyz_lab_d65_roundtrip(void) {
         alwan_vec3 lab_vec, lab_expected_vec;
         ALWAN_MEMCPY(&lab_vec, &lab, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&lab_expected_vec, &lab_expected, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&lab_vec, &lab_expected_vec);
+        alwan_f64 diff_forward = vec3_max_diff(&lab_vec, &lab_expected_vec);
         if (diff_forward >= tolerance) {
             printf("Lab D65 test %d: diff=%e (tol=%e)\n", i, diff_forward, tolerance);
             vec3_print("  Computed", &lab_vec);
@@ -136,7 +136,7 @@ static int test_xyz_lab_d65_roundtrip(void) {
         alwan_vec3 xyz_vec, xyz_roundtrip_vec;
         ALWAN_MEMCPY(&xyz_vec, &xyz, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&xyz_roundtrip_vec, &xyz_roundtrip, sizeof(alwan_vec3));
-        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
+        alwan_f64 diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "Lab->XYZ round-trip mismatch (D65)");
     }
 
@@ -147,13 +147,13 @@ static int test_xyz_lab_d50_roundtrip(void) {
     /* Load white point and test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
-    static alwan_scalar const xyz_data[] = {
+    static alwan_f64 const xyz_data[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const lab_data[] = {
+    static alwan_f64 const lab_data[] = {
 #include "reference_values/xyz_to_lab_d50.csv"
     };
     ALWAN_DIAG_POP
@@ -163,8 +163,8 @@ static int test_xyz_lab_d50_roundtrip(void) {
     white_xyz.y = d50_xyz_data[1];
     white_xyz.z = d50_xyz_data[2];
 
-    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -182,7 +182,7 @@ static int test_xyz_lab_d50_roundtrip(void) {
         alwan_vec3 lab_vec, lab_expected_vec;
         ALWAN_MEMCPY(&lab_vec, &lab, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&lab_expected_vec, &lab_expected, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&lab_vec, &lab_expected_vec);
+        alwan_f64 diff_forward = vec3_max_diff(&lab_vec, &lab_expected_vec);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->Lab mismatch (D50)");
 
         /* Lab -> XYZ (round-trip) */
@@ -191,7 +191,7 @@ static int test_xyz_lab_d50_roundtrip(void) {
         alwan_vec3 xyz_vec, xyz_roundtrip_vec;
         ALWAN_MEMCPY(&xyz_vec, &xyz, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&xyz_roundtrip_vec, &xyz_roundtrip, sizeof(alwan_vec3));
-        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
+        alwan_f64 diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "Lab->XYZ round-trip mismatch (D50)");
     }
 
@@ -202,13 +202,13 @@ static int test_xyz_luv_d65_roundtrip(void) {
     /* Load white point and test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const xyz_data[] = {
+    static alwan_f64 const xyz_data[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const luv_data[] = {
+    static alwan_f64 const luv_data[] = {
 #include "reference_values/xyz_to_luv_d65.csv"
     };
     ALWAN_DIAG_POP
@@ -218,8 +218,8 @@ static int test_xyz_luv_d65_roundtrip(void) {
     white_xyz.y = d65_xyz_data[1];
     white_xyz.z = d65_xyz_data[2];
 
-    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(xyz_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_xyz xyz;
@@ -237,7 +237,7 @@ static int test_xyz_luv_d65_roundtrip(void) {
         alwan_vec3 luv_vec, luv_expected_vec;
         ALWAN_MEMCPY(&luv_vec, &luv, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&luv_expected_vec, &luv_expected, sizeof(alwan_vec3));
-        alwan_scalar diff_forward = vec3_max_diff(&luv_vec, &luv_expected_vec);
+        alwan_f64 diff_forward = vec3_max_diff(&luv_vec, &luv_expected_vec);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->Luv mismatch (D65)");
 
         /* Luv -> XYZ (round-trip) */
@@ -246,7 +246,7 @@ static int test_xyz_luv_d65_roundtrip(void) {
         alwan_vec3 xyz_vec, xyz_roundtrip_vec;
         ALWAN_MEMCPY(&xyz_vec, &xyz, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&xyz_roundtrip_vec, &xyz_roundtrip, sizeof(alwan_vec3));
-        alwan_scalar diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
+        alwan_f64 diff_roundtrip = vec3_max_diff(&xyz_vec, &xyz_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "Luv->XYZ round-trip mismatch (D65)");
     }
 
@@ -257,16 +257,16 @@ static int test_lab_lch_roundtrip(void) {
     /* Load Lab and LCh test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const lab_data[] = {
+    static alwan_f64 const lab_data[] = {
 #include "reference_values/xyz_to_lab_d65.csv"
     };
-    static alwan_scalar const lch_data[] = {
+    static alwan_f64 const lch_data[] = {
 #include "reference_values/lab_to_lch.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(lab_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab;
@@ -283,14 +283,14 @@ static int test_lab_lch_roundtrip(void) {
         alwan_lab_to_lch(&lch, &lab);
 
         /* For achromatic colors (C ~= 0), hue is undefined - only check L and C */
-        alwan_scalar L_err = ALWAN_ABS(lch.L - lch_expected.L);
-        alwan_scalar C_err = ALWAN_ABS(lch.C - lch_expected.C);
+        alwan_f64 L_err = ALWAN_ABS(lch.L - lch_expected.L);
+        alwan_f64 C_err = ALWAN_ABS(lch.C - lch_expected.C);
         TEST_ASSERT(L_err < tolerance, "Lab->LCh L mismatch");
         TEST_ASSERT(C_err < tolerance, "Lab->LCh C mismatch");
 
         /* Only check hue for chromatic colors */
         if (lch.C > ALWAN_LITERAL(1.0)) {
-            alwan_scalar h_err = ALWAN_ABS(lch.h - lch_expected.h);
+            alwan_f64 h_err = ALWAN_ABS(lch.h - lch_expected.h);
             /* Handle hue wraparound */
             if (h_err > ALWAN_LITERAL(180.0)) {
                 h_err = ALWAN_LITERAL(360.0) - h_err;
@@ -304,7 +304,7 @@ static int test_lab_lch_roundtrip(void) {
         alwan_vec3 lab_vec, lab_roundtrip_vec;
         ALWAN_MEMCPY(&lab_vec, &lab, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&lab_roundtrip_vec, &lab_roundtrip, sizeof(alwan_vec3));
-        alwan_scalar diff_roundtrip = vec3_max_diff(&lab_vec, &lab_roundtrip_vec);
+        alwan_f64 diff_roundtrip = vec3_max_diff(&lab_vec, &lab_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "LCh->Lab round-trip mismatch");
     }
 
@@ -315,16 +315,16 @@ static int test_luv_lchuv_roundtrip(void) {
     /* Load Luv and LCh(uv) test values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const luv_data[] = {
+    static alwan_f64 const luv_data[] = {
 #include "reference_values/xyz_to_luv_d65.csv"
     };
-    static alwan_scalar const lchuv_data[] = {
+    static alwan_f64 const lchuv_data[] = {
 #include "reference_values/luv_to_lchuv.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(luv_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(luv_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_luv luv;
@@ -341,14 +341,14 @@ static int test_luv_lchuv_roundtrip(void) {
         alwan_luv_to_lchuv(&lchuv, &luv);
 
         /* For achromatic colors (C ~= 0), hue is undefined - only check L and C */
-        alwan_scalar L_err = ALWAN_ABS(lchuv.L - lchuv_expected.L);
-        alwan_scalar C_err = ALWAN_ABS(lchuv.C - lchuv_expected.C);
+        alwan_f64 L_err = ALWAN_ABS(lchuv.L - lchuv_expected.L);
+        alwan_f64 C_err = ALWAN_ABS(lchuv.C - lchuv_expected.C);
         TEST_ASSERT(L_err < tolerance, "Luv->LChuv L mismatch");
         TEST_ASSERT(C_err < tolerance, "Luv->LChuv C mismatch");
 
         /* Only check hue for chromatic colors */
         if (lchuv.C > ALWAN_LITERAL(1.0)) {
-            alwan_scalar h_err = ALWAN_ABS(lchuv.h - lchuv_expected.h);
+            alwan_f64 h_err = ALWAN_ABS(lchuv.h - lchuv_expected.h);
             /* Handle hue wraparound */
             if (h_err > ALWAN_LITERAL(180.0)) {
                 h_err = ALWAN_LITERAL(360.0) - h_err;
@@ -362,7 +362,7 @@ static int test_luv_lchuv_roundtrip(void) {
         alwan_vec3 luv_vec, luv_roundtrip_vec;
         ALWAN_MEMCPY(&luv_vec, &luv, sizeof(alwan_vec3));
         ALWAN_MEMCPY(&luv_roundtrip_vec, &luv_roundtrip, sizeof(alwan_vec3));
-        alwan_scalar diff_roundtrip = vec3_max_diff(&luv_vec, &luv_roundtrip_vec);
+        alwan_f64 diff_roundtrip = vec3_max_diff(&luv_vec, &luv_roundtrip_vec);
         TEST_ASSERT(diff_roundtrip < tolerance, "LCh(uv)->Luv round-trip mismatch");
     }
 

@@ -14,10 +14,10 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_scalar vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
-    alwan_scalar max_diff = 0;
+static alwan_f64 vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
+    alwan_f64 max_diff = 0;
     for (int i = 0; i < 3; i++) {
-        alwan_scalar diff = ALWAN_ABS(a->v[i] - b->v[i]);
+        alwan_f64 diff = ALWAN_ABS(a->v[i] - b->v[i]);
         if (diff > max_diff) max_diff = diff;
     }
     return max_diff;
@@ -35,16 +35,16 @@ static int test_adapt_d65_to_d50_bradford(void) {
     /* Load white points and test colors */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
-    static alwan_scalar const test_colors_data[] = {
+    static alwan_f64 const test_colors_data[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const expected_adapted_data[] = {
+    static alwan_f64 const expected_adapted_data[] = {
 #include "reference_values/adapted_d65_to_d50_bradford.csv"
     };
     ALWAN_DIAG_POP
@@ -52,8 +52,8 @@ static int test_adapt_d65_to_d50_bradford(void) {
     alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
     alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
-    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 input_xyz = {{test_colors_data[i * 3 + 0],
@@ -69,11 +69,11 @@ static int test_adapt_d65_to_d50_bradford(void) {
                                      &d65_xyz, &d50_xyz,
                                      ALWAN_CAT_BRADFORD,
                                      input_xyz.v, 1,
-                                     3 * sizeof(alwan_scalar),
-                                     3 * sizeof(alwan_scalar));
+                                     3 * sizeof(alwan_f64),
+                                     3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Adaptation failed");
 
-        alwan_scalar diff = vec3_max_diff(&adapted, &expected);
+        alwan_f64 diff = vec3_max_diff(&adapted, &expected);
         if (diff >= tolerance) {
             printf("Test %d: diff=%e (tol=%e)\n", i, diff, tolerance);
             vec3_print("  Input", &input_xyz);
@@ -90,16 +90,16 @@ static int test_adapt_a_to_d65_bradford(void) {
     /* Load white points and test colors */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const a_xyz_data[] = {
+    static alwan_f64 const a_xyz_data[] = {
 #include "reference_values/a_xyz.csv"
     };
-    static alwan_scalar const test_colors_data[] = {
+    static alwan_f64 const test_colors_data[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
-    static alwan_scalar const expected_adapted_data[] = {
+    static alwan_f64 const expected_adapted_data[] = {
 #include "reference_values/adapted_a_to_d65_bradford.csv"
     };
     ALWAN_DIAG_POP
@@ -107,8 +107,8 @@ static int test_adapt_a_to_d65_bradford(void) {
     alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
     alwan_xyz a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
 
-    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 input_xyz = {{test_colors_data[i * 3 + 0],
@@ -124,11 +124,11 @@ static int test_adapt_a_to_d65_bradford(void) {
                                      &a_xyz, &d65_xyz,
                                      ALWAN_CAT_BRADFORD,
                                      input_xyz.v, 1,
-                                     3 * sizeof(alwan_scalar),
-                                     3 * sizeof(alwan_scalar));
+                                     3 * sizeof(alwan_f64),
+                                     3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Adaptation failed");
 
-        alwan_scalar diff = vec3_max_diff(&adapted, &expected);
+        alwan_f64 diff = vec3_max_diff(&adapted, &expected);
         TEST_ASSERT(diff < tolerance, "A->D65 adaptation mismatch");
     }
 
@@ -139,13 +139,13 @@ static int test_roundtrip_d65_d50_d65(void) {
     /* Load white points */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
-    static alwan_scalar const test_colors_data[] = {
+    static alwan_f64 const test_colors_data[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
     ALWAN_DIAG_POP
@@ -153,8 +153,8 @@ static int test_roundtrip_d65_d50_d65(void) {
     alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
     alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
-    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_vec3 original = {{test_colors_data[i * 3 + 0],
@@ -167,8 +167,8 @@ static int test_roundtrip_d65_d50_d65(void) {
                                      &d65_xyz, &d50_xyz,
                                      ALWAN_CAT_BRADFORD,
                                      original.v, 1,
-                                     3 * sizeof(alwan_scalar),
-                                     3 * sizeof(alwan_scalar));
+                                     3 * sizeof(alwan_f64),
+                                     3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "D65->D50 adaptation failed");
 
         /* D50 -> D65 (back) */
@@ -177,11 +177,11 @@ static int test_roundtrip_d65_d50_d65(void) {
                                  &d50_xyz, &d65_xyz,
                                  ALWAN_CAT_BRADFORD,
                                  adapted_to_d50.v, 1,
-                                 3 * sizeof(alwan_scalar),
-                                 3 * sizeof(alwan_scalar));
+                                 3 * sizeof(alwan_f64),
+                                 3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "D50->D65 adaptation failed");
 
-        alwan_scalar diff = vec3_max_diff(&original, &roundtrip);
+        alwan_f64 diff = vec3_max_diff(&original, &roundtrip);
         if (diff >= tolerance) {
             printf("Round-trip test %d: diff=%e (tol=%e)\n", i, diff, tolerance);
             vec3_print("  Original", &original);
@@ -197,10 +197,10 @@ static int test_roundtrip_all_methods(void) {
     /* Load white points */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
     ALWAN_DIAG_POP
@@ -211,7 +211,7 @@ static int test_roundtrip_all_methods(void) {
     /* Test color: sRGB red in D65 */
     alwan_vec3 original = {{ALWAN_LITERAL(0.412456), ALWAN_LITERAL(0.212673), ALWAN_LITERAL(0.019334)}};
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     /* Test all methods */
     alwan_cat_method methods[] = {
@@ -234,8 +234,8 @@ static int test_roundtrip_all_methods(void) {
                                      &d65_xyz, &d50_xyz,
                                      methods[m],
                                      original.v, 1,
-                                     3 * sizeof(alwan_scalar),
-                                     3 * sizeof(alwan_scalar));
+                                     3 * sizeof(alwan_f64),
+                                     3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Forward adaptation failed");
 
         /* Backward */
@@ -244,11 +244,11 @@ static int test_roundtrip_all_methods(void) {
                                  &d50_xyz, &d65_xyz,
                                  methods[m],
                                  adapted.v, 1,
-                                 3 * sizeof(alwan_scalar),
-                                 3 * sizeof(alwan_scalar));
+                                 3 * sizeof(alwan_f64),
+                                 3 * sizeof(alwan_f64));
         TEST_ASSERT(status == ALWAN_OK, "Backward adaptation failed");
 
-        alwan_scalar diff = vec3_max_diff(&original, &roundtrip);
+        alwan_f64 diff = vec3_max_diff(&original, &roundtrip);
         if (diff >= tolerance) {
             printf("Round-trip %s: diff=%e (tol=%e)\n", method_names[m], diff, tolerance);
             vec3_print("  Original", &original);

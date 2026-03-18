@@ -13,7 +13,7 @@
  * Format: 12 values per row (3+3+1+1+1+3) = 12 scalars per test case */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const test_data[] = {
+static alwan_f64 const test_data[] = {
 #include "reference_values/hellwig2022.csv"
 };
 ALWAN_DIAG_POP
@@ -22,8 +22,8 @@ static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 
 
 /* Helper to extract test case from flat array */
 static void get_test_case(size_t index, alwan_xyz *xyz_in, alwan_xyz *xyz_w,
-                          alwan_scalar *La, alwan_scalar *Yb, int *surround_idx,
-                          alwan_scalar *J_expected, alwan_scalar *C_expected, alwan_scalar *h_expected) {
+                          alwan_f64 *La, alwan_f64 *Yb, int *surround_idx,
+                          alwan_f64 *J_expected, alwan_f64 *C_expected, alwan_f64 *h_expected) {
     size_t offset = index * 12;
     xyz_in->x = test_data[offset + 0];
     xyz_in->y = test_data[offset + 1];
@@ -44,7 +44,7 @@ static int test_hellwig2022_forward(void) {
     /* Test forward transform for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
         alwan_xyz xyz_in, xyz_w;
-        alwan_scalar La, Yb, J_expected, C_expected, h_expected;
+        alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
 
@@ -62,9 +62,9 @@ static int test_hellwig2022_forward(void) {
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
-        alwan_scalar J_err = ALWAN_ABS(corr.J - J_expected);
-        alwan_scalar C_err = ALWAN_ABS(corr.C - C_expected);
-        alwan_scalar h_err = ALWAN_ABS(corr.h - h_expected);
+        alwan_f64 J_err = ALWAN_ABS(corr.J - J_expected);
+        alwan_f64 C_err = ALWAN_ABS(corr.C - C_expected);
+        alwan_f64 h_err = ALWAN_ABS(corr.h - h_expected);
 
         /* Handle hue wraparound (360° = 0°) */
         if (h_err > ALWAN_LITERAL(180.0)) {
@@ -101,7 +101,7 @@ static int test_hellwig2022_inverse(void) {
     /* Test inverse transform for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
         alwan_xyz xyz_in, xyz_w;
-        alwan_scalar La, Yb, J_expected, C_expected, h_expected;
+        alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
 
@@ -125,9 +125,9 @@ static int test_hellwig2022_inverse(void) {
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against input values */
-        alwan_scalar X_err = ALWAN_ABS(xyz_out.x - xyz_in.x);
-        alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
-        alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
+        alwan_f64 X_err = ALWAN_ABS(xyz_out.x - xyz_in.x);
+        alwan_f64 Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
+        alwan_f64 Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
         if (X_err >= ALWAN_TEST_TOLERANCE || Y_err >= ALWAN_TEST_TOLERANCE || Z_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: XYZ errors = [%.10e, %.10e, %.10e]\n",
@@ -152,7 +152,7 @@ static int test_hellwig2022_roundtrip(void) {
     /* Test round-trip for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
         alwan_xyz xyz_in, xyz_w;
-        alwan_scalar La, Yb, J_expected, C_expected, h_expected;
+        alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
 
@@ -175,9 +175,9 @@ static int test_hellwig2022_roundtrip(void) {
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
-        alwan_scalar X_err = ALWAN_ABS(xyz_out.x - xyz_in.x);
-        alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
-        alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
+        alwan_f64 X_err = ALWAN_ABS(xyz_out.x - xyz_in.x);
+        alwan_f64 Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
+        alwan_f64 Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
         if (X_err >= ALWAN_TEST_TOLERANCE || Y_err >= ALWAN_TEST_TOLERANCE || Z_err >= ALWAN_TEST_TOLERANCE) {
             printf("  Test %zu: Round-trip XYZ errors = [%.10e, %.10e, %.10e]\n",

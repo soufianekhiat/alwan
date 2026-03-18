@@ -11,7 +11,7 @@
 static int test_xyz_oklab_round_trip(void) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "reference_values/test_xyz_oklab_pairs.csv"
     };
 ALWAN_DIAG_POP
@@ -39,7 +39,7 @@ ALWAN_DIAG_POP
         }
 
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(oklab_computed.v[j] - oklab_expected.v[j]);
+            alwan_f64 diff = ALWAN_ABS(oklab_computed.v[j] - oklab_expected.v[j]);
             if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
@@ -62,10 +62,10 @@ ALWAN_DIAG_POP
             ALWAN_MEMCPY(&xyz_out, &xyz_typed, sizeof(alwan_vec3));
         }
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(xyz_out.v[j] - xyz_in.v[j]);
+            alwan_f64 diff = ALWAN_ABS(xyz_out.v[j] - xyz_in.v[j]);
             if (diff > roundtrip_tol) {
                 printf("Round-trip color %zu channel %d failed:\n", i, j);
                 printf("  Original XYZ: [%.6f, %.6f, %.6f]\n",
@@ -89,7 +89,7 @@ ALWAN_DIAG_POP
 static int test_oklab_oklch_round_trip(void) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "reference_values/test_oklab_oklch_pairs.csv"
     };
 ALWAN_DIAG_POP
@@ -117,8 +117,8 @@ ALWAN_DIAG_POP
         }
 
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(oklch_computed.v[j] - oklch_expected.v[j]);
-            alwan_scalar tol = ALWAN_TEST_TOLERANCE;
+            alwan_f64 diff = ALWAN_ABS(oklch_computed.v[j] - oklch_expected.v[j]);
+            alwan_f64 tol = ALWAN_TEST_TOLERANCE;
             if (diff > tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  Oklab: [%.6f, %.6f, %.6f]\n",
@@ -142,7 +142,7 @@ ALWAN_DIAG_POP
         }
 
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(oklab_out.v[j] - oklab_in.v[j]);
+            alwan_f64 diff = ALWAN_ABS(oklab_out.v[j] - oklab_in.v[j]);
             if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("Round-trip color %zu channel %d failed:\n", i, j);
                 printf("  Original Oklab: [%.6f, %.6f, %.6f]\n",
@@ -164,7 +164,7 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 static int test_oklab_known_values(void) {
-    alwan_scalar const tol = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tol = ALWAN_TEST_TOLERANCE;
 
     /* D65 white in Oklab: reference values computed from the Oklab M1/M2 matrices.
      * Note: Oklab matrices are designed for sRGB (1,1,1) -> L=1; an arbitrary D65

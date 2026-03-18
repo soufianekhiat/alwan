@@ -16,7 +16,7 @@
 /* Wavelengths in nm */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar wavelengths_nm[] = {
+static const alwan_f64 wavelengths_nm[] = {
 #include "reference_values/rayleigh_wavelengths_nm.csv"
 };
 ALWAN_DIAG_POP
@@ -25,7 +25,7 @@ ALWAN_DIAG_POP
 /* Cross section with default params (cm^2) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_cross_section_default[] = {
+static const alwan_f64 ref_cross_section_default[] = {
 #include "reference_values/rayleigh_cross_section_default.csv"
 };
 ALWAN_DIAG_POP
@@ -33,7 +33,7 @@ ALWAN_DIAG_POP
 /* Optical depth with default params */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_optical_depth_default[] = {
+static const alwan_f64 ref_optical_depth_default[] = {
 #include "reference_values/rayleigh_optical_depth_default.csv"
 };
 ALWAN_DIAG_POP
@@ -41,7 +41,7 @@ ALWAN_DIAG_POP
 /* CO2 concentration levels */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar co2_levels[] = {
+static const alwan_f64 co2_levels[] = {
 #include "reference_values/rayleigh_co2_levels.csv"
 };
 ALWAN_DIAG_POP
@@ -50,7 +50,7 @@ ALWAN_DIAG_POP
 /* Cross section at 555nm for different CO2 levels */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_cross_section_co2_555nm[] = {
+static const alwan_f64 ref_cross_section_co2_555nm[] = {
 #include "reference_values/rayleigh_cross_section_co2_555nm.csv"
 };
 ALWAN_DIAG_POP
@@ -58,7 +58,7 @@ ALWAN_DIAG_POP
 /* Pressure levels (Pa) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar pressures[] = {
+static const alwan_f64 pressures[] = {
 #include "reference_values/rayleigh_pressures.csv"
 };
 ALWAN_DIAG_POP
@@ -67,7 +67,7 @@ ALWAN_DIAG_POP
 /* Optical depth at 555nm for different pressures */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_optical_depth_pressure_555nm[] = {
+static const alwan_f64 ref_optical_depth_pressure_555nm[] = {
 #include "reference_values/rayleigh_optical_depth_pressure_555nm.csv"
 };
 ALWAN_DIAG_POP
@@ -75,7 +75,7 @@ ALWAN_DIAG_POP
 /* Latitudes (degrees) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar latitudes[] = {
+static const alwan_f64 latitudes[] = {
 #include "reference_values/rayleigh_latitudes.csv"
 };
 ALWAN_DIAG_POP
@@ -84,7 +84,7 @@ ALWAN_DIAG_POP
 /* Optical depth at 555nm for different latitudes */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_optical_depth_latitude_555nm[] = {
+static const alwan_f64 ref_optical_depth_latitude_555nm[] = {
 #include "reference_values/rayleigh_optical_depth_latitude_555nm.csv"
 };
 ALWAN_DIAG_POP
@@ -92,7 +92,7 @@ ALWAN_DIAG_POP
 /* Altitudes (meters) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar altitudes[] = {
+static const alwan_f64 altitudes[] = {
 #include "reference_values/rayleigh_altitudes.csv"
 };
 ALWAN_DIAG_POP
@@ -101,7 +101,7 @@ ALWAN_DIAG_POP
 /* Optical depth at 555nm for different altitudes */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_optical_depth_altitude_555nm[] = {
+static const alwan_f64 ref_optical_depth_altitude_555nm[] = {
 #include "reference_values/rayleigh_optical_depth_altitude_555nm.csv"
 };
 ALWAN_DIAG_POP
@@ -109,7 +109,7 @@ ALWAN_DIAG_POP
 /* Combined parameter test results */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_optical_depth_combined[] = {
+static const alwan_f64 ref_optical_depth_combined[] = {
 #include "reference_values/rayleigh_optical_depth_combined.csv"
 };
 ALWAN_DIAG_POP
@@ -117,7 +117,7 @@ ALWAN_DIAG_POP
 /* Combined params: lat, alt pairs (Paris, Denver, high altitude) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar combined_params[] = {
+static const alwan_f64 combined_params[] = {
 #include "reference_values/rayleigh_combined_params.csv"
 };
 ALWAN_DIAG_POP
@@ -125,7 +125,7 @@ ALWAN_DIAG_POP
 /* SPD parameters: start, end, step */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar spd_params[] = {
+static const alwan_f64 spd_params[] = {
 #include "reference_values/rayleigh_spd_params.csv"
 };
 ALWAN_DIAG_POP
@@ -133,7 +133,7 @@ ALWAN_DIAG_POP
 /* SPD reference values */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_scalar ref_spd_default[] = {
+static const alwan_f64 ref_spd_default[] = {
 #include "reference_values/rayleigh_spd_default.csv"
 };
 ALWAN_DIAG_POP
@@ -170,7 +170,7 @@ static int test_cross_section_default(void)
     printf("  TEST: Cross section with default parameters\n");
 
     for (size_t i = 0; i < NUM_WAVELENGTHS; i++) {
-        alwan_scalar sigma = alwan_rayleigh_cross_section(wavelengths_nm[i], NULL);
+        alwan_f64 sigma = alwan_rayleigh_cross_section(wavelengths_nm[i], NULL);
         char msg[64];
         sprintf(msg, "Cross section at %.0f nm", wavelengths_nm[i]);
         TEST_ASSERT_REL(sigma, ref_cross_section_default[i], ALWAN_TEST_TOLERANCE, msg);
@@ -188,7 +188,7 @@ static int test_cross_section_co2(void)
 
     for (size_t i = 0; i < NUM_CO2_LEVELS; i++) {
         params.CO2_concentration = co2_levels[i];
-        alwan_scalar sigma = alwan_rayleigh_cross_section(555.0, &params);
+        alwan_f64 sigma = alwan_rayleigh_cross_section(555.0, &params);
         char msg[64];
         sprintf(msg, "Cross section at CO2 = %.0f ppm", co2_levels[i]);
         TEST_ASSERT_REL(sigma, ref_cross_section_co2_555nm[i], ALWAN_TEST_TOLERANCE, msg);
@@ -202,7 +202,7 @@ static int test_optical_depth_default(void)
     printf("  TEST: Optical depth with default parameters\n");
 
     for (size_t i = 0; i < NUM_WAVELENGTHS; i++) {
-        alwan_scalar depth = alwan_rayleigh_optical_depth(wavelengths_nm[i], NULL);
+        alwan_f64 depth = alwan_rayleigh_optical_depth(wavelengths_nm[i], NULL);
         char msg[64];
         sprintf(msg, "Optical depth at %.0f nm", wavelengths_nm[i]);
         TEST_ASSERT_REL(depth, ref_optical_depth_default[i], ALWAN_TEST_TOLERANCE, msg);
@@ -220,7 +220,7 @@ static int test_optical_depth_pressure(void)
 
     for (size_t i = 0; i < NUM_PRESSURES; i++) {
         params.pressure = pressures[i];
-        alwan_scalar depth = alwan_rayleigh_optical_depth(555.0, &params);
+        alwan_f64 depth = alwan_rayleigh_optical_depth(555.0, &params);
         char msg[64];
         sprintf(msg, "Optical depth at P = %.0f Pa", pressures[i]);
         TEST_ASSERT_REL(depth, ref_optical_depth_pressure_555nm[i], ALWAN_TEST_TOLERANCE, msg);
@@ -238,7 +238,7 @@ static int test_optical_depth_latitude(void)
 
     for (size_t i = 0; i < NUM_LATITUDES; i++) {
         params.latitude = latitudes[i];
-        alwan_scalar depth = alwan_rayleigh_optical_depth(555.0, &params);
+        alwan_f64 depth = alwan_rayleigh_optical_depth(555.0, &params);
         char msg[64];
         sprintf(msg, "Optical depth at lat = %.0f deg", latitudes[i]);
         TEST_ASSERT_REL(depth, ref_optical_depth_latitude_555nm[i], ALWAN_TEST_TOLERANCE, msg);
@@ -256,7 +256,7 @@ static int test_optical_depth_altitude(void)
 
     for (size_t i = 0; i < NUM_ALTITUDES; i++) {
         params.altitude = altitudes[i];
-        alwan_scalar depth = alwan_rayleigh_optical_depth(555.0, &params);
+        alwan_f64 depth = alwan_rayleigh_optical_depth(555.0, &params);
         char msg[64];
         sprintf(msg, "Optical depth at alt = %.0f m", altitudes[i]);
         TEST_ASSERT_REL(depth, ref_optical_depth_altitude_555nm[i], ALWAN_TEST_TOLERANCE, msg);
@@ -276,7 +276,7 @@ static int test_optical_depth_combined(void)
     for (int i = 0; i < 3; i++) {
         params.latitude = combined_params[i * 2];
         params.altitude = combined_params[i * 2 + 1];
-        alwan_scalar depth = alwan_rayleigh_optical_depth(555.0, &params);
+        alwan_f64 depth = alwan_rayleigh_optical_depth(555.0, &params);
         char msg[64];
         sprintf(msg, "Optical depth at %s", locations[i]);
         TEST_ASSERT_REL(depth, ref_optical_depth_combined[i], ALWAN_TEST_TOLERANCE, msg);
@@ -289,13 +289,13 @@ static int test_spd(void)
 {
     printf("  TEST: Spectral distribution generation\n");
 
-    alwan_scalar out[100];
+    alwan_f64 out[100];
     int out_count;
 
     int status = alwan_rayleigh_spd(
-        (alwan_scalar)spd_params[0],  /* start */
-        (alwan_scalar)spd_params[1],  /* end */
-        (alwan_scalar)spd_params[2],  /* step */
+        (alwan_f64)spd_params[0],  /* start */
+        (alwan_f64)spd_params[1],  /* end */
+        (alwan_f64)spd_params[2],  /* step */
         NULL,
         out,
         &out_count
@@ -317,7 +317,7 @@ static int test_spd_error_handling(void)
 {
     printf("  TEST: SPD error handling\n");
 
-    alwan_scalar out[100];
+    alwan_f64 out[100];
     int out_count;
     int status;
 

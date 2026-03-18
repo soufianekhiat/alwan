@@ -9,47 +9,23 @@
 #include "../core/alwan_math_core.h"
 #include <string.h>
 
-/* ----------------------------------------------------------------
- * 3x3 Matrix Operations
- * Matrix layout (row-major): [m00 m01 m02 m10 m11 m12 m20 m21 m22]
- * Index: m->m[row*3 + col]
- * ---------------------------------------------------------------- */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_math_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
 
-void alwan_mat3_identity(alwan_mat3x3 *out) {
-    *out = alwan_mat3_identity_v();
-}
-
-void alwan_mat3_mul(alwan_mat3x3 *out, alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
-    *out = alwan_mat3_mul_v(*a, *b);
-}
-
-void alwan_mat3_mulv(alwan_vec3 *out, alwan_mat3x3 const *m, alwan_vec3 const *v) {
-    *out = alwan_mat3_mulv_v(*m, *v);
-}
-
-alwan_scalar alwan_mat3_det(alwan_mat3x3 const *m) {
-    return alwan_mat3_det_v(*m);
-}
-
-/* ----------------------------------------------------------------
- * 3x3 Matrix Inversion
- * ---------------------------------------------------------------- */
-
-int alwan_mat3_inv(alwan_mat3x3 *out, alwan_mat3x3 const *m) {
-    alwan_scalar det = alwan_mat3_det_v(*m);
-    if (ALWAN_ABS(det) < ALWAN_EPSILON) {
-        return ALWAN_E_RANGE;
-    }
-    *out = alwan_mat3_inv_v(*m);
-    return ALWAN_OK;
-}
+#include "alwan_api_f64_setup.h"
+#include "alwan_math_impl.inc"
+#include "alwan_api_teardown.h"
 
 /* ================================================================
  * Advanced Mathematical & Utility Functions
  * ================================================================ */
 
 /* Find interval index for x in sorted array x_in */
-static size_t find_interval(alwan_scalar const *x_in, size_t count, alwan_scalar x) {
+static size_t find_interval(alwan_f64 const *x_in, size_t count, alwan_f64 x) {
     if (x <= x_in[0]) return 0;
     if (x >= x_in[count - 1]) return count - 2;
 
@@ -67,23 +43,23 @@ static size_t find_interval(alwan_scalar const *x_in, size_t count, alwan_scalar
 }
 
 /* Lanczos kernel */
-static alwan_scalar lanczos_kernel(alwan_scalar x, int a) {
-    return alwan_lanczos_kernel_v(x, (alwan_scalar)a);
+static alwan_f64 lanczos_kernel(alwan_f64 x, int a) {
+    return alwan_lanczos_kernel_f64_v(x, (alwan_f64)a);
 }
 
 /* ----------------------------------------------------------------
  * Advanced Interpolation Methods
  * ---------------------------------------------------------------- */
 
-int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t count_in,
-                       alwan_scalar const *x_out, alwan_scalar *y_out, size_t count_out,
+int alwan_interpolate(alwan_f64 const *x_in, alwan_f64 const *y_in, size_t count_in,
+                       alwan_f64 const *x_out, alwan_f64 *y_out, size_t count_out,
                        alwan_interp_method method) {
     if (!x_in || !y_in || !x_out || !y_out || count_in < 2 || count_out == 0) {
         return ALWAN_E_RANGE;
     }
 
     for (size_t i = 0; i < count_out; i++) {
-        alwan_scalar x = x_out[i];
+        alwan_f64 x = x_out[i];
 
         /* Handle boundary cases */
         if (x <= x_in[0]) {
@@ -96,9 +72,9 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
         }
 
         size_t idx = find_interval(x_in, count_in, x);
-        alwan_scalar x0 = x_in[idx];
-        alwan_scalar x1 = x_in[idx + 1];
-        alwan_scalar t = (x - x0) / (x1 - x0);
+        alwan_f64 x0 = x_in[idx];
+        alwan_f64 x1 = x_in[idx + 1];
+        alwan_f64 t = (x - x0) / (x1 - x0);
 
         switch (method) {
             case ALWAN_INTERP_LINEAR: {
@@ -109,28 +85,28 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
 
             case ALWAN_INTERP_CUBIC: {
                 /* Catmull-Rom cubic spline */
-                alwan_scalar y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
-                alwan_scalar y1 = y_in[idx];
-                alwan_scalar y2 = y_in[idx + 1];
-                alwan_scalar y3 = (idx + 2 < count_in) ? y_in[idx + 2] : y_in[idx + 1];
+                alwan_f64 y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
+                alwan_f64 y1 = y_in[idx];
+                alwan_f64 y2 = y_in[idx + 1];
+                alwan_f64 y3 = (idx + 2 < count_in) ? y_in[idx + 2] : y_in[idx + 1];
 
-                y_out[i] = alwan_catmull_rom_v(y0, y1, y2, y3, t);
+                y_out[i] = alwan_catmull_rom_f64_v(y0, y1, y2, y3, t);
                 break;
             }
 
             case ALWAN_INTERP_LANCZOS: {
                 /* Lanczos interpolation (a=3) */
                 const int a = 3;
-                alwan_scalar sum = 0.0;
-                alwan_scalar weight_sum = 0.0;
+                alwan_f64 sum = 0.0;
+                alwan_f64 weight_sum = 0.0;
 
                 for (int j = -a + 1; j <= a; j++) {
                     int k = (int)idx + j;
                     if (k < 0 || k >= (int)count_in) continue;
 
-                    alwan_scalar dx = x - x_in[k];
-                    alwan_scalar normalized_dx = dx / (x1 - x0);
-                    alwan_scalar weight = lanczos_kernel(normalized_dx, a);
+                    alwan_f64 dx = x - x_in[k];
+                    alwan_f64 normalized_dx = dx / (x1 - x0);
+                    alwan_f64 weight = lanczos_kernel(normalized_dx, a);
 
                     sum += y_in[k] * weight;
                     weight_sum += weight;
@@ -144,15 +120,15 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                 /* Sprague 5th order interpolation (for smooth spectra) */
                 if (count_in < 6) {
                     /* Fall back to cubic */
-                    alwan_scalar y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
-                    alwan_scalar y1 = y_in[idx];
-                    alwan_scalar y2 = y_in[idx + 1];
-                    alwan_scalar y3 = (idx + 2 < count_in) ? y_in[idx + 2] : y_in[idx + 1];
+                    alwan_f64 y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
+                    alwan_f64 y1 = y_in[idx];
+                    alwan_f64 y2 = y_in[idx + 1];
+                    alwan_f64 y3 = (idx + 2 < count_in) ? y_in[idx + 2] : y_in[idx + 1];
 
-                    y_out[i] = alwan_catmull_rom_v(y0, y1, y2, y3, t);
+                    y_out[i] = alwan_catmull_rom_f64_v(y0, y1, y2, y3, t);
                 } else {
                     /* Sprague coefficients for 6 points */
-                    alwan_scalar y[6];
+                    alwan_f64 y[6];
                     for (int j = 0; j < 6; j++) {
                         int k = (int)idx + j - 2;
                         if (k < 0) k = 0;
@@ -161,10 +137,10 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                     }
 
                     /* Sprague formula */
-                    alwan_scalar t2 = t * t;
-                    alwan_scalar t3 = t2 * t;
-                    alwan_scalar t4 = t3 * t;
-                    alwan_scalar t5 = t4 * t;
+                    alwan_f64 t2 = t * t;
+                    alwan_f64 t3 = t2 * t;
+                    alwan_f64 t4 = t3 * t;
+                    alwan_f64 t5 = t4 * t;
 
                     y_out[i] =
                         y[2] +
@@ -179,8 +155,8 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
 
             case ALWAN_INTERP_LAGRANGE: {
                 /* Lagrange polynomial interpolation (3rd order) */
-                alwan_scalar y[4];
-                alwan_scalar x_vals[4];
+                alwan_f64 y[4];
+                alwan_f64 x_vals[4];
 
                 int start = (int)idx - 1;
                 if (start < 0) start = 0;
@@ -191,9 +167,9 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                     x_vals[j] = x_in[start + j];
                 }
 
-                alwan_scalar result = 0.0;
+                alwan_f64 result = 0.0;
                 for (int j = 0; j < 4; j++) {
-                    alwan_scalar term = y[j];
+                    alwan_f64 term = y[j];
                     for (int k = 0; k < 4; k++) {
                         if (j != k) {
                             term *= (x - x_vals[k]) / (x_vals[j] - x_vals[k]);
@@ -213,7 +189,7 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                     y_out[i] = y_in[idx] * (ALWAN_LITERAL(1.0) - t) + y_in[idx + 1] * t;
                 } else {
                     /* Calculate slopes */
-                    alwan_scalar m[5];
+                    alwan_f64 m[5];
                     for (int j = -2; j <= 2; j++) {
                         int k = (int)idx + j;
                         if (k < 0) k = 0;
@@ -222,21 +198,21 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                     }
 
                     /* Akima weights */
-                    alwan_scalar w1 = ALWAN_ABS(m[3] - m[2]);
-                    alwan_scalar w2 = ALWAN_ABS(m[1] - m[0]);
-                    alwan_scalar slope = (w1 + w2 > 0.0) ?
+                    alwan_f64 w1 = ALWAN_ABS(m[3] - m[2]);
+                    alwan_f64 w2 = ALWAN_ABS(m[1] - m[0]);
+                    alwan_f64 slope = (w1 + w2 > 0.0) ?
                         ((w1 * m[1] + w2 * m[3]) / (w1 + w2)) :
                         (ALWAN_LITERAL(0.5) * (m[1] + m[3]));
 
                     /* Hermite interpolation */
-                    alwan_scalar y1 = y_in[idx];
-                    alwan_scalar y2 = y_in[idx + 1];
-                    alwan_scalar dx = x1 - x0;
+                    alwan_f64 y1 = y_in[idx];
+                    alwan_f64 y2 = y_in[idx + 1];
+                    alwan_f64 dx = x1 - x0;
 
-                    alwan_scalar h00 = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(2.0) * t) * (ALWAN_LITERAL(1.0) - t) * (ALWAN_LITERAL(1.0) - t);
-                    alwan_scalar h10 = t * (ALWAN_LITERAL(1.0) - t) * (ALWAN_LITERAL(1.0) - t);
-                    alwan_scalar h01 = t * t * (ALWAN_LITERAL(3.0) - ALWAN_LITERAL(2.0) * t);
-                    alwan_scalar h11 = t * t * (t - ALWAN_LITERAL(1.0));
+                    alwan_f64 h00 = (ALWAN_LITERAL(1.0) + ALWAN_LITERAL(2.0) * t) * (ALWAN_LITERAL(1.0) - t) * (ALWAN_LITERAL(1.0) - t);
+                    alwan_f64 h10 = t * (ALWAN_LITERAL(1.0) - t) * (ALWAN_LITERAL(1.0) - t);
+                    alwan_f64 h01 = t * t * (ALWAN_LITERAL(3.0) - ALWAN_LITERAL(2.0) * t);
+                    alwan_f64 h11 = t * t * (t - ALWAN_LITERAL(1.0));
 
                     y_out[i] = h00 * y1 + h10 * dx * slope + h01 * y2 + h11 * dx * slope;
                 }
@@ -255,15 +231,15 @@ int alwan_interpolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
  * Enhanced Extrapolation Methods
  * ---------------------------------------------------------------- */
 
-int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t count_in,
-                       alwan_scalar const *x_out, alwan_scalar *y_out, size_t count_out,
+int alwan_extrapolate(alwan_f64 const *x_in, alwan_f64 const *y_in, size_t count_in,
+                       alwan_f64 const *x_out, alwan_f64 *y_out, size_t count_out,
                        alwan_extrap_method method) {
     if (!x_in || !y_in || !x_out || !y_out || count_in < 2 || count_out == 0) {
         return ALWAN_E_RANGE;
     }
 
     for (size_t i = 0; i < count_out; i++) {
-        alwan_scalar x = x_out[i];
+        alwan_f64 x = x_out[i];
         int extrapolating = 0;
         int use_left = 0;
 
@@ -278,7 +254,7 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
         if (!extrapolating) {
             /* Within bounds, use linear interpolation */
             size_t idx = find_interval(x_in, count_in, x);
-            alwan_scalar t = (x - x_in[idx]) / (x_in[idx + 1] - x_in[idx]);
+            alwan_f64 t = (x - x_in[idx]) / (x_in[idx + 1] - x_in[idx]);
             y_out[i] = y_in[idx] * (ALWAN_LITERAL(1.0) - t) + y_in[idx + 1] * t;
             continue;
         }
@@ -293,10 +269,10 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
             case ALWAN_EXTRAP_LINEAR: {
                 /* Linear extrapolation */
                 if (use_left) {
-                    alwan_scalar slope = (y_in[1] - y_in[0]) / (x_in[1] - x_in[0]);
+                    alwan_f64 slope = (y_in[1] - y_in[0]) / (x_in[1] - x_in[0]);
                     y_out[i] = y_in[0] + slope * (x - x_in[0]);
                 } else {
-                    alwan_scalar slope = (y_in[count_in - 1] - y_in[count_in - 2]) /
+                    alwan_f64 slope = (y_in[count_in - 1] - y_in[count_in - 2]) /
                                         (x_in[count_in - 1] - x_in[count_in - 2]);
                     y_out[i] = y_in[count_in - 1] + slope * (x - x_in[count_in - 1]);
                 }
@@ -308,16 +284,16 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                 if (count_in < 3) {
                     /* Fall back to linear */
                     if (use_left) {
-                        alwan_scalar slope = (y_in[1] - y_in[0]) / (x_in[1] - x_in[0]);
+                        alwan_f64 slope = (y_in[1] - y_in[0]) / (x_in[1] - x_in[0]);
                         y_out[i] = y_in[0] + slope * (x - x_in[0]);
                     } else {
-                        alwan_scalar slope = (y_in[count_in - 1] - y_in[count_in - 2]) /
+                        alwan_f64 slope = (y_in[count_in - 1] - y_in[count_in - 2]) /
                                             (x_in[count_in - 1] - x_in[count_in - 2]);
                         y_out[i] = y_in[count_in - 1] + slope * (x - x_in[count_in - 1]);
                     }
                 } else {
                     /* Use 3 boundary points for quadratic fit */
-                    alwan_scalar x0, x1, x2, y0, y1, y2;
+                    alwan_f64 x0, x1, x2, y0, y1, y2;
                     if (use_left) {
                         x0 = x_in[0]; y0 = y_in[0];
                         x1 = x_in[1]; y1 = y_in[1];
@@ -340,16 +316,16 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
                 /* Exponential decay (for SPDs) */
                 if (use_left) {
                     if (y_in[0] > 0.0 && y_in[1] > 0.0) {
-                        alwan_scalar ratio = y_in[1] / y_in[0];
-                        alwan_scalar lambda = ALWAN_LN(ratio) / (x_in[1] - x_in[0]);
+                        alwan_f64 ratio = y_in[1] / y_in[0];
+                        alwan_f64 lambda = ALWAN_LN(ratio) / (x_in[1] - x_in[0]);
                         y_out[i] = y_in[0] * ALWAN_EXP(lambda * (x - x_in[0]));
                     } else {
                         y_out[i] = y_in[0];
                     }
                 } else {
                     if (y_in[count_in - 1] > 0.0 && y_in[count_in - 2] > 0.0) {
-                        alwan_scalar ratio = y_in[count_in - 1] / y_in[count_in - 2];
-                        alwan_scalar lambda = ALWAN_LN(ratio) / (x_in[count_in - 1] - x_in[count_in - 2]);
+                        alwan_f64 ratio = y_in[count_in - 1] / y_in[count_in - 2];
+                        alwan_f64 lambda = ALWAN_LN(ratio) / (x_in[count_in - 1] - x_in[count_in - 2]);
                         y_out[i] = y_in[count_in - 1] * ALWAN_EXP(lambda * (x - x_in[count_in - 1]));
                     } else {
                         y_out[i] = y_in[count_in - 1];
@@ -363,13 +339,13 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
 
             case ALWAN_EXTRAP_REFLECT: {
                 /* Reflective boundary */
-                alwan_scalar x_reflected;
+                alwan_f64 x_reflected;
 
                 if (use_left) {
-                    alwan_scalar dist = x_in[0] - x;
+                    alwan_f64 dist = x_in[0] - x;
                     x_reflected = x_in[0] + dist;
                 } else {
-                    alwan_scalar dist = x - x_in[count_in - 1];
+                    alwan_f64 dist = x - x_in[count_in - 1];
                     x_reflected = x_in[count_in - 1] - dist;
                 }
 
@@ -379,7 +355,7 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
 
                 /* Interpolate at reflected position */
                 size_t idx = find_interval(x_in, count_in, x_reflected);
-                alwan_scalar t = (x_reflected - x_in[idx]) / (x_in[idx + 1] - x_in[idx]);
+                alwan_f64 t = (x_reflected - x_in[idx]) / (x_in[idx + 1] - x_in[idx]);
                 y_out[i] = y_in[idx] * (ALWAN_LITERAL(1.0) - t) + y_in[idx + 1] * t;
                 break;
             }
@@ -403,20 +379,20 @@ int alwan_extrapolate(alwan_scalar const *x_in, alwan_scalar const *y_in, size_t
  * ---------------------------------------------------------------- */
 
 /* CCT helpers */
-static alwan_scalar compute_duv(alwan_scalar x, alwan_scalar y, alwan_scalar cct) {
-    return alwan_compute_duv_v(x, y, cct);
+static alwan_f64 compute_duv(alwan_f64 x, alwan_f64 y, alwan_f64 cct) {
+    return alwan_compute_duv_f64_v(x, y, cct);
 }
 
-int alwan_cct_duv_optimize(alwan_scalar *cct_out, alwan_scalar *duv_out, alwan_vec2 const *xy) {
+int alwan_cct_duv_optimize(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2 const *xy) {
     if (!xy || !cct_out || !duv_out) {
         return ALWAN_E_RANGE;
     }
 
-    alwan_scalar x = xy->v[0];
-    alwan_scalar y = xy->v[1];
+    alwan_f64 x = xy->v[0];
+    alwan_f64 y = xy->v[1];
 
     /* Initial CCT estimate using McCamy's formula */
-    alwan_scalar cct = alwan_mccamy_cct_v(x, y);
+    alwan_f64 cct = alwan_mccamy_cct_f64_v(x, y);
 
     /* Clamp to reasonable range */
     if (cct < ALWAN_LITERAL(1000.0)) cct = ALWAN_LITERAL(1000.0);
@@ -425,32 +401,32 @@ int alwan_cct_duv_optimize(alwan_scalar *cct_out, alwan_scalar *duv_out, alwan_v
     /* Newton-Raphson iteration to find minimum Duv (not root!) */
     /* We're finding where d(Duv^2)/d(CCT) = 0 for robustness */
     const int max_iter = 20;
-    const alwan_scalar tol = ALWAN_LITERAL(0.01);
-    const alwan_scalar h = ALWAN_LITERAL(1.0); /* Finite difference step */
+    const alwan_f64 tol = ALWAN_LITERAL(0.01);
+    const alwan_f64 h = ALWAN_LITERAL(1.0); /* Finite difference step */
 
     for (int iter = 0; iter < max_iter; iter++) {
         /* Compute Duv^2 at three points for first and second derivatives */
-        alwan_scalar duv_minus = compute_duv(x, y, cct - h);
-        alwan_scalar duv_current = compute_duv(x, y, cct);
-        alwan_scalar duv_plus = compute_duv(x, y, cct + h);
+        alwan_f64 duv_minus = compute_duv(x, y, cct - h);
+        alwan_f64 duv_current = compute_duv(x, y, cct);
+        alwan_f64 duv_plus = compute_duv(x, y, cct + h);
 
         /* Use Duv^2 for better numerical stability */
-        alwan_scalar f_minus = duv_minus * duv_minus;
-        alwan_scalar f_current = duv_current * duv_current;
-        alwan_scalar f_plus = duv_plus * duv_plus;
+        alwan_f64 f_minus = duv_minus * duv_minus;
+        alwan_f64 f_current = duv_current * duv_current;
+        alwan_f64 f_plus = duv_plus * duv_plus;
 
         /* First derivative (central difference) */
-        alwan_scalar first_deriv = (f_plus - f_minus) / (ALWAN_LITERAL(2.0) * h);
+        alwan_f64 first_deriv = (f_plus - f_minus) / (ALWAN_LITERAL(2.0) * h);
 
         /* Second derivative */
-        alwan_scalar second_deriv = (f_plus - ALWAN_LITERAL(2.0) * f_current + f_minus) / (h * h);
+        alwan_f64 second_deriv = (f_plus - ALWAN_LITERAL(2.0) * f_current + f_minus) / (h * h);
 
         /* Check for convergence or numerical issues */
         if (ALWAN_ABS(first_deriv) < ALWAN_LITERAL(1e-10)) break;
         if (ALWAN_ABS(second_deriv) < ALWAN_LITERAL(1e-10)) break;
 
         /* Newton step for minimization: x_new = x - f'(x)/f''(x) */
-        alwan_scalar delta = -first_deriv / second_deriv;
+        alwan_f64 delta = -first_deriv / second_deriv;
 
         cct += delta;
 
@@ -487,12 +463,12 @@ int alwan_optimize_spectrum_for_xyz(alwan_spd *spd_out,
      * more sophisticated optimization (e.g., quasi-Newton methods) */
 
     const size_t num_gaussians = 7;
-    const alwan_scalar centers[7] = {
+    const alwan_f64 centers[7] = {
         ALWAN_LITERAL(420.0), ALWAN_LITERAL(470.0), ALWAN_LITERAL(520.0),
         ALWAN_LITERAL(570.0), ALWAN_LITERAL(600.0), ALWAN_LITERAL(630.0),
         ALWAN_LITERAL(680.0)
     };
-    const alwan_scalar widths[7] = {
+    const alwan_f64 widths[7] = {
         ALWAN_LITERAL(40.0), ALWAN_LITERAL(40.0), ALWAN_LITERAL(40.0),
         ALWAN_LITERAL(40.0), ALWAN_LITERAL(40.0), ALWAN_LITERAL(40.0),
         ALWAN_LITERAL(40.0)
@@ -504,20 +480,20 @@ int alwan_optimize_spectrum_for_xyz(alwan_spd *spd_out,
     spd_out->count = 81; /* 380-780nm in 5nm steps */
 
     /* Simple initial guess: equal weight Gaussians scaled by luminance */
-    alwan_scalar weights[7];
-    alwan_scalar luminance = target_xyz->y; /* Y component */
+    alwan_f64 weights[7];
+    alwan_f64 luminance = target_xyz->y; /* Y component */
     for (size_t i = 0; i < num_gaussians; i++) {
         weights[i] = luminance / num_gaussians;
     }
 
     /* Build SPD from Gaussian basis */
-    alwan_scalar wavelength_step = (spd_out->wavelength_max - spd_out->wavelength_min) / (spd_out->count - 1);
+    alwan_f64 wavelength_step = (spd_out->wavelength_max - spd_out->wavelength_min) / (spd_out->count - 1);
     for (size_t i = 0; i < spd_out->count; i++) {
-        alwan_scalar lambda = spd_out->wavelength_min + i * wavelength_step;
-        alwan_scalar value = 0.0;
+        alwan_f64 lambda = spd_out->wavelength_min + i * wavelength_step;
+        alwan_f64 value = 0.0;
 
         for (size_t j = 0; j < num_gaussians; j++) {
-            alwan_scalar dx = (lambda - centers[j]) / widths[j];
+            alwan_f64 dx = (lambda - centers[j]) / widths[j];
             value += weights[j] * ALWAN_EXP(ALWAN_LITERAL(-0.5) * dx * dx);
         }
 
@@ -539,8 +515,8 @@ int alwan_optimize_spectrum_for_xyz(alwan_spd *spd_out,
  * Table Interpolation Utilities
  * ---------------------------------------------------------------- */
 
-alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
-                                    alwan_scalar x, alwan_interp_method method) {
+alwan_f64 alwan_table_interp_1d(alwan_f64 const *table, size_t size,
+                                    alwan_f64 x, alwan_interp_method method) {
     if (!table || size < 2) {
         return 0.0;
     }
@@ -550,9 +526,9 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
     if (x >= 1.0) return table[size - 1];
 
     /* Map x to table index */
-    alwan_scalar pos = x * (size - 1);
+    alwan_f64 pos = x * (size - 1);
     size_t idx = (size_t)pos;
-    alwan_scalar t = pos - idx;
+    alwan_f64 t = pos - idx;
 
     if (idx >= size - 1) {
         return table[size - 1];
@@ -565,12 +541,12 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
 
         case ALWAN_INTERP_CUBIC: {
             /* Catmull-Rom cubic */
-            alwan_scalar y0 = (idx > 0) ? table[idx - 1] : table[idx];
-            alwan_scalar y1 = table[idx];
-            alwan_scalar y2 = table[idx + 1];
-            alwan_scalar y3 = (idx + 2 < size) ? table[idx + 2] : table[idx + 1];
+            alwan_f64 y0 = (idx > 0) ? table[idx - 1] : table[idx];
+            alwan_f64 y1 = table[idx];
+            alwan_f64 y2 = table[idx + 1];
+            alwan_f64 y3 = (idx + 2 < size) ? table[idx + 2] : table[idx + 1];
 
-            return alwan_catmull_rom_v(y0, y1, y2, y3, t);
+            return alwan_catmull_rom_f64_v(y0, y1, y2, y3, t);
         }
 
         default:
@@ -579,33 +555,33 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
 }
 
 int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
-                                     alwan_scalar const *table, size_t const sizes[3],
+                                     alwan_f64 const *table, size_t const sizes[3],
                                      alwan_rgb const *rgb_in) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
         return ALWAN_E_RANGE;
     }
 
     /* Clamp input to [0, 1] */
-    alwan_scalar r = rgb_in->r;
-    alwan_scalar g = rgb_in->g;
-    alwan_scalar b = rgb_in->b;
+    alwan_f64 r = rgb_in->r;
+    alwan_f64 g = rgb_in->g;
+    alwan_f64 b = rgb_in->b;
 
     if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
     if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
     if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
 
     /* Map to table indices */
-    alwan_scalar r_pos = r * (sizes[0] - 1);
-    alwan_scalar g_pos = g * (sizes[1] - 1);
-    alwan_scalar b_pos = b * (sizes[2] - 1);
+    alwan_f64 r_pos = r * (sizes[0] - 1);
+    alwan_f64 g_pos = g * (sizes[1] - 1);
+    alwan_f64 b_pos = b * (sizes[2] - 1);
 
     size_t r_idx = (size_t)r_pos;
     size_t g_idx = (size_t)g_pos;
     size_t b_idx = (size_t)b_pos;
 
-    alwan_scalar r_frac = r_pos - r_idx;
-    alwan_scalar g_frac = g_pos - g_idx;
-    alwan_scalar b_frac = b_pos - b_idx;
+    alwan_f64 r_frac = r_pos - r_idx;
+    alwan_f64 g_frac = g_pos - g_idx;
+    alwan_f64 b_frac = b_pos - b_idx;
 
     /* Clamp indices */
     if (r_idx >= sizes[0] - 1) { r_idx = sizes[0] - 2; r_frac = 1.0; }
@@ -618,8 +594,8 @@ int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
 
     #define GET_VALUE(ri, gi, bi, c) table[((bi) * stride_b + (gi) * stride_g + (ri) * 3 + (c))]
 
-    alwan_scalar c000[3], c001[3], c010[3], c011[3];
-    alwan_scalar c100[3], c101[3], c110[3], c111[3];
+    alwan_f64 c000[3], c001[3], c010[3], c011[3];
+    alwan_f64 c100[3], c101[3], c110[3], c111[3];
 
     for (int c = 0; c < 3; c++) {
         c000[c] = GET_VALUE(r_idx, g_idx, b_idx, c);
@@ -636,15 +612,15 @@ int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
 
     /* Trilinear interpolation */
     for (int c = 0; c < 3; c++) {
-        alwan_scalar c00 = c000[c] * (ALWAN_LITERAL(1.0) - r_frac) + c100[c] * r_frac;
-        alwan_scalar c01 = c001[c] * (ALWAN_LITERAL(1.0) - r_frac) + c101[c] * r_frac;
-        alwan_scalar c10 = c010[c] * (ALWAN_LITERAL(1.0) - r_frac) + c110[c] * r_frac;
-        alwan_scalar c11 = c011[c] * (ALWAN_LITERAL(1.0) - r_frac) + c111[c] * r_frac;
+        alwan_f64 c00 = c000[c] * (ALWAN_LITERAL(1.0) - r_frac) + c100[c] * r_frac;
+        alwan_f64 c01 = c001[c] * (ALWAN_LITERAL(1.0) - r_frac) + c101[c] * r_frac;
+        alwan_f64 c10 = c010[c] * (ALWAN_LITERAL(1.0) - r_frac) + c110[c] * r_frac;
+        alwan_f64 c11 = c011[c] * (ALWAN_LITERAL(1.0) - r_frac) + c111[c] * r_frac;
 
-        alwan_scalar c0 = c00 * (ALWAN_LITERAL(1.0) - g_frac) + c10 * g_frac;
-        alwan_scalar c1 = c01 * (ALWAN_LITERAL(1.0) - g_frac) + c11 * g_frac;
+        alwan_f64 c0 = c00 * (ALWAN_LITERAL(1.0) - g_frac) + c10 * g_frac;
+        alwan_f64 c1 = c01 * (ALWAN_LITERAL(1.0) - g_frac) + c11 * g_frac;
 
-        alwan_scalar result = c0 * (ALWAN_LITERAL(1.0) - b_frac) + c1 * b_frac;
+        alwan_f64 result = c0 * (ALWAN_LITERAL(1.0) - b_frac) + c1 * b_frac;
 
         if (c == 0) rgb_out->r = result;
         else if (c == 1) rgb_out->g = result;
@@ -655,33 +631,33 @@ int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
 }
 
 int alwan_table_interp_3d_tetrahedral(alwan_rgb *rgb_out,
-                                       alwan_scalar const *table, size_t const sizes[3],
+                                       alwan_f64 const *table, size_t const sizes[3],
                                        alwan_rgb const *rgb_in) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
         return ALWAN_E_RANGE;
     }
 
     /* Clamp input to [0, 1] */
-    alwan_scalar r = rgb_in->r;
-    alwan_scalar g = rgb_in->g;
-    alwan_scalar b = rgb_in->b;
+    alwan_f64 r = rgb_in->r;
+    alwan_f64 g = rgb_in->g;
+    alwan_f64 b = rgb_in->b;
 
     if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
     if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
     if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
 
     /* Map to table indices */
-    alwan_scalar r_pos = r * (sizes[0] - 1);
-    alwan_scalar g_pos = g * (sizes[1] - 1);
-    alwan_scalar b_pos = b * (sizes[2] - 1);
+    alwan_f64 r_pos = r * (sizes[0] - 1);
+    alwan_f64 g_pos = g * (sizes[1] - 1);
+    alwan_f64 b_pos = b * (sizes[2] - 1);
 
     size_t r_idx = (size_t)r_pos;
     size_t g_idx = (size_t)g_pos;
     size_t b_idx = (size_t)b_pos;
 
-    alwan_scalar r_frac = r_pos - r_idx;
-    alwan_scalar g_frac = g_pos - g_idx;
-    alwan_scalar b_frac = b_pos - b_idx;
+    alwan_f64 r_frac = r_pos - r_idx;
+    alwan_f64 g_frac = g_pos - g_idx;
+    alwan_f64 b_frac = b_pos - b_idx;
 
     /* Clamp indices */
     if (r_idx >= sizes[0] - 1) { r_idx = sizes[0] - 2; r_frac = 1.0; }
@@ -694,50 +670,50 @@ int alwan_table_interp_3d_tetrahedral(alwan_rgb *rgb_out,
 
     #define GET_VALUE(ri, gi, bi, c) table[((bi) * stride_b + (gi) * stride_g + (ri) * 3 + (c))]
 
-    alwan_scalar result[3] = {0.0, 0.0, 0.0};
+    alwan_f64 result[3] = {0.0, 0.0, 0.0};
 
     /* Tetrahedral interpolation - determine which tetrahedron we're in */
     for (int c = 0; c < 3; c++) {
-        alwan_scalar c000 = GET_VALUE(r_idx, g_idx, b_idx, c);
-        alwan_scalar c111 = GET_VALUE(r_idx + 1, g_idx + 1, b_idx + 1, c);
+        alwan_f64 c000 = GET_VALUE(r_idx, g_idx, b_idx, c);
+        alwan_f64 c111 = GET_VALUE(r_idx + 1, g_idx + 1, b_idx + 1, c);
 
         if (r_frac > g_frac) {
             if (g_frac > b_frac) {
                 /* Tetrahedron 1: r > g > b */
-                alwan_scalar c100 = GET_VALUE(r_idx + 1, g_idx, b_idx, c);
-                alwan_scalar c110 = GET_VALUE(r_idx + 1, g_idx + 1, b_idx, c);
+                alwan_f64 c100 = GET_VALUE(r_idx + 1, g_idx, b_idx, c);
+                alwan_f64 c110 = GET_VALUE(r_idx + 1, g_idx + 1, b_idx, c);
                 result[c] = c000 + (c100 - c000) * r_frac +
                            (c110 - c100) * g_frac + (c111 - c110) * b_frac;
             } else if (r_frac > b_frac) {
                 /* Tetrahedron 2: r > b > g */
-                alwan_scalar c100 = GET_VALUE(r_idx + 1, g_idx, b_idx, c);
-                alwan_scalar c101 = GET_VALUE(r_idx + 1, g_idx, b_idx + 1, c);
+                alwan_f64 c100 = GET_VALUE(r_idx + 1, g_idx, b_idx, c);
+                alwan_f64 c101 = GET_VALUE(r_idx + 1, g_idx, b_idx + 1, c);
                 result[c] = c000 + (c100 - c000) * r_frac +
                            (c101 - c100) * b_frac + (c111 - c101) * g_frac;
             } else {
                 /* Tetrahedron 3: b > r > g */
-                alwan_scalar c001 = GET_VALUE(r_idx, g_idx, b_idx + 1, c);
-                alwan_scalar c101 = GET_VALUE(r_idx + 1, g_idx, b_idx + 1, c);
+                alwan_f64 c001 = GET_VALUE(r_idx, g_idx, b_idx + 1, c);
+                alwan_f64 c101 = GET_VALUE(r_idx + 1, g_idx, b_idx + 1, c);
                 result[c] = c000 + (c001 - c000) * b_frac +
                            (c101 - c001) * r_frac + (c111 - c101) * g_frac;
             }
         } else {
             if (b_frac > g_frac) {
                 /* Tetrahedron 4: b > g > r */
-                alwan_scalar c001 = GET_VALUE(r_idx, g_idx, b_idx + 1, c);
-                alwan_scalar c011 = GET_VALUE(r_idx, g_idx + 1, b_idx + 1, c);
+                alwan_f64 c001 = GET_VALUE(r_idx, g_idx, b_idx + 1, c);
+                alwan_f64 c011 = GET_VALUE(r_idx, g_idx + 1, b_idx + 1, c);
                 result[c] = c000 + (c001 - c000) * b_frac +
                            (c011 - c001) * g_frac + (c111 - c011) * r_frac;
             } else if (b_frac > r_frac) {
                 /* Tetrahedron 5: g > b > r */
-                alwan_scalar c010 = GET_VALUE(r_idx, g_idx + 1, b_idx, c);
-                alwan_scalar c011 = GET_VALUE(r_idx, g_idx + 1, b_idx + 1, c);
+                alwan_f64 c010 = GET_VALUE(r_idx, g_idx + 1, b_idx, c);
+                alwan_f64 c011 = GET_VALUE(r_idx, g_idx + 1, b_idx + 1, c);
                 result[c] = c000 + (c010 - c000) * g_frac +
                            (c011 - c010) * b_frac + (c111 - c011) * r_frac;
             } else {
                 /* Tetrahedron 6: g > r > b */
-                alwan_scalar c010 = GET_VALUE(r_idx, g_idx + 1, b_idx, c);
-                alwan_scalar c110 = GET_VALUE(r_idx + 1, g_idx + 1, b_idx, c);
+                alwan_f64 c010 = GET_VALUE(r_idx, g_idx + 1, b_idx, c);
+                alwan_f64 c110 = GET_VALUE(r_idx + 1, g_idx + 1, b_idx, c);
                 result[c] = c000 + (c010 - c000) * g_frac +
                            (c110 - c010) * r_frac + (c111 - c110) * b_frac;
             }

@@ -12,11 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-static alwan_scalar vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
-    alwan_scalar diff_x = ALWAN_ABS(a->x - b->x);
-    alwan_scalar diff_y = ALWAN_ABS(a->y - b->y);
-    alwan_scalar diff_z = ALWAN_ABS(a->z - b->z);
-    alwan_scalar max_diff = diff_x;
+static alwan_f64 vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
+    alwan_f64 diff_x = ALWAN_ABS(a->x - b->x);
+    alwan_f64 diff_y = ALWAN_ABS(a->y - b->y);
+    alwan_f64 diff_z = ALWAN_ABS(a->z - b->z);
+    alwan_f64 max_diff = diff_x;
     if (diff_y > max_diff) max_diff = diff_y;
     if (diff_z > max_diff) max_diff = diff_z;
     return max_diff;
@@ -34,24 +34,24 @@ ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* P8 White points for new illuminants */
-static alwan_scalar const white_b_data[] = {
+static alwan_f64 const white_b_data[] = {
 #include "reference_values/white_b_xyz.csv"
 };
 
-static alwan_scalar const white_c_data[] = {
+static alwan_f64 const white_c_data[] = {
 #include "reference_values/white_c_xyz.csv"
 };
 
-static alwan_scalar const white_d60_data[] = {
+static alwan_f64 const white_d60_data[] = {
 #include "reference_values/white_d60_xyz.csv"
 };
 
-static alwan_scalar const white_d75_data[] = {
+static alwan_f64 const white_d75_data[] = {
 #include "reference_values/white_d75_xyz.csv"
 };
 
 /* D65 white point using Stockman & Sharpe observer */
-static alwan_scalar const white_d65_stockman_sharpe_data[] = {
+static alwan_f64 const white_d65_stockman_sharpe_data[] = {
 #include "reference_values/white_d65_stockman_sharpe_xyz.csv"
 };
 
@@ -64,7 +64,7 @@ ALWAN_DIAG_POP
 static int test_p8_illuminant_white_point(
     char const *name,
     alwan_illuminant illuminant,
-    alwan_scalar const *expected_white_xyz)
+    alwan_f64 const *expected_white_xyz)
 {
     alwan_xyz expected = {expected_white_xyz[0], expected_white_xyz[1], expected_white_xyz[2]};
     alwan_xyz computed;
@@ -78,9 +78,9 @@ static int test_p8_illuminant_white_point(
      * - Alwan: SPDs at 360-830nm 1nm intervals (471 samples), Simpson integration
      * - colour-science: SPDs at varying intervals, ASTM E308 method
      * Expect differences up to ~1e-3 in normalized white point coordinates */
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = vec3_max_diff(&computed, &expected);
+    alwan_f64 diff = vec3_max_diff(&computed, &expected);
     if (diff >= tolerance) {
         printf("  %s white point max diff: %e (tolerance: %e)\n", name, diff, tolerance);
         vec3_print("  Computed", &computed);
@@ -132,9 +132,9 @@ static int test_stockman_sharpe_observer(void) {
      * - Alwan: D65 SPD at 360-830nm 1nm intervals (471 samples), Simpson integration
      * - colour-science: D65 SPD at 300-780nm 5nm intervals (97 samples), ASTM E308 method
      * The Stockman & Sharpe CMFs have subtle differences that compound with SPD integration */
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = vec3_max_diff(&computed, &expected);
+    alwan_f64 diff = vec3_max_diff(&computed, &expected);
     if (diff >= tolerance) {
         printf("  Stockman & Sharpe D65 white max diff: %e (tolerance: %e)\n", diff, tolerance);
         vec3_print("  Computed", &computed);

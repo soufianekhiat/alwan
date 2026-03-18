@@ -70,7 +70,7 @@ static alwan_rgb_space_desc get_acescg_desc(void) {
 static int test_srgb_to_p3(alwan_ctx *ctx) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "data/fixtures/rgb_convert_srgb_to_p3.csv"
     };
     ALWAN_DIAG_POP
@@ -92,9 +92,9 @@ static int test_srgb_to_p3(alwan_ctx *ctx) {
         int status = alwan_rgb_convert(&result_rgb, ctx, &srgb, &p3, &src_rgb);
         TEST_ASSERT(status == ALWAN_OK, "Conversion failed");
 
-        alwan_scalar diff_r = ALWAN_ABS(result_rgb.r - expected_rgb.r);
-        alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
-        alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
+        alwan_f64 diff_r = ALWAN_ABS(result_rgb.r - expected_rgb.r);
+        alwan_f64 diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
+        alwan_f64 diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
         if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("sRGB->P3 color %zu failed:\n", i);
@@ -114,7 +114,7 @@ static int test_srgb_to_p3(alwan_ctx *ctx) {
 static int test_srgb_to_bt2020(alwan_ctx *ctx) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "data/fixtures/rgb_convert_srgb_to_bt2020.csv"
     };
     ALWAN_DIAG_POP
@@ -136,9 +136,9 @@ static int test_srgb_to_bt2020(alwan_ctx *ctx) {
         int status = alwan_rgb_convert(&result_rgb, ctx, &srgb, &bt2020, &src_rgb);
         TEST_ASSERT(status == ALWAN_OK, "Conversion failed");
 
-        alwan_scalar diff_r = ALWAN_ABS(result_rgb.r - expected_rgb.r);
-        alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
-        alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
+        alwan_f64 diff_r = ALWAN_ABS(result_rgb.r - expected_rgb.r);
+        alwan_f64 diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
+        alwan_f64 diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
         if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("sRGB->BT2020 color %zu failed:\n", i);
@@ -158,7 +158,7 @@ static int test_srgb_to_bt2020(alwan_ctx *ctx) {
 static int test_srgb_to_acescg(alwan_ctx *ctx) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "data/fixtures/rgb_convert_srgb_to_acescg.csv"
     };
     ALWAN_DIAG_POP
@@ -180,9 +180,9 @@ static int test_srgb_to_acescg(alwan_ctx *ctx) {
         int status = alwan_rgb_convert(&result_rgb, ctx, &srgb, &acescg, &src_rgb);
         TEST_ASSERT(status == ALWAN_OK, "Conversion failed");
 
-        alwan_scalar diff_r = ALWAN_ABS(result_rgb.r - expected_rgb.r);
-        alwan_scalar diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
-        alwan_scalar diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
+        alwan_f64 diff_r = ALWAN_ABS(result_rgb.r - expected_rgb.r);
+        alwan_f64 diff_g = ALWAN_ABS(result_rgb.g - expected_rgb.g);
+        alwan_f64 diff_b = ALWAN_ABS(result_rgb.b - expected_rgb.b);
 
         if (diff_r > ALWAN_TEST_TOLERANCE || diff_g > ALWAN_TEST_TOLERANCE || diff_b > ALWAN_TEST_TOLERANCE) {
             printf("sRGB->ACEScg color %zu failed:\n", i);

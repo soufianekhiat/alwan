@@ -16,21 +16,13 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_ipt_core.h"
 
-void alwan_xyz_to_ipt(alwan_ipt *ipt, alwan_xyz const *xyz) {
-    *ipt = alwan_xyz_to_ipt_v(*xyz);
-}
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_ipt_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
 
-void alwan_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *ipt) {
-    *xyz = alwan_ipt_to_xyz_v(*ipt);
-}
-
-void alwan_ipt_to_iptch(alwan_iptch *iptch, alwan_ipt const *ipt) {
-    *iptch = alwan_ipt_to_iptch_v(*ipt);
-    ALWAN_NORM_IPTCH(iptch);
-}
-
-void alwan_iptch_to_ipt(alwan_ipt *ipt, alwan_iptch const *iptch) {
-    alwan_iptch tmp = *iptch;
-    ALWAN_DENORM_IPTCH(&tmp);
-    *ipt = alwan_iptch_to_ipt_v(tmp);
-}
+#include "alwan_api_f64_setup.h"
+#include "alwan_ipt_impl.inc"
+#include "alwan_api_teardown.h"
