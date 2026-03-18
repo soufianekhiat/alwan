@@ -15,6 +15,17 @@
 #include "../core/alwan_cat_core.h"
 #include <string.h>
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_cat_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_cat_impl.inc"
+#include "alwan_api_teardown.h"
+
 /* ----------------------------------------------------------------
  * CAT Matrix Accessors
  * Load cone-response matrices from embedded global data arrays.
@@ -105,7 +116,7 @@ int alwan_cat_matrix(alwan_mat3x3 *out,
 
     /* Handle XYZ scaling separately (simplest case -- no cone-response matrix) */
     if (method == ALWAN_CAT_XYZ_SCALING) {
-        *out = alwan_cat_xyz_scaling_v(*src_white_xyz, *dst_white_xyz);
+        *out = alwan_cat_xyz_scaling_f64_v(*src_white_xyz, *dst_white_xyz);
         return ALWAN_OK;
     }
 
@@ -157,7 +168,7 @@ int alwan_cat_matrix(alwan_mat3x3 *out,
     }
 
     /* Delegate to core: M_adapt = M^-1 * diag(rgb_dst / rgb_src) * M */
-    *out = alwan_cat_matrix_v(M, M_inv, *src_white_xyz, *dst_white_xyz);
+    *out = alwan_cat_matrix_f64_v(M, M_inv, *src_white_xyz, *dst_white_xyz);
 
     return ALWAN_OK;
 }
@@ -170,11 +181,11 @@ int alwan_cat_matrix(alwan_mat3x3 *out,
  * header-only core.
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_adapt(alwan_scalar *xyz_out,
+int alwan_xyz_adapt(alwan_f64 *xyz_out,
                     alwan_xyz const *src_white_xyz,
                     alwan_xyz const *dst_white_xyz,
                     alwan_cat_method method,
-                    alwan_scalar const *xyz_in,
+                    alwan_f64 const *xyz_in,
                     size_t count, size_t in_stride, size_t out_stride) {
     if (!xyz_in || !xyz_out || !src_white_xyz || !dst_white_xyz) {
         return ALWAN_E_INVALID;
@@ -189,8 +200,8 @@ int alwan_xyz_adapt(alwan_scalar *xyz_out,
 
     /* Apply to all colors (strides are in bytes) */
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in_ptr = (alwan_scalar const *)((char const *)xyz_in + i * in_stride);
-        alwan_scalar *out_ptr = (alwan_scalar *)((char *)xyz_out + i * out_stride);
+        alwan_f64 const *in_ptr = (alwan_f64 const *)((char const *)xyz_in + i * in_stride);
+        alwan_f64 *out_ptr = (alwan_f64 *)((char *)xyz_out + i * out_stride);
 
         /* Build an alwan_xyz from the strided input */
         alwan_xyz xyz_input;
@@ -199,7 +210,7 @@ int alwan_xyz_adapt(alwan_scalar *xyz_out,
         xyz_input.z = in_ptr[2];
 
         /* Delegate to core single-color adaptation */
-        alwan_xyz xyz_adapted = alwan_cat_adapt_v(cat_mat, xyz_input);
+        alwan_xyz xyz_adapted = alwan_cat_adapt_f64_v(cat_mat, xyz_input);
 
         /* Store output color */
         out_ptr[0] = xyz_adapted.x;
@@ -221,8 +232,8 @@ int alwan_cat_zhai2018(alwan_xyz *xyz_out,
                        alwan_xyz const *xyz_in,
                        alwan_xyz const *xyz_src,
                        alwan_xyz const *xyz_dst,
-                       alwan_scalar D_src,
-                       alwan_scalar D_dst,
+                       alwan_f64 D_src,
+                       alwan_f64 D_dst,
                        alwan_xyz const *xyz_baseline,
                        alwan_cat_method transform) {
     if (!xyz_in || !xyz_src || !xyz_dst || !xyz_out) {
@@ -260,7 +271,7 @@ int alwan_cat_zhai2018(alwan_xyz *xyz_out,
     }
 
     /* Delegate to core two-step adaptation */
-    *xyz_out = alwan_cat_zhai2018_v(M, M_inv, *xyz_in, *xyz_src, *xyz_dst,
+    *xyz_out = alwan_cat_zhai2018_f64_v(M, M_inv, *xyz_in, *xyz_src, *xyz_dst,
                                     D_src, D_dst, *xyz_o);
 
     return ALWAN_OK;

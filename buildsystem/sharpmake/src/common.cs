@@ -4,15 +4,7 @@ using Sharpmake;
 
 namespace Alwan
 {
-    // Scalar type fragment for float/double toggle
-    [Fragment, Flags]
-    public enum ScalarType
-    {
-        Float  = 1 << 0,  // float (32-bit)
-        Double = 1 << 1   // double (64-bit, default)
-    }
-
-    // Custom target with ScalarType
+    // Custom target
     [Generate]
     public class AlwanTarget : Target
     {
@@ -21,13 +13,10 @@ namespace Alwan
         {
         }
 
-        public AlwanTarget(Platform platform, DevEnv devEnv, Optimization optimization, ScalarType scalarType)
+        public AlwanTarget(Platform platform, DevEnv devEnv, Optimization optimization)
             : base(platform, devEnv, optimization)
         {
-            Scalar = scalarType;
         }
-
-        public ScalarType Scalar;
     }
 
     // Common project base for all Alwan projects
@@ -41,21 +30,17 @@ namespace Alwan
             IsTargetFileNameToLower = false;
             SourceRootPath = @"[project.SharpmakeCsPath]\..\..\..\src";
 
-            // Add all target permutations
             AddTargets(new AlwanTarget(
                 Platform.win64,
                 DevEnv.vs2022,
-                Optimization.Debug | Optimization.Release,
-                ScalarType.Float | ScalarType.Double
+                Optimization.Debug | Optimization.Release
             ));
         }
 
         [Configure()]
         public virtual void ConfigureAll(Configuration conf, AlwanTarget target)
         {
-            // Name includes scalar type: Debug_f32, Release_f64, etc.
-            string scalarSuffix = (target.Scalar == ScalarType.Float) ? "f32" : "f64";
-            conf.Name = "[target.Optimization]_" + scalarSuffix;
+            conf.Name = "[target.Optimization]";
 
             conf.ProjectFileName = "[project.Name]_[target.DevEnv]_[target.Platform]";
             conf.ProjectPath = Path.Combine("[project.SharpmakeCsPath]", "..", "..", "..", "projects", "[project.Name]");
@@ -81,19 +66,6 @@ namespace Alwan
             conf.Defines.Add("NOMINMAX");
             conf.Defines.Add("WIN32");
             conf.Defines.Add("_CRT_SECURE_NO_WARNINGS");
-
-            // Add scalar type define
-            if (target.Scalar == ScalarType.Float)
-            {
-                conf.Defines.Add("ALWAN_SCALAR_IS_FLOAT=1");
-                // Disable truncation warnings for float builds (double literals to float)
-                conf.AdditionalCompilerOptions.Add("/wd4305");  // truncation from 'double' to 'float'
-                conf.AdditionalCompilerOptions.Add("/wd4244");  // conversion from 'double' to 'float', possible loss of data
-            }
-            else
-            {
-                conf.Defines.Add("ALWAN_SCALAR_IS_FLOAT=0");
-            }
 
             // Data embedding (default: embed)
             conf.Defines.Add("ALWAN_EMBED_DATA=1");

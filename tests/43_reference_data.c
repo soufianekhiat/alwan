@@ -72,9 +72,9 @@ static int test_munsell_chromatic(void) {
 static int test_munsell_roundtrip(void) {
     TEST_START("Munsell HVC roundtrip conversion");
 
-    alwan_scalar hue_in = 0.0;
-    alwan_scalar value_in = 5.0;
-    alwan_scalar chroma_in = 0.0;
+    alwan_f64 hue_in = 0.0;
+    alwan_f64 value_in = 5.0;
+    alwan_f64 chroma_in = 0.0;
 
     alwan_xyz xyz;
     int status = alwan_munsell_to_xyz(&xyz, hue_in, value_in, chroma_in, ALWAN_ILLUMINANT_C);
@@ -82,7 +82,7 @@ static int test_munsell_roundtrip(void) {
         TEST_FAIL("Forward conversion failed: error %d", status);
     }
 
-    alwan_scalar hue_out, value_out, chroma_out;
+    alwan_f64 hue_out, value_out, chroma_out;
     status = alwan_xyz_to_munsell(&hue_out, &value_out, &chroma_out, &xyz, ALWAN_ILLUMINANT_C);
     if (status != ALWAN_OK) {
         TEST_FAIL("Inverse conversion failed: error %d", status);
@@ -115,7 +115,7 @@ static int test_munsell_illuminant_adaptation(void) {
     }
 
     /* Values should differ due to chromatic adaptation */
-    alwan_scalar diff =  ALWAN_ABS(xyz_c.x - xyz_d65.x) +
+    alwan_f64 diff =  ALWAN_ABS(xyz_c.x - xyz_d65.x) +
                          ALWAN_ABS(xyz_c.y - xyz_d65.y) +
                          ALWAN_ABS(xyz_c.z - xyz_d65.z);
 
@@ -203,7 +203,7 @@ static int test_colorchecker_illuminant_adaptation(void) {
     }
 
     /* Values should differ due to chromatic adaptation */
-    alwan_scalar diff =  ALWAN_ABS(xyz_d50.x - xyz_d65.x) +
+    alwan_f64 diff =  ALWAN_ABS(xyz_d50.x - xyz_d65.x) +
                          ALWAN_ABS(xyz_d50.y - xyz_d65.y) +
                          ALWAN_ABS(xyz_d50.z - xyz_d65.z);
 
@@ -268,7 +268,7 @@ static int test_ncs_parsing(void) {
 static int test_rgb_space_lookup(void) {
     TEST_START("RGB space lookup by enum");
 
-    alwan_scalar primaries[6];
+    alwan_f64 primaries[6];
     alwan_vec2 white_point;
     int status;
 
@@ -297,7 +297,7 @@ static int test_rgb_space_lookup(void) {
 static int test_rgb_space_various(void) {
     TEST_START("Various RGB space definitions");
 
-    alwan_scalar primaries[6];
+    alwan_f64 primaries[6];
     alwan_vec2 white_point;
     int status;
 
@@ -382,7 +382,7 @@ static int test_rgb_space_transfer_functions(void) {
 static int test_rgb_space_not_found(void) {
     TEST_START("RGB space invalid enum handling");
 
-    alwan_scalar primaries[6];
+    alwan_f64 primaries[6];
     alwan_vec2 white_point;
     int status;
 

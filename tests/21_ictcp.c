@@ -14,7 +14,7 @@
 
 static int test_rgb_to_ictcp_pq(void) {
     /* Load test RGB colors and expected ICtCp values */
-    static alwan_scalar const test_rgb[] = {
+    static alwan_f64 const test_rgb[] = {
         ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),      /* Black */
         ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18),  /* 18% gray */
         ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0),      /* SDR white */
@@ -27,7 +27,7 @@ static int test_rgb_to_ictcp_pq(void) {
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_ictcp[] = {
+    static alwan_f64 const expected_ictcp[] = {
 #include "reference_values/ictcp_pq_from_rgb.csv"
     };
 ALWAN_DIAG_POP
@@ -51,8 +51,8 @@ ALWAN_DIAG_POP
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
-            alwan_scalar expected = expected_ictcp[i * 3 + j];
-            alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
+            alwan_f64 expected = expected_ictcp[i * 3 + j];
+            alwan_f64 diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
             if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
@@ -78,7 +78,7 @@ ALWAN_DIAG_POP
 
 static int test_ictcp_pq_to_rgb_roundtrip(void) {
     /* Load test RGB colors and reconstructed RGB */
-    static alwan_scalar const test_rgb[] = {
+    static alwan_f64 const test_rgb[] = {
         ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
         ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18),
         ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0),
@@ -91,7 +91,7 @@ static int test_ictcp_pq_to_rgb_roundtrip(void) {
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_rgb_reconstructed[] = {
+    static alwan_f64 const expected_rgb_reconstructed[] = {
 #include "reference_values/rgb_from_ictcp_pq.csv"
     };
 ALWAN_DIAG_POP
@@ -121,8 +121,8 @@ ALWAN_DIAG_POP
 
         /* Check round-trip against colour-science reconstructed values */
         for (int j = 0; j < 3; j++) {
-            alwan_scalar expected = expected_rgb_reconstructed[i * 3 + j];
-            alwan_scalar diff = ALWAN_ABS(rgb_out.v[j] - expected);
+            alwan_f64 expected = expected_rgb_reconstructed[i * 3 + j];
+            alwan_f64 diff = ALWAN_ABS(rgb_out.v[j] - expected);
 
             if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
@@ -150,7 +150,7 @@ ALWAN_DIAG_POP
 
 static int test_rgb_to_ictcp_hlg(void) {
     /* Load test RGB colors and expected ICtCp values */
-    static alwan_scalar const test_rgb[] = {
+    static alwan_f64 const test_rgb[] = {
         ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
         ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18),
         ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0),
@@ -163,7 +163,7 @@ static int test_rgb_to_ictcp_hlg(void) {
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_ictcp[] = {
+    static alwan_f64 const expected_ictcp[] = {
 #include "reference_values/ictcp_hlg_from_rgb.csv"
     };
 ALWAN_DIAG_POP
@@ -187,8 +187,8 @@ ALWAN_DIAG_POP
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
-            alwan_scalar expected = expected_ictcp[i * 3 + j];
-            alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
+            alwan_f64 expected = expected_ictcp[i * 3 + j];
+            alwan_f64 diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
             if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
@@ -214,7 +214,7 @@ ALWAN_DIAG_POP
 
 static int test_ictcp_hlg_to_rgb_roundtrip(void) {
     /* Load test RGB colors and reconstructed RGB */
-    static alwan_scalar const test_rgb[] = {
+    static alwan_f64 const test_rgb[] = {
         ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
         ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18),
         ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0),
@@ -227,7 +227,7 @@ static int test_ictcp_hlg_to_rgb_roundtrip(void) {
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_rgb_reconstructed[] = {
+    static alwan_f64 const expected_rgb_reconstructed[] = {
 #include "reference_values/rgb_from_ictcp_hlg.csv"
     };
 ALWAN_DIAG_POP
@@ -257,8 +257,8 @@ ALWAN_DIAG_POP
 
         /* Check round-trip against colour-science reconstructed values */
         for (int j = 0; j < 3; j++) {
-            alwan_scalar expected = expected_rgb_reconstructed[i * 3 + j];
-            alwan_scalar diff = ALWAN_ABS(rgb_out.v[j] - expected);
+            alwan_f64 expected = expected_rgb_reconstructed[i * 3 + j];
+            alwan_f64 diff = ALWAN_ABS(rgb_out.v[j] - expected);
 
             if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed:\n", i, j);
@@ -288,14 +288,14 @@ static int test_xyz_to_ictcp_pq(void) {
     /* Load standard test XYZ colors */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz[] = {
+    static alwan_f64 const test_xyz[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_ictcp[] = {
+    static alwan_f64 const expected_ictcp[] = {
 #include "reference_values/ictcp_pq_from_xyz.csv"
     };
 ALWAN_DIAG_POP
@@ -319,8 +319,8 @@ ALWAN_DIAG_POP
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
-            alwan_scalar expected = expected_ictcp[i * 3 + j];
-            alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
+            alwan_f64 expected = expected_ictcp[i * 3 + j];
+            alwan_f64 diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
             if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed (diff: %.6e)\n", i, j, (double)diff);
@@ -337,14 +337,14 @@ static int test_xyz_to_ictcp_hlg(void) {
     /* Load standard test XYZ colors */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz[] = {
+    static alwan_f64 const test_xyz[] = {
 #include "reference_values/test_xyz_colors.csv"
     };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_ictcp[] = {
+    static alwan_f64 const expected_ictcp[] = {
 #include "reference_values/ictcp_hlg_from_xyz.csv"
     };
 ALWAN_DIAG_POP
@@ -368,8 +368,8 @@ ALWAN_DIAG_POP
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
-            alwan_scalar expected = expected_ictcp[i * 3 + j];
-            alwan_scalar diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
+            alwan_f64 expected = expected_ictcp[i * 3 + j];
+            alwan_f64 diff = ALWAN_ABS(ictcp_computed.v[j] - expected);
 
             if (diff >= ALWAN_TEST_TOLERANCE) {
                 printf("  Color %zu channel %d failed (diff: %.6e)\n", i, j, (double)diff);

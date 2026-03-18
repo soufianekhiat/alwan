@@ -56,12 +56,6 @@ typedef enum {
     ALWAN_DATA_UNKNOWN   = 2   /* Unknown — application should decide */
 } alwan_data_semantic;
 
-#if ALWAN_SCALAR_IS_FLOAT
-#  define ALWAN_PIXEL_SCALAR ALWAN_PIXEL_F32
-#else
-#  define ALWAN_PIXEL_SCALAR ALWAN_PIXEL_F64
-#endif
-
 /* ----------------------------------------------------------------
  * Context & Configuration
  * ---------------------------------------------------------------- */
@@ -141,20 +135,30 @@ void alwan_data_free(alwan_ctx *ctx, alwan_scalar *data);
  * ---------------------------------------------------------------- */
 
 /* Multiply two 3x3 matrices: out = a * b */
-void alwan_mat3_mul(alwan_mat3x3 *out, alwan_mat3x3 const *a, alwan_mat3x3 const *b);
+void alwan_mat3_mul_f32(alwan_mat3x3_f32 *out, alwan_mat3x3_f32 const *a, alwan_mat3x3_f32 const *b);
+void alwan_mat3_mul_f64(alwan_mat3x3_f64 *out, alwan_mat3x3_f64 const *a, alwan_mat3x3_f64 const *b);
+#define alwan_mat3_mul alwan_mat3_mul_f64
 
 /* Invert a 3x3 matrix using partial-pivot Gaussian elimination
  * Returns ALWAN_OK on success, ALWAN_E_RANGE if matrix is singular */
-int alwan_mat3_inv(alwan_mat3x3 *out, alwan_mat3x3 const *m);
+int alwan_mat3_inv_f32(alwan_mat3x3_f32 *out, alwan_mat3x3_f32 const *m);
+int alwan_mat3_inv_f64(alwan_mat3x3_f64 *out, alwan_mat3x3_f64 const *m);
+#define alwan_mat3_inv alwan_mat3_inv_f64
 
 /* Multiply matrix by vector: out = m * v */
-void alwan_mat3_mulv(alwan_vec3 *out, alwan_mat3x3 const *m, alwan_vec3 const *v);
+void alwan_mat3_mulv_f32(alwan_vec3_f32 *out, alwan_mat3x3_f32 const *m, alwan_vec3_f32 const *v);
+void alwan_mat3_mulv_f64(alwan_vec3_f64 *out, alwan_mat3x3_f64 const *m, alwan_vec3_f64 const *v);
+#define alwan_mat3_mulv alwan_mat3_mulv_f64
 
 /* Create identity matrix */
-void alwan_mat3_identity(alwan_mat3x3 *out);
+void alwan_mat3_identity_f32(alwan_mat3x3_f32 *out);
+void alwan_mat3_identity_f64(alwan_mat3x3_f64 *out);
+#define alwan_mat3_identity alwan_mat3_identity_f64
 
 /* Compute the determinant of a 3x3 matrix */
-alwan_scalar alwan_mat3_det(alwan_mat3x3 const *m);
+float  alwan_mat3_det_f32(alwan_mat3x3_f32 const *m);
+double alwan_mat3_det_f64(alwan_mat3x3_f64 const *m);
+#define alwan_mat3_det alwan_mat3_det_f64
 
 /* Mapmatrix-vector multiplication: out[i] = m * in[i]
  * Transforms array of 3D vectors by the same matrix
@@ -162,15 +166,22 @@ alwan_scalar alwan_mat3_det(alwan_mat3x3 const *m);
  * matrix: transformation matrix (applied to all vectors)
  * vec_in: input vectors (stride in_stride between consecutive vectors)
  * count: number of vectors to transform
- * in_stride: input stride in bytes (typically 3*sizeof(alwan_scalar))
- * out_stride: output stride in bytes (typically 3*sizeof(alwan_scalar))
+ * in_stride: input stride in bytes (typically 3*sizeof(float/double))
+ * out_stride: output stride in bytes (typically 3*sizeof(float/double))
  * Returns ALWAN_OK on success */
-int alwan_mat3_transform_map_interleave(alwan_scalar *vec_out,
-                              alwan_mat3x3 const *matrix,
-                              alwan_scalar const *vec_in,
+int alwan_mat3_transform_f32_map_interleave(float *vec_out,
+                              alwan_mat3x3_f32 const *matrix,
+                              float const *vec_in,
                               size_t count,
                               size_t in_stride,
                               size_t out_stride);
+int alwan_mat3_transform_f64_map_interleave(double *vec_out,
+                              alwan_mat3x3_f64 const *matrix,
+                              double const *vec_in,
+                              size_t count,
+                              size_t in_stride,
+                              size_t out_stride);
+#define alwan_mat3_transform_map_interleave alwan_mat3_transform_f64_map_interleave
 
 /* Typed mat3 transform: accepts void* buffers with pixel format */
 int alwan_mat3_transform_map_interleave_ex(void *vec_out, alwan_pixel_format out_fmt,
@@ -542,18 +553,26 @@ int alwan_rgb_derive_matrices(alwan_mat3x3 *rgb_to_xyz,
  * rgb: input linear RGB color
  * xyz: output XYZ color
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_rgb_to_xyz(alwan_xyz *xyz,
-                     alwan_rgb_space_desc const *space,
-                     alwan_rgb const *rgb);
+int alwan_rgb_to_xyz_f32(alwan_xyz_f32 *xyz,
+                         alwan_rgb_space_desc const *space,
+                         alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_xyz_f64(alwan_xyz_f64 *xyz,
+                         alwan_rgb_space_desc const *space,
+                         alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_xyz alwan_rgb_to_xyz_f64
 
 /* Convert XYZ to linear RGB for a given color space
  * space: RGB color space descriptor (primaries and white point)
  * xyz: input XYZ color
  * rgb: output linear RGB color (may be out of gamut)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_xyz_to_rgb(alwan_rgb *rgb,
-                     alwan_rgb_space_desc const *space,
-                     alwan_xyz const *xyz);
+int alwan_xyz_to_rgb_f32(alwan_rgb_f32 *rgb,
+                         alwan_rgb_space_desc const *space,
+                         alwan_xyz_f32 const *xyz);
+int alwan_xyz_to_rgb_f64(alwan_rgb_f64 *rgb,
+                         alwan_rgb_space_desc const *space,
+                         alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_rgb alwan_xyz_to_rgb_f64
 
 /* Get RGB color space descriptor by enum
  * Loads primaries and white point from data files and populates descriptor
@@ -625,53 +644,101 @@ int alwan_image_convert_rgba(
  * ---------------------------------------------------------------- */
 
 /* sRGB <-> XYZ (D65 white point) */
-int alwan_srgb_to_xyz(alwan_xyz *xyz, alwan_rgb const *rgb);
-int alwan_xyz_to_srgb(alwan_rgb *rgb, alwan_xyz const *xyz);
+int alwan_srgb_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_rgb_f32 const *rgb);
+int alwan_srgb_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_rgb_f64 const *rgb);
+#define alwan_srgb_to_xyz alwan_srgb_to_xyz_f64
+int alwan_xyz_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_xyz_f32 const *xyz);
+int alwan_xyz_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_srgb alwan_xyz_to_srgb_f64
 
 /* sRGB <-> Lab (D65 white point) */
-int alwan_srgb_to_lab(alwan_lab *lab, alwan_rgb const *rgb);
-int alwan_lab_to_srgb(alwan_rgb *rgb, alwan_lab const *lab);
+int alwan_srgb_to_lab_f32(alwan_lab_f32 *lab, alwan_rgb_f32 const *rgb);
+int alwan_srgb_to_lab_f64(alwan_lab_f64 *lab, alwan_rgb_f64 const *rgb);
+#define alwan_srgb_to_lab alwan_srgb_to_lab_f64
+int alwan_lab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_lab_f32 const *lab);
+int alwan_lab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_lab_f64 const *lab);
+#define alwan_lab_to_srgb alwan_lab_to_srgb_f64
 
 /* sRGB <-> Oklab (D65 assumed by Oklab) */
-int alwan_srgb_to_oklab(alwan_oklab *oklab, alwan_rgb const *rgb);
-int alwan_oklab_to_srgb(alwan_rgb *rgb, alwan_oklab const *oklab);
+int alwan_srgb_to_oklab_f32(alwan_oklab_f32 *oklab, alwan_rgb_f32 const *rgb);
+int alwan_srgb_to_oklab_f64(alwan_oklab_f64 *oklab, alwan_rgb_f64 const *rgb);
+#define alwan_srgb_to_oklab alwan_srgb_to_oklab_f64
+int alwan_oklab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_oklab_f32 const *oklab);
+int alwan_oklab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_oklab_f64 const *oklab);
+#define alwan_oklab_to_srgb alwan_oklab_to_srgb_f64
 
 /* MapsRGB convenience conversions */
-int alwan_srgb_to_xyz_map_interleave(alwan_scalar *xyz_out,
-                           alwan_scalar const *rgb_in,
+int alwan_srgb_to_xyz_f32_map_interleave(float *xyz_out,
+                           float const *rgb_in,
                            size_t count,
                            size_t in_stride,
                            size_t out_stride);
-
-int alwan_xyz_to_srgb_map_interleave(alwan_scalar *rgb_out,
-                           alwan_scalar const *xyz_in,
+int alwan_srgb_to_xyz_f64_map_interleave(double *xyz_out,
+                           double const *rgb_in,
                            size_t count,
                            size_t in_stride,
                            size_t out_stride);
+#define alwan_srgb_to_xyz_map_interleave alwan_srgb_to_xyz_f64_map_interleave
 
-int alwan_srgb_to_lab_map_interleave(alwan_scalar *lab_out,
-                           alwan_scalar const *rgb_in,
+int alwan_xyz_to_srgb_f32_map_interleave(float *rgb_out,
+                           float const *xyz_in,
                            size_t count,
                            size_t in_stride,
                            size_t out_stride);
-
-int alwan_lab_to_srgb_map_interleave(alwan_scalar *rgb_out,
-                           alwan_scalar const *lab_in,
+int alwan_xyz_to_srgb_f64_map_interleave(double *rgb_out,
+                           double const *xyz_in,
                            size_t count,
                            size_t in_stride,
                            size_t out_stride);
+#define alwan_xyz_to_srgb_map_interleave alwan_xyz_to_srgb_f64_map_interleave
 
-int alwan_srgb_to_oklab_map_interleave(alwan_scalar *oklab_out,
-                             alwan_scalar const *rgb_in,
+int alwan_srgb_to_lab_f32_map_interleave(float *lab_out,
+                           float const *rgb_in,
+                           size_t count,
+                           size_t in_stride,
+                           size_t out_stride);
+int alwan_srgb_to_lab_f64_map_interleave(double *lab_out,
+                           double const *rgb_in,
+                           size_t count,
+                           size_t in_stride,
+                           size_t out_stride);
+#define alwan_srgb_to_lab_map_interleave alwan_srgb_to_lab_f64_map_interleave
+
+int alwan_lab_to_srgb_f32_map_interleave(float *rgb_out,
+                           float const *lab_in,
+                           size_t count,
+                           size_t in_stride,
+                           size_t out_stride);
+int alwan_lab_to_srgb_f64_map_interleave(double *rgb_out,
+                           double const *lab_in,
+                           size_t count,
+                           size_t in_stride,
+                           size_t out_stride);
+#define alwan_lab_to_srgb_map_interleave alwan_lab_to_srgb_f64_map_interleave
+
+int alwan_srgb_to_oklab_f32_map_interleave(float *oklab_out,
+                             float const *rgb_in,
                              size_t count,
                              size_t in_stride,
                              size_t out_stride);
-
-int alwan_oklab_to_srgb_map_interleave(alwan_scalar *rgb_out,
-                             alwan_scalar const *oklab_in,
+int alwan_srgb_to_oklab_f64_map_interleave(double *oklab_out,
+                             double const *rgb_in,
                              size_t count,
                              size_t in_stride,
                              size_t out_stride);
+#define alwan_srgb_to_oklab_map_interleave alwan_srgb_to_oklab_f64_map_interleave
+
+int alwan_oklab_to_srgb_f32_map_interleave(float *rgb_out,
+                             float const *oklab_in,
+                             size_t count,
+                             size_t in_stride,
+                             size_t out_stride);
+int alwan_oklab_to_srgb_f64_map_interleave(double *rgb_out,
+                             double const *oklab_in,
+                             size_t count,
+                             size_t in_stride,
+                             size_t out_stride);
+#define alwan_oklab_to_srgb_map_interleave alwan_oklab_to_srgb_f64_map_interleave
 
 /* Typed sRGB convenience map functions (_ex variants) */
 int alwan_srgb_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
@@ -699,32 +766,60 @@ int alwan_oklab_to_srgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
  * ---------------------------------------------------------------- */
 
 /* RGB <-> Lab (requires white point for Lab) */
-int alwan_rgb_to_lab(alwan_lab *lab,
-                     alwan_rgb_space_desc const *space,
-                     alwan_rgb const *rgb,
-                     alwan_xyz const *white_xyz);
-int alwan_lab_to_rgb(alwan_rgb *rgb,
-                     alwan_rgb_space_desc const *space,
-                     alwan_lab const *lab,
-                     alwan_xyz const *white_xyz);
+int alwan_rgb_to_lab_f32(alwan_lab_f32 *lab,
+                         alwan_rgb_space_desc const *space,
+                         alwan_rgb_f32 const *rgb,
+                         alwan_xyz_f32 const *white_xyz);
+int alwan_rgb_to_lab_f64(alwan_lab_f64 *lab,
+                         alwan_rgb_space_desc const *space,
+                         alwan_rgb_f64 const *rgb,
+                         alwan_xyz_f64 const *white_xyz);
+#define alwan_rgb_to_lab alwan_rgb_to_lab_f64
+int alwan_lab_to_rgb_f32(alwan_rgb_f32 *rgb,
+                         alwan_rgb_space_desc const *space,
+                         alwan_lab_f32 const *lab,
+                         alwan_xyz_f32 const *white_xyz);
+int alwan_lab_to_rgb_f64(alwan_rgb_f64 *rgb,
+                         alwan_rgb_space_desc const *space,
+                         alwan_lab_f64 const *lab,
+                         alwan_xyz_f64 const *white_xyz);
+#define alwan_lab_to_rgb alwan_lab_to_rgb_f64
 
 /* RGB <-> Luv (requires white point for Luv) */
-int alwan_rgb_to_luv(alwan_luv *luv,
-                     alwan_rgb_space_desc const *space,
-                     alwan_rgb const *rgb,
-                     alwan_xyz const *white_xyz);
-int alwan_luv_to_rgb(alwan_rgb *rgb,
-                     alwan_rgb_space_desc const *space,
-                     alwan_luv const *luv,
-                     alwan_xyz const *white_xyz);
+int alwan_rgb_to_luv_f32(alwan_luv_f32 *luv,
+                         alwan_rgb_space_desc const *space,
+                         alwan_rgb_f32 const *rgb,
+                         alwan_xyz_f32 const *white_xyz);
+int alwan_rgb_to_luv_f64(alwan_luv_f64 *luv,
+                         alwan_rgb_space_desc const *space,
+                         alwan_rgb_f64 const *rgb,
+                         alwan_xyz_f64 const *white_xyz);
+#define alwan_rgb_to_luv alwan_rgb_to_luv_f64
+int alwan_luv_to_rgb_f32(alwan_rgb_f32 *rgb,
+                         alwan_rgb_space_desc const *space,
+                         alwan_luv_f32 const *luv,
+                         alwan_xyz_f32 const *white_xyz);
+int alwan_luv_to_rgb_f64(alwan_rgb_f64 *rgb,
+                         alwan_rgb_space_desc const *space,
+                         alwan_luv_f64 const *luv,
+                         alwan_xyz_f64 const *white_xyz);
+#define alwan_luv_to_rgb alwan_luv_to_rgb_f64
 
 /* RGB <-> Oklab (Oklab assumes D65, handles chromatic adaptation if needed) */
-int alwan_rgb_to_oklab(alwan_oklab *oklab, alwan_rgb_space_desc const *space, alwan_rgb const *rgb);
-int alwan_oklab_to_rgb(alwan_rgb *rgb, alwan_rgb_space_desc const *space, alwan_oklab const *oklab);
+int alwan_rgb_to_oklab_f32(alwan_oklab_f32 *oklab, alwan_rgb_space_desc const *space, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_oklab_f64(alwan_oklab_f64 *oklab, alwan_rgb_space_desc const *space, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_oklab alwan_rgb_to_oklab_f64
+int alwan_oklab_to_rgb_f32(alwan_rgb_f32 *rgb, alwan_rgb_space_desc const *space, alwan_oklab_f32 const *oklab);
+int alwan_oklab_to_rgb_f64(alwan_rgb_f64 *rgb, alwan_rgb_space_desc const *space, alwan_oklab_f64 const *oklab);
+#define alwan_oklab_to_rgb alwan_oklab_to_rgb_f64
 
 /* RGB <-> Oklch (cylindrical Oklab) */
-int alwan_rgb_to_oklch(alwan_oklch *oklch, alwan_rgb_space_desc const *space, alwan_rgb const *rgb);
-int alwan_oklch_to_rgb(alwan_rgb *rgb, alwan_rgb_space_desc const *space, alwan_oklch const *oklch);
+int alwan_rgb_to_oklch_f32(alwan_oklch_f32 *oklch, alwan_rgb_space_desc const *space, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_oklch_f64(alwan_oklch_f64 *oklch, alwan_rgb_space_desc const *space, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_oklch alwan_rgb_to_oklch_f64
+int alwan_oklch_to_rgb_f32(alwan_rgb_f32 *rgb, alwan_rgb_space_desc const *space, alwan_oklch_f32 const *oklch);
+int alwan_oklch_to_rgb_f64(alwan_rgb_f64 *rgb, alwan_rgb_space_desc const *space, alwan_oklch_f64 const *oklch);
+#define alwan_oklch_to_rgb alwan_oklch_to_rgb_f64
 
 /* ----------------------------------------------------------------
  * Direct XYZ <-> Cylindrical Conversions
@@ -732,16 +827,28 @@ int alwan_oklch_to_rgb(alwan_rgb *rgb, alwan_rgb_space_desc const *space, alwan_
  * ---------------------------------------------------------------- */
 
 /* XYZ <-> LCh(ab) (cylindrical Lab) */
-void alwan_xyz_to_lch(alwan_lch *lch, alwan_xyz const *xyz, alwan_xyz const *white_xyz);
-void alwan_lch_to_xyz(alwan_xyz *xyz, alwan_lch const *lch, alwan_xyz const *white_xyz);
+void alwan_xyz_to_lch_f32(alwan_lch_f32 *lch, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *white_xyz);
+void alwan_xyz_to_lch_f64(alwan_lch_f64 *lch, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *white_xyz);
+#define alwan_xyz_to_lch alwan_xyz_to_lch_f64
+void alwan_lch_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_lch_f32 const *lch, alwan_xyz_f32 const *white_xyz);
+void alwan_lch_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_lch_f64 const *lch, alwan_xyz_f64 const *white_xyz);
+#define alwan_lch_to_xyz alwan_lch_to_xyz_f64
 
 /* XYZ <-> LCh(uv) (cylindrical Luv) */
-void alwan_xyz_to_lchuv(alwan_lchuv *lchuv, alwan_xyz const *xyz, alwan_xyz const *white_xyz);
-void alwan_lchuv_to_xyz(alwan_xyz *xyz, alwan_lchuv const *lchuv, alwan_xyz const *white_xyz);
+void alwan_xyz_to_lchuv_f32(alwan_lchuv_f32 *lchuv, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *white_xyz);
+void alwan_xyz_to_lchuv_f64(alwan_lchuv_f64 *lchuv, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *white_xyz);
+#define alwan_xyz_to_lchuv alwan_xyz_to_lchuv_f64
+void alwan_lchuv_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_lchuv_f32 const *lchuv, alwan_xyz_f32 const *white_xyz);
+void alwan_lchuv_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_lchuv_f64 const *lchuv, alwan_xyz_f64 const *white_xyz);
+#define alwan_lchuv_to_xyz alwan_lchuv_to_xyz_f64
 
 /* XYZ <-> Oklch (cylindrical Oklab, D65 assumed) */
-void alwan_xyz_to_oklch(alwan_oklch *oklch, alwan_xyz const *xyz);
-void alwan_oklch_to_xyz(alwan_xyz *xyz, alwan_oklch const *oklch);
+void alwan_xyz_to_oklch_f32(alwan_oklch_f32 *oklch, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_oklch_f64(alwan_oklch_f64 *oklch, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_oklch alwan_xyz_to_oklch_f64
+void alwan_oklch_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_oklch_f32 const *oklch);
+void alwan_oklch_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_oklch_f64 const *oklch);
+#define alwan_oklch_to_xyz alwan_oklch_to_xyz_f64
 
 /* ----------------------------------------------------------------
  * M11: Gamut Utilities & Mapping
@@ -779,12 +886,19 @@ int alwan_gamut_volume_mc(alwan_scalar *volume,
  * in_stride: stride for input (in bytes, typically 3*sizeof(alwan_scalar) for packed)
  * out_stride: stride for output (in bytes, typically 3*sizeof(alwan_scalar) for packed)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if method not supported */
-int alwan_gamut_map_interleave(alwan_scalar *rgb_out,
+int alwan_gamut_f32_map_interleave(float *rgb_out,
                     alwan_gamut_map_method method,
-                    alwan_scalar const *rgb_in,
+                    float const *rgb_in,
                     size_t count,
                     size_t in_stride,
                     size_t out_stride);
+int alwan_gamut_f64_map_interleave(double *rgb_out,
+                    alwan_gamut_map_method method,
+                    double const *rgb_in,
+                    size_t count,
+                    size_t in_stride,
+                    size_t out_stride);
+#define alwan_gamut_map_interleave alwan_gamut_f64_map_interleave
 
 /* Map XYZ color to RGB gamut with hue preservation
  * ctx: optional context (can be NULL)
@@ -804,20 +918,35 @@ int alwan_gamut_map_xyz_to_rgb(alwan_rgb *rgb_out,
  * rgb_in: input linear sRGB triplets (may be out of gamut)
  * count: number of RGB triplets
  * in_stride, out_stride: stride in bytes */
-int alwan_css_gamut_map_interleave(alwan_scalar *rgb_out,
-                        alwan_scalar const *rgb_in,
+int alwan_css_gamut_f32_map_interleave(float *rgb_out,
+                        float const *rgb_in,
                         size_t count,
                         size_t in_stride,
                         size_t out_stride);
+int alwan_css_gamut_f64_map_interleave(double *rgb_out,
+                        double const *rgb_in,
+                        size_t count,
+                        size_t in_stride,
+                        size_t out_stride);
+#define alwan_css_gamut_map_interleave alwan_css_gamut_f64_map_interleave
 
 /* Gamut map planar */
-int alwan_gamut_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
+int alwan_gamut_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
                     alwan_gamut_map_method method,
-                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_css_gamut_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_gamut_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                    alwan_gamut_map_method method,
+                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
                     size_t count, size_t in_stride, size_t out_stride);
+#define alwan_gamut_map_planar alwan_gamut_f64_map_planar
+int alwan_css_gamut_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                    size_t count, size_t in_stride, size_t out_stride);
+int alwan_css_gamut_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_css_gamut_map_planar alwan_css_gamut_f64_map_planar
 
 /* Gamut map _ex (typed pixel format) */
 int alwan_gamut_map_interleave_ex(void *rgb_out, alwan_pixel_format out_fmt,
@@ -889,31 +1018,55 @@ int alwan_view_transform_apply(alwan_scalar *rgb_out,
  * ---------------------------------------------------------------- */
 
 /* XYZ <-> xyY conversions */
-void alwan_xyz_to_xyy(alwan_xyy *xyy, alwan_xyz const *xyz);
-void alwan_xyy_to_xyz(alwan_xyz *xyz, alwan_xyy const *xyy);
+void alwan_xyz_to_xyy_f32(alwan_xyy_f32 *xyy, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_xyy_f64(alwan_xyy_f64 *xyy, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_xyy alwan_xyz_to_xyy_f64
+void alwan_xyy_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_xyy_f32 const *xyy);
+void alwan_xyy_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_xyy_f64 const *xyy);
+#define alwan_xyy_to_xyz alwan_xyy_to_xyz_f64
 
 /* XYZ <-> Lab conversions (requires white point in XYZ) */
-void alwan_xyz_to_lab(alwan_lab *lab, alwan_xyz const *xyz, alwan_xyz const *white_xyz);
-void alwan_lab_to_xyz(alwan_xyz *xyz, alwan_lab const *lab, alwan_xyz const *white_xyz);
+void alwan_xyz_to_lab_f32(alwan_lab_f32 *lab, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *white_xyz);
+void alwan_xyz_to_lab_f64(alwan_lab_f64 *lab, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *white_xyz);
+#define alwan_xyz_to_lab alwan_xyz_to_lab_f64
+void alwan_lab_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_lab_f32 const *lab, alwan_xyz_f32 const *white_xyz);
+void alwan_lab_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_lab_f64 const *lab, alwan_xyz_f64 const *white_xyz);
+#define alwan_lab_to_xyz alwan_lab_to_xyz_f64
 
 /* XYZ <-> Luv conversions (requires white point in XYZ) */
-void alwan_xyz_to_luv(alwan_luv *luv, alwan_xyz const *xyz, alwan_xyz const *white_xyz);
-void alwan_luv_to_xyz(alwan_xyz *xyz, alwan_luv const *luv, alwan_xyz const *white_xyz);
+void alwan_xyz_to_luv_f32(alwan_luv_f32 *luv, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *white_xyz);
+void alwan_xyz_to_luv_f64(alwan_luv_f64 *luv, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *white_xyz);
+#define alwan_xyz_to_luv alwan_xyz_to_luv_f64
+void alwan_luv_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_luv_f32 const *luv, alwan_xyz_f32 const *white_xyz);
+void alwan_luv_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_luv_f64 const *luv, alwan_xyz_f64 const *white_xyz);
+#define alwan_luv_to_xyz alwan_luv_to_xyz_f64
 
 /* XYZ <-> U*V*W* conversions (CIE 1964 uniform color space for CRI)
  * Based on CIE 1960 UCS chromaticity diagram
  * Used specifically for Color Rendering Index calculations
  * Requires white point in XYZ */
-void alwan_xyz_to_uvw(alwan_uvw *uvw, alwan_xyz const *xyz, alwan_xyz const *white_xyz);
-void alwan_uvw_to_xyz(alwan_xyz *xyz, alwan_uvw const *uvw, alwan_xyz const *white_xyz);
+void alwan_xyz_to_uvw_f32(alwan_uvw_f32 *uvw, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *white_xyz);
+void alwan_xyz_to_uvw_f64(alwan_uvw_f64 *uvw, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *white_xyz);
+#define alwan_xyz_to_uvw alwan_xyz_to_uvw_f64
+void alwan_uvw_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_uvw_f32 const *uvw, alwan_xyz_f32 const *white_xyz);
+void alwan_uvw_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_uvw_f64 const *uvw, alwan_xyz_f64 const *white_xyz);
+#define alwan_uvw_to_xyz alwan_uvw_to_xyz_f64
 
 /* Lab <-> LCh(ab) conversions */
-void alwan_lab_to_lch(alwan_lch *lch, alwan_lab const *lab);
-void alwan_lch_to_lab(alwan_lab *lab, alwan_lch const *lch);
+void alwan_lab_to_lch_f32(alwan_lch_f32 *lch, alwan_lab_f32 const *lab);
+void alwan_lab_to_lch_f64(alwan_lch_f64 *lch, alwan_lab_f64 const *lab);
+#define alwan_lab_to_lch alwan_lab_to_lch_f64
+void alwan_lch_to_lab_f32(alwan_lab_f32 *lab, alwan_lch_f32 const *lch);
+void alwan_lch_to_lab_f64(alwan_lab_f64 *lab, alwan_lch_f64 const *lch);
+#define alwan_lch_to_lab alwan_lch_to_lab_f64
 
 /* Luv <-> LCh(uv) conversions */
-void alwan_luv_to_lchuv(alwan_lchuv *lchuv, alwan_luv const *luv);
-void alwan_lchuv_to_luv(alwan_luv *luv, alwan_lchuv const *lchuv);
+void alwan_luv_to_lchuv_f32(alwan_lchuv_f32 *lchuv, alwan_luv_f32 const *luv);
+void alwan_luv_to_lchuv_f64(alwan_lchuv_f64 *lchuv, alwan_luv_f64 const *luv);
+#define alwan_luv_to_lchuv alwan_luv_to_lchuv_f64
+void alwan_lchuv_to_luv_f32(alwan_luv_f32 *luv, alwan_lchuv_f32 const *lchuv);
+void alwan_lchuv_to_luv_f64(alwan_luv_f64 *luv, alwan_lchuv_f64 const *lchuv);
+#define alwan_lchuv_to_luv alwan_lchuv_to_luv_f64
 
 /* ----------------------------------------------------------------
  * Map Color Space Conversions (with stride support)
@@ -921,75 +1074,139 @@ void alwan_lchuv_to_luv(alwan_luv *luv, alwan_lchuv const *lchuv);
 
 /* MapXYZ <-> Lab conversions
  * count: number of color triplets to convert
- * in_stride: input stride in bytes (typically 3*sizeof(alwan_scalar))
- * out_stride: output stride in bytes (typically 3*sizeof(alwan_scalar)) */
-int alwan_xyz_to_lab_map_interleave(alwan_scalar *lab_out,
-                          alwan_scalar const *xyz_in,
-                          alwan_xyz const *white_xyz,
+ * in_stride: input stride in bytes (typically 3*sizeof(float/double))
+ * out_stride: output stride in bytes (typically 3*sizeof(float/double)) */
+int alwan_xyz_to_lab_f32_map_interleave(float *lab_out,
+                          float const *xyz_in,
+                          alwan_xyz_f32 const *white_xyz,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_xyz_to_lab_f64_map_interleave(double *lab_out,
+                          double const *xyz_in,
+                          alwan_xyz_f64 const *white_xyz,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_xyz_to_lab_map_interleave alwan_xyz_to_lab_f64_map_interleave
 
-int alwan_lab_to_xyz_map_interleave(alwan_scalar *xyz_out,
-                          alwan_scalar const *lab_in,
-                          alwan_xyz const *white_xyz,
+int alwan_lab_to_xyz_f32_map_interleave(float *xyz_out,
+                          float const *lab_in,
+                          alwan_xyz_f32 const *white_xyz,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_lab_to_xyz_f64_map_interleave(double *xyz_out,
+                          double const *lab_in,
+                          alwan_xyz_f64 const *white_xyz,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_lab_to_xyz_map_interleave alwan_lab_to_xyz_f64_map_interleave
 
 /* MapXYZ <-> Luv conversions */
-int alwan_xyz_to_luv_map_interleave(alwan_scalar *luv_out,
-                          alwan_scalar const *xyz_in,
-                          alwan_xyz const *white_xyz,
+int alwan_xyz_to_luv_f32_map_interleave(float *luv_out,
+                          float const *xyz_in,
+                          alwan_xyz_f32 const *white_xyz,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_xyz_to_luv_f64_map_interleave(double *luv_out,
+                          double const *xyz_in,
+                          alwan_xyz_f64 const *white_xyz,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_xyz_to_luv_map_interleave alwan_xyz_to_luv_f64_map_interleave
 
-int alwan_luv_to_xyz_map_interleave(alwan_scalar *xyz_out,
-                          alwan_scalar const *luv_in,
-                          alwan_xyz const *white_xyz,
+int alwan_luv_to_xyz_f32_map_interleave(float *xyz_out,
+                          float const *luv_in,
+                          alwan_xyz_f32 const *white_xyz,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_luv_to_xyz_f64_map_interleave(double *xyz_out,
+                          double const *luv_in,
+                          alwan_xyz_f64 const *white_xyz,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_luv_to_xyz_map_interleave alwan_luv_to_xyz_f64_map_interleave
 
 /* MapLab <-> LCh conversions */
-int alwan_lab_to_lch_map_interleave(alwan_scalar *lch_out,
-                          alwan_scalar const *lab_in,
+int alwan_lab_to_lch_f32_map_interleave(float *lch_out,
+                          float const *lab_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_lab_to_lch_f64_map_interleave(double *lch_out,
+                          double const *lab_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_lab_to_lch_map_interleave alwan_lab_to_lch_f64_map_interleave
 
-int alwan_lch_to_lab_map_interleave(alwan_scalar *lab_out,
-                          alwan_scalar const *lch_in,
+int alwan_lch_to_lab_f32_map_interleave(float *lab_out,
+                          float const *lch_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_lch_to_lab_f64_map_interleave(double *lab_out,
+                          double const *lch_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_lch_to_lab_map_interleave alwan_lch_to_lab_f64_map_interleave
 
 /* MapLuv <-> LCh(uv) conversions */
-int alwan_luv_to_lchuv_map_interleave(alwan_scalar *lchuv_out,
-                            alwan_scalar const *luv_in,
+int alwan_luv_to_lchuv_f32_map_interleave(float *lchuv_out,
+                            float const *luv_in,
                             size_t count,
                             size_t in_stride,
                             size_t out_stride);
+int alwan_luv_to_lchuv_f64_map_interleave(double *lchuv_out,
+                            double const *luv_in,
+                            size_t count,
+                            size_t in_stride,
+                            size_t out_stride);
+#define alwan_luv_to_lchuv_map_interleave alwan_luv_to_lchuv_f64_map_interleave
 
-int alwan_lchuv_to_luv_map_interleave(alwan_scalar *luv_out,
-                            alwan_scalar const *lchuv_in,
+int alwan_lchuv_to_luv_f32_map_interleave(float *luv_out,
+                            float const *lchuv_in,
                             size_t count,
                             size_t in_stride,
                             size_t out_stride);
+int alwan_lchuv_to_luv_f64_map_interleave(double *luv_out,
+                            double const *lchuv_in,
+                            size_t count,
+                            size_t in_stride,
+                            size_t out_stride);
+#define alwan_lchuv_to_luv_map_interleave alwan_lchuv_to_luv_f64_map_interleave
 
 /* MapXYZ <-> xyY conversions */
-int alwan_xyz_to_xyy_map_interleave(alwan_scalar *xyy_out,
-                          alwan_scalar const *xyz_in,
+int alwan_xyz_to_xyy_f32_map_interleave(float *xyy_out,
+                          float const *xyz_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_xyz_to_xyy_f64_map_interleave(double *xyy_out,
+                          double const *xyz_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_xyz_to_xyy_map_interleave alwan_xyz_to_xyy_f64_map_interleave
 
-int alwan_xyy_to_xyz_map_interleave(alwan_scalar *xyz_out,
-                          alwan_scalar const *xyy_in,
+int alwan_xyy_to_xyz_f32_map_interleave(float *xyz_out,
+                          float const *xyy_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_xyy_to_xyz_f64_map_interleave(double *xyz_out,
+                          double const *xyy_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_xyy_to_xyz_map_interleave alwan_xyy_to_xyz_f64_map_interleave
 
 /* Typed colorspace map functions (_ex variants) */
 int alwan_xyz_to_lab_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
@@ -1028,38 +1245,70 @@ int alwan_xyy_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> Oklab conversions (modern perceptually uniform space, D65 assumed) */
-void alwan_xyz_to_oklab(alwan_oklab *oklab, alwan_xyz const *xyz);
-void alwan_oklab_to_xyz(alwan_xyz *xyz, alwan_oklab const *oklab);
+void alwan_xyz_to_oklab_f32(alwan_oklab_f32 *oklab, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_oklab_f64(alwan_oklab_f64 *oklab, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_oklab alwan_xyz_to_oklab_f64
+void alwan_oklab_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_oklab_f32 const *oklab);
+void alwan_oklab_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_oklab_f64 const *oklab);
+#define alwan_oklab_to_xyz alwan_oklab_to_xyz_f64
 
 /* Oklab <-> Oklch conversions (cylindrical Oklab) */
-void alwan_oklab_to_oklch(alwan_oklch *oklch, alwan_oklab const *oklab);
-void alwan_oklch_to_oklab(alwan_oklab *oklab, alwan_oklch const *oklch);
+void alwan_oklab_to_oklch_f32(alwan_oklch_f32 *oklch, alwan_oklab_f32 const *oklab);
+void alwan_oklab_to_oklch_f64(alwan_oklch_f64 *oklch, alwan_oklab_f64 const *oklab);
+#define alwan_oklab_to_oklch alwan_oklab_to_oklch_f64
+void alwan_oklch_to_oklab_f32(alwan_oklab_f32 *oklab, alwan_oklch_f32 const *oklch);
+void alwan_oklch_to_oklab_f64(alwan_oklab_f64 *oklab, alwan_oklch_f64 const *oklch);
+#define alwan_oklch_to_oklab alwan_oklch_to_oklab_f64
 
 /* MapXYZ <-> Oklab conversions */
-int alwan_xyz_to_oklab_map_interleave(alwan_scalar *oklab_out,
-                            alwan_scalar const *xyz_in,
+int alwan_xyz_to_oklab_f32_map_interleave(float *oklab_out,
+                            float const *xyz_in,
                             size_t count,
                             size_t in_stride,
                             size_t out_stride);
+int alwan_xyz_to_oklab_f64_map_interleave(double *oklab_out,
+                            double const *xyz_in,
+                            size_t count,
+                            size_t in_stride,
+                            size_t out_stride);
+#define alwan_xyz_to_oklab_map_interleave alwan_xyz_to_oklab_f64_map_interleave
 
-int alwan_oklab_to_xyz_map_interleave(alwan_scalar *xyz_out,
-                            alwan_scalar const *oklab_in,
+int alwan_oklab_to_xyz_f32_map_interleave(float *xyz_out,
+                            float const *oklab_in,
                             size_t count,
                             size_t in_stride,
                             size_t out_stride);
+int alwan_oklab_to_xyz_f64_map_interleave(double *xyz_out,
+                            double const *oklab_in,
+                            size_t count,
+                            size_t in_stride,
+                            size_t out_stride);
+#define alwan_oklab_to_xyz_map_interleave alwan_oklab_to_xyz_f64_map_interleave
 
 /* MapOklab <-> Oklch conversions */
-int alwan_oklab_to_oklch_map_interleave(alwan_scalar *oklch_out,
-                              alwan_scalar const *oklab_in,
+int alwan_oklab_to_oklch_f32_map_interleave(float *oklch_out,
+                              float const *oklab_in,
                               size_t count,
                               size_t in_stride,
                               size_t out_stride);
+int alwan_oklab_to_oklch_f64_map_interleave(double *oklch_out,
+                              double const *oklab_in,
+                              size_t count,
+                              size_t in_stride,
+                              size_t out_stride);
+#define alwan_oklab_to_oklch_map_interleave alwan_oklab_to_oklch_f64_map_interleave
 
-int alwan_oklch_to_oklab_map_interleave(alwan_scalar *oklab_out,
-                              alwan_scalar const *oklch_in,
+int alwan_oklch_to_oklab_f32_map_interleave(float *oklab_out,
+                              float const *oklch_in,
                               size_t count,
                               size_t in_stride,
                               size_t out_stride);
+int alwan_oklch_to_oklab_f64_map_interleave(double *oklab_out,
+                              double const *oklch_in,
+                              size_t count,
+                              size_t in_stride,
+                              size_t out_stride);
+#define alwan_oklch_to_oklab_map_interleave alwan_oklch_to_oklab_f64_map_interleave
 
 /* Typed Oklab map functions (_ex variants) */
 int alwan_xyz_to_oklab_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
@@ -1080,52 +1329,92 @@ int alwan_oklch_to_oklab_map_interleave_ex(void *out, alwan_pixel_format out_fmt
  * - All variants provide improved perceptual uniformity over CIE Lab
  * - Input Lab should be D65 adapted
  */
-void alwan_lab_to_din99(alwan_din99 *din99, alwan_lab const *lab, int variant);
-void alwan_din99_to_lab(alwan_lab *lab, alwan_din99 const *din99, int variant);
+void alwan_lab_to_din99_f32(alwan_din99_f32 *din99, alwan_lab_f32 const *lab, int variant);
+void alwan_lab_to_din99_f64(alwan_din99_f64 *din99, alwan_lab_f64 const *lab, int variant);
+#define alwan_lab_to_din99 alwan_lab_to_din99_f64
+void alwan_din99_to_lab_f32(alwan_lab_f32 *lab, alwan_din99_f32 const *din99, int variant);
+void alwan_din99_to_lab_f64(alwan_lab_f64 *lab, alwan_din99_f64 const *din99, int variant);
+#define alwan_din99_to_lab alwan_din99_to_lab_f64
 
 /* RGB <-> ICtCp conversions (ITU-R BT.2100 HDR color space)
  * - RGB input/output is linear BT.2020 RGB
  * - use_pq: 1 for PQ (Perceptual Quantizer), 0 for HLG (Hybrid Log-Gamma)
  */
-void alwan_rgb_to_ictcp(alwan_ictcp *ictcp, alwan_rgb const *rgb, int use_pq);
-void alwan_ictcp_to_rgb(alwan_rgb *rgb, alwan_ictcp const *ictcp, int use_pq);
+void alwan_rgb_to_ictcp_f32(alwan_ictcp_f32 *ictcp, alwan_rgb_f32 const *rgb, int use_pq);
+void alwan_rgb_to_ictcp_f64(alwan_ictcp_f64 *ictcp, alwan_rgb_f64 const *rgb, int use_pq);
+#define alwan_rgb_to_ictcp alwan_rgb_to_ictcp_f64
+void alwan_ictcp_to_rgb_f32(alwan_rgb_f32 *rgb, alwan_ictcp_f32 const *ictcp, int use_pq);
+void alwan_ictcp_to_rgb_f64(alwan_rgb_f64 *rgb, alwan_ictcp_f64 const *ictcp, int use_pq);
+#define alwan_ictcp_to_rgb alwan_ictcp_to_rgb_f64
 
 /* XYZ <-> ICtCp conversions (via BT.2020 RGB)
  * - XYZ is assumed to be D65 adapted
  * - use_pq: 1 for PQ (Perceptual Quantizer), 0 for HLG (Hybrid Log-Gamma)
  */
-void alwan_xyz_to_ictcp(alwan_ictcp *ictcp, alwan_xyz const *xyz, int use_pq);
-void alwan_ictcp_to_xyz(alwan_xyz *xyz, alwan_ictcp const *ictcp, int use_pq);
+void alwan_xyz_to_ictcp_f32(alwan_ictcp_f32 *ictcp, alwan_xyz_f32 const *xyz, int use_pq);
+void alwan_xyz_to_ictcp_f64(alwan_ictcp_f64 *ictcp, alwan_xyz_f64 const *xyz, int use_pq);
+#define alwan_xyz_to_ictcp alwan_xyz_to_ictcp_f64
+void alwan_ictcp_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_ictcp_f32 const *ictcp, int use_pq);
+void alwan_ictcp_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_ictcp_f64 const *ictcp, int use_pq);
+#define alwan_ictcp_to_xyz alwan_ictcp_to_xyz_f64
 
 /* MapRGB <-> ICtCp conversions */
-int alwan_rgb_to_ictcp_map_interleave(alwan_scalar *ictcp_out,
-                            alwan_scalar const *rgb_in,
+int alwan_rgb_to_ictcp_f32_map_interleave(float *ictcp_out,
+                            float const *rgb_in,
                             int use_pq,
                             size_t count,
                             size_t in_stride,
                             size_t out_stride);
+int alwan_rgb_to_ictcp_f64_map_interleave(double *ictcp_out,
+                            double const *rgb_in,
+                            int use_pq,
+                            size_t count,
+                            size_t in_stride,
+                            size_t out_stride);
+#define alwan_rgb_to_ictcp_map_interleave alwan_rgb_to_ictcp_f64_map_interleave
 
-int alwan_ictcp_to_rgb_map_interleave(alwan_scalar *rgb_out,
-                            alwan_scalar const *ictcp_in,
+int alwan_ictcp_to_rgb_f32_map_interleave(float *rgb_out,
+                            float const *ictcp_in,
                             int use_pq,
                             size_t count,
                             size_t in_stride,
                             size_t out_stride);
+int alwan_ictcp_to_rgb_f64_map_interleave(double *rgb_out,
+                            double const *ictcp_in,
+                            int use_pq,
+                            size_t count,
+                            size_t in_stride,
+                            size_t out_stride);
+#define alwan_ictcp_to_rgb_map_interleave alwan_ictcp_to_rgb_f64_map_interleave
 
 /* MapXYZ <-> ICtCp conversions */
-int alwan_xyz_to_ictcp_map_interleave(alwan_scalar *ictcp_out,
-                            alwan_scalar const *xyz_in,
+int alwan_xyz_to_ictcp_f32_map_interleave(float *ictcp_out,
+                            float const *xyz_in,
                             int use_pq,
                             size_t count,
                             size_t in_stride,
                             size_t out_stride);
+int alwan_xyz_to_ictcp_f64_map_interleave(double *ictcp_out,
+                            double const *xyz_in,
+                            int use_pq,
+                            size_t count,
+                            size_t in_stride,
+                            size_t out_stride);
+#define alwan_xyz_to_ictcp_map_interleave alwan_xyz_to_ictcp_f64_map_interleave
 
-int alwan_ictcp_to_xyz_map_interleave(alwan_scalar *xyz_out,
-                            alwan_scalar const *ictcp_in,
+int alwan_ictcp_to_xyz_f32_map_interleave(float *xyz_out,
+                            float const *ictcp_in,
                             int use_pq,
                             size_t count,
                             size_t in_stride,
                             size_t out_stride);
+int alwan_ictcp_to_xyz_f64_map_interleave(double *xyz_out,
+                            double const *ictcp_in,
+                            int use_pq,
+                            size_t count,
+                            size_t in_stride,
+                            size_t out_stride);
+#define alwan_ictcp_to_xyz_map_interleave alwan_ictcp_to_xyz_f64_map_interleave
 
 /* Typed ICtCp map functions (_ex variants) */
 int alwan_rgb_to_ictcp_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
@@ -1149,40 +1438,72 @@ int alwan_ictcp_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
  * - XYZ input/output is D65 adapted
  * - Jzazbz: Jz (lightness), az (red-green), bz (yellow-blue)
  */
-void alwan_xyz_to_jzazbz(alwan_jzazbz *jzazbz, alwan_xyz const *xyz);
-void alwan_jzazbz_to_xyz(alwan_xyz *xyz, alwan_jzazbz const *jzazbz);
+void alwan_xyz_to_jzazbz_f32(alwan_jzazbz_f32 *jzazbz, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_jzazbz_f64(alwan_jzazbz_f64 *jzazbz, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_jzazbz alwan_xyz_to_jzazbz_f64
+void alwan_jzazbz_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_jzazbz_f32 const *jzazbz);
+void alwan_jzazbz_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_jzazbz_f64 const *jzazbz);
+#define alwan_jzazbz_to_xyz alwan_jzazbz_to_xyz_f64
 
 /* Jzazbz <-> JzCzhz conversions (cylindrical coordinates)
  * - JzCzhz: Jz (lightness), Cz (chroma), hz (hue in radians)
  */
-void alwan_jzazbz_to_jzczhz(alwan_jzczhz *jzczhz, alwan_jzazbz const *jzazbz);
-void alwan_jzczhz_to_jzazbz(alwan_jzazbz *jzazbz, alwan_jzczhz const *jzczhz);
+void alwan_jzazbz_to_jzczhz_f32(alwan_jzczhz_f32 *jzczhz, alwan_jzazbz_f32 const *jzazbz);
+void alwan_jzazbz_to_jzczhz_f64(alwan_jzczhz_f64 *jzczhz, alwan_jzazbz_f64 const *jzazbz);
+#define alwan_jzazbz_to_jzczhz alwan_jzazbz_to_jzczhz_f64
+void alwan_jzczhz_to_jzazbz_f32(alwan_jzazbz_f32 *jzazbz, alwan_jzczhz_f32 const *jzczhz);
+void alwan_jzczhz_to_jzazbz_f64(alwan_jzazbz_f64 *jzazbz, alwan_jzczhz_f64 const *jzczhz);
+#define alwan_jzczhz_to_jzazbz alwan_jzczhz_to_jzazbz_f64
 
 /* MapXYZ <-> JzAzBz conversions */
-int alwan_xyz_to_jzazbz_map_interleave(alwan_scalar *jzazbz_out,
-                             alwan_scalar const *xyz_in,
+int alwan_xyz_to_jzazbz_f32_map_interleave(float *jzazbz_out,
+                             float const *xyz_in,
                              size_t count,
                              size_t in_stride,
                              size_t out_stride);
+int alwan_xyz_to_jzazbz_f64_map_interleave(double *jzazbz_out,
+                             double const *xyz_in,
+                             size_t count,
+                             size_t in_stride,
+                             size_t out_stride);
+#define alwan_xyz_to_jzazbz_map_interleave alwan_xyz_to_jzazbz_f64_map_interleave
 
-int alwan_jzazbz_to_xyz_map_interleave(alwan_scalar *xyz_out,
-                             alwan_scalar const *jzazbz_in,
+int alwan_jzazbz_to_xyz_f32_map_interleave(float *xyz_out,
+                             float const *jzazbz_in,
                              size_t count,
                              size_t in_stride,
                              size_t out_stride);
+int alwan_jzazbz_to_xyz_f64_map_interleave(double *xyz_out,
+                             double const *jzazbz_in,
+                             size_t count,
+                             size_t in_stride,
+                             size_t out_stride);
+#define alwan_jzazbz_to_xyz_map_interleave alwan_jzazbz_to_xyz_f64_map_interleave
 
 /* MapJzAzBz <-> JzCzhz conversions */
-int alwan_jzazbz_to_jzczhz_map_interleave(alwan_scalar *jzczhz_out,
-                                alwan_scalar const *jzazbz_in,
+int alwan_jzazbz_to_jzczhz_f32_map_interleave(float *jzczhz_out,
+                                float const *jzazbz_in,
                                 size_t count,
                                 size_t in_stride,
                                 size_t out_stride);
+int alwan_jzazbz_to_jzczhz_f64_map_interleave(double *jzczhz_out,
+                                double const *jzazbz_in,
+                                size_t count,
+                                size_t in_stride,
+                                size_t out_stride);
+#define alwan_jzazbz_to_jzczhz_map_interleave alwan_jzazbz_to_jzczhz_f64_map_interleave
 
-int alwan_jzczhz_to_jzazbz_map_interleave(alwan_scalar *jzazbz_out,
-                                alwan_scalar const *jzczhz_in,
+int alwan_jzczhz_to_jzazbz_f32_map_interleave(float *jzazbz_out,
+                                float const *jzczhz_in,
                                 size_t count,
                                 size_t in_stride,
                                 size_t out_stride);
+int alwan_jzczhz_to_jzazbz_f64_map_interleave(double *jzazbz_out,
+                                double const *jzczhz_in,
+                                size_t count,
+                                size_t in_stride,
+                                size_t out_stride);
+#define alwan_jzczhz_to_jzazbz_map_interleave alwan_jzczhz_to_jzazbz_f64_map_interleave
 
 /* Typed JzAzBz map functions (_ex variants) */
 int alwan_xyz_to_jzazbz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
@@ -1204,15 +1525,23 @@ int alwan_jzczhz_to_jzazbz_map_interleave_ex(void *out, alwan_pixel_format out_f
  * - Uses square roots instead of cube roots (unlike CIE Lab)
  * - Ka and Kb coefficients are illuminant-dependent
  */
-void alwan_xyz_to_hunter_lab(alwan_hunter_lab *hunter_lab, alwan_xyz const *xyz);
-void alwan_hunter_lab_to_xyz(alwan_xyz *xyz, alwan_hunter_lab const *hunter_lab);
+void alwan_xyz_to_hunter_lab_f32(alwan_hunter_lab_f32 *hunter_lab, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_hunter_lab_f64(alwan_hunter_lab_f64 *hunter_lab, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_hunter_lab alwan_xyz_to_hunter_lab_f64
+void alwan_hunter_lab_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_hunter_lab_f32 const *hunter_lab);
+void alwan_hunter_lab_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_hunter_lab_f64 const *hunter_lab);
+#define alwan_hunter_lab_to_xyz alwan_hunter_lab_to_xyz_f64
 
 /* Hunter Lab <-> XYZ conversions with custom illuminant
  * - xyz_n: Reference white point (e.g., D50, D65, or custom illuminant)
  * - Ka and Kb are calculated automatically based on xyz_n
  */
-void alwan_xyz_to_hunter_lab_custom(alwan_hunter_lab *hunter_lab, alwan_xyz const *xyz, alwan_xyz const *xyz_n);
-void alwan_hunter_lab_to_xyz_custom(alwan_xyz *xyz, alwan_hunter_lab const *hunter_lab, alwan_xyz const *xyz_n);
+void alwan_xyz_to_hunter_lab_custom_f32(alwan_hunter_lab_f32 *hunter_lab, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *xyz_n);
+void alwan_xyz_to_hunter_lab_custom_f64(alwan_hunter_lab_f64 *hunter_lab, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *xyz_n);
+#define alwan_xyz_to_hunter_lab_custom alwan_xyz_to_hunter_lab_custom_f64
+void alwan_hunter_lab_to_xyz_custom_f32(alwan_xyz_f32 *xyz, alwan_hunter_lab_f32 const *hunter_lab, alwan_xyz_f32 const *xyz_n);
+void alwan_hunter_lab_to_xyz_custom_f64(alwan_xyz_f64 *xyz, alwan_hunter_lab_f64 const *hunter_lab, alwan_xyz_f64 const *xyz_n);
+#define alwan_hunter_lab_to_xyz_custom alwan_hunter_lab_to_xyz_custom_f64
 
 /* IPT <-> XYZ conversions (Image Processing Transform)
  * - XYZ input/output is D65 adapted
@@ -1220,27 +1549,47 @@ void alwan_hunter_lab_to_xyz_custom(alwan_xyz *xyz, alwan_hunter_lab const *hunt
  * - Improved hue uniformity over CIELAB
  * - Uses power function nonlinearity (exponent 0.43)
  */
-void alwan_xyz_to_ipt(alwan_ipt *ipt, alwan_xyz const *xyz);
-void alwan_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *ipt);
+void alwan_xyz_to_ipt_f32(alwan_ipt_f32 *ipt, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_ipt_f64(alwan_ipt_f64 *ipt, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_ipt alwan_xyz_to_ipt_f64
+void alwan_ipt_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_ipt_f32 const *ipt);
+void alwan_ipt_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_ipt_f64 const *ipt);
+#define alwan_ipt_to_xyz alwan_ipt_to_xyz_f64
 
 /* IPT <-> IPTch conversions (cylindrical coordinates)
  * - IPTch: I (intensity), C (chroma), h (hue in radians)
  */
-void alwan_ipt_to_iptch(alwan_iptch *iptch, alwan_ipt const *ipt);
-void alwan_iptch_to_ipt(alwan_ipt *ipt, alwan_iptch const *iptch);
+void alwan_ipt_to_iptch_f32(alwan_iptch_f32 *iptch, alwan_ipt_f32 const *ipt);
+void alwan_ipt_to_iptch_f64(alwan_iptch_f64 *iptch, alwan_ipt_f64 const *ipt);
+#define alwan_ipt_to_iptch alwan_ipt_to_iptch_f64
+void alwan_iptch_to_ipt_f32(alwan_ipt_f32 *ipt, alwan_iptch_f32 const *iptch);
+void alwan_iptch_to_ipt_f64(alwan_ipt_f64 *ipt, alwan_iptch_f64 const *iptch);
+#define alwan_iptch_to_ipt alwan_iptch_to_ipt_f64
 
 /* MapXYZ <-> IPT conversions */
-int alwan_xyz_to_ipt_map_interleave(alwan_scalar *ipt_out,
-                          alwan_scalar const *xyz_in,
+int alwan_xyz_to_ipt_f32_map_interleave(float *ipt_out,
+                          float const *xyz_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_xyz_to_ipt_f64_map_interleave(double *ipt_out,
+                          double const *xyz_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_xyz_to_ipt_map_interleave alwan_xyz_to_ipt_f64_map_interleave
 
-int alwan_ipt_to_xyz_map_interleave(alwan_scalar *xyz_out,
-                          alwan_scalar const *ipt_in,
+int alwan_ipt_to_xyz_f32_map_interleave(float *xyz_out,
+                          float const *ipt_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_ipt_to_xyz_f64_map_interleave(double *xyz_out,
+                          double const *ipt_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_ipt_to_xyz_map_interleave alwan_ipt_to_xyz_f64_map_interleave
 
 /* Typed IPT map functions (_ex variants) */
 int alwan_xyz_to_ipt_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
@@ -1255,14 +1604,22 @@ int alwan_ipt_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
  * - ProLab: Uses projective transformation for improved uniformity
  * - Based on Konovalenko et al. (2021)
  */
-void alwan_xyz_to_prolab(alwan_prolab *prolab, alwan_xyz const *xyz);
-void alwan_prolab_to_xyz(alwan_xyz *xyz, alwan_prolab const *prolab);
+void alwan_xyz_to_prolab_f32(alwan_prolab_f32 *prolab, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_prolab_f64(alwan_prolab_f64 *prolab, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_prolab alwan_xyz_to_prolab_f64
+void alwan_prolab_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_prolab_f32 const *prolab);
+void alwan_prolab_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_prolab_f64 const *prolab);
+#define alwan_prolab_to_xyz alwan_prolab_to_xyz_f64
 
 /* ProLab <-> XYZ conversions with custom illuminant
  * - xyz_n: Reference white point (e.g., D50, D65, or custom illuminant)
  */
-void alwan_xyz_to_prolab_custom(alwan_prolab *prolab, alwan_xyz const *xyz, alwan_xyz const *xyz_n);
-void alwan_prolab_to_xyz_custom(alwan_xyz *xyz, alwan_prolab const *prolab, alwan_xyz const *xyz_n);
+void alwan_xyz_to_prolab_custom_f32(alwan_prolab_f32 *prolab, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *xyz_n);
+void alwan_xyz_to_prolab_custom_f64(alwan_prolab_f64 *prolab, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *xyz_n);
+#define alwan_xyz_to_prolab_custom alwan_xyz_to_prolab_custom_f64
+void alwan_prolab_to_xyz_custom_f32(alwan_xyz_f32 *xyz, alwan_prolab_f32 const *prolab, alwan_xyz_f32 const *xyz_n);
+void alwan_prolab_to_xyz_custom_f64(alwan_xyz_f64 *xyz, alwan_prolab_f64 const *prolab, alwan_xyz_f64 const *xyz_n);
+#define alwan_prolab_to_xyz_custom alwan_prolab_to_xyz_custom_f64
 
 /* OSA-UCS <-> XYZ conversions (Optical Society of America Uniform Color Scales)
  * - XYZ input/output is D65 adapted
@@ -1270,16 +1627,24 @@ void alwan_prolab_to_xyz_custom(alwan_xyz *xyz, alwan_prolab const *prolab, alwa
  * - Forward transform is exact, inverse is approximate (iterative solution)
  * - Note: Inverse transformation has lower precision than other color spaces
  */
-void alwan_xyz_to_osa_ucs(alwan_osa_ucs *osa_ucs, alwan_xyz const *xyz);
-void alwan_osa_ucs_to_xyz(alwan_xyz *xyz, alwan_osa_ucs const *osa_ucs);
+void alwan_xyz_to_osa_ucs_f32(alwan_osa_ucs_f32 *osa_ucs, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_osa_ucs_f64(alwan_osa_ucs_f64 *osa_ucs, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_osa_ucs alwan_xyz_to_osa_ucs_f64
+void alwan_osa_ucs_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_osa_ucs_f32 const *osa_ucs);
+void alwan_osa_ucs_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_osa_ucs_f64 const *osa_ucs);
+#define alwan_osa_ucs_to_xyz alwan_osa_ucs_to_xyz_f64
 
 /* CIE 1960 UCS <-> XYZ conversions (Uniform Chromaticity Scale)
  * - CIE 1960 UCS: u, v chromaticity coordinates + Y luminance
  * - Used for CCT calculations and color rendering metrics
  * - Precursor to CIE 1976 u'v' (CIELUV) chromaticity diagram
  */
-void alwan_xyz_to_ucs(alwan_ucs *ucs, alwan_xyz const *xyz);
-void alwan_ucs_to_xyz(alwan_xyz *xyz, alwan_ucs const *ucs);
+void alwan_xyz_to_ucs_f32(alwan_ucs_f32 *ucs, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_ucs_f64(alwan_ucs_f64 *ucs, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_ucs alwan_xyz_to_ucs_f64
+void alwan_ucs_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_ucs_f32 const *ucs);
+void alwan_ucs_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_ucs_f64 const *ucs);
+#define alwan_ucs_to_xyz alwan_ucs_to_xyz_f64
 
 /* hdr-CIELAB <-> XYZ conversions (HDR extension of CIELAB)
  * - Fairchild & Wyble (2010) HDR-CIELAB model
@@ -1287,8 +1652,12 @@ void alwan_ucs_to_xyz(alwan_xyz *xyz, alwan_ucs const *ucs);
  * - Maintains perceptual uniformity across extended luminance range
  * - XYZ input/output is D65 adapted, Y can exceed 100
  */
-void alwan_xyz_to_hdr_cielab(alwan_lab *hdr_lab, alwan_xyz const *xyz);
-void alwan_hdr_cielab_to_xyz(alwan_xyz *xyz, alwan_lab const *hdr_lab);
+void alwan_xyz_to_hdr_cielab_f32(alwan_lab_f32 *hdr_lab, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_hdr_cielab_f64(alwan_lab_f64 *hdr_lab, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_hdr_cielab alwan_xyz_to_hdr_cielab_f64
+void alwan_hdr_cielab_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_lab_f32 const *hdr_lab);
+void alwan_hdr_cielab_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_lab_f64 const *hdr_lab);
+#define alwan_hdr_cielab_to_xyz alwan_hdr_cielab_to_xyz_f64
 
 /* hdr-IPT <-> XYZ conversions (HDR extension of IPT)
  * - Fairchild (2010) HDR-IPT model
@@ -1296,102 +1665,156 @@ void alwan_hdr_cielab_to_xyz(alwan_xyz *xyz, alwan_lab const *hdr_lab);
  * - Better hue preservation than hdr-CIELAB for HDR content
  * - XYZ input/output is D65 adapted, supports extended luminance
  */
-void alwan_xyz_to_hdr_ipt(alwan_ipt *hdr_ipt, alwan_xyz const *xyz);
-void alwan_hdr_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *hdr_ipt);
+void alwan_xyz_to_hdr_ipt_f32(alwan_ipt_f32 *hdr_ipt, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_hdr_ipt_f64(alwan_ipt_f64 *hdr_ipt, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_hdr_ipt alwan_xyz_to_hdr_ipt_f64
+void alwan_hdr_ipt_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_ipt_f32 const *hdr_ipt);
+void alwan_hdr_ipt_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_ipt_f64 const *hdr_ipt);
+#define alwan_hdr_ipt_to_xyz alwan_hdr_ipt_to_xyz_f64
 
 /* IgPgTg <-> XYZ conversions (Improved IPT variant)
  * - Ebner & Fairchild (1998) improved hue uniformity
  * - Better than IPT for certain hue angles
  * - XYZ input/output is D65 adapted
  */
-void alwan_xyz_to_igpgtg(alwan_igpgtg *igpgtg, alwan_xyz const *xyz);
-void alwan_igpgtg_to_xyz(alwan_xyz *xyz, alwan_igpgtg const *igpgtg);
+void alwan_xyz_to_igpgtg_f32(alwan_igpgtg_f32 *igpgtg, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_igpgtg_f64(alwan_igpgtg_f64 *igpgtg, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_igpgtg alwan_xyz_to_igpgtg_f64
+void alwan_igpgtg_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_igpgtg_f32 const *igpgtg);
+void alwan_igpgtg_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_igpgtg_f64 const *igpgtg);
+#define alwan_igpgtg_to_xyz alwan_igpgtg_to_xyz_f64
 
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics
  * - XYZ input/output is D65 adapted
  */
-void alwan_xyz_to_icacb(alwan_icacb *icacb, alwan_xyz const *xyz);
-void alwan_icacb_to_xyz(alwan_xyz *xyz, alwan_icacb const *icacb);
+void alwan_xyz_to_icacb_f32(alwan_icacb_f32 *icacb, alwan_xyz_f32 const *xyz);
+void alwan_xyz_to_icacb_f64(alwan_icacb_f64 *icacb, alwan_xyz_f64 const *xyz);
+#define alwan_xyz_to_icacb alwan_xyz_to_icacb_f64
+void alwan_icacb_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_icacb_f32 const *icacb);
+void alwan_icacb_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_icacb_f64 const *icacb);
+#define alwan_icacb_to_xyz alwan_icacb_to_xyz_f64
 
 /* Prismatic <-> RGB conversions (Pridmore 2021)
  * - Perceptually uniform cylindrical color space
  * - P (purity), r (red-green), i (intensity)
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_prismatic(alwan_prismatic *prismatic, alwan_rgb const *rgb);
-void alwan_prismatic_to_rgb(alwan_rgb *rgb, alwan_prismatic const *prismatic);
+void alwan_rgb_to_prismatic_f32(alwan_prismatic_f32 *prismatic, alwan_rgb_f32 const *rgb);
+void alwan_rgb_to_prismatic_f64(alwan_prismatic_f64 *prismatic, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_prismatic alwan_rgb_to_prismatic_f64
+void alwan_prismatic_to_rgb_f32(alwan_rgb_f32 *rgb, alwan_prismatic_f32 const *prismatic);
+void alwan_prismatic_to_rgb_f64(alwan_rgb_f64 *rgb, alwan_prismatic_f64 const *prismatic);
+#define alwan_prismatic_to_rgb alwan_prismatic_to_rgb_f64
 
 /* HCL <-> RGB conversions (Sarifuddin 2005)
  * - Hue-Chroma-Luminance polar coordinate system
  * - Better perceptual properties than HSL
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_hcl(alwan_hcl *hcl, alwan_rgb const *rgb);
-void alwan_hcl_to_rgb(alwan_rgb *rgb, alwan_hcl const *hcl);
+void alwan_rgb_to_hcl_f32(alwan_hcl_f32 *hcl, alwan_rgb_f32 const *rgb);
+void alwan_rgb_to_hcl_f64(alwan_hcl_f64 *hcl, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_hcl alwan_rgb_to_hcl_f64
+void alwan_hcl_to_rgb_f32(alwan_rgb_f32 *rgb, alwan_hcl_f32 const *hcl);
+void alwan_hcl_to_rgb_f64(alwan_rgb_f64 *rgb, alwan_hcl_f64 const *hcl);
+#define alwan_hcl_to_rgb alwan_hcl_to_rgb_f64
 
 /* IHLS <-> RGB conversions (Improved HLS - Hanbury 2003)
  * - Improved Hue-Lightness-Saturation
  * - Better perceptual properties than standard HSL
  * - RGB input/output in [0, 1] range
  */
-void alwan_rgb_to_ihls(alwan_ihls *ihls, alwan_rgb const *rgb);
-void alwan_ihls_to_rgb(alwan_rgb *rgb, alwan_ihls const *ihls);
+void alwan_rgb_to_ihls_f32(alwan_ihls_f32 *ihls, alwan_rgb_f32 const *rgb);
+void alwan_rgb_to_ihls_f64(alwan_ihls_f64 *ihls, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_ihls alwan_rgb_to_ihls_f64
+void alwan_ihls_to_rgb_f32(alwan_rgb_f32 *rgb, alwan_ihls_f32 const *ihls);
+void alwan_ihls_to_rgb_f64(alwan_rgb_f64 *rgb, alwan_ihls_f64 const *ihls);
+#define alwan_ihls_to_rgb alwan_ihls_to_rgb_f64
 
 /* HLC <-> LCH conversions (cylindrical CIELAB, H-L-C ordering)
  * Pure reordering of CIE LCH(ab): H=[0-360], L=[0-100], C=[0-~181]
  * Reference: CIE 015:2004 */
-void alwan_lch_to_hlc(alwan_hlc *hlc, alwan_lch const *lch);
-void alwan_hlc_to_lch(alwan_lch *lch, alwan_hlc const *hlc);
+void alwan_lch_to_hlc_f32(alwan_hlc_f32 *hlc, alwan_lch_f32 const *lch);
+void alwan_lch_to_hlc_f64(alwan_hlc_f64 *hlc, alwan_lch_f64 const *lch);
+#define alwan_lch_to_hlc alwan_lch_to_hlc_f64
+void alwan_hlc_to_lch_f32(alwan_lch_f32 *lch, alwan_hlc_f32 const *hlc);
+void alwan_hlc_to_lch_f64(alwan_lch_f64 *lch, alwan_hlc_f64 const *hlc);
+#define alwan_hlc_to_lch alwan_hlc_to_lch_f64
 
 /* Cubehelix <-> sRGB conversions (Green 2011)
  * Monotonic-luminance helical scheme for data visualization
  * h: hue [degrees], s: saturation [0+], l: lightness [0-1]
  * Reference: Green, D.A., 2011, BASI, 39, 289 */
-void alwan_cubehelix_to_rgb(alwan_rgb *rgb, alwan_cubehelix const *ch);
-void alwan_rgb_to_cubehelix(alwan_cubehelix *ch, alwan_rgb const *rgb);
+void alwan_cubehelix_to_rgb_f32(alwan_rgb_f32 *rgb, alwan_cubehelix_f32 const *ch);
+void alwan_cubehelix_to_rgb_f64(alwan_rgb_f64 *rgb, alwan_cubehelix_f64 const *ch);
+#define alwan_cubehelix_to_rgb alwan_cubehelix_to_rgb_f64
+void alwan_rgb_to_cubehelix_f32(alwan_cubehelix_f32 *ch, alwan_rgb_f32 const *rgb);
+void alwan_rgb_to_cubehelix_f64(alwan_cubehelix_f64 *ch, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_cubehelix alwan_rgb_to_cubehelix_f64
 
 /* HSLuv <-> sRGB conversions (Boronine)
  * Human-friendly HSL via CIE LCHuv with sRGB gamut boundary
  * h: [0-360], s: [0-100] (% of max chroma at h,l), l: [0-100]
  * Input/output sRGB is encoded (with OETF), [0-1]
  * Reference: https://www.hsluv.org/ */
-void alwan_hsluv_to_srgb(alwan_rgb *rgb, alwan_hsluv const *hsluv);
-void alwan_srgb_to_hsluv(alwan_hsluv *hsluv, alwan_rgb const *srgb);
+void alwan_hsluv_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_hsluv_f32 const *hsluv);
+void alwan_hsluv_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_hsluv_f64 const *hsluv);
+#define alwan_hsluv_to_srgb alwan_hsluv_to_srgb_f64
+void alwan_srgb_to_hsluv_f32(alwan_hsluv_f32 *hsluv, alwan_rgb_f32 const *srgb);
+void alwan_srgb_to_hsluv_f64(alwan_hsluv_f64 *hsluv, alwan_rgb_f64 const *srgb);
+#define alwan_srgb_to_hsluv alwan_srgb_to_hsluv_f64
 
 /* HPLuv <-> sRGB conversions (Boronine)
  * Pastel variant of HSLuv: all (h,s,l) triples guaranteed in sRGB gamut
  * Uses minimum chroma across all hues at given lightness
  * Reference: https://www.hsluv.org/ */
-void alwan_hpluv_to_srgb(alwan_rgb *rgb, alwan_hpluv const *hpluv);
-void alwan_srgb_to_hpluv(alwan_hpluv *hpluv, alwan_rgb const *srgb);
+void alwan_hpluv_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_hpluv_f32 const *hpluv);
+void alwan_hpluv_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_hpluv_f64 const *hpluv);
+#define alwan_hpluv_to_srgb alwan_hpluv_to_srgb_f64
+void alwan_srgb_to_hpluv_f32(alwan_hpluv_f32 *hpluv, alwan_rgb_f32 const *srgb);
+void alwan_srgb_to_hpluv_f64(alwan_hpluv_f64 *hpluv, alwan_rgb_f64 const *srgb);
+#define alwan_srgb_to_hpluv alwan_srgb_to_hpluv_f64
 
 /* Okhsl <-> sRGB conversions (Ottosson 2021)
  * Perceptually uniform HSL in Oklab space
  * h: [0-1], s: [0-1], l: [0-1]
  * Input/output sRGB is encoded (with OETF), [0-1]
  * Reference: https://bottosson.github.io/posts/colorpicker/ */
-void alwan_okhsl_to_srgb(alwan_rgb *rgb, alwan_okhsl const *okhsl);
-void alwan_srgb_to_okhsl(alwan_okhsl *okhsl, alwan_rgb const *srgb);
+void alwan_okhsl_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_okhsl_f32 const *okhsl);
+void alwan_okhsl_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_okhsl_f64 const *okhsl);
+#define alwan_okhsl_to_srgb alwan_okhsl_to_srgb_f64
+void alwan_srgb_to_okhsl_f32(alwan_okhsl_f32 *okhsl, alwan_rgb_f32 const *srgb);
+void alwan_srgb_to_okhsl_f64(alwan_okhsl_f64 *okhsl, alwan_rgb_f64 const *srgb);
+#define alwan_srgb_to_okhsl alwan_srgb_to_okhsl_f64
 
 /* Okhsv <-> sRGB conversions (Ottosson 2021)
  * Perceptually uniform HSV in Oklab space
  * h: [0-1], s: [0-1], v: [0-1]
  * Input/output sRGB is encoded (with OETF), [0-1]
  * Reference: https://bottosson.github.io/posts/colorpicker/ */
-void alwan_okhsv_to_srgb(alwan_rgb *rgb, alwan_okhsv const *okhsv);
-void alwan_srgb_to_okhsv(alwan_okhsv *okhsv, alwan_rgb const *srgb);
+void alwan_okhsv_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_okhsv_f32 const *okhsv);
+void alwan_okhsv_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_okhsv_f64 const *okhsv);
+#define alwan_okhsv_to_srgb alwan_okhsv_to_srgb_f64
+void alwan_srgb_to_okhsv_f32(alwan_okhsv_f32 *okhsv, alwan_rgb_f32 const *srgb);
+void alwan_srgb_to_okhsv_f64(alwan_okhsv_f64 *okhsv, alwan_rgb_f64 const *srgb);
+#define alwan_srgb_to_okhsv alwan_srgb_to_okhsv_f64
 
 /* ----------------------------------------------------------------
  * Extended Colorspace Batch Map Functions
  * ---------------------------------------------------------------- */
 
 /* XYZ <-> IgPgTg batch maps */
-int alwan_xyz_to_igpgtg_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_igpgtg_f32_map_interleave(float *out, float const *in,
                               size_t count, size_t in_stride, size_t out_stride);
-int alwan_igpgtg_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_igpgtg_f64_map_interleave(double *out, double const *in,
                               size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_igpgtg_map_interleave alwan_xyz_to_igpgtg_f64_map_interleave
+int alwan_igpgtg_to_xyz_f32_map_interleave(float *out, float const *in,
+                              size_t count, size_t in_stride, size_t out_stride);
+int alwan_igpgtg_to_xyz_f64_map_interleave(double *out, double const *in,
+                              size_t count, size_t in_stride, size_t out_stride);
+#define alwan_igpgtg_to_xyz_map_interleave alwan_igpgtg_to_xyz_f64_map_interleave
 int alwan_xyz_to_igpgtg_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                  void const *in, alwan_pixel_format in_fmt,
                                  size_t count, size_t in_stride, size_t out_stride);
@@ -1400,10 +1823,16 @@ int alwan_igpgtg_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                  size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> ICaCb batch maps */
-int alwan_xyz_to_icacb_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_icacb_f32_map_interleave(float *out, float const *in,
                              size_t count, size_t in_stride, size_t out_stride);
-int alwan_icacb_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_icacb_f64_map_interleave(double *out, double const *in,
                              size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_icacb_map_interleave alwan_xyz_to_icacb_f64_map_interleave
+int alwan_icacb_to_xyz_f32_map_interleave(float *out, float const *in,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_icacb_to_xyz_f64_map_interleave(double *out, double const *in,
+                             size_t count, size_t in_stride, size_t out_stride);
+#define alwan_icacb_to_xyz_map_interleave alwan_icacb_to_xyz_f64_map_interleave
 int alwan_xyz_to_icacb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                 void const *in, alwan_pixel_format in_fmt,
                                 size_t count, size_t in_stride, size_t out_stride);
@@ -1412,10 +1841,16 @@ int alwan_icacb_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                 size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> hdr-CIELAB batch maps */
-int alwan_xyz_to_hdr_cielab_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_hdr_cielab_f32_map_interleave(float *out, float const *in,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hdr_cielab_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_hdr_cielab_f64_map_interleave(double *out, double const *in,
                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_hdr_cielab_map_interleave alwan_xyz_to_hdr_cielab_f64_map_interleave
+int alwan_hdr_cielab_to_xyz_f32_map_interleave(float *out, float const *in,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_hdr_cielab_to_xyz_f64_map_interleave(double *out, double const *in,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hdr_cielab_to_xyz_map_interleave alwan_hdr_cielab_to_xyz_f64_map_interleave
 int alwan_xyz_to_hdr_cielab_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                      void const *in, alwan_pixel_format in_fmt,
                                      size_t count, size_t in_stride, size_t out_stride);
@@ -1424,10 +1859,16 @@ int alwan_hdr_cielab_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_
                                      size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> hdr-IPT batch maps */
-int alwan_xyz_to_hdr_ipt_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_hdr_ipt_f32_map_interleave(float *out, float const *in,
                                size_t count, size_t in_stride, size_t out_stride);
-int alwan_hdr_ipt_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_hdr_ipt_f64_map_interleave(double *out, double const *in,
                                size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_hdr_ipt_map_interleave alwan_xyz_to_hdr_ipt_f64_map_interleave
+int alwan_hdr_ipt_to_xyz_f32_map_interleave(float *out, float const *in,
+                               size_t count, size_t in_stride, size_t out_stride);
+int alwan_hdr_ipt_to_xyz_f64_map_interleave(double *out, double const *in,
+                               size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hdr_ipt_to_xyz_map_interleave alwan_hdr_ipt_to_xyz_f64_map_interleave
 int alwan_xyz_to_hdr_ipt_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                   void const *in, alwan_pixel_format in_fmt,
                                   size_t count, size_t in_stride, size_t out_stride);
@@ -1436,10 +1877,16 @@ int alwan_hdr_ipt_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt
                                   size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> UCS batch maps */
-int alwan_xyz_to_ucs_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_ucs_f32_map_interleave(float *out, float const *in,
                            size_t count, size_t in_stride, size_t out_stride);
-int alwan_ucs_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_ucs_f64_map_interleave(double *out, double const *in,
                            size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_ucs_map_interleave alwan_xyz_to_ucs_f64_map_interleave
+int alwan_ucs_to_xyz_f32_map_interleave(float *out, float const *in,
+                           size_t count, size_t in_stride, size_t out_stride);
+int alwan_ucs_to_xyz_f64_map_interleave(double *out, double const *in,
+                           size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ucs_to_xyz_map_interleave alwan_ucs_to_xyz_f64_map_interleave
 int alwan_xyz_to_ucs_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                               void const *in, alwan_pixel_format in_fmt,
                               size_t count, size_t in_stride, size_t out_stride);
@@ -1448,10 +1895,16 @@ int alwan_ucs_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                               size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> OSA-UCS batch maps */
-int alwan_xyz_to_osa_ucs_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_osa_ucs_f32_map_interleave(float *out, float const *in,
                                size_t count, size_t in_stride, size_t out_stride);
-int alwan_osa_ucs_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_osa_ucs_f64_map_interleave(double *out, double const *in,
                                size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_osa_ucs_map_interleave alwan_xyz_to_osa_ucs_f64_map_interleave
+int alwan_osa_ucs_to_xyz_f32_map_interleave(float *out, float const *in,
+                               size_t count, size_t in_stride, size_t out_stride);
+int alwan_osa_ucs_to_xyz_f64_map_interleave(double *out, double const *in,
+                               size_t count, size_t in_stride, size_t out_stride);
+#define alwan_osa_ucs_to_xyz_map_interleave alwan_osa_ucs_to_xyz_f64_map_interleave
 int alwan_xyz_to_osa_ucs_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                   void const *in, alwan_pixel_format in_fmt,
                                   size_t count, size_t in_stride, size_t out_stride);
@@ -1460,10 +1913,16 @@ int alwan_osa_ucs_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt
                                   size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> Hunter Lab batch maps (D65 default white) */
-int alwan_xyz_to_hunter_lab_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_hunter_lab_f32_map_interleave(float *out, float const *in,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hunter_lab_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_hunter_lab_f64_map_interleave(double *out, double const *in,
                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_hunter_lab_map_interleave alwan_xyz_to_hunter_lab_f64_map_interleave
+int alwan_hunter_lab_to_xyz_f32_map_interleave(float *out, float const *in,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_hunter_lab_to_xyz_f64_map_interleave(double *out, double const *in,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hunter_lab_to_xyz_map_interleave alwan_hunter_lab_to_xyz_f64_map_interleave
 int alwan_xyz_to_hunter_lab_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                      void const *in, alwan_pixel_format in_fmt,
                                      size_t count, size_t in_stride, size_t out_stride);
@@ -1472,12 +1931,20 @@ int alwan_hunter_lab_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_
                                      size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> Hunter Lab batch maps (custom white point) */
-int alwan_xyz_to_hunter_lab_custom_map_interleave(alwan_scalar *out, alwan_scalar const *in,
-                                         alwan_xyz const *white_xyz,
+int alwan_xyz_to_hunter_lab_custom_f32_map_interleave(float *out, float const *in,
+                                         alwan_xyz_f32 const *white_xyz,
                                          size_t count, size_t in_stride, size_t out_stride);
-int alwan_hunter_lab_to_xyz_custom_map_interleave(alwan_scalar *out, alwan_scalar const *in,
-                                         alwan_xyz const *white_xyz,
+int alwan_xyz_to_hunter_lab_custom_f64_map_interleave(double *out, double const *in,
+                                         alwan_xyz_f64 const *white_xyz,
                                          size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_hunter_lab_custom_map_interleave alwan_xyz_to_hunter_lab_custom_f64_map_interleave
+int alwan_hunter_lab_to_xyz_custom_f32_map_interleave(float *out, float const *in,
+                                         alwan_xyz_f32 const *white_xyz,
+                                         size_t count, size_t in_stride, size_t out_stride);
+int alwan_hunter_lab_to_xyz_custom_f64_map_interleave(double *out, double const *in,
+                                         alwan_xyz_f64 const *white_xyz,
+                                         size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hunter_lab_to_xyz_custom_map_interleave alwan_hunter_lab_to_xyz_custom_f64_map_interleave
 int alwan_xyz_to_hunter_lab_custom_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                             void const *in, alwan_pixel_format in_fmt,
                                             alwan_xyz const *white_xyz,
@@ -1488,10 +1955,16 @@ int alwan_hunter_lab_to_xyz_custom_map_interleave_ex(void *out, alwan_pixel_form
                                             size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> ProLab batch maps (D65 default white) */
-int alwan_xyz_to_prolab_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_prolab_f32_map_interleave(float *out, float const *in,
                               size_t count, size_t in_stride, size_t out_stride);
-int alwan_prolab_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_xyz_to_prolab_f64_map_interleave(double *out, double const *in,
                               size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_prolab_map_interleave alwan_xyz_to_prolab_f64_map_interleave
+int alwan_prolab_to_xyz_f32_map_interleave(float *out, float const *in,
+                              size_t count, size_t in_stride, size_t out_stride);
+int alwan_prolab_to_xyz_f64_map_interleave(double *out, double const *in,
+                              size_t count, size_t in_stride, size_t out_stride);
+#define alwan_prolab_to_xyz_map_interleave alwan_prolab_to_xyz_f64_map_interleave
 int alwan_xyz_to_prolab_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                  void const *in, alwan_pixel_format in_fmt,
                                  size_t count, size_t in_stride, size_t out_stride);
@@ -1500,12 +1973,20 @@ int alwan_prolab_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                  size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> ProLab batch maps (custom white point) */
-int alwan_xyz_to_prolab_custom_map_interleave(alwan_scalar *out, alwan_scalar const *in,
-                                     alwan_xyz const *white_xyz,
+int alwan_xyz_to_prolab_custom_f32_map_interleave(float *out, float const *in,
+                                     alwan_xyz_f32 const *white_xyz,
                                      size_t count, size_t in_stride, size_t out_stride);
-int alwan_prolab_to_xyz_custom_map_interleave(alwan_scalar *out, alwan_scalar const *in,
-                                     alwan_xyz const *white_xyz,
+int alwan_xyz_to_prolab_custom_f64_map_interleave(double *out, double const *in,
+                                     alwan_xyz_f64 const *white_xyz,
                                      size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_prolab_custom_map_interleave alwan_xyz_to_prolab_custom_f64_map_interleave
+int alwan_prolab_to_xyz_custom_f32_map_interleave(float *out, float const *in,
+                                     alwan_xyz_f32 const *white_xyz,
+                                     size_t count, size_t in_stride, size_t out_stride);
+int alwan_prolab_to_xyz_custom_f64_map_interleave(double *out, double const *in,
+                                     alwan_xyz_f64 const *white_xyz,
+                                     size_t count, size_t in_stride, size_t out_stride);
+#define alwan_prolab_to_xyz_custom_map_interleave alwan_prolab_to_xyz_custom_f64_map_interleave
 int alwan_xyz_to_prolab_custom_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                         void const *in, alwan_pixel_format in_fmt,
                                         alwan_xyz const *white_xyz,
@@ -1516,12 +1997,20 @@ int alwan_prolab_to_xyz_custom_map_interleave_ex(void *out, alwan_pixel_format o
                                         size_t count, size_t in_stride, size_t out_stride);
 
 /* XYZ <-> UVW batch maps (with white point) */
-int alwan_xyz_to_uvw_map_interleave(alwan_scalar *out, alwan_scalar const *in,
-                           alwan_xyz const *white_xyz,
+int alwan_xyz_to_uvw_f32_map_interleave(float *out, float const *in,
+                           alwan_xyz_f32 const *white_xyz,
                            size_t count, size_t in_stride, size_t out_stride);
-int alwan_uvw_to_xyz_map_interleave(alwan_scalar *out, alwan_scalar const *in,
-                           alwan_xyz const *white_xyz,
+int alwan_xyz_to_uvw_f64_map_interleave(double *out, double const *in,
+                           alwan_xyz_f64 const *white_xyz,
                            size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_uvw_map_interleave alwan_xyz_to_uvw_f64_map_interleave
+int alwan_uvw_to_xyz_f32_map_interleave(float *out, float const *in,
+                           alwan_xyz_f32 const *white_xyz,
+                           size_t count, size_t in_stride, size_t out_stride);
+int alwan_uvw_to_xyz_f64_map_interleave(double *out, double const *in,
+                           alwan_xyz_f64 const *white_xyz,
+                           size_t count, size_t in_stride, size_t out_stride);
+#define alwan_uvw_to_xyz_map_interleave alwan_uvw_to_xyz_f64_map_interleave
 int alwan_xyz_to_uvw_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                               void const *in, alwan_pixel_format in_fmt,
                               alwan_xyz const *white_xyz,
@@ -1532,10 +2021,16 @@ int alwan_uvw_to_xyz_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                               size_t count, size_t in_stride, size_t out_stride);
 
 /* RGB <-> Prismatic batch maps */
-int alwan_rgb_to_prismatic_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_rgb_to_prismatic_f32_map_interleave(float *out, float const *in,
                                  size_t count, size_t in_stride, size_t out_stride);
-int alwan_prismatic_to_rgb_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_rgb_to_prismatic_f64_map_interleave(double *out, double const *in,
                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_prismatic_map_interleave alwan_rgb_to_prismatic_f64_map_interleave
+int alwan_prismatic_to_rgb_f32_map_interleave(float *out, float const *in,
+                                 size_t count, size_t in_stride, size_t out_stride);
+int alwan_prismatic_to_rgb_f64_map_interleave(double *out, double const *in,
+                                 size_t count, size_t in_stride, size_t out_stride);
+#define alwan_prismatic_to_rgb_map_interleave alwan_prismatic_to_rgb_f64_map_interleave
 int alwan_rgb_to_prismatic_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                     void const *in, alwan_pixel_format in_fmt,
                                     size_t count, size_t in_stride, size_t out_stride);
@@ -1544,10 +2039,16 @@ int alwan_prismatic_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_f
                                     size_t count, size_t in_stride, size_t out_stride);
 
 /* RGB <-> HCL batch maps */
-int alwan_rgb_to_hcl_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_rgb_to_hcl_f32_map_interleave(float *out, float const *in,
                            size_t count, size_t in_stride, size_t out_stride);
-int alwan_hcl_to_rgb_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_rgb_to_hcl_f64_map_interleave(double *out, double const *in,
                            size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_hcl_map_interleave alwan_rgb_to_hcl_f64_map_interleave
+int alwan_hcl_to_rgb_f32_map_interleave(float *out, float const *in,
+                           size_t count, size_t in_stride, size_t out_stride);
+int alwan_hcl_to_rgb_f64_map_interleave(double *out, double const *in,
+                           size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hcl_to_rgb_map_interleave alwan_hcl_to_rgb_f64_map_interleave
 int alwan_rgb_to_hcl_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                               void const *in, alwan_pixel_format in_fmt,
                               size_t count, size_t in_stride, size_t out_stride);
@@ -1556,10 +2057,16 @@ int alwan_hcl_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                               size_t count, size_t in_stride, size_t out_stride);
 
 /* RGB <-> IHLS batch maps */
-int alwan_rgb_to_ihls_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_rgb_to_ihls_f32_map_interleave(float *out, float const *in,
                             size_t count, size_t in_stride, size_t out_stride);
-int alwan_ihls_to_rgb_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_rgb_to_ihls_f64_map_interleave(double *out, double const *in,
                             size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_ihls_map_interleave alwan_rgb_to_ihls_f64_map_interleave
+int alwan_ihls_to_rgb_f32_map_interleave(float *out, float const *in,
+                            size_t count, size_t in_stride, size_t out_stride);
+int alwan_ihls_to_rgb_f64_map_interleave(double *out, double const *in,
+                            size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ihls_to_rgb_map_interleave alwan_ihls_to_rgb_f64_map_interleave
 int alwan_rgb_to_ihls_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                void const *in, alwan_pixel_format in_fmt,
                                size_t count, size_t in_stride, size_t out_stride);
@@ -1568,12 +2075,20 @@ int alwan_ihls_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                size_t count, size_t in_stride, size_t out_stride);
 
 /* Lab <-> DIN99 batch maps (with variant: 0=DIN99, 1=b, 2=c, 3=d) */
-int alwan_lab_to_din99_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_lab_to_din99_f32_map_interleave(float *out, float const *in,
                              int variant,
                              size_t count, size_t in_stride, size_t out_stride);
-int alwan_din99_to_lab_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_lab_to_din99_f64_map_interleave(double *out, double const *in,
                              int variant,
                              size_t count, size_t in_stride, size_t out_stride);
+#define alwan_lab_to_din99_map_interleave alwan_lab_to_din99_f64_map_interleave
+int alwan_din99_to_lab_f32_map_interleave(float *out, float const *in,
+                             int variant,
+                             size_t count, size_t in_stride, size_t out_stride);
+int alwan_din99_to_lab_f64_map_interleave(double *out, double const *in,
+                             int variant,
+                             size_t count, size_t in_stride, size_t out_stride);
+#define alwan_din99_to_lab_map_interleave alwan_din99_to_lab_f64_map_interleave
 int alwan_lab_to_din99_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                 void const *in, alwan_pixel_format in_fmt,
                                 int variant,
@@ -1588,51 +2103,81 @@ int alwan_din99_to_lab_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
  * ---------------------------------------------------------------- */
 
 /* ΔE*76 - Euclidean distance in Lab space */
-alwan_scalar alwan_delta_e_76(alwan_lab const *lab1, alwan_lab const *lab2);
+float  alwan_delta_e_76_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2);
+double alwan_delta_e_76_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2);
+#define alwan_delta_e_76 alwan_delta_e_76_f64
 
 /* ΔE OK - Euclidean distance in Oklab space (CSS Color Level 4 JND criterion) */
-alwan_scalar alwan_delta_e_ok(alwan_oklab const *a, alwan_oklab const *b);
+float  alwan_delta_e_ok_f32(alwan_oklab_f32 const *a, alwan_oklab_f32 const *b);
+double alwan_delta_e_ok_f64(alwan_oklab_f64 const *a, alwan_oklab_f64 const *b);
+#define alwan_delta_e_ok alwan_delta_e_ok_f64
 
 /* ΔE*94 - CIE 1994 color difference (graphic arts defaults: kL=1, K1=0.045, K2=0.015) */
-alwan_scalar alwan_delta_e_94(alwan_lab const *lab1, alwan_lab const *lab2);
+float  alwan_delta_e_94_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2);
+double alwan_delta_e_94_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2);
+#define alwan_delta_e_94 alwan_delta_e_94_f64
 
 /* ΔE CMC(l:c) - CMC color difference (defaults: l=2, c=1 for acceptability) */
-alwan_scalar alwan_delta_e_cmc(alwan_lab const *lab1, alwan_lab const *lab2, alwan_scalar l, alwan_scalar c);
+float  alwan_delta_e_cmc_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2, float l, float c);
+double alwan_delta_e_cmc_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2, double l, double c);
+#define alwan_delta_e_cmc alwan_delta_e_cmc_f64
 
 /* ΔE*00 - CIEDE2000 color difference (most perceptually uniform) */
-alwan_scalar alwan_delta_e_2000(alwan_lab const *lab1, alwan_lab const *lab2);
+float  alwan_delta_e_2000_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2);
+double alwan_delta_e_2000_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2);
+#define alwan_delta_e_2000 alwan_delta_e_2000_f64
 
 /* ΔE ITP - ITU-R BT.2124 HDR color difference in ICtCp space (scalar_factor default: 720) */
-alwan_scalar alwan_delta_e_itp(alwan_ictcp const *ictcp1, alwan_ictcp const *ictcp2, alwan_scalar scalar_factor);
+float  alwan_delta_e_itp_f32(alwan_ictcp_f32 const *ictcp1, alwan_ictcp_f32 const *ictcp2, float scalar_factor);
+double alwan_delta_e_itp_f64(alwan_ictcp_f64 const *ictcp1, alwan_ictcp_f64 const *ictcp2, double scalar_factor);
+#define alwan_delta_e_itp alwan_delta_e_itp_f64
 
 /* ΔE HyAB - Hybrid Delta E, improved perceptual metric */
-alwan_scalar alwan_delta_e_hyab(alwan_lab const *lab1, alwan_lab const *lab2);
+float  alwan_delta_e_hyab_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2);
+double alwan_delta_e_hyab_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2);
+#define alwan_delta_e_hyab alwan_delta_e_hyab_f64
 
 /* ΔE DIN99 - Euclidean distance in DIN99 space (variant: 0=DIN99, 1=b, 2=c, 3=d) */
-alwan_scalar alwan_delta_e_din99(alwan_din99 const *din99_1, alwan_din99 const *din99_2);
+float  alwan_delta_e_din99_f32(alwan_din99_f32 const *din99_1, alwan_din99_f32 const *din99_2);
+double alwan_delta_e_din99_f64(alwan_din99_f64 const *din99_1, alwan_din99_f64 const *din99_2);
+#define alwan_delta_e_din99 alwan_delta_e_din99_f64
 
 /* ΔE CAM02-LCD - CIECAM02 Large Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam02_lcd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
+float  alwan_delta_e_cam02_lcd_f32(alwan_cam_jab_f32 const *jab1, alwan_cam_jab_f32 const *jab2);
+double alwan_delta_e_cam02_lcd_f64(alwan_cam_jab_f64 const *jab1, alwan_cam_jab_f64 const *jab2);
+#define alwan_delta_e_cam02_lcd alwan_delta_e_cam02_lcd_f64
 
 /* ΔE CAM02-SCD - CIECAM02 Small Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam02_scd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
+float  alwan_delta_e_cam02_scd_f32(alwan_cam_jab_f32 const *jab1, alwan_cam_jab_f32 const *jab2);
+double alwan_delta_e_cam02_scd_f64(alwan_cam_jab_f64 const *jab1, alwan_cam_jab_f64 const *jab2);
+#define alwan_delta_e_cam02_scd alwan_delta_e_cam02_scd_f64
 
 /* ΔE CAM16-LCD - CAM16 Large Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam16_lcd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
+float  alwan_delta_e_cam16_lcd_f32(alwan_cam_jab_f32 const *jab1, alwan_cam_jab_f32 const *jab2);
+double alwan_delta_e_cam16_lcd_f64(alwan_cam_jab_f64 const *jab1, alwan_cam_jab_f64 const *jab2);
+#define alwan_delta_e_cam16_lcd alwan_delta_e_cam16_lcd_f64
 
 /* ΔE CAM16-SCD - CAM16 Small Color Difference in UCS space */
-alwan_scalar alwan_delta_e_cam16_scd(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
+float  alwan_delta_e_cam16_scd_f32(alwan_cam_jab_f32 const *jab1, alwan_cam_jab_f32 const *jab2);
+double alwan_delta_e_cam16_scd_f64(alwan_cam_jab_f64 const *jab1, alwan_cam_jab_f64 const *jab2);
+#define alwan_delta_e_cam16_scd alwan_delta_e_cam16_scd_f64
 
 /* ΔE CAM02-UCS - CIECAM02 Uniform Color Space (Luo et al. 2006)
  * Uses K_L=1.0, c1=0.007, c2=0.0228 for general-purpose color difference */
-alwan_scalar alwan_delta_e_cam02_ucs(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
+float  alwan_delta_e_cam02_ucs_f32(alwan_cam_jab_f32 const *jab1, alwan_cam_jab_f32 const *jab2);
+double alwan_delta_e_cam02_ucs_f64(alwan_cam_jab_f64 const *jab1, alwan_cam_jab_f64 const *jab2);
+#define alwan_delta_e_cam02_ucs alwan_delta_e_cam02_ucs_f64
 
 /* ΔE CAM16-UCS - CAM16 Uniform Color Space (Li et al. 2017)
  * Uses K_L=1.0, c1=0.007, c2=0.0228 for general-purpose color difference */
-alwan_scalar alwan_delta_e_cam16_ucs(alwan_cam_jab const *jab1, alwan_cam_jab const *jab2);
+float  alwan_delta_e_cam16_ucs_f32(alwan_cam_jab_f32 const *jab1, alwan_cam_jab_f32 const *jab2);
+double alwan_delta_e_cam16_ucs_f64(alwan_cam_jab_f64 const *jab1, alwan_cam_jab_f64 const *jab2);
+#define alwan_delta_e_cam16_ucs alwan_delta_e_cam16_ucs_f64
 
 /* ΔE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space */
-alwan_scalar alwan_delta_e_zcam(alwan_jzazbz const *jab1, alwan_jzazbz const *jab2);
+float  alwan_delta_e_zcam_f32(alwan_jzazbz_f32 const *jab1, alwan_jzazbz_f32 const *jab2);
+double alwan_delta_e_zcam_f64(alwan_jzazbz_f64 const *jab1, alwan_jzazbz_f64 const *jab2);
+#define alwan_delta_e_zcam alwan_delta_e_zcam_f64
 
 /* ----------------------------------------------------------------
  * Batch Color Difference (ΔE) Computations
@@ -1644,44 +2189,74 @@ alwan_scalar alwan_delta_e_zcam(alwan_jzazbz const *jab1, alwan_jzazbz const *ja
  * lab1_in: first array of Lab colors
  * lab2_in: second array of Lab colors
  * count: number of color pairs to compare
- * in1_stride: stride for lab1_in in bytes (typically 3*sizeof(alwan_scalar))
- * in2_stride: stride for lab2_in in bytes (typically 3*sizeof(alwan_scalar))
+ * in1_stride: stride for lab1_in in bytes (typically 3*sizeof(float/double))
+ * in2_stride: stride for lab2_in in bytes (typically 3*sizeof(float/double))
  * Returns ALWAN_OK on success */
-int alwan_delta_e_76_batch(alwan_scalar *delta_e_out,
-                           alwan_scalar const *lab1_in,
-                           alwan_scalar const *lab2_in,
+int alwan_delta_e_76_f32_batch(float *delta_e_out,
+                           float const *lab1_in,
+                           float const *lab2_in,
                            size_t count,
                            size_t in1_stride,
                            size_t in2_stride);
+int alwan_delta_e_76_f64_batch(double *delta_e_out,
+                           double const *lab1_in,
+                           double const *lab2_in,
+                           size_t count,
+                           size_t in1_stride,
+                           size_t in2_stride);
+#define alwan_delta_e_76_batch alwan_delta_e_76_f64_batch
 
 /* Batch ΔE*00 - CIEDE2000 color difference
- * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(alwan_scalar)) */
-int alwan_delta_e_2000_batch(alwan_scalar *delta_e_out,
-                             alwan_scalar const *lab1_in,
-                             alwan_scalar const *lab2_in,
+ * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(float/double)) */
+int alwan_delta_e_2000_f32_batch(float *delta_e_out,
+                             float const *lab1_in,
+                             float const *lab2_in,
                              size_t count,
                              size_t in1_stride,
                              size_t in2_stride);
+int alwan_delta_e_2000_f64_batch(double *delta_e_out,
+                             double const *lab1_in,
+                             double const *lab2_in,
+                             size_t count,
+                             size_t in1_stride,
+                             size_t in2_stride);
+#define alwan_delta_e_2000_batch alwan_delta_e_2000_f64_batch
 
 /* Batch ΔE*94 - CIE 1994 color difference
- * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(alwan_scalar)) */
-int alwan_delta_e_94_batch(alwan_scalar *delta_e_out,
-                           alwan_scalar const *lab1_in,
-                           alwan_scalar const *lab2_in,
+ * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(float/double)) */
+int alwan_delta_e_94_f32_batch(float *delta_e_out,
+                           float const *lab1_in,
+                           float const *lab2_in,
                            size_t count,
                            size_t in1_stride,
                            size_t in2_stride);
+int alwan_delta_e_94_f64_batch(double *delta_e_out,
+                           double const *lab1_in,
+                           double const *lab2_in,
+                           size_t count,
+                           size_t in1_stride,
+                           size_t in2_stride);
+#define alwan_delta_e_94_batch alwan_delta_e_94_f64_batch
 
 /* Batch ΔE CMC(l:c) - CMC color difference
- * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(alwan_scalar)) */
-int alwan_delta_e_cmc_batch(alwan_scalar *delta_e_out,
-                            alwan_scalar const *lab1_in,
-                            alwan_scalar const *lab2_in,
-                            alwan_scalar l,
-                            alwan_scalar c,
+ * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(float/double)) */
+int alwan_delta_e_cmc_f32_batch(float *delta_e_out,
+                            float const *lab1_in,
+                            float const *lab2_in,
+                            float l,
+                            float c,
                             size_t count,
                             size_t in1_stride,
                             size_t in2_stride);
+int alwan_delta_e_cmc_f64_batch(double *delta_e_out,
+                            double const *lab1_in,
+                            double const *lab2_in,
+                            double l,
+                            double c,
+                            size_t count,
+                            size_t in1_stride,
+                            size_t in2_stride);
+#define alwan_delta_e_cmc_batch alwan_delta_e_cmc_f64_batch
 
 /* Typed delta E batch functions (_ex variants) */
 int alwan_delta_e_76_batch_ex(alwan_scalar *delta_e_out,
@@ -1718,13 +2293,17 @@ typedef enum {
  * xyz: CIE XYZ tristimulus values (normalized to Y=100 for perfect white)
  * illuminant: illuminant/observer pair (C/2°, D65/2°, C/10°, or D65/10°)
  * Returns: Yellowness Index (YI) value */
-alwan_scalar alwan_yellowness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant);
+float  alwan_yellowness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant);
+double alwan_yellowness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant);
+#define alwan_yellowness_astm_e313 alwan_yellowness_astm_e313_f64
 
 /* ASTM E313 Whiteness Index
  * xyz: CIE XYZ tristimulus values (normalized to Y=100 for perfect white)
  * illuminant: illuminant/observer pair (C/2°, D65/2°, C/10°, or D65/10°)
  * Returns: Whiteness Index (WI) value */
-alwan_scalar alwan_whiteness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant);
+float  alwan_whiteness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant);
+double alwan_whiteness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant);
+#define alwan_whiteness_astm_e313 alwan_whiteness_astm_e313_f64
 
 /* CIE 2004 Whiteness Index
  * xy: CIE 1931 chromaticity coordinates (x, y)
@@ -1734,7 +2313,9 @@ alwan_scalar alwan_whiteness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_ill
  * Note: Also computes Tint (T), but this function only returns W.
  *       Tint = 900(xn - x) - 650(yn - y) for 2° observer
  *       Tint = 1000(xn - x) - 650(yn - y) for 10° observer */
-alwan_scalar alwan_whiteness_cie2004(alwan_vec2 const *xy, alwan_scalar Y, alwan_vec2 const *xy_n);
+float  alwan_whiteness_cie2004_f32(alwan_vec2_f32 const *xy, float Y, alwan_vec2_f32 const *xy_n);
+double alwan_whiteness_cie2004_f64(alwan_vec2_f64 const *xy, double Y, alwan_vec2_f64 const *xy_n);
+#define alwan_whiteness_cie2004 alwan_whiteness_cie2004_f64
 
 /* ----------------------------------------------------------------
  * Chromatic Adaptation Transform (CAT)
@@ -1766,27 +2347,39 @@ typedef enum {
  * method: CAT method (Bradford, CAT02, CAT16, or XYZ scaling)
  * out: output 3x3 adaptation matrix
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if white points are invalid */
-int alwan_cat_matrix(alwan_mat3x3 *out,
-                     alwan_xyz const *src_white_xyz,
-                     alwan_xyz const *dst_white_xyz,
-                     alwan_cat_method method);
+int alwan_cat_matrix_f32(alwan_mat3x3_f32 *out,
+                         alwan_xyz_f32 const *src_white_xyz,
+                         alwan_xyz_f32 const *dst_white_xyz,
+                         alwan_cat_method method);
+int alwan_cat_matrix_f64(alwan_mat3x3_f64 *out,
+                         alwan_xyz_f64 const *src_white_xyz,
+                         alwan_xyz_f64 const *dst_white_xyz,
+                         alwan_cat_method method);
+#define alwan_cat_matrix alwan_cat_matrix_f64
 
 /* Apply chromatic adaptation to XYZ colors (map operation)
  * xyz_in: input XYZ colors (stride in_stride between consecutive colors)
  * count: number of colors to transform
- * in_stride: stride for input (in bytes, typically 3*sizeof(alwan_scalar) for packed array)
+ * in_stride: stride for input (in bytes, typically 3*sizeof(float/double) for packed array)
  * src_white_xyz: source white point in XYZ
  * dst_white_xyz: destination white point in XYZ
  * method: CAT method
  * xyz_out: output XYZ colors (stride out_stride between consecutive colors)
- * out_stride: stride for output (in bytes, typically 3*sizeof(alwan_scalar) for packed array)
+ * out_stride: stride for output (in bytes, typically 3*sizeof(float/double) for packed array)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if parameters are invalid */
-int alwan_xyz_adapt(alwan_scalar *xyz_out,
-                    alwan_xyz const *src_white_xyz,
-                    alwan_xyz const *dst_white_xyz,
-                    alwan_cat_method method,
-                    alwan_scalar const *xyz_in,
-                    size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_adapt_f32(float *xyz_out,
+                        alwan_xyz_f32 const *src_white_xyz,
+                        alwan_xyz_f32 const *dst_white_xyz,
+                        alwan_cat_method method,
+                        float const *xyz_in,
+                        size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_adapt_f64(double *xyz_out,
+                        alwan_xyz_f64 const *src_white_xyz,
+                        alwan_xyz_f64 const *dst_white_xyz,
+                        alwan_cat_method method,
+                        double const *xyz_in,
+                        size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_adapt alwan_xyz_adapt_f64
 
 /* Zhai & Luo 2018 two-step chromatic adaptation
  * Adapts XYZ from input illuminant to output illuminant via baseline illuminant
@@ -1799,14 +2392,23 @@ int alwan_xyz_adapt(alwan_scalar *xyz_out,
  * transform: underlying CAT transform (ALWAN_CAT_CAT02 or ALWAN_CAT_CAT16)
  * xyz_out: output adapted XYZ color
  * Returns ALWAN_OK on success */
-int alwan_cat_zhai2018(alwan_xyz *xyz_out,
-                       alwan_xyz const *xyz_in,
-                       alwan_xyz const *xyz_src,
-                       alwan_xyz const *xyz_dst,
-                       alwan_scalar D_src,
-                       alwan_scalar D_dst,
-                       alwan_xyz const *xyz_baseline,
-                       alwan_cat_method transform);
+int alwan_cat_zhai2018_f32(alwan_xyz_f32 *xyz_out,
+                           alwan_xyz_f32 const *xyz_in,
+                           alwan_xyz_f32 const *xyz_src,
+                           alwan_xyz_f32 const *xyz_dst,
+                           float D_src,
+                           float D_dst,
+                           alwan_xyz_f32 const *xyz_baseline,
+                           alwan_cat_method transform);
+int alwan_cat_zhai2018_f64(alwan_xyz_f64 *xyz_out,
+                           alwan_xyz_f64 const *xyz_in,
+                           alwan_xyz_f64 const *xyz_src,
+                           alwan_xyz_f64 const *xyz_dst,
+                           double D_src,
+                           double D_dst,
+                           alwan_xyz_f64 const *xyz_baseline,
+                           alwan_cat_method transform);
+#define alwan_cat_zhai2018 alwan_cat_zhai2018_f64
 
 /* ----------------------------------------------------------------
  * Spectral Power Distributions (SPD)
@@ -1993,20 +2595,24 @@ int alwan_spd_analyze_shape(alwan_spd_shape *shape_out, alwan_spd const *spd);
  * Pointer's Gamut represents the boundary of real surface colors under illuminant C
  * xy: CIE 1931 xy chromaticity coordinates
  * Returns 1 if inside Pointer's Gamut, 0 otherwise */
-int alwan_is_within_pointer_gamut(alwan_vec2 const *xy);
+int alwan_is_within_pointer_gamut_f32(alwan_vec2_f32 const *xy);
+int alwan_is_within_pointer_gamut_f64(alwan_vec2_f64 const *xy);
+#define alwan_is_within_pointer_gamut alwan_is_within_pointer_gamut_f64
 
 /* Get Pointer's Gamut boundary points
  * Returns array of xy chromaticity coordinates defining the boundary
  * count_out: receives the number of boundary points (32)
  * Returns pointer to internal static data (do not free) */
-alwan_vec2 const* alwan_pointer_gamut_boundary(size_t *count_out);
+alwan_vec2_f64 const* alwan_pointer_gamut_boundary(size_t *count_out);
 
 /* Get CIE 1931 spectral locus xy chromaticity for a given wavelength
  * Computes xy chromaticity from CIE 1931 2° observer CMFs for monochromatic light
  * wavelength: wavelength in nm (360-830nm)
  * xy_out: output xy chromaticity coordinates
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if wavelength out of range */
-int alwan_spectral_locus_xy(alwan_vec2 *xy_out, alwan_scalar wavelength);
+int alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, float wavelength);
+int alwan_spectral_locus_xy_f64(alwan_vec2_f64 *xy_out, double wavelength);
+#define alwan_spectral_locus_xy alwan_spectral_locus_xy_f64
 
 /* Compute dominant wavelength for a color
  * Dominant wavelength is the wavelength of monochromatic light that,
@@ -2017,11 +2623,17 @@ int alwan_spectral_locus_xy(alwan_vec2 *xy_out, alwan_scalar wavelength);
  * xy_wl_out: receives xy of the spectral locus point (optional, can be NULL)
  * xy_cw_out: receives xy of the color-white intersection (optional, can be NULL)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if color is on/near the purple line */
-int alwan_dominant_wavelength(alwan_scalar *wavelength_out,
-                               alwan_vec2 *xy_wl_out,
-                               alwan_vec2 *xy_cw_out,
-                               alwan_vec2 const *xy,
-                               alwan_vec2 const *xy_white);
+int alwan_dominant_wavelength_f32(float *wavelength_out,
+                               alwan_vec2_f32 *xy_wl_out,
+                               alwan_vec2_f32 *xy_cw_out,
+                               alwan_vec2_f32 const *xy,
+                               alwan_vec2_f32 const *xy_white);
+int alwan_dominant_wavelength_f64(double *wavelength_out,
+                               alwan_vec2_f64 *xy_wl_out,
+                               alwan_vec2_f64 *xy_cw_out,
+                               alwan_vec2_f64 const *xy,
+                               alwan_vec2_f64 const *xy_white);
+#define alwan_dominant_wavelength alwan_dominant_wavelength_f64
 
 /* Compute excitation purity for a color
  * Excitation purity is the ratio of the distance from the white point to the color,
@@ -2031,9 +2643,13 @@ int alwan_dominant_wavelength(alwan_scalar *wavelength_out,
  * xy_white: white point xy chromaticity (e.g., illuminant D65)
  * purity_out: receives excitation purity [0-1]
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_excitation_purity(alwan_scalar *purity_out,
-                             alwan_vec2 const *xy,
-                             alwan_vec2 const *xy_white);
+int alwan_excitation_purity_f32(float *purity_out,
+                             alwan_vec2_f32 const *xy,
+                             alwan_vec2_f32 const *xy_white);
+int alwan_excitation_purity_f64(double *purity_out,
+                             alwan_vec2_f64 const *xy,
+                             alwan_vec2_f64 const *xy_white);
+#define alwan_excitation_purity alwan_excitation_purity_f64
 
 /* Compute complementary wavelength for a color
  * Complementary wavelength is used for colors on the purple line (no dominant wavelength)
@@ -2044,11 +2660,17 @@ int alwan_excitation_purity(alwan_scalar *purity_out,
  * xy_wl_out: receives xy of the spectral locus point (optional, can be NULL)
  * xy_cw_out: receives xy of the color-white intersection (optional, can be NULL)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_complementary_wavelength(alwan_scalar *wavelength_out,
-                                     alwan_vec2 *xy_wl_out,
-                                     alwan_vec2 *xy_cw_out,
-                                     alwan_vec2 const *xy,
-                                     alwan_vec2 const *xy_white);
+int alwan_complementary_wavelength_f32(float *wavelength_out,
+                                     alwan_vec2_f32 *xy_wl_out,
+                                     alwan_vec2_f32 *xy_cw_out,
+                                     alwan_vec2_f32 const *xy,
+                                     alwan_vec2_f32 const *xy_white);
+int alwan_complementary_wavelength_f64(double *wavelength_out,
+                                     alwan_vec2_f64 *xy_wl_out,
+                                     alwan_vec2_f64 *xy_cw_out,
+                                     alwan_vec2_f64 const *xy,
+                                     alwan_vec2_f64 const *xy_white);
+#define alwan_complementary_wavelength alwan_complementary_wavelength_f64
 
 /* Compute gamut volume ratio between two RGB color spaces
  * Computes the ratio of gamut volumes: volume(space1) / volume(space2)
@@ -2087,10 +2709,15 @@ int alwan_gamut_coverage(alwan_scalar *coverage_out,
  * rgb_linear: input RGB color in linear (not gamma-corrected) space
  * rgb_out: receives mapped RGB color (guaranteed in [0,1])
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
-                              alwan_gamut_map_method method,
-                              alwan_rgb_space_desc const *space,
-                              alwan_rgb const *rgb_linear);
+int alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
+                                  alwan_gamut_map_method method,
+                                  alwan_rgb_space_desc const *space,
+                                  alwan_rgb_f32 const *rgb_linear);
+int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
+                                  alwan_gamut_map_method method,
+                                  alwan_rgb_space_desc const *space,
+                                  alwan_rgb_f64 const *rgb_linear);
+#define alwan_gamut_map_advanced alwan_gamut_map_advanced_f64
 
 /* ----------------------------------------------------------------
  * Spectral Upsampling - RGB to Spectrum Conversion
@@ -2175,9 +2802,13 @@ typedef struct {
  * vc: viewing conditions
  * out: output appearance correlates (J, C, h, s, Q, M, H)
  * Returns ALWAN_OK on success */
-int alwan_ciecam02_forward(alwan_ciecam02_correlates *out,
-                            alwan_xyz const *xyz,
-                            alwan_ciecam02_viewing_conditions const *vc);
+int alwan_ciecam02_forward_f32(alwan_ciecam02_correlates *out,
+                                alwan_xyz_f32 const *xyz,
+                                alwan_ciecam02_viewing_conditions const *vc);
+int alwan_ciecam02_forward_f64(alwan_ciecam02_correlates *out,
+                                alwan_xyz_f64 const *xyz,
+                                alwan_ciecam02_viewing_conditions const *vc);
+#define alwan_ciecam02_forward alwan_ciecam02_forward_f64
 
 /* CIECAM02 inverse transform: appearance correlates -> XYZ
  * Uses J, C, h from input correlates (other fields are ignored)
@@ -2185,9 +2816,13 @@ int alwan_ciecam02_forward(alwan_ciecam02_correlates *out,
  * vc: viewing conditions
  * xyz_out: output color in XYZ
  * Returns ALWAN_OK on success */
-int alwan_ciecam02_inverse(alwan_xyz *xyz_out,
-                            alwan_ciecam02_correlates const *correlates,
-                            alwan_ciecam02_viewing_conditions const *vc);
+int alwan_ciecam02_inverse_f32(alwan_xyz_f32 *xyz_out,
+                                alwan_ciecam02_correlates const *correlates,
+                                alwan_ciecam02_viewing_conditions const *vc);
+int alwan_ciecam02_inverse_f64(alwan_xyz_f64 *xyz_out,
+                                alwan_ciecam02_correlates const *correlates,
+                                alwan_ciecam02_viewing_conditions const *vc);
+#define alwan_ciecam02_inverse alwan_ciecam02_inverse_f64
 
 /* ----------------------------------------------------------------
  * CAM16 Color Appearance Model
@@ -2225,9 +2860,13 @@ typedef struct {
  * vc: viewing conditions
  * out: output appearance correlates (J, C, h, s, Q, M, H)
  * Returns ALWAN_OK on success */
-int alwan_cam16_forward(alwan_cam16_correlates *out,
-                        alwan_xyz const *xyz,
-                        alwan_cam16_viewing_conditions const *vc);
+int alwan_cam16_forward_f32(alwan_cam16_correlates *out,
+                             alwan_xyz_f32 const *xyz,
+                             alwan_cam16_viewing_conditions const *vc);
+int alwan_cam16_forward_f64(alwan_cam16_correlates *out,
+                             alwan_xyz_f64 const *xyz,
+                             alwan_cam16_viewing_conditions const *vc);
+#define alwan_cam16_forward alwan_cam16_forward_f64
 
 /* CAM16 inverse transform: appearance correlates -> XYZ
  * Uses J, C, h from input correlates (other fields are ignored)
@@ -2235,44 +2874,72 @@ int alwan_cam16_forward(alwan_cam16_correlates *out,
  * vc: viewing conditions
  * xyz_out: output color in XYZ
  * Returns ALWAN_OK on success */
-int alwan_cam16_inverse(alwan_xyz *xyz_out,
-                        alwan_cam16_correlates const *correlates,
-                        alwan_cam16_viewing_conditions const *vc);
+int alwan_cam16_inverse_f32(alwan_xyz_f32 *xyz_out,
+                             alwan_cam16_correlates const *correlates,
+                             alwan_cam16_viewing_conditions const *vc);
+int alwan_cam16_inverse_f64(alwan_xyz_f64 *xyz_out,
+                             alwan_cam16_correlates const *correlates,
+                             alwan_cam16_viewing_conditions const *vc);
+#define alwan_cam16_inverse alwan_cam16_inverse_f64
 
 /* MapCIECAM02 forward transform
  * xyz_in: input XYZ colors (stride in_stride between consecutive colors)
  * count: number of colors to process
  * correlates_out: output appearance correlates (count elements)
  * Returns ALWAN_OK on success */
-int alwan_ciecam02_forward_map_interleave(alwan_ciecam02_correlates *correlates_out,
-                                alwan_scalar const *xyz_in,
+int alwan_ciecam02_forward_f32_map_interleave(alwan_ciecam02_correlates *correlates_out,
+                                float const *xyz_in,
                                 alwan_ciecam02_viewing_conditions const *vc,
                                 size_t count,
                                 size_t in_stride);
+int alwan_ciecam02_forward_f64_map_interleave(alwan_ciecam02_correlates *correlates_out,
+                                double const *xyz_in,
+                                alwan_ciecam02_viewing_conditions const *vc,
+                                size_t count,
+                                size_t in_stride);
+#define alwan_ciecam02_forward_map_interleave alwan_ciecam02_forward_f64_map_interleave
 
 /* MapCIECAM02 inverse transform
  * correlates_in: input appearance correlates (count elements)
  * xyz_out: output XYZ colors (stride out_stride between consecutive colors)
  * Returns ALWAN_OK on success */
-int alwan_ciecam02_inverse_map_interleave(alwan_scalar *xyz_out,
+int alwan_ciecam02_inverse_f32_map_interleave(float *xyz_out,
                                 alwan_ciecam02_correlates const *correlates_in,
                                 alwan_ciecam02_viewing_conditions const *vc,
                                 size_t count,
                                 size_t out_stride);
+int alwan_ciecam02_inverse_f64_map_interleave(double *xyz_out,
+                                alwan_ciecam02_correlates const *correlates_in,
+                                alwan_ciecam02_viewing_conditions const *vc,
+                                size_t count,
+                                size_t out_stride);
+#define alwan_ciecam02_inverse_map_interleave alwan_ciecam02_inverse_f64_map_interleave
 
 /* MapCAM16 forward transform */
-int alwan_cam16_forward_map_interleave(alwan_cam16_correlates *correlates_out,
-                             alwan_scalar const *xyz_in,
+int alwan_cam16_forward_f32_map_interleave(alwan_cam16_correlates *correlates_out,
+                             float const *xyz_in,
                              alwan_cam16_viewing_conditions const *vc,
                              size_t count,
                              size_t in_stride);
+int alwan_cam16_forward_f64_map_interleave(alwan_cam16_correlates *correlates_out,
+                             double const *xyz_in,
+                             alwan_cam16_viewing_conditions const *vc,
+                             size_t count,
+                             size_t in_stride);
+#define alwan_cam16_forward_map_interleave alwan_cam16_forward_f64_map_interleave
 
 /* MapCAM16 inverse transform */
-int alwan_cam16_inverse_map_interleave(alwan_scalar *xyz_out,
+int alwan_cam16_inverse_f32_map_interleave(float *xyz_out,
                              alwan_cam16_correlates const *correlates_in,
                              alwan_cam16_viewing_conditions const *vc,
                              size_t count,
                              size_t out_stride);
+int alwan_cam16_inverse_f64_map_interleave(double *xyz_out,
+                             alwan_cam16_correlates const *correlates_in,
+                             alwan_cam16_viewing_conditions const *vc,
+                             size_t count,
+                             size_t out_stride);
+#define alwan_cam16_inverse_map_interleave alwan_cam16_inverse_f64_map_interleave
 
 /* Typed CAM map functions (_ex variants) */
 int alwan_ciecam02_forward_map_interleave_ex(alwan_ciecam02_correlates *correlates_out,
@@ -2297,16 +2964,22 @@ int alwan_cam16_inverse_map_interleave_ex(void *xyz_out, alwan_pixel_format out_
  * correlates: input CAM16 correlates (J, M, h used)
  * Jab_out: output CAM16-UCS coordinates [J', a', b']
  * Returns ALWAN_OK on success */
-int alwan_cam16_to_ucs(alwan_cam_jab *Jab_out,
-                       alwan_cam16_correlates const *correlates);
+int alwan_cam16_to_ucs_f32(alwan_cam_jab_f32 *Jab_out,
+                            alwan_cam16_correlates const *correlates);
+int alwan_cam16_to_ucs_f64(alwan_cam_jab_f64 *Jab_out,
+                            alwan_cam16_correlates const *correlates);
+#define alwan_cam16_to_ucs alwan_cam16_to_ucs_f64
 
 /* Inverse CAM16-UCS transform
  * Converts CAM16-UCS Jab back to CAM16 JMh
  * Jab: input CAM16-UCS coordinates [J', a', b']
  * correlates_out: output CAM16 correlates (J, M, h filled; other fields set to 0)
  * Returns ALWAN_OK on success */
-int alwan_cam16_from_ucs(alwan_cam16_correlates *correlates_out,
-                         alwan_cam_jab const *Jab);
+int alwan_cam16_from_ucs_f32(alwan_cam16_correlates *correlates_out,
+                              alwan_cam_jab_f32 const *Jab);
+int alwan_cam16_from_ucs_f64(alwan_cam16_correlates *correlates_out,
+                              alwan_cam_jab_f64 const *Jab);
+#define alwan_cam16_from_ucs alwan_cam16_from_ucs_f64
 
 /* ----------------------------------------------------------------
  * ZCAM - HDR Color Appearance Model
@@ -2348,9 +3021,13 @@ typedef struct {
  * vc: viewing conditions
  * out: computed appearance correlates
  * Returns 0 on success, -1 on error */
-int alwan_zcam_forward(alwan_zcam_correlates *out,
-                       alwan_xyz const *xyz,
-                       alwan_zcam_viewing_conditions const *vc);
+int alwan_zcam_forward_f32(alwan_zcam_correlates *out,
+                            alwan_xyz_f32 const *xyz,
+                            alwan_zcam_viewing_conditions const *vc);
+int alwan_zcam_forward_f64(alwan_zcam_correlates *out,
+                            alwan_xyz_f64 const *xyz,
+                            alwan_zcam_viewing_conditions const *vc);
+#define alwan_zcam_forward alwan_zcam_forward_f64
 
 /* ZCAM inverse transform: appearance correlates -> XYZ (approximate)
  * correlates: appearance correlates
@@ -2358,16 +3035,23 @@ int alwan_zcam_forward(alwan_zcam_correlates *out,
  * xyz: output XYZ tristimulus values (cd/m^2)
  * Returns 0 on success, -1 on error
  * Note: Inverse is approximate due to complexity */
-int alwan_zcam_inverse(alwan_xyz *xyz,
-                       alwan_zcam_correlates const *correlates,
-                       alwan_zcam_viewing_conditions const *vc);
+int alwan_zcam_inverse_f32(alwan_xyz_f32 *xyz,
+                            alwan_zcam_correlates const *correlates,
+                            alwan_zcam_viewing_conditions const *vc);
+int alwan_zcam_inverse_f64(alwan_xyz_f64 *xyz,
+                            alwan_zcam_correlates const *correlates,
+                            alwan_zcam_viewing_conditions const *vc);
+#define alwan_zcam_inverse alwan_zcam_inverse_f64
 
 /* ZCAM to UCS (Uniform Color Space) for color difference
  * correlates: input ZCAM correlates
  * Jab_out: output ZCAM-UCS coordinates [Jz, az, bz]
  * Returns 0 on success, -1 on error */
-int alwan_zcam_to_ucs(alwan_jzazbz *Jab_out,
-                      alwan_zcam_correlates const *correlates);
+int alwan_zcam_to_ucs_f32(alwan_jzazbz_f32 *Jab_out,
+                           alwan_zcam_correlates const *correlates);
+int alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
+                           alwan_zcam_correlates const *correlates);
+#define alwan_zcam_to_ucs alwan_zcam_to_ucs_f64
 
 /* ----------------------------------------------------------------
  * RLAB Color Appearance Model
@@ -2402,15 +3086,23 @@ typedef struct {
 
 /* RLAB forward transform: XYZ -> appearance correlates
  * Returns 0 on success, -1 on error */
-int alwan_rlab_forward(alwan_rlab_correlates *out,
-                       alwan_xyz const *xyz,
-                       alwan_rlab_viewing_conditions const *vc);
+int alwan_rlab_forward_f32(alwan_rlab_correlates *out,
+                            alwan_xyz_f32 const *xyz,
+                            alwan_rlab_viewing_conditions const *vc);
+int alwan_rlab_forward_f64(alwan_rlab_correlates *out,
+                            alwan_xyz_f64 const *xyz,
+                            alwan_rlab_viewing_conditions const *vc);
+#define alwan_rlab_forward alwan_rlab_forward_f64
 
 /* RLAB inverse transform: appearance correlates -> XYZ
  * Returns 0 on success, -1 on error */
-int alwan_rlab_inverse(alwan_xyz *xyz,
-                       alwan_rlab_correlates const *correlates,
-                       alwan_rlab_viewing_conditions const *vc);
+int alwan_rlab_inverse_f32(alwan_xyz_f32 *xyz,
+                            alwan_rlab_correlates const *correlates,
+                            alwan_rlab_viewing_conditions const *vc);
+int alwan_rlab_inverse_f64(alwan_xyz_f64 *xyz,
+                            alwan_rlab_correlates const *correlates,
+                            alwan_rlab_viewing_conditions const *vc);
+#define alwan_rlab_inverse alwan_rlab_inverse_f64
 
 /* ----------------------------------------------------------------
  * Hunt Color Appearance Model
@@ -2447,9 +3139,13 @@ typedef struct {
 /* Hunt forward transform: XYZ -> appearance correlates
  * Returns 0 on success, -1 on error
  * Note: Hunt inverse is not implemented due to extreme complexity */
-int alwan_hunt_forward(alwan_hunt_correlates *out,
-                       alwan_xyz const *xyz,
-                       alwan_hunt_viewing_conditions const *vc);
+int alwan_hunt_forward_f32(alwan_hunt_correlates *out,
+                            alwan_xyz_f32 const *xyz,
+                            alwan_hunt_viewing_conditions const *vc);
+int alwan_hunt_forward_f64(alwan_hunt_correlates *out,
+                            alwan_xyz_f64 const *xyz,
+                            alwan_hunt_viewing_conditions const *vc);
+#define alwan_hunt_forward alwan_hunt_forward_f64
 
 /* ----------------------------------------------------------------
  * Hellwig2022 Color Appearance Model
@@ -2485,14 +3181,22 @@ typedef struct {
 } alwan_hellwig2022_correlates;
 
 /* Hellwig2022 forward transform: XYZ -> appearance correlates */
-int alwan_hellwig2022_forward(alwan_hellwig2022_correlates *out,
-                               alwan_xyz const *xyz,
-                               alwan_hellwig2022_viewing_conditions const *vc);
+int alwan_hellwig2022_forward_f32(alwan_hellwig2022_correlates *out,
+                                   alwan_xyz_f32 const *xyz,
+                                   alwan_hellwig2022_viewing_conditions const *vc);
+int alwan_hellwig2022_forward_f64(alwan_hellwig2022_correlates *out,
+                                   alwan_xyz_f64 const *xyz,
+                                   alwan_hellwig2022_viewing_conditions const *vc);
+#define alwan_hellwig2022_forward alwan_hellwig2022_forward_f64
 
 /* Hellwig2022 inverse transform: appearance correlates -> XYZ */
-int alwan_hellwig2022_inverse(alwan_xyz *xyz_out,
-                               alwan_hellwig2022_correlates const *correlates,
-                               alwan_hellwig2022_viewing_conditions const *vc);
+int alwan_hellwig2022_inverse_f32(alwan_xyz_f32 *xyz_out,
+                                   alwan_hellwig2022_correlates const *correlates,
+                                   alwan_hellwig2022_viewing_conditions const *vc);
+int alwan_hellwig2022_inverse_f64(alwan_xyz_f64 *xyz_out,
+                                   alwan_hellwig2022_correlates const *correlates,
+                                   alwan_hellwig2022_viewing_conditions const *vc);
+#define alwan_hellwig2022_inverse alwan_hellwig2022_inverse_f64
 
 /* ----------------------------------------------------------------
  * Kim2009 Color Appearance Model
@@ -2516,14 +3220,22 @@ typedef struct {
 } alwan_kim2009_correlates;
 
 /* Kim2009 forward transform: XYZ -> appearance correlates */
-int alwan_kim2009_forward(alwan_kim2009_correlates *out,
-                           alwan_xyz const *xyz,
-                           alwan_kim2009_viewing_conditions const *vc);
+int alwan_kim2009_forward_f32(alwan_kim2009_correlates *out,
+                               alwan_xyz_f32 const *xyz,
+                               alwan_kim2009_viewing_conditions const *vc);
+int alwan_kim2009_forward_f64(alwan_kim2009_correlates *out,
+                               alwan_xyz_f64 const *xyz,
+                               alwan_kim2009_viewing_conditions const *vc);
+#define alwan_kim2009_forward alwan_kim2009_forward_f64
 
 /* Kim2009 inverse transform: appearance correlates -> XYZ */
-int alwan_kim2009_inverse(alwan_xyz *xyz_out,
-                           alwan_kim2009_correlates const *correlates,
-                           alwan_kim2009_viewing_conditions const *vc);
+int alwan_kim2009_inverse_f32(alwan_xyz_f32 *xyz_out,
+                               alwan_kim2009_correlates const *correlates,
+                               alwan_kim2009_viewing_conditions const *vc);
+int alwan_kim2009_inverse_f64(alwan_xyz_f64 *xyz_out,
+                               alwan_kim2009_correlates const *correlates,
+                               alwan_kim2009_viewing_conditions const *vc);
+#define alwan_kim2009_inverse alwan_kim2009_inverse_f64
 
 /* ----------------------------------------------------------------
  * LLAB Color Appearance Model
@@ -2557,9 +3269,13 @@ typedef struct {
 } alwan_llab_correlates;
 
 /* LLAB forward transform: XYZ -> appearance correlates */
-int alwan_llab_forward(alwan_llab_correlates *out,
-                        alwan_xyz const *xyz,
-                        alwan_llab_viewing_conditions const *vc);
+int alwan_llab_forward_f32(alwan_llab_correlates *out,
+                            alwan_xyz_f32 const *xyz,
+                            alwan_llab_viewing_conditions const *vc);
+int alwan_llab_forward_f64(alwan_llab_correlates *out,
+                            alwan_xyz_f64 const *xyz,
+                            alwan_llab_viewing_conditions const *vc);
+#define alwan_llab_forward alwan_llab_forward_f64
 
 /* ----------------------------------------------------------------
  * ATD95 Color Vision Model
@@ -2590,9 +3306,13 @@ typedef struct {
 } alwan_atd95_correlates;
 
 /* ATD95 forward transform: XYZ -> correlates */
-int alwan_atd95_forward(alwan_atd95_correlates *out,
-                         alwan_xyz const *xyz,
-                         alwan_atd95_viewing_conditions const *vc);
+int alwan_atd95_forward_f32(alwan_atd95_correlates *out,
+                             alwan_xyz_f32 const *xyz,
+                             alwan_atd95_viewing_conditions const *vc);
+int alwan_atd95_forward_f64(alwan_atd95_correlates *out,
+                             alwan_xyz_f64 const *xyz,
+                             alwan_atd95_viewing_conditions const *vc);
+#define alwan_atd95_forward alwan_atd95_forward_f64
 
 /* ----------------------------------------------------------------
  * Nayatani95 Color Appearance Model
@@ -2620,9 +3340,13 @@ typedef struct {
 } alwan_nayatani95_correlates;
 
 /* Nayatani95 forward transform: XYZ -> appearance correlates */
-int alwan_nayatani95_forward(alwan_nayatani95_correlates *out,
-                               alwan_xyz const *xyz,
-                               alwan_nayatani95_viewing_conditions const *vc);
+int alwan_nayatani95_forward_f32(alwan_nayatani95_correlates *out,
+                                  alwan_xyz_f32 const *xyz,
+                                  alwan_nayatani95_viewing_conditions const *vc);
+int alwan_nayatani95_forward_f64(alwan_nayatani95_correlates *out,
+                                  alwan_xyz_f64 const *xyz,
+                                  alwan_nayatani95_viewing_conditions const *vc);
+#define alwan_nayatani95_forward alwan_nayatani95_forward_f64
 
 /* ----------------------------------------------------------------
  * M9: Convenience Color Models (HSV, HSL, CMY, CMYK, YCbCr)
@@ -2630,23 +3354,39 @@ int alwan_nayatani95_forward(alwan_nayatani95_correlates *out,
 
 /* RGB <-> HSV conversions (all values in [0, 1])
  * Operates on encoded (display-referred) sRGB. For linear input, apply sRGB OETF first. */
-int alwan_rgb_to_hsv(alwan_hsv *hsv_out, alwan_rgb const *rgb);
-int alwan_hsv_to_rgb(alwan_rgb *rgb_out, alwan_hsv const *hsv);
+int alwan_rgb_to_hsv_f32(alwan_hsv_f32 *hsv_out, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_hsv_f64(alwan_hsv_f64 *hsv_out, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_hsv alwan_rgb_to_hsv_f64
+int alwan_hsv_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hsv_f32 const *hsv);
+int alwan_hsv_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hsv_f64 const *hsv);
+#define alwan_hsv_to_rgb alwan_hsv_to_rgb_f64
 
 /* RGB <-> HSL conversions (all values in [0, 1])
  * Operates on encoded (display-referred) sRGB. For linear input, apply sRGB OETF first. */
-int alwan_rgb_to_hsl(alwan_hsl *hsl_out, alwan_rgb const *rgb);
-int alwan_hsl_to_rgb(alwan_rgb *rgb_out, alwan_hsl const *hsl);
+int alwan_rgb_to_hsl_f32(alwan_hsl_f32 *hsl_out, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_hsl_f64(alwan_hsl_f64 *hsl_out, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_hsl alwan_rgb_to_hsl_f64
+int alwan_hsl_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hsl_f32 const *hsl);
+int alwan_hsl_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hsl_f64 const *hsl);
+#define alwan_hsl_to_rgb alwan_hsl_to_rgb_f64
 
 /* Linear sRGB <-> HSV conversions
  * Applies sRGB OETF/EOTF internally so the caller works in linear light. */
-int alwan_linear_srgb_to_hsv(alwan_hsv *hsv_out, alwan_rgb const *rgb);
-int alwan_hsv_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsv const *hsv);
+int alwan_linear_srgb_to_hsv_f32(alwan_hsv_f32 *hsv_out, alwan_rgb_f32 const *rgb);
+int alwan_linear_srgb_to_hsv_f64(alwan_hsv_f64 *hsv_out, alwan_rgb_f64 const *rgb);
+#define alwan_linear_srgb_to_hsv alwan_linear_srgb_to_hsv_f64
+int alwan_hsv_to_linear_srgb_f32(alwan_rgb_f32 *rgb_out, alwan_hsv_f32 const *hsv);
+int alwan_hsv_to_linear_srgb_f64(alwan_rgb_f64 *rgb_out, alwan_hsv_f64 const *hsv);
+#define alwan_hsv_to_linear_srgb alwan_hsv_to_linear_srgb_f64
 
 /* Linear sRGB <-> HSL conversions
  * Applies sRGB OETF/EOTF internally so the caller works in linear light. */
-int alwan_linear_srgb_to_hsl(alwan_hsl *hsl_out, alwan_rgb const *rgb);
-int alwan_hsl_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsl const *hsl);
+int alwan_linear_srgb_to_hsl_f32(alwan_hsl_f32 *hsl_out, alwan_rgb_f32 const *rgb);
+int alwan_linear_srgb_to_hsl_f64(alwan_hsl_f64 *hsl_out, alwan_rgb_f64 const *rgb);
+#define alwan_linear_srgb_to_hsl alwan_linear_srgb_to_hsl_f64
+int alwan_hsl_to_linear_srgb_f32(alwan_rgb_f32 *rgb_out, alwan_hsl_f32 const *hsl);
+int alwan_hsl_to_linear_srgb_f64(alwan_rgb_f64 *rgb_out, alwan_hsl_f64 const *hsl);
+#define alwan_hsl_to_linear_srgb alwan_hsl_to_linear_srgb_f64
 
 /*
  * RGB <-> HSP conversions (all values in [0, 1])
@@ -2654,8 +3394,12 @@ int alwan_hsl_to_linear_srgb(alwan_rgb *rgb_out, alwan_hsl const *hsl);
  * Reference: Darel Rex Finley (2006), http://alienryderflex.com/hsp.html
  * P = sqrt(Pr*R^2 + Pg*G^2 + Pb*B^2) with BT.601 weights.
  * H and S identical to HSV. Used by DaVinci Resolve. */
-int alwan_rgb_to_hsp(alwan_hsp *hsp_out, alwan_rgb const *rgb);
-int alwan_hsp_to_rgb(alwan_rgb *rgb_out, alwan_hsp const *hsp);
+int alwan_rgb_to_hsp_f32(alwan_hsp_f32 *hsp_out, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_hsp_f64(alwan_hsp_f64 *hsp_out, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_hsp alwan_rgb_to_hsp_f64
+int alwan_hsp_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hsp_f32 const *hsp);
+int alwan_hsp_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hsp_f64 const *hsp);
+#define alwan_hsp_to_rgb alwan_hsp_to_rgb_f64
 
 /*
  * RGB <-> HSPLog conversions (all values in [0, 1])
@@ -2664,8 +3408,12 @@ int alwan_hsp_to_rgb(alwan_rgb *rgb_out, alwan_hsp const *hsp);
  * Designed for log/flat-encoded footage.
  * Inspired by Nobe Color Remap / DaVinci Resolve "HSP Log".
  * NOTE: No published specification exists; see alwan_types.h. */
-int alwan_rgb_to_hsplog(alwan_hsplog *hsplog_out, alwan_rgb const *rgb);
-int alwan_hsplog_to_rgb(alwan_rgb *rgb_out, alwan_hsplog const *hsplog);
+int alwan_rgb_to_hsplog_f32(alwan_hsplog_f32 *hsplog_out, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_hsplog_f64(alwan_hsplog_f64 *hsplog_out, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_hsplog alwan_rgb_to_hsplog_f64
+int alwan_hsplog_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hsplog_f32 const *hsplog);
+int alwan_hsplog_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hsplog_f64 const *hsplog);
+#define alwan_hsplog_to_rgb alwan_hsplog_to_rgb_f64
 
 /*
  * RGB <-> HSY conversions (all values in [0, 1])
@@ -2673,16 +3421,28 @@ int alwan_hsplog_to_rgb(alwan_rgb *rgb_out, alwan_hsplog const *hsplog);
  * Reference: Kuzma Shapran "HCY" (chilliant.com); Krita KoColorConversions.cpp
  * Y = BT.601 weighted luma, S uses luma-aware max_sat remapping.
  * Used by DaVinci Resolve. */
-int alwan_rgb_to_hsy(alwan_hsy *hsy_out, alwan_rgb const *rgb);
-int alwan_hsy_to_rgb(alwan_rgb *rgb_out, alwan_hsy const *hsy);
+int alwan_rgb_to_hsy_f32(alwan_hsy_f32 *hsy_out, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_hsy_f64(alwan_hsy_f64 *hsy_out, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_hsy alwan_rgb_to_hsy_f64
+int alwan_hsy_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hsy_f32 const *hsy);
+int alwan_hsy_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hsy_f64 const *hsy);
+#define alwan_hsy_to_rgb alwan_hsy_to_rgb_f64
 
 /* RGB <-> CMY conversions (all values in [0, 1]) */
-int alwan_rgb_to_cmy(alwan_cmy *cmy_out, alwan_rgb const *rgb);
-int alwan_cmy_to_rgb(alwan_rgb *rgb_out, alwan_cmy const *cmy);
+int alwan_rgb_to_cmy_f32(alwan_cmy_f32 *cmy_out, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_cmy_f64(alwan_cmy_f64 *cmy_out, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_cmy alwan_rgb_to_cmy_f64
+int alwan_cmy_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_cmy_f32 const *cmy);
+int alwan_cmy_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_cmy_f64 const *cmy);
+#define alwan_cmy_to_rgb alwan_cmy_to_rgb_f64
 
 /* CMY <-> CMYK conversions (all values in [0, 1]) */
-int alwan_cmy_to_cmyk(alwan_scalar *c, alwan_scalar *m, alwan_scalar *y, alwan_scalar *k, alwan_cmy const *cmy);
-int alwan_cmyk_to_cmy(alwan_cmy *cmy_out, alwan_scalar c, alwan_scalar m, alwan_scalar y, alwan_scalar k);
+int alwan_cmy_to_cmyk_f32(float *c, float *m, float *y, float *k, alwan_cmy_f32 const *cmy);
+int alwan_cmy_to_cmyk_f64(double *c, double *m, double *y, double *k, alwan_cmy_f64 const *cmy);
+#define alwan_cmy_to_cmyk alwan_cmy_to_cmyk_f64
+int alwan_cmyk_to_cmy_f32(alwan_cmy_f32 *cmy_out, float c, float m, float y, float k);
+int alwan_cmyk_to_cmy_f64(alwan_cmy_f64 *cmy_out, double c, double m, double y, double k);
+#define alwan_cmyk_to_cmy alwan_cmyk_to_cmy_f64
 
 /* YCbCr standard identifiers */
 typedef enum {
@@ -2697,20 +3457,30 @@ int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr
 
 /* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020)
  * bit_depth: 8, 10, 12, or 16 -- controls legal range scaling */
-int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb, int bit_depth);
-int alwan_yccbccrc_to_rgb(alwan_rgb *rgb_out, alwan_yccbccrc const *yccbccrc, int bit_depth);
+int alwan_rgb_to_yccbccrc_f32(alwan_yccbccrc_f32 *yccbccrc_out, alwan_rgb_f32 const *rgb, int bit_depth);
+int alwan_rgb_to_yccbccrc_f64(alwan_yccbccrc_f64 *yccbccrc_out, alwan_rgb_f64 const *rgb, int bit_depth);
+#define alwan_rgb_to_yccbccrc alwan_rgb_to_yccbccrc_f64
+int alwan_yccbccrc_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_yccbccrc_f32 const *yccbccrc, int bit_depth);
+int alwan_yccbccrc_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_yccbccrc_f64 const *yccbccrc, int bit_depth);
+#define alwan_yccbccrc_to_rgb alwan_yccbccrc_to_rgb_f64
 
 /* YCbCr legal <-> full range conversion
  * Converts between full-range [0,1] and legal/narrow range with proper chroma centering.
  * bit_depth: 8, 10, 12, or 16 */
-int alwan_ycbcr_full_to_legal(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_depth);
-int alwan_ycbcr_legal_to_full(alwan_ycbcr *out, alwan_ycbcr const *in, int bit_depth);
+int alwan_ycbcr_full_to_legal_f32(alwan_ycbcr_f32 *out, alwan_ycbcr_f32 const *in, int bit_depth);
+int alwan_ycbcr_full_to_legal_f64(alwan_ycbcr_f64 *out, alwan_ycbcr_f64 const *in, int bit_depth);
+#define alwan_ycbcr_full_to_legal alwan_ycbcr_full_to_legal_f64
+int alwan_ycbcr_legal_to_full_f32(alwan_ycbcr_f32 *out, alwan_ycbcr_f32 const *in, int bit_depth);
+int alwan_ycbcr_legal_to_full_f64(alwan_ycbcr_f64 *out, alwan_ycbcr_f64 const *in, int bit_depth);
+#define alwan_ycbcr_legal_to_full alwan_ycbcr_legal_to_full_f64
 
 /* RGB <-> YCoCg conversions (video compression, real-time graphics)
  * - Y: luma, Co: orange chrominance, Cg: green chrominance
  * - Reversible integer transform (exact round-trip with proper scaling)
  * - Used in H.264/AVC and video codecs */
-int alwan_rgb_to_ycocg(alwan_ycocg *ycocg_out, alwan_rgb const *rgb);
+int alwan_rgb_to_ycocg_f32(alwan_ycocg_f32 *ycocg_out, alwan_rgb_f32 const *rgb);
+int alwan_rgb_to_ycocg_f64(alwan_ycocg_f64 *ycocg_out, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_ycocg alwan_rgb_to_ycocg_f64
 
 /* ----------------------------------------------------------------
  * Relative Luminance (Y)
@@ -2737,93 +3507,175 @@ int alwan_relative_luminance(alwan_scalar *Y_out,
                              alwan_luma_standard standard);
 
 /* Per-pixel relative luminance from explicit coefficients */
-int alwan_relative_luminance_kr_kb(alwan_scalar *Y_out,
-                                   alwan_rgb const *rgb,
-                                   alwan_scalar kr, alwan_scalar kb);
+int alwan_relative_luminance_kr_kb_f32(float *Y_out,
+                                       alwan_rgb_f32 const *rgb,
+                                       float kr, float kb);
+int alwan_relative_luminance_kr_kb_f64(double *Y_out,
+                                       alwan_rgb_f64 const *rgb,
+                                       double kr, double kb);
+#define alwan_relative_luminance_kr_kb alwan_relative_luminance_kr_kb_f64
 
 /* Per-pixel relative luminance from RGB space descriptor (extracts Y row from NPM) */
-int alwan_relative_luminance_space(alwan_scalar *Y_out,
-                                   alwan_rgb const *rgb,
-                                   alwan_rgb_space_desc const *space);
+int alwan_relative_luminance_space_f32(float *Y_out,
+                                       alwan_rgb_f32 const *rgb,
+                                       alwan_rgb_space_desc const *space);
+int alwan_relative_luminance_space_f64(double *Y_out,
+                                       alwan_rgb_f64 const *rgb,
+                                       alwan_rgb_space_desc const *space);
+#define alwan_relative_luminance_space alwan_relative_luminance_space_f64
 
 /* Batch relative luminance (3-channel input, 1-channel output) */
-int alwan_relative_luminance_map_interleave(alwan_scalar *Y_out,
-                                            alwan_scalar const *rgb_in,
-                                            size_t count,
-                                            alwan_luma_standard standard,
-                                            size_t in_stride,
-                                            size_t out_stride);
+int alwan_relative_luminance_f32_map_interleave(float *Y_out,
+                                                float const *rgb_in,
+                                                size_t count,
+                                                alwan_luma_standard standard,
+                                                size_t in_stride,
+                                                size_t out_stride);
+int alwan_relative_luminance_f64_map_interleave(double *Y_out,
+                                                double const *rgb_in,
+                                                size_t count,
+                                                alwan_luma_standard standard,
+                                                size_t in_stride,
+                                                size_t out_stride);
+#define alwan_relative_luminance_map_interleave alwan_relative_luminance_f64_map_interleave
 
-int alwan_relative_luminance_space_map_interleave(alwan_scalar *Y_out,
-                                                   alwan_scalar const *rgb_in,
-                                                   size_t count,
-                                                   alwan_rgb_space_desc const *space,
-                                                   size_t in_stride,
-                                                   size_t out_stride);
+int alwan_relative_luminance_space_f32_map_interleave(float *Y_out,
+                                                       float const *rgb_in,
+                                                       size_t count,
+                                                       alwan_rgb_space_desc const *space,
+                                                       size_t in_stride,
+                                                       size_t out_stride);
+int alwan_relative_luminance_space_f64_map_interleave(double *Y_out,
+                                                       double const *rgb_in,
+                                                       size_t count,
+                                                       alwan_rgb_space_desc const *space,
+                                                       size_t in_stride,
+                                                       size_t out_stride);
+#define alwan_relative_luminance_space_map_interleave alwan_relative_luminance_space_f64_map_interleave
 
 /* Mapconvenience color model conversions */
-int alwan_rgb_to_hsv_map_interleave(alwan_scalar *hsv_out,
-                          alwan_scalar const *rgb_in,
+int alwan_rgb_to_hsv_f32_map_interleave(float *hsv_out,
+                          float const *rgb_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_rgb_to_hsv_f64_map_interleave(double *hsv_out,
+                          double const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_rgb_to_hsv_map_interleave alwan_rgb_to_hsv_f64_map_interleave
 
-int alwan_hsv_to_rgb_map_interleave(alwan_scalar *rgb_out,
-                          alwan_scalar const *hsv_in,
+int alwan_hsv_to_rgb_f32_map_interleave(float *rgb_out,
+                          float const *hsv_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_hsv_to_rgb_f64_map_interleave(double *rgb_out,
+                          double const *hsv_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_hsv_to_rgb_map_interleave alwan_hsv_to_rgb_f64_map_interleave
 
-int alwan_rgb_to_hsl_map_interleave(alwan_scalar *hsl_out,
-                          alwan_scalar const *rgb_in,
+int alwan_rgb_to_hsl_f32_map_interleave(float *hsl_out,
+                          float const *rgb_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_rgb_to_hsl_f64_map_interleave(double *hsl_out,
+                          double const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_rgb_to_hsl_map_interleave alwan_rgb_to_hsl_f64_map_interleave
 
-int alwan_hsl_to_rgb_map_interleave(alwan_scalar *rgb_out,
-                          alwan_scalar const *hsl_in,
+int alwan_hsl_to_rgb_f32_map_interleave(float *rgb_out,
+                          float const *hsl_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_hsl_to_rgb_f64_map_interleave(double *rgb_out,
+                          double const *hsl_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_hsl_to_rgb_map_interleave alwan_hsl_to_rgb_f64_map_interleave
 
 /* Map HSP conversions */
-int alwan_rgb_to_hsp_map_interleave(alwan_scalar *hsp_out,
-                          alwan_scalar const *rgb_in,
+int alwan_rgb_to_hsp_f32_map_interleave(float *hsp_out,
+                          float const *rgb_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_rgb_to_hsp_f64_map_interleave(double *hsp_out,
+                          double const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_rgb_to_hsp_map_interleave alwan_rgb_to_hsp_f64_map_interleave
 
-int alwan_hsp_to_rgb_map_interleave(alwan_scalar *rgb_out,
-                          alwan_scalar const *hsp_in,
+int alwan_hsp_to_rgb_f32_map_interleave(float *rgb_out,
+                          float const *hsp_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_hsp_to_rgb_f64_map_interleave(double *rgb_out,
+                          double const *hsp_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_hsp_to_rgb_map_interleave alwan_hsp_to_rgb_f64_map_interleave
 
 /* Map HSPLog conversions */
-int alwan_rgb_to_hsplog_map_interleave(alwan_scalar *hsplog_out,
-                          alwan_scalar const *rgb_in,
+int alwan_rgb_to_hsplog_f32_map_interleave(float *hsplog_out,
+                          float const *rgb_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_rgb_to_hsplog_f64_map_interleave(double *hsplog_out,
+                          double const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_rgb_to_hsplog_map_interleave alwan_rgb_to_hsplog_f64_map_interleave
 
-int alwan_hsplog_to_rgb_map_interleave(alwan_scalar *rgb_out,
-                          alwan_scalar const *hsplog_in,
+int alwan_hsplog_to_rgb_f32_map_interleave(float *rgb_out,
+                          float const *hsplog_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_hsplog_to_rgb_f64_map_interleave(double *rgb_out,
+                          double const *hsplog_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_hsplog_to_rgb_map_interleave alwan_hsplog_to_rgb_f64_map_interleave
 
 /* Map HSY conversions */
-int alwan_rgb_to_hsy_map_interleave(alwan_scalar *hsy_out,
-                          alwan_scalar const *rgb_in,
+int alwan_rgb_to_hsy_f32_map_interleave(float *hsy_out,
+                          float const *rgb_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_rgb_to_hsy_f64_map_interleave(double *hsy_out,
+                          double const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_rgb_to_hsy_map_interleave alwan_rgb_to_hsy_f64_map_interleave
 
-int alwan_hsy_to_rgb_map_interleave(alwan_scalar *rgb_out,
-                          alwan_scalar const *hsy_in,
+int alwan_hsy_to_rgb_f32_map_interleave(float *rgb_out,
+                          float const *hsy_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_hsy_to_rgb_f64_map_interleave(double *rgb_out,
+                          double const *hsy_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_hsy_to_rgb_map_interleave alwan_hsy_to_rgb_f64_map_interleave
 
 /* Typed convenience HSV/HSL map functions (_ex variants) */
 int alwan_rgb_to_hsv_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
@@ -2878,30 +3730,54 @@ int alwan_hsy_to_rgb_map_planar_ex(void *out0, void *out1, void *out2, alwan_pix
                                     size_t count, size_t in_stride, size_t out_stride);
 
 /* Map linear sRGB <-> HSV conversions */
-int alwan_linear_srgb_to_hsv_map_interleave(alwan_scalar *hsv_out,
-                          alwan_scalar const *rgb_in,
+int alwan_linear_srgb_to_hsv_f32_map_interleave(float *hsv_out,
+                          float const *rgb_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_linear_srgb_to_hsv_f64_map_interleave(double *hsv_out,
+                          double const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_linear_srgb_to_hsv_map_interleave alwan_linear_srgb_to_hsv_f64_map_interleave
 
-int alwan_hsv_to_linear_srgb_map_interleave(alwan_scalar *rgb_out,
-                          alwan_scalar const *hsv_in,
+int alwan_hsv_to_linear_srgb_f32_map_interleave(float *rgb_out,
+                          float const *hsv_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_hsv_to_linear_srgb_f64_map_interleave(double *rgb_out,
+                          double const *hsv_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_hsv_to_linear_srgb_map_interleave alwan_hsv_to_linear_srgb_f64_map_interleave
 
 /* Map linear sRGB <-> HSL conversions */
-int alwan_linear_srgb_to_hsl_map_interleave(alwan_scalar *hsl_out,
-                          alwan_scalar const *rgb_in,
+int alwan_linear_srgb_to_hsl_f32_map_interleave(float *hsl_out,
+                          float const *rgb_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_linear_srgb_to_hsl_f64_map_interleave(double *hsl_out,
+                          double const *rgb_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_linear_srgb_to_hsl_map_interleave alwan_linear_srgb_to_hsl_f64_map_interleave
 
-int alwan_hsl_to_linear_srgb_map_interleave(alwan_scalar *rgb_out,
-                          alwan_scalar const *hsl_in,
+int alwan_hsl_to_linear_srgb_f32_map_interleave(float *rgb_out,
+                          float const *hsl_in,
                           size_t count,
                           size_t in_stride,
                           size_t out_stride);
+int alwan_hsl_to_linear_srgb_f64_map_interleave(double *rgb_out,
+                          double const *hsl_in,
+                          size_t count,
+                          size_t in_stride,
+                          size_t out_stride);
+#define alwan_hsl_to_linear_srgb_map_interleave alwan_hsl_to_linear_srgb_f64_map_interleave
 
 /* Typed linear sRGB <-> HSV/HSL map functions (_ex variants) */
 int alwan_linear_srgb_to_hsv_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
@@ -2930,10 +3806,16 @@ int alwan_hsl_to_linear_srgb_map_planar_ex(void *out0, void *out1, void *out2, a
                                             size_t count, size_t in_stride, size_t out_stride);
 
 /* Map CMY conversions */
-int alwan_rgb_to_cmy_map_interleave(alwan_scalar *cmy_out, alwan_scalar const *rgb_in,
+int alwan_rgb_to_cmy_f32_map_interleave(float *cmy_out, float const *rgb_in,
                           size_t count, size_t in_stride, size_t out_stride);
-int alwan_cmy_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *cmy_in,
+int alwan_rgb_to_cmy_f64_map_interleave(double *cmy_out, double const *rgb_in,
                           size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_cmy_map_interleave alwan_rgb_to_cmy_f64_map_interleave
+int alwan_cmy_to_rgb_f32_map_interleave(float *rgb_out, float const *cmy_in,
+                          size_t count, size_t in_stride, size_t out_stride);
+int alwan_cmy_to_rgb_f64_map_interleave(double *rgb_out, double const *cmy_in,
+                          size_t count, size_t in_stride, size_t out_stride);
+#define alwan_cmy_to_rgb_map_interleave alwan_cmy_to_rgb_f64_map_interleave
 int alwan_rgb_to_cmy_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              void const *in, alwan_pixel_format in_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
@@ -2942,16 +3824,30 @@ int alwan_cmy_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
 
 /* Map CMYK conversions (4-channel output/input) */
-int alwan_cmy_to_cmyk_map_interleave(alwan_scalar *cmyk_out, alwan_scalar const *cmy_in,
+int alwan_cmy_to_cmyk_f32_map_interleave(float *cmyk_out, float const *cmy_in,
                            size_t count, size_t in_stride, size_t out_stride);
-int alwan_cmyk_to_cmy_map_interleave(alwan_scalar *cmy_out, alwan_scalar const *cmyk_in,
+int alwan_cmy_to_cmyk_f64_map_interleave(double *cmyk_out, double const *cmy_in,
                            size_t count, size_t in_stride, size_t out_stride);
-int alwan_cmy_to_cmyk_map_planar(alwan_scalar *out_c, alwan_scalar *out_m, alwan_scalar *out_y, alwan_scalar *out_k,
-                           alwan_scalar const *in_c, alwan_scalar const *in_m, alwan_scalar const *in_y,
+#define alwan_cmy_to_cmyk_map_interleave alwan_cmy_to_cmyk_f64_map_interleave
+int alwan_cmyk_to_cmy_f32_map_interleave(float *cmy_out, float const *cmyk_in,
                            size_t count, size_t in_stride, size_t out_stride);
-int alwan_cmyk_to_cmy_map_planar(alwan_scalar *out_c, alwan_scalar *out_m, alwan_scalar *out_y,
-                           alwan_scalar const *in_c, alwan_scalar const *in_m, alwan_scalar const *in_y, alwan_scalar const *in_k,
+int alwan_cmyk_to_cmy_f64_map_interleave(double *cmy_out, double const *cmyk_in,
                            size_t count, size_t in_stride, size_t out_stride);
+#define alwan_cmyk_to_cmy_map_interleave alwan_cmyk_to_cmy_f64_map_interleave
+int alwan_cmy_to_cmyk_f32_map_planar(float *out_c, float *out_m, float *out_y, float *out_k,
+                           float const *in_c, float const *in_m, float const *in_y,
+                           size_t count, size_t in_stride, size_t out_stride);
+int alwan_cmy_to_cmyk_f64_map_planar(double *out_c, double *out_m, double *out_y, double *out_k,
+                           double const *in_c, double const *in_m, double const *in_y,
+                           size_t count, size_t in_stride, size_t out_stride);
+#define alwan_cmy_to_cmyk_map_planar alwan_cmy_to_cmyk_f64_map_planar
+int alwan_cmyk_to_cmy_f32_map_planar(float *out_c, float *out_m, float *out_y,
+                           float const *in_c, float const *in_m, float const *in_y, float const *in_k,
+                           size_t count, size_t in_stride, size_t out_stride);
+int alwan_cmyk_to_cmy_f64_map_planar(double *out_c, double *out_m, double *out_y,
+                           double const *in_c, double const *in_m, double const *in_y, double const *in_k,
+                           size_t count, size_t in_stride, size_t out_stride);
+#define alwan_cmyk_to_cmy_map_planar alwan_cmyk_to_cmy_f64_map_planar
 int alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, alwan_pixel_format out_fmt,
                            void const *cmy_in, alwan_pixel_format in_fmt,
                            size_t count, size_t in_stride, size_t out_stride);
@@ -2966,10 +3862,16 @@ int alwan_cmyk_to_cmy_map_planar_ex(void *out_c, void *out_m, void *out_y, alwan
                            size_t count, size_t in_stride, size_t out_stride);
 
 /* Map YCoCg conversions */
-int alwan_rgb_to_ycocg_map_interleave(alwan_scalar *ycocg_out, alwan_scalar const *rgb_in,
+int alwan_rgb_to_ycocg_f32_map_interleave(float *ycocg_out, float const *rgb_in,
                             size_t count, size_t in_stride, size_t out_stride);
-int alwan_ycocg_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *ycocg_in,
+int alwan_rgb_to_ycocg_f64_map_interleave(double *ycocg_out, double const *rgb_in,
                             size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_ycocg_map_interleave alwan_rgb_to_ycocg_f64_map_interleave
+int alwan_ycocg_to_rgb_f32_map_interleave(float *rgb_out, float const *ycocg_in,
+                            size_t count, size_t in_stride, size_t out_stride);
+int alwan_ycocg_to_rgb_f64_map_interleave(double *rgb_out, double const *ycocg_in,
+                            size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ycocg_to_rgb_map_interleave alwan_ycocg_to_rgb_f64_map_interleave
 int alwan_rgb_to_ycocg_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                void const *in, alwan_pixel_format in_fmt,
                                size_t count, size_t in_stride, size_t out_stride);
@@ -2978,14 +3880,26 @@ int alwan_ycocg_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                size_t count, size_t in_stride, size_t out_stride);
 
 /* Map HWB conversions */
-int alwan_rgb_to_hwb_map_interleave(alwan_scalar *hwb_out, alwan_scalar const *rgb_in,
+int alwan_rgb_to_hwb_f32_map_interleave(float *hwb_out, float const *rgb_in,
                           size_t count, size_t in_stride, size_t out_stride);
-int alwan_hwb_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *hwb_in,
+int alwan_rgb_to_hwb_f64_map_interleave(double *hwb_out, double const *rgb_in,
                           size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsv_to_hwb_map_interleave(alwan_scalar *hwb_out, alwan_scalar const *hsv_in,
+#define alwan_rgb_to_hwb_map_interleave alwan_rgb_to_hwb_f64_map_interleave
+int alwan_hwb_to_rgb_f32_map_interleave(float *rgb_out, float const *hwb_in,
                           size_t count, size_t in_stride, size_t out_stride);
-int alwan_hwb_to_hsv_map_interleave(alwan_scalar *hsv_out, alwan_scalar const *hwb_in,
+int alwan_hwb_to_rgb_f64_map_interleave(double *rgb_out, double const *hwb_in,
                           size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hwb_to_rgb_map_interleave alwan_hwb_to_rgb_f64_map_interleave
+int alwan_hsv_to_hwb_f32_map_interleave(float *hwb_out, float const *hsv_in,
+                          size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsv_to_hwb_f64_map_interleave(double *hwb_out, double const *hsv_in,
+                          size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hsv_to_hwb_map_interleave alwan_hsv_to_hwb_f64_map_interleave
+int alwan_hwb_to_hsv_f32_map_interleave(float *hsv_out, float const *hwb_in,
+                          size_t count, size_t in_stride, size_t out_stride);
+int alwan_hwb_to_hsv_f64_map_interleave(double *hsv_out, double const *hwb_in,
+                          size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hwb_to_hsv_map_interleave alwan_hwb_to_hsv_f64_map_interleave
 int alwan_rgb_to_hwb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              void const *in, alwan_pixel_format in_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
@@ -3000,12 +3914,20 @@ int alwan_hwb_to_hsv_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              size_t count, size_t in_stride, size_t out_stride);
 
 /* Map YCbCr conversions (with standard) */
-int alwan_rgb_to_ycbcr_map_interleave(alwan_scalar *ycbcr_out, alwan_scalar const *rgb_in,
+int alwan_rgb_to_ycbcr_f32_map_interleave(float *ycbcr_out, float const *rgb_in,
                             alwan_ycbcr_standard standard,
                             size_t count, size_t in_stride, size_t out_stride);
-int alwan_ycbcr_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *ycbcr_in,
+int alwan_rgb_to_ycbcr_f64_map_interleave(double *ycbcr_out, double const *rgb_in,
                             alwan_ycbcr_standard standard,
                             size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_ycbcr_map_interleave alwan_rgb_to_ycbcr_f64_map_interleave
+int alwan_ycbcr_to_rgb_f32_map_interleave(float *rgb_out, float const *ycbcr_in,
+                            alwan_ycbcr_standard standard,
+                            size_t count, size_t in_stride, size_t out_stride);
+int alwan_ycbcr_to_rgb_f64_map_interleave(double *rgb_out, double const *ycbcr_in,
+                            alwan_ycbcr_standard standard,
+                            size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ycbcr_to_rgb_map_interleave alwan_ycbcr_to_rgb_f64_map_interleave
 int alwan_rgb_to_ycbcr_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                void const *in, alwan_pixel_format in_fmt,
                                alwan_ycbcr_standard standard,
@@ -3016,12 +3938,20 @@ int alwan_ycbcr_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                size_t count, size_t in_stride, size_t out_stride);
 
 /* Map YcCbcCrc conversions (with bit_depth) */
-int alwan_rgb_to_yccbccrc_map_interleave(alwan_scalar *yccbccrc_out, alwan_scalar const *rgb_in,
+int alwan_rgb_to_yccbccrc_f32_map_interleave(float *yccbccrc_out, float const *rgb_in,
                                int bit_depth,
                                size_t count, size_t in_stride, size_t out_stride);
-int alwan_yccbccrc_to_rgb_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *yccbccrc_in,
+int alwan_rgb_to_yccbccrc_f64_map_interleave(double *yccbccrc_out, double const *rgb_in,
                                int bit_depth,
                                size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_yccbccrc_map_interleave alwan_rgb_to_yccbccrc_f64_map_interleave
+int alwan_yccbccrc_to_rgb_f32_map_interleave(float *rgb_out, float const *yccbccrc_in,
+                               int bit_depth,
+                               size_t count, size_t in_stride, size_t out_stride);
+int alwan_yccbccrc_to_rgb_f64_map_interleave(double *rgb_out, double const *yccbccrc_in,
+                               int bit_depth,
+                               size_t count, size_t in_stride, size_t out_stride);
+#define alwan_yccbccrc_to_rgb_map_interleave alwan_yccbccrc_to_rgb_f64_map_interleave
 int alwan_rgb_to_yccbccrc_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                   void const *in, alwan_pixel_format in_fmt,
                                   int bit_depth,
@@ -3032,12 +3962,20 @@ int alwan_yccbccrc_to_rgb_map_interleave_ex(void *out, alwan_pixel_format out_fm
                                   size_t count, size_t in_stride, size_t out_stride);
 
 /* Map YCbCr legal/full range conversions (with bit_depth) */
-int alwan_ycbcr_full_to_legal_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_ycbcr_full_to_legal_f32_map_interleave(float *out, float const *in,
                                    int bit_depth,
                                    size_t count, size_t in_stride, size_t out_stride);
-int alwan_ycbcr_legal_to_full_map_interleave(alwan_scalar *out, alwan_scalar const *in,
+int alwan_ycbcr_full_to_legal_f64_map_interleave(double *out, double const *in,
                                    int bit_depth,
                                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ycbcr_full_to_legal_map_interleave alwan_ycbcr_full_to_legal_f64_map_interleave
+int alwan_ycbcr_legal_to_full_f32_map_interleave(float *out, float const *in,
+                                   int bit_depth,
+                                   size_t count, size_t in_stride, size_t out_stride);
+int alwan_ycbcr_legal_to_full_f64_map_interleave(double *out, double const *in,
+                                   int bit_depth,
+                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ycbcr_legal_to_full_map_interleave alwan_ycbcr_legal_to_full_f64_map_interleave
 int alwan_ycbcr_full_to_legal_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                       void const *in, alwan_pixel_format in_fmt,
                                       int bit_depth,
@@ -3047,7 +3985,9 @@ int alwan_ycbcr_legal_to_full_map_interleave_ex(void *out, alwan_pixel_format ou
                                       int bit_depth,
                                       size_t count, size_t in_stride, size_t out_stride);
 
-int alwan_ycocg_to_rgb(alwan_rgb *rgb_out, alwan_ycocg const *ycocg);
+void alwan_ycocg_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycocg_f32 const *ycocg);
+void alwan_ycocg_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_ycocg_f64 const *ycocg);
+#define alwan_ycocg_to_rgb alwan_ycocg_to_rgb_f64
 
 /* ----------------------------------------------------------------
  * M10: Light Quality & CCT (Correlated Color Temperature)
@@ -3055,26 +3995,36 @@ int alwan_ycocg_to_rgb(alwan_rgb *rgb_out, alwan_ycocg const *ycocg);
 
 /* CCT estimation from chromaticity coordinates (xy) */
 /* McCamy approximation: fast, ~2% accuracy above 2800K */
-alwan_scalar alwan_cct_mccamy_xy(alwan_vec2 const *xy);
+float  alwan_cct_mccamy_xy_f32(alwan_vec2_f32 const *xy);
+double alwan_cct_mccamy_xy_f64(alwan_vec2_f64 const *xy);
+#define alwan_cct_mccamy_xy alwan_cct_mccamy_xy_f64
 
 /* Robertson method: accurate, iterative lookup against Planckian locus */
 /* Returns CCT in Kelvin, or negative value on error */
-alwan_scalar alwan_cct_robertson_xy(alwan_vec2 const *xy);
+float  alwan_cct_robertson_xy_f32(alwan_vec2_f32 const *xy);
+double alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy);
+#define alwan_cct_robertson_xy alwan_cct_robertson_xy_f64
 
 /* Hernandez-Andres 1999: accurate analytical formula
  * Valid range: 3000K - 50000K (extended formula for higher CCT)
  * Reference: Hernandez-Andres et al. (1999) */
-alwan_scalar alwan_cct_hernandez_xy(alwan_vec2 const *xy);
+float  alwan_cct_hernandez_xy_f32(alwan_vec2_f32 const *xy);
+double alwan_cct_hernandez_xy_f64(alwan_vec2_f64 const *xy);
+#define alwan_cct_hernandez_xy alwan_cct_hernandez_xy_f64
 
 /* Kang 2002: CCT to xy chromaticity (forward transform)
  * Valid range: 1667K - 25000K
  * Reference: Kang et al. (2002) */
-void alwan_cct_to_xy_kang(alwan_vec2 *xy_out, alwan_scalar cct);
+void alwan_cct_to_xy_kang_f32(alwan_vec2_f32 *xy_out, float cct);
+void alwan_cct_to_xy_kang_f64(alwan_vec2_f64 *xy_out, double cct);
+#define alwan_cct_to_xy_kang alwan_cct_to_xy_kang_f64
 
 /* Kang 2002: xy chromaticity to CCT (inverse, uses Newton-Raphson)
  * Valid range: 1667K - 25000K
  * Reference: Kang et al. (2002) */
-alwan_scalar alwan_cct_kang_xy(alwan_vec2 const *xy);
+float  alwan_cct_kang_xy_f32(alwan_vec2_f32 const *xy);
+double alwan_cct_kang_xy_f64(alwan_vec2_f64 const *xy);
+#define alwan_cct_kang_xy alwan_cct_kang_xy_f64
 
 /* CRI (Color Rendering Index) Ra - average of 8 TCS samples */
 /* Requires SPD (spectral power distribution) */
@@ -3154,18 +4104,34 @@ int alwan_simulate_cvd(alwan_rgb *rgb_out,
                         alwan_scalar severity);
 
 /* CVD Simulation Batch Map Functions */
-int alwan_simulate_cvd_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
-                             alwan_cvd_type cvd_type, alwan_scalar severity,
+int alwan_simulate_cvd_f32_map_interleave(float *rgb_out, float const *rgb_in,
+                             alwan_cvd_type cvd_type, float severity,
                              size_t count, size_t in_stride, size_t out_stride);
-int alwan_simulate_protanopia_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
-                                    alwan_scalar severity,
+int alwan_simulate_cvd_f64_map_interleave(double *rgb_out, double const *rgb_in,
+                             alwan_cvd_type cvd_type, double severity,
+                             size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_cvd_map_interleave alwan_simulate_cvd_f64_map_interleave
+int alwan_simulate_protanopia_f32_map_interleave(float *rgb_out, float const *rgb_in,
+                                    float severity,
                                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_simulate_deuteranopia_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
-                                      alwan_scalar severity,
+int alwan_simulate_protanopia_f64_map_interleave(double *rgb_out, double const *rgb_in,
+                                    double severity,
+                                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_protanopia_map_interleave alwan_simulate_protanopia_f64_map_interleave
+int alwan_simulate_deuteranopia_f32_map_interleave(float *rgb_out, float const *rgb_in,
+                                      float severity,
                                       size_t count, size_t in_stride, size_t out_stride);
-int alwan_simulate_tritanopia_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
-                                    alwan_scalar severity,
+int alwan_simulate_deuteranopia_f64_map_interleave(double *rgb_out, double const *rgb_in,
+                                      double severity,
+                                      size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_deuteranopia_map_interleave alwan_simulate_deuteranopia_f64_map_interleave
+int alwan_simulate_tritanopia_f32_map_interleave(float *rgb_out, float const *rgb_in,
+                                    float severity,
                                     size_t count, size_t in_stride, size_t out_stride);
+int alwan_simulate_tritanopia_f64_map_interleave(double *rgb_out, double const *rgb_in,
+                                    double severity,
+                                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_tritanopia_map_interleave alwan_simulate_tritanopia_f64_map_interleave
 int alwan_simulate_cvd_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                 void const *in, alwan_pixel_format in_fmt,
                                 alwan_cvd_type cvd_type, alwan_scalar severity,
@@ -3207,17 +4173,30 @@ int alwan_simulate_cvd_ex(alwan_rgb *rgb_out,
                            alwan_cvd_model model);
 
 /* Machado 2009 batch map functions */
-int alwan_simulate_cvd_machado_map_interleave(alwan_scalar *rgb_out,
-                                               alwan_scalar const *rgb_in,
+int alwan_simulate_cvd_machado_f32_map_interleave(float *rgb_out,
+                                               float const *rgb_in,
                                                alwan_cvd_type cvd_type,
-                                               alwan_scalar severity,
+                                               float severity,
                                                size_t count,
                                                size_t in_stride,
                                                size_t out_stride);
-int alwan_simulate_cvd_machado_map_planar(alwan_scalar *out_r, alwan_scalar *out_g, alwan_scalar *out_b,
-                                           alwan_scalar const *in_r, alwan_scalar const *in_g, alwan_scalar const *in_b,
-                                           alwan_cvd_type cvd_type, alwan_scalar severity,
+int alwan_simulate_cvd_machado_f64_map_interleave(double *rgb_out,
+                                               double const *rgb_in,
+                                               alwan_cvd_type cvd_type,
+                                               double severity,
+                                               size_t count,
+                                               size_t in_stride,
+                                               size_t out_stride);
+#define alwan_simulate_cvd_machado_map_interleave alwan_simulate_cvd_machado_f64_map_interleave
+int alwan_simulate_cvd_machado_f32_map_planar(float *out_r, float *out_g, float *out_b,
+                                           float const *in_r, float const *in_g, float const *in_b,
+                                           alwan_cvd_type cvd_type, float severity,
                                            size_t count, size_t in_stride, size_t out_stride);
+int alwan_simulate_cvd_machado_f64_map_planar(double *out_r, double *out_g, double *out_b,
+                                           double const *in_r, double const *in_g, double const *in_b,
+                                           alwan_cvd_type cvd_type, double severity,
+                                           size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_cvd_machado_map_planar alwan_simulate_cvd_machado_f64_map_planar
 int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, alwan_pixel_format out_fmt,
                                                    void const *rgb_in, alwan_pixel_format in_fmt,
                                                    alwan_cvd_type cvd_type, alwan_scalar severity,
@@ -3453,9 +4432,13 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
  * rgb_in: input RGB coordinates [0, 1] (normalized)
  * rgb_out: receives interpolated RGB values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
-                                     alwan_scalar const *table, size_t const sizes[3],
-                                     alwan_rgb const *rgb_in);
+int alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
+                                     float const *table, size_t const sizes[3],
+                                     alwan_rgb_f32 const *rgb_in);
+int alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
+                                     double const *table, size_t const sizes[3],
+                                     alwan_rgb_f64 const *rgb_in);
+#define alwan_table_interp_3d_trilinear alwan_table_interp_3d_trilinear_f64
 
 /* 3D Table Interpolation (Tetrahedral)
  * Interpolates RGB values from a 3D lookup table using tetrahedral method
@@ -3465,9 +4448,13 @@ int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
  * rgb_in: input RGB coordinates [0, 1] (normalized)
  * rgb_out: receives interpolated RGB values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
-int alwan_table_interp_3d_tetrahedral(alwan_rgb *rgb_out,
-                                       alwan_scalar const *table, size_t const sizes[3],
-                                       alwan_rgb const *rgb_in);
+int alwan_table_interp_3d_tetrahedral_f32(alwan_rgb_f32 *rgb_out,
+                                       float const *table, size_t const sizes[3],
+                                       alwan_rgb_f32 const *rgb_in);
+int alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
+                                       double const *table, size_t const sizes[3],
+                                       alwan_rgb_f64 const *rgb_in);
+#define alwan_table_interp_3d_tetrahedral alwan_table_interp_3d_tetrahedral_f64
 
 /* ----------------------------------------------------------------
  * Data & Reference Sets
@@ -3553,8 +4540,11 @@ int alwan_rgb_space_get_tfs(alwan_transfer_function *oetf, alwan_transfer_functi
  * rgb_out: output RGB values
  * Formula: rgb_out = ((rgb_in + lift) ^ (1/gamma)) * gain
  * Returns ALWAN_OK on success */
-int alwan_lgg_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb_in, alwan_rgb const *lift,
-                    alwan_rgb const *gamma, alwan_rgb const *gain);
+void alwan_lgg_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_rgb_f32 const *lift,
+                    alwan_rgb_f32 const *gamma, alwan_rgb_f32 const *gain);
+void alwan_lgg_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_rgb_f64 const *lift,
+                    alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain);
+#define alwan_lgg_apply alwan_lgg_apply_f64
 
 /* Color matrix grading preset types */
 typedef enum {
@@ -3572,8 +4562,11 @@ typedef enum {
  * matrix_3x3: 3x3 color transformation matrix
  * rgb_out: output RGB values
  * Returns ALWAN_OK on success */
-int alwan_color_matrix_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb_in,
-                              alwan_mat3x3 const *matrix_3x3);
+void alwan_color_matrix_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+                              alwan_mat3x3_f32 const *matrix_3x3);
+void alwan_color_matrix_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+                              alwan_mat3x3_f64 const *matrix_3x3);
+#define alwan_color_matrix_apply alwan_color_matrix_apply_f64
 
 /* Get preset color grading matrix
  * preset: preset type from alwan_color_matrix_preset
@@ -3589,29 +4582,46 @@ int alwan_color_matrix_get_preset(alwan_mat3x3 *matrix_3x3, alwan_color_matrix_p
  * rgb_out: output RGB values
  * Each light unit represents approximately 0.025 log exposure change
  * Returns ALWAN_OK on success */
-int alwan_printer_lights_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb_in,
-                                alwan_scalar red_lights, alwan_scalar green_lights,
-                                alwan_scalar blue_lights);
+void alwan_printer_lights_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+                                float red_lights, float green_lights,
+                                float blue_lights);
+void alwan_printer_lights_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+                                double red_lights, double green_lights,
+                                double blue_lights);
+#define alwan_printer_lights_apply alwan_printer_lights_apply_f64
 
 /* Color Correction Batch Map Functions */
-int alwan_lgg_apply_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
-                          alwan_rgb const *lift, alwan_rgb const *gamma, alwan_rgb const *gain,
+int alwan_lgg_apply_f32_map_interleave(float *rgb_out, float const *rgb_in,
+                          alwan_rgb_f32 const *lift, alwan_rgb_f32 const *gamma, alwan_rgb_f32 const *gain,
                           size_t count, size_t in_stride, size_t out_stride);
+int alwan_lgg_apply_f64_map_interleave(double *rgb_out, double const *rgb_in,
+                          alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain,
+                          size_t count, size_t in_stride, size_t out_stride);
+#define alwan_lgg_apply_map_interleave alwan_lgg_apply_f64_map_interleave
 int alwan_lgg_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                              void const *in, alwan_pixel_format in_fmt,
                              alwan_rgb const *lift, alwan_rgb const *gamma, alwan_rgb const *gain,
                              size_t count, size_t in_stride, size_t out_stride);
-int alwan_color_matrix_apply_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
-                                   alwan_mat3x3 const *matrix,
+int alwan_color_matrix_apply_f32_map_interleave(float *rgb_out, float const *rgb_in,
+                                   alwan_mat3x3_f32 const *matrix,
                                    size_t count, size_t in_stride, size_t out_stride);
+int alwan_color_matrix_apply_f64_map_interleave(double *rgb_out, double const *rgb_in,
+                                   alwan_mat3x3_f64 const *matrix,
+                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_color_matrix_apply_map_interleave alwan_color_matrix_apply_f64_map_interleave
 int alwan_color_matrix_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                       void const *in, alwan_pixel_format in_fmt,
                                       alwan_mat3x3 const *matrix,
                                       size_t count, size_t in_stride, size_t out_stride);
-int alwan_printer_lights_apply_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
-                                     alwan_scalar red_lights, alwan_scalar green_lights,
-                                     alwan_scalar blue_lights,
+int alwan_printer_lights_apply_f32_map_interleave(float *rgb_out, float const *rgb_in,
+                                     float red_lights, float green_lights,
+                                     float blue_lights,
                                      size_t count, size_t in_stride, size_t out_stride);
+int alwan_printer_lights_apply_f64_map_interleave(double *rgb_out, double const *rgb_in,
+                                     double red_lights, double green_lights,
+                                     double blue_lights,
+                                     size_t count, size_t in_stride, size_t out_stride);
+#define alwan_printer_lights_apply_map_interleave alwan_printer_lights_apply_f64_map_interleave
 int alwan_printer_lights_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                         void const *in, alwan_pixel_format in_fmt,
                                         alwan_scalar red_lights, alwan_scalar green_lights,
@@ -3690,8 +4700,11 @@ int alwan_colour_correction_matrix_cheung2004(alwan_scalar *matrix_out,
  * terms: must match terms used to compute the matrix
  * rgb_out: corrected RGB output
  * Returns ALWAN_OK on success */
-int alwan_colour_correct_cheung2004(alwan_rgb *rgb_out, alwan_rgb const *rgb,
-                                     alwan_scalar const *matrix, alwan_poly_cheung_terms terms);
+void alwan_colour_correct_cheung2004_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb,
+                                     float const *matrix, alwan_poly_cheung_terms terms);
+void alwan_colour_correct_cheung2004_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb,
+                                     double const *matrix, alwan_poly_cheung_terms terms);
+#define alwan_colour_correct_cheung2004 alwan_colour_correct_cheung2004_f64
 
 /* Compute colour correction matrix using Finlayson 2015 method
  * M_T: test (measured) RGB values, Nx3 array (row-major)
@@ -3714,8 +4727,11 @@ int alwan_colour_correction_matrix_finlayson2015(alwan_scalar *matrix_out, int *
  * root_poly: must match root_poly used to compute the matrix
  * rgb_out: corrected RGB output
  * Returns ALWAN_OK on success */
-int alwan_colour_correct_finlayson2015(alwan_rgb *rgb_out, alwan_rgb const *rgb,
-                                        alwan_scalar const *matrix, int degree, int root_poly);
+void alwan_colour_correct_finlayson2015_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb,
+                                        float const *matrix, int degree, int root_poly);
+void alwan_colour_correct_finlayson2015_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb,
+                                        double const *matrix, int degree, int root_poly);
+#define alwan_colour_correct_finlayson2015 alwan_colour_correct_finlayson2015_f64
 
 /* White balance multipliers from neutral gray measurement
  * Given a measured RGB value that should be neutral gray,
@@ -3723,20 +4739,29 @@ int alwan_colour_correct_finlayson2015(alwan_rgb *rgb_out, alwan_rgb const *rgb,
  * measured_gray: measured RGB of a neutral gray target
  * multipliers_out: receives RGB multipliers (normalized so min = 1.0)
  * Returns ALWAN_OK on success */
-int alwan_white_balance_from_gray(alwan_rgb *multipliers_out, alwan_rgb const *measured_gray);
+void alwan_white_balance_from_gray_f32(alwan_rgb_f32 *multipliers_out, alwan_rgb_f32 const *measured_gray);
+void alwan_white_balance_from_gray_f64(alwan_rgb_f64 *multipliers_out, alwan_rgb_f64 const *measured_gray);
+#define alwan_white_balance_from_gray alwan_white_balance_from_gray_f64
 
 /* Apply white balance multipliers
  * rgb: input RGB
  * multipliers: RGB multipliers from alwan_white_balance_from_gray
  * rgb_out: white-balanced RGB output
  * Returns ALWAN_OK on success */
-int alwan_white_balance_apply(alwan_rgb *rgb_out, alwan_rgb const *rgb,
-                               alwan_rgb const *multipliers);
+void alwan_white_balance_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb,
+                               alwan_rgb_f32 const *multipliers);
+void alwan_white_balance_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb,
+                               alwan_rgb_f64 const *multipliers);
+#define alwan_white_balance_apply alwan_white_balance_apply_f64
 
 /* White Balance Batch Map Functions */
-int alwan_white_balance_apply_map_interleave(alwan_scalar *rgb_out, alwan_scalar const *rgb_in,
-                                    alwan_rgb const *multipliers,
+int alwan_white_balance_apply_f32_map_interleave(float *rgb_out, float const *rgb_in,
+                                    alwan_rgb_f32 const *multipliers,
                                     size_t count, size_t in_stride, size_t out_stride);
+int alwan_white_balance_apply_f64_map_interleave(double *rgb_out, double const *rgb_in,
+                                    alwan_rgb_f64 const *multipliers,
+                                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_white_balance_apply_map_interleave alwan_white_balance_apply_f64_map_interleave
 int alwan_white_balance_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
                                        void const *in, alwan_pixel_format in_fmt,
                                        alwan_rgb const *multipliers,
@@ -3796,19 +4821,29 @@ int alwan_rayleigh_spd(alwan_scalar wavelength_start, alwan_scalar wavelength_en
  * ================================================================ */
 
 /* ACES RedMod03 - Red channel modification (RRT v0.3) */
-int alwan_aces_redmod03(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_redmod03_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_redmod03_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_redmod03 alwan_aces_redmod03_f64
 
 /* ACES RedMod10 - Red channel modification (RRT v1.0) */
-int alwan_aces_redmod10(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_redmod10_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_redmod10_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_redmod10 alwan_aces_redmod10_f64
 
 /* ACES Glow03 - Flare/glow effect (RRT v0.3) */
-int alwan_aces_glow03(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_glow03_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_glow03_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_glow03 alwan_aces_glow03_f64
 
 /* ACES Glow10 - Flare/glow effect (RRT v1.0) */
-int alwan_aces_glow10(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_glow10_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_glow10_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_glow10 alwan_aces_glow10_f64
 
 /* ACES DarkToDim10 - Surround compensation (RRT v1.0) */
-int alwan_aces_dark_to_dim10(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_dark_to_dim10_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_dark_to_dim10_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_dark_to_dim10 alwan_aces_dark_to_dim10_f64
 
 /* ACES GamutComp13 parameters */
 typedef struct {
@@ -3825,14 +4860,22 @@ typedef struct {
 void alwan_aces_gamut_comp13_params_default(alwan_aces_gamut_comp13_params *params);
 
 /* ACES GamutComp13 - Gamut compression (ACES 1.3) */
-int alwan_aces_gamut_comp13(alwan_rgb *rgb_out,
-                            alwan_rgb const *rgb_in,
+void alwan_aces_gamut_comp13_f32(alwan_rgb_f32 *rgb_out,
+                            alwan_rgb_f32 const *rgb_in,
                             alwan_aces_gamut_comp13_params const *params);
+void alwan_aces_gamut_comp13_f64(alwan_rgb_f64 *rgb_out,
+                            alwan_rgb_f64 const *rgb_in,
+                            alwan_aces_gamut_comp13_params const *params);
+#define alwan_aces_gamut_comp13 alwan_aces_gamut_comp13_f64
 
 /* ACES GamutComp13 Inverse - Gamut decompression (ACES 1.3) */
-int alwan_aces_gamut_comp13_inv(alwan_rgb *rgb_out,
-                                 alwan_rgb const *rgb_in,
+void alwan_aces_gamut_comp13_inv_f32(alwan_rgb_f32 *rgb_out,
+                                 alwan_rgb_f32 const *rgb_in,
                                  alwan_aces_gamut_comp13_params const *params);
+void alwan_aces_gamut_comp13_inv_f64(alwan_rgb_f64 *rgb_out,
+                                 alwan_rgb_f64 const *rgb_in,
+                                 alwan_aces_gamut_comp13_params const *params);
+#define alwan_aces_gamut_comp13_inv alwan_aces_gamut_comp13_inv_f64
 
 /* ================================================================
  * Blue Light Artifact Fix (Neon Suppression) LMT
@@ -3852,7 +4895,9 @@ int alwan_aces_gamut_comp13_inv(alwan_rgb *rgb_out,
  * @param rgb_in Input AP0 linear color
  * @return ALWAN_OK on success
  */
-int alwan_aces_blue_light_fix(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_blue_light_fix_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_blue_light_fix_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_blue_light_fix alwan_aces_blue_light_fix_f64
 
 /**
  * @brief Apply inverse Blue Light Artifact Fix
@@ -3860,7 +4905,9 @@ int alwan_aces_blue_light_fix(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
  * @param rgb_in Input AP0 linear color (with fix applied)
  * @return ALWAN_OK on success
  */
-int alwan_aces_blue_light_fix_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_blue_light_fix_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_blue_light_fix_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_blue_light_fix_inv alwan_aces_blue_light_fix_inv_f64
 
 /**
  * @brief Inverse of Glow03 fixed function
@@ -3868,7 +4915,9 @@ int alwan_aces_blue_light_fix_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
  * @param rgb_in Input AP1 linear color
  * @return ALWAN_OK on success
  */
-int alwan_aces_glow03_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_glow03_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_glow03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_glow03_inv alwan_aces_glow03_inv_f64
 
 /**
  * @brief Inverse of Glow10 fixed function
@@ -3876,7 +4925,9 @@ int alwan_aces_glow03_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
  * @param rgb_in Input AP1 linear color
  * @return ALWAN_OK on success
  */
-int alwan_aces_glow10_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_glow10_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_glow10_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_glow10_inv alwan_aces_glow10_inv_f64
 
 /**
  * @brief Inverse of RedMod03 fixed function
@@ -3884,7 +4935,9 @@ int alwan_aces_glow10_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
  * @param rgb_in Input AP1 linear color
  * @return ALWAN_OK on success
  */
-int alwan_aces_redmod03_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_redmod03_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_redmod03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_redmod03_inv alwan_aces_redmod03_inv_f64
 
 /**
  * @brief Inverse of RedMod10 fixed function
@@ -3892,7 +4945,9 @@ int alwan_aces_redmod03_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
  * @param rgb_in Input AP1 linear color
  * @return ALWAN_OK on success
  */
-int alwan_aces_redmod10_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_redmod10_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_redmod10_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_redmod10_inv alwan_aces_redmod10_inv_f64
 
 /**
  * @brief ACES 1.0 Look LMT - emulates ACES 1.0 look with ACES 1.0.3+ RRT
@@ -3905,7 +4960,9 @@ int alwan_aces_redmod10_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
  * @param rgb_in Input AP1 linear color
  * @return ALWAN_OK on success
  */
-int alwan_aces_look_1_0(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_look_1_0_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_look_1_0_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_look_1_0 alwan_aces_look_1_0_f64
 
 /**
  * @brief Inverse of ACES 1.0 Look LMT
@@ -3913,7 +4970,9 @@ int alwan_aces_look_1_0(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
  * @param rgb_in Input AP1 linear color (with ACES 1.0 look)
  * @return ALWAN_OK on success
  */
-int alwan_aces_look_1_0_inv(alwan_rgb *rgb_out, alwan_rgb const *rgb_in);
+void alwan_aces_look_1_0_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
+void alwan_aces_look_1_0_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
+#define alwan_aces_look_1_0_inv alwan_aces_look_1_0_inv_f64
 
 /**
  * @brief Parametric LMT parameters (CDL-style color grading)
@@ -3945,9 +5004,13 @@ void alwan_aces_lmt_params_init(alwan_aces_lmt_params *params);
  * @param params LMT parameters
  * @return ALWAN_OK on success
  */
-int alwan_aces_lmt_apply(alwan_rgb *rgb_out,
-                         alwan_rgb const *rgb_in,
+void alwan_aces_lmt_apply_f32(alwan_rgb_f32 *rgb_out,
+                         alwan_rgb_f32 const *rgb_in,
                          alwan_aces_lmt_params const *params);
+void alwan_aces_lmt_apply_f64(alwan_rgb_f64 *rgb_out,
+                         alwan_rgb_f64 const *rgb_in,
+                         alwan_aces_lmt_params const *params);
+#define alwan_aces_lmt_apply alwan_aces_lmt_apply_f64
 
 /* ================================================================
  * ACES 1.x Output Transforms (RRT + ODT)
@@ -4015,16 +5078,22 @@ int alwan_aces1_output_transform_inv(alwan_rgb *rgb_out,
                                       alwan_aces1_output output);
 
 /* Rec.2100 Surround adjustment */
-int alwan_rec2100_surround(alwan_rgb *rgb_out, alwan_rgb const *rgb_in, alwan_scalar gamma);
+void alwan_rec2100_surround_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, float gamma);
+void alwan_rec2100_surround_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, double gamma);
+#define alwan_rec2100_surround alwan_rec2100_surround_f64
 
 /* ================================================================
  * ACES 2.0 Components
  * ================================================================ */
 
 /* ACES TonescaleCompress20 - Tonescale compression (ACES 2.0) */
-int alwan_aces_tonescale_compress20(alwan_rgb *rgb_out,
-                                     alwan_rgb const *rgb_in,
-                                     alwan_scalar peak_luminance);
+void alwan_aces_tonescale_compress20_f32(alwan_rgb_f32 *rgb_out,
+                                     alwan_rgb_f32 const *rgb_in,
+                                     float peak_luminance);
+void alwan_aces_tonescale_compress20_f64(alwan_rgb_f64 *rgb_out,
+                                     alwan_rgb_f64 const *rgb_in,
+                                     double peak_luminance);
+#define alwan_aces_tonescale_compress20 alwan_aces_tonescale_compress20_f64
 
 /* ACES RGB to JMh20 encoding primaries */
 typedef struct {
@@ -4038,14 +5107,22 @@ typedef struct {
 void alwan_aces_primaries_ap1_default(alwan_aces_primaries *primaries);
 
 /* ACES RGB to JMh20 - Convert to color appearance coordinates (ACES 2.0) */
-int alwan_aces_rgb_to_jmh20(alwan_vec3 *jmh_out,
-                            alwan_rgb const *rgb_in,
+void alwan_aces_rgb_to_jmh20_f32(alwan_vec3_f32 *jmh_out,
+                            alwan_rgb_f32 const *rgb_in,
                             alwan_aces_primaries const *primaries);
+void alwan_aces_rgb_to_jmh20_f64(alwan_vec3_f64 *jmh_out,
+                            alwan_rgb_f64 const *rgb_in,
+                            alwan_aces_primaries const *primaries);
+#define alwan_aces_rgb_to_jmh20 alwan_aces_rgb_to_jmh20_f64
 
 /* ACES JMh to RGB20 - Convert from color appearance coordinates (ACES 2.0) */
-int alwan_aces_jmh_to_rgb20(alwan_rgb *rgb_out,
-                            alwan_vec3 const *jmh_in,
+void alwan_aces_jmh_to_rgb20_f32(alwan_rgb_f32 *rgb_out,
+                            alwan_vec3_f32 const *jmh_in,
                             alwan_aces_primaries const *primaries);
+void alwan_aces_jmh_to_rgb20_f64(alwan_rgb_f64 *rgb_out,
+                            alwan_vec3_f64 const *jmh_in,
+                            alwan_aces_primaries const *primaries);
+#define alwan_aces_jmh_to_rgb20 alwan_aces_jmh_to_rgb20_f64
 
 /* ACES GamutCompress20 - Gamut compression in JMh space (ACES 2.0)
  *
@@ -4059,20 +5136,30 @@ int alwan_aces_jmh_to_rgb20(alwan_rgb *rgb_out,
  *
  * Note: For RGB-to-RGB gamut compression, chain with rgb_to_jmh20/jmh_to_rgb20.
  */
-int alwan_aces_gamut_compress20(alwan_vec3 *jmh_out,
-                                 alwan_vec3 const *jmh_in,
-                                 alwan_scalar peak_luminance,
+void alwan_aces_gamut_compress20_f32(alwan_vec3_f32 *jmh_out,
+                                 alwan_vec3_f32 const *jmh_in,
+                                 float peak_luminance,
                                  alwan_aces_primaries const *limit_primaries);
+void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
+                                 alwan_vec3_f64 const *jmh_in,
+                                 double peak_luminance,
+                                 alwan_aces_primaries const *limit_primaries);
+#define alwan_aces_gamut_compress20 alwan_aces_gamut_compress20_f64
 
 /**
  * ACES 2.0: Gamut Compression (Inverse)
  * Expands JMh colors from display gamut back to scene-referred gamut.
  * Parameters same as forward function.
  */
-int alwan_aces_gamut_compress20_inv(alwan_vec3 *jmh_out,
-                                     alwan_vec3 const *jmh_in,
-                                     alwan_scalar peak_luminance,
+void alwan_aces_gamut_compress20_inv_f32(alwan_vec3_f32 *jmh_out,
+                                     alwan_vec3_f32 const *jmh_in,
+                                     float peak_luminance,
                                      alwan_aces_primaries const *limit_primaries);
+void alwan_aces_gamut_compress20_inv_f64(alwan_vec3_f64 *jmh_out,
+                                     alwan_vec3_f64 const *jmh_in,
+                                     double peak_luminance,
+                                     alwan_aces_primaries const *limit_primaries);
+#define alwan_aces_gamut_compress20_inv alwan_aces_gamut_compress20_inv_f64
 
 /* ================================================================
  * ACES 2.0 Output Transform (Unified API)
@@ -4166,12 +5253,18 @@ int alwan_aces2_output_transform_custom(alwan_rgb *rgb_out,
 /* HLG OOTF: scene-to-display transform per BT.2100-2
  * Lw: nominal peak luminance (cd/m2), default 1000
  * gamma_sys: system gamma, default 1.2 */
-int alwan_hlg_ootf(alwan_rgb *out, alwan_rgb const *in,
-                    alwan_scalar Lw, alwan_scalar gamma_sys);
+void alwan_hlg_ootf_f32(alwan_rgb_f32 *out, alwan_rgb_f32 const *in,
+                    float Lw, float gamma_sys);
+void alwan_hlg_ootf_f64(alwan_rgb_f64 *out, alwan_rgb_f64 const *in,
+                    double Lw, double gamma_sys);
+#define alwan_hlg_ootf alwan_hlg_ootf_f64
 
 /* HLG inverse OOTF: display-to-scene */
-int alwan_hlg_ootf_inv(alwan_rgb *out, alwan_rgb const *in,
-                        alwan_scalar Lw, alwan_scalar gamma_sys);
+void alwan_hlg_ootf_inv_f32(alwan_rgb_f32 *out, alwan_rgb_f32 const *in,
+                        float Lw, float gamma_sys);
+void alwan_hlg_ootf_inv_f64(alwan_rgb_f64 *out, alwan_rgb_f64 const *in,
+                        double Lw, double gamma_sys);
+#define alwan_hlg_ootf_inv alwan_hlg_ootf_inv_f64
 
 /* Maximum Content Light Level (scan for max R/G/B across all pixels) */
 int alwan_maxcll(alwan_scalar *maxcll_out,
@@ -4232,9 +5325,13 @@ int alwan_wcag_contrast_ratio(alwan_scalar *result, alwan_scalar Y1, alwan_scala
  * srgb_text, srgb_bg: sRGB-encoded colors (0..1 per channel)
  * Lc_out: perceptual contrast value (positive = dark on light,
  *         negative = light on dark; magnitude is contrast level) */
-int alwan_apca_contrast(alwan_scalar *Lc_out,
-                         alwan_rgb const *srgb_text,
-                         alwan_rgb const *srgb_bg);
+int alwan_apca_contrast_f32(float *Lc_out,
+                         alwan_rgb_f32 const *srgb_text,
+                         alwan_rgb_f32 const *srgb_bg);
+int alwan_apca_contrast_f64(double *Lc_out,
+                         alwan_rgb_f64 const *srgb_text,
+                         alwan_rgb_f64 const *srgb_bg);
+#define alwan_apca_contrast alwan_apca_contrast_f64
 
 /* ----------------------------------------------------------------
  * HDR Ecosystem: BT.2446 Methods B & C, BT.2390 EETF
@@ -4286,8 +5383,11 @@ int alwan_reinhard_calibrated(alwan_scalar *out, alwan_scalar L,
 
 /* Chroma compression in JzCzhz (hue-preserving)
  * Cz_max: maximum chroma at the input's (Jz, hz) for target gamut */
-int alwan_hdr_gamut_map_jzczhz(alwan_jzczhz *out, alwan_jzczhz const *in,
-                                alwan_scalar Cz_max);
+void alwan_hdr_gamut_map_jzczhz_f32(alwan_jzczhz_f32 *out, alwan_jzczhz_f32 const *in,
+                                float Cz_max);
+void alwan_hdr_gamut_map_jzczhz_f64(alwan_jzczhz_f64 *out, alwan_jzczhz_f64 const *in,
+                                double Cz_max);
+#define alwan_hdr_gamut_map_jzczhz alwan_hdr_gamut_map_jzczhz_f64
 
 /* ----------------------------------------------------------------
  * Display Characterization
@@ -4318,8 +5418,12 @@ int alwan_content_light_level_compute(alwan_content_light_level *cll_out,
 
 /* RGB <-> HWB conversions (Hue [0-1], Whiteness [0-1], Blackness [0-1])
  * Note: alwan_hwb is defined in alwan_convenience_core.h */
-int alwan_rgb_to_hwb(alwan_scalar *hwb_out, alwan_rgb const *rgb);
-int alwan_hwb_to_rgb(alwan_rgb *rgb_out, alwan_scalar const *hwb_in);
+void alwan_rgb_to_hwb_f32(float *hwb_out, alwan_rgb_f32 const *rgb);
+void alwan_rgb_to_hwb_f64(double *hwb_out, alwan_rgb_f64 const *rgb);
+#define alwan_rgb_to_hwb alwan_rgb_to_hwb_f64
+void alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, float const *hwb_in);
+void alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, double const *hwb_in);
+#define alwan_hwb_to_rgb alwan_hwb_to_rgb_f64
 
 /* ----------------------------------------------------------------
  * Hero Wavelength Spectral Sampling
@@ -4329,7 +5433,9 @@ int alwan_hwb_to_rgb(alwan_rgb *rgb_out, alwan_scalar const *hwb_in);
 int alwan_hero_wavelength_sample(alwan_scalar *lambda_out, alwan_scalar u);
 
 /* Convert single wavelength to XYZ via Wyman 2013 analytic CMF fit */
-int alwan_hero_wavelength_to_xyz(alwan_xyz *xyz_out, alwan_scalar lambda);
+void alwan_hero_wavelength_to_xyz_f32(alwan_xyz_f32 *xyz_out, float lambda);
+void alwan_hero_wavelength_to_xyz_f64(alwan_xyz_f64 *xyz_out, double lambda);
+#define alwan_hero_wavelength_to_xyz alwan_hero_wavelength_to_xyz_f64
 
 /* Batch sampling with stratification: generates count wavelengths from seed
  * lambda_out: output wavelengths (count elements)
@@ -4359,14 +5465,22 @@ typedef struct {
 /* CAM18sl forward: XYZ -> appearance correlates
  * xyz: absolute XYZ tristimulus (cd/m2)
  * Y_b: background luminance (cd/m2) */
-int alwan_cam18sl_forward(alwan_cam18sl_correlates *out,
-                           alwan_xyz const *xyz,
-                           alwan_scalar Y_b);
+void alwan_cam18sl_forward_f32(alwan_cam18sl_correlates *out,
+                           alwan_xyz_f32 const *xyz,
+                           float Y_b);
+void alwan_cam18sl_forward_f64(alwan_cam18sl_correlates *out,
+                           alwan_xyz_f64 const *xyz,
+                           double Y_b);
+#define alwan_cam18sl_forward alwan_cam18sl_forward_f64
 
 /* CAM18sl inverse: appearance correlates -> XYZ */
-int alwan_cam18sl_inverse(alwan_xyz *xyz_out,
+void alwan_cam18sl_inverse_f32(alwan_xyz_f32 *xyz_out,
                            alwan_cam18sl_correlates const *correlates,
-                           alwan_scalar Y_b);
+                           float Y_b);
+void alwan_cam18sl_inverse_f64(alwan_xyz_f64 *xyz_out,
+                           alwan_cam18sl_correlates const *correlates,
+                           double Y_b);
+#define alwan_cam18sl_inverse alwan_cam18sl_inverse_f64
 
 /* ----------------------------------------------------------------
  * CAM20u - Color Appearance Model for Unrelated Color
@@ -4388,16 +5502,26 @@ typedef struct {
  * xyz: absolute XYZ tristimulus (cd/m2)
  * Y_b: background luminance (cd/m2)
  * L_a: adapting luminance (cd/m2) */
-int alwan_cam20u_forward(alwan_cam20u_correlates *out,
-                          alwan_xyz const *xyz,
-                          alwan_scalar Y_b,
-                          alwan_scalar L_a);
+void alwan_cam20u_forward_f32(alwan_cam20u_correlates *out,
+                          alwan_xyz_f32 const *xyz,
+                          float Y_b,
+                          float L_a);
+void alwan_cam20u_forward_f64(alwan_cam20u_correlates *out,
+                          alwan_xyz_f64 const *xyz,
+                          double Y_b,
+                          double L_a);
+#define alwan_cam20u_forward alwan_cam20u_forward_f64
 
 /* CAM20u inverse: appearance correlates -> XYZ */
-int alwan_cam20u_inverse(alwan_xyz *xyz_out,
+void alwan_cam20u_inverse_f32(alwan_xyz_f32 *xyz_out,
                           alwan_cam20u_correlates const *correlates,
-                          alwan_scalar Y_b,
-                          alwan_scalar L_a);
+                          float Y_b,
+                          float L_a);
+void alwan_cam20u_inverse_f64(alwan_xyz_f64 *xyz_out,
+                          alwan_cam20u_correlates const *correlates,
+                          double Y_b,
+                          double L_a);
+#define alwan_cam20u_inverse alwan_cam20u_inverse_f64
 
 /* ================================================================
  * Planar Map Functions (_map_planar)
@@ -4410,24 +5534,48 @@ int alwan_cam20u_inverse(alwan_xyz *xyz_out,
  * ================================================================ */
 
 /* sRGB convenience planar */
-int alwan_srgb_to_xyz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                   alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_srgb_to_xyz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                   float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                    size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_srgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                   alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_srgb_to_xyz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                   double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                    size_t count, size_t in_stride, size_t out_stride);
-int alwan_srgb_to_lab_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                   alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_srgb_to_xyz_map_planar alwan_srgb_to_xyz_f64_map_planar
+int alwan_xyz_to_srgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                   float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                    size_t count, size_t in_stride, size_t out_stride);
-int alwan_lab_to_srgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                   alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_xyz_to_srgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                   double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                    size_t count, size_t in_stride, size_t out_stride);
-int alwan_srgb_to_oklab_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                     alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_xyz_to_srgb_map_planar alwan_xyz_to_srgb_f64_map_planar
+int alwan_srgb_to_lab_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                   float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                   size_t count, size_t in_stride, size_t out_stride);
+int alwan_srgb_to_lab_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                   double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_srgb_to_lab_map_planar alwan_srgb_to_lab_f64_map_planar
+int alwan_lab_to_srgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                   float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                   size_t count, size_t in_stride, size_t out_stride);
+int alwan_lab_to_srgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                   double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_lab_to_srgb_map_planar alwan_lab_to_srgb_f64_map_planar
+int alwan_srgb_to_oklab_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                     float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                      size_t count, size_t in_stride, size_t out_stride);
-int alwan_oklab_to_srgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                     alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_srgb_to_oklab_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                     double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                      size_t count, size_t in_stride, size_t out_stride);
+#define alwan_srgb_to_oklab_map_planar alwan_srgb_to_oklab_f64_map_planar
+int alwan_oklab_to_srgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                     float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                     size_t count, size_t in_stride, size_t out_stride);
+int alwan_oklab_to_srgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                     double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                     size_t count, size_t in_stride, size_t out_stride);
+#define alwan_oklab_to_srgb_map_planar alwan_oklab_to_srgb_f64_map_planar
 
 /* sRGB convenience planar _ex */
 int alwan_srgb_to_xyz_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4450,38 +5598,78 @@ int alwan_oklab_to_srgb_map_planar_ex(void *out0, void *out1, void *out2, alwan_
                                         size_t count, size_t in_stride, size_t out_stride);
 
 /* Colorspace planar (with white_xyz) */
-int alwan_xyz_to_lab_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
-                                  alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
-int alwan_lab_to_xyz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
-                                  alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_luv_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
-                                  alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
-int alwan_luv_to_xyz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
-                                  alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_lab_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_lab_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_lab_map_planar alwan_xyz_to_lab_f64_map_planar
+int alwan_lab_to_xyz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_lab_to_xyz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_lab_to_xyz_map_planar alwan_lab_to_xyz_f64_map_planar
+int alwan_xyz_to_luv_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_luv_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_luv_map_planar alwan_xyz_to_luv_f64_map_planar
+int alwan_luv_to_xyz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_luv_to_xyz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_luv_to_xyz_map_planar alwan_luv_to_xyz_f64_map_planar
 
 /* Colorspace planar (no extra params) */
-int alwan_lab_to_lch_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_lab_to_lch_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_lch_to_lab_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_lab_to_lch_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_luv_to_lchuv_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_lab_to_lch_map_planar alwan_lab_to_lch_f64_map_planar
+int alwan_lch_to_lab_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_lch_to_lab_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_lch_to_lab_map_planar alwan_lch_to_lab_f64_map_planar
+int alwan_luv_to_lchuv_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_lchuv_to_luv_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_luv_to_lchuv_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_xyy_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_luv_to_lchuv_map_planar alwan_luv_to_lchuv_f64_map_planar
+int alwan_lchuv_to_luv_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                    size_t count, size_t in_stride, size_t out_stride);
+int alwan_lchuv_to_luv_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_lchuv_to_luv_map_planar alwan_lchuv_to_luv_f64_map_planar
+int alwan_xyz_to_xyy_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyy_to_xyz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_xyz_to_xyy_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_xyy_map_planar alwan_xyz_to_xyy_f64_map_planar
+int alwan_xyy_to_xyz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyy_to_xyz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyy_to_xyz_map_planar alwan_xyy_to_xyz_f64_map_planar
 
 /* Colorspace planar _ex */
 int alwan_xyz_to_lab_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4516,18 +5704,34 @@ int alwan_xyy_to_xyz_map_planar_ex(void *out0, void *out1, void *out2, alwan_pix
                                      size_t count, size_t in_stride, size_t out_stride);
 
 /* Oklab planar */
-int alwan_xyz_to_oklab_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_xyz_to_oklab_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_oklab_to_xyz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_xyz_to_oklab_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_oklab_to_oklch_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                      alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_xyz_to_oklab_map_planar alwan_xyz_to_oklab_f64_map_planar
+int alwan_oklab_to_xyz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                    size_t count, size_t in_stride, size_t out_stride);
+int alwan_oklab_to_xyz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_oklab_to_xyz_map_planar alwan_oklab_to_xyz_f64_map_planar
+int alwan_oklab_to_oklch_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                      float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                       size_t count, size_t in_stride, size_t out_stride);
-int alwan_oklch_to_oklab_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                      alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_oklab_to_oklch_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                      double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                       size_t count, size_t in_stride, size_t out_stride);
+#define alwan_oklab_to_oklch_map_planar alwan_oklab_to_oklch_f64_map_planar
+int alwan_oklch_to_oklab_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                      float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                      size_t count, size_t in_stride, size_t out_stride);
+int alwan_oklch_to_oklab_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                      double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                      size_t count, size_t in_stride, size_t out_stride);
+#define alwan_oklch_to_oklab_map_planar alwan_oklch_to_oklab_f64_map_planar
 
 /* Oklab planar _ex */
 int alwan_xyz_to_oklab_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4544,18 +5748,34 @@ int alwan_oklch_to_oklab_map_planar_ex(void *out0, void *out1, void *out2, alwan
                                          size_t count, size_t in_stride, size_t out_stride);
 
 /* ICtCp planar (with use_pq) */
-int alwan_rgb_to_ictcp_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_ictcp_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                     int use_pq, size_t count, size_t in_stride, size_t out_stride);
-int alwan_ictcp_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_ictcp_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                     int use_pq, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_ictcp_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_rgb_to_ictcp_map_planar alwan_rgb_to_ictcp_f64_map_planar
+int alwan_ictcp_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                     int use_pq, size_t count, size_t in_stride, size_t out_stride);
-int alwan_ictcp_to_xyz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_ictcp_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                     int use_pq, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ictcp_to_rgb_map_planar alwan_ictcp_to_rgb_f64_map_planar
+int alwan_xyz_to_ictcp_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                    int use_pq, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_ictcp_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                    int use_pq, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_ictcp_map_planar alwan_xyz_to_ictcp_f64_map_planar
+int alwan_ictcp_to_xyz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                    int use_pq, size_t count, size_t in_stride, size_t out_stride);
+int alwan_ictcp_to_xyz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                    int use_pq, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ictcp_to_xyz_map_planar alwan_ictcp_to_xyz_f64_map_planar
 
 /* ICtCp planar _ex */
 int alwan_rgb_to_ictcp_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4572,18 +5792,34 @@ int alwan_ictcp_to_xyz_map_planar_ex(void *out0, void *out1, void *out2, alwan_p
                                        int use_pq, size_t count, size_t in_stride, size_t out_stride);
 
 /* JzAzBz planar */
-int alwan_xyz_to_jzazbz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                      alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_xyz_to_jzazbz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                      float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                       size_t count, size_t in_stride, size_t out_stride);
-int alwan_jzazbz_to_xyz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                      alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_xyz_to_jzazbz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                      double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                       size_t count, size_t in_stride, size_t out_stride);
-int alwan_jzazbz_to_jzczhz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                         alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_xyz_to_jzazbz_map_planar alwan_xyz_to_jzazbz_f64_map_planar
+int alwan_jzazbz_to_xyz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                      float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                      size_t count, size_t in_stride, size_t out_stride);
+int alwan_jzazbz_to_xyz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                      double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                      size_t count, size_t in_stride, size_t out_stride);
+#define alwan_jzazbz_to_xyz_map_planar alwan_jzazbz_to_xyz_f64_map_planar
+int alwan_jzazbz_to_jzczhz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                         float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                          size_t count, size_t in_stride, size_t out_stride);
-int alwan_jzczhz_to_jzazbz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                         alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_jzazbz_to_jzczhz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                         double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                          size_t count, size_t in_stride, size_t out_stride);
+#define alwan_jzazbz_to_jzczhz_map_planar alwan_jzazbz_to_jzczhz_f64_map_planar
+int alwan_jzczhz_to_jzazbz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                         float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                         size_t count, size_t in_stride, size_t out_stride);
+int alwan_jzczhz_to_jzazbz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                         double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                         size_t count, size_t in_stride, size_t out_stride);
+#define alwan_jzczhz_to_jzazbz_map_planar alwan_jzczhz_to_jzazbz_f64_map_planar
 
 /* JzAzBz planar _ex */
 int alwan_xyz_to_jzazbz_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4600,12 +5836,20 @@ int alwan_jzczhz_to_jzazbz_map_planar_ex(void *out0, void *out1, void *out2, alw
                                             size_t count, size_t in_stride, size_t out_stride);
 
 /* IPT planar */
-int alwan_xyz_to_ipt_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_xyz_to_ipt_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_ipt_to_xyz_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_xyz_to_ipt_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_ipt_map_planar alwan_xyz_to_ipt_f64_map_planar
+int alwan_ipt_to_xyz_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_ipt_to_xyz_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ipt_to_xyz_map_planar alwan_ipt_to_xyz_f64_map_planar
 
 /* IPT planar _ex */
 int alwan_xyz_to_ipt_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4616,24 +5860,48 @@ int alwan_ipt_to_xyz_map_planar_ex(void *out0, void *out1, void *out2, alwan_pix
                                      size_t count, size_t in_stride, size_t out_stride);
 
 /* HSP/HSPlog/HSY planar */
-int alwan_rgb_to_hsp_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_hsp_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsp_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_hsp_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_rgb_to_hsplog_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_rgb_to_hsp_map_planar alwan_rgb_to_hsp_f64_map_planar
+int alwan_hsp_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsplog_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_hsp_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_rgb_to_hsy_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_hsp_to_rgb_map_planar alwan_hsp_to_rgb_f64_map_planar
+int alwan_rgb_to_hsplog_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsy_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_hsplog_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_hsplog_map_planar alwan_rgb_to_hsplog_f64_map_planar
+int alwan_hsplog_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsplog_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hsplog_to_rgb_map_planar alwan_hsplog_to_rgb_f64_map_planar
+int alwan_rgb_to_hsy_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_rgb_to_hsy_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_hsy_map_planar alwan_rgb_to_hsy_f64_map_planar
+int alwan_hsy_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsy_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hsy_to_rgb_map_planar alwan_hsy_to_rgb_f64_map_planar
 
 /* HSP/HSPlog/HSY planar _ex */
 int alwan_rgb_to_hsp_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4656,18 +5924,34 @@ int alwan_hsy_to_rgb_map_planar_ex(void *out0, void *out1, void *out2, alwan_pix
                                      size_t count, size_t in_stride, size_t out_stride);
 
 /* Linear sRGB <-> HSV/HSL planar */
-int alwan_linear_srgb_to_hsv_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_linear_srgb_to_hsv_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsv_to_linear_srgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_linear_srgb_to_hsv_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_linear_srgb_to_hsl_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_linear_srgb_to_hsv_map_planar alwan_linear_srgb_to_hsv_f64_map_planar
+int alwan_hsv_to_linear_srgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsl_to_linear_srgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_hsv_to_linear_srgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hsv_to_linear_srgb_map_planar alwan_hsv_to_linear_srgb_f64_map_planar
+int alwan_linear_srgb_to_hsl_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_linear_srgb_to_hsl_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_linear_srgb_to_hsl_map_planar alwan_linear_srgb_to_hsl_f64_map_planar
+int alwan_hsl_to_linear_srgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsl_to_linear_srgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hsl_to_linear_srgb_map_planar alwan_hsl_to_linear_srgb_f64_map_planar
 
 /* Linear sRGB <-> HSV/HSL planar _ex */
 int alwan_linear_srgb_to_hsv_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4684,18 +5968,34 @@ int alwan_hsl_to_linear_srgb_map_planar_ex(void *out0, void *out1, void *out2, a
                                              size_t count, size_t in_stride, size_t out_stride);
 
 /* HSV/HSL planar */
-int alwan_rgb_to_hsv_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_hsv_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsv_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_hsv_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_rgb_to_hsl_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_rgb_to_hsv_map_planar alwan_rgb_to_hsv_f64_map_planar
+int alwan_hsv_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsl_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_hsv_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hsv_to_rgb_map_planar alwan_hsv_to_rgb_f64_map_planar
+int alwan_rgb_to_hsl_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_rgb_to_hsl_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_hsl_map_planar alwan_rgb_to_hsl_f64_map_planar
+int alwan_hsl_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsl_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hsl_to_rgb_map_planar alwan_hsl_to_rgb_f64_map_planar
 
 /* HSV/HSL planar _ex */
 int alwan_rgb_to_hsv_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4712,30 +6012,62 @@ int alwan_hsl_to_rgb_map_planar_ex(void *out0, void *out1, void *out2, alwan_pix
                                      size_t count, size_t in_stride, size_t out_stride);
 
 /* CMY/YCoCg/HWB planar */
-int alwan_rgb_to_cmy_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_cmy_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_cmy_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_cmy_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_rgb_to_ycocg_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_rgb_to_cmy_map_planar alwan_rgb_to_cmy_f64_map_planar
+int alwan_cmy_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_cmy_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_cmy_to_rgb_map_planar alwan_cmy_to_rgb_f64_map_planar
+int alwan_rgb_to_ycocg_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_ycocg_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_ycocg_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_rgb_to_hwb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_rgb_to_ycocg_map_planar alwan_rgb_to_ycocg_f64_map_planar
+int alwan_ycocg_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                    size_t count, size_t in_stride, size_t out_stride);
+int alwan_ycocg_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ycocg_to_rgb_map_planar alwan_ycocg_to_rgb_f64_map_planar
+int alwan_rgb_to_hwb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hwb_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_hwb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hsv_to_hwb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_rgb_to_hwb_map_planar alwan_rgb_to_hwb_f64_map_planar
+int alwan_hwb_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
-int alwan_hwb_to_hsv_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                  alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_hwb_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                   size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hwb_to_rgb_map_planar alwan_hwb_to_rgb_f64_map_planar
+int alwan_hsv_to_hwb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_hsv_to_hwb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hsv_to_hwb_map_planar alwan_hsv_to_hwb_f64_map_planar
+int alwan_hwb_to_hsv_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                  float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+int alwan_hwb_to_hsv_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                  double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                  size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hwb_to_hsv_map_planar alwan_hwb_to_hsv_f64_map_planar
 
 /* CMY/YCoCg/HWB planar _ex */
 int alwan_rgb_to_cmy_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4764,14 +6096,24 @@ int alwan_hwb_to_hsv_map_planar_ex(void *out0, void *out1, void *out2, alwan_pix
                                      size_t count, size_t in_stride, size_t out_stride);
 
 /* YCbCr planar */
-int alwan_rgb_to_ycbcr_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_ycbcr_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                     alwan_ycbcr_standard standard,
                                     size_t count, size_t in_stride, size_t out_stride);
-int alwan_ycbcr_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                    alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_ycbcr_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                     alwan_ycbcr_standard standard,
                                     size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_ycbcr_map_planar alwan_rgb_to_ycbcr_f64_map_planar
+int alwan_ycbcr_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                    float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                    alwan_ycbcr_standard standard,
+                                    size_t count, size_t in_stride, size_t out_stride);
+int alwan_ycbcr_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                    double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                    alwan_ycbcr_standard standard,
+                                    size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ycbcr_to_rgb_map_planar alwan_ycbcr_to_rgb_f64_map_planar
 
 /* YCbCr planar _ex */
 int alwan_rgb_to_ycbcr_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4784,18 +6126,34 @@ int alwan_ycbcr_to_rgb_map_planar_ex(void *out0, void *out1, void *out2, alwan_p
                                        size_t count, size_t in_stride, size_t out_stride);
 
 /* YcCbcCrc / legal-full planar */
-int alwan_rgb_to_yccbccrc_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                       alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_yccbccrc_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                       float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                        int bit_depth, size_t count, size_t in_stride, size_t out_stride);
-int alwan_yccbccrc_to_rgb_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                       alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_rgb_to_yccbccrc_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                       double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                        int bit_depth, size_t count, size_t in_stride, size_t out_stride);
-int alwan_ycbcr_full_to_legal_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                           alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+#define alwan_rgb_to_yccbccrc_map_planar alwan_rgb_to_yccbccrc_f64_map_planar
+int alwan_yccbccrc_to_rgb_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                       float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                       int bit_depth, size_t count, size_t in_stride, size_t out_stride);
+int alwan_yccbccrc_to_rgb_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                       double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                       int bit_depth, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_yccbccrc_to_rgb_map_planar alwan_yccbccrc_to_rgb_f64_map_planar
+int alwan_ycbcr_full_to_legal_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                           float const *in_ch0, float const *in_ch1, float const *in_ch2,
                                            int bit_depth, size_t count, size_t in_stride, size_t out_stride);
-int alwan_ycbcr_legal_to_full_map_planar(alwan_scalar *out_ch0, alwan_scalar *out_ch1, alwan_scalar *out_ch2,
-                                           alwan_scalar const *in_ch0, alwan_scalar const *in_ch1, alwan_scalar const *in_ch2,
+int alwan_ycbcr_full_to_legal_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                           double const *in_ch0, double const *in_ch1, double const *in_ch2,
                                            int bit_depth, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ycbcr_full_to_legal_map_planar alwan_ycbcr_full_to_legal_f64_map_planar
+int alwan_ycbcr_legal_to_full_f32_map_planar(float *out_ch0, float *out_ch1, float *out_ch2,
+                                           float const *in_ch0, float const *in_ch1, float const *in_ch2,
+                                           int bit_depth, size_t count, size_t in_stride, size_t out_stride);
+int alwan_ycbcr_legal_to_full_f64_map_planar(double *out_ch0, double *out_ch1, double *out_ch2,
+                                           double const *in_ch0, double const *in_ch1, double const *in_ch2,
+                                           int bit_depth, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ycbcr_legal_to_full_map_planar alwan_ycbcr_legal_to_full_f64_map_planar
 
 /* YcCbcCrc / legal-full planar _ex */
 int alwan_rgb_to_yccbccrc_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
@@ -4812,40 +6170,100 @@ int alwan_ycbcr_legal_to_full_map_planar_ex(void *out0, void *out1, void *out2, 
                                               int bit_depth, size_t count, size_t in_stride, size_t out_stride);
 
 /* Extended color spaces planar */
-int alwan_xyz_to_igpgtg_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_igpgtg_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_icacb_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_icacb_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_hdr_cielab_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_hdr_cielab_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_hdr_ipt_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_hdr_ipt_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_ucs_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_ucs_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_osa_ucs_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_osa_ucs_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_hunter_lab_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_hunter_lab_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_prolab_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_prolab_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_rgb_to_prismatic_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_prismatic_to_rgb_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_rgb_to_hcl_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_hcl_to_rgb_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_rgb_to_ihls_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
-int alwan_ihls_to_rgb_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_igpgtg_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_igpgtg_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_igpgtg_map_planar alwan_xyz_to_igpgtg_f64_map_planar
+int alwan_igpgtg_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_igpgtg_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_igpgtg_to_xyz_map_planar alwan_igpgtg_to_xyz_f64_map_planar
+int alwan_xyz_to_icacb_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_icacb_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_icacb_map_planar alwan_xyz_to_icacb_f64_map_planar
+int alwan_icacb_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_icacb_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_icacb_to_xyz_map_planar alwan_icacb_to_xyz_f64_map_planar
+int alwan_xyz_to_hdr_cielab_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_hdr_cielab_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_hdr_cielab_map_planar alwan_xyz_to_hdr_cielab_f64_map_planar
+int alwan_hdr_cielab_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_hdr_cielab_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hdr_cielab_to_xyz_map_planar alwan_hdr_cielab_to_xyz_f64_map_planar
+int alwan_xyz_to_hdr_ipt_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_hdr_ipt_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_hdr_ipt_map_planar alwan_xyz_to_hdr_ipt_f64_map_planar
+int alwan_hdr_ipt_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_hdr_ipt_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hdr_ipt_to_xyz_map_planar alwan_hdr_ipt_to_xyz_f64_map_planar
+int alwan_xyz_to_ucs_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_ucs_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_ucs_map_planar alwan_xyz_to_ucs_f64_map_planar
+int alwan_ucs_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_ucs_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ucs_to_xyz_map_planar alwan_ucs_to_xyz_f64_map_planar
+int alwan_xyz_to_osa_ucs_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_osa_ucs_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_osa_ucs_map_planar alwan_xyz_to_osa_ucs_f64_map_planar
+int alwan_osa_ucs_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_osa_ucs_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_osa_ucs_to_xyz_map_planar alwan_osa_ucs_to_xyz_f64_map_planar
+int alwan_xyz_to_hunter_lab_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_hunter_lab_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_hunter_lab_map_planar alwan_xyz_to_hunter_lab_f64_map_planar
+int alwan_hunter_lab_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_hunter_lab_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hunter_lab_to_xyz_map_planar alwan_hunter_lab_to_xyz_f64_map_planar
+int alwan_xyz_to_prolab_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_prolab_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_prolab_map_planar alwan_xyz_to_prolab_f64_map_planar
+int alwan_prolab_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_prolab_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_prolab_to_xyz_map_planar alwan_prolab_to_xyz_f64_map_planar
+int alwan_rgb_to_prismatic_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_rgb_to_prismatic_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_prismatic_map_planar alwan_rgb_to_prismatic_f64_map_planar
+int alwan_prismatic_to_rgb_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_prismatic_to_rgb_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_prismatic_to_rgb_map_planar alwan_prismatic_to_rgb_f64_map_planar
+int alwan_rgb_to_hcl_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_rgb_to_hcl_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_hcl_map_planar alwan_rgb_to_hcl_f64_map_planar
+int alwan_hcl_to_rgb_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_hcl_to_rgb_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hcl_to_rgb_map_planar alwan_hcl_to_rgb_f64_map_planar
+int alwan_rgb_to_ihls_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_rgb_to_ihls_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_rgb_to_ihls_map_planar alwan_rgb_to_ihls_f64_map_planar
+int alwan_ihls_to_rgb_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, size_t count, size_t in_stride, size_t out_stride);
+int alwan_ihls_to_rgb_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_ihls_to_rgb_map_planar alwan_ihls_to_rgb_f64_map_planar
 
 /* Extended with white point planar */
-int alwan_xyz_to_hunter_lab_custom_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
-int alwan_hunter_lab_to_xyz_custom_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_prolab_custom_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
-int alwan_prolab_to_xyz_custom_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
-int alwan_xyz_to_uvw_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
-int alwan_uvw_to_xyz_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_xyz const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_hunter_lab_custom_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_hunter_lab_custom_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_hunter_lab_custom_map_planar alwan_xyz_to_hunter_lab_custom_f64_map_planar
+int alwan_hunter_lab_to_xyz_custom_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_hunter_lab_to_xyz_custom_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_hunter_lab_to_xyz_custom_map_planar alwan_hunter_lab_to_xyz_custom_f64_map_planar
+int alwan_xyz_to_prolab_custom_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_prolab_custom_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_prolab_custom_map_planar alwan_xyz_to_prolab_custom_f64_map_planar
+int alwan_prolab_to_xyz_custom_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_prolab_to_xyz_custom_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_prolab_to_xyz_custom_map_planar alwan_prolab_to_xyz_custom_f64_map_planar
+int alwan_xyz_to_uvw_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_uvw_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_xyz_to_uvw_map_planar alwan_xyz_to_uvw_f64_map_planar
+int alwan_uvw_to_xyz_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_xyz_f32 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+int alwan_uvw_to_xyz_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_xyz_f64 const *white_xyz, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_uvw_to_xyz_map_planar alwan_uvw_to_xyz_f64_map_planar
 
 /* DIN99 planar */
-int alwan_lab_to_din99_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, int variant, size_t count, size_t in_stride, size_t out_stride);
-int alwan_din99_to_lab_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, int variant, size_t count, size_t in_stride, size_t out_stride);
+int alwan_lab_to_din99_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, int variant, size_t count, size_t in_stride, size_t out_stride);
+int alwan_lab_to_din99_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, int variant, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_lab_to_din99_map_planar alwan_lab_to_din99_f64_map_planar
+int alwan_din99_to_lab_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, int variant, size_t count, size_t in_stride, size_t out_stride);
+int alwan_din99_to_lab_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, int variant, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_din99_to_lab_map_planar alwan_din99_to_lab_f64_map_planar
 
 /* Extended planar _ex */
 int alwan_xyz_to_igpgtg_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, size_t count, size_t in_stride, size_t out_stride);
@@ -4884,10 +6302,18 @@ int alwan_lab_to_din99_map_planar_ex(void *out0, void *out1, void *out2, alwan_p
 int alwan_din99_to_lab_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, int variant, size_t count, size_t in_stride, size_t out_stride);
 
 /* CVD simulation planar */
-int alwan_simulate_cvd_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_cvd_type cvd_type, alwan_scalar severity, size_t count, size_t in_stride, size_t out_stride);
-int alwan_simulate_protanopia_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_scalar severity, size_t count, size_t in_stride, size_t out_stride);
-int alwan_simulate_deuteranopia_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_scalar severity, size_t count, size_t in_stride, size_t out_stride);
-int alwan_simulate_tritanopia_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_scalar severity, size_t count, size_t in_stride, size_t out_stride);
+int alwan_simulate_cvd_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_cvd_type cvd_type, float severity, size_t count, size_t in_stride, size_t out_stride);
+int alwan_simulate_cvd_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_cvd_type cvd_type, double severity, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_cvd_map_planar alwan_simulate_cvd_f64_map_planar
+int alwan_simulate_protanopia_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, float severity, size_t count, size_t in_stride, size_t out_stride);
+int alwan_simulate_protanopia_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, double severity, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_protanopia_map_planar alwan_simulate_protanopia_f64_map_planar
+int alwan_simulate_deuteranopia_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, float severity, size_t count, size_t in_stride, size_t out_stride);
+int alwan_simulate_deuteranopia_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, double severity, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_deuteranopia_map_planar alwan_simulate_deuteranopia_f64_map_planar
+int alwan_simulate_tritanopia_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, float severity, size_t count, size_t in_stride, size_t out_stride);
+int alwan_simulate_tritanopia_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, double severity, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_simulate_tritanopia_map_planar alwan_simulate_tritanopia_f64_map_planar
 
 /* CVD simulation planar _ex */
 int alwan_simulate_cvd_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_scalar severity, size_t count, size_t in_stride, size_t out_stride);
@@ -4896,10 +6322,18 @@ int alwan_simulate_deuteranopia_map_planar_ex(void *out0, void *out1, void *out2
 int alwan_simulate_tritanopia_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, alwan_scalar severity, size_t count, size_t in_stride, size_t out_stride);
 
 /* Color correction planar */
-int alwan_lgg_apply_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_rgb const *lift, alwan_rgb const *gamma, alwan_rgb const *gain, size_t count, size_t in_stride, size_t out_stride);
-int alwan_color_matrix_apply_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_mat3x3 const *matrix, size_t count, size_t in_stride, size_t out_stride);
-int alwan_printer_lights_apply_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_scalar red_lights, alwan_scalar green_lights, alwan_scalar blue_lights, size_t count, size_t in_stride, size_t out_stride);
-int alwan_white_balance_apply_map_planar(alwan_scalar *o0, alwan_scalar *o1, alwan_scalar *o2, alwan_scalar const *i0, alwan_scalar const *i1, alwan_scalar const *i2, alwan_rgb const *multipliers, size_t count, size_t in_stride, size_t out_stride);
+int alwan_lgg_apply_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_rgb_f32 const *lift, alwan_rgb_f32 const *gamma, alwan_rgb_f32 const *gain, size_t count, size_t in_stride, size_t out_stride);
+int alwan_lgg_apply_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_lgg_apply_map_planar alwan_lgg_apply_f64_map_planar
+int alwan_color_matrix_apply_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_mat3x3_f32 const *matrix, size_t count, size_t in_stride, size_t out_stride);
+int alwan_color_matrix_apply_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_mat3x3_f64 const *matrix, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_color_matrix_apply_map_planar alwan_color_matrix_apply_f64_map_planar
+int alwan_printer_lights_apply_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, float red_lights, float green_lights, float blue_lights, size_t count, size_t in_stride, size_t out_stride);
+int alwan_printer_lights_apply_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, double red_lights, double green_lights, double blue_lights, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_printer_lights_apply_map_planar alwan_printer_lights_apply_f64_map_planar
+int alwan_white_balance_apply_f32_map_planar(float *o0, float *o1, float *o2, float const *i0, float const *i1, float const *i2, alwan_rgb_f32 const *multipliers, size_t count, size_t in_stride, size_t out_stride);
+int alwan_white_balance_apply_f64_map_planar(double *o0, double *o1, double *o2, double const *i0, double const *i1, double const *i2, alwan_rgb_f64 const *multipliers, size_t count, size_t in_stride, size_t out_stride);
+#define alwan_white_balance_apply_map_planar alwan_white_balance_apply_f64_map_planar
 
 /* Color correction planar _ex */
 int alwan_lgg_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, alwan_rgb const *lift, alwan_rgb const *gamma, alwan_rgb const *gain, size_t count, size_t in_stride, size_t out_stride);

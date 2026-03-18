@@ -33,7 +33,7 @@
 
 static int test_mat3_identity(void) {
     TEST_START("mat3 identity");
-    alwan_mat3x3 id = alwan_mat3_identity_v();
+    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
     TEST_ASSERT_NEAR(id.m[0], ALWAN_ONE, ALWAN_EPSILON, "m[0]");
     TEST_ASSERT_NEAR(id.m[4], ALWAN_ONE, ALWAN_EPSILON, "m[4]");
     TEST_ASSERT_NEAR(id.m[8], ALWAN_ONE, ALWAN_EPSILON, "m[8]");
@@ -44,20 +44,20 @@ static int test_mat3_identity(void) {
 
 static int test_mat3_det(void) {
     TEST_START("mat3 determinant");
-    alwan_mat3x3 id = alwan_mat3_identity_v();
-    alwan_scalar det = alwan_mat3_det_v(id);
+    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
+    alwan_f64 det = alwan_mat3_det_f64_v(id);
     TEST_ASSERT_NEAR(det, ALWAN_ONE, ALWAN_EPSILON, "det(I)=1");
     TEST_PASS("mat3_det");
 }
 
 static int test_mat3_mulv(void) {
     TEST_START("mat3 * vec3");
-    alwan_mat3x3 id = alwan_mat3_identity_v();
+    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
     alwan_vec3 v;
     v.v[0] = ALWAN_LITERAL(1.0);
     v.v[1] = ALWAN_LITERAL(2.0);
     v.v[2] = ALWAN_LITERAL(3.0);
-    alwan_vec3 r = alwan_mat3_mulv_v(id, v);
+    alwan_vec3 r = alwan_mat3_mulv_f64_v(id, v);
     TEST_ASSERT_NEAR(r.v[0], v.v[0], ALWAN_EPSILON, "I*v[0]");
     TEST_ASSERT_NEAR(r.v[1], v.v[1], ALWAN_EPSILON, "I*v[1]");
     TEST_ASSERT_NEAR(r.v[2], v.v[2], ALWAN_EPSILON, "I*v[2]");
@@ -66,8 +66,8 @@ static int test_mat3_mulv(void) {
 
 static int test_mat3_mul(void) {
     TEST_START("mat3 * mat3");
-    alwan_mat3x3 id = alwan_mat3_identity_v();
-    alwan_mat3x3 r = alwan_mat3_mul_v(id, id);
+    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
+    alwan_mat3x3 r = alwan_mat3_mul_f64_v(id, id);
     TEST_ASSERT_NEAR(r.m[0], ALWAN_ONE, ALWAN_EPSILON, "I*I[0]");
     TEST_ASSERT_NEAR(r.m[4], ALWAN_ONE, ALWAN_EPSILON, "I*I[4]");
     TEST_ASSERT_NEAR(r.m[8], ALWAN_ONE, ALWAN_EPSILON, "I*I[8]");
@@ -88,8 +88,8 @@ static int test_oklab_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_oklab ok_v = alwan_xyz_to_oklab_v(white);
-    alwan_xyz back_v = alwan_oklab_to_xyz_v(ok_v);
+    alwan_oklab ok_v = alwan_xyz_to_oklab_f64_v(white);
+    alwan_xyz back_v = alwan_oklab_to_xyz_f64_v(ok_v);
 
     /* pointer variant */
     alwan_oklab ok_p;
@@ -117,9 +117,9 @@ static int test_oklch_v_roundtrip(void) {
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_oklab ok_v = alwan_xyz_to_oklab_v(color);
-    alwan_oklch lch_v = alwan_oklab_to_oklch_v(ok_v);
-    alwan_oklab back_v = alwan_oklch_to_oklab_v(lch_v);
+    alwan_oklab ok_v = alwan_xyz_to_oklab_f64_v(color);
+    alwan_oklch lch_v = alwan_oklab_to_oklch_f64_v(ok_v);
+    alwan_oklab back_v = alwan_oklch_to_oklab_f64_v(lch_v);
 
     /* pointer variant */
     alwan_oklab ok_p;
@@ -153,8 +153,8 @@ static int test_jzazbz_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_jzazbz jz_v = alwan_xyz_to_jzazbz_v(white);
-    alwan_xyz back_v = alwan_jzazbz_to_xyz_v(jz_v);
+    alwan_jzazbz jz_v = alwan_xyz_to_jzazbz_f64_v(white);
+    alwan_xyz back_v = alwan_jzazbz_to_xyz_f64_v(jz_v);
 
     /* pointer variant */
     alwan_jzazbz jz_p;
@@ -181,9 +181,9 @@ static int test_jzczhz_v_roundtrip(void) {
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_jzazbz jz_v = alwan_xyz_to_jzazbz_v(color);
-    alwan_jzczhz jzczhz_v = alwan_jzazbz_to_jzczhz_v(jz_v);
-    alwan_jzazbz back_v = alwan_jzczhz_to_jzazbz_v(jzczhz_v);
+    alwan_jzazbz jz_v = alwan_xyz_to_jzazbz_f64_v(color);
+    alwan_jzczhz jzczhz_v = alwan_jzazbz_to_jzczhz_f64_v(jz_v);
+    alwan_jzazbz back_v = alwan_jzczhz_to_jzazbz_f64_v(jzczhz_v);
 
     /* pointer variant */
     alwan_jzazbz jz_p;
@@ -216,8 +216,8 @@ static int test_xyy_v_roundtrip(void) {
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
-    alwan_xyy xyy_v = alwan_xyz_to_xyy_v(white);
-    alwan_xyz back_v = alwan_xyy_to_xyz_v(xyy_v);
+    alwan_xyy xyy_v = alwan_xyz_to_xyy_f64_v(white);
+    alwan_xyz back_v = alwan_xyy_to_xyz_f64_v(xyy_v);
 
     alwan_xyy xyy_p;
     alwan_xyz_to_xyy(&xyy_p, &white);
@@ -248,8 +248,8 @@ static int test_lab_v_roundtrip(void) {
     wp.y = ALWAN_D65_Y;
     wp.z = ALWAN_D65_Z;
 
-    alwan_lab lab_v = alwan_xyz_to_lab_v(color, wp);
-    alwan_xyz back_v = alwan_lab_to_xyz_v(lab_v, wp);
+    alwan_lab lab_v = alwan_xyz_to_lab_f64_v(color, wp);
+    alwan_xyz back_v = alwan_lab_to_xyz_f64_v(lab_v, wp);
 
     alwan_lab lab_p;
     alwan_xyz_to_lab(&lab_p, &color, &wp);
@@ -275,8 +275,8 @@ static int test_lch_v_roundtrip(void) {
     lab.a = ALWAN_LITERAL(20.0);
     lab.b = ALWAN_LITERAL(-30.0);
 
-    alwan_lch lch_v = alwan_lab_to_lch_v(lab);
-    alwan_lab back_v = alwan_lch_to_lab_v(lch_v);
+    alwan_lch lch_v = alwan_lab_to_lch_f64_v(lab);
+    alwan_lab back_v = alwan_lch_to_lab_f64_v(lch_v);
 
     alwan_lch lch_p;
     alwan_lab_to_lch(&lch_p, &lab);
@@ -307,8 +307,8 @@ static int test_luv_v_roundtrip(void) {
     wp.y = ALWAN_D65_Y;
     wp.z = ALWAN_D65_Z;
 
-    alwan_luv luv_v = alwan_xyz_to_luv_v(color, wp);
-    alwan_xyz back_v = alwan_luv_to_xyz_v(luv_v, wp);
+    alwan_luv luv_v = alwan_xyz_to_luv_f64_v(color, wp);
+    alwan_xyz back_v = alwan_luv_to_xyz_f64_v(luv_v, wp);
 
     alwan_luv luv_p;
     alwan_xyz_to_luv(&luv_p, &color, &wp);
@@ -338,8 +338,8 @@ static int test_ipt_v_roundtrip(void) {
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
-    alwan_ipt ipt_v = alwan_xyz_to_ipt_v(white);
-    alwan_xyz back_v = alwan_ipt_to_xyz_v(ipt_v);
+    alwan_ipt ipt_v = alwan_xyz_to_ipt_f64_v(white);
+    alwan_xyz back_v = alwan_ipt_to_xyz_f64_v(ipt_v);
 
     alwan_ipt ipt_p;
     alwan_xyz_to_ipt(&ipt_p, &white);
@@ -365,9 +365,9 @@ static int test_iptch_v_roundtrip(void) {
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_ipt ipt_v = alwan_xyz_to_ipt_v(color);
-    alwan_iptch iptch_v = alwan_ipt_to_iptch_v(ipt_v);
-    alwan_ipt back_v = alwan_iptch_to_ipt_v(iptch_v);
+    alwan_ipt ipt_v = alwan_xyz_to_ipt_f64_v(color);
+    alwan_iptch iptch_v = alwan_ipt_to_iptch_f64_v(ipt_v);
+    alwan_ipt back_v = alwan_iptch_to_ipt_f64_v(iptch_v);
 
     alwan_ipt ipt_p;
     alwan_xyz_to_ipt(&ipt_p, &color);
@@ -399,8 +399,8 @@ static int test_cmy_v_roundtrip(void) {
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
-    alwan_cmy cmy_v = alwan_rgb_to_cmy_v(rgb);
-    alwan_rgb back_v = alwan_cmy_to_rgb_v(cmy_v);
+    alwan_cmy cmy_v = alwan_rgb_to_cmy_f64_v(rgb);
+    alwan_rgb back_v = alwan_cmy_to_rgb_f64_v(cmy_v);
 
     alwan_cmy cmy_p;
     alwan_rgb_to_cmy(&cmy_p, &rgb);
@@ -426,8 +426,8 @@ static int test_ycocg_v_roundtrip(void) {
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
-    alwan_ycocg ycocg_v = alwan_rgb_to_ycocg_v(rgb);
-    alwan_rgb back_v = alwan_ycocg_to_rgb_v(ycocg_v);
+    alwan_ycocg ycocg_v = alwan_rgb_to_ycocg_f64_v(rgb);
+    alwan_rgb back_v = alwan_ycocg_to_rgb_f64_v(ycocg_v);
 
     alwan_ycocg ycocg_p;
     alwan_rgb_to_ycocg(&ycocg_p, &rgb);
@@ -458,8 +458,8 @@ static int test_hsv_v_roundtrip(void) {
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_hsv hsv_v = alwan_rgb_to_hsv_v(rgb);
-    alwan_rgb back_v = alwan_hsv_to_rgb_v(hsv_v);
+    alwan_hsv hsv_v = alwan_rgb_to_hsv_f64_v(rgb);
+    alwan_rgb back_v = alwan_hsv_to_rgb_f64_v(hsv_v);
 
     /* pointer variant */
     alwan_hsv hsv_p;
@@ -487,8 +487,8 @@ static int test_hsl_v_roundtrip(void) {
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_hsl hsl_v = alwan_rgb_to_hsl_v(rgb);
-    alwan_rgb back_v = alwan_hsl_to_rgb_v(hsl_v);
+    alwan_hsl hsl_v = alwan_rgb_to_hsl_f64_v(rgb);
+    alwan_rgb back_v = alwan_hsl_to_rgb_f64_v(hsl_v);
 
     /* pointer variant */
     alwan_hsl hsl_p;
@@ -516,12 +516,12 @@ static int test_ycbcr_v_roundtrip(void) {
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* BT.709 coefficients */
-    alwan_scalar kr = ALWAN_LITERAL(0.2126);
-    alwan_scalar kb = ALWAN_LITERAL(0.0722);
+    alwan_f64 kr = ALWAN_LITERAL(0.2126);
+    alwan_f64 kb = ALWAN_LITERAL(0.0722);
 
     /* _v variant */
-    alwan_ycbcr ycbcr_v = alwan_rgb_to_ycbcr_kr_kb_v(rgb, kr, kb);
-    alwan_rgb back_v = alwan_ycbcr_to_rgb_kr_kb_v(ycbcr_v, kr, kb);
+    alwan_ycbcr ycbcr_v = alwan_rgb_to_ycbcr_kr_kb_f64_v(rgb, kr, kb);
+    alwan_rgb back_v = alwan_ycbcr_to_rgb_kr_kb_f64_v(ycbcr_v, kr, kb);
 
     /* pointer variant */
     alwan_ycbcr ycbcr_p;
@@ -549,8 +549,8 @@ static int test_yccbccrc_v_roundtrip(void) {
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_yccbccrc yccbccrc_v = alwan_rgb_to_yccbccrc_v(rgb, 10);
-    alwan_rgb back_v = alwan_yccbccrc_to_rgb_v(yccbccrc_v, 10);
+    alwan_yccbccrc yccbccrc_v = alwan_rgb_to_yccbccrc_f64_v(rgb, 10);
+    alwan_rgb back_v = alwan_yccbccrc_to_rgb_f64_v(yccbccrc_v, 10);
 
     /* pointer variant */
     alwan_yccbccrc yccbccrc_p;
@@ -582,8 +582,8 @@ static int test_din99_v_roundtrip(void) {
     lab.b = ALWAN_LITERAL(-30.0);
 
     /* _v variant (variant 0 = DIN99 / ASTM D2244-07) */
-    alwan_din99 din99_v = alwan_lab_to_din99_v(lab, 0);
-    alwan_lab back_v = alwan_din99_to_lab_v(din99_v, 0);
+    alwan_din99 din99_v = alwan_lab_to_din99_f64_v(lab, 0);
+    alwan_lab back_v = alwan_din99_to_lab_f64_v(din99_v, 0);
 
     /* pointer variant */
     alwan_din99 din99_p;
@@ -615,8 +615,8 @@ static int test_hunter_lab_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_hunter_lab hl_v = alwan_xyz_to_hunter_lab_v(white);
-    alwan_xyz back_v = alwan_hunter_lab_to_xyz_v(hl_v);
+    alwan_hunter_lab hl_v = alwan_xyz_to_hunter_lab_f64_v(white);
+    alwan_xyz back_v = alwan_hunter_lab_to_xyz_f64_v(hl_v);
 
     /* pointer variant */
     alwan_hunter_lab hl_p;
@@ -648,8 +648,8 @@ static int test_prolab_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_prolab pl_v = alwan_xyz_to_prolab_v(white);
-    alwan_xyz back_v = alwan_prolab_to_xyz_v(pl_v);
+    alwan_prolab pl_v = alwan_xyz_to_prolab_f64_v(white);
+    alwan_xyz back_v = alwan_prolab_to_xyz_f64_v(pl_v);
 
     /* pointer variant */
     alwan_prolab pl_p;
@@ -681,8 +681,8 @@ static int test_prismatic_v_roundtrip(void) {
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_prismatic pris_v = alwan_rgb_to_prismatic_v(rgb);
-    alwan_rgb back_v = alwan_prismatic_to_rgb_v(pris_v);
+    alwan_prismatic pris_v = alwan_rgb_to_prismatic_f64_v(rgb);
+    alwan_rgb back_v = alwan_prismatic_to_rgb_f64_v(pris_v);
 
     /* pointer variant */
     alwan_prismatic pris_p;
@@ -710,8 +710,8 @@ static int test_hcl_v_roundtrip(void) {
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_hcl hcl_v = alwan_rgb_to_hcl_v(rgb);
-    alwan_rgb back_v = alwan_hcl_to_rgb_v(hcl_v);
+    alwan_hcl hcl_v = alwan_rgb_to_hcl_f64_v(rgb);
+    alwan_rgb back_v = alwan_hcl_to_rgb_f64_v(hcl_v);
 
     /* pointer variant */
     alwan_hcl hcl_p;
@@ -739,8 +739,8 @@ static int test_ihls_v_roundtrip(void) {
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_ihls ihls_v = alwan_rgb_to_ihls_v(rgb);
-    alwan_rgb back_v = alwan_ihls_to_rgb_v(ihls_v);
+    alwan_ihls ihls_v = alwan_rgb_to_ihls_f64_v(rgb);
+    alwan_rgb back_v = alwan_ihls_to_rgb_f64_v(ihls_v);
 
     /* pointer variant */
     alwan_ihls ihls_p;
@@ -772,8 +772,8 @@ static int test_hdr_cielab_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_lab hdr_v = alwan_xyz_to_hdr_cielab_v(white);
-    alwan_xyz back_v = alwan_hdr_cielab_to_xyz_v(hdr_v);
+    alwan_lab hdr_v = alwan_xyz_to_hdr_cielab_f64_v(white);
+    alwan_xyz back_v = alwan_hdr_cielab_to_xyz_f64_v(hdr_v);
 
     /* pointer variant */
     alwan_lab hdr_p;
@@ -801,8 +801,8 @@ static int test_hdr_ipt_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_ipt hdr_v = alwan_xyz_to_hdr_ipt_v(white);
-    alwan_xyz back_v = alwan_hdr_ipt_to_xyz_v(hdr_v);
+    alwan_ipt hdr_v = alwan_xyz_to_hdr_ipt_f64_v(white);
+    alwan_xyz back_v = alwan_hdr_ipt_to_xyz_f64_v(hdr_v);
 
     /* pointer variant */
     alwan_ipt hdr_p;
@@ -830,8 +830,8 @@ static int test_igpgtg_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_igpgtg ig_v = alwan_xyz_to_igpgtg_v(white);
-    alwan_xyz back_v = alwan_igpgtg_to_xyz_v(ig_v);
+    alwan_igpgtg ig_v = alwan_xyz_to_igpgtg_f64_v(white);
+    alwan_xyz back_v = alwan_igpgtg_to_xyz_f64_v(ig_v);
 
     /* pointer variant */
     alwan_igpgtg ig_p;
@@ -859,8 +859,8 @@ static int test_icacb_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_icacb ic_v = alwan_xyz_to_icacb_v(white);
-    alwan_xyz back_v = alwan_icacb_to_xyz_v(ic_v);
+    alwan_icacb ic_v = alwan_xyz_to_icacb_f64_v(white);
+    alwan_xyz back_v = alwan_icacb_to_xyz_f64_v(ic_v);
 
     /* pointer variant */
     alwan_icacb ic_p;
@@ -892,8 +892,8 @@ static int test_ucs_v_roundtrip(void) {
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_ucs ucs_v = alwan_xyz_to_ucs_v(white);
-    alwan_xyz back_v = alwan_ucs_to_xyz_v(ucs_v);
+    alwan_ucs ucs_v = alwan_xyz_to_ucs_f64_v(white);
+    alwan_xyz back_v = alwan_ucs_to_xyz_f64_v(ucs_v);
 
     /* pointer variant */
     alwan_ucs ucs_p;
@@ -926,8 +926,8 @@ static int test_uvw_v_roundtrip(void) {
     wp.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_uvw uvw_v = alwan_xyz_to_uvw_v(color, wp);
-    alwan_xyz back_v = alwan_uvw_to_xyz_v(uvw_v, wp);
+    alwan_uvw uvw_v = alwan_xyz_to_uvw_f64_v(color, wp);
+    alwan_xyz back_v = alwan_uvw_to_xyz_f64_v(uvw_v, wp);
 
     /* pointer variant */
     alwan_uvw uvw_p;
@@ -960,8 +960,8 @@ static int test_xyz_lch_v_roundtrip(void) {
     wp.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_lch lch_v = alwan_xyz_to_lch_v(color, wp);
-    alwan_xyz back_v = alwan_lch_to_xyz_v(lch_v, wp);
+    alwan_lch lch_v = alwan_xyz_to_lch_f64_v(color, wp);
+    alwan_xyz back_v = alwan_lch_to_xyz_f64_v(lch_v, wp);
 
     /* pointer variant */
     alwan_lch lch_p;
@@ -994,8 +994,8 @@ static int test_xyz_lchuv_v_roundtrip(void) {
     wp.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_lchuv lchuv_v = alwan_xyz_to_lchuv_v(color, wp);
-    alwan_xyz back_v = alwan_lchuv_to_xyz_v(lchuv_v, wp);
+    alwan_lchuv lchuv_v = alwan_xyz_to_lchuv_f64_v(color, wp);
+    alwan_xyz back_v = alwan_lchuv_to_xyz_f64_v(lchuv_v, wp);
 
     /* pointer variant */
     alwan_lchuv lchuv_p;
@@ -1032,10 +1032,10 @@ static int test_delta_e_76_v(void) {
     lab2.b = ALWAN_LITERAL(-20.0);
 
     /* _v variant */
-    alwan_scalar de_v = alwan_delta_e_76_v(lab1, lab2);
+    alwan_f64 de_v = alwan_delta_e_76_f64_v(lab1, lab2);
 
     /* pointer variant */
-    alwan_scalar de_p = alwan_delta_e_76(&lab1, &lab2);
+    alwan_f64 de_p = alwan_delta_e_76(&lab1, &lab2);
 
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_76");
 
@@ -1056,10 +1056,10 @@ static int test_delta_e_94_v(void) {
     lab2.b = ALWAN_LITERAL(-20.0);
 
     /* _v variant */
-    alwan_scalar de_v = alwan_delta_e_94_v(lab1, lab2);
+    alwan_f64 de_v = alwan_delta_e_94_f64_v(lab1, lab2);
 
     /* pointer variant */
-    alwan_scalar de_p = alwan_delta_e_94(&lab1, &lab2);
+    alwan_f64 de_p = alwan_delta_e_94(&lab1, &lab2);
 
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_94");
 
@@ -1080,10 +1080,10 @@ static int test_delta_e_2000_v(void) {
     lab2.b = ALWAN_LITERAL(-20.0);
 
     /* _v variant */
-    alwan_scalar de_v = alwan_delta_e_2000_v(lab1, lab2);
+    alwan_f64 de_v = alwan_delta_e_2000_f64_v(lab1, lab2);
 
     /* pointer variant */
-    alwan_scalar de_p = alwan_delta_e_2000(&lab1, &lab2);
+    alwan_f64 de_p = alwan_delta_e_2000(&lab1, &lab2);
 
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_2000");
 
@@ -1103,14 +1103,14 @@ static int test_delta_e_cmc_v(void) {
     lab2.a = ALWAN_LITERAL(10.0);
     lab2.b = ALWAN_LITERAL(-20.0);
 
-    alwan_scalar l = ALWAN_LITERAL(1.0);
-    alwan_scalar c = ALWAN_LITERAL(1.0);
+    alwan_f64 l = ALWAN_LITERAL(1.0);
+    alwan_f64 c = ALWAN_LITERAL(1.0);
 
     /* _v variant */
-    alwan_scalar de_v = alwan_delta_e_cmc_v(lab1, lab2, l, c);
+    alwan_f64 de_v = alwan_delta_e_cmc_f64_v(lab1, lab2, l, c);
 
     /* pointer variant */
-    alwan_scalar de_p = alwan_delta_e_cmc(&lab1, &lab2, l, c);
+    alwan_f64 de_p = alwan_delta_e_cmc(&lab1, &lab2, l, c);
 
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_cmc");
 
@@ -1125,8 +1125,8 @@ static int test_delta_e_cam02_lcd_v(void) {
     TEST_START("delta_e_cam02_lcd _v");
     alwan_cam_jab jab1; jab1.J = ALWAN_LITERAL(50.0); jab1.a = ALWAN_LITERAL(10.0); jab1.b = ALWAN_LITERAL(-5.0);
     alwan_cam_jab jab2; jab2.J = ALWAN_LITERAL(60.0); jab2.a = ALWAN_LITERAL(15.0); jab2.b = ALWAN_LITERAL(5.0);
-    alwan_scalar de_v = alwan_delta_e_cam02_lcd_v(jab1, jab2);
-    alwan_scalar de_p = alwan_delta_e_cam02_lcd(&jab1, &jab2);
+    alwan_f64 de_v = alwan_delta_e_cam02_lcd_f64_v(jab1, jab2);
+    alwan_f64 de_p = alwan_delta_e_cam02_lcd(&jab1, &jab2);
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "cam02_lcd");
     TEST_PASS("delta_e_cam02_lcd_v");
 }
@@ -1135,8 +1135,8 @@ static int test_delta_e_cam16_ucs_v(void) {
     TEST_START("delta_e_cam16_ucs _v");
     alwan_cam_jab jab1; jab1.J = ALWAN_LITERAL(50.0); jab1.a = ALWAN_LITERAL(10.0); jab1.b = ALWAN_LITERAL(-5.0);
     alwan_cam_jab jab2; jab2.J = ALWAN_LITERAL(60.0); jab2.a = ALWAN_LITERAL(15.0); jab2.b = ALWAN_LITERAL(5.0);
-    alwan_scalar de_v = alwan_delta_e_cam16_ucs_v(jab1, jab2);
-    alwan_scalar de_p = alwan_delta_e_cam16_ucs(&jab1, &jab2);
+    alwan_f64 de_v = alwan_delta_e_cam16_ucs_f64_v(jab1, jab2);
+    alwan_f64 de_p = alwan_delta_e_cam16_ucs(&jab1, &jab2);
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "cam16_ucs");
     TEST_PASS("delta_e_cam16_ucs_v");
 }
@@ -1152,11 +1152,11 @@ static int test_cmyk_v_roundtrip(void) {
     cmy.m = ALWAN_LITERAL(0.4);
     cmy.y = ALWAN_LITERAL(0.9);
 
-    alwan_cmyk cmyk_v = alwan_cmy_to_cmyk_v(cmy);
-    alwan_cmy back_v = alwan_cmyk_to_cmy_v(cmyk_v);
+    alwan_cmyk cmyk_v = alwan_cmy_to_cmyk_f64_v(cmy);
+    alwan_cmy back_v = alwan_cmyk_to_cmy_f64_v(cmyk_v);
 
     /* pointer variant */
-    alwan_scalar c_p, m_p, y_p, k_p;
+    alwan_f64 c_p, m_p, y_p, k_p;
     alwan_cmy_to_cmyk(&c_p, &m_p, &y_p, &k_p, &cmy);
     alwan_cmy back_p;
     alwan_cmyk_to_cmy(&back_p, c_p, m_p, y_p, k_p);
@@ -1187,7 +1187,7 @@ static int test_mat3_inv_v(void) {
     m.m[6] = ALWAN_LITERAL(5.0); m.m[7] = ALWAN_LITERAL(6.0); m.m[8] = ALWAN_LITERAL(0.0);
 
     /* _v variant */
-    alwan_mat3x3 inv_v = alwan_mat3_inv_v(m);
+    alwan_mat3x3 inv_v = alwan_mat3_inv_f64_v(m);
 
     /* pointer variant */
     alwan_mat3x3 inv_p;
@@ -1201,7 +1201,7 @@ static int test_mat3_inv_v(void) {
     }
 
     /* Verify M * M^-1 ~= I */
-    alwan_mat3x3 product = alwan_mat3_mul_v(m, inv_v);
+    alwan_mat3x3 product = alwan_mat3_mul_f64_v(m, inv_v);
     TEST_ASSERT_NEAR(product.m[0], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[0,0]");
     TEST_ASSERT_NEAR(product.m[4], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[1,1]");
     TEST_ASSERT_NEAR(product.m[8], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[2,2]");
@@ -1223,8 +1223,8 @@ static int test_ictcp_pq_v_roundtrip(void) {
     rgb_in.g = ALWAN_LITERAL(0.10);
     rgb_in.b = ALWAN_LITERAL(0.05);
 
-    alwan_ictcp ictcp = alwan_rgb_to_ictcp_pq_v(rgb_in);
-    alwan_rgb rgb_out = alwan_ictcp_pq_to_rgb_v(ictcp);
+    alwan_ictcp ictcp = alwan_rgb_to_ictcp_pq_f64_v(rgb_in);
+    alwan_rgb rgb_out = alwan_ictcp_pq_to_rgb_f64_v(ictcp);
 
     TEST_ASSERT_NEAR(rgb_out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
     TEST_ASSERT_NEAR(rgb_out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
@@ -1243,8 +1243,8 @@ static int test_ictcp_hlg_v_roundtrip(void) {
     rgb_in.g = ALWAN_LITERAL(0.10);
     rgb_in.b = ALWAN_LITERAL(0.05);
 
-    alwan_ictcp ictcp = alwan_rgb_to_ictcp_hlg_v(rgb_in);
-    alwan_rgb rgb_out = alwan_ictcp_hlg_to_rgb_v(ictcp);
+    alwan_ictcp ictcp = alwan_rgb_to_ictcp_hlg_f64_v(rgb_in);
+    alwan_rgb rgb_out = alwan_ictcp_hlg_to_rgb_f64_v(ictcp);
 
     TEST_ASSERT_NEAR(rgb_out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
     TEST_ASSERT_NEAR(rgb_out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
@@ -1265,7 +1265,7 @@ static int test_osa_ucs_v_forward(void) {
     xyz_in.y = ALWAN_LITERAL(100.0);
     xyz_in.z = ALWAN_LITERAL(108.883);
 
-    alwan_osa_ucs osa = alwan_xyz_to_osa_ucs_v(xyz_in);
+    alwan_osa_ucs osa = alwan_xyz_to_osa_ucs_f64_v(xyz_in);
 
     /* For a D65 white, j and g should be near 0 (achromatic) */
     TEST_ASSERT_NEAR(osa.j, ALWAN_ZERO, ALWAN_LITERAL(1.0), "j near 0");
@@ -1298,10 +1298,10 @@ static int test_rlab_v_forward(void) {
     alwan_xyz xyz_n = xyz_w;
 
     /* Average surround: sigma = 1/2.3, D = 1.0 (hard copy) */
-    alwan_scalar sigma = ALWAN_ONE / ALWAN_LITERAL(2.3);
-    alwan_scalar D = ALWAN_ONE;
+    alwan_f64 sigma = ALWAN_ONE / ALWAN_LITERAL(2.3);
+    alwan_f64 D = ALWAN_ONE;
 
-    alwan_rlab_v_correlates corr = alwan_rlab_forward_v(xyz_in, xyz_w, xyz_n, sigma, D);
+    alwan_rlab_v_correlates_f64 corr = alwan_rlab_forward_f64_v(xyz_in, xyz_w, xyz_n, sigma, D);
 
     /* L should be positive (RLAB L can exceed 100 on Y=100 scale) */
     int l_ok = (corr.L > ALWAN_ZERO);
@@ -1333,12 +1333,12 @@ static int test_atd95_v_forward(void) {
     white.y = ALWAN_LITERAL(100.0);
     white.z = ALWAN_LITERAL(108.88);
 
-    alwan_scalar Y_0 = ALWAN_LITERAL(318.0);
-    alwan_scalar k1 = ALWAN_LITERAL(1.0);
-    alwan_scalar k2 = ALWAN_LITERAL(0.0);
-    alwan_scalar sigma = ALWAN_LITERAL(300.0);
+    alwan_f64 Y_0 = ALWAN_LITERAL(318.0);
+    alwan_f64 k1 = ALWAN_LITERAL(1.0);
+    alwan_f64 k2 = ALWAN_LITERAL(0.0);
+    alwan_f64 sigma = ALWAN_LITERAL(300.0);
 
-    alwan_atd95_v_correlates corr = alwan_atd95_forward_v(xyz_in, white, Y_0, k1, k2, sigma);
+    alwan_atd95_v_correlates_f64 corr = alwan_atd95_forward_f64_v(xyz_in, white, Y_0, k1, k2, sigma);
 
     /* Brightness should be positive */
     int br_ok = (corr.Br > ALWAN_ZERO);
@@ -1369,13 +1369,13 @@ static int test_llab_v_forward(void) {
     xyz_0.z = ALWAN_LITERAL(108.88);
 
     alwan_xyz xyz_r = xyz_0;
-    alwan_scalar Y_b = ALWAN_LITERAL(20.0);
+    alwan_f64 Y_b = ALWAN_LITERAL(20.0);
     /* Average surround factors */
-    alwan_scalar D = ALWAN_LITERAL(1.0);
-    alwan_scalar F_S = ALWAN_LITERAL(3.0);
-    alwan_scalar F_L = ALWAN_LITERAL(0.0);
+    alwan_f64 D = ALWAN_LITERAL(1.0);
+    alwan_f64 F_S = ALWAN_LITERAL(3.0);
+    alwan_f64 F_L = ALWAN_LITERAL(0.0);
 
-    alwan_llab_v_correlates corr = alwan_llab_forward_v(xyz_in, xyz_0, xyz_r, Y_b, D, F_S, F_L);
+    alwan_llab_v_correlates_f64 corr = alwan_llab_forward_f64_v(xyz_in, xyz_0, xyz_r, Y_b, D, F_S, F_L);
 
     /* L should be positive (for Y=20) */
     int l_ok = (corr.L > ALWAN_ZERO && corr.L < ALWAN_LITERAL(100.0));
@@ -1399,9 +1399,9 @@ static int test_cvd_v_identity(void) {
     rgb_in.b = ALWAN_LITERAL(0.8);
 
     /* severity = 0 -> output should equal input */
-    alwan_rgb out_p = alwan_simulate_protanopia_v(rgb_in, ALWAN_ZERO);
-    alwan_rgb out_d = alwan_simulate_deuteranopia_v(rgb_in, ALWAN_ZERO);
-    alwan_rgb out_t = alwan_simulate_tritanopia_v(rgb_in, ALWAN_ZERO);
+    alwan_rgb out_p = alwan_simulate_protanopia_f64_v(rgb_in, ALWAN_ZERO);
+    alwan_rgb out_d = alwan_simulate_deuteranopia_f64_v(rgb_in, ALWAN_ZERO);
+    alwan_rgb out_t = alwan_simulate_tritanopia_f64_v(rgb_in, ALWAN_ZERO);
 
     TEST_ASSERT_NEAR(out_p.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "protan r");
     TEST_ASSERT_NEAR(out_p.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "protan g");
@@ -1432,7 +1432,7 @@ static int test_lgg_v_identity(void) {
     alwan_rgb gamma = { ALWAN_ONE,  ALWAN_ONE,  ALWAN_ONE  };
     alwan_rgb gain  = { ALWAN_ONE,  ALWAN_ONE,  ALWAN_ONE  };
 
-    alwan_rgb out = alwan_lgg_apply_v(rgb_in, lift, gamma, gain);
+    alwan_rgb out = alwan_lgg_apply_f64_v(rgb_in, lift, gamma, gain);
 
     TEST_ASSERT_NEAR(out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
     TEST_ASSERT_NEAR(out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
@@ -1452,8 +1452,8 @@ static int test_color_matrix_v_identity(void) {
     rgb_in.g = ALWAN_LITERAL(0.3);
     rgb_in.b = ALWAN_LITERAL(0.8);
 
-    alwan_mat3x3 id = alwan_mat3_identity_v();
-    alwan_rgb out = alwan_color_matrix_apply_v(rgb_in, id);
+    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
+    alwan_rgb out = alwan_color_matrix_apply_f64_v(rgb_in, id);
 
     TEST_ASSERT_NEAR(out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
     TEST_ASSERT_NEAR(out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
@@ -1474,7 +1474,7 @@ static int test_cat_v_identity(void) {
     d65.z = ALWAN_LITERAL(1.08883);
 
     /* XYZ scaling: same white -> identity matrix */
-    alwan_mat3x3 cat_id = alwan_cat_xyz_scaling_v(d65, d65);
+    alwan_mat3x3 cat_id = alwan_cat_xyz_scaling_f64_v(d65, d65);
     TEST_ASSERT_NEAR(cat_id.m[0], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[0]");
     TEST_ASSERT_NEAR(cat_id.m[4], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[4]");
     TEST_ASSERT_NEAR(cat_id.m[8], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[8]");
@@ -1485,7 +1485,7 @@ static int test_cat_v_identity(void) {
     test_in.y = ALWAN_LITERAL(0.3);
     test_in.z = ALWAN_LITERAL(0.8);
 
-    alwan_xyz test_out = alwan_cat_adapt_v(cat_id, test_in);
+    alwan_xyz test_out = alwan_cat_adapt_f64_v(cat_id, test_in);
     TEST_ASSERT_NEAR(test_out.x, test_in.x, ALWAN_TEST_TOLERANCE, "adapt x");
     TEST_ASSERT_NEAR(test_out.y, test_in.y, ALWAN_TEST_TOLERANCE, "adapt y");
     TEST_ASSERT_NEAR(test_out.z, test_in.z, ALWAN_TEST_TOLERANCE, "adapt z");
@@ -1498,9 +1498,9 @@ static int test_cat_v_identity(void) {
 
 static int test_cct_mccamy_v(void) {
     TEST_START("CCT McCamy _v");
-    alwan_scalar x = ALWAN_LITERAL(0.3127);
-    alwan_scalar y = ALWAN_LITERAL(0.3290);
-    alwan_scalar cct = alwan_cct_mccamy_v(x, y);
+    alwan_f64 x = ALWAN_LITERAL(0.3127);
+    alwan_f64 y = ALWAN_LITERAL(0.3290);
+    alwan_f64 cct = alwan_cct_mccamy_f64_v(x, y);
     /* D65 should be ~6504K */
     int ok = (cct > ALWAN_LITERAL(6000.0) && cct < ALWAN_LITERAL(7000.0));
     TEST_ASSERT(ok, "D65 CCT in [6000, 7000]");
@@ -1509,9 +1509,9 @@ static int test_cct_mccamy_v(void) {
 
 static int test_cct_hernandez_v(void) {
     TEST_START("CCT Hernandez _v");
-    alwan_scalar x = ALWAN_LITERAL(0.3127);
-    alwan_scalar y = ALWAN_LITERAL(0.3290);
-    alwan_scalar cct = alwan_cct_hernandez_v(x, y);
+    alwan_f64 x = ALWAN_LITERAL(0.3127);
+    alwan_f64 y = ALWAN_LITERAL(0.3290);
+    alwan_f64 cct = alwan_cct_hernandez_f64_v(x, y);
     /* D65 should be ~6500K */
     int ok = (cct > ALWAN_LITERAL(6000.0) && cct < ALWAN_LITERAL(7000.0));
     TEST_ASSERT(ok, "D65 CCT in [6000, 7000]");
@@ -1520,7 +1520,7 @@ static int test_cct_hernandez_v(void) {
 
 static int test_cct_to_xy_kang_v(void) {
     TEST_START("CCT to xy Kang _v");
-    alwan_vec2 xy = alwan_cct_to_xy_kang_v(ALWAN_LITERAL(6504.0));
+    alwan_vec2 xy = alwan_cct_to_xy_kang_f64_v(ALWAN_LITERAL(6504.0));
     /* D65: x~0.3127, y~0.3290 */
     TEST_ASSERT_NEAR(xy.v[0], ALWAN_LITERAL(0.3127), ALWAN_LITERAL(0.01), "x near 0.3127");
     TEST_ASSERT_NEAR(xy.v[1], ALWAN_LITERAL(0.3290), ALWAN_LITERAL(0.01), "y near 0.3290");
@@ -1533,7 +1533,7 @@ static int test_cct_to_xy_kang_v(void) {
 
 static int test_rayleigh_cross_section_v(void) {
     TEST_START("Rayleigh cross section _v");
-    alwan_scalar sigma = rayleigh_cross_section_v(
+    alwan_f64 sigma = rayleigh_cross_section_f64_v(
         ALWAN_LITERAL(550.0), RAYLEIGH_V_STD_CO2, RAYLEIGH_V_STD_TEMPERATURE);
     int ok = (sigma > ALWAN_ZERO);
     TEST_ASSERT(ok, "sigma > 0");
@@ -1542,7 +1542,7 @@ static int test_rayleigh_cross_section_v(void) {
 
 static int test_rayleigh_optical_depth_v(void) {
     TEST_START("Rayleigh optical depth _v");
-    alwan_scalar tau = rayleigh_optical_depth_v(
+    alwan_f64 tau = rayleigh_optical_depth_f64_v(
         ALWAN_LITERAL(550.0), RAYLEIGH_V_STD_CO2, RAYLEIGH_V_STD_TEMPERATURE,
         RAYLEIGH_V_STD_PRESSURE, ALWAN_ZERO, ALWAN_ZERO);
     int ok = (tau > ALWAN_ZERO);
@@ -1560,7 +1560,7 @@ static int test_gamut_clip_v(void) {
     oob.v[0] = ALWAN_LITERAL(-0.5);
     oob.v[1] = ALWAN_LITERAL(0.5);
     oob.v[2] = ALWAN_LITERAL(1.5);
-    alwan_vec3 clipped = gamut_clip_v(oob);
+    alwan_vec3 clipped = gamut_clip_f64_v(oob);
     TEST_ASSERT_NEAR(clipped.v[0], ALWAN_ZERO, ALWAN_EPSILON, "clip r");
     TEST_ASSERT_NEAR(clipped.v[1], ALWAN_LITERAL(0.5), ALWAN_EPSILON, "clip g");
     TEST_ASSERT_NEAR(clipped.v[2], ALWAN_ONE, ALWAN_EPSILON, "clip b");
@@ -1573,8 +1573,8 @@ static int test_gamut_oklab_roundtrip_v(void) {
     rgb.v[0] = ALWAN_LITERAL(0.5);
     rgb.v[1] = ALWAN_LITERAL(0.3);
     rgb.v[2] = ALWAN_LITERAL(0.8);
-    alwan_vec3 oklab = gamut_linear_srgb_to_oklab_v(rgb);
-    alwan_vec3 back = gamut_oklab_to_linear_srgb_v(oklab);
+    alwan_vec3 oklab = gamut_linear_srgb_to_oklab_f64_v(rgb);
+    alwan_vec3 back = gamut_oklab_to_linear_srgb_f64_v(oklab);
     TEST_ASSERT_NEAR(back.v[0], rgb.v[0], ALWAN_LITERAL(1e-6), "r");
     TEST_ASSERT_NEAR(back.v[1], rgb.v[1], ALWAN_LITERAL(1e-6), "g");
     TEST_ASSERT_NEAR(back.v[2], rgb.v[2], ALWAN_LITERAL(1e-6), "b");
@@ -1584,7 +1584,7 @@ static int test_gamut_oklab_roundtrip_v(void) {
 static int test_gamut_find_cusp_v(void) {
     TEST_START("gamut find cusp _v");
     /* Red hue direction */
-    alwan_vec2 cusp = gamut_find_cusp_v(ALWAN_ONE, ALWAN_ZERO);
+    alwan_vec2 cusp = gamut_find_cusp_f64_v(ALWAN_ONE, ALWAN_ZERO);
     int ok = (cusp.v[0] > ALWAN_ZERO && cusp.v[0] < ALWAN_ONE &&
               cusp.v[1] > ALWAN_ZERO);
     TEST_ASSERT(ok, "cusp L in (0,1), C > 0");
@@ -1598,9 +1598,9 @@ static int test_gamut_find_cusp_v(void) {
 static int test_aces_tonemap_v(void) {
     TEST_START("ACES tonemap _v");
     /* Black maps to ~0, mid-gray stays mid, white asymptotes */
-    alwan_scalar t0 = alwan_aces_tonemap_v(ALWAN_ZERO);
-    alwan_scalar t_mid = alwan_aces_tonemap_v(ALWAN_LITERAL(0.18));
-    alwan_scalar t_hi = alwan_aces_tonemap_v(ALWAN_LITERAL(10.0));
+    alwan_f64 t0 = alwan_aces_tonemap_f64_v(ALWAN_ZERO);
+    alwan_f64 t_mid = alwan_aces_tonemap_f64_v(ALWAN_LITERAL(0.18));
+    alwan_f64 t_hi = alwan_aces_tonemap_f64_v(ALWAN_LITERAL(10.0));
     TEST_ASSERT_NEAR(t0, ALWAN_ZERO, ALWAN_LITERAL(0.01), "f(0)~0");
     int mid_ok = (t_mid > ALWAN_LITERAL(0.05) && t_mid < ALWAN_LITERAL(0.5));
     TEST_ASSERT(mid_ok, "f(0.18) in reasonable range");
@@ -1611,8 +1611,8 @@ static int test_aces_tonemap_v(void) {
 
 static int test_agx_curve_v(void) {
     TEST_START("AgX curve _v");
-    alwan_scalar t0 = alwan_agx_curve_v(ALWAN_ZERO);
-    alwan_scalar t1 = alwan_agx_curve_v(ALWAN_ONE);
+    alwan_f64 t0 = alwan_agx_curve_f64_v(ALWAN_ZERO);
+    alwan_f64 t1 = alwan_agx_curve_f64_v(ALWAN_ONE);
     TEST_ASSERT_NEAR(t0, ALWAN_ZERO, ALWAN_LITERAL(0.01), "curve(0)~0");
     int ok = (t1 > ALWAN_LITERAL(0.5) && t1 <= ALWAN_ONE);
     TEST_ASSERT(ok, "curve(1) in (0.5, 1]");

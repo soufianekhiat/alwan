@@ -22,7 +22,7 @@ static int test_gamut_volume_srgb(void) {
     srgb.oetf = ALWAN_TF_LINEAR;
     srgb.eotf = ALWAN_TF_LINEAR;
 
-    alwan_scalar volume;
+    alwan_f64 volume;
     int status = alwan_gamut_volume_mc(&volume, &srgb, 100000, 42);
     TEST_ASSERT(status == ALWAN_OK, "Volume estimation failed");
     TEST_ASSERT(volume > ALWAN_LITERAL(0.0), "Volume should be positive");
@@ -50,12 +50,12 @@ static int test_gamut_volume_bt2020(void) {
     bt2020.oetf = ALWAN_TF_LINEAR;
     bt2020.eotf = ALWAN_TF_LINEAR;
 
-    alwan_scalar volume;
+    alwan_f64 volume;
     int status = alwan_gamut_volume_mc(&volume, &bt2020, 100000, 42);
     TEST_ASSERT(status == ALWAN_OK, "Volume estimation failed");
     TEST_ASSERT(volume > ALWAN_LITERAL(0.0), "Volume should be positive");
 
-    alwan_scalar srgb_volume = ALWAN_LITERAL(0.207);  /* Approximate sRGB volume from previous test */
+    alwan_f64 srgb_volume = ALWAN_LITERAL(0.207);  /* Approximate sRGB volume from previous test */
     printf("  BT.2020 gamut volume: %.6f\n", (double)volume);
 
     /* BT.2020 should have larger gamut than sRGB (roughly 4-5x) */
@@ -78,7 +78,7 @@ static int test_gamut_volume_reproducible(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Same seed should give same result */
-    alwan_scalar volume1, volume2;
+    alwan_f64 volume1, volume2;
     alwan_gamut_volume_mc(&volume1, &srgb, 100000, 123);
     alwan_gamut_volume_mc(&volume2, &srgb, 100000, 123);
 
@@ -96,7 +96,7 @@ static int test_gamut_volume_reproducible(void) {
 static int test_gamut_map_clip(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "data/fixtures/gamut_map_clip.csv"
     };
     ALWAN_DIAG_POP
@@ -120,11 +120,11 @@ static int test_gamut_map_clip(void) {
         TEST_ASSERT(status == ALWAN_OK, "Clip mapping failed");
 
         /* Check results */
-        alwan_scalar const result_arr[3] = {result.r, result.g, result.b};
-        alwan_scalar const expected_arr[3] = {expected.r, expected.g, expected.b};
-        alwan_scalar const rgb_in_arr[3] = {rgb_in.r, rgb_in.g, rgb_in.b};
+        alwan_f64 const result_arr[3] = {result.r, result.g, result.b};
+        alwan_f64 const expected_arr[3] = {expected.r, expected.g, expected.b};
+        alwan_f64 const rgb_in_arr[3] = {rgb_in.r, rgb_in.g, rgb_in.b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(result_arr[j] - expected_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(result_arr[j] - expected_arr[j]);
             if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  Input: [%.6f, %.6f, %.6f]\n",
@@ -145,14 +145,14 @@ static int test_gamut_map_clip(void) {
 static int test_gamut_map_hue_preserving(void) {
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "data/fixtures/gamut_map_hue_preserving.csv"
     };
     ALWAN_DIAG_POP
 
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
     /* Relaxed tolerance for hue-preserving (involves iterative algorithm) */
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_rgb rgb_in, expected, result;
@@ -171,11 +171,11 @@ static int test_gamut_map_hue_preserving(void) {
         TEST_ASSERT(status == ALWAN_OK, "Hue-preserving mapping failed");
 
         /* Check results */
-        alwan_scalar const result_arr[3] = {result.r, result.g, result.b};
-        alwan_scalar const expected_arr[3] = {expected.r, expected.g, expected.b};
-        alwan_scalar const rgb_in_arr[3] = {rgb_in.r, rgb_in.g, rgb_in.b};
+        alwan_f64 const result_arr[3] = {result.r, result.g, result.b};
+        alwan_f64 const expected_arr[3] = {expected.r, expected.g, expected.b};
+        alwan_f64 const rgb_in_arr[3] = {rgb_in.r, rgb_in.g, rgb_in.b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(result_arr[j] - expected_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(result_arr[j] - expected_arr[j]);
             if (diff > tolerance) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  Input: [%.6f, %.6f, %.6f]\n",
@@ -217,10 +217,10 @@ static int test_gamut_map_monotonicity(void) {
     TEST_ASSERT(status == ALWAN_OK, "Gamut mapping failed");
 
     for (int i = 0; i < 4; i++) {
-        alwan_scalar const result_arr[3] = {results[i].r, results[i].g, results[i].b};
-        alwan_scalar const input_arr[3] = {in_gamut_colors[i].r, in_gamut_colors[i].g, in_gamut_colors[i].b};
+        alwan_f64 const result_arr[3] = {results[i].r, results[i].g, results[i].b};
+        alwan_f64 const input_arr[3] = {in_gamut_colors[i].r, in_gamut_colors[i].g, in_gamut_colors[i].b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(result_arr[j] - input_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(result_arr[j] - input_arr[j]);
             TEST_ASSERT(diff < ALWAN_LITERAL(1e-10), "In-gamut color was changed");
         }
     }
@@ -230,12 +230,12 @@ static int test_gamut_map_monotonicity(void) {
 }
 
 static int test_css_gamut_map_interleave(void) {
-    size_t const stride = 3 * sizeof(alwan_scalar);
+    size_t const stride = 3 * sizeof(alwan_f64);
 
     /* In-gamut passthrough: (0.5, 0.3, 0.7) should be unchanged */
     {
-        alwan_scalar in[3] = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.7)};
-        alwan_scalar out[3];
+        alwan_f64 in[3] = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.7)};
+        alwan_f64 out[3];
         int status = alwan_css_gamut_map_interleave(out, in, 1, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map in-gamut status");
         TEST_CHECK_NEAR(out[0], in[0], ALWAN_LITERAL(1e-10));
@@ -245,9 +245,9 @@ static int test_css_gamut_map_interleave(void) {
 
     /* Black and white passthrough */
     {
-        alwan_scalar black[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-        alwan_scalar white[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
-        alwan_scalar out[3];
+        alwan_f64 black[3] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_f64 white[3] = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+        alwan_f64 out[3];
 
         int status = alwan_css_gamut_map_interleave(out, black, 1, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map black status");
@@ -264,8 +264,8 @@ static int test_css_gamut_map_interleave(void) {
 
     /* Out-of-gamut: result must be in [0,1] */
     {
-        alwan_scalar in[3] = {ALWAN_LITERAL(1.5), ALWAN_LITERAL(-0.2), ALWAN_LITERAL(0.8)};
-        alwan_scalar out[3];
+        alwan_f64 in[3] = {ALWAN_LITERAL(1.5), ALWAN_LITERAL(-0.2), ALWAN_LITERAL(0.8)};
+        alwan_f64 out[3];
         int status = alwan_css_gamut_map_interleave(out, in, 1, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map out-of-gamut status");
         TEST_ASSERT(out[0] >= ALWAN_LITERAL(0.0) && out[0] <= ALWAN_LITERAL(1.0), "CSS R in gamut");
@@ -275,12 +275,12 @@ static int test_css_gamut_map_interleave(void) {
 
     /* Bulk: 3 colors at once */
     {
-        alwan_scalar in[] = {
+        alwan_f64 in[] = {
             ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5),
             ALWAN_LITERAL(2.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(2.0)
         };
-        alwan_scalar out[9];
+        alwan_f64 out[9];
         int status = alwan_css_gamut_map_interleave(out, in, 3, stride, stride);
         TEST_ASSERT(status == ALWAN_OK, "CSS gamut map bulk status");
         for (int j = 0; j < 9; j++) {

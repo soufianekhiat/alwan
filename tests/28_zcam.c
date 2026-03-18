@@ -11,7 +11,7 @@
 static int test_zcam_forward(void) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "reference_values/test_zcam_correlates.csv"
     };
 ALWAN_DIAG_POP
@@ -28,7 +28,7 @@ ALWAN_DIAG_POP
     vc.surround = ALWAN_ZCAM_SURROUND_AVERAGE;
     vc.discount_illuminant = 0;
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_xyz xyz;
@@ -51,9 +51,9 @@ ALWAN_DIAG_POP
         TEST_ASSERT(result == 0, "ZCAM forward failed");
 
         /* Check key correlates: Jz, Cz, hz */
-        alwan_scalar diff_J = ALWAN_ABS(computed.Jz - expected.Jz);
-        alwan_scalar diff_C = ALWAN_ABS(computed.Cz - expected.Cz);
-        alwan_scalar diff_h = ALWAN_ABS(computed.hz - expected.hz);
+        alwan_f64 diff_J = ALWAN_ABS(computed.Jz - expected.Jz);
+        alwan_f64 diff_C = ALWAN_ABS(computed.Cz - expected.Cz);
+        alwan_f64 diff_h = ALWAN_ABS(computed.hz - expected.hz);
         if (diff_h > ALWAN_LITERAL(180.0)) diff_h = ALWAN_LITERAL(360.0) - diff_h;
 
         if (diff_J > tolerance || diff_C > tolerance || diff_h > tolerance) {

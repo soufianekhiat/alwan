@@ -23,14 +23,14 @@
  * using colour-science MUNSELL_COLOURS_ALL. */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_munsell_renotation_flat[] = {
+static alwan_f64 const g_munsell_renotation_flat[] = {
 #include "../data/munsell_renotation.csv"
 };
 ALWAN_DIAG_POP
 
 #define MUNSELL_FIELDS_PER_ENTRY 6
 static size_t const g_munsell_renotation_count =
-    sizeof(g_munsell_renotation_flat) / (MUNSELL_FIELDS_PER_ENTRY * sizeof(alwan_scalar));
+    sizeof(g_munsell_renotation_flat) / (MUNSELL_FIELDS_PER_ENTRY * sizeof(alwan_f64));
 
 /* Access helpers for flat Munsell data */
 #define MUNSELL_HUE(i)    g_munsell_renotation_flat[(i) * MUNSELL_FIELDS_PER_ENTRY + 0]
@@ -42,7 +42,7 @@ static size_t const g_munsell_renotation_count =
 
 /* Convert Munsell HVC to XYZ tristimulus values
  * Uses trilinear interpolation in the Munsell renotation data */
-int alwan_munsell_to_xyz(alwan_xyz *xyz, alwan_scalar hue, alwan_scalar value, alwan_scalar chroma,
+int alwan_munsell_to_xyz(alwan_xyz *xyz, alwan_f64 hue, alwan_f64 value, alwan_f64 chroma,
                          alwan_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_E_INVALID;
@@ -82,14 +82,14 @@ int alwan_munsell_to_xyz(alwan_xyz *xyz, alwan_scalar hue, alwan_scalar value, a
         }
 
         /* Linear interpolation by value */
-        alwan_scalar t = ALWAN_LITERAL(0.0);
+        alwan_f64 t = ALWAN_LITERAL(0.0);
         if (MUNSELL_VALUE(idx_high) > MUNSELL_VALUE(idx_low)) {
             t = (value - MUNSELL_VALUE(idx_low)) / (MUNSELL_VALUE(idx_high) - MUNSELL_VALUE(idx_low));
         }
 
-        alwan_scalar x_interp = MUNSELL_X(idx_low) + t * (MUNSELL_X(idx_high) - MUNSELL_X(idx_low));
-        alwan_scalar y_interp = MUNSELL_Y(idx_low) + t * (MUNSELL_Y(idx_high) - MUNSELL_Y(idx_low));
-        alwan_scalar Y_interp = MUNSELL_YLUM(idx_low) + t * (MUNSELL_YLUM(idx_high) - MUNSELL_YLUM(idx_low));
+        alwan_f64 x_interp = MUNSELL_X(idx_low) + t * (MUNSELL_X(idx_high) - MUNSELL_X(idx_low));
+        alwan_f64 y_interp = MUNSELL_Y(idx_low) + t * (MUNSELL_Y(idx_high) - MUNSELL_Y(idx_low));
+        alwan_f64 Y_interp = MUNSELL_YLUM(idx_low) + t * (MUNSELL_YLUM(idx_high) - MUNSELL_YLUM(idx_low));
 
         /* Convert xyY to XYZ */
         if (y_interp <= ALWAN_LITERAL(0.0)) {
@@ -105,20 +105,20 @@ int alwan_munsell_to_xyz(alwan_xyz *xyz, alwan_scalar hue, alwan_scalar value, a
          * in hue, value, and chroma for trilinear interpolation.
          * TODO: proper trilinear interpolation once full gendata CSV is run */
         size_t best = 0;
-        alwan_scalar best_dist = ALWAN_LITERAL(1e10);
+        alwan_f64 best_dist = ALWAN_LITERAL(1e10);
         for (size_t i = 0; i < g_munsell_renotation_count; i++) {
-            alwan_scalar dh = MUNSELL_HUE(i) - hue;
-            alwan_scalar dv = MUNSELL_VALUE(i) - value;
-            alwan_scalar dc = MUNSELL_CHROMA(i) - chroma;
-            alwan_scalar dist = dh * dh + dv * dv * ALWAN_LITERAL(100.0) + dc * dc;
+            alwan_f64 dh = MUNSELL_HUE(i) - hue;
+            alwan_f64 dv = MUNSELL_VALUE(i) - value;
+            alwan_f64 dc = MUNSELL_CHROMA(i) - chroma;
+            alwan_f64 dist = dh * dh + dv * dv * ALWAN_LITERAL(100.0) + dc * dc;
             if (dist < best_dist) {
                 best_dist = dist;
                 best = i;
             }
         }
-        alwan_scalar x_near = MUNSELL_X(best);
-        alwan_scalar y_near = MUNSELL_Y(best);
-        alwan_scalar Y_near = MUNSELL_YLUM(best);
+        alwan_f64 x_near = MUNSELL_X(best);
+        alwan_f64 y_near = MUNSELL_Y(best);
+        alwan_f64 Y_near = MUNSELL_YLUM(best);
 
         if (y_near <= ALWAN_LITERAL(0.0)) {
             return ALWAN_E_INVALID;
@@ -166,7 +166,7 @@ int alwan_munsell_to_xyz(alwan_xyz *xyz, alwan_scalar hue, alwan_scalar value, a
 
 /* Convert XYZ tristimulus values to Munsell HVC notation
  * Uses iterative search in the Munsell renotation data */
-int alwan_xyz_to_munsell(alwan_scalar *hue, alwan_scalar *value, alwan_scalar *chroma,
+int alwan_xyz_to_munsell(alwan_f64 *hue, alwan_f64 *value, alwan_f64 *chroma,
                          alwan_xyz const *xyz, alwan_illuminant illuminant) {
     if (!xyz || !hue || !value || !chroma) {
         return ALWAN_E_INVALID;
@@ -206,27 +206,27 @@ int alwan_xyz_to_munsell(alwan_scalar *hue, alwan_scalar *value, alwan_scalar *c
     }
 
     /* Convert XYZ to xyY */
-    alwan_scalar sum = xyz_c.x + xyz_c.y + xyz_c.z;
+    alwan_f64 sum = xyz_c.x + xyz_c.y + xyz_c.z;
     if (sum <= ALWAN_LITERAL(0.0)) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_scalar x = xyz_c.x / sum;
-    alwan_scalar y = xyz_c.y / sum;
-    alwan_scalar Y = xyz_c.y;
+    alwan_f64 x = xyz_c.x / sum;
+    alwan_f64 y = xyz_c.y / sum;
+    alwan_f64 Y = xyz_c.y;
 
     /* Find nearest entry in Munsell renotation data using nearest-neighbor search
      * More sophisticated inverse interpolation could be added in future versions */
 
-    alwan_scalar min_dist = ALWAN_LITERAL(1e10);
+    alwan_f64 min_dist = ALWAN_LITERAL(1e10);
     size_t best_idx = 0;
 
     for (size_t i = 0; i < g_munsell_renotation_count; i++) {
-        alwan_scalar dx = x - MUNSELL_X(i);
-        alwan_scalar dy = y - MUNSELL_Y(i);
-        alwan_scalar dY = Y - MUNSELL_YLUM(i);
+        alwan_f64 dx = x - MUNSELL_X(i);
+        alwan_f64 dy = y - MUNSELL_Y(i);
+        alwan_f64 dY = Y - MUNSELL_YLUM(i);
 
-        alwan_scalar dist = dx * dx + dy * dy + dY * dY * ALWAN_LITERAL(0.01);
+        alwan_f64 dist = dx * dx + dy * dy + dY * dY * ALWAN_LITERAL(0.01);
 
         if (dist < min_dist) {
             min_dist = dist;
@@ -250,7 +250,7 @@ int alwan_xyz_to_munsell(alwan_scalar *hue, alwan_scalar *value, alwan_scalar *c
  * Format: 24 patches x 3 values (x, y, Y) = 72 values total */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_colorchecker_classic_d50_xyY[] = {
+static alwan_f64 const g_colorchecker_classic_d50_xyY[] = {
 #include "../data/colorchecker/classic_d50_xyy.csv"
 };
 ALWAN_DIAG_POP
@@ -296,9 +296,9 @@ int alwan_color_checker_data(alwan_xyz *xyz, alwan_colorchecker_type type, alwan
 
     /* Get xyY data under D50 (flat array: patch_index * 3 + offset) */
     size_t const base_idx = patch_index * 3;
-    alwan_scalar x = g_colorchecker_classic_d50_xyY[base_idx + 0];
-    alwan_scalar y = g_colorchecker_classic_d50_xyY[base_idx + 1];
-    alwan_scalar Y = g_colorchecker_classic_d50_xyY[base_idx + 2];
+    alwan_f64 x = g_colorchecker_classic_d50_xyY[base_idx + 0];
+    alwan_f64 y = g_colorchecker_classic_d50_xyY[base_idx + 1];
+    alwan_f64 Y = g_colorchecker_classic_d50_xyY[base_idx + 2];
 
     /* Convert xyY to XYZ */
     if (y <= ALWAN_LITERAL(0.0)) {
@@ -409,7 +409,7 @@ int alwan_xyz_to_ncs(char *ncs_notation, size_t notation_size, alwan_xyz const *
 #define RGB_LOOKUP_STRIDE 8
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_rgb_lookup_data[] = {
+static alwan_f64 const g_rgb_lookup_data[] = {
 #include "../data/rgb_spaces_lookup.csv"
 };
 ALWAN_DIAG_POP
@@ -478,7 +478,7 @@ static int get_rgb_space_index(alwan_rgb_space space) {
 }
 
 /* Get RGB space primaries and white point by name */
-int alwan_rgb_space_by_enum(alwan_scalar primaries[6], alwan_vec2 *white_point, alwan_rgb_space space) {
+int alwan_rgb_space_by_enum(alwan_f64 primaries[6], alwan_vec2 *white_point, alwan_rgb_space space) {
     if (!primaries || !white_point) {
         return ALWAN_E_INVALID;
     }
@@ -490,7 +490,7 @@ int alwan_rgb_space_by_enum(alwan_scalar primaries[6], alwan_vec2 *white_point, 
     }
 
     /* Lookup primaries + white from CSV data */
-    alwan_scalar const *row = &g_rgb_lookup_data[index * RGB_LOOKUP_STRIDE];
+    alwan_f64 const *row = &g_rgb_lookup_data[index * RGB_LOOKUP_STRIDE];
 
     /* Copy primaries (first 6 values: rx, ry, gx, gy, bx, by) */
     for (int j = 0; j < 6; j++) {

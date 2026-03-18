@@ -50,9 +50,9 @@ static int test_cie_2012_observers(void) {
     TEST_ASSERT(xyz_2012_10deg.z > ALWAN_LITERAL(0.0), "2012 10-deg Z should be positive");
 
     /* 2-deg and 10-deg observers should give slightly different results */
-    alwan_scalar diff_x = ALWAN_ABS(xyz_2012_2deg.x - xyz_2012_10deg.x);
-    alwan_scalar diff_y = ALWAN_ABS(xyz_2012_2deg.y - xyz_2012_10deg.y);
-    alwan_scalar diff_z = ALWAN_ABS(xyz_2012_2deg.z - xyz_2012_10deg.z);
+    alwan_f64 diff_x = ALWAN_ABS(xyz_2012_2deg.x - xyz_2012_10deg.x);
+    alwan_f64 diff_y = ALWAN_ABS(xyz_2012_2deg.y - xyz_2012_10deg.y);
+    alwan_f64 diff_z = ALWAN_ABS(xyz_2012_2deg.z - xyz_2012_10deg.z);
 
     TEST_ASSERT(diff_x + diff_y + diff_z > ALWAN_LITERAL(0.01),
                 "2-deg and 10-deg observers should differ");
@@ -79,7 +79,7 @@ static int test_extrapolation_modes(void) {
 
     /* Fill with linear ramp */
     for (size_t i = 0; i < src.count; i++) {
-        src.values[i] = ALWAN_LITERAL(0.1) + (alwan_scalar)i / (alwan_scalar)(src.count - 1) * ALWAN_LITERAL(0.8);
+        src.values[i] = ALWAN_LITERAL(0.1) + (alwan_f64)i / (alwan_f64)(src.count - 1) * ALWAN_LITERAL(0.8);
     }
 
     /* Resample to wider range (400-700nm) with different extrapolation modes */
@@ -164,7 +164,7 @@ static int test_bandpass_parameter(void) {
     TEST_ASSERT(status == ALWAN_OK, "XYZ with bandpass parameter failed");
 
     /* Since bandpass correction is not yet implemented, results should be identical */
-    alwan_scalar diff = ALWAN_ABS(xyz_no_bp.x - xyz_with_bp.x) +
+    alwan_f64 diff = ALWAN_ABS(xyz_no_bp.x - xyz_with_bp.x) +
                   ALWAN_ABS(xyz_no_bp.y - xyz_with_bp.y) +
                   ALWAN_ABS(xyz_no_bp.z - xyz_with_bp.z);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "Bandpass parameter should be accepted (impl pending)");

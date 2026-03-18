@@ -17,12 +17,23 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_rlab_core.h"
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_rlab_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_rlab_impl.inc"
+#include "alwan_api_teardown.h"
+
 /* ----------------------------------------------------------------
  * Helper Functions (enum resolution - not cross-platform)
  * ---------------------------------------------------------------- */
 
 /* Get sigma (surround parameter) based on viewing conditions */
-static alwan_scalar get_sigma(alwan_rlab_surround surround) {
+static alwan_f64 get_sigma(alwan_rlab_surround surround) {
     switch (surround) {
         case ALWAN_RLAB_SURROUND_AVERAGE: return ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.3);
         case ALWAN_RLAB_SURROUND_DIM:     return ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.9);
@@ -32,7 +43,7 @@ static alwan_scalar get_sigma(alwan_rlab_surround surround) {
 }
 
 /* Get D (discounting-the-illuminant factor) based on media */
-static alwan_scalar get_D_factor(int D_setting) {
+static alwan_f64 get_D_factor(int D_setting) {
     /* D_setting: 0 = auto (use defaults), 1 = hard copy, 2 = soft copy, 3 = transparency */
     switch (D_setting) {
         case 1:  return ALWAN_LITERAL(1.0);  /* Hard copy images */
@@ -53,10 +64,10 @@ int alwan_rlab_forward(alwan_rlab_correlates *out,
         return -1;
     }
 
-    alwan_scalar sigma = get_sigma(vc->surround);
-    alwan_scalar D     = get_D_factor(vc->D_factor);
+    alwan_f64 sigma = get_sigma(vc->surround);
+    alwan_f64 D     = get_D_factor(vc->D_factor);
 
-    alwan_rlab_v_correlates result = alwan_rlab_forward_v(*xyz, vc->xyz_w, vc->xyz_n, sigma, D);
+    alwan_rlab_v_correlates_f64 result = alwan_rlab_forward_f64_v(*xyz, vc->xyz_w, vc->xyz_n, sigma, D);
 
     out->L = result.L;
     out->a = result.a;
@@ -84,10 +95,10 @@ int alwan_rlab_inverse(alwan_xyz *xyz,
     alwan_rlab_correlates tmp = *correlates;
     ALWAN_DENORM_RLAB(&tmp);
 
-    alwan_scalar sigma = get_sigma(vc->surround);
-    alwan_scalar D     = get_D_factor(vc->D_factor);
+    alwan_f64 sigma = get_sigma(vc->surround);
+    alwan_f64 D     = get_D_factor(vc->D_factor);
 
-    alwan_rlab_v_correlates vc_in;
+    alwan_rlab_v_correlates_f64 vc_in;
     vc_in.L = tmp.L;
     vc_in.a = tmp.a;
     vc_in.b = tmp.b;
@@ -95,7 +106,7 @@ int alwan_rlab_inverse(alwan_xyz *xyz,
     vc_in.C = tmp.C;
     vc_in.s = tmp.s;
 
-    *xyz = alwan_rlab_inverse_v(vc_in, vc->xyz_w, vc->xyz_n, sigma, D);
+    *xyz = alwan_rlab_inverse_f64_v(vc_in, vc->xyz_w, vc->xyz_n, sigma, D);
 
     return 0;
 }

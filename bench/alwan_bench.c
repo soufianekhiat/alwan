@@ -1125,11 +1125,7 @@ int main(void) {
 
     printf("========================================\n");
     printf("Alwan Benchmark Suite\n");
-#if ALWAN_SCALAR_IS_FLOAT
-    printf("Scalar type : float32\n");
-#else
     printf("Scalar type : float64\n");
-#endif
     printf("SIMD backend: %s (f32 x%d, f64 x%d)\n",
            simd_backend_name(), ALWAN_SIMD_F32_WIDTH, ALWAN_SIMD_F64_WIDTH);
     printf("Pixels/run  : %d (%d warmup, %d measured)\n",

@@ -84,6 +84,7 @@ add_executable(
   80_interop_clf.c
   81_video_signal.c
   82_machado_cvd.c
+  83_dual_precision.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

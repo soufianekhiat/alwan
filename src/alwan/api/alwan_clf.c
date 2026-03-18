@@ -76,7 +76,7 @@ static void clf_write_header(clf_writer *w, char const *id, char const *name,
  * ---------------------------------------------------------------- */
 
 static void clf_write_matrix(clf_writer *w, alwan_mat3x3 const *mat,
-                               alwan_scalar const *offset,
+                               alwan_f64 const *offset,
                                char const *desc) {
     if (offset) {
         clf_write(w, "  <Matrix inBitDepth=\"32f\" outBitDepth=\"32f\">\n");
@@ -108,7 +108,7 @@ static void clf_write_matrix(clf_writer *w, alwan_mat3x3 const *mat,
  * Internal: write a 1D LUT ProcessNode
  * ---------------------------------------------------------------- */
 
-static void clf_write_lut1d(clf_writer *w, alwan_scalar const *lut,
+static void clf_write_lut1d(clf_writer *w, alwan_f64 const *lut,
                               int size, char const *desc) {
     clf_write(w, "  <LUT1D inBitDepth=\"32f\" outBitDepth=\"32f\" interpolation=\"linear\">\n");
     if (desc) clf_write(w, "    <Description>%s</Description>\n", desc);
@@ -126,7 +126,7 @@ static void clf_write_lut1d(clf_writer *w, alwan_scalar const *lut,
  * Internal: write a 3D LUT ProcessNode
  * ---------------------------------------------------------------- */
 
-static void clf_write_lut3d(clf_writer *w, alwan_scalar const *lut,
+static void clf_write_lut3d(clf_writer *w, alwan_f64 const *lut,
                               int size, char const *desc) {
     clf_write(w, "  <LUT3D inBitDepth=\"32f\" outBitDepth=\"32f\" interpolation=\"trilinear\">\n");
     if (desc) clf_write(w, "    <Description>%s</Description>\n", desc);
@@ -150,8 +150,8 @@ static void clf_write_lut3d(clf_writer *w, alwan_scalar const *lut,
  * ---------------------------------------------------------------- */
 
 static void clf_write_range(clf_writer *w,
-                              alwan_scalar min_in, alwan_scalar max_in,
-                              alwan_scalar min_out, alwan_scalar max_out,
+                              alwan_f64 min_in, alwan_f64 max_in,
+                              alwan_f64 min_out, alwan_f64 max_out,
                               int clamp, char const *desc) {
     clf_write(w, "  <Range inBitDepth=\"32f\" outBitDepth=\"32f\"");
     if (!clamp) clf_write(w, " style=\"noClamp\"");
@@ -168,7 +168,7 @@ static void clf_write_range(clf_writer *w,
  * Internal: write an Exponent ProcessNode
  * ---------------------------------------------------------------- */
 
-static void clf_write_exponent(clf_writer *w, alwan_scalar exponent,
+static void clf_write_exponent(clf_writer *w, alwan_f64 exponent,
                                  char const *style, char const *desc) {
     clf_write(w, "  <Exponent inBitDepth=\"32f\" outBitDepth=\"32f\" style=\"%s\">\n",
               style);
@@ -181,8 +181,8 @@ static void clf_write_exponent(clf_writer *w, alwan_scalar exponent,
  * Internal: write monCurve Exponent (sRGB-style with linear segment)
  * ---------------------------------------------------------------- */
 
-static void clf_write_exponent_moncurve(clf_writer *w, alwan_scalar exponent,
-                                          alwan_scalar offset,
+static void clf_write_exponent_moncurve(clf_writer *w, alwan_f64 exponent,
+                                          alwan_f64 offset,
                                           char const *style, char const *desc) {
     clf_write(w, "  <Exponent inBitDepth=\"32f\" outBitDepth=\"32f\" style=\"%s\">\n",
               style);
@@ -258,7 +258,7 @@ static int clf_write_tf_node(clf_writer *w, alwan_transfer_function tf,
 
     /* For all other TFs (PQ, HLG, log curves, etc.): bake a 1D LUT */
     if (lut_size > 0) {
-        alwan_scalar *lut = (alwan_scalar *)ALWAN_ALLOC((size_t)lut_size * sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_f64 *lut = (alwan_f64 *)ALWAN_ALLOC((size_t)lut_size * sizeof(alwan_f64), sizeof(alwan_f64));
         if (!lut) return -1;
 
         int status = alwan_bake_1dlut(lut, lut_size, tf, is_eotf ? 0 : 1);
@@ -316,9 +316,9 @@ static int clf_export_core(clf_writer *w,
     clf_write_matrix(w, &src_to_xyz, NULL, "Source RGB to XYZ (NPM)");
 
     /* Step 3: Chromatic adaptation (if white points differ) */
-    alwan_scalar const tol = 1e-6;
-    alwan_scalar dx = src_space->white_xy[0] - dst_space->white_xy[0];
-    alwan_scalar dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    alwan_f64 const tol = 1e-6;
+    alwan_f64 dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_f64 dy = src_space->white_xy[1] - dst_space->white_xy[1];
     int need_cat = (dx > tol || dx < -tol || dy > tol || dy < -tol);
 
     if (need_cat && ctx) {
@@ -359,7 +359,7 @@ static int clf_export_core(clf_writer *w,
         /* Bake the view transform into a 3D LUT operating in linear space */
         int const vt_lut_size = lut_size < 17 ? 17 : (lut_size > 65 ? 65 : lut_size);
         size_t const total = (size_t)vt_lut_size * (size_t)vt_lut_size * (size_t)vt_lut_size;
-        alwan_scalar *lut3d = (alwan_scalar *)ALWAN_ALLOC(total * 3 * sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_f64 *lut3d = (alwan_f64 *)ALWAN_ALLOC(total * 3 * sizeof(alwan_f64), sizeof(alwan_f64));
         if (!lut3d) return ALWAN_E_NOMEM;
 
         /* Build an identity-space LUT with only the view transform applied */

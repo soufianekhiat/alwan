@@ -26,7 +26,7 @@ static int test_bake_3dlut_identity(void) {
 
     int const size = 5;
     size_t const total = (size_t)size * (size_t)size * (size_t)size;
-    alwan_scalar *lut = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
     int status = alwan_bake_3dlut(lut, size, ctx, &srgb, &srgb);
     if (status != ALWAN_OK) {
@@ -36,7 +36,7 @@ static int test_bake_3dlut_identity(void) {
     }
 
     /* Every entry should match its coordinate */
-    alwan_scalar const inv = 1.0 / (size - 1);
+    alwan_f64 const inv = 1.0 / (size - 1);
     for (int b = 0; b < size; b++) {
         for (int g = 0; g < size; g++) {
             for (int r = 0; r < size; r++) {
@@ -61,7 +61,7 @@ static int test_bake_1dlut(void) {
     printf("  test_bake_1dlut...\n");
 
     int const size = 256;
-    alwan_scalar *lut = (alwan_scalar *)malloc((size_t)size * sizeof(alwan_scalar));
+    alwan_f64 *lut = (alwan_f64 *)malloc((size_t)size * sizeof(alwan_f64));
 
     /* Linear TF should give identity */
     int status = alwan_bake_1dlut(lut, size, ALWAN_TF_LINEAR, 1);
@@ -72,7 +72,7 @@ static int test_bake_1dlut(void) {
     }
 
     for (int i = 0; i < size; i++) {
-        alwan_scalar expected = (alwan_scalar)i / (alwan_scalar)(size - 1);
+        alwan_f64 expected = (alwan_f64)i / (alwan_f64)(size - 1);
         TEST_CHECK_NEAR(lut[i], expected, TEST_REL_EPSILON);
     }
 
@@ -108,12 +108,12 @@ static int test_lut_2d_roundtrip(void) {
     size_t const total3d = (size_t)size * size * size * 3;
     size_t const total2d = (size_t)(size * size) * size * 3;
 
-    alwan_scalar *lut3d = (alwan_scalar *)malloc(total3d * sizeof(alwan_scalar));
-    alwan_scalar *lut2d = (alwan_scalar *)malloc(total2d * sizeof(alwan_scalar));
-    alwan_scalar *roundtrip = (alwan_scalar *)malloc(total3d * sizeof(alwan_scalar));
+    alwan_f64 *lut3d = (alwan_f64 *)malloc(total3d * sizeof(alwan_f64));
+    alwan_f64 *lut2d = (alwan_f64 *)malloc(total2d * sizeof(alwan_f64));
+    alwan_f64 *roundtrip = (alwan_f64 *)malloc(total3d * sizeof(alwan_f64));
 
     /* Fill 3D LUT with known pattern */
-    alwan_scalar inv = 1.0 / (size - 1);
+    alwan_f64 inv = 1.0 / (size - 1);
     for (int b = 0; b < size; b++) {
         for (int g = 0; g < size; g++) {
             for (int r = 0; r < size; r++) {
@@ -173,11 +173,11 @@ static int test_lut_2d_layout(void) {
     size_t const total3d = (size_t)size * size * size * 3;
     size_t const total2d = (size_t)w * size * 3;
 
-    alwan_scalar *lut3d = (alwan_scalar *)malloc(total3d * sizeof(alwan_scalar));
-    alwan_scalar *lut2d = (alwan_scalar *)malloc(total2d * sizeof(alwan_scalar));
+    alwan_f64 *lut3d = (alwan_f64 *)malloc(total3d * sizeof(alwan_f64));
+    alwan_f64 *lut2d = (alwan_f64 *)malloc(total2d * sizeof(alwan_f64));
 
     /* Fill with coordinate values */
-    alwan_scalar inv = 1.0 / (size - 1);
+    alwan_f64 inv = 1.0 / (size - 1);
     for (int b = 0; b < size; b++) {
         for (int g = 0; g < size; g++) {
             for (int r = 0; r < size; r++) {
@@ -191,7 +191,7 @@ static int test_lut_2d_layout(void) {
 
     alwan_lut3d_to_2d(lut2d, lut3d, size);
 
-    alwan_scalar *p;
+    alwan_f64 *p;
 
     /* (0,0) = black */
     p = lut2d;
@@ -238,9 +238,9 @@ static int test_bake_2dlut(void) {
     size_t const total2d = (size_t)w * size * 3;
     size_t const total3d = (size_t)size * size * size * 3;
 
-    alwan_scalar *lut2d_direct = (alwan_scalar *)malloc(total2d * sizeof(alwan_scalar));
-    alwan_scalar *lut3d = (alwan_scalar *)malloc(total3d * sizeof(alwan_scalar));
-    alwan_scalar *lut2d_indirect = (alwan_scalar *)malloc(total2d * sizeof(alwan_scalar));
+    alwan_f64 *lut2d_direct = (alwan_f64 *)malloc(total2d * sizeof(alwan_f64));
+    alwan_f64 *lut3d = (alwan_f64 *)malloc(total3d * sizeof(alwan_f64));
+    alwan_f64 *lut2d_indirect = (alwan_f64 *)malloc(total2d * sizeof(alwan_f64));
 
     /* Direct 2D bake */
     int status = alwan_bake_2dlut(lut2d_direct, size, ctx, &srgb, &srgb);
@@ -280,7 +280,7 @@ static int test_lut3d_sample(void) {
 
     int const size = 17;
     size_t const total = (size_t)size * size * size;
-    alwan_scalar *lut = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
     /* Identity LUT */
     alwan_bake_3dlut(lut, size, ctx, &srgb, &srgb);
@@ -331,8 +331,8 @@ static int test_cube_roundtrip(void) {
 
     int const size = 5;
     size_t const total = (size_t)size * size * size;
-    alwan_scalar *lut_out = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
-    alwan_scalar *lut_in = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut_out = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
+    alwan_f64 *lut_in = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
     alwan_bake_3dlut(lut_out, size, ctx, &srgb, &srgb);
 
@@ -383,10 +383,10 @@ static int test_cube_buffer_export(void) {
 
     int const size = 3;
     size_t const total = (size_t)size * size * size;
-    alwan_scalar *lut = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
     /* Fill with simple identity pattern */
-    alwan_scalar inv = 1.0 / (size - 1);
+    alwan_f64 inv = 1.0 / (size - 1);
     for (int b = 0; b < size; b++) {
         for (int g = 0; g < size; g++) {
             for (int r = 0; r < size; r++) {
@@ -421,7 +421,7 @@ static int test_cube_buffer_export(void) {
     }
 
     /* Re-import from buffer */
-    alwan_scalar *lut2 = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut2 = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
     int imported_size = 0;
     status = alwan_cube_import_3d_buffer(lut2, &imported_size, buf, written);
     if (status != ALWAN_OK) {
@@ -458,8 +458,8 @@ static int test_bake_3dlut_view(void) {
 
     int const size = 5;
     size_t const total = (size_t)size * size * size;
-    alwan_scalar *lut_plain = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
-    alwan_scalar *lut_view = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut_plain = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
+    alwan_f64 *lut_view = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
     /* Plain identity */
     alwan_bake_3dlut(lut_plain, size, ctx, &srgb, &srgb);
@@ -513,7 +513,7 @@ static int test_bake_3dlut_view(void) {
 static int test_lut_null_checks(void) {
     printf("  test_lut_null_checks...\n");
 
-    alwan_scalar buf[3 * 8]; /* 2^3 */
+    alwan_f64 buf[3 * 8]; /* 2^3 */
     alwan_rgb_space_desc desc;
     memset(&desc, 0, sizeof(desc));
 
@@ -541,7 +541,7 @@ static int test_lut_null_checks(void) {
     if (alwan_lut3d_sample(NULL, buf, &rgb, 2) != ALWAN_E_INVALID) return 1;
 
     /* 1D sample NULL */
-    alwan_scalar val;
+    alwan_f64 val;
     if (alwan_lut1d_sample(NULL, buf, 0.5, 2) != ALWAN_E_INVALID) return 1;
     if (alwan_lut1d_sample(&val, NULL, 0.5, 2) != ALWAN_E_INVALID) return 1;
     if (alwan_lut1d_sample(&val, buf, 0.5, 1) != ALWAN_E_INVALID) return 1;
@@ -570,7 +570,7 @@ static int test_bake_cross_space(void) {
 
     int const size = 9;
     size_t const total = (size_t)size * size * size;
-    alwan_scalar *lut = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
     int status = alwan_bake_3dlut(lut, size, ctx, &srgb, &p3);
     if (status != ALWAN_OK) {
@@ -617,14 +617,14 @@ static int full_pipeline_convert(alwan_rgb *dst, alwan_ctx *ctx,
                                   alwan_rgb const *src) {
     /* EOTF: encoded src -> linear src */
     alwan_rgb linear_src;
-    alwan_eotf_apply(&linear_src.r, src_space->eotf, &src->r, 3, sizeof(alwan_scalar), sizeof(alwan_scalar));
+    alwan_eotf_apply(&linear_src.r, src_space->eotf, &src->r, 3, sizeof(alwan_f64), sizeof(alwan_f64));
 
     /* Matrix: linear src -> linear dst */
     alwan_rgb linear_dst;
     alwan_rgb_convert(&linear_dst, ctx, src_space, dst_space, &linear_src);
 
     /* OETF: linear dst -> encoded dst */
-    alwan_oetf_apply(&dst->r, dst_space->oetf, &linear_dst.r, 3, sizeof(alwan_scalar), sizeof(alwan_scalar));
+    alwan_oetf_apply(&dst->r, dst_space->oetf, &linear_dst.r, 3, sizeof(alwan_f64), sizeof(alwan_f64));
 
     return ALWAN_OK;
 }
@@ -642,8 +642,8 @@ static int test_cube_import_and_sample(void) {
 
     int const size = 17;
     size_t const total = (size_t)size * size * size;
-    alwan_scalar *lut_baked = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
-    alwan_scalar *lut_imported = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut_baked = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
+    alwan_f64 *lut_imported = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
     /* Bake sRGB -> P3 conversion LUT */
     int status = alwan_bake_3dlut(lut_baked, size, ctx, &srgb, &p3);
@@ -718,7 +718,7 @@ static int test_1d_linear_sample(void) {
     printf("  test_1d_linear_sample...\n");
 
     int const size = 256;
-    alwan_scalar *lut = (alwan_scalar *)malloc((size_t)size * sizeof(alwan_scalar));
+    alwan_f64 *lut = (alwan_f64 *)malloc((size_t)size * sizeof(alwan_f64));
 
     /* Bake sRGB OETF */
     int status = alwan_bake_1dlut(lut, size, ALWAN_TF_SRGB, 1);
@@ -730,31 +730,31 @@ static int test_1d_linear_sample(void) {
 
     /* Sample at exact grid points — should match LUT entries exactly */
     for (int i = 0; i < size; i++) {
-        alwan_scalar t = (alwan_scalar)i / (alwan_scalar)(size - 1);
-        alwan_scalar sampled;
+        alwan_f64 t = (alwan_f64)i / (alwan_f64)(size - 1);
+        alwan_f64 sampled;
         alwan_lut1d_sample(&sampled, lut, t, size);
         TEST_CHECK_NEAR(sampled, lut[i], 1e-15);
     }
 
     /* Sample at midpoints between grid entries — should be average */
     for (int i = 0; i < size - 1; i++) {
-        alwan_scalar t = ((alwan_scalar)i + 0.5) / (alwan_scalar)(size - 1);
-        alwan_scalar sampled;
+        alwan_f64 t = ((alwan_f64)i + 0.5) / (alwan_f64)(size - 1);
+        alwan_f64 sampled;
         alwan_lut1d_sample(&sampled, lut, t, size);
-        alwan_scalar expected = (lut[i] + lut[i + 1]) * 0.5;
+        alwan_f64 expected = (lut[i] + lut[i + 1]) * 0.5;
         TEST_CHECK_NEAR(sampled, expected, 1e-12);
     }
 
     /* Clamp test: below 0 should return lut[0] */
     {
-        alwan_scalar sampled;
+        alwan_f64 sampled;
         alwan_lut1d_sample(&sampled, lut, -0.5, size);
         TEST_CHECK_NEAR(sampled, lut[0], 1e-15);
     }
 
     /* Clamp test: above 1 should return lut[size-1] */
     {
-        alwan_scalar sampled;
+        alwan_f64 sampled;
         alwan_lut1d_sample(&sampled, lut, 1.5, size);
         TEST_CHECK_NEAR(sampled, lut[size - 1], 1e-15);
     }
@@ -773,7 +773,7 @@ static int test_1d_lut_vs_tf(void) {
     /* Compare LUT-sampled sRGB OETF to direct sRGB OETF at arbitrary inputs.
      * A 4096-entry LUT should be very close to the analytical function. */
     int const size = 4096;
-    alwan_scalar *lut = (alwan_scalar *)malloc((size_t)size * sizeof(alwan_scalar));
+    alwan_f64 *lut = (alwan_f64 *)malloc((size_t)size * sizeof(alwan_f64));
 
     int status = alwan_bake_1dlut(lut, size, ALWAN_TF_SRGB, 1);
     if (status != ALWAN_OK) {
@@ -783,7 +783,7 @@ static int test_1d_lut_vs_tf(void) {
     }
 
     /* Bake the sRGB EOTF for comparison */
-    alwan_scalar *lut_eotf = (alwan_scalar *)malloc((size_t)size * sizeof(alwan_scalar));
+    alwan_f64 *lut_eotf = (alwan_f64 *)malloc((size_t)size * sizeof(alwan_f64));
     status = alwan_bake_1dlut(lut_eotf, size, ALWAN_TF_SRGB, 0);
     if (status != ALWAN_OK) {
         printf("  FAIL: eotf bake returned %d\n", status);
@@ -794,14 +794,14 @@ static int test_1d_lut_vs_tf(void) {
     /* OETF(EOTF(x)) should ≈ x (roundtrip through LUTs) */
     double max_err = 0.0;
     for (int i = 0; i < 1000; i++) {
-        alwan_scalar t = (alwan_scalar)i / 999.0;
+        alwan_f64 t = (alwan_f64)i / 999.0;
 
         /* EOTF: encoded -> linear */
-        alwan_scalar linear;
+        alwan_f64 linear;
         alwan_lut1d_sample(&linear, lut_eotf, t, size);
 
         /* OETF: linear -> encoded */
-        alwan_scalar roundtrip;
+        alwan_f64 roundtrip;
         alwan_lut1d_sample(&roundtrip, lut, linear, size);
 
         double err = fabs((double)(roundtrip - t));
@@ -837,8 +837,8 @@ static int test_2d_sample_matches_3d(void) {
     size_t const total3d = (size_t)size * size * size * 3;
     size_t const total2d = (size_t)(size * size) * size * 3;
 
-    alwan_scalar *lut3d = (alwan_scalar *)malloc(total3d * sizeof(alwan_scalar));
-    alwan_scalar *lut2d = (alwan_scalar *)malloc(total2d * sizeof(alwan_scalar));
+    alwan_f64 *lut3d = (alwan_f64 *)malloc(total3d * sizeof(alwan_f64));
+    alwan_f64 *lut2d = (alwan_f64 *)malloc(total2d * sizeof(alwan_f64));
 
     /* Bake a non-identity LUT: sRGB -> P3 */
     alwan_bake_3dlut(lut3d, size, ctx, &srgb, &p3);
@@ -892,8 +892,8 @@ static int test_2d_bake_and_sample(void) {
     size_t const total3d = (size_t)size * size * size * 3;
     size_t const total2d = (size_t)(size * size) * size * 3;
 
-    alwan_scalar *lut3d = (alwan_scalar *)malloc(total3d * sizeof(alwan_scalar));
-    alwan_scalar *lut2d = (alwan_scalar *)malloc(total2d * sizeof(alwan_scalar));
+    alwan_f64 *lut3d = (alwan_f64 *)malloc(total3d * sizeof(alwan_f64));
+    alwan_f64 *lut2d = (alwan_f64 *)malloc(total2d * sizeof(alwan_f64));
 
     alwan_bake_3dlut(lut3d, size, ctx, &srgb, &p3);
     alwan_bake_2dlut(lut2d, size, ctx, &srgb, &p3);
@@ -961,7 +961,7 @@ static int test_lut_precision_vs_direct(void) {
     for (int s = 0; s < num_sizes; s++) {
         int const size = sizes[s];
         size_t const total = (size_t)size * size * size;
-        alwan_scalar *lut = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+        alwan_f64 *lut = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
         alwan_bake_3dlut(lut, size, ctx, &srgb, &p3);
 
@@ -1013,8 +1013,8 @@ static int test_cube_1d_import_sample(void) {
     printf("  test_cube_1d_import_sample...\n");
 
     int const size = 1024;
-    alwan_scalar *lut_baked = (alwan_scalar *)malloc((size_t)size * sizeof(alwan_scalar));
-    alwan_scalar *lut_imported = (alwan_scalar *)malloc((size_t)size * sizeof(alwan_scalar));
+    alwan_f64 *lut_baked = (alwan_f64 *)malloc((size_t)size * sizeof(alwan_f64));
+    alwan_f64 *lut_imported = (alwan_f64 *)malloc((size_t)size * sizeof(alwan_f64));
 
     /* Bake sRGB EOTF (decode curve) */
     int status = alwan_bake_1dlut(lut_baked, size, ALWAN_TF_SRGB, 0);
@@ -1056,10 +1056,10 @@ static int test_cube_1d_import_sample(void) {
     }
 
     /* Sample through imported LUT at various points and verify monotonicity */
-    alwan_scalar prev = -1.0;
+    alwan_f64 prev = -1.0;
     for (int i = 0; i <= 500; i++) {
-        alwan_scalar t = (alwan_scalar)i / 500.0;
-        alwan_scalar sampled;
+        alwan_f64 t = (alwan_f64)i / 500.0;
+        alwan_f64 sampled;
         alwan_lut1d_sample(&sampled, lut_imported, t, size);
         if (sampled < prev - 1e-15) {
             printf("  FAIL: imported 1D LUT not monotonic at t=%.4f\n", (double)t);
@@ -1091,8 +1091,8 @@ static int test_cube_3d_precision_vs_direct(void) {
 
     int const size = 33;
     size_t const total = (size_t)size * size * size;
-    alwan_scalar *lut_baked = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
-    alwan_scalar *lut_imported = (alwan_scalar *)malloc(total * 3 * sizeof(alwan_scalar));
+    alwan_f64 *lut_baked = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
+    alwan_f64 *lut_imported = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
 
     /* Bake and export */
     alwan_bake_3dlut(lut_baked, size, ctx, &srgb, &p3);
@@ -1116,9 +1116,9 @@ static int test_cube_3d_precision_vs_direct(void) {
         for (int gi = 0; gi < steps; gi++) {
             for (int bi = 0; bi < steps; bi++) {
                 alwan_rgb in;
-                in.r = (alwan_scalar)ri / (alwan_scalar)(steps - 1);
-                in.g = (alwan_scalar)gi / (alwan_scalar)(steps - 1);
-                in.b = (alwan_scalar)bi / (alwan_scalar)(steps - 1);
+                in.r = (alwan_f64)ri / (alwan_f64)(steps - 1);
+                in.g = (alwan_f64)gi / (alwan_f64)(steps - 1);
+                in.b = (alwan_f64)bi / (alwan_f64)(steps - 1);
 
                 alwan_rgb lut_out, pipeline_out;
                 alwan_lut3d_sample(&lut_out, lut_imported, &in, size);
@@ -1163,10 +1163,10 @@ static int test_trilinear_manual(void) {
 
     /* 2x2x2 cube: 8 corners with known values */
     int const size = 2;
-    alwan_scalar lut[2 * 2 * 2 * 3];
+    alwan_f64 lut[2 * 2 * 2 * 3];
 
     /* Fill corners: output = (R^2, G^2, B^2) at each corner */
-    alwan_scalar corners[2] = {0.0, 1.0};
+    alwan_f64 corners[2] = {0.0, 1.0};
     for (int b = 0; b < 2; b++) {
         for (int g = 0; g < 2; g++) {
             for (int r = 0; r < 2; r++) {

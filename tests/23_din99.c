@@ -11,16 +11,16 @@
 /* DIN99 variant test data - embedded at compile time */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_din99_test_data[] = {
+static alwan_f64 const g_din99_test_data[] = {
 #include "reference_values/test_lab_din99_pairs.csv"
 };
-static alwan_scalar const g_din99b_test_data[] = {
+static alwan_f64 const g_din99b_test_data[] = {
 #include "reference_values/test_lab_din99b_pairs.csv"
 };
-static alwan_scalar const g_din99c_test_data[] = {
+static alwan_f64 const g_din99c_test_data[] = {
 #include "reference_values/test_lab_din99c_pairs.csv"
 };
-static alwan_scalar const g_din99d_test_data[] = {
+static alwan_f64 const g_din99d_test_data[] = {
 #include "reference_values/test_lab_din99d_pairs.csv"
 };
 ALWAN_DIAG_POP
@@ -29,7 +29,7 @@ ALWAN_DIAG_POP
  * Test Lab <-> DIN99 conversions
  * ---------------------------------------------------------------- */
 
-static int test_din99_variant(int variant, char const *variant_name, alwan_scalar const *test_data, size_t data_count) {
+static int test_din99_variant(int variant, char const *variant_name, alwan_f64 const *test_data, size_t data_count) {
     size_t const num_colors = data_count / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
@@ -48,11 +48,11 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
         /* Test Lab -> DIN99 */
         alwan_lab_to_din99(&din99_computed, &lab, variant);
 
-        alwan_scalar const din99_tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar din99_comp_arr[3] = {din99_computed.L99, din99_computed.a99, din99_computed.b99};
-        alwan_scalar din99_exp_arr[3] = {din99_expected.L99, din99_expected.a99, din99_expected.b99};
+        alwan_f64 const din99_tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 din99_comp_arr[3] = {din99_computed.L99, din99_computed.a99, din99_computed.b99};
+        alwan_f64 din99_exp_arr[3] = {din99_expected.L99, din99_expected.a99, din99_expected.b99};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(din99_comp_arr[j] - din99_exp_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(din99_comp_arr[j] - din99_exp_arr[j]);
             if (diff > din99_tol) {
                 printf("Color %zu channel %d failed (%s):\n", i, j, variant_name);
                 printf("  Lab: [%.6f, %.6f, %.6f]\n",
@@ -69,12 +69,12 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_scala
         /* Test round-trip: DIN99 -> Lab */
         alwan_din99_to_lab(&lab_out, &din99_computed, variant);
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
-        alwan_scalar lab_arr[3] = {lab.L, lab.a, lab.b};
-        alwan_scalar lab_out_arr[3] = {lab_out.L, lab_out.a, lab_out.b};
+        alwan_f64 lab_arr[3] = {lab.L, lab.a, lab.b};
+        alwan_f64 lab_out_arr[3] = {lab_out.L, lab_out.a, lab_out.b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(lab_out_arr[j] - lab_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(lab_out_arr[j] - lab_arr[j]);
             if (diff > roundtrip_tol) {
                 printf("Round-trip color %zu channel %d failed (%s):\n", i, j, variant_name);
                 printf("  Original Lab: [%.6f, %.6f, %.6f]\n",

@@ -14,6 +14,17 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_kim2009_core.h"
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_kim2009_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_kim2009_impl.inc"
+#include "alwan_api_teardown.h"
+
 /* ----------------------------------------------------------------
  * Viewing Condition Resolution Helpers
  * ---------------------------------------------------------------- */
@@ -21,14 +32,14 @@
 /* Get viewing condition induction factors based on background luminance Yb
  * Following CIECAM02 conventions, we derive surround from Yb relative to white */
 static void get_induction_factors(
-    alwan_scalar Yb,
-    alwan_scalar Y_w,
-    alwan_scalar *F,
-    alwan_scalar *c,
-    alwan_scalar *Nc
+    alwan_f64 Yb,
+    alwan_f64 Y_w,
+    alwan_f64 *F,
+    alwan_f64 *c,
+    alwan_f64 *Nc
 ) {
     /* Compute relative background: n = Yb / Yw */
-    alwan_scalar n = Yb / Y_w;
+    alwan_f64 n = Yb / Y_w;
 
     /* Derive surround from background:
      * n >= 0.18 -> Average surround
@@ -54,16 +65,16 @@ static void get_induction_factors(
 }
 
 /* Compute degree of adaptation D from F and adapting luminance */
-static alwan_scalar compute_degree_of_adaptation(
-    alwan_scalar F,
-    alwan_scalar L_A,
+static alwan_f64 compute_degree_of_adaptation(
+    alwan_f64 F,
+    alwan_f64 L_A,
     int discount_illuminant
 ) {
     if (discount_illuminant) {
         return ALWAN_LITERAL(1.0);
     }
 
-    alwan_scalar D = F * (ALWAN_LITERAL(1.0) -
+    alwan_f64 D = F * (ALWAN_LITERAL(1.0) -
                           (ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.6)) *
                           ALWAN_EXP((-L_A - ALWAN_LITERAL(42.0)) / ALWAN_LITERAL(92.0)));
 
@@ -88,17 +99,17 @@ int alwan_kim2009_forward(
     }
 
     /* Resolve viewing condition parameters */
-    alwan_scalar F, c, Nc;
-    alwan_scalar Y_w = vc->white_xyz.y;
+    alwan_f64 F, c, Nc;
+    alwan_f64 Y_w = vc->white_xyz.y;
     get_induction_factors(vc->Yb, Y_w, &F, &c, &Nc);
 
-    alwan_scalar D = compute_degree_of_adaptation(F, vc->La, vc->discount_illuminant);
+    alwan_f64 D = compute_degree_of_adaptation(F, vc->La, vc->discount_illuminant);
 
     /* Default media parameter E = 1.0 (CRT Displays) */
-    alwan_scalar media_E = ALWAN_LITERAL(1.0);
+    alwan_f64 media_E = ALWAN_LITERAL(1.0);
 
     /* Delegate to core */
-    alwan_kim2009_v_correlates result = alwan_kim2009_forward_v(
+    alwan_kim2009_v_correlates_f64 result = alwan_kim2009_forward_f64_v(
         *xyz,
         vc->white_xyz.x, vc->white_xyz.y, vc->white_xyz.z,
         vc->La, D, media_E
@@ -130,23 +141,23 @@ int alwan_kim2009_inverse(
     ALWAN_DENORM_KIM2009(&tmp);
 
     /* Resolve viewing condition parameters */
-    alwan_scalar F, c, Nc;
-    alwan_scalar Y_w = vc->white_xyz.y;
+    alwan_f64 F, c, Nc;
+    alwan_f64 Y_w = vc->white_xyz.y;
     get_induction_factors(vc->Yb, Y_w, &F, &c, &Nc);
 
-    alwan_scalar D = compute_degree_of_adaptation(F, vc->La, vc->discount_illuminant);
+    alwan_f64 D = compute_degree_of_adaptation(F, vc->La, vc->discount_illuminant);
 
     /* Default media parameter E = 1.0 (CRT Displays) */
-    alwan_scalar media_E = ALWAN_LITERAL(1.0);
+    alwan_f64 media_E = ALWAN_LITERAL(1.0);
 
     /* Build core correlates struct */
-    alwan_kim2009_v_correlates v_correlates;
+    alwan_kim2009_v_correlates_f64 v_correlates;
     v_correlates.J = tmp.J;
     v_correlates.C = tmp.C;
     v_correlates.h = tmp.h;
 
     /* Delegate to core */
-    *out = alwan_kim2009_inverse_v(
+    *out = alwan_kim2009_inverse_f64_v(
         v_correlates,
         vc->white_xyz.x, vc->white_xyz.y, vc->white_xyz.z,
         vc->La, D, media_E

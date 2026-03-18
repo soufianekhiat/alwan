@@ -19,6 +19,17 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_llab_core.h"
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_llab_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_llab_impl.inc"
+#include "alwan_api_teardown.h"
+
 /* ----------------------------------------------------------------
  * LLAB Surround Induction Factors
  *
@@ -27,10 +38,10 @@
  * ---------------------------------------------------------------- */
 
 typedef struct {
-    alwan_scalar D;   /* Discounting-the-Illuminant factor */
-    alwan_scalar F_S; /* Surround induction factor */
-    alwan_scalar F_L; /* Lightness induction factor */
-    alwan_scalar F_C; /* Chroma induction factor (unused by core) */
+    alwan_f64 D;   /* Discounting-the-Illuminant factor */
+    alwan_f64 F_S; /* Surround induction factor */
+    alwan_f64 F_L; /* Lightness induction factor */
+    alwan_f64 F_C; /* Chroma induction factor (unused by core) */
 } llab_induction_factors;
 
 static llab_induction_factors const LLAB_SURROUND_FACTORS[] = {
@@ -57,17 +68,17 @@ int alwan_llab_forward(
 
     /* Resolve induction factors from surround enum */
     llab_induction_factors const *factors = &LLAB_SURROUND_FACTORS[vc->surround];
-    alwan_scalar D   = factors->D;
-    alwan_scalar F_S = factors->F_S;
-    alwan_scalar F_L = factors->F_L;
+    alwan_f64 D   = factors->D;
+    alwan_f64 F_S = factors->F_S;
+    alwan_f64 F_L = factors->F_L;
 
     /* Override D if user specified a non-negative value */
     if (vc->D_factor >= 0) {
-        D = (alwan_scalar)vc->D_factor;
+        D = (alwan_f64)vc->D_factor;
     }
 
     /* Delegate to the core value-returning implementation */
-    alwan_llab_v_correlates v = alwan_llab_forward_v(
+    alwan_llab_v_correlates_f64 v = alwan_llab_forward_f64_v(
         *xyz, vc->xyz_0, vc->xyz_r, vc->Y_b, D, F_S, F_L);
 
     /* Map core result to public struct */

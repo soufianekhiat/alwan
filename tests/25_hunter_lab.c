@@ -11,7 +11,7 @@
 static int test_xyz_hunter_lab_round_trip(void) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "reference_values/test_xyz_hunter_lab_pairs.csv"
     };
 ALWAN_DIAG_POP
@@ -45,11 +45,11 @@ ALWAN_DIAG_POP
         /* Test XYZ -> Hunter Lab */
         alwan_xyz_to_hunter_lab(&hunter_computed, &xyz_in);
 
-        alwan_scalar const hunter_tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar hunter_comp_arr[3] = {hunter_computed.L, hunter_computed.a, hunter_computed.b};
-        alwan_scalar hunter_exp_arr[3] = {hunter_expected.L, hunter_expected.a, hunter_expected.b};
+        alwan_f64 const hunter_tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 hunter_comp_arr[3] = {hunter_computed.L, hunter_computed.a, hunter_computed.b};
+        alwan_f64 hunter_exp_arr[3] = {hunter_expected.L, hunter_expected.a, hunter_expected.b};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(hunter_comp_arr[j] - hunter_exp_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(hunter_comp_arr[j] - hunter_exp_arr[j]);
             if (diff > hunter_tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
@@ -66,12 +66,12 @@ ALWAN_DIAG_POP
         /* Test round-trip: Hunter Lab -> XYZ */
         alwan_hunter_lab_to_xyz(&xyz_out, &hunter_computed);
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
-        alwan_scalar xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
-        alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};
+        alwan_f64 xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
+        alwan_f64 xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(xyz_out_arr[j] - xyz_in_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(xyz_out_arr[j] - xyz_in_arr[j]);
             if (diff > roundtrip_tol) {
                 printf("Round-trip color %zu channel %d failed:\n", i, j);
                 printf("  Original XYZ: [%.6f, %.6f, %.6f]\n",

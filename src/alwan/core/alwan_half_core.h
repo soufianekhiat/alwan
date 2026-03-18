@@ -30,6 +30,35 @@
 
 typedef uint16_t alwan_half;
 
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
+/* ================================================================
+ * Dual-Precision: emit f32 and f64 variants from shared .inc
+ * Note: half-float operations are inherently float32, but we
+ * generate both suffixed variants for API consistency.
+ * ================================================================ */
+
+#include "../alwan_types.h"
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
+
+/* f32 pass */
+#include "alwan_core_f32_setup.h"
+#include "alwan_half_core.inc"
+#include "alwan_core_teardown.h"
+
+/* f64 pass */
+#include "alwan_core_f64_setup.h"
+#include "alwan_half_core.inc"
+#include "alwan_core_teardown.h"
+
+ALWAN_DIAG_POP
+
+#else /* HLSL / GLSL / Halide */
+/* ================================================================
+ * GPU Backends: Single-precision only (original code)
+ * ================================================================ */
+
 /* Convert float32 -> float16 (with rounding to nearest even) */
 ALWAN_INLINE alwan_half alwan_float_to_half_v(float f) {
     uint32_t fbits;
@@ -129,5 +158,7 @@ ALWAN_INLINE float alwan_half_to_float_v(alwan_half h) {
     ALWAN_MEMCPY(&result, &fbits, sizeof(result));
     return result;
 }
+
+#endif
 
 #endif /* ALWAN_HALF_CORE_H */

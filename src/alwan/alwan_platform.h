@@ -49,37 +49,26 @@
  * ================================================================ */
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
-  /* C/C++ backend */
-# ifndef ALWAN_SCALAR_IS_FLOAT
-#   define ALWAN_SCALAR_IS_FLOAT 0  /* default: double for parity with Colour-Science (Python) Library */
-# endif
-
-# if ALWAN_SCALAR_IS_FLOAT
-    typedef float  alwan_scalar;
-#   define ALWAN_EPSILON 1e-6f
-#   define ALWAN_LITERAL(x) x##f
-# else
-    typedef double alwan_scalar;
-#   define ALWAN_EPSILON 1e-12
-#   define ALWAN_LITERAL(x) x
-# endif
+  /* C/C++ backend — always double */
+  typedef double alwan_scalar;
+# define ALWAN_EPSILON 1e-12
+# define ALWAN_LITERAL(x) (x)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
   /* HLSL backend */
-# define ALWAN_SCALAR_IS_FLOAT 1
   typedef float  alwan_scalar;
 # define ALWAN_EPSILON 1e-6f
 # define ALWAN_LITERAL(x) (x)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_GLSL
   /* GLSL backend */
-# define ALWAN_SCALAR_IS_FLOAT 1
+  typedef float  alwan_scalar;
 # define ALWAN_EPSILON 1e-6
 # define ALWAN_LITERAL(x) (x)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
-  /* Halide backend
-   * ALWAN_SCALAR_IS_FLOAT selects Float(32) vs Float(64) precision.
+  /* Halide backend — supports both Float(32) and Float(64) at runtime.
+   * Set ALWAN_HALIDE_FLOAT_BITS to 32 or 64 before including this header.
    *
    * alwan_halide_scalar inherits from Halide::Expr and adds an implicit
    * constructor from double so that bare numeric literals in CSV data files
@@ -87,18 +76,15 @@
    * alwan_scalar arrays and structs without wrapping every value in
    * ALWAN_LITERAL(). */
 # include <Halide.h>
-# ifndef ALWAN_SCALAR_IS_FLOAT
-#   define ALWAN_SCALAR_IS_FLOAT 1  /* default: float for GPU pipelines */
-# endif
-# if ALWAN_SCALAR_IS_FLOAT
-#   define ALWAN_EPSILON 1e-6f
+# ifndef ALWAN_HALIDE_FLOAT_BITS
 #   define ALWAN_HALIDE_FLOAT_BITS 32
-#   define ALWAN_LITERAL(x) Halide::Internal::make_const(Halide::Float(32), (x))
-# else
-#   define ALWAN_EPSILON 1e-12
-#   define ALWAN_HALIDE_FLOAT_BITS 64
-#   define ALWAN_LITERAL(x) Halide::Internal::make_const(Halide::Float(64), (x))
 # endif
+# if ALWAN_HALIDE_FLOAT_BITS == 64
+#   define ALWAN_EPSILON 1e-12
+# else
+#   define ALWAN_EPSILON 1e-6f
+# endif
+# define ALWAN_LITERAL(x) Halide::Internal::make_const(Halide::Float(ALWAN_HALIDE_FLOAT_BITS), (x))
 
   struct alwan_halide_scalar : Halide::Expr {
       using Halide::Expr::Expr;
@@ -190,47 +176,26 @@
  * ================================================================ */
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
-  /* C/C++ backend: dispatch float vs double */
+  /* C/C++ backend — always double */
 # include <math.h>
-# if ALWAN_SCALAR_IS_FLOAT
-#   define ALWAN_ABS(x)       fabsf(x)
-#   define ALWAN_SQRT(x)      sqrtf(x)
-#   define ALWAN_CBRT(x)      cbrtf(x)
-#   define ALWAN_SIN(x)       sinf(x)
-#   define ALWAN_COS(x)       cosf(x)
-#   define ALWAN_TAN(x)       tanf(x)
-#   define ALWAN_TANH(x)      tanhf(x)
-#   define ALWAN_ATAN(x)      atanf(x)
-#   define ALWAN_ACOS(x)      acosf(x)
-#   define ALWAN_ATAN2(y, x)  atan2f(y, x)
-#   define ALWAN_POW(x, y)    powf(x, y)
-#   define ALWAN_EXP(x)       expf(x)
-#   define ALWAN_LN(x)        logf(x)
-#   define ALWAN_LOG2(x)      log2f(x)
-#   define ALWAN_LOG10(x)     log10f(x)
-#   define ALWAN_FLOOR(x)     floorf(x)
-#   define ALWAN_CEIL(x)      ceilf(x)
-#   define ALWAN_FMOD(x, y)   fmodf(x, y)
-# else
-#   define ALWAN_ABS(x)       fabs(x)
-#   define ALWAN_SQRT(x)      sqrt(x)
-#   define ALWAN_CBRT(x)      cbrt(x)
-#   define ALWAN_SIN(x)       sin(x)
-#   define ALWAN_COS(x)       cos(x)
-#   define ALWAN_TAN(x)       tan(x)
-#   define ALWAN_TANH(x)      tanh(x)
-#   define ALWAN_ATAN(x)      atan(x)
-#   define ALWAN_ACOS(x)      acos(x)
-#   define ALWAN_ATAN2(y, x)  atan2(y, x)
-#   define ALWAN_POW(x, y)    pow(x, y)
-#   define ALWAN_EXP(x)       exp(x)
-#   define ALWAN_LN(x)        log(x)
-#   define ALWAN_LOG2(x)      log2(x)
-#   define ALWAN_LOG10(x)     log10(x)
-#   define ALWAN_FLOOR(x)     floor(x)
-#   define ALWAN_CEIL(x)      ceil(x)
-#   define ALWAN_FMOD(x, y)   fmod(x, y)
-# endif
+# define ALWAN_ABS(x)       fabs(x)
+# define ALWAN_SQRT(x)      sqrt(x)
+# define ALWAN_CBRT(x)      cbrt(x)
+# define ALWAN_SIN(x)       sin(x)
+# define ALWAN_COS(x)       cos(x)
+# define ALWAN_TAN(x)       tan(x)
+# define ALWAN_TANH(x)      tanh(x)
+# define ALWAN_ATAN(x)      atan(x)
+# define ALWAN_ACOS(x)      acos(x)
+# define ALWAN_ATAN2(y, x)  atan2(y, x)
+# define ALWAN_POW(x, y)    pow(x, y)
+# define ALWAN_EXP(x)       exp(x)
+# define ALWAN_LN(x)        log(x)
+# define ALWAN_LOG2(x)      log2(x)
+# define ALWAN_LOG10(x)     log10(x)
+# define ALWAN_FLOOR(x)     floor(x)
+# define ALWAN_CEIL(x)      ceil(x)
+# define ALWAN_FMOD(x, y)   fmod(x, y)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
   /* HLSL backend: intrinsics */
@@ -296,6 +261,101 @@
 # define ALWAN_FMOD(x, y)   ((x) - Halide::floor((x) / (y)) * (y))
 
 #endif
+
+/* ================================================================
+ * 1.4.1 Precision-Specific Math Macros (C backend only)
+ *
+ * Always available for both f32 and f64 kernels.
+ * Used by dual-precision .inc files via ALWAN_CORE_* aliases.
+ * ================================================================ */
+
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
+
+/* f32 math */
+#define ALWAN_ABS_F32(x)       fabsf(x)
+#define ALWAN_SQRT_F32(x)      sqrtf(x)
+#define ALWAN_CBRT_F32(x)      cbrtf(x)
+#define ALWAN_SIN_F32(x)       sinf(x)
+#define ALWAN_COS_F32(x)       cosf(x)
+#define ALWAN_TAN_F32(x)       tanf(x)
+#define ALWAN_TANH_F32(x)      tanhf(x)
+#define ALWAN_ATAN_F32(x)      atanf(x)
+#define ALWAN_ACOS_F32(x)      acosf(x)
+#define ALWAN_ATAN2_F32(y, x)  atan2f(y, x)
+#define ALWAN_POW_F32(x, y)    powf(x, y)
+#define ALWAN_EXP_F32(x)       expf(x)
+#define ALWAN_LN_F32(x)        logf(x)
+#define ALWAN_LOG2_F32(x)      log2f(x)
+#define ALWAN_LOG10_F32(x)     log10f(x)
+#define ALWAN_FLOOR_F32(x)     floorf(x)
+#define ALWAN_CEIL_F32(x)      ceilf(x)
+#define ALWAN_FMOD_F32(x, y)   fmodf(x, y)
+
+/* f64 math */
+#define ALWAN_ABS_F64(x)       fabs(x)
+#define ALWAN_SQRT_F64(x)      sqrt(x)
+#define ALWAN_CBRT_F64(x)      cbrt(x)
+#define ALWAN_SIN_F64(x)       sin(x)
+#define ALWAN_COS_F64(x)       cos(x)
+#define ALWAN_TAN_F64(x)       tan(x)
+#define ALWAN_TANH_F64(x)      tanh(x)
+#define ALWAN_ATAN_F64(x)      atan(x)
+#define ALWAN_ACOS_F64(x)      acos(x)
+#define ALWAN_ATAN2_F64(y, x)  atan2(y, x)
+#define ALWAN_POW_F64(x, y)    pow(x, y)
+#define ALWAN_EXP_F64(x)       exp(x)
+#define ALWAN_LN_F64(x)        log(x)
+#define ALWAN_LOG2_F64(x)      log2(x)
+#define ALWAN_LOG10_F64(x)     log10(x)
+#define ALWAN_FLOOR_F64(x)     floor(x)
+#define ALWAN_CEIL_F64(x)      ceil(x)
+#define ALWAN_FMOD_F64(x, y)   fmod(x, y)
+
+/* Precision-specific literals */
+#define ALWAN_LITERAL_F32(x) x##f
+#define ALWAN_LITERAL_F64(x) x
+
+/* Precision-specific constants */
+#define ALWAN_EPSILON_F32 1e-6f
+#define ALWAN_EPSILON_F64 1e-12
+#define ALWAN_PI_F32 3.14159265358979323846f
+#define ALWAN_PI_F64 3.14159265358979323846
+#define ALWAN_ZERO_F32 0.0f
+#define ALWAN_ZERO_F64 0.0
+#define ALWAN_ONE_F32  1.0f
+#define ALWAN_ONE_F64  1.0
+
+/* Precision-specific utility functions */
+static inline float  alwan_min_f32(float a, float b)   { return (a < b) ? a : b; }
+static inline double alwan_min_f64(double a, double b) { return (a < b) ? a : b; }
+
+static inline float  alwan_max_f32(float a, float b)   { return (a > b) ? a : b; }
+static inline double alwan_max_f64(double a, double b) { return (a > b) ? a : b; }
+
+static inline float alwan_min3_f32(float a, float b, float c) {
+    float m = a; if (b < m) m = b; if (c < m) m = c; return m;
+}
+static inline double alwan_min3_f64(double a, double b, double c) {
+    double m = a; if (b < m) m = b; if (c < m) m = c; return m;
+}
+
+static inline float alwan_max3_f32(float a, float b, float c) {
+    float m = a; if (b > m) m = b; if (c > m) m = c; return m;
+}
+static inline double alwan_max3_f64(double a, double b, double c) {
+    double m = a; if (b > m) m = b; if (c > m) m = c; return m;
+}
+
+static inline float  alwan_clamp_f32(float x, float lo, float hi)    { return (x < lo) ? lo : (x > hi) ? hi : x; }
+static inline double alwan_clamp_f64(double x, double lo, double hi) { return (x < lo) ? lo : (x > hi) ? hi : x; }
+
+static inline float  alwan_saturate_f32(float x)  { if (x < 0.0f) return 0.0f; if (x > 1.0f) return 1.0f; return x; }
+static inline double alwan_saturate_f64(double x)  { if (x < 0.0)  return 0.0;  if (x > 1.0)  return 1.0;  return x; }
+
+static inline float  alwan_lerp_f32(float a, float b, float t)    { return (1.0f - t) * a + t * b; }
+static inline double alwan_lerp_f64(double a, double b, double t) { return (1.0  - t) * a + t * b; }
+
+#endif /* ALWAN_BACKEND == ALWAN_BACKEND_C */
 
 /* ================================================================
  * 1.5 ALWAN_SELECT (branchless conditional)
@@ -438,11 +498,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  * ================================================================ */
 
 /* Mathematical constants */
-#if ALWAN_SCALAR_IS_FLOAT
-# define ALWAN_PI ALWAN_LITERAL(3.14159265358979323846)
-#else
-# define ALWAN_PI ALWAN_LITERAL(3.14159265358979323846)
-#endif
+#define ALWAN_PI ALWAN_LITERAL(3.14159265358979323846)
 
 /* Standard illuminant D65 white point (Y=100 scale)
  * From colour-science: CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
@@ -1075,11 +1131,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 
 #endif /* ALWAN_NORMALIZE_RANGES */
 
-/* Test tolerance (depends on scalar precision) */
-#if ALWAN_SCALAR_IS_FLOAT
-# define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-5)
-#else
-# define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-12)
-#endif
+/* Test tolerance (double precision) */
+#define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-12)
 
 #endif /* ALWAN_PLATFORM_H */

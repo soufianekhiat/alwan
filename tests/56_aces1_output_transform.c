@@ -411,9 +411,9 @@ static int test_neutral_axis_consistency(void) {
         }
 
         /* Neutral input should produce neutral output */
-        alwan_scalar diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
-        alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
-        alwan_scalar max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
+        alwan_f64 diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
+        alwan_f64 diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
+        alwan_f64 max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
         if (max_diff > ALWAN_TEST_TOLERANCE) {
             TEST_FAIL("Gray %zu produced non-neutral output: (%g, %g, %g)",
                       i, rgb_out.r, rgb_out.g, rgb_out.b);
@@ -566,15 +566,9 @@ static int test_gamut_comp13_inverse(void) {
     alwan_aces_gamut_comp13_params params;
     alwan_aces_gamut_comp13_params_default(&params);
 
-    int status = alwan_aces_gamut_comp13(&rgb_compressed, &rgb_in, &params);
-    if (status != ALWAN_OK) {
-        TEST_FAIL("Forward GamutComp failed with error %d", status);
-    }
+    alwan_aces_gamut_comp13(&rgb_compressed, &rgb_in, &params);
 
-    status = alwan_aces_gamut_comp13_inv(&rgb_recovered, &rgb_compressed, &params);
-    if (status != ALWAN_OK) {
-        TEST_FAIL("Inverse GamutComp failed with error %d", status);
-    }
+    alwan_aces_gamut_comp13_inv(&rgb_recovered, &rgb_compressed, &params);
 
     /* Check roundtrip */
     TEST_CHECK_NEAR(rgb_recovered.r, rgb_in.r, ALWAN_TEST_TOLERANCE);

@@ -16,13 +16,24 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_hunt_core.h"
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_hunt_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_hunt_impl.inc"
+#include "alwan_api_teardown.h"
+
 /* ----------------------------------------------------------------
  * Helper Functions (enum resolution - not cross-platform)
  * ---------------------------------------------------------------- */
 
 /* Resolve Hunt surround enum to Nc (chromatic induction) and Nb (brightness) */
 static void get_hunt_params(alwan_hunt_surround surround,
-                            alwan_scalar *Nc, alwan_scalar *Nb) {
+                            alwan_f64 *Nc, alwan_f64 *Nb) {
     switch (surround) {
         case ALWAN_HUNT_SURROUND_NORMAL:
             *Nc = ALWAN_LITERAL(1.0);
@@ -55,14 +66,14 @@ int alwan_hunt_forward(alwan_hunt_correlates *out,
     }
 
     /* Resolve surround enum to scalar parameters */
-    alwan_scalar Nc, Nb;
+    alwan_f64 Nc, Nb;
     get_hunt_params(vc->surround, &Nc, &Nb);
 
     /* Resolve discount_illuminant flag to degree of adaptation */
-    alwan_scalar D = vc->discount_illuminant ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
+    alwan_f64 D = vc->discount_illuminant ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
 
     /* Delegate to core (value-returning, cross-platform) */
-    alwan_hunt_v_correlates result = alwan_hunt_forward_v(
+    alwan_hunt_v_correlates_f64 result = alwan_hunt_forward_f64_v(
         *xyz,
         vc->xyz_w.x, vc->xyz_w.y, vc->xyz_w.z,
         vc->La, vc->Yb,

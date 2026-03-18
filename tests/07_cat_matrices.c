@@ -14,10 +14,10 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_scalar mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
-    alwan_scalar max_diff = 0;
+static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
+    alwan_f64 max_diff = 0;
     for (int i = 0; i < 9; i++) {
-        alwan_scalar diff = ALWAN_ABS(a->m[i] - b->m[i]);
+        alwan_f64 diff = ALWAN_ABS(a->m[i] - b->m[i]);
         if (diff > max_diff) max_diff = diff;
     }
     return max_diff;
@@ -39,13 +39,13 @@ static int test_cat_d65_to_d50_bradford(void) {
     /* Load white points and expected matrix */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
-    static alwan_scalar const expected_matrix_data[] = {
+    static alwan_f64 const expected_matrix_data[] = {
 #include "reference_values/cat_d65_to_d50_bradford.csv"
     };
     ALWAN_DIAG_POP
@@ -60,9 +60,9 @@ static int test_cat_d65_to_d50_bradford(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
+    alwan_f64 diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     if (diff >= tolerance) {
         printf("  Max diff: %e (tolerance: %e)\n", diff, tolerance);
         mat3_print("  Computed", &computed_matrix);
@@ -77,13 +77,13 @@ static int test_cat_d50_to_d65_bradford(void) {
     /* Load white points and expected matrix */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
-    static alwan_scalar const expected_matrix_data[] = {
+    static alwan_f64 const expected_matrix_data[] = {
 #include "reference_values/cat_d50_to_d65_bradford.csv"
     };
     ALWAN_DIAG_POP
@@ -98,9 +98,9 @@ static int test_cat_d50_to_d65_bradford(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d50_xyz, &d65_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
+    alwan_f64 diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D50->D65 Bradford matrix mismatch");
 
     TEST_PASS("CAT D50->D65 (Bradford)");
@@ -110,13 +110,13 @@ static int test_cat_a_to_d65_bradford(void) {
     /* Load white points and expected matrix */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const a_xyz_data[] = {
+    static alwan_f64 const a_xyz_data[] = {
 #include "reference_values/a_xyz.csv"
     };
-    static alwan_scalar const expected_matrix_data[] = {
+    static alwan_f64 const expected_matrix_data[] = {
 #include "reference_values/cat_a_to_d65_bradford.csv"
     };
     ALWAN_DIAG_POP
@@ -131,9 +131,9 @@ static int test_cat_a_to_d65_bradford(void) {
     int status = alwan_cat_matrix(&computed_matrix, &a_xyz, &d65_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
+    alwan_f64 diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "A->D65 Bradford matrix mismatch");
 
     TEST_PASS("CAT A->D65 (Bradford)");
@@ -143,13 +143,13 @@ static int test_cat_d65_to_d60_bradford(void) {
     /* Load white points and expected matrix */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d60_xyz_data[] = {
+    static alwan_f64 const d60_xyz_data[] = {
 #include "reference_values/d60_xyz.csv"
     };
-    static alwan_scalar const expected_matrix_data[] = {
+    static alwan_f64 const expected_matrix_data[] = {
 #include "reference_values/cat_d65_to_d60_bradford.csv"
     };
     ALWAN_DIAG_POP
@@ -164,9 +164,9 @@ static int test_cat_d65_to_d60_bradford(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d60_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
+    alwan_f64 diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D65->D60 Bradford matrix mismatch");
 
     TEST_PASS("CAT D65->D60 (Bradford)");
@@ -176,13 +176,13 @@ static int test_cat_d65_to_d50_cat02(void) {
     /* Load white points and expected matrix */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
-    static alwan_scalar const expected_matrix_data[] = {
+    static alwan_f64 const expected_matrix_data[] = {
 #include "reference_values/cat_d65_to_d50_cat02.csv"
     };
     ALWAN_DIAG_POP
@@ -197,9 +197,9 @@ static int test_cat_d65_to_d50_cat02(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_CAT02);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
+    alwan_f64 diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D65->D50 CAT02 matrix mismatch");
 
     TEST_PASS("CAT D65->D50 (CAT02)");
@@ -209,13 +209,13 @@ static int test_cat_d65_to_d50_cat16(void) {
     /* Load white points and expected matrix */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
-    static alwan_scalar const expected_matrix_data[] = {
+    static alwan_f64 const expected_matrix_data[] = {
 #include "reference_values/cat_d65_to_d50_cat16.csv"
     };
     ALWAN_DIAG_POP
@@ -230,9 +230,9 @@ static int test_cat_d65_to_d50_cat16(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_CAT16);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
+    alwan_f64 diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D65->D50 CAT16 matrix mismatch");
 
     TEST_PASS("CAT D65->D50 (CAT16)");
@@ -242,13 +242,13 @@ static int test_cat_d65_to_d50_xyz_scaling(void) {
     /* Load white points and expected matrix */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const d65_xyz_data[] = {
+    static alwan_f64 const d65_xyz_data[] = {
 #include "reference_values/test_d65_white.csv"
     };
-    static alwan_scalar const d50_xyz_data[] = {
+    static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
-    static alwan_scalar const expected_matrix_data[] = {
+    static alwan_f64 const expected_matrix_data[] = {
 #include "reference_values/cat_d65_to_d50_xyz_scaling.csv"
     };
     ALWAN_DIAG_POP
@@ -263,9 +263,9 @@ static int test_cat_d65_to_d50_xyz_scaling(void) {
     int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_XYZ_SCALING);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
-    alwan_scalar diff = mat3_max_diff(&computed_matrix, &expected_matrix);
+    alwan_f64 diff = mat3_max_diff(&computed_matrix, &expected_matrix);
     TEST_ASSERT(diff < tolerance, "D65->D50 XYZ Scaling matrix mismatch");
 
     TEST_PASS("CAT D65->D50 (XYZ Scaling)");

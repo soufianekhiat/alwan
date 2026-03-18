@@ -13,18 +13,13 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_din99_core.h"
 
-void alwan_lab_to_din99(alwan_din99 *din99, alwan_lab const *lab, int variant) {
-    if (variant < 0 || variant > 3) return;
-    alwan_lab tmp = *lab;
-    ALWAN_DENORM_LAB(&tmp);
-    *din99 = alwan_lab_to_din99_v(tmp, variant);
-    ALWAN_NORM_DIN99(din99);
-}
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_din99_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
 
-void alwan_din99_to_lab(alwan_lab *lab, alwan_din99 const *din99, int variant) {
-    if (variant < 0 || variant > 3) return;
-    alwan_din99 tmp = *din99;
-    ALWAN_DENORM_DIN99(&tmp);
-    *lab = alwan_din99_to_lab_v(tmp, variant);
-    ALWAN_NORM_LAB(lab);
-}
+#include "alwan_api_f64_setup.h"
+#include "alwan_din99_impl.inc"
+#include "alwan_api_teardown.h"

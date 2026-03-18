@@ -14,12 +14,23 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_hellwig2022_core.h"
 
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_hellwig2022_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_hellwig2022_impl.inc"
+#include "alwan_api_teardown.h"
+
 /* ----------------------------------------------------------------
  * Surround enum -> F, c, Nc resolution (kept in .c wrapper)
  * ---------------------------------------------------------------- */
 
 static void get_surround_params(alwan_hellwig2022_surround surround,
-                                alwan_scalar *F, alwan_scalar *c, alwan_scalar *Nc) {
+                                alwan_f64 *F, alwan_f64 *c, alwan_f64 *Nc) {
     switch (surround) {
         case ALWAN_HELLWIG2022_SURROUND_AVERAGE:
             *F  = ALWAN_LITERAL(1.0);
@@ -56,18 +67,18 @@ int alwan_hellwig2022_forward(alwan_hellwig2022_correlates *out,
     }
 
     /* Resolve surround enum to scalar parameters */
-    alwan_scalar F, c, Nc;
+    alwan_f64 F, c, Nc;
     get_surround_params(vc->surround, &F, &c, &Nc);
 
     /* Delegate to the core value-returning function */
-    alwan_hellwig2022_v_correlates v = alwan_hellwig2022_forward_v(
+    alwan_hellwig2022_v_correlates_f64 v = alwan_hellwig2022_forward_f64_v(
         *xyz,
         vc->white_xyz.x, vc->white_xyz.y, vc->white_xyz.z,
         F, c, Nc,
         vc->adapting_luminance,
         vc->background_luminance,
         vc->white_xyz.y,
-        (alwan_scalar)vc->discount_illuminant);
+        (alwan_f64)vc->discount_illuminant);
 
     /* Copy correlates to output */
     out->J = v.J;
@@ -98,11 +109,11 @@ int alwan_hellwig2022_inverse(alwan_xyz *xyz_out,
     ALWAN_DENORM_HELLWIG2022(&tmp);
 
     /* Resolve surround enum to scalar parameters */
-    alwan_scalar F, c, Nc;
+    alwan_f64 F, c, Nc;
     get_surround_params(vc->surround, &F, &c, &Nc);
 
     /* Build core correlates from public correlates (only J, C, h needed for inverse) */
-    alwan_hellwig2022_v_correlates v_corr;
+    alwan_hellwig2022_v_correlates_f64 v_corr;
     v_corr.J = tmp.J;
     v_corr.C = tmp.C;
     v_corr.h = tmp.h;
@@ -112,14 +123,14 @@ int alwan_hellwig2022_inverse(alwan_xyz *xyz_out,
     v_corr.H = ALWAN_LITERAL(0.0);
 
     /* Delegate to the core value-returning function */
-    *xyz_out = alwan_hellwig2022_inverse_v(
+    *xyz_out = alwan_hellwig2022_inverse_f64_v(
         v_corr,
         vc->white_xyz.x, vc->white_xyz.y, vc->white_xyz.z,
         F, c, Nc,
         vc->adapting_luminance,
         vc->background_luminance,
         vc->white_xyz.y,
-        (alwan_scalar)vc->discount_illuminant);
+        (alwan_f64)vc->discount_illuminant);
 
     return ALWAN_OK;
 }

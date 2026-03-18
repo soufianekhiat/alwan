@@ -18,27 +18,27 @@ static int test_delta_e_76(void) {
     /* Load Lab test pairs and expected dE76 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const lab1_data[] = {
+    static alwan_f64 const lab1_data[] = {
 #include "reference_values/delta_e_lab1.csv"
     };
-    static alwan_scalar const lab2_data[] = {
+    static alwan_f64 const lab2_data[] = {
 #include "reference_values/delta_e_lab2.csv"
     };
-    static alwan_scalar const de76_data[] = {
+    static alwan_f64 const de76_data[] = {
 #include "reference_values/delta_e_76.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
         alwan_lab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
-        alwan_scalar expected = de76_data[i];
+        alwan_f64 expected = de76_data[i];
 
-        alwan_scalar result = alwan_delta_e_76(&lab1, &lab2);
-        alwan_scalar diff = ALWAN_ABS(result - expected);
+        alwan_f64 result = alwan_delta_e_76(&lab1, &lab2);
+        alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "dE*76 mismatch");
     }
@@ -50,27 +50,27 @@ static int test_delta_e_94(void) {
     /* Load Lab test pairs and expected dE94 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const lab1_data[] = {
+    static alwan_f64 const lab1_data[] = {
 #include "reference_values/delta_e_lab1.csv"
     };
-    static alwan_scalar const lab2_data[] = {
+    static alwan_f64 const lab2_data[] = {
 #include "reference_values/delta_e_lab2.csv"
     };
-    static alwan_scalar const de94_data[] = {
+    static alwan_f64 const de94_data[] = {
 #include "reference_values/delta_e_94.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
         alwan_lab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
-        alwan_scalar expected = de94_data[i];
+        alwan_f64 expected = de94_data[i];
 
-        alwan_scalar result = alwan_delta_e_94(&lab1, &lab2);
-        alwan_scalar diff = ALWAN_ABS(result - expected);
+        alwan_f64 result = alwan_delta_e_94(&lab1, &lab2);
+        alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "dE*94 mismatch");
     }
@@ -82,28 +82,28 @@ static int test_delta_e_cmc(void) {
     /* Load Lab test pairs and expected dE CMC values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const lab1_data[] = {
+    static alwan_f64 const lab1_data[] = {
 #include "reference_values/delta_e_lab1.csv"
     };
-    static alwan_scalar const lab2_data[] = {
+    static alwan_f64 const lab2_data[] = {
 #include "reference_values/delta_e_lab2.csv"
     };
-    static alwan_scalar const de_cmc_data[] = {
+    static alwan_f64 const de_cmc_data[] = {
 #include "reference_values/delta_e_cmc.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
         alwan_lab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
-        alwan_scalar expected = de_cmc_data[i];
+        alwan_f64 expected = de_cmc_data[i];
 
         /* Use default l=2, c=1 (acceptability) */
-        alwan_scalar result = alwan_delta_e_cmc(&lab1, &lab2, ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0));
-        alwan_scalar diff = ALWAN_ABS(result - expected);
+        alwan_f64 result = alwan_delta_e_cmc(&lab1, &lab2, ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0));
+        alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "dE CMC(2:1) mismatch");
     }
@@ -115,27 +115,27 @@ static int test_delta_e_2000(void) {
     /* Load Lab test pairs and expected dE2000 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const lab1_data[] = {
+    static alwan_f64 const lab1_data[] = {
 #include "reference_values/delta_e_lab1.csv"
     };
-    static alwan_scalar const lab2_data[] = {
+    static alwan_f64 const lab2_data[] = {
 #include "reference_values/delta_e_lab2.csv"
     };
-    static alwan_scalar const de2000_data[] = {
+    static alwan_f64 const de2000_data[] = {
 #include "reference_values/delta_e_2000.csv"
     };
     ALWAN_DIAG_POP
 
-    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_scalar));
-    alwan_scalar const tolerance = ALWAN_TEST_TOLERANCE;
+    int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_f64));
+    alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
         alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
         alwan_lab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
-        alwan_scalar expected = de2000_data[i];
+        alwan_f64 expected = de2000_data[i];
 
-        alwan_scalar result = alwan_delta_e_2000(&lab1, &lab2);
-        alwan_scalar diff = ALWAN_ABS(result - expected);
+        alwan_f64 result = alwan_delta_e_2000(&lab1, &lab2);
+        alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "dE*00 mismatch");
     }
@@ -149,7 +149,7 @@ static int test_delta_e_ok(void) {
     /* Identical colors should give 0 */
     {
         alwan_oklab a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.05)};
-        alwan_scalar result = alwan_delta_e_ok(&a, &a);
+        alwan_f64 result = alwan_delta_e_ok(&a, &a);
         TEST_ASSERT_NEAR(result, ALWAN_LITERAL(0.0), ALWAN_TEST_TOLERANCE, "deltaEOK identical");
     }
 
@@ -157,8 +157,8 @@ static int test_delta_e_ok(void) {
     {
         alwan_oklab a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
         alwan_oklab b = {ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.3)};
-        alwan_scalar expected = ALWAN_SQRT(ALWAN_LITERAL(0.14));
-        alwan_scalar result = alwan_delta_e_ok(&a, &b);
+        alwan_f64 expected = ALWAN_SQRT(ALWAN_LITERAL(0.14));
+        alwan_f64 result = alwan_delta_e_ok(&a, &b);
         TEST_ASSERT_NEAR(result, expected, ALWAN_TEST_TOLERANCE, "deltaEOK known pair");
     }
 
@@ -166,8 +166,8 @@ static int test_delta_e_ok(void) {
     {
         alwan_oklab a = {ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.05), ALWAN_LITERAL(-0.1)};
         alwan_oklab b = {ALWAN_LITERAL(0.3), ALWAN_LITERAL(-0.02), ALWAN_LITERAL(0.15)};
-        alwan_scalar d1 = alwan_delta_e_ok(&a, &b);
-        alwan_scalar d2 = alwan_delta_e_ok(&b, &a);
+        alwan_f64 d1 = alwan_delta_e_ok(&a, &b);
+        alwan_f64 d2 = alwan_delta_e_ok(&b, &a);
         TEST_ASSERT_NEAR(d1, d2, ALWAN_TEST_TOLERANCE, "deltaEOK symmetry");
     }
 
@@ -175,7 +175,7 @@ static int test_delta_e_ok(void) {
     {
         alwan_oklab a = {ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.3), ALWAN_LITERAL(0.2)};
         alwan_oklab b = {ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.1)};
-        alwan_scalar result = alwan_delta_e_ok(&a, &b);
+        alwan_f64 result = alwan_delta_e_ok(&a, &b);
         TEST_ASSERT(result >= ALWAN_LITERAL(0.0), "deltaEOK non-negative");
     }
 

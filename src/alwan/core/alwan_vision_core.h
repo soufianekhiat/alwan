@@ -6,8 +6,8 @@
  * Header-only Color Vision Deficiency (CVD) Simulation
  * Value-returning variants for cross-platform (C/HLSL/Halide) use.
  *
- * Brettel, Vienot & Mollon (1997) — confusion-line projection
- * Machado, Oliveira & Fernandes (2009) — cone spectral shift
+ * Brettel, Vienot & Mollon (1997) -- confusion-line projection
+ * Machado, Oliveira & Fernandes (2009) -- cone spectral shift
  */
 
 #ifndef ALWAN_VISION_CORE_H
@@ -17,109 +17,79 @@
 #include "../alwan_types.h"
 #include "alwan_math_core.h"
 
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
 /* ================================================================
- * CVD Transformation Matrices
- * Based on Brettel, Vienot & Mollon (1997)
+ * Dual-Precision: emit f32 and f64 variants from shared .inc
+ * ================================================================ */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
+
+/* f32 pass */
+#include "alwan_core_f32_setup.h"
+#include "alwan_vision_core.inc"
+#include "alwan_core_teardown.h"
+
+/* f64 pass */
+#include "alwan_core_f64_setup.h"
+#include "alwan_vision_core.inc"
+#include "alwan_core_teardown.h"
+
+ALWAN_DIAG_POP
+
+#else /* HLSL / GLSL / Halide */
+/* ================================================================
+ * GPU Backends: Single-precision only (original code)
  * ================================================================ */
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-/* sRGB to LMS matrix */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_RGB_TO_LMS = {{
 #include "../data/matrices/cvd_rgb_to_lms.csv"
 }};
-
-/* LMS to sRGB matrix */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_LMS_TO_RGB = {{
 #include "../data/matrices/cvd_lms_to_rgb.csv"
 }};
-
-/* Protanopia (L-cone absent) - red-blind */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_PROTANOPIA = {{
 #include "../data/matrices/cvd_protanopia.csv"
 }};
-
-/* Deuteranopia (M-cone absent) - green-blind */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_DEUTERANOPIA = {{
 #include "../data/matrices/cvd_deuteranopia.csv"
 }};
-
-/* Tritanopia (S-cone absent) - blue-blind */
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_TRITANOPIA = {{
 #include "../data/matrices/cvd_tritanopia.csv"
 }};
 
 ALWAN_DIAG_POP
 
-/* ================================================================
- * Generic CVD Simulation (takes CVD matrix as parameter)
- * ================================================================
- *
- * Pipeline: RGB -> LMS -> CVD(LMS) -> RGB -> lerp(original, cvd, severity)
- */
-
 ALWAN_INLINE alwan_rgb alwan_simulate_cvd_matrix_v(alwan_rgb rgb,
                                                     alwan_mat3x3 cvd_matrix,
                                                     alwan_scalar severity) {
     alwan_rgb result;
-
-    /* Clamp severity to [0, 1] */
     severity = alwan_clamp(severity, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-
-    /* RGB -> LMS */
     alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
     alwan_vec3 lms = alwan_mat3_mulv_v(CVD_RGB_TO_LMS, rgb_v);
-
-    /* Apply CVD transformation in LMS space */
     alwan_vec3 lms_cvd = alwan_mat3_mulv_v(cvd_matrix, lms);
-
-    /* LMS -> RGB (unrolled matrix multiply) */
     alwan_vec3 cvd_rgb = alwan_mat3_mulv_v(CVD_LMS_TO_RGB, lms_cvd);
     alwan_scalar cr = alwan_saturate(cvd_rgb.v[0]);
     alwan_scalar cg = alwan_saturate(cvd_rgb.v[1]);
     alwan_scalar cb = alwan_saturate(cvd_rgb.v[2]);
-
-    /* Interpolate with original: out = lerp(rgb_in, cvd_rgb, severity) */
     result.r = alwan_lerp(rgb.r, cr, severity);
     result.g = alwan_lerp(rgb.g, cg, severity);
     result.b = alwan_lerp(rgb.b, cb, severity);
-
     return result;
 }
 
-/* ================================================================
- * Named CVD Simulation Functions
- * ================================================================ */
-
-/* Protanopia simulation (L-cone deficiency, red-blind) */
 ALWAN_INLINE alwan_rgb alwan_simulate_protanopia_v(alwan_rgb rgb, alwan_scalar severity) {
     return alwan_simulate_cvd_matrix_v(rgb, CVD_PROTANOPIA, severity);
 }
-
-/* Deuteranopia simulation (M-cone deficiency, green-blind) */
 ALWAN_INLINE alwan_rgb alwan_simulate_deuteranopia_v(alwan_rgb rgb, alwan_scalar severity) {
     return alwan_simulate_cvd_matrix_v(rgb, CVD_DEUTERANOPIA, severity);
 }
-
-/* Tritanopia simulation (S-cone deficiency, blue-blind) */
 ALWAN_INLINE alwan_rgb alwan_simulate_tritanopia_v(alwan_rgb rgb, alwan_scalar severity) {
     return alwan_simulate_cvd_matrix_v(rgb, CVD_TRITANOPIA, severity);
 }
-
-/* ================================================================
- * Machado, Oliveira & Fernandes (2009) CVD Simulation
- *
- * Unlike Brettel which operates in LMS space, Machado produces
- * direct sRGB->sRGB 3x3 matrices at precomputed severity levels.
- * For arbitrary severity, linearly interpolate between the two
- * nearest precomputed matrices (0.0, 0.1, ..., 1.0).
- *
- * Reference: Machado, G. M., Oliveira, M. M., & Fernandes, L. A. F.
- *            (2009). IEEE TVCG, 15(6), 1291-1298.
- * ================================================================ */
-
-/* 11 precomputed matrices per CVD type (severity 0.0 to 1.0, step 0.1) */
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
@@ -127,35 +97,25 @@ ALWAN_DIAG_DISABLE_FLOAT_CONV
 ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_PROTAN[11] = {
     {{
 #include "../data/matrices/machado2009_protan_00.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_01.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_02.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_03.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_04.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_05.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_06.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_07.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_08.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_09.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_protan_10.csv"
     }},
 };
@@ -163,35 +123,25 @@ ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_PROTAN[11] = {
 ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_DEUTAN[11] = {
     {{
 #include "../data/matrices/machado2009_deutan_00.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_01.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_02.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_03.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_04.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_05.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_06.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_07.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_08.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_09.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_deutan_10.csv"
     }},
 };
@@ -199,55 +149,39 @@ ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_DEUTAN[11] = {
 ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_TRITAN[11] = {
     {{
 #include "../data/matrices/machado2009_tritan_00.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_01.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_02.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_03.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_04.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_05.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_06.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_07.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_08.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_09.csv"
-    }},
-    {{
+    }},{{
 #include "../data/matrices/machado2009_tritan_10.csv"
     }},
 };
 
 ALWAN_DIAG_POP
 
-/* Interpolate a Machado matrix from the 11-element LUT at arbitrary severity.
- * severity is clamped to [0, 1].  Returns the interpolated 3x3 matrix. */
 ALWAN_INLINE alwan_mat3x3 alwan_machado_interpolate_v(
-    alwan_mat3x3 const *lut, alwan_scalar severity)
-{
+    alwan_mat3x3 const *lut, alwan_scalar severity) {
     severity = alwan_clamp(severity, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-
     alwan_scalar idx_f = severity * ALWAN_LITERAL(10.0);
     int lo = (int)idx_f;
     if (lo >= 10) lo = 9;
     int hi = lo + 1;
     alwan_scalar t = idx_f - (alwan_scalar)lo;
-
-    /* Element-wise linear interpolation between lut[lo] and lut[hi] */
     alwan_mat3x3 result;
     int i;
     for (i = 0; i < 9; i++) {
@@ -256,15 +190,11 @@ ALWAN_INLINE alwan_mat3x3 alwan_machado_interpolate_v(
     return result;
 }
 
-/* Machado 2009 CVD simulation (value-returning).
- * Applies the interpolated sRGB->sRGB matrix directly — no LMS decomposition. */
 ALWAN_INLINE alwan_rgb alwan_simulate_cvd_machado_v(
-    alwan_rgb rgb, alwan_mat3x3 const *lut, alwan_scalar severity)
-{
+    alwan_rgb rgb, alwan_mat3x3 const *lut, alwan_scalar severity) {
     alwan_mat3x3 mat = alwan_machado_interpolate_v(lut, severity);
     alwan_vec3 v = {{rgb.r, rgb.g, rgb.b}};
     alwan_vec3 out = alwan_mat3_mulv_v(mat, v);
-
     alwan_rgb result;
     result.r = alwan_saturate(out.v[0]);
     result.g = alwan_saturate(out.v[1]);
@@ -272,252 +202,122 @@ ALWAN_INLINE alwan_rgb alwan_simulate_cvd_machado_v(
     return result;
 }
 
-/* Named Machado 2009 simulation functions */
-
 ALWAN_INLINE alwan_rgb alwan_simulate_machado_protan_v(alwan_rgb rgb, alwan_scalar severity) {
     return alwan_simulate_cvd_machado_v(rgb, MACHADO_PROTAN, severity);
 }
-
 ALWAN_INLINE alwan_rgb alwan_simulate_machado_deutan_v(alwan_rgb rgb, alwan_scalar severity) {
     return alwan_simulate_cvd_machado_v(rgb, MACHADO_DEUTAN, severity);
 }
-
 ALWAN_INLINE alwan_rgb alwan_simulate_machado_tritan_v(alwan_rgb rgb, alwan_scalar severity) {
     return alwan_simulate_cvd_machado_v(rgb, MACHADO_TRITAN, severity);
 }
 
-/* ================================================================
- * Contrast Sensitivity Function (CSF) -- Barten 1999
- * Reference: Barten, P. G. J. (1999). Contrast sensitivity of the
- *            human eye and its effects on image quality. SPIE Press.
- * ================================================================ */
-
-/* Pupil diameter using Barten (1999) method
- * Formula: d = 5 - 3 * tanh(0.4 * log10(L * X_0 * Y_0 / 40^2))
- * When Y_0 < 0, uses X_0 in its place. */
 ALWAN_INLINE alwan_scalar alwan_pupil_diameter_barten1999_v(
-    alwan_scalar L, alwan_scalar X_0, alwan_scalar Y_0)
-{
+    alwan_scalar L, alwan_scalar X_0, alwan_scalar Y_0) {
     alwan_scalar Y = ALWAN_SELECT(Y_0 < ALWAN_ZERO, X_0, Y_0);
     alwan_scalar arg = ALWAN_LITERAL(0.4) * ALWAN_LOG10(L * X_0 * Y / ALWAN_LITERAL(1600.0));
     return ALWAN_LITERAL(5.0) - ALWAN_LITERAL(3.0) * ALWAN_TANH(arg);
 }
 
-/* Retinal illuminance using Barten (1999) method
- * Formula: E = (pi * d^2 / 4) * L * [Stiles-Crawford correction]
- * apply_stiles_crawford: 1.0 to apply, 0.0 to skip */
 ALWAN_INLINE alwan_scalar alwan_retinal_illuminance_barten1999_v(
-    alwan_scalar L, alwan_scalar d, alwan_scalar apply_stiles_crawford)
-{
+    alwan_scalar L, alwan_scalar d, alwan_scalar apply_stiles_crawford) {
     alwan_scalar E = (ALWAN_PI * d * d / ALWAN_LITERAL(4.0)) * L;
-
     alwan_scalar d_97 = d / ALWAN_LITERAL(9.7);
     alwan_scalar d_124 = d / ALWAN_LITERAL(12.4);
     alwan_scalar sc = ALWAN_ONE - d_97 * d_97 + d_124 * d_124 * d_124 * d_124;
     alwan_scalar correction = ALWAN_SELECT(apply_stiles_crawford > ALWAN_LITERAL(0.5), sc, ALWAN_ONE);
-
     return E * correction;
 }
 
-/* Optical MTF: M_opt = exp(-2 * pi^2 * sigma^2 * u^2) */
 ALWAN_INLINE alwan_scalar alwan_optical_mtf_barten1999_v(alwan_scalar u, alwan_scalar sigma) {
     return ALWAN_EXP(ALWAN_LITERAL(-2.0) * ALWAN_PI * ALWAN_PI * sigma * sigma * u * u);
 }
 
-/* Standard deviation of line-spread function:
- * sigma = sqrt(sigma_0^2 + (C_ab * d)^2) */
 ALWAN_INLINE alwan_scalar alwan_sigma_barten1999_v(
-    alwan_scalar sigma_0, alwan_scalar C_ab, alwan_scalar d)
-{
+    alwan_scalar sigma_0, alwan_scalar C_ab, alwan_scalar d) {
     alwan_scalar Cab_d = C_ab * d;
     return ALWAN_SQRT(sigma_0 * sigma_0 + Cab_d * Cab_d);
 }
 
-/* Maximum angular size:
- * X = (1/X_0^2 + 1/X_max^2 + u^2/N_max^2)^(-0.5) */
 ALWAN_INLINE alwan_scalar alwan_maximum_angular_size_barten1999_v(
-    alwan_scalar u, alwan_scalar X_0, alwan_scalar X_max, alwan_scalar N_max)
-{
+    alwan_scalar u, alwan_scalar X_0, alwan_scalar X_max, alwan_scalar N_max) {
     alwan_scalar term1 = ALWAN_ONE / (X_0 * X_0);
     alwan_scalar term2 = ALWAN_ONE / (X_max * X_max);
     alwan_scalar term3 = (u * u) / (N_max * N_max);
     return ALWAN_POW(term1 + term2 + term3, ALWAN_LITERAL(-0.5));
 }
 
-/* Parameters for the full Barten 1999 CSF model */
 typedef struct {
-    alwan_scalar sigma;   /* Std. dev. of line-spread function (deg) */
-    alwan_scalar k;       /* Signal-to-noise ratio */
-    alwan_scalar T;       /* Integration time (seconds) */
-    alwan_scalar X_0;     /* Angular size of object (deg) */
-    alwan_scalar Y_0;     /* Vertical angular size (<0 means use X_0) */
-    alwan_scalar X_max;   /* Maximum integration area (deg) */
-    alwan_scalar Y_max;   /* Vertical max area (<0 means use X_max) */
-    alwan_scalar N_max;   /* Maximum number of cycles */
-    alwan_scalar n;       /* Quantum efficiency of the eye */
-    alwan_scalar p;       /* Photon conversion factor */
-    alwan_scalar E;       /* Retinal illuminance (Trolands) */
-    alwan_scalar phi_0;   /* Neural noise spectral density */
-    alwan_scalar u_0;     /* Lateral inhibition cutoff frequency */
+    alwan_scalar sigma; alwan_scalar k; alwan_scalar T;
+    alwan_scalar X_0; alwan_scalar Y_0; alwan_scalar X_max; alwan_scalar Y_max;
+    alwan_scalar N_max; alwan_scalar n; alwan_scalar p; alwan_scalar E;
+    alwan_scalar phi_0; alwan_scalar u_0;
 } alwan_csf_barten1999_v_params;
 
-/* Full Barten (1999) CSF
- * Formula: S = (M_opt / k) / sqrt(2/T * M_as * (1/(n*p*E) + phi_0/(1 - exp(-(u/u_0)^2)))) */
 ALWAN_INLINE alwan_scalar alwan_csf_barten1999_v(
-    alwan_scalar u, alwan_csf_barten1999_v_params p)
-{
-    /* Get Y values (use X if Y is negative) */
-    alwan_scalar Y_0   = ALWAN_SELECT(p.Y_0   < ALWAN_ZERO, p.X_0,   p.Y_0);
+    alwan_scalar u, alwan_csf_barten1999_v_params p) {
+    alwan_scalar Y_0 = ALWAN_SELECT(p.Y_0 < ALWAN_ZERO, p.X_0, p.Y_0);
     alwan_scalar Y_max = ALWAN_SELECT(p.Y_max < ALWAN_ZERO, p.X_max, p.Y_max);
-
-    /* Optical MTF */
     alwan_scalar M_opt = alwan_optical_mtf_barten1999_v(u, p.sigma);
-
-    /* Maximum angular size product M_as = 1/(X*Y) */
     alwan_scalar X = alwan_maximum_angular_size_barten1999_v(u, p.X_0, p.X_max, p.N_max);
     alwan_scalar Y = alwan_maximum_angular_size_barten1999_v(u, Y_0, Y_max, p.N_max);
     alwan_scalar M_as = ALWAN_ONE / (X * Y);
-
-    /* Photon noise term */
     alwan_scalar photon_term = ALWAN_ONE / (p.n * p.p * p.E);
-
-    /* Neural noise term with lateral inhibition cutoff */
     alwan_scalar u_ratio = u / p.u_0;
     alwan_scalar neural_term = p.phi_0 / (ALWAN_ONE - ALWAN_EXP(-(u_ratio * u_ratio)));
-
-    /* Total noise under square root */
     alwan_scalar noise = (ALWAN_LITERAL(2.0) / p.T) * M_as * (photon_term + neural_term);
-
-    /* Contrast sensitivity */
     return (M_opt / p.k) / ALWAN_SQRT(noise);
 }
 
-/* Simplified CSF model (value-returning, branchless)
- * Barten-inspired model with pupil area and band-pass filtering. */
 ALWAN_INLINE alwan_scalar alwan_csf_simple_v(
-    alwan_scalar spatial_frequency, alwan_scalar luminance)
-{
-    alwan_scalar f = spatial_frequency;
-    alwan_scalar L = luminance;
-
-    /* Pupil diameter: d ~= 5 - 3*tanh(0.4*log10(L)) */
+    alwan_scalar spatial_frequency, alwan_scalar luminance) {
+    alwan_scalar f = spatial_frequency; alwan_scalar L = luminance;
     alwan_scalar log_L = ALWAN_LOG10(L);
     alwan_scalar d = ALWAN_LITERAL(5.0) - ALWAN_LITERAL(3.0) * ALWAN_TANH(ALWAN_LITERAL(0.4) * log_L);
     alwan_scalar pupil_area = ALWAN_PI * d * d / ALWAN_LITERAL(4.0);
     alwan_scalar E = L * pupil_area;
-
-    /* Band-pass filter: low-frequency roll-off * high-frequency roll-off */
-    alwan_scalar low_freq_atten  = f / (f + ALWAN_LITERAL(0.5));
+    alwan_scalar low_freq_atten = f / (f + ALWAN_LITERAL(0.5));
     alwan_scalar high_freq_atten = ALWAN_EXP(ALWAN_LITERAL(-0.005) * f * f);
     alwan_scalar M_opt = low_freq_atten * high_freq_atten;
-
-    /* Noise: photon + neural */
-    alwan_scalar phi_0 = ALWAN_LITERAL(3.0e-8);
-    alwan_scalar k = ALWAN_LITERAL(3.0);
+    alwan_scalar phi_0 = ALWAN_LITERAL(3.0e-8); alwan_scalar k = ALWAN_LITERAL(3.0);
     alwan_scalar noise_photon = phi_0 / (E + ALWAN_LITERAL(1e-10));
     alwan_scalar noise_neural = ALWAN_ONE / k;
     alwan_scalar noise_total = ALWAN_SQRT(noise_photon * noise_photon + noise_neural * noise_neural);
-
-    /* Contrast sensitivity, scaled */
     return (M_opt * E) / (noise_total + ALWAN_LITERAL(1e-10)) * ALWAN_LITERAL(10.0);
 }
 
-/* ================================================================
- * WCAG 2.x Contrast Ratio
- *
- * Reference: W3C WCAG 2.1, "1.4.3 Contrast (Minimum)"
- *   https://www.w3.org/TR/WCAG21/#contrast-minimum
- *
- * CR = (L_lighter + 0.05) / (L_darker + 0.05)
- * Input: relative luminances (0..1) of two colors.
- * The 0.05 offset accounts for ambient light / viewing flare.
- * Returns contrast ratio in range [1, 21].
- * ================================================================ */
-
-ALWAN_INLINE alwan_scalar alwan_wcag_contrast_ratio_v(alwan_scalar Y1,
-                                                       alwan_scalar Y2) {
+ALWAN_INLINE alwan_scalar alwan_wcag_contrast_ratio_v(alwan_scalar Y1, alwan_scalar Y2) {
     alwan_scalar L1 = ALWAN_SELECT(Y1 > Y2, Y1, Y2);
     alwan_scalar L2 = ALWAN_SELECT(Y1 > Y2, Y2, Y1);
     return (L1 + ALWAN_LITERAL(0.05)) / (L2 + ALWAN_LITERAL(0.05));
 }
 
-/* ================================================================
- * APCA (Advanced Perceptual Contrast Algorithm) — WCAG 3.0 Draft
- *
- * Reference: Myndex / Andrew Somers, APCA-W3 v0.0.98G-4g
- *   https://github.com/Myndex/SAPC-APCA
- *   https://github.com/Myndex/apca-w3
- *   https://www.w3.org/WAI/GL/task-forces/silver/wiki/Visual_Contrast_of_Text_Subgroup
- *
- * SAPC (S-LUV Advanced Perceptual Contrast) is the predecessor name;
- * APCA is the current W3C reference. Same algorithm.
- *
- * Input: sRGB-encoded text and background colors (0..1 per channel).
- * Output: Lc contrast value. Positive = dark text on light bg,
- *         negative = light text on dark bg. Magnitude is the
- *         perceptual contrast (typical range ±0..±108).
- * ================================================================ */
-
-ALWAN_INLINE alwan_scalar alwan_apca_contrast_v(alwan_rgb srgb_text,
-                                                  alwan_rgb srgb_bg) {
-    /* APCA uses simple power-2.4 linearization (NOT piecewise sRGB EOTF) */
+ALWAN_INLINE alwan_scalar alwan_apca_contrast_v(alwan_rgb srgb_text, alwan_rgb srgb_bg) {
     alwan_scalar const mainTRC = ALWAN_LITERAL(2.4);
-
-    alwan_scalar Rtxt = ALWAN_POW(srgb_text.r, mainTRC);
-    alwan_scalar Gtxt = ALWAN_POW(srgb_text.g, mainTRC);
-    alwan_scalar Btxt = ALWAN_POW(srgb_text.b, mainTRC);
-
-    alwan_scalar Rbg = ALWAN_POW(srgb_bg.r, mainTRC);
-    alwan_scalar Gbg = ALWAN_POW(srgb_bg.g, mainTRC);
-    alwan_scalar Bbg = ALWAN_POW(srgb_bg.b, mainTRC);
-
-    /* sRGB luminance coefficients (IEC 61966-2-1) */
-    alwan_scalar const Rco = ALWAN_LITERAL(0.2126729);
-    alwan_scalar const Gco = ALWAN_LITERAL(0.7151522);
-    alwan_scalar const Bco = ALWAN_LITERAL(0.0721750);
-
+    alwan_scalar Rtxt = ALWAN_POW(srgb_text.r, mainTRC); alwan_scalar Gtxt = ALWAN_POW(srgb_text.g, mainTRC); alwan_scalar Btxt = ALWAN_POW(srgb_text.b, mainTRC);
+    alwan_scalar Rbg = ALWAN_POW(srgb_bg.r, mainTRC); alwan_scalar Gbg = ALWAN_POW(srgb_bg.g, mainTRC); alwan_scalar Bbg = ALWAN_POW(srgb_bg.b, mainTRC);
+    alwan_scalar const Rco = ALWAN_LITERAL(0.2126729); alwan_scalar const Gco = ALWAN_LITERAL(0.7151522); alwan_scalar const Bco = ALWAN_LITERAL(0.0721750);
     alwan_scalar Ytxt = Rco * Rtxt + Gco * Gtxt + Bco * Btxt;
-    alwan_scalar Ybg  = Rco * Rbg  + Gco * Gbg  + Bco * Bbg;
-
-    /* Soft clamp near black (flare/ambient compensation).
-     * When Y < blkThrs, add (blkThrs - Y)^blkClmp as ambient flare model. */
-    alwan_scalar const blkThrs = ALWAN_LITERAL(0.022);
-    alwan_scalar const blkClmp = ALWAN_LITERAL(1.414);
-
-    /* Guard: only compute pow when Y < blkThrs (argument is positive) */
+    alwan_scalar Ybg = Rco * Rbg + Gco * Gbg + Bco * Bbg;
+    alwan_scalar const blkThrs = ALWAN_LITERAL(0.022); alwan_scalar const blkClmp = ALWAN_LITERAL(1.414);
     alwan_scalar diffTxt = ALWAN_SELECT(Ytxt < blkThrs, blkThrs - Ytxt, ALWAN_ZERO);
-    alwan_scalar diffBg  = ALWAN_SELECT(Ybg  < blkThrs, blkThrs - Ybg,  ALWAN_ZERO);
+    alwan_scalar diffBg = ALWAN_SELECT(Ybg < blkThrs, blkThrs - Ybg, ALWAN_ZERO);
     Ytxt = ALWAN_SELECT(Ytxt < blkThrs, Ytxt + ALWAN_POW(diffTxt, blkClmp), Ytxt);
-    Ybg  = ALWAN_SELECT(Ybg  < blkThrs, Ybg  + ALWAN_POW(diffBg,  blkClmp), Ybg);
-
-    /* Polarity-dependent exponents and output scaling */
-    alwan_scalar const normBG  = ALWAN_LITERAL(0.56);
-    alwan_scalar const normTXT = ALWAN_LITERAL(0.57);
-    alwan_scalar const revBG   = ALWAN_LITERAL(0.65);
-    alwan_scalar const revTXT  = ALWAN_LITERAL(0.62);
-    alwan_scalar const scaleBO = ALWAN_LITERAL(1.14);
-    alwan_scalar const loClip  = ALWAN_LITERAL(0.1);
+    Ybg = ALWAN_SELECT(Ybg < blkThrs, Ybg + ALWAN_POW(diffBg, blkClmp), Ybg);
+    alwan_scalar const normBG = ALWAN_LITERAL(0.56); alwan_scalar const normTXT = ALWAN_LITERAL(0.57);
+    alwan_scalar const revBG = ALWAN_LITERAL(0.65); alwan_scalar const revTXT = ALWAN_LITERAL(0.62);
+    alwan_scalar const scaleBO = ALWAN_LITERAL(1.14); alwan_scalar const loClip = ALWAN_LITERAL(0.1);
     alwan_scalar const loBoWoffset = ALWAN_LITERAL(0.027);
-
-    /* Determine polarity: Ybg > Ytxt = normal (dark text on light) */
     alwan_scalar Sapc_normal = (ALWAN_POW(Ybg, normBG) - ALWAN_POW(Ytxt, normTXT)) * scaleBO;
     alwan_scalar Sapc_reverse = (ALWAN_POW(Ybg, revBG) - ALWAN_POW(Ytxt, revTXT)) * scaleBO;
-
     alwan_scalar SAPC = ALWAN_SELECT(Ybg > Ytxt, Sapc_normal, Sapc_reverse);
-
-    /* Low-contrast clipping and offset */
     alwan_scalar abs_SAPC = ALWAN_SELECT(SAPC < ALWAN_ZERO, -SAPC, SAPC);
-
-    /* Apply offset and clip */
-    alwan_scalar Lc_pos = SAPC - loBoWoffset;
-    alwan_scalar Lc_neg = SAPC + loBoWoffset;
+    alwan_scalar Lc_pos = SAPC - loBoWoffset; alwan_scalar Lc_neg = SAPC + loBoWoffset;
     alwan_scalar Lc = ALWAN_SELECT(SAPC > ALWAN_ZERO, Lc_pos, Lc_neg);
-
-    /* Zero out very low contrasts */
     Lc = ALWAN_SELECT(abs_SAPC < loClip, ALWAN_ZERO, Lc);
-
-    /* Scale to Lc percentage (× 100) */
     return Lc * ALWAN_LITERAL(100.0);
 }
+
+#endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_VISION_CORE_H */

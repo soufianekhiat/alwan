@@ -19,8 +19,8 @@
 
 static int test_hwb_roundtrip(void) {
     alwan_rgb rgb_in = { ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.1) };
-    alwan_hwb hwb = alwan_rgb_to_hwb_v(rgb_in);
-    alwan_rgb rgb_rt = alwan_hwb_to_rgb_v(hwb);
+    alwan_hwb_f64 hwb = alwan_rgb_to_hwb_f64_v(rgb_in);
+    alwan_rgb rgb_rt = alwan_hwb_to_rgb_f64_v(hwb);
 
     TEST_ASSERT_NEAR(rgb_rt.r, rgb_in.r, ALWAN_LITERAL(1e-6), "hwb rt R");
     TEST_ASSERT_NEAR(rgb_rt.g, rgb_in.g, ALWAN_LITERAL(1e-6), "hwb rt G");
@@ -36,19 +36,19 @@ static int test_hwb_roundtrip(void) {
 static int test_hwb_pure_colors(void) {
     /* Pure red: H=0, W=0, B=0 (in HSV: H=0, S=1, V=1) */
     alwan_rgb red = { ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0) };
-    alwan_hwb hwb_red = alwan_rgb_to_hwb_v(red);
+    alwan_hwb_f64 hwb_red = alwan_rgb_to_hwb_f64_v(red);
     TEST_ASSERT_NEAR(hwb_red.w, ALWAN_ZERO, ALWAN_LITERAL(1e-6), "hwb red W=0");
     TEST_ASSERT_NEAR(hwb_red.b, ALWAN_ZERO, ALWAN_LITERAL(1e-6), "hwb red B=0");
 
     /* White: H=undefined, W=1, B=0 */
     alwan_rgb white = { ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0) };
-    alwan_hwb hwb_white = alwan_rgb_to_hwb_v(white);
+    alwan_hwb_f64 hwb_white = alwan_rgb_to_hwb_f64_v(white);
     TEST_ASSERT_NEAR(hwb_white.w, ALWAN_ONE, ALWAN_LITERAL(1e-6), "hwb white W=1");
     TEST_ASSERT_NEAR(hwb_white.b, ALWAN_ZERO, ALWAN_LITERAL(1e-6), "hwb white B=0");
 
     /* Black: H=undefined, W=0, B=1 */
     alwan_rgb black = { ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0) };
-    alwan_hwb hwb_black = alwan_rgb_to_hwb_v(black);
+    alwan_hwb_f64 hwb_black = alwan_rgb_to_hwb_f64_v(black);
     TEST_ASSERT_NEAR(hwb_black.w, ALWAN_ZERO, ALWAN_LITERAL(1e-6), "hwb black W=0");
     TEST_ASSERT_NEAR(hwb_black.b, ALWAN_ONE, ALWAN_LITERAL(1e-6), "hwb black B=1");
 
@@ -61,14 +61,12 @@ static int test_hwb_pure_colors(void) {
 
 static int test_hwb_api(void) {
     alwan_rgb rgb_in = { ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.4), ALWAN_LITERAL(0.2) };
-    alwan_scalar hwb_out[3];
+    alwan_f64 hwb_out[3];
 
-    int status = alwan_rgb_to_hwb(hwb_out, &rgb_in);
-    TEST_ASSERT(status == ALWAN_OK, "hwb api forward failed");
+    alwan_rgb_to_hwb(hwb_out, &rgb_in);
 
     alwan_rgb rgb_rt;
-    status = alwan_hwb_to_rgb(&rgb_rt, hwb_out);
-    TEST_ASSERT(status == ALWAN_OK, "hwb api inverse failed");
+    alwan_hwb_to_rgb(&rgb_rt, hwb_out);
 
     TEST_ASSERT_NEAR(rgb_rt.r, rgb_in.r, ALWAN_LITERAL(1e-6), "hwb api rt R");
     TEST_ASSERT_NEAR(rgb_rt.g, rgb_in.g, ALWAN_LITERAL(1e-6), "hwb api rt G");
@@ -82,19 +80,19 @@ static int test_hwb_api(void) {
  * ---------------------------------------------------------------- */
 
 static int test_gamma_roundtrip(void) {
-    alwan_scalar gammas[] = {
+    alwan_f64 gammas[] = {
         ALWAN_LITERAL(1.8), ALWAN_LITERAL(2.2), ALWAN_LITERAL(2.6)
     };
 
     for (int g = 0; g < 3; g++) {
-        alwan_scalar gamma = gammas[g];
-        alwan_scalar test_values[] = {
+        alwan_f64 gamma = gammas[g];
+        alwan_f64 test_values[] = {
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.5), ALWAN_LITERAL(1.0)
         };
         for (int i = 0; i < 4; i++) {
-            alwan_scalar linear = test_values[i];
-            alwan_scalar encoded = alwan_gamma_oetf_v(linear, gamma);
-            alwan_scalar decoded = alwan_gamma_eotf_v(encoded, gamma);
+            alwan_f64 linear = test_values[i];
+            alwan_f64 encoded = alwan_gamma_oetf_f64_v(linear, gamma);
+            alwan_f64 decoded = alwan_gamma_eotf_f64_v(encoded, gamma);
             TEST_ASSERT_NEAR(decoded, linear, ALWAN_LITERAL(1e-6), "gamma roundtrip");
         }
     }
@@ -108,11 +106,11 @@ static int test_gamma_roundtrip(void) {
 
 static int test_gamma_known(void) {
     /* gamma=2.0: oetf(0.25) = sqrt(0.25) = 0.5 */
-    alwan_scalar result = alwan_gamma_oetf_v(ALWAN_LITERAL(0.25), ALWAN_LITERAL(2.0));
+    alwan_f64 result = alwan_gamma_oetf_f64_v(ALWAN_LITERAL(0.25), ALWAN_LITERAL(2.0));
     TEST_ASSERT_NEAR(result, ALWAN_LITERAL(0.5), ALWAN_LITERAL(1e-6), "gamma 2.0 oetf(0.25)");
 
     /* gamma=2.0: eotf(0.5) = 0.5^2 = 0.25 */
-    alwan_scalar result2 = alwan_gamma_eotf_v(ALWAN_LITERAL(0.5), ALWAN_LITERAL(2.0));
+    alwan_f64 result2 = alwan_gamma_eotf_f64_v(ALWAN_LITERAL(0.5), ALWAN_LITERAL(2.0));
     TEST_ASSERT_NEAR(result2, ALWAN_LITERAL(0.25), ALWAN_LITERAL(1e-6), "gamma 2.0 eotf(0.5)");
 
     TEST_PASS("gamma known");
@@ -123,17 +121,17 @@ static int test_gamma_known(void) {
  * ---------------------------------------------------------------- */
 
 static int test_gamma_api(void) {
-    alwan_scalar in_val = ALWAN_LITERAL(0.25);
-    alwan_scalar out_val;
+    alwan_f64 in_val = ALWAN_LITERAL(0.25);
+    alwan_f64 out_val;
 
     int status = alwan_gamma_oetf(&out_val, &in_val, ALWAN_LITERAL(2.0),
-                                   1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+                                   1, sizeof(alwan_f64), sizeof(alwan_f64));
     TEST_ASSERT(status == ALWAN_OK, "gamma oetf api failed");
     TEST_ASSERT_NEAR(out_val, ALWAN_LITERAL(0.5), ALWAN_LITERAL(1e-6), "gamma oetf api value");
 
-    alwan_scalar decoded;
+    alwan_f64 decoded;
     status = alwan_gamma_eotf(&decoded, &out_val, ALWAN_LITERAL(2.0),
-                               1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+                               1, sizeof(alwan_f64), sizeof(alwan_f64));
     TEST_ASSERT(status == ALWAN_OK, "gamma eotf api failed");
     TEST_ASSERT_NEAR(decoded, ALWAN_LITERAL(0.25), ALWAN_LITERAL(1e-6), "gamma eotf api value");
 
@@ -146,12 +144,12 @@ static int test_gamma_api(void) {
 
 static int test_d_series_known(void) {
     /* D65 at 6504K should give approximately x=0.3127, y=0.3290 */
-    alwan_vec2 d65 = alwan_d_series_xy_v(ALWAN_LITERAL(6504.0));
+    alwan_vec2 d65 = alwan_d_series_xy_f64_v(ALWAN_LITERAL(6504.0));
     TEST_ASSERT_NEAR(d65.v[0], ALWAN_LITERAL(0.3127), ALWAN_LITERAL(5e-3), "d65 x");
     TEST_ASSERT_NEAR(d65.v[1], ALWAN_LITERAL(0.3290), ALWAN_LITERAL(5e-3), "d65 y");
 
     /* D50 at ~5003K should give approximately x=0.3457, y=0.3585 */
-    alwan_vec2 d50 = alwan_d_series_xy_v(ALWAN_LITERAL(5003.0));
+    alwan_vec2 d50 = alwan_d_series_xy_f64_v(ALWAN_LITERAL(5003.0));
     TEST_ASSERT_NEAR(d50.v[0], ALWAN_LITERAL(0.3457), ALWAN_LITERAL(5e-3), "d50 x");
     TEST_ASSERT_NEAR(d50.v[1], ALWAN_LITERAL(0.3585), ALWAN_LITERAL(5e-3), "d50 y");
 
@@ -164,13 +162,13 @@ static int test_d_series_known(void) {
 
 static int test_d_series_range(void) {
     /* All D-series results should be reasonable xy chromaticity */
-    alwan_scalar ccts[] = {
+    alwan_f64 ccts[] = {
         ALWAN_LITERAL(4000.0), ALWAN_LITERAL(5000.0), ALWAN_LITERAL(6500.0),
         ALWAN_LITERAL(10000.0), ALWAN_LITERAL(15000.0), ALWAN_LITERAL(25000.0)
     };
 
     for (int i = 0; i < 6; i++) {
-        alwan_vec2 xy = alwan_d_series_xy_v(ccts[i]);
+        alwan_vec2 xy = alwan_d_series_xy_f64_v(ccts[i]);
         TEST_ASSERT(xy.v[0] > ALWAN_LITERAL(0.2) && xy.v[0] < ALWAN_LITERAL(0.5),
                     "d series x in range");
         TEST_ASSERT(xy.v[1] > ALWAN_LITERAL(0.2) && xy.v[1] < ALWAN_LITERAL(0.4),

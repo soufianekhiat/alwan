@@ -15,9 +15,9 @@
  * Single Sample
  * ---------------------------------------------------------------- */
 
-int alwan_hero_wavelength_sample(alwan_scalar *lambda_out, alwan_scalar u) {
+int alwan_hero_wavelength_sample(alwan_f64 *lambda_out, alwan_f64 u) {
     if (!lambda_out) return ALWAN_E_INVALID;
-    *lambda_out = alwan_hero_wavelength_sample_v(u);
+    *lambda_out = alwan_hero_wavelength_sample_f64_v(u);
     return ALWAN_OK;
 }
 
@@ -25,34 +25,41 @@ int alwan_hero_wavelength_sample(alwan_scalar *lambda_out, alwan_scalar u) {
  * Single wavelength -> XYZ
  * ---------------------------------------------------------------- */
 
-int alwan_hero_wavelength_to_xyz(alwan_xyz *xyz_out, alwan_scalar lambda) {
-    if (!xyz_out) return ALWAN_E_INVALID;
-    *xyz_out = alwan_hero_wavelength_to_xyz_v(lambda);
-    return ALWAN_OK;
+void alwan_hero_wavelength_to_xyz_f32(alwan_xyz_f32 *xyz_out, float lambda) {
+    if (!xyz_out) return;
+    alwan_xyz_f64 result = alwan_hero_wavelength_to_xyz_f64_v((alwan_f64)lambda);
+    xyz_out->x = (float)result.x;
+    xyz_out->y = (float)result.y;
+    xyz_out->z = (float)result.z;
+}
+
+void alwan_hero_wavelength_to_xyz_f64(alwan_xyz_f64 *xyz_out, double lambda) {
+    if (!xyz_out) return;
+    *xyz_out = alwan_hero_wavelength_to_xyz_f64_v(lambda);
 }
 
 /* ----------------------------------------------------------------
  * Batch sampling with stratification
  * ---------------------------------------------------------------- */
 
-int alwan_hero_wavelength_batch(alwan_scalar *lambda_out,
+int alwan_hero_wavelength_batch(alwan_f64 *lambda_out,
                                  alwan_xyz *xyz_weights,
                                  size_t count,
-                                 alwan_scalar seed) {
+                                 alwan_f64 seed) {
     if (!lambda_out || count == 0) return ALWAN_E_INVALID;
 
     /* Generate hero wavelength from seed */
-    alwan_scalar hero = alwan_hero_wavelength_sample_v(seed);
+    alwan_f64 hero = alwan_hero_wavelength_sample_f64_v(seed);
 
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar lambda = alwan_hero_wavelength_stratified_v(hero, (int)i, (int)count);
+        alwan_f64 lambda = alwan_hero_wavelength_stratified_f64_v(hero, (int)i, (int)count);
         lambda_out[i] = lambda;
 
         if (xyz_weights) {
-            alwan_scalar pdf = alwan_hero_wavelength_pdf_v(lambda);
-            alwan_xyz cmf = alwan_hero_wavelength_to_xyz_v(lambda);
+            alwan_f64 pdf = alwan_hero_wavelength_pdf_f64_v(lambda);
+            alwan_xyz cmf = alwan_hero_wavelength_to_xyz_f64_v(lambda);
             /* Weight = CMF / pdf for importance sampling */
-            alwan_scalar inv_pdf = ALWAN_LITERAL(1.0) / pdf;
+            alwan_f64 inv_pdf = ALWAN_LITERAL(1.0) / pdf;
             xyz_weights[i].x = cmf.x * inv_pdf;
             xyz_weights[i].y = cmf.y * inv_pdf;
             xyz_weights[i].z = cmf.z * inv_pdf;

@@ -24,7 +24,7 @@ static int test_belcour_placeholder(void) {
      * The implementation is pending gendata for null-space basis vectors.
      * For now, just verify the test infrastructure works. */
 
-    alwan_scalar t = ALWAN_LITERAL(0.0);
+    alwan_f64 t = ALWAN_LITERAL(0.0);
     TEST_ASSERT(t >= ALWAN_ZERO && t <= ALWAN_ONE,
                 "belcour t parameter range");
 

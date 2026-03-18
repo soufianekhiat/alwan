@@ -54,56 +54,56 @@ static alwan_rgb const g_test_rgb_inputs[] = {
  * ---------------------------------------------------------------- */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_ocio_ref_rec709_100nit_bt1886[][3] = {
+static alwan_f64 const g_ocio_ref_rec709_100nit_bt1886[][3] = {
 #include "reference_values/aces2_output_rec709_100nit_bt1886_output.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_ocio_ref_srgb_100nit[][3] = {
+static alwan_f64 const g_ocio_ref_srgb_100nit[][3] = {
 #include "reference_values/aces2_output_srgb_100nit_output.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_ocio_ref_p3d65_100nit_srgb[][3] = {
+static alwan_f64 const g_ocio_ref_p3d65_100nit_srgb[][3] = {
 #include "reference_values/aces2_output_p3d65_100nit_srgb_output.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_ocio_ref_p3d65_1000nit_pq[][3] = {
+static alwan_f64 const g_ocio_ref_p3d65_1000nit_pq[][3] = {
 #include "reference_values/aces2_output_p3d65_1000nit_pq_output.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_ocio_ref_rec2100_1000nit_pq[][3] = {
+static alwan_f64 const g_ocio_ref_rec2100_1000nit_pq[][3] = {
 #include "reference_values/aces2_output_rec2100_1000nit_pq_output.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_ocio_ref_rec2100_1000nit_hlg[][3] = {
+static alwan_f64 const g_ocio_ref_rec2100_1000nit_hlg[][3] = {
 #include "reference_values/aces2_output_rec2100_1000nit_hlg_output.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_ocio_ref_dcdm_48nit[][3] = {
+static alwan_f64 const g_ocio_ref_dcdm_48nit[][3] = {
 #include "reference_values/aces2_output_dcdm_48nit_output.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_ocio_ref_p3dci_48nit[][3] = {
+static alwan_f64 const g_ocio_ref_p3dci_48nit[][3] = {
 #include "reference_values/aces2_output_p3dci_48nit_output.csv"
 };
 ALWAN_DIAG_POP
@@ -262,9 +262,9 @@ static int test_output_transform_cinema_p3dci(void) {
     }
 
     /* For neutral gray, all channels should be similar (achromatic) */
-    alwan_scalar max_diff = ALWAN_ABS(rgb_out.r - rgb_out.g);
-    alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
-    alwan_scalar diff_rb = ALWAN_ABS(rgb_out.r - rgb_out.b);
+    alwan_f64 max_diff = ALWAN_ABS(rgb_out.r - rgb_out.g);
+    alwan_f64 diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
+    alwan_f64 diff_rb = ALWAN_ABS(rgb_out.r - rgb_out.b);
     if (diff_gb > max_diff) max_diff = diff_gb;
     if (diff_rb > max_diff) max_diff = diff_rb;
 
@@ -491,9 +491,9 @@ static int test_neutral_axis_consistency(void) {
         }
 
         /* Neutral input should produce neutral output */
-        alwan_scalar diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
-        alwan_scalar diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
-        alwan_scalar max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
+        alwan_f64 diff_rg = ALWAN_ABS(rgb_out.r - rgb_out.g);
+        alwan_f64 diff_gb = ALWAN_ABS(rgb_out.g - rgb_out.b);
+        alwan_f64 max_diff = (diff_rg > diff_gb) ? diff_rg : diff_gb;
         if (max_diff > ALWAN_TEST_TOLERANCE) {
             TEST_FAIL("Gray %zu produced non-neutral output: (%g, %g, %g)",
                       i, rgb_out.r, rgb_out.g, rgb_out.b);
@@ -535,8 +535,8 @@ static int test_monotonic_luminance(void) {
 static int compare_preset_vs_ocio(
     alwan_aces2_output preset,
     char const *preset_name,
-    alwan_scalar const (*ocio_ref)[3],
-    alwan_scalar tolerance
+    alwan_f64 const (*ocio_ref)[3],
+    alwan_f64 tolerance
 ) {
     int errors = 0;
     int skipped = 0;
@@ -556,10 +556,10 @@ static int compare_preset_vs_ocio(
             continue;
         }
 
-        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - ocio_ref[i][0]);
-        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - ocio_ref[i][1]);
-        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - ocio_ref[i][2]);
-        alwan_scalar max_diff = diff_r > diff_g ? diff_r : diff_g;
+        alwan_f64 diff_r = ALWAN_ABS(rgb_out.r - ocio_ref[i][0]);
+        alwan_f64 diff_g = ALWAN_ABS(rgb_out.g - ocio_ref[i][1]);
+        alwan_f64 diff_b = ALWAN_ABS(rgb_out.b - ocio_ref[i][2]);
+        alwan_f64 max_diff = diff_r > diff_g ? diff_r : diff_g;
         max_diff = max_diff > diff_b ? max_diff : diff_b;
 
         if (max_diff > tolerance) {
@@ -591,7 +591,7 @@ static int test_ocio_reference_comparison(void) {
      */
 
     int total_errors = 0;
-    alwan_scalar tol = (alwan_scalar)0.005;  /* 0.5% tolerance for display-encoded values */
+    alwan_f64 tol = (alwan_f64)0.005;  /* 0.5% tolerance for display-encoded values */
 
     /* Test only neutral values (indices 6-9) for strict comparison */
     printf("    Testing neutral values (indices 6-9) against OCIO reference...\n");
@@ -604,7 +604,7 @@ static int test_ocio_reference_comparison(void) {
     struct {
         alwan_aces2_output preset;
         char const *name;
-        alwan_scalar const (*ref)[3];
+        alwan_f64 const (*ref)[3];
     } neutral_tests[] = {
         {ALWAN_ACES2_OUT_REC709_100NIT_BT1886, "Rec709_BT1886", g_ocio_ref_rec709_100nit_bt1886},
         {ALWAN_ACES2_OUT_SRGB_100NIT, "sRGB", g_ocio_ref_srgb_100nit},
@@ -627,10 +627,10 @@ static int test_ocio_reference_comparison(void) {
             continue;
         }
 
-        alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - neutral_tests[p].ref[idx][0]);
-        alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - neutral_tests[p].ref[idx][1]);
-        alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - neutral_tests[p].ref[idx][2]);
-        alwan_scalar max_diff = diff_r > diff_g ? diff_r : diff_g;
+        alwan_f64 diff_r = ALWAN_ABS(rgb_out.r - neutral_tests[p].ref[idx][0]);
+        alwan_f64 diff_g = ALWAN_ABS(rgb_out.g - neutral_tests[p].ref[idx][1]);
+        alwan_f64 diff_b = ALWAN_ABS(rgb_out.b - neutral_tests[p].ref[idx][2]);
+        alwan_f64 max_diff = diff_r > diff_g ? diff_r : diff_g;
         max_diff = max_diff > diff_b ? max_diff : diff_b;
 
         if (max_diff > tol) {

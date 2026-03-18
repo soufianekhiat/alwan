@@ -27,7 +27,7 @@
  * ---------------------------------------------------------------- */
 
 int alwan_cube_export_3d(char const *path,
-                          alwan_scalar const *lut,
+                          alwan_f64 const *lut,
                           int size,
                           char const *title) {
     if (!path || !lut || size < 2 || size > 256) return ALWAN_E_INVALID;
@@ -58,7 +58,7 @@ int alwan_cube_export_3d(char const *path,
 }
 
 int alwan_cube_export_1d(char const *path,
-                          alwan_scalar const *lut,
+                          alwan_f64 const *lut,
                           int size,
                           char const *title) {
     if (!path || !lut || size < 2 || size > 65536) return ALWAN_E_INVALID;
@@ -90,7 +90,7 @@ int alwan_cube_export_1d(char const *path,
  * ---------------------------------------------------------------- */
 
 int alwan_cube_export_3d_buffer(char *buf, size_t buf_size, size_t *bytes_written,
-                                 alwan_scalar const *lut,
+                                 alwan_f64 const *lut,
                                  int size,
                                  char const *title) {
     if (!buf || !lut || !bytes_written || size < 2 || size > 256 || buf_size == 0) {

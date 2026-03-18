@@ -16,7 +16,7 @@
 /* Test inputs: reuse the same 11 test colors */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const test_rgb[] = {
+static alwan_f64 const test_rgb[] = {
 #include "reference_values/test_rgb_colors.csv"
 };
 ALWAN_DIAG_POP
@@ -30,7 +30,7 @@ ALWAN_DIAG_POP
 typedef struct {
     alwan_luma_standard standard;
     char const *name;
-    alwan_scalar kr, kg, kb;
+    alwan_f64 kr, kg, kb;
 } luma_test_entry;
 
 ALWAN_DIAG_PUSH
@@ -56,8 +56,8 @@ ALWAN_DIAG_POP
 
 static int test_coefficient_sum(void) {
     for (size_t i = 0; i < NUM_STANDARDS; i++) {
-        alwan_scalar sum = g_standards[i].kr + g_standards[i].kg + g_standards[i].kb;
-        alwan_scalar diff = ALWAN_ABS(sum - ALWAN_LITERAL(1.0));
+        alwan_f64 sum = g_standards[i].kr + g_standards[i].kg + g_standards[i].kb;
+        alwan_f64 diff = ALWAN_ABS(sum - ALWAN_LITERAL(1.0));
         if (diff > ALWAN_LITERAL(1e-10)) {
             printf("Coefficient sum for %s: %.16e (diff from 1.0: %e)\n",
                    g_standards[i].name, (double)sum, (double)diff);
@@ -79,16 +79,16 @@ static int test_per_pixel_all_standards(void) {
             rgb.g = test_rgb[i * 3 + 1];
             rgb.b = test_rgb[i * 3 + 2];
 
-            alwan_scalar Y_api;
+            alwan_f64 Y_api;
             int status = alwan_relative_luminance(&Y_api, &rgb, g_standards[s].standard);
             TEST_ASSERT(status == ALWAN_OK, "alwan_relative_luminance failed");
 
             /* Manual computation */
-            alwan_scalar Y_manual = g_standards[s].kr * rgb.r
+            alwan_f64 Y_manual = g_standards[s].kr * rgb.r
                                   + g_standards[s].kg * rgb.g
                                   + g_standards[s].kb * rgb.b;
 
-            alwan_scalar diff = ALWAN_ABS(Y_api - Y_manual);
+            alwan_f64 diff = ALWAN_ABS(Y_api - Y_manual);
             if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("%s color %zu: api=%.16e manual=%.16e diff=%e\n",
                        g_standards[s].name, i, (double)Y_api, (double)Y_manual, (double)diff);
@@ -111,14 +111,14 @@ static int test_kr_kb_variant(void) {
             rgb.g = test_rgb[i * 3 + 1];
             rgb.b = test_rgb[i * 3 + 2];
 
-            alwan_scalar Y_std;
+            alwan_f64 Y_std;
             alwan_relative_luminance(&Y_std, &rgb, g_standards[s].standard);
 
-            alwan_scalar Y_kr_kb;
+            alwan_f64 Y_kr_kb;
             alwan_relative_luminance_kr_kb(&Y_kr_kb, &rgb,
                                            g_standards[s].kr, g_standards[s].kb);
 
-            alwan_scalar diff = ALWAN_ABS(Y_std - Y_kr_kb);
+            alwan_f64 diff = ALWAN_ABS(Y_std - Y_kr_kb);
             if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("%s color %zu: std=%.16e kr_kb=%.16e diff=%e\n",
                        g_standards[s].name, i, (double)Y_std, (double)Y_kr_kb, (double)diff);
@@ -137,9 +137,9 @@ static int test_known_values(void) {
     /* White (1,1,1) should give Y = kr + kg + kb = 1.0 for all standards */
     alwan_rgb white = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
     for (size_t s = 0; s < NUM_STANDARDS; s++) {
-        alwan_scalar Y;
+        alwan_f64 Y;
         alwan_relative_luminance(&Y, &white, g_standards[s].standard);
-        alwan_scalar diff = ALWAN_ABS(Y - ALWAN_LITERAL(1.0));
+        alwan_f64 diff = ALWAN_ABS(Y - ALWAN_LITERAL(1.0));
         if (diff > ALWAN_LITERAL(1e-10)) {
             printf("%s white luminance: %.16e (expected 1.0)\n",
                    g_standards[s].name, (double)Y);
@@ -150,26 +150,26 @@ static int test_known_values(void) {
     /* Black (0,0,0) should give Y = 0.0 */
     alwan_rgb black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
     for (size_t s = 0; s < NUM_STANDARDS; s++) {
-        alwan_scalar Y;
+        alwan_f64 Y;
         alwan_relative_luminance(&Y, &black, g_standards[s].standard);
         TEST_ASSERT(Y == ALWAN_LITERAL(0.0), "Black luminance != 0.0");
     }
 
     /* Pure red (1,0,0) in BT.709 should give Y = 0.2126 */
     alwan_rgb red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    alwan_scalar Y_red;
+    alwan_f64 Y_red;
     alwan_relative_luminance(&Y_red, &red, ALWAN_LUMA_BT709);
     TEST_ASSERT_NEAR(Y_red, ALWAN_LITERAL(0.2126), ALWAN_TEST_TOLERANCE, "BT.709 red luminance");
 
     /* Pure green (0,1,0) in BT.709 should give Y = 0.7152 */
     alwan_rgb green = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
-    alwan_scalar Y_green;
+    alwan_f64 Y_green;
     alwan_relative_luminance(&Y_green, &green, ALWAN_LUMA_BT709);
     TEST_ASSERT_NEAR(Y_green, ALWAN_LITERAL(0.7152), ALWAN_TEST_TOLERANCE, "BT.709 green luminance");
 
     /* Pure blue (0,0,1) in BT.709 should give Y = 0.0722 */
     alwan_rgb blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};
-    alwan_scalar Y_blue;
+    alwan_f64 Y_blue;
     alwan_relative_luminance(&Y_blue, &blue, ALWAN_LUMA_BT709);
     TEST_ASSERT_NEAR(Y_blue, ALWAN_LITERAL(0.0722), ALWAN_TEST_TOLERANCE, "BT.709 blue luminance");
 
@@ -182,7 +182,7 @@ static int test_known_values(void) {
 
 static int test_null_pointers(void) {
     alwan_rgb rgb = {0};
-    alwan_scalar Y;
+    alwan_f64 Y;
 
     TEST_ASSERT(alwan_relative_luminance(NULL, &rgb, ALWAN_LUMA_BT709) == ALWAN_E_INVALID,
                 "should reject null output");
@@ -210,14 +210,14 @@ static int test_null_pointers(void) {
 #define MAP_COUNT_1D ((255 / MAP_STEP) + 1)
 #define MAP_COUNT (MAP_COUNT_1D * MAP_COUNT_1D * MAP_COUNT_1D)
 
-static void generate_unit_grid(alwan_scalar *out) {
+static void generate_unit_grid(alwan_f64 *out) {
     size_t idx = 0;
     for (int r = 0; r <= 255; r += MAP_STEP) {
         for (int g = 0; g <= 255; g += MAP_STEP) {
             for (int b = 0; b <= 255; b += MAP_STEP) {
-                out[idx * 3 + 0] = (alwan_scalar)r / ALWAN_LITERAL(255.0);
-                out[idx * 3 + 1] = (alwan_scalar)g / ALWAN_LITERAL(255.0);
-                out[idx * 3 + 2] = (alwan_scalar)b / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 0] = (alwan_f64)r / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 1] = (alwan_f64)g / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 2] = (alwan_f64)b / ALWAN_LITERAL(255.0);
                 idx++;
             }
         }
@@ -227,11 +227,11 @@ static void generate_unit_grid(alwan_scalar *out) {
 static int test_luminance_maps(void) {
     TEST_START("Map validation: relative luminance (all standards)");
 
-    size_t const in_stride = 3 * sizeof(alwan_scalar);
-    size_t const out_stride = sizeof(alwan_scalar);
-    alwan_scalar *grid    = (alwan_scalar *)malloc(MAP_COUNT * in_stride);
-    alwan_scalar *map_out = (alwan_scalar *)malloc(MAP_COUNT * out_stride);
-    alwan_scalar *ref_out = (alwan_scalar *)malloc(MAP_COUNT * out_stride);
+    size_t const in_stride = 3 * sizeof(alwan_f64);
+    size_t const out_stride = sizeof(alwan_f64);
+    alwan_f64 *grid    = (alwan_f64 *)malloc(MAP_COUNT * in_stride);
+    alwan_f64 *map_out = (alwan_f64 *)malloc(MAP_COUNT * out_stride);
+    alwan_f64 *ref_out = (alwan_f64 *)malloc(MAP_COUNT * out_stride);
     if (!grid || !map_out || !ref_out) {
         free(grid); free(map_out); free(ref_out); TEST_FAIL("malloc");
     }
@@ -255,7 +255,7 @@ static int test_luminance_maps(void) {
 
         /* Compare */
         for (size_t i = 0; i < MAP_COUNT; i++) {
-            alwan_scalar diff = ALWAN_ABS(map_out[i] - ref_out[i]);
+            alwan_f64 diff = ALWAN_ABS(map_out[i] - ref_out[i]);
             if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("[FAIL] %s map pixel %zu: map=%.16e ref=%.16e diff=%e\n",
                        g_standards[s].name, i,
@@ -287,11 +287,11 @@ static int test_space_descriptor_map(void) {
     bt709.rgb_to_xyz.m[5] = ALWAN_LUMA_KB_BT709;
     bt709.has_matrices = 1;
 
-    size_t const in_stride = 3 * sizeof(alwan_scalar);
-    size_t const out_stride = sizeof(alwan_scalar);
-    alwan_scalar *grid      = (alwan_scalar *)malloc(MAP_COUNT * in_stride);
-    alwan_scalar *map_enum  = (alwan_scalar *)malloc(MAP_COUNT * out_stride);
-    alwan_scalar *map_space = (alwan_scalar *)malloc(MAP_COUNT * out_stride);
+    size_t const in_stride = 3 * sizeof(alwan_f64);
+    size_t const out_stride = sizeof(alwan_f64);
+    alwan_f64 *grid      = (alwan_f64 *)malloc(MAP_COUNT * in_stride);
+    alwan_f64 *map_enum  = (alwan_f64 *)malloc(MAP_COUNT * out_stride);
+    alwan_f64 *map_space = (alwan_f64 *)malloc(MAP_COUNT * out_stride);
     if (!grid || !map_enum || !map_space) {
         free(grid); free(map_enum); free(map_space); TEST_FAIL("malloc");
     }
@@ -306,7 +306,7 @@ static int test_space_descriptor_map(void) {
                                                    in_stride, out_stride);
 
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_scalar diff = ALWAN_ABS(map_enum[i] - map_space[i]);
+        alwan_f64 diff = ALWAN_ABS(map_enum[i] - map_space[i]);
         if (diff > ALWAN_TEST_TOLERANCE) {
             printf("[FAIL] space vs enum pixel %zu: enum=%.16e space=%.16e diff=%e\n",
                    i, (double)map_enum[i], (double)map_space[i], (double)diff);

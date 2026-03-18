@@ -20,12 +20,12 @@
 static int test_st2086_metadata(void) {
     /* Initialize with BT.2020 primaries + D65 white point */
     alwan_st2086_metadata meta;
-    alwan_scalar primaries[6] = {
+    alwan_f64 primaries[6] = {
         ALWAN_LITERAL(0.708), ALWAN_LITERAL(0.292),  /* R */
         ALWAN_LITERAL(0.170), ALWAN_LITERAL(0.797),  /* G */
         ALWAN_LITERAL(0.131), ALWAN_LITERAL(0.046)   /* B */
     };
-    alwan_scalar wp[2] = {ALWAN_LITERAL(0.3127), ALWAN_LITERAL(0.3290)};
+    alwan_f64 wp[2] = {ALWAN_LITERAL(0.3127), ALWAN_LITERAL(0.3290)};
 
     int status = alwan_st2086_init(&meta, primaries, wp,
                                     ALWAN_LITERAL(1000.0),
@@ -52,14 +52,14 @@ static int test_st2086_metadata(void) {
  * ---------------------------------------------------------------- */
 
 static int test_content_light_level(void) {
-    alwan_scalar pixels[] = {
+    alwan_f64 pixels[] = {
         ALWAN_LITERAL(100.0), ALWAN_LITERAL(200.0), ALWAN_LITERAL(300.0),
         ALWAN_LITERAL(500.0), ALWAN_LITERAL(800.0), ALWAN_LITERAL(100.0),
         ALWAN_LITERAL(900.0), ALWAN_LITERAL(100.0), ALWAN_LITERAL(400.0),
     };
     alwan_content_light_level cll;
     int status = alwan_content_light_level_compute(&cll, pixels, 3,
-                                                     3 * sizeof(alwan_scalar));
+                                                     3 * sizeof(alwan_f64));
     TEST_ASSERT(status == ALWAN_OK, "cll compute status");
     TEST_ASSERT_NEAR(cll.max_cll, ALWAN_LITERAL(900.0), ALWAN_LITERAL(1e-10),
                      "cll maxcll");
@@ -77,7 +77,7 @@ static int test_content_light_level(void) {
 static int test_bt2446b(void) {
     /* Black maps to black */
     {
-        alwan_scalar y_hdr = alwan_bt2446b_forward_v(
+        alwan_f64 y_hdr = alwan_bt2446b_forward_f64_v(
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
         TEST_ASSERT_NEAR(y_hdr, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-6),
                          "bt2446b: black -> black");
@@ -85,10 +85,10 @@ static int test_bt2446b(void) {
 
     /* Monotonicity: brighter SDR -> brighter HDR */
     {
-        alwan_scalar prev = ALWAN_LITERAL(-1.0);
+        alwan_f64 prev = ALWAN_LITERAL(-1.0);
         for (int i = 0; i <= 10; i++) {
-            alwan_scalar x = (alwan_scalar)i / ALWAN_LITERAL(10.0);
-            alwan_scalar y = alwan_bt2446b_forward_v(
+            alwan_f64 x = (alwan_f64)i / ALWAN_LITERAL(10.0);
+            alwan_f64 y = alwan_bt2446b_forward_f64_v(
                 x, ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
             TEST_ASSERT(y >= prev, "bt2446b: monotonic");
             prev = y;
@@ -97,7 +97,7 @@ static int test_bt2446b(void) {
 
     /* API wrapper */
     {
-        alwan_scalar y_hdr;
+        alwan_f64 y_hdr;
         int status = alwan_bt2446b_forward(&y_hdr, ALWAN_LITERAL(0.5),
                                              ALWAN_LITERAL(1000.0),
                                              ALWAN_LITERAL(100.0));
@@ -115,7 +115,7 @@ static int test_bt2446b(void) {
 static int test_bt2446c(void) {
     /* Black maps to black */
     {
-        alwan_scalar y_sdr = alwan_bt2446c_forward_v(
+        alwan_f64 y_sdr = alwan_bt2446c_forward_f64_v(
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
         TEST_ASSERT_NEAR(y_sdr, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1e-6),
                          "bt2446c: black -> black");
@@ -123,10 +123,10 @@ static int test_bt2446c(void) {
 
     /* Monotonicity */
     {
-        alwan_scalar prev = ALWAN_LITERAL(-1.0);
+        alwan_f64 prev = ALWAN_LITERAL(-1.0);
         for (int i = 0; i <= 10; i++) {
-            alwan_scalar x = (alwan_scalar)i / ALWAN_LITERAL(10.0);
-            alwan_scalar y = alwan_bt2446c_forward_v(
+            alwan_f64 x = (alwan_f64)i / ALWAN_LITERAL(10.0);
+            alwan_f64 y = alwan_bt2446c_forward_f64_v(
                 x, ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
             TEST_ASSERT(y >= prev, "bt2446c: monotonic");
             prev = y;
@@ -135,7 +135,7 @@ static int test_bt2446c(void) {
 
     /* Output should be in [0,1] */
     {
-        alwan_scalar y = alwan_bt2446c_forward_v(
+        alwan_f64 y = alwan_bt2446c_forward_f64_v(
             ALWAN_LITERAL(1.0), ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
         TEST_ASSERT(y >= ALWAN_LITERAL(0.0) && y <= ALWAN_LITERAL(1.0),
                     "bt2446c: output in [0,1]");
@@ -143,7 +143,7 @@ static int test_bt2446c(void) {
 
     /* API wrapper */
     {
-        alwan_scalar y_sdr;
+        alwan_f64 y_sdr;
         int status = alwan_bt2446c_forward(&y_sdr, ALWAN_LITERAL(0.5),
                                              ALWAN_LITERAL(1000.0),
                                              ALWAN_LITERAL(100.0));
@@ -160,7 +160,7 @@ static int test_bt2446c(void) {
 static int test_bt2390_eetf(void) {
     /* Identity: source range == target range */
     {
-        alwan_scalar y = alwan_bt2390_eetf_v(
+        alwan_f64 y = alwan_bt2390_eetf_f64_v(
             ALWAN_LITERAL(0.5),
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0),
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
@@ -170,7 +170,7 @@ static int test_bt2390_eetf(void) {
 
     /* Black preserved */
     {
-        alwan_scalar y = alwan_bt2390_eetf_v(
+        alwan_f64 y = alwan_bt2390_eetf_f64_v(
             ALWAN_LITERAL(0.0),
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0),
             ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.5));
@@ -180,12 +180,12 @@ static int test_bt2390_eetf(void) {
 
     /* Monotonicity */
     {
-        alwan_scalar LW_src = alwan_pq_oetf(ALWAN_LITERAL(10000.0));
-        alwan_scalar LW_tgt = alwan_pq_oetf(ALWAN_LITERAL(1000.0));
-        alwan_scalar prev = ALWAN_LITERAL(-1.0);
+        alwan_f64 LW_src = alwan_pq_oetf_f64(ALWAN_LITERAL(10000.0));
+        alwan_f64 LW_tgt = alwan_pq_oetf_f64(ALWAN_LITERAL(1000.0));
+        alwan_f64 prev = ALWAN_LITERAL(-1.0);
         for (int i = 0; i <= 20; i++) {
-            alwan_scalar x = (alwan_scalar)i / ALWAN_LITERAL(20.0) * LW_src;
-            alwan_scalar y = alwan_bt2390_eetf_v(x,
+            alwan_f64 x = (alwan_f64)i / ALWAN_LITERAL(20.0) * LW_src;
+            alwan_f64 y = alwan_bt2390_eetf_f64_v(x,
                 ALWAN_LITERAL(0.0), LW_src,
                 ALWAN_LITERAL(0.0), LW_tgt);
             TEST_ASSERT(y >= prev, "bt2390: monotonic");
@@ -195,7 +195,7 @@ static int test_bt2390_eetf(void) {
 
     /* Luminance convenience wrapper */
     {
-        alwan_scalar y;
+        alwan_f64 y;
         int status = alwan_bt2390_eetf_luminance(&y, ALWAN_LITERAL(0.5),
                                                    ALWAN_LITERAL(10000.0),
                                                    ALWAN_LITERAL(1000.0));
@@ -212,33 +212,33 @@ static int test_bt2390_eetf(void) {
 static int test_exposure_tonemap(void) {
     /* Zero exposure: 1 - exp(-L) */
     {
-        alwan_scalar y = alwan_exposure_tonemap_v(ALWAN_LITERAL(1.0), ALWAN_ZERO);
-        alwan_scalar expected = ALWAN_ONE - ALWAN_EXP(-ALWAN_ONE);
+        alwan_f64 y = alwan_exposure_tonemap_f64_v(ALWAN_LITERAL(1.0), ALWAN_ZERO);
+        alwan_f64 expected = ALWAN_ONE - ALWAN_EXP(-ALWAN_ONE);
         TEST_ASSERT_NEAR(y, expected, ALWAN_LITERAL(1e-10),
                          "exposure: 0 EV at L=1");
     }
 
     /* +1 EV: 1 - exp(-2*L) */
     {
-        alwan_scalar y = alwan_exposure_tonemap_v(ALWAN_LITERAL(1.0), ALWAN_ONE);
-        alwan_scalar expected = ALWAN_ONE - ALWAN_EXP(-ALWAN_LITERAL(2.0));
+        alwan_f64 y = alwan_exposure_tonemap_f64_v(ALWAN_LITERAL(1.0), ALWAN_ONE);
+        alwan_f64 expected = ALWAN_ONE - ALWAN_EXP(-ALWAN_LITERAL(2.0));
         TEST_ASSERT_NEAR(y, expected, ALWAN_LITERAL(1e-10),
                          "exposure: +1 EV at L=1");
     }
 
     /* Black preserved */
     {
-        alwan_scalar y = alwan_exposure_tonemap_v(ALWAN_ZERO, ALWAN_ZERO);
+        alwan_f64 y = alwan_exposure_tonemap_f64_v(ALWAN_ZERO, ALWAN_ZERO);
         TEST_ASSERT_NEAR(y, ALWAN_ZERO, ALWAN_LITERAL(1e-10),
                          "exposure: black preserved");
     }
 
     /* Monotonicity */
     {
-        alwan_scalar prev = ALWAN_LITERAL(-1.0);
+        alwan_f64 prev = ALWAN_LITERAL(-1.0);
         for (int i = 0; i <= 10; i++) {
-            alwan_scalar L = (alwan_scalar)i / ALWAN_LITERAL(10.0) * ALWAN_LITERAL(5.0);
-            alwan_scalar y = alwan_exposure_tonemap_v(L, ALWAN_ZERO);
+            alwan_f64 L = (alwan_f64)i / ALWAN_LITERAL(10.0) * ALWAN_LITERAL(5.0);
+            alwan_f64 y = alwan_exposure_tonemap_f64_v(L, ALWAN_ZERO);
             TEST_ASSERT(y >= prev, "exposure: monotonic");
             prev = y;
         }
@@ -247,7 +247,7 @@ static int test_exposure_tonemap(void) {
     /* RGB version */
     {
         alwan_vec3 in = {{ALWAN_LITERAL(0.5), ALWAN_LITERAL(1.0), ALWAN_LITERAL(2.0)}};
-        alwan_vec3 out = alwan_exposure_tonemap_rgb_v(in, ALWAN_ZERO);
+        alwan_vec3 out = alwan_exposure_tonemap_rgb_f64_v(in, ALWAN_ZERO);
         for (int c = 0; c < 3; c++) {
             TEST_ASSERT(out.v[c] >= ALWAN_ZERO && out.v[c] <= ALWAN_ONE,
                         "exposure rgb: output in [0,1]");
@@ -256,7 +256,7 @@ static int test_exposure_tonemap(void) {
 
     /* API wrapper */
     {
-        alwan_scalar y;
+        alwan_f64 y;
         int status = alwan_exposure_tonemap(&y, ALWAN_LITERAL(0.5), ALWAN_ZERO);
         TEST_ASSERT(status == ALWAN_OK, "exposure api status");
     }
@@ -271,7 +271,7 @@ static int test_exposure_tonemap(void) {
 static int test_reinhard_calibrated(void) {
     /* Black preserved */
     {
-        alwan_scalar y = alwan_reinhard_calibrated_v(
+        alwan_f64 y = alwan_reinhard_calibrated_f64_v(
             ALWAN_ZERO, ALWAN_LITERAL(0.18),
             ALWAN_LITERAL(0.18), ALWAN_LITERAL(4.0));
         TEST_ASSERT_NEAR(y, ALWAN_ZERO, ALWAN_LITERAL(1e-10),
@@ -280,10 +280,10 @@ static int test_reinhard_calibrated(void) {
 
     /* Monotonicity */
     {
-        alwan_scalar prev = ALWAN_LITERAL(-1.0);
+        alwan_f64 prev = ALWAN_LITERAL(-1.0);
         for (int i = 0; i <= 10; i++) {
-            alwan_scalar L = (alwan_scalar)i / ALWAN_LITERAL(10.0) * ALWAN_LITERAL(5.0);
-            alwan_scalar y = alwan_reinhard_calibrated_v(
+            alwan_f64 L = (alwan_f64)i / ALWAN_LITERAL(10.0) * ALWAN_LITERAL(5.0);
+            alwan_f64 y = alwan_reinhard_calibrated_f64_v(
                 L, ALWAN_LITERAL(0.18),
                 ALWAN_LITERAL(0.18), ALWAN_LITERAL(4.0));
             TEST_ASSERT(y >= prev, "reinhard cal: monotonic");
@@ -293,7 +293,7 @@ static int test_reinhard_calibrated(void) {
 
     /* L_white acts as hard clip: L >= L_white maps to ~1 */
     {
-        alwan_scalar y = alwan_reinhard_calibrated_v(
+        alwan_f64 y = alwan_reinhard_calibrated_f64_v(
             ALWAN_LITERAL(100.0), ALWAN_LITERAL(0.18),
             ALWAN_LITERAL(0.18), ALWAN_LITERAL(4.0));
         TEST_ASSERT(y > ALWAN_LITERAL(0.9),
@@ -302,7 +302,7 @@ static int test_reinhard_calibrated(void) {
 
     /* API wrapper */
     {
-        alwan_scalar y;
+        alwan_f64 y;
         int status = alwan_reinhard_calibrated(&y, ALWAN_LITERAL(0.5),
                                                 ALWAN_LITERAL(0.18),
                                                 ALWAN_LITERAL(0.18),
@@ -321,7 +321,7 @@ static int test_hdr_gamut_map(void) {
     /* In-gamut: no compression */
     {
         alwan_jzczhz in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(180.0)};
-        alwan_jzczhz out = alwan_hdr_gamut_map_jzczhz_v(in, ALWAN_LITERAL(0.2));
+        alwan_jzczhz out = alwan_hdr_gamut_map_jzczhz_f64_v(in, ALWAN_LITERAL(0.2));
         TEST_ASSERT_NEAR(out.Cz, in.Cz, ALWAN_LITERAL(1e-10),
                          "gamut map: in-gamut preserved");
         TEST_ASSERT_NEAR(out.Jz, in.Jz, ALWAN_LITERAL(1e-10),
@@ -333,7 +333,7 @@ static int test_hdr_gamut_map(void) {
     /* Out-of-gamut: compressed */
     {
         alwan_jzczhz in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(90.0)};
-        alwan_jzczhz out = alwan_hdr_gamut_map_jzczhz_v(in, ALWAN_LITERAL(0.15));
+        alwan_jzczhz out = alwan_hdr_gamut_map_jzczhz_f64_v(in, ALWAN_LITERAL(0.15));
         TEST_ASSERT(out.Cz < in.Cz, "gamut map: chroma compressed");
         TEST_ASSERT_NEAR(out.Jz, in.Jz, ALWAN_LITERAL(1e-10),
                          "gamut map: Jz preserved when compressed");
@@ -345,8 +345,7 @@ static int test_hdr_gamut_map(void) {
     {
         alwan_jzczhz in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(90.0)};
         alwan_jzczhz out;
-        int status = alwan_hdr_gamut_map_jzczhz(&out, &in, ALWAN_LITERAL(0.15));
-        TEST_ASSERT(status == ALWAN_OK, "gamut map api status");
+        alwan_hdr_gamut_map_jzczhz(&out, &in, ALWAN_LITERAL(0.15));
     }
 
     TEST_PASS("HDR gamut mapping (JzCzhz)");
@@ -359,31 +358,31 @@ static int test_hdr_gamut_map(void) {
 static int test_pq_normalize(void) {
     /* PQ value below peak: pass through */
     {
-        alwan_scalar pq_100 = alwan_pq_oetf(ALWAN_LITERAL(100.0));
-        alwan_scalar out = alwan_pq_normalize_peak_v(pq_100, ALWAN_LITERAL(1000.0));
+        alwan_f64 pq_100 = alwan_pq_oetf_f64(100.0);
+        alwan_f64 out = alwan_pq_normalize_peak_f64_v(pq_100, 1000.0);
         TEST_ASSERT_NEAR(out, pq_100, ALWAN_LITERAL(1e-6),
                          "pq normalize: below peak unchanged");
     }
 
     /* PQ value at peak: clipped */
     {
-        alwan_scalar pq_max = alwan_pq_oetf(ALWAN_LITERAL(10000.0));
-        alwan_scalar out = alwan_pq_normalize_peak_v(pq_max, ALWAN_LITERAL(1000.0));
-        alwan_scalar expected = alwan_pq_oetf(ALWAN_LITERAL(1000.0));
+        alwan_f64 pq_max = alwan_pq_oetf_f64(ALWAN_LITERAL(10000.0));
+        alwan_f64 out = alwan_pq_normalize_peak_f64_v(pq_max, ALWAN_LITERAL(1000.0));
+        alwan_f64 expected = alwan_pq_oetf_f64(ALWAN_LITERAL(1000.0));
         TEST_ASSERT_NEAR(out, expected, ALWAN_LITERAL(1e-4),
                          "pq normalize: clipped at peak");
     }
 
     /* Black preserved */
     {
-        alwan_scalar out = alwan_pq_normalize_peak_v(ALWAN_ZERO, ALWAN_LITERAL(1000.0));
+        alwan_f64 out = alwan_pq_normalize_peak_f64_v(ALWAN_ZERO, ALWAN_LITERAL(1000.0));
         TEST_ASSERT_NEAR(out, ALWAN_ZERO, ALWAN_LITERAL(1e-6),
                          "pq normalize: black preserved");
     }
 
     /* API wrapper */
     {
-        alwan_scalar out;
+        alwan_f64 out;
         int status = alwan_pq_normalize_peak(&out, ALWAN_LITERAL(0.5),
                                                ALWAN_LITERAL(1000.0));
         TEST_ASSERT(status == ALWAN_OK, "pq normalize api status");
@@ -411,14 +410,14 @@ static int test_hdr_view_transforms(void) {
 
     for (size_t t = 0; t < n; t++) {
         /* Basic: dispatch should succeed */
-        alwan_scalar input[3] = {
+        alwan_f64 input[3] = {
             ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.2)
         };
-        alwan_scalar output[3];
+        alwan_f64 output[3];
         int status = alwan_view_transform_apply(output, NULL, hdr_vts[t],
                                                  input, 1,
-                                                 3 * sizeof(alwan_scalar),
-                                                 3 * sizeof(alwan_scalar));
+                                                 3 * sizeof(alwan_f64),
+                                                 3 * sizeof(alwan_f64));
         char msg[128];
         snprintf(msg, sizeof(msg), "%s: dispatch ok", names[t]);
         TEST_ASSERT(status == ALWAN_OK, msg);

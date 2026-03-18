@@ -196,9 +196,9 @@ static int test_rgb_to_xyz_embedded_vs_derived(void) {
             status = alwan_rgb_to_xyz(&xyz_derive, &derived, &g_test_rgb[c]);
             TEST_ASSERT(status == ALWAN_OK, "alwan_rgb_to_xyz (derived) failed");
 
-            alwan_scalar dx = ALWAN_ABS(xyz_embed.x - xyz_derive.x);
-            alwan_scalar dy = ALWAN_ABS(xyz_embed.y - xyz_derive.y);
-            alwan_scalar dz = ALWAN_ABS(xyz_embed.z - xyz_derive.z);
+            alwan_f64 dx = ALWAN_ABS(xyz_embed.x - xyz_derive.x);
+            alwan_f64 dy = ALWAN_ABS(xyz_embed.y - xyz_derive.y);
+            alwan_f64 dz = ALWAN_ABS(xyz_embed.z - xyz_derive.z);
 
             if (dx > ALWAN_TEST_TOLERANCE || dy > ALWAN_TEST_TOLERANCE || dz > ALWAN_TEST_TOLERANCE) {
                 printf("[FAIL] %s RGB->XYZ color %zu:\n", g_space_names[s], c);
@@ -263,9 +263,9 @@ static int test_xyz_to_rgb_embedded_vs_derived(void) {
             status = alwan_xyz_to_rgb(&rgb_derive, &derived, &xyz);
             TEST_ASSERT(status == ALWAN_OK, "alwan_xyz_to_rgb (derived) failed");
 
-            alwan_scalar dr = ALWAN_ABS(rgb_embed.r - rgb_derive.r);
-            alwan_scalar dg = ALWAN_ABS(rgb_embed.g - rgb_derive.g);
-            alwan_scalar db = ALWAN_ABS(rgb_embed.b - rgb_derive.b);
+            alwan_f64 dr = ALWAN_ABS(rgb_embed.r - rgb_derive.r);
+            alwan_f64 dg = ALWAN_ABS(rgb_embed.g - rgb_derive.g);
+            alwan_f64 db = ALWAN_ABS(rgb_embed.b - rgb_derive.b);
 
             if (dr > ALWAN_TEST_TOLERANCE || dg > ALWAN_TEST_TOLERANCE || db > ALWAN_TEST_TOLERANCE) {
                 printf("[FAIL] %s XYZ->RGB color %zu:\n", g_space_names[s], c);
@@ -318,9 +318,9 @@ static int test_rgb_xyz_roundtrip(void) {
             status = alwan_xyz_to_rgb(&rgb_back, &desc, &xyz);
             TEST_ASSERT(status == ALWAN_OK, "alwan_xyz_to_rgb failed");
 
-            alwan_scalar dr = ALWAN_ABS(rgb_back.r - g_test_rgb[c].r);
-            alwan_scalar dg = ALWAN_ABS(rgb_back.g - g_test_rgb[c].g);
-            alwan_scalar db = ALWAN_ABS(rgb_back.b - g_test_rgb[c].b);
+            alwan_f64 dr = ALWAN_ABS(rgb_back.r - g_test_rgb[c].r);
+            alwan_f64 dg = ALWAN_ABS(rgb_back.g - g_test_rgb[c].g);
+            alwan_f64 db = ALWAN_ABS(rgb_back.b - g_test_rgb[c].b);
 
             if (dr > ALWAN_TEST_TOLERANCE || dg > ALWAN_TEST_TOLERANCE || db > ALWAN_TEST_TOLERANCE) {
                 printf("[FAIL] %s round-trip color %zu:\n", g_space_names[s], c);

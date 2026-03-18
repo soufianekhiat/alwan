@@ -11,7 +11,7 @@
 static int test_xyz_ipt_round_trip(void) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_data[] = {
+    static alwan_f64 const test_data[] = {
 #include "reference_values/test_xyz_ipt_pairs.csv"
     };
 ALWAN_DIAG_POP
@@ -33,11 +33,11 @@ ALWAN_DIAG_POP
         /* Test XYZ -> IPT */
         alwan_xyz_to_ipt(&ipt_computed, &xyz_in);
 
-        alwan_scalar const ipt_tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar ipt_comp_arr[3] = {ipt_computed.I, ipt_computed.P, ipt_computed.T};
-        alwan_scalar ipt_exp_arr[3] = {ipt_expected.I, ipt_expected.P, ipt_expected.T};
+        alwan_f64 const ipt_tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 ipt_comp_arr[3] = {ipt_computed.I, ipt_computed.P, ipt_computed.T};
+        alwan_f64 ipt_exp_arr[3] = {ipt_expected.I, ipt_expected.P, ipt_expected.T};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(ipt_comp_arr[j] - ipt_exp_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(ipt_comp_arr[j] - ipt_exp_arr[j]);
             if (diff > ipt_tol) {
                 printf("Color %zu channel %d failed:\n", i, j);
                 printf("  XYZ: [%.6f, %.6f, %.6f]\n",
@@ -54,12 +54,12 @@ ALWAN_DIAG_POP
         /* Test round-trip: IPT -> XYZ */
         alwan_ipt_to_xyz(&xyz_out, &ipt_computed);
 
-        alwan_scalar const roundtrip_tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
-        alwan_scalar xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
-        alwan_scalar xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};
+        alwan_f64 xyz_in_arr[3] = {xyz_in.x, xyz_in.y, xyz_in.z};
+        alwan_f64 xyz_out_arr[3] = {xyz_out.x, xyz_out.y, xyz_out.z};
         for (int j = 0; j < 3; j++) {
-            alwan_scalar diff = ALWAN_ABS(xyz_out_arr[j] - xyz_in_arr[j]);
+            alwan_f64 diff = ALWAN_ABS(xyz_out_arr[j] - xyz_in_arr[j]);
             if (diff > roundtrip_tol) {
                 printf("Round-trip color %zu channel %d failed:\n", i, j);
                 printf("  Original XYZ: [%.6f, %.6f, %.6f]\n",
@@ -94,8 +94,8 @@ static int test_ipt_iptch_round_trip(void) {
     TEST_ASSERT(ALWAN_ABS(iptch.C) < ALWAN_TEST_TOLERANCE, "C should be 0");
 
     alwan_iptch_to_ipt(&ipt_out, &iptch);
-    alwan_scalar ipt_arr[3] = {ipt.I, ipt.P, ipt.T};
-    alwan_scalar ipt_out_arr[3] = {ipt_out.I, ipt_out.P, ipt_out.T};
+    alwan_f64 ipt_arr[3] = {ipt.I, ipt.P, ipt.T};
+    alwan_f64 ipt_out_arr[3] = {ipt_out.I, ipt_out.P, ipt_out.T};
     for (int i = 0; i < 3; i++) {
         TEST_ASSERT(ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]) < ALWAN_TEST_TOLERANCE,
                     "IPT round-trip failed");
@@ -112,7 +112,7 @@ static int test_ipt_iptch_round_trip(void) {
     ipt_arr[0] = ipt.I; ipt_arr[1] = ipt.P; ipt_arr[2] = ipt.T;
     ipt_out_arr[0] = ipt_out.I; ipt_out_arr[1] = ipt_out.P; ipt_out_arr[2] = ipt_out.T;
     for (int i = 0; i < 3; i++) {
-        alwan_scalar diff = ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]);
+        alwan_f64 diff = ALWAN_ABS(ipt_out_arr[i] - ipt_arr[i]);
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "IPT round-trip failed");
     }
 

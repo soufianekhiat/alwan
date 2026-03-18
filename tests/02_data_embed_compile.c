@@ -15,7 +15,7 @@
 /* D65 white point (x, y) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_d65_xy[] = {
+static alwan_f64 const g_d65_xy[] = {
 #include "data/illuminants_xy/d65_xy.csv"
 };
 ALWAN_DIAG_POP
@@ -23,7 +23,7 @@ ALWAN_DIAG_POP
 /* sRGB primaries (rx, ry, gx, gy, bx, by) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_srgb_primaries[] = {
+static alwan_f64 const g_srgb_primaries[] = {
 #include "data/srgb_primaries_only.csv"
 };
 ALWAN_DIAG_POP
@@ -38,13 +38,13 @@ static int test_d65_data(void) {
     /* Expected values from colour-science (data/illuminants_xy/d65_xy.csv) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_d65[] = {
+    static alwan_f64 const expected_d65[] = {
 #include "data/illuminants_xy/d65_xy.csv"
     };
     ALWAN_DIAG_POP
 
-    alwan_scalar diff_x = ALWAN_ABS(g_d65_xy[0] - expected_d65[0]);
-    alwan_scalar diff_y = ALWAN_ABS(g_d65_xy[1] - expected_d65[1]);
+    alwan_f64 diff_x = ALWAN_ABS(g_d65_xy[0] - expected_d65[0]);
+    alwan_f64 diff_y = ALWAN_ABS(g_d65_xy[1] - expected_d65[1]);
 
     printf("  D65 x: %.17g (diff %e)\n", g_d65_xy[0], diff_x);
     printf("  D65 y: %.17g (diff %e)\n", g_d65_xy[1], diff_y);
@@ -57,7 +57,7 @@ static int test_d65_data(void) {
 
 static int test_srgb_primaries(void) {
     /* Verify sRGB primary chromaticities (ITU-R BT.709) */
-    alwan_scalar const expected[] = {
+    alwan_f64 const expected[] = {
         ALWAN_BT709_RED_x, ALWAN_BT709_RED_y,      /* Red */
         ALWAN_BT709_GREEN_x, ALWAN_BT709_GREEN_y,  /* Green */
         ALWAN_BT709_BLUE_x, ALWAN_BT709_BLUE_y     /* Blue */
@@ -69,7 +69,7 @@ static int test_srgb_primaries(void) {
     }
 
     for (int i = 0; i < 6; i++) {
-        alwan_scalar diff = ALWAN_ABS(g_srgb_primaries[i] - expected[i]);
+        alwan_f64 diff = ALWAN_ABS(g_srgb_primaries[i] - expected[i]);
         if (diff > ALWAN_TEST_TOLERANCE) {
             printf("  Primary [%d] mismatch: %f vs %f (diff %e)\n",
                     i, g_srgb_primaries[i], expected[i], diff);
@@ -113,7 +113,7 @@ static test_entry const tests[] = {
 
 int test_02_data_embed_main(void) {
     printf("Running data embedding tests...\n");
-    printf("alwan_scalar type: %s\n", sizeof(alwan_scalar) == 4 ? "float" : "double");
+    printf("alwan_f64 type: %s\n", sizeof(alwan_f64) == 4 ? "float" : "double");
 
     int failed = 0;
     int passed = 0;

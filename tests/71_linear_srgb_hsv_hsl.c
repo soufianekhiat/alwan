@@ -17,7 +17,7 @@
 /* Test inputs: reuse the same 11 test colors as test 15 */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const test_rgb[] = {
+static alwan_f64 const test_rgb[] = {
 #include "reference_values/test_rgb_colors.csv"
 };
 ALWAN_DIAG_POP
@@ -32,27 +32,27 @@ ALWAN_DIAG_POP
 #define MAP_COUNT_1D ((255 / MAP_STEP) + 1)
 #define MAP_COUNT (MAP_COUNT_1D * MAP_COUNT_1D * MAP_COUNT_1D)
 
-static void generate_unit_grid(alwan_scalar *out) {
+static void generate_unit_grid(alwan_f64 *out) {
     size_t idx = 0;
     for (int r = 0; r <= 255; r += MAP_STEP) {
         for (int g = 0; g <= 255; g += MAP_STEP) {
             for (int b = 0; b <= 255; b += MAP_STEP) {
-                out[idx * 3 + 0] = (alwan_scalar)r / ALWAN_LITERAL(255.0);
-                out[idx * 3 + 1] = (alwan_scalar)g / ALWAN_LITERAL(255.0);
-                out[idx * 3 + 2] = (alwan_scalar)b / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 0] = (alwan_f64)r / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 1] = (alwan_f64)g / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 2] = (alwan_f64)b / ALWAN_LITERAL(255.0);
                 idx++;
             }
         }
     }
 }
 
-static int compare_arrays(alwan_scalar const *map_out, alwan_scalar const *ref,
+static int compare_arrays(alwan_f64 const *map_out, alwan_f64 const *ref,
                           size_t count, size_t stride, char const *name) {
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *m = (alwan_scalar const *)((char const *)map_out + i * stride);
-        alwan_scalar const *r = (alwan_scalar const *)((char const *)ref + i * stride);
+        alwan_f64 const *m = (alwan_f64 const *)((char const *)map_out + i * stride);
+        alwan_f64 const *r = (alwan_f64 const *)((char const *)ref + i * stride);
         for (int c = 0; c < 3; c++) {
-            alwan_scalar diff = ALWAN_ABS(m[c] - r[c]);
+            alwan_f64 diff = ALWAN_ABS(m[c] - r[c]);
             if (diff > ALWAN_TEST_TOLERANCE) {
                 printf("[FAIL] %s: pixel %zu ch %d: map=%.16e ref=%.16e diff=%.16e\n",
                        name, i, c, (double)m[c], (double)r[c], (double)diff);
@@ -81,17 +81,17 @@ static int test_linear_srgb_to_hsv_consistency(void) {
 
         /* Manual: OETF then HSV */
         alwan_rgb encoded;
-        encoded.r = alwan_srgb_oetf(linear.r);
-        encoded.g = alwan_srgb_oetf(linear.g);
-        encoded.b = alwan_srgb_oetf(linear.b);
+        encoded.r = alwan_srgb_oetf_f64(linear.r);
+        encoded.g = alwan_srgb_oetf_f64(linear.g);
+        encoded.b = alwan_srgb_oetf_f64(linear.b);
         alwan_hsv hsv_manual;
         status = alwan_rgb_to_hsv(&hsv_manual, &encoded);
         TEST_ASSERT(status == ALWAN_OK, "manual rgb_to_hsv failed");
 
-        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_h = ALWAN_ABS(hsv_composite.h - hsv_manual.h);
-        alwan_scalar diff_s = ALWAN_ABS(hsv_composite.s - hsv_manual.s);
-        alwan_scalar diff_v = ALWAN_ABS(hsv_composite.v - hsv_manual.v);
+        alwan_f64 tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 diff_h = ALWAN_ABS(hsv_composite.h - hsv_manual.h);
+        alwan_f64 diff_s = ALWAN_ABS(hsv_composite.s - hsv_manual.s);
+        alwan_f64 diff_v = ALWAN_ABS(hsv_composite.v - hsv_manual.v);
 
         if (diff_h > tol || diff_s > tol || diff_v > tol) {
             printf("linear_srgb_to_hsv consistency failed for color %zu:\n", i);
@@ -121,17 +121,17 @@ static int test_linear_srgb_to_hsl_consistency(void) {
         TEST_ASSERT(status == ALWAN_OK, "alwan_linear_srgb_to_hsl failed");
 
         alwan_rgb encoded;
-        encoded.r = alwan_srgb_oetf(linear.r);
-        encoded.g = alwan_srgb_oetf(linear.g);
-        encoded.b = alwan_srgb_oetf(linear.b);
+        encoded.r = alwan_srgb_oetf_f64(linear.r);
+        encoded.g = alwan_srgb_oetf_f64(linear.g);
+        encoded.b = alwan_srgb_oetf_f64(linear.b);
         alwan_hsl hsl_manual;
         status = alwan_rgb_to_hsl(&hsl_manual, &encoded);
         TEST_ASSERT(status == ALWAN_OK, "manual rgb_to_hsl failed");
 
-        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_h = ALWAN_ABS(hsl_composite.h - hsl_manual.h);
-        alwan_scalar diff_s = ALWAN_ABS(hsl_composite.s - hsl_manual.s);
-        alwan_scalar diff_l = ALWAN_ABS(hsl_composite.l - hsl_manual.l);
+        alwan_f64 tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 diff_h = ALWAN_ABS(hsl_composite.h - hsl_manual.h);
+        alwan_f64 diff_s = ALWAN_ABS(hsl_composite.s - hsl_manual.s);
+        alwan_f64 diff_l = ALWAN_ABS(hsl_composite.l - hsl_manual.l);
 
         if (diff_h > tol || diff_s > tol || diff_l > tol) {
             printf("linear_srgb_to_hsl consistency failed for color %zu:\n", i);
@@ -164,10 +164,10 @@ static int test_linear_srgb_hsv_round_trip(void) {
         status = alwan_hsv_to_linear_srgb(&rgb_recon, &hsv);
         TEST_ASSERT(status == ALWAN_OK, "hsv_to_linear_srgb failed");
 
-        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_r = ALWAN_ABS(rgb_recon.r - rgb_orig.r);
-        alwan_scalar diff_g = ALWAN_ABS(rgb_recon.g - rgb_orig.g);
-        alwan_scalar diff_b = ALWAN_ABS(rgb_recon.b - rgb_orig.b);
+        alwan_f64 tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 diff_r = ALWAN_ABS(rgb_recon.r - rgb_orig.r);
+        alwan_f64 diff_g = ALWAN_ABS(rgb_recon.g - rgb_orig.g);
+        alwan_f64 diff_b = ALWAN_ABS(rgb_recon.b - rgb_orig.b);
 
         if (diff_r > tol || diff_g > tol || diff_b > tol) {
             printf("linear_srgb HSV round-trip failed for color %zu:\n", i);
@@ -202,10 +202,10 @@ static int test_linear_srgb_hsl_round_trip(void) {
         status = alwan_hsl_to_linear_srgb(&rgb_recon, &hsl);
         TEST_ASSERT(status == ALWAN_OK, "hsl_to_linear_srgb failed");
 
-        alwan_scalar tol = ALWAN_TEST_TOLERANCE;
-        alwan_scalar diff_r = ALWAN_ABS(rgb_recon.r - rgb_orig.r);
-        alwan_scalar diff_g = ALWAN_ABS(rgb_recon.g - rgb_orig.g);
-        alwan_scalar diff_b = ALWAN_ABS(rgb_recon.b - rgb_orig.b);
+        alwan_f64 tol = ALWAN_TEST_TOLERANCE;
+        alwan_f64 diff_r = ALWAN_ABS(rgb_recon.r - rgb_orig.r);
+        alwan_f64 diff_g = ALWAN_ABS(rgb_recon.g - rgb_orig.g);
+        alwan_f64 diff_b = ALWAN_ABS(rgb_recon.b - rgb_orig.b);
 
         if (diff_r > tol || diff_g > tol || diff_b > tol) {
             printf("linear_srgb HSL round-trip failed for color %zu:\n", i);
@@ -257,10 +257,10 @@ static int test_null_pointers(void) {
 static int test_linear_srgb_hsv_hsl_maps(void) {
     TEST_START("Map validation: linear_sRGB<->HSV, linear_sRGB<->HSL");
 
-    size_t const stride = 3 * sizeof(alwan_scalar);
-    alwan_scalar *grid    = (alwan_scalar *)malloc(MAP_COUNT * stride);
-    alwan_scalar *map_out = (alwan_scalar *)malloc(MAP_COUNT * stride);
-    alwan_scalar *ref_out = (alwan_scalar *)malloc(MAP_COUNT * stride);
+    size_t const stride = 3 * sizeof(alwan_f64);
+    alwan_f64 *grid    = (alwan_f64 *)malloc(MAP_COUNT * stride);
+    alwan_f64 *map_out = (alwan_f64 *)malloc(MAP_COUNT * stride);
+    alwan_f64 *ref_out = (alwan_f64 *)malloc(MAP_COUNT * stride);
     if (!grid || !map_out || !ref_out) {
         free(grid); free(map_out); free(ref_out); TEST_FAIL("malloc");
     }
@@ -324,14 +324,14 @@ fail:
 #define MAPEX_COUNT_1D ((255 / MAPEX_STEP) + 1)
 #define MAPEX_COUNT (MAPEX_COUNT_1D * MAPEX_COUNT_1D * MAPEX_COUNT_1D)
 
-static void generate_mapex_grid(alwan_scalar *out) {
+static void generate_mapex_grid(alwan_f64 *out) {
     size_t idx = 0;
     for (int r = 0; r <= 255; r += MAPEX_STEP) {
         for (int g = 0; g <= 255; g += MAPEX_STEP) {
             for (int b = 0; b <= 255; b += MAPEX_STEP) {
-                out[idx * 3 + 0] = (alwan_scalar)r / ALWAN_LITERAL(255.0);
-                out[idx * 3 + 1] = (alwan_scalar)g / ALWAN_LITERAL(255.0);
-                out[idx * 3 + 2] = (alwan_scalar)b / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 0] = (alwan_f64)r / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 1] = (alwan_f64)g / ALWAN_LITERAL(255.0);
+                out[idx * 3 + 2] = (alwan_f64)b / ALWAN_LITERAL(255.0);
                 idx++;
             }
         }
@@ -348,7 +348,7 @@ static size_t mapex_typed_stride(alwan_pixel_format fmt) {
     return 0;
 }
 
-static alwan_scalar mapex_tol(alwan_pixel_format fmt) {
+static alwan_f64 mapex_tol(alwan_pixel_format fmt) {
     switch (fmt) {
     case ALWAN_PIXEL_U8:  return ALWAN_LITERAL(3e-3);
     case ALWAN_PIXEL_U16: return ALWAN_LITERAL(1e-4);
@@ -358,14 +358,14 @@ static alwan_scalar mapex_tol(alwan_pixel_format fmt) {
     return ALWAN_TEST_TOLERANCE;
 }
 
-static int compare_mapex(alwan_scalar const *ex, alwan_scalar const *ref,
+static int compare_mapex(alwan_f64 const *ex, alwan_f64 const *ref,
                          size_t count, size_t stride, char const *name,
-                         alwan_scalar tol, alwan_pixel_format fmt) {
+                         alwan_f64 tol, alwan_pixel_format fmt) {
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *e = (alwan_scalar const *)((char const *)ex + i * stride);
-        alwan_scalar const *r = (alwan_scalar const *)((char const *)ref + i * stride);
+        alwan_f64 const *e = (alwan_f64 const *)((char const *)ex + i * stride);
+        alwan_f64 const *r = (alwan_f64 const *)((char const *)ref + i * stride);
         for (int c = 0; c < 3; c++) {
-            alwan_scalar diff = ALWAN_ABS(e[c] - r[c]);
+            alwan_f64 diff = ALWAN_ABS(e[c] - r[c]);
             if (diff > tol) {
                 printf("[FAIL] %s [%s]: pixel %zu ch %d: ex=%.16e ref=%.16e diff=%.16e\n",
                        name, test_fmt_name(fmt), i, c,
@@ -377,18 +377,18 @@ static int compare_mapex(alwan_scalar const *ex, alwan_scalar const *ref,
     return 0;
 }
 
-typedef int (*mapex_fn3)(alwan_scalar *, alwan_scalar const *, size_t, size_t, size_t);
+typedef int (*mapex_fn3)(alwan_f64 *, alwan_f64 const *, size_t, size_t, size_t);
 typedef int (*mapex_fn3_ex)(void *, alwan_pixel_format, void const *, alwan_pixel_format,
                              size_t, size_t, size_t);
 typedef struct { char const *name; mapex_fn3 map; mapex_fn3_ex map_ex; } mapex_entry3;
 
 static int run_mapex3(mapex_entry3 const *entries, size_t n,
-                       alwan_scalar const *grid) {
-    size_t const ss = 3 * sizeof(alwan_scalar);
+                       alwan_f64 const *grid) {
+    size_t const ss = 3 * sizeof(alwan_f64);
     size_t const mt = 3 * sizeof(double);
-    alwan_scalar *ref   = (alwan_scalar *)malloc(MAPEX_COUNT * ss);
-    alwan_scalar *ex    = (alwan_scalar *)malloc(MAPEX_COUNT * ss);
-    alwan_scalar *qgrid = (alwan_scalar *)malloc(MAPEX_COUNT * ss);
+    alwan_f64 *ref   = (alwan_f64 *)malloc(MAPEX_COUNT * ss);
+    alwan_f64 *ex    = (alwan_f64 *)malloc(MAPEX_COUNT * ss);
+    alwan_f64 *qgrid = (alwan_f64 *)malloc(MAPEX_COUNT * ss);
     void *tin  = malloc(MAPEX_COUNT * mt);
     void *tout = malloc(MAPEX_COUNT * mt);
     if (!ref || !ex || !qgrid || !tin || !tout) {
@@ -399,7 +399,7 @@ static int run_mapex3(mapex_entry3 const *entries, size_t n,
         for (int f = 0; f < 4; f++) {
             alwan_pixel_format fmt = TEST_PIXEL_FMTS[f];
             size_t ts = mapex_typed_stride(fmt);
-            alwan_scalar tol = mapex_tol(fmt);
+            alwan_f64 tol = mapex_tol(fmt);
 
             alwan_scatter3(tin, fmt, grid, MAPEX_COUNT, ss, ts);
 
@@ -424,7 +424,7 @@ static int run_mapex3(mapex_entry3 const *entries, size_t n,
 
 static int test_linear_srgb_hsv_hsl_maps_ex(void) {
     TEST_START("_map_interleave_ex: linear_sRGB<->HSV/HSL");
-    alwan_scalar *grid = (alwan_scalar *)malloc(MAPEX_COUNT * 3 * sizeof(alwan_scalar));
+    alwan_f64 *grid = (alwan_f64 *)malloc(MAPEX_COUNT * 3 * sizeof(alwan_f64));
     if (!grid) { TEST_FAIL("malloc"); }
     generate_mapex_grid(grid);
 

@@ -76,7 +76,7 @@ static int test_pointer_gamut_boundary(void) {
 
 static int test_spectral_locus_wavelengths(void) {
     /* Test specific wavelengths */
-    alwan_scalar test_wavelengths[] = {
+    alwan_f64 test_wavelengths[] = {
         ALWAN_LITERAL(400.0),
         ALWAN_LITERAL(500.0),
         ALWAN_LITERAL(550.0),
@@ -88,7 +88,7 @@ static int test_spectral_locus_wavelengths(void) {
     printf("  Testing spectral locus xy values:\n");
 
     for (size_t i = 0; i < 6; i++) {
-        alwan_scalar wl = test_wavelengths[i];
+        alwan_f64 wl = test_wavelengths[i];
         alwan_vec2 xy_out;
 
         int status = alwan_spectral_locus_xy(&xy_out, wl);
@@ -117,8 +117,8 @@ static int test_spectral_locus_interpolation(void) {
                 "Failed to compute spectral locus for interpolation test");
 
     /* Values should be very close but not identical (fractional wavelength forces interpolation) */
-    alwan_scalar diff_x = ALWAN_ABS(xy_500_5.v[0] - xy_500.v[0]);
-    alwan_scalar diff_y = ALWAN_ABS(xy_500_5.v[1] - xy_500.v[1]);
+    alwan_f64 diff_x = ALWAN_ABS(xy_500_5.v[0] - xy_500.v[0]);
+    alwan_f64 diff_y = ALWAN_ABS(xy_500_5.v[1] - xy_500.v[1]);
 
     /* Spectral locus xy changes ~0.002/nm at 500nm; 0.5nm step should give diff ~0.001.
      * Use 0.05 as sanity bound (tighter than original 0.1 but allows for CMF spacing). */
@@ -143,7 +143,7 @@ static int test_dominant_wavelength_green(void) {
     alwan_vec2 xy_green = {{ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.6)}};
     alwan_vec2 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
 
-    alwan_scalar wl_out;
+    alwan_f64 wl_out;
     alwan_vec2 xy_wl_out, xy_cw_out;
 
     int status = alwan_dominant_wavelength(&wl_out, &xy_wl_out, &xy_cw_out,
@@ -174,7 +174,7 @@ static int test_excitation_purity_green(void) {
     alwan_vec2 xy_green = {{ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.6)}};
     alwan_vec2 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
 
-    alwan_scalar purity_out;
+    alwan_f64 purity_out;
 
     int status = alwan_excitation_purity(&purity_out, &xy_green, &xy_d65);
     TEST_ASSERT(status == ALWAN_OK, "Failed to compute excitation purity");
@@ -194,7 +194,7 @@ static int test_dominant_wavelength_red(void) {
     alwan_vec2 xy_red = {{ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.3)}};
     alwan_vec2 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
 
-    alwan_scalar wl_out;
+    alwan_f64 wl_out;
 
     int status = alwan_dominant_wavelength(&wl_out, NULL, NULL, &xy_red, &xy_d65);
     TEST_ASSERT(status == ALWAN_OK, "Failed to compute dominant wavelength");
@@ -213,7 +213,7 @@ static int test_dominant_wavelength_blue(void) {
     alwan_vec2 xy_blue = {{ALWAN_LITERAL(0.15), ALWAN_LITERAL(0.06)}};
     alwan_vec2 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
 
-    alwan_scalar wl_out;
+    alwan_f64 wl_out;
 
     int status = alwan_dominant_wavelength(&wl_out, NULL, NULL, &xy_blue, &xy_d65);
     TEST_ASSERT(status == ALWAN_OK, "Failed to compute dominant wavelength");
@@ -259,7 +259,7 @@ static int test_gamut_volume_ratio(void) {
     bt2020.oetf = ALWAN_TF_LINEAR;
     bt2020.eotf = ALWAN_TF_LINEAR;
 
-    alwan_scalar ratio_bt2020_srgb, ratio_srgb_bt2020;
+    alwan_f64 ratio_bt2020_srgb, ratio_srgb_bt2020;
 
     int status1 = alwan_gamut_volume_ratio(&ratio_bt2020_srgb, &bt2020, &srgb);
     int status2 = alwan_gamut_volume_ratio(&ratio_srgb_bt2020, &srgb, &bt2020);
@@ -272,7 +272,7 @@ static int test_gamut_volume_ratio(void) {
                 "BT.2020/sRGB ratio out of expected range");
 
     /* Ratios should be reciprocals */
-    alwan_scalar product = ratio_bt2020_srgb * ratio_srgb_bt2020;
+    alwan_f64 product = ratio_bt2020_srgb * ratio_srgb_bt2020;
     TEST_ASSERT(ALWAN_ABS(product - ALWAN_LITERAL(1.0)) < ALWAN_LITERAL(1e-6),
                 "Ratios should be reciprocals");
 
@@ -310,7 +310,7 @@ static int test_gamut_coverage(void) {
     bt2020.oetf = ALWAN_TF_LINEAR;
     bt2020.eotf = ALWAN_TF_LINEAR;
 
-    alwan_scalar coverage_srgb_by_bt2020, coverage_bt2020_by_srgb;
+    alwan_f64 coverage_srgb_by_bt2020, coverage_bt2020_by_srgb;
 
     /* sRGB should be ~100% covered by BT.2020 (BT.2020 is wider) */
     int status1 = alwan_gamut_coverage(&coverage_srgb_by_bt2020, &srgb, &bt2020, 50000, 12345);
@@ -514,9 +514,9 @@ static int test_gamut_map_in_gamut(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed to map in-gamut color");
 
     /* In-gamut color should be mostly preserved */
-    alwan_scalar diff_r = ALWAN_ABS(rgb_out.r - rgb_in.r);
-    alwan_scalar diff_g = ALWAN_ABS(rgb_out.g - rgb_in.g);
-    alwan_scalar diff_b = ALWAN_ABS(rgb_out.b - rgb_in.b);
+    alwan_f64 diff_r = ALWAN_ABS(rgb_out.r - rgb_in.r);
+    alwan_f64 diff_g = ALWAN_ABS(rgb_out.g - rgb_in.g);
+    alwan_f64 diff_b = ALWAN_ABS(rgb_out.b - rgb_in.b);
 
     TEST_ASSERT(diff_r < ALWAN_LITERAL(0.01) && diff_g < ALWAN_LITERAL(0.01) && diff_b < ALWAN_LITERAL(0.01),
                 "In-gamut color should be preserved");

@@ -14,10 +14,10 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_scalar mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
-    alwan_scalar max_diff = 0;
+static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
+    alwan_f64 max_diff = 0;
     for (int i = 0; i < 9; i++) {
-        alwan_scalar diff = ALWAN_ABS(a->m[i] - b->m[i]);
+        alwan_f64 diff = ALWAN_ABS(a->m[i] - b->m[i]);
         if (diff > max_diff) max_diff = diff;
     }
     return max_diff;
@@ -39,7 +39,7 @@ static int test_srgb_matrices(void) {
     /* Load sRGB descriptor from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const srgb_fixture[] = {
+    static alwan_f64 const srgb_fixture[] = {
 #include "data/fixtures/srgb_descriptor.csv"
     };
     ALWAN_DIAG_POP
@@ -59,7 +59,7 @@ static int test_srgb_matrices(void) {
     /* Load reference RGB->XYZ matrix from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_matrix[] = {
+    static alwan_f64 const expected_matrix[] = {
 #include "data/fixtures/srgb_rgb_to_xyz.csv"
     };
     ALWAN_DIAG_POP
@@ -68,7 +68,7 @@ static int test_srgb_matrices(void) {
     memcpy(expected_rgb_to_xyz.m, expected_matrix, sizeof(expected_rgb_to_xyz.m));
 
     /* Check RGB->XYZ - use relaxed tolerance for reference comparison */
-    alwan_scalar diff = mat3_max_diff(&rgb_to_xyz, &expected_rgb_to_xyz);
+    alwan_f64 diff = mat3_max_diff(&rgb_to_xyz, &expected_rgb_to_xyz);
     if (diff > ALWAN_LITERAL(1e-4)) {
         mat3_print("Computed RGB->XYZ", &rgb_to_xyz);
         mat3_print("Expected RGB->XYZ", &expected_rgb_to_xyz);
@@ -92,7 +92,7 @@ static int test_aces_ap0_matrices(void) {
      * Note: AP0 has imaginary primaries which can cause numerical challenges */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const aces_ap0_fixture[] = {
+    static alwan_f64 const aces_ap0_fixture[] = {
 #include "data/fixtures/aces_ap0_descriptor.csv"
     };
     ALWAN_DIAG_POP
@@ -120,7 +120,7 @@ static int test_aces_ap0_matrices(void) {
     alwan_mat3_identity(&I);
     alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
 
-    alwan_scalar diff = mat3_max_diff(&I, &result);
+    alwan_f64 diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ACES AP0 round-trip failed");
 
     TEST_PASS("test_aces_ap0_matrices");
@@ -130,7 +130,7 @@ static int test_aces_ap1_matrices(void) {
     /* Load ACEScg (AP1) descriptor from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const aces_ap1_fixture[] = {
+    static alwan_f64 const aces_ap1_fixture[] = {
 #include "data/fixtures/aces_ap1_descriptor.csv"
     };
     ALWAN_DIAG_POP
@@ -152,7 +152,7 @@ static int test_aces_ap1_matrices(void) {
     alwan_mat3_identity(&I);
     alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
 
-    alwan_scalar diff = mat3_max_diff(&I, &result);
+    alwan_f64 diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ACES AP1 round-trip failed");
 
     TEST_PASS("test_aces_ap1_matrices");
@@ -162,7 +162,7 @@ static int test_bt2020_matrices(void) {
     /* Load BT.2020 descriptor from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const bt2020_fixture[] = {
+    static alwan_f64 const bt2020_fixture[] = {
 #include "data/fixtures/bt2020_descriptor.csv"
     };
     ALWAN_DIAG_POP
@@ -184,7 +184,7 @@ static int test_bt2020_matrices(void) {
     alwan_mat3_identity(&I);
     alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
 
-    alwan_scalar diff = mat3_max_diff(&I, &result);
+    alwan_f64 diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "BT.2020 round-trip failed");
 
     TEST_PASS("test_bt2020_matrices");

@@ -42,7 +42,7 @@ static int test_hsp_forward_known_values(void) {
         alwan_hsp hsp;
         int status = alwan_rgb_to_hsp(&hsp, &red);
         TEST_ASSERT(status == ALWAN_OK, "HSP forward red status");
-        alwan_scalar expected_p = ALWAN_SQRT(ALWAN_LUMA_KR_BT601);
+        alwan_f64 expected_p = ALWAN_SQRT(ALWAN_LUMA_KR_BT601);
         TEST_ASSERT(ALWAN_ABS(hsp.p - expected_p) < ALWAN_TEST_TOLERANCE, "red P mismatch");
         TEST_ASSERT(ALWAN_ABS(hsp.s - ALWAN_LITERAL(1.0)) < ALWAN_TEST_TOLERANCE, "red S should be 1.0");
         TEST_ASSERT(ALWAN_ABS(hsp.h) < ALWAN_TEST_TOLERANCE, "red H should be 0.0");
@@ -54,7 +54,7 @@ static int test_hsp_forward_known_values(void) {
         alwan_hsp hsp;
         int status = alwan_rgb_to_hsp(&hsp, &green);
         TEST_ASSERT(status == ALWAN_OK, "HSP forward green status");
-        alwan_scalar expected_p = ALWAN_SQRT(ALWAN_LUMA_KG_BT601);
+        alwan_f64 expected_p = ALWAN_SQRT(ALWAN_LUMA_KG_BT601);
         TEST_ASSERT(ALWAN_ABS(hsp.p - expected_p) < ALWAN_TEST_TOLERANCE, "green P mismatch");
     }
 
@@ -64,7 +64,7 @@ static int test_hsp_forward_known_values(void) {
         alwan_hsp hsp;
         int status = alwan_rgb_to_hsp(&hsp, &blue);
         TEST_ASSERT(status == ALWAN_OK, "HSP forward blue status");
-        alwan_scalar expected_p = ALWAN_SQRT(ALWAN_LUMA_KB_BT601);
+        alwan_f64 expected_p = ALWAN_SQRT(ALWAN_LUMA_KB_BT601);
         TEST_ASSERT(ALWAN_ABS(hsp.p - expected_p) < ALWAN_TEST_TOLERANCE, "blue P mismatch");
     }
 
@@ -99,7 +99,7 @@ static int test_hsp_roundtrip(void) {
     };
     size_t const num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
 
-    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
+    alwan_f64 const tol = ALWAN_LITERAL(1e-6);
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_hsp hsp;
@@ -108,9 +108,9 @@ static int test_hsp_roundtrip(void) {
         int s2 = alwan_hsp_to_rgb(&roundtrip, &hsp);
         TEST_ASSERT(s1 == ALWAN_OK && s2 == ALWAN_OK, "HSP round-trip status");
 
-        alwan_scalar dr = ALWAN_ABS(roundtrip.r - test_colors[i].r);
-        alwan_scalar dg = ALWAN_ABS(roundtrip.g - test_colors[i].g);
-        alwan_scalar db = ALWAN_ABS(roundtrip.b - test_colors[i].b);
+        alwan_f64 dr = ALWAN_ABS(roundtrip.r - test_colors[i].r);
+        alwan_f64 dg = ALWAN_ABS(roundtrip.g - test_colors[i].g);
+        alwan_f64 db = ALWAN_ABS(roundtrip.b - test_colors[i].b);
 
         if (dr > tol || dg > tol || db > tol) {
             printf("  HSP round-trip failed for color %zu:\n", i);
@@ -129,30 +129,30 @@ static int test_hsp_roundtrip(void) {
 /* Test HSP map vs per-pixel consistency */
 static int test_hsp_map_consistency(void) {
     size_t const N = 512;
-    alwan_scalar rgb_buf[512 * 3];
-    alwan_scalar hsp_map[512 * 3];
-    size_t const stride = 3 * sizeof(alwan_scalar);
+    alwan_f64 rgb_buf[512 * 3];
+    alwan_f64 hsp_map[512 * 3];
+    size_t const stride = 3 * sizeof(alwan_f64);
 
     /* Generate test colors */
     for (size_t i = 0; i < N; i++) {
-        rgb_buf[i * 3 + 0] = (alwan_scalar)i / (alwan_scalar)(N - 1);
-        rgb_buf[i * 3 + 1] = ALWAN_LITERAL(1.0) - (alwan_scalar)i / (alwan_scalar)(N - 1);
-        rgb_buf[i * 3 + 2] = (alwan_scalar)((i * 7) % N) / (alwan_scalar)(N - 1);
+        rgb_buf[i * 3 + 0] = (alwan_f64)i / (alwan_f64)(N - 1);
+        rgb_buf[i * 3 + 1] = ALWAN_LITERAL(1.0) - (alwan_f64)i / (alwan_f64)(N - 1);
+        rgb_buf[i * 3 + 2] = (alwan_f64)((i * 7) % N) / (alwan_f64)(N - 1);
     }
 
     int status = alwan_rgb_to_hsp_map_interleave(hsp_map, rgb_buf, N, stride, stride);
     TEST_ASSERT(status == ALWAN_OK, "HSP map status");
 
     /* SIMD uses FMA and different op ordering vs scalar: float32 ~1e-7 diffs */
-    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
+    alwan_f64 const tol = ALWAN_LITERAL(1e-6);
     for (size_t i = 0; i < N; i++) {
         alwan_rgb rgb = {rgb_buf[i * 3], rgb_buf[i * 3 + 1], rgb_buf[i * 3 + 2]};
         alwan_hsp hsp_pixel;
         alwan_rgb_to_hsp(&hsp_pixel, &rgb);
 
-        alwan_scalar dh = ALWAN_ABS(hsp_map[i * 3 + 0] - hsp_pixel.h);
-        alwan_scalar ds = ALWAN_ABS(hsp_map[i * 3 + 1] - hsp_pixel.s);
-        alwan_scalar dp = ALWAN_ABS(hsp_map[i * 3 + 2] - hsp_pixel.p);
+        alwan_f64 dh = ALWAN_ABS(hsp_map[i * 3 + 0] - hsp_pixel.h);
+        alwan_f64 ds = ALWAN_ABS(hsp_map[i * 3 + 1] - hsp_pixel.s);
+        alwan_f64 dp = ALWAN_ABS(hsp_map[i * 3 + 2] - hsp_pixel.p);
         if (dh > tol || ds > tol || dp > tol) {
             printf("  HSP map/pixel mismatch at %zu: diff [%e, %e, %e]\n", i, dh, ds, dp);
             TEST_ASSERT(0, "HSP map vs per-pixel mismatch");
@@ -182,9 +182,9 @@ static int test_hsp_null_rejection(void) {
 
 /* Test HSY forward: Y = kr*R + kg*G + kb*B (BT.601) */
 static int test_hsy_forward_known_values(void) {
-    alwan_scalar const kr = ALWAN_LUMA_KR_BT601;
-    alwan_scalar const kg = ALWAN_LUMA_KG_BT601;
-    alwan_scalar const kb = ALWAN_LUMA_KB_BT601;
+    alwan_f64 const kr = ALWAN_LUMA_KR_BT601;
+    alwan_f64 const kg = ALWAN_LUMA_KG_BT601;
+    alwan_f64 const kb = ALWAN_LUMA_KB_BT601;
 
     /* White: Y = 1.0 */
     {
@@ -262,7 +262,7 @@ static int test_hsy_roundtrip(void) {
     };
     size_t const num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
 
-    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
+    alwan_f64 const tol = ALWAN_LITERAL(1e-6);
 
     for (size_t i = 0; i < num_colors; i++) {
         alwan_hsy hsy;
@@ -271,9 +271,9 @@ static int test_hsy_roundtrip(void) {
         int s2 = alwan_hsy_to_rgb(&roundtrip, &hsy);
         TEST_ASSERT(s1 == ALWAN_OK && s2 == ALWAN_OK, "HSY round-trip status");
 
-        alwan_scalar dr = ALWAN_ABS(roundtrip.r - test_colors[i].r);
-        alwan_scalar dg = ALWAN_ABS(roundtrip.g - test_colors[i].g);
-        alwan_scalar db = ALWAN_ABS(roundtrip.b - test_colors[i].b);
+        alwan_f64 dr = ALWAN_ABS(roundtrip.r - test_colors[i].r);
+        alwan_f64 dg = ALWAN_ABS(roundtrip.g - test_colors[i].g);
+        alwan_f64 db = ALWAN_ABS(roundtrip.b - test_colors[i].b);
 
         if (dr > tol || dg > tol || db > tol) {
             printf("  HSY round-trip failed for color %zu:\n", i);
@@ -291,9 +291,9 @@ static int test_hsy_roundtrip(void) {
 
 /* Test HSY luma preservation: after round-trip, luma must match */
 static int test_hsy_luma_preservation(void) {
-    alwan_scalar const kr = ALWAN_LUMA_KR_BT601;
-    alwan_scalar const kg = ALWAN_LUMA_KG_BT601;
-    alwan_scalar const kb = ALWAN_LUMA_KB_BT601;
+    alwan_f64 const kr = ALWAN_LUMA_KR_BT601;
+    alwan_f64 const kg = ALWAN_LUMA_KG_BT601;
+    alwan_f64 const kb = ALWAN_LUMA_KB_BT601;
 
     alwan_rgb test_colors[] = {
         {ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.1)},
@@ -308,13 +308,13 @@ static int test_hsy_luma_preservation(void) {
         alwan_rgb_to_hsy(&hsy, &test_colors[i]);
 
         /* Y component should equal BT.601 luma */
-        alwan_scalar expected_y = kr * test_colors[i].r + kg * test_colors[i].g + kb * test_colors[i].b;
+        alwan_f64 expected_y = kr * test_colors[i].r + kg * test_colors[i].g + kb * test_colors[i].b;
         TEST_ASSERT(ALWAN_ABS(hsy.y - expected_y) < ALWAN_TEST_TOLERANCE, "HSY luma matches BT.601");
 
         /* After inverse, the luma of the reconstructed RGB should still match */
         alwan_rgb rt;
         alwan_hsy_to_rgb(&rt, &hsy);
-        alwan_scalar rt_y = kr * rt.r + kg * rt.g + kb * rt.b;
+        alwan_f64 rt_y = kr * rt.r + kg * rt.g + kb * rt.b;
         TEST_ASSERT(ALWAN_ABS(rt_y - hsy.y) < ALWAN_LITERAL(1e-6), "HSY luma preserved after round-trip");
     }
 
@@ -324,29 +324,29 @@ static int test_hsy_luma_preservation(void) {
 /* Test HSY map vs per-pixel consistency */
 static int test_hsy_map_consistency(void) {
     size_t const N = 512;
-    alwan_scalar rgb_buf[512 * 3];
-    alwan_scalar hsy_map[512 * 3];
-    size_t const stride = 3 * sizeof(alwan_scalar);
+    alwan_f64 rgb_buf[512 * 3];
+    alwan_f64 hsy_map[512 * 3];
+    size_t const stride = 3 * sizeof(alwan_f64);
 
     for (size_t i = 0; i < N; i++) {
-        rgb_buf[i * 3 + 0] = (alwan_scalar)i / (alwan_scalar)(N - 1);
-        rgb_buf[i * 3 + 1] = ALWAN_LITERAL(1.0) - (alwan_scalar)i / (alwan_scalar)(N - 1);
-        rgb_buf[i * 3 + 2] = (alwan_scalar)((i * 7) % N) / (alwan_scalar)(N - 1);
+        rgb_buf[i * 3 + 0] = (alwan_f64)i / (alwan_f64)(N - 1);
+        rgb_buf[i * 3 + 1] = ALWAN_LITERAL(1.0) - (alwan_f64)i / (alwan_f64)(N - 1);
+        rgb_buf[i * 3 + 2] = (alwan_f64)((i * 7) % N) / (alwan_f64)(N - 1);
     }
 
     int status = alwan_rgb_to_hsy_map_interleave(hsy_map, rgb_buf, N, stride, stride);
     TEST_ASSERT(status == ALWAN_OK, "HSY map status");
 
     /* SIMD uses FMA and different op ordering vs scalar: float32 ~1e-7 diffs */
-    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
+    alwan_f64 const tol = ALWAN_LITERAL(1e-6);
     for (size_t i = 0; i < N; i++) {
         alwan_rgb rgb = {rgb_buf[i * 3], rgb_buf[i * 3 + 1], rgb_buf[i * 3 + 2]};
         alwan_hsy hsy_pixel;
         alwan_rgb_to_hsy(&hsy_pixel, &rgb);
 
-        alwan_scalar dh = ALWAN_ABS(hsy_map[i * 3 + 0] - hsy_pixel.h);
-        alwan_scalar ds = ALWAN_ABS(hsy_map[i * 3 + 1] - hsy_pixel.s);
-        alwan_scalar dy = ALWAN_ABS(hsy_map[i * 3 + 2] - hsy_pixel.y);
+        alwan_f64 dh = ALWAN_ABS(hsy_map[i * 3 + 0] - hsy_pixel.h);
+        alwan_f64 ds = ALWAN_ABS(hsy_map[i * 3 + 1] - hsy_pixel.s);
+        alwan_f64 dy = ALWAN_ABS(hsy_map[i * 3 + 2] - hsy_pixel.y);
         if (dh > tol || ds > tol || dy > tol) {
             printf("  HSY map/pixel mismatch at %zu: diff [%e, %e, %e]\n", i, dh, ds, dy);
             TEST_ASSERT(0, "HSY map vs per-pixel mismatch");

@@ -16,7 +16,7 @@
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_machado_ref[] = {
+static alwan_f64 const g_machado_ref[] = {
 #include "reference_values/test_machado2009_cvd.csv"
 };
 ALWAN_DIAG_POP
@@ -40,12 +40,12 @@ static int test_machado_reference(void) {
     int failures = 0;
 
     for (int i = 0; i < MACHADO_REF_COUNT; i++) {
-        alwan_scalar const *d = &g_machado_ref[i * MACHADO_REF_STRIDE];
+        alwan_f64 const *d = &g_machado_ref[i * MACHADO_REF_STRIDE];
 
         alwan_rgb rgb_in = {d[0], d[1], d[2]};
         int type_idx = (int)d[3];
-        alwan_scalar severity = d[4];
-        alwan_scalar exp_r = d[5], exp_g = d[6], exp_b = d[7];
+        alwan_f64 severity = d[4];
+        alwan_f64 exp_r = d[5], exp_g = d[6], exp_b = d[7];
 
         alwan_rgb rgb_out;
         int status = alwan_simulate_cvd_machado(&rgb_out, &rgb_in,
@@ -56,10 +56,10 @@ static int test_machado_reference(void) {
             continue;
         }
 
-        alwan_scalar dr = ALWAN_ABS(rgb_out.r - exp_r);
-        alwan_scalar dg = ALWAN_ABS(rgb_out.g - exp_g);
-        alwan_scalar db = ALWAN_ABS(rgb_out.b - exp_b);
-        alwan_scalar max_diff = dr;
+        alwan_f64 dr = ALWAN_ABS(rgb_out.r - exp_r);
+        alwan_f64 dg = ALWAN_ABS(rgb_out.g - exp_g);
+        alwan_f64 db = ALWAN_ABS(rgb_out.b - exp_b);
+        alwan_f64 max_diff = dr;
         if (dg > max_diff) max_diff = dg;
         if (db > max_diff) max_diff = db;
 
@@ -151,10 +151,10 @@ static int test_cvd_ex_dispatch(void) {
     TEST_CHECK_NEAR(out_ex_machado.b, out_machado.b, ALWAN_TEST_TOLERANCE);
 
     /* Brettel and Machado should give different results (different models) */
-    alwan_scalar dr = ALWAN_ABS(out_brettel.r - out_machado.r);
-    alwan_scalar dg = ALWAN_ABS(out_brettel.g - out_machado.g);
-    alwan_scalar db = ALWAN_ABS(out_brettel.b - out_machado.b);
-    alwan_scalar max_diff = dr;
+    alwan_f64 dr = ALWAN_ABS(out_brettel.r - out_machado.r);
+    alwan_f64 dg = ALWAN_ABS(out_brettel.g - out_machado.g);
+    alwan_f64 db = ALWAN_ABS(out_brettel.b - out_machado.b);
+    alwan_f64 max_diff = dr;
     if (dg > max_diff) max_diff = dg;
     if (db > max_diff) max_diff = db;
     TEST_ASSERT(max_diff > ALWAN_LITERAL(0.001),
@@ -170,15 +170,15 @@ static int test_cvd_ex_dispatch(void) {
 static int test_machado_batch(void) {
     TEST_START("test_machado_batch");
 
-    alwan_scalar rgb_in[] = {
+    alwan_f64 rgb_in[] = {
         0.8, 0.3, 0.1,
         0.2, 0.6, 0.8,
         1.0, 0.0, 0.0,
         0.5, 0.5, 0.5,
     };
     size_t count = 4;
-    alwan_scalar rgb_out[12];
-    size_t stride = 3 * sizeof(alwan_scalar);
+    alwan_f64 rgb_out[12];
+    size_t stride = 3 * sizeof(alwan_f64);
 
     int status = alwan_simulate_cvd_machado_map_interleave(
         rgb_out, rgb_in, ALWAN_CVD_DEUTERANOPIA, ALWAN_LITERAL(0.7),
@@ -216,18 +216,18 @@ static int test_machado_monotonicity(void) {
     };
 
     for (int t = 0; t < 2; t++) {
-        alwan_scalar prev_dist = ALWAN_LITERAL(0.0);
+        alwan_f64 prev_dist = ALWAN_LITERAL(0.0);
 
         for (int s = 1; s <= 10; s++) {
-            alwan_scalar severity = (alwan_scalar)s / ALWAN_LITERAL(10.0);
+            alwan_f64 severity = (alwan_f64)s / ALWAN_LITERAL(10.0);
             alwan_rgb out;
             alwan_simulate_cvd_machado(&out, &rgb_in, types[t], severity);
 
             /* Euclidean distance from original */
-            alwan_scalar dr = out.r - rgb_in.r;
-            alwan_scalar dg = out.g - rgb_in.g;
-            alwan_scalar db = out.b - rgb_in.b;
-            alwan_scalar dist = ALWAN_SQRT(dr*dr + dg*dg + db*db);
+            alwan_f64 dr = out.r - rgb_in.r;
+            alwan_f64 dg = out.g - rgb_in.g;
+            alwan_f64 db = out.b - rgb_in.b;
+            alwan_f64 dist = ALWAN_SQRT(dr*dr + dg*dg + db*db);
 
             /* Should be non-decreasing (allow small tolerance for interpolation) */
             if (dist < prev_dist - ALWAN_LITERAL(1e-4)) {
@@ -258,18 +258,18 @@ static int test_machado_gray(void) {
 
     for (int t = 0; t < 2; t++) {
         for (int s = 0; s <= 10; s++) {
-            alwan_scalar severity = (alwan_scalar)s / ALWAN_LITERAL(10.0);
+            alwan_f64 severity = (alwan_f64)s / ALWAN_LITERAL(10.0);
             alwan_rgb out;
             alwan_simulate_cvd_machado(&out, &gray, types[t], severity);
 
             /* R, G, B should be similar (achromatic) */
-            alwan_scalar max_ch = out.r;
+            alwan_f64 max_ch = out.r;
             if (out.g > max_ch) max_ch = out.g;
             if (out.b > max_ch) max_ch = out.b;
-            alwan_scalar min_ch = out.r;
+            alwan_f64 min_ch = out.r;
             if (out.g < min_ch) min_ch = out.g;
             if (out.b < min_ch) min_ch = out.b;
-            alwan_scalar spread = max_ch - min_ch;
+            alwan_f64 spread = max_ch - min_ch;
 
             if (spread > ALWAN_LITERAL(0.05)) {
                 printf("[FAIL] type=%d severity=%.1f: gray -> [%.6f,%.6f,%.6f] "
@@ -302,9 +302,9 @@ static int test_machado_null(void) {
     TEST_ASSERT(alwan_simulate_cvd_ex(NULL, &rgb, ALWAN_CVD_PROTANOPIA,
                 ALWAN_LITERAL(0.5), ALWAN_CVD_MODEL_MACHADO) == ALWAN_E_INVALID,
                 "NULL out (ex)");
-    TEST_ASSERT(alwan_simulate_cvd_machado_map_interleave(NULL, (alwan_scalar*)&rgb,
+    TEST_ASSERT(alwan_simulate_cvd_machado_map_interleave(NULL, (alwan_f64*)&rgb,
                 ALWAN_CVD_PROTANOPIA, ALWAN_LITERAL(0.5), 1,
-                3*sizeof(alwan_scalar), 3*sizeof(alwan_scalar)) == ALWAN_E_INVALID,
+                3*sizeof(alwan_f64), 3*sizeof(alwan_f64)) == ALWAN_E_INVALID,
                 "NULL batch out");
 
     TEST_PASS("test_machado_null");

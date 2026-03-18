@@ -8,5 +8,5 @@ Description: Alwan colour science library (C11)
 Version: @PROJECT_VERSION@
 Libs: -L${libdir} -lalwan
 Libs.private: @_ALWAN_PKGCONFIG_LIBS_PRIVATE@
-Cflags: -I${includedir} -DALWAN_SCALAR_IS_FLOAT=@_ALWAN_SCALAR_IS_FLOAT_VALUE@ -DALWAN_EMBED_DATA=@_ALWAN_EMBED_DATA_VALUE@
+Cflags: -I${includedir} -DALWAN_EMBED_DATA=@_ALWAN_EMBED_DATA_VALUE@
 

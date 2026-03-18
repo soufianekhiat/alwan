@@ -10,6 +10,9 @@ namespace Alwan
         {
             Name = "Alwan";
             SourceRootPath = @"[project.SharpmakeCsPath]\..\..\..\src\alwan";
+
+            // Include .inc files in the project for IDE visibility (not compiled)
+            SourceFilesExtensions.Add(".inc");
         }
 
         [Configure()]
@@ -25,6 +28,7 @@ namespace Alwan
 
             // Source files (explicitly list them for now)
             conf.SourceFilesBuildExcludeRegex.Add(@".*\.sharpmake\.cs$");
+            conf.SourceFilesBuildExcludeRegex.Add(@".*\.inc$");
         }
     }
 }

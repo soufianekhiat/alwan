@@ -79,7 +79,7 @@ static int test_cubehelix_roundtrip(void) {
             test_inputs[i].l < ALWAN_LITERAL(0.99)) {
             alwan_cubehelix ch_out;
             alwan_rgb_to_cubehelix(&ch_out, &rgb);
-            alwan_scalar h_diff = ALWAN_ABS(ch_out.h - test_inputs[i].h);
+            alwan_f64 h_diff = ALWAN_ABS(ch_out.h - test_inputs[i].h);
             if (h_diff > ALWAN_LITERAL(180.0)) h_diff = ALWAN_LITERAL(360.0) - h_diff;
             TEST_ASSERT(h_diff < ALWAN_LITERAL(0.1), "Cubehelix roundtrip hue mismatch");
             TEST_ASSERT(ALWAN_ABS(ch_out.s - test_inputs[i].s) < ALWAN_LITERAL(0.01),
@@ -94,12 +94,12 @@ static int test_cubehelix_roundtrip(void) {
         alwan_cubehelix gray;
         gray.h = ALWAN_LITERAL(0.0);
         gray.s = ALWAN_LITERAL(0.0);
-        alwan_scalar prev_luma = ALWAN_LITERAL(-1.0);
+        alwan_f64 prev_luma = ALWAN_LITERAL(-1.0);
         for (int k = 0; k <= 10; k++) {
-            gray.l = (alwan_scalar)k / ALWAN_LITERAL(10.0);
+            gray.l = (alwan_f64)k / ALWAN_LITERAL(10.0);
             alwan_rgb rgb;
             alwan_cubehelix_to_rgb(&rgb, &gray);
-            alwan_scalar luma = ALWAN_LITERAL(0.299) * rgb.r + ALWAN_LITERAL(0.587) * rgb.g
+            alwan_f64 luma = ALWAN_LITERAL(0.299) * rgb.r + ALWAN_LITERAL(0.587) * rgb.g
                               + ALWAN_LITERAL(0.114) * rgb.b;
             TEST_ASSERT(luma >= prev_luma - ALWAN_LITERAL(0.001),
                        "Cubehelix: luminance should increase with l for s=0");
@@ -127,7 +127,7 @@ static int test_hsluv_roundtrip(void) {
         {0.3, 0.7, 0.5},           /* arbitrary */
     };
     size_t const num_tests = sizeof(test_srgb) / sizeof(test_srgb[0]);
-    alwan_scalar const tol = ALWAN_LITERAL(0.005);
+    alwan_f64 const tol = ALWAN_LITERAL(0.005);
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_hsluv hsluv;
@@ -135,7 +135,7 @@ static int test_hsluv_roundtrip(void) {
         alwan_srgb_to_hsluv(&hsluv, &test_srgb[i]);
         alwan_hsluv_to_srgb(&roundtrip, &hsluv);
 
-        alwan_scalar diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
+        alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
                           + ALWAN_ABS(roundtrip.g - test_srgb[i].g)
                           + ALWAN_ABS(roundtrip.b - test_srgb[i].b);
         if (diff > tol) {
@@ -181,7 +181,7 @@ static int test_hpluv_roundtrip(void) {
         {240.0,  30.0,  30.0},   /* dark blue pastel */
     };
     size_t const num_tests = sizeof(test_hpluv) / sizeof(test_hpluv[0]);
-    alwan_scalar const tol = ALWAN_LITERAL(0.5);
+    alwan_f64 const tol = ALWAN_LITERAL(0.5);
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_rgb rgb;
@@ -196,11 +196,11 @@ static int test_hpluv_roundtrip(void) {
 
         alwan_srgb_to_hpluv(&roundtrip, &rgb);
 
-        alwan_scalar diff_l = ALWAN_ABS(roundtrip.l - test_hpluv[i].l);
+        alwan_f64 diff_l = ALWAN_ABS(roundtrip.l - test_hpluv[i].l);
         TEST_ASSERT(diff_l < tol, "HPLuv roundtrip L mismatch");
 
         if (test_hpluv[i].s > ALWAN_LITERAL(1.0)) {
-            alwan_scalar diff_s = ALWAN_ABS(roundtrip.s - test_hpluv[i].s);
+            alwan_f64 diff_s = ALWAN_ABS(roundtrip.s - test_hpluv[i].s);
             TEST_ASSERT(diff_s < tol, "HPLuv roundtrip S mismatch");
         }
     }
@@ -225,7 +225,7 @@ static int test_okhsl_roundtrip(void) {
         {0.1, 0.3, 0.6},           /* arbitrary */
     };
     size_t const num_tests = sizeof(test_srgb) / sizeof(test_srgb[0]);
-    alwan_scalar const tol = ALWAN_LITERAL(0.01);
+    alwan_f64 const tol = ALWAN_LITERAL(0.01);
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_okhsl okhsl;
@@ -233,7 +233,7 @@ static int test_okhsl_roundtrip(void) {
         alwan_srgb_to_okhsl(&okhsl, &test_srgb[i]);
         alwan_okhsl_to_srgb(&roundtrip, &okhsl);
 
-        alwan_scalar diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
+        alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
                           + ALWAN_ABS(roundtrip.g - test_srgb[i].g)
                           + ALWAN_ABS(roundtrip.b - test_srgb[i].b);
         if (diff > tol) {
@@ -283,7 +283,7 @@ static int test_okhsv_roundtrip(void) {
         {0.2, 0.6, 0.9},           /* arbitrary */
     };
     size_t const num_tests = sizeof(test_srgb) / sizeof(test_srgb[0]);
-    alwan_scalar const tol = ALWAN_LITERAL(0.01);
+    alwan_f64 const tol = ALWAN_LITERAL(0.01);
 
     for (size_t i = 0; i < num_tests; i++) {
         alwan_okhsv okhsv;
@@ -291,7 +291,7 @@ static int test_okhsv_roundtrip(void) {
         alwan_srgb_to_okhsv(&okhsv, &test_srgb[i]);
         alwan_okhsv_to_srgb(&roundtrip, &okhsv);
 
-        alwan_scalar diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
+        alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
                           + ALWAN_ABS(roundtrip.g - test_srgb[i].g)
                           + ALWAN_ABS(roundtrip.b - test_srgb[i].b);
         if (diff > tol) {

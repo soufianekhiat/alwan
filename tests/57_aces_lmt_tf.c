@@ -19,13 +19,11 @@ static int test_blue_light_fix_roundtrip(void) {
     size_t num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
     for (size_t i = 0; i < num_colors; i++) {
         alwan_rgb forward, roundtrip;
-        int status = alwan_aces_blue_light_fix(&forward, &test_colors[i]);
-        TEST_ASSERT(status == ALWAN_OK, "Blue light fix forward failed");
-        status = alwan_aces_blue_light_fix_inv(&roundtrip, &forward);
-        TEST_ASSERT(status == ALWAN_OK, "Blue light fix inverse failed");
-        alwan_scalar diff_r = ALWAN_ABS(roundtrip.r - test_colors[i].r);
-        alwan_scalar diff_g = ALWAN_ABS(roundtrip.g - test_colors[i].g);
-        alwan_scalar diff_b = ALWAN_ABS(roundtrip.b - test_colors[i].b);
+        alwan_aces_blue_light_fix(&forward, &test_colors[i]);
+        alwan_aces_blue_light_fix_inv(&roundtrip, &forward);
+        alwan_f64 diff_r = ALWAN_ABS(roundtrip.r - test_colors[i].r);
+        alwan_f64 diff_g = ALWAN_ABS(roundtrip.g - test_colors[i].g);
+        alwan_f64 diff_b = ALWAN_ABS(roundtrip.b - test_colors[i].b);
         TEST_ASSERT(diff_r < ALWAN_TEST_TOLERANCE && diff_g < ALWAN_TEST_TOLERANCE && diff_b < ALWAN_TEST_TOLERANCE, "Round-trip exceeded");
     }
     TEST_PASS("test_blue_light_fix_roundtrip");
@@ -34,76 +32,75 @@ static int test_blue_light_fix_roundtrip(void) {
 static int test_blue_light_fix_effect(void) {
     alwan_rgb neon_blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(2.0)};
     alwan_rgb result;
-    int status = alwan_aces_blue_light_fix(&result, &neon_blue);
-    TEST_ASSERT(status == ALWAN_OK, "Blue light fix failed");
+    alwan_aces_blue_light_fix(&result, &neon_blue);
     TEST_ASSERT(result.r > neon_blue.r, "Should add red");
     TEST_ASSERT(result.g > neon_blue.g, "Should add green");
     TEST_PASS("test_blue_light_fix_effect");
 }
 
 static int test_acescc_known_values(void) {
-    struct { alwan_scalar linear; alwan_scalar encoded; } known_pairs[] = {
+    struct { alwan_f64 linear; alwan_f64 encoded; } known_pairs[] = {
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.41358840249244228)},
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(-0.35844748858447484)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.55479452054794520)},
     };
     size_t num_pairs = sizeof(known_pairs) / sizeof(known_pairs[0]);
     for (size_t i = 0; i < num_pairs; i++) {
-        alwan_scalar encoded;
-        alwan_oetf_apply(&encoded, ALWAN_TF_ACESCC, &known_pairs[i].linear, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
-        alwan_scalar diff = ALWAN_ABS(encoded - known_pairs[i].encoded);
+        alwan_f64 encoded;
+        alwan_oetf_apply(&encoded, ALWAN_TF_ACESCC, &known_pairs[i].linear, 1, sizeof(alwan_f64), sizeof(alwan_f64));
+        alwan_f64 diff = ALWAN_ABS(encoded - known_pairs[i].encoded);
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ACEScc known value exceeded");
     }
     TEST_PASS("test_acescc_known_values");
 }
 
 static int test_acescc_roundtrip(void) {
-    alwan_scalar test_values[] = {ALWAN_LITERAL(0.0001), ALWAN_LITERAL(0.18), ALWAN_LITERAL(1.0)};
+    alwan_f64 test_values[] = {ALWAN_LITERAL(0.0001), ALWAN_LITERAL(0.18), ALWAN_LITERAL(1.0)};
     size_t num_values = sizeof(test_values) / sizeof(test_values[0]);
     for (size_t i = 0; i < num_values; i++) {
-        alwan_scalar encoded, decoded;
-        alwan_oetf_apply(&encoded, ALWAN_TF_ACESCC, &test_values[i], 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
-        alwan_eotf_apply(&decoded, ALWAN_TF_ACESCC, &encoded, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
-        alwan_scalar rel = (test_values[i] > ALWAN_LITERAL(0.0001)) ? ALWAN_ABS(decoded - test_values[i]) / test_values[i] : ALWAN_ABS(decoded - test_values[i]);
+        alwan_f64 encoded, decoded;
+        alwan_oetf_apply(&encoded, ALWAN_TF_ACESCC, &test_values[i], 1, sizeof(alwan_f64), sizeof(alwan_f64));
+        alwan_eotf_apply(&decoded, ALWAN_TF_ACESCC, &encoded, 1, sizeof(alwan_f64), sizeof(alwan_f64));
+        alwan_f64 rel = (test_values[i] > ALWAN_LITERAL(0.0001)) ? ALWAN_ABS(decoded - test_values[i]) / test_values[i] : ALWAN_ABS(decoded - test_values[i]);
         TEST_ASSERT(rel < ALWAN_TEST_TOLERANCE, "ACEScc round-trip exceeded");
     }
     TEST_PASS("test_acescc_roundtrip");
 }
 
 static int test_acescct_known_values(void) {
-    struct { alwan_scalar linear; alwan_scalar encoded; } known_pairs[] = {
+    struct { alwan_f64 linear; alwan_f64 encoded; } known_pairs[] = {
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.41358840249244228)},
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0729055341958355)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.55479452054794520)},
     };
     size_t num_pairs = sizeof(known_pairs) / sizeof(known_pairs[0]);
     for (size_t i = 0; i < num_pairs; i++) {
-        alwan_scalar encoded;
-        alwan_oetf_apply(&encoded, ALWAN_TF_ACESCCT, &known_pairs[i].linear, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_f64 encoded;
+        alwan_oetf_apply(&encoded, ALWAN_TF_ACESCCT, &known_pairs[i].linear, 1, sizeof(alwan_f64), sizeof(alwan_f64));
         TEST_ASSERT(ALWAN_ABS(encoded - known_pairs[i].encoded) < ALWAN_TEST_TOLERANCE, "ACEScct known value exceeded");
     }
     TEST_PASS("test_acescct_known_values");
 }
 
 static int test_acescct_roundtrip(void) {
-    alwan_scalar test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0078125), ALWAN_LITERAL(0.18), ALWAN_LITERAL(1.0)};
+    alwan_f64 test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0078125), ALWAN_LITERAL(0.18), ALWAN_LITERAL(1.0)};
     size_t num_values = sizeof(test_values) / sizeof(test_values[0]);
     for (size_t i = 0; i < num_values; i++) {
-        alwan_scalar encoded, decoded;
-        alwan_oetf_apply(&encoded, ALWAN_TF_ACESCCT, &test_values[i], 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
-        alwan_eotf_apply(&decoded, ALWAN_TF_ACESCCT, &encoded, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_f64 encoded, decoded;
+        alwan_oetf_apply(&encoded, ALWAN_TF_ACESCCT, &test_values[i], 1, sizeof(alwan_f64), sizeof(alwan_f64));
+        alwan_eotf_apply(&decoded, ALWAN_TF_ACESCCT, &encoded, 1, sizeof(alwan_f64), sizeof(alwan_f64));
         TEST_ASSERT(ALWAN_ABS(decoded - test_values[i]) < ALWAN_TEST_TOLERANCE, "ACEScct round-trip exceeded");
     }
     TEST_PASS("test_acescct_roundtrip");
 }
 
 static int test_tf_roundtrip(char const *name, alwan_transfer_function tf) {
-    alwan_scalar test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01), ALWAN_LITERAL(0.18), ALWAN_LITERAL(1.0)};
+    alwan_f64 test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.01), ALWAN_LITERAL(0.18), ALWAN_LITERAL(1.0)};
     size_t num_values = sizeof(test_values) / sizeof(test_values[0]);
     for (size_t i = 0; i < num_values; i++) {
-        alwan_scalar encoded, decoded;
-        if (alwan_oetf_apply(&encoded, tf, &test_values[i], 1, sizeof(alwan_scalar), sizeof(alwan_scalar)) != ALWAN_OK) return 1;
-        if (alwan_eotf_apply(&decoded, tf, &encoded, 1, sizeof(alwan_scalar), sizeof(alwan_scalar)) != ALWAN_OK) return 1;
+        alwan_f64 encoded, decoded;
+        if (alwan_oetf_apply(&encoded, tf, &test_values[i], 1, sizeof(alwan_f64), sizeof(alwan_f64)) != ALWAN_OK) return 1;
+        if (alwan_eotf_apply(&decoded, tf, &encoded, 1, sizeof(alwan_f64), sizeof(alwan_f64)) != ALWAN_OK) return 1;
         if (ALWAN_ABS(decoded - test_values[i]) > ALWAN_TEST_TOLERANCE) return 1;
     }
     printf("[PASS] %s round-trip\n", name);
@@ -119,22 +116,22 @@ static int test_bmdfilm4_roundtrip(void) { return test_tf_roundtrip("BMDFilm4", 
 static int test_camera_logs_range(void) {
     alwan_transfer_function tfs[] = {ALWAN_TF_FLOG, ALWAN_TF_FLOG2, ALWAN_TF_LLOG, ALWAN_TF_DLOG, ALWAN_TF_BMDFILM4};
     size_t num_tfs = sizeof(tfs) / sizeof(tfs[0]);
-    alwan_scalar gray = ALWAN_LITERAL(0.18);
+    alwan_f64 gray = ALWAN_LITERAL(0.18);
     for (size_t i = 0; i < num_tfs; i++) {
-        alwan_scalar encoded;
-        alwan_oetf_apply(&encoded, tfs[i], &gray, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_f64 encoded;
+        alwan_oetf_apply(&encoded, tfs[i], &gray, 1, sizeof(alwan_f64), sizeof(alwan_f64));
         TEST_ASSERT(encoded > ALWAN_LITERAL(0.2) && encoded < ALWAN_LITERAL(0.7), "Camera log out of range");
     }
     TEST_PASS("test_camera_logs_range");
 }
 
 static int test_adx10_roundtrip(void) {
-    alwan_scalar test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.3), ALWAN_LITERAL(1.0), ALWAN_LITERAL(2.0)};
+    alwan_f64 test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.3), ALWAN_LITERAL(1.0), ALWAN_LITERAL(2.0)};
     size_t num_values = sizeof(test_values) / sizeof(test_values[0]);
     for (size_t i = 0; i < num_values; i++) {
-        alwan_scalar encoded, decoded;
-        alwan_oetf_apply(&encoded, ALWAN_TF_ADX10, &test_values[i], 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
-        alwan_eotf_apply(&decoded, ALWAN_TF_ADX10, &encoded, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_f64 encoded, decoded;
+        alwan_oetf_apply(&encoded, ALWAN_TF_ADX10, &test_values[i], 1, sizeof(alwan_f64), sizeof(alwan_f64));
+        alwan_eotf_apply(&decoded, ALWAN_TF_ADX10, &encoded, 1, sizeof(alwan_f64), sizeof(alwan_f64));
         TEST_ASSERT(ALWAN_ABS(decoded - test_values[i]) < ALWAN_TEST_TOLERANCE, "ADX10 round-trip exceeded");
     }
     printf("[PASS] ADX10 round-trip\n");
@@ -142,12 +139,12 @@ static int test_adx10_roundtrip(void) {
 }
 
 static int test_adx16_roundtrip(void) {
-    alwan_scalar test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.3), ALWAN_LITERAL(1.0), ALWAN_LITERAL(2.0)};
+    alwan_f64 test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.3), ALWAN_LITERAL(1.0), ALWAN_LITERAL(2.0)};
     size_t num_values = sizeof(test_values) / sizeof(test_values[0]);
     for (size_t i = 0; i < num_values; i++) {
-        alwan_scalar encoded, decoded;
-        alwan_oetf_apply(&encoded, ALWAN_TF_ADX16, &test_values[i], 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
-        alwan_eotf_apply(&decoded, ALWAN_TF_ADX16, &encoded, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_f64 encoded, decoded;
+        alwan_oetf_apply(&encoded, ALWAN_TF_ADX16, &test_values[i], 1, sizeof(alwan_f64), sizeof(alwan_f64));
+        alwan_eotf_apply(&decoded, ALWAN_TF_ADX16, &encoded, 1, sizeof(alwan_f64), sizeof(alwan_f64));
         TEST_ASSERT(ALWAN_ABS(decoded - test_values[i]) < ALWAN_TEST_TOLERANCE, "ADX16 round-trip exceeded");
     }
     printf("[PASS] ADX16 round-trip\n");
@@ -155,10 +152,10 @@ static int test_adx16_roundtrip(void) {
 }
 
 static int test_adx_known_values(void) {
-    alwan_scalar density_zero = ALWAN_LITERAL(0.0);
-    alwan_scalar encoded;
-    alwan_oetf_apply(&encoded, ALWAN_TF_ADX10, &density_zero, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
-    alwan_scalar expected = ALWAN_LITERAL(200.0) / ALWAN_LITERAL(1023.0);
+    alwan_f64 density_zero = ALWAN_LITERAL(0.0);
+    alwan_f64 encoded;
+    alwan_oetf_apply(&encoded, ALWAN_TF_ADX10, &density_zero, 1, sizeof(alwan_f64), sizeof(alwan_f64));
+    alwan_f64 expected = ALWAN_LITERAL(200.0) / ALWAN_LITERAL(1023.0);
     TEST_ASSERT(ALWAN_ABS(encoded - expected) < ALWAN_TEST_TOLERANCE, "ADX10 known value exceeded");
     TEST_PASS("test_adx_known_values");
 }
@@ -167,7 +164,7 @@ static int test_dlog_known_values(void) {
     /* DJI D-Log reference values from colour-science
      * For linear in log region (>0.0078): y = log10(x * 0.9892 + 0.0108) * 0.256663 + 0.584555
      * For linear in linear region (<=0.0078): y = 6.025 * x + 0.0929 */
-    struct { alwan_scalar linear; alwan_scalar encoded; } known_pairs[] = {
+    struct { alwan_f64 linear; alwan_f64 encoded; } known_pairs[] = {
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0929)},             /* Linear region: 6.025 * 0 + 0.0929 */
         {ALWAN_LITERAL(0.001), ALWAN_LITERAL(0.098925)},         /* Linear region: 6.025 * 0.001 + 0.0929 */
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.39876455618933060)}, /* Log region: 18% gray */
@@ -175,9 +172,9 @@ static int test_dlog_known_values(void) {
     };
     size_t num_pairs = sizeof(known_pairs) / sizeof(known_pairs[0]);
     for (size_t i = 0; i < num_pairs; i++) {
-        alwan_scalar encoded;
-        alwan_oetf_apply(&encoded, ALWAN_TF_DLOG, &known_pairs[i].linear, 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
-        alwan_scalar diff = ALWAN_ABS(encoded - known_pairs[i].encoded);
+        alwan_f64 encoded;
+        alwan_oetf_apply(&encoded, ALWAN_TF_DLOG, &known_pairs[i].linear, 1, sizeof(alwan_f64), sizeof(alwan_f64));
+        alwan_f64 diff = ALWAN_ABS(encoded - known_pairs[i].encoded);
         if (diff >= ALWAN_TEST_TOLERANCE) {
             printf("D-Log: linear=%g, expected=%g, got=%g, diff=%g\n",
                     (double)known_pairs[i].linear, (double)known_pairs[i].encoded, (double)encoded, (double)diff);
@@ -188,13 +185,13 @@ static int test_dlog_known_values(void) {
 }
 
 static int test_linear_identity(void) {
-    alwan_scalar test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.18), ALWAN_LITERAL(1.0), ALWAN_LITERAL(-0.1)};
+    alwan_f64 test_values[] = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.18), ALWAN_LITERAL(1.0), ALWAN_LITERAL(-0.1)};
     size_t num_values = sizeof(test_values) / sizeof(test_values[0]);
     for (size_t i = 0; i < num_values; i++) {
-        alwan_scalar encoded, decoded;
-        alwan_oetf_apply(&encoded, ALWAN_TF_LINEAR, &test_values[i], 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_f64 encoded, decoded;
+        alwan_oetf_apply(&encoded, ALWAN_TF_LINEAR, &test_values[i], 1, sizeof(alwan_f64), sizeof(alwan_f64));
         TEST_ASSERT(encoded == test_values[i], "Linear OETF should be identity");
-        alwan_eotf_apply(&decoded, ALWAN_TF_LINEAR, &test_values[i], 1, sizeof(alwan_scalar), sizeof(alwan_scalar));
+        alwan_eotf_apply(&decoded, ALWAN_TF_LINEAR, &test_values[i], 1, sizeof(alwan_f64), sizeof(alwan_f64));
         TEST_ASSERT(decoded == test_values[i], "Linear EOTF should be identity");
     }
     TEST_PASS("test_linear_identity");
@@ -211,13 +208,11 @@ static int test_aces_look_1_0_roundtrip(void) {
     size_t num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
     for (size_t i = 0; i < num_colors; i++) {
         alwan_rgb forward, roundtrip;
-        int status = alwan_aces_look_1_0(&forward, &test_colors[i]);
-        TEST_ASSERT(status == ALWAN_OK, "ACES 1.0 Look forward failed");
-        status = alwan_aces_look_1_0_inv(&roundtrip, &forward);
-        TEST_ASSERT(status == ALWAN_OK, "ACES 1.0 Look inverse failed");
-        alwan_scalar diff_r = ALWAN_ABS(roundtrip.r - test_colors[i].r);
-        alwan_scalar diff_g = ALWAN_ABS(roundtrip.g - test_colors[i].g);
-        alwan_scalar diff_b = ALWAN_ABS(roundtrip.b - test_colors[i].b);
+        alwan_aces_look_1_0(&forward, &test_colors[i]);
+        alwan_aces_look_1_0_inv(&roundtrip, &forward);
+        alwan_f64 diff_r = ALWAN_ABS(roundtrip.r - test_colors[i].r);
+        alwan_f64 diff_g = ALWAN_ABS(roundtrip.g - test_colors[i].g);
+        alwan_f64 diff_b = ALWAN_ABS(roundtrip.b - test_colors[i].b);
         if (diff_r >= ALWAN_TEST_TOLERANCE || diff_g >= ALWAN_TEST_TOLERANCE || diff_b >= ALWAN_TEST_TOLERANCE) {
             printf("  Index %zu: in=(%.6f,%.6f,%.6f) out=(%.6f,%.6f,%.6f) diff=(%.6f,%.6f,%.6f)\n",
                    i, test_colors[i].r, test_colors[i].g, test_colors[i].b,
@@ -239,7 +234,7 @@ static int test_glow_inv_roundtrip(void) {
         /* Test Glow10 */
         alwan_aces_glow10(&forward, &test_colors[i]);
         alwan_aces_glow10_inv(&roundtrip, &forward);
-        alwan_scalar diff = ALWAN_ABS(roundtrip.r - test_colors[i].r) +
+        alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_colors[i].r) +
                             ALWAN_ABS(roundtrip.g - test_colors[i].g) +
                             ALWAN_ABS(roundtrip.b - test_colors[i].b);
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE * 3, "Glow10 round-trip exceeded");
@@ -265,7 +260,7 @@ static int test_redmod_inv_roundtrip(void) {
         /* Test RedMod10 */
         alwan_aces_redmod10(&forward, &test_colors[i]);
         alwan_aces_redmod10_inv(&roundtrip, &forward);
-        alwan_scalar diff = ALWAN_ABS(roundtrip.r - test_colors[i].r);
+        alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_colors[i].r);
         if (diff >= ALWAN_TEST_TOLERANCE) {
             printf("  RedMod10 index %zu: in=%.6f fwd=%.6f out=%.6f diff=%.6f\n",
                    i, test_colors[i].r, forward.r, roundtrip.r, diff);
@@ -297,10 +292,10 @@ static int test_ap0_ap1_roundtrip(void) {
     TEST_ASSERT(status == ALWAN_OK, "ACES2 output transform failed");
 
     /* Check that output is neutral (R~=G~=B) */
-    alwan_scalar max_diff = ALWAN_ABS(result.r - result.g);
-    alwan_scalar diff2 = ALWAN_ABS(result.g - result.b);
+    alwan_f64 max_diff = ALWAN_ABS(result.r - result.g);
+    alwan_f64 diff2 = ALWAN_ABS(result.g - result.b);
     if (diff2 > max_diff) max_diff = diff2;
-    alwan_scalar diff3 = ALWAN_ABS(result.r - result.b);
+    alwan_f64 diff3 = ALWAN_ABS(result.r - result.b);
     if (diff3 > max_diff) max_diff = diff3;
     TEST_ASSERT(max_diff < ALWAN_TEST_TOLERANCE, "Neutral axis not preserved in AP0->AP1");
 
@@ -336,13 +331,11 @@ static int test_jmh_roundtrip(void) {
         alwan_vec3 jmh;
         alwan_rgb roundtrip;
         /* RGB -> JMh */
-        int status = alwan_aces_rgb_to_jmh20(&jmh, &test_colors[i], &primaries);
-        TEST_ASSERT(status == ALWAN_OK, "RGB to JMh conversion failed");
+        alwan_aces_rgb_to_jmh20(&jmh, &test_colors[i], &primaries);
         /* JMh -> RGB */
-        status = alwan_aces_jmh_to_rgb20(&roundtrip, &jmh, &primaries);
-        TEST_ASSERT(status == ALWAN_OK, "JMh to RGB conversion failed");
+        alwan_aces_jmh_to_rgb20(&roundtrip, &jmh, &primaries);
         /* Check round-trip (looser tolerance for JMh) */
-        alwan_scalar diff = ALWAN_ABS(roundtrip.r - test_colors[i].r) +
+        alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_colors[i].r) +
                             ALWAN_ABS(roundtrip.g - test_colors[i].g) +
                             ALWAN_ABS(roundtrip.b - test_colors[i].b);
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE * 3, "JMh round-trip exceeded");
@@ -358,30 +351,26 @@ static int test_parametric_lmt(void) {
     /* Test 1: Identity transform (default params) */
     alwan_rgb gray = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
     alwan_rgb result;
-    int status = alwan_aces_lmt_apply(&result, &gray, &params);
-    TEST_ASSERT(status == ALWAN_OK, "Parametric LMT identity failed");
+    alwan_aces_lmt_apply(&result, &gray, &params);
     TEST_ASSERT(ALWAN_ABS(result.r - gray.r) < ALWAN_TEST_TOLERANCE, "Identity should preserve R");
     TEST_ASSERT(ALWAN_ABS(result.g - gray.g) < ALWAN_TEST_TOLERANCE, "Identity should preserve G");
     TEST_ASSERT(ALWAN_ABS(result.b - gray.b) < ALWAN_TEST_TOLERANCE, "Identity should preserve B");
 
     /* Test 2: Slope (gain) adjustment */
     params.slope[0] = params.slope[1] = params.slope[2] = ALWAN_LITERAL(2.0);
-    status = alwan_aces_lmt_apply(&result, &gray, &params);
-    TEST_ASSERT(status == ALWAN_OK, "Parametric LMT slope failed");
+    alwan_aces_lmt_apply(&result, &gray, &params);
     TEST_ASSERT(ALWAN_ABS(result.r - ALWAN_LITERAL(0.36)) < ALWAN_TEST_TOLERANCE, "Slope should double values");
     alwan_aces_lmt_params_init(&params);  /* Reset */
 
     /* Test 3: Offset adjustment */
     params.offset[0] = params.offset[1] = params.offset[2] = ALWAN_LITERAL(0.1);
-    status = alwan_aces_lmt_apply(&result, &gray, &params);
-    TEST_ASSERT(status == ALWAN_OK, "Parametric LMT offset failed");
+    alwan_aces_lmt_apply(&result, &gray, &params);
     TEST_ASSERT(ALWAN_ABS(result.r - ALWAN_LITERAL(0.28)) < ALWAN_TEST_TOLERANCE, "Offset should add 0.1");
     alwan_aces_lmt_params_init(&params);  /* Reset */
 
     /* Test 4: Saturation adjustment - should keep gray neutral */
     params.saturation = ALWAN_LITERAL(1.5);
-    status = alwan_aces_lmt_apply(&result, &gray, &params);
-    TEST_ASSERT(status == ALWAN_OK, "Parametric LMT saturation failed");
+    alwan_aces_lmt_apply(&result, &gray, &params);
     /* Gray input should remain gray (R=G=B) */
     TEST_ASSERT(ALWAN_ABS(result.r - result.g) < ALWAN_TEST_TOLERANCE, "Gray should stay neutral");
     TEST_ASSERT(ALWAN_ABS(result.g - result.b) < ALWAN_TEST_TOLERANCE, "Gray should stay neutral");
@@ -390,11 +379,10 @@ static int test_parametric_lmt(void) {
     /* Test 5: Saturation on chromatic color */
     alwan_rgb red = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)};
     params.saturation = ALWAN_LITERAL(1.5);
-    status = alwan_aces_lmt_apply(&result, &red, &params);
-    TEST_ASSERT(status == ALWAN_OK, "Parametric LMT saturation on color failed");
+    alwan_aces_lmt_apply(&result, &red, &params);
     /* Increased saturation should increase chroma */
-    alwan_scalar in_chroma = red.r - (red.g + red.b) / ALWAN_LITERAL(2.0);
-    alwan_scalar out_chroma = result.r - (result.g + result.b) / ALWAN_LITERAL(2.0);
+    alwan_f64 in_chroma = red.r - (red.g + red.b) / ALWAN_LITERAL(2.0);
+    alwan_f64 out_chroma = result.r - (result.g + result.b) / ALWAN_LITERAL(2.0);
     TEST_ASSERT(out_chroma > in_chroma, "Saturation 1.5 should increase chroma");
 
     TEST_PASS("test_parametric_lmt");
@@ -407,8 +395,7 @@ static int test_tonescale_known_values(void) {
     alwan_rgb result;
 
     /* 100 nit SDR tonescale */
-    int status = alwan_aces_tonescale_compress20(&result, &gray18, ALWAN_LITERAL(100.0));
-    TEST_ASSERT(status == ALWAN_OK, "Tonescale 100 nit failed");
+    alwan_aces_tonescale_compress20(&result, &gray18, ALWAN_LITERAL(100.0));
     /* 18% gray should map to a reasonable positive value (output is compressed linear) */
     TEST_ASSERT(result.r > ALWAN_LITERAL(0.05) && result.r < ALWAN_LITERAL(1.0), "18% gray should map to positive output");
     /* Should remain neutral */
@@ -417,8 +404,7 @@ static int test_tonescale_known_values(void) {
 
     /* Test black stays black */
     alwan_rgb black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    status = alwan_aces_tonescale_compress20(&result, &black, ALWAN_LITERAL(100.0));
-    TEST_ASSERT(status == ALWAN_OK, "Tonescale black failed");
+    alwan_aces_tonescale_compress20(&result, &black, ALWAN_LITERAL(100.0));
     TEST_ASSERT(result.r < ALWAN_LITERAL(0.01), "Black should stay near black");
 
     /* Test HDR tonescale - higher peak should compress less in highlights */
@@ -443,34 +429,29 @@ static int test_gamut_compress_boundary(void) {
     alwan_rgb recovered;
 
     /* Convert to JMh */
-    int status = alwan_aces_rgb_to_jmh20(&jmh, &saturated_red, &primaries);
-    TEST_ASSERT(status == ALWAN_OK, "RGB to JMh failed");
+    alwan_aces_rgb_to_jmh20(&jmh, &saturated_red, &primaries);
 
     /* Forward gamut compression in JMh space */
-    status = alwan_aces_gamut_compress20(&jmh_compressed, &jmh, ALWAN_LITERAL(100.0), &primaries);
-    TEST_ASSERT(status == ALWAN_OK, "Gamut compress forward failed");
+    alwan_aces_gamut_compress20(&jmh_compressed, &jmh, ALWAN_LITERAL(100.0), &primaries);
     /* Compressed M (colorfulness) should be <= original M */
     TEST_ASSERT(jmh_compressed.v[1] <= jmh.v[1] + ALWAN_TEST_TOLERANCE, "Gamut compress should reduce or preserve M");
 
     /* Inverse gamut compression */
-    status = alwan_aces_gamut_compress20_inv(&jmh_recovered, &jmh_compressed, ALWAN_LITERAL(100.0), &primaries);
-    TEST_ASSERT(status == ALWAN_OK, "Gamut compress inverse failed");
+    alwan_aces_gamut_compress20_inv(&jmh_recovered, &jmh_compressed, ALWAN_LITERAL(100.0), &primaries);
     /* Should approximately recover original JMh (within tolerance) */
-    alwan_scalar diff = ALWAN_ABS(jmh_recovered.v[0] - jmh.v[0]) +
+    alwan_f64 diff = ALWAN_ABS(jmh_recovered.v[0] - jmh.v[0]) +
                         ALWAN_ABS(jmh_recovered.v[1] - jmh.v[1]) +
                         ALWAN_ABS(jmh_recovered.v[2] - jmh.v[2]);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE * 3, "Gamut compress round-trip exceeded");
 
     /* Convert back to RGB and verify */
-    status = alwan_aces_jmh_to_rgb20(&recovered, &jmh_recovered, &primaries);
-    TEST_ASSERT(status == ALWAN_OK, "JMh to RGB failed");
+    alwan_aces_jmh_to_rgb20(&recovered, &jmh_recovered, &primaries);
 
     /* Test neutral stays neutral through full pipeline */
     alwan_rgb gray = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
     alwan_vec3 gray_jmh, gray_compressed;
     alwan_aces_rgb_to_jmh20(&gray_jmh, &gray, &primaries);
-    status = alwan_aces_gamut_compress20(&gray_compressed, &gray_jmh, ALWAN_LITERAL(100.0), &primaries);
-    TEST_ASSERT(status == ALWAN_OK, "Gamut compress neutral failed");
+    alwan_aces_gamut_compress20(&gray_compressed, &gray_jmh, ALWAN_LITERAL(100.0), &primaries);
     /* Neutral should have M (colorfulness) near zero */
     TEST_ASSERT(gray_jmh.v[1] < ALWAN_LITERAL(0.1), "Neutral should have low colorfulness");
 

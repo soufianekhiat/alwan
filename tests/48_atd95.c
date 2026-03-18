@@ -13,7 +13,7 @@
  * Format: 13 values per row */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const test_data[] = {
+static alwan_f64 const test_data[] = {
 #include "reference_values/atd95.csv"
 };
 ALWAN_DIAG_POP
@@ -32,10 +32,10 @@ static int test_atd95_forward(void) {
         size_t offset = i * 13;
         alwan_vec3 xyz_in = {test_data[offset + 0], test_data[offset + 1], test_data[offset + 2]};
         alwan_vec3 xyz_w = {test_data[offset + 3], test_data[offset + 4], test_data[offset + 5]};
-        alwan_scalar Y_0 = test_data[offset + 6];
-        alwan_scalar k1 = test_data[offset + 7];
-        alwan_scalar k2 = test_data[offset + 8];
-        alwan_scalar sigma = test_data[offset + 9];
+        alwan_f64 Y_0 = test_data[offset + 6];
+        alwan_f64 k1 = test_data[offset + 7];
+        alwan_f64 k2 = test_data[offset + 8];
+        alwan_f64 sigma = test_data[offset + 9];
 
         alwan_atd95_viewing_conditions vc;
         ALWAN_MEMCPY(&vc.white_xyz, &xyz_w, sizeof(alwan_xyz));

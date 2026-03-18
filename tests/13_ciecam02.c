@@ -14,7 +14,7 @@ static int test_ciecam02_forward(void) {
     /* Load viewing conditions from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const viewing_params[] = {
+    static alwan_f64 const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
     ALWAN_DIAG_POP
@@ -32,7 +32,7 @@ static int test_ciecam02_forward(void) {
     /* Load test XYZ colors */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz[] = {
+    static alwan_f64 const test_xyz[] = {
 #include "reference_values/ciecam02_xyz_input.csv"
     };
     ALWAN_DIAG_POP
@@ -41,7 +41,7 @@ static int test_ciecam02_forward(void) {
     /* Load expected correlates (J, C, h, Q, M, s, H for each color) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_correlates[] = {
+    static alwan_f64 const expected_correlates[] = {
 #include "reference_values/ciecam02_correlates.csv"
     };
     ALWAN_DIAG_POP
@@ -58,10 +58,10 @@ static int test_ciecam02_forward(void) {
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
-        alwan_scalar const *expected = &expected_correlates[i * 7];
-        alwan_scalar J_err = ALWAN_ABS(corr.J - expected[0]);
-        alwan_scalar C_err = ALWAN_ABS(corr.C - expected[1]);
-        alwan_scalar h_err = ALWAN_ABS(corr.h - expected[2]);
+        alwan_f64 const *expected = &expected_correlates[i * 7];
+        alwan_f64 J_err = ALWAN_ABS(corr.J - expected[0]);
+        alwan_f64 C_err = ALWAN_ABS(corr.C - expected[1]);
+        alwan_f64 h_err = ALWAN_ABS(corr.h - expected[2]);
 
         /* Handle hue wraparound (360° = 0°) */
         if (h_err > ALWAN_LITERAL(180.0)) {
@@ -90,9 +90,9 @@ static int test_ciecam02_forward(void) {
         }
 
         /* Also check Q, M, s */
-        alwan_scalar Q_err = ALWAN_ABS(corr.Q - expected[3]);
-        alwan_scalar M_err = ALWAN_ABS(corr.M - expected[4]);
-        alwan_scalar s_err = ALWAN_ABS(corr.s - expected[5]);
+        alwan_f64 Q_err = ALWAN_ABS(corr.Q - expected[3]);
+        alwan_f64 M_err = ALWAN_ABS(corr.M - expected[4]);
+        alwan_f64 s_err = ALWAN_ABS(corr.s - expected[5]);
         TEST_ASSERT(Q_err < ALWAN_TEST_TOLERANCE, "Q mismatch");
         TEST_ASSERT(M_err < ALWAN_TEST_TOLERANCE, "M mismatch");
         TEST_ASSERT(s_err < ALWAN_TEST_TOLERANCE, "s mismatch");
@@ -109,7 +109,7 @@ static int test_ciecam02_inverse(void) {
     /* Load viewing conditions from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const viewing_params[] = {
+    static alwan_f64 const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
     ALWAN_DIAG_POP
@@ -125,7 +125,7 @@ static int test_ciecam02_inverse(void) {
     /* Load correlates (J, C, h) */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const correlates_data[] = {
+    static alwan_f64 const correlates_data[] = {
 #include "reference_values/ciecam02_correlates.csv"
     };
     ALWAN_DIAG_POP
@@ -134,7 +134,7 @@ static int test_ciecam02_inverse(void) {
     /* Load expected reconstructed XYZ */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const expected_xyz[] = {
+    static alwan_f64 const expected_xyz[] = {
 #include "reference_values/ciecam02_xyz_reconstructed.csv"
     };
     ALWAN_DIAG_POP
@@ -153,10 +153,10 @@ static int test_ciecam02_inverse(void) {
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against expected values */
-        alwan_scalar const *expected = &expected_xyz[i * 3];
-        alwan_scalar X_err = ALWAN_ABS(xyz_out.x - expected[0]);
-        alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - expected[1]);
-        alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - expected[2]);
+        alwan_f64 const *expected = &expected_xyz[i * 3];
+        alwan_f64 X_err = ALWAN_ABS(xyz_out.x - expected[0]);
+        alwan_f64 Y_err = ALWAN_ABS(xyz_out.y - expected[1]);
+        alwan_f64 Z_err = ALWAN_ABS(xyz_out.z - expected[2]);
 
         TEST_ASSERT(X_err < ALWAN_TEST_TOLERANCE, "X mismatch");
         TEST_ASSERT(Y_err < ALWAN_TEST_TOLERANCE, "Y mismatch");
@@ -174,7 +174,7 @@ static int test_ciecam02_roundtrip(void) {
     /* Load viewing conditions from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const viewing_params[] = {
+    static alwan_f64 const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
     ALWAN_DIAG_POP
@@ -190,7 +190,7 @@ static int test_ciecam02_roundtrip(void) {
     /* Load test XYZ colors */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const test_xyz[] = {
+    static alwan_f64 const test_xyz[] = {
 #include "reference_values/ciecam02_xyz_input.csv"
     };
     ALWAN_DIAG_POP
@@ -214,9 +214,9 @@ static int test_ciecam02_roundtrip(void) {
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
-        alwan_scalar X_err = ALWAN_ABS(xyz_out.x - xyz_in.x);
-        alwan_scalar Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
-        alwan_scalar Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
+        alwan_f64 X_err = ALWAN_ABS(xyz_out.x - xyz_in.x);
+        alwan_f64 Y_err = ALWAN_ABS(xyz_out.y - xyz_in.y);
+        alwan_f64 Z_err = ALWAN_ABS(xyz_out.z - xyz_in.z);
 
         TEST_ASSERT(X_err < ALWAN_TEST_TOLERANCE, "Round-trip X error too large");
         TEST_ASSERT(Y_err < ALWAN_TEST_TOLERANCE, "Round-trip Y error too large");
@@ -233,7 +233,7 @@ static int test_ciecam02_surround_conditions(void) {
     /* Load viewing conditions from fixture */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
-    static alwan_scalar const viewing_params[] = {
+    static alwan_f64 const viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
     ALWAN_DIAG_POP

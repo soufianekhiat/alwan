@@ -97,8 +97,8 @@ static int test_cvd_severity(void) {
     TEST_ASSERT(status1 == ALWAN_OK && status2 == ALWAN_OK, "Failed to simulate anomalous trichromacy");
 
     /* Severe should deviate more from original than mild */
-    alwan_scalar diff_mild = ALWAN_ABS(rgb_mild.r - rgb_red.r);
-    alwan_scalar diff_severe = ALWAN_ABS(rgb_severe.r - rgb_red.r);
+    alwan_f64 diff_mild = ALWAN_ABS(rgb_mild.r - rgb_red.r);
+    alwan_f64 diff_severe = ALWAN_ABS(rgb_severe.r - rgb_red.r);
 
     TEST_ASSERT(diff_severe >= diff_mild, "Severity parameter not working correctly");
 
@@ -138,46 +138,46 @@ static int test_cvd_normal_vision(void) {
 /* Embedded test data - compiled at build time */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_photopic_wavelengths[] = {
+static alwan_f64 const g_photopic_wavelengths[] = {
 #include "reference_values/photopic_efficiency_wavelengths.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_photopic_values[] = {
+static alwan_f64 const g_photopic_values[] = {
 #include "reference_values/photopic_efficiency_values.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_scotopic_wavelengths[] = {
+static alwan_f64 const g_scotopic_wavelengths[] = {
 #include "reference_values/scotopic_efficiency_wavelengths.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_scotopic_values[] = {
+static alwan_f64 const g_scotopic_values[] = {
 #include "reference_values/scotopic_efficiency_values.csv"
 };
 ALWAN_DIAG_POP
 
 static int test_photopic_efficiency(void) {
     /* Use embedded reference values from colour-science */
-    alwan_scalar const *ref_wavelengths = g_photopic_wavelengths;
-    alwan_scalar const *ref_values = g_photopic_values;
+    alwan_f64 const *ref_wavelengths = g_photopic_wavelengths;
+    alwan_f64 const *ref_values = g_photopic_values;
     int wl_count = sizeof(g_photopic_wavelengths) / sizeof(g_photopic_wavelengths[0]);
     int val_count = sizeof(g_photopic_values) / sizeof(g_photopic_values[0]);
 
     TEST_ASSERT(wl_count > 0 && wl_count == val_count, "Photopic reference data size mismatch");
 
     /* Test against all reference wavelengths */
-    alwan_scalar max_error = ALWAN_LITERAL(0.0);
+    alwan_f64 max_error = ALWAN_LITERAL(0.0);
     for (int i = 0; i < wl_count; i++) {
-        alwan_scalar computed = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_PHOTOPIC);
-        alwan_scalar error = ALWAN_ABS(computed - ref_values[i]);
+        alwan_f64 computed = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_PHOTOPIC);
+        alwan_f64 error = ALWAN_ABS(computed - ref_values[i]);
         if (error > max_error) max_error = error;
 
         /* Allow small interpolation error */
@@ -190,7 +190,7 @@ static int test_photopic_efficiency(void) {
     for (int i = 0; i < wl_count; i++) {
         if ((int)ref_wavelengths[i] == 450 || (int)ref_wavelengths[i] == 555 ||
             (int)ref_wavelengths[i] == 650) {
-            alwan_scalar v = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_PHOTOPIC);
+            alwan_f64 v = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_PHOTOPIC);
             printf("    %.0fnm: %.4f (ref: %.4f)\n", ref_wavelengths[i], v, ref_values[i]);
         }
     }
@@ -201,18 +201,18 @@ static int test_photopic_efficiency(void) {
 
 static int test_scotopic_efficiency(void) {
     /* Use embedded reference values from colour-science */
-    alwan_scalar const *ref_wavelengths = g_scotopic_wavelengths;
-    alwan_scalar const *ref_values = g_scotopic_values;
+    alwan_f64 const *ref_wavelengths = g_scotopic_wavelengths;
+    alwan_f64 const *ref_values = g_scotopic_values;
     int wl_count = sizeof(g_scotopic_wavelengths) / sizeof(g_scotopic_wavelengths[0]);
     int val_count = sizeof(g_scotopic_values) / sizeof(g_scotopic_values[0]);
 
     TEST_ASSERT(wl_count > 0 && wl_count == val_count, "Scotopic reference data size mismatch");
 
     /* Test against all reference wavelengths */
-    alwan_scalar max_error = ALWAN_LITERAL(0.0);
+    alwan_f64 max_error = ALWAN_LITERAL(0.0);
     for (int i = 0; i < wl_count; i++) {
-        alwan_scalar computed = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_SCOTOPIC);
-        alwan_scalar error = ALWAN_ABS(computed - ref_values[i]);
+        alwan_f64 computed = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_SCOTOPIC);
+        alwan_f64 error = ALWAN_ABS(computed - ref_values[i]);
         if (error > max_error) max_error = error;
 
         /* Allow small interpolation error */
@@ -225,7 +225,7 @@ static int test_scotopic_efficiency(void) {
     for (int i = 0; i < wl_count; i++) {
         if ((int)ref_wavelengths[i] == 450 || (int)ref_wavelengths[i] == 507 ||
             (int)ref_wavelengths[i] == 650) {
-            alwan_scalar v = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_SCOTOPIC);
+            alwan_f64 v = alwan_luminous_efficiency(ref_wavelengths[i], ALWAN_VISION_SCOTOPIC);
             printf("    %.0fnm: %.4f (ref: %.4f)\n", ref_wavelengths[i], v, ref_values[i]);
         }
     }
@@ -236,8 +236,8 @@ static int test_scotopic_efficiency(void) {
 
 static int test_luminous_efficiency_bounds(void) {
     /* Test out-of-range wavelengths */
-    alwan_scalar v_low = alwan_luminous_efficiency(ALWAN_LITERAL(300.0), ALWAN_VISION_PHOTOPIC);
-    alwan_scalar v_high = alwan_luminous_efficiency(ALWAN_LITERAL(900.0), ALWAN_VISION_PHOTOPIC);
+    alwan_f64 v_low = alwan_luminous_efficiency(ALWAN_LITERAL(300.0), ALWAN_VISION_PHOTOPIC);
+    alwan_f64 v_high = alwan_luminous_efficiency(ALWAN_LITERAL(900.0), ALWAN_VISION_PHOTOPIC);
 
     TEST_ASSERT(v_low < ALWAN_LITERAL(0.0), "Should return error for wavelength < 380nm");
     TEST_ASSERT(v_high < ALWAN_LITERAL(0.0), "Should return error for wavelength > 780nm");
@@ -254,9 +254,9 @@ static int test_luminous_efficiency_bounds(void) {
 static int test_csf_basic(void) {
     /* Test CSF at typical viewing conditions */
     /* Peak sensitivity around 4-8 cpd */
-    alwan_scalar csf_low = alwan_csf(ALWAN_LITERAL(1.0), ALWAN_LITERAL(100.0));
-    alwan_scalar csf_peak = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(100.0));
-    alwan_scalar csf_high = alwan_csf(ALWAN_LITERAL(30.0), ALWAN_LITERAL(100.0));
+    alwan_f64 csf_low = alwan_csf(ALWAN_LITERAL(1.0), ALWAN_LITERAL(100.0));
+    alwan_f64 csf_peak = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(100.0));
+    alwan_f64 csf_high = alwan_csf(ALWAN_LITERAL(30.0), ALWAN_LITERAL(100.0));
 
     TEST_ASSERT(csf_low > ALWAN_LITERAL(0.0), "CSF should be > 0 at low freq");
     TEST_ASSERT(csf_peak > ALWAN_LITERAL(0.0), "CSF should be > 0 at peak freq");
@@ -277,8 +277,8 @@ static int test_csf_basic(void) {
 static int test_csf_luminance_dependence(void) {
     /* Test CSF luminance dependence */
     /* Higher luminance -> better sensitivity */
-    alwan_scalar csf_dim = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(1.0));
-    alwan_scalar csf_bright = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(1000.0));
+    alwan_f64 csf_dim = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(1.0));
+    alwan_f64 csf_bright = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(1000.0));
 
     TEST_ASSERT(csf_dim > ALWAN_LITERAL(0.0), "CSF should work at low luminance");
     TEST_ASSERT(csf_bright > ALWAN_LITERAL(0.0), "CSF should work at high luminance");
@@ -293,10 +293,10 @@ static int test_csf_luminance_dependence(void) {
 
 static int test_csf_bounds(void) {
     /* Test CSF bounds checking */
-    alwan_scalar csf_low_freq = alwan_csf(ALWAN_LITERAL(0.01), ALWAN_LITERAL(100.0));
-    alwan_scalar csf_high_freq = alwan_csf(ALWAN_LITERAL(100.0), ALWAN_LITERAL(100.0));
-    alwan_scalar csf_low_lum = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(0.001));
-    alwan_scalar csf_high_lum = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(100000.0));
+    alwan_f64 csf_low_freq = alwan_csf(ALWAN_LITERAL(0.01), ALWAN_LITERAL(100.0));
+    alwan_f64 csf_high_freq = alwan_csf(ALWAN_LITERAL(100.0), ALWAN_LITERAL(100.0));
+    alwan_f64 csf_low_lum = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(0.001));
+    alwan_f64 csf_high_lum = alwan_csf(ALWAN_LITERAL(4.0), ALWAN_LITERAL(100000.0));
 
     TEST_ASSERT(csf_low_freq < ALWAN_LITERAL(0.0), "Should reject freq < 0.1 cpd");
     TEST_ASSERT(csf_high_freq < ALWAN_LITERAL(0.0), "Should reject freq > 60 cpd");

@@ -1,0 +1,111 @@
+/*
+ * Alwan - Pure C colour science library
+ * Copyright (c) 2025 Soufiane KHIAT
+ * SPDX-License-Identifier: MIT
+ *
+ * Core teardown - undefines all ALWAN_CORE_* macros.
+ * No include guard (used after each .inc inclusion).
+ */
+
+/* Scalar type */
+#undef ALWAN_CORE_T
+#undef ALWAN_CORE_SUFFIX
+
+/* Token-pasting */
+#undef ALWAN_CORE_FN
+#undef ALWAN_CORE_FN_
+#undef ALWAN_CORE_FN2_
+#undef ALWAN_CORE_FNV
+#undef ALWAN_CORE_FNV_
+#undef ALWAN_CORE_FNV2_
+#undef ALWAN_CORE_FNLIT
+#undef ALWAN_CORE_FNVLIT
+
+/* Math macros */
+#undef ALWAN_CORE_ABS
+#undef ALWAN_CORE_SQRT
+#undef ALWAN_CORE_CBRT
+#undef ALWAN_CORE_SIN
+#undef ALWAN_CORE_COS
+#undef ALWAN_CORE_TAN
+#undef ALWAN_CORE_TANH
+#undef ALWAN_CORE_ATAN
+#undef ALWAN_CORE_ACOS
+#undef ALWAN_CORE_ATAN2
+#undef ALWAN_CORE_POW
+#undef ALWAN_CORE_EXP
+#undef ALWAN_CORE_LN
+#undef ALWAN_CORE_LOG2
+#undef ALWAN_CORE_LOG10
+#undef ALWAN_CORE_FLOOR
+#undef ALWAN_CORE_CEIL
+#undef ALWAN_CORE_FMOD
+
+/* Literals and constants */
+#undef ALWAN_CORE_LITERAL
+#undef ALWAN_CORE_EPSILON
+#undef ALWAN_CORE_PI
+#undef ALWAN_CORE_ZERO
+#undef ALWAN_CORE_ONE
+
+/* Select */
+#undef ALWAN_CORE_SELECT
+
+/* Utility functions */
+#undef ALWAN_CORE_MIN
+#undef ALWAN_CORE_MAX
+#undef ALWAN_CORE_MIN3
+#undef ALWAN_CORE_MAX3
+#undef ALWAN_CORE_CLAMP
+#undef ALWAN_CORE_SATURATE
+#undef ALWAN_CORE_LERP
+
+/* Type aliases */
+#undef ALWAN_CORE_VEC2
+#undef ALWAN_CORE_VEC3
+#undef ALWAN_CORE_MAT3X3
+#undef ALWAN_CORE_MAT4X4
+#undef ALWAN_CORE_RGB
+#undef ALWAN_CORE_CMYK
+#undef ALWAN_CORE_CMY
+#undef ALWAN_CORE_HSV
+#undef ALWAN_CORE_HSL
+#undef ALWAN_CORE_HSP
+#undef ALWAN_CORE_HSPLOG
+#undef ALWAN_CORE_HSY
+#undef ALWAN_CORE_XYZ
+#undef ALWAN_CORE_XYY
+#undef ALWAN_CORE_LAB
+#undef ALWAN_CORE_LUV
+#undef ALWAN_CORE_LCH
+#undef ALWAN_CORE_LCHUV
+#undef ALWAN_CORE_OKLAB
+#undef ALWAN_CORE_OKLCH
+#undef ALWAN_CORE_JZAZBZ
+#undef ALWAN_CORE_JZCZHZ
+#undef ALWAN_CORE_ICTCP
+#undef ALWAN_CORE_IPT
+#undef ALWAN_CORE_IGPGTG
+#undef ALWAN_CORE_ICACB
+#undef ALWAN_CORE_YCBCR
+#undef ALWAN_CORE_YCOCG
+#undef ALWAN_CORE_YCCBCCRC
+#undef ALWAN_CORE_UVW
+#undef ALWAN_CORE_DIN99
+#undef ALWAN_CORE_HUNTER_LAB
+#undef ALWAN_CORE_IPTCH
+#undef ALWAN_CORE_PROLAB
+#undef ALWAN_CORE_OSA_UCS
+#undef ALWAN_CORE_UCS
+#undef ALWAN_CORE_PRISMATIC
+#undef ALWAN_CORE_HCL
+#undef ALWAN_CORE_IHLS
+#undef ALWAN_CORE_CAM_JAB
+#undef ALWAN_CORE_HSLUV
+#undef ALWAN_CORE_HPLUV
+#undef ALWAN_CORE_OKHSL
+#undef ALWAN_CORE_OKHSV
+#undef ALWAN_CORE_CUBEHELIX
+#undef ALWAN_CORE_HLC
+#undef ALWAN_CORE_ST2086_METADATA
+#undef ALWAN_CORE_CONTENT_LIGHT_LEVEL
