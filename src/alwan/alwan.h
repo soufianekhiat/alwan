@@ -482,8 +482,19 @@ typedef enum {
     ALWAN_VIEW_AGX_GOLDEN,         /* AgX golden variant (warm highlights, cool shadows) */
     ALWAN_VIEW_BT2446A_HDR_TO_SDR, /* BT.2446 Method A: HDR to SDR tone mapping */
     ALWAN_VIEW_BT2446A_SDR_TO_HDR,  /* BT.2446 Method A: SDR to HDR inverse mapping */
-    ALWAN_VIEW_KHRONOS_PBR_NEUTRAL  /* Khronos PBR Neutral tone mapping (glTF/WebGL) */
+    ALWAN_VIEW_KHRONOS_PBR_NEUTRAL, /* Khronos PBR Neutral tone mapping (glTF/WebGL) */
+    ALWAN_VIEW_REINHARD_EXT,        /* Reinhard Extended (luminance-based, Reinhard 2002) */
+    ALWAN_VIEW_UCHIMURA,            /* Uchimura / Gran Turismo (parametric S-curve) */
+    ALWAN_VIEW_LOTTES,              /* Lottes / AMD Cauldron (parametric rational curve) */
+    ALWAN_VIEW_TONY_MCMAPFACE       /* Somewhat Boring Display Transform (Stachowiak 2023) */
 } alwan_view_transform;
+
+/* Alpha handling mode for RGBA image conversion */
+typedef enum {
+    ALWAN_ALPHA_STRAIGHT     = 0, /* Alpha is independent; pass through unchanged */
+    ALWAN_ALPHA_PREMULTIPLIED = 1  /* RGB is premultiplied by alpha; unpremultiply before
+                                    * color conversion, repremultiply after */
+} alwan_alpha_mode;
 
 /* RGB space descriptor with primaries, white point, and transfer functions */
 typedef struct {
@@ -548,6 +559,40 @@ int alwan_rgb_convert_map_interleave(alwan_rgb *dst_rgb,
                             alwan_rgb_space_desc const *dst_space,
                             alwan_rgb const *src_rgb,
                             size_t count);
+
+/* Convert a 2D image between RGB color spaces with format conversion.
+ * Handles EOTF/OETF, chromatic adaptation (Bradford), and U8/U16/F32/F64.
+ * dst/src: pixel buffers (3-channel, tightly packed per pixel)
+ * dst_fmt/src_fmt: pixel format (ALWAN_PIXEL_U8, _U16, _F32, _F64)
+ * dst_row_stride/src_row_stride: bytes between consecutive rows
+ * width/height: image dimensions in pixels
+ * ctx: context (required when src and dst white points differ)
+ * src_space/dst_space: RGB space descriptors (primaries, white point, TFs)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_image_convert(
+    void *dst, alwan_pixel_format dst_fmt, size_t dst_row_stride,
+    void const *src, alwan_pixel_format src_fmt, size_t src_row_stride,
+    size_t width, size_t height,
+    alwan_ctx *ctx,
+    alwan_rgb_space_desc const *src_space,
+    alwan_rgb_space_desc const *dst_space);
+
+/* Convert a 2D RGBA image between RGB color spaces with format conversion.
+ * Same pipeline as alwan_image_convert but with 4-channel (RGBA) pixels.
+ * The alpha channel is preserved through the conversion:
+ *   ALWAN_ALPHA_STRAIGHT:      alpha copied unchanged, RGB converted independently
+ *   ALWAN_ALPHA_PREMULTIPLIED: RGB unpremultiplied before conversion, repremultiplied after
+ * dst/src: pixel buffers (4-channel RGBA, tightly packed per pixel)
+ * All other parameters identical to alwan_image_convert.
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+int alwan_image_convert_rgba(
+    void *dst, alwan_pixel_format dst_fmt, size_t dst_row_stride,
+    void const *src, alwan_pixel_format src_fmt, size_t src_row_stride,
+    size_t width, size_t height,
+    alwan_ctx *ctx,
+    alwan_rgb_space_desc const *src_space,
+    alwan_rgb_space_desc const *dst_space,
+    alwan_alpha_mode alpha_mode);
 
 /* ----------------------------------------------------------------
  * sRGB Convenience Functions

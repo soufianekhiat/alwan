@@ -11,6 +11,7 @@
 #include "alwan_map_internal.h"
 #include "../core/alwan_colorspace_core.h"
 #include "../core/alwan_oklab_core.h"
+#include "../core/alwan_rgb_core.h"
 
 /* ----------------------------------------------------------------
  * sRGB <-> XYZ D65 matrices (BT.709 primaries)
@@ -909,6 +910,366 @@ int alwan_delta_e_cmc_batch(alwan_scalar *delta_e_out,
         alwan_lab lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
         alwan_lab lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
         delta_e_out[i] = alwan_delta_e_cmc(&lab1, &lab2, l, c);
+    }
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * Image Color Space Conversion
+ * ---------------------------------------------------------------- */
+
+/* Resolve an alwan_transfer_function enum to EOTF function pointer.
+ * Returns NULL for unsupported TFs. */
+static alwan_scalar (*alwan__resolve_eotf(alwan_transfer_function tf))(alwan_scalar) {
+    switch (tf) {
+    case ALWAN_TF_LINEAR:     return alwan_linear_identity;
+    case ALWAN_TF_SRGB:       return alwan_srgb_eotf;
+    case ALWAN_TF_BT709:      return alwan_bt2020_eotf;
+    case ALWAN_TF_BT2020:     return alwan_bt2020_eotf;
+    case ALWAN_TF_PQ:         return alwan_pq_eotf;
+    case ALWAN_TF_ST2084:     return alwan_pq_eotf;
+    case ALWAN_TF_HLG:        return alwan_hlg_eotf;
+    case ALWAN_TF_BT1886:     return alwan_bt1886_eotf;
+    case ALWAN_TF_ACESPROXY:  return alwan_acesproxy_eotf;
+    case ALWAN_TF_ACESCC:     return alwan_acescc_eotf;
+    case ALWAN_TF_ACESCCT:    return alwan_acescct_eotf;
+    case ALWAN_TF_SLOG:       return alwan_slog_eotf;
+    case ALWAN_TF_SLOG2:      return alwan_slog2_eotf;
+    case ALWAN_TF_SLOG3:      return alwan_slog3_eotf;
+    case ALWAN_TF_CLOG:       return alwan_clog_eotf;
+    case ALWAN_TF_CLOG2:      return alwan_clog2_eotf;
+    case ALWAN_TF_CLOG3:      return alwan_clog3_eotf;
+    case ALWAN_TF_VLOG:       return alwan_vlog_eotf;
+    case ALWAN_TF_LOGC3:      return alwan_logc3_eotf;
+    case ALWAN_TF_LOGC4:      return alwan_logc4_eotf;
+    case ALWAN_TF_REDLOG:     return alwan_redlog_eotf;
+    case ALWAN_TF_REDLOGFILM: return alwan_redlogfilm_eotf;
+    case ALWAN_TF_LOG3G10:    return alwan_log3g10_eotf;
+    case ALWAN_TF_BMDFILM:    return alwan_bmdfilm_eotf;
+    case ALWAN_TF_BMDFILM4:   return alwan_bmdfilm4_eotf;
+    case ALWAN_TF_TLOG:       return alwan_tlog_eotf;
+    case ALWAN_TF_ELOG:       return alwan_elog_eotf;
+    case ALWAN_TF_PROTUNE:    return alwan_protune_eotf;
+    case ALWAN_TF_GAMMA22:    return alwan_gamma22_eotf;
+    case ALWAN_TF_GAMMA24:    return alwan_gamma24_eotf;
+    case ALWAN_TF_GAMMA26:    return alwan_gamma26_eotf;
+    case ALWAN_TF_GAMMA28:    return alwan_gamma28_eotf;
+    case ALWAN_TF_NLOG:       return alwan_nlog_eotf;
+    case ALWAN_TF_CINEON:     return alwan_cineon_eotf;
+    case ALWAN_TF_APPLE_LOG:  return alwan_apple_log_eotf;
+    case ALWAN_TF_FLOG:       return alwan_flog_eotf;
+    case ALWAN_TF_FLOG2:      return alwan_flog2_eotf;
+    case ALWAN_TF_LLOG:       return alwan_llog_eotf;
+    case ALWAN_TF_DLOG:       return alwan_dlog_eotf;
+    case ALWAN_TF_DCDM:       return alwan_dcdm_eotf;
+    case ALWAN_TF_ADX10:      return alwan_adx10_eotf;
+    case ALWAN_TF_ADX16:      return alwan_adx16_eotf;
+    default:                  return NULL;
+    }
+}
+
+/* Resolve an alwan_transfer_function enum to OETF function pointer.
+ * Returns NULL for unsupported TFs. */
+static alwan_scalar (*alwan__resolve_oetf(alwan_transfer_function tf))(alwan_scalar) {
+    switch (tf) {
+    case ALWAN_TF_LINEAR:     return alwan_linear_identity;
+    case ALWAN_TF_SRGB:       return alwan_srgb_oetf;
+    case ALWAN_TF_BT709:      return alwan_bt2020_oetf;
+    case ALWAN_TF_BT2020:     return alwan_bt2020_oetf;
+    case ALWAN_TF_PQ:         return alwan_pq_oetf;
+    case ALWAN_TF_ST2084:     return alwan_pq_oetf;
+    case ALWAN_TF_HLG:        return alwan_hlg_oetf;
+    case ALWAN_TF_BT1886:     return alwan_gamma24_oetf;
+    case ALWAN_TF_ACESPROXY:  return alwan_acesproxy_oetf;
+    case ALWAN_TF_ACESCC:     return alwan_acescc_oetf;
+    case ALWAN_TF_ACESCCT:    return alwan_acescct_oetf;
+    case ALWAN_TF_SLOG:       return alwan_slog_oetf;
+    case ALWAN_TF_SLOG2:      return alwan_slog2_oetf;
+    case ALWAN_TF_SLOG3:      return alwan_slog3_oetf;
+    case ALWAN_TF_CLOG:       return alwan_clog_oetf;
+    case ALWAN_TF_CLOG2:      return alwan_clog2_oetf;
+    case ALWAN_TF_CLOG3:      return alwan_clog3_oetf;
+    case ALWAN_TF_VLOG:       return alwan_vlog_oetf;
+    case ALWAN_TF_LOGC3:      return alwan_logc3_oetf;
+    case ALWAN_TF_LOGC4:      return alwan_logc4_oetf;
+    case ALWAN_TF_REDLOG:     return alwan_redlog_oetf;
+    case ALWAN_TF_REDLOGFILM: return alwan_redlogfilm_oetf;
+    case ALWAN_TF_LOG3G10:    return alwan_log3g10_oetf;
+    case ALWAN_TF_BMDFILM:    return alwan_bmdfilm_oetf;
+    case ALWAN_TF_BMDFILM4:   return alwan_bmdfilm4_oetf;
+    case ALWAN_TF_TLOG:       return alwan_tlog_oetf;
+    case ALWAN_TF_ELOG:       return alwan_elog_oetf;
+    case ALWAN_TF_PROTUNE:    return alwan_protune_oetf;
+    case ALWAN_TF_GAMMA22:    return alwan_gamma22_oetf;
+    case ALWAN_TF_GAMMA24:    return alwan_gamma24_oetf;
+    case ALWAN_TF_GAMMA26:    return alwan_gamma26_oetf;
+    case ALWAN_TF_GAMMA28:    return alwan_gamma28_oetf;
+    case ALWAN_TF_NLOG:       return alwan_nlog_oetf;
+    case ALWAN_TF_CINEON:     return alwan_cineon_oetf;
+    case ALWAN_TF_APPLE_LOG:  return alwan_apple_log_oetf;
+    case ALWAN_TF_FLOG:       return alwan_flog_oetf;
+    case ALWAN_TF_FLOG2:      return alwan_flog2_oetf;
+    case ALWAN_TF_LLOG:       return alwan_llog_oetf;
+    case ALWAN_TF_DLOG:       return alwan_dlog_oetf;
+    case ALWAN_TF_DCDM:       return alwan_dcdm_oetf;
+    case ALWAN_TF_ADX10:      return alwan_adx10_oetf;
+    case ALWAN_TF_ADX16:      return alwan_adx16_oetf;
+    default:                  return NULL;
+    }
+}
+
+/* Pixel stride in bytes for a 3-channel pixel of the given format. */
+static size_t alwan__pixel_stride(alwan_pixel_format fmt) {
+    switch (fmt) {
+    case ALWAN_PIXEL_U8:  return 3 * sizeof(uint8_t);
+    case ALWAN_PIXEL_U16: return 3 * sizeof(uint16_t);
+    case ALWAN_PIXEL_F32: return 3 * sizeof(float);
+    case ALWAN_PIXEL_F64: return 3 * sizeof(double);
+    default:              return 0;
+    }
+}
+
+/* Pixel stride in bytes for a 4-channel (RGBA) pixel of the given format. */
+static size_t alwan__pixel_stride4(alwan_pixel_format fmt) {
+    switch (fmt) {
+    case ALWAN_PIXEL_U8:  return 4 * sizeof(uint8_t);
+    case ALWAN_PIXEL_U16: return 4 * sizeof(uint16_t);
+    case ALWAN_PIXEL_F32: return 4 * sizeof(float);
+    case ALWAN_PIXEL_F64: return 4 * sizeof(double);
+    default:              return 0;
+    }
+}
+
+int alwan_image_convert(
+    void *dst, alwan_pixel_format dst_fmt, size_t dst_row_stride,
+    void const *src, alwan_pixel_format src_fmt, size_t src_row_stride,
+    size_t width, size_t height,
+    alwan_ctx *ctx,
+    alwan_rgb_space_desc const *src_space,
+    alwan_rgb_space_desc const *dst_space) {
+
+    if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Resolve pixel strides from format */
+    size_t const src_px = alwan__pixel_stride(src_fmt);
+    size_t const dst_px = alwan__pixel_stride(dst_fmt);
+    if (src_px == 0 || dst_px == 0) return ALWAN_E_INVALID;
+
+    /* Derive conversion matrices */
+    alwan_mat3x3 src_to_xyz, xyz_to_src;
+    if (src_space->has_matrices) {
+        src_to_xyz = src_space->rgb_to_xyz;
+    } else {
+        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        if (status != ALWAN_OK) return status;
+    }
+
+    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+    if (dst_space->has_matrices) {
+        xyz_to_dst = dst_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        if (status != ALWAN_OK) return status;
+    }
+
+    /* Check if chromatic adaptation is needed */
+    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
+    alwan_scalar dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_scalar dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    int need_cat = (ALWAN_ABS(dx) > tol || ALWAN_ABS(dy) > tol);
+
+    /* Precompute a single combined matrix: xyz_to_dst * [cat *] src_to_xyz
+     * This reduces per-pixel work to one mat3 multiply. */
+    alwan_mat3x3 combined;
+    if (need_cat && ctx) {
+        alwan_xyy src_xyy, dst_xyy;
+        alwan_xyz src_wp, dst_wp;
+        src_xyy.x = src_space->white_xy[0];
+        src_xyy.y = src_space->white_xy[1];
+        src_xyy.Y = ALWAN_LITERAL(1.0);
+        alwan_xyy_to_xyz(&src_wp, &src_xyy);
+
+        dst_xyy.x = dst_space->white_xy[0];
+        dst_xyy.y = dst_space->white_xy[1];
+        dst_xyy.Y = ALWAN_LITERAL(1.0);
+        alwan_xyy_to_xyz(&dst_wp, &dst_xyy);
+
+        alwan_mat3x3 cat;
+        int status = alwan_cat_matrix(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
+        if (status != ALWAN_OK) return status;
+
+        /* combined = xyz_to_dst * cat * src_to_xyz */
+        alwan_mat3x3 tmp = alwan_mat3_mul_v(cat, src_to_xyz);
+        combined = alwan_mat3_mul_v(xyz_to_dst, tmp);
+    } else {
+        /* combined = xyz_to_dst * src_to_xyz */
+        combined = alwan_mat3_mul_v(xyz_to_dst, src_to_xyz);
+    }
+
+    /* Resolve transfer function pointers */
+    alwan_scalar (*eotf_fn)(alwan_scalar) = alwan__resolve_eotf(src_space->eotf);
+    alwan_scalar (*oetf_fn)(alwan_scalar) = alwan__resolve_oetf(dst_space->oetf);
+    if (!eotf_fn || !oetf_fn) return ALWAN_E_INVALID;
+
+    /* Process image row by row */
+    for (size_t y = 0; y < height; y++) {
+        char const *src_row = (char const *)src + y * src_row_stride;
+        char       *dst_row = (char       *)dst + y * dst_row_stride;
+
+        for (size_t x = 0; x < width; x++) {
+            /* Load 3-channel pixel with format conversion */
+            alwan_scalar rgb[3];
+            alwan__load3_typed(rgb, src_row + x * src_px, src_fmt);
+
+            /* Source EOTF: encoded -> linear */
+            alwan_vec3 lin = {{eotf_fn(rgb[0]), eotf_fn(rgb[1]), eotf_fn(rgb[2])}};
+
+            /* Combined matrix: src linear RGB -> dst linear RGB */
+            alwan_vec3 dst_lin = alwan_mat3_mulv_v(combined, lin);
+
+            /* Destination OETF: linear -> encoded */
+            alwan_scalar out[3] = {
+                oetf_fn(dst_lin.v[0]),
+                oetf_fn(dst_lin.v[1]),
+                oetf_fn(dst_lin.v[2])
+            };
+
+            /* Store with format conversion */
+            alwan__store3_typed(dst_row + x * dst_px, out, dst_fmt);
+        }
+    }
+
+    return ALWAN_OK;
+}
+
+int alwan_image_convert_rgba(
+    void *dst, alwan_pixel_format dst_fmt, size_t dst_row_stride,
+    void const *src, alwan_pixel_format src_fmt, size_t src_row_stride,
+    size_t width, size_t height,
+    alwan_ctx *ctx,
+    alwan_rgb_space_desc const *src_space,
+    alwan_rgb_space_desc const *dst_space,
+    alwan_alpha_mode alpha_mode) {
+
+    if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Resolve 4-channel pixel strides */
+    size_t const src_px = alwan__pixel_stride4(src_fmt);
+    size_t const dst_px = alwan__pixel_stride4(dst_fmt);
+    if (src_px == 0 || dst_px == 0) return ALWAN_E_INVALID;
+
+    /* Element size for alpha channel offset (4th channel at index 3) */
+    size_t const src_elem = alwan__fmt_size(src_fmt);
+    size_t const dst_elem = alwan__fmt_size(dst_fmt);
+
+    /* Derive conversion matrices */
+    alwan_mat3x3 src_to_xyz, xyz_to_src;
+    if (src_space->has_matrices) {
+        src_to_xyz = src_space->rgb_to_xyz;
+    } else {
+        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        if (status != ALWAN_OK) return status;
+    }
+
+    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+    if (dst_space->has_matrices) {
+        xyz_to_dst = dst_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        if (status != ALWAN_OK) return status;
+    }
+
+    /* Check if chromatic adaptation is needed */
+    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
+    alwan_scalar dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_scalar dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    int need_cat = (ALWAN_ABS(dx) > tol || ALWAN_ABS(dy) > tol);
+
+    /* Precompute combined matrix: xyz_to_dst * [cat *] src_to_xyz */
+    alwan_mat3x3 combined;
+    if (need_cat && ctx) {
+        alwan_xyy src_xyy, dst_xyy;
+        alwan_xyz src_wp, dst_wp;
+        src_xyy.x = src_space->white_xy[0];
+        src_xyy.y = src_space->white_xy[1];
+        src_xyy.Y = ALWAN_LITERAL(1.0);
+        alwan_xyy_to_xyz(&src_wp, &src_xyy);
+
+        dst_xyy.x = dst_space->white_xy[0];
+        dst_xyy.y = dst_space->white_xy[1];
+        dst_xyy.Y = ALWAN_LITERAL(1.0);
+        alwan_xyy_to_xyz(&dst_wp, &dst_xyy);
+
+        alwan_mat3x3 cat;
+        int status = alwan_cat_matrix(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
+        if (status != ALWAN_OK) return status;
+
+        alwan_mat3x3 tmp = alwan_mat3_mul_v(cat, src_to_xyz);
+        combined = alwan_mat3_mul_v(xyz_to_dst, tmp);
+    } else {
+        combined = alwan_mat3_mul_v(xyz_to_dst, src_to_xyz);
+    }
+
+    /* Resolve transfer function pointers */
+    alwan_scalar (*eotf_fn)(alwan_scalar) = alwan__resolve_eotf(src_space->eotf);
+    alwan_scalar (*oetf_fn)(alwan_scalar) = alwan__resolve_oetf(dst_space->oetf);
+    if (!eotf_fn || !oetf_fn) return ALWAN_E_INVALID;
+
+    int const premul = (alpha_mode == ALWAN_ALPHA_PREMULTIPLIED);
+
+    /* Process image row by row */
+    for (size_t y = 0; y < height; y++) {
+        char const *src_row = (char const *)src + y * src_row_stride;
+        char       *dst_row = (char       *)dst + y * dst_row_stride;
+
+        for (size_t x = 0; x < width; x++) {
+            char const *src_pixel = src_row + x * src_px;
+            char       *dst_pixel = dst_row + x * dst_px;
+
+            /* Load RGB channels (first 3 elements of 4-channel pixel) */
+            alwan_scalar rgb[3];
+            alwan__load3_typed(rgb, src_pixel, src_fmt);
+
+            /* Load alpha channel (4th element) */
+            alwan_scalar alpha = alwan__load1_typed(src_pixel + 3 * src_elem, src_fmt);
+
+            /* Unpremultiply if needed */
+            if (premul && alpha > ALWAN_LITERAL(0.0)) {
+                alwan_scalar inv_a = ALWAN_LITERAL(1.0) / alpha;
+                rgb[0] *= inv_a;
+                rgb[1] *= inv_a;
+                rgb[2] *= inv_a;
+            }
+
+            /* Source EOTF: encoded -> linear */
+            alwan_vec3 lin = {{eotf_fn(rgb[0]), eotf_fn(rgb[1]), eotf_fn(rgb[2])}};
+
+            /* Combined matrix: src linear RGB -> dst linear RGB */
+            alwan_vec3 dst_lin = alwan_mat3_mulv_v(combined, lin);
+
+            /* Destination OETF: linear -> encoded */
+            alwan_scalar out[3] = {
+                oetf_fn(dst_lin.v[0]),
+                oetf_fn(dst_lin.v[1]),
+                oetf_fn(dst_lin.v[2])
+            };
+
+            /* Repremultiply if needed */
+            if (premul) {
+                out[0] *= alpha;
+                out[1] *= alpha;
+                out[2] *= alpha;
+            }
+
+            /* Store RGB + alpha with format conversion */
+            alwan__store3_typed(dst_pixel, out, dst_fmt);
+            alwan__store1_typed(dst_pixel + 3 * dst_elem, alpha, dst_fmt);
+        }
     }
 
     return ALWAN_OK;

@@ -164,6 +164,60 @@ static void khronos_pbr_neutral_transform(alwan_scalar const *rgb_in, alwan_scal
 }
 
 /* ----------------------------------------------------------------
+ * Reinhard Extended (Luminance-based)
+ * ---------------------------------------------------------------- */
+
+static void reinhard_ext_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    alwan_vec3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
+    alwan_vec3 out_v = alwan_reinhard_extended_luma_v(in_v, ALWAN_LITERAL(4.0));
+    rgb_out[0] = alwan_saturate(out_v.v[0]);
+    rgb_out[1] = alwan_saturate(out_v.v[1]);
+    rgb_out[2] = alwan_saturate(out_v.v[2]);
+}
+
+/* ----------------------------------------------------------------
+ * Uchimura / Gran Turismo
+ * ---------------------------------------------------------------- */
+
+static void uchimura_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    rgb_out[0] = alwan_saturate(alwan_uchimura_default_v(alwan_max(rgb_in[0], ALWAN_ZERO)));
+    rgb_out[1] = alwan_saturate(alwan_uchimura_default_v(alwan_max(rgb_in[1], ALWAN_ZERO)));
+    rgb_out[2] = alwan_saturate(alwan_uchimura_default_v(alwan_max(rgb_in[2], ALWAN_ZERO)));
+}
+
+/* ----------------------------------------------------------------
+ * Lottes / AMD Cauldron
+ * ---------------------------------------------------------------- */
+
+static void lottes_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    alwan_vec3 in_v = {{
+        alwan_max(rgb_in[0], ALWAN_ZERO),
+        alwan_max(rgb_in[1], ALWAN_ZERO),
+        alwan_max(rgb_in[2], ALWAN_ZERO)
+    }};
+    alwan_vec3 out_v = alwan_lottes_default_v(in_v);
+    rgb_out[0] = alwan_saturate(out_v.v[0]);
+    rgb_out[1] = alwan_saturate(out_v.v[1]);
+    rgb_out[2] = alwan_saturate(out_v.v[2]);
+}
+
+/* ----------------------------------------------------------------
+ * Tony McMapface (Somewhat Boring Display Transform)
+ * ---------------------------------------------------------------- */
+
+static void tony_mcmapface_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    alwan_vec3 in_v = {{
+        alwan_max(rgb_in[0], ALWAN_ZERO),
+        alwan_max(rgb_in[1], ALWAN_ZERO),
+        alwan_max(rgb_in[2], ALWAN_ZERO)
+    }};
+    alwan_vec3 out_v = alwan_tony_mcmapface_v(in_v);
+    rgb_out[0] = alwan_saturate(out_v.v[0]);
+    rgb_out[1] = alwan_saturate(out_v.v[1]);
+    rgb_out[2] = alwan_saturate(out_v.v[2]);
+}
+
+/* ----------------------------------------------------------------
  * View Transform API
  * ---------------------------------------------------------------- */
 
@@ -202,6 +256,18 @@ int alwan_view_transform_apply(alwan_scalar *rgb_out,
             break;
         case ALWAN_VIEW_KHRONOS_PBR_NEUTRAL:
             transform_fn = khronos_pbr_neutral_transform;
+            break;
+        case ALWAN_VIEW_REINHARD_EXT:
+            transform_fn = reinhard_ext_transform;
+            break;
+        case ALWAN_VIEW_UCHIMURA:
+            transform_fn = uchimura_transform;
+            break;
+        case ALWAN_VIEW_LOTTES:
+            transform_fn = lottes_transform;
+            break;
+        case ALWAN_VIEW_TONY_MCMAPFACE:
+            transform_fn = tony_mcmapface_transform;
             break;
         default:
             return ALWAN_E_INVALID;
