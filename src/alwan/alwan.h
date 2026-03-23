@@ -486,7 +486,12 @@ typedef enum {
     ALWAN_VIEW_REINHARD_EXT,        /* Reinhard Extended (luminance-based, Reinhard 2002) */
     ALWAN_VIEW_UCHIMURA,            /* Uchimura / Gran Turismo (parametric S-curve) */
     ALWAN_VIEW_LOTTES,              /* Lottes / AMD Cauldron (parametric rational curve) */
-    ALWAN_VIEW_TONY_MCMAPFACE       /* Somewhat Boring Display Transform (Stachowiak 2023) */
+    ALWAN_VIEW_TONY_MCMAPFACE,       /* Somewhat Boring Display Transform (Stachowiak 2023) */
+    ALWAN_VIEW_BT2446B_SDR_TO_HDR,   /* BT.2446 Method B: SDR to HDR up-conversion */
+    ALWAN_VIEW_BT2446C_HDR_TO_SDR,   /* BT.2446 Method C: HDR to SDR (quantization-aware) */
+    ALWAN_VIEW_BT2390_HDR_TO_SDR,    /* BT.2390 EETF: HDR to SDR (Hermite spline) */
+    ALWAN_VIEW_REINHARD_CALIBRATED,  /* Reinhard calibrated (key-based, Reinhard 2002) */
+    ALWAN_VIEW_EXPOSURE              /* Exposure-based with shoulder compression */
 } alwan_view_transform;
 
 /* Alpha handling mode for RGBA image conversion */
@@ -4070,6 +4075,100 @@ int alwan_weber_contrast(alwan_scalar *result, alwan_scalar L_target, alwan_scal
 
 /* Michelson contrast: (L_max - L_min) / (L_max + L_min) */
 int alwan_michelson_contrast(alwan_scalar *result, alwan_scalar L_max, alwan_scalar L_min);
+
+/* ----------------------------------------------------------------
+ * Accessibility Contrast Metrics
+ * ---------------------------------------------------------------- */
+
+/* WCAG 2.x Contrast Ratio: (L_lighter + 0.05) / (L_darker + 0.05)
+ * Y1, Y2: relative luminances [0,1] of two colors
+ * Returns contrast ratio [1, 21] (AA: >= 4.5, AAA: >= 7.0) */
+int alwan_wcag_contrast_ratio(alwan_scalar *result, alwan_scalar Y1, alwan_scalar Y2);
+
+/* APCA / SAPC (Advanced Perceptual Contrast Algorithm — WCAG 3.0 draft)
+ * Reference: Myndex APCA-W3, https://github.com/Myndex/apca-w3
+ * srgb_text, srgb_bg: sRGB-encoded colors (0..1 per channel)
+ * Lc_out: perceptual contrast value (positive = dark on light,
+ *         negative = light on dark; magnitude is contrast level) */
+int alwan_apca_contrast(alwan_scalar *Lc_out,
+                         alwan_rgb const *srgb_text,
+                         alwan_rgb const *srgb_bg);
+
+/* ----------------------------------------------------------------
+ * HDR Ecosystem: BT.2446 Methods B & C, BT.2390 EETF
+ * ---------------------------------------------------------------- */
+
+/* BT.2446 Method B: SDR to HDR up-conversion (parametric)
+ * Y_sdr: input SDR luminance [0,1]
+ * L_hdr: target HDR peak luminance (cd/m2)
+ * L_sdr: source SDR peak luminance (cd/m2) */
+int alwan_bt2446b_forward(alwan_scalar *Y_hdr_out, alwan_scalar Y_sdr,
+                            alwan_scalar L_hdr, alwan_scalar L_sdr);
+
+/* BT.2446 Method C: HDR to SDR tone mapping (quantization-aware)
+ * Y_hdr: input HDR luminance (PQ-encoded) [0,1]
+ * L_hdr: peak HDR luminance (cd/m2)
+ * L_sdr: peak SDR luminance (cd/m2) */
+int alwan_bt2446c_forward(alwan_scalar *Y_sdr_out, alwan_scalar Y_hdr,
+                            alwan_scalar L_hdr, alwan_scalar L_sdr);
+
+/* BT.2390 EETF: PQ-domain tone mapping (Hermite spline)
+ * E_pq: PQ-encoded input [0,1]
+ * LB, LW: source black/white levels (PQ-encoded)
+ * LB_target, LW_target: target black/white levels (PQ-encoded) */
+int alwan_bt2390_eetf(alwan_scalar *E_out, alwan_scalar E_pq,
+                       alwan_scalar LB, alwan_scalar LW,
+                       alwan_scalar LB_target, alwan_scalar LW_target);
+
+/* BT.2390 EETF with luminance parameters (cd/m2) */
+int alwan_bt2390_eetf_luminance(alwan_scalar *E_out, alwan_scalar E_pq,
+                                 alwan_scalar L_source_peak,
+                                 alwan_scalar L_target_peak);
+
+/* Exposure-based tone mapping: 1 - exp(-2^exposure * L)
+ * exposure: EV offset (0 = neutral, +1 = 1 stop brighter) */
+int alwan_exposure_tonemap(alwan_scalar *out, alwan_scalar L,
+                            alwan_scalar exposure);
+
+/* Reinhard calibrated (key-based with white point adaptation)
+ * key: exposure key (0.18 = standard 18% gray)
+ * L_avg: log-average luminance of the scene
+ * L_white: smallest luminance mapped to pure white */
+int alwan_reinhard_calibrated(alwan_scalar *out, alwan_scalar L,
+                               alwan_scalar key, alwan_scalar L_avg,
+                               alwan_scalar L_white);
+
+/* ----------------------------------------------------------------
+ * HDR Gamut Mapping
+ * ---------------------------------------------------------------- */
+
+/* Chroma compression in JzCzhz (hue-preserving)
+ * Cz_max: maximum chroma at the input's (Jz, hz) for target gamut */
+int alwan_hdr_gamut_map_jzczhz(alwan_jzczhz *out, alwan_jzczhz const *in,
+                                alwan_scalar Cz_max);
+
+/* ----------------------------------------------------------------
+ * Display Characterization
+ * ---------------------------------------------------------------- */
+
+/* Peak luminance normalization for PQ signals
+ * Clips PQ absolute values to display-specific peak, re-encodes
+ * display_peak: display peak luminance (cd/m2) */
+int alwan_pq_normalize_peak(alwan_scalar *pq_out, alwan_scalar pq_value,
+                              alwan_scalar display_peak);
+
+/* Initialize ST.2086 metadata from display parameters */
+int alwan_st2086_init(alwan_st2086_metadata *meta,
+                       alwan_scalar const display_primaries_xy[6],
+                       alwan_scalar const white_point_xy[2],
+                       alwan_scalar max_luminance,
+                       alwan_scalar min_luminance);
+
+/* Compute content light level info from linear RGB pixel data (cd/m2) */
+int alwan_content_light_level_compute(alwan_content_light_level *cll_out,
+                                       alwan_scalar const *rgb_data,
+                                       size_t count,
+                                       size_t stride);
 
 /* ----------------------------------------------------------------
  * HWB Color Space (CSS Color Level 4)

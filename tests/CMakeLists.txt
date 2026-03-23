@@ -78,6 +78,8 @@ add_executable(
   74_hsplog.c
   75_image_convert.c
   76_convenience_models.c
+  77_accessibility_contrast.c
+  78_hdr_ecosystem.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)

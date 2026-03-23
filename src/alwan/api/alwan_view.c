@@ -218,6 +218,77 @@ static void tony_mcmapface_transform(alwan_scalar const *rgb_in, alwan_scalar *r
 }
 
 /* ----------------------------------------------------------------
+ * BT.2446 Method B: SDR to HDR (default: 1000 nits HDR, 100 nits SDR)
+ * ---------------------------------------------------------------- */
+
+static void bt2446b_sdr_to_hdr_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    rgb_out[0] = alwan_bt2446b_forward_v(alwan_saturate(rgb_in[0]),
+                    ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
+    rgb_out[1] = alwan_bt2446b_forward_v(alwan_saturate(rgb_in[1]),
+                    ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
+    rgb_out[2] = alwan_bt2446b_forward_v(alwan_saturate(rgb_in[2]),
+                    ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
+}
+
+/* ----------------------------------------------------------------
+ * BT.2446 Method C: HDR to SDR (default: 1000 nits HDR, 100 nits SDR)
+ * ---------------------------------------------------------------- */
+
+static void bt2446c_hdr_to_sdr_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    rgb_out[0] = alwan_bt2446c_forward_v(alwan_saturate(rgb_in[0]),
+                    ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
+    rgb_out[1] = alwan_bt2446c_forward_v(alwan_saturate(rgb_in[1]),
+                    ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
+    rgb_out[2] = alwan_bt2446c_forward_v(alwan_saturate(rgb_in[2]),
+                    ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0));
+}
+
+/* ----------------------------------------------------------------
+ * BT.2390 EETF: HDR to SDR (default: 10000 nits -> 100 nits)
+ * ---------------------------------------------------------------- */
+
+static void bt2390_hdr_to_sdr_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    rgb_out[0] = alwan_bt2390_eetf_luminance_v(alwan_saturate(rgb_in[0]),
+                    ALWAN_LITERAL(10000.0), ALWAN_LITERAL(100.0));
+    rgb_out[1] = alwan_bt2390_eetf_luminance_v(alwan_saturate(rgb_in[1]),
+                    ALWAN_LITERAL(10000.0), ALWAN_LITERAL(100.0));
+    rgb_out[2] = alwan_bt2390_eetf_luminance_v(alwan_saturate(rgb_in[2]),
+                    ALWAN_LITERAL(10000.0), ALWAN_LITERAL(100.0));
+}
+
+/* ----------------------------------------------------------------
+ * Reinhard Calibrated (default: key=0.18, L_avg=0.18, L_white=4.0)
+ * ---------------------------------------------------------------- */
+
+static void reinhard_calibrated_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    rgb_out[0] = alwan_saturate(alwan_reinhard_calibrated_v(
+                    alwan_max(rgb_in[0], ALWAN_ZERO),
+                    ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(4.0)));
+    rgb_out[1] = alwan_saturate(alwan_reinhard_calibrated_v(
+                    alwan_max(rgb_in[1], ALWAN_ZERO),
+                    ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(4.0)));
+    rgb_out[2] = alwan_saturate(alwan_reinhard_calibrated_v(
+                    alwan_max(rgb_in[2], ALWAN_ZERO),
+                    ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(4.0)));
+}
+
+/* ----------------------------------------------------------------
+ * Exposure-Based (default: exposure = 0 EV)
+ * ---------------------------------------------------------------- */
+
+static void exposure_transform(alwan_scalar const *rgb_in, alwan_scalar *rgb_out) {
+    alwan_vec3 in_v = {{
+        alwan_max(rgb_in[0], ALWAN_ZERO),
+        alwan_max(rgb_in[1], ALWAN_ZERO),
+        alwan_max(rgb_in[2], ALWAN_ZERO)
+    }};
+    alwan_vec3 out_v = alwan_exposure_tonemap_rgb_v(in_v, ALWAN_ZERO);
+    rgb_out[0] = alwan_saturate(out_v.v[0]);
+    rgb_out[1] = alwan_saturate(out_v.v[1]);
+    rgb_out[2] = alwan_saturate(out_v.v[2]);
+}
+
+/* ----------------------------------------------------------------
  * View Transform API
  * ---------------------------------------------------------------- */
 
@@ -268,6 +339,21 @@ int alwan_view_transform_apply(alwan_scalar *rgb_out,
             break;
         case ALWAN_VIEW_TONY_MCMAPFACE:
             transform_fn = tony_mcmapface_transform;
+            break;
+        case ALWAN_VIEW_BT2446B_SDR_TO_HDR:
+            transform_fn = bt2446b_sdr_to_hdr_transform;
+            break;
+        case ALWAN_VIEW_BT2446C_HDR_TO_SDR:
+            transform_fn = bt2446c_hdr_to_sdr_transform;
+            break;
+        case ALWAN_VIEW_BT2390_HDR_TO_SDR:
+            transform_fn = bt2390_hdr_to_sdr_transform;
+            break;
+        case ALWAN_VIEW_REINHARD_CALIBRATED:
+            transform_fn = reinhard_calibrated_transform;
+            break;
+        case ALWAN_VIEW_EXPOSURE:
+            transform_fn = exposure_transform;
             break;
         default:
             return ALWAN_E_INVALID;

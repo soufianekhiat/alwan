@@ -227,3 +227,21 @@ alwan_scalar alwan_csf_barten1999(alwan_scalar u,
 
     return alwan_csf_barten1999_v(u, vp);
 }
+
+/* ================================================================
+ * Accessibility Contrast Metrics
+ * ================================================================ */
+
+int alwan_wcag_contrast_ratio(alwan_scalar *result, alwan_scalar Y1, alwan_scalar Y2) {
+    if (!result) return ALWAN_E_INVALID;
+    *result = alwan_wcag_contrast_ratio_v(Y1, Y2);
+    return ALWAN_OK;
+}
+
+int alwan_apca_contrast(alwan_scalar *Lc_out,
+                         alwan_rgb const *srgb_text,
+                         alwan_rgb const *srgb_bg) {
+    if (!Lc_out || !srgb_text || !srgb_bg) return ALWAN_E_INVALID;
+    *Lc_out = alwan_apca_contrast_v(*srgb_text, *srgb_bg);
+    return ALWAN_OK;
+}
