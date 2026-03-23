@@ -115,6 +115,9 @@ namespace Alwan
                 conf.Options.Add(Options.Vc.Compiler.Optimization.MaximizeSpeed);
                 conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreaded);
                 conf.Options.Add(Options.Vc.Compiler.Inline.AnySuitable);
+
+                // Enable AVX2 for wider SIMD (f32 x8, f64 x4)
+                conf.AdditionalCompilerOptions.Add("/arch:AVX2");
             }
 
             // Set working directory for Visual Studio debugging

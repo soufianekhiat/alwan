@@ -394,6 +394,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #   define ALWAN_DIAG_DISABLE_FLOAT_CONV __pragma(warning(disable: 4244 4305))
 #   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC __pragma(warning(disable: 4211))
 #   define ALWAN_DIAG_DISABLE_UNUSED_FUNCTION  __pragma(warning(disable: 4505))
+#   define ALWAN_DIAG_DISABLE_MACRO_EXPANSION  __pragma(warning(disable: 5105))
 # elif defined(__clang__)
 #   define ALWAN_DIAG_PUSH _Pragma("clang diagnostic push")
 #   define ALWAN_DIAG_POP  _Pragma("clang diagnostic pop")
@@ -403,6 +404,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC /* no equivalent in clang */
 #   define ALWAN_DIAG_DISABLE_UNUSED_FUNCTION \
       _Pragma("clang diagnostic ignored \"-Wunused-function\"")
+#   define ALWAN_DIAG_DISABLE_MACRO_EXPANSION  /* MSVC-only: C5105 */
 # elif defined(__GNUC__)
 #   define ALWAN_DIAG_PUSH _Pragma("GCC diagnostic push")
 #   define ALWAN_DIAG_POP  _Pragma("GCC diagnostic pop")
@@ -412,12 +414,14 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC /* no equivalent in GCC */
 #   define ALWAN_DIAG_DISABLE_UNUSED_FUNCTION \
       _Pragma("GCC diagnostic ignored \"-Wunused-function\"")
+#   define ALWAN_DIAG_DISABLE_MACRO_EXPANSION  /* MSVC-only: C5105 */
 # else
 #   define ALWAN_DIAG_PUSH
 #   define ALWAN_DIAG_POP
 #   define ALWAN_DIAG_DISABLE_FLOAT_CONV
 #   define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC
 #   define ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
+#   define ALWAN_DIAG_DISABLE_MACRO_EXPANSION
 # endif
 #else
   /* HLSL/GLSL/Halide: no diagnostic pragmas */
@@ -426,6 +430,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 # define ALWAN_DIAG_DISABLE_FLOAT_CONV
 # define ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC
 # define ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
+# define ALWAN_DIAG_DISABLE_MACRO_EXPANSION
 #endif
 
 /* ================================================================

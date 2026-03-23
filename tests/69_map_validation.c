@@ -20,6 +20,7 @@
 #define MAP_STEP 5
 #define MAP_COUNT_1D ((255 / MAP_STEP) + 1)  /* 52 */
 #define MAP_COUNT (MAP_COUNT_1D * MAP_COUNT_1D * MAP_COUNT_1D)  /* 140608 */
+_Static_assert(MAP_COUNT >= MIN_SIMD_PIXELS, "MAP_COUNT too small to exercise SIMD");
 
 static void generate_unit_grid(alwan_scalar *out) {
     size_t idx = 0;
@@ -53,17 +54,6 @@ static void generate_lab_grid(alwan_scalar *out) {
  * Helper: compare map output vs per-pixel reference
  * ---------------------------------------------------------------- */
 
-/*
- * SIMD map functions use fmadd (fused multiply-add) in matrix multiplies,
- * which has different rounding than the scalar a*b+c. When followed by
- * transcendental functions (pow, exp, log), these tiny differences get
- * amplified to ~1e-9 in f64. MAP_TOLERANCE accounts for this.
- */
-#ifdef ALWAN_SCALAR_IS_FLOAT
-#define MAP_TOLERANCE ALWAN_LITERAL(1e-4)
-#else
-#define MAP_TOLERANCE ALWAN_LITERAL(1e-8)
-#endif
 
 static int compare_arrays_tol(alwan_scalar const *map_out, alwan_scalar const *ref,
                               size_t count, size_t stride, char const *name,
@@ -85,7 +75,7 @@ static int compare_arrays_tol(alwan_scalar const *map_out, alwan_scalar const *r
 
 static int compare_arrays(alwan_scalar const *map_out, alwan_scalar const *ref,
                           size_t count, size_t stride, char const *name) {
-    return compare_arrays_tol(map_out, ref, count, stride, name, ALWAN_TEST_TOLERANCE);
+    return compare_arrays_tol(map_out, ref, count, stride, name, ALWAN_SIMD_TOLERANCE);
 }
 
 /* ----------------------------------------------------------------
@@ -451,7 +441,7 @@ static int test_ictcp_maps(void) {
             ref_out[i*3+0] = ictcp.I; ref_out[i*3+1] = ictcp.Ct; ref_out[i*3+2] = ictcp.Cp;
         }
         if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride,
-                           use_pq ? "rgb_to_ictcp_map_interleave PQ" : "rgb_to_ictcp_map_interleave HLG", MAP_TOLERANCE)) goto fail;
+                           use_pq ? "rgb_to_ictcp_map_interleave PQ" : "rgb_to_ictcp_map_interleave HLG", ALWAN_SIMD_TOLERANCE)) goto fail;
 
         /* ICtCp -> RGB */
         memcpy(grid, ref_out, MAP_COUNT * stride);
@@ -462,7 +452,7 @@ static int test_ictcp_maps(void) {
             ref_out[i*3+0] = rgb.r; ref_out[i*3+1] = rgb.g; ref_out[i*3+2] = rgb.b;
         }
         if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride,
-                           use_pq ? "ictcp_to_rgb_map_interleave PQ" : "ictcp_to_rgb_map_interleave HLG", MAP_TOLERANCE)) goto fail;
+                           use_pq ? "ictcp_to_rgb_map_interleave PQ" : "ictcp_to_rgb_map_interleave HLG", ALWAN_SIMD_TOLERANCE)) goto fail;
 
         /* XYZ -> ICtCp */
         generate_unit_grid(grid);
@@ -473,7 +463,7 @@ static int test_ictcp_maps(void) {
             ref_out[i*3+0] = ictcp.I; ref_out[i*3+1] = ictcp.Ct; ref_out[i*3+2] = ictcp.Cp;
         }
         if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride,
-                           use_pq ? "xyz_to_ictcp_map_interleave PQ" : "xyz_to_ictcp_map_interleave HLG", MAP_TOLERANCE)) goto fail;
+                           use_pq ? "xyz_to_ictcp_map_interleave PQ" : "xyz_to_ictcp_map_interleave HLG", ALWAN_SIMD_TOLERANCE)) goto fail;
 
         /* ICtCp -> XYZ */
         memcpy(grid, ref_out, MAP_COUNT * stride);
@@ -484,7 +474,7 @@ static int test_ictcp_maps(void) {
             ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
         }
         if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride,
-                           use_pq ? "ictcp_to_xyz_map_interleave PQ" : "ictcp_to_xyz_map_interleave HLG", MAP_TOLERANCE)) goto fail;
+                           use_pq ? "ictcp_to_xyz_map_interleave PQ" : "ictcp_to_xyz_map_interleave HLG", ALWAN_SIMD_TOLERANCE)) goto fail;
     }
 
     free(grid); free(map_out); free(ref_out);
@@ -515,7 +505,7 @@ static int test_jzazbz_maps(void) {
         alwan_jzazbz jz; alwan_xyz_to_jzazbz(&jz, &xyz);
         ref_out[i*3+0] = jz.Jz; ref_out[i*3+1] = jz.az; ref_out[i*3+2] = jz.bz;
     }
-    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "xyz_to_jzazbz_map_interleave", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "xyz_to_jzazbz_map_interleave", ALWAN_SIMD_TOLERANCE)) goto fail;
 
     /* JzAzBz -> XYZ */
     memcpy(grid, ref_out, MAP_COUNT * stride);
@@ -525,7 +515,7 @@ static int test_jzazbz_maps(void) {
         alwan_xyz xyz; alwan_jzazbz_to_xyz(&xyz, &jz);
         ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
     }
-    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "jzazbz_to_xyz_map_interleave", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "jzazbz_to_xyz_map_interleave", ALWAN_SIMD_TOLERANCE)) goto fail;
 
     /* JzAzBz -> JzCzhz */
     generate_unit_grid(grid);
@@ -576,7 +566,7 @@ static int test_ipt_maps(void) {
         alwan_ipt ipt; alwan_xyz_to_ipt(&ipt, &xyz);
         ref_out[i*3+0] = ipt.I; ref_out[i*3+1] = ipt.P; ref_out[i*3+2] = ipt.T;
     }
-    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "xyz_to_ipt_map_interleave", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "xyz_to_ipt_map_interleave", ALWAN_SIMD_TOLERANCE)) goto fail;
 
     /* IPT -> XYZ */
     memcpy(grid, ref_out, MAP_COUNT * stride);
@@ -586,7 +576,7 @@ static int test_ipt_maps(void) {
         alwan_xyz xyz; alwan_ipt_to_xyz(&xyz, &ipt);
         ref_out[i*3+0] = xyz.x; ref_out[i*3+1] = xyz.y; ref_out[i*3+2] = xyz.z;
     }
-    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "ipt_to_xyz_map_interleave", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_out, ref_out, MAP_COUNT, stride, "ipt_to_xyz_map_interleave", ALWAN_SIMD_TOLERANCE)) goto fail;
 
     free(grid); free(map_out); free(ref_out);
     TEST_PASS_MSG(); return 0;
@@ -653,7 +643,7 @@ static int test_ciecam02_maps(void) {
         alwan_scalar dC = ALWAN_ABS(map_corr[i].C - ref_corr[i].C);
         alwan_scalar dh = ALWAN_ABS(map_corr[i].h - ref_corr[i].h);
         alwan_scalar max_d = dJ; if (dC > max_d) max_d = dC; if (dh > max_d) max_d = dh;
-        if (max_d > MAP_TOLERANCE) {
+        if (max_d > ALWAN_SIMD_TOLERANCE) {
             printf("[FAIL] ciecam02_forward_map_interleave: pixel %zu: diff=%.16e\n", i, (double)max_d);
             goto fail;
         }
@@ -665,7 +655,7 @@ static int test_ciecam02_maps(void) {
         alwan_xyz xyz; alwan_ciecam02_inverse(&xyz, &ref_corr[i], &vc);
         ref_xyz[i*3+0] = xyz.x; ref_xyz[i*3+1] = xyz.y; ref_xyz[i*3+2] = xyz.z;
     }
-    if (compare_arrays_tol(map_xyz, ref_xyz, CAM_COUNT, stride, "ciecam02_inverse_map_interleave", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_xyz, ref_xyz, CAM_COUNT, stride, "ciecam02_inverse_map_interleave", ALWAN_SIMD_TOLERANCE)) goto fail;
 
     free(grid); free(map_corr); free(ref_corr); free(map_xyz); free(ref_xyz);
     TEST_PASS_MSG(); return 0;
@@ -709,7 +699,7 @@ static int test_cam16_maps(void) {
         alwan_scalar dC = ALWAN_ABS(map_corr[i].C - ref_corr[i].C);
         alwan_scalar dh = ALWAN_ABS(map_corr[i].h - ref_corr[i].h);
         alwan_scalar max_d = dJ; if (dC > max_d) max_d = dC; if (dh > max_d) max_d = dh;
-        if (max_d > MAP_TOLERANCE) {
+        if (max_d > ALWAN_SIMD_TOLERANCE) {
             printf("[FAIL] cam16_forward_map_interleave: pixel %zu: diff=%.16e\n", i, (double)max_d);
             goto fail;
         }
@@ -721,7 +711,7 @@ static int test_cam16_maps(void) {
         alwan_xyz xyz; alwan_cam16_inverse(&xyz, &ref_corr[i], &vc);
         ref_xyz[i*3+0] = xyz.x; ref_xyz[i*3+1] = xyz.y; ref_xyz[i*3+2] = xyz.z;
     }
-    if (compare_arrays_tol(map_xyz, ref_xyz, CAM_COUNT, stride, "cam16_inverse_map_interleave", MAP_TOLERANCE)) goto fail;
+    if (compare_arrays_tol(map_xyz, ref_xyz, CAM_COUNT, stride, "cam16_inverse_map_interleave", ALWAN_SIMD_TOLERANCE)) goto fail;
 
     free(grid); free(map_corr); free(ref_corr); free(map_xyz); free(ref_xyz);
     TEST_PASS_MSG(); return 0;
@@ -749,9 +739,9 @@ static size_t mapex_typed_stride(alwan_pixel_format fmt) {
 static alwan_scalar mapex_tol(alwan_pixel_format fmt) {
     /* Output quantization adds up to 0.5 LSB of rounding error. */
     switch (fmt) {
-    case ALWAN_PIXEL_U8:  return ALWAN_LITERAL(0.5) / ALWAN_LITERAL(255.0) + MAP_TOLERANCE;
-    case ALWAN_PIXEL_U16: return ALWAN_LITERAL(0.5) / ALWAN_LITERAL(65535.0) + MAP_TOLERANCE;
-    default:              return MAP_TOLERANCE;
+    case ALWAN_PIXEL_U8:  return ALWAN_LITERAL(0.5) / ALWAN_LITERAL(255.0) + ALWAN_SIMD_TOLERANCE;
+    case ALWAN_PIXEL_U16: return ALWAN_LITERAL(0.5) / ALWAN_LITERAL(65535.0) + ALWAN_SIMD_TOLERANCE;
+    default:              return ALWAN_SIMD_TOLERANCE;
     }
 }
 
@@ -1104,7 +1094,7 @@ static int test_ex_cam_maps(void) {
         size_t ts = mapex_typed_stride(fmt);
         alwan_scalar tol = mapex_tol(fmt);
 
-        alwan_scalar cam_fwd_tol = MAP_TOLERANCE;
+        alwan_scalar cam_fwd_tol = ALWAN_SIMD_TOLERANCE;
 
         alwan_scatter3(typed_xyz, fmt, grid, MAPEX_COUNT, ss, ts);
 
@@ -1182,6 +1172,67 @@ fail:
 }
 
 /* ----------------------------------------------------------------
+ * Gamut map SIMD validation
+ *
+ * Gamut map functions (clip, hue-preserving, CSS) are not covered by
+ * the fixture tests at large batch sizes.  Run them on the full 140K
+ * grid and compare the batch output against a per-pixel reference to
+ * ensure the SIMD path produces identical results.
+ * ---------------------------------------------------------------- */
+
+static int test_gamut_map_simd(void) {
+    TEST_START("Map validation: gamut clip + CSS (batch vs per-pixel)");
+
+    size_t const stride = 3 * sizeof(alwan_scalar);
+    alwan_scalar *grid    = (alwan_scalar *)malloc(MAP_COUNT * stride);
+    alwan_scalar *map_out = (alwan_scalar *)malloc(MAP_COUNT * stride);
+    alwan_scalar *ref_out = (alwan_scalar *)malloc(MAP_COUNT * stride);
+    if (!grid || !map_out || !ref_out) { free(grid); free(map_out); free(ref_out); TEST_FAIL("malloc"); }
+
+    /* Generate grid with some out-of-gamut values [-0.5, 1.5] */
+    {
+        size_t idx = 0;
+        for (int r = 0; r <= 255; r += MAP_STEP)
+            for (int g = 0; g <= 255; g += MAP_STEP)
+                for (int b = 0; b <= 255; b += MAP_STEP, idx++) {
+                    grid[idx*3+0] = (alwan_scalar)r / ALWAN_LITERAL(255.0) * ALWAN_LITERAL(2.0) - ALWAN_LITERAL(0.5);
+                    grid[idx*3+1] = (alwan_scalar)g / ALWAN_LITERAL(255.0) * ALWAN_LITERAL(2.0) - ALWAN_LITERAL(0.5);
+                    grid[idx*3+2] = (alwan_scalar)b / ALWAN_LITERAL(255.0) * ALWAN_LITERAL(2.0) - ALWAN_LITERAL(0.5);
+                }
+    }
+
+    /* Gamut clip: batch vs per-pixel */
+    alwan_gamut_map_interleave(map_out, ALWAN_GAMUT_MAP_CLIP, grid, MAP_COUNT, stride, stride);
+    for (size_t i = 0; i < MAP_COUNT; i++) {
+        alwan_gamut_map_interleave(&ref_out[i*3], ALWAN_GAMUT_MAP_CLIP, &grid[i*3], 1, stride, stride);
+    }
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "gamut_map_clip")) goto fail;
+
+    /* CSS gamut map: batch vs per-pixel (uses unit-range input) */
+    {
+        size_t idx = 0;
+        for (int r = 0; r <= 255; r += MAP_STEP)
+            for (int g = 0; g <= 255; g += MAP_STEP)
+                for (int b = 0; b <= 255; b += MAP_STEP, idx++) {
+                    grid[idx*3+0] = (alwan_scalar)r / ALWAN_LITERAL(255.0);
+                    grid[idx*3+1] = (alwan_scalar)g / ALWAN_LITERAL(255.0);
+                    grid[idx*3+2] = (alwan_scalar)b / ALWAN_LITERAL(255.0);
+                }
+    }
+
+    alwan_css_gamut_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
+    for (size_t i = 0; i < MAP_COUNT; i++) {
+        alwan_css_gamut_map_interleave(&ref_out[i*3], &grid[i*3], 1, stride, stride);
+    }
+    if (compare_arrays(map_out, ref_out, MAP_COUNT, stride, "css_gamut_map")) goto fail;
+
+    free(grid); free(map_out); free(ref_out);
+    TEST_PASS_MSG(); return 0;
+fail:
+    free(grid); free(map_out); free(ref_out); return 1;
+}
+
+/* ----------------------------------------------------------------
  * Main Test Runner
  * ---------------------------------------------------------------- */
 
@@ -1241,6 +1292,11 @@ int test_69_map_validation_main(void) {
     if (test_ex_white_point_maps()) return 1;
     if (test_ex_ictcp_maps()) return 1;
     if (test_ex_cam_maps()) return 1;
+
+    /* Group I: Gamut maps (SIMD batch vs per-pixel) */
+    printf("\nGroup I: Gamut map SIMD validation\n");
+    printf("--------------------------------\n");
+    if (test_gamut_map_simd()) return 1;
 
     printf("\n========================================\n");
     printf("Test Results: %d/%d passed\n", test_passed, test_count);

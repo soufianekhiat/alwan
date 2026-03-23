@@ -39,6 +39,39 @@ static int test_failed = 0;
 #endif
 
 /* ============================================================================
+ * SIMD tolerance
+ *
+ * SIMD map functions use FMA, reciprocal multiplication, and polynomial
+ * approximations for transcendentals (pow, cbrt, log) that differ in
+ * rounding from scalar evaluation.  This tolerance accepts those
+ * differences while still validating algorithmic correctness.
+ * ============================================================================ */
+#if ALWAN_SCALAR_IS_FLOAT
+#  define ALWAN_SIMD_TOLERANCE ALWAN_LITERAL(5e-3)
+#else
+#  define ALWAN_SIMD_TOLERANCE ALWAN_LITERAL(1e-8)
+#endif
+
+/* PQ (perceptual quantizer) transfer functions have extremely steep curves
+ * that amplify tiny SIMD rounding differences by orders of magnitude,
+ * especially near zero.  This wider tolerance is for colorspaces that use
+ * PQ internally (HDR IPT, HDR CIELAB, ICtCp, JzAzBz, IgPgTg). */
+#if ALWAN_SCALAR_IS_FLOAT
+#  define ALWAN_SIMD_PQ_TOLERANCE ALWAN_LITERAL(5e-2)
+#else
+#  define ALWAN_SIMD_PQ_TOLERANCE ALWAN_LITERAL(1e-6)
+#endif
+
+/* ============================================================================
+ * Minimum pixel count for SIMD coverage
+ *
+ * Map tests must use at least this many pixels to guarantee the SIMD loop
+ * executes (not just the scalar tail).  33 = 2 * 16 + 1 covers up to
+ * AVX-512 f32 (16 lanes) with at least 2 full SIMD iterations + a tail.
+ * ============================================================================ */
+#define MIN_SIMD_PIXELS 33
+
+/* ============================================================================
  * Basic Test Flow Macros
  * ============================================================================ */
 

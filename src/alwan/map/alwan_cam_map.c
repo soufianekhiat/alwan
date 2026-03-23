@@ -27,7 +27,7 @@ int alwan_ciecam02_forward_map_interleave(alwan_ciecam02_correlates *correlates_
         while (off < count) {
             size_t tile = count - off;
             if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-            alwan_simd_lane ci0[ALWAN_TILE_PIXELS], ci1[ALWAN_TILE_PIXELS], ci2[ALWAN_TILE_PIXELS];
+            ALWAN_ALIGN(32) alwan_simd_lane ci0[ALWAN_TILE_PIXELS], ci1[ALWAN_TILE_PIXELS], ci2[ALWAN_TILE_PIXELS];
             alwan__load_tile_aos3(ci0, ci1, ci2, xyz_in, off, in_stride, tile);
             for (size_t j = 0; j < tile; j++) {
                 alwan_xyz xyz = {(alwan_scalar)ci0[j], (alwan_scalar)ci1[j], (alwan_scalar)ci2[j]};
@@ -59,7 +59,7 @@ int alwan_ciecam02_inverse_map_interleave(alwan_scalar *xyz_out,
         while (off < count) {
             size_t tile = count - off;
             if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-            alwan_simd_lane co0[ALWAN_TILE_PIXELS], co1[ALWAN_TILE_PIXELS], co2[ALWAN_TILE_PIXELS];
+            ALWAN_ALIGN(32) alwan_simd_lane co0[ALWAN_TILE_PIXELS], co1[ALWAN_TILE_PIXELS], co2[ALWAN_TILE_PIXELS];
             for (size_t j = 0; j < tile; j++) {
                 alwan_xyz xyz;
                 int status = alwan_ciecam02_inverse(&xyz, &correlates_in[off + j], vc);
@@ -97,7 +97,7 @@ int alwan_cam16_forward_map_interleave(alwan_cam16_correlates *correlates_out,
         while (off < count) {
             size_t tile = count - off;
             if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-            alwan_simd_lane ci0[ALWAN_TILE_PIXELS], ci1[ALWAN_TILE_PIXELS], ci2[ALWAN_TILE_PIXELS];
+            ALWAN_ALIGN(32) alwan_simd_lane ci0[ALWAN_TILE_PIXELS], ci1[ALWAN_TILE_PIXELS], ci2[ALWAN_TILE_PIXELS];
             alwan__load_tile_aos3(ci0, ci1, ci2, xyz_in, off, in_stride, tile);
             for (size_t j = 0; j < tile; j++) {
                 alwan_xyz xyz = {(alwan_scalar)ci0[j], (alwan_scalar)ci1[j], (alwan_scalar)ci2[j]};
@@ -129,7 +129,7 @@ int alwan_cam16_inverse_map_interleave(alwan_scalar *xyz_out,
         while (off < count) {
             size_t tile = count - off;
             if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
-            alwan_simd_lane co0[ALWAN_TILE_PIXELS], co1[ALWAN_TILE_PIXELS], co2[ALWAN_TILE_PIXELS];
+            ALWAN_ALIGN(32) alwan_simd_lane co0[ALWAN_TILE_PIXELS], co1[ALWAN_TILE_PIXELS], co2[ALWAN_TILE_PIXELS];
             for (size_t j = 0; j < tile; j++) {
                 alwan_xyz xyz;
                 int status = alwan_cam16_inverse(&xyz, &correlates_in[off + j], vc);

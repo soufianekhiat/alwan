@@ -27,39 +27,39 @@ static int test_cie_2012_observers(void) {
     status = alwan_spd_illuminant(&d65, ctx, ALWAN_ILLUMINANT_D65);
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
-    /* Test CIE 2012 2° observer */
+    /* Test CIE 2012 2-deg observer */
     alwan_xyz xyz_2012_2deg;
     status = alwan_xyz_from_spd(&xyz_2012_2deg, ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_2012_2DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
                                 ALWAN_LITERAL(0.0));
-    TEST_ASSERT(status == ALWAN_OK, "CIE 2012 2° observer failed");
-    TEST_ASSERT(xyz_2012_2deg.x > ALWAN_LITERAL(0.0), "2012 2° X should be positive");
-    TEST_ASSERT(xyz_2012_2deg.y > ALWAN_LITERAL(0.0), "2012 2° Y should be positive");
-    TEST_ASSERT(xyz_2012_2deg.z > ALWAN_LITERAL(0.0), "2012 2° Z should be positive");
+    TEST_ASSERT(status == ALWAN_OK, "CIE 2012 2-deg observer failed");
+    TEST_ASSERT(xyz_2012_2deg.x > ALWAN_LITERAL(0.0), "2012 2-deg X should be positive");
+    TEST_ASSERT(xyz_2012_2deg.y > ALWAN_LITERAL(0.0), "2012 2-deg Y should be positive");
+    TEST_ASSERT(xyz_2012_2deg.z > ALWAN_LITERAL(0.0), "2012 2-deg Z should be positive");
 
-    /* Test CIE 2012 10° observer */
+    /* Test CIE 2012 10-deg observer */
     alwan_xyz xyz_2012_10deg;
     status = alwan_xyz_from_spd(&xyz_2012_10deg, ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_2012_10DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
                                 ALWAN_LITERAL(0.0));
-    TEST_ASSERT(status == ALWAN_OK, "CIE 2012 10° observer failed");
-    TEST_ASSERT(xyz_2012_10deg.x > ALWAN_LITERAL(0.0), "2012 10° X should be positive");
-    TEST_ASSERT(xyz_2012_10deg.y > ALWAN_LITERAL(0.0), "2012 10° Y should be positive");
-    TEST_ASSERT(xyz_2012_10deg.z > ALWAN_LITERAL(0.0), "2012 10° Z should be positive");
+    TEST_ASSERT(status == ALWAN_OK, "CIE 2012 10-deg observer failed");
+    TEST_ASSERT(xyz_2012_10deg.x > ALWAN_LITERAL(0.0), "2012 10-deg X should be positive");
+    TEST_ASSERT(xyz_2012_10deg.y > ALWAN_LITERAL(0.0), "2012 10-deg Y should be positive");
+    TEST_ASSERT(xyz_2012_10deg.z > ALWAN_LITERAL(0.0), "2012 10-deg Z should be positive");
 
-    /* 2° and 10° observers should give slightly different results */
+    /* 2-deg and 10-deg observers should give slightly different results */
     alwan_scalar diff_x = ALWAN_ABS(xyz_2012_2deg.x - xyz_2012_10deg.x);
     alwan_scalar diff_y = ALWAN_ABS(xyz_2012_2deg.y - xyz_2012_10deg.y);
     alwan_scalar diff_z = ALWAN_ABS(xyz_2012_2deg.z - xyz_2012_10deg.z);
 
     TEST_ASSERT(diff_x + diff_y + diff_z > ALWAN_LITERAL(0.01),
-                "2° and 10° observers should differ");
+                "2-deg and 10-deg observers should differ");
 
-    printf("  CIE 2012 2°:  XYZ = [%.4f, %.4f, %.4f]\n",
+    printf("  CIE 2012 2-deg:  XYZ = [%.4f, %.4f, %.4f]\n",
            (double)xyz_2012_2deg.x, (double)xyz_2012_2deg.y, (double)xyz_2012_2deg.z);
-    printf("  CIE 2012 10°: XYZ = [%.4f, %.4f, %.4f]\n",
+    printf("  CIE 2012 10-deg: XYZ = [%.4f, %.4f, %.4f]\n",
            (double)xyz_2012_10deg.x, (double)xyz_2012_10deg.y, (double)xyz_2012_10deg.z);
 
     alwan_spd_destroy(ctx, &reflectance);

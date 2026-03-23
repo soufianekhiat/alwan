@@ -211,26 +211,26 @@ static int test_xyz_both_observers(void) {
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
                                 ALWAN_LITERAL(0.0));  /* No bandpass correction */
-    TEST_ASSERT(status == ALWAN_OK, "XYZ with 2° observer failed");
+    TEST_ASSERT(status == ALWAN_OK, "XYZ with 2-deg observer failed");
 
     status = alwan_xyz_from_spd(&xyz_10deg, ctx, &reflectance, &illum_e,
                                 ALWAN_OBSERVER_CIE_1964_10DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
                                 ALWAN_LITERAL(0.0));  /* No bandpass correction */
-    TEST_ASSERT(status == ALWAN_OK, "XYZ with 10° observer failed");
+    TEST_ASSERT(status == ALWAN_OK, "XYZ with 10-deg observer failed");
 
     /* Both observers should give positive XYZ */
-    TEST_ASSERT(xyz_2deg.x > ALWAN_LITERAL(0.0), "2° observer X should be positive");
-    TEST_ASSERT(xyz_2deg.y > ALWAN_LITERAL(0.0), "2° observer Y should be positive");
-    TEST_ASSERT(xyz_2deg.z > ALWAN_LITERAL(0.0), "2° observer Z should be positive");
+    TEST_ASSERT(xyz_2deg.x > ALWAN_LITERAL(0.0), "2-deg observer X should be positive");
+    TEST_ASSERT(xyz_2deg.y > ALWAN_LITERAL(0.0), "2-deg observer Y should be positive");
+    TEST_ASSERT(xyz_2deg.z > ALWAN_LITERAL(0.0), "2-deg observer Z should be positive");
 
-    TEST_ASSERT(xyz_10deg.x > ALWAN_LITERAL(0.0), "10° observer X should be positive");
-    TEST_ASSERT(xyz_10deg.y > ALWAN_LITERAL(0.0), "10° observer Y should be positive");
-    TEST_ASSERT(xyz_10deg.z > ALWAN_LITERAL(0.0), "10° observer Z should be positive");
+    TEST_ASSERT(xyz_10deg.x > ALWAN_LITERAL(0.0), "10-deg observer X should be positive");
+    TEST_ASSERT(xyz_10deg.y > ALWAN_LITERAL(0.0), "10-deg observer Y should be positive");
+    TEST_ASSERT(xyz_10deg.z > ALWAN_LITERAL(0.0), "10-deg observer Z should be positive");
 
-    printf("  CIE 1931 2°:  XYZ = [%.4f, %.4f, %.4f]\n",
+    printf("  CIE 1931 2-deg:  XYZ = [%.4f, %.4f, %.4f]\n",
            xyz_2deg.x, xyz_2deg.y, xyz_2deg.z);
-    printf("  CIE 1964 10°: XYZ = [%.4f, %.4f, %.4f]\n",
+    printf("  CIE 1964 10-deg: XYZ = [%.4f, %.4f, %.4f]\n",
            xyz_10deg.x, xyz_10deg.y, xyz_10deg.z);
 
     alwan_spd_destroy(ctx, &reflectance);

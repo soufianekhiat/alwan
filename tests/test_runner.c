@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* Forward declarations of test main functions */
 extern int test_00_context_main(void);
@@ -186,16 +187,53 @@ static test_suite const g_test_suites[] = {
     {"82_machado_cvd", test_82_machado_cvd_main},
 };
 
-int main(void) {
+static int suite_matches(char const *name, char const *filter) {
+    /* Match by substring: "70" matches "70_planar_map", "planar" matches too */
+    return strstr(name, filter) != NULL;
+}
+
+int main(int argc, char **argv) {
+    setvbuf(stdout, NULL, _IONBF, 0);
     printf("========================================\n");
     printf("Alwan Unit Test Runner\n");
-    printf("========================================\n\n");
+    printf("========================================\n");
+
+    size_t const num_suites = sizeof(g_test_suites) / sizeof(g_test_suites[0]);
+
+    if (argc > 1 && strcmp(argv[1], "--list") == 0) {
+        for (size_t i = 0; i < num_suites; i++)
+            printf("  %s\n", g_test_suites[i].name);
+        return 0;
+    }
+
+    if (argc > 1 && strcmp(argv[1], "--help") == 0) {
+        printf("Usage: %s [filter...]\n", argv[0]);
+        printf("  No arguments: run all suites\n");
+        printf("  filter:       run suites whose name contains any filter substring\n");
+        printf("  --list:       list all suite names\n");
+        return 0;
+    }
+
+    printf("\n");
 
     int total_failed = 0;
     int total_passed = 0;
-    size_t const num_suites = sizeof(g_test_suites) / sizeof(g_test_suites[0]);
+    int total_skipped = 0;
+    char const *failed_names[sizeof(g_test_suites) / sizeof(g_test_suites[0])];
 
     for (size_t i = 0; i < num_suites; i++) {
+        /* If filters provided, check if this suite matches any */
+        if (argc > 1) {
+            int matched = 0;
+            for (int a = 1; a < argc; a++) {
+                if (suite_matches(g_test_suites[i].name, argv[a])) {
+                    matched = 1;
+                    break;
+                }
+            }
+            if (!matched) { total_skipped++; continue; }
+        }
+
         printf("\n");
         printf("========================================\n");
         printf("Running test suite: %s\n", g_test_suites[i].name);
@@ -207,6 +245,7 @@ int main(void) {
             total_passed++;
             printf("[PASS] Test suite '%s' passed\n", g_test_suites[i].name);
         } else {
+            failed_names[total_failed] = g_test_suites[i].name;
             total_failed++;
             printf("[FAIL] Test suite '%s' failed with code %d\n",
                    g_test_suites[i].name, result);
@@ -217,13 +256,18 @@ int main(void) {
     printf("========================================\n");
     printf("Overall Results\n");
     printf("========================================\n");
-    printf("Test suites passed: %d\n", total_passed);
-    printf("Test suites failed: %d\n", total_failed);
-    printf("Total test suites:  %zu\n", num_suites);
+    printf("Test suites passed:  %d\n", total_passed);
+    printf("Test suites failed:  %d\n", total_failed);
+    if (total_skipped > 0)
+        printf("Test suites skipped: %d\n", total_skipped);
+    printf("Total test suites:   %zu\n", num_suites);
     printf("========================================\n");
 
     if (total_failed > 0) {
-        printf("\nSome tests FAILED!\n");
+        printf("\nFailed suites:\n");
+        for (int f = 0; f < total_failed; f++)
+            printf("  - %s\n", failed_names[f]);
+        printf("\n");
         return 1;
     } else {
         printf("\nAll tests PASSED!\n");

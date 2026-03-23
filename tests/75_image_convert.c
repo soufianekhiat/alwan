@@ -83,8 +83,8 @@ static int test_image_convert_same_wp(void) {
     size_t row_stride = W * 3 * sizeof(alwan_scalar);
 
     int status = alwan_image_convert(
-        dst, ALWAN_PIXEL_F64, row_stride,
-        src, ALWAN_PIXEL_F64, row_stride,
+        dst, ALWAN_PIXEL_SCALAR, row_stride,
+        src, ALWAN_PIXEL_SCALAR, row_stride,
         W, H, ctx, &srgb, &p3);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert returned error");
@@ -141,8 +141,8 @@ static int test_image_convert_diff_wp(void) {
     size_t row_stride = W * 3 * sizeof(alwan_scalar);
 
     int status = alwan_image_convert(
-        dst, ALWAN_PIXEL_F64, row_stride,
-        src, ALWAN_PIXEL_F64, row_stride,
+        dst, ALWAN_PIXEL_SCALAR, row_stride,
+        src, ALWAN_PIXEL_SCALAR, row_stride,
         W, H, ctx, &srgb, &acescg);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert returned error");
@@ -353,8 +353,8 @@ static int test_image_convert_in_place(void) {
 
     size_t row_stride = W * 3 * sizeof(alwan_scalar);
     int status = alwan_image_convert(
-        buf, ALWAN_PIXEL_F64, row_stride,
-        buf, ALWAN_PIXEL_F64, row_stride,
+        buf, ALWAN_PIXEL_SCALAR, row_stride,
+        buf, ALWAN_PIXEL_SCALAR, row_stride,
         W, H, ctx, &srgb, &p3);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert in-place returned error");
@@ -384,23 +384,23 @@ static int test_image_convert_errors(void) {
     alwan_scalar buf[9];
 
     /* NULL dst */
-    TEST_ASSERT(alwan_image_convert(NULL, ALWAN_PIXEL_F64, 24,
-        buf, ALWAN_PIXEL_F64, 24, 1, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_image_convert(NULL, ALWAN_PIXEL_SCALAR, 24,
+        buf, ALWAN_PIXEL_SCALAR, 24, 1, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
         "NULL dst should fail");
 
     /* NULL src */
-    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_F64, 24,
-        NULL, ALWAN_PIXEL_F64, 24, 1, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_SCALAR, 24,
+        NULL, ALWAN_PIXEL_SCALAR, 24, 1, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
         "NULL src should fail");
 
     /* zero width */
-    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_F64, 24,
-        buf, ALWAN_PIXEL_F64, 24, 0, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_SCALAR, 24,
+        buf, ALWAN_PIXEL_SCALAR, 24, 0, 1, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
         "zero width should fail");
 
     /* zero height */
-    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_F64, 24,
-        buf, ALWAN_PIXEL_F64, 24, 1, 0, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_image_convert(buf, ALWAN_PIXEL_SCALAR, 24,
+        buf, ALWAN_PIXEL_SCALAR, 24, 1, 0, NULL, &srgb, &srgb) == ALWAN_E_INVALID,
         "zero height should fail");
 
     TEST_PASS_MSG();
@@ -440,8 +440,8 @@ static int test_image_convert_rgba_straight(void) {
 
     size_t row_stride = W * 4 * sizeof(alwan_scalar);
     int status = alwan_image_convert_rgba(
-        dst, ALWAN_PIXEL_F64, row_stride,
-        src, ALWAN_PIXEL_F64, row_stride,
+        dst, ALWAN_PIXEL_SCALAR, row_stride,
+        src, ALWAN_PIXEL_SCALAR, row_stride,
         W, H, ctx, &srgb, &p3, ALWAN_ALPHA_STRAIGHT);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert_rgba returned error");
@@ -506,8 +506,8 @@ static int test_image_convert_rgba_premul(void) {
 
     size_t row_stride = W * 4 * sizeof(alwan_scalar);
     int status = alwan_image_convert_rgba(
-        dst, ALWAN_PIXEL_F64, row_stride,
-        src, ALWAN_PIXEL_F64, row_stride,
+        dst, ALWAN_PIXEL_SCALAR, row_stride,
+        src, ALWAN_PIXEL_SCALAR, row_stride,
         W, H, ctx, &srgb, &p3, ALWAN_ALPHA_PREMULTIPLIED);
 
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert_rgba premul returned error");
@@ -662,8 +662,8 @@ static int test_image_convert_rgba_in_place(void) {
 
     size_t row_stride = W * 4 * sizeof(alwan_scalar);
     int status = alwan_image_convert_rgba(
-        buf, ALWAN_PIXEL_F64, row_stride,
-        buf, ALWAN_PIXEL_F64, row_stride,
+        buf, ALWAN_PIXEL_SCALAR, row_stride,
+        buf, ALWAN_PIXEL_SCALAR, row_stride,
         W, H, ctx, &srgb, &p3, ALWAN_ALPHA_STRAIGHT);
 
     TEST_ASSERT(status == ALWAN_OK, "rgba in-place returned error");
