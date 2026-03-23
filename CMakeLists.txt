@@ -99,6 +99,9 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_lut.c
   src/alwan/api/alwan_export.c
   src/alwan/api/alwan_import.c
+  src/alwan/api/alwan_interop.c
+  src/alwan/api/alwan_clf.c
+  src/alwan/api/alwan_half.c
   src/alwan/map/alwan_vision_map.c
   src/alwan/api/alwan_zcam.c
 )
