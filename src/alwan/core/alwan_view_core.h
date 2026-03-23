@@ -192,4 +192,267 @@ ALWAN_INLINE alwan_vec3 alwan_khronos_pbr_neutral_v(alwan_vec3 color) {
     return result;
 }
 
+/* ================================================================
+ * Reinhard Extended Tone Mapping (Luminance-based)
+ *
+ * From "Photographic Tone Reproduction for Digital Images"
+ * (Reinhard et al., SIGGRAPH 2002), Equation 4.
+ *
+ * Extends the basic Reinhard operator C/(1+C) with a white point
+ * parameter that controls the luminance level that maps to pure
+ * white. As max_white -> infinity, reduces to basic Reinhard.
+ *
+ * This luminance-based variant applies the curve to BT.709 luminance
+ * and scales all channels proportionally, preserving hue and
+ * saturation better than the per-channel form.
+ *
+ * References:
+ *   Paper:  https://dl.acm.org/doi/10.1145/566654.566575
+ *   PDF:    https://www.cs.utah.edu/docs/techreports/2002/pdf/UUCS-02-001.pdf
+ *   Review: https://64.github.io/tonemapping/
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_reinhard_extended_v(alwan_scalar v,
+                                                     alwan_scalar max_white) {
+    alwan_scalar ww = max_white * max_white;
+    return (v * (ALWAN_ONE + v / ww)) / (ALWAN_ONE + v);
+}
+
+ALWAN_INLINE alwan_vec3 alwan_reinhard_extended_luma_v(alwan_vec3 rgb,
+                                                        alwan_scalar max_white) {
+    alwan_vec3 result;
+    alwan_scalar l_old = ALWAN_LUMA_KR_BT709 * rgb.v[0]
+                       + ALWAN_LUMA_KG_BT709 * rgb.v[1]
+                       + ALWAN_LUMA_KB_BT709 * rgb.v[2];
+
+    if (l_old < ALWAN_LITERAL(1e-10)) {
+        result.v[0] = ALWAN_ZERO;
+        result.v[1] = ALWAN_ZERO;
+        result.v[2] = ALWAN_ZERO;
+        return result;
+    }
+
+    alwan_scalar l_new = alwan_reinhard_extended_v(l_old, max_white);
+    alwan_scalar scale = l_new / l_old;
+
+    result.v[0] = rgb.v[0] * scale;
+    result.v[1] = rgb.v[1] * scale;
+    result.v[2] = rgb.v[2] * scale;
+    return result;
+}
+
+/* ================================================================
+ * Uchimura / Gran Turismo Tone Mapping
+ *
+ * Three-segment piecewise curve (toe + linear + shoulder) with
+ * smooth blending, designed for HDR display mapping in Gran Turismo
+ * Sport / GT7.
+ *
+ * Parameters:
+ *   P  = 1.0   Maximum display brightness (peak value)
+ *   a  = 1.0   Contrast (slope of linear section)
+ *   m  = 0.22  Linear section start
+ *   l  = 0.4   Linear section length
+ *   c  = 1.33  Black tightness (toe curvature)
+ *   b  = 0.0   Pedestal (black level lift)
+ *
+ * References:
+ *   Presentation: "HDR Theory and Practice" (Uchimura, CEDEC 2017)
+ *   SIGGRAPH:     https://www.polyphony.co.jp/publications/sa2018/
+ *   Desmos:       https://www.desmos.com/calculator/gslcdxvipg
+ *   GLSL impl:    https://github.com/dmnsgn/glsl-tone-map/blob/main/uchimura.glsl
+ *   Shadertoy:    https://www.shadertoy.com/view/Xstyzn
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_uchimura_v(alwan_scalar x,
+                                             alwan_scalar P,
+                                             alwan_scalar a,
+                                             alwan_scalar m,
+                                             alwan_scalar l,
+                                             alwan_scalar c,
+                                             alwan_scalar b) {
+    /* Derived constants */
+    alwan_scalar l0 = ((P - m) * l) / a;
+    alwan_scalar S0 = m + l0;
+    alwan_scalar S1 = m + a * l0;
+    alwan_scalar C2 = (a * P) / (P - S1);
+    alwan_scalar CP = -C2 / P;
+
+    /* Smoothstep weights: 3t^2 - 2t^3 */
+    alwan_scalar t_toe = alwan_saturate((x < m) ? (ALWAN_ONE - x / m) : ALWAN_ZERO);
+    alwan_scalar w0 = t_toe * t_toe * (ALWAN_LITERAL(3.0) - ALWAN_LITERAL(2.0) * t_toe);
+    alwan_scalar w2 = (x > S0) ? ALWAN_ONE : ALWAN_ZERO;
+    alwan_scalar w1 = ALWAN_ONE - w0 - w2;
+
+    /* Toe: power curve + pedestal */
+    alwan_scalar T = m * ALWAN_POW(x / m, c) + b;
+
+    /* Linear section */
+    alwan_scalar L = m + a * (x - m);
+
+    /* Shoulder: exponential asymptote to P */
+    alwan_scalar S = P - (P - S1) * ALWAN_EXP(CP * (x - S0));
+
+    return T * w0 + L * w1 + S * w2;
+}
+
+ALWAN_INLINE alwan_scalar alwan_uchimura_default_v(alwan_scalar x) {
+    return alwan_uchimura_v(x,
+        ALWAN_ONE,                  /* P = 1.0  */
+        ALWAN_ONE,                  /* a = 1.0  */
+        ALWAN_LITERAL(0.22),        /* m = 0.22 */
+        ALWAN_LITERAL(0.4),         /* l = 0.4  */
+        ALWAN_LITERAL(1.33),        /* c = 1.33 */
+        ALWAN_ZERO);                /* b = 0.0  */
+}
+
+/* ================================================================
+ * Lottes / AMD Cauldron Tone Mapping
+ *
+ * Parametric rational curve: pow(x,a) / (pow(x,a*d) * b + c)
+ * where b and c are derived from the constraint that the curve
+ * passes through (midIn, midOut) and approaches 1.0 at hdrMax.
+ *
+ * Applied to the peak channel to preserve hue, with optional
+ * desaturation/crosstalk for highlight rolloff.
+ *
+ * References:
+ *   GDC 2016:  https://gpuopen.com/wp-content/uploads/2016/03/GdcVdrLottes.pdf
+ *   Follow-up: https://gpuopen.com/learn/vdr-follow-up-tonemapping-for-hdr-signals/
+ *   Cauldron:  https://github.com/GPUOpen-LibrariesAndSDKs/Cauldron
+ *   GLSL impl: https://github.com/dmnsgn/glsl-tone-map/blob/main/lottes.glsl
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_lottes_curve_v(alwan_scalar x,
+                                                 alwan_scalar a,
+                                                 alwan_scalar d,
+                                                 alwan_scalar b,
+                                                 alwan_scalar c) {
+    alwan_scalar xp = ALWAN_POW(x, a);
+    return xp / (ALWAN_POW(x, a * d) * b + c);
+}
+
+ALWAN_INLINE alwan_vec3 alwan_lottes_v(alwan_vec3 rgb,
+                                         alwan_scalar contrast,
+                                         alwan_scalar shoulder,
+                                         alwan_scalar hdr_max,
+                                         alwan_scalar mid_in,
+                                         alwan_scalar mid_out) {
+    alwan_vec3 result;
+
+    /* Precompute b and c from constraints */
+    alwan_scalar pow_hdr_a   = ALWAN_POW(hdr_max, contrast);
+    alwan_scalar pow_hdr_ad  = ALWAN_POW(hdr_max, contrast * shoulder);
+    alwan_scalar pow_mid_a   = ALWAN_POW(mid_in,  contrast);
+    alwan_scalar pow_mid_ad  = ALWAN_POW(mid_in,  contrast * shoulder);
+
+    alwan_scalar b = (-pow_mid_a + pow_hdr_a * mid_out)
+                   / ((pow_hdr_ad - pow_mid_ad) * mid_out);
+    alwan_scalar c = (pow_hdr_ad * pow_mid_a - pow_hdr_a * pow_mid_ad * mid_out)
+                   / ((pow_hdr_ad - pow_mid_ad) * mid_out);
+
+    /* Apply curve to peak channel, scale others proportionally */
+    alwan_scalar peak = alwan_max3(rgb.v[0], rgb.v[1], rgb.v[2]);
+
+    if (peak < ALWAN_LITERAL(1e-10)) {
+        result.v[0] = ALWAN_ZERO;
+        result.v[1] = ALWAN_ZERO;
+        result.v[2] = ALWAN_ZERO;
+        return result;
+    }
+
+    alwan_scalar new_peak = alwan_lottes_curve_v(peak, contrast, shoulder, b, c);
+    alwan_scalar scale = new_peak / peak;
+
+    result.v[0] = rgb.v[0] * scale;
+    result.v[1] = rgb.v[1] * scale;
+    result.v[2] = rgb.v[2] * scale;
+    return result;
+}
+
+ALWAN_INLINE alwan_vec3 alwan_lottes_default_v(alwan_vec3 rgb) {
+    return alwan_lottes_v(rgb,
+        ALWAN_LITERAL(1.6),         /* contrast  */
+        ALWAN_LITERAL(0.977),       /* shoulder  */
+        ALWAN_LITERAL(8.0),         /* hdr_max   */
+        ALWAN_LITERAL(0.18),        /* mid_in    */
+        ALWAN_LITERAL(0.267));      /* mid_out   */
+}
+
+/* ================================================================
+ * "Somewhat Boring Display Transform" (Stachowiak, 2023)
+ *
+ * Analytical tone mapper by Tomasz Stachowiak (h3r2tic), designed
+ * as a practical replacement for per-channel Reinhard. Works in
+ * BT.709 YCbCr space: compresses luminance with 1-exp(-v), then
+ * selectively desaturates bright chromatic content to avoid hue
+ * shifts from clipping.
+ *
+ * This is the analytical companion to the LUT-based Tony McMapface.
+ * Used by the Bevy game engine as its default tone mapper.
+ *
+ * References:
+ *   Tony McMapface repo: https://github.com/h3r2tic/tony-mc-mapface
+ *   Bevy engine impl:    https://github.com/bevyengine/bevy (tonemapping_shared.wgsl)
+ *   Alex Tardif review:  https://alextardif.com/Tonemapping.html
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_tony_curve_v(alwan_scalar v) {
+    return ALWAN_ONE - ALWAN_EXP(-v);
+}
+
+ALWAN_INLINE alwan_vec3 alwan_tony_mcmapface_v(alwan_vec3 col) {
+    alwan_vec3 result;
+
+    /* BT.709 luma */
+    alwan_scalar luma = ALWAN_LUMA_KR_BT709 * col.v[0]
+                      + ALWAN_LUMA_KG_BT709 * col.v[1]
+                      + ALWAN_LUMA_KB_BT709 * col.v[2];
+
+    /* BT.709 Cb, Cr (simplified, not full-range) */
+    alwan_scalar cb = col.v[2] - luma;
+    alwan_scalar cr = col.v[0] - luma;
+
+    /* Chroma magnitude drives desaturation */
+    alwan_scalar chroma_len = ALWAN_SQRT(cb * cb + cr * cr);
+    alwan_scalar bt = alwan_tony_curve_v(chroma_len * ALWAN_LITERAL(2.4));
+    alwan_scalar desat = alwan_max(
+        (bt - ALWAN_LITERAL(0.7)) * ALWAN_LITERAL(0.8), ALWAN_ZERO);
+    desat = desat * desat;
+
+    /* Desaturate toward luma */
+    alwan_scalar desat_r = col.v[0] + (luma - col.v[0]) * desat;
+    alwan_scalar desat_g = col.v[1] + (luma - col.v[1]) * desat;
+    alwan_scalar desat_b = col.v[2] + (luma - col.v[2]) * desat;
+
+    /* Tone-map luminance */
+    alwan_scalar tm_luma = alwan_tony_curve_v(luma);
+
+    /* Luminance-preserving scale of original color */
+    alwan_scalar orig_luma = ALWAN_LUMA_KR_BT709 * col.v[0]
+                           + ALWAN_LUMA_KG_BT709 * col.v[1]
+                           + ALWAN_LUMA_KB_BT709 * col.v[2];
+    alwan_scalar luma_scale = (orig_luma > ALWAN_LITERAL(1e-5))
+                            ? (tm_luma / orig_luma) : ALWAN_ZERO;
+
+    alwan_scalar tm0_r = col.v[0] * luma_scale;
+    alwan_scalar tm0_g = col.v[1] * luma_scale;
+    alwan_scalar tm0_b = col.v[2] * luma_scale;
+
+    /* Per-channel tone map of desaturated color */
+    alwan_scalar tm1_r = alwan_tony_curve_v(desat_r);
+    alwan_scalar tm1_g = alwan_tony_curve_v(desat_g);
+    alwan_scalar tm1_b = alwan_tony_curve_v(desat_b);
+
+    /* Blend between luminance-preserving and per-channel based on bt */
+    alwan_scalar bt2 = bt * bt;
+    alwan_scalar final_mult = ALWAN_LITERAL(0.97);
+
+    result.v[0] = (tm0_r + (tm1_r - tm0_r) * bt2) * final_mult;
+    result.v[1] = (tm0_g + (tm1_g - tm0_g) * bt2) * final_mult;
+    result.v[2] = (tm0_b + (tm1_b - tm0_b) * bt2) * final_mult;
+
+    return result;
+}
+
 #endif /* ALWAN_VIEW_CORE_H */

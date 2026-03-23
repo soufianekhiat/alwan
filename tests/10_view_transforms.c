@@ -220,6 +220,186 @@ static int test_khronos_pbr_neutral_basic(void) {
     TEST_PASS("Khronos PBR Neutral basic tests");
 }
 
+static int test_reinhard_ext_basic(void) {
+    /* Test Reinhard Extended with typical scene-referred values */
+    alwan_scalar test_inputs[][3] = {
+        /* Black */
+        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
+        /* Middle gray */
+        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
+        /* Bright white */
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
+        /* Over-bright */
+        {ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0)},
+        /* Saturated red */
+        {ALWAN_LITERAL(2.0), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)}
+    };
+    size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
+
+    for (size_t i = 0; i < num_tests; i++) {
+        alwan_scalar output[3];
+        int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_REINHARD_EXT,
+                                                test_inputs[i], 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
+        TEST_ASSERT(status == ALWAN_OK, "Reinhard Extended transform failed");
+        TEST_ASSERT(is_in_range_01(output), "Reinhard Extended output not in [0,1] range");
+
+        /* Black input should produce black output */
+        if (i == 0) {
+            TEST_ASSERT(output[0] < ALWAN_LITERAL(0.001) &&
+                       output[1] < ALWAN_LITERAL(0.001) &&
+                       output[2] < ALWAN_LITERAL(0.001),
+                       "Black input should produce black output");
+        }
+    }
+
+    TEST_PASS("Reinhard Extended basic tests");
+}
+
+static int test_uchimura_basic(void) {
+    /* Test Uchimura / Gran Turismo tone mapper */
+    alwan_scalar test_inputs[][3] = {
+        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
+        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
+        {ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0)},
+        {ALWAN_LITERAL(10.0), ALWAN_LITERAL(10.0), ALWAN_LITERAL(10.0)}
+    };
+    size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
+
+    for (size_t i = 0; i < num_tests; i++) {
+        alwan_scalar output[3];
+        int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_UCHIMURA,
+                                                test_inputs[i], 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
+        TEST_ASSERT(status == ALWAN_OK, "Uchimura transform failed");
+        TEST_ASSERT(is_in_range_01(output), "Uchimura output not in [0,1] range");
+
+        /* Black input should produce near-black output (pedestal b=0) */
+        if (i == 0) {
+            TEST_ASSERT(output[0] < ALWAN_LITERAL(0.01), "Uchimura: black should map near zero");
+        }
+
+        /* Output should approach but not exceed P=1.0 */
+        if (i == 4) {
+            TEST_ASSERT(output[0] > ALWAN_LITERAL(0.9), "Uchimura: bright HDR should approach 1.0");
+        }
+    }
+
+    /* Test that default parameters produce a smooth curve */
+    alwan_scalar prev = ALWAN_LITERAL(-1.0);
+    for (int k = 0; k <= 100; k++) {
+        alwan_scalar x = ALWAN_LITERAL(0.05) * (alwan_scalar)k;
+        alwan_scalar input[3] = {x, x, x};
+        alwan_scalar output[3];
+        alwan_view_transform_apply(output, NULL, ALWAN_VIEW_UCHIMURA,
+                                   input, 1,
+                                   3 * sizeof(alwan_scalar),
+                                   3 * sizeof(alwan_scalar));
+        TEST_ASSERT(output[0] >= prev, "Uchimura: curve should be monotonic");
+        prev = output[0];
+    }
+
+    TEST_PASS("Uchimura / Gran Turismo basic tests");
+}
+
+static int test_lottes_basic(void) {
+    /* Test Lottes / AMD Cauldron tone mapper */
+    alwan_scalar test_inputs[][3] = {
+        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
+        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
+        {ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0)},
+        /* Saturated color: hue should be preserved (peak-channel mapping) */
+        {ALWAN_LITERAL(2.0), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1)}
+    };
+    size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
+
+    for (size_t i = 0; i < num_tests; i++) {
+        alwan_scalar output[3];
+        int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_LOTTES,
+                                                test_inputs[i], 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
+        TEST_ASSERT(status == ALWAN_OK, "Lottes transform failed");
+        TEST_ASSERT(is_in_range_01(output), "Lottes output not in [0,1] range");
+    }
+
+    /* Verify mid-gray mapping: midIn=0.18 should map to approximately midOut=0.267 */
+    {
+        alwan_scalar mid_in[3] = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+        alwan_scalar mid_out[3];
+        alwan_view_transform_apply(mid_out, NULL, ALWAN_VIEW_LOTTES,
+                                   mid_in, 1,
+                                   3 * sizeof(alwan_scalar),
+                                   3 * sizeof(alwan_scalar));
+        /* Should be near 0.267 (the configured midOut) */
+        TEST_ASSERT(ALWAN_ABS(mid_out[0] - ALWAN_LITERAL(0.267)) < ALWAN_LITERAL(0.02),
+                    "Lottes: 0.18 should map near 0.267");
+    }
+
+    /* Hue preservation: R channel should remain dominant */
+    {
+        alwan_scalar sat_in[3] = {ALWAN_LITERAL(2.0), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1)};
+        alwan_scalar sat_out[3];
+        alwan_view_transform_apply(sat_out, NULL, ALWAN_VIEW_LOTTES,
+                                   sat_in, 1,
+                                   3 * sizeof(alwan_scalar),
+                                   3 * sizeof(alwan_scalar));
+        TEST_ASSERT(sat_out[0] > sat_out[1] && sat_out[1] > sat_out[2],
+                    "Lottes: hue ordering should be preserved");
+    }
+
+    TEST_PASS("Lottes / AMD Cauldron basic tests");
+}
+
+static int test_tony_mcmapface_basic(void) {
+    /* Test Tony McMapface (Somewhat Boring Display Transform) */
+    alwan_scalar test_inputs[][3] = {
+        {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
+        {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
+        {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
+        {ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(4.0)},
+        /* Bright saturated: should desaturate gracefully */
+        {ALWAN_LITERAL(5.0), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)}
+    };
+    size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
+
+    for (size_t i = 0; i < num_tests; i++) {
+        alwan_scalar output[3];
+        int status = alwan_view_transform_apply(output, NULL, ALWAN_VIEW_TONY_MCMAPFACE,
+                                                test_inputs[i], 1,
+                                                3 * sizeof(alwan_scalar),
+                                                3 * sizeof(alwan_scalar));
+        TEST_ASSERT(status == ALWAN_OK, "Tony McMapface transform failed");
+        TEST_ASSERT(is_in_range_01(output), "Tony McMapface output not in [0,1] range");
+
+        /* Black input should produce black output */
+        if (i == 0) {
+            TEST_ASSERT(output[0] < ALWAN_LITERAL(0.001) &&
+                       output[1] < ALWAN_LITERAL(0.001) &&
+                       output[2] < ALWAN_LITERAL(0.001),
+                       "Tony McMapface: black should map to black");
+        }
+    }
+
+    /* Bright saturated red: R should still dominate (hue-preserving) */
+    {
+        alwan_scalar bright_red[3] = {ALWAN_LITERAL(3.0), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)};
+        alwan_scalar out[3];
+        alwan_view_transform_apply(out, NULL, ALWAN_VIEW_TONY_MCMAPFACE,
+                                   bright_red, 1,
+                                   3 * sizeof(alwan_scalar),
+                                   3 * sizeof(alwan_scalar));
+        TEST_ASSERT(out[0] > out[1] && out[0] > out[2],
+                    "Tony McMapface: red hue should be preserved");
+    }
+
+    TEST_PASS("Tony McMapface basic tests");
+}
+
 static int test_view_transform_monotonic(void) {
     /* Test that view transforms are monotonic: brighter input -> brighter output */
     alwan_scalar inputs[][3] = {
@@ -228,8 +408,15 @@ static int test_view_transform_monotonic(void) {
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)}
     };
 
-    alwan_view_transform transforms[] = {ALWAN_VIEW_ACES_REC709, ALWAN_VIEW_AGX, ALWAN_VIEW_AGX_PUNCHY, ALWAN_VIEW_KHRONOS_PBR_NEUTRAL};
-    char const *transform_names[] = {"aces_rec709", "agx", "agx_punchy", "khronos_pbr_neutral"};
+    alwan_view_transform transforms[] = {
+        ALWAN_VIEW_ACES_REC709, ALWAN_VIEW_AGX, ALWAN_VIEW_AGX_PUNCHY,
+        ALWAN_VIEW_KHRONOS_PBR_NEUTRAL, ALWAN_VIEW_REINHARD_EXT,
+        ALWAN_VIEW_UCHIMURA, ALWAN_VIEW_LOTTES, ALWAN_VIEW_TONY_MCMAPFACE
+    };
+    char const *transform_names[] = {
+        "aces_rec709", "agx", "agx_punchy", "khronos_pbr_neutral",
+        "reinhard_ext", "uchimura", "lottes", "tony_mcmapface"
+    };
     size_t const num_transforms = sizeof(transforms) / sizeof(transforms[0]);
 
     for (size_t t = 0; t < num_transforms; t++) {
@@ -324,6 +511,10 @@ int test_10_view_transforms_main(void) {
     failures += test_agx_basic();
     failures += test_agx_punchy();
     failures += test_khronos_pbr_neutral_basic();
+    failures += test_reinhard_ext_basic();
+    failures += test_uchimura_basic();
+    failures += test_lottes_basic();
+    failures += test_tony_mcmapface_basic();
     failures += test_view_transform_monotonic();
     failures += test_view_transform_preserves_hue();
     failures += test_invalid_view_transform();

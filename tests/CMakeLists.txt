@@ -76,6 +76,7 @@ add_executable(
   72_relative_luminance.c
   73_hsp_hsy.c
   74_hsplog.c
+  75_image_convert.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)
