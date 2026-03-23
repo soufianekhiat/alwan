@@ -411,11 +411,13 @@ static int test_view_transform_monotonic(void) {
     alwan_view_transform transforms[] = {
         ALWAN_VIEW_ACES_REC709, ALWAN_VIEW_AGX, ALWAN_VIEW_AGX_PUNCHY,
         ALWAN_VIEW_KHRONOS_PBR_NEUTRAL, ALWAN_VIEW_REINHARD_EXT,
-        ALWAN_VIEW_UCHIMURA, ALWAN_VIEW_LOTTES, ALWAN_VIEW_TONY_MCMAPFACE
+        ALWAN_VIEW_UCHIMURA, ALWAN_VIEW_LOTTES, ALWAN_VIEW_TONY_MCMAPFACE,
+        ALWAN_VIEW_REINHARD_CALIBRATED, ALWAN_VIEW_EXPOSURE
     };
     char const *transform_names[] = {
         "aces_rec709", "agx", "agx_punchy", "khronos_pbr_neutral",
-        "reinhard_ext", "uchimura", "lottes", "tony_mcmapface"
+        "reinhard_ext", "uchimura", "lottes", "tony_mcmapface",
+        "reinhard_calibrated", "exposure"
     };
     size_t const num_transforms = sizeof(transforms) / sizeof(transforms[0]);
 

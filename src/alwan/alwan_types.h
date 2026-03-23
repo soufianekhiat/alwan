@@ -297,4 +297,22 @@ ALWAN_TYPE_DEF struct {
     alwan_scalar H, L, C;
 } alwan_hlc;
 
+/* ST.2086 Mastering Display Color Volume Metadata
+ * Reference: SMPTE ST 2086:2018
+ * Contains mastering display primaries, white point, and luminance range */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar display_primaries_xy[6]; /* rx, ry, gx, gy, bx, by */
+    alwan_scalar white_point_xy[2];       /* wx, wy */
+    alwan_scalar max_luminance;           /* cd/m2 (nits) */
+    alwan_scalar min_luminance;           /* cd/m2 (nits) */
+} alwan_st2086_metadata;
+
+/* Content Light Level Info (CTA-861-H / ST.2086 companion)
+ * MaxCLL:  maximum content light level (peak pixel luminance, cd/m2)
+ * MaxFALL: maximum frame-average light level (cd/m2) */
+ALWAN_TYPE_DEF struct {
+    alwan_scalar max_cll;
+    alwan_scalar max_fall;
+} alwan_content_light_level;
+
 #endif /* ALWAN_TYPES_H */

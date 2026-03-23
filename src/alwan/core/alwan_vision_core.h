@@ -242,4 +242,107 @@ ALWAN_INLINE alwan_scalar alwan_csf_simple_v(
     return (M_opt * E) / (noise_total + ALWAN_LITERAL(1e-10)) * ALWAN_LITERAL(10.0);
 }
 
+/* ================================================================
+ * WCAG 2.x Contrast Ratio
+ *
+ * Reference: W3C WCAG 2.1, "1.4.3 Contrast (Minimum)"
+ *   https://www.w3.org/TR/WCAG21/#contrast-minimum
+ *
+ * CR = (L_lighter + 0.05) / (L_darker + 0.05)
+ * Input: relative luminances (0..1) of two colors.
+ * The 0.05 offset accounts for ambient light / viewing flare.
+ * Returns contrast ratio in range [1, 21].
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_wcag_contrast_ratio_v(alwan_scalar Y1,
+                                                       alwan_scalar Y2) {
+    alwan_scalar L1 = ALWAN_SELECT(Y1 > Y2, Y1, Y2);
+    alwan_scalar L2 = ALWAN_SELECT(Y1 > Y2, Y2, Y1);
+    return (L1 + ALWAN_LITERAL(0.05)) / (L2 + ALWAN_LITERAL(0.05));
+}
+
+/* ================================================================
+ * APCA (Advanced Perceptual Contrast Algorithm) — WCAG 3.0 Draft
+ *
+ * Reference: Myndex / Andrew Somers, APCA-W3 v0.0.98G-4g
+ *   https://github.com/Myndex/SAPC-APCA
+ *   https://github.com/Myndex/apca-w3
+ *   https://www.w3.org/WAI/GL/task-forces/silver/wiki/Visual_Contrast_of_Text_Subgroup
+ *
+ * SAPC (S-LUV Advanced Perceptual Contrast) is the predecessor name;
+ * APCA is the current W3C reference. Same algorithm.
+ *
+ * Input: sRGB-encoded text and background colors (0..1 per channel).
+ * Output: Lc contrast value. Positive = dark text on light bg,
+ *         negative = light text on dark bg. Magnitude is the
+ *         perceptual contrast (typical range ±0..±108).
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_apca_contrast_v(alwan_rgb srgb_text,
+                                                  alwan_rgb srgb_bg) {
+    /* APCA uses simple power-2.4 linearization (NOT piecewise sRGB EOTF) */
+    alwan_scalar const mainTRC = ALWAN_LITERAL(2.4);
+
+    alwan_scalar Rtxt = ALWAN_POW(srgb_text.r, mainTRC);
+    alwan_scalar Gtxt = ALWAN_POW(srgb_text.g, mainTRC);
+    alwan_scalar Btxt = ALWAN_POW(srgb_text.b, mainTRC);
+
+    alwan_scalar Rbg = ALWAN_POW(srgb_bg.r, mainTRC);
+    alwan_scalar Gbg = ALWAN_POW(srgb_bg.g, mainTRC);
+    alwan_scalar Bbg = ALWAN_POW(srgb_bg.b, mainTRC);
+
+    /* sRGB luminance coefficients (IEC 61966-2-1) */
+    alwan_scalar const Rco = ALWAN_LITERAL(0.2126729);
+    alwan_scalar const Gco = ALWAN_LITERAL(0.7151522);
+    alwan_scalar const Bco = ALWAN_LITERAL(0.0721750);
+
+    alwan_scalar Ytxt = Rco * Rtxt + Gco * Gtxt + Bco * Btxt;
+    alwan_scalar Ybg  = Rco * Rbg  + Gco * Gbg  + Bco * Bbg;
+
+    /* Soft clamp near black (flare/ambient compensation).
+     * When Y < blkThrs, add (blkThrs - Y)^blkClmp as ambient flare model. */
+    alwan_scalar const blkThrs = ALWAN_LITERAL(0.022);
+    alwan_scalar const blkClmp = ALWAN_LITERAL(1.414);
+
+    /* Guard: only compute pow when Y < blkThrs (argument is positive) */
+    alwan_scalar diffTxt = ALWAN_SELECT(Ytxt < blkThrs, blkThrs - Ytxt, ALWAN_ZERO);
+    alwan_scalar diffBg  = ALWAN_SELECT(Ybg  < blkThrs, blkThrs - Ybg,  ALWAN_ZERO);
+    Ytxt = ALWAN_SELECT(Ytxt < blkThrs, Ytxt + ALWAN_POW(diffTxt, blkClmp), Ytxt);
+    Ybg  = ALWAN_SELECT(Ybg  < blkThrs, Ybg  + ALWAN_POW(diffBg,  blkClmp), Ybg);
+
+    /* Minimum luminance difference check */
+    alwan_scalar const deltaYmin = ALWAN_LITERAL(0.0005);
+    alwan_scalar absDiff = Ybg - Ytxt;
+    absDiff = ALWAN_SELECT(absDiff < ALWAN_ZERO, -absDiff, absDiff);
+
+    /* Polarity-dependent exponents and output scaling */
+    alwan_scalar const normBG  = ALWAN_LITERAL(0.56);
+    alwan_scalar const normTXT = ALWAN_LITERAL(0.57);
+    alwan_scalar const revBG   = ALWAN_LITERAL(0.65);
+    alwan_scalar const revTXT  = ALWAN_LITERAL(0.62);
+    alwan_scalar const scaleBO = ALWAN_LITERAL(1.14);
+    alwan_scalar const loClip  = ALWAN_LITERAL(0.1);
+    alwan_scalar const loBoWoffset = ALWAN_LITERAL(0.027);
+
+    /* Determine polarity: Ybg > Ytxt = normal (dark text on light) */
+    alwan_scalar Sapc_normal = (ALWAN_POW(Ybg, normBG) - ALWAN_POW(Ytxt, normTXT)) * scaleBO;
+    alwan_scalar Sapc_reverse = (ALWAN_POW(Ybg, revBG) - ALWAN_POW(Ytxt, revTXT)) * scaleBO;
+
+    alwan_scalar SAPC = ALWAN_SELECT(Ybg > Ytxt, Sapc_normal, Sapc_reverse);
+
+    /* Low-contrast clipping and offset */
+    alwan_scalar abs_SAPC = ALWAN_SELECT(SAPC < ALWAN_ZERO, -SAPC, SAPC);
+
+    /* Apply offset and clip */
+    alwan_scalar Lc_pos = SAPC - loBoWoffset;
+    alwan_scalar Lc_neg = SAPC + loBoWoffset;
+    alwan_scalar Lc = ALWAN_SELECT(SAPC > ALWAN_ZERO, Lc_pos, Lc_neg);
+
+    /* Zero out very low contrasts */
+    Lc = ALWAN_SELECT(abs_SAPC < loClip, ALWAN_ZERO, Lc);
+
+    /* Scale to Lc percentage (× 100) */
+    return Lc * ALWAN_LITERAL(100.0);
+}
+
 #endif /* ALWAN_VISION_CORE_H */
