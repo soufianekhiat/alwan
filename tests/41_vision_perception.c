@@ -266,7 +266,7 @@ static int test_csf_basic(void) {
     TEST_ASSERT(csf_peak >= csf_low, "CSF peak should be >= low freq");
     TEST_ASSERT(csf_peak >= csf_high, "CSF peak should be >= high freq");
 
-    printf("  CSF at 100 cd/m²:\n");
+    printf("  CSF at 100 cd/m^2:\n");
     printf("    1.0 cpd: %.2f\n", csf_low);
     printf("    4.0 cpd: %.2f (near peak)\n", csf_peak);
     printf("    30.0 cpd: %.2f\n", csf_high);
@@ -285,8 +285,8 @@ static int test_csf_luminance_dependence(void) {
     TEST_ASSERT(csf_bright > csf_dim, "CSF should increase with luminance");
 
     printf("  CSF at 4.0 cpd:\n");
-    printf("    1 cd/m²:    %.2f\n", csf_dim);
-    printf("    1000 cd/m²: %.2f\n", csf_bright);
+    printf("    1 cd/m^2:    %.2f\n", csf_dim);
+    printf("    1000 cd/m^2: %.2f\n", csf_bright);
 
     TEST_PASS("CSF luminance dependence");
 }

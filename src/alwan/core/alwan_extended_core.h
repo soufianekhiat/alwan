@@ -15,6 +15,7 @@
 #include "../alwan_types.h"
 #include "alwan_math_core.h"
 #include "alwan_core.h"
+#include "alwan_gamut_core.h"
 
 /* ================================================================
  * Matrix Data (static const, CSV-embedded)
@@ -1037,32 +1038,20 @@ ALWAN_INLINE alwan_hpluv alwan_srgb_to_hpluv_v(alwan_rgb srgb) {
  *           misc/ok_color.h (MIT, Bjorn Ottosson 2021)
  * ================================================================ */
 
-/* Oklab internal: linear sRGB -> Oklab */
+/* Oklab internal: linear sRGB -> Oklab (uses CSS matrices from alwan_gamut_core.h) */
 ALWAN_INLINE void alwan_ok_srgb_to_lab(alwan_scalar *L, alwan_scalar *a, alwan_scalar *b,
                                          alwan_scalar r, alwan_scalar g, alwan_scalar bl_in) {
-    alwan_scalar l_ = ALWAN_LITERAL(0.4122214708) * r + ALWAN_LITERAL(0.5363325363) * g + ALWAN_LITERAL(0.0514459929) * bl_in;
-    alwan_scalar m_ = ALWAN_LITERAL(0.2119034982) * r + ALWAN_LITERAL(0.6806995451) * g + ALWAN_LITERAL(0.1073969566) * bl_in;
-    alwan_scalar s_ = ALWAN_LITERAL(0.0883024619) * r + ALWAN_LITERAL(0.2817188376) * g + ALWAN_LITERAL(0.6299787005) * bl_in;
-    alwan_scalar lp = ALWAN_CBRT(l_);
-    alwan_scalar mp = ALWAN_CBRT(m_);
-    alwan_scalar sp = ALWAN_CBRT(s_);
-    *L = ALWAN_LITERAL(0.2104542553) * lp + ALWAN_LITERAL(0.7936177850) * mp - ALWAN_LITERAL(0.0040720468) * sp;
-    *a = ALWAN_LITERAL(1.9779984951) * lp - ALWAN_LITERAL(2.4285922050) * mp + ALWAN_LITERAL(0.4505937099) * sp;
-    *b = ALWAN_LITERAL(0.0259040371) * lp + ALWAN_LITERAL(0.7827717662) * mp - ALWAN_LITERAL(0.8086757660) * sp;
+    alwan_vec3 rgb = {{r, g, bl_in}};
+    alwan_vec3 oklab = gamut_linear_srgb_to_oklab_v(rgb);
+    *L = oklab.v[0]; *a = oklab.v[1]; *b = oklab.v[2];
 }
 
-/* Oklab internal: Oklab -> linear sRGB */
+/* Oklab internal: Oklab -> linear sRGB (uses CSS matrices from alwan_gamut_core.h) */
 ALWAN_INLINE void alwan_ok_lab_to_srgb(alwan_scalar *r, alwan_scalar *g, alwan_scalar *b,
                                          alwan_scalar L, alwan_scalar a, alwan_scalar bl_in) {
-    alwan_scalar lp = L + ALWAN_LITERAL(0.3963377774) * a + ALWAN_LITERAL(0.2158037573) * bl_in;
-    alwan_scalar mp = L - ALWAN_LITERAL(0.1055613458) * a - ALWAN_LITERAL(0.0638541728) * bl_in;
-    alwan_scalar sp = L - ALWAN_LITERAL(0.0894841775) * a - ALWAN_LITERAL(1.2914855480) * bl_in;
-    alwan_scalar l_ = lp * lp * lp;
-    alwan_scalar m_ = mp * mp * mp;
-    alwan_scalar s_ = sp * sp * sp;
-    *r =  ALWAN_LITERAL(4.0767416621) * l_ - ALWAN_LITERAL(3.3077115913) * m_ + ALWAN_LITERAL(0.2309699292) * s_;
-    *g = -ALWAN_LITERAL(1.2684380046) * l_ + ALWAN_LITERAL(2.6097574011) * m_ - ALWAN_LITERAL(0.3413193965) * s_;
-    *b = -ALWAN_LITERAL(0.0041960863) * l_ - ALWAN_LITERAL(0.7034186147) * m_ + ALWAN_LITERAL(1.7076147010) * s_;
+    alwan_vec3 oklab = {{L, a, bl_in}};
+    alwan_vec3 rgb = gamut_oklab_to_linear_srgb_v(oklab);
+    *r = rgb.v[0]; *g = rgb.v[1]; *b = rgb.v[2];
 }
 
 /* Toe function: softens the low-lightness region */
@@ -1091,20 +1080,20 @@ ALWAN_INLINE alwan_scalar alwan_ok_compute_max_saturation(alwan_scalar a_, alwan
         k0 = ALWAN_LITERAL( 1.19086277); k1 = ALWAN_LITERAL( 1.76576728);
         k2 = ALWAN_LITERAL( 0.59662641); k3 = ALWAN_LITERAL( 0.75515197);
         k4 = ALWAN_LITERAL( 0.56771245);
-        wl = ALWAN_LITERAL( 4.0767416621); wm = ALWAN_LITERAL(-3.3077115913);
-        ws = ALWAN_LITERAL( 0.2309699292);
+        wl = CSS_LMS_TO_SRGB.m[0]; wm = CSS_LMS_TO_SRGB.m[1];
+        ws = CSS_LMS_TO_SRGB.m[2];
     } else if (ALWAN_LITERAL(1.81444104) * a_ - ALWAN_LITERAL(1.19445276) * b_ > ALWAN_ONE) {
         k0 = ALWAN_LITERAL( 0.73956515); k1 = ALWAN_LITERAL(-0.45954404);
         k2 = ALWAN_LITERAL( 0.08285427); k3 = ALWAN_LITERAL( 0.12541070);
         k4 = ALWAN_LITERAL( 0.14503204);
-        wl = ALWAN_LITERAL(-1.2684380046); wm = ALWAN_LITERAL( 2.6097574011);
-        ws = ALWAN_LITERAL(-0.3413193965);
+        wl = CSS_LMS_TO_SRGB.m[3]; wm = CSS_LMS_TO_SRGB.m[4];
+        ws = CSS_LMS_TO_SRGB.m[5];
     } else {
         k0 = ALWAN_LITERAL( 1.35733652); k1 = ALWAN_LITERAL(-0.00915799);
         k2 = ALWAN_LITERAL(-1.15130210); k3 = ALWAN_LITERAL(-0.50559606);
         k4 = ALWAN_LITERAL( 0.00692167);
-        wl = ALWAN_LITERAL(-0.0041960863); wm = ALWAN_LITERAL(-0.7034186147);
-        ws = ALWAN_LITERAL( 1.7076147010);
+        wl = CSS_LMS_TO_SRGB.m[6]; wm = CSS_LMS_TO_SRGB.m[7];
+        ws = CSS_LMS_TO_SRGB.m[8];
     }
 
     /* Initial polynomial approximation */
@@ -1112,9 +1101,9 @@ ALWAN_INLINE alwan_scalar alwan_ok_compute_max_saturation(alwan_scalar a_, alwan
 
     /* One step of Halley's method */
     {
-        alwan_scalar k_l = ALWAN_LITERAL( 0.3963377774) * a_ + ALWAN_LITERAL(0.2158037573) * b_;
-        alwan_scalar k_m = ALWAN_LITERAL(-0.1055613458) * a_ - ALWAN_LITERAL(0.0638541728) * b_;
-        alwan_scalar k_s = ALWAN_LITERAL(-0.0894841775) * a_ - ALWAN_LITERAL(1.2914855480) * b_;
+        alwan_scalar k_l = CSS_LAB_TO_LMS.m[1] * a_ + CSS_LAB_TO_LMS.m[2] * b_;
+        alwan_scalar k_m = CSS_LAB_TO_LMS.m[4] * a_ + CSS_LAB_TO_LMS.m[5] * b_;
+        alwan_scalar k_s = CSS_LAB_TO_LMS.m[7] * a_ + CSS_LAB_TO_LMS.m[8] * b_;
 
         alwan_scalar l_ = ALWAN_ONE + S * k_l;
         alwan_scalar m_ = ALWAN_ONE + S * k_m;

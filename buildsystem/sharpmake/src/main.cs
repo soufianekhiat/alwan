@@ -3,6 +3,7 @@ using Sharpmake;
 [module: Sharpmake.Include("common.cs")]
 [module: Sharpmake.Include("AlwanLib.cs")]
 [module: Sharpmake.Include("AlwanTests.cs")]
+[module: Sharpmake.Include("AlwanBench.cs")]
 
 namespace Alwan
 {
@@ -39,6 +40,8 @@ namespace Alwan
             // Add unified test project
             conf.AddProject<AlwanTestsProject>(target);
 
+            // Add benchmark project
+            conf.AddProject<AlwanBenchProject>(target);
         }
 
         [Main]

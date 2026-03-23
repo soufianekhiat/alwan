@@ -60,9 +60,9 @@ static int test_atd95_forward(void) {
     }
 
     if (failed == 0) {
-        printf("\n✓ All %zu ATD95 forward transform tests passed!\n", num_test_cases);
+        printf("\n[OK] All %zu ATD95 forward transform tests passed!\n", num_test_cases);
     } else {
-        printf("\n✗ %d/%zu ATD95 forward transform tests failed\n",
+        printf("\n[FAIL] %d/%zu ATD95 forward transform tests failed\n",
                failed, num_test_cases);
     }
 
@@ -121,9 +121,9 @@ static int test_atd95_adaptation(void) {
     }
 
     if (failed == 0) {
-        printf("\n✓ All adaptation parameter tests passed!\n");
+        printf("\n[OK] All adaptation parameter tests passed!\n");
     } else {
-        printf("\n✗ %d adaptation parameter tests failed\n", failed);
+        printf("\n[FAIL] %d adaptation parameter tests failed\n", failed);
     }
 
     return failed;

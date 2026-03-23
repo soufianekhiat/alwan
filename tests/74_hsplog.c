@@ -181,7 +181,8 @@ static int test_hsplog_map_consistency(void) {
     int status = alwan_rgb_to_hsplog_map_interleave(hsplog_map, rgb_buf, N, stride, stride);
     TEST_ASSERT(status == ALWAN_OK, "HSPLog map status");
 
-    alwan_scalar const tol = ALWAN_LITERAL(1e-10);
+    /* SIMD uses FMA and different op ordering vs scalar: float32 ~1e-7 diffs */
+    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
     for (size_t i = 0; i < N; i++) {
         alwan_rgb rgb = {rgb_buf[i * 3], rgb_buf[i * 3 + 1], rgb_buf[i * 3 + 2]};
         alwan_hsplog hsplog_pixel;

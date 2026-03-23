@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Test 06: Color difference (ΔE) metrics
+ * Test 06: Color difference (dE) metrics
  */
 
 #include "test_common.h"
@@ -15,7 +15,7 @@
  * ---------------------------------------------------------------- */
 
 static int test_delta_e_76(void) {
-    /* Load Lab test pairs and expected ΔE76 values */
+    /* Load Lab test pairs and expected dE76 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const lab1_data[] = {
@@ -40,14 +40,14 @@ static int test_delta_e_76(void) {
         alwan_scalar result = alwan_delta_e_76(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE*76 mismatch");
+        TEST_ASSERT(diff < tolerance, "dE*76 mismatch");
     }
 
-    TEST_PASS("ΔE*76");
+    TEST_PASS("dE*76");
 }
 
 static int test_delta_e_94(void) {
-    /* Load Lab test pairs and expected ΔE94 values */
+    /* Load Lab test pairs and expected dE94 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const lab1_data[] = {
@@ -72,14 +72,14 @@ static int test_delta_e_94(void) {
         alwan_scalar result = alwan_delta_e_94(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE*94 mismatch");
+        TEST_ASSERT(diff < tolerance, "dE*94 mismatch");
     }
 
-    TEST_PASS("ΔE*94");
+    TEST_PASS("dE*94");
 }
 
 static int test_delta_e_cmc(void) {
-    /* Load Lab test pairs and expected ΔE CMC values */
+    /* Load Lab test pairs and expected dE CMC values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const lab1_data[] = {
@@ -105,14 +105,14 @@ static int test_delta_e_cmc(void) {
         alwan_scalar result = alwan_delta_e_cmc(&lab1, &lab2, ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0));
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE CMC(2:1) mismatch");
+        TEST_ASSERT(diff < tolerance, "dE CMC(2:1) mismatch");
     }
 
-    TEST_PASS("ΔE CMC(2:1)");
+    TEST_PASS("dE CMC(2:1)");
 }
 
 static int test_delta_e_2000(void) {
-    /* Load Lab test pairs and expected ΔE2000 values */
+    /* Load Lab test pairs and expected dE2000 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const lab1_data[] = {
@@ -137,10 +137,10 @@ static int test_delta_e_2000(void) {
         alwan_scalar result = alwan_delta_e_2000(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < tolerance, "ΔE*00 mismatch");
+        TEST_ASSERT(diff < tolerance, "dE*00 mismatch");
     }
 
-    TEST_PASS("ΔE*00 (CIEDE2000)");
+    TEST_PASS("dE*00 (CIEDE2000)");
 }
 
 static int test_delta_e_ok(void) {
@@ -179,7 +179,7 @@ static int test_delta_e_ok(void) {
         TEST_ASSERT(result >= ALWAN_LITERAL(0.0), "deltaEOK non-negative");
     }
 
-    TEST_PASS("ΔE OK (Oklab Euclidean)");
+    TEST_PASS("dE OK (Oklab Euclidean)");
 }
 
 /* ----------------------------------------------------------------
@@ -196,7 +196,7 @@ int test_06_delta_e_main(void) {
     failures += test_delta_e_ok();
 
     if (failures == 0) {
-        printf("\n=== All ΔE metric tests passed ===\n");
+        printf("\n=== All dE metric tests passed ===\n");
         return 0;
     } else {
         printf("\n=== %d test(s) failed ===\n", failures);

@@ -101,15 +101,15 @@ static int test_llab_forward(void) {
                    result.Ch, Ch_expected, Ch_error);
             failed++;
         } else {
-            printf("  Test %zu: PASSED (L=%.2f, Ch=%.2f, h=%.1f°)\n",
+            printf("  Test %zu: PASSED (L=%.2f, Ch=%.2f, h=%.1f deg)\n",
                    i + 1, result.L, result.Ch, result.h);
         }
     }
 
     if (failed == 0) {
-        printf("\n✓ All %zu LLAB forward transform tests passed!\n", num_test_cases);
+        printf("\n[OK] All %zu LLAB forward transform tests passed!\n", num_test_cases);
     } else {
-        printf("\n✗ %d/%zu LLAB forward transform tests failed\n",
+        printf("\n[FAIL] %d/%zu LLAB forward transform tests failed\n",
                failed, num_test_cases);
     }
 
@@ -181,16 +181,16 @@ static int test_llab_viewing_conditions(void) {
     /* Verify that lightness increases from average to dim to dark
      * (due to higher F_S values) */
     if (corr_dark.L > corr_dim.L && corr_dim.L > corr_avg.L) {
-        printf("  ✓ Lightness increases with darker surrounds\n");
+        printf("  [OK] Lightness increases with darker surrounds\n");
     } else {
-        printf("  ✗ Lightness relationship incorrect\n");
+        printf("  [FAIL] Lightness relationship incorrect\n");
         failed++;
     }
 
     if (failed == 0) {
-        printf("\n✓ All viewing conditions tests passed!\n");
+        printf("\n[OK] All viewing conditions tests passed!\n");
     } else {
-        printf("\n✗ %d viewing conditions tests failed\n", failed);
+        printf("\n[FAIL] %d viewing conditions tests failed\n", failed);
     }
 
     return failed;
@@ -265,9 +265,9 @@ static int test_llab_achromatic(void) {
     }
 
     if (failed == 0) {
-        printf("\n✓ All achromatic tests passed!\n");
+        printf("\n[OK] All achromatic tests passed!\n");
     } else {
-        printf("\n✗ %d achromatic tests failed\n", failed);
+        printf("\n[FAIL] %d achromatic tests failed\n", failed);
     }
 
     return failed;

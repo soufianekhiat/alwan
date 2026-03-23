@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Test 30: Extended color difference (ΔE) metrics (P3)
+ * Test 30: Extended color difference (dE) metrics (P3)
  */
 
 #include "test_common.h"
@@ -13,7 +13,7 @@
  * ---------------------------------------------------------------- */
 
 static int test_delta_e_itp(void) {
-    /* Load ICtCp test pairs and expected ΔE ITP values */
+    /* Load ICtCp test pairs and expected dE ITP values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const ictcp1_data[] = {
@@ -37,14 +37,14 @@ static int test_delta_e_itp(void) {
         alwan_scalar result = alwan_delta_e_itp(&ictcp1, &ictcp2, ALWAN_LITERAL(720.0));
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE ITP mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE ITP mismatch");
     }
 
-    TEST_PASS("ΔE ITP (BT.2100 HDR)");
+    TEST_PASS("dE ITP (BT.2100 HDR)");
 }
 
 static int test_delta_e_din99(void) {
-    /* Load DIN99 test pairs and expected ΔE DIN99 values */
+    /* Load DIN99 test pairs and expected dE DIN99 values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const din99_1_data[] = {
@@ -68,14 +68,14 @@ static int test_delta_e_din99(void) {
         alwan_scalar result = alwan_delta_e_din99(&din99_1, &din99_2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE DIN99 mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE DIN99 mismatch");
     }
 
-    TEST_PASS("ΔE DIN99");
+    TEST_PASS("dE DIN99");
 }
 
 static int test_delta_e_zcam(void) {
-    /* Load Jzazbz test pairs and expected ΔE ZCAM values */
+    /* Load Jzazbz test pairs and expected dE ZCAM values */
     ALWAN_DIAG_PUSH
     ALWAN_DIAG_DISABLE_FLOAT_CONV
     static alwan_scalar const jzazbz1_data[] = {
@@ -99,10 +99,10 @@ static int test_delta_e_zcam(void) {
         alwan_scalar result = alwan_delta_e_zcam(&jzazbz1, &jzazbz2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE ZCAM mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE ZCAM mismatch");
     }
 
-    TEST_PASS("ΔE ZCAM (Jzazbz UCS)");
+    TEST_PASS("dE ZCAM (Jzazbz UCS)");
 }
 
 static int test_delta_e_cam02_lcd(void) {
@@ -129,10 +129,10 @@ static int test_delta_e_cam02_lcd(void) {
         alwan_scalar result = alwan_delta_e_cam02_lcd(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE CAM02-LCD mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM02-LCD mismatch");
     }
 
-    TEST_PASS("ΔE CAM02-LCD");
+    TEST_PASS("dE CAM02-LCD");
 }
 
 static int test_delta_e_cam02_scd(void) {
@@ -159,10 +159,10 @@ static int test_delta_e_cam02_scd(void) {
         alwan_scalar result = alwan_delta_e_cam02_scd(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE CAM02-SCD mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM02-SCD mismatch");
     }
 
-    TEST_PASS("ΔE CAM02-SCD");
+    TEST_PASS("dE CAM02-SCD");
 }
 
 static int test_delta_e_cam16_lcd(void) {
@@ -189,10 +189,10 @@ static int test_delta_e_cam16_lcd(void) {
         alwan_scalar result = alwan_delta_e_cam16_lcd(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE CAM16-LCD mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM16-LCD mismatch");
     }
 
-    TEST_PASS("ΔE CAM16-LCD");
+    TEST_PASS("dE CAM16-LCD");
 }
 
 static int test_delta_e_cam16_scd(void) {
@@ -219,10 +219,10 @@ static int test_delta_e_cam16_scd(void) {
         alwan_scalar result = alwan_delta_e_cam16_scd(&lab1, &lab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE CAM16-SCD mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM16-SCD mismatch");
     }
 
-    TEST_PASS("ΔE CAM16-SCD");
+    TEST_PASS("dE CAM16-SCD");
 }
 
 static int test_delta_e_cam02_ucs(void) {
@@ -249,10 +249,10 @@ static int test_delta_e_cam02_ucs(void) {
         alwan_scalar result = alwan_delta_e_cam02_ucs(&jab1, &jab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE CAM02-UCS mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM02-UCS mismatch");
     }
 
-    TEST_PASS("ΔE CAM02-UCS");
+    TEST_PASS("dE CAM02-UCS");
 }
 
 static int test_delta_e_cam16_ucs(void) {
@@ -279,10 +279,10 @@ static int test_delta_e_cam16_ucs(void) {
         alwan_scalar result = alwan_delta_e_cam16_ucs(&jab1, &jab2);
         alwan_scalar diff = ALWAN_ABS(result - expected);
 
-        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ΔE CAM16-UCS mismatch");
+        TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM16-UCS mismatch");
     }
 
-    TEST_PASS("ΔE CAM16-UCS");
+    TEST_PASS("dE CAM16-UCS");
 }
 
 /* ----------------------------------------------------------------
@@ -303,7 +303,7 @@ int test_30_delta_e_extended_main(void) {
     failures += test_delta_e_cam16_ucs();
 
     if (failures == 0) {
-        printf("\n=== All extended ΔE metric tests passed ===\n");
+        printf("\n=== All extended dE metric tests passed ===\n");
         return 0;
     } else {
         printf("\n=== %d test(s) failed ===\n", failures);

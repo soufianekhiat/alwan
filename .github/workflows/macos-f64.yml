@@ -9,6 +9,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
-      - run: cmake -B build -DALWAN_SCALAR_IS_FLOAT=OFF -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=OFF
+      - run: cmake -B build -DALWAN_SCALAR_IS_FLOAT=OFF -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=OFF -DALWAN_BUILD_BENCH=ON
       - run: cmake --build build --config Release
       - run: ctest --test-dir build --build-config Release --output-on-failure
+      - run: ./build/bench/alwan_bench

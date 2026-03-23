@@ -34,15 +34,16 @@ static int test_munsell_neutrals(void) {
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N5: error %d", status);
     }
-    /* N5 should have Y ~= 0.198 (19.8% reflectance) */
-    TEST_CHECK_NEAR(xyz.y, 0.198, ALWAN_TEST_TOLERANCE);
+    /* N5 should have Y ~= 0.1977 (ASTM D1535 quintic: 19.77%) */
+    TEST_CHECK_NEAR(xyz.y, 0.1977, ALWAN_LITERAL(1e-3));
 
     /* N10 (white) */
     status = alwan_munsell_to_xyz(&xyz, 0.0, 10.0, 0.0, ALWAN_ILLUMINANT_C);
     if (status != ALWAN_OK) {
         TEST_FAIL("Failed to convert N10: error %d", status);
     }
-    TEST_CHECK_NEAR(xyz.y, 1.0, ALWAN_TEST_TOLERANCE);  /* Y should be ~1.0 */
+    /* ASTM D1535 quintic gives Y=1.02568 at V=10 (overshoots 1.0 slightly) */
+    TEST_CHECK_NEAR(xyz.y, 1.0, ALWAN_LITERAL(0.03));
 
     TEST_PASS_MSG();
     return 0;

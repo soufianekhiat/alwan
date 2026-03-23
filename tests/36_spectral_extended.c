@@ -142,7 +142,7 @@ static int test_stockman_sharpe_observer(void) {
     }
     TEST_ASSERT(diff < tolerance, "Stockman & Sharpe D65 white point mismatch");
 
-    TEST_PASS("Stockman & Sharpe 2000 2° observer D65 white point");
+    TEST_PASS("Stockman & Sharpe 2000 2-deg observer D65 white point");
 }
 
 /* ----------------------------------------------------------------

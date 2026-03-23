@@ -28,6 +28,8 @@ option(
 )
 
 option(ALWAN_DISABLE_STRICT_ALIASING "Compile with -fno-strict-aliasing on GCC/Clang" ON)
+set(ALWAN_SIMD_ARCH "" CACHE STRING "SIMD instruction set: SSE2, AVX, AVX2, or native (empty = compiler default)")
+option(ALWAN_BUILD_BENCH "Build benchmark suite" OFF)
 option(ALWAN_INSTALL "Enable install rules" ON)
 option(ALWAN_INSTALL_PKGCONFIG "Install pkg-config .pc file" ON)
 
@@ -64,6 +66,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_extended.c
   src/alwan/map/alwan_extended_map.c
   src/alwan/api/alwan_gamut.c
+  src/alwan/map/alwan_gamut_map.c
   src/alwan/api/alwan_hellwig2022.c
   src/alwan/api/alwan_hunt.c
   src/alwan/api/alwan_hunter_lab.c
@@ -154,6 +157,29 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   set_target_properties(alwan PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
+if(ALWAN_SIMD_ARCH)
+  string(TOUPPER "${ALWAN_SIMD_ARCH}" _ALWAN_SIMD_UPPER)
+  if(MSVC)
+    if(_ALWAN_SIMD_UPPER STREQUAL "AVX2")
+      target_compile_options(alwan PUBLIC /arch:AVX2)
+    elseif(_ALWAN_SIMD_UPPER STREQUAL "AVX")
+      target_compile_options(alwan PUBLIC /arch:AVX)
+    elseif(_ALWAN_SIMD_UPPER STREQUAL "AVX512")
+      target_compile_options(alwan PUBLIC /arch:AVX512)
+    endif()
+  else()
+    if(_ALWAN_SIMD_UPPER STREQUAL "AVX2")
+      target_compile_options(alwan PUBLIC -mavx2 -mfma)
+    elseif(_ALWAN_SIMD_UPPER STREQUAL "AVX")
+      target_compile_options(alwan PUBLIC -mavx)
+    elseif(_ALWAN_SIMD_UPPER STREQUAL "AVX512")
+      target_compile_options(alwan PUBLIC -mavx512f -mavx512bw)
+    elseif(_ALWAN_SIMD_UPPER STREQUAL "NATIVE")
+      target_compile_options(alwan PUBLIC -march=native)
+    endif()
+  endif()
+endif()
+
 if(ALWAN_ENABLE_WARNINGS)
   if(MSVC)
     target_compile_options(alwan PRIVATE /W4)
@@ -186,6 +212,10 @@ if(BUILD_TESTING)
     DEPENDS alwan_tests
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
+endif()
+
+if(ALWAN_BUILD_BENCH)
+  add_subdirectory(bench)
 endif()
 
 if(ALWAN_INSTALL)

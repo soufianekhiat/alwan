@@ -1016,7 +1016,112 @@ int alwan_image_convert(
     alwan_scalar (*oetf_fn)(alwan_scalar) = alwan__resolve_oetf(dst_space->oetf);
     if (!eotf_fn || !oetf_fn) return ALWAN_E_INVALID;
 
-    /* Process image row by row */
+#if ALWAN_SIMD_WIDTH > 1
+    /* SIMD fast path: resolve SIMD transfer function pairs */
+    {
+        typedef alwan_simd (*simd_tf_fn)(alwan_simd);
+        simd_tf_fn eotf_simd = NULL, oetf_simd = NULL;
+
+        switch (src_space->eotf) {
+        case ALWAN_TF_SRGB:   eotf_simd = alwan__srgb_eotf_simd;  break;
+        case ALWAN_TF_PQ:
+        case ALWAN_TF_ST2084: eotf_simd = alwan__pq_eotf_simd;    break;
+        case ALWAN_TF_HLG:    eotf_simd = alwan__hlg_eotf_simd;   break;
+        case ALWAN_TF_LINEAR: eotf_simd = NULL;                    break; /* identity — handle below */
+        default: break;
+        }
+
+        switch (dst_space->oetf) {
+        case ALWAN_TF_SRGB:   oetf_simd = alwan__srgb_oetf_simd;  break;
+        case ALWAN_TF_PQ:
+        case ALWAN_TF_ST2084: oetf_simd = alwan__pq_oetf_simd;    break;
+        case ALWAN_TF_HLG:    oetf_simd = alwan__hlg_oetf_simd;   break;
+        case ALWAN_TF_LINEAR: oetf_simd = NULL;                    break; /* identity — handle below */
+        default: break;
+        }
+
+        /* Use SIMD path if both TFs are known (including LINEAR=identity) */
+        if (eotf_simd || src_space->eotf == ALWAN_TF_LINEAR) {
+            if (oetf_simd || dst_space->oetf == ALWAN_TF_LINEAR) {
+                int const eotf_is_linear = (src_space->eotf == ALWAN_TF_LINEAR);
+                int const oetf_is_linear = (dst_space->oetf == ALWAN_TF_LINEAR);
+                size_t const W = ALWAN_SIMD_WIDTH;
+
+                for (size_t y = 0; y < height; y++) {
+                    char const *src_row = (char const *)src + y * src_row_stride;
+                    char       *dst_row = (char       *)dst + y * dst_row_stride;
+                    size_t processed = 0;
+
+                    while (processed < width) {
+                        size_t tile = width - processed;
+                        if (tile > ALWAN_TILE_PIXELS) tile = ALWAN_TILE_PIXELS;
+                        ALWAN_ALIGN(32) alwan_simd_lane c0[ALWAN_TILE_PIXELS], c1[ALWAN_TILE_PIXELS], c2[ALWAN_TILE_PIXELS];
+
+                        alwan__load_tile_typed_3(c0, c1, c2, src_row, src_fmt, processed, src_px, tile);
+
+                        /* SIMD: EOTF -> mat3 -> OETF */
+                        {
+                            size_t j = 0;
+                            for (; j + W <= tile; j += W) {
+                                alwan_simd vr = alwan_simd_load(&c0[j]);
+                                alwan_simd vg = alwan_simd_load(&c1[j]);
+                                alwan_simd vb = alwan_simd_load(&c2[j]);
+
+                                /* EOTF: encoded -> linear */
+                                if (!eotf_is_linear) {
+                                    vr = eotf_simd(vr);
+                                    vg = eotf_simd(vg);
+                                    vb = eotf_simd(vb);
+                                }
+
+                                /* Combined matrix multiply */
+                                alwan_simd dr, dg, db;
+                                alwan__mat3_mul_simd(&dr, &dg, &db, &combined, vr, vg, vb);
+
+                                /* OETF: linear -> encoded */
+                                if (!oetf_is_linear) {
+                                    dr = oetf_simd(dr);
+                                    dg = oetf_simd(dg);
+                                    db = oetf_simd(db);
+                                }
+
+                                alwan_simd_store(&c0[j], dr);
+                                alwan_simd_store(&c1[j], dg);
+                                alwan_simd_store(&c2[j], db);
+                            }
+                            /* Scalar tail within tile */
+                            for (; j < tile; j++) {
+                                alwan_scalar r = (alwan_scalar)c0[j];
+                                alwan_scalar g = (alwan_scalar)c1[j];
+                                alwan_scalar b = (alwan_scalar)c2[j];
+                                if (!eotf_is_linear) {
+                                    r = eotf_fn(r); g = eotf_fn(g); b = eotf_fn(b);
+                                }
+                                alwan_vec3 lin = {{r, g, b}};
+                                alwan_vec3 dst_lin = alwan_mat3_mulv_v(combined, lin);
+                                if (!oetf_is_linear) {
+                                    c0[j] = (alwan_simd_lane)oetf_fn(dst_lin.v[0]);
+                                    c1[j] = (alwan_simd_lane)oetf_fn(dst_lin.v[1]);
+                                    c2[j] = (alwan_simd_lane)oetf_fn(dst_lin.v[2]);
+                                } else {
+                                    c0[j] = (alwan_simd_lane)dst_lin.v[0];
+                                    c1[j] = (alwan_simd_lane)dst_lin.v[1];
+                                    c2[j] = (alwan_simd_lane)dst_lin.v[2];
+                                }
+                            }
+                        }
+
+                        alwan__store_tile_typed_3(dst_row, dst_fmt, processed, dst_px, c0, c1, c2, tile);
+                        processed += tile;
+                    }
+                }
+                return ALWAN_OK;
+            }
+        }
+    }
+#endif /* ALWAN_SIMD_WIDTH > 1 */
+
+    /* Scalar fallback */
     for (size_t y = 0; y < height; y++) {
         char const *src_row = (char const *)src + y * src_row_stride;
         char       *dst_row = (char       *)dst + y * dst_row_stride;
