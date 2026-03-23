@@ -34,8 +34,21 @@ typedef enum {
     ALWAN_PIXEL_U8  = 0,  /* uint8_t  [0,255]   -> [0.0, 1.0] */
     ALWAN_PIXEL_U16 = 1,  /* uint16_t [0,65535]  -> [0.0, 1.0] */
     ALWAN_PIXEL_F32 = 2,  /* float                              */
-    ALWAN_PIXEL_F64 = 3   /* double                             */
+    ALWAN_PIXEL_F64 = 3,  /* double                             */
+    ALWAN_PIXEL_F16 = 4   /* IEEE 754 binary16 (half-float)     */
 } alwan_pixel_format;
+
+/* ----------------------------------------------------------------
+ * Data semantic classification (Color Interop Forum)
+ *
+ * Distinguishes color data from non-color data (normals, displacement,
+ * masks) to prevent inappropriate color management.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_DATA_COLOR     = 0,  /* Color data — apply color management */
+    ALWAN_DATA_NON_COLOR = 1,  /* Non-color (normals, masks, displacement) — pass through */
+    ALWAN_DATA_UNKNOWN   = 2   /* Unknown — application should decide */
+} alwan_data_semantic;
 
 #if ALWAN_SCALAR_IS_FLOAT
 #  define ALWAN_PIXEL_SCALAR ALWAN_PIXEL_F32
@@ -4866,6 +4879,101 @@ int alwan_cube_import_1d(alwan_scalar *lut, int *out_size,
  * buf_len: buffer length */
 int alwan_cube_import_3d_buffer(alwan_scalar *lut, int *out_size,
                                  char const *buf, size_t buf_len);
+
+/* ----------------------------------------------------------------
+ * Color Interop Forum — Interop ID Strings
+ *
+ * Bidirectional lookup between alwan_rgb_space enum values and
+ * canonical Color Interop Forum string identifiers.
+ * Reference: ASWF Color Interop Forum specification
+ * ---------------------------------------------------------------- */
+
+/* Parse a Color Interop Forum ID string to an alwan_rgb_space enum.
+ * Returns ALWAN_OK on success, ALWAN_E_NODATA if ID not recognized. */
+int alwan_interop_parse(alwan_rgb_space *space, char const *id);
+
+/* Get the Color Interop Forum ID string for an alwan_rgb_space enum.
+ * Returns the canonical string, or NULL if the space has no interop ID. */
+char const *alwan_interop_format(alwan_rgb_space space);
+
+/* Get the total number of registered interop ID entries. */
+size_t alwan_interop_count(void);
+
+/* Get the interop entry at the given index (for enumeration).
+ * space and id may be NULL if not needed.
+ * Returns ALWAN_E_RANGE if index is out of bounds. */
+int alwan_interop_entry_at(alwan_rgb_space *space, char const **id, size_t index);
+
+/* ----------------------------------------------------------------
+ * Color Interop Forum — float16 (half-float) Conversion
+ * ---------------------------------------------------------------- */
+
+/* Convert float16 (IEEE 754 binary16) samples to float32.
+ * out: output float32 buffer
+ * in: input uint16_t buffer containing float16 bit patterns
+ * count: number of samples */
+int alwan_half_to_float(float *out, alwan_uint16 const *in, size_t count);
+
+/* Convert float32 samples to float16 (IEEE 754 binary16).
+ * out: output uint16_t buffer for float16 bit patterns
+ * in: input float32 buffer
+ * count: number of samples */
+int alwan_float_to_half(alwan_uint16 *out, float const *in, size_t count);
+
+/* ----------------------------------------------------------------
+ * CLF (Common LUT Format) Export — SMPTE ST 2136-1:2024
+ *
+ * Serialize color space conversions as CLF XML for interchange
+ * with OCIO, ACES, DaVinci Resolve, Baselight.
+ * ---------------------------------------------------------------- */
+
+/* Export a CLF file for a color space conversion.
+ * Decomposes the conversion into ProcessNodes:
+ *   EOTF (Exponent or LUT1D) -> Matrix (src RGB->XYZ) ->
+ *   CAT Matrix (if needed) -> Matrix (XYZ->dst RGB) ->
+ *   Range (gamut clamp) -> OETF (Exponent or LUT1D)
+ *
+ * path: output file path
+ * ctx: context for chromatic adaptation (may be NULL if white points match)
+ * src_space/dst_space: source and destination RGB space descriptors
+ * id: CLF ProcessList id attribute (NULL for default)
+ * name: CLF ProcessList name attribute (NULL to omit)
+ * lut_size: resolution for baked LUT1D nodes (default 4096 if < 2) */
+int alwan_clf_export(char const *path,
+                      alwan_ctx *ctx,
+                      alwan_rgb_space_desc const *src_space,
+                      alwan_rgb_space_desc const *dst_space,
+                      char const *id, char const *name,
+                      int lut_size);
+
+/* Export a CLF file with a view transform (tone mapping) included.
+ * Same as alwan_clf_export but adds a LUT3D ProcessNode for the
+ * view transform between the color space conversion and OETF. */
+int alwan_clf_export_view(char const *path,
+                           alwan_ctx *ctx,
+                           alwan_rgb_space_desc const *src_space,
+                           alwan_rgb_space_desc const *dst_space,
+                           alwan_view_transform view,
+                           char const *id, char const *name,
+                           int lut_size);
+
+/* Export CLF to a memory buffer.
+ * Returns ALWAN_E_RANGE if buffer too small. */
+int alwan_clf_export_buffer(char *buf, size_t buf_size, size_t *bytes_written,
+                             alwan_ctx *ctx,
+                             alwan_rgb_space_desc const *src_space,
+                             alwan_rgb_space_desc const *dst_space,
+                             char const *id, char const *name,
+                             int lut_size);
+
+/* Export CLF with view transform to a memory buffer. */
+int alwan_clf_export_view_buffer(char *buf, size_t buf_size, size_t *bytes_written,
+                                  alwan_ctx *ctx,
+                                  alwan_rgb_space_desc const *src_space,
+                                  alwan_rgb_space_desc const *dst_space,
+                                  alwan_view_transform view,
+                                  char const *id, char const *name,
+                                  int lut_size);
 
 #ifdef __cplusplus
 }

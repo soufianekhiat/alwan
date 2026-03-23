@@ -81,6 +81,7 @@ add_executable(
   77_accessibility_contrast.c
   78_hdr_ecosystem.c
   79_lut_bake_export.c
+  80_interop_clf.c
 )
 
 target_link_libraries(alwan_tests PRIVATE Alwan::alwan)
