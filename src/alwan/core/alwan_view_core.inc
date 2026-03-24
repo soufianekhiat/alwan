@@ -8,8 +8,11 @@
  */
 
 /* ================================================================
- * ACES Filmic Tone-Map (Hill approximation)
+ * ACES Filmic Tone-Map (Hill / Narkowicz approximation)
  * f(x) = (x*(a*x+b)) / (x*(c*x+d)+e)
+ * Coefficients: Narkowicz, "ACES Filmic Tone Mapping Curve"
+ *   https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+ * Not equivalent to the full ACES Reference Rendering Transform (RRT+ODT).
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_aces_tonemap)(ALWAN_CORE_T x) {
@@ -75,6 +78,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_agx_punchy_grade)(ALWAN_COR
     ALWAN_CORE_T const saturation = ALWAN_CORE_LITERAL(1.2);
     ALWAN_CORE_T const mid_gray   = ALWAN_CORE_LITERAL(0.18);
 
+    /* BT.709 luma coefficients — ITU-R BT.709-6 Table 3 */
     ALWAN_CORE_T luma = ALWAN_CORE_LITERAL(0.2126) * rgb.v[0]
                       + ALWAN_CORE_LITERAL(0.7152) * rgb.v[1]
                       + ALWAN_CORE_LITERAL(0.0722) * rgb.v[2];
@@ -96,6 +100,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_agx_punchy_grade)(ALWAN_COR
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_agx_golden_grade)(ALWAN_CORE_VEC3 rgb) {
     ALWAN_CORE_VEC3 result;
 
+    /* BT.709 luma coefficients — ITU-R BT.709-6 Table 3 */
     ALWAN_CORE_T luma = ALWAN_CORE_LITERAL(0.2126) * rgb.v[0]
                       + ALWAN_CORE_LITERAL(0.7152) * rgb.v[1]
                       + ALWAN_CORE_LITERAL(0.0722) * rgb.v[2];

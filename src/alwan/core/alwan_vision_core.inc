@@ -327,6 +327,12 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_csf_barten1999)(
     return (M_opt / p.k) / ALWAN_CORE_SQRT(noise);
 }
 
+/* Barten-inspired simplified CSF model for fast approximation.
+ * Not a direct implementation of Barten 1999; constants are fitted to
+ * qualitatively match the full model without integration overhead.
+ * For accurate CSF evaluation use alwan_csf_barten1999() instead.
+ * Rolloff constants: low-freq (-3dB at 0.5 cpd), noise floor phi_0=3e-8,
+ * detection threshold multiplier k=3. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_csf_simple)(
     ALWAN_CORE_T spatial_frequency, ALWAN_CORE_T luminance)
 {

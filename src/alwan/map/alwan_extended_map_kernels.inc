@@ -13,7 +13,7 @@
  * XYZ <-> IgPgTg
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_igpgtg_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_igpgtg_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                          alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -82,7 +82,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_igpgtg, _map_interleave)(alwan_map_lane *igpgt
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__igpgtg_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__igpgtg_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                          alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -155,7 +155,7 @@ int ALWAN_MAP_LITCAT(alwan_igpgtg_to_xyz, _map_interleave)(alwan_map_lane *xyz_o
  * XYZ <-> ICaCb
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_icacb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_icacb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -225,7 +225,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_icacb, _map_interleave)(alwan_map_lane *icacb_
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__icacb_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__icacb_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -301,7 +301,7 @@ int ALWAN_MAP_LITCAT(alwan_icacb_to_xyz, _map_interleave)(alwan_map_lane *xyz_ou
  * XYZ <-> hdr-CIELAB
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_hdr_cielab_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_hdr_cielab_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                              alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     /* Precompute epsilon and Km */
     alwan_map_lane sf = (alwan_map_lane)(1.25 - 0.25 * (0.2 / 0.184));
@@ -368,7 +368,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_hdr_cielab, _map_interleave)(alwan_map_lane *h
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__hdr_cielab_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hdr_cielab_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                              alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     /* Precompute epsilon and inverse */
     alwan_map_lane sf = (alwan_map_lane)(1.25 - 0.25 * (0.2 / 0.184));
@@ -447,7 +447,7 @@ int ALWAN_MAP_LITCAT(alwan_hdr_cielab_to_xyz, _map_interleave)(alwan_map_lane *x
  * XYZ <-> hdr-IPT
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_hdr_ipt_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_hdr_ipt_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                           alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     /* Precompute epsilon and Km */
     alwan_map_lane lf = (alwan_map_lane)(alwan_map_scalar_log((alwan_map_lane)318.0) / alwan_map_scalar_log((alwan_map_lane)100.0));
@@ -528,7 +528,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_hdr_ipt, _map_interleave)(alwan_map_lane *hdr_
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__hdr_ipt_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hdr_ipt_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                           alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     /* Precompute epsilon and inverse */
     alwan_map_lane lf = (alwan_map_lane)(alwan_map_scalar_log((alwan_map_lane)318.0) / alwan_map_scalar_log((alwan_map_lane)100.0));
@@ -617,7 +617,7 @@ int ALWAN_MAP_LITCAT(alwan_hdr_ipt_to_xyz, _map_interleave)(alwan_map_lane *xyz_
  * XYZ <-> CIE 1960 UCS
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_ucs_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_ucs_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                       size_t n) {
     size_t i = 0;
@@ -664,7 +664,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_ucs, _map_interleave)(alwan_map_lane *ucs_out,
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__ucs_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ucs_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                       size_t n) {
     size_t i = 0;
@@ -715,7 +715,7 @@ int ALWAN_MAP_LITCAT(alwan_ucs_to_xyz, _map_interleave)(alwan_map_lane *xyz_out,
  * XYZ <-> OSA-UCS
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_osa_ucs_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_osa_ucs_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                           alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                           size_t n) {
     size_t i = 0;
@@ -823,17 +823,13 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_osa_ucs, _map_interleave)(alwan_map_lane *osa_
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__osa_ucs_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__osa_ucs_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                           alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                           size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
         size_t const W = ALWAN_MAP_SIMD_WIDTH;
-        alwan_map_lane const *Mi = ALWAN_MAP_LIT(RGB_TO_XYZ_OSA).m;
-        alwan_map_simd m00 = alwan_map_simd_set1((alwan_map_lane)(Mi[0])), m01 = alwan_map_simd_set1((alwan_map_lane)(Mi[1])), m02 = alwan_map_simd_set1((alwan_map_lane)(Mi[2]));
-        alwan_map_simd m10 = alwan_map_simd_set1((alwan_map_lane)(Mi[3])), m11 = alwan_map_simd_set1((alwan_map_lane)(Mi[4])), m12 = alwan_map_simd_set1((alwan_map_lane)(Mi[5]));
-        alwan_map_simd m20 = alwan_map_simd_set1((alwan_map_lane)(Mi[6])), m21 = alwan_map_simd_set1((alwan_map_lane)(Mi[7])), m22 = alwan_map_simd_set1((alwan_map_lane)(Mi[8]));
         alwan_map_simd sqrt2 = alwan_map_simd_set1((alwan_map_lane)(1.41421356237309504880));
         alwan_map_simd k_144 = alwan_map_simd_set1((alwan_map_lane)(14.4));
         alwan_map_simd inv_59 = alwan_map_simd_set1((alwan_map_lane)(1.0 / 5.9));
@@ -872,10 +868,9 @@ static void ALWAN_MAP_LIT(alwan__osa_ucs_to_xyz_kernel)(alwan_map_lane *d0, alwa
             alwan_map_simd r2 = alwan_map_simd_mul(r_cbrt, r_cbrt), r3 = alwan_map_simd_mul(r2, r_cbrt);
             alwan_map_simd g2 = alwan_map_simd_mul(g_cbrt, g_cbrt), g3 = alwan_map_simd_mul(g2, g_cbrt);
             alwan_map_simd b2 = alwan_map_simd_mul(b_cbrt, b_cbrt), b3 = alwan_map_simd_mul(b2, b_cbrt);
-            /* mat3: RGB -> XYZ */
-            alwan_map_simd ox = alwan_map_simd_fmadd(m00, r3, alwan_map_simd_fmadd(m01, g3, alwan_map_simd_mul(m02, b3)));
-            alwan_map_simd oy = alwan_map_simd_fmadd(m10, r3, alwan_map_simd_fmadd(m11, g3, alwan_map_simd_mul(m12, b3)));
-            alwan_map_simd oz = alwan_map_simd_fmadd(m20, r3, alwan_map_simd_fmadd(m21, g3, alwan_map_simd_mul(m22, b3)));
+            /* mat3: RGB -> XYZ (load matrix elements on demand, reducing pre-loop register pressure) */
+            alwan_map_simd ox, oy, oz;
+            ALWAN_MAP_NAME(alwan__mat3_mul_simd)(&ox, &oy, &oz, &ALWAN_MAP_LIT(RGB_TO_XYZ_OSA), r3, g3, b3);
             /* Clamp negatives + C_tiny guard */
             ox = alwan_map_simd_max(zero, ox); oy = alwan_map_simd_max(zero, oy); oz = alwan_map_simd_max(zero, oz);
             alwan_map_simd_store(&d0[i], alwan_map_simd_select(c_tiny, zero, ox));
@@ -923,7 +918,7 @@ int ALWAN_MAP_LITCAT(alwan_osa_ucs_to_xyz, _map_interleave)(alwan_map_lane *xyz_
 #define ALWAN_HUNTER_DEFS_LOCAL_
 #endif
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                              alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                              size_t n) {
     size_t i = 0;
@@ -981,7 +976,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_hunter_lab, _map_interleave)(alwan_map_lane *h
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                              alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                              size_t n) {
     size_t i = 0;
@@ -1046,7 +1041,7 @@ int ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz, _map_interleave)(alwan_map_lane *x
 #undef ALWAN_HUNTER_DEFS_LOCAL_
 #endif
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_custom_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_custom_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                                     alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                                     size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) {
     ALWAN_MAP_LIT(alwan_vec2) coeffs = ALWAN_MAP_LITV(alwan_hunter_coefficients)(*white_xyz);
@@ -1106,7 +1101,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_hunter_lab_custom, _map_interleave)(alwan_map_
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_custom_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_custom_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                                     alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                                     size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) {
     ALWAN_MAP_LIT(alwan_vec2) coeffs = ALWAN_MAP_LITV(alwan_hunter_coefficients)(*white_xyz);
@@ -1164,7 +1159,7 @@ int ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz_custom, _map_interleave)(alwan_map_
  * XYZ <-> ProLab
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_prolab_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_prolab_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                          alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                          size_t n) {
     size_t i = 0;
@@ -1229,7 +1224,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_prolab, _map_interleave)(alwan_map_lane *prola
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__prolab_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__prolab_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                          alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                          size_t n) {
     size_t i = 0;
@@ -1291,7 +1286,7 @@ int ALWAN_MAP_LITCAT(alwan_prolab_to_xyz, _map_interleave)(alwan_map_lane *xyz_o
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_prolab_custom_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_prolab_custom_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                                 alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                                 size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) {
     /* Precompute safe white point reciprocals */
@@ -1356,7 +1351,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_prolab_custom, _map_interleave)(alwan_map_lane
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__prolab_to_xyz_custom_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__prolab_to_xyz_custom_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                                 alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                                 size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) {
     size_t i = 0;
@@ -1418,7 +1413,7 @@ int ALWAN_MAP_LITCAT(alwan_prolab_to_xyz_custom, _map_interleave)(alwan_map_lane
  * XYZ <-> UVW (with white point)
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_uvw_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_uvw_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                       size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) {
     /* Precompute white point chromaticity */
@@ -1491,7 +1486,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_uvw, _map_interleave)(alwan_map_lane *uvw_out,
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                       size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) {
     /* Precompute white point chromaticity */
@@ -1508,7 +1503,7 @@ static void ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel)(alwan_map_lane *d0, alwan_ma
         alwan_map_simd k17 = alwan_map_simd_set1((alwan_map_lane)(17.0));
         alwan_map_simd inv25 = alwan_map_simd_set1((alwan_map_lane)(1.0 / 25.0));
         alwan_map_simd k9 = alwan_map_simd_set1((alwan_map_lane)(9.0));
-        alwan_map_simd k4 = alwan_map_simd_set1((alwan_map_lane)(4.0));
+        alwan_map_simd inv4 = alwan_map_simd_set1((alwan_map_lane)(0.25));
         alwan_map_simd k12 = alwan_map_simd_set1((alwan_map_lane)(12.0));
         alwan_map_simd kn3 = alwan_map_simd_set1((alwan_map_lane)(-3.0));
         alwan_map_simd kn20 = alwan_map_simd_set1((alwan_map_lane)(-20.0));
@@ -1528,13 +1523,13 @@ static void ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel)(alwan_map_lane *d0, alwan_ma
             alwan_map_simd abs_W = alwan_map_simd_abs(vW);
             alwan_map_simd_mask w_tiny = alwan_map_simd_cmplt(abs_W, eps);
             alwan_map_simd u = alwan_map_simd_select(w_tiny, v_un,
-                            alwan_map_simd_fmadd(alwan_map_simd_div(vU, W13), alwan_map_simd_set1((alwan_map_lane)(1.0)), v_un));
+                            alwan_map_simd_add(alwan_map_simd_div(vU, W13), v_un));
             alwan_map_simd v = alwan_map_simd_select(w_tiny, v_vn,
-                            alwan_map_simd_fmadd(alwan_map_simd_div(vV, W13), alwan_map_simd_set1((alwan_map_lane)(1.0)), v_vn));
+                            alwan_map_simd_add(alwan_map_simd_div(vV, W13), v_vn));
             /* X = 9*u*Y / (4*v), Z = (12 - 3*u - 20*v)*Y / (4*v) */
             alwan_map_simd abs_v = alwan_map_simd_abs(v);
             alwan_map_simd_mask v_tiny = alwan_map_simd_cmplt(abs_v, eps);
-            alwan_map_simd inv_4v = alwan_map_simd_div(alwan_map_simd_set1((alwan_map_lane)(1.0)), alwan_map_simd_mul(k4, v));
+            alwan_map_simd inv_4v = alwan_map_simd_div(inv4, v);
             alwan_map_simd_store(&d0[i], alwan_map_simd_select(v_tiny, zero,
                                 alwan_map_simd_mul(alwan_map_simd_mul(k9, alwan_map_simd_mul(u, Y)), inv_4v)));
             alwan_map_simd_store(&d1[i], Y);
@@ -1575,7 +1570,7 @@ int ALWAN_MAP_LITCAT(alwan_uvw_to_xyz, _map_interleave)(alwan_map_lane *xyz_out,
  * RGB <-> Prismatic
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_prismatic_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_prismatic_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                             alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                             size_t n) {
     size_t i = 0;
@@ -1623,7 +1618,7 @@ int ALWAN_MAP_LITCAT(alwan_rgb_to_prismatic, _map_interleave)(alwan_map_lane *pr
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__prismatic_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__prismatic_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                             alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                             size_t n) {
     size_t i = 0;
@@ -1677,7 +1672,7 @@ int ALWAN_MAP_LITCAT(alwan_prismatic_to_rgb, _map_interleave)(alwan_map_lane *rg
  * RGB <-> HCL  (SIMD kernels)
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_hcl_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_hcl_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                       size_t n) {
     size_t i = 0;
@@ -1759,7 +1754,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_hcl_kernel)(alwan_map_lane *d0, alwan_ma
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                       size_t n) {
     size_t i = 0;
@@ -1954,7 +1949,7 @@ int ALWAN_MAP_LITCAT(alwan_hcl_to_rgb, _map_interleave)(alwan_map_lane *rgb_out,
  * RGB <-> IHLS  (SIMD kernels)
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_ihls_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_ihls_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                        alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                        size_t n) {
     size_t i = 0;
@@ -2022,7 +2017,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_ihls_kernel)(alwan_map_lane *d0, alwan_m
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__ihls_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ihls_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                        alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                        size_t n) {
     size_t i = 0;
@@ -2121,7 +2116,7 @@ int ALWAN_MAP_LITCAT(alwan_ihls_to_rgb, _map_interleave)(alwan_map_lane *rgb_out
  * Lab <-> DIN99 (with int variant)
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__lab_to_din99_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__lab_to_din99_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                         size_t n, int variant) {
     /* Precompute variant-dependent constants */
@@ -2198,7 +2193,7 @@ int ALWAN_MAP_LITCAT(alwan_lab_to_din99, _map_interleave)(alwan_map_lane *din99_
     return ALWAN_OK;
 }
 
-static void ALWAN_MAP_LIT(alwan__din99_to_lab_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__din99_to_lab_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                         size_t n, int variant) {
     /* Precompute variant-dependent constants */

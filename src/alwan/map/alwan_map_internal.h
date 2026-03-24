@@ -1125,14 +1125,21 @@ ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
 
 ALWAN_INLINE alwan_simd alwan__srgb_oetf_simd(alwan_simd v) {
     alwan_simd thresh = alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_OETF_THRESH);
-    alwan_simd lo     = alwan_simd_mul(v, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_LINEAR_GAIN));
-    alwan_simd hi     = alwan_simd_sub(
+    alwan_simd_mask mask = alwan_simd_cmple(v, thresh);
+    alwan_simd lo = alwan_simd_mul(v, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_LINEAR_GAIN));
+    /* Early-out: skip pow_inv24 when all lanes are in the linear region */
+    if (alwan_simd_mask_all_set(mask))
+        return lo;
+    /* Clamp to zero before pow_inv24 to avoid undefined pow(negative, non-integer) */
+    alwan_simd hi_base = alwan_simd_select(
+        alwan_simd_cmpgt(v, alwan_simd_zero()),
+        v,
+        alwan_simd_zero());
+    alwan_simd hi = alwan_simd_sub(
         alwan_simd_mul(
             alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_A),
-            alwan_simd_pow_inv24(v)),
+            alwan_simd_pow_inv24(hi_base)),
         alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_B));
-
-    alwan_simd_mask mask = alwan_simd_cmple(v, thresh);
     return alwan_simd_select(mask, lo, hi);
 }
 
@@ -1253,7 +1260,8 @@ ALWAN_INLINE alwan_simd alwan__hlg_oetf_simd(alwan_simd v) {
 }
 
 /* ----------------------------------------------------------------
- * HLG inverse OETF (NOT EOTF): encoded -> linear (no system gamma)
+ * HLG inverse OETF (NOT full EOTF): encoded -> scene-linear (no OOTF)
+ * Used internally by ICtCp-HLG which needs pure OETF^-1 per LMS channel.
  * E <= 0.5: E^2/3
  * E > 0.5:  (exp((E-c)/a) + b) / 12
  * ---------------------------------------------------------------- */
@@ -1273,6 +1281,17 @@ ALWAN_INLINE alwan_simd alwan__hlg_eotf_simd(alwan_simd v) {
         alwan_simd_add(alwan_simd_exp(alwan_simd_mul(alwan_simd_sub(E, c_), inv_a)), b_),
         twelve);
     return alwan_simd_select(alwan_simd_cmple(E, half), lo, hi);
+}
+
+/* ----------------------------------------------------------------
+ * HLG full EOTF: encoded -> display-linear (includes OOTF, system gamma 1.2)
+ * Matches the scalar alwan_hlg_eotf_f64.
+ * Used by RGB image conversion; ICtCp-HLG uses alwan__hlg_eotf_simd instead.
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_simd alwan__hlg_eotf_full_simd(alwan_simd v) {
+    alwan_simd scene = alwan__hlg_eotf_simd(v);
+    return alwan_simd_pow(scene, alwan_simd_set1((alwan_simd_lane)1.2));
 }
 
 /* ----------------------------------------------------------------

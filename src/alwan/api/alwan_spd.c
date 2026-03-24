@@ -46,7 +46,7 @@ int alwan_spd_create(alwan_spd *out,
     out->wavelength_max = wavelength_max;
     out->count = count;
 
-    (void)ctx;  /* Unused for now, reserved for future use */
+    (void)ctx;
     return ALWAN_OK;
 }
 
@@ -989,8 +989,7 @@ int alwan_xyz_from_spd(alwan_xyz *xyz_out,
         prod_z[i] = spd_value * z_bar_resampled.values[i];
     }
 
-    /* Bandpass correction (Stearns & Stearns 1988) not yet implemented.
-     * For now, bandpass_nm parameter is accepted but not used. */
+    /* Bandpass correction (Stearns & Stearns 1988) not implemented; parameter reserved. */
     (void)bandpass_nm;
 
     /* Integrate to get XYZ */
@@ -1093,7 +1092,7 @@ int alwan_spd_camera_sensitivity(alwan_spd *spd_r,
 
     ALWAN_DIAG_POP
 
-    (void)ctx;  /* Unused for now */
+    (void)ctx;
     return ALWAN_OK;
 }
 

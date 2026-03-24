@@ -351,52 +351,164 @@ int alwan_color_checker_data(alwan_xyz *xyz, alwan_colorchecker_type type, alwan
 
 /* NCS color notation structure */
 typedef struct {
-    int nuance_code;       /* 0-99: blackness + chromaticness code */
-    int hue_code;          /* 0-99: hue position */
-    char hue_name[8];      /* e.g., "Y90R", "G10Y" */
+    alwan_f64 blackness;     /* s: 0.0-99.0 */
+    alwan_f64 chromaticness; /* c: 0.0-99.0 */
+    alwan_f64 hue_pos;       /* hue position in NCS circle [0, 100) */
+    int is_neutral;          /* non-zero for achromatic (chromaticness == 0 or "N") */
 } ncs_notation_parsed;
 
-/* Parse NCS notation string (e.g., "S 1050-Y90R") */
+/* Parse NCS notation string (e.g., "S 1050-Y90R")
+ * Format: [S|W ]NNCC-HHX[X]  or  [S|W ]NNCC-N
+ *   NN = blackness (00-99)
+ *   CC = chromaticness (00-99)
+ *   HH = hue percentage within hue pair (00-99)
+ *   X[X] = one or two adjacent elementary hues from {Y, R, B, G} in circle order
+ *           Y(0)→R(25)→B(50)→G(75)→Y, so valid pairs: YR RB BG GY
+ * "S 1050-Y90R": s=10, c=50, hue=Y+90%×(R-Y)=22.5 on the NCS circle */
 static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed) {
-    if (!notation || !parsed) {
-        return ALWAN_E_INVALID;
+    if (!notation || !parsed) return ALWAN_E_INVALID;
+
+    const char *p = notation;
+
+    /* Skip optional "S " or "W " prefix */
+    if ((*p == 'S' || *p == 'W') && p[1] == ' ') p += 2;
+
+    /* Blackness NN (2 digits) */
+    if (p[0] < '0' || p[0] > '9' || p[1] < '0' || p[1] > '9') return ALWAN_E_INVALID;
+    int blackness = (p[0] - '0') * 10 + (p[1] - '0');
+    p += 2;
+
+    /* Chromaticness CC (2 digits) */
+    if (p[0] < '0' || p[0] > '9' || p[1] < '0' || p[1] > '9') return ALWAN_E_INVALID;
+    int chromaticness = (p[0] - '0') * 10 + (p[1] - '0');
+    p += 2;
+
+    if (*p != '-') return ALWAN_E_INVALID;
+    p++;
+
+    /* Achromatic: notation ends with "N" */
+    if (*p == 'N' && (p[1] == '\0')) {
+        parsed->blackness     = (alwan_f64)blackness;
+        parsed->chromaticness = ALWAN_LITERAL(0.0);
+        parsed->hue_pos       = ALWAN_LITERAL(0.0);
+        parsed->is_neutral    = 1;
+        return ALWAN_OK;
     }
 
-    /* Simple parser - full implementation needed
-     * Format: [S|W] NNCC-HHX[X]
-     * S = standard NCS colors
-     * NN = blackness (00-99)
-     * CC = chromaticness (00-99)
-     * HH = hue position (00-99)
-     * X[X] = hue name (Y, YR, R, RB, B, BG, G, GY) */
+    /* Hue percentage HH (2 digits) */
+    if (p[0] < '0' || p[0] > '9' || p[1] < '0' || p[1] > '9') return ALWAN_E_INVALID;
+    int hue_pct = (p[0] - '0') * 10 + (p[1] - '0');
+    p += 2;
 
-    /* Full parser not yet implemented */
-    return ALWAN_E_INVALID;
+    /* Elementary hue letters and their NCS circle positions */
+    static const char   ELEM_CH[4]  = {'Y', 'R', 'B', 'G'};
+    static const alwan_f64 ELEM_POS[4] = {0.0, 25.0, 50.0, 75.0};
+
+    /* First letter */
+    int idx1 = -1;
+    for (int i = 0; i < 4; i++) { if (*p == ELEM_CH[i]) { idx1 = i; break; } }
+    if (idx1 < 0) return ALWAN_E_INVALID;
+    p++;
+
+    /* Optional second letter — must be the next elementary in circle order */
+    if (*p != '\0') {
+        int idx2 = -1;
+        for (int i = 0; i < 4; i++) { if (*p == ELEM_CH[i]) { idx2 = i; break; } }
+        if (idx2 < 0 || idx2 != (idx1 + 1) % 4) return ALWAN_E_INVALID;
+        p++;
+        /* GY pair: G(75) → Y(100), wrapping */
+        alwan_f64 pos2 = (idx2 == 0) ? 100.0 : ELEM_POS[idx2];
+        alwan_f64 pos = ELEM_POS[idx1] + ((alwan_f64)hue_pct / 100.0) * (pos2 - ELEM_POS[idx1]);
+        if (pos >= 100.0) pos -= 100.0;
+        parsed->hue_pos = pos;
+    } else {
+        parsed->hue_pos = ELEM_POS[idx1];
+    }
+
+    if (*p != '\0') return ALWAN_E_INVALID; /* trailing garbage */
+
+    parsed->blackness     = (alwan_f64)blackness;
+    parsed->chromaticness = (alwan_f64)chromaticness;
+    parsed->is_neutral    = (chromaticness == 0);
+    return ALWAN_OK;
 }
 
-/* Convert NCS notation to XYZ tristimulus values */
+/* Approximate CIE 1931 xy chromaticities for the four NCS elementary hues
+ * under D65 illuminant, at maximum chromaticness.
+ * Source: Hård & Sivik (1981) Color Res. Appl. 6(3), 129–138, and
+ *         Sällström (1973) unpublished data cited therein.
+ * Order: Y(0), R(25), B(50), G(75) — matching ELEM_POS above. */
+static const alwan_f64 NCS_ELEM_x[4] = {0.418, 0.621, 0.162, 0.199};
+static const alwan_f64 NCS_ELEM_y[4] = {0.503, 0.335, 0.083, 0.454};
+
+/* D65 chromaticity */
+static const alwan_f64 NCS_WP_x = 0.3127;
+static const alwan_f64 NCS_WP_y = 0.3290;
+
+/* Convert NCS notation to approximate XYZ tristimulus values.
+ * Uses an approximation based on published elementary hue chromaticities
+ * (Hård & Sivik 1981) with linear interpolation along the NCS hue circle
+ * and chromaticness-weighted mixing towards the D65 white point.
+ * Luminance derived from blackness via Y ≈ (1 − s/100)².
+ * This approximation is suitable for colour-approximate use; it does not
+ * reproduce the proprietary NCS colour atlas. */
 int alwan_ncs_to_xyz(alwan_xyz *xyz, char const *ncs_notation) {
-    if (!xyz || !ncs_notation) {
-        return ALWAN_E_INVALID;
-    }
+    if (!xyz || !ncs_notation) return ALWAN_E_INVALID;
 
     ncs_notation_parsed parsed;
     int status = parse_ncs_notation(ncs_notation, &parsed);
-    if (status != ALWAN_OK) {
-        return status;
+    if (status != ALWAN_OK) return status;
+
+    alwan_f64 s = parsed.blackness     / 100.0;
+    alwan_f64 c = parsed.chromaticness / 100.0;
+
+    /* NCS constraint: s + c ≤ 1; normalise if violated */
+    if (s + c > ALWAN_LITERAL(1.0)) {
+        alwan_f64 total = s + c;
+        s /= total;
+        c /= total;
     }
 
-    /* Requires NCS color atlas data */
-    return ALWAN_E_INVALID;
+    /* Approximate CIE Y from NCS blackness: Y ≈ (1 − s)² × 100 */
+    alwan_f64 Y = (ALWAN_LITERAL(1.0) - s) * (ALWAN_LITERAL(1.0) - s) * 100.0;
+
+    alwan_f64 cx, cy;
+    if (parsed.is_neutral) {
+        cx = NCS_WP_x;
+        cy = NCS_WP_y;
+    } else {
+        /* Interpolate xy between adjacent elementary hues */
+        static const alwan_f64 ELEM_POS[4] = {0.0, 25.0, 50.0, 75.0};
+        alwan_f64 pos = parsed.hue_pos;
+        int seg      = (int)(pos / 25.0) % 4;
+        int seg_next = (seg + 1) % 4;
+        alwan_f64 seg_end = (seg == 3) ? 100.0 : ELEM_POS[seg_next];
+        alwan_f64 t = (pos - ELEM_POS[seg]) / (seg_end - ELEM_POS[seg]);
+        alwan_f64 hue_x = NCS_ELEM_x[seg] + t * (NCS_ELEM_x[seg_next] - NCS_ELEM_x[seg]);
+        alwan_f64 hue_y = NCS_ELEM_y[seg] + t * (NCS_ELEM_y[seg_next] - NCS_ELEM_y[seg]);
+
+        /* Mix white point with full-chroma hue according to chromaticness */
+        cx = NCS_WP_x + c * (hue_x - NCS_WP_x);
+        cy = NCS_WP_y + c * (hue_y - NCS_WP_y);
+    }
+
+    /* xyY → XYZ */
+    if (cy < ALWAN_LITERAL(1e-12)) {
+        xyz->x = xyz->y = xyz->z = ALWAN_LITERAL(0.0);
+    } else {
+        xyz->y = Y;
+        xyz->x = Y * cx / cy;
+        xyz->z = Y * (ALWAN_LITERAL(1.0) - cx - cy) / cy;
+    }
+
+    return ALWAN_OK;
 }
 
-/* Convert XYZ tristimulus values to NCS notation */
+/* Convert XYZ tristimulus values to NCS notation.
+ * An accurate inverse requires the full NCS colour atlas (proprietary data).
+ * Not implemented. */
 int alwan_xyz_to_ncs(char *ncs_notation, size_t notation_size, alwan_xyz const *xyz) {
-    if (!ncs_notation || notation_size < 16 || !xyz) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Requires inverse lookup in NCS color atlas */
+    if (!ncs_notation || notation_size < 16 || !xyz) return ALWAN_E_INVALID;
     return ALWAN_E_INVALID;
 }
 

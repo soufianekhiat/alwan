@@ -2,11 +2,7 @@
 
 How Alwan handles reference datasets (CMFs, illuminants, RGB spaces).
 
-> **/!\ IMPLEMENTATION STATUS:**
-> **Runtime Mode (`ALWAN_EMBED_DATA=0`):** NOT YET IMPLEMENTED in v0.1-alpha
-> **Embedded Mode (`ALWAN_EMBED_DATA=1`):** SUPPORTED (default)
->
-> This document describes both modes for future reference. Currently, only embedded mode works.
+> **Note:** Runtime Mode (`ALWAN_EMBED_DATA=0`) is not implemented. Only embedded mode is supported.
 
 ---
 

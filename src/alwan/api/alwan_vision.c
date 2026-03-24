@@ -175,19 +175,76 @@ alwan_f64 alwan_luminous_efficiency(alwan_f64 wavelength, alwan_vision_type visi
 }
 
 alwan_f64 alwan_photopic_luminance(alwan_ctx *ctx, alwan_spd const *spd) {
-    (void)ctx; (void)spd;
-    return ALWAN_LITERAL(-1.0);  /* Not yet implemented */
+    (void)ctx;
+    if (!spd || !spd->values || spd->count < 2) return ALWAN_LITERAL(-1.0);
+
+    /* CIE 69:1987 / NIST SP 250-37: maximum spectral luminous efficacy photopic */
+    alwan_f64 const Km = 683.002;
+    alwan_f64 step = ((alwan_f64)spd->wavelength_max - (alwan_f64)spd->wavelength_min)
+                     / (alwan_f64)(spd->count - 1);
+    alwan_f64 sum = ALWAN_LITERAL(0.0);
+
+    for (size_t i = 0; i < spd->count; i++) {
+        alwan_f64 lambda = (alwan_f64)spd->wavelength_min + (alwan_f64)i * step;
+        alwan_f64 v = interpolate_lut(PHOTOPIC_V_DATA, PHOTOPIC_V_COUNT, lambda);
+        /* Trapezoidal weights: 0.5 at endpoints, 1.0 interior */
+        alwan_f64 w = (i == 0 || i == spd->count - 1)
+                      ? ALWAN_LITERAL(0.5) : ALWAN_LITERAL(1.0);
+        sum += w * (alwan_f64)spd->values[i] * v;
+    }
+
+    return Km * sum * step;
 }
 
 alwan_f64 alwan_scotopic_luminance(alwan_ctx *ctx, alwan_spd const *spd) {
-    (void)ctx; (void)spd;
-    return ALWAN_LITERAL(-1.0);  /* Not yet implemented */
+    (void)ctx;
+    if (!spd || !spd->values || spd->count < 2) return ALWAN_LITERAL(-1.0);
+
+    /* CIE 69:1987: maximum spectral luminous efficacy scotopic */
+    alwan_f64 const Kmp = 1699.998;
+    alwan_f64 step = ((alwan_f64)spd->wavelength_max - (alwan_f64)spd->wavelength_min)
+                     / (alwan_f64)(spd->count - 1);
+    alwan_f64 sum = ALWAN_LITERAL(0.0);
+
+    for (size_t i = 0; i < spd->count; i++) {
+        alwan_f64 lambda = (alwan_f64)spd->wavelength_min + (alwan_f64)i * step;
+        alwan_f64 vp = interpolate_lut(SCOTOPIC_VP_DATA, SCOTOPIC_VP_COUNT, lambda);
+        alwan_f64 w  = (i == 0 || i == spd->count - 1)
+                       ? ALWAN_LITERAL(0.5) : ALWAN_LITERAL(1.0);
+        sum += w * (alwan_f64)spd->values[i] * vp;
+    }
+
+    return Kmp * sum * step;
 }
 
 alwan_f64 alwan_mesopic_luminance(alwan_ctx *ctx, alwan_spd const *spd,
                                       alwan_f64 adaptation_level) {
-    (void)ctx; (void)spd; (void)adaptation_level;
-    return ALWAN_LITERAL(-1.0);  /* Not yet implemented */
+    if (!spd || !spd->values || spd->count < 2) return ALWAN_LITERAL(-1.0);
+    if (adaptation_level <= ALWAN_LITERAL(0.0))  return ALWAN_LITERAL(-1.0);
+
+    /* CIE 191:2010 mesopic adaptation coefficient m.
+     * Functional form from Goodman et al. (2007):
+     *   m = 10^(0.767) * L_p / (1 + 10^(0.767) * L_p)
+     * Valid range: 0.001-10 cd/m^2; m=1 for L_p >= 5 (photopic region). */
+    alwan_f64 m;
+    if (adaptation_level >= ALWAN_LITERAL(5.0)) {
+        m = ALWAN_LITERAL(1.0);
+    } else {
+        /* 10^0.767 ≈ 5.8474... */
+        alwan_f64 const c = 5.84738229067;
+        m = c * adaptation_level / (ALWAN_LITERAL(1.0) + c * adaptation_level);
+    }
+
+    alwan_f64 L_p = alwan_photopic_luminance(ctx, spd);
+    if (L_p < ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(-1.0);
+
+    alwan_f64 L_s = alwan_scotopic_luminance(ctx, spd);
+    if (L_s < ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(-1.0);
+
+    /* L_mes = m*L_p + (1-m)*(K_m/K_m')*L_s
+     * (K_m/K_m') converts scotopic luminance to photopic-equivalent cd/m^2. */
+    alwan_f64 const Km_ratio = 683.002 / 1699.998;
+    return m * L_p + (ALWAN_LITERAL(1.0) - m) * Km_ratio * L_s;
 }
 
 /* ================================================================
@@ -237,6 +294,14 @@ alwan_f64 alwan_maximum_angular_size_barten1999(alwan_f64 u,
 void alwan_csf_barten1999_params_default(alwan_csf_barten1999_params *params) {
     if (!params) return;
 
+    /* Default parameters for 1920×1080 display at ~3 m viewing distance.
+     * Values from Barten (1999) "Contrast Sensitivity of the Human Eye and its
+     * Effects on Image Quality", SPIE Press — Table 3.2 reference observer:
+     *   sigma_0=0.5/60 deg, C_ab=0.08/60 deg, d=2.1 mm pupil (20 cd/m^2),
+     *   k=3 (signal threshold multiplier), T=0.1 s (integration time),
+     *   X_0=60 deg (field of view), X_max=12 deg (display size at 3m),
+     *   N_max=15 (max cycles), n=0.03 (neural noise), p=1.2274e6 (photon efficiency),
+     *   phi_0=3e-8 sr·deg^2 (spectral density of neural noise), u_0=7 cpd (filter). */
     params->sigma = alwan_sigma_barten1999_f64_v(
         ALWAN_LITERAL(0.5) / ALWAN_LITERAL(60.0),
         ALWAN_LITERAL(0.08) / ALWAN_LITERAL(60.0),

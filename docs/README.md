@@ -15,9 +15,9 @@ Complete reference documentation for the Alwan colour science library.
 
 ### API Reference
 - **[Context Management](api/context.md)** — Library initialization and cleanup
-- **[Color Spaces](api/color-spaces.md)** — Conversions between color models
-- **[Chromatic Adaptation](api/chromatic-adaptation.md)** — White point adaptation transforms
-- **[Transfer Functions](api/transfer-functions.md)** — Encoding/decoding curves and view transforms
+- **[Color Spaces](api/color-spaces.md)** — 50+ color models: CIE, perceptual, encoding, HDR variants
+- **[Chromatic Adaptation](api/chromatic-adaptation.md)** — White point adaptation transforms (12 CAT methods)
+- **[Transfer Functions](api/transfer-functions.md)** — Encoding/decoding curves, 37+ camera logs, view transforms
 - **[Matrix Operations](api/matrix-operations.md)** — 3×3 matrix math
 - **[Spectral Operations](api/spectral.md)** — SPD lifecycle, integration, resampling, and upsampling
 - **[Color Appearance Models](api/color-appearance.md)** — CIECAM02, CAM16, ZCAM, and 7 more CAMs
@@ -31,6 +31,9 @@ Complete reference documentation for the Alwan colour science library.
 - **[Vision Science](api/vision.md)** — Barten CSF, luminous efficiency, pupil response
 - **[Atmospheric Optics](api/atmosphere.md)** — Rayleigh scattering (Bodhaine 1999)
 - **[Reference Data](api/reference-data.md)** — Munsell, ColorChecker, NCS, interpolation, LUT
+- **[Bulk Operations / Map](api/map.md)** — Batch pixel processing with stride and pixel format support
+- **[SIMD](api/simd.md)** — SIMD-accelerated bulk operations
+- **[GPU Backends](api/backends.md)** — HLSL, GLSL, and Halide backend usage
 
 ### Technical Details
 - **[Precision & Limits](precision-and-limits.md)** — Numerical accuracy, tolerances, and constraints

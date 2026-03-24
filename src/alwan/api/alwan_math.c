@@ -391,10 +391,12 @@ int alwan_cct_duv_optimize(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2 co
     alwan_f64 x = xy->v[0];
     alwan_f64 y = xy->v[1];
 
-    /* Initial CCT estimate using McCamy's formula */
+    /* Initial CCT estimate using McCamy (1992) formula */
     alwan_f64 cct = alwan_mccamy_cct_f64_v(x, y);
 
-    /* Clamp to reasonable range */
+    /* Clamp to [1000, 25000] K — practical range covering incandescent to
+     * extreme daylight; CIE defines CCT for sources near the Planckian locus
+     * (Duv < 0.05 per CIE 015:2004), but no formal CCT range is mandated. */
     if (cct < ALWAN_LITERAL(1000.0)) cct = ALWAN_LITERAL(1000.0);
     if (cct > ALWAN_LITERAL(25000.0)) cct = ALWAN_LITERAL(25000.0);
 
@@ -430,7 +432,7 @@ int alwan_cct_duv_optimize(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2 co
 
         cct += delta;
 
-        /* Clamp */
+        /* Clamp to valid CCT search range [1000, 25000] K */
         if (cct < ALWAN_LITERAL(1000.0)) cct = ALWAN_LITERAL(1000.0);
         if (cct > ALWAN_LITERAL(25000.0)) cct = ALWAN_LITERAL(25000.0);
 
@@ -458,9 +460,19 @@ int alwan_optimize_spectrum_for_xyz(alwan_spd *spd_out,
         return ALWAN_E_RANGE;
     }
 
-    /* Simple optimization using Gaussian basis functions */
-    /* This is a simplified approach - a full implementation would use
-     * more sophisticated optimization (e.g., quasi-Newton methods) */
+    /* Gaussian basis approximation: 7 Gaussians spanning 420–680 nm.
+     * Centers {420, 470, 520, 570, 600, 630, 680} nm chosen to cover
+     * the visible spectrum with spacing matching the CIE 1964 CMF peak
+     * separation; width=40 nm provides smooth interpolation without
+     * excessive metamerism. This is an engineering choice, not from a paper.
+     * This gives a single smooth SPD per XYZ target; it does not minimise
+     * metamerism or find the minimum-energy solution.
+     * A rigorous solver would:
+     *   1. Convolve candidate SPDs with the CMF to evaluate XYZ residual
+     *   2. Minimise ||XYZ_computed − XYZ_target||² subject to SPD ≥ 0
+     *      (e.g., NNLS or quasi-Newton with bound constraints)
+     * The current approach is adequate for rough spectrum reconstruction where
+     * accuracy is less important than smoothness and speed. */
 
     const size_t num_gaussians = 7;
     const alwan_f64 centers[7] = {
@@ -499,14 +511,6 @@ int alwan_optimize_spectrum_for_xyz(alwan_spd *spd_out,
 
         spd_out->values[i] = (value > ALWAN_LITERAL(0.0)) ? value : ALWAN_LITERAL(0.0);
     }
-
-    /* Note: A complete implementation would:
-     * 1. Use proper CMF convolution to compute XYZ from SPD
-     * 2. Implement iterative optimization (gradient descent or quasi-Newton)
-     * 3. Add constraints (non-negative, smoothness)
-     * 4. Handle multiple observer types
-     * This simplified version provides a reasonable starting point.
-     */
 
     return ALWAN_OK;
 }

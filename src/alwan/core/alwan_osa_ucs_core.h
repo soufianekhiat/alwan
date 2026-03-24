@@ -53,8 +53,8 @@ ALWAN_DIAG_POP
 
 ALWAN_INLINE alwan_scalar alwan_spow_cbrt_v(alwan_scalar val) {
     return ALWAN_SELECT(val >= ALWAN_ZERO,
-                        ALWAN_POW(ALWAN_SELECT(val < ALWAN_ZERO, ALWAN_ZERO, val), ALWAN_ONE / ALWAN_LITERAL(3.0)),
-                        -ALWAN_POW(ALWAN_SELECT(-val < ALWAN_ZERO, ALWAN_ZERO, -val), ALWAN_ONE / ALWAN_LITERAL(3.0)));
+                        ALWAN_CBRT(ALWAN_SELECT(val < ALWAN_ZERO, ALWAN_ZERO, val)),
+                        -ALWAN_CBRT(ALWAN_SELECT(-val < ALWAN_ZERO, ALWAN_ZERO, -val)));
 }
 
 ALWAN_INLINE alwan_osa_ucs alwan_xyz_to_osa_ucs_v(alwan_xyz xyz) {
@@ -70,7 +70,7 @@ ALWAN_INLINE alwan_osa_ucs alwan_xyz_to_osa_ucs_v(alwan_xyz xyz) {
                    - ALWAN_LITERAL(2.5643) * cy + ALWAN_LITERAL(1.8103);
     alwan_scalar Y0 = Y * k;
     Y0 = ALWAN_SELECT(Y0 < ALWAN_ZERO, ALWAN_ZERO, Y0);
-    alwan_scalar Y0_cbrt = ALWAN_POW(Y0, ALWAN_ONE / ALWAN_LITERAL(3.0));
+    alwan_scalar Y0_cbrt = ALWAN_CBRT(Y0);
     alwan_scalar Y0_minus_30_cbrt = alwan_spow_cbrt_v(Y0 - ALWAN_LITERAL(30.0));
     alwan_scalar Y0_es = Y0_cbrt - ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0);
     alwan_scalar lambda = ALWAN_LITERAL(5.9) * (Y0_es + ALWAN_LITERAL(0.042) * Y0_minus_30_cbrt);

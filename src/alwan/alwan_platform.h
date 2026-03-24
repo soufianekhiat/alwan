@@ -17,11 +17,11 @@
  * 1.0 Version
  * ================================================================ */
 
-#define ALWAN_VERSION_MAJOR 1
+#define ALWAN_VERSION_MAJOR 2
 #define ALWAN_VERSION_MINOR 0
 #define ALWAN_VERSION_PATCH 0
 #define ALWAN_VERSION ((ALWAN_VERSION_MAJOR * 10000) + (ALWAN_VERSION_MINOR * 100) + ALWAN_VERSION_PATCH)
-#define ALWAN_VERSION_STRING "1.0.0"
+#define ALWAN_VERSION_STRING "2.0.0"
 
 /* ================================================================
  * 1.1 Backend Detection
@@ -120,6 +120,13 @@
 # define ALWAN_CONSTEXPR static const
 # define ALWAN_TYPE_DEF  typedef
 # define ALWAN_UNUSED(x) (void)(x)
+# if defined(_MSC_VER)
+#  define ALWAN_FORCE_INLINE static __forceinline
+# elif defined(__GNUC__) || defined(__clang__)
+#  define ALWAN_FORCE_INLINE static __attribute__((always_inline)) inline
+# else
+#  define ALWAN_FORCE_INLINE static inline
+# endif
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
 # define ALWAN_INLINE    inline
 # define ALWAN_CONSTEXPR static const

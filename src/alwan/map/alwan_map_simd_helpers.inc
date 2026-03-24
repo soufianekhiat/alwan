@@ -201,8 +201,18 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__lab_f_inv_simd)(alwan_map_simd
     return alwan_map_simd_select(mask, cube_result, linear_result);
 }
 
+/* Force-inline when SVML: pow24/pow_inv24 reduce to a single intrinsic (~3 YMM
+ * registers). Three inlined calls stay well within the 16-register budget.
+ * Without SVML the software implementation uses ~15 temporaries; three inlined
+ * copies would overflow the register file and cause spills worse than a call. */
+#if ALWAN_HAS_SVML
+#  define ALWAN__OETF_INLINE ALWAN_FORCE_INLINE
+#else
+#  define ALWAN__OETF_INLINE ALWAN_INLINE
+#endif
+
 /* sRGB EOTF: encoded -> linear */
-ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_map_simd v) {
+ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_map_simd v) {
     alwan_map_simd thresh = alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_EOTF_THRESH);
     alwan_map_simd_mask mask = alwan_map_simd_cmple(v, thresh);
     alwan_map_simd lo     = alwan_map_simd_mul(v, alwan_map_simd_set1((alwan_map_lane)(1.0 / ALWAN_SRGB_LINEAR_GAIN)));
@@ -216,17 +226,27 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_map_simd
 }
 
 /* sRGB OETF: linear -> encoded */
-ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd v) {
+ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd v) {
     alwan_map_simd thresh = alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_OETF_THRESH);
-    alwan_map_simd lo     = alwan_map_simd_mul(v, alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_LINEAR_GAIN));
-    alwan_map_simd hi     = alwan_map_simd_sub(
+    alwan_map_simd_mask mask = alwan_map_simd_cmple(v, thresh);
+    alwan_map_simd lo = alwan_map_simd_mul(v, alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_LINEAR_GAIN));
+    /* Early-out: skip pow_inv24 when all lanes are in the linear region */
+    if (alwan_map_simd_mask_all_set(mask))
+        return lo;
+    /* Clamp to zero before pow_inv24 to avoid undefined pow(negative, non-integer) */
+    alwan_map_simd hi_base = alwan_map_simd_select(
+        alwan_map_simd_cmpgt(v, alwan_map_simd_zero()),
+        v,
+        alwan_map_simd_zero());
+    alwan_map_simd hi = alwan_map_simd_sub(
         alwan_map_simd_mul(
             alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_A),
-            alwan_map_simd_pow_inv24(v)),
+            alwan_map_simd_pow_inv24(hi_base)),
         alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_B));
-    alwan_map_simd_mask mask = alwan_map_simd_cmple(v, thresh);
     return alwan_map_simd_select(mask, lo, hi);
 }
+
+#undef ALWAN__OETF_INLINE
 
 /* PQ OETF: linear (0-10000 cd/m^2) -> encoded */
 ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__pq_oetf_simd)(alwan_map_simd v) {
@@ -320,7 +340,7 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__hlg_oetf_simd)(alwan_map_simd 
     return alwan_map_simd_select(alwan_map_simd_cmple(L, thresh), lo, hi);
 }
 
-/* HLG inverse OETF: encoded -> linear (no system gamma) */
+/* HLG inverse OETF: encoded -> scene-linear (no OOTF, used by ICtCp-HLG) */
 ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__hlg_eotf_simd)(alwan_map_simd v) {
     alwan_map_simd const b_     = alwan_map_simd_set1((alwan_map_lane)(1.0 - 4.0 * 0.17883277));
     alwan_map_simd const c_     = alwan_map_simd_set1((alwan_map_lane)0.55991072952956202);
@@ -335,6 +355,12 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__hlg_eotf_simd)(alwan_map_simd 
         alwan_map_simd_add(alwan_map_simd_exp(alwan_map_simd_mul(alwan_map_simd_sub(E, c_), inv_a)), b_),
         twelve);
     return alwan_map_simd_select(alwan_map_simd_cmple(E, half), lo, hi);
+}
+
+/* HLG full EOTF: encoded -> display-linear (OOTF system gamma 1.2) */
+ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__hlg_eotf_full_simd)(alwan_map_simd v) {
+    alwan_map_simd scene = ALWAN_MAP_NAME(alwan__hlg_eotf_simd)(v);
+    return alwan_map_simd_pow(scene, alwan_map_simd_set1((alwan_map_lane)1.2));
 }
 
 /* SIMD min3 / max3 */

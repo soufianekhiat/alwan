@@ -186,9 +186,12 @@ static int test_color_matrix_monochrome(void)
 
     alwan_color_matrix_apply(&rgb_out, &rgb_in, &mono_matrix);
 
-    /* Monochrome should make all channels equal (luminance)
-     * Luma = 0.299*R + 0.587*G + 0.114*B = 0.299*0.8 + 0.587*0.4 + 0.114*0.2 ~= 0.497 */
-    alwan_f64 expected_luma = 0.299 * 0.8 + 0.587 * 0.4 + 0.114 * 0.2;
+    /* Monochrome should make all channels equal (luminance).
+     * Luma = Kr*R + Kg*G + Kb*B using BT.601 weights (ITU-R BT.601-7).
+     * Monochrome preset uses the same Kr=0.299, Kg=0.587, Kb=0.114 coefficients. */
+    alwan_f64 expected_luma = ALWAN_LUMA_KR_BT601 * ALWAN_LITERAL(0.8)
+                            + ALWAN_LUMA_KG_BT601 * ALWAN_LITERAL(0.4)
+                            + ALWAN_LUMA_KB_BT601 * ALWAN_LITERAL(0.2);
     TEST_ASSERT_NEAR(rgb_out.r, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome red = luma");
     TEST_ASSERT_NEAR(rgb_out.g, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome green = luma");
     TEST_ASSERT_NEAR(rgb_out.b, expected_luma, ALWAN_TEST_TOLERANCE, "Monochrome blue = luma");

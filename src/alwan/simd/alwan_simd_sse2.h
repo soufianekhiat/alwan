@@ -611,7 +611,7 @@ ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_shuffle(alwan_simd_u8 v, alwan_simd_u8 
  * ---------------------------------------------------------------- */
 
 /* f32: load 4 RGB pixels (12 floats) -> 3 x __m128 SoA */
-ALWAN_INLINE void alwan_simd_f32_deinterleave3(float const *src,
+ALWAN_FORCE_INLINE void alwan_simd_f32_deinterleave3(float const *src,
                                                  alwan_simd_f32 *ch0, alwan_simd_f32 *ch1, alwan_simd_f32 *ch2) {
     __m128 v0 = _mm_loadu_ps(src);      /* a0 b0 c0 a1 */
     __m128 v1 = _mm_loadu_ps(src + 4);  /* b1 c1 a2 b2 */
@@ -626,7 +626,7 @@ ALWAN_INLINE void alwan_simd_f32_deinterleave3(float const *src,
 }
 
 /* f32: store 3 x __m128 SoA -> 4 RGB pixels (12 floats) */
-ALWAN_INLINE void alwan_simd_f32_interleave3(float *dst,
+ALWAN_FORCE_INLINE void alwan_simd_f32_interleave3(float *dst,
                                                alwan_simd_f32 a, alwan_simd_f32 b, alwan_simd_f32 c) {
     __m128 u0 = _mm_unpacklo_ps(a, b);  /* a0 b0 a1 b1 */
     __m128 u1 = _mm_unpackhi_ps(a, b);  /* a2 b2 a3 b3 */
@@ -649,7 +649,7 @@ ALWAN_INLINE void alwan_simd_f32_interleave3(float *dst,
 }
 
 /* f64: load 2 RGB pixels (6 doubles) -> 3 x __m128d SoA */
-ALWAN_INLINE void alwan_simd_f64_deinterleave3(double const *src,
+ALWAN_FORCE_INLINE void alwan_simd_f64_deinterleave3(double const *src,
                                                  alwan_simd_f64 *ch0, alwan_simd_f64 *ch1, alwan_simd_f64 *ch2) {
     __m128d v0 = _mm_loadu_pd(src);      /* a0 b0 */
     __m128d v1 = _mm_loadu_pd(src + 2);  /* c0 a1 */
@@ -661,7 +661,7 @@ ALWAN_INLINE void alwan_simd_f64_deinterleave3(double const *src,
 }
 
 /* f64: store 3 x __m128d SoA -> 2 RGB pixels (6 doubles) */
-ALWAN_INLINE void alwan_simd_f64_interleave3(double *dst,
+ALWAN_FORCE_INLINE void alwan_simd_f64_interleave3(double *dst,
                                                alwan_simd_f64 a, alwan_simd_f64 b, alwan_simd_f64 c) {
     _mm_storeu_pd(dst,     _mm_shuffle_pd(a, b, 0x0)); /* a0 b0 */
     _mm_storeu_pd(dst + 2, _mm_shuffle_pd(c, a, 0x2)); /* c0 a1 */
@@ -775,19 +775,122 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
 }
 
 /* ----------------------------------------------------------------
- * Float64 pow(x, 2.4) -- forward to alwan_simd_f64_pow
+ * Float64 pow(x, 2.4) -- fast log2/exp2 decomposition (SSE2, 2-lane)
+ * Valid for normal-range inputs; subnormal inputs may be inaccurate.
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
-    return alwan_simd_f64_pow(x, _mm_set1_pd(2.4));
+#if ALWAN_HAS_SVML
+    return _mm_pow_pd(x, _mm_set1_pd(2.4));
+#else
+    __m128d zero   = _mm_setzero_pd();
+    __m128d v      = _mm_max_pd(x, zero);
+    __m128d is_pos = _mm_cmpgt_pd(v, zero);
+
+    /* Extract binary exponent: (bits >> 52) - 1023 */
+    __m128i iv      = _mm_castpd_si128(v);
+    __m128i exp_i64 = _mm_sub_epi64(
+        _mm_srli_epi64(iv, 52),
+        _mm_set1_epi64x(1023LL));
+
+    /* Convert exp_i64 to f64 via bias trick */
+    __m128i const cvt_magic_i = _mm_set1_epi64x(0x4330000000000000LL + 1022LL);
+    __m128d const cvt_magic_d = _mm_set1_pd(4503599627371518.0); /* 2^52 + 1022 */
+    __m128d e = _mm_sub_pd(
+        _mm_castsi128_pd(_mm_add_epi64(exp_i64, cvt_magic_i)),
+        cvt_magic_d);
+
+    /* Extract mantissa in [1.0, 2.0) */
+    __m128i mant_bits = _mm_or_si128(
+        _mm_and_si128(iv, _mm_set1_epi64x(0x000FFFFFFFFFFFFFLL)),
+        _mm_set1_epi64x(0x3FF0000000000000LL));
+    __m128d m = _mm_castsi128_pd(mant_bits);
+
+    /* log2(m) on [1, 2): Horner polynomial, t = m - 1 */
+    __m128d t = _mm_sub_pd(m, _mm_set1_pd(1.0));
+    __m128d log2_m = _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(1.4426950408889634),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.7213475204049363),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(0.4808983469618909),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.3606737602744954),
+                     _mm_mul_pd(t, _mm_set1_pd(0.28854301595785953))))))))));
+
+    /* y = 2.4 * log2(x) */
+    __m128d y = _mm_mul_pd(_mm_set1_pd(2.4), _mm_add_pd(e, log2_m));
+
+    /* Split y = yi (integer) + yf (fraction) */
+    __m128d yi = alwan_simd_f64_floor(y);
+    __m128d yf = _mm_sub_pd(y, yi);
+
+    /* exp2(yf) on [0, 1): Horner polynomial */
+    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.6931471805599453),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.24022650695910071),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.05550410866482158),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.009618129107628477),
+                    _mm_mul_pd(yf, _mm_set1_pd(0.0013333558146428443)))))))))));
+
+    /* Scale: 2^yi = float with exponent field = (yi + 1023) << 52
+     * _mm_cvttpd_epi32 gives 2×i32 in low 64 bits; sign-extend to i64. */
+    __m128i yi_i32  = _mm_cvttpd_epi32(yi);
+    __m128i yi_sign = _mm_srai_epi32(yi_i32, 31);     /* all-ones if negative */
+    __m128i yi_i64  = _mm_unpacklo_epi32(yi_i32, yi_sign); /* 2×i64 sign-extended */
+    __m128i scale_i = _mm_slli_epi64(
+        _mm_add_epi64(yi_i64, _mm_set1_epi64x(1023LL)), 52);
+    __m128d scale   = _mm_castsi128_pd(scale_i);
+
+    __m128d result  = _mm_mul_pd(scale, exp2f);
+    return _mm_and_pd(is_pos, result);
+#endif
 }
 
 /* ----------------------------------------------------------------
- * Float64 pow(x, 1/2.4) -- forward to alwan_simd_f64_pow
+ * Float64 pow(x, 1/2.4) -- fast log2/exp2 decomposition (SSE2, 2-lane)
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
-    return alwan_simd_f64_pow(x, _mm_set1_pd(1.0 / 2.4));
+#if ALWAN_HAS_SVML
+    return _mm_pow_pd(x, _mm_set1_pd(1.0 / 2.4));
+#else
+    __m128d zero   = _mm_setzero_pd();
+    __m128d v      = _mm_max_pd(x, zero);
+    __m128d is_pos = _mm_cmpgt_pd(v, zero);
+    __m128i iv      = _mm_castpd_si128(v);
+    __m128i exp_i64 = _mm_sub_epi64(
+        _mm_srli_epi64(iv, 52),
+        _mm_set1_epi64x(1023LL));
+    __m128i const cvt_magic_i = _mm_set1_epi64x(0x4330000000000000LL + 1022LL);
+    __m128d const cvt_magic_d = _mm_set1_pd(4503599627371518.0);
+    __m128d e = _mm_sub_pd(
+        _mm_castsi128_pd(_mm_add_epi64(exp_i64, cvt_magic_i)),
+        cvt_magic_d);
+    __m128i mant_bits = _mm_or_si128(
+        _mm_and_si128(iv, _mm_set1_epi64x(0x000FFFFFFFFFFFFFLL)),
+        _mm_set1_epi64x(0x3FF0000000000000LL));
+    __m128d m = _mm_castsi128_pd(mant_bits);
+    __m128d t = _mm_sub_pd(m, _mm_set1_pd(1.0));
+    __m128d log2_m = _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(1.4426950408889634),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.7213475204049363),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(0.4808983469618909),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.3606737602744954),
+                     _mm_mul_pd(t, _mm_set1_pd(0.28854301595785953))))))))));
+    __m128d y = _mm_mul_pd(_mm_set1_pd(1.0 / 2.4), _mm_add_pd(e, log2_m));
+    __m128d yi = alwan_simd_f64_floor(y);
+    __m128d yf = _mm_sub_pd(y, yi);
+    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.6931471805599453),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.24022650695910071),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.05550410866482158),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.009618129107628477),
+                    _mm_mul_pd(yf, _mm_set1_pd(0.0013333558146428443)))))))))));
+    __m128i yi_i32  = _mm_cvttpd_epi32(yi);
+    __m128i yi_sign = _mm_srai_epi32(yi_i32, 31);
+    __m128i yi_i64  = _mm_unpacklo_epi32(yi_i32, yi_sign);
+    __m128i scale_i = _mm_slli_epi64(
+        _mm_add_epi64(yi_i64, _mm_set1_epi64x(1023LL)), 52);
+    __m128d scale   = _mm_castsi128_pd(scale_i);
+    __m128d result  = _mm_mul_pd(scale, exp2f);
+    return _mm_and_pd(is_pos, result);
+#endif
 }
 
 /* ----------------------------------------------------------------

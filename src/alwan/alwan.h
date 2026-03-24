@@ -4224,19 +4224,22 @@ alwan_scalar alwan_luminous_efficiency(alwan_scalar wavelength, alwan_vision_typ
 
 /* Calculate photopic luminance from SPD
  * spd: spectral power distribution
- * Returns photopic luminance in cd/m^2, or negative on error */
+ * Returns photopic luminance in cd/m^2 (K_m=683.002 lm/W), or negative on error
+ * Uses CIE 1924 photopic V(lambda) via trapezoidal integration */
 alwan_scalar alwan_photopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
 
 /* Calculate scotopic luminance from SPD
  * spd: spectral power distribution
- * Returns scotopic luminance in cd/m^2, or negative on error */
+ * Returns scotopic luminance in cd/m^2 (K_m'=1699.998 lm/W), or negative on error
+ * Uses CIE 1951 scotopic V'(lambda) via trapezoidal integration */
 alwan_scalar alwan_scotopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
 
-/* Calculate mesopic luminance from SPD
+/* Calculate mesopic luminance from SPD (CIE 191:2010)
  * spd: spectral power distribution
- * adaptation_level: adaptation luminance level in cd/m^2 [0.001, 10]
+ * adaptation_level: photopic adaptation luminance in cd/m^2 [0.001, 10]
  * Returns mesopic luminance in cd/m^2, or negative on error
- * Uses CIE 191:2010 mesopic vision model */
+ * Adaptation coefficient m from Goodman et al. (2007);
+ * L_mes = m*L_p + (1-m)*(K_m/K_m')*L_s */
 alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx,
                                       alwan_spd const *spd,
                                       alwan_scalar adaptation_level);
@@ -4502,15 +4505,17 @@ size_t alwan_color_checker_num_patches(alwan_colorchecker_type type);
 /* NCS (Natural Color System) Data
  * Convert NCS notation to XYZ tristimulus values
  * ncs_notation: NCS notation string (e.g., "S 1050-Y90R")
- * xyz: receives XYZ tristimulus values
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+ * xyz: receives XYZ tristimulus values (Y=0–100 scale, D65)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on parse error
+ * Approximate: uses published elementary-hue chromaticities (Hård & Sivik 1981)
+ * with linear hue interpolation; does not reproduce the proprietary NCS atlas */
 int alwan_ncs_to_xyz(alwan_xyz *xyz, char const *ncs_notation);
 
 /* Convert XYZ tristimulus values to NCS notation
  * xyz: XYZ tristimulus values
  * ncs_notation: receives NCS notation string (allocated by caller)
  * notation_size: size of notation buffer (should be >= 32)
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+ * Returns ALWAN_E_INVALID — inverse requires the proprietary NCS colour atlas */
 int alwan_xyz_to_ncs(char *ncs_notation, size_t notation_size, alwan_xyz const *xyz);
 
 /* Additional RGB Space Definitions

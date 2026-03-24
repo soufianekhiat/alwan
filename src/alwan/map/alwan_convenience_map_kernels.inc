@@ -768,7 +768,7 @@ int ALWAN_MAP_LITCAT(alwan_hsl_to_rgb, _map_planar)(alwan_map_lane *out_ch0, alw
  * Process c0/c1/c2 tile buffers in-place.
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_hsp_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_hsp_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -835,7 +835,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_hsp_kernel)(alwan_map_lane *c0, alwan_ma
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__hsp_to_rgb_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hsp_to_rgb_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -972,7 +972,7 @@ static void ALWAN_MAP_LIT(alwan__hsp_to_rgb_kernel)(alwan_map_lane *c0, alwan_ma
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_hsplog_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_hsplog_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
     ALWAN_MAP_LIT(alwan__rgb_to_hsp_kernel)(c0, c1, c2, tile);
     /* Apply log10 to saturation channel */
     size_t i = 0;
@@ -991,7 +991,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_hsplog_kernel)(alwan_map_lane *c0, alwan
         c1[i] = (alwan_map_lane)alwan_map_scalar_log10((alwan_map_lane)(1.0) + (alwan_map_lane)(9.0) * (alwan_map_lane)c1[i]);
 }
 
-static void ALWAN_MAP_LIT(alwan__hsplog_to_rgb_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hsplog_to_rgb_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
     /* Invert log saturation: S = (10^S_log - 1) / 9 */
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -1014,7 +1014,7 @@ static void ALWAN_MAP_LIT(alwan__hsplog_to_rgb_kernel)(alwan_map_lane *c0, alwan
     ALWAN_MAP_LIT(alwan__hsp_to_rgb_kernel)(c0, c1, c2, tile);
 }
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_hsy_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_hsy_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -1131,7 +1131,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_hsy_kernel)(alwan_map_lane *c0, alwan_ma
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__hsy_to_rgb_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hsy_to_rgb_kernel)(alwan_map_lane *c0, alwan_map_lane *c1, alwan_map_lane *c2, size_t tile) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -1599,7 +1599,7 @@ int ALWAN_MAP_LITCAT(alwan_hsl_to_linear_srgb, _map_interleave)(alwan_map_lane *
  * Relative Luminance map (3->1)
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__relative_luminance_kernel)(alwan_map_lane *Y_out, alwan_map_lane const *rgb_in,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__relative_luminance_kernel)(alwan_map_lane *Y_out, alwan_map_lane const *rgb_in,
                                               size_t count, alwan_map_lane kr, alwan_map_lane kg, alwan_map_lane kb,
                                               size_t in_stride, size_t out_stride) {
     size_t processed = 0;

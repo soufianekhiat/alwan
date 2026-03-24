@@ -740,19 +740,94 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
 }
 
 /* ----------------------------------------------------------------
- * Float64 pow(x, 2.4) -- forward to alwan_simd_f64_pow
+ * Float64 pow(x, 2.4) -- fast log2/exp2 on AArch64, scalar fallback
+ * Valid for normal-range inputs; subnormal inputs may be inaccurate.
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
+#if defined(__aarch64__)
+    float64x2_t zero   = vdupq_n_f64(0.0);
+    float64x2_t v      = vmaxq_f64(x, zero);
+    uint64x2_t  is_pos = vcgtq_f64(v, zero);
+    int64x2_t   iv     = vreinterpretq_s64_f64(v);
+    /* Extract binary exponent: (unsigned_bits >> 52) - 1023 */
+    int64x2_t exp_i64  = vsubq_s64(
+        vreinterpretq_s64_u64(vshrq_n_u64(vreinterpretq_u64_s64(iv), 52)),
+        vdupq_n_s64(1023LL));
+    /* Convert exponent to f64 directly (AArch64 has vcvtq_f64_s64) */
+    float64x2_t e = vcvtq_f64_s64(exp_i64);
+    /* Extract mantissa in [1.0, 2.0) */
+    int64x2_t mant_bits = vorrq_s64(
+        vandq_s64(iv, vdupq_n_s64(0x000FFFFFFFFFFFFFLL)),
+        vdupq_n_s64(0x3FF0000000000000LL));
+    float64x2_t m = vreinterpretq_f64_s64(mant_bits);
+    /* log2(m) on [1, 2): Horner polynomial, t = m - 1 */
+    float64x2_t t = vsubq_f64(m, vdupq_n_f64(1.0));
+    float64x2_t log2_m = vmulq_f64(t, vaddq_f64(vdupq_n_f64(1.4426950408889634),
+                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(-0.7213475204049363),
+                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(0.4808983469618909),
+                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(-0.3606737602744954),
+                         vmulq_f64(t, vdupq_n_f64(0.28854301595785953))))))))));
+    float64x2_t y  = vmulq_f64(vdupq_n_f64(2.4), vaddq_f64(e, log2_m));
+    float64x2_t yi = vrndmq_f64(y);  /* floor */
+    float64x2_t yf = vsubq_f64(y, yi);
+    /* exp2(yf) on [0, 1): Horner polynomial */
+    float64x2_t exp2f = vaddq_f64(vdupq_n_f64(1.0),
+                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.6931471805599453),
+                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.24022650695910071),
+                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.05550410866482158),
+                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.009618129107628477),
+                        vmulq_f64(yf, vdupq_n_f64(0.0013333558146428443)))))))))));
+    /* Scale: 2^yi = float with exponent field = (yi + 1023) << 52 */
+    int64x2_t yi_i64  = vcvtq_s64_f64(yi);
+    int64x2_t scale_i = vshlq_n_s64(vaddq_s64(yi_i64, vdupq_n_s64(1023LL)), 52);
+    float64x2_t result = vmulq_f64(vreinterpretq_f64_s64(scale_i), exp2f);
+    return vreinterpretq_f64_u64(vandq_u64(is_pos, vreinterpretq_u64_f64(result)));
+#else
     return alwan_simd_f64_pow(x, alwan_simd_f64_set1(2.4));
+#endif
 }
 
 /* ----------------------------------------------------------------
- * Float64 pow(x, 1/2.4) -- forward to alwan_simd_f64_pow
+ * Float64 pow(x, 1/2.4) -- fast log2/exp2 on AArch64, scalar fallback
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
+#if defined(__aarch64__)
+    float64x2_t zero   = vdupq_n_f64(0.0);
+    float64x2_t v      = vmaxq_f64(x, zero);
+    uint64x2_t  is_pos = vcgtq_f64(v, zero);
+    int64x2_t   iv     = vreinterpretq_s64_f64(v);
+    int64x2_t exp_i64  = vsubq_s64(
+        vreinterpretq_s64_u64(vshrq_n_u64(vreinterpretq_u64_s64(iv), 52)),
+        vdupq_n_s64(1023LL));
+    float64x2_t e = vcvtq_f64_s64(exp_i64);
+    int64x2_t mant_bits = vorrq_s64(
+        vandq_s64(iv, vdupq_n_s64(0x000FFFFFFFFFFFFFLL)),
+        vdupq_n_s64(0x3FF0000000000000LL));
+    float64x2_t m = vreinterpretq_f64_s64(mant_bits);
+    float64x2_t t = vsubq_f64(m, vdupq_n_f64(1.0));
+    float64x2_t log2_m = vmulq_f64(t, vaddq_f64(vdupq_n_f64(1.4426950408889634),
+                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(-0.7213475204049363),
+                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(0.4808983469618909),
+                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(-0.3606737602744954),
+                         vmulq_f64(t, vdupq_n_f64(0.28854301595785953))))))))));
+    float64x2_t y  = vmulq_f64(vdupq_n_f64(1.0 / 2.4), vaddq_f64(e, log2_m));
+    float64x2_t yi = vrndmq_f64(y);
+    float64x2_t yf = vsubq_f64(y, yi);
+    float64x2_t exp2f = vaddq_f64(vdupq_n_f64(1.0),
+                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.6931471805599453),
+                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.24022650695910071),
+                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.05550410866482158),
+                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.009618129107628477),
+                        vmulq_f64(yf, vdupq_n_f64(0.0013333558146428443)))))))))));
+    int64x2_t yi_i64  = vcvtq_s64_f64(yi);
+    int64x2_t scale_i = vshlq_n_s64(vaddq_s64(yi_i64, vdupq_n_s64(1023LL)), 52);
+    float64x2_t result = vmulq_f64(vreinterpretq_f64_s64(scale_i), exp2f);
+    return vreinterpretq_f64_u64(vandq_u64(is_pos, vreinterpretq_u64_f64(result)));
+#else
     return alwan_simd_f64_pow(x, alwan_simd_f64_set1(1.0 / 2.4));
+#endif
 }
 
 /* ----------------------------------------------------------------

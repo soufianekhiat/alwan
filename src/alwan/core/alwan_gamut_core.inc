@@ -61,6 +61,11 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(gamut_oklab_to_linear_srgb)(ALWAN
  * Maximum saturation for a given hue direction (a, b) in Oklab
  * ================================================================ */
 
+/* Polynomial approximation for maximum saturation at a given Oklab (a, b) hue.
+ * Three zones (R/G/B gamut faces); k0-k4 are fitted polynomial coefficients,
+ * wl/wm/ws are the corresponding LMS-to-sRGB row elements for that face.
+ * Coefficients from Ottosson (2021) "Gamut clipping"
+ *   https://bottosson.github.io/posts/gamutclipping/ reference implementation. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(gamut_compute_max_saturation)(ALWAN_CORE_T a, ALWAN_CORE_T b) {
     ALWAN_CORE_T k0, k1, k2, k3, k4, wl, wm, ws;
 

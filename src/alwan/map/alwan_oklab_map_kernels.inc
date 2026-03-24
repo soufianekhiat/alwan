@@ -13,7 +13,7 @@
  * XYZ -> Oklab Kernel
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_oklab_kernel)(
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_oklab_kernel)(
     alwan_map_lane *o0, alwan_map_lane *o1, alwan_map_lane *o2,
     alwan_map_lane const *i0, alwan_map_lane const *i1, alwan_map_lane const *i2,
     size_t n)
@@ -48,7 +48,7 @@ static void ALWAN_MAP_LIT(alwan__xyz_to_oklab_kernel)(
  * Oklab -> XYZ Kernel
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__oklab_to_xyz_kernel)(
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__oklab_to_xyz_kernel)(
     alwan_map_lane *o0, alwan_map_lane *o1, alwan_map_lane *o2,
     alwan_map_lane const *i0, alwan_map_lane const *i1, alwan_map_lane const *i2,
     size_t n)

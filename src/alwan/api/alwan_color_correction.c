@@ -67,52 +67,65 @@ int alwan_color_matrix_get_preset(alwan_mat3x3 *matrix_3x3, alwan_color_matrix_p
         return ALWAN_E_INVALID;
     }
 
-    /* Define preset matrices for common color grading looks */
+    /* Preset matrices for common color grading looks.
+     * All matrices below (except Sepia) are artistic presets with no published
+     * source; values are chosen for plausible visual effect and should be
+     * treated as implementation-defined defaults, not industry standards.
+     *
+     * Sepia: classic formula widely published in image processing literature
+     *   (e.g. Microsoft Imaging documentation, CSS filter drafts). Values:
+     *   R' = 0.393R + 0.769G + 0.189B
+     *   G' = 0.349R + 0.686G + 0.168B
+     *   B' = 0.272R + 0.534G + 0.131B
+     *
+     * Monochrome: BT.601 luma weights (Kr=0.299, Kg=0.587, Kb=0.114)
+     *   per ITU-R BT.601-7. All channels set to luma value. */
     switch (preset) {
         case ALWAN_COLOR_MATRIX_SEPIA:
-            /* Sepia tone: warm brown/yellow tint */
+            /* Sepia tone: warm brown/yellow tint (classic formula) */
             matrix_3x3->m[0] = 0.393; matrix_3x3->m[1] = 0.769; matrix_3x3->m[2] = 0.189;
             matrix_3x3->m[3] = 0.349; matrix_3x3->m[4] = 0.686; matrix_3x3->m[5] = 0.168;
             matrix_3x3->m[6] = 0.272; matrix_3x3->m[7] = 0.534; matrix_3x3->m[8] = 0.131;
             break;
 
         case ALWAN_COLOR_MATRIX_VINTAGE:
-            /* Vintage: reduced saturation, warm shift */
+            /* Vintage: reduced saturation, warm shift (artistic preset) */
             matrix_3x3->m[0] = 0.9; matrix_3x3->m[1] = 0.1; matrix_3x3->m[2] = 0.1;
             matrix_3x3->m[3] = 0.1; matrix_3x3->m[4] = 0.8; matrix_3x3->m[5] = 0.0;
             matrix_3x3->m[6] = 0.0; matrix_3x3->m[7] = 0.1; matrix_3x3->m[8] = 0.7;
             break;
 
         case ALWAN_COLOR_MATRIX_BLEACH_BYPASS:
-            /* Bleach bypass: high contrast, reduced saturation */
+            /* Bleach bypass: high contrast, reduced saturation (artistic preset) */
             matrix_3x3->m[0] = 1.2; matrix_3x3->m[1] = 0.2; matrix_3x3->m[2] = 0.0;
             matrix_3x3->m[3] = 0.1; matrix_3x3->m[4] = 1.1; matrix_3x3->m[5] = 0.1;
             matrix_3x3->m[6] = 0.0; matrix_3x3->m[7] = 0.2; matrix_3x3->m[8] = 1.0;
             break;
 
         case ALWAN_COLOR_MATRIX_COOL:
-            /* Cool tone: blue shift */
+            /* Cool tone: blue shift (artistic preset) */
             matrix_3x3->m[0] = 0.8; matrix_3x3->m[1] = 0.0; matrix_3x3->m[2] = 0.2;
             matrix_3x3->m[3] = 0.0; matrix_3x3->m[4] = 0.9; matrix_3x3->m[5] = 0.1;
             matrix_3x3->m[6] = 0.0; matrix_3x3->m[7] = 0.0; matrix_3x3->m[8] = 1.2;
             break;
 
         case ALWAN_COLOR_MATRIX_WARM:
-            /* Warm tone: red/yellow shift */
+            /* Warm tone: red/yellow shift (artistic preset) */
             matrix_3x3->m[0] = 1.2; matrix_3x3->m[1] = 0.1; matrix_3x3->m[2] = 0.0;
             matrix_3x3->m[3] = 0.1; matrix_3x3->m[4] = 1.1; matrix_3x3->m[5] = 0.0;
             matrix_3x3->m[6] = 0.0; matrix_3x3->m[7] = 0.1; matrix_3x3->m[8] = 0.7;
             break;
 
         case ALWAN_COLOR_MATRIX_MONOCHROME:
-            /* Black and white: luminance weights */
+            /* Black and white: BT.601 luma weights Kr=0.299, Kg=0.587, Kb=0.114
+             * per ITU-R BT.601-7; all channels equal to luma. */
             matrix_3x3->m[0] = 0.299; matrix_3x3->m[1] = 0.587; matrix_3x3->m[2] = 0.114;
             matrix_3x3->m[3] = 0.299; matrix_3x3->m[4] = 0.587; matrix_3x3->m[5] = 0.114;
             matrix_3x3->m[6] = 0.299; matrix_3x3->m[7] = 0.587; matrix_3x3->m[8] = 0.114;
             break;
 
         case ALWAN_COLOR_MATRIX_NIGHT_VISION:
-            /* Night vision: green monochrome */
+            /* Night vision: green monochrome (artistic preset) */
             matrix_3x3->m[0] = 0.0; matrix_3x3->m[1] = 1.0; matrix_3x3->m[2] = 0.0;
             matrix_3x3->m[3] = 0.0; matrix_3x3->m[4] = 1.0; matrix_3x3->m[5] = 0.0;
             matrix_3x3->m[6] = 0.0; matrix_3x3->m[7] = 1.0; matrix_3x3->m[8] = 0.0;

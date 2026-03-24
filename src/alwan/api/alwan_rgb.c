@@ -12,6 +12,7 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_rgb_core.h"
 #include "../core/alwan_math_core.h"
+#include "../map/alwan_map_internal.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -126,6 +127,31 @@ int alwan_oetf_apply(alwan_f64 *encoded,
     alwan_tf_fn_f64 oetf_fn = alwan__resolve_oetf_f64(tf);
     if (!oetf_fn) return ALWAN_E_INVALID;
 
+#if ALWAN_SIMD_WIDTH > 1
+    if (in_stride == sizeof(double) && out_stride == sizeof(double)) {
+        typedef alwan_simd (*simd_tf_fn)(alwan_simd);
+        simd_tf_fn oetf_simd = NULL;
+        switch (tf) {
+        case ALWAN_TF_SRGB:   oetf_simd = alwan__srgb_oetf_simd;  break;
+        case ALWAN_TF_PQ:
+        case ALWAN_TF_ST2084: oetf_simd = alwan__pq_oetf_simd;    break;
+        case ALWAN_TF_HLG:    oetf_simd = alwan__hlg_oetf_simd;   break;
+        default: break;
+        }
+        if (oetf_simd) {
+            alwan_simd_lane const *in  = (alwan_simd_lane const *)linear;
+            alwan_simd_lane       *out = (alwan_simd_lane       *)encoded;
+            size_t const W = ALWAN_SIMD_WIDTH;
+            size_t i = 0;
+            for (; i + W <= count; i += W)
+                alwan_simd_store(&out[i], oetf_simd(alwan_simd_load(&in[i])));
+            for (; i < count; i++)
+                out[i] = (alwan_simd_lane)oetf_fn((alwan_f64)in[i]);
+            return ALWAN_OK;
+        }
+    }
+#endif
+
     /* Apply transfer function to array */
     for (size_t i = 0; i < count; i++) {
         double const *in_ptr = (double const *)((char const *)linear + i * in_stride);
@@ -147,6 +173,31 @@ int alwan_eotf_apply(alwan_f64 *linear,
     /* Select transfer function */
     alwan_tf_fn_f64 eotf_fn = alwan__resolve_eotf_f64(tf);
     if (!eotf_fn) return ALWAN_E_INVALID;
+
+#if ALWAN_SIMD_WIDTH > 1
+    if (in_stride == sizeof(double) && out_stride == sizeof(double)) {
+        typedef alwan_simd (*simd_tf_fn)(alwan_simd);
+        simd_tf_fn eotf_simd = NULL;
+        switch (tf) {
+        case ALWAN_TF_SRGB:   eotf_simd = alwan__srgb_eotf_simd;  break;
+        case ALWAN_TF_PQ:
+        case ALWAN_TF_ST2084: eotf_simd = alwan__pq_eotf_simd;    break;
+        case ALWAN_TF_HLG:    eotf_simd = alwan__hlg_eotf_full_simd; break;
+        default: break;
+        }
+        if (eotf_simd) {
+            alwan_simd_lane const *in  = (alwan_simd_lane const *)encoded;
+            alwan_simd_lane       *out = (alwan_simd_lane       *)linear;
+            size_t const W = ALWAN_SIMD_WIDTH;
+            size_t i = 0;
+            for (; i + W <= count; i += W)
+                alwan_simd_store(&out[i], eotf_simd(alwan_simd_load(&in[i])));
+            for (; i < count; i++)
+                out[i] = (alwan_simd_lane)eotf_fn((alwan_f64)in[i]);
+            return ALWAN_OK;
+        }
+    }
+#endif
 
     /* Apply transfer function to array */
     for (size_t i = 0; i < count; i++) {
