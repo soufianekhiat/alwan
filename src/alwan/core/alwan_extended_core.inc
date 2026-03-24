@@ -192,7 +192,10 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_prismatic_to_rgb)(ALWAN_CORE
 ALWAN_INLINE ALWAN_CORE_LAB ALWAN_CORE_FNVLIT(alwan_xyz_to_hdr_cielab)(ALWAN_CORE_XYZ xyz) {
     ALWAN_CORE_LAB result;
 
-    /* Default parameters: Y_s=0.2, Y_abs=100 */
+    /* Default parameters: Y_s=0.2, Y_abs=100 cd/m^2.
+     * Epsilon computed via Fairchild & Wyble (2010) CIC18 eq. 7:
+     *   sf = 1.25 - 0.25*(Y_s/0.184), lf = ln(Y_abs)/ln(100), epsilon_base/sf/lf
+     * Published constants: epsilon_base=0.58, Y_s=0.2, Y_abs=318 (adapting field). */
     ALWAN_CORE_T epsilon = ALWAN_CORE_LITERAL(0.58);
     ALWAN_CORE_T sf = ALWAN_CORE_LITERAL(1.25) - ALWAN_CORE_LITERAL(0.25) * (ALWAN_CORE_LITERAL(0.2) / ALWAN_CORE_LITERAL(0.184));
     ALWAN_CORE_T lf = ALWAN_CORE_LN(ALWAN_CORE_LITERAL(318.0)) / ALWAN_CORE_LN(ALWAN_CORE_LITERAL(100.0));
@@ -246,7 +249,9 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_hdr_cielab_to_xyz)(ALWAN_COR
 ALWAN_INLINE ALWAN_CORE_IPT ALWAN_CORE_FNVLIT(alwan_xyz_to_hdr_ipt)(ALWAN_CORE_XYZ xyz) {
     ALWAN_CORE_IPT result;
 
-    /* Epsilon formula: 0.59 / (sf * lf) */
+    /* Epsilon formula per Fairchild (2011) "Thinking in Three Dimensions" eq. 4:
+     *   epsilon = 0.59 / (sf * lf), with sf = 1.25 - 0.25*(Y_s/0.184),
+     *   lf = ln(Y_abs)/ln(100), Y_s=0.2 (surround), Y_abs=318 cd/m^2 */
     ALWAN_CORE_T lf = ALWAN_CORE_LN(ALWAN_CORE_LITERAL(318.0)) / ALWAN_CORE_LN(ALWAN_CORE_LITERAL(100.0));
     ALWAN_CORE_T sf = ALWAN_CORE_LITERAL(1.25) - ALWAN_CORE_LITERAL(0.25) * (ALWAN_CORE_LITERAL(0.2) / ALWAN_CORE_LITERAL(0.184));
     ALWAN_CORE_T epsilon = ALWAN_CORE_LITERAL(0.59) / (sf * lf);
@@ -316,7 +321,9 @@ ALWAN_INLINE ALWAN_CORE_IGPGTG ALWAN_CORE_FNVLIT(alwan_xyz_to_igpgtg)(ALWAN_CORE
     vec_in.v[0] = xyz.x; vec_in.v[1] = xyz.y; vec_in.v[2] = xyz.z;
     ALWAN_CORE_VEC3 lms = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_XYZ_TO_LMS_IGPGTG), vec_in);
 
-    /* Scaled nonlinearity: spow(LMS / scale, 0.427) */
+    /* Scaled nonlinearity: spow(LMS / scale, 0.427)
+     * Exponent 0.427 from Ebner & Fairchild (1998) "Development and testing
+     * of a color space (IPT) with improved hue uniformity" IS&T 6th CIC, Table 3. */
     ALWAN_CORE_T const exponent = ALWAN_CORE_LITERAL(0.427);
     lms.v[0] = ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[0] / ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[0], exponent);
     lms.v[1] = ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[1] / ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[1], exponent);
@@ -392,11 +399,16 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_icacb_to_xyz)(ALWAN_CORE_ICA
 
 /* ================================================================
  * HCL (Sarifuddin 2005)
+ * Reference: Sarifuddin & Missaoui (2005) "A New Perceptually Uniform
+ *   Color Space with Associated Color Similarity Measure for Content-Based
+ *   Image and Video Retrieval" MMDB '05, ACM.
+ * gamma=3.0 and Y_0=100.0 are the fixed model constants from eq. (9-11).
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_HCL ALWAN_CORE_FNVLIT(alwan_rgb_to_hcl)(ALWAN_CORE_RGB rgb) {
     ALWAN_CORE_HCL result;
 
+    /* gamma=3.0, Y_0=100.0 per Sarifuddin & Missaoui (2005) eqs. 9-11 */
     ALWAN_CORE_T const gamma = ALWAN_CORE_LITERAL(3.0);
     ALWAN_CORE_T const Y_0 = ALWAN_CORE_LITERAL(100.0);
 

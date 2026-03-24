@@ -215,6 +215,147 @@ static int test_invalid_tf_name(void) {
 }
 
 /* ----------------------------------------------------------------
+ * SIMD vs scalar parity tests
+ *
+ * These run each TF in two ways:
+ *  - bulk (count = MIN_SIMD_PIXELS, contiguous strides) -> exercises SIMD loop
+ *  - scalar (count = 1 per element)                     -> exercises scalar tail
+ * Then compare element-by-element to catch any vectorization divergence.
+ * ---------------------------------------------------------------- */
+
+static int test_pq_simd_vs_scalar(void) {
+    TEST_START("PQ OETF/EOTF SIMD vs scalar parity");
+
+    alwan_f64 oetf_in[MIN_SIMD_PIXELS];
+    alwan_f64 simd_out[MIN_SIMD_PIXELS];
+    alwan_f64 ref_out[MIN_SIMD_PIXELS];
+
+    /* Ramp from 0 to 10 000 cd/m² (full PQ range) */
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++)
+        oetf_in[i] = (alwan_f64)i / (alwan_f64)(MIN_SIMD_PIXELS - 1) * ALWAN_LITERAL(10000.0);
+
+    /* Bulk SIMD path */
+    int status = alwan_oetf_apply(simd_out, ALWAN_TF_PQ,
+                                  oetf_in, MIN_SIMD_PIXELS,
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
+    TEST_ASSERT(status == ALWAN_OK, "PQ OETF bulk failed");
+
+    /* Per-element scalar reference (count=1 stays below any SIMD width) */
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++) {
+        status = alwan_oetf_apply(&ref_out[i], ALWAN_TF_PQ,
+                                  &oetf_in[i], 1,
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
+        TEST_ASSERT(status == ALWAN_OK, "PQ OETF scalar ref failed");
+    }
+
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++) {
+        alwan_f64 diff = ALWAN_ABS(simd_out[i] - ref_out[i]);
+        if (diff > ALWAN_SIMD_PQ_TOLERANCE) {
+            printf("  PQ OETF SIMD/scalar mismatch at [%d]: simd=%.15g ref=%.15g diff=%e\n",
+                   i, simd_out[i], ref_out[i], diff);
+            TEST_ASSERT(0, "PQ OETF SIMD/scalar mismatch");
+        }
+    }
+
+    /* EOTF: ramp 0..1 encoded -> linear cd/m² */
+    alwan_f64 eotf_in[MIN_SIMD_PIXELS];
+    alwan_f64 eotf_simd[MIN_SIMD_PIXELS];
+    alwan_f64 eotf_ref[MIN_SIMD_PIXELS];
+
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++)
+        eotf_in[i] = (alwan_f64)i / (alwan_f64)(MIN_SIMD_PIXELS - 1);
+
+    status = alwan_eotf_apply(eotf_simd, ALWAN_TF_PQ,
+                              eotf_in, MIN_SIMD_PIXELS,
+                              sizeof(alwan_f64), sizeof(alwan_f64));
+    TEST_ASSERT(status == ALWAN_OK, "PQ EOTF bulk failed");
+
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++) {
+        status = alwan_eotf_apply(&eotf_ref[i], ALWAN_TF_PQ,
+                                  &eotf_in[i], 1,
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
+        TEST_ASSERT(status == ALWAN_OK, "PQ EOTF scalar ref failed");
+    }
+
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++) {
+        /* Use relative tolerance for large cd/m² values */
+        alwan_f64 tol = eotf_ref[i] > ALWAN_LITERAL(1.0)
+            ? ALWAN_ABS(eotf_ref[i]) * ALWAN_SIMD_PQ_TOLERANCE
+            : ALWAN_SIMD_PQ_TOLERANCE;
+        alwan_f64 diff = ALWAN_ABS(eotf_simd[i] - eotf_ref[i]);
+        if (diff > tol) {
+            printf("  PQ EOTF SIMD/scalar mismatch at [%d]: simd=%.15g ref=%.15g diff=%e\n",
+                   i, eotf_simd[i], eotf_ref[i], diff);
+            TEST_ASSERT(0, "PQ EOTF SIMD/scalar mismatch");
+        }
+    }
+
+    TEST_PASS_MSG();
+    return 0;
+}
+
+static int test_hlg_simd_vs_scalar(void) {
+    TEST_START("HLG OETF/EOTF SIMD vs scalar parity");
+
+    alwan_f64 oetf_in[MIN_SIMD_PIXELS];
+    alwan_f64 simd_out[MIN_SIMD_PIXELS];
+    alwan_f64 ref_out[MIN_SIMD_PIXELS];
+
+    /* Ramp over HLG scene-linear range [0, 1] */
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++)
+        oetf_in[i] = (alwan_f64)i / (alwan_f64)(MIN_SIMD_PIXELS - 1);
+
+    int status = alwan_oetf_apply(simd_out, ALWAN_TF_HLG,
+                                  oetf_in, MIN_SIMD_PIXELS,
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
+    TEST_ASSERT(status == ALWAN_OK, "HLG OETF bulk failed");
+
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++) {
+        status = alwan_oetf_apply(&ref_out[i], ALWAN_TF_HLG,
+                                  &oetf_in[i], 1,
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
+        TEST_ASSERT(status == ALWAN_OK, "HLG OETF scalar ref failed");
+    }
+
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++) {
+        alwan_f64 diff = ALWAN_ABS(simd_out[i] - ref_out[i]);
+        if (diff > ALWAN_SIMD_TOLERANCE) {
+            printf("  HLG OETF SIMD/scalar mismatch at [%d]: simd=%.15g ref=%.15g diff=%e\n",
+                   i, simd_out[i], ref_out[i], diff);
+            TEST_ASSERT(0, "HLG OETF SIMD/scalar mismatch");
+        }
+    }
+
+    /* EOTF: ramp 0..1 */
+    alwan_f64 eotf_simd[MIN_SIMD_PIXELS];
+    alwan_f64 eotf_ref[MIN_SIMD_PIXELS];
+
+    status = alwan_eotf_apply(eotf_simd, ALWAN_TF_HLG,
+                              oetf_in, MIN_SIMD_PIXELS,
+                              sizeof(alwan_f64), sizeof(alwan_f64));
+    TEST_ASSERT(status == ALWAN_OK, "HLG EOTF bulk failed");
+
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++) {
+        status = alwan_eotf_apply(&eotf_ref[i], ALWAN_TF_HLG,
+                                  &oetf_in[i], 1,
+                                  sizeof(alwan_f64), sizeof(alwan_f64));
+        TEST_ASSERT(status == ALWAN_OK, "HLG EOTF scalar ref failed");
+    }
+
+    for (int i = 0; i < MIN_SIMD_PIXELS; i++) {
+        alwan_f64 diff = ALWAN_ABS(eotf_simd[i] - eotf_ref[i]);
+        if (diff > ALWAN_SIMD_TOLERANCE) {
+            printf("  HLG EOTF SIMD/scalar mismatch at [%d]: simd=%.15g ref=%.15g diff=%e\n",
+                   i, eotf_simd[i], eotf_ref[i], diff);
+            TEST_ASSERT(0, "HLG EOTF SIMD/scalar mismatch");
+        }
+    }
+
+    TEST_PASS_MSG();
+    return 0;
+}
+
+/* ----------------------------------------------------------------
  * Main test runner
  * ---------------------------------------------------------------- */
 
@@ -227,6 +368,8 @@ int test_09_tf_hdr_main(void) {
     failures += test_acesproxy_roundtrip();
     failures += test_pq_st2084_alias();
     failures += test_invalid_tf_name();
+    failures += test_pq_simd_vs_scalar();
+    failures += test_hlg_simd_vs_scalar();
 
     if (failures == 0) {
         printf("\n=== All HDR transfer function tests passed ===\n");

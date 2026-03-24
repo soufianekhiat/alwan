@@ -203,13 +203,17 @@ static int test_roundtrip_all_methods(void) {
     static alwan_f64 const d50_xyz_data[] = {
 #include "reference_values/test_d50_white.csv"
     };
+    /* test_xyz_colors.csv: index 5 = sRGB red XYZ (D65) from colour-science */
+    static alwan_f64 const test_xyz_colors[] = {
+#include "reference_values/test_xyz_colors.csv"
+    };
     ALWAN_DIAG_POP
 
     alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
     alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
-    /* Test color: sRGB red in D65 */
-    alwan_vec3 original = {{ALWAN_LITERAL(0.412456), ALWAN_LITERAL(0.212673), ALWAN_LITERAL(0.019334)}};
+    /* Test color: sRGB red XYZ (D65) — entry 5 in test_xyz_colors.csv */
+    alwan_vec3 original = {{test_xyz_colors[15], test_xyz_colors[16], test_xyz_colors[17]}};
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 

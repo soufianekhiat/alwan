@@ -13,7 +13,7 @@
  * RGB <-> CMY
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_cmy_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_cmy_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -34,7 +34,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_cmy_kernel)(alwan_map_lane *d0, alwan_ma
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__cmy_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__cmy_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -73,7 +73,7 @@ int ALWAN_MAP_LITCAT(alwan_cmy_to_rgb, _map_interleave)(alwan_map_lane *rgb_out,
  * RGB <-> YCoCg
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_ycocg_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_ycocg_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -99,7 +99,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_ycocg_kernel)(alwan_map_lane *d0, alwan_
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__ycocg_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ycocg_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -167,7 +167,7 @@ int ALWAN_MAP_LITCAT(alwan_ycocg_to_rgb, _map_interleave)(alwan_map_lane *rgb_ou
  * RGB <-> HWB, HSV <-> HWB
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_hwb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_hwb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -214,7 +214,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_hwb_kernel)(alwan_map_lane *d0, alwan_ma
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__hwb_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hwb_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -276,7 +276,7 @@ static void ALWAN_MAP_LIT(alwan__hwb_to_rgb_kernel)(alwan_map_lane *d0, alwan_ma
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__hsv_to_hwb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hsv_to_hwb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -300,7 +300,7 @@ static void ALWAN_MAP_LIT(alwan__hsv_to_hwb_kernel)(alwan_map_lane *d0, alwan_ma
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__hwb_to_hsv_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hwb_to_hsv_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                       alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -365,7 +365,7 @@ int ALWAN_MAP_LITCAT(alwan_hwb_to_hsv, _map_interleave)(alwan_map_lane *hsv_out,
  * RGB <-> YCbCr (with standard enum)
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_ycbcr_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_ycbcr_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                         size_t n, alwan_map_lane kr, alwan_map_lane kb) {
     size_t i = 0;
@@ -396,7 +396,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_ycbcr_kernel)(alwan_map_lane *d0, alwan_
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__ycbcr_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ycbcr_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                         size_t n, alwan_map_lane kr, alwan_map_lane kb) {
     size_t i = 0;
@@ -484,7 +484,7 @@ int ALWAN_MAP_LITCAT(alwan_ycbcr_to_rgb, _map_interleave)(alwan_map_lane *rgb_ou
  * RGB <-> YcCbcCrc (with bit_depth)
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__rgb_to_yccbccrc_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_yccbccrc_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                            alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                            size_t n, int bit_depth) {
     size_t i = 0;
@@ -542,7 +542,7 @@ static void ALWAN_MAP_LIT(alwan__rgb_to_yccbccrc_kernel)(alwan_map_lane *d0, alw
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__yccbccrc_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__yccbccrc_to_rgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                            alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                            size_t n, int bit_depth) {
     size_t i = 0;
@@ -653,7 +653,7 @@ int ALWAN_MAP_LITCAT(alwan_yccbccrc_to_rgb, _map_interleave)(alwan_map_lane *rgb
  * YCbCr legal <-> full range (with bit_depth)
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__ycbcr_full_to_legal_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ycbcr_full_to_legal_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                                alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                                size_t n, int bit_depth) {
     size_t i = 0;
@@ -679,7 +679,7 @@ static void ALWAN_MAP_LIT(alwan__ycbcr_full_to_legal_kernel)(alwan_map_lane *d0,
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__ycbcr_legal_to_full_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ycbcr_legal_to_full_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
                                                alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                                size_t n, int bit_depth) {
     size_t i = 0;

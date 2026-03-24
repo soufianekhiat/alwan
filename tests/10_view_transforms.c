@@ -432,10 +432,10 @@ static int test_view_transform_monotonic(void) {
                                                 3 * sizeof(alwan_f64));
             TEST_ASSERT(status == ALWAN_OK, "View transform failed");
 
-            /* Calculate luminance (Rec.709 weights) */
-            alwan_f64 luma = ALWAN_LITERAL(0.2126) * output[0] +
-                         ALWAN_LITERAL(0.7152) * output[1] +
-                         ALWAN_LITERAL(0.0722) * output[2];
+            /* Calculate luminance using BT.709 weights (ITU-R BT.709-6 Table 3) */
+            alwan_f64 luma = ALWAN_LUMA_KR_BT709 * output[0] +
+                         ALWAN_LUMA_KG_BT709 * output[1] +
+                         ALWAN_LUMA_KB_BT709 * output[2];
 
             /* Should be monotonically increasing */
             if (i > 0 && luma <= prev_luma) {

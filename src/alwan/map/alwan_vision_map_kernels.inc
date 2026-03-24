@@ -13,7 +13,7 @@
  * Helper: fuse RGB_TO_LMS * CVD * LMS_TO_RGB into a single mat3
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__fuse_cvd_matrix)(ALWAN_MAP_LIT(alwan_mat3x3) *fused, ALWAN_MAP_LIT(alwan_mat3x3) const *cvd) {
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__fuse_cvd_matrix)(ALWAN_MAP_LIT(alwan_mat3x3) *fused, ALWAN_MAP_LIT(alwan_mat3x3) const *cvd) {
     /* temp = CVD * RGB_TO_LMS */
     ALWAN_MAP_LIT(alwan_mat3x3) temp;
     for (int r = 0; r < 3; r++)

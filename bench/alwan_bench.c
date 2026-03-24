@@ -1110,9 +1110,7 @@ int main(void) {
     size_t m;
     int max_ch, f;
     alwan_scalar *buf_in, *buf_out;
-    /* Planar channel buffers */
-    alwan_scalar *ch_in[3], *ch_out[3];
-    double *res_il, *res_pl, *res_pp;
+    double *res_pp;
     double *res_ex[5]; /* U8, U16, F16, F32, F64 interleave _ex */
     double *res_pex[5]; /* U8, U16, F16, F32, F64 planar _ex */
     void *ex_buf_in, *ex_buf_out;
@@ -1136,12 +1134,6 @@ int main(void) {
     max_ch = 4;
     buf_in  = (alwan_scalar *)malloc((size_t)BENCH_PIXELS * (size_t)max_ch * sizeof(alwan_scalar));
     buf_out = (alwan_scalar *)malloc((size_t)BENCH_PIXELS * (size_t)max_ch * sizeof(alwan_scalar));
-    for (m = 0; m < 3; m++) {
-        ch_in[m]  = (alwan_scalar *)malloc((size_t)BENCH_PIXELS * sizeof(alwan_scalar));
-        ch_out[m] = (alwan_scalar *)malloc((size_t)BENCH_PIXELS * sizeof(alwan_scalar));
-    }
-    res_il = (double *)calloc(MAP_COUNT, sizeof(double));
-    res_pl = (double *)calloc(MAP_COUNT, sizeof(double));
     res_pp = (double *)calloc(MAP_COUNT, sizeof(double));
     for (f = 0; f < 5; f++) {
         res_ex[f] = (double *)calloc(MAP_COUNT, sizeof(double));
@@ -1158,15 +1150,12 @@ int main(void) {
         pex_ch_out[m] = malloc((size_t)BENCH_PIXELS * sizeof(double));
     }
 
-    if (!buf_in || !buf_out || !res_il || !res_pl || !res_pp || !ex_buf_in || !ex_buf_out) {
+    if (!buf_in || !buf_out || !res_pp || !ex_buf_in || !ex_buf_out) {
         printf("ERROR: allocation failed\n");
         return 1;
     }
 
     fill_random(buf_in, (size_t)BENCH_PIXELS * (size_t)max_ch);
-    /* Fill planar channel buffers */
-    for (m = 0; m < 3; m++)
-        fill_random(ch_in[m], BENCH_PIXELS);
     /* ex_buf_in / pex_ch_in filled per-format in the benchmark loop */
     /* Fill planar _ex typed channel buffers with random bytes */
     {
@@ -1184,7 +1173,7 @@ int main(void) {
     }
 
     /* ---- Run all benchmarks ---- */
-    printf("\nRunning %d benchmarks (x3 + 10 typed)...\n", (int)MAP_COUNT);
+    printf("\nRunning %d benchmarks (x1 per-pixel + 10 typed)...\n", (int)MAP_COUNT);
 
     for (m = 0; m < MAP_COUNT; m++) {
         map_entry const *e = &g_maps[m];
@@ -1192,28 +1181,6 @@ int main(void) {
 
         printf("  [%3d/%3d] %-35s", (int)(m + 1), (int)MAP_COUNT, e->name);
         fflush(stdout);
-
-        /* Interleave (always present) */
-        {
-            ileave_ctx ctx;
-            ctx.fn  = e->interleave;
-            ctx.in  = buf_in;
-            ctx.out = buf_out;
-            ctx.si  = (size_t)e->in_ch  * sizeof(alwan_scalar);
-            ctx.so  = (size_t)e->out_ch * sizeof(alwan_scalar);
-            t = measure_best(run_ileave, &ctx);
-            res_il[m] = (double)BENCH_PIXELS / t / 1e6;
-        }
-
-        /* Planar (if available) */
-        if (e->planar) {
-            planar_ctx ctx;
-            ctx.fn = e->planar;
-            ctx.i0 = ch_in[0]; ctx.i1 = ch_in[1]; ctx.i2 = ch_in[2];
-            ctx.o0 = ch_out[0]; ctx.o1 = ch_out[1]; ctx.o2 = ch_out[2];
-            t = measure_best(run_planar, &ctx);
-            res_pl[m] = (double)BENCH_PIXELS / t / 1e6;
-        }
 
         /* Per-pixel (if available) */
         if (e->per_pixel) {
@@ -1328,13 +1295,12 @@ int main(void) {
      * Print results
      * ================================================================ */
 
-    printf("\n| %-35s | Vec | %10s | %10s | %10s | %7s %7s | %7s %7s | %7s %7s | %7s %7s | %7s %7s |\n",
-           "Pipeline", "Interleave", "Planar", "Per-pixel",
-           "U8i", "U8p", "U16i", "U16p", "F16i", "F16p", "F32i", "F32p", "F64i", "F64p");
-    printf("|%-37s|-----|%12s|%12s|%12s|%8s%8s|%8s%8s|%8s%8s|%8s%8s|%8s%8s|\n",
+    printf("\n| %-35s | Vec | %10s | %10s | %10s | %10s | %10s | %7s %7s | %7s %7s | %7s %7s |\n",
+           "Pipeline", "Intlv_f32", "Planar_f32", "Intlv_f64", "Planar_f64", "Per-pixel",
+           "U8i", "U8p", "U16i", "U16p", "F16i", "F16p");
+    printf("|%-37s|-----|%12s|%12s|%12s|%12s|%12s|%8s%8s|%8s%8s|%8s%8s|\n",
            "-------------------------------------",
-           "------------", "------------", "------------",
-           "--------", "--------", "--------", "--------",
+           "------------", "------------", "------------", "------------", "------------",
            "--------", "--------", "--------", "--------",
            "--------", "--------");
 
@@ -1347,16 +1313,46 @@ int main(void) {
         color_reset();
         printf("  | ");
 
-        /* Interleave */
-        color_set(col_for_mpixs(res_il[m]));
-        printf("%10.2f", res_il[m]);
-        color_reset();
+        /* Interleave f32 */
+        if (res_ex[3][m] > 0.0) {
+            color_set(col_for_mpixs(res_ex[3][m]));
+            printf("%10.2f", res_ex[3][m]);
+            color_reset();
+        } else {
+            color_set(COL_GRAY);
+            printf("%10s", "--");
+            color_reset();
+        }
 
-        /* Planar */
+        /* Planar f32 */
         printf(" | ");
-        if (res_pl[m] > 0.0) {
-            color_set(col_for_mpixs(res_pl[m]));
-            printf("%10.2f", res_pl[m]);
+        if (res_pex[3][m] > 0.0) {
+            color_set(col_for_mpixs(res_pex[3][m]));
+            printf("%10.2f", res_pex[3][m]);
+            color_reset();
+        } else {
+            color_set(COL_GRAY);
+            printf("%10s", "--");
+            color_reset();
+        }
+
+        /* Interleave f64 */
+        printf(" | ");
+        if (res_ex[4][m] > 0.0) {
+            color_set(col_for_mpixs(res_ex[4][m]));
+            printf("%10.2f", res_ex[4][m]);
+            color_reset();
+        } else {
+            color_set(COL_GRAY);
+            printf("%10s", "--");
+            color_reset();
+        }
+
+        /* Planar f64 */
+        printf(" | ");
+        if (res_pex[4][m] > 0.0) {
+            color_set(col_for_mpixs(res_pex[4][m]));
+            printf("%10.2f", res_pex[4][m]);
             color_reset();
         } else {
             color_set(COL_GRAY);
@@ -1376,8 +1372,8 @@ int main(void) {
             color_reset();
         }
 
-        /* Typed _ex columns (5 formats x interleave + planar) */
-        for (f = 0; f < 5; f++) {
+        /* Typed _ex columns: U8, U16, F16 only (f=0,1,2) */
+        for (f = 0; f < 3; f++) {
             printf(" | ");
             if (res_ex[f][m] > 0.0) {
                 color_set(col_for_mpixs(res_ex[f][m]));
@@ -1414,9 +1410,9 @@ int main(void) {
         color_reset();
         printf(" | ");
         color_set(COL_GRAY);
-        printf("%10s | %10s", "--", "--");
+        printf("%10s | %10s | %10s | %10s", "--", "--", "--", "--");
         color_reset();
-        for (f = 0; f < 5; f++) {
+        for (f = 0; f < 3; f++) {
             printf(" | ");
             color_set(COL_GRAY);
             printf("%7s %7s", "--", "--");
@@ -1431,19 +1427,18 @@ int main(void) {
     printf(" = SIMD vectorized, ");
     color_set(COL_RED); printf("-"); color_reset();
     printf(" = scalar loop\n");
-    printf("U8i/U16i/F16i/F32i/F64i: _ex typed interleave,  U8p/U16p/F16p/F32p/F64p: _ex typed planar\n");
+    printf("Intlv_f32/f64: _ex typed interleave;  Planar_f32/f64: _ex typed planar;  U8/U16/F16: typed only\n");
 
     /* ================================================================
      * Print results (per-row relative coloring)
      * ================================================================ */
 
-    printf("\n| %-35s | Vec | %10s | %10s | %10s | %7s %7s | %7s %7s | %7s %7s | %7s %7s | %7s %7s |\n",
-           "Pipeline (row-relative)", "Interleave", "Planar", "Per-pixel",
-           "U8i", "U8p", "U16i", "U16p", "F16i", "F16p", "F32i", "F32p", "F64i", "F64p");
-    printf("|%-37s|-----|%12s|%12s|%12s|%8s%8s|%8s%8s|%8s%8s|%8s%8s|%8s%8s|\n",
+    printf("\n| %-35s | Vec | %10s | %10s | %10s | %10s | %10s | %7s %7s | %7s %7s | %7s %7s |\n",
+           "Pipeline (row-relative)", "Intlv_f32", "Planar_f32", "Intlv_f64", "Planar_f64", "Per-pixel",
+           "U8i", "U8p", "U16i", "U16p", "F16i", "F16p");
+    printf("|%-37s|-----|%12s|%12s|%12s|%12s|%12s|%8s%8s|%8s%8s|%8s%8s|\n",
            "-------------------------------------",
-           "------------", "------------", "------------",
-           "--------", "--------", "--------", "--------",
+           "------------", "------------", "------------", "------------", "------------",
            "--------", "--------", "--------", "--------",
            "--------", "--------");
 
@@ -1451,11 +1446,13 @@ int main(void) {
         double row_max = 0.0;
         int has_v = g_maps[m].has_simd;
 
-        /* Find row maximum across all columns */
-        if (res_il[m] > row_max) row_max = res_il[m];
-        if (res_pl[m] > row_max) row_max = res_pl[m];
+        /* Find row maximum across all printed columns */
+        if (res_ex[3][m]  > row_max) row_max = res_ex[3][m];
+        if (res_pex[3][m] > row_max) row_max = res_pex[3][m];
+        if (res_ex[4][m]  > row_max) row_max = res_ex[4][m];
+        if (res_pex[4][m] > row_max) row_max = res_pex[4][m];
         if (res_pp[m] > row_max) row_max = res_pp[m];
-        for (f = 0; f < 5; f++) {
+        for (f = 0; f < 3; f++) {
             if (res_ex[f][m]  > row_max) row_max = res_ex[f][m];
             if (res_pex[f][m] > row_max) row_max = res_pex[f][m];
         }
@@ -1466,16 +1463,46 @@ int main(void) {
         color_reset();
         printf("  | ");
 
-        /* Interleave */
-        color_set(col_for_row(res_il[m], row_max));
-        printf("%10.2f", res_il[m]);
-        color_reset();
+        /* Interleave f32 */
+        if (res_ex[3][m] > 0.0) {
+            color_set(col_for_row(res_ex[3][m], row_max));
+            printf("%10.2f", res_ex[3][m]);
+            color_reset();
+        } else {
+            color_set(COL_GRAY);
+            printf("%10s", "--");
+            color_reset();
+        }
 
-        /* Planar */
+        /* Planar f32 */
         printf(" | ");
-        if (res_pl[m] > 0.0) {
-            color_set(col_for_row(res_pl[m], row_max));
-            printf("%10.2f", res_pl[m]);
+        if (res_pex[3][m] > 0.0) {
+            color_set(col_for_row(res_pex[3][m], row_max));
+            printf("%10.2f", res_pex[3][m]);
+            color_reset();
+        } else {
+            color_set(COL_GRAY);
+            printf("%10s", "--");
+            color_reset();
+        }
+
+        /* Interleave f64 */
+        printf(" | ");
+        if (res_ex[4][m] > 0.0) {
+            color_set(col_for_row(res_ex[4][m], row_max));
+            printf("%10.2f", res_ex[4][m]);
+            color_reset();
+        } else {
+            color_set(COL_GRAY);
+            printf("%10s", "--");
+            color_reset();
+        }
+
+        /* Planar f64 */
+        printf(" | ");
+        if (res_pex[4][m] > 0.0) {
+            color_set(col_for_row(res_pex[4][m], row_max));
+            printf("%10.2f", res_pex[4][m]);
             color_reset();
         } else {
             color_set(COL_GRAY);
@@ -1495,8 +1522,8 @@ int main(void) {
             color_reset();
         }
 
-        /* Typed _ex columns */
-        for (f = 0; f < 5; f++) {
+        /* Typed _ex columns: U8, U16, F16 only (f=0,1,2) */
+        for (f = 0; f < 3; f++) {
             printf(" | ");
             if (res_ex[f][m] > 0.0) {
                 color_set(col_for_row(res_ex[f][m], row_max));
@@ -1533,9 +1560,9 @@ int main(void) {
         color_reset();
         printf(" | ");
         color_set(COL_GRAY);
-        printf("%10s | %10s", "--", "--");
+        printf("%10s | %10s | %10s | %10s", "--", "--", "--", "--");
         color_reset();
-        for (f = 0; f < 5; f++) {
+        for (f = 0; f < 3; f++) {
             printf(" | ");
             color_set(COL_GRAY);
             printf("%7s %7s", "--", "--");
@@ -1552,8 +1579,7 @@ int main(void) {
     printf(")\n\n");
 
     free(buf_in); free(buf_out);
-    for (m = 0; m < 3; m++) { free(ch_in[m]); free(ch_out[m]); }
-    free(res_il); free(res_pl); free(res_pp);
+    free(res_pp);
     for (f = 0; f < 5; f++) { free(res_ex[f]); free(res_pex[f]); }
     free(ex_buf_in); free(ex_buf_out);
     for (m = 0; m < 4; m++) { free(pex_ch_in[m]); free(pex_ch_out[m]); }

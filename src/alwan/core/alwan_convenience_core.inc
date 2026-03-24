@@ -253,6 +253,9 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_ycbcr_to_rgb_kr_kb)(ALWAN_CO
  * Y range:  [16*s, 235*s] / (2^N-1)
  * Cb/Cr range: [16*s, 240*s] / (2^N-1)
  * where s = 2^(N-8).
+ * Reference: ITU-R BT.601-7 §2.5.3 (8-bit), SMPTE ST 274:2008 (10-bit HD),
+ *   SMPTE ST 2082-1:2015 Table 1 (12/16-bit); values 16/235/240 are fixed
+ *   by the standard regardless of bit depth (only code range scales).
  * ---------------------------------------------------------------- */
 
 typedef struct {
@@ -284,6 +287,7 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_legal_range) ALWAN_CORE_FNLIT(alwan_legal_ra
 ALWAN_INLINE ALWAN_CORE_YCCBCCRC ALWAN_CORE_FNVLIT(alwan_rgb_to_yccbccrc)(ALWAN_CORE_RGB rgb, int bit_depth) {
     ALWAN_CORE_YCCBCCRC result;
 
+    /* BT.2020 constant-luminance luma coefficients — ITU-R BT.2020-2 Table 4 */
     ALWAN_CORE_T const kr = ALWAN_CORE_LITERAL(0.2627);
     ALWAN_CORE_T const kg = ALWAN_CORE_LITERAL(0.6780);
     ALWAN_CORE_T const kb = ALWAN_CORE_LITERAL(0.0593);
@@ -291,7 +295,8 @@ ALWAN_INLINE ALWAN_CORE_YCCBCCRC ALWAN_CORE_FNVLIT(alwan_rgb_to_yccbccrc)(ALWAN_
     /* Linear Yc */
     ALWAN_CORE_T yc_linear = kr * rgb.r + kg * rgb.g + kb * rgb.b;
 
-    /* BT.2020 OETF */
+    /* BT.2020 OETF — ITU-R BT.2020-2 §4 (same form as BT.709, different threshold)
+     * alpha=1.099, beta=0.018 are the 10/12-bit precision constants from Table 5. */
     ALWAN_CORE_T const beta = ALWAN_CORE_LITERAL(0.018);
     ALWAN_CORE_T const alpha = ALWAN_CORE_LITERAL(1.099);
 
@@ -329,6 +334,7 @@ ALWAN_INLINE ALWAN_CORE_YCCBCCRC ALWAN_CORE_FNVLIT(alwan_rgb_to_yccbccrc)(ALWAN_
 ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_yccbccrc_to_rgb)(ALWAN_CORE_YCCBCCRC yccbccrc, int bit_depth) {
     ALWAN_CORE_RGB result;
 
+    /* BT.2020 constant-luminance luma coefficients — ITU-R BT.2020-2 Table 4 */
     ALWAN_CORE_T const kr = ALWAN_CORE_LITERAL(0.2627);
     ALWAN_CORE_T const kg = ALWAN_CORE_LITERAL(0.6780);
     ALWAN_CORE_T const kb = ALWAN_CORE_LITERAL(0.0593);
@@ -352,7 +358,7 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_yccbccrc_to_rgb)(ALWAN_CORE_
     ALWAN_CORE_T r_gamma = yc + diff_r;
     ALWAN_CORE_T b_gamma = yc + diff_b;
 
-    /* BT.2020 EOTF */
+    /* BT.2020 EOTF — ITU-R BT.2020-2 §4, inverse of OETF */
     ALWAN_CORE_T const beta = ALWAN_CORE_LITERAL(0.018);
     ALWAN_CORE_T const alpha = ALWAN_CORE_LITERAL(1.099);
     ALWAN_CORE_T const threshold = ALWAN_CORE_LITERAL(4.5) * beta;

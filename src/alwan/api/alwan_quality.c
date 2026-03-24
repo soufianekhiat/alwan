@@ -876,10 +876,9 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 3: Generate reference illuminant at same CCT */
-    /* For now, use Planckian radiator for all CCTs.
-     * CIE 13.3-1995 specifies D-illuminant for CCT >= 5000K,
-     * but blackbody is acceptable and simpler. */
+    /* Step 3: Generate reference illuminant at same CCT.
+     * Uses Planckian radiator for all CCTs; CIE 13.3-1995 specifies D-illuminant
+     * for CCT >= 5000K but blackbody is a common substitute. */
     alwan_spd reference_spd;
     status = alwan_spd_blackbody(&reference_spd, ctx, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX,
                                  TCS_COUNT);
@@ -1246,9 +1245,8 @@ alwan_f64 alwan_ssi_calculate(alwan_ctx *ctx, alwan_spd const *test_spd, alwan_s
  * 4. Calculate ΔE*ab between sample and reference under test conditions
  * 5. Return ΔE as the metamerism index
  *
- * Note: This function computes the color difference under the test
- * illuminant only. It assumes the samples are intended to be a metameric
- * match under the reference illuminant, but does not verify this.
+ * Computes color difference under the test illuminant only.
+ * Assumes the samples are a metameric match under the reference illuminant.
  */
 alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
                                      alwan_spd const *sample_reflectance,

@@ -7,10 +7,10 @@ Functions for converting between different color spaces and models.
 ## Overview
 
 Alwan supports conversions between:
-- **CIE spaces:** XYZ, xyY, Lab, Luv, LCh(ab), LCh(uv)
-- **Perceptual models:** IPT, ICtCp, JzAzBz, Oklab, Oklch
-- **RGB families:** sRGB, Adobe RGB, BT.709, BT.2020, Display P3, ACES, and more
-- **Encoding spaces:** HSV, HSL, HSP, HSPLog, HSY, HWB, YCbCr, YCoCg, CMY, CMYK, HCL, IHLS
+- **CIE spaces:** XYZ, xyY, Lab, Luv, LCh(ab), LCh(uv), UVW
+- **Perceptual models:** IPT, ICtCp, JzAzBz, Oklab, Oklch, Hunter Lab, ProLab, OSA-UCS, DIN99, hdr-CIELAB, hdr-IPT, IgPgTg, ICaCb
+- **RGB families:** sRGB, Adobe RGB, BT.709, BT.2020, Display P3, ACES, and 100+ more
+- **Encoding spaces:** HSV, HSL, HSP, HSPLog, HSY, HWB, YCbCr, YCoCg, YcCbcCrc, CMY, CMYK, HCL, HLC, IHLS, Prismatic, CubeHelix, HSLuv, HPLuv, OkHSL, OkHSV
 - **Relative luminance:** Multi-standard Y calculation from linear RGB
 
 **API Pattern:** Single-element functions use semantic types. Bulk functions use `alwan_scalar*` with strides.
@@ -415,6 +415,297 @@ Extracts the Y row from the RGB-to-XYZ normalized primary matrix, enabling lumin
 
 ---
 
+## CIE 1964 UVW (Wyszecki)
+
+Uniform color space predating CIE 1976 Lab/Luv. Requires a reference white.
+
+```c
+void alwan_xyz_to_uvw(alwan_uvw *uvw, alwan_xyz const *xyz, alwan_xyz const *white_xyz);
+void alwan_uvw_to_xyz(alwan_xyz *xyz, alwan_uvw const *uvw, alwan_xyz const *white_xyz);
+```
+
+**Reference:** Wyszecki (1963). Superseded by CIE Lab/Luv for most purposes; retained for legacy pipeline compatibility.
+
+---
+
+## DIN99 Color Space
+
+German standard DIN 6176 perceptual color space. Four variants with different rotation/scaling trade-offs.
+
+```c
+void alwan_lab_to_din99(alwan_din99 *din99, alwan_lab const *lab, int variant);
+void alwan_din99_to_lab(alwan_lab *lab, alwan_din99 const *din99, int variant);
+```
+
+**Variants:** `0` (original DIN99), `1` (DIN99b), `2` (DIN99c), `3` (DIN99d — most uniform)
+
+**Input:** CIE Lab values. Convert XYZ → Lab first.
+
+**Use case:** Color difference calculation. `alwan_delta_e_din99` operates directly on `alwan_din99` values.
+
+---
+
+## Hunter Lab
+
+Earlier perceptual space (1958) predating CIE 1976 Lab. Computed directly from XYZ with a different nonlinearity.
+
+```c
+void alwan_xyz_to_hunter_lab(alwan_hunter_lab *hunter_lab, alwan_xyz const *xyz);
+void alwan_hunter_lab_to_xyz(alwan_xyz *xyz, alwan_hunter_lab const *hunter_lab);
+
+// Custom reference white
+void alwan_xyz_to_hunter_lab_custom(alwan_hunter_lab *hunter_lab,
+                                    alwan_xyz const *xyz,
+                                    alwan_xyz const *xyz_n);
+void alwan_hunter_lab_to_xyz_custom(alwan_xyz *xyz,
+                                    alwan_hunter_lab const *hunter_lab,
+                                    alwan_xyz const *xyz_n);
+```
+
+The default form uses D65. The `_custom` form accepts an explicit reference white `xyz_n`.
+
+**Reference:** Hunter (1958), "Photoelectric Color-Difference Meter."
+
+---
+
+## ProLab
+
+Perceptually uniform space designed for smooth interpolation in 3D color pickers.
+
+```c
+void alwan_xyz_to_prolab(alwan_prolab *prolab, alwan_xyz const *xyz);
+void alwan_prolab_to_xyz(alwan_xyz *xyz, alwan_prolab const *prolab);
+
+// Custom reference white
+void alwan_xyz_to_prolab_custom(alwan_prolab *prolab,
+                                alwan_xyz const *xyz,
+                                alwan_xyz const *xyz_n);
+void alwan_prolab_to_xyz_custom(alwan_xyz *xyz,
+                                alwan_prolab const *prolab,
+                                alwan_xyz const *xyz_n);
+```
+
+**Output:** L: [0, 100], a: unconstrained, b: unconstrained
+
+**Reference:** Brill & Süsstrunk (2008), "Renotating the Munsell Book of Color."
+
+---
+
+## OSA-UCS
+
+Optical Society of America Uniform Color Scales. Non-standard but notably uniform for large color differences.
+
+```c
+void alwan_xyz_to_osa_ucs(alwan_osa_ucs *osa_ucs, alwan_xyz const *xyz);
+void alwan_osa_ucs_to_xyz(alwan_xyz *xyz, alwan_osa_ucs const *osa_ucs);
+```
+
+**Output:** L: unconstrained, j: unconstrained, g: unconstrained
+
+**Reference:** MacAdam (1974).
+
+---
+
+## Extended Perceptual Spaces
+
+### hdr-CIELAB (Fairchild 2011)
+
+CIELAB adapted for HDR content using a Michaelis-Menten power function instead of the cube-root nonlinearity. Uses a D65 white point at Y=1 scale (not Y=100).
+
+```c
+void alwan_xyz_to_hdr_cielab(alwan_lab *hdr_lab, alwan_xyz const *xyz);
+void alwan_hdr_cielab_to_xyz(alwan_xyz *xyz, alwan_lab const *hdr_lab);
+```
+
+**Use case:** HDR tone mapping evaluation, HDR color difference.
+
+**Reference:** Fairchild & Wyble (2010), "hdr-CIELAB and hdr-IPT."
+
+---
+
+### hdr-IPT (Fairchild 2011)
+
+IPT adapted for HDR content, same Michaelis-Menten nonlinearity as hdr-CIELAB applied in the LMS domain.
+
+```c
+void alwan_xyz_to_hdr_ipt(alwan_ipt *hdr_ipt, alwan_xyz const *xyz);
+void alwan_hdr_ipt_to_xyz(alwan_xyz *xyz, alwan_ipt const *hdr_ipt);
+```
+
+---
+
+### IgPgTg
+
+Improved IPT variant with better hue constancy for chromatic adaptation applications.
+
+```c
+void alwan_xyz_to_igpgtg(alwan_igpgtg *igpgtg, alwan_xyz const *xyz);
+void alwan_igpgtg_to_xyz(alwan_xyz *xyz, alwan_igpgtg const *igpgtg);
+```
+
+**Reference:** Safdar et al. (2018), "Perceptually Uniform Color Space for Image Signals."
+
+---
+
+### ICaCb
+
+Designed for HDR and wide-gamut content, using a PQ-based nonlinearity in the LMS domain.
+
+```c
+void alwan_xyz_to_icacb(alwan_icacb *icacb, alwan_xyz const *xyz);
+void alwan_icacb_to_xyz(alwan_xyz *xyz, alwan_icacb const *icacb);
+```
+
+---
+
+### Prismatic
+
+Divides each RGB channel by their sum, producing a luminance-independent hue/saturation plane. Useful for color constancy and hue analysis.
+
+```c
+void alwan_rgb_to_prismatic(alwan_prismatic *prismatic, alwan_rgb const *rgb);
+void alwan_prismatic_to_rgb(alwan_rgb *rgb, alwan_prismatic const *prismatic);
+```
+
+**Output:** L: luminance (sum of channels), s: saturation, h: hue angle
+
+---
+
+### HCL (Sarifuddin & Picard)
+
+Perceptual cylindrical space derived from CIE Lab via a non-standard cylindrical mapping for improved hue uniformity.
+
+```c
+void alwan_rgb_to_hcl(alwan_hcl *hcl, alwan_rgb const *rgb);
+void alwan_hcl_to_rgb(alwan_rgb *rgb, alwan_hcl const *hcl);
+```
+
+**Output:** H: [-π, π] radians, C: [0, inf), L: [0, 1]
+
+**Reference:** Sarifuddin & Picard (2005).
+
+---
+
+### IHLS (Hanbury & Serra)
+
+Improved HLS designed for image segmentation and analysis, with a hue angle defined on [0, 2π].
+
+```c
+void alwan_rgb_to_ihls(alwan_ihls *ihls, alwan_rgb const *rgb);
+void alwan_ihls_to_rgb(alwan_rgb *rgb, alwan_ihls const *ihls);
+```
+
+**Output:** H: [0, 2π] radians, L: [0, 1], S: [0, 1]
+
+**Reference:** Hanbury & Serra (2002).
+
+---
+
+### HLC (DIN 5033 / ISO 11664)
+
+A reordering of CIE LCh(ab) placing hue first (H, L, C). Used in colorimetry standards and some European color specification systems.
+
+```c
+void alwan_lch_to_hlc(alwan_hlc *hlc, alwan_lch const *lch);
+void alwan_hlc_to_lch(alwan_lch *lch, alwan_hlc const *hlc);
+```
+
+This is a pure component reordering — no numeric conversion. Convert XYZ → Lab → LCh first.
+
+---
+
+### CubeHelix
+
+A colour scheme / encoding designed so that greyscale conversions are perceptually monotone. The hue cycles through the colour cube as lightness increases.
+
+```c
+void alwan_rgb_to_cubehelix(alwan_cubehelix *ch, alwan_rgb const *rgb);
+void alwan_cubehelix_to_rgb(alwan_rgb *rgb, alwan_cubehelix const *ch);
+```
+
+**Output:** h: hue angle (radians), s: saturation, l: lightness [0, 1]
+
+**Reference:** Green (2011), "A colour scheme for the display of astronomical intensity images."
+
+---
+
+## Perceptually Uniform sRGB Spaces
+
+These spaces are tied specifically to sRGB and perform their chromatic computation in sRGB's gamut boundary.
+
+### HSLuv
+
+Human-friendly HSL with a perceptually uniform saturation axis. H and L follow CIE LCh(uv); S is normalized to the sRGB gamut boundary at that hue/lightness.
+
+```c
+void alwan_srgb_to_hsluv(alwan_hsluv *hsluv, alwan_rgb const *srgb);
+void alwan_hsluv_to_srgb(alwan_rgb *srgb, alwan_hsluv const *hsluv);
+```
+
+**Output:** h: [0, 360] degrees, s: [0, 100], l: [0, 100]
+
+**Reference:** [hsluv.org](https://www.hsluv.org)
+
+---
+
+### HPLuv
+
+Like HSLuv but limited to hues that have a full pastel range at all lightness levels. More restricted gamut than HSLuv; saturation 100 is always achievable.
+
+```c
+void alwan_srgb_to_hpluv(alwan_hpluv *hpluv, alwan_rgb const *srgb);
+void alwan_hpluv_to_srgb(alwan_rgb *srgb, alwan_hpluv const *hpluv);
+```
+
+**Output:** h: [0, 360] degrees, s: [0, 100], l: [0, 100]
+
+---
+
+### OkHSL
+
+HSL-like encoding derived from the Oklab gamut boundary for sRGB. Designed for color pickers where hue and lightness changes look smooth.
+
+```c
+void alwan_srgb_to_okhsl(alwan_okhsl *okhsl, alwan_rgb const *srgb);
+void alwan_okhsl_to_srgb(alwan_rgb *srgb, alwan_okhsl const *okhsl);
+```
+
+**Output:** h: [0, 1] (normalized hue), s: [0, 1], l: [0, 1]
+
+**Reference:** Ottosson (2021), "A perceptual color space for image processing."
+
+---
+
+### OkHSV
+
+HSV-like encoding derived from the Oklab gamut boundary for sRGB. Designed for color pickers — the maximum chroma corner is always reachable at s=1, v=1.
+
+```c
+void alwan_srgb_to_okhsv(alwan_okhsv *okhsv, alwan_rgb const *srgb);
+void alwan_okhsv_to_srgb(alwan_rgb *srgb, alwan_okhsv const *okhsv);
+```
+
+**Output:** h: [0, 1] (normalized hue), s: [0, 1], v: [0, 1]
+
+---
+
+## YcCbcCrc (BT.2020 Constant Luminance)
+
+Constant luminance variant of YCbCr defined in ITU-R BT.2020 for UHD video. Unlike regular YCbCr, luma is computed from linear RGB before quantization.
+
+```c
+int alwan_rgb_to_yccbccrc(alwan_yccbccrc *yccbccrc_out, alwan_rgb const *rgb, int bit_depth);
+int alwan_yccbccrc_to_rgb(alwan_rgb *rgb_out, alwan_yccbccrc const *yccbccrc, int bit_depth);
+```
+
+**Parameters:**
+- `rgb` — linear BT.2020 RGB (not encoded)
+- `bit_depth` — `10` or `12`
+
+**Reference:** ITU-R BT.2020-2, Section 4.
+
+---
+
 ## Bulk Operations
 
 Always prefer bulk operations over single-element loops:
@@ -449,4 +740,6 @@ alwan_xyz_to_lab_bulk((alwan_scalar*)lab, (alwan_scalar*)xyz, &d65,
 
 - [Chromatic Adaptation](chromatic-adaptation.md) — White point transforms
 - [Transfer Functions](transfer-functions.md) — Encoding/decoding
+- [Color Difference](color-difference.md) — ΔE metrics that operate on these spaces
+- [GPU Backends](backends.md) — Using color space conversions in HLSL/GLSL/Halide
 - [Examples](../examples.md) — Usage examples

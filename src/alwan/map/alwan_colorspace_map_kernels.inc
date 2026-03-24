@@ -13,7 +13,7 @@
  * Map XYZ <-> Lab Kernels
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_lab_kernel_wp)(
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_lab_kernel_wp)(
     alwan_map_lane *o0, alwan_map_lane *o1, alwan_map_lane *o2,
     alwan_map_lane const *i0, alwan_map_lane const *i1, alwan_map_lane const *i2,
     size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz)
@@ -49,7 +49,7 @@ static void ALWAN_MAP_LIT(alwan__xyz_to_lab_kernel_wp)(
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__lab_to_xyz_kernel_wp)(
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__lab_to_xyz_kernel_wp)(
     alwan_map_lane *o0, alwan_map_lane *o1, alwan_map_lane *o2,
     alwan_map_lane const *i0, alwan_map_lane const *i1, alwan_map_lane const *i2,
     size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz)
@@ -134,7 +134,7 @@ int ALWAN_MAP_LITCAT(alwan_lab_to_xyz, _map_interleave)(
  * Map XYZ <-> Luv Kernels
  * ---------------------------------------------------------------- */
 
-static void ALWAN_MAP_LIT(alwan__xyz_to_luv_kernel_wp)(
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_luv_kernel_wp)(
     alwan_map_lane *o0, alwan_map_lane *o1, alwan_map_lane *o2,
     alwan_map_lane const *i0, alwan_map_lane const *i1, alwan_map_lane const *i2,
     size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz)
@@ -188,7 +188,7 @@ static void ALWAN_MAP_LIT(alwan__xyz_to_luv_kernel_wp)(
     }
 }
 
-static void ALWAN_MAP_LIT(alwan__luv_to_xyz_kernel_wp)(
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__luv_to_xyz_kernel_wp)(
     alwan_map_lane *o0, alwan_map_lane *o1, alwan_map_lane *o2,
     alwan_map_lane const *i0, alwan_map_lane const *i1, alwan_map_lane const *i2,
     size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz)

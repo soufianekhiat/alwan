@@ -686,6 +686,139 @@ static int test_image_convert_rgba_in_place(void) {
 }
 
 /* ----------------------------------------------------------------
+ * SIMD coverage tests for alwan_image_convert_rgba
+ *
+ * Use MIN_SIMD_PIXELS = 33 pixels so the SIMD inner loop executes
+ * (not just the scalar tail).  Compare against ref_image_pixel
+ * which processes 3 values at a time — always scalar on any target.
+ * ---------------------------------------------------------------- */
+
+static int test_image_convert_rgba_simd_straight(void) {
+    TEST_START("image_convert_rgba SIMD straight alpha");
+
+    alwan_ctx *ctx = alwan_create(NULL);
+    if (!ctx) TEST_FAIL("failed to create context");
+
+    alwan_rgb_space_desc srgb = {0};
+    alwan_rgb_space_desc p3   = {0};
+    alwan_rgb_get_space_descriptor(&srgb, ctx, ALWAN_RGB_SPACE_SRGB);
+    alwan_rgb_get_space_descriptor(&p3,   ctx, ALWAN_RGB_SPACE_P3_D65);
+
+    size_t const W = MIN_SIMD_PIXELS, H = 1;
+    alwan_f64 src[MIN_SIMD_PIXELS * 4];
+    alwan_f64 dst[MIN_SIMD_PIXELS * 4];
+
+    /* Fill with a structured ramp: R/G/B in [0,1], alpha varying */
+    for (size_t i = 0; i < W; i++) {
+        alwan_f64 t = (alwan_f64)i / (alwan_f64)(W - 1);
+        src[i * 4 + 0] = t;
+        src[i * 4 + 1] = ALWAN_LITERAL(1.0) - t;
+        src[i * 4 + 2] = t * ALWAN_LITERAL(0.5) + ALWAN_LITERAL(0.1);
+        src[i * 4 + 3] = (i % 4 == 0) ? ALWAN_LITERAL(0.0) : t; /* include alpha=0 */
+    }
+
+    size_t const row_stride = W * 4 * sizeof(alwan_f64);
+    int status = alwan_image_convert_rgba(
+        dst, ALWAN_PIXEL_F64, row_stride,
+        src, ALWAN_PIXEL_F64, row_stride,
+        W, H, ctx, &srgb, &p3, ALWAN_ALPHA_STRAIGHT);
+    TEST_ASSERT(status == ALWAN_OK, "rgba SIMD straight failed");
+
+    for (size_t i = 0; i < W; i++) {
+        alwan_rgb rgb_in = {src[i * 4 + 0], src[i * 4 + 1], src[i * 4 + 2]};
+        alwan_rgb ref;
+        ref_image_pixel(&ref, ctx, &srgb, &p3, &rgb_in);
+
+        char msg[128];
+        snprintf(msg, sizeof(msg), "SIMD straight px %zu R", i);
+        TEST_ASSERT_NEAR(dst[i * 4 + 0], ref.r, ALWAN_SIMD_TOLERANCE, msg);
+        snprintf(msg, sizeof(msg), "SIMD straight px %zu G", i);
+        TEST_ASSERT_NEAR(dst[i * 4 + 1], ref.g, ALWAN_SIMD_TOLERANCE, msg);
+        snprintf(msg, sizeof(msg), "SIMD straight px %zu B", i);
+        TEST_ASSERT_NEAR(dst[i * 4 + 2], ref.b, ALWAN_SIMD_TOLERANCE, msg);
+
+        /* Alpha must be bit-exact pass-through */
+        snprintf(msg, sizeof(msg), "SIMD straight px %zu A", i);
+        TEST_ASSERT_NEAR(dst[i * 4 + 3], src[i * 4 + 3], ALWAN_LITERAL(1e-15), msg);
+    }
+
+    alwan_destroy(ctx);
+    TEST_PASS_MSG();
+    return 0;
+}
+
+static int test_image_convert_rgba_simd_premul(void) {
+    TEST_START("image_convert_rgba SIMD premultiplied alpha");
+
+    alwan_ctx *ctx = alwan_create(NULL);
+    if (!ctx) TEST_FAIL("failed to create context");
+
+    alwan_rgb_space_desc srgb = {0};
+    alwan_rgb_space_desc p3   = {0};
+    alwan_rgb_get_space_descriptor(&srgb, ctx, ALWAN_RGB_SPACE_SRGB);
+    alwan_rgb_get_space_descriptor(&p3,   ctx, ALWAN_RGB_SPACE_P3_D65);
+
+    size_t const W = MIN_SIMD_PIXELS, H = 1;
+    alwan_f64 src[MIN_SIMD_PIXELS * 4];
+    alwan_f64 dst[MIN_SIMD_PIXELS * 4];
+
+    /* Build premultiplied source from straight values */
+    for (size_t i = 0; i < W; i++) {
+        alwan_f64 t = (alwan_f64)(i + 1) / (alwan_f64)W;
+        alwan_f64 a = (i == W / 2) ? ALWAN_LITERAL(0.0) : t; /* one zero-alpha pixel */
+        alwan_f64 r = t * ALWAN_LITERAL(0.8);
+        alwan_f64 g = (ALWAN_LITERAL(1.0) - t) * ALWAN_LITERAL(0.6);
+        alwan_f64 b = t * ALWAN_LITERAL(0.4) + ALWAN_LITERAL(0.05);
+        src[i * 4 + 0] = r * a;
+        src[i * 4 + 1] = g * a;
+        src[i * 4 + 2] = b * a;
+        src[i * 4 + 3] = a;
+    }
+
+    size_t const row_stride = W * 4 * sizeof(alwan_f64);
+    int status = alwan_image_convert_rgba(
+        dst, ALWAN_PIXEL_F64, row_stride,
+        src, ALWAN_PIXEL_F64, row_stride,
+        W, H, ctx, &srgb, &p3, ALWAN_ALPHA_PREMULTIPLIED);
+    TEST_ASSERT(status == ALWAN_OK, "rgba SIMD premul failed");
+
+    for (size_t i = 0; i < W; i++) {
+        alwan_f64 a = src[i * 4 + 3];
+
+        /* Reference: unpremultiply -> convert -> repremultiply */
+        alwan_rgb straight_in;
+        if (a > ALWAN_LITERAL(0.0)) {
+            alwan_f64 inv_a = ALWAN_LITERAL(1.0) / a;
+            straight_in.r = src[i * 4 + 0] * inv_a;
+            straight_in.g = src[i * 4 + 1] * inv_a;
+            straight_in.b = src[i * 4 + 2] * inv_a;
+        } else {
+            straight_in.r = straight_in.g = straight_in.b = ALWAN_LITERAL(0.0);
+        }
+        alwan_rgb ref_straight;
+        ref_image_pixel(&ref_straight, ctx, &srgb, &p3, &straight_in);
+
+        alwan_f64 ref_r = ref_straight.r * a;
+        alwan_f64 ref_g = ref_straight.g * a;
+        alwan_f64 ref_b = ref_straight.b * a;
+
+        char msg[128];
+        snprintf(msg, sizeof(msg), "SIMD premul px %zu R", i);
+        TEST_ASSERT_NEAR(dst[i * 4 + 0], ref_r, ALWAN_SIMD_TOLERANCE, msg);
+        snprintf(msg, sizeof(msg), "SIMD premul px %zu G", i);
+        TEST_ASSERT_NEAR(dst[i * 4 + 1], ref_g, ALWAN_SIMD_TOLERANCE, msg);
+        snprintf(msg, sizeof(msg), "SIMD premul px %zu B", i);
+        TEST_ASSERT_NEAR(dst[i * 4 + 2], ref_b, ALWAN_SIMD_TOLERANCE, msg);
+        snprintf(msg, sizeof(msg), "SIMD premul px %zu A", i);
+        TEST_ASSERT_NEAR(dst[i * 4 + 3], a, ALWAN_LITERAL(1e-15), msg);
+    }
+
+    alwan_destroy(ctx);
+    TEST_PASS_MSG();
+    return 0;
+}
+
+/* ----------------------------------------------------------------
  * Main
  * ---------------------------------------------------------------- */
 int test_75_image_convert_main(void) {
@@ -704,6 +837,8 @@ int test_75_image_convert_main(void) {
     result |= test_image_convert_rgba_premul();
     result |= test_image_convert_rgba_u8_f32();
     result |= test_image_convert_rgba_in_place();
+    result |= test_image_convert_rgba_simd_straight();
+    result |= test_image_convert_rgba_simd_premul();
 
     printf("\n  Summary: %d/%d passed\n", test_passed, test_count);
     return result;

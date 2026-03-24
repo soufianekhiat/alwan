@@ -502,7 +502,7 @@ ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_shuffle(alwan_simd_u8 v, alwan_simd_u8 
 
 /* f32: load 8 RGB pixels (24 floats) -> 3 x __m256 SoA
  * Split into 2 x SSE deinterleave on 128-bit halves, then combine. */
-ALWAN_INLINE void alwan_simd_f32_deinterleave3(float const *src,
+ALWAN_FORCE_INLINE void alwan_simd_f32_deinterleave3(float const *src,
                                                  alwan_simd_f32 *ch0, alwan_simd_f32 *ch1, alwan_simd_f32 *ch2) {
     /* Low 4 pixels (12 floats) */
     __m128 lo0 = _mm_loadu_ps(src);
@@ -533,7 +533,7 @@ ALWAN_INLINE void alwan_simd_f32_deinterleave3(float const *src,
 }
 
 /* f32: store 3 x __m256 SoA -> 8 RGB pixels (24 floats) */
-ALWAN_INLINE void alwan_simd_f32_interleave3(float *dst,
+ALWAN_FORCE_INLINE void alwan_simd_f32_interleave3(float *dst,
                                                alwan_simd_f32 a, alwan_simd_f32 b, alwan_simd_f32 c) {
     /* Low 4 pixels */
     __m128 a_lo = _mm256_castps256_ps128(a);
@@ -574,7 +574,7 @@ ALWAN_INLINE void alwan_simd_f32_interleave3(float *dst,
 
 /* f64: AVX has 4-wide f64. Load 4 RGB pixels (12 doubles) -> 3 x __m256d SoA.
  * Split into 2 x SSE f64 deinterleave, combine. */
-ALWAN_INLINE void alwan_simd_f64_deinterleave3(double const *src,
+ALWAN_FORCE_INLINE void alwan_simd_f64_deinterleave3(double const *src,
                                                  alwan_simd_f64 *ch0, alwan_simd_f64 *ch1, alwan_simd_f64 *ch2) {
     __m128d lo0 = _mm_loadu_pd(src);      /* a0 b0 */
     __m128d lo1 = _mm_loadu_pd(src + 2);  /* c0 a1 */
@@ -596,7 +596,7 @@ ALWAN_INLINE void alwan_simd_f64_deinterleave3(double const *src,
 }
 
 /* f64: store 3 x __m256d SoA -> 4 RGB pixels (12 doubles) */
-ALWAN_INLINE void alwan_simd_f64_interleave3(double *dst,
+ALWAN_FORCE_INLINE void alwan_simd_f64_interleave3(double *dst,
                                                alwan_simd_f64 a, alwan_simd_f64 b, alwan_simd_f64 c) {
     __m128d a_lo = _mm256_castpd256_pd128(a);
     __m128d b_lo = _mm256_castpd256_pd128(b);
@@ -804,15 +804,79 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cbrt_fast(alwan_simd_f32 x) {
 }
 
 /* ================================================================
- * Fast approximation functions (f64) -- delegate to exact paths
+ * Fast approximation functions (f64) -- split-128 log2/exp2
+ * AVX (without AVX2) uses SSE2 integer ops on 128-bit halves.
+ * Valid for normal-range inputs; subnormal inputs may be inaccurate.
  * ================================================================ */
 
+/* Process one 128-bit half: pow(v_half, exp_val) via log2/exp2 */
+static ALWAN_INLINE __m128d alwan__f64_pow_half(__m128d x_half, double exp_val) {
+    __m128d zero   = _mm_setzero_pd();
+    __m128d v      = _mm_max_pd(x_half, zero);
+    __m128d is_pos = _mm_cmpgt_pd(v, zero);
+    __m128i iv      = _mm_castpd_si128(v);
+    __m128i exp_i64 = _mm_sub_epi64(
+        _mm_srli_epi64(iv, 52),
+        _mm_set1_epi64x(1023LL));
+    __m128i const cvt_magic_i = _mm_set1_epi64x(0x4330000000000000LL + 1022LL);
+    __m128d const cvt_magic_d = _mm_set1_pd(4503599627371518.0);
+    __m128d e = _mm_sub_pd(
+        _mm_castsi128_pd(_mm_add_epi64(exp_i64, cvt_magic_i)),
+        cvt_magic_d);
+    __m128i mant_bits = _mm_or_si128(
+        _mm_and_si128(iv, _mm_set1_epi64x(0x000FFFFFFFFFFFFFLL)),
+        _mm_set1_epi64x(0x3FF0000000000000LL));
+    __m128d m  = _mm_castsi128_pd(mant_bits);
+    __m128d t  = _mm_sub_pd(m, _mm_set1_pd(1.0));
+    __m128d log2_m = _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(1.4426950408889634),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.7213475204049363),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(0.4808983469618909),
+                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.3606737602744954),
+                     _mm_mul_pd(t, _mm_set1_pd(0.28854301595785953))))))))));
+    __m128d y  = _mm_mul_pd(_mm_set1_pd(exp_val), _mm_add_pd(e, log2_m));
+#if defined(__SSE4_1__)
+    __m128d yi = _mm_floor_pd(y);
+#else
+    __m128i ti = _mm_cvttpd_epi32(y);
+    __m128d tc = _mm_cvtepi32_pd(ti);
+    __m128d adj = _mm_and_pd(_mm_cmpgt_pd(tc, y), _mm_set1_pd(1.0));
+    __m128d yi = _mm_sub_pd(tc, adj);
+#endif
+    __m128d yf = _mm_sub_pd(y, yi);
+    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.6931471805599453),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.24022650695910071),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.05550410866482158),
+                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.009618129107628477),
+                    _mm_mul_pd(yf, _mm_set1_pd(0.0013333558146428443)))))))))));
+    __m128i yi_i32  = _mm_cvttpd_epi32(yi);
+    __m128i yi_sign = _mm_srai_epi32(yi_i32, 31);
+    __m128i yi_i64  = _mm_unpacklo_epi32(yi_i32, yi_sign);
+    __m128i scale_i = _mm_slli_epi64(_mm_add_epi64(yi_i64, _mm_set1_epi64x(1023LL)), 52);
+    __m128d scale   = _mm_castsi128_pd(scale_i);
+    return _mm_and_pd(is_pos, _mm_mul_pd(scale, exp2f));
+}
+
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
-    return alwan_simd_f64_pow(x, _mm256_set1_pd(2.4));
+#if ALWAN_HAS_SVML
+    return _mm256_pow_pd(x, _mm256_set1_pd(2.4));
+#else
+    __m128d lo = _mm256_castpd256_pd128(x);
+    __m128d hi = _mm256_extractf128_pd(x, 1);
+    return _mm256_set_m128d(alwan__f64_pow_half(hi, 2.4),
+                            alwan__f64_pow_half(lo, 2.4));
+#endif
 }
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
-    return alwan_simd_f64_pow(x, _mm256_set1_pd(1.0 / 2.4));
+#if ALWAN_HAS_SVML
+    return _mm256_pow_pd(x, _mm256_set1_pd(1.0 / 2.4));
+#else
+    __m128d lo = _mm256_castpd256_pd128(x);
+    __m128d hi = _mm256_extractf128_pd(x, 1);
+    return _mm256_set_m128d(alwan__f64_pow_half(hi, 1.0 / 2.4),
+                            alwan__f64_pow_half(lo, 1.0 / 2.4));
+#endif
 }
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_cbrt_fast(alwan_simd_f64 x) {

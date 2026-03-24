@@ -61,8 +61,35 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__load_tile_typed_ch)(ALWAN_TILE_T *dst,
     } break;
     case ALWAN_PIXEL_U16: {
         ALWAN_TILE_T const inv = (ALWAN_TILE_T)(1.0 / 65535.0);
-        for (j = 0; j < n; j++)
-            dst[j] = (ALWAN_TILE_T)*(uint16_t const *)((char const *)src + (offset + j) * stride) * inv;
+        if (stride == 2) {
+            uint16_t const *src_u16 = (uint16_t const *)src + offset;
+            j = 0;
+#if defined(__AVX2__)
+#if ALWAN_TILE_IS_F32
+            {
+                __m256 const inv256 = _mm256_set1_ps(1.0f / 65535.0f);
+                for (; j + 8 <= n; j += 8) {
+                    __m128i raw = _mm_loadu_si128((const __m128i *)(src_u16 + j));
+                    _mm256_storeu_ps(&dst[j], _mm256_mul_ps(_mm256_cvtepi32_ps(_mm256_cvtepu16_epi32(raw)), inv256));
+                }
+            }
+#else
+            {
+                __m256d const inv256d = _mm256_set1_pd(1.0 / 65535.0);
+                for (; j + 4 <= n; j += 4) {
+                    __m128i raw = _mm_loadl_epi64((const __m128i *)(src_u16 + j));
+                    __m128i i32 = _mm_cvtepu16_epi32(raw);
+                    _mm256_storeu_pd(&dst[j], _mm256_mul_pd(_mm256_cvtepi32_pd(i32), inv256d));
+                }
+            }
+#endif
+#endif
+            for (; j < n; j++)
+                dst[j] = (ALWAN_TILE_T)src_u16[j] * inv;
+        } else {
+            for (j = 0; j < n; j++)
+                dst[j] = (ALWAN_TILE_T)*(uint16_t const *)((char const *)src + (offset + j) * stride) * inv;
+        }
     } break;
     case ALWAN_PIXEL_F16: {
         if (stride == 2) {
@@ -166,11 +193,53 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__store_tile_typed_ch)(void *dst, alwan_pix
         }
     } break;
     case ALWAN_PIXEL_U16: {
-        for (j = 0; j < n; j++) {
-            ALWAN_TILE_T v = src[j] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
-            if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
-            if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
-            *(uint16_t *)((char *)dst + (offset + j) * stride) = (uint16_t)v;
+        if (stride == 2) {
+            uint16_t *dst_u16 = (uint16_t *)dst + offset;
+            j = 0;
+#if defined(__AVX2__)
+#if ALWAN_TILE_IS_F32
+            {
+                __m256 const scale256 = _mm256_set1_ps(65535.0f);
+                __m256 const half256  = _mm256_set1_ps(0.5f);
+                __m256 const zero256  = _mm256_setzero_ps();
+                __m256 const max256   = _mm256_set1_ps(65535.0f);
+                for (; j + 8 <= n; j += 8) {
+                    __m256 f = _mm256_loadu_ps(&src[j]);
+                    f = _mm256_min_ps(_mm256_max_ps(_mm256_add_ps(_mm256_mul_ps(f, scale256), half256), zero256), max256);
+                    __m256i i32 = _mm256_cvttps_epi32(f);
+                    __m128i u16 = _mm_packus_epi32(_mm256_castsi256_si128(i32), _mm256_extracti128_si256(i32, 1));
+                    _mm_storeu_si128((__m128i *)(dst_u16 + j), u16);
+                }
+            }
+#else
+            {
+                __m256d const scale256d = _mm256_set1_pd(65535.0);
+                __m256d const half256d  = _mm256_set1_pd(0.5);
+                __m256d const zero256d  = _mm256_setzero_pd();
+                __m256d const max256d   = _mm256_set1_pd(65535.0);
+                for (; j + 4 <= n; j += 4) {
+                    __m256d f = _mm256_loadu_pd(&src[j]);
+                    f = _mm256_min_pd(_mm256_max_pd(_mm256_add_pd(_mm256_mul_pd(f, scale256d), half256d), zero256d), max256d);
+                    __m128i i32 = _mm256_cvttpd_epi32(f);
+                    __m128i u16 = _mm_packus_epi32(i32, _mm_setzero_si128());
+                    _mm_storel_epi64((__m128i *)(dst_u16 + j), u16);
+                }
+            }
+#endif
+#endif
+            for (; j < n; j++) {
+                ALWAN_TILE_T v = src[j] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
+                if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
+                dst_u16[j] = (uint16_t)v;
+            }
+        } else {
+            for (j = 0; j < n; j++) {
+                ALWAN_TILE_T v = src[j] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
+                if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
+                *(uint16_t *)((char *)dst + (offset + j) * stride) = (uint16_t)v;
+            }
         }
     } break;
     case ALWAN_PIXEL_F16: {
@@ -268,9 +337,47 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__load_tile_typed_aos)(ALWAN_TILE_T *dst,
     } break;
     case ALWAN_PIXEL_U16: {
         ALWAN_TILE_T const inv = (ALWAN_TILE_T)(1.0 / 65535.0);
-        for (j = 0; j < n; j++) {
-            uint16_t const *p = (uint16_t const *)((char const *)src + (offset + j) * stride);
-            int c; for (c = 0; c < ch; c++) dst[j * ch + c] = (ALWAN_TILE_T)p[c] * inv;
+        if (ch == 3 && stride == 6) {
+            uint16_t const *src_u16 = (uint16_t const *)src + offset * 3;
+            j = 0;
+#if defined(__AVX2__)
+#if ALWAN_TILE_IS_F32
+            {
+                __m128 const inv128 = _mm_set1_ps(1.0f / 65535.0f);
+                for (; j + 4 <= n; j += 4) {
+                    __m128i raw0 = _mm_loadu_si128((const __m128i *)(src_u16 + j * 3));
+                    __m128i raw1 = _mm_loadl_epi64((const __m128i *)(src_u16 + j * 3 + 8));
+                    __m128 f0 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu16_epi32(raw0)), inv128);
+                    __m128 f1 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu16_epi32(_mm_srli_si128(raw0, 8))), inv128);
+                    __m128 f2 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu16_epi32(raw1)), inv128);
+                    _mm_storeu_ps(&dst[j * 3],     f0);
+                    _mm_storeu_ps(&dst[j * 3 + 4], f1);
+                    _mm_storeu_ps(&dst[j * 3 + 8], f2);
+                }
+            }
+#else
+            {
+                __m256d const inv256d = _mm256_set1_pd(1.0 / 65535.0);
+                for (; j + 4 <= n; j += 4) {
+                    __m128i raw0 = _mm_loadu_si128((const __m128i *)(src_u16 + j * 3));
+                    __m128i raw1 = _mm_loadl_epi64((const __m128i *)(src_u16 + j * 3 + 8));
+                    _mm256_storeu_pd(&dst[j * 3],     _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu16_epi32(raw0)), inv256d));
+                    _mm256_storeu_pd(&dst[j * 3 + 4], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu16_epi32(_mm_srli_si128(raw0, 8))), inv256d));
+                    _mm256_storeu_pd(&dst[j * 3 + 8], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu16_epi32(raw1)), inv256d));
+                }
+            }
+#endif
+#endif
+            for (; j < n; j++) {
+                dst[j * 3 + 0] = (ALWAN_TILE_T)src_u16[j * 3 + 0] * inv;
+                dst[j * 3 + 1] = (ALWAN_TILE_T)src_u16[j * 3 + 1] * inv;
+                dst[j * 3 + 2] = (ALWAN_TILE_T)src_u16[j * 3 + 2] * inv;
+            }
+        } else {
+            for (j = 0; j < n; j++) {
+                uint16_t const *p = (uint16_t const *)((char const *)src + (offset + j) * stride);
+                int c; for (c = 0; c < ch; c++) dst[j * ch + c] = (ALWAN_TILE_T)p[c] * inv;
+            }
         }
     } break;
     case ALWAN_PIXEL_F16: {
@@ -392,13 +499,55 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__store_tile_typed_aos)(void *dst, alwan_pi
         }
     } break;
     case ALWAN_PIXEL_U16: {
-        for (j = 0; j < n; j++) {
-            uint16_t *p = (uint16_t *)((char *)dst + (offset + j) * stride);
-            int c; for (c = 0; c < ch; c++) {
-                ALWAN_TILE_T v = src[j * ch + c] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
-                if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
-                if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
-                p[c] = (uint16_t)v;
+        if (ch == 3 && stride == 6) {
+            uint16_t *dst_u16 = (uint16_t *)dst + offset * 3;
+            j = 0;
+#if defined(__AVX2__)
+            {
+                __m128 const scale128 = _mm_set1_ps(65535.0f);
+                __m128 const half128  = _mm_set1_ps(0.5f);
+                __m128 const zero128  = _mm_setzero_ps();
+                __m128 const max128   = _mm_set1_ps(65535.0f);
+                for (; j + 4 <= n; j += 4) {
+#if ALWAN_TILE_IS_F32
+                    __m128 f0 = _mm_loadu_ps(&src[j * 3]);
+                    __m128 f1 = _mm_loadu_ps(&src[j * 3 + 4]);
+                    __m128 f2 = _mm_loadu_ps(&src[j * 3 + 8]);
+#else
+                    __m128 f0 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3]));
+                    __m128 f1 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3 + 4]));
+                    __m128 f2 = _mm256_cvtpd_ps(_mm256_loadu_pd(&src[j * 3 + 8]));
+#endif
+                    f0 = _mm_min_ps(_mm_max_ps(_mm_add_ps(_mm_mul_ps(f0, scale128), half128), zero128), max128);
+                    f1 = _mm_min_ps(_mm_max_ps(_mm_add_ps(_mm_mul_ps(f1, scale128), half128), zero128), max128);
+                    f2 = _mm_min_ps(_mm_max_ps(_mm_add_ps(_mm_mul_ps(f2, scale128), half128), zero128), max128);
+                    __m128i i0  = _mm_cvttps_epi32(f0);
+                    __m128i i1  = _mm_cvttps_epi32(f1);
+                    __m128i i2  = _mm_cvttps_epi32(f2);
+                    __m128i u01 = _mm_packus_epi32(i0, i1);
+                    __m128i u2z = _mm_packus_epi32(i2, _mm_setzero_si128());
+                    _mm_storeu_si128((__m128i *)(dst_u16 + j * 3), u01);
+                    _mm_storel_epi64((__m128i *)(dst_u16 + j * 3 + 8), u2z);
+                }
+            }
+#endif
+            for (; j < n; j++) {
+                int c; for (c = 0; c < 3; c++) {
+                    ALWAN_TILE_T v = src[j * 3 + c] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
+                    if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                    if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
+                    dst_u16[j * 3 + c] = (uint16_t)v;
+                }
+            }
+        } else {
+            for (j = 0; j < n; j++) {
+                uint16_t *p = (uint16_t *)((char *)dst + (offset + j) * stride);
+                int c; for (c = 0; c < ch; c++) {
+                    ALWAN_TILE_T v = src[j * ch + c] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
+                    if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                    if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
+                    p[c] = (uint16_t)v;
+                }
             }
         }
     } break;

@@ -2790,9 +2790,8 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
     alwan_vec3 jmh_exp;
     alwan_aces_gamut_compress20_inv_f64(&jmh_exp, &jmh, config.peak_luminance, &config.primaries);
 
-    /* Step 6: Convert JMh back to AP1 RGB
-     * Note: Full inverse would require inverse tonescale, which is complex.
-     * For now, we return the expanded JMh converted to RGB. */
+    /* Step 6: Convert expanded JMh back to AP1 RGB.
+     * Inverse tonescale is not applied (gamut expansion only). */
     alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_exp, &ap1);
 
     return ALWAN_OK;

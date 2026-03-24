@@ -258,6 +258,13 @@ int alwan_white_balance_apply_f64_map_planar(double *o0,double *o1,double *o2,do
 int alwan_white_balance_apply_f32_map_interleave(float *out,float const *in,alwan_rgb_f32 const *multipliers,size_t count,size_t in_stride,size_t out_stride);
 int alwan_white_balance_apply_f64_map_interleave(double *out,double const *in,alwan_rgb_f64 const *multipliers,size_t count,size_t in_stride,size_t out_stride);
 
+/* ======================================================================== */
+/* Gamut operations (no extra param)                                        */
+/* ======================================================================== */
+
+ALWAN_PFWD_IFWD(alwan_gamut_clip);
+ALWAN_PFWD_IFWD(alwan_css_gamut_map);
+
 /* Undef helper macros */
 #undef ALWAN_PFWD
 #undef ALWAN_IFWD

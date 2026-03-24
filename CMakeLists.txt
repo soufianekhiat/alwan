@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
   Alwan
-  VERSION 1.0.0
+  VERSION 2.0.0
   DESCRIPTION "Dependency-free C11 colour science library"
   LANGUAGES C
 )
