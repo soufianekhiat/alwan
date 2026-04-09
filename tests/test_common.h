@@ -110,10 +110,10 @@ extern char g_current_test[256];
 /* Absolute difference assertion */
 #define TEST_ASSERT_NEAR(a, b, tol, msg) do { \
     TEST_COUNT_INCR(); \
-    alwan_scalar _a = (a); \
-    alwan_scalar _b = (b); \
-    alwan_scalar _tol = (tol); \
-    alwan_scalar _diff = ALWAN_ABS(_a - _b); \
+    alwan_f64 _a = (a); \
+    alwan_f64 _b = (b); \
+    alwan_f64 _tol = (tol); \
+    alwan_f64 _diff = ALWAN_ABS(_a - _b); \
     if (_diff > _tol) { \
         printf("[FAIL] %s: expected %.16e, got %.16e (diff=%.16e, tol=%.16e)\n", \
                msg, _b, _a, _diff, _tol); \
@@ -126,12 +126,12 @@ extern char g_current_test[256];
 /* Relative difference assertion */
 #define TEST_ASSERT_REL(a, b, rel_tol, msg) do { \
     TEST_COUNT_INCR(); \
-    alwan_scalar _a = (a); \
-    alwan_scalar _b = (b); \
-    alwan_scalar _tol = (rel_tol); \
-    alwan_scalar _diff = ALWAN_ABS(_a - _b); \
-    alwan_scalar _ref = ALWAN_ABS(_b); \
-    alwan_scalar _rel_err = (_ref > TEST_EPSILON) ? _diff / _ref : _diff; \
+    alwan_f64 _a = (a); \
+    alwan_f64 _b = (b); \
+    alwan_f64 _tol = (rel_tol); \
+    alwan_f64 _diff = ALWAN_ABS(_a - _b); \
+    alwan_f64 _ref = ALWAN_ABS(_b); \
+    alwan_f64 _rel_err = (_ref > TEST_EPSILON) ? _diff / _ref : _diff; \
     if (_rel_err > _tol) { \
         printf("[FAIL] %s: expected %.16e, got %.16e (rel_err=%.16e, tol=%.16e)\n", \
                msg, _b, _a, _rel_err, _tol); \
@@ -146,10 +146,10 @@ extern char g_current_test[256];
 
 /* Simpler version - auto-generates location in error message */
 #define TEST_CHECK_NEAR(a, b, tol) do { \
-    alwan_scalar _a = (alwan_scalar)(a); \
-    alwan_scalar _b = (alwan_scalar)(b); \
-    alwan_scalar _tol = (tol); \
-    alwan_scalar _diff = ALWAN_ABS(_a - _b); \
+    alwan_f64 _a = (alwan_f64)(a); \
+    alwan_f64 _b = (alwan_f64)(b); \
+    alwan_f64 _tol = (tol); \
+    alwan_f64 _diff = ALWAN_ABS(_a - _b); \
     if (_diff > _tol) { \
         printf("[FAIL] %s:%d: expected %g, got %g (diff %g > %g)\n", \
                __FILE__, __LINE__, (double)_b, (double)_a, (double)_diff, (double)_tol); \
@@ -179,17 +179,17 @@ extern char g_current_test[256];
 /* Assert vec3 components are within tolerance */
 #define TEST_ASSERT_VEC3_NEAR(v, expected, tol, msg) do { \
     TEST_COUNT_INCR(); \
-    alwan_scalar _tol = (tol); \
-    alwan_scalar _exp0 = (expected)[0]; \
-    alwan_scalar _exp1 = (expected)[1]; \
-    alwan_scalar _exp2 = (expected)[2]; \
-    alwan_scalar _got0 = (v).v[0]; \
-    alwan_scalar _got1 = (v).v[1]; \
-    alwan_scalar _got2 = (v).v[2]; \
-    alwan_scalar _diff_x = ALWAN_ABS(_got0 - _exp0); \
-    alwan_scalar _diff_y = ALWAN_ABS(_got1 - _exp1); \
-    alwan_scalar _diff_z = ALWAN_ABS(_got2 - _exp2); \
-    alwan_scalar _max_diff = _diff_x; \
+    alwan_f64 _tol = (tol); \
+    alwan_f64 _exp0 = (expected)[0]; \
+    alwan_f64 _exp1 = (expected)[1]; \
+    alwan_f64 _exp2 = (expected)[2]; \
+    alwan_f64 _got0 = (v).v[0]; \
+    alwan_f64 _got1 = (v).v[1]; \
+    alwan_f64 _got2 = (v).v[2]; \
+    alwan_f64 _diff_x = ALWAN_ABS(_got0 - _exp0); \
+    alwan_f64 _diff_y = ALWAN_ABS(_got1 - _exp1); \
+    alwan_f64 _diff_z = ALWAN_ABS(_got2 - _exp2); \
+    alwan_f64 _max_diff = _diff_x; \
     if (_diff_y > _max_diff) _max_diff = _diff_y; \
     if (_diff_z > _max_diff) _max_diff = _diff_z; \
     if (_max_diff > _tol) { \
@@ -207,20 +207,20 @@ extern char g_current_test[256];
  * ============================================================================ */
 
 /* Calculate maximum absolute difference between two vectors */
-static inline alwan_scalar test_vec3_max_diff(alwan_scalar const *a, alwan_scalar const *b) {
-    alwan_scalar d0 = ALWAN_ABS(a[0] - b[0]);
-    alwan_scalar d1 = ALWAN_ABS(a[1] - b[1]);
-    alwan_scalar d2 = ALWAN_ABS(a[2] - b[2]);
-    alwan_scalar max_d = d0;
+static inline alwan_f64 test_vec3_max_diff(alwan_f64 const *a, alwan_f64 const *b) {
+    alwan_f64 d0 = ALWAN_ABS(a[0] - b[0]);
+    alwan_f64 d1 = ALWAN_ABS(a[1] - b[1]);
+    alwan_f64 d2 = ALWAN_ABS(a[2] - b[2]);
+    alwan_f64 max_d = d0;
     if (d1 > max_d) max_d = d1;
     if (d2 > max_d) max_d = d2;
     return max_d;
 }
 
 /* Calculate relative error */
-static inline alwan_scalar test_rel_error(alwan_scalar got, alwan_scalar expected) {
-    alwan_scalar diff = ALWAN_ABS(got - expected);
-    alwan_scalar ref = ALWAN_ABS(expected);
+static inline alwan_f64 test_rel_error(alwan_f64 got, alwan_f64 expected) {
+    alwan_f64 diff = ALWAN_ABS(got - expected);
+    alwan_f64 ref = ALWAN_ABS(expected);
     return (ref > TEST_EPSILON) ? diff / ref : diff;
 }
 
@@ -230,7 +230,7 @@ static inline alwan_scalar test_rel_error(alwan_scalar got, alwan_scalar expecte
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const g_d65_xyz_y1[] = {
+static alwan_f64 const g_d65_xyz_y1[] = {
 #include "reference_values/test_d65_white.csv"
 };
 ALWAN_DIAG_POP
@@ -263,11 +263,11 @@ static inline size_t test_fmt_elem_size(alwan_pixel_format fmt) {
     return 0;
 }
 
-/* Scatter: alwan_scalar -> typed (single channel, clamped to [0,1] for int) */
+/* Scatter: alwan_f64 -> typed (single channel, clamped to [0,1] for int) */
 static inline void test_scatter1(void *out, alwan_pixel_format fmt,
-                                  alwan_scalar const *in, size_t count) {
+                                  alwan_f64 const *in, size_t count) {
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar v = in[i];
+        alwan_f64 v = in[i];
         switch (fmt) {
         case ALWAN_PIXEL_U8:  ((uint8_t *)out)[i]  = (v < 0) ? 0 : (v > 1) ? 255
                                 : (uint8_t)(v * 255 + 0.5); break;
@@ -279,17 +279,17 @@ static inline void test_scatter1(void *out, alwan_pixel_format fmt,
     }
 }
 
-/* Collect: typed -> alwan_scalar (single channel) */
-static inline void test_collect1(alwan_scalar *out, void const *in,
+/* Collect: typed -> alwan_f64 (single channel) */
+static inline void test_collect1(alwan_f64 *out, void const *in,
                                   alwan_pixel_format fmt, size_t count) {
     for (size_t i = 0; i < count; i++) {
         switch (fmt) {
-        case ALWAN_PIXEL_U8:  out[i] = (alwan_scalar)((uint8_t const *)in)[i]
+        case ALWAN_PIXEL_U8:  out[i] = (alwan_f64)((uint8_t const *)in)[i]
                                 / ALWAN_LITERAL(255.0); break;
-        case ALWAN_PIXEL_U16: out[i] = (alwan_scalar)((uint16_t const *)in)[i]
+        case ALWAN_PIXEL_U16: out[i] = (alwan_f64)((uint16_t const *)in)[i]
                                 / ALWAN_LITERAL(65535.0); break;
-        case ALWAN_PIXEL_F32: out[i] = (alwan_scalar)((float const *)in)[i]; break;
-        case ALWAN_PIXEL_F64: out[i] = (alwan_scalar)((double const *)in)[i]; break;
+        case ALWAN_PIXEL_F32: out[i] = (alwan_f64)((float const *)in)[i]; break;
+        case ALWAN_PIXEL_F64: out[i] = (alwan_f64)((double const *)in)[i]; break;
         }
     }
 }

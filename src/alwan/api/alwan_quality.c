@@ -20,7 +20,7 @@
  * Formula: CCT = 449n^3 + 3525n^2 + 6823.3n + 5520.33
  * where n = (x - 0.3320) / (0.1858 - y)
  */
-alwan_f64 alwan_cct_mccamy_xy(alwan_vec2 const *xy) {
+alwan_f64 alwan_cct_mccamy_xy(alwan_vec2_f64 const *xy) {
     if (!xy) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -53,7 +53,7 @@ ALWAN_DIAG_POP
 #define ROBERTSON_TABLE_SIZE 31
 #define ROBERTSON_TABLE_STRIDE 4  /* reciprocal_mrd, u, v, slope */
 
-alwan_f64 alwan_cct_robertson_xy(alwan_vec2 const *xy) {
+alwan_f64 alwan_cct_robertson_xy(alwan_vec2_f64 const *xy) {
     if (!xy) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -129,7 +129,7 @@ alwan_f64 alwan_cct_robertson_xy(alwan_vec2 const *xy) {
 /* Hernandez-Andres 1999: xy to CCT
  * Reference: Hernandez-Andres et al. (1999)
  * Valid for 3000K - 50000K (extended formula for higher CCT) */
-alwan_f64 alwan_cct_hernandez_xy(alwan_vec2 const *xy) {
+alwan_f64 alwan_cct_hernandez_xy(alwan_vec2_f64 const *xy) {
     if (!xy) return ALWAN_LITERAL(-1.0);
 
     alwan_f64 denom = xy->v[1] - ALWAN_LITERAL(0.1735);
@@ -143,7 +143,7 @@ alwan_f64 alwan_cct_hernandez_xy(alwan_vec2 const *xy) {
 /* Kang 2002: CCT to xy (forward transform)
  * Reference: Kang et al. (2002)
  * Valid range: 1667K - 25000K */
-void alwan_cct_to_xy_kang(alwan_vec2 *xy_out, alwan_f64 cct) {
+void alwan_cct_to_xy_kang(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
     if (!xy_out) return;
 
     *xy_out = alwan_cct_to_xy_kang_f64_v(cct);
@@ -156,7 +156,7 @@ void alwan_cct_to_xy_kang(alwan_vec2 *xy_out, alwan_f64 cct) {
  * Uses 1D Newton-Raphson on x(T): since x(T) is monotonic in the valid
  * range, solving x(T) = x_target uniquely determines T.  Analytical
  * derivatives of the Kang polynomial eliminate numerical-derivative error. */
-alwan_f64 alwan_cct_kang_xy(alwan_vec2 const *xy) {
+alwan_f64 alwan_cct_kang_xy(alwan_vec2_f64 const *xy) {
     if (!xy) return ALWAN_LITERAL(-1.0);
 
     alwan_f64 target_x = xy->v[0];
@@ -178,7 +178,7 @@ alwan_f64 alwan_cct_kang_xy(alwan_vec2 const *xy) {
         alwan_f64 T4 = T3 * T;
 
         /* Evaluate x(T) via the forward transform (bit-exact match) */
-        alwan_vec2 xy_eval = alwan_cct_to_xy_kang_f64_v(T);
+        alwan_vec2_f64 xy_eval = alwan_cct_to_xy_kang_f64_v(T);
         alwan_f64 x_val = xy_eval.v[0];
 
         /* Analytical derivative of Kang x(T) polynomial */
@@ -220,14 +220,14 @@ alwan_f64 alwan_cct_kang_xy(alwan_vec2 const *xy) {
      * may fail to converge exactly.  If the forward-transform residual is
      * still large, check whether a boundary value is a better match. */
     {
-        alwan_vec2 xy_check = alwan_cct_to_xy_kang_f64_v(cct);
+        alwan_vec2_f64 xy_check = alwan_cct_to_xy_kang_f64_v(cct);
         alwan_f64 best_err = ALWAN_ABS(xy_check.v[0] - target_x);
 
         static alwan_f64 const boundaries[] = {
             ALWAN_LITERAL(2222.0), ALWAN_LITERAL(4000.0)
         };
         for (int b = 0; b < 2; b++) {
-            alwan_vec2 xy_b = alwan_cct_to_xy_kang_f64_v(boundaries[b]);
+            alwan_vec2_f64 xy_b = alwan_cct_to_xy_kang_f64_v(boundaries[b]);
             alwan_f64 b_err = ALWAN_ABS(xy_b.v[0] - target_x);
             if (b_err < best_err) {
                 best_err = b_err;
@@ -242,7 +242,7 @@ alwan_f64 alwan_cct_kang_xy(alwan_vec2 const *xy) {
      * land anywhere in this band.  Among equivalent T values, prefer the
      * "simplest" double by checking round(cct) and cct rounded to 0.1. */
     {
-        alwan_vec2 xy_cur = alwan_cct_to_xy_kang_f64_v(cct);
+        alwan_vec2_f64 xy_cur = alwan_cct_to_xy_kang_f64_v(cct);
         alwan_f64 cur_err = ALWAN_ABS(xy_cur.v[0] - target_x);
         alwan_f64 rounds[] = {
             floor(cct + ALWAN_LITERAL(0.5)),                      /* nearest int */
@@ -253,7 +253,7 @@ alwan_f64 alwan_cct_kang_xy(alwan_vec2 const *xy) {
             alwan_f64 c = rounds[r];
             if (c < ALWAN_LITERAL(1667.0) || c > ALWAN_LITERAL(25000.0)) continue;
             if (ALWAN_ABS(c - cct) > ALWAN_LITERAL(1e-8)) continue;
-            alwan_vec2 xy_c = alwan_cct_to_xy_kang_f64_v(c);
+            alwan_vec2_f64 xy_c = alwan_cct_to_xy_kang_f64_v(c);
             alwan_f64 c_err = ALWAN_ABS(xy_c.v[0] - target_x);
             if (c_err <= cur_err) {
                 cct = c;
@@ -837,7 +837,7 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_xyz xyz_test_white;
+    alwan_xyz_f64 xyz_test_white;
     status = alwan_xyz_from_spd(&xyz_test_white, ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -865,7 +865,7 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_vec2 xy_test;
+    alwan_vec2_f64 xy_test;
     xy_test.v[0] = xyz_test_white.x / sum;
     xy_test.v[1] = xyz_test_white.y / sum;
 
@@ -899,7 +899,7 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_xyz xyz_ref_white;
+    alwan_xyz_f64 xyz_ref_white;
     status = alwan_xyz_from_spd(&xyz_ref_white, ctx, &perfect_white, &reference_spd,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -940,7 +940,7 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under test illuminant */
-        alwan_xyz xyz_test;
+        alwan_xyz_f64 xyz_test;
         status = alwan_xyz_from_spd(&xyz_test, ctx, &tcs_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -953,7 +953,7 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under reference illuminant */
-        alwan_xyz xyz_ref;
+        alwan_xyz_f64 xyz_ref;
         status = alwan_xyz_from_spd(&xyz_ref, ctx, &tcs_spd, &reference_spd,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1036,7 +1036,7 @@ static alwan_f64 const astm_e313_white_xy[][2] = {
 /* ASTM E313 Yellowness Index
  * Formula: YI = 100(Cx*X - Cz*Z) / Y
  * where Cx and Cz are coefficients that depend on illuminant/observer */
-alwan_f64 alwan_yellowness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant) {
+alwan_f64 alwan_yellowness_astm_e313(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1064,7 +1064,7 @@ alwan_f64 alwan_yellowness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illum
  * Formula: WI = 3.388 * Z - 3 * Y
  * Note: This formula does not depend on illuminant/observer, but the parameter
  * is kept for API consistency with yellowness function */
-alwan_f64 alwan_whiteness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illuminant illuminant) {
+alwan_f64 alwan_whiteness_astm_e313(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1077,7 +1077,7 @@ alwan_f64 alwan_whiteness_astm_e313(alwan_xyz const *xyz, alwan_astm_e313_illumi
 /* CIE 2004 Whiteness Index
  * Formula: W = Y + 800(xn - x) + 1700(yn - y)
  * where xn, yn are the reference white chromaticity coordinates */
-alwan_f64 alwan_whiteness_cie2004(alwan_vec2 const *xy, alwan_f64 Y, alwan_vec2 const *xy_n) {
+alwan_f64 alwan_whiteness_cie2004(alwan_vec2_f64 const *xy, alwan_f64 Y, alwan_vec2_f64 const *xy_n) {
     if (!xy || !xy_n) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1261,7 +1261,7 @@ alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
     }
 
     /* Step 1: Compute XYZ for sample under test illuminant */
-    alwan_xyz xyz_sample_test, xyz_ref_test;
+    alwan_xyz_f64 xyz_sample_test, xyz_ref_test;
     int status;
 
     status = alwan_xyz_from_spd(&xyz_sample_test, ctx, sample_reflectance, test_illuminant,
@@ -1292,7 +1292,7 @@ alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_xyz xyz_test_white;
+    alwan_xyz_f64 xyz_test_white;
     status = alwan_xyz_from_spd(&xyz_test_white, ctx, &perfect_white, test_illuminant,
                                 observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0));
     alwan_spd_destroy(ctx, &perfect_white);
@@ -1302,7 +1302,7 @@ alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
     }
 
     /* Step 4: Convert to CIELAB using test illuminant white point */
-    alwan_lab lab_sample, lab_ref;
+    alwan_lab_f64 lab_sample, lab_ref;
     alwan_xyz_to_lab(&lab_sample, &xyz_sample_test, &xyz_test_white);
     alwan_xyz_to_lab(&lab_ref, &xyz_ref_test, &xyz_test_white);
 
@@ -1361,7 +1361,7 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_xyz xyz_test_white;
+    alwan_xyz_f64 xyz_test_white;
     status = alwan_xyz_from_spd(&xyz_test_white, ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -1389,7 +1389,7 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_vec2 xy_test;
+    alwan_vec2_f64 xy_test;
     xy_test.v[0] = xyz_test_white.x / sum;
     xy_test.v[1] = xyz_test_white.y / sum;
 
@@ -1422,7 +1422,7 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_xyz xyz_ref_white;
+    alwan_xyz_f64 xyz_ref_white;
     status = alwan_xyz_from_spd(&xyz_ref_white, ctx, &perfect_white, &reference_spd,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -1445,13 +1445,13 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     /* D65 white point for chromatic adaptation target */
-    alwan_xyz d65_white;
+    alwan_xyz_f64 d65_white;
     d65_white.x = ALWAN_D65_X;
     d65_white.y = ALWAN_D65_Y;
     d65_white.z = ALWAN_D65_Z;
 
     /* Get chromatic adaptation matrices */
-    alwan_mat3x3 cat_test_to_d65, cat_ref_to_d65;
+    alwan_mat3x3_f64 cat_test_to_d65, cat_ref_to_d65;
     status = alwan_cat_matrix(&cat_test_to_d65, &xyz_test_white, &d65_white, ALWAN_CAT_CAT02);
     if (status != ALWAN_OK) {
         alwan_spd_destroy(ctx, &reference_spd);
@@ -1485,7 +1485,7 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under test illuminant */
-        alwan_xyz xyz_test;
+        alwan_xyz_f64 xyz_test;
         status = alwan_xyz_from_spd(&xyz_test, ctx, &vs_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1498,7 +1498,7 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under reference illuminant */
-        alwan_xyz xyz_ref;
+        alwan_xyz_f64 xyz_ref;
         status = alwan_xyz_from_spd(&xyz_ref, ctx, &vs_spd, &reference_spd,
                                     ALWAN_OBSERVER_CIE_1931_2DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1522,17 +1522,17 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         xyz_ref.z *= ref_norm_factor;
 
         /* Apply chromatic adaptation to D65 */
-        alwan_xyz xyz_test_adapted, xyz_ref_adapted;
-        alwan_vec3 vec_in, vec_out;
-        ALWAN_MEMCPY(&vec_in, &xyz_test, sizeof(alwan_vec3));
+        alwan_xyz_f64 xyz_test_adapted, xyz_ref_adapted;
+        alwan_vec3_f64 vec_in, vec_out;
+        ALWAN_MEMCPY(&vec_in, &xyz_test, sizeof(alwan_vec3_f64));
         alwan_mat3_mulv(&vec_out, &cat_test_to_d65, &vec_in);
-        ALWAN_MEMCPY(&xyz_test_adapted, &vec_out, sizeof(alwan_vec3));
-        ALWAN_MEMCPY(&vec_in, &xyz_ref, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&xyz_test_adapted, &vec_out, sizeof(alwan_vec3_f64));
+        ALWAN_MEMCPY(&vec_in, &xyz_ref, sizeof(alwan_vec3_f64));
         alwan_mat3_mulv(&vec_out, &cat_ref_to_d65, &vec_in);
-        ALWAN_MEMCPY(&xyz_ref_adapted, &vec_out, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&xyz_ref_adapted, &vec_out, sizeof(alwan_vec3_f64));
 
         /* Convert to CIELAB */
-        alwan_lab lab_test, lab_ref;
+        alwan_lab_f64 lab_test, lab_ref;
         alwan_xyz_to_lab(&lab_test, &xyz_test_adapted, &d65_white);
         alwan_xyz_to_lab(&lab_ref, &xyz_ref_adapted, &d65_white);
 
@@ -1603,7 +1603,7 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_xyz xyz_test_white_10deg;
+    alwan_xyz_f64 xyz_test_white_10deg;
     status = alwan_xyz_from_spd(&xyz_test_white_10deg, ctx, &perfect_white, &test_spd_resampled,
                                 ALWAN_OBSERVER_CIE_1964_10DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -1631,7 +1631,7 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_vec2 xy_test;
+    alwan_vec2_f64 xy_test;
     xy_test.v[0] = xyz_test_white_10deg.x / sum;
     xy_test.v[1] = xyz_test_white_10deg.y / sum;
 
@@ -1682,7 +1682,7 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         perfect_white.values[i] = ALWAN_LITERAL(1.0);
     }
 
-    alwan_xyz xyz_ref_white_10deg;
+    alwan_xyz_f64 xyz_ref_white_10deg;
     status = alwan_xyz_from_spd(&xyz_ref_white_10deg, ctx, &perfect_white, &reference_spd,
                                 ALWAN_OBSERVER_CIE_1964_10DEG,
                                 ALWAN_INTEGRATE_TRAPEZOID,
@@ -1743,7 +1743,7 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under test illuminant (10° observer) */
-        alwan_xyz xyz_test;
+        alwan_xyz_f64 xyz_test;
         status = alwan_xyz_from_spd(&xyz_test, ctx, &ces_spd, &test_spd_resampled,
                                     ALWAN_OBSERVER_CIE_1964_10DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1756,7 +1756,7 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         }
 
         /* Calculate XYZ under reference illuminant (10° observer) */
-        alwan_xyz xyz_ref;
+        alwan_xyz_f64 xyz_ref;
         status = alwan_xyz_from_spd(&xyz_ref, ctx, &ces_spd, &reference_spd,
                                     ALWAN_OBSERVER_CIE_1964_10DEG,
                                     ALWAN_INTEGRATE_TRAPEZOID,
@@ -1892,7 +1892,7 @@ int alwan_michelson_contrast(alwan_f64 *result, alwan_f64 L_max, alwan_f64 L_min
  * D-Series Illuminant from CCT
  * ---------------------------------------------------------------- */
 
-int alwan_d_series_illuminant_xy(alwan_vec2 *xy_out, alwan_f64 cct) {
+int alwan_d_series_illuminant_xy(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
     if (!xy_out) return ALWAN_E_INVALID;
     if (cct < ALWAN_LITERAL(4000.0) || cct > ALWAN_LITERAL(25000.0))
         return ALWAN_E_RANGE;

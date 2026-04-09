@@ -21,8 +21,8 @@ ALWAN_DIAG_POP
     alwan_f64 const osa_tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz_in;
-        alwan_osa_ucs osa_expected, osa_computed;
+        alwan_xyz_f64 xyz_in;
+        alwan_osa_ucs_f64 osa_expected, osa_computed;
 
         /* Load test data */
         xyz_in.x = test_data[i * 6 + 0];
@@ -40,7 +40,7 @@ ALWAN_DIAG_POP
         }
 
         /* Test XYZ -> OSA-UCS */
-        alwan_xyz_to_osa_ucs(&osa_computed, &xyz_in);
+        alwan_xyz_to_osa_ucs_f64(&osa_computed, &xyz_in);
 
         alwan_f64 osa_comp_arr[3] = {osa_computed.L, osa_computed.j, osa_computed.g};
         alwan_f64 osa_exp_arr[3] = {osa_expected.L, osa_expected.j, osa_expected.g};
@@ -71,16 +71,16 @@ ALWAN_DIAG_POP
 
 static int test_osa_ucs_inverse_approximate(void) {
     /* Test a few known conversions with very loose tolerance */
-    alwan_xyz xyz, xyz_out;
-    alwan_osa_ucs osa;
+    alwan_xyz_f64 xyz, xyz_out;
+    alwan_osa_ucs_f64 osa;
 
     /* White D65 */
     xyz.x = ALWAN_LITERAL(95.047);
     xyz.y = ALWAN_LITERAL(100.0);
     xyz.z = ALWAN_LITERAL(108.883);
 
-    alwan_xyz_to_osa_ucs(&osa, &xyz);
-    alwan_osa_ucs_to_xyz(&xyz_out, &osa);
+    alwan_xyz_to_osa_ucs_f64(&osa, &xyz);
+    alwan_osa_ucs_to_xyz_f64(&xyz_out, &osa);
 
     alwan_f64 const loose_tol = ALWAN_TEST_TOLERANCE;
 

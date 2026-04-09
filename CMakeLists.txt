@@ -18,7 +18,6 @@ option(ALWAN_WARNINGS_AS_ERRORS "Treat warnings as errors" ON)
 
 option(ALWAN_DISABLE_STRICT_ALIASING "Compile with -fno-strict-aliasing on GCC/Clang" ON)
 set(ALWAN_SIMD_ARCH "" CACHE STRING "SIMD instruction set: SSE2, AVX, AVX2, or native (empty = compiler default)")
-option(ALWAN_BUILD_BENCH "Build benchmark suite" OFF)
 option(ALWAN_INSTALL "Enable install rules" ON)
 option(ALWAN_INSTALL_PKGCONFIG "Install pkg-config .pc file" ON)
 
@@ -197,9 +196,7 @@ if(BUILD_TESTING)
   )
 endif()
 
-if(ALWAN_BUILD_BENCH)
-  add_subdirectory(bench)
-endif()
+# bench has been moved to ../alwan_dev/bench/ (separate project)
 
 if(ALWAN_INSTALL)
   install(
@@ -264,3 +261,5 @@ if(ALWAN_INSTALL)
     )
   endif()
 endif()
+
+

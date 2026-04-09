@@ -33,9 +33,9 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_f64 c
     size_t const num_colors = data_count / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_lab lab;
-        alwan_din99 din99_expected, din99_computed;
-        alwan_lab lab_out;
+        alwan_lab_f64 lab;
+        alwan_din99_f64 din99_expected, din99_computed;
+        alwan_lab_f64 lab_out;
 
         /* Load test data - Lab + DIN99 pairs */
         lab.L = test_data[i * 6 + 0];
@@ -46,7 +46,7 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_f64 c
         din99_expected.b99 = test_data[i * 6 + 5];
 
         /* Test Lab -> DIN99 */
-        alwan_lab_to_din99(&din99_computed, &lab, variant);
+        alwan_lab_to_din99_f64(&din99_computed, &lab, variant);
 
         alwan_f64 const din99_tol = ALWAN_TEST_TOLERANCE;
         alwan_f64 din99_comp_arr[3] = {din99_computed.L99, din99_computed.a99, din99_computed.b99};
@@ -67,7 +67,7 @@ static int test_din99_variant(int variant, char const *variant_name, alwan_f64 c
         }
 
         /* Test round-trip: DIN99 -> Lab */
-        alwan_din99_to_lab(&lab_out, &din99_computed, variant);
+        alwan_din99_to_lab_f64(&lab_out, &din99_computed, variant);
 
         alwan_f64 const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 

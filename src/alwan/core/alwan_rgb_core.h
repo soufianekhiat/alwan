@@ -207,10 +207,11 @@ ALWAN_INLINE alwan_scalar alwan_slog2_eotf(alwan_scalar encoded) {
 
 /* S-Log3 — Sony "Technical Summary for S-Gamut3.Cine/S-Log3 and S-Gamut3/S-Log3" (2014) */
 ALWAN_INLINE alwan_scalar alwan_slog3_oetf(alwan_scalar linear) {
-    alwan_scalar L = ALWAN_SELECT(linear < ALWAN_ZERO, ALWAN_ZERO, linear);
-    alwan_scalar log_result    = (ALWAN_LITERAL(420.0) + ALWAN_LOG10((L + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.19)) * ALWAN_LITERAL(261.5)) / ALWAN_LITERAL(1023.0);
-    alwan_scalar linear_result = (L * (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(0.01125000) + ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(1023.0);
-    return ALWAN_SELECT(L >= ALWAN_LITERAL(0.01125000), log_result, linear_result);
+    /* No pre-clamp: negative inputs use the linear segment (L < 0.01125000),
+     * giving a negative encoded output that callers can clip as needed. */
+    alwan_scalar log_result    = (ALWAN_LITERAL(420.0) + ALWAN_LOG10((linear + ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(0.19)) * ALWAN_LITERAL(261.5)) / ALWAN_LITERAL(1023.0);
+    alwan_scalar linear_result = (linear * (ALWAN_LITERAL(171.2102946929) - ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(0.01125000) + ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(1023.0);
+    return ALWAN_SELECT(linear >= ALWAN_LITERAL(0.01125000), log_result, linear_result);
 }
 
 ALWAN_INLINE alwan_scalar alwan_slog3_eotf(alwan_scalar encoded) {
@@ -326,28 +327,31 @@ ALWAN_INLINE alwan_scalar alwan_logc3_eotf(alwan_scalar encoded) {
     return ALWAN_SELECT(encoded < threshold, linear_result, log_result);
 }
 
-/* LogC4 — ARRI "ARRI LogC4 Logarithmic Color Space" Technical Reference (2022) */
+/* LogC4 — ARRI LogC4 (Cooper 2022, ARRI LogC4 Specification)
+ * Formula: (log2(a*x + 64) - 6) / 14 * b + c  for x >= t
+ *          (x - t) / s                          for x < t  */
 ALWAN_INLINE alwan_scalar alwan_logc4_oetf(alwan_scalar linear) {
-    alwan_scalar a = ALWAN_LITERAL(14.98325);
-    alwan_scalar b = ALWAN_LITERAL(0.005494072);
-    alwan_scalar c = ALWAN_LITERAL(0.0647954);
-    alwan_scalar d = ALWAN_LITERAL(0.0075);
-    alwan_scalar e = ALWAN_LITERAL(0.000000089);
-    alwan_scalar f = ALWAN_LITERAL(0.0);
-    alwan_scalar L = ALWAN_SELECT(linear < ALWAN_ZERO, ALWAN_ZERO, linear);
-    alwan_scalar t = (L + e) / (L + d);
-    return (c * ALWAN_LOG10(a * t + b)) + f;
+    alwan_scalar a = ALWAN_LITERAL(2231.8263090676883);
+    alwan_scalar b = ALWAN_LITERAL(0.9071358748778103);
+    alwan_scalar c = ALWAN_LITERAL(0.09286412512218964);
+    alwan_scalar s = ALWAN_LITERAL(0.1135972086105891);
+    alwan_scalar t = ALWAN_LITERAL(-0.01805699611991131);
+    alwan_scalar log_val = (ALWAN_LOG2(a * linear + ALWAN_LITERAL(64.0)) - ALWAN_LITERAL(6.0))
+                         / ALWAN_LITERAL(14.0) * b + c;
+    alwan_scalar lin_val = (linear - t) / s;
+    return ALWAN_SELECT(linear < t, lin_val, log_val);
 }
 
 ALWAN_INLINE alwan_scalar alwan_logc4_eotf(alwan_scalar encoded) {
-    alwan_scalar a = ALWAN_LITERAL(14.98325);
-    alwan_scalar b = ALWAN_LITERAL(0.005494072);
-    alwan_scalar c = ALWAN_LITERAL(0.0647954);
-    alwan_scalar d = ALWAN_LITERAL(0.0075);
-    alwan_scalar e = ALWAN_LITERAL(0.000000089);
-    alwan_scalar f = ALWAN_LITERAL(0.0);
-    alwan_scalar s = ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - f) / c);
-    return (d * (s - b) - e * (a * s - b)) / (a * s - b - s + ALWAN_ONE);
+    alwan_scalar a = ALWAN_LITERAL(2231.8263090676883);
+    alwan_scalar b = ALWAN_LITERAL(0.9071358748778103);
+    alwan_scalar c = ALWAN_LITERAL(0.09286412512218964);
+    alwan_scalar s = ALWAN_LITERAL(0.1135972086105891);
+    alwan_scalar t = ALWAN_LITERAL(-0.01805699611991131);
+    alwan_scalar scene = (ALWAN_POW(ALWAN_LITERAL(2.0),
+        (encoded - c) / b * ALWAN_LITERAL(14.0) + ALWAN_LITERAL(6.0)) - ALWAN_LITERAL(64.0)) / a;
+    alwan_scalar lin_val = encoded * s + t;
+    return ALWAN_SELECT(encoded < ALWAN_ZERO, lin_val, scene);
 }
 
 /* REDLog — RED Digital Cinema "RED Gamma and Log Curves" technical note */
@@ -394,15 +398,26 @@ ALWAN_INLINE alwan_scalar alwan_log3g10_eotf(alwan_scalar encoded) {
 
 /* BMDFilm (Gen5) — Blackmagic Design "Blackmagic RAW 3.0 SDK" color science documentation */
 ALWAN_INLINE alwan_scalar alwan_bmdfilm_oetf(alwan_scalar linear) {
-    alwan_scalar linear_result = linear * ALWAN_LITERAL(8.283605932);
-    alwan_scalar log_result    = ALWAN_LITERAL(0.5) * ALWAN_LN(linear + ALWAN_LITERAL(0.006)) / ALWAN_LN(ALWAN_LITERAL(2.0)) + ALWAN_LITERAL(0.584);
+    /* A*ln(x+B)+C  for x >= LIN_CUT;  D*x+E  for x < LIN_CUT */
+    alwan_scalar A = ALWAN_LITERAL(0.08692876065491224);
+    alwan_scalar B = ALWAN_LITERAL(0.005494072432257808);
+    alwan_scalar C = ALWAN_LITERAL(0.5300133392291939);
+    alwan_scalar D = ALWAN_LITERAL(8.283605932402494);
+    alwan_scalar E = ALWAN_LITERAL(0.09246575342465753);
+    alwan_scalar linear_result = D * linear + E;
+    alwan_scalar log_result    = A * ALWAN_LN(linear + B) + C;
     return ALWAN_SELECT(linear < ALWAN_LITERAL(0.005), linear_result, log_result);
 }
 
 ALWAN_INLINE alwan_scalar alwan_bmdfilm_eotf(alwan_scalar encoded) {
-    alwan_scalar threshold = ALWAN_LITERAL(0.005) * ALWAN_LITERAL(8.283605932);
-    alwan_scalar linear_result = encoded / ALWAN_LITERAL(8.283605932);
-    alwan_scalar log_result    = ALWAN_POW(ALWAN_LITERAL(2.0), (encoded - ALWAN_LITERAL(0.584)) / ALWAN_LITERAL(0.5)) - ALWAN_LITERAL(0.006);
+    alwan_scalar A = ALWAN_LITERAL(0.08692876065491224);
+    alwan_scalar B = ALWAN_LITERAL(0.005494072432257808);
+    alwan_scalar C = ALWAN_LITERAL(0.5300133392291939);
+    alwan_scalar D = ALWAN_LITERAL(8.283605932402494);
+    alwan_scalar E = ALWAN_LITERAL(0.09246575342465753);
+    alwan_scalar threshold     = D * ALWAN_LITERAL(0.005) + E;
+    alwan_scalar linear_result = (encoded - E) / D;
+    alwan_scalar log_result    = ALWAN_EXP((encoded - C) / A) - B;
     return ALWAN_SELECT(encoded < threshold, linear_result, log_result);
 }
 
@@ -514,18 +529,32 @@ ALWAN_INLINE alwan_scalar alwan_gamma28_eotf(alwan_scalar encoded) {
 
 /* N-Log — Nikon "N-Log Specification Document" Ver. 1.0.0 (2018) */
 ALWAN_INLINE alwan_scalar alwan_nlog_oetf(alwan_scalar linear) {
-    alwan_scalar cut = ALWAN_LITERAL(0.00570);
-    alwan_scalar linear_result = ALWAN_LITERAL(150.0) * linear + ALWAN_LITERAL(0.11241);
-    alwan_scalar log_result    = (ALWAN_LITERAL(0.36) * ALWAN_LN(linear + ALWAN_LITERAL(0.10033)) / ALWAN_LN(ALWAN_LITERAL(10.0))) + ALWAN_LITERAL(0.71722);
-    return ALWAN_SELECT(linear < cut, linear_result, log_result);
+    /* Nikon N-Log: a*(y+b)^(1/3)  for y < cut1;  c*ln(y)+d  for y >= cut1
+     * Source: Nikon "N-Log Specification" (2018)
+     * Signed cube root: follows colour-science spow convention so that
+     * linear < -b gives a negative result (clipped to 0 by callers). */
+    alwan_scalar a    = ALWAN_LITERAL(0.635386119257087);
+    alwan_scalar b    = ALWAN_LITERAL(0.0075);
+    alwan_scalar c    = ALWAN_LITERAL(0.1466275659824047);
+    alwan_scalar d    = ALWAN_LITERAL(0.6050830889540567);
+    alwan_scalar cut1 = ALWAN_LITERAL(0.328);
+    alwan_scalar arg      = linear + b;
+    alwan_scalar abs_arg  = ALWAN_SELECT(arg < ALWAN_ZERO, -arg, arg);
+    alwan_scalar sign_arg = ALWAN_SELECT(arg < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE);
+    alwan_scalar linear_result = a * sign_arg * ALWAN_POW(abs_arg, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0));
+    alwan_scalar log_result    = c * ALWAN_LN(linear) + d;
+    return ALWAN_SELECT(linear < cut1, linear_result, log_result);
 }
 
 ALWAN_INLINE alwan_scalar alwan_nlog_eotf(alwan_scalar encoded) {
-    alwan_scalar cut       = ALWAN_LITERAL(0.00570);
-    alwan_scalar threshold = ALWAN_LITERAL(150.0) * cut + ALWAN_LITERAL(0.11241);
-    alwan_scalar linear_result = (encoded - ALWAN_LITERAL(0.11241)) / ALWAN_LITERAL(150.0);
-    alwan_scalar log_result    = ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - ALWAN_LITERAL(0.71722)) / ALWAN_LITERAL(0.36)) - ALWAN_LITERAL(0.10033);
-    return ALWAN_SELECT(encoded < threshold, linear_result, log_result);
+    alwan_scalar a    = ALWAN_LITERAL(0.635386119257087);
+    alwan_scalar b    = ALWAN_LITERAL(0.0075);
+    alwan_scalar c    = ALWAN_LITERAL(0.1466275659824047);
+    alwan_scalar d    = ALWAN_LITERAL(0.6050830889540567);
+    alwan_scalar cut2 = ALWAN_LITERAL(0.4418377321603128);
+    alwan_scalar linear_result = ALWAN_POW(encoded / a, ALWAN_LITERAL(3.0)) - b;
+    alwan_scalar log_result    = ALWAN_EXP((encoded - d) / c);
+    return ALWAN_SELECT(encoded < cut2, linear_result, log_result);
 }
 
 /* Cineon — Kodak "Reference Manual for Cineon Digital Film System" (1992);

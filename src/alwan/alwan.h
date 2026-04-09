@@ -81,6 +81,19 @@ alwan_ctx *alwan_create(alwan_config const *cfg);
 /* Destroy context and release all resources */
 void alwan_destroy(alwan_ctx *ctx);
 
+/* ACES tone curve interpolation method */
+typedef enum {
+    ALWAN_ACES_INTERP_BSPLINE = 0,  /* Quadratic B-spline (Academy CTL reference, default) */
+    ALWAN_ACES_INTERP_HERMITE = 1,  /* Legacy piecewise Hermite approximation */
+    ALWAN_ACES_INTERP_OCIO = 2      /* OCIO GradingRGBCurve (monotone cubic Hermite, pixel-exact OCIO match) */
+} alwan_aces_interp;
+
+/* Set the ACES tone curve interpolation method.
+ * Default: ALWAN_ACES_INTERP_BSPLINE.
+ * Use ALWAN_ACES_INTERP_OCIO for pixel-exact match with OpenColorIO. */
+void alwan_set_aces_interp(alwan_aces_interp method);
+alwan_aces_interp alwan_get_aces_interp(void);
+
 /* ----------------------------------------------------------------
  * Data Loading
  * ---------------------------------------------------------------- */
@@ -2118,8 +2131,10 @@ double alwan_delta_e_94_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2
 #define alwan_delta_e_94 alwan_delta_e_94_f64
 
 /* ΔE CMC(l:c) - CMC color difference (defaults: l=2, c=1 for acceptability) */
-float  alwan_delta_e_cmc_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2, float l, float c);
-double alwan_delta_e_cmc_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2, double l, double c);
+typedef struct { double l; double c; } alwan_delta_e_cmc_params;
+void alwan_delta_e_cmc_params_default(alwan_delta_e_cmc_params *p);
+float  alwan_delta_e_cmc_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2, alwan_delta_e_cmc_params const *params);
+double alwan_delta_e_cmc_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2, alwan_delta_e_cmc_params const *params);
 #define alwan_delta_e_cmc alwan_delta_e_cmc_f64
 
 /* ΔE*00 - CIEDE2000 color difference (most perceptually uniform) */
@@ -2128,8 +2143,9 @@ double alwan_delta_e_2000_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *la
 #define alwan_delta_e_2000 alwan_delta_e_2000_f64
 
 /* ΔE ITP - ITU-R BT.2124 HDR color difference in ICtCp space (scalar_factor default: 720) */
-float  alwan_delta_e_itp_f32(alwan_ictcp_f32 const *ictcp1, alwan_ictcp_f32 const *ictcp2, float scalar_factor);
-double alwan_delta_e_itp_f64(alwan_ictcp_f64 const *ictcp1, alwan_ictcp_f64 const *ictcp2, double scalar_factor);
+typedef struct { double scalar_factor; } alwan_delta_e_itp_params;
+float  alwan_delta_e_itp_f32(alwan_ictcp_f32 const *ictcp1, alwan_ictcp_f32 const *ictcp2, alwan_delta_e_itp_params const *params);
+double alwan_delta_e_itp_f64(alwan_ictcp_f64 const *ictcp1, alwan_ictcp_f64 const *ictcp2, alwan_delta_e_itp_params const *params);
 #define alwan_delta_e_itp alwan_delta_e_itp_f64
 
 /* ΔE HyAB - Hybrid Delta E, improved perceptual metric */
@@ -3437,11 +3453,11 @@ int alwan_cmy_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_cmy_f64 const *cmy);
 #define alwan_cmy_to_rgb alwan_cmy_to_rgb_f64
 
 /* CMY <-> CMYK conversions (all values in [0, 1]) */
-int alwan_cmy_to_cmyk_f32(float *c, float *m, float *y, float *k, alwan_cmy_f32 const *cmy);
-int alwan_cmy_to_cmyk_f64(double *c, double *m, double *y, double *k, alwan_cmy_f64 const *cmy);
+int alwan_cmy_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_cmy_f32 const *cmy);
+int alwan_cmy_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_cmy_f64 const *cmy);
 #define alwan_cmy_to_cmyk alwan_cmy_to_cmyk_f64
-int alwan_cmyk_to_cmy_f32(alwan_cmy_f32 *cmy_out, float c, float m, float y, float k);
-int alwan_cmyk_to_cmy_f64(alwan_cmy_f64 *cmy_out, double c, double m, double y, double k);
+int alwan_cmyk_to_cmy_f32(alwan_cmy_f32 *cmy_out, alwan_cmyk_f32 const *cmyk);
+int alwan_cmyk_to_cmy_f64(alwan_cmy_f64 *cmy_out, alwan_cmyk_f64 const *cmyk);
 #define alwan_cmyk_to_cmy alwan_cmyk_to_cmy_f64
 
 /* YCbCr standard identifiers */
@@ -4828,59 +4844,46 @@ int alwan_rayleigh_spd(alwan_scalar wavelength_start, alwan_scalar wavelength_en
 /* ACES RedMod03 - Red channel modification (RRT v0.3) */
 void alwan_aces_redmod03_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_redmod03_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_redmod03 alwan_aces_redmod03_f64
 
 /* ACES RedMod10 - Red channel modification (RRT v1.0) */
 void alwan_aces_redmod10_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_redmod10_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_redmod10 alwan_aces_redmod10_f64
 
 /* ACES Glow03 - Flare/glow effect (RRT v0.3) */
 void alwan_aces_glow03_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_glow03_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_glow03 alwan_aces_glow03_f64
 
 /* ACES Glow10 - Flare/glow effect (RRT v1.0) */
 void alwan_aces_glow10_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_glow10_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_glow10 alwan_aces_glow10_f64
 
 /* ACES DarkToDim10 - Surround compensation (RRT v1.0) */
 void alwan_aces_dark_to_dim10_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_dark_to_dim10_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_dark_to_dim10 alwan_aces_dark_to_dim10_f64
 
 /* ACES GamutComp13 parameters */
-typedef struct {
-    alwan_scalar lim_cyan;     /* Cyan limit (default: 1.147) */
-    alwan_scalar lim_magenta;  /* Magenta limit (default: 1.264) */
-    alwan_scalar lim_yellow;   /* Yellow limit (default: 1.312) */
-    alwan_scalar thr_cyan;     /* Cyan threshold (default: 0.815) */
-    alwan_scalar thr_magenta;  /* Magenta threshold (default: 0.803) */
-    alwan_scalar thr_yellow;   /* Yellow threshold (default: 0.880) */
-    alwan_scalar power;        /* Compression power (default: 1.2) */
-} alwan_aces_gamut_comp13_params;
+typedef struct { float  lim_cyan, lim_magenta, lim_yellow, thr_cyan, thr_magenta, thr_yellow, power; } alwan_aces_gamut_comp13_params_f32;
+typedef struct { double lim_cyan, lim_magenta, lim_yellow, thr_cyan, thr_magenta, thr_yellow, power; } alwan_aces_gamut_comp13_params_f64;
 
 /* Initialize GamutComp13 parameters with ACES 1.3 defaults */
-void alwan_aces_gamut_comp13_params_default(alwan_aces_gamut_comp13_params *params);
+void alwan_aces_gamut_comp13_params_default_f32(alwan_aces_gamut_comp13_params_f32 *params);
+void alwan_aces_gamut_comp13_params_default_f64(alwan_aces_gamut_comp13_params_f64 *params);
 
 /* ACES GamutComp13 - Gamut compression (ACES 1.3) */
 void alwan_aces_gamut_comp13_f32(alwan_rgb_f32 *rgb_out,
                             alwan_rgb_f32 const *rgb_in,
-                            alwan_aces_gamut_comp13_params const *params);
+                            alwan_aces_gamut_comp13_params_f32 const *params);
 void alwan_aces_gamut_comp13_f64(alwan_rgb_f64 *rgb_out,
                             alwan_rgb_f64 const *rgb_in,
-                            alwan_aces_gamut_comp13_params const *params);
-#define alwan_aces_gamut_comp13 alwan_aces_gamut_comp13_f64
+                            alwan_aces_gamut_comp13_params_f64 const *params);
 
 /* ACES GamutComp13 Inverse - Gamut decompression (ACES 1.3) */
 void alwan_aces_gamut_comp13_inv_f32(alwan_rgb_f32 *rgb_out,
                                  alwan_rgb_f32 const *rgb_in,
-                                 alwan_aces_gamut_comp13_params const *params);
+                                 alwan_aces_gamut_comp13_params_f32 const *params);
 void alwan_aces_gamut_comp13_inv_f64(alwan_rgb_f64 *rgb_out,
                                  alwan_rgb_f64 const *rgb_in,
-                                 alwan_aces_gamut_comp13_params const *params);
-#define alwan_aces_gamut_comp13_inv alwan_aces_gamut_comp13_inv_f64
+                                 alwan_aces_gamut_comp13_params_f64 const *params);
 
 /* ================================================================
  * Blue Light Artifact Fix (Neon Suppression) LMT
@@ -4902,7 +4905,6 @@ void alwan_aces_gamut_comp13_inv_f64(alwan_rgb_f64 *rgb_out,
  */
 void alwan_aces_blue_light_fix_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_blue_light_fix_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_blue_light_fix alwan_aces_blue_light_fix_f64
 
 /**
  * @brief Apply inverse Blue Light Artifact Fix
@@ -4912,7 +4914,6 @@ void alwan_aces_blue_light_fix_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *
  */
 void alwan_aces_blue_light_fix_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_blue_light_fix_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_blue_light_fix_inv alwan_aces_blue_light_fix_inv_f64
 
 /**
  * @brief Inverse of Glow03 fixed function
@@ -4922,7 +4923,6 @@ void alwan_aces_blue_light_fix_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 con
  */
 void alwan_aces_glow03_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_glow03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_glow03_inv alwan_aces_glow03_inv_f64
 
 /**
  * @brief Inverse of Glow10 fixed function
@@ -4932,7 +4932,6 @@ void alwan_aces_glow03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_
  */
 void alwan_aces_glow10_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_glow10_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_glow10_inv alwan_aces_glow10_inv_f64
 
 /**
  * @brief Inverse of RedMod03 fixed function
@@ -4942,7 +4941,6 @@ void alwan_aces_glow10_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_
  */
 void alwan_aces_redmod03_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_redmod03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_redmod03_inv alwan_aces_redmod03_inv_f64
 
 /**
  * @brief Inverse of RedMod10 fixed function
@@ -4952,7 +4950,6 @@ void alwan_aces_redmod03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rg
  */
 void alwan_aces_redmod10_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_redmod10_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_redmod10_inv alwan_aces_redmod10_inv_f64
 
 /**
  * @brief ACES 1.0 Look LMT - emulates ACES 1.0 look with ACES 1.0.3+ RRT
@@ -4967,7 +4964,6 @@ void alwan_aces_redmod10_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rg
  */
 void alwan_aces_look_1_0_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_look_1_0_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_look_1_0 alwan_aces_look_1_0_f64
 
 /**
  * @brief Inverse of ACES 1.0 Look LMT
@@ -4977,7 +4973,6 @@ void alwan_aces_look_1_0_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in
  */
 void alwan_aces_look_1_0_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_look_1_0_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
-#define alwan_aces_look_1_0_inv alwan_aces_look_1_0_inv_f64
 
 /**
  * @brief Parametric LMT parameters (CDL-style color grading)
@@ -4985,18 +4980,15 @@ void alwan_aces_look_1_0_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rg
  * Applies: out = (in * slope + offset) ^ power, then saturation adjustment.
  * All parameters default to neutral (slope=1, offset=0, power=1, saturation=1).
  */
-typedef struct {
-    alwan_scalar slope[3];      /* Per-channel gain (r, g, b). Default: 1.0 */
-    alwan_scalar offset[3];     /* Per-channel offset (r, g, b). Default: 0.0 */
-    alwan_scalar power[3];      /* Per-channel gamma (r, g, b). Default: 1.0 */
-    alwan_scalar saturation;    /* Global saturation. Default: 1.0 */
-} alwan_aces_lmt_params;
+typedef struct { float  slope[3], offset[3], power[3], saturation; } alwan_aces_lmt_params_f32;
+typedef struct { double slope[3], offset[3], power[3], saturation; } alwan_aces_lmt_params_f64;
 
 /**
  * @brief Initialize LMT params to neutral (identity transform)
  * @param params Output params struct
  */
-void alwan_aces_lmt_params_init(alwan_aces_lmt_params *params);
+void alwan_aces_lmt_params_init_f32(alwan_aces_lmt_params_f32 *params);
+void alwan_aces_lmt_params_init_f64(alwan_aces_lmt_params_f64 *params);
 
 /**
  * @brief Apply parametric LMT (CDL-style color grading)
@@ -5011,11 +5003,10 @@ void alwan_aces_lmt_params_init(alwan_aces_lmt_params *params);
  */
 void alwan_aces_lmt_apply_f32(alwan_rgb_f32 *rgb_out,
                          alwan_rgb_f32 const *rgb_in,
-                         alwan_aces_lmt_params const *params);
+                         alwan_aces_lmt_params_f32 const *params);
 void alwan_aces_lmt_apply_f64(alwan_rgb_f64 *rgb_out,
                          alwan_rgb_f64 const *rgb_in,
-                         alwan_aces_lmt_params const *params);
-#define alwan_aces_lmt_apply alwan_aces_lmt_apply_f64
+                         alwan_aces_lmt_params_f64 const *params);
 
 /* ================================================================
  * ACES 1.x Output Transforms (RRT + ODT)
@@ -5064,9 +5055,12 @@ typedef enum {
  * @param output   Output transform preset (display configuration)
  * @return         ALWAN_OK on success
  */
-int alwan_aces1_output_transform(alwan_rgb *rgb_out,
-                                  alwan_rgb const *rgb_in,
-                                  alwan_aces1_output output);
+int alwan_aces1_output_transform_f32(alwan_rgb_f32 *rgb_out,
+                                      alwan_rgb_f32 const *rgb_in,
+                                      alwan_aces1_output output);
+int alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
+                                      alwan_rgb_f64 const *rgb_in,
+                                      alwan_aces1_output output);
 
 /**
  * ACES 1.x Output Transform (Inverse)
@@ -5078,14 +5072,16 @@ int alwan_aces1_output_transform(alwan_rgb *rgb_out,
  * @param output   Output transform preset (display configuration)
  * @return         ALWAN_OK on success
  */
-int alwan_aces1_output_transform_inv(alwan_rgb *rgb_out,
-                                      alwan_rgb const *rgb_in,
-                                      alwan_aces1_output output);
+int alwan_aces1_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
+                                          alwan_rgb_f32 const *rgb_in,
+                                          alwan_aces1_output output);
+int alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
+                                          alwan_rgb_f64 const *rgb_in,
+                                          alwan_aces1_output output);
 
 /* Rec.2100 Surround adjustment */
 void alwan_rec2100_surround_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, float gamma);
 void alwan_rec2100_surround_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, double gamma);
-#define alwan_rec2100_surround alwan_rec2100_surround_f64
 
 /* ================================================================
  * ACES 2.0 Components
@@ -5098,36 +5094,30 @@ void alwan_aces_tonescale_compress20_f32(alwan_rgb_f32 *rgb_out,
 void alwan_aces_tonescale_compress20_f64(alwan_rgb_f64 *rgb_out,
                                      alwan_rgb_f64 const *rgb_in,
                                      double peak_luminance);
-#define alwan_aces_tonescale_compress20 alwan_aces_tonescale_compress20_f64
 
 /* ACES RGB to JMh20 encoding primaries */
-typedef struct {
-    alwan_scalar red_x, red_y;
-    alwan_scalar green_x, green_y;
-    alwan_scalar blue_x, blue_y;
-    alwan_scalar white_x, white_y;
-} alwan_aces_primaries;
+typedef struct { float  red_x, red_y, green_x, green_y, blue_x, blue_y, white_x, white_y; } alwan_aces_primaries_f32;
+typedef struct { double red_x, red_y, green_x, green_y, blue_x, blue_y, white_x, white_y; } alwan_aces_primaries_f64;
 
 /* Initialize primaries with AP1 defaults */
-void alwan_aces_primaries_ap1_default(alwan_aces_primaries *primaries);
+void alwan_aces_primaries_ap1_default_f32(alwan_aces_primaries_f32 *primaries);
+void alwan_aces_primaries_ap1_default_f64(alwan_aces_primaries_f64 *primaries);
 
 /* ACES RGB to JMh20 - Convert to color appearance coordinates (ACES 2.0) */
 void alwan_aces_rgb_to_jmh20_f32(alwan_vec3_f32 *jmh_out,
                             alwan_rgb_f32 const *rgb_in,
-                            alwan_aces_primaries const *primaries);
+                            alwan_aces_primaries_f32 const *primaries);
 void alwan_aces_rgb_to_jmh20_f64(alwan_vec3_f64 *jmh_out,
                             alwan_rgb_f64 const *rgb_in,
-                            alwan_aces_primaries const *primaries);
-#define alwan_aces_rgb_to_jmh20 alwan_aces_rgb_to_jmh20_f64
+                            alwan_aces_primaries_f64 const *primaries);
 
 /* ACES JMh to RGB20 - Convert from color appearance coordinates (ACES 2.0) */
 void alwan_aces_jmh_to_rgb20_f32(alwan_rgb_f32 *rgb_out,
                             alwan_vec3_f32 const *jmh_in,
-                            alwan_aces_primaries const *primaries);
+                            alwan_aces_primaries_f32 const *primaries);
 void alwan_aces_jmh_to_rgb20_f64(alwan_rgb_f64 *rgb_out,
                             alwan_vec3_f64 const *jmh_in,
-                            alwan_aces_primaries const *primaries);
-#define alwan_aces_jmh_to_rgb20 alwan_aces_jmh_to_rgb20_f64
+                            alwan_aces_primaries_f64 const *primaries);
 
 /* ACES GamutCompress20 - Gamut compression in JMh space (ACES 2.0)
  *
@@ -5144,12 +5134,11 @@ void alwan_aces_jmh_to_rgb20_f64(alwan_rgb_f64 *rgb_out,
 void alwan_aces_gamut_compress20_f32(alwan_vec3_f32 *jmh_out,
                                  alwan_vec3_f32 const *jmh_in,
                                  float peak_luminance,
-                                 alwan_aces_primaries const *limit_primaries);
+                                 alwan_aces_primaries_f32 const *limit_primaries);
 void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
                                  alwan_vec3_f64 const *jmh_in,
                                  double peak_luminance,
-                                 alwan_aces_primaries const *limit_primaries);
-#define alwan_aces_gamut_compress20 alwan_aces_gamut_compress20_f64
+                                 alwan_aces_primaries_f64 const *limit_primaries);
 
 /**
  * ACES 2.0: Gamut Compression (Inverse)
@@ -5159,12 +5148,11 @@ void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
 void alwan_aces_gamut_compress20_inv_f32(alwan_vec3_f32 *jmh_out,
                                      alwan_vec3_f32 const *jmh_in,
                                      float peak_luminance,
-                                     alwan_aces_primaries const *limit_primaries);
+                                     alwan_aces_primaries_f32 const *limit_primaries);
 void alwan_aces_gamut_compress20_inv_f64(alwan_vec3_f64 *jmh_out,
                                      alwan_vec3_f64 const *jmh_in,
                                      double peak_luminance,
-                                     alwan_aces_primaries const *limit_primaries);
-#define alwan_aces_gamut_compress20_inv alwan_aces_gamut_compress20_inv_f64
+                                     alwan_aces_primaries_f64 const *limit_primaries);
 
 /* ================================================================
  * ACES 2.0 Output Transform (Unified API)
@@ -5214,9 +5202,12 @@ typedef enum {
  * @param output   Output transform preset (display configuration)
  * @return         ALWAN_OK on success
  */
-int alwan_aces2_output_transform(alwan_rgb *rgb_out,
-                                  alwan_rgb const *rgb_in,
-                                  alwan_aces2_output output);
+int alwan_aces2_output_transform_f32(alwan_rgb_f32 *rgb_out,
+                                      alwan_rgb_f32 const *rgb_in,
+                                      alwan_aces2_output output);
+int alwan_aces2_output_transform_f64(alwan_rgb_f64 *rgb_out,
+                                      alwan_rgb_f64 const *rgb_in,
+                                      alwan_aces2_output output);
 
 /**
  * ACES 2.0 Output Transform (Inverse)
@@ -5229,9 +5220,12 @@ int alwan_aces2_output_transform(alwan_rgb *rgb_out,
  * @param output   Output transform preset (display configuration)
  * @return         ALWAN_OK on success
  */
-int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
-                                      alwan_rgb const *rgb_in,
-                                      alwan_aces2_output output);
+int alwan_aces2_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
+                                          alwan_rgb_f32 const *rgb_in,
+                                          alwan_aces2_output output);
+int alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
+                                          alwan_rgb_f64 const *rgb_in,
+                                          alwan_aces2_output output);
 
 /**
  * ACES 2.0 Output Transform (Custom)
@@ -5245,11 +5239,38 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
  * @param eotf            Display EOTF (e.g., ALWAN_TF_BT1886, ALWAN_TF_PQ)
  * @return                ALWAN_OK on success
  */
-int alwan_aces2_output_transform_custom(alwan_rgb *rgb_out,
-                                         alwan_rgb const *rgb_in,
-                                         alwan_scalar peak_luminance,
-                                         alwan_aces_primaries const *limit_primaries,
-                                         alwan_transfer_function eotf);
+int alwan_aces2_output_transform_custom_f32(alwan_rgb_f32 *rgb_out,
+                                             alwan_rgb_f32 const *rgb_in,
+                                             float peak_luminance,
+                                             alwan_aces_primaries_f32 const *limit_primaries,
+                                             alwan_transfer_function eotf);
+int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
+                                             alwan_rgb_f64 const *rgb_in,
+                                             double peak_luminance,
+                                             alwan_aces_primaries_f64 const *limit_primaries,
+                                             alwan_transfer_function eotf);
+
+/**
+ * ACES 2.0 Output Transform (Batch)
+ * Pre-initializes parameters once, then processes count pixels.
+ * Much faster than calling alwan_aces2_output_transform per pixel.
+ *
+ * @param out       Output interleaved RGB triplets (display-encoded)
+ * @param in        Input interleaved RGB triplets (AP1 linear)
+ * @param output    Output transform preset
+ * @param count     Number of pixels
+ * @param in_stride  Bytes between input RGB triplets (typically 3*sizeof(alwan_scalar))
+ * @param out_stride Bytes between output RGB triplets
+ * @return          ALWAN_OK on success
+ */
+int alwan_aces2_output_transform_f64_map_interleave(
+        double *out, double const *in,
+        alwan_aces2_output output, size_t count,
+        size_t in_stride, size_t out_stride);
+int alwan_aces2_output_transform_f32_map_interleave(
+        float *out, float const *in,
+        alwan_aces2_output output, size_t count,
+        size_t in_stride, size_t out_stride);
 
 /* ----------------------------------------------------------------
  * HDR Pipeline Utilities
@@ -5421,13 +5442,12 @@ int alwan_content_light_level_compute(alwan_content_light_level *cll_out,
  * HWB Color Space (CSS Color Level 4)
  * ---------------------------------------------------------------- */
 
-/* RGB <-> HWB conversions (Hue [0-1], Whiteness [0-1], Blackness [0-1])
- * Note: alwan_hwb is defined in alwan_convenience_core.h */
-void alwan_rgb_to_hwb_f32(float *hwb_out, alwan_rgb_f32 const *rgb);
-void alwan_rgb_to_hwb_f64(double *hwb_out, alwan_rgb_f64 const *rgb);
+/* RGB <-> HWB conversions (Hue [0-1], Whiteness [0-1], Blackness [0-1]) */
+void alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb);
+void alwan_rgb_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_rgb_f64 const *rgb);
 #define alwan_rgb_to_hwb alwan_rgb_to_hwb_f64
-void alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, float const *hwb_in);
-void alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, double const *hwb_in);
+void alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hwb_f32 const *hwb);
+void alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb);
 #define alwan_hwb_to_rgb alwan_hwb_to_rgb_f64
 
 /* ----------------------------------------------------------------

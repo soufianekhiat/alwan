@@ -15,7 +15,7 @@
 /* ----------------------------------------------------------------
  * Test RGB Inputs (must match gendata/tests/aces2_output_transform.py)
  * ---------------------------------------------------------------- */
-static alwan_rgb const g_test_rgb_inputs[] = {
+static alwan_rgb_f64 const g_test_rgb_inputs[] = {
     /* Primary colors */
     {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},     /* Pure red */
     {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)},     /* Pure green */
@@ -115,10 +115,10 @@ ALWAN_DIAG_POP
 static int test_output_transform_basic_rec709(void) {
     TEST_START("ACES 2.0 Output Transform - Rec.709 100 nits basic");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};  /* 18% gray */
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};  /* 18% gray */
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
     if (status != ALWAN_OK) {
         TEST_FAIL("Transform failed with error %d", status);
     }
@@ -139,10 +139,10 @@ static int test_output_transform_basic_rec709(void) {
 static int test_output_transform_basic_srgb(void) {
     TEST_START("ACES 2.0 Output Transform - sRGB 100 nits basic");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_SRGB_100NIT);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_SRGB_100NIT);
     if (status != ALWAN_OK) {
         TEST_FAIL("Transform failed with error %d", status);
     }
@@ -158,10 +158,10 @@ static int test_output_transform_basic_srgb(void) {
 static int test_output_transform_basic_p3(void) {
     TEST_START("ACES 2.0 Output Transform - P3-D65 100 nits basic");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_P3D65_100NIT_SRGB);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_P3D65_100NIT_SRGB);
     if (status != ALWAN_OK) {
         TEST_FAIL("Transform failed with error %d", status);
     }
@@ -178,10 +178,10 @@ static int test_output_transform_basic_p3(void) {
 static int test_output_transform_hdr_pq(void) {
     TEST_START("ACES 2.0 Output Transform - Rec.2100 1000 nits PQ");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};  /* White */
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};  /* White */
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC2100_1000NIT_PQ);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC2100_1000NIT_PQ);
     if (status != ALWAN_OK) {
         TEST_FAIL("Transform failed with error %d", status);
     }
@@ -198,10 +198,10 @@ static int test_output_transform_hdr_pq(void) {
 static int test_output_transform_hdr_hlg(void) {
     TEST_START("ACES 2.0 Output Transform - Rec.2100 1000 nits HLG");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC2100_1000NIT_HLG);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC2100_1000NIT_HLG);
     if (status != ALWAN_OK) {
         TEST_FAIL("Transform failed with error %d", status);
     }
@@ -219,10 +219,10 @@ static int test_output_transform_cinema_dcdm(void) {
     TEST_START("ACES 2.0 Output Transform - DCDM 48 nits");
 
     /* DCDM outputs X'Y'Z' (gamma 2.6 encoded XYZ for cinema projection) */
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_DCDM_48NIT);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_DCDM_48NIT);
     if (status != ALWAN_OK) {
         TEST_FAIL("DCDM transform failed with error %d", status);
     }
@@ -248,10 +248,10 @@ static int test_output_transform_cinema_p3dci(void) {
     TEST_START("ACES 2.0 Output Transform - P3-DCI 48 nits");
 
     /* P3-DCI outputs P3 primaries with gamma 2.6 encoding for cinema */
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_P3DCI_48NIT);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_P3DCI_48NIT);
     if (status != ALWAN_OK) {
         TEST_FAIL("P3-DCI transform failed with error %d", status);
     }
@@ -291,17 +291,17 @@ static int test_output_transform_cinema_p3dci(void) {
 static int test_roundtrip_rec709(void) {
     TEST_START("ACES 2.0 Output Transform roundtrip - Rec.709");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_rgb rgb_encoded, rgb_decoded;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_rgb_f64 rgb_encoded, rgb_decoded;
 
     /* Forward */
-    int status = alwan_aces2_output_transform(&rgb_encoded, &rgb_in, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+    int status = alwan_aces2_output_transform_f64(&rgb_encoded, &rgb_in, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
     if (status != ALWAN_OK) {
         TEST_FAIL("Forward transform failed with error %d", status);
     }
 
     /* Inverse */
-    status = alwan_aces2_output_transform_inv(&rgb_decoded, &rgb_encoded, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+    status = alwan_aces2_output_transform_inv_f64(&rgb_decoded, &rgb_encoded, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
     if (status != ALWAN_OK) {
         TEST_FAIL("Inverse transform failed with error %d", status);
     }
@@ -330,17 +330,17 @@ static int test_roundtrip_rec709(void) {
 static int test_roundtrip_hdr(void) {
     TEST_START("ACES 2.0 Output Transform roundtrip - Rec.2100 PQ");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.1)};
-    alwan_rgb rgb_encoded, rgb_decoded;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.1)};
+    alwan_rgb_f64 rgb_encoded, rgb_decoded;
 
     /* Forward */
-    int status = alwan_aces2_output_transform(&rgb_encoded, &rgb_in, ALWAN_ACES2_OUT_REC2100_1000NIT_PQ);
+    int status = alwan_aces2_output_transform_f64(&rgb_encoded, &rgb_in, ALWAN_ACES2_OUT_REC2100_1000NIT_PQ);
     if (status != ALWAN_OK) {
         TEST_FAIL("Forward transform failed with error %d", status);
     }
 
     /* Inverse */
-    status = alwan_aces2_output_transform_inv(&rgb_decoded, &rgb_encoded, ALWAN_ACES2_OUT_REC2100_1000NIT_PQ);
+    status = alwan_aces2_output_transform_inv_f64(&rgb_decoded, &rgb_encoded, ALWAN_ACES2_OUT_REC2100_1000NIT_PQ);
     if (status != ALWAN_OK) {
         TEST_FAIL("Inverse transform failed with error %d", status);
     }
@@ -365,10 +365,10 @@ static int test_roundtrip_hdr(void) {
 static int test_black_preserves(void) {
     TEST_START("ACES 2.0 Output Transform - Black preserves");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
     if (status != ALWAN_OK) {
         TEST_FAIL("Transform failed with error %d", status);
     }
@@ -385,10 +385,10 @@ static int test_black_preserves(void) {
 static int test_negative_input_handling(void) {
     TEST_START("ACES 2.0 Output Transform - Negative input handling");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(-0.2), ALWAN_LITERAL(0.5)};  /* Out of gamut */
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(-0.2), ALWAN_LITERAL(0.5)};  /* Out of gamut */
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
     if (status != ALWAN_OK) {
         TEST_FAIL("Transform failed with error %d (should handle gracefully)", status);
     }
@@ -408,10 +408,10 @@ static int test_negative_input_handling(void) {
 static int test_hdr_bright_handling(void) {
     TEST_START("ACES 2.0 Output Transform - HDR bright values");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(5.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(3.0)};  /* Very bright HDR */
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(5.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(3.0)};  /* Very bright HDR */
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC2100_4000NIT_PQ);
+    int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, ALWAN_ACES2_OUT_REC2100_4000NIT_PQ);
     if (status != ALWAN_OK) {
         TEST_FAIL("Transform failed with error %d", status);
     }
@@ -432,8 +432,8 @@ static int test_hdr_bright_handling(void) {
 static int test_all_presets_valid(void) {
     TEST_START("ACES 2.0 Output Transform - All presets produce valid output");
 
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_rgb_f64 rgb_out;
 
     char const *preset_names[] = {
         "REC709_100NIT_BT1886",
@@ -451,7 +451,7 @@ static int test_all_presets_valid(void) {
     };
 
     for (int i = 0; i < ALWAN_ACES2_OUT_COUNT; i++) {
-        int status = alwan_aces2_output_transform(&rgb_out, &rgb_in, (alwan_aces2_output)i);
+        int status = alwan_aces2_output_transform_f64(&rgb_out, &rgb_in, (alwan_aces2_output)i);
         if (status != ALWAN_OK) {
             TEST_FAIL("Preset %s failed with error %d", preset_names[i], status);
         }
@@ -475,7 +475,7 @@ static int test_all_presets_valid(void) {
 static int test_neutral_axis_consistency(void) {
     TEST_START("ACES 2.0 Output Transform - Neutral axis stays neutral");
 
-    alwan_rgb grays[] = {
+    alwan_rgb_f64 grays[] = {
         {ALWAN_LITERAL(0.02), ALWAN_LITERAL(0.02), ALWAN_LITERAL(0.02)},
         {ALWAN_LITERAL(0.05), ALWAN_LITERAL(0.05), ALWAN_LITERAL(0.05)},
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
@@ -484,8 +484,8 @@ static int test_neutral_axis_consistency(void) {
     };
 
     for (size_t i = 0; i < sizeof(grays) / sizeof(grays[0]); i++) {
-        alwan_rgb rgb_out;
-        int status = alwan_aces2_output_transform(&rgb_out, &grays[i], ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+        alwan_rgb_f64 rgb_out;
+        int status = alwan_aces2_output_transform_f64(&rgb_out, &grays[i], ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
         if (status != ALWAN_OK) {
             TEST_FAIL("Gray %zu failed with error %d", i, status);
         }
@@ -508,15 +508,15 @@ static int test_monotonic_luminance(void) {
     TEST_START("ACES 2.0 Output Transform - Luminance is monotonic");
 
     /* Test that brighter inputs produce brighter outputs */
-    alwan_rgb rgb_low = {ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)};
-    alwan_rgb rgb_mid = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
-    alwan_rgb rgb_high = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+    alwan_rgb_f64 rgb_low = {ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)};
+    alwan_rgb_f64 rgb_mid = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
+    alwan_rgb_f64 rgb_high = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
 
-    alwan_rgb out_low, out_mid, out_high;
+    alwan_rgb_f64 out_low, out_mid, out_high;
 
-    alwan_aces2_output_transform(&out_low, &rgb_low, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
-    alwan_aces2_output_transform(&out_mid, &rgb_mid, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
-    alwan_aces2_output_transform(&out_high, &rgb_high, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+    alwan_aces2_output_transform_f64(&out_low, &rgb_low, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+    alwan_aces2_output_transform_f64(&out_mid, &rgb_mid, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
+    alwan_aces2_output_transform_f64(&out_high, &rgb_high, ALWAN_ACES2_OUT_REC709_100NIT_BT1886);
 
     if (out_low.r >= out_mid.r || out_mid.r >= out_high.r) {
         TEST_FAIL("Luminance not monotonic: low=%g, mid=%g, high=%g",
@@ -542,8 +542,8 @@ static int compare_preset_vs_ocio(
     int skipped = 0;
 
     for (size_t i = 0; i < NUM_TEST_INPUTS; i++) {
-        alwan_rgb rgb_out;
-        int status = alwan_aces2_output_transform(&rgb_out, &g_test_rgb_inputs[i], preset);
+        alwan_rgb_f64 rgb_out;
+        int status = alwan_aces2_output_transform_f64(&rgb_out, &g_test_rgb_inputs[i], preset);
         if (status != ALWAN_OK) {
             printf("      [ERROR] Input %zu: transform failed with error %d\n", i, status);
             errors++;
@@ -619,8 +619,8 @@ static int test_ocio_reference_comparison(void) {
     for (size_t p = 0; p < sizeof(neutral_tests) / sizeof(neutral_tests[0]); p++) {
         /* Test 18% gray (index 7) */
         size_t idx = 7;
-        alwan_rgb rgb_out;
-        int status = alwan_aces2_output_transform(&rgb_out, &g_test_rgb_inputs[idx], neutral_tests[p].preset);
+        alwan_rgb_f64 rgb_out;
+        int status = alwan_aces2_output_transform_f64(&rgb_out, &g_test_rgb_inputs[idx], neutral_tests[p].preset);
         if (status != ALWAN_OK) {
             printf("      [ERROR] %s: transform failed\n", neutral_tests[p].name);
             total_errors++;

@@ -17,6 +17,18 @@
  * sRGB <-> XYZ D65 matrices (BT.709 primaries) - dual precision
  * ---------------------------------------------------------------- */
 
+/* sRGB / BT.709 NPM (Normalized Primary Matrix) and its inverse.
+ * These are computed from exact BT.709 primaries + D65 white point via gendata
+ * (colour-science rgb_spaces.py), NOT the IEC 61966-2-1 rounded constants.
+ *
+ * Difference vs IEC 61966-2-1 published matrix (4 decimal places):
+ *   IEC:   0.4124, 0.3576, 0.1805, ...
+ *   ours:  0.41239080, 0.35758434, 0.18048079, ...
+ *   delta: ~1e-5 per cell (5th decimal place)
+ *
+ * This produces a ~0.007 difference in Lab a* for saturated colors compared
+ * to implementations that use the rounded IEC constants (e.g. colour-science).
+ * Both are valid — ours is more precise, IEC is the published standard. */
 ALWAN_DIAG_PUSH
 ALWAN_CONSTEXPR alwan_mat3x3 SRGB_TO_XYZ = {{
 #include "../data/matrices/aces_rec709_to_xyz.csv"
@@ -267,7 +279,8 @@ int alwan_delta_e_cmc_batch(alwan_scalar *delta_e_out,
         alwan_scalar const *in2_ptr = (alwan_scalar const *)((char const *)lab2_in + i * in2_stride);
         alwan_lab lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
         alwan_lab lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
-        delta_e_out[i] = alwan_delta_e_cmc(&lab1, &lab2, l, c);
+        alwan_delta_e_cmc_params cmc_p; cmc_p.l = (double)l; cmc_p.c = (double)c;
+        delta_e_out[i] = alwan_delta_e_cmc_f64(&lab1, &lab2, &cmc_p);
     }
 
     return ALWAN_OK;

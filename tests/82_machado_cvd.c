@@ -42,12 +42,12 @@ static int test_machado_reference(void) {
     for (int i = 0; i < MACHADO_REF_COUNT; i++) {
         alwan_f64 const *d = &g_machado_ref[i * MACHADO_REF_STRIDE];
 
-        alwan_rgb rgb_in = {d[0], d[1], d[2]};
+        alwan_rgb_f64 rgb_in = {d[0], d[1], d[2]};
         int type_idx = (int)d[3];
         alwan_f64 severity = d[4];
         alwan_f64 exp_r = d[5], exp_g = d[6], exp_b = d[7];
 
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
         int status = alwan_simulate_cvd_machado(&rgb_out, &rgb_in,
                                                  type_map[type_idx], severity);
         if (status != ALWAN_OK) {
@@ -90,7 +90,7 @@ static int test_machado_reference(void) {
 static int test_machado_identity(void) {
     TEST_START("test_machado_identity");
 
-    alwan_rgb colors[] = {
+    alwan_rgb_f64 colors[] = {
         {1.0, 0.0, 0.0},
         {0.0, 1.0, 0.0},
         {0.0, 0.0, 1.0},
@@ -106,7 +106,7 @@ static int test_machado_identity(void) {
 
     for (int t = 0; t < 3; t++) {
         for (int c = 0; c < 5; c++) {
-            alwan_rgb out;
+            alwan_rgb_f64 out;
             int status = alwan_simulate_cvd_machado(&out, &colors[c],
                                                      types[t],
                                                      ALWAN_LITERAL(0.0));
@@ -127,8 +127,8 @@ static int test_machado_identity(void) {
 static int test_cvd_ex_dispatch(void) {
     TEST_START("test_cvd_ex_dispatch");
 
-    alwan_rgb rgb_in = {0.8, 0.3, 0.1};
-    alwan_rgb out_brettel, out_machado, out_ex_brettel, out_ex_machado;
+    alwan_rgb_f64 rgb_in = {0.8, 0.3, 0.1};
+    alwan_rgb_f64 out_brettel, out_machado, out_ex_brettel, out_ex_machado;
 
     /* Get direct results */
     alwan_simulate_cvd(&out_brettel, &rgb_in, ALWAN_CVD_PROTANOPIA, ALWAN_LITERAL(0.7));
@@ -180,15 +180,15 @@ static int test_machado_batch(void) {
     alwan_f64 rgb_out[12];
     size_t stride = 3 * sizeof(alwan_f64);
 
-    int status = alwan_simulate_cvd_machado_map_interleave(
+    int status = alwan_simulate_cvd_machado_f64_map_interleave(
         rgb_out, rgb_in, ALWAN_CVD_DEUTERANOPIA, ALWAN_LITERAL(0.7),
         count, stride, stride);
     TEST_ASSERT(status == ALWAN_OK, "batch returned error");
 
     /* Compare against single-pixel API */
     for (size_t i = 0; i < count; i++) {
-        alwan_rgb in_px = {rgb_in[i*3], rgb_in[i*3+1], rgb_in[i*3+2]};
-        alwan_rgb out_px;
+        alwan_rgb_f64 in_px = {rgb_in[i*3], rgb_in[i*3+1], rgb_in[i*3+2]};
+        alwan_rgb_f64 out_px;
         alwan_simulate_cvd_machado(&out_px, &in_px, ALWAN_CVD_DEUTERANOPIA,
                                     ALWAN_LITERAL(0.7));
         TEST_CHECK_NEAR(rgb_out[i*3+0], out_px.r, ALWAN_TEST_TOLERANCE);
@@ -206,7 +206,7 @@ static int test_machado_batch(void) {
 static int test_machado_monotonicity(void) {
     TEST_START("test_machado_monotonicity");
 
-    alwan_rgb rgb_in = {0.8, 0.2, 0.1};
+    alwan_rgb_f64 rgb_in = {0.8, 0.2, 0.1};
 
     /* Only test protan and deutan; tritan uses an approximate shift model
      * (domain [5,59] vs [0,20]) and is not strictly monotonic. */
@@ -220,7 +220,7 @@ static int test_machado_monotonicity(void) {
 
         for (int s = 1; s <= 10; s++) {
             alwan_f64 severity = (alwan_f64)s / ALWAN_LITERAL(10.0);
-            alwan_rgb out;
+            alwan_rgb_f64 out;
             alwan_simulate_cvd_machado(&out, &rgb_in, types[t], severity);
 
             /* Euclidean distance from original */
@@ -253,13 +253,13 @@ static int test_machado_gray(void) {
 
     /* For protan and deutan, gray should remain nearly gray at all severities.
      * Tritan may shift gray slightly due to the model approximation. */
-    alwan_rgb gray = {0.5, 0.5, 0.5};
+    alwan_rgb_f64 gray = {0.5, 0.5, 0.5};
     alwan_cvd_type types[] = {ALWAN_CVD_PROTANOPIA, ALWAN_CVD_DEUTERANOPIA};
 
     for (int t = 0; t < 2; t++) {
         for (int s = 0; s <= 10; s++) {
             alwan_f64 severity = (alwan_f64)s / ALWAN_LITERAL(10.0);
-            alwan_rgb out;
+            alwan_rgb_f64 out;
             alwan_simulate_cvd_machado(&out, &gray, types[t], severity);
 
             /* R, G, B should be similar (achromatic) */
@@ -292,8 +292,8 @@ static int test_machado_gray(void) {
 static int test_machado_null(void) {
     TEST_START("test_machado_null");
 
-    alwan_rgb rgb = {0.5, 0.5, 0.5};
-    alwan_rgb out;
+    alwan_rgb_f64 rgb = {0.5, 0.5, 0.5};
+    alwan_rgb_f64 out;
 
     TEST_ASSERT(alwan_simulate_cvd_machado(NULL, &rgb, ALWAN_CVD_PROTANOPIA,
                 ALWAN_LITERAL(0.5)) == ALWAN_E_INVALID, "NULL out");
@@ -302,7 +302,7 @@ static int test_machado_null(void) {
     TEST_ASSERT(alwan_simulate_cvd_ex(NULL, &rgb, ALWAN_CVD_PROTANOPIA,
                 ALWAN_LITERAL(0.5), ALWAN_CVD_MODEL_MACHADO) == ALWAN_E_INVALID,
                 "NULL out (ex)");
-    TEST_ASSERT(alwan_simulate_cvd_machado_map_interleave(NULL, (alwan_f64*)&rgb,
+    TEST_ASSERT(alwan_simulate_cvd_machado_f64_map_interleave(NULL, (alwan_f64*)&rgb,
                 ALWAN_CVD_PROTANOPIA, ALWAN_LITERAL(0.5), 1,
                 3*sizeof(alwan_f64), 3*sizeof(alwan_f64)) == ALWAN_E_INVALID,
                 "NULL batch out");
@@ -319,7 +319,7 @@ static int test_machado_clamping(void) {
 
     /* Saturated colors at high severity can push channels negative or > 1.
      * The implementation should clamp output to [0, 1]. */
-    alwan_rgb saturated[] = {
+    alwan_rgb_f64 saturated[] = {
         {1.0, 0.0, 0.0},
         {0.0, 1.0, 0.0},
         {0.0, 0.0, 1.0},
@@ -330,7 +330,7 @@ static int test_machado_clamping(void) {
             alwan_cvd_type types[] = {
                 ALWAN_CVD_PROTANOPIA, ALWAN_CVD_DEUTERANOPIA, ALWAN_CVD_TRITANOPIA
             };
-            alwan_rgb out;
+            alwan_rgb_f64 out;
             alwan_simulate_cvd_machado(&out, &saturated[c], types[t],
                                         ALWAN_LITERAL(1.0));
             TEST_ASSERT(out.r >= ALWAN_LITERAL(0.0) && out.r <= ALWAN_LITERAL(1.0),

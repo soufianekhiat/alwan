@@ -21,7 +21,7 @@ ALWAN_DIAG_POP
 static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 11;
 
 /* Helper to extract test case from flat array */
-static void get_test_case(size_t index, alwan_xyz *xyz_in, alwan_xyz *xyz_w,
+static void get_test_case(size_t index, alwan_xyz_f64 *xyz_in, alwan_xyz_f64 *xyz_w,
                           alwan_f64 *La, alwan_f64 *Yb,
                           alwan_f64 *J_expected, alwan_f64 *C_expected, alwan_f64 *h_expected) {
     size_t offset = index * 11;
@@ -42,7 +42,7 @@ static void get_test_case(size_t index, alwan_xyz *xyz_in, alwan_xyz *xyz_w,
 static int test_kim2009_forward(void) {
     /* Test forward transform for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_xyz xyz_in, xyz_w;
+        alwan_xyz_f64 xyz_in, xyz_w;
         alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &J_expected, &C_expected, &h_expected);
 
@@ -55,7 +55,7 @@ static int test_kim2009_forward(void) {
 
         /* Forward transform */
         alwan_kim2009_correlates corr;
-        int status = alwan_kim2009_forward(&corr, &xyz_in, &vc);
+        int status = alwan_kim2009_forward_f64(&corr, &xyz_in, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
@@ -100,7 +100,7 @@ static int test_kim2009_forward(void) {
 static int test_kim2009_inverse(void) {
     /* Test inverse transform for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_xyz xyz_in, xyz_w;
+        alwan_xyz_f64 xyz_in, xyz_w;
         alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &J_expected, &C_expected, &h_expected);
 
@@ -118,8 +118,8 @@ static int test_kim2009_inverse(void) {
         corr.h = h_expected;
 
         /* Inverse transform */
-        alwan_xyz xyz_out;
-        int status = alwan_kim2009_inverse(&xyz_out, &corr, &vc);
+        alwan_xyz_f64 xyz_out;
+        int status = alwan_kim2009_inverse_f64(&xyz_out, &corr, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against input values */
@@ -149,7 +149,7 @@ static int test_kim2009_inverse(void) {
 static int test_kim2009_roundtrip(void) {
     /* Test round-trip for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_xyz xyz_in, xyz_w;
+        alwan_xyz_f64 xyz_in, xyz_w;
         alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &J_expected, &C_expected, &h_expected);
 
@@ -162,12 +162,12 @@ static int test_kim2009_roundtrip(void) {
 
         /* Forward: XYZ -> correlates */
         alwan_kim2009_correlates corr;
-        int status = alwan_kim2009_forward(&corr, &xyz_in, &vc);
+        int status = alwan_kim2009_forward_f64(&corr, &xyz_in, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Inverse: correlates -> XYZ */
-        alwan_xyz xyz_out;
-        status = alwan_kim2009_inverse(&xyz_out, &corr, &vc);
+        alwan_xyz_f64 xyz_out;
+        status = alwan_kim2009_inverse_f64(&xyz_out, &corr, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
@@ -203,7 +203,7 @@ static int test_kim2009_surrounds(void) {
     vc.discount_illuminant = 0;
 
     /* Test color: mid-gray */
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     xyz.x = ALWAN_LITERAL(50.0);
     xyz.y = ALWAN_LITERAL(50.0);
     xyz.z = ALWAN_LITERAL(50.0);
@@ -212,17 +212,17 @@ static int test_kim2009_surrounds(void) {
 
     /* Average surround (Yb = 20) */
     vc.Yb = ALWAN_LITERAL(20.0);
-    int status = alwan_kim2009_forward(&corr_avg, &xyz, &vc);
+    int status = alwan_kim2009_forward_f64(&corr_avg, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Average surround failed");
 
     /* Dim surround (Yb = 5) */
     vc.Yb = ALWAN_LITERAL(5.0);
-    status = alwan_kim2009_forward(&corr_dim, &xyz, &vc);
+    status = alwan_kim2009_forward_f64(&corr_dim, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Dim surround failed");
 
     /* Dark surround (Yb = 0.5) */
     vc.Yb = ALWAN_LITERAL(0.5);
-    status = alwan_kim2009_forward(&corr_dark, &xyz, &vc);
+    status = alwan_kim2009_forward_f64(&corr_dark, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Dark surround failed");
 
     /* Print surround results (informational) */

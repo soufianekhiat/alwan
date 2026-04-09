@@ -143,7 +143,7 @@ static int test_xyz_from_constant_spd(void) {
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Compute XYZ with both integration methods */
-    alwan_xyz xyz_trap, xyz_simp;
+    alwan_xyz_f64 xyz_trap, xyz_simp;
 
     status = alwan_xyz_from_spd(&xyz_trap, ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,
@@ -205,7 +205,7 @@ static int test_xyz_both_observers(void) {
     TEST_ASSERT(status == ALWAN_OK, "E illuminant loading failed");
 
     /* Test both observers */
-    alwan_xyz xyz_2deg, xyz_10deg;
+    alwan_xyz_f64 xyz_2deg, xyz_10deg;
 
     status = alwan_xyz_from_spd(&xyz_2deg, ctx, &reflectance, &illum_e,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,

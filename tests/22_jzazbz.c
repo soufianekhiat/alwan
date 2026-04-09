@@ -19,8 +19,8 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz_in;
-        alwan_jzazbz jzazbz_expected, jzazbz_computed;
+        alwan_xyz_f64 xyz_in;
+        alwan_jzazbz_f64 jzazbz_expected, jzazbz_computed;
 
         /* Load test data */
         xyz_in.x = test_data[i * 6 + 0];
@@ -31,7 +31,7 @@ ALWAN_DIAG_POP
         jzazbz_expected.bz = test_data[i * 6 + 5];
 
         /* Test XYZ -> Jzazbz */
-        alwan_xyz_to_jzazbz(&jzazbz_computed, &xyz_in);
+        alwan_xyz_to_jzazbz_f64(&jzazbz_computed, &xyz_in);
 
         alwan_f64 const jzazbz_tol = ALWAN_TEST_TOLERANCE;
         alwan_f64 diff_Jz = ALWAN_ABS(jzazbz_computed.Jz - jzazbz_expected.Jz);
@@ -88,19 +88,19 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 static int test_jzazbz_jzczhz_round_trip(void) {
-    alwan_jzazbz jzazbz, jzazbz_out;
-    alwan_jzczhz jzczhz;
+    alwan_jzazbz_f64 jzazbz, jzazbz_out;
+    alwan_jzczhz_f64 jzczhz;
 
     /* Test 1: Neutral (no chroma) */
     jzazbz.Jz = ALWAN_LITERAL(0.5);
     jzazbz.az = ALWAN_LITERAL(0.0);
     jzazbz.bz = ALWAN_LITERAL(0.0);
 
-    alwan_jzazbz_to_jzczhz(&jzczhz, &jzazbz);
+    alwan_jzazbz_to_jzczhz_f64(&jzczhz, &jzazbz);
     TEST_ASSERT(ALWAN_ABS(jzczhz.Jz - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "Jz mismatch");
     TEST_ASSERT(ALWAN_ABS(jzczhz.Cz) < ALWAN_TEST_TOLERANCE, "Cz should be 0");
 
-    alwan_jzczhz_to_jzazbz(&jzazbz_out, &jzczhz);
+    alwan_jzczhz_to_jzazbz_f64(&jzazbz_out, &jzczhz);
     TEST_ASSERT(ALWAN_ABS(jzazbz_out.Jz - jzazbz.Jz) < ALWAN_TEST_TOLERANCE,
                 "Jzazbz round-trip failed (Jz)");
     TEST_ASSERT(ALWAN_ABS(jzazbz_out.az - jzazbz.az) < ALWAN_TEST_TOLERANCE,
@@ -113,8 +113,8 @@ static int test_jzazbz_jzczhz_round_trip(void) {
     jzazbz.az = ALWAN_LITERAL(0.1);
     jzazbz.bz = ALWAN_LITERAL(0.05);
 
-    alwan_jzazbz_to_jzczhz(&jzczhz, &jzazbz);
-    alwan_jzczhz_to_jzazbz(&jzazbz_out, &jzczhz);
+    alwan_jzazbz_to_jzczhz_f64(&jzczhz, &jzazbz);
+    alwan_jzczhz_to_jzazbz_f64(&jzazbz_out, &jzczhz);
 
     alwan_f64 diff_Jz = ALWAN_ABS(jzazbz_out.Jz - jzazbz.Jz);
     alwan_f64 diff_az = ALWAN_ABS(jzazbz_out.az - jzazbz.az);

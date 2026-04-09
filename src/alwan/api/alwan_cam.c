@@ -86,7 +86,7 @@ static void get_cam16_surround_params(alwan_cam16_surround surround,
  * ---------------------------------------------------------------- */
 
 int alwan_ciecam02_forward(alwan_ciecam02_correlates *out,
-                            alwan_xyz const *xyz,
+                            alwan_xyz_f64 const *xyz,
                             alwan_ciecam02_viewing_conditions const *vc) {
     if (!out || !xyz || !vc) {
         return ALWAN_E_INVALID;
@@ -126,7 +126,7 @@ int alwan_ciecam02_forward(alwan_ciecam02_correlates *out,
  * CIECAM02 Inverse Transform
  * ---------------------------------------------------------------- */
 
-int alwan_ciecam02_inverse(alwan_xyz *xyz_out,
+int alwan_ciecam02_inverse(alwan_xyz_f64 *xyz_out,
                             alwan_ciecam02_correlates const *correlates,
                             alwan_ciecam02_viewing_conditions const *vc) {
     if (!xyz_out || !correlates || !vc) {
@@ -162,7 +162,7 @@ int alwan_ciecam02_inverse(alwan_xyz *xyz_out,
  * ---------------------------------------------------------------- */
 
 int alwan_cam16_forward(alwan_cam16_correlates *out,
-                        alwan_xyz const *xyz,
+                        alwan_xyz_f64 const *xyz,
                         alwan_cam16_viewing_conditions const *vc) {
     if (!out || !xyz || !vc) {
         return ALWAN_E_INVALID;
@@ -202,7 +202,7 @@ int alwan_cam16_forward(alwan_cam16_correlates *out,
  * CAM16 Inverse Transform
  * ---------------------------------------------------------------- */
 
-int alwan_cam16_inverse(alwan_xyz *xyz_out,
+int alwan_cam16_inverse(alwan_xyz_f64 *xyz_out,
                         alwan_cam16_correlates const *correlates,
                         alwan_cam16_viewing_conditions const *vc) {
     if (!xyz_out || !correlates || !vc) {

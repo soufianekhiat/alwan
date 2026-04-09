@@ -19,7 +19,7 @@
 
 static int test_st2086_metadata(void) {
     /* Initialize with BT.2020 primaries + D65 white point */
-    alwan_st2086_metadata meta;
+    alwan_st2086_metadata_f64 meta;
     alwan_f64 primaries[6] = {
         ALWAN_LITERAL(0.708), ALWAN_LITERAL(0.292),  /* R */
         ALWAN_LITERAL(0.170), ALWAN_LITERAL(0.797),  /* G */
@@ -246,8 +246,8 @@ static int test_exposure_tonemap(void) {
 
     /* RGB version */
     {
-        alwan_vec3 in = {{ALWAN_LITERAL(0.5), ALWAN_LITERAL(1.0), ALWAN_LITERAL(2.0)}};
-        alwan_vec3 out = alwan_exposure_tonemap_rgb_f64_v(in, ALWAN_ZERO);
+        alwan_vec3_f64 in = {{ALWAN_LITERAL(0.5), ALWAN_LITERAL(1.0), ALWAN_LITERAL(2.0)}};
+        alwan_vec3_f64 out = alwan_exposure_tonemap_rgb_f64_v(in, ALWAN_ZERO);
         for (int c = 0; c < 3; c++) {
             TEST_ASSERT(out.v[c] >= ALWAN_ZERO && out.v[c] <= ALWAN_ONE,
                         "exposure rgb: output in [0,1]");
@@ -320,8 +320,8 @@ static int test_reinhard_calibrated(void) {
 static int test_hdr_gamut_map(void) {
     /* In-gamut: no compression */
     {
-        alwan_jzczhz in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(180.0)};
-        alwan_jzczhz out = alwan_hdr_gamut_map_jzczhz_f64_v(in, ALWAN_LITERAL(0.2));
+        alwan_jzczhz_f64 in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(180.0)};
+        alwan_jzczhz_f64 out = alwan_hdr_gamut_map_jzczhz_f64_v(in, ALWAN_LITERAL(0.2));
         TEST_ASSERT_NEAR(out.Cz, in.Cz, ALWAN_LITERAL(1e-10),
                          "gamut map: in-gamut preserved");
         TEST_ASSERT_NEAR(out.Jz, in.Jz, ALWAN_LITERAL(1e-10),
@@ -332,8 +332,8 @@ static int test_hdr_gamut_map(void) {
 
     /* Out-of-gamut: compressed */
     {
-        alwan_jzczhz in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(90.0)};
-        alwan_jzczhz out = alwan_hdr_gamut_map_jzczhz_f64_v(in, ALWAN_LITERAL(0.15));
+        alwan_jzczhz_f64 in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(90.0)};
+        alwan_jzczhz_f64 out = alwan_hdr_gamut_map_jzczhz_f64_v(in, ALWAN_LITERAL(0.15));
         TEST_ASSERT(out.Cz < in.Cz, "gamut map: chroma compressed");
         TEST_ASSERT_NEAR(out.Jz, in.Jz, ALWAN_LITERAL(1e-10),
                          "gamut map: Jz preserved when compressed");
@@ -343,9 +343,9 @@ static int test_hdr_gamut_map(void) {
 
     /* API wrapper */
     {
-        alwan_jzczhz in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(90.0)};
-        alwan_jzczhz out;
-        alwan_hdr_gamut_map_jzczhz(&out, &in, ALWAN_LITERAL(0.15));
+        alwan_jzczhz_f64 in = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(90.0)};
+        alwan_jzczhz_f64 out;
+        alwan_hdr_gamut_map_jzczhz_f64(&out, &in, ALWAN_LITERAL(0.15));
     }
 
     TEST_PASS("HDR gamut mapping (JzCzhz)");

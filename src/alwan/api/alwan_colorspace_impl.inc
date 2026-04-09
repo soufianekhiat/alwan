@@ -148,10 +148,10 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_94)(ALWAN_CORE_LAB const *lab1, ALWA
     return ALWAN_CORE_FNVLIT(alwan_delta_e_94)(t1, t2);
 }
 
-ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_cmc)(ALWAN_CORE_LAB const *lab1, ALWAN_CORE_LAB const *lab2, ALWAN_CORE_T l, ALWAN_CORE_T c) {
+ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_cmc)(ALWAN_CORE_LAB const *lab1, ALWAN_CORE_LAB const *lab2, alwan_delta_e_cmc_params const *params) {
     ALWAN_CORE_LAB t1 = *lab1, t2 = *lab2;
     ALWAN_DENORM_LAB(&t1); ALWAN_DENORM_LAB(&t2);
-    return ALWAN_CORE_FNVLIT(alwan_delta_e_cmc)(t1, t2, l, c);
+    return ALWAN_CORE_FNVLIT(alwan_delta_e_cmc)(t1, t2, (ALWAN_CORE_T)params->l, (ALWAN_CORE_T)params->c);
 }
 
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_2000)(ALWAN_CORE_LAB const *lab1, ALWAN_CORE_LAB const *lab2) {
@@ -164,8 +164,8 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_2000)(ALWAN_CORE_LAB const *lab1, AL
  * Additional Color Difference Metrics
  * ================================================================ */
 
-ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_itp)(ALWAN_CORE_ICTCP const *ictcp1, ALWAN_CORE_ICTCP const *ictcp2, ALWAN_CORE_T scalar_factor) {
-    return ALWAN_CORE_FNVLIT(alwan_delta_e_itp)(*ictcp1, *ictcp2, scalar_factor);
+ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_itp)(ALWAN_CORE_ICTCP const *ictcp1, ALWAN_CORE_ICTCP const *ictcp2, alwan_delta_e_itp_params const *params) {
+    return ALWAN_CORE_FNVLIT(alwan_delta_e_itp)(*ictcp1, *ictcp2, (ALWAN_CORE_T)params->scalar_factor);
 }
 
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_hyab)(ALWAN_CORE_LAB const *lab1, ALWAN_CORE_LAB const *lab2) {

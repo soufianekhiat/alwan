@@ -51,6 +51,7 @@ typedef double alwan_f64;
 #define alwan_hsp               alwan_hsp_f64
 #define alwan_hsplog            alwan_hsplog_f64
 #define alwan_hsy               alwan_hsy_f64
+#define alwan_hwb               alwan_hwb_f64
 #define alwan_xyz               alwan_xyz_f64
 #define alwan_xyy               alwan_xyy_f64
 #define alwan_lab               alwan_lab_f64
@@ -119,6 +120,7 @@ ALWAN_TYPE_DEF struct { alwan_scalar h, s, l; }     alwan_hsl;
 ALWAN_TYPE_DEF struct { alwan_scalar h, s, p; }     alwan_hsp;
 ALWAN_TYPE_DEF struct { alwan_scalar h, s, p; }     alwan_hsplog;
 ALWAN_TYPE_DEF struct { alwan_scalar h, s, y; }     alwan_hsy;
+ALWAN_TYPE_DEF struct { alwan_scalar h, w, b; }     alwan_hwb;
 ALWAN_TYPE_DEF struct { alwan_scalar x, y, z; }     alwan_xyz;
 ALWAN_TYPE_DEF struct { alwan_scalar x, y, Y; }     alwan_xyy;
 ALWAN_TYPE_DEF struct { alwan_scalar L, a, b; }     alwan_lab;

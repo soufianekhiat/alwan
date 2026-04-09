@@ -60,7 +60,7 @@ static void get_surround_params(alwan_hellwig2022_surround surround,
  * ---------------------------------------------------------------- */
 
 int alwan_hellwig2022_forward(alwan_hellwig2022_correlates *out,
-                               alwan_xyz const *xyz,
+                               alwan_xyz_f64 const *xyz,
                                alwan_hellwig2022_viewing_conditions const *vc) {
     if (!xyz || !vc || !out) {
         return ALWAN_E_INVALID;
@@ -98,7 +98,7 @@ int alwan_hellwig2022_forward(alwan_hellwig2022_correlates *out,
  * Hellwig2022 Inverse Transform
  * ---------------------------------------------------------------- */
 
-int alwan_hellwig2022_inverse(alwan_xyz *xyz_out,
+int alwan_hellwig2022_inverse(alwan_xyz_f64 *xyz_out,
                                alwan_hellwig2022_correlates const *correlates,
                                alwan_hellwig2022_viewing_conditions const *vc) {
     if (!correlates || !vc || !xyz_out) {

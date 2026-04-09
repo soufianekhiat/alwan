@@ -94,6 +94,9 @@ set_target_properties(alwan_tests PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED Y
 target_compile_definitions(alwan_tests PRIVATE ALWAN_NORMALIZE_RANGES=0)
 if(MSVC)
   target_compile_definitions(alwan_tests PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX)
+  target_compile_options(alwan_tests PRIVATE /W4 /WX)
+else()
+  target_compile_options(alwan_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
 add_test(NAME alwan_tests COMMAND alwan_tests)

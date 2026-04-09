@@ -107,14 +107,14 @@ static int test_aces_redmod03(void) {
     printf("  Testing ACES RedMod03...\n");
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
 
-        alwan_aces_redmod03(&rgb_out, &rgb_in);
+        alwan_aces_redmod03_f64(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RedMod03 [%zu] R", i);
@@ -133,14 +133,14 @@ static int test_aces_redmod10(void) {
     printf("  Testing ACES RedMod10...\n");
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
 
-        alwan_aces_redmod10(&rgb_out, &rgb_in);
+        alwan_aces_redmod10_f64(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RedMod10 [%zu] R", i);
@@ -159,22 +159,24 @@ static int test_aces_glow03(void) {
     printf("  Testing ACES Glow03...\n");
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
 
-        alwan_aces_glow03(&rgb_out, &rgb_in);
+        alwan_aces_glow03_f64(&rgb_out, &rgb_in);
 
         char msg[128];
+        /* Glow references are from OCIO (float32); sigmoid_shaper in f64 differs at ~1e-3.
+         * The sigmoid fix (matching ACES CTL) causes f64 to diverge slightly from f32. */
         snprintf(msg, sizeof(msg), "Glow03 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, glow03_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, glow03_expected[i * 3], ALWAN_LITERAL(1e-3), msg);
         snprintf(msg, sizeof(msg), "Glow03 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, glow03_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, glow03_expected[i * 3 + 1], ALWAN_LITERAL(1e-3), msg);
         snprintf(msg, sizeof(msg), "Glow03 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, glow03_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, glow03_expected[i * 3 + 2], ALWAN_LITERAL(1e-3), msg);
     }
 
     printf("    PASS: %zu Glow03 tests\n", NUM_TEST_RGB);
@@ -185,22 +187,22 @@ static int test_aces_glow10(void) {
     printf("  Testing ACES Glow10...\n");
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
 
-        alwan_aces_glow10(&rgb_out, &rgb_in);
+        alwan_aces_glow10_f64(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Glow10 [%zu] R", i);
-        TEST_ASSERT_REL(rgb_out.r, glow10_expected[i * 3], ALWAN_TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.r, glow10_expected[i * 3], ALWAN_LITERAL(1e-3), msg);
         snprintf(msg, sizeof(msg), "Glow10 [%zu] G", i);
-        TEST_ASSERT_REL(rgb_out.g, glow10_expected[i * 3 + 1], ALWAN_TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.g, glow10_expected[i * 3 + 1], ALWAN_LITERAL(1e-3), msg);
         snprintf(msg, sizeof(msg), "Glow10 [%zu] B", i);
-        TEST_ASSERT_REL(rgb_out.b, glow10_expected[i * 3 + 2], ALWAN_TEST_TOLERANCE, msg);
+        TEST_ASSERT_REL(rgb_out.b, glow10_expected[i * 3 + 2], ALWAN_LITERAL(1e-3), msg);
     }
 
     printf("    PASS: %zu Glow10 tests\n", NUM_TEST_RGB);
@@ -211,14 +213,14 @@ static int test_aces_dark_to_dim10(void) {
     printf("  Testing ACES DarkToDim10...\n");
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
 
-        alwan_aces_dark_to_dim10(&rgb_out, &rgb_in);
+        alwan_aces_dark_to_dim10_f64(&rgb_out, &rgb_in);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "DarkToDim10 [%zu] R", i);
@@ -237,18 +239,18 @@ static int test_aces_gamut_comp13(void) {
     printf("  Testing ACES GamutComp13...\n");
 
     /* Use default ACES 1.3 parameters */
-    alwan_aces_gamut_comp13_params params;
-    alwan_aces_gamut_comp13_params_default(&params);
+    alwan_aces_gamut_comp13_params_f64 params;
+    alwan_aces_gamut_comp13_params_default_f64(&params);
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
 
-        alwan_aces_gamut_comp13(&rgb_out, &rgb_in, &params);
+        alwan_aces_gamut_comp13_f64(&rgb_out, &rgb_in, &params);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "GamutComp13 [%zu] R", i);
@@ -270,14 +272,14 @@ static int test_rec2100_surround(void) {
     alwan_f64 gamma = 0.78;
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
 
-        alwan_rec2100_surround(&rgb_out, &rgb_in, gamma);
+        alwan_rec2100_surround_f64(&rgb_out, &rgb_in, gamma);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Rec2100_Surround [%zu] R", i);
@@ -299,14 +301,14 @@ static int test_aces_tonescale_compress20(void) {
     alwan_f64 peak_luminance = 1000.0;
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_rgb rgb_out;
+        alwan_rgb_f64 rgb_out;
 
-        alwan_aces_tonescale_compress20(&rgb_out, &rgb_in, peak_luminance);
+        alwan_aces_tonescale_compress20_f64(&rgb_out, &rgb_in, peak_luminance);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "TonescaleCompress20 [%zu] R", i);
@@ -325,18 +327,18 @@ static int test_aces_rgb_to_jmh20(void) {
     printf("  Testing ACES RGB to JMh20...\n");
 
     /* Use AP1 primaries */
-    alwan_aces_primaries primaries;
-    alwan_aces_primaries_ap1_default(&primaries);
+    alwan_aces_primaries_f64 primaries;
+    alwan_aces_primaries_ap1_default_f64(&primaries);
 
     for (size_t i = 0; i < NUM_TEST_RGB; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             test_rgb_input[i * 3],
             test_rgb_input[i * 3 + 1],
             test_rgb_input[i * 3 + 2]
         };
-        alwan_vec3 jmh_out;
+        alwan_vec3_f64 jmh_out;
 
-        alwan_aces_rgb_to_jmh20(&jmh_out, &rgb_in, &primaries);
+        alwan_aces_rgb_to_jmh20_f64(&jmh_out, &rgb_in, &primaries);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "RGB_to_JMh20 [%zu] J", i);

@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static alwan_f64 vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
+static alwan_f64 vec3_max_diff(alwan_xyz_f64 const *a, alwan_xyz_f64 const *b) {
     alwan_f64 max_diff = 0;
     alwan_f64 diff_x = ALWAN_ABS(a->x - b->x);
     alwan_f64 diff_y = ALWAN_ABS(a->y - b->y);
@@ -26,11 +26,11 @@ static alwan_f64 vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
     return max_diff;
 }
 
-static void vec3_print(char const *name, alwan_xyz const *v) {
+static void vec3_print(char const *name, alwan_xyz_f64 const *v) {
     printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->x, v->y, v->z);
 }
 
-static void rgb_print(char const *name, alwan_rgb const *v) {
+static void rgb_print(char const *name, alwan_rgb_f64 const *v) {
     printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->r, v->g, v->b);
 }
 
@@ -137,12 +137,12 @@ ALWAN_DIAG_POP
  *   3. Normalize by K = integral(D65 * y_bar)
  * ---------------------------------------------------------------- */
 
-static int spectrum_to_normalized_xyz(alwan_xyz *xyz_out, alwan_ctx *ctx,
+static int spectrum_to_normalized_xyz(alwan_xyz_f64 *xyz_out, alwan_ctx *ctx,
                                        alwan_spd const *spectrum) {
     alwan_spd illuminant_d65 = {0};
     alwan_spd spectrum_1nm = {0};
     alwan_spd flat = {0};
-    alwan_xyz xyz_raw, xyz_flat;
+    alwan_xyz_f64 xyz_raw, xyz_flat;
 
     /* Get D65 illuminant SPD */
     int status = alwan_spd_illuminant(&illuminant_d65, ctx, ALWAN_ILLUMINANT_D65);
@@ -215,10 +215,10 @@ static int test_smits1999_round_trip(char const *color_name,
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_rgb rgb = {r, g, b};
-    alwan_xyz expected = {expected_xyz[0], expected_xyz[1], expected_xyz[2]};
+    alwan_rgb_f64 rgb = {r, g, b};
+    alwan_xyz_f64 expected = {expected_xyz[0], expected_xyz[1], expected_xyz[2]};
     alwan_spd spectrum = {0};
-    alwan_xyz xyz_recovered;
+    alwan_xyz_f64 xyz_recovered;
 
     /* Convert RGB to spectrum using Smits1999 */
     int status = alwan_rgb_to_spectrum_smits1999(&spectrum, ctx, &rgb);
@@ -259,10 +259,10 @@ static int test_mallett2019_round_trip(char const *color_name,
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_rgb rgb = {r, g, b};
-    alwan_xyz expected = {expected_xyz[0], expected_xyz[1], expected_xyz[2]};
+    alwan_rgb_f64 rgb = {r, g, b};
+    alwan_xyz_f64 expected = {expected_xyz[0], expected_xyz[1], expected_xyz[2]};
     alwan_spd spectrum = {0};
-    alwan_xyz xyz_recovered;
+    alwan_xyz_f64 xyz_recovered;
 
     /* Convert RGB to spectrum using Mallett2019 */
     int status = alwan_rgb_to_spectrum_mallett2019(&spectrum, ctx, &rgb);
@@ -301,7 +301,7 @@ static int test_jakob2019_structure(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_rgb rgb = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
+    alwan_rgb_f64 rgb = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
     alwan_spd spectrum = {0};
 
     /* Convert RGB to spectrum using Jakob2019 with sRGB gamut */
@@ -333,7 +333,7 @@ static int test_spectrum_structure_smits1999(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_rgb rgb = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};  /* Red */
+    alwan_rgb_f64 rgb = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};  /* Red */
     alwan_spd spectrum = {0};
 
     int status = alwan_rgb_to_spectrum_smits1999(&spectrum, ctx, &rgb);
@@ -360,7 +360,7 @@ static int test_spectrum_structure_mallett2019(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_rgb rgb = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};  /* Green */
+    alwan_rgb_f64 rgb = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};  /* Green */
     alwan_spd spectrum = {0};
 
     int status = alwan_rgb_to_spectrum_mallett2019(&spectrum, ctx, &rgb);
@@ -393,7 +393,7 @@ static int test_spectrum_structure_jakob2019(void) {
     alwan_ctx *ctx = alwan_create(NULL);
     TEST_ASSERT(ctx != NULL, "Context creation failed");
 
-    alwan_rgb rgb = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};  /* Blue */
+    alwan_rgb_f64 rgb = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};  /* Blue */
     alwan_spd spectrum = {0};
 
     int status = alwan_rgb_to_spectrum_jakob2019(&spectrum, ctx, ALWAN_JAKOB2019_SRGB, &rgb);

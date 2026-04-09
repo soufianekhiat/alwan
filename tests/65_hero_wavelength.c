@@ -99,7 +99,7 @@ static int test_hero_stratified(void) {
  * ---------------------------------------------------------------- */
 
 static int test_hero_to_xyz(void) {
-    alwan_xyz xyz = alwan_hero_wavelength_to_xyz_f64_v(ALWAN_LITERAL(555.0));
+    alwan_xyz_f64 xyz = alwan_hero_wavelength_to_xyz_f64_v(ALWAN_LITERAL(555.0));
 
     /* At 555 nm, Y should be dominant */
     TEST_ASSERT(xyz.y > ALWAN_LITERAL(0.8), "hero_to_xyz Y(555) > 0.8");
@@ -120,13 +120,13 @@ static int test_hero_api(void) {
     TEST_ASSERT_NEAR(lambda, ALWAN_LITERAL(580.0), ALWAN_LITERAL(1e-10),
                      "hero sample api value");
 
-    alwan_xyz xyz;
-    alwan_hero_wavelength_to_xyz(&xyz, ALWAN_LITERAL(555.0));
+    alwan_xyz_f64 xyz;
+    alwan_hero_wavelength_to_xyz_f64(&xyz, ALWAN_LITERAL(555.0));
     TEST_ASSERT(xyz.y > ALWAN_LITERAL(0.8), "hero to_xyz api Y");
 
     /* Batch */
     alwan_f64 lambdas[4];
-    alwan_xyz weights[4];
+    alwan_xyz_f64 weights[4];
     status = alwan_hero_wavelength_batch(lambdas, weights, 4, ALWAN_LITERAL(0.3));
     TEST_ASSERT(status == ALWAN_OK, "hero batch api failed");
     for (int i = 0; i < 4; i++) {

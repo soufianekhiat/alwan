@@ -59,7 +59,7 @@ static void get_hunt_params(alwan_hunt_surround surround,
  * ---------------------------------------------------------------- */
 
 int alwan_hunt_forward(alwan_hunt_correlates *out,
-                       alwan_xyz const *xyz,
+                       alwan_xyz_f64 const *xyz,
                        alwan_hunt_viewing_conditions const *vc) {
     if (!out || !xyz || !vc) {
         return -1;

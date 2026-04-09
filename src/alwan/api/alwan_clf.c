@@ -75,7 +75,7 @@ static void clf_write_header(clf_writer *w, char const *id, char const *name,
  * Internal: write a Matrix ProcessNode (3x3 or 3x4)
  * ---------------------------------------------------------------- */
 
-static void clf_write_matrix(clf_writer *w, alwan_mat3x3 const *mat,
+static void clf_write_matrix(clf_writer *w, alwan_mat3x3_f64 const *mat,
                                alwan_f64 const *offset,
                                char const *desc) {
     if (offset) {
@@ -306,7 +306,7 @@ static int clf_export_core(clf_writer *w,
     }
 
     /* Step 2: Source RGB -> XYZ matrix */
-    alwan_mat3x3 src_to_xyz, xyz_to_src;
+    alwan_mat3x3_f64 src_to_xyz, xyz_to_src;
     if (src_space->has_matrices) {
         src_to_xyz = src_space->rgb_to_xyz;
     } else {
@@ -323,7 +323,7 @@ static int clf_export_core(clf_writer *w,
 
     if (need_cat && ctx) {
         alwan_xyy src_xyy, dst_xyy;
-        alwan_xyz src_wp, dst_wp;
+        alwan_xyz_f64 src_wp, dst_wp;
         src_xyy.x = src_space->white_xy[0];
         src_xyy.y = src_space->white_xy[1];
         src_xyy.Y = 1.0;
@@ -334,7 +334,7 @@ static int clf_export_core(clf_writer *w,
         dst_xyy.Y = 1.0;
         alwan_xyy_to_xyz(&dst_wp, &dst_xyy);
 
-        alwan_mat3x3 cat;
+        alwan_mat3x3_f64 cat;
         int status = alwan_cat_matrix(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
 
@@ -342,7 +342,7 @@ static int clf_export_core(clf_writer *w,
     }
 
     /* Step 4: XYZ -> Destination RGB matrix */
-    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+    alwan_mat3x3_f64 dst_to_xyz, xyz_to_dst;
     if (dst_space->has_matrices) {
         xyz_to_dst = dst_space->xyz_to_rgb;
     } else {

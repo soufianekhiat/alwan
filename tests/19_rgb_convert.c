@@ -81,7 +81,7 @@ static int test_srgb_to_p3(alwan_ctx *ctx) {
     alwan_rgb_space_desc p3 = get_display_p3_desc();
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_rgb src_rgb, expected_rgb, result_rgb;
+        alwan_rgb_f64 src_rgb, expected_rgb, result_rgb;
         src_rgb.r = test_data[i * 6 + 0];
         src_rgb.g = test_data[i * 6 + 1];
         src_rgb.b = test_data[i * 6 + 2];
@@ -125,7 +125,7 @@ static int test_srgb_to_bt2020(alwan_ctx *ctx) {
     alwan_rgb_space_desc bt2020 = get_bt2020_desc();
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_rgb src_rgb, expected_rgb, result_rgb;
+        alwan_rgb_f64 src_rgb, expected_rgb, result_rgb;
         src_rgb.r = test_data[i * 6 + 0];
         src_rgb.g = test_data[i * 6 + 1];
         src_rgb.b = test_data[i * 6 + 2];
@@ -169,7 +169,7 @@ static int test_srgb_to_acescg(alwan_ctx *ctx) {
     alwan_rgb_space_desc acescg = get_acescg_desc();
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_rgb src_rgb, expected_rgb, result_rgb;
+        alwan_rgb_f64 src_rgb, expected_rgb, result_rgb;
         src_rgb.r = test_data[i * 6 + 0];
         src_rgb.g = test_data[i * 6 + 1];
         src_rgb.b = test_data[i * 6 + 2];

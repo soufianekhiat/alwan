@@ -30,11 +30,12 @@ static int test_delta_e_itp(void) {
     int const num_tests = sizeof(ictcp1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_ictcp ictcp1 = {ictcp1_data[i * 3 + 0], ictcp1_data[i * 3 + 1], ictcp1_data[i * 3 + 2]};
-        alwan_ictcp ictcp2 = {ictcp2_data[i * 3 + 0], ictcp2_data[i * 3 + 1], ictcp2_data[i * 3 + 2]};
+        alwan_ictcp_f64 ictcp1 = {ictcp1_data[i * 3 + 0], ictcp1_data[i * 3 + 1], ictcp1_data[i * 3 + 2]};
+        alwan_ictcp_f64 ictcp2 = {ictcp2_data[i * 3 + 0], ictcp2_data[i * 3 + 1], ictcp2_data[i * 3 + 2]};
         alwan_f64 expected = de_itp_data[i];
 
-        alwan_f64 result = alwan_delta_e_itp(&ictcp1, &ictcp2, ALWAN_LITERAL(720.0));
+        alwan_delta_e_itp_params itp_p; itp_p.scalar_factor = ALWAN_LITERAL(720.0);
+        alwan_f64 result = alwan_delta_e_itp_f64(&ictcp1, &ictcp2, &itp_p);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE ITP mismatch");
@@ -61,11 +62,11 @@ static int test_delta_e_din99(void) {
     int const num_tests = sizeof(din99_1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_din99 din99_1 = {din99_1_data[i * 3 + 0], din99_1_data[i * 3 + 1], din99_1_data[i * 3 + 2]};
-        alwan_din99 din99_2 = {din99_2_data[i * 3 + 0], din99_2_data[i * 3 + 1], din99_2_data[i * 3 + 2]};
+        alwan_din99_f64 din99_1 = {din99_1_data[i * 3 + 0], din99_1_data[i * 3 + 1], din99_1_data[i * 3 + 2]};
+        alwan_din99_f64 din99_2 = {din99_2_data[i * 3 + 0], din99_2_data[i * 3 + 1], din99_2_data[i * 3 + 2]};
         alwan_f64 expected = de_din99_data[i];
 
-        alwan_f64 result = alwan_delta_e_din99(&din99_1, &din99_2);
+        alwan_f64 result = alwan_delta_e_din99_f64(&din99_1, &din99_2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE DIN99 mismatch");
@@ -92,11 +93,11 @@ static int test_delta_e_zcam(void) {
     int const num_tests = sizeof(jzazbz1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_jzazbz jzazbz1 = {jzazbz1_data[i * 3 + 0], jzazbz1_data[i * 3 + 1], jzazbz1_data[i * 3 + 2]};
-        alwan_jzazbz jzazbz2 = {jzazbz2_data[i * 3 + 0], jzazbz2_data[i * 3 + 1], jzazbz2_data[i * 3 + 2]};
+        alwan_jzazbz_f64 jzazbz1 = {jzazbz1_data[i * 3 + 0], jzazbz1_data[i * 3 + 1], jzazbz1_data[i * 3 + 2]};
+        alwan_jzazbz_f64 jzazbz2 = {jzazbz2_data[i * 3 + 0], jzazbz2_data[i * 3 + 1], jzazbz2_data[i * 3 + 2]};
         alwan_f64 expected = de_zcam_data[i];
 
-        alwan_f64 result = alwan_delta_e_zcam(&jzazbz1, &jzazbz2);
+        alwan_f64 result = alwan_delta_e_zcam_f64(&jzazbz1, &jzazbz2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE ZCAM mismatch");
@@ -122,11 +123,11 @@ static int test_delta_e_cam02_lcd(void) {
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
-        alwan_cam_jab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
+        alwan_cam_jab_f64 lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_cam_jab_f64 lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_f64 expected = de_cam02_lcd_data[i];
 
-        alwan_f64 result = alwan_delta_e_cam02_lcd(&lab1, &lab2);
+        alwan_f64 result = alwan_delta_e_cam02_lcd_f64(&lab1, &lab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM02-LCD mismatch");
@@ -152,11 +153,11 @@ static int test_delta_e_cam02_scd(void) {
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
-        alwan_cam_jab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
+        alwan_cam_jab_f64 lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_cam_jab_f64 lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_f64 expected = de_cam02_scd_data[i];
 
-        alwan_f64 result = alwan_delta_e_cam02_scd(&lab1, &lab2);
+        alwan_f64 result = alwan_delta_e_cam02_scd_f64(&lab1, &lab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM02-SCD mismatch");
@@ -182,11 +183,11 @@ static int test_delta_e_cam16_lcd(void) {
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
-        alwan_cam_jab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
+        alwan_cam_jab_f64 lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_cam_jab_f64 lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_f64 expected = de_cam16_lcd_data[i];
 
-        alwan_f64 result = alwan_delta_e_cam16_lcd(&lab1, &lab2);
+        alwan_f64 result = alwan_delta_e_cam16_lcd_f64(&lab1, &lab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM16-LCD mismatch");
@@ -212,11 +213,11 @@ static int test_delta_e_cam16_scd(void) {
     int const num_tests = sizeof(lab1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_cam_jab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
-        alwan_cam_jab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
+        alwan_cam_jab_f64 lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_cam_jab_f64 lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_f64 expected = de_cam16_scd_data[i];
 
-        alwan_f64 result = alwan_delta_e_cam16_scd(&lab1, &lab2);
+        alwan_f64 result = alwan_delta_e_cam16_scd_f64(&lab1, &lab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM16-SCD mismatch");
@@ -242,11 +243,11 @@ static int test_delta_e_cam02_ucs(void) {
     int const num_tests = sizeof(jab1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_cam_jab jab1 = {jab1_data[i * 3 + 0], jab1_data[i * 3 + 1], jab1_data[i * 3 + 2]};
-        alwan_cam_jab jab2 = {jab2_data[i * 3 + 0], jab2_data[i * 3 + 1], jab2_data[i * 3 + 2]};
+        alwan_cam_jab_f64 jab1 = {jab1_data[i * 3 + 0], jab1_data[i * 3 + 1], jab1_data[i * 3 + 2]};
+        alwan_cam_jab_f64 jab2 = {jab2_data[i * 3 + 0], jab2_data[i * 3 + 1], jab2_data[i * 3 + 2]};
         alwan_f64 expected = de_cam02_ucs_data[i];
 
-        alwan_f64 result = alwan_delta_e_cam02_ucs(&jab1, &jab2);
+        alwan_f64 result = alwan_delta_e_cam02_ucs_f64(&jab1, &jab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM02-UCS mismatch");
@@ -272,11 +273,11 @@ static int test_delta_e_cam16_ucs(void) {
     int const num_tests = sizeof(jab1_data) / (3 * sizeof(alwan_f64));
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_cam_jab jab1 = {jab1_data[i * 3 + 0], jab1_data[i * 3 + 1], jab1_data[i * 3 + 2]};
-        alwan_cam_jab jab2 = {jab2_data[i * 3 + 0], jab2_data[i * 3 + 1], jab2_data[i * 3 + 2]};
+        alwan_cam_jab_f64 jab1 = {jab1_data[i * 3 + 0], jab1_data[i * 3 + 1], jab1_data[i * 3 + 2]};
+        alwan_cam_jab_f64 jab2 = {jab2_data[i * 3 + 0], jab2_data[i * 3 + 1], jab2_data[i * 3 + 2]};
         alwan_f64 expected = de_cam16_ucs_data[i];
 
-        alwan_f64 result = alwan_delta_e_cam16_ucs(&jab1, &jab2);
+        alwan_f64 result = alwan_delta_e_cam16_ucs_f64(&jab1, &jab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "dE CAM16-UCS mismatch");

@@ -55,7 +55,7 @@ static int validate_space_descriptor(char const *name, alwan_rgb_space_desc cons
 
 /* Test helper: verify matrices can be derived from space descriptor */
 static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *desc) {
-    alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
     int status = alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, desc);
 
     if (status != ALWAN_OK) {
@@ -64,8 +64,8 @@ static int test_matrix_derivation(char const *name, alwan_rgb_space_desc const *
     }
 
     /* Verify matrices are inverses: M * M^-1 ~= I */
-    alwan_mat3x3 identity;
-    alwan_mat3_mul(&identity, &rgb_to_xyz, &xyz_to_rgb);
+    alwan_mat3x3_f64 identity;
+    alwan_mat3_mul_f64(&identity, &rgb_to_xyz, &xyz_to_rgb);
 
     /* Check diagonal is ~1 */
     alwan_f64 diag_err = 0.0;
@@ -422,8 +422,8 @@ static int test_rgb_space_conversion(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed to get Adobe RGB 1998 descriptor");
 
     /* Convert a test color: sRGB (1, 0, 0) -> Adobe RGB */
-    alwan_rgb srgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    alwan_rgb adobe_rgb;
+    alwan_rgb_f64 srgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 adobe_rgb;
 
     status = alwan_rgb_convert(&adobe_rgb, ctx, &srgb_desc, &adobe_desc, &srgb_red);
     TEST_ASSERT(status == ALWAN_OK, "RGB conversion failed");

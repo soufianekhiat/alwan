@@ -19,12 +19,12 @@ static int test_hlg_ootf_roundtrip(void) {
     /* Use neutral input (R=G=B) for roundtrip since the OOTF uses
      * luma-dependent scaling that only roundtrips exactly for neutrals.
      * For non-neutral signals, the luma coupling prevents exact inversion. */
-    alwan_rgb E = { ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5) };
+    alwan_rgb_f64 E = { ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5) };
     alwan_f64 Lw = ALWAN_LITERAL(1000.0);
     alwan_f64 gamma_sys = ALWAN_LITERAL(1.2);
 
-    alwan_rgb Fd = alwan_hlg_ootf_f64_v(E, Lw, gamma_sys);
-    alwan_rgb E_rt = alwan_hlg_ootf_inv_f64_v(Fd, Lw, gamma_sys);
+    alwan_rgb_f64 Fd = alwan_hlg_ootf_f64_v(E, Lw, gamma_sys);
+    alwan_rgb_f64 E_rt = alwan_hlg_ootf_inv_f64_v(Fd, Lw, gamma_sys);
 
     TEST_ASSERT_NEAR(E_rt.r, E.r, ALWAN_LITERAL(1e-4), "hlg ootf rt R");
     TEST_ASSERT_NEAR(E_rt.g, E.g, ALWAN_LITERAL(1e-4), "hlg ootf rt G");
@@ -39,18 +39,18 @@ static int test_hlg_ootf_roundtrip(void) {
 
 static int test_hlg_ootf_api(void) {
     /* Use neutral input for roundtrip correctness (see roundtrip test comment) */
-    alwan_rgb in = { ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5) };
-    alwan_rgb out;
+    alwan_rgb_f64 in = { ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5) };
+    alwan_rgb_f64 out;
 
-    alwan_hlg_ootf(&out, &in,
+    alwan_hlg_ootf_f64(&out, &in,
                    ALWAN_LITERAL(1000.0), ALWAN_LITERAL(1.2));
 
     /* Display-referred should be scaled by luminance */
     TEST_ASSERT(out.r > ALWAN_LITERAL(0.0), "hlg ootf R > 0");
 
     /* Inverse */
-    alwan_rgb rt;
-    alwan_hlg_ootf_inv(&rt, &out,
+    alwan_rgb_f64 rt;
+    alwan_hlg_ootf_inv_f64(&rt, &out,
                        ALWAN_LITERAL(1000.0), ALWAN_LITERAL(1.2));
     TEST_ASSERT_NEAR(rt.r, in.r, ALWAN_LITERAL(1e-4), "hlg ootf api rt R");
 
@@ -62,8 +62,8 @@ static int test_hlg_ootf_api(void) {
  * ---------------------------------------------------------------- */
 
 static int test_hlg_ootf_neutral(void) {
-    alwan_rgb E = { ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5) };
-    alwan_rgb Fd = alwan_hlg_ootf_f64_v(E, ALWAN_LITERAL(1000.0), ALWAN_LITERAL(1.2));
+    alwan_rgb_f64 E = { ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5) };
+    alwan_rgb_f64 Fd = alwan_hlg_ootf_f64_v(E, ALWAN_LITERAL(1000.0), ALWAN_LITERAL(1.2));
 
     /* Neutral input should produce neutral output (equal channels) */
     TEST_ASSERT_NEAR(Fd.r, Fd.g, ALWAN_LITERAL(1e-10), "hlg neutral R!=G");

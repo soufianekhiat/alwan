@@ -53,7 +53,7 @@ int alwan_gamut_volume_mc(alwan_f64 *volume,
     }
 
     /* Derive RGB->XYZ matrix */
-    alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
     int status = alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, space);
     if (status != ALWAN_OK) {
         return status;
@@ -78,12 +78,12 @@ int alwan_gamut_volume_mc(alwan_f64 *volume,
  * ---------------------------------------------------------------- */
 
 /* Clip RGB to [0,1] range */
-static void gamut_map_clip_single(alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out) {
+static void gamut_map_clip_single(alwan_vec3_f64 const *rgb_in, alwan_vec3_f64 *rgb_out) {
     *rgb_out = gamut_clip_f64_v(*rgb_in);
 }
 
 /* Hue-preserving gamut mapping: scale towards neutral until in gamut */
-static void gamut_map_hue_preserving_single(alwan_vec3 const *rgb_in, alwan_vec3 *rgb_out) {
+static void gamut_map_hue_preserving_single(alwan_vec3_f64 const *rgb_in, alwan_vec3_f64 *rgb_out) {
     /* If already in gamut, return as-is */
     if (rgb_in->v[0] >= ALWAN_LITERAL(0.0) && rgb_in->v[0] <= ALWAN_LITERAL(1.0) &&
         rgb_in->v[1] >= ALWAN_LITERAL(0.0) && rgb_in->v[1] <= ALWAN_LITERAL(1.0) &&
@@ -104,7 +104,7 @@ static void gamut_map_hue_preserving_single(alwan_vec3 const *rgb_in, alwan_vec3
     /* Binary search for the largest t where t*rgb_in + (1-t)*L_clamped is in [0,1]^3 */
     alwan_f64 t_min = ALWAN_LITERAL(0.0);
     alwan_f64 t_max = ALWAN_LITERAL(1.0);
-    alwan_vec3 neutral;
+    alwan_vec3_f64 neutral;
     neutral.v[0] = neutral.v[1] = neutral.v[2] = L_clamped;
 
     /* Initialize output to neutral (t=0 fallback) */
@@ -112,7 +112,7 @@ static void gamut_map_hue_preserving_single(alwan_vec3 const *rgb_in, alwan_vec3
 
     for (int iter = 0; iter < 20; iter++) {  /* 20 iterations gives ~1e-6 precision */
         alwan_f64 const t = (t_min + t_max) * ALWAN_LITERAL(0.5);
-        alwan_vec3 test;
+        alwan_vec3_f64 test;
         test.v[0] = t * rgb_in->v[0] + (ALWAN_LITERAL(1.0) - t) * neutral.v[0];
         test.v[1] = t * rgb_in->v[1] + (ALWAN_LITERAL(1.0) - t) * neutral.v[1];
         test.v[2] = t * rgb_in->v[2] + (ALWAN_LITERAL(1.0) - t) * neutral.v[2];
@@ -157,7 +157,7 @@ int alwan_gamut_map_interleave(alwan_f64 *rgb_out,
     }
 
     /* Select gamut mapping function */
-    void (*map_fn)(alwan_vec3 const *, alwan_vec3 *) = NULL;
+    void (*map_fn)(alwan_vec3_f64 const *, alwan_vec3_f64 *) = NULL;
 
     switch (method) {
         case ALWAN_GAMUT_MAP_HUE_PRESERVING:
@@ -173,7 +173,7 @@ int alwan_gamut_map_interleave(alwan_f64 *rgb_out,
         alwan_f64 *out_ptr = (alwan_f64 *)((char *)rgb_out + i * out_stride);
 
         /* Load RGB triplet into vec3 */
-        alwan_vec3 rgb_in_vec, rgb_out_vec;
+        alwan_vec3_f64 rgb_in_vec, rgb_out_vec;
         rgb_in_vec.v[0] = in_ptr[0];
         rgb_in_vec.v[1] = in_ptr[1];
         rgb_in_vec.v[2] = in_ptr[2];
@@ -191,10 +191,10 @@ int alwan_gamut_map_interleave(alwan_f64 *rgb_out,
 }
 
 /* Map XYZ to RGB gamut with hue preservation */
-int alwan_gamut_map_xyz_to_rgb(alwan_rgb *rgb_out,
+int alwan_gamut_map_xyz_to_rgb(alwan_rgb_f64 *rgb_out,
                                 alwan_ctx *ctx,
                                 alwan_rgb_space_desc const *space,
-                                alwan_xyz const *xyz_in) {
+                                alwan_xyz_f64 const *xyz_in) {
     (void)ctx;  /* Reserved for future use */
 
     if (!space || !xyz_in || !rgb_out) {
@@ -202,14 +202,14 @@ int alwan_gamut_map_xyz_to_rgb(alwan_rgb *rgb_out,
     }
 
     /* Derive XYZ->RGB matrix */
-    alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
     int status = alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, space);
     if (status != ALWAN_OK) {
         return status;
     }
 
     /* Convert XYZ to RGB (may be out of gamut) */
-    alwan_vec3 xyz_vec, rgb_raw, rgb_mapped;
+    alwan_vec3_f64 xyz_vec, rgb_raw, rgb_mapped;
     xyz_vec.v[0] = xyz_in->x;
     xyz_vec.v[1] = xyz_in->y;
     xyz_vec.v[2] = xyz_in->z;
@@ -240,15 +240,15 @@ int alwan_gamut_map_xyz_to_rgb(alwan_rgb *rgb_out,
  * Source: colour-science CCS_POINTER_GAMUT_BOUNDARY */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_vec2 const POINTER_GAMUT_BOUNDARY[32] = {
+static alwan_vec2_f64 const POINTER_GAMUT_BOUNDARY[32] = {
 #include "../data/gamut/pointer_gamut_boundary_xy.csv"
 };
 ALWAN_DIAG_POP
 
 /* Check if a point is inside a 2D polygon using ray casting algorithm
  * Returns 1 if inside, 0 if outside */
-static int alwan_point_in_polygon(alwan_vec2 const *point,
-                                    alwan_vec2 const *polygon,
+static int alwan_point_in_polygon(alwan_vec2_f64 const *point,
+                                    alwan_vec2_f64 const *polygon,
                                     size_t polygon_count) {
     int inside = 0;
     alwan_f64 px = point->v[0];
@@ -269,7 +269,7 @@ static int alwan_point_in_polygon(alwan_vec2 const *point,
     return inside;
 }
 
-int alwan_is_within_pointer_gamut(alwan_vec2 const *xy) {
+int alwan_is_within_pointer_gamut(alwan_vec2_f64 const *xy) {
     if (!xy) {
         return 0;
     }
@@ -277,7 +277,7 @@ int alwan_is_within_pointer_gamut(alwan_vec2 const *xy) {
     return alwan_point_in_polygon(xy, POINTER_GAMUT_BOUNDARY, 32);
 }
 
-alwan_vec2 const* alwan_pointer_gamut_boundary(size_t *count_out) {
+alwan_vec2_f64 const* alwan_pointer_gamut_boundary(size_t *count_out) {
     if (count_out) {
         *count_out = 32;
     }
@@ -292,7 +292,7 @@ alwan_vec2 const* alwan_pointer_gamut_boundary(size_t *count_out) {
  * Computed from CIE 1931 2° observer CMFs */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_vec2 const SPECTRAL_LOCUS_XY[471] = {
+static alwan_vec2_f64 const SPECTRAL_LOCUS_XY[471] = {
 #include "../data/gamut/spectral_locus_xy_only_360_830_1nm.csv"
 };
 ALWAN_DIAG_POP
@@ -302,7 +302,7 @@ ALWAN_DIAG_POP
 #define SPECTRAL_LOCUS_WL_INTERVAL ALWAN_LITERAL(1.0)
 #define SPECTRAL_LOCUS_COUNT 471
 
-int alwan_spectral_locus_xy(alwan_vec2 *xy_out, alwan_f64 wavelength) {
+int alwan_spectral_locus_xy(alwan_vec2_f64 *xy_out, alwan_f64 wavelength) {
     if (!xy_out) {
         return ALWAN_E_INVALID;
     }
@@ -324,8 +324,8 @@ int alwan_spectral_locus_xy(alwan_vec2 *xy_out, alwan_f64 wavelength) {
     }
 
     /* Linear interpolation between two adjacent points */
-    alwan_vec2 const *xy0 = &SPECTRAL_LOCUS_XY[idx];
-    alwan_vec2 const *xy1 = &SPECTRAL_LOCUS_XY[idx + 1];
+    alwan_vec2_f64 const *xy0 = &SPECTRAL_LOCUS_XY[idx];
+    alwan_vec2_f64 const *xy1 = &SPECTRAL_LOCUS_XY[idx + 1];
 
     xy_out->v[0] = xy0->v[0] + frac * (xy1->v[0] - xy0->v[0]);
     xy_out->v[1] = xy0->v[1] + frac * (xy1->v[1] - xy0->v[1]);
@@ -340,17 +340,17 @@ int alwan_spectral_locus_xy(alwan_vec2 *xy_out, alwan_f64 wavelength) {
 /* Compute intersection of line (p1, p2) with spectral locus
  * Returns wavelength and xy coordinates of intersection point
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if no intersection found */
-static int alwan_intersect_spectral_locus(alwan_vec2 const *p1,
-                                           alwan_vec2 const *p2,
+static int alwan_intersect_spectral_locus(alwan_vec2_f64 const *p1,
+                                           alwan_vec2_f64 const *p2,
                                            alwan_f64 *wavelength_out,
-                                           alwan_vec2 *xy_out) {
+                                           alwan_vec2_f64 *xy_out) {
     /* Find intersection by testing each segment of the spectral locus */
     alwan_f64 best_t = ALWAN_LITERAL(-1.0);
     size_t best_idx = 0;
 
     for (size_t i = 0; i < SPECTRAL_LOCUS_COUNT - 1; i++) {
-        alwan_vec2 const *s1 = &SPECTRAL_LOCUS_XY[i];
-        alwan_vec2 const *s2 = &SPECTRAL_LOCUS_XY[i + 1];
+        alwan_vec2_f64 const *s1 = &SPECTRAL_LOCUS_XY[i];
+        alwan_vec2_f64 const *s2 = &SPECTRAL_LOCUS_XY[i + 1];
 
         /* Line-line intersection using parametric form:
          * p1 + t*(p2-p1) = s1 + u*(s2-s1) */
@@ -386,8 +386,8 @@ static int alwan_intersect_spectral_locus(alwan_vec2 const *p1,
     }
 
     /* Compute intersection point */
-    alwan_vec2 const *s1 = &SPECTRAL_LOCUS_XY[best_idx];
-    alwan_vec2 const *s2 = &SPECTRAL_LOCUS_XY[best_idx + 1];
+    alwan_vec2_f64 const *s1 = &SPECTRAL_LOCUS_XY[best_idx];
+    alwan_vec2_f64 const *s2 = &SPECTRAL_LOCUS_XY[best_idx + 1];
 
     alwan_f64 dx2 = s2->v[0] - s1->v[0];
     alwan_f64 dy2 = s2->v[1] - s1->v[1];
@@ -416,17 +416,17 @@ static int alwan_intersect_spectral_locus(alwan_vec2 const *p1,
 }
 
 int alwan_dominant_wavelength(alwan_f64 *wavelength_out,
-                               alwan_vec2 *xy_wl_out,
-                               alwan_vec2 *xy_cw_out,
-                               alwan_vec2 const *xy,
-                               alwan_vec2 const *xy_white) {
+                               alwan_vec2_f64 *xy_wl_out,
+                               alwan_vec2_f64 *xy_cw_out,
+                               alwan_vec2_f64 const *xy,
+                               alwan_vec2_f64 const *xy_white) {
     if (!xy || !xy_white || !wavelength_out) {
         return ALWAN_E_INVALID;
     }
 
     /* Extend line from white point through xy to spectral locus */
     alwan_f64 wl;
-    alwan_vec2 xy_intersection;
+    alwan_vec2_f64 xy_intersection;
     int status = alwan_intersect_spectral_locus(xy_white, xy, &wl, &xy_intersection);
 
     if (status != ALWAN_OK) {
@@ -449,21 +449,21 @@ int alwan_dominant_wavelength(alwan_f64 *wavelength_out,
 }
 
 int alwan_excitation_purity(alwan_f64 *purity_out,
-                             alwan_vec2 const *xy,
-                             alwan_vec2 const *xy_white) {
+                             alwan_vec2_f64 const *xy,
+                             alwan_vec2_f64 const *xy_white) {
     if (!xy || !xy_white || !purity_out) {
         return ALWAN_E_INVALID;
     }
 
     /* Get dominant wavelength (intersection with spectral locus) */
-    alwan_vec2 xy_wl;
+    alwan_vec2_f64 xy_wl;
     alwan_f64 wl;
     int status = alwan_intersect_spectral_locus(xy_white, xy, &wl, &xy_wl);
 
     if (status != ALWAN_OK) {
         /* For purple line colors, use complementary wavelength */
         /* Find intersection in opposite direction */
-        alwan_vec2 xy_opposite;
+        alwan_vec2_f64 xy_opposite;
         xy_opposite.v[0] = ALWAN_LITERAL(2.0) * xy_white->v[0] - xy->v[0];
         xy_opposite.v[1] = ALWAN_LITERAL(2.0) * xy_white->v[1] - xy->v[1];
 
@@ -501,21 +501,21 @@ int alwan_excitation_purity(alwan_f64 *purity_out,
 }
 
 int alwan_complementary_wavelength(alwan_f64 *wavelength_out,
-                                     alwan_vec2 *xy_wl_out,
-                                     alwan_vec2 *xy_cw_out,
-                                     alwan_vec2 const *xy,
-                                     alwan_vec2 const *xy_white) {
+                                     alwan_vec2_f64 *xy_wl_out,
+                                     alwan_vec2_f64 *xy_cw_out,
+                                     alwan_vec2_f64 const *xy,
+                                     alwan_vec2_f64 const *xy_white) {
     if (!xy || !xy_white || !wavelength_out) {
         return ALWAN_E_INVALID;
     }
 
     /* Extend line from color through white point to spectral locus (opposite direction) */
-    alwan_vec2 xy_opposite;
+    alwan_vec2_f64 xy_opposite;
     xy_opposite.v[0] = ALWAN_LITERAL(2.0) * xy_white->v[0] - xy->v[0];
     xy_opposite.v[1] = ALWAN_LITERAL(2.0) * xy_white->v[1] - xy->v[1];
 
     alwan_f64 wl;
-    alwan_vec2 xy_intersection;
+    alwan_vec2_f64 xy_intersection;
     int status = alwan_intersect_spectral_locus(xy_white, &xy_opposite, &wl, &xy_intersection);
 
     if (status != ALWAN_OK) {
@@ -578,8 +578,8 @@ int alwan_gamut_coverage(alwan_f64 *coverage_out,
     }
 
     /* Derive matrices for both spaces */
-    alwan_mat3x3 rgb1_to_xyz, xyz_to_rgb1;
-    alwan_mat3x3 rgb2_to_xyz, xyz_to_rgb2;
+    alwan_mat3x3_f64 rgb1_to_xyz, xyz_to_rgb1;
+    alwan_mat3x3_f64 rgb2_to_xyz, xyz_to_rgb2;
 
     int status1 = alwan_rgb_derive_matrices(&rgb1_to_xyz, &xyz_to_rgb1, space1);
     int status2 = alwan_rgb_derive_matrices(&rgb2_to_xyz, &xyz_to_rgb2, space2);
@@ -598,7 +598,7 @@ int alwan_gamut_coverage(alwan_f64 *coverage_out,
 
     for (size_t i = 0; i < num_samples; i++) {
         /* Generate random RGB point in [0,1] cube (space1's gamut) */
-        alwan_vec3 rgb1;
+        alwan_vec3_f64 rgb1;
 
         /* LCG for R */
         rng_state = (rng_state * 1103515245u + 12345u) & 0x7fffffffu;
@@ -613,11 +613,11 @@ int alwan_gamut_coverage(alwan_f64 *coverage_out,
         rgb1.v[2] = (alwan_f64)rng_state / (alwan_f64)0x7fffffff;
 
         /* Transform space1 RGB -> XYZ */
-        alwan_vec3 xyz;
+        alwan_vec3_f64 xyz;
         alwan_mat3_mulv(&xyz, &rgb1_to_xyz, &rgb1);
 
         /* Transform XYZ -> space2 RGB */
-        alwan_vec3 rgb2;
+        alwan_vec3_f64 rgb2;
         alwan_mat3_mulv(&rgb2, &xyz_to_rgb2, &xyz);
 
         /* Check if rgb2 is in gamut (all components in [0,1]) */
@@ -645,12 +645,12 @@ int alwan_gamut_coverage(alwan_f64 *coverage_out,
  * https://bottosson.github.io/posts/oklab/ */
 
 /* Linear sRGB -> Oklab */
-static void alwan_linear_srgb_to_oklab(alwan_vec3 const *rgb, alwan_vec3 *oklab) {
+static void alwan_linear_srgb_to_oklab(alwan_vec3_f64 const *rgb, alwan_vec3_f64 *oklab) {
     *oklab = gamut_linear_srgb_to_oklab_f64_v(*rgb);
 }
 
 /* Oklab -> Linear sRGB */
-static void alwan_oklab_to_linear_srgb(alwan_vec3 const *oklab, alwan_vec3 *rgb) {
+static void alwan_oklab_to_linear_srgb(alwan_vec3_f64 const *oklab, alwan_vec3_f64 *rgb) {
     *rgb = gamut_oklab_to_linear_srgb_f64_v(*oklab);
 }
 
@@ -661,7 +661,7 @@ static alwan_f64 alwan_compute_max_saturation(alwan_f64 a, alwan_f64 b) {
 
 /* Find gamut cusp */
 static void alwan_find_cusp(alwan_f64 a, alwan_f64 b, alwan_f64 *L_cusp, alwan_f64 *C_cusp) {
-    alwan_vec2 cusp = gamut_find_cusp_f64_v(a, b);
+    alwan_vec2_f64 cusp = gamut_find_cusp_f64_v(a, b);
     *L_cusp = cusp.v[0];
     *C_cusp = cusp.v[1];
 }
@@ -674,16 +674,16 @@ static alwan_f64 alwan_find_gamut_intersection(alwan_f64 a, alwan_f64 b,
 }
 
 /* Gamut mapping implementation */
-int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
+int alwan_gamut_map_advanced(alwan_rgb_f64 *rgb_out,
                               alwan_gamut_map_method method,
                               alwan_rgb_space_desc const *space,
-                              alwan_rgb const *rgb_linear) {
+                              alwan_rgb_f64 const *rgb_linear) {
     if (!space || !rgb_linear || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
     /* Convert to vec3 for internal processing */
-    alwan_vec3 rgb_vec;
+    alwan_vec3_f64 rgb_vec;
     rgb_vec.v[0] = rgb_linear->r;
     rgb_vec.v[1] = rgb_linear->g;
     rgb_vec.v[2] = rgb_linear->b;
@@ -700,7 +700,7 @@ int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
     }
 
     /* Convert to Oklab */
-    alwan_vec3 oklab;
+    alwan_vec3_f64 oklab;
     alwan_linear_srgb_to_oklab(&rgb_vec, &oklab);
 
     alwan_f64 L = oklab.v[0];
@@ -784,13 +784,13 @@ int alwan_gamut_map_advanced(alwan_rgb *rgb_out,
     alwan_f64 C_clipped = t * C;
 
     /* Convert back to Oklab */
-    alwan_vec3 oklab_clipped;
+    alwan_vec3_f64 oklab_clipped;
     oklab_clipped.v[0] = L_clipped;
     oklab_clipped.v[1] = C_clipped * a_norm;
     oklab_clipped.v[2] = C_clipped * b_norm;
 
     /* Convert to linear RGB */
-    alwan_vec3 rgb_result;
+    alwan_vec3_f64 rgb_result;
     alwan_oklab_to_linear_srgb(&oklab_clipped, &rgb_result);
 
     /* Final safety clamp and convert to rgb */
@@ -856,7 +856,7 @@ int alwan_gamut_map_planar(alwan_f64 *out_ch0, alwan_f64 *out_ch1, alwan_f64 *ou
         return ALWAN_OK;
     }
 
-    void (*map_fn)(alwan_vec3 const *, alwan_vec3 *) = NULL;
+    void (*map_fn)(alwan_vec3_f64 const *, alwan_vec3_f64 *) = NULL;
     switch (method) {
         case ALWAN_GAMUT_MAP_HUE_PRESERVING:
             map_fn = gamut_map_hue_preserving_single;
@@ -866,12 +866,12 @@ int alwan_gamut_map_planar(alwan_f64 *out_ch0, alwan_f64 *out_ch1, alwan_f64 *ou
     }
 
     for (size_t i = 0; i < count; i++) {
-        alwan_vec3 rgb_in_vec = {{
+        alwan_vec3_f64 rgb_in_vec = {{
             *(alwan_f64 const *)((char const *)in_ch0 + i * in_stride),
             *(alwan_f64 const *)((char const *)in_ch1 + i * in_stride),
             *(alwan_f64 const *)((char const *)in_ch2 + i * in_stride)
         }};
-        alwan_vec3 rgb_out_vec;
+        alwan_vec3_f64 rgb_out_vec;
         map_fn(&rgb_in_vec, &rgb_out_vec);
         *(alwan_f64 *)((char *)out_ch0 + i * out_stride) = rgb_out_vec.v[0];
         *(alwan_f64 *)((char *)out_ch1 + i * out_stride) = rgb_out_vec.v[1];
@@ -948,7 +948,7 @@ int alwan_gamut_map_interleave_ex(void *rgb_out, alwan_pixel_format out_fmt,
         return ALWAN_OK;
     }
 
-    void (*map_fn)(alwan_vec3 const *, alwan_vec3 *) = NULL;
+    void (*map_fn)(alwan_vec3_f64 const *, alwan_vec3_f64 *) = NULL;
     switch (method) {
         case ALWAN_GAMUT_MAP_HUE_PRESERVING: map_fn = gamut_map_hue_preserving_single; break;
         default: return ALWAN_E_INVALID;
@@ -957,7 +957,7 @@ int alwan_gamut_map_interleave_ex(void *rgb_out, alwan_pixel_format out_fmt,
     for (size_t i = 0; i < count; i++) {
         alwan_f64 sv[3];
         alwan__load3_typed(sv, (char const *)rgb_in + i * in_stride, in_fmt);
-        alwan_vec3 vin = {{sv[0], sv[1], sv[2]}}, vout;
+        alwan_vec3_f64 vin = {{sv[0], sv[1], sv[2]}}, vout;
         map_fn(&vin, &vout);
         alwan_f64 dv[3] = {vout.v[0], vout.v[1], vout.v[2]};
         alwan__store3_typed((char *)rgb_out + i * out_stride, dv, out_fmt);
@@ -1017,14 +1017,14 @@ int alwan_gamut_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_fo
         return ALWAN_OK;
     }
 
-    void (*map_fn)(alwan_vec3 const *, alwan_vec3 *) = NULL;
+    void (*map_fn)(alwan_vec3_f64 const *, alwan_vec3_f64 *) = NULL;
     switch (method) {
         case ALWAN_GAMUT_MAP_HUE_PRESERVING: map_fn = gamut_map_hue_preserving_single; break;
         default: return ALWAN_E_INVALID;
     }
 
     for (size_t i = 0; i < count; i++) {
-        alwan_vec3 vin = {{
+        alwan_vec3_f64 vin = {{
             alwan__load1_typed((char const *)in0 + i * in_stride, in_fmt),
             alwan__load1_typed((char const *)in1 + i * in_stride, in_fmt),
             alwan__load1_typed((char const *)in2 + i * in_stride, in_fmt)

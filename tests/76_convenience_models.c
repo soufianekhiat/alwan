@@ -16,16 +16,16 @@
  * ---------------------------------------------------------------- */
 
 static int test_hlc_roundtrip(void) {
-    alwan_lch lch_in = {50.0, 30.0, 120.0};
-    alwan_hlc hlc;
-    alwan_lch lch_out;
+    alwan_lch_f64 lch_in = {50.0, 30.0, 120.0};
+    alwan_hlc_f64 hlc;
+    alwan_lch_f64 lch_out;
 
-    alwan_lch_to_hlc(&hlc, &lch_in);
+    alwan_lch_to_hlc_f64(&hlc, &lch_in);
     TEST_ASSERT(ALWAN_ABS(hlc.H - ALWAN_LITERAL(120.0)) < ALWAN_LITERAL(1e-10), "HLC hue mismatch");
     TEST_ASSERT(ALWAN_ABS(hlc.L - ALWAN_LITERAL(50.0)) < ALWAN_LITERAL(1e-10), "HLC lightness mismatch");
     TEST_ASSERT(ALWAN_ABS(hlc.C - ALWAN_LITERAL(30.0)) < ALWAN_LITERAL(1e-10), "HLC chroma mismatch");
 
-    alwan_hlc_to_lch(&lch_out, &hlc);
+    alwan_hlc_to_lch_f64(&lch_out, &hlc);
     TEST_ASSERT(ALWAN_ABS(lch_out.L - lch_in.L) < ALWAN_LITERAL(1e-10), "LCH roundtrip L mismatch");
     TEST_ASSERT(ALWAN_ABS(lch_out.C - lch_in.C) < ALWAN_LITERAL(1e-10), "LCH roundtrip C mismatch");
     TEST_ASSERT(ALWAN_ABS(lch_out.h - lch_in.h) < ALWAN_LITERAL(1e-10), "LCH roundtrip h mismatch");
@@ -39,7 +39,7 @@ static int test_hlc_roundtrip(void) {
 
 static int test_cubehelix_roundtrip(void) {
     /* Test several cubehelix colors for roundtrip accuracy */
-    alwan_cubehelix test_inputs[] = {
+    alwan_cubehelix_f64 test_inputs[] = {
         {  0.0, 0.0, 0.5},   /* gray (s=0) */
         {  0.0, 1.0, 0.5},   /* full saturation mid lightness */
         {120.0, 0.8, 0.3},   /* green-ish, dark */
@@ -50,8 +50,8 @@ static int test_cubehelix_roundtrip(void) {
     size_t const num_tests = sizeof(test_inputs) / sizeof(test_inputs[0]);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_rgb rgb;
-        alwan_cubehelix_to_rgb(&rgb, &test_inputs[i]);
+        alwan_rgb_f64 rgb;
+        alwan_cubehelix_to_rgb_f64(&rgb, &test_inputs[i]);
 
         /* Gray (s=0) should produce equal channels */
         if (i == 0) {
@@ -77,8 +77,8 @@ static int test_cubehelix_roundtrip(void) {
         if (test_inputs[i].s > ALWAN_LITERAL(0.01) &&
             test_inputs[i].l > ALWAN_LITERAL(0.01) &&
             test_inputs[i].l < ALWAN_LITERAL(0.99)) {
-            alwan_cubehelix ch_out;
-            alwan_rgb_to_cubehelix(&ch_out, &rgb);
+            alwan_cubehelix_f64 ch_out;
+            alwan_rgb_to_cubehelix_f64(&ch_out, &rgb);
             alwan_f64 h_diff = ALWAN_ABS(ch_out.h - test_inputs[i].h);
             if (h_diff > ALWAN_LITERAL(180.0)) h_diff = ALWAN_LITERAL(360.0) - h_diff;
             TEST_ASSERT(h_diff < ALWAN_LITERAL(0.1), "Cubehelix roundtrip hue mismatch");
@@ -91,14 +91,14 @@ static int test_cubehelix_roundtrip(void) {
 
     /* Verify luminance monotonicity: for s=0, output = l */
     {
-        alwan_cubehelix gray;
+        alwan_cubehelix_f64 gray;
         gray.h = ALWAN_LITERAL(0.0);
         gray.s = ALWAN_LITERAL(0.0);
         alwan_f64 prev_luma = ALWAN_LITERAL(-1.0);
         for (int k = 0; k <= 10; k++) {
             gray.l = (alwan_f64)k / ALWAN_LITERAL(10.0);
-            alwan_rgb rgb;
-            alwan_cubehelix_to_rgb(&rgb, &gray);
+            alwan_rgb_f64 rgb;
+            alwan_cubehelix_to_rgb_f64(&rgb, &gray);
             alwan_f64 luma = ALWAN_LITERAL(0.299) * rgb.r + ALWAN_LITERAL(0.587) * rgb.g
                               + ALWAN_LITERAL(0.114) * rgb.b;
             TEST_ASSERT(luma >= prev_luma - ALWAN_LITERAL(0.001),
@@ -116,7 +116,7 @@ static int test_cubehelix_roundtrip(void) {
 
 static int test_hsluv_roundtrip(void) {
     /* Test sRGB -> HSLuv -> sRGB roundtrip */
-    alwan_rgb test_srgb[] = {
+    alwan_rgb_f64 test_srgb[] = {
         {0.0, 0.0, 0.0},           /* black */
         {1.0, 1.0, 1.0},           /* white */
         {0.5, 0.5, 0.5},           /* mid gray */
@@ -130,10 +130,10 @@ static int test_hsluv_roundtrip(void) {
     alwan_f64 const tol = ALWAN_LITERAL(0.005);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_hsluv hsluv;
-        alwan_rgb roundtrip;
-        alwan_srgb_to_hsluv(&hsluv, &test_srgb[i]);
-        alwan_hsluv_to_srgb(&roundtrip, &hsluv);
+        alwan_hsluv_f64 hsluv;
+        alwan_rgb_f64 roundtrip;
+        alwan_srgb_to_hsluv_f64(&hsluv, &test_srgb[i]);
+        alwan_hsluv_to_srgb_f64(&roundtrip, &hsluv);
 
         alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
                           + ALWAN_ABS(roundtrip.g - test_srgb[i].g)
@@ -149,9 +149,9 @@ static int test_hsluv_roundtrip(void) {
 
     /* Check ranges: H [0-360], S [0-100], L [0-100] */
     {
-        alwan_rgb srgb = {0.8, 0.2, 0.4};
-        alwan_hsluv hsluv;
-        alwan_srgb_to_hsluv(&hsluv, &srgb);
+        alwan_rgb_f64 srgb = {0.8, 0.2, 0.4};
+        alwan_hsluv_f64 hsluv;
+        alwan_srgb_to_hsluv_f64(&hsluv, &srgb);
         TEST_ASSERT(hsluv.h >= ALWAN_LITERAL(0.0) && hsluv.h <= ALWAN_LITERAL(360.0), "HSLuv H out of range");
         TEST_ASSERT(hsluv.s >= ALWAN_LITERAL(0.0) && hsluv.s <= ALWAN_LITERAL(100.1), "HSLuv S out of range");
         TEST_ASSERT(hsluv.l >= ALWAN_LITERAL(0.0) && hsluv.l <= ALWAN_LITERAL(100.1), "HSLuv L out of range");
@@ -159,9 +159,9 @@ static int test_hsluv_roundtrip(void) {
 
     /* Gray should have S=0 */
     {
-        alwan_rgb gray = {0.5, 0.5, 0.5};
-        alwan_hsluv hsluv;
-        alwan_srgb_to_hsluv(&hsluv, &gray);
+        alwan_rgb_f64 gray = {0.5, 0.5, 0.5};
+        alwan_hsluv_f64 hsluv;
+        alwan_srgb_to_hsluv_f64(&hsluv, &gray);
         TEST_ASSERT(hsluv.s < ALWAN_LITERAL(0.1), "HSLuv: gray should have S near 0");
     }
 
@@ -174,7 +174,7 @@ static int test_hsluv_roundtrip(void) {
 
 static int test_hpluv_roundtrip(void) {
     /* HPLuv -> sRGB -> HPLuv roundtrip */
-    alwan_hpluv test_hpluv[] = {
+    alwan_hpluv_f64 test_hpluv[] = {
         {  0.0,   0.0,  50.0},   /* gray */
         {  0.0,  50.0,  50.0},   /* half sat red hue */
         {120.0,  50.0,  70.0},   /* greenish pastel */
@@ -184,9 +184,9 @@ static int test_hpluv_roundtrip(void) {
     alwan_f64 const tol = ALWAN_LITERAL(0.5);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_rgb rgb;
-        alwan_hpluv roundtrip;
-        alwan_hpluv_to_srgb(&rgb, &test_hpluv[i]);
+        alwan_rgb_f64 rgb;
+        alwan_hpluv_f64 roundtrip;
+        alwan_hpluv_to_srgb_f64(&rgb, &test_hpluv[i]);
 
         /* Output should be in [0,1] since HPLuv guarantees gamut */
         TEST_ASSERT(rgb.r >= ALWAN_LITERAL(-0.01) && rgb.r <= ALWAN_LITERAL(1.01) &&
@@ -194,7 +194,7 @@ static int test_hpluv_roundtrip(void) {
                    rgb.b >= ALWAN_LITERAL(-0.01) && rgb.b <= ALWAN_LITERAL(1.01),
                    "HPLuv: output should be in sRGB gamut");
 
-        alwan_srgb_to_hpluv(&roundtrip, &rgb);
+        alwan_srgb_to_hpluv_f64(&roundtrip, &rgb);
 
         alwan_f64 diff_l = ALWAN_ABS(roundtrip.l - test_hpluv[i].l);
         TEST_ASSERT(diff_l < tol, "HPLuv roundtrip L mismatch");
@@ -214,7 +214,7 @@ static int test_hpluv_roundtrip(void) {
 
 static int test_okhsl_roundtrip(void) {
     /* Test sRGB -> Okhsl -> sRGB roundtrip */
-    alwan_rgb test_srgb[] = {
+    alwan_rgb_f64 test_srgb[] = {
         {0.0, 0.0, 0.0},           /* black */
         {1.0, 1.0, 1.0},           /* white */
         {0.5, 0.5, 0.5},           /* mid gray */
@@ -228,10 +228,10 @@ static int test_okhsl_roundtrip(void) {
     alwan_f64 const tol = ALWAN_LITERAL(0.01);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_okhsl okhsl;
-        alwan_rgb roundtrip;
-        alwan_srgb_to_okhsl(&okhsl, &test_srgb[i]);
-        alwan_okhsl_to_srgb(&roundtrip, &okhsl);
+        alwan_okhsl_f64 okhsl;
+        alwan_rgb_f64 roundtrip;
+        alwan_srgb_to_okhsl_f64(&okhsl, &test_srgb[i]);
+        alwan_okhsl_to_srgb_f64(&roundtrip, &okhsl);
 
         alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
                           + ALWAN_ABS(roundtrip.g - test_srgb[i].g)
@@ -247,9 +247,9 @@ static int test_okhsl_roundtrip(void) {
 
     /* Check ranges: all in [0,1] */
     {
-        alwan_rgb srgb = {0.8, 0.2, 0.4};
-        alwan_okhsl okhsl;
-        alwan_srgb_to_okhsl(&okhsl, &srgb);
+        alwan_rgb_f64 srgb = {0.8, 0.2, 0.4};
+        alwan_okhsl_f64 okhsl;
+        alwan_srgb_to_okhsl_f64(&okhsl, &srgb);
         TEST_ASSERT(okhsl.h >= ALWAN_LITERAL(-0.01) && okhsl.h <= ALWAN_LITERAL(1.01), "Okhsl h out of range");
         TEST_ASSERT(okhsl.s >= ALWAN_LITERAL(-0.01) && okhsl.s <= ALWAN_LITERAL(1.01), "Okhsl s out of range");
         TEST_ASSERT(okhsl.l >= ALWAN_LITERAL(-0.01) && okhsl.l <= ALWAN_LITERAL(1.01), "Okhsl l out of range");
@@ -257,9 +257,9 @@ static int test_okhsl_roundtrip(void) {
 
     /* Gray should have s near 0 */
     {
-        alwan_rgb gray = {0.5, 0.5, 0.5};
-        alwan_okhsl okhsl;
-        alwan_srgb_to_okhsl(&okhsl, &gray);
+        alwan_rgb_f64 gray = {0.5, 0.5, 0.5};
+        alwan_okhsl_f64 okhsl;
+        alwan_srgb_to_okhsl_f64(&okhsl, &gray);
         TEST_ASSERT(okhsl.s < ALWAN_LITERAL(0.01), "Okhsl: gray should have s near 0");
     }
 
@@ -272,7 +272,7 @@ static int test_okhsl_roundtrip(void) {
 
 static int test_okhsv_roundtrip(void) {
     /* Test sRGB -> Okhsv -> sRGB roundtrip */
-    alwan_rgb test_srgb[] = {
+    alwan_rgb_f64 test_srgb[] = {
         {0.0, 0.0, 0.0},           /* black */
         {1.0, 1.0, 1.0},           /* white */
         {0.5, 0.5, 0.5},           /* mid gray */
@@ -286,10 +286,10 @@ static int test_okhsv_roundtrip(void) {
     alwan_f64 const tol = ALWAN_LITERAL(0.01);
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_okhsv okhsv;
-        alwan_rgb roundtrip;
-        alwan_srgb_to_okhsv(&okhsv, &test_srgb[i]);
-        alwan_okhsv_to_srgb(&roundtrip, &okhsv);
+        alwan_okhsv_f64 okhsv;
+        alwan_rgb_f64 roundtrip;
+        alwan_srgb_to_okhsv_f64(&okhsv, &test_srgb[i]);
+        alwan_okhsv_to_srgb_f64(&roundtrip, &okhsv);
 
         alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_srgb[i].r)
                           + ALWAN_ABS(roundtrip.g - test_srgb[i].g)
@@ -305,9 +305,9 @@ static int test_okhsv_roundtrip(void) {
 
     /* Check ranges */
     {
-        alwan_rgb srgb = {0.8, 0.2, 0.4};
-        alwan_okhsv okhsv;
-        alwan_srgb_to_okhsv(&okhsv, &srgb);
+        alwan_rgb_f64 srgb = {0.8, 0.2, 0.4};
+        alwan_okhsv_f64 okhsv;
+        alwan_srgb_to_okhsv_f64(&okhsv, &srgb);
         TEST_ASSERT(okhsv.h >= ALWAN_LITERAL(-0.01) && okhsv.h <= ALWAN_LITERAL(1.01), "Okhsv h out of range");
         TEST_ASSERT(okhsv.s >= ALWAN_LITERAL(-0.01) && okhsv.s <= ALWAN_LITERAL(1.01), "Okhsv s out of range");
         TEST_ASSERT(okhsv.v >= ALWAN_LITERAL(-0.01) && okhsv.v <= ALWAN_LITERAL(1.01), "Okhsv v out of range");
@@ -315,17 +315,17 @@ static int test_okhsv_roundtrip(void) {
 
     /* Gray should have s near 0 */
     {
-        alwan_rgb gray = {0.5, 0.5, 0.5};
-        alwan_okhsv okhsv;
-        alwan_srgb_to_okhsv(&okhsv, &gray);
+        alwan_rgb_f64 gray = {0.5, 0.5, 0.5};
+        alwan_okhsv_f64 okhsv;
+        alwan_srgb_to_okhsv_f64(&okhsv, &gray);
         TEST_ASSERT(okhsv.s < ALWAN_LITERAL(0.01), "Okhsv: gray should have s near 0");
     }
 
     /* Black should have v near 0 */
     {
-        alwan_rgb black = {0.0, 0.0, 0.0};
-        alwan_okhsv okhsv;
-        alwan_srgb_to_okhsv(&okhsv, &black);
+        alwan_rgb_f64 black = {0.0, 0.0, 0.0};
+        alwan_okhsv_f64 okhsv;
+        alwan_srgb_to_okhsv_f64(&okhsv, &black);
         TEST_ASSERT(okhsv.v < ALWAN_LITERAL(0.01), "Okhsv: black should have v near 0");
     }
 

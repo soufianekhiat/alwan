@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
+static alwan_f64 mat3_max_diff(alwan_mat3x3_f64 const *a, alwan_mat3x3_f64 const *b) {
     alwan_f64 max_diff = 0;
     for (int i = 0; i < 9; i++) {
         alwan_f64 diff = ALWAN_ABS(a->m[i] - b->m[i]);
@@ -21,7 +21,7 @@ static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
     return max_diff;
 }
 
-static void mat3_print(char const *name, alwan_mat3x3 const *m) {
+static void mat3_print(char const *name, alwan_mat3x3_f64 const *m) {
     printf("%s:\n", name);
     for (int row = 0; row < 3; row++) {
         printf("  [%12.8f %12.8f %12.8f]\n",
@@ -120,15 +120,15 @@ static int test_cat_method(
     alwan_f64 const *expected_matrix_data,
     alwan_f64 const *expected_adapted_data)
 {
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     /* Test 1: CAT matrix D65->D50 */
-    alwan_mat3x3 expected_matrix;
+    alwan_mat3x3_f64 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix.m));
 
-    alwan_mat3x3 computed_matrix;
-    int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, method);
+    alwan_mat3x3_f64 computed_matrix;
+    int status = alwan_cat_matrix_f64(&computed_matrix, &d65_xyz, &d50_xyz, method);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
     alwan_f64 const matrix_tolerance = ALWAN_TEST_TOLERANCE;
@@ -146,7 +146,7 @@ static int test_cat_method(
     size_t const num_test_colors = 8;
     alwan_f64 adapted_xyz[24];  /* 8 colors * 3 components */
 
-    status = alwan_xyz_adapt(adapted_xyz,
+    status = alwan_xyz_adapt_f64(adapted_xyz,
                              &d65_xyz, &d50_xyz, method,
                              test_xyz_data, num_test_colors,
                              3 * sizeof(alwan_f64),

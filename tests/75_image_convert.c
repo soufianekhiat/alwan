@@ -15,10 +15,10 @@
 /* Reference: manually apply EOTF -> rgb_convert -> OETF to match alwan_image_convert.
  * alwan_rgb_convert operates on linear RGB (no TF applied), while alwan_image_convert
  * handles the full encoded -> decoded -> matrix -> encoded pipeline. */
-static int ref_image_pixel(alwan_rgb *out, alwan_ctx *ctx,
+static int ref_image_pixel(alwan_rgb_f64 *out, alwan_ctx *ctx,
                            alwan_rgb_space_desc const *src_space,
                            alwan_rgb_space_desc const *dst_space,
-                           alwan_rgb const *in) {
+                           alwan_rgb_f64 const *in) {
     /* Decode source: EOTF (encoded -> linear) */
     alwan_f64 linear_src[3];
     alwan_eotf_apply(linear_src, src_space->eotf,
@@ -26,8 +26,8 @@ static int ref_image_pixel(alwan_rgb *out, alwan_ctx *ctx,
                      sizeof(alwan_f64), sizeof(alwan_f64));
 
     /* Convert linear src -> linear dst */
-    alwan_rgb lin_in = {linear_src[0], linear_src[1], linear_src[2]};
-    alwan_rgb lin_out;
+    alwan_rgb_f64 lin_in = {linear_src[0], linear_src[1], linear_src[2]};
+    alwan_rgb_f64 lin_out;
     int status = alwan_rgb_convert(&lin_out, ctx, src_space, dst_space, &lin_in);
     if (status != ALWAN_OK) return status;
 
@@ -91,8 +91,8 @@ static int test_image_convert_same_wp(void) {
 
     /* Verify against reference: EOTF -> rgb_convert -> OETF */
     for (size_t i = 0; i < W * H; i++) {
-        alwan_rgb rgb_in = {colors[i][0], colors[i][1], colors[i][2]};
-        alwan_rgb rgb_ref;
+        alwan_rgb_f64 rgb_in = {colors[i][0], colors[i][1], colors[i][2]};
+        alwan_rgb_f64 rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
 
         char msg[128];
@@ -148,8 +148,8 @@ static int test_image_convert_diff_wp(void) {
     TEST_ASSERT(status == ALWAN_OK, "alwan_image_convert returned error");
 
     for (size_t i = 0; i < W * H; i++) {
-        alwan_rgb rgb_in = {colors[i][0], colors[i][1], colors[i][2]};
-        alwan_rgb rgb_ref;
+        alwan_rgb_f64 rgb_in = {colors[i][0], colors[i][1], colors[i][2]};
+        alwan_rgb_f64 rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &acescg, &rgb_in);
 
         char msg[128];
@@ -214,12 +214,12 @@ static int test_image_convert_u8_to_f32(void) {
     /* Verify against reference: normalize U8, EOTF, convert, OETF */
     alwan_f64 const f32_tol = ALWAN_LITERAL(1e-5);
     for (size_t i = 0; i < W * H; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             (alwan_f64)pixels[i][0] / ALWAN_LITERAL(255.0),
             (alwan_f64)pixels[i][1] / ALWAN_LITERAL(255.0),
             (alwan_f64)pixels[i][2] / ALWAN_LITERAL(255.0)
         };
-        alwan_rgb rgb_ref;
+        alwan_rgb_f64 rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &bt2020, &rgb_in);
 
         char msg[128];
@@ -286,12 +286,12 @@ static int test_image_convert_row_stride(void) {
         float const *dst_row = (float const *)(dst_buf + y * padded_row);
         for (size_t x = 0; x < W; x++) {
             size_t idx = y * W + x;
-            alwan_rgb rgb_in = {
+            alwan_rgb_f64 rgb_in = {
                 (alwan_f64)test_colors[idx][0],
                 (alwan_f64)test_colors[idx][1],
                 (alwan_f64)test_colors[idx][2]
             };
-            alwan_rgb rgb_ref;
+            alwan_rgb_f64 rgb_ref;
             ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
 
             char msg[128];
@@ -336,8 +336,8 @@ static int test_image_convert_in_place(void) {
     /* Compute reference first */
     alwan_f64 ref[3 * 3];
     for (size_t i = 0; i < W; i++) {
-        alwan_rgb rgb_in = {colors[i][0], colors[i][1], colors[i][2]};
-        alwan_rgb rgb_ref;
+        alwan_rgb_f64 rgb_in = {colors[i][0], colors[i][1], colors[i][2]};
+        alwan_rgb_f64 rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
         ref[i * 3 + 0] = rgb_ref.r;
         ref[i * 3 + 1] = rgb_ref.g;
@@ -448,8 +448,8 @@ static int test_image_convert_rgba_straight(void) {
 
     /* Verify RGB matches 3-channel reference, alpha preserved */
     for (size_t i = 0; i < W; i++) {
-        alwan_rgb rgb_in = {pixels[i][0], pixels[i][1], pixels[i][2]};
-        alwan_rgb rgb_ref;
+        alwan_rgb_f64 rgb_in = {pixels[i][0], pixels[i][1], pixels[i][2]};
+        alwan_rgb_f64 rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
 
         char msg[128];
@@ -519,8 +519,8 @@ static int test_image_convert_rgba_premul(void) {
         char msg[128];
 
         if (a > ALWAN_LITERAL(0.0)) {
-            alwan_rgb rgb_in = {straight[i][0], straight[i][1], straight[i][2]};
-            alwan_rgb rgb_ref;
+            alwan_rgb_f64 rgb_in = {straight[i][0], straight[i][1], straight[i][2]};
+            alwan_rgb_f64 rgb_ref;
             ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
 
             /* Result should be premultiplied: converted_rgb * alpha */
@@ -592,12 +592,12 @@ static int test_image_convert_rgba_u8_f32(void) {
 
     alwan_f64 const f32_tol = ALWAN_LITERAL(1e-5);
     for (size_t i = 0; i < W; i++) {
-        alwan_rgb rgb_in = {
+        alwan_rgb_f64 rgb_in = {
             (alwan_f64)u8_pixels[i][0] / ALWAN_LITERAL(255.0),
             (alwan_f64)u8_pixels[i][1] / ALWAN_LITERAL(255.0),
             (alwan_f64)u8_pixels[i][2] / ALWAN_LITERAL(255.0)
         };
-        alwan_rgb rgb_ref;
+        alwan_rgb_f64 rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
 
         alwan_f64 expected_alpha = (alwan_f64)u8_pixels[i][3] / ALWAN_LITERAL(255.0);
@@ -643,8 +643,8 @@ static int test_image_convert_rgba_in_place(void) {
     /* Compute reference first */
     alwan_f64 ref[2 * 4];
     for (size_t i = 0; i < W; i++) {
-        alwan_rgb rgb_in = {pixels[i][0], pixels[i][1], pixels[i][2]};
-        alwan_rgb rgb_ref;
+        alwan_rgb_f64 rgb_in = {pixels[i][0], pixels[i][1], pixels[i][2]};
+        alwan_rgb_f64 rgb_ref;
         ref_image_pixel(&rgb_ref, ctx, &srgb, &p3, &rgb_in);
         ref[i * 4 + 0] = rgb_ref.r;
         ref[i * 4 + 1] = rgb_ref.g;
@@ -725,8 +725,8 @@ static int test_image_convert_rgba_simd_straight(void) {
     TEST_ASSERT(status == ALWAN_OK, "rgba SIMD straight failed");
 
     for (size_t i = 0; i < W; i++) {
-        alwan_rgb rgb_in = {src[i * 4 + 0], src[i * 4 + 1], src[i * 4 + 2]};
-        alwan_rgb ref;
+        alwan_rgb_f64 rgb_in = {src[i * 4 + 0], src[i * 4 + 1], src[i * 4 + 2]};
+        alwan_rgb_f64 ref;
         ref_image_pixel(&ref, ctx, &srgb, &p3, &rgb_in);
 
         char msg[128];
@@ -786,7 +786,7 @@ static int test_image_convert_rgba_simd_premul(void) {
         alwan_f64 a = src[i * 4 + 3];
 
         /* Reference: unpremultiply -> convert -> repremultiply */
-        alwan_rgb straight_in;
+        alwan_rgb_f64 straight_in;
         if (a > ALWAN_LITERAL(0.0)) {
             alwan_f64 inv_a = ALWAN_LITERAL(1.0) / a;
             straight_in.r = src[i * 4 + 0] * inv_a;
@@ -795,7 +795,7 @@ static int test_image_convert_rgba_simd_premul(void) {
         } else {
             straight_in.r = straight_in.g = straight_in.b = ALWAN_LITERAL(0.0);
         }
-        alwan_rgb ref_straight;
+        alwan_rgb_f64 ref_straight;
         ref_image_pixel(&ref_straight, ctx, &srgb, &p3, &straight_in);
 
         alwan_f64 ref_r = ref_straight.r * a;

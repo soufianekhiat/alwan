@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static alwan_f64 vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
+static alwan_f64 vec3_max_diff(alwan_xyz_f64 const *a, alwan_xyz_f64 const *b) {
     alwan_f64 diff_x = ALWAN_ABS(a->x - b->x);
     alwan_f64 diff_y = ALWAN_ABS(a->y - b->y);
     alwan_f64 diff_z = ALWAN_ABS(a->z - b->z);
@@ -22,7 +22,7 @@ static alwan_f64 vec3_max_diff(alwan_xyz const *a, alwan_xyz const *b) {
     return max_diff;
 }
 
-static void vec3_print(char const *name, alwan_xyz const *v) {
+static void vec3_print(char const *name, alwan_xyz_f64 const *v) {
     printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->x, v->y, v->z);
 }
 
@@ -66,8 +66,8 @@ static int test_p8_illuminant_white_point(
     alwan_illuminant illuminant,
     alwan_f64 const *expected_white_xyz)
 {
-    alwan_xyz expected = {expected_white_xyz[0], expected_white_xyz[1], expected_white_xyz[2]};
-    alwan_xyz computed;
+    alwan_xyz_f64 expected = {expected_white_xyz[0], expected_white_xyz[1], expected_white_xyz[2]};
+    alwan_xyz_f64 computed;
 
     /* Get white point XYZ using alwan_illuminant_white_point */
     int status = alwan_illuminant_white_point(&computed, illuminant, ALWAN_OBSERVER_CIE_1931_2DEG);
@@ -116,10 +116,10 @@ static int test_illuminant_d75_white(void) {
  * ---------------------------------------------------------------- */
 
 static int test_stockman_sharpe_observer(void) {
-    alwan_xyz expected = {white_d65_stockman_sharpe_data[0],
+    alwan_xyz_f64 expected = {white_d65_stockman_sharpe_data[0],
                           white_d65_stockman_sharpe_data[1],
                           white_d65_stockman_sharpe_data[2]};
-    alwan_xyz computed;
+    alwan_xyz_f64 computed;
 
     /* Get D65 white point using Stockman & Sharpe observer */
     int status = alwan_illuminant_white_point(&computed,

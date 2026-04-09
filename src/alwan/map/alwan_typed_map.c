@@ -643,7 +643,8 @@ int alwan_delta_e_cmc_batch_ex(alwan_scalar *delta_e_out,
         alwan__load3_typed(s2, (char const *)lab2_in + i * in2_stride, lab2_fmt);
         alwan_lab l1 = {s1[0], s1[1], s1[2]};
         alwan_lab l2 = {s2[0], s2[1], s2[2]};
-        delta_e_out[i] = alwan_delta_e_cmc(&l1, &l2, l, c);
+        alwan_delta_e_cmc_params cmc_p; cmc_p.l = (double)l; cmc_p.c = (double)c;
+        delta_e_out[i] = alwan_delta_e_cmc_f64(&l1, &l2, &cmc_p);
     }
     return ALWAN_OK;
 }

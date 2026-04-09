@@ -33,7 +33,7 @@
 
 static int test_mat3_identity(void) {
     TEST_START("mat3 identity");
-    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
+    alwan_mat3x3_f64 id = alwan_mat3_identity_f64_v();
     TEST_ASSERT_NEAR(id.m[0], ALWAN_ONE, ALWAN_EPSILON, "m[0]");
     TEST_ASSERT_NEAR(id.m[4], ALWAN_ONE, ALWAN_EPSILON, "m[4]");
     TEST_ASSERT_NEAR(id.m[8], ALWAN_ONE, ALWAN_EPSILON, "m[8]");
@@ -44,7 +44,7 @@ static int test_mat3_identity(void) {
 
 static int test_mat3_det(void) {
     TEST_START("mat3 determinant");
-    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
+    alwan_mat3x3_f64 id = alwan_mat3_identity_f64_v();
     alwan_f64 det = alwan_mat3_det_f64_v(id);
     TEST_ASSERT_NEAR(det, ALWAN_ONE, ALWAN_EPSILON, "det(I)=1");
     TEST_PASS("mat3_det");
@@ -52,12 +52,12 @@ static int test_mat3_det(void) {
 
 static int test_mat3_mulv(void) {
     TEST_START("mat3 * vec3");
-    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
-    alwan_vec3 v;
+    alwan_mat3x3_f64 id = alwan_mat3_identity_f64_v();
+    alwan_vec3_f64 v;
     v.v[0] = ALWAN_LITERAL(1.0);
     v.v[1] = ALWAN_LITERAL(2.0);
     v.v[2] = ALWAN_LITERAL(3.0);
-    alwan_vec3 r = alwan_mat3_mulv_f64_v(id, v);
+    alwan_vec3_f64 r = alwan_mat3_mulv_f64_v(id, v);
     TEST_ASSERT_NEAR(r.v[0], v.v[0], ALWAN_EPSILON, "I*v[0]");
     TEST_ASSERT_NEAR(r.v[1], v.v[1], ALWAN_EPSILON, "I*v[1]");
     TEST_ASSERT_NEAR(r.v[2], v.v[2], ALWAN_EPSILON, "I*v[2]");
@@ -66,8 +66,8 @@ static int test_mat3_mulv(void) {
 
 static int test_mat3_mul(void) {
     TEST_START("mat3 * mat3");
-    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
-    alwan_mat3x3 r = alwan_mat3_mul_f64_v(id, id);
+    alwan_mat3x3_f64 id = alwan_mat3_identity_f64_v();
+    alwan_mat3x3_f64 r = alwan_mat3_mul_f64_v(id, id);
     TEST_ASSERT_NEAR(r.m[0], ALWAN_ONE, ALWAN_EPSILON, "I*I[0]");
     TEST_ASSERT_NEAR(r.m[4], ALWAN_ONE, ALWAN_EPSILON, "I*I[4]");
     TEST_ASSERT_NEAR(r.m[8], ALWAN_ONE, ALWAN_EPSILON, "I*I[8]");
@@ -82,20 +82,20 @@ static int test_mat3_mul(void) {
 static int test_oklab_v_roundtrip(void) {
     TEST_START("oklab _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_oklab ok_v = alwan_xyz_to_oklab_f64_v(white);
-    alwan_xyz back_v = alwan_oklab_to_xyz_f64_v(ok_v);
+    alwan_oklab_f64 ok_v = alwan_xyz_to_oklab_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_oklab_to_xyz_f64_v(ok_v);
 
     /* pointer variant */
-    alwan_oklab ok_p;
-    alwan_xyz_to_oklab(&ok_p, &white);
-    alwan_xyz back_p;
-    alwan_oklab_to_xyz(&back_p, &ok_p);
+    alwan_oklab_f64 ok_p;
+    alwan_xyz_to_oklab_f64(&ok_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_oklab_to_xyz_f64(&back_p, &ok_p);
 
     /* Compare _v vs pointer results */
     TEST_ASSERT_NEAR(ok_v.L, ok_p.L, ALWAN_TEST_TOLERANCE, "oklab L");
@@ -112,22 +112,22 @@ static int test_oklab_v_roundtrip(void) {
 static int test_oklch_v_roundtrip(void) {
     TEST_START("oklch _v round-trip");
 
-    alwan_xyz color;
+    alwan_xyz_f64 color;
     color.x = ALWAN_LITERAL(50.0);
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_oklab ok_v = alwan_xyz_to_oklab_f64_v(color);
-    alwan_oklch lch_v = alwan_oklab_to_oklch_f64_v(ok_v);
-    alwan_oklab back_v = alwan_oklch_to_oklab_f64_v(lch_v);
+    alwan_oklab_f64 ok_v = alwan_xyz_to_oklab_f64_v(color);
+    alwan_oklch_f64 lch_v = alwan_oklab_to_oklch_f64_v(ok_v);
+    alwan_oklab_f64 back_v = alwan_oklch_to_oklab_f64_v(lch_v);
 
     /* pointer variant */
-    alwan_oklab ok_p;
-    alwan_xyz_to_oklab(&ok_p, &color);
-    alwan_oklch lch_p;
-    alwan_oklab_to_oklch(&lch_p, &ok_p);
-    alwan_oklab back_p;
-    alwan_oklch_to_oklab(&back_p, &lch_p);
+    alwan_oklab_f64 ok_p;
+    alwan_xyz_to_oklab_f64(&ok_p, &color);
+    alwan_oklch_f64 lch_p;
+    alwan_oklab_to_oklch_f64(&lch_p, &ok_p);
+    alwan_oklab_f64 back_p;
+    alwan_oklch_to_oklab_f64(&back_p, &lch_p);
 
     TEST_ASSERT_NEAR(lch_v.L, lch_p.L, ALWAN_TEST_TOLERANCE, "oklch L");
     TEST_ASSERT_NEAR(lch_v.C, lch_p.C, ALWAN_TEST_TOLERANCE, "oklch C");
@@ -147,20 +147,20 @@ static int test_oklch_v_roundtrip(void) {
 static int test_jzazbz_v_roundtrip(void) {
     TEST_START("jzazbz _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_jzazbz jz_v = alwan_xyz_to_jzazbz_f64_v(white);
-    alwan_xyz back_v = alwan_jzazbz_to_xyz_f64_v(jz_v);
+    alwan_jzazbz_f64 jz_v = alwan_xyz_to_jzazbz_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_jzazbz_to_xyz_f64_v(jz_v);
 
     /* pointer variant */
-    alwan_jzazbz jz_p;
-    alwan_xyz_to_jzazbz(&jz_p, &white);
-    alwan_xyz back_p;
-    alwan_jzazbz_to_xyz(&back_p, &jz_p);
+    alwan_jzazbz_f64 jz_p;
+    alwan_xyz_to_jzazbz_f64(&jz_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_jzazbz_to_xyz_f64(&back_p, &jz_p);
 
     TEST_ASSERT_NEAR(jz_v.Jz, jz_p.Jz, ALWAN_TEST_TOLERANCE, "Jz");
     TEST_ASSERT_NEAR(jz_v.az, jz_p.az, ALWAN_TEST_TOLERANCE, "az");
@@ -176,22 +176,22 @@ static int test_jzazbz_v_roundtrip(void) {
 static int test_jzczhz_v_roundtrip(void) {
     TEST_START("jzczhz _v round-trip");
 
-    alwan_xyz color;
+    alwan_xyz_f64 color;
     color.x = ALWAN_LITERAL(50.0);
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_jzazbz jz_v = alwan_xyz_to_jzazbz_f64_v(color);
-    alwan_jzczhz jzczhz_v = alwan_jzazbz_to_jzczhz_f64_v(jz_v);
-    alwan_jzazbz back_v = alwan_jzczhz_to_jzazbz_f64_v(jzczhz_v);
+    alwan_jzazbz_f64 jz_v = alwan_xyz_to_jzazbz_f64_v(color);
+    alwan_jzczhz_f64 jzczhz_v = alwan_jzazbz_to_jzczhz_f64_v(jz_v);
+    alwan_jzazbz_f64 back_v = alwan_jzczhz_to_jzazbz_f64_v(jzczhz_v);
 
     /* pointer variant */
-    alwan_jzazbz jz_p;
-    alwan_xyz_to_jzazbz(&jz_p, &color);
-    alwan_jzczhz jzczhz_p;
-    alwan_jzazbz_to_jzczhz(&jzczhz_p, &jz_p);
-    alwan_jzazbz back_p;
-    alwan_jzczhz_to_jzazbz(&back_p, &jzczhz_p);
+    alwan_jzazbz_f64 jz_p;
+    alwan_xyz_to_jzazbz_f64(&jz_p, &color);
+    alwan_jzczhz_f64 jzczhz_p;
+    alwan_jzazbz_to_jzczhz_f64(&jzczhz_p, &jz_p);
+    alwan_jzazbz_f64 back_p;
+    alwan_jzczhz_to_jzazbz_f64(&back_p, &jzczhz_p);
 
     TEST_ASSERT_NEAR(jzczhz_v.Jz, jzczhz_p.Jz, ALWAN_TEST_TOLERANCE, "JzCzhz Jz");
     TEST_ASSERT_NEAR(jzczhz_v.Cz, jzczhz_p.Cz, ALWAN_TEST_TOLERANCE, "JzCzhz Cz");
@@ -211,18 +211,18 @@ static int test_jzczhz_v_roundtrip(void) {
 static int test_xyy_v_roundtrip(void) {
     TEST_START("xyY _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
-    alwan_xyy xyy_v = alwan_xyz_to_xyy_f64_v(white);
-    alwan_xyz back_v = alwan_xyy_to_xyz_f64_v(xyy_v);
+    alwan_xyy_f64 xyy_v = alwan_xyz_to_xyy_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_xyy_to_xyz_f64_v(xyy_v);
 
-    alwan_xyy xyy_p;
-    alwan_xyz_to_xyy(&xyy_p, &white);
-    alwan_xyz back_p;
-    alwan_xyy_to_xyz(&back_p, &xyy_p);
+    alwan_xyy_f64 xyy_p;
+    alwan_xyz_to_xyy_f64(&xyy_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_xyy_to_xyz_f64(&back_p, &xyy_p);
 
     TEST_ASSERT_NEAR(xyy_v.x, xyy_p.x, ALWAN_TEST_TOLERANCE, "xyy x");
     TEST_ASSERT_NEAR(xyy_v.y, xyy_p.y, ALWAN_TEST_TOLERANCE, "xyy y");
@@ -238,23 +238,23 @@ static int test_xyy_v_roundtrip(void) {
 static int test_lab_v_roundtrip(void) {
     TEST_START("Lab _v round-trip");
 
-    alwan_xyz color;
+    alwan_xyz_f64 color;
     color.x = ALWAN_LITERAL(50.0);
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_xyz wp;
+    alwan_xyz_f64 wp;
     wp.x = ALWAN_D65_X;
     wp.y = ALWAN_D65_Y;
     wp.z = ALWAN_D65_Z;
 
-    alwan_lab lab_v = alwan_xyz_to_lab_f64_v(color, wp);
-    alwan_xyz back_v = alwan_lab_to_xyz_f64_v(lab_v, wp);
+    alwan_lab_f64 lab_v = alwan_xyz_to_lab_f64_v(color, wp);
+    alwan_xyz_f64 back_v = alwan_lab_to_xyz_f64_v(lab_v, wp);
 
-    alwan_lab lab_p;
-    alwan_xyz_to_lab(&lab_p, &color, &wp);
-    alwan_xyz back_p;
-    alwan_lab_to_xyz(&back_p, &lab_p, &wp);
+    alwan_lab_f64 lab_p;
+    alwan_xyz_to_lab_f64(&lab_p, &color, &wp);
+    alwan_xyz_f64 back_p;
+    alwan_lab_to_xyz_f64(&back_p, &lab_p, &wp);
 
     TEST_ASSERT_NEAR(lab_v.L, lab_p.L, ALWAN_TEST_TOLERANCE, "lab L");
     TEST_ASSERT_NEAR(lab_v.a, lab_p.a, ALWAN_TEST_TOLERANCE, "lab a");
@@ -270,18 +270,18 @@ static int test_lab_v_roundtrip(void) {
 static int test_lch_v_roundtrip(void) {
     TEST_START("LCh _v round-trip");
 
-    alwan_lab lab;
+    alwan_lab_f64 lab;
     lab.L = ALWAN_LITERAL(50.0);
     lab.a = ALWAN_LITERAL(20.0);
     lab.b = ALWAN_LITERAL(-30.0);
 
-    alwan_lch lch_v = alwan_lab_to_lch_f64_v(lab);
-    alwan_lab back_v = alwan_lch_to_lab_f64_v(lch_v);
+    alwan_lch_f64 lch_v = alwan_lab_to_lch_f64_v(lab);
+    alwan_lab_f64 back_v = alwan_lch_to_lab_f64_v(lch_v);
 
-    alwan_lch lch_p;
-    alwan_lab_to_lch(&lch_p, &lab);
-    alwan_lab back_p;
-    alwan_lch_to_lab(&back_p, &lch_p);
+    alwan_lch_f64 lch_p;
+    alwan_lab_to_lch_f64(&lch_p, &lab);
+    alwan_lab_f64 back_p;
+    alwan_lch_to_lab_f64(&back_p, &lch_p);
 
     TEST_ASSERT_NEAR(lch_v.L, lch_p.L, ALWAN_TEST_TOLERANCE, "lch L");
     TEST_ASSERT_NEAR(lch_v.C, lch_p.C, ALWAN_TEST_TOLERANCE, "lch C");
@@ -297,23 +297,23 @@ static int test_lch_v_roundtrip(void) {
 static int test_luv_v_roundtrip(void) {
     TEST_START("Luv _v round-trip");
 
-    alwan_xyz color;
+    alwan_xyz_f64 color;
     color.x = ALWAN_LITERAL(50.0);
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_xyz wp;
+    alwan_xyz_f64 wp;
     wp.x = ALWAN_D65_X;
     wp.y = ALWAN_D65_Y;
     wp.z = ALWAN_D65_Z;
 
-    alwan_luv luv_v = alwan_xyz_to_luv_f64_v(color, wp);
-    alwan_xyz back_v = alwan_luv_to_xyz_f64_v(luv_v, wp);
+    alwan_luv_f64 luv_v = alwan_xyz_to_luv_f64_v(color, wp);
+    alwan_xyz_f64 back_v = alwan_luv_to_xyz_f64_v(luv_v, wp);
 
-    alwan_luv luv_p;
-    alwan_xyz_to_luv(&luv_p, &color, &wp);
-    alwan_xyz back_p;
-    alwan_luv_to_xyz(&back_p, &luv_p, &wp);
+    alwan_luv_f64 luv_p;
+    alwan_xyz_to_luv_f64(&luv_p, &color, &wp);
+    alwan_xyz_f64 back_p;
+    alwan_luv_to_xyz_f64(&back_p, &luv_p, &wp);
 
     TEST_ASSERT_NEAR(luv_v.L, luv_p.L, ALWAN_TEST_TOLERANCE, "luv L");
     TEST_ASSERT_NEAR(luv_v.u, luv_p.u, ALWAN_TEST_TOLERANCE, "luv u");
@@ -333,18 +333,18 @@ static int test_luv_v_roundtrip(void) {
 static int test_ipt_v_roundtrip(void) {
     TEST_START("IPT _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
-    alwan_ipt ipt_v = alwan_xyz_to_ipt_f64_v(white);
-    alwan_xyz back_v = alwan_ipt_to_xyz_f64_v(ipt_v);
+    alwan_ipt_f64 ipt_v = alwan_xyz_to_ipt_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_ipt_to_xyz_f64_v(ipt_v);
 
-    alwan_ipt ipt_p;
-    alwan_xyz_to_ipt(&ipt_p, &white);
-    alwan_xyz back_p;
-    alwan_ipt_to_xyz(&back_p, &ipt_p);
+    alwan_ipt_f64 ipt_p;
+    alwan_xyz_to_ipt_f64(&ipt_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_ipt_to_xyz_f64(&back_p, &ipt_p);
 
     TEST_ASSERT_NEAR(ipt_v.I, ipt_p.I, ALWAN_TEST_TOLERANCE, "ipt I");
     TEST_ASSERT_NEAR(ipt_v.P, ipt_p.P, ALWAN_TEST_TOLERANCE, "ipt P");
@@ -360,21 +360,21 @@ static int test_ipt_v_roundtrip(void) {
 static int test_iptch_v_roundtrip(void) {
     TEST_START("IPTch _v round-trip");
 
-    alwan_xyz color;
+    alwan_xyz_f64 color;
     color.x = ALWAN_LITERAL(50.0);
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_ipt ipt_v = alwan_xyz_to_ipt_f64_v(color);
-    alwan_iptch iptch_v = alwan_ipt_to_iptch_f64_v(ipt_v);
-    alwan_ipt back_v = alwan_iptch_to_ipt_f64_v(iptch_v);
+    alwan_ipt_f64 ipt_v = alwan_xyz_to_ipt_f64_v(color);
+    alwan_iptch_f64 iptch_v = alwan_ipt_to_iptch_f64_v(ipt_v);
+    alwan_ipt_f64 back_v = alwan_iptch_to_ipt_f64_v(iptch_v);
 
-    alwan_ipt ipt_p;
-    alwan_xyz_to_ipt(&ipt_p, &color);
-    alwan_iptch iptch_p;
-    alwan_ipt_to_iptch(&iptch_p, &ipt_p);
-    alwan_ipt back_p;
-    alwan_iptch_to_ipt(&back_p, &iptch_p);
+    alwan_ipt_f64 ipt_p;
+    alwan_xyz_to_ipt_f64(&ipt_p, &color);
+    alwan_iptch_f64 iptch_p;
+    alwan_ipt_to_iptch_f64(&iptch_p, &ipt_p);
+    alwan_ipt_f64 back_p;
+    alwan_iptch_to_ipt_f64(&back_p, &iptch_p);
 
     TEST_ASSERT_NEAR(iptch_v.I, iptch_p.I, ALWAN_TEST_TOLERANCE, "iptch I");
     TEST_ASSERT_NEAR(iptch_v.C, iptch_p.C, ALWAN_TEST_TOLERANCE, "iptch C");
@@ -394,18 +394,18 @@ static int test_iptch_v_roundtrip(void) {
 static int test_cmy_v_roundtrip(void) {
     TEST_START("CMY _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
-    alwan_cmy cmy_v = alwan_rgb_to_cmy_f64_v(rgb);
-    alwan_rgb back_v = alwan_cmy_to_rgb_f64_v(cmy_v);
+    alwan_cmy_f64 cmy_v = alwan_rgb_to_cmy_f64_v(rgb);
+    alwan_rgb_f64 back_v = alwan_cmy_to_rgb_f64_v(cmy_v);
 
-    alwan_cmy cmy_p;
-    alwan_rgb_to_cmy(&cmy_p, &rgb);
-    alwan_rgb back_p;
-    alwan_cmy_to_rgb(&back_p, &cmy_p);
+    alwan_cmy_f64 cmy_p;
+    alwan_rgb_to_cmy_f64(&cmy_p, &rgb);
+    alwan_rgb_f64 back_p;
+    alwan_cmy_to_rgb_f64(&back_p, &cmy_p);
 
     TEST_ASSERT_NEAR(cmy_v.c, cmy_p.c, ALWAN_EPSILON, "cmy c");
     TEST_ASSERT_NEAR(cmy_v.m, cmy_p.m, ALWAN_EPSILON, "cmy m");
@@ -421,18 +421,18 @@ static int test_cmy_v_roundtrip(void) {
 static int test_ycocg_v_roundtrip(void) {
     TEST_START("YCoCg _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
-    alwan_ycocg ycocg_v = alwan_rgb_to_ycocg_f64_v(rgb);
-    alwan_rgb back_v = alwan_ycocg_to_rgb_f64_v(ycocg_v);
+    alwan_ycocg_f64 ycocg_v = alwan_rgb_to_ycocg_f64_v(rgb);
+    alwan_rgb_f64 back_v = alwan_ycocg_to_rgb_f64_v(ycocg_v);
 
-    alwan_ycocg ycocg_p;
-    alwan_rgb_to_ycocg(&ycocg_p, &rgb);
-    alwan_rgb back_p;
-    alwan_ycocg_to_rgb(&back_p, &ycocg_p);
+    alwan_ycocg_f64 ycocg_p;
+    alwan_rgb_to_ycocg_f64(&ycocg_p, &rgb);
+    alwan_rgb_f64 back_p;
+    alwan_ycocg_to_rgb_f64(&back_p, &ycocg_p);
 
     TEST_ASSERT_NEAR(ycocg_v.Y, ycocg_p.Y, ALWAN_EPSILON, "ycocg Y");
     TEST_ASSERT_NEAR(ycocg_v.Co, ycocg_p.Co, ALWAN_EPSILON, "ycocg Co");
@@ -452,20 +452,20 @@ static int test_ycocg_v_roundtrip(void) {
 static int test_hsv_v_roundtrip(void) {
     TEST_START("HSV _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_hsv hsv_v = alwan_rgb_to_hsv_f64_v(rgb);
-    alwan_rgb back_v = alwan_hsv_to_rgb_f64_v(hsv_v);
+    alwan_hsv_f64 hsv_v = alwan_rgb_to_hsv_f64_v(rgb);
+    alwan_rgb_f64 back_v = alwan_hsv_to_rgb_f64_v(hsv_v);
 
     /* pointer variant */
-    alwan_hsv hsv_p;
-    alwan_rgb_to_hsv(&hsv_p, &rgb);
-    alwan_rgb back_p;
-    alwan_hsv_to_rgb(&back_p, &hsv_p);
+    alwan_hsv_f64 hsv_p;
+    alwan_rgb_to_hsv_f64(&hsv_p, &rgb);
+    alwan_rgb_f64 back_p;
+    alwan_hsv_to_rgb_f64(&back_p, &hsv_p);
 
     TEST_ASSERT_NEAR(hsv_v.h, hsv_p.h, ALWAN_TEST_TOLERANCE, "hsv h");
     TEST_ASSERT_NEAR(hsv_v.s, hsv_p.s, ALWAN_TEST_TOLERANCE, "hsv s");
@@ -481,20 +481,20 @@ static int test_hsv_v_roundtrip(void) {
 static int test_hsl_v_roundtrip(void) {
     TEST_START("HSL _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_hsl hsl_v = alwan_rgb_to_hsl_f64_v(rgb);
-    alwan_rgb back_v = alwan_hsl_to_rgb_f64_v(hsl_v);
+    alwan_hsl_f64 hsl_v = alwan_rgb_to_hsl_f64_v(rgb);
+    alwan_rgb_f64 back_v = alwan_hsl_to_rgb_f64_v(hsl_v);
 
     /* pointer variant */
-    alwan_hsl hsl_p;
-    alwan_rgb_to_hsl(&hsl_p, &rgb);
-    alwan_rgb back_p;
-    alwan_hsl_to_rgb(&back_p, &hsl_p);
+    alwan_hsl_f64 hsl_p;
+    alwan_rgb_to_hsl_f64(&hsl_p, &rgb);
+    alwan_rgb_f64 back_p;
+    alwan_hsl_to_rgb_f64(&back_p, &hsl_p);
 
     TEST_ASSERT_NEAR(hsl_v.h, hsl_p.h, ALWAN_TEST_TOLERANCE, "hsl h");
     TEST_ASSERT_NEAR(hsl_v.s, hsl_p.s, ALWAN_TEST_TOLERANCE, "hsl s");
@@ -510,7 +510,7 @@ static int test_hsl_v_roundtrip(void) {
 static int test_ycbcr_v_roundtrip(void) {
     TEST_START("YCbCr _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
@@ -520,13 +520,13 @@ static int test_ycbcr_v_roundtrip(void) {
     alwan_f64 kb = ALWAN_LITERAL(0.0722);
 
     /* _v variant */
-    alwan_ycbcr ycbcr_v = alwan_rgb_to_ycbcr_kr_kb_f64_v(rgb, kr, kb);
-    alwan_rgb back_v = alwan_ycbcr_to_rgb_kr_kb_f64_v(ycbcr_v, kr, kb);
+    alwan_ycbcr_f64 ycbcr_v = alwan_rgb_to_ycbcr_kr_kb_f64_v(rgb, kr, kb);
+    alwan_rgb_f64 back_v = alwan_ycbcr_to_rgb_kr_kb_f64_v(ycbcr_v, kr, kb);
 
     /* pointer variant */
-    alwan_ycbcr ycbcr_p;
+    alwan_ycbcr_f64 ycbcr_p;
     alwan_rgb_to_ycbcr(&ycbcr_p, &rgb, ALWAN_YCBCR_BT709);
-    alwan_rgb back_p;
+    alwan_rgb_f64 back_p;
     alwan_ycbcr_to_rgb(&back_p, &ycbcr_p, ALWAN_YCBCR_BT709);
 
     TEST_ASSERT_NEAR(ycbcr_v.Y, ycbcr_p.Y, ALWAN_TEST_TOLERANCE, "ycbcr Y");
@@ -543,20 +543,20 @@ static int test_ycbcr_v_roundtrip(void) {
 static int test_yccbccrc_v_roundtrip(void) {
     TEST_START("YcCbcCrc _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_yccbccrc yccbccrc_v = alwan_rgb_to_yccbccrc_f64_v(rgb, 10);
-    alwan_rgb back_v = alwan_yccbccrc_to_rgb_f64_v(yccbccrc_v, 10);
+    alwan_yccbccrc_f64 yccbccrc_v = alwan_rgb_to_yccbccrc_f64_v(rgb, 10);
+    alwan_rgb_f64 back_v = alwan_yccbccrc_to_rgb_f64_v(yccbccrc_v, 10);
 
     /* pointer variant */
-    alwan_yccbccrc yccbccrc_p;
-    alwan_rgb_to_yccbccrc(&yccbccrc_p, &rgb, 10);
-    alwan_rgb back_p;
-    alwan_yccbccrc_to_rgb(&back_p, &yccbccrc_p, 10);
+    alwan_yccbccrc_f64 yccbccrc_p;
+    alwan_rgb_to_yccbccrc_f64(&yccbccrc_p, &rgb, 10);
+    alwan_rgb_f64 back_p;
+    alwan_yccbccrc_to_rgb_f64(&back_p, &yccbccrc_p, 10);
 
     TEST_ASSERT_NEAR(yccbccrc_v.Yc, yccbccrc_p.Yc, ALWAN_TEST_TOLERANCE, "yccbccrc Yc");
     TEST_ASSERT_NEAR(yccbccrc_v.Cbc, yccbccrc_p.Cbc, ALWAN_TEST_TOLERANCE, "yccbccrc Cbc");
@@ -576,20 +576,20 @@ static int test_yccbccrc_v_roundtrip(void) {
 static int test_din99_v_roundtrip(void) {
     TEST_START("DIN99 _v round-trip");
 
-    alwan_lab lab;
+    alwan_lab_f64 lab;
     lab.L = ALWAN_LITERAL(50.0);
     lab.a = ALWAN_LITERAL(20.0);
     lab.b = ALWAN_LITERAL(-30.0);
 
     /* _v variant (variant 0 = DIN99 / ASTM D2244-07) */
-    alwan_din99 din99_v = alwan_lab_to_din99_f64_v(lab, 0);
-    alwan_lab back_v = alwan_din99_to_lab_f64_v(din99_v, 0);
+    alwan_din99_f64 din99_v = alwan_lab_to_din99_f64_v(lab, 0);
+    alwan_lab_f64 back_v = alwan_din99_to_lab_f64_v(din99_v, 0);
 
     /* pointer variant */
-    alwan_din99 din99_p;
-    alwan_lab_to_din99(&din99_p, &lab, 0);
-    alwan_lab back_p;
-    alwan_din99_to_lab(&back_p, &din99_p, 0);
+    alwan_din99_f64 din99_p;
+    alwan_lab_to_din99_f64(&din99_p, &lab, 0);
+    alwan_lab_f64 back_p;
+    alwan_din99_to_lab_f64(&back_p, &din99_p, 0);
 
     TEST_ASSERT_NEAR(din99_v.L99, din99_p.L99, ALWAN_TEST_TOLERANCE, "din99 L99");
     TEST_ASSERT_NEAR(din99_v.a99, din99_p.a99, ALWAN_TEST_TOLERANCE, "din99 a99");
@@ -609,20 +609,20 @@ static int test_din99_v_roundtrip(void) {
 static int test_hunter_lab_v_roundtrip(void) {
     TEST_START("Hunter Lab _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_hunter_lab hl_v = alwan_xyz_to_hunter_lab_f64_v(white);
-    alwan_xyz back_v = alwan_hunter_lab_to_xyz_f64_v(hl_v);
+    alwan_hunter_lab_f64 hl_v = alwan_xyz_to_hunter_lab_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_hunter_lab_to_xyz_f64_v(hl_v);
 
     /* pointer variant */
-    alwan_hunter_lab hl_p;
-    alwan_xyz_to_hunter_lab(&hl_p, &white);
-    alwan_xyz back_p;
-    alwan_hunter_lab_to_xyz(&back_p, &hl_p);
+    alwan_hunter_lab_f64 hl_p;
+    alwan_xyz_to_hunter_lab_f64(&hl_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_hunter_lab_to_xyz_f64(&back_p, &hl_p);
 
     TEST_ASSERT_NEAR(hl_v.L, hl_p.L, ALWAN_TEST_TOLERANCE, "hunter_lab L");
     TEST_ASSERT_NEAR(hl_v.a, hl_p.a, ALWAN_TEST_TOLERANCE, "hunter_lab a");
@@ -642,20 +642,20 @@ static int test_hunter_lab_v_roundtrip(void) {
 static int test_prolab_v_roundtrip(void) {
     TEST_START("ProLab _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_prolab pl_v = alwan_xyz_to_prolab_f64_v(white);
-    alwan_xyz back_v = alwan_prolab_to_xyz_f64_v(pl_v);
+    alwan_prolab_f64 pl_v = alwan_xyz_to_prolab_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_prolab_to_xyz_f64_v(pl_v);
 
     /* pointer variant */
-    alwan_prolab pl_p;
-    alwan_xyz_to_prolab(&pl_p, &white);
-    alwan_xyz back_p;
-    alwan_prolab_to_xyz(&back_p, &pl_p);
+    alwan_prolab_f64 pl_p;
+    alwan_xyz_to_prolab_f64(&pl_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_prolab_to_xyz_f64(&back_p, &pl_p);
 
     TEST_ASSERT_NEAR(pl_v.L, pl_p.L, ALWAN_TEST_TOLERANCE, "prolab L");
     TEST_ASSERT_NEAR(pl_v.a, pl_p.a, ALWAN_TEST_TOLERANCE, "prolab a");
@@ -675,20 +675,20 @@ static int test_prolab_v_roundtrip(void) {
 static int test_prismatic_v_roundtrip(void) {
     TEST_START("Prismatic _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_prismatic pris_v = alwan_rgb_to_prismatic_f64_v(rgb);
-    alwan_rgb back_v = alwan_prismatic_to_rgb_f64_v(pris_v);
+    alwan_prismatic_f64 pris_v = alwan_rgb_to_prismatic_f64_v(rgb);
+    alwan_rgb_f64 back_v = alwan_prismatic_to_rgb_f64_v(pris_v);
 
     /* pointer variant */
-    alwan_prismatic pris_p;
-    alwan_rgb_to_prismatic(&pris_p, &rgb);
-    alwan_rgb back_p;
-    alwan_prismatic_to_rgb(&back_p, &pris_p);
+    alwan_prismatic_f64 pris_p;
+    alwan_rgb_to_prismatic_f64(&pris_p, &rgb);
+    alwan_rgb_f64 back_p;
+    alwan_prismatic_to_rgb_f64(&back_p, &pris_p);
 
     TEST_ASSERT_NEAR(pris_v.L, pris_p.L, ALWAN_TEST_TOLERANCE, "prismatic L");
     TEST_ASSERT_NEAR(pris_v.s, pris_p.s, ALWAN_TEST_TOLERANCE, "prismatic s");
@@ -704,20 +704,20 @@ static int test_prismatic_v_roundtrip(void) {
 static int test_hcl_v_roundtrip(void) {
     TEST_START("HCL _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_hcl hcl_v = alwan_rgb_to_hcl_f64_v(rgb);
-    alwan_rgb back_v = alwan_hcl_to_rgb_f64_v(hcl_v);
+    alwan_hcl_f64 hcl_v = alwan_rgb_to_hcl_f64_v(rgb);
+    alwan_rgb_f64 back_v = alwan_hcl_to_rgb_f64_v(hcl_v);
 
     /* pointer variant */
-    alwan_hcl hcl_p;
-    alwan_rgb_to_hcl(&hcl_p, &rgb);
-    alwan_rgb back_p;
-    alwan_hcl_to_rgb(&back_p, &hcl_p);
+    alwan_hcl_f64 hcl_p;
+    alwan_rgb_to_hcl_f64(&hcl_p, &rgb);
+    alwan_rgb_f64 back_p;
+    alwan_hcl_to_rgb_f64(&back_p, &hcl_p);
 
     TEST_ASSERT_NEAR(hcl_v.H, hcl_p.H, ALWAN_TEST_TOLERANCE, "hcl H");
     TEST_ASSERT_NEAR(hcl_v.C, hcl_p.C, ALWAN_TEST_TOLERANCE, "hcl C");
@@ -733,20 +733,20 @@ static int test_hcl_v_roundtrip(void) {
 static int test_ihls_v_roundtrip(void) {
     TEST_START("IHLS _v round-trip");
 
-    alwan_rgb rgb;
+    alwan_rgb_f64 rgb;
     rgb.r = ALWAN_LITERAL(0.3);
     rgb.g = ALWAN_LITERAL(0.6);
     rgb.b = ALWAN_LITERAL(0.9);
 
     /* _v variant */
-    alwan_ihls ihls_v = alwan_rgb_to_ihls_f64_v(rgb);
-    alwan_rgb back_v = alwan_ihls_to_rgb_f64_v(ihls_v);
+    alwan_ihls_f64 ihls_v = alwan_rgb_to_ihls_f64_v(rgb);
+    alwan_rgb_f64 back_v = alwan_ihls_to_rgb_f64_v(ihls_v);
 
     /* pointer variant */
-    alwan_ihls ihls_p;
-    alwan_rgb_to_ihls(&ihls_p, &rgb);
-    alwan_rgb back_p;
-    alwan_ihls_to_rgb(&back_p, &ihls_p);
+    alwan_ihls_f64 ihls_p;
+    alwan_rgb_to_ihls_f64(&ihls_p, &rgb);
+    alwan_rgb_f64 back_p;
+    alwan_ihls_to_rgb_f64(&back_p, &ihls_p);
 
     TEST_ASSERT_NEAR(ihls_v.H, ihls_p.H, ALWAN_TEST_TOLERANCE, "ihls H");
     TEST_ASSERT_NEAR(ihls_v.L, ihls_p.L, ALWAN_TEST_TOLERANCE, "ihls L");
@@ -766,20 +766,20 @@ static int test_ihls_v_roundtrip(void) {
 static int test_hdr_cielab_v_roundtrip(void) {
     TEST_START("hdr-CIELAB _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_lab hdr_v = alwan_xyz_to_hdr_cielab_f64_v(white);
-    alwan_xyz back_v = alwan_hdr_cielab_to_xyz_f64_v(hdr_v);
+    alwan_lab_f64 hdr_v = alwan_xyz_to_hdr_cielab_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_hdr_cielab_to_xyz_f64_v(hdr_v);
 
     /* pointer variant */
-    alwan_lab hdr_p;
-    alwan_xyz_to_hdr_cielab(&hdr_p, &white);
-    alwan_xyz back_p;
-    alwan_hdr_cielab_to_xyz(&back_p, &hdr_p);
+    alwan_lab_f64 hdr_p;
+    alwan_xyz_to_hdr_cielab_f64(&hdr_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_hdr_cielab_to_xyz_f64(&back_p, &hdr_p);
 
     TEST_ASSERT_NEAR(hdr_v.L, hdr_p.L, ALWAN_TEST_TOLERANCE, "hdr_cielab L");
     TEST_ASSERT_NEAR(hdr_v.a, hdr_p.a, ALWAN_TEST_TOLERANCE, "hdr_cielab a");
@@ -795,20 +795,20 @@ static int test_hdr_cielab_v_roundtrip(void) {
 static int test_hdr_ipt_v_roundtrip(void) {
     TEST_START("hdr-IPT _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_ipt hdr_v = alwan_xyz_to_hdr_ipt_f64_v(white);
-    alwan_xyz back_v = alwan_hdr_ipt_to_xyz_f64_v(hdr_v);
+    alwan_ipt_f64 hdr_v = alwan_xyz_to_hdr_ipt_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_hdr_ipt_to_xyz_f64_v(hdr_v);
 
     /* pointer variant */
-    alwan_ipt hdr_p;
-    alwan_xyz_to_hdr_ipt(&hdr_p, &white);
-    alwan_xyz back_p;
-    alwan_hdr_ipt_to_xyz(&back_p, &hdr_p);
+    alwan_ipt_f64 hdr_p;
+    alwan_xyz_to_hdr_ipt_f64(&hdr_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_hdr_ipt_to_xyz_f64(&back_p, &hdr_p);
 
     TEST_ASSERT_NEAR(hdr_v.I, hdr_p.I, ALWAN_TEST_TOLERANCE, "hdr_ipt I");
     TEST_ASSERT_NEAR(hdr_v.P, hdr_p.P, ALWAN_TEST_TOLERANCE, "hdr_ipt P");
@@ -824,20 +824,20 @@ static int test_hdr_ipt_v_roundtrip(void) {
 static int test_igpgtg_v_roundtrip(void) {
     TEST_START("IgPgTg _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_igpgtg ig_v = alwan_xyz_to_igpgtg_f64_v(white);
-    alwan_xyz back_v = alwan_igpgtg_to_xyz_f64_v(ig_v);
+    alwan_igpgtg_f64 ig_v = alwan_xyz_to_igpgtg_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_igpgtg_to_xyz_f64_v(ig_v);
 
     /* pointer variant */
-    alwan_igpgtg ig_p;
-    alwan_xyz_to_igpgtg(&ig_p, &white);
-    alwan_xyz back_p;
-    alwan_igpgtg_to_xyz(&back_p, &ig_p);
+    alwan_igpgtg_f64 ig_p;
+    alwan_xyz_to_igpgtg_f64(&ig_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_igpgtg_to_xyz_f64(&back_p, &ig_p);
 
     TEST_ASSERT_NEAR(ig_v.Ig, ig_p.Ig, ALWAN_TEST_TOLERANCE, "igpgtg Ig");
     TEST_ASSERT_NEAR(ig_v.Pg, ig_p.Pg, ALWAN_TEST_TOLERANCE, "igpgtg Pg");
@@ -853,20 +853,20 @@ static int test_igpgtg_v_roundtrip(void) {
 static int test_icacb_v_roundtrip(void) {
     TEST_START("ICaCb _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_icacb ic_v = alwan_xyz_to_icacb_f64_v(white);
-    alwan_xyz back_v = alwan_icacb_to_xyz_f64_v(ic_v);
+    alwan_icacb_f64 ic_v = alwan_xyz_to_icacb_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_icacb_to_xyz_f64_v(ic_v);
 
     /* pointer variant */
-    alwan_icacb ic_p;
-    alwan_xyz_to_icacb(&ic_p, &white);
-    alwan_xyz back_p;
-    alwan_icacb_to_xyz(&back_p, &ic_p);
+    alwan_icacb_f64 ic_p;
+    alwan_xyz_to_icacb_f64(&ic_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_icacb_to_xyz_f64(&back_p, &ic_p);
 
     TEST_ASSERT_NEAR(ic_v.I, ic_p.I, ALWAN_TEST_TOLERANCE, "icacb I");
     TEST_ASSERT_NEAR(ic_v.Ca, ic_p.Ca, ALWAN_TEST_TOLERANCE, "icacb Ca");
@@ -886,20 +886,20 @@ static int test_icacb_v_roundtrip(void) {
 static int test_ucs_v_roundtrip(void) {
     TEST_START("UCS _v round-trip");
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_D65_X;
     white.y = ALWAN_D65_Y;
     white.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_ucs ucs_v = alwan_xyz_to_ucs_f64_v(white);
-    alwan_xyz back_v = alwan_ucs_to_xyz_f64_v(ucs_v);
+    alwan_ucs_f64 ucs_v = alwan_xyz_to_ucs_f64_v(white);
+    alwan_xyz_f64 back_v = alwan_ucs_to_xyz_f64_v(ucs_v);
 
     /* pointer variant */
-    alwan_ucs ucs_p;
-    alwan_xyz_to_ucs(&ucs_p, &white);
-    alwan_xyz back_p;
-    alwan_ucs_to_xyz(&back_p, &ucs_p);
+    alwan_ucs_f64 ucs_p;
+    alwan_xyz_to_ucs_f64(&ucs_p, &white);
+    alwan_xyz_f64 back_p;
+    alwan_ucs_to_xyz_f64(&back_p, &ucs_p);
 
     TEST_ASSERT_NEAR(ucs_v.U, ucs_p.U, ALWAN_TEST_TOLERANCE, "ucs U");
     TEST_ASSERT_NEAR(ucs_v.V, ucs_p.V, ALWAN_TEST_TOLERANCE, "ucs V");
@@ -915,25 +915,25 @@ static int test_ucs_v_roundtrip(void) {
 static int test_uvw_v_roundtrip(void) {
     TEST_START("UVW _v round-trip");
 
-    alwan_xyz color;
+    alwan_xyz_f64 color;
     color.x = ALWAN_LITERAL(50.0);
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_xyz wp;
+    alwan_xyz_f64 wp;
     wp.x = ALWAN_D65_X;
     wp.y = ALWAN_D65_Y;
     wp.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_uvw uvw_v = alwan_xyz_to_uvw_f64_v(color, wp);
-    alwan_xyz back_v = alwan_uvw_to_xyz_f64_v(uvw_v, wp);
+    alwan_uvw_f64 uvw_v = alwan_xyz_to_uvw_f64_v(color, wp);
+    alwan_xyz_f64 back_v = alwan_uvw_to_xyz_f64_v(uvw_v, wp);
 
     /* pointer variant */
-    alwan_uvw uvw_p;
-    alwan_xyz_to_uvw(&uvw_p, &color, &wp);
-    alwan_xyz back_p;
-    alwan_uvw_to_xyz(&back_p, &uvw_p, &wp);
+    alwan_uvw_f64 uvw_p;
+    alwan_xyz_to_uvw_f64(&uvw_p, &color, &wp);
+    alwan_xyz_f64 back_p;
+    alwan_uvw_to_xyz_f64(&back_p, &uvw_p, &wp);
 
     TEST_ASSERT_NEAR(uvw_v.U, uvw_p.U, ALWAN_TEST_TOLERANCE, "uvw U");
     TEST_ASSERT_NEAR(uvw_v.V, uvw_p.V, ALWAN_TEST_TOLERANCE, "uvw V");
@@ -949,25 +949,25 @@ static int test_uvw_v_roundtrip(void) {
 static int test_xyz_lch_v_roundtrip(void) {
     TEST_START("XYZ->LCh _v round-trip");
 
-    alwan_xyz color;
+    alwan_xyz_f64 color;
     color.x = ALWAN_LITERAL(50.0);
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_xyz wp;
+    alwan_xyz_f64 wp;
     wp.x = ALWAN_D65_X;
     wp.y = ALWAN_D65_Y;
     wp.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_lch lch_v = alwan_xyz_to_lch_f64_v(color, wp);
-    alwan_xyz back_v = alwan_lch_to_xyz_f64_v(lch_v, wp);
+    alwan_lch_f64 lch_v = alwan_xyz_to_lch_f64_v(color, wp);
+    alwan_xyz_f64 back_v = alwan_lch_to_xyz_f64_v(lch_v, wp);
 
     /* pointer variant */
-    alwan_lch lch_p;
-    alwan_xyz_to_lch(&lch_p, &color, &wp);
-    alwan_xyz back_p;
-    alwan_lch_to_xyz(&back_p, &lch_p, &wp);
+    alwan_lch_f64 lch_p;
+    alwan_xyz_to_lch_f64(&lch_p, &color, &wp);
+    alwan_xyz_f64 back_p;
+    alwan_lch_to_xyz_f64(&back_p, &lch_p, &wp);
 
     TEST_ASSERT_NEAR(lch_v.L, lch_p.L, ALWAN_TEST_TOLERANCE, "xyz_lch L");
     TEST_ASSERT_NEAR(lch_v.C, lch_p.C, ALWAN_TEST_TOLERANCE, "xyz_lch C");
@@ -983,25 +983,25 @@ static int test_xyz_lch_v_roundtrip(void) {
 static int test_xyz_lchuv_v_roundtrip(void) {
     TEST_START("XYZ->LChuv _v round-trip");
 
-    alwan_xyz color;
+    alwan_xyz_f64 color;
     color.x = ALWAN_LITERAL(50.0);
     color.y = ALWAN_LITERAL(40.0);
     color.z = ALWAN_LITERAL(30.0);
 
-    alwan_xyz wp;
+    alwan_xyz_f64 wp;
     wp.x = ALWAN_D65_X;
     wp.y = ALWAN_D65_Y;
     wp.z = ALWAN_D65_Z;
 
     /* _v variant */
-    alwan_lchuv lchuv_v = alwan_xyz_to_lchuv_f64_v(color, wp);
-    alwan_xyz back_v = alwan_lchuv_to_xyz_f64_v(lchuv_v, wp);
+    alwan_lchuv_f64 lchuv_v = alwan_xyz_to_lchuv_f64_v(color, wp);
+    alwan_xyz_f64 back_v = alwan_lchuv_to_xyz_f64_v(lchuv_v, wp);
 
     /* pointer variant */
-    alwan_lchuv lchuv_p;
-    alwan_xyz_to_lchuv(&lchuv_p, &color, &wp);
-    alwan_xyz back_p;
-    alwan_lchuv_to_xyz(&back_p, &lchuv_p, &wp);
+    alwan_lchuv_f64 lchuv_p;
+    alwan_xyz_to_lchuv_f64(&lchuv_p, &color, &wp);
+    alwan_xyz_f64 back_p;
+    alwan_lchuv_to_xyz_f64(&back_p, &lchuv_p, &wp);
 
     TEST_ASSERT_NEAR(lchuv_v.L, lchuv_p.L, ALWAN_TEST_TOLERANCE, "xyz_lchuv L");
     TEST_ASSERT_NEAR(lchuv_v.C, lchuv_p.C, ALWAN_TEST_TOLERANCE, "xyz_lchuv C");
@@ -1021,12 +1021,12 @@ static int test_xyz_lchuv_v_roundtrip(void) {
 static int test_delta_e_76_v(void) {
     TEST_START("delta_e_76 _v");
 
-    alwan_lab lab1;
+    alwan_lab_f64 lab1;
     lab1.L = ALWAN_LITERAL(50.0);
     lab1.a = ALWAN_LITERAL(20.0);
     lab1.b = ALWAN_LITERAL(-30.0);
 
-    alwan_lab lab2;
+    alwan_lab_f64 lab2;
     lab2.L = ALWAN_LITERAL(60.0);
     lab2.a = ALWAN_LITERAL(10.0);
     lab2.b = ALWAN_LITERAL(-20.0);
@@ -1035,7 +1035,7 @@ static int test_delta_e_76_v(void) {
     alwan_f64 de_v = alwan_delta_e_76_f64_v(lab1, lab2);
 
     /* pointer variant */
-    alwan_f64 de_p = alwan_delta_e_76(&lab1, &lab2);
+    alwan_f64 de_p = alwan_delta_e_76_f64(&lab1, &lab2);
 
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_76");
 
@@ -1045,12 +1045,12 @@ static int test_delta_e_76_v(void) {
 static int test_delta_e_94_v(void) {
     TEST_START("delta_e_94 _v");
 
-    alwan_lab lab1;
+    alwan_lab_f64 lab1;
     lab1.L = ALWAN_LITERAL(50.0);
     lab1.a = ALWAN_LITERAL(20.0);
     lab1.b = ALWAN_LITERAL(-30.0);
 
-    alwan_lab lab2;
+    alwan_lab_f64 lab2;
     lab2.L = ALWAN_LITERAL(60.0);
     lab2.a = ALWAN_LITERAL(10.0);
     lab2.b = ALWAN_LITERAL(-20.0);
@@ -1059,7 +1059,7 @@ static int test_delta_e_94_v(void) {
     alwan_f64 de_v = alwan_delta_e_94_f64_v(lab1, lab2);
 
     /* pointer variant */
-    alwan_f64 de_p = alwan_delta_e_94(&lab1, &lab2);
+    alwan_f64 de_p = alwan_delta_e_94_f64(&lab1, &lab2);
 
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_94");
 
@@ -1069,12 +1069,12 @@ static int test_delta_e_94_v(void) {
 static int test_delta_e_2000_v(void) {
     TEST_START("delta_e_2000 _v");
 
-    alwan_lab lab1;
+    alwan_lab_f64 lab1;
     lab1.L = ALWAN_LITERAL(50.0);
     lab1.a = ALWAN_LITERAL(20.0);
     lab1.b = ALWAN_LITERAL(-30.0);
 
-    alwan_lab lab2;
+    alwan_lab_f64 lab2;
     lab2.L = ALWAN_LITERAL(60.0);
     lab2.a = ALWAN_LITERAL(10.0);
     lab2.b = ALWAN_LITERAL(-20.0);
@@ -1083,7 +1083,7 @@ static int test_delta_e_2000_v(void) {
     alwan_f64 de_v = alwan_delta_e_2000_f64_v(lab1, lab2);
 
     /* pointer variant */
-    alwan_f64 de_p = alwan_delta_e_2000(&lab1, &lab2);
+    alwan_f64 de_p = alwan_delta_e_2000_f64(&lab1, &lab2);
 
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_2000");
 
@@ -1093,12 +1093,12 @@ static int test_delta_e_2000_v(void) {
 static int test_delta_e_cmc_v(void) {
     TEST_START("delta_e_cmc _v");
 
-    alwan_lab lab1;
+    alwan_lab_f64 lab1;
     lab1.L = ALWAN_LITERAL(50.0);
     lab1.a = ALWAN_LITERAL(20.0);
     lab1.b = ALWAN_LITERAL(-30.0);
 
-    alwan_lab lab2;
+    alwan_lab_f64 lab2;
     lab2.L = ALWAN_LITERAL(60.0);
     lab2.a = ALWAN_LITERAL(10.0);
     lab2.b = ALWAN_LITERAL(-20.0);
@@ -1110,7 +1110,8 @@ static int test_delta_e_cmc_v(void) {
     alwan_f64 de_v = alwan_delta_e_cmc_f64_v(lab1, lab2, l, c);
 
     /* pointer variant */
-    alwan_f64 de_p = alwan_delta_e_cmc(&lab1, &lab2, l, c);
+    alwan_delta_e_cmc_params cmc_p; cmc_p.l = l; cmc_p.c = c;
+    alwan_f64 de_p = alwan_delta_e_cmc_f64(&lab1, &lab2, &cmc_p);
 
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "delta_e_cmc");
 
@@ -1123,20 +1124,20 @@ static int test_delta_e_cmc_v(void) {
 
 static int test_delta_e_cam02_lcd_v(void) {
     TEST_START("delta_e_cam02_lcd _v");
-    alwan_cam_jab jab1; jab1.J = ALWAN_LITERAL(50.0); jab1.a = ALWAN_LITERAL(10.0); jab1.b = ALWAN_LITERAL(-5.0);
-    alwan_cam_jab jab2; jab2.J = ALWAN_LITERAL(60.0); jab2.a = ALWAN_LITERAL(15.0); jab2.b = ALWAN_LITERAL(5.0);
+    alwan_cam_jab_f64 jab1; jab1.J = ALWAN_LITERAL(50.0); jab1.a = ALWAN_LITERAL(10.0); jab1.b = ALWAN_LITERAL(-5.0);
+    alwan_cam_jab_f64 jab2; jab2.J = ALWAN_LITERAL(60.0); jab2.a = ALWAN_LITERAL(15.0); jab2.b = ALWAN_LITERAL(5.0);
     alwan_f64 de_v = alwan_delta_e_cam02_lcd_f64_v(jab1, jab2);
-    alwan_f64 de_p = alwan_delta_e_cam02_lcd(&jab1, &jab2);
+    alwan_f64 de_p = alwan_delta_e_cam02_lcd_f64(&jab1, &jab2);
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "cam02_lcd");
     TEST_PASS("delta_e_cam02_lcd_v");
 }
 
 static int test_delta_e_cam16_ucs_v(void) {
     TEST_START("delta_e_cam16_ucs _v");
-    alwan_cam_jab jab1; jab1.J = ALWAN_LITERAL(50.0); jab1.a = ALWAN_LITERAL(10.0); jab1.b = ALWAN_LITERAL(-5.0);
-    alwan_cam_jab jab2; jab2.J = ALWAN_LITERAL(60.0); jab2.a = ALWAN_LITERAL(15.0); jab2.b = ALWAN_LITERAL(5.0);
+    alwan_cam_jab_f64 jab1; jab1.J = ALWAN_LITERAL(50.0); jab1.a = ALWAN_LITERAL(10.0); jab1.b = ALWAN_LITERAL(-5.0);
+    alwan_cam_jab_f64 jab2; jab2.J = ALWAN_LITERAL(60.0); jab2.a = ALWAN_LITERAL(15.0); jab2.b = ALWAN_LITERAL(5.0);
     alwan_f64 de_v = alwan_delta_e_cam16_ucs_f64_v(jab1, jab2);
-    alwan_f64 de_p = alwan_delta_e_cam16_ucs(&jab1, &jab2);
+    alwan_f64 de_p = alwan_delta_e_cam16_ucs_f64(&jab1, &jab2);
     TEST_ASSERT_NEAR(de_v, de_p, ALWAN_TEST_TOLERANCE, "cam16_ucs");
     TEST_PASS("delta_e_cam16_ucs_v");
 }
@@ -1147,24 +1148,24 @@ static int test_delta_e_cam16_ucs_v(void) {
 
 static int test_cmyk_v_roundtrip(void) {
     TEST_START("CMYK _v round-trip");
-    alwan_cmy cmy;
+    alwan_cmy_f64 cmy;
     cmy.c = ALWAN_LITERAL(0.7);
     cmy.m = ALWAN_LITERAL(0.4);
     cmy.y = ALWAN_LITERAL(0.9);
 
-    alwan_cmyk cmyk_v = alwan_cmy_to_cmyk_f64_v(cmy);
-    alwan_cmy back_v = alwan_cmyk_to_cmy_f64_v(cmyk_v);
+    alwan_cmyk_f64 cmyk_v = alwan_cmy_to_cmyk_f64_v(cmy);
+    alwan_cmy_f64 back_v = alwan_cmyk_to_cmy_f64_v(cmyk_v);
 
     /* pointer variant */
-    alwan_f64 c_p, m_p, y_p, k_p;
-    alwan_cmy_to_cmyk(&c_p, &m_p, &y_p, &k_p, &cmy);
-    alwan_cmy back_p;
-    alwan_cmyk_to_cmy(&back_p, c_p, m_p, y_p, k_p);
+    alwan_cmyk_f64 cmyk_p;
+    alwan_cmy_to_cmyk_f64(&cmyk_p, &cmy);
+    alwan_cmy_f64 back_p;
+    alwan_cmyk_to_cmy_f64(&back_p, &cmyk_p);
 
-    TEST_ASSERT_NEAR(cmyk_v.c, c_p, ALWAN_EPSILON, "cmyk c");
-    TEST_ASSERT_NEAR(cmyk_v.m, m_p, ALWAN_EPSILON, "cmyk m");
-    TEST_ASSERT_NEAR(cmyk_v.y, y_p, ALWAN_EPSILON, "cmyk y");
-    TEST_ASSERT_NEAR(cmyk_v.k, k_p, ALWAN_EPSILON, "cmyk k");
+    TEST_ASSERT_NEAR(cmyk_v.c, cmyk_p.c, ALWAN_EPSILON, "cmyk c");
+    TEST_ASSERT_NEAR(cmyk_v.m, cmyk_p.m, ALWAN_EPSILON, "cmyk m");
+    TEST_ASSERT_NEAR(cmyk_v.y, cmyk_p.y, ALWAN_EPSILON, "cmyk y");
+    TEST_ASSERT_NEAR(cmyk_v.k, cmyk_p.k, ALWAN_EPSILON, "cmyk k");
 
     TEST_ASSERT_NEAR(back_v.c, back_p.c, ALWAN_EPSILON, "cmyk->cmy c");
     TEST_ASSERT_NEAR(back_v.m, back_p.m, ALWAN_EPSILON, "cmyk->cmy m");
@@ -1181,17 +1182,17 @@ static int test_mat3_inv_v(void) {
     TEST_START("mat3_inv _v");
 
     /* A non-trivial matrix */
-    alwan_mat3x3 m;
+    alwan_mat3x3_f64 m;
     m.m[0] = ALWAN_LITERAL(1.0); m.m[1] = ALWAN_LITERAL(2.0); m.m[2] = ALWAN_LITERAL(3.0);
     m.m[3] = ALWAN_LITERAL(0.0); m.m[4] = ALWAN_LITERAL(1.0); m.m[5] = ALWAN_LITERAL(4.0);
     m.m[6] = ALWAN_LITERAL(5.0); m.m[7] = ALWAN_LITERAL(6.0); m.m[8] = ALWAN_LITERAL(0.0);
 
     /* _v variant */
-    alwan_mat3x3 inv_v = alwan_mat3_inv_f64_v(m);
+    alwan_mat3x3_f64 inv_v = alwan_mat3_inv_f64_v(m);
 
     /* pointer variant */
-    alwan_mat3x3 inv_p;
-    alwan_mat3_inv(&inv_p, &m);
+    alwan_mat3x3_f64 inv_p;
+    alwan_mat3_inv_f64(&inv_p, &m);
 
     /* Compare all 9 elements */
     for (int i = 0; i < 9; i++) {
@@ -1201,7 +1202,7 @@ static int test_mat3_inv_v(void) {
     }
 
     /* Verify M * M^-1 ~= I */
-    alwan_mat3x3 product = alwan_mat3_mul_f64_v(m, inv_v);
+    alwan_mat3x3_f64 product = alwan_mat3_mul_f64_v(m, inv_v);
     TEST_ASSERT_NEAR(product.m[0], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[0,0]");
     TEST_ASSERT_NEAR(product.m[4], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[1,1]");
     TEST_ASSERT_NEAR(product.m[8], ALWAN_LITERAL(1.0), ALWAN_TEST_TOLERANCE, "M*Minv[2,2]");
@@ -1218,13 +1219,13 @@ static int test_mat3_inv_v(void) {
 static int test_ictcp_pq_v_roundtrip(void) {
     TEST_START("ICtCp PQ _v round-trip");
     /* Use small HDR-range BT.2020 linear values */
-    alwan_rgb rgb_in;
+    alwan_rgb_f64 rgb_in;
     rgb_in.r = ALWAN_LITERAL(0.18);
     rgb_in.g = ALWAN_LITERAL(0.10);
     rgb_in.b = ALWAN_LITERAL(0.05);
 
-    alwan_ictcp ictcp = alwan_rgb_to_ictcp_pq_f64_v(rgb_in);
-    alwan_rgb rgb_out = alwan_ictcp_pq_to_rgb_f64_v(ictcp);
+    alwan_ictcp_f64 ictcp = alwan_rgb_to_ictcp_pq_f64_v(rgb_in);
+    alwan_rgb_f64 rgb_out = alwan_ictcp_pq_to_rgb_f64_v(ictcp);
 
     TEST_ASSERT_NEAR(rgb_out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
     TEST_ASSERT_NEAR(rgb_out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
@@ -1238,13 +1239,13 @@ static int test_ictcp_pq_v_roundtrip(void) {
 
 static int test_ictcp_hlg_v_roundtrip(void) {
     TEST_START("ICtCp HLG _v round-trip");
-    alwan_rgb rgb_in;
+    alwan_rgb_f64 rgb_in;
     rgb_in.r = ALWAN_LITERAL(0.18);
     rgb_in.g = ALWAN_LITERAL(0.10);
     rgb_in.b = ALWAN_LITERAL(0.05);
 
-    alwan_ictcp ictcp = alwan_rgb_to_ictcp_hlg_f64_v(rgb_in);
-    alwan_rgb rgb_out = alwan_ictcp_hlg_to_rgb_f64_v(ictcp);
+    alwan_ictcp_f64 ictcp = alwan_rgb_to_ictcp_hlg_f64_v(rgb_in);
+    alwan_rgb_f64 rgb_out = alwan_ictcp_hlg_to_rgb_f64_v(ictcp);
 
     TEST_ASSERT_NEAR(rgb_out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
     TEST_ASSERT_NEAR(rgb_out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
@@ -1260,12 +1261,12 @@ static int test_ictcp_hlg_v_roundtrip(void) {
 static int test_osa_ucs_v_forward(void) {
     TEST_START("OSA-UCS _v forward");
     /* D65 white at Y=100 scale */
-    alwan_xyz xyz_in;
+    alwan_xyz_f64 xyz_in;
     xyz_in.x = ALWAN_LITERAL(95.047);
     xyz_in.y = ALWAN_LITERAL(100.0);
     xyz_in.z = ALWAN_LITERAL(108.883);
 
-    alwan_osa_ucs osa = alwan_xyz_to_osa_ucs_f64_v(xyz_in);
+    alwan_osa_ucs_f64 osa = alwan_xyz_to_osa_ucs_f64_v(xyz_in);
 
     /* For a D65 white, j and g should be near 0 (achromatic) */
     TEST_ASSERT_NEAR(osa.j, ALWAN_ZERO, ALWAN_LITERAL(1.0), "j near 0");
@@ -1283,19 +1284,19 @@ static int test_osa_ucs_v_forward(void) {
 static int test_rlab_v_forward(void) {
     TEST_START("RLAB _v forward");
 
-    alwan_xyz xyz_in;
+    alwan_xyz_f64 xyz_in;
     xyz_in.x = ALWAN_LITERAL(19.01);
     xyz_in.y = ALWAN_LITERAL(20.0);
     xyz_in.z = ALWAN_LITERAL(21.78);
 
     /* D65 white point */
-    alwan_xyz xyz_w;
+    alwan_xyz_f64 xyz_w;
     xyz_w.x = ALWAN_LITERAL(95.05);
     xyz_w.y = ALWAN_LITERAL(100.0);
     xyz_w.z = ALWAN_LITERAL(108.88);
 
     /* Reference white = D65 */
-    alwan_xyz xyz_n = xyz_w;
+    alwan_xyz_f64 xyz_n = xyz_w;
 
     /* Average surround: sigma = 1/2.3, D = 1.0 (hard copy) */
     alwan_f64 sigma = ALWAN_ONE / ALWAN_LITERAL(2.3);
@@ -1323,12 +1324,12 @@ static int test_rlab_v_forward(void) {
 static int test_atd95_v_forward(void) {
     TEST_START("ATD95 _v forward");
 
-    alwan_xyz xyz_in;
+    alwan_xyz_f64 xyz_in;
     xyz_in.x = ALWAN_LITERAL(19.01);
     xyz_in.y = ALWAN_LITERAL(20.0);
     xyz_in.z = ALWAN_LITERAL(21.78);
 
-    alwan_xyz white;
+    alwan_xyz_f64 white;
     white.x = ALWAN_LITERAL(95.05);
     white.y = ALWAN_LITERAL(100.0);
     white.z = ALWAN_LITERAL(108.88);
@@ -1357,18 +1358,18 @@ static int test_atd95_v_forward(void) {
 static int test_llab_v_forward(void) {
     TEST_START("LLAB _v forward");
 
-    alwan_xyz xyz_in;
+    alwan_xyz_f64 xyz_in;
     xyz_in.x = ALWAN_LITERAL(19.01);
     xyz_in.y = ALWAN_LITERAL(20.0);
     xyz_in.z = ALWAN_LITERAL(21.78);
 
     /* D65 as both test and reference illuminant */
-    alwan_xyz xyz_0;
+    alwan_xyz_f64 xyz_0;
     xyz_0.x = ALWAN_LITERAL(95.05);
     xyz_0.y = ALWAN_LITERAL(100.0);
     xyz_0.z = ALWAN_LITERAL(108.88);
 
-    alwan_xyz xyz_r = xyz_0;
+    alwan_xyz_f64 xyz_r = xyz_0;
     alwan_f64 Y_b = ALWAN_LITERAL(20.0);
     /* Average surround factors */
     alwan_f64 D = ALWAN_LITERAL(1.0);
@@ -1393,15 +1394,15 @@ static int test_llab_v_forward(void) {
 static int test_cvd_v_identity(void) {
     TEST_START("CVD _v identity at severity=0");
 
-    alwan_rgb rgb_in;
+    alwan_rgb_f64 rgb_in;
     rgb_in.r = ALWAN_LITERAL(0.5);
     rgb_in.g = ALWAN_LITERAL(0.3);
     rgb_in.b = ALWAN_LITERAL(0.8);
 
     /* severity = 0 -> output should equal input */
-    alwan_rgb out_p = alwan_simulate_protanopia_f64_v(rgb_in, ALWAN_ZERO);
-    alwan_rgb out_d = alwan_simulate_deuteranopia_f64_v(rgb_in, ALWAN_ZERO);
-    alwan_rgb out_t = alwan_simulate_tritanopia_f64_v(rgb_in, ALWAN_ZERO);
+    alwan_rgb_f64 out_p = alwan_simulate_protanopia_f64_v(rgb_in, ALWAN_ZERO);
+    alwan_rgb_f64 out_d = alwan_simulate_deuteranopia_f64_v(rgb_in, ALWAN_ZERO);
+    alwan_rgb_f64 out_t = alwan_simulate_tritanopia_f64_v(rgb_in, ALWAN_ZERO);
 
     TEST_ASSERT_NEAR(out_p.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "protan r");
     TEST_ASSERT_NEAR(out_p.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "protan g");
@@ -1422,17 +1423,17 @@ static int test_cvd_v_identity(void) {
 static int test_lgg_v_identity(void) {
     TEST_START("LGG _v identity");
 
-    alwan_rgb rgb_in;
+    alwan_rgb_f64 rgb_in;
     rgb_in.r = ALWAN_LITERAL(0.5);
     rgb_in.g = ALWAN_LITERAL(0.3);
     rgb_in.b = ALWAN_LITERAL(0.8);
 
     /* Identity: lift=0, gamma=1, gain=1 */
-    alwan_rgb lift  = { ALWAN_ZERO, ALWAN_ZERO, ALWAN_ZERO };
-    alwan_rgb gamma = { ALWAN_ONE,  ALWAN_ONE,  ALWAN_ONE  };
-    alwan_rgb gain  = { ALWAN_ONE,  ALWAN_ONE,  ALWAN_ONE  };
+    alwan_rgb_f64 lift  = { ALWAN_ZERO, ALWAN_ZERO, ALWAN_ZERO };
+    alwan_rgb_f64 gamma = { ALWAN_ONE,  ALWAN_ONE,  ALWAN_ONE  };
+    alwan_rgb_f64 gain  = { ALWAN_ONE,  ALWAN_ONE,  ALWAN_ONE  };
 
-    alwan_rgb out = alwan_lgg_apply_f64_v(rgb_in, lift, gamma, gain);
+    alwan_rgb_f64 out = alwan_lgg_apply_f64_v(rgb_in, lift, gamma, gain);
 
     TEST_ASSERT_NEAR(out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
     TEST_ASSERT_NEAR(out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
@@ -1447,13 +1448,13 @@ static int test_lgg_v_identity(void) {
 static int test_color_matrix_v_identity(void) {
     TEST_START("color_matrix _v identity");
 
-    alwan_rgb rgb_in;
+    alwan_rgb_f64 rgb_in;
     rgb_in.r = ALWAN_LITERAL(0.5);
     rgb_in.g = ALWAN_LITERAL(0.3);
     rgb_in.b = ALWAN_LITERAL(0.8);
 
-    alwan_mat3x3 id = alwan_mat3_identity_f64_v();
-    alwan_rgb out = alwan_color_matrix_apply_f64_v(rgb_in, id);
+    alwan_mat3x3_f64 id = alwan_mat3_identity_f64_v();
+    alwan_rgb_f64 out = alwan_color_matrix_apply_f64_v(rgb_in, id);
 
     TEST_ASSERT_NEAR(out.r, rgb_in.r, ALWAN_TEST_TOLERANCE, "r");
     TEST_ASSERT_NEAR(out.g, rgb_in.g, ALWAN_TEST_TOLERANCE, "g");
@@ -1468,24 +1469,24 @@ static int test_color_matrix_v_identity(void) {
 static int test_cat_v_identity(void) {
     TEST_START("CAT _v D65->D65 identity");
 
-    alwan_xyz d65;
+    alwan_xyz_f64 d65;
     d65.x = ALWAN_LITERAL(0.95047);
     d65.y = ALWAN_ONE;
     d65.z = ALWAN_LITERAL(1.08883);
 
     /* XYZ scaling: same white -> identity matrix */
-    alwan_mat3x3 cat_id = alwan_cat_xyz_scaling_f64_v(d65, d65);
+    alwan_mat3x3_f64 cat_id = alwan_cat_xyz_scaling_f64_v(d65, d65);
     TEST_ASSERT_NEAR(cat_id.m[0], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[0]");
     TEST_ASSERT_NEAR(cat_id.m[4], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[4]");
     TEST_ASSERT_NEAR(cat_id.m[8], ALWAN_ONE, ALWAN_TEST_TOLERANCE, "xyz_scaling[8]");
 
     /* Apply identity adaptation to a test color */
-    alwan_xyz test_in;
+    alwan_xyz_f64 test_in;
     test_in.x = ALWAN_LITERAL(0.5);
     test_in.y = ALWAN_LITERAL(0.3);
     test_in.z = ALWAN_LITERAL(0.8);
 
-    alwan_xyz test_out = alwan_cat_adapt_f64_v(cat_id, test_in);
+    alwan_xyz_f64 test_out = alwan_cat_adapt_f64_v(cat_id, test_in);
     TEST_ASSERT_NEAR(test_out.x, test_in.x, ALWAN_TEST_TOLERANCE, "adapt x");
     TEST_ASSERT_NEAR(test_out.y, test_in.y, ALWAN_TEST_TOLERANCE, "adapt y");
     TEST_ASSERT_NEAR(test_out.z, test_in.z, ALWAN_TEST_TOLERANCE, "adapt z");
@@ -1520,7 +1521,7 @@ static int test_cct_hernandez_v(void) {
 
 static int test_cct_to_xy_kang_v(void) {
     TEST_START("CCT to xy Kang _v");
-    alwan_vec2 xy = alwan_cct_to_xy_kang_f64_v(ALWAN_LITERAL(6504.0));
+    alwan_vec2_f64 xy = alwan_cct_to_xy_kang_f64_v(ALWAN_LITERAL(6504.0));
     /* D65: x~0.3127, y~0.3290 */
     TEST_ASSERT_NEAR(xy.v[0], ALWAN_LITERAL(0.3127), ALWAN_LITERAL(0.01), "x near 0.3127");
     TEST_ASSERT_NEAR(xy.v[1], ALWAN_LITERAL(0.3290), ALWAN_LITERAL(0.01), "y near 0.3290");
@@ -1556,11 +1557,11 @@ static int test_rayleigh_optical_depth_v(void) {
 
 static int test_gamut_clip_v(void) {
     TEST_START("gamut clip _v");
-    alwan_vec3 oob;
+    alwan_vec3_f64 oob;
     oob.v[0] = ALWAN_LITERAL(-0.5);
     oob.v[1] = ALWAN_LITERAL(0.5);
     oob.v[2] = ALWAN_LITERAL(1.5);
-    alwan_vec3 clipped = gamut_clip_f64_v(oob);
+    alwan_vec3_f64 clipped = gamut_clip_f64_v(oob);
     TEST_ASSERT_NEAR(clipped.v[0], ALWAN_ZERO, ALWAN_EPSILON, "clip r");
     TEST_ASSERT_NEAR(clipped.v[1], ALWAN_LITERAL(0.5), ALWAN_EPSILON, "clip g");
     TEST_ASSERT_NEAR(clipped.v[2], ALWAN_ONE, ALWAN_EPSILON, "clip b");
@@ -1569,12 +1570,12 @@ static int test_gamut_clip_v(void) {
 
 static int test_gamut_oklab_roundtrip_v(void) {
     TEST_START("gamut Oklab _v round-trip");
-    alwan_vec3 rgb;
+    alwan_vec3_f64 rgb;
     rgb.v[0] = ALWAN_LITERAL(0.5);
     rgb.v[1] = ALWAN_LITERAL(0.3);
     rgb.v[2] = ALWAN_LITERAL(0.8);
-    alwan_vec3 oklab = gamut_linear_srgb_to_oklab_f64_v(rgb);
-    alwan_vec3 back = gamut_oklab_to_linear_srgb_f64_v(oklab);
+    alwan_vec3_f64 oklab = gamut_linear_srgb_to_oklab_f64_v(rgb);
+    alwan_vec3_f64 back = gamut_oklab_to_linear_srgb_f64_v(oklab);
     TEST_ASSERT_NEAR(back.v[0], rgb.v[0], ALWAN_LITERAL(1e-6), "r");
     TEST_ASSERT_NEAR(back.v[1], rgb.v[1], ALWAN_LITERAL(1e-6), "g");
     TEST_ASSERT_NEAR(back.v[2], rgb.v[2], ALWAN_LITERAL(1e-6), "b");
@@ -1584,7 +1585,7 @@ static int test_gamut_oklab_roundtrip_v(void) {
 static int test_gamut_find_cusp_v(void) {
     TEST_START("gamut find cusp _v");
     /* Red hue direction */
-    alwan_vec2 cusp = gamut_find_cusp_f64_v(ALWAN_ONE, ALWAN_ZERO);
+    alwan_vec2_f64 cusp = gamut_find_cusp_f64_v(ALWAN_ONE, ALWAN_ZERO);
     int ok = (cusp.v[0] > ALWAN_ZERO && cusp.v[0] < ALWAN_ONE &&
               cusp.v[1] > ALWAN_ZERO);
     TEST_ASSERT(ok, "cusp L in (0,1), C > 0");

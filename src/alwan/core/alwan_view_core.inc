@@ -68,71 +68,61 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_agx_curve)(ALWAN_CORE_T t) {
 }
 
 /* ================================================================
- * AgX Punchy Grade
- * Applies contrast + saturation boost on top of base curve output
+ * ASC CDL (Color Decision List) — ASC-CDL v1.2
+ * Standard formula: out = clamp01(in * slope + offset) ^ power
+ * Then saturation around BT.709 luma.
+ * Used by AgX Punchy and Golden looks (sobotka/AgX config.ocio).
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_agx_punchy_grade)(ALWAN_CORE_VEC3 rgb) {
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_cdl_apply)(
+    ALWAN_CORE_VEC3 rgb,
+    ALWAN_CORE_T slope_r, ALWAN_CORE_T slope_g, ALWAN_CORE_T slope_b,
+    ALWAN_CORE_T offset_r, ALWAN_CORE_T offset_g, ALWAN_CORE_T offset_b,
+    ALWAN_CORE_T power_r, ALWAN_CORE_T power_g, ALWAN_CORE_T power_b,
+    ALWAN_CORE_T sat) {
     ALWAN_CORE_VEC3 result;
-    ALWAN_CORE_T const contrast   = ALWAN_CORE_LITERAL(1.15);
-    ALWAN_CORE_T const saturation = ALWAN_CORE_LITERAL(1.2);
-    ALWAN_CORE_T const mid_gray   = ALWAN_CORE_LITERAL(0.18);
-
-    /* BT.709 luma coefficients — ITU-R BT.709-6 Table 3 */
-    ALWAN_CORE_T luma = ALWAN_CORE_LITERAL(0.2126) * rgb.v[0]
-                      + ALWAN_CORE_LITERAL(0.7152) * rgb.v[1]
-                      + ALWAN_CORE_LITERAL(0.0722) * rgb.v[2];
-
-    result.v[0] = ALWAN_CORE_SATURATE(mid_gray + (luma + (rgb.v[0] - luma) * saturation - mid_gray) * contrast);
-    result.v[1] = ALWAN_CORE_SATURATE(mid_gray + (luma + (rgb.v[1] - luma) * saturation - mid_gray) * contrast);
-    result.v[2] = ALWAN_CORE_SATURATE(mid_gray + (luma + (rgb.v[2] - luma) * saturation - mid_gray) * contrast);
-
+    /* Slope + Offset + Clamp */
+    ALWAN_CORE_T r = ALWAN_CORE_SATURATE(rgb.v[0] * slope_r + offset_r);
+    ALWAN_CORE_T g = ALWAN_CORE_SATURATE(rgb.v[1] * slope_g + offset_g);
+    ALWAN_CORE_T b = ALWAN_CORE_SATURATE(rgb.v[2] * slope_b + offset_b);
+    /* Power */
+    r = ALWAN_CORE_POW(r, power_r);
+    g = ALWAN_CORE_POW(g, power_g);
+    b = ALWAN_CORE_POW(b, power_b);
+    /* Saturation around BT.709 luma */
+    ALWAN_CORE_T luma = ALWAN_CORE_LITERAL(0.2126) * r
+                      + ALWAN_CORE_LITERAL(0.7152) * g
+                      + ALWAN_CORE_LITERAL(0.0722) * b;
+    result.v[0] = ALWAN_CORE_SATURATE(luma + sat * (r - luma));
+    result.v[1] = ALWAN_CORE_SATURATE(luma + sat * (g - luma));
+    result.v[2] = ALWAN_CORE_SATURATE(luma + sat * (b - luma));
     return result;
 }
 
 /* ================================================================
- * AgX Golden Grade
- *
- * Look transform that warms highlights and cools shadows,
- * inspired by the Blender AgX "Golden" look.
+ * AgX Punchy Grade — CDL from sobotka/AgX config.ocio
+ * CDLTransform {power: [1.35, 1.35, 1.35], sat: 1.4}
+ * ================================================================ */
+
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_agx_punchy_grade)(ALWAN_CORE_VEC3 rgb) {
+    return ALWAN_CORE_FNVLIT(alwan_cdl_apply)(rgb,
+        ALWAN_CORE_ONE, ALWAN_CORE_ONE, ALWAN_CORE_ONE,           /* slope = 1 */
+        ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, ALWAN_CORE_ZERO,       /* offset = 0 */
+        ALWAN_CORE_LITERAL(1.35), ALWAN_CORE_LITERAL(1.35), ALWAN_CORE_LITERAL(1.35), /* power */
+        ALWAN_CORE_LITERAL(1.4));                                  /* saturation */
+}
+
+/* ================================================================
+ * AgX Golden Grade — CDL from sobotka/AgX config.ocio
+ * CDLTransform {slope: [1, 0.9, 0.5], power: [0.8, 0.8, 0.8], sat: 1.3}
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_agx_golden_grade)(ALWAN_CORE_VEC3 rgb) {
-    ALWAN_CORE_VEC3 result;
-
-    /* BT.709 luma coefficients — ITU-R BT.709-6 Table 3 */
-    ALWAN_CORE_T luma = ALWAN_CORE_LITERAL(0.2126) * rgb.v[0]
-                      + ALWAN_CORE_LITERAL(0.7152) * rgb.v[1]
-                      + ALWAN_CORE_LITERAL(0.0722) * rgb.v[2];
-
-    /* Golden: warm highlights, cool shadows */
-    /* Highlights: shift toward warm (increase R, slight G, decrease B) */
-    /* Shadows: shift toward cool (decrease R, slight G, increase B) */
-    ALWAN_CORE_T warm_factor = ALWAN_CORE_SATURATE(luma);  /* 0 in shadows, 1 in highlights */
-
-    /* Base saturation boost */
-    ALWAN_CORE_T saturation = ALWAN_CORE_LITERAL(1.3);
-    ALWAN_CORE_T contrast   = ALWAN_CORE_LITERAL(1.1);
-    ALWAN_CORE_T mid_gray   = ALWAN_CORE_LITERAL(0.18);
-
-    /* Apply saturation around luma */
-    ALWAN_CORE_T r_sat = luma + (rgb.v[0] - luma) * saturation;
-    ALWAN_CORE_T g_sat = luma + (rgb.v[1] - luma) * saturation;
-    ALWAN_CORE_T b_sat = luma + (rgb.v[2] - luma) * saturation;
-
-    /* Apply warm/cool color shift */
-    ALWAN_CORE_T warm_r = ALWAN_CORE_LITERAL(0.02) * warm_factor;
-    ALWAN_CORE_T cool_b = ALWAN_CORE_LITERAL(0.02) * (ALWAN_CORE_ONE - warm_factor);
-
-    r_sat = r_sat + warm_r - cool_b * ALWAN_CORE_LITERAL(0.5);
-    b_sat = b_sat + cool_b - warm_r * ALWAN_CORE_LITERAL(0.5);
-
-    /* Apply contrast */
-    result.v[0] = ALWAN_CORE_SATURATE(mid_gray + (r_sat - mid_gray) * contrast);
-    result.v[1] = ALWAN_CORE_SATURATE(mid_gray + (g_sat - mid_gray) * contrast);
-    result.v[2] = ALWAN_CORE_SATURATE(mid_gray + (b_sat - mid_gray) * contrast);
-
-    return result;
+    return ALWAN_CORE_FNVLIT(alwan_cdl_apply)(rgb,
+        ALWAN_CORE_ONE, ALWAN_CORE_LITERAL(0.9), ALWAN_CORE_LITERAL(0.5), /* slope */
+        ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, ALWAN_CORE_ZERO,               /* offset = 0 */
+        ALWAN_CORE_LITERAL(0.8), ALWAN_CORE_LITERAL(0.8), ALWAN_CORE_LITERAL(0.8), /* power */
+        ALWAN_CORE_LITERAL(1.3));                                          /* saturation */
 }
 
 /* ================================================================

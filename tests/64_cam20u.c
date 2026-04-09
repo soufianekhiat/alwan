@@ -16,7 +16,7 @@
  * ---------------------------------------------------------------- */
 
 static int test_cam20u_roundtrip(void) {
-    alwan_xyz xyz_in = { ALWAN_LITERAL(50.0), ALWAN_LITERAL(50.0), ALWAN_LITERAL(50.0) };
+    alwan_xyz_f64 xyz_in = { ALWAN_LITERAL(50.0), ALWAN_LITERAL(50.0), ALWAN_LITERAL(50.0) };
     alwan_f64 Y_b = ALWAN_LITERAL(20.0);
     alwan_f64 L_a = ALWAN_LITERAL(64.0);
 
@@ -25,7 +25,7 @@ static int test_cam20u_roundtrip(void) {
     /* Sanity: brightness should be positive */
     TEST_ASSERT(fwd.Q > ALWAN_ZERO, "cam20u Q > 0");
 
-    alwan_xyz xyz_rt = alwan_cam20u_inverse_f64_v(fwd, Y_b, L_a);
+    alwan_xyz_f64 xyz_rt = alwan_cam20u_inverse_f64_v(fwd, Y_b, L_a);
 
     TEST_ASSERT_NEAR(xyz_rt.x, xyz_in.x, ALWAN_LITERAL(5e-1), "cam20u rt X");
     TEST_ASSERT_NEAR(xyz_rt.y, xyz_in.y, ALWAN_LITERAL(5e-1), "cam20u rt Y");
@@ -39,7 +39,7 @@ static int test_cam20u_roundtrip(void) {
  * ---------------------------------------------------------------- */
 
 static int test_cam20u_achromatic(void) {
-    alwan_xyz xyz_in = { ALWAN_LITERAL(95.047), ALWAN_LITERAL(100.0), ALWAN_LITERAL(108.883) };
+    alwan_xyz_f64 xyz_in = { ALWAN_LITERAL(95.047), ALWAN_LITERAL(100.0), ALWAN_LITERAL(108.883) };
     alwan_f64 Y_b = ALWAN_LITERAL(20.0);
     alwan_f64 L_a = ALWAN_LITERAL(64.0);
 
@@ -57,7 +57,7 @@ static int test_cam20u_achromatic(void) {
 
 static int test_cam20u_chromatic(void) {
     /* A saturated red */
-    alwan_xyz xyz_in = { ALWAN_LITERAL(40.0), ALWAN_LITERAL(20.0), ALWAN_LITERAL(5.0) };
+    alwan_xyz_f64 xyz_in = { ALWAN_LITERAL(40.0), ALWAN_LITERAL(20.0), ALWAN_LITERAL(5.0) };
     alwan_f64 Y_b = ALWAN_LITERAL(20.0);
     alwan_f64 L_a = ALWAN_LITERAL(64.0);
 
@@ -77,16 +77,16 @@ static int test_cam20u_chromatic(void) {
  * ---------------------------------------------------------------- */
 
 static int test_cam20u_api(void) {
-    alwan_xyz xyz_in = { ALWAN_LITERAL(50.0), ALWAN_LITERAL(50.0), ALWAN_LITERAL(50.0) };
+    alwan_xyz_f64 xyz_in = { ALWAN_LITERAL(50.0), ALWAN_LITERAL(50.0), ALWAN_LITERAL(50.0) };
     alwan_f64 Y_b = ALWAN_LITERAL(20.0);
     alwan_f64 L_a = ALWAN_LITERAL(64.0);
     alwan_cam20u_correlates out;
 
-    alwan_cam20u_forward(&out, &xyz_in, Y_b, L_a);
+    alwan_cam20u_forward_f64(&out, &xyz_in, Y_b, L_a);
     TEST_ASSERT(out.Q > ALWAN_ZERO, "cam20u api Q > 0");
 
-    alwan_xyz xyz_rt;
-    alwan_cam20u_inverse(&xyz_rt, &out, Y_b, L_a);
+    alwan_xyz_f64 xyz_rt;
+    alwan_cam20u_inverse_f64(&xyz_rt, &out, Y_b, L_a);
 
     TEST_PASS("cam20u api");
 }

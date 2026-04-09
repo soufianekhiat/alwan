@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static alwan_f64 vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
+static alwan_f64 vec3_max_diff(alwan_vec3_f64 const *a, alwan_vec3_f64 const *b) {
     alwan_f64 max_diff = 0;
     for (int i = 0; i < 3; i++) {
         alwan_f64 diff = ALWAN_ABS(a->v[i] - b->v[i]);
@@ -20,7 +20,7 @@ static alwan_f64 vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
     return max_diff;
 }
 
-static void vec3_print(char const *name, alwan_vec3 const *v) {
+static void vec3_print(char const *name, alwan_vec3_f64 const *v) {
     printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->v[0], v->v[1], v->v[2]);
 }
 
@@ -50,25 +50,25 @@ static int test_ycocg_roundtrip(void) {
     };
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
-        alwan_vec3 ycocg_expected = {{ycocg_from_rgb[i * 3 + 0], ycocg_from_rgb[i * 3 + 1], ycocg_from_rgb[i * 3 + 2]}};
-        alwan_vec3 rgb_expected = {{rgb_from_ycocg_roundtrip[i * 3 + 0], rgb_from_ycocg_roundtrip[i * 3 + 1], rgb_from_ycocg_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
+        alwan_vec3_f64 ycocg_expected = {{ycocg_from_rgb[i * 3 + 0], ycocg_from_rgb[i * 3 + 1], ycocg_from_rgb[i * 3 + 2]}};
+        alwan_vec3_f64 rgb_expected = {{rgb_from_ycocg_roundtrip[i * 3 + 0], rgb_from_ycocg_roundtrip[i * 3 + 1], rgb_from_ycocg_roundtrip[i * 3 + 2]}};
 
         /* RGB -> YCoCg */
-        alwan_vec3 ycocg;
-        alwan_rgb rgb_typed;
-        alwan_ycocg ycocg_typed;
-        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
-        alwan_rgb_to_ycocg(&ycocg_typed, &rgb_typed);
-        ALWAN_MEMCPY(&ycocg, &ycocg_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 ycocg;
+        alwan_rgb_f64 rgb_typed;
+        alwan_ycocg_f64 ycocg_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3_f64));
+        alwan_rgb_to_ycocg_f64(&ycocg_typed, &rgb_typed);
+        ALWAN_MEMCPY(&ycocg, &ycocg_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&ycocg, &ycocg_expected);
         TEST_ASSERT(diff_forward < tolerance, "RGB->YCoCg mismatch");
 
         /* YCoCg -> RGB */
-        alwan_vec3 rgb_out;
-        alwan_rgb rgb_out_typed;
-        alwan_ycocg_to_rgb(&rgb_out_typed, &ycocg_typed);
-        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 rgb_out;
+        alwan_rgb_f64 rgb_out_typed;
+        alwan_ycocg_to_rgb_f64(&rgb_out_typed, &ycocg_typed);
+        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         TEST_ASSERT(diff_inverse < tolerance, "YCoCg->RGB roundtrip mismatch");
     }
@@ -98,25 +98,25 @@ static int test_ucs_roundtrip(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
-        alwan_vec3 ucs_expected = {{ucs_from_xyz[i * 3 + 0], ucs_from_xyz[i * 3 + 1], ucs_from_xyz[i * 3 + 2]}};
-        alwan_vec3 xyz_expected = {{xyz_from_ucs_roundtrip[i * 3 + 0], xyz_from_ucs_roundtrip[i * 3 + 1], xyz_from_ucs_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
+        alwan_vec3_f64 ucs_expected = {{ucs_from_xyz[i * 3 + 0], ucs_from_xyz[i * 3 + 1], ucs_from_xyz[i * 3 + 2]}};
+        alwan_vec3_f64 xyz_expected = {{xyz_from_ucs_roundtrip[i * 3 + 0], xyz_from_ucs_roundtrip[i * 3 + 1], xyz_from_ucs_roundtrip[i * 3 + 2]}};
 
         /* XYZ -> UCS */
-        alwan_ucs ucs;
-        alwan_xyz xyz_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
-        alwan_xyz_to_ucs(&ucs, &xyz_typed);
-        alwan_vec3 ucs_vec;
-        ALWAN_MEMCPY(&ucs_vec, &ucs, sizeof(alwan_vec3));
+        alwan_ucs_f64 ucs;
+        alwan_xyz_f64 xyz_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_ucs_f64(&ucs, &xyz_typed);
+        alwan_vec3_f64 ucs_vec;
+        ALWAN_MEMCPY(&ucs_vec, &ucs, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&ucs_vec, &ucs_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->UCS mismatch");
 
         /* UCS -> XYZ */
-        alwan_xyz xyz_out;
-        alwan_ucs_to_xyz(&xyz_out, &ucs);
-        alwan_vec3 xyz_out_vec;
-        ALWAN_MEMCPY(&xyz_out_vec, &xyz_out, sizeof(alwan_vec3));
+        alwan_xyz_f64 xyz_out;
+        alwan_ucs_to_xyz_f64(&xyz_out, &ucs);
+        alwan_vec3_f64 xyz_out_vec;
+        ALWAN_MEMCPY(&xyz_out_vec, &xyz_out, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&xyz_out_vec, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "UCS->XYZ roundtrip mismatch");
     }
@@ -146,17 +146,17 @@ static int test_hdr_cielab_roundtrip(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{test_xyz_hdr[i * 3 + 0], test_xyz_hdr[i * 3 + 1], test_xyz_hdr[i * 3 + 2]}};
-        alwan_vec3 hdr_lab_expected = {{hdr_lab_from_xyz[i * 3 + 0], hdr_lab_from_xyz[i * 3 + 1], hdr_lab_from_xyz[i * 3 + 2]}};
-        alwan_vec3 xyz_expected = {{xyz_from_hdr_lab_roundtrip[i * 3 + 0], xyz_from_hdr_lab_roundtrip[i * 3 + 1], xyz_from_hdr_lab_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 xyz = {{test_xyz_hdr[i * 3 + 0], test_xyz_hdr[i * 3 + 1], test_xyz_hdr[i * 3 + 2]}};
+        alwan_vec3_f64 hdr_lab_expected = {{hdr_lab_from_xyz[i * 3 + 0], hdr_lab_from_xyz[i * 3 + 1], hdr_lab_from_xyz[i * 3 + 2]}};
+        alwan_vec3_f64 xyz_expected = {{xyz_from_hdr_lab_roundtrip[i * 3 + 0], xyz_from_hdr_lab_roundtrip[i * 3 + 1], xyz_from_hdr_lab_roundtrip[i * 3 + 2]}};
 
         /* XYZ -> hdr-CIELAB */
-        alwan_vec3 hdr_lab;
-        alwan_xyz xyz_typed;
-        alwan_lab hdr_lab_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
-        alwan_xyz_to_hdr_cielab(&hdr_lab_typed, &xyz_typed);
-        ALWAN_MEMCPY(&hdr_lab, &hdr_lab_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 hdr_lab;
+        alwan_xyz_f64 xyz_typed;
+        alwan_lab_f64 hdr_lab_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_hdr_cielab_f64(&hdr_lab_typed, &xyz_typed);
+        ALWAN_MEMCPY(&hdr_lab, &hdr_lab_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&hdr_lab, &hdr_lab_expected);
         if (diff_forward >= tolerance && i == 0) {
             printf("  hdr-CIELAB test %d FAIL:\n", i);
@@ -167,10 +167,10 @@ static int test_hdr_cielab_roundtrip(void) {
         TEST_ASSERT(diff_forward < tolerance, "XYZ->hdr-CIELAB mismatch");
 
         /* hdr-CIELAB -> XYZ */
-        alwan_vec3 xyz_out;
-        alwan_xyz xyz_out_typed;
-        alwan_hdr_cielab_to_xyz(&xyz_out_typed, &hdr_lab_typed);
-        ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 xyz_out;
+        alwan_xyz_f64 xyz_out_typed;
+        alwan_hdr_cielab_to_xyz_f64(&xyz_out_typed, &hdr_lab_typed);
+        ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "hdr-CIELAB->XYZ roundtrip mismatch");
     }
@@ -200,25 +200,25 @@ static int test_hdr_ipt_roundtrip(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{test_xyz_hdr[i * 3 + 0], test_xyz_hdr[i * 3 + 1], test_xyz_hdr[i * 3 + 2]}};
-        alwan_vec3 hdr_ipt_expected = {{hdr_ipt_from_xyz[i * 3 + 0], hdr_ipt_from_xyz[i * 3 + 1], hdr_ipt_from_xyz[i * 3 + 2]}};
-        alwan_vec3 xyz_expected = {{xyz_from_hdr_ipt_roundtrip[i * 3 + 0], xyz_from_hdr_ipt_roundtrip[i * 3 + 1], xyz_from_hdr_ipt_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 xyz = {{test_xyz_hdr[i * 3 + 0], test_xyz_hdr[i * 3 + 1], test_xyz_hdr[i * 3 + 2]}};
+        alwan_vec3_f64 hdr_ipt_expected = {{hdr_ipt_from_xyz[i * 3 + 0], hdr_ipt_from_xyz[i * 3 + 1], hdr_ipt_from_xyz[i * 3 + 2]}};
+        alwan_vec3_f64 xyz_expected = {{xyz_from_hdr_ipt_roundtrip[i * 3 + 0], xyz_from_hdr_ipt_roundtrip[i * 3 + 1], xyz_from_hdr_ipt_roundtrip[i * 3 + 2]}};
 
         /* XYZ -> hdr-IPT */
-        alwan_vec3 hdr_ipt;
-        alwan_xyz xyz_typed;
-        alwan_ipt hdr_ipt_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
-        alwan_xyz_to_hdr_ipt(&hdr_ipt_typed, &xyz_typed);
-        ALWAN_MEMCPY(&hdr_ipt, &hdr_ipt_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 hdr_ipt;
+        alwan_xyz_f64 xyz_typed;
+        alwan_ipt_f64 hdr_ipt_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_hdr_ipt_f64(&hdr_ipt_typed, &xyz_typed);
+        ALWAN_MEMCPY(&hdr_ipt, &hdr_ipt_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&hdr_ipt, &hdr_ipt_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->hdr-IPT mismatch");
 
         /* hdr-IPT -> XYZ */
-        alwan_vec3 xyz_out;
-        alwan_xyz xyz_out_typed;
-        alwan_hdr_ipt_to_xyz(&xyz_out_typed, &hdr_ipt_typed);
-        ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 xyz_out;
+        alwan_xyz_f64 xyz_out_typed;
+        alwan_hdr_ipt_to_xyz_f64(&xyz_out_typed, &hdr_ipt_typed);
+        ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "hdr-IPT->XYZ roundtrip mismatch");
     }
@@ -248,25 +248,25 @@ static int test_igpgtg_roundtrip(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
-        alwan_vec3 igpgtg_expected = {{igpgtg_from_xyz[i * 3 + 0], igpgtg_from_xyz[i * 3 + 1], igpgtg_from_xyz[i * 3 + 2]}};
-        alwan_vec3 xyz_expected = {{xyz_from_igpgtg_roundtrip[i * 3 + 0], xyz_from_igpgtg_roundtrip[i * 3 + 1], xyz_from_igpgtg_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
+        alwan_vec3_f64 igpgtg_expected = {{igpgtg_from_xyz[i * 3 + 0], igpgtg_from_xyz[i * 3 + 1], igpgtg_from_xyz[i * 3 + 2]}};
+        alwan_vec3_f64 xyz_expected = {{xyz_from_igpgtg_roundtrip[i * 3 + 0], xyz_from_igpgtg_roundtrip[i * 3 + 1], xyz_from_igpgtg_roundtrip[i * 3 + 2]}};
 
         /* XYZ -> IgPgTg */
-        alwan_vec3 igpgtg;
-        alwan_xyz xyz_typed;
-        alwan_igpgtg igpgtg_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
-        alwan_xyz_to_igpgtg(&igpgtg_typed, &xyz_typed);
-        ALWAN_MEMCPY(&igpgtg, &igpgtg_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 igpgtg;
+        alwan_xyz_f64 xyz_typed;
+        alwan_igpgtg_f64 igpgtg_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_igpgtg_f64(&igpgtg_typed, &xyz_typed);
+        ALWAN_MEMCPY(&igpgtg, &igpgtg_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&igpgtg, &igpgtg_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->IgPgTg mismatch");
 
         /* IgPgTg -> XYZ */
-        alwan_vec3 xyz_out;
-        alwan_xyz xyz_out_typed;
-        alwan_igpgtg_to_xyz(&xyz_out_typed, &igpgtg_typed);
-        ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 xyz_out;
+        alwan_xyz_f64 xyz_out_typed;
+        alwan_igpgtg_to_xyz_f64(&xyz_out_typed, &igpgtg_typed);
+        ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "IgPgTg->XYZ roundtrip mismatch");
     }
@@ -296,25 +296,25 @@ static int test_icacb_roundtrip(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
-        alwan_vec3 icacb_expected = {{icacb_from_xyz[i * 3 + 0], icacb_from_xyz[i * 3 + 1], icacb_from_xyz[i * 3 + 2]}};
-        alwan_vec3 xyz_expected = {{xyz_from_icacb_roundtrip[i * 3 + 0], xyz_from_icacb_roundtrip[i * 3 + 1], xyz_from_icacb_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 xyz = {{test_xyz_colors[i * 3 + 0], test_xyz_colors[i * 3 + 1], test_xyz_colors[i * 3 + 2]}};
+        alwan_vec3_f64 icacb_expected = {{icacb_from_xyz[i * 3 + 0], icacb_from_xyz[i * 3 + 1], icacb_from_xyz[i * 3 + 2]}};
+        alwan_vec3_f64 xyz_expected = {{xyz_from_icacb_roundtrip[i * 3 + 0], xyz_from_icacb_roundtrip[i * 3 + 1], xyz_from_icacb_roundtrip[i * 3 + 2]}};
 
         /* XYZ -> ICaCb */
-        alwan_vec3 icacb;
-        alwan_xyz xyz_typed;
-        alwan_icacb icacb_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
-        alwan_xyz_to_icacb(&icacb_typed, &xyz_typed);
-        ALWAN_MEMCPY(&icacb, &icacb_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 icacb;
+        alwan_xyz_f64 xyz_typed;
+        alwan_icacb_f64 icacb_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_icacb_f64(&icacb_typed, &xyz_typed);
+        ALWAN_MEMCPY(&icacb, &icacb_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&icacb, &icacb_expected);
         TEST_ASSERT(diff_forward < tolerance, "XYZ->ICaCb mismatch");
 
         /* ICaCb -> XYZ */
-        alwan_vec3 xyz_out;
-        alwan_xyz xyz_out_typed;
-        alwan_icacb_to_xyz(&xyz_out_typed, &icacb_typed);
-        ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 xyz_out;
+        alwan_xyz_f64 xyz_out_typed;
+        alwan_icacb_to_xyz_f64(&xyz_out_typed, &icacb_typed);
+        ALWAN_MEMCPY(&xyz_out, &xyz_out_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&xyz_out, &xyz_expected);
         TEST_ASSERT(diff_inverse < tolerance, "ICaCb->XYZ roundtrip mismatch");
     }
@@ -348,25 +348,25 @@ static int test_prismatic_roundtrip(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
-        alwan_vec3 prismatic_expected = {{prismatic_from_rgb[i * 3 + 0], prismatic_from_rgb[i * 3 + 1], prismatic_from_rgb[i * 3 + 2]}};
-        alwan_vec3 rgb_expected = {{rgb_from_prismatic_roundtrip[i * 3 + 0], rgb_from_prismatic_roundtrip[i * 3 + 1], rgb_from_prismatic_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
+        alwan_vec3_f64 prismatic_expected = {{prismatic_from_rgb[i * 3 + 0], prismatic_from_rgb[i * 3 + 1], prismatic_from_rgb[i * 3 + 2]}};
+        alwan_vec3_f64 rgb_expected = {{rgb_from_prismatic_roundtrip[i * 3 + 0], rgb_from_prismatic_roundtrip[i * 3 + 1], rgb_from_prismatic_roundtrip[i * 3 + 2]}};
 
         /* RGB -> Prismatic */
-        alwan_prismatic prismatic;
-        alwan_rgb rgb_typed;
-        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
-        alwan_rgb_to_prismatic(&prismatic, &rgb_typed);
-        alwan_vec3 prismatic_vec;
-        ALWAN_MEMCPY(&prismatic_vec, &prismatic, sizeof(alwan_vec3));
+        alwan_prismatic_f64 prismatic;
+        alwan_rgb_f64 rgb_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3_f64));
+        alwan_rgb_to_prismatic_f64(&prismatic, &rgb_typed);
+        alwan_vec3_f64 prismatic_vec;
+        ALWAN_MEMCPY(&prismatic_vec, &prismatic, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&prismatic_vec, &prismatic_expected);
         TEST_ASSERT(diff_forward < tolerance, "RGB->Prismatic mismatch");
 
         /* Prismatic -> RGB */
-        alwan_vec3 rgb_out;
-        alwan_rgb rgb_out_typed;
-        alwan_prismatic_to_rgb(&rgb_out_typed, &prismatic);
-        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 rgb_out;
+        alwan_rgb_f64 rgb_out_typed;
+        alwan_prismatic_to_rgb_f64(&rgb_out_typed, &prismatic);
+        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         TEST_ASSERT(diff_inverse < tolerance, "Prismatic->RGB roundtrip mismatch");
     }
@@ -400,17 +400,17 @@ static int test_hcl_roundtrip(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
-        alwan_vec3 hcl_expected = {{hcl_from_rgb[i * 3 + 0], hcl_from_rgb[i * 3 + 1], hcl_from_rgb[i * 3 + 2]}};
-        alwan_vec3 rgb_expected = {{rgb_from_hcl_roundtrip[i * 3 + 0], rgb_from_hcl_roundtrip[i * 3 + 1], rgb_from_hcl_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
+        alwan_vec3_f64 hcl_expected = {{hcl_from_rgb[i * 3 + 0], hcl_from_rgb[i * 3 + 1], hcl_from_rgb[i * 3 + 2]}};
+        alwan_vec3_f64 rgb_expected = {{rgb_from_hcl_roundtrip[i * 3 + 0], rgb_from_hcl_roundtrip[i * 3 + 1], rgb_from_hcl_roundtrip[i * 3 + 2]}};
 
         /* RGB -> HCL */
-        alwan_hcl hcl;
-        alwan_rgb rgb_typed;
-        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
-        alwan_rgb_to_hcl(&hcl, &rgb_typed);
-        alwan_vec3 hcl_vec;
-        ALWAN_MEMCPY(&hcl_vec, &hcl, sizeof(alwan_vec3));
+        alwan_hcl_f64 hcl;
+        alwan_rgb_f64 rgb_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3_f64));
+        alwan_rgb_to_hcl_f64(&hcl, &rgb_typed);
+        alwan_vec3_f64 hcl_vec;
+        ALWAN_MEMCPY(&hcl_vec, &hcl, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&hcl_vec, &hcl_expected);
         if (diff_forward >= tolerance) {
             printf("  HCL test %d FAIL: RGB=[%.3f, %.3f, %.3f]\n", i, rgb.v[0], rgb.v[1], rgb.v[2]);
@@ -421,10 +421,10 @@ static int test_hcl_roundtrip(void) {
         TEST_ASSERT(diff_forward < tolerance, "RGB->HCL mismatch");
 
         /* HCL -> RGB */
-        alwan_vec3 rgb_out;
-        alwan_rgb rgb_out_typed;
-        alwan_hcl_to_rgb(&rgb_out_typed, &hcl);
-        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 rgb_out;
+        alwan_rgb_f64 rgb_out_typed;
+        alwan_hcl_to_rgb_f64(&rgb_out_typed, &hcl);
+        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         TEST_ASSERT(diff_inverse < tolerance, "HCL->RGB roundtrip mismatch");
     }
@@ -458,17 +458,17 @@ static int test_ihls_roundtrip(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
-        alwan_vec3 ihls_expected = {{ihls_from_rgb[i * 3 + 0], ihls_from_rgb[i * 3 + 1], ihls_from_rgb[i * 3 + 2]}};
-        alwan_vec3 rgb_expected = {{rgb_from_ihls_roundtrip[i * 3 + 0], rgb_from_ihls_roundtrip[i * 3 + 1], rgb_from_ihls_roundtrip[i * 3 + 2]}};
+        alwan_vec3_f64 rgb = {{test_rgb[i][0], test_rgb[i][1], test_rgb[i][2]}};
+        alwan_vec3_f64 ihls_expected = {{ihls_from_rgb[i * 3 + 0], ihls_from_rgb[i * 3 + 1], ihls_from_rgb[i * 3 + 2]}};
+        alwan_vec3_f64 rgb_expected = {{rgb_from_ihls_roundtrip[i * 3 + 0], rgb_from_ihls_roundtrip[i * 3 + 1], rgb_from_ihls_roundtrip[i * 3 + 2]}};
 
         /* RGB -> IHLS */
-        alwan_ihls ihls;
-        alwan_rgb rgb_typed;
-        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
-        alwan_rgb_to_ihls(&ihls, &rgb_typed);
-        alwan_vec3 ihls_vec;
-        ALWAN_MEMCPY(&ihls_vec, &ihls, sizeof(alwan_vec3));
+        alwan_ihls_f64 ihls;
+        alwan_rgb_f64 rgb_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3_f64));
+        alwan_rgb_to_ihls_f64(&ihls, &rgb_typed);
+        alwan_vec3_f64 ihls_vec;
+        ALWAN_MEMCPY(&ihls_vec, &ihls, sizeof(alwan_vec3_f64));
         alwan_f64 diff_forward = vec3_max_diff(&ihls_vec, &ihls_expected);
         if (diff_forward >= tolerance) {
             printf("  IHLS test %d FAIL: RGB=[%.3f, %.3f, %.3f]\n", i, rgb.v[0], rgb.v[1], rgb.v[2]);
@@ -479,10 +479,10 @@ static int test_ihls_roundtrip(void) {
         TEST_ASSERT(diff_forward < tolerance, "RGB->IHLS mismatch");
 
         /* IHLS -> RGB */
-        alwan_vec3 rgb_out;
-        alwan_rgb rgb_out_typed;
-        alwan_ihls_to_rgb(&rgb_out_typed, &ihls);
-        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 rgb_out;
+        alwan_rgb_f64 rgb_out_typed;
+        alwan_ihls_to_rgb_f64(&rgb_out_typed, &ihls);
+        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3_f64));
         alwan_f64 diff_inverse = vec3_max_diff(&rgb_out, &rgb_expected);
         if (diff_inverse >= tolerance) {
             printf("  IHLS->RGB test %d FAIL: IHLS=[%.3f, %.3f, %.3f]\n", i, ihls.H, ihls.L, ihls.S);

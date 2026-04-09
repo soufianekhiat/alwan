@@ -19,7 +19,7 @@
 static int test_munsell_neutrals(void) {
     TEST_START("Munsell neutral axis (N0-N10)");
 
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     int status;
 
     /* N0 (black) */
@@ -52,7 +52,7 @@ static int test_munsell_neutrals(void) {
 static int test_munsell_chromatic(void) {
     TEST_START("Munsell chromatic colors");
 
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     int status;
 
     /* 5R 5/10 (medium red with high chroma) */
@@ -76,7 +76,7 @@ static int test_munsell_roundtrip(void) {
     alwan_f64 value_in = 5.0;
     alwan_f64 chroma_in = 0.0;
 
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     int status = alwan_munsell_to_xyz(&xyz, hue_in, value_in, chroma_in, ALWAN_ILLUMINANT_C);
     if (status != ALWAN_OK) {
         TEST_FAIL("Forward conversion failed: error %d", status);
@@ -99,7 +99,7 @@ static int test_munsell_roundtrip(void) {
 static int test_munsell_illuminant_adaptation(void) {
     TEST_START("Munsell illuminant adaptation");
 
-    alwan_xyz xyz_c, xyz_d65;
+    alwan_xyz_f64 xyz_c, xyz_d65;
     int status;
 
     /* Convert N5 under Illuminant C */
@@ -153,7 +153,7 @@ static int test_colorchecker_num_patches(void) {
 static int test_colorchecker_classic_patches(void) {
     TEST_START("ColorChecker Classic patch data");
 
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     int status;
 
     /* Test patch 19 (white) - should have high Y */
@@ -185,7 +185,7 @@ static int test_colorchecker_classic_patches(void) {
 static int test_colorchecker_illuminant_adaptation(void) {
     TEST_START("ColorChecker illuminant adaptation");
 
-    alwan_xyz xyz_d50, xyz_d65;
+    alwan_xyz_f64 xyz_d50, xyz_d65;
     int status;
 
     /* Get patch under D50 */
@@ -218,7 +218,7 @@ static int test_colorchecker_illuminant_adaptation(void) {
 static int test_colorchecker_bounds(void) {
     TEST_START("ColorChecker bounds checking");
 
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     int status;
 
     /* Test out-of-bounds patch index */
@@ -246,7 +246,7 @@ static int test_colorchecker_bounds(void) {
 static int test_ncs_parsing(void) {
     TEST_START("NCS notation parsing");
 
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     int status;
 
     /* Note: NCS functions are stubs and return ALWAN_E_INVALID */
@@ -269,7 +269,7 @@ static int test_rgb_space_lookup(void) {
     TEST_START("RGB space lookup by enum");
 
     alwan_f64 primaries[6];
-    alwan_vec2 white_point;
+    alwan_vec2_f64 white_point;
     int status;
 
     /* Test sRGB */
@@ -298,7 +298,7 @@ static int test_rgb_space_various(void) {
     TEST_START("Various RGB space definitions");
 
     alwan_f64 primaries[6];
-    alwan_vec2 white_point;
+    alwan_vec2_f64 white_point;
     int status;
 
     alwan_rgb_space spaces[] = {
@@ -383,7 +383,7 @@ static int test_rgb_space_not_found(void) {
     TEST_START("RGB space invalid enum handling");
 
     alwan_f64 primaries[6];
-    alwan_vec2 white_point;
+    alwan_vec2_f64 white_point;
     int status;
 
     /* Test with out-of-range enum value */

@@ -13,7 +13,7 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
+static alwan_f64 mat3_max_diff(alwan_mat3x3_f64 const *a, alwan_mat3x3_f64 const *b) {
     alwan_f64 max_diff = 0;
     for (int i = 0; i < 9; i++) {
         alwan_f64 diff = ALWAN_ABS(a->m[i] - b->m[i]);
@@ -22,7 +22,7 @@ static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
     return max_diff;
 }
 
-static void mat3_print(char const *name, alwan_mat3x3 const *m) {
+static void mat3_print(char const *name, alwan_mat3x3_f64 const *m) {
     printf("%s:\n", name);
     for (int row = 0; row < 3; row++) {
         printf("  [%12.8f %12.8f %12.8f]\n",
@@ -35,14 +35,14 @@ static void mat3_print(char const *name, alwan_mat3x3 const *m) {
  * ---------------------------------------------------------------- */
 
 static int test_identity(void) {
-    alwan_mat3x3 I, result;
+    alwan_mat3x3_f64 I, result;
 
-    alwan_mat3_identity(&I);
+    alwan_mat3_identity_f64(&I);
     TEST_ASSERT(I.m[0] == 1.0 && I.m[4] == 1.0 && I.m[8] == 1.0, "Diagonal not 1");
     TEST_ASSERT(I.m[1] == 0.0 && I.m[2] == 0.0 && I.m[3] == 0.0, "Off-diagonal not 0");
 
     /* I * I = I */
-    alwan_mat3_mul(&result, &I, &I);
+    alwan_mat3_mul_f64(&result, &I, &I);
     alwan_f64 diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "I * I != I");
 
@@ -51,11 +51,11 @@ static int test_identity(void) {
 
 static int test_multiply(void) {
     /* Simple test: A * I = A */
-    alwan_mat3x3 A = {{1, 2, 3, 4, 5, 6, 7, 8, 9}};
-    alwan_mat3x3 I, result;
+    alwan_mat3x3_f64 A = {{1, 2, 3, 4, 5, 6, 7, 8, 9}};
+    alwan_mat3x3_f64 I, result;
 
-    alwan_mat3_identity(&I);
-    alwan_mat3_mul(&result, &A, &I);
+    alwan_mat3_identity_f64(&I);
+    alwan_mat3_mul_f64(&result, &A, &I);
 
     alwan_f64 diff = mat3_max_diff(&A, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "A * I != A");
@@ -64,10 +64,10 @@ static int test_multiply(void) {
 }
 
 static int test_inverse_identity(void) {
-    alwan_mat3x3 I, I_inv, result;
+    alwan_mat3x3_f64 I, I_inv, result;
 
-    alwan_mat3_identity(&I);
-    int status = alwan_mat3_inv(&I_inv, &I);
+    alwan_mat3_identity_f64(&I);
+    int status = alwan_mat3_inv_f64(&I_inv, &I);
     TEST_ASSERT(status == ALWAN_OK, "Failed to invert identity matrix");
 
     /* I^-1 should be I */
@@ -75,7 +75,7 @@ static int test_inverse_identity(void) {
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "I^-1 != I");
 
     /* I * I^-1 = I */
-    alwan_mat3_mul(&result, &I, &I_inv);
+    alwan_mat3_mul_f64(&result, &I, &I_inv);
     diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "I * I^-1 != I");
 
@@ -84,20 +84,20 @@ static int test_inverse_identity(void) {
 
 static int test_inverse_general(void) {
     /* Test matrix from rotation + scale */
-    alwan_mat3x3 M = {{
+    alwan_mat3x3_f64 M = {{
         ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0),
         ALWAN_LITERAL(0.0), ALWAN_LITERAL(3.0), ALWAN_LITERAL(1.0),
         ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(2.0)
     }};
 
-    alwan_mat3x3 M_inv, result, I;
-    alwan_mat3_identity(&I);
+    alwan_mat3x3_f64 M_inv, result, I;
+    alwan_mat3_identity_f64(&I);
 
-    int status = alwan_mat3_inv(&M_inv, &M);
+    int status = alwan_mat3_inv_f64(&M_inv, &M);
     TEST_ASSERT(status == ALWAN_OK, "Failed to invert test matrix");
 
     /* M * M^-1 should equal I */
-    alwan_mat3_mul(&result, &M, &M_inv);
+    alwan_mat3_mul_f64(&result, &M, &M_inv);
     alwan_f64 diff = mat3_max_diff(&I, &result);
 
     if (diff > ALWAN_TEST_TOLERANCE) {
@@ -115,14 +115,14 @@ static int test_inverse_general(void) {
 
 static int test_inverse_singular(void) {
     /* Singular matrix (det = 0) */
-    alwan_mat3x3 M = {{
+    alwan_mat3x3_f64 M = {{
         ALWAN_LITERAL(1.0), ALWAN_LITERAL(2.0), ALWAN_LITERAL(3.0),
         ALWAN_LITERAL(2.0), ALWAN_LITERAL(4.0), ALWAN_LITERAL(6.0),
         ALWAN_LITERAL(3.0), ALWAN_LITERAL(6.0), ALWAN_LITERAL(9.0)
     }};
 
-    alwan_mat3x3 M_inv;
-    int status = alwan_mat3_inv(&M_inv, &M);
+    alwan_mat3x3_f64 M_inv;
+    int status = alwan_mat3_inv_f64(&M_inv, &M);
 
     TEST_ASSERT(status != ALWAN_OK, "Should fail to invert singular matrix");
     TEST_PASS("test_inverse_singular");
@@ -133,8 +133,8 @@ static int test_inverse_random_seed(void) {
     srand(42);
 
     for (int trial = 0; trial < 10; trial++) {
-        alwan_mat3x3 M, M_inv, result, I;
-        alwan_mat3_identity(&I);
+        alwan_mat3x3_f64 M, M_inv, result, I;
+        alwan_mat3_identity_f64(&I);
 
         /* Generate random matrix with reasonable values */
         for (int i = 0; i < 9; i++) {
@@ -146,13 +146,13 @@ static int test_inverse_random_seed(void) {
         M.m[4] += ALWAN_LITERAL(10.0);
         M.m[8] += ALWAN_LITERAL(10.0);
 
-        int status = alwan_mat3_inv(&M_inv, &M);
+        int status = alwan_mat3_inv_f64(&M_inv, &M);
         if (status != ALWAN_OK) {
             continue;  /* Skip if numerically unstable */
         }
 
         /* M * M^-1 = I */
-        alwan_mat3_mul(&result, &M, &M_inv);
+        alwan_mat3_mul_f64(&result, &M, &M_inv);
         alwan_f64 diff = mat3_max_diff(&I, &result);
 
         alwan_f64 random_tolerance = ALWAN_TEST_TOLERANCE;
@@ -169,16 +169,16 @@ static int test_inverse_random_seed(void) {
 }
 
 static int test_mat3_mulv(void) {
-    alwan_mat3x3 M = {{
+    alwan_mat3x3_f64 M = {{
         1, 0, 0,
         0, 2, 0,
         0, 0, 3
     }};
 
-    alwan_vec3 v = {{1, 1, 1}};
-    alwan_vec3 result;
+    alwan_vec3_f64 v = {{1, 1, 1}};
+    alwan_vec3_f64 result;
 
-    alwan_mat3_mulv(&result, &M, &v);
+    alwan_mat3_mulv_f64(&result, &M, &v);
 
     TEST_ASSERT(ALWAN_ABS(result.v[0] - ALWAN_LITERAL(1.0)) < ALWAN_TEST_TOLERANCE, "Mv[0] != 1");
     TEST_ASSERT(ALWAN_ABS(result.v[1] - ALWAN_LITERAL(2.0)) < ALWAN_TEST_TOLERANCE, "Mv[1] != 2");

@@ -43,7 +43,7 @@ void alwan_hero_wavelength_to_xyz_f64(alwan_xyz_f64 *xyz_out, double lambda) {
  * ---------------------------------------------------------------- */
 
 int alwan_hero_wavelength_batch(alwan_f64 *lambda_out,
-                                 alwan_xyz *xyz_weights,
+                                 alwan_xyz_f64 *xyz_weights,
                                  size_t count,
                                  alwan_f64 seed) {
     if (!lambda_out || count == 0) return ALWAN_E_INVALID;
@@ -57,7 +57,7 @@ int alwan_hero_wavelength_batch(alwan_f64 *lambda_out,
 
         if (xyz_weights) {
             alwan_f64 pdf = alwan_hero_wavelength_pdf_f64_v(lambda);
-            alwan_xyz cmf = alwan_hero_wavelength_to_xyz_f64_v(lambda);
+            alwan_xyz_f64 cmf = alwan_hero_wavelength_to_xyz_f64_v(lambda);
             /* Weight = CMF / pdf for importance sampling */
             alwan_f64 inv_pdf = ALWAN_LITERAL(1.0) / pdf;
             xyz_weights[i].x = cmf.x * inv_pdf;

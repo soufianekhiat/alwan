@@ -58,7 +58,7 @@ static alwan_f64 get_D_factor(int D_setting) {
  * ---------------------------------------------------------------- */
 
 int alwan_rlab_forward(alwan_rlab_correlates *out,
-                       alwan_xyz const *xyz,
+                       alwan_xyz_f64 const *xyz,
                        alwan_rlab_viewing_conditions const *vc) {
     if (!out || !xyz || !vc) {
         return -1;
@@ -85,7 +85,7 @@ int alwan_rlab_forward(alwan_rlab_correlates *out,
  * RLAB Inverse Transform: Correlates -> XYZ
  * ---------------------------------------------------------------- */
 
-int alwan_rlab_inverse(alwan_xyz *xyz,
+int alwan_rlab_inverse(alwan_xyz_f64 *xyz,
                        alwan_rlab_correlates const *correlates,
                        alwan_rlab_viewing_conditions const *vc) {
     if (!xyz || !correlates || !vc) {

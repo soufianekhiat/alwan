@@ -19,7 +19,7 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz_in, oklab_expected, oklab_computed, xyz_out;
+        alwan_vec3_f64 xyz_in, oklab_expected, oklab_computed, xyz_out;
 
         /* Load test data */
         xyz_in.v[0] = test_data[i * 6 + 0];
@@ -31,11 +31,11 @@ ALWAN_DIAG_POP
 
         /* Test XYZ -> Oklab */
         {
-            alwan_xyz xyz_typed;
-            alwan_oklab oklab_typed;
-            ALWAN_MEMCPY(&xyz_typed, &xyz_in, sizeof(alwan_vec3));
-            alwan_xyz_to_oklab(&oklab_typed, &xyz_typed);
-            ALWAN_MEMCPY(&oklab_computed, &oklab_typed, sizeof(alwan_vec3));
+            alwan_xyz_f64 xyz_typed;
+            alwan_oklab_f64 oklab_typed;
+            ALWAN_MEMCPY(&xyz_typed, &xyz_in, sizeof(alwan_vec3_f64));
+            alwan_xyz_to_oklab_f64(&oklab_typed, &xyz_typed);
+            ALWAN_MEMCPY(&oklab_computed, &oklab_typed, sizeof(alwan_vec3_f64));
         }
 
         for (int j = 0; j < 3; j++) {
@@ -55,11 +55,11 @@ ALWAN_DIAG_POP
 
         /* Test round-trip: Oklab -> XYZ */
         {
-            alwan_oklab oklab_typed;
-            alwan_xyz xyz_typed;
-            ALWAN_MEMCPY(&oklab_typed, &oklab_computed, sizeof(alwan_vec3));
-            alwan_oklab_to_xyz(&xyz_typed, &oklab_typed);
-            ALWAN_MEMCPY(&xyz_out, &xyz_typed, sizeof(alwan_vec3));
+            alwan_oklab_f64 oklab_typed;
+            alwan_xyz_f64 xyz_typed;
+            ALWAN_MEMCPY(&oklab_typed, &oklab_computed, sizeof(alwan_vec3_f64));
+            alwan_oklab_to_xyz_f64(&xyz_typed, &oklab_typed);
+            ALWAN_MEMCPY(&xyz_out, &xyz_typed, sizeof(alwan_vec3_f64));
         }
 
         alwan_f64 const roundtrip_tol = ALWAN_TEST_TOLERANCE;
@@ -97,7 +97,7 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 oklab_in, oklch_expected, oklch_computed, oklab_out;
+        alwan_vec3_f64 oklab_in, oklch_expected, oklch_computed, oklab_out;
 
         /* Load test data */
         oklab_in.v[0] = test_data[i * 6 + 0];
@@ -109,11 +109,11 @@ ALWAN_DIAG_POP
 
         /* Test Oklab -> Oklch */
         {
-            alwan_oklab oklab_typed;
-            alwan_oklch oklch_typed;
-            ALWAN_MEMCPY(&oklab_typed, &oklab_in, sizeof(alwan_vec3));
-            alwan_oklab_to_oklch(&oklch_typed, &oklab_typed);
-            ALWAN_MEMCPY(&oklch_computed, &oklch_typed, sizeof(alwan_vec3));
+            alwan_oklab_f64 oklab_typed;
+            alwan_oklch_f64 oklch_typed;
+            ALWAN_MEMCPY(&oklab_typed, &oklab_in, sizeof(alwan_vec3_f64));
+            alwan_oklab_to_oklch_f64(&oklch_typed, &oklab_typed);
+            ALWAN_MEMCPY(&oklch_computed, &oklch_typed, sizeof(alwan_vec3_f64));
         }
 
         for (int j = 0; j < 3; j++) {
@@ -134,11 +134,11 @@ ALWAN_DIAG_POP
 
         /* Test round-trip: Oklch -> Oklab */
         {
-            alwan_oklch oklch_typed;
-            alwan_oklab oklab_typed;
-            ALWAN_MEMCPY(&oklch_typed, &oklch_computed, sizeof(alwan_vec3));
-            alwan_oklch_to_oklab(&oklab_typed, &oklch_typed);
-            ALWAN_MEMCPY(&oklab_out, &oklab_typed, sizeof(alwan_vec3));
+            alwan_oklch_f64 oklch_typed;
+            alwan_oklab_f64 oklab_typed;
+            ALWAN_MEMCPY(&oklch_typed, &oklch_computed, sizeof(alwan_vec3_f64));
+            alwan_oklch_to_oklab_f64(&oklab_typed, &oklch_typed);
+            ALWAN_MEMCPY(&oklab_out, &oklab_typed, sizeof(alwan_vec3_f64));
         }
 
         for (int j = 0; j < 3; j++) {
@@ -169,14 +169,14 @@ static int test_oklab_known_values(void) {
     /* D65 white in Oklab: reference values computed from the Oklab M1/M2 matrices.
      * Note: Oklab matrices are designed for sRGB (1,1,1) -> L=1; an arbitrary D65
      * XYZ approximation won't give exactly (1, 0, 0) due to matrix coefficient precision. */
-    alwan_vec3 xyz_white = {{ALWAN_LITERAL(0.95047), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.08883)}};
-    alwan_vec3 oklab;
+    alwan_vec3_f64 xyz_white = {{ALWAN_LITERAL(0.95047), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.08883)}};
+    alwan_vec3_f64 oklab;
     {
-        alwan_xyz xyz_typed;
-        alwan_oklab oklab_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz_white, sizeof(alwan_vec3));
-        alwan_xyz_to_oklab(&oklab_typed, &xyz_typed);
-        ALWAN_MEMCPY(&oklab, &oklab_typed, sizeof(alwan_vec3));
+        alwan_xyz_f64 xyz_typed;
+        alwan_oklab_f64 oklab_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz_white, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_oklab_f64(&oklab_typed, &xyz_typed);
+        ALWAN_MEMCPY(&oklab, &oklab_typed, sizeof(alwan_vec3_f64));
     }
 
     TEST_ASSERT(ALWAN_ABS(oklab.v[0] - ALWAN_LITERAL(9.99999809520289439924e-01)) < tol, "White L mismatch");
@@ -184,13 +184,13 @@ static int test_oklab_known_values(void) {
     TEST_ASSERT(ALWAN_ABS(oklab.v[2] - ALWAN_LITERAL(-8.61087800451548757152e-05)) < tol, "White b mismatch");
 
     /* Black should be L=0, a=0, b=0 */
-    alwan_vec3 xyz_black = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};
+    alwan_vec3_f64 xyz_black = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};
     {
-        alwan_xyz xyz_typed;
-        alwan_oklab oklab_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz_black, sizeof(alwan_vec3));
-        alwan_xyz_to_oklab(&oklab_typed, &xyz_typed);
-        ALWAN_MEMCPY(&oklab, &oklab_typed, sizeof(alwan_vec3));
+        alwan_xyz_f64 xyz_typed;
+        alwan_oklab_f64 oklab_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz_black, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_oklab_f64(&oklab_typed, &xyz_typed);
+        ALWAN_MEMCPY(&oklab, &oklab_typed, sizeof(alwan_vec3_f64));
     }
 
     TEST_ASSERT(ALWAN_ABS(oklab.v[0]) < tol, "Black L != 0");

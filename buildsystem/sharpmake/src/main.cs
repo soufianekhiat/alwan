@@ -3,7 +3,8 @@ using Sharpmake;
 [module: Sharpmake.Include("common.cs")]
 [module: Sharpmake.Include("AlwanLib.cs")]
 [module: Sharpmake.Include("AlwanTests.cs")]
-[module: Sharpmake.Include("AlwanBench.cs")]
+// AlwanBench has been moved to ../alwan_dev/bench/ (separate project)
+// AlwanImageGen has been moved to ../alwan_dev/image_gen/ (separate project)
 
 namespace Alwan
 {
@@ -36,8 +37,6 @@ namespace Alwan
             // Add unified test project
             conf.AddProject<AlwanTestsProject>(target);
 
-            // Add benchmark project
-            conf.AddProject<AlwanBenchProject>(target);
         }
 
         [Main]

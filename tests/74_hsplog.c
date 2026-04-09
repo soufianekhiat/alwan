@@ -19,9 +19,9 @@
 static int test_hsplog_forward_known_values(void) {
     /* White: S=0 -> S_log = log10(1) = 0, P = 1.0 */
     {
-        alwan_rgb white = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
-        alwan_hsplog hsplog;
-        int status = alwan_rgb_to_hsplog(&hsplog, &white);
+        alwan_rgb_f64 white = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+        alwan_hsplog_f64 hsplog;
+        int status = alwan_rgb_to_hsplog_f64(&hsplog, &white);
         TEST_ASSERT(status == ALWAN_OK, "HSPLog forward white status");
         TEST_ASSERT(ALWAN_ABS(hsplog.p - ALWAN_LITERAL(1.0)) < ALWAN_TEST_TOLERANCE, "white P should be 1.0");
         TEST_ASSERT(ALWAN_ABS(hsplog.s) < ALWAN_TEST_TOLERANCE, "white S_log should be 0.0");
@@ -29,18 +29,18 @@ static int test_hsplog_forward_known_values(void) {
 
     /* Black: P = 0, S=0 -> S_log = 0 */
     {
-        alwan_rgb black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-        alwan_hsplog hsplog;
-        int status = alwan_rgb_to_hsplog(&hsplog, &black);
+        alwan_rgb_f64 black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_hsplog_f64 hsplog;
+        int status = alwan_rgb_to_hsplog_f64(&hsplog, &black);
         TEST_ASSERT(status == ALWAN_OK, "HSPLog forward black status");
         TEST_ASSERT(ALWAN_ABS(hsplog.p) < ALWAN_TEST_TOLERANCE, "black P should be 0.0");
     }
 
     /* Pure red: S=1.0 -> S_log = log10(1+9) = log10(10) = 1.0 */
     {
-        alwan_rgb red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-        alwan_hsplog hsplog;
-        int status = alwan_rgb_to_hsplog(&hsplog, &red);
+        alwan_rgb_f64 red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_hsplog_f64 hsplog;
+        int status = alwan_rgb_to_hsplog_f64(&hsplog, &red);
         TEST_ASSERT(status == ALWAN_OK, "HSPLog forward red status");
         TEST_ASSERT(ALWAN_ABS(hsplog.s - ALWAN_LITERAL(1.0)) < ALWAN_TEST_TOLERANCE,
                     "fully saturated S_log should be 1.0");
@@ -50,9 +50,9 @@ static int test_hsplog_forward_known_values(void) {
 
     /* 50% gray: S=0 -> S_log = 0 */
     {
-        alwan_rgb gray = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
-        alwan_hsplog hsplog;
-        int status = alwan_rgb_to_hsplog(&hsplog, &gray);
+        alwan_rgb_f64 gray = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
+        alwan_hsplog_f64 hsplog;
+        int status = alwan_rgb_to_hsplog_f64(&hsplog, &gray);
         TEST_ASSERT(status == ALWAN_OK, "HSPLog forward gray status");
         TEST_ASSERT(ALWAN_ABS(hsplog.s) < ALWAN_TEST_TOLERANCE, "gray S_log should be 0.0");
     }
@@ -63,7 +63,7 @@ static int test_hsplog_forward_known_values(void) {
 /* Test HSPLog log saturation formula: S_log = log10(1 + 9*S) */
 static int test_hsplog_log_saturation(void) {
     /* Compare HSPLog saturation against HSP saturation with manual log10 */
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.2)},
         {ALWAN_LITERAL(0.4), ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.1)},
         {ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.8)},
@@ -72,10 +72,10 @@ static int test_hsplog_log_saturation(void) {
     size_t const num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_hsp hsp;
-        alwan_hsplog hsplog;
-        alwan_rgb_to_hsp(&hsp, &test_colors[i]);
-        alwan_rgb_to_hsplog(&hsplog, &test_colors[i]);
+        alwan_hsp_f64 hsp;
+        alwan_hsplog_f64 hsplog;
+        alwan_rgb_to_hsp_f64(&hsp, &test_colors[i]);
+        alwan_rgb_to_hsplog_f64(&hsplog, &test_colors[i]);
 
         /* H and P must be identical */
         TEST_ASSERT(ALWAN_ABS(hsplog.h - hsp.h) < ALWAN_TEST_TOLERANCE, "HSPLog H matches HSP H");
@@ -122,7 +122,7 @@ static int test_hsplog_expansion(void) {
 
 /* Test HSPLog round-trip: RGB -> HSPLog -> RGB */
 static int test_hsplog_roundtrip(void) {
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},   /* Red */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)},   /* Green */
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)},   /* Blue */
@@ -141,10 +141,10 @@ static int test_hsplog_roundtrip(void) {
     alwan_f64 const tol = ALWAN_LITERAL(1e-6);
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_hsplog hsplog;
-        alwan_rgb roundtrip;
-        int s1 = alwan_rgb_to_hsplog(&hsplog, &test_colors[i]);
-        int s2 = alwan_hsplog_to_rgb(&roundtrip, &hsplog);
+        alwan_hsplog_f64 hsplog;
+        alwan_rgb_f64 roundtrip;
+        int s1 = alwan_rgb_to_hsplog_f64(&hsplog, &test_colors[i]);
+        int s2 = alwan_hsplog_to_rgb_f64(&roundtrip, &hsplog);
         TEST_ASSERT(s1 == ALWAN_OK && s2 == ALWAN_OK, "HSPLog round-trip status");
 
         alwan_f64 dr = ALWAN_ABS(roundtrip.r - test_colors[i].r);
@@ -178,15 +178,15 @@ static int test_hsplog_map_consistency(void) {
         rgb_buf[i * 3 + 2] = (alwan_f64)((i * 7) % N) / (alwan_f64)(N - 1);
     }
 
-    int status = alwan_rgb_to_hsplog_map_interleave(hsplog_map, rgb_buf, N, stride, stride);
+    int status = alwan_rgb_to_hsplog_f64_map_interleave(hsplog_map, rgb_buf, N, stride, stride);
     TEST_ASSERT(status == ALWAN_OK, "HSPLog map status");
 
     /* SIMD uses FMA and different op ordering vs scalar: float32 ~1e-7 diffs */
     alwan_f64 const tol = ALWAN_LITERAL(1e-6);
     for (size_t i = 0; i < N; i++) {
-        alwan_rgb rgb = {rgb_buf[i * 3], rgb_buf[i * 3 + 1], rgb_buf[i * 3 + 2]};
-        alwan_hsplog hsplog_pixel;
-        alwan_rgb_to_hsplog(&hsplog_pixel, &rgb);
+        alwan_rgb_f64 rgb = {rgb_buf[i * 3], rgb_buf[i * 3 + 1], rgb_buf[i * 3 + 2]};
+        alwan_hsplog_f64 hsplog_pixel;
+        alwan_rgb_to_hsplog_f64(&hsplog_pixel, &rgb);
 
         alwan_f64 dh = ALWAN_ABS(hsplog_map[i * 3 + 0] - hsplog_pixel.h);
         alwan_f64 ds = ALWAN_ABS(hsplog_map[i * 3 + 1] - hsplog_pixel.s);
@@ -203,13 +203,13 @@ static int test_hsplog_map_consistency(void) {
 
 /* Test HSPLog null pointer rejection */
 static int test_hsplog_null_rejection(void) {
-    alwan_rgb rgb = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
-    alwan_hsplog hsplog = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.5)};
+    alwan_rgb_f64 rgb = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
+    alwan_hsplog_f64 hsplog = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.5)};
 
-    TEST_ASSERT(alwan_rgb_to_hsplog(NULL, &rgb) == ALWAN_E_INVALID, "hsplog null out");
-    TEST_ASSERT(alwan_rgb_to_hsplog(&hsplog, NULL) == ALWAN_E_INVALID, "hsplog null in");
-    TEST_ASSERT(alwan_hsplog_to_rgb(NULL, &hsplog) == ALWAN_E_INVALID, "hsplog->rgb null out");
-    TEST_ASSERT(alwan_hsplog_to_rgb(&rgb, NULL) == ALWAN_E_INVALID, "hsplog->rgb null in");
+    TEST_ASSERT(alwan_rgb_to_hsplog_f64(NULL, &rgb) == ALWAN_E_INVALID, "hsplog null out");
+    TEST_ASSERT(alwan_rgb_to_hsplog_f64(&hsplog, NULL) == ALWAN_E_INVALID, "hsplog null in");
+    TEST_ASSERT(alwan_hsplog_to_rgb_f64(NULL, &hsplog) == ALWAN_E_INVALID, "hsplog->rgb null out");
+    TEST_ASSERT(alwan_hsplog_to_rgb_f64(&rgb, NULL) == ALWAN_E_INVALID, "hsplog->rgb null in");
 
     TEST_PASS("hsplog_null_rejection");
 }

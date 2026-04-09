@@ -74,7 +74,7 @@ static int test_coefficient_sum(void) {
 static int test_per_pixel_all_standards(void) {
     for (size_t s = 0; s < NUM_STANDARDS; s++) {
         for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-            alwan_rgb rgb;
+            alwan_rgb_f64 rgb;
             rgb.r = test_rgb[i * 3 + 0];
             rgb.g = test_rgb[i * 3 + 1];
             rgb.b = test_rgb[i * 3 + 2];
@@ -106,7 +106,7 @@ static int test_per_pixel_all_standards(void) {
 static int test_kr_kb_variant(void) {
     for (size_t s = 0; s < NUM_STANDARDS; s++) {
         for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-            alwan_rgb rgb;
+            alwan_rgb_f64 rgb;
             rgb.r = test_rgb[i * 3 + 0];
             rgb.g = test_rgb[i * 3 + 1];
             rgb.b = test_rgb[i * 3 + 2];
@@ -115,7 +115,7 @@ static int test_kr_kb_variant(void) {
             alwan_relative_luminance(&Y_std, &rgb, g_standards[s].standard);
 
             alwan_f64 Y_kr_kb;
-            alwan_relative_luminance_kr_kb(&Y_kr_kb, &rgb,
+            alwan_relative_luminance_kr_kb_f64(&Y_kr_kb, &rgb,
                                            g_standards[s].kr, g_standards[s].kb);
 
             alwan_f64 diff = ALWAN_ABS(Y_std - Y_kr_kb);
@@ -135,7 +135,7 @@ static int test_kr_kb_variant(void) {
 
 static int test_known_values(void) {
     /* White (1,1,1) should give Y = kr + kg + kb = 1.0 for all standards */
-    alwan_rgb white = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+    alwan_rgb_f64 white = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
     for (size_t s = 0; s < NUM_STANDARDS; s++) {
         alwan_f64 Y;
         alwan_relative_luminance(&Y, &white, g_standards[s].standard);
@@ -148,7 +148,7 @@ static int test_known_values(void) {
     }
 
     /* Black (0,0,0) should give Y = 0.0 */
-    alwan_rgb black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
     for (size_t s = 0; s < NUM_STANDARDS; s++) {
         alwan_f64 Y;
         alwan_relative_luminance(&Y, &black, g_standards[s].standard);
@@ -156,19 +156,19 @@ static int test_known_values(void) {
     }
 
     /* Pure red (1,0,0) in BT.709 should give Y = 0.2126 */
-    alwan_rgb red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
     alwan_f64 Y_red;
     alwan_relative_luminance(&Y_red, &red, ALWAN_LUMA_BT709);
     TEST_ASSERT_NEAR(Y_red, ALWAN_LITERAL(0.2126), ALWAN_TEST_TOLERANCE, "BT.709 red luminance");
 
     /* Pure green (0,1,0) in BT.709 should give Y = 0.7152 */
-    alwan_rgb green = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 green = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
     alwan_f64 Y_green;
     alwan_relative_luminance(&Y_green, &green, ALWAN_LUMA_BT709);
     TEST_ASSERT_NEAR(Y_green, ALWAN_LITERAL(0.7152), ALWAN_TEST_TOLERANCE, "BT.709 green luminance");
 
     /* Pure blue (0,0,1) in BT.709 should give Y = 0.0722 */
-    alwan_rgb blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};
+    alwan_rgb_f64 blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};
     alwan_f64 Y_blue;
     alwan_relative_luminance(&Y_blue, &blue, ALWAN_LUMA_BT709);
     TEST_ASSERT_NEAR(Y_blue, ALWAN_LITERAL(0.0722), ALWAN_TEST_TOLERANCE, "BT.709 blue luminance");
@@ -181,22 +181,22 @@ static int test_known_values(void) {
  * ---------------------------------------------------------------- */
 
 static int test_null_pointers(void) {
-    alwan_rgb rgb = {0};
+    alwan_rgb_f64 rgb = {0};
     alwan_f64 Y;
 
     TEST_ASSERT(alwan_relative_luminance(NULL, &rgb, ALWAN_LUMA_BT709) == ALWAN_E_INVALID,
                 "should reject null output");
     TEST_ASSERT(alwan_relative_luminance(&Y, NULL, ALWAN_LUMA_BT709) == ALWAN_E_INVALID,
                 "should reject null input");
-    TEST_ASSERT(alwan_relative_luminance_kr_kb(NULL, &rgb, 0.2126, 0.0722) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_relative_luminance_kr_kb_f64(NULL, &rgb, 0.2126, 0.0722) == ALWAN_E_INVALID,
                 "kr_kb should reject null output");
-    TEST_ASSERT(alwan_relative_luminance_kr_kb(&Y, NULL, 0.2126, 0.0722) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_relative_luminance_kr_kb_f64(&Y, NULL, 0.2126, 0.0722) == ALWAN_E_INVALID,
                 "kr_kb should reject null input");
-    TEST_ASSERT(alwan_relative_luminance_space(NULL, &rgb, NULL) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_relative_luminance_space_f64(NULL, &rgb, NULL) == ALWAN_E_INVALID,
                 "space should reject null output");
-    TEST_ASSERT(alwan_relative_luminance_space(&Y, NULL, NULL) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_relative_luminance_space_f64(&Y, NULL, NULL) == ALWAN_E_INVALID,
                 "space should reject null input");
-    TEST_ASSERT(alwan_relative_luminance_space(&Y, &rgb, NULL) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_relative_luminance_space_f64(&Y, &rgb, NULL) == ALWAN_E_INVALID,
                 "space should reject null space");
 
     TEST_PASS("test_null_pointers");
@@ -240,13 +240,13 @@ static int test_luminance_maps(void) {
 
     for (size_t s = 0; s < NUM_STANDARDS; s++) {
         /* Map version */
-        alwan_relative_luminance_map_interleave(map_out, grid, MAP_COUNT,
+        alwan_relative_luminance_f64_map_interleave(map_out, grid, MAP_COUNT,
                                                  g_standards[s].standard,
                                                  in_stride, out_stride);
 
         /* Per-pixel reference */
         for (size_t i = 0; i < MAP_COUNT; i++) {
-            alwan_rgb rgb;
+            alwan_rgb_f64 rgb;
             rgb.r = grid[i * 3 + 0];
             rgb.g = grid[i * 3 + 1];
             rgb.b = grid[i * 3 + 2];
@@ -298,10 +298,10 @@ static int test_space_descriptor_map(void) {
 
     generate_unit_grid(grid);
 
-    alwan_relative_luminance_map_interleave(map_enum, grid, MAP_COUNT,
+    alwan_relative_luminance_f64_map_interleave(map_enum, grid, MAP_COUNT,
                                              ALWAN_LUMA_BT709,
                                              in_stride, out_stride);
-    alwan_relative_luminance_space_map_interleave(map_space, grid, MAP_COUNT,
+    alwan_relative_luminance_space_f64_map_interleave(map_space, grid, MAP_COUNT,
                                                    &bt709,
                                                    in_stride, out_stride);
 

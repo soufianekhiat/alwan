@@ -34,8 +34,8 @@ ALWAN_DIAG_POP
  * RGB Matrix Derivation
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_derive_matrices(alwan_mat3x3 *rgb_to_xyz,
-                               alwan_mat3x3 *xyz_to_rgb,
+int alwan_rgb_derive_matrices(alwan_mat3x3_f64 *rgb_to_xyz,
+                               alwan_mat3x3_f64 *xyz_to_rgb,
                                alwan_rgb_space_desc const *desc) {
     if (!desc || !rgb_to_xyz || !xyz_to_rgb) {
         return ALWAN_E_INVALID;
@@ -57,15 +57,15 @@ int alwan_rgb_derive_matrices(alwan_mat3x3 *rgb_to_xyz,
  * RGB <-> XYZ Direct Conversion
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_xyz(alwan_xyz *xyz,
+int alwan_rgb_to_xyz(alwan_xyz_f64 *xyz,
                      alwan_rgb_space_desc const *space,
-                     alwan_rgb const *rgb) {
+                     alwan_rgb_f64 const *rgb) {
     if (!space || !rgb || !xyz) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_mat3x3 const *mat;
-    alwan_mat3x3 derived_rgb_to_xyz, derived_xyz_to_rgb;
+    alwan_mat3x3_f64 const *mat;
+    alwan_mat3x3_f64 derived_rgb_to_xyz, derived_xyz_to_rgb;
 
     if (space->has_matrices) {
         mat = &space->rgb_to_xyz;
@@ -76,23 +76,23 @@ int alwan_rgb_to_xyz(alwan_xyz *xyz,
     }
 
     /* Apply RGB -> XYZ matrix */
-    alwan_vec3 vec_in, vec_out;
-    ALWAN_MEMCPY(&vec_in, rgb, sizeof(alwan_vec3));
+    alwan_vec3_f64 vec_in, vec_out;
+    ALWAN_MEMCPY(&vec_in, rgb, sizeof(alwan_vec3_f64));
     alwan_mat3_mulv(&vec_out, mat, &vec_in);
-    ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3));
+    ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3_f64));
 
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_rgb(alwan_rgb *rgb,
+int alwan_xyz_to_rgb(alwan_rgb_f64 *rgb,
                      alwan_rgb_space_desc const *space,
-                     alwan_xyz const *xyz) {
+                     alwan_xyz_f64 const *xyz) {
     if (!space || !xyz || !rgb) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_mat3x3 const *mat;
-    alwan_mat3x3 derived_rgb_to_xyz, derived_xyz_to_rgb;
+    alwan_mat3x3_f64 const *mat;
+    alwan_mat3x3_f64 derived_rgb_to_xyz, derived_xyz_to_rgb;
 
     if (space->has_matrices) {
         mat = &space->xyz_to_rgb;
@@ -103,10 +103,10 @@ int alwan_xyz_to_rgb(alwan_rgb *rgb,
     }
 
     /* Apply XYZ -> RGB matrix */
-    alwan_vec3 vec_in, vec_out;
-    ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3));
+    alwan_vec3_f64 vec_in, vec_out;
+    ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3_f64));
     alwan_mat3_mulv(&vec_out, mat, &vec_in);
-    ALWAN_MEMCPY(rgb, &vec_out, sizeof(alwan_vec3));
+    ALWAN_MEMCPY(rgb, &vec_out, sizeof(alwan_vec3_f64));
 
     return ALWAN_OK;
 }
@@ -214,18 +214,18 @@ int alwan_eotf_apply(alwan_f64 *linear,
  * ---------------------------------------------------------------- */
 
 /* Convert RGB color from one color space to another */
-int alwan_rgb_convert(alwan_rgb *dst_rgb,
+int alwan_rgb_convert(alwan_rgb_f64 *dst_rgb,
                       alwan_ctx *ctx,
                       alwan_rgb_space_desc const *src_space,
                       alwan_rgb_space_desc const *dst_space,
-                      alwan_rgb const *src_rgb) {
+                      alwan_rgb_f64 const *src_rgb) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb) {
         return ALWAN_E_INVALID;
     }
 
     /* Get conversion matrices for both spaces */
-    alwan_mat3x3 src_to_xyz, xyz_to_src;
-    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+    alwan_mat3x3_f64 src_to_xyz, xyz_to_src;
+    alwan_mat3x3_f64 dst_to_xyz, xyz_to_dst;
 
     if (src_space->has_matrices) {
         src_to_xyz = src_space->rgb_to_xyz;
@@ -244,9 +244,9 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
     }
 
     /* Convert source RGB to XYZ */
-    alwan_vec3 vec_in;
-    ALWAN_MEMCPY(&vec_in, src_rgb, sizeof(alwan_vec3));
-    alwan_vec3 xyz;
+    alwan_vec3_f64 vec_in;
+    ALWAN_MEMCPY(&vec_in, src_rgb, sizeof(alwan_vec3_f64));
+    alwan_vec3_f64 xyz;
     alwan_mat3_mulv(&xyz, &src_to_xyz, &vec_in);
 
     /* Check if chromatic adaptation is needed */
@@ -259,7 +259,7 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
     if (need_adaptation && ctx) {
         /* Perform chromatic adaptation using Bradford CAT */
         alwan_xyy src_white_xyy, dst_white_xyy;
-        alwan_xyz src_white_xyz, dst_white_xyz;
+        alwan_xyz_f64 src_white_xyz, dst_white_xyz;
 
         /* Convert xy to XYZ (using Y=1.0) */
         src_white_xyy.x = src_space->white_xy[0];
@@ -273,38 +273,38 @@ int alwan_rgb_convert(alwan_rgb *dst_rgb,
         alwan_xyy_to_xyz(&dst_white_xyz, &dst_white_xyy);
 
         /* Compute and apply CAT matrix */
-        alwan_mat3x3 cat_matrix;
+        alwan_mat3x3_f64 cat_matrix;
         status = alwan_cat_matrix(&cat_matrix, &src_white_xyz, &dst_white_xyz,
                                   ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
 
-        alwan_vec3 xyz_adapted;
+        alwan_vec3_f64 xyz_adapted;
         alwan_mat3_mulv(&xyz_adapted, &cat_matrix, &xyz);
         xyz = xyz_adapted;
     }
 
     /* Convert adapted XYZ to destination RGB */
-    alwan_vec3 vec_out;
+    alwan_vec3_f64 vec_out;
     alwan_mat3_mulv(&vec_out, &xyz_to_dst, &xyz);
-    ALWAN_MEMCPY(dst_rgb, &vec_out, sizeof(alwan_vec3));
+    ALWAN_MEMCPY(dst_rgb, &vec_out, sizeof(alwan_vec3_f64));
 
     return ALWAN_OK;
 }
 
 /* Map RGB color space conversion */
-int alwan_rgb_convert_map_interleave(alwan_rgb *dst_rgb,
+int alwan_rgb_convert_map_interleave(alwan_rgb_f64 *dst_rgb,
                             alwan_ctx *ctx,
                             alwan_rgb_space_desc const *src_space,
                             alwan_rgb_space_desc const *dst_space,
-                            alwan_rgb const *src_rgb,
+                            alwan_rgb_f64 const *src_rgb,
                             size_t count) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb || count == 0) {
         return ALWAN_E_INVALID;
     }
 
     /* Get conversion matrices once for all colors */
-    alwan_mat3x3 src_to_xyz, xyz_to_src;
-    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+    alwan_mat3x3_f64 src_to_xyz, xyz_to_src;
+    alwan_mat3x3_f64 dst_to_xyz, xyz_to_dst;
 
     if (src_space->has_matrices) {
         src_to_xyz = src_space->rgb_to_xyz;
@@ -329,10 +329,10 @@ int alwan_rgb_convert_map_interleave(alwan_rgb *dst_rgb,
     int need_adaptation = (ALWAN_ABS(dx) > tolerance || ALWAN_ABS(dy) > tolerance);
 
     /* Precompute adaptation matrix if needed */
-    alwan_mat3x3 cat_matrix;
+    alwan_mat3x3_f64 cat_matrix;
     if (need_adaptation && ctx) {
         alwan_xyy src_white_xyy, dst_white_xyy;
-        alwan_xyz src_white_xyz, dst_white_xyz;
+        alwan_xyz_f64 src_white_xyz, dst_white_xyz;
 
         /* Convert xy to XYZ (using Y=1.0) */
         src_white_xyy.x = src_space->white_xy[0];
@@ -354,21 +354,21 @@ int alwan_rgb_convert_map_interleave(alwan_rgb *dst_rgb,
     /* Convert all colors */
     for (size_t i = 0; i < count; i++) {
         /* Convert source RGB to XYZ */
-        alwan_vec3 xyz, vec_in;
-        ALWAN_MEMCPY(&vec_in, &src_rgb[i], sizeof(alwan_vec3));
+        alwan_vec3_f64 xyz, vec_in;
+        ALWAN_MEMCPY(&vec_in, &src_rgb[i], sizeof(alwan_vec3_f64));
         alwan_mat3_mulv(&xyz, &src_to_xyz, &vec_in);
 
         /* Apply chromatic adaptation if needed */
         if (need_adaptation && ctx) {
-            alwan_vec3 xyz_adapted;
+            alwan_vec3_f64 xyz_adapted;
             alwan_mat3_mulv(&xyz_adapted, &cat_matrix, &xyz);
             xyz = xyz_adapted;
         }
 
         /* Convert adapted XYZ to destination RGB */
-        alwan_vec3 vec_out;
+        alwan_vec3_f64 vec_out;
         alwan_mat3_mulv(&vec_out, &xyz_to_dst, &xyz);
-        ALWAN_MEMCPY(&dst_rgb[i], &vec_out, sizeof(alwan_vec3));
+        ALWAN_MEMCPY(&dst_rgb[i], &vec_out, sizeof(alwan_vec3_f64));
     }
 
     return ALWAN_OK;

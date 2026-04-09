@@ -225,7 +225,7 @@ static int test_dcdm_decoding(void) {
  * Main Test Runner
  * ============================================================================ */
 
-int test_section9_transfer_functions(void) {
+int test_53_section9_transfer_functions_main(void) {
     printf("Testing Section 9 Transfer Functions (Apple Log, DCDM)...\n");
     int failures = 0;
 

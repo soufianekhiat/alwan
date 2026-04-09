@@ -82,17 +82,17 @@ ALWAN_DIAG_POP
 static int test_hsv_forward(void) {
     /* Test RGB -> HSV conversion */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb;
+        alwan_vec3_f64 rgb;
         rgb.v[0] = test_rgb[i * 3 + 0];
         rgb.v[1] = test_rgb[i * 3 + 1];
         rgb.v[2] = test_rgb[i * 3 + 2];
 
-        alwan_vec3 hsv;
-        alwan_rgb rgb_typed;
-        alwan_hsv hsv_typed;
-        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
-        int status = alwan_rgb_to_hsv(&hsv_typed, &rgb_typed);
-        ALWAN_MEMCPY(&hsv, &hsv_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 hsv;
+        alwan_rgb_f64 rgb_typed;
+        alwan_hsv_f64 hsv_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3_f64));
+        int status = alwan_rgb_to_hsv_f64(&hsv_typed, &rgb_typed);
+        ALWAN_MEMCPY(&hsv, &hsv_typed, sizeof(alwan_vec3_f64));
         TEST_ASSERT(status == ALWAN_OK, "RGB to HSV conversion failed");
 
         /* Compare with expected values */
@@ -121,19 +121,19 @@ static int test_hsv_forward(void) {
 static int test_hsv_round_trip(void) {
     /* Test RGB -> HSV -> RGB round-trip */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb_orig;
+        alwan_rgb_f64 rgb_orig;
         rgb_orig.r = test_rgb[i * 3 + 0];
         rgb_orig.g = test_rgb[i * 3 + 1];
         rgb_orig.b = test_rgb[i * 3 + 2];
 
-        alwan_hsv hsv;
-        alwan_rgb rgb_recon;
+        alwan_hsv_f64 hsv;
+        alwan_rgb_f64 rgb_recon;
         int status;
 
-        status = alwan_rgb_to_hsv(&hsv, &rgb_orig);
+        status = alwan_rgb_to_hsv_f64(&hsv, &rgb_orig);
         TEST_ASSERT(status == ALWAN_OK, "RGB to HSV failed");
 
-        status = alwan_hsv_to_rgb(&rgb_recon, &hsv);
+        status = alwan_hsv_to_rgb_f64(&rgb_recon, &hsv);
         TEST_ASSERT(status == ALWAN_OK, "HSV to RGB failed");
 
         /* Check round-trip accuracy */
@@ -161,17 +161,17 @@ static int test_hsv_round_trip(void) {
 static int test_hsl_forward(void) {
     /* Test RGB -> HSL conversion */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_vec3 rgb;
+        alwan_vec3_f64 rgb;
         rgb.v[0] = test_rgb[i * 3 + 0];
         rgb.v[1] = test_rgb[i * 3 + 1];
         rgb.v[2] = test_rgb[i * 3 + 2];
 
-        alwan_vec3 hsl;
-        alwan_rgb rgb_typed;
-        alwan_hsl hsl_typed;
-        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
-        int status = alwan_rgb_to_hsl(&hsl_typed, &rgb_typed);
-        ALWAN_MEMCPY(&hsl, &hsl_typed, sizeof(alwan_vec3));
+        alwan_vec3_f64 hsl;
+        alwan_rgb_f64 rgb_typed;
+        alwan_hsl_f64 hsl_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3_f64));
+        int status = alwan_rgb_to_hsl_f64(&hsl_typed, &rgb_typed);
+        ALWAN_MEMCPY(&hsl, &hsl_typed, sizeof(alwan_vec3_f64));
         TEST_ASSERT(status == ALWAN_OK, "RGB to HSL conversion failed");
 
         /* Compare with expected values */
@@ -200,19 +200,19 @@ static int test_hsl_forward(void) {
 static int test_hsl_round_trip(void) {
     /* Test RGB -> HSL -> RGB round-trip */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb_orig;
+        alwan_rgb_f64 rgb_orig;
         rgb_orig.r = test_rgb[i * 3 + 0];
         rgb_orig.g = test_rgb[i * 3 + 1];
         rgb_orig.b = test_rgb[i * 3 + 2];
 
-        alwan_hsl hsl;
-        alwan_rgb rgb_recon;
+        alwan_hsl_f64 hsl;
+        alwan_rgb_f64 rgb_recon;
         int status;
 
-        status = alwan_rgb_to_hsl(&hsl, &rgb_orig);
+        status = alwan_rgb_to_hsl_f64(&hsl, &rgb_orig);
         TEST_ASSERT(status == ALWAN_OK, "RGB to HSL failed");
 
-        status = alwan_hsl_to_rgb(&rgb_recon, &hsl);
+        status = alwan_hsl_to_rgb_f64(&rgb_recon, &hsl);
         TEST_ASSERT(status == ALWAN_OK, "HSL to RGB failed");
 
         /* Check round-trip accuracy */
@@ -240,13 +240,13 @@ static int test_hsl_round_trip(void) {
 static int test_cmy_conversions(void) {
     /* Test RGB <-> CMY conversions */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb;
+        alwan_rgb_f64 rgb;
         rgb.r = test_rgb[i * 3 + 0];
         rgb.g = test_rgb[i * 3 + 1];
         rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_cmy cmy;
-        int status = alwan_rgb_to_cmy(&cmy, &rgb);
+        alwan_cmy_f64 cmy;
+        int status = alwan_rgb_to_cmy_f64(&cmy, &rgb);
         TEST_ASSERT(status == ALWAN_OK, "RGB to CMY failed");
 
         /* Compare with expected */
@@ -268,8 +268,8 @@ static int test_cmy_conversions(void) {
         }
 
         /* Test round-trip */
-        alwan_rgb rgb_recon;
-        status = alwan_cmy_to_rgb(&rgb_recon, &cmy);
+        alwan_rgb_f64 rgb_recon;
+        status = alwan_cmy_to_rgb_f64(&rgb_recon, &cmy);
         TEST_ASSERT(status == ALWAN_OK, "CMY to RGB failed");
 
         alwan_f64 diff_r = ALWAN_ABS(rgb_recon.r - rgb.r);
@@ -288,13 +288,13 @@ static int test_cmy_conversions(void) {
 static int test_cmyk_conversions(void) {
     /* Test CMY <-> CMYK conversions */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_cmy cmy;
+        alwan_cmy_f64 cmy;
         cmy.c = expected_cmy[i * 3 + 0];
         cmy.m = expected_cmy[i * 3 + 1];
         cmy.y = expected_cmy[i * 3 + 2];
 
-        alwan_f64 c, m, y, k;
-        int status = alwan_cmy_to_cmyk(&c, &m, &y, &k, &cmy);
+        alwan_cmyk_f64 cmyk_result;
+        int status = alwan_cmy_to_cmyk_f64(&cmyk_result, &cmy);
         TEST_ASSERT(status == ALWAN_OK, "CMY to CMYK failed");
 
         /* Compare with expected */
@@ -304,22 +304,22 @@ static int test_cmyk_conversions(void) {
         alwan_f64 exp_k = expected_cmyk[i * 4 + 3];
 
         alwan_f64 tol = ALWAN_TEST_TOLERANCE;
-        alwan_f64 diff_c = ALWAN_ABS(c - exp_c);
-        alwan_f64 diff_m = ALWAN_ABS(m - exp_m);
-        alwan_f64 diff_y = ALWAN_ABS(y - exp_y);
-        alwan_f64 diff_k = ALWAN_ABS(k - exp_k);
+        alwan_f64 diff_c = ALWAN_ABS(cmyk_result.c - exp_c);
+        alwan_f64 diff_m = ALWAN_ABS(cmyk_result.m - exp_m);
+        alwan_f64 diff_y = ALWAN_ABS(cmyk_result.y - exp_y);
+        alwan_f64 diff_k = ALWAN_ABS(cmyk_result.k - exp_k);
 
         if (diff_c > tol || diff_m > tol || diff_y > tol || diff_k > tol) {
             printf("CMYK forward test failed for color %zu:\n", i);
             printf("  CMY: [%.6f, %.6f, %.6f]\n", cmy.c, cmy.m, cmy.y);
             printf("  Expected CMYK: [%.6f, %.6f, %.6f, %.6f]\n", exp_c, exp_m, exp_y, exp_k);
-            printf("  Got CMYK:      [%.6f, %.6f, %.6f, %.6f]\n", c, m, y, k);
+            printf("  Got CMYK:      [%.6f, %.6f, %.6f, %.6f]\n", cmyk_result.c, cmyk_result.m, cmyk_result.y, cmyk_result.k);
             TEST_ASSERT(0, "CMYK values don't match expected");
         }
 
         /* Test round-trip */
-        alwan_cmy cmy_recon;
-        status = alwan_cmyk_to_cmy(&cmy_recon, c, m, y, k);
+        alwan_cmy_f64 cmy_recon;
+        status = alwan_cmyk_to_cmy_f64(&cmy_recon, &cmyk_result);
         TEST_ASSERT(status == ALWAN_OK, "CMYK to CMY failed");
 
         alwan_f64 diff_c2 = ALWAN_ABS(cmy_recon.c - cmy.c);
@@ -338,12 +338,12 @@ static int test_cmyk_conversions(void) {
 static int test_ycbcr_bt601(void) {
     /* Test RGB <-> YCbCr (BT.601) */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb;
+        alwan_rgb_f64 rgb;
         rgb.r = test_rgb[i * 3 + 0];
         rgb.g = test_rgb[i * 3 + 1];
         rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_ycbcr ycbcr;
+        alwan_ycbcr_f64 ycbcr;
         int status = alwan_rgb_to_ycbcr(&ycbcr, &rgb, ALWAN_YCBCR_BT601);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YCbCr BT.601 failed");
 
@@ -367,7 +367,7 @@ static int test_ycbcr_bt601(void) {
         }
 
         /* Test round-trip */
-        alwan_rgb rgb_recon;
+        alwan_rgb_f64 rgb_recon;
         status = alwan_ycbcr_to_rgb(&rgb_recon, &ycbcr, ALWAN_YCBCR_BT601);
         TEST_ASSERT(status == ALWAN_OK, "YCbCr to RGB BT.601 failed");
 
@@ -387,12 +387,12 @@ static int test_ycbcr_bt601(void) {
 static int test_ycbcr_bt709(void) {
     /* Test RGB <-> YCbCr (BT.709) */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb;
+        alwan_rgb_f64 rgb;
         rgb.r = test_rgb[i * 3 + 0];
         rgb.g = test_rgb[i * 3 + 1];
         rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_ycbcr ycbcr;
+        alwan_ycbcr_f64 ycbcr;
         int status = alwan_rgb_to_ycbcr(&ycbcr, &rgb, ALWAN_YCBCR_BT709);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YCbCr BT.709 failed");
 
@@ -416,7 +416,7 @@ static int test_ycbcr_bt709(void) {
         }
 
         /* Test round-trip */
-        alwan_rgb rgb_recon;
+        alwan_rgb_f64 rgb_recon;
         status = alwan_ycbcr_to_rgb(&rgb_recon, &ycbcr, ALWAN_YCBCR_BT709);
         TEST_ASSERT(status == ALWAN_OK, "YCbCr to RGB BT.709 failed");
 
@@ -436,12 +436,12 @@ static int test_ycbcr_bt709(void) {
 static int test_ycbcr_bt2020(void) {
     /* Test RGB <-> YCbCr (BT.2020) */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb;
+        alwan_rgb_f64 rgb;
         rgb.r = test_rgb[i * 3 + 0];
         rgb.g = test_rgb[i * 3 + 1];
         rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_ycbcr ycbcr;
+        alwan_ycbcr_f64 ycbcr;
         int status = alwan_rgb_to_ycbcr(&ycbcr, &rgb, ALWAN_YCBCR_BT2020);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YCbCr BT.2020 failed");
 
@@ -465,7 +465,7 @@ static int test_ycbcr_bt2020(void) {
         }
 
         /* Test round-trip */
-        alwan_rgb rgb_recon;
+        alwan_rgb_f64 rgb_recon;
         status = alwan_ycbcr_to_rgb(&rgb_recon, &ycbcr, ALWAN_YCBCR_BT2020);
         TEST_ASSERT(status == ALWAN_OK, "YCbCr to RGB BT.2020 failed");
 
@@ -486,13 +486,13 @@ static int test_yccbccrc(void) {
     /* Test RGB <-> YcCbcCrc (constant luminance BT.2020) */
     /* Note: YcCbcCrc cannot perfectly round-trip pure colors at RGB boundaries */
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb;
+        alwan_rgb_f64 rgb;
         rgb.r = test_rgb[i * 3 + 0];
         rgb.g = test_rgb[i * 3 + 1];
         rgb.b = test_rgb[i * 3 + 2];
 
-        alwan_yccbccrc ycc;
-        int status = alwan_rgb_to_yccbccrc(&ycc, &rgb, 10);
+        alwan_yccbccrc_f64 ycc;
+        int status = alwan_rgb_to_yccbccrc_f64(&ycc, &rgb, 10);
         TEST_ASSERT(status == ALWAN_OK, "RGB to YcCbcCrc failed");
 
         /* Compare with expected */
@@ -520,8 +520,8 @@ static int test_yccbccrc(void) {
                                ((rgb.r == 0.0 ? 1 : 0) + (rgb.g == 0.0 ? 1 : 0) + (rgb.b == 0.0 ? 1 : 0)) >= 1;
 
         if (!is_boundary_color) {
-            alwan_rgb rgb_recon;
-            status = alwan_yccbccrc_to_rgb(&rgb_recon, &ycc, 10);
+            alwan_rgb_f64 rgb_recon;
+            status = alwan_yccbccrc_to_rgb_f64(&rgb_recon, &ycc, 10);
             TEST_ASSERT(status == ALWAN_OK, "YcCbcCrc to RGB failed");
 
             alwan_f64 diff_r = ALWAN_ABS(rgb_recon.r - rgb.r);

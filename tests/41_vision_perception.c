@@ -16,8 +16,8 @@
 
 static int test_cvd_protanopia(void) {
     /* Test protanopia (red-blind) simulation */
-    alwan_rgb rgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 rgb_out;
 
     int status = alwan_simulate_cvd(&rgb_out, &rgb_red, ALWAN_CVD_PROTANOPIA, ALWAN_LITERAL(1.0));
 
@@ -40,8 +40,8 @@ static int test_cvd_protanopia(void) {
 
 static int test_cvd_deuteranopia(void) {
     /* Test deuteranopia (green-blind) simulation */
-    alwan_rgb rgb_green = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_green = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 rgb_out;
 
     int status = alwan_simulate_cvd(&rgb_out, &rgb_green, ALWAN_CVD_DEUTERANOPIA, ALWAN_LITERAL(1.0));
 
@@ -63,8 +63,8 @@ static int test_cvd_deuteranopia(void) {
 
 static int test_cvd_tritanopia(void) {
     /* Test tritanopia (blue-blind) simulation */
-    alwan_rgb rgb_blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)};
+    alwan_rgb_f64 rgb_out;
 
     int status = alwan_simulate_cvd(&rgb_out, &rgb_blue, ALWAN_CVD_TRITANOPIA, ALWAN_LITERAL(1.0));
 
@@ -86,8 +86,8 @@ static int test_cvd_tritanopia(void) {
 
 static int test_cvd_severity(void) {
     /* Test severity parameter for anomalous trichromacy */
-    alwan_rgb rgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    alwan_rgb rgb_mild, rgb_severe;
+    alwan_rgb_f64 rgb_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 rgb_mild, rgb_severe;
 
     /* Mild protanomaly (severity = 0.3) */
     int status1 = alwan_simulate_cvd(&rgb_mild, &rgb_red, ALWAN_CVD_PROTANOMALY, ALWAN_LITERAL(0.3));
@@ -112,8 +112,8 @@ static int test_cvd_severity(void) {
 
 static int test_cvd_normal_vision(void) {
     /* Test that severity = 0 returns unchanged color */
-    alwan_rgb rgb_in = {ALWAN_LITERAL(0.7), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.5)};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {ALWAN_LITERAL(0.7), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.5)};
+    alwan_rgb_f64 rgb_out;
 
     int status = alwan_simulate_cvd(&rgb_out, &rgb_in, ALWAN_CVD_PROTANOPIA, ALWAN_LITERAL(0.0));
 

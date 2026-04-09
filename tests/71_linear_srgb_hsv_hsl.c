@@ -69,23 +69,23 @@ static int compare_arrays(alwan_f64 const *map_out, alwan_f64 const *ref,
 
 static int test_linear_srgb_to_hsv_consistency(void) {
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb linear;
+        alwan_rgb_f64 linear;
         linear.r = test_rgb[i * 3 + 0];
         linear.g = test_rgb[i * 3 + 1];
         linear.b = test_rgb[i * 3 + 2];
 
         /* Composite function */
-        alwan_hsv hsv_composite;
-        int status = alwan_linear_srgb_to_hsv(&hsv_composite, &linear);
+        alwan_hsv_f64 hsv_composite;
+        int status = alwan_linear_srgb_to_hsv_f64(&hsv_composite, &linear);
         TEST_ASSERT(status == ALWAN_OK, "alwan_linear_srgb_to_hsv failed");
 
         /* Manual: OETF then HSV */
-        alwan_rgb encoded;
+        alwan_rgb_f64 encoded;
         encoded.r = alwan_srgb_oetf_f64(linear.r);
         encoded.g = alwan_srgb_oetf_f64(linear.g);
         encoded.b = alwan_srgb_oetf_f64(linear.b);
-        alwan_hsv hsv_manual;
-        status = alwan_rgb_to_hsv(&hsv_manual, &encoded);
+        alwan_hsv_f64 hsv_manual;
+        status = alwan_rgb_to_hsv_f64(&hsv_manual, &encoded);
         TEST_ASSERT(status == ALWAN_OK, "manual rgb_to_hsv failed");
 
         alwan_f64 tol = ALWAN_TEST_TOLERANCE;
@@ -111,21 +111,21 @@ static int test_linear_srgb_to_hsv_consistency(void) {
 
 static int test_linear_srgb_to_hsl_consistency(void) {
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb linear;
+        alwan_rgb_f64 linear;
         linear.r = test_rgb[i * 3 + 0];
         linear.g = test_rgb[i * 3 + 1];
         linear.b = test_rgb[i * 3 + 2];
 
-        alwan_hsl hsl_composite;
-        int status = alwan_linear_srgb_to_hsl(&hsl_composite, &linear);
+        alwan_hsl_f64 hsl_composite;
+        int status = alwan_linear_srgb_to_hsl_f64(&hsl_composite, &linear);
         TEST_ASSERT(status == ALWAN_OK, "alwan_linear_srgb_to_hsl failed");
 
-        alwan_rgb encoded;
+        alwan_rgb_f64 encoded;
         encoded.r = alwan_srgb_oetf_f64(linear.r);
         encoded.g = alwan_srgb_oetf_f64(linear.g);
         encoded.b = alwan_srgb_oetf_f64(linear.b);
-        alwan_hsl hsl_manual;
-        status = alwan_rgb_to_hsl(&hsl_manual, &encoded);
+        alwan_hsl_f64 hsl_manual;
+        status = alwan_rgb_to_hsl_f64(&hsl_manual, &encoded);
         TEST_ASSERT(status == ALWAN_OK, "manual rgb_to_hsl failed");
 
         alwan_f64 tol = ALWAN_TEST_TOLERANCE;
@@ -151,17 +151,17 @@ static int test_linear_srgb_to_hsl_consistency(void) {
 
 static int test_linear_srgb_hsv_round_trip(void) {
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb_orig;
+        alwan_rgb_f64 rgb_orig;
         rgb_orig.r = test_rgb[i * 3 + 0];
         rgb_orig.g = test_rgb[i * 3 + 1];
         rgb_orig.b = test_rgb[i * 3 + 2];
 
-        alwan_hsv hsv;
-        int status = alwan_linear_srgb_to_hsv(&hsv, &rgb_orig);
+        alwan_hsv_f64 hsv;
+        int status = alwan_linear_srgb_to_hsv_f64(&hsv, &rgb_orig);
         TEST_ASSERT(status == ALWAN_OK, "linear_srgb_to_hsv failed");
 
-        alwan_rgb rgb_recon;
-        status = alwan_hsv_to_linear_srgb(&rgb_recon, &hsv);
+        alwan_rgb_f64 rgb_recon;
+        status = alwan_hsv_to_linear_srgb_f64(&rgb_recon, &hsv);
         TEST_ASSERT(status == ALWAN_OK, "hsv_to_linear_srgb failed");
 
         alwan_f64 tol = ALWAN_TEST_TOLERANCE;
@@ -189,17 +189,17 @@ static int test_linear_srgb_hsv_round_trip(void) {
 
 static int test_linear_srgb_hsl_round_trip(void) {
     for (size_t i = 0; i < NUM_TEST_COLORS; i++) {
-        alwan_rgb rgb_orig;
+        alwan_rgb_f64 rgb_orig;
         rgb_orig.r = test_rgb[i * 3 + 0];
         rgb_orig.g = test_rgb[i * 3 + 1];
         rgb_orig.b = test_rgb[i * 3 + 2];
 
-        alwan_hsl hsl;
-        int status = alwan_linear_srgb_to_hsl(&hsl, &rgb_orig);
+        alwan_hsl_f64 hsl;
+        int status = alwan_linear_srgb_to_hsl_f64(&hsl, &rgb_orig);
         TEST_ASSERT(status == ALWAN_OK, "linear_srgb_to_hsl failed");
 
-        alwan_rgb rgb_recon;
-        status = alwan_hsl_to_linear_srgb(&rgb_recon, &hsl);
+        alwan_rgb_f64 rgb_recon;
+        status = alwan_hsl_to_linear_srgb_f64(&rgb_recon, &hsl);
         TEST_ASSERT(status == ALWAN_OK, "hsl_to_linear_srgb failed");
 
         alwan_f64 tol = ALWAN_TEST_TOLERANCE;
@@ -226,25 +226,25 @@ static int test_linear_srgb_hsl_round_trip(void) {
  * ---------------------------------------------------------------- */
 
 static int test_null_pointers(void) {
-    alwan_rgb rgb = {0};
-    alwan_hsv hsv = {0};
-    alwan_hsl hsl = {0};
+    alwan_rgb_f64 rgb = {0};
+    alwan_hsv_f64 hsv = {0};
+    alwan_hsl_f64 hsl = {0};
 
-    TEST_ASSERT(alwan_linear_srgb_to_hsv(NULL, &rgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_linear_srgb_to_hsv_f64(NULL, &rgb) == ALWAN_E_INVALID,
                 "linear_srgb_to_hsv should reject null output");
-    TEST_ASSERT(alwan_linear_srgb_to_hsv(&hsv, NULL) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_linear_srgb_to_hsv_f64(&hsv, NULL) == ALWAN_E_INVALID,
                 "linear_srgb_to_hsv should reject null input");
-    TEST_ASSERT(alwan_hsv_to_linear_srgb(NULL, &hsv) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_hsv_to_linear_srgb_f64(NULL, &hsv) == ALWAN_E_INVALID,
                 "hsv_to_linear_srgb should reject null output");
-    TEST_ASSERT(alwan_hsv_to_linear_srgb(&rgb, NULL) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_hsv_to_linear_srgb_f64(&rgb, NULL) == ALWAN_E_INVALID,
                 "hsv_to_linear_srgb should reject null input");
-    TEST_ASSERT(alwan_linear_srgb_to_hsl(NULL, &rgb) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_linear_srgb_to_hsl_f64(NULL, &rgb) == ALWAN_E_INVALID,
                 "linear_srgb_to_hsl should reject null output");
-    TEST_ASSERT(alwan_linear_srgb_to_hsl(&hsl, NULL) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_linear_srgb_to_hsl_f64(&hsl, NULL) == ALWAN_E_INVALID,
                 "linear_srgb_to_hsl should reject null input");
-    TEST_ASSERT(alwan_hsl_to_linear_srgb(NULL, &hsl) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_hsl_to_linear_srgb_f64(NULL, &hsl) == ALWAN_E_INVALID,
                 "hsl_to_linear_srgb should reject null output");
-    TEST_ASSERT(alwan_hsl_to_linear_srgb(&rgb, NULL) == ALWAN_E_INVALID,
+    TEST_ASSERT(alwan_hsl_to_linear_srgb_f64(&rgb, NULL) == ALWAN_E_INVALID,
                 "hsl_to_linear_srgb should reject null input");
 
     TEST_PASS("test_null_pointers");
@@ -268,10 +268,10 @@ static int test_linear_srgb_hsv_hsl_maps(void) {
     generate_unit_grid(grid);
 
     /* Linear sRGB -> HSV */
-    alwan_linear_srgb_to_hsv_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_linear_srgb_to_hsv_f64_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_rgb rgb; rgb.r = grid[i*3+0]; rgb.g = grid[i*3+1]; rgb.b = grid[i*3+2];
-        alwan_hsv hsv; alwan_linear_srgb_to_hsv(&hsv, &rgb);
+        alwan_rgb_f64 rgb; rgb.r = grid[i*3+0]; rgb.g = grid[i*3+1]; rgb.b = grid[i*3+2];
+        alwan_hsv_f64 hsv; alwan_linear_srgb_to_hsv_f64(&hsv, &rgb);
         ref_out[i*3+0] = hsv.h; ref_out[i*3+1] = hsv.s; ref_out[i*3+2] = hsv.v;
     }
     if (compare_arrays(map_out, ref_out, MAP_COUNT, stride,
@@ -279,10 +279,10 @@ static int test_linear_srgb_hsv_hsl_maps(void) {
 
     /* HSV -> Linear sRGB */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_hsv_to_linear_srgb_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_hsv_to_linear_srgb_f64_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_hsv hsv; hsv.h = grid[i*3+0]; hsv.s = grid[i*3+1]; hsv.v = grid[i*3+2];
-        alwan_rgb rgb; alwan_hsv_to_linear_srgb(&rgb, &hsv);
+        alwan_hsv_f64 hsv; hsv.h = grid[i*3+0]; hsv.s = grid[i*3+1]; hsv.v = grid[i*3+2];
+        alwan_rgb_f64 rgb; alwan_hsv_to_linear_srgb_f64(&rgb, &hsv);
         ref_out[i*3+0] = rgb.r; ref_out[i*3+1] = rgb.g; ref_out[i*3+2] = rgb.b;
     }
     if (compare_arrays(map_out, ref_out, MAP_COUNT, stride,
@@ -290,10 +290,10 @@ static int test_linear_srgb_hsv_hsl_maps(void) {
 
     /* Linear sRGB -> HSL */
     generate_unit_grid(grid);
-    alwan_linear_srgb_to_hsl_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_linear_srgb_to_hsl_f64_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_rgb rgb; rgb.r = grid[i*3+0]; rgb.g = grid[i*3+1]; rgb.b = grid[i*3+2];
-        alwan_hsl hsl; alwan_linear_srgb_to_hsl(&hsl, &rgb);
+        alwan_rgb_f64 rgb; rgb.r = grid[i*3+0]; rgb.g = grid[i*3+1]; rgb.b = grid[i*3+2];
+        alwan_hsl_f64 hsl; alwan_linear_srgb_to_hsl_f64(&hsl, &rgb);
         ref_out[i*3+0] = hsl.h; ref_out[i*3+1] = hsl.s; ref_out[i*3+2] = hsl.l;
     }
     if (compare_arrays(map_out, ref_out, MAP_COUNT, stride,
@@ -301,10 +301,10 @@ static int test_linear_srgb_hsv_hsl_maps(void) {
 
     /* HSL -> Linear sRGB */
     memcpy(grid, ref_out, MAP_COUNT * stride);
-    alwan_hsl_to_linear_srgb_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
+    alwan_hsl_to_linear_srgb_f64_map_interleave(map_out, grid, MAP_COUNT, stride, stride);
     for (size_t i = 0; i < MAP_COUNT; i++) {
-        alwan_hsl hsl; hsl.h = grid[i*3+0]; hsl.s = grid[i*3+1]; hsl.l = grid[i*3+2];
-        alwan_rgb rgb; alwan_hsl_to_linear_srgb(&rgb, &hsl);
+        alwan_hsl_f64 hsl; hsl.h = grid[i*3+0]; hsl.s = grid[i*3+1]; hsl.l = grid[i*3+2];
+        alwan_rgb_f64 rgb; alwan_hsl_to_linear_srgb_f64(&rgb, &hsl);
         ref_out[i*3+0] = rgb.r; ref_out[i*3+1] = rgb.g; ref_out[i*3+2] = rgb.b;
     }
     if (compare_arrays(map_out, ref_out, MAP_COUNT, stride,

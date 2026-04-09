@@ -10,21 +10,21 @@ int main(void) {
     alwan_f64 viewing_params[] = {
 #include "reference_values/cam_viewing_conditions.csv"
     };
-    alwan_xyz XYZ_w = {viewing_params[0], viewing_params[1], viewing_params[2]};
+    alwan_xyz_f64 XYZ_w = {viewing_params[0], viewing_params[1], viewing_params[2]};
     alwan_f64 L_A = viewing_params[3];
     alwan_f64 Y_b = viewing_params[4];
-    alwan_xyz XYZ = XYZ_w;
+    alwan_xyz_f64 XYZ = XYZ_w;
 
     printf("XYZ_w: [%.20e, %.20e, %.20e]\n", XYZ_w.x, XYZ_w.y, XYZ_w.z);
 
     /* Step 1: CAT02 cone responses */
-    alwan_vec3 xyz_v = {{XYZ.x, XYZ.y, XYZ.z}};
-    alwan_vec3 rgb_cat = alwan_mat3_mulv_v(CAM_M_CAT02, xyz_v);
+    alwan_vec3_f64 xyz_v = {{XYZ.x, XYZ.y, XYZ.z}};
+    alwan_vec3_f64 rgb_cat = alwan_mat3_mulv_v(CAM_M_CAT02, xyz_v);
     printf("RGB_cat: [%.20e, %.20e, %.20e]\n", rgb_cat.v[0], rgb_cat.v[1], rgb_cat.v[2]);
 
     /* Step 2: White point cone responses */
-    alwan_vec3 white_v = {{XYZ_w.x, XYZ_w.y, XYZ_w.z}};
-    alwan_vec3 rgb_cat_w = alwan_mat3_mulv_v(CAM_M_CAT02, white_v);
+    alwan_vec3_f64 white_v = {{XYZ_w.x, XYZ_w.y, XYZ_w.z}};
+    alwan_vec3_f64 rgb_cat_w = alwan_mat3_mulv_v(CAM_M_CAT02, white_v);
 
     /* Step 3: Degree of adaptation */
     alwan_f64 F = 1.0;
@@ -37,16 +37,16 @@ int main(void) {
     alwan_f64 D_B = D * (XYZ_w.y / rgb_cat_w.v[2]) + 1.0 - D;
     printf("D_RGB: [%.20e, %.20e, %.20e]\n", D_R, D_G, D_B);
 
-    alwan_vec3 rgb_c = {{rgb_cat.v[0] * D_R, rgb_cat.v[1] * D_G, rgb_cat.v[2] * D_B}};
+    alwan_vec3_f64 rgb_c = {{rgb_cat.v[0] * D_R, rgb_cat.v[1] * D_G, rgb_cat.v[2] * D_B}};
     printf("RGB_c: [%.20e, %.20e, %.20e]\n", rgb_c.v[0], rgb_c.v[1], rgb_c.v[2]);
 
     /* Step 5: HPE conversion using precomputed matrix */
-    alwan_vec3 hpe = alwan_mat3_mulv_v(CAM_M_HPE_CAT02_INV, rgb_c);
+    alwan_vec3_f64 hpe = alwan_mat3_mulv_v(CAM_M_HPE_CAT02_INV, rgb_c);
     printf("HPE: [%.20e, %.20e, %.20e]\n", hpe.v[0], hpe.v[1], hpe.v[2]);
 
     /* Also try 2-step HPE conversion */
-    alwan_vec3 xyz_c = alwan_mat3_mulv_v(CAM_M_CAT02_INV, rgb_c);
-    alwan_vec3 hpe2 = alwan_mat3_mulv_v(CAM_M_HPE, xyz_c);
+    alwan_vec3_f64 xyz_c = alwan_mat3_mulv_v(CAM_M_CAT02_INV, rgb_c);
+    alwan_vec3_f64 hpe2 = alwan_mat3_mulv_v(CAM_M_HPE, xyz_c);
     printf("HPE (2-step): [%.20e, %.20e, %.20e]\n", hpe2.v[0], hpe2.v[1], hpe2.v[2]);
     printf("HPE diff: [%.20e, %.20e, %.20e]\n", hpe.v[0]-hpe2.v[0], hpe.v[1]-hpe2.v[1], hpe.v[2]-hpe2.v[2]);
 

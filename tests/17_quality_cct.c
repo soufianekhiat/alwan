@@ -21,12 +21,12 @@ static int test_cct_mccamy(void) {
     size_t const num_tests = sizeof(test_data) / sizeof(test_data[0]) / 3;
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_vec2 xy;
+        alwan_vec2_f64 xy;
         xy.v[0] = test_data[i * 3 + 0];
         xy.v[1] = test_data[i * 3 + 1];
         alwan_f64 expected_cct = test_data[i * 3 + 2];
 
-        alwan_f64 cct = alwan_cct_mccamy_xy(&xy);
+        alwan_f64 cct = alwan_cct_mccamy_xy_f64(&xy);
         TEST_ASSERT(cct > 0, "McCamy CCT should be positive");
 
         alwan_f64 rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;
@@ -56,12 +56,12 @@ static int test_cct_robertson(void) {
     size_t const num_tests = sizeof(test_data) / sizeof(test_data[0]) / 3;
 
     for (size_t i = 0; i < num_tests; i++) {
-        alwan_vec2 xy;
+        alwan_vec2_f64 xy;
         xy.v[0] = test_data[i * 3 + 0];
         xy.v[1] = test_data[i * 3 + 1];
         alwan_f64 expected_cct = test_data[i * 3 + 2];
 
-        alwan_f64 cct = alwan_cct_robertson_xy(&xy);
+        alwan_f64 cct = alwan_cct_robertson_xy_f64(&xy);
         TEST_ASSERT(cct > 0, "Robertson CCT should be positive");
 
         alwan_f64 rel_err = ALWAN_ABS(cct - expected_cct) / expected_cct;

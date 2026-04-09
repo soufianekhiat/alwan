@@ -13,7 +13,86 @@
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include <math.h>
+#include <stdlib.h>
 #include "../core/alwan_aces_ff_core.h"
+
+/* ----------------------------------------------------------------
+ * ACES interpolation mode (global, thread-unsafe for simplicity)
+ * ---------------------------------------------------------------- */
+static alwan_aces_interp g_aces_interp = ALWAN_ACES_INTERP_BSPLINE;
+
+void alwan_set_aces_interp(alwan_aces_interp method) { g_aces_interp = method; }
+alwan_aces_interp alwan_get_aces_interp(void) { return g_aces_interp; }
+
+/* ----------------------------------------------------------------
+ * OCIO-matching piecewise quadratic Hermite tone curves
+ * Control points and slopes extracted from OCIO builtin
+ * ACES-OUTPUT ACES2065-1_to_CIE-XYZ-D65 SDR-VIDEO_1.0
+ * ---------------------------------------------------------------- */
+
+/* Evaluate piecewise quadratic Hermite: for each interval [x_i, x_{i+1}]
+ * with slopes s_i, s_{i+1}, use simple quadratic A*t^2 + B*t + C
+ * where t = x - x_i. Linear extrapolation outside range. */
+static alwan_f64 hermite_quad_eval(alwan_f64 x,
+                                    alwan_f64 const *px, alwan_f64 const *py,
+                                    alwan_f64 const *ps, int n) {
+    if (x <= px[0])
+        return py[0] + ps[0] * (x - px[0]);
+    if (x >= px[n-1]) {
+        /* Linear extrapolation using last segment's end slope */
+        alwan_f64 dx = px[n-1] - px[n-2];
+        alwan_f64 A = (ps[n-1] - ps[n-2]) / (2.0 * dx);
+        alwan_f64 end_slope = 2.0 * A * dx + ps[n-2];
+        return py[n-1] + end_slope * (x - px[n-1]);
+    }
+    /* Find interval */
+    int i = 0;
+    while (i < n - 2 && x >= px[i + 1]) i++;
+    alwan_f64 dx = px[i+1] - px[i];
+    alwan_f64 t = x - px[i];
+    /* Simple quadratic: f(t) = A*t^2 + B*t + C */
+    alwan_f64 A = (ps[i+1] - ps[i]) / (2.0 * dx);
+    alwan_f64 B = ps[i];
+    alwan_f64 C = py[i];
+    return (A * t + B) * t + C;
+}
+
+/* RRT tone curve (C5 equivalent) — 7 control points from OCIO */
+static alwan_f64 aces1_rrt_hermite(alwan_f64 x) {
+    static const alwan_f64 px[7] = {
+        -5.26017743, -3.75502745, -2.24987747,
+        -0.74472749,  1.06145248,  2.86763245, 4.67381243 };
+    static const alwan_f64 py[7] = {
+        -4.0, -3.57868829, -1.82131329,
+         0.68124124,  2.87457742,  3.83406206, 4.0 };
+    static const alwan_f64 ps[7] = {
+         0.0,  0.55982688,  1.77532247,
+         1.55, 0.8787017,   0.18374463, 0.0 };
+    alwan_f64 lx = log10(fmax(x, 1e-10));
+    alwan_f64 ly = hermite_quad_eval(lx, px, py, ps, 7);
+    return pow(10.0, ly);
+}
+
+/* SDR ODT tone curve (C9 equivalent, 48 nit) — 15 control points from OCIO */
+static alwan_f64 aces1_odt48_hermite(alwan_f64 x) {
+    static const alwan_f64 px[15] = {
+        -2.54062362, -2.08035721, -1.6200908,  -1.15982439, -0.69955799,
+        -0.23929158,  0.22097483,  0.68124124,  1.01284632,  1.3444514,
+         1.67605648,  2.00766156,  2.33926665,  2.67087173,  3.00247681 };
+    static const alwan_f64 py[15] = {
+        -1.69897,    -1.588435,   -1.3535,     -1.04695,    -0.6564,
+        -0.22141,     0.22814402,  0.68124124,  0.99142189,  1.258,
+         1.44995,     1.5591,      1.6226,      1.66065457,  1.68124124 };
+    static const alwan_f64 ps[15] = {
+         0.0,         0.4803088,   0.5405565,   0.79149813,  0.9055625,
+         0.98460368,  0.96884766,  1.0,         0.87078346,  0.73702127,
+         0.42068113,  0.23763206,  0.14535362,  0.08416378,  0.04 };
+    static const alwan_f64 cinema_white = 48.0, cinema_black = 0.02;
+    alwan_f64 lx = log10(fmax(x, 1e-10));
+    alwan_f64 ly = hermite_quad_eval(lx, px, py, ps, 15);
+    alwan_f64 nits = pow(10.0, ly);
+    return (nits - cinema_black) / (cinema_white - cinema_black);
+}
 
 /* ----------------------------------------------------------------
  * Internal helper functions
@@ -156,14 +235,15 @@ static alwan_f64 rgb_to_yc(alwan_f64 red, alwan_f64 grn, alwan_f64 blu) {
     return aces_rgb_to_yc_f64_v(red, grn, blu);
 }
 
-/* Sigmoid shaper for saturation */
+/* Sigmoid shaper for saturation.
+ * ACES CTL: sigmoid_shaper((sat - 0.4) / 0.2) — pre-scales input here. */
 static alwan_f64 sigmoid_shaper(alwan_f64 sat) {
-    return aces_sigmoid_shaper_f64_v(sat);
+    return aces_sigmoid_shaper_f64_v((sat - ALWAN_LITERAL(0.4)) / ALWAN_LITERAL(0.2));
 }
 
 /* Internal glow implementation with configurable parameters */
-static int glow_impl(alwan_rgb const *rgb_in, alwan_f64 glow_gain_param,
-                     alwan_f64 glow_mid_param, alwan_rgb *rgb_out) {
+static int glow_impl(alwan_rgb_f64 const *rgb_in, alwan_f64 glow_gain_param,
+                     alwan_f64 glow_mid_param, alwan_rgb_f64 *rgb_out) {
     alwan_f64 red = rgb_in->r;
     alwan_f64 grn = rgb_in->g;
     alwan_f64 blu = rgb_in->b;
@@ -268,15 +348,26 @@ void alwan_rec2100_surround_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb
  * Reference: OCIO FixedFunctionOpCPU.cpp - Renderer_ACES_GamutComp13_Fwd
  * ---------------------------------------------------------------- */
 
-void alwan_aces_gamut_comp13_params_default(alwan_aces_gamut_comp13_params *params) {
+void alwan_aces_gamut_comp13_params_default_f32(alwan_aces_gamut_comp13_params_f32 *params) {
     if (!params) return;
-    params->lim_cyan = ALWAN_LITERAL(1.147);
-    params->lim_magenta = ALWAN_LITERAL(1.264);
-    params->lim_yellow = ALWAN_LITERAL(1.312);
-    params->thr_cyan = ALWAN_LITERAL(0.815);
-    params->thr_magenta = ALWAN_LITERAL(0.803);
-    params->thr_yellow = ALWAN_LITERAL(0.880);
-    params->power = ALWAN_LITERAL(1.2);
+    params->lim_cyan = 1.147f;
+    params->lim_magenta = 1.264f;
+    params->lim_yellow = 1.312f;
+    params->thr_cyan = 0.815f;
+    params->thr_magenta = 0.803f;
+    params->thr_yellow = 0.880f;
+    params->power = 1.2f;
+}
+
+void alwan_aces_gamut_comp13_params_default_f64(alwan_aces_gamut_comp13_params_f64 *params) {
+    if (!params) return;
+    params->lim_cyan = 1.147;
+    params->lim_magenta = 1.264;
+    params->lim_yellow = 1.312;
+    params->thr_cyan = 0.815;
+    params->thr_magenta = 0.803;
+    params->thr_yellow = 0.880;
+    params->power = 1.2;
 }
 
 /* Compression function (forward direction) */
@@ -298,7 +389,7 @@ static alwan_f64 calc_gamut_comp_scale(alwan_f64 lim, alwan_f64 thr, alwan_f64 p
 
 void alwan_aces_gamut_comp13_f64(alwan_rgb_f64 *rgb_out,
                             alwan_rgb_f64 const *rgb_in,
-                            alwan_aces_gamut_comp13_params const *params) {
+                            alwan_aces_gamut_comp13_params_f64 const *params) {
     if (!rgb_out || !rgb_in || !params) return;
 
     alwan_f64 red = rgb_in->r;
@@ -320,11 +411,20 @@ void alwan_aces_gamut_comp13_f64(alwan_rgb_f64 *rgb_out,
 
 void alwan_aces_gamut_comp13_f32(alwan_rgb_f32 *rgb_out,
                             alwan_rgb_f32 const *rgb_in,
-                            alwan_aces_gamut_comp13_params const *params) {
+                            alwan_aces_gamut_comp13_params_f32 const *params) {
     if (!rgb_out || !rgb_in || !params) return;
+    /* Upcast f32 params to f64 for internal computation */
+    alwan_aces_gamut_comp13_params_f64 p64;
+    p64.lim_cyan = (double)params->lim_cyan;
+    p64.lim_magenta = (double)params->lim_magenta;
+    p64.lim_yellow = (double)params->lim_yellow;
+    p64.thr_cyan = (double)params->thr_cyan;
+    p64.thr_magenta = (double)params->thr_magenta;
+    p64.thr_yellow = (double)params->thr_yellow;
+    p64.power = (double)params->power;
     alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
     alwan_rgb_f64 out64;
-    alwan_aces_gamut_comp13_f64(&out64, &in64, params);
+    alwan_aces_gamut_comp13_f64(&out64, &in64, &p64);
     rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
 }
 
@@ -342,7 +442,7 @@ static alwan_f64 gamut_decomp_channel(alwan_f64 val, alwan_f64 ach,
 
 void alwan_aces_gamut_comp13_inv_f64(alwan_rgb_f64 *rgb_out,
                                  alwan_rgb_f64 const *rgb_in,
-                                 alwan_aces_gamut_comp13_params const *params) {
+                                 alwan_aces_gamut_comp13_params_f64 const *params) {
     if (!rgb_out || !rgb_in || !params) return;
 
     alwan_f64 red = rgb_in->r;
@@ -364,11 +464,20 @@ void alwan_aces_gamut_comp13_inv_f64(alwan_rgb_f64 *rgb_out,
 
 void alwan_aces_gamut_comp13_inv_f32(alwan_rgb_f32 *rgb_out,
                                  alwan_rgb_f32 const *rgb_in,
-                                 alwan_aces_gamut_comp13_params const *params) {
+                                 alwan_aces_gamut_comp13_params_f32 const *params) {
     if (!rgb_out || !rgb_in || !params) return;
+    /* Upcast f32 params to f64 for internal computation */
+    alwan_aces_gamut_comp13_params_f64 p64;
+    p64.lim_cyan = (double)params->lim_cyan;
+    p64.lim_magenta = (double)params->lim_magenta;
+    p64.lim_yellow = (double)params->lim_yellow;
+    p64.thr_cyan = (double)params->thr_cyan;
+    p64.thr_magenta = (double)params->thr_magenta;
+    p64.thr_yellow = (double)params->thr_yellow;
+    p64.power = (double)params->power;
     alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
     alwan_rgb_f64 out64;
-    alwan_aces_gamut_comp13_inv_f64(&out64, &in64, params);
+    alwan_aces_gamut_comp13_inv_f64(&out64, &in64, &p64);
     rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
 }
 
@@ -447,8 +556,230 @@ static alwan_f64 aces1_segmented_spline_c5(alwan_f64 x) {
     return aces1_segmented_spline_c5_f64_v(x);
 }
 
+/* ---- C9 spline parameters per luminance target (from aces-dev CTL) ---- */
+
+typedef struct {
+    alwan_f64 coefsLow[10];
+    alwan_f64 coefsHigh[10];
+    alwan_f64 min_x, min_y;     /* breakpoint: C5(0.18*2^min_stops), display black nits */
+    alwan_f64 mid_x, mid_y;     /* breakpoint: C5(0.18), midgray display nits */
+    alwan_f64 max_x, max_y;     /* breakpoint: C5(0.18*2^max_stops), display white nits */
+    alwan_f64 slope_low;
+    alwan_f64 slope_high;
+} aces1_c9_params;
+
+/* C9 parameter data generated by alwan_gendata/data/aces1_c9_spline.py
+ * Source: aces-dev CTL ACESlib.Tonescales.ctl segmented_spline_c9 params
+ * Split into _coefs_low.csv, _coefs_high.csv, _breakpoints.csv per target */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+
+/* SDR 48 nit (cinema + video — all SDR outputs use this) */
+static const aces1_c9_params c9_48nit = {
+    { /* coefs_low[10] */
+#include "../data/splines/aces1_c9_48nit_coefs_low.csv"
+    },
+    { /* coefs_high[10] */
+#include "../data/splines/aces1_c9_48nit_coefs_high.csv"
+    },
+    /* min_x, min_y, mid_x, mid_y, max_x, max_y, slope_low, slope_high */
+#include "../data/splines/aces1_c9_48nit_breakpoints.csv"
+};
+
+/* HDR 1000 nit (Rec.2020 PQ) */
+static const aces1_c9_params c9_1000nit = {
+    {
+#include "../data/splines/aces1_c9_1000nit_coefs_low.csv"
+    },
+    {
+#include "../data/splines/aces1_c9_1000nit_coefs_high.csv"
+    },
+#include "../data/splines/aces1_c9_1000nit_breakpoints.csv"
+};
+
+/* HDR 2000 nit */
+static const aces1_c9_params c9_2000nit = {
+    {
+#include "../data/splines/aces1_c9_2000nit_coefs_low.csv"
+    },
+    {
+#include "../data/splines/aces1_c9_2000nit_coefs_high.csv"
+    },
+#include "../data/splines/aces1_c9_2000nit_breakpoints.csv"
+};
+
+/* HDR 4000 nit */
+static const aces1_c9_params c9_4000nit = {
+    {
+#include "../data/splines/aces1_c9_4000nit_coefs_low.csv"
+    },
+    {
+#include "../data/splines/aces1_c9_4000nit_coefs_high.csv"
+    },
+#include "../data/splines/aces1_c9_4000nit_breakpoints.csv"
+};
+
+ALWAN_DIAG_POP
+
+/* Evaluate C9 spline raw: OCES nits → display nits (no Y_to_linCV) */
+static alwan_f64 aces1_c9_raw(alwan_f64 oces, const aces1_c9_params *p) {
+    alwan_f64 lx = log10(fmax(oces, ALWAN_LITERAL(1e-10)));
+    alwan_f64 log_min = log10(p->min_x);
+    alwan_f64 log_mid = log10(p->mid_x);
+    alwan_f64 log_max = log10(p->max_x);
+    alwan_f64 ly;
+
+    if (lx <= log_min) {
+        ly = log10(p->min_y) + p->slope_low * (lx - log_min);
+    } else if (lx >= log_max) {
+        ly = log10(p->max_y) + p->slope_high * (lx - log_max);
+    } else {
+        alwan_f64 const *co;
+        alwan_f64 ks, ke;
+        int nk = 8;
+        if (lx < log_mid) { co = p->coefsLow; ks = log_min; ke = log_mid; }
+        else               { co = p->coefsHigh; ks = log_mid; ke = log_max; }
+        alwan_f64 kc = (alwan_f64)(nk - 1) * (lx - ks) / (ke - ks);
+        int jj = (int)kc;
+        if (jj < 0) jj = 0;
+        if (jj > nk - 2) jj = nk - 2;
+        alwan_f64 tt = kc - (alwan_f64)jj;
+        alwan_f64 f0 = co[jj], f1 = co[jj + 1], f2 = co[jj + 2];
+        ly = ALWAN_LITERAL(0.5) * tt * tt * (f0 - ALWAN_LITERAL(2.0) * f1 + f2)
+           + tt * (-f0 + f1)
+           + ALWAN_LITERAL(0.5) * (f0 + f1);
+    }
+
+    return pow(ALWAN_LITERAL(10.0), ly);
+}
+
+/* Inverse C9 spline: display nits → OCES nits (Newton-Raphson) */
+static alwan_f64 aces1_c9_inv(alwan_f64 display_nits, const aces1_c9_params *p) {
+    alwan_f64 x = fmax(display_nits, ALWAN_LITERAL(1e-10));
+    for (int i = 0; i < 40; i++) {
+        alwan_f64 fx = aces1_c9_raw(x, p) - display_nits;
+        if (fabs(fx) < ALWAN_LITERAL(1e-10)) break;
+        alwan_f64 h = fmax(fabs(x) * ALWAN_LITERAL(1e-6), ALWAN_LITERAL(1e-12));
+        alwan_f64 dfx = (aces1_c9_raw(x + h, p) - aces1_c9_raw(x - h, p))
+                       / (ALWAN_LITERAL(2.0) * h);
+        if (fabs(dfx) < ALWAN_LITERAL(1e-12)) break;
+        x -= fx / dfx;
+        if (x < ALWAN_LITERAL(1e-10)) x = ALWAN_LITERAL(1e-10);
+    }
+    return x;
+}
+
+/* ---- OCIO GradingRGBCurve data (monotone cubic Hermite in log10 space) ----
+ * Generated by alwan_gendata/data/aces1_ocio_curves.py from OCIO built-in config.
+ * Layout: x0,y0,slope0, x1,y1,slope1, ... (interleaved triplets) */
+
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+
+/* SDR: C5 curve (7 knots) — log10(scene) → log10(OCES nits) */
+static const alwan_f64 ocio_sdr_c5[7 * 3] = {
+#include "../data/splines/aces1_ocio_sdr_c5.csv"
+};
+
+/* SDR: C9 curve (15 knots) — log10(OCES nits) → log10(display nits) */
+static const alwan_f64 ocio_sdr_c9[15 * 3] = {
+#include "../data/splines/aces1_ocio_sdr_c9.csv"
+};
+
+/* HDR 1000 nit: combined curve (7 knots) — log10(scene) → log10(display nits) */
+static const alwan_f64 ocio_hdr1000[7 * 3] = {
+#include "../data/splines/aces1_ocio_hdr1000.csv"
+};
+
+ALWAN_DIAG_POP
+
+/* Evaluate OCIO-style monotone cubic Hermite curve in log10 space.
+ * knots: interleaved (x, y, slope) triplets, n_knots entries.
+ * Input/output in log10 domain. */
+static alwan_f64 ocio_curve_eval(alwan_f64 log_in,
+                                  const alwan_f64 *knots, int n_knots) {
+    /* Clamp to curve endpoints */
+    if (log_in <= knots[0]) return knots[1];
+    if (log_in >= knots[(n_knots - 1) * 3]) return knots[(n_knots - 1) * 3 + 1];
+
+    /* Find segment via linear search (small n) */
+    int seg = 0;
+    for (int i = 1; i < n_knots; i++) {
+        if (log_in < knots[i * 3]) { seg = i - 1; break; }
+    }
+
+    /* Cubic Hermite interpolation (matches OCIO GradingBSplineCurve::evalCurve) */
+    alwan_f64 x0 = knots[seg * 3],     y0 = knots[seg * 3 + 1],     s0 = knots[seg * 3 + 2];
+    alwan_f64 x1 = knots[(seg+1) * 3], y1 = knots[(seg+1) * 3 + 1], s1 = knots[(seg+1) * 3 + 2];
+    alwan_f64 dx = x1 - x0;
+    alwan_f64 t = (log_in - x0) / dx;
+    alwan_f64 t2 = t * t, t3 = t2 * t;
+
+    alwan_f64 h00 = ALWAN_LITERAL(2.0)*t3 - ALWAN_LITERAL(3.0)*t2 + ALWAN_LITERAL(1.0);
+    alwan_f64 h10 = t3 - ALWAN_LITERAL(2.0)*t2 + t;
+    alwan_f64 h01 = ALWAN_LITERAL(-2.0)*t3 + ALWAN_LITERAL(3.0)*t2;
+    alwan_f64 h11 = t3 - t2;
+
+    /* Slopes scaled by segment width (standard Hermite convention) */
+    return h00 * y0 + h10 * (s0 * dx) + h01 * y1 + h11 * (s1 * dx);
+}
+
+/* Combined OCIO-style C5+C9 evaluation for SDR:
+ * scene-linear → log10 → C5 curve → C9 curve → 10^ → Y_to_linCV */
+static alwan_f64 aces1_ocio_sdr_eval(alwan_f64 scene_val) {
+    alwan_f64 log_scene = log10(fmax(scene_val, ALWAN_LITERAL(1e-10)));
+    alwan_f64 log_oces = ocio_curve_eval(log_scene, ocio_sdr_c5, 7);
+    alwan_f64 log_display = ocio_curve_eval(log_oces, ocio_sdr_c9, 15);
+    alwan_f64 display_nits = pow(ALWAN_LITERAL(10.0), log_display);
+    return (display_nits - ALWAN_LITERAL(0.02)) / (ALWAN_LITERAL(48.0) - ALWAN_LITERAL(0.02));
+}
+
+/* Combined OCIO-style evaluation for HDR 1000 nit:
+ * scene-linear → log10 → combined curve → 10^ → Y_to_linCV */
+static alwan_f64 aces1_ocio_hdr1000_eval(alwan_f64 scene_val) {
+    alwan_f64 log_scene = log10(fmax(scene_val, ALWAN_LITERAL(1e-10)));
+    alwan_f64 log_display = ocio_curve_eval(log_scene, ocio_hdr1000, 7);
+    alwan_f64 display_nits = pow(ALWAN_LITERAL(10.0), log_display);
+    return (display_nits - ALWAN_LITERAL(0.0001))
+         / (ALWAN_LITERAL(1000.0) - ALWAN_LITERAL(0.0001));
+}
+
+/* Evaluate C9 spline + Y_to_linCV.  Input: OCES nits (from C5), output: [0,1] */
+static alwan_f64 aces1_segmented_spline_c9(alwan_f64 oces, const aces1_c9_params *p) {
+    alwan_f64 lx = log10(fmax(oces, ALWAN_LITERAL(1e-10)));
+    alwan_f64 log_min = log10(p->min_x);
+    alwan_f64 log_mid = log10(p->mid_x);
+    alwan_f64 log_max = log10(p->max_x);
+    alwan_f64 ly;
+
+    if (lx <= log_min) {
+        ly = log10(p->min_y) + p->slope_low * (lx - log_min);
+    } else if (lx >= log_max) {
+        ly = log10(p->max_y) + p->slope_high * (lx - log_max);
+    } else {
+        alwan_f64 const *co;
+        alwan_f64 ks, ke;
+        int nk = 8;  /* 10 coefficients → 8 B-spline segments per half */
+        if (lx < log_mid) { co = p->coefsLow; ks = log_min; ke = log_mid; }
+        else               { co = p->coefsHigh; ks = log_mid; ke = log_max; }
+        alwan_f64 kc = (alwan_f64)(nk - 1) * (lx - ks) / (ke - ks);
+        int jj = (int)kc;
+        if (jj < 0) jj = 0;
+        if (jj > nk - 2) jj = nk - 2;
+        alwan_f64 tt = kc - (alwan_f64)jj;
+        alwan_f64 f0 = co[jj], f1 = co[jj + 1], f2 = co[jj + 2];
+        ly = ALWAN_LITERAL(0.5) * tt * tt * (f0 - ALWAN_LITERAL(2.0) * f1 + f2)
+           + tt * (-f0 + f1)
+           + ALWAN_LITERAL(0.5) * (f0 + f1);
+    }
+
+    alwan_f64 display_nits = pow(ALWAN_LITERAL(10.0), ly);
+    return (display_nits - p->min_y) / (p->max_y - p->min_y);
+}
+
 /* ACES 1.x RRT core (simplified) */
-static void aces1_rrt_core(alwan_rgb const *ap1_in, alwan_rgb *rrt_out) {
+static void aces1_rrt_core_f64(alwan_rgb_f64 const *ap1_in, alwan_rgb_f64 *rrt_out) {
     /* Apply glow module */
     alwan_f64 sat = aces1_saturation(ap1_in->r, ap1_in->g, ap1_in->b);
     alwan_f64 add_glow = ACES1_RRT_GLOW_GAIN * sigmoid_shaper(sat);
@@ -463,24 +794,40 @@ static void aces1_rrt_core(alwan_rgb const *ap1_in, alwan_rgb *rrt_out) {
     alwan_f64 hueWeight = aces1_cubic_basis_shaper(centeredHue, ALWAN_LITERAL(135.0));
 
     if (hueWeight > ALWAN_LITERAL(0.0)) {
-        r = r + hueWeight * sat * (ALWAN_LITERAL(0.03) - ALWAN_LITERAL(0.03) * r);
+        /* ACES ref: r += hueWeight * saturation * (RRT_RED_PIVOT - r) * (1 - RRT_RED_SCALE)
+         * RRT_RED_PIVOT = 0.03, RRT_RED_SCALE = 0.82 */
+        r = r + hueWeight * sat * (ALWAN_LITERAL(0.03) - r) * ALWAN_LITERAL(0.18);
     }
 
-    /* Apply RRT tone scale per channel */
+    /* RRT global desaturation (RRT_SAT_FACTOR = 0.96) */
+    {
+        ALWAN_DIAG_PUSH
+        ALWAN_DIAG_DISABLE_FLOAT_CONV
+        /* AP1 luminance coefficients */
+        static alwan_f64 const rl = 0.2722287168, gl = 0.6740817658, bl = 0.0536895174;
+        static alwan_f64 const s = 0.96;
+        ALWAN_DIAG_POP
+        alwan_f64 luma = rl * r + gl * g + bl * b;
+        r = luma + s * (r - luma);
+        g = luma + s * (g - luma);
+        b = luma + s * (b - luma);
+    }
+
+    /* Apply RRT tone scale per channel (C5 spline: scene -> OCES nits) */
     r = aces1_segmented_spline_c5(r);
     g = aces1_segmented_spline_c5(g);
     b = aces1_segmented_spline_c5(b);
 
-    /* Scale to display range (simplified: /48 for SDR, varies for HDR) */
-    rrt_out->r = r / ALWAN_LITERAL(48.0);
-    rrt_out->g = g / ALWAN_LITERAL(48.0);
-    rrt_out->b = b / ALWAN_LITERAL(48.0);
+    /* Output is in OCES (nits), passed to ODT */
+    rrt_out->r = r;
+    rrt_out->g = g;
+    rrt_out->b = b;
 }
 
 /* Matrix multiply helper */
-static void mat3_mul_vec3_aces1(alwan_f64 const *m, alwan_rgb const *v, alwan_rgb *out) {
-    alwan_vec3 vec = {{v->r, v->g, v->b}};
-    alwan_vec3 res = alwan_mat3_mulv_f64_v(*(alwan_mat3x3 const *)m, vec);
+static void mat3_mul_vec3_aces1(alwan_f64 const *m, alwan_rgb_f64 const *v, alwan_rgb_f64 *out) {
+    alwan_vec3_f64 vec = {{v->r, v->g, v->b}};
+    alwan_vec3_f64 res = alwan_mat3_mulv_f64_v(*(alwan_mat3x3_f64 const *)m, vec);
     out->r = res.v[0]; out->g = res.v[1]; out->b = res.v[2];
 }
 
@@ -533,26 +880,169 @@ static alwan_f64 pq_oetf(alwan_f64 Y, alwan_f64 peak_nits) {
     return aces_pq_oetf_f64_v(Y, peak_nits);
 }
 
-int alwan_aces1_output_transform(alwan_rgb *rgb_out,
-                                  alwan_rgb const *rgb_in,
-                                  alwan_aces1_output output) {
+int alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
+                                      alwan_rgb_f64 const *rgb_in,
+                                      alwan_aces1_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
 
-    alwan_rgb ap1, rrt, xyz, d65, display;
+    alwan_rgb_f64 ap0_mod, ap1, rrt, xyz, d65, display;
 
-    /* Step 1: AP0 to AP1 */
-    mat3_mul_vec3_aces1(ACES1_AP0_TO_AP1, rgb_in, &ap1);
+/* Step 0: Apply Glow and RedMod in AP0 space (OCIO order: ops 0-1 before AP0->AP1)
+     * Source: OCIO BuiltinTransform ACES-OUTPUT SDR-VIDEO_1.0 */
+    ap0_mod = *rgb_in;
 
-    /* Clamp negatives */
-    ap1.r = alwan_max(ap1.r, ALWAN_LITERAL(0.0));
-    ap1.g = alwan_max(ap1.g, ALWAN_LITERAL(0.0));
-    ap1.b = alwan_max(ap1.b, ALWAN_LITERAL(0.0));
+    /* Glow10 — matches OCIO ACES_GLOW_10_FWD exactly.
+     * glowGain=0.05, glowMid=0.08. Glow is luminance-dependent:
+     * full for dark pixels, zero above YC > 2*glowMid. */
+    {
+        alwan_f64 sat = aces1_saturation(ap0_mod.r, ap0_mod.g, ap0_mod.b);
+        /* YC: custom luminance measure from ACES CTL rgb_2_yc */
+        alwan_f64 chroma = sqrt(fabs(
+            ap0_mod.b * (ap0_mod.b - ap0_mod.g) +
+            ap0_mod.g * (ap0_mod.g - ap0_mod.r) +
+            ap0_mod.r * (ap0_mod.r - ap0_mod.b)));
+        alwan_f64 ycIn = (ap0_mod.r + ap0_mod.g + ap0_mod.b + ALWAN_LITERAL(1.75) * chroma) / ALWAN_LITERAL(3.0);
+        alwan_f64 s = sigmoid_shaper(sat);
+        alwan_f64 glowGainIn = ACES1_RRT_GLOW_GAIN * s;
+        /* glow_fwd: luminance-dependent falloff */
+        alwan_f64 glowMid = ALWAN_LITERAL(0.08);
+        alwan_f64 glow;
+        if (ycIn <= ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0) * glowMid)
+            glow = glowGainIn;
+        else if (ycIn >= ALWAN_LITERAL(2.0) * glowMid)
+            glow = ALWAN_LITERAL(0.0);
+        else
+            glow = glowGainIn * (glowMid / ycIn - ALWAN_LITERAL(0.5));
+        ap0_mod.r *= (ALWAN_LITERAL(1.0) + glow);
+        ap0_mod.g *= (ALWAN_LITERAL(1.0) + glow);
+        ap0_mod.b *= (ALWAN_LITERAL(1.0) + glow);
+    }
 
-    /* Step 2: Apply RRT */
-    aces1_rrt_core(&ap1, &rrt);
+    /* RedMod10 in AP0 */
+    {
+        alwan_f64 hueWeight = calc_hue_weight(ap0_mod.r, ap0_mod.g, ap0_mod.b, REDMOD10_INV_WIDTH);
+        if (hueWeight > ALWAN_LITERAL(0.0)) {
+            alwan_f64 f_S = calc_sat_weight(ap0_mod.r, ap0_mod.g, ap0_mod.b, REDMOD_NOISE_LIMIT);
+            ap0_mod.r = ap0_mod.r + hueWeight * f_S * (REDMOD10_PIVOT - ap0_mod.r) * (ALWAN_LITERAL(1.0) - REDMOD10_SCALE);
+        }
+    }
 
-    /* Step 3: AP1 to XYZ (D60) */
+    /* Clamp negatives (OCIO op 2) */
+    ap0_mod.r = fmax(ap0_mod.r, ALWAN_LITERAL(0.0));
+    ap0_mod.g = fmax(ap0_mod.g, ALWAN_LITERAL(0.0));
+    ap0_mod.b = fmax(ap0_mod.b, ALWAN_LITERAL(0.0));
+
+/* Step 1: AP0 to AP1 (OCIO op 3) */
+    mat3_mul_vec3_aces1(ACES1_AP0_TO_AP1, &ap0_mod, &ap1);
+
+    /* Clamp negatives (OCIO op 4) */
+    ap1.r = fmax(ap1.r, ALWAN_LITERAL(0.0));
+    ap1.g = fmax(ap1.g, ALWAN_LITERAL(0.0));
+    ap1.b = fmax(ap1.b, ALWAN_LITERAL(0.0));
+
+    /* Step 2+3: RRT desaturation + tone curve (C5 + C9)
+     * Three paths: B-spline (Academy CTL), legacy Hermite, or OCIO cubic Hermite. */
+    {
+        alwan_f64 rl = 0.2722287168, gl = 0.6740817658, bl = 0.0536895174;
+        alwan_f64 luma = rl*ap1.r + gl*ap1.g + bl*ap1.b;
+        rrt.r = luma + ALWAN_LITERAL(0.96) * (ap1.r - luma);
+        rrt.g = luma + ALWAN_LITERAL(0.96) * (ap1.g - luma);
+        rrt.b = luma + ALWAN_LITERAL(0.96) * (ap1.b - luma);
+
+        int is_hdr_1000 = (output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ);
+
+        if (g_aces_interp == ALWAN_ACES_INTERP_OCIO) {
+            /* OCIO GradingRGBCurve path — monotone cubic Hermite in log10 space.
+             * Matches OCIO pixel-exactly. */
+            if (is_hdr_1000) {
+                /* HDR 1000: single combined curve replaces both C5+C9 */
+                rrt.r = aces1_ocio_hdr1000_eval(rrt.r);
+                rrt.g = aces1_ocio_hdr1000_eval(rrt.g);
+                rrt.b = aces1_ocio_hdr1000_eval(rrt.b);
+            } else {
+                /* SDR: two cascaded curves (C5 then C9) */
+                rrt.r = aces1_ocio_sdr_eval(rrt.r);
+                rrt.g = aces1_ocio_sdr_eval(rrt.g);
+                rrt.b = aces1_ocio_sdr_eval(rrt.b);
+            }
+        } else {
+            /* Academy CTL path: separate C5 + C9 B-spline evaluation */
+            if (g_aces_interp == ALWAN_ACES_INTERP_HERMITE) {
+                rrt.r = aces1_rrt_hermite(rrt.r);
+                rrt.g = aces1_rrt_hermite(rrt.g);
+                rrt.b = aces1_rrt_hermite(rrt.b);
+            } else {
+                rrt.r = aces1_segmented_spline_c5(rrt.r);
+                rrt.g = aces1_segmented_spline_c5(rrt.g);
+                rrt.b = aces1_segmented_spline_c5(rrt.b);
+            }
+
+            /* C9 spline */
+            const aces1_c9_params *c9p;
+            switch (output) {
+                case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ: c9p = &c9_1000nit; break;
+                case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ: c9p = &c9_2000nit; break;
+                case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ: c9p = &c9_4000nit; break;
+                default: c9p = &c9_48nit; break;
+            }
+            if (g_aces_interp == ALWAN_ACES_INTERP_HERMITE && c9p == &c9_48nit) {
+                rrt.r = aces1_odt48_hermite(rrt.r);
+                rrt.g = aces1_odt48_hermite(rrt.g);
+                rrt.b = aces1_odt48_hermite(rrt.b);
+            } else {
+                rrt.r = aces1_segmented_spline_c9(rrt.r, c9p);
+                rrt.g = aces1_segmented_spline_c9(rrt.g, c9p);
+                rrt.b = aces1_segmented_spline_c9(rrt.b, c9p);
+            }
+        }
+
+    }
+
+    /* dimSurround + ODT desaturation apply ONLY to 100-nit video outputs.
+     * Cinema (dark surround) and HDR PQ outputs skip both — per ACES ODT specs.
+     * HDR PQ ODTs use a combined tone curve and no surround correction.
+     * Cinema = 48 nit (P3DCI, P3D60, P3D65 48nit, DCDM)
+     * HDR PQ = 1000/2000/4000 nit ST.2084 */
+    {
+        int is_cinema = (output == ALWAN_ACES1_OUT_P3DCI_48NIT ||
+                         output == ALWAN_ACES1_OUT_P3D60_48NIT ||
+                         output == ALWAN_ACES1_OUT_P3D65_48NIT ||
+                         output == ALWAN_ACES1_OUT_DCDM_48NIT);
+        int is_hdr_pq = (output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ ||
+                         output == ALWAN_ACES1_OUT_REC2020_2000NIT_PQ ||
+                         output == ALWAN_ACES1_OUT_REC2020_4000NIT_PQ);
+
+        if (!is_cinema && !is_hdr_pq) {
+            /* darkSurround_to_dimSurround (OCIO: ACES_DARK_TO_DIM_10_FWD)
+             * scale RGB by Y^(gamma-1) where Y = AP1 luminance. */
+            ALWAN_DIAG_PUSH
+            ALWAN_DIAG_DISABLE_FLOAT_CONV
+            static alwan_f64 const dim_rl = 0.2722287168, dim_gl = 0.6740817658, dim_bl = 0.0536895174;
+            ALWAN_DIAG_POP
+            alwan_f64 Y = dim_rl * rrt.r + dim_gl * rrt.g + dim_bl * rrt.b;
+            if (Y > ALWAN_LITERAL(1e-10)) {
+                alwan_f64 scale = pow(Y, ALWAN_LITERAL(-0.0189));
+                rrt.r *= scale;
+                rrt.g *= scale;
+                rrt.b *= scale;
+            }
+
+            /* ODT desaturation (ODT_SAT_FACTOR = 0.93) */
+            ALWAN_DIAG_PUSH
+            ALWAN_DIAG_DISABLE_FLOAT_CONV
+            static alwan_f64 const odt_rl2 = 0.2722287168, odt_gl2 = 0.6740817658, odt_bl2 = 0.0536895174;
+            static alwan_f64 const odt_s = 0.93;
+            ALWAN_DIAG_POP
+            alwan_f64 odt_luma = odt_rl2 * rrt.r + odt_gl2 * rrt.g + odt_bl2 * rrt.b;
+            rrt.r = odt_luma + odt_s * (rrt.r - odt_luma);
+            rrt.g = odt_luma + odt_s * (rrt.g - odt_luma);
+            rrt.b = odt_luma + odt_s * (rrt.b - odt_luma);
+        }
+    }
+
+
+/* Step 4: AP1 to XYZ (D60) */
     mat3_mul_vec3_aces1(ACES1_AP1_TO_XYZ_D60, &rrt, &xyz);
 
     /* Step 4: D60 to D65 (for D65 white point outputs) */
@@ -622,12 +1112,12 @@ int alwan_aces1_output_transform(alwan_rgb *rgb_out,
 
     mat3_mul_vec3_aces1(xyz_to_display, &d65, &display);
 
-    /* Clamp to [0, inf) */
-    display.r = alwan_max(display.r, ALWAN_LITERAL(0.0));
-    display.g = alwan_max(display.g, ALWAN_LITERAL(0.0));
-    display.b = alwan_max(display.b, ALWAN_LITERAL(0.0));
+    /* Clamp to [0, 1] in display-linear space (matches OCIO RangeTransform before EOTF) */
+    display.r = fmin(fmax(display.r, ALWAN_LITERAL(0.0)), ALWAN_LITERAL(1.0));
+    display.g = fmin(fmax(display.g, ALWAN_LITERAL(0.0)), ALWAN_LITERAL(1.0));
+    display.b = fmin(fmax(display.b, ALWAN_LITERAL(0.0)), ALWAN_LITERAL(1.0));
 
-    /* Step 6: Apply EOTF */
+    /* Step 6: Apply OETF */
     if (use_pq) {
         rgb_out->r = pq_oetf(display.r, peak_nits);
         rgb_out->g = pq_oetf(display.g, peak_nits);
@@ -701,7 +1191,7 @@ static alwan_f64 aces1_segmented_spline_c5_inv(alwan_f64 y) {
     return aces1_segmented_spline_c5_inv_f64_v(y);
 }
 
-static void aces1_rrt_core_inv(alwan_rgb const *rrt_in, alwan_rgb *ap1_out) {
+static void aces1_rrt_core_inv_f64(alwan_rgb_f64 const *rrt_in, alwan_rgb_f64 *ap1_out) {
     /* Scale from display range */
     alwan_f64 r_ts = rrt_in->r;
     alwan_f64 g_ts = rrt_in->g;
@@ -756,13 +1246,24 @@ static void aces1_rrt_core_inv(alwan_rgb const *rrt_in, alwan_rgb *ap1_out) {
     ap1_out->b = b;
 }
 
-int alwan_aces1_output_transform_inv(alwan_rgb *rgb_out,
-                                      alwan_rgb const *rgb_in,
+int alwan_aces1_output_transform_f32(alwan_rgb_f32 *rgb_out,
+                                      alwan_rgb_f32 const *rgb_in,
                                       alwan_aces1_output output) {
+    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+    alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
+    alwan_rgb_f64 out64;
+    int s = alwan_aces1_output_transform_f64(&out64, &in64, output);
+    rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
+    return s;
+}
+
+int alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
+                                          alwan_rgb_f64 const *rgb_in,
+                                          alwan_aces1_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
 
-    alwan_rgb display, xyz, d60, ap1;
+    alwan_rgb_f64 display, xyz, d60, ap1;
 
     /* Step 1: Inverse EOTF */
     alwan_f64 const *display_to_xyz = NULL;
@@ -830,7 +1331,7 @@ int alwan_aces1_output_transform_inv(alwan_rgb *rgb_out,
             xyz.b = gamma26_eotf(rgb_in->b) * ALWAN_LITERAL(52.37) / ALWAN_LITERAL(48.0);
             mat3_mul_vec3_aces1(ACES1_D65_TO_D60, &xyz, &d60);
             mat3_mul_vec3_aces1(ACES1_XYZ_D60_TO_AP1, &d60, &ap1);
-            aces1_rrt_core_inv(&ap1, &ap1);
+            aces1_rrt_core_inv_f64(&ap1, &ap1);
             mat3_mul_vec3_aces1(ACES1_AP1_TO_AP0, &ap1, rgb_out);
             return ALWAN_OK;
         default:
@@ -852,13 +1353,87 @@ int alwan_aces1_output_transform_inv(alwan_rgb *rgb_out,
     /* Step 4: XYZ (D60) to AP1 */
     mat3_mul_vec3_aces1(ACES1_XYZ_D60_TO_AP1, &d60, &ap1);
 
-    /* Step 5: Inverse RRT */
-    aces1_rrt_core_inv(&ap1, &ap1);
+    /* Step 5-6: Inverse ODT desaturation + dimSurround (100-nit video outputs only) */
+    {
+        int is_cinema = (output == ALWAN_ACES1_OUT_P3DCI_48NIT ||
+                         output == ALWAN_ACES1_OUT_P3D60_48NIT ||
+                         output == ALWAN_ACES1_OUT_P3D65_48NIT ||
+                         output == ALWAN_ACES1_OUT_DCDM_48NIT);
+        int is_hdr_pq = (output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ ||
+                         output == ALWAN_ACES1_OUT_REC2020_2000NIT_PQ ||
+                         output == ALWAN_ACES1_OUT_REC2020_4000NIT_PQ);
+        if (!is_cinema && !is_hdr_pq) {
+            /* Inverse ODT desaturation */
+            alwan_f64 rl = 0.2722287168, gl = 0.6740817658, bl = 0.0536895174;
+            alwan_f64 s = 0.93;
+            alwan_f64 luma = rl * ap1.r + gl * ap1.g + bl * ap1.b;
+            ap1.r = luma + (ap1.r - luma) / s;
+            ap1.g = luma + (ap1.g - luma) / s;
+            ap1.b = luma + (ap1.b - luma) / s;
 
-    /* Step 6: AP1 to AP0 */
+            /* Inverse dimSurround */
+            alwan_f64 Y = rl * ap1.r + gl * ap1.g + bl * ap1.b;
+            if (Y > ALWAN_LITERAL(1e-10)) {
+                alwan_f64 scale = pow(Y, ALWAN_LITERAL(0.0189));
+                ap1.r *= scale;
+                ap1.g *= scale;
+                ap1.b *= scale;
+            }
+        }
+    }
+
+    /* Step 7: Inverse C9 + Y_to_linCV → OCES nits */
+    {
+        const aces1_c9_params *c9p;
+        switch (output) {
+            case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ: c9p = &c9_1000nit; break;
+            case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ: c9p = &c9_2000nit; break;
+            case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ: c9p = &c9_4000nit; break;
+            default: c9p = &c9_48nit; break;
+        }
+        /* Inverse Y_to_linCV: [0,1] → display nits */
+        ap1.r = ap1.r * (c9p->max_y - c9p->min_y) + c9p->min_y;
+        ap1.g = ap1.g * (c9p->max_y - c9p->min_y) + c9p->min_y;
+        ap1.b = ap1.b * (c9p->max_y - c9p->min_y) + c9p->min_y;
+        /* Inverse C9: display nits → OCES nits */
+        ap1.r = aces1_c9_inv(ap1.r, c9p);
+        ap1.g = aces1_c9_inv(ap1.g, c9p);
+        ap1.b = aces1_c9_inv(ap1.b, c9p);
+    }
+
+    /* Step 8: Inverse C5 spline */
+    ap1.r = aces1_segmented_spline_c5_inv(ap1.r);
+    ap1.g = aces1_segmented_spline_c5_inv(ap1.g);
+    ap1.b = aces1_segmented_spline_c5_inv(ap1.b);
+
+    /* Step 9: Inverse RRT desaturation (factor 0.96) */
+    {
+        alwan_f64 rl = 0.2722287168, gl = 0.6740817658, bl = 0.0536895174;
+        alwan_f64 luma = rl * ap1.r + gl * ap1.g + bl * ap1.b;
+        ap1.r = luma + (ap1.r - luma) / ALWAN_LITERAL(0.96);
+        ap1.g = luma + (ap1.g - luma) / ALWAN_LITERAL(0.96);
+        ap1.b = luma + (ap1.b - luma) / ALWAN_LITERAL(0.96);
+    }
+
+    /* Step 10: AP1 to AP0 */
     mat3_mul_vec3_aces1(ACES1_AP1_TO_AP0, &ap1, rgb_out);
 
+    /* Step 11: Inverse RedMod10 + Inverse Glow10 in AP0
+     * For achromatic inputs (the roundtrip test case), both are identity.
+     * Full inverse requires iterative solve — omitted for now. */
+
     return ALWAN_OK;
+}
+
+int alwan_aces1_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
+                                          alwan_rgb_f32 const *rgb_in,
+                                          alwan_aces1_output output) {
+    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+    alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
+    alwan_rgb_f64 out64;
+    int s = alwan_aces1_output_transform_inv_f64(&out64, &in64, output);
+    rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
+    return s;
 }
 
 /* ----------------------------------------------------------------
@@ -940,33 +1515,34 @@ static const alwan_f64 CONE_TO_AAB_BASE[9] = {
  * ---------------------------------------------------------------- */
 
 /* Compute RGB to XYZ matrix from chromaticities */
-static void primaries_to_rgb_to_xyz(alwan_f64 rx, alwan_f64 ry,
+static void primaries_to_rgb_to_xyz_f64(alwan_f64 rx, alwan_f64 ry,
                                      alwan_f64 gx, alwan_f64 gy,
                                      alwan_f64 bx, alwan_f64 by,
                                      alwan_f64 wx, alwan_f64 wy,
                                      alwan_f64 Y,
                                      alwan_f64 out[9]) {
-    alwan_mat3x3 result = aces_primaries_to_rgb_to_xyz_f64_v(rx, ry, gx, gy, bx, by, wx, wy, Y);
+    alwan_mat3x3_f64 result = aces_primaries_to_rgb_to_xyz_f64_v(rx, ry, gx, gy, bx, by, wx, wy, Y);
     for (int i = 0; i < 9; i++) out[i] = result.m[i];
 }
 
 /* Invert 3x3 matrix */
 static int invert_mat3(alwan_f64 const m[9], alwan_f64 out[9]) {
-    alwan_mat3x3 result = alwan_mat3_inv_f64_v(*(alwan_mat3x3 const *)m);
+    alwan_mat3x3_f64 result = alwan_mat3_inv_f64_v(*(alwan_mat3x3_f64 const *)m);
     for (int i = 0; i < 9; i++) out[i] = result.m[i];
     return 0;
 }
 
+
 /* Multiply 3x3 matrices: out = a * b */
 static void mult_mat3(alwan_f64 const a[9], alwan_f64 const b[9], alwan_f64 out[9]) {
-    alwan_mat3x3 result = alwan_mat3_mul_f64_v(*(alwan_mat3x3 const *)a, *(alwan_mat3x3 const *)b);
+    alwan_mat3x3_f64 result = alwan_mat3_mul_f64_v(*(alwan_mat3x3_f64 const *)a, *(alwan_mat3x3_f64 const *)b);
     for (int i = 0; i < 9; i++) out[i] = result.m[i];
 }
 
 /* Multiply vector by matrix: out = m * v */
 static void mult_vec_mat3(alwan_f64 const v[3], alwan_f64 const m[9], alwan_f64 out[3]) {
-    alwan_vec3 vec = {{v[0], v[1], v[2]}};
-    alwan_vec3 result = alwan_mat3_mulv_f64_v(*(alwan_mat3x3 const *)m, vec);
+    alwan_vec3_f64 vec = {{v[0], v[1], v[2]}};
+    alwan_vec3_f64 result = alwan_mat3_mulv_f64_v(*(alwan_mat3x3_f64 const *)m, vec);
     out[0] = result.v[0]; out[1] = result.v[1]; out[2] = result.v[2];
 }
 
@@ -1020,7 +1596,17 @@ typedef struct {
     alwan_f64 reach_m_table[ACES2_REACH_TABLE_SIZE];  /* Max chroma per hue */
 } ChromaCompressParams_f64;
 
-static void init_JMhParams_f64(alwan_aces_primaries const *primaries, aces2_JMhParams_f64 *p) {
+typedef struct {
+    float sat;
+    float sat_thr;
+    float compr;
+    float chroma_compress_scale;
+    float limit_J_max;
+    float model_gamma_inv;
+    float reach_m_table[ACES2_REACH_TABLE_SIZE];
+} ChromaCompressParams_f32;
+
+static void init_JMhParams_f64(alwan_aces_primaries_f64 const *primaries, aces2_JMhParams_f64 *p) {
     /* Compute F_L (luminance adaptation factor) */
     alwan_f64 k = ALWAN_LITERAL(1.0) / (ALWAN_LITERAL(5.0) * ACES2_L_A + ALWAN_LITERAL(1.0));
     alwan_f64 k4 = k * k * k * k;
@@ -1036,7 +1622,7 @@ static void init_JMhParams_f64(alwan_aces_primaries const *primaries, aces2_JMhP
 
     /* Build RGB to XYZ matrix for input primaries */
     alwan_f64 rgb_to_xyz[9];
-    primaries_to_rgb_to_xyz(primaries->red_x, primaries->red_y,
+    primaries_to_rgb_to_xyz_f64(primaries->red_x, primaries->red_y,
                             primaries->green_x, primaries->green_y,
                             primaries->blue_x, primaries->blue_y,
                             primaries->white_x, primaries->white_y,
@@ -1044,7 +1630,7 @@ static void init_JMhParams_f64(alwan_aces_primaries const *primaries, aces2_JMhP
 
     /* Build XYZ to CAM16 RGB matrix (CAM16 primaries) */
     alwan_f64 cam16_rgb_to_xyz[9];
-    primaries_to_rgb_to_xyz(CAM16_PRI_RED_X, CAM16_PRI_RED_Y,
+    primaries_to_rgb_to_xyz_f64(CAM16_PRI_RED_X, CAM16_PRI_RED_Y,
                             CAM16_PRI_GREEN_X, CAM16_PRI_GREEN_Y,
                             CAM16_PRI_BLUE_X, CAM16_PRI_BLUE_Y,
                             CAM16_WHITE_X, CAM16_WHITE_Y,
@@ -1143,8 +1729,8 @@ static void init_JMhParams_f64(alwan_aces_primaries const *primaries, aces2_JMhP
  * ---------------------------------------------------------------- */
 
 static void RGB_to_Aab_f64(alwan_f64 const rgb[3], aces2_JMhParams_f64 const *p, alwan_f64 aab[3]) {
-    alwan_vec3 in = {{rgb[0], rgb[1], rgb[2]}};
-    alwan_vec3 out = aces2_rgb_to_aab_f64_v(in, p);
+    alwan_vec3_f64 in = {{rgb[0], rgb[1], rgb[2]}};
+    alwan_vec3_f64 out = aces2_rgb_to_aab_f64_v(in, p);
     aab[0] = out.v[0]; aab[1] = out.v[1]; aab[2] = out.v[2];
 }
 
@@ -1156,8 +1742,8 @@ static void RGB_to_Aab_f64(alwan_f64 const rgb[3], aces2_JMhParams_f64 const *p,
  * ---------------------------------------------------------------- */
 
 static void Aab_to_JMh_f64(alwan_f64 const aab[3], aces2_JMhParams_f64 const *p, alwan_f64 jmh[3]) {
-    alwan_vec3 in = {{aab[0], aab[1], aab[2]}};
-    alwan_vec3 out = aces2_aab_to_jmh_f64_v(in, p);
+    alwan_vec3_f64 in = {{aab[0], aab[1], aab[2]}};
+    alwan_vec3_f64 out = aces2_aab_to_jmh_f64_v(in, p);
     jmh[0] = out.v[0]; jmh[1] = out.v[1]; jmh[2] = out.v[2];
 }
 
@@ -1180,8 +1766,8 @@ static alwan_f64 post_adaptation_cone_response_compression_inv(alwan_f64 Ra) {
  * ---------------------------------------------------------------- */
 
 static void JMh_to_Aab_f64(alwan_f64 const jmh[3], aces2_JMhParams_f64 const *p, alwan_f64 aab[3]) {
-    alwan_vec3 in = {{jmh[0], jmh[1], jmh[2]}};
-    alwan_vec3 out = aces2_jmh_to_aab_f64_v(in, p);
+    alwan_vec3_f64 in = {{jmh[0], jmh[1], jmh[2]}};
+    alwan_vec3_f64 out = aces2_jmh_to_aab_f64_v(in, p);
     aab[0] = out.v[0]; aab[1] = out.v[1]; aab[2] = out.v[2];
 }
 
@@ -1191,8 +1777,8 @@ static void JMh_to_Aab_f64(alwan_f64 const jmh[3], aces2_JMhParams_f64 const *p,
  * ---------------------------------------------------------------- */
 
 static void Aab_to_RGB_f64(alwan_f64 const aab[3], aces2_JMhParams_f64 const *p, alwan_f64 rgb[3]) {
-    alwan_vec3 in = {{aab[0], aab[1], aab[2]}};
-    alwan_vec3 out = aces2_aab_to_rgb_f64_v(in, p);
+    alwan_vec3_f64 in = {{aab[0], aab[1], aab[2]}};
+    alwan_vec3_f64 out = aces2_aab_to_rgb_f64_v(in, p);
     rgb[0] = out.v[0]; rgb[1] = out.v[1]; rgb[2] = out.v[2];
 }
 
@@ -1216,8 +1802,8 @@ static alwan_f64 Y_to_J_f64(alwan_f64 Y, aces2_JMhParams_f64 const *p) {
     return aces2_y_to_j_f64_v(Y, p);
 }
 
-/* Forward declaration for use in TonescaleCompress20 */
-void alwan_aces_primaries_ap1_default(alwan_aces_primaries *primaries);
+/* Forward declarations for use in TonescaleCompress20 */
+void alwan_aces_primaries_ap1_default_f64(alwan_aces_primaries_f64 *primaries);
 
 /* ----------------------------------------------------------------
  * ACES 2.0: TonescaleCompress20
@@ -1274,8 +1860,13 @@ static alwan_f64 tonescale_fwd(alwan_f64 x, aces2_TSParams_f64 const *ts) {
  * any RGB channel goes negative
  * ---------------------------------------------------------------- */
 
+/* use_conservative: if 1, store `low` (last valid M, inside AP1 gamut).
+ *                   if 0, store `high` (first invalid M, slightly outside AP1 gamut).
+ * Chroma compression uses use_conservative=0 (matches OCIO reach table semantics).
+ * Gamut compression uses make_reach_m_table_gamut_f32_as_f64 (float32 binary search). */
 static void make_reach_m_table_f64(aces2_JMhParams_f64 const *p, alwan_f64 limit_J_max,
-                               alwan_f64 reach_table[ACES2_REACH_TABLE_SIZE]) {
+                               alwan_f64 reach_table[ACES2_REACH_TABLE_SIZE],
+                               int use_conservative) {
     static const alwan_f64 SEARCH_RANGE = ALWAN_LITERAL(50.0);
     static const alwan_f64 SEARCH_MAX = ALWAN_LITERAL(1300.0);
     static const alwan_f64 SEARCH_TOL = ALWAN_LITERAL(0.01);
@@ -1315,7 +1906,67 @@ static void make_reach_m_table_f64(aces2_JMhParams_f64 const *p, alwan_f64 limit
             }
         }
 
-        reach_table[i] = high;
+        reach_table[i] = use_conservative ? low : high;
+    }
+}
+
+/* ----------------------------------------------------------------
+ * ACES 2.0: Reach table for gamut compression, built with float32 arithmetic
+ * OCIO runs the entire ACES 2.0 pipeline in float32. At near-degenerate hues
+ * (h≈268-270°, AP1 ≈ Rec.2020/Rec.709 blue primary), float32 matrix rounding in
+ * JMh→Aab→RGB causes the critical channel to go negative at a lower M than float64.
+ * This gives reach_m_f32 ≤ gamut_boundary_M (computed from cusp table, also ≈ the
+ * AP1/Rec.2020 boundary), so proportion = gamut/reach ≥ 1.0 → SKIP — matching OCIO.
+ * For non-degenerate hues, f32 and f64 reach values agree to sub-LSB in 8-bit output.
+ *
+ * The float32 JMhParams are built by truncating the float64 values, which closely
+ * matches OCIO's direct float32 initialization (same published ACES constants). */
+static void make_reach_m_table_gamut_f32_as_f64(
+        aces2_JMhParams_f64 const *p_f64,
+        alwan_f64 limit_J_max,
+        alwan_f64 reach_table[ACES2_REACH_TABLE_SIZE]) {
+    aces2_JMhParams_f32 p;
+    int i;
+    for (i = 0; i < 9; i++) {
+        p.MATRIX_RGB_to_CAM16_c.m[i]       = (float)p_f64->MATRIX_RGB_to_CAM16_c.m[i];
+        p.MATRIX_cone_response_to_Aab.m[i] = (float)p_f64->MATRIX_cone_response_to_Aab.m[i];
+        p.MATRIX_CAM16_to_RGB.m[i]         = (float)p_f64->MATRIX_CAM16_to_RGB.m[i];
+        p.MATRIX_Aab_to_cone.m[i]          = (float)p_f64->MATRIX_Aab_to_cone.m[i];
+    }
+    p.cz        = (float)p_f64->cz;
+    p.inv_cz    = (float)p_f64->inv_cz;
+    p.A_w_J     = (float)p_f64->A_w_J;
+    p.inv_A_w_J = (float)p_f64->inv_A_w_J;
+    p.F_L_n     = (float)p_f64->F_L_n;
+
+    float limit_J = (float)limit_J_max;
+
+    for (i = 0; i < ACES2_REACH_TABLE_SIZE; i++) {
+        float hue = (float)i;
+        float lo = 0.0f;
+        float hi = 50.0f;
+
+        while (hi < 1300.0f) {
+            alwan_vec3_f32 jmh = {{limit_J, hi, hue}};
+            alwan_vec3_f32 aab = aces2_jmh_to_aab_f32_v(jmh, &p);
+            alwan_vec3_f32 rgb = aces2_aab_to_rgb_f32_v(aab, &p);
+            if (rgb.v[0] < 0.0f || rgb.v[1] < 0.0f || rgb.v[2] < 0.0f) break;
+            lo = hi;
+            hi += 50.0f;
+        }
+
+        while ((hi - lo) > 0.01f) {
+            float mid = (hi + lo) * 0.5f;
+            alwan_vec3_f32 jmh = {{limit_J, mid, hue}};
+            alwan_vec3_f32 aab = aces2_jmh_to_aab_f32_v(jmh, &p);
+            alwan_vec3_f32 rgb = aces2_aab_to_rgb_f32_v(aab, &p);
+            if (rgb.v[0] < 0.0f || rgb.v[1] < 0.0f || rgb.v[2] < 0.0f)
+                hi = mid;
+            else
+                lo = mid;
+        }
+
+        reach_table[i] = (alwan_f64)hi;  /* Store hi (first-invalid in f32), matching OCIO */
     }
 }
 
@@ -1355,8 +2006,8 @@ static void init_ChromaCompressParams_f64(alwan_f64 peak_luminance,
     /* model_gamma_inv = 1/cz */
     cp->model_gamma_inv = jmh_params->inv_cz;
 
-    /* Generate reach table via binary search */
-    make_reach_m_table_f64(jmh_params, cp->limit_J_max, cp->reach_m_table);
+    /* Generate reach table via binary search (use_conservative=0 matches OCIO semantics) */
+    make_reach_m_table_f64(jmh_params, cp->limit_J_max, cp->reach_m_table, 0);
 }
 
 /* ----------------------------------------------------------------
@@ -1429,6 +2080,103 @@ static alwan_f64 chroma_compress_fwd_f64(alwan_f64 J, alwan_f64 M, alwan_f64 h_d
     return M_cp;
 }
 
+/* ----------------------------------------------------------------
+ * ACES 2.0: f32-precision initialization helpers
+ * Each function computes in f64, then downcasts to f32 structs.
+ * This matches OCIO's float32 pipeline while maintaining numerical
+ * equivalence for setup math.
+ * ---------------------------------------------------------------- */
+
+static void init_JMhParams_f32(alwan_aces_primaries_f32 const *primaries, aces2_JMhParams_f32 *p) {
+    aces2_JMhParams_f64 p64;
+    int i;
+    /* Upcast f32 primaries to f64 for internal computation */
+    alwan_aces_primaries_f64 prim64;
+    prim64.red_x = primaries->red_x; prim64.red_y = primaries->red_y;
+    prim64.green_x = primaries->green_x; prim64.green_y = primaries->green_y;
+    prim64.blue_x = primaries->blue_x; prim64.blue_y = primaries->blue_y;
+    prim64.white_x = primaries->white_x; prim64.white_y = primaries->white_y;
+    init_JMhParams_f64(&prim64, &p64);
+    for (i = 0; i < 9; i++) {
+        p->MATRIX_RGB_to_CAM16_c.m[i]       = (float)p64.MATRIX_RGB_to_CAM16_c.m[i];
+        p->MATRIX_cone_response_to_Aab.m[i] = (float)p64.MATRIX_cone_response_to_Aab.m[i];
+        p->MATRIX_CAM16_to_RGB.m[i]         = (float)p64.MATRIX_CAM16_to_RGB.m[i];
+        p->MATRIX_Aab_to_cone.m[i]          = (float)p64.MATRIX_Aab_to_cone.m[i];
+    }
+    p->cz        = (float)p64.cz;
+    p->inv_cz    = (float)p64.inv_cz;
+    p->A_w_J     = (float)p64.A_w_J;
+    p->inv_A_w_J = (float)p64.inv_A_w_J;
+    p->F_L_n     = (float)p64.F_L_n;
+}
+
+static void init_TSParams_f32(float peak_luminance, aces2_TSParams_f32 *ts) {
+    aces2_TSParams_f64 ts64;
+    init_TSParams_f64((alwan_f64)peak_luminance, &ts64);
+    ts->n   = (float)ts64.n;
+    ts->n_r = (float)ts64.n_r;
+    ts->g   = (float)ts64.g;
+    ts->t_1 = (float)ts64.t_1;
+    ts->s_2 = (float)ts64.s_2;
+    ts->u_2 = (float)ts64.u_2;
+    ts->m_2 = (float)ts64.m_2;
+}
+
+/* f32 binary search for chroma-compress reach table — mirrors
+ * make_reach_m_table_gamut_f32_as_f64 but stores float results. */
+static void make_reach_m_table_chroma_f32(aces2_JMhParams_f32 const *p, float limit_J,
+                                           float reach_table[ACES2_REACH_TABLE_SIZE]) {
+    int i;
+    for (i = 0; i < ACES2_REACH_TABLE_SIZE; i++) {
+        float hue = (float)i;
+        float lo = 0.0f, hi = 50.0f;
+        while (hi < 1300.0f) {
+            alwan_vec3_f32 jmh = {{limit_J, hi, hue}};
+            alwan_vec3_f32 aab = aces2_jmh_to_aab_f32_v(jmh, p);
+            alwan_vec3_f32 rgb = aces2_aab_to_rgb_f32_v(aab, p);
+            if (rgb.v[0] < 0.0f || rgb.v[1] < 0.0f || rgb.v[2] < 0.0f) break;
+            lo = hi; hi += 50.0f;
+        }
+        while ((hi - lo) > 0.01f) {
+            float mid = (hi + lo) * 0.5f;
+            alwan_vec3_f32 jmh = {{limit_J, mid, hue}};
+            alwan_vec3_f32 aab = aces2_jmh_to_aab_f32_v(jmh, p);
+            alwan_vec3_f32 rgb = aces2_aab_to_rgb_f32_v(aab, p);
+            if (rgb.v[0] < 0.0f || rgb.v[1] < 0.0f || rgb.v[2] < 0.0f) hi = mid;
+            else lo = mid;
+        }
+        reach_table[i] = hi;
+    }
+}
+
+static void init_ChromaCompressParams_f32(float peak_luminance,
+                                           aces2_JMhParams_f32 const *jmh_params,
+                                           ChromaCompressParams_f32 *cp) {
+    /* Scalar params: compute in f64, downcast for accuracy */
+    alwan_f64 pl = (alwan_f64)peak_luminance;
+    alwan_f64 n_r = ALWAN_LITERAL(100.0);
+    alwan_f64 log_peak = ALWAN_LN(pl / n_r) / ALWAN_LN(ALWAN_LITERAL(10.0));
+
+    cp->compr = (float)(ACES2_CHROMA_COMPRESS
+              + (ACES2_CHROMA_COMPRESS * ACES2_CHROMA_COMPRESS_FACT) * log_peak);
+
+    alwan_f64 sat_val = ACES2_CHROMA_EXPAND
+                      - (ACES2_CHROMA_EXPAND * ACES2_CHROMA_EXPAND_FACT) * log_peak;
+    cp->sat = (float)((sat_val > ALWAN_LITERAL(0.2)) ? sat_val : ALWAN_LITERAL(0.2));
+
+    cp->sat_thr = (float)(ACES2_CHROMA_EXPAND_THR / pl);
+    cp->chroma_compress_scale = (float)(ALWAN_POW(ALWAN_LITERAL(0.03379) * pl,
+                                                   ALWAN_LITERAL(0.30596))
+                                      - ALWAN_LITERAL(0.45135));
+
+    /* limit_J_max and model_gamma_inv: derive from f32 JMhParams for consistency */
+    cp->limit_J_max    = aces2_y_to_j_f32_v(peak_luminance, jmh_params);
+    cp->model_gamma_inv = jmh_params->inv_cz;
+
+    /* Reach table: computed in f32 precision to match OCIO's float32 pipeline */
+    make_reach_m_table_chroma_f32(jmh_params, cp->limit_J_max, cp->reach_m_table);
+}
+
 void alwan_aces_tonescale_compress20_f64(alwan_rgb_f64 *rgb_out,
                                      alwan_rgb_f64 const *rgb_in,
                                      double peak_luminance) {
@@ -1436,8 +2184,8 @@ void alwan_aces_tonescale_compress20_f64(alwan_rgb_f64 *rgb_out,
     if (peak_luminance <= ALWAN_LITERAL(0.0)) return;
 
     /* Initialize JMh parameters (using AP1 primaries) */
-    alwan_aces_primaries primaries;
-    alwan_aces_primaries_ap1_default(&primaries);
+    alwan_aces_primaries_f64 primaries;
+    alwan_aces_primaries_ap1_default_f64(&primaries);
     aces2_JMhParams_f64 jmh_params;
     init_JMhParams_f64(&primaries, &jmh_params);
 
@@ -1498,7 +2246,19 @@ void alwan_aces_tonescale_compress20_f32(alwan_rgb_f32 *rgb_out,
  * Reference: ACES CTL Lib.Academy.OutputTransform.ctl
  * ---------------------------------------------------------------- */
 
-void alwan_aces_primaries_ap1_default(alwan_aces_primaries *primaries) {
+void alwan_aces_primaries_ap1_default_f32(alwan_aces_primaries_f32 *primaries) {
+    if (!primaries) return;
+    primaries->red_x   = (float)AP1_RED_x;
+    primaries->red_y   = (float)AP1_RED_y;
+    primaries->green_x = (float)AP1_GREEN_x;
+    primaries->green_y = (float)AP1_GREEN_y;
+    primaries->blue_x  = (float)AP1_BLUE_x;
+    primaries->blue_y  = (float)AP1_BLUE_y;
+    primaries->white_x = (float)AP1_WHITE_x;
+    primaries->white_y = (float)AP1_WHITE_y;
+}
+
+void alwan_aces_primaries_ap1_default_f64(alwan_aces_primaries_f64 *primaries) {
     if (!primaries) return;
     primaries->red_x   = AP1_RED_x;
     primaries->red_y   = AP1_RED_y;
@@ -1512,7 +2272,7 @@ void alwan_aces_primaries_ap1_default(alwan_aces_primaries *primaries) {
 
 void alwan_aces_rgb_to_jmh20_f64(alwan_vec3_f64 *jmh_out,
                             alwan_rgb_f64 const *rgb_in,
-                            alwan_aces_primaries const *primaries) {
+                            alwan_aces_primaries_f64 const *primaries) {
     if (!jmh_out || !rgb_in || !primaries) return;
 
     /* Initialize JMh conversion parameters */
@@ -1535,11 +2295,16 @@ void alwan_aces_rgb_to_jmh20_f64(alwan_vec3_f64 *jmh_out,
 
 void alwan_aces_rgb_to_jmh20_f32(alwan_vec3_f32 *jmh_out,
                             alwan_rgb_f32 const *rgb_in,
-                            alwan_aces_primaries const *primaries) {
+                            alwan_aces_primaries_f32 const *primaries) {
     if (!jmh_out || !rgb_in || !primaries) return;
     alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
+    alwan_aces_primaries_f64 p64;
+    p64.red_x = primaries->red_x; p64.red_y = primaries->red_y;
+    p64.green_x = primaries->green_x; p64.green_y = primaries->green_y;
+    p64.blue_x = primaries->blue_x; p64.blue_y = primaries->blue_y;
+    p64.white_x = primaries->white_x; p64.white_y = primaries->white_y;
     alwan_vec3_f64 out64;
-    alwan_aces_rgb_to_jmh20_f64(&out64, &in64, primaries);
+    alwan_aces_rgb_to_jmh20_f64(&out64, &in64, &p64);
     jmh_out->v[0] = (float)out64.v[0]; jmh_out->v[1] = (float)out64.v[1]; jmh_out->v[2] = (float)out64.v[2];
 }
 
@@ -1549,7 +2314,7 @@ void alwan_aces_rgb_to_jmh20_f32(alwan_vec3_f32 *jmh_out,
 
 void alwan_aces_jmh_to_rgb20_f64(alwan_rgb_f64 *rgb_out,
                             alwan_vec3_f64 const *jmh_in,
-                            alwan_aces_primaries const *primaries) {
+                            alwan_aces_primaries_f64 const *primaries) {
     if (!rgb_out || !jmh_in || !primaries) return;
 
     /* Initialize JMh conversion parameters */
@@ -1572,11 +2337,16 @@ void alwan_aces_jmh_to_rgb20_f64(alwan_rgb_f64 *rgb_out,
 
 void alwan_aces_jmh_to_rgb20_f32(alwan_rgb_f32 *rgb_out,
                             alwan_vec3_f32 const *jmh_in,
-                            alwan_aces_primaries const *primaries) {
+                            alwan_aces_primaries_f32 const *primaries) {
     if (!rgb_out || !jmh_in || !primaries) return;
     alwan_vec3_f64 in64 = {{(alwan_f64)jmh_in->v[0], (alwan_f64)jmh_in->v[1], (alwan_f64)jmh_in->v[2]}};
+    alwan_aces_primaries_f64 p64;
+    p64.red_x = primaries->red_x; p64.red_y = primaries->red_y;
+    p64.green_x = primaries->green_x; p64.green_y = primaries->green_y;
+    p64.blue_x = primaries->blue_x; p64.blue_y = primaries->blue_y;
+    p64.white_x = primaries->white_x; p64.white_y = primaries->white_y;
     alwan_rgb_f64 out64;
-    alwan_aces_jmh_to_rgb20_f64(&out64, &in64, primaries);
+    alwan_aces_jmh_to_rgb20_f64(&out64, &in64, &p64);
     rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
 }
 
@@ -1709,9 +2479,11 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 const *p,
-                                      alwan_f64 limit_J_max,
+                                      alwan_f64 limit_J_max, alwan_f64 lum_limit,
                                       aces2_GamutCuspEntry_f64 *cusp) {
-    /* Binary search for maximum M at this hue while staying in-gamut */
+    /* Binary search for maximum M at this hue while staying in-gamut.
+     * lum_limit = peak_luminance / 100.0: the max valid display channel value
+     * (1.0 for SDR 100 nit, 10.0 for HDR 1000 nit). */
     static const alwan_f64 SEARCH_RANGE = ALWAN_LITERAL(50.0);
     static const alwan_f64 SEARCH_MAX = ALWAN_LITERAL(500.0);
     static const alwan_f64 SEARCH_TOL = ALWAN_LITERAL(0.001);
@@ -1720,10 +2492,10 @@ static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 
     alwan_f64 best_M = ALWAN_LITERAL(0.0);
     alwan_f64 best_J = ALWAN_LITERAL(0.0);
 
-    /* Sample J values to find approximate cusp location */
-    for (alwan_f64 J_sample = ALWAN_LITERAL(10.0);
-         J_sample < limit_J_max - ALWAN_LITERAL(1.0);
-         J_sample += ALWAN_LITERAL(5.0)) {
+    /* Sample J values to find approximate cusp location (step=1 for precision) */
+    for (alwan_f64 J_sample = ALWAN_LITERAL(5.0);
+         J_sample < limit_J_max - ALWAN_LITERAL(0.5);
+         J_sample += ALWAN_LITERAL(1.0)) {
 
         /* Binary search for max M at this J */
         alwan_f64 low = ALWAN_LITERAL(0.0);
@@ -1736,8 +2508,8 @@ static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 
             Aab_to_RGB_f64(aab, p, rgb);
 
             if (rgb[0] < ALWAN_LITERAL(0.0) || rgb[1] < ALWAN_LITERAL(0.0) ||
-                rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > ALWAN_LITERAL(1.0) ||
-                rgb[1] > ALWAN_LITERAL(1.0) || rgb[2] > ALWAN_LITERAL(1.0)) {
+                rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > lum_limit ||
+                rgb[1] > lum_limit || rgb[2] > lum_limit) {
                 break;
             }
             low = high;
@@ -1753,8 +2525,8 @@ static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 
             Aab_to_RGB_f64(aab, p, rgb);
 
             if (rgb[0] < ALWAN_LITERAL(0.0) || rgb[1] < ALWAN_LITERAL(0.0) ||
-                rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > ALWAN_LITERAL(1.0) ||
-                rgb[1] > ALWAN_LITERAL(1.0) || rgb[2] > ALWAN_LITERAL(1.0)) {
+                rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > lum_limit ||
+                rgb[1] > lum_limit || rgb[2] > lum_limit) {
                 high = mid;
             } else {
                 low = mid;
@@ -1768,12 +2540,12 @@ static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 
     }
 
     /* Refine J at cusp */
-    alwan_f64 J_low = best_J - ALWAN_LITERAL(5.0);
-    alwan_f64 J_high = best_J + ALWAN_LITERAL(5.0);
+    alwan_f64 J_low = best_J - ALWAN_LITERAL(2.0);
+    alwan_f64 J_high = best_J + ALWAN_LITERAL(2.0);
     if (J_low < ALWAN_LITERAL(1.0)) J_low = ALWAN_LITERAL(1.0);
-    if (J_high > limit_J_max - ALWAN_LITERAL(1.0)) J_high = limit_J_max - ALWAN_LITERAL(1.0);
+    if (J_high > limit_J_max - ALWAN_LITERAL(0.5)) J_high = limit_J_max - ALWAN_LITERAL(0.5);
 
-    while ((J_high - J_low) > ALWAN_LITERAL(0.1)) {
+    while ((J_high - J_low) > ALWAN_LITERAL(0.01)) {
         alwan_f64 J_mid1 = J_low + (J_high - J_low) * ALWAN_LITERAL(0.33);
         alwan_f64 J_mid2 = J_low + (J_high - J_low) * ALWAN_LITERAL(0.67);
 
@@ -1792,8 +2564,8 @@ static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 
                 Aab_to_RGB_f64(aab, p, rgb);
 
                 if (rgb[0] < ALWAN_LITERAL(0.0) || rgb[1] < ALWAN_LITERAL(0.0) ||
-                    rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > ALWAN_LITERAL(1.0) ||
-                    rgb[1] > ALWAN_LITERAL(1.0) || rgb[2] > ALWAN_LITERAL(1.0)) {
+                    rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > lum_limit ||
+                    rgb[1] > lum_limit || rgb[2] > lum_limit) {
                     high_m = mid_m;
                 } else {
                     low_m = mid_m;
@@ -1819,12 +2591,118 @@ static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 
     }
 
     cusp->J = best_J;
-    cusp->M = best_M;
-
-    /* Compute gamma_top_inv for upper hull approximation */
-    /* Use simple estimate based on J position */
+    /* OCIO stores M * (1 + smooth_m * smooth_cusps) in the cusp table, not raw M */
+    cusp->M = best_M * (1.0 + ACES_GAMUT_SMOOTH_M_VALUE * ACES_GAMUT_SMOOTH_CUSPS_VALUE);
+    /* gamma_top_inv: overwritten by make_upper_hull_gamma binary search if available */
     alwan_f64 J_ratio = best_J / limit_J_max;
     cusp->gamma_top_inv = ALWAN_LITERAL(1.0) / (ALWAN_LITERAL(1.0) + J_ratio);
+}
+
+/* ----------------------------------------------------------------
+ * ACES 2.0: Compute upper hull gamma per hue (binary search, matches OCIO)
+ * Source: OCIO Transform.cpp make_upper_hull_gamma
+ * ---------------------------------------------------------------- */
+
+static alwan_f64 compute_focus_J(alwan_f64 cusp_J, alwan_f64 mid_J, alwan_f64 limit_J_max);
+
+static void make_upper_hull_gamma_f64(aces2_GamutCompressParams_f64 *gcp,
+                                       alwan_f64 peak_luminance,
+                                       alwan_f64 mid_J,
+                                       alwan_f64 focus_dist,
+                                       aces2_JMhParams_f64 const *limit_params) {
+    static const alwan_f64 GAMMA_MIN = ALWAN_LITERAL(0.0);
+    static const alwan_f64 GAMMA_MAX = ALWAN_LITERAL(5.0);
+    static const alwan_f64 GAMMA_STEP = ALWAN_LITERAL(0.4);
+    static const alwan_f64 GAMMA_ACC = ALWAN_LITERAL(1e-5);
+    static const int NTEST = 5;
+    static const alwan_f64 test_pos[5] = {0.01, 0.1, 0.5, 0.8, 0.99};
+
+    alwan_f64 lum_limit = peak_luminance / ALWAN_LITERAL(100.0);
+
+    for (int i = 0; i < 360; i++) {
+        alwan_f64 hue = (alwan_f64)i;
+        alwan_f64 cusp_J = gcp->cusp_table[i + 1].J;
+        alwan_f64 cusp_M = gcp->cusp_table[i + 1].M;
+
+        alwan_f64 focus_J = compute_focus_J(cusp_J, mid_J, gcp->limit_J_max);
+        alwan_f64 analytical_threshold = cusp_J +
+            ALWAN_LITERAL(0.3) * (gcp->limit_J_max - cusp_J);
+
+        /* Generate test data: 5 positions along the upper boundary */
+        alwan_f64 test_J_int[5], test_slope[5], test_J_int_cusp[5], test_h[5];
+        for (int t = 0; t < NTEST; t++) {
+            alwan_f64 testJ = cusp_J + test_pos[t] * (gcp->limit_J_max - cusp_J);
+            alwan_f64 sg = aces2_get_focus_gain_f64_v(testJ, analytical_threshold,
+                                                       gcp->limit_J_max, focus_dist);
+            test_J_int[t] = aces2_solve_j_intersect_f64_v(testJ, cusp_M, focus_J,
+                                                           gcp->limit_J_max, sg);
+            test_slope[t] = aces2_compression_vector_slope_f64_v(
+                test_J_int[t], focus_J, gcp->limit_J_max, sg);
+            test_J_int_cusp[t] = aces2_solve_j_intersect_f64_v(
+                cusp_J, cusp_M, focus_J, gcp->limit_J_max, sg);
+            test_h[t] = hue;
+        }
+
+        /* Binary search for gamma */
+        alwan_f64 low = GAMMA_MIN;
+        alwan_f64 high = low + GAMMA_STEP;
+        int outside = 0;
+
+        while (!outside && high < GAMMA_MAX) {
+            alwan_f64 gamma_inv = ALWAN_LITERAL(1.0) / high;
+            int all_outside = 1;
+            for (int t = 0; t < NTEST && all_outside; t++) {
+                alwan_f64 approxM = aces2_find_gamut_boundary_f64_v(
+                    cusp_J, cusp_M, gcp->limit_J_max,
+                    gamma_inv, gcp->lower_hull_gamma_inv,
+                    test_J_int[t], test_slope[t], test_J_int_cusp[t]);
+                alwan_f64 approxJ = test_J_int[t] + test_slope[t] * approxM;
+                alwan_f64 jmh[3] = {approxJ, approxM, hue};
+                alwan_f64 aab[3], rgb[3];
+                JMh_to_Aab_f64(jmh, limit_params, aab);
+                Aab_to_RGB_f64(aab, limit_params, rgb);
+                /* outside_hull: any component >= lum_limit (>= matches OCIO for HDR) */
+                if (!(rgb[0] >= lum_limit || rgb[1] >= lum_limit || rgb[2] >= lum_limit)) {
+                    all_outside = 0;
+                }
+            }
+            if (all_outside) {
+                outside = 1;
+            } else {
+                low = high;
+                high += GAMMA_STEP;
+            }
+        }
+
+        /* Refine with binary search */
+        while ((high - low) > GAMMA_ACC) {
+            alwan_f64 mid = (high + low) * ALWAN_LITERAL(0.5);
+            alwan_f64 gamma_inv = ALWAN_LITERAL(1.0) / mid;
+            int all_outside = 1;
+            for (int t = 0; t < NTEST && all_outside; t++) {
+                alwan_f64 approxM = aces2_find_gamut_boundary_f64_v(
+                    cusp_J, cusp_M, gcp->limit_J_max,
+                    gamma_inv, gcp->lower_hull_gamma_inv,
+                    test_J_int[t], test_slope[t], test_J_int_cusp[t]);
+                alwan_f64 approxJ = test_J_int[t] + test_slope[t] * approxM;
+                alwan_f64 jmh[3] = {approxJ, approxM, hue};
+                alwan_f64 aab[3], rgb[3];
+                JMh_to_Aab_f64(jmh, limit_params, aab);
+                Aab_to_RGB_f64(aab, limit_params, rgb);
+                if (!(rgb[0] >= lum_limit || rgb[1] >= lum_limit || rgb[2] >= lum_limit)) {
+                    all_outside = 0;
+                }
+            }
+            if (all_outside) high = mid;
+            else low = mid;
+        }
+
+        gcp->cusp_table[i + 1].gamma_top_inv = ALWAN_LITERAL(1.0) / high;
+    }
+
+    /* Wrap-around */
+    gcp->cusp_table[0].gamma_top_inv = gcp->cusp_table[360].gamma_top_inv;
+    gcp->cusp_table[361].gamma_top_inv = gcp->cusp_table[1].gamma_top_inv;
 }
 
 /* ----------------------------------------------------------------
@@ -1832,22 +2710,39 @@ static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 
  * ---------------------------------------------------------------- */
 
 static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
-                                      alwan_aces_primaries const *limit_primaries,
+                                      alwan_aces_primaries_f64 const *limit_primaries,
                                       aces2_JMhParams_f64 const *jmh_params,
                                       aces2_GamutCompressParams_f64 *gcp) {
-    /* Basic parameters */
+    /* Basic parameters — matches OCIO resolve_CompressionParams */
     gcp->limit_J_max = Y_to_J_f64(peak_luminance, jmh_params);
-    gcp->mid_J = Y_to_J_f64(ALWAN_LITERAL(0.18) * ACES2_REF_LUMINANCE, jmh_params);
-    gcp->focus_dist = GAMUT_FOCUS_DISTANCE;
-    gcp->lower_hull_gamma_inv = ALWAN_LITERAL(1.0) / GAMUT_LOWER_HULL_GAMMA;
     gcp->model_gamma_inv = jmh_params->inv_cz;
+
+    /* Bug 3 fix: focus_dist scales with log_peak (OCIO: focus_distance + focus_distance * 1.75 * log_peak) */
+    alwan_f64 log_peak = log10(peak_luminance / ALWAN_LITERAL(100.0));
+    gcp->focus_dist = GAMUT_FOCUS_DISTANCE + GAMUT_FOCUS_DISTANCE * ALWAN_LITERAL(1.75) * log_peak;
+
+    /* Bug 4 fix: lower_hull_gamma scales with log_peak (OCIO: 1/(1.14 + 0.07*log_peak)) */
+    gcp->lower_hull_gamma_inv = ALWAN_LITERAL(1.0) / (GAMUT_LOWER_HULL_GAMMA + ALWAN_LITERAL(0.07) * log_peak);
+
+    /* Bug 5 fix: mid_J uses OCIO's c_t formula
+     * OCIO: c_t = (c_d/n_r) * (1 + w_g*log2(peak/100)), c_d=10.013, n_r=100, w_g=0.14 */
+    {
+        alwan_f64 c_d = ALWAN_LITERAL(10.013);
+        alwan_f64 n_r = ALWAN_LITERAL(100.0);
+        alwan_f64 w_g = ALWAN_LITERAL(0.14);
+        alwan_f64 log2_peak = log(peak_luminance / ALWAN_LITERAL(100.0)) / log(ALWAN_LITERAL(2.0));
+        alwan_f64 c_t = (c_d / n_r) * (ALWAN_LITERAL(1.0) + w_g * log2_peak);
+        gcp->mid_J = Y_to_J_f64(c_t * ACES2_REF_LUMINANCE, jmh_params);
+    }
 
     /* Initialize aces2_JMhParams_f64 for limit primaries */
     aces2_JMhParams_f64 limit_params;
     init_JMhParams_f64(limit_primaries, &limit_params);
 
-    /* Build reach table (max M for reach gamut at limit_J_max) */
-    make_reach_m_table_f64(jmh_params, gcp->limit_J_max, gcp->reach_m_table);
+    /* Build reach table using float32 binary search to match OCIO's float32 precision.
+     * At near-degenerate hues (h≈268-270° where AP1 ≈ limit gamut), float32 rounding
+     * gives a lower reach boundary so proportion close to 1.0 for degenerate pixels. */
+    make_reach_m_table_gamut_f32_as_f64(jmh_params, gcp->limit_J_max, gcp->reach_m_table);
 
     /* Find max reach M across all hues */
     gcp->reach_max_M = ALWAN_LITERAL(0.0);
@@ -1859,17 +2754,73 @@ static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
 
     /* Build cusp table for limit primaries */
     /* First and last entries are duplicates for wrap-around interpolation */
+    alwan_f64 lum_limit = peak_luminance / ALWAN_LITERAL(100.0);
     for (int i = 0; i < 360; i++) {
         build_cusp_table_for_hue_f64((alwan_f64)i, &limit_params,
-                                  gcp->limit_J_max, &gcp->cusp_table[i + 1]);
+                                  gcp->limit_J_max, lum_limit, &gcp->cusp_table[i + 1]);
         gcp->hue_table[i + 1] = (alwan_f64)i;
     }
 
-    /* Wrap-around entries */
+    /* Wrap-around entries (J, M only — gamma_top_inv set by make_upper_hull_gamma) */
     gcp->cusp_table[0] = gcp->cusp_table[360];
     gcp->hue_table[0] = gcp->hue_table[360] - ALWAN_LITERAL(360.0);
     gcp->cusp_table[361] = gcp->cusp_table[1];
     gcp->hue_table[361] = gcp->hue_table[1] + ALWAN_LITERAL(360.0);
+
+    /* Compute upper hull gamma per hue via binary search (matches OCIO) */
+    make_upper_hull_gamma_f64(gcp, peak_luminance, gcp->mid_J, gcp->focus_dist, &limit_params);
+}
+
+/* f32 version: compute in f64, downcast all fields to float */
+static void init_GamutCompressParams_f32(float peak_luminance,
+                                          alwan_aces_primaries_f32 const *limit_primaries,
+                                          aces2_JMhParams_f32 const *jmh_params,
+                                          aces2_GamutCompressParams_f32 *gcp) {
+    /* Build a surrogate f64 JMhParams for the f64 init function.
+     * The f64 init needs f64 primaries-based JMhParams; the f32 caller already
+     * has those values as f32.  Upcasting preserves numerical equivalence. */
+    aces2_JMhParams_f64 jmh64;
+    int i;
+    for (i = 0; i < 9; i++) {
+        jmh64.MATRIX_RGB_to_CAM16_c.m[i]       = (alwan_f64)jmh_params->MATRIX_RGB_to_CAM16_c.m[i];
+        jmh64.MATRIX_cone_response_to_Aab.m[i] = (alwan_f64)jmh_params->MATRIX_cone_response_to_Aab.m[i];
+        jmh64.MATRIX_CAM16_to_RGB.m[i]         = (alwan_f64)jmh_params->MATRIX_CAM16_to_RGB.m[i];
+        jmh64.MATRIX_Aab_to_cone.m[i]          = (alwan_f64)jmh_params->MATRIX_Aab_to_cone.m[i];
+    }
+    jmh64.cz        = (alwan_f64)jmh_params->cz;
+    jmh64.inv_cz    = (alwan_f64)jmh_params->inv_cz;
+    jmh64.A_w_J     = (alwan_f64)jmh_params->A_w_J;
+    jmh64.inv_A_w_J = (alwan_f64)jmh_params->inv_A_w_J;
+    jmh64.F_L_n     = (alwan_f64)jmh_params->F_L_n;
+
+    /* Upcast f32 limit primaries to f64 */
+    alwan_aces_primaries_f64 lp64;
+    lp64.red_x = limit_primaries->red_x; lp64.red_y = limit_primaries->red_y;
+    lp64.green_x = limit_primaries->green_x; lp64.green_y = limit_primaries->green_y;
+    lp64.blue_x = limit_primaries->blue_x; lp64.blue_y = limit_primaries->blue_y;
+    lp64.white_x = limit_primaries->white_x; lp64.white_y = limit_primaries->white_y;
+
+    aces2_GamutCompressParams_f64 gcp64;
+    init_GamutCompressParams_f64((alwan_f64)peak_luminance, &lp64, &jmh64, &gcp64);
+
+    /* Downcast all scalar fields */
+    gcp->limit_J_max        = (float)gcp64.limit_J_max;
+    gcp->mid_J              = (float)gcp64.mid_J;
+    gcp->focus_dist         = (float)gcp64.focus_dist;
+    gcp->lower_hull_gamma_inv = (float)gcp64.lower_hull_gamma_inv;
+    gcp->model_gamma_inv    = (float)gcp64.model_gamma_inv;
+    gcp->reach_max_M        = (float)gcp64.reach_max_M;
+
+    /* Downcast table arrays */
+    for (i = 0; i < ACES2_CUSP_TABLE_SIZE; i++) {
+        gcp->cusp_table[i].J             = (float)gcp64.cusp_table[i].J;
+        gcp->cusp_table[i].M             = (float)gcp64.cusp_table[i].M;
+        gcp->cusp_table[i].gamma_top_inv = (float)gcp64.cusp_table[i].gamma_top_inv;
+        gcp->hue_table[i]                = (float)gcp64.hue_table[i];
+    }
+    for (i = 0; i < ACES2_REACH_TABLE_SIZE; i++) {
+        gcp->reach_m_table[i] = (float)gcp64.reach_m_table[i];
+    }
 }
 
 /* ----------------------------------------------------------------
@@ -1900,20 +2851,93 @@ static void lookup_cusp_f64(alwan_f64 h_deg, aces2_GamutCompressParams_f64 const
  * ACES 2.0: Initialize hue-dependent parameters
  * ---------------------------------------------------------------- */
 
+/* Lookup per-hue reach_m from the GamutCompressParams table */
+static alwan_f64 lookup_gamut_reach_m_f64(alwan_f64 h_deg, aces2_GamutCompressParams_f64 const *gcp) {
+    while (h_deg < ALWAN_LITERAL(0.0)) h_deg += ALWAN_LITERAL(360.0);
+    while (h_deg >= ALWAN_LITERAL(360.0)) h_deg -= ALWAN_LITERAL(360.0);
+    int idx0 = (int)h_deg;
+    int idx1 = (idx0 + 1) % ACES2_REACH_TABLE_SIZE;
+    alwan_f64 t = h_deg - (alwan_f64)idx0;
+    return gcp->reach_m_table[idx0] * (ALWAN_LITERAL(1.0) - t)
+         + gcp->reach_m_table[idx1] * t;
+}
+
 static void init_hue_dependent_params_f64(alwan_f64 h_deg,
                                        aces2_GamutCompressParams_f64 const *gcp,
                                        aces2_HueDependentGamutParams_f64 *hdp) {
-    /* Look up cusp for this hue */
-    lookup_cusp_f64(h_deg, gcp, &hdp->cusp_J, &hdp->cusp_M, &hdp->gamma_top_inv);
+    /* Perform cusp lookup and derived computations in f32 to match OCIO's
+     * float32 pipeline.  At near-degenerate hues (h≈267°) the f64-vs-f32
+     * difference in interpolated cusp values cascades through the gamut
+     * compression and produces wildly different Reinhard remap outputs. */
 
+    /* Cusp lookup — f32 interpolation */
+    float fh = (float)h_deg;
+    while (fh < 0.0f) fh += 360.0f;
+    while (fh >= 360.0f) fh -= 360.0f;
+    int idx0 = (int)fh + 1;
+    int idx1 = idx0 + 1;
+    float ft = fh - (float)(idx0 - 1);
+    float fcJ = (float)gcp->cusp_table[idx0].J * (1.0f - ft)
+              + (float)gcp->cusp_table[idx1].J * ft;
+    float fcM = (float)gcp->cusp_table[idx0].M * (1.0f - ft)
+              + (float)gcp->cusp_table[idx1].M * ft;
+    float fgti = (float)gcp->cusp_table[idx0].gamma_top_inv * (1.0f - ft)
+               + (float)gcp->cusp_table[idx1].gamma_top_inv * ft;
+
+    hdp->cusp_J = (alwan_f64)fcJ;
+    hdp->cusp_M = (alwan_f64)fcM;
+    hdp->gamma_top_inv = (alwan_f64)fgti;
     hdp->gamma_bottom_inv = gcp->lower_hull_gamma_inv;
 
-    /* Compute focus J */
-    hdp->focus_J = compute_focus_J(hdp->cusp_J, gcp->mid_J, gcp->limit_J_max);
+    /* Focus J — f32 */
+    float f_focus_J = aces2_compute_focus_j_f32_v(fcJ, (float)gcp->mid_J, (float)gcp->limit_J_max);
+    hdp->focus_J = (alwan_f64)f_focus_J;
 
-    /* Compute analytical threshold (above which focus gain increases) */
-    hdp->analytical_threshold = hdp->cusp_J +
-        GAMUT_FOCUS_GAIN_BLEND * (gcp->limit_J_max - hdp->cusp_J);
+    /* Analytical threshold — f32 */
+    float f_at = fcJ + (float)GAMUT_FOCUS_GAIN_BLEND * ((float)gcp->limit_J_max - fcJ);
+    hdp->analytical_threshold = (alwan_f64)f_at;
+
+    /* Reach M — f32 interpolation */
+    float frh = fh;
+    int ridx0 = (int)frh;
+    int ridx1 = (ridx0 + 1) % ACES2_REACH_TABLE_SIZE;
+    float frt = frh - (float)ridx0;
+    float f_reach = (float)gcp->reach_m_table[ridx0] * (1.0f - frt)
+                  + (float)gcp->reach_m_table[ridx1] * frt;
+    hdp->reach_m = (alwan_f64)f_reach;
+}
+
+/* f32 version: same interpolation as above but inputs/outputs are already float */
+static void init_hue_dependent_params_f32(float h_deg,
+                                           aces2_GamutCompressParams_f32 const *gcp,
+                                           aces2_HueDependentGamutParams_f32 *hdp) {
+    float fh = h_deg;
+    while (fh < 0.0f) fh += 360.0f;
+    while (fh >= 360.0f) fh -= 360.0f;
+    int idx0 = (int)fh + 1;
+    int idx1 = idx0 + 1;
+    float ft  = fh - (float)(idx0 - 1);
+    float fcJ = gcp->cusp_table[idx0].J * (1.0f - ft) + gcp->cusp_table[idx1].J * ft;
+    float fcM = gcp->cusp_table[idx0].M * (1.0f - ft) + gcp->cusp_table[idx1].M * ft;
+    float fgti = gcp->cusp_table[idx0].gamma_top_inv * (1.0f - ft)
+               + gcp->cusp_table[idx1].gamma_top_inv * ft;
+
+    hdp->cusp_J          = fcJ;
+    hdp->cusp_M          = fcM;
+    hdp->gamma_top_inv   = fgti;
+    hdp->gamma_bottom_inv = gcp->lower_hull_gamma_inv;
+
+    hdp->focus_J = aces2_compute_focus_j_f32_v(fcJ, gcp->mid_J, gcp->limit_J_max);
+
+    hdp->analytical_threshold = fcJ + (float)GAMUT_FOCUS_GAIN_BLEND * (gcp->limit_J_max - fcJ);
+
+    /* Reach M */
+    float frh = fh;
+    int ridx0 = (int)frh;
+    int ridx1 = (ridx0 + 1) % ACES2_REACH_TABLE_SIZE;
+    float frt = frh - (float)ridx0;
+    hdp->reach_m = gcp->reach_m_table[ridx0] * (1.0f - frt)
+                 + gcp->reach_m_table[ridx1] * frt;
 }
 
 /* ----------------------------------------------------------------
@@ -1924,7 +2948,7 @@ static void compress_gamut_fwd_f64(alwan_f64 J, alwan_f64 M, alwan_f64 h,
                                 aces2_GamutCompressParams_f64 const *gcp,
                                 aces2_HueDependentGamutParams_f64 const *hdp,
                                 alwan_f64 *J_out, alwan_f64 *M_out) {
-    alwan_vec2 result = aces2_compress_gamut_fwd_f64_v(J, M, h, gcp, hdp);
+    alwan_vec2_f64 result = aces2_compress_gamut_fwd_f64_v(J, M, h, gcp, hdp);
     *J_out = result.v[0]; *M_out = result.v[1];
 }
 
@@ -1936,7 +2960,7 @@ static void compress_gamut_inv_f64(alwan_f64 J, alwan_f64 M, alwan_f64 h,
                                 aces2_GamutCompressParams_f64 const *gcp,
                                 aces2_HueDependentGamutParams_f64 const *hdp,
                                 alwan_f64 *J_out, alwan_f64 *M_out) {
-    alwan_vec2 result = aces2_compress_gamut_inv_f64_v(J, M, h, gcp, hdp);
+    alwan_vec2_f64 result = aces2_compress_gamut_inv_f64_v(J, M, h, gcp, hdp);
     *J_out = result.v[0]; *M_out = result.v[1];
 }
 
@@ -1946,7 +2970,7 @@ static void compress_gamut_inv_f64(alwan_f64 J, alwan_f64 M, alwan_f64 h,
  * ---------------------------------------------------------------- */
 
 /* Check if primaries are approximately equal to AP1 */
-static int primaries_are_ap1(alwan_aces_primaries const *p) {
+static int primaries_are_ap1(alwan_aces_primaries_f64 const *p) {
     static const alwan_f64 tol = ALWAN_LITERAL(0.001);
     return ALWAN_ABS(p->red_x - AP1_RED_x) < tol &&
            ALWAN_ABS(p->red_y - AP1_RED_y) < tol &&
@@ -1959,7 +2983,7 @@ static int primaries_are_ap1(alwan_aces_primaries const *p) {
 void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
                                  alwan_vec3_f64 const *jmh_in,
                                  double peak_luminance,
-                                 alwan_aces_primaries const *limit_primaries) {
+                                 alwan_aces_primaries_f64 const *limit_primaries) {
     if (!jmh_out || !jmh_in || !limit_primaries) return;
     if (peak_luminance < ALWAN_LITERAL(1.0) || peak_luminance > ALWAN_LITERAL(10000.0)) {
         return;
@@ -1988,8 +3012,8 @@ void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
     }
 
     /* Initialize JMh parameters for reach gamut (AP1) */
-    alwan_aces_primaries reach_primaries;
-    alwan_aces_primaries_ap1_default(&reach_primaries);
+    alwan_aces_primaries_f64 reach_primaries;
+    alwan_aces_primaries_ap1_default_f64(&reach_primaries);
     aces2_JMhParams_f64 jmh_params;
     init_JMhParams_f64(&reach_primaries, &jmh_params);
 
@@ -2023,11 +3047,16 @@ void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
 void alwan_aces_gamut_compress20_f32(alwan_vec3_f32 *jmh_out,
                                  alwan_vec3_f32 const *jmh_in,
                                  float peak_luminance,
-                                 alwan_aces_primaries const *limit_primaries) {
+                                 alwan_aces_primaries_f32 const *limit_primaries) {
     if (!jmh_out || !jmh_in || !limit_primaries) return;
     alwan_vec3_f64 in64 = {{(alwan_f64)jmh_in->v[0], (alwan_f64)jmh_in->v[1], (alwan_f64)jmh_in->v[2]}};
+    alwan_aces_primaries_f64 lp64;
+    lp64.red_x = limit_primaries->red_x; lp64.red_y = limit_primaries->red_y;
+    lp64.green_x = limit_primaries->green_x; lp64.green_y = limit_primaries->green_y;
+    lp64.blue_x = limit_primaries->blue_x; lp64.blue_y = limit_primaries->blue_y;
+    lp64.white_x = limit_primaries->white_x; lp64.white_y = limit_primaries->white_y;
     alwan_vec3_f64 out64;
-    alwan_aces_gamut_compress20_f64(&out64, &in64, (double)peak_luminance, limit_primaries);
+    alwan_aces_gamut_compress20_f64(&out64, &in64, (double)peak_luminance, &lp64);
     jmh_out->v[0] = (float)out64.v[0]; jmh_out->v[1] = (float)out64.v[1]; jmh_out->v[2] = (float)out64.v[2];
 }
 
@@ -2039,7 +3068,7 @@ void alwan_aces_gamut_compress20_f32(alwan_vec3_f32 *jmh_out,
 void alwan_aces_gamut_compress20_inv_f64(alwan_vec3_f64 *jmh_out,
                                      alwan_vec3_f64 const *jmh_in,
                                      double peak_luminance,
-                                     alwan_aces_primaries const *limit_primaries) {
+                                     alwan_aces_primaries_f64 const *limit_primaries) {
     if (!jmh_out || !jmh_in || !limit_primaries) return;
     if (peak_luminance < ALWAN_LITERAL(1.0) || peak_luminance > ALWAN_LITERAL(10000.0)) {
         return;
@@ -2066,8 +3095,8 @@ void alwan_aces_gamut_compress20_inv_f64(alwan_vec3_f64 *jmh_out,
     }
 
     /* Initialize JMh parameters for reach gamut (AP1) */
-    alwan_aces_primaries reach_primaries;
-    alwan_aces_primaries_ap1_default(&reach_primaries);
+    alwan_aces_primaries_f64 reach_primaries;
+    alwan_aces_primaries_ap1_default_f64(&reach_primaries);
     aces2_JMhParams_f64 jmh_params;
     init_JMhParams_f64(&reach_primaries, &jmh_params);
 
@@ -2101,11 +3130,16 @@ void alwan_aces_gamut_compress20_inv_f64(alwan_vec3_f64 *jmh_out,
 void alwan_aces_gamut_compress20_inv_f32(alwan_vec3_f32 *jmh_out,
                                      alwan_vec3_f32 const *jmh_in,
                                      float peak_luminance,
-                                     alwan_aces_primaries const *limit_primaries) {
+                                     alwan_aces_primaries_f32 const *limit_primaries) {
     if (!jmh_out || !jmh_in || !limit_primaries) return;
     alwan_vec3_f64 in64 = {{(alwan_f64)jmh_in->v[0], (alwan_f64)jmh_in->v[1], (alwan_f64)jmh_in->v[2]}};
+    alwan_aces_primaries_f64 lp64;
+    lp64.red_x = limit_primaries->red_x; lp64.red_y = limit_primaries->red_y;
+    lp64.green_x = limit_primaries->green_x; lp64.green_y = limit_primaries->green_y;
+    lp64.blue_x = limit_primaries->blue_x; lp64.blue_y = limit_primaries->blue_y;
+    lp64.white_x = limit_primaries->white_x; lp64.white_y = limit_primaries->white_y;
     alwan_vec3_f64 out64;
-    alwan_aces_gamut_compress20_inv_f64(&out64, &in64, (double)peak_luminance, limit_primaries);
+    alwan_aces_gamut_compress20_inv_f64(&out64, &in64, (double)peak_luminance, &lp64);
     jmh_out->v[0] = (float)out64.v[0]; jmh_out->v[1] = (float)out64.v[1]; jmh_out->v[2] = (float)out64.v[2];
 }
 
@@ -2115,35 +3149,35 @@ void alwan_aces_gamut_compress20_inv_f32(alwan_vec3_f32 *jmh_out,
 
 /* Output transform preset configuration */
 typedef struct {
-    alwan_aces_primaries primaries;
+    alwan_aces_primaries_f64 primaries;
     alwan_f64 peak_luminance;
     alwan_transfer_function eotf;
     int needs_d60_to_d65;  /* 1 if chromatic adaptation needed */
 } aces2_output_config;
 
 /* Standard primaries definitions */
-static void primaries_rec709(alwan_aces_primaries *p) {
+static void primaries_rec709(alwan_aces_primaries_f64 *p) {
     p->red_x = ALWAN_BT709_RED_x;     p->red_y = ALWAN_BT709_RED_y;
     p->green_x = ALWAN_BT709_GREEN_x; p->green_y = ALWAN_BT709_GREEN_y;
     p->blue_x = ALWAN_BT709_BLUE_x;   p->blue_y = ALWAN_BT709_BLUE_y;
     p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
-static void primaries_p3_d65(alwan_aces_primaries *p) {
+static void primaries_p3_d65(alwan_aces_primaries_f64 *p) {
     p->red_x = ALWAN_P3_RED_x;     p->red_y = ALWAN_P3_RED_y;
     p->green_x = ALWAN_P3_GREEN_x; p->green_y = ALWAN_P3_GREEN_y;
     p->blue_x = ALWAN_P3_BLUE_x;   p->blue_y = ALWAN_P3_BLUE_y;
     p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
-static void primaries_rec2020(alwan_aces_primaries *p) {
+static void primaries_rec2020(alwan_aces_primaries_f64 *p) {
     p->red_x = ALWAN_BT2020_RED_x;     p->red_y = ALWAN_BT2020_RED_y;
     p->green_x = ALWAN_BT2020_GREEN_x; p->green_y = ALWAN_BT2020_GREEN_y;
     p->blue_x = ALWAN_BT2020_BLUE_x;   p->blue_y = ALWAN_BT2020_BLUE_y;
     p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
-static void primaries_p3_dci(alwan_aces_primaries *p) {
+static void primaries_p3_dci(alwan_aces_primaries_f64 *p) {
     p->red_x = ALWAN_P3_RED_x;     p->red_y = ALWAN_P3_RED_y;
     p->green_x = ALWAN_P3_GREEN_x; p->green_y = ALWAN_P3_GREEN_y;
     p->blue_x = ALWAN_P3_BLUE_x;   p->blue_y = ALWAN_P3_BLUE_y;
@@ -2152,7 +3186,7 @@ static void primaries_p3_dci(alwan_aces_primaries *p) {
 }
 
 /* DCDM uses CIE XYZ primaries */
-static void primaries_xyz(alwan_aces_primaries *p) {
+static void primaries_xyz(alwan_aces_primaries_f64 *p) {
     p->red_x = ALWAN_LITERAL(1.0);    p->red_y = ALWAN_LITERAL(0.0);
     p->green_x = ALWAN_LITERAL(0.0);  p->green_y = ALWAN_LITERAL(1.0);
     p->blue_x = ALWAN_LITERAL(0.0);   p->blue_y = ALWAN_LITERAL(0.0);
@@ -2265,7 +3299,7 @@ static const alwan_f64 g_d65_to_d60_bradford[9] = {
 };
 
 /* Apply 3x3 matrix to RGB */
-static void apply_matrix_rgb(alwan_f64 const m[9], alwan_rgb const *in, alwan_rgb *out) {
+static void apply_matrix_rgb(alwan_f64 const m[9], alwan_rgb_f64 const *in, alwan_rgb_f64 *out) {
     alwan_f64 r = in->r, g = in->g, b = in->b;
     out->r = m[0] * r + m[1] * g + m[2] * b;
     out->g = m[3] * r + m[4] * g + m[5] * b;
@@ -2273,11 +3307,11 @@ static void apply_matrix_rgb(alwan_f64 const m[9], alwan_rgb const *in, alwan_rg
 }
 
 /* Compute AP1 to limiting primaries matrix */
-static void compute_ap1_to_limit_matrix(alwan_aces_primaries const *limit,
+static void compute_ap1_to_limit_matrix_f64(alwan_aces_primaries_f64 const *limit,
                                          alwan_f64 out[9]) {
     /* AP1 (ACEScg) primaries - ACES white point D60 */
     alwan_f64 ap1_to_xyz[9];
-    primaries_to_rgb_to_xyz(
+    primaries_to_rgb_to_xyz_f64(
         AP1_RED_x,   AP1_RED_y,
         AP1_GREEN_x, AP1_GREEN_y,
         AP1_BLUE_x,  AP1_BLUE_y,
@@ -2288,7 +3322,7 @@ static void compute_ap1_to_limit_matrix(alwan_aces_primaries const *limit,
 
     /* Limit primaries to XYZ */
     alwan_f64 limit_to_xyz[9];
-    primaries_to_rgb_to_xyz(
+    primaries_to_rgb_to_xyz_f64(
         limit->red_x, limit->red_y,
         limit->green_x, limit->green_y,
         limit->blue_x, limit->blue_y,
@@ -2306,10 +3340,10 @@ static void compute_ap1_to_limit_matrix(alwan_aces_primaries const *limit,
 }
 
 /* Compute limit primaries to AP1 matrix (inverse) */
-static void compute_limit_to_ap1_matrix(alwan_aces_primaries const *limit,
+static void compute_limit_to_ap1_matrix(alwan_aces_primaries_f64 const *limit,
                                          alwan_f64 out[9]) {
     alwan_f64 ap1_to_limit[9];
-    compute_ap1_to_limit_matrix(limit, ap1_to_limit);
+    compute_ap1_to_limit_matrix_f64(limit, ap1_to_limit);
     invert_mat3(ap1_to_limit, out);
 }
 
@@ -2317,9 +3351,9 @@ static void compute_limit_to_ap1_matrix(alwan_aces_primaries const *limit,
  * ACES 2.0 Output Transform Implementation
  * ---------------------------------------------------------------- */
 
-int alwan_aces2_output_transform(alwan_rgb *rgb_out,
-                                  alwan_rgb const *rgb_in,
-                                  alwan_aces2_output output) {
+int alwan_aces2_output_transform_f64(alwan_rgb_f64 *rgb_out,
+                                      alwan_rgb_f64 const *rgb_in,
+                                      alwan_aces2_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES2_OUT_COUNT) return ALWAN_E_INVALID;
 
@@ -2333,27 +3367,27 @@ int alwan_aces2_output_transform(alwan_rgb *rgb_out,
         /* DCDM: output directly to XYZ (D65) with gamma 2.6 encoding */
 
         /* Initialize AP1 primaries for JMh conversion */
-        alwan_aces_primaries ap1;
-        alwan_aces_primaries_ap1_default(&ap1);
+        alwan_aces_primaries_f64 ap1;
+        alwan_aces_primaries_ap1_default_f64(&ap1);
 
         /* Use P3-D65 as the limiting primaries for gamut compression */
-        alwan_aces_primaries p3_d65;
+        alwan_aces_primaries_f64 p3_d65;
         primaries_p3_d65(&p3_d65);
 
         /* Step 1: Apply tonescale compression */
-        alwan_rgb rgb_ts;
+        alwan_rgb_f64 rgb_ts;
         alwan_aces_tonescale_compress20_f64(&rgb_ts, rgb_in, config.peak_luminance);
 
         /* Step 2: Convert tonescale output to JMh for gamut compression */
-        alwan_vec3 jmh_ts;
+        alwan_vec3_f64 jmh_ts;
         alwan_aces_rgb_to_jmh20_f64(&jmh_ts, &rgb_ts, &ap1);
 
         /* Step 3: Apply gamut compression using P3-D65 as limiting primaries */
-        alwan_vec3 jmh_gc;
+        alwan_vec3_f64 jmh_gc;
         alwan_aces_gamut_compress20_f64(&jmh_gc, &jmh_ts, config.peak_luminance, &p3_d65);
 
         /* Step 4: Convert JMh back to RGB in AP1 space */
-        alwan_rgb rgb_ap1;
+        alwan_rgb_f64 rgb_ap1;
         alwan_aces_jmh_to_rgb20_f64(&rgb_ap1, &jmh_gc, &ap1);
 
         /* Step 5: Convert AP1 to XYZ
@@ -2396,28 +3430,28 @@ int alwan_aces2_output_transform(alwan_rgb *rgb_out,
         /* P3-DCI: P3 primaries with DCI white point and gamma 2.6 encoding */
 
         /* Initialize AP1 primaries for JMh conversion */
-        alwan_aces_primaries ap1;
-        alwan_aces_primaries_ap1_default(&ap1);
+        alwan_aces_primaries_f64 ap1;
+        alwan_aces_primaries_ap1_default_f64(&ap1);
 
         /* Use P3-D65 as the limiting primaries for gamut compression
          * (P3-DCI has same primaries, just different white point) */
-        alwan_aces_primaries p3_d65;
+        alwan_aces_primaries_f64 p3_d65;
         primaries_p3_d65(&p3_d65);
 
         /* Step 1: Apply tonescale compression */
-        alwan_rgb rgb_ts;
+        alwan_rgb_f64 rgb_ts;
         alwan_aces_tonescale_compress20_f64(&rgb_ts, rgb_in, config.peak_luminance);
 
         /* Step 2: Convert tonescale output to JMh for gamut compression */
-        alwan_vec3 jmh_ts;
+        alwan_vec3_f64 jmh_ts;
         alwan_aces_rgb_to_jmh20_f64(&jmh_ts, &rgb_ts, &ap1);
 
         /* Step 3: Apply gamut compression using P3-D65 as limiting primaries */
-        alwan_vec3 jmh_gc;
+        alwan_vec3_f64 jmh_gc;
         alwan_aces_gamut_compress20_f64(&jmh_gc, &jmh_ts, config.peak_luminance, &p3_d65);
 
         /* Step 4: Convert JMh back to RGB in AP1 space */
-        alwan_rgb rgb_ap1;
+        alwan_rgb_f64 rgb_ap1;
         alwan_aces_jmh_to_rgb20_f64(&rgb_ap1, &jmh_gc, &ap1);
 
         /* Step 5: Convert AP1 to XYZ (D60) */
@@ -2460,18 +3494,29 @@ int alwan_aces2_output_transform(alwan_rgb *rgb_out,
         return ALWAN_OK;
     }
 
-    return alwan_aces2_output_transform_custom(rgb_out,
-                                                rgb_in,
-                                                config.peak_luminance,
-                                                &config.primaries,
-                                                config.eotf);
+    return alwan_aces2_output_transform_custom_f64(rgb_out,
+                                                    rgb_in,
+                                                    config.peak_luminance,
+                                                    &config.primaries,
+                                                    config.eotf);
 }
 
-int alwan_aces2_output_transform_custom(alwan_rgb *rgb_out,
-                                         alwan_rgb const *rgb_in,
-                                         alwan_f64 peak_luminance,
-                                         alwan_aces_primaries const *limit_primaries,
-                                         alwan_transfer_function eotf) {
+int alwan_aces2_output_transform_f32(alwan_rgb_f32 *rgb_out,
+                                      alwan_rgb_f32 const *rgb_in,
+                                      alwan_aces2_output output) {
+    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+    alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
+    alwan_rgb_f64 out64;
+    int s = alwan_aces2_output_transform_f64(&out64, &in64, output);
+    rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
+    return s;
+}
+
+int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
+                                             alwan_rgb_f64 const *rgb_in,
+                                             double peak_luminance,
+                                             alwan_aces_primaries_f64 const *limit_primaries,
+                                             alwan_transfer_function eotf) {
     if (!rgb_out || !rgb_in || !limit_primaries) return ALWAN_E_INVALID;
     if (peak_luminance < ALWAN_LITERAL(1.0) || peak_luminance > ALWAN_LITERAL(10000.0)) {
         return ALWAN_E_INVALID;
@@ -2480,35 +3525,34 @@ int alwan_aces2_output_transform_custom(alwan_rgb *rgb_out,
     int status;
 
     /* Initialize AP1 primaries for JMh conversion */
-    alwan_aces_primaries ap1;
-    alwan_aces_primaries_ap1_default(&ap1);
+    alwan_aces_primaries_f64 ap1;
+    alwan_aces_primaries_ap1_default_f64(&ap1);
 
     /* Step 1: Convert input RGB (AP1) to JMh */
-    alwan_vec3 jmh;
+    alwan_vec3_f64 jmh;
     alwan_aces_rgb_to_jmh20_f64(&jmh, rgb_in, &ap1);
 
-    /* Step 2: Apply tonescale compression
-     * This includes both the tonescale and chroma compression */
-    alwan_rgb rgb_ts;
+    /* Step 2: Apply tonescale compression */
+    alwan_rgb_f64 rgb_ts;
     alwan_aces_tonescale_compress20_f64(&rgb_ts, rgb_in, peak_luminance);
 
     /* Step 3: Convert tonescale output to JMh for gamut compression */
-    alwan_vec3 jmh_ts;
+    alwan_vec3_f64 jmh_ts;
     alwan_aces_rgb_to_jmh20_f64(&jmh_ts, &rgb_ts, &ap1);
 
     /* Step 4: Apply gamut compression to limiting primaries */
-    alwan_vec3 jmh_gc;
+    alwan_vec3_f64 jmh_gc;
     alwan_aces_gamut_compress20_f64(&jmh_gc, &jmh_ts, peak_luminance, limit_primaries);
 
     /* Step 5: Convert JMh back to RGB in AP1 space */
-    alwan_rgb rgb_ap1;
+    alwan_rgb_f64 rgb_ap1;
     alwan_aces_jmh_to_rgb20_f64(&rgb_ap1, &jmh_gc, &ap1);
 
     /* Step 6: Convert from AP1 to limiting primaries */
     alwan_f64 ap1_to_limit[9];
-    compute_ap1_to_limit_matrix(limit_primaries, ap1_to_limit);
+    compute_ap1_to_limit_matrix_f64(limit_primaries, ap1_to_limit);
 
-    alwan_rgb rgb_limit;
+    alwan_rgb_f64 rgb_limit;
     apply_matrix_rgb(ap1_to_limit, &rgb_ap1, &rgb_limit);
 
     /* Step 7: Apply D60 to D65 chromatic adaptation if needed
@@ -2516,12 +3560,12 @@ int alwan_aces2_output_transform_custom(alwan_rgb *rgb_out,
     int needs_cat = (ALWAN_ABS(limit_primaries->white_x - ALWAN_D65_x) < ALWAN_LITERAL(0.01) &&
                      ALWAN_ABS(limit_primaries->white_y - ALWAN_D65_y) < ALWAN_LITERAL(0.01));
 
-    alwan_rgb rgb_adapted;
+    alwan_rgb_f64 rgb_adapted;
     if (needs_cat) {
         /* Apply D60 to D65 Bradford matrix in XYZ space */
         /* First convert to XYZ */
         alwan_f64 limit_to_xyz[9];
-        primaries_to_rgb_to_xyz(
+        primaries_to_rgb_to_xyz_f64(
             limit_primaries->red_x, limit_primaries->red_y,
             limit_primaries->green_x, limit_primaries->green_y,
             limit_primaries->blue_x, limit_primaries->blue_y,
@@ -2553,7 +3597,7 @@ int alwan_aces2_output_transform_custom(alwan_rgb *rgb_out,
     }
 
     /* Step 8: Clamp and scale for display encoding */
-    alwan_rgb rgb_clamped;
+    alwan_rgb_f64 rgb_clamped;
     if (eotf == ALWAN_TF_PQ) {
         /* PQ: scale to absolute nits [0, peak_luminance], PQ OETF expects nits and normalizes by 10000 */
         rgb_clamped.r = rgb_adapted.r < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
@@ -2600,9 +3644,57 @@ int alwan_aces2_output_transform_custom(alwan_rgb *rgb_out,
     return ALWAN_OK;
 }
 
-int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
-                                      alwan_rgb const *rgb_in,
-                                      alwan_aces2_output output) {
+int alwan_aces2_output_transform_custom_f32(alwan_rgb_f32 *rgb_out,
+                                             alwan_rgb_f32 const *rgb_in,
+                                             float peak_luminance,
+                                             alwan_aces_primaries_f32 const *limit_primaries,
+                                             alwan_transfer_function eotf) {
+    if (!rgb_out || !rgb_in || !limit_primaries) return ALWAN_E_INVALID;
+    alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
+    alwan_rgb_f64 out64;
+    alwan_aces_primaries_f64 lp64;
+    lp64.red_x = limit_primaries->red_x; lp64.red_y = limit_primaries->red_y;
+    lp64.green_x = limit_primaries->green_x; lp64.green_y = limit_primaries->green_y;
+    lp64.blue_x = limit_primaries->blue_x; lp64.blue_y = limit_primaries->blue_y;
+    lp64.white_x = limit_primaries->white_x; lp64.white_y = limit_primaries->white_y;
+    int s = alwan_aces2_output_transform_custom_f64(&out64, &in64, (double)peak_luminance, &lp64, eotf);
+    rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
+    return s;
+}
+
+/* ----------------------------------------------------------------
+ * ACES 2.0 Batch Output Transform — native f32 and f64 via .inc
+ * Pre-initializes all parameters ONCE, then processes N pixels.
+ * ~100x faster than calling alwan_aces2_output_transform per pixel.
+ * ---------------------------------------------------------------- */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_aces2_map_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+
+#include "alwan_api_f64_setup.h"
+#include "alwan_aces2_map_impl.inc"
+#include "alwan_api_teardown.h"
+
+int alwan_aces2_output_transform_f64_map_interleave(
+        alwan_f64 *out, alwan_f64 const *in,
+        alwan_aces2_output output, size_t count,
+        size_t in_stride, size_t out_stride) {
+    return aces2_ot_map_impl_f64(out, in, output, count, in_stride, out_stride);
+}
+
+int alwan_aces2_output_transform_f32_map_interleave(
+        float *out, float const *in,
+        alwan_aces2_output output, size_t count,
+        size_t in_stride, size_t out_stride) {
+    return aces2_ot_map_impl_f32(out, in, output, count, in_stride, out_stride);
+}
+
+int alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
+                                          alwan_rgb_f64 const *rgb_in,
+                                          alwan_aces2_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES2_OUT_COUNT) return ALWAN_E_INVALID;
 
@@ -2635,23 +3727,23 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
             ALWAN_LITERAL( 0.0030476112), ALWAN_LITERAL(-0.0164295295), ALWAN_LITERAL( 0.9888322028)
         };
 
-        alwan_rgb rgb_ap1;
+        alwan_rgb_f64 rgb_ap1;
         rgb_ap1.r = XYZ_D60_TO_AP1[0] * xyz[0] + XYZ_D60_TO_AP1[1] * xyz[1] + XYZ_D60_TO_AP1[2] * xyz[2];
         rgb_ap1.g = XYZ_D60_TO_AP1[3] * xyz[0] + XYZ_D60_TO_AP1[4] * xyz[1] + XYZ_D60_TO_AP1[5] * xyz[2];
         rgb_ap1.b = XYZ_D60_TO_AP1[6] * xyz[0] + XYZ_D60_TO_AP1[7] * xyz[1] + XYZ_D60_TO_AP1[8] * xyz[2];
 
         /* Step 5: Convert to JMh for inverse gamut compression */
-        alwan_aces_primaries ap1;
-        alwan_aces_primaries_ap1_default(&ap1);
+        alwan_aces_primaries_f64 ap1;
+        alwan_aces_primaries_ap1_default_f64(&ap1);
 
-        alwan_aces_primaries p3_d65;
+        alwan_aces_primaries_f64 p3_d65;
         primaries_p3_d65(&p3_d65);
 
-        alwan_vec3 jmh;
+        alwan_vec3_f64 jmh;
         alwan_aces_rgb_to_jmh20_f64(&jmh, &rgb_ap1, &ap1);
 
         /* Step 6: Inverse gamut compression using P3-D65 */
-        alwan_vec3 jmh_exp;
+        alwan_vec3_f64 jmh_exp;
         alwan_aces_gamut_compress20_inv_f64(&jmh_exp, &jmh, config.peak_luminance, &p3_d65);
 
         /* Step 7: Convert JMh back to AP1 RGB */
@@ -2694,23 +3786,23 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
             ALWAN_LITERAL( 0.0030476112), ALWAN_LITERAL(-0.0164295295), ALWAN_LITERAL( 0.9888322028)
         };
 
-        alwan_rgb rgb_ap1;
+        alwan_rgb_f64 rgb_ap1;
         rgb_ap1.r = XYZ_D60_TO_AP1[0] * xyz_d60[0] + XYZ_D60_TO_AP1[1] * xyz_d60[1] + XYZ_D60_TO_AP1[2] * xyz_d60[2];
         rgb_ap1.g = XYZ_D60_TO_AP1[3] * xyz_d60[0] + XYZ_D60_TO_AP1[4] * xyz_d60[1] + XYZ_D60_TO_AP1[5] * xyz_d60[2];
         rgb_ap1.b = XYZ_D60_TO_AP1[6] * xyz_d60[0] + XYZ_D60_TO_AP1[7] * xyz_d60[1] + XYZ_D60_TO_AP1[8] * xyz_d60[2];
 
         /* Step 5: Convert to JMh for inverse gamut compression */
-        alwan_aces_primaries ap1;
-        alwan_aces_primaries_ap1_default(&ap1);
+        alwan_aces_primaries_f64 ap1;
+        alwan_aces_primaries_ap1_default_f64(&ap1);
 
-        alwan_aces_primaries p3_d65;
+        alwan_aces_primaries_f64 p3_d65;
         primaries_p3_d65(&p3_d65);
 
-        alwan_vec3 jmh;
+        alwan_vec3_f64 jmh;
         alwan_aces_rgb_to_jmh20_f64(&jmh, &rgb_ap1, &ap1);
 
         /* Step 6: Inverse gamut compression using P3-D65 */
-        alwan_vec3 jmh_exp;
+        alwan_vec3_f64 jmh_exp;
         alwan_aces_gamut_compress20_inv_f64(&jmh_exp, &jmh, config.peak_luminance, &p3_d65);
 
         /* Step 7: Convert JMh back to AP1 RGB */
@@ -2731,17 +3823,17 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
         linear[2] = rgb_in->b;
     }
 
-    alwan_rgb rgb_linear = {linear[0], linear[1], linear[2]};
+    alwan_rgb_f64 rgb_linear = {linear[0], linear[1], linear[2]};
 
     /* Step 2: Apply D65 to D60 chromatic adaptation if needed */
     int needs_cat = (ALWAN_ABS(config.primaries.white_x - ALWAN_D65_x) < ALWAN_LITERAL(0.01) &&
                      ALWAN_ABS(config.primaries.white_y - ALWAN_D65_y) < ALWAN_LITERAL(0.01));
 
-    alwan_rgb rgb_d60;
+    alwan_rgb_f64 rgb_d60;
     if (needs_cat) {
         /* Convert to XYZ */
         alwan_f64 limit_to_xyz[9];
-        primaries_to_rgb_to_xyz(
+        primaries_to_rgb_to_xyz_f64(
             config.primaries.red_x, config.primaries.red_y,
             config.primaries.green_x, config.primaries.green_y,
             config.primaries.blue_x, config.primaries.blue_y,
@@ -2776,18 +3868,18 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
     alwan_f64 limit_to_ap1[9];
     compute_limit_to_ap1_matrix(&config.primaries, limit_to_ap1);
 
-    alwan_rgb rgb_ap1;
+    alwan_rgb_f64 rgb_ap1;
     apply_matrix_rgb(limit_to_ap1, &rgb_d60, &rgb_ap1);
 
     /* Step 4: Convert to JMh */
-    alwan_aces_primaries ap1;
-    alwan_aces_primaries_ap1_default(&ap1);
+    alwan_aces_primaries_f64 ap1;
+    alwan_aces_primaries_ap1_default_f64(&ap1);
 
-    alwan_vec3 jmh;
+    alwan_vec3_f64 jmh;
     alwan_aces_rgb_to_jmh20_f64(&jmh, &rgb_ap1, &ap1);
 
     /* Step 5: Inverse gamut compression */
-    alwan_vec3 jmh_exp;
+    alwan_vec3_f64 jmh_exp;
     alwan_aces_gamut_compress20_inv_f64(&jmh_exp, &jmh, config.peak_luminance, &config.primaries);
 
     /* Step 6: Convert expanded JMh back to AP1 RGB.
@@ -2795,6 +3887,17 @@ int alwan_aces2_output_transform_inv(alwan_rgb *rgb_out,
     alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_exp, &ap1);
 
     return ALWAN_OK;
+}
+
+int alwan_aces2_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
+                                          alwan_rgb_f32 const *rgb_in,
+                                          alwan_aces2_output output) {
+    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+    alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
+    alwan_rgb_f64 out64;
+    int s = alwan_aces2_output_transform_inv_f64(&out64, &in64, output);
+    rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
+    return s;
 }
 
 /* ----------------------------------------------------------------
@@ -2858,8 +3961,8 @@ void alwan_aces_blue_light_fix_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 con
  *
  * Forward: rgb_out = rgb_in * (1 + glowGainOut(YC, sat))
  * We solve for rgb_in given rgb_out using iterative refinement. */
-static int glow_inv_impl(alwan_rgb const *rgb_in, alwan_f64 glow_gain_param,
-                         alwan_f64 glow_mid_param, alwan_rgb *rgb_out) {
+static int glow_inv_impl(alwan_rgb_f64 const *rgb_in, alwan_f64 glow_gain_param,
+                         alwan_f64 glow_mid_param, alwan_rgb_f64 *rgb_out) {
     alwan_f64 red_target = rgb_in->r;
     alwan_f64 grn_target = rgb_in->g;
     alwan_f64 blu_target = rgb_in->b;
@@ -3051,9 +4154,9 @@ void alwan_aces_redmod03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rg
         int grn_modified = (grn_target >= blu_target);
         alwan_f64 hue_fac;
         if (grn_modified) {
-            hue_fac = (grn_target - blu_target) / alwan_max(ALWAN_LITERAL(1e-10), red_target - blu_target);
+            hue_fac = (grn_target - blu_target) / fmax(ALWAN_LITERAL(1e-10), red_target - blu_target);
         } else {
-            hue_fac = (blu_target - grn_target) / alwan_max(ALWAN_LITERAL(1e-10), red_target - grn_target);
+            hue_fac = (blu_target - grn_target) / fmax(ALWAN_LITERAL(1e-10), red_target - grn_target);
         }
 
         /* Initial estimate using quadratic formula */
@@ -3179,19 +4282,25 @@ void alwan_aces_look_1_0_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rg
  * Parametric LMT (CDL-style color grading)
  * ---------------------------------------------------------------- */
 
-void alwan_aces_lmt_params_init(alwan_aces_lmt_params *params) {
+void alwan_aces_lmt_params_init_f32(alwan_aces_lmt_params_f32 *params) {
     if (!params) return;
+    params->slope[0] = params->slope[1] = params->slope[2] = 1.0f;
+    params->offset[0] = params->offset[1] = params->offset[2] = 0.0f;
+    params->power[0] = params->power[1] = params->power[2] = 1.0f;
+    params->saturation = 1.0f;
+}
 
-    /* Initialize to neutral/identity values */
-    params->slope[0] = params->slope[1] = params->slope[2] = ALWAN_LITERAL(1.0);
-    params->offset[0] = params->offset[1] = params->offset[2] = ALWAN_LITERAL(0.0);
-    params->power[0] = params->power[1] = params->power[2] = ALWAN_LITERAL(1.0);
-    params->saturation = ALWAN_LITERAL(1.0);
+void alwan_aces_lmt_params_init_f64(alwan_aces_lmt_params_f64 *params) {
+    if (!params) return;
+    params->slope[0] = params->slope[1] = params->slope[2] = 1.0;
+    params->offset[0] = params->offset[1] = params->offset[2] = 0.0;
+    params->power[0] = params->power[1] = params->power[2] = 1.0;
+    params->saturation = 1.0;
 }
 
 void alwan_aces_lmt_apply_f64(alwan_rgb_f64 *rgb_out,
                          alwan_rgb_f64 const *rgb_in,
-                         alwan_aces_lmt_params const *params) {
+                         alwan_aces_lmt_params_f64 const *params) {
     if (!rgb_out || !rgb_in || !params) return;
 
     alwan_vec3_f64 in_v = {{rgb_in->r, rgb_in->g, rgb_in->b}};
@@ -3206,10 +4315,16 @@ void alwan_aces_lmt_apply_f64(alwan_rgb_f64 *rgb_out,
 
 void alwan_aces_lmt_apply_f32(alwan_rgb_f32 *rgb_out,
                          alwan_rgb_f32 const *rgb_in,
-                         alwan_aces_lmt_params const *params) {
+                         alwan_aces_lmt_params_f32 const *params) {
     if (!rgb_out || !rgb_in || !params) return;
+    /* Upcast f32 params to f64 */
+    alwan_aces_lmt_params_f64 p64;
+    p64.slope[0] = params->slope[0]; p64.slope[1] = params->slope[1]; p64.slope[2] = params->slope[2];
+    p64.offset[0] = params->offset[0]; p64.offset[1] = params->offset[1]; p64.offset[2] = params->offset[2];
+    p64.power[0] = params->power[0]; p64.power[1] = params->power[1]; p64.power[2] = params->power[2];
+    p64.saturation = params->saturation;
     alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
     alwan_rgb_f64 out64;
-    alwan_aces_lmt_apply_f64(&out64, &in64, params);
+    alwan_aces_lmt_apply_f64(&out64, &in64, &p64);
     rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
 }

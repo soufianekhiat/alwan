@@ -441,13 +441,9 @@ ALWAN_INLINE ALWAN_CORE_CMY ALWAN_CORE_FNVLIT(alwan_cmyk_to_cmy)(ALWAN_CORE_CMYK
  * W = whiteness [0, 1], B = blackness [0, 1]
  * ---------------------------------------------------------------- */
 
-typedef struct {
-    ALWAN_CORE_T h, w, b;
-} ALWAN_CORE_FNLIT(alwan_hwb);
-
 /* HSV -> HWB: W = (1-S)*V, B = 1-V, H = H */
-ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_hwb) ALWAN_CORE_FNVLIT(alwan_hsv_to_hwb)(ALWAN_CORE_HSV hsv) {
-    ALWAN_CORE_FNLIT(alwan_hwb) result;
+ALWAN_INLINE ALWAN_CORE_HWB ALWAN_CORE_FNVLIT(alwan_hsv_to_hwb)(ALWAN_CORE_HSV hsv) {
+    ALWAN_CORE_HWB result;
     result.h = hsv.h;
     result.w = (ALWAN_CORE_ONE - hsv.s) * hsv.v;
     result.b = ALWAN_CORE_ONE - hsv.v;
@@ -455,7 +451,7 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_hwb) ALWAN_CORE_FNVLIT(alwan_hsv_to_hwb)(ALW
 }
 
 /* HWB -> HSV: V = 1-B, S = 1-W/(1-B), H = H */
-ALWAN_INLINE ALWAN_CORE_HSV ALWAN_CORE_FNVLIT(alwan_hwb_to_hsv)(ALWAN_CORE_FNLIT(alwan_hwb) hwb) {
+ALWAN_INLINE ALWAN_CORE_HSV ALWAN_CORE_FNVLIT(alwan_hwb_to_hsv)(ALWAN_CORE_HWB hwb) {
     ALWAN_CORE_HSV result;
     result.h = hwb.h;
     result.v = ALWAN_CORE_ONE - hwb.b;
@@ -474,13 +470,13 @@ ALWAN_INLINE ALWAN_CORE_HSV ALWAN_CORE_FNVLIT(alwan_hwb_to_hsv)(ALWAN_CORE_FNLIT
 }
 
 /* RGB -> HWB (via HSV intermediate) */
-ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_hwb) ALWAN_CORE_FNVLIT(alwan_rgb_to_hwb)(ALWAN_CORE_RGB rgb) {
+ALWAN_INLINE ALWAN_CORE_HWB ALWAN_CORE_FNVLIT(alwan_rgb_to_hwb)(ALWAN_CORE_RGB rgb) {
     ALWAN_CORE_HSV hsv = ALWAN_CORE_FNVLIT(alwan_rgb_to_hsv)(rgb);
     return ALWAN_CORE_FNVLIT(alwan_hsv_to_hwb)(hsv);
 }
 
 /* HWB -> RGB (via HSV intermediate) */
-ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hwb_to_rgb)(ALWAN_CORE_FNLIT(alwan_hwb) hwb) {
+ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hwb_to_rgb)(ALWAN_CORE_HWB hwb) {
     ALWAN_CORE_HSV hsv = ALWAN_CORE_FNVLIT(alwan_hwb_to_hsv)(hwb);
     return ALWAN_CORE_FNVLIT(alwan_hsv_to_rgb)(hsv);
 }

@@ -31,7 +31,7 @@ ALWAN_DIAG_POP
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz;
+        alwan_xyz_f64 xyz;
         alwan_zcam_correlates expected, computed;
 
         /* Load test data: XYZ (3) + J, C, h, Q, M, s (6) */
@@ -47,7 +47,7 @@ ALWAN_DIAG_POP
         expected.Sz = test_data[i * 9 + 8];
 
         /* Test ZCAM forward */
-        int result = alwan_zcam_forward(&computed, &xyz, &vc);
+        int result = alwan_zcam_forward_f64(&computed, &xyz, &vc);
         TEST_ASSERT(result == 0, "ZCAM forward failed");
 
         /* Check key correlates: Jz, Cz, hz */

@@ -171,11 +171,11 @@ static int test_cct_hernandez(void) {
     printf("  Testing CCT Hernandez 1999...\n");
 
     for (size_t i = 0; i < NUM_HERNANDEZ_XY; i++) {
-        alwan_vec2 xy;
+        alwan_vec2_f64 xy;
         xy.v[0] = hernandez_xy_input[i * 2];
         xy.v[1] = hernandez_xy_input[i * 2 + 1];
 
-        alwan_f64 cct = alwan_cct_hernandez_xy(&xy);
+        alwan_f64 cct = alwan_cct_hernandez_xy_f64(&xy);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Hernandez CCT [%zu]: xy=(%.4f, %.4f)",
@@ -192,8 +192,8 @@ static int test_cct_kang_forward(void) {
 
     for (size_t i = 0; i < NUM_KANG_CCT; i++) {
         alwan_f64 cct = kang_cct_input[i];
-        alwan_vec2 xy;
-        alwan_cct_to_xy_kang(&xy, cct);
+        alwan_vec2_f64 xy;
+        alwan_cct_to_xy_kang_f64(&xy, cct);
 
         alwan_f64 expected_x = kang_xy_expected[i * 2];
         alwan_f64 expected_y = kang_xy_expected[i * 2 + 1];
@@ -221,11 +221,11 @@ static int test_cct_kang_inverse(void) {
         if (original_cct < 1667.0 || original_cct > 25000.0) continue;
 
         /* Forward: CCT -> xy */
-        alwan_vec2 xy;
-        alwan_cct_to_xy_kang(&xy, original_cct);
+        alwan_vec2_f64 xy;
+        alwan_cct_to_xy_kang_f64(&xy, original_cct);
 
         /* Inverse: xy -> CCT */
-        alwan_f64 recovered_cct = alwan_cct_kang_xy(&xy);
+        alwan_f64 recovered_cct = alwan_cct_kang_xy_f64(&xy);
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Kang inverse [%zu]: original CCT=%.0fK", i, (double)original_cct);
@@ -242,13 +242,13 @@ static int test_cct_methods_comparison(void) {
     printf("  Testing CCT method comparison (D65)...\n");
 
     /* D65 chromaticity */
-    alwan_vec2 d65 = {{0.31270, 0.32900}};
+    alwan_vec2_f64 d65 = {{0.31270, 0.32900}};
 
     /* Get CCT from each method */
-    alwan_f64 cct_mccamy = alwan_cct_mccamy_xy(&d65);
-    alwan_f64 cct_robertson = alwan_cct_robertson_xy(&d65);
-    alwan_f64 cct_hernandez = alwan_cct_hernandez_xy(&d65);
-    alwan_f64 cct_kang = alwan_cct_kang_xy(&d65);
+    alwan_f64 cct_mccamy = alwan_cct_mccamy_xy_f64(&d65);
+    alwan_f64 cct_robertson = alwan_cct_robertson_xy_f64(&d65);
+    alwan_f64 cct_hernandez = alwan_cct_hernandez_xy_f64(&d65);
+    alwan_f64 cct_kang = alwan_cct_kang_xy_f64(&d65);
 
     printf("    D65 CCT results:\n");
     printf("      McCamy:    %.2f K\n", (double)cct_mccamy);
