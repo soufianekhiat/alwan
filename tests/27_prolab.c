@@ -21,8 +21,8 @@ ALWAN_DIAG_POP
     alwan_f64 const prolab_tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz_in;
-        alwan_prolab prolab_expected, prolab_computed;
+        alwan_xyz_f64 xyz_in;
+        alwan_prolab_f64 prolab_expected, prolab_computed;
 
         /* Load test data */
         xyz_in.x = test_data[i * 6 + 0];
@@ -40,7 +40,7 @@ ALWAN_DIAG_POP
         }
 
         /* Test XYZ -> ProLab */
-        alwan_xyz_to_prolab(&prolab_computed, &xyz_in);
+        alwan_xyz_to_prolab_f64(&prolab_computed, &xyz_in);
 
         alwan_f64 prolab_comp_arr[3] = {prolab_computed.L, prolab_computed.a, prolab_computed.b};
         alwan_f64 prolab_exp_arr[3] = {prolab_expected.L, prolab_expected.a, prolab_expected.b};

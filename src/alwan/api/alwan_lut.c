@@ -122,11 +122,11 @@ static alwan_f64 (*lut__resolve_oetf(alwan_transfer_function tf))(alwan_f64) {
  * Same logic as alwan_image_convert
  * ---------------------------------------------------------------- */
 
-static int lut__build_combined_matrix(alwan_mat3x3 *combined,
+static int lut__build_combined_matrix(alwan_mat3x3_f64 *combined,
                                        alwan_ctx *ctx,
                                        alwan_rgb_space_desc const *src_space,
                                        alwan_rgb_space_desc const *dst_space) {
-    alwan_mat3x3 src_to_xyz, xyz_to_src;
+    alwan_mat3x3_f64 src_to_xyz, xyz_to_src;
     if (src_space->has_matrices) {
         src_to_xyz = src_space->rgb_to_xyz;
     } else {
@@ -134,7 +134,7 @@ static int lut__build_combined_matrix(alwan_mat3x3 *combined,
         if (status != ALWAN_OK) return status;
     }
 
-    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+    alwan_mat3x3_f64 dst_to_xyz, xyz_to_dst;
     if (dst_space->has_matrices) {
         xyz_to_dst = dst_space->xyz_to_rgb;
     } else {
@@ -150,7 +150,7 @@ static int lut__build_combined_matrix(alwan_mat3x3 *combined,
 
     if (need_cat && ctx) {
         alwan_xyy src_xyy, dst_xyy;
-        alwan_xyz src_wp, dst_wp;
+        alwan_xyz_f64 src_wp, dst_wp;
         src_xyy.x = src_space->white_xy[0];
         src_xyy.y = src_space->white_xy[1];
         src_xyy.Y = ALWAN_LITERAL(1.0);
@@ -161,11 +161,11 @@ static int lut__build_combined_matrix(alwan_mat3x3 *combined,
         dst_xyy.Y = ALWAN_LITERAL(1.0);
         alwan_xyy_to_xyz(&dst_wp, &dst_xyy);
 
-        alwan_mat3x3 cat;
+        alwan_mat3x3_f64 cat;
         int status = alwan_cat_matrix(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
 
-        alwan_mat3x3 tmp = alwan_mat3_mul_f64_v(cat, src_to_xyz);
+        alwan_mat3x3_f64 tmp = alwan_mat3_mul_f64_v(cat, src_to_xyz);
         *combined = alwan_mat3_mul_f64_v(xyz_to_dst, tmp);
     } else {
         *combined = alwan_mat3_mul_f64_v(xyz_to_dst, src_to_xyz);
@@ -178,13 +178,13 @@ static int lut__build_combined_matrix(alwan_mat3x3 *combined,
  * View transform applicator (same dispatch as alwan_view.c)
  * ---------------------------------------------------------------- */
 
-static alwan_vec3 lut__apply_view(alwan_view_transform vt, alwan_vec3 rgb) {
-    alwan_vec3 in = {{
+static alwan_vec3_f64 lut__apply_view(alwan_view_transform vt, alwan_vec3_f64 rgb) {
+    alwan_vec3_f64 in = {{
         alwan_max(rgb.v[0], ALWAN_ZERO),
         alwan_max(rgb.v[1], ALWAN_ZERO),
         alwan_max(rgb.v[2], ALWAN_ZERO)
     }};
-    alwan_vec3 r;
+    alwan_vec3_f64 r;
 
     switch (vt) {
     case ALWAN_VIEW_ACES_REC709:
@@ -245,7 +245,7 @@ int alwan_bake_3dlut(alwan_f64 *out, int size,
     }
 
     /* Build combined conversion matrix */
-    alwan_mat3x3 combined;
+    alwan_mat3x3_f64 combined;
     int status = lut__build_combined_matrix(&combined, ctx, src_space, dst_space);
     if (status != ALWAN_OK) return status;
 
@@ -257,13 +257,13 @@ int alwan_bake_3dlut(alwan_f64 *out, int size,
     /* Sample every point in the cube */
     size_t const total = (size_t)size * (size_t)size * (size_t)size;
     for (size_t i = 0; i < total; i++) {
-        alwan_vec3 coord = alwan_lut3d_index_to_rgb_f64_v(i, size);
+        alwan_vec3_f64 coord = alwan_lut3d_index_to_rgb_f64_v(i, size);
 
         /* Source EOTF: encoded -> linear */
-        alwan_vec3 lin = {{eotf_fn(coord.v[0]), eotf_fn(coord.v[1]), eotf_fn(coord.v[2])}};
+        alwan_vec3_f64 lin = {{eotf_fn(coord.v[0]), eotf_fn(coord.v[1]), eotf_fn(coord.v[2])}};
 
         /* Combined matrix: src linear -> dst linear */
-        alwan_vec3 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
+        alwan_vec3_f64 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
 
         /* Destination OETF: linear -> encoded */
         out[i * 3 + 0] = oetf_fn(dst_lin.v[0]);
@@ -284,7 +284,7 @@ int alwan_bake_3dlut_view(alwan_f64 *out, int size,
     }
 
     /* Build combined conversion matrix */
-    alwan_mat3x3 combined;
+    alwan_mat3x3_f64 combined;
     int status = lut__build_combined_matrix(&combined, ctx, src_space, dst_space);
     if (status != ALWAN_OK) return status;
 
@@ -296,13 +296,13 @@ int alwan_bake_3dlut_view(alwan_f64 *out, int size,
     /* Sample every point in the cube */
     size_t const total = (size_t)size * (size_t)size * (size_t)size;
     for (size_t i = 0; i < total; i++) {
-        alwan_vec3 coord = alwan_lut3d_index_to_rgb_f64_v(i, size);
+        alwan_vec3_f64 coord = alwan_lut3d_index_to_rgb_f64_v(i, size);
 
         /* Source EOTF */
-        alwan_vec3 lin = {{eotf_fn(coord.v[0]), eotf_fn(coord.v[1]), eotf_fn(coord.v[2])}};
+        alwan_vec3_f64 lin = {{eotf_fn(coord.v[0]), eotf_fn(coord.v[1]), eotf_fn(coord.v[2])}};
 
         /* Combined matrix */
-        alwan_vec3 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
+        alwan_vec3_f64 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
 
         /* View transform */
         dst_lin = lut__apply_view(vt, dst_lin);
@@ -427,7 +427,7 @@ int alwan_bake_2dlut(alwan_f64 *out, int size,
     }
 
     /* Build combined conversion matrix */
-    alwan_mat3x3 combined;
+    alwan_mat3x3_f64 combined;
     int status = lut__build_combined_matrix(&combined, ctx, src_space, dst_space);
     if (status != ALWAN_OK) return status;
 
@@ -451,10 +451,10 @@ int alwan_bake_2dlut(alwan_f64 *out, int size,
             alwan_f64 bv = (alwan_f64)b * inv;
 
             /* Source EOTF */
-            alwan_vec3 lin = {{eotf_fn(rv), eotf_fn(gv), eotf_fn(bv)}};
+            alwan_vec3_f64 lin = {{eotf_fn(rv), eotf_fn(gv), eotf_fn(bv)}};
 
             /* Combined matrix */
-            alwan_vec3 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
+            alwan_vec3_f64 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
 
             /* Destination OETF */
             size_t idx = ((size_t)py * (size_t)w + (size_t)px) * 3;
@@ -485,14 +485,14 @@ int alwan_lut1d_sample(alwan_f64 *result,
  * 2D LUT bilinear sampling (flattened 3D strip, API wrapper)
  * ---------------------------------------------------------------- */
 
-int alwan_lut2d_sample(alwan_rgb *result,
+int alwan_lut2d_sample(alwan_rgb_f64 *result,
                         alwan_f64 const *lut2d,
-                        alwan_rgb const *rgb,
+                        alwan_rgb_f64 const *rgb,
                         int size) {
     if (!result || !lut2d || !rgb || size < 2) return ALWAN_E_INVALID;
 
-    alwan_vec3 in = {{rgb->r, rgb->g, rgb->b}};
-    alwan_vec3 out = alwan_lut2d_sample_f64_v(lut2d, in, size);
+    alwan_vec3_f64 in = {{rgb->r, rgb->g, rgb->b}};
+    alwan_vec3_f64 out = alwan_lut2d_sample_f64_v(lut2d, in, size);
     result->r = out.v[0];
     result->g = out.v[1];
     result->b = out.v[2];
@@ -503,14 +503,14 @@ int alwan_lut2d_sample(alwan_rgb *result,
  * 3D LUT trilinear sampling (API wrapper)
  * ---------------------------------------------------------------- */
 
-int alwan_lut3d_sample(alwan_rgb *result,
+int alwan_lut3d_sample(alwan_rgb_f64 *result,
                         alwan_f64 const *lut,
-                        alwan_rgb const *rgb,
+                        alwan_rgb_f64 const *rgb,
                         int size) {
     if (!result || !lut || !rgb || size < 2) return ALWAN_E_INVALID;
 
-    alwan_vec3 in = {{rgb->r, rgb->g, rgb->b}};
-    alwan_vec3 out = alwan_lut3d_sample_f64_v(lut, in, size);
+    alwan_vec3_f64 in = {{rgb->r, rgb->g, rgb->b}};
+    alwan_vec3_f64 out = alwan_lut3d_sample_f64_v(lut, in, size);
     result->r = out.v[0];
     result->g = out.v[1];
     result->b = out.v[2];

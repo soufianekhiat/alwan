@@ -28,25 +28,27 @@ ALWAN_DIAG_POP
  * CMY <-> CMYK
  * ---------------------------------------------------------------- */
 
-int alwan_cmy_to_cmyk(alwan_f64 *c, alwan_f64 *m, alwan_f64 *y, alwan_f64 *k, alwan_cmy const *cmy) {
-    if (!cmy || !c || !m || !y || !k) {
-        return ALWAN_E_INVALID;
-    }
-    alwan_cmyk result = alwan_cmy_to_cmyk_f64_v(*cmy);
-    *c = result.c;
-    *m = result.m;
-    *y = result.y;
-    *k = result.k;
+int alwan_cmy_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_cmy_f32 const *cmy) {
+    if (!cmyk_out || !cmy) return ALWAN_E_INVALID;
+    *cmyk_out = alwan_cmy_to_cmyk_f32_v(*cmy);
     return ALWAN_OK;
 }
 
-int alwan_cmyk_to_cmy(alwan_cmy *cmy_out, alwan_f64 c, alwan_f64 m, alwan_f64 y, alwan_f64 k) {
-    if (!cmy_out) {
-        return ALWAN_E_INVALID;
-    }
-    alwan_cmyk cmyk;
-    cmyk.c = c; cmyk.m = m; cmyk.y = y; cmyk.k = k;
-    *cmy_out = alwan_cmyk_to_cmy_f64_v(cmyk);
+int alwan_cmy_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_cmy_f64 const *cmy) {
+    if (!cmyk_out || !cmy) return ALWAN_E_INVALID;
+    *cmyk_out = alwan_cmy_to_cmyk_f64_v(*cmy);
+    return ALWAN_OK;
+}
+
+int alwan_cmyk_to_cmy_f32(alwan_cmy_f32 *cmy_out, alwan_cmyk_f32 const *cmyk) {
+    if (!cmy_out || !cmyk) return ALWAN_E_INVALID;
+    *cmy_out = alwan_cmyk_to_cmy_f32_v(*cmyk);
+    return ALWAN_OK;
+}
+
+int alwan_cmyk_to_cmy_f64(alwan_cmy_f64 *cmy_out, alwan_cmyk_f64 const *cmyk) {
+    if (!cmy_out || !cmyk) return ALWAN_E_INVALID;
+    *cmy_out = alwan_cmyk_to_cmy_f64_v(*cmyk);
     return ALWAN_OK;
 }
 
@@ -57,7 +59,7 @@ int alwan_cmyk_to_cmy(alwan_cmy *cmy_out, alwan_f64 c, alwan_f64 m, alwan_f64 y,
 
 /* YCbCr coefficients resolved via alwan__get_ycbcr_coeffs() in alwan_internal.h */
 
-int alwan_rgb_to_ycbcr(alwan_ycbcr *ycbcr_out, alwan_rgb const *rgb, alwan_ycbcr_standard standard) {
+int alwan_rgb_to_ycbcr(alwan_ycbcr_f64 *ycbcr_out, alwan_rgb_f64 const *rgb, alwan_ycbcr_standard standard) {
     if (!rgb || !ycbcr_out) return ALWAN_E_INVALID;
     alwan_f64 kr, kb;
     alwan__get_ycbcr_coeffs(standard, &kr, &kb);
@@ -66,9 +68,9 @@ int alwan_rgb_to_ycbcr(alwan_ycbcr *ycbcr_out, alwan_rgb const *rgb, alwan_ycbcr
     return ALWAN_OK;
 }
 
-int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr_standard standard) {
+int alwan_ycbcr_to_rgb(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr, alwan_ycbcr_standard standard) {
     if (!ycbcr || !rgb_out) return ALWAN_E_INVALID;
-    alwan_ycbcr tmp = *ycbcr;
+    alwan_ycbcr_f64 tmp = *ycbcr;
     ALWAN_DENORM_YCBCR(&tmp);
     alwan_f64 kr, kb;
     alwan__get_ycbcr_coeffs(standard, &kr, &kb);
@@ -80,38 +82,24 @@ int alwan_ycbcr_to_rgb(alwan_rgb *rgb_out, alwan_ycbcr const *ycbcr, alwan_ycbcr
  * RGB <-> HWB
  * ---------------------------------------------------------------- */
 
-void alwan_rgb_to_hwb_f32(float *hwb_out, alwan_rgb_f32 const *rgb) {
+void alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb) {
     if (!rgb || !hwb_out) return;
-    alwan_hwb_f32 result = alwan_rgb_to_hwb_f32_v(*rgb);
-    hwb_out[0] = result.h;
-    hwb_out[1] = result.w;
-    hwb_out[2] = result.b;
+    *hwb_out = alwan_rgb_to_hwb_f32_v(*rgb);
 }
 
-void alwan_rgb_to_hwb_f64(double *hwb_out, alwan_rgb_f64 const *rgb) {
+void alwan_rgb_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_rgb_f64 const *rgb) {
     if (!rgb || !hwb_out) return;
-    alwan_hwb_f64 result = alwan_rgb_to_hwb_f64_v(*rgb);
-    hwb_out[0] = result.h;
-    hwb_out[1] = result.w;
-    hwb_out[2] = result.b;
+    *hwb_out = alwan_rgb_to_hwb_f64_v(*rgb);
 }
 
-void alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, float const *hwb_in) {
-    if (!rgb_out || !hwb_in) return;
-    alwan_hwb_f32 hwb;
-    hwb.h = hwb_in[0];
-    hwb.w = hwb_in[1];
-    hwb.b = hwb_in[2];
-    *rgb_out = alwan_hwb_to_rgb_f32_v(hwb);
+void alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hwb_f32 const *hwb) {
+    if (!rgb_out || !hwb) return;
+    *rgb_out = alwan_hwb_to_rgb_f32_v(*hwb);
 }
 
-void alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, double const *hwb_in) {
-    if (!rgb_out || !hwb_in) return;
-    alwan_hwb_f64 hwb;
-    hwb.h = hwb_in[0];
-    hwb.w = hwb_in[1];
-    hwb.b = hwb_in[2];
-    *rgb_out = alwan_hwb_to_rgb_f64_v(hwb);
+void alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb) {
+    if (!rgb_out || !hwb) return;
+    *rgb_out = alwan_hwb_to_rgb_f64_v(*hwb);
 }
 
 /* ----------------------------------------------------------------
@@ -119,7 +107,7 @@ void alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, double const *hwb_in) {
  * ---------------------------------------------------------------- */
 
 int alwan_relative_luminance(alwan_f64 *Y_out,
-                             alwan_rgb const *rgb,
+                             alwan_rgb_f64 const *rgb,
                              alwan_luma_standard standard) {
     if (!rgb || !Y_out) return ALWAN_E_INVALID;
     alwan_f64 kr, kg, kb;
@@ -129,7 +117,7 @@ int alwan_relative_luminance(alwan_f64 *Y_out,
 }
 
 int alwan_relative_luminance_kr_kb(alwan_f64 *Y_out,
-                                   alwan_rgb const *rgb,
+                                   alwan_rgb_f64 const *rgb,
                                    alwan_f64 kr, alwan_f64 kb) {
     if (!rgb || !Y_out) return ALWAN_E_INVALID;
     alwan_f64 kg = ALWAN_LITERAL(1.0) - kr - kb;
@@ -138,7 +126,7 @@ int alwan_relative_luminance_kr_kb(alwan_f64 *Y_out,
 }
 
 int alwan_relative_luminance_space(alwan_f64 *Y_out,
-                                   alwan_rgb const *rgb,
+                                   alwan_rgb_f64 const *rgb,
                                    alwan_rgb_space_desc const *space) {
     if (!rgb || !Y_out || !space) return ALWAN_E_INVALID;
     if (!space->has_matrices) return ALWAN_E_INVALID;

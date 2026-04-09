@@ -195,7 +195,7 @@ static int test_extrapolation_exponential(void) {
 
 static int test_cct_d65(void) {
     /* Test CCT/Duv optimization for D65 (6504K) */
-    alwan_vec2 xy_d65 = {{0.31271, 0.32902}};  /* D65 chromaticity */
+    alwan_vec2_f64 xy_d65 = {{0.31271, 0.32902}};  /* D65 chromaticity */
     alwan_f64 cct_out, duv_out;
 
     int status = alwan_cct_duv_optimize(&cct_out, &duv_out, &xy_d65);
@@ -212,7 +212,7 @@ static int test_cct_d65(void) {
 
 static int test_cct_a(void) {
     /* Test CCT/Duv optimization for Illuminant A (2856K) */
-    alwan_vec2 xy_a = {{0.44757, 0.40745}};  /* Illuminant A chromaticity */
+    alwan_vec2_f64 xy_a = {{0.44757, 0.40745}};  /* Illuminant A chromaticity */
     alwan_f64 cct_out, duv_out;
 
     int status = alwan_cct_duv_optimize(&cct_out, &duv_out, &xy_a);
@@ -228,7 +228,7 @@ static int test_cct_a(void) {
 
 static int test_cct_off_locus(void) {
     /* Test CCT/Duv for point off Planckian locus */
-    alwan_vec2 xy_off = {{0.35, 0.40}};  /* Arbitrary point */
+    alwan_vec2_f64 xy_off = {{0.35, 0.40}};  /* Arbitrary point */
     alwan_f64 cct_out, duv_out;
 
     int status = alwan_cct_duv_optimize(&cct_out, &duv_out, &xy_off);
@@ -248,7 +248,7 @@ static int test_cct_off_locus(void) {
 
 static int test_optimize_spectrum(void) {
     /* Test spectrum optimization for target XYZ */
-    alwan_xyz target_xyz = {50.0, 50.0, 50.0};  /* Mid-gray */
+    alwan_xyz_f64 target_xyz = {50.0, 50.0, 50.0};  /* Mid-gray */
     alwan_ctx *ctx;
     alwan_spd spd_out;
     alwan_f64 spd_values[81];  /* Allocate storage for SPD values */
@@ -335,10 +335,10 @@ static int test_table_3d_trilinear(void) {
         /* [1,1,1] */ 1.0, 1.0, 1.0
     };
 
-    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_table_interp_3d_trilinear(&rgb_out, table, sizes, &rgb_in);
+    int status = alwan_table_interp_3d_trilinear_f64(&rgb_out, table, sizes, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "3D trilinear interpolation failed");
     TEST_ASSERT(ALWAN_ABS(rgb_out.r - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "R should be ~0.5");
@@ -366,10 +366,10 @@ static int test_table_3d_tetrahedral(void) {
         /* [1,1,1] */ 1.0, 1.0, 1.0
     };
 
-    alwan_rgb rgb_in = {0.5, 0.5, 0.5};
-    alwan_rgb rgb_out;
+    alwan_rgb_f64 rgb_in = {0.5, 0.5, 0.5};
+    alwan_rgb_f64 rgb_out;
 
-    int status = alwan_table_interp_3d_tetrahedral(&rgb_out, table, sizes, &rgb_in);
+    int status = alwan_table_interp_3d_tetrahedral_f64(&rgb_out, table, sizes, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "3D tetrahedral interpolation failed");
     TEST_ASSERT(ALWAN_ABS(rgb_out.r - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "R should be ~0.5");

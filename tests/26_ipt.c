@@ -19,8 +19,8 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz_in, xyz_out;
-        alwan_ipt ipt_expected, ipt_computed;
+        alwan_xyz_f64 xyz_in, xyz_out;
+        alwan_ipt_f64 ipt_expected, ipt_computed;
 
         /* Load test data */
         xyz_in.x = test_data[i * 6 + 0];
@@ -31,7 +31,7 @@ ALWAN_DIAG_POP
         ipt_expected.T = test_data[i * 6 + 5];
 
         /* Test XYZ -> IPT */
-        alwan_xyz_to_ipt(&ipt_computed, &xyz_in);
+        alwan_xyz_to_ipt_f64(&ipt_computed, &xyz_in);
 
         alwan_f64 const ipt_tol = ALWAN_TEST_TOLERANCE;
         alwan_f64 ipt_comp_arr[3] = {ipt_computed.I, ipt_computed.P, ipt_computed.T};
@@ -52,7 +52,7 @@ ALWAN_DIAG_POP
         }
 
         /* Test round-trip: IPT -> XYZ */
-        alwan_ipt_to_xyz(&xyz_out, &ipt_computed);
+        alwan_ipt_to_xyz_f64(&xyz_out, &ipt_computed);
 
         alwan_f64 const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 
@@ -81,19 +81,19 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 static int test_ipt_iptch_round_trip(void) {
-    alwan_ipt ipt, ipt_out;
-    alwan_iptch iptch;
+    alwan_ipt_f64 ipt, ipt_out;
+    alwan_iptch_f64 iptch;
 
     /* Test 1: Neutral (no chroma) */
     ipt.I = ALWAN_LITERAL(0.5);
     ipt.P = ALWAN_LITERAL(0.0);
     ipt.T = ALWAN_LITERAL(0.0);
 
-    alwan_ipt_to_iptch(&iptch, &ipt);
+    alwan_ipt_to_iptch_f64(&iptch, &ipt);
     TEST_ASSERT(ALWAN_ABS(iptch.I - ALWAN_LITERAL(0.5)) < ALWAN_TEST_TOLERANCE, "I mismatch");
     TEST_ASSERT(ALWAN_ABS(iptch.C) < ALWAN_TEST_TOLERANCE, "C should be 0");
 
-    alwan_iptch_to_ipt(&ipt_out, &iptch);
+    alwan_iptch_to_ipt_f64(&ipt_out, &iptch);
     alwan_f64 ipt_arr[3] = {ipt.I, ipt.P, ipt.T};
     alwan_f64 ipt_out_arr[3] = {ipt_out.I, ipt_out.P, ipt_out.T};
     for (int i = 0; i < 3; i++) {
@@ -106,8 +106,8 @@ static int test_ipt_iptch_round_trip(void) {
     ipt.P = ALWAN_LITERAL(0.1);
     ipt.T = ALWAN_LITERAL(0.05);
 
-    alwan_ipt_to_iptch(&iptch, &ipt);
-    alwan_iptch_to_ipt(&ipt_out, &iptch);
+    alwan_ipt_to_iptch_f64(&iptch, &ipt);
+    alwan_iptch_to_ipt_f64(&ipt_out, &iptch);
 
     ipt_arr[0] = ipt.I; ipt_arr[1] = ipt.P; ipt_arr[2] = ipt.T;
     ipt_out_arr[0] = ipt_out.I; ipt_out_arr[1] = ipt_out.P; ipt_out_arr[2] = ipt_out.T;

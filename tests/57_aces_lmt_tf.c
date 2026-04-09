@@ -11,16 +11,16 @@
 #include <math.h>
 
 static int test_blue_light_fix_roundtrip(void) {
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)},
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(2.0)},
     };
     size_t num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_rgb forward, roundtrip;
-        alwan_aces_blue_light_fix(&forward, &test_colors[i]);
-        alwan_aces_blue_light_fix_inv(&roundtrip, &forward);
+        alwan_rgb_f64 forward, roundtrip;
+        alwan_aces_blue_light_fix_f64(&forward, &test_colors[i]);
+        alwan_aces_blue_light_fix_inv_f64(&roundtrip, &forward);
         alwan_f64 diff_r = ALWAN_ABS(roundtrip.r - test_colors[i].r);
         alwan_f64 diff_g = ALWAN_ABS(roundtrip.g - test_colors[i].g);
         alwan_f64 diff_b = ALWAN_ABS(roundtrip.b - test_colors[i].b);
@@ -30,9 +30,9 @@ static int test_blue_light_fix_roundtrip(void) {
 }
 
 static int test_blue_light_fix_effect(void) {
-    alwan_rgb neon_blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(2.0)};
-    alwan_rgb result;
-    alwan_aces_blue_light_fix(&result, &neon_blue);
+    alwan_rgb_f64 neon_blue = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(2.0)};
+    alwan_rgb_f64 result;
+    alwan_aces_blue_light_fix_f64(&result, &neon_blue);
     TEST_ASSERT(result.r > neon_blue.r, "Should add red");
     TEST_ASSERT(result.g > neon_blue.g, "Should add green");
     TEST_PASS("test_blue_light_fix_effect");
@@ -199,7 +199,7 @@ static int test_linear_identity(void) {
 
 
 static int test_aces_look_1_0_roundtrip(void) {
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
         {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.2)},
@@ -207,9 +207,9 @@ static int test_aces_look_1_0_roundtrip(void) {
     };
     size_t num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_rgb forward, roundtrip;
-        alwan_aces_look_1_0(&forward, &test_colors[i]);
-        alwan_aces_look_1_0_inv(&roundtrip, &forward);
+        alwan_rgb_f64 forward, roundtrip;
+        alwan_aces_look_1_0_f64(&forward, &test_colors[i]);
+        alwan_aces_look_1_0_inv_f64(&roundtrip, &forward);
         alwan_f64 diff_r = ALWAN_ABS(roundtrip.r - test_colors[i].r);
         alwan_f64 diff_g = ALWAN_ABS(roundtrip.g - test_colors[i].g);
         alwan_f64 diff_b = ALWAN_ABS(roundtrip.b - test_colors[i].b);
@@ -224,23 +224,23 @@ static int test_aces_look_1_0_roundtrip(void) {
 }
 
 static int test_glow_inv_roundtrip(void) {
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)},
         {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.2)},
     };
     size_t num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_rgb forward, roundtrip;
+        alwan_rgb_f64 forward, roundtrip;
         /* Test Glow10 */
-        alwan_aces_glow10(&forward, &test_colors[i]);
-        alwan_aces_glow10_inv(&roundtrip, &forward);
+        alwan_aces_glow10_f64(&forward, &test_colors[i]);
+        alwan_aces_glow10_inv_f64(&roundtrip, &forward);
         alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_colors[i].r) +
                             ALWAN_ABS(roundtrip.g - test_colors[i].g) +
                             ALWAN_ABS(roundtrip.b - test_colors[i].b);
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE * 3, "Glow10 round-trip exceeded");
         /* Test Glow03 */
-        alwan_aces_glow03(&forward, &test_colors[i]);
-        alwan_aces_glow03_inv(&roundtrip, &forward);
+        alwan_aces_glow03_f64(&forward, &test_colors[i]);
+        alwan_aces_glow03_inv_f64(&roundtrip, &forward);
         diff = ALWAN_ABS(roundtrip.r - test_colors[i].r) +
                ALWAN_ABS(roundtrip.g - test_colors[i].g) +
                ALWAN_ABS(roundtrip.b - test_colors[i].b);
@@ -250,16 +250,16 @@ static int test_glow_inv_roundtrip(void) {
 }
 
 static int test_redmod_inv_roundtrip(void) {
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.1)},
         {ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.05)},
     };
     size_t num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_rgb forward, roundtrip;
+        alwan_rgb_f64 forward, roundtrip;
         /* Test RedMod10 */
-        alwan_aces_redmod10(&forward, &test_colors[i]);
-        alwan_aces_redmod10_inv(&roundtrip, &forward);
+        alwan_aces_redmod10_f64(&forward, &test_colors[i]);
+        alwan_aces_redmod10_inv_f64(&roundtrip, &forward);
         alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_colors[i].r);
         if (diff >= ALWAN_TEST_TOLERANCE) {
             printf("  RedMod10 index %zu: in=%.6f fwd=%.6f out=%.6f diff=%.6f\n",
@@ -267,8 +267,8 @@ static int test_redmod_inv_roundtrip(void) {
         }
         TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "RedMod10 round-trip exceeded");
         /* Test RedMod03 */
-        alwan_aces_redmod03(&forward, &test_colors[i]);
-        alwan_aces_redmod03_inv(&roundtrip, &forward);
+        alwan_aces_redmod03_f64(&forward, &test_colors[i]);
+        alwan_aces_redmod03_inv_f64(&roundtrip, &forward);
         diff = ALWAN_ABS(roundtrip.r - test_colors[i].r);
         if (diff >= ALWAN_TEST_TOLERANCE) {
             printf("  RedMod03 index %zu: in=%.6f fwd=%.6f out=%.6f diff=%.6f\n",
@@ -284,11 +284,11 @@ static int test_redmod_inv_roundtrip(void) {
  * that the neutral axis is preserved (which validates the matrix math) */
 static int test_ap0_ap1_roundtrip(void) {
     /* Test that 18% gray stays neutral through ACES output transform */
-    alwan_rgb gray = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_rgb result;
+    alwan_rgb_f64 gray = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_rgb_f64 result;
 
     /* ACES 2.0 output transform (includes AP0->AP1 internally) */
-    int status = alwan_aces2_output_transform(&result, &gray, ALWAN_ACES2_OUT_SRGB_100NIT);
+    int status = alwan_aces2_output_transform_f64(&result, &gray, ALWAN_ACES2_OUT_SRGB_100NIT);
     TEST_ASSERT(status == ALWAN_OK, "ACES2 output transform failed");
 
     /* Check that output is neutral (R~=G~=B) */
@@ -300,7 +300,7 @@ static int test_ap0_ap1_roundtrip(void) {
     TEST_ASSERT(max_diff < ALWAN_TEST_TOLERANCE, "Neutral axis not preserved in AP0->AP1");
 
     /* Test ACES 1.x output transform as well */
-    status = alwan_aces1_output_transform(&result, &gray, ALWAN_ACES1_OUT_SRGB_100NIT);
+    status = alwan_aces1_output_transform_f64(&result, &gray, ALWAN_ACES1_OUT_SRGB_100NIT);
     TEST_ASSERT(status == ALWAN_OK, "ACES1 output transform failed");
 
     max_diff = ALWAN_ABS(result.r - result.g);
@@ -316,7 +316,7 @@ static int test_ap0_ap1_roundtrip(void) {
 
 /* Test JMh round-trip (ACES 2.0) */
 static int test_jmh_roundtrip(void) {
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)},
         {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.2)},
         {ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.9)},
@@ -324,16 +324,16 @@ static int test_jmh_roundtrip(void) {
     size_t num_colors = sizeof(test_colors) / sizeof(test_colors[0]);
 
     /* Get default AP1 primaries */
-    alwan_aces_primaries primaries;
-    alwan_aces_primaries_ap1_default(&primaries);
+    alwan_aces_primaries_f64 primaries;
+    alwan_aces_primaries_ap1_default_f64(&primaries);
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 jmh;
-        alwan_rgb roundtrip;
+        alwan_vec3_f64 jmh;
+        alwan_rgb_f64 roundtrip;
         /* RGB -> JMh */
-        alwan_aces_rgb_to_jmh20(&jmh, &test_colors[i], &primaries);
+        alwan_aces_rgb_to_jmh20_f64(&jmh, &test_colors[i], &primaries);
         /* JMh -> RGB */
-        alwan_aces_jmh_to_rgb20(&roundtrip, &jmh, &primaries);
+        alwan_aces_jmh_to_rgb20_f64(&roundtrip, &jmh, &primaries);
         /* Check round-trip (looser tolerance for JMh) */
         alwan_f64 diff = ALWAN_ABS(roundtrip.r - test_colors[i].r) +
                             ALWAN_ABS(roundtrip.g - test_colors[i].g) +
@@ -345,41 +345,41 @@ static int test_jmh_roundtrip(void) {
 
 /* Test Parametric LMT */
 static int test_parametric_lmt(void) {
-    alwan_aces_lmt_params params;
-    alwan_aces_lmt_params_init(&params);
+    alwan_aces_lmt_params_f64 params;
+    alwan_aces_lmt_params_init_f64(&params);
 
     /* Test 1: Identity transform (default params) */
-    alwan_rgb gray = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_rgb result;
-    alwan_aces_lmt_apply(&result, &gray, &params);
+    alwan_rgb_f64 gray = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_rgb_f64 result;
+    alwan_aces_lmt_apply_f64(&result, &gray, &params);
     TEST_ASSERT(ALWAN_ABS(result.r - gray.r) < ALWAN_TEST_TOLERANCE, "Identity should preserve R");
     TEST_ASSERT(ALWAN_ABS(result.g - gray.g) < ALWAN_TEST_TOLERANCE, "Identity should preserve G");
     TEST_ASSERT(ALWAN_ABS(result.b - gray.b) < ALWAN_TEST_TOLERANCE, "Identity should preserve B");
 
     /* Test 2: Slope (gain) adjustment */
     params.slope[0] = params.slope[1] = params.slope[2] = ALWAN_LITERAL(2.0);
-    alwan_aces_lmt_apply(&result, &gray, &params);
+    alwan_aces_lmt_apply_f64(&result, &gray, &params);
     TEST_ASSERT(ALWAN_ABS(result.r - ALWAN_LITERAL(0.36)) < ALWAN_TEST_TOLERANCE, "Slope should double values");
-    alwan_aces_lmt_params_init(&params);  /* Reset */
+    alwan_aces_lmt_params_init_f64(&params);  /* Reset */
 
     /* Test 3: Offset adjustment */
     params.offset[0] = params.offset[1] = params.offset[2] = ALWAN_LITERAL(0.1);
-    alwan_aces_lmt_apply(&result, &gray, &params);
+    alwan_aces_lmt_apply_f64(&result, &gray, &params);
     TEST_ASSERT(ALWAN_ABS(result.r - ALWAN_LITERAL(0.28)) < ALWAN_TEST_TOLERANCE, "Offset should add 0.1");
-    alwan_aces_lmt_params_init(&params);  /* Reset */
+    alwan_aces_lmt_params_init_f64(&params);  /* Reset */
 
     /* Test 4: Saturation adjustment - should keep gray neutral */
     params.saturation = ALWAN_LITERAL(1.5);
-    alwan_aces_lmt_apply(&result, &gray, &params);
+    alwan_aces_lmt_apply_f64(&result, &gray, &params);
     /* Gray input should remain gray (R=G=B) */
     TEST_ASSERT(ALWAN_ABS(result.r - result.g) < ALWAN_TEST_TOLERANCE, "Gray should stay neutral");
     TEST_ASSERT(ALWAN_ABS(result.g - result.b) < ALWAN_TEST_TOLERANCE, "Gray should stay neutral");
-    alwan_aces_lmt_params_init(&params);  /* Reset */
+    alwan_aces_lmt_params_init_f64(&params);  /* Reset */
 
     /* Test 5: Saturation on chromatic color */
-    alwan_rgb red = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)};
+    alwan_rgb_f64 red = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.1)};
     params.saturation = ALWAN_LITERAL(1.5);
-    alwan_aces_lmt_apply(&result, &red, &params);
+    alwan_aces_lmt_apply_f64(&result, &red, &params);
     /* Increased saturation should increase chroma */
     alwan_f64 in_chroma = red.r - (red.g + red.b) / ALWAN_LITERAL(2.0);
     alwan_f64 out_chroma = result.r - (result.g + result.b) / ALWAN_LITERAL(2.0);
@@ -391,11 +391,11 @@ static int test_parametric_lmt(void) {
 /* Test ACES 2.0 tonescale known values */
 static int test_tonescale_known_values(void) {
     /* Test that 18% gray maps to expected mid-gray in SDR output */
-    alwan_rgb gray18 = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_rgb result;
+    alwan_rgb_f64 gray18 = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_rgb_f64 result;
 
     /* 100 nit SDR tonescale */
-    alwan_aces_tonescale_compress20(&result, &gray18, ALWAN_LITERAL(100.0));
+    alwan_aces_tonescale_compress20_f64(&result, &gray18, ALWAN_LITERAL(100.0));
     /* 18% gray should map to a reasonable positive value (output is compressed linear) */
     TEST_ASSERT(result.r > ALWAN_LITERAL(0.05) && result.r < ALWAN_LITERAL(1.0), "18% gray should map to positive output");
     /* Should remain neutral */
@@ -403,15 +403,15 @@ static int test_tonescale_known_values(void) {
     TEST_ASSERT(ALWAN_ABS(result.g - result.b) < ALWAN_TEST_TOLERANCE, "Neutral should stay neutral");
 
     /* Test black stays black */
-    alwan_rgb black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    alwan_aces_tonescale_compress20(&result, &black, ALWAN_LITERAL(100.0));
+    alwan_rgb_f64 black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_aces_tonescale_compress20_f64(&result, &black, ALWAN_LITERAL(100.0));
     TEST_ASSERT(result.r < ALWAN_LITERAL(0.01), "Black should stay near black");
 
     /* Test HDR tonescale - higher peak should compress less in highlights */
-    alwan_rgb bright = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
-    alwan_rgb result_sdr, result_hdr;
-    alwan_aces_tonescale_compress20(&result_sdr, &bright, ALWAN_LITERAL(100.0));
-    alwan_aces_tonescale_compress20(&result_hdr, &bright, ALWAN_LITERAL(1000.0));
+    alwan_rgb_f64 bright = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+    alwan_rgb_f64 result_sdr, result_hdr;
+    alwan_aces_tonescale_compress20_f64(&result_sdr, &bright, ALWAN_LITERAL(100.0));
+    alwan_aces_tonescale_compress20_f64(&result_hdr, &bright, ALWAN_LITERAL(1000.0));
     /* HDR should have higher output for same input (less compression) */
     TEST_ASSERT(result_hdr.r >= result_sdr.r, "HDR should compress less than SDR");
 
@@ -420,24 +420,24 @@ static int test_tonescale_known_values(void) {
 
 /* Test ACES 2.0 gamut compression boundary colors */
 static int test_gamut_compress_boundary(void) {
-    alwan_aces_primaries primaries;
-    alwan_aces_primaries_ap1_default(&primaries);
+    alwan_aces_primaries_f64 primaries;
+    alwan_aces_primaries_ap1_default_f64(&primaries);
 
     /* Test highly saturated red (out of gamut for most displays) */
-    alwan_rgb saturated_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-    alwan_vec3 jmh, jmh_compressed, jmh_recovered;
-    alwan_rgb recovered;
+    alwan_rgb_f64 saturated_red = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_vec3_f64 jmh, jmh_compressed, jmh_recovered;
+    alwan_rgb_f64 recovered;
 
     /* Convert to JMh */
-    alwan_aces_rgb_to_jmh20(&jmh, &saturated_red, &primaries);
+    alwan_aces_rgb_to_jmh20_f64(&jmh, &saturated_red, &primaries);
 
     /* Forward gamut compression in JMh space */
-    alwan_aces_gamut_compress20(&jmh_compressed, &jmh, ALWAN_LITERAL(100.0), &primaries);
+    alwan_aces_gamut_compress20_f64(&jmh_compressed, &jmh, ALWAN_LITERAL(100.0), &primaries);
     /* Compressed M (colorfulness) should be <= original M */
     TEST_ASSERT(jmh_compressed.v[1] <= jmh.v[1] + ALWAN_TEST_TOLERANCE, "Gamut compress should reduce or preserve M");
 
     /* Inverse gamut compression */
-    alwan_aces_gamut_compress20_inv(&jmh_recovered, &jmh_compressed, ALWAN_LITERAL(100.0), &primaries);
+    alwan_aces_gamut_compress20_inv_f64(&jmh_recovered, &jmh_compressed, ALWAN_LITERAL(100.0), &primaries);
     /* Should approximately recover original JMh (within tolerance) */
     alwan_f64 diff = ALWAN_ABS(jmh_recovered.v[0] - jmh.v[0]) +
                         ALWAN_ABS(jmh_recovered.v[1] - jmh.v[1]) +
@@ -445,13 +445,13 @@ static int test_gamut_compress_boundary(void) {
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE * 3, "Gamut compress round-trip exceeded");
 
     /* Convert back to RGB and verify */
-    alwan_aces_jmh_to_rgb20(&recovered, &jmh_recovered, &primaries);
+    alwan_aces_jmh_to_rgb20_f64(&recovered, &jmh_recovered, &primaries);
 
     /* Test neutral stays neutral through full pipeline */
-    alwan_rgb gray = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
-    alwan_vec3 gray_jmh, gray_compressed;
-    alwan_aces_rgb_to_jmh20(&gray_jmh, &gray, &primaries);
-    alwan_aces_gamut_compress20(&gray_compressed, &gray_jmh, ALWAN_LITERAL(100.0), &primaries);
+    alwan_rgb_f64 gray = {ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.18)};
+    alwan_vec3_f64 gray_jmh, gray_compressed;
+    alwan_aces_rgb_to_jmh20_f64(&gray_jmh, &gray, &primaries);
+    alwan_aces_gamut_compress20_f64(&gray_compressed, &gray_jmh, ALWAN_LITERAL(100.0), &primaries);
     /* Neutral should have M (colorfulness) near zero */
     TEST_ASSERT(gray_jmh.v[1] < ALWAN_LITERAL(0.1), "Neutral should have low colorfulness");
 

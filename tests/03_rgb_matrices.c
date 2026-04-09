@@ -14,7 +14,7 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
+static alwan_f64 mat3_max_diff(alwan_mat3x3_f64 const *a, alwan_mat3x3_f64 const *b) {
     alwan_f64 max_diff = 0;
     for (int i = 0; i < 9; i++) {
         alwan_f64 diff = ALWAN_ABS(a->m[i] - b->m[i]);
@@ -23,7 +23,7 @@ static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
     return max_diff;
 }
 
-static void mat3_print(char const *name, alwan_mat3x3 const *m) {
+static void mat3_print(char const *name, alwan_mat3x3_f64 const *m) {
     printf("%s:\n", name);
     for (int row = 0; row < 3; row++) {
         printf("  [%12.8f %12.8f %12.8f]\n",
@@ -52,7 +52,7 @@ static int test_srgb_matrices(void) {
         ALWAN_TF_LINEAR, ALWAN_TF_LINEAR
     };
 
-    alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
     int status = alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, &desc);
     TEST_ASSERT(status == ALWAN_OK, "Failed to derive sRGB matrices");
 
@@ -64,7 +64,7 @@ static int test_srgb_matrices(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_mat3x3 expected_rgb_to_xyz;
+    alwan_mat3x3_f64 expected_rgb_to_xyz;
     memcpy(expected_rgb_to_xyz.m, expected_matrix, sizeof(expected_rgb_to_xyz.m));
 
     /* Check RGB->XYZ - use relaxed tolerance for reference comparison */
@@ -77,9 +77,9 @@ static int test_srgb_matrices(void) {
     }
 
     /* Verify round-trip: RGB->XYZ * XYZ->RGB = I */
-    alwan_mat3x3 result, I;
-    alwan_mat3_identity(&I);
-    alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
+    alwan_mat3x3_f64 result, I;
+    alwan_mat3_identity_f64(&I);
+    alwan_mat3_mul_f64(&result, &rgb_to_xyz, &xyz_to_rgb);
 
     diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "sRGB round-trip failed");
@@ -105,7 +105,7 @@ static int test_aces_ap0_matrices(void) {
         ALWAN_TF_LINEAR, ALWAN_TF_LINEAR
     };
 
-    alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
     int status = alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, &desc);
 
     if (status != ALWAN_OK) {
@@ -116,9 +116,9 @@ static int test_aces_ap0_matrices(void) {
     }
 
     /* Verify round-trip */
-    alwan_mat3x3 result, I;
-    alwan_mat3_identity(&I);
-    alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
+    alwan_mat3x3_f64 result, I;
+    alwan_mat3_identity_f64(&I);
+    alwan_mat3_mul_f64(&result, &rgb_to_xyz, &xyz_to_rgb);
 
     alwan_f64 diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ACES AP0 round-trip failed");
@@ -143,14 +143,14 @@ static int test_aces_ap1_matrices(void) {
         ALWAN_TF_LINEAR, ALWAN_TF_LINEAR
     };
 
-    alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
     int status = alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, &desc);
     TEST_ASSERT(status == ALWAN_OK, "Failed to derive ACES AP1 matrices");
 
     /* Verify round-trip */
-    alwan_mat3x3 result, I;
-    alwan_mat3_identity(&I);
-    alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
+    alwan_mat3x3_f64 result, I;
+    alwan_mat3_identity_f64(&I);
+    alwan_mat3_mul_f64(&result, &rgb_to_xyz, &xyz_to_rgb);
 
     alwan_f64 diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "ACES AP1 round-trip failed");
@@ -175,14 +175,14 @@ static int test_bt2020_matrices(void) {
         ALWAN_TF_LINEAR, ALWAN_TF_LINEAR
     };
 
-    alwan_mat3x3 rgb_to_xyz, xyz_to_rgb;
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
     int status = alwan_rgb_derive_matrices(&rgb_to_xyz, &xyz_to_rgb, &desc);
     TEST_ASSERT(status == ALWAN_OK, "Failed to derive BT.2020 matrices");
 
     /* Verify round-trip */
-    alwan_mat3x3 result, I;
-    alwan_mat3_identity(&I);
-    alwan_mat3_mul(&result, &rgb_to_xyz, &xyz_to_rgb);
+    alwan_mat3x3_f64 result, I;
+    alwan_mat3_identity_f64(&I);
+    alwan_mat3_mul_f64(&result, &rgb_to_xyz, &xyz_to_rgb);
 
     alwan_f64 diff = mat3_max_diff(&I, &result);
     TEST_ASSERT(diff < ALWAN_TEST_TOLERANCE, "BT.2020 round-trip failed");

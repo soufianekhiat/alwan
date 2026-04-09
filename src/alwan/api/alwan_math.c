@@ -383,7 +383,7 @@ static alwan_f64 compute_duv(alwan_f64 x, alwan_f64 y, alwan_f64 cct) {
     return alwan_compute_duv_f64_v(x, y, cct);
 }
 
-int alwan_cct_duv_optimize(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2 const *xy) {
+int alwan_cct_duv_optimize(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2_f64 const *xy) {
     if (!xy || !cct_out || !duv_out) {
         return ALWAN_E_RANGE;
     }
@@ -451,7 +451,7 @@ int alwan_cct_duv_optimize(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2 co
  * ---------------------------------------------------------------- */
 
 int alwan_optimize_spectrum_for_xyz(alwan_spd *spd_out,
-                                      alwan_xyz const *target_xyz,
+                                      alwan_xyz_f64 const *target_xyz,
                                       alwan_observer_type observer,
                                       alwan_ctx *ctx) {
     (void)observer; /* Observer type parameter reserved for future CMF selection */
@@ -558,9 +558,9 @@ alwan_f64 alwan_table_interp_1d(alwan_f64 const *table, size_t size,
     }
 }
 
-int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
+int alwan_table_interp_3d_trilinear(alwan_rgb_f64 *rgb_out,
                                      alwan_f64 const *table, size_t const sizes[3],
-                                     alwan_rgb const *rgb_in) {
+                                     alwan_rgb_f64 const *rgb_in) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
         return ALWAN_E_RANGE;
     }
@@ -634,9 +634,9 @@ int alwan_table_interp_3d_trilinear(alwan_rgb *rgb_out,
     return ALWAN_OK;
 }
 
-int alwan_table_interp_3d_tetrahedral(alwan_rgb *rgb_out,
+int alwan_table_interp_3d_tetrahedral(alwan_rgb_f64 *rgb_out,
                                        alwan_f64 const *table, size_t const sizes[3],
-                                       alwan_rgb const *rgb_in) {
+                                       alwan_rgb_f64 const *rgb_in) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
         return ALWAN_E_RANGE;
     }

@@ -18,3 +18,8 @@ ALWAN_DIAG_POP
 #include "alwan_api_f64_setup.h"
 #include "alwan_colorspace_impl.inc"
 #include "alwan_api_teardown.h"
+
+void alwan_delta_e_cmc_params_default(alwan_delta_e_cmc_params *p) {
+    p->l = 2.0;
+    p->c = 1.0;
+}

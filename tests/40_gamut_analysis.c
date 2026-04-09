@@ -19,9 +19,9 @@
 
 static int test_pointer_gamut_inside(void) {
     /* Test point inside Pointer's gamut (moderate saturation green) */
-    alwan_vec2 xy_green = {{ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.5)}};
+    alwan_vec2_f64 xy_green = {{ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.5)}};
 
-    int result = alwan_is_within_pointer_gamut(&xy_green);
+    int result = alwan_is_within_pointer_gamut_f64(&xy_green);
 
     /* This point should be inside - it's a realizable surface color */
     TEST_ASSERT(result == 1, "Expected xy=[0.3, 0.5] to be inside Pointer's gamut");
@@ -34,9 +34,9 @@ static int test_pointer_gamut_inside(void) {
 
 static int test_pointer_gamut_outside(void) {
     /* Test point outside Pointer's gamut (very saturated, near spectral locus) */
-    alwan_vec2 xy_spectral = {{ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.8)}};
+    alwan_vec2_f64 xy_spectral = {{ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.8)}};
 
-    int result = alwan_is_within_pointer_gamut(&xy_spectral);
+    int result = alwan_is_within_pointer_gamut_f64(&xy_spectral);
 
     /* This point should be outside - it's too saturated for real surface colors */
     TEST_ASSERT(result == 0, "Expected xy=[0.1, 0.8] to be outside Pointer's gamut");
@@ -50,7 +50,7 @@ static int test_pointer_gamut_outside(void) {
 static int test_pointer_gamut_boundary(void) {
     /* Test boundary retrieval */
     size_t count = 0;
-    alwan_vec2 const *boundary = alwan_pointer_gamut_boundary(&count);
+    alwan_vec2_f64 const *boundary = alwan_pointer_gamut_boundary(&count);
 
     TEST_ASSERT(boundary != NULL, "Boundary pointer is NULL");
     TEST_ASSERT(count == 32, "Boundary should have 32 points");
@@ -89,9 +89,9 @@ static int test_spectral_locus_wavelengths(void) {
 
     for (size_t i = 0; i < 6; i++) {
         alwan_f64 wl = test_wavelengths[i];
-        alwan_vec2 xy_out;
+        alwan_vec2_f64 xy_out;
 
-        int status = alwan_spectral_locus_xy(&xy_out, wl);
+        int status = alwan_spectral_locus_xy_f64(&xy_out, wl);
         TEST_ASSERT(status == ALWAN_OK, "Failed to compute spectral locus");
 
         /* Validate xy values are in valid range */
@@ -108,10 +108,10 @@ static int test_spectral_locus_wavelengths(void) {
 
 static int test_spectral_locus_interpolation(void) {
     /* Test interpolation with fractional wavelengths */
-    alwan_vec2 xy_500, xy_500_5;
+    alwan_vec2_f64 xy_500, xy_500_5;
 
-    int status1 = alwan_spectral_locus_xy(&xy_500, ALWAN_LITERAL(500.0));
-    int status2 = alwan_spectral_locus_xy(&xy_500_5, ALWAN_LITERAL(500.5));
+    int status1 = alwan_spectral_locus_xy_f64(&xy_500, ALWAN_LITERAL(500.0));
+    int status2 = alwan_spectral_locus_xy_f64(&xy_500_5, ALWAN_LITERAL(500.5));
 
     TEST_ASSERT(status1 == ALWAN_OK && status2 == ALWAN_OK,
                 "Failed to compute spectral locus for interpolation test");
@@ -140,13 +140,13 @@ static int test_spectral_locus_interpolation(void) {
 
 static int test_dominant_wavelength_green(void) {
     /* Test dominant wavelength for green */
-    alwan_vec2 xy_green = {{ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.6)}};
-    alwan_vec2 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
+    alwan_vec2_f64 xy_green = {{ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.6)}};
+    alwan_vec2_f64 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
 
     alwan_f64 wl_out;
-    alwan_vec2 xy_wl_out, xy_cw_out;
+    alwan_vec2_f64 xy_wl_out, xy_cw_out;
 
-    int status = alwan_dominant_wavelength(&wl_out, &xy_wl_out, &xy_cw_out,
+    int status = alwan_dominant_wavelength_f64(&wl_out, &xy_wl_out, &xy_cw_out,
                                             &xy_green, &xy_d65);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to compute dominant wavelength");
@@ -171,12 +171,12 @@ static int test_dominant_wavelength_green(void) {
 
 static int test_excitation_purity_green(void) {
     /* Test excitation purity for green */
-    alwan_vec2 xy_green = {{ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.6)}};
-    alwan_vec2 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
+    alwan_vec2_f64 xy_green = {{ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.6)}};
+    alwan_vec2_f64 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
 
     alwan_f64 purity_out;
 
-    int status = alwan_excitation_purity(&purity_out, &xy_green, &xy_d65);
+    int status = alwan_excitation_purity_f64(&purity_out, &xy_green, &xy_d65);
     TEST_ASSERT(status == ALWAN_OK, "Failed to compute excitation purity");
 
     /* Validate purity is in valid range [0, 1] */
@@ -191,12 +191,12 @@ static int test_excitation_purity_green(void) {
 
 static int test_dominant_wavelength_red(void) {
     /* Test dominant wavelength for red */
-    alwan_vec2 xy_red = {{ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.3)}};
-    alwan_vec2 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
+    alwan_vec2_f64 xy_red = {{ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.3)}};
+    alwan_vec2_f64 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
 
     alwan_f64 wl_out;
 
-    int status = alwan_dominant_wavelength(&wl_out, NULL, NULL, &xy_red, &xy_d65);
+    int status = alwan_dominant_wavelength_f64(&wl_out, NULL, NULL, &xy_red, &xy_d65);
     TEST_ASSERT(status == ALWAN_OK, "Failed to compute dominant wavelength");
 
     /* Validate wavelength is in visible range */
@@ -210,12 +210,12 @@ static int test_dominant_wavelength_red(void) {
 
 static int test_dominant_wavelength_blue(void) {
     /* Test dominant wavelength for blue */
-    alwan_vec2 xy_blue = {{ALWAN_LITERAL(0.15), ALWAN_LITERAL(0.06)}};
-    alwan_vec2 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
+    alwan_vec2_f64 xy_blue = {{ALWAN_LITERAL(0.15), ALWAN_LITERAL(0.06)}};
+    alwan_vec2_f64 xy_d65 = {{ALWAN_LITERAL(0.31271), ALWAN_LITERAL(0.32902)}};
 
     alwan_f64 wl_out;
 
-    int status = alwan_dominant_wavelength(&wl_out, NULL, NULL, &xy_blue, &xy_d65);
+    int status = alwan_dominant_wavelength_f64(&wl_out, NULL, NULL, &xy_blue, &xy_d65);
     TEST_ASSERT(status == ALWAN_OK, "Failed to compute dominant wavelength");
 
     /* Validate wavelength is in visible range */
@@ -350,12 +350,12 @@ static int test_gamut_map_simple_clip(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with out-of-gamut color (oversaturated red) */
-    alwan_rgb rgb_in, rgb_out;
+    alwan_rgb_f64 rgb_in, rgb_out;
     rgb_in.r = ALWAN_LITERAL(1.5);
     rgb_in.g = ALWAN_LITERAL(-0.2);
     rgb_in.b = ALWAN_LITERAL(0.1);
 
-    int status = alwan_gamut_map_advanced(&rgb_out, ALWAN_GAMUT_MAP_CLIP, &srgb, &rgb_in);
+    int status = alwan_gamut_map_advanced_f64(&rgb_out, ALWAN_GAMUT_MAP_CLIP, &srgb, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to clip RGB color");
     TEST_ASSERT(rgb_out.r == ALWAN_LITERAL(1.0), "Red component not clipped to 1.0");
@@ -384,12 +384,12 @@ static int test_gamut_map_adaptive_l0(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated green */
-    alwan_rgb rgb_in, rgb_out;
+    alwan_rgb_f64 rgb_in, rgb_out;
     rgb_in.r = ALWAN_LITERAL(-0.3);
     rgb_in.g = ALWAN_LITERAL(1.8);
     rgb_in.b = ALWAN_LITERAL(-0.5);
 
-    int status = alwan_gamut_map_advanced(&rgb_out, ALWAN_GAMUT_MAP_ADAPTIVE_L0, &srgb, &rgb_in);
+    int status = alwan_gamut_map_advanced_f64(&rgb_out, ALWAN_GAMUT_MAP_ADAPTIVE_L0, &srgb, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to map RGB color with adaptive L0");
     TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
@@ -424,12 +424,12 @@ static int test_gamut_map_adaptive_cusp(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated blue */
-    alwan_rgb rgb_in, rgb_out;
+    alwan_rgb_f64 rgb_in, rgb_out;
     rgb_in.r = ALWAN_LITERAL(-0.1);
     rgb_in.g = ALWAN_LITERAL(0.2);
     rgb_in.b = ALWAN_LITERAL(1.9);
 
-    int status = alwan_gamut_map_advanced(&rgb_out, ALWAN_GAMUT_MAP_ADAPTIVE_CUSP, &srgb, &rgb_in);
+    int status = alwan_gamut_map_advanced_f64(&rgb_out, ALWAN_GAMUT_MAP_ADAPTIVE_CUSP, &srgb, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to map RGB color with adaptive cusp");
     TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
@@ -464,12 +464,12 @@ static int test_gamut_map_chroma_compress(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with oversaturated cyan */
-    alwan_rgb rgb_in, rgb_out;
+    alwan_rgb_f64 rgb_in, rgb_out;
     rgb_in.r = ALWAN_LITERAL(-0.4);
     rgb_in.g = ALWAN_LITERAL(1.6);
     rgb_in.b = ALWAN_LITERAL(1.7);
 
-    int status = alwan_gamut_map_advanced(&rgb_out, ALWAN_GAMUT_MAP_CHROMA_COMPRESS, &srgb, &rgb_in);
+    int status = alwan_gamut_map_advanced_f64(&rgb_out, ALWAN_GAMUT_MAP_CHROMA_COMPRESS, &srgb, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to compress chroma");
     TEST_ASSERT(rgb_out.r >= ALWAN_LITERAL(0.0) && rgb_out.r <= ALWAN_LITERAL(1.0),
@@ -504,12 +504,12 @@ static int test_gamut_map_in_gamut(void) {
     srgb.eotf = ALWAN_TF_LINEAR;
 
     /* Test with valid in-gamut color */
-    alwan_rgb rgb_in, rgb_out;
+    alwan_rgb_f64 rgb_in, rgb_out;
     rgb_in.r = ALWAN_LITERAL(0.7);
     rgb_in.g = ALWAN_LITERAL(0.3);
     rgb_in.b = ALWAN_LITERAL(0.5);
 
-    int status = alwan_gamut_map_advanced(&rgb_out, ALWAN_GAMUT_MAP_ADAPTIVE_L0, &srgb, &rgb_in);
+    int status = alwan_gamut_map_advanced_f64(&rgb_out, ALWAN_GAMUT_MAP_ADAPTIVE_L0, &srgb, &rgb_in);
 
     TEST_ASSERT(status == ALWAN_OK, "Failed to map in-gamut color");
 

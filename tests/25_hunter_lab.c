@@ -19,8 +19,8 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_data) / sizeof(test_data[0]) / 6;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz_in, xyz_out;
-        alwan_hunter_lab hunter_expected, hunter_computed;
+        alwan_xyz_f64 xyz_in, xyz_out;
+        alwan_hunter_lab_f64 hunter_expected, hunter_computed;
 
         /* Load test data */
         xyz_in.x = test_data[i * 6 + 0];
@@ -43,7 +43,7 @@ ALWAN_DIAG_POP
         }
 
         /* Test XYZ -> Hunter Lab */
-        alwan_xyz_to_hunter_lab(&hunter_computed, &xyz_in);
+        alwan_xyz_to_hunter_lab_f64(&hunter_computed, &xyz_in);
 
         alwan_f64 const hunter_tol = ALWAN_TEST_TOLERANCE;
         alwan_f64 hunter_comp_arr[3] = {hunter_computed.L, hunter_computed.a, hunter_computed.b};
@@ -64,7 +64,7 @@ ALWAN_DIAG_POP
         }
 
         /* Test round-trip: Hunter Lab -> XYZ */
-        alwan_hunter_lab_to_xyz(&xyz_out, &hunter_computed);
+        alwan_hunter_lab_to_xyz_f64(&xyz_out, &hunter_computed);
 
         alwan_f64 const roundtrip_tol = ALWAN_TEST_TOLERANCE;
 

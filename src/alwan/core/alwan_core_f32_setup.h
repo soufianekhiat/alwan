@@ -69,6 +69,7 @@
 #define ALWAN_CORE_MAT3X3             alwan_mat3x3_f32
 #define ALWAN_CORE_MAT4X4             alwan_mat4x4_f32
 #define ALWAN_CORE_RGB                alwan_rgb_f32
+#define ALWAN_CORE_PRIM               alwan_aces_primaries_f32
 #define ALWAN_CORE_CMYK               alwan_cmyk_f32
 #define ALWAN_CORE_CMY                alwan_cmy_f32
 #define ALWAN_CORE_HSV                alwan_hsv_f32
@@ -76,6 +77,7 @@
 #define ALWAN_CORE_HSP                alwan_hsp_f32
 #define ALWAN_CORE_HSPLOG             alwan_hsplog_f32
 #define ALWAN_CORE_HSY                alwan_hsy_f32
+#define ALWAN_CORE_HWB                alwan_hwb_f32
 #define ALWAN_CORE_XYZ                alwan_xyz_f32
 #define ALWAN_CORE_XYY                alwan_xyy_f32
 #define ALWAN_CORE_LAB                alwan_lab_f32

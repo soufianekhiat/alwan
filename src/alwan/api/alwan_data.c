@@ -521,7 +521,7 @@ int alwan_data_get_srgb_primaries(alwan_f64 **data, size_t *count, alwan_ctx *ct
  * Illuminant White Point Calculation (works in both modes)
  * ---------------------------------------------------------------- */
 
-int alwan_illuminant_white_point(alwan_xyz *out_xyz,
+int alwan_illuminant_white_point(alwan_xyz_f64 *out_xyz,
                                    alwan_illuminant illuminant,
                                    alwan_observer_type observer) {
     if (!out_xyz) {
@@ -568,7 +568,7 @@ int alwan_illuminant_white_point(alwan_xyz *out_xyz,
     }
 
     /* Integrate illuminant SPD with observer CMFs to get XYZ */
-    alwan_xyz xyz_unnormalized;
+    alwan_xyz_f64 xyz_unnormalized;
     status = alwan_xyz_from_spd(&xyz_unnormalized, NULL, &illum_spd, NULL, observer,
                                 ALWAN_INTEGRATE_SIMPSON, ALWAN_LITERAL(0.0));
 

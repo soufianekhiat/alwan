@@ -30,24 +30,24 @@ static int test_atd95_forward(void) {
 
     for (size_t i = 0; i < num_test_cases; i++) {
         size_t offset = i * 13;
-        alwan_vec3 xyz_in = {test_data[offset + 0], test_data[offset + 1], test_data[offset + 2]};
-        alwan_vec3 xyz_w = {test_data[offset + 3], test_data[offset + 4], test_data[offset + 5]};
+        alwan_vec3_f64 xyz_in = {test_data[offset + 0], test_data[offset + 1], test_data[offset + 2]};
+        alwan_vec3_f64 xyz_w = {test_data[offset + 3], test_data[offset + 4], test_data[offset + 5]};
         alwan_f64 Y_0 = test_data[offset + 6];
         alwan_f64 k1 = test_data[offset + 7];
         alwan_f64 k2 = test_data[offset + 8];
         alwan_f64 sigma = test_data[offset + 9];
 
         alwan_atd95_viewing_conditions vc;
-        ALWAN_MEMCPY(&vc.white_xyz, &xyz_w, sizeof(alwan_xyz));
+        ALWAN_MEMCPY(&vc.white_xyz, &xyz_w, sizeof(alwan_xyz_f64));
         vc.Y_0 = Y_0;
         vc.k1 = k1;
         vc.k2 = k2;
         vc.sigma = sigma;
 
-        alwan_xyz xyz_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz_in, sizeof(alwan_xyz));
+        alwan_xyz_f64 xyz_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz_in, sizeof(alwan_xyz_f64));
         alwan_atd95_correlates result;
-        int status = alwan_atd95_forward(&result, &xyz_typed, &vc);
+        int status = alwan_atd95_forward_f64(&result, &xyz_typed, &vc);
 
         if (status != ALWAN_OK) {
             printf("  Test %zu: FAILED - Status %d\n", i + 1, status);
@@ -78,17 +78,17 @@ static int test_atd95_adaptation(void) {
     int failed = 0;
 
     /* D65 illuminant */
-    alwan_vec3 d65 = {ALWAN_LITERAL(95.05),
+    alwan_vec3_f64 d65 = {ALWAN_LITERAL(95.05),
                       ALWAN_LITERAL(100.0),
                       ALWAN_LITERAL(108.88)};
 
     /* Test color: mid-gray */
-    alwan_vec3 xyz = {ALWAN_LITERAL(50.0),
+    alwan_vec3_f64 xyz = {ALWAN_LITERAL(50.0),
                       ALWAN_LITERAL(50.0),
                       ALWAN_LITERAL(50.0)};
 
     alwan_atd95_viewing_conditions vc;
-    ALWAN_MEMCPY(&vc.white_xyz, &d65, sizeof(alwan_xyz));
+    ALWAN_MEMCPY(&vc.white_xyz, &d65, sizeof(alwan_xyz_f64));
     vc.Y_0 = ALWAN_LITERAL(318.31);
     vc.sigma = ALWAN_LITERAL(300.0);
 
@@ -97,9 +97,9 @@ static int test_atd95_adaptation(void) {
     /* Test unrelated colors (k1=1, k2=0) */
     vc.k1 = ALWAN_LITERAL(1.0);
     vc.k2 = ALWAN_LITERAL(0.0);
-    alwan_xyz xyz_typed;
-    ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_xyz));
-    int status = alwan_atd95_forward(&corr_unrelated, &xyz_typed, &vc);
+    alwan_xyz_f64 xyz_typed;
+    ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_xyz_f64));
+    int status = alwan_atd95_forward_f64(&corr_unrelated, &xyz_typed, &vc);
     if (status != ALWAN_OK) {
         printf("  Unrelated colors: FAILED (status %d)\n", status);
         failed++;
@@ -111,7 +111,7 @@ static int test_atd95_adaptation(void) {
     /* Test related colors (k1=0, k2=50) */
     vc.k1 = ALWAN_LITERAL(0.0);
     vc.k2 = ALWAN_LITERAL(50.0);
-    status = alwan_atd95_forward(&corr_related, &xyz_typed, &vc);
+    status = alwan_atd95_forward_f64(&corr_related, &xyz_typed, &vc);
     if (status != ALWAN_OK) {
         printf("  Related colors: FAILED (status %d)\n", status);
         failed++;

@@ -66,7 +66,7 @@ static void get_zcam_surround_params(alwan_zcam_surround surround,
  * ---------------------------------------------------------------- */
 
 int alwan_zcam_forward(alwan_zcam_correlates *out,
-                       alwan_xyz const *xyz,
+                       alwan_xyz_f64 const *xyz,
                        alwan_zcam_viewing_conditions const *vc) {
     if (!xyz || !vc || !out) {
         return -1;
@@ -102,7 +102,7 @@ int alwan_zcam_forward(alwan_zcam_correlates *out,
  * ZCAM Inverse Transform: Correlates -> XYZ
  * ---------------------------------------------------------------- */
 
-int alwan_zcam_inverse(alwan_xyz *xyz,
+int alwan_zcam_inverse(alwan_xyz_f64 *xyz,
                        alwan_zcam_correlates const *correlates,
                        alwan_zcam_viewing_conditions const *vc) {
     if (!correlates || !vc || !xyz) {

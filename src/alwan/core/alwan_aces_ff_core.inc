@@ -69,6 +69,7 @@ typedef struct {
 typedef struct {
     ALWAN_CORE_T cusp_J, cusp_M, gamma_top_inv, gamma_bottom_inv;
     ALWAN_CORE_T focus_J, analytical_threshold;
+    ALWAN_CORE_T reach_m;  /* Per-hue reach M (Bug 8 fix: was global max) */
 } ALWAN_CORE_FNLIT(aces2_HueDependentGamutParams);
 
 /* ================================================================
@@ -205,13 +206,13 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_rgb_to_yc)(ALWAN_CORE_T red, AL
     return YC;
 }
 
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_sigmoid_shaper)(ALWAN_CORE_T sat) {
-    ALWAN_CORE_T x = (sat - ALWAN_CORE_LITERAL(0.4)) * ALWAN_CORE_LITERAL(5.0);
-    ALWAN_CORE_T sign = (x >= ALWAN_CORE_LITERAL(0.0)) ? ALWAN_CORE_LITERAL(1.0) : ALWAN_CORE_LITERAL(-1.0);
-    ALWAN_CORE_T t = ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_LITERAL(0.5) * sign * x;
-    if (t < ALWAN_CORE_LITERAL(0.0)) t = ALWAN_CORE_LITERAL(0.0);
-    ALWAN_CORE_T s = (ALWAN_CORE_LITERAL(1.0) + sign * (ALWAN_CORE_LITERAL(1.0) - t * t)) * ALWAN_CORE_LITERAL(0.5);
-    return s;
+/* ACES sigmoid_shaper: smooth step function mapping [0,1] → [0,1].
+ * Input is pre-scaled: x = (sat - 0.4) / 0.2.
+ * Source: aces-dev/lib/ACESlib.Utilities.ctl sigmoid_shaper */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_sigmoid_shaper)(ALWAN_CORE_T x) {
+    ALWAN_CORE_T t = ALWAN_CORE_MAX(ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_ABS(x * ALWAN_CORE_LITERAL(2.0) - ALWAN_CORE_LITERAL(1.0)), ALWAN_CORE_LITERAL(0.0));
+    ALWAN_CORE_T sign = (x > ALWAN_CORE_LITERAL(0.5)) ? ALWAN_CORE_LITERAL(1.0) : ALWAN_CORE_LITERAL(-1.0);
+    return ALWAN_CORE_LITERAL(0.5) + sign * (ALWAN_CORE_LITERAL(1.0) - t * t) * ALWAN_CORE_LITERAL(0.5);
 }
 
 /* ================================================================
@@ -329,46 +330,85 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_cubic_basis_shaper)(ALWAN_CORE
     return ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_LITERAL(3.0) * t2 + ALWAN_CORE_LITERAL(2.0) * t2 * ALWAN_CORE_ABS(t);
 }
 
+/* ACES Reference Segmented Spline C5 — full 10-coefficient B-spline evaluation.
+ * Source: Academy S-2014-003 / aces-dev lib/ACESlib.Tonescales.ctl
+ * coefsLow / coefsHigh are the cubic B-spline control values.
+ * N = 5 segments per half; knots are uniformly spaced in log10 domain. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(ALWAN_CORE_T x) {
-    ALWAN_CORE_T min_pt_x = ALWAN_CORE_LITERAL(5.4931640625e-6);
-    ALWAN_CORE_T min_pt_y = ALWAN_CORE_LITERAL(0.0001);
-    ALWAN_CORE_T mid_pt_x = ALWAN_CORE_LITERAL(0.18);
-    ALWAN_CORE_T mid_pt_y = ALWAN_CORE_LITERAL(4.8);
-    ALWAN_CORE_T max_pt_x = ALWAN_CORE_LITERAL(47185.92);
-    ALWAN_CORE_T max_pt_y = ALWAN_CORE_LITERAL(48.0);
+    /* B-spline coefficients (low side: shadows, high side: highlights) */
+    ALWAN_CORE_T const coefsLow[6] = {
+        ALWAN_CORE_LITERAL(-4.0000000000), ALWAN_CORE_LITERAL(-4.0000000000),
+        ALWAN_CORE_LITERAL(-3.1573765773), ALWAN_CORE_LITERAL(-0.4852499958),
+        ALWAN_CORE_LITERAL( 1.8477324706), ALWAN_CORE_LITERAL( 1.8477324706)
+    };
+    ALWAN_CORE_T const coefsHigh[6] = {
+        ALWAN_CORE_LITERAL(-0.7185482425), ALWAN_CORE_LITERAL( 2.0810307172),
+        ALWAN_CORE_LITERAL( 3.6681241237), ALWAN_CORE_LITERAL( 4.0000000000),
+        ALWAN_CORE_LITERAL( 4.0000000000), ALWAN_CORE_LITERAL( 4.0000000000)
+    };
+    ALWAN_CORE_T const min_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(-15.0));
+    ALWAN_CORE_T const min_pt_y = ALWAN_CORE_LITERAL(0.0001);
+    ALWAN_CORE_T const mid_pt_x = ALWAN_CORE_LITERAL(0.18);
+    ALWAN_CORE_T const max_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(18.0));
+    ALWAN_CORE_T const max_pt_y = ALWAN_CORE_LITERAL(10000.0);
 
     ALWAN_CORE_T log_x = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(x, ALWAN_CORE_LITERAL(1e-10)));
     ALWAN_CORE_T log_min = ALWAN_CORE_LOG10(min_pt_x);
     ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(mid_pt_x);
     ALWAN_CORE_T log_max = ALWAN_CORE_LOG10(max_pt_x);
 
-    ALWAN_CORE_T t;
+    /* Academy reference: N_KNOTS = 4 per half, quadratic B-spline basis.
+     * Source: aces-dev/lib/ACESlib.Tonescales.ctl segmented_spline_c5_fwd */
+    ALWAN_CORE_T log_y;
     if (log_x <= log_min) {
-        return min_pt_y;
+        log_y = ALWAN_CORE_LOG10(min_pt_y);
     } else if (log_x >= log_max) {
-        return max_pt_y;
-    } else if (log_x < log_mid) {
-        t = (log_x - log_min) / (log_mid - log_min);
-        ALWAN_CORE_T t2 = t * t;
-        ALWAN_CORE_T t3 = t2 * t;
-        return min_pt_y + (mid_pt_y - min_pt_y) * (ALWAN_CORE_LITERAL(3.0) * t2 - ALWAN_CORE_LITERAL(2.0) * t3);
+        log_y = ALWAN_CORE_LOG10(max_pt_y);
     } else {
-        t = (log_x - log_mid) / (log_max - log_mid);
+        ALWAN_CORE_T const *coefs;
+        ALWAN_CORE_T knot_start, knot_end;
+        int n_knots = 4;
+        if (log_x < log_mid) {
+            coefs = coefsLow;
+            knot_start = log_min;
+            knot_end = log_mid;
+        } else {
+            coefs = coefsHigh;
+            knot_start = log_mid;
+            knot_end = log_max;
+        }
+        ALWAN_CORE_T knot_coord = (ALWAN_CORE_T)(n_knots - 1) *
+            (log_x - knot_start) / (knot_end - knot_start);
+        int j = (int)knot_coord;
+        if (j < 0) j = 0;
+        if (j > n_knots - 2) j = n_knots - 2;  /* max j = 2, accesses coefs[2..4] */
+        ALWAN_CORE_T t = knot_coord - (ALWAN_CORE_T)j;
+
+        /* Quadratic B-spline basis matrix evaluation:
+         * M = [[0.5,-1.0,0.5],[-1.0,1.0,0.0],[0.5,0.5,0.0]]
+         * logy = [t^2, t, 1] . (M * [cf0, cf1, cf2]^T) */
+        ALWAN_CORE_T cf0 = coefs[j], cf1 = coefs[j+1], cf2 = coefs[j+2];
         ALWAN_CORE_T t2 = t * t;
-        ALWAN_CORE_T t3 = t2 * t;
-        return mid_pt_y + (max_pt_y - mid_pt_y) * (ALWAN_CORE_LITERAL(3.0) * t2 - ALWAN_CORE_LITERAL(2.0) * t3);
+        log_y = ALWAN_CORE_LITERAL(0.5) * t2 * (cf0 - ALWAN_CORE_LITERAL(2.0)*cf1 + cf2)
+              + t * (-cf0 + cf1)
+              + ALWAN_CORE_LITERAL(0.5) * (cf0 + cf1);
     }
+
+    return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), log_y);
 }
 
+/* Inverse of the segmented spline C5: given OCES nits, return scene-referred linear.
+ * Uses Newton-Raphson iteration on the forward C5. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5_inv)(ALWAN_CORE_T y) {
-    ALWAN_CORE_T min_pt_x = ALWAN_CORE_LITERAL(5.4931640625e-6);
+    ALWAN_CORE_T min_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(-15.0));
     ALWAN_CORE_T min_pt_y = ALWAN_CORE_LITERAL(0.0001);
     ALWAN_CORE_T mid_pt_x = ALWAN_CORE_LITERAL(0.18);
     ALWAN_CORE_T mid_pt_y = ALWAN_CORE_LITERAL(4.8);
-    ALWAN_CORE_T max_pt_x = ALWAN_CORE_LITERAL(47185.92);
-    ALWAN_CORE_T max_pt_y = ALWAN_CORE_LITERAL(48.0);
+    ALWAN_CORE_T max_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(18.0));
+    ALWAN_CORE_T max_pt_y = ALWAN_CORE_LITERAL(10000.0);
 
-    ALWAN_CORE_T target_nits = y * ALWAN_CORE_LITERAL(48.0);
+    /* Input y is in OCES nits (output of C5 forward) */
+    ALWAN_CORE_T target_nits = y;
 
     if (target_nits <= min_pt_y) return min_pt_x;
     if (target_nits >= max_pt_y) return max_pt_x;
@@ -460,6 +500,12 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_cone_response_fwd)(ALWAN_CORE_T
     if (abs_v < ALWAN_CORE_LITERAL(1e-10)) return ALWAN_CORE_LITERAL(0.0);
 
     ALWAN_CORE_T F_L_Y = ALWAN_CORE_POW(abs_v, ALWAN_CORE_LITERAL(0.42));
+    /* Guard: Inf or NaN F_L_Y (from Inf/NaN input) → Ra = Inf/Inf = NaN.
+     * Physically Ra → 1 as stimulus → ∞, so cap at 1. Also protects
+     * downstream hue lookups from (int)NaN undefined behaviour. */
+    if (!(F_L_Y < ALWAN_CORE_LITERAL(1e15))) {
+        return (v >= ALWAN_CORE_LITERAL(0.0)) ? ALWAN_CORE_LITERAL(1.0) : ALWAN_CORE_LITERAL(-1.0);
+    }
     ALWAN_CORE_T Ra = F_L_Y / (ACES_CAM_NL_OFFSET_ + F_L_Y);
 
     return (v >= ALWAN_CORE_LITERAL(0.0)) ? Ra : -Ra;
@@ -622,21 +668,12 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_tonescale_fwd)(ALWAN_CORE_T x,
  * Gamut Compression Math
  * ================================================================ */
 
+/* Smooth minimum (cubic) — matches OCIO smin_scaled exactly.
+ * Source: OCIO Transform.cpp smin_scaled */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_smin_scaled)(ALWAN_CORE_T a, ALWAN_CORE_T b, ALWAN_CORE_T cusp_M) {
-    ALWAN_CORE_T s = cusp_M * ACES_GAMUT_SMOOTH_CUSPS_;
-    ALWAN_CORE_T x = a - b;
-    ALWAN_CORE_T sign = (x >= ALWAN_CORE_LITERAL(0.0)) ? ALWAN_CORE_LITERAL(1.0) : ALWAN_CORE_LITERAL(-1.0);
-    ALWAN_CORE_T abs_x = ALWAN_CORE_ABS(x);
-
-    if (abs_x >= s) {
-        return (a < b) ? a : b;
-    }
-
-    ALWAN_CORE_T t = (abs_x - s) / (ALWAN_CORE_LITERAL(2.0) * s);
-    ALWAN_CORE_T blend = t * t * (abs_x + s) / (ALWAN_CORE_LITERAL(2.0) * s);
-    ALWAN_CORE_T min_val = (a < b) ? a : b;
-
-    return min_val + blend * sign;
+    ALWAN_CORE_T s_scaled = cusp_M * ACES_GAMUT_SMOOTH_CUSPS_;
+    ALWAN_CORE_T h = ALWAN_CORE_MAX(s_scaled - ALWAN_CORE_ABS(a - b), ALWAN_CORE_LITERAL(0.0)) / s_scaled;
+    return ALWAN_CORE_MIN(a, b) - h * h * h * s_scaled * (ALWAN_CORE_LITERAL(1.0) / ALWAN_CORE_LITERAL(6.0));
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_reinhard_fwd)(ALWAN_CORE_T x) {
@@ -654,7 +691,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_remap_m_fwd)(ALWAN_CORE_T M, A
                              ? boundary_ratio : ACES_GAMUT_COMPRESSION_THRESHOLD_;
     ALWAN_CORE_T threshold = proportion * gamut_boundary_M;
 
-    if (M <= threshold || proportion >= ALWAN_CORE_LITERAL(1.0)) {
+    if (M <= threshold) {
         return M;
     }
 
@@ -674,7 +711,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_remap_m_inv)(ALWAN_CORE_T M, A
                              ? boundary_ratio : ACES_GAMUT_COMPRESSION_THRESHOLD_;
     ALWAN_CORE_T threshold = proportion * gamut_boundary_M;
 
-    if (M <= threshold || proportion >= ALWAN_CORE_LITERAL(1.0)) {
+    if (M <= threshold) {
         return M;
     }
 
@@ -731,43 +768,29 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_solve_j_intersect)(ALWAN_CORE_
     }
 }
 
+/* Compression vector slope — matches OCIO compute_compression_vector_slope.
+ * Source: OCIO Transform.cpp */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_compression_vector_slope)(ALWAN_CORE_T J_intersect,
                                                             ALWAN_CORE_T focus_J,
                                                             ALWAN_CORE_T limit_J_max,
                                                             ALWAN_CORE_T slope_gain) {
-    if (J_intersect < focus_J) {
-        return slope_gain * (ALWAN_CORE_LITERAL(1.0) - J_intersect / focus_J);
-    } else {
-        return slope_gain * (J_intersect - focus_J) / (limit_J_max - focus_J);
-    }
+    ALWAN_CORE_T direction_scaler = (J_intersect < focus_J) ? J_intersect : (limit_J_max - J_intersect);
+    return direction_scaler * (J_intersect - focus_J) / (focus_J * slope_gain);
 }
 
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_estimate_line_boundary_m)(ALWAN_CORE_T J_intersect_source,
+/* Estimate intersection of line with gamut boundary — matches OCIO exactly.
+ * Source: OCIO Transform.cpp estimate_line_and_boundary_intersection_M */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_estimate_line_boundary_m)(ALWAN_CORE_T J_axis_intersect,
                                                             ALWAN_CORE_T slope,
-                                                            ALWAN_CORE_T gamma_inv,
-                                                            ALWAN_CORE_T cusp_J,
-                                                            ALWAN_CORE_T cusp_M,
-                                                            ALWAN_CORE_T J_intersect_cusp) {
-    ALWAN_CORE_T denom = J_intersect_cusp - cusp_J;
-    if (ALWAN_CORE_ABS(denom) < ALWAN_CORE_LITERAL(1e-6)) {
-        if (cusp_J > ALWAN_CORE_LITERAL(0.0)) {
-            return cusp_M * J_intersect_source / cusp_J;
-        }
-        return cusp_M;
-    }
-
-    ALWAN_CORE_T t = (J_intersect_source - cusp_J) / denom;
-    if (t < ALWAN_CORE_LITERAL(0.0)) t = ALWAN_CORE_LITERAL(0.0);
-    if (t > ALWAN_CORE_LITERAL(1.0)) t = ALWAN_CORE_LITERAL(1.0);
-
-    ALWAN_CORE_T M_boundary = cusp_M * ALWAN_CORE_POW(t, gamma_inv);
-
-    ALWAN_CORE_T J_diff = ALWAN_CORE_ABS(J_intersect_source - cusp_J);
-    if (slope != ALWAN_CORE_LITERAL(0.0)) {
-        M_boundary = M_boundary + J_diff / ALWAN_CORE_ABS(slope);
-    }
-
-    return M_boundary;
+                                                            ALWAN_CORE_T inv_gamma,
+                                                            ALWAN_CORE_T J_max,
+                                                            ALWAN_CORE_T M_max,
+                                                            ALWAN_CORE_T J_intersection_reference) {
+    ALWAN_CORE_T normalised_J = J_axis_intersect / J_intersection_reference;
+    ALWAN_CORE_T shifted_intersection = J_intersection_reference * ALWAN_CORE_POW(normalised_J, inv_gamma);
+    ALWAN_CORE_T denom = J_max - slope * M_max;
+    if (ALWAN_CORE_ABS(denom) < ALWAN_CORE_LITERAL(1e-10)) return M_max;
+    return shifted_intersection * M_max / denom;
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_find_gamut_boundary)(ALWAN_CORE_T cusp_J,
@@ -778,19 +801,29 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_find_gamut_boundary)(ALWAN_COR
                                                        ALWAN_CORE_T J_intersect_source,
                                                        ALWAN_CORE_T slope,
                                                        ALWAN_CORE_T J_intersect_cusp) {
-    ALWAN_CORE_T M_boundary_lower = ALWAN_CORE_FNVLIT(aces2_estimate_line_boundary_m)(
-        J_intersect_source, slope, gamma_bottom_inv,
-        cusp_J, cusp_M, J_intersect_cusp);
+    /* Compute entire gamut boundary in float32 to match OCIO's precision.
+     * At near-degenerate hues (h≈267-270°) where AP1≈display gamut, float64
+     * catastrophic cancellation produces different boundary ratios than float32,
+     * making the Reinhard remap extremely sensitive to precision. Using f32
+     * for the full boundary computation (estimate + smin) keeps alwan's
+     * boundaries consistent with OCIO's.  For non-degenerate hues, the f32
+     * result ≈ f64 result (difference is sub-LSB in 8-bit output). */
+    float fJ_src  = (float)J_intersect_source;
+    float fslope  = (float)slope;
+    float fJ_cusp = (float)J_intersect_cusp;
+    float fJ_max  = (float)limit_J_max;
+    float fcM     = (float)cusp_M;
+    float fcJ     = (float)cusp_J;
 
-    ALWAN_CORE_T f_J_intersect_cusp = limit_J_max - J_intersect_cusp;
-    ALWAN_CORE_T f_J_intersect_source = limit_J_max - J_intersect_source;
-    ALWAN_CORE_T f_cusp_J = limit_J_max - cusp_J;
+    float M_boundary_lower = aces2_estimate_line_boundary_m_f32_v(
+        fJ_src, fslope, (float)gamma_bottom_inv, fcJ, fcM, fJ_cusp);
 
-    ALWAN_CORE_T M_boundary_upper = ALWAN_CORE_FNVLIT(aces2_estimate_line_boundary_m)(
-        f_J_intersect_source, -slope, gamma_top_inv,
-        f_cusp_J, cusp_M, f_J_intersect_cusp);
+    float M_boundary_upper = aces2_estimate_line_boundary_m_f32_v(
+        fJ_max - fJ_src, -fslope, (float)gamma_top_inv,
+        fJ_max - fcJ, fcM, fJ_max - fJ_cusp);
 
-    return ALWAN_CORE_FNVLIT(aces2_smin_scaled)(M_boundary_lower, M_boundary_upper, cusp_M);
+    return (ALWAN_CORE_T)aces2_smin_scaled_f32_v(
+        M_boundary_lower, M_boundary_upper, fcM);
 }
 
 ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_fwd)(ALWAN_CORE_T J, ALWAN_CORE_T M, ALWAN_CORE_T h,
@@ -799,22 +832,34 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_fwd)(ALWAN_C
     ALWAN_CORE_VEC2 result;
     ALWAN_UNUSED(h);
 
-    ALWAN_CORE_T slope_gain = ALWAN_CORE_FNVLIT(aces2_get_focus_gain)(J, hdp->analytical_threshold,
-                                                      gcp->limit_J_max, gcp->focus_dist);
+    /* Compute ALL intermediates in f32 to match OCIO's float32 pipeline.
+     * At near-degenerate hues (h≈267°), tiny f64-vs-f32 differences in
+     * slope_gain/J_intersect/gamut_slope accumulate and produce wildly
+     * different Reinhard remap outputs.  Using f32 throughout keeps alwan's
+     * gamut compression numerically consistent with OCIO's.  For non-degenerate
+     * hues the difference is sub-LSB in 8-bit output. */
+    float fJ = (float)J, fM = (float)M;
+    float fJ_max = (float)gcp->limit_J_max;
+    float f_focus_dist = (float)gcp->focus_dist;
+    float f_cusp_J = (float)hdp->cusp_J, f_cusp_M = (float)hdp->cusp_M;
+    float f_focus_J = (float)hdp->focus_J;
+    float f_at = (float)hdp->analytical_threshold;
 
-    ALWAN_CORE_T J_intersect = ALWAN_CORE_FNVLIT(aces2_solve_j_intersect)(J, M, hdp->focus_J,
-                                                          gcp->limit_J_max, slope_gain);
+    float f_slope_gain = aces2_get_focus_gain_f32_v(fJ, f_at, fJ_max, f_focus_dist);
 
-    ALWAN_CORE_T gamut_slope = ALWAN_CORE_FNVLIT(aces2_compression_vector_slope)(
-        J_intersect, hdp->focus_J, gcp->limit_J_max, slope_gain);
+    float f_J_intersect = aces2_solve_j_intersect_f32_v(fJ, fM, f_focus_J, fJ_max, f_slope_gain);
 
-    ALWAN_CORE_T J_intersect_cusp = ALWAN_CORE_FNVLIT(aces2_solve_j_intersect)(
-        hdp->cusp_J, hdp->cusp_M, hdp->focus_J, gcp->limit_J_max, slope_gain);
+    float f_gamut_slope = aces2_compression_vector_slope_f32_v(
+        f_J_intersect, f_focus_J, fJ_max, f_slope_gain);
+
+    float f_J_intersect_cusp = aces2_solve_j_intersect_f32_v(
+        f_cusp_J, f_cusp_M, f_focus_J, fJ_max, f_slope_gain);
 
     ALWAN_CORE_T gamut_boundary_M = ALWAN_CORE_FNVLIT(aces2_find_gamut_boundary)(
         hdp->cusp_J, hdp->cusp_M, gcp->limit_J_max,
         hdp->gamma_top_inv, hdp->gamma_bottom_inv,
-        J_intersect, gamut_slope, J_intersect_cusp);
+        (ALWAN_CORE_T)f_J_intersect, (ALWAN_CORE_T)f_gamut_slope,
+        (ALWAN_CORE_T)f_J_intersect_cusp);
 
     if (gamut_boundary_M <= ALWAN_CORE_LITERAL(0.0)) {
         result.v[0] = J;
@@ -822,12 +867,25 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_fwd)(ALWAN_C
         return result;
     }
 
-    ALWAN_CORE_T reach_boundary_M = ALWAN_CORE_FNVLIT(aces2_estimate_line_boundary_m)(
-        J_intersect, gamut_slope, gcp->model_gamma_inv,
-        gcp->limit_J_max, gcp->reach_max_M, gcp->limit_J_max);
+    ALWAN_CORE_T reach_boundary_M = (ALWAN_CORE_T)aces2_estimate_line_boundary_m_f32_v(
+        f_J_intersect, f_gamut_slope, (float)gcp->model_gamma_inv,
+        fJ_max, (float)hdp->reach_m, fJ_max);
 
-    ALWAN_CORE_T remapped_M = ALWAN_CORE_FNVLIT(aces2_remap_m_fwd)(M, gamut_boundary_M, reach_boundary_M);
+    /* Degenerate guard: when reach ≤ gamut (precision artifact at hues
+     * where the display gamut boundary ≈ AP1 boundary), the Reinhard has a
+     * singularity.  Bypass compression — these pixels are already within
+     * or at the gamut boundary. */
+    if (reach_boundary_M <= gamut_boundary_M) {
+        result.v[0] = J;
+        result.v[1] = M;
+        return result;
+    }
 
+    ALWAN_CORE_T remapped_M = (ALWAN_CORE_T)aces2_remap_m_fwd_f32_v(
+        fM, (float)gamut_boundary_M, (float)reach_boundary_M);
+
+    ALWAN_CORE_T J_intersect = (ALWAN_CORE_T)f_J_intersect;
+    ALWAN_CORE_T gamut_slope = (ALWAN_CORE_T)f_gamut_slope;
     result.v[0] = J_intersect + remapped_M * gamut_slope;
     result.v[1] = remapped_M;
     return result;
@@ -839,22 +897,30 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_inv)(ALWAN_C
     ALWAN_CORE_VEC2 result;
     ALWAN_UNUSED(h);
 
-    ALWAN_CORE_T slope_gain = ALWAN_CORE_FNVLIT(aces2_get_focus_gain)(J, hdp->analytical_threshold,
-                                                      gcp->limit_J_max, gcp->focus_dist);
+    /* Mirror of fwd: compute all intermediates in f32 for consistency
+     * with OCIO's float32 pipeline.  See compress_gamut_fwd comment. */
+    float fJ = (float)J, fM = (float)M;
+    float fJ_max = (float)gcp->limit_J_max;
+    float f_focus_dist = (float)gcp->focus_dist;
+    float f_cusp_J = (float)hdp->cusp_J, f_cusp_M = (float)hdp->cusp_M;
+    float f_focus_J = (float)hdp->focus_J;
+    float f_at = (float)hdp->analytical_threshold;
 
-    ALWAN_CORE_T J_intersect = ALWAN_CORE_FNVLIT(aces2_solve_j_intersect)(J, M, hdp->focus_J,
-                                                          gcp->limit_J_max, slope_gain);
+    float f_slope_gain = aces2_get_focus_gain_f32_v(fJ, f_at, fJ_max, f_focus_dist);
 
-    ALWAN_CORE_T gamut_slope = ALWAN_CORE_FNVLIT(aces2_compression_vector_slope)(
-        J_intersect, hdp->focus_J, gcp->limit_J_max, slope_gain);
+    float f_J_intersect = aces2_solve_j_intersect_f32_v(fJ, fM, f_focus_J, fJ_max, f_slope_gain);
 
-    ALWAN_CORE_T J_intersect_cusp = ALWAN_CORE_FNVLIT(aces2_solve_j_intersect)(
-        hdp->cusp_J, hdp->cusp_M, hdp->focus_J, gcp->limit_J_max, slope_gain);
+    float f_gamut_slope = aces2_compression_vector_slope_f32_v(
+        f_J_intersect, f_focus_J, fJ_max, f_slope_gain);
+
+    float f_J_intersect_cusp = aces2_solve_j_intersect_f32_v(
+        f_cusp_J, f_cusp_M, f_focus_J, fJ_max, f_slope_gain);
 
     ALWAN_CORE_T gamut_boundary_M = ALWAN_CORE_FNVLIT(aces2_find_gamut_boundary)(
         hdp->cusp_J, hdp->cusp_M, gcp->limit_J_max,
         hdp->gamma_top_inv, hdp->gamma_bottom_inv,
-        J_intersect, gamut_slope, J_intersect_cusp);
+        (ALWAN_CORE_T)f_J_intersect, (ALWAN_CORE_T)f_gamut_slope,
+        (ALWAN_CORE_T)f_J_intersect_cusp);
 
     if (gamut_boundary_M <= ALWAN_CORE_LITERAL(0.0)) {
         result.v[0] = J;
@@ -862,12 +928,22 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_inv)(ALWAN_C
         return result;
     }
 
-    ALWAN_CORE_T reach_boundary_M = ALWAN_CORE_FNVLIT(aces2_estimate_line_boundary_m)(
-        J_intersect, gamut_slope, gcp->model_gamma_inv,
-        gcp->limit_J_max, gcp->reach_max_M, gcp->limit_J_max);
+    ALWAN_CORE_T reach_boundary_M = (ALWAN_CORE_T)aces2_estimate_line_boundary_m_f32_v(
+        f_J_intersect, f_gamut_slope, (float)gcp->model_gamma_inv,
+        fJ_max, (float)hdp->reach_m, fJ_max);
 
-    ALWAN_CORE_T remapped_M = ALWAN_CORE_FNVLIT(aces2_remap_m_inv)(M, gamut_boundary_M, reach_boundary_M);
+    /* Degenerate guard (inverse): mirror of fwd guard. */
+    if (reach_boundary_M <= gamut_boundary_M) {
+        result.v[0] = J;
+        result.v[1] = M;
+        return result;
+    }
 
+    ALWAN_CORE_T remapped_M = (ALWAN_CORE_T)aces2_remap_m_inv_f32_v(
+        (float)M, (float)gamut_boundary_M, (float)reach_boundary_M);
+
+    ALWAN_CORE_T J_intersect = (ALWAN_CORE_T)f_J_intersect;
+    ALWAN_CORE_T gamut_slope = (ALWAN_CORE_T)f_gamut_slope;
     result.v[0] = J_intersect + remapped_M * gamut_slope;
     result.v[1] = remapped_M;
     return result;

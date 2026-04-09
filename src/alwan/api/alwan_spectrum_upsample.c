@@ -292,7 +292,7 @@ static inline alwan_f64 clamp(alwan_f64 x, alwan_f64 min, alwan_f64 max) {
 
 int alwan_rgb_to_spectrum_smits1999(alwan_spd *out_spd,
                                      alwan_ctx *ctx,
-                                     alwan_rgb const *rgb) {
+                                     alwan_rgb_f64 const *rgb) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
     }
@@ -403,7 +403,7 @@ int alwan_rgb_to_spectrum_smits1999(alwan_spd *out_spd,
 
 int alwan_rgb_to_spectrum_mallett2019(alwan_spd *out_spd,
                                        alwan_ctx *ctx,
-                                       alwan_rgb const *rgb) {
+                                       alwan_rgb_f64 const *rgb) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
     }
@@ -539,7 +539,7 @@ static inline alwan_f64 jakob2019_eval_poly(alwan_f64 c0, alwan_f64 c1, alwan_f6
 int alwan_rgb_to_spectrum_jakob2019(alwan_spd *out_spd,
                                       alwan_ctx *ctx,
                                       alwan_jakob2019_gamut gamut,
-                                      alwan_rgb const *rgb) {
+                                      alwan_rgb_f64 const *rgb) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
     }

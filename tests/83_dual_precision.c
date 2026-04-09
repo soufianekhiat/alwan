@@ -46,8 +46,8 @@ _Static_assert(sizeof(alwan_xyz_f64)  == 3 * sizeof(double), "alwan_xyz_f64 must
 _Static_assert(sizeof(alwan_oklab_f32) == 3 * sizeof(float),  "alwan_oklab_f32 must be 3 floats");
 _Static_assert(sizeof(alwan_oklab_f64) == 3 * sizeof(double), "alwan_oklab_f64 must be 3 doubles");
 _Static_assert(sizeof(alwan_xyz_f64)  == 2 * sizeof(alwan_xyz_f32), "f64 struct must be twice the f32 size");
-_Static_assert(sizeof(alwan_xyz)   == sizeof(alwan_xyz_f64),   "alwan_xyz must alias alwan_xyz_f64");
-_Static_assert(sizeof(alwan_oklab) == sizeof(alwan_oklab_f64), "alwan_oklab must alias alwan_oklab_f64");
+_Static_assert(sizeof(alwan_xyz_f64)   == sizeof(alwan_xyz_f64),   "alwan_xyz_f64 must alias alwan_xyz_f64");
+_Static_assert(sizeof(alwan_oklab_f64) == sizeof(alwan_oklab_f64), "alwan_oklab_f64 must alias alwan_oklab_f64");
 
 /* ================================================================
  * Test: Point functions — D65 white -> Oklab

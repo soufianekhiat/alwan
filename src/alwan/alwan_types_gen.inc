@@ -37,6 +37,7 @@ typedef struct { ALWAN_T h, s, l; }     ALWAN_TN(alwan_hsl);
 typedef struct { ALWAN_T h, s, p; }     ALWAN_TN(alwan_hsp);
 typedef struct { ALWAN_T h, s, p; }     ALWAN_TN(alwan_hsplog);
 typedef struct { ALWAN_T h, s, y; }     ALWAN_TN(alwan_hsy);
+typedef struct { ALWAN_T h, w, b; }     ALWAN_TN(alwan_hwb);
 typedef struct { ALWAN_T x, y, z; }     ALWAN_TN(alwan_xyz);
 typedef struct { ALWAN_T x, y, Y; }     ALWAN_TN(alwan_xyy);
 typedef struct { ALWAN_T L, a, b; }     ALWAN_TN(alwan_lab);

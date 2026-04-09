@@ -28,7 +28,7 @@ static int test_cie_2012_observers(void) {
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Test CIE 2012 2-deg observer */
-    alwan_xyz xyz_2012_2deg;
+    alwan_xyz_f64 xyz_2012_2deg;
     status = alwan_xyz_from_spd(&xyz_2012_2deg, ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_2012_2DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
@@ -39,7 +39,7 @@ static int test_cie_2012_observers(void) {
     TEST_ASSERT(xyz_2012_2deg.z > ALWAN_LITERAL(0.0), "2012 2-deg Z should be positive");
 
     /* Test CIE 2012 10-deg observer */
-    alwan_xyz xyz_2012_10deg;
+    alwan_xyz_f64 xyz_2012_10deg;
     status = alwan_xyz_from_spd(&xyz_2012_10deg, ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_2012_10DEG,
                                 ALWAN_INTEGRATE_SIMPSON,
@@ -149,7 +149,7 @@ static int test_bandpass_parameter(void) {
     TEST_ASSERT(status == ALWAN_OK, "D65 loading failed");
 
     /* Test with different bandpass values (currently no-op) */
-    alwan_xyz xyz_no_bp, xyz_with_bp;
+    alwan_xyz_f64 xyz_no_bp, xyz_with_bp;
 
     status = alwan_xyz_from_spd(&xyz_no_bp, ctx, &reflectance, &d65,
                                 ALWAN_OBSERVER_CIE_1931_2DEG,

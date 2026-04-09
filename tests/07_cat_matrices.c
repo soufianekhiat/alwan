@@ -14,7 +14,7 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
+static alwan_f64 mat3_max_diff(alwan_mat3x3_f64 const *a, alwan_mat3x3_f64 const *b) {
     alwan_f64 max_diff = 0;
     for (int i = 0; i < 9; i++) {
         alwan_f64 diff = ALWAN_ABS(a->m[i] - b->m[i]);
@@ -23,7 +23,7 @@ static alwan_f64 mat3_max_diff(alwan_mat3x3 const *a, alwan_mat3x3 const *b) {
     return max_diff;
 }
 
-static void mat3_print(char const *name, alwan_mat3x3 const *m) {
+static void mat3_print(char const *name, alwan_mat3x3_f64 const *m) {
     printf("%s:\n", name);
     for (int row = 0; row < 3; row++) {
         printf("  [%12.8f %12.8f %12.8f]\n",
@@ -50,14 +50,14 @@ static int test_cat_d65_to_d50_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
-    alwan_mat3x3 expected_matrix;
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_mat3x3_f64 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
     /* Compute CAT matrix */
-    alwan_mat3x3 computed_matrix;
-    int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_BRADFORD);
+    alwan_mat3x3_f64 computed_matrix;
+    int status = alwan_cat_matrix_f64(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
@@ -88,14 +88,14 @@ static int test_cat_d50_to_d65_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
-    alwan_mat3x3 expected_matrix;
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_mat3x3_f64 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
     /* Compute CAT matrix (reverse direction) */
-    alwan_mat3x3 computed_matrix;
-    int status = alwan_cat_matrix(&computed_matrix, &d50_xyz, &d65_xyz, ALWAN_CAT_BRADFORD);
+    alwan_mat3x3_f64 computed_matrix;
+    int status = alwan_cat_matrix_f64(&computed_matrix, &d50_xyz, &d65_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
@@ -121,14 +121,14 @@ static int test_cat_a_to_d65_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
-    alwan_mat3x3 expected_matrix;
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
+    alwan_mat3x3_f64 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
     /* Compute CAT matrix */
-    alwan_mat3x3 computed_matrix;
-    int status = alwan_cat_matrix(&computed_matrix, &a_xyz, &d65_xyz, ALWAN_CAT_BRADFORD);
+    alwan_mat3x3_f64 computed_matrix;
+    int status = alwan_cat_matrix_f64(&computed_matrix, &a_xyz, &d65_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
@@ -154,14 +154,14 @@ static int test_cat_d65_to_d60_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d60_xyz = {d60_xyz_data[0], d60_xyz_data[1], d60_xyz_data[2]};
-    alwan_mat3x3 expected_matrix;
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d60_xyz = {d60_xyz_data[0], d60_xyz_data[1], d60_xyz_data[2]};
+    alwan_mat3x3_f64 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
     /* Compute CAT matrix */
-    alwan_mat3x3 computed_matrix;
-    int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d60_xyz, ALWAN_CAT_BRADFORD);
+    alwan_mat3x3_f64 computed_matrix;
+    int status = alwan_cat_matrix_f64(&computed_matrix, &d65_xyz, &d60_xyz, ALWAN_CAT_BRADFORD);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
@@ -187,14 +187,14 @@ static int test_cat_d65_to_d50_cat02(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
-    alwan_mat3x3 expected_matrix;
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_mat3x3_f64 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
     /* Compute CAT matrix */
-    alwan_mat3x3 computed_matrix;
-    int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_CAT02);
+    alwan_mat3x3_f64 computed_matrix;
+    int status = alwan_cat_matrix_f64(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_CAT02);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
@@ -220,14 +220,14 @@ static int test_cat_d65_to_d50_cat16(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
-    alwan_mat3x3 expected_matrix;
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_mat3x3_f64 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
     /* Compute CAT matrix */
-    alwan_mat3x3 computed_matrix;
-    int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_CAT16);
+    alwan_mat3x3_f64 computed_matrix;
+    int status = alwan_cat_matrix_f64(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_CAT16);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
@@ -253,14 +253,14 @@ static int test_cat_d65_to_d50_xyz_scaling(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
-    alwan_mat3x3 expected_matrix;
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_mat3x3_f64 expected_matrix;
     memcpy(expected_matrix.m, expected_matrix_data, sizeof(expected_matrix_data));
 
     /* Compute CAT matrix */
-    alwan_mat3x3 computed_matrix;
-    int status = alwan_cat_matrix(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_XYZ_SCALING);
+    alwan_mat3x3_f64 computed_matrix;
+    int status = alwan_cat_matrix_f64(&computed_matrix, &d65_xyz, &d50_xyz, ALWAN_CAT_XYZ_SCALING);
     TEST_ASSERT(status == ALWAN_OK, "CAT matrix computation failed");
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;

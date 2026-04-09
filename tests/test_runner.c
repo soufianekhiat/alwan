@@ -66,7 +66,7 @@ extern int test_49_rayleigh_scattering_main(void);
 extern int test_50_barten1999_csf_main(void);
 extern int test_51_cct_cineon_main(void);
 extern int test_52_aces_fixed_functions_main(void);
-extern int test_section9_transfer_functions(void);
+extern int test_53_section9_transfer_functions_main(void);
 extern int test_54_aces20_main(void);
 extern int test_55_aces2_output_transform_main(void);
 extern int test_56_aces1_output_transform_main(void);
@@ -158,7 +158,7 @@ static test_suite const g_test_suites[] = {
     {"50_barten1999_csf", test_50_barten1999_csf_main},
     {"51_cct_cineon", test_51_cct_cineon_main},
     {"52_aces_fixed_functions", test_52_aces_fixed_functions_main},
-    {"53_section9_transfer_functions", test_section9_transfer_functions},
+    {"53_section9_transfer_functions", test_53_section9_transfer_functions_main},
     {"54_aces20", test_54_aces20_main},
     {"55_aces2_output_transform", test_55_aces2_output_transform_main},
     {"56_aces1_output_transform", test_56_aces1_output_transform_main},

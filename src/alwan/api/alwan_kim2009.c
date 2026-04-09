@@ -91,7 +91,7 @@ static alwan_f64 compute_degree_of_adaptation(
 
 int alwan_kim2009_forward(
     alwan_kim2009_correlates *out,
-    alwan_xyz const *xyz,
+    alwan_xyz_f64 const *xyz,
     alwan_kim2009_viewing_conditions const *vc
 ) {
     if (!xyz || !vc || !out) {
@@ -129,7 +129,7 @@ int alwan_kim2009_forward(
  * ---------------------------------------------------------------- */
 
 int alwan_kim2009_inverse(
-    alwan_xyz *out,
+    alwan_xyz_f64 *out,
     alwan_kim2009_correlates const *correlates,
     alwan_kim2009_viewing_conditions const *vc
 ) {

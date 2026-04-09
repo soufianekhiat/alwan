@@ -35,7 +35,7 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_rgb) / sizeof(test_rgb[0]) / 3;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 rgb, ictcp_computed;
+        alwan_vec3_f64 rgb, ictcp_computed;
 
         /* Load input RGB */
         rgb.v[0] = test_rgb[i * 3 + 0];
@@ -43,11 +43,11 @@ ALWAN_DIAG_POP
         rgb.v[2] = test_rgb[i * 3 + 2];
 
         /* Convert RGB -> ICtCp (PQ) */
-        alwan_rgb rgb_typed;
-        alwan_ictcp ictcp_typed;
-        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
-        alwan_rgb_to_ictcp(&ictcp_typed, &rgb_typed, 1);
-        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3));
+        alwan_rgb_f64 rgb_typed;
+        alwan_ictcp_f64 ictcp_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3_f64));
+        alwan_rgb_to_ictcp_f64(&ictcp_typed, &rgb_typed, 1);
+        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3_f64));
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -99,7 +99,7 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_rgb) / sizeof(test_rgb[0]) / 3;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 rgb_in, ictcp, rgb_out;
+        alwan_vec3_f64 rgb_in, ictcp, rgb_out;
 
         /* Load input RGB */
         rgb_in.v[0] = test_rgb[i * 3 + 0];
@@ -107,17 +107,17 @@ ALWAN_DIAG_POP
         rgb_in.v[2] = test_rgb[i * 3 + 2];
 
         /* Forward: RGB -> ICtCp */
-        alwan_rgb rgb_in_typed;
-        alwan_ictcp ictcp_typed;
-        ALWAN_MEMCPY(&rgb_in_typed, &rgb_in, sizeof(alwan_vec3));
-        alwan_rgb_to_ictcp(&ictcp_typed, &rgb_in_typed, 1);
-        ALWAN_MEMCPY(&ictcp, &ictcp_typed, sizeof(alwan_vec3));
+        alwan_rgb_f64 rgb_in_typed;
+        alwan_ictcp_f64 ictcp_typed;
+        ALWAN_MEMCPY(&rgb_in_typed, &rgb_in, sizeof(alwan_vec3_f64));
+        alwan_rgb_to_ictcp_f64(&ictcp_typed, &rgb_in_typed, 1);
+        ALWAN_MEMCPY(&ictcp, &ictcp_typed, sizeof(alwan_vec3_f64));
 
         /* Inverse: ICtCp -> RGB */
-        alwan_rgb rgb_out_typed;
-        ALWAN_MEMCPY(&ictcp_typed, &ictcp, sizeof(alwan_vec3));
-        alwan_ictcp_to_rgb(&rgb_out_typed, &ictcp_typed, 1);
-        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
+        alwan_rgb_f64 rgb_out_typed;
+        ALWAN_MEMCPY(&ictcp_typed, &ictcp, sizeof(alwan_vec3_f64));
+        alwan_ictcp_to_rgb_f64(&rgb_out_typed, &ictcp_typed, 1);
+        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3_f64));
 
         /* Check round-trip against colour-science reconstructed values */
         for (int j = 0; j < 3; j++) {
@@ -171,7 +171,7 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_rgb) / sizeof(test_rgb[0]) / 3;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 rgb, ictcp_computed;
+        alwan_vec3_f64 rgb, ictcp_computed;
 
         /* Load input RGB */
         rgb.v[0] = test_rgb[i * 3 + 0];
@@ -179,11 +179,11 @@ ALWAN_DIAG_POP
         rgb.v[2] = test_rgb[i * 3 + 2];
 
         /* Convert RGB -> ICtCp (HLG) */
-        alwan_rgb rgb_typed;
-        alwan_ictcp ictcp_typed;
-        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3));
-        alwan_rgb_to_ictcp(&ictcp_typed, &rgb_typed, 0);
-        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3));
+        alwan_rgb_f64 rgb_typed;
+        alwan_ictcp_f64 ictcp_typed;
+        ALWAN_MEMCPY(&rgb_typed, &rgb, sizeof(alwan_vec3_f64));
+        alwan_rgb_to_ictcp_f64(&ictcp_typed, &rgb_typed, 0);
+        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3_f64));
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -235,7 +235,7 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_rgb) / sizeof(test_rgb[0]) / 3;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 rgb_in, ictcp, rgb_out;
+        alwan_vec3_f64 rgb_in, ictcp, rgb_out;
 
         /* Load input RGB */
         rgb_in.v[0] = test_rgb[i * 3 + 0];
@@ -243,17 +243,17 @@ ALWAN_DIAG_POP
         rgb_in.v[2] = test_rgb[i * 3 + 2];
 
         /* Forward: RGB -> ICtCp */
-        alwan_rgb rgb_in_typed;
-        alwan_ictcp ictcp_typed;
-        ALWAN_MEMCPY(&rgb_in_typed, &rgb_in, sizeof(alwan_vec3));
-        alwan_rgb_to_ictcp(&ictcp_typed, &rgb_in_typed, 0);
-        ALWAN_MEMCPY(&ictcp, &ictcp_typed, sizeof(alwan_vec3));
+        alwan_rgb_f64 rgb_in_typed;
+        alwan_ictcp_f64 ictcp_typed;
+        ALWAN_MEMCPY(&rgb_in_typed, &rgb_in, sizeof(alwan_vec3_f64));
+        alwan_rgb_to_ictcp_f64(&ictcp_typed, &rgb_in_typed, 0);
+        ALWAN_MEMCPY(&ictcp, &ictcp_typed, sizeof(alwan_vec3_f64));
 
         /* Inverse: ICtCp -> RGB */
-        alwan_rgb rgb_out_typed;
-        ALWAN_MEMCPY(&ictcp_typed, &ictcp, sizeof(alwan_vec3));
-        alwan_ictcp_to_rgb(&rgb_out_typed, &ictcp_typed, 0);
-        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3));
+        alwan_rgb_f64 rgb_out_typed;
+        ALWAN_MEMCPY(&ictcp_typed, &ictcp, sizeof(alwan_vec3_f64));
+        alwan_ictcp_to_rgb_f64(&rgb_out_typed, &ictcp_typed, 0);
+        ALWAN_MEMCPY(&rgb_out, &rgb_out_typed, sizeof(alwan_vec3_f64));
 
         /* Check round-trip against colour-science reconstructed values */
         for (int j = 0; j < 3; j++) {
@@ -303,7 +303,7 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz, ictcp_computed;
+        alwan_vec3_f64 xyz, ictcp_computed;
 
         /* Load input XYZ */
         xyz.v[0] = test_xyz[i * 3 + 0];
@@ -311,11 +311,11 @@ ALWAN_DIAG_POP
         xyz.v[2] = test_xyz[i * 3 + 2];
 
         /* Convert XYZ -> ICtCp (PQ) */
-        alwan_xyz xyz_typed;
-        alwan_ictcp ictcp_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
-        alwan_xyz_to_ictcp(&ictcp_typed, &xyz_typed, 1);
-        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3));
+        alwan_xyz_f64 xyz_typed;
+        alwan_ictcp_f64 ictcp_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_ictcp_f64(&ictcp_typed, &xyz_typed, 1);
+        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3_f64));
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {
@@ -352,7 +352,7 @@ ALWAN_DIAG_POP
     size_t const num_colors = sizeof(test_xyz) / sizeof(test_xyz[0]) / 3;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_vec3 xyz, ictcp_computed;
+        alwan_vec3_f64 xyz, ictcp_computed;
 
         /* Load input XYZ */
         xyz.v[0] = test_xyz[i * 3 + 0];
@@ -360,11 +360,11 @@ ALWAN_DIAG_POP
         xyz.v[2] = test_xyz[i * 3 + 2];
 
         /* Convert XYZ -> ICtCp (HLG) */
-        alwan_xyz xyz_typed;
-        alwan_ictcp ictcp_typed;
-        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3));
-        alwan_xyz_to_ictcp(&ictcp_typed, &xyz_typed, 0);
-        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3));
+        alwan_xyz_f64 xyz_typed;
+        alwan_ictcp_f64 ictcp_typed;
+        ALWAN_MEMCPY(&xyz_typed, &xyz, sizeof(alwan_vec3_f64));
+        alwan_xyz_to_ictcp_f64(&ictcp_typed, &xyz_typed, 0);
+        ALWAN_MEMCPY(&ictcp_computed, &ictcp_typed, sizeof(alwan_vec3_f64));
 
         /* Check against expected values */
         for (int j = 0; j < 3; j++) {

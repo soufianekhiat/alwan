@@ -139,7 +139,7 @@ _Static_assert(
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-static alwan_rgb const g_test_rgb[] = {
+static alwan_rgb_f64 const g_test_rgb[] = {
     {ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)},
     {ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0)},
     {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0)},
@@ -188,12 +188,12 @@ static int test_rgb_to_xyz_embedded_vs_derived(void) {
         derived.has_matrices = 0;
 
         for (size_t c = 0; c < NUM_TEST_COLORS; c++) {
-            alwan_xyz xyz_embed, xyz_derive;
+            alwan_xyz_f64 xyz_embed, xyz_derive;
 
-            status = alwan_rgb_to_xyz(&xyz_embed, &embedded, &g_test_rgb[c]);
+            status = alwan_rgb_to_xyz_f64(&xyz_embed, &embedded, &g_test_rgb[c]);
             TEST_ASSERT(status == ALWAN_OK, "alwan_rgb_to_xyz (embedded) failed");
 
-            status = alwan_rgb_to_xyz(&xyz_derive, &derived, &g_test_rgb[c]);
+            status = alwan_rgb_to_xyz_f64(&xyz_derive, &derived, &g_test_rgb[c]);
             TEST_ASSERT(status == ALWAN_OK, "alwan_rgb_to_xyz (derived) failed");
 
             alwan_f64 dx = ALWAN_ABS(xyz_embed.x - xyz_derive.x);
@@ -251,16 +251,16 @@ static int test_xyz_to_rgb_embedded_vs_derived(void) {
 
         for (size_t c = 0; c < NUM_TEST_COLORS; c++) {
             /* Get an XYZ value by converting a known RGB through embedded */
-            alwan_xyz xyz;
-            status = alwan_rgb_to_xyz(&xyz, &embedded, &g_test_rgb[c]);
+            alwan_xyz_f64 xyz;
+            status = alwan_rgb_to_xyz_f64(&xyz, &embedded, &g_test_rgb[c]);
             if (status != ALWAN_OK) continue;
 
-            alwan_rgb rgb_embed, rgb_derive;
+            alwan_rgb_f64 rgb_embed, rgb_derive;
 
-            status = alwan_xyz_to_rgb(&rgb_embed, &embedded, &xyz);
+            status = alwan_xyz_to_rgb_f64(&rgb_embed, &embedded, &xyz);
             TEST_ASSERT(status == ALWAN_OK, "alwan_xyz_to_rgb (embedded) failed");
 
-            status = alwan_xyz_to_rgb(&rgb_derive, &derived, &xyz);
+            status = alwan_xyz_to_rgb_f64(&rgb_derive, &derived, &xyz);
             TEST_ASSERT(status == ALWAN_OK, "alwan_xyz_to_rgb (derived) failed");
 
             alwan_f64 dr = ALWAN_ABS(rgb_embed.r - rgb_derive.r);
@@ -309,13 +309,13 @@ static int test_rgb_xyz_roundtrip(void) {
         if (status != ALWAN_OK) continue;
 
         for (size_t c = 0; c < NUM_TEST_COLORS; c++) {
-            alwan_xyz xyz;
-            alwan_rgb rgb_back;
+            alwan_xyz_f64 xyz;
+            alwan_rgb_f64 rgb_back;
 
-            status = alwan_rgb_to_xyz(&xyz, &desc, &g_test_rgb[c]);
+            status = alwan_rgb_to_xyz_f64(&xyz, &desc, &g_test_rgb[c]);
             TEST_ASSERT(status == ALWAN_OK, "alwan_rgb_to_xyz failed");
 
-            status = alwan_xyz_to_rgb(&rgb_back, &desc, &xyz);
+            status = alwan_xyz_to_rgb_f64(&rgb_back, &desc, &xyz);
             TEST_ASSERT(status == ALWAN_OK, "alwan_xyz_to_rgb failed");
 
             alwan_f64 dr = ALWAN_ABS(rgb_back.r - g_test_rgb[c].r);

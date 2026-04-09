@@ -894,7 +894,7 @@ static alwan_f64 integrate_simpson(alwan_f64 const *values, size_t count, alwan_
     return result;
 }
 
-int alwan_xyz_from_spd(alwan_xyz *xyz_out,
+int alwan_xyz_from_spd(alwan_xyz_f64 *xyz_out,
                        alwan_ctx *ctx,
                        alwan_spd const *spd,
                        alwan_spd const *illuminant,
@@ -1096,7 +1096,7 @@ int alwan_spd_camera_sensitivity(alwan_spd *spd_r,
     return ALWAN_OK;
 }
 
-int alwan_xyz_from_spd_camera(alwan_xyz *xyz_out,
+int alwan_xyz_from_spd_camera(alwan_xyz_f64 *xyz_out,
                                alwan_ctx *ctx,
                                alwan_spd const *spd,
                                alwan_spd const *illuminant,

@@ -48,13 +48,13 @@ static int test_cam16_forward(void) {
 
     /* Test forward transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz;
+        alwan_xyz_f64 xyz;
         xyz.x = test_xyz[i * 3 + 0];
         xyz.y = test_xyz[i * 3 + 1];
         xyz.z = test_xyz[i * 3 + 2];
 
         alwan_cam16_correlates corr;
-        int status = alwan_cam16_forward(&corr, &xyz, &vc);
+        int status = alwan_cam16_forward_f64(&corr, &xyz, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
@@ -159,8 +159,8 @@ static int test_cam16_inverse(void) {
         corr.C = correlates_data[i * 7 + 1];
         corr.h = correlates_data[i * 7 + 2];
 
-        alwan_xyz xyz_out;
-        int status = alwan_cam16_inverse(&xyz_out, &corr, &vc);
+        alwan_xyz_f64 xyz_out;
+        int status = alwan_cam16_inverse_f64(&xyz_out, &corr, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against expected values */
@@ -217,19 +217,19 @@ static int test_cam16_roundtrip(void) {
 
     /* Test round-trip for each color */
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz_in;
+        alwan_xyz_f64 xyz_in;
         xyz_in.x = test_xyz[i * 3 + 0];
         xyz_in.y = test_xyz[i * 3 + 1];
         xyz_in.z = test_xyz[i * 3 + 2];
 
         /* Forward: XYZ -> correlates */
         alwan_cam16_correlates corr;
-        int status = alwan_cam16_forward(&corr, &xyz_in, &vc);
+        int status = alwan_cam16_forward_f64(&corr, &xyz_in, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Inverse: correlates -> XYZ */
-        alwan_xyz xyz_out;
-        status = alwan_cam16_inverse(&xyz_out, &corr, &vc);
+        alwan_xyz_f64 xyz_out;
+        status = alwan_cam16_inverse_f64(&xyz_out, &corr, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
@@ -285,8 +285,8 @@ static int test_cam16_ucs_forward(void) {
         corr.s = correlates_data[i * 7 + 5];
         corr.H = correlates_data[i * 7 + 6];
 
-        alwan_cam_jab jab_out;
-        int status = alwan_cam16_to_ucs(&jab_out, &corr);
+        alwan_cam_jab_f64 jab_out;
+        int status = alwan_cam16_to_ucs_f64(&jab_out, &corr);
         TEST_ASSERT(status == ALWAN_OK, "CAM16-UCS forward transform failed");
 
         /* Check Jab against expected values */
@@ -324,13 +324,13 @@ static int test_cam16_ucs_roundtrip(void) {
         corr_in.h = correlates_data[i * 7 + 2];
 
         /* Forward: JMh -> Jab */
-        alwan_cam_jab jab;
-        int status = alwan_cam16_to_ucs(&jab, &corr_in);
+        alwan_cam_jab_f64 jab;
+        int status = alwan_cam16_to_ucs_f64(&jab, &corr_in);
         TEST_ASSERT(status == ALWAN_OK, "UCS forward transform failed");
 
         /* Inverse: Jab -> JMh */
         alwan_cam16_correlates corr_out;
-        status = alwan_cam16_from_ucs(&corr_out, &jab);
+        status = alwan_cam16_from_ucs_f64(&corr_out, &jab);
         TEST_ASSERT(status == ALWAN_OK, "UCS inverse transform failed");
 
         /* Check round-trip error */

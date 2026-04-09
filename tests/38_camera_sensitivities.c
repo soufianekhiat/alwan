@@ -82,7 +82,7 @@ static int test_xyz_from_spd_camera(void) {
     TEST_ASSERT(status == ALWAN_OK, "Failed to load D65 illuminant");
 
     /* Compute camera RGB for D65 */
-    alwan_xyz rgb_nikon, rgb_sigma;
+    alwan_xyz_f64 rgb_nikon, rgb_sigma;
 
     status = alwan_xyz_from_spd_camera(&rgb_nikon, ctx, &d65, NULL, ALWAN_CAMERA_NIKON_5100,
                                         ALWAN_INTEGRATE_TRAPEZOID);

@@ -21,7 +21,7 @@ ALWAN_DIAG_POP
 static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 12;
 
 /* Helper to extract test case from flat array */
-static void get_test_case(size_t index, alwan_xyz *xyz_in, alwan_xyz *xyz_w,
+static void get_test_case(size_t index, alwan_xyz_f64 *xyz_in, alwan_xyz_f64 *xyz_w,
                           alwan_f64 *La, alwan_f64 *Yb, int *surround_idx,
                           alwan_f64 *J_expected, alwan_f64 *C_expected, alwan_f64 *h_expected) {
     size_t offset = index * 12;
@@ -43,7 +43,7 @@ static void get_test_case(size_t index, alwan_xyz *xyz_in, alwan_xyz *xyz_w,
 static int test_hellwig2022_forward(void) {
     /* Test forward transform for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_xyz xyz_in, xyz_w;
+        alwan_xyz_f64 xyz_in, xyz_w;
         alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
@@ -58,7 +58,7 @@ static int test_hellwig2022_forward(void) {
 
         /* Forward transform */
         alwan_hellwig2022_correlates corr;
-        int status = alwan_hellwig2022_forward(&corr, &xyz_in, &vc);
+        int status = alwan_hellwig2022_forward_f64(&corr, &xyz_in, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
@@ -100,7 +100,7 @@ static int test_hellwig2022_forward(void) {
 static int test_hellwig2022_inverse(void) {
     /* Test inverse transform for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_xyz xyz_in, xyz_w;
+        alwan_xyz_f64 xyz_in, xyz_w;
         alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
@@ -120,8 +120,8 @@ static int test_hellwig2022_inverse(void) {
         corr.h = h_expected;
 
         /* Inverse transform */
-        alwan_xyz xyz_out;
-        int status = alwan_hellwig2022_inverse(&xyz_out, &corr, &vc);
+        alwan_xyz_f64 xyz_out;
+        int status = alwan_hellwig2022_inverse_f64(&xyz_out, &corr, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against input values */
@@ -151,7 +151,7 @@ static int test_hellwig2022_inverse(void) {
 static int test_hellwig2022_roundtrip(void) {
     /* Test round-trip for each test case */
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_xyz xyz_in, xyz_w;
+        alwan_xyz_f64 xyz_in, xyz_w;
         alwan_f64 La, Yb, J_expected, C_expected, h_expected;
         int surround_idx;
         get_test_case(i, &xyz_in, &xyz_w, &La, &Yb, &surround_idx, &J_expected, &C_expected, &h_expected);
@@ -166,12 +166,12 @@ static int test_hellwig2022_roundtrip(void) {
 
         /* Forward: XYZ -> correlates */
         alwan_hellwig2022_correlates corr;
-        int status = alwan_hellwig2022_forward(&corr, &xyz_in, &vc);
+        int status = alwan_hellwig2022_forward_f64(&corr, &xyz_in, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Inverse: correlates -> XYZ */
-        alwan_xyz xyz_out;
-        status = alwan_hellwig2022_inverse(&xyz_out, &corr, &vc);
+        alwan_xyz_f64 xyz_out;
+        status = alwan_hellwig2022_inverse_f64(&xyz_out, &corr, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
@@ -208,7 +208,7 @@ static int test_hellwig2022_surround_conditions(void) {
     vc.discount_illuminant = 0;
 
     /* Test color: mid-gray */
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     xyz.x = ALWAN_LITERAL(50.0);
     xyz.y = ALWAN_LITERAL(50.0);
     xyz.z = ALWAN_LITERAL(50.0);
@@ -217,17 +217,17 @@ static int test_hellwig2022_surround_conditions(void) {
 
     /* Average surround */
     vc.surround = ALWAN_HELLWIG2022_SURROUND_AVERAGE;
-    int status = alwan_hellwig2022_forward(&corr_avg, &xyz, &vc);
+    int status = alwan_hellwig2022_forward_f64(&corr_avg, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Average surround failed");
 
     /* Dim surround */
     vc.surround = ALWAN_HELLWIG2022_SURROUND_DIM;
-    status = alwan_hellwig2022_forward(&corr_dim, &xyz, &vc);
+    status = alwan_hellwig2022_forward_f64(&corr_dim, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Dim surround failed");
 
     /* Dark surround */
     vc.surround = ALWAN_HELLWIG2022_SURROUND_DARK;
-    status = alwan_hellwig2022_forward(&corr_dark, &xyz, &vc);
+    status = alwan_hellwig2022_forward_f64(&corr_dark, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Dark surround failed");
 
     /* Different surrounds should give different results */

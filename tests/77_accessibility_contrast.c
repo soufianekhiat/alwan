@@ -77,8 +77,8 @@ static int test_wcag_contrast_ratio(void) {
 static int test_apca_contrast(void) {
     /* Black text on white background: high positive contrast */
     {
-        alwan_rgb text = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-        alwan_rgb bg   = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+        alwan_rgb_f64 text = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_rgb_f64 bg   = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
         alwan_f64 Lc = alwan_apca_contrast_f64_v(text, bg);
 
         /* Black on white should give a large positive Lc (around 106) */
@@ -88,8 +88,8 @@ static int test_apca_contrast(void) {
 
     /* White text on black background: large negative contrast */
     {
-        alwan_rgb text = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
-        alwan_rgb bg   = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_rgb_f64 text = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+        alwan_rgb_f64 bg   = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
         alwan_f64 Lc = alwan_apca_contrast_f64_v(text, bg);
 
         /* White on black should give a large negative Lc */
@@ -99,7 +99,7 @@ static int test_apca_contrast(void) {
 
     /* Same color: zero or near-zero contrast */
     {
-        alwan_rgb mid = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
+        alwan_rgb_f64 mid = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
         alwan_f64 Lc = alwan_apca_contrast_f64_v(mid, mid);
 
         TEST_ASSERT(ALWAN_ABS(Lc) < ALWAN_LITERAL(1.0),
@@ -108,8 +108,8 @@ static int test_apca_contrast(void) {
 
     /* Polarity: dark-on-light should be positive, light-on-dark negative */
     {
-        alwan_rgb dark  = {ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.2)};
-        alwan_rgb light = {ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.9)};
+        alwan_rgb_f64 dark  = {ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.2)};
+        alwan_rgb_f64 light = {ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.9)};
 
         alwan_f64 Lc_dark_on_light = alwan_apca_contrast_f64_v(dark, light);
         alwan_f64 Lc_light_on_dark = alwan_apca_contrast_f64_v(light, dark);
@@ -122,10 +122,10 @@ static int test_apca_contrast(void) {
 
     /* Monotonicity: increasing contrast with increasing luminance difference */
     {
-        alwan_rgb white = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
-        alwan_rgb gray1 = {ALWAN_LITERAL(0.7), ALWAN_LITERAL(0.7), ALWAN_LITERAL(0.7)};
-        alwan_rgb gray2 = {ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.3)};
-        alwan_rgb black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_rgb_f64 white = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+        alwan_rgb_f64 gray1 = {ALWAN_LITERAL(0.7), ALWAN_LITERAL(0.7), ALWAN_LITERAL(0.7)};
+        alwan_rgb_f64 gray2 = {ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.3), ALWAN_LITERAL(0.3)};
+        alwan_rgb_f64 black = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
 
         alwan_f64 Lc1 = alwan_apca_contrast_f64_v(gray1, white);
         alwan_f64 Lc2 = alwan_apca_contrast_f64_v(gray2, white);
@@ -137,23 +137,23 @@ static int test_apca_contrast(void) {
 
     /* API wrapper */
     {
-        alwan_rgb text = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-        alwan_rgb bg   = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
+        alwan_rgb_f64 text = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_rgb_f64 bg   = {ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)};
         alwan_f64 Lc;
-        int status = alwan_apca_contrast(&Lc, &text, &bg);
+        int status = alwan_apca_contrast_f64(&Lc, &text, &bg);
         TEST_ASSERT(status == ALWAN_OK, "apca api status");
         TEST_ASSERT(Lc > ALWAN_LITERAL(90.0), "apca api value");
     }
 
     /* NULL checks */
     {
-        alwan_rgb c = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
+        alwan_rgb_f64 c = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.5)};
         alwan_f64 Lc;
-        TEST_ASSERT(alwan_apca_contrast(NULL, &c, &c) == ALWAN_E_INVALID,
+        TEST_ASSERT(alwan_apca_contrast_f64(NULL, &c, &c) == ALWAN_E_INVALID,
                     "apca: null out");
-        TEST_ASSERT(alwan_apca_contrast(&Lc, NULL, &c) == ALWAN_E_INVALID,
+        TEST_ASSERT(alwan_apca_contrast_f64(&Lc, NULL, &c) == ALWAN_E_INVALID,
                     "apca: null text");
-        TEST_ASSERT(alwan_apca_contrast(&Lc, &c, NULL) == ALWAN_E_INVALID,
+        TEST_ASSERT(alwan_apca_contrast_f64(&Lc, &c, NULL) == ALWAN_E_INVALID,
                     "apca: null bg");
     }
 

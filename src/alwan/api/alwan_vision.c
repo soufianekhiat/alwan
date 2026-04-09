@@ -24,15 +24,15 @@ ALWAN_DIAG_POP
  * Color Vision Deficiency (CVD) Simulation
  * ================================================================ */
 
-int alwan_simulate_cvd(alwan_rgb *rgb_out,
-                        alwan_rgb const *rgb_in,
+int alwan_simulate_cvd(alwan_rgb_f64 *rgb_out,
+                        alwan_rgb_f64 const *rgb_in,
                         alwan_cvd_type cvd_type,
                         alwan_f64 severity) {
     if (!rgb_in || !rgb_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_rgb result;
+    alwan_rgb_f64 result;
 
     switch (cvd_type) {
         case ALWAN_CVD_PROTANOPIA:
@@ -62,13 +62,13 @@ int alwan_simulate_cvd(alwan_rgb *rgb_out,
  * Machado 2009 CVD Simulation
  * ================================================================ */
 
-int alwan_simulate_cvd_machado(alwan_rgb *rgb_out,
-                                alwan_rgb const *rgb_in,
+int alwan_simulate_cvd_machado(alwan_rgb_f64 *rgb_out,
+                                alwan_rgb_f64 const *rgb_in,
                                 alwan_cvd_type cvd_type,
                                 alwan_f64 severity) {
     if (!rgb_in || !rgb_out) return ALWAN_E_INVALID;
 
-    alwan_rgb result;
+    alwan_rgb_f64 result;
 
     switch (cvd_type) {
         case ALWAN_CVD_PROTANOPIA:
@@ -91,8 +91,8 @@ int alwan_simulate_cvd_machado(alwan_rgb *rgb_out,
     return ALWAN_OK;
 }
 
-int alwan_simulate_cvd_ex(alwan_rgb *rgb_out,
-                           alwan_rgb const *rgb_in,
+int alwan_simulate_cvd_ex(alwan_rgb_f64 *rgb_out,
+                           alwan_rgb_f64 const *rgb_in,
                            alwan_cvd_type cvd_type,
                            alwan_f64 severity,
                            alwan_cvd_model model) {

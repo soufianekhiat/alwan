@@ -31,7 +31,7 @@ ALWAN_DIAG_POP
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz;
+        alwan_xyz_f64 xyz;
         alwan_hunt_correlates expected, computed;
 
         /* Load test data: XYZ (3) + J, C, h, s, Q, M (6) */
@@ -47,7 +47,7 @@ ALWAN_DIAG_POP
         expected.M = test_data[i * 9 + 8];
 
         /* Test Hunt forward */
-        int result = alwan_hunt_forward(&computed, &xyz, &vc);
+        int result = alwan_hunt_forward_f64(&computed, &xyz, &vc);
         TEST_ASSERT(result == 0, "Hunt forward failed");
 
         /* Check key correlates: J, C, h */

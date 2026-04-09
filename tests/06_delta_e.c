@@ -33,11 +33,11 @@ static int test_delta_e_76(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
-        alwan_lab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
+        alwan_lab_f64 lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_lab_f64 lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_f64 expected = de76_data[i];
 
-        alwan_f64 result = alwan_delta_e_76(&lab1, &lab2);
+        alwan_f64 result = alwan_delta_e_76_f64(&lab1, &lab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "dE*76 mismatch");
@@ -65,11 +65,11 @@ static int test_delta_e_94(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
-        alwan_lab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
+        alwan_lab_f64 lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_lab_f64 lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_f64 expected = de94_data[i];
 
-        alwan_f64 result = alwan_delta_e_94(&lab1, &lab2);
+        alwan_f64 result = alwan_delta_e_94_f64(&lab1, &lab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "dE*94 mismatch");
@@ -97,12 +97,13 @@ static int test_delta_e_cmc(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
-        alwan_lab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
+        alwan_lab_f64 lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_lab_f64 lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_f64 expected = de_cmc_data[i];
 
         /* Use default l=2, c=1 (acceptability) */
-        alwan_f64 result = alwan_delta_e_cmc(&lab1, &lab2, ALWAN_LITERAL(2.0), ALWAN_LITERAL(1.0));
+        alwan_delta_e_cmc_params cmc_p; alwan_delta_e_cmc_params_default(&cmc_p);
+        alwan_f64 result = alwan_delta_e_cmc_f64(&lab1, &lab2, &cmc_p);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "dE CMC(2:1) mismatch");
@@ -130,11 +131,11 @@ static int test_delta_e_2000(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_lab lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
-        alwan_lab lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
+        alwan_lab_f64 lab1 = {lab1_data[i * 3 + 0], lab1_data[i * 3 + 1], lab1_data[i * 3 + 2]};
+        alwan_lab_f64 lab2 = {lab2_data[i * 3 + 0], lab2_data[i * 3 + 1], lab2_data[i * 3 + 2]};
         alwan_f64 expected = de2000_data[i];
 
-        alwan_f64 result = alwan_delta_e_2000(&lab1, &lab2);
+        alwan_f64 result = alwan_delta_e_2000_f64(&lab1, &lab2);
         alwan_f64 diff = ALWAN_ABS(result - expected);
 
         TEST_ASSERT(diff < tolerance, "dE*00 mismatch");
@@ -148,34 +149,34 @@ static int test_delta_e_ok(void) {
 
     /* Identical colors should give 0 */
     {
-        alwan_oklab a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.05)};
-        alwan_f64 result = alwan_delta_e_ok(&a, &a);
+        alwan_oklab_f64 a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.05)};
+        alwan_f64 result = alwan_delta_e_ok_f64(&a, &a);
         TEST_ASSERT_NEAR(result, ALWAN_LITERAL(0.0), ALWAN_TEST_TOLERANCE, "deltaEOK identical");
     }
 
     /* Known pair: dL=0.1, da=0.2, db=0.3 -> sqrt(0.01+0.04+0.09) = sqrt(0.14) */
     {
-        alwan_oklab a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
-        alwan_oklab b = {ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.3)};
+        alwan_oklab_f64 a = {ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+        alwan_oklab_f64 b = {ALWAN_LITERAL(0.6), ALWAN_LITERAL(0.2), ALWAN_LITERAL(0.3)};
         alwan_f64 expected = ALWAN_SQRT(ALWAN_LITERAL(0.14));
-        alwan_f64 result = alwan_delta_e_ok(&a, &b);
+        alwan_f64 result = alwan_delta_e_ok_f64(&a, &b);
         TEST_ASSERT_NEAR(result, expected, ALWAN_TEST_TOLERANCE, "deltaEOK known pair");
     }
 
     /* Symmetry: dE(a,b) == dE(b,a) */
     {
-        alwan_oklab a = {ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.05), ALWAN_LITERAL(-0.1)};
-        alwan_oklab b = {ALWAN_LITERAL(0.3), ALWAN_LITERAL(-0.02), ALWAN_LITERAL(0.15)};
-        alwan_f64 d1 = alwan_delta_e_ok(&a, &b);
-        alwan_f64 d2 = alwan_delta_e_ok(&b, &a);
+        alwan_oklab_f64 a = {ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.05), ALWAN_LITERAL(-0.1)};
+        alwan_oklab_f64 b = {ALWAN_LITERAL(0.3), ALWAN_LITERAL(-0.02), ALWAN_LITERAL(0.15)};
+        alwan_f64 d1 = alwan_delta_e_ok_f64(&a, &b);
+        alwan_f64 d2 = alwan_delta_e_ok_f64(&b, &a);
         TEST_ASSERT_NEAR(d1, d2, ALWAN_TEST_TOLERANCE, "deltaEOK symmetry");
     }
 
     /* Non-negativity */
     {
-        alwan_oklab a = {ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.3), ALWAN_LITERAL(0.2)};
-        alwan_oklab b = {ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.1)};
-        alwan_f64 result = alwan_delta_e_ok(&a, &b);
+        alwan_oklab_f64 a = {ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.3), ALWAN_LITERAL(0.2)};
+        alwan_oklab_f64 b = {ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.1), ALWAN_LITERAL(-0.1)};
+        alwan_f64 result = alwan_delta_e_ok_f64(&a, &b);
         TEST_ASSERT(result >= ALWAN_LITERAL(0.0), "deltaEOK non-negative");
     }
 

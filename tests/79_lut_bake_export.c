@@ -286,7 +286,7 @@ static int test_lut3d_sample(void) {
     alwan_bake_3dlut(lut, size, ctx, &srgb, &srgb);
 
     /* Sample at grid points — should be exact */
-    alwan_rgb in, out;
+    alwan_rgb_f64 in, out;
     in.r = 0.5; in.g = 0.25; in.b = 0.75;
     alwan_lut3d_sample(&out, lut, &in, size);
     TEST_CHECK_NEAR(out.r, 0.5, TEST_REL_EPSILON);
@@ -537,7 +537,7 @@ static int test_lut_null_checks(void) {
     if (alwan_lut2d_to_3d(NULL, buf, 2) != ALWAN_E_INVALID) return 1;
 
     /* Sample NULL */
-    alwan_rgb rgb = {0.5, 0.5, 0.5};
+    alwan_rgb_f64 rgb = {0.5, 0.5, 0.5};
     if (alwan_lut3d_sample(NULL, buf, &rgb, 2) != ALWAN_E_INVALID) return 1;
 
     /* 1D sample NULL */
@@ -547,7 +547,7 @@ static int test_lut_null_checks(void) {
     if (alwan_lut1d_sample(&val, buf, 0.5, 1) != ALWAN_E_INVALID) return 1;
 
     /* 2D sample NULL */
-    alwan_rgb out2d;
+    alwan_rgb_f64 out2d;
     if (alwan_lut2d_sample(NULL, buf, &rgb, 2) != ALWAN_E_INVALID) return 1;
     if (alwan_lut2d_sample(&out2d, NULL, &rgb, 2) != ALWAN_E_INVALID) return 1;
     if (alwan_lut2d_sample(&out2d, buf, NULL, 2) != ALWAN_E_INVALID) return 1;
@@ -611,16 +611,16 @@ static int test_bake_cross_space(void) {
 /* Helper: full pipeline conversion for a single RGB value
  * (encoded src -> linear via EOTF -> matrix convert -> encoded dst via OETF)
  * This matches the pipeline in alwan_bake_3dlut. */
-static int full_pipeline_convert(alwan_rgb *dst, alwan_ctx *ctx,
+static int full_pipeline_convert(alwan_rgb_f64 *dst, alwan_ctx *ctx,
                                   alwan_rgb_space_desc const *src_space,
                                   alwan_rgb_space_desc const *dst_space,
-                                  alwan_rgb const *src) {
+                                  alwan_rgb_f64 const *src) {
     /* EOTF: encoded src -> linear src */
-    alwan_rgb linear_src;
+    alwan_rgb_f64 linear_src;
     alwan_eotf_apply(&linear_src.r, src_space->eotf, &src->r, 3, sizeof(alwan_f64), sizeof(alwan_f64));
 
     /* Matrix: linear src -> linear dst */
-    alwan_rgb linear_dst;
+    alwan_rgb_f64 linear_dst;
     alwan_rgb_convert(&linear_dst, ctx, src_space, dst_space, &linear_src);
 
     /* OETF: linear dst -> encoded dst */
@@ -685,7 +685,7 @@ static int test_cube_import_and_sample(void) {
     }
 
     /* Test grid-point sampling: LUT should match full pipeline at grid points */
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {0.0, 0.0, 0.0},       /* black */
         {1.0, 1.0, 1.0},       /* white */
         {0.5, 0.5, 0.5},       /* mid gray (grid point: 0.5 = 8/16) */
@@ -694,7 +694,7 @@ static int test_cube_import_and_sample(void) {
     int num_colors = (int)(sizeof(test_colors) / sizeof(test_colors[0]));
 
     for (int c = 0; c < num_colors; c++) {
-        alwan_rgb lut_out, pipeline_out;
+        alwan_rgb_f64 lut_out, pipeline_out;
         alwan_lut3d_sample(&lut_out, lut_imported, &test_colors[c], size);
         full_pipeline_convert(&pipeline_out, ctx, &srgb, &p3, &test_colors[c]);
 
@@ -845,7 +845,7 @@ static int test_2d_sample_matches_3d(void) {
     alwan_lut3d_to_2d(lut2d, lut3d, size);
 
     /* Sample both at many arbitrary RGB values and compare */
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {0.0, 0.0, 0.0},
         {1.0, 1.0, 1.0},
         {0.5, 0.5, 0.5},
@@ -860,7 +860,7 @@ static int test_2d_sample_matches_3d(void) {
     int const num_colors = (int)(sizeof(test_colors) / sizeof(test_colors[0]));
 
     for (int i = 0; i < num_colors; i++) {
-        alwan_rgb out3d, out2d;
+        alwan_rgb_f64 out3d, out2d;
         alwan_lut3d_sample(&out3d, lut3d, &test_colors[i], size);
         alwan_lut2d_sample(&out2d, lut2d, &test_colors[i], size);
 
@@ -899,8 +899,8 @@ static int test_2d_bake_and_sample(void) {
     alwan_bake_2dlut(lut2d, size, ctx, &srgb, &p3);
 
     /* Sample both at mid-gray and verify same result */
-    alwan_rgb gray = {0.5, 0.5, 0.5};
-    alwan_rgb out3d, out2d;
+    alwan_rgb_f64 gray = {0.5, 0.5, 0.5};
+    alwan_rgb_f64 out3d, out2d;
     alwan_lut3d_sample(&out3d, lut3d, &gray, size);
     alwan_lut2d_sample(&out2d, lut2d, &gray, size);
 
@@ -909,7 +909,7 @@ static int test_2d_bake_and_sample(void) {
     TEST_CHECK_NEAR(out2d.b, out3d.b, TEST_REL_EPSILON);
 
     /* Sample at off-grid point */
-    alwan_rgb color = {0.37, 0.82, 0.15};
+    alwan_rgb_f64 color = {0.37, 0.82, 0.15};
     alwan_lut3d_sample(&out3d, lut3d, &color, size);
     alwan_lut2d_sample(&out2d, lut2d, &color, size);
 
@@ -940,7 +940,7 @@ static int test_lut_precision_vs_direct(void) {
     alwan_rgb_get_space_descriptor(&p3, ctx, ALWAN_RGB_SPACE_DISPLAY_P3);
 
     /* Test colors — deliberately off-grid to exercise interpolation */
-    alwan_rgb test_colors[] = {
+    alwan_rgb_f64 test_colors[] = {
         {0.13, 0.27, 0.84},
         {0.71, 0.33, 0.52},
         {0.92, 0.08, 0.46},
@@ -967,7 +967,7 @@ static int test_lut_precision_vs_direct(void) {
 
         double max_err = 0.0;
         for (int c = 0; c < num_colors; c++) {
-            alwan_rgb lut_out, pipeline_out;
+            alwan_rgb_f64 lut_out, pipeline_out;
             alwan_lut3d_sample(&lut_out, lut, &test_colors[c], size);
             full_pipeline_convert(&pipeline_out, ctx, &srgb, &p3, &test_colors[c]);
 
@@ -1115,12 +1115,12 @@ static int test_cube_3d_precision_vs_direct(void) {
     for (int ri = 0; ri < steps; ri++) {
         for (int gi = 0; gi < steps; gi++) {
             for (int bi = 0; bi < steps; bi++) {
-                alwan_rgb in;
+                alwan_rgb_f64 in;
                 in.r = (alwan_f64)ri / (alwan_f64)(steps - 1);
                 in.g = (alwan_f64)gi / (alwan_f64)(steps - 1);
                 in.b = (alwan_f64)bi / (alwan_f64)(steps - 1);
 
-                alwan_rgb lut_out, pipeline_out;
+                alwan_rgb_f64 lut_out, pipeline_out;
                 alwan_lut3d_sample(&lut_out, lut_imported, &in, size);
                 full_pipeline_convert(&pipeline_out, ctx, &srgb, &p3, &in);
 
@@ -1179,8 +1179,8 @@ static int test_trilinear_manual(void) {
     }
 
     /* At corner (0,0,0) = (0,0,0) */
-    alwan_rgb in = {0.0, 0.0, 0.0};
-    alwan_rgb out;
+    alwan_rgb_f64 in = {0.0, 0.0, 0.0};
+    alwan_rgb_f64 out;
     alwan_lut3d_sample(&out, lut, &in, size);
     TEST_CHECK_NEAR(out.r, 0.0, 1e-15);
     TEST_CHECK_NEAR(out.g, 0.0, 1e-15);

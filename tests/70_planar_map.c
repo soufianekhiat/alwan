@@ -359,63 +359,63 @@ static int test_v_vs_planar_core(void) {
 
     RELOAD_UNIT();
     TVP(alwan_xyz_to_oklab, alwan_xyz_to_oklab_map_planar,
-        alwan_xyz, alwan_oklab, x,y,z, L,a,b, "v:xyz_to_oklab");
+        alwan_xyz_f64, alwan_oklab_f64, x,y,z, L,a,b, "v:xyz_to_oklab");
     CHAIN_REF();
     TVP(alwan_oklab_to_xyz, alwan_oklab_to_xyz_map_planar,
-        alwan_oklab, alwan_xyz, L,a,b, x,y,z, "v:oklab_to_xyz");
+        alwan_oklab_f64, alwan_xyz_f64, L,a,b, x,y,z, "v:oklab_to_xyz");
 
     RELOAD_UNIT();
-    alwan_xyz_to_oklab_map_interleave(b.grid, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
+    alwan_xyz_to_oklab_f64_map_interleave(b.grid, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
     deinterleave(b.pi0, b.pi1, b.pi2, b.grid, PM_COUNT);
     TVP(alwan_oklab_to_oklch, alwan_oklab_to_oklch_map_planar,
-        alwan_oklab, alwan_oklch, L,a,b, L,C,h, "v:oklab_to_oklch");
+        alwan_oklab_f64, alwan_oklch_f64, L,a,b, L,C,h, "v:oklab_to_oklch");
     CHAIN_REF();
     TVP(alwan_oklch_to_oklab, alwan_oklch_to_oklab_map_planar,
-        alwan_oklch, alwan_oklab, L,C,h, L,a,b, "v:oklch_to_oklab");
+        alwan_oklch_f64, alwan_oklab_f64, L,C,h, L,a,b, "v:oklch_to_oklab");
 
     RELOAD_LAB();
     TVP(alwan_lab_to_lch, alwan_lab_to_lch_map_planar,
-        alwan_lab, alwan_lch, L,a,b, L,C,h, "v:lab_to_lch");
+        alwan_lab_f64, alwan_lch_f64, L,a,b, L,C,h, "v:lab_to_lch");
     CHAIN_REF();
     TVP(alwan_lch_to_lab, alwan_lch_to_lab_map_planar,
-        alwan_lch, alwan_lab, L,C,h, L,a,b, "v:lch_to_lab");
+        alwan_lch_f64, alwan_lab_f64, L,C,h, L,a,b, "v:lch_to_lab");
 
     RELOAD_LAB();
     TVP(alwan_luv_to_lchuv, alwan_luv_to_lchuv_map_planar,
-        alwan_luv, alwan_lchuv, L,u,v, L,C,h, "v:luv_to_lchuv");
+        alwan_luv_f64, alwan_lchuv_f64, L,u,v, L,C,h, "v:luv_to_lchuv");
     CHAIN_REF();
     TVP(alwan_lchuv_to_luv, alwan_lchuv_to_luv_map_planar,
-        alwan_lchuv, alwan_luv, L,C,h, L,u,v, "v:lchuv_to_luv");
+        alwan_lchuv_f64, alwan_luv_f64, L,C,h, L,u,v, "v:lchuv_to_luv");
 
     RELOAD_UNIT();
     TVP(alwan_xyz_to_xyy, alwan_xyz_to_xyy_map_planar,
-        alwan_xyz, alwan_xyy, x,y,z, x,y,Y, "v:xyz_to_xyy");
+        alwan_xyz_f64, alwan_xyy_f64, x,y,z, x,y,Y, "v:xyz_to_xyy");
     CHAIN_REF();
     TVP(alwan_xyy_to_xyz, alwan_xyy_to_xyz_map_planar,
-        alwan_xyy, alwan_xyz, x,y,Y, x,y,z, "v:xyy_to_xyz");
+        alwan_xyy_f64, alwan_xyz_f64, x,y,Y, x,y,z, "v:xyy_to_xyz");
 
     RELOAD_UNIT();
     TVP(alwan_xyz_to_jzazbz, alwan_xyz_to_jzazbz_map_planar,
-        alwan_xyz, alwan_jzazbz, x,y,z, Jz,az,bz, "v:xyz_to_jzazbz");
+        alwan_xyz_f64, alwan_jzazbz_f64, x,y,z, Jz,az,bz, "v:xyz_to_jzazbz");
     CHAIN_REF();
     TVP(alwan_jzazbz_to_xyz, alwan_jzazbz_to_xyz_map_planar,
-        alwan_jzazbz, alwan_xyz, Jz,az,bz, x,y,z, "v:jzazbz_to_xyz");
+        alwan_jzazbz_f64, alwan_xyz_f64, Jz,az,bz, x,y,z, "v:jzazbz_to_xyz");
 
     RELOAD_UNIT();
-    alwan_xyz_to_jzazbz_map_interleave(b.grid, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
+    alwan_xyz_to_jzazbz_f64_map_interleave(b.grid, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
     deinterleave(b.pi0, b.pi1, b.pi2, b.grid, PM_COUNT);
     TVP(alwan_jzazbz_to_jzczhz, alwan_jzazbz_to_jzczhz_map_planar,
-        alwan_jzazbz, alwan_jzczhz, Jz,az,bz, Jz,Cz,hz, "v:jzazbz_to_jzczhz");
+        alwan_jzazbz_f64, alwan_jzczhz_f64, Jz,az,bz, Jz,Cz,hz, "v:jzazbz_to_jzczhz");
     CHAIN_REF();
     TVP(alwan_jzczhz_to_jzazbz, alwan_jzczhz_to_jzazbz_map_planar,
-        alwan_jzczhz, alwan_jzazbz, Jz,Cz,hz, Jz,az,bz, "v:jzczhz_to_jzazbz");
+        alwan_jzczhz_f64, alwan_jzazbz_f64, Jz,Cz,hz, Jz,az,bz, "v:jzczhz_to_jzazbz");
 
     RELOAD_UNIT();
     TVP(alwan_xyz_to_ipt, alwan_xyz_to_ipt_map_planar,
-        alwan_xyz, alwan_ipt, x,y,z, I,P,T, "v:xyz_to_ipt");
+        alwan_xyz_f64, alwan_ipt_f64, x,y,z, I,P,T, "v:xyz_to_ipt");
     CHAIN_REF();
     TVP(alwan_ipt_to_xyz, alwan_ipt_to_xyz_map_planar,
-        alwan_ipt, alwan_xyz, I,P,T, x,y,z, "v:ipt_to_xyz");
+        alwan_ipt_f64, alwan_xyz_f64, I,P,T, x,y,z, "v:ipt_to_xyz");
 
     pm_free(&b);
     TEST_PASS_MSG(); return 0;
@@ -431,24 +431,24 @@ static int test_v_vs_planar_srgb(void) {
 
     RELOAD_UNIT();
     TVP(alwan_srgb_to_xyz, alwan_srgb_to_xyz_map_planar,
-        alwan_rgb, alwan_xyz, r,g,b, x,y,z, "v:srgb_to_xyz");
+        alwan_rgb_f64, alwan_xyz_f64, r,g,b, x,y,z, "v:srgb_to_xyz");
     CHAIN_REF();
     TVP(alwan_xyz_to_srgb, alwan_xyz_to_srgb_map_planar,
-        alwan_xyz, alwan_rgb, x,y,z, r,g,b, "v:xyz_to_srgb");
+        alwan_xyz_f64, alwan_rgb_f64, x,y,z, r,g,b, "v:xyz_to_srgb");
 
     RELOAD_UNIT();
     TVP(alwan_srgb_to_lab, alwan_srgb_to_lab_map_planar,
-        alwan_rgb, alwan_lab, r,g,b, L,a,b, "v:srgb_to_lab");
+        alwan_rgb_f64, alwan_lab_f64, r,g,b, L,a,b, "v:srgb_to_lab");
     CHAIN_REF();
     TVP(alwan_lab_to_srgb, alwan_lab_to_srgb_map_planar,
-        alwan_lab, alwan_rgb, L,a,b, r,g,b, "v:lab_to_srgb");
+        alwan_lab_f64, alwan_rgb_f64, L,a,b, r,g,b, "v:lab_to_srgb");
 
     RELOAD_UNIT();
     TVP(alwan_srgb_to_oklab, alwan_srgb_to_oklab_map_planar,
-        alwan_rgb, alwan_oklab, r,g,b, L,a,b, "v:srgb_to_oklab");
+        alwan_rgb_f64, alwan_oklab_f64, r,g,b, L,a,b, "v:srgb_to_oklab");
     CHAIN_REF();
     TVP(alwan_oklab_to_srgb, alwan_oklab_to_srgb_map_planar,
-        alwan_oklab, alwan_rgb, L,a,b, r,g,b, "v:oklab_to_srgb");
+        alwan_oklab_f64, alwan_rgb_f64, L,a,b, r,g,b, "v:oklab_to_srgb");
 
     pm_free(&b);
     TEST_PASS_MSG(); return 0;
@@ -462,22 +462,22 @@ static int test_v_vs_planar_white(void) {
     pm_buf b;
     if (pm_alloc(&b, PM_COUNT)) { pm_free(&b); TEST_FAIL("malloc"); }
 
-    alwan_xyz wp;
+    alwan_xyz_f64 wp;
     wp.x = g_d65_xyz_y1[0]; wp.y = g_d65_xyz_y1[1]; wp.z = g_d65_xyz_y1[2];
 
     RELOAD_UNIT();
     TVP_W(alwan_xyz_to_lab, alwan_xyz_to_lab_map_planar,
-          alwan_xyz, alwan_lab, x,y,z, L,a,b, &wp, "v:xyz_to_lab");
+          alwan_xyz_f64, alwan_lab_f64, x,y,z, L,a,b, &wp, "v:xyz_to_lab");
     CHAIN_REF();
     TVP_W(alwan_lab_to_xyz, alwan_lab_to_xyz_map_planar,
-          alwan_lab, alwan_xyz, L,a,b, x,y,z, &wp, "v:lab_to_xyz");
+          alwan_lab_f64, alwan_xyz_f64, L,a,b, x,y,z, &wp, "v:lab_to_xyz");
 
     RELOAD_UNIT();
     TVP_W(alwan_xyz_to_luv, alwan_xyz_to_luv_map_planar,
-          alwan_xyz, alwan_luv, x,y,z, L,u,v, &wp, "v:xyz_to_luv");
+          alwan_xyz_f64, alwan_luv_f64, x,y,z, L,u,v, &wp, "v:xyz_to_luv");
     CHAIN_REF();
     TVP_W(alwan_luv_to_xyz, alwan_luv_to_xyz_map_planar,
-          alwan_luv, alwan_xyz, L,u,v, x,y,z, &wp, "v:luv_to_xyz");
+          alwan_luv_f64, alwan_xyz_f64, L,u,v, x,y,z, &wp, "v:luv_to_xyz");
 
     pm_free(&b);
     TEST_PASS_MSG(); return 0;
@@ -493,57 +493,57 @@ static int test_v_vs_planar_hsv_hsl(void) {
 
     RELOAD_UNIT();
     TVP(alwan_rgb_to_hsv, alwan_rgb_to_hsv_map_planar,
-        alwan_rgb, alwan_hsv, r,g,b, h,s,v, "v:rgb_to_hsv");
+        alwan_rgb_f64, alwan_hsv_f64, r,g,b, h,s,v, "v:rgb_to_hsv");
     CHAIN_REF();
     TVP(alwan_hsv_to_rgb, alwan_hsv_to_rgb_map_planar,
-        alwan_hsv, alwan_rgb, h,s,v, r,g,b, "v:hsv_to_rgb");
+        alwan_hsv_f64, alwan_rgb_f64, h,s,v, r,g,b, "v:hsv_to_rgb");
 
     RELOAD_UNIT();
     TVP(alwan_rgb_to_hsl, alwan_rgb_to_hsl_map_planar,
-        alwan_rgb, alwan_hsl, r,g,b, h,s,l, "v:rgb_to_hsl");
+        alwan_rgb_f64, alwan_hsl_f64, r,g,b, h,s,l, "v:rgb_to_hsl");
     CHAIN_REF();
     TVP(alwan_hsl_to_rgb, alwan_hsl_to_rgb_map_planar,
-        alwan_hsl, alwan_rgb, h,s,l, r,g,b, "v:hsl_to_rgb");
+        alwan_hsl_f64, alwan_rgb_f64, h,s,l, r,g,b, "v:hsl_to_rgb");
 
     /* Linear sRGB <-> HSV */
     RELOAD_UNIT();
     TVP(alwan_linear_srgb_to_hsv, alwan_linear_srgb_to_hsv_map_planar,
-        alwan_rgb, alwan_hsv, r,g,b, h,s,v, "v:linear_srgb_to_hsv");
+        alwan_rgb_f64, alwan_hsv_f64, r,g,b, h,s,v, "v:linear_srgb_to_hsv");
     CHAIN_REF();
     TVP(alwan_hsv_to_linear_srgb, alwan_hsv_to_linear_srgb_map_planar,
-        alwan_hsv, alwan_rgb, h,s,v, r,g,b, "v:hsv_to_linear_srgb");
+        alwan_hsv_f64, alwan_rgb_f64, h,s,v, r,g,b, "v:hsv_to_linear_srgb");
 
     /* Linear sRGB <-> HSL */
     RELOAD_UNIT();
     TVP(alwan_linear_srgb_to_hsl, alwan_linear_srgb_to_hsl_map_planar,
-        alwan_rgb, alwan_hsl, r,g,b, h,s,l, "v:linear_srgb_to_hsl");
+        alwan_rgb_f64, alwan_hsl_f64, r,g,b, h,s,l, "v:linear_srgb_to_hsl");
     CHAIN_REF();
     TVP(alwan_hsl_to_linear_srgb, alwan_hsl_to_linear_srgb_map_planar,
-        alwan_hsl, alwan_rgb, h,s,l, r,g,b, "v:hsl_to_linear_srgb");
+        alwan_hsl_f64, alwan_rgb_f64, h,s,l, r,g,b, "v:hsl_to_linear_srgb");
 
     /* HSP */
     RELOAD_UNIT();
     TVP(alwan_rgb_to_hsp, alwan_rgb_to_hsp_map_planar,
-        alwan_rgb, alwan_hsp, r,g,b, h,s,p, "v:rgb_to_hsp");
+        alwan_rgb_f64, alwan_hsp_f64, r,g,b, h,s,p, "v:rgb_to_hsp");
     CHAIN_REF();
     TVP(alwan_hsp_to_rgb, alwan_hsp_to_rgb_map_planar,
-        alwan_hsp, alwan_rgb, h,s,p, r,g,b, "v:hsp_to_rgb");
+        alwan_hsp_f64, alwan_rgb_f64, h,s,p, r,g,b, "v:hsp_to_rgb");
 
     /* HSPlog */
     RELOAD_UNIT();
     TVP(alwan_rgb_to_hsplog, alwan_rgb_to_hsplog_map_planar,
-        alwan_rgb, alwan_hsplog, r,g,b, h,s,p, "v:rgb_to_hsplog");
+        alwan_rgb_f64, alwan_hsplog_f64, r,g,b, h,s,p, "v:rgb_to_hsplog");
     CHAIN_REF();
     TVP(alwan_hsplog_to_rgb, alwan_hsplog_to_rgb_map_planar,
-        alwan_hsplog, alwan_rgb, h,s,p, r,g,b, "v:hsplog_to_rgb");
+        alwan_hsplog_f64, alwan_rgb_f64, h,s,p, r,g,b, "v:hsplog_to_rgb");
 
     /* HSY */
     RELOAD_UNIT();
     TVP(alwan_rgb_to_hsy, alwan_rgb_to_hsy_map_planar,
-        alwan_rgb, alwan_hsy, r,g,b, h,s,y, "v:rgb_to_hsy");
+        alwan_rgb_f64, alwan_hsy_f64, r,g,b, h,s,y, "v:rgb_to_hsy");
     CHAIN_REF();
     TVP(alwan_hsy_to_rgb, alwan_hsy_to_rgb_map_planar,
-        alwan_hsy, alwan_rgb, h,s,y, r,g,b, "v:hsy_to_rgb");
+        alwan_hsy_f64, alwan_rgb_f64, h,s,y, r,g,b, "v:hsy_to_rgb");
 
     pm_free(&b);
     TEST_PASS_MSG(); return 0;
@@ -559,17 +559,17 @@ static int test_v_vs_planar_ictcp(void) {
 
     RELOAD_UNIT();
     TVP_I(alwan_rgb_to_ictcp, alwan_rgb_to_ictcp_map_planar,
-          alwan_rgb, alwan_ictcp, r,g,b, I,Ct,Cp, 1, "v:rgb_to_ictcp_pq");
+          alwan_rgb_f64, alwan_ictcp_f64, r,g,b, I,Ct,Cp, 1, "v:rgb_to_ictcp_pq");
     CHAIN_REF();
     TVP_I(alwan_ictcp_to_rgb, alwan_ictcp_to_rgb_map_planar,
-          alwan_ictcp, alwan_rgb, I,Ct,Cp, r,g,b, 1, "v:ictcp_to_rgb_pq");
+          alwan_ictcp_f64, alwan_rgb_f64, I,Ct,Cp, r,g,b, 1, "v:ictcp_to_rgb_pq");
 
     RELOAD_UNIT();
     TVP_I(alwan_rgb_to_ictcp, alwan_rgb_to_ictcp_map_planar,
-          alwan_rgb, alwan_ictcp, r,g,b, I,Ct,Cp, 0, "v:rgb_to_ictcp_hlg");
+          alwan_rgb_f64, alwan_ictcp_f64, r,g,b, I,Ct,Cp, 0, "v:rgb_to_ictcp_hlg");
     CHAIN_REF();
     TVP_I(alwan_ictcp_to_rgb, alwan_ictcp_to_rgb_map_planar,
-          alwan_ictcp, alwan_rgb, I,Ct,Cp, r,g,b, 0, "v:ictcp_to_rgb_hlg");
+          alwan_ictcp_f64, alwan_rgb_f64, I,Ct,Cp, r,g,b, 0, "v:ictcp_to_rgb_hlg");
 
     pm_free(&b);
     TEST_PASS_MSG(); return 0;
@@ -585,38 +585,38 @@ static int test_v_vs_planar_convenience(void) {
 
     RELOAD_UNIT();
     TVP(alwan_rgb_to_cmy, alwan_rgb_to_cmy_map_planar,
-        alwan_rgb, alwan_cmy, r,g,b, c,m,y, "v:rgb_to_cmy");
+        alwan_rgb_f64, alwan_cmy_f64, r,g,b, c,m,y, "v:rgb_to_cmy");
     CHAIN_REF();
     TVP(alwan_cmy_to_rgb, alwan_cmy_to_rgb_map_planar,
-        alwan_cmy, alwan_rgb, c,m,y, r,g,b, "v:cmy_to_rgb");
+        alwan_cmy_f64, alwan_rgb_f64, c,m,y, r,g,b, "v:cmy_to_rgb");
 
     RELOAD_UNIT();
     TVP(alwan_rgb_to_ycocg, alwan_rgb_to_ycocg_map_planar,
-        alwan_rgb, alwan_ycocg, r,g,b, Y,Co,Cg, "v:rgb_to_ycocg");
+        alwan_rgb_f64, alwan_ycocg_f64, r,g,b, Y,Co,Cg, "v:rgb_to_ycocg");
     CHAIN_REF();
     TVP(alwan_ycocg_to_rgb, alwan_ycocg_to_rgb_map_planar,
-        alwan_ycocg, alwan_rgb, Y,Co,Cg, r,g,b, "v:ycocg_to_rgb");
+        alwan_ycocg_f64, alwan_rgb_f64, Y,Co,Cg, r,g,b, "v:ycocg_to_rgb");
 
-    /* HWB: API uses alwan_f64[3], not struct */
+    /* HWB: API uses typed alwan_hwb_f64 struct */
     RELOAD_UNIT();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_rgb rgb; rgb.r = b.pi0[i_]; rgb.g = b.pi1[i_]; rgb.b = b.pi2[i_];
-        alwan_f64 hwb[3];
-        alwan_rgb_to_hwb(hwb, &rgb);
-        b.r0[i_] = hwb[0]; b.r1[i_] = hwb[1]; b.r2[i_] = hwb[2];
+        alwan_rgb_f64 rgb; rgb.r = b.pi0[i_]; rgb.g = b.pi1[i_]; rgb.b = b.pi2[i_];
+        alwan_hwb_f64 hwb;
+        alwan_rgb_to_hwb_f64(&hwb, &rgb);
+        b.r0[i_] = hwb.h; b.r1[i_] = hwb.w; b.r2[i_] = hwb.b;
     }
-    alwan_rgb_to_hwb_map_planar(b.po0, b.po1, b.po2,
+    alwan_rgb_to_hwb_f64_map_planar(b.po0, b.po1, b.po2,
                                  b.pi0, b.pi1, b.pi2, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:rgb_to_hwb", tol)) goto fail;
 
     CHAIN_REF();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_f64 hwb[3] = {b.pi0[i_], b.pi1[i_], b.pi2[i_]};
-        alwan_rgb rgb;
-        alwan_hwb_to_rgb(&rgb, hwb);
+        alwan_hwb_f64 hwb; hwb.h = b.pi0[i_]; hwb.w = b.pi1[i_]; hwb.b = b.pi2[i_];
+        alwan_rgb_f64 rgb;
+        alwan_hwb_to_rgb_f64(&rgb, &hwb);
         b.r0[i_] = rgb.r; b.r1[i_] = rgb.g; b.r2[i_] = rgb.b;
     }
-    alwan_hwb_to_rgb_map_planar(b.po0, b.po1, b.po2,
+    alwan_hwb_to_rgb_f64_map_planar(b.po0, b.po1, b.po2,
                                  b.pi0, b.pi1, b.pi2, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:hwb_to_rgb", tol)) goto fail;
 
@@ -626,12 +626,12 @@ static int test_v_vs_planar_convenience(void) {
         alwan_f64 *k_out = (alwan_f64 *)malloc(PM_COUNT * sizeof(alwan_f64));
         if (!k_out) goto fail;
         for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-            alwan_cmy cmy; cmy.c = b.pi0[i_]; cmy.m = b.pi1[i_]; cmy.y = b.pi2[i_];
-            alwan_f64 oc, om, oy, ok;
-            alwan_cmy_to_cmyk(&oc, &om, &oy, &ok, &cmy);
-            b.r0[i_] = oc; b.r1[i_] = om; b.r2[i_] = oy;
+            alwan_cmy_f64 cmy; cmy.c = b.pi0[i_]; cmy.m = b.pi1[i_]; cmy.y = b.pi2[i_];
+            alwan_cmyk_f64 cmyk_tmp;
+            alwan_cmy_to_cmyk_f64(&cmyk_tmp, &cmy);
+            b.r0[i_] = cmyk_tmp.c; b.r1[i_] = cmyk_tmp.m; b.r2[i_] = cmyk_tmp.y;
         }
-        alwan_cmy_to_cmyk_map_planar(b.po0, b.po1, b.po2, k_out,
+        alwan_cmy_to_cmyk_f64_map_planar(b.po0, b.po1, b.po2, k_out,
                                       b.pi0, b.pi1, b.pi2, PM_COUNT, PSTRIDE, PSTRIDE);
         free(k_out);
         if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:cmy_to_cmyk", tol)) goto fail;
@@ -645,11 +645,12 @@ static int test_v_vs_planar_convenience(void) {
         RELOAD_UNIT();
         for (size_t i_ = 0; i_ < PM_COUNT; i_++) k_in[i_] = ALWAN_LITERAL(0.2);
         for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-            alwan_cmy result;
-            alwan_cmyk_to_cmy(&result, b.pi0[i_], b.pi1[i_], b.pi2[i_], k_in[i_]);
+            alwan_cmy_f64 result;
+            alwan_cmyk_f64 cmyk_in; cmyk_in.c = b.pi0[i_]; cmyk_in.m = b.pi1[i_]; cmyk_in.y = b.pi2[i_]; cmyk_in.k = k_in[i_];
+            alwan_cmyk_to_cmy_f64(&result, &cmyk_in);
             b.r0[i_] = result.c; b.r1[i_] = result.m; b.r2[i_] = result.y;
         }
-        alwan_cmyk_to_cmy_map_planar(b.po0, b.po1, b.po2,
+        alwan_cmyk_to_cmy_f64_map_planar(b.po0, b.po1, b.po2,
                                       b.pi0, b.pi1, b.pi2, k_in, PM_COUNT, PSTRIDE, PSTRIDE);
         free(k_in);
         if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:cmyk_to_cmy", tol)) goto fail;
@@ -658,26 +659,26 @@ static int test_v_vs_planar_convenience(void) {
     /* YCbCr BT.709 */
     RELOAD_UNIT();
     TVP_I(alwan_rgb_to_ycbcr, alwan_rgb_to_ycbcr_map_planar,
-          alwan_rgb, alwan_ycbcr, r,g,b, Y,Cb,Cr, ALWAN_YCBCR_BT709, "v:rgb_to_ycbcr");
+          alwan_rgb_f64, alwan_ycbcr_f64, r,g,b, Y,Cb,Cr, ALWAN_YCBCR_BT709, "v:rgb_to_ycbcr");
     CHAIN_REF();
     TVP_I(alwan_ycbcr_to_rgb, alwan_ycbcr_to_rgb_map_planar,
-          alwan_ycbcr, alwan_rgb, Y,Cb,Cr, r,g,b, ALWAN_YCBCR_BT709, "v:ycbcr_to_rgb");
+          alwan_ycbcr_f64, alwan_rgb_f64, Y,Cb,Cr, r,g,b, ALWAN_YCBCR_BT709, "v:ycbcr_to_rgb");
 
     /* YcCbcCrc 10-bit */
     RELOAD_UNIT();
     TVP_I(alwan_rgb_to_yccbccrc, alwan_rgb_to_yccbccrc_map_planar,
-          alwan_rgb, alwan_yccbccrc, r,g,b, Yc,Cbc,Crc, 10, "v:rgb_to_yccbccrc");
+          alwan_rgb_f64, alwan_yccbccrc_f64, r,g,b, Yc,Cbc,Crc, 10, "v:rgb_to_yccbccrc");
     CHAIN_REF();
     TVP_I(alwan_yccbccrc_to_rgb, alwan_yccbccrc_to_rgb_map_planar,
-          alwan_yccbccrc, alwan_rgb, Yc,Cbc,Crc, r,g,b, 10, "v:yccbccrc_to_rgb");
+          alwan_yccbccrc_f64, alwan_rgb_f64, Yc,Cbc,Crc, r,g,b, 10, "v:yccbccrc_to_rgb");
 
     /* Full/legal 10-bit */
     RELOAD_UNIT();
     TVP_I(alwan_ycbcr_full_to_legal, alwan_ycbcr_full_to_legal_map_planar,
-          alwan_ycbcr, alwan_ycbcr, Y,Cb,Cr, Y,Cb,Cr, 10, "v:ycbcr_full_to_legal");
+          alwan_ycbcr_f64, alwan_ycbcr_f64, Y,Cb,Cr, Y,Cb,Cr, 10, "v:ycbcr_full_to_legal");
     CHAIN_REF();
     TVP_I(alwan_ycbcr_legal_to_full, alwan_ycbcr_legal_to_full_map_planar,
-          alwan_ycbcr, alwan_ycbcr, Y,Cb,Cr, Y,Cb,Cr, 10, "v:ycbcr_legal_to_full");
+          alwan_ycbcr_f64, alwan_ycbcr_f64, Y,Cb,Cr, Y,Cb,Cr, 10, "v:ycbcr_legal_to_full");
 
     pm_free(&b);
     TEST_PASS_MSG(); return 0;
@@ -691,7 +692,7 @@ static int test_v_vs_planar_extended(void) {
     pm_buf b;
     if (pm_alloc(&b, PM_COUNT)) { pm_free(&b); TEST_FAIL("malloc"); }
 
-    alwan_xyz wp;
+    alwan_xyz_f64 wp;
     wp.x = g_d65_xyz_y1[0]; wp.y = g_d65_xyz_y1[1]; wp.z = g_d65_xyz_y1[2];
 
     /* PQ-based colorspaces: steep PQ curves amplify SIMD rounding near zero.
@@ -701,110 +702,110 @@ static int test_v_vs_planar_extended(void) {
 
     RELOAD_UNIT();
     TVP_REL(alwan_xyz_to_igpgtg, alwan_xyz_to_igpgtg_map_planar,
-           alwan_xyz, alwan_igpgtg, x,y,z, Ig,Pg,Tg, "v:xyz_to_igpgtg");
+           alwan_xyz_f64, alwan_igpgtg_f64, x,y,z, Ig,Pg,Tg, "v:xyz_to_igpgtg");
     CHAIN_REF();
     TVP_REL(alwan_igpgtg_to_xyz, alwan_igpgtg_to_xyz_map_planar,
-           alwan_igpgtg, alwan_xyz, Ig,Pg,Tg, x,y,z, "v:igpgtg_to_xyz");
+           alwan_igpgtg_f64, alwan_xyz_f64, Ig,Pg,Tg, x,y,z, "v:igpgtg_to_xyz");
 
     RELOAD_UNIT();
     TVP_REL(alwan_xyz_to_hdr_cielab, alwan_xyz_to_hdr_cielab_map_planar,
-           alwan_xyz, alwan_lab, x,y,z, L,a,b, "v:xyz_to_hdr_cielab");
+           alwan_xyz_f64, alwan_lab_f64, x,y,z, L,a,b, "v:xyz_to_hdr_cielab");
     CHAIN_REF();
     TVP_REL(alwan_hdr_cielab_to_xyz, alwan_hdr_cielab_to_xyz_map_planar,
-           alwan_lab, alwan_xyz, L,a,b, x,y,z, "v:hdr_cielab_to_xyz");
+           alwan_lab_f64, alwan_xyz_f64, L,a,b, x,y,z, "v:hdr_cielab_to_xyz");
 
     RELOAD_UNIT();
     TVP_REL(alwan_xyz_to_hdr_ipt, alwan_xyz_to_hdr_ipt_map_planar,
-           alwan_xyz, alwan_ipt, x,y,z, I,P,T, "v:xyz_to_hdr_ipt");
+           alwan_xyz_f64, alwan_ipt_f64, x,y,z, I,P,T, "v:xyz_to_hdr_ipt");
     CHAIN_REF();
     TVP_REL(alwan_hdr_ipt_to_xyz, alwan_hdr_ipt_to_xyz_map_planar,
-           alwan_ipt, alwan_xyz, I,P,T, x,y,z, "v:hdr_ipt_to_xyz");
+           alwan_ipt_f64, alwan_xyz_f64, I,P,T, x,y,z, "v:hdr_ipt_to_xyz");
 
     /* Non-PQ colorspaces */
 
     RELOAD_UNIT();
     TVP(alwan_xyz_to_icacb, alwan_xyz_to_icacb_map_planar,
-        alwan_xyz, alwan_icacb, x,y,z, I,Ca,Cb, "v:xyz_to_icacb");
+        alwan_xyz_f64, alwan_icacb_f64, x,y,z, I,Ca,Cb, "v:xyz_to_icacb");
     CHAIN_REF();
     TVP(alwan_icacb_to_xyz, alwan_icacb_to_xyz_map_planar,
-        alwan_icacb, alwan_xyz, I,Ca,Cb, x,y,z, "v:icacb_to_xyz");
+        alwan_icacb_f64, alwan_xyz_f64, I,Ca,Cb, x,y,z, "v:icacb_to_xyz");
 
     RELOAD_UNIT();
     TVP(alwan_xyz_to_ucs, alwan_xyz_to_ucs_map_planar,
-        alwan_xyz, alwan_ucs, x,y,z, U,V,W, "v:xyz_to_ucs");
+        alwan_xyz_f64, alwan_ucs_f64, x,y,z, U,V,W, "v:xyz_to_ucs");
     CHAIN_REF();
     TVP(alwan_ucs_to_xyz, alwan_ucs_to_xyz_map_planar,
-        alwan_ucs, alwan_xyz, U,V,W, x,y,z, "v:ucs_to_xyz");
+        alwan_ucs_f64, alwan_xyz_f64, U,V,W, x,y,z, "v:ucs_to_xyz");
 
     RELOAD_UNIT();
     TVP_REL(alwan_xyz_to_osa_ucs, alwan_xyz_to_osa_ucs_map_planar,
-            alwan_xyz, alwan_osa_ucs, x,y,z, L,j,g, "v:xyz_to_osa_ucs");
+            alwan_xyz_f64, alwan_osa_ucs_f64, x,y,z, L,j,g, "v:xyz_to_osa_ucs");
 
     RELOAD_UNIT();
     TVP(alwan_xyz_to_hunter_lab, alwan_xyz_to_hunter_lab_map_planar,
-        alwan_xyz, alwan_hunter_lab, x,y,z, L,a,b, "v:xyz_to_hunter_lab");
+        alwan_xyz_f64, alwan_hunter_lab_f64, x,y,z, L,a,b, "v:xyz_to_hunter_lab");
     CHAIN_REF();
     TVP(alwan_hunter_lab_to_xyz, alwan_hunter_lab_to_xyz_map_planar,
-        alwan_hunter_lab, alwan_xyz, L,a,b, x,y,z, "v:hunter_lab_to_xyz");
+        alwan_hunter_lab_f64, alwan_xyz_f64, L,a,b, x,y,z, "v:hunter_lab_to_xyz");
 
     RELOAD_UNIT();
     TVP(alwan_xyz_to_prolab, alwan_xyz_to_prolab_map_planar,
-        alwan_xyz, alwan_prolab, x,y,z, L,a,b, "v:xyz_to_prolab");
+        alwan_xyz_f64, alwan_prolab_f64, x,y,z, L,a,b, "v:xyz_to_prolab");
     CHAIN_REF();
     TVP(alwan_prolab_to_xyz, alwan_prolab_to_xyz_map_planar,
-        alwan_prolab, alwan_xyz, L,a,b, x,y,z, "v:prolab_to_xyz");
+        alwan_prolab_f64, alwan_xyz_f64, L,a,b, x,y,z, "v:prolab_to_xyz");
 
     /* RGB-based */
     RELOAD_UNIT();
     TVP(alwan_rgb_to_prismatic, alwan_rgb_to_prismatic_map_planar,
-        alwan_rgb, alwan_prismatic, r,g,b, L,s,h, "v:rgb_to_prismatic");
+        alwan_rgb_f64, alwan_prismatic_f64, r,g,b, L,s,h, "v:rgb_to_prismatic");
     CHAIN_REF();
     TVP(alwan_prismatic_to_rgb, alwan_prismatic_to_rgb_map_planar,
-        alwan_prismatic, alwan_rgb, L,s,h, r,g,b, "v:prismatic_to_rgb");
+        alwan_prismatic_f64, alwan_rgb_f64, L,s,h, r,g,b, "v:prismatic_to_rgb");
 
     RELOAD_UNIT();
     TVP_HUE(alwan_rgb_to_hcl, alwan_rgb_to_hcl_map_planar,
-            alwan_rgb, alwan_hcl, r,g,b, H,C,L, "v:rgb_to_hcl");
+            alwan_rgb_f64, alwan_hcl_f64, r,g,b, H,C,L, "v:rgb_to_hcl");
     /* hcl_to_rgb inverse: skip here because the unit grid produces hue values
      * at exact sector boundaries (tan singularities) that cause different
      * sector selection in scalar vs SIMD.  Tested via interleave vs planar. */
 
     RELOAD_UNIT();
     TVP_HUE(alwan_rgb_to_ihls, alwan_rgb_to_ihls_map_planar,
-            alwan_rgb, alwan_ihls, r,g,b, H,L,S, "v:rgb_to_ihls");
+            alwan_rgb_f64, alwan_ihls_f64, r,g,b, H,L,S, "v:rgb_to_ihls");
     CHAIN_REF();
     TVP(alwan_ihls_to_rgb, alwan_ihls_to_rgb_map_planar,
-        alwan_ihls, alwan_rgb, H,L,S, r,g,b, "v:ihls_to_rgb");
+        alwan_ihls_f64, alwan_rgb_f64, H,L,S, r,g,b, "v:ihls_to_rgb");
 
     /* With white point */
     RELOAD_UNIT();
     TVP_W(alwan_xyz_to_uvw, alwan_xyz_to_uvw_map_planar,
-          alwan_xyz, alwan_uvw, x,y,z, U,V,W, &wp, "v:xyz_to_uvw");
+          alwan_xyz_f64, alwan_uvw_f64, x,y,z, U,V,W, &wp, "v:xyz_to_uvw");
     CHAIN_REF();
     TVP_W(alwan_uvw_to_xyz, alwan_uvw_to_xyz_map_planar,
-          alwan_uvw, alwan_xyz, U,V,W, x,y,z, &wp, "v:uvw_to_xyz");
+          alwan_uvw_f64, alwan_xyz_f64, U,V,W, x,y,z, &wp, "v:uvw_to_xyz");
 
     RELOAD_UNIT();
     TVP_W(alwan_xyz_to_hunter_lab_custom, alwan_xyz_to_hunter_lab_custom_map_planar,
-          alwan_xyz, alwan_hunter_lab, x,y,z, L,a,b, &wp, "v:xyz_to_hunter_lab_custom");
+          alwan_xyz_f64, alwan_hunter_lab_f64, x,y,z, L,a,b, &wp, "v:xyz_to_hunter_lab_custom");
     CHAIN_REF();
     TVP_W(alwan_hunter_lab_to_xyz_custom, alwan_hunter_lab_to_xyz_custom_map_planar,
-          alwan_hunter_lab, alwan_xyz, L,a,b, x,y,z, &wp, "v:hunter_lab_custom_to_xyz");
+          alwan_hunter_lab_f64, alwan_xyz_f64, L,a,b, x,y,z, &wp, "v:hunter_lab_custom_to_xyz");
 
     RELOAD_UNIT();
     TVP_W(alwan_xyz_to_prolab_custom, alwan_xyz_to_prolab_custom_map_planar,
-          alwan_xyz, alwan_prolab, x,y,z, L,a,b, &wp, "v:xyz_to_prolab_custom");
+          alwan_xyz_f64, alwan_prolab_f64, x,y,z, L,a,b, &wp, "v:xyz_to_prolab_custom");
     CHAIN_REF();
     TVP_W(alwan_prolab_to_xyz_custom, alwan_prolab_to_xyz_custom_map_planar,
-          alwan_prolab, alwan_xyz, L,a,b, x,y,z, &wp, "v:prolab_custom_to_xyz");
+          alwan_prolab_f64, alwan_xyz_f64, L,a,b, x,y,z, &wp, "v:prolab_custom_to_xyz");
 
     /* DIN99 (variant 0) */
     RELOAD_LAB();
     TVP_I(alwan_lab_to_din99, alwan_lab_to_din99_map_planar,
-          alwan_lab, alwan_din99, L,a,b, L99,a99,b99, 0, "v:lab_to_din99");
+          alwan_lab_f64, alwan_din99_f64, L,a,b, L99,a99,b99, 0, "v:lab_to_din99");
     CHAIN_REF();
     TVP_I(alwan_din99_to_lab, alwan_din99_to_lab_map_planar,
-          alwan_din99, alwan_lab, L99,a99,b99, L,a,b, 0, "v:din99_to_lab");
+          alwan_din99_f64, alwan_lab_f64, L99,a99,b99, L,a,b, 0, "v:din99_to_lab");
 
     pm_free(&b);
     TEST_PASS_MSG(); return 0;
@@ -822,31 +823,31 @@ static int test_v_vs_planar_cvd(void) {
 
     RELOAD_UNIT();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_rgb si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
-        alwan_rgb so; alwan_simulate_cvd(&so, &si, ALWAN_CVD_PROTANOPIA, sev);
+        alwan_rgb_f64 si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
+        alwan_rgb_f64 so; alwan_simulate_cvd(&so, &si, ALWAN_CVD_PROTANOPIA, sev);
         b.r0[i_] = so.r; b.r1[i_] = so.g; b.r2[i_] = so.b;
     }
-    alwan_simulate_cvd_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+    alwan_simulate_cvd_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                    ALWAN_CVD_PROTANOPIA, sev, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:cvd_protan", tol)) goto fail;
 
     RELOAD_UNIT();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_rgb si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
-        alwan_rgb so; alwan_simulate_cvd(&so, &si, ALWAN_CVD_DEUTERANOPIA, sev);
+        alwan_rgb_f64 si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
+        alwan_rgb_f64 so; alwan_simulate_cvd(&so, &si, ALWAN_CVD_DEUTERANOPIA, sev);
         b.r0[i_] = so.r; b.r1[i_] = so.g; b.r2[i_] = so.b;
     }
-    alwan_simulate_deuteranopia_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+    alwan_simulate_deuteranopia_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                             sev, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:cvd_deutan", tol)) goto fail;
 
     RELOAD_UNIT();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_rgb si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
-        alwan_rgb so; alwan_simulate_cvd(&so, &si, ALWAN_CVD_TRITANOPIA, sev);
+        alwan_rgb_f64 si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
+        alwan_rgb_f64 so; alwan_simulate_cvd(&so, &si, ALWAN_CVD_TRITANOPIA, sev);
         b.r0[i_] = so.r; b.r1[i_] = so.g; b.r2[i_] = so.b;
     }
-    alwan_simulate_tritanopia_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+    alwan_simulate_tritanopia_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                           sev, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:cvd_tritan", tol)) goto fail;
 
@@ -862,58 +863,58 @@ static int test_v_vs_planar_colorcorr(void) {
     pm_buf b;
     if (pm_alloc(&b, PM_COUNT)) { pm_free(&b); TEST_FAIL("malloc"); }
 
-    alwan_rgb lift  = {ALWAN_LITERAL(0.02), ALWAN_LITERAL(0.01), ALWAN_LITERAL(0.03)};
-    alwan_rgb gamma = {ALWAN_LITERAL(1.1),  ALWAN_LITERAL(0.95), ALWAN_LITERAL(1.05)};
-    alwan_rgb gain  = {ALWAN_LITERAL(1.2),  ALWAN_LITERAL(1.0),  ALWAN_LITERAL(0.9)};
+    alwan_rgb_f64 lift  = {ALWAN_LITERAL(0.02), ALWAN_LITERAL(0.01), ALWAN_LITERAL(0.03)};
+    alwan_rgb_f64 gamma = {ALWAN_LITERAL(1.1),  ALWAN_LITERAL(0.95), ALWAN_LITERAL(1.05)};
+    alwan_rgb_f64 gain  = {ALWAN_LITERAL(1.2),  ALWAN_LITERAL(1.0),  ALWAN_LITERAL(0.9)};
 
     RELOAD_UNIT();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_rgb si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
-        alwan_rgb so;
-        alwan_lgg_apply(&so, &si, &lift, &gamma, &gain);
+        alwan_rgb_f64 si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
+        alwan_rgb_f64 so;
+        alwan_lgg_apply_f64(&so, &si, &lift, &gamma, &gain);
         b.r0[i_] = so.r; b.r1[i_] = so.g; b.r2[i_] = so.b;
     }
-    alwan_lgg_apply_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+    alwan_lgg_apply_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                 &lift, &gamma, &gain, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:lgg_apply", tol)) goto fail;
 
-    alwan_mat3x3 matrix;
+    alwan_mat3x3_f64 matrix;
     matrix.m[0] = ALWAN_LITERAL(1.2);   matrix.m[1] = ALWAN_LITERAL(-0.1);  matrix.m[2] = ALWAN_LITERAL(-0.1);
     matrix.m[3] = ALWAN_LITERAL(-0.05); matrix.m[4] = ALWAN_LITERAL(1.1);   matrix.m[5] = ALWAN_LITERAL(-0.05);
     matrix.m[6] = ALWAN_LITERAL(-0.02); matrix.m[7] = ALWAN_LITERAL(-0.08); matrix.m[8] = ALWAN_LITERAL(1.1);
 
     RELOAD_UNIT();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_rgb si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
-        alwan_rgb so;
-        alwan_color_matrix_apply(&so, &si, &matrix);
+        alwan_rgb_f64 si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
+        alwan_rgb_f64 so;
+        alwan_color_matrix_apply_f64(&so, &si, &matrix);
         b.r0[i_] = so.r; b.r1[i_] = so.g; b.r2[i_] = so.b;
     }
-    alwan_color_matrix_apply_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+    alwan_color_matrix_apply_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                          &matrix, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:color_matrix", tol)) goto fail;
 
     RELOAD_UNIT();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_rgb si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
-        alwan_rgb so;
-        alwan_printer_lights_apply(&so, &si, ALWAN_LITERAL(1.1), ALWAN_LITERAL(0.95), ALWAN_LITERAL(1.05));
+        alwan_rgb_f64 si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
+        alwan_rgb_f64 so;
+        alwan_printer_lights_apply_f64(&so, &si, ALWAN_LITERAL(1.1), ALWAN_LITERAL(0.95), ALWAN_LITERAL(1.05));
         b.r0[i_] = so.r; b.r1[i_] = so.g; b.r2[i_] = so.b;
     }
-    alwan_printer_lights_apply_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+    alwan_printer_lights_apply_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                            ALWAN_LITERAL(1.1), ALWAN_LITERAL(0.95), ALWAN_LITERAL(1.05),
                                            PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:printer_lights", tol)) goto fail;
 
-    alwan_rgb wb_mul = {ALWAN_LITERAL(1.05), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.92)};
+    alwan_rgb_f64 wb_mul = {ALWAN_LITERAL(1.05), ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.92)};
     RELOAD_UNIT();
     for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
-        alwan_rgb si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
-        alwan_rgb so;
-        alwan_white_balance_apply(&so, &si, &wb_mul);
+        alwan_rgb_f64 si; si.r = b.pi0[i_]; si.g = b.pi1[i_]; si.b = b.pi2[i_];
+        alwan_rgb_f64 so;
+        alwan_white_balance_apply_f64(&so, &si, &wb_mul);
         b.r0[i_] = so.r; b.r1[i_] = so.g; b.r2[i_] = so.b;
     }
-    alwan_white_balance_apply_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+    alwan_white_balance_apply_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                           &wb_mul, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp3(b.po0, b.po1, b.po2, b.r0, b.r1, b.r2, PM_COUNT, "v:white_balance", tol)) goto fail;
 
@@ -935,19 +936,19 @@ static int test_interleave_vs_planar(void) {
     pm_buf b;
     if (pm_alloc(&b, PM_COUNT)) { pm_free(&b); TEST_FAIL("malloc"); }
 
-    alwan_xyz wp;
+    alwan_xyz_f64 wp;
     wp.x = g_d65_xyz_y1[0]; wp.y = g_d65_xyz_y1[1]; wp.z = g_d65_xyz_y1[2];
 
     /* OkLab */
     RELOAD_UNIT();
     TIP(alwan_xyz_to_oklab_map_interleave, alwan_xyz_to_oklab_map_planar, "i_vs_p:xyz_to_oklab");
     RELOAD_UNIT();
-    alwan_xyz_to_oklab_map_interleave(b.grid, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
+    alwan_xyz_to_oklab_f64_map_interleave(b.grid, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
     deinterleave(b.pi0, b.pi1, b.pi2, b.grid, PM_COUNT);
     TIP(alwan_oklab_to_xyz_map_interleave, alwan_oklab_to_xyz_map_planar, "i_vs_p:oklab_to_xyz");
 
     RELOAD_UNIT();
-    alwan_xyz_to_oklab_map_interleave(b.grid, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
+    alwan_xyz_to_oklab_f64_map_interleave(b.grid, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
     deinterleave(b.pi0, b.pi1, b.pi2, b.grid, PM_COUNT);
     TIP(alwan_oklab_to_oklch_map_interleave, alwan_oklab_to_oklch_map_planar, "i_vs_p:oklab_to_oklch");
     CHAIN_AOS();
@@ -1063,9 +1064,9 @@ static int test_interleave_vs_planar(void) {
         alwan_f64 *cmyk_out = (alwan_f64 *)malloc(PM_COUNT * 4 * sizeof(alwan_f64));
         if (!k_pl || !cmyk_out) { free(k_pl); free(cmyk_out); goto fail; }
         /* interleave: 3-ch in, 4-ch out (needs dedicated 4-ch buffer) */
-        alwan_cmy_to_cmyk_map_interleave(cmyk_out, b.grid, PM_COUNT, ASTRIDE, 4 * sizeof(alwan_f64));
+        alwan_cmy_to_cmyk_f64_map_interleave(cmyk_out, b.grid, PM_COUNT, ASTRIDE, 4 * sizeof(alwan_f64));
         /* planar */
-        alwan_cmy_to_cmyk_map_planar(b.po0, b.po1, b.po2, k_pl,
+        alwan_cmy_to_cmyk_f64_map_planar(b.po0, b.po1, b.po2, k_pl,
                                       b.pi0, b.pi1, b.pi2, PM_COUNT, PSTRIDE, PSTRIDE);
         /* compare first 3 channels */
         for (size_t i_ = 0; i_ < PM_COUNT; i_++) {
@@ -1095,8 +1096,8 @@ static int test_interleave_vs_planar(void) {
             cmyk_aos[i_*4+0] = b.pi0[i_]; cmyk_aos[i_*4+1] = b.pi1[i_];
             cmyk_aos[i_*4+2] = b.pi2[i_]; cmyk_aos[i_*4+3] = k_in[i_];
         }
-        alwan_cmyk_to_cmy_map_interleave(b.aos, cmyk_aos, PM_COUNT, 4 * sizeof(alwan_f64), ASTRIDE);
-        alwan_cmyk_to_cmy_map_planar(b.po0, b.po1, b.po2,
+        alwan_cmyk_to_cmy_f64_map_interleave(b.aos, cmyk_aos, PM_COUNT, 4 * sizeof(alwan_f64), ASTRIDE);
+        alwan_cmyk_to_cmy_f64_map_planar(b.po0, b.po1, b.po2,
                                       b.pi0, b.pi1, b.pi2, k_in, PM_COUNT, PSTRIDE, PSTRIDE);
         if (cmp_planar_vs_aos(b.po0, b.po1, b.po2, b.aos, PM_COUNT, "i_vs_p:cmyk_to_cmy", tol)) {
             free(k_in); free(cmyk_aos); goto fail;
@@ -1107,8 +1108,8 @@ static int test_interleave_vs_planar(void) {
     /* Gamut map (clip) */
     RELOAD_UNIT();
     {
-        alwan_gamut_map_interleave(b.aos, ALWAN_GAMUT_MAP_CLIP, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
-        alwan_gamut_map_planar(b.po0, b.po1, b.po2, ALWAN_GAMUT_MAP_CLIP,
+        alwan_gamut_f64_map_interleave(b.aos, ALWAN_GAMUT_MAP_CLIP, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
+        alwan_gamut_f64_map_planar(b.po0, b.po1, b.po2, ALWAN_GAMUT_MAP_CLIP,
                                 b.pi0, b.pi1, b.pi2, PM_COUNT, PSTRIDE, PSTRIDE);
         if (cmp_planar_vs_aos(b.po0, b.po1, b.po2, b.aos, PM_COUNT, "i_vs_p:gamut_map_clip", tol)) goto fail;
     }
@@ -1116,16 +1117,16 @@ static int test_interleave_vs_planar(void) {
     /* CSS gamut map */
     RELOAD_UNIT();
     {
-        alwan_css_gamut_map_interleave(b.aos, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
-        alwan_css_gamut_map_planar(b.po0, b.po1, b.po2,
+        alwan_css_gamut_f64_map_interleave(b.aos, b.grid, PM_COUNT, ASTRIDE, ASTRIDE);
+        alwan_css_gamut_f64_map_planar(b.po0, b.po1, b.po2,
                                     b.pi0, b.pi1, b.pi2, PM_COUNT, PSTRIDE, PSTRIDE);
         if (cmp_planar_vs_aos(b.po0, b.po1, b.po2, b.aos, PM_COUNT, "i_vs_p:css_gamut_map", tol)) goto fail;
     }
 
     /* ICtCp PQ */
     RELOAD_UNIT();
-    alwan_rgb_to_ictcp_map_interleave(b.aos, b.grid, 1, PM_COUNT, ASTRIDE, ASTRIDE);
-    alwan_rgb_to_ictcp_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+    alwan_rgb_to_ictcp_f64_map_interleave(b.aos, b.grid, 1, PM_COUNT, ASTRIDE, ASTRIDE);
+    alwan_rgb_to_ictcp_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                    1, PM_COUNT, PSTRIDE, PSTRIDE);
     if (cmp_planar_vs_aos(b.po0, b.po1, b.po2, b.aos, PM_COUNT, "i_vs_p:rgb_to_ictcp", tol)) goto fail;
 
@@ -1170,20 +1171,20 @@ static int test_interleave_vs_planar(void) {
     {
         alwan_f64 const sev = ALWAN_LITERAL(0.8);
         RELOAD_UNIT();
-        alwan_simulate_cvd_map_interleave(b.aos, b.grid, ALWAN_CVD_PROTANOPIA, sev, PM_COUNT, ASTRIDE, ASTRIDE);
-        alwan_simulate_cvd_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+        alwan_simulate_cvd_f64_map_interleave(b.aos, b.grid, ALWAN_CVD_PROTANOPIA, sev, PM_COUNT, ASTRIDE, ASTRIDE);
+        alwan_simulate_cvd_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                        ALWAN_CVD_PROTANOPIA, sev, PM_COUNT, PSTRIDE, PSTRIDE);
         if (cmp_planar_vs_aos(b.po0, b.po1, b.po2, b.aos, PM_COUNT, "i_vs_p:cvd_protan", tol)) goto fail;
     }
 
     /* Color correction */
     {
-        alwan_rgb lft  = {ALWAN_LITERAL(0.02), ALWAN_LITERAL(0.01), ALWAN_LITERAL(0.03)};
-        alwan_rgb gam  = {ALWAN_LITERAL(1.1),  ALWAN_LITERAL(0.95), ALWAN_LITERAL(1.05)};
-        alwan_rgb gan  = {ALWAN_LITERAL(1.2),  ALWAN_LITERAL(1.0),  ALWAN_LITERAL(0.9)};
+        alwan_rgb_f64 lft  = {ALWAN_LITERAL(0.02), ALWAN_LITERAL(0.01), ALWAN_LITERAL(0.03)};
+        alwan_rgb_f64 gam  = {ALWAN_LITERAL(1.1),  ALWAN_LITERAL(0.95), ALWAN_LITERAL(1.05)};
+        alwan_rgb_f64 gan  = {ALWAN_LITERAL(1.2),  ALWAN_LITERAL(1.0),  ALWAN_LITERAL(0.9)};
         RELOAD_UNIT();
-        alwan_lgg_apply_map_interleave(b.aos, b.grid, &lft, &gam, &gan, PM_COUNT, ASTRIDE, ASTRIDE);
-        alwan_lgg_apply_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
+        alwan_lgg_apply_f64_map_interleave(b.aos, b.grid, &lft, &gam, &gan, PM_COUNT, ASTRIDE, ASTRIDE);
+        alwan_lgg_apply_f64_map_planar(b.po0, b.po1, b.po2, b.pi0, b.pi1, b.pi2,
                                     &lft, &gam, &gan, PM_COUNT, PSTRIDE, PSTRIDE);
         if (cmp_planar_vs_aos(b.po0, b.po1, b.po2, b.aos, PM_COUNT, "i_vs_p:lgg_apply", tol)) goto fail;
     }
@@ -1209,27 +1210,27 @@ static int test_v_vs_interleave(void) {
 
     RELOAD_UNIT();
     TVI(alwan_xyz_to_oklab, alwan_xyz_to_oklab_map_interleave,
-        alwan_xyz, alwan_oklab, x,y,z, L,a,b, "v_vs_i:xyz_to_oklab");
+        alwan_xyz_f64, alwan_oklab_f64, x,y,z, L,a,b, "v_vs_i:xyz_to_oklab");
 
     RELOAD_UNIT();
     TVI(alwan_xyz_to_jzazbz, alwan_xyz_to_jzazbz_map_interleave,
-        alwan_xyz, alwan_jzazbz, x,y,z, Jz,az,bz, "v_vs_i:xyz_to_jzazbz");
+        alwan_xyz_f64, alwan_jzazbz_f64, x,y,z, Jz,az,bz, "v_vs_i:xyz_to_jzazbz");
 
     RELOAD_UNIT();
     TVI(alwan_rgb_to_hsv, alwan_rgb_to_hsv_map_interleave,
-        alwan_rgb, alwan_hsv, r,g,b, h,s,v, "v_vs_i:rgb_to_hsv");
+        alwan_rgb_f64, alwan_hsv_f64, r,g,b, h,s,v, "v_vs_i:rgb_to_hsv");
 
     RELOAD_UNIT();
     TVI(alwan_rgb_to_cmy, alwan_rgb_to_cmy_map_interleave,
-        alwan_rgb, alwan_cmy, r,g,b, c,m,y, "v_vs_i:rgb_to_cmy");
+        alwan_rgb_f64, alwan_cmy_f64, r,g,b, c,m,y, "v_vs_i:rgb_to_cmy");
 
     RELOAD_UNIT();
     TVI(alwan_xyz_to_igpgtg, alwan_xyz_to_igpgtg_map_interleave,
-        alwan_xyz, alwan_igpgtg, x,y,z, Ig,Pg,Tg, "v_vs_i:xyz_to_igpgtg");
+        alwan_xyz_f64, alwan_igpgtg_f64, x,y,z, Ig,Pg,Tg, "v_vs_i:xyz_to_igpgtg");
 
     RELOAD_UNIT();
     TVI(alwan_srgb_to_xyz, alwan_srgb_to_xyz_map_interleave,
-        alwan_rgb, alwan_xyz, r,g,b, x,y,z, "v_vs_i:srgb_to_xyz");
+        alwan_rgb_f64, alwan_xyz_f64, r,g,b, x,y,z, "v_vs_i:srgb_to_xyz");
 
     pm_free(&b);
     TEST_PASS_MSG(); return 0;

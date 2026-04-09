@@ -23,9 +23,9 @@ static size_t const num_test_cases = sizeof(test_data) / sizeof(test_data[0]) / 
 /* Helper function to extract a test case from the flat array */
 static void get_test_case(
     size_t index,
-    alwan_xyz *xyz_in,
-    alwan_xyz *xyz_0,
-    alwan_xyz *xyz_r,
+    alwan_xyz_f64 *xyz_in,
+    alwan_xyz_f64 *xyz_0,
+    alwan_xyz_f64 *xyz_r,
     alwan_f64 *Y_b,
     int *surround,
     alwan_f64 *L_expected,
@@ -62,7 +62,7 @@ static int test_llab_forward(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (size_t i = 0; i < num_test_cases; i++) {
-        alwan_xyz xyz_in, xyz_0, xyz_r;
+        alwan_xyz_f64 xyz_in, xyz_0, xyz_r;
         alwan_f64 Y_b;
         int surround;
         alwan_f64 L_expected, Ch_expected, h_expected, s_expected;
@@ -79,7 +79,7 @@ static int test_llab_forward(void) {
         vc.D_factor = -1;      /* Use automatic D based on surround */
 
         alwan_llab_correlates result;
-        int status = alwan_llab_forward(&result, &xyz_in, &vc);
+        int status = alwan_llab_forward_f64(&result, &xyz_in, &vc);
 
         if (status != ALWAN_OK) {
             printf("  Test %zu: FAILED - Status %d\n", i + 1, status);
@@ -125,13 +125,13 @@ static int test_llab_viewing_conditions(void) {
     int failed = 0;
 
     /* D65 illuminant */
-    alwan_xyz d65;
+    alwan_xyz_f64 d65;
     d65.x = ALWAN_LITERAL(95.05);
     d65.y = ALWAN_LITERAL(100.0);
     d65.z = ALWAN_LITERAL(108.88);
 
     /* Test color: mid-gray */
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     xyz.x = ALWAN_LITERAL(50.0);
     xyz.y = ALWAN_LITERAL(50.0);
     xyz.z = ALWAN_LITERAL(50.0);
@@ -147,7 +147,7 @@ static int test_llab_viewing_conditions(void) {
 
     /* Test average surround */
     vc.surround = ALWAN_LLAB_SURROUND_AVERAGE;
-    int status = alwan_llab_forward(&corr_avg, &xyz, &vc);
+    int status = alwan_llab_forward_f64(&corr_avg, &xyz, &vc);
     if (status != ALWAN_OK) {
         printf("  Average surround: FAILED (status %d)\n", status);
         failed++;
@@ -158,7 +158,7 @@ static int test_llab_viewing_conditions(void) {
 
     /* Test dim surround */
     vc.surround = ALWAN_LLAB_SURROUND_DIM;
-    status = alwan_llab_forward(&corr_dim, &xyz, &vc);
+    status = alwan_llab_forward_f64(&corr_dim, &xyz, &vc);
     if (status != ALWAN_OK) {
         printf("  Dim surround: FAILED (status %d)\n", status);
         failed++;
@@ -169,7 +169,7 @@ static int test_llab_viewing_conditions(void) {
 
     /* Test dark surround */
     vc.surround = ALWAN_LLAB_SURROUND_DARK;
-    status = alwan_llab_forward(&corr_dark, &xyz, &vc);
+    status = alwan_llab_forward_f64(&corr_dark, &xyz, &vc);
     if (status != ALWAN_OK) {
         printf("  Dark surround: FAILED (status %d)\n", status);
         failed++;
@@ -207,7 +207,7 @@ static int test_llab_achromatic(void) {
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     /* D65 illuminant */
-    alwan_xyz d65;
+    alwan_xyz_f64 d65;
     d65.x = ALWAN_LITERAL(95.05);
     d65.y = ALWAN_LITERAL(100.0);
     d65.z = ALWAN_LITERAL(108.88);
@@ -232,13 +232,13 @@ static int test_llab_achromatic(void) {
     alwan_f64 prev_L = ALWAN_LITERAL(0.0);
     for (size_t i = 0; i < num_grays; i++) {
         alwan_f64 gray = gray_values[i];
-        alwan_xyz xyz;
+        alwan_xyz_f64 xyz;
         xyz.x = gray;
         xyz.y = gray;
         xyz.z = gray * ALWAN_LITERAL(1.08880);
 
         alwan_llab_correlates corr;
-        int status = alwan_llab_forward(&corr, &xyz, &vc);
+        int status = alwan_llab_forward_f64(&corr, &xyz, &vc);
 
         if (status != ALWAN_OK) {
             printf("    Gray %.2f: FAILED (status %d)\n", gray, status);

@@ -48,13 +48,13 @@ static int test_ciecam02_forward(void) {
 
     /* Test forward transform for each color */
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz;
+        alwan_xyz_f64 xyz;
         xyz.x = test_xyz[i * 3 + 0];
         xyz.y = test_xyz[i * 3 + 1];
         xyz.z = test_xyz[i * 3 + 2];
 
         alwan_ciecam02_correlates corr;
-        int status = alwan_ciecam02_forward(&corr, &xyz, &vc);
+        int status = alwan_ciecam02_forward_f64(&corr, &xyz, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Check correlates against expected values */
@@ -148,8 +148,8 @@ static int test_ciecam02_inverse(void) {
         corr.h = correlates_data[i * 7 + 2];
         /* Other fields not used for inverse */
 
-        alwan_xyz xyz_out;
-        int status = alwan_ciecam02_inverse(&xyz_out, &corr, &vc);
+        alwan_xyz_f64 xyz_out;
+        int status = alwan_ciecam02_inverse_f64(&xyz_out, &corr, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check XYZ against expected values */
@@ -198,19 +198,19 @@ static int test_ciecam02_roundtrip(void) {
 
     /* Test round-trip for each color */
     for (size_t i = 0; i < num_colors; i++) {
-        alwan_xyz xyz_in;
+        alwan_xyz_f64 xyz_in;
         xyz_in.x = test_xyz[i * 3 + 0];
         xyz_in.y = test_xyz[i * 3 + 1];
         xyz_in.z = test_xyz[i * 3 + 2];
 
         /* Forward: XYZ -> correlates */
         alwan_ciecam02_correlates corr;
-        int status = alwan_ciecam02_forward(&corr, &xyz_in, &vc);
+        int status = alwan_ciecam02_forward_f64(&corr, &xyz_in, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Forward transform failed");
 
         /* Inverse: correlates -> XYZ */
-        alwan_xyz xyz_out;
-        status = alwan_ciecam02_inverse(&xyz_out, &corr, &vc);
+        alwan_xyz_f64 xyz_out;
+        status = alwan_ciecam02_inverse_f64(&xyz_out, &corr, &vc);
         TEST_ASSERT(status == ALWAN_OK, "Inverse transform failed");
 
         /* Check round-trip error */
@@ -246,7 +246,7 @@ static int test_ciecam02_surround_conditions(void) {
     vc.discount_illuminant = 0;
 
     /* Test color: mid-gray */
-    alwan_xyz xyz;
+    alwan_xyz_f64 xyz;
     xyz.x = ALWAN_LITERAL(50.0);
     xyz.y = ALWAN_LITERAL(50.0);
     xyz.z = ALWAN_LITERAL(50.0);
@@ -255,17 +255,17 @@ static int test_ciecam02_surround_conditions(void) {
 
     /* Average surround */
     vc.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
-    int status = alwan_ciecam02_forward(&corr_avg, &xyz, &vc);
+    int status = alwan_ciecam02_forward_f64(&corr_avg, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Average surround failed");
 
     /* Dim surround */
     vc.surround = ALWAN_CIECAM02_SURROUND_DIM;
-    status = alwan_ciecam02_forward(&corr_dim, &xyz, &vc);
+    status = alwan_ciecam02_forward_f64(&corr_dim, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Dim surround failed");
 
     /* Dark surround */
     vc.surround = ALWAN_CIECAM02_SURROUND_DARK;
-    status = alwan_ciecam02_forward(&corr_dark, &xyz, &vc);
+    status = alwan_ciecam02_forward_f64(&corr_dark, &xyz, &vc);
     TEST_ASSERT(status == ALWAN_OK, "Dark surround failed");
 
     /* Different surrounds should give different results */

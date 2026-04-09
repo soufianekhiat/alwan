@@ -14,7 +14,7 @@
  * Test helpers
  * ---------------------------------------------------------------- */
 
-static alwan_f64 vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
+static alwan_f64 vec3_max_diff(alwan_vec3_f64 const *a, alwan_vec3_f64 const *b) {
     alwan_f64 max_diff = 0;
     for (int i = 0; i < 3; i++) {
         alwan_f64 diff = ALWAN_ABS(a->v[i] - b->v[i]);
@@ -23,7 +23,7 @@ static alwan_f64 vec3_max_diff(alwan_vec3 const *a, alwan_vec3 const *b) {
     return max_diff;
 }
 
-static void vec3_print(char const *name, alwan_vec3 const *v) {
+static void vec3_print(char const *name, alwan_vec3_f64 const *v) {
     printf("%s: [%12.8f %12.8f %12.8f]\n", name, v->v[0], v->v[1], v->v[2]);
 }
 
@@ -49,23 +49,23 @@ static int test_adapt_d65_to_d50_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_f64));
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 input_xyz = {{test_colors_data[i * 3 + 0],
+        alwan_vec3_f64 input_xyz = {{test_colors_data[i * 3 + 0],
                                   test_colors_data[i * 3 + 1],
                                   test_colors_data[i * 3 + 2]}};
-        alwan_vec3 expected = {{expected_adapted_data[i * 3 + 0],
+        alwan_vec3_f64 expected = {{expected_adapted_data[i * 3 + 0],
                                  expected_adapted_data[i * 3 + 1],
                                  expected_adapted_data[i * 3 + 2]}};
 
         /* Adapt using map function */
-        alwan_vec3 adapted;
-        int status = alwan_xyz_adapt(adapted.v,
+        alwan_vec3_f64 adapted;
+        int status = alwan_xyz_adapt_f64(adapted.v,
                                      &d65_xyz, &d50_xyz,
                                      ALWAN_CAT_BRADFORD,
                                      input_xyz.v, 1,
@@ -104,23 +104,23 @@ static int test_adapt_a_to_d65_bradford(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 a_xyz = {a_xyz_data[0], a_xyz_data[1], a_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_f64));
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 input_xyz = {{test_colors_data[i * 3 + 0],
+        alwan_vec3_f64 input_xyz = {{test_colors_data[i * 3 + 0],
                                   test_colors_data[i * 3 + 1],
                                   test_colors_data[i * 3 + 2]}};
-        alwan_vec3 expected = {{expected_adapted_data[i * 3 + 0],
+        alwan_vec3_f64 expected = {{expected_adapted_data[i * 3 + 0],
                                  expected_adapted_data[i * 3 + 1],
                                  expected_adapted_data[i * 3 + 2]}};
 
         /* Adapt using map function */
-        alwan_vec3 adapted;
-        int status = alwan_xyz_adapt(adapted.v,
+        alwan_vec3_f64 adapted;
+        int status = alwan_xyz_adapt_f64(adapted.v,
                                      &a_xyz, &d65_xyz,
                                      ALWAN_CAT_BRADFORD,
                                      input_xyz.v, 1,
@@ -150,20 +150,20 @@ static int test_roundtrip_d65_d50_d65(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     int const num_tests = sizeof(test_colors_data) / (3 * sizeof(alwan_f64));
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
     for (int i = 0; i < num_tests; i++) {
-        alwan_vec3 original = {{test_colors_data[i * 3 + 0],
+        alwan_vec3_f64 original = {{test_colors_data[i * 3 + 0],
                                  test_colors_data[i * 3 + 1],
                                  test_colors_data[i * 3 + 2]}};
 
         /* D65 -> D50 */
-        alwan_vec3 adapted_to_d50;
-        int status = alwan_xyz_adapt(adapted_to_d50.v,
+        alwan_vec3_f64 adapted_to_d50;
+        int status = alwan_xyz_adapt_f64(adapted_to_d50.v,
                                      &d65_xyz, &d50_xyz,
                                      ALWAN_CAT_BRADFORD,
                                      original.v, 1,
@@ -172,8 +172,8 @@ static int test_roundtrip_d65_d50_d65(void) {
         TEST_ASSERT(status == ALWAN_OK, "D65->D50 adaptation failed");
 
         /* D50 -> D65 (back) */
-        alwan_vec3 roundtrip;
-        status = alwan_xyz_adapt(roundtrip.v,
+        alwan_vec3_f64 roundtrip;
+        status = alwan_xyz_adapt_f64(roundtrip.v,
                                  &d50_xyz, &d65_xyz,
                                  ALWAN_CAT_BRADFORD,
                                  adapted_to_d50.v, 1,
@@ -209,11 +209,11 @@ static int test_roundtrip_all_methods(void) {
     };
     ALWAN_DIAG_POP
 
-    alwan_xyz d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
-    alwan_xyz d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
+    alwan_xyz_f64 d65_xyz = {d65_xyz_data[0], d65_xyz_data[1], d65_xyz_data[2]};
+    alwan_xyz_f64 d50_xyz = {d50_xyz_data[0], d50_xyz_data[1], d50_xyz_data[2]};
 
     /* Test color: sRGB red XYZ (D65) — entry 5 in test_xyz_colors.csv */
-    alwan_vec3 original = {{test_xyz_colors[15], test_xyz_colors[16], test_xyz_colors[17]}};
+    alwan_vec3_f64 original = {{test_xyz_colors[15], test_xyz_colors[16], test_xyz_colors[17]}};
 
     alwan_f64 const tolerance = ALWAN_TEST_TOLERANCE;
 
@@ -233,8 +233,8 @@ static int test_roundtrip_all_methods(void) {
 
     for (int m = 0; m < 4; m++) {
         /* Forward */
-        alwan_vec3 adapted;
-        int status = alwan_xyz_adapt(adapted.v,
+        alwan_vec3_f64 adapted;
+        int status = alwan_xyz_adapt_f64(adapted.v,
                                      &d65_xyz, &d50_xyz,
                                      methods[m],
                                      original.v, 1,
@@ -243,8 +243,8 @@ static int test_roundtrip_all_methods(void) {
         TEST_ASSERT(status == ALWAN_OK, "Forward adaptation failed");
 
         /* Backward */
-        alwan_vec3 roundtrip;
-        status = alwan_xyz_adapt(roundtrip.v,
+        alwan_vec3_f64 roundtrip;
+        status = alwan_xyz_adapt_f64(roundtrip.v,
                                  &d50_xyz, &d65_xyz,
                                  methods[m],
                                  adapted.v, 1,
