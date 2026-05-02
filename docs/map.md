@@ -1155,9 +1155,9 @@ Tolerance depends on whether `alwan_scalar` is float or double, and whether the 
 
 | Configuration | Tolerance |
 |---------------|-----------|
-| `ALWAN_SCALAR_IS_FLOAT=1`, SIMD f32 | `1e-6` (round-trip through same type) |
-| `ALWAN_SCALAR_IS_FLOAT=0` (double), SIMD f32 | `1e-5` (f32 SIMD vs f64 scalar) |
-| `ALWAN_SCALAR_IS_FLOAT=0` (double), SIMD f64 | `1e-12` (same precision) |
+| f32 variants, SIMD f32 | `1e-6` (round-trip through same type) |
+| f64 variants, SIMD f32 | `1e-5` (f32 SIMD vs f64 scalar) |
+| f64 variants, SIMD f64 | `1e-12` (same precision) |
 
 ### 11.5 Test File Naming
 

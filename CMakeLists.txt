@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
+# Force 64-bit host toolset on Visual Studio generators. The 32-bit cl.exe
+# (default on some installs) hits C1060 "out of heap space" on large
+# embedded-data TUs like alwan_spectrum_upsample.c. Must be set before project().
+if(NOT CMAKE_GENERATOR_TOOLSET AND CMAKE_GENERATOR MATCHES "Visual Studio")
+  set(CMAKE_GENERATOR_TOOLSET "host=x64" CACHE STRING "" FORCE)
+endif()
+
 project(
   Alwan
   VERSION 2.0.0
@@ -71,6 +78,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_reference_data.c
   src/alwan/api/alwan_normalize.c
   src/alwan/api/alwan_rgb.c
+  src/alwan/api/alwan_tf_resolve.c
   src/alwan/map/alwan_mat3_map.c
   src/alwan/map/alwan_rgb_map.c
   src/alwan/map/alwan_typed_map.c
@@ -129,6 +137,10 @@ target_compile_definitions(
 
 if(MSVC)
   target_compile_definitions(alwan PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX)
+  # Defense in depth for the 32-bit cl.exe heap (alwan_spectrum_upsample.c
+  # has ~470K float literals/TU). The primary fix is `host=x64` set above
+  # before project(); /Zm is harmless on the 64-bit host.
+  target_compile_options(alwan PRIVATE /Zm400)
 endif()
 
 if(NOT WIN32)
@@ -169,7 +181,22 @@ if(ALWAN_ENABLE_WARNINGS)
       target_compile_options(alwan PRIVATE /WX)
     endif()
   else()
-    target_compile_options(alwan PRIVATE -Wall -Wextra -Wpedantic)
+    # alwan is a public API library: -Wunused-* would flag symbols
+    # that are part of the API surface but not consumed by any
+    # in-tree call. Coverage of these symbols is the job of the
+    # alwan_dev test suite, not the lib build.
+    # -Wmissing-braces is silenced because embedded CSV data is
+    # included as flat initializers for nested arrays.
+    target_compile_options(
+      alwan PRIVATE
+      -Wall -Wextra -Wpedantic
+      -Wno-unused-function
+      -Wno-unused-const-variable
+      -Wno-unused-but-set-variable
+      -Wno-unused-variable
+      -Wno-unused-parameter
+      -Wno-missing-braces
+    )
     if(ALWAN_WARNINGS_AS_ERRORS)
       target_compile_options(alwan PRIVATE -Werror)
     endif()
@@ -183,20 +210,12 @@ if(ALWAN_DISABLE_STRICT_ALIASING AND NOT MSVC)
   endif()
 endif()
 
-# Library defaults to ALWAN_NORMALIZE_RANGES=1 (set in alwan_platform.h).
-# Override to 0 when testing — test references use native mathematical ranges.
-if(BUILD_TESTING)
-  target_compile_definitions(alwan PRIVATE ALWAN_NORMALIZE_RANGES=0)
-  add_subdirectory(tests)
-  add_custom_target(
-    check
-    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-    DEPENDS alwan_tests
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  )
-endif()
+# Tests now live in the sibling alwan_dev repo (alwan_dev/tests/), built by
+# alwan_dev/CMakeLists.txt which re-exposes the alwan target via
+# add_subdirectory() and applies ALWAN_NORMALIZE_RANGES=0 there.
 
-# bench has been moved to ../alwan_dev/bench/ (separate project)
+# Tools, tests, bench, and image_gen all live in the sibling alwan_dev repo.
+# `check_core_parity` is exposed there as a CMake target and CI job.
 
 if(ALWAN_INSTALL)
   install(

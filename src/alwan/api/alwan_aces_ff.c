@@ -326,7 +326,7 @@ void alwan_aces_dark_to_dim10_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *r
  * Reference: OCIO FixedFunctionOpCPU.cpp - Renderer_REC2100_Surround
  * ---------------------------------------------------------------- */
 
-void alwan_rec2100_surround_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, double gamma) {
+void alwan_rec2100_surround_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_f64 gamma) {
     if (!rgb_out || !rgb_in) return;
     alwan_vec3_f64 in_v = {{rgb_in->r, rgb_in->g, rgb_in->b}};
     alwan_vec3_f64 out_v = aces_rec2100_surround_f64_v(in_v, gamma);
@@ -335,7 +335,7 @@ void alwan_rec2100_surround_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb
     rgb_out->b = out_v.v[2];
 }
 
-void alwan_rec2100_surround_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, float gamma) {
+void alwan_rec2100_surround_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_f32 gamma) {
     if (!rgb_out || !rgb_in) return;
     alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
     alwan_rgb_f64 out64;
@@ -2179,7 +2179,7 @@ static void init_ChromaCompressParams_f32(float peak_luminance,
 
 void alwan_aces_tonescale_compress20_f64(alwan_rgb_f64 *rgb_out,
                                      alwan_rgb_f64 const *rgb_in,
-                                     double peak_luminance) {
+                                     alwan_f64 peak_luminance) {
     if (!rgb_out || !rgb_in) return;
     if (peak_luminance <= ALWAN_LITERAL(0.0)) return;
 
@@ -2233,7 +2233,7 @@ void alwan_aces_tonescale_compress20_f64(alwan_rgb_f64 *rgb_out,
 
 void alwan_aces_tonescale_compress20_f32(alwan_rgb_f32 *rgb_out,
                                      alwan_rgb_f32 const *rgb_in,
-                                     float peak_luminance) {
+                                     alwan_f32 peak_luminance) {
     if (!rgb_out || !rgb_in) return;
     alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
     alwan_rgb_f64 out64;
@@ -2830,13 +2830,14 @@ static void init_GamutCompressParams_f32(float peak_luminance,
 static void lookup_cusp_f64(alwan_f64 h_deg, aces2_GamutCompressParams_f64 const *gcp,
                          alwan_f64 *cusp_J, alwan_f64 *cusp_M,
                          alwan_f64 *gamma_top_inv) {
-    /* Wrap hue to [0, 360) */
+    /* Wrap hue to [0, 360) — NaN-safe (NaN fails both while conditions) */
+    if (!(h_deg >= ALWAN_LITERAL(0.0))) h_deg = ALWAN_LITERAL(0.0);
     while (h_deg < ALWAN_LITERAL(0.0)) h_deg += ALWAN_LITERAL(360.0);
     while (h_deg >= ALWAN_LITERAL(360.0)) h_deg -= ALWAN_LITERAL(360.0);
 
     /* Linear interpolation */
     int idx0 = (int)h_deg + 1;  /* +1 for offset due to wrap entry */
-    int idx1 = idx0 + 1;
+    int idx1 = (idx0 + 1 < ACES2_CUSP_TABLE_SIZE) ? idx0 + 1 : 1;
     alwan_f64 t = h_deg - (alwan_f64)(idx0 - 1);
 
     *cusp_J = gcp->cusp_table[idx0].J * (ALWAN_LITERAL(1.0) - t)
@@ -2853,6 +2854,7 @@ static void lookup_cusp_f64(alwan_f64 h_deg, aces2_GamutCompressParams_f64 const
 
 /* Lookup per-hue reach_m from the GamutCompressParams table */
 static alwan_f64 lookup_gamut_reach_m_f64(alwan_f64 h_deg, aces2_GamutCompressParams_f64 const *gcp) {
+    if (!(h_deg >= ALWAN_LITERAL(0.0))) h_deg = ALWAN_LITERAL(0.0);
     while (h_deg < ALWAN_LITERAL(0.0)) h_deg += ALWAN_LITERAL(360.0);
     while (h_deg >= ALWAN_LITERAL(360.0)) h_deg -= ALWAN_LITERAL(360.0);
     int idx0 = (int)h_deg;
@@ -2872,10 +2874,11 @@ static void init_hue_dependent_params_f64(alwan_f64 h_deg,
 
     /* Cusp lookup — f32 interpolation */
     float fh = (float)h_deg;
+    if (!(fh >= 0.0f)) fh = 0.0f;
     while (fh < 0.0f) fh += 360.0f;
     while (fh >= 360.0f) fh -= 360.0f;
     int idx0 = (int)fh + 1;
-    int idx1 = idx0 + 1;
+    int idx1 = (idx0 + 1 < ACES2_CUSP_TABLE_SIZE) ? idx0 + 1 : 1;
     float ft = fh - (float)(idx0 - 1);
     float fcJ = (float)gcp->cusp_table[idx0].J * (1.0f - ft)
               + (float)gcp->cusp_table[idx1].J * ft;
@@ -2912,10 +2915,11 @@ static void init_hue_dependent_params_f32(float h_deg,
                                            aces2_GamutCompressParams_f32 const *gcp,
                                            aces2_HueDependentGamutParams_f32 *hdp) {
     float fh = h_deg;
+    if (!(fh >= 0.0f)) fh = 0.0f;
     while (fh < 0.0f) fh += 360.0f;
     while (fh >= 360.0f) fh -= 360.0f;
     int idx0 = (int)fh + 1;
-    int idx1 = idx0 + 1;
+    int idx1 = (idx0 + 1 < ACES2_CUSP_TABLE_SIZE) ? idx0 + 1 : 1;
     float ft  = fh - (float)(idx0 - 1);
     float fcJ = gcp->cusp_table[idx0].J * (1.0f - ft) + gcp->cusp_table[idx1].J * ft;
     float fcM = gcp->cusp_table[idx0].M * (1.0f - ft) + gcp->cusp_table[idx1].M * ft;
@@ -2982,7 +2986,7 @@ static int primaries_are_ap1(alwan_aces_primaries_f64 const *p) {
 
 void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
                                  alwan_vec3_f64 const *jmh_in,
-                                 double peak_luminance,
+                                 alwan_f64 peak_luminance,
                                  alwan_aces_primaries_f64 const *limit_primaries) {
     if (!jmh_out || !jmh_in || !limit_primaries) return;
     if (peak_luminance < ALWAN_LITERAL(1.0) || peak_luminance > ALWAN_LITERAL(10000.0)) {
@@ -3046,7 +3050,7 @@ void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
 
 void alwan_aces_gamut_compress20_f32(alwan_vec3_f32 *jmh_out,
                                  alwan_vec3_f32 const *jmh_in,
-                                 float peak_luminance,
+                                 alwan_f32 peak_luminance,
                                  alwan_aces_primaries_f32 const *limit_primaries) {
     if (!jmh_out || !jmh_in || !limit_primaries) return;
     alwan_vec3_f64 in64 = {{(alwan_f64)jmh_in->v[0], (alwan_f64)jmh_in->v[1], (alwan_f64)jmh_in->v[2]}};
@@ -3067,7 +3071,7 @@ void alwan_aces_gamut_compress20_f32(alwan_vec3_f32 *jmh_out,
 
 void alwan_aces_gamut_compress20_inv_f64(alwan_vec3_f64 *jmh_out,
                                      alwan_vec3_f64 const *jmh_in,
-                                     double peak_luminance,
+                                     alwan_f64 peak_luminance,
                                      alwan_aces_primaries_f64 const *limit_primaries) {
     if (!jmh_out || !jmh_in || !limit_primaries) return;
     if (peak_luminance < ALWAN_LITERAL(1.0) || peak_luminance > ALWAN_LITERAL(10000.0)) {
@@ -3129,7 +3133,7 @@ void alwan_aces_gamut_compress20_inv_f64(alwan_vec3_f64 *jmh_out,
 
 void alwan_aces_gamut_compress20_inv_f32(alwan_vec3_f32 *jmh_out,
                                      alwan_vec3_f32 const *jmh_in,
-                                     float peak_luminance,
+                                     alwan_f32 peak_luminance,
                                      alwan_aces_primaries_f32 const *limit_primaries) {
     if (!jmh_out || !jmh_in || !limit_primaries) return;
     alwan_vec3_f64 in64 = {{(alwan_f64)jmh_in->v[0], (alwan_f64)jmh_in->v[1], (alwan_f64)jmh_in->v[2]}};
@@ -3514,7 +3518,7 @@ int alwan_aces2_output_transform_f32(alwan_rgb_f32 *rgb_out,
 
 int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
                                              alwan_rgb_f64 const *rgb_in,
-                                             double peak_luminance,
+                                             alwan_f64 peak_luminance,
                                              alwan_aces_primaries_f64 const *limit_primaries,
                                              alwan_transfer_function eotf) {
     if (!rgb_out || !rgb_in || !limit_primaries) return ALWAN_E_INVALID;
@@ -3628,7 +3632,7 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
     alwan_f64 linear[3] = {rgb_clamped.r, rgb_clamped.g, rgb_clamped.b};
     alwan_f64 encoded[3];
 
-    status = alwan_oetf_apply(encoded, eotf, linear, 3, sizeof(alwan_f64), sizeof(alwan_f64));
+    status = alwan_oetf_apply_f64(encoded, sizeof(alwan_f64), linear, sizeof(alwan_f64), 3, eotf);
     if (status != ALWAN_OK) {
         /* Fallback: return linear values if OETF not supported */
         rgb_out->r = rgb_clamped.r;
@@ -3646,7 +3650,7 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
 
 int alwan_aces2_output_transform_custom_f32(alwan_rgb_f32 *rgb_out,
                                              alwan_rgb_f32 const *rgb_in,
-                                             float peak_luminance,
+                                             alwan_f32 peak_luminance,
                                              alwan_aces_primaries_f32 const *limit_primaries,
                                              alwan_transfer_function eotf) {
     if (!rgb_out || !rgb_in || !limit_primaries) return ALWAN_E_INVALID;
@@ -3678,17 +3682,11 @@ ALWAN_DIAG_POP
 #include "alwan_aces2_map_impl.inc"
 #include "alwan_api_teardown.h"
 
-int alwan_aces2_output_transform_f64_map_interleave(
-        alwan_f64 *out, alwan_f64 const *in,
-        alwan_aces2_output output, size_t count,
-        size_t in_stride, size_t out_stride) {
+int alwan_aces2_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces2_output output) {
     return aces2_ot_map_impl_f64(out, in, output, count, in_stride, out_stride);
 }
 
-int alwan_aces2_output_transform_f32_map_interleave(
-        float *out, float const *in,
-        alwan_aces2_output output, size_t count,
-        size_t in_stride, size_t out_stride) {
+int alwan_aces2_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces2_output output) {
     return aces2_ot_map_impl_f32(out, in, output, count, in_stride, out_stride);
 }
 
@@ -3815,7 +3813,7 @@ int alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
     alwan_f64 encoded[3] = {rgb_in->r, rgb_in->g, rgb_in->b};
     alwan_f64 linear[3];
 
-    status = alwan_eotf_apply(linear, config.eotf, encoded, 3, sizeof(alwan_f64), sizeof(alwan_f64));
+    status = alwan_eotf_apply_f64(linear, sizeof(alwan_f64), encoded, sizeof(alwan_f64), 3, config.eotf);
     if (status != ALWAN_OK) {
         /* Fallback: assume already linear */
         linear[0] = rgb_in->r;

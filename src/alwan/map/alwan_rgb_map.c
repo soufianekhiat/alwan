@@ -30,10 +30,10 @@
  * to implementations that use the rounded IEC constants (e.g. colour-science).
  * Both are valid — ours is more precise, IEC is the published standard. */
 ALWAN_DIAG_PUSH
-ALWAN_CONSTEXPR alwan_mat3x3 SRGB_TO_XYZ = {{
+ALWAN_CONSTEXPR alwan_mat3x3_f64 SRGB_TO_XYZ = {{
 #include "../data/matrices/aces_rec709_to_xyz.csv"
 }};
-ALWAN_CONSTEXPR alwan_mat3x3 XYZ_TO_SRGB = {{
+ALWAN_CONSTEXPR alwan_mat3x3_f64 XYZ_TO_SRGB = {{
 #include "../data/matrices/aces_xyz_to_rec709.csv"
 }};
 ALWAN_DIAG_POP
@@ -61,7 +61,7 @@ ALWAN_DIAG_POP
 
 /* D65 white point (Y=1 normalized) - compile-time + dual precision */
 ALWAN_DIAG_PUSH
-static alwan_scalar const D65_WP_Y1[] = {
+static alwan_f64 const D65_WP_Y1[] = {
 #include "../data/white_d65_xyz_y1.csv"
 };
 ALWAN_DIAG_POP
@@ -84,56 +84,56 @@ ALWAN_DIAG_POP
  * Used by _map_interleave_ex macros; composite of EOTF/OETF + matrix + core
  * ---------------------------------------------------------------- */
 
-int alwan_srgb_to_xyz(alwan_xyz *xyz, alwan_rgb const *rgb) {
+int alwan_srgb_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_rgb_f64 const *rgb) {
     if (!rgb || !xyz) return ALWAN_E_INVALID;
-    alwan_vec3 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
-    alwan_vec3 r = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
+    alwan_vec3_f64 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
+    alwan_vec3_f64 r = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
     xyz->x = r.v[0]; xyz->y = r.v[1]; xyz->z = r.v[2];
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_srgb(alwan_rgb *rgb, alwan_xyz const *xyz) {
+int alwan_xyz_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_xyz_f64 const *xyz) {
     if (!xyz || !rgb) return ALWAN_E_INVALID;
-    alwan_vec3 v = {{xyz->x, xyz->y, xyz->z}};
-    alwan_vec3 lin = alwan_mat3_mulv_f64_v(XYZ_TO_SRGB, v);
+    alwan_vec3_f64 v = {{xyz->x, xyz->y, xyz->z}};
+    alwan_vec3_f64 lin = alwan_mat3_mulv_f64_v(XYZ_TO_SRGB, v);
     rgb->r = alwan_srgb_oetf_f64(lin.v[0]); rgb->g = alwan_srgb_oetf_f64(lin.v[1]); rgb->b = alwan_srgb_oetf_f64(lin.v[2]);
     return ALWAN_OK;
 }
 
-int alwan_srgb_to_lab(alwan_lab *lab, alwan_rgb const *rgb) {
+int alwan_srgb_to_lab_f64(alwan_lab_f64 *lab, alwan_rgb_f64 const *rgb) {
     if (!rgb || !lab) return ALWAN_E_INVALID;
-    alwan_vec3 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
-    alwan_vec3 xyz = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
-    alwan_xyz wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
-    alwan_xyz xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
+    alwan_vec3_f64 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
+    alwan_vec3_f64 xyz = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
+    alwan_xyz_f64 wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
+    alwan_xyz_f64 xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
     *lab = alwan_xyz_to_lab_f64_v(xyz_s, wp);
     return ALWAN_OK;
 }
 
-int alwan_lab_to_srgb(alwan_rgb *rgb, alwan_lab const *lab) {
+int alwan_lab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_lab_f64 const *lab) {
     if (!lab || !rgb) return ALWAN_E_INVALID;
-    alwan_xyz wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
-    alwan_xyz xyz = alwan_lab_to_xyz_f64_v(*lab, wp);
-    alwan_vec3 v = {{xyz.x, xyz.y, xyz.z}};
-    alwan_vec3 lin = alwan_mat3_mulv_f64_v(XYZ_TO_SRGB, v);
+    alwan_xyz_f64 wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
+    alwan_xyz_f64 xyz = alwan_lab_to_xyz_f64_v(*lab, wp);
+    alwan_vec3_f64 v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3_f64 lin = alwan_mat3_mulv_f64_v(XYZ_TO_SRGB, v);
     rgb->r = alwan_srgb_oetf_f64(lin.v[0]); rgb->g = alwan_srgb_oetf_f64(lin.v[1]); rgb->b = alwan_srgb_oetf_f64(lin.v[2]);
     return ALWAN_OK;
 }
 
-int alwan_srgb_to_oklab(alwan_oklab *oklab, alwan_rgb const *rgb) {
+int alwan_srgb_to_oklab_f64(alwan_oklab_f64 *oklab, alwan_rgb_f64 const *rgb) {
     if (!rgb || !oklab) return ALWAN_E_INVALID;
-    alwan_vec3 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
-    alwan_vec3 xyz = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
-    alwan_xyz xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
+    alwan_vec3_f64 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
+    alwan_vec3_f64 xyz = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
+    alwan_xyz_f64 xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
     *oklab = alwan_xyz_to_oklab_f64_v(xyz_s);
     return ALWAN_OK;
 }
 
-int alwan_oklab_to_srgb(alwan_rgb *rgb, alwan_oklab const *oklab) {
+int alwan_oklab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_oklab_f64 const *oklab) {
     if (!oklab || !rgb) return ALWAN_E_INVALID;
-    alwan_xyz xyz = alwan_oklab_to_xyz_f64_v(*oklab);
-    alwan_vec3 v = {{xyz.x, xyz.y, xyz.z}};
-    alwan_vec3 lin = alwan_mat3_mulv_f64_v(XYZ_TO_SRGB, v);
+    alwan_xyz_f64 xyz = alwan_oklab_to_xyz_f64_v(*oklab);
+    alwan_vec3_f64 v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3_f64 lin = alwan_mat3_mulv_f64_v(XYZ_TO_SRGB, v);
     rgb->r = alwan_srgb_oetf_f64(lin.v[0]); rgb->g = alwan_srgb_oetf_f64(lin.v[1]); rgb->b = alwan_srgb_oetf_f64(lin.v[2]);
     return ALWAN_OK;
 }
@@ -199,87 +199,79 @@ ALWAN_EX_DELEGATE_DUAL(alwan_oklab_to_srgb_map_interleave_ex,
  * Batch Delta E Computations
  * ---------------------------------------------------------------- */
 
-int alwan_delta_e_76_batch(alwan_scalar *delta_e_out,
-                           alwan_scalar const *lab1_in,
-                           alwan_scalar const *lab2_in,
-                           size_t count,
-                           size_t in1_stride,
-                           size_t in2_stride) {
+int alwan_delta_e_76_f64_batch(alwan_f64 *delta_e_out,
+                           alwan_f64 const *lab1_in, size_t in1_stride,
+                           alwan_f64 const *lab2_in, size_t in2_stride,
+                           size_t count) {
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) {
         return ALWAN_E_INVALID;
     }
 
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in1_ptr = (alwan_scalar const *)((char const *)lab1_in + i * in1_stride);
-        alwan_scalar const *in2_ptr = (alwan_scalar const *)((char const *)lab2_in + i * in2_stride);
-        alwan_lab lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
-        alwan_lab lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
-        delta_e_out[i] = alwan_delta_e_76(&lab1, &lab2);
+        alwan_f64 const *in1_ptr = (alwan_f64 const *)((char const *)lab1_in + i * in1_stride);
+        alwan_f64 const *in2_ptr = (alwan_f64 const *)((char const *)lab2_in + i * in2_stride);
+        alwan_lab_f64 lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
+        alwan_lab_f64 lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
+        delta_e_out[i] = alwan_delta_e_76_f64(&lab1, &lab2);
     }
 
     return ALWAN_OK;
 }
 
-int alwan_delta_e_2000_batch(alwan_scalar *delta_e_out,
-                             alwan_scalar const *lab1_in,
-                             alwan_scalar const *lab2_in,
-                             size_t count,
-                             size_t in1_stride,
-                             size_t in2_stride) {
+int alwan_delta_e_2000_f64_batch(alwan_f64 *delta_e_out,
+                             alwan_f64 const *lab1_in, size_t in1_stride,
+                             alwan_f64 const *lab2_in, size_t in2_stride,
+                             size_t count) {
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) {
         return ALWAN_E_INVALID;
     }
 
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in1_ptr = (alwan_scalar const *)((char const *)lab1_in + i * in1_stride);
-        alwan_scalar const *in2_ptr = (alwan_scalar const *)((char const *)lab2_in + i * in2_stride);
-        alwan_lab lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
-        alwan_lab lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
-        delta_e_out[i] = alwan_delta_e_2000(&lab1, &lab2);
+        alwan_f64 const *in1_ptr = (alwan_f64 const *)((char const *)lab1_in + i * in1_stride);
+        alwan_f64 const *in2_ptr = (alwan_f64 const *)((char const *)lab2_in + i * in2_stride);
+        alwan_lab_f64 lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
+        alwan_lab_f64 lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
+        delta_e_out[i] = alwan_delta_e_2000_f64(&lab1, &lab2);
     }
 
     return ALWAN_OK;
 }
 
-int alwan_delta_e_94_batch(alwan_scalar *delta_e_out,
-                           alwan_scalar const *lab1_in,
-                           alwan_scalar const *lab2_in,
-                           size_t count,
-                           size_t in1_stride,
-                           size_t in2_stride) {
+int alwan_delta_e_94_f64_batch(alwan_f64 *delta_e_out,
+                           alwan_f64 const *lab1_in, size_t in1_stride,
+                           alwan_f64 const *lab2_in, size_t in2_stride,
+                           size_t count) {
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) {
         return ALWAN_E_INVALID;
     }
 
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in1_ptr = (alwan_scalar const *)((char const *)lab1_in + i * in1_stride);
-        alwan_scalar const *in2_ptr = (alwan_scalar const *)((char const *)lab2_in + i * in2_stride);
-        alwan_lab lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
-        alwan_lab lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
-        delta_e_out[i] = alwan_delta_e_94(&lab1, &lab2);
+        alwan_f64 const *in1_ptr = (alwan_f64 const *)((char const *)lab1_in + i * in1_stride);
+        alwan_f64 const *in2_ptr = (alwan_f64 const *)((char const *)lab2_in + i * in2_stride);
+        alwan_lab_f64 lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
+        alwan_lab_f64 lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
+        delta_e_out[i] = alwan_delta_e_94_f64(&lab1, &lab2);
     }
 
     return ALWAN_OK;
 }
 
-int alwan_delta_e_cmc_batch(alwan_scalar *delta_e_out,
-                            alwan_scalar const *lab1_in,
-                            alwan_scalar const *lab2_in,
-                            alwan_scalar l,
-                            alwan_scalar c,
+int alwan_delta_e_cmc_f64_batch(alwan_f64 *delta_e_out,
+                            alwan_f64 const *lab1_in, size_t in1_stride,
+                            alwan_f64 const *lab2_in, size_t in2_stride,
                             size_t count,
-                            size_t in1_stride,
-                            size_t in2_stride) {
+                            alwan_f64 l,
+                            alwan_f64 c) {
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) {
         return ALWAN_E_INVALID;
     }
 
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *in1_ptr = (alwan_scalar const *)((char const *)lab1_in + i * in1_stride);
-        alwan_scalar const *in2_ptr = (alwan_scalar const *)((char const *)lab2_in + i * in2_stride);
-        alwan_lab lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
-        alwan_lab lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
-        alwan_delta_e_cmc_params cmc_p; cmc_p.l = (double)l; cmc_p.c = (double)c;
+        alwan_f64 const *in1_ptr = (alwan_f64 const *)((char const *)lab1_in + i * in1_stride);
+        alwan_f64 const *in2_ptr = (alwan_f64 const *)((char const *)lab2_in + i * in2_stride);
+        alwan_lab_f64 lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
+        alwan_lab_f64 lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
+        alwan_delta_e_cmc_params_f64 cmc_p; cmc_p.l = (double)l; cmc_p.c = (double)c;
         delta_e_out[i] = alwan_delta_e_cmc_f64(&lab1, &lab2, &cmc_p);
     }
 
@@ -297,6 +289,7 @@ static size_t alwan__pixel_stride(alwan_pixel_format fmt) {
     switch (fmt) {
     case ALWAN_PIXEL_U8:  return 3 * sizeof(uint8_t);
     case ALWAN_PIXEL_U16: return 3 * sizeof(uint16_t);
+    case ALWAN_PIXEL_F16: return 3 * sizeof(uint16_t);
     case ALWAN_PIXEL_F32: return 3 * sizeof(float);
     case ALWAN_PIXEL_F64: return 3 * sizeof(double);
     default:              return 0;
@@ -308,19 +301,14 @@ static size_t alwan__pixel_stride4(alwan_pixel_format fmt) {
     switch (fmt) {
     case ALWAN_PIXEL_U8:  return 4 * sizeof(uint8_t);
     case ALWAN_PIXEL_U16: return 4 * sizeof(uint16_t);
+    case ALWAN_PIXEL_F16: return 4 * sizeof(uint16_t);
     case ALWAN_PIXEL_F32: return 4 * sizeof(float);
     case ALWAN_PIXEL_F64: return 4 * sizeof(double);
     default:              return 0;
     }
 }
 
-int alwan_image_convert(
-    void *dst, alwan_pixel_format dst_fmt, size_t dst_row_stride,
-    void const *src, alwan_pixel_format src_fmt, size_t src_row_stride,
-    size_t width, size_t height,
-    alwan_ctx *ctx,
-    alwan_rgb_space_desc const *src_space,
-    alwan_rgb_space_desc const *dst_space) {
+int alwan_image_convert_f64(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_ctx *ctx) {
 
     if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
         return ALWAN_E_INVALID;
@@ -332,50 +320,50 @@ int alwan_image_convert(
     if (src_px == 0 || dst_px == 0) return ALWAN_E_INVALID;
 
     /* Derive conversion matrices */
-    alwan_mat3x3 src_to_xyz, xyz_to_src;
+    alwan_mat3x3_f64 src_to_xyz, xyz_to_src;
     if (src_space->has_matrices) {
         src_to_xyz = src_space->rgb_to_xyz;
     } else {
-        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        int status = alwan_rgb_derive_matrices_f64(&src_to_xyz, &xyz_to_src, src_space);
         if (status != ALWAN_OK) return status;
     }
 
-    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+    alwan_mat3x3_f64 dst_to_xyz, xyz_to_dst;
     if (dst_space->has_matrices) {
         xyz_to_dst = dst_space->xyz_to_rgb;
     } else {
-        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        int status = alwan_rgb_derive_matrices_f64(&dst_to_xyz, &xyz_to_dst, dst_space);
         if (status != ALWAN_OK) return status;
     }
 
     /* Check if chromatic adaptation is needed */
-    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
-    alwan_scalar dx = src_space->white_xy[0] - dst_space->white_xy[0];
-    alwan_scalar dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    alwan_f64 const tol = ALWAN_LITERAL(1e-6);
+    alwan_f64 dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_f64 dy = src_space->white_xy[1] - dst_space->white_xy[1];
     int need_cat = (ALWAN_ABS(dx) > tol || ALWAN_ABS(dy) > tol);
 
     /* Precompute a single combined matrix: xyz_to_dst * [cat *] src_to_xyz
      * This reduces per-pixel work to one mat3 multiply. */
-    alwan_mat3x3 combined;
+    alwan_mat3x3_f64 combined;
     if (need_cat && ctx) {
-        alwan_xyy src_xyy, dst_xyy;
-        alwan_xyz src_wp, dst_wp;
+        alwan_xyy_f64 src_xyy, dst_xyy;
+        alwan_xyz_f64 src_wp, dst_wp;
         src_xyy.x = src_space->white_xy[0];
         src_xyy.y = src_space->white_xy[1];
         src_xyy.Y = ALWAN_LITERAL(1.0);
-        alwan_xyy_to_xyz(&src_wp, &src_xyy);
+        alwan_xyy_to_xyz_f64(&src_wp, &src_xyy);
 
         dst_xyy.x = dst_space->white_xy[0];
         dst_xyy.y = dst_space->white_xy[1];
         dst_xyy.Y = ALWAN_LITERAL(1.0);
-        alwan_xyy_to_xyz(&dst_wp, &dst_xyy);
+        alwan_xyy_to_xyz_f64(&dst_wp, &dst_xyy);
 
-        alwan_mat3x3 cat;
-        int status = alwan_cat_matrix(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
+        alwan_mat3x3_f64 cat;
+        int status = alwan_cat_matrix_f64(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
 
         /* combined = xyz_to_dst * cat * src_to_xyz */
-        alwan_mat3x3 tmp = alwan_mat3_mul_f64_v(cat, src_to_xyz);
+        alwan_mat3x3_f64 tmp = alwan_mat3_mul_f64_v(cat, src_to_xyz);
         combined = alwan_mat3_mul_f64_v(xyz_to_dst, tmp);
     } else {
         /* combined = xyz_to_dst * src_to_xyz */
@@ -462,14 +450,14 @@ int alwan_image_convert(
                             }
                             /* Scalar tail within tile */
                             for (; j < tile; j++) {
-                                alwan_scalar r = (alwan_scalar)c0[j];
-                                alwan_scalar g = (alwan_scalar)c1[j];
-                                alwan_scalar b = (alwan_scalar)c2[j];
+                                alwan_f64 r = (alwan_f64)c0[j];
+                                alwan_f64 g = (alwan_f64)c1[j];
+                                alwan_f64 b = (alwan_f64)c2[j];
                                 if (!eotf_is_linear) {
                                     r = eotf_fn(r); g = eotf_fn(g); b = eotf_fn(b);
                                 }
-                                alwan_vec3 lin = {{r, g, b}};
-                                alwan_vec3 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
+                                alwan_vec3_f64 lin = {{r, g, b}};
+                                alwan_vec3_f64 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
                                 if (!oetf_is_linear) {
                                     c0[j] = (alwan_simd_lane)oetf_fn(dst_lin.v[0]);
                                     c1[j] = (alwan_simd_lane)oetf_fn(dst_lin.v[1]);
@@ -499,17 +487,17 @@ int alwan_image_convert(
 
         for (size_t x = 0; x < width; x++) {
             /* Load 3-channel pixel with format conversion */
-            alwan_scalar rgb[3];
+            alwan_f64 rgb[3];
             alwan__load3_typed(rgb, src_row + x * src_px, src_fmt);
 
             /* Source EOTF: encoded -> linear */
-            alwan_vec3 lin = {{eotf_fn(rgb[0]), eotf_fn(rgb[1]), eotf_fn(rgb[2])}};
+            alwan_vec3_f64 lin = {{eotf_fn(rgb[0]), eotf_fn(rgb[1]), eotf_fn(rgb[2])}};
 
             /* Combined matrix: src linear RGB -> dst linear RGB */
-            alwan_vec3 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
+            alwan_vec3_f64 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
 
             /* Destination OETF: linear -> encoded */
-            alwan_scalar out[3] = {
+            alwan_f64 out[3] = {
                 oetf_fn(dst_lin.v[0]),
                 oetf_fn(dst_lin.v[1]),
                 oetf_fn(dst_lin.v[2])
@@ -523,14 +511,7 @@ int alwan_image_convert(
     return ALWAN_OK;
 }
 
-int alwan_image_convert_rgba(
-    void *dst, alwan_pixel_format dst_fmt, size_t dst_row_stride,
-    void const *src, alwan_pixel_format src_fmt, size_t src_row_stride,
-    size_t width, size_t height,
-    alwan_ctx *ctx,
-    alwan_rgb_space_desc const *src_space,
-    alwan_rgb_space_desc const *dst_space,
-    alwan_alpha_mode alpha_mode) {
+int alwan_image_convert_rgba_f64(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_alpha_mode alpha_mode, alwan_ctx *ctx) {
 
     if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
         return ALWAN_E_INVALID;
@@ -546,48 +527,48 @@ int alwan_image_convert_rgba(
     size_t const dst_elem = alwan__fmt_size(dst_fmt);
 
     /* Derive conversion matrices */
-    alwan_mat3x3 src_to_xyz, xyz_to_src;
+    alwan_mat3x3_f64 src_to_xyz, xyz_to_src;
     if (src_space->has_matrices) {
         src_to_xyz = src_space->rgb_to_xyz;
     } else {
-        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        int status = alwan_rgb_derive_matrices_f64(&src_to_xyz, &xyz_to_src, src_space);
         if (status != ALWAN_OK) return status;
     }
 
-    alwan_mat3x3 dst_to_xyz, xyz_to_dst;
+    alwan_mat3x3_f64 dst_to_xyz, xyz_to_dst;
     if (dst_space->has_matrices) {
         xyz_to_dst = dst_space->xyz_to_rgb;
     } else {
-        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        int status = alwan_rgb_derive_matrices_f64(&dst_to_xyz, &xyz_to_dst, dst_space);
         if (status != ALWAN_OK) return status;
     }
 
     /* Check if chromatic adaptation is needed */
-    alwan_scalar const tol = ALWAN_LITERAL(1e-6);
-    alwan_scalar dx = src_space->white_xy[0] - dst_space->white_xy[0];
-    alwan_scalar dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    alwan_f64 const tol = ALWAN_LITERAL(1e-6);
+    alwan_f64 dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_f64 dy = src_space->white_xy[1] - dst_space->white_xy[1];
     int need_cat = (ALWAN_ABS(dx) > tol || ALWAN_ABS(dy) > tol);
 
     /* Precompute combined matrix: xyz_to_dst * [cat *] src_to_xyz */
-    alwan_mat3x3 combined;
+    alwan_mat3x3_f64 combined;
     if (need_cat && ctx) {
-        alwan_xyy src_xyy, dst_xyy;
-        alwan_xyz src_wp, dst_wp;
+        alwan_xyy_f64 src_xyy, dst_xyy;
+        alwan_xyz_f64 src_wp, dst_wp;
         src_xyy.x = src_space->white_xy[0];
         src_xyy.y = src_space->white_xy[1];
         src_xyy.Y = ALWAN_LITERAL(1.0);
-        alwan_xyy_to_xyz(&src_wp, &src_xyy);
+        alwan_xyy_to_xyz_f64(&src_wp, &src_xyy);
 
         dst_xyy.x = dst_space->white_xy[0];
         dst_xyy.y = dst_space->white_xy[1];
         dst_xyy.Y = ALWAN_LITERAL(1.0);
-        alwan_xyy_to_xyz(&dst_wp, &dst_xyy);
+        alwan_xyy_to_xyz_f64(&dst_wp, &dst_xyy);
 
-        alwan_mat3x3 cat;
-        int status = alwan_cat_matrix(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
+        alwan_mat3x3_f64 cat;
+        int status = alwan_cat_matrix_f64(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
 
-        alwan_mat3x3 tmp = alwan_mat3_mul_f64_v(cat, src_to_xyz);
+        alwan_mat3x3_f64 tmp = alwan_mat3_mul_f64_v(cat, src_to_xyz);
         combined = alwan_mat3_mul_f64_v(xyz_to_dst, tmp);
     } else {
         combined = alwan_mat3_mul_f64_v(xyz_to_dst, src_to_xyz);
@@ -696,17 +677,17 @@ int alwan_image_convert_rgba(
                             }
                             /* Scalar tail within tile */
                             for (; j < tile; j++) {
-                                alwan_scalar r = (alwan_scalar)c0[j];
-                                alwan_scalar g = (alwan_scalar)c1[j];
-                                alwan_scalar b = (alwan_scalar)c2[j];
-                                alwan_scalar a = (alwan_scalar)c3[j];
+                                alwan_f64 r = (alwan_f64)c0[j];
+                                alwan_f64 g = (alwan_f64)c1[j];
+                                alwan_f64 b = (alwan_f64)c2[j];
+                                alwan_f64 a = (alwan_f64)c3[j];
                                 if (premul && a > ALWAN_LITERAL(0.0)) {
-                                    alwan_scalar inv_a = ALWAN_LITERAL(1.0) / a;
+                                    alwan_f64 inv_a = ALWAN_LITERAL(1.0) / a;
                                     r *= inv_a; g *= inv_a; b *= inv_a;
                                 }
                                 if (!eotf_is_linear) { r = eotf_fn(r); g = eotf_fn(g); b = eotf_fn(b); }
-                                alwan_vec3 lin = {{r, g, b}};
-                                alwan_vec3 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
+                                alwan_vec3_f64 lin = {{r, g, b}};
+                                alwan_vec3_f64 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
                                 if (!oetf_is_linear) {
                                     c0[j] = (alwan_simd_lane)oetf_fn(dst_lin.v[0]);
                                     c1[j] = (alwan_simd_lane)oetf_fn(dst_lin.v[1]);
@@ -729,7 +710,7 @@ int alwan_image_convert_rgba(
                         /* Store alpha (channel 3) */
                         for (size_t j = 0; j < tile; j++) {
                             char *ap = dst_row + (processed + j) * dst_px + 3 * dst_elem;
-                            alwan__store1_typed(ap, (alwan_scalar)c3[j], dst_fmt);
+                            alwan__store1_typed(ap, (alwan_f64)c3[j], dst_fmt);
                         }
 
                         processed += tile;
@@ -751,28 +732,28 @@ int alwan_image_convert_rgba(
             char       *dst_pixel = dst_row + x * dst_px;
 
             /* Load RGB channels (first 3 elements of 4-channel pixel) */
-            alwan_scalar rgb[3];
+            alwan_f64 rgb[3];
             alwan__load3_typed(rgb, src_pixel, src_fmt);
 
             /* Load alpha channel (4th element) */
-            alwan_scalar alpha = alwan__load1_typed(src_pixel + 3 * src_elem, src_fmt);
+            alwan_f64 alpha = alwan__load1_typed(src_pixel + 3 * src_elem, src_fmt);
 
             /* Unpremultiply if needed */
             if (premul && alpha > ALWAN_LITERAL(0.0)) {
-                alwan_scalar inv_a = ALWAN_LITERAL(1.0) / alpha;
+                alwan_f64 inv_a = ALWAN_LITERAL(1.0) / alpha;
                 rgb[0] *= inv_a;
                 rgb[1] *= inv_a;
                 rgb[2] *= inv_a;
             }
 
             /* Source EOTF: encoded -> linear */
-            alwan_vec3 lin = {{eotf_fn(rgb[0]), eotf_fn(rgb[1]), eotf_fn(rgb[2])}};
+            alwan_vec3_f64 lin = {{eotf_fn(rgb[0]), eotf_fn(rgb[1]), eotf_fn(rgb[2])}};
 
             /* Combined matrix: src linear RGB -> dst linear RGB */
-            alwan_vec3 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
+            alwan_vec3_f64 dst_lin = alwan_mat3_mulv_f64_v(combined, lin);
 
             /* Destination OETF: linear -> encoded */
-            alwan_scalar out[3] = {
+            alwan_f64 out[3] = {
                 oetf_fn(dst_lin.v[0]),
                 oetf_fn(dst_lin.v[1]),
                 oetf_fn(dst_lin.v[2])
@@ -792,4 +773,40 @@ int alwan_image_convert_rgba(
     }
 
     return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * f32 wrappers — widen f32 descriptors to f64 and delegate.
+ *
+ * The image pixel data is in a typed pixel_format and is not affected
+ * by the descriptor precision.
+ * ---------------------------------------------------------------- */
+
+static void image_map_widen_desc_32(alwan_rgb_space_desc_f64 *out, alwan_rgb_space_desc_f32 const *in) {
+    for (int j = 0; j < 6; j++) out->primaries_xy[j] = (double)in->primaries_xy[j];
+    out->white_xy[0] = (double)in->white_xy[0];
+    out->white_xy[1] = (double)in->white_xy[1];
+    out->oetf = in->oetf;
+    out->eotf = in->eotf;
+    for (int j = 0; j < 9; j++) {
+        out->rgb_to_xyz.m[j] = (double)in->rgb_to_xyz.m[j];
+        out->xyz_to_rgb.m[j] = (double)in->xyz_to_rgb.m[j];
+    }
+    out->has_matrices = in->has_matrices;
+}
+
+int alwan_image_convert_f32(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_ctx *ctx) {
+    if (!src_space || !dst_space) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 s, d;
+    image_map_widen_desc_32(&s, src_space);
+    image_map_widen_desc_32(&d, dst_space);
+    return alwan_image_convert_f64(dst, dst_row_stride, src, src_row_stride, width, height, dst_fmt, src_fmt, &s, &d, ctx);
+}
+
+int alwan_image_convert_rgba_f32(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_alpha_mode alpha_mode, alwan_ctx *ctx) {
+    if (!src_space || !dst_space) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 s, d;
+    image_map_widen_desc_32(&s, src_space);
+    image_map_widen_desc_32(&d, dst_space);
+    return alwan_image_convert_rgba_f64(dst, dst_row_stride, src, src_row_stride, width, height, dst_fmt, src_fmt, &s, &d, alpha_mode, ctx);
 }

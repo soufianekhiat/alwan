@@ -79,27 +79,51 @@ ALWAN_INLINE alwan_scalar ipt_nonlinearity_inverse_v(alwan_scalar x) {
 
 ALWAN_INLINE alwan_ipt alwan_xyz_to_ipt_v(alwan_xyz xyz) {
     alwan_ipt result;
+
+    /* Step 1: XYZ -> LMS via matrix */
     alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
     alwan_vec3 lms_v = alwan_mat3_mulv_v(IPT_V_XYZ_TO_LMS, xyz_v);
-    alwan_scalar l_ = ipt_nonlinearity_v(lms_v.v[0]);
-    alwan_scalar m_ = ipt_nonlinearity_v(lms_v.v[1]);
-    alwan_scalar s_ = ipt_nonlinearity_v(lms_v.v[2]);
+    alwan_scalar l = lms_v.v[0];
+    alwan_scalar m = lms_v.v[1];
+    alwan_scalar s = lms_v.v[2];
+
+    /* Step 2: LMS -> LMS' via nonlinearity */
+    alwan_scalar l_ = ipt_nonlinearity_v(l);
+    alwan_scalar m_ = ipt_nonlinearity_v(m);
+    alwan_scalar s_ = ipt_nonlinearity_v(s);
+
+    /* Step 3: LMS' -> IPT via matrix */
     alwan_vec3 lms_p_v = {{l_, m_, s_}};
     alwan_vec3 ipt_v = alwan_mat3_mulv_v(IPT_V_LMS_P_TO_IPT, lms_p_v);
-    result.I = ipt_v.v[0]; result.P = ipt_v.v[1]; result.T = ipt_v.v[2];
+    result.I = ipt_v.v[0];
+    result.P = ipt_v.v[1];
+    result.T = ipt_v.v[2];
+
     return result;
 }
 
 ALWAN_INLINE alwan_xyz alwan_ipt_to_xyz_v(alwan_ipt ipt) {
     alwan_xyz result;
+
+    /* Step 1: IPT -> LMS' via inverse matrix */
     alwan_vec3 ipt_v = {{ipt.I, ipt.P, ipt.T}};
     alwan_vec3 lms_p_v = alwan_mat3_mulv_v(IPT_V_IPT_TO_LMS_P, ipt_v);
-    alwan_scalar l = ipt_nonlinearity_inverse_v(lms_p_v.v[0]);
-    alwan_scalar m = ipt_nonlinearity_inverse_v(lms_p_v.v[1]);
-    alwan_scalar s = ipt_nonlinearity_inverse_v(lms_p_v.v[2]);
+    alwan_scalar l_ = lms_p_v.v[0];
+    alwan_scalar m_ = lms_p_v.v[1];
+    alwan_scalar s_ = lms_p_v.v[2];
+
+    /* Step 2: LMS' -> LMS via inverse nonlinearity */
+    alwan_scalar l = ipt_nonlinearity_inverse_v(l_);
+    alwan_scalar m = ipt_nonlinearity_inverse_v(m_);
+    alwan_scalar s = ipt_nonlinearity_inverse_v(s_);
+
+    /* Step 3: LMS -> XYZ via inverse matrix */
     alwan_vec3 lms_v = {{l, m, s}};
     alwan_vec3 xyz_v = alwan_mat3_mulv_v(IPT_V_LMS_TO_XYZ, lms_v);
-    result.x = xyz_v.v[0]; result.y = xyz_v.v[1]; result.z = xyz_v.v[2];
+    result.x = xyz_v.v[0];
+    result.y = xyz_v.v[1];
+    result.z = xyz_v.v[2];
+
     return result;
 }
 

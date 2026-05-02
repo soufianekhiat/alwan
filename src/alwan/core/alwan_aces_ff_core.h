@@ -103,21 +103,20 @@ typedef struct {
 } aces2_HueDependentGamutParams;
 
 ALWAN_INLINE alwan_scalar aces_bt1886_oetf_v(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return ALWAN_POW(x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
+    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    return ALWAN_POW(safe_x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
 }
 
 ALWAN_INLINE alwan_scalar aces_srgb_oetf_v(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    if (x <= ALWAN_SRGB_OETF_THRESH) {
-        return x * ALWAN_SRGB_LINEAR_GAIN;
-    }
-    return ALWAN_SRGB_A * ALWAN_POW(x, ALWAN_LITERAL(1.0) / ALWAN_SRGB_GAMMA) - ALWAN_SRGB_B;
+    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    alwan_scalar const linear_seg = safe_x * ALWAN_SRGB_LINEAR_GAIN;
+    alwan_scalar const power_seg  = ALWAN_SRGB_A * ALWAN_POW(safe_x, ALWAN_LITERAL(1.0) / ALWAN_SRGB_GAMMA) - ALWAN_SRGB_B;
+    return ALWAN_SELECT(safe_x <= ALWAN_SRGB_OETF_THRESH, linear_seg, power_seg);
 }
 
 ALWAN_INLINE alwan_scalar aces_gamma26_oetf_v(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return ALWAN_POW(x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
+    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    return ALWAN_POW(safe_x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
 }
 
 ALWAN_INLINE alwan_scalar aces_pq_oetf_v(alwan_scalar Y, alwan_scalar peak_nits) {
@@ -135,21 +134,20 @@ ALWAN_INLINE alwan_scalar aces_pq_oetf_v(alwan_scalar Y, alwan_scalar peak_nits)
 }
 
 ALWAN_INLINE alwan_scalar aces_bt1886_eotf_v(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return ALWAN_POW(x, ALWAN_LITERAL(2.4));
+    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    return ALWAN_POW(safe_x, ALWAN_LITERAL(2.4));
 }
 
 ALWAN_INLINE alwan_scalar aces_srgb_eotf_v(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    if (x <= ALWAN_SRGB_EOTF_THRESH) {
-        return x / ALWAN_SRGB_LINEAR_GAIN;
-    }
-    return ALWAN_POW((x + ALWAN_SRGB_B) / ALWAN_SRGB_A, ALWAN_SRGB_GAMMA);
+    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    alwan_scalar const linear_seg = safe_x / ALWAN_SRGB_LINEAR_GAIN;
+    alwan_scalar const power_seg  = ALWAN_POW((safe_x + ALWAN_SRGB_B) / ALWAN_SRGB_A, ALWAN_SRGB_GAMMA);
+    return ALWAN_SELECT(safe_x <= ALWAN_SRGB_EOTF_THRESH, linear_seg, power_seg);
 }
 
 ALWAN_INLINE alwan_scalar aces_gamma26_eotf_v(alwan_scalar x) {
-    if (x <= ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
-    return ALWAN_POW(x, ALWAN_LITERAL(2.6));
+    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    return ALWAN_POW(safe_x, ALWAN_LITERAL(2.6));
 }
 
 ALWAN_INLINE alwan_scalar aces_pq_eotf_v(alwan_scalar E, alwan_scalar peak_nits) {
@@ -171,8 +169,16 @@ ALWAN_INLINE alwan_scalar aces_pq_eotf_v(alwan_scalar E, alwan_scalar peak_nits)
 ALWAN_INLINE alwan_scalar aces_cone_response_fwd_v(alwan_scalar v) {
     alwan_scalar abs_v = ALWAN_ABS(v);
     if (abs_v < ALWAN_LITERAL(1e-10)) return ALWAN_LITERAL(0.0);
+
     alwan_scalar F_L_Y = ALWAN_POW(abs_v, ALWAN_LITERAL(0.42));
+    /* Guard: Inf or NaN F_L_Y (from Inf/NaN input) → Ra = Inf/Inf = NaN.
+     * Physically Ra → 1 as stimulus → ∞, so cap at 1. Also protects
+     * downstream hue lookups from (int)NaN undefined behaviour. */
+    if (!(F_L_Y < ALWAN_LITERAL(1e15))) {
+        return (v >= ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(-1.0);
+    }
     alwan_scalar Ra = F_L_Y / (ACES_CAM_NL_OFFSET + F_L_Y);
+
     return (v >= ALWAN_LITERAL(0.0)) ? Ra : -Ra;
 }
 

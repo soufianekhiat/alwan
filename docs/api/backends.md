@@ -13,7 +13,7 @@ Alwan's core math is header-only and cross-platform. The same `*_core.inc` files
 | **GLSL** | `alwan_glsl.h` | `float` | f32 | OpenGL / Vulkan shaders |
 | **Halide** | `alwan_halide.h` | `Halide::Expr` | f32 or f64 | Pipeline generators |
 
-GPU backends always use single precision. The C backend uses double by default and can be switched to float with `ALWAN_SCALAR_IS_FLOAT=1`.
+GPU backends always use single precision. The C backend exposes both `_f32` (float) and `_f64` (double) variants — choose the appropriate suffix at each call site.
 
 ---
 
@@ -315,6 +315,6 @@ All core conversion functions (XYZ↔Lab, Oklab, ICtCp, transfer functions, CAT,
 
 ## See Also
 
-- [Configuration](../configuration.md) — `ALWAN_SCALAR_IS_FLOAT`, `ALWAN_EMBED_DATA`
+- [Configuration](../configuration.md) — `ALWAN_EMBED_DATA`, custom allocators
 - [Getting Started](../getting-started.md) — C usage introduction
 - [Map / Bulk Operations](map.md) — CPU batch processing

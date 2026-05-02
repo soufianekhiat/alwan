@@ -61,7 +61,7 @@ void alwan_color_matrix_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *r
     *rgb_out = alwan_color_matrix_apply_f64_v(*rgb_in, *matrix_3x3);
 }
 
-int alwan_color_matrix_get_preset(alwan_mat3x3_f64 *matrix_3x3, alwan_color_matrix_preset preset)
+int alwan_color_matrix_get_preset_f64(alwan_mat3x3_f64 *matrix_3x3, alwan_color_matrix_preset_f64 preset)
 {
     if (!matrix_3x3) {
         return ALWAN_E_INVALID;
@@ -143,8 +143,8 @@ int alwan_color_matrix_get_preset(alwan_mat3x3_f64 *matrix_3x3, alwan_color_matr
  * ================================================================ */
 
 void alwan_printer_lights_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
-                                float red_lights, float green_lights,
-                                float blue_lights)
+                                alwan_f32 red_lights, alwan_f32 green_lights,
+                                alwan_f32 blue_lights)
 {
     if (!rgb_out || !rgb_in) {
         return;
@@ -154,8 +154,8 @@ void alwan_printer_lights_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const 
 }
 
 void alwan_printer_lights_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
-                                double red_lights, double green_lights,
-                                double blue_lights)
+                                alwan_f64 red_lights, alwan_f64 green_lights,
+                                alwan_f64 blue_lights)
 {
     if (!rgb_out || !rgb_in) {
         return;
@@ -169,7 +169,7 @@ void alwan_printer_lights_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const 
  * Reference: colour-science implementation for exact term ordering
  * ================================================================ */
 
-int alwan_poly_expand_cheung2004(alwan_f64 *out, alwan_rgb_f64 const *rgb,
+int alwan_poly_expand_cheung2004_f64(alwan_f64 *out, alwan_rgb_f64 const *rgb,
                                   alwan_poly_cheung_terms terms)
 {
     if (!rgb || !out) {
@@ -337,7 +337,7 @@ int alwan_poly_expand_cheung2004(alwan_f64 *out, alwan_rgb_f64 const *rgb,
     return ALWAN_OK;
 }
 
-int alwan_poly_expand_finlayson2015(alwan_f64 *out, int *out_size,
+int alwan_poly_expand_finlayson2015_f64(alwan_f64 *out, int *out_size,
                                      alwan_rgb_f64 const *rgb, int degree, int root_poly)
 {
     if (!rgb || !out || !out_size) {
@@ -453,7 +453,7 @@ int alwan_poly_expand_finlayson2015(alwan_f64 *out, int *out_size,
     return ALWAN_OK;
 }
 
-int alwan_poly_expand_vandermonde(alwan_f64 *out, int *out_size,
+int alwan_poly_expand_vandermonde_f64(alwan_f64 *out, int *out_size,
                                    alwan_f64 const *a, int a_size, int degree)
 {
     if (!a || !out || !out_size || a_size <= 0 || degree < 1) {
@@ -590,7 +590,7 @@ static int least_squares_solve(alwan_f64 const *A, alwan_f64 const *b,
     return ALWAN_OK;
 }
 
-int alwan_colour_correction_matrix_cheung2004(alwan_f64 *matrix_out,
+int alwan_colour_correction_matrix_cheung2004_f64(alwan_f64 *matrix_out,
                                                alwan_f64 const *M_T,
                                                alwan_f64 const *M_R,
                                                int num_samples,
@@ -615,7 +615,7 @@ int alwan_colour_correction_matrix_cheung2004(alwan_f64 *matrix_out,
         rgb.g = M_T[i * 3 + 1];
         rgb.b = M_T[i * 3 + 2];
 
-        int result = alwan_poly_expand_cheung2004(&A[i * terms], &rgb, terms);
+        int result = alwan_poly_expand_cheung2004_f64(&A[i * terms], &rgb, terms);
         if (result != ALWAN_OK) {
             ALWAN_FREE(A);
             return result;
@@ -630,7 +630,7 @@ int alwan_colour_correction_matrix_cheung2004(alwan_f64 *matrix_out,
 }
 
 void alwan_colour_correct_cheung2004_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb,
-                                     float const *matrix, alwan_poly_cheung_terms terms)
+                                     alwan_f32 const *matrix, alwan_poly_cheung_terms terms)
 {
     if (!rgb || !matrix || !rgb_out) {
         return;
@@ -643,7 +643,7 @@ void alwan_colour_correct_cheung2004_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 c
     rgb64.b = (alwan_f64)rgb->b;
 
     alwan_f64 expanded[35];
-    int result = alwan_poly_expand_cheung2004(expanded, &rgb64, terms);
+    int result = alwan_poly_expand_cheung2004_f64(expanded, &rgb64, terms);
     if (result != ALWAN_OK) return;
 
     /* Apply matrix: RGB_out = expanded * matrix */
@@ -661,7 +661,7 @@ void alwan_colour_correct_cheung2004_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 c
 }
 
 void alwan_colour_correct_cheung2004_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb,
-                                     double const *matrix, alwan_poly_cheung_terms terms)
+                                     alwan_f64 const *matrix, alwan_poly_cheung_terms terms)
 {
     if (!rgb || !matrix || !rgb_out) {
         return;
@@ -669,7 +669,7 @@ void alwan_colour_correct_cheung2004_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 c
 
     /* Expand input */
     alwan_f64 expanded[35];
-    int result = alwan_poly_expand_cheung2004(expanded, rgb, terms);
+    int result = alwan_poly_expand_cheung2004_f64(expanded, rgb, terms);
     if (result != ALWAN_OK) return;
 
     /* Apply matrix: RGB_out = expanded * matrix */
@@ -684,7 +684,7 @@ void alwan_colour_correct_cheung2004_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 c
     }
 }
 
-int alwan_colour_correction_matrix_finlayson2015(alwan_f64 *matrix_out, int *matrix_size,
+int alwan_colour_correction_matrix_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_size,
                                                   alwan_f64 const *M_T,
                                                   alwan_f64 const *M_R,
                                                   int num_samples, int degree, int root_poly)
@@ -701,7 +701,7 @@ int alwan_colour_correction_matrix_finlayson2015(alwan_f64 *matrix_out, int *mat
     alwan_rgb_f64 test_rgb = {0.5, 0.5, 0.5};
     alwan_f64 test_out[34];
     int exp_size;
-    int result = alwan_poly_expand_finlayson2015(test_out, &exp_size, &test_rgb, degree, root_poly);
+    int result = alwan_poly_expand_finlayson2015_f64(test_out, &exp_size, &test_rgb, degree, root_poly);
     if (result != ALWAN_OK) return result;
 
     if (num_samples < exp_size) {
@@ -724,7 +724,7 @@ int alwan_colour_correction_matrix_finlayson2015(alwan_f64 *matrix_out, int *mat
         rgb.b = M_T[i * 3 + 2];
 
         int actual_size;
-        result = alwan_poly_expand_finlayson2015(&A[i * exp_size], &actual_size, &rgb, degree, root_poly);
+        result = alwan_poly_expand_finlayson2015_f64(&A[i * exp_size], &actual_size, &rgb, degree, root_poly);
         if (result != ALWAN_OK) {
             ALWAN_FREE(A);
             return result;
@@ -740,7 +740,7 @@ int alwan_colour_correction_matrix_finlayson2015(alwan_f64 *matrix_out, int *mat
 }
 
 void alwan_colour_correct_finlayson2015_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb,
-                                        float const *matrix, int degree, int root_poly)
+                                        alwan_f32 const *matrix, int degree, int root_poly)
 {
     if (!rgb || !matrix || !rgb_out) {
         return;
@@ -754,7 +754,7 @@ void alwan_colour_correct_finlayson2015_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f3
 
     alwan_f64 expanded[34];
     int exp_size;
-    int result = alwan_poly_expand_finlayson2015(expanded, &exp_size, &rgb64, degree, root_poly);
+    int result = alwan_poly_expand_finlayson2015_f64(expanded, &exp_size, &rgb64, degree, root_poly);
     if (result != ALWAN_OK) return;
 
     /* Apply matrix */
@@ -772,7 +772,7 @@ void alwan_colour_correct_finlayson2015_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f3
 }
 
 void alwan_colour_correct_finlayson2015_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb,
-                                        double const *matrix, int degree, int root_poly)
+                                        alwan_f64 const *matrix, int degree, int root_poly)
 {
     if (!rgb || !matrix || !rgb_out) {
         return;
@@ -781,7 +781,7 @@ void alwan_colour_correct_finlayson2015_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f6
     /* Expand input */
     alwan_f64 expanded[34];
     int exp_size;
-    int result = alwan_poly_expand_finlayson2015(expanded, &exp_size, rgb, degree, root_poly);
+    int result = alwan_poly_expand_finlayson2015_f64(expanded, &exp_size, rgb, degree, root_poly);
     if (result != ALWAN_OK) return;
 
     /* Apply matrix */
@@ -854,4 +854,118 @@ void alwan_white_balance_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *
     }
 
     *rgb_out = alwan_white_balance_apply_f64_v(*rgb, *multipliers);
+}
+
+/* ================================================================
+ * f32 wrappers for color-correction utilities
+ *
+ * Delegate to the f64 implementations via temporary f64 buffers.
+ * ================================================================ */
+
+int alwan_color_matrix_get_preset_f32(alwan_mat3x3_f32 *matrix_3x3, alwan_color_matrix_preset_f32 preset) {
+    if (!matrix_3x3) return ALWAN_E_INVALID;
+    alwan_mat3x3_f64 tmp;
+    int rc = alwan_color_matrix_get_preset_f64(&tmp, (alwan_color_matrix_preset_f64)preset);
+    if (rc != ALWAN_OK) return rc;
+    for (int i = 0; i < 9; i++) matrix_3x3->m[i] = (float)tmp.m[i];
+    return ALWAN_OK;
+}
+
+int alwan_poly_expand_cheung2004_f32(alwan_f32 *out, alwan_rgb_f32 const *rgb,
+                                  alwan_poly_cheung_terms terms) {
+    if (!rgb || !out) return ALWAN_E_INVALID;
+    alwan_rgb_f64 rgb64 = { (double)rgb->r, (double)rgb->g, (double)rgb->b };
+    alwan_f64 tmp[35];
+    int rc = alwan_poly_expand_cheung2004_f64(tmp, &rgb64, terms);
+    if (rc != ALWAN_OK) return rc;
+    for (int i = 0; i < (int)terms; i++) out[i] = (alwan_f32)tmp[i];
+    return ALWAN_OK;
+}
+
+int alwan_poly_expand_finlayson2015_f32(alwan_f32 *out, int *out_size,
+                                     alwan_rgb_f32 const *rgb, int degree, int root_poly) {
+    if (!rgb || !out || !out_size) return ALWAN_E_INVALID;
+    alwan_rgb_f64 rgb64 = { (double)rgb->r, (double)rgb->g, (double)rgb->b };
+    alwan_f64 tmp[35];
+    int rc = alwan_poly_expand_finlayson2015_f64(tmp, out_size, &rgb64, degree, root_poly);
+    if (rc != ALWAN_OK) return rc;
+    for (int i = 0; i < *out_size; i++) out[i] = (alwan_f32)tmp[i];
+    return ALWAN_OK;
+}
+
+int alwan_poly_expand_vandermonde_f32(alwan_f32 *out, int *out_size,
+                                   alwan_f32 const *a, int a_size, int degree) {
+    if (!a || !out || !out_size || a_size <= 0 || degree < 1) return ALWAN_E_INVALID;
+    size_t a_sz = (size_t)a_size;
+    alwan_f64 *a64 = (alwan_f64 *)ALWAN_ALLOC(a_sz * sizeof(alwan_f64), sizeof(alwan_f64));
+    if (!a64) return ALWAN_E_NOMEM;
+    for (size_t i = 0; i < a_sz; i++) a64[i] = (alwan_f64)a[i];
+
+    size_t max_out = a_sz * (size_t)degree + 1;
+    alwan_f64 *tmp = (alwan_f64 *)ALWAN_ALLOC(max_out * sizeof(alwan_f64), sizeof(alwan_f64));
+    if (!tmp) { ALWAN_FREE(a64); return ALWAN_E_NOMEM; }
+
+    int rc = alwan_poly_expand_vandermonde_f64(tmp, out_size, a64, a_size, degree);
+    if (rc == ALWAN_OK) {
+        for (int i = 0; i < *out_size; i++) out[i] = (alwan_f32)tmp[i];
+    }
+
+    ALWAN_FREE(tmp);
+    ALWAN_FREE(a64);
+    return rc;
+}
+
+int alwan_colour_correction_matrix_cheung2004_f32(alwan_f32 *matrix_out,
+                                               alwan_f32 const *M_T,
+                                               alwan_f32 const *M_R,
+                                               int num_samples,
+                                               alwan_poly_cheung_terms terms) {
+    if (!M_T || !M_R || !matrix_out || num_samples < (int)terms) return ALWAN_E_INVALID;
+
+    size_t ns = (size_t)num_samples * 3;
+    alwan_f64 *MT64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
+    alwan_f64 *MR64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
+    size_t mat_sz = (size_t)terms * 3;
+    alwan_f64 *mat64 = (alwan_f64 *)ALWAN_ALLOC(mat_sz * sizeof(alwan_f64), sizeof(alwan_f64));
+    if (!MT64 || !MR64 || !mat64) {
+        if (MT64) ALWAN_FREE(MT64);
+        if (MR64) ALWAN_FREE(MR64);
+        if (mat64) ALWAN_FREE(mat64);
+        return ALWAN_E_NOMEM;
+    }
+    for (size_t i = 0; i < ns; i++) { MT64[i] = (alwan_f64)M_T[i]; MR64[i] = (alwan_f64)M_R[i]; }
+
+    int rc = alwan_colour_correction_matrix_cheung2004_f64(mat64, MT64, MR64, num_samples, terms);
+    if (rc == ALWAN_OK) {
+        for (size_t i = 0; i < mat_sz; i++) matrix_out[i] = (alwan_f32)mat64[i];
+    }
+    ALWAN_FREE(MT64); ALWAN_FREE(MR64); ALWAN_FREE(mat64);
+    return rc;
+}
+
+int alwan_colour_correction_matrix_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size,
+                                                  alwan_f32 const *M_T,
+                                                  alwan_f32 const *M_R,
+                                                  int num_samples, int degree, int root_poly) {
+    if (!M_T || !M_R || !matrix_out || !matrix_size) return ALWAN_E_INVALID;
+
+    size_t ns = (size_t)num_samples * 3;
+    alwan_f64 *MT64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
+    alwan_f64 *MR64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
+    /* max size for finlayson is 22 features * 3 */
+    alwan_f64 mat64[22 * 3];
+    if (!MT64 || !MR64) {
+        if (MT64) ALWAN_FREE(MT64);
+        if (MR64) ALWAN_FREE(MR64);
+        return ALWAN_E_NOMEM;
+    }
+    for (size_t i = 0; i < ns; i++) { MT64[i] = (alwan_f64)M_T[i]; MR64[i] = (alwan_f64)M_R[i]; }
+
+    int rc = alwan_colour_correction_matrix_finlayson2015_f64(mat64, matrix_size, MT64, MR64, num_samples, degree, root_poly);
+    if (rc == ALWAN_OK) {
+        int total = (*matrix_size) * 3;
+        for (int i = 0; i < total; i++) matrix_out[i] = (alwan_f32)mat64[i];
+    }
+    ALWAN_FREE(MT64); ALWAN_FREE(MR64);
+    return rc;
 }

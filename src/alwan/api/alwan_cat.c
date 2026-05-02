@@ -15,17 +15,6 @@
 #include "../core/alwan_cat_core.h"
 #include <string.h>
 
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-#include "alwan_api_f32_setup.h"
-#include "alwan_cat_impl.inc"
-#include "alwan_api_teardown.h"
-ALWAN_DIAG_POP
-
-#include "alwan_api_f64_setup.h"
-#include "alwan_cat_impl.inc"
-#include "alwan_api_teardown.h"
-
 /* ----------------------------------------------------------------
  * CAT Matrix Accessors
  * Load cone-response matrices from embedded global data arrays.
@@ -101,77 +90,16 @@ static void get_bianco_pc_2010_matrix(alwan_mat3x3_f64 *out) {
  * calls the core value-returning functions.
  * ---------------------------------------------------------------- */
 
-int alwan_cat_matrix(alwan_mat3x3_f64 *out,
-                     alwan_xyz_f64 const *src_white_xyz,
-                     alwan_xyz_f64 const *dst_white_xyz,
-                     alwan_cat_method method) {
-    if (!src_white_xyz || !dst_white_xyz || !out) {
-        return ALWAN_E_INVALID;
-    }
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_cat_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
 
-    /* Validate white points (Y should be close to 1.0, and all components > 0) */
-    if (src_white_xyz->y < ALWAN_EPSILON || dst_white_xyz->y < ALWAN_EPSILON) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Handle XYZ scaling separately (simplest case -- no cone-response matrix) */
-    if (method == ALWAN_CAT_XYZ_SCALING) {
-        *out = alwan_cat_xyz_scaling_f64_v(*src_white_xyz, *dst_white_xyz);
-        return ALWAN_OK;
-    }
-
-    /* Get the CAT matrix M for the chosen method */
-    alwan_mat3x3_f64 M;
-    switch (method) {
-        case ALWAN_CAT_BRADFORD:
-            get_bradford_matrix(&M);
-            break;
-        case ALWAN_CAT_CAT02:
-            get_cat02_matrix(&M);
-            break;
-        case ALWAN_CAT_CAT16:
-            get_cat16_matrix(&M);
-            break;
-
-        /* Extended CAT methods */
-        case ALWAN_CAT_SHARP:
-            get_sharp_matrix(&M);
-            break;
-        case ALWAN_CAT_FAIRCHILD:
-            get_fairchild_matrix(&M);
-            break;
-        case ALWAN_CAT_CMCCAT97:
-            get_cmccat97_matrix(&M);
-            break;
-        case ALWAN_CAT_CMCCAT2000:
-            get_cmccat2000_matrix(&M);
-            break;
-        case ALWAN_CAT_CAT02_BRILL_2008:
-            get_cat02_brill_2008_matrix(&M);
-            break;
-        case ALWAN_CAT_BIANCO_2010:
-            get_bianco_2010_matrix(&M);
-            break;
-        case ALWAN_CAT_BIANCO_PC_2010:
-            get_bianco_pc_2010_matrix(&M);
-            break;
-
-        default:
-            return ALWAN_E_INVALID;
-    }
-
-    /* Compute M^-1 */
-    alwan_mat3x3_f64 M_inv;
-    int status = alwan_mat3_inv(&M_inv, &M);
-    if (status != ALWAN_OK) {
-        return status;
-    }
-
-    /* Delegate to core: M_adapt = M^-1 * diag(rgb_dst / rgb_src) * M */
-    *out = alwan_cat_matrix_f64_v(M, M_inv, *src_white_xyz, *dst_white_xyz);
-
-    return ALWAN_OK;
-}
+#include "alwan_api_f64_setup.h"
+#include "alwan_cat_impl.inc"
+#include "alwan_api_teardown.h"
 
 /* ----------------------------------------------------------------
  * Bulk Chromatic Adaptation
@@ -181,19 +109,14 @@ int alwan_cat_matrix(alwan_mat3x3_f64 *out,
  * header-only core.
  * ---------------------------------------------------------------- */
 
-int alwan_xyz_adapt(alwan_f64 *xyz_out,
-                    alwan_xyz_f64 const *src_white_xyz,
-                    alwan_xyz_f64 const *dst_white_xyz,
-                    alwan_cat_method method,
-                    alwan_f64 const *xyz_in,
-                    size_t count, size_t in_stride, size_t out_stride) {
+int alwan_xyz_adapt_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f64 const *src_white_xyz, alwan_xyz_f64 const *dst_white_xyz, alwan_cat_method method) {
     if (!xyz_in || !xyz_out || !src_white_xyz || !dst_white_xyz) {
         return ALWAN_E_INVALID;
     }
 
     /* Compute adaptation matrix once */
     alwan_mat3x3_f64 cat_mat;
-    int status = alwan_cat_matrix(&cat_mat, src_white_xyz, dst_white_xyz, method);
+    int status = alwan_cat_matrix_f64(&cat_mat, src_white_xyz, dst_white_xyz, method);
     if (status != ALWAN_OK) {
         return status;
     }
@@ -228,7 +151,7 @@ int alwan_xyz_adapt(alwan_f64 *xyz_out,
  *            Optics Express, 26(6), 7724.
  * ---------------------------------------------------------------- */
 
-int alwan_cat_zhai2018(alwan_xyz_f64 *xyz_out,
+int alwan_cat_zhai2018_f64(alwan_xyz_f64 *xyz_out,
                        alwan_xyz_f64 const *xyz_in,
                        alwan_xyz_f64 const *xyz_src,
                        alwan_xyz_f64 const *xyz_dst,
@@ -265,7 +188,7 @@ int alwan_cat_zhai2018(alwan_xyz_f64 *xyz_out,
 
     /* Compute M inverse */
     alwan_mat3x3_f64 M_inv;
-    int status = alwan_mat3_inv(&M_inv, &M);
+    int status = alwan_mat3_inv_f64(&M_inv, &M);
     if (status != ALWAN_OK) {
         return status;
     }

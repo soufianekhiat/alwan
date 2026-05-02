@@ -2,7 +2,7 @@
 
 Context objects (`alwan_ctx`) manage library state, memory allocation, and reference data.
 
-> **Note:** Runtime data loading (`runtime_data_root`) is not yet implemented. Only embedded mode works.
+> **Note:** Runtime data loading (`runtime_data_root`) is NOT implemented. Only embedded mode (`ALWAN_EMBED_DATA=1`, the default) is supported. Runtime mode is planned for alwan 3.0.0.
 
 ---
 
@@ -140,26 +140,14 @@ void free_cb(void *ptr);
 **Default:** System `free`
 
 #### `runtime_data_root`
-Path to data directory for runtime loading.
+Reserved. Runtime data loading is NOT implemented (planned for alwan 3.0.0).
 
 **Type:** `const char*`
 
-**Default:** `NULL` (not used in embedded mode)
+**Default:** `NULL`
 
-**Only relevant when `ALWAN_EMBED_DATA=0`.**
-
-**Example:**
-```c
-// Runtime data loading
-alwan_ctx *ctx = alwan_create(&(alwan_config){
-    .runtime_data_root = "C:/alwan/data"
-});
-```
-
-**Path format:**
-- Absolute or relative paths supported
-- Use forward slashes `/` or backslashes `\\`
-- Must point to folder containing CSV files
+This field is currently ignored. Building with `ALWAN_EMBED_DATA=0` produces a compile-time error.
+Set to `NULL` until runtime loading is implemented in alwan 3.0.0.
 
 ---
 
@@ -207,31 +195,11 @@ alwan_destroy(ctx);
 
 ---
 
-### Pattern 3: Runtime Data Loading
+### Pattern 3: Runtime Data Loading (NOT IMPLEMENTED)
 
-**Requirements:**
-- Build with `ALWAN_EMBED_DATA=0`
-- CSV files accessible at runtime
-
-```c
-alwan_ctx *ctx = alwan_create(&(alwan_config){
-    .runtime_data_root = "./data"
-});
-
-if (!ctx) {
-    fprintf(stderr, "Failed to load data from ./data\n");
-    return -1;
-}
-
-// Context loaded data from disk
-
-alwan_destroy(ctx);
-```
-
-**Use when:**
-- Binary size is critical
-- Data needs to be updated without recompiling
-- Lazy loading is acceptable
+> **NOT IMPLEMENTED.** Runtime mode is planned for alwan 3.0.0.
+> Building with `ALWAN_EMBED_DATA=0` produces a compile-time error.
+> Always use `ALWAN_EMBED_DATA=1` (the default) and pass `runtime_data_root = NULL`.
 
 ---
 
@@ -241,16 +209,16 @@ alwan_destroy(ctx);
 // Create one shared context
 alwan_ctx *shared_ctx = alwan_create(NULL);
 
-// Get descriptors once (thread-safe read)
-alwan_rgb_space_desc srgb_desc, bt2020_desc;
-alwan_rgb_get_space_descriptor(&srgb_desc, shared_ctx, ALWAN_RGB_SPACE_SRGB);
-alwan_rgb_get_space_descriptor(&bt2020_desc, shared_ctx, ALWAN_RGB_SPACE_BT2020);
+/* Get descriptors once (thread-safe read) */
+alwan_rgb_space_desc_{T} srgb_desc, bt2020_desc;
+alwan_rgb_get_space_descriptor_{T}(&srgb_desc, shared_ctx, ALWAN_RGB_SPACE_SRGB);
+alwan_rgb_get_space_descriptor_{T}(&bt2020_desc, shared_ctx, ALWAN_RGB_SPACE_BT2020);
 
-// Use from multiple threads (read-only operations)
+/* Use from multiple threads (read-only operations) */
 #pragma omp parallel for
 for (int i = 0; i < n; i++) {
-    // Safe: read-only color space conversion
-    alwan_rgb_convert(&out[i], shared_ctx, &srgb_desc, &bt2020_desc, &rgb[i]);
+    /* Safe: read-only color space conversion */
+    alwan_rgb_convert_{T}(&out[i], shared_ctx, &srgb_desc, &bt2020_desc, &rgb[i]);
 }
 
 alwan_destroy(shared_ctx);
@@ -302,17 +270,9 @@ alwan_destroy(shared_ctx);
 
 ---
 
-### Runtime Mode (ALWAN_EMBED_DATA=0)
+### Runtime Mode (ALWAN_EMBED_DATA=0) — NOT IMPLEMENTED
 
-**Allocation during `alwan_create()`:**
-- Context structure: ~few KB
-- CMF data: ~50-200 KB (depending on observers)
-- Illuminant data: ~20-100 KB
-- RGB space data: ~10-50 KB
-
-**Total runtime memory:** ~100-400 KB per context
-
-**Load time:** 10-50 ms on modern systems (one-time cost)
+> Runtime data loading is not implemented. Planned for alwan 3.0.0.
 
 ---
 
@@ -323,19 +283,16 @@ alwan_destroy(shared_ctx);
 ```c
 alwan_ctx *ctx = alwan_create(config);
 if (!ctx) {
-    // Possible causes:
-    // - Allocation failure
-    // - Data files not found (runtime mode)
-    // - Invalid data files (runtime mode)
-    // - Invalid configuration
+    /* Possible causes:
+     * - Allocation failure
+     * - Invalid configuration (e.g., alloc_cb set without free_cb) */
 }
 ```
 
 **Debugging:**
 1. Check `config` pointers are valid
-2. Verify `runtime_data_root` path exists (runtime mode)
-3. Ensure allocator callbacks work correctly
-4. Check available memory
+2. Ensure allocator callbacks work correctly
+3. Check available memory
 
 ---
 
@@ -356,7 +313,7 @@ int status = alwan_rgb_convert(&rgb_out, NULL, &src_desc, &dst_desc, &rgb_in);
 ## Limits
 
 - **Maximum contexts:** Limited only by available memory
-- **Context size:** < 10 KB (embedded), < 500 KB (runtime)
+- **Context size:** < 10 KB (embedded mode)
 - **Thread safety:** Read-only operations safe, write operations require synchronization
 - **Lifetime:** No maximum, can persist for application lifetime
 

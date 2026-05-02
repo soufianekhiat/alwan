@@ -104,14 +104,20 @@ ALWAN_INLINE alwan_scalar alwan_lanczos_kernel_v(alwan_scalar x, alwan_scalar a)
     alwan_scalar x_abs = ALWAN_ABS(x);
     alwan_scalar pi_x = ALWAN_PI * x;
     alwan_scalar pi_x_a = pi_x / a;
+
+    /* sinc(x) * sinc(x/a) */
     alwan_scalar sinc_val = (ALWAN_SIN(pi_x) / pi_x) * (ALWAN_SIN(pi_x_a) / pi_x_a);
-    return ALWAN_SELECT(x_abs < ALWAN_EPSILON, ALWAN_ONE,
-           ALWAN_SELECT(x_abs >= a, ALWAN_ZERO, sinc_val));
+
+    /* x == 0 => 1.0, |x| >= a => 0.0, else sinc */
+    alwan_scalar result = ALWAN_SELECT(x_abs < ALWAN_EPSILON, ALWAN_ONE,
+                          ALWAN_SELECT(x_abs >= a, ALWAN_ZERO, sinc_val));
+    return result;
 }
 
 ALWAN_INLINE alwan_scalar alwan_catmull_rom_v(
     alwan_scalar y0, alwan_scalar y1, alwan_scalar y2, alwan_scalar y3, alwan_scalar t) {
-    alwan_scalar t2 = t * t, t3 = t2 * t;
+    alwan_scalar t2 = t * t;
+    alwan_scalar t3 = t2 * t;
     return ALWAN_LITERAL(0.5) * (
         (ALWAN_LITERAL(2.0) * y1) + (-y0 + y2) * t +
         (ALWAN_LITERAL(2.0) * y0 - ALWAN_LITERAL(5.0) * y1 + ALWAN_LITERAL(4.0) * y2 - y3) * t2 +
@@ -120,32 +126,46 @@ ALWAN_INLINE alwan_scalar alwan_catmull_rom_v(
 
 ALWAN_INLINE alwan_vec2 alwan_cct_to_xy_planckian_v(alwan_scalar cct) {
     alwan_vec2 result;
-    alwan_scalar T = cct, T2 = T * T, T3 = T2 * T;
+    alwan_scalar T = cct;
+    alwan_scalar T2 = T * T;
+    alwan_scalar T3 = T2 * T;
     alwan_scalar x_lo = ALWAN_LITERAL(-0.2661239e9) / T3 - ALWAN_LITERAL(0.2343589e6) / T2 +
                         ALWAN_LITERAL(0.8776956e3) / T + ALWAN_LITERAL(0.179910);
     alwan_scalar x_hi = ALWAN_LITERAL(-3.0258469e9) / T3 + ALWAN_LITERAL(2.1070379e6) / T2 +
                         ALWAN_LITERAL(0.2226347e3) / T + ALWAN_LITERAL(0.240390);
     alwan_scalar x = ALWAN_SELECT(T <= ALWAN_LITERAL(4000.0), x_lo, x_hi);
-    alwan_scalar x2 = x * x, x3 = x2 * x;
+    alwan_scalar x2 = x * x;
+    alwan_scalar x3 = x2 * x;
     alwan_scalar y_lo  = ALWAN_LITERAL(-1.1063814) * x3 - ALWAN_LITERAL(1.34811020) * x2 +
                          ALWAN_LITERAL(2.18555832) * x - ALWAN_LITERAL(0.20219683);
     alwan_scalar y_mid = ALWAN_LITERAL(-0.9549476) * x3 - ALWAN_LITERAL(1.37418593) * x2 +
                          ALWAN_LITERAL(2.09137015) * x - ALWAN_LITERAL(0.16748867);
     alwan_scalar y_hi2 = ALWAN_LITERAL(3.0817580) * x3 - ALWAN_LITERAL(5.87338670) * x2 +
                          ALWAN_LITERAL(3.75112997) * x - ALWAN_LITERAL(0.37001483);
+    alwan_scalar y = ALWAN_SELECT(T <= ALWAN_LITERAL(2222.0), y_lo,
+                     ALWAN_SELECT(T <= ALWAN_LITERAL(4000.0), y_mid, y_hi2));
     result.v[0] = x;
-    result.v[1] = ALWAN_SELECT(T <= ALWAN_LITERAL(2222.0), y_lo,
-                  ALWAN_SELECT(T <= ALWAN_LITERAL(4000.0), y_mid, y_hi2));
+    result.v[1] = y;
     return result;
 }
 
 ALWAN_INLINE alwan_scalar alwan_compute_duv_v(alwan_scalar x, alwan_scalar y, alwan_scalar cct) {
     alwan_vec2 xy_p = alwan_cct_to_xy_planckian_v(cct);
-    alwan_scalar x_p = xy_p.v[0], y_p = xy_p.v[1];
+    alwan_scalar x_p = xy_p.v[0];
+    alwan_scalar y_p = xy_p.v[1];
+
+    /* Convert to CIE 1960 UCS (u, v) */
     alwan_scalar denom   = ALWAN_LITERAL(-2.0) * x   + ALWAN_LITERAL(12.0) * y   + ALWAN_LITERAL(3.0);
     alwan_scalar denom_p = ALWAN_LITERAL(-2.0) * x_p + ALWAN_LITERAL(12.0) * y_p + ALWAN_LITERAL(3.0);
-    alwan_scalar du = ALWAN_LITERAL(4.0) * x / denom   - ALWAN_LITERAL(4.0) * x_p / denom_p;
-    alwan_scalar dv = ALWAN_LITERAL(6.0) * y / denom   - ALWAN_LITERAL(6.0) * y_p / denom_p;
+
+    alwan_scalar u   = ALWAN_LITERAL(4.0) * x   / denom;
+    alwan_scalar v   = ALWAN_LITERAL(6.0) * y   / denom;
+    alwan_scalar u_p = ALWAN_LITERAL(4.0) * x_p / denom_p;
+    alwan_scalar v_p = ALWAN_LITERAL(6.0) * y_p / denom_p;
+
+    alwan_scalar du = u - u_p;
+    alwan_scalar dv = v - v_p;
+
     return ALWAN_SQRT(du * du + dv * dv);
 }
 

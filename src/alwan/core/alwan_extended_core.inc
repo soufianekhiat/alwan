@@ -852,7 +852,7 @@ ALWAN_INLINE void ALWAN_CORE_FNLIT(alwan_hsluv_rgb_to_lchuv)(ALWAN_CORE_T *L_out
     *L_out = L;
     *C_out = ALWAN_CORE_SQRT(u * u + v * v);
     *H_out = ALWAN_CORE_ATAN2(v, u) * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
-    if (*H_out < ALWAN_CORE_ZERO) *H_out += ALWAN_CORE_LITERAL(360.0);
+    *H_out += ALWAN_CORE_SELECT(*H_out < ALWAN_CORE_ZERO, ALWAN_CORE_LITERAL(360.0), ALWAN_CORE_ZERO);
 }
 
 /* HSLuv -> sRGB (encoded) */

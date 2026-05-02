@@ -2,11 +2,9 @@
 
 > **Alwan** (ألوان) — Arabic for "colours"
 
-| Platform | f32 | f64 |
-|---|---|---|
-| **Linux** | [![Linux f32](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f32.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f32.yml) | [![Linux f64](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml) |
-| **macOS** | [![macOS f32](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f32.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f32.yml) | [![macOS f64](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml) |
-| **Windows** | [![Windows f32](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f32.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f32.yml) | [![Windows f64](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml) |
+[![Linux](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml)
+[![macOS](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml)
+[![Windows](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))

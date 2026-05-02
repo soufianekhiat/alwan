@@ -34,9 +34,9 @@ ALWAN_DIAG_POP
  * RGB Matrix Derivation
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_derive_matrices(alwan_mat3x3_f64 *rgb_to_xyz,
+int alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
                                alwan_mat3x3_f64 *xyz_to_rgb,
-                               alwan_rgb_space_desc const *desc) {
+                               alwan_rgb_space_desc_f64 const *desc) {
     if (!desc || !rgb_to_xyz || !xyz_to_rgb) {
         return ALWAN_E_INVALID;
     }
@@ -53,12 +53,28 @@ int alwan_rgb_derive_matrices(alwan_mat3x3_f64 *rgb_to_xyz,
     return ALWAN_OK;
 }
 
+int alwan_rgb_derive_matrices_f32(alwan_mat3x3_f32 *rgb_to_xyz,
+                               alwan_mat3x3_f32 *xyz_to_rgb,
+                               alwan_rgb_space_desc_f32 const *desc) {
+    if (!desc || !rgb_to_xyz || !xyz_to_rgb) return ALWAN_E_INVALID;
+
+    alwan_rgb_matrices_f32 m = alwan_rgb_derive_matrices_f32_v(
+        desc->primaries_xy[0], desc->primaries_xy[1],
+        desc->primaries_xy[2], desc->primaries_xy[3],
+        desc->primaries_xy[4], desc->primaries_xy[5],
+        desc->white_xy[0], desc->white_xy[1]);
+
+    *rgb_to_xyz = m.rgb_to_xyz;
+    *xyz_to_rgb = m.xyz_to_rgb;
+    return ALWAN_OK;
+}
+
 /* ----------------------------------------------------------------
  * RGB <-> XYZ Direct Conversion
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_xyz(alwan_xyz_f64 *xyz,
-                     alwan_rgb_space_desc const *space,
+int alwan_rgb_to_xyz_f64(alwan_xyz_f64 *xyz,
+                     alwan_rgb_space_desc_f64 const *space,
                      alwan_rgb_f64 const *rgb) {
     if (!space || !rgb || !xyz) {
         return ALWAN_E_INVALID;
@@ -70,7 +86,7 @@ int alwan_rgb_to_xyz(alwan_xyz_f64 *xyz,
     if (space->has_matrices) {
         mat = &space->rgb_to_xyz;
     } else {
-        int status = alwan_rgb_derive_matrices(&derived_rgb_to_xyz, &derived_xyz_to_rgb, space);
+        int status = alwan_rgb_derive_matrices_f64(&derived_rgb_to_xyz, &derived_xyz_to_rgb, space);
         if (status != ALWAN_OK) return status;
         mat = &derived_rgb_to_xyz;
     }
@@ -78,14 +94,14 @@ int alwan_rgb_to_xyz(alwan_xyz_f64 *xyz,
     /* Apply RGB -> XYZ matrix */
     alwan_vec3_f64 vec_in, vec_out;
     ALWAN_MEMCPY(&vec_in, rgb, sizeof(alwan_vec3_f64));
-    alwan_mat3_mulv(&vec_out, mat, &vec_in);
+    alwan_mat3_mulv_f64(&vec_out, mat, &vec_in);
     ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3_f64));
 
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_rgb(alwan_rgb_f64 *rgb,
-                     alwan_rgb_space_desc const *space,
+int alwan_xyz_to_rgb_f64(alwan_rgb_f64 *rgb,
+                     alwan_rgb_space_desc_f64 const *space,
                      alwan_xyz_f64 const *xyz) {
     if (!space || !xyz || !rgb) {
         return ALWAN_E_INVALID;
@@ -97,7 +113,7 @@ int alwan_xyz_to_rgb(alwan_rgb_f64 *rgb,
     if (space->has_matrices) {
         mat = &space->xyz_to_rgb;
     } else {
-        int status = alwan_rgb_derive_matrices(&derived_rgb_to_xyz, &derived_xyz_to_rgb, space);
+        int status = alwan_rgb_derive_matrices_f64(&derived_rgb_to_xyz, &derived_xyz_to_rgb, space);
         if (status != ALWAN_OK) return status;
         mat = &derived_xyz_to_rgb;
     }
@@ -105,7 +121,7 @@ int alwan_xyz_to_rgb(alwan_rgb_f64 *rgb,
     /* Apply XYZ -> RGB matrix */
     alwan_vec3_f64 vec_in, vec_out;
     ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3_f64));
-    alwan_mat3_mulv(&vec_out, mat, &vec_in);
+    alwan_mat3_mulv_f64(&vec_out, mat, &vec_in);
     ALWAN_MEMCPY(rgb, &vec_out, sizeof(alwan_vec3_f64));
 
     return ALWAN_OK;
@@ -115,11 +131,8 @@ int alwan_xyz_to_rgb(alwan_rgb_f64 *rgb,
  * Transfer Function API
  * ---------------------------------------------------------------- */
 
-int alwan_oetf_apply(alwan_f64 *encoded,
-                     alwan_transfer_function tf,
-                     alwan_f64 const *linear, size_t count, size_t in_stride,
-                     size_t out_stride) {
-    if (!linear || !encoded) {
+int alwan_oetf_apply_f64(alwan_f64 *encoded_out, size_t out_stride, alwan_f64 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
+    if (!linear_in || !encoded_out) {
         return ALWAN_E_INVALID;
     }
 
@@ -139,8 +152,8 @@ int alwan_oetf_apply(alwan_f64 *encoded,
         default: break;
         }
         if (oetf_simd) {
-            alwan_simd_lane const *in  = (alwan_simd_lane const *)linear;
-            alwan_simd_lane       *out = (alwan_simd_lane       *)encoded;
+            alwan_simd_lane const *in  = (alwan_simd_lane const *)linear_in;
+            alwan_simd_lane       *out = (alwan_simd_lane       *)encoded_out;
             size_t const W = ALWAN_SIMD_WIDTH;
             size_t i = 0;
             for (; i + W <= count; i += W)
@@ -154,19 +167,44 @@ int alwan_oetf_apply(alwan_f64 *encoded,
 
     /* Apply transfer function to array */
     for (size_t i = 0; i < count; i++) {
-        double const *in_ptr = (double const *)((char const *)linear + i * in_stride);
-        double *out_ptr = (double *)((char *)encoded + i * out_stride);
+        double const *in_ptr = (double const *)((char const *)linear_in + i * in_stride);
+        double *out_ptr = (double *)((char *)encoded_out + i * out_stride);
         *out_ptr = oetf_fn(*in_ptr);
     }
 
     return ALWAN_OK;
 }
 
-int alwan_eotf_apply(alwan_f64 *linear,
-                     alwan_transfer_function tf,
-                     alwan_f64 const *encoded, size_t count, size_t in_stride,
-                     size_t out_stride) {
-    if (!encoded || !linear) {
+int alwan_oetf_apply_f32(alwan_f32 *encoded_out, size_t out_stride, alwan_f32 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
+    if (!linear_in || !encoded_out) return ALWAN_E_INVALID;
+
+    alwan_tf_fn_f32 oetf_fn = alwan__resolve_oetf_f32(tf);
+    if (!oetf_fn) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        float const *in_ptr = (float const *)((char const *)linear_in + i * in_stride);
+        float *out_ptr = (float *)((char *)encoded_out + i * out_stride);
+        *out_ptr = oetf_fn(*in_ptr);
+    }
+    return ALWAN_OK;
+}
+
+int alwan_eotf_apply_f32(alwan_f32 *linear_out, size_t out_stride, alwan_f32 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
+    if (!encoded_in || !linear_out) return ALWAN_E_INVALID;
+
+    alwan_tf_fn_f32 eotf_fn = alwan__resolve_eotf_f32(tf);
+    if (!eotf_fn) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        float const *in_ptr = (float const *)((char const *)encoded_in + i * in_stride);
+        float *out_ptr = (float *)((char *)linear_out + i * out_stride);
+        *out_ptr = eotf_fn(*in_ptr);
+    }
+    return ALWAN_OK;
+}
+
+int alwan_eotf_apply_f64(alwan_f64 *linear_out, size_t out_stride, alwan_f64 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
+    if (!encoded_in || !linear_out) {
         return ALWAN_E_INVALID;
     }
 
@@ -186,8 +224,8 @@ int alwan_eotf_apply(alwan_f64 *linear,
         default: break;
         }
         if (eotf_simd) {
-            alwan_simd_lane const *in  = (alwan_simd_lane const *)encoded;
-            alwan_simd_lane       *out = (alwan_simd_lane       *)linear;
+            alwan_simd_lane const *in  = (alwan_simd_lane const *)encoded_in;
+            alwan_simd_lane       *out = (alwan_simd_lane       *)linear_out;
             size_t const W = ALWAN_SIMD_WIDTH;
             size_t i = 0;
             for (; i + W <= count; i += W)
@@ -201,8 +239,8 @@ int alwan_eotf_apply(alwan_f64 *linear,
 
     /* Apply transfer function to array */
     for (size_t i = 0; i < count; i++) {
-        double const *in_ptr = (double const *)((char const *)encoded + i * in_stride);
-        double *out_ptr = (double *)((char *)linear + i * out_stride);
+        double const *in_ptr = (double const *)((char const *)encoded_in + i * in_stride);
+        double *out_ptr = (double *)((char *)linear_out + i * out_stride);
         *out_ptr = eotf_fn(*in_ptr);
     }
 
@@ -214,11 +252,36 @@ int alwan_eotf_apply(alwan_f64 *linear,
  * ---------------------------------------------------------------- */
 
 /* Convert RGB color from one color space to another */
-int alwan_rgb_convert(alwan_rgb_f64 *dst_rgb,
-                      alwan_ctx *ctx,
-                      alwan_rgb_space_desc const *src_space,
-                      alwan_rgb_space_desc const *dst_space,
-                      alwan_rgb_f64 const *src_rgb) {
+static void rgb_space_desc_widen_32_to_64(alwan_rgb_space_desc_f64 *out, alwan_rgb_space_desc_f32 const *in) {
+    for (int j = 0; j < 6; j++) out->primaries_xy[j] = (double)in->primaries_xy[j];
+    out->white_xy[0] = (double)in->white_xy[0];
+    out->white_xy[1] = (double)in->white_xy[1];
+    out->oetf = in->oetf;
+    out->eotf = in->eotf;
+    for (int j = 0; j < 9; j++) {
+        out->rgb_to_xyz.m[j] = (double)in->rgb_to_xyz.m[j];
+        out->xyz_to_rgb.m[j] = (double)in->xyz_to_rgb.m[j];
+    }
+    out->has_matrices = in->has_matrices;
+}
+
+int alwan_rgb_convert_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, alwan_ctx *ctx) {
+    if (!src_space || !dst_space || !src_rgb || !dst_rgb) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 src64, dst64;
+    rgb_space_desc_widen_32_to_64(&src64, src_space);
+    rgb_space_desc_widen_32_to_64(&dst64, dst_space);
+    alwan_rgb_f64 src_rgb64 = { (double)src_rgb->r, (double)src_rgb->g, (double)src_rgb->b };
+    alwan_rgb_f64 dst_rgb64;
+    int rc = alwan_rgb_convert_f64(&dst_rgb64, &src64, &dst64, &src_rgb64, ctx);
+    if (rc == ALWAN_OK) {
+        dst_rgb->r = (float)dst_rgb64.r;
+        dst_rgb->g = (float)dst_rgb64.g;
+        dst_rgb->b = (float)dst_rgb64.b;
+    }
+    return rc;
+}
+
+int alwan_rgb_convert_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_rgb_f64 const *src_rgb, alwan_ctx *ctx) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb) {
         return ALWAN_E_INVALID;
     }
@@ -231,7 +294,7 @@ int alwan_rgb_convert(alwan_rgb_f64 *dst_rgb,
         src_to_xyz = src_space->rgb_to_xyz;
         xyz_to_src = src_space->xyz_to_rgb;
     } else {
-        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        int status = alwan_rgb_derive_matrices_f64(&src_to_xyz, &xyz_to_src, src_space);
         if (status != ALWAN_OK) return status;
     }
 
@@ -239,7 +302,7 @@ int alwan_rgb_convert(alwan_rgb_f64 *dst_rgb,
         dst_to_xyz = dst_space->rgb_to_xyz;
         xyz_to_dst = dst_space->xyz_to_rgb;
     } else {
-        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        int status = alwan_rgb_derive_matrices_f64(&dst_to_xyz, &xyz_to_dst, dst_space);
         if (status != ALWAN_OK) return status;
     }
 
@@ -247,7 +310,7 @@ int alwan_rgb_convert(alwan_rgb_f64 *dst_rgb,
     alwan_vec3_f64 vec_in;
     ALWAN_MEMCPY(&vec_in, src_rgb, sizeof(alwan_vec3_f64));
     alwan_vec3_f64 xyz;
-    alwan_mat3_mulv(&xyz, &src_to_xyz, &vec_in);
+    alwan_mat3_mulv_f64(&xyz, &src_to_xyz, &vec_in);
 
     /* Check if chromatic adaptation is needed */
     alwan_f64 const tolerance = ALWAN_LITERAL(1e-6);
@@ -258,46 +321,41 @@ int alwan_rgb_convert(alwan_rgb_f64 *dst_rgb,
     int status;
     if (need_adaptation && ctx) {
         /* Perform chromatic adaptation using Bradford CAT */
-        alwan_xyy src_white_xyy, dst_white_xyy;
+        alwan_xyy_f64 src_white_xyy, dst_white_xyy;
         alwan_xyz_f64 src_white_xyz, dst_white_xyz;
 
         /* Convert xy to XYZ (using Y=1.0) */
         src_white_xyy.x = src_space->white_xy[0];
         src_white_xyy.y = src_space->white_xy[1];
         src_white_xyy.Y = ALWAN_LITERAL(1.0);
-        alwan_xyy_to_xyz(&src_white_xyz, &src_white_xyy);
+        alwan_xyy_to_xyz_f64(&src_white_xyz, &src_white_xyy);
 
         dst_white_xyy.x = dst_space->white_xy[0];
         dst_white_xyy.y = dst_space->white_xy[1];
         dst_white_xyy.Y = ALWAN_LITERAL(1.0);
-        alwan_xyy_to_xyz(&dst_white_xyz, &dst_white_xyy);
+        alwan_xyy_to_xyz_f64(&dst_white_xyz, &dst_white_xyy);
 
         /* Compute and apply CAT matrix */
         alwan_mat3x3_f64 cat_matrix;
-        status = alwan_cat_matrix(&cat_matrix, &src_white_xyz, &dst_white_xyz,
+        status = alwan_cat_matrix_f64(&cat_matrix, &src_white_xyz, &dst_white_xyz,
                                   ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
 
         alwan_vec3_f64 xyz_adapted;
-        alwan_mat3_mulv(&xyz_adapted, &cat_matrix, &xyz);
+        alwan_mat3_mulv_f64(&xyz_adapted, &cat_matrix, &xyz);
         xyz = xyz_adapted;
     }
 
     /* Convert adapted XYZ to destination RGB */
     alwan_vec3_f64 vec_out;
-    alwan_mat3_mulv(&vec_out, &xyz_to_dst, &xyz);
+    alwan_mat3_mulv_f64(&vec_out, &xyz_to_dst, &xyz);
     ALWAN_MEMCPY(dst_rgb, &vec_out, sizeof(alwan_vec3_f64));
 
     return ALWAN_OK;
 }
 
 /* Map RGB color space conversion */
-int alwan_rgb_convert_map_interleave(alwan_rgb_f64 *dst_rgb,
-                            alwan_ctx *ctx,
-                            alwan_rgb_space_desc const *src_space,
-                            alwan_rgb_space_desc const *dst_space,
-                            alwan_rgb_f64 const *src_rgb,
-                            size_t count) {
+int alwan_rgb_convert_map_interleave_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_rgb_f64 const *src_rgb, size_t count, alwan_ctx *ctx) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -310,7 +368,7 @@ int alwan_rgb_convert_map_interleave(alwan_rgb_f64 *dst_rgb,
         src_to_xyz = src_space->rgb_to_xyz;
         xyz_to_src = src_space->xyz_to_rgb;
     } else {
-        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        int status = alwan_rgb_derive_matrices_f64(&src_to_xyz, &xyz_to_src, src_space);
         if (status != ALWAN_OK) return status;
     }
 
@@ -318,7 +376,7 @@ int alwan_rgb_convert_map_interleave(alwan_rgb_f64 *dst_rgb,
         dst_to_xyz = dst_space->rgb_to_xyz;
         xyz_to_dst = dst_space->xyz_to_rgb;
     } else {
-        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        int status = alwan_rgb_derive_matrices_f64(&dst_to_xyz, &xyz_to_dst, dst_space);
         if (status != ALWAN_OK) return status;
     }
 
@@ -331,22 +389,22 @@ int alwan_rgb_convert_map_interleave(alwan_rgb_f64 *dst_rgb,
     /* Precompute adaptation matrix if needed */
     alwan_mat3x3_f64 cat_matrix;
     if (need_adaptation && ctx) {
-        alwan_xyy src_white_xyy, dst_white_xyy;
+        alwan_xyy_f64 src_white_xyy, dst_white_xyy;
         alwan_xyz_f64 src_white_xyz, dst_white_xyz;
 
         /* Convert xy to XYZ (using Y=1.0) */
         src_white_xyy.x = src_space->white_xy[0];
         src_white_xyy.y = src_space->white_xy[1];
         src_white_xyy.Y = ALWAN_LITERAL(1.0);
-        alwan_xyy_to_xyz(&src_white_xyz, &src_white_xyy);
+        alwan_xyy_to_xyz_f64(&src_white_xyz, &src_white_xyy);
 
         dst_white_xyy.x = dst_space->white_xy[0];
         dst_white_xyy.y = dst_space->white_xy[1];
         dst_white_xyy.Y = ALWAN_LITERAL(1.0);
-        alwan_xyy_to_xyz(&dst_white_xyz, &dst_white_xyy);
+        alwan_xyy_to_xyz_f64(&dst_white_xyz, &dst_white_xyy);
 
         /* Compute CAT matrix once */
-        int status = alwan_cat_matrix(&cat_matrix, &src_white_xyz, &dst_white_xyz,
+        int status = alwan_cat_matrix_f64(&cat_matrix, &src_white_xyz, &dst_white_xyz,
                                       ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
     }
@@ -356,22 +414,80 @@ int alwan_rgb_convert_map_interleave(alwan_rgb_f64 *dst_rgb,
         /* Convert source RGB to XYZ */
         alwan_vec3_f64 xyz, vec_in;
         ALWAN_MEMCPY(&vec_in, &src_rgb[i], sizeof(alwan_vec3_f64));
-        alwan_mat3_mulv(&xyz, &src_to_xyz, &vec_in);
+        alwan_mat3_mulv_f64(&xyz, &src_to_xyz, &vec_in);
 
         /* Apply chromatic adaptation if needed */
         if (need_adaptation && ctx) {
             alwan_vec3_f64 xyz_adapted;
-            alwan_mat3_mulv(&xyz_adapted, &cat_matrix, &xyz);
+            alwan_mat3_mulv_f64(&xyz_adapted, &cat_matrix, &xyz);
             xyz = xyz_adapted;
         }
 
         /* Convert adapted XYZ to destination RGB */
         alwan_vec3_f64 vec_out;
-        alwan_mat3_mulv(&vec_out, &xyz_to_dst, &xyz);
+        alwan_mat3_mulv_f64(&vec_out, &xyz_to_dst, &xyz);
         ALWAN_MEMCPY(&dst_rgb[i], &vec_out, sizeof(alwan_vec3_f64));
     }
 
     return ALWAN_OK;
+}
+
+/* f32 wrapper: widen f32 inputs to f64, delegate, narrow result */
+int alwan_rgb_convert_map_interleave_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, size_t count, alwan_ctx *ctx) {
+    if (!src_space || !dst_space || !src_rgb || !dst_rgb || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_rgb_space_desc_f64 src64, dst64;
+    for (int j = 0; j < 6; j++) src64.primaries_xy[j] = (double)src_space->primaries_xy[j];
+    src64.white_xy[0] = (double)src_space->white_xy[0];
+    src64.white_xy[1] = (double)src_space->white_xy[1];
+    src64.oetf = src_space->oetf;
+    src64.eotf = src_space->eotf;
+    for (int j = 0; j < 9; j++) {
+        src64.rgb_to_xyz.m[j] = (double)src_space->rgb_to_xyz.m[j];
+        src64.xyz_to_rgb.m[j] = (double)src_space->xyz_to_rgb.m[j];
+    }
+    src64.has_matrices = src_space->has_matrices;
+
+    for (int j = 0; j < 6; j++) dst64.primaries_xy[j] = (double)dst_space->primaries_xy[j];
+    dst64.white_xy[0] = (double)dst_space->white_xy[0];
+    dst64.white_xy[1] = (double)dst_space->white_xy[1];
+    dst64.oetf = dst_space->oetf;
+    dst64.eotf = dst_space->eotf;
+    for (int j = 0; j < 9; j++) {
+        dst64.rgb_to_xyz.m[j] = (double)dst_space->rgb_to_xyz.m[j];
+        dst64.xyz_to_rgb.m[j] = (double)dst_space->xyz_to_rgb.m[j];
+    }
+    dst64.has_matrices = dst_space->has_matrices;
+
+    alwan_rgb_f64 *src64_buf = (alwan_rgb_f64 *)ALWAN_ALLOC(count * sizeof(alwan_rgb_f64), sizeof(alwan_f64));
+    alwan_rgb_f64 *dst64_buf = (alwan_rgb_f64 *)ALWAN_ALLOC(count * sizeof(alwan_rgb_f64), sizeof(alwan_f64));
+    if (!src64_buf || !dst64_buf) {
+        if (src64_buf) ALWAN_FREE(src64_buf);
+        if (dst64_buf) ALWAN_FREE(dst64_buf);
+        return ALWAN_E_NOMEM;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        src64_buf[i].r = (double)src_rgb[i].r;
+        src64_buf[i].g = (double)src_rgb[i].g;
+        src64_buf[i].b = (double)src_rgb[i].b;
+    }
+
+    int status = alwan_rgb_convert_map_interleave_f64(dst64_buf, &src64, &dst64, src64_buf, count, ctx);
+
+    if (status == ALWAN_OK) {
+        for (size_t i = 0; i < count; i++) {
+            dst_rgb[i].r = (float)dst64_buf[i].r;
+            dst_rgb[i].g = (float)dst64_buf[i].g;
+            dst_rgb[i].b = (float)dst64_buf[i].b;
+        }
+    }
+
+    ALWAN_FREE(src64_buf);
+    ALWAN_FREE(dst64_buf);
+    return status;
 }
 
 /* ----------------------------------------------------------------
@@ -516,7 +632,25 @@ _Static_assert(
  * Get RGB space descriptor by enum
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_get_space_descriptor(alwan_rgb_space_desc *desc, alwan_ctx *ctx, alwan_rgb_space space) {
+int alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
+    if (!desc) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 tmp;
+    int rc = alwan_rgb_get_space_descriptor_f64(&tmp, space, ctx);
+    if (rc != ALWAN_OK) return rc;
+    for (int j = 0; j < 6; j++) desc->primaries_xy[j] = (float)tmp.primaries_xy[j];
+    desc->white_xy[0] = (float)tmp.white_xy[0];
+    desc->white_xy[1] = (float)tmp.white_xy[1];
+    desc->oetf = tmp.oetf;
+    desc->eotf = tmp.eotf;
+    for (int j = 0; j < 9; j++) {
+        desc->rgb_to_xyz.m[j] = (float)tmp.rgb_to_xyz.m[j];
+        desc->xyz_to_rgb.m[j] = (float)tmp.xyz_to_rgb.m[j];
+    }
+    desc->has_matrices = tmp.has_matrices;
+    return ALWAN_OK;
+}
+
+int alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
     if (!desc) {
         return ALWAN_E_INVALID;
     }
@@ -561,28 +695,6 @@ int alwan_rgb_get_space_descriptor(alwan_rgb_space_desc *desc, alwan_ctx *ctx, a
 
 /* ----------------------------------------------------------------
  * Arbitrary Gamma OETF/EOTF
+ *
+ * Templatized in alwan_rgb_impl.inc.
  * ---------------------------------------------------------------- */
-
-int alwan_gamma_oetf(alwan_f64 *out, alwan_f64 const *in,
-                      alwan_f64 gamma, size_t count,
-                      size_t in_stride, size_t out_stride) {
-    if (!out || !in) return ALWAN_E_INVALID;
-    for (size_t i = 0; i < count; i++) {
-        alwan_f64 const *in_ptr = (alwan_f64 const *)((char const *)in + i * in_stride);
-        alwan_f64 *out_ptr = (alwan_f64 *)((char *)out + i * out_stride);
-        *out_ptr = alwan_gamma_oetf_f64_v(*in_ptr, gamma);
-    }
-    return ALWAN_OK;
-}
-
-int alwan_gamma_eotf(alwan_f64 *out, alwan_f64 const *in,
-                      alwan_f64 gamma, size_t count,
-                      size_t in_stride, size_t out_stride) {
-    if (!out || !in) return ALWAN_E_INVALID;
-    for (size_t i = 0; i < count; i++) {
-        alwan_f64 const *in_ptr = (alwan_f64 const *)((char const *)in + i * in_stride);
-        alwan_f64 *out_ptr = (alwan_f64 *)((char *)out + i * out_stride);
-        *out_ptr = alwan_gamma_eotf_f64_v(*in_ptr, gamma);
-    }
-    return ALWAN_OK;
-}

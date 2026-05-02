@@ -66,21 +66,23 @@ int main(void) {
     }
 
     // Define an sRGB color (orange)
-    alwan_rgb_f64 rgb = {1.0, 0.5, 0.0};
+    alwan_rgb_{T} rgb = {1.0, 0.5, 0.0};
 
     // Get the sRGB space descriptor
-    alwan_rgb_space_desc srgb_desc;
-    alwan_rgb_get_space_descriptor(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
+    alwan_rgb_space_desc_{T} srgb_desc;
+    alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
 
     // Convert sRGB → XYZ → Lab
-    alwan_xyz_f64 xyz;
-    alwan_lab_f64 lab;
+    alwan_xyz_{T} xyz;
+    alwan_lab_{T} lab;
 
     // First convert to XYZ (using standard sRGB descriptor)
-    alwan_rgb_to_xyz(&xyz, &srgb_desc, &rgb);
+    alwan_rgb_to_xyz_{T}(&xyz, &srgb_desc, &rgb);
 
     // Then convert XYZ to Lab (relative to D65)
-    alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz);
+    alwan_xyz_{T} d65;
+    alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+    alwan_xyz_to_lab_{T}(&lab, &xyz, &d65);
 
     printf("RGB: (%.3f, %.3f, %.3f)\n", rgb.r, rgb.g, rgb.b);
     printf("Lab: (L=%.2f, a=%.2f, b=%.2f)\n", lab.L, lab.a, lab.b);
@@ -118,40 +120,48 @@ For custom allocators or runtime data loading:
 alwan_ctx *ctx = alwan_create(&(alwan_config){
     .alloc_cb = my_alloc,
     .free_cb = my_free,
-    .runtime_data_root = "data/"  // Only if ALWAN_EMBED_DATA=0
+    /* TODO: runtime_data_root is reserved — runtime data loading is not implemented.
+     * Planned for alwan 3.0.0. This field is currently ignored. */
+    .runtime_data_root = NULL
 });
 ```
 
 ### 2. Color Space Conversions
 
-Single-element conversions use semantic types (`alwan_xyz_f64`, `alwan_lab_f64`, etc.). Bulk operations use scalar arrays with explicit count and stride.
+Single-element conversions use semantic types (`alwan_xyz_{T}`, `alwan_lab_{T}`, etc.). Bulk operations use scalar arrays with explicit count and stride.
 
 **Single color:**
 ```c
-alwan_xyz_f64 xyz = {0.5, 0.6, 0.4};
-alwan_lab_f64 lab;
-alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz);
+alwan_xyz_{T} xyz = {0.5, 0.6, 0.4};
+alwan_lab_{T} lab;
+alwan_xyz_{T} d65;
+alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+alwan_xyz_to_lab_{T}(&lab, &xyz, &d65);
 ```
 
-**Multiple colors (bulk, interleaved):**
+**Multiple colors (interleaved):**
 ```c
 /* Interleaved map: XYZ triplets → Lab triplets */
-alwan_xyz_f64 xyz_array[100];
-alwan_lab_f64 lab_array[100];
-alwan_xyz_to_lab_map_interleave(lab_array, xyz_array, &alwan_d65_xyz, 100,
-                                sizeof(alwan_xyz_f64), sizeof(alwan_lab_f64));
+alwan_xyz_{T} xyz_array[100];
+alwan_lab_{T} lab_array[100];
+alwan_xyz_{T} d65;
+alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+alwan_xyz_to_lab_{T}_map_interleave((double*)lab_array, (double const*)xyz_array, &d65, 100,
+                                    sizeof(alwan_xyz_{T}), sizeof(alwan_lab_{T}));
 ```
 
 ### 3. Standard Illuminants
 
-Alwan provides common illuminants as constants:
+Use `alwan_illuminant_white_point_{T}` to retrieve white points:
 
 ```c
-alwan_d65_xyz  // D65 white point (daylight, 6504K)
-alwan_d50_xyz  // D50 white point (photography, 5003K)
-alwan_a_xyz    // Illuminant A (tungsten, 2856K)
-alwan_e_xyz    // Equal energy illuminant
+alwan_xyz_{T} d65, d50;
+alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+alwan_illuminant_white_point_{T}(&d50, ALWAN_ILLUMINANT_D50, ALWAN_OBSERVER_CIE_1931_2DEG);
 ```
+
+Common illuminants: `ALWAN_ILLUMINANT_D65` (daylight 6504K), `ALWAN_ILLUMINANT_D50` (5003K),
+`ALWAN_ILLUMINANT_A` (tungsten 2856K), `ALWAN_ILLUMINANT_E` (equal energy).
 
 ### 4. Stride for Interleaved Data
 
@@ -159,16 +169,16 @@ Process interleaved data without copying:
 
 ```c
 // RGBA data: [R,G,B,A, R,G,B,A, ...]
-alwan_scalar rgba[100 * 4];
+double rgba[100 * 4];
 
-// Process only RGB channels (3 per pixel), skipping alpha — stride = 4 scalars
-// alwan_oetf_apply(out, transfer_function_enum, in, count, in_stride, out_stride)
-alwan_oetf_apply(rgba,                         // Output (in-place)
-                 ALWAN_TF_SRGB,                // Transfer function enum
-                 rgba,                         // Input
-                 100 * 3,                      // Count (3 channels × 100 pixels)
-                 4 * sizeof(alwan_scalar),     // Input stride (skip alpha)
-                 4 * sizeof(alwan_scalar));    // Output stride
+// Process only RGB channels (3 per pixel), skipping alpha — stride = 4 doubles
+// alwan_oetf_apply_{T}(out, transfer_function_enum, in, count, in_stride, out_stride)
+alwan_oetf_apply_{T}(rgba,                     // Output (in-place)
+                     ALWAN_TF_SRGB,            // Transfer function enum
+                     rgba,                     // Input
+                     100 * 3,                  // Count (3 channels x 100 pixels)
+                     4 * sizeof(double),       // Input stride (skip alpha)
+                     4 * sizeof(double));      // Output stride
 ```
 
 ---
@@ -180,16 +190,16 @@ alwan_oetf_apply(rgba,                         // Output (in-place)
 Convert an sRGB image to linear light:
 
 ```c
-// Encoded sRGB pixels
-alwan_scalar srgb_encoded[1920 * 1080 * 3];
+/* Encoded sRGB pixels */
+double srgb_encoded[1920 * 1080 * 3];
 
-// Allocate linear buffer
-alwan_scalar srgb_linear[1920 * 1080 * 3];
+/* Allocate linear buffer */
+double srgb_linear[1920 * 1080 * 3];
 
-// Apply inverse sRGB transfer function (EOTF: encoded → linear)
-alwan_eotf_apply(srgb_linear, ALWAN_TF_SRGB,
-                 srgb_encoded, 1920 * 1080 * 3,
-                 sizeof(alwan_scalar), sizeof(alwan_scalar));
+/* Apply inverse sRGB transfer function (EOTF: encoded -> linear) */
+alwan_eotf_apply_{T}(srgb_linear, ALWAN_TF_SRGB,
+                     srgb_encoded, 1920 * 1080 * 3,
+                     sizeof(double), sizeof(double));
 ```
 
 ### Workflow 2: Color Space Conversion
@@ -197,15 +207,16 @@ alwan_eotf_apply(srgb_linear, ALWAN_TF_SRGB,
 Convert between RGB color spaces:
 
 ```c
-// Get space descriptors
-alwan_rgb_space_desc srgb_desc, bt2020_desc;
-alwan_rgb_get_space_descriptor(&srgb_desc,   ctx, ALWAN_RGB_SPACE_SRGB);
-alwan_rgb_get_space_descriptor(&bt2020_desc, ctx, ALWAN_RGB_SPACE_BT2020);
+/* Get space descriptors */
+alwan_rgb_space_desc_{T} srgb_desc, bt2020_desc;
+alwan_rgb_get_space_descriptor_{T}(&srgb_desc,   ctx, ALWAN_RGB_SPACE_SRGB);
+alwan_rgb_get_space_descriptor_{T}(&bt2020_desc, ctx, ALWAN_RGB_SPACE_BT2020);
 
-// Convert sRGB → BT.2020 (bulk)
-alwan_rgb_convert_map_interleave(bt2020_data, ctx,
-                                 &srgb_desc, &bt2020_desc,
-                                 srgb_data, pixel_count);
+/* Convert sRGB -> BT.2020 (interleaved) */
+alwan_rgb_convert_{T}_map_interleave(bt2020_data, ctx,
+                                     &srgb_desc, &bt2020_desc,
+                                     srgb_data, pixel_count,
+                                     sizeof(alwan_rgb_{T}), sizeof(alwan_rgb_{T}));
 ```
 
 ### Workflow 3: Chromatic Adaptation
@@ -213,28 +224,31 @@ alwan_rgb_convert_map_interleave(bt2020_data, ctx,
 Adapt colors from one white point to another:
 
 ```c
-// Colors under D50 illuminant (flat scalar triplets)
-alwan_scalar xyz_d50[100 * 3];
+/* Colors under D50 illuminant (flat double triplets) */
+double xyz_d50[100 * 3];
 
-// Adapt to D65 using Bradford transform
-// Signature: (out, src_white, dst_white, method, in, count, in_stride, out_stride)
-alwan_scalar xyz_d65[100 * 3];
-alwan_xyz_adapt(xyz_d65,
-                &alwan_d50_xyz, &alwan_d65_xyz,
-                ALWAN_CAT_BRADFORD,
-                xyz_d50, 100,
-                3 * sizeof(alwan_scalar), 3 * sizeof(alwan_scalar));
+/* Get white points */
+alwan_xyz_{T} wp_d50, wp_d65;
+alwan_illuminant_white_point_{T}(&wp_d50, ALWAN_ILLUMINANT_D50, ALWAN_OBSERVER_CIE_1931_2DEG);
+alwan_illuminant_white_point_{T}(&wp_d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+
+/* Adapt to D65 using Bradford transform */
+double xyz_d65[100 * 3];
+alwan_cat_adapt_{T}(xyz_d65, &wp_d50, &wp_d65,
+                    ALWAN_CAT_BRADFORD,
+                    xyz_d50, 100,
+                    3 * sizeof(double), 3 * sizeof(double));
 ```
 
 ### Workflow 4: Perceptual Color Difference
 
-Calculate ΔE2000 between two colors:
+Calculate dE2000 between two colors:
 
 ```c
-alwan_lab_f64 lab1 = {50.0, 20.0, 10.0};
-alwan_lab_f64 lab2 = {51.0, 21.0, 11.0};
+alwan_lab_{T} lab1 = {50.0, 20.0, 10.0};
+alwan_lab_{T} lab2 = {51.0, 21.0, 11.0};
 
-double delta_e = alwan_delta_e_2000(&lab1, &lab2);
+double delta_e = alwan_delta_e_2000_{T}(&lab1, &lab2);
 
 if (delta_e < 1.0) {
     printf("Colors are perceptually identical\n");
@@ -250,15 +264,15 @@ if (delta_e < 1.0) {
 Apply AgX view transform for HDR:
 
 ```c
-// High dynamic range linear RGB
-float hdr_rgb[1920 * 1080 * 3];
+/* High dynamic range linear RGB */
+double hdr_rgb[1920 * 1080 * 3];
 
-// Display-ready RGB
-float display_rgb[1920 * 1080 * 3];
+/* Display-ready RGB */
+double display_rgb[1920 * 1080 * 3];
 
-alwan_view_transform_apply(display_rgb, ctx, ALWAN_VIEW_AGX,
-                           hdr_rgb, 1920 * 1080,
-                           3 * sizeof(alwan_scalar), 3 * sizeof(alwan_scalar));
+alwan_view_transform_apply_{T}(display_rgb, ctx, ALWAN_VIEW_AGX,
+                               hdr_rgb, 1920 * 1080,
+                               3 * sizeof(double), 3 * sizeof(double));
 ```
 
 ---
@@ -280,14 +294,9 @@ Choose precision and optimization:
 
 Edit `alwan_config.h` or define at compile time:
 
-**Scalar precision:**
-```c
-#define ALWAN_SCALAR_IS_FLOAT 0  // 0=double (default), 1=float
-```
-
 **Data embedding:**
 ```c
-#define ALWAN_EMBED_DATA 1  // 1=embedded (default), 0=runtime
+#define ALWAN_EMBED_DATA 1  /* 1=embedded (default); 0=runtime (NOT implemented, planned for 3.0.0) */
 ```
 
 **Custom allocators:**
@@ -296,6 +305,8 @@ Edit `alwan_config.h` or define at compile time:
 #define ALWAN_FREE(ptr) my_free(ptr)
 ```
 
+**Precision** is selected per call site using `_f32` or `_f64` function/type variants — there is no global precision toggle.
+
 ---
 
 ## Error Handling
@@ -303,13 +314,13 @@ Edit `alwan_config.h` or define at compile time:
 Check return values for operations that can fail:
 
 ```c
-alwan_rgb_space_desc src_desc, dst_desc;
-alwan_rgb_get_space_descriptor(&src_desc, ctx, ALWAN_RGB_SPACE_SRGB);
-alwan_rgb_get_space_descriptor(&dst_desc, ctx, ALWAN_RGB_SPACE_BT2020);
+alwan_rgb_space_desc_{T} src_desc, dst_desc;
+alwan_rgb_get_space_descriptor_{T}(&src_desc, ctx, ALWAN_RGB_SPACE_SRGB);
+alwan_rgb_get_space_descriptor_{T}(&dst_desc, ctx, ALWAN_RGB_SPACE_BT2020);
 
-alwan_rgb_f64 src = {1.0, 0.5, 0.0};
-alwan_rgb_f64 dst;
-int result = alwan_rgb_convert(&dst, ctx, &src_desc, &dst_desc, &src);
+alwan_rgb_{T} src = {1.0, 0.5, 0.0};
+alwan_rgb_{T} dst;
+int result = alwan_rgb_convert_{T}(&dst, ctx, &src_desc, &dst_desc, &src);
 
 switch (result) {
     case ALWAN_OK:
@@ -339,13 +350,16 @@ working_dir\AlwanTests.exe
 
 ### 2. Check White Points
 
-Many conversions require explicit white points. Always specify:
+Many conversions require an explicit white point. Always provide one:
 ```c
-// Correct (output first)
-alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz, 1, 0, 0);
+alwan_xyz_{T} d65;
+alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
 
-// Wrong (will use incorrect white point)
-alwan_xyz_to_lab(&lab, &xyz, NULL, 1, 0, 0);  // Error!
+/* Correct */
+alwan_xyz_to_lab_{T}(&lab, &xyz, &d65);
+
+/* Wrong: NULL white point returns ALWAN_E_INVALID */
+alwan_xyz_to_lab_{T}(&lab, &xyz, NULL);
 ```
 
 ### 3. Validate Input Ranges

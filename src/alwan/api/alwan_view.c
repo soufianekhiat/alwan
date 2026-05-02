@@ -316,11 +316,7 @@ static void exposure_transform(alwan_f64 const *rgb_in, alwan_f64 *rgb_out) {
  * View Transform API
  * ---------------------------------------------------------------- */
 
-int alwan_view_transform_apply(alwan_f64 *rgb_out,
-                                alwan_ctx *ctx,
-                                alwan_view_transform vt,
-                                alwan_f64 const *rgb_in, size_t count, size_t in_stride,
-                                size_t out_stride) {
+int alwan_view_transform_apply_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
     (void)ctx;  /* Unused for stateless transforms */
 
     if (!rgb_in || !rgb_out) {
@@ -391,5 +387,24 @@ int alwan_view_transform_apply(alwan_f64 *rgb_out,
         transform_fn(in_ptr, out_ptr);
     }
 
+    return ALWAN_OK;
+}
+
+int alwan_view_transform_apply_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
+    if (!rgb_in || !rgb_out) return ALWAN_E_INVALID;
+    /* Widen to f64, call f64 implementation, narrow back. Strides on the f32
+     * views are in bytes; we convert pixel-wise to keep the public API
+     * unchanged even when callers pass packed or planar buffers. */
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 const *in_ptr = (alwan_f32 const *)((char const *)rgb_in + i * in_stride);
+        alwan_f32 *out_ptr = (alwan_f32 *)((char *)rgb_out + i * out_stride);
+        alwan_f64 in64[3] = { (double)in_ptr[0], (double)in_ptr[1], (double)in_ptr[2] };
+        alwan_f64 out64[3];
+        int rc = alwan_view_transform_apply_f64(out64, 3 * sizeof(alwan_f64), in64, 3 * sizeof(alwan_f64), 1, vt, ctx);
+        if (rc != ALWAN_OK) return rc;
+        out_ptr[0] = (float)out64[0];
+        out_ptr[1] = (float)out64[1];
+        out_ptr[2] = (float)out64[2];
+    }
     return ALWAN_OK;
 }

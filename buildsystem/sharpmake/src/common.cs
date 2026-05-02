@@ -62,6 +62,13 @@ namespace Alwan
             // Precise floating point for accurate color science calculations
             conf.AdditionalCompilerOptions.Add("/fp:precise");
 
+            // Use 64-bit host cl.exe. The 32-bit host (default on some VS installs)
+            // hits C1060 "out of heap space" on large embedded-data TUs such as
+            // alwan_spectrum_upsample.c (Jakob2019 LUTs, ~470K float literals/TU).
+            // /Zm400 is kept as defense in depth for any fallback to 32-bit cl.
+            conf.Options.Add(Options.Vc.General.PreferredToolArchitecture.x64);
+            conf.AdditionalCompilerOptions.Add("/Zm400");
+
             // Basic defines
             conf.Defines.Add("NOMINMAX");
             conf.Defines.Add("WIN32");

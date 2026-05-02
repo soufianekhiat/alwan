@@ -103,40 +103,76 @@ ALWAN_INLINE alwan_ictcp alwan_rgb_to_ictcp_pq_v(alwan_rgb rgb) {
 
 ALWAN_INLINE alwan_rgb alwan_ictcp_pq_to_rgb_v(alwan_ictcp ictcp) {
     alwan_rgb result;
+
+    /* Step 1: ICtCp -> LMS' via PQ inverse matrix */
     alwan_vec3 ictcp_v = {{ictcp.I, ictcp.Ct, ictcp.Cp}};
     alwan_vec3 lms_p = alwan_mat3_mulv_v(ICTCP_ICTCP_TO_LMS_P_PQ, ictcp_v);
-    alwan_scalar l = alwan_pq_eotf(lms_p.v[0]);
-    alwan_scalar m = alwan_pq_eotf(lms_p.v[1]);
-    alwan_scalar s = alwan_pq_eotf(lms_p.v[2]);
+    alwan_scalar lp = lms_p.v[0];
+    alwan_scalar mp = lms_p.v[1];
+    alwan_scalar sp = lms_p.v[2];
+
+    /* Step 2: LMS' -> LMS via PQ EOTF */
+    alwan_scalar l = alwan_pq_eotf(lp);
+    alwan_scalar m = alwan_pq_eotf(mp);
+    alwan_scalar s = alwan_pq_eotf(sp);
+
+    /* Step 3: LMS -> BT.2020 RGB (linear) */
     alwan_vec3 lms_v = {{l, m, s}};
     alwan_vec3 rgb = alwan_mat3_mulv_v(ICTCP_LMS_TO_RGB, lms_v);
-    result.r = rgb.v[0]; result.g = rgb.v[1]; result.b = rgb.v[2];
+    result.r = rgb.v[0];
+    result.g = rgb.v[1];
+    result.b = rgb.v[2];
+
     return result;
 }
 
 ALWAN_INLINE alwan_ictcp alwan_rgb_to_ictcp_hlg_v(alwan_rgb rgb) {
     alwan_ictcp result;
+
+    /* Step 1: BT.2020 RGB (linear) -> LMS */
     alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
     alwan_vec3 lms = alwan_mat3_mulv_v(ICTCP_RGB_TO_LMS, rgb_v);
-    alwan_scalar lp = alwan_hlg_oetf(lms.v[0]);
-    alwan_scalar mp = alwan_hlg_oetf(lms.v[1]);
-    alwan_scalar sp = alwan_hlg_oetf(lms.v[2]);
+    alwan_scalar l = lms.v[0];
+    alwan_scalar m = lms.v[1];
+    alwan_scalar s = lms.v[2];
+
+    /* Step 2: LMS -> LMS' via HLG OETF */
+    alwan_scalar lp = alwan_hlg_oetf(l);
+    alwan_scalar mp = alwan_hlg_oetf(m);
+    alwan_scalar sp = alwan_hlg_oetf(s);
+
+    /* Step 3: LMS' -> ICtCp via HLG matrix */
     alwan_vec3 lms_p = {{lp, mp, sp}};
     alwan_vec3 ictcp = alwan_mat3_mulv_v(ICTCP_LMS_P_TO_ICTCP_HLG, lms_p);
-    result.I = ictcp.v[0]; result.Ct = ictcp.v[1]; result.Cp = ictcp.v[2];
+    result.I  = ictcp.v[0];
+    result.Ct = ictcp.v[1];
+    result.Cp = ictcp.v[2];
+
     return result;
 }
 
 ALWAN_INLINE alwan_rgb alwan_ictcp_hlg_to_rgb_v(alwan_ictcp ictcp) {
     alwan_rgb result;
+
+    /* Step 1: ICtCp -> LMS' via HLG inverse matrix */
     alwan_vec3 ictcp_v = {{ictcp.I, ictcp.Ct, ictcp.Cp}};
     alwan_vec3 lms_p = alwan_mat3_mulv_v(ICTCP_ICTCP_TO_LMS_P_HLG, ictcp_v);
-    alwan_scalar l = alwan_hlg_inverse_oetf_v(lms_p.v[0]);
-    alwan_scalar m = alwan_hlg_inverse_oetf_v(lms_p.v[1]);
-    alwan_scalar s = alwan_hlg_inverse_oetf_v(lms_p.v[2]);
+    alwan_scalar lp = lms_p.v[0];
+    alwan_scalar mp = lms_p.v[1];
+    alwan_scalar sp = lms_p.v[2];
+
+    /* Step 2: LMS' -> LMS via HLG inverse OETF (NOT EOTF - no system gamma) */
+    alwan_scalar l = alwan_hlg_inverse_oetf_v(lp);
+    alwan_scalar m = alwan_hlg_inverse_oetf_v(mp);
+    alwan_scalar s = alwan_hlg_inverse_oetf_v(sp);
+
+    /* Step 3: LMS -> BT.2020 RGB (linear) */
     alwan_vec3 lms_v = {{l, m, s}};
     alwan_vec3 rgb = alwan_mat3_mulv_v(ICTCP_LMS_TO_RGB, lms_v);
-    result.r = rgb.v[0]; result.g = rgb.v[1]; result.b = rgb.v[2];
+    result.r = rgb.v[0];
+    result.g = rgb.v[1];
+    result.b = rgb.v[2];
+
     return result;
 }
 

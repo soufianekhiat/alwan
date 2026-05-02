@@ -290,19 +290,13 @@ static inline alwan_f64 clamp(alwan_f64 x, alwan_f64 min, alwan_f64 max) {
  * 3. Add appropriate complementary colors based on remaining components
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_spectrum_smits1999(alwan_spd *out_spd,
-                                     alwan_ctx *ctx,
-                                     alwan_rgb_f64 const *rgb) {
+int alwan_rgb_to_spectrum_smits1999_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
     }
 
     /* Create output SPD with Smits1999 wavelength range */
-    int status = alwan_spd_create(out_spd,
-                                   ctx,
-                                   SMITS1999_WAVELENGTH_MIN,
-                                   SMITS1999_WAVELENGTH_MAX,
-                                   SMITS1999_WAVELENGTH_COUNT);
+    int status = alwan_spd_create_f64(out_spd, SMITS1999_WAVELENGTH_MIN, SMITS1999_WAVELENGTH_MAX, SMITS1999_WAVELENGTH_COUNT, ctx);
     if (status != ALWAN_OK) {
         return status;
     }
@@ -401,19 +395,13 @@ int alwan_rgb_to_spectrum_smits1999(alwan_spd *out_spd,
  * recovered_spectrum = R * basis_red + G * basis_green + B * basis_blue
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_spectrum_mallett2019(alwan_spd *out_spd,
-                                       alwan_ctx *ctx,
-                                       alwan_rgb_f64 const *rgb) {
+int alwan_rgb_to_spectrum_mallett2019_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
     }
 
     /* Create output SPD with Mallett2019 wavelength range */
-    int status = alwan_spd_create(out_spd,
-                                   ctx,
-                                   MALLETT2019_WAVELENGTH_MIN,
-                                   MALLETT2019_WAVELENGTH_MAX,
-                                   MALLETT2019_WAVELENGTH_COUNT);
+    int status = alwan_spd_create_f64(out_spd, MALLETT2019_WAVELENGTH_MIN, MALLETT2019_WAVELENGTH_MAX, MALLETT2019_WAVELENGTH_COUNT, ctx);
     if (status != ALWAN_OK) {
         return status;
     }
@@ -536,10 +524,7 @@ static inline alwan_f64 jakob2019_eval_poly(alwan_f64 c0, alwan_f64 c1, alwan_f6
     return clamp(R, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
 }
 
-int alwan_rgb_to_spectrum_jakob2019(alwan_spd *out_spd,
-                                      alwan_ctx *ctx,
-                                      alwan_jakob2019_gamut gamut,
-                                      alwan_rgb_f64 const *rgb) {
+int alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f64 const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) {
         return ALWAN_E_INVALID;
     }
@@ -589,11 +574,7 @@ int alwan_rgb_to_spectrum_jakob2019(alwan_spd *out_spd,
     }
 
     /* Create output SPD with Jakob2019 wavelength range */
-    int status = alwan_spd_create(out_spd,
-                                   ctx,
-                                   JAKOB2019_WAVELENGTH_MIN,
-                                   JAKOB2019_WAVELENGTH_MAX,
-                                   JAKOB2019_WAVELENGTH_COUNT);
+    int status = alwan_spd_create_f64(out_spd, JAKOB2019_WAVELENGTH_MIN, JAKOB2019_WAVELENGTH_MAX, JAKOB2019_WAVELENGTH_COUNT, ctx);
     if (status != ALWAN_OK) {
         return status;
     }
@@ -612,4 +593,52 @@ int alwan_rgb_to_spectrum_jakob2019(alwan_spd *out_spd,
     }
 
     return ALWAN_OK;
+}
+
+/* ================================================================
+ * f32 wrappers — delegate to f64 and convert the SPD output.
+ * ================================================================ */
+
+static void spd_f64_to_f32_blit(alwan_spd_f32 *out, alwan_spd_f64 const *in) {
+    out->wavelength_min = (alwan_f32)in->wavelength_min;
+    out->wavelength_max = (alwan_f32)in->wavelength_max;
+    for (size_t i = 0; i < in->count && i < out->count; i++) {
+        out->values[i] = (alwan_f32)in->values[i];
+    }
+}
+
+int alwan_rgb_to_spectrum_smits1999_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx) {
+    if (!rgb || !out_spd) return ALWAN_E_INVALID;
+    alwan_rgb_f64 rgb64 = { (double)rgb->r, (double)rgb->g, (double)rgb->b };
+    alwan_spd_f64 tmp;
+    int rc = alwan_rgb_to_spectrum_smits1999_f64(&tmp, &rgb64, ctx);
+    if (rc != ALWAN_OK) return rc;
+    rc = alwan_spd_create_f32(out_spd, (alwan_f32)tmp.wavelength_min, (alwan_f32)tmp.wavelength_max, tmp.count, ctx);
+    if (rc == ALWAN_OK) spd_f64_to_f32_blit(out_spd, &tmp);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return rc;
+}
+
+int alwan_rgb_to_spectrum_mallett2019_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx) {
+    if (!rgb || !out_spd) return ALWAN_E_INVALID;
+    alwan_rgb_f64 rgb64 = { (double)rgb->r, (double)rgb->g, (double)rgb->b };
+    alwan_spd_f64 tmp;
+    int rc = alwan_rgb_to_spectrum_mallett2019_f64(&tmp, &rgb64, ctx);
+    if (rc != ALWAN_OK) return rc;
+    rc = alwan_spd_create_f32(out_spd, (alwan_f32)tmp.wavelength_min, (alwan_f32)tmp.wavelength_max, tmp.count, ctx);
+    if (rc == ALWAN_OK) spd_f64_to_f32_blit(out_spd, &tmp);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return rc;
+}
+
+int alwan_rgb_to_spectrum_jakob2019_f32(alwan_spd_f32 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f32 const *rgb, alwan_ctx *ctx) {
+    if (!rgb || !out_spd) return ALWAN_E_INVALID;
+    alwan_rgb_f64 rgb64 = { (double)rgb->r, (double)rgb->g, (double)rgb->b };
+    alwan_spd_f64 tmp;
+    int rc = alwan_rgb_to_spectrum_jakob2019_f64(&tmp, gamut, &rgb64, ctx);
+    if (rc != ALWAN_OK) return rc;
+    rc = alwan_spd_create_f32(out_spd, (alwan_f32)tmp.wavelength_min, (alwan_f32)tmp.wavelength_max, tmp.count, ctx);
+    if (rc == ALWAN_OK) spd_f64_to_f32_blit(out_spd, &tmp);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return rc;
 }

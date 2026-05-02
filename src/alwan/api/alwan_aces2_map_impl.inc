@@ -25,6 +25,8 @@
 static ALWAN_CORE_T ALWAN_CORE_FNLIT(lookup_reach_m_cc)(
         ALWAN_CORE_T h_deg,
         ALWAN_CORE_FNLIT(ChromaCompressParams) const *cp) {
+    /* NaN fails both while conditions and would reach (int)NaN = INT_MIN — clamp first. */
+    if (!(h_deg >= ALWAN_CORE_LITERAL(0.0))) h_deg = ALWAN_CORE_LITERAL(0.0);
     while (h_deg < ALWAN_CORE_LITERAL(0.0)) h_deg += ALWAN_CORE_LITERAL(360.0);
     while (h_deg >= ALWAN_CORE_LITERAL(360.0)) h_deg -= ALWAN_CORE_LITERAL(360.0);
     int idx0 = (int)h_deg;
@@ -137,11 +139,13 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
         ALWAN_CORE_T const *px_in  = in  + i * in_step;
         ALWAN_CORE_T       *px_out = out + i * out_step;
 
-        /* Clamp AP1 input to [0, ap1_clamp_max] — matches OCIO pre-clamp */
+        /* Clamp AP1 input to [0, ap1_clamp_max] — matches OCIO pre-clamp.
+         * Use >= 0 test (not < 0) so NaN (which fails all comparisons) maps to 0
+         * rather than passing through, avoiding (int)NaN UB in hue table lookup. */
         ALWAN_CORE_T ri = px_in[0], gi = px_in[1], bi = px_in[2];
-        if (ri < 0) ri = 0; else if (ri > ap1_clamp_max) ri = ap1_clamp_max;
-        if (gi < 0) gi = 0; else if (gi > ap1_clamp_max) gi = ap1_clamp_max;
-        if (bi < 0) bi = 0; else if (bi > ap1_clamp_max) bi = ap1_clamp_max;
+        if (!(ri >= 0)) ri = 0; else if (ri > ap1_clamp_max) ri = ap1_clamp_max;
+        if (!(gi >= 0)) gi = 0; else if (gi > ap1_clamp_max) gi = ap1_clamp_max;
+        if (!(bi >= 0)) bi = 0; else if (bi > ap1_clamp_max) bi = ap1_clamp_max;
 
         /* RGB → Aab → JMh */
         ALWAN_CORE_VEC3 rgb_in_v; rgb_in_v.v[0] = ri; rgb_in_v.v[1] = gi; rgb_in_v.v[2] = bi;
@@ -206,7 +210,7 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
             /* Fallback: promote to f64, apply generic OETF, demote */
             alwan_f64 tmp[3];
             tmp[0] = (alwan_f64)r; tmp[1] = (alwan_f64)g; tmp[2] = (alwan_f64)b;
-            alwan_oetf_apply(tmp, config.eotf, tmp, 3, sizeof(alwan_f64), sizeof(alwan_f64));
+            alwan_oetf_apply_f64(tmp, sizeof(alwan_f64), tmp, sizeof(alwan_f64), 3, config.eotf);
             px_out[0] = (ALWAN_CORE_T)tmp[0];
             px_out[1] = (ALWAN_CORE_T)tmp[1];
             px_out[2] = (ALWAN_CORE_T)tmp[2];

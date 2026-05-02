@@ -13,9 +13,7 @@
  * RGB -> ICtCp Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_rgb_to_ictcp, _map_interleave)(
-    alwan_map_lane *ictcp_out, alwan_map_lane const *rgb_in,
-    int use_pq, size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_rgb_to_ictcp, _map_interleave)(alwan_map_lane *ictcp_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, int use_pq)
 {
     if (!rgb_in || !ictcp_out || count == 0) return ALWAN_E_INVALID;
 
@@ -85,9 +83,7 @@ int ALWAN_MAP_LITCAT(alwan_rgb_to_ictcp, _map_interleave)(
  * ICtCp -> RGB Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_ictcp_to_rgb, _map_interleave)(
-    alwan_map_lane *rgb_out, alwan_map_lane const *ictcp_in,
-    int use_pq, size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_ictcp_to_rgb, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *ictcp_in, size_t in_stride, size_t count, int use_pq)
 {
     if (!ictcp_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
@@ -157,9 +153,7 @@ int ALWAN_MAP_LITCAT(alwan_ictcp_to_rgb, _map_interleave)(
  * XYZ -> ICtCp Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_xyz_to_ictcp, _map_interleave)(
-    alwan_map_lane *ictcp_out, alwan_map_lane const *xyz_in,
-    int use_pq, size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_xyz_to_ictcp, _map_interleave)(alwan_map_lane *ictcp_out, size_t out_stride, alwan_map_lane const *xyz_in, size_t in_stride, size_t count, int use_pq)
 {
     if (!xyz_in || !ictcp_out || count == 0) return ALWAN_E_INVALID;
 
@@ -233,9 +227,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_ictcp, _map_interleave)(
  * ICtCp -> XYZ Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_ictcp_to_xyz, _map_interleave)(
-    alwan_map_lane *xyz_out, alwan_map_lane const *ictcp_in,
-    int use_pq, size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_ictcp_to_xyz, _map_interleave)(alwan_map_lane *xyz_out, size_t out_stride, alwan_map_lane const *ictcp_in, size_t in_stride, size_t count, int use_pq)
 {
     if (!ictcp_in || !xyz_out || count == 0) return ALWAN_E_INVALID;
 
@@ -309,11 +301,7 @@ int ALWAN_MAP_LITCAT(alwan_ictcp_to_xyz, _map_interleave)(
  * Planar Map Variants
  * ================================================================ */
 
-int ALWAN_MAP_LITCAT(alwan_rgb_to_ictcp, _map_planar)(
-    alwan_map_lane *out_ch0, alwan_map_lane *out_ch1, alwan_map_lane *out_ch2,
-    alwan_map_lane const *in_ch0, alwan_map_lane const *in_ch1, alwan_map_lane const *in_ch2,
-    int use_pq,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_rgb_to_ictcp, _map_planar)(alwan_map_lane *out_ch0, size_t out_stride, alwan_map_lane *out_ch1, alwan_map_lane *out_ch2, alwan_map_lane const *in_ch0, size_t in_stride, alwan_map_lane const *in_ch1, alwan_map_lane const *in_ch2, size_t count, int use_pq)
 {
     if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) return ALWAN_E_INVALID;
 
@@ -383,11 +371,7 @@ int ALWAN_MAP_LITCAT(alwan_rgb_to_ictcp, _map_planar)(
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_ictcp_to_rgb, _map_planar)(
-    alwan_map_lane *out_ch0, alwan_map_lane *out_ch1, alwan_map_lane *out_ch2,
-    alwan_map_lane const *in_ch0, alwan_map_lane const *in_ch1, alwan_map_lane const *in_ch2,
-    int use_pq,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_ictcp_to_rgb, _map_planar)(alwan_map_lane *out_ch0, size_t out_stride, alwan_map_lane *out_ch1, alwan_map_lane *out_ch2, alwan_map_lane const *in_ch0, size_t in_stride, alwan_map_lane const *in_ch1, alwan_map_lane const *in_ch2, size_t count, int use_pq)
 {
     if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) return ALWAN_E_INVALID;
 
@@ -457,11 +441,7 @@ int ALWAN_MAP_LITCAT(alwan_ictcp_to_rgb, _map_planar)(
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_xyz_to_ictcp, _map_planar)(
-    alwan_map_lane *out_ch0, alwan_map_lane *out_ch1, alwan_map_lane *out_ch2,
-    alwan_map_lane const *in_ch0, alwan_map_lane const *in_ch1, alwan_map_lane const *in_ch2,
-    int use_pq,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_xyz_to_ictcp, _map_planar)(alwan_map_lane *out_ch0, size_t out_stride, alwan_map_lane *out_ch1, alwan_map_lane *out_ch2, alwan_map_lane const *in_ch0, size_t in_stride, alwan_map_lane const *in_ch1, alwan_map_lane const *in_ch2, size_t count, int use_pq)
 {
     if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) return ALWAN_E_INVALID;
 
@@ -535,11 +515,7 @@ int ALWAN_MAP_LITCAT(alwan_xyz_to_ictcp, _map_planar)(
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_ictcp_to_xyz, _map_planar)(
-    alwan_map_lane *out_ch0, alwan_map_lane *out_ch1, alwan_map_lane *out_ch2,
-    alwan_map_lane const *in_ch0, alwan_map_lane const *in_ch1, alwan_map_lane const *in_ch2,
-    int use_pq,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_ictcp_to_xyz, _map_planar)(alwan_map_lane *out_ch0, size_t out_stride, alwan_map_lane *out_ch1, alwan_map_lane *out_ch2, alwan_map_lane const *in_ch0, size_t in_stride, alwan_map_lane const *in_ch1, alwan_map_lane const *in_ch2, size_t count, int use_pq)
 {
     if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) return ALWAN_E_INVALID;
 

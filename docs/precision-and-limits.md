@@ -6,13 +6,14 @@ Understanding numerical accuracy, constraints, and edge cases in Alwan.
 
 ## Scalar Precision
 
-Alwan supports two precision modes, selected at compile time:
+Alwan exposes every function and type in two precision variants selected per call site:
 
-### Float (32-bit)
+- **`_f32` variants** (`float`, 32-bit) — for real-time graphics, game engines, mobile
+- **`_f64` variants** (`double`, 64-bit) — for scientific computation, validation, reference work
 
-```c
-#define ALWAN_SCALAR_IS_FLOAT 1
-```
+There is no compile-time toggle. Choose the appropriate suffix at each call site.
+
+### Float / f32 (32-bit)
 
 **Properties:**
 - **Precision:** ~7 decimal digits
@@ -30,17 +31,13 @@ Alwan supports two precision modes, selected at compile time:
 | Operation | Absolute Error | Relative Error |
 |-----------|----------------|----------------|
 | Matrix multiply | ±1e-6 | ±1e-6 |
-| XYZ → Lab | ±0.001 | ±1e-5 |
-| RGB → XYZ | ±0.0001 | ±1e-6 |
+| XYZ -> Lab | ±0.001 | ±1e-5 |
+| RGB -> XYZ | ±0.0001 | ±1e-6 |
 | Transfer functions | ±1e-6 | ±1e-6 |
 
 ---
 
-### Double (64-bit)
-
-```c
-#define ALWAN_SCALAR_IS_FLOAT 0  // Default
-```
+### Double / f64 (64-bit)
 
 **Properties:**
 - **Precision:** ~16 decimal digits
@@ -58,8 +55,8 @@ Alwan supports two precision modes, selected at compile time:
 | Operation | Absolute Error | Relative Error |
 |-----------|----------------|----------------|
 | Matrix multiply | ±1e-14 | ±1e-15 |
-| XYZ → Lab | ±1e-10 | ±1e-12 |
-| RGB → XYZ | ±1e-12 | ±1e-14 |
+| XYZ -> Lab | ±1e-10 | ±1e-12 |
+| RGB -> XYZ | ±1e-12 | ±1e-14 |
 | Transfer functions | ±1e-12 | ±1e-13 |
 
 ---
@@ -93,12 +90,12 @@ Alwan supports two precision modes, selected at compile time:
 
 **Example:**
 ```c
-alwan_mat3x3 m, m_inv;
-// ... initialize m ...
+alwan_mat3x3_{T} m, m_inv;
+/* ... initialize m ... */
 
-alwan_result r = alwan_mat3_inv(&m_inv, &m);  // Output first
-if (r != ALWAN_SUCCESS) {
-    // Matrix is singular or ill-conditioned
+int r = alwan_mat3_inv_{T}(&m_inv, &m);
+if (r != ALWAN_OK) {
+    /* Matrix is singular or ill-conditioned */
 }
 ```
 
@@ -392,11 +389,11 @@ Colors with zero chroma:
 
 **Handling:**
 ```c
-// Hue is preserved as 0 but should not be trusted
-alwan_vec3 gray = {0.5, 0.5, 0.5};  // Gray RGB
-alwan_vec3 hsv;
-alwan_rgb_to_hsv(&hsv, &gray, 1, 0, 0);  // Output first
-// hsv.x (hue) is 0, but meaningless
+/* Hue is preserved as 0 but should not be trusted */
+alwan_rgb_{T} gray = {0.5, 0.5, 0.5};
+alwan_hsv_{T} hsv;
+alwan_rgb_to_hsv_{T}(&hsv, &gray);
+/* hsv.h (hue) is 0, but meaningless */
 ```
 
 ---
@@ -407,10 +404,10 @@ Colors outside the RGB cube [0,1]^3:
 
 **Detection:**
 ```c
-bool is_in_gamut(const alwan_vec3 *rgb) {
-    return rgb->x >= 0 && rgb->x <= 1 &&
-           rgb->y >= 0 && rgb->y <= 1 &&
-           rgb->z >= 0 && rgb->z <= 1;
+static int is_in_gamut(alwan_rgb_{T} const *rgb) {
+    return rgb->r >= 0.0 && rgb->r <= 1.0 &&
+           rgb->g >= 0.0 && rgb->g <= 1.0 &&
+           rgb->b >= 0.0 && rgb->b <= 1.0;
 }
 ```
 
@@ -480,9 +477,10 @@ bool is_in_gamut(const alwan_vec3 *rgb) {
 **Error does not accumulate across array elements:**
 
 ```c
-// Each color processed independently (output first)
-alwan_xyz_to_lab(lab, xyz, &d65, 1000000, s, s);
-// Error is consistent per element, not cumulative
+/* Each color processed independently */
+alwan_xyz_to_lab_{T}_map_interleave((double*)lab, (double const*)xyz, &d65,
+                                    1000000, s, s);
+/* Error is consistent per element, not cumulative */
 ```
 
 ---
@@ -509,9 +507,9 @@ Alwan's test suite uses adaptive tolerances:
 
 | Metric | Float | Double |
 |--------|-------|--------|
-| ΔE76 | ±0.01 | ±1e-8 |
-| ΔE00 | ±0.01 | ±1e-8 |
-| ΔE CMC | ±0.01 | ±1e-8 |
+| dE76 | +-0.01 | +-1e-8 |
+| dE00 | +-0.01 | +-1e-8 |
+| dE CMC | +-0.01 | +-1e-8 |
 
 ---
 
@@ -545,9 +543,8 @@ Alwan's test suite uses adaptive tolerances:
 ## Recommendations
 
 ### For Real-Time Graphics
-```c
-#define ALWAN_SCALAR_IS_FLOAT 1
-```
+
+Use `_f32` variants (e.g., `alwan_xyz_to_lab_f32`):
 - 8-bit output: Invisible error
 - 10-bit output: <0.5 LSB error
 - 12-bit output: <2 LSB error
@@ -555,9 +552,8 @@ Alwan's test suite uses adaptive tolerances:
 ---
 
 ### For Offline Rendering
-```c
-#define ALWAN_SCALAR_IS_FLOAT 0  // double
-```
+
+Use `_f64` variants (e.g., `alwan_xyz_to_lab_f64`):
 - Eliminates accumulation error
 - Matches reference implementations
 - Suitable for 16-bit output
@@ -565,9 +561,8 @@ Alwan's test suite uses adaptive tolerances:
 ---
 
 ### For Scientific Use
-```c
-#define ALWAN_SCALAR_IS_FLOAT 0  // double
-```
+
+Use `_f64` variants:
 - Required for validation
 - Matches published reference values
 - Enables unit tests with tight tolerances
@@ -576,12 +571,12 @@ Alwan's test suite uses adaptive tolerances:
 
 ## Debugging Precision Issues
 
-### 1. Verify Build Configuration
+### 1. Verify Precision
 
 ```c
-#include "alwan.h"
-printf("sizeof(alwan_scalar) = %zu\n", sizeof(alwan_scalar));
-// 4 = float, 8 = double
+/* _f32 variants use float (4 bytes), _f64 variants use double (8 bytes) */
+printf("f32 size: %zu bytes\n", sizeof(float));
+printf("f64 size: %zu bytes\n", sizeof(double));
 ```
 
 ---
@@ -601,13 +596,15 @@ bool is_valid_color(const alwan_vec3 *c) {
 ### 3. Compare Against Reference
 
 ```c
-alwan_vec3 xyz = {0.5, 0.6, 0.4};
-alwan_vec3 lab;
-alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz, 1, 0, 0);  // Output first
+alwan_xyz_{T} xyz = {0.5, 0.6, 0.4};
+alwan_lab_{T} lab;
+alwan_xyz_{T} d65;
+alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+alwan_xyz_to_lab_{T}(&lab, &xyz, &d65);
 
-// Expected (from Python Colour): L=81.968, a=-7.528, b=17.211
-// Float: Should match within ±0.001
-// Double: Should match within ±1e-9
+/* Expected (from Python Colour): L=81.968, a=-7.528, b=17.211 */
+/* f32: Should match within +-0.001 */
+/* f64: Should match within +-1e-9 */
 ```
 
 ---
@@ -615,24 +612,27 @@ alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz, 1, 0, 0);  // Output first
 ### 4. Test Round-Trip Accuracy
 
 ```c
-alwan_vec3 xyz_orig = {0.5, 0.6, 0.4};
-alwan_vec3 lab, xyz_reconstructed;
+alwan_xyz_{T} xyz_orig = {0.5, 0.6, 0.4};
+alwan_lab_{T} lab;
+alwan_xyz_{T} xyz_reconstructed;
+alwan_xyz_{T} d65;
+alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
 
-alwan_xyz_to_lab(&lab, &xyz_orig, &alwan_d65_xyz, 1, 0, 0);  // Output first
-alwan_lab_to_xyz(&xyz_reconstructed, &lab, &alwan_d65_xyz, 1, 0, 0);  // Output first
+alwan_xyz_to_lab_{T}(&lab, &xyz_orig, &d65);
+alwan_lab_to_xyz_{T}(&xyz_reconstructed, &lab, &d65);
 
-alwan_scalar error = fabs(xyz_orig.x - xyz_reconstructed.x) +
-                     fabs(xyz_orig.y - xyz_reconstructed.y) +
-                     fabs(xyz_orig.z - xyz_reconstructed.z);
+double error = fabs(xyz_orig.x - xyz_reconstructed.x) +
+               fabs(xyz_orig.y - xyz_reconstructed.y) +
+               fabs(xyz_orig.z - xyz_reconstructed.z);
 
-// Float: error < 1e-6
-// Double: error < 1e-12
+/* f32: error < 1e-6 */
+/* f64: error < 1e-12 */
 ```
 
 ---
 
 ## See Also
 
-- [Configuration](configuration.md) — Setting scalar precision
+- [Configuration](configuration.md) — Compile-time options (allocators, ALWAN_EMBED_DATA)
 - [Testing](../README.md#testing) — Validation methodology
 - [Examples](examples.md) — Practical usage patterns

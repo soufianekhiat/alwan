@@ -38,7 +38,7 @@ static int is_comment_or_empty(char const *line) {
     return (*s == '#' || *s == '\0' || *s == '\n' || *s == '\r');
 }
 
-int alwan_cube_import_3d(alwan_f64 *lut, int *out_size,
+int alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
                           char const *path) {
     if (!lut || !out_size || !path) return ALWAN_E_INVALID;
 
@@ -104,7 +104,7 @@ int alwan_cube_import_3d(alwan_f64 *lut, int *out_size,
     return ALWAN_OK;
 }
 
-int alwan_cube_import_1d(alwan_f64 *lut, int *out_size,
+int alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
                           char const *path) {
     if (!lut || !out_size || !path) return ALWAN_E_INVALID;
 
@@ -167,7 +167,7 @@ int alwan_cube_import_1d(alwan_f64 *lut, int *out_size,
  * Import from memory buffer
  * ---------------------------------------------------------------- */
 
-int alwan_cube_import_3d_buffer(alwan_f64 *lut, int *out_size,
+int alwan_cube_import_3d_buffer_f64(alwan_f64 *lut, int *out_size,
                                  char const *buf, size_t buf_len) {
     if (!lut || !out_size || !buf || buf_len == 0) return ALWAN_E_INVALID;
 
@@ -227,4 +227,49 @@ int alwan_cube_import_3d_buffer(alwan_f64 *lut, int *out_size,
 
     *out_size = size;
     return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * f32 wrappers — delegate to f64 via a temporary buffer.
+ * ---------------------------------------------------------------- */
+
+int alwan_cube_import_3d_f32(alwan_f32 *lut, int *out_size, char const *path) {
+    if (!lut || !out_size || !path) return ALWAN_E_INVALID;
+    size_t max_total = 256ULL * 256ULL * 256ULL * 3ULL;
+    alwan_f64 *tmp = (alwan_f64 *)malloc(max_total * sizeof(alwan_f64));
+    if (!tmp) return ALWAN_E_NOMEM;
+    int rc = alwan_cube_import_3d_f64(tmp, out_size, path);
+    if (rc == ALWAN_OK) {
+        size_t total = (size_t)(*out_size) * (size_t)(*out_size) * (size_t)(*out_size) * 3;
+        for (size_t i = 0; i < total; i++) lut[i] = (alwan_f32)tmp[i];
+    }
+    free(tmp);
+    return rc;
+}
+
+int alwan_cube_import_1d_f32(alwan_f32 *lut, int *out_size, char const *path) {
+    if (!lut || !out_size || !path) return ALWAN_E_INVALID;
+    alwan_f64 *tmp = (alwan_f64 *)malloc(65536 * sizeof(alwan_f64));
+    if (!tmp) return ALWAN_E_NOMEM;
+    int rc = alwan_cube_import_1d_f64(tmp, out_size, path);
+    if (rc == ALWAN_OK) {
+        for (int i = 0; i < *out_size; i++) lut[i] = (alwan_f32)tmp[i];
+    }
+    free(tmp);
+    return rc;
+}
+
+int alwan_cube_import_3d_buffer_f32(alwan_f32 *lut, int *out_size,
+                                 char const *buf, size_t buf_len) {
+    if (!lut || !out_size || !buf || buf_len == 0) return ALWAN_E_INVALID;
+    size_t max_total = 256ULL * 256ULL * 256ULL * 3ULL;
+    alwan_f64 *tmp = (alwan_f64 *)malloc(max_total * sizeof(alwan_f64));
+    if (!tmp) return ALWAN_E_NOMEM;
+    int rc = alwan_cube_import_3d_buffer_f64(tmp, out_size, buf, buf_len);
+    if (rc == ALWAN_OK) {
+        size_t total = (size_t)(*out_size) * (size_t)(*out_size) * (size_t)(*out_size) * 3;
+        for (size_t i = 0; i < total; i++) lut[i] = (alwan_f32)tmp[i];
+    }
+    free(tmp);
+    return rc;
 }

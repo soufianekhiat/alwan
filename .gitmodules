@@ -1,3 +1,6 @@
 [submodule "extern/Sharpmake"]
 	path = extern/Sharpmake
 	url = https://github.com/ubisoft/Sharpmake.git
+[submodule "extern/imath"]
+	path = extern/imath
+	url = https://github.com/AcademySoftwareFoundation/Imath.git

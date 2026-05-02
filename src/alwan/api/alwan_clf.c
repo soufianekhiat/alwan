@@ -261,7 +261,7 @@ static int clf_write_tf_node(clf_writer *w, alwan_transfer_function tf,
         alwan_f64 *lut = (alwan_f64 *)ALWAN_ALLOC((size_t)lut_size * sizeof(alwan_f64), sizeof(alwan_f64));
         if (!lut) return -1;
 
-        int status = alwan_bake_1dlut(lut, lut_size, tf, is_eotf ? 0 : 1);
+        int status = alwan_bake_1dlut_f64(lut, lut_size, tf, is_eotf ? 0 : 1);
         if (status != ALWAN_OK) {
             ALWAN_FREE(lut);
             return -1;
@@ -286,8 +286,8 @@ static int clf_write_tf_node(clf_writer *w, alwan_transfer_function tf,
  * ---------------------------------------------------------------- */
 
 static int clf_export_core(clf_writer *w,
-                            alwan_rgb_space_desc const *src_space,
-                            alwan_rgb_space_desc const *dst_space,
+                            alwan_rgb_space_desc_f64 const *src_space,
+                            alwan_rgb_space_desc_f64 const *dst_space,
                             int use_view, alwan_view_transform view,
                             alwan_ctx *ctx,
                             char const *id, char const *name,
@@ -310,7 +310,7 @@ static int clf_export_core(clf_writer *w,
     if (src_space->has_matrices) {
         src_to_xyz = src_space->rgb_to_xyz;
     } else {
-        int status = alwan_rgb_derive_matrices(&src_to_xyz, &xyz_to_src, src_space);
+        int status = alwan_rgb_derive_matrices_f64(&src_to_xyz, &xyz_to_src, src_space);
         if (status != ALWAN_OK) return status;
     }
     clf_write_matrix(w, &src_to_xyz, NULL, "Source RGB to XYZ (NPM)");
@@ -322,20 +322,20 @@ static int clf_export_core(clf_writer *w,
     int need_cat = (dx > tol || dx < -tol || dy > tol || dy < -tol);
 
     if (need_cat && ctx) {
-        alwan_xyy src_xyy, dst_xyy;
+        alwan_xyy_f64 src_xyy, dst_xyy;
         alwan_xyz_f64 src_wp, dst_wp;
         src_xyy.x = src_space->white_xy[0];
         src_xyy.y = src_space->white_xy[1];
         src_xyy.Y = 1.0;
-        alwan_xyy_to_xyz(&src_wp, &src_xyy);
+        alwan_xyy_to_xyz_f64(&src_wp, &src_xyy);
 
         dst_xyy.x = dst_space->white_xy[0];
         dst_xyy.y = dst_space->white_xy[1];
         dst_xyy.Y = 1.0;
-        alwan_xyy_to_xyz(&dst_wp, &dst_xyy);
+        alwan_xyy_to_xyz_f64(&dst_wp, &dst_xyy);
 
         alwan_mat3x3_f64 cat;
-        int status = alwan_cat_matrix(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
+        int status = alwan_cat_matrix_f64(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
         if (status != ALWAN_OK) return status;
 
         clf_write_matrix(w, &cat, NULL, "Chromatic adaptation (Bradford)");
@@ -346,7 +346,7 @@ static int clf_export_core(clf_writer *w,
     if (dst_space->has_matrices) {
         xyz_to_dst = dst_space->xyz_to_rgb;
     } else {
-        int status = alwan_rgb_derive_matrices(&dst_to_xyz, &xyz_to_dst, dst_space);
+        int status = alwan_rgb_derive_matrices_f64(&dst_to_xyz, &xyz_to_dst, dst_space);
         if (status != ALWAN_OK) return status;
     }
     clf_write_matrix(w, &xyz_to_dst, NULL, "XYZ to destination RGB (inverse NPM)");
@@ -363,7 +363,7 @@ static int clf_export_core(clf_writer *w,
         if (!lut3d) return ALWAN_E_NOMEM;
 
         /* Build an identity-space LUT with only the view transform applied */
-        alwan_rgb_space_desc linear_desc;
+        alwan_rgb_space_desc_f64 linear_desc;
         memset(&linear_desc, 0, sizeof(linear_desc));
         linear_desc.oetf = ALWAN_TF_LINEAR;
         linear_desc.eotf = ALWAN_TF_LINEAR;
@@ -376,8 +376,7 @@ static int clf_export_core(clf_writer *w,
             linear_desc.xyz_to_rgb = dst_space->xyz_to_rgb;
         }
 
-        int status = alwan_bake_3dlut_view(lut3d, vt_lut_size, ctx,
-                                            &linear_desc, &linear_desc, view);
+        int status = alwan_bake_3dlut_view_f64(lut3d, vt_lut_size, &linear_desc, &linear_desc, view, ctx);
         if (status != ALWAN_OK) {
             ALWAN_FREE(lut3d);
             return status;
@@ -403,12 +402,7 @@ static int clf_export_core(clf_writer *w,
  * Public API: Write CLF to file
  * ---------------------------------------------------------------- */
 
-int alwan_clf_export(char const *path,
-                      alwan_ctx *ctx,
-                      alwan_rgb_space_desc const *src_space,
-                      alwan_rgb_space_desc const *dst_space,
-                      char const *id, char const *name,
-                      int lut_size) {
+int alwan_clf_export_f64(char const *path, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!path || !src_space || !dst_space) return ALWAN_E_INVALID;
     if (lut_size < 2) lut_size = 4096; /* default LUT size for 1D */
 
@@ -425,13 +419,7 @@ int alwan_clf_export(char const *path,
     return status;
 }
 
-int alwan_clf_export_view(char const *path,
-                           alwan_ctx *ctx,
-                           alwan_rgb_space_desc const *src_space,
-                           alwan_rgb_space_desc const *dst_space,
-                           alwan_view_transform view,
-                           char const *id, char const *name,
-                           int lut_size) {
+int alwan_clf_export_view_f64(char const *path, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!path || !src_space || !dst_space) return ALWAN_E_INVALID;
     if (lut_size < 2) lut_size = 4096;
 
@@ -452,12 +440,7 @@ int alwan_clf_export_view(char const *path,
  * Public API: Write CLF to buffer
  * ---------------------------------------------------------------- */
 
-int alwan_clf_export_buffer(char *buf, size_t buf_size, size_t *bytes_written,
-                             alwan_ctx *ctx,
-                             alwan_rgb_space_desc const *src_space,
-                             alwan_rgb_space_desc const *dst_space,
-                             char const *id, char const *name,
-                             int lut_size) {
+int alwan_clf_export_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!buf || !src_space || !dst_space || !bytes_written || buf_size == 0) {
         return ALWAN_E_INVALID;
     }
@@ -476,13 +459,7 @@ int alwan_clf_export_buffer(char *buf, size_t buf_size, size_t *bytes_written,
     return status;
 }
 
-int alwan_clf_export_view_buffer(char *buf, size_t buf_size, size_t *bytes_written,
-                                  alwan_ctx *ctx,
-                                  alwan_rgb_space_desc const *src_space,
-                                  alwan_rgb_space_desc const *dst_space,
-                                  alwan_view_transform view,
-                                  char const *id, char const *name,
-                                  int lut_size) {
+int alwan_clf_export_view_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!buf || !src_space || !dst_space || !bytes_written || buf_size == 0) {
         return ALWAN_E_INVALID;
     }
@@ -499,4 +476,53 @@ int alwan_clf_export_view_buffer(char *buf, size_t buf_size, size_t *bytes_writt
     if (w.overflow) return ALWAN_E_RANGE;
     *bytes_written = w.pos;
     return status;
+}
+
+/* ----------------------------------------------------------------
+ * f32 wrappers — widen f32 descriptors to f64 and delegate.
+ * ---------------------------------------------------------------- */
+
+static void clf_widen_desc_32(alwan_rgb_space_desc_f64 *out, alwan_rgb_space_desc_f32 const *in) {
+    for (int j = 0; j < 6; j++) out->primaries_xy[j] = (double)in->primaries_xy[j];
+    out->white_xy[0] = (double)in->white_xy[0];
+    out->white_xy[1] = (double)in->white_xy[1];
+    out->oetf = in->oetf;
+    out->eotf = in->eotf;
+    for (int j = 0; j < 9; j++) {
+        out->rgb_to_xyz.m[j] = (double)in->rgb_to_xyz.m[j];
+        out->xyz_to_rgb.m[j] = (double)in->xyz_to_rgb.m[j];
+    }
+    out->has_matrices = in->has_matrices;
+}
+
+int alwan_clf_export_f32(char const *path, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+    if (!src_space || !dst_space) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 s, d;
+    clf_widen_desc_32(&s, src_space);
+    clf_widen_desc_32(&d, dst_space);
+    return alwan_clf_export_f64(path, &s, &d, id, name, lut_size, ctx);
+}
+
+int alwan_clf_export_view_f32(char const *path, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+    if (!src_space || !dst_space) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 s, d;
+    clf_widen_desc_32(&s, src_space);
+    clf_widen_desc_32(&d, dst_space);
+    return alwan_clf_export_view_f64(path, &s, &d, view, id, name, lut_size, ctx);
+}
+
+int alwan_clf_export_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+    if (!src_space || !dst_space) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 s, d;
+    clf_widen_desc_32(&s, src_space);
+    clf_widen_desc_32(&d, dst_space);
+    return alwan_clf_export_buffer_f64(buf, bytes_written, buf_size, &s, &d, id, name, lut_size, ctx);
+}
+
+int alwan_clf_export_view_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+    if (!src_space || !dst_space) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 s, d;
+    clf_widen_desc_32(&s, src_space);
+    clf_widen_desc_32(&d, dst_space);
+    return alwan_clf_export_view_buffer_f64(buf, bytes_written, buf_size, &s, &d, view, id, name, lut_size, ctx);
 }

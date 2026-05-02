@@ -124,7 +124,8 @@ if (status != ALWAN_OK) {
 ### Core Types
 
 ```c
-// Scalar type (float or double based on ALWAN_SCALAR_IS_FLOAT)
+/* alwan_scalar is an internal type used in the GPU-compatible core layer.
+ * All public API functions and types have explicit _f32 (float) and _f64 (double) variants. */
 typedef ALWAN_SCALAR alwan_scalar;
 
 // 2-component vector (for xy chromaticity coordinates)

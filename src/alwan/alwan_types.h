@@ -17,12 +17,55 @@
  * C Backend: Dual-Precision Types
  *
  * Both f32 and f64 variants are always available.
- * Unsuffixed names alias to double (f64).
+ * Use explicit _f32 or _f64 suffixed type names.
  * ================================================================ */
 
 /* --- Scalar precision aliases --- */
 typedef float  alwan_f32;
 typedef double alwan_f64;
+
+/* --- CAM surround enums (needed by precision-typed viewing condition structs) --- */
+typedef enum {
+    ALWAN_CIECAM02_SURROUND_AVERAGE = 0,
+    ALWAN_CIECAM02_SURROUND_DIM = 1,
+    ALWAN_CIECAM02_SURROUND_DARK = 2
+} alwan_ciecam02_surround;
+
+typedef enum {
+    ALWAN_CAM16_SURROUND_AVERAGE = 0,
+    ALWAN_CAM16_SURROUND_DIM = 1,
+    ALWAN_CAM16_SURROUND_DARK = 2
+} alwan_cam16_surround;
+
+typedef enum {
+    ALWAN_ZCAM_SURROUND_AVERAGE = 0,
+    ALWAN_ZCAM_SURROUND_DIM = 1,
+    ALWAN_ZCAM_SURROUND_DARK = 2
+} alwan_zcam_surround;
+
+typedef enum {
+    ALWAN_RLAB_SURROUND_AVERAGE = 0,
+    ALWAN_RLAB_SURROUND_DIM = 1,
+    ALWAN_RLAB_SURROUND_DARK = 2
+} alwan_rlab_surround;
+
+typedef enum {
+    ALWAN_HUNT_SURROUND_NORMAL = 0,
+    ALWAN_HUNT_SURROUND_DIM = 1,
+    ALWAN_HUNT_SURROUND_DARK = 2
+} alwan_hunt_surround;
+
+typedef enum {
+    ALWAN_HELLWIG2022_SURROUND_AVERAGE = 0,
+    ALWAN_HELLWIG2022_SURROUND_DIM = 1,
+    ALWAN_HELLWIG2022_SURROUND_DARK = 2
+} alwan_hellwig2022_surround;
+
+typedef enum {
+    ALWAN_LLAB_SURROUND_AVERAGE = 0,
+    ALWAN_LLAB_SURROUND_DIM = 1,
+    ALWAN_LLAB_SURROUND_DARK = 2
+} alwan_llab_surround;
 
 /* --- f32 types --- */
 #define ALWAN_T float
@@ -37,57 +80,6 @@ typedef double alwan_f64;
 #include "alwan_types_gen.inc"
 #undef ALWAN_T
 #undef ALWAN_SUFFIX
-
-/* --- Backward-compat aliases (unsuffixed = f64; prefer explicit _f32/_f64) --- */
-#define alwan_vec2              alwan_vec2_f64
-#define alwan_vec3              alwan_vec3_f64
-#define alwan_mat3x3            alwan_mat3x3_f64
-#define alwan_mat4x4            alwan_mat4x4_f64
-#define alwan_rgb               alwan_rgb_f64
-#define alwan_cmyk              alwan_cmyk_f64
-#define alwan_cmy               alwan_cmy_f64
-#define alwan_hsv               alwan_hsv_f64
-#define alwan_hsl               alwan_hsl_f64
-#define alwan_hsp               alwan_hsp_f64
-#define alwan_hsplog            alwan_hsplog_f64
-#define alwan_hsy               alwan_hsy_f64
-#define alwan_hwb               alwan_hwb_f64
-#define alwan_xyz               alwan_xyz_f64
-#define alwan_xyy               alwan_xyy_f64
-#define alwan_lab               alwan_lab_f64
-#define alwan_luv               alwan_luv_f64
-#define alwan_lch               alwan_lch_f64
-#define alwan_lchuv             alwan_lchuv_f64
-#define alwan_oklab             alwan_oklab_f64
-#define alwan_oklch             alwan_oklch_f64
-#define alwan_jzazbz            alwan_jzazbz_f64
-#define alwan_jzczhz            alwan_jzczhz_f64
-#define alwan_ictcp             alwan_ictcp_f64
-#define alwan_ipt               alwan_ipt_f64
-#define alwan_igpgtg            alwan_igpgtg_f64
-#define alwan_icacb             alwan_icacb_f64
-#define alwan_ycbcr             alwan_ycbcr_f64
-#define alwan_ycocg             alwan_ycocg_f64
-#define alwan_yccbccrc          alwan_yccbccrc_f64
-#define alwan_uvw               alwan_uvw_f64
-#define alwan_din99             alwan_din99_f64
-#define alwan_hunter_lab        alwan_hunter_lab_f64
-#define alwan_iptch             alwan_iptch_f64
-#define alwan_prolab            alwan_prolab_f64
-#define alwan_osa_ucs           alwan_osa_ucs_f64
-#define alwan_ucs               alwan_ucs_f64
-#define alwan_prismatic         alwan_prismatic_f64
-#define alwan_hcl               alwan_hcl_f64
-#define alwan_ihls              alwan_ihls_f64
-#define alwan_cam_jab           alwan_cam_jab_f64
-#define alwan_hsluv             alwan_hsluv_f64
-#define alwan_hpluv             alwan_hpluv_f64
-#define alwan_okhsl             alwan_okhsl_f64
-#define alwan_okhsv             alwan_okhsv_f64
-#define alwan_cubehelix         alwan_cubehelix_f64
-#define alwan_hlc               alwan_hlc_f64
-#define alwan_st2086_metadata   alwan_st2086_metadata_f64
-#define alwan_content_light_level alwan_content_light_level_f64
 
 #else /* HLSL / GLSL / Halide */
 /* ================================================================

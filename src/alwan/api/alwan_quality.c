@@ -20,7 +20,7 @@
  * Formula: CCT = 449n^3 + 3525n^2 + 6823.3n + 5520.33
  * where n = (x - 0.3320) / (0.1858 - y)
  */
-alwan_f64 alwan_cct_mccamy_xy(alwan_vec2_f64 const *xy) {
+alwan_f64 alwan_cct_mccamy_xy_f64(alwan_vec2_f64 const *xy) {
     if (!xy) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -53,7 +53,7 @@ ALWAN_DIAG_POP
 #define ROBERTSON_TABLE_SIZE 31
 #define ROBERTSON_TABLE_STRIDE 4  /* reciprocal_mrd, u, v, slope */
 
-alwan_f64 alwan_cct_robertson_xy(alwan_vec2_f64 const *xy) {
+alwan_f64 alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy) {
     if (!xy) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -129,7 +129,7 @@ alwan_f64 alwan_cct_robertson_xy(alwan_vec2_f64 const *xy) {
 /* Hernandez-Andres 1999: xy to CCT
  * Reference: Hernandez-Andres et al. (1999)
  * Valid for 3000K - 50000K (extended formula for higher CCT) */
-alwan_f64 alwan_cct_hernandez_xy(alwan_vec2_f64 const *xy) {
+alwan_f64 alwan_cct_hernandez_xy_f64(alwan_vec2_f64 const *xy) {
     if (!xy) return ALWAN_LITERAL(-1.0);
 
     alwan_f64 denom = xy->v[1] - ALWAN_LITERAL(0.1735);
@@ -143,7 +143,7 @@ alwan_f64 alwan_cct_hernandez_xy(alwan_vec2_f64 const *xy) {
 /* Kang 2002: CCT to xy (forward transform)
  * Reference: Kang et al. (2002)
  * Valid range: 1667K - 25000K */
-void alwan_cct_to_xy_kang(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
+void alwan_cct_to_xy_kang_f64(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
     if (!xy_out) return;
 
     *xy_out = alwan_cct_to_xy_kang_f64_v(cct);
@@ -156,13 +156,13 @@ void alwan_cct_to_xy_kang(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
  * Uses 1D Newton-Raphson on x(T): since x(T) is monotonic in the valid
  * range, solving x(T) = x_target uniquely determines T.  Analytical
  * derivatives of the Kang polynomial eliminate numerical-derivative error. */
-alwan_f64 alwan_cct_kang_xy(alwan_vec2_f64 const *xy) {
+alwan_f64 alwan_cct_kang_xy_f64(alwan_vec2_f64 const *xy) {
     if (!xy) return ALWAN_LITERAL(-1.0);
 
     alwan_f64 target_x = xy->v[0];
 
     /* Initial estimate using McCamy's formula */
-    alwan_f64 cct = alwan_cct_mccamy_xy(xy);
+    alwan_f64 cct = alwan_cct_mccamy_xy_f64(xy);
     if (cct < ALWAN_LITERAL(1667.0)) cct = ALWAN_LITERAL(1667.0);
     if (cct > ALWAN_LITERAL(25000.0)) cct = ALWAN_LITERAL(25000.0);
 
@@ -809,27 +809,24 @@ static alwan_f64 const *ces_reflectances[80] = {
  *
  * Returns: Ra value (0-100), or negative on error
  */
-alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
+alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 1: Resample test SPD to TCS wavelength range (360-830nm @ 5nm) */
-    alwan_spd test_spd_resampled;
-    int status = alwan_spd_resample(&test_spd_resampled, ctx, test_spd,
-                                    TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, TCS_COUNT,
-                                    ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
+    alwan_spd_f64 test_spd_resampled;
+    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, TCS_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 2: Calculate XYZ and CCT of test illuminant */
     /* Use perfect white reflector to get illuminant's white point */
-    alwan_spd perfect_white;
-    status = alwan_spd_create(&perfect_white, ctx, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max,
-                              test_spd_resampled.count);
+    alwan_spd_f64 perfect_white;
+    status = alwan_spd_create_f64(&perfect_white, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max, test_spd_resampled.count, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -838,14 +835,11 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_xyz_f64 xyz_test_white;
-    status = alwan_xyz_from_spd(&xyz_test_white, ctx, &perfect_white, &test_spd_resampled,
-                                ALWAN_OBSERVER_CIE_1931_2DEG,
-                                ALWAN_INTEGRATE_TRAPEZOID,
-                                ALWAN_LITERAL(0.0));
-    alwan_spd_destroy(ctx, &perfect_white);
+    status = alwan_xyz_from_spd_f64(&xyz_test_white, &perfect_white, &test_spd_resampled, ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+    alwan_spd_destroy_f64(&perfect_white, ctx);
 
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -861,7 +855,7 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     /* Convert XYZ to xy chromaticity */
     alwan_f64 sum = xyz_test_white.x + xyz_test_white.y + xyz_test_white.z;
     if (sum < ALWAN_EPSILON) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -870,28 +864,26 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     xy_test.v[1] = xyz_test_white.y / sum;
 
     /* Calculate CCT using Robertson's method */
-    alwan_f64 cct = alwan_cct_robertson_xy(&xy_test);
+    alwan_f64 cct = alwan_cct_robertson_xy_f64(&xy_test);
     if (cct < ALWAN_LITERAL(0.0)) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 3: Generate reference illuminant at same CCT.
      * Uses Planckian radiator for all CCTs; CIE 13.3-1995 specifies D-illuminant
      * for CCT >= 5000K but blackbody is a common substitute. */
-    alwan_spd reference_spd;
-    status = alwan_spd_blackbody(&reference_spd, ctx, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX,
-                                 TCS_COUNT);
+    alwan_spd_f64 reference_spd;
+    status = alwan_spd_blackbody_f64(&reference_spd, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, TCS_COUNT, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Calculate reference white point */
-    status = alwan_spd_create(&perfect_white, ctx, reference_spd.wavelength_min, reference_spd.wavelength_max,
-                              reference_spd.count);
+    status = alwan_spd_create_f64(&perfect_white, reference_spd.wavelength_min, reference_spd.wavelength_max, reference_spd.count, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &reference_spd);
+        alwan_spd_destroy_f64(&reference_spd, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -900,15 +892,12 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_xyz_f64 xyz_ref_white;
-    status = alwan_xyz_from_spd(&xyz_ref_white, ctx, &perfect_white, &reference_spd,
-                                ALWAN_OBSERVER_CIE_1931_2DEG,
-                                ALWAN_INTEGRATE_TRAPEZOID,
-                                ALWAN_LITERAL(0.0));
-    alwan_spd_destroy(ctx, &perfect_white);
+    status = alwan_xyz_from_spd_f64(&xyz_ref_white, &perfect_white, &reference_spd, ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+    alwan_spd_destroy_f64(&perfect_white, ctx);
 
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &reference_spd);
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&reference_spd, ctx);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -926,11 +915,10 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     for (int i = 0; i < 8; i++) {
         /* Create TCS reflectance SPD */
-        alwan_spd tcs_spd;
-        status = alwan_spd_create(&tcs_spd, ctx, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX,
-                                  TCS_COUNT);
+        alwan_spd_f64 tcs_spd;
+        status = alwan_spd_create_f64(&tcs_spd, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, TCS_COUNT, ctx);
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -941,29 +929,23 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Calculate XYZ under test illuminant */
         alwan_xyz_f64 xyz_test;
-        status = alwan_xyz_from_spd(&xyz_test, ctx, &tcs_spd, &test_spd_resampled,
-                                    ALWAN_OBSERVER_CIE_1931_2DEG,
-                                    ALWAN_INTEGRATE_TRAPEZOID,
-                                    ALWAN_LITERAL(0.0));
+        status = alwan_xyz_from_spd_f64(&xyz_test, &tcs_spd, &test_spd_resampled, ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &tcs_spd);
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&tcs_spd, ctx);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
         /* Calculate XYZ under reference illuminant */
         alwan_xyz_f64 xyz_ref;
-        status = alwan_xyz_from_spd(&xyz_ref, ctx, &tcs_spd, &reference_spd,
-                                    ALWAN_OBSERVER_CIE_1931_2DEG,
-                                    ALWAN_INTEGRATE_TRAPEZOID,
-                                    ALWAN_LITERAL(0.0));
+        status = alwan_xyz_from_spd_f64(&xyz_ref, &tcs_spd, &reference_spd, ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
 
-        alwan_spd_destroy(ctx, &tcs_spd);
+        alwan_spd_destroy_f64(&tcs_spd, ctx);
 
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -978,9 +960,9 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Convert to U*V*W* color space (CIE 1964)
          * Each sample uses its respective illuminant's white point */
-        alwan_uvw uvw_test, uvw_ref;
-        alwan_xyz_to_uvw(&uvw_test, &xyz_test, &xyz_test_white);
-        alwan_xyz_to_uvw(&uvw_ref, &xyz_ref, &xyz_ref_white);
+        alwan_uvw_f64 uvw_test, uvw_ref;
+        alwan_xyz_to_uvw_f64(&uvw_test, &xyz_test, &xyz_test_white);
+        alwan_xyz_to_uvw_f64(&uvw_ref, &xyz_ref, &xyz_ref_white);
 
         /* Calculate color difference ΔE in U*V*W* space */
         alwan_f64 du = uvw_test.U - uvw_ref.U;
@@ -995,8 +977,8 @@ alwan_f64 alwan_cri_ra(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     /* Cleanup */
-    alwan_spd_destroy(ctx, &reference_spd);
-    alwan_spd_destroy(ctx, &test_spd_resampled);
+    alwan_spd_destroy_f64(&reference_spd, ctx);
+    alwan_spd_destroy_f64(&test_spd_resampled, ctx);
 
     /* Step 4: Calculate Ra as average of R1...R8 */
     alwan_f64 ra = ALWAN_LITERAL(0.0);
@@ -1036,7 +1018,7 @@ static alwan_f64 const astm_e313_white_xy[][2] = {
 /* ASTM E313 Yellowness Index
  * Formula: YI = 100(Cx*X - Cz*Z) / Y
  * where Cx and Cz are coefficients that depend on illuminant/observer */
-alwan_f64 alwan_yellowness_astm_e313(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
+alwan_f64 alwan_yellowness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1064,7 +1046,7 @@ alwan_f64 alwan_yellowness_astm_e313(alwan_xyz_f64 const *xyz, alwan_astm_e313_i
  * Formula: WI = 3.388 * Z - 3 * Y
  * Note: This formula does not depend on illuminant/observer, but the parameter
  * is kept for API consistency with yellowness function */
-alwan_f64 alwan_whiteness_astm_e313(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
+alwan_f64 alwan_whiteness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1077,7 +1059,7 @@ alwan_f64 alwan_whiteness_astm_e313(alwan_xyz_f64 const *xyz, alwan_astm_e313_il
 /* CIE 2004 Whiteness Index
  * Formula: W = Y + 800(xn - x) + 1700(yn - y)
  * where xn, yn are the reference white chromaticity coordinates */
-alwan_f64 alwan_whiteness_cie2004(alwan_vec2_f64 const *xy, alwan_f64 Y, alwan_vec2_f64 const *xy_n) {
+alwan_f64 alwan_whiteness_cie2004_f64(alwan_vec2_f64 const *xy, alwan_f64 Y, alwan_vec2_f64 const *xy_n) {
     if (!xy || !xy_n) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1127,25 +1109,21 @@ ALWAN_DIAG_POP
  * 5. Smooth with convolution
  * 6. Compute SSI = 100 - 32*sqrt(sum(smoothed^2))
  */
-alwan_f64 alwan_ssi_calculate(alwan_ctx *ctx, alwan_spd const *test_spd, alwan_spd const *reference_spd) {
+alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 const *reference_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd || !reference_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 1: Resample both SPDs to SSI spectral shape (375-675nm, 1nm) */
-    alwan_spd test_resampled, ref_resampled;
-    int result = alwan_spd_resample(&test_resampled, ctx, test_spd,
-                                    SSI_WAVELENGTH_MIN, SSI_WAVELENGTH_MAX, SSI_WAVELENGTH_COUNT,
-                                    ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
+    alwan_spd_f64 test_resampled, ref_resampled;
+    int result = alwan_spd_resample_f64(&test_resampled, test_spd, SSI_WAVELENGTH_MIN, SSI_WAVELENGTH_MAX, SSI_WAVELENGTH_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (result != ALWAN_OK) {
         return ALWAN_LITERAL(-2.0);
     }
 
-    result = alwan_spd_resample(&ref_resampled, ctx, reference_spd,
-                                SSI_WAVELENGTH_MIN, SSI_WAVELENGTH_MAX, SSI_WAVELENGTH_COUNT,
-                                ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
+    result = alwan_spd_resample_f64(&ref_resampled, reference_spd, SSI_WAVELENGTH_MIN, SSI_WAVELENGTH_MAX, SSI_WAVELENGTH_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (result != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_resampled);
+        alwan_spd_destroy_f64(&test_resampled, ctx);
         return ALWAN_LITERAL(-2.0);
     }
 
@@ -1178,8 +1156,8 @@ alwan_f64 alwan_ssi_calculate(alwan_ctx *ctx, alwan_spd const *test_spd, alwan_s
     }
 
     if (test_sum < ALWAN_EPSILON || ref_sum < ALWAN_EPSILON) {
-        alwan_spd_destroy(ctx, &test_resampled);
-        alwan_spd_destroy(ctx, &ref_resampled);
+        alwan_spd_destroy_f64(&test_resampled, ctx);
+        alwan_spd_destroy_f64(&ref_resampled, ctx);
         return ALWAN_LITERAL(-3.0);
     }
 
@@ -1223,8 +1201,8 @@ alwan_f64 alwan_ssi_calculate(alwan_ctx *ctx, alwan_spd const *test_spd, alwan_s
     alwan_f64 ssi = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(32.0) * ALWAN_SQRT(sum_squares);
 
     /* Cleanup */
-    alwan_spd_destroy(ctx, &test_resampled);
-    alwan_spd_destroy(ctx, &ref_resampled);
+    alwan_spd_destroy_f64(&test_resampled, ctx);
+    alwan_spd_destroy_f64(&ref_resampled, ctx);
 
     return ssi;
 }
@@ -1248,12 +1226,7 @@ alwan_f64 alwan_ssi_calculate(alwan_ctx *ctx, alwan_spd const *test_spd, alwan_s
  * Computes color difference under the test illuminant only.
  * Assumes the samples are a metameric match under the reference illuminant.
  */
-alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
-                                     alwan_spd const *sample_reflectance,
-                                     alwan_spd const *reference_reflectance,
-                                     alwan_spd const *reference_illuminant,
-                                     alwan_spd const *test_illuminant,
-                                     alwan_observer_type observer)
+alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, alwan_spd_f64 const *reference_reflectance, alwan_spd_f64 const *reference_illuminant, alwan_spd_f64 const *test_illuminant, alwan_observer_type observer, alwan_ctx *ctx)
 {
     if (!ctx || !sample_reflectance || !reference_reflectance ||
         !reference_illuminant || !test_illuminant) {
@@ -1264,25 +1237,21 @@ alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
     alwan_xyz_f64 xyz_sample_test, xyz_ref_test;
     int status;
 
-    status = alwan_xyz_from_spd(&xyz_sample_test, ctx, sample_reflectance, test_illuminant,
-                                observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0));
+    status = alwan_xyz_from_spd_f64(&xyz_sample_test, sample_reflectance, test_illuminant, observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 2: Compute XYZ for reference under test illuminant */
-    status = alwan_xyz_from_spd(&xyz_ref_test, ctx, reference_reflectance, test_illuminant,
-                                observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0));
+    status = alwan_xyz_from_spd_f64(&xyz_ref_test, reference_reflectance, test_illuminant, observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 3: Compute white point of test illuminant */
     /* Create a perfect reflectance SPD (all values = 1.0) */
-    alwan_spd perfect_white;
-    status = alwan_spd_create(&perfect_white, ctx, test_illuminant->wavelength_min,
-                              test_illuminant->wavelength_max,
-                              test_illuminant->count);
+    alwan_spd_f64 perfect_white;
+    status = alwan_spd_create_f64(&perfect_white, test_illuminant->wavelength_min, test_illuminant->wavelength_max, test_illuminant->count, ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1293,9 +1262,8 @@ alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
     }
 
     alwan_xyz_f64 xyz_test_white;
-    status = alwan_xyz_from_spd(&xyz_test_white, ctx, &perfect_white, test_illuminant,
-                                observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0));
-    alwan_spd_destroy(ctx, &perfect_white);
+    status = alwan_xyz_from_spd_f64(&xyz_test_white, &perfect_white, test_illuminant, observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+    alwan_spd_destroy_f64(&perfect_white, ctx);
 
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
@@ -1303,11 +1271,11 @@ alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
 
     /* Step 4: Convert to CIELAB using test illuminant white point */
     alwan_lab_f64 lab_sample, lab_ref;
-    alwan_xyz_to_lab(&lab_sample, &xyz_sample_test, &xyz_test_white);
-    alwan_xyz_to_lab(&lab_ref, &xyz_ref_test, &xyz_test_white);
+    alwan_xyz_to_lab_f64(&lab_sample, &xyz_sample_test, &xyz_test_white);
+    alwan_xyz_to_lab_f64(&lab_ref, &xyz_ref_test, &xyz_test_white);
 
     /* Step 5: Compute ΔE*ab (1976) */
-    alwan_f64 delta_e = alwan_delta_e_76(&lab_sample, &lab_ref);
+    alwan_f64 delta_e = alwan_delta_e_76_f64(&lab_sample, &lab_ref);
 
     return delta_e;
 }
@@ -1334,26 +1302,23 @@ alwan_f64 alwan_metamerism_index(alwan_ctx *ctx,
  *
  * Returns: CQS value (0-100), or negative on error
  */
-alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
+alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 1: Resample test SPD to VS wavelength range (360-830nm @ 5nm) */
-    alwan_spd test_spd_resampled;
-    int status = alwan_spd_resample(&test_spd_resampled, ctx, test_spd,
-                                    VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, VS_COUNT,
-                                    ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
+    alwan_spd_f64 test_spd_resampled;
+    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, VS_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 2: Calculate XYZ and CCT of test illuminant */
-    alwan_spd perfect_white;
-    status = alwan_spd_create(&perfect_white, ctx, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max,
-                              test_spd_resampled.count);
+    alwan_spd_f64 perfect_white;
+    status = alwan_spd_create_f64(&perfect_white, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max, test_spd_resampled.count, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1362,14 +1327,11 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_xyz_f64 xyz_test_white;
-    status = alwan_xyz_from_spd(&xyz_test_white, ctx, &perfect_white, &test_spd_resampled,
-                                ALWAN_OBSERVER_CIE_1931_2DEG,
-                                ALWAN_INTEGRATE_TRAPEZOID,
-                                ALWAN_LITERAL(0.0));
-    alwan_spd_destroy(ctx, &perfect_white);
+    status = alwan_xyz_from_spd_f64(&xyz_test_white, &perfect_white, &test_spd_resampled, ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+    alwan_spd_destroy_f64(&perfect_white, ctx);
 
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1385,7 +1347,7 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     /* Convert XYZ to xy chromaticity */
     alwan_f64 sum = xyz_test_white.x + xyz_test_white.y + xyz_test_white.z;
     if (sum < ALWAN_EPSILON) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1394,27 +1356,25 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     xy_test.v[1] = xyz_test_white.y / sum;
 
     /* Calculate CCT using Robertson's method */
-    alwan_f64 cct = alwan_cct_robertson_xy(&xy_test);
+    alwan_f64 cct = alwan_cct_robertson_xy_f64(&xy_test);
     if (cct < ALWAN_LITERAL(0.0)) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 3: Generate blackbody reference at same CCT */
-    alwan_spd reference_spd;
-    status = alwan_spd_blackbody(&reference_spd, ctx, cct, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX,
-                                 VS_COUNT);
+    alwan_spd_f64 reference_spd;
+    status = alwan_spd_blackbody_f64(&reference_spd, cct, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, VS_COUNT, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Calculate reference white point */
-    status = alwan_spd_create(&perfect_white, ctx, reference_spd.wavelength_min, reference_spd.wavelength_max,
-                              reference_spd.count);
+    status = alwan_spd_create_f64(&perfect_white, reference_spd.wavelength_min, reference_spd.wavelength_max, reference_spd.count, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &reference_spd);
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&reference_spd, ctx);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1423,15 +1383,12 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_xyz_f64 xyz_ref_white;
-    status = alwan_xyz_from_spd(&xyz_ref_white, ctx, &perfect_white, &reference_spd,
-                                ALWAN_OBSERVER_CIE_1931_2DEG,
-                                ALWAN_INTEGRATE_TRAPEZOID,
-                                ALWAN_LITERAL(0.0));
-    alwan_spd_destroy(ctx, &perfect_white);
+    status = alwan_xyz_from_spd_f64(&xyz_ref_white, &perfect_white, &reference_spd, ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+    alwan_spd_destroy_f64(&perfect_white, ctx);
 
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &reference_spd);
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&reference_spd, ctx);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1452,17 +1409,17 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     /* Get chromatic adaptation matrices */
     alwan_mat3x3_f64 cat_test_to_d65, cat_ref_to_d65;
-    status = alwan_cat_matrix(&cat_test_to_d65, &xyz_test_white, &d65_white, ALWAN_CAT_CAT02);
+    status = alwan_cat_matrix_f64(&cat_test_to_d65, &xyz_test_white, &d65_white, ALWAN_CAT_CAT02);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &reference_spd);
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&reference_spd, ctx);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
-    status = alwan_cat_matrix(&cat_ref_to_d65, &xyz_ref_white, &d65_white, ALWAN_CAT_CAT02);
+    status = alwan_cat_matrix_f64(&cat_ref_to_d65, &xyz_ref_white, &d65_white, ALWAN_CAT_CAT02);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &reference_spd);
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&reference_spd, ctx);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1471,11 +1428,10 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     for (int i = 0; i < 15; i++) {
         /* Create VS reflectance SPD */
-        alwan_spd vs_spd;
-        status = alwan_spd_create(&vs_spd, ctx, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX,
-                                  VS_COUNT);
+        alwan_spd_f64 vs_spd;
+        status = alwan_spd_create_f64(&vs_spd, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, VS_COUNT, ctx);
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1486,29 +1442,23 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Calculate XYZ under test illuminant */
         alwan_xyz_f64 xyz_test;
-        status = alwan_xyz_from_spd(&xyz_test, ctx, &vs_spd, &test_spd_resampled,
-                                    ALWAN_OBSERVER_CIE_1931_2DEG,
-                                    ALWAN_INTEGRATE_TRAPEZOID,
-                                    ALWAN_LITERAL(0.0));
+        status = alwan_xyz_from_spd_f64(&xyz_test, &vs_spd, &test_spd_resampled, ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &vs_spd);
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&vs_spd, ctx);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
         /* Calculate XYZ under reference illuminant */
         alwan_xyz_f64 xyz_ref;
-        status = alwan_xyz_from_spd(&xyz_ref, ctx, &vs_spd, &reference_spd,
-                                    ALWAN_OBSERVER_CIE_1931_2DEG,
-                                    ALWAN_INTEGRATE_TRAPEZOID,
-                                    ALWAN_LITERAL(0.0));
+        status = alwan_xyz_from_spd_f64(&xyz_ref, &vs_spd, &reference_spd, ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
 
-        alwan_spd_destroy(ctx, &vs_spd);
+        alwan_spd_destroy_f64(&vs_spd, ctx);
 
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1525,16 +1475,16 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
         alwan_xyz_f64 xyz_test_adapted, xyz_ref_adapted;
         alwan_vec3_f64 vec_in, vec_out;
         ALWAN_MEMCPY(&vec_in, &xyz_test, sizeof(alwan_vec3_f64));
-        alwan_mat3_mulv(&vec_out, &cat_test_to_d65, &vec_in);
+        alwan_mat3_mulv_f64(&vec_out, &cat_test_to_d65, &vec_in);
         ALWAN_MEMCPY(&xyz_test_adapted, &vec_out, sizeof(alwan_vec3_f64));
         ALWAN_MEMCPY(&vec_in, &xyz_ref, sizeof(alwan_vec3_f64));
-        alwan_mat3_mulv(&vec_out, &cat_ref_to_d65, &vec_in);
+        alwan_mat3_mulv_f64(&vec_out, &cat_ref_to_d65, &vec_in);
         ALWAN_MEMCPY(&xyz_ref_adapted, &vec_out, sizeof(alwan_vec3_f64));
 
         /* Convert to CIELAB */
         alwan_lab_f64 lab_test, lab_ref;
-        alwan_xyz_to_lab(&lab_test, &xyz_test_adapted, &d65_white);
-        alwan_xyz_to_lab(&lab_ref, &xyz_ref_adapted, &d65_white);
+        alwan_xyz_to_lab_f64(&lab_test, &xyz_test_adapted, &d65_white);
+        alwan_xyz_to_lab_f64(&lab_ref, &xyz_ref_adapted, &d65_white);
 
         /* Calculate color difference ΔE*ab */
         alwan_f64 dL = lab_test.L - lab_ref.L;
@@ -1546,8 +1496,8 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     /* Cleanup */
-    alwan_spd_destroy(ctx, &reference_spd);
-    alwan_spd_destroy(ctx, &test_spd_resampled);
+    alwan_spd_destroy_f64(&reference_spd, ctx);
+    alwan_spd_destroy_f64(&test_spd_resampled, ctx);
 
     /* Step 5: Calculate CQS using simplified formula */
     alwan_f64 avg_delta_e = delta_e_sum / ALWAN_LITERAL(15.0);
@@ -1576,26 +1526,23 @@ alwan_f64 alwan_cqs_calculate(alwan_ctx *ctx, alwan_spd const *test_spd) {
  *
  * Returns: Rf value (0-100), or negative on error
  */
-alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
+alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 1: Resample test SPD to CES wavelength range (360-830nm @ 5nm) */
-    alwan_spd test_spd_resampled;
-    int status = alwan_spd_resample(&test_spd_resampled, ctx, test_spd,
-                                    CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT,
-                                    ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
+    alwan_spd_f64 test_spd_resampled;
+    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 2: Calculate CCT of test illuminant to determine reference type */
-    alwan_spd perfect_white;
-    status = alwan_spd_create(&perfect_white, ctx, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max,
-                              test_spd_resampled.count);
+    alwan_spd_f64 perfect_white;
+    status = alwan_spd_create_f64(&perfect_white, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max, test_spd_resampled.count, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1604,14 +1551,11 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_xyz_f64 xyz_test_white_10deg;
-    status = alwan_xyz_from_spd(&xyz_test_white_10deg, ctx, &perfect_white, &test_spd_resampled,
-                                ALWAN_OBSERVER_CIE_1964_10DEG,
-                                ALWAN_INTEGRATE_TRAPEZOID,
-                                ALWAN_LITERAL(0.0));
-    alwan_spd_destroy(ctx, &perfect_white);
+    status = alwan_xyz_from_spd_f64(&xyz_test_white_10deg, &perfect_white, &test_spd_resampled, ALWAN_OBSERVER_CIE_1964_10DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+    alwan_spd_destroy_f64(&perfect_white, ctx);
 
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1627,7 +1571,7 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     /* Convert XYZ to xy chromaticity */
     alwan_f64 sum = xyz_test_white_10deg.x + xyz_test_white_10deg.y + xyz_test_white_10deg.z;
     if (sum < ALWAN_EPSILON) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1636,28 +1580,25 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     xy_test.v[1] = xyz_test_white_10deg.y / sum;
 
     /* Calculate CCT */
-    alwan_f64 cct = alwan_cct_robertson_xy(&xy_test);
+    alwan_f64 cct = alwan_cct_robertson_xy_f64(&xy_test);
     if (cct < ALWAN_LITERAL(0.0)) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Step 3: Generate reference illuminant (blackbody < 5000K, D-illuminant >= 5000K) */
-    alwan_spd reference_spd;
+    alwan_spd_f64 reference_spd;
     if (cct < ALWAN_LITERAL(5000.0)) {
         /* Use blackbody for low CCT */
-        status = alwan_spd_blackbody(&reference_spd, ctx, cct, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX,
-                                     CES_COUNT);
+        status = alwan_spd_blackbody_f64(&reference_spd, cct, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT, ctx);
     } else {
         /* Use D-illuminant for high CCT - use D65 as approximation */
-        status = alwan_spd_illuminant(&reference_spd, ctx, ALWAN_ILLUMINANT_D65);
+        status = alwan_spd_illuminant_f64(&reference_spd, ALWAN_ILLUMINANT_D65, ctx);
         if (status == ALWAN_OK) {
             /* Resample to CES wavelength range */
-            alwan_spd temp_spd;
-            status = alwan_spd_resample(&temp_spd, ctx, &reference_spd,
-                                       CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT,
-                                       ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
-            alwan_spd_destroy(ctx, &reference_spd);
+            alwan_spd_f64 temp_spd;
+            status = alwan_spd_resample_f64(&temp_spd, &reference_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
             if (status == ALWAN_OK) {
                 reference_spd = temp_spd;
             }
@@ -1665,16 +1606,15 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
     /* Calculate reference white point (10° observer) */
-    status = alwan_spd_create(&perfect_white, ctx, reference_spd.wavelength_min, reference_spd.wavelength_max,
-                              reference_spd.count);
+    status = alwan_spd_create_f64(&perfect_white, reference_spd.wavelength_min, reference_spd.wavelength_max, reference_spd.count, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &reference_spd);
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&reference_spd, ctx);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1683,15 +1623,12 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     alwan_xyz_f64 xyz_ref_white_10deg;
-    status = alwan_xyz_from_spd(&xyz_ref_white_10deg, ctx, &perfect_white, &reference_spd,
-                                ALWAN_OBSERVER_CIE_1964_10DEG,
-                                ALWAN_INTEGRATE_TRAPEZOID,
-                                ALWAN_LITERAL(0.0));
-    alwan_spd_destroy(ctx, &perfect_white);
+    status = alwan_xyz_from_spd_f64(&xyz_ref_white_10deg, &perfect_white, &reference_spd, ALWAN_OBSERVER_CIE_1964_10DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+    alwan_spd_destroy_f64(&perfect_white, ctx);
 
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &reference_spd);
-        alwan_spd_destroy(ctx, &test_spd_resampled);
+        alwan_spd_destroy_f64(&reference_spd, ctx);
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
@@ -1705,7 +1642,7 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     /* Setup CIECAM02 viewing conditions (standard for TM-30) */
-    alwan_ciecam02_viewing_conditions vc_test, vc_ref;
+    alwan_ciecam02_viewing_conditions_f64 vc_test, vc_ref;
 
     vc_test.white_xyz.x = xyz_test_white_10deg.x;
     vc_test.white_xyz.y = xyz_test_white_10deg.y;
@@ -1728,12 +1665,11 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
     for (int i = 0; i < 80; i++) {
         /* Create CES reflectance SPD */
-        alwan_spd ces_spd;
-        status = alwan_spd_create(&ces_spd, ctx, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX,
-                                  CES_COUNT);
+        alwan_spd_f64 ces_spd;
+        status = alwan_spd_create_f64(&ces_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT, ctx);
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1744,29 +1680,23 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
 
         /* Calculate XYZ under test illuminant (10° observer) */
         alwan_xyz_f64 xyz_test;
-        status = alwan_xyz_from_spd(&xyz_test, ctx, &ces_spd, &test_spd_resampled,
-                                    ALWAN_OBSERVER_CIE_1964_10DEG,
-                                    ALWAN_INTEGRATE_TRAPEZOID,
-                                    ALWAN_LITERAL(0.0));
+        status = alwan_xyz_from_spd_f64(&xyz_test, &ces_spd, &test_spd_resampled, ALWAN_OBSERVER_CIE_1964_10DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &ces_spd);
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&ces_spd, ctx);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
         /* Calculate XYZ under reference illuminant (10° observer) */
         alwan_xyz_f64 xyz_ref;
-        status = alwan_xyz_from_spd(&xyz_ref, ctx, &ces_spd, &reference_spd,
-                                    ALWAN_OBSERVER_CIE_1964_10DEG,
-                                    ALWAN_INTEGRATE_TRAPEZOID,
-                                    ALWAN_LITERAL(0.0));
+        status = alwan_xyz_from_spd_f64(&xyz_ref, &ces_spd, &reference_spd, ALWAN_OBSERVER_CIE_1964_10DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
 
-        alwan_spd_destroy(ctx, &ces_spd);
+        alwan_spd_destroy_f64(&ces_spd, ctx);
 
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1780,18 +1710,18 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
         xyz_ref.z *= ref_norm_factor_10deg;
 
         /* Calculate CIECAM02 correlates */
-        alwan_ciecam02_correlates cam_test, cam_ref;
-        status = alwan_ciecam02_forward(&cam_test, &xyz_test, &vc_test);
+        alwan_ciecam02_correlates_f64 cam_test, cam_ref;
+        status = alwan_ciecam02_forward_f64(&cam_test, &xyz_test, &vc_test);
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
-        status = alwan_ciecam02_forward(&cam_ref, &xyz_ref, &vc_ref);
+        status = alwan_ciecam02_forward_f64(&cam_ref, &xyz_ref, &vc_ref);
         if (status != ALWAN_OK) {
-            alwan_spd_destroy(ctx, &reference_spd);
-            alwan_spd_destroy(ctx, &test_spd_resampled);
+            alwan_spd_destroy_f64(&reference_spd, ctx);
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
@@ -1833,8 +1763,8 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
     }
 
     /* Cleanup */
-    alwan_spd_destroy(ctx, &reference_spd);
-    alwan_spd_destroy(ctx, &test_spd_resampled);
+    alwan_spd_destroy_f64(&reference_spd, ctx);
+    alwan_spd_destroy_f64(&test_spd_resampled, ctx);
 
     /* Step 5: Calculate Rf */
     alwan_f64 avg_delta_e = delta_e_sum / ALWAN_LITERAL(99.0);
@@ -1861,7 +1791,7 @@ alwan_f64 alwan_tm30_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
  *
  * Returns: Rf value (0-100), or negative on error
  */
-alwan_f64 alwan_cie224_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
+alwan_f64 alwan_cie224_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     /* CIE 224:2017 uses the same algorithm as TM-30
      * Both standards use identical methodology:
      * - 99 CES samples
@@ -1869,33 +1799,129 @@ alwan_f64 alwan_cie224_rf(alwan_ctx *ctx, alwan_spd const *test_spd) {
      * - CIECAM02 with CAM02-UCS color space
      * - Same formula for Rf calculation
      */
-    return alwan_tm30_rf(ctx, test_spd);
+    return alwan_tm30_rf_f64(test_spd, ctx);
 }
 
 /* ----------------------------------------------------------------
  * Weber & Michelson Contrast
+ *
+ * Templatized in alwan_vision_impl.inc.
  * ---------------------------------------------------------------- */
-
-int alwan_weber_contrast(alwan_f64 *result, alwan_f64 L_target, alwan_f64 L_bg) {
-    if (!result) return ALWAN_E_INVALID;
-    *result = alwan_weber_contrast_f64_v(L_target, L_bg);
-    return ALWAN_OK;
-}
-
-int alwan_michelson_contrast(alwan_f64 *result, alwan_f64 L_max, alwan_f64 L_min) {
-    if (!result) return ALWAN_E_INVALID;
-    *result = alwan_michelson_contrast_f64_v(L_max, L_min);
-    return ALWAN_OK;
-}
 
 /* ----------------------------------------------------------------
  * D-Series Illuminant from CCT
  * ---------------------------------------------------------------- */
 
-int alwan_d_series_illuminant_xy(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
+int alwan_d_series_illuminant_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
     if (!xy_out) return ALWAN_E_INVALID;
     if (cct < ALWAN_LITERAL(4000.0) || cct > ALWAN_LITERAL(25000.0))
         return ALWAN_E_RANGE;
     *xy_out = alwan_d_series_xy_f64_v(cct);
     return ALWAN_OK;
+}
+
+int alwan_d_series_illuminant_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 cct) {
+    if (!xy_out) return ALWAN_E_INVALID;
+    if (cct < 4000.0f || cct > 25000.0f)
+        return ALWAN_E_RANGE;
+    *xy_out = alwan_d_series_xy_f32_v(cct);
+    return ALWAN_OK;
+}
+
+/* ================================================================
+ * f32 wrappers for SPD-based quality metrics
+ *
+ * These allocate a temporary f64 SPD mirror and delegate to the
+ * f64 implementations (which use f64 CMF tables and integrators).
+ * ================================================================ */
+
+static int spd_alloc_f64_from_f32(alwan_spd_f64 *out, alwan_ctx *ctx, alwan_spd_f32 const *in) {
+    int rc = alwan_spd_create_f64(out, (alwan_f64)in->wavelength_min, (alwan_f64)in->wavelength_max, in->count, ctx);
+    if (rc != ALWAN_OK) return rc;
+    for (size_t i = 0; i < in->count; i++) {
+        out->values[i] = (alwan_f64)in->values[i];
+    }
+    return ALWAN_OK;
+}
+
+alwan_f32 alwan_cri_ra_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {
+    if (!test_spd) return -1.0f;
+    alwan_spd_f64 tmp;
+    if (spd_alloc_f64_from_f32(&tmp, ctx, test_spd) != ALWAN_OK) return -1.0f;
+    alwan_f64 result = alwan_cri_ra_f64(&tmp, ctx);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return (alwan_f32)result;
+}
+
+alwan_f32 alwan_cqs_calculate_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {
+    if (!test_spd) return -1.0f;
+    alwan_spd_f64 tmp;
+    if (spd_alloc_f64_from_f32(&tmp, ctx, test_spd) != ALWAN_OK) return -1.0f;
+    alwan_f64 result = alwan_cqs_calculate_f64(&tmp, ctx);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return (alwan_f32)result;
+}
+
+alwan_f32 alwan_tm30_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {
+    if (!test_spd) return -1.0f;
+    alwan_spd_f64 tmp;
+    if (spd_alloc_f64_from_f32(&tmp, ctx, test_spd) != ALWAN_OK) return -1.0f;
+    alwan_f64 result = alwan_tm30_rf_f64(&tmp, ctx);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return (alwan_f32)result;
+}
+
+alwan_f32 alwan_cie224_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {
+    if (!test_spd) return -1.0f;
+    alwan_spd_f64 tmp;
+    if (spd_alloc_f64_from_f32(&tmp, ctx, test_spd) != ALWAN_OK) return -1.0f;
+    alwan_f64 result = alwan_cie224_rf_f64(&tmp, ctx);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return (alwan_f32)result;
+}
+
+alwan_f32 alwan_ssi_calculate_f32(alwan_spd_f32 const *test_spd, alwan_spd_f32 const *reference_spd, alwan_ctx *ctx) {
+    if (!test_spd || !reference_spd) return -1.0f;
+    alwan_spd_f64 tmp_test, tmp_ref;
+    if (spd_alloc_f64_from_f32(&tmp_test, ctx, test_spd) != ALWAN_OK) return -1.0f;
+    if (spd_alloc_f64_from_f32(&tmp_ref, ctx, reference_spd) != ALWAN_OK) {
+        alwan_spd_destroy_f64(&tmp_test, ctx);
+        return -1.0f;
+    }
+    alwan_f64 result = alwan_ssi_calculate_f64(&tmp_test, &tmp_ref, ctx);
+    alwan_spd_destroy_f64(&tmp_test, ctx);
+    alwan_spd_destroy_f64(&tmp_ref, ctx);
+    return (alwan_f32)result;
+}
+
+alwan_f32 alwan_metamerism_index_f32(alwan_spd_f32 const *sample_reflectance, alwan_spd_f32 const *reference_reflectance, alwan_spd_f32 const *reference_illuminant, alwan_spd_f32 const *test_illuminant, alwan_observer_type observer, alwan_ctx *ctx) {
+    if (!ctx || !sample_reflectance || !reference_reflectance ||
+        !reference_illuminant || !test_illuminant) {
+        return -1.0f;
+    }
+
+    alwan_spd_f64 a, b, ri, ti;
+    if (spd_alloc_f64_from_f32(&a, ctx, sample_reflectance) != ALWAN_OK) return -1.0f;
+    if (spd_alloc_f64_from_f32(&b, ctx, reference_reflectance) != ALWAN_OK) {
+        alwan_spd_destroy_f64(&a, ctx);
+        return -1.0f;
+    }
+    if (spd_alloc_f64_from_f32(&ri, ctx, reference_illuminant) != ALWAN_OK) {
+        alwan_spd_destroy_f64(&a, ctx);
+        alwan_spd_destroy_f64(&b, ctx);
+        return -1.0f;
+    }
+    if (spd_alloc_f64_from_f32(&ti, ctx, test_illuminant) != ALWAN_OK) {
+        alwan_spd_destroy_f64(&a, ctx);
+        alwan_spd_destroy_f64(&b, ctx);
+        alwan_spd_destroy_f64(&ri, ctx);
+        return -1.0f;
+    }
+
+    alwan_f64 result = alwan_metamerism_index_f64(&a, &b, &ri, &ti, observer, ctx);
+    alwan_spd_destroy_f64(&a, ctx);
+    alwan_spd_destroy_f64(&b, ctx);
+    alwan_spd_destroy_f64(&ri, ctx);
+    alwan_spd_destroy_f64(&ti, ctx);
+    return (alwan_f32)result;
 }

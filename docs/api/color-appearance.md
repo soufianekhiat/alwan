@@ -2,6 +2,10 @@
 
 Functions for color appearance models that predict color perception under different viewing conditions.
 
+> **Precision variants:** Every function and type shown as `name_{T}` exists in two forms:
+> `name_f32` (single precision, `float`) and `name_f64` (double precision, `double`).
+> `T = f32 | f64`.
+
 ---
 
 ## Overview
@@ -13,310 +17,219 @@ Color appearance models (CAMs) predict how colors appear under varying viewing c
 - Chromatic adaptation state
 
 **Implemented models:**
-- **CIECAM02** — CIE Color Appearance Model 2002
-- **CAM16** — Color Appearance Model 2016 (improved CIECAM02)
-- **ZCAM** — Latest CIE color appearance model
-- **UCS variants** — Uniform Color Space versions (JMh → J'a'b')
-- **Additional models** — RLAB, Hunt, Nayatani, LLAB, ATD95, Hellwig2022, Kim2009
+- **CIECAM02** -- CIE Color Appearance Model 2002
+- **CAM16** -- Color Appearance Model 2016 (improved CIECAM02)
+- **ZCAM** -- Latest CIE color appearance model
+- **UCS variants** -- Uniform Color Space versions (JMh -> J'a'b')
+- **Additional models** -- RLAB, Hunt, Nayatani, LLAB, ATD95, Hellwig2022, Kim2009
 
 ---
 
-## Functions
+## Viewing Conditions
 
-### Viewing Conditions
+Each model has its own precision-specific struct. Fields shown here use the CIECAM02/CAM16 layout
+(ZCAM and the other models differ slightly -- see `alwan_types_gen.inc`).
 
 ```c
+/* Surround enum (model-specific: alwan_ciecam02_surround, alwan_cam16_surround, ...) */
+typedef enum {
+    ALWAN_CIECAM02_SURROUND_AVERAGE = 0,  /* Average surround (outdoor/office) */
+    ALWAN_CIECAM02_SURROUND_DIM     = 1,  /* Dim surround (cinema) */
+    ALWAN_CIECAM02_SURROUND_DARK    = 2   /* Dark surround (home theater) */
+} alwan_ciecam02_surround;
+/* CAM16 uses ALWAN_CAM16_SURROUND_*, ZCAM uses ALWAN_ZCAM_SURROUND_*, etc. */
+
+/* CIECAM02 viewing conditions (precision-specific) */
 typedef struct {
-    alwan_vec3 white_point;       // Adapting white point (XYZ)
-    alwan_scalar la;              // Adapting luminance (cd/m^2)
-    alwan_scalar yb;              // Background relative luminance
-    alwan_scalar surround;        // Surround: 0.8 (avg), 0.9 (dim), 1.0 (dark)
-    alwan_scalar f;               // Luminance level: 0.8 (avg), 0.9 (dim), 1.0 (dark)
-    alwan_scalar c;               // Impact of surround: 0.69 (avg), 0.59 (dim), 0.525 (dark)
-    alwan_scalar nc;              // Chromatic induction: 1.0 (avg), 0.95 (dim), 0.8 (dark)
-} alwan_cam_viewing_conditions;
+    alwan_xyz_{T}           white_xyz;           /* Reference white in XYZ (Y typically 100) */
+    {T}                     adapting_luminance;  /* Adapting luminance La in cd/m^2 */
+    {T}                     background_luminance;/* Background relative luminance Yb/Yw */
+    alwan_ciecam02_surround surround;            /* Viewing surround condition */
+    int                     discount_illuminant; /* 1 = discount, 0 = adapt */
+} alwan_ciecam02_viewing_conditions_{T};
+
+/* CAM16 viewing conditions -- same fields, different surround enum type */
+typedef struct {
+    alwan_xyz_{T}       white_xyz;
+    {T}                 adapting_luminance;
+    {T}                 background_luminance;
+    alwan_cam16_surround surround;
+    int                 discount_illuminant;
+} alwan_cam16_viewing_conditions_{T};
 ```
 
 ---
 
-### CIECAM02 Forward Transform
+## CIECAM02
+
+### alwan_ciecam02_forward_{T} / alwan_ciecam02_inverse_{T}
 
 ```c
-alwan_result alwan_ciecam02_forward(
-    alwan_scalar *J,   // Lightness (output first)
-    alwan_scalar *C,   // Chroma
-    alwan_scalar *h,   // Hue angle
-    alwan_scalar *s,   // Saturation
-    alwan_scalar *Q,   // Brightness
-    alwan_scalar *M,   // Colorfulness
-    alwan_scalar *H,   // Hue quadrature
-    alwan_ctx *ctx,
-    const alwan_vec3 *xyz,
-    const alwan_cam_viewing_conditions *vc
-);
+int alwan_ciecam02_forward_{T}(alwan_ciecam02_correlates_{T} *out,
+                                alwan_xyz_{T} const *xyz,
+                                alwan_ciecam02_viewing_conditions_{T} const *vc);
+
+int alwan_ciecam02_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                                alwan_ciecam02_correlates_{T} const *correlates,
+                                alwan_ciecam02_viewing_conditions_{T} const *vc);
 ```
 
-Convert XYZ to CIECAM02 perceptual correlates.
+Output struct fields (correlates): `J` (lightness), `C` (chroma), `h` (hue angle), `s` (saturation),
+`Q` (brightness), `M` (colorfulness), `H` (hue quadrature).
+
+The inverse uses only `J`, `C`, `h` from the correlates struct; other fields are ignored.
+
+**Example:**
+```c
+alwan_xyz_{T} xyz = {19.01, 20.00, 21.78};
+
+alwan_ciecam02_viewing_conditions_{T} vc;
+vc.white_xyz.x          = 95.05;
+vc.white_xyz.y          = 100.0;
+vc.white_xyz.z          = 108.88;
+vc.adapting_luminance   = 64.0;   /* cd/m^2 */
+vc.background_luminance = 20.0;   /* Yb/Yw */
+vc.surround             = ALWAN_CIECAM02_SURROUND_AVERAGE;
+vc.discount_illuminant  = 0;
+
+alwan_ciecam02_correlates_{T} corr;
+alwan_ciecam02_forward_{T}(&corr, &xyz, &vc);
+printf("J=%.2f C=%.2f h=%.2f\n", corr.J, corr.C, corr.h);
+```
 
 ---
 
-### CIECAM02 Reverse Transform
+## CAM16
+
+### alwan_cam16_forward_{T} / alwan_cam16_inverse_{T}
 
 ```c
-alwan_result alwan_ciecam02_reverse(
-    alwan_vec3 *xyz,              // Output first
-    alwan_ctx *ctx,
-    alwan_scalar J, alwan_scalar C, alwan_scalar h,
-    const alwan_cam_viewing_conditions *vc
-);
+int alwan_cam16_forward_{T}(alwan_cam16_correlates_{T} *out,
+                             alwan_xyz_{T} const *xyz,
+                             alwan_cam16_viewing_conditions_{T} const *vc);
+
+int alwan_cam16_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                             alwan_cam16_correlates_{T} const *correlates,
+                             alwan_cam16_viewing_conditions_{T} const *vc);
 ```
 
-Convert CIECAM02 JCh back to XYZ.
+Improved CIECAM02 with better chromatic adaptation and numerical stability.
 
----
-
-### CAM16 Forward Transform
+### alwan_cam16_to_ucs_{T} / alwan_cam16_from_ucs_{T}
 
 ```c
-alwan_result alwan_cam16_forward(
-    alwan_scalar *J,   // Lightness (output first)
-    alwan_scalar *C,   // Chroma
-    alwan_scalar *h,   // Hue angle
-    alwan_scalar *s,   // Saturation
-    alwan_scalar *Q,   // Brightness
-    alwan_scalar *M,   // Colorfulness
-    alwan_scalar *H,   // Hue quadrature
-    alwan_ctx *ctx,
-    const alwan_vec3 *xyz,
-    const alwan_cam_viewing_conditions *vc
-);
-```
+int alwan_cam16_to_ucs_{T}(alwan_cam_jab_{T} *jab_out,
+                            alwan_cam16_correlates_{T} const *correlates);
 
-Convert XYZ to CAM16 perceptual correlates (improved CIECAM02).
-
----
-
-### CAM16 UCS (Uniform Color Space)
-
-```c
-alwan_result alwan_cam16_to_ucs(
-    alwan_scalar *J_prime,        // Output first
-    alwan_scalar *a_prime,
-    alwan_scalar *b_prime,
-    alwan_scalar J, alwan_scalar M, alwan_scalar h
-);
+int alwan_cam16_from_ucs_{T}(alwan_cam16_correlates_{T} *out,
+                              alwan_cam_jab_{T} const *jab,
+                              alwan_cam16_viewing_conditions_{T} const *vc);
 ```
 
 Convert CAM16 JMh to uniform color space J'a'b' for color difference calculations.
 
 ---
 
-## Use Cases
-
-### Perceptual Color Matching
-
-Match colors across different viewing conditions:
-```c
-// Display viewed in dim office
-alwan_cam_viewing_conditions dim_office = {
-    .white_point = alwan_d65_xyz,
-    .la = 64.0,   // cd/m^2
-    .yb = 0.2,    // 20% gray background
-    .surround = 0.9,
-    .f = 0.9,
-    .c = 0.59,
-    .nc = 0.95
-};
-
-// Bright print viewed in bright gallery
-alwan_cam_viewing_conditions bright_print = {
-    .white_point = alwan_d50_xyz,
-    .la = 318.0,  // cd/m^2
-    .yb = 0.2,
-    .surround = 0.8,
-    .f = 0.8,
-    .c = 0.69,
-    .nc = 1.0
-};
-
-// Convert display XYZ → CAM16 → print XYZ (output first)
-alwan_scalar J, C, h;
-alwan_cam16_forward(&J, &C, &h, ..., ctx, &display_xyz, &dim_office);
-alwan_cam16_reverse(&print_xyz, ctx, J, C, h, &bright_print);
-```
-
----
-
-### Color Difference in Perceptual Space
+## Batch Processing (CIECAM02 and CAM16)
 
 ```c
-// ΔE in CAM16-UCS space (output first)
-alwan_scalar J1, M1, h1, J2, M2, h2;
-alwan_cam16_forward(&J1, ..., &M1, &h1, ctx, &xyz1, &vc);
-alwan_cam16_forward(&J2, ..., &M2, &h2, ctx, &xyz2, &vc);
+int alwan_ciecam02_forward_{T}_map_interleave(
+    alwan_ciecam02_correlates_{T} *correlates_out,
+    alwan_{T} const *xyz_in,
+    alwan_ciecam02_viewing_conditions_{T} const *vc,
+    size_t count, size_t in_stride, size_t out_stride);
 
-alwan_scalar J1p, a1p, b1p, J2p, a2p, b2p;
-alwan_cam16_to_ucs(&J1p, &a1p, &b1p, J1, M1, h1);
-alwan_cam16_to_ucs(&J2p, &a2p, &b2p, J2, M2, h2);
-
-alwan_scalar delta_e_cam16 = sqrt(
-    pow(J1p - J2p, 2) +
-    pow(a1p - a2p, 2) +
-    pow(b1p - b2p, 2)
-);
+int alwan_cam16_forward_{T}_map_interleave(
+    alwan_cam16_correlates_{T} *correlates_out,
+    alwan_{T} const *xyz_in,
+    alwan_cam16_viewing_conditions_{T} const *vc,
+    size_t count, size_t in_stride, size_t out_stride);
 ```
+
+Inverse (`_inverse_{T}_map_interleave`) and typed `_map_interleave_ex` variants also available.
 
 ---
 
 ## ZCAM
 
-### alwan_zcam_forward / alwan_zcam_inverse
+### alwan_zcam_forward_{T} / alwan_zcam_inverse_{T}
 
 ```c
-int alwan_zcam_forward(alwan_zcam_correlates *out,
-                       alwan_xyz const *xyz,
-                       alwan_zcam_viewing_conditions const *vc);
+int alwan_zcam_forward_{T}(alwan_zcam_correlates_{T} *out,
+                            alwan_xyz_{T} const *xyz,
+                            alwan_zcam_viewing_conditions_{T} const *vc);
 
-int alwan_zcam_inverse(alwan_xyz *xyz,
-                       alwan_zcam_correlates const *correlates,
-                       alwan_zcam_viewing_conditions const *vc);
+int alwan_zcam_inverse_{T}(alwan_xyz_{T} *xyz,
+                            alwan_zcam_correlates_{T} const *correlates,
+                            alwan_zcam_viewing_conditions_{T} const *vc);
 ```
 
 Latest CIE color appearance model with improved HDR support. Built on Jzazbz color space.
 
-### alwan_zcam_to_ucs
+### alwan_zcam_to_ucs_{T}
 
 ```c
-int alwan_zcam_to_ucs(alwan_jzazbz *Jab_out,
-                      alwan_zcam_correlates const *correlates);
+int alwan_zcam_to_ucs_{T}(alwan_jzazbz_{T} *Jab_out,
+                            alwan_zcam_correlates_{T} const *correlates);
 ```
-
-Convert ZCAM correlates to uniform color space coordinates for color difference calculations.
 
 ---
 
 ## CAM18sl (Self-Luminous Colors)
 
-### alwan_cam18sl_forward / alwan_cam18sl_inverse
+No viewing conditions struct -- takes scalar parameters directly.
 
 ```c
-int alwan_cam18sl_forward(alwan_cam18sl_correlates *out,
-                          alwan_xyz const *xyz, ...);
+int alwan_cam18sl_forward_{T}(alwan_cam18sl_correlates_{T} *out,
+                               alwan_xyz_{T} const *xyz,
+                               alwan_{T} Y_b);   /* background luminance in cd/m^2 */
 
-int alwan_cam18sl_inverse(alwan_xyz *xyz_out,
-                          alwan_cam18sl_correlates const *correlates, ...);
+int alwan_cam18sl_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                               alwan_cam18sl_correlates_{T} const *correlates,
+                               alwan_{T} Y_b);
 ```
 
-Color appearance model for self-luminous stimuli (displays, LEDs). Unlike CIECAM02/CAM16, this model is designed specifically for emissive sources rather than reflective surfaces.
+Color appearance model for self-luminous stimuli (displays, LEDs). Designed for emissive sources.
 
 ---
 
-## CAM20u (Updated CAM)
+## CAM20u (Unrelated Colors)
 
-### alwan_cam20u_forward / alwan_cam20u_inverse
+No viewing conditions struct -- takes scalar parameters directly.
 
 ```c
-int alwan_cam20u_forward(alwan_cam20u_correlates *out,
-                         alwan_xyz const *xyz, ...);
+int alwan_cam20u_forward_{T}(alwan_cam20u_correlates_{T} *out,
+                              alwan_xyz_{T} const *xyz,
+                              alwan_{T} Y_b,   /* background luminance in cd/m^2 */
+                              alwan_{T} L_a);  /* adapting luminance in cd/m^2 */
 
-int alwan_cam20u_inverse(alwan_xyz *xyz_out,
-                         alwan_cam20u_correlates const *correlates, ...);
+int alwan_cam20u_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                              alwan_cam20u_correlates_{T} const *correlates,
+                              alwan_{T} Y_b,
+                              alwan_{T} L_a);
 ```
-
-Updated color appearance model with improved chromatic adaptation.
 
 ---
 
 ## Additional Color Appearance Models
 
-Alwan also implements several historical and specialized CAMs. These are forward-only unless noted:
+Alwan also implements several historical and specialized CAMs. These are forward-only unless noted.
+All follow the `alwan_<model>_forward_{T}(correlates_out, xyz, vc)` pattern.
 
-### RLAB (Revised Lab)
-
-```c
-int alwan_rlab_forward(alwan_rlab_correlates *out, alwan_xyz const *xyz, ...);
-int alwan_rlab_inverse(alwan_xyz *xyz, alwan_rlab_correlates const *correlates, ...);
-```
-
-Fairchild 1996 revised Lab model. Invertible.
-
-### Hunt Model
-
-```c
-int alwan_hunt_forward(alwan_hunt_correlates *out, alwan_xyz const *xyz, ...);
-```
-
-Hunt color appearance model. Complex viewing condition parameters.
-
-### Hellwig & Fairchild 2022
-
-```c
-int alwan_hellwig2022_forward(alwan_hellwig2022_correlates *out,
-                              alwan_xyz const *xyz, ...);
-int alwan_hellwig2022_inverse(alwan_xyz *xyz_out,
-                              alwan_hellwig2022_correlates const *correlates, ...);
-```
-
-Modern CAM with improved chromatic adaptation. Invertible.
-
-### Kim 2009
-
-```c
-int alwan_kim2009_forward(alwan_kim2009_correlates *out,
-                          alwan_xyz const *xyz, ...);
-int alwan_kim2009_inverse(alwan_xyz *xyz_out,
-                          alwan_kim2009_correlates const *correlates, ...);
-```
-
-Kim, Weymouth & Rossi 2009 model. Invertible.
-
-### LLAB
-
-```c
-int alwan_llab_forward(alwan_llab_correlates *out, alwan_xyz const *xyz, ...);
-```
-
-Luo, Lo, Kuo 1996 color appearance model. Forward only.
-
-### ATD95
-
-```c
-int alwan_atd95_forward(alwan_atd95_correlates *out, alwan_xyz const *xyz, ...);
-```
-
-Guth 1995 achromatic, tritanopic, and deuteranopic model. Forward only.
-
-### Nayatani 1995
-
-```c
-int alwan_nayatani95_forward(alwan_nayatani95_correlates *out,
-                             alwan_xyz const *xyz, ...);
-```
-
-Nayatani 1995 color appearance model. Forward only.
-
----
-
-## Batch Processing
-
-CIECAM02 and CAM16 support batch operations:
-
-```c
-int alwan_ciecam02_forward_map_interleave(alwan_ciecam02_correlates *correlates_out,
-    alwan_scalar const *xyz_in, alwan_ciecam02_viewing_conditions const *vc,
-    size_t count, size_t in_stride, size_t out_stride);
-
-int alwan_cam16_forward_map_interleave(alwan_cam16_correlates *correlates_out,
-    alwan_scalar const *xyz_in, alwan_cam16_viewing_conditions const *vc,
-    size_t count, size_t in_stride, size_t out_stride);
-```
-
-Inverse batch and `_ex` (typed) variants also available.
+| Model | Function prefix | Invertible |
+|---|---|---|
+| RLAB (Fairchild 1996) | `alwan_rlab_{T}` | Yes |
+| Hunt | `alwan_hunt_{T}` | No |
+| Hellwig & Fairchild 2022 | `alwan_hellwig2022_{T}` | Yes |
+| Kim 2009 | `alwan_kim2009_{T}` | Yes |
+| LLAB (Luo, Lo, Kuo 1996) | `alwan_llab_{T}` | No |
+| ATD95 (Guth 1995) | `alwan_atd95_{T}` | No |
+| Nayatani 1995 | `alwan_nayatani95_{T}` | No |
 
 ---
 
 ## See Also
 
-- [Color Difference](color-difference.md) — ΔE metrics (CAM02 UCS, CAM16 UCS, ZCAM)
-- [Chromatic Adaptation](chromatic-adaptation.md) — White point adaptation
-- [Color Spaces](color-spaces.md) — XYZ conversions
+- [Color Difference](color-difference.md) -- dE metrics (CAM02 UCS, CAM16 UCS, ZCAM)
+- [Chromatic Adaptation](chromatic-adaptation.md) -- White point adaptation
+- [Color Spaces](color-spaces.md) -- XYZ conversions

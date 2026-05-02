@@ -48,7 +48,7 @@ alwan_simd_f64_mask  // same as alwan_simd_f64
 
 ### Generic aliases (in `alwan_map_internal.h`)
 
-Map code uses type-generic aliases that resolve based on `ALWAN_SCALAR_IS_FLOAT`:
+Map kernels use type-generic aliases that resolve based on the active precision pass (f32 or f64):
 
 ```c
 alwan_simd          // alwan_simd_f32 or alwan_simd_f64

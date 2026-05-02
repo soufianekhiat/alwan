@@ -89,10 +89,10 @@ static alwan_f64 compute_degree_of_adaptation(
  * Kim2009 Forward Transform: XYZ -> Appearance Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_kim2009_forward(
-    alwan_kim2009_correlates *out,
+int alwan_kim2009_forward_f64(
+    alwan_kim2009_correlates_f64 *out,
     alwan_xyz_f64 const *xyz,
-    alwan_kim2009_viewing_conditions const *vc
+    alwan_kim2009_viewing_conditions_f64 const *vc
 ) {
     if (!xyz || !vc || !out) {
         return ALWAN_E_INVALID;
@@ -128,16 +128,16 @@ int alwan_kim2009_forward(
  * Kim2009 Inverse Transform: Appearance Correlates -> XYZ
  * ---------------------------------------------------------------- */
 
-int alwan_kim2009_inverse(
-    alwan_xyz_f64 *out,
-    alwan_kim2009_correlates const *correlates,
-    alwan_kim2009_viewing_conditions const *vc
+int alwan_kim2009_inverse_f64(
+    alwan_xyz_f64 *xyz_out,
+    alwan_kim2009_correlates_f64 const *correlates,
+    alwan_kim2009_viewing_conditions_f64 const *vc
 ) {
-    if (!correlates || !vc || !out) {
+    if (!correlates || !vc || !xyz_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_kim2009_correlates tmp = *correlates;
+    alwan_kim2009_correlates_f64 tmp = *correlates;
     ALWAN_DENORM_KIM2009(&tmp);
 
     /* Resolve viewing condition parameters */
@@ -157,7 +157,7 @@ int alwan_kim2009_inverse(
     v_correlates.h = tmp.h;
 
     /* Delegate to core */
-    *out = alwan_kim2009_inverse_f64_v(
+    *xyz_out = alwan_kim2009_inverse_f64_v(
         v_correlates,
         vc->white_xyz.x, vc->white_xyz.y, vc->white_xyz.z,
         vc->La, D, media_E

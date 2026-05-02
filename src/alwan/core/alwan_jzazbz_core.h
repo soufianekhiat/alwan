@@ -88,37 +88,76 @@ ALWAN_INLINE alwan_scalar pq_jz_eotf_v(alwan_scalar encoded) {
 
 ALWAN_INLINE alwan_jzazbz alwan_xyz_to_jzazbz_v(alwan_xyz xyz) {
     alwan_jzazbz result;
+
+    /* Step 1: Chromatic adaptation (D65) */
     alwan_scalar xa = JZAZBZ_V_B * xyz.x - (JZAZBZ_V_B - ALWAN_LITERAL(1.0)) * xyz.z;
     alwan_scalar ya = JZAZBZ_V_G * xyz.y - (JZAZBZ_V_G - ALWAN_LITERAL(1.0)) * xyz.x;
     alwan_scalar za = xyz.z;
+
+    /* Step 2: XYZ (adapted) -> LMS via matrix */
     alwan_vec3 xa_v = {{xa, ya, za}};
     alwan_vec3 lms_v = alwan_mat3_mulv_v(JZAZBZ_V_XYZ_TO_LMS, xa_v);
-    alwan_scalar lp = pq_jz_oetf_v(lms_v.v[0]);
-    alwan_scalar mp = pq_jz_oetf_v(lms_v.v[1]);
-    alwan_scalar sp = pq_jz_oetf_v(lms_v.v[2]);
+    alwan_scalar l = lms_v.v[0];
+    alwan_scalar m = lms_v.v[1];
+    alwan_scalar s = lms_v.v[2];
+
+    /* Step 3: PQ OETF: LMS -> LMS' */
+    alwan_scalar lp = pq_jz_oetf_v(l);
+    alwan_scalar mp = pq_jz_oetf_v(m);
+    alwan_scalar sp = pq_jz_oetf_v(s);
+
+    /* Step 4: LMS' -> Izazbz via matrix */
     alwan_vec3 lms_p_v = {{lp, mp, sp}};
     alwan_vec3 izazbz_v = alwan_mat3_mulv_v(JZAZBZ_V_LMS_P_TO_IZAZBZ, lms_p_v);
-    alwan_scalar jz_raw = ((ALWAN_LITERAL(1.0) + JZAZBZ_V_D) * izazbz_v.v[0]) / (ALWAN_LITERAL(1.0) + JZAZBZ_V_D * izazbz_v.v[0]) - JZAZBZ_V_D0;
+    alwan_scalar iz = izazbz_v.v[0];
+    alwan_scalar az = izazbz_v.v[1];
+    alwan_scalar bz = izazbz_v.v[2];
+
+    /* Step 5: Calculate Jz from Iz (clamp to non-negative: lightness cannot be negative) */
+    alwan_scalar jz_raw = ((ALWAN_LITERAL(1.0) + JZAZBZ_V_D) * iz) / (ALWAN_LITERAL(1.0) + JZAZBZ_V_D * iz) - JZAZBZ_V_D0;
     result.Jz = ALWAN_SELECT(jz_raw < ALWAN_ZERO, ALWAN_ZERO, jz_raw);
-    result.az = izazbz_v.v[1];
-    result.bz = izazbz_v.v[2];
+    result.az = az;
+    result.bz = bz;
+
     return result;
 }
 
 ALWAN_INLINE alwan_xyz alwan_jzazbz_to_xyz_v(alwan_jzazbz jzazbz) {
     alwan_xyz result;
+
+    /* Step 1: Recover Iz from Jz */
     alwan_scalar jz = jzazbz.Jz;
     alwan_scalar iz = (jz + JZAZBZ_V_D0) / (ALWAN_LITERAL(1.0) + JZAZBZ_V_D - JZAZBZ_V_D * (jz + JZAZBZ_V_D0));
-    alwan_vec3 izazbz_v = {{iz, jzazbz.az, jzazbz.bz}};
+
+    /* Step 2: Construct Izazbz */
+    alwan_scalar i = iz;
+    alwan_scalar a = jzazbz.az;
+    alwan_scalar b = jzazbz.bz;
+
+    /* Step 3: Izazbz -> LMS' via matrix */
+    alwan_vec3 izazbz_v = {{i, a, b}};
     alwan_vec3 lms_p_v = alwan_mat3_mulv_v(JZAZBZ_V_IZAZBZ_TO_LMS_P, izazbz_v);
-    alwan_scalar l = pq_jz_eotf_v(lms_p_v.v[0]);
-    alwan_scalar m = pq_jz_eotf_v(lms_p_v.v[1]);
-    alwan_scalar s = pq_jz_eotf_v(lms_p_v.v[2]);
+    alwan_scalar lp = lms_p_v.v[0];
+    alwan_scalar mp = lms_p_v.v[1];
+    alwan_scalar sp = lms_p_v.v[2];
+
+    /* Step 4: PQ EOTF: LMS' -> LMS */
+    alwan_scalar l = pq_jz_eotf_v(lp);
+    alwan_scalar m = pq_jz_eotf_v(mp);
+    alwan_scalar s = pq_jz_eotf_v(sp);
+
+    /* Step 5: LMS -> XYZ (adapted) via matrix */
     alwan_vec3 lms_v = {{l, m, s}};
     alwan_vec3 xa_v = alwan_mat3_mulv_v(JZAZBZ_V_LMS_TO_XYZ, lms_v);
-    result.x = (xa_v.v[0] + (JZAZBZ_V_B - ALWAN_LITERAL(1.0)) * xa_v.v[2]) / JZAZBZ_V_B;
-    result.y = (xa_v.v[1] + (JZAZBZ_V_G - ALWAN_LITERAL(1.0)) * result.x) / JZAZBZ_V_G;
-    result.z = xa_v.v[2];
+    alwan_scalar xa = xa_v.v[0];
+    alwan_scalar ya = xa_v.v[1];
+    alwan_scalar za = xa_v.v[2];
+
+    /* Step 6: Inverse chromatic adaptation */
+    result.x = (xa + (JZAZBZ_V_B - ALWAN_LITERAL(1.0)) * za) / JZAZBZ_V_B;
+    result.y = (ya + (JZAZBZ_V_G - ALWAN_LITERAL(1.0)) * result.x) / JZAZBZ_V_G;
+    result.z = za;
+
     return result;
 }
 
