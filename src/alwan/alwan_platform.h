@@ -215,6 +215,8 @@
 # define ALWAN_LOG10(x)     log10(x)
 # define ALWAN_FLOOR(x)     floor(x)
 # define ALWAN_CEIL(x)      ceil(x)
+# define ALWAN_ROUND(x)     round(x)
+# define ALWAN_TRUNC(x)     trunc(x)
 # define ALWAN_FMOD(x, y)   fmod(x, y)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
@@ -316,6 +318,8 @@
 #define ALWAN_LOG10_F32(x)     log10f(x)
 #define ALWAN_FLOOR_F32(x)     floorf(x)
 #define ALWAN_CEIL_F32(x)      ceilf(x)
+#define ALWAN_ROUND_F32(x)     roundf(x)
+#define ALWAN_TRUNC_F32(x)     truncf(x)
 #define ALWAN_FMOD_F32(x, y)   fmodf(x, y)
 
 /* f64 math */
@@ -336,6 +340,8 @@
 #define ALWAN_LOG10_F64(x)     log10(x)
 #define ALWAN_FLOOR_F64(x)     floor(x)
 #define ALWAN_CEIL_F64(x)      ceil(x)
+#define ALWAN_ROUND_F64(x)     round(x)
+#define ALWAN_TRUNC_F64(x)     trunc(x)
 #define ALWAN_FMOD_F64(x, y)   fmod(x, y)
 
 /* Precision-specific literals */

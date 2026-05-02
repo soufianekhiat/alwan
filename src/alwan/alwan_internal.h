@@ -10,6 +10,7 @@
 #define ALWAN_INTERNAL_H
 
 #include "alwan.h"  /* For alwan_alloc_fn, alwan_free_fn, alwan_f64 */
+#include "alwan_math.h"  /* ALWAN_POW / ALWAN_FMA / ... routing */
 
 /* ----------------------------------------------------------------
  * Internal context structure (shared across modules)
