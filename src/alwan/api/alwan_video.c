@@ -205,15 +205,12 @@ static size_t video_pixel_stride(alwan_pixel_format fmt) {
  * Public API
  * ---------------------------------------------------------------- */
 
-int alwan_video_encode(void *out, alwan_pixel_format out_fmt,
-                       alwan_f64 const *rgb_linear, size_t count,
-                       alwan_ctx *ctx, alwan_rgb_space space,
-                       alwan_video_range range, int bit_depth) {
+int alwan_video_encode_f64(void *out, alwan_pixel_format out_fmt, alwan_f64 const *rgb_linear, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
     if (!out || !rgb_linear || count == 0) return ALWAN_E_INVALID;
 
     /* Get the space descriptor for the OETF */
-    alwan_rgb_space_desc desc;
-    int status = alwan_rgb_get_space_descriptor(&desc, ctx, space);
+    alwan_rgb_space_desc_f64 desc;
+    int status = alwan_rgb_get_space_descriptor_f64(&desc, space, ctx);
     if (status != ALWAN_OK) return status;
 
     /* Resolve the OETF function pointer */
@@ -240,15 +237,12 @@ int alwan_video_encode(void *out, alwan_pixel_format out_fmt,
     return ALWAN_OK;
 }
 
-int alwan_video_decode(alwan_f64 *rgb_linear,
-                       void const *in, alwan_pixel_format in_fmt, size_t count,
-                       alwan_ctx *ctx, alwan_rgb_space space,
-                       alwan_video_range range, int bit_depth) {
+int alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, alwan_pixel_format in_fmt, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
     if (!rgb_linear || !in || count == 0) return ALWAN_E_INVALID;
 
     /* Get the space descriptor for the EOTF */
-    alwan_rgb_space_desc desc;
-    int status = alwan_rgb_get_space_descriptor(&desc, ctx, space);
+    alwan_rgb_space_desc_f64 desc;
+    int status = alwan_rgb_get_space_descriptor_f64(&desc, space, ctx);
     if (status != ALWAN_OK) return status;
 
     /* Resolve the EOTF function pointer */
@@ -273,4 +267,42 @@ int alwan_video_decode(alwan_f64 *rgb_linear,
     }
 
     return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * f32 wrappers — delegate to f64 via a temporary buffer.
+ * Video pipeline TF resolution is f64-only; we route through
+ * alwan_video_encode_f64 / alwan_video_decode_f64.
+ * ---------------------------------------------------------------- */
+
+int alwan_video_encode_f32(void *out, alwan_pixel_format out_fmt, alwan_f32 const *rgb_linear, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
+    if (!out || !rgb_linear || count == 0) return ALWAN_E_INVALID;
+    if (!ctx || !ctx->alloc_fn) return ALWAN_E_INVALID;
+
+    size_t n = count * 3;
+    alwan_f64 *tmp = (alwan_f64 *)ctx->alloc_fn(n * sizeof(alwan_f64), 16);
+    if (!tmp) return ALWAN_E_NOMEM;
+    for (size_t i = 0; i < n; i++) tmp[i] = (alwan_f64)rgb_linear[i];
+
+    int rc = alwan_video_encode_f64(out, out_fmt, tmp, count, space, range, bit_depth, ctx);
+
+    if (ctx->free_fn) ctx->free_fn(tmp);
+    return rc;
+}
+
+int alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, alwan_pixel_format in_fmt, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
+    if (!rgb_linear || !in || count == 0) return ALWAN_E_INVALID;
+    if (!ctx || !ctx->alloc_fn) return ALWAN_E_INVALID;
+
+    size_t n = count * 3;
+    alwan_f64 *tmp = (alwan_f64 *)ctx->alloc_fn(n * sizeof(alwan_f64), 16);
+    if (!tmp) return ALWAN_E_NOMEM;
+
+    int rc = alwan_video_decode_f64(tmp, in, in_fmt, count, space, range, bit_depth, ctx);
+    if (rc == ALWAN_OK) {
+        for (size_t i = 0; i < n; i++) rgb_linear[i] = (alwan_f32)tmp[i];
+    }
+
+    if (ctx->free_fn) ctx->free_fn(tmp);
+    return rc;
 }

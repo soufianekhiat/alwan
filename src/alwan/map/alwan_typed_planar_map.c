@@ -191,10 +191,7 @@ ALWAN_PLANAR_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_protanopia_map_planar_ex,   
 ALWAN_PLANAR_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_deuteranopia_map_planar_ex, alwan_simulate_deuteranopia_f32_map_planar, alwan_simulate_deuteranopia_f64_map_planar)
 ALWAN_PLANAR_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_tritanopia_map_planar_ex,   alwan_simulate_tritanopia_f32_map_planar,   alwan_simulate_tritanopia_f64_map_planar)
 
-int alwan_simulate_cvd_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
-                                       void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt,
-                                       alwan_cvd_type cvd_type, alwan_scalar severity,
-                                       size_t count, size_t in_stride, size_t out_stride) {
+int alwan_simulate_cvd_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -206,9 +203,7 @@ int alwan_simulate_cvd_map_planar_ex(void *out0, void *out1, void *out2, alwan_p
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_simulate_cvd_f64_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                              cvd_type, (double)severity, tile_,
-                                              sizeof(double), sizeof(double));
+            alwan_simulate_cvd_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, cvd_type, (double)severity);
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -224,9 +219,7 @@ int alwan_simulate_cvd_map_planar_ex(void *out0, void *out1, void *out2, alwan_p
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_simulate_cvd_f32_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                              cvd_type, (float)severity, tile_,
-                                              sizeof(float), sizeof(float));
+            alwan_simulate_cvd_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, cvd_type, (float)severity);
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -240,10 +233,7 @@ int alwan_simulate_cvd_map_planar_ex(void *out0, void *out1, void *out2, alwan_p
  * Color correction planar _ex (tiled delegation to native planar)
  * ---------------------------------------------------------------- */
 
-int alwan_lgg_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
-                                    void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt,
-                                    alwan_rgb const *lift, alwan_rgb const *gamma, alwan_rgb const *gain,
-                                    size_t count, size_t in_stride, size_t out_stride) {
+int alwan_lgg_apply_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !lift || !gamma || !gain || count == 0)
         return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
@@ -259,9 +249,7 @@ int alwan_lgg_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixe
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_lgg_apply_f64_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                           &lift64, &gamma64, &gain64, tile_,
-                                           sizeof(double), sizeof(double));
+            alwan_lgg_apply_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, &lift64, &gamma64, &gain64);
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -280,9 +268,7 @@ int alwan_lgg_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixe
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_lgg_apply_f32_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                           &lift32, &gamma32, &gain32, tile_,
-                                           sizeof(float), sizeof(float));
+            alwan_lgg_apply_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, &lift32, &gamma32, &gain32);
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -292,10 +278,7 @@ int alwan_lgg_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixe
     return ALWAN_OK;
 }
 
-int alwan_color_matrix_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
-                                             void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt,
-                                             alwan_mat3x3 const *matrix,
-                                             size_t count, size_t in_stride, size_t out_stride) {
+int alwan_color_matrix_apply_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_mat3x3_f64 const *matrix) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !matrix || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_mat3x3_f64 m64; for (int i = 0; i < 9; i++) m64.m[i] = (double)matrix->m[i];
@@ -308,9 +291,7 @@ int alwan_color_matrix_apply_map_planar_ex(void *out0, void *out1, void *out2, a
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_color_matrix_apply_f64_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                                    &m64, tile_,
-                                                    sizeof(double), sizeof(double));
+            alwan_color_matrix_apply_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, &m64);
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -327,9 +308,7 @@ int alwan_color_matrix_apply_map_planar_ex(void *out0, void *out1, void *out2, a
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_color_matrix_apply_f32_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                                    &m32, tile_,
-                                                    sizeof(float), sizeof(float));
+            alwan_color_matrix_apply_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, &m32);
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -339,10 +318,7 @@ int alwan_color_matrix_apply_map_planar_ex(void *out0, void *out1, void *out2, a
     return ALWAN_OK;
 }
 
-int alwan_printer_lights_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
-                                               void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt,
-                                               alwan_scalar red_lights, alwan_scalar green_lights, alwan_scalar blue_lights,
-                                               size_t count, size_t in_stride, size_t out_stride) {
+int alwan_printer_lights_apply_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 red_lights, alwan_f64 green_lights, alwan_f64 blue_lights) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -354,9 +330,7 @@ int alwan_printer_lights_apply_map_planar_ex(void *out0, void *out1, void *out2,
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_printer_lights_apply_f64_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                                      (double)red_lights, (double)green_lights, (double)blue_lights, tile_,
-                                                      sizeof(double), sizeof(double));
+            alwan_printer_lights_apply_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, (double)red_lights, (double)green_lights, (double)blue_lights);
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -372,9 +346,7 @@ int alwan_printer_lights_apply_map_planar_ex(void *out0, void *out1, void *out2,
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_printer_lights_apply_f32_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                                      (float)red_lights, (float)green_lights, (float)blue_lights, tile_,
-                                                      sizeof(float), sizeof(float));
+            alwan_printer_lights_apply_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, (float)red_lights, (float)green_lights, (float)blue_lights);
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -384,10 +356,7 @@ int alwan_printer_lights_apply_map_planar_ex(void *out0, void *out1, void *out2,
     return ALWAN_OK;
 }
 
-int alwan_white_balance_apply_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
-                                              void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt,
-                                              alwan_rgb const *multipliers,
-                                              size_t count, size_t in_stride, size_t out_stride) {
+int alwan_white_balance_apply_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *multipliers) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !multipliers || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_rgb_f64 mul64 = {(double)multipliers->r, (double)multipliers->g, (double)multipliers->b};
@@ -400,9 +369,7 @@ int alwan_white_balance_apply_map_planar_ex(void *out0, void *out1, void *out2, 
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_white_balance_apply_f64_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                                     &mul64, tile_,
-                                                     sizeof(double), sizeof(double));
+            alwan_white_balance_apply_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, &mul64);
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -419,9 +386,7 @@ int alwan_white_balance_apply_map_planar_ex(void *out0, void *out1, void *out2, 
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_white_balance_apply_f32_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                                     &mul32, tile_,
-                                                     sizeof(float), sizeof(float));
+            alwan_white_balance_apply_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, &mul32);
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -435,10 +400,7 @@ int alwan_white_balance_apply_map_planar_ex(void *out0, void *out1, void *out2, 
  * CVD Machado planar _ex (tiled delegation to native planar)
  * ---------------------------------------------------------------- */
 
-int alwan_simulate_cvd_machado_map_planar_ex(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt,
-                                               void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt,
-                                               alwan_cvd_type cvd_type, alwan_scalar severity,
-                                               size_t count, size_t in_stride, size_t out_stride) {
+int alwan_simulate_cvd_machado_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -450,9 +412,7 @@ int alwan_simulate_cvd_machado_map_planar_ex(void *out0, void *out1, void *out2,
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_simulate_cvd_machado_f64_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                                      cvd_type, (double)severity, tile_,
-                                                      sizeof(double), sizeof(double));
+            alwan_simulate_cvd_machado_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, cvd_type, (double)severity);
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -468,9 +428,7 @@ int alwan_simulate_cvd_machado_map_planar_ex(void *out0, void *out1, void *out2,
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_);
-            alwan_simulate_cvd_machado_f32_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_,
-                                                      cvd_type, (float)severity, tile_,
-                                                      sizeof(float), sizeof(float));
+            alwan_simulate_cvd_machado_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, cvd_type, (float)severity);
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_);
@@ -484,9 +442,7 @@ int alwan_simulate_cvd_machado_map_planar_ex(void *out0, void *out1, void *out2,
  * CMY <-> CMYK planar _ex (3<->4 channel, tiled delegation to SIMD native)
  * ---------------------------------------------------------------- */
 
-int alwan_cmy_to_cmyk_map_planar_ex(void *out_c, void *out_m, void *out_y, void *out_k, alwan_pixel_format out_fmt,
-                           void const *in_c, void const *in_m, void const *in_y, alwan_pixel_format in_fmt,
-                           size_t count, size_t in_stride, size_t out_stride) {
+int alwan_cmy_to_cmyk_map_planar_ex(void *out_c, size_t out_stride, void *out_m, void *out_y, void *out_k, void const *in_c, size_t in_stride, void const *in_m, void const *in_y, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
     if (!in_c || !in_m || !in_y || !out_c || !out_m || !out_y || !out_k || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -498,8 +454,7 @@ int alwan_cmy_to_cmyk_map_planar_ex(void *out_c, void *out_m, void *out_y, void 
             alwan__load_tile_typed_ch_f64(ic0_, in_c, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic1_, in_m, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic2_, in_y, in_fmt, off_, in_stride, tile_);
-            alwan_cmy_to_cmyk_f64_map_planar(oc0_, oc1_, oc2_, ok_, ic0_, ic1_, ic2_, tile_,
-                                             sizeof(double), sizeof(double));
+            alwan_cmy_to_cmyk_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ok_, ic0_, sizeof(double), ic1_, ic2_, tile_);
             alwan__store_tile_typed_ch_f64(out_c, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f64(out_m, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f64(out_y, out_fmt, off_, out_stride, oc2_, tile_);
@@ -516,8 +471,7 @@ int alwan_cmy_to_cmyk_map_planar_ex(void *out_c, void *out_m, void *out_y, void 
             alwan__load_tile_typed_ch_f32(ic0_, in_c, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic1_, in_m, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic2_, in_y, in_fmt, off_, in_stride, tile_);
-            alwan_cmy_to_cmyk_f32_map_planar(oc0_, oc1_, oc2_, ok_, ic0_, ic1_, ic2_, tile_,
-                                             sizeof(float), sizeof(float));
+            alwan_cmy_to_cmyk_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ok_, ic0_, sizeof(float), ic1_, ic2_, tile_);
             alwan__store_tile_typed_ch_f32(out_c, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f32(out_m, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f32(out_y, out_fmt, off_, out_stride, oc2_, tile_);
@@ -528,9 +482,7 @@ int alwan_cmy_to_cmyk_map_planar_ex(void *out_c, void *out_m, void *out_y, void 
     return ALWAN_OK;
 }
 
-int alwan_cmyk_to_cmy_map_planar_ex(void *out_c, void *out_m, void *out_y, alwan_pixel_format out_fmt,
-                           void const *in_c, void const *in_m, void const *in_y, void const *in_k, alwan_pixel_format in_fmt,
-                           size_t count, size_t in_stride, size_t out_stride) {
+int alwan_cmyk_to_cmy_map_planar_ex(void *out_c, size_t out_stride, void *out_m, void *out_y, void const *in_c, size_t in_stride, void const *in_m, void const *in_y, void const *in_k, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
     if (!in_c || !in_m || !in_y || !in_k || !out_c || !out_m || !out_y || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -543,8 +495,7 @@ int alwan_cmyk_to_cmy_map_planar_ex(void *out_c, void *out_m, void *out_y, alwan
             alwan__load_tile_typed_ch_f64(ic1_, in_m, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ic2_, in_y, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f64(ik_, in_k, in_fmt, off_, in_stride, tile_);
-            alwan_cmyk_to_cmy_f64_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, ik_, tile_,
-                                             sizeof(double), sizeof(double));
+            alwan_cmyk_to_cmy_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, ik_, tile_);
             alwan__store_tile_typed_ch_f64(out_c, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f64(out_m, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f64(out_y, out_fmt, off_, out_stride, oc2_, tile_);
@@ -561,8 +512,7 @@ int alwan_cmyk_to_cmy_map_planar_ex(void *out_c, void *out_m, void *out_y, alwan
             alwan__load_tile_typed_ch_f32(ic1_, in_m, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ic2_, in_y, in_fmt, off_, in_stride, tile_);
             alwan__load_tile_typed_ch_f32(ik_, in_k, in_fmt, off_, in_stride, tile_);
-            alwan_cmyk_to_cmy_f32_map_planar(oc0_, oc1_, oc2_, ic0_, ic1_, ic2_, ik_, tile_,
-                                             sizeof(float), sizeof(float));
+            alwan_cmyk_to_cmy_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, ik_, tile_);
             alwan__store_tile_typed_ch_f32(out_c, out_fmt, off_, out_stride, oc0_, tile_);
             alwan__store_tile_typed_ch_f32(out_m, out_fmt, off_, out_stride, oc1_, tile_);
             alwan__store_tile_typed_ch_f32(out_y, out_fmt, off_, out_stride, oc2_, tile_);

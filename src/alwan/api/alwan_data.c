@@ -3,7 +3,11 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Data loading: embedded vs runtime
+ * Data loading.
+ *
+ * Only embedded mode (ALWAN_EMBED_DATA=1) is implemented.
+ * Runtime mode (ALWAN_EMBED_DATA=0) is NOT supported in the current release.
+ * It is planned as a feature for alwan 3.0.0.
  */
 
 #include "../alwan.h"
@@ -286,63 +290,63 @@ alwan_f64 const g_ipt_ipt_to_lms_p[9] = {
 
 ALWAN_DIAG_POP
 
-int alwan_data_get_illuminant_a(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_a_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;  /* Unused in embedded mode */
     *data = (alwan_f64 *)g_a_xy;
     *count = sizeof(g_a_xy) / sizeof(g_a_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_d50(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_d50_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_d50_xy;
     *count = sizeof(g_d50_xy) / sizeof(g_d50_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_d55(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_d55_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_d55_xy;
     *count = sizeof(g_d55_xy) / sizeof(g_d55_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_d60(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_d60_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_d60_xy;
     *count = sizeof(g_d60_xy) / sizeof(g_d60_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_d65(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_d65_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_d65_xy;
     *count = sizeof(g_d65_xy) / sizeof(g_d65_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_e(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_e_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_e_xy;
     *count = sizeof(g_e_xy) / sizeof(g_e_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_b(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_b_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_b_xy;
     *count = sizeof(g_b_xy) / sizeof(g_b_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_c(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_c_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_c_xy;
     *count = sizeof(g_c_xy) / sizeof(g_c_xy[0]);
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_d75(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_illuminant_d75_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_d75_xy;
     *count = sizeof(g_d75_xy) / sizeof(g_d75_xy[0]);
@@ -471,18 +475,17 @@ int alwan_data_get_illuminant_hp5(alwan_f64 **data, size_t *count, alwan_ctx *ct
     return ALWAN_OK;
 }
 
-int alwan_data_get_illuminant_xy(alwan_f64 **data, size_t *count,
-                                   alwan_ctx *ctx, alwan_illuminant illuminant) {
+int alwan_data_get_illuminant_xy_f64(alwan_f64 **data, size_t *count, alwan_illuminant illuminant, alwan_ctx *ctx) {
     switch (illuminant) {
-        case ALWAN_ILLUMINANT_A:   return alwan_data_get_illuminant_a(data, count, ctx);
-        case ALWAN_ILLUMINANT_D50: return alwan_data_get_illuminant_d50(data, count, ctx);
-        case ALWAN_ILLUMINANT_D55: return alwan_data_get_illuminant_d55(data, count, ctx);
-        case ALWAN_ILLUMINANT_D60: return alwan_data_get_illuminant_d60(data, count, ctx);
-        case ALWAN_ILLUMINANT_D65: return alwan_data_get_illuminant_d65(data, count, ctx);
-        case ALWAN_ILLUMINANT_E:   return alwan_data_get_illuminant_e(data, count, ctx);
-        case ALWAN_ILLUMINANT_B:   return alwan_data_get_illuminant_b(data, count, ctx);
-        case ALWAN_ILLUMINANT_C:   return alwan_data_get_illuminant_c(data, count, ctx);
-        case ALWAN_ILLUMINANT_D75: return alwan_data_get_illuminant_d75(data, count, ctx);
+        case ALWAN_ILLUMINANT_A:   return alwan_data_get_illuminant_a_f64(data, count, ctx);
+        case ALWAN_ILLUMINANT_D50: return alwan_data_get_illuminant_d50_f64(data, count, ctx);
+        case ALWAN_ILLUMINANT_D55: return alwan_data_get_illuminant_d55_f64(data, count, ctx);
+        case ALWAN_ILLUMINANT_D60: return alwan_data_get_illuminant_d60_f64(data, count, ctx);
+        case ALWAN_ILLUMINANT_D65: return alwan_data_get_illuminant_d65_f64(data, count, ctx);
+        case ALWAN_ILLUMINANT_E:   return alwan_data_get_illuminant_e_f64(data, count, ctx);
+        case ALWAN_ILLUMINANT_B:   return alwan_data_get_illuminant_b_f64(data, count, ctx);
+        case ALWAN_ILLUMINANT_C:   return alwan_data_get_illuminant_c_f64(data, count, ctx);
+        case ALWAN_ILLUMINANT_D75: return alwan_data_get_illuminant_d75_f64(data, count, ctx);
         /* Additional illuminants */
         case ALWAN_ILLUMINANT_D40: return alwan_data_get_illuminant_d40(data, count, ctx);
         case ALWAN_ILLUMINANT_D45: return alwan_data_get_illuminant_d45(data, count, ctx);
@@ -506,34 +509,164 @@ int alwan_data_get_illuminant_xy(alwan_f64 **data, size_t *count,
     }
 }
 
-int alwan_data_get_srgb_primaries(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+int alwan_data_get_srgb_primaries_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
     *data = (alwan_f64 *)g_srgb_primaries_3x2;
     *count = sizeof(g_srgb_primaries_3x2) / sizeof(g_srgb_primaries_3x2[0]);
     return ALWAN_OK;
 }
 
+/* ----------------------------------------------------------------
+ * f32 Variants
+ *
+ * These convert the embedded f64 CSV data to a static f32 copy on
+ * first call. Data is small (all illuminant xy are 2 floats each).
+ * ---------------------------------------------------------------- */
+
+#define ALWAN_DATA_F32_CACHE(name) \
+    static alwan_f32 name##_f32_cache[sizeof(name) / sizeof(name[0])]; \
+    static int name##_f32_initialized = 0; \
+    if (!name##_f32_initialized) { \
+        for (size_t i = 0; i < sizeof(name) / sizeof(name[0]); i++) { \
+            name##_f32_cache[i] = (alwan_f32)name[i]; \
+        } \
+        name##_f32_initialized = 1; \
+    }
+
+int alwan_data_get_illuminant_a_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_a_xy)
+    *data = g_a_xy_f32_cache;
+    *count = sizeof(g_a_xy) / sizeof(g_a_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_d50_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_d50_xy)
+    *data = g_d50_xy_f32_cache;
+    *count = sizeof(g_d50_xy) / sizeof(g_d50_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_d55_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_d55_xy)
+    *data = g_d55_xy_f32_cache;
+    *count = sizeof(g_d55_xy) / sizeof(g_d55_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_d60_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_d60_xy)
+    *data = g_d60_xy_f32_cache;
+    *count = sizeof(g_d60_xy) / sizeof(g_d60_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_d65_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_d65_xy)
+    *data = g_d65_xy_f32_cache;
+    *count = sizeof(g_d65_xy) / sizeof(g_d65_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_e_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_e_xy)
+    *data = g_e_xy_f32_cache;
+    *count = sizeof(g_e_xy) / sizeof(g_e_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_b_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_b_xy)
+    *data = g_b_xy_f32_cache;
+    *count = sizeof(g_b_xy) / sizeof(g_b_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_c_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_c_xy)
+    *data = g_c_xy_f32_cache;
+    *count = sizeof(g_c_xy) / sizeof(g_c_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_d75_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_d75_xy)
+    *data = g_d75_xy_f32_cache;
+    *count = sizeof(g_d75_xy) / sizeof(g_d75_xy[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_xy_f32(alwan_f32 **data, size_t *count, alwan_illuminant illuminant, alwan_ctx *ctx) {
+    /* For illuminants not in the f32 fast-path, convert the f64 result. */
+    alwan_f64 *f64_data = NULL;
+    size_t f64_count = 0;
+    switch (illuminant) {
+        case ALWAN_ILLUMINANT_A:   return alwan_data_get_illuminant_a_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_D50: return alwan_data_get_illuminant_d50_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_D55: return alwan_data_get_illuminant_d55_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_D60: return alwan_data_get_illuminant_d60_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_D65: return alwan_data_get_illuminant_d65_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_E:   return alwan_data_get_illuminant_e_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_B:   return alwan_data_get_illuminant_b_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_C:   return alwan_data_get_illuminant_c_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_D75: return alwan_data_get_illuminant_d75_f32(data, count, ctx);
+        default:
+            break;
+    }
+    /* Fallback: convert f64 data to a fresh static f32 buffer (per-illuminant). */
+    if (alwan_data_get_illuminant_xy_f64(&f64_data, &f64_count, illuminant, ctx) != ALWAN_OK) {
+        return ALWAN_E_INVALID;
+    }
+    /* Small shared cache (2 entries covers all xy pairs) for the "extra" illuminants */
+    static alwan_f32 extra_cache[2];
+    if (f64_count > 2) return ALWAN_E_INVALID;
+    extra_cache[0] = (alwan_f32)f64_data[0];
+    extra_cache[1] = (alwan_f32)f64_data[1];
+    *data = extra_cache;
+    *count = f64_count;
+    return ALWAN_OK;
+}
+
+int alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    ALWAN_DATA_F32_CACHE(g_srgb_primaries_3x2)
+    *data = g_srgb_primaries_3x2_f32_cache;
+    *count = sizeof(g_srgb_primaries_3x2) / sizeof(g_srgb_primaries_3x2[0]);
+    return ALWAN_OK;
+}
+
 #else
-    #error "Only ALWAN_EMBED_DATA mode is supported. Runtime CSV loading has been removed."
+    /* Runtime data loading (ALWAN_EMBED_DATA=0) is NOT implemented.
+     * It is planned for alwan 3.0.0. Build with ALWAN_EMBED_DATA=1 (the default). */
+    #error "Runtime data loading (ALWAN_EMBED_DATA=0) is not implemented. Planned for alwan 3.0.0. Use ALWAN_EMBED_DATA=1."
 #endif /* ALWAN_EMBED_DATA */
 
 /* ----------------------------------------------------------------
  * Illuminant White Point Calculation (works in both modes)
  * ---------------------------------------------------------------- */
 
-int alwan_illuminant_white_point(alwan_xyz_f64 *out_xyz,
+int alwan_illuminant_white_point_f64(alwan_xyz_f64 *out_xyz,
                                    alwan_illuminant illuminant,
                                    alwan_observer_type observer) {
     if (!out_xyz) {
         return ALWAN_E_INVALID;
     }
 
-    /* For CIE 1931 2° observer, use pre-computed xy chromaticity values for efficiency */
+    /* For CIE 1931 2-deg observer, use pre-computed xy chromaticity values for efficiency */
     if (observer == ALWAN_OBSERVER_CIE_1931_2DEG) {
         /* Get xy chromaticity data for the illuminant */
         alwan_f64 *xy_data = NULL;
         size_t count = 0;
-        int status = alwan_data_get_illuminant_xy(&xy_data, &count, NULL, illuminant);
+        int status = alwan_data_get_illuminant_xy_f64(&xy_data, &count, illuminant, NULL);
 
         if (status != ALWAN_OK || count < 2) {
             return ALWAN_E_INVALID;
@@ -561,18 +694,17 @@ int alwan_illuminant_white_point(alwan_xyz_f64 *out_xyz,
     }
 
     /* For other observers, compute from illuminant SPD + observer CMF integration */
-    alwan_spd illum_spd;
-    int status = alwan_spd_illuminant(&illum_spd, NULL, illuminant);
+    alwan_spd_f64 illum_spd;
+    int status = alwan_spd_illuminant_f64(&illum_spd, illuminant, NULL);
     if (status != ALWAN_OK) {
         return status;
     }
 
     /* Integrate illuminant SPD with observer CMFs to get XYZ */
     alwan_xyz_f64 xyz_unnormalized;
-    status = alwan_xyz_from_spd(&xyz_unnormalized, NULL, &illum_spd, NULL, observer,
-                                ALWAN_INTEGRATE_SIMPSON, ALWAN_LITERAL(0.0));
+    status = alwan_xyz_from_spd_f64(&xyz_unnormalized, &illum_spd, NULL, observer, ALWAN_INTEGRATE_SIMPSON, ALWAN_LITERAL(0.0), NULL);
 
-    alwan_spd_destroy(NULL, &illum_spd);
+    alwan_spd_destroy_f64(&illum_spd, NULL);
 
     if (status != ALWAN_OK) {
         return status;
@@ -588,5 +720,18 @@ int alwan_illuminant_white_point(alwan_xyz_f64 *out_xyz,
     out_xyz->y = ALWAN_LITERAL(1.0);
     out_xyz->z = xyz_unnormalized.z * norm_factor;
 
+    return ALWAN_OK;
+}
+
+int alwan_illuminant_white_point_f32(alwan_xyz_f32 *out_xyz,
+                                   alwan_illuminant illuminant,
+                                   alwan_observer_type observer) {
+    if (!out_xyz) return ALWAN_E_INVALID;
+    alwan_xyz_f64 f64_out;
+    int rc = alwan_illuminant_white_point_f64(&f64_out, illuminant, observer);
+    if (rc != ALWAN_OK) return rc;
+    out_xyz->x = (alwan_f32)f64_out.x;
+    out_xyz->y = (alwan_f32)f64_out.y;
+    out_xyz->z = (alwan_f32)f64_out.z;
     return ALWAN_OK;
 }

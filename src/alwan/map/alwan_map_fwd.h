@@ -13,61 +13,61 @@
 
 /* Helper macros ---------------------------------------------------------- */
 
-/* Basic 3-channel planar pair */
+/* Basic 3-channel planar pair (v2: out_stride after o0, in_stride after i0) */
 #define ALWAN_PFWD(n) \
-    int n##_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count); \
+    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count)
 
-/* Basic 3-channel interleave pair */
+/* Basic 3-channel interleave pair (v2: stride after each buffer) */
 #define ALWAN_IFWD(n) \
-    int n##_f32_map_interleave(float *out,float const *in,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_interleave(double *out,double const *in,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count); \
+    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count)
 
 /* Both planar + interleave, basic */
 #define ALWAN_PFWD_IFWD(n) ALWAN_PFWD(n); ALWAN_IFWD(n)
 
-/* Planar with white_xyz */
+/* Planar with white_xyz (v2) */
 #define ALWAN_PFWD_W(n) \
-    int n##_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,alwan_xyz_f32 const *w,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,alwan_xyz_f64 const *w,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,alwan_xyz_f32 const *w); \
+    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,alwan_xyz_f64 const *w)
 
-/* Interleave with white_xyz */
+/* Interleave with white_xyz (v2) */
 #define ALWAN_IFWD_W(n) \
-    int n##_f32_map_interleave(float *out,float const *in,alwan_xyz_f32 const *w,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_interleave(double *out,double const *in,alwan_xyz_f64 const *w,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,alwan_xyz_f32 const *w); \
+    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,alwan_xyz_f64 const *w)
 
 /* Both with white_xyz */
 #define ALWAN_PFWD_IFWD_W(n) ALWAN_PFWD_W(n); ALWAN_IFWD_W(n)
 
-/* Planar with int */
+/* Planar with int (v2) */
 #define ALWAN_PFWD_I(n) \
-    int n##_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,int v,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,int v,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,int v); \
+    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,int v)
 
-/* Interleave with int */
+/* Interleave with int (v2) */
 #define ALWAN_IFWD_I(n) \
-    int n##_f32_map_interleave(float *out,float const *in,int v,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_interleave(double *out,double const *in,int v,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,int v); \
+    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,int v)
 
 /* Both with int */
 #define ALWAN_PFWD_IFWD_I(n) ALWAN_PFWD_I(n); ALWAN_IFWD_I(n)
 
-/* Both with alwan_ycbcr_standard (enum) -- avoids C4028 vs int mismatch */
+/* Both with alwan_ycbcr_standard (enum) — avoids C4028 vs int mismatch (v2) */
 #define ALWAN_PFWD_IFWD_YCBCR(n) \
-    int n##_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,alwan_ycbcr_standard v,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,alwan_ycbcr_standard v,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f32_map_interleave(float *out,float const *in,alwan_ycbcr_standard v,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_interleave(double *out,double const *in,alwan_ycbcr_standard v,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,alwan_ycbcr_standard v); \
+    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,alwan_ycbcr_standard v); \
+    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,alwan_ycbcr_standard v); \
+    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,alwan_ycbcr_standard v)
 
-/* Planar with scalar */
+/* Planar with scalar (v2) */
 #define ALWAN_PFWD_S(n) \
-    int n##_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,float p,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,double p,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,float p); \
+    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,double p)
 
-/* Interleave with scalar */
+/* Interleave with scalar (v2) */
 #define ALWAN_IFWD_S(n) \
-    int n##_f32_map_interleave(float *out,float const *in,float p,size_t count,size_t in_stride,size_t out_stride); \
-    int n##_f64_map_interleave(double *out,double const *in,double p,size_t count,size_t in_stride,size_t out_stride)
+    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,float p); \
+    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,double p)
 
 /* Both with scalar */
 #define ALWAN_PFWD_IFWD_S(n) ALWAN_PFWD_S(n); ALWAN_IFWD_S(n)
@@ -200,14 +200,14 @@ ALWAN_PFWD_IFWD_I(alwan_ycbcr_full_to_legal);
 ALWAN_PFWD_IFWD_I(alwan_ycbcr_legal_to_full);
 
 /* 4-channel CMY<->CMYK -- different channel counts, explicit declarations */
-int alwan_cmy_to_cmyk_f32_map_planar(float *oc,float *om,float *oy,float *ok,float const *ic,float const *im,float const *iy,size_t count,size_t in_stride,size_t out_stride);
-int alwan_cmy_to_cmyk_f64_map_planar(double *oc,double *om,double *oy,double *ok,double const *ic,double const *im,double const *iy,size_t count,size_t in_stride,size_t out_stride);
-int alwan_cmy_to_cmyk_f32_map_interleave(float *out,float const *in,size_t count,size_t in_stride,size_t out_stride);
-int alwan_cmy_to_cmyk_f64_map_interleave(double *out,double const *in,size_t count,size_t in_stride,size_t out_stride);
-int alwan_cmyk_to_cmy_f32_map_planar(float *oc,float *om,float *oy,float const *ic,float const *im,float const *iy,float const *ik,size_t count,size_t in_stride,size_t out_stride);
-int alwan_cmyk_to_cmy_f64_map_planar(double *oc,double *om,double *oy,double const *ic,double const *im,double const *iy,double const *ik,size_t count,size_t in_stride,size_t out_stride);
-int alwan_cmyk_to_cmy_f32_map_interleave(float *out,float const *in,size_t count,size_t in_stride,size_t out_stride);
-int alwan_cmyk_to_cmy_f64_map_interleave(double *out,double const *in,size_t count,size_t in_stride,size_t out_stride);
+int alwan_cmy_to_cmyk_f32_map_planar(float *out_c, size_t out_stride, float *out_m, float *out_y, float *out_k, float const *in_c, size_t in_stride, float const *in_m, float const *in_y, size_t count);
+int alwan_cmy_to_cmyk_f64_map_planar(double *out_c, size_t out_stride, double *out_m, double *out_y, double *out_k, double const *in_c, size_t in_stride, double const *in_m, double const *in_y, size_t count);
+int alwan_cmy_to_cmyk_f32_map_interleave(float *out, size_t out_stride, float const *in, size_t in_stride, size_t count);
+int alwan_cmy_to_cmyk_f64_map_interleave(double *out, size_t out_stride, double const *in, size_t in_stride, size_t count);
+int alwan_cmyk_to_cmy_f32_map_planar(float *out_c, size_t out_stride, float *out_m, float *out_y, float const *in_c, size_t in_stride, float const *in_m, float const *in_y, float const *in_k, size_t count);
+int alwan_cmyk_to_cmy_f64_map_planar(double *out_c, size_t out_stride, double *out_m, double *out_y, double const *in_c, size_t in_stride, double const *in_m, double const *in_y, double const *in_k, size_t count);
+int alwan_cmyk_to_cmy_f32_map_interleave(float *out, size_t out_stride, float const *in, size_t in_stride, size_t count);
+int alwan_cmyk_to_cmy_f64_map_interleave(double *out, size_t out_stride, double const *in, size_t in_stride, size_t count);
 
 /* ======================================================================== */
 /* DIN99 (with int variant)                                                 */
@@ -225,38 +225,38 @@ ALWAN_PFWD_IFWD_S(alwan_simulate_deuteranopia);
 ALWAN_PFWD_IFWD_S(alwan_simulate_tritanopia);
 
 /* CVD with cvd_type enum + scalar severity (manual -- no helper macro) */
-int alwan_simulate_cvd_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,alwan_cvd_type t,float s,size_t count,size_t in_stride,size_t out_stride);
-int alwan_simulate_cvd_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,alwan_cvd_type t,double s,size_t count,size_t in_stride,size_t out_stride);
-int alwan_simulate_cvd_f32_map_interleave(float *out,float const *in,alwan_cvd_type t,float s,size_t count,size_t in_stride,size_t out_stride);
-int alwan_simulate_cvd_f64_map_interleave(double *out,double const *in,alwan_cvd_type t,double s,size_t count,size_t in_stride,size_t out_stride);
-int alwan_simulate_cvd_machado_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,alwan_cvd_type t,float s,size_t count,size_t in_stride,size_t out_stride);
-int alwan_simulate_cvd_machado_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,alwan_cvd_type t,double s,size_t count,size_t in_stride,size_t out_stride);
-int alwan_simulate_cvd_machado_f32_map_interleave(float *out,float const *in,alwan_cvd_type t,float s,size_t count,size_t in_stride,size_t out_stride);
-int alwan_simulate_cvd_machado_f64_map_interleave(double *out,double const *in,alwan_cvd_type t,double s,size_t count,size_t in_stride,size_t out_stride);
+int alwan_simulate_cvd_f32_map_planar(float *o0, size_t out_stride, float *o1, float *o2, float const *i0, size_t in_stride, float const *i1, float const *i2, size_t count, alwan_cvd_type cvd_type, float severity);
+int alwan_simulate_cvd_f64_map_planar(double *o0, size_t out_stride, double *o1, double *o2, double const *i0, size_t in_stride, double const *i1, double const *i2, size_t count, alwan_cvd_type cvd_type, double severity);
+int alwan_simulate_cvd_f32_map_interleave(float *out, size_t out_stride, float const *in, size_t in_stride, size_t count, alwan_cvd_type t, float s);
+int alwan_simulate_cvd_f64_map_interleave(double *out, size_t out_stride, double const *in, size_t in_stride, size_t count, alwan_cvd_type t, double s);
+int alwan_simulate_cvd_machado_f32_map_planar(float *o0, size_t out_stride, float *o1, float *o2, float const *i0, size_t in_stride, float const *i1, float const *i2, size_t count, alwan_cvd_type cvd_type, float severity);
+int alwan_simulate_cvd_machado_f64_map_planar(double *o0, size_t out_stride, double *o1, double *o2, double const *i0, size_t in_stride, double const *i1, double const *i2, size_t count, alwan_cvd_type cvd_type, double severity);
+int alwan_simulate_cvd_machado_f32_map_interleave(float *out, size_t out_stride, float const *in, size_t in_stride, size_t count, alwan_cvd_type t, float s);
+int alwan_simulate_cvd_machado_f64_map_interleave(double *out, size_t out_stride, double const *in, size_t in_stride, size_t count, alwan_cvd_type t, double s);
 
 /* ======================================================================== */
 /* Color correction (complex signatures)                                    */
 /* ======================================================================== */
 
-int alwan_lgg_apply_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,alwan_rgb_f32 const *lift,alwan_rgb_f32 const *gamma,alwan_rgb_f32 const *gain,size_t count,size_t in_stride,size_t out_stride);
-int alwan_lgg_apply_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,alwan_rgb_f64 const *lift,alwan_rgb_f64 const *gamma,alwan_rgb_f64 const *gain,size_t count,size_t in_stride,size_t out_stride);
-int alwan_lgg_apply_f32_map_interleave(float *out,float const *in,alwan_rgb_f32 const *lift,alwan_rgb_f32 const *gamma,alwan_rgb_f32 const *gain,size_t count,size_t in_stride,size_t out_stride);
-int alwan_lgg_apply_f64_map_interleave(double *out,double const *in,alwan_rgb_f64 const *lift,alwan_rgb_f64 const *gamma,alwan_rgb_f64 const *gain,size_t count,size_t in_stride,size_t out_stride);
+int alwan_lgg_apply_f32_map_planar(float *o0, size_t out_stride, float *o1, float *o2, float const *i0, size_t in_stride, float const *i1, float const *i2, size_t count, alwan_rgb_f32 const *lift, alwan_rgb_f32 const *gamma, alwan_rgb_f32 const *gain);
+int alwan_lgg_apply_f64_map_planar(double *o0, size_t out_stride, double *o1, double *o2, double const *i0, size_t in_stride, double const *i1, double const *i2, size_t count, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain);
+int alwan_lgg_apply_f32_map_interleave(float *out, size_t out_stride, float const *in, size_t in_stride, size_t count, alwan_rgb_f32 const *lift, alwan_rgb_f32 const *gamma, alwan_rgb_f32 const *gain);
+int alwan_lgg_apply_f64_map_interleave(double *out, size_t out_stride, double const *in, size_t in_stride, size_t count, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain);
 
-int alwan_color_matrix_apply_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,alwan_mat3x3_f32 const *matrix,size_t count,size_t in_stride,size_t out_stride);
-int alwan_color_matrix_apply_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,alwan_mat3x3_f64 const *matrix,size_t count,size_t in_stride,size_t out_stride);
-int alwan_color_matrix_apply_f32_map_interleave(float *out,float const *in,alwan_mat3x3_f32 const *matrix,size_t count,size_t in_stride,size_t out_stride);
-int alwan_color_matrix_apply_f64_map_interleave(double *out,double const *in,alwan_mat3x3_f64 const *matrix,size_t count,size_t in_stride,size_t out_stride);
+int alwan_color_matrix_apply_f32_map_planar(float *o0, size_t out_stride, float *o1, float *o2, float const *i0, size_t in_stride, float const *i1, float const *i2, size_t count, alwan_mat3x3_f32 const *matrix);
+int alwan_color_matrix_apply_f64_map_planar(double *o0, size_t out_stride, double *o1, double *o2, double const *i0, size_t in_stride, double const *i1, double const *i2, size_t count, alwan_mat3x3_f64 const *matrix);
+int alwan_color_matrix_apply_f32_map_interleave(float *out, size_t out_stride, float const *in, size_t in_stride, size_t count, alwan_mat3x3_f32 const *matrix);
+int alwan_color_matrix_apply_f64_map_interleave(double *out, size_t out_stride, double const *in, size_t in_stride, size_t count, alwan_mat3x3_f64 const *matrix);
 
-int alwan_printer_lights_apply_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,float r,float g,float b,size_t count,size_t in_stride,size_t out_stride);
-int alwan_printer_lights_apply_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,double r,double g,double b,size_t count,size_t in_stride,size_t out_stride);
-int alwan_printer_lights_apply_f32_map_interleave(float *out,float const *in,float r,float g,float b,size_t count,size_t in_stride,size_t out_stride);
-int alwan_printer_lights_apply_f64_map_interleave(double *out,double const *in,double r,double g,double b,size_t count,size_t in_stride,size_t out_stride);
+int alwan_printer_lights_apply_f32_map_planar(float *o0, size_t out_stride, float *o1, float *o2, float const *i0, size_t in_stride, float const *i1, float const *i2, size_t count, float r, float g, float b);
+int alwan_printer_lights_apply_f64_map_planar(double *o0, size_t out_stride, double *o1, double *o2, double const *i0, size_t in_stride, double const *i1, double const *i2, size_t count, double r, double g, double b);
+int alwan_printer_lights_apply_f32_map_interleave(float *out, size_t out_stride, float const *in, size_t in_stride, size_t count, float r, float g, float b);
+int alwan_printer_lights_apply_f64_map_interleave(double *out, size_t out_stride, double const *in, size_t in_stride, size_t count, double r, double g, double b);
 
-int alwan_white_balance_apply_f32_map_planar(float *o0,float *o1,float *o2,float const *i0,float const *i1,float const *i2,alwan_rgb_f32 const *multipliers,size_t count,size_t in_stride,size_t out_stride);
-int alwan_white_balance_apply_f64_map_planar(double *o0,double *o1,double *o2,double const *i0,double const *i1,double const *i2,alwan_rgb_f64 const *multipliers,size_t count,size_t in_stride,size_t out_stride);
-int alwan_white_balance_apply_f32_map_interleave(float *out,float const *in,alwan_rgb_f32 const *multipliers,size_t count,size_t in_stride,size_t out_stride);
-int alwan_white_balance_apply_f64_map_interleave(double *out,double const *in,alwan_rgb_f64 const *multipliers,size_t count,size_t in_stride,size_t out_stride);
+int alwan_white_balance_apply_f32_map_planar(float *o0, size_t out_stride, float *o1, float *o2, float const *i0, size_t in_stride, float const *i1, float const *i2, size_t count, alwan_rgb_f32 const *multipliers);
+int alwan_white_balance_apply_f64_map_planar(double *o0, size_t out_stride, double *o1, double *o2, double const *i0, size_t in_stride, double const *i1, double const *i2, size_t count, alwan_rgb_f64 const *multipliers);
+int alwan_white_balance_apply_f32_map_interleave(float *out, size_t out_stride, float const *in, size_t in_stride, size_t count, alwan_rgb_f32 const *multipliers);
+int alwan_white_balance_apply_f64_map_interleave(double *out, size_t out_stride, double const *in, size_t in_stride, size_t count, alwan_rgb_f64 const *multipliers);
 
 /* ======================================================================== */
 /* Gamut operations (no extra param)                                        */

@@ -11,6 +11,7 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_lut_core.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* ----------------------------------------------------------------
@@ -26,7 +27,7 @@
  *   R G B (one triplet per line, R varies fastest)
  * ---------------------------------------------------------------- */
 
-int alwan_cube_export_3d(char const *path,
+int alwan_cube_export_3d_f64(char const *path,
                           alwan_f64 const *lut,
                           int size,
                           char const *title) {
@@ -57,7 +58,7 @@ int alwan_cube_export_3d(char const *path,
     return ALWAN_OK;
 }
 
-int alwan_cube_export_1d(char const *path,
+int alwan_cube_export_1d_f64(char const *path,
                           alwan_f64 const *lut,
                           int size,
                           char const *title) {
@@ -89,7 +90,7 @@ int alwan_cube_export_1d(char const *path,
  * .cube file export to memory buffer
  * ---------------------------------------------------------------- */
 
-int alwan_cube_export_3d_buffer(char *buf, size_t buf_size, size_t *bytes_written,
+int alwan_cube_export_3d_buffer_f64(char *buf, size_t buf_size, size_t *bytes_written,
                                  alwan_f64 const *lut,
                                  int size,
                                  char const *title) {
@@ -126,4 +127,41 @@ int alwan_cube_export_3d_buffer(char *buf, size_t buf_size, size_t *bytes_writte
 
     *bytes_written = pos;
     return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * f32 wrappers — widen to f64 and delegate.
+ * ---------------------------------------------------------------- */
+
+int alwan_cube_export_3d_f32(char const *path, alwan_f32 const *lut, int size, char const *title) {
+    if (!path || !lut || size < 2 || size > 256) return ALWAN_E_INVALID;
+    size_t total = (size_t)size * (size_t)size * (size_t)size;
+    alwan_f64 *tmp = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
+    if (!tmp) return ALWAN_E_NOMEM;
+    for (size_t i = 0; i < total * 3; i++) tmp[i] = (alwan_f64)lut[i];
+    int rc = alwan_cube_export_3d_f64(path, tmp, size, title);
+    free(tmp);
+    return rc;
+}
+
+int alwan_cube_export_1d_f32(char const *path, alwan_f32 const *lut, int size, char const *title) {
+    if (!path || !lut || size < 2 || size > 65536) return ALWAN_E_INVALID;
+    alwan_f64 *tmp = (alwan_f64 *)malloc((size_t)size * sizeof(alwan_f64));
+    if (!tmp) return ALWAN_E_NOMEM;
+    for (int i = 0; i < size; i++) tmp[i] = (alwan_f64)lut[i];
+    int rc = alwan_cube_export_1d_f64(path, tmp, size, title);
+    free(tmp);
+    return rc;
+}
+
+int alwan_cube_export_3d_buffer_f32(char *buf, size_t buf_size, size_t *bytes_written,
+                                 alwan_f32 const *lut, int size, char const *title) {
+    if (!buf || !lut || !bytes_written || size < 2 || size > 256 || buf_size == 0) return ALWAN_E_INVALID;
+    size_t total = (size_t)size * (size_t)size * (size_t)size;
+    alwan_f64 *tmp = (alwan_f64 *)malloc(total * 3 * sizeof(alwan_f64));
+    if (!tmp) return ALWAN_E_NOMEM;
+    for (size_t i = 0; i < total * 3; i++) tmp[i] = (alwan_f64)lut[i];
+    int rc = alwan_cube_export_3d_buffer_f64(buf, buf_size, bytes_written, tmp, size, title);
+    free(tmp);
+    return rc;
 }

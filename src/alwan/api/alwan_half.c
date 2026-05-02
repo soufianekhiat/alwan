@@ -21,7 +21,7 @@ ALWAN_DIAG_POP
 #include "alwan_half_impl.inc"
 #include "alwan_api_teardown.h"
 
-int alwan_half_to_float(float *out, alwan_uint16 const *in, size_t count) {
+int alwan_half_to_float_f64(alwan_f32 *out, alwan_uint16 const *in, size_t count) {
     if (!out || !in || count == 0) return ALWAN_E_INVALID;
 
     for (size_t i = 0; i < count; i++) {
@@ -30,11 +30,29 @@ int alwan_half_to_float(float *out, alwan_uint16 const *in, size_t count) {
     return ALWAN_OK;
 }
 
-int alwan_float_to_half(alwan_uint16 *out, float const *in, size_t count) {
+int alwan_half_to_float_f32(alwan_f32 *out, alwan_uint16 const *in, size_t count) {
+    if (!out || !in || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        out[i] = alwan_half_to_float_f32_v((alwan_half)in[i]);
+    }
+    return ALWAN_OK;
+}
+
+int alwan_float_to_half_f64(alwan_uint16 *out, alwan_f32 const *in, size_t count) {
     if (!out || !in || count == 0) return ALWAN_E_INVALID;
 
     for (size_t i = 0; i < count; i++) {
         out[i] = (alwan_uint16)alwan_float_to_half_f64_v(in[i]);
+    }
+    return ALWAN_OK;
+}
+
+int alwan_float_to_half_f32(alwan_uint16 *out, alwan_f32 const *in, size_t count) {
+    if (!out || !in || count == 0) return ALWAN_E_INVALID;
+
+    for (size_t i = 0; i < count; i++) {
+        out[i] = (alwan_uint16)alwan_float_to_half_f32_v(in[i]);
     }
     return ALWAN_OK;
 }

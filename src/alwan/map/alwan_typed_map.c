@@ -28,26 +28,43 @@
  * Collect / Scatter utilities
  * ---------------------------------------------------------------- */
 
-int alwan_collect3(alwan_scalar *out,
-                   void const *in, alwan_pixel_format in_fmt,
-                   size_t count, size_t in_stride, size_t out_stride) {
+int alwan_collect3_f64(alwan_f64 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar s[3];
+        alwan_f64 s[3];
         alwan__load3_typed(s, (char const *)in + i * in_stride, in_fmt);
-        alwan_scalar *op = (alwan_scalar *)((char *)out + i * out_stride);
+        alwan_f64 *op = (alwan_f64 *)((char *)out + i * out_stride);
         op[0] = s[0]; op[1] = s[1]; op[2] = s[2];
     }
     return ALWAN_OK;
 }
 
-int alwan_scatter3(void *out, alwan_pixel_format out_fmt,
-                   alwan_scalar const *in,
-                   size_t count, size_t in_stride, size_t out_stride) {
+int alwan_collect3_f32(alwan_f32 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar const *ip = (alwan_scalar const *)((char const *)in + i * in_stride);
+        alwan_f64 s[3];
+        alwan__load3_typed(s, (char const *)in + i * in_stride, in_fmt);
+        alwan_f32 *op = (alwan_f32 *)((char *)out + i * out_stride);
+        op[0] = (alwan_f32)s[0]; op[1] = (alwan_f32)s[1]; op[2] = (alwan_f32)s[2];
+    }
+    return ALWAN_OK;
+}
+
+int alwan_scatter3_f64(void *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt) {
+    if (!in || !out || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_f64 const *ip = (alwan_f64 const *)((char const *)in + i * in_stride);
         alwan__store3_typed((char *)out + i * out_stride, ip, out_fmt);
+    }
+    return ALWAN_OK;
+}
+
+int alwan_scatter3_f32(void *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt) {
+    if (!in || !out || count == 0) return ALWAN_E_INVALID;
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 const *ip = (alwan_f32 const *)((char const *)in + i * in_stride);
+        alwan_f64 s[3] = { (double)ip[0], (double)ip[1], (double)ip[2] };
+        alwan__store3_typed((char *)out + i * out_stride, s, out_fmt);
     }
     return ALWAN_OK;
 }
@@ -207,10 +224,7 @@ ALWAN_EX_DELEGATE_DUAL_INT(alwan_din99_to_lab_map_interleave_ex, alwan_din99_to_
  * Color correction _ex (tiled delegation to native functions)
  * ---------------------------------------------------------------- */
 
-int alwan_lgg_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
-                            void const *in, alwan_pixel_format in_fmt,
-                            alwan_rgb const *lift, alwan_rgb const *gamma, alwan_rgb const *gain,
-                            size_t count, size_t in_stride, size_t out_stride) {
+int alwan_lgg_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain) {
     if (!in || !out || !lift || !gamma || !gain || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_rgb_f64 lift64 = {(double)lift->r, (double)lift->g, (double)lift->b};
@@ -223,8 +237,7 @@ int alwan_lgg_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_lgg_apply_f64_map_interleave(obuf_, ibuf_, &lift64, &gamma64, &gain64, tile_,
-                                               3 * sizeof(double), 3 * sizeof(double));
+            alwan_lgg_apply_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &gain64, &gamma64, &lift64);
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -239,8 +252,7 @@ int alwan_lgg_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_lgg_apply_f32_map_interleave(obuf_, ibuf_, &lift32, &gamma32, &gain32, tile_,
-                                               3 * sizeof(float), 3 * sizeof(float));
+            alwan_lgg_apply_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &gain32, &gamma32, &lift32);
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -248,10 +260,7 @@ int alwan_lgg_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
     return ALWAN_OK;
 }
 
-int alwan_color_matrix_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
-                                     void const *in, alwan_pixel_format in_fmt,
-                                     alwan_mat3x3 const *matrix,
-                                     size_t count, size_t in_stride, size_t out_stride) {
+int alwan_color_matrix_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_mat3x3_f64 const *matrix) {
     if (!in || !out || !matrix || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_mat3x3_f64 m64; for (int i = 0; i < 9; i++) m64.m[i] = (double)matrix->m[i];
@@ -262,8 +271,7 @@ int alwan_color_matrix_apply_map_interleave_ex(void *out, alwan_pixel_format out
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_color_matrix_apply_f64_map_interleave(obuf_, ibuf_, &m64, tile_,
-                                                        3 * sizeof(double), 3 * sizeof(double));
+            alwan_color_matrix_apply_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &m64);
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -276,8 +284,7 @@ int alwan_color_matrix_apply_map_interleave_ex(void *out, alwan_pixel_format out
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_color_matrix_apply_f32_map_interleave(obuf_, ibuf_, &m32, tile_,
-                                                        3 * sizeof(float), 3 * sizeof(float));
+            alwan_color_matrix_apply_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &m32);
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -285,11 +292,7 @@ int alwan_color_matrix_apply_map_interleave_ex(void *out, alwan_pixel_format out
     return ALWAN_OK;
 }
 
-int alwan_printer_lights_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
-                                       void const *in, alwan_pixel_format in_fmt,
-                                       alwan_scalar red_lights, alwan_scalar green_lights,
-                                       alwan_scalar blue_lights,
-                                       size_t count, size_t in_stride, size_t out_stride) {
+int alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 red_lights, alwan_f64 green_lights, alwan_f64 blue_lights) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -299,8 +302,7 @@ int alwan_printer_lights_apply_map_interleave_ex(void *out, alwan_pixel_format o
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_printer_lights_apply_f64_map_interleave(obuf_, ibuf_, (double)red_lights, (double)green_lights, (double)blue_lights, tile_,
-                                                          3 * sizeof(double), 3 * sizeof(double));
+            alwan_printer_lights_apply_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, (double)blue_lights, (double)green_lights, (double)red_lights);
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -312,8 +314,7 @@ int alwan_printer_lights_apply_map_interleave_ex(void *out, alwan_pixel_format o
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_printer_lights_apply_f32_map_interleave(obuf_, ibuf_, (float)red_lights, (float)green_lights, (float)blue_lights, tile_,
-                                                          3 * sizeof(float), 3 * sizeof(float));
+            alwan_printer_lights_apply_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, (float)blue_lights, (float)green_lights, (float)red_lights);
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -321,10 +322,7 @@ int alwan_printer_lights_apply_map_interleave_ex(void *out, alwan_pixel_format o
     return ALWAN_OK;
 }
 
-int alwan_white_balance_apply_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
-                                      void const *in, alwan_pixel_format in_fmt,
-                                      alwan_rgb const *multipliers,
-                                      size_t count, size_t in_stride, size_t out_stride) {
+int alwan_white_balance_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *multipliers) {
     if (!in || !out || !multipliers || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_rgb_f64 mul64 = {(double)multipliers->r, (double)multipliers->g, (double)multipliers->b};
@@ -335,8 +333,7 @@ int alwan_white_balance_apply_map_interleave_ex(void *out, alwan_pixel_format ou
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_white_balance_apply_f64_map_interleave(obuf_, ibuf_, &mul64, tile_,
-                                                         3 * sizeof(double), 3 * sizeof(double));
+            alwan_white_balance_apply_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &mul64);
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -349,8 +346,7 @@ int alwan_white_balance_apply_map_interleave_ex(void *out, alwan_pixel_format ou
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_white_balance_apply_f32_map_interleave(obuf_, ibuf_, &mul32, tile_,
-                                                         3 * sizeof(float), 3 * sizeof(float));
+            alwan_white_balance_apply_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &mul32);
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -366,10 +362,7 @@ ALWAN_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_protanopia_map_interleave_ex,   alw
 ALWAN_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_deuteranopia_map_interleave_ex, alwan_simulate_deuteranopia_f32_map_interleave, alwan_simulate_deuteranopia_f64_map_interleave)
 ALWAN_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_tritanopia_map_interleave_ex,   alwan_simulate_tritanopia_f32_map_interleave,   alwan_simulate_tritanopia_f64_map_interleave)
 
-int alwan_simulate_cvd_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
-                               void const *in, alwan_pixel_format in_fmt,
-                               alwan_cvd_type cvd_type, alwan_scalar severity,
-                               size_t count, size_t in_stride, size_t out_stride) {
+int alwan_simulate_cvd_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -379,8 +372,7 @@ int alwan_simulate_cvd_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_simulate_cvd_f64_map_interleave(obuf_, ibuf_, cvd_type, (double)severity, tile_,
-                                                  3 * sizeof(double), 3 * sizeof(double));
+            alwan_simulate_cvd_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, cvd_type, (double)severity);
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -392,8 +384,7 @@ int alwan_simulate_cvd_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_simulate_cvd_f32_map_interleave(obuf_, ibuf_, cvd_type, (float)severity, tile_,
-                                                  3 * sizeof(float), 3 * sizeof(float));
+            alwan_simulate_cvd_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, cvd_type, (float)severity);
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -405,10 +396,7 @@ int alwan_simulate_cvd_map_interleave_ex(void *out, alwan_pixel_format out_fmt,
  * CVD Machado _ex
  * ---------------------------------------------------------------- */
 
-int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, alwan_pixel_format out_fmt,
-                                                   void const *rgb_in, alwan_pixel_format in_fmt,
-                                                   alwan_cvd_type cvd_type, alwan_scalar severity,
-                                                   size_t count, size_t in_stride, size_t out_stride) {
+int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -418,8 +406,7 @@ int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, alwan_pixel_form
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
             alwan__load_tile_typed_aos_f64(ibuf_, rgb_in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_simulate_cvd_machado_f64_map_interleave(obuf_, ibuf_, cvd_type, (double)severity, tile_,
-                                                          3 * sizeof(double), 3 * sizeof(double));
+            alwan_simulate_cvd_machado_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, cvd_type, (double)severity);
             alwan__store_tile_typed_aos_f64(rgb_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -431,8 +418,7 @@ int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, alwan_pixel_form
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
             alwan__load_tile_typed_aos_f32(ibuf_, rgb_in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_simulate_cvd_machado_f32_map_interleave(obuf_, ibuf_, cvd_type, (float)severity, tile_,
-                                                          3 * sizeof(float), 3 * sizeof(float));
+            alwan_simulate_cvd_machado_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, cvd_type, (float)severity);
             alwan__store_tile_typed_aos_f32(rgb_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -444,9 +430,7 @@ int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, alwan_pixel_form
  * CMY <-> CMYK _ex (3<->4 channel, tiled delegation)
  * ---------------------------------------------------------------- */
 
-int alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, alwan_pixel_format out_fmt,
-                           void const *cmy_in, alwan_pixel_format in_fmt,
-                           size_t count, size_t in_stride, size_t out_stride) {
+int alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, size_t out_stride, void const *cmy_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
     if (!cmy_in || !cmyk_out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -456,8 +440,7 @@ int alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, alwan_pixel_format out_f
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 4];
             alwan__load_tile_typed_aos_f64(ibuf_, cmy_in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_cmy_to_cmyk_f64_map_interleave(obuf_, ibuf_, tile_,
-                                                  3 * sizeof(double), 4 * sizeof(double));
+            alwan_cmy_to_cmyk_f64_map_interleave(obuf_, 4 * sizeof(double), ibuf_, 3 * sizeof(double), tile_);
             alwan__store_tile_typed_aos_f64(cmyk_out, out_fmt, off_, out_stride, obuf_, tile_, 4);
             off_ += tile_;
         }
@@ -469,8 +452,7 @@ int alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, alwan_pixel_format out_f
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 4];
             alwan__load_tile_typed_aos_f32(ibuf_, cmy_in, in_fmt, off_, in_stride, tile_, 3);
-            alwan_cmy_to_cmyk_f32_map_interleave(obuf_, ibuf_, tile_,
-                                                  3 * sizeof(float), 4 * sizeof(float));
+            alwan_cmy_to_cmyk_f32_map_interleave(obuf_, 4 * sizeof(float), ibuf_, 3 * sizeof(float), tile_);
             alwan__store_tile_typed_aos_f32(cmyk_out, out_fmt, off_, out_stride, obuf_, tile_, 4);
             off_ += tile_;
         }
@@ -478,9 +460,7 @@ int alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, alwan_pixel_format out_f
     return ALWAN_OK;
 }
 
-int alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, alwan_pixel_format out_fmt,
-                           void const *cmyk_in, alwan_pixel_format in_fmt,
-                           size_t count, size_t in_stride, size_t out_stride) {
+int alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, size_t out_stride, void const *cmyk_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
     if (!cmyk_in || !cmy_out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -490,8 +470,7 @@ int alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, alwan_pixel_format out_fm
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 4];
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
             alwan__load_tile_typed_aos_f64(ibuf_, cmyk_in, in_fmt, off_, in_stride, tile_, 4);
-            alwan_cmyk_to_cmy_f64_map_interleave(obuf_, ibuf_, tile_,
-                                                  4 * sizeof(double), 3 * sizeof(double));
+            alwan_cmyk_to_cmy_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 4 * sizeof(double), tile_);
             alwan__store_tile_typed_aos_f64(cmy_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -503,8 +482,7 @@ int alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, alwan_pixel_format out_fm
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 4];
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
             alwan__load_tile_typed_aos_f32(ibuf_, cmyk_in, in_fmt, off_, in_stride, tile_, 4);
-            alwan_cmyk_to_cmy_f32_map_interleave(obuf_, ibuf_, tile_,
-                                                  4 * sizeof(float), 3 * sizeof(float));
+            alwan_cmyk_to_cmy_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 4 * sizeof(float), tile_);
             alwan__store_tile_typed_aos_f32(cmy_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
             off_ += tile_;
         }
@@ -518,61 +496,49 @@ int alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, alwan_pixel_format out_fm
  * and per-pixel error returns, so they remain per-pixel.
  * ---------------------------------------------------------------- */
 
-int alwan_ciecam02_forward_map_interleave_ex(alwan_ciecam02_correlates *correlates_out,
-                                   void const *xyz_in, alwan_pixel_format in_fmt,
-                                   alwan_ciecam02_viewing_conditions const *vc,
-                                   size_t count, size_t in_stride) {
+int alwan_ciecam02_forward_map_interleave_ex(alwan_ciecam02_correlates_f64 *correlates_out, void const *xyz_in, size_t in_stride, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format in_fmt) {
     if (!xyz_in || !correlates_out || !vc || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar s[3];
+        alwan_f64 s[3];
         alwan__load3_typed(s, (char const *)xyz_in + i * in_stride, in_fmt);
-        alwan_xyz xyz = {s[0], s[1], s[2]};
-        int st = alwan_ciecam02_forward(&correlates_out[i], &xyz, vc);
+        alwan_xyz_f64 xyz = {s[0], s[1], s[2]};
+        int st = alwan_ciecam02_forward_f64(&correlates_out[i], &xyz, vc);
         if (st != ALWAN_OK) return st;
     }
     return ALWAN_OK;
 }
 
-int alwan_ciecam02_inverse_map_interleave_ex(void *xyz_out, alwan_pixel_format out_fmt,
-                                   alwan_ciecam02_correlates const *correlates_in,
-                                   alwan_ciecam02_viewing_conditions const *vc,
-                                   size_t count, size_t out_stride) {
+int alwan_ciecam02_inverse_map_interleave_ex(void *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f64 const *correlates_in, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format out_fmt) {
     if (!correlates_in || !xyz_out || !vc || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_xyz xyz;
-        int st = alwan_ciecam02_inverse(&xyz, &correlates_in[i], vc);
+        alwan_xyz_f64 xyz;
+        int st = alwan_ciecam02_inverse_f64(&xyz, &correlates_in[i], vc);
         if (st != ALWAN_OK) return st;
-        alwan_scalar d[3] = {xyz.x, xyz.y, xyz.z};
+        alwan_f64 d[3] = {xyz.x, xyz.y, xyz.z};
         alwan__store3_typed((char *)xyz_out + i * out_stride, d, out_fmt);
     }
     return ALWAN_OK;
 }
 
-int alwan_cam16_forward_map_interleave_ex(alwan_cam16_correlates *correlates_out,
-                                void const *xyz_in, alwan_pixel_format in_fmt,
-                                alwan_cam16_viewing_conditions const *vc,
-                                size_t count, size_t in_stride) {
+int alwan_cam16_forward_map_interleave_ex(alwan_cam16_correlates_f64 *correlates_out, void const *xyz_in, size_t in_stride, alwan_cam16_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format in_fmt) {
     if (!xyz_in || !correlates_out || !vc || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar s[3];
+        alwan_f64 s[3];
         alwan__load3_typed(s, (char const *)xyz_in + i * in_stride, in_fmt);
-        alwan_xyz xyz = {s[0], s[1], s[2]};
-        int st = alwan_cam16_forward(&correlates_out[i], &xyz, vc);
+        alwan_xyz_f64 xyz = {s[0], s[1], s[2]};
+        int st = alwan_cam16_forward_f64(&correlates_out[i], &xyz, vc);
         if (st != ALWAN_OK) return st;
     }
     return ALWAN_OK;
 }
 
-int alwan_cam16_inverse_map_interleave_ex(void *xyz_out, alwan_pixel_format out_fmt,
-                                alwan_cam16_correlates const *correlates_in,
-                                alwan_cam16_viewing_conditions const *vc,
-                                size_t count, size_t out_stride) {
+int alwan_cam16_inverse_map_interleave_ex(void *xyz_out, size_t out_stride, alwan_cam16_correlates_f64 const *correlates_in, alwan_cam16_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format out_fmt) {
     if (!correlates_in || !xyz_out || !vc || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_xyz xyz;
-        int st = alwan_cam16_inverse(&xyz, &correlates_in[i], vc);
+        alwan_xyz_f64 xyz;
+        int st = alwan_cam16_inverse_f64(&xyz, &correlates_in[i], vc);
         if (st != ALWAN_OK) return st;
-        alwan_scalar d[3] = {xyz.x, xyz.y, xyz.z};
+        alwan_f64 d[3] = {xyz.x, xyz.y, xyz.z};
         alwan__store3_typed((char *)xyz_out + i * out_stride, d, out_fmt);
     }
     return ALWAN_OK;
@@ -583,67 +549,67 @@ int alwan_cam16_inverse_map_interleave_ex(void *xyz_out, alwan_pixel_format out_
  * Two typed inputs -> scalar output; remain per-pixel.
  * ---------------------------------------------------------------- */
 
-int alwan_delta_e_76_batch_ex(alwan_scalar *delta_e_out,
-                               void const *lab1_in, alwan_pixel_format lab1_fmt,
-                               void const *lab2_in, alwan_pixel_format lab2_fmt,
-                               size_t count, size_t in1_stride, size_t in2_stride) {
+int alwan_delta_e_76_batch_ex(alwan_f64 *delta_e_out,
+                               void const *lab1_in, size_t in1_stride,
+                               void const *lab2_in, size_t in2_stride,
+                               size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt) {
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar s1[3], s2[3];
+        alwan_f64 s1[3], s2[3];
         alwan__load3_typed(s1, (char const *)lab1_in + i * in1_stride, lab1_fmt);
         alwan__load3_typed(s2, (char const *)lab2_in + i * in2_stride, lab2_fmt);
-        alwan_lab l1 = {s1[0], s1[1], s1[2]};
-        alwan_lab l2 = {s2[0], s2[1], s2[2]};
-        delta_e_out[i] = alwan_delta_e_76(&l1, &l2);
+        alwan_lab_f64 l1 = {s1[0], s1[1], s1[2]};
+        alwan_lab_f64 l2 = {s2[0], s2[1], s2[2]};
+        delta_e_out[i] = alwan_delta_e_76_f64(&l1, &l2);
     }
     return ALWAN_OK;
 }
 
-int alwan_delta_e_2000_batch_ex(alwan_scalar *delta_e_out,
-                                 void const *lab1_in, alwan_pixel_format lab1_fmt,
-                                 void const *lab2_in, alwan_pixel_format lab2_fmt,
-                                 size_t count, size_t in1_stride, size_t in2_stride) {
+int alwan_delta_e_2000_batch_ex(alwan_f64 *delta_e_out,
+                                 void const *lab1_in, size_t in1_stride,
+                                 void const *lab2_in, size_t in2_stride,
+                                 size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt) {
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar s1[3], s2[3];
+        alwan_f64 s1[3], s2[3];
         alwan__load3_typed(s1, (char const *)lab1_in + i * in1_stride, lab1_fmt);
         alwan__load3_typed(s2, (char const *)lab2_in + i * in2_stride, lab2_fmt);
-        alwan_lab l1 = {s1[0], s1[1], s1[2]};
-        alwan_lab l2 = {s2[0], s2[1], s2[2]};
-        delta_e_out[i] = alwan_delta_e_2000(&l1, &l2);
+        alwan_lab_f64 l1 = {s1[0], s1[1], s1[2]};
+        alwan_lab_f64 l2 = {s2[0], s2[1], s2[2]};
+        delta_e_out[i] = alwan_delta_e_2000_f64(&l1, &l2);
     }
     return ALWAN_OK;
 }
 
-int alwan_delta_e_94_batch_ex(alwan_scalar *delta_e_out,
-                               void const *lab1_in, alwan_pixel_format lab1_fmt,
-                               void const *lab2_in, alwan_pixel_format lab2_fmt,
-                               size_t count, size_t in1_stride, size_t in2_stride) {
+int alwan_delta_e_94_batch_ex(alwan_f64 *delta_e_out,
+                               void const *lab1_in, size_t in1_stride,
+                               void const *lab2_in, size_t in2_stride,
+                               size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt) {
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar s1[3], s2[3];
+        alwan_f64 s1[3], s2[3];
         alwan__load3_typed(s1, (char const *)lab1_in + i * in1_stride, lab1_fmt);
         alwan__load3_typed(s2, (char const *)lab2_in + i * in2_stride, lab2_fmt);
-        alwan_lab l1 = {s1[0], s1[1], s1[2]};
-        alwan_lab l2 = {s2[0], s2[1], s2[2]};
-        delta_e_out[i] = alwan_delta_e_94(&l1, &l2);
+        alwan_lab_f64 l1 = {s1[0], s1[1], s1[2]};
+        alwan_lab_f64 l2 = {s2[0], s2[1], s2[2]};
+        delta_e_out[i] = alwan_delta_e_94_f64(&l1, &l2);
     }
     return ALWAN_OK;
 }
 
-int alwan_delta_e_cmc_batch_ex(alwan_scalar *delta_e_out,
-                                void const *lab1_in, alwan_pixel_format lab1_fmt,
-                                void const *lab2_in, alwan_pixel_format lab2_fmt,
-                                alwan_scalar l, alwan_scalar c,
-                                size_t count, size_t in1_stride, size_t in2_stride) {
+int alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
+                                void const *lab1_in, size_t in1_stride,
+                                void const *lab2_in, size_t in2_stride,
+                                size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt,
+                                alwan_f64 l, alwan_f64 c) {
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar s1[3], s2[3];
+        alwan_f64 s1[3], s2[3];
         alwan__load3_typed(s1, (char const *)lab1_in + i * in1_stride, lab1_fmt);
         alwan__load3_typed(s2, (char const *)lab2_in + i * in2_stride, lab2_fmt);
-        alwan_lab l1 = {s1[0], s1[1], s1[2]};
-        alwan_lab l2 = {s2[0], s2[1], s2[2]};
-        alwan_delta_e_cmc_params cmc_p; cmc_p.l = (double)l; cmc_p.c = (double)c;
+        alwan_lab_f64 l1 = {s1[0], s1[1], s1[2]};
+        alwan_lab_f64 l2 = {s2[0], s2[1], s2[2]};
+        alwan_delta_e_cmc_params_f64 cmc_p; cmc_p.l = (double)l; cmc_p.c = (double)c;
         delta_e_out[i] = alwan_delta_e_cmc_f64(&l1, &l2, &cmc_p);
     }
     return ALWAN_OK;

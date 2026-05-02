@@ -54,6 +54,11 @@
 /* Branchless select (same for both precisions) */
 #define ALWAN_CORE_SELECT(cond, t, f) ((cond) ? (t) : (f))
 
+/* BT.709 luma coefficients */
+#define ALWAN_CORE_LUMA_KR_BT709  ALWAN_CORE_LITERAL(0.2126)
+#define ALWAN_CORE_LUMA_KG_BT709  ALWAN_CORE_LITERAL(0.7152)
+#define ALWAN_CORE_LUMA_KB_BT709  ALWAN_CORE_LITERAL(0.0722)
+
 /* Utility functions */
 #define ALWAN_CORE_MIN       alwan_min_f32
 #define ALWAN_CORE_MAX       alwan_max_f32
@@ -114,3 +119,40 @@
 #define ALWAN_CORE_HLC                alwan_hlc_f32
 #define ALWAN_CORE_ST2086_METADATA    alwan_st2086_metadata_f32
 #define ALWAN_CORE_CONTENT_LIGHT_LEVEL alwan_content_light_level_f32
+#define ALWAN_CORE_RGB_SPACE_DESC     alwan_rgb_space_desc_f32
+
+/* Parameter structs */
+#define ALWAN_CORE_DELTA_E_CMC_PARAMS          alwan_delta_e_cmc_params_f32
+#define ALWAN_CORE_DELTA_E_ITP_PARAMS          alwan_delta_e_itp_params_f32
+#define ALWAN_CORE_CSF_BARTEN1999_PARAMS       alwan_csf_barten1999_params_f32
+#define ALWAN_CORE_ATMOSPHERE_PARAMS           alwan_atmosphere_params_f32
+
+/* SPD structs */
+#define ALWAN_CORE_SPD                         alwan_spd_f32
+#define ALWAN_CORE_SPD_SHAPE                   alwan_spd_shape_f32
+
+/* CAM viewing conditions */
+#define ALWAN_CORE_CIECAM02_VIEWING_CONDITIONS alwan_ciecam02_viewing_conditions_f32
+#define ALWAN_CORE_CAM16_VIEWING_CONDITIONS    alwan_cam16_viewing_conditions_f32
+#define ALWAN_CORE_ZCAM_VIEWING_CONDITIONS     alwan_zcam_viewing_conditions_f32
+#define ALWAN_CORE_RLAB_VIEWING_CONDITIONS     alwan_rlab_viewing_conditions_f32
+#define ALWAN_CORE_HUNT_VIEWING_CONDITIONS     alwan_hunt_viewing_conditions_f32
+#define ALWAN_CORE_HELLWIG2022_VIEWING_CONDITIONS alwan_hellwig2022_viewing_conditions_f32
+#define ALWAN_CORE_KIM2009_VIEWING_CONDITIONS  alwan_kim2009_viewing_conditions_f32
+#define ALWAN_CORE_LLAB_VIEWING_CONDITIONS     alwan_llab_viewing_conditions_f32
+#define ALWAN_CORE_ATD95_VIEWING_CONDITIONS    alwan_atd95_viewing_conditions_f32
+#define ALWAN_CORE_NAYATANI95_VIEWING_CONDITIONS alwan_nayatani95_viewing_conditions_f32
+
+/* CAM correlates */
+#define ALWAN_CORE_CIECAM02_CORRELATES         alwan_ciecam02_correlates_f32
+#define ALWAN_CORE_CAM16_CORRELATES            alwan_cam16_correlates_f32
+#define ALWAN_CORE_ZCAM_CORRELATES             alwan_zcam_correlates_f32
+#define ALWAN_CORE_RLAB_CORRELATES             alwan_rlab_correlates_f32
+#define ALWAN_CORE_HUNT_CORRELATES             alwan_hunt_correlates_f32
+#define ALWAN_CORE_HELLWIG2022_CORRELATES      alwan_hellwig2022_correlates_f32
+#define ALWAN_CORE_KIM2009_CORRELATES          alwan_kim2009_correlates_f32
+#define ALWAN_CORE_LLAB_CORRELATES             alwan_llab_correlates_f32
+#define ALWAN_CORE_ATD95_CORRELATES            alwan_atd95_correlates_f32
+#define ALWAN_CORE_NAYATANI95_CORRELATES       alwan_nayatani95_correlates_f32
+#define ALWAN_CORE_CAM18SL_CORRELATES          alwan_cam18sl_correlates_f32
+#define ALWAN_CORE_CAM20U_CORRELATES           alwan_cam20u_correlates_f32

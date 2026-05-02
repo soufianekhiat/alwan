@@ -58,11 +58,11 @@ static void get_hunt_params(alwan_hunt_surround surround,
  * Hunt Forward Transform: XYZ -> Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_hunt_forward(alwan_hunt_correlates *out,
+int alwan_hunt_forward_f64(alwan_hunt_correlates_f64 *out,
                        alwan_xyz_f64 const *xyz,
-                       alwan_hunt_viewing_conditions const *vc) {
+                       alwan_hunt_viewing_conditions_f64 const *vc) {
     if (!out || !xyz || !vc) {
-        return -1;
+        return ALWAN_E_INVALID;
     }
 
     /* Resolve surround enum to scalar parameters */
@@ -90,7 +90,7 @@ int alwan_hunt_forward(alwan_hunt_correlates *out,
 
     ALWAN_NORM_HUNT(out);
 
-    return 0;
+    return ALWAN_OK;
 }
 
 /* Note: Hunt inverse is extremely complex and typically not implemented.

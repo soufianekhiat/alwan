@@ -90,9 +90,9 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_cdl_apply)(
     g = ALWAN_CORE_POW(g, power_g);
     b = ALWAN_CORE_POW(b, power_b);
     /* Saturation around BT.709 luma */
-    ALWAN_CORE_T luma = ALWAN_CORE_LITERAL(0.2126) * r
-                      + ALWAN_CORE_LITERAL(0.7152) * g
-                      + ALWAN_CORE_LITERAL(0.0722) * b;
+    ALWAN_CORE_T luma = ALWAN_CORE_LUMA_KR_BT709 * r
+                      + ALWAN_CORE_LUMA_KG_BT709 * g
+                      + ALWAN_CORE_LUMA_KB_BT709 * b;
     result.v[0] = ALWAN_CORE_SATURATE(luma + sat * (r - luma));
     result.v[1] = ALWAN_CORE_SATURATE(luma + sat * (g - luma));
     result.v[2] = ALWAN_CORE_SATURATE(luma + sat * (b - luma));
@@ -156,28 +156,24 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_khronos_pbr_neutral)(ALWAN_
     peak = ALWAN_CORE_SELECT(color.v[1] > peak, color.v[1], peak);
     peak = ALWAN_CORE_SELECT(color.v[2] > peak, color.v[2], peak);
 
-    /* Below start_compression: pass-through */
-    if (peak < start_compression) {
-        return color;
-    }
+    /* Soft rolloff — branchless: when peak < start_compression, new_peak=peak → scale=1, g=0 */
+    ALWAN_CORE_T const d = ALWAN_CORE_LITERAL(1.0) - start_compression;
+    ALWAN_CORE_T safe_peak = ALWAN_CORE_SELECT(peak < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_LITERAL(1e-10), peak);
+    ALWAN_CORE_T new_peak = ALWAN_CORE_SELECT(
+        peak < start_compression,
+        peak,
+        ALWAN_CORE_LITERAL(1.0) - d * d / (safe_peak + d - start_compression));
+    ALWAN_CORE_T scale = new_peak / safe_peak;
+    color.v[0] *= scale;
+    color.v[1] *= scale;
+    color.v[2] *= scale;
 
-    /* Soft rolloff */
-    {
-        ALWAN_CORE_T const d = ALWAN_CORE_LITERAL(1.0) - start_compression;
-        ALWAN_CORE_T new_peak = ALWAN_CORE_LITERAL(1.0) - d * d / (peak + d - start_compression);
-        ALWAN_CORE_T scale = new_peak / peak;
-        color.v[0] *= scale;
-        color.v[1] *= scale;
-        color.v[2] *= scale;
-
-        /* Desaturation */
-        ALWAN_CORE_T g = ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_LITERAL(1.0) /
-                         (desaturation * (peak - new_peak) + ALWAN_CORE_LITERAL(1.0));
-        result.v[0] = color.v[0] + (new_peak - color.v[0]) * g;
-        result.v[1] = color.v[1] + (new_peak - color.v[1]) * g;
-        result.v[2] = color.v[2] + (new_peak - color.v[2]) * g;
-    }
-
+    /* Desaturation — g=0 when pass-through (safe_peak == new_peak) */
+    ALWAN_CORE_T g = ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_LITERAL(1.0) /
+                     (desaturation * (safe_peak - new_peak) + ALWAN_CORE_LITERAL(1.0));
+    result.v[0] = color.v[0] + (new_peak - color.v[0]) * g;
+    result.v[1] = color.v[1] + (new_peak - color.v[1]) * g;
+    result.v[2] = color.v[2] + (new_peak - color.v[2]) * g;
     return result;
 }
 
@@ -197,19 +193,14 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_reinhard_extended)(ALWAN_CORE_
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_reinhard_extended_luma)(ALWAN_CORE_VEC3 rgb,
                                                         ALWAN_CORE_T max_white) {
     ALWAN_CORE_VEC3 result;
-    ALWAN_CORE_T l_old = ALWAN_CORE_LITERAL(0.2126) * rgb.v[0]
-                       + ALWAN_CORE_LITERAL(0.7152) * rgb.v[1]
-                       + ALWAN_CORE_LITERAL(0.0722) * rgb.v[2];
+    ALWAN_CORE_T l_old = ALWAN_CORE_LUMA_KR_BT709 * rgb.v[0]
+                       + ALWAN_CORE_LUMA_KG_BT709 * rgb.v[1]
+                       + ALWAN_CORE_LUMA_KB_BT709 * rgb.v[2];
 
-    if (l_old < ALWAN_CORE_LITERAL(1e-10)) {
-        result.v[0] = ALWAN_CORE_ZERO;
-        result.v[1] = ALWAN_CORE_ZERO;
-        result.v[2] = ALWAN_CORE_ZERO;
-        return result;
-    }
-
-    ALWAN_CORE_T l_new = ALWAN_CORE_FNVLIT(alwan_reinhard_extended)(l_old, max_white);
-    ALWAN_CORE_T scale = l_new / l_old;
+    /* Branchless: clamp to safe value, zero scale when l_old is black */
+    ALWAN_CORE_T safe_l = ALWAN_CORE_SELECT(l_old < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_LITERAL(1e-10), l_old);
+    ALWAN_CORE_T l_new = ALWAN_CORE_FNVLIT(alwan_reinhard_extended)(safe_l, max_white);
+    ALWAN_CORE_T scale = ALWAN_CORE_SELECT(l_old < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_ZERO, l_new / safe_l);
 
     result.v[0] = rgb.v[0] * scale;
     result.v[1] = rgb.v[1] * scale;
@@ -236,9 +227,9 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_uchimura)(ALWAN_CORE_T x,
     ALWAN_CORE_T CP = -C2 / P;
 
     /* Smoothstep weights: 3t^2 - 2t^3 */
-    ALWAN_CORE_T t_toe = ALWAN_CORE_SATURATE((x < m) ? (ALWAN_CORE_ONE - x / m) : ALWAN_CORE_ZERO);
+    ALWAN_CORE_T t_toe = ALWAN_CORE_SATURATE(ALWAN_CORE_SELECT(x < m, ALWAN_CORE_ONE - x / m, ALWAN_CORE_ZERO));
     ALWAN_CORE_T w0 = t_toe * t_toe * (ALWAN_CORE_LITERAL(3.0) - ALWAN_CORE_LITERAL(2.0) * t_toe);
-    ALWAN_CORE_T w2 = (x > S0) ? ALWAN_CORE_ONE : ALWAN_CORE_ZERO;
+    ALWAN_CORE_T w2 = ALWAN_CORE_SELECT(x > S0, ALWAN_CORE_ONE, ALWAN_CORE_ZERO);
     ALWAN_CORE_T w1 = ALWAN_CORE_ONE - w0 - w2;
 
     /* Toe: power curve + pedestal */
@@ -298,15 +289,10 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lottes)(ALWAN_CORE_VEC3 rgb
     /* Apply curve to peak channel, scale others proportionally */
     ALWAN_CORE_T peak = ALWAN_CORE_MAX3(rgb.v[0], rgb.v[1], rgb.v[2]);
 
-    if (peak < ALWAN_CORE_LITERAL(1e-10)) {
-        result.v[0] = ALWAN_CORE_ZERO;
-        result.v[1] = ALWAN_CORE_ZERO;
-        result.v[2] = ALWAN_CORE_ZERO;
-        return result;
-    }
-
-    ALWAN_CORE_T new_peak = ALWAN_CORE_FNVLIT(alwan_lottes_curve)(peak, contrast, shoulder, b, c);
-    ALWAN_CORE_T scale = new_peak / peak;
+    /* Branchless: clamp safe_peak, zero scale for black input */
+    ALWAN_CORE_T safe_peak = ALWAN_CORE_SELECT(peak < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_LITERAL(1e-10), peak);
+    ALWAN_CORE_T new_peak = ALWAN_CORE_FNVLIT(alwan_lottes_curve)(safe_peak, contrast, shoulder, b, c);
+    ALWAN_CORE_T scale = ALWAN_CORE_SELECT(peak < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_ZERO, new_peak / safe_peak);
 
     result.v[0] = rgb.v[0] * scale;
     result.v[1] = rgb.v[1] * scale;
@@ -335,9 +321,9 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_tony_mcmapface)(ALWAN_CORE_
     ALWAN_CORE_VEC3 result;
 
     /* BT.709 luma */
-    ALWAN_CORE_T luma = ALWAN_CORE_LITERAL(0.2126) * col.v[0]
-                      + ALWAN_CORE_LITERAL(0.7152) * col.v[1]
-                      + ALWAN_CORE_LITERAL(0.0722) * col.v[2];
+    ALWAN_CORE_T luma = ALWAN_CORE_LUMA_KR_BT709 * col.v[0]
+                      + ALWAN_CORE_LUMA_KG_BT709 * col.v[1]
+                      + ALWAN_CORE_LUMA_KB_BT709 * col.v[2];
 
     /* BT.709 Cb, Cr (simplified, not full-range) */
     ALWAN_CORE_T cb = col.v[2] - luma;
@@ -358,12 +344,9 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_tony_mcmapface)(ALWAN_CORE_
     /* Tone-map luminance */
     ALWAN_CORE_T tm_luma = ALWAN_CORE_FNVLIT(alwan_tony_curve)(luma);
 
-    /* Luminance-preserving scale of original color */
-    ALWAN_CORE_T orig_luma = ALWAN_CORE_LITERAL(0.2126) * col.v[0]
-                           + ALWAN_CORE_LITERAL(0.7152) * col.v[1]
-                           + ALWAN_CORE_LITERAL(0.0722) * col.v[2];
-    ALWAN_CORE_T luma_scale = (orig_luma > ALWAN_CORE_LITERAL(1e-5))
-                            ? (tm_luma / orig_luma) : ALWAN_CORE_ZERO;
+    /* Luminance-preserving scale of original color (luma already computed above) */
+    ALWAN_CORE_T luma_scale = ALWAN_CORE_SELECT(luma > ALWAN_CORE_LITERAL(1e-5),
+                                                tm_luma / luma, ALWAN_CORE_ZERO);
 
     ALWAN_CORE_T tm0_r = col.v[0] * luma_scale;
     ALWAN_CORE_T tm0_g = col.v[1] * luma_scale;
@@ -376,7 +359,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_tony_mcmapface)(ALWAN_CORE_
 
     /* Blend between luminance-preserving and per-channel based on bt */
     ALWAN_CORE_T bt2 = bt * bt;
-    ALWAN_CORE_T final_mult = ALWAN_CORE_LITERAL(0.97);
+    ALWAN_CORE_T final_mult = ALWAN_CORE_LITERAL(0.97); /* Stachowiak 2023 "Somewhat Boring Display Transform" — empirical rolloff */
 
     result.v[0] = (tm0_r + (tm1_r - tm0_r) * bt2) * final_mult;
     result.v[1] = (tm0_g + (tm1_g - tm0_g) * bt2) * final_mult;

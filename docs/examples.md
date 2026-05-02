@@ -32,18 +32,27 @@ Convert an sRGB color to perceptual Lab for color analysis.
 int main(void) {
     alwan_ctx *ctx = alwan_create(NULL);
 
-    // Orange color in sRGB
-    alwan_vec3 rgb = {1.0, 0.5, 0.0};
+    /* Orange color in sRGB */
+    alwan_rgb_{T} rgb = {1.0, 0.5, 0.0};
 
-    // Convert sRGB (linear) → XYZ → Lab
-    alwan_vec3 xyz, lab;
-    alwan_rgb_to_xyz(&xyz, &rgb, 1, 0, 0);
-    alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz, 1, 0, 0);
+    /* Get D65 white point */
+    alwan_xyz_{T} d65;
+    alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
 
-    printf("RGB: (%.3f, %.3f, %.3f)\n", rgb.x, rgb.y, rgb.z);
-    printf("Lab: L=%.2f, a=%.2f, b=%.2f\n", lab.x, lab.y, lab.z);
-    printf("Lightness: %.0f%%\n", lab.x);
-    printf("Chroma: %.2f\n", sqrt(lab.y*lab.y + lab.z*lab.z));
+    /* Get sRGB space descriptor */
+    alwan_rgb_space_desc_{T} srgb_desc;
+    alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
+
+    /* Convert sRGB (linear) -> XYZ -> Lab */
+    alwan_xyz_{T} xyz;
+    alwan_lab_{T} lab;
+    alwan_rgb_to_xyz_{T}(&xyz, &srgb_desc, &rgb);
+    alwan_xyz_to_lab_{T}(&lab, &xyz, &d65);
+
+    printf("RGB: (%.3f, %.3f, %.3f)\n", rgb.r, rgb.g, rgb.b);
+    printf("Lab: L=%.2f, a=%.2f, b=%.2f\n", lab.L, lab.a, lab.b);
+    printf("Lightness: %.0f%%\n", lab.L);
+    printf("Chroma: %.2f\n", sqrt(lab.a*lab.a + lab.b*lab.b));
 
     alwan_destroy(ctx);
     return 0;
@@ -327,32 +336,41 @@ Shift hue by a specific angle in perceptual space.
 #include "alwan.h"
 #include <math.h>
 
-void shift_hue(alwan_vec3 *rgb, float hue_shift_degrees) {
-    // Convert RGB → XYZ → Lab → LCh
-    alwan_vec3 xyz, lab, lch;
-    alwan_rgb_to_xyz(&xyz, rgb, 1, 0, 0);
-    alwan_xyz_to_lab(&lab, &xyz, &alwan_d65_xyz, 1, 0, 0);
-    alwan_lab_to_lch(&lch, &lab, 1, 0, 0);
+void shift_hue(alwan_rgb_{T} *rgb, alwan_rgb_space_desc_{T} const *desc,
+               alwan_xyz_{T} const *d65, double hue_shift_degrees) {
+    /* Convert RGB -> XYZ -> Lab -> LCh */
+    alwan_xyz_{T} xyz;
+    alwan_lab_{T} lab;
+    alwan_lch_{T} lch;
+    alwan_rgb_to_xyz_{T}(&xyz, desc, rgb);
+    alwan_xyz_to_lab_{T}(&lab, &xyz, d65);
+    alwan_lab_to_lch_{T}(&lch, &lab);
 
-    // Shift hue
-    lch.z += hue_shift_degrees;
-    if (lch.z >= 360.0) lch.z -= 360.0;
-    if (lch.z < 0.0) lch.z += 360.0;
+    /* Shift hue */
+    lch.h += hue_shift_degrees;
+    if (lch.h >= 360.0) lch.h -= 360.0;
+    if (lch.h < 0.0) lch.h += 360.0;
 
-    // Convert back: LCh → Lab → XYZ → RGB
-    alwan_lch_to_lab(&lab, &lch, 1, 0, 0);
-    alwan_lab_to_xyz(&xyz, &lab, &alwan_d65_xyz, 1, 0, 0);
-    alwan_xyz_to_rgb(rgb, &xyz, 1, 0, 0);
+    /* Convert back: LCh -> Lab -> XYZ -> RGB */
+    alwan_lch_to_lab_{T}(&lab, &lch);
+    alwan_lab_to_xyz_{T}(&xyz, &lab, d65);
+    alwan_xyz_to_rgb_{T}(rgb, desc, &xyz);
 }
 
 int main(void) {
-    alwan_vec3 color = {1.0, 0.0, 0.0};  // Red
+    alwan_ctx *ctx = alwan_create(NULL);
+    alwan_rgb_{T} color = {1.0, 0.0, 0.0};  /* Red */
+    alwan_xyz_{T} d65;
+    alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+    alwan_rgb_space_desc_{T} srgb_desc;
+    alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
 
-    printf("Original: (%.3f, %.3f, %.3f)\n", color.x, color.y, color.z);
+    printf("Original: (%.3f, %.3f, %.3f)\n", color.r, color.g, color.b);
 
-    shift_hue(&color, 60.0);  // Shift by 60° (red → yellow)
+    shift_hue(&color, &srgb_desc, &d65, 60.0);  /* Shift by 60 deg (red -> yellow) */
 
-    printf("Shifted:  (%.3f, %.3f, %.3f)\n", color.x, color.y, color.z);
+    printf("Shifted:  (%.3f, %.3f, %.3f)\n", color.r, color.g, color.b);
+    alwan_destroy(ctx);
 
     return 0;
 }
@@ -364,7 +382,7 @@ int main(void) {
 
 ### Example 9: Perceptual Color Difference
 
-Calculate ΔE2000 between two colors.
+Calculate dE2000 between two colors.
 
 ```c
 #include "alwan.h"
@@ -373,22 +391,27 @@ Calculate ΔE2000 between two colors.
 int main(void) {
     alwan_ctx *ctx = alwan_create(NULL);
 
-    // Two colors in RGB
-    alwan_vec3 rgb1 = {0.8, 0.2, 0.1};
-    alwan_vec3 rgb2 = {0.82, 0.21, 0.11};
+    /* Two colors in sRGB */
+    alwan_rgb_{T} rgb1 = {0.8, 0.2, 0.1};
+    alwan_rgb_{T} rgb2 = {0.82, 0.21, 0.11};
 
-    // Convert to Lab
-    alwan_vec3 xyz1, xyz2, lab1, lab2;
-    alwan_rgb_to_xyz(&xyz1, &rgb1, 1, 0, 0);
-    alwan_rgb_to_xyz(&xyz2, &rgb2, 1, 0, 0);
-    alwan_xyz_to_lab(&lab1, &xyz1, &alwan_d65_xyz, 1, 0, 0);
-    alwan_xyz_to_lab(&lab2, &xyz2, &alwan_d65_xyz, 1, 0, 0);
+    alwan_xyz_{T} d65;
+    alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+    alwan_rgb_space_desc_{T} srgb_desc;
+    alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
 
-    // Calculate ΔE2000
-    alwan_scalar delta_e;
-    alwan_delta_e_2000(&delta_e, &lab1, &lab2, 1, 0, 0);
+    /* Convert to Lab */
+    alwan_xyz_{T} xyz1, xyz2;
+    alwan_lab_{T} lab1, lab2;
+    alwan_rgb_to_xyz_{T}(&xyz1, &srgb_desc, &rgb1);
+    alwan_rgb_to_xyz_{T}(&xyz2, &srgb_desc, &rgb2);
+    alwan_xyz_to_lab_{T}(&lab1, &xyz1, &d65);
+    alwan_xyz_to_lab_{T}(&lab2, &xyz2, &d65);
 
-    printf("ΔE2000 = %.4f\n", delta_e);
+    /* Calculate dE2000 */
+    double delta_e = alwan_delta_e_2000_{T}(&lab1, &lab2);
+
+    printf("dE2000 = %.4f\n", delta_e);
 
     if (delta_e < 1.0) {
         printf("Colors are perceptually identical\n");
@@ -416,15 +439,14 @@ Find the perceptually closest color from a palette.
 #include <float.h>
 #include <stdio.h>
 
-int find_closest_color(const alwan_vec3 *target_lab,
-                       const alwan_vec3 *palette_lab,
+int find_closest_color(alwan_lab_{T} const *target_lab,
+                       alwan_lab_{T} const *palette_lab,
                        int palette_size) {
     int closest_idx = 0;
-    alwan_scalar min_delta_e = FLT_MAX;
+    double min_delta_e = 1e300;
 
     for (int i = 0; i < palette_size; i++) {
-        alwan_scalar delta_e;
-        alwan_delta_e_2000(&delta_e, target_lab, &palette_lab[i], 1, 0, 0);
+        double delta_e = alwan_delta_e_2000_{T}(target_lab, &palette_lab[i]);
 
         if (delta_e < min_delta_e) {
             min_delta_e = delta_e;
@@ -437,41 +459,46 @@ int find_closest_color(const alwan_vec3 *target_lab,
 
 int main(void) {
     alwan_ctx *ctx = alwan_create(NULL);
+    alwan_xyz_{T} d65;
+    alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG);
+    alwan_rgb_space_desc_{T} srgb_desc;
+    alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
 
-    // Target color (RGB)
-    alwan_vec3 target_rgb = {0.7, 0.3, 0.2};
+    /* Target color (sRGB) */
+    alwan_rgb_{T} target_rgb = {0.7, 0.3, 0.2};
 
-    // Palette (RGB)
-    alwan_vec3 palette_rgb[] = {
-        {1.0, 0.0, 0.0},  // Red
-        {0.0, 1.0, 0.0},  // Green
-        {0.0, 0.0, 1.0},  // Blue
-        {1.0, 1.0, 0.0},  // Yellow
-        {1.0, 0.5, 0.0},  // Orange
-        {0.5, 0.0, 0.5}   // Purple
+    /* Palette (sRGB) */
+    alwan_rgb_{T} palette_rgb[] = {
+        {1.0, 0.0, 0.0},  /* Red */
+        {0.0, 1.0, 0.0},  /* Green */
+        {0.0, 0.0, 1.0},  /* Blue */
+        {1.0, 1.0, 0.0},  /* Yellow */
+        {1.0, 0.5, 0.0},  /* Orange */
+        {0.5, 0.0, 0.5}   /* Purple */
     };
-    int palette_size = sizeof(palette_rgb) / sizeof(palette_rgb[0]);
+    int palette_size = (int)(sizeof(palette_rgb) / sizeof(palette_rgb[0]));
 
-    // Convert all to Lab
-    alwan_vec3 target_xyz, target_lab;
-    alwan_rgb_to_xyz(&target_xyz, &target_rgb, 1, 0, 0);
-    alwan_xyz_to_lab(&target_lab, &target_xyz, &alwan_d65_xyz, 1, 0, 0);
+    /* Convert all to Lab */
+    alwan_xyz_{T} target_xyz;
+    alwan_lab_{T} target_lab;
+    alwan_rgb_to_xyz_{T}(&target_xyz, &srgb_desc, &target_rgb);
+    alwan_xyz_to_lab_{T}(&target_lab, &target_xyz, &d65);
 
-    alwan_vec3 palette_lab[palette_size];
+    alwan_lab_{T} palette_lab[6];
     for (int i = 0; i < palette_size; i++) {
-        alwan_vec3 xyz;
-        alwan_rgb_to_xyz(&xyz, &palette_rgb[i], 1, 0, 0);
-        alwan_xyz_to_lab(&palette_lab[i], &xyz, &alwan_d65_xyz, 1, 0, 0);
+        alwan_xyz_{T} xyz;
+        alwan_rgb_to_xyz_{T}(&xyz, &srgb_desc, &palette_rgb[i]);
+        alwan_xyz_to_lab_{T}(&palette_lab[i], &xyz, &d65);
     }
 
-    // Find closest
+    /* Find closest */
     int closest = find_closest_color(&target_lab, palette_lab, palette_size);
 
     printf("Closest palette color: #%d\n", closest);
     printf("RGB: (%.3f, %.3f, %.3f)\n",
-           palette_rgb[closest].x,
-           palette_rgb[closest].y,
-           palette_rgb[closest].z);
+           palette_rgb[closest].r,
+           palette_rgb[closest].g,
+           palette_rgb[closest].b);
 
     alwan_destroy(ctx);
     return 0;

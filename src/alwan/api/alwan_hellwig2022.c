@@ -29,6 +29,7 @@ ALWAN_DIAG_POP
  * Surround enum -> F, c, Nc resolution (kept in .c wrapper)
  * ---------------------------------------------------------------- */
 
+/* DIM Nc = 0.9 here (Hellwig2022); CIECAM02/CAM16 uses 0.95 per Li et al. 2022 — intentional spec difference */
 static void get_surround_params(alwan_hellwig2022_surround surround,
                                 alwan_f64 *F, alwan_f64 *c, alwan_f64 *Nc) {
     switch (surround) {
@@ -59,9 +60,9 @@ static void get_surround_params(alwan_hellwig2022_surround surround,
  * Hellwig2022 Forward Transform
  * ---------------------------------------------------------------- */
 
-int alwan_hellwig2022_forward(alwan_hellwig2022_correlates *out,
+int alwan_hellwig2022_forward_f64(alwan_hellwig2022_correlates_f64 *out,
                                alwan_xyz_f64 const *xyz,
-                               alwan_hellwig2022_viewing_conditions const *vc) {
+                               alwan_hellwig2022_viewing_conditions_f64 const *vc) {
     if (!xyz || !vc || !out) {
         return ALWAN_E_INVALID;
     }
@@ -98,14 +99,14 @@ int alwan_hellwig2022_forward(alwan_hellwig2022_correlates *out,
  * Hellwig2022 Inverse Transform
  * ---------------------------------------------------------------- */
 
-int alwan_hellwig2022_inverse(alwan_xyz_f64 *xyz_out,
-                               alwan_hellwig2022_correlates const *correlates,
-                               alwan_hellwig2022_viewing_conditions const *vc) {
+int alwan_hellwig2022_inverse_f64(alwan_xyz_f64 *xyz_out,
+                               alwan_hellwig2022_correlates_f64 const *correlates,
+                               alwan_hellwig2022_viewing_conditions_f64 const *vc) {
     if (!correlates || !vc || !xyz_out) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_hellwig2022_correlates tmp = *correlates;
+    alwan_hellwig2022_correlates_f64 tmp = *correlates;
     ALWAN_DENORM_HELLWIG2022(&tmp);
 
     /* Resolve surround enum to scalar parameters */

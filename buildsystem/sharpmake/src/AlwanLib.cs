@@ -29,6 +29,22 @@ namespace Alwan
             // Source files (explicitly list them for now)
             conf.SourceFilesBuildExcludeRegex.Add(@".*\.sharpmake\.cs$");
             conf.SourceFilesBuildExcludeRegex.Add(@".*\.inc$");
+
+            // Post-build: verify core .h vs .inc parity. The script reads each
+            // alwan_*_core.h / alwan_*_core.inc pair, normalises macro layers,
+            // and exits non-zero on any drift between function bodies. A failure
+            // here means the C-backend dual-precision template (.inc) and the
+            // GPU/single-backend mirror (.h) have diverged — usually because a
+            // fix was applied to one without the other (see feedback note
+            // "Core .h and .inc parity" for the bug history).
+            //
+            // The check is platform-agnostic Python and runs in well under a
+            // second; we run it on every config so a divergence in either Debug
+            // or Release surfaces immediately.
+            string parityScript = @"[project.SharpmakeCsPath]\..\..\..\tools\check_core_parity.py";
+            conf.EventPostBuild.Add(
+                "python \"" + parityScript + "\" --quiet"
+            );
         }
     }
 }

@@ -57,11 +57,11 @@ static alwan_f64 get_D_factor(int D_setting) {
  * RLAB Forward Transform: XYZ -> Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_rlab_forward(alwan_rlab_correlates *out,
+int alwan_rlab_forward_f64(alwan_rlab_correlates_f64 *out,
                        alwan_xyz_f64 const *xyz,
-                       alwan_rlab_viewing_conditions const *vc) {
+                       alwan_rlab_viewing_conditions_f64 const *vc) {
     if (!out || !xyz || !vc) {
-        return -1;
+        return ALWAN_E_INVALID;
     }
 
     alwan_f64 sigma = get_sigma(vc->surround);
@@ -78,21 +78,21 @@ int alwan_rlab_forward(alwan_rlab_correlates *out,
 
     ALWAN_NORM_RLAB(out);
 
-    return 0;
+    return ALWAN_OK;
 }
 
 /* ----------------------------------------------------------------
  * RLAB Inverse Transform: Correlates -> XYZ
  * ---------------------------------------------------------------- */
 
-int alwan_rlab_inverse(alwan_xyz_f64 *xyz,
-                       alwan_rlab_correlates const *correlates,
-                       alwan_rlab_viewing_conditions const *vc) {
+int alwan_rlab_inverse_f64(alwan_xyz_f64 *xyz,
+                       alwan_rlab_correlates_f64 const *correlates,
+                       alwan_rlab_viewing_conditions_f64 const *vc) {
     if (!xyz || !correlates || !vc) {
-        return -1;
+        return ALWAN_E_INVALID;
     }
 
-    alwan_rlab_correlates tmp = *correlates;
+    alwan_rlab_correlates_f64 tmp = *correlates;
     ALWAN_DENORM_RLAB(&tmp);
 
     alwan_f64 sigma = get_sigma(vc->surround);
@@ -108,5 +108,70 @@ int alwan_rlab_inverse(alwan_xyz_f64 *xyz,
 
     *xyz = alwan_rlab_inverse_f64_v(vc_in, vc->xyz_w, vc->xyz_n, sigma, D);
 
-    return 0;
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * f32 Wrappers
+ *
+ * The RLAB core math is implemented in f64 only. The f32 entry points
+ * convert inputs up to f64, call the f64 implementation, then narrow
+ * the outputs back to f32.
+ * ---------------------------------------------------------------- */
+
+static void rlab_vc_f32_to_f64(alwan_rlab_viewing_conditions_f64 *dst,
+                               alwan_rlab_viewing_conditions_f32 const *src) {
+    dst->xyz_w.x = (alwan_f64)src->xyz_w.x;
+    dst->xyz_w.y = (alwan_f64)src->xyz_w.y;
+    dst->xyz_w.z = (alwan_f64)src->xyz_w.z;
+    dst->xyz_n.x = (alwan_f64)src->xyz_n.x;
+    dst->xyz_n.y = (alwan_f64)src->xyz_n.y;
+    dst->xyz_n.z = (alwan_f64)src->xyz_n.z;
+    dst->surround = src->surround;
+    dst->D_factor = src->D_factor;
+}
+
+int alwan_rlab_forward_f32(alwan_rlab_correlates_f32 *out,
+                           alwan_xyz_f32 const *xyz,
+                           alwan_rlab_viewing_conditions_f32 const *vc) {
+    if (!out || !xyz || !vc) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_xyz_f64 xyz64 = {(alwan_f64)xyz->x, (alwan_f64)xyz->y, (alwan_f64)xyz->z};
+    alwan_rlab_viewing_conditions_f64 vc64;
+    rlab_vc_f32_to_f64(&vc64, vc);
+    alwan_rlab_correlates_f64 out64;
+    int rc = alwan_rlab_forward_f64(&out64, &xyz64, &vc64);
+    if (rc != ALWAN_OK) return rc;
+    out->L = (alwan_f32)out64.L;
+    out->C = (alwan_f32)out64.C;
+    out->h = (alwan_f32)out64.h;
+    out->s = (alwan_f32)out64.s;
+    out->a = (alwan_f32)out64.a;
+    out->b = (alwan_f32)out64.b;
+    return ALWAN_OK;
+}
+
+int alwan_rlab_inverse_f32(alwan_xyz_f32 *xyz,
+                           alwan_rlab_correlates_f32 const *correlates,
+                           alwan_rlab_viewing_conditions_f32 const *vc) {
+    if (!xyz || !correlates || !vc) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_rlab_correlates_f64 c64;
+    c64.L = (alwan_f64)correlates->L;
+    c64.C = (alwan_f64)correlates->C;
+    c64.h = (alwan_f64)correlates->h;
+    c64.s = (alwan_f64)correlates->s;
+    c64.a = (alwan_f64)correlates->a;
+    c64.b = (alwan_f64)correlates->b;
+    alwan_rlab_viewing_conditions_f64 vc64;
+    rlab_vc_f32_to_f64(&vc64, vc);
+    alwan_xyz_f64 xyz64;
+    int rc = alwan_rlab_inverse_f64(&xyz64, &c64, &vc64);
+    if (rc != ALWAN_OK) return rc;
+    xyz->x = (alwan_f32)xyz64.x;
+    xyz->y = (alwan_f32)xyz64.y;
+    xyz->z = (alwan_f32)xyz64.z;
+    return ALWAN_OK;
 }

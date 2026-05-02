@@ -13,10 +13,7 @@
  * LGG (Lift/Gamma/Gain) Apply Map - Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_lgg_apply, _map_interleave)(
-    alwan_map_lane *rgb_out, alwan_map_lane const *rgb_in,
-    ALWAN_MAP_LIT(alwan_rgb) const *lift, ALWAN_MAP_LIT(alwan_rgb) const *gamma, ALWAN_MAP_LIT(alwan_rgb) const *gain,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_lgg_apply, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, ALWAN_MAP_LIT(alwan_rgb) const *lift, ALWAN_MAP_LIT(alwan_rgb) const *gamma, ALWAN_MAP_LIT(alwan_rgb) const *gain)
 {
     if (!rgb_in || !rgb_out || !lift || !gamma || !gain || count == 0)
         return ALWAN_E_INVALID;
@@ -82,10 +79,7 @@ int ALWAN_MAP_LITCAT(alwan_lgg_apply, _map_interleave)(
  * Color Matrix Apply Map - Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_color_matrix_apply, _map_interleave)(
-    alwan_map_lane *rgb_out, alwan_map_lane const *rgb_in,
-    ALWAN_MAP_LIT(alwan_mat3x3) const *matrix,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_color_matrix_apply, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, ALWAN_MAP_LIT(alwan_mat3x3) const *matrix)
 {
     if (!rgb_in || !rgb_out || !matrix || count == 0) return ALWAN_E_INVALID;
 
@@ -134,11 +128,7 @@ int ALWAN_MAP_LITCAT(alwan_color_matrix_apply, _map_interleave)(
  * Printer Lights Apply Map - Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_printer_lights_apply, _map_interleave)(
-    alwan_map_lane *rgb_out, alwan_map_lane const *rgb_in,
-    alwan_map_lane red_lights, alwan_map_lane green_lights,
-    alwan_map_lane blue_lights,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_printer_lights_apply, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_map_lane red_lights, alwan_map_lane green_lights, alwan_map_lane blue_lights)
 {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
@@ -186,10 +176,7 @@ int ALWAN_MAP_LITCAT(alwan_printer_lights_apply, _map_interleave)(
  * White Balance Apply Map - Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_white_balance_apply, _map_interleave)(
-    alwan_map_lane *rgb_out, alwan_map_lane const *rgb_in,
-    ALWAN_MAP_LIT(alwan_rgb) const *multipliers,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_white_balance_apply, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, ALWAN_MAP_LIT(alwan_rgb) const *multipliers)
 {
     if (!rgb_in || !rgb_out || !multipliers || count == 0) return ALWAN_E_INVALID;
 
@@ -236,11 +223,7 @@ int ALWAN_MAP_LITCAT(alwan_white_balance_apply, _map_interleave)(
  * Planar Map Variants
  * ================================================================ */
 
-int ALWAN_MAP_LITCAT(alwan_lgg_apply, _map_planar)(
-    alwan_map_lane *out0, alwan_map_lane *out1, alwan_map_lane *out2,
-    alwan_map_lane const *in0, alwan_map_lane const *in1, alwan_map_lane const *in2,
-    ALWAN_MAP_LIT(alwan_rgb) const *lift, ALWAN_MAP_LIT(alwan_rgb) const *gamma, ALWAN_MAP_LIT(alwan_rgb) const *gain,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_lgg_apply, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, ALWAN_MAP_LIT(alwan_rgb) const *lift, ALWAN_MAP_LIT(alwan_rgb) const *gamma, ALWAN_MAP_LIT(alwan_rgb) const *gain)
 {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !lift || !gamma || !gain || count == 0)
         return ALWAN_E_INVALID;
@@ -299,11 +282,7 @@ int ALWAN_MAP_LITCAT(alwan_lgg_apply, _map_planar)(
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_color_matrix_apply, _map_planar)(
-    alwan_map_lane *out0, alwan_map_lane *out1, alwan_map_lane *out2,
-    alwan_map_lane const *in0, alwan_map_lane const *in1, alwan_map_lane const *in2,
-    ALWAN_MAP_LIT(alwan_mat3x3) const *matrix,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_color_matrix_apply, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, ALWAN_MAP_LIT(alwan_mat3x3) const *matrix)
 {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !matrix || count == 0) return ALWAN_E_INVALID;
 
@@ -352,11 +331,7 @@ int ALWAN_MAP_LITCAT(alwan_color_matrix_apply, _map_planar)(
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_printer_lights_apply, _map_planar)(
-    alwan_map_lane *out0, alwan_map_lane *out1, alwan_map_lane *out2,
-    alwan_map_lane const *in0, alwan_map_lane const *in1, alwan_map_lane const *in2,
-    alwan_map_lane red_lights, alwan_map_lane green_lights, alwan_map_lane blue_lights,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_printer_lights_apply, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_map_lane red_lights, alwan_map_lane green_lights, alwan_map_lane blue_lights)
 {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
 
@@ -399,11 +374,7 @@ int ALWAN_MAP_LITCAT(alwan_printer_lights_apply, _map_planar)(
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_white_balance_apply, _map_planar)(
-    alwan_map_lane *out0, alwan_map_lane *out1, alwan_map_lane *out2,
-    alwan_map_lane const *in0, alwan_map_lane const *in1, alwan_map_lane const *in2,
-    ALWAN_MAP_LIT(alwan_rgb) const *multipliers,
-    size_t count, size_t in_stride, size_t out_stride)
+int ALWAN_MAP_LITCAT(alwan_white_balance_apply, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, ALWAN_MAP_LIT(alwan_rgb) const *multipliers)
 {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !multipliers || count == 0) return ALWAN_E_INVALID;
 

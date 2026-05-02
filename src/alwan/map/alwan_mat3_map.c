@@ -29,18 +29,15 @@
  * Bulk Matrix-Vector Transform _ex (typed I/O)
  * ---------------------------------------------------------------- */
 
-int alwan_mat3_transform_map_interleave_ex(void *vec_out, alwan_pixel_format out_fmt,
-                                 alwan_mat3x3 const *matrix,
-                                 void const *vec_in, alwan_pixel_format in_fmt,
-                                 size_t count, size_t in_stride, size_t out_stride) {
+int alwan_mat3_transform_map_interleave_ex(void *vec_out, size_t out_stride, void const *vec_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_mat3x3_f64 const *matrix, alwan_pixel_format in_fmt) {
     if (!vec_in || !vec_out || !matrix || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
-        alwan_scalar s[3];
+        alwan_f64 s[3];
         alwan__load3_typed(s, (char const *)vec_in + i * in_stride, in_fmt);
-        alwan_vec3 v = {{s[0], s[1], s[2]}};
-        alwan_vec3 r;
-        alwan_mat3_mulv(&r, matrix, &v);
-        alwan_scalar d[3] = {r.v[0], r.v[1], r.v[2]};
+        alwan_vec3_f64 v = {{s[0], s[1], s[2]}};
+        alwan_vec3_f64 r;
+        alwan_mat3_mulv_f64(&r, matrix, &v);
+        alwan_f64 d[3] = {r.v[0], r.v[1], r.v[2]};
         alwan__store3_typed((char *)vec_out + i * out_stride, d, out_fmt);
     }
     return ALWAN_OK;

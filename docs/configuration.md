@@ -2,7 +2,9 @@
 
 Compile-time configuration options for Alwan.
 
-> **/!\ Runtime Data Loading:** Runtime data loading mode (`ALWAN_EMBED_DATA=0`) is not yet fully implemented in v0.1-alpha. Currently, only embedded mode (`ALWAN_EMBED_DATA=1`, default) is supported.
+> **Runtime Data Loading (ALWAN_EMBED_DATA=0) is NOT implemented.**
+> Only embedded mode (`ALWAN_EMBED_DATA=1`, the default) is supported in the current release.
+> Runtime mode is planned as a feature for alwan 3.0.0.
 
 ---
 
@@ -14,49 +16,6 @@ Alwan's behavior is controlled through compile-time macros defined in [alwan_con
 - **Dead code elimination** by the compiler
 - **Binary size optimization**
 - **Platform-specific tuning**
-
----
-
-## Scalar Precision
-
-### ALWAN_SCALAR_IS_FLOAT
-
-```c
-#define ALWAN_SCALAR_IS_FLOAT 0  // 0 = double (default), 1 = float
-```
-
-Controls the underlying scalar type for all calculations.
-
-**Options:**
-- `0` — Use `double` (64-bit, ~16 decimal digits)
-- `1` — Use `float` (32-bit, ~7 decimal digits)
-
-**Impact:**
-| Aspect | Float | Double |
-|--------|-------|--------|
-| Precision | ±1e-6 | ±1e-12 |
-| Memory | 50% less | Baseline |
-| Performance | Up to 2× faster | Baseline |
-| Binary size | Slightly smaller | Baseline |
-
-**Setting via compiler:**
-```batch
-cl /D ALWAN_SCALAR_IS_FLOAT=1 ...
-```
-
-**When to use float:**
-- Real-time graphics (>30 fps)
-- Memory-constrained systems
-- 8-bit or 10-bit image processing
-- Mobile platforms
-
-**When to use double:**
-- Scientific accuracy required
-- High bit-depth images (>12-bit)
-- Validation and testing
-- Chained conversions (>5 steps)
-
-**See also:** [Precision & Limits](precision-and-limits.md)
 
 ---
 
@@ -106,51 +65,33 @@ alwan_ctx *ctx = alwan_create(NULL);
 
 ### Runtime Mode (ALWAN_EMBED_DATA=0)
 
-**Advantages:**
-- Yes Smaller binary size
-- Yes Data can be updated without recompiling
-- Yes Faster linking during development
+> **NOT IMPLEMENTED.** Runtime mode is planned for alwan 3.0.0.
+> Building with `ALWAN_EMBED_DATA=0` produces a compile-time error.
+> The `runtime_data_root` field in `alwan_config` is reserved and currently ignored.
 
-**Disadvantages:**
-- No Requires file I/O at initialization (~10-50 ms)
-- No CSV files must be deployed with binary
-- No Potential for missing/corrupt data errors
+**Planned advantages (alwan 3.0.0):**
+- Smaller binary size
+- Data can be updated without recompiling
+- Faster linking during development
 
-**Required:** Set `runtime_data_root` in config:
-```c
-alwan_ctx *ctx = alwan_create(&(alwan_config){
-    .runtime_data_root = "C:/Program Files/MyApp/data"
-});
-```
+**Planned disadvantages:**
+- Requires file I/O at initialization
+- CSV files must be deployed with binary
+- Potential for missing/corrupt data errors
 
-**Data directory structure:**
+**Planned data directory structure:**
 ```
 data/
-├── cmf/
-│   ├── cie_1931_2deg_x_360_830_1nm.csv
-│   ├── cie_1931_2deg_y_360_830_1nm.csv
-│   └── ...
-├── illuminants/
-│   ├── D65_360_830_1nm.csv
-│   └── ...
-└── rgb_spaces/
-    ├── srgb.csv
-    └── ...
-```
-
-**Error handling:**
-```c
-alwan_ctx *ctx = alwan_create(&(alwan_config){
-    .runtime_data_root = "./data"
-});
-
-if (!ctx) {
-    fprintf(stderr, "Failed to load data from ./data\n");
-    // Check:
-    // - Path exists and is readable
-    // - All required CSV files present
-    // - CSV files not corrupted
-}
+  cmf/
+    cie_1931_2deg_x_360_830_1nm.csv
+    cie_1931_2deg_y_360_830_1nm.csv
+    ...
+  illuminants/
+    D65_360_830_1nm.csv
+    ...
+  rgb_spaces/
+    srgb.csv
+    ...
 ```
 
 ---
@@ -239,7 +180,7 @@ void tracked_free(void *ptr) {
 #define ALWAN_FREE(ptr) ((void)0)  // No-op for stack
 ```
 
-/!\ **Warning:** Stack allocators are risky for runtime data loading mode.
+/!\ **Warning:** Stack allocators are only safe for small, short-lived allocations.
 
 ---
 
@@ -278,11 +219,7 @@ Alwan's Sharpmake build system provides pre-configured combinations:
 
 ### Debug_f32
 
-```
-ALWAN_SCALAR_IS_FLOAT = 1
-Optimization = None
-Debug symbols = Yes
-```
+Precision: float (32-bit), Optimization: None, Debug symbols: Yes
 
 **Use for:** Fast iteration, graphics debugging
 
@@ -290,11 +227,7 @@ Debug symbols = Yes
 
 ### Release_f32
 
-```
-ALWAN_SCALAR_IS_FLOAT = 1
-Optimization = Full
-Debug symbols = No
-```
+Precision: float (32-bit), Optimization: Full, Debug symbols: No
 
 **Use for:** Production graphics applications
 
@@ -302,11 +235,7 @@ Debug symbols = No
 
 ### Debug_f64
 
-```
-ALWAN_SCALAR_IS_FLOAT = 0
-Optimization = None
-Debug symbols = Yes
-```
+Precision: double (64-bit), Optimization: None, Debug symbols: Yes
 
 **Use for:** Scientific validation, algorithm development
 
@@ -314,11 +243,7 @@ Debug symbols = Yes
 
 ### Release_f64
 
-```
-ALWAN_SCALAR_IS_FLOAT = 0
-Optimization = Full
-Debug symbols = No
-```
+Precision: double (64-bit), Optimization: Full, Debug symbols: No
 
 **Use for:** High-precision production, offline rendering
 
@@ -406,7 +331,6 @@ For embedded systems with limited memory, create a custom build with only requir
 #include <stdio.h>
 
 int main(void) {
-    printf("Scalar size: %zu bytes\n", sizeof(alwan_scalar));
     printf("Embed data: %d\n", ALWAN_EMBED_DATA);
 
     alwan_ctx *ctx = alwan_create(NULL);
@@ -423,8 +347,7 @@ int main(void) {
 
 **Expected output:**
 ```
-Scalar size: 8 bytes          (or 4 for float)
-Embed data: 1                 (or 0 for runtime)
+Embed data: 1
 Context created successfully
 ```
 
@@ -434,9 +357,10 @@ Context created successfully
 
 ### Template: Game Engine
 
+Use `_f32` API variants for real-time graphics performance.
+
 ```c
 // alwan_game_config.h
-#define ALWAN_SCALAR_IS_FLOAT 1              // Float precision
 #define ALWAN_EMBED_DATA 1                    // Embedded data
 #define ALWAN_ALLOC(sz, align) GameAlloc(sz, align)
 #define ALWAN_FREE(ptr) GameFree(ptr)
@@ -446,10 +370,11 @@ Context created successfully
 
 ### Template: Scientific Tool
 
+Use `_f64` API variants for maximum precision.
+
 ```c
 // alwan_science_config.h
-#define ALWAN_SCALAR_IS_FLOAT 0              // Double precision
-#define ALWAN_EMBED_DATA 0                    // Runtime loading
+#define ALWAN_EMBED_DATA 1                    // Embedded data (runtime loading not yet implemented)
 // Use default system allocator
 ```
 
@@ -457,9 +382,10 @@ Context created successfully
 
 ### Template: Mobile App
 
+Use `_f32` API variants for performance on mobile.
+
 ```c
 // alwan_mobile_config.h
-#define ALWAN_SCALAR_IS_FLOAT 1              // Float for performance
 #define ALWAN_EMBED_DATA 1                    // No file I/O on mobile
 #define ALWAN_ALLOC(sz, align) malloc(sz)    // System allocator OK
 #define ALWAN_FREE(ptr) free(ptr)

@@ -59,7 +59,7 @@ int alwan_cmyk_to_cmy_f64(alwan_cmy_f64 *cmy_out, alwan_cmyk_f64 const *cmyk) {
 
 /* YCbCr coefficients resolved via alwan__get_ycbcr_coeffs() in alwan_internal.h */
 
-int alwan_rgb_to_ycbcr(alwan_ycbcr_f64 *ycbcr_out, alwan_rgb_f64 const *rgb, alwan_ycbcr_standard standard) {
+int alwan_rgb_to_ycbcr_f64(alwan_ycbcr_f64 *ycbcr_out, alwan_rgb_f64 const *rgb, alwan_ycbcr_standard standard) {
     if (!rgb || !ycbcr_out) return ALWAN_E_INVALID;
     alwan_f64 kr, kb;
     alwan__get_ycbcr_coeffs(standard, &kr, &kb);
@@ -68,13 +68,33 @@ int alwan_rgb_to_ycbcr(alwan_ycbcr_f64 *ycbcr_out, alwan_rgb_f64 const *rgb, alw
     return ALWAN_OK;
 }
 
-int alwan_ycbcr_to_rgb(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr, alwan_ycbcr_standard standard) {
+int alwan_rgb_to_ycbcr_f32(alwan_ycbcr_f32 *ycbcr_out, alwan_rgb_f32 const *rgb, alwan_ycbcr_standard standard) {
+    if (!rgb || !ycbcr_out) return ALWAN_E_INVALID;
+    alwan_f64 kr, kb;
+    alwan__get_ycbcr_coeffs(standard, &kr, &kb);
+    alwan_rgb_f32 rgb_f32 = *rgb;
+    *ycbcr_out = alwan_rgb_to_ycbcr_kr_kb_f32_v(rgb_f32, (alwan_f32)kr, (alwan_f32)kb);
+    ALWAN_NORM_YCBCR(ycbcr_out);
+    return ALWAN_OK;
+}
+
+int alwan_ycbcr_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr, alwan_ycbcr_standard standard) {
     if (!ycbcr || !rgb_out) return ALWAN_E_INVALID;
     alwan_ycbcr_f64 tmp = *ycbcr;
     ALWAN_DENORM_YCBCR(&tmp);
     alwan_f64 kr, kb;
     alwan__get_ycbcr_coeffs(standard, &kr, &kb);
     *rgb_out = alwan_ycbcr_to_rgb_kr_kb_f64_v(tmp, kr, kb);
+    return ALWAN_OK;
+}
+
+int alwan_ycbcr_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr, alwan_ycbcr_standard standard) {
+    if (!ycbcr || !rgb_out) return ALWAN_E_INVALID;
+    alwan_ycbcr_f32 tmp = *ycbcr;
+    ALWAN_DENORM_YCBCR(&tmp);
+    alwan_f64 kr, kb;
+    alwan__get_ycbcr_coeffs(standard, &kr, &kb);
+    *rgb_out = alwan_ycbcr_to_rgb_kr_kb_f32_v(tmp, (alwan_f32)kr, (alwan_f32)kb);
     return ALWAN_OK;
 }
 
@@ -106,17 +126,27 @@ void alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb) {
  * Relative Luminance
  * ---------------------------------------------------------------- */
 
-int alwan_relative_luminance(alwan_f64 *Y_out,
+int alwan_relative_luminance_f64(alwan_f64 *Y_out,
                              alwan_rgb_f64 const *rgb,
                              alwan_luma_standard standard) {
     if (!rgb || !Y_out) return ALWAN_E_INVALID;
     alwan_f64 kr, kg, kb;
-    alwan__get_luma_coeffs((int)standard, &kr, &kg, &kb);
+    alwan__get_luma_coeffs(standard, &kr, &kg, &kb);
     *Y_out = alwan_relative_luminance_f64_v(*rgb, kr, kg, kb);
     return ALWAN_OK;
 }
 
-int alwan_relative_luminance_kr_kb(alwan_f64 *Y_out,
+int alwan_relative_luminance_f32(alwan_f32 *Y_out,
+                             alwan_rgb_f32 const *rgb,
+                             alwan_luma_standard standard) {
+    if (!rgb || !Y_out) return ALWAN_E_INVALID;
+    alwan_f64 kr, kg, kb;
+    alwan__get_luma_coeffs(standard, &kr, &kg, &kb);
+    *Y_out = alwan_relative_luminance_f32_v(*rgb, (alwan_f32)kr, (alwan_f32)kg, (alwan_f32)kb);
+    return ALWAN_OK;
+}
+
+int alwan_relative_luminance_kr_kb_f64(alwan_f64 *Y_out,
                                    alwan_rgb_f64 const *rgb,
                                    alwan_f64 kr, alwan_f64 kb) {
     if (!rgb || !Y_out) return ALWAN_E_INVALID;
@@ -125,9 +155,9 @@ int alwan_relative_luminance_kr_kb(alwan_f64 *Y_out,
     return ALWAN_OK;
 }
 
-int alwan_relative_luminance_space(alwan_f64 *Y_out,
+int alwan_relative_luminance_space_f64(alwan_f64 *Y_out,
                                    alwan_rgb_f64 const *rgb,
-                                   alwan_rgb_space_desc const *space) {
+                                   alwan_rgb_space_desc_f64 const *space) {
     if (!rgb || !Y_out || !space) return ALWAN_E_INVALID;
     if (!space->has_matrices) return ALWAN_E_INVALID;
     /* Y row of the RGB-to-XYZ NPM (row-major: m[3], m[4], m[5]) */

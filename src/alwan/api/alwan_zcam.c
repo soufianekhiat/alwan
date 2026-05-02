@@ -65,11 +65,11 @@ static void get_zcam_surround_params(alwan_zcam_surround surround,
  * ZCAM Forward Transform: XYZ -> Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_zcam_forward(alwan_zcam_correlates *out,
+int alwan_zcam_forward_f64(alwan_zcam_correlates_f64 *out,
                        alwan_xyz_f64 const *xyz,
-                       alwan_zcam_viewing_conditions const *vc) {
+                       alwan_zcam_viewing_conditions_f64 const *vc) {
     if (!xyz || !vc || !out) {
-        return -1;
+        return ALWAN_E_INVALID;
     }
 
     /* Resolve surround enum to scalar parameters */
@@ -95,21 +95,21 @@ int alwan_zcam_forward(alwan_zcam_correlates *out,
 
     ALWAN_NORM_ZCAM(out);
 
-    return 0;
+    return ALWAN_OK;
 }
 
 /* ----------------------------------------------------------------
  * ZCAM Inverse Transform: Correlates -> XYZ
  * ---------------------------------------------------------------- */
 
-int alwan_zcam_inverse(alwan_xyz_f64 *xyz,
-                       alwan_zcam_correlates const *correlates,
-                       alwan_zcam_viewing_conditions const *vc) {
+int alwan_zcam_inverse_f64(alwan_xyz_f64 *xyz,
+                       alwan_zcam_correlates_f64 const *correlates,
+                       alwan_zcam_viewing_conditions_f64 const *vc) {
     if (!correlates || !vc || !xyz) {
-        return -1;
+        return ALWAN_E_INVALID;
     }
 
-    alwan_zcam_correlates tmp = *correlates;
+    alwan_zcam_correlates_f64 tmp = *correlates;
     ALWAN_DENORM_ZCAM(&tmp);
 
     /* Resolve surround enum to scalar parameters */
@@ -134,21 +134,21 @@ int alwan_zcam_inverse(alwan_xyz_f64 *xyz,
         Fs, c, Nc, F,
         vc->La, vc->Yb, vc->xyz_w.y);
 
-    return 0;
+    return ALWAN_OK;
 }
 
 /* ----------------------------------------------------------------
  * ZCAM to UCS (Uniform Color Space) for color difference
  * ---------------------------------------------------------------- */
 
-int alwan_zcam_to_ucs(alwan_jzazbz *Jab_out,
-                      alwan_zcam_correlates const *correlates) {
+int alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
+                      alwan_zcam_correlates_f64 const *correlates) {
     if (!correlates || !Jab_out) {
-        return -1;
+        return ALWAN_E_INVALID;
     }
 
     /* Denormalize input correlates */
-    alwan_zcam_correlates tmp = *correlates;
+    alwan_zcam_correlates_f64 tmp = *correlates;
     ALWAN_DENORM_ZCAM(&tmp);
 
     /* Build value-type correlates (only Jz, Mz, hz needed) */
@@ -166,5 +166,101 @@ int alwan_zcam_to_ucs(alwan_jzazbz *Jab_out,
     /* Delegate to value-returning core */
     *Jab_out = alwan_zcam_to_ucs_f64_v(v);
 
-    return 0;
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * f32 Wrappers
+ *
+ * The ZCAM core math is implemented in f64 only. The f32 entry points
+ * convert inputs up to f64, call the f64 implementation, then narrow
+ * the outputs back to f32.
+ * ---------------------------------------------------------------- */
+
+static void zcam_vc_f32_to_f64(alwan_zcam_viewing_conditions_f64 *dst,
+                               alwan_zcam_viewing_conditions_f32 const *src) {
+    dst->xyz_w.x = (alwan_f64)src->xyz_w.x;
+    dst->xyz_w.y = (alwan_f64)src->xyz_w.y;
+    dst->xyz_w.z = (alwan_f64)src->xyz_w.z;
+    dst->La = (alwan_f64)src->La;
+    dst->Yb = (alwan_f64)src->Yb;
+    dst->surround = src->surround;
+    dst->discount_illuminant = src->discount_illuminant;
+}
+
+static void zcam_correlates_f64_to_f32(alwan_zcam_correlates_f32 *dst,
+                                       alwan_zcam_correlates_f64 const *src) {
+    dst->Jz = (alwan_f32)src->Jz;
+    dst->Cz = (alwan_f32)src->Cz;
+    dst->hz = (alwan_f32)src->hz;
+    dst->Qz = (alwan_f32)src->Qz;
+    dst->Mz = (alwan_f32)src->Mz;
+    dst->Sz = (alwan_f32)src->Sz;
+    dst->Vz = (alwan_f32)src->Vz;
+    dst->Kz = (alwan_f32)src->Kz;
+    dst->Wz = (alwan_f32)src->Wz;
+}
+
+static void zcam_correlates_f32_to_f64(alwan_zcam_correlates_f64 *dst,
+                                       alwan_zcam_correlates_f32 const *src) {
+    dst->Jz = (alwan_f64)src->Jz;
+    dst->Cz = (alwan_f64)src->Cz;
+    dst->hz = (alwan_f64)src->hz;
+    dst->Qz = (alwan_f64)src->Qz;
+    dst->Mz = (alwan_f64)src->Mz;
+    dst->Sz = (alwan_f64)src->Sz;
+    dst->Vz = (alwan_f64)src->Vz;
+    dst->Kz = (alwan_f64)src->Kz;
+    dst->Wz = (alwan_f64)src->Wz;
+}
+
+int alwan_zcam_forward_f32(alwan_zcam_correlates_f32 *out,
+                           alwan_xyz_f32 const *xyz,
+                           alwan_zcam_viewing_conditions_f32 const *vc) {
+    if (!out || !xyz || !vc) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_xyz_f64 xyz64 = {(alwan_f64)xyz->x, (alwan_f64)xyz->y, (alwan_f64)xyz->z};
+    alwan_zcam_viewing_conditions_f64 vc64;
+    zcam_vc_f32_to_f64(&vc64, vc);
+    alwan_zcam_correlates_f64 out64;
+    int rc = alwan_zcam_forward_f64(&out64, &xyz64, &vc64);
+    if (rc != ALWAN_OK) return rc;
+    zcam_correlates_f64_to_f32(out, &out64);
+    return ALWAN_OK;
+}
+
+int alwan_zcam_inverse_f32(alwan_xyz_f32 *xyz,
+                           alwan_zcam_correlates_f32 const *correlates,
+                           alwan_zcam_viewing_conditions_f32 const *vc) {
+    if (!xyz || !correlates || !vc) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_zcam_correlates_f64 c64;
+    zcam_correlates_f32_to_f64(&c64, correlates);
+    alwan_zcam_viewing_conditions_f64 vc64;
+    zcam_vc_f32_to_f64(&vc64, vc);
+    alwan_xyz_f64 xyz64;
+    int rc = alwan_zcam_inverse_f64(&xyz64, &c64, &vc64);
+    if (rc != ALWAN_OK) return rc;
+    xyz->x = (alwan_f32)xyz64.x;
+    xyz->y = (alwan_f32)xyz64.y;
+    xyz->z = (alwan_f32)xyz64.z;
+    return ALWAN_OK;
+}
+
+int alwan_zcam_to_ucs_f32(alwan_jzazbz_f32 *Jab_out,
+                          alwan_zcam_correlates_f32 const *correlates) {
+    if (!Jab_out || !correlates) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_zcam_correlates_f64 c64;
+    zcam_correlates_f32_to_f64(&c64, correlates);
+    alwan_jzazbz_f64 jab64;
+    int rc = alwan_zcam_to_ucs_f64(&jab64, &c64);
+    if (rc != ALWAN_OK) return rc;
+    Jab_out->Jz = (alwan_f32)jab64.Jz;
+    Jab_out->az = (alwan_f32)jab64.az;
+    Jab_out->bz = (alwan_f32)jab64.bz;
+    return ALWAN_OK;
 }

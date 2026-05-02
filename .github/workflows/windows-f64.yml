@@ -9,7 +9,5 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
-      - run: cmake -B build -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=OFF -DALWAN_BUILD_BENCH=ON
+      - run: cmake -B build -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=ON
       - run: cmake --build build --config Release
-      - run: ctest --test-dir build --build-config Release --output-on-failure
-      - run: ./build/bench/Release/alwan_bench.exe

@@ -16,8 +16,8 @@ Alwan requires extensive reference data for color science operations:
 
 Alwan provides two modes for managing this data:
 
-1. **Embedded Mode (default):** Data compiled into binary
-2. **Runtime Mode:** Data loaded from CSV files
+1. **Embedded Mode (default, implemented):** Data compiled into binary
+2. **Runtime Mode (NOT implemented — planned for alwan 3.0.0):** Data loaded from CSV files
 
 ---
 
@@ -127,17 +127,20 @@ alwan_destroy(ctx);
 
 ---
 
-## Runtime Mode
+## Runtime Mode (NOT IMPLEMENTED)
 
-### Configuration
+> **NOT IMPLEMENTED.** Runtime mode is planned for alwan 3.0.0.
+> Building with `ALWAN_EMBED_DATA=0` produces a compile-time error.
+
+### Configuration (future)
 
 ```c
-#define ALWAN_EMBED_DATA 0
+#define ALWAN_EMBED_DATA 0  /* NOT IMPLEMENTED — planned for alwan 3.0.0 */
 ```
 
-### How It Works
+### How It Will Work (planned)
 
-Data is loaded from CSV files during `alwan_create()`:
+Data would be loaded from CSV files during `alwan_create()`:
 
 1. Open CSV file
 2. Parse numeric values

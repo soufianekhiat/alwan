@@ -21,40 +21,5 @@ ALWAN_DIAG_POP
 #include "alwan_normalize_impl.inc"
 #include "alwan_api_teardown.h"
 
-int alwan_uint_to_float(alwan_f64 *out, alwan_uint16 const *in,
-                        int bit_depth, size_t count) {
-    if (!out || !in || count == 0) {
-        return ALWAN_E_INVALID;
-    }
-
-    alwan_f64 max_val = alwan_normalize_max_f64_v(bit_depth);
-    if (max_val < ALWAN_ZERO) {
-        return ALWAN_E_INVALID;  /* unsupported bit depth */
-    }
-
-    alwan_f64 inv_max = ALWAN_ONE / max_val;
-    for (size_t i = 0; i < count; i++) {
-        out[i] = (alwan_f64)in[i] * inv_max;
-    }
-
-    return ALWAN_OK;
-}
-
-int alwan_float_to_uint(alwan_uint16 *out, alwan_f64 const *in,
-                        int bit_depth, size_t count) {
-    if (!out || !in || count == 0) {
-        return ALWAN_E_INVALID;
-    }
-
-    alwan_f64 max_val = alwan_normalize_max_f64_v(bit_depth);
-    if (max_val < ALWAN_ZERO) {
-        return ALWAN_E_INVALID;  /* unsupported bit depth */
-    }
-
-    for (size_t i = 0; i < count; i++) {
-        alwan_f64 clamped = alwan_clamp(in[i], ALWAN_ZERO, ALWAN_ONE);
-        out[i] = (alwan_uint16)(clamped * max_val + ALWAN_LITERAL(0.5));
-    }
-
-    return ALWAN_OK;
-}
+/* alwan_uint_to_float_*, alwan_float_to_uint_* are templatized in
+ * alwan_normalize_impl.inc. */

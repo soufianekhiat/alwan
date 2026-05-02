@@ -57,10 +57,10 @@ static llab_induction_factors const LLAB_SURROUND_FACTORS[] = {
  * LLAB Forward Transform
  * ---------------------------------------------------------------- */
 
-int alwan_llab_forward(
-    alwan_llab_correlates *out,
+int alwan_llab_forward_f64(
+    alwan_llab_correlates_f64 *out,
     alwan_xyz_f64 const *xyz,
-    alwan_llab_viewing_conditions const *vc
+    alwan_llab_viewing_conditions_f64 const *vc
 ) {
     if (!out || !xyz || !vc) {
         return ALWAN_E_INVALID;

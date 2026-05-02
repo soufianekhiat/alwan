@@ -180,6 +180,19 @@
 
 /* ================================================================
  * 1.4 Math Macros
+ *
+ * Backend parity contract: every ALWAN_* primitive must produce the same
+ * mathematical result on every backend, modulo float precision. When a
+ * native intrinsic doesn't match the contract (e.g. GPU pow(x, 1/3) NaNs
+ * for negatives where libm cbrt() is signed; GLSL `mod` is Euclidean
+ * where C `fmod` truncates toward zero) the wrapper must compensate.
+ *
+ * Adding a primitive: state the contract one-liner, then implement it
+ * on all four backends to honor it — not "whatever the native intrinsic
+ * happens to do", which is how silent divergences slip in.
+ *
+ * Macros below assume side-effect-free arguments: some compensations
+ * (ALWAN_CBRT, etc.) evaluate `x` more than once.
  * ================================================================ */
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
@@ -208,7 +221,9 @@
   /* HLSL backend: intrinsics */
 # define ALWAN_ABS(x)       abs(x)
 # define ALWAN_SQRT(x)      sqrt(x)
-# define ALWAN_CBRT(x)      pow(x, 1.0f / 3.0f)
+/* Signed cube root (parity with libm cbrt). pow(x,1/3) NaNs for x<0 — compensate. */
+# define ALWAN_CBRT(x)      (ALWAN_SELECT((x) < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE) * \
+                             pow(ALWAN_ABS(x), ALWAN_LITERAL(1.0 / 3.0)))
 # define ALWAN_SIN(x)       sin(x)
 # define ALWAN_COS(x)       cos(x)
 # define ALWAN_TAN(x)       tan(x)
@@ -229,7 +244,9 @@
   /* GLSL backend: intrinsics */
 # define ALWAN_ABS(x)       abs(x)
 # define ALWAN_SQRT(x)      sqrt(x)
-# define ALWAN_CBRT(x)      pow(x, 1.0 / 3.0)
+/* Signed cube root (parity with libm cbrt). pow(x,1/3) NaNs for x<0 — compensate. */
+# define ALWAN_CBRT(x)      (ALWAN_SELECT((x) < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE) * \
+                             pow(ALWAN_ABS(x), ALWAN_LITERAL(1.0 / 3.0)))
 # define ALWAN_SIN(x)       sin(x)
 # define ALWAN_COS(x)       cos(x)
 # define ALWAN_TAN(x)       tan(x)
@@ -250,7 +267,10 @@
   /* Halide backend: uses ALWAN_HALIDE_FLOAT_BITS for constant precision */
 # define ALWAN_ABS(x)       Halide::abs(x)
 # define ALWAN_SQRT(x)      Halide::sqrt(x)
-# define ALWAN_CBRT(x)      Halide::pow(x, ALWAN_LITERAL(1.0 / 3.0))
+/* Signed cube root (parity with libm cbrt). Halide::pow NaNs for negative
+ * base — feed only |x| and reapply sign afterwards. */
+# define ALWAN_CBRT(x)      (ALWAN_SELECT((x) < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE) * \
+                             Halide::pow(ALWAN_ABS(x), ALWAN_LITERAL(1.0 / 3.0)))
 # define ALWAN_SIN(x)       Halide::sin(x)
 # define ALWAN_COS(x)       Halide::cos(x)
 # define ALWAN_TAN(x)       Halide::tan(x)
@@ -953,7 +973,18 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 
 #define ALWAN__TWOPI (ALWAN_LITERAL(2.0) * ALWAN_PI)
 
-#if ALWAN_NORMALIZE_RANGES
+/* Macros below use C pointer syntax ((p)->field). They are gated on the C
+ * backend because GLSL/HLSL have no `->` operator; on GPU backends every
+ * NORM/DENORM expands to ((void)0). No GPU-shareable *_core.h calls these,
+ * so this is preventive — keeping the symbols available without breaking
+ * shader compilation if a bootstrap header is included.
+ *
+ * Multi-field macros (CIECAM02, CAM16, ZCAM, …) evaluate `p` 2–4 times.
+ * Callers MUST pass a side-effect-free lvalue (e.g. `&local`, `out`).
+ * Side-effecting expressions like `ALWAN_NORM_CIECAM02(get_ptr())` will
+ * call `get_ptr()` multiple times. */
+
+#if ALWAN_NORMALIZE_RANGES && ALWAN_BACKEND == ALWAN_BACKEND_C
 
 /* Lab: L [0,100] -> [0,1] */
 #define ALWAN_NORM_LAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
@@ -1077,7 +1108,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_NORM_CAM20U(p)   do { (p)->h /= ALWAN_LITERAL(360.0); } while(0)
 #define ALWAN_DENORM_CAM20U(p) do { (p)->h *= ALWAN_LITERAL(360.0); } while(0)
 
-#else /* ALWAN_NORMALIZE_RANGES == 0: all no-ops */
+#else /* ALWAN_NORMALIZE_RANGES == 0 or non-C backend: all no-ops */
 
 #define ALWAN_NORM_LAB(p)           ((void)0)
 #define ALWAN_DENORM_LAB(p)         ((void)0)

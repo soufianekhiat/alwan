@@ -76,50 +76,19 @@ ALWAN_INLINE alwan_scalar alwan_agx_curve_v(alwan_scalar t) {
 }
 
 ALWAN_INLINE alwan_vec3 alwan_agx_punchy_grade_v(alwan_vec3 rgb) {
-    alwan_vec3 result;
-    alwan_scalar const contrast   = ALWAN_LITERAL(1.15);
-    alwan_scalar const saturation = ALWAN_LITERAL(1.2);
-    alwan_scalar const mid_gray   = ALWAN_LITERAL(0.18);
-
-    alwan_scalar luma = ALWAN_LUMA_KR_BT709 * rgb.v[0]
-                      + ALWAN_LUMA_KG_BT709 * rgb.v[1]
-                      + ALWAN_LUMA_KB_BT709 * rgb.v[2];
-
-    result.v[0] = alwan_saturate(mid_gray + (luma + (rgb.v[0] - luma) * saturation - mid_gray) * contrast);
-    result.v[1] = alwan_saturate(mid_gray + (luma + (rgb.v[1] - luma) * saturation - mid_gray) * contrast);
-    result.v[2] = alwan_saturate(mid_gray + (luma + (rgb.v[2] - luma) * saturation - mid_gray) * contrast);
-
-    return result;
+    return alwan_cdl_apply_v(rgb,
+        ALWAN_ONE, ALWAN_ONE, ALWAN_ONE,           /* slope = 1 */
+        ALWAN_ZERO, ALWAN_ZERO, ALWAN_ZERO,       /* offset = 0 */
+        ALWAN_LITERAL(1.35), ALWAN_LITERAL(1.35), ALWAN_LITERAL(1.35), /* power */
+        ALWAN_LITERAL(1.4));                                  /* saturation */
 }
 
 ALWAN_INLINE alwan_vec3 alwan_agx_golden_grade_v(alwan_vec3 rgb) {
-    alwan_vec3 result;
-
-    alwan_scalar luma = ALWAN_LUMA_KR_BT709 * rgb.v[0]
-                      + ALWAN_LUMA_KG_BT709 * rgb.v[1]
-                      + ALWAN_LUMA_KB_BT709 * rgb.v[2];
-
-    alwan_scalar warm_factor = alwan_saturate(luma);
-
-    alwan_scalar saturation = ALWAN_LITERAL(1.3);
-    alwan_scalar contrast   = ALWAN_LITERAL(1.1);
-    alwan_scalar mid_gray   = ALWAN_LITERAL(0.18);
-
-    alwan_scalar r_sat = luma + (rgb.v[0] - luma) * saturation;
-    alwan_scalar g_sat = luma + (rgb.v[1] - luma) * saturation;
-    alwan_scalar b_sat = luma + (rgb.v[2] - luma) * saturation;
-
-    alwan_scalar warm_r = ALWAN_LITERAL(0.02) * warm_factor;
-    alwan_scalar cool_b = ALWAN_LITERAL(0.02) * (ALWAN_ONE - warm_factor);
-
-    r_sat = r_sat + warm_r - cool_b * ALWAN_LITERAL(0.5);
-    b_sat = b_sat + cool_b - warm_r * ALWAN_LITERAL(0.5);
-
-    result.v[0] = alwan_saturate(mid_gray + (r_sat - mid_gray) * contrast);
-    result.v[1] = alwan_saturate(mid_gray + (g_sat - mid_gray) * contrast);
-    result.v[2] = alwan_saturate(mid_gray + (b_sat - mid_gray) * contrast);
-
-    return result;
+    return alwan_cdl_apply_v(rgb,
+        ALWAN_ONE, ALWAN_LITERAL(0.9), ALWAN_LITERAL(0.5), /* slope */
+        ALWAN_ZERO, ALWAN_ZERO, ALWAN_ZERO,               /* offset = 0 */
+        ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.8), /* power */
+        ALWAN_LITERAL(1.3));                                          /* saturation */
 }
 
 ALWAN_INLINE alwan_vec3 alwan_khronos_pbr_neutral_v(alwan_vec3 color) {
@@ -141,25 +110,22 @@ ALWAN_INLINE alwan_vec3 alwan_khronos_pbr_neutral_v(alwan_vec3 color) {
     peak = ALWAN_SELECT(color.v[1] > peak, color.v[1], peak);
     peak = ALWAN_SELECT(color.v[2] > peak, color.v[2], peak);
 
-    if (peak < start_compression) {
-        return color;
-    }
+    alwan_scalar const d = ALWAN_LITERAL(1.0) - start_compression;
+    alwan_scalar safe_peak = ALWAN_SELECT(peak < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1e-10), peak);
+    alwan_scalar new_peak = ALWAN_SELECT(
+        peak < start_compression,
+        peak,
+        ALWAN_LITERAL(1.0) - d * d / (safe_peak + d - start_compression));
+    alwan_scalar scale = new_peak / safe_peak;
+    color.v[0] *= scale;
+    color.v[1] *= scale;
+    color.v[2] *= scale;
 
-    {
-        alwan_scalar const d = ALWAN_LITERAL(1.0) - start_compression;
-        alwan_scalar new_peak = ALWAN_LITERAL(1.0) - d * d / (peak + d - start_compression);
-        alwan_scalar scale = new_peak / peak;
-        color.v[0] *= scale;
-        color.v[1] *= scale;
-        color.v[2] *= scale;
-
-        alwan_scalar g = ALWAN_LITERAL(1.0) - ALWAN_LITERAL(1.0) /
-                         (desaturation * (peak - new_peak) + ALWAN_LITERAL(1.0));
-        result.v[0] = color.v[0] + (new_peak - color.v[0]) * g;
-        result.v[1] = color.v[1] + (new_peak - color.v[1]) * g;
-        result.v[2] = color.v[2] + (new_peak - color.v[2]) * g;
-    }
-
+    alwan_scalar g = ALWAN_LITERAL(1.0) - ALWAN_LITERAL(1.0) /
+                     (desaturation * (safe_peak - new_peak) + ALWAN_LITERAL(1.0));
+    result.v[0] = color.v[0] + (new_peak - color.v[0]) * g;
+    result.v[1] = color.v[1] + (new_peak - color.v[1]) * g;
+    result.v[2] = color.v[2] + (new_peak - color.v[2]) * g;
     return result;
 }
 
@@ -176,15 +142,9 @@ ALWAN_INLINE alwan_vec3 alwan_reinhard_extended_luma_v(alwan_vec3 rgb,
                        + ALWAN_LUMA_KG_BT709 * rgb.v[1]
                        + ALWAN_LUMA_KB_BT709 * rgb.v[2];
 
-    if (l_old < ALWAN_LITERAL(1e-10)) {
-        result.v[0] = ALWAN_ZERO;
-        result.v[1] = ALWAN_ZERO;
-        result.v[2] = ALWAN_ZERO;
-        return result;
-    }
-
-    alwan_scalar l_new = alwan_reinhard_extended_v(l_old, max_white);
-    alwan_scalar scale = l_new / l_old;
+    alwan_scalar safe_l = ALWAN_SELECT(l_old < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1e-10), l_old);
+    alwan_scalar l_new = alwan_reinhard_extended_v(safe_l, max_white);
+    alwan_scalar scale = ALWAN_SELECT(l_old < ALWAN_LITERAL(1e-10), ALWAN_ZERO, l_new / safe_l);
 
     result.v[0] = rgb.v[0] * scale;
     result.v[1] = rgb.v[1] * scale;
@@ -205,9 +165,9 @@ ALWAN_INLINE alwan_scalar alwan_uchimura_v(alwan_scalar x,
     alwan_scalar C2 = (a * P) / (P - S1);
     alwan_scalar CP = -C2 / P;
 
-    alwan_scalar t_toe = alwan_saturate((x < m) ? (ALWAN_ONE - x / m) : ALWAN_ZERO);
+    alwan_scalar t_toe = alwan_saturate(ALWAN_SELECT(x < m, ALWAN_ONE - x / m, ALWAN_ZERO));
     alwan_scalar w0 = t_toe * t_toe * (ALWAN_LITERAL(3.0) - ALWAN_LITERAL(2.0) * t_toe);
-    alwan_scalar w2 = (x > S0) ? ALWAN_ONE : ALWAN_ZERO;
+    alwan_scalar w2 = ALWAN_SELECT(x > S0, ALWAN_ONE, ALWAN_ZERO);
     alwan_scalar w1 = ALWAN_ONE - w0 - w2;
 
     alwan_scalar T = m * ALWAN_POW(x / m, c) + b;
@@ -252,15 +212,9 @@ ALWAN_INLINE alwan_vec3 alwan_lottes_v(alwan_vec3 rgb,
 
     alwan_scalar peak = alwan_max3(rgb.v[0], rgb.v[1], rgb.v[2]);
 
-    if (peak < ALWAN_LITERAL(1e-10)) {
-        result.v[0] = ALWAN_ZERO;
-        result.v[1] = ALWAN_ZERO;
-        result.v[2] = ALWAN_ZERO;
-        return result;
-    }
-
-    alwan_scalar new_peak = alwan_lottes_curve_v(peak, contrast, shoulder, b, c);
-    alwan_scalar scale = new_peak / peak;
+    alwan_scalar safe_peak = ALWAN_SELECT(peak < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1e-10), peak);
+    alwan_scalar new_peak = alwan_lottes_curve_v(safe_peak, contrast, shoulder, b, c);
+    alwan_scalar scale = ALWAN_SELECT(peak < ALWAN_LITERAL(1e-10), ALWAN_ZERO, new_peak / safe_peak);
 
     result.v[0] = rgb.v[0] * scale;
     result.v[1] = rgb.v[1] * scale;
@@ -300,11 +254,8 @@ ALWAN_INLINE alwan_vec3 alwan_tony_mcmapface_v(alwan_vec3 col) {
 
     alwan_scalar tm_luma = alwan_tony_curve_v(luma);
 
-    alwan_scalar orig_luma = ALWAN_LUMA_KR_BT709 * col.v[0]
-                           + ALWAN_LUMA_KG_BT709 * col.v[1]
-                           + ALWAN_LUMA_KB_BT709 * col.v[2];
-    alwan_scalar luma_scale = (orig_luma > ALWAN_LITERAL(1e-5))
-                            ? (tm_luma / orig_luma) : ALWAN_ZERO;
+    alwan_scalar luma_scale = ALWAN_SELECT(luma > ALWAN_LITERAL(1e-5),
+                                           tm_luma / luma, ALWAN_ZERO);
 
     alwan_scalar tm0_r = col.v[0] * luma_scale;
     alwan_scalar tm0_g = col.v[1] * luma_scale;
@@ -315,7 +266,7 @@ ALWAN_INLINE alwan_vec3 alwan_tony_mcmapface_v(alwan_vec3 col) {
     alwan_scalar tm1_b = alwan_tony_curve_v(desat_b);
 
     alwan_scalar bt2 = bt * bt;
-    alwan_scalar final_mult = ALWAN_LITERAL(0.97);
+    alwan_scalar final_mult = ALWAN_LITERAL(0.97); /* Stachowiak 2023 "Somewhat Boring Display Transform" — empirical rolloff */
 
     result.v[0] = (tm0_r + (tm1_r - tm0_r) * bt2) * final_mult;
     result.v[1] = (tm0_g + (tm1_g - tm0_g) * bt2) * final_mult;

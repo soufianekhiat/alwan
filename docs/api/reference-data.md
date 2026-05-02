@@ -255,9 +255,9 @@ alwan_scalar alwan_table_interp_1d(alwan_scalar const *table, size_t size,
 
 ```c
 int alwan_optimize_spectrum_for_xyz(alwan_spd *spd_out,
+                                    alwan_ctx *ctx,
                                     alwan_xyz const *target_xyz,
-                                    alwan_observer_type observer,
-                                    alwan_ctx *ctx);
+                                    alwan_observer_type observer);
 ```
 
 Find a spectral power distribution that matches target XYZ tristimulus values. Due to metamerism, multiple SPDs can match the same XYZ; this finds one valid solution.

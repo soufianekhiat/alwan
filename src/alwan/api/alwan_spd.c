@@ -15,11 +15,7 @@
  * SPD Creation and Destruction
  * ---------------------------------------------------------------- */
 
-int alwan_spd_create(alwan_spd *out,
-                     alwan_ctx *ctx,
-                     alwan_f64 wavelength_min,
-                     alwan_f64 wavelength_max,
-                     size_t count) {
+int alwan_spd_create_f64(alwan_spd_f64 *out, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx) {
     if (!out || count == 0 || wavelength_min >= wavelength_max) {
         return ALWAN_E_INVALID;
     }
@@ -50,7 +46,7 @@ int alwan_spd_create(alwan_spd *out,
     return ALWAN_OK;
 }
 
-void alwan_spd_destroy(alwan_ctx *ctx, alwan_spd *spd) {
+void alwan_spd_destroy_f64(alwan_spd_f64 *spd, alwan_ctx *ctx) {
     if (spd && spd->values) {
         ALWAN_FREE(spd->values);
         spd->values = NULL;
@@ -63,7 +59,7 @@ void alwan_spd_destroy(alwan_ctx *ctx, alwan_spd *spd) {
  * Get wavelength at index
  * ---------------------------------------------------------------- */
 
-static inline alwan_f64 spd_wavelength_at(alwan_spd const *spd, size_t index) {
+static inline alwan_f64 spd_wavelength_at(alwan_spd_f64 const *spd, size_t index) {
     if (spd->count <= 1) {
         return spd->wavelength_min;
     }
@@ -72,7 +68,7 @@ static inline alwan_f64 spd_wavelength_at(alwan_spd const *spd, size_t index) {
 }
 
 /* Interpolate SPD value at wavelength with extrapolation */
-static alwan_f64 spd_interpolate(alwan_spd const *spd, alwan_f64 wavelength,
+static alwan_f64 spd_interpolate(alwan_spd_f64 const *spd, alwan_f64 wavelength,
                                alwan_resample_method method,
                                alwan_extrapolate_mode extrapolate) {
     /* Handle out-of-range wavelengths based on extrapolation mode */
@@ -163,20 +159,13 @@ static alwan_f64 spd_interpolate(alwan_spd const *spd, alwan_f64 wavelength,
  * SPD Resampling
  * ---------------------------------------------------------------- */
 
-int alwan_spd_resample(alwan_spd *dst,
-                       alwan_ctx *ctx,
-                       alwan_spd const *src,
-                       alwan_f64 wavelength_min,
-                       alwan_f64 wavelength_max,
-                       size_t count,
-                       alwan_resample_method method,
-                       alwan_extrapolate_mode extrapolate) {
+int alwan_spd_resample_f64(alwan_spd_f64 *dst, alwan_spd_f64 const *src, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx) {
     if (!src || !dst || count == 0 || wavelength_min >= wavelength_max) {
         return ALWAN_E_INVALID;
     }
 
     /* Create destination SPD */
-    int status = alwan_spd_create(dst, ctx, wavelength_min, wavelength_max, count);
+    int status = alwan_spd_create_f64(dst, wavelength_min, wavelength_max, count, ctx);
     if (status != ALWAN_OK) {
         return status;
     }
@@ -194,13 +183,13 @@ int alwan_spd_resample(alwan_spd *dst,
  * Illuminant Loading
  * ---------------------------------------------------------------- */
 
-int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
+int alwan_spd_illuminant_f64(alwan_spd_f64 *out, alwan_illuminant ill, alwan_ctx *ctx) {
     if (!out) {
         return ALWAN_E_INVALID;
     }
 
     /* Create SPD structure (360-830nm, 1nm steps = 471 samples) */
-    int status = alwan_spd_create(out, ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471);
+    int status = alwan_spd_create_f64(out, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, ctx);
     if (status != ALWAN_OK) {
         return status;
     }
@@ -600,7 +589,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
         }
 
         default:
-            alwan_spd_destroy(ctx, out);
+            alwan_spd_destroy_f64(out, ctx);
             return ALWAN_E_INVALID;
     }
 
@@ -613,12 +602,7 @@ int alwan_spd_illuminant(alwan_spd *out, alwan_ctx *ctx, alwan_illuminant ill) {
 /* Generate blackbody (Planckian) SPD using Planck's law
  * Spectral radiance: L(lambda,T) = c1 / (lambda^5 * (exp(c2/(lambda*T)) - 1))
  * where c1 = 3.741771e-16 W*m^2, c2 = 1.4388e-2 m*K */
-int alwan_spd_blackbody(alwan_spd *out,
-                        alwan_ctx *ctx,
-                        alwan_f64 temperature_K,
-                        alwan_f64 wavelength_min,
-                        alwan_f64 wavelength_max,
-                        size_t count) {
+int alwan_spd_blackbody_f64(alwan_spd_f64 *out, alwan_f64 temperature_K, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx) {
     if (!out || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -629,7 +613,7 @@ int alwan_spd_blackbody(alwan_spd *out,
     }
 
     /* Create SPD structure */
-    int status = alwan_spd_create(out, ctx, wavelength_min, wavelength_max, count);
+    int status = alwan_spd_create_f64(out, wavelength_min, wavelength_max, count, ctx);
     if (status != ALWAN_OK) {
         return status;
     }
@@ -653,9 +637,9 @@ int alwan_spd_blackbody(alwan_spd *out,
 
 static int load_observer_cmf(alwan_ctx *ctx,
                               alwan_observer_type observer,
-                              alwan_spd *x_bar,
-                              alwan_spd *y_bar,
-                              alwan_spd *z_bar) {
+                              alwan_spd_f64 *x_bar,
+                              alwan_spd_f64 *y_bar,
+                              alwan_spd_f64 *z_bar) {
     /* Determine wavelength range and sample count based on observer */
     alwan_f64 wl_min, wl_max;
     size_t count;
@@ -675,19 +659,19 @@ static int load_observer_cmf(alwan_ctx *ctx,
 
     int status;
 
-    status = alwan_spd_create(x_bar, ctx, wl_min, wl_max, count);
+    status = alwan_spd_create_f64(x_bar, wl_min, wl_max, count, ctx);
     if (status != ALWAN_OK) return status;
 
-    status = alwan_spd_create(y_bar, ctx, wl_min, wl_max, count);
+    status = alwan_spd_create_f64(y_bar, wl_min, wl_max, count, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, x_bar);
+        alwan_spd_destroy_f64(x_bar, ctx);
         return status;
     }
 
-    status = alwan_spd_create(z_bar, ctx, wl_min, wl_max, count);
+    status = alwan_spd_create_f64(z_bar, wl_min, wl_max, count, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, x_bar);
-        alwan_spd_destroy(ctx, y_bar);
+        alwan_spd_destroy_f64(x_bar, ctx);
+        alwan_spd_destroy_f64(y_bar, ctx);
         return status;
     }
 
@@ -840,9 +824,9 @@ static int load_observer_cmf(alwan_ctx *ctx,
             z_bar->values[i] = b_data[i];
         }
     } else {
-        alwan_spd_destroy(ctx, x_bar);
-        alwan_spd_destroy(ctx, y_bar);
-        alwan_spd_destroy(ctx, z_bar);
+        alwan_spd_destroy_f64(x_bar, ctx);
+        alwan_spd_destroy_f64(y_bar, ctx);
+        alwan_spd_destroy_f64(z_bar, ctx);
         return ALWAN_E_INVALID;
     }
 
@@ -894,65 +878,56 @@ static alwan_f64 integrate_simpson(alwan_f64 const *values, size_t count, alwan_
     return result;
 }
 
-int alwan_xyz_from_spd(alwan_xyz_f64 *xyz_out,
-                       alwan_ctx *ctx,
-                       alwan_spd const *spd,
-                       alwan_spd const *illuminant,
-                       alwan_observer_type observer,
-                       alwan_integrate_method method,
-                       alwan_f64 bandpass_nm) {
+int alwan_xyz_from_spd_f64(alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, alwan_f64 bandpass_nm, alwan_ctx *ctx) {
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
 
     /* Load observer CMFs */
-    alwan_spd x_bar, y_bar, z_bar;
+    alwan_spd_f64 x_bar, y_bar, z_bar;
     int status = load_observer_cmf(ctx, observer, &x_bar, &y_bar, &z_bar);
     if (status != ALWAN_OK) {
         return status;
     }
 
     /* Resample CMFs to match SPD wavelength range (use constant extrapolation for smooth CMFs) */
-    alwan_spd x_bar_resampled, y_bar_resampled, z_bar_resampled;
-    status = alwan_spd_resample(&x_bar_resampled, ctx, &x_bar, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT);
+    alwan_spd_f64 x_bar_resampled, y_bar_resampled, z_bar_resampled;
+    status = alwan_spd_resample_f64(&x_bar_resampled, &x_bar, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &x_bar);
-        alwan_spd_destroy(ctx, &y_bar);
-        alwan_spd_destroy(ctx, &z_bar);
+        alwan_spd_destroy_f64(&x_bar, ctx);
+        alwan_spd_destroy_f64(&y_bar, ctx);
+        alwan_spd_destroy_f64(&z_bar, ctx);
         return status;
     }
 
-    status = alwan_spd_resample(&y_bar_resampled, ctx, &y_bar, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT);
+    status = alwan_spd_resample_f64(&y_bar_resampled, &y_bar, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &x_bar);
-        alwan_spd_destroy(ctx, &y_bar);
-        alwan_spd_destroy(ctx, &z_bar);
-        alwan_spd_destroy(ctx, &x_bar_resampled);
+        alwan_spd_destroy_f64(&x_bar, ctx);
+        alwan_spd_destroy_f64(&y_bar, ctx);
+        alwan_spd_destroy_f64(&z_bar, ctx);
+        alwan_spd_destroy_f64(&x_bar_resampled, ctx);
         return status;
     }
 
-    status = alwan_spd_resample(&z_bar_resampled, ctx, &z_bar, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT);
+    status = alwan_spd_resample_f64(&z_bar_resampled, &z_bar, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &x_bar);
-        alwan_spd_destroy(ctx, &y_bar);
-        alwan_spd_destroy(ctx, &z_bar);
-        alwan_spd_destroy(ctx, &x_bar_resampled);
-        alwan_spd_destroy(ctx, &y_bar_resampled);
+        alwan_spd_destroy_f64(&x_bar, ctx);
+        alwan_spd_destroy_f64(&y_bar, ctx);
+        alwan_spd_destroy_f64(&z_bar, ctx);
+        alwan_spd_destroy_f64(&x_bar_resampled, ctx);
+        alwan_spd_destroy_f64(&y_bar_resampled, ctx);
         return status;
     }
 
     /* Allocate temporary arrays for products (with overflow protection) */
     size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(alwan_f64));
     if (alloc_size == 0) {
-        alwan_spd_destroy(ctx, &x_bar);
-        alwan_spd_destroy(ctx, &y_bar);
-        alwan_spd_destroy(ctx, &z_bar);
-        alwan_spd_destroy(ctx, &x_bar_resampled);
-        alwan_spd_destroy(ctx, &y_bar_resampled);
-        alwan_spd_destroy(ctx, &z_bar_resampled);
+        alwan_spd_destroy_f64(&x_bar, ctx);
+        alwan_spd_destroy_f64(&y_bar, ctx);
+        alwan_spd_destroy_f64(&z_bar, ctx);
+        alwan_spd_destroy_f64(&x_bar_resampled, ctx);
+        alwan_spd_destroy_f64(&y_bar_resampled, ctx);
+        alwan_spd_destroy_f64(&z_bar_resampled, ctx);
         return ALWAN_E_NOMEM;
     }
     alwan_f64 *prod_x = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
@@ -963,12 +938,12 @@ int alwan_xyz_from_spd(alwan_xyz_f64 *xyz_out,
         if (prod_x) ALWAN_FREE(prod_x);
         if (prod_y) ALWAN_FREE(prod_y);
         if (prod_z) ALWAN_FREE(prod_z);
-        alwan_spd_destroy(ctx, &x_bar);
-        alwan_spd_destroy(ctx, &y_bar);
-        alwan_spd_destroy(ctx, &z_bar);
-        alwan_spd_destroy(ctx, &x_bar_resampled);
-        alwan_spd_destroy(ctx, &y_bar_resampled);
-        alwan_spd_destroy(ctx, &z_bar_resampled);
+        alwan_spd_destroy_f64(&x_bar, ctx);
+        alwan_spd_destroy_f64(&y_bar, ctx);
+        alwan_spd_destroy_f64(&z_bar, ctx);
+        alwan_spd_destroy_f64(&x_bar_resampled, ctx);
+        alwan_spd_destroy_f64(&y_bar_resampled, ctx);
+        alwan_spd_destroy_f64(&z_bar_resampled, ctx);
         return ALWAN_E_NOMEM;
     }
 
@@ -1010,12 +985,12 @@ int alwan_xyz_from_spd(alwan_xyz_f64 *xyz_out,
     ALWAN_FREE(prod_x);
     ALWAN_FREE(prod_y);
     ALWAN_FREE(prod_z);
-    alwan_spd_destroy(ctx, &x_bar);
-    alwan_spd_destroy(ctx, &y_bar);
-    alwan_spd_destroy(ctx, &z_bar);
-    alwan_spd_destroy(ctx, &x_bar_resampled);
-    alwan_spd_destroy(ctx, &y_bar_resampled);
-    alwan_spd_destroy(ctx, &z_bar_resampled);
+    alwan_spd_destroy_f64(&x_bar, ctx);
+    alwan_spd_destroy_f64(&y_bar, ctx);
+    alwan_spd_destroy_f64(&z_bar, ctx);
+    alwan_spd_destroy_f64(&x_bar_resampled, ctx);
+    alwan_spd_destroy_f64(&y_bar_resampled, ctx);
+    alwan_spd_destroy_f64(&z_bar_resampled, ctx);
 
     return ALWAN_OK;
 }
@@ -1024,11 +999,7 @@ int alwan_xyz_from_spd(alwan_xyz_f64 *xyz_out,
  * Camera Sensitivity Functions
  * ---------------------------------------------------------------- */
 
-int alwan_spd_camera_sensitivity(alwan_spd *spd_r,
-                                   alwan_spd *spd_g,
-                                   alwan_spd *spd_b,
-                                   alwan_ctx *ctx,
-                                   alwan_camera_sensitivity camera) {
+int alwan_spd_camera_sensitivity_f64(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b, alwan_camera_sensitivity camera, alwan_ctx *ctx) {
     if (!spd_r || !spd_g || !spd_b) {
         return ALWAN_E_INVALID;
     }
@@ -1096,83 +1067,75 @@ int alwan_spd_camera_sensitivity(alwan_spd *spd_r,
     return ALWAN_OK;
 }
 
-int alwan_xyz_from_spd_camera(alwan_xyz_f64 *xyz_out,
-                               alwan_ctx *ctx,
-                               alwan_spd const *spd,
-                               alwan_spd const *illuminant,
-                               alwan_camera_sensitivity camera,
-                               alwan_integrate_method method) {
+int alwan_xyz_from_spd_camera_f64(alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx) {
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
 
     /* Load camera RGB sensitivities */
-    alwan_spd r_sens, g_sens, b_sens;
-    int status = alwan_spd_create(&r_sens, ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471);
+    alwan_spd_f64 r_sens, g_sens, b_sens;
+    int status = alwan_spd_create_f64(&r_sens, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, ctx);
     if (status != ALWAN_OK) {
         return status;
     }
-    status = alwan_spd_create(&g_sens, ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471);
+    status = alwan_spd_create_f64(&g_sens, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &r_sens);
+        alwan_spd_destroy_f64(&r_sens, ctx);
         return status;
     }
-    status = alwan_spd_create(&b_sens, ctx, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471);
+    status = alwan_spd_create_f64(&b_sens, ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0), 471, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &r_sens);
-        alwan_spd_destroy(ctx, &g_sens);
+        alwan_spd_destroy_f64(&r_sens, ctx);
+        alwan_spd_destroy_f64(&g_sens, ctx);
         return status;
     }
 
-    status = alwan_spd_camera_sensitivity(&r_sens, &g_sens, &b_sens, ctx, camera);
+    status = alwan_spd_camera_sensitivity_f64(&r_sens, &g_sens, &b_sens, camera, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &r_sens);
-        alwan_spd_destroy(ctx, &g_sens);
-        alwan_spd_destroy(ctx, &b_sens);
+        alwan_spd_destroy_f64(&r_sens, ctx);
+        alwan_spd_destroy_f64(&g_sens, ctx);
+        alwan_spd_destroy_f64(&b_sens, ctx);
         return status;
     }
 
     /* Resample sensitivities to match SPD wavelength range */
-    alwan_spd r_resampled, g_resampled, b_resampled;
-    status = alwan_spd_resample(&r_resampled, ctx, &r_sens, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
+    alwan_spd_f64 r_resampled, g_resampled, b_resampled;
+    status = alwan_spd_resample_f64(&r_resampled, &r_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &r_sens);
-        alwan_spd_destroy(ctx, &g_sens);
-        alwan_spd_destroy(ctx, &b_sens);
+        alwan_spd_destroy_f64(&r_sens, ctx);
+        alwan_spd_destroy_f64(&g_sens, ctx);
+        alwan_spd_destroy_f64(&b_sens, ctx);
         return status;
     }
 
-    status = alwan_spd_resample(&g_resampled, ctx, &g_sens, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
+    status = alwan_spd_resample_f64(&g_resampled, &g_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &r_sens);
-        alwan_spd_destroy(ctx, &g_sens);
-        alwan_spd_destroy(ctx, &b_sens);
-        alwan_spd_destroy(ctx, &r_resampled);
+        alwan_spd_destroy_f64(&r_sens, ctx);
+        alwan_spd_destroy_f64(&g_sens, ctx);
+        alwan_spd_destroy_f64(&b_sens, ctx);
+        alwan_spd_destroy_f64(&r_resampled, ctx);
         return status;
     }
 
-    status = alwan_spd_resample(&b_resampled, ctx, &b_sens, spd->wavelength_min, spd->wavelength_max,
-                                spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO);
+    status = alwan_spd_resample_f64(&b_resampled, &b_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
-        alwan_spd_destroy(ctx, &r_sens);
-        alwan_spd_destroy(ctx, &g_sens);
-        alwan_spd_destroy(ctx, &b_sens);
-        alwan_spd_destroy(ctx, &r_resampled);
-        alwan_spd_destroy(ctx, &g_resampled);
+        alwan_spd_destroy_f64(&r_sens, ctx);
+        alwan_spd_destroy_f64(&g_sens, ctx);
+        alwan_spd_destroy_f64(&b_sens, ctx);
+        alwan_spd_destroy_f64(&r_resampled, ctx);
+        alwan_spd_destroy_f64(&g_resampled, ctx);
         return status;
     }
 
     /* Allocate temporary arrays for products (with overflow protection) */
     size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(alwan_f64));
     if (alloc_size == 0) {
-        alwan_spd_destroy(ctx, &r_sens);
-        alwan_spd_destroy(ctx, &g_sens);
-        alwan_spd_destroy(ctx, &b_sens);
-        alwan_spd_destroy(ctx, &r_resampled);
-        alwan_spd_destroy(ctx, &g_resampled);
-        alwan_spd_destroy(ctx, &b_resampled);
+        alwan_spd_destroy_f64(&r_sens, ctx);
+        alwan_spd_destroy_f64(&g_sens, ctx);
+        alwan_spd_destroy_f64(&b_sens, ctx);
+        alwan_spd_destroy_f64(&r_resampled, ctx);
+        alwan_spd_destroy_f64(&g_resampled, ctx);
+        alwan_spd_destroy_f64(&b_resampled, ctx);
         return ALWAN_E_NOMEM;
     }
     alwan_f64 *prod_r = (alwan_f64 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f64));
@@ -1183,12 +1146,12 @@ int alwan_xyz_from_spd_camera(alwan_xyz_f64 *xyz_out,
         if (prod_r) ALWAN_FREE(prod_r);
         if (prod_g) ALWAN_FREE(prod_g);
         if (prod_b) ALWAN_FREE(prod_b);
-        alwan_spd_destroy(ctx, &r_sens);
-        alwan_spd_destroy(ctx, &g_sens);
-        alwan_spd_destroy(ctx, &b_sens);
-        alwan_spd_destroy(ctx, &r_resampled);
-        alwan_spd_destroy(ctx, &g_resampled);
-        alwan_spd_destroy(ctx, &b_resampled);
+        alwan_spd_destroy_f64(&r_sens, ctx);
+        alwan_spd_destroy_f64(&g_sens, ctx);
+        alwan_spd_destroy_f64(&b_sens, ctx);
+        alwan_spd_destroy_f64(&r_resampled, ctx);
+        alwan_spd_destroy_f64(&g_resampled, ctx);
+        alwan_spd_destroy_f64(&b_resampled, ctx);
         return ALWAN_E_NOMEM;
     }
 
@@ -1227,12 +1190,12 @@ int alwan_xyz_from_spd_camera(alwan_xyz_f64 *xyz_out,
     ALWAN_FREE(prod_r);
     ALWAN_FREE(prod_g);
     ALWAN_FREE(prod_b);
-    alwan_spd_destroy(ctx, &r_sens);
-    alwan_spd_destroy(ctx, &g_sens);
-    alwan_spd_destroy(ctx, &b_sens);
-    alwan_spd_destroy(ctx, &r_resampled);
-    alwan_spd_destroy(ctx, &g_resampled);
-    alwan_spd_destroy(ctx, &b_resampled);
+    alwan_spd_destroy_f64(&r_sens, ctx);
+    alwan_spd_destroy_f64(&g_sens, ctx);
+    alwan_spd_destroy_f64(&b_sens, ctx);
+    alwan_spd_destroy_f64(&r_resampled, ctx);
+    alwan_spd_destroy_f64(&g_resampled, ctx);
+    alwan_spd_destroy_f64(&b_resampled, ctx);
 
     return ALWAN_OK;
 }
@@ -1241,7 +1204,7 @@ int alwan_xyz_from_spd_camera(alwan_xyz_f64 *xyz_out,
  * Spectral Shape Descriptors
  * ---------------------------------------------------------------- */
 
-int alwan_spd_analyze_shape(alwan_spd_shape *shape_out, alwan_spd const *spd) {
+int alwan_spd_analyze_shape_f64(alwan_spd_shape_f64 *shape_out, alwan_spd_f64 const *spd) {
     if (!spd || !shape_out || spd->count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -1316,4 +1279,216 @@ int alwan_spd_analyze_shape(alwan_spd_shape *shape_out, alwan_spd const *spd) {
     shape_out->bandwidth = spd->wavelength_max - spd->wavelength_min;
 
     return ALWAN_OK;
+}
+
+/* ================================================================
+ * f32 wrappers
+ *
+ * SPD operations route through f64 primitives because the CMF tables,
+ * integrators (Simpson/Trapezoid), and scientific constants are all
+ * stored in f64. The wrappers allocate a temporary f64 SPD, call the
+ * f64 function, and convert values to f32.
+ * ================================================================ */
+
+int alwan_spd_create_f32(alwan_spd_f32 *out, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx) {
+    if (!out || count == 0 || wavelength_min >= wavelength_max) {
+        return ALWAN_E_INVALID;
+    }
+
+    size_t alloc_size = alwan_safe_array_size(count, sizeof(alwan_f32));
+    if (alloc_size == 0) return ALWAN_E_NOMEM;
+
+    alwan_f32 *values = (alwan_f32 *)ALWAN_ALLOC(alloc_size, sizeof(alwan_f32));
+    if (!values) return ALWAN_E_NOMEM;
+
+    for (size_t i = 0; i < count; i++) values[i] = 0.0f;
+
+    out->values = values;
+    out->wavelength_min = wavelength_min;
+    out->wavelength_max = wavelength_max;
+    out->count = count;
+
+    (void)ctx;
+    return ALWAN_OK;
+}
+
+void alwan_spd_destroy_f32(alwan_spd_f32 *spd, alwan_ctx *ctx) {
+    if (spd && spd->values) {
+        ALWAN_FREE(spd->values);
+        spd->values = NULL;
+        spd->count = 0;
+    }
+    (void)ctx;
+}
+
+/* Helper: convert f32 spd shell to f64 (views the same wavelength range and count,
+ * allocates and copies values). Caller must destroy with alwan_spd_destroy_f64. */
+static int spd_f32_to_f64(alwan_spd_f64 *out, alwan_ctx *ctx, alwan_spd_f32 const *in) {
+    int rc = alwan_spd_create_f64(out, (alwan_f64)in->wavelength_min, (alwan_f64)in->wavelength_max, in->count, ctx);
+    if (rc != ALWAN_OK) return rc;
+    for (size_t i = 0; i < in->count; i++) {
+        out->values[i] = (alwan_f64)in->values[i];
+    }
+    return ALWAN_OK;
+}
+
+/* Copy values from f64 to existing f32 SPD (shell fields updated, caller must
+ * have allocated f32 values array to match count). */
+static void spd_f64_to_f32_values(alwan_spd_f32 *out, alwan_spd_f64 const *in) {
+    out->wavelength_min = (alwan_f32)in->wavelength_min;
+    out->wavelength_max = (alwan_f32)in->wavelength_max;
+    /* count is already set; copy values */
+    for (size_t i = 0; i < in->count && i < out->count; i++) {
+        out->values[i] = (alwan_f32)in->values[i];
+    }
+}
+
+int alwan_spd_illuminant_f32(alwan_spd_f32 *out, alwan_illuminant ill, alwan_ctx *ctx) {
+    if (!out) return ALWAN_E_INVALID;
+    alwan_spd_f64 tmp;
+    int rc = alwan_spd_illuminant_f64(&tmp, ill, ctx);
+    if (rc != ALWAN_OK) return rc;
+    rc = alwan_spd_create_f32(out, (alwan_f32)tmp.wavelength_min, (alwan_f32)tmp.wavelength_max, tmp.count, ctx);
+    if (rc == ALWAN_OK) spd_f64_to_f32_values(out, &tmp);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return rc;
+}
+
+int alwan_spd_blackbody_f32(alwan_spd_f32 *out, alwan_f32 temperature_K, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx) {
+    if (!out) return ALWAN_E_INVALID;
+    alwan_spd_f64 tmp;
+    int rc = alwan_spd_blackbody_f64(&tmp, (alwan_f64)temperature_K, (alwan_f64)wavelength_min, (alwan_f64)wavelength_max, count, ctx);
+    if (rc != ALWAN_OK) return rc;
+    rc = alwan_spd_create_f32(out, wavelength_min, wavelength_max, count, ctx);
+    if (rc == ALWAN_OK) spd_f64_to_f32_values(out, &tmp);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    return rc;
+}
+
+int alwan_spd_resample_f32(alwan_spd_f32 *dst, alwan_spd_f32 const *src, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx) {
+    if (!src || !dst) return ALWAN_E_INVALID;
+
+    alwan_spd_f64 src_f64;
+    int rc = spd_f32_to_f64(&src_f64, ctx, src);
+    if (rc != ALWAN_OK) return rc;
+
+    alwan_spd_f64 dst_f64;
+    rc = alwan_spd_resample_f64(&dst_f64, &src_f64, (alwan_f64)wavelength_min, (alwan_f64)wavelength_max, count, method, extrapolate, ctx);
+    alwan_spd_destroy_f64(&src_f64, ctx);
+    if (rc != ALWAN_OK) return rc;
+
+    rc = alwan_spd_create_f32(dst, wavelength_min, wavelength_max, count, ctx);
+    if (rc == ALWAN_OK) spd_f64_to_f32_values(dst, &dst_f64);
+    alwan_spd_destroy_f64(&dst_f64, ctx);
+    return rc;
+}
+
+int alwan_spd_camera_sensitivity_f32(alwan_spd_f32 *spd_r, alwan_spd_f32 *spd_g, alwan_spd_f32 *spd_b, alwan_camera_sensitivity camera, alwan_ctx *ctx) {
+    if (!spd_r || !spd_g || !spd_b) return ALWAN_E_INVALID;
+
+    alwan_spd_f64 r64, g64, b64;
+    int rc = alwan_spd_create_f64(&r64, 360.0, 830.0, 471, ctx);
+    if (rc != ALWAN_OK) return rc;
+    rc = alwan_spd_create_f64(&g64, 360.0, 830.0, 471, ctx);
+    if (rc != ALWAN_OK) { alwan_spd_destroy_f64(&r64, ctx); return rc; }
+    rc = alwan_spd_create_f64(&b64, 360.0, 830.0, 471, ctx);
+    if (rc != ALWAN_OK) { alwan_spd_destroy_f64(&r64, ctx); alwan_spd_destroy_f64(&g64, ctx); return rc; }
+
+    rc = alwan_spd_camera_sensitivity_f64(&r64, &g64, &b64, camera, ctx);
+    if (rc == ALWAN_OK) {
+        rc = alwan_spd_create_f32(spd_r, (alwan_f32)r64.wavelength_min, (alwan_f32)r64.wavelength_max, r64.count, ctx);
+    }
+    if (rc == ALWAN_OK) {
+        rc = alwan_spd_create_f32(spd_g, (alwan_f32)g64.wavelength_min, (alwan_f32)g64.wavelength_max, g64.count, ctx);
+    }
+    if (rc == ALWAN_OK) {
+        rc = alwan_spd_create_f32(spd_b, (alwan_f32)b64.wavelength_min, (alwan_f32)b64.wavelength_max, b64.count, ctx);
+    }
+    if (rc == ALWAN_OK) {
+        spd_f64_to_f32_values(spd_r, &r64);
+        spd_f64_to_f32_values(spd_g, &g64);
+        spd_f64_to_f32_values(spd_b, &b64);
+    }
+
+    alwan_spd_destroy_f64(&r64, ctx);
+    alwan_spd_destroy_f64(&g64, ctx);
+    alwan_spd_destroy_f64(&b64, ctx);
+    return rc;
+}
+
+int alwan_xyz_from_spd_f32(alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, alwan_f32 bandpass_nm, alwan_ctx *ctx) {
+    if (!spd || !xyz_out) return ALWAN_E_INVALID;
+
+    alwan_spd_f64 spd_f64;
+    int rc = spd_f32_to_f64(&spd_f64, ctx, spd);
+    if (rc != ALWAN_OK) return rc;
+
+    alwan_spd_f64 illum_f64;
+    int have_illum = 0;
+    if (illuminant) {
+        rc = spd_f32_to_f64(&illum_f64, ctx, illuminant);
+        if (rc != ALWAN_OK) { alwan_spd_destroy_f64(&spd_f64, ctx); return rc; }
+        have_illum = 1;
+    }
+
+    alwan_xyz_f64 xyz_f64;
+    rc = alwan_xyz_from_spd_f64(&xyz_f64, &spd_f64, have_illum ? &illum_f64 : NULL, observer, method, (alwan_f64)bandpass_nm, ctx);
+    if (rc == ALWAN_OK) {
+        xyz_out->x = (alwan_f32)xyz_f64.x;
+        xyz_out->y = (alwan_f32)xyz_f64.y;
+        xyz_out->z = (alwan_f32)xyz_f64.z;
+    }
+
+    alwan_spd_destroy_f64(&spd_f64, ctx);
+    if (have_illum) alwan_spd_destroy_f64(&illum_f64, ctx);
+    return rc;
+}
+
+int alwan_xyz_from_spd_camera_f32(alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx) {
+    if (!spd || !xyz_out) return ALWAN_E_INVALID;
+
+    alwan_spd_f64 spd_f64;
+    int rc = spd_f32_to_f64(&spd_f64, ctx, spd);
+    if (rc != ALWAN_OK) return rc;
+
+    alwan_spd_f64 illum_f64;
+    int have_illum = 0;
+    if (illuminant) {
+        rc = spd_f32_to_f64(&illum_f64, ctx, illuminant);
+        if (rc != ALWAN_OK) { alwan_spd_destroy_f64(&spd_f64, ctx); return rc; }
+        have_illum = 1;
+    }
+
+    alwan_xyz_f64 xyz_f64;
+    rc = alwan_xyz_from_spd_camera_f64(&xyz_f64, &spd_f64, have_illum ? &illum_f64 : NULL, camera, method, ctx);
+    if (rc == ALWAN_OK) {
+        xyz_out->x = (alwan_f32)xyz_f64.x;
+        xyz_out->y = (alwan_f32)xyz_f64.y;
+        xyz_out->z = (alwan_f32)xyz_f64.z;
+    }
+
+    alwan_spd_destroy_f64(&spd_f64, ctx);
+    if (have_illum) alwan_spd_destroy_f64(&illum_f64, ctx);
+    return rc;
+}
+
+int alwan_spd_analyze_shape_f32(alwan_spd_shape_f32 *shape_out, alwan_spd_f32 const *spd) {
+    if (!spd || !shape_out || spd->count == 0) return ALWAN_E_INVALID;
+
+    alwan_spd_f64 spd_f64;
+    int rc = spd_f32_to_f64(&spd_f64, NULL, spd);
+    if (rc != ALWAN_OK) return rc;
+
+    alwan_spd_shape_f64 shape_f64;
+    rc = alwan_spd_analyze_shape_f64(&shape_f64, &spd_f64);
+    if (rc == ALWAN_OK) {
+        shape_out->peak_wavelength = (alwan_f32)shape_f64.peak_wavelength;
+        shape_out->peak_value = (alwan_f32)shape_f64.peak_value;
+        shape_out->fwhm = (alwan_f32)shape_f64.fwhm;
+        shape_out->centroid = (alwan_f32)shape_f64.centroid;
+        shape_out->bandwidth = (alwan_f32)shape_f64.bandwidth;
+    }
+
+    alwan_spd_destroy_f64(&spd_f64, NULL);
+    return rc;
 }
