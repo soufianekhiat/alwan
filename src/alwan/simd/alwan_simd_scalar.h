@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Alwan - Pure C colour science library
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
@@ -34,17 +34,17 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_zero(void) { return 0.0f; }
  * Float32 Math (EXACT)
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_sqrt(alwan_simd_f32 a) { return sqrtf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_abs(alwan_simd_f32 a) { return fabsf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow(alwan_simd_f32 base, alwan_simd_f32 exp) { return powf(base, exp); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cbrt(alwan_simd_f32 a) { return cbrtf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_exp(alwan_simd_f32 a) { return expf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_log(alwan_simd_f32 a) { return logf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_log2(alwan_simd_f32 a) { return log2f(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_log10(alwan_simd_f32 a) { return log10f(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_sin(alwan_simd_f32 a) { return sinf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cos(alwan_simd_f32 a) { return cosf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_atan2(alwan_simd_f32 y, alwan_simd_f32 x) { return atan2f(y, x); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_sqrt(alwan_simd_f32 a) { return ALWAN_SQRT_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_abs(alwan_simd_f32 a) { return ALWAN_ABS_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow(alwan_simd_f32 base, alwan_simd_f32 exp) { return ALWAN_POW_F32(base, exp); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cbrt(alwan_simd_f32 a) { return ALWAN_CBRT_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_exp(alwan_simd_f32 a) { return ALWAN_EXP_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_log(alwan_simd_f32 a) { return ALWAN_LN_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_log2(alwan_simd_f32 a) { return ALWAN_LOG2_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_log10(alwan_simd_f32 a) { return ALWAN_LOG10_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_sin(alwan_simd_f32 a) { return ALWAN_SIN_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cos(alwan_simd_f32 a) { return ALWAN_COS_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_atan2(alwan_simd_f32 y, alwan_simd_f32 x) { return ALWAN_ATAN2_F32(y, x); }
 
 /* ----------------------------------------------------------------
  * Float32 FMA
@@ -101,10 +101,10 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum(alwan_simd_f32 a) {
  * Float32 Rounding
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_floor(alwan_simd_f32 a) { return floorf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_ceil(alwan_simd_f32 a) { return ceilf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_round(alwan_simd_f32 a) { return roundf(a); }
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_trunc(alwan_simd_f32 a) { return truncf(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_floor(alwan_simd_f32 a) { return ALWAN_FLOOR_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_ceil(alwan_simd_f32 a) { return ALWAN_CEIL_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_round(alwan_simd_f32 a) { return ALWAN_ROUND_F32(a); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_trunc(alwan_simd_f32 a) { return ALWAN_TRUNC_F32(a); }
 
 /* ----------------------------------------------------------------
  * Float32 Reciprocal (exact)
@@ -132,17 +132,17 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_div(alwan_simd_f64 a, alwan_simd_f64 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_neg(alwan_simd_f64 a) { return -a; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_set1(double v) { return v; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_zero(void) { return 0.0; }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_sqrt(alwan_simd_f64 a) { return sqrt(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_abs(alwan_simd_f64 a) { return fabs(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow(alwan_simd_f64 base, alwan_simd_f64 exp) { return pow(base, exp); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_cbrt(alwan_simd_f64 a) { return cbrt(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_exp(alwan_simd_f64 a) { return exp(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_log(alwan_simd_f64 a) { return log(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_log2(alwan_simd_f64 a) { return log2(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_log10(alwan_simd_f64 a) { return log10(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_sin(alwan_simd_f64 a) { return sin(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_cos(alwan_simd_f64 a) { return cos(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_atan2(alwan_simd_f64 y, alwan_simd_f64 x) { return atan2(y, x); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_sqrt(alwan_simd_f64 a) { return ALWAN_SQRT_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_abs(alwan_simd_f64 a) { return ALWAN_ABS_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow(alwan_simd_f64 base, alwan_simd_f64 exp) { return ALWAN_POW_F64(base, exp); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_cbrt(alwan_simd_f64 a) { return ALWAN_CBRT_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_exp(alwan_simd_f64 a) { return ALWAN_EXP_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_log(alwan_simd_f64 a) { return ALWAN_LN_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_log2(alwan_simd_f64 a) { return ALWAN_LOG2_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_log10(alwan_simd_f64 a) { return ALWAN_LOG10_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_sin(alwan_simd_f64 a) { return ALWAN_SIN_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_cos(alwan_simd_f64 a) { return ALWAN_COS_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_atan2(alwan_simd_f64 y, alwan_simd_f64 x) { return ALWAN_ATAN2_F64(y, x); }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_fmadd(alwan_simd_f64 a, alwan_simd_f64 b, alwan_simd_f64 c) { return a * b + c; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_fmsub(alwan_simd_f64 a, alwan_simd_f64 b, alwan_simd_f64 c) { return a * b - c; }
 ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_cmpeq(alwan_simd_f64 a, alwan_simd_f64 b) { return a == b; }
@@ -157,10 +157,10 @@ ALWAN_INLINE int alwan_simd_f64_mask_all_set(alwan_simd_f64_mask m) { return m !
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_min(alwan_simd_f64 a, alwan_simd_f64 b) { return a < b ? a : b; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_max(alwan_simd_f64 a, alwan_simd_f64 b) { return a > b ? a : b; }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_floor(alwan_simd_f64 a) { return floor(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_ceil(alwan_simd_f64 a) { return ceil(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_round(alwan_simd_f64 a) { return round(a); }
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_trunc(alwan_simd_f64 a) { return trunc(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_floor(alwan_simd_f64 a) { return ALWAN_FLOOR_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_ceil(alwan_simd_f64 a) { return ALWAN_CEIL_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_round(alwan_simd_f64 a) { return ALWAN_ROUND_F64(a); }
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_trunc(alwan_simd_f64 a) { return ALWAN_TRUNC_F64(a); }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_clamp(alwan_simd_f64 v, alwan_simd_f64 lo, alwan_simd_f64 hi) {
     if (v < lo) return lo;
     if (v > hi) return hi;
@@ -234,7 +234,7 @@ ALWAN_INLINE void alwan_simd_f64_interleave3(double *dst,
 }
 
 /* ----------------------------------------------------------------
- * Float32 Fast pow(x, 2.4) / pow(x, 1/2.4) -- log2/exp2 decomposition
+ * Float32 Fast ALWAN_POW_F64(x, 2.4) / ALWAN_POW_F64(x, 1/2.4) -- log2/exp2 decomposition
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
@@ -245,10 +245,10 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
     u.i = (u.i & 0x007FFFFF) | 0x3F800000;
     float m = u.f;
     float t = m - 1.0f;
-    /* Minimax polynomial log2(m) on [1, 2), max error ~2e-7 */
+    /* Minimax polynomial ALWAN_LOG2_F64(m) on [1, 2), max error ~2e-7 */
     float log2_m = t * (1.44269504f + t * (-0.72134752f + t * (0.48089835f + t * (-0.36067376f + t * 0.28854314f))));
     float y = 2.4f * (e + log2_m);
-    float yi = floorf(y);
+    float yi = ALWAN_FLOOR_F32(y);
     float yf = y - yi;
     int32_t n = (int32_t)yi;
     /* Minimax polynomial 2^yf on [0, 1), max error ~1e-7 */
@@ -265,10 +265,10 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
     u.i = (u.i & 0x007FFFFF) | 0x3F800000;
     float m = u.f;
     float t = m - 1.0f;
-    /* Minimax polynomial log2(m) on [1, 2), max error ~2e-7 */
+    /* Minimax polynomial ALWAN_LOG2_F64(m) on [1, 2), max error ~2e-7 */
     float log2_m = t * (1.44269504f + t * (-0.72134752f + t * (0.48089835f + t * (-0.36067376f + t * 0.28854314f))));
     float y = 0.41666667f * (e + log2_m);
-    float yi = floorf(y);
+    float yi = ALWAN_FLOOR_F32(y);
     float yf = y - yi;
     int32_t n = (int32_t)yi;
     /* Minimax polynomial 2^yf on [0, 1), max error ~1e-7 */
@@ -278,15 +278,15 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
 }
 
 /* ----------------------------------------------------------------
- * Float64 pow(x, 2.4) / pow(x, 1/2.4) -- exact via libm
+ * Float64 ALWAN_POW_F64(x, 2.4) / ALWAN_POW_F64(x, 1/2.4) -- exact via libm
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
-    return pow(x, 2.4);
+    return ALWAN_POW_F64(x, 2.4);
 }
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
-    return pow(x, 1.0 / 2.4);
+    return ALWAN_POW_F64(x, 1.0 / 2.4);
 }
 
 /* ----------------------------------------------------------------
@@ -296,7 +296,7 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
 ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cbrt_fast(alwan_simd_f32 x) {
     if (x == 0.0f) return 0.0f;
     float sign = (x < 0.0f) ? -1.0f : 1.0f;
-    float ax = fabsf(x);
+    float ax = ALWAN_ABS_F32(x);
     union { float f; int32_t i; } u;
     u.f = ax;
     u.i = u.i / 3 + 0x2a508f2e;
@@ -311,7 +311,7 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cbrt_fast(alwan_simd_f32 x) {
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_cbrt_fast(alwan_simd_f64 x) {
     if (x == 0.0) return 0.0;
     double sign = (x < 0.0) ? -1.0 : 1.0;
-    double ax = fabs(x);
+    double ax = ALWAN_ABS_F64(x);
     union { double d; int64_t i; } u;
     u.d = ax;
     u.i = u.i / 3 + 0x2a9f7893782da1ceLL;
