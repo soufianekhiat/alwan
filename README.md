@@ -2,9 +2,15 @@
 
 > **Alwan** (ألوان) — Arabic for "colours"
 
-[![Linux](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml)
-[![macOS](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml)
-[![Windows](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml)
+| Platform    | Build |
+|-------------|-------|
+| **Linux**   | [![Linux build](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml)       |
+| **macOS**   | [![macOS build](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml)       |
+| **Windows** | [![Windows build](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml) |
+
+> Tests, benchmarks, and ARM coverage live in the sibling
+> [alwan_dev](https://github.com/soufianekhiat/alwan_dev) repo — the lib build
+> badges above only verify a clean compile.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))

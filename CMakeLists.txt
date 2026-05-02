@@ -186,17 +186,38 @@ if(ALWAN_ENABLE_WARNINGS)
     # in-tree call. Coverage of these symbols is the job of the
     # alwan_dev test suite, not the lib build.
     # -Wmissing-braces is silenced because embedded CSV data is
-    # included as flat initializers for nested arrays.
-    target_compile_options(
-      alwan PRIVATE
-      -Wall -Wextra -Wpedantic
-      -Wno-unused-function
-      -Wno-unused-const-variable
-      -Wno-unused-but-set-variable
-      -Wno-unused-variable
-      -Wno-unused-parameter
-      -Wno-missing-braces
+    # included as flat initializers for nested arrays. The other
+    # silencers cover gcc-only or clang-only diagnostics that fire
+    # on intentional library code (e.g. the f64 sentinel 1e-100
+    # underflowing when templated for f32, or a one-line
+    # `if(x<0)x=0; if(x>1)x=1;` clamp).
+    target_compile_options(alwan PRIVATE -Wall -Wextra -Wpedantic)
+    # gcc silently accepts unknown -Wno-X (the warning only fires when
+    # another diagnostic does). To detect support reliably we probe
+    # the *positive* form -W<flag> — gcc/clang both reject unknown
+    # positive forms. If accepted, we add the negative form.
+    set(_ALWAN_SILENCED_WARNINGS
+      unused-function
+      unused-const-variable
+      unused-but-set-variable
+      unused-variable
+      unused-parameter
+      missing-braces
+      misleading-indentation
+      literal-range        # clang only
+      overflow             # gcc fires this on 1e-100 -> 0.0f
+      maybe-uninitialized  # gcc only
+      uninitialized        # gcc "definite" class (separate from maybe-)
+      newline-eof          # clang only
     )
+    foreach(_w IN LISTS _ALWAN_SILENCED_WARNINGS)
+      string(REPLACE "-" "_" _var "ALWAN_HAS_W_${_w}")
+      check_c_compiler_flag("-W${_w}" ${_var})
+      if(${_var})
+        target_compile_options(alwan PRIVATE "-Wno-${_w}")
+      endif()
+    endforeach()
+    unset(_ALWAN_SILENCED_WARNINGS)
     if(ALWAN_WARNINGS_AS_ERRORS)
       target_compile_options(alwan PRIVATE -Werror)
     endif()

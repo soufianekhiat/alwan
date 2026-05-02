@@ -6,7 +6,9 @@ on:
     branches: [main]
 jobs:
   build:
-    runs-on: macos-latest
+    # Pin to macos-13 (Intel x86_64). macos-latest is Apple Silicon
+    # arm64 — SIMD/precision paths haven't been validated there yet.
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v5
       - run: cmake -B build -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=ON
