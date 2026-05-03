@@ -16,11 +16,33 @@
 #define ALWAN_MAP_CAT2_(a, b) a##b
 #define ALWAN_MAP_CAT_(a, b)  ALWAN_MAP_CAT2_(a, b)
 
+/* Deterministic mode forces all *_map_kernels.inc SIMD bodies to fall
+ * through to their scalar tail loops. Most colorspace kernels diverge
+ * from their scalar-equivalent at last bit even with /fp:precise — the
+ * vector path uses precomputed reciprocals (`vx * (1/wx)` instead of
+ * `vx / wx`), pre-multiplied constants, and slightly different operation
+ * orderings in matrix multiplies. Lane-unpacking each one individually
+ * is ~50 helpers; collapsing the SIMD width to 1 in det mode is one
+ * line and every kernel benefits. road_to_determinism.md §8.
+ *
+ * Element-wise SIMD usage outside the kernel files (alwan_rgb.c's
+ * OETF/EOTF apply functions through alwan_map_internal.h) is unaffected
+ * because those gate on ALWAN_SIMD_WIDTH, not ALWAN_MAP_SIMD_WIDTH.
+ * Their helpers already lane-unpack to the canonical scalar in det mode.
+ */
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#  define ALWAN__MAP_SIMD_WIDTH_F32  1
+#  define ALWAN__MAP_SIMD_WIDTH_F64  1
+#else
+#  define ALWAN__MAP_SIMD_WIDTH_F32  ALWAN_SIMD_F32_WIDTH
+#  define ALWAN__MAP_SIMD_WIDTH_F64  ALWAN_SIMD_F64_WIDTH
+#endif
+
 #ifdef ALWAN_MAP_F32
 
 #define ALWAN_MAP_SUFFIX       _f32
 #define ALWAN_MAP_NAME(base)   ALWAN_MAP_CAT_(base, _f32)
-#define ALWAN_MAP_SIMD_WIDTH   ALWAN_SIMD_F32_WIDTH
+#define ALWAN_MAP_SIMD_WIDTH   ALWAN__MAP_SIMD_WIDTH_F32
 #define ALWAN_MAP_TILE_PIXELS  4096
 #define alwan_map_lane         float
 #define alwan_map_simd         alwan_simd_f32
@@ -98,7 +120,7 @@
 
 #define ALWAN_MAP_SUFFIX       _f64
 #define ALWAN_MAP_NAME(base)   ALWAN_MAP_CAT_(base, _f64)
-#define ALWAN_MAP_SIMD_WIDTH   ALWAN_SIMD_F64_WIDTH
+#define ALWAN_MAP_SIMD_WIDTH   ALWAN__MAP_SIMD_WIDTH_F64
 #define ALWAN_MAP_TILE_PIXELS  2048
 #define alwan_map_lane         double
 #define alwan_map_simd         alwan_simd_f64

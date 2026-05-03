@@ -11,7 +11,9 @@
 #define ALWAN_SIMD_AVX_H
 
 #include "alwan_simd_types.h"
-#include "../alwan_platform.h"
+#include "../alwan_math.h"   /* must come before per-lane ALWAN_POW_F32/etc.
+                                 * uses below; alwan_math.h supplies det-mode
+                                 * redefinitions when ALWAN_DETERMINISTIC=1. */
 #include <math.h>
 
 /* ================================================================

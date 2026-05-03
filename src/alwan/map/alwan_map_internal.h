@@ -1065,6 +1065,20 @@ ALWAN_INLINE void alwan__mat3_mul_simd(alwan_simd *ox, alwan_simd *oy, alwan_sim
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_simd alwan__lab_f_simd(alwan_simd t) {
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+    /* Det mode: lane-unpack so the cube root branch matches the scalar
+     * deterministic polynomial bit-exactly across SIMD widths. */
+    alwan_simd_lane const delta3   = (alwan_simd_lane)(216.0 / 24389.0);
+    alwan_simd_lane const kappa_s  = (alwan_simd_lane)(24389.0 / (27.0 * 116.0));
+    alwan_simd_lane const offset_s = (alwan_simd_lane)(16.0 / 116.0);
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, t);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        alwan_simd_lane const x = lanes[i];
+        lanes[i] = (x > delta3) ? alwan_det_cbrt_f64(x) : (kappa_s * x + offset_s);
+    }
+    return alwan_simd_load(lanes);
+#else
     alwan_simd delta3 = alwan_simd_set1((alwan_simd_lane)(216.0 / 24389.0));
     alwan_simd kappa  = alwan_simd_set1((alwan_simd_lane)(24389.0 / (27.0 * 116.0)));
     alwan_simd offset = alwan_simd_set1((alwan_simd_lane)(16.0 / 116.0));
@@ -1074,6 +1088,7 @@ ALWAN_INLINE alwan_simd alwan__lab_f_simd(alwan_simd t) {
 
     alwan_simd_mask mask = alwan_simd_cmpgt(t, delta3);
     return alwan_simd_select(mask, cbrt_result, linear_result);
+#endif
 }
 
 /* ----------------------------------------------------------------
@@ -1101,6 +1116,33 @@ ALWAN_INLINE alwan_simd alwan__lab_f_inv_simd(alwan_simd t) {
  * sRGB EOTF: encoded -> linear
  * V <= 0.04045 ? V/12.92 : ((V+0.055)/1.055)^2.4
  * ---------------------------------------------------------------- */
+
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+
+/* Det mode: lane-unpack to the canonical scalar polynomial. The vector
+ * pow24/pow_inv24 paths use approximation polynomials whose lane order
+ * and FMA usage differ across SSE/AVX/NEON; routing through the scalar
+ * polynomial keeps SIMD and scalar paths bit-identical.
+ * road_to_determinism.md §8. */
+ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        lanes[i] = alwan_det_srgb_eotf_f64(lanes[i]);
+    }
+    return alwan_simd_load(lanes);
+}
+
+ALWAN_INLINE alwan_simd alwan__srgb_oetf_simd(alwan_simd v) {
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        lanes[i] = alwan_det_srgb_oetf_f64(lanes[i]);
+    }
+    return alwan_simd_load(lanes);
+}
+
+#else /* fast mode -- vectorised approximations */
 
 ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
     alwan_simd thresh = alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_EOTF_THRESH);
@@ -1143,10 +1185,22 @@ ALWAN_INLINE alwan_simd alwan__srgb_oetf_simd(alwan_simd v) {
     return alwan_simd_select(mask, lo, hi);
 }
 
+#endif /* ALWAN_DETERMINISTIC */
+
 /* ----------------------------------------------------------------
  * PQ OETF (Standard SMPTE ST 2084): linear (0-10000 cd/m^2) -> encoded
  * ---------------------------------------------------------------- */
 
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+ALWAN_INLINE alwan_simd alwan__pq_oetf_simd(alwan_simd v) {
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        lanes[i] = alwan_pq_oetf_f64(lanes[i]);
+    }
+    return alwan_simd_load(lanes);
+}
+#else
 ALWAN_INLINE alwan_simd alwan__pq_oetf_simd(alwan_simd v) {
     alwan_simd const m1   = alwan_simd_set1((alwan_simd_lane)(2610.0 / 16384.0));
     alwan_simd const m2   = alwan_simd_set1((alwan_simd_lane)(2523.0 / 32.0));
@@ -1162,11 +1216,22 @@ ALWAN_INLINE alwan_simd alwan__pq_oetf_simd(alwan_simd v) {
     alwan_simd den = alwan_simd_add(alwan_simd_set1((alwan_simd_lane)1.0), alwan_simd_mul(c3, Ym1));
     return alwan_simd_pow(alwan_simd_div(num, den), m2);
 }
+#endif /* ALWAN_DETERMINISTIC */
 
 /* ----------------------------------------------------------------
  * PQ EOTF (Standard SMPTE ST 2084): encoded -> linear (0-10000 cd/m^2)
  * ---------------------------------------------------------------- */
 
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+ALWAN_INLINE alwan_simd alwan__pq_eotf_simd(alwan_simd v) {
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        lanes[i] = alwan_pq_eotf_f64(lanes[i]);
+    }
+    return alwan_simd_load(lanes);
+}
+#else
 ALWAN_INLINE alwan_simd alwan__pq_eotf_simd(alwan_simd v) {
     alwan_simd const m1_inv = alwan_simd_set1((alwan_simd_lane)(16384.0 / 2610.0));
     alwan_simd const m2_inv = alwan_simd_set1((alwan_simd_lane)(32.0 / 2523.0));
@@ -1188,12 +1253,40 @@ ALWAN_INLINE alwan_simd alwan__pq_eotf_simd(alwan_simd v) {
     ratio = alwan_simd_select(alwan_simd_cmplt(ratio, zero), zero, ratio);
     return alwan_simd_mul(ten_k, alwan_simd_pow(ratio, m1_inv));
 }
+#endif /* ALWAN_DETERMINISTIC */
 
 /* ----------------------------------------------------------------
  * JzAzBz-specific PQ OETF: uses JzAzBz constants (N, P, C1-C3)
  * linear -> encoded
  * ---------------------------------------------------------------- */
 
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+/* Det mode: lane-unpack with the scalar formula inlined directly to
+ * avoid the inv10k vs / 10000.0 1-ULP divergence (see alwan__pq_oetf_simd
+ * det branch above). The formula matches alwan/core/alwan_jzazbz_core.inc
+ * `pq_jz_oetf_v` exactly when ALWAN_POW_F64 routes to alwan_det_pow_pos. */
+ALWAN_INLINE alwan_simd alwan__pq_jz_oetf_simd(alwan_simd v) {
+    alwan_simd_lane const n  = (alwan_simd_lane)0.1593017578125;
+    alwan_simd_lane const p  = (alwan_simd_lane)134.034375;
+    alwan_simd_lane const c1 = (alwan_simd_lane)0.8359375;
+    alwan_simd_lane const c2 = (alwan_simd_lane)18.8515625;
+    alwan_simd_lane const c3 = (alwan_simd_lane)18.6875;
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        alwan_simd_lane const lin = lanes[i];
+        if (lin <= (alwan_simd_lane)0) {
+            lanes[i] = (alwan_simd_lane)0;
+        } else {
+            alwan_simd_lane const Yn = ALWAN_POW_F64(lin / (alwan_simd_lane)10000.0, n);
+            alwan_simd_lane const num = c1 + c2 * Yn;
+            alwan_simd_lane const den = (alwan_simd_lane)1.0 + c3 * Yn;
+            lanes[i] = ALWAN_POW_F64(num / den, p);
+        }
+    }
+    return alwan_simd_load(lanes);
+}
+#else
 ALWAN_INLINE alwan_simd alwan__pq_jz_oetf_simd(alwan_simd v) {
     alwan_simd const n_exp = alwan_simd_set1((alwan_simd_lane)0.1593017578125);    /* 2610/16384 */
     alwan_simd const p_exp = alwan_simd_set1((alwan_simd_lane)134.034375);          /* 1.7*2523/32 */
@@ -1211,11 +1304,36 @@ ALWAN_INLINE alwan_simd alwan__pq_jz_oetf_simd(alwan_simd v) {
     alwan_simd result = alwan_simd_pow(alwan_simd_div(num, den), p_exp);
     return alwan_simd_select(pos, result, zero);
 }
+#endif /* ALWAN_DETERMINISTIC */
 
 /* ----------------------------------------------------------------
  * JzAzBz-specific PQ EOTF: encoded -> linear
  * ---------------------------------------------------------------- */
 
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+ALWAN_INLINE alwan_simd alwan__pq_jz_eotf_simd(alwan_simd v) {
+    alwan_simd_lane const n_inv = (alwan_simd_lane)(1.0 / 0.1593017578125);
+    alwan_simd_lane const p_inv = (alwan_simd_lane)(1.0 / 134.034375);
+    alwan_simd_lane const c1 = (alwan_simd_lane)0.8359375;
+    alwan_simd_lane const c2 = (alwan_simd_lane)18.8515625;
+    alwan_simd_lane const c3 = (alwan_simd_lane)18.6875;
+    alwan_simd_lane const eps = (alwan_simd_lane)ALWAN_MAP_PQ_DIV_GUARD;
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        alwan_simd_lane const enc = lanes[i];
+        if (enc <= (alwan_simd_lane)0) { lanes[i] = (alwan_simd_lane)0; continue; }
+        alwan_simd_lane const Ep = ALWAN_POW_F64(enc, p_inv);
+        alwan_simd_lane const num = Ep - c1;
+        alwan_simd_lane const den = c2 - c3 * Ep;
+        alwan_simd_lane const abs_den = (den < (alwan_simd_lane)0) ? -den : den;
+        alwan_simd_lane ratio = (abs_den > eps) ? (num / den) : (alwan_simd_lane)0;
+        if (ratio < (alwan_simd_lane)0) ratio = (alwan_simd_lane)0;
+        lanes[i] = (alwan_simd_lane)10000.0 * ALWAN_POW_F64(ratio, n_inv);
+    }
+    return alwan_simd_load(lanes);
+}
+#else
 ALWAN_INLINE alwan_simd alwan__pq_jz_eotf_simd(alwan_simd v) {
     alwan_simd const n_inv = alwan_simd_set1((alwan_simd_lane)(1.0 / 0.1593017578125));
     alwan_simd const p_inv = alwan_simd_set1((alwan_simd_lane)(1.0 / 134.034375));
@@ -1237,6 +1355,7 @@ ALWAN_INLINE alwan_simd alwan__pq_jz_eotf_simd(alwan_simd v) {
     alwan_simd result = alwan_simd_mul(ten_k, alwan_simd_pow(ratio, n_inv));
     return alwan_simd_select(pos, result, zero);
 }
+#endif /* ALWAN_DETERMINISTIC */
 
 /* ----------------------------------------------------------------
  * HLG OETF: linear -> encoded
@@ -1244,6 +1363,16 @@ ALWAN_INLINE alwan_simd alwan__pq_jz_eotf_simd(alwan_simd v) {
  * L > 1/12:  a*ln(12*L - b) + c
  * ---------------------------------------------------------------- */
 
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+ALWAN_INLINE alwan_simd alwan__hlg_oetf_simd(alwan_simd v) {
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        lanes[i] = alwan_hlg_oetf_f64(lanes[i]);
+    }
+    return alwan_simd_load(lanes);
+}
+#else
 ALWAN_INLINE alwan_simd alwan__hlg_oetf_simd(alwan_simd v) {
     alwan_simd const a_     = alwan_simd_set1((alwan_simd_lane)0.17883277);
     alwan_simd const b_     = alwan_simd_set1((alwan_simd_lane)(1.0 - 4.0 * 0.17883277));
@@ -1258,6 +1387,7 @@ ALWAN_INLINE alwan_simd alwan__hlg_oetf_simd(alwan_simd v) {
     alwan_simd hi = alwan_simd_add(alwan_simd_mul(a_, alwan_simd_log(alwan_simd_sub(alwan_simd_mul(twelve, L), b_))), c_);
     return alwan_simd_select(alwan_simd_cmple(L, thresh), lo, hi);
 }
+#endif /* ALWAN_DETERMINISTIC */
 
 /* ----------------------------------------------------------------
  * HLG inverse OETF (NOT full EOTF): encoded -> scene-linear (no OOTF)
@@ -1266,6 +1396,28 @@ ALWAN_INLINE alwan_simd alwan__hlg_oetf_simd(alwan_simd v) {
  * E > 0.5:  (exp((E-c)/a) + b) / 12
  * ---------------------------------------------------------------- */
 
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+/* Det mode no-OOTF inverse: replicate the scalar building blocks lane-wise.
+ * No `alwan_hlg_inv_oetf_*` exists in alwan_core.inc (the scalar HLG EOTF
+ * applies the OOTF), so re-derive the no-OOTF formula here using the
+ * deterministic exp primitive. */
+ALWAN_INLINE alwan_simd alwan__hlg_eotf_simd(alwan_simd v) {
+    alwan_simd_lane const a = (alwan_simd_lane)0.17883277;
+    alwan_simd_lane const b = (alwan_simd_lane)(1.0 - 4.0 * 0.17883277);
+    alwan_simd_lane const c = (alwan_simd_lane)0.55991072952956202;
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        alwan_simd_lane const E = lanes[i] < (alwan_simd_lane)0 ? (alwan_simd_lane)0 : lanes[i];
+        if (E <= (alwan_simd_lane)0.5) {
+            lanes[i] = (E * E) / (alwan_simd_lane)3.0;
+        } else {
+            lanes[i] = (alwan_det_exp_f64((E - c) / a) + b) / (alwan_simd_lane)12.0;
+        }
+    }
+    return alwan_simd_load(lanes);
+}
+#else
 ALWAN_INLINE alwan_simd alwan__hlg_eotf_simd(alwan_simd v) {
     alwan_simd const b_     = alwan_simd_set1((alwan_simd_lane)(1.0 - 4.0 * 0.17883277));
     alwan_simd const c_     = alwan_simd_set1((alwan_simd_lane)0.55991072952956202); /* 0.5 - a*ln(4a) */
@@ -1282,6 +1434,7 @@ ALWAN_INLINE alwan_simd alwan__hlg_eotf_simd(alwan_simd v) {
         twelve);
     return alwan_simd_select(alwan_simd_cmple(E, half), lo, hi);
 }
+#endif /* ALWAN_DETERMINISTIC */
 
 /* ----------------------------------------------------------------
  * HLG full EOTF: encoded -> display-linear (includes OOTF, system gamma 1.2)
@@ -1289,10 +1442,21 @@ ALWAN_INLINE alwan_simd alwan__hlg_eotf_simd(alwan_simd v) {
  * Used by RGB image conversion; ICtCp-HLG uses alwan__hlg_eotf_simd instead.
  * ---------------------------------------------------------------- */
 
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+ALWAN_INLINE alwan_simd alwan__hlg_eotf_full_simd(alwan_simd v) {
+    ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
+    alwan_simd_store(lanes, v);
+    for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
+        lanes[i] = alwan_hlg_eotf_f64(lanes[i]);
+    }
+    return alwan_simd_load(lanes);
+}
+#else
 ALWAN_INLINE alwan_simd alwan__hlg_eotf_full_simd(alwan_simd v) {
     alwan_simd scene = alwan__hlg_eotf_simd(v);
     return alwan_simd_pow(scene, alwan_simd_set1((alwan_simd_lane)1.2));
 }
+#endif /* ALWAN_DETERMINISTIC */
 
 /* ----------------------------------------------------------------
  * SIMD min3 / max3 helpers (used by HSV, HSL, HWB kernels)
