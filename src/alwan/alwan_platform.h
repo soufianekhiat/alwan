@@ -219,6 +219,31 @@
 # define ALWAN_TRUNC(x)     trunc(x)
 # define ALWAN_FMOD(x, y)   fmod(x, y)
 
+/* Deterministic-aware sRGB OETF/EOTF, scalar form. Mirrors
+ * ALWAN_CORE_SRGB_OETF / _EOTF in alwan_core_*_setup.h but uses the
+ * single-precision (alwan_scalar) macro vocabulary. The .h and .inc
+ * core files both compute sRGB transfer through these macros, so
+ * deterministic mode propagates uniformly. road_to_determinism.md §6.2. */
+# if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#  define ALWAN_SRGB_OETF(x)     alwan_det_srgb_oetf_f64(x)
+#  define ALWAN_SRGB_EOTF(x)     alwan_det_srgb_eotf_f64(x)
+#  define ALWAN_BT2020_OETF(x)   alwan_det_bt2020_oetf_f64(x)
+#  define ALWAN_BT2020_EOTF(x)   alwan_det_bt2020_eotf_f64(x)
+# else
+#  define ALWAN_SRGB_OETF(x)  ((x) <= ALWAN_LITERAL(0.0031308) ? \
+        (x) * ALWAN_LITERAL(12.92) : \
+        ALWAN_LITERAL(1.055) * ALWAN_POW((x), ALWAN_LITERAL(1.0)/ALWAN_LITERAL(2.4)) - ALWAN_LITERAL(0.055))
+#  define ALWAN_SRGB_EOTF(x)  ((x) <= ALWAN_LITERAL(0.04045) ? \
+        (x) / ALWAN_LITERAL(12.92) : \
+        ALWAN_POW(((x) + ALWAN_LITERAL(0.055)) / ALWAN_LITERAL(1.055), ALWAN_LITERAL(2.4)))
+#  define ALWAN_BT2020_OETF(x)  ((x) < ALWAN_LITERAL(0.018) ? \
+        (x) * ALWAN_LITERAL(4.5) : \
+        ALWAN_LITERAL(1.099) * ALWAN_POW((x), ALWAN_LITERAL(0.45)) - ALWAN_LITERAL(0.099))
+#  define ALWAN_BT2020_EOTF(x)  ((x) < (ALWAN_LITERAL(4.5) * ALWAN_LITERAL(0.018)) ? \
+        (x) / ALWAN_LITERAL(4.5) : \
+        ALWAN_POW(((x) + ALWAN_LITERAL(0.099)) / ALWAN_LITERAL(1.099), ALWAN_LITERAL(1.0)/ALWAN_LITERAL(0.45)))
+# endif
+
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
   /* HLSL backend: intrinsics */
 # define ALWAN_ABS(x)       abs(x)
@@ -1175,7 +1200,25 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 
 #endif /* ALWAN_NORMALIZE_RANGES */
 
-/* Test tolerance (double precision) */
+/* Test tolerance (double precision).
+ *
+ * In fast mode (default), the lib uses libm pow/exp/log/... and tests
+ * pin libm precision: 1e-12 catches algorithmic regressions while
+ * staying above libm's ULP noise on standard pow/sqrt/etc. inputs.
+ *
+ * In deterministic mode (ALWAN_DETERMINISTIC=1), transcendentals are
+ * approximated by polynomials within a documented absolute-error
+ * budget (typically 5e-5 for sRGB-domain inputs). Existing tests
+ * that compare against libm reference values must accept this looser
+ * bound — the budget is intentionally larger than libm noise. The
+ * narrower assertions are exercised only in fast mode.
+ *
+ * Tests that need a precision-mode-independent assertion should use
+ * ULP budgets via TEST_ASSERT_CLOSE_ULP_F* (test_common.h) instead. */
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-3)
+#else
 #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-12)
+#endif
 
 #endif /* ALWAN_PLATFORM_H */

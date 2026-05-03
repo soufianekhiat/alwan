@@ -12,20 +12,11 @@
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_srgb_oetf)(ALWAN_CORE_T linear) {
-    ALWAN_CORE_T linear_result = ALWAN_CORE_LITERAL(12.92) * linear;
-    ALWAN_CORE_T gamma_result  = ALWAN_CORE_LITERAL(1.055)
-        * ALWAN_CORE_POW(linear, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(2.4)) - ALWAN_CORE_LITERAL(0.055);
-    return ALWAN_CORE_SELECT(linear <= ALWAN_CORE_LITERAL(0.0031308),
-                              linear_result, gamma_result);
+    return ALWAN_CORE_SRGB_OETF(linear);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_srgb_eotf)(ALWAN_CORE_T encoded) {
-    ALWAN_CORE_T linear_result = encoded / ALWAN_CORE_LITERAL(12.92);
-    ALWAN_CORE_T gamma_result  = ALWAN_CORE_POW(
-        (encoded + ALWAN_CORE_LITERAL(0.055)) / ALWAN_CORE_LITERAL(1.055),
-        ALWAN_CORE_LITERAL(2.4));
-    return ALWAN_CORE_SELECT(encoded <= ALWAN_CORE_LITERAL(0.04045),
-                              linear_result, gamma_result);
+    return ALWAN_CORE_SRGB_EOTF(encoded);
 }
 
 /* ================================================================
@@ -33,21 +24,11 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_srgb_eotf)(ALWAN_CORE_T encoded
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_oetf)(ALWAN_CORE_T linear) {
-    ALWAN_CORE_T linear_result = ALWAN_CORE_LITERAL(4.5) * linear;
-    ALWAN_CORE_T gamma_result  = ALWAN_CORE_LITERAL(1.099)
-        * ALWAN_CORE_POW(linear, ALWAN_CORE_LITERAL(0.45)) - ALWAN_CORE_LITERAL(0.099);
-    return ALWAN_CORE_SELECT(linear < ALWAN_CORE_LITERAL(0.018),
-                              linear_result, gamma_result);
+    return ALWAN_CORE_BT2020_OETF(linear);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_eotf)(ALWAN_CORE_T encoded) {
-    ALWAN_CORE_T threshold = ALWAN_CORE_LITERAL(4.5) * ALWAN_CORE_LITERAL(0.018);
-    ALWAN_CORE_T linear_result = encoded / ALWAN_CORE_LITERAL(4.5);
-    ALWAN_CORE_T gamma_result  = ALWAN_CORE_POW(
-        (encoded + ALWAN_CORE_LITERAL(0.099)) / ALWAN_CORE_LITERAL(1.099),
-        ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(0.45));
-    return ALWAN_CORE_SELECT(encoded < threshold,
-                              linear_result, gamma_result);
+    return ALWAN_CORE_BT2020_EOTF(encoded);
 }
 
 /* ================================================================

@@ -209,7 +209,7 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_clamp(alwan_simd_f32 v, alwan_simd_f3
  * SSE3: haddps; SSE2: shuffle+add
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd(alwan_simd_f32 a, alwan_simd_f32 b) {
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd_native(alwan_simd_f32 a, alwan_simd_f32 b) {
 #if defined(__SSE3__)
     return _mm_hadd_ps(a, b);
 #else
@@ -223,7 +223,7 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd(alwan_simd_f32 a, alwan_simd_f32
  * Float32 Horizontal Sum
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum(alwan_simd_f32 a) {
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum_native(alwan_simd_f32 a) {
 #if defined(__SSE3__)
     __m128 t = _mm_hadd_ps(a, a);
     return _mm_hadd_ps(t, t);
@@ -483,7 +483,7 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_clamp(alwan_simd_f64 v, alwan_simd_f6
     return _mm_min_pd(_mm_max_pd(v, lo), hi);
 }
 
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum(alwan_simd_f64 a) {
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum_native(alwan_simd_f64 a) {
     __m128d t = _mm_shuffle_pd(a, a, 1);
     return _mm_add_pd(a, t);
 }

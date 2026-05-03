@@ -88,12 +88,12 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_clamp(alwan_simd_f32 v, alwan_simd_f3
  * Float32 Horizontal
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd(alwan_simd_f32 a, alwan_simd_f32 b) {
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd_native(alwan_simd_f32 a, alwan_simd_f32 b) {
     (void)b;
     return a; /* width=1 */
 }
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum(alwan_simd_f32 a) {
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum_native(alwan_simd_f32 a) {
     return a; /* width=1, already scalar */
 }
 
@@ -171,6 +171,9 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_load(double const *ptr) { return *ptr
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_loadu(double const *ptr) { return *ptr; }
 ALWAN_INLINE void alwan_simd_f64_store(double *ptr, alwan_simd_f64 v) { *ptr = v; }
 ALWAN_INLINE void alwan_simd_f64_storeu(double *ptr, alwan_simd_f64 v) { *ptr = v; }
+
+/* Scalar backend: 1-lane f64 vector — "horizontal sum" is identity. */
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum_native(alwan_simd_f64 a) { return a; }
 
 /* ----------------------------------------------------------------
  * Integer Load / Store & Conversion
