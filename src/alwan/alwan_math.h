@@ -74,13 +74,54 @@
 
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
 
-/* Phase 1: sRGB OETF/EOTF deterministic polynomials. These are exposed
- * directly (alwan_det_srgb_oetf_f32/_f64, _eotf_*) and called by
- * alwan_aces_ff_core.inc when ALWAN_DETERMINISTIC=1. Other primitives
- * (BT.2020, PQ, HLG, Lab cube root, ACES splines, ...) follow in
- * subsequent phases — until then they still use libm even in det mode.
- * road_to_determinism.md §6.8 lists the priority order. */
+/* alwan_det_* primitives:
+ *   sRGB / BT.2020 OETF & EOTF      (Phase 1, 2)
+ *   log2 / exp2 / pow_pos / cbrt    (Phase 2b infrastructure)
+ *
+ * Phase 3+ (PQ, HLG, ACES splines) compose pow_pos/exp/log; phase 5
+ * (Lab/Oklab cube root) is alwan_det_cbrt directly. */
 # include "core/alwan_deterministic.h"
+
+/* Route fastmode pow / cbrt through deterministic positive-base
+ * versions. Most callers clamp the base to >= 0 before calling, so
+ * the "positive only" restriction matches existing usage. */
+# undef  ALWAN_POW
+# undef  ALWAN_POW_F32
+# undef  ALWAN_POW_F64
+# define ALWAN_POW(x, y)      alwan_det_pow_pos_f64((x), (y))
+# define ALWAN_POW_F32(x, y)  alwan_det_pow_pos_f32((x), (y))
+# define ALWAN_POW_F64(x, y)  alwan_det_pow_pos_f64((x), (y))
+
+# undef  ALWAN_CBRT
+# undef  ALWAN_CBRT_F32
+# undef  ALWAN_CBRT_F64
+# define ALWAN_CBRT(x)        alwan_det_cbrt_f64((x))
+# define ALWAN_CBRT_F32(x)    alwan_det_cbrt_f32((x))
+# define ALWAN_CBRT_F64(x)    alwan_det_cbrt_f64((x))
+
+# undef  ALWAN_EXP
+# undef  ALWAN_EXP_F32
+# undef  ALWAN_EXP_F64
+# define ALWAN_EXP(x)         alwan_det_exp_f64((x))
+# define ALWAN_EXP_F32(x)     alwan_det_exp_f32((x))
+# define ALWAN_EXP_F64(x)     alwan_det_exp_f64((x))
+
+# undef  ALWAN_LN
+# undef  ALWAN_LN_F32
+# undef  ALWAN_LN_F64
+# define ALWAN_LN(x)          alwan_det_log_f64((x))
+# define ALWAN_LN_F32(x)      alwan_det_log_f32((x))
+# define ALWAN_LN_F64(x)      alwan_det_log_f64((x))
+
+# undef  ALWAN_LOG2
+# undef  ALWAN_LOG2_F32
+# undef  ALWAN_LOG2_F64
+# define ALWAN_LOG2(x)        alwan_det_log2_f64((x))
+# define ALWAN_LOG2_F32(x)    alwan_det_log2_f32((x))
+# define ALWAN_LOG2_F64(x)    alwan_det_log2_f64((x))
+
+/* exp2 has no top-level fast-mode macro; we add it now since the
+ * det path makes it cheap to expose. */
 
 /* Force 2-rounding multiply-add. The build also passes
  * `-ffp-contract=off` (clang/gcc) or `/fp:precise` (MSVC) so the
