@@ -12,14 +12,30 @@ testing, and SIMD coverage on aarch64.
 >     normalized basis; f32 path tracks f64 within FLT_EPSILON.
 >   - **W3 Phase 2 (BT.2020 / BT.709 deterministic)** — done. Generic
 >     `LinearPlusPowerTF` helper in gen_tf_polynomials.py.
+>   - **W3 Phase 2b (argument-reduction infrastructure)** — done.
+>     log2/exp2/pow_pos/cbrt via frexp/ldexp + Chebyshev poly; auto-routes
+>     ALWAN_POW/CBRT/EXP/LN/LOG2 in det mode. Subsumes BT.1886/gamma/PQ/
+>     HLG/Lab cube root for the scalar path.
 >   - **W4 (SIMD reduction-order determinism)** — done. `*_native` rename +
 >     dispatcher + canonical scalar fallback in det mode.
+>   - **W5 (NEON backend + SIMD det-mode parity)** — done. Native NEON
+>     backend with f32 (4-lane) + f64 (2-lane on aarch64), full op set.
+>     SIMD backends route per-lane libm through `alwan_math.h` so det
+>     mode redirects pow/exp/log/cbrt automatically. Approximate
+>     `pow24`/`pow_inv24`/`cbrt_fast` lane-unpack to the canonical
+>     scalar polynomial in det mode (see `alwan_map_internal.h` sRGB
+>     branches and `alwan_map_simd_helpers.inc` Lab f(t) branch).
+>     PQ/HLG SIMD helpers also lane-unpack in det mode — necessary
+>     because their vector form uses `linear * (1/10000)` while the
+>     scalar uses `linear / 10000.0`; same value mathematically but
+>     1 ULP apart. 88_simd_parity verifies sRGB / PQ / HLG OETF and
+>     EOTF SIMD-vs-scalar at 0 ULP in det mode.
 >   - **W6 (cross-platform bit-exact CI)** — done. `det_run_regression`
 >     tool + matrix workflow comparing 6 platforms.
->   - Deferred (next): **Phase 2b** (BT.1886, gamma 2.2/2.4/2.6/2.8 —
->     pure-power TFs, need argument reduction); **Phase 3+** (PQ, HLG);
->     **Phase 5** (Lab/Oklab cube root, unbounded XYZ domain); **W5**
->     (NEON backend); **W1 followup** (mass-migrate tests to ULP budgets).
+>   - Deferred (next): **W1 followup** (mass-migrate remaining tests
+>     to ULP budgets); **JzAzBz / IPT / extended SIMD lane-unpack**
+>     (same div-vs-mul-by-reciprocal hazard as PQ; lower priority
+>     since not on the determinism contract surface yet).
 
 ---
 

@@ -146,8 +146,16 @@ if(ALWAN_DETERMINISTIC)
   # roundings makes the build bit-exact regardless of platform.
   if(MSVC)
     target_compile_options(alwan PUBLIC /fp:precise)
+    # In det mode, ALWAN_MAP_SIMD_WIDTH collapses to 1 so all SIMD
+    # bodies in *_map_kernels.inc are skipped and their precomputed
+    # `set1`/`inv_*` locals become unused. C4189 (initialised but
+    # not referenced) and C4101 (unreferenced local) get tripped by
+    # tens of those; suppressing them here is cheaper than refactoring
+    # every kernel to scope the constants inside the `#if`.
+    target_compile_options(alwan PRIVATE /wd4189 /wd4101)
   else()
     target_compile_options(alwan PUBLIC -ffp-contract=off)
+    target_compile_options(alwan PRIVATE -Wno-unused-variable -Wno-unused-but-set-variable)
   endif()
 endif()
 
