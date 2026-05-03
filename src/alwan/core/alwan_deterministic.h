@@ -54,6 +54,13 @@
 #include "../alwan_types.h"
 #include "alwan_det_srgb_coeffs.h"
 #include "alwan_det_bt2020_coeffs.h"
+#include "alwan_det_math_coeffs.h"
+
+/* frexp / ldexp are libm but pure IEEE-754 bit manipulation, not
+ * transcendental approximation, so they're bit-identical across
+ * platforms. Used by alwan_det_log2 / alwan_det_exp2 below for
+ * argument reduction. */
+#include <math.h>
 
 /* ----------------------------------------------------------------
  * Horner evaluation — explicit `mul; add` so FP_CONTRACT OFF actually
@@ -86,6 +93,107 @@ ALWAN_INLINE alwan_f64 alwan_det_normalize_f64(alwan_f64 x, alwan_f64 lo, alwan_
 }
 ALWAN_INLINE alwan_f32 alwan_det_normalize_f32(alwan_f32 x, alwan_f32 lo, alwan_f32 hi) {
     return 2.0f * (x - lo) / (hi - lo) - 1.0f;
+}
+
+/* ----------------------------------------------------------------
+ * Argument-reduced log2 / exp2 / pow_pos.
+ *
+ * log2(x) for x > 0:
+ *   x = m * 2^k   (frexp; m in [0.5, 1.0), k integer)
+ *   log2(x) = k + log2(m), polynomial fits log2(m) on [0.5, 1.0].
+ *
+ * exp2(t) for any t:
+ *   t = int_t + frac_t   (frac_t in [0, 1))
+ *   exp2(t) = ldexp(exp2(frac_t), int_t), polynomial fits exp2 on [0, 1].
+ *
+ * pow_pos(x, e) for x > 0:
+ *   exp2(e * log2(x)).
+ *
+ * For x <= 0 the result is 0 (matching IEEE/libm pow conventions for
+ * x = 0; for negative x it's a domain error, which we treat as 0
+ * deterministically rather than NaN).
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_f64 alwan_det_log2_f64(alwan_f64 x) {
+    if (x <= 0.0) return -INFINITY;  /* IEEE convention */
+    int k;
+    alwan_f64 const m = frexp(x, &k);
+    /* m in [0.5, 1.0); normalise to u in [-1, 1] for the polynomial. */
+    alwan_f64 const u = alwan_det_normalize_f64(m, 0.5, 1.0);
+    return (alwan_f64)k + alwan_det_horner_f64(
+        alwan_det_log2_coeffs_f64, ALWAN_DET_LOG2_DEGREE, u);
+}
+
+ALWAN_INLINE alwan_f32 alwan_det_log2_f32(alwan_f32 x) {
+    if (x <= 0.0f) return -INFINITY;
+    int k;
+    alwan_f32 const m = frexpf(x, &k);
+    alwan_f32 const u = alwan_det_normalize_f32(m, 0.5f, 1.0f);
+    return (alwan_f32)k + alwan_det_horner_f32(
+        alwan_det_log2_coeffs_f32, ALWAN_DET_LOG2_DEGREE, u);
+}
+
+ALWAN_INLINE alwan_f64 alwan_det_exp2_f64(alwan_f64 t) {
+    /* Split t into integer and fractional parts. floor() works for
+     * negative t too (frac stays in [0, 1)). */
+    alwan_f64 const int_part = floor(t);
+    alwan_f64 const frac_part = t - int_part;
+    alwan_f64 const u = alwan_det_normalize_f64(frac_part, 0.0, 1.0);
+    alwan_f64 const exp2_frac = alwan_det_horner_f64(
+        alwan_det_exp2_coeffs_f64, ALWAN_DET_EXP2_DEGREE, u);
+    return ldexp(exp2_frac, (int)int_part);
+}
+
+ALWAN_INLINE alwan_f32 alwan_det_exp2_f32(alwan_f32 t) {
+    alwan_f32 const int_part = floorf(t);
+    alwan_f32 const frac_part = t - int_part;
+    alwan_f32 const u = alwan_det_normalize_f32(frac_part, 0.0f, 1.0f);
+    alwan_f32 const exp2_frac = alwan_det_horner_f32(
+        alwan_det_exp2_coeffs_f32, ALWAN_DET_EXP2_DEGREE, u);
+    return ldexpf(exp2_frac, (int)int_part);
+}
+
+ALWAN_INLINE alwan_f64 alwan_det_log_f64(alwan_f64 x) {
+    /* ln(x) = log2(x) * ln(2). The constant 0.6931... is exact in f64. */
+    return alwan_det_log2_f64(x) * 0.69314718055994530941723212145817657;
+}
+ALWAN_INLINE alwan_f32 alwan_det_log_f32(alwan_f32 x) {
+    return alwan_det_log2_f32(x) * 0.69314718055994530941723212145817657f;
+}
+
+ALWAN_INLINE alwan_f64 alwan_det_exp_f64(alwan_f64 x) {
+    /* e^x = 2^(x / ln(2)) = 2^(x * 1.4426950...). */
+    return alwan_det_exp2_f64(x * 1.4426950408889634073599246810018922);
+}
+ALWAN_INLINE alwan_f32 alwan_det_exp_f32(alwan_f32 x) {
+    return alwan_det_exp2_f32(x * 1.4426950408889634073599246810018922f);
+}
+
+/* pow(x, e) for positive base x. For x = 0 returns 0. For x < 0
+ * returns 0 (det-mode convention; libm returns NaN for non-integer
+ * exponents). */
+ALWAN_INLINE alwan_f64 alwan_det_pow_pos_f64(alwan_f64 x, alwan_f64 e) {
+    if (x <= 0.0) return 0.0;
+    return alwan_det_exp2_f64(e * alwan_det_log2_f64(x));
+}
+ALWAN_INLINE alwan_f32 alwan_det_pow_pos_f32(alwan_f32 x, alwan_f32 e) {
+    if (x <= 0.0f) return 0.0f;
+    return alwan_det_exp2_f32(e * alwan_det_log2_f32(x));
+}
+
+/* Cube root via pow_pos. Handles negative x by sign-preservation
+ * (matches libm cbrt behaviour). */
+ALWAN_INLINE alwan_f64 alwan_det_cbrt_f64(alwan_f64 x) {
+    if (x == 0.0) return 0.0;
+    alwan_f64 const a = (x < 0.0) ? -x : x;
+    alwan_f64 const r = alwan_det_pow_pos_f64(a, 1.0 / 3.0);
+    return (x < 0.0) ? -r : r;
+}
+ALWAN_INLINE alwan_f32 alwan_det_cbrt_f32(alwan_f32 x) {
+    if (x == 0.0f) return 0.0f;
+    alwan_f32 const a = (x < 0.0f) ? -x : x;
+    alwan_f32 const r = alwan_det_pow_pos_f32(a, 1.0f / 3.0f);
+    return (x < 0.0f) ? -r : r;
 }
 
 /* ----------------------------------------------------------------

@@ -3,8 +3,23 @@
 Engineering plan for cross-platform bit-exact reproducibility, ULP-budget
 testing, and SIMD coverage on aarch64.
 
-> Status: planning. Nothing here is implemented yet. Workstreams are listed
-> in execution order; each has explicit entry/exit criteria.
+> Status as of 2026-05-03:
+>   - **W1 (ULP helper)** — done. `alwan_ulps_f64/_f32` plus six macros in
+>     test_common.h; self-tested by 85_ulp_helpers.
+>   - **W2 (alwan_math.h math layer + libm sweep)** — done. 409 raw libm
+>     calls routed through `ALWAN_*` macros. Lint enforces no regressions.
+>   - **W3 Phase 1 + 1.5 (sRGB deterministic)** — done. Polynomials in
+>     normalized basis; f32 path tracks f64 within FLT_EPSILON.
+>   - **W3 Phase 2 (BT.2020 / BT.709 deterministic)** — done. Generic
+>     `LinearPlusPowerTF` helper in gen_tf_polynomials.py.
+>   - **W4 (SIMD reduction-order determinism)** — done. `*_native` rename +
+>     dispatcher + canonical scalar fallback in det mode.
+>   - **W6 (cross-platform bit-exact CI)** — done. `det_run_regression`
+>     tool + matrix workflow comparing 6 platforms.
+>   - Deferred (next): **Phase 2b** (BT.1886, gamma 2.2/2.4/2.6/2.8 —
+>     pure-power TFs, need argument reduction); **Phase 3+** (PQ, HLG);
+>     **Phase 5** (Lab/Oklab cube root, unbounded XYZ domain); **W5**
+>     (NEON backend); **W1 followup** (mass-migrate tests to ULP budgets).
 
 ---
 
@@ -416,14 +431,68 @@ CI infra to come online.
 ### 6.8 Phase 2+ priorities
 
 In order:
-- BT.1886 / BT.2020 / generic gamma — same shape as sRGB, mostly mechanical.
-- Lab cube root (`pow(x, 1/3)`) — used everywhere in CIE math.
-- Oklab cube root.
-- PQ (rational poly + power) — more complex but well-bounded.
-- HLG — log + power, similar to PQ.
-- ACES segmented splines — already piecewise polynomial, just needs
-  `FP_CONTRACT OFF`.
-- The long tail (atd95, llab, kim2009, etc.) — nice to have, not urgent.
+- ✅ BT.2020 / BT.709 — done (Phase 2). Same shape as sRGB; the
+  refactor in `alwan_deterministic.h` introduced a generic
+  `alwan__det_lin_pow_oetf_f{32,64}` helper that takes the TF
+  parameters as args. New linear-plus-power TFs are now a one-line
+  entry in `gen_tf_polynomials.py` (LinearPlusPowerTF) plus a thin
+  inline wrapper.
+- ⏳ BT.1886 / generic gamma 2.2/2.4/2.6/2.8 — same exponent as
+  sRGB/BT.2020 but no linear segment, so the polynomial domain
+  starts at 0 where `pow(x, exp<1)` has infinite slope. Needs
+  IEEE-form argument reduction:
+      x = m * 2^k via frexp; fit `pow(m, exp)` on [0.5, 1] only.
+      `pow(2, k*exp)` = `2^int_part * pow(2, frac_part)` where the
+      integer part is exact (ldexp) and the fractional part is one
+      of `denom` distinct cases for `exp = num/denom`.
+  Adds infrastructure (frexp/ldexp wrappers in alwan_math.h) but
+  the polynomial fits become trivial.
+- ⏳ Lab/Oklab cube root (`pow(x, 1/3)`) — used everywhere in CIE
+  math. Domain is unbounded (XYZ can be > 1 for HDR), so single-
+  segment polynomial doesn't apply. Same IEEE-form reduction
+  approach as BT.1886 plus a Lab-specific linear-segment carve-out
+  near t = (6/29)^3.
+- ⏳ PQ (ST.2084) — rational polynomial in `pow(L, m1)` then
+  `pow(num/den, m2)`. Both exponents are fractional; needs the
+  IEEE reduction infrastructure from BT.1886.
+- ⏳ HLG (Hybrid Log-Gamma) — sqrt + log + linear segments. Sqrt
+  is already deterministic via `ALWAN_SQRT` (single rounding); log
+  needs argument reduction. Roughly the same level of complexity
+  as PQ.
+- ⏳ ACES segmented splines — already piecewise polynomial, just
+  needs `FP_CONTRACT OFF`. Should be the easiest of the remaining
+  phases once we have the routing pattern.
+- The long tail (atd95, llab, kim2009, ...) — same kind of
+  per-TF fits, mostly mechanical once the patterns are in place.
+
+### 6.9 Lessons learned during phases 1–2
+
+- **numpy.polynomial domain/window machinery is misleading.** Calling
+  `Chebyshev.fit(x, y, deg, domain=[lo, hi])` then `.convert(kind=
+  Polynomial)` keeps the ORIGINAL x range alive in `.coef`, so the
+  emitted coefficients reach 1e17 when the domain is small. The fix
+  is to pre-normalize x to [-1, 1] before fitting; see
+  `chebyshev_minimax_fit` in gen_tf_polynomials.py.
+- **f32 needs O(1) coefficients.** The original power-basis fit had
+  coefficients up to 3.7e17 — fine in f64 but completely lost in
+  f32 (24-bit mantissa). After normalization the coefficients drop
+  to O(0.2–0.8) and the f32 path agrees with f64 to 1.8e-7.
+- **SIMD parity matters.** SIMD's `pow24`/`pow_inv24` use lane-
+  order- and FMA-dependent approximations that diverge from the
+  scalar polynomial by ~5e-5. In det mode we pay ~10× perf to
+  unpack lanes and route through the scalar polynomial; without
+  this, scalar-vs-SIMD parity tests fail.
+- **Existing tolerance constants must be precision-aware.** Tests
+  pinning `1e-12` (libm noise floor) fail in det mode because the
+  polynomial has 5e-5 absolute error vs libm — and that's a *feature*,
+  not a bug, since 5e-5 is within the documented contract.
+  ALWAN_TEST_TOLERANCE / TEST_REL_EPSILON / ALWAN_SIMD_TOLERANCE all
+  flip wider in det mode.
+- **The cleanest refactor pattern for new TFs.** Once the generic
+  helper landed, adding BT.2020 was: one entry in the Python TF
+  table, plus four three-line wrappers in `alwan_deterministic.h`,
+  plus four macro definitions in setup files. ~1 hour of work
+  per linear-plus-power TF after the infrastructure exists.
 
 ---
 
