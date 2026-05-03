@@ -26,4 +26,11 @@
 #  include "alwan_simd_scalar.h"
 #endif
 
+/* Reduction dispatcher: defines the public alwan_simd_*_hsum / _hadd
+ * names. In fast mode they forward to the backend's *_native impl;
+ * in ALWAN_DETERMINISTIC=1 mode they use a canonical scalar reduction
+ * that's bit-exact across SSE/AVX/NEON/scalar. Must be included after
+ * the backend so the *_native symbols are visible. */
+#include "alwan_simd_reduce.h"
+
 #endif /* ALWAN_SIMD_H */

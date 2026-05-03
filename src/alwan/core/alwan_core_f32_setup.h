@@ -37,6 +37,26 @@
 #define ALWAN_CORE_ATAN2(y, x)  ALWAN_ATAN2_F32(y, x)
 #define ALWAN_CORE_POW(x, y)    ALWAN_POW_F32(x, y)
 #define ALWAN_CORE_EXP(x)       ALWAN_EXP_F32(x)
+/* Deterministic-aware sRGB primitives. road_to_determinism.md §6.2. */
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#  define ALWAN_CORE_SRGB_OETF(x)    alwan_det_srgb_oetf_f32(x)
+#  define ALWAN_CORE_SRGB_EOTF(x)    alwan_det_srgb_eotf_f32(x)
+#  define ALWAN_CORE_BT2020_OETF(x)  alwan_det_bt2020_oetf_f32(x)
+#  define ALWAN_CORE_BT2020_EOTF(x)  alwan_det_bt2020_eotf_f32(x)
+#else
+#  define ALWAN_CORE_SRGB_OETF(x)  ((x) <= ALWAN_LITERAL_F32(0.0031308) ? \
+        (x) * ALWAN_LITERAL_F32(12.92) : \
+        ALWAN_LITERAL_F32(1.055) * ALWAN_POW_F32((x), ALWAN_LITERAL_F32(1.0)/ALWAN_LITERAL_F32(2.4)) - ALWAN_LITERAL_F32(0.055))
+#  define ALWAN_CORE_SRGB_EOTF(x)  ((x) <= ALWAN_LITERAL_F32(0.04045) ? \
+        (x) / ALWAN_LITERAL_F32(12.92) : \
+        ALWAN_POW_F32(((x) + ALWAN_LITERAL_F32(0.055)) / ALWAN_LITERAL_F32(1.055), ALWAN_LITERAL_F32(2.4)))
+#  define ALWAN_CORE_BT2020_OETF(x)  ((x) < ALWAN_LITERAL_F32(0.018) ? \
+        (x) * ALWAN_LITERAL_F32(4.5) : \
+        ALWAN_LITERAL_F32(1.099) * ALWAN_POW_F32((x), ALWAN_LITERAL_F32(0.45)) - ALWAN_LITERAL_F32(0.099))
+#  define ALWAN_CORE_BT2020_EOTF(x)  ((x) < (ALWAN_LITERAL_F32(4.5) * ALWAN_LITERAL_F32(0.018)) ? \
+        (x) / ALWAN_LITERAL_F32(4.5) : \
+        ALWAN_POW_F32(((x) + ALWAN_LITERAL_F32(0.099)) / ALWAN_LITERAL_F32(1.099), ALWAN_LITERAL_F32(1.0)/ALWAN_LITERAL_F32(0.45)))
+#endif
 #define ALWAN_CORE_LN(x)        ALWAN_LN_F32(x)
 #define ALWAN_CORE_LOG2(x)      ALWAN_LOG2_F32(x)
 #define ALWAN_CORE_LOG10(x)     ALWAN_LOG10_F32(x)

@@ -197,9 +197,9 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_clamp(alwan_simd_f32 v, alwan_simd_f3
  * Float32 Horizontal / Rounding
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd(alwan_simd_f32 a, alwan_simd_f32 b) { return _mm256_hadd_ps(a, b); }
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd_native(alwan_simd_f32 a, alwan_simd_f32 b) { return _mm256_hadd_ps(a, b); }
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum(alwan_simd_f32 a) {
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum_native(alwan_simd_f32 a) {
     __m128 lo = _mm256_castps256_ps128(a);
     __m128 hi = _mm256_extractf128_ps(a, 1);
     __m128 sum128 = _mm_add_ps(lo, hi);
@@ -413,7 +413,7 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_clamp(alwan_simd_f64 v, alwan_simd_f6
     return _mm256_min_pd(_mm256_max_pd(v, lo), hi);
 }
 
-ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum(alwan_simd_f64 a) {
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum_native(alwan_simd_f64 a) {
     __m128d lo = _mm256_castpd256_pd128(a);
     __m128d hi = _mm256_extractf128_pd(a, 1);
     __m128d sum128 = _mm_add_pd(lo, hi);

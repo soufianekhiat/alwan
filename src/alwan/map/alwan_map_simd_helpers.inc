@@ -211,6 +211,36 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__lab_f_inv_simd)(alwan_map_simd
 #  define ALWAN__OETF_INLINE ALWAN_INLINE
 #endif
 
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+
+/* Deterministic mode: SIMD srgb_oetf/eotf go through the same scalar
+ * polynomial as the non-SIMD path, lane by lane. The vectorised
+ * pow24/pow_inv24 paths use approximations whose lane order and FMA
+ * usage differ across SSE/AVX/NEON; using the scalar polynomial keeps
+ * SIMD and scalar paths bit-identical. ~10x slower per pixel than the
+ * fast-mode vector path, but the determinism contract requires it.
+ * road_to_determinism.md §4. */
+
+ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_map_simd v) {
+    ALWAN_ALIGN(64) alwan_map_lane lanes[ALWAN_MAP_SIMD_WIDTH];
+    alwan_map_simd_store(lanes, v);
+    for (int i = 0; i < ALWAN_MAP_SIMD_WIDTH; i++) {
+        lanes[i] = ALWAN_MAP_NAME(alwan_det_srgb_eotf)(lanes[i]);
+    }
+    return alwan_map_simd_load(lanes);
+}
+
+ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd v) {
+    ALWAN_ALIGN(64) alwan_map_lane lanes[ALWAN_MAP_SIMD_WIDTH];
+    alwan_map_simd_store(lanes, v);
+    for (int i = 0; i < ALWAN_MAP_SIMD_WIDTH; i++) {
+        lanes[i] = ALWAN_MAP_NAME(alwan_det_srgb_oetf)(lanes[i]);
+    }
+    return alwan_map_simd_load(lanes);
+}
+
+#else /* fast mode — vectorised approximations */
+
 /* sRGB EOTF: encoded -> linear */
 ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_map_simd v) {
     alwan_map_simd thresh = alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_EOTF_THRESH);
@@ -245,6 +275,8 @@ ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_ma
         alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_B));
     return alwan_map_simd_select(mask, lo, hi);
 }
+
+#endif /* ALWAN_DETERMINISTIC */
 
 #undef ALWAN__OETF_INLINE
 

@@ -74,29 +74,21 @@
 
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
 
-# error "ALWAN_DETERMINISTIC=1 is not yet implemented. \
-See road_to_determinism.md (workstream 3) for the plan. \
-Set ALWAN_DETERMINISTIC=0 to use libm (fast mode)."
+/* Phase 1: sRGB OETF/EOTF deterministic polynomials. These are exposed
+ * directly (alwan_det_srgb_oetf_f32/_f64, _eotf_*) and called by
+ * alwan_aces_ff_core.inc when ALWAN_DETERMINISTIC=1. Other primitives
+ * (BT.2020, PQ, HLG, Lab cube root, ACES splines, ...) follow in
+ * subsequent phases — until then they still use libm even in det mode.
+ * road_to_determinism.md §6.8 lists the priority order. */
+# include "core/alwan_deterministic.h"
 
-/* Future shape, for reference:
- *
- *   #include "core/alwan_deterministic.h"
- *
- *   #undef  ALWAN_POW
- *   #define ALWAN_POW(x, y)   alwan_det_pow_f64((x), (y))
- *   #undef  ALWAN_POW_F32
- *   #define ALWAN_POW_F32(x, y)  alwan_det_pow_f32((x), (y))
- *   #undef  ALWAN_POW_F64
- *   #define ALWAN_POW_F64(x, y)  alwan_det_pow_f64((x), (y))
- *
- *   ... same for EXP, LOG, LOG2, LOG10, LN, SIN, COS, TAN,
- *   ASIN, ACOS, ATAN, ATAN2, SQRT, CBRT, FMOD, SINH, COSH, TANH ...
- *
- *   #undef  ALWAN_FMA
- *   #define ALWAN_FMA(a, b, c)   ((a) * (b) + (c))   // forced 2-rounding
- *   #undef  ALWAN_FMAF
- *   #define ALWAN_FMAF(a, b, c)  ((a) * (b) + (c))
- */
+/* Force 2-rounding multiply-add. The build also passes
+ * `-ffp-contract=off` (clang/gcc) or `/fp:precise` (MSVC) so the
+ * compiler can't re-fuse this back into hardware FMA. */
+# undef  ALWAN_FMA
+# undef  ALWAN_FMAF
+# define ALWAN_FMA(a, b, c)   ((a) * (b) + (c))
+# define ALWAN_FMAF(a, b, c)  ((a) * (b) + (c))
 
 #endif /* ALWAN_DETERMINISTIC */
 

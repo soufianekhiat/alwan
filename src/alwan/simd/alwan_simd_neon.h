@@ -205,7 +205,7 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_clamp(alwan_simd_f32 v, alwan_simd_f3
  * ARMv7: vpadd_f32 (64-bit pairwise add, needs two passes)
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd(alwan_simd_f32 a, alwan_simd_f32 b) {
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd_native(alwan_simd_f32 a, alwan_simd_f32 b) {
 #if defined(__aarch64__)
     /* vpaddq_f32 does pairwise add: [a0+a1, a2+a3, b0+b1, b2+b3] */
     return vpaddq_f32(a, b);
@@ -224,7 +224,7 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd(alwan_simd_f32 a, alwan_simd_f32
  * Float32 Horizontal Sum
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum(alwan_simd_f32 a) {
+ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum_native(alwan_simd_f32 a) {
 #if defined(__aarch64__)
     float32x4_t t = vpaddq_f32(a, a);
     return vpaddq_f32(t, t);
@@ -467,6 +467,12 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_loadu(double const *ptr) { return vld
 ALWAN_INLINE void alwan_simd_f64_store(double *ptr, alwan_simd_f64 v)  { vst1q_f64(ptr, v); }
 ALWAN_INLINE void alwan_simd_f64_storeu(double *ptr, alwan_simd_f64 v) { vst1q_f64(ptr, v); }
 
+/* Native horizontal sum (2-lane f64). Order is implementation-defined
+ * by NEON; deterministic mode bypasses this via alwan_simd_reduce.h. */
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum_native(alwan_simd_f64 a) {
+    return vdupq_n_f64(vaddvq_f64(a));
+}
+
 #else /* !__aarch64__ -- ARMv7 f64 scalar fallback */
 
 /* ARMv7 NEON has no 64-bit float SIMD; scalarize all f64 operations */
@@ -522,6 +528,9 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_load(double const *ptr) { return *ptr
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_loadu(double const *ptr) { return *ptr; }
 ALWAN_INLINE void alwan_simd_f64_store(double *ptr, alwan_simd_f64 v) { *ptr = v; }
 ALWAN_INLINE void alwan_simd_f64_storeu(double *ptr, alwan_simd_f64 v) { *ptr = v; }
+
+/* ARMv7 fallback f64 is already scalar; "horizontal sum" is identity. */
+ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum_native(alwan_simd_f64 a) { return a; }
 
 #endif /* __aarch64__ f64 */
 

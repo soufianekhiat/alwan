@@ -27,6 +27,7 @@ option(ALWAN_DISABLE_STRICT_ALIASING "Compile with -fno-strict-aliasing on GCC/C
 set(ALWAN_SIMD_ARCH "" CACHE STRING "SIMD instruction set: SSE2, AVX, AVX2, or native (empty = compiler default)")
 option(ALWAN_INSTALL "Enable install rules" ON)
 option(ALWAN_INSTALL_PKGCONFIG "Install pkg-config .pc file" ON)
+option(ALWAN_DETERMINISTIC "Use bit-exact polynomial math (no libm transcendentals, no FMA fusion). Trades ~20% perf for cross-platform reproducibility. See road_to_determinism.md." OFF)
 
 set(ALWAN_DEBUG_POSTFIX "d" CACHE STRING "Debug postfix for output names (e.g. 'd' -> alwand)")
 set(ALWAN_DEBUG_PREFIX "" CACHE STRING "Debug prefix for output names (e.g. 'dbg_' -> dbg_alwan)")
@@ -134,6 +135,21 @@ target_compile_definitions(
   PUBLIC
     ALWAN_EMBED_DATA=${_ALWAN_EMBED_DATA_VALUE}
 )
+
+if(ALWAN_DETERMINISTIC)
+  # Public so consumers (alwan_dev tests, downstream code) see the same
+  # routing path through alwan_math.h.
+  target_compile_definitions(alwan PUBLIC ALWAN_DETERMINISTIC=1)
+  # Block the compiler from contracting `a*b + c` into a hardware FMA.
+  # FMA gives a different last-bit result on x86 (with -mfma) vs without,
+  # and ARM aarch64 always fuses since FMA is mandatory. Forcing 2
+  # roundings makes the build bit-exact regardless of platform.
+  if(MSVC)
+    target_compile_options(alwan PUBLIC /fp:precise)
+  else()
+    target_compile_options(alwan PUBLIC -ffp-contract=off)
+  endif()
+endif()
 
 if(MSVC)
   target_compile_definitions(alwan PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX)

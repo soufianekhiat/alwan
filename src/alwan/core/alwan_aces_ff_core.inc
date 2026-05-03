@@ -85,9 +85,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_bt1886_oetf)(ALWAN_CORE_T x) {
 /* sRGB OETF */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_srgb_oetf)(ALWAN_CORE_T x) {
     ALWAN_CORE_T const safe_x = ALWAN_CORE_MAX(x, ALWAN_CORE_LITERAL(0.0));
-    ALWAN_CORE_T const linear_seg = safe_x * ALWAN_CORE_LITERAL(12.92);
-    ALWAN_CORE_T const power_seg  = ALWAN_CORE_LITERAL(1.055) * ALWAN_CORE_POW(safe_x, ALWAN_CORE_LITERAL(1.0) / ALWAN_CORE_LITERAL(2.4)) - ALWAN_CORE_LITERAL(0.055);
-    return ALWAN_CORE_SELECT(safe_x <= ALWAN_CORE_LITERAL(0.0031308), linear_seg, power_seg);
+    return ALWAN_CORE_SRGB_OETF(safe_x);
 }
 
 /* Gamma 2.6 OETF (cinema) */
@@ -120,9 +118,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_bt1886_eotf)(ALWAN_CORE_T x) {
 /* sRGB EOTF */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_srgb_eotf)(ALWAN_CORE_T x) {
     ALWAN_CORE_T const safe_x = ALWAN_CORE_MAX(x, ALWAN_CORE_LITERAL(0.0));
-    ALWAN_CORE_T const linear_seg = safe_x / ALWAN_CORE_LITERAL(12.92);
-    ALWAN_CORE_T const power_seg  = ALWAN_CORE_POW((safe_x + ALWAN_CORE_LITERAL(0.055)) / ALWAN_CORE_LITERAL(1.055), ALWAN_CORE_LITERAL(2.4));
-    return ALWAN_CORE_SELECT(safe_x <= ALWAN_CORE_LITERAL(0.04045), linear_seg, power_seg);
+    return ALWAN_CORE_SRGB_EOTF(safe_x);
 }
 
 /* Gamma 2.6 EOTF */
