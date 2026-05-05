@@ -157,6 +157,11 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_select(alwan_simd_f64_mask m, alwan_s
 ALWAN_INLINE int alwan_simd_f32_mask_all_set(alwan_simd_f32_mask m) { return m != 0; }
 ALWAN_INLINE int alwan_simd_f64_mask_all_set(alwan_simd_f64_mask m) { return m != 0; }
 
+ALWAN_INLINE alwan_simd_f32_mask alwan_simd_f32_mask_and(alwan_simd_f32_mask a, alwan_simd_f32_mask b) { return a & b; }
+ALWAN_INLINE alwan_simd_f32_mask alwan_simd_f32_mask_or (alwan_simd_f32_mask a, alwan_simd_f32_mask b) { return a | b; }
+ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_mask_and(alwan_simd_f64_mask a, alwan_simd_f64_mask b) { return a & b; }
+ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_mask_or (alwan_simd_f64_mask a, alwan_simd_f64_mask b) { return a | b; }
+
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_min(alwan_simd_f64 a, alwan_simd_f64 b) { return a < b ? a : b; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_max(alwan_simd_f64 a, alwan_simd_f64 b) { return a > b ? a : b; }
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_floor(alwan_simd_f64 a) { return ALWAN_FLOOR_F64(a); }

@@ -26,6 +26,11 @@ int ALWAN_MAP_LITCAT(alwan_lgg_apply, _map_interleave)(alwan_map_lane *rgb_out, 
     alwan_map_lane inv_gamma_r = (alwan_map_lane)1.0 / gs_r;
     alwan_map_lane inv_gamma_g = (alwan_map_lane)1.0 / gs_g;
     alwan_map_lane inv_gamma_b = (alwan_map_lane)1.0 / gs_b;
+    /* Used only inside the SIMD path; reference unconditionally so that
+     * builds where ALWAN_MAP_SIMD_WIDTH == 1 (e.g. Windows ARM) don't
+     * emit C4189 unused-local-initialized-but-not-referenced warnings,
+     * which Windows-ARM CI treats as errors via /WX. */
+    (void)inv_gamma_r; (void)inv_gamma_g; (void)inv_gamma_b;
 
     while (processed < count) {
         size_t tile = count - processed;
@@ -234,6 +239,9 @@ int ALWAN_MAP_LITCAT(alwan_lgg_apply, _map_planar)(alwan_map_lane *out0, size_t 
     alwan_map_lane inv_gamma_r = (alwan_map_lane)1.0 / gs_r;
     alwan_map_lane inv_gamma_g = (alwan_map_lane)1.0 / gs_g;
     alwan_map_lane inv_gamma_b = (alwan_map_lane)1.0 / gs_b;
+    /* See planar-form note above: silence MSVC C4189 when SIMD path
+     * is disabled (ALWAN_MAP_SIMD_WIDTH == 1) so /WX doesn't fail. */
+    (void)inv_gamma_r; (void)inv_gamma_g; (void)inv_gamma_b;
 
     size_t processed = 0;
     while (processed < count) {

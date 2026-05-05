@@ -304,6 +304,10 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_hdr_cielab_kernel)(alwan_map
     alwan_map_lane lf = (alwan_map_lane)(alwan_map_scalar_log((alwan_map_lane)318.0) / alwan_map_scalar_log((alwan_map_lane)100.0));
     alwan_map_lane epsilon_s = (alwan_map_lane)(0.58 / (sf * lf));
     alwan_map_lane Km_s = (alwan_map_lane)(alwan_map_scalar_pow((alwan_map_lane)2.0, epsilon_s));
+    /* Used only inside the SIMD path; reference unconditionally so MSVC
+     * /WX builds with ALWAN_MAP_SIMD_WIDTH == 1 (Windows ARM) don't
+     * fail on C4189. */
+    (void)Km_s;
 
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -371,6 +375,8 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hdr_cielab_to_xyz_kernel)(alwan_map
     alwan_map_lane epsilon_s = (alwan_map_lane)(0.58 / (sf * lf));
     alwan_map_lane Km_s = (alwan_map_lane)(alwan_map_scalar_pow((alwan_map_lane)2.0, epsilon_s));
     alwan_map_lane inv_eps = (alwan_map_lane)(1.0 / epsilon_s);
+    /* SIMD-only constants — silence MSVC C4189 on Windows ARM. */
+    (void)Km_s; (void)inv_eps;
 
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -448,6 +454,8 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_hdr_ipt_kernel)(alwan_map_la
     alwan_map_lane sf = (alwan_map_lane)(1.25 - 0.25 * (0.2 / 0.184));
     alwan_map_lane epsilon_s = (alwan_map_lane)(0.59 / (sf * lf));
     alwan_map_lane Km_s = (alwan_map_lane)(alwan_map_scalar_pow((alwan_map_lane)2.0, epsilon_s));
+    /* SIMD-only constant — silence MSVC C4189 on Windows ARM. */
+    (void)Km_s;
 
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -529,6 +537,8 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hdr_ipt_to_xyz_kernel)(alwan_map_la
     alwan_map_lane epsilon_s = (alwan_map_lane)(0.59 / (sf * lf));
     alwan_map_lane Km_s = (alwan_map_lane)(alwan_map_scalar_pow((alwan_map_lane)2.0, epsilon_s));
     alwan_map_lane inv_eps = (alwan_map_lane)(1.0 / epsilon_s);
+    /* SIMD-only constants — silence MSVC C4189 on Windows ARM. */
+    (void)Km_s; (void)inv_eps;
 
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
@@ -1031,6 +1041,11 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_custom_kernel)(al
                                                     alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                                     size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) {
     ALWAN_MAP_LIT(alwan_vec2) coeffs = ALWAN_MAP_LITV(alwan_hunter_coefficients)(*white_xyz);
+    /* coeffs is consumed only inside the SIMD branch via ka/kb; the
+     * scalar fallback recomputes via ALWAN_MAP_LITV(...). Reference
+     * unconditionally so MSVC /WX builds with ALWAN_MAP_SIMD_WIDTH == 1
+     * (Windows ARM) don't fail on C4101. */
+    (void)coeffs;
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -1089,6 +1104,8 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_custom_kernel)(al
                                                     alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
                                                     size_t n, ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) {
     ALWAN_MAP_LIT(alwan_vec2) coeffs = ALWAN_MAP_LITV(alwan_hunter_coefficients)(*white_xyz);
+    /* See forward-form note above: silence MSVC C4101 on Windows ARM. */
+    (void)coeffs;
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -1274,6 +1291,9 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_prolab_custom_kernel)(alwan_
     alwan_map_lane inv_wx = (alwan_map_lane)((alwan_map_scalar_abs(white_xyz->x) > eps) ? 1.0 / white_xyz->x : 1.0 / eps);
     alwan_map_lane inv_wy = (alwan_map_lane)((alwan_map_scalar_abs(white_xyz->y) > eps) ? 1.0 / white_xyz->y : 1.0 / eps);
     alwan_map_lane inv_wz = (alwan_map_lane)((alwan_map_scalar_abs(white_xyz->z) > eps) ? 1.0 / white_xyz->z : 1.0 / eps);
+    /* Folded into the SIMD Q*inv_w matrix below; reference unconditionally
+     * so MSVC /WX builds with ALWAN_MAP_SIMD_WIDTH == 1 don't fail on C4189. */
+    (void)inv_wx; (void)inv_wy; (void)inv_wz;
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -1396,6 +1416,8 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_uvw_kernel)(alwan_map_lane *
     alwan_map_lane sum_n = (alwan_map_lane)(white_xyz->x + 15.0 * white_xyz->y + 3.0 * white_xyz->z);
     alwan_map_lane un_s = (alwan_map_lane)((alwan_map_scalar_abs(sum_n) < ALWAN_EPSILON) ? 0.0 : (4.0 * white_xyz->x) / sum_n);
     alwan_map_lane vn_s = (alwan_map_lane)((alwan_map_scalar_abs(sum_n) < ALWAN_EPSILON) ? 0.0 : (6.0 * white_xyz->y) / sum_n);
+    /* Broadcast into SIMD un_w/vn_w; silence MSVC C4189 on Windows ARM. */
+    (void)un_s; (void)vn_s;
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -1467,6 +1489,8 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel)(alwan_map_lane *
     alwan_map_lane sum_n = (alwan_map_lane)(white_xyz->x + 15.0 * white_xyz->y + 3.0 * white_xyz->z);
     alwan_map_lane un_s = (alwan_map_lane)((alwan_map_scalar_abs(sum_n) < ALWAN_EPSILON) ? 0.0 : (4.0 * white_xyz->x) / sum_n);
     alwan_map_lane vn_s = (alwan_map_lane)((alwan_map_scalar_abs(sum_n) < ALWAN_EPSILON) ? 0.0 : (6.0 * white_xyz->y) / sum_n);
+    /* Broadcast into SIMD un_w/vn_w; silence MSVC C4189 on Windows ARM. */
+    (void)un_s; (void)vn_s;
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -2091,6 +2115,8 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__lab_to_din99_kernel)(alwan_map_lane
     alwan_map_lane c7_rad = (alwan_map_lane)(ALWAN_MAP_LIT(ALWAN_DIN99_COEFFS)[v][6] * ALWAN_PI / 180.0);
     alwan_map_lane cos_c3 = (alwan_map_lane)(alwan_map_scalar_cos(c3_rad));
     alwan_map_lane sin_c3 = (alwan_map_lane)(alwan_map_scalar_sin(c3_rad));
+    /* Used only inside the SIMD branch; silence MSVC C4189 on Windows ARM. */
+    (void)c7_rad; (void)cos_c3; (void)sin_c3;
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {
@@ -2171,6 +2197,11 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__din99_to_lab_kernel)(alwan_map_lane
     alwan_map_lane inv_c5 = (alwan_map_lane)(1.0 / ALWAN_MAP_LIT(ALWAN_DIN99_COEFFS)[v][5]);
     alwan_map_lane inv_c0 = (alwan_map_lane)(1.0 / ALWAN_MAP_LIT(ALWAN_DIN99_COEFFS)[v][0]);
     alwan_map_lane inv_c1 = (alwan_map_lane)(1.0 / ALWAN_MAP_LIT(ALWAN_DIN99_COEFFS)[v][1]);
+    /* These constants feed only the SIMD branch below; reference them
+     * unconditionally so MSVC /WX builds with ALWAN_MAP_SIMD_WIDTH == 1
+     * (e.g. Windows ARM) don't fail on C4189. */
+    (void)c7_rad; (void)cos_c3; (void)sin_c3; (void)inv_c3f;
+    (void)c7_over_c4; (void)inv_c5; (void)inv_c1; (void)inv_c0;
     size_t i = 0;
 #if ALWAN_MAP_SIMD_WIDTH > 1
     {

@@ -181,6 +181,14 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_select(alwan_simd_f32_mask m, alwan_s
     return vbslq_f32(m, a, b);
 }
 
+ALWAN_INLINE alwan_simd_f32_mask alwan_simd_f32_mask_and(alwan_simd_f32_mask a, alwan_simd_f32_mask b) {
+    return vandq_u32(a, b);
+}
+
+ALWAN_INLINE alwan_simd_f32_mask alwan_simd_f32_mask_or(alwan_simd_f32_mask a, alwan_simd_f32_mask b) {
+    return vorrq_u32(a, b);
+}
+
 ALWAN_INLINE int alwan_simd_f32_mask_all_set(alwan_simd_f32_mask m) {
 #if defined(__aarch64__)
     return vminvq_u32(m) != 0;
@@ -428,6 +436,14 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_select(alwan_simd_f64_mask m, alwan_s
     return vbslq_f64(m, a, b);
 }
 
+ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_mask_and(alwan_simd_f64_mask a, alwan_simd_f64_mask b) {
+    return vandq_u64(a, b);
+}
+
+ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_mask_or(alwan_simd_f64_mask a, alwan_simd_f64_mask b) {
+    return vorrq_u64(a, b);
+}
+
 ALWAN_INLINE int alwan_simd_f64_mask_all_set(alwan_simd_f64_mask m) {
     return vgetq_lane_u64(m, 0) != 0 && vgetq_lane_u64(m, 1) != 0;
 }
@@ -510,6 +526,9 @@ ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_cmpgt(alwan_simd_f64 a, alwan_si
 ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_cmpge(alwan_simd_f64 a, alwan_simd_f64 b) { return a >= b ? ~(uint64_t)0 : 0; }
 
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_select(alwan_simd_f64_mask m, alwan_simd_f64 a, alwan_simd_f64 b) { return m ? a : b; }
+
+ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_mask_and(alwan_simd_f64_mask a, alwan_simd_f64_mask b) { return a & b; }
+ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_mask_or(alwan_simd_f64_mask a, alwan_simd_f64_mask b) { return a | b; }
 
 ALWAN_INLINE int alwan_simd_f64_mask_all_set(alwan_simd_f64_mask m) { return m != 0; }
 
