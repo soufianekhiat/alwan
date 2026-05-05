@@ -16,7 +16,38 @@
 #include "../core/alwan_rgb_core.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <locale.h>
+
+/* ----------------------------------------------------------------
+ * Determinism / portability hardening:
+ *   - All file output uses "wb" (binary mode) so MSVC text-mode
+ *     CRLF translation does not perturb the on-disk content.
+ *   - All numeric formatting (%.17g) is wrapped under LC_NUMERIC="C"
+ *     so a host locale that uses "," as the decimal separator does
+ *     not produce un-parseable XML floats.
+ *   - All numeric data uses %.17g for lossless f64 round-trip; CLF
+ *     consumers that prefer fixed-point formatting can re-format.
+ * ---------------------------------------------------------------- */
+
+static char *alwan_clf_save_lc_numeric(void) {
+    char const *cur = setlocale(LC_NUMERIC, NULL);
+    if (!cur) return NULL;
+    size_t n = strlen(cur);
+    char *saved = (char *)malloc(n + 1);
+    if (!saved) return NULL;
+    memcpy(saved, cur, n + 1);
+    setlocale(LC_NUMERIC, "C");
+    return saved;
+}
+
+static void alwan_clf_restore_lc_numeric(char *saved) {
+    if (saved) {
+        setlocale(LC_NUMERIC, saved);
+        free(saved);
+    }
+}
 
 /* ----------------------------------------------------------------
  * Internal: buffered writer that works for both FILE* and char*
@@ -115,7 +146,7 @@ static void clf_write_lut1d(clf_writer *w, alwan_f64 const *lut,
     clf_write(w, "    <Array dim=\"%d 1\">\n", size);
 
     for (int i = 0; i < size; i++) {
-        clf_write(w, "      %.10f\n", (double)lut[i]);
+        clf_write(w, "      %.17g\n", (double)lut[i]);
     }
 
     clf_write(w, "    </Array>\n");
@@ -135,7 +166,7 @@ static void clf_write_lut3d(clf_writer *w, alwan_f64 const *lut,
     /* CLF data order: R varies fastest, then G, then B (same as Alwan's internal order) */
     size_t const total = (size_t)size * (size_t)size * (size_t)size;
     for (size_t i = 0; i < total; i++) {
-        clf_write(w, "      %.10f %.10f %.10f\n",
+        clf_write(w, "      %.17g %.17g %.17g\n",
                   (double)lut[i * 3 + 0],
                   (double)lut[i * 3 + 1],
                   (double)lut[i * 3 + 2]);
@@ -157,10 +188,10 @@ static void clf_write_range(clf_writer *w,
     if (!clamp) clf_write(w, " style=\"noClamp\"");
     clf_write(w, ">\n");
     if (desc) clf_write(w, "    <Description>%s</Description>\n", desc);
-    clf_write(w, "    <minInValue>%.10f</minInValue>\n", (double)min_in);
-    clf_write(w, "    <maxInValue>%.10f</maxInValue>\n", (double)max_in);
-    clf_write(w, "    <minOutValue>%.10f</minOutValue>\n", (double)min_out);
-    clf_write(w, "    <maxOutValue>%.10f</maxOutValue>\n", (double)max_out);
+    clf_write(w, "    <minInValue>%.17g</minInValue>\n", (double)min_in);
+    clf_write(w, "    <maxInValue>%.17g</maxInValue>\n", (double)max_in);
+    clf_write(w, "    <minOutValue>%.17g</minOutValue>\n", (double)min_out);
+    clf_write(w, "    <maxOutValue>%.17g</maxOutValue>\n", (double)max_out);
     clf_write(w, "  </Range>\n");
 }
 
@@ -173,7 +204,7 @@ static void clf_write_exponent(clf_writer *w, alwan_f64 exponent,
     clf_write(w, "  <Exponent inBitDepth=\"32f\" outBitDepth=\"32f\" style=\"%s\">\n",
               style);
     if (desc) clf_write(w, "    <Description>%s</Description>\n", desc);
-    clf_write(w, "    <ExponentParams exponent=\"%.10f\" />\n", (double)exponent);
+    clf_write(w, "    <ExponentParams exponent=\"%.17g\" />\n", (double)exponent);
     clf_write(w, "  </Exponent>\n");
 }
 
@@ -187,7 +218,7 @@ static void clf_write_exponent_moncurve(clf_writer *w, alwan_f64 exponent,
     clf_write(w, "  <Exponent inBitDepth=\"32f\" outBitDepth=\"32f\" style=\"%s\">\n",
               style);
     if (desc) clf_write(w, "    <Description>%s</Description>\n", desc);
-    clf_write(w, "    <ExponentParams exponent=\"%.10f\" offset=\"%.10f\" />\n",
+    clf_write(w, "    <ExponentParams exponent=\"%.17g\" offset=\"%.17g\" />\n",
               (double)exponent, (double)offset);
     clf_write(w, "  </Exponent>\n");
 }
@@ -406,8 +437,10 @@ int alwan_clf_export_f64(char const *path, alwan_rgb_space_desc_f64 const *src_s
     if (!path || !src_space || !dst_space) return ALWAN_E_INVALID;
     if (lut_size < 2) lut_size = 4096; /* default LUT size for 1D */
 
-    FILE *f = fopen(path, "w");
+    FILE *f = fopen(path, "wb");
     if (!f) return ALWAN_E_INVALID;
+
+    char *saved_locale = alwan_clf_save_lc_numeric();
 
     clf_writer w;
     memset(&w, 0, sizeof(w));
@@ -415,6 +448,8 @@ int alwan_clf_export_f64(char const *path, alwan_rgb_space_desc_f64 const *src_s
 
     int status = clf_export_core(&w, src_space, dst_space, 0, (alwan_view_transform)0,
                                   ctx, id, name, lut_size);
+
+    alwan_clf_restore_lc_numeric(saved_locale);
     fclose(f);
     return status;
 }
@@ -423,8 +458,10 @@ int alwan_clf_export_view_f64(char const *path, alwan_rgb_space_desc_f64 const *
     if (!path || !src_space || !dst_space) return ALWAN_E_INVALID;
     if (lut_size < 2) lut_size = 4096;
 
-    FILE *f = fopen(path, "w");
+    FILE *f = fopen(path, "wb");
     if (!f) return ALWAN_E_INVALID;
+
+    char *saved_locale = alwan_clf_save_lc_numeric();
 
     clf_writer w;
     memset(&w, 0, sizeof(w));
@@ -432,6 +469,8 @@ int alwan_clf_export_view_f64(char const *path, alwan_rgb_space_desc_f64 const *
 
     int status = clf_export_core(&w, src_space, dst_space, 1, view,
                                   ctx, id, name, lut_size);
+
+    alwan_clf_restore_lc_numeric(saved_locale);
     fclose(f);
     return status;
 }
@@ -446,6 +485,8 @@ int alwan_clf_export_buffer_f64(char *buf, size_t *bytes_written, size_t buf_siz
     }
     if (lut_size < 2) lut_size = 4096;
 
+    char *saved_locale = alwan_clf_save_lc_numeric();
+
     clf_writer w;
     memset(&w, 0, sizeof(w));
     w.buf = buf;
@@ -454,6 +495,7 @@ int alwan_clf_export_buffer_f64(char *buf, size_t *bytes_written, size_t buf_siz
     int status = clf_export_core(&w, src_space, dst_space, 0, (alwan_view_transform)0,
                                   ctx, id, name, lut_size);
 
+    alwan_clf_restore_lc_numeric(saved_locale);
     if (w.overflow) return ALWAN_E_RANGE;
     *bytes_written = w.pos;
     return status;
@@ -465,6 +507,8 @@ int alwan_clf_export_view_buffer_f64(char *buf, size_t *bytes_written, size_t bu
     }
     if (lut_size < 2) lut_size = 4096;
 
+    char *saved_locale = alwan_clf_save_lc_numeric();
+
     clf_writer w;
     memset(&w, 0, sizeof(w));
     w.buf = buf;
@@ -473,6 +517,7 @@ int alwan_clf_export_view_buffer_f64(char *buf, size_t *bytes_written, size_t bu
     int status = clf_export_core(&w, src_space, dst_space, 1, view,
                                   ctx, id, name, lut_size);
 
+    alwan_clf_restore_lc_numeric(saved_locale);
     if (w.overflow) return ALWAN_E_RANGE;
     *bytes_written = w.pos;
     return status;

@@ -46,10 +46,15 @@ testing, and SIMD coverage on aarch64.
 >     `_map_planar_ex` format-conversion paths are pinned across all
 >     5 pixel formats. Two previously-unimplemented f32 functions
 >     (`alwan_table_interp_3d_{trilinear,tetrahedral}_f32`) were
->     implemented in alwan and added to the contract. Out of scope
->     by design only for path-based file I/O surfaces (filesystem
->     encoding / line endings / timestamps are not determinism
->     targets). Coverage: 12 math primitives; 24 colorspace
+>     implemented in alwan and added to the contract. File I/O
+>     byte-content is also now under the contract:
+>     `alwan_clf_export_*` and `alwan_cube_export_*` were hardened
+>     (binary fopen modes, `LC_NUMERIC="C"` guard, `%.17g` lossless
+>     precision) and a companion `det_file_export` tool runs in CI
+>     to MD5 the resulting `.cube` / `.clf` files across all 6
+>     matrix runners; only filesystem-level concerns (timestamps,
+>     ACLs, path encoding) stay out of scope as OS metadata, not
+>     byte content. Coverage: 12 math primitives; 24 colorspace
 >     forwards + 23 inverses + direct LCh/LCHuv↔XYZ + HLC roundtrip +
 >     NCS notation lookup; 10 CAM forwards + 7 inverses; 16 view
 >     transforms; 16 ACES output transforms + 2 inverses + LMT;

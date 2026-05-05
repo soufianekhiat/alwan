@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <locale.h>
 
 /* ----------------------------------------------------------------
  * .cube file parser (Adobe/Iridas format)
@@ -24,7 +25,30 @@
  *   TITLE "name"
  *   # comments
  *   R G B data lines
+ *
+ * Determinism / portability hardening: files are opened in binary
+ * mode ("rb"); sscanf is run under LC_NUMERIC="C" so a host locale
+ * with "," as the decimal separator does not silently fail to parse
+ * numeric data. See alwan_export.c for the matching writer notes.
  * ---------------------------------------------------------------- */
+
+static char *alwan_save_lc_numeric(void) {
+    char const *cur = setlocale(LC_NUMERIC, NULL);
+    if (!cur) return NULL;
+    size_t n = strlen(cur);
+    char *saved = (char *)malloc(n + 1);
+    if (!saved) return NULL;
+    memcpy(saved, cur, n + 1);
+    setlocale(LC_NUMERIC, "C");
+    return saved;
+}
+
+static void alwan_restore_lc_numeric(char *saved) {
+    if (saved) {
+        setlocale(LC_NUMERIC, saved);
+        free(saved);
+    }
+}
 
 /* Skip leading whitespace */
 static char const *skip_ws(char const *s) {
@@ -42,8 +66,11 @@ int alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
                           char const *path) {
     if (!lut || !out_size || !path) return ALWAN_E_INVALID;
 
-    FILE *f = fopen(path, "r");
+    FILE *f = fopen(path, "rb");
     if (!f) return ALWAN_E_INVALID;
+
+    char *saved_locale = alwan_save_lc_numeric();
+    int err = ALWAN_OK;
 
     int size = 0;
     size_t data_count = 0;
@@ -58,10 +85,7 @@ int alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
         /* Parse header keywords */
         if (strncmp(s, "LUT_3D_SIZE", 11) == 0) {
             size = atoi(s + 11);
-            if (size < 2 || size > 256) {
-                fclose(f);
-                return ALWAN_E_RANGE;
-            }
+            if (size < 2 || size > 256) { err = ALWAN_E_RANGE; goto done; }
             continue;
         }
         if (strncmp(s, "LUT_1D_SIZE", 11) == 0) continue; /* skip 1D in 3D loader */
@@ -70,22 +94,15 @@ int alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
         if (strncmp(s, "TITLE", 5) == 0) continue;
 
         /* Must be data — parse RGB triplet */
-        if (size == 0) {
-            fclose(f);
-            return ALWAN_E_INVALID; /* data before size declaration */
-        }
+        if (size == 0) { err = ALWAN_E_INVALID; goto done; }
 
         double r, g, b;
         if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) {
-            fclose(f);
-            return ALWAN_E_INVALID;
+            err = ALWAN_E_INVALID; goto done;
         }
 
         size_t total = (size_t)size * (size_t)size * (size_t)size;
-        if (data_count >= total) {
-            fclose(f);
-            return ALWAN_E_RANGE; /* too many data points */
-        }
+        if (data_count >= total) { err = ALWAN_E_RANGE; goto done; }
 
         lut[data_count * 3 + 0] = (alwan_f64)r;
         lut[data_count * 3 + 1] = (alwan_f64)g;
@@ -93,23 +110,28 @@ int alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
         data_count++;
     }
 
-    fclose(f);
-
-    if (size == 0) return ALWAN_E_NODATA;
+    if (size == 0) { err = ALWAN_E_NODATA; goto done; }
 
     size_t expected = (size_t)size * (size_t)size * (size_t)size;
-    if (data_count != expected) return ALWAN_E_RANGE;
+    if (data_count != expected) { err = ALWAN_E_RANGE; goto done; }
 
     *out_size = size;
-    return ALWAN_OK;
+
+done:
+    alwan_restore_lc_numeric(saved_locale);
+    fclose(f);
+    return err;
 }
 
 int alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
                           char const *path) {
     if (!lut || !out_size || !path) return ALWAN_E_INVALID;
 
-    FILE *f = fopen(path, "r");
+    FILE *f = fopen(path, "rb");
     if (!f) return ALWAN_E_INVALID;
+
+    char *saved_locale = alwan_save_lc_numeric();
+    int err = ALWAN_OK;
 
     int size = 0;
     int data_count = 0;
@@ -122,10 +144,7 @@ int alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
 
         if (strncmp(s, "LUT_1D_SIZE", 11) == 0) {
             size = atoi(s + 11);
-            if (size < 2 || size > 65536) {
-                fclose(f);
-                return ALWAN_E_RANGE;
-            }
+            if (size < 2 || size > 65536) { err = ALWAN_E_RANGE; goto done_1d; }
             continue;
         }
         if (strncmp(s, "LUT_3D_SIZE", 11) == 0) continue;
@@ -133,34 +152,29 @@ int alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;
 
-        if (size == 0) {
-            fclose(f);
-            return ALWAN_E_INVALID;
-        }
+        if (size == 0) { err = ALWAN_E_INVALID; goto done_1d; }
 
         double r, g, b;
         if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) {
-            fclose(f);
-            return ALWAN_E_INVALID;
+            err = ALWAN_E_INVALID; goto done_1d;
         }
 
-        if (data_count >= size) {
-            fclose(f);
-            return ALWAN_E_RANGE;
-        }
+        if (data_count >= size) { err = ALWAN_E_RANGE; goto done_1d; }
 
         /* Average of R, G, B for 1D (they're usually identical) */
         lut[data_count] = (alwan_f64)((r + g + b) / 3.0);
         data_count++;
     }
 
-    fclose(f);
-
-    if (size == 0) return ALWAN_E_NODATA;
-    if (data_count != size) return ALWAN_E_RANGE;
+    if (size == 0) { err = ALWAN_E_NODATA; goto done_1d; }
+    if (data_count != size) { err = ALWAN_E_RANGE; goto done_1d; }
 
     *out_size = size;
-    return ALWAN_OK;
+
+done_1d:
+    alwan_restore_lc_numeric(saved_locale);
+    fclose(f);
+    return err;
 }
 
 /* ----------------------------------------------------------------
@@ -170,6 +184,9 @@ int alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
 int alwan_cube_import_3d_buffer_f64(alwan_f64 *lut, int *out_size,
                                  char const *buf, size_t buf_len) {
     if (!lut || !out_size || !buf || buf_len == 0) return ALWAN_E_INVALID;
+
+    char *saved_locale = alwan_save_lc_numeric();
+    int err = ALWAN_OK;
 
     int size = 0;
     size_t data_count = 0;
@@ -198,7 +215,7 @@ int alwan_cube_import_3d_buffer_f64(alwan_f64 *lut, int *out_size,
 
         if (strncmp(s, "LUT_3D_SIZE", 11) == 0) {
             size = atoi(s + 11);
-            if (size < 2 || size > 256) return ALWAN_E_RANGE;
+            if (size < 2 || size > 256) { err = ALWAN_E_RANGE; goto done_buf; }
             continue;
         }
         if (strncmp(s, "LUT_1D_SIZE", 11) == 0) continue;
@@ -206,13 +223,13 @@ int alwan_cube_import_3d_buffer_f64(alwan_f64 *lut, int *out_size,
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;
 
-        if (size == 0) return ALWAN_E_INVALID;
+        if (size == 0) { err = ALWAN_E_INVALID; goto done_buf; }
 
         double r, g, b;
-        if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) return ALWAN_E_INVALID;
+        if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) { err = ALWAN_E_INVALID; goto done_buf; }
 
         size_t total = (size_t)size * (size_t)size * (size_t)size;
-        if (data_count >= total) return ALWAN_E_RANGE;
+        if (data_count >= total) { err = ALWAN_E_RANGE; goto done_buf; }
 
         lut[data_count * 3 + 0] = (alwan_f64)r;
         lut[data_count * 3 + 1] = (alwan_f64)g;
@@ -220,13 +237,16 @@ int alwan_cube_import_3d_buffer_f64(alwan_f64 *lut, int *out_size,
         data_count++;
     }
 
-    if (size == 0) return ALWAN_E_NODATA;
+    if (size == 0) { err = ALWAN_E_NODATA; goto done_buf; }
 
     size_t expected = (size_t)size * (size_t)size * (size_t)size;
-    if (data_count != expected) return ALWAN_E_RANGE;
+    if (data_count != expected) { err = ALWAN_E_RANGE; goto done_buf; }
 
     *out_size = size;
-    return ALWAN_OK;
+
+done_buf:
+    alwan_restore_lc_numeric(saved_locale);
+    return err;
 }
 
 /* ----------------------------------------------------------------

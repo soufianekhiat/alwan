@@ -464,12 +464,31 @@ Out of scope:
   determinism is forfeit.
 - **f128 / long double.** Stays f32/f64 only.
 - **GPU backends (HLSL/GLSL/Halide/CUDA).** Out of scope.
-- **File I/O surfaces** (`alwan_clf_export_*`, `alwan_cube_import_*` /
-  `alwan_cube_export_*` taking file paths). Filesystem encoding, line
-  endings, and timestamps are not determinism targets. The
-  buffer-based variants (`alwan_clf_export_buffer`,
-  `alwan_cube_import_buffer`, etc.) are pure memory operations and
-  could be added to the contract if needed.
+- **Filesystem-level concerns**: filesystem timestamps, atime/mtime,
+  ACLs, sparse-file behaviour, and arbitrary path encoding stay out
+  of scope — those are OS-level, not byte-content concerns.
+
+  The byte content written by `alwan_clf_export_*` /
+  `alwan_cube_export_*` *is* on the contract. Three pieces of
+  hardening land that:
+  1. All file output uses `"wb"` (binary fopen mode) to disable
+     MSVC's text-mode CRLF translation.
+  2. All numeric formatting runs under `LC_NUMERIC="C"` so a host
+     locale that uses `,` as the decimal separator does not produce
+     unparseable `.cube` / `.clf` output. The exporters save the
+     caller's `LC_NUMERIC`, switch to `"C"` for the export block,
+     and restore on every exit path.
+  3. Numeric data uses `%.17g` (f64) / `%.9g` (f32) — the
+     round-trip-preserving format for IEEE 754 — so the
+     `cube_export → cube_import` cycle is exact.
+
+  CI verifies the on-disk bytes match across the matrix: the
+  determinism workflow builds a sibling `det_file_export` tool that
+  writes a fixed test scene (sRGB→BT.2020 3D LUT at edge 17, an
+  identity 1D LUT at 64 entries, two CLF ProcessLists) and the
+  matrix step asserts MD5 equality of each output file across all
+  6 runners (Linux x86_64, Linux aarch64, macOS x86_64, macOS
+  aarch64, Windows x86_64, Windows aarch64).
 
 ---
 
