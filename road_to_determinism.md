@@ -23,15 +23,74 @@ testing, and SIMD coverage on aarch64.
 >     SIMD backends route per-lane libm through `alwan_math.h` so det
 >     mode redirects pow/exp/log/cbrt automatically. Approximate
 >     `pow24`/`pow_inv24`/`cbrt_fast` lane-unpack to the canonical
->     scalar polynomial in det mode (see `alwan_map_internal.h` sRGB
->     branches and `alwan_map_simd_helpers.inc` Lab f(t) branch).
->     PQ/HLG SIMD helpers also lane-unpack in det mode — necessary
->     because their vector form uses `linear * (1/10000)` while the
->     scalar uses `linear / 10000.0`; same value mathematically but
->     1 ULP apart. 88_simd_parity verifies sRGB / PQ / HLG OETF and
->     EOTF SIMD-vs-scalar at 0 ULP in det mode.
->   - **W6 (cross-platform bit-exact CI)** — done. `det_run_regression`
->     tool + matrix workflow comparing 6 platforms.
+>     scalar polynomial in det mode for the alwan_map_internal.h
+>     legacy SIMD path (used by alwan_rgb.c's OETF/EOTF apply).
+>     For all *_map_kernels.inc-driven colorspace conversions (Lab,
+>     Luv, IPT, Oklab, JzAzBz, HSV, HSL, HWB, HSY, HSP, LCh, JzCzHz,
+>     ICtCp, IgPgTg, ICaCb, OSA-UCS, Hunter-Lab, ProLab, DIN99, ...),
+>     ALWAN_MAP_SIMD_WIDTH collapses to 1 in det mode so every kernel
+>     falls through to its scalar tail loop — eliminates SIMD-vs-scalar
+>     drift from precomputed reciprocals (`vx * (1/wx)` vs `vx / wx`),
+>     pre-computed log constants (`c = 0.5 - a*ln(4a)` literal vs
+>     runtime polynomial log), and matrix-multiply codegen variation.
+>     88_simd_parity verifies 25 conversions at 0 ULP in det mode.
+>   - **W6 (cross-platform bit-exact CI)** — done + extended through v49.
+>     `det_run_regression` dumps 407,365 lines per platform pinning
+>     the full public API surface of alwan.h. Every color-type
+>     declared in the header is reached by at least one conversion;
+>     every TF enum has OETF/EOTF roundtrip; every CAM model has
+>     forward + inverse and (for CAM16/CIECAM02/ZCAM/Hellwig2022/RLAB)
+>     a viewing-condition parameter sweep across all surrounds ×
+>     discount × La/D_factor combinations; both `_map_interleave`
+>     and `_map_planar` dispatch shapes plus `_map_interleave_ex` and
+>     `_map_planar_ex` format-conversion paths are pinned across all
+>     5 pixel formats. Two previously-unimplemented f32 functions
+>     (`alwan_table_interp_3d_{trilinear,tetrahedral}_f32`) were
+>     implemented in alwan and added to the contract. Out of scope
+>     by design only for path-based file I/O surfaces (filesystem
+>     encoding / line endings / timestamps are not determinism
+>     targets). Coverage: 12 math primitives; 24 colorspace
+>     forwards + 23 inverses + direct LCh/LCHuv↔XYZ + HLC roundtrip +
+>     NCS notation lookup; 10 CAM forwards + 7 inverses; 16 view
+>     transforms; 16 ACES output transforms + 2 inverses + LMT;
+>     8 gamut-mapping methods; **35 transfer-function families** with
+>     roundtrip — every TF enum in alwan.h (ACEScc/cct, S-Log/2/3,
+>     C-Log/2/3, V-Log, N-Log, REDLog/Film, Log3G10, Protune, Cineon,
+>     BT.1886, Gamma 2.2/2.4/2.6/2.8, ACESproxy, LogC3/4, BMDFilm/4,
+>     T-Log, E-Log, Apple Log, F-Log/2, L-Log, D-Log, DCDM, ADX10/16);
+>     14 dE metrics; 4 CCT estimators + cct_duv_optimize;
+>     6 CAT transforms (incl. Zhai2018); 3 spectrum upsamplers;
+>     SPD blackbody integration + shape analysis + resample (linear +
+>     Catmull-Rom × 3 extrapolate modes) + bandpass correction
+>     (1/5/10 nm); camera sensitivities (Nikon D5100, Sigma SD
+>     Merrill); all 8 observers integrated against D65; 5 additional
+>     illuminants (A, D50, D55, F11, E); **6 colour quality metrics**
+>     (TM-30 Rf, CRI Ra, CQS, CIE 224 Rf, SSI, metamerism index);
+>     LUT sampling primitives + 6 interpolation methods + 6
+>     extrapolation modes; ColorChecker + Munsell renotation
+>     reference data; **Machado CVD model** at 3 severities + Brettel
+>     vs Machado single-pixel dispatch; luminous efficiency curves
+>     V(λ)/V'(λ)/V_mesopic + photopic/scotopic/mesopic luminance
+>     integration + 5 Barten 1999 sub-helpers; image_convert +
+>     image_convert_rgba (straight + premultiplied alpha); video
+>     encode/decode (BT.709 8b + BT.2020 10b, full + narrow);
+>     bake_1dlut + bake_2dlut + lut3d↔lut2d layout converters;
+>     interop registry (count + entry_at + parse + format roundtrip
+>     across every entry); f32 SPD pipeline; hero wavelength sampling,
+>     9 RGB-to-RGB conversions, prismatic colour roundtrip, 2 CSF
+>     variants, Rayleigh scattering, linear-sRGB convenience wrappers,
+>     relative luminance, white balance, printer lights, LGG and
+>     color matrix (incl. 5 presets), ICtCp HLG forward+inverse,
+>     integer normalization (8/10/12/16-bit u↔f + half conversion),
+>     plus f32 forward+inverse colorspace coverage and an f32 hot-path
+>     block (AgX + Tony McMapface view transforms, ACES1/ACES2 outputs,
+>     CAM16 forward). 58 SIMD-vs-scalar parity assertions verified
+>     bit-exact locally via 88_simd_parity. Matrix workflow compares
+>     6 platforms.
+>   - **88_simd_parity (local SIMD-vs-scalar parity)** — done.
+>     35 conversions verified at 0 ULP in det mode. Generic
+>     run_chan3_parity helper supports adding more via init+adapter
+>     functions.
 >   - Deferred (next): **W1 followup** (mass-migrate remaining tests
 >     to ULP budgets); **JzAzBz / IPT / extended SIMD lane-unpack**
 >     (same div-vs-mul-by-reciprocal hazard as PQ; lower priority

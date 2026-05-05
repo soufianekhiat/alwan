@@ -1,94 +1,283 @@
-# Alwan API Conventions (v2.0)
+# Alwan API Conventions
 
-This document is the single source of truth for parameter ordering and naming
-across the public Alwan C API. The 2.0 release locks these conventions; every
-public function in `alwan.h` must comply.
+This document summarizes the public API patterns used by `src/alwan/alwan.h`.
+It lives in `docs/` on purpose: it is a companion guide for the whole library,
+not a per-module reference page.
 
-## 1. Parameter Order
+---
 
-The canonical signature is:
+## Quick Reference
+
+The dominant signature shape across the public batch surface is:
+
+```text
+alwan_<...>_<f32|f64>_map_interleave(
+    out, out_stride,            <- output first, stride next to it
+    in,  in_stride,             <- input second, stride next to it
+    count,                      <- always size_t
+    [extras]...,                <- white points, descriptors, enums
+    [ctx])                      <- alwan_ctx*, last when needed
+```
+
+Quick rules:
+
+- precision is explicit at the call site (`_f32` or `_f64`)
+- output buffer comes before input buffer
+- each buffer's stride sits next to that buffer
+- pixel-format pairs in `_ex` variants follow `(out_fmt, in_fmt)` after `count`
+  (a small block of legacy planar `_ex` entries still uses `(in_fmt, out_fmt)` —
+  see [map.md](map.md))
+- `alwan_ctx*` only appears on functions that allocate, look up registry data,
+  or run descriptor-driven workflows; pure math helpers omit it
+- fallible functions return `int` matching `alwan_status`; output buffers are
+  undefined unless the call returned `ALWAN_OK`
+
+The rest of this document is the long-form expansion of those rules.
+
+---
+
+## Naming
+
+- Functions use the form `alwan_<verb>_<object>_<suffix>`.
+- Precision suffixes are explicit:
+  - `_f32` for `float`
+  - `_f64` for `double`
+- Batch variants append an additional shape suffix such as:
+  - `_map_interleave`
+  - `_map_planar`
+  - `_map_interleave_ex`
+  - `_map_planar_ex`
+- Image-level helpers use `alwan_image_*`.
+- Lookup / utility helpers may omit a precision suffix when they are not
+  precision-specific, for example `alwan_interop_format()` and
+  `alwan_interop_count()`.
+
+---
+
+## Precision Style
+
+Public scalar and semantic types are explicit:
 
 ```c
-return_type alwan_<verb>_<object>_<precision>[_<variant>](
-    /* 1. Strided outputs — buffer immediately followed by its byte stride */
-    out_buf_0, out_stride_0,
-    out_buf_1, out_stride_1,
-    /* …repeat for additional outputs */
+alwan_f32
+alwan_f64
+alwan_rgb_f32
+alwan_rgb_f64
+alwan_xyz_f32
+alwan_xyz_f64
+```
 
-    /* 2. Strided inputs — buffer immediately followed by its byte stride */
-    in_buf_0,  in_stride_0,
-    in_buf_1,  in_stride_1,
-    /* …repeat for additional inputs */
+The docs sometimes use `{T}` as a template placeholder:
 
-    /* 3. Sizing — count first, then any width/height/depth */
-    count [, width, height, depth, …],
+- `alwan_rgb_{T}` means `alwan_rgb_f32` or `alwan_rgb_f64`
+- `alwan_scalar_{T}` means `alwan_f32` or `alwan_f64`
+- `alwan_function_{T}` means the matching `_f32` or `_f64` function
 
-    /* 4. Value-typed inputs — small structs, enums, and tuning parameters */
-    value_in_0, value_in_1, …,
+---
 
-    /* 5. Context — last, optional (NULL allowed for stateless calls) */
+## Signature Families
+
+Alwan does not force one signature shape for every function. Instead, it uses a
+small number of repeatable families.
+
+### 1. Single-value transforms
+
+Outputs come first, followed by inputs, then any extra descriptors.
+
+```c
+void alwan_xyz_to_lab_f64(
+    alwan_lab_f64 *lab_out,
+    alwan_xyz_f64 const *xyz_in,
+    alwan_xyz_f64 const *white_xyz
+);
+```
+
+### 2. Typed batch transforms
+
+Typed interleaved batch functions operate on `alwan_f32*` or `alwan_f64*`
+buffers. The pattern is:
+
+```c
+int alwan_<...>_f64_map_interleave(
+    alwan_f64 *out, size_t out_stride,
+    alwan_f64 const *in, size_t in_stride,
+    size_t count,
+    ...extra parameters...
+);
+```
+
+Examples:
+
+```c
+int alwan_xyz_to_lab_f64_map_interleave(
+    alwan_f64 *lab_out, size_t out_stride,
+    alwan_f64 const *xyz_in, size_t in_stride,
+    size_t count,
+    alwan_xyz_f64 const *white_xyz
+);
+
+int alwan_view_transform_apply_f64(
+    alwan_f64 *rgb_out, size_t out_stride,
+    alwan_f64 const *rgb_in, size_t in_stride,
+    size_t count,
+    alwan_view_transform vt,
     alwan_ctx *ctx
 );
 ```
 
-### Slots in detail
+### 3. Typed-pixel batch transforms (`_ex`)
 
-| Slot | What goes here | Examples |
-|---|---|---|
-| **1. Strided outputs** | Pointer-to-buffer parameters that the function writes to. Each is immediately followed by its **per-buffer layout descriptors** in this order: byte stride, then pixel format if applicable. | `alwan_f64 *xyz_out, size_t out_stride` or `void *dst, size_t dst_row_stride, alwan_pixel_format dst_fmt` |
-| **2. Strided inputs** | Pointer-to-buffer parameters that the function reads from. Each is immediately followed by its per-buffer layout descriptors (stride, then format). | `alwan_f64 const *rgb_in, size_t in_stride` or `void const *src, size_t src_row_stride, alwan_pixel_format src_fmt` |
-| **3. Sizing** | The count of elements processed and any auxiliary geometric sizes. | `size_t count`, `size_t width, size_t height` |
-| **4. Value-typed inputs** | Small structs passed by const-pointer or by value, enums, and tuning knobs that aren't bulk data. | `alwan_xyz_f64 const *white_xyz`, `alwan_pixel_format src_fmt`, `alwan_transfer_function tf` |
-| **5. Context** | The Alwan context handle. Always last. NULL is permitted for stateless calls; functions that require ctx must say so in their doc comment and return `ALWAN_E_INVALID` for NULL. | `alwan_ctx *ctx` |
+`_ex` variants accept `void*` buffers plus `alwan_pixel_format` so they can
+operate on `U8`, `U16`, `F16`, `F32`, or `F64` buffers without a separate
+caller-side normalize/cast pass.
 
-### Why "ctx last"
+Most `_map_interleave_ex` functions follow:
 
-`ctx` is plumbing — it carries allocators and configuration, not data. Putting
-plumbing last keeps the data-flow ("X is produced from Y") at the front of the
-signature where the reader cares. Making it last also lets call sites omit it
-visually for stateless transforms (`f(out, in, count, NULL)`), which is most
-of the API.
+```c
+int alwan_<...>_map_interleave_ex(
+    void *out, size_t out_stride,
+    void const *in, size_t in_stride,
+    size_t count,
+    alwan_pixel_format out_fmt,
+    alwan_pixel_format in_fmt,
+    ...extra parameters...
+);
+```
 
-### Why "strides adjacent to buffers"
+Example:
 
-A reader scanning a long signature should not have to count argument positions
-to learn which stride goes with which buffer. `(out_buf, out_stride)` and
-`(in_buf, in_stride)` group as visual units. This matches BLAS/cblas (`lda`,
-`ldb`, `ldc` adjacent to `A`, `B`, `C`).
+```c
+int alwan_xyz_to_lab_map_interleave_ex(
+    void *out, size_t out_stride,
+    void const *in, size_t in_stride,
+    size_t count,
+    alwan_pixel_format out_fmt,
+    alwan_pixel_format in_fmt,
+    alwan_xyz_f64 const *white_xyz
+);
+```
 
-## 2. Naming
+### 4. Planar batch transforms
 
-- Function: `alwan_<verb>_<object>_<precision>[_<variant>]` — e.g. `alwan_xyz_to_lab_f64_map_interleave`.
-- Output buffer: `<noun>_out` (e.g. `xyz_out`, `lab_out`).
-- Input buffer: `<noun>_in` (e.g. `rgb_in`, `xyz_in`).
-- Stride: `out_stride_N` / `in_stride_N` where `N` matches the buffer index, or
-  drop the index when only one of each.
-- Count: `count` for an opaque element count; `width`/`height`/`depth` for
-  spatial dimensions.
+Planar functions group outputs first, then inputs, then `count`, then extra
+parameters.
 
-## 3. Return value
+```c
+int alwan_xyz_to_lab_f64_map_planar(
+    alwan_f64 *out0, size_t out_stride,
+    alwan_f64 *out1,
+    alwan_f64 *out2,
+    alwan_f64 const *in0, size_t in_stride,
+    alwan_f64 const *in1,
+    alwan_f64 const *in2,
+    size_t count,
+    alwan_xyz_f64 const *white_xyz
+);
+```
 
-- Functions that can fail return `int` with values from `alwan_status`. Never
-  return raw `0` / `-1`; always use named error codes.
-- Functions that cannot fail (pure math on validated inputs) may return
-  `void` or the result by value.
-- Out-parameters are filled only on `ALWAN_OK`; on error, callers must not
-  read them.
+`_map_planar_ex` variants follow the same general model but add pixel-format
+arguments. Most use `(out_fmt, in_fmt)` after `count`, but a few older planar
+`_ex` entries still preserve legacy argument ordering. When in doubt, use
+`alwan.h` as the literal source of truth for that specific function.
 
-## 4. Backwards compatibility
+### 5. Image-level helpers
 
-The 2.0 release is the convergence window. Older signatures (`ctx`-first,
-trailing strides) are removed, not aliased. Downstream callers must be
-migrated, not shimmed.
+Image helpers operate on rows rather than per-pixel strides:
 
-## 5. Lints / enforceable rules
+```c
+int alwan_image_convert_f64(
+    void *dst, size_t dst_row_stride,
+    void const *src, size_t src_row_stride,
+    size_t width, size_t height,
+    alwan_pixel_format dst_fmt,
+    alwan_pixel_format src_fmt,
+    alwan_rgb_space_desc_f64 const *src_space,
+    alwan_rgb_space_desc_f64 const *dst_space,
+    alwan_ctx *ctx
+);
+```
 
-A signature is non-compliant if any of:
+RGBA image helpers add `alwan_alpha_mode` before `ctx`.
 
-- `alwan_ctx *ctx` is not the last parameter (when present).
-- A `*_stride` parameter does not immediately follow the buffer it strides.
-- An output buffer appears after an input buffer.
-- A `count` / `width` parameter appears before a buffer or stride.
+### 6. Lookup / utility functions
 
-Keep this file in sync when conventions evolve. Reviewers should reject PRs
-that introduce non-compliant signatures.
+Registry and utility helpers use the smallest signature that fits the job:
+
+```c
+int         alwan_interop_parse_f64(alwan_rgb_space *space, char const *id);
+char const *alwan_interop_format(alwan_rgb_space space);
+size_t      alwan_interop_count(void);
+```
+
+---
+
+## Output-First Rule
+
+The dominant style across the public API is output-first:
+
+- single-value math writes into output structs first
+- batch APIs place output buffers before input buffers
+- file/buffer export APIs place the destination path or destination buffer first
+
+This keeps call sites visually aligned with data flow.
+
+---
+
+## Strides And Formats
+
+- Strides are expressed in bytes.
+- Interleaved typed APIs carry one output stride and one input stride.
+- Planar APIs use one stride shared across the three channels for that call.
+- `_ex` APIs attach pixel-format metadata directly in the signature via
+  `alwan_pixel_format`.
+
+Current public pixel formats are:
+
+```c
+ALWAN_PIXEL_U8
+ALWAN_PIXEL_U16
+ALWAN_PIXEL_F32
+ALWAN_PIXEL_F64
+ALWAN_PIXEL_F16
+```
+
+---
+
+## Error Model
+
+- Fallible functions return `int` and use `alwan_status`.
+- Common status codes:
+  - `ALWAN_OK`
+  - `ALWAN_E_INVALID`
+  - `ALWAN_E_NODATA`
+  - `ALWAN_E_RANGE`
+  - `ALWAN_E_NOMEM`
+  - `ALWAN_E_DIVZERO`
+- In general, callers should treat output buffers as undefined unless the
+  function returned `ALWAN_OK`.
+
+---
+
+## Context Usage
+
+`alwan_ctx *ctx` is only present on APIs that need:
+
+- RGB-space descriptor lookup
+- chromatic adaptation with descriptor-driven workflows
+- LUT / CLF generation
+- video encode / decode space lookup
+- other allocation- or registry-backed helpers
+
+Pure math helpers usually do not take a context.
+
+---
+
+## Practical Rule
+
+For any new or updated documentation in `docs/`, prefer this order of truth:
+
+1. `src/alwan/alwan.h`
+2. this conventions document
+3. individual guide pages in `docs/`
+
+If a guide example disagrees with the header, the header wins.
