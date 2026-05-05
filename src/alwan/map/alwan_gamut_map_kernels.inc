@@ -162,13 +162,19 @@ void ALWAN_MAP_LIT(alwan__css_gamut_map_kernel)(alwan_map_lane *o0, alwan_map_la
             alwan_map_simd vg = alwan_map_simd_load(&i1[i]);
             alwan_map_simd vb = alwan_map_simd_load(&i2[i]);
 
-            /* Check which pixels are already in gamut */
+            /* Check which pixels are already in gamut. Each cmp produces
+             * a mask; we AND them together so a lane stays "in gamut"
+             * only if every channel passes both bounds. The previous
+             * pattern abused select(mask, mask_a, value_b) with the
+             * implicit mask==value identity that holds on x86 SSE/AVX
+             * but breaks on NEON where mask and value have distinct
+             * types (uint32x4_t vs float32x4_t). */
             alwan_map_simd_mask in_gamut = alwan_map_simd_cmpge(vr, neg_eps);
-            in_gamut = alwan_map_simd_select(in_gamut, alwan_map_simd_cmple(vr, one_eps), zero);
-            in_gamut = alwan_map_simd_select(in_gamut, alwan_map_simd_cmple(vg, one_eps), zero);
-            in_gamut = alwan_map_simd_select(in_gamut, alwan_map_simd_cmpge(vg, neg_eps), zero);
-            in_gamut = alwan_map_simd_select(in_gamut, alwan_map_simd_cmple(vb, one_eps), zero);
-            in_gamut = alwan_map_simd_select(in_gamut, alwan_map_simd_cmpge(vb, neg_eps), zero);
+            in_gamut = alwan_map_simd_mask_and(in_gamut, alwan_map_simd_cmple(vr, one_eps));
+            in_gamut = alwan_map_simd_mask_and(in_gamut, alwan_map_simd_cmpge(vg, neg_eps));
+            in_gamut = alwan_map_simd_mask_and(in_gamut, alwan_map_simd_cmple(vg, one_eps));
+            in_gamut = alwan_map_simd_mask_and(in_gamut, alwan_map_simd_cmpge(vb, neg_eps));
+            in_gamut = alwan_map_simd_mask_and(in_gamut, alwan_map_simd_cmple(vb, one_eps));
 
             /* Early-out: all in gamut */
             if (alwan_map_simd_mask_all_set(in_gamut)) {
@@ -244,13 +250,14 @@ void ALWAN_MAP_LIT(alwan__css_gamut_map_kernel)(alwan_map_lane *o0, alwan_map_la
                     alwan_map_simd de = alwan_map_simd_sqrt(alwan_map_simd_fmadd(dL, dL,
                                     alwan_map_simd_fmadd(da, da, alwan_map_simd_mul(db, db))));
 
-                    /* Check in-gamut for trial_rgb (not clipped) */
+                    /* Check in-gamut for trial_rgb (not clipped). Same
+                     * mask-AND fix as the outer loop above. */
                     alwan_map_simd_mask trial_in = alwan_map_simd_cmpge(tr, neg_eps);
-                    trial_in = alwan_map_simd_select(trial_in, alwan_map_simd_cmple(tr, one_eps), zero);
-                    trial_in = alwan_map_simd_select(trial_in, alwan_map_simd_cmpge(tg, neg_eps), zero);
-                    trial_in = alwan_map_simd_select(trial_in, alwan_map_simd_cmple(tg, one_eps), zero);
-                    trial_in = alwan_map_simd_select(trial_in, alwan_map_simd_cmpge(tb, neg_eps), zero);
-                    trial_in = alwan_map_simd_select(trial_in, alwan_map_simd_cmple(tb, one_eps), zero);
+                    trial_in = alwan_map_simd_mask_and(trial_in, alwan_map_simd_cmple(tr, one_eps));
+                    trial_in = alwan_map_simd_mask_and(trial_in, alwan_map_simd_cmpge(tg, neg_eps));
+                    trial_in = alwan_map_simd_mask_and(trial_in, alwan_map_simd_cmple(tg, one_eps));
+                    trial_in = alwan_map_simd_mask_and(trial_in, alwan_map_simd_cmpge(tb, neg_eps));
+                    trial_in = alwan_map_simd_mask_and(trial_in, alwan_map_simd_cmple(tb, one_eps));
 
                     /* de_close = (de - jnd) < eps */
                     alwan_map_simd_mask de_close = alwan_map_simd_cmplt(alwan_map_simd_sub(de, jnd), eps_v);

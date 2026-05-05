@@ -580,3 +580,4 @@ Development is incentivized through Patreon:
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details
+

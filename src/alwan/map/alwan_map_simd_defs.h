@@ -83,6 +83,8 @@
 #define alwan_map_simd_cmpgt        alwan_simd_f32_cmpgt
 #define alwan_map_simd_cmpge        alwan_simd_f32_cmpge
 #define alwan_map_simd_select       alwan_simd_f32_select
+#define alwan_map_simd_mask_and     alwan_simd_f32_mask_and
+#define alwan_map_simd_mask_or      alwan_simd_f32_mask_or
 #define alwan_map_simd_pow24        alwan_simd_f32_pow24
 #define alwan_map_simd_pow_inv24    alwan_simd_f32_pow_inv24
 #define alwan_map_simd_cbrt_fast    alwan_simd_f32_cbrt_fast
@@ -161,6 +163,8 @@
 #define alwan_map_simd_cmpgt        alwan_simd_f64_cmpgt
 #define alwan_map_simd_cmpge        alwan_simd_f64_cmpge
 #define alwan_map_simd_select       alwan_simd_f64_select
+#define alwan_map_simd_mask_and     alwan_simd_f64_mask_and
+#define alwan_map_simd_mask_or      alwan_simd_f64_mask_or
 #define alwan_map_simd_pow24        alwan_simd_f64_pow24
 #define alwan_map_simd_pow_inv24    alwan_simd_f64_pow_inv24
 #define alwan_map_simd_cbrt_fast    alwan_simd_f64_cbrt_fast

@@ -63,6 +63,8 @@
 #undef alwan_map_simd_cmpgt
 #undef alwan_map_simd_cmpge
 #undef alwan_map_simd_select
+#undef alwan_map_simd_mask_and
+#undef alwan_map_simd_mask_or
 #undef alwan_map_simd_pow24
 #undef alwan_map_simd_pow_inv24
 #undef alwan_map_simd_cbrt_fast

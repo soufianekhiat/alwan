@@ -474,6 +474,11 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_select(alwan_simd_f64_mask m, alwan_s
 ALWAN_INLINE int alwan_simd_f32_mask_all_set(alwan_simd_f32_mask m) { return _mm_movemask_ps(m) == 0xF; }
 ALWAN_INLINE int alwan_simd_f64_mask_all_set(alwan_simd_f64_mask m) { return _mm_movemask_pd(m) == 0x3; }
 
+ALWAN_INLINE alwan_simd_f32_mask alwan_simd_f32_mask_and(alwan_simd_f32_mask a, alwan_simd_f32_mask b) { return _mm_and_ps(a, b); }
+ALWAN_INLINE alwan_simd_f32_mask alwan_simd_f32_mask_or (alwan_simd_f32_mask a, alwan_simd_f32_mask b) { return _mm_or_ps(a, b); }
+ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_mask_and(alwan_simd_f64_mask a, alwan_simd_f64_mask b) { return _mm_and_pd(a, b); }
+ALWAN_INLINE alwan_simd_f64_mask alwan_simd_f64_mask_or (alwan_simd_f64_mask a, alwan_simd_f64_mask b) { return _mm_or_pd(a, b); }
+
 /* ----------------------------------------------------------------
  * Float64 Min / Max / Clamp
  * ---------------------------------------------------------------- */
