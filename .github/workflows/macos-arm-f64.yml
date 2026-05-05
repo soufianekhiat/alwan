@@ -1,0 +1,16 @@
+name: macOS ARM
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  build:
+    # macos-latest is the Apple Silicon (arm64) runner. The sibling
+    # macos-f64 workflow pins macos-13 (Intel x86_64); this one
+    # exercises the aarch64 codegen path.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cmake -B build -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=ON
+      - run: cmake --build build --config Release

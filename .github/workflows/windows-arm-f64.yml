@@ -1,0 +1,13 @@
+name: Windows ARM
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  build:
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v5
+      - run: cmake -B build -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=ON
+      - run: cmake --build build --config Release

@@ -1,10 +1,18 @@
 # Deterministic mode
 
-When you build alwan with `-DALWAN_DETERMINISTIC=ON`, the library produces
+When you build Alwan with `-DALWAN_DETERMINISTIC=ON`, the build system defines
+`ALWAN_DETERMINISTIC` and the library routes through the deterministic paths in
+`alwan_platform.h`, `alwan_math.h`, the SIMD reduction layer, and the batch map
+kernels.
+
+In that mode the library produces
 **byte-identical numerical output** across compilers, optimization levels,
 operating systems, and CPU architectures. Same input ⇒ same bytes — on
 Windows MSVC x64, Linux gcc x64, Linux clang ARM, macOS Apple Silicon, all
 of it.
+
+The cross-platform regression harness for this mode lives in the sibling
+`alwan_dev` repository; this repository contains the production implementation.
 
 Use it when you need:
 
@@ -35,8 +43,8 @@ results that differ in the last bit.
 | FMA contraction (`a*b + c`)     | Compiler decides; hardware FMA on aarch64, often on x86 with `-mfma` | `-ffp-contract=off` / `/fp:precise`; never fused |
 | SIMD horizontal sum             | Native pairwise (`vpaddq_pd`, `_mm_hadd_pd`, `vaddvq_f64`) | Canonical scalar left-to-right reduction |
 | SIMD per-lane libm              | Lane-unpack to libm                  | Lane-unpack to deterministic polynomial    |
-| sRGB / PQ / HLG / JzAzBz SIMD   | Vectorised approximation kernels (`pow24`, `pow_inv24`, `cbrt_fast`) | Lane-unpack to canonical scalar polynomial |
-| IPT / Oklab SIMD                | Vectorised mat-mul + cbrt + mat-mul  | SIMD body bypassed; per-pixel scalar loop  |
+| `_oetf_apply` / `_eotf_apply` SIMD (sRGB/PQ/HLG) | Vectorised approximations (`pow24`, `pow_inv24`) | Lane-unpacked to canonical scalar polynomial |
+| `_map_interleave` / `_map_planar` colorspace SIMD (25+ spaces) | Vectorised matrix muls + per-channel pow/cbrt | `ALWAN_MAP_SIMD_WIDTH=1` — every map kernel runs its scalar tail loop |
 | Output stability across runs    | Last-bit may vary between platforms  | Byte-identical; verified by CI matrix      |
 | Throughput cost                 | —                                    | ~5–20% slower depending on workload        |
 
@@ -108,22 +116,38 @@ optimise differently from the scalar formulas. Two examples we've hit:
   is accurate to ~1e-12 vs the literal; the difference is small
   (~1e-12) but enough to break bit-exact.
 
-**Fix:** in det mode, kernels that match this pattern lane-unpack
-through the canonical scalar primitive. Specifically:
+**Fix:** det mode closes this in two layers.
 
-- sRGB / BT.2020 / BT.709 OETF and EOTF (lane-unpacked through `alwan_det_*_oetf` / `_eotf`).
-- PQ / HLG OETF and EOTF (lane-unpacked through `alwan_pq_oetf_v` / `alwan_hlg_oetf_v` / etc.).
-- JzAzBz PQ OETF / EOTF (lane-unpacked with the formula inlined; cross-TU header dependencies make linking the named scalar awkward, so the formula is reproduced verbatim using `alwan_map_scalar_pow`).
-- Lab `f(t)` cube-root branch (lane-unpacked through `alwan_det_cbrt`).
-- IPT and Oklab kernels (entire SIMD body gated off; the per-pixel scalar
-  function runs for every pixel — matrix-multiply codegen between SIMD and
-  scalar diverges at last bit even with `/fp:precise`).
+1. The OETF/EOTF apply functions in `alwan_rgb.c` (legacy SIMD path
+   used by `alwan_oetf_apply_f64` / `alwan_eotf_apply_f64`) lane-unpack
+   to the canonical scalar:
+   - sRGB / BT.2020 / BT.709 — `alwan_det_*_oetf` / `_eotf` polynomials.
+   - PQ / HLG — `alwan_pq_oetf_v` / `alwan_hlg_oetf_v`.
+   - JzAzBz PQ — formula inlined (cross-TU header dependencies make
+     linking the named scalar awkward).
+   - Lab `f(t)` cube-root branch — `alwan_det_cbrt`.
 
-This is the largest source of perf cost in det mode. Lane-unpacking
-defeats vectorisation on those kernels — typically ~10× slower than
-the fast-mode SIMD path on a per-kernel basis. Element-wise SIMD
-kernels (matrix transforms with no `pow`/`log`) keep their vectorised
-path and pay no cost.
+2. The full colorspace conversion kernels (`alwan_xyz_to_lab_f64_map_interleave`,
+   `alwan_xyz_to_oklab_f64_map_interleave`, `alwan_rgb_to_hsv_f64_map_interleave`,
+   ...) all live in `*_map_kernels.inc` files that gate their SIMD body
+   on `#if ALWAN_MAP_SIMD_WIDTH > 1`. In det mode `ALWAN_MAP_SIMD_WIDTH`
+   is redefined to 1 in `alwan_map_simd_defs.h`, so every kernel falls
+   through to its scalar tail loop and runs the public single-pixel
+   function per pixel. This catches the matrix-multiply codegen drift
+   too (scalar `+` vs SIMD `add+add` ordering on MSVC even with
+   `/fp:precise`) without needing to enumerate every kernel.
+
+   25 colorspace conversions — sRGB/PQ/HLG OETF/EOTF, JzAzBz, IPT,
+   Oklab, Lab, Luv, HSV, HSL, HWB, HSY, HSP, LCh, JzCzHz, ICtCp,
+   IgPgTg, ICaCb, OSA-UCS, Hunter-Lab, ProLab, DIN99 — are verified
+   bit-exact (0 ULP) in det mode by `tests/88_simd_parity.c`.
+
+This is the largest source of perf cost in det mode. The map kernels
+that fall back to scalar pay roughly the difference between their
+vectorised body and the scalar tail loop — typically 4–10× slower
+on per-pixel throughput depending on lane width. Element-wise SIMD
+outside the kernel files (alwan_rgb.c's apply functions) keeps the
+vectorised path with lane-unpacked math primitives.
 
 ### 5. Denormal flushing
 
@@ -195,11 +219,237 @@ Tested in CI on:
 - Windows aarch64: MSVC 19+
 
 The CI workflow `.github/workflows/determinism.yml` runs the
-`det_run_regression` tool (12 deterministic primitives × 1024 sample
-points = 16,401 lines of hex-dumped IEEE-754 bytes per platform) on
-every runner and asserts that all artefacts match. If any byte differs,
-the build fails and the diff is printed. The current reference hash
-is `fe46f566a0a84a41e8d219222bdb1b92`.
+`det_run_regression` tool (407,365 lines of hex-dumped IEEE-754 bytes
+per platform) on every runner and asserts that all artefacts match.
+If any byte differs, the build fails and the diff is printed. The
+current reference hash on the local Windows MSVC x64 build is
+`7d41e9af28d5acf2fc6bbffa54b39ea7` (this is informational only — the
+CI diffs all platforms against each other, not against a committed
+reference).
+
+Coverage in the regression dump (manifest v49):
+
+- f64 + f32 deterministic math primitives: log2, exp2, pow_pos(., 1/2.4), cbrt.
+- f64 + f32 OETF/EOTF for sRGB and BT.2020 / BT.709.
+- 24 public colorspace forward conversions: xyz_to_{lab, luv, oklab,
+  jzazbz, ipt, igpgtg, icacb, osa_ucs, hunter_lab, prolab, xyy, ucs,
+  hdr_cielab, hdr_ipt, ictcp_pq}; rgb_to_{hsv, hsl, hwb, hsy, hsp,
+  ictcp_pq}; lab_to_{lch, din99}; jzazbz_to_jzczhz.
+- 23 inverse conversions: {lab, oklab, ipt, jzazbz, igpgtg, icacb,
+  hunter_lab, prolab, xyy, ucs, hdr_cielab, hdr_ipt}_to_xyz;
+  {hsv, hsl, hwb, hsy, hsp, ictcp_pq}_to_rgb;
+  oklab<->oklch; lch_to_lab; jzczhz_to_jzazbz; din99_to_lab.
+- 10 CAM forward models (per-pixel correlates): cam16, zcam,
+  ciecam02, hellwig2022, kim2009, hunt, llab, atd95, cam18sl,
+  cam20u — all under fixed viewing conditions.
+- 7 CAM inverses (cam16, zcam, ciecam02, hellwig2022, kim2009,
+  cam18sl, cam20u) driven via forward+inverse round-trip XYZ.
+- 16 view transforms via `alwan_view_transform_apply_f32` /
+  `alwan_view_transform_apply_f64`: AgX (base/
+  punchy/golden), BT.2446 (Method A HDR↔SDR, B SDR→HDR, C HDR→SDR),
+  BT.2390 HDR→SDR, Tony McMapface, Reinhard (Extended + Calibrated),
+  Khronos PBR Neutral, Uchimura, Lottes, Exposure, ACES Rec.709.
+- 16 ACES output transforms forward + 2 inverses: ACES 1.x (Rec.709,
+  sRGB, Rec.2020 100nit/1000nit_PQ/4000nit_PQ, P3-D65, DCDM) + ACES
+  2.0 (Rec.709, sRGB, P3-D65 100nit_sRGB/1000nit_PQ, Rec.2100
+  1000nit_PQ/4000nit_PQ/1000nit_HLG, DCDM, P3-DCI).
+- 8 gamut-mapping algorithms: clip, hue-preserving, adaptive_l0,
+  adaptive_cusp, chroma_compress, sgck, hpminde, lightness_preserve.
+- 19 transfer-function round-trips (oetf+eotf): ACEScc, ACEScct,
+  S-Log / S-Log2 / S-Log3, C-Log / C-Log2 / C-Log3, V-Log, N-Log,
+  REDLog / REDLogFilm, Protune, Cineon, BT.1886, Gamma 2.2 / 2.4 /
+  2.6 / 2.8.
+- 14 colour-difference metrics: delta_e_76 / 94 / 2000 / hyab / cmc /
+  ok / din99 / itp / cam02_lcd / cam02_scd / cam02_ucs / cam16_lcd /
+  cam16_scd / cam16_ucs.
+- 4 CCT estimators (McCamy / Robertson / Hernandez-Andres / Kang)
+  over an xy chromaticity sweep + cct_duv_optimize.
+- 6 chromatic-adaptation transforms: XYZ scaling / Bradford / CAT02 /
+  CAT16 / Sharp / Zhai2018 (two-step via E baseline).
+- Hero wavelength sample + XYZ for spectral-rendering pipelines.
+- Vision: 6 dichromacy / anomaly simulations (Machado et al. CVD
+  model) — protanopia, deuteranopia, tritanopia, and their
+  *_anomaly weak variants.
+- Prismatic colour {L, s, h} forward + roundtrip.
+- Contrast Sensitivity Functions (CSF and Barten 1999) over
+  spatial-frequency sweeps.
+- SPD shape analysis: blackbody 2000K → 10000K → (peak_wavelength,
+  peak_value, fwhm, centroid, bandwidth).
+- Rayleigh scattering: cross_section + optical_depth across
+  λ ∈ [360, 830] nm with default atmosphere parameters.
+- Linear-sRGB convenience kernels: linear_srgb_to_{HSV, HSL}.
+- Relative luminance (BT.709 default + custom kr/kb for BT.2020).
+- White-balance multiply with asymmetric per-channel gains.
+- f32 colorspace conversions (forward): xyz_to_{oklab, jzazbz, ipt,
+  xyy, lab, luv}_f32 and rgb_to_{hsv, hsl}_f32 — validates the f32
+  polynomial path (alwan_det_pow_pos_f32) stays bit-stable across
+  platforms.
+- f32 colorspace conversions (inverse): {lab, oklab, jzazbz, ipt}_to_xyz_f32
+  and hsv_to_rgb_f32.
+- ACES LMT (Look Modification Transform): per-channel slope/offset/
+  power + saturation, the ASC-CDL grading interface in the ACES
+  pipeline.
+- 5 colour-matrix presets: sepia, vintage, bleach_bypass, cool, warm
+  — both coefficient lookup and applied output.
+- Printer-lights apply: log-domain density adjustment (cinema dailies).
+- TM-30 Rf colour fidelity index for D65 / A / F11 / E illuminants.
+- Per-channel correction: lgg_apply (lift/gamma/gain) and
+  color_matrix_apply (sepia preset).
+- 9 RGB-to-RGB cross-space conversions: sRGB ↔ Display P3 / BT.2020 /
+  ACEScg, ACEScg ↔ BT.2020, ACES2065-1 → ACEScg, BT.2020 → Display P3.
+  Full EOTF → primaries → XYZ → primaries → OETF chain.
+- SPD: Planckian blackbody integration. 256 temperatures (1500K
+  to 12000K), each integrated against D65 over 360-830 nm with
+  Simpson's rule and the CIE 1931 2deg observer.
+- SPD round-trip: RGB → {Smits1999, Mallett2019, Jakob2019_sRGB}
+  upsample → integrate against D65 → XYZ. Three different
+  upsampler formulations all under cross-platform check.
+- SPD resample (v36): linear and Catmull-Rom interpolation crossed
+  with all three extrapolation modes (zero / constant / linear) over
+  a 5000K blackbody source resampled onto a 350-740 nm 41-sample
+  observer-aligned grid. Both the resample kernel and the
+  extrapolation branch are individually pinned.
+- SPD bandpass correction (v36): same blackbody sweep at 1, 5, and
+  10 nm bandpass corrections — the polynomial bandpass branch inside
+  `alwan_xyz_from_spd_f64` was previously only exercised at 0 nm.
+- Camera sensitivities (v36): both `ALWAN_CAMERA_NIKON_5100` and
+  `ALWAN_CAMERA_SIGMA_SDMERILL` — the embedded 471-sample 360-830 nm
+  R/G/B spectral curves themselves, plus camera-space XYZ over a CCT
+  sweep via `alwan_xyz_from_spd_camera_f64` with Simpson integration.
+- Extended observers (v37): all 8 observers — CIE 1931 2deg, CIE
+  1964 10deg, CIE 2012 2deg/10deg, Stockman & Sharpe 2deg, CIE 2015
+  2deg/10deg, Wright & Guild 1931 — each integrated against D65 over
+  a 2000..10000K blackbody sweep with Simpson's rule. Pins each
+  observer's embedded CMF table independently of illuminant choice.
+- Additional illuminants (v37): 5 illuminants beyond D65 (A, D50,
+  D55, F11, E). Both the raw illuminant SPDs (embedded CSV bytes)
+  and full SPD->XYZ integration against the CIE 1931 2deg observer
+  are pinned. A is incandescent, D50/D55 non-D65 daylight, F11
+  tri-band fluorescent, E equal-energy — together exercising
+  visibly different spectral shapes through the same kernel.
+- Quality metrics (v38): CRI Ra, CQS, CIE 224:2017 Rf, SSI, and
+  metamerism index — joining the existing TM-30 Rf coverage so
+  every entry in the alwan_quality module is now on the contract.
+- LUT sampling + interpolation (v39): alwan_lut1d_sample_f64,
+  alwan_lut3d_sample_f64, table_interp_3d trilinear + tetrahedral,
+  table_interp_1d (LINEAR + CUBIC); alwan_interpolate_f64 over all
+  6 methods (linear / cubic / lanczos / sprague / lagrange / akima)
+  and alwan_extrapolate_f64 over all 6 modes; ColorChecker reference
+  data (CLASSIC 24 patches; SG / DIGITAL_SG / BABELCOLOR_AVG / HCT
+  enumerated for forward compatibility); Munsell renotation HVC grid.
+- Machado CVD (v40): alwan_simulate_cvd_machado_f64 over all 6 CVD
+  types at 3 severities, plus single-pixel direct + cvd_ex through
+  both Brettel and Machado dispatch models.
+- Photometry (v40): luminous_efficiency curves V(λ)/V'(λ)/V_mesopic
+  over 360-830nm at 1nm; photopic / scotopic / mesopic luminance
+  integration over the blackbody sweep; Barten 1999 sub-helpers
+  (pupil_diameter, retinal_illuminance ± Stiles-Crawford, sigma,
+  optical_mtf, maximum_angular_size).
+- Image / video pipeline (v41): alwan_image_convert_f64 (sRGB to
+  Display P3 + BT.2020 over a 16x16 F64 frame); image_convert_rgba
+  with both ALWAN_ALPHA_STRAIGHT and ALWAN_ALPHA_PREMULTIPLIED;
+  alwan_video_encode/decode_f64 over BT.709 8-bit and BT.2020 10-bit
+  in both narrow and full range; alwan_bake_1dlut_f64 over six TFs
+  (sRGB, BT.2020, PQ, HLG, BT.1886, gamma 2.2) at 256-entry
+  resolution OETF + EOTF; alwan_bake_2dlut_f64 sRGB→P3 at edge=17;
+  alwan_lut3d_to_2d / alwan_lut2d_to_3d round-trip on identity 17³.
+- Extended transfer functions (v42): ACESproxy, ARRI LogC3 + LogC4,
+  RED Log3G10, Blackmagic Film Gen 5 + Gen 4, Filmlight T-Log + E-Log,
+  Apple Log, Fujifilm F-Log + F-Log2, Leica L-Log, DJI D-Log, DCDM,
+  ADX 10-bit + 16-bit. Combined with the v18 set, the contract now
+  covers every TF enum in alwan.h.
+- Interop registry (v42): alwan_interop_count + alwan_interop_entry_at_f64
+  walk over every registered RGB-space entry; for each entry pins
+  (index, parsed_enum, first_id_char, parse_round_trip_ok,
+  format_round_trip_ok). Catches drift in the registry layout +
+  string-based lookup.
+- f32 SPD pipeline (v42): alwan_spd_blackbody_f32 +
+  alwan_xyz_from_spd_f32 over the same 1500..12000K sweep that
+  pinned the f64 path in v33; alwan_spd_resample_f32 in linear
+  / zero-extrapolate config. Independent f32 path (alwan_det_pow_pos_f32
+  + scalar Simpson in float).
+- Direct LCh + LCHuv ↔ XYZ (v43): alwan_xyz_to_lch_f64 +
+  alwan_lch_to_xyz_f64 + alwan_xyz_to_lchuv_f64 +
+  alwan_lchuv_to_xyz_f64. The single-call entry points that bypass
+  the Lab/Luv intermediate were not previously on the contract.
+- HLC roundtrip (v43): alwan_lch_to_hlc_f64 + alwan_hlc_to_lch_f64
+  pure component reorder, round-trip pinned for regression-detection.
+- NCS notation lookup (v43): alwan_ncs_to_xyz_f64 over 8 canonical
+  NCS strings spanning the elementary-hue interpolation grid; on
+  parse failure the dump still pins the return code so even
+  malformed-string behavior is cross-platform stable.
+- Missing colorspaces (v44): HCL, IHLS, Cubehelix, HSLuv, HPLuv,
+  OkHSL, OkHSV, IPTCh, UVW, YCbCr (BT.601/709/2020), YCoCg,
+  YccCbcCrc (8/10/12-bit), and RLAB (3 surrounds × forward+inverse).
+  Every color-type declared in alwan.h is now reached by at least
+  one conversion in the contract.
+- f32 parity (v45): f32 versions of the v38–v44 surfaces — quality
+  metrics, luminous_efficiency / photopic / scotopic luminance,
+  LUT sampling, image_convert + bake_1dlut + video encode/decode,
+  ColorChecker / Munsell / NCS reference data, direct LCh/LCHuv↔XYZ
+  + HLC, and all 14 v44 colorspaces. Each is its own f32
+  polynomial chain (alwan_det_pow_pos_f32 etc.) — pinning these
+  confirms cross-platform stability of the f32 surface in addition
+  to f64.
+- Pixel-format _ex paths (v46): alwan_srgb_to_xyz / sRGB→Lab /
+  sRGB→Oklab via map_interleave_ex with full input-format sweep
+  (U8/U16/F16/F32/F64) and output-format sweep on the store side.
+  alwan_collect3_f64 + alwan_scatter3_f64 pinned across all five
+  formats. This puts the load/normalize and store/quantize layer
+  under contract — algorithmically deterministic by construction
+  (integer arithmetic + division), but the dispatch table and
+  per-format rounding rules are now pinned for regression
+  detection.
+- Newly-implemented f32 LUT interpolation (v47):
+  `alwan_table_interp_3d_trilinear_f32` and
+  `alwan_table_interp_3d_tetrahedral_f32` were declared in alwan.h
+  but only the f64 variants existed; v47 ships the f32
+  implementations (mirror of the f64 algorithm — pure arithmetic,
+  inherently deterministic) and adds them to the contract.
+- CAM viewing-condition sweep (v48): for CAM16, CIECAM02, ZCAM, and
+  Hellwig2022, every parameter combination of (3 surrounds × 2
+  discount_illuminant × 3 La values) = 18 viewing conditions per
+  model, each driven across a 5-point XYZ test grid (white,
+  neutral 50%, primary RGB). For RLAB: 3 surrounds × 4 D_factor
+  variants. Surround DIM/DARK selects different exponent constants;
+  discount_illuminant=1 toggles the chromatic-adaptation matrix;
+  varied La changes FL adaptation scaling — all distinct VC code
+  paths now on the contract.
+- _map_planar / _map_planar_ex dispatch (v49): typed planar
+  variants of sRGB→XYZ, XYZ↔Lab (D65), XYZ↔Oklab, RGB↔HSV, and
+  RGB↔YCbCr (BT.709). Plus _map_planar_ex with format conversion:
+  sRGB→XYZ from U16 planes to F64 output (legacy in_fmt/out_fmt
+  arg order), and XYZ→Lab from F64 to F32 (canonical
+  out_fmt/in_fmt arg order). Confirms the planar entry points
+  dispatch into the deterministic scalar kernel rather than
+  specializing.
+- ICtCp HLG (v34): forward + inverse with `use_pq=0` (the HLG
+  transfer-function branch — PQ was already covered upstream).
+- Integer normalization (v34): `uint_to_float` and `float_to_uint`
+  at 8/10/12/16 bit, plus `float_to_half` + half-to-float roundtrip.
+- f32 hot path (v35): `alwan_view_transform_apply_f32` for AgX and
+  Tony McMapface, `alwan_aces1_output_transform_f32(REC709_100NIT)`,
+  `alwan_aces2_output_transform_f32(SRGB_100NIT)`, and
+  `alwan_cam16_forward_f32` (J / C / h). Independent of the f64
+  surface — exercises `alwan_det_pow_pos_f32` and the f32
+  trig/log primitives directly.
+
+Adding a new conversion to the determinism contract: extend the dump
+in `alwan_dev/det_regression/det_run_regression.c`, bump the manifest
+version (currently v49), and include in the CI matrix. The
+`tests/88_simd_parity` suite is the local-iteration counterpart — it
+asserts SIMD-vs-scalar parity on the same machine over 58 conversions,
+while `det_run_regression` asserts cross-platform stability of the
+scalar path over 230+ public functions: 10 CAMs forward, 7 CAM
+inverses, 14 dE metrics, 4 CCT estimators + duv optimisation, 6 CAT
+transforms, 8 gamut-mapping algorithms, 16 view transforms, 5 ACES
+output transforms + 2 inverses, 19 transfer-function families with
+roundtrip, 9 RGB-to-RGB conversions, 3 spectrum upsamplers, blackbody
+SPD integration + shape analysis, hero wavelength sampling, 2
+contrast-sensitivity functions, 6 colour-vision deficiency
+simulations, prismatic colour roundtrip, Rayleigh scattering,
+linear-sRGB convenience wrappers, white-balance, relative luminance,
+and the full TF + colorspace forward/inverse map-interleave grid.
 
 Optimization levels: `-O0` through `-O3` all produce the same output.
 The polynomials are written so that LICM, common-subexpression
@@ -214,6 +464,12 @@ Out of scope:
   determinism is forfeit.
 - **f128 / long double.** Stays f32/f64 only.
 - **GPU backends (HLSL/GLSL/Halide/CUDA).** Out of scope.
+- **File I/O surfaces** (`alwan_clf_export_*`, `alwan_cube_import_*` /
+  `alwan_cube_export_*` taking file paths). Filesystem encoding, line
+  endings, and timestamps are not determinism targets. The
+  buffer-based variants (`alwan_clf_export_buffer`,
+  `alwan_cube_import_buffer`, etc.) are pure memory operations and
+  could be added to the contract if needed.
 
 ---
 
