@@ -26,180 +26,448 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
+/* Illuminant chromaticity (x, y) and sRGB primary tables: dual f32/f64
+ * declaration so the f32 getters return native float data instead of narrowing
+ * doubles through a runtime cache. Each twin is fed by the same CSV; the f64
+ * twin is byte-identical to the former array. */
+
 /* Illuminant A (x, y) */
-static alwan_f64 const g_a_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_a_xy_f32[] = {
 #include "../data/illuminants_xy/a_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_a_xy_f64[] = {
+#include "../data/illuminants_xy/a_xy.csv"
+};
+#endif
 
 /* Illuminant D50 (x, y) */
-static alwan_f64 const g_d50_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_d50_xy_f32[] = {
 #include "../data/illuminants_xy/d50_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_d50_xy_f64[] = {
+#include "../data/illuminants_xy/d50_xy.csv"
+};
+#endif
 
 /* Illuminant D55 (x, y) */
-static alwan_f64 const g_d55_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_d55_xy_f32[] = {
 #include "../data/illuminants_xy/d55_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_d55_xy_f64[] = {
+#include "../data/illuminants_xy/d55_xy.csv"
+};
+#endif
 
 /* Illuminant D60 (x, y) */
-static alwan_f64 const g_d60_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_d60_xy_f32[] = {
 #include "../data/illuminants_xy/d60_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_d60_xy_f64[] = {
+#include "../data/illuminants_xy/d60_xy.csv"
+};
+#endif
 
 /* Illuminant D65 (x, y) */
-static alwan_f64 const g_d65_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_d65_xy_f32[] = {
 #include "../data/illuminants_xy/d65_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_d65_xy_f64[] = {
+#include "../data/illuminants_xy/d65_xy.csv"
+};
+#endif
 
 /* Illuminant E (x, y) */
-static alwan_f64 const g_e_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_e_xy_f32[] = {
 #include "../data/illuminants_xy/e_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_e_xy_f64[] = {
+#include "../data/illuminants_xy/e_xy.csv"
+};
+#endif
 
 /* Illuminant B (x, y) */
-static alwan_f64 const g_b_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_b_xy_f32[] = {
 #include "../data/illuminants_xy/b_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_b_xy_f64[] = {
+#include "../data/illuminants_xy/b_xy.csv"
+};
+#endif
 
 /* Illuminant C (x, y) */
-static alwan_f64 const g_c_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_c_xy_f32[] = {
 #include "../data/illuminants_xy/c_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_c_xy_f64[] = {
+#include "../data/illuminants_xy/c_xy.csv"
+};
+#endif
 
 /* Illuminant D75 (x, y) */
-static alwan_f64 const g_d75_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_d75_xy_f32[] = {
 #include "../data/illuminants_xy/d75_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_d75_xy_f64[] = {
+#include "../data/illuminants_xy/d75_xy.csv"
+};
+#endif
 
 /* Additional D-series illuminants */
-static alwan_f64 const g_d40_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_d40_xy_f32[] = {
 #include "../data/illuminants_xy/d40_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_d40_xy_f64[] = {
+#include "../data/illuminants_xy/d40_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_d45_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_d45_xy_f32[] = {
 #include "../data/illuminants_xy/d45_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_d45_xy_f64[] = {
+#include "../data/illuminants_xy/d45_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_d93_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_d93_xy_f32[] = {
 #include "../data/illuminants_xy/d93_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_d93_xy_f64[] = {
+#include "../data/illuminants_xy/d93_xy.csv"
+};
+#endif
 
 /* LED illuminants */
-static alwan_f64 const g_led_b1_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_b1_xy_f32[] = {
 #include "../data/illuminants_xy/led-b1_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_b1_xy_f64[] = {
+#include "../data/illuminants_xy/led-b1_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_led_b2_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_b2_xy_f32[] = {
 #include "../data/illuminants_xy/led-b2_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_b2_xy_f64[] = {
+#include "../data/illuminants_xy/led-b2_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_led_b3_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_b3_xy_f32[] = {
 #include "../data/illuminants_xy/led-b3_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_b3_xy_f64[] = {
+#include "../data/illuminants_xy/led-b3_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_led_b4_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_b4_xy_f32[] = {
 #include "../data/illuminants_xy/led-b4_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_b4_xy_f64[] = {
+#include "../data/illuminants_xy/led-b4_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_led_b5_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_b5_xy_f32[] = {
 #include "../data/illuminants_xy/led-b5_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_b5_xy_f64[] = {
+#include "../data/illuminants_xy/led-b5_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_led_bh1_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_bh1_xy_f32[] = {
 #include "../data/illuminants_xy/led-bh1_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_bh1_xy_f64[] = {
+#include "../data/illuminants_xy/led-bh1_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_led_rgb1_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_rgb1_xy_f32[] = {
 #include "../data/illuminants_xy/led-rgb1_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_rgb1_xy_f64[] = {
+#include "../data/illuminants_xy/led-rgb1_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_led_v1_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_v1_xy_f32[] = {
 #include "../data/illuminants_xy/led-v1_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_v1_xy_f64[] = {
+#include "../data/illuminants_xy/led-v1_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_led_v2_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_led_v2_xy_f32[] = {
 #include "../data/illuminants_xy/led-v2_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_led_v2_xy_f64[] = {
+#include "../data/illuminants_xy/led-v2_xy.csv"
+};
+#endif
 
 /* High Pressure illuminants */
-static alwan_f64 const g_hp1_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_hp1_xy_f32[] = {
 #include "../data/illuminants_xy/hp1_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_hp1_xy_f64[] = {
+#include "../data/illuminants_xy/hp1_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_hp2_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_hp2_xy_f32[] = {
 #include "../data/illuminants_xy/hp2_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_hp2_xy_f64[] = {
+#include "../data/illuminants_xy/hp2_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_hp3_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_hp3_xy_f32[] = {
 #include "../data/illuminants_xy/hp3_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_hp3_xy_f64[] = {
+#include "../data/illuminants_xy/hp3_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_hp4_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_hp4_xy_f32[] = {
 #include "../data/illuminants_xy/hp4_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_hp4_xy_f64[] = {
+#include "../data/illuminants_xy/hp4_xy.csv"
+};
+#endif
 
-static alwan_f64 const g_hp5_xy[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_hp5_xy_f32[] = {
 #include "../data/illuminants_xy/hp5_xy.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_hp5_xy_f64[] = {
+#include "../data/illuminants_xy/hp5_xy.csv"
+};
+#endif
 
 /* sRGB primaries (rx, ry, gx, gy, bx, by) */
-static alwan_f64 const g_srgb_primaries_3x2[] = {
+#if ALWAN_WITH_F32
+static alwan_f32 const g_srgb_primaries_3x2_f32[] = {
 #include "../data/srgb_primaries_3x2.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+static alwan_f64 const g_srgb_primaries_3x2_f64[] = {
+#include "../data/srgb_primaries_3x2.csv"
+};
+#endif
 
 /* ----------------------------------------------------------------
  * CAT Matrices (Chromatic Adaptation Transform)
  * ---------------------------------------------------------------- */
 
+/* CAT matrices: dual f32/f64 declaration so the templated f32 path reads
+ * native float data instead of narrowing doubles per access. Each twin is
+ * fed by the same CSV; the f64 twin is byte-identical to the former array. */
+
 /* Bradford CAT matrix (most common, used in ICC profiles) */
-alwan_f64 const g_cat_bradford[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_bradford_f32[9] = {
 #include "../data/matrices/cat_bradford.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_bradford_f64[9] = {
+#include "../data/matrices/cat_bradford.csv"
+};
+#endif
 
 /* CAT02 matrix (from CIECAM02) */
-alwan_f64 const g_cat_cat02[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_cat02_f32[9] = {
 #include "../data/matrices/cat_cat02.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_cat02_f64[9] = {
+#include "../data/matrices/cat_cat02.csv"
+};
+#endif
 
 /* CAT16 matrix (from CAM16) */
-alwan_f64 const g_cat_cat16[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_cat16_f32[9] = {
 #include "../data/matrices/cat_cat16.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_cat16_f64[9] = {
+#include "../data/matrices/cat_cat16.csv"
+};
+#endif
 
 /* Sharp CAT matrix */
-alwan_f64 const g_cat_sharp[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_sharp_f32[9] = {
 #include "../data/matrices/cat_sharp.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_sharp_f64[9] = {
+#include "../data/matrices/cat_sharp.csv"
+};
+#endif
 
 /* Fairchild 1990 CAT matrix */
-alwan_f64 const g_cat_fairchild[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_fairchild_f32[9] = {
 #include "../data/matrices/cat_fairchild.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_fairchild_f64[9] = {
+#include "../data/matrices/cat_fairchild.csv"
+};
+#endif
 
 /* CMCCAT97 matrix */
-alwan_f64 const g_cat_cmccat97[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_cmccat97_f32[9] = {
 #include "../data/matrices/cat_cmccat97.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_cmccat97_f64[9] = {
+#include "../data/matrices/cat_cmccat97.csv"
+};
+#endif
 
 /* CMCCAT2000 matrix */
-alwan_f64 const g_cat_cmccat2000[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_cmccat2000_f32[9] = {
 #include "../data/matrices/cat_cmccat2000.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_cmccat2000_f64[9] = {
+#include "../data/matrices/cat_cmccat2000.csv"
+};
+#endif
 
 /* CAT02 Brill 2008 variant matrix */
-alwan_f64 const g_cat_cat02_brill_2008[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_cat02_brill_2008_f32[9] = {
 #include "../data/matrices/cat_cat02_brill_2008.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_cat02_brill_2008_f64[9] = {
+#include "../data/matrices/cat_cat02_brill_2008.csv"
+};
+#endif
 
 /* Bianco 2010 CAT matrix */
-alwan_f64 const g_cat_bianco_2010[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_bianco_2010_f32[9] = {
 #include "../data/matrices/cat_bianco_2010.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_bianco_2010_f64[9] = {
+#include "../data/matrices/cat_bianco_2010.csv"
+};
+#endif
 
 /* Bianco PC 2010 CAT matrix */
-alwan_f64 const g_cat_bianco_pc_2010[9] = {
+#if ALWAN_WITH_F32
+alwan_f32 const g_cat_bianco_pc_2010_f32[9] = {
 #include "../data/matrices/cat_bianco_pc_2010.csv"
 };
+#endif
+#if ALWAN_WITH_F64
+alwan_f64 const g_cat_bianco_pc_2010_f64[9] = {
+#include "../data/matrices/cat_bianco_pc_2010.csv"
+};
+#endif
 
 /* ----------------------------------------------------------------
  * CAM Matrices (Color Appearance Models)
@@ -290,188 +558,189 @@ alwan_f64 const g_ipt_ipt_to_lms_p[9] = {
 
 ALWAN_DIAG_POP
 
+#if ALWAN_WITH_F64
 int alwan_data_get_illuminant_a_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;  /* Unused in embedded mode */
-    *data = (alwan_f64 *)g_a_xy;
-    *count = sizeof(g_a_xy) / sizeof(g_a_xy[0]);
+    *data = (alwan_f64 *)g_a_xy_f64;
+    *count = sizeof(g_a_xy_f64) / sizeof(g_a_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d50_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_d50_xy;
-    *count = sizeof(g_d50_xy) / sizeof(g_d50_xy[0]);
+    *data = (alwan_f64 *)g_d50_xy_f64;
+    *count = sizeof(g_d50_xy_f64) / sizeof(g_d50_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d55_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_d55_xy;
-    *count = sizeof(g_d55_xy) / sizeof(g_d55_xy[0]);
+    *data = (alwan_f64 *)g_d55_xy_f64;
+    *count = sizeof(g_d55_xy_f64) / sizeof(g_d55_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d60_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_d60_xy;
-    *count = sizeof(g_d60_xy) / sizeof(g_d60_xy[0]);
+    *data = (alwan_f64 *)g_d60_xy_f64;
+    *count = sizeof(g_d60_xy_f64) / sizeof(g_d60_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d65_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_d65_xy;
-    *count = sizeof(g_d65_xy) / sizeof(g_d65_xy[0]);
+    *data = (alwan_f64 *)g_d65_xy_f64;
+    *count = sizeof(g_d65_xy_f64) / sizeof(g_d65_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_e_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_e_xy;
-    *count = sizeof(g_e_xy) / sizeof(g_e_xy[0]);
+    *data = (alwan_f64 *)g_e_xy_f64;
+    *count = sizeof(g_e_xy_f64) / sizeof(g_e_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_b_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_b_xy;
-    *count = sizeof(g_b_xy) / sizeof(g_b_xy[0]);
+    *data = (alwan_f64 *)g_b_xy_f64;
+    *count = sizeof(g_b_xy_f64) / sizeof(g_b_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_c_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_c_xy;
-    *count = sizeof(g_c_xy) / sizeof(g_c_xy[0]);
+    *data = (alwan_f64 *)g_c_xy_f64;
+    *count = sizeof(g_c_xy_f64) / sizeof(g_c_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d75_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_d75_xy;
-    *count = sizeof(g_d75_xy) / sizeof(g_d75_xy[0]);
+    *data = (alwan_f64 *)g_d75_xy_f64;
+    *count = sizeof(g_d75_xy_f64) / sizeof(g_d75_xy_f64[0]);
     return ALWAN_OK;
 }
 
 /* Additional D-series illuminants */
 int alwan_data_get_illuminant_d40(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_d40_xy;
-    *count = sizeof(g_d40_xy) / sizeof(g_d40_xy[0]);
+    *data = (alwan_f64 *)g_d40_xy_f64;
+    *count = sizeof(g_d40_xy_f64) / sizeof(g_d40_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d45(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_d45_xy;
-    *count = sizeof(g_d45_xy) / sizeof(g_d45_xy[0]);
+    *data = (alwan_f64 *)g_d45_xy_f64;
+    *count = sizeof(g_d45_xy_f64) / sizeof(g_d45_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d93(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_d93_xy;
-    *count = sizeof(g_d93_xy) / sizeof(g_d93_xy[0]);
+    *data = (alwan_f64 *)g_d93_xy_f64;
+    *count = sizeof(g_d93_xy_f64) / sizeof(g_d93_xy_f64[0]);
     return ALWAN_OK;
 }
 
 /* LED illuminants */
 int alwan_data_get_illuminant_led_b1(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_b1_xy;
-    *count = sizeof(g_led_b1_xy) / sizeof(g_led_b1_xy[0]);
+    *data = (alwan_f64 *)g_led_b1_xy_f64;
+    *count = sizeof(g_led_b1_xy_f64) / sizeof(g_led_b1_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_led_b2(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_b2_xy;
-    *count = sizeof(g_led_b2_xy) / sizeof(g_led_b2_xy[0]);
+    *data = (alwan_f64 *)g_led_b2_xy_f64;
+    *count = sizeof(g_led_b2_xy_f64) / sizeof(g_led_b2_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_led_b3(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_b3_xy;
-    *count = sizeof(g_led_b3_xy) / sizeof(g_led_b3_xy[0]);
+    *data = (alwan_f64 *)g_led_b3_xy_f64;
+    *count = sizeof(g_led_b3_xy_f64) / sizeof(g_led_b3_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_led_b4(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_b4_xy;
-    *count = sizeof(g_led_b4_xy) / sizeof(g_led_b4_xy[0]);
+    *data = (alwan_f64 *)g_led_b4_xy_f64;
+    *count = sizeof(g_led_b4_xy_f64) / sizeof(g_led_b4_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_led_b5(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_b5_xy;
-    *count = sizeof(g_led_b5_xy) / sizeof(g_led_b5_xy[0]);
+    *data = (alwan_f64 *)g_led_b5_xy_f64;
+    *count = sizeof(g_led_b5_xy_f64) / sizeof(g_led_b5_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_led_bh1(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_bh1_xy;
-    *count = sizeof(g_led_bh1_xy) / sizeof(g_led_bh1_xy[0]);
+    *data = (alwan_f64 *)g_led_bh1_xy_f64;
+    *count = sizeof(g_led_bh1_xy_f64) / sizeof(g_led_bh1_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_led_rgb1(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_rgb1_xy;
-    *count = sizeof(g_led_rgb1_xy) / sizeof(g_led_rgb1_xy[0]);
+    *data = (alwan_f64 *)g_led_rgb1_xy_f64;
+    *count = sizeof(g_led_rgb1_xy_f64) / sizeof(g_led_rgb1_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_led_v1(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_v1_xy;
-    *count = sizeof(g_led_v1_xy) / sizeof(g_led_v1_xy[0]);
+    *data = (alwan_f64 *)g_led_v1_xy_f64;
+    *count = sizeof(g_led_v1_xy_f64) / sizeof(g_led_v1_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_led_v2(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_led_v2_xy;
-    *count = sizeof(g_led_v2_xy) / sizeof(g_led_v2_xy[0]);
+    *data = (alwan_f64 *)g_led_v2_xy_f64;
+    *count = sizeof(g_led_v2_xy_f64) / sizeof(g_led_v2_xy_f64[0]);
     return ALWAN_OK;
 }
 
 /* High Pressure illuminants */
 int alwan_data_get_illuminant_hp1(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_hp1_xy;
-    *count = sizeof(g_hp1_xy) / sizeof(g_hp1_xy[0]);
+    *data = (alwan_f64 *)g_hp1_xy_f64;
+    *count = sizeof(g_hp1_xy_f64) / sizeof(g_hp1_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_hp2(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_hp2_xy;
-    *count = sizeof(g_hp2_xy) / sizeof(g_hp2_xy[0]);
+    *data = (alwan_f64 *)g_hp2_xy_f64;
+    *count = sizeof(g_hp2_xy_f64) / sizeof(g_hp2_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_hp3(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_hp3_xy;
-    *count = sizeof(g_hp3_xy) / sizeof(g_hp3_xy[0]);
+    *data = (alwan_f64 *)g_hp3_xy_f64;
+    *count = sizeof(g_hp3_xy_f64) / sizeof(g_hp3_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_hp4(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_hp4_xy;
-    *count = sizeof(g_hp4_xy) / sizeof(g_hp4_xy[0]);
+    *data = (alwan_f64 *)g_hp4_xy_f64;
+    *count = sizeof(g_hp4_xy_f64) / sizeof(g_hp4_xy_f64[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_hp5(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_hp5_xy;
-    *count = sizeof(g_hp5_xy) / sizeof(g_hp5_xy[0]);
+    *data = (alwan_f64 *)g_hp5_xy_f64;
+    *count = sizeof(g_hp5_xy_f64) / sizeof(g_hp5_xy_f64[0]);
     return ALWAN_OK;
 }
 
@@ -511,104 +780,87 @@ int alwan_data_get_illuminant_xy_f64(alwan_f64 **data, size_t *count, alwan_illu
 
 int alwan_data_get_srgb_primaries_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    *data = (alwan_f64 *)g_srgb_primaries_3x2;
-    *count = sizeof(g_srgb_primaries_3x2) / sizeof(g_srgb_primaries_3x2[0]);
+    *data = (alwan_f64 *)g_srgb_primaries_3x2_f64;
+    *count = sizeof(g_srgb_primaries_3x2_f64) / sizeof(g_srgb_primaries_3x2_f64[0]);
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64 */
 
 /* ----------------------------------------------------------------
  * f32 Variants
  *
- * These convert the embedded f64 CSV data to a static f32 copy on
- * first call. Data is small (all illuminant xy are 2 floats each).
+ * Native f32: each getter returns its dedicated f32 CSV twin directly
+ * (decimal -> float at compile time), with no runtime narrowing.
  * ---------------------------------------------------------------- */
 
-#define ALWAN_DATA_F32_CACHE(name) \
-    static alwan_f32 name##_f32_cache[sizeof(name) / sizeof(name[0])]; \
-    static int name##_f32_initialized = 0; \
-    if (!name##_f32_initialized) { \
-        for (size_t i = 0; i < sizeof(name) / sizeof(name[0]); i++) { \
-            name##_f32_cache[i] = (alwan_f32)name[i]; \
-        } \
-        name##_f32_initialized = 1; \
-    }
-
+#if ALWAN_WITH_F32
 int alwan_data_get_illuminant_a_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_a_xy)
-    *data = g_a_xy_f32_cache;
-    *count = sizeof(g_a_xy) / sizeof(g_a_xy[0]);
+    *data = (alwan_f32 *)g_a_xy_f32;
+    *count = sizeof(g_a_xy_f32) / sizeof(g_a_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d50_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_d50_xy)
-    *data = g_d50_xy_f32_cache;
-    *count = sizeof(g_d50_xy) / sizeof(g_d50_xy[0]);
+    *data = (alwan_f32 *)g_d50_xy_f32;
+    *count = sizeof(g_d50_xy_f32) / sizeof(g_d50_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d55_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_d55_xy)
-    *data = g_d55_xy_f32_cache;
-    *count = sizeof(g_d55_xy) / sizeof(g_d55_xy[0]);
+    *data = (alwan_f32 *)g_d55_xy_f32;
+    *count = sizeof(g_d55_xy_f32) / sizeof(g_d55_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d60_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_d60_xy)
-    *data = g_d60_xy_f32_cache;
-    *count = sizeof(g_d60_xy) / sizeof(g_d60_xy[0]);
+    *data = (alwan_f32 *)g_d60_xy_f32;
+    *count = sizeof(g_d60_xy_f32) / sizeof(g_d60_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d65_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_d65_xy)
-    *data = g_d65_xy_f32_cache;
-    *count = sizeof(g_d65_xy) / sizeof(g_d65_xy[0]);
+    *data = (alwan_f32 *)g_d65_xy_f32;
+    *count = sizeof(g_d65_xy_f32) / sizeof(g_d65_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_e_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_e_xy)
-    *data = g_e_xy_f32_cache;
-    *count = sizeof(g_e_xy) / sizeof(g_e_xy[0]);
+    *data = (alwan_f32 *)g_e_xy_f32;
+    *count = sizeof(g_e_xy_f32) / sizeof(g_e_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_b_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_b_xy)
-    *data = g_b_xy_f32_cache;
-    *count = sizeof(g_b_xy) / sizeof(g_b_xy[0]);
+    *data = (alwan_f32 *)g_b_xy_f32;
+    *count = sizeof(g_b_xy_f32) / sizeof(g_b_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_c_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_c_xy)
-    *data = g_c_xy_f32_cache;
-    *count = sizeof(g_c_xy) / sizeof(g_c_xy[0]);
+    *data = (alwan_f32 *)g_c_xy_f32;
+    *count = sizeof(g_c_xy_f32) / sizeof(g_c_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_d75_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_d75_xy)
-    *data = g_d75_xy_f32_cache;
-    *count = sizeof(g_d75_xy) / sizeof(g_d75_xy[0]);
+    *data = (alwan_f32 *)g_d75_xy_f32;
+    *count = sizeof(g_d75_xy_f32) / sizeof(g_d75_xy_f32[0]);
     return ALWAN_OK;
 }
 
 int alwan_data_get_illuminant_xy_f32(alwan_f32 **data, size_t *count, alwan_illuminant illuminant, alwan_ctx *ctx) {
-    /* For illuminants not in the f32 fast-path, convert the f64 result. */
-    alwan_f64 *f64_data = NULL;
-    size_t f64_count = 0;
+    /* Native f32: every illuminant has a dedicated f32 CSV twin, so return its
+     * pointer directly (no f64 narrowing fallback). The main illuminants
+     * delegate to their per-illuminant getters; the rest are inlined here. */
     switch (illuminant) {
         case ALWAN_ILLUMINANT_A:   return alwan_data_get_illuminant_a_f32(data, count, ctx);
         case ALWAN_ILLUMINANT_D50: return alwan_data_get_illuminant_d50_f32(data, count, ctx);
@@ -619,30 +871,52 @@ int alwan_data_get_illuminant_xy_f32(alwan_f32 **data, size_t *count, alwan_illu
         case ALWAN_ILLUMINANT_B:   return alwan_data_get_illuminant_b_f32(data, count, ctx);
         case ALWAN_ILLUMINANT_C:   return alwan_data_get_illuminant_c_f32(data, count, ctx);
         case ALWAN_ILLUMINANT_D75: return alwan_data_get_illuminant_d75_f32(data, count, ctx);
+        case ALWAN_ILLUMINANT_D40:
+            *data = (alwan_f32 *)g_d40_xy_f32; *count = sizeof(g_d40_xy_f32) / sizeof(g_d40_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_D45:
+            *data = (alwan_f32 *)g_d45_xy_f32; *count = sizeof(g_d45_xy_f32) / sizeof(g_d45_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_D93:
+            *data = (alwan_f32 *)g_d93_xy_f32; *count = sizeof(g_d93_xy_f32) / sizeof(g_d93_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_B1:
+            *data = (alwan_f32 *)g_led_b1_xy_f32; *count = sizeof(g_led_b1_xy_f32) / sizeof(g_led_b1_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_B2:
+            *data = (alwan_f32 *)g_led_b2_xy_f32; *count = sizeof(g_led_b2_xy_f32) / sizeof(g_led_b2_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_B3:
+            *data = (alwan_f32 *)g_led_b3_xy_f32; *count = sizeof(g_led_b3_xy_f32) / sizeof(g_led_b3_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_B4:
+            *data = (alwan_f32 *)g_led_b4_xy_f32; *count = sizeof(g_led_b4_xy_f32) / sizeof(g_led_b4_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_B5:
+            *data = (alwan_f32 *)g_led_b5_xy_f32; *count = sizeof(g_led_b5_xy_f32) / sizeof(g_led_b5_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_BH1:
+            *data = (alwan_f32 *)g_led_bh1_xy_f32; *count = sizeof(g_led_bh1_xy_f32) / sizeof(g_led_bh1_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_RGB1:
+            *data = (alwan_f32 *)g_led_rgb1_xy_f32; *count = sizeof(g_led_rgb1_xy_f32) / sizeof(g_led_rgb1_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_V1:
+            *data = (alwan_f32 *)g_led_v1_xy_f32; *count = sizeof(g_led_v1_xy_f32) / sizeof(g_led_v1_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_LED_V2:
+            *data = (alwan_f32 *)g_led_v2_xy_f32; *count = sizeof(g_led_v2_xy_f32) / sizeof(g_led_v2_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_HP1:
+            *data = (alwan_f32 *)g_hp1_xy_f32; *count = sizeof(g_hp1_xy_f32) / sizeof(g_hp1_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_HP2:
+            *data = (alwan_f32 *)g_hp2_xy_f32; *count = sizeof(g_hp2_xy_f32) / sizeof(g_hp2_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_HP3:
+            *data = (alwan_f32 *)g_hp3_xy_f32; *count = sizeof(g_hp3_xy_f32) / sizeof(g_hp3_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_HP4:
+            *data = (alwan_f32 *)g_hp4_xy_f32; *count = sizeof(g_hp4_xy_f32) / sizeof(g_hp4_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_HP5:
+            *data = (alwan_f32 *)g_hp5_xy_f32; *count = sizeof(g_hp5_xy_f32) / sizeof(g_hp5_xy_f32[0]); return ALWAN_OK;
         default:
-            break;
+            return ALWAN_E_INVALID;  /* Unsupported illuminant or no xy data */
     }
-    /* Fallback: convert f64 data to a fresh static f32 buffer (per-illuminant). */
-    if (alwan_data_get_illuminant_xy_f64(&f64_data, &f64_count, illuminant, ctx) != ALWAN_OK) {
-        return ALWAN_E_INVALID;
-    }
-    /* Small shared cache (2 entries covers all xy pairs) for the "extra" illuminants */
-    static alwan_f32 extra_cache[2];
-    if (f64_count > 2) return ALWAN_E_INVALID;
-    extra_cache[0] = (alwan_f32)f64_data[0];
-    extra_cache[1] = (alwan_f32)f64_data[1];
-    *data = extra_cache;
-    *count = f64_count;
-    return ALWAN_OK;
 }
 
 int alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;
-    ALWAN_DATA_F32_CACHE(g_srgb_primaries_3x2)
-    *data = g_srgb_primaries_3x2_f32_cache;
-    *count = sizeof(g_srgb_primaries_3x2) / sizeof(g_srgb_primaries_3x2[0]);
+    *data = (alwan_f32 *)g_srgb_primaries_3x2_f32;
+    *count = sizeof(g_srgb_primaries_3x2_f32) / sizeof(g_srgb_primaries_3x2_f32[0]);
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */
 
 #else
     /* Runtime data loading (ALWAN_EMBED_DATA=0) is NOT implemented.
@@ -654,6 +928,7 @@ int alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, alwan_ctx
  * Illuminant White Point Calculation (works in both modes)
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_F64
 int alwan_illuminant_white_point_f64(alwan_xyz_f64 *out_xyz,
                                    alwan_illuminant illuminant,
                                    alwan_observer_type observer) {
@@ -722,16 +997,72 @@ int alwan_illuminant_white_point_f64(alwan_xyz_f64 *out_xyz,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64 */
 
+#if ALWAN_WITH_F32
 int alwan_illuminant_white_point_f32(alwan_xyz_f32 *out_xyz,
                                    alwan_illuminant illuminant,
                                    alwan_observer_type observer) {
     if (!out_xyz) return ALWAN_E_INVALID;
-    alwan_xyz_f64 f64_out;
-    int rc = alwan_illuminant_white_point_f64(&f64_out, illuminant, observer);
-    if (rc != ALWAN_OK) return rc;
-    out_xyz->x = (alwan_f32)f64_out.x;
-    out_xyz->y = (alwan_f32)f64_out.y;
-    out_xyz->z = (alwan_f32)f64_out.z;
+
+    /* Fully native f32: the CIE 1931 2-deg branch is pure xy->XYZ over the native
+     * f32 chromaticity data; the general-observer branch integrates the f32
+     * illuminant SPD against the f32 observer CMFs (alwan_spd is now native f32).
+     * Both mirror the f64 worker's algorithm exactly, in f32. */
+    if (observer == ALWAN_OBSERVER_CIE_1931_2DEG) {
+        alwan_f32 *xy_data = NULL;
+        size_t count = 0;
+        int status = alwan_data_get_illuminant_xy_f32(&xy_data, &count, illuminant, NULL);
+
+        if (status != ALWAN_OK || count < 2) {
+            return ALWAN_E_INVALID;
+        }
+
+        /* Extract x and y chromaticity coordinates */
+        alwan_f32 x = xy_data[0];
+        alwan_f32 y = xy_data[1];
+
+        /* Convert xy to XYZ with Y = 1.0 (normalized)
+         * Formula: X = x * Y / y
+         *          Y = 1.0
+         *          Z = (1 - x - y) * Y / y */
+        alwan_f32 const Y = 1.0f;
+
+        if (y <= 0.0f) {
+            return ALWAN_E_INVALID;  /* Invalid chromaticity */
+        }
+
+        out_xyz->x = x * Y / y;                    /* X */
+        out_xyz->y = Y;                             /* Y */
+        out_xyz->z = (1.0f - x - y) * Y / y;       /* Z */
+
+        return ALWAN_OK;
+    }
+
+    /* General observer: native f32 SPD + observer-CMF integration (alwan_spd is
+     * native f32, so this needs no f64 path and works in an f32-only build). */
+    alwan_spd_f32 illum_spd;
+    int status = alwan_spd_illuminant_f32(&illum_spd, illuminant, NULL);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+
+    alwan_xyz_f32 xyz_unnormalized;
+    status = alwan_xyz_from_spd_f32(&xyz_unnormalized, &illum_spd, NULL, observer,
+                                    ALWAN_INTEGRATE_SIMPSON, 0.0f, NULL);
+    alwan_spd_destroy_f32(&illum_spd, NULL);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+
+    if (xyz_unnormalized.y <= 0.0f) {
+        return ALWAN_E_INVALID;  /* Invalid Y value */
+    }
+
+    alwan_f32 norm_factor = 1.0f / xyz_unnormalized.y;
+    out_xyz->x = xyz_unnormalized.x * norm_factor;
+    out_xyz->y = 1.0f;
+    out_xyz->z = xyz_unnormalized.z * norm_factor;
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */

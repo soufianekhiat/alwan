@@ -102,6 +102,38 @@ int ALWAN_CORE_FNLIT(alwan_simulate_cvd_ex)(ALWAN_CORE_RGB *rgb_out,
  * Luminous Efficiency Functions
  * ================================================================ */
 
+/* Interpolate interleaved {wavelength, value} pairs (stride 2).
+ * Templatized per precision so the f32 path reads native float LUTs. */
+static ALWAN_CORE_T ALWAN_CORE_FNLIT(interpolate_lut)(ALWAN_CORE_T const *data,
+                                                      int count,
+                                                      ALWAN_CORE_T wavelength) {
+    if (wavelength <= data[0]) {
+        return data[1];
+    }
+    if (wavelength >= data[(count - 1) * 2]) {
+        return data[(count - 1) * 2 + 1];
+    }
+
+    int i;
+    for (i = 0; i < count - 1; i++) {
+        ALWAN_CORE_T wl_lo = data[i * 2];
+        ALWAN_CORE_T wl_hi = data[(i + 1) * 2];
+        if (wavelength >= wl_lo && wavelength <= wl_hi) {
+            ALWAN_CORE_T t = (wavelength - wl_lo) / (wl_hi - wl_lo);
+            return data[i * 2 + 1] + t * (data[(i + 1) * 2 + 1] - data[i * 2 + 1]);
+        }
+    }
+
+    return ALWAN_CORE_LITERAL(0.0);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_vision_interpolate_photopic_lut)(ALWAN_CORE_T wavelength) {
+    return ALWAN_CORE_FNLIT(interpolate_lut)(ALWAN_CORE_FNLIT(PHOTOPIC_V_DATA), PHOTOPIC_V_COUNT, wavelength);
+}
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_vision_interpolate_scotopic_lut)(ALWAN_CORE_T wavelength) {
+    return ALWAN_CORE_FNLIT(interpolate_lut)(ALWAN_CORE_FNLIT(SCOTOPIC_VP_DATA), SCOTOPIC_VP_COUNT, wavelength);
+}
+
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_luminous_efficiency)(ALWAN_CORE_T wavelength, alwan_vision_type vision_type) {
     if (wavelength < ALWAN_CORE_LITERAL(360.0) || wavelength > ALWAN_CORE_LITERAL(830.0)) {
         return ALWAN_CORE_LITERAL(-1.0);
@@ -109,11 +141,11 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_luminous_efficiency)(ALWAN_CORE_T wavelength
 
     switch (vision_type) {
         case ALWAN_VISION_PHOTOPIC:
-            return (ALWAN_CORE_T)alwan_vision_interpolate_photopic_lut((alwan_f64)wavelength);
+            return ALWAN_CORE_FNLIT(alwan_vision_interpolate_photopic_lut)(wavelength);
         case ALWAN_VISION_SCOTOPIC:
-            return (ALWAN_CORE_T)alwan_vision_interpolate_scotopic_lut((alwan_f64)wavelength);
+            return ALWAN_CORE_FNLIT(alwan_vision_interpolate_scotopic_lut)(wavelength);
         case ALWAN_VISION_MESOPIC:
-            return (ALWAN_CORE_T)alwan_vision_interpolate_photopic_lut((alwan_f64)wavelength);
+            return ALWAN_CORE_FNLIT(alwan_vision_interpolate_photopic_lut)(wavelength);
         default:
             return ALWAN_CORE_LITERAL(-1.0);
     }
@@ -244,7 +276,8 @@ int ALWAN_CORE_FNLIT(alwan_michelson_contrast)(ALWAN_CORE_T *result, ALWAN_CORE_
 /* ================================================================
  * SPD-based luminance functions
  *
- * Use the shared f64 LUTs with interpolate_lut() declared in alwan_vision.c.
+ * Use the per-precision LUTs via the ALWAN_CORE_FNLIT(interpolate_lut) helpers
+ * defined above, so each pass reads its native float/double table.
  * ================================================================ */
 
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_photopic_luminance)(ALWAN_CORE_SPD const *spd, alwan_ctx *ctx) {
@@ -259,7 +292,7 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_photopic_luminance)(ALWAN_CORE_SPD const *sp
 
     for (size_t i = 0; i < spd->count; i++) {
         ALWAN_CORE_T lambda = (ALWAN_CORE_T)spd->wavelength_min + (ALWAN_CORE_T)i * step;
-        ALWAN_CORE_T v = (ALWAN_CORE_T)alwan_vision_interpolate_photopic_lut((alwan_f64)lambda);
+        ALWAN_CORE_T v = ALWAN_CORE_FNLIT(alwan_vision_interpolate_photopic_lut)(lambda);
         ALWAN_CORE_T w = (i == 0 || i == spd->count - 1)
                          ? ALWAN_CORE_LITERAL(0.5) : ALWAN_CORE_LITERAL(1.0);
         sum += w * (ALWAN_CORE_T)spd->values[i] * v;
@@ -280,7 +313,7 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_scotopic_luminance)(ALWAN_CORE_SPD const *sp
 
     for (size_t i = 0; i < spd->count; i++) {
         ALWAN_CORE_T lambda = (ALWAN_CORE_T)spd->wavelength_min + (ALWAN_CORE_T)i * step;
-        ALWAN_CORE_T vp = (ALWAN_CORE_T)alwan_vision_interpolate_scotopic_lut((alwan_f64)lambda);
+        ALWAN_CORE_T vp = ALWAN_CORE_FNLIT(alwan_vision_interpolate_scotopic_lut)(lambda);
         ALWAN_CORE_T w = (i == 0 || i == spd->count - 1)
                          ? ALWAN_CORE_LITERAL(0.5) : ALWAN_CORE_LITERAL(1.0);
         sum += w * (ALWAN_CORE_T)spd->values[i] * vp;

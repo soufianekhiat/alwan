@@ -4,7 +4,13 @@
  * SPDX-License-Identifier: MIT
  *
  * Spectral Upsampling - RGB to Spectrum Conversion
- * Implements reflectance recovery methods based on colour-science
+ * Implements reflectance recovery methods based on colour-science.
+ *
+ * The recovery methods are instantiated natively for both f32 and f64
+ * from alwan_spectrum_upsample_impl.inc (included once per precision
+ * below), so the single-precision path computes in float throughout
+ * rather than widening to double. Only the shared basis/LUT data lives
+ * here.
  */
 
 #include "../alwan.h"
@@ -32,55 +38,127 @@ static alwan_f64 const smits1999_wavelengths[SMITS1999_WAVELENGTH_COUNT] = {
 };
 ALWAN_DIAG_POP
 
-/* Basis spectra: white, cyan, magenta, yellow, red, green, blue */
+/* Basis spectra: white, cyan, magenta, yellow, red, green, blue.
+ * Dual-declared (f32 + f64 twins from the same CSV) so the templated
+ * impl reads native float data on the f32 pass instead of casting. */
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const smits1999_white[SMITS1999_WAVELENGTH_COUNT] = {
+static alwan_f32 const smits1999_white_f32[SMITS1999_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/smits1999/white.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const smits1999_cyan[SMITS1999_WAVELENGTH_COUNT] = {
+static alwan_f64 const smits1999_white_f64[SMITS1999_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/smits1999/white.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const smits1999_cyan_f32[SMITS1999_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/smits1999/cyan.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const smits1999_magenta[SMITS1999_WAVELENGTH_COUNT] = {
+static alwan_f64 const smits1999_cyan_f64[SMITS1999_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/smits1999/cyan.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const smits1999_magenta_f32[SMITS1999_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/smits1999/magenta.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const smits1999_yellow[SMITS1999_WAVELENGTH_COUNT] = {
+static alwan_f64 const smits1999_magenta_f64[SMITS1999_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/smits1999/magenta.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const smits1999_yellow_f32[SMITS1999_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/smits1999/yellow.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const smits1999_red[SMITS1999_WAVELENGTH_COUNT] = {
+static alwan_f64 const smits1999_yellow_f64[SMITS1999_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/smits1999/yellow.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const smits1999_red_f32[SMITS1999_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/smits1999/red.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const smits1999_green[SMITS1999_WAVELENGTH_COUNT] = {
+static alwan_f64 const smits1999_red_f64[SMITS1999_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/smits1999/red.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const smits1999_green_f32[SMITS1999_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/smits1999/green.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const smits1999_blue[SMITS1999_WAVELENGTH_COUNT] = {
+static alwan_f64 const smits1999_green_f64[SMITS1999_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/smits1999/green.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const smits1999_blue_f32[SMITS1999_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/smits1999/blue.csv"
 };
 ALWAN_DIAG_POP
+#endif
+#if ALWAN_WITH_F64
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const smits1999_blue_f64[SMITS1999_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/smits1999/blue.csv"
+};
+ALWAN_DIAG_POP
+#endif
 
 /* ----------------------------------------------------------------
  * Mallett2019 Basis Functions Data
@@ -101,27 +179,57 @@ static alwan_f64 const mallett2019_wavelengths[MALLETT2019_WAVELENGTH_COUNT] = {
 };
 ALWAN_DIAG_POP
 
-/* Basis functions: red, green, blue */
+/* Basis functions: red, green, blue. Dual-declared f32/f64 twins. */
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const mallett2019_red[MALLETT2019_WAVELENGTH_COUNT] = {
+static alwan_f32 const mallett2019_red_f32[MALLETT2019_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/mallett2019/red.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const mallett2019_green[MALLETT2019_WAVELENGTH_COUNT] = {
+static alwan_f64 const mallett2019_red_f64[MALLETT2019_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/mallett2019/red.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const mallett2019_green_f32[MALLETT2019_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/mallett2019/green.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const mallett2019_blue[MALLETT2019_WAVELENGTH_COUNT] = {
+static alwan_f64 const mallett2019_green_f64[MALLETT2019_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/mallett2019/green.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const mallett2019_blue_f32[MALLETT2019_WAVELENGTH_COUNT] = {
 #include "../data/spectral_basis/mallett2019/blue.csv"
 };
 ALWAN_DIAG_POP
+#endif
+#if ALWAN_WITH_F64
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const mallett2019_blue_f64[MALLETT2019_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/mallett2019/blue.csv"
+};
+ALWAN_DIAG_POP
+#endif
 
 /* ----------------------------------------------------------------
  * Jakob2019 Polynomial LUT Data
@@ -139,506 +247,335 @@ ALWAN_DIAG_POP
 #define JAKOB2019_LUT_RES 64
 #define JAKOB2019_LUT_SIZE (JAKOB2019_LUT_RES * JAKOB2019_LUT_RES * JAKOB2019_LUT_RES)
 
-/* sRGB LUT (default) */
+/* sRGB LUT (default). Dual-declared f32/f64 twins from the same CSV. */
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_srgb_lut_c0[JAKOB2019_LUT_SIZE] = {
+static alwan_f32 const jakob2019_srgb_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c0.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_srgb_lut_c1[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_srgb_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_srgb_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c1.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_srgb_lut_c2[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_srgb_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_srgb_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c2.csv"
 };
 ALWAN_DIAG_POP
-
-/* ProPhoto RGB LUT */
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_prophoto_lut_c0[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_srgb_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+/* ProPhoto RGB LUT. Dual-declared f32/f64 twins. */
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_prophoto_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_prophotorgb.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_prophoto_lut_c1[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_prophoto_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_prophotorgb.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_prophoto_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_prophotorgb.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_prophoto_lut_c2[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_prophoto_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_prophotorgb.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_prophoto_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_prophotorgb.csv"
 };
 ALWAN_DIAG_POP
-
-/* ACES2065-1 LUT */
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_aces_lut_c0[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_prophoto_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_prophotorgb.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+/* ACES2065-1 LUT. Dual-declared f32/f64 twins. */
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_aces_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_aces2065_1.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_aces_lut_c1[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_aces_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_aces2065_1.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_aces_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_aces2065_1.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_aces_lut_c2[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_aces_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_aces2065_1.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_aces_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_aces2065_1.csv"
 };
 ALWAN_DIAG_POP
-
-/* Rec.2020 LUT */
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_rec2020_lut_c0[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_aces_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_aces2065_1.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+/* Rec.2020 LUT. Dual-declared f32/f64 twins. */
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_rec2020_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_rec2020.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_rec2020_lut_c1[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_rec2020_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_rec2020.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_rec2020_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_rec2020.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_rec2020_lut_c2[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_rec2020_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_rec2020.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_rec2020_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_rec2020.csv"
 };
 ALWAN_DIAG_POP
-
-/* eRGB LUT */
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_ergb_lut_c0[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_rec2020_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_rec2020.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+/* eRGB LUT. Dual-declared f32/f64 twins. */
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_ergb_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_ergb.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_ergb_lut_c1[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_ergb_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_ergb.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_ergb_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_ergb.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_ergb_lut_c2[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_ergb_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_ergb.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_ergb_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_ergb.csv"
 };
 ALWAN_DIAG_POP
-
-/* CIE XYZ LUT */
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_xyz_lut_c0[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_ergb_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_ergb.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+/* CIE XYZ LUT. Dual-declared f32/f64 twins. */
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_xyz_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_xyz.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_xyz_lut_c1[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_xyz_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_xyz.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_xyz_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_xyz.csv"
 };
 ALWAN_DIAG_POP
-
+#endif
+#if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_xyz_lut_c2[JAKOB2019_LUT_SIZE] = {
+static alwan_f64 const jakob2019_xyz_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_xyz.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f32 const jakob2019_xyz_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
 #include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_xyz.csv"
 };
 ALWAN_DIAG_POP
+#endif
+#if ALWAN_WITH_F64
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const jakob2019_xyz_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
+#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_xyz.csv"
+};
+ALWAN_DIAG_POP
+#endif
 
 /* ----------------------------------------------------------------
- * Helper Functions
+ * Native dual-precision instantiation of the recovery methods.
+ * The dual-declared f32/f64 basis/LUT twins above are selected per
+ * precision via ALWAN_CORE_FNLIT(NAME) inside the impl, so each pass
+ * reads native data of its own precision (no per-element casts).
  * ---------------------------------------------------------------- */
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+#include "alwan_api_f32_setup.h"
+#include "alwan_spectrum_upsample_impl.inc"
+#include "alwan_api_teardown.h"
+ALWAN_DIAG_POP
+#endif
 
-/* Clamp scalar value to [min, max] range */
-static inline alwan_f64 clamp(alwan_f64 x, alwan_f64 min, alwan_f64 max) {
-    if (x < min) return min;
-    if (x > max) return max;
-    return x;
-}
-
-/* ----------------------------------------------------------------
- * Smits1999: RGB to Spectrum Conversion
- * Algorithm:
- * 1. Find minimum RGB component
- * 2. Start with white spectrum scaled by minimum
- * 3. Add appropriate complementary colors based on remaining components
- * ---------------------------------------------------------------- */
-
-int alwan_rgb_to_spectrum_smits1999_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx) {
-    if (!rgb || !out_spd) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Create output SPD with Smits1999 wavelength range */
-    int status = alwan_spd_create_f64(out_spd, SMITS1999_WAVELENGTH_MIN, SMITS1999_WAVELENGTH_MAX, SMITS1999_WAVELENGTH_COUNT, ctx);
-    if (status != ALWAN_OK) {
-        return status;
-    }
-
-    /* Extract RGB components (clamped to [0, 1]) */
-    alwan_f64 r = clamp(rgb->r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    alwan_f64 g = clamp(rgb->g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    alwan_f64 b = clamp(rgb->b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-
-    /* Smits1999 algorithm: build spectrum from basis spectra */
-    /* Based on colour-science implementation */
-
-    if (r <= g && r <= b) {
-        /* R is minimum: start with white * R */
-        for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-            out_spd->values[i] = smits1999_white[i] * r;
-        }
-
-        if (g <= b) {
-            /* Add cyan for (G - R) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_cyan[i] * (g - r);
-            }
-            /* Add blue for (B - G) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_blue[i] * (b - g);
-            }
-        } else {
-            /* Add cyan for (B - R) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_cyan[i] * (b - r);
-            }
-            /* Add green for (G - B) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_green[i] * (g - b);
-            }
-        }
-    } else if (g <= r && g <= b) {
-        /* G is minimum: start with white * G */
-        for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-            out_spd->values[i] = smits1999_white[i] * g;
-        }
-
-        if (r <= b) {
-            /* Add magenta for (R - G) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_magenta[i] * (r - g);
-            }
-            /* Add blue for (B - R) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_blue[i] * (b - r);
-            }
-        } else {
-            /* Add magenta for (B - G) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_magenta[i] * (b - g);
-            }
-            /* Add red for (R - B) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_red[i] * (r - b);
-            }
-        }
-    } else {
-        /* B is minimum: start with white * B */
-        for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-            out_spd->values[i] = smits1999_white[i] * b;
-        }
-
-        if (r <= g) {
-            /* Add yellow for (R - B) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_yellow[i] * (r - b);
-            }
-            /* Add green for (G - R) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_green[i] * (g - r);
-            }
-        } else {
-            /* Add yellow for (G - B) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_yellow[i] * (g - b);
-            }
-            /* Add red for (R - G) */
-            for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++) {
-                out_spd->values[i] += smits1999_red[i] * (r - g);
-            }
-        }
-    }
-
-    return ALWAN_OK;
-}
-
-/* ----------------------------------------------------------------
- * Mallett2019: RGB to Spectrum Conversion
- * Algorithm: Linear combination of basis functions
- * recovered_spectrum = R * basis_red + G * basis_green + B * basis_blue
- * ---------------------------------------------------------------- */
-
-int alwan_rgb_to_spectrum_mallett2019_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx) {
-    if (!rgb || !out_spd) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Create output SPD with Mallett2019 wavelength range */
-    int status = alwan_spd_create_f64(out_spd, MALLETT2019_WAVELENGTH_MIN, MALLETT2019_WAVELENGTH_MAX, MALLETT2019_WAVELENGTH_COUNT, ctx);
-    if (status != ALWAN_OK) {
-        return status;
-    }
-
-    /* Extract RGB components */
-    alwan_f64 r = rgb->r;
-    alwan_f64 g = rgb->g;
-    alwan_f64 b = rgb->b;
-
-    /* Linear combination: spectrum = R * basis_red + G * basis_green + B * basis_blue */
-    for (size_t i = 0; i < MALLETT2019_WAVELENGTH_COUNT; i++) {
-        out_spd->values[i] = r * mallett2019_red[i] +
-                             g * mallett2019_green[i] +
-                             b * mallett2019_blue[i];
-    }
-
-    /* Optional: clamp negative values to zero for physical validity */
-    for (size_t i = 0; i < MALLETT2019_WAVELENGTH_COUNT; i++) {
-        if (out_spd->values[i] < ALWAN_LITERAL(0.0)) {
-            out_spd->values[i] = ALWAN_LITERAL(0.0);
-        }
-    }
-
-    return ALWAN_OK;
-}
-
-/* ----------------------------------------------------------------
- * Jakob2019: RGB to Spectrum Conversion
- * Uses polynomial LUT-based approach from the original paper
- * ---------------------------------------------------------------- */
-
-/* Trilinear interpolation of Jakob2019 LUT */
-static void jakob2019_lut_sample(alwan_f64 const *lut_c0,
-                                  alwan_f64 const *lut_c1,
-                                  alwan_f64 const *lut_c2,
-                                  alwan_f64 r, alwan_f64 g, alwan_f64 b,
-                                  alwan_f64 *out_c0,
-                                  alwan_f64 *out_c1,
-                                  alwan_f64 *out_c2) {
-    /* Clamp inputs to [0, 1] */
-    r = clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    g = clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    b = clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-
-    /* Scale to LUT resolution */
-    alwan_f64 const res_f = (alwan_f64)(JAKOB2019_LUT_RES - 1);
-    alwan_f64 const rf = r * res_f;
-    alwan_f64 const gf = g * res_f;
-    alwan_f64 const bf = b * res_f;
-
-    /* Integer indices */
-    int const r0 = (int)rf;
-    int const g0 = (int)gf;
-    int const b0 = (int)bf;
-
-    /* Clamp to valid range */
-    int const r1 = (r0 + 1 < JAKOB2019_LUT_RES) ? (r0 + 1) : r0;
-    int const g1 = (g0 + 1 < JAKOB2019_LUT_RES) ? (g0 + 1) : g0;
-    int const b1 = (b0 + 1 < JAKOB2019_LUT_RES) ? (b0 + 1) : b0;
-
-    /* Fractional parts */
-    alwan_f64 const fr = rf - (alwan_f64)r0;
-    alwan_f64 const fg = gf - (alwan_f64)g0;
-    alwan_f64 const fb = bf - (alwan_f64)b0;
-
-    /* LUT indexing: index = r * RES^2 + g * RES + b */
-#define LUT_INDEX(ri, gi, bi) ((ri) * JAKOB2019_LUT_RES * JAKOB2019_LUT_RES + (gi) * JAKOB2019_LUT_RES + (bi))
-
-    /* Sample 8 corners of the cube */
-    int const i000 = LUT_INDEX(r0, g0, b0);
-    int const i001 = LUT_INDEX(r0, g0, b1);
-    int const i010 = LUT_INDEX(r0, g1, b0);
-    int const i011 = LUT_INDEX(r0, g1, b1);
-    int const i100 = LUT_INDEX(r1, g0, b0);
-    int const i101 = LUT_INDEX(r1, g0, b1);
-    int const i110 = LUT_INDEX(r1, g1, b0);
-    int const i111 = LUT_INDEX(r1, g1, b1);
-
-#undef LUT_INDEX
-
-    /* Trilinear interpolation for c0 */
-    alwan_f64 const c0_00 = lut_c0[i000] * (ALWAN_LITERAL(1.0) - fb) + lut_c0[i001] * fb;
-    alwan_f64 const c0_01 = lut_c0[i010] * (ALWAN_LITERAL(1.0) - fb) + lut_c0[i011] * fb;
-    alwan_f64 const c0_10 = lut_c0[i100] * (ALWAN_LITERAL(1.0) - fb) + lut_c0[i101] * fb;
-    alwan_f64 const c0_11 = lut_c0[i110] * (ALWAN_LITERAL(1.0) - fb) + lut_c0[i111] * fb;
-    alwan_f64 const c0_0 = c0_00 * (ALWAN_LITERAL(1.0) - fg) + c0_01 * fg;
-    alwan_f64 const c0_1 = c0_10 * (ALWAN_LITERAL(1.0) - fg) + c0_11 * fg;
-    *out_c0 = c0_0 * (ALWAN_LITERAL(1.0) - fr) + c0_1 * fr;
-
-    /* Trilinear interpolation for c1 */
-    alwan_f64 const c1_00 = lut_c1[i000] * (ALWAN_LITERAL(1.0) - fb) + lut_c1[i001] * fb;
-    alwan_f64 const c1_01 = lut_c1[i010] * (ALWAN_LITERAL(1.0) - fb) + lut_c1[i011] * fb;
-    alwan_f64 const c1_10 = lut_c1[i100] * (ALWAN_LITERAL(1.0) - fb) + lut_c1[i101] * fb;
-    alwan_f64 const c1_11 = lut_c1[i110] * (ALWAN_LITERAL(1.0) - fb) + lut_c1[i111] * fb;
-    alwan_f64 const c1_0 = c1_00 * (ALWAN_LITERAL(1.0) - fg) + c1_01 * fg;
-    alwan_f64 const c1_1 = c1_10 * (ALWAN_LITERAL(1.0) - fg) + c1_11 * fg;
-    *out_c1 = c1_0 * (ALWAN_LITERAL(1.0) - fr) + c1_1 * fr;
-
-    /* Trilinear interpolation for c2 */
-    alwan_f64 const c2_00 = lut_c2[i000] * (ALWAN_LITERAL(1.0) - fb) + lut_c2[i001] * fb;
-    alwan_f64 const c2_01 = lut_c2[i010] * (ALWAN_LITERAL(1.0) - fb) + lut_c2[i011] * fb;
-    alwan_f64 const c2_10 = lut_c2[i100] * (ALWAN_LITERAL(1.0) - fb) + lut_c2[i101] * fb;
-    alwan_f64 const c2_11 = lut_c2[i110] * (ALWAN_LITERAL(1.0) - fb) + lut_c2[i111] * fb;
-    alwan_f64 const c2_0 = c2_00 * (ALWAN_LITERAL(1.0) - fg) + c2_01 * fg;
-    alwan_f64 const c2_1 = c2_10 * (ALWAN_LITERAL(1.0) - fg) + c2_11 * fg;
-    *out_c2 = c2_0 * (ALWAN_LITERAL(1.0) - fr) + c2_1 * fr;
-}
-
-/* Evaluate Jakob2019 polynomial to generate spectrum from coefficients */
-static inline alwan_f64 jakob2019_eval_poly(alwan_f64 c0, alwan_f64 c1, alwan_f64 c2, alwan_f64 wavelength) {
-    /* Polynomial: U = c0 * wavelength^2 + c1 * wavelength + c2 */
-    alwan_f64 const U = c0 * wavelength * wavelength + c1 * wavelength + c2;
-
-    /* Reflectance: R = 0.5 + U / (2 * sqrt(1 + U^2)) */
-    alwan_f64 const U_sq = U * U;
-    alwan_f64 const denom = ALWAN_LITERAL(2.0) * ALWAN_SQRT(ALWAN_LITERAL(1.0) + U_sq);
-    alwan_f64 const R = ALWAN_LITERAL(0.5) + U / denom;
-
-    /* Clamp to [0, 1] */
-    return clamp(R, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-}
-
-int alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f64 const *rgb, alwan_ctx *ctx) {
-    if (!rgb || !out_spd) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Select LUT based on gamut */
-    alwan_f64 const *lut_c0, *lut_c1, *lut_c2;
-
-    switch (gamut) {
-        case ALWAN_JAKOB2019_SRGB:
-            lut_c0 = jakob2019_srgb_lut_c0;
-            lut_c1 = jakob2019_srgb_lut_c1;
-            lut_c2 = jakob2019_srgb_lut_c2;
-            break;
-
-        case ALWAN_JAKOB2019_PROPHOTO_RGB:
-            lut_c0 = jakob2019_prophoto_lut_c0;
-            lut_c1 = jakob2019_prophoto_lut_c1;
-            lut_c2 = jakob2019_prophoto_lut_c2;
-            break;
-
-        case ALWAN_JAKOB2019_ACES2065_1:
-            lut_c0 = jakob2019_aces_lut_c0;
-            lut_c1 = jakob2019_aces_lut_c1;
-            lut_c2 = jakob2019_aces_lut_c2;
-            break;
-
-        case ALWAN_JAKOB2019_REC2020:
-            lut_c0 = jakob2019_rec2020_lut_c0;
-            lut_c1 = jakob2019_rec2020_lut_c1;
-            lut_c2 = jakob2019_rec2020_lut_c2;
-            break;
-
-        case ALWAN_JAKOB2019_ERGB:
-            lut_c0 = jakob2019_ergb_lut_c0;
-            lut_c1 = jakob2019_ergb_lut_c1;
-            lut_c2 = jakob2019_ergb_lut_c2;
-            break;
-
-        case ALWAN_JAKOB2019_XYZ:
-            lut_c0 = jakob2019_xyz_lut_c0;
-            lut_c1 = jakob2019_xyz_lut_c1;
-            lut_c2 = jakob2019_xyz_lut_c2;
-            break;
-
-        default:
-            return ALWAN_E_INVALID;
-    }
-
-    /* Create output SPD with Jakob2019 wavelength range */
-    int status = alwan_spd_create_f64(out_spd, JAKOB2019_WAVELENGTH_MIN, JAKOB2019_WAVELENGTH_MAX, JAKOB2019_WAVELENGTH_COUNT, ctx);
-    if (status != ALWAN_OK) {
-        return status;
-    }
-
-    /* Sample LUT to get polynomial coefficients via trilinear interpolation */
-    alwan_f64 c0, c1, c2;
-    jakob2019_lut_sample(lut_c0, lut_c1, lut_c2, rgb->r, rgb->g, rgb->b, &c0, &c1, &c2);
-
-    /* Evaluate polynomial for each wavelength */
-    alwan_f64 const wl_min = JAKOB2019_WAVELENGTH_MIN;
-    alwan_f64 const wl_step = (JAKOB2019_WAVELENGTH_MAX - JAKOB2019_WAVELENGTH_MIN) / (alwan_f64)(JAKOB2019_WAVELENGTH_COUNT - 1);
-
-    for (size_t i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
-        alwan_f64 const wavelength = wl_min + (alwan_f64)i * wl_step;
-        out_spd->values[i] = jakob2019_eval_poly(c0, c1, c2, wavelength);
-    }
-
-    return ALWAN_OK;
-}
-
-/* ================================================================
- * f32 wrappers — delegate to f64 and convert the SPD output.
- * ================================================================ */
-
-static void spd_f64_to_f32_blit(alwan_spd_f32 *out, alwan_spd_f64 const *in) {
-    out->wavelength_min = (alwan_f32)in->wavelength_min;
-    out->wavelength_max = (alwan_f32)in->wavelength_max;
-    for (size_t i = 0; i < in->count && i < out->count; i++) {
-        out->values[i] = (alwan_f32)in->values[i];
-    }
-}
-
-int alwan_rgb_to_spectrum_smits1999_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx) {
-    if (!rgb || !out_spd) return ALWAN_E_INVALID;
-    alwan_rgb_f64 rgb64 = { (double)rgb->r, (double)rgb->g, (double)rgb->b };
-    alwan_spd_f64 tmp;
-    int rc = alwan_rgb_to_spectrum_smits1999_f64(&tmp, &rgb64, ctx);
-    if (rc != ALWAN_OK) return rc;
-    rc = alwan_spd_create_f32(out_spd, (alwan_f32)tmp.wavelength_min, (alwan_f32)tmp.wavelength_max, tmp.count, ctx);
-    if (rc == ALWAN_OK) spd_f64_to_f32_blit(out_spd, &tmp);
-    alwan_spd_destroy_f64(&tmp, ctx);
-    return rc;
-}
-
-int alwan_rgb_to_spectrum_mallett2019_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx) {
-    if (!rgb || !out_spd) return ALWAN_E_INVALID;
-    alwan_rgb_f64 rgb64 = { (double)rgb->r, (double)rgb->g, (double)rgb->b };
-    alwan_spd_f64 tmp;
-    int rc = alwan_rgb_to_spectrum_mallett2019_f64(&tmp, &rgb64, ctx);
-    if (rc != ALWAN_OK) return rc;
-    rc = alwan_spd_create_f32(out_spd, (alwan_f32)tmp.wavelength_min, (alwan_f32)tmp.wavelength_max, tmp.count, ctx);
-    if (rc == ALWAN_OK) spd_f64_to_f32_blit(out_spd, &tmp);
-    alwan_spd_destroy_f64(&tmp, ctx);
-    return rc;
-}
-
-int alwan_rgb_to_spectrum_jakob2019_f32(alwan_spd_f32 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f32 const *rgb, alwan_ctx *ctx) {
-    if (!rgb || !out_spd) return ALWAN_E_INVALID;
-    alwan_rgb_f64 rgb64 = { (double)rgb->r, (double)rgb->g, (double)rgb->b };
-    alwan_spd_f64 tmp;
-    int rc = alwan_rgb_to_spectrum_jakob2019_f64(&tmp, gamut, &rgb64, ctx);
-    if (rc != ALWAN_OK) return rc;
-    rc = alwan_spd_create_f32(out_spd, (alwan_f32)tmp.wavelength_min, (alwan_f32)tmp.wavelength_max, tmp.count, ctx);
-    if (rc == ALWAN_OK) spd_f64_to_f32_blit(out_spd, &tmp);
-    alwan_spd_destroy_f64(&tmp, ctx);
-    return rc;
-}
+#if ALWAN_WITH_F64
+#include "alwan_api_f64_setup.h"
+#include "alwan_spectrum_upsample_impl.inc"
+#include "alwan_api_teardown.h"
+#endif

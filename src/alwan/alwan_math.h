@@ -29,6 +29,12 @@
 
 #include "alwan_platform.h"
 
+/* Scalar fast-mode pow(x,2.4)/pow(x,1/2.4) twins of the SIMD pow kernels, so
+ * the scalar _v path matches the SIMD map path in fast mode on platforms
+ * without an accurate vector pow (no SVML). Header-guarded; the inline
+ * functions are unused (and thus not emitted) in deterministic mode. */
+#include "core/alwan_fast_pow.h"
+
 /* ----------------------------------------------------------------
  * Fused multiply-add
  *

@@ -701,12 +701,17 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
     __m128 m = _mm_castsi128_ps(mant_bits);
 
     /* Minimax polynomial ALWAN_LOG2_F64(m) on [1, 2) */
-    __m128 t = _mm_sub_ps(m, _mm_set1_ps(1.0f));
-    __m128 log2_m = _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(1.44269504f),
-                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(-0.72134752f),
-                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(0.48089835f),
-                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(-0.36067376f),
-                    _mm_mul_ps(t, _mm_set1_ps(0.28854314f))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1); matches scalar twin */
+    __m128 one_l = _mm_set1_ps(1.0f);
+    __m128 s  = _mm_div_ps(_mm_sub_ps(m, one_l), _mm_add_ps(m, one_l));
+    __m128 s2 = _mm_mul_ps(s, s);
+    __m128 lp = _mm_add_ps(_mm_set1_ps(1.0f/11.0f), _mm_mul_ps(s2, _mm_set1_ps(1.0f/13.0f)));
+    lp = _mm_add_ps(_mm_set1_ps(1.0f/9.0f), _mm_mul_ps(s2, lp));
+    lp = _mm_add_ps(_mm_set1_ps(1.0f/7.0f), _mm_mul_ps(s2, lp));
+    lp = _mm_add_ps(_mm_set1_ps(1.0f/5.0f), _mm_mul_ps(s2, lp));
+    lp = _mm_add_ps(_mm_set1_ps(1.0f/3.0f), _mm_mul_ps(s2, lp));
+    lp = _mm_add_ps(one_l, _mm_mul_ps(s2, lp));
+    __m128 log2_m = _mm_mul_ps(_mm_set1_ps(2.8853901f), _mm_mul_ps(s, lp));
 
     __m128 y = _mm_mul_ps(_mm_set1_ps(2.4f), _mm_add_ps(e, log2_m));
 
@@ -716,12 +721,16 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
     __m128i n = _mm_cvttps_epi32(yi);
 
     /* Minimax polynomial 2^yf on [0, 1) */
-    __m128 exp2f = _mm_add_ps(_mm_set1_ps(1.0f),
-                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.69314718f),
-                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.24022651f),
-                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.05550411f),
-                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.00961813f),
-                   _mm_mul_ps(yf, _mm_set1_ps(0.00133335f)))))))))));
+    /* exp2(yf) on [0,1): degree-6 Taylor; matches scalar twin */
+    __m128 e2 = _mm_add_ps(_mm_set1_ps(1.5252734e-05f),
+                _mm_mul_ps(yf, _mm_set1_ps(1.3215487e-06f)));
+    e2 = _mm_add_ps(_mm_set1_ps(0.00015403530f), _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.0013333558f),  _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.009618129f),   _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.055504109f),   _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.24022651f),    _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.6931472f),     _mm_mul_ps(yf, e2));
+    __m128 exp2f = _mm_add_ps(_mm_set1_ps(1.0f), _mm_mul_ps(yf, e2));
 
     __m128i scale_i = _mm_slli_epi32(_mm_add_epi32(n, _mm_set1_epi32(127)), 23);
     __m128 scale = _mm_castsi128_ps(scale_i);
@@ -752,12 +761,17 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
     __m128 m = _mm_castsi128_ps(mant_bits);
 
     /* Minimax polynomial ALWAN_LOG2_F64(m) on [1, 2) */
-    __m128 t = _mm_sub_ps(m, _mm_set1_ps(1.0f));
-    __m128 log2_m = _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(1.44269504f),
-                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(-0.72134752f),
-                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(0.48089835f),
-                    _mm_mul_ps(t, _mm_add_ps(_mm_set1_ps(-0.36067376f),
-                    _mm_mul_ps(t, _mm_set1_ps(0.28854314f))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1); matches scalar twin */
+    __m128 one_l = _mm_set1_ps(1.0f);
+    __m128 s  = _mm_div_ps(_mm_sub_ps(m, one_l), _mm_add_ps(m, one_l));
+    __m128 s2 = _mm_mul_ps(s, s);
+    __m128 lp = _mm_add_ps(_mm_set1_ps(1.0f/11.0f), _mm_mul_ps(s2, _mm_set1_ps(1.0f/13.0f)));
+    lp = _mm_add_ps(_mm_set1_ps(1.0f/9.0f), _mm_mul_ps(s2, lp));
+    lp = _mm_add_ps(_mm_set1_ps(1.0f/7.0f), _mm_mul_ps(s2, lp));
+    lp = _mm_add_ps(_mm_set1_ps(1.0f/5.0f), _mm_mul_ps(s2, lp));
+    lp = _mm_add_ps(_mm_set1_ps(1.0f/3.0f), _mm_mul_ps(s2, lp));
+    lp = _mm_add_ps(one_l, _mm_mul_ps(s2, lp));
+    __m128 log2_m = _mm_mul_ps(_mm_set1_ps(2.8853901f), _mm_mul_ps(s, lp));
 
     __m128 y = _mm_mul_ps(_mm_set1_ps(0.41666667f), _mm_add_ps(e, log2_m));
 
@@ -767,12 +781,16 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
     __m128i n = _mm_cvttps_epi32(yi);
 
     /* Minimax polynomial 2^yf on [0, 1) */
-    __m128 exp2f = _mm_add_ps(_mm_set1_ps(1.0f),
-                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.69314718f),
-                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.24022651f),
-                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.05550411f),
-                   _mm_mul_ps(yf, _mm_add_ps(_mm_set1_ps(0.00961813f),
-                   _mm_mul_ps(yf, _mm_set1_ps(0.00133335f)))))))))));
+    /* exp2(yf) on [0,1): degree-6 Taylor; matches scalar twin */
+    __m128 e2 = _mm_add_ps(_mm_set1_ps(1.5252734e-05f),
+                _mm_mul_ps(yf, _mm_set1_ps(1.3215487e-06f)));
+    e2 = _mm_add_ps(_mm_set1_ps(0.00015403530f), _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.0013333558f),  _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.009618129f),   _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.055504109f),   _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.24022651f),    _mm_mul_ps(yf, e2));
+    e2 = _mm_add_ps(_mm_set1_ps(0.6931472f),     _mm_mul_ps(yf, e2));
+    __m128 exp2f = _mm_add_ps(_mm_set1_ps(1.0f), _mm_mul_ps(yf, e2));
 
     __m128i scale_i = _mm_slli_epi32(_mm_add_epi32(n, _mm_set1_epi32(127)), 23);
     __m128 scale = _mm_castsi128_ps(scale_i);
@@ -814,12 +832,21 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
     __m128d m = _mm_castsi128_pd(mant_bits);
 
     /* ALWAN_LOG2_F64(m) on [1, 2): Horner polynomial, t = m - 1 */
-    __m128d t = _mm_sub_pd(m, _mm_set1_pd(1.0));
-    __m128d log2_m = _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(1.4426950408889634),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.7213475204049363),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(0.4808983469618909),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.3606737602744954),
-                     _mm_mul_pd(t, _mm_set1_pd(0.28854301595785953))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1) in [0,1/3):
+       log2(m) = (2/ln2)*(s + s^3/3 + s^5/5 + s^7/7 + s^9/9). Far more accurate
+       near m->2 than a Taylor series in (m-1), which diverges there. */
+    __m128d one_l = _mm_set1_pd(1.0);
+    __m128d s  = _mm_div_pd(_mm_sub_pd(m, one_l), _mm_add_pd(m, one_l));
+    __m128d s2 = _mm_mul_pd(s, s);
+    __m128d lp = _mm_add_pd(_mm_set1_pd(1.0/15.0), _mm_mul_pd(s2, _mm_set1_pd(1.0/17.0)));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/13.0), _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/11.0), _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/9.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/7.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/5.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/3.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(one_l, _mm_mul_pd(s2, lp));
+    __m128d log2_m = _mm_mul_pd(_mm_set1_pd(2.8853900817779268), _mm_mul_pd(s, lp));
 
     /* y = 2.4 * ALWAN_LOG2_F64(x) */
     __m128d y = _mm_mul_pd(_mm_set1_pd(2.4), _mm_add_pd(e, log2_m));
@@ -829,12 +856,18 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
     __m128d yf = _mm_sub_pd(y, yi);
 
     /* exp2(yf) on [0, 1): Horner polynomial */
-    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.6931471805599453),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.24022650695910071),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.05550410866482158),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.009618129107628477),
-                    _mm_mul_pd(yf, _mm_set1_pd(0.0013333558146428443)))))))))));
+    /* exp2(yf) on [0,1): degree-6 Taylor (ln2^k/k!) */
+    __m128d e2 = _mm_add_pd(_mm_set1_pd(1.0178086009239696e-07),
+                 _mm_mul_pd(yf, _mm_set1_pd(7.0549116208011209e-09)));
+    e2 = _mm_add_pd(_mm_set1_pd(1.3215486790144305e-06), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(1.5252733804059838e-05), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.00015403530393381606), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.0013333558146428441),  _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.0096181291076284769),  _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.055504108664821576),   _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.24022650695910069),    _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.69314718055994529),    _mm_mul_pd(yf, e2));
+    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),         _mm_mul_pd(yf, e2));
 
     /* Scale: 2^yi = float with exponent field = (yi + 1023) << 52
      * _mm_cvttpd_epi32 gives 2Ã—i32 in low 64 bits; sign-extend to i64. */
@@ -874,21 +907,36 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
         _mm_and_si128(iv, _mm_set1_epi64x(0x000FFFFFFFFFFFFFLL)),
         _mm_set1_epi64x(0x3FF0000000000000LL));
     __m128d m = _mm_castsi128_pd(mant_bits);
-    __m128d t = _mm_sub_pd(m, _mm_set1_pd(1.0));
-    __m128d log2_m = _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(1.4426950408889634),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.7213475204049363),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(0.4808983469618909),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.3606737602744954),
-                     _mm_mul_pd(t, _mm_set1_pd(0.28854301595785953))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1) in [0,1/3):
+       log2(m) = (2/ln2)*(s + s^3/3 + s^5/5 + s^7/7 + s^9/9). Far more accurate
+       near m->2 than a Taylor series in (m-1), which diverges there. */
+    __m128d one_l = _mm_set1_pd(1.0);
+    __m128d s  = _mm_div_pd(_mm_sub_pd(m, one_l), _mm_add_pd(m, one_l));
+    __m128d s2 = _mm_mul_pd(s, s);
+    __m128d lp = _mm_add_pd(_mm_set1_pd(1.0/15.0), _mm_mul_pd(s2, _mm_set1_pd(1.0/17.0)));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/13.0), _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/11.0), _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/9.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/7.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/5.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/3.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(one_l, _mm_mul_pd(s2, lp));
+    __m128d log2_m = _mm_mul_pd(_mm_set1_pd(2.8853900817779268), _mm_mul_pd(s, lp));
     __m128d y = _mm_mul_pd(_mm_set1_pd(1.0 / 2.4), _mm_add_pd(e, log2_m));
     __m128d yi = alwan_simd_f64_floor(y);
     __m128d yf = _mm_sub_pd(y, yi);
-    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.6931471805599453),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.24022650695910071),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.05550410866482158),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.009618129107628477),
-                    _mm_mul_pd(yf, _mm_set1_pd(0.0013333558146428443)))))))))));
+    /* exp2(yf) on [0,1): degree-6 Taylor (ln2^k/k!) */
+    __m128d e2 = _mm_add_pd(_mm_set1_pd(1.0178086009239696e-07),
+                 _mm_mul_pd(yf, _mm_set1_pd(7.0549116208011209e-09)));
+    e2 = _mm_add_pd(_mm_set1_pd(1.3215486790144305e-06), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(1.5252733804059838e-05), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.00015403530393381606), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.0013333558146428441),  _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.0096181291076284769),  _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.055504108664821576),   _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.24022650695910069),    _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.69314718055994529),    _mm_mul_pd(yf, e2));
+    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),         _mm_mul_pd(yf, e2));
     __m128i yi_i32  = _mm_cvttpd_epi32(yi);
     __m128i yi_sign = _mm_srai_epi32(yi_i32, 31);
     __m128i yi_i64  = _mm_unpacklo_epi32(yi_i32, yi_sign);

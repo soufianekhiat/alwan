@@ -614,22 +614,31 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
         _mm256_and_si256(iv, _mm256_set1_epi32(0x007FFFFF)),
         _mm256_set1_epi32(0x3F800000));
     __m256 m = _mm256_castsi256_ps(mant_bits);
-    __m256 t = _mm256_sub_ps(m, _mm256_set1_ps(1.0f));
-    __m256 log2_m = _mm256_mul_ps(t, _mm256_add_ps(_mm256_set1_ps(1.44269504f),
-                    _mm256_mul_ps(t, _mm256_add_ps(_mm256_set1_ps(-0.72134752f),
-                    _mm256_mul_ps(t, _mm256_add_ps(_mm256_set1_ps(0.48089835f),
-                    _mm256_mul_ps(t, _mm256_add_ps(_mm256_set1_ps(-0.36067376f),
-                    _mm256_mul_ps(t, _mm256_set1_ps(0.28854314f))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1); matches scalar twin */
+    __m256 one_l = _mm256_set1_ps(1.0f);
+    __m256 s  = _mm256_div_ps(_mm256_sub_ps(m, one_l), _mm256_add_ps(m, one_l));
+    __m256 s2 = _mm256_mul_ps(s, s);
+    __m256 lp = _mm256_add_ps(_mm256_set1_ps(1.0f/11.0f), _mm256_mul_ps(s2, _mm256_set1_ps(1.0f/13.0f)));
+    lp = _mm256_add_ps(_mm256_set1_ps(1.0f/9.0f), _mm256_mul_ps(s2, lp));
+    lp = _mm256_add_ps(_mm256_set1_ps(1.0f/7.0f), _mm256_mul_ps(s2, lp));
+    lp = _mm256_add_ps(_mm256_set1_ps(1.0f/5.0f), _mm256_mul_ps(s2, lp));
+    lp = _mm256_add_ps(_mm256_set1_ps(1.0f/3.0f), _mm256_mul_ps(s2, lp));
+    lp = _mm256_add_ps(one_l, _mm256_mul_ps(s2, lp));
+    __m256 log2_m = _mm256_mul_ps(_mm256_set1_ps(2.8853901f), _mm256_mul_ps(s, lp));
     __m256 y = _mm256_mul_ps(_mm256_set1_ps(2.4f), _mm256_add_ps(e, log2_m));
     __m256 yi = _mm256_floor_ps(y);
     __m256 yf = _mm256_sub_ps(y, yi);
     __m256i n = _mm256_cvttps_epi32(yi);
-    __m256 exp2f = _mm256_add_ps(_mm256_set1_ps(1.0f),
-                   _mm256_mul_ps(yf, _mm256_add_ps(_mm256_set1_ps(0.69314718f),
-                   _mm256_mul_ps(yf, _mm256_add_ps(_mm256_set1_ps(0.24022651f),
-                   _mm256_mul_ps(yf, _mm256_add_ps(_mm256_set1_ps(0.05550411f),
-                   _mm256_mul_ps(yf, _mm256_add_ps(_mm256_set1_ps(0.00961813f),
-                   _mm256_mul_ps(yf, _mm256_set1_ps(0.00133335f)))))))))));
+    /* exp2(yf) on [0,1): degree-6 Taylor; matches scalar twin */
+    __m256 e2 = _mm256_add_ps(_mm256_set1_ps(1.5252734e-05f),
+                _mm256_mul_ps(yf, _mm256_set1_ps(1.3215487e-06f)));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.00015403530f), _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.0013333558f),  _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.009618129f),   _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.055504109f),   _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.24022651f),    _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.6931472f),     _mm256_mul_ps(yf, e2));
+    __m256 exp2f = _mm256_add_ps(_mm256_set1_ps(1.0f), _mm256_mul_ps(yf, e2));
     __m256i scale_i = _mm256_slli_epi32(_mm256_add_epi32(n, _mm256_set1_epi32(127)), 23);
     __m256 scale = _mm256_castsi256_ps(scale_i);
     __m256 result = _mm256_mul_ps(scale, exp2f);
@@ -654,22 +663,31 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
         _mm256_and_si256(iv, _mm256_set1_epi32(0x007FFFFF)),
         _mm256_set1_epi32(0x3F800000));
     __m256 m = _mm256_castsi256_ps(mant_bits);
-    __m256 t = _mm256_sub_ps(m, _mm256_set1_ps(1.0f));
-    __m256 log2_m = _mm256_mul_ps(t, _mm256_add_ps(_mm256_set1_ps(1.44269504f),
-                    _mm256_mul_ps(t, _mm256_add_ps(_mm256_set1_ps(-0.72134752f),
-                    _mm256_mul_ps(t, _mm256_add_ps(_mm256_set1_ps(0.48089835f),
-                    _mm256_mul_ps(t, _mm256_add_ps(_mm256_set1_ps(-0.36067376f),
-                    _mm256_mul_ps(t, _mm256_set1_ps(0.28854314f))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1); matches scalar twin */
+    __m256 one_l = _mm256_set1_ps(1.0f);
+    __m256 s  = _mm256_div_ps(_mm256_sub_ps(m, one_l), _mm256_add_ps(m, one_l));
+    __m256 s2 = _mm256_mul_ps(s, s);
+    __m256 lp = _mm256_add_ps(_mm256_set1_ps(1.0f/11.0f), _mm256_mul_ps(s2, _mm256_set1_ps(1.0f/13.0f)));
+    lp = _mm256_add_ps(_mm256_set1_ps(1.0f/9.0f), _mm256_mul_ps(s2, lp));
+    lp = _mm256_add_ps(_mm256_set1_ps(1.0f/7.0f), _mm256_mul_ps(s2, lp));
+    lp = _mm256_add_ps(_mm256_set1_ps(1.0f/5.0f), _mm256_mul_ps(s2, lp));
+    lp = _mm256_add_ps(_mm256_set1_ps(1.0f/3.0f), _mm256_mul_ps(s2, lp));
+    lp = _mm256_add_ps(one_l, _mm256_mul_ps(s2, lp));
+    __m256 log2_m = _mm256_mul_ps(_mm256_set1_ps(2.8853901f), _mm256_mul_ps(s, lp));
     __m256 y = _mm256_mul_ps(_mm256_set1_ps(1.0f / 2.4f), _mm256_add_ps(e, log2_m));
     __m256 yi = _mm256_floor_ps(y);
     __m256 yf = _mm256_sub_ps(y, yi);
     __m256i n = _mm256_cvttps_epi32(yi);
-    __m256 exp2f = _mm256_add_ps(_mm256_set1_ps(1.0f),
-                   _mm256_mul_ps(yf, _mm256_add_ps(_mm256_set1_ps(0.69314718f),
-                   _mm256_mul_ps(yf, _mm256_add_ps(_mm256_set1_ps(0.24022651f),
-                   _mm256_mul_ps(yf, _mm256_add_ps(_mm256_set1_ps(0.05550411f),
-                   _mm256_mul_ps(yf, _mm256_add_ps(_mm256_set1_ps(0.00961813f),
-                   _mm256_mul_ps(yf, _mm256_set1_ps(0.00133335f)))))))))));
+    /* exp2(yf) on [0,1): degree-6 Taylor; matches scalar twin */
+    __m256 e2 = _mm256_add_ps(_mm256_set1_ps(1.5252734e-05f),
+                _mm256_mul_ps(yf, _mm256_set1_ps(1.3215487e-06f)));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.00015403530f), _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.0013333558f),  _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.009618129f),   _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.055504109f),   _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.24022651f),    _mm256_mul_ps(yf, e2));
+    e2 = _mm256_add_ps(_mm256_set1_ps(0.6931472f),     _mm256_mul_ps(yf, e2));
+    __m256 exp2f = _mm256_add_ps(_mm256_set1_ps(1.0f), _mm256_mul_ps(yf, e2));
     __m256i scale_i = _mm256_slli_epi32(_mm256_add_epi32(n, _mm256_set1_epi32(127)), 23);
     __m256 scale = _mm256_castsi256_ps(scale_i);
     __m256 result = _mm256_mul_ps(scale, exp2f);
@@ -754,12 +772,21 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
     __m256d m = _mm256_castsi256_pd(mant_bits);
 
     /* ALWAN_LOG2_F64(m) on [1, 2): Horner polynomial, t = m - 1 */
-    __m256d t = _mm256_sub_pd(m, _mm256_set1_pd(1.0));
-    __m256d log2_m = _mm256_mul_pd(t, _mm256_add_pd(_mm256_set1_pd(1.4426950408889634),
-                     _mm256_mul_pd(t, _mm256_add_pd(_mm256_set1_pd(-0.7213475204049363),
-                     _mm256_mul_pd(t, _mm256_add_pd(_mm256_set1_pd(0.4808983469618909),
-                     _mm256_mul_pd(t, _mm256_add_pd(_mm256_set1_pd(-0.3606737602744954),
-                     _mm256_mul_pd(t, _mm256_set1_pd(0.28854301595785953))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1) in [0,1/3):
+       log2(m) = (2/ln2)*(s + s^3/3 + s^5/5 + s^7/7 + s^9/9). Far more accurate
+       near m->2 than a Taylor series in (m-1), which diverges there. */
+    __m256d one_l = _mm256_set1_pd(1.0);
+    __m256d s  = _mm256_div_pd(_mm256_sub_pd(m, one_l), _mm256_add_pd(m, one_l));
+    __m256d s2 = _mm256_mul_pd(s, s);
+    __m256d lp = _mm256_add_pd(_mm256_set1_pd(1.0/15.0), _mm256_mul_pd(s2, _mm256_set1_pd(1.0/17.0)));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/13.0), _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/11.0), _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/9.0),  _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/7.0),  _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/5.0),  _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/3.0),  _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(one_l, _mm256_mul_pd(s2, lp));
+    __m256d log2_m = _mm256_mul_pd(_mm256_set1_pd(2.8853900817779268), _mm256_mul_pd(s, lp));
 
     /* y = 2.4 * ALWAN_LOG2_F64(x) */
     __m256d y = _mm256_mul_pd(_mm256_set1_pd(2.4), _mm256_add_pd(e, log2_m));
@@ -769,12 +796,18 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
     __m256d yf = _mm256_sub_pd(y, yi);
 
     /* exp2(yf) on [0, 1): Horner polynomial */
-    __m256d exp2f = _mm256_add_pd(_mm256_set1_pd(1.0),
-                    _mm256_mul_pd(yf, _mm256_add_pd(_mm256_set1_pd(0.6931471805599453),
-                    _mm256_mul_pd(yf, _mm256_add_pd(_mm256_set1_pd(0.24022650695910071),
-                    _mm256_mul_pd(yf, _mm256_add_pd(_mm256_set1_pd(0.05550410866482158),
-                    _mm256_mul_pd(yf, _mm256_add_pd(_mm256_set1_pd(0.009618129107628477),
-                    _mm256_mul_pd(yf, _mm256_set1_pd(0.0013333558146428443)))))))))));
+    /* exp2(yf) on [0,1): degree-10 Taylor (ln2^k/k!) */
+    __m256d e2 = _mm256_add_pd(_mm256_set1_pd(1.0178086009239696e-07),
+                 _mm256_mul_pd(yf, _mm256_set1_pd(7.0549116208011209e-09)));
+    e2 = _mm256_add_pd(_mm256_set1_pd(1.3215486790144305e-06), _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(1.5252733804059838e-05), _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.00015403530393381606), _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.0013333558146428441),  _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.0096181291076284769),  _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.055504108664821576),   _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.24022650695910069),    _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.69314718055994529),    _mm256_mul_pd(yf, e2));
+    __m256d exp2f = _mm256_add_pd(_mm256_set1_pd(1.0),         _mm256_mul_pd(yf, e2));
 
     /* Scale: 2^yi = float with exponent field = (yi + 1023) << 52 */
     __m128i yi_i32  = _mm256_cvttpd_epi32(yi);           /* 4Ã—i32 in __m128i */
@@ -811,21 +844,36 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
         _mm256_and_si256(iv, _mm256_set1_epi64x(0x000FFFFFFFFFFFFFLL)),
         _mm256_set1_epi64x(0x3FF0000000000000LL));
     __m256d m = _mm256_castsi256_pd(mant_bits);
-    __m256d t = _mm256_sub_pd(m, _mm256_set1_pd(1.0));
-    __m256d log2_m = _mm256_mul_pd(t, _mm256_add_pd(_mm256_set1_pd(1.4426950408889634),
-                     _mm256_mul_pd(t, _mm256_add_pd(_mm256_set1_pd(-0.7213475204049363),
-                     _mm256_mul_pd(t, _mm256_add_pd(_mm256_set1_pd(0.4808983469618909),
-                     _mm256_mul_pd(t, _mm256_add_pd(_mm256_set1_pd(-0.3606737602744954),
-                     _mm256_mul_pd(t, _mm256_set1_pd(0.28854301595785953))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1) in [0,1/3):
+       log2(m) = (2/ln2)*(s + s^3/3 + s^5/5 + s^7/7 + s^9/9). Far more accurate
+       near m->2 than a Taylor series in (m-1), which diverges there. */
+    __m256d one_l = _mm256_set1_pd(1.0);
+    __m256d s  = _mm256_div_pd(_mm256_sub_pd(m, one_l), _mm256_add_pd(m, one_l));
+    __m256d s2 = _mm256_mul_pd(s, s);
+    __m256d lp = _mm256_add_pd(_mm256_set1_pd(1.0/15.0), _mm256_mul_pd(s2, _mm256_set1_pd(1.0/17.0)));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/13.0), _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/11.0), _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/9.0),  _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/7.0),  _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/5.0),  _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(_mm256_set1_pd(1.0/3.0),  _mm256_mul_pd(s2, lp));
+    lp = _mm256_add_pd(one_l, _mm256_mul_pd(s2, lp));
+    __m256d log2_m = _mm256_mul_pd(_mm256_set1_pd(2.8853900817779268), _mm256_mul_pd(s, lp));
     __m256d y = _mm256_mul_pd(_mm256_set1_pd(1.0 / 2.4), _mm256_add_pd(e, log2_m));
     __m256d yi = _mm256_floor_pd(y);
     __m256d yf = _mm256_sub_pd(y, yi);
-    __m256d exp2f = _mm256_add_pd(_mm256_set1_pd(1.0),
-                    _mm256_mul_pd(yf, _mm256_add_pd(_mm256_set1_pd(0.6931471805599453),
-                    _mm256_mul_pd(yf, _mm256_add_pd(_mm256_set1_pd(0.24022650695910071),
-                    _mm256_mul_pd(yf, _mm256_add_pd(_mm256_set1_pd(0.05550410866482158),
-                    _mm256_mul_pd(yf, _mm256_add_pd(_mm256_set1_pd(0.009618129107628477),
-                    _mm256_mul_pd(yf, _mm256_set1_pd(0.0013333558146428443)))))))))));
+    /* exp2(yf) on [0,1): degree-10 Taylor (ln2^k/k!) */
+    __m256d e2 = _mm256_add_pd(_mm256_set1_pd(1.0178086009239696e-07),
+                 _mm256_mul_pd(yf, _mm256_set1_pd(7.0549116208011209e-09)));
+    e2 = _mm256_add_pd(_mm256_set1_pd(1.3215486790144305e-06), _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(1.5252733804059838e-05), _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.00015403530393381606), _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.0013333558146428441),  _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.0096181291076284769),  _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.055504108664821576),   _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.24022650695910069),    _mm256_mul_pd(yf, e2));
+    e2 = _mm256_add_pd(_mm256_set1_pd(0.69314718055994529),    _mm256_mul_pd(yf, e2));
+    __m256d exp2f = _mm256_add_pd(_mm256_set1_pd(1.0),         _mm256_mul_pd(yf, e2));
     __m128i yi_i32  = _mm256_cvttpd_epi32(yi);
     __m256i yi_i64  = _mm256_cvtepi32_epi64(yi_i32);
     __m256i scale_i = _mm256_slli_epi64(

@@ -5,6 +5,8 @@
  * ---------------------------------------------------------------- */
 #if ALWAN_EMBED_DATA
 
+#if ALWAN_WITH_F64
+
 /* Disable float conversion warnings for embedded CSV data */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
@@ -539,5 +541,552 @@ static alwan_f64 const * const g_rgb_space_data[] = {
 };
 
 static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]);
+
+#endif /* ALWAN_WITH_F64 */
+
+/* ----------------------------------------------------------------
+ * f32 native twins of the embedded tables above.
+ * Same CSV bytes, stored as float for native f32 readers (no f64->f32
+ * double-rounding). Order MUST match enum / the f64 arrays.
+ * ---------------------------------------------------------------- */
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+
+ALWAN_DIAG_DISABLE_EXTERN_TO_STATIC
+
+static float const g_srgb_f32[] = {
+#include "data/rgb_spaces/srgb.csv"
+};
+
+static float const g_bt709_f32[] = {
+#include "data/rgb_spaces/bt709.csv"
+};
+
+static float const g_display_p3_f32[] = {
+#include "data/rgb_spaces/display_p3.csv"
+};
+
+static float const g_bt2020_f32[] = {
+#include "data/rgb_spaces/bt2020.csv"
+};
+
+static float const g_aces2065_1_f32[] = {
+#include "data/rgb_spaces/aces2065-1.csv"
+};
+
+static float const g_acescg_f32[] = {
+#include "data/rgb_spaces/acescg.csv"
+};
+
+static float const g_acesproxy_f32[] = {
+#include "data/rgb_spaces/acesproxy.csv"
+};
+
+static float const g_acescc_f32[] = {
+#include "data/rgb_spaces/acescc.csv"
+};
+
+static float const g_acescct_f32[] = {
+#include "data/rgb_spaces/acescct.csv"
+};
+
+static float const g_arri_wide_gamut_3_f32[] = {
+#include "data/rgb_spaces/arri_wide_gamut_3.csv"
+};
+
+static float const g_arri_wide_gamut_4_f32[] = {
+#include "data/rgb_spaces/arri_wide_gamut_4.csv"
+};
+
+static float const g_arri_logc3_f32[] = {
+#include "data/rgb_spaces/arri_logc3.csv"
+};
+
+static float const g_arri_logc4_f32[] = {
+#include "data/rgb_spaces/arri_logc4.csv"
+};
+
+static float const g_redcolor_f32[] = {
+#include "data/rgb_spaces/redcolor.csv"
+};
+
+static float const g_redcolor2_f32[] = {
+#include "data/rgb_spaces/redcolor2.csv"
+};
+
+static float const g_redcolor3_f32[] = {
+#include "data/rgb_spaces/redcolor3.csv"
+};
+
+static float const g_redcolor4_f32[] = {
+#include "data/rgb_spaces/redcolor4.csv"
+};
+
+static float const g_dragoncolor_f32[] = {
+#include "data/rgb_spaces/dragoncolor.csv"
+};
+
+static float const g_dragoncolor2_f32[] = {
+#include "data/rgb_spaces/dragoncolor2.csv"
+};
+
+static float const g_redlog_f32[] = {
+#include "data/rgb_spaces/redlog.csv"
+};
+
+static float const g_venice_s_gamut3_f32[] = {
+#include "data/rgb_spaces/venice_s-gamut3.csv"
+};
+
+static float const g_venice_s_gamut3_cine_f32[] = {
+#include "data/rgb_spaces/venice_s-gamut3cine.csv"
+};
+
+static float const g_s_log_f32[] = {
+#include "data/rgb_spaces/s-log.csv"
+};
+
+static float const g_s_log2_f32[] = {
+#include "data/rgb_spaces/s-log2.csv"
+};
+
+static float const g_s_log3_f32[] = {
+#include "data/rgb_spaces/s-log3.csv"
+};
+
+static float const g_cie_rgb_f32[] = {
+#include "data/rgb_spaces/cie_rgb.csv"
+};
+
+static float const g_adobe_wide_gamut_rgb_f32[] = {
+#include "data/rgb_spaces/adobe_wide_gamut_rgb.csv"
+};
+
+static float const g_romm_rgb_f32[] = {
+#include "data/rgb_spaces/romm_rgb.csv"
+};
+
+static float const g_rimm_rgb_f32[] = {
+#include "data/rgb_spaces/rimm_rgb.csv"
+};
+
+static float const g_erimm_rgb_f32[] = {
+#include "data/rgb_spaces/erimm_rgb.csv"
+};
+
+static float const g_filmlight_e_gamut_f32[] = {
+#include "data/rgb_spaces/filmlight_e-gamut.csv"
+};
+
+static float const g_filmlight_t_log_f32[] = {
+#include "data/rgb_spaces/filmlight_t-log.csv"
+};
+
+static float const g_f_gamut_f32[] = {
+#include "data/rgb_spaces/f-gamut.csv"
+};
+
+static float const g_fujifilm_f_log_f32[] = {
+#include "data/rgb_spaces/fujifilm_f-log.csv"
+};
+
+static float const g_n_gamut_f32[] = {
+#include "data/rgb_spaces/n-gamut.csv"
+};
+
+static float const g_n_log_f32[] = {
+#include "data/rgb_spaces/n-log.csv"
+};
+
+static float const g_dji_d_gamut_f32[] = {
+#include "data/rgb_spaces/dji_d-gamut.csv"
+};
+
+static float const g_protune_native_f32[] = {
+#include "data/rgb_spaces/protune_native.csv"
+};
+
+static float const g_itu_r_bt470_525_f32[] = {
+#include "data/rgb_spaces/itu-r_bt470_-_525.csv"
+};
+
+static float const g_itu_r_bt470_625_f32[] = {
+#include "data/rgb_spaces/itu-r_bt470_-_625.csv"
+};
+
+static float const g_smpte_240m_f32[] = {
+#include "data/rgb_spaces/smpte_240m.csv"
+};
+
+static float const g_smpte_c_f32[] = {
+#include "data/rgb_spaces/smpte_c.csv"
+};
+
+static float const g_dcdm_xyz_f32[] = {
+#include "data/rgb_spaces/dcdm_xyz.csv"
+};
+
+static float const g_best_rgb_f32[] = {
+#include "data/rgb_spaces/best_rgb.csv"
+};
+
+static float const g_beta_rgb_f32[] = {
+#include "data/rgb_spaces/beta_rgb.csv"
+};
+
+static float const g_don_rgb_4_f32[] = {
+#include "data/rgb_spaces/don_rgb_4.csv"
+};
+
+static float const g_ekta_space_ps5_f32[] = {
+#include "data/rgb_spaces/ekta_space_ps_5.csv"
+};
+
+static float const g_max_rgb_f32[] = {
+#include "data/rgb_spaces/max_rgb.csv"
+};
+
+static float const g_russell_rgb_f32[] = {
+#include "data/rgb_spaces/russell_rgb.csv"
+};
+
+static float const g_sharp_rgb_f32[] = {
+#include "data/rgb_spaces/sharp_rgb.csv"
+};
+
+static float const g_eci_rgb_v2_f32[] = {
+#include "data/rgb_spaces/eci_rgb_v2.csv"
+};
+
+static float const g_adobe_rgb_1998_f32[] = {
+#include "data/rgb_spaces/adobe_rgb_1998.csv"
+};
+
+static float const g_prophoto_rgb_f32[] = {
+#include "data/rgb_spaces/prophoto_rgb.csv"
+};
+
+static float const g_davinci_wide_gamut_f32[] = {
+#include "data/rgb_spaces/davinci_wide_gamut.csv"
+};
+
+static float const g_davinci_intermediate_f32[] = {
+#include "data/rgb_spaces/davinci_intermediate.csv"
+};
+
+static float const g_blackmagic_wide_gamut_f32[] = {
+#include "data/rgb_spaces/blackmagic_wide_gamut.csv"
+};
+
+static float const g_blackmagic_film_f32[] = {
+#include "data/rgb_spaces/blackmagic_film.csv"
+};
+
+static float const g_blackmagic_film_gen5_f32[] = {
+#include "data/rgb_spaces/blackmagic_film_gen5.csv"
+};
+
+static float const g_v_gamut_f32[] = {
+#include "data/rgb_spaces/v-gamut.csv"
+};
+
+static float const g_v_log_f32[] = {
+#include "data/rgb_spaces/v-log.csv"
+};
+
+static float const g_s_gamut_f32[] = {
+#include "data/rgb_spaces/s-gamut.csv"
+};
+
+static float const g_s_gamut3_f32[] = {
+#include "data/rgb_spaces/s-gamut3.csv"
+};
+
+static float const g_s_gamut3_cine_f32[] = {
+#include "data/rgb_spaces/s-gamut3cine.csv"
+};
+
+static float const g_cinema_gamut_f32[] = {
+#include "data/rgb_spaces/cinema_gamut.csv"
+};
+
+static float const g_canon_log_f32[] = {
+#include "data/rgb_spaces/canon_log.csv"
+};
+
+static float const g_redwidegamutrgb_f32[] = {
+#include "data/rgb_spaces/redwidegamutrgb.csv"
+};
+
+static float const g_dci_p3_f32[] = {
+#include "data/rgb_spaces/dci-p3.csv"
+};
+
+static float const g_dci_p3_p_f32[] = {
+#include "data/rgb_spaces/dci-p3-p.csv"
+};
+
+static float const g_p3_d65_f32[] = {
+#include "data/rgb_spaces/p3-d65.csv"
+};
+
+static float const g_ntsc_1953_f32[] = {
+#include "data/rgb_spaces/ntsc_1953.csv"
+};
+
+static float const g_ntsc_1987_f32[] = {
+#include "data/rgb_spaces/ntsc_1987.csv"
+};
+
+static float const g_pal_secam_f32[] = {
+#include "data/rgb_spaces/pal_secam.csv"
+};
+
+static float const g_ebu_tech_3213_e_f32[] = {
+#include "data/rgb_spaces/ebu_tech_3213-e.csv"
+};
+
+static float const g_apple_rgb_f32[] = {
+#include "data/rgb_spaces/apple_rgb.csv"
+};
+
+static float const g_colormatch_rgb_f32[] = {
+#include "data/rgb_spaces/colormatch_rgb.csv"
+};
+
+static float const g_alexa_wide_gamut_f32[] = {
+#include "data/rgb_spaces/alexa_wide_gamut.csv"
+};
+
+static float const g_p3_d60_f32[] = {
+#include "data/rgb_spaces/p3-d60.csv"
+};
+
+static float const g_xtreme_rgb_f32[] = {
+#include "data/rgb_spaces/xtreme_rgb.csv"
+};
+
+static float const g_linear_rec709_f32[] = {
+#include "data/rgb_spaces/linear_srgb.csv"
+};
+
+static float const g_linear_rec2020_f32[] = {
+#include "data/rgb_spaces/linear_rec2020.csv"
+};
+
+static float const g_linear_adobe_rgb_1998_f32[] = {
+#include "data/rgb_spaces/linear_adobe_rgb_1998.csv"
+};
+
+static float const g_linear_p3_d65_f32[] = {
+#include "data/rgb_spaces/linear_p3_d65.csv"
+};
+
+static float const g_linear_display_p3_f32[] = {
+#include "data/rgb_spaces/linear_display_p3.csv"
+};
+
+static float const g_linear_prophoto_rgb_f32[] = {
+#include "data/rgb_spaces/linear_prophoto_rgb.csv"
+};
+
+static float const g_linear_dci_p3_f32[] = {
+#include "data/rgb_spaces/linear_dci_p3.csv"
+};
+
+static float const g_linear_adobe_wide_gamut_rgb_f32[] = {
+#include "data/rgb_spaces/linear_adobe_wide_gamut_rgb.csv"
+};
+
+static float const g_linear_apple_rgb_f32[] = {
+#include "data/rgb_spaces/linear_apple_rgb.csv"
+};
+
+static float const g_linear_colormatch_rgb_f32[] = {
+#include "data/rgb_spaces/linear_colormatch_rgb.csv"
+};
+
+static float const g_linear_p3_d60_f32[] = {
+#include "data/rgb_spaces/linear_p3_d60.csv"
+};
+
+static float const g_linear_bt470_525_f32[] = {
+#include "data/rgb_spaces/linear_bt470_525.csv"
+};
+
+static float const g_linear_bt470_625_f32[] = {
+#include "data/rgb_spaces/linear_bt470_625.csv"
+};
+
+static float const g_linear_smpte_240m_f32[] = {
+#include "data/rgb_spaces/linear_smpte_240m.csv"
+};
+
+static float const g_itu_t_h273_22_unspecified_f32[] = {
+#include "data/rgb_spaces/itu-t_h273_22_unspecified.csv"
+};
+
+static float const g_itu_t_h273_generic_film_f32[] = {
+#include "data/rgb_spaces/itu-t_h273_generic_film.csv"
+};
+
+static float const g_plasa_ansi_e154_f32[] = {
+#include "data/rgb_spaces/plasa_ansi_e154.csv"
+};
+
+static float const g_gamma22_rec709_f32[] = {
+#include "data/rgb_spaces/gamma_22_rec709.csv"
+};
+
+static float const g_gamma22_adobe_rgb_f32[] = {
+#include "data/rgb_spaces/gamma_22_adobe_rgb.csv"
+};
+
+static float const g_gamma22_p3_d65_f32[] = {
+#include "data/rgb_spaces/gamma_22_p3-d65.csv"
+};
+
+static float const g_gamma22_ap1_f32[] = {
+#include "data/rgb_spaces/gamma_22_ap1.csv"
+};
+
+static float const g_gamma18_rec709_f32[] = {
+#include "data/rgb_spaces/gamma_18_rec709.csv"
+};
+
+static float const g_rec1886_rec709_f32[] = {
+#include "data/rgb_spaces/bt709.csv"
+};
+
+static float const g_rec2100_pq_f32[] = {
+#include "data/rgb_spaces/bt2020.csv"
+};
+
+static float const g_rec2100_hlg_f32[] = {
+#include "data/rgb_spaces/bt2020.csv"
+};
+
+static float const g_display_p3_hdr_f32[] = {
+#include "data/rgb_spaces/display_p3.csv"
+};
+
+ALWAN_DIAG_POP
+
+static float const * const g_rgb_space_data_f32[] = {
+    g_srgb_f32,
+    g_bt709_f32,
+    g_display_p3_f32,
+    g_bt2020_f32,
+    g_aces2065_1_f32,
+    g_acescg_f32,
+    g_acesproxy_f32,
+    g_acescc_f32,
+    g_acescct_f32,
+    g_arri_wide_gamut_3_f32,
+    g_arri_wide_gamut_4_f32,
+    g_arri_logc3_f32,
+    g_arri_logc4_f32,
+    g_redcolor_f32,
+    g_redcolor2_f32,
+    g_redcolor3_f32,
+    g_redcolor4_f32,
+    g_dragoncolor_f32,
+    g_dragoncolor2_f32,
+    g_redlog_f32,
+    g_venice_s_gamut3_f32,
+    g_venice_s_gamut3_cine_f32,
+    g_s_log_f32,
+    g_s_log2_f32,
+    g_s_log3_f32,
+    g_cie_rgb_f32,
+    g_adobe_wide_gamut_rgb_f32,
+    g_romm_rgb_f32,
+    g_rimm_rgb_f32,
+    g_erimm_rgb_f32,
+    g_filmlight_e_gamut_f32,
+    g_filmlight_t_log_f32,
+    g_f_gamut_f32,
+    g_fujifilm_f_log_f32,
+    g_n_gamut_f32,
+    g_n_log_f32,
+    g_dji_d_gamut_f32,
+    g_protune_native_f32,
+    g_itu_r_bt470_525_f32,
+    g_itu_r_bt470_625_f32,
+    g_smpte_240m_f32,
+    g_smpte_c_f32,
+    g_dcdm_xyz_f32,
+    g_best_rgb_f32,
+    g_beta_rgb_f32,
+    g_don_rgb_4_f32,
+    g_ekta_space_ps5_f32,
+    g_max_rgb_f32,
+    g_russell_rgb_f32,
+    g_sharp_rgb_f32,
+    g_eci_rgb_v2_f32,
+    g_adobe_rgb_1998_f32,
+    g_prophoto_rgb_f32,
+    g_davinci_wide_gamut_f32,
+    g_davinci_intermediate_f32,
+    g_blackmagic_wide_gamut_f32,
+    g_blackmagic_film_f32,
+    g_blackmagic_film_gen5_f32,
+    g_v_gamut_f32,
+    g_v_log_f32,
+    g_s_gamut_f32,
+    g_s_gamut3_f32,
+    g_s_gamut3_cine_f32,
+    g_cinema_gamut_f32,
+    g_canon_log_f32,
+    g_redwidegamutrgb_f32,
+    g_dci_p3_f32,
+    g_dci_p3_p_f32,
+    g_p3_d65_f32,
+    g_ntsc_1953_f32,
+    g_ntsc_1987_f32,
+    g_pal_secam_f32,
+    g_ebu_tech_3213_e_f32,
+    g_apple_rgb_f32,
+    g_colormatch_rgb_f32,
+    g_alexa_wide_gamut_f32,
+    g_p3_d60_f32,
+    g_xtreme_rgb_f32,
+    g_linear_rec709_f32,
+    g_linear_rec2020_f32,
+    g_linear_adobe_rgb_1998_f32,
+    g_linear_p3_d65_f32,
+    g_linear_display_p3_f32,
+    g_linear_prophoto_rgb_f32,
+    g_linear_dci_p3_f32,
+    g_linear_adobe_wide_gamut_rgb_f32,
+    g_linear_apple_rgb_f32,
+    g_linear_colormatch_rgb_f32,
+    g_linear_p3_d60_f32,
+    g_linear_bt470_525_f32,
+    g_linear_bt470_625_f32,
+    g_linear_smpte_240m_f32,
+    g_itu_t_h273_22_unspecified_f32,
+    g_itu_t_h273_generic_film_f32,
+    g_plasa_ansi_e154_f32,
+    g_gamma22_rec709_f32,
+    g_gamma22_adobe_rgb_f32,
+    g_gamma22_p3_d65_f32,
+    g_gamma22_ap1_f32,
+    g_gamma18_rec709_f32,
+    g_rec1886_rec709_f32,
+    g_rec2100_pq_f32,
+    g_rec2100_hlg_f32,
+    g_display_p3_hdr_f32
+};
+
+#if !ALWAN_WITH_F64
+/* Shared element count for the RGB space tables. In dual / f64 builds this is
+ * defined from g_rgb_space_data inside the ALWAN_WITH_F64 block above; in
+ * f32-only builds that block is gated out, so derive it from the f32 twin. */
+static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data_f32) / sizeof(g_rgb_space_data_f32[0]);
+#endif /* !ALWAN_WITH_F64 */
+
+#endif /* ALWAN_WITH_F32 */
 
 #endif /* ALWAN_EMBED_DATA */

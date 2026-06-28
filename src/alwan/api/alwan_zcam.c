@@ -9,23 +9,37 @@
  * Reference: Optics Express 29(4), 6036-6052
  *
  * See alwan_zcam_core.h.
+ *
+ * NOTE: the f32 entry points intentionally compute in f64 internally
+ * (widen -> f64 core -> narrow). ZCAM is an HDR model whose inverse
+ * (PQ-domain) is numerically ill-conditioned: a 1-ULP f32 difference in
+ * the correlates amplifies catastrophically through the inverse, so a
+ * genuinely native-f32 inverse fails to round-trip. Keeping the core in
+ * f64 preserves correctness. See test 93_zcam_f32.
  */
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_zcam_core.h"
 
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 #include "alwan_api_f32_setup.h"
 #include "alwan_zcam_impl.inc"
 #include "alwan_api_teardown.h"
 ALWAN_DIAG_POP
+#endif
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
+#if ALWAN_WITH_F64_FACADE
 #include "alwan_api_f64_setup.h"
 #include "alwan_zcam_impl.inc"
 #include "alwan_api_teardown.h"
+#endif /* ALWAN_WITH_F64_FACADE */
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
+#if ALWAN_WITH_F64_FACADE
 /* ----------------------------------------------------------------
  * Surround Enum Resolution (kept in the .c wrapper)
  * ---------------------------------------------------------------- */
@@ -168,13 +182,15 @@ int alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64_FACADE */
 
+#if ALWAN_WITH_F32
 /* ----------------------------------------------------------------
  * f32 Wrappers
  *
- * The ZCAM core math is implemented in f64 only. The f32 entry points
- * convert inputs up to f64, call the f64 implementation, then narrow
- * the outputs back to f32.
+ * The ZCAM core math is computed in f64 (see file header note); the f32
+ * entry points convert inputs up to f64, call the f64 implementation,
+ * then narrow the outputs back to f32.
  * ---------------------------------------------------------------- */
 
 static void zcam_vc_f32_to_f64(alwan_zcam_viewing_conditions_f64 *dst,
@@ -264,3 +280,4 @@ int alwan_zcam_to_ucs_f32(alwan_jzazbz_f32 *Jab_out,
     Jab_out->bz = (alwan_f32)jab64.bz;
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */
