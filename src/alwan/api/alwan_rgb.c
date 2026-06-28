@@ -19,21 +19,28 @@
 
 /* struct alwan_ctx is defined in alwan_internal.h */
 
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 #include "alwan_api_f32_setup.h"
 #include "alwan_rgb_impl.inc"
 #include "alwan_api_teardown.h"
 ALWAN_DIAG_POP
+#endif
 
+#if ALWAN_WITH_F64
 #include "alwan_api_f64_setup.h"
 #include "alwan_rgb_impl.inc"
 #include "alwan_api_teardown.h"
+#endif
 
 /* ----------------------------------------------------------------
  * RGB Matrix Derivation
  * ---------------------------------------------------------------- */
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
+ * (gamut volume/coverage f32 facades derive matrices in f64). */
+#if ALWAN_WITH_F64_FACADE
 int alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
                                alwan_mat3x3_f64 *xyz_to_rgb,
                                alwan_rgb_space_desc_f64 const *desc) {
@@ -52,7 +59,9 @@ int alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64_FACADE */
 
+#if ALWAN_WITH_F32
 int alwan_rgb_derive_matrices_f32(alwan_mat3x3_f32 *rgb_to_xyz,
                                alwan_mat3x3_f32 *xyz_to_rgb,
                                alwan_rgb_space_desc_f32 const *desc) {
@@ -68,11 +77,13 @@ int alwan_rgb_derive_matrices_f32(alwan_mat3x3_f32 *rgb_to_xyz,
     *xyz_to_rgb = m.xyz_to_rgb;
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */
 
 /* ----------------------------------------------------------------
  * RGB <-> XYZ Direct Conversion
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_F64
 int alwan_rgb_to_xyz_f64(alwan_xyz_f64 *xyz,
                      alwan_rgb_space_desc_f64 const *space,
                      alwan_rgb_f64 const *rgb) {
@@ -126,11 +137,15 @@ int alwan_xyz_to_rgb_f64(alwan_rgb_f64 *rgb,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64 */
 
 /* ----------------------------------------------------------------
  * Transfer Function API
  * ---------------------------------------------------------------- */
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
+ * (referenced by the always-compiled alwan_aces2_output_transform_custom_f64). */
+#if ALWAN_WITH_F64_FACADE
 int alwan_oetf_apply_f64(alwan_f64 *encoded_out, size_t out_stride, alwan_f64 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
     if (!linear_in || !encoded_out) {
         return ALWAN_E_INVALID;
@@ -174,7 +189,9 @@ int alwan_oetf_apply_f64(alwan_f64 *encoded_out, size_t out_stride, alwan_f64 co
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64_FACADE */
 
+#if ALWAN_WITH_F32
 int alwan_oetf_apply_f32(alwan_f32 *encoded_out, size_t out_stride, alwan_f32 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
     if (!linear_in || !encoded_out) return ALWAN_E_INVALID;
 
@@ -202,7 +219,11 @@ int alwan_eotf_apply_f32(alwan_f32 *linear_out, size_t out_stride, alwan_f32 con
     }
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
+ * (the aces2 inverse f32 facade applies the display EOTF in f64). */
+#if ALWAN_WITH_F64_FACADE
 int alwan_eotf_apply_f64(alwan_f64 *linear_out, size_t out_stride, alwan_f64 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
     if (!encoded_in || !linear_out) {
         return ALWAN_E_INVALID;
@@ -246,41 +267,91 @@ int alwan_eotf_apply_f64(alwan_f64 *linear_out, size_t out_stride, alwan_f64 con
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* ----------------------------------------------------------------
  * M11: RGB <-> RGB Conversion
  * ---------------------------------------------------------------- */
 
-/* Convert RGB color from one color space to another */
-static void rgb_space_desc_widen_32_to_64(alwan_rgb_space_desc_f64 *out, alwan_rgb_space_desc_f32 const *in) {
-    for (int j = 0; j < 6; j++) out->primaries_xy[j] = (double)in->primaries_xy[j];
-    out->white_xy[0] = (double)in->white_xy[0];
-    out->white_xy[1] = (double)in->white_xy[1];
-    out->oetf = in->oetf;
-    out->eotf = in->eotf;
-    for (int j = 0; j < 9; j++) {
-        out->rgb_to_xyz.m[j] = (double)in->rgb_to_xyz.m[j];
-        out->xyz_to_rgb.m[j] = (double)in->xyz_to_rgb.m[j];
-    }
-    out->has_matrices = in->has_matrices;
-}
-
+/* Convert RGB color from one color space to another.
+ * Native f32: mirrors alwan_rgb_convert_f64's algorithm exactly using f32
+ * building blocks (no widen-to-f64 facade). */
+#if ALWAN_WITH_F32
 int alwan_rgb_convert_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, alwan_ctx *ctx) {
-    if (!src_space || !dst_space || !src_rgb || !dst_rgb) return ALWAN_E_INVALID;
-    alwan_rgb_space_desc_f64 src64, dst64;
-    rgb_space_desc_widen_32_to_64(&src64, src_space);
-    rgb_space_desc_widen_32_to_64(&dst64, dst_space);
-    alwan_rgb_f64 src_rgb64 = { (double)src_rgb->r, (double)src_rgb->g, (double)src_rgb->b };
-    alwan_rgb_f64 dst_rgb64;
-    int rc = alwan_rgb_convert_f64(&dst_rgb64, &src64, &dst64, &src_rgb64, ctx);
-    if (rc == ALWAN_OK) {
-        dst_rgb->r = (float)dst_rgb64.r;
-        dst_rgb->g = (float)dst_rgb64.g;
-        dst_rgb->b = (float)dst_rgb64.b;
+    if (!src_space || !dst_space || !src_rgb || !dst_rgb) {
+        return ALWAN_E_INVALID;
     }
-    return rc;
-}
 
+    /* Get conversion matrices for both spaces */
+    alwan_mat3x3_f32 src_to_xyz, xyz_to_src;
+    alwan_mat3x3_f32 dst_to_xyz, xyz_to_dst;
+
+    if (src_space->has_matrices) {
+        src_to_xyz = src_space->rgb_to_xyz;
+        xyz_to_src = src_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices_f32(&src_to_xyz, &xyz_to_src, src_space);
+        if (status != ALWAN_OK) return status;
+    }
+
+    if (dst_space->has_matrices) {
+        dst_to_xyz = dst_space->rgb_to_xyz;
+        xyz_to_dst = dst_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices_f32(&dst_to_xyz, &xyz_to_dst, dst_space);
+        if (status != ALWAN_OK) return status;
+    }
+
+    /* Convert source RGB to XYZ */
+    alwan_vec3_f32 vec_in;
+    ALWAN_MEMCPY(&vec_in, src_rgb, sizeof(alwan_vec3_f32));
+    alwan_vec3_f32 xyz;
+    alwan_mat3_mulv_f32(&xyz, &src_to_xyz, &vec_in);
+
+    /* Check if chromatic adaptation is needed */
+    alwan_f32 const tolerance = 1e-6f;
+    alwan_f32 dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_f32 dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    int need_adaptation = (ALWAN_ABS_F32(dx) > tolerance || ALWAN_ABS_F32(dy) > tolerance);
+
+    int status;
+    if (need_adaptation && ctx) {
+        /* Perform chromatic adaptation using Bradford CAT */
+        alwan_xyy_f32 src_white_xyy, dst_white_xyy;
+        alwan_xyz_f32 src_white_xyz, dst_white_xyz;
+
+        /* Convert xy to XYZ (using Y=1.0) */
+        src_white_xyy.x = src_space->white_xy[0];
+        src_white_xyy.y = src_space->white_xy[1];
+        src_white_xyy.Y = 1.0f;
+        alwan_xyy_to_xyz_f32(&src_white_xyz, &src_white_xyy);
+
+        dst_white_xyy.x = dst_space->white_xy[0];
+        dst_white_xyy.y = dst_space->white_xy[1];
+        dst_white_xyy.Y = 1.0f;
+        alwan_xyy_to_xyz_f32(&dst_white_xyz, &dst_white_xyy);
+
+        /* Compute and apply CAT matrix */
+        alwan_mat3x3_f32 cat_matrix;
+        status = alwan_cat_matrix_f32(&cat_matrix, &src_white_xyz, &dst_white_xyz,
+                                  ALWAN_CAT_BRADFORD);
+        if (status != ALWAN_OK) return status;
+
+        alwan_vec3_f32 xyz_adapted;
+        alwan_mat3_mulv_f32(&xyz_adapted, &cat_matrix, &xyz);
+        xyz = xyz_adapted;
+    }
+
+    /* Convert adapted XYZ to destination RGB */
+    alwan_vec3_f32 vec_out;
+    alwan_mat3_mulv_f32(&vec_out, &xyz_to_dst, &xyz);
+    ALWAN_MEMCPY(dst_rgb, &vec_out, sizeof(alwan_vec3_f32));
+
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F32 */
+
+#if ALWAN_WITH_F64
 int alwan_rgb_convert_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_rgb_f64 const *src_rgb, alwan_ctx *ctx) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb) {
         return ALWAN_E_INVALID;
@@ -431,64 +502,90 @@ int alwan_rgb_convert_map_interleave_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64 */
 
-/* f32 wrapper: widen f32 inputs to f64, delegate, narrow result */
+/* Map RGB color space conversion.
+ * Native f32 (HOT PATH): mirrors alwan_rgb_convert_map_interleave_f64's algorithm
+ * exactly using f32 building blocks. Matrices/CAT precomputed once; per-pixel
+ * matrix-vector products in f32. No f64 scratch, no heap allocation. */
+#if ALWAN_WITH_F32
 int alwan_rgb_convert_map_interleave_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, size_t count, alwan_ctx *ctx) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb || count == 0) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_rgb_space_desc_f64 src64, dst64;
-    for (int j = 0; j < 6; j++) src64.primaries_xy[j] = (double)src_space->primaries_xy[j];
-    src64.white_xy[0] = (double)src_space->white_xy[0];
-    src64.white_xy[1] = (double)src_space->white_xy[1];
-    src64.oetf = src_space->oetf;
-    src64.eotf = src_space->eotf;
-    for (int j = 0; j < 9; j++) {
-        src64.rgb_to_xyz.m[j] = (double)src_space->rgb_to_xyz.m[j];
-        src64.xyz_to_rgb.m[j] = (double)src_space->xyz_to_rgb.m[j];
-    }
-    src64.has_matrices = src_space->has_matrices;
+    /* Get conversion matrices once for all colors */
+    alwan_mat3x3_f32 src_to_xyz, xyz_to_src;
+    alwan_mat3x3_f32 dst_to_xyz, xyz_to_dst;
 
-    for (int j = 0; j < 6; j++) dst64.primaries_xy[j] = (double)dst_space->primaries_xy[j];
-    dst64.white_xy[0] = (double)dst_space->white_xy[0];
-    dst64.white_xy[1] = (double)dst_space->white_xy[1];
-    dst64.oetf = dst_space->oetf;
-    dst64.eotf = dst_space->eotf;
-    for (int j = 0; j < 9; j++) {
-        dst64.rgb_to_xyz.m[j] = (double)dst_space->rgb_to_xyz.m[j];
-        dst64.xyz_to_rgb.m[j] = (double)dst_space->xyz_to_rgb.m[j];
-    }
-    dst64.has_matrices = dst_space->has_matrices;
-
-    alwan_rgb_f64 *src64_buf = (alwan_rgb_f64 *)ALWAN_ALLOC(count * sizeof(alwan_rgb_f64), sizeof(alwan_f64));
-    alwan_rgb_f64 *dst64_buf = (alwan_rgb_f64 *)ALWAN_ALLOC(count * sizeof(alwan_rgb_f64), sizeof(alwan_f64));
-    if (!src64_buf || !dst64_buf) {
-        if (src64_buf) ALWAN_FREE(src64_buf);
-        if (dst64_buf) ALWAN_FREE(dst64_buf);
-        return ALWAN_E_NOMEM;
+    if (src_space->has_matrices) {
+        src_to_xyz = src_space->rgb_to_xyz;
+        xyz_to_src = src_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices_f32(&src_to_xyz, &xyz_to_src, src_space);
+        if (status != ALWAN_OK) return status;
     }
 
+    if (dst_space->has_matrices) {
+        dst_to_xyz = dst_space->rgb_to_xyz;
+        xyz_to_dst = dst_space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices_f32(&dst_to_xyz, &xyz_to_dst, dst_space);
+        if (status != ALWAN_OK) return status;
+    }
+
+    /* Check if chromatic adaptation is needed */
+    alwan_f32 const tolerance = 1e-6f;
+    alwan_f32 dx = src_space->white_xy[0] - dst_space->white_xy[0];
+    alwan_f32 dy = src_space->white_xy[1] - dst_space->white_xy[1];
+    int need_adaptation = (ALWAN_ABS_F32(dx) > tolerance || ALWAN_ABS_F32(dy) > tolerance);
+
+    /* Precompute adaptation matrix if needed */
+    alwan_mat3x3_f32 cat_matrix;
+    if (need_adaptation && ctx) {
+        alwan_xyy_f32 src_white_xyy, dst_white_xyy;
+        alwan_xyz_f32 src_white_xyz, dst_white_xyz;
+
+        /* Convert xy to XYZ (using Y=1.0) */
+        src_white_xyy.x = src_space->white_xy[0];
+        src_white_xyy.y = src_space->white_xy[1];
+        src_white_xyy.Y = 1.0f;
+        alwan_xyy_to_xyz_f32(&src_white_xyz, &src_white_xyy);
+
+        dst_white_xyy.x = dst_space->white_xy[0];
+        dst_white_xyy.y = dst_space->white_xy[1];
+        dst_white_xyy.Y = 1.0f;
+        alwan_xyy_to_xyz_f32(&dst_white_xyz, &dst_white_xyy);
+
+        /* Compute CAT matrix once */
+        int status = alwan_cat_matrix_f32(&cat_matrix, &src_white_xyz, &dst_white_xyz,
+                                      ALWAN_CAT_BRADFORD);
+        if (status != ALWAN_OK) return status;
+    }
+
+    /* Convert all colors */
     for (size_t i = 0; i < count; i++) {
-        src64_buf[i].r = (double)src_rgb[i].r;
-        src64_buf[i].g = (double)src_rgb[i].g;
-        src64_buf[i].b = (double)src_rgb[i].b;
-    }
+        /* Convert source RGB to XYZ */
+        alwan_vec3_f32 xyz, vec_in;
+        ALWAN_MEMCPY(&vec_in, &src_rgb[i], sizeof(alwan_vec3_f32));
+        alwan_mat3_mulv_f32(&xyz, &src_to_xyz, &vec_in);
 
-    int status = alwan_rgb_convert_map_interleave_f64(dst64_buf, &src64, &dst64, src64_buf, count, ctx);
-
-    if (status == ALWAN_OK) {
-        for (size_t i = 0; i < count; i++) {
-            dst_rgb[i].r = (float)dst64_buf[i].r;
-            dst_rgb[i].g = (float)dst64_buf[i].g;
-            dst_rgb[i].b = (float)dst64_buf[i].b;
+        /* Apply chromatic adaptation if needed */
+        if (need_adaptation && ctx) {
+            alwan_vec3_f32 xyz_adapted;
+            alwan_mat3_mulv_f32(&xyz_adapted, &cat_matrix, &xyz);
+            xyz = xyz_adapted;
         }
+
+        /* Convert adapted XYZ to destination RGB */
+        alwan_vec3_f32 vec_out;
+        alwan_mat3_mulv_f32(&vec_out, &xyz_to_dst, &xyz);
+        ALWAN_MEMCPY(&dst_rgb[i], &vec_out, sizeof(alwan_vec3_f32));
     }
 
-    ALWAN_FREE(src64_buf);
-    ALWAN_FREE(dst64_buf);
-    return status;
+    return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */
 
 /* ----------------------------------------------------------------
  * RGB Space Descriptor Helper
@@ -620,11 +717,18 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
 };
 
 /* Static assert: TF table must match embedded data array size */
-#if ALWAN_EMBED_DATA
+#if ALWAN_EMBED_DATA && ALWAN_WITH_F64
 _Static_assert(
     sizeof(g_rgb_space_tf) / sizeof(g_rgb_space_tf[0]) ==
     sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]),
     "g_rgb_space_tf[] and g_rgb_space_data[] size mismatch"
+);
+#endif
+#if ALWAN_EMBED_DATA && !ALWAN_WITH_F64 && ALWAN_WITH_F32
+_Static_assert(
+    sizeof(g_rgb_space_tf) / sizeof(g_rgb_space_tf[0]) ==
+    sizeof(g_rgb_space_data_f32) / sizeof(g_rgb_space_data_f32[0]),
+    "g_rgb_space_tf[] and g_rgb_space_data_f32[] size mismatch"
 );
 #endif
 
@@ -632,24 +736,53 @@ _Static_assert(
  * Get RGB space descriptor by enum
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_F32
 int alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
-    if (!desc) return ALWAN_E_INVALID;
-    alwan_rgb_space_desc_f64 tmp;
-    int rc = alwan_rgb_get_space_descriptor_f64(&tmp, space, ctx);
-    if (rc != ALWAN_OK) return rc;
-    for (int j = 0; j < 6; j++) desc->primaries_xy[j] = (float)tmp.primaries_xy[j];
-    desc->white_xy[0] = (float)tmp.white_xy[0];
-    desc->white_xy[1] = (float)tmp.white_xy[1];
-    desc->oetf = tmp.oetf;
-    desc->eotf = tmp.eotf;
-    for (int j = 0; j < 9; j++) {
-        desc->rgb_to_xyz.m[j] = (float)tmp.rgb_to_xyz.m[j];
-        desc->xyz_to_rgb.m[j] = (float)tmp.xyz_to_rgb.m[j];
+    if (!desc) {
+        return ALWAN_E_INVALID;
     }
-    desc->has_matrices = tmp.has_matrices;
-    return ALWAN_OK;
-}
 
+#if ALWAN_EMBED_DATA
+    /* Embedded data mode - read native f32 tables directly (no f64->f32
+     * double-rounding). Mirrors alwan_rgb_get_space_descriptor_f64 exactly. */
+    (void)ctx;  /* Unused in embedded mode */
+
+    /* Bounds check: ensure enum value is within valid array range */
+    if (space < 0 || (size_t)space >= g_rgb_space_data_count) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Direct lookup using enum as index - data format: [rx, ry, gx, gy, bx, by, wx, wy] */
+    float const *rgb_data = g_rgb_space_data_f32[space];
+
+    /* Copy primaries (first 6 values) and white point (last 2 values) */
+    for (int j = 0; j < 6; j++) {
+        desc->primaries_xy[j] = rgb_data[j];
+    }
+    desc->white_xy[0] = rgb_data[6];
+    desc->white_xy[1] = rgb_data[7];
+
+    /* Look up transfer functions from the TF table */
+    desc->oetf = g_rgb_space_tf[space].oetf;
+    desc->eotf = g_rgb_space_tf[space].eotf;
+
+    /* Load precomputed matrices */
+    float const *mat_data = g_rgb_space_matrices_f32[space];
+    for (int j = 0; j < 9; j++) {
+        desc->rgb_to_xyz.m[j] = mat_data[j];
+        desc->xyz_to_rgb.m[j] = mat_data[j + 9];
+    }
+    desc->has_matrices = 1;
+
+    return ALWAN_OK;
+
+#else
+    #error "Only ALWAN_EMBED_DATA mode is supported. Runtime CSV loading has been removed."
+#endif /* ALWAN_EMBED_DATA */
+}
+#endif /* ALWAN_WITH_F32 */
+
+#if ALWAN_WITH_F64
 int alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
     if (!desc) {
         return ALWAN_E_INVALID;
@@ -692,6 +825,7 @@ int alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, alwan_rgb
     #error "Only ALWAN_EMBED_DATA mode is supported. Runtime CSV loading has been removed."
 #endif /* ALWAN_EMBED_DATA */
 }
+#endif /* ALWAN_WITH_F64 */
 
 /* ----------------------------------------------------------------
  * Arbitrary Gamma OETF/EOTF

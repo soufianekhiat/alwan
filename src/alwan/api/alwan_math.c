@@ -9,16 +9,22 @@
 #include "../core/alwan_math_core.h"
 #include <string.h>
 
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 #include "alwan_api_f32_setup.h"
 #include "alwan_math_impl.inc"
 #include "alwan_api_teardown.h"
 ALWAN_DIAG_POP
+#endif
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
+ * (gamut volume/coverage f32 facades use alwan_mat3_det_f64 / _mulv_f64). */
+#if ALWAN_WITH_F64_FACADE
 #include "alwan_api_f64_setup.h"
 #include "alwan_math_impl.inc"
 #include "alwan_api_teardown.h"
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* ================================================================
  * Advanced Mathematical & Utility Functions
@@ -40,6 +46,7 @@ ALWAN_DIAG_POP
  * alwan_table_interp_1d_* is templatized in alwan_math_impl.inc.
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_F64
 int alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
                                      alwan_f64 const *table, size_t const sizes[3],
                                      alwan_rgb_f64 const *rgb_in) {
@@ -214,7 +221,9 @@ int alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64 */
 
+#if ALWAN_WITH_F32
 int alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
                                      alwan_f32 const *table, size_t const sizes[3],
                                      alwan_rgb_f32 const *rgb_in) {
@@ -373,3 +382,4 @@ int alwan_table_interp_3d_tetrahedral_f32(alwan_rgb_f32 *rgb_out,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */

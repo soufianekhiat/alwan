@@ -29,6 +29,13 @@ option(ALWAN_INSTALL "Enable install rules" ON)
 option(ALWAN_INSTALL_PKGCONFIG "Install pkg-config .pc file" ON)
 option(ALWAN_DETERMINISTIC "Use bit-exact polynomial math (no libm transcendentals, no FMA fusion). Trades ~20% perf for cross-platform reproducibility. See road_to_determinism.md." OFF)
 
+# Numeric precision selection. "both" (default) compiles the f32 and f64 APIs
+# and data; "f32"/"f64" compile only the single-precision API+data (smaller code
+# and embedded-data footprint). Maps to the ALWAN_BUILD_ONLY_F32/F64 macros that
+# alwan_build_config.h resolves into ALWAN_WITH_F32 / ALWAN_WITH_F64.
+set(ALWAN_BUILD_PRECISION "both" CACHE STRING "Numeric precisions to build: both | f32 | f64")
+set_property(CACHE ALWAN_BUILD_PRECISION PROPERTY STRINGS both f32 f64)
+
 set(ALWAN_DEBUG_POSTFIX "d" CACHE STRING "Debug postfix for output names (e.g. 'd' -> alwand)")
 set(ALWAN_DEBUG_PREFIX "" CACHE STRING "Debug prefix for output names (e.g. 'dbg_' -> dbg_alwan)")
 
@@ -135,6 +142,16 @@ target_compile_definitions(
   PUBLIC
     ALWAN_EMBED_DATA=${_ALWAN_EMBED_DATA_VALUE}
 )
+
+# Precision gating: define ALWAN_BUILD_ONLY_F32/F64 (PUBLIC so consumers see the
+# same available API surface as the compiled library).
+if(ALWAN_BUILD_PRECISION STREQUAL "f32")
+  target_compile_definitions(alwan PUBLIC ALWAN_BUILD_ONLY_F32=1)
+elseif(ALWAN_BUILD_PRECISION STREQUAL "f64")
+  target_compile_definitions(alwan PUBLIC ALWAN_BUILD_ONLY_F64=1)
+elseif(NOT ALWAN_BUILD_PRECISION STREQUAL "both")
+  message(FATAL_ERROR "ALWAN_BUILD_PRECISION must be 'both', 'f32', or 'f64' (got '${ALWAN_BUILD_PRECISION}')")
+endif()
 
 if(ALWAN_DETERMINISTIC)
   # Public so consumers (alwan_dev tests, downstream code) see the same

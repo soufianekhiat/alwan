@@ -270,39 +270,232 @@ int alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, alwan_pixel_fo
 }
 
 /* ----------------------------------------------------------------
- * f32 wrappers — delegate to f64 via a temporary buffer.
- * Video pipeline TF resolution is f64-only; we route through
- * alwan_video_encode_f64 / alwan_video_decode_f64.
+ * f32 helpers — native float twins of the f64 range/quantize math.
+ * Mirror video_narrow_params / video_store / video_load exactly,
+ * but compute entirely in alwan_f32.
+ * ---------------------------------------------------------------- */
+
+static int video_narrow_params_f32(int bit_depth,
+                                   alwan_f32 *foot,
+                                   alwan_f32 *head,
+                                   alwan_f32 *max_code) {
+    if (bit_depth < 8 || bit_depth > 16) return 0;
+    int scale = 1 << (bit_depth - 8);
+    *foot     = (alwan_f32)(16  * scale);
+    *head     = (alwan_f32)(235 * scale);
+    *max_code = (alwan_f32)((1 << bit_depth) - 1);
+    return 1;
+}
+
+/* Store a single encoded+range-scaled triplet to output buffer (f32 math) */
+static void video_store_f32(void *dst, alwan_f32 const v[3],
+                            alwan_pixel_format fmt,
+                            int bit_depth, alwan_video_range range) {
+    if (range == ALWAN_VIDEO_RANGE_NARROW) {
+        alwan_f32 foot, head, max_code;
+        video_narrow_params_f32(bit_depth, &foot, &head, &max_code);
+
+        switch (fmt) {
+        case ALWAN_PIXEL_U8: {
+            uint8_t *p = (uint8_t *)dst;
+            for (int c = 0; c < 3; c++) {
+                alwan_f32 cv = v[c] * (head - foot) + foot + 0.5f;
+                if (cv < foot) cv = foot;
+                if (cv > head) cv = head;
+                p[c] = (uint8_t)cv;
+            }
+        } break;
+        case ALWAN_PIXEL_U16: {
+            uint16_t *p = (uint16_t *)dst;
+            for (int c = 0; c < 3; c++) {
+                alwan_f32 cv = v[c] * (head - foot) + foot + 0.5f;
+                if (cv < foot) cv = foot;
+                if (cv > head) cv = head;
+                p[c] = (uint16_t)cv;
+            }
+        } break;
+        case ALWAN_PIXEL_F32: {
+            float *p = (float *)dst;
+            for (int c = 0; c < 3; c++) {
+                alwan_f32 cv = v[c] * (head - foot) / max_code + foot / max_code;
+                p[c] = (float)cv;
+            }
+        } break;
+        case ALWAN_PIXEL_F64: {
+            double *p = (double *)dst;
+            for (int c = 0; c < 3; c++) {
+                alwan_f32 cv = v[c] * (head - foot) / max_code + foot / max_code;
+                p[c] = (double)cv;
+            }
+        } break;
+        default: break;
+        }
+    } else {
+        /* Full range */
+        alwan_f32 max_code = (alwan_f32)((1 << bit_depth) - 1);
+
+        switch (fmt) {
+        case ALWAN_PIXEL_U8: {
+            uint8_t *p = (uint8_t *)dst;
+            for (int c = 0; c < 3; c++) {
+                alwan_f32 cv = v[c] * max_code + 0.5f;
+                if (cv < 0.0f) cv = 0.0f;
+                if (cv > max_code) cv = max_code;
+                p[c] = (uint8_t)cv;
+            }
+        } break;
+        case ALWAN_PIXEL_U16: {
+            uint16_t *p = (uint16_t *)dst;
+            for (int c = 0; c < 3; c++) {
+                alwan_f32 cv = v[c] * max_code + 0.5f;
+                if (cv < 0.0f) cv = 0.0f;
+                if (cv > max_code) cv = max_code;
+                p[c] = (uint16_t)cv;
+            }
+        } break;
+        case ALWAN_PIXEL_F32: {
+            float *p = (float *)dst;
+            p[0] = (float)v[0]; p[1] = (float)v[1]; p[2] = (float)v[2];
+        } break;
+        case ALWAN_PIXEL_F64: {
+            double *p = (double *)dst;
+            p[0] = (double)v[0]; p[1] = (double)v[1]; p[2] = (double)v[2];
+        } break;
+        default: break;
+        }
+    }
+}
+
+/* Load a single pixel, dequantize + unscale range -> [0,1] (f32 math) */
+static void video_load_f32(alwan_f32 v[3], void const *src,
+                           alwan_pixel_format fmt,
+                           int bit_depth, alwan_video_range range) {
+    alwan_f32 raw[3];
+
+    switch (fmt) {
+    case ALWAN_PIXEL_U8: {
+        uint8_t const *p = (uint8_t const *)src;
+        raw[0] = (alwan_f32)p[0];
+        raw[1] = (alwan_f32)p[1];
+        raw[2] = (alwan_f32)p[2];
+    } break;
+    case ALWAN_PIXEL_U16: {
+        uint16_t const *p = (uint16_t const *)src;
+        raw[0] = (alwan_f32)p[0];
+        raw[1] = (alwan_f32)p[1];
+        raw[2] = (alwan_f32)p[2];
+    } break;
+    case ALWAN_PIXEL_F32: {
+        float const *p = (float const *)src;
+        raw[0] = (alwan_f32)p[0];
+        raw[1] = (alwan_f32)p[1];
+        raw[2] = (alwan_f32)p[2];
+    } break;
+    case ALWAN_PIXEL_F64: {
+        double const *p = (double const *)src;
+        raw[0] = (alwan_f32)p[0];
+        raw[1] = (alwan_f32)p[1];
+        raw[2] = (alwan_f32)p[2];
+    } break;
+    default:
+        v[0] = v[1] = v[2] = 0.0f;
+        return;
+    }
+
+    if (range == ALWAN_VIDEO_RANGE_NARROW) {
+        alwan_f32 foot, head, max_code;
+        video_narrow_params_f32(bit_depth, &foot, &head, &max_code);
+
+        if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
+            /* Integer: raw is code value, unscale from narrow */
+            for (int c = 0; c < 3; c++) {
+                v[c] = (raw[c] - foot) / (head - foot);
+            }
+        } else {
+            /* Float: raw is already normalized to [foot/max, head/max], unscale */
+            for (int c = 0; c < 3; c++) {
+                v[c] = (raw[c] - foot / max_code) / ((head - foot) / max_code);
+            }
+        }
+    } else {
+        /* Full range */
+        if (fmt == ALWAN_PIXEL_U8 || fmt == ALWAN_PIXEL_U16) {
+            alwan_f32 max_code = (alwan_f32)((1 << bit_depth) - 1);
+            for (int c = 0; c < 3; c++) {
+                v[c] = raw[c] / max_code;
+            }
+        } else {
+            v[0] = raw[0]; v[1] = raw[1]; v[2] = raw[2];
+        }
+    }
+}
+
+/* ----------------------------------------------------------------
+ * f32 public API — native float pipeline.
+ * Resolves OETF/EOTF with the native f32 resolvers and applies all
+ * range/quantize math in f32; no widen/narrow round-trip.
  * ---------------------------------------------------------------- */
 
 int alwan_video_encode_f32(void *out, alwan_pixel_format out_fmt, alwan_f32 const *rgb_linear, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
     if (!out || !rgb_linear || count == 0) return ALWAN_E_INVALID;
-    if (!ctx || !ctx->alloc_fn) return ALWAN_E_INVALID;
 
-    size_t n = count * 3;
-    alwan_f64 *tmp = (alwan_f64 *)ctx->alloc_fn(n * sizeof(alwan_f64), 16);
-    if (!tmp) return ALWAN_E_NOMEM;
-    for (size_t i = 0; i < n; i++) tmp[i] = (alwan_f64)rgb_linear[i];
+    /* Get the space descriptor for the OETF */
+    alwan_rgb_space_desc_f32 desc;
+    int status = alwan_rgb_get_space_descriptor_f32(&desc, space, ctx);
+    if (status != ALWAN_OK) return status;
 
-    int rc = alwan_video_encode_f64(out, out_fmt, tmp, count, space, range, bit_depth, ctx);
+    /* Resolve the OETF function pointer */
+    alwan_tf_fn_f32 oetf = alwan__resolve_oetf_f32(desc.oetf);
+    if (!oetf) return ALWAN_E_INVALID;
 
-    if (ctx->free_fn) ctx->free_fn(tmp);
-    return rc;
+    /* Default bit depth from output format */
+    if (bit_depth <= 0) bit_depth = video_default_bit_depth(out_fmt);
+
+    size_t stride = video_pixel_stride(out_fmt);
+    if (stride == 0) return ALWAN_E_INVALID;
+
+    uint8_t *dst = (uint8_t *)out;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 encoded[3];
+        encoded[0] = oetf(rgb_linear[i * 3 + 0]);
+        encoded[1] = oetf(rgb_linear[i * 3 + 1]);
+        encoded[2] = oetf(rgb_linear[i * 3 + 2]);
+
+        video_store_f32(dst + i * stride, encoded, out_fmt, bit_depth, range);
+    }
+
+    return ALWAN_OK;
 }
 
 int alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, alwan_pixel_format in_fmt, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
     if (!rgb_linear || !in || count == 0) return ALWAN_E_INVALID;
-    if (!ctx || !ctx->alloc_fn) return ALWAN_E_INVALID;
 
-    size_t n = count * 3;
-    alwan_f64 *tmp = (alwan_f64 *)ctx->alloc_fn(n * sizeof(alwan_f64), 16);
-    if (!tmp) return ALWAN_E_NOMEM;
+    /* Get the space descriptor for the EOTF */
+    alwan_rgb_space_desc_f32 desc;
+    int status = alwan_rgb_get_space_descriptor_f32(&desc, space, ctx);
+    if (status != ALWAN_OK) return status;
 
-    int rc = alwan_video_decode_f64(tmp, in, in_fmt, count, space, range, bit_depth, ctx);
-    if (rc == ALWAN_OK) {
-        for (size_t i = 0; i < n; i++) rgb_linear[i] = (alwan_f32)tmp[i];
+    /* Resolve the EOTF function pointer */
+    alwan_tf_fn_f32 eotf = alwan__resolve_eotf_f32(desc.eotf);
+    if (!eotf) return ALWAN_E_INVALID;
+
+    /* Default bit depth from input format */
+    if (bit_depth <= 0) bit_depth = video_default_bit_depth(in_fmt);
+
+    size_t stride = video_pixel_stride(in_fmt);
+    if (stride == 0) return ALWAN_E_INVALID;
+
+    uint8_t const *src = (uint8_t const *)in;
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 encoded[3];
+        video_load_f32(encoded, src + i * stride, in_fmt, bit_depth, range);
+
+        rgb_linear[i * 3 + 0] = eotf(encoded[0]);
+        rgb_linear[i * 3 + 1] = eotf(encoded[1]);
+        rgb_linear[i * 3 + 2] = eotf(encoded[2]);
     }
 
-    if (ctx->free_fn) ctx->free_fn(tmp);
-    return rc;
+    return ALWAN_OK;
 }

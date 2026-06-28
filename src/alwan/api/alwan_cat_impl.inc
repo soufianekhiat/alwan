@@ -18,24 +18,25 @@ int ALWAN_CORE_FNLIT(alwan_cat_matrix)(ALWAN_CORE_MAT3X3 *out,
         return ALWAN_OK;
     }
 
-    /* Get the CAT matrix M (constant data is f64; narrow to working precision) */
-    alwan_mat3x3_f64 M64;
+    /* Select the CAT matrix M directly from the native-precision data twin
+     * (ALWAN_CORE_FNLIT(g_cat_NAME) -> g_cat_NAME_f32 / g_cat_NAME_f64). */
+    ALWAN_CORE_T const *M_data;
     switch (method) {
-        case ALWAN_CAT_BRADFORD:       get_bradford_matrix(&M64);       break;
-        case ALWAN_CAT_CAT02:          get_cat02_matrix(&M64);          break;
-        case ALWAN_CAT_CAT16:          get_cat16_matrix(&M64);          break;
-        case ALWAN_CAT_SHARP:          get_sharp_matrix(&M64);          break;
-        case ALWAN_CAT_FAIRCHILD:      get_fairchild_matrix(&M64);      break;
-        case ALWAN_CAT_CMCCAT97:       get_cmccat97_matrix(&M64);       break;
-        case ALWAN_CAT_CMCCAT2000:     get_cmccat2000_matrix(&M64);     break;
-        case ALWAN_CAT_CAT02_BRILL_2008: get_cat02_brill_2008_matrix(&M64); break;
-        case ALWAN_CAT_BIANCO_2010:    get_bianco_2010_matrix(&M64);    break;
-        case ALWAN_CAT_BIANCO_PC_2010: get_bianco_pc_2010_matrix(&M64); break;
+        case ALWAN_CAT_BRADFORD:         M_data = ALWAN_CORE_FNLIT(g_cat_bradford);         break;
+        case ALWAN_CAT_CAT02:            M_data = ALWAN_CORE_FNLIT(g_cat_cat02);            break;
+        case ALWAN_CAT_CAT16:            M_data = ALWAN_CORE_FNLIT(g_cat_cat16);            break;
+        case ALWAN_CAT_SHARP:            M_data = ALWAN_CORE_FNLIT(g_cat_sharp);            break;
+        case ALWAN_CAT_FAIRCHILD:        M_data = ALWAN_CORE_FNLIT(g_cat_fairchild);        break;
+        case ALWAN_CAT_CMCCAT97:         M_data = ALWAN_CORE_FNLIT(g_cat_cmccat97);         break;
+        case ALWAN_CAT_CMCCAT2000:       M_data = ALWAN_CORE_FNLIT(g_cat_cmccat2000);       break;
+        case ALWAN_CAT_CAT02_BRILL_2008: M_data = ALWAN_CORE_FNLIT(g_cat_cat02_brill_2008); break;
+        case ALWAN_CAT_BIANCO_2010:      M_data = ALWAN_CORE_FNLIT(g_cat_bianco_2010);      break;
+        case ALWAN_CAT_BIANCO_PC_2010:   M_data = ALWAN_CORE_FNLIT(g_cat_bianco_pc_2010);   break;
         default: return ALWAN_E_INVALID;
     }
 
     ALWAN_CORE_MAT3X3 M;
-    for (int i = 0; i < 9; i++) M.m[i] = (ALWAN_CORE_T)M64.m[i];
+    memcpy(M.m, M_data, sizeof(M.m));
 
     /* Compute M^-1 */
     ALWAN_CORE_MAT3X3 M_inv;

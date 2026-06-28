@@ -25,8 +25,11 @@
 static ALWAN_CORE_T ALWAN_CORE_FNLIT(lookup_reach_m_cc)(
         ALWAN_CORE_T h_deg,
         ALWAN_CORE_FNLIT(ChromaCompressParams) const *cp) {
-    /* NaN fails both while conditions and would reach (int)NaN = INT_MIN — clamp first. */
-    if (!(h_deg >= ALWAN_CORE_LITERAL(0.0))) h_deg = ALWAN_CORE_LITERAL(0.0);
+    /* Wrap hue into [0,360). Guard NaN/+-Inf/huge first: the naive while-subtract
+     * never terminates for +Inf or for |h| so large that h - 360 == h in floating
+     * point (observed to hang when an intermediate hue overflows). After the guard
+     * the wrap is bounded and bit-identical to the original for valid hues. */
+    if (!(h_deg > ALWAN_CORE_LITERAL(-1.0e6) && h_deg < ALWAN_CORE_LITERAL(1.0e6))) h_deg = ALWAN_CORE_LITERAL(0.0);
     while (h_deg < ALWAN_CORE_LITERAL(0.0)) h_deg += ALWAN_CORE_LITERAL(360.0);
     while (h_deg >= ALWAN_CORE_LITERAL(360.0)) h_deg -= ALWAN_CORE_LITERAL(360.0);
     int idx0 = (int)h_deg;
@@ -98,8 +101,7 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
     ALWAN_CORE_PRIM ap1;
     ALWAN_CORE_FNLIT(alwan_aces_primaries_ap1_default)(&ap1);
 
-    ALWAN_CORE_FNLIT(aces2_JMhParams) jmh_params_storage;
-    ALWAN_CORE_FNLIT(init_JMhParams)(&ap1, &jmh_params_storage);
+    ALWAN_CORE_FNLIT(aces2_JMhParams) jmh_params_storage; ALWAN_CORE_FNLIT(init_JMhParams)(&ap1, &jmh_params_storage);
     ALWAN_CORE_FNLIT(aces2_JMhParams) const *jmh_params = &jmh_params_storage;
 
     ALWAN_CORE_FNLIT(aces2_TSParams) ts;
@@ -112,8 +114,7 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
     int skip_gamut = primaries_are_ap1(&config.primaries);
     ALWAN_CORE_FNLIT(aces2_GamutCompressParams) gcp;
     ALWAN_CORE_T limit_J_max = ALWAN_CORE_LITERAL(0.0);
-    if (!skip_gamut) {
-        ALWAN_CORE_FNLIT(init_GamutCompressParams)(
+    if (!skip_gamut) { ALWAN_CORE_FNLIT(init_GamutCompressParams)(
             (ALWAN_CORE_T)config.peak_luminance, &limit_prim, jmh_params, &gcp);
         limit_J_max = ALWAN_CORE_FNVLIT(aces2_y_to_j)(
             (ALWAN_CORE_T)config.peak_luminance, jmh_params);
@@ -129,8 +130,34 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
              / ALWAN_CORE_LN(ALWAN_CORE_LITERAL(100.0)));
     ALWAN_CORE_T ap1_clamp_max = r_hit_ap1 * ALWAN_CORE_LITERAL(8.0);
 
-    ALWAN_CORE_FNLIT(aces2_JMhParams) limit_jmh_params;
-    ALWAN_CORE_FNLIT(init_JMhParams)(&limit_prim, &limit_jmh_params);
+    /* Output stage matrix: the OCIO-validated scalar path converts the
+     * gamut-compressed JMh back to RGB in AP1, then applies AP1->limit
+     * primaries and (for D65 displays) a D60->D65 Bradford CAT in XYZ.
+     * All linear, so combine into one 3x3 computed once in f64 and applied
+     * per-pixel. (The previous code went JMh->RGB via the limit-primary
+     * JMhParams directly, skipping the matrix + CAT — diverged from OCIO.) */
+    alwan_f64 M_out_f64[9];
+    {
+        alwan_f64 ap1_to_limit[9];
+        compute_ap1_to_limit_matrix_f64(&config.primaries, ap1_to_limit);
+        int needs_cat = (ALWAN_ABS(config.primaries.white_x - ALWAN_D65_x) < ALWAN_LITERAL(0.01) &&
+                         ALWAN_ABS(config.primaries.white_y - ALWAN_D65_y) < ALWAN_LITERAL(0.01));
+        if (needs_cat) {
+            alwan_f64 limit_to_xyz[9], xyz_to_limit[9], tmp[9], cat_limit[9];
+            primaries_to_rgb_to_xyz_f64(
+                config.primaries.red_x, config.primaries.red_y,
+                config.primaries.green_x, config.primaries.green_y,
+                config.primaries.blue_x, config.primaries.blue_y,
+                config.primaries.white_x, config.primaries.white_y,
+                ALWAN_LITERAL(1.0), limit_to_xyz);
+            invert_mat3(limit_to_xyz, xyz_to_limit);
+            mult_mat3(g_d60_to_d65_bradford, limit_to_xyz, tmp);
+            mult_mat3(xyz_to_limit, tmp, cat_limit);
+            mult_mat3(cat_limit, ap1_to_limit, M_out_f64);
+        } else {
+            for (int mi = 0; mi < 9; mi++) M_out_f64[mi] = ap1_to_limit[mi];
+        }
+    }
 
     size_t in_step  = in_stride  / sizeof(ALWAN_CORE_T);
     size_t out_step = out_stride / sizeof(ALWAN_CORE_T);
@@ -165,56 +192,46 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
         ALWAN_CORE_T J_gc = J_ts, M_gc = M_cc;
         if (!skip_gamut && J_gc > ALWAN_CORE_LITERAL(0.0) && M_gc > ALWAN_CORE_LITERAL(0.0)) {
             if (J_gc > limit_J_max) {
-                J_gc = limit_J_max;
+                /* Above the limit: drop colourfulness but KEEP J (matches the
+                 * scalar gamut_compress20 / OCIO; the old code clamped J). */
                 M_gc = ALWAN_CORE_LITERAL(0.0);
             } else {
                 ALWAN_CORE_FNLIT(aces2_HueDependentGamutParams) hdp;
                 ALWAN_CORE_FNLIT(init_hue_dependent_params)(jmh.v[2], &gcp, &hdp);
                 ALWAN_CORE_VEC2 gc = ALWAN_CORE_FNVLIT(aces2_compress_gamut_fwd)(
-                    J_gc, M_gc, jmh.v[2], &gcp, &hdp);
-                J_gc = gc.v[0];
+                    J_gc, M_gc, jmh.v[2], &gcp, &hdp); J_gc = gc.v[0];
                 M_gc = gc.v[1];
             }
         }
 
-        /* JMh → Aab → RGB (using limit/display primaries) */
+        /* JMh -> Aab -> RGB in AP1, then the combined AP1->limit (+CAT) matrix.
+         * This is the OCIO-validated scalar output path. */
         ALWAN_CORE_VEC3 jmh_gc; jmh_gc.v[0] = J_gc; jmh_gc.v[1] = M_gc; jmh_gc.v[2] = jmh.v[2];
-        ALWAN_CORE_VEC3 aab_out   = ALWAN_CORE_FNVLIT(aces2_jmh_to_aab)(jmh_gc, &limit_jmh_params);
-        ALWAN_CORE_VEC3 rgb_disp  = ALWAN_CORE_FNVLIT(aces2_aab_to_rgb)(aab_out, &limit_jmh_params);
-        ALWAN_CORE_T r = rgb_disp.v[0], g = rgb_disp.v[1], b = rgb_disp.v[2];
+        ALWAN_CORE_VEC3 aab_out  = ALWAN_CORE_FNVLIT(aces2_jmh_to_aab)(jmh_gc, jmh_params);
+        ALWAN_CORE_VEC3 rgb_ap1  = ALWAN_CORE_FNVLIT(aces2_aab_to_rgb)(aab_out, jmh_params);
+        ALWAN_CORE_T r = (ALWAN_CORE_T)M_out_f64[0]*rgb_ap1.v[0] + (ALWAN_CORE_T)M_out_f64[1]*rgb_ap1.v[1] + (ALWAN_CORE_T)M_out_f64[2]*rgb_ap1.v[2];
+        ALWAN_CORE_T g = (ALWAN_CORE_T)M_out_f64[3]*rgb_ap1.v[0] + (ALWAN_CORE_T)M_out_f64[4]*rgb_ap1.v[1] + (ALWAN_CORE_T)M_out_f64[5]*rgb_ap1.v[2];
+        ALWAN_CORE_T b = (ALWAN_CORE_T)M_out_f64[6]*rgb_ap1.v[0] + (ALWAN_CORE_T)M_out_f64[7]*rgb_ap1.v[1] + (ALWAN_CORE_T)M_out_f64[8]*rgb_ap1.v[2];
 
-        /* Clamp display values */
-        ALWAN_CORE_T display_max = is_pq
-            ? (peak / ALWAN_CORE_LITERAL(100.0))
-            : ALWAN_CORE_LITERAL(1.0);
-        r = r < 0 ? 0 : (r > display_max ? display_max : r);
-        g = g < 0 ? 0 : (g > display_max ? display_max : g);
-        b = b < 0 ? 0 : (b > display_max ? display_max : b);
-
-        /* OETF (inline for the common cases) */
-        if (config.eotf == ALWAN_TF_SRGB) {
-            px_out[0] = ALWAN_CORE_FNVLIT(aces_srgb_oetf)(r);
-            px_out[1] = ALWAN_CORE_FNVLIT(aces_srgb_oetf)(g);
-            px_out[2] = ALWAN_CORE_FNVLIT(aces_srgb_oetf)(b);
-        } else if (config.eotf == ALWAN_TF_BT1886) {
-            px_out[0] = ALWAN_CORE_FNVLIT(aces_bt1886_oetf)(r);
-            px_out[1] = ALWAN_CORE_FNVLIT(aces_bt1886_oetf)(g);
-            px_out[2] = ALWAN_CORE_FNVLIT(aces_bt1886_oetf)(b);
-        } else if (is_pq) {
-            /* Normalize from [0, peak/100] to [0, 1] before PQ OETF */
-            ALWAN_CORE_T pq_norm = ALWAN_CORE_LITERAL(100.0) / peak;
-            px_out[0] = ALWAN_CORE_FNVLIT(aces_pq_oetf)(r * pq_norm, peak);
-            px_out[1] = ALWAN_CORE_FNVLIT(aces_pq_oetf)(g * pq_norm, peak);
-            px_out[2] = ALWAN_CORE_FNVLIT(aces_pq_oetf)(b * pq_norm, peak);
-        } else {
-            /* Fallback: promote to f64, apply generic OETF, demote */
-            alwan_f64 tmp[3];
-            tmp[0] = (alwan_f64)r; tmp[1] = (alwan_f64)g; tmp[2] = (alwan_f64)b;
-            alwan_oetf_apply_f64(tmp, sizeof(alwan_f64), tmp, sizeof(alwan_f64), 3, config.eotf);
-            px_out[0] = (ALWAN_CORE_T)tmp[0];
-            px_out[1] = (ALWAN_CORE_T)tmp[1];
-            px_out[2] = (ALWAN_CORE_T)tmp[2];
-        }
+        /* Clamp + encode exactly as the scalar output transform: clamp the
+         * normalized display-linear RGB to [0,1]; for PQ scale to absolute
+         * nits [0,peak]; then apply the display OETF via the same path the
+         * scalar uses (alwan_oetf_apply). */
+        ALWAN_CORE_T lin[3];
+        ALWAN_CORE_T const out_rgb[3] = { r, g, b };
+        for (int k = 0; k < 3; k++) {
+            ALWAN_CORE_T x = out_rgb[k];
+            if (is_pq) {
+                lin[k] = x < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0)
+                       : (x > ALWAN_CORE_LITERAL(1.0) ? peak : (x * peak));
+            } else {
+                lin[k] = x < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0)
+                       : (x > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : x);
+            }
+        } ALWAN_CORE_FNLIT(alwan_oetf_apply)(lin, sizeof(ALWAN_CORE_T), lin, sizeof(ALWAN_CORE_T), 3, config.eotf);
+        px_out[0] = lin[0];
+        px_out[1] = lin[1];
+        px_out[2] = lin[2];
     }
 
     return ALWAN_OK;

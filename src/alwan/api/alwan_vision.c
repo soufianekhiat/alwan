@@ -16,68 +16,69 @@
 
 /* CIE 1924 Photopic V(lambda) - interleaved {wavelength, value} pairs
  * 42 samples, 380-780 nm (10 nm step + peak at 555 nm)
- * Generated from colour-science SDS_LEFS['CIE 1924 Photopic Standard Observer'] */
+ * Generated from colour-science SDS_LEFS['CIE 1924 Photopic Standard Observer']
+ *
+ * Dual-declared: the f32 twin lets the templated f32 luminous-efficiency path
+ * read native float data instead of widening doubles per access. */
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const PHOTOPIC_V_DATA[] = {
+static float const PHOTOPIC_V_DATA_f32[] = {
 #include "../data/vision/photopic_v_lambda.csv"
 };
 ALWAN_DIAG_POP
+#endif
+#if ALWAN_WITH_F64
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const PHOTOPIC_V_DATA_f64[] = {
+#include "../data/vision/photopic_v_lambda.csv"
+};
+ALWAN_DIAG_POP
+#endif
 #define PHOTOPIC_V_COUNT 42
 
 /* CIE 1951 Scotopic V'(lambda) - interleaved {wavelength, value} pairs
  * 42 samples, 380-780 nm (10 nm step + peak at 507 nm)
- * Generated from colour-science SDS_LEFS['CIE 1951 Scotopic Standard Observer'] */
+ * Generated from colour-science SDS_LEFS['CIE 1951 Scotopic Standard Observer']
+ *
+ * Dual-declared (see PHOTOPIC_V_DATA above). */
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const SCOTOPIC_VP_DATA[] = {
+static float const SCOTOPIC_VP_DATA_f32[] = {
 #include "../data/vision/scotopic_vp_lambda.csv"
 };
 ALWAN_DIAG_POP
+#endif
+#if ALWAN_WITH_F64
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const SCOTOPIC_VP_DATA_f64[] = {
+#include "../data/vision/scotopic_vp_lambda.csv"
+};
+ALWAN_DIAG_POP
+#endif
 #define SCOTOPIC_VP_COUNT 42
 
-/* Interpolate interleaved {wavelength, value} pairs (stride 2) */
-static alwan_f64 interpolate_lut(alwan_f64 const *data,
-                                      int count,
-                                      alwan_f64 wavelength) {
-    if (wavelength <= data[0]) {
-        return data[1];
-    }
-    if (wavelength >= data[(count - 1) * 2]) {
-        return data[(count - 1) * 2 + 1];
-    }
+/* interpolate_lut() and the photopic/scotopic interpolators are templatized
+ * per precision inside alwan_vision_impl.inc (ALWAN_CORE_FNLIT helpers), so the
+ * f32 path reads PHOTOPIC_V_DATA_f32 / SCOTOPIC_VP_DATA_f32 natively. */
 
-    int i;
-    for (i = 0; i < count - 1; i++) {
-        alwan_f64 wl_lo = data[i * 2];
-        alwan_f64 wl_hi = data[(i + 1) * 2];
-        if (wavelength >= wl_lo && wavelength <= wl_hi) {
-            alwan_f64 t = (wavelength - wl_lo) / (wl_hi - wl_lo);
-            return data[i * 2 + 1] + t * (data[(i + 1) * 2 + 1] - data[i * 2 + 1]);
-        }
-    }
-
-    return ALWAN_LITERAL_F64(0.0);
-}
-
-/* Internal helpers used by both f32 and f64 templated code via the .inc */
-ALWAN_INLINE alwan_f64 alwan_vision_interpolate_photopic_lut(alwan_f64 wavelength) {
-    return interpolate_lut(PHOTOPIC_V_DATA, PHOTOPIC_V_COUNT, wavelength);
-}
-ALWAN_INLINE alwan_f64 alwan_vision_interpolate_scotopic_lut(alwan_f64 wavelength) {
-    return interpolate_lut(SCOTOPIC_VP_DATA, SCOTOPIC_VP_COUNT, wavelength);
-}
-
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 #include "alwan_api_f32_setup.h"
 #include "alwan_vision_impl.inc"
 #include "alwan_api_teardown.h"
 ALWAN_DIAG_POP
+#endif
 
+#if ALWAN_WITH_F64
 #include "alwan_api_f64_setup.h"
 #include "alwan_vision_impl.inc"
 #include "alwan_api_teardown.h"
+#endif
 
 /* SPD-based luminance functions (alwan_photopic_luminance_*, etc.)
  * are templatized in alwan_vision_impl.inc. */

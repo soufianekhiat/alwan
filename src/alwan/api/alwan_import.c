@@ -36,7 +36,7 @@ static char *alwan_save_lc_numeric(void) {
     char const *cur = setlocale(LC_NUMERIC, NULL);
     if (!cur) return NULL;
     size_t n = strlen(cur);
-    char *saved = (char *)malloc(n + 1);
+    char *saved = (char *)ALWAN_ALLOC(n + 1, 1);
     if (!saved) return NULL;
     memcpy(saved, cur, n + 1);
     setlocale(LC_NUMERIC, "C");
@@ -46,7 +46,7 @@ static char *alwan_save_lc_numeric(void) {
 static void alwan_restore_lc_numeric(char *saved) {
     if (saved) {
         setlocale(LC_NUMERIC, saved);
-        free(saved);
+        ALWAN_FREE(saved);
     }
 }
 
@@ -250,46 +250,184 @@ done_buf:
 }
 
 /* ----------------------------------------------------------------
- * f32 wrappers — delegate to f64 via a temporary buffer.
+ * f32 variants — native single-precision parsers.
+ *
+ * Tokens are parsed as double (sscanf %lf, identical to the f64 path)
+ * and stored as f32, so the result is bit-identical to widening the
+ * f64 result — but without the large temporary f64 buffer (previously
+ * up to 256^3*3*8 bytes ~= 400 MB regardless of actual LUT size).
  * ---------------------------------------------------------------- */
 
 int alwan_cube_import_3d_f32(alwan_f32 *lut, int *out_size, char const *path) {
     if (!lut || !out_size || !path) return ALWAN_E_INVALID;
-    size_t max_total = 256ULL * 256ULL * 256ULL * 3ULL;
-    alwan_f64 *tmp = (alwan_f64 *)malloc(max_total * sizeof(alwan_f64));
-    if (!tmp) return ALWAN_E_NOMEM;
-    int rc = alwan_cube_import_3d_f64(tmp, out_size, path);
-    if (rc == ALWAN_OK) {
-        size_t total = (size_t)(*out_size) * (size_t)(*out_size) * (size_t)(*out_size) * 3;
-        for (size_t i = 0; i < total; i++) lut[i] = (alwan_f32)tmp[i];
+
+    FILE *f = fopen(path, "rb");
+    if (!f) return ALWAN_E_INVALID;
+
+    char *saved_locale = alwan_save_lc_numeric();
+    int err = ALWAN_OK;
+
+    int size = 0;
+    size_t data_count = 0;
+    char line[512];
+
+    while (fgets(line, sizeof(line), f)) {
+        char const *s = skip_ws(line);
+
+        if (is_comment_or_empty(s)) continue;
+
+        if (strncmp(s, "LUT_3D_SIZE", 11) == 0) {
+            size = atoi(s + 11);
+            if (size < 2 || size > 256) { err = ALWAN_E_RANGE; goto done_3d_f32; }
+            continue;
+        }
+        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) continue;
+        if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
+        if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
+        if (strncmp(s, "TITLE", 5) == 0) continue;
+
+        if (size == 0) { err = ALWAN_E_INVALID; goto done_3d_f32; }
+
+        double r, g, b;
+        if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) { err = ALWAN_E_INVALID; goto done_3d_f32; }
+
+        size_t total = (size_t)size * (size_t)size * (size_t)size;
+        if (data_count >= total) { err = ALWAN_E_RANGE; goto done_3d_f32; }
+
+        lut[data_count * 3 + 0] = (alwan_f32)r;
+        lut[data_count * 3 + 1] = (alwan_f32)g;
+        lut[data_count * 3 + 2] = (alwan_f32)b;
+        data_count++;
     }
-    free(tmp);
-    return rc;
+
+    if (size == 0) { err = ALWAN_E_NODATA; goto done_3d_f32; }
+
+    {
+        size_t expected = (size_t)size * (size_t)size * (size_t)size;
+        if (data_count != expected) { err = ALWAN_E_RANGE; goto done_3d_f32; }
+    }
+
+    *out_size = size;
+
+done_3d_f32:
+    alwan_restore_lc_numeric(saved_locale);
+    fclose(f);
+    return err;
 }
 
 int alwan_cube_import_1d_f32(alwan_f32 *lut, int *out_size, char const *path) {
     if (!lut || !out_size || !path) return ALWAN_E_INVALID;
-    alwan_f64 *tmp = (alwan_f64 *)malloc(65536 * sizeof(alwan_f64));
-    if (!tmp) return ALWAN_E_NOMEM;
-    int rc = alwan_cube_import_1d_f64(tmp, out_size, path);
-    if (rc == ALWAN_OK) {
-        for (int i = 0; i < *out_size; i++) lut[i] = (alwan_f32)tmp[i];
+
+    FILE *f = fopen(path, "rb");
+    if (!f) return ALWAN_E_INVALID;
+
+    char *saved_locale = alwan_save_lc_numeric();
+    int err = ALWAN_OK;
+
+    int size = 0;
+    int data_count = 0;
+    char line[512];
+
+    while (fgets(line, sizeof(line), f)) {
+        char const *s = skip_ws(line);
+
+        if (is_comment_or_empty(s)) continue;
+
+        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) {
+            size = atoi(s + 11);
+            if (size < 2 || size > 65536) { err = ALWAN_E_RANGE; goto done_1d_f32; }
+            continue;
+        }
+        if (strncmp(s, "LUT_3D_SIZE", 11) == 0) continue;
+        if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
+        if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
+        if (strncmp(s, "TITLE", 5) == 0) continue;
+
+        if (size == 0) { err = ALWAN_E_INVALID; goto done_1d_f32; }
+
+        double r, g, b;
+        if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) { err = ALWAN_E_INVALID; goto done_1d_f32; }
+
+        if (data_count >= size) { err = ALWAN_E_RANGE; goto done_1d_f32; }
+
+        lut[data_count] = (alwan_f32)((r + g + b) / 3.0);
+        data_count++;
     }
-    free(tmp);
-    return rc;
+
+    if (size == 0) { err = ALWAN_E_NODATA; goto done_1d_f32; }
+    if (data_count != size) { err = ALWAN_E_RANGE; goto done_1d_f32; }
+
+    *out_size = size;
+
+done_1d_f32:
+    alwan_restore_lc_numeric(saved_locale);
+    fclose(f);
+    return err;
 }
 
 int alwan_cube_import_3d_buffer_f32(alwan_f32 *lut, int *out_size,
                                  char const *buf, size_t buf_len) {
     if (!lut || !out_size || !buf || buf_len == 0) return ALWAN_E_INVALID;
-    size_t max_total = 256ULL * 256ULL * 256ULL * 3ULL;
-    alwan_f64 *tmp = (alwan_f64 *)malloc(max_total * sizeof(alwan_f64));
-    if (!tmp) return ALWAN_E_NOMEM;
-    int rc = alwan_cube_import_3d_buffer_f64(tmp, out_size, buf, buf_len);
-    if (rc == ALWAN_OK) {
-        size_t total = (size_t)(*out_size) * (size_t)(*out_size) * (size_t)(*out_size) * 3;
-        for (size_t i = 0; i < total; i++) lut[i] = (alwan_f32)tmp[i];
+
+    char *saved_locale = alwan_save_lc_numeric();
+    int err = ALWAN_OK;
+
+    int size = 0;
+    size_t data_count = 0;
+    char const *pos = buf;
+    char const *end = buf + buf_len;
+
+    while (pos < end) {
+        char const *eol = pos;
+        while (eol < end && *eol != '\n' && *eol != '\r') eol++;
+
+        size_t line_len = (size_t)(eol - pos);
+        if (line_len >= 511) line_len = 510;
+        char line[512];
+        memcpy(line, pos, line_len);
+        line[line_len] = '\0';
+
+        pos = eol;
+        if (pos < end && *pos == '\r') pos++;
+        if (pos < end && *pos == '\n') pos++;
+
+        char const *s = skip_ws(line);
+        if (is_comment_or_empty(s)) continue;
+
+        if (strncmp(s, "LUT_3D_SIZE", 11) == 0) {
+            size = atoi(s + 11);
+            if (size < 2 || size > 256) { err = ALWAN_E_RANGE; goto done_buf_f32; }
+            continue;
+        }
+        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) continue;
+        if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
+        if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
+        if (strncmp(s, "TITLE", 5) == 0) continue;
+
+        if (size == 0) { err = ALWAN_E_INVALID; goto done_buf_f32; }
+
+        double r, g, b;
+        if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) { err = ALWAN_E_INVALID; goto done_buf_f32; }
+
+        size_t total = (size_t)size * (size_t)size * (size_t)size;
+        if (data_count >= total) { err = ALWAN_E_RANGE; goto done_buf_f32; }
+
+        lut[data_count * 3 + 0] = (alwan_f32)r;
+        lut[data_count * 3 + 1] = (alwan_f32)g;
+        lut[data_count * 3 + 2] = (alwan_f32)b;
+        data_count++;
     }
-    free(tmp);
-    return rc;
+
+    if (size == 0) { err = ALWAN_E_NODATA; goto done_buf_f32; }
+
+    {
+        size_t expected = (size_t)size * (size_t)size * (size_t)size;
+        if (data_count != expected) { err = ALWAN_E_RANGE; goto done_buf_f32; }
+    }
+
+    *out_size = size;
+
+done_buf_f32:
+    alwan_restore_lc_numeric(saved_locale);
+    return err;
 }

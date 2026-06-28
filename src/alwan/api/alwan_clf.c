@@ -35,7 +35,7 @@ static char *alwan_clf_save_lc_numeric(void) {
     char const *cur = setlocale(LC_NUMERIC, NULL);
     if (!cur) return NULL;
     size_t n = strlen(cur);
-    char *saved = (char *)malloc(n + 1);
+    char *saved = (char *)ALWAN_ALLOC(n + 1, 1);
     if (!saved) return NULL;
     memcpy(saved, cur, n + 1);
     setlocale(LC_NUMERIC, "C");
@@ -45,7 +45,7 @@ static char *alwan_clf_save_lc_numeric(void) {
 static void alwan_clf_restore_lc_numeric(char *saved) {
     if (saved) {
         setlocale(LC_NUMERIC, saved);
-        free(saved);
+        ALWAN_FREE(saved);
     }
 }
 

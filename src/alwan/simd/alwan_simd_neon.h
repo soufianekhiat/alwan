@@ -689,13 +689,17 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
         vdupq_n_s32(0x3F800000));
     float32x4_t m = vreinterpretq_f32_s32(mant_bits);
 
-    /* Minimax polynomial ALWAN_LOG2_F64(m) on [1, 2) */
-    float32x4_t t = vsubq_f32(m, vdupq_n_f32(1.0f));
-    float32x4_t log2_m = vmulq_f32(t, vaddq_f32(vdupq_n_f32(1.44269504f),
-                         vmulq_f32(t, vaddq_f32(vdupq_n_f32(-0.72134752f),
-                         vmulq_f32(t, vaddq_f32(vdupq_n_f32(0.48089835f),
-                         vmulq_f32(t, vaddq_f32(vdupq_n_f32(-0.36067376f),
-                         vmulq_f32(t, vdupq_n_f32(0.28854314f))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1); matches scalar twin */
+    float32x4_t one_l = vdupq_n_f32(1.0f);
+    float32x4_t s  = alwan_simd_f32_div(vsubq_f32(m, one_l), vaddq_f32(m, one_l));
+    float32x4_t s2 = vmulq_f32(s, s);
+    float32x4_t lp = vaddq_f32(vdupq_n_f32(1.0f/11.0f), vmulq_f32(s2, vdupq_n_f32(1.0f/13.0f)));
+    lp = vaddq_f32(vdupq_n_f32(1.0f/9.0f), vmulq_f32(s2, lp));
+    lp = vaddq_f32(vdupq_n_f32(1.0f/7.0f), vmulq_f32(s2, lp));
+    lp = vaddq_f32(vdupq_n_f32(1.0f/5.0f), vmulq_f32(s2, lp));
+    lp = vaddq_f32(vdupq_n_f32(1.0f/3.0f), vmulq_f32(s2, lp));
+    lp = vaddq_f32(one_l, vmulq_f32(s2, lp));
+    float32x4_t log2_m = vmulq_f32(vdupq_n_f32(2.8853901f), vmulq_f32(s, lp));
 
     float32x4_t y = vmulq_f32(vdupq_n_f32(2.4f), vaddq_f32(e, log2_m));
 
@@ -704,13 +708,16 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
     float32x4_t yf = vsubq_f32(y, yi);
     int32x4_t n = vcvtq_s32_f32(yi);
 
-    /* Minimax polynomial 2^yf on [0, 1) */
-    float32x4_t exp2f_val = vaddq_f32(vdupq_n_f32(1.0f),
-                            vmulq_f32(yf, vaddq_f32(vdupq_n_f32(0.69314718f),
-                            vmulq_f32(yf, vaddq_f32(vdupq_n_f32(0.24022651f),
-                            vmulq_f32(yf, vaddq_f32(vdupq_n_f32(0.05550411f),
-                            vmulq_f32(yf, vaddq_f32(vdupq_n_f32(0.00961813f),
-                            vmulq_f32(yf, vdupq_n_f32(0.00133335f)))))))))));
+    /* exp2(yf) on [0,1): degree-6 Taylor; matches scalar twin */
+    float32x4_t e2 = vaddq_f32(vdupq_n_f32(1.5252734e-05f),
+                     vmulq_f32(yf, vdupq_n_f32(1.3215487e-06f)));
+    e2 = vaddq_f32(vdupq_n_f32(0.00015403530f), vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.0013333558f),  vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.009618129f),   vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.055504109f),   vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.24022651f),    vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.6931472f),     vmulq_f32(yf, e2));
+    float32x4_t exp2f_val = vaddq_f32(vdupq_n_f32(1.0f), vmulq_f32(yf, e2));
 
     int32x4_t scale_i = vshlq_n_s32(vaddq_s32(n, vdupq_n_s32(127)), 23);
     float32x4_t scale = vreinterpretq_f32_s32(scale_i);
@@ -738,13 +745,17 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
         vdupq_n_s32(0x3F800000));
     float32x4_t m = vreinterpretq_f32_s32(mant_bits);
 
-    /* Minimax polynomial ALWAN_LOG2_F64(m) on [1, 2) */
-    float32x4_t t = vsubq_f32(m, vdupq_n_f32(1.0f));
-    float32x4_t log2_m = vmulq_f32(t, vaddq_f32(vdupq_n_f32(1.44269504f),
-                         vmulq_f32(t, vaddq_f32(vdupq_n_f32(-0.72134752f),
-                         vmulq_f32(t, vaddq_f32(vdupq_n_f32(0.48089835f),
-                         vmulq_f32(t, vaddq_f32(vdupq_n_f32(-0.36067376f),
-                         vmulq_f32(t, vdupq_n_f32(0.28854314f))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1); matches scalar twin */
+    float32x4_t one_l = vdupq_n_f32(1.0f);
+    float32x4_t s  = alwan_simd_f32_div(vsubq_f32(m, one_l), vaddq_f32(m, one_l));
+    float32x4_t s2 = vmulq_f32(s, s);
+    float32x4_t lp = vaddq_f32(vdupq_n_f32(1.0f/11.0f), vmulq_f32(s2, vdupq_n_f32(1.0f/13.0f)));
+    lp = vaddq_f32(vdupq_n_f32(1.0f/9.0f), vmulq_f32(s2, lp));
+    lp = vaddq_f32(vdupq_n_f32(1.0f/7.0f), vmulq_f32(s2, lp));
+    lp = vaddq_f32(vdupq_n_f32(1.0f/5.0f), vmulq_f32(s2, lp));
+    lp = vaddq_f32(vdupq_n_f32(1.0f/3.0f), vmulq_f32(s2, lp));
+    lp = vaddq_f32(one_l, vmulq_f32(s2, lp));
+    float32x4_t log2_m = vmulq_f32(vdupq_n_f32(2.8853901f), vmulq_f32(s, lp));
 
     float32x4_t y = vmulq_f32(vdupq_n_f32(0.41666667f), vaddq_f32(e, log2_m));
 
@@ -753,13 +764,16 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
     float32x4_t yf = vsubq_f32(y, yi);
     int32x4_t n = vcvtq_s32_f32(yi);
 
-    /* Minimax polynomial 2^yf on [0, 1) */
-    float32x4_t exp2f_val = vaddq_f32(vdupq_n_f32(1.0f),
-                            vmulq_f32(yf, vaddq_f32(vdupq_n_f32(0.69314718f),
-                            vmulq_f32(yf, vaddq_f32(vdupq_n_f32(0.24022651f),
-                            vmulq_f32(yf, vaddq_f32(vdupq_n_f32(0.05550411f),
-                            vmulq_f32(yf, vaddq_f32(vdupq_n_f32(0.00961813f),
-                            vmulq_f32(yf, vdupq_n_f32(0.00133335f)))))))))));
+    /* exp2(yf) on [0,1): degree-6 Taylor; matches scalar twin */
+    float32x4_t e2 = vaddq_f32(vdupq_n_f32(1.5252734e-05f),
+                     vmulq_f32(yf, vdupq_n_f32(1.3215487e-06f)));
+    e2 = vaddq_f32(vdupq_n_f32(0.00015403530f), vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.0013333558f),  vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.009618129f),   vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.055504109f),   vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.24022651f),    vmulq_f32(yf, e2));
+    e2 = vaddq_f32(vdupq_n_f32(0.6931472f),     vmulq_f32(yf, e2));
+    float32x4_t exp2f_val = vaddq_f32(vdupq_n_f32(1.0f), vmulq_f32(yf, e2));
 
     int32x4_t scale_i = vshlq_n_s32(vaddq_s32(n, vdupq_n_s32(127)), 23);
     float32x4_t scale = vreinterpretq_f32_s32(scale_i);
@@ -791,23 +805,34 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
         vandq_s64(iv, vdupq_n_s64(0x000FFFFFFFFFFFFFLL)),
         vdupq_n_s64(0x3FF0000000000000LL));
     float64x2_t m = vreinterpretq_f64_s64(mant_bits);
-    /* ALWAN_LOG2_F64(m) on [1, 2): Horner polynomial, t = m - 1 */
-    float64x2_t t = vsubq_f64(m, vdupq_n_f64(1.0));
-    float64x2_t log2_m = vmulq_f64(t, vaddq_f64(vdupq_n_f64(1.4426950408889634),
-                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(-0.7213475204049363),
-                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(0.4808983469618909),
-                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(-0.3606737602744954),
-                         vmulq_f64(t, vdupq_n_f64(0.28854301595785953))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1); matches scalar twin */
+    float64x2_t one_l = vdupq_n_f64(1.0);
+    float64x2_t s  = vdivq_f64(vsubq_f64(m, one_l), vaddq_f64(m, one_l));
+    float64x2_t s2 = vmulq_f64(s, s);
+    float64x2_t lp = vaddq_f64(vdupq_n_f64(1.0/15.0), vmulq_f64(s2, vdupq_n_f64(1.0/17.0)));
+    lp = vaddq_f64(vdupq_n_f64(1.0/13.0), vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/11.0), vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/9.0),  vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/7.0),  vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/5.0),  vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/3.0),  vmulq_f64(s2, lp));
+    lp = vaddq_f64(one_l, vmulq_f64(s2, lp));
+    float64x2_t log2_m = vmulq_f64(vdupq_n_f64(2.8853900817779268), vmulq_f64(s, lp));
     float64x2_t y  = vmulq_f64(vdupq_n_f64(2.4), vaddq_f64(e, log2_m));
     float64x2_t yi = vrndmq_f64(y);  /* floor */
     float64x2_t yf = vsubq_f64(y, yi);
-    /* exp2(yf) on [0, 1): Horner polynomial */
-    float64x2_t exp2f = vaddq_f64(vdupq_n_f64(1.0),
-                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.6931471805599453),
-                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.24022650695910071),
-                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.05550410866482158),
-                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.009618129107628477),
-                        vmulq_f64(yf, vdupq_n_f64(0.0013333558146428443)))))))))));
+    /* exp2(yf) on [0,1): degree-10 Taylor (ln2^k/k!) */
+    float64x2_t e2 = vaddq_f64(vdupq_n_f64(1.0178086009239696e-07),
+                     vmulq_f64(yf, vdupq_n_f64(7.0549116208011209e-09)));
+    e2 = vaddq_f64(vdupq_n_f64(1.3215486790144305e-06), vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(1.5252733804059838e-05), vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.00015403530393381606), vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.0013333558146428441),  vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.0096181291076284769),  vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.055504108664821576),   vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.24022650695910069),    vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.69314718055994529),    vmulq_f64(yf, e2));
+    float64x2_t exp2f = vaddq_f64(vdupq_n_f64(1.0),     vmulq_f64(yf, e2));
     /* Scale: 2^yi = float with exponent field = (yi + 1023) << 52 */
     int64x2_t yi_i64  = vcvtq_s64_f64(yi);
     int64x2_t scale_i = vshlq_n_s64(vaddq_s64(yi_i64, vdupq_n_s64(1023LL)), 52);
@@ -836,21 +861,34 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow_inv24(alwan_simd_f64 x) {
         vandq_s64(iv, vdupq_n_s64(0x000FFFFFFFFFFFFFLL)),
         vdupq_n_s64(0x3FF0000000000000LL));
     float64x2_t m = vreinterpretq_f64_s64(mant_bits);
-    float64x2_t t = vsubq_f64(m, vdupq_n_f64(1.0));
-    float64x2_t log2_m = vmulq_f64(t, vaddq_f64(vdupq_n_f64(1.4426950408889634),
-                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(-0.7213475204049363),
-                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(0.4808983469618909),
-                         vmulq_f64(t, vaddq_f64(vdupq_n_f64(-0.3606737602744954),
-                         vmulq_f64(t, vdupq_n_f64(0.28854301595785953))))))))));
+    /* log2(m) on [1,2) via atanh series, s=(m-1)/(m+1); matches scalar twin */
+    float64x2_t one_l = vdupq_n_f64(1.0);
+    float64x2_t s  = vdivq_f64(vsubq_f64(m, one_l), vaddq_f64(m, one_l));
+    float64x2_t s2 = vmulq_f64(s, s);
+    float64x2_t lp = vaddq_f64(vdupq_n_f64(1.0/15.0), vmulq_f64(s2, vdupq_n_f64(1.0/17.0)));
+    lp = vaddq_f64(vdupq_n_f64(1.0/13.0), vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/11.0), vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/9.0),  vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/7.0),  vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/5.0),  vmulq_f64(s2, lp));
+    lp = vaddq_f64(vdupq_n_f64(1.0/3.0),  vmulq_f64(s2, lp));
+    lp = vaddq_f64(one_l, vmulq_f64(s2, lp));
+    float64x2_t log2_m = vmulq_f64(vdupq_n_f64(2.8853900817779268), vmulq_f64(s, lp));
     float64x2_t y  = vmulq_f64(vdupq_n_f64(1.0 / 2.4), vaddq_f64(e, log2_m));
     float64x2_t yi = vrndmq_f64(y);
     float64x2_t yf = vsubq_f64(y, yi);
-    float64x2_t exp2f = vaddq_f64(vdupq_n_f64(1.0),
-                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.6931471805599453),
-                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.24022650695910071),
-                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.05550410866482158),
-                        vmulq_f64(yf, vaddq_f64(vdupq_n_f64(0.009618129107628477),
-                        vmulq_f64(yf, vdupq_n_f64(0.0013333558146428443)))))))))));
+    /* exp2(yf) on [0,1): degree-10 Taylor (ln2^k/k!) */
+    float64x2_t e2 = vaddq_f64(vdupq_n_f64(1.0178086009239696e-07),
+                     vmulq_f64(yf, vdupq_n_f64(7.0549116208011209e-09)));
+    e2 = vaddq_f64(vdupq_n_f64(1.3215486790144305e-06), vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(1.5252733804059838e-05), vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.00015403530393381606), vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.0013333558146428441),  vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.0096181291076284769),  vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.055504108664821576),   vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.24022650695910069),    vmulq_f64(yf, e2));
+    e2 = vaddq_f64(vdupq_n_f64(0.69314718055994529),    vmulq_f64(yf, e2));
+    float64x2_t exp2f = vaddq_f64(vdupq_n_f64(1.0),     vmulq_f64(yf, e2));
     int64x2_t yi_i64  = vcvtq_s64_f64(yi);
     int64x2_t scale_i = vshlq_n_s64(vaddq_s64(yi_i64, vdupq_n_s64(1023LL)), 52);
     float64x2_t result = vmulq_f64(vreinterpretq_f64_s64(scale_i), exp2f);

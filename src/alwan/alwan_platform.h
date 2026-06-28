@@ -1215,8 +1215,14 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  *
  * Tests that need a precision-mode-independent assertion should use
  * ULP budgets via TEST_ASSERT_CLOSE_ULP_F* (test_common.h) instead. */
+#include "simd/alwan_simd_types.h"   /* ALWAN_HAS_SVML (for the tolerance below) */
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
 #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-3)
+#elif !ALWAN_HAS_SVML
+/* Fast mode without SVML (e.g. NEON): the sRGB gamma-2.4 leg uses the scalar /
+ * SIMD polynomial twins (alwan_fast_pow*, ~5e-10 abs over [0,1]) so the scalar
+ * and SIMD paths agree; round-trips land a few e-10 from libm, above 1e-12. */
+#define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-8)
 #else
 #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-12)
 #endif

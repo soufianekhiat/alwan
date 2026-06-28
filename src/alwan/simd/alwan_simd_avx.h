@@ -648,22 +648,29 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
     __m128 e_lo = _mm_cvtepi32_ps(exp_lo);
     __m128i mant_lo = _mm_or_si128(_mm_and_si128(iv_lo, _mm_set1_epi32(0x007FFFFF)), _mm_set1_epi32(0x3F800000));
     __m128 m_lo = _mm_castsi128_ps(mant_lo);
-    __m128 t_lo = _mm_sub_ps(m_lo, _mm_set1_ps(1.0f));
-    __m128 log2_lo = _mm_mul_ps(t_lo, _mm_add_ps(_mm_set1_ps(1.44269504f),
-                     _mm_mul_ps(t_lo, _mm_add_ps(_mm_set1_ps(-0.72134752f),
-                     _mm_mul_ps(t_lo, _mm_add_ps(_mm_set1_ps(0.48089835f),
-                     _mm_mul_ps(t_lo, _mm_add_ps(_mm_set1_ps(-0.36067376f),
-                     _mm_mul_ps(t_lo, _mm_set1_ps(0.28854314f))))))))));
+    __m128 one_lo = _mm_set1_ps(1.0f);
+    __m128 s_lo  = _mm_div_ps(_mm_sub_ps(m_lo, one_lo), _mm_add_ps(m_lo, one_lo));
+    __m128 s2_lo = _mm_mul_ps(s_lo, s_lo);
+    __m128 lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/11.0f), _mm_mul_ps(s2_lo, _mm_set1_ps(1.0f/13.0f)));
+    lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/9.0f), _mm_mul_ps(s2_lo, lp_lo));
+    lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/7.0f), _mm_mul_ps(s2_lo, lp_lo));
+    lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/5.0f), _mm_mul_ps(s2_lo, lp_lo));
+    lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/3.0f), _mm_mul_ps(s2_lo, lp_lo));
+    lp_lo = _mm_add_ps(one_lo, _mm_mul_ps(s2_lo, lp_lo));
+    __m128 log2_lo = _mm_mul_ps(_mm_set1_ps(2.8853901f), _mm_mul_ps(s_lo, lp_lo));
     __m128 y_lo = _mm_mul_ps(_mm_set1_ps(2.4f), _mm_add_ps(e_lo, log2_lo));
     __m128 yi_lo = _mm_floor_ps(y_lo);
     __m128 yf_lo = _mm_sub_ps(y_lo, yi_lo);
     __m128i n_lo = _mm_cvttps_epi32(yi_lo);
-    __m128 exp2_lo = _mm_add_ps(_mm_set1_ps(1.0f),
-                     _mm_mul_ps(yf_lo, _mm_add_ps(_mm_set1_ps(0.69314718f),
-                     _mm_mul_ps(yf_lo, _mm_add_ps(_mm_set1_ps(0.24022651f),
-                     _mm_mul_ps(yf_lo, _mm_add_ps(_mm_set1_ps(0.05550411f),
-                     _mm_mul_ps(yf_lo, _mm_add_ps(_mm_set1_ps(0.00961813f),
-                     _mm_mul_ps(yf_lo, _mm_set1_ps(0.00133335f)))))))))));
+    __m128 e2_lo = _mm_add_ps(_mm_set1_ps(1.5252734e-05f),
+                   _mm_mul_ps(yf_lo, _mm_set1_ps(1.3215487e-06f)));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.00015403530f), _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.0013333558f),  _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.009618129f),   _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.055504109f),   _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.24022651f),    _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.6931472f),     _mm_mul_ps(yf_lo, e2_lo));
+    __m128 exp2_lo = _mm_add_ps(_mm_set1_ps(1.0f), _mm_mul_ps(yf_lo, e2_lo));
     __m128i sc_lo = _mm_slli_epi32(_mm_add_epi32(n_lo, _mm_set1_epi32(127)), 23);
     __m128 res_lo = _mm_and_ps(pos_lo, _mm_mul_ps(_mm_castsi128_ps(sc_lo), exp2_lo));
 
@@ -675,22 +682,29 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow24(alwan_simd_f32 x) {
     __m128 e_hi = _mm_cvtepi32_ps(exp_hi);
     __m128i mant_hi = _mm_or_si128(_mm_and_si128(iv_hi, _mm_set1_epi32(0x007FFFFF)), _mm_set1_epi32(0x3F800000));
     __m128 m_hi = _mm_castsi128_ps(mant_hi);
-    __m128 t_hi = _mm_sub_ps(m_hi, _mm_set1_ps(1.0f));
-    __m128 log2_hi = _mm_mul_ps(t_hi, _mm_add_ps(_mm_set1_ps(1.44269504f),
-                     _mm_mul_ps(t_hi, _mm_add_ps(_mm_set1_ps(-0.72134752f),
-                     _mm_mul_ps(t_hi, _mm_add_ps(_mm_set1_ps(0.48089835f),
-                     _mm_mul_ps(t_hi, _mm_add_ps(_mm_set1_ps(-0.36067376f),
-                     _mm_mul_ps(t_hi, _mm_set1_ps(0.28854314f))))))))));
+    __m128 one_hi = _mm_set1_ps(1.0f);
+    __m128 s_hi  = _mm_div_ps(_mm_sub_ps(m_hi, one_hi), _mm_add_ps(m_hi, one_hi));
+    __m128 s2_hi = _mm_mul_ps(s_hi, s_hi);
+    __m128 lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/11.0f), _mm_mul_ps(s2_hi, _mm_set1_ps(1.0f/13.0f)));
+    lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/9.0f), _mm_mul_ps(s2_hi, lp_hi));
+    lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/7.0f), _mm_mul_ps(s2_hi, lp_hi));
+    lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/5.0f), _mm_mul_ps(s2_hi, lp_hi));
+    lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/3.0f), _mm_mul_ps(s2_hi, lp_hi));
+    lp_hi = _mm_add_ps(one_hi, _mm_mul_ps(s2_hi, lp_hi));
+    __m128 log2_hi = _mm_mul_ps(_mm_set1_ps(2.8853901f), _mm_mul_ps(s_hi, lp_hi));
     __m128 y_hi = _mm_mul_ps(_mm_set1_ps(2.4f), _mm_add_ps(e_hi, log2_hi));
     __m128 yi_hi = _mm_floor_ps(y_hi);
     __m128 yf_hi = _mm_sub_ps(y_hi, yi_hi);
     __m128i n_hi = _mm_cvttps_epi32(yi_hi);
-    __m128 exp2_hi = _mm_add_ps(_mm_set1_ps(1.0f),
-                     _mm_mul_ps(yf_hi, _mm_add_ps(_mm_set1_ps(0.69314718f),
-                     _mm_mul_ps(yf_hi, _mm_add_ps(_mm_set1_ps(0.24022651f),
-                     _mm_mul_ps(yf_hi, _mm_add_ps(_mm_set1_ps(0.05550411f),
-                     _mm_mul_ps(yf_hi, _mm_add_ps(_mm_set1_ps(0.00961813f),
-                     _mm_mul_ps(yf_hi, _mm_set1_ps(0.00133335f)))))))))));
+    __m128 e2_hi = _mm_add_ps(_mm_set1_ps(1.5252734e-05f),
+                   _mm_mul_ps(yf_hi, _mm_set1_ps(1.3215487e-06f)));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.00015403530f), _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.0013333558f),  _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.009618129f),   _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.055504109f),   _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.24022651f),    _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.6931472f),     _mm_mul_ps(yf_hi, e2_hi));
+    __m128 exp2_hi = _mm_add_ps(_mm_set1_ps(1.0f), _mm_mul_ps(yf_hi, e2_hi));
     __m128i sc_hi = _mm_slli_epi32(_mm_add_epi32(n_hi, _mm_set1_epi32(127)), 23);
     __m128 res_hi = _mm_and_ps(pos_hi, _mm_mul_ps(_mm_castsi128_ps(sc_hi), exp2_hi));
 
@@ -720,22 +734,29 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
     __m128 e_lo = _mm_cvtepi32_ps(exp_lo);
     __m128i mant_lo = _mm_or_si128(_mm_and_si128(iv_lo, _mm_set1_epi32(0x007FFFFF)), _mm_set1_epi32(0x3F800000));
     __m128 m_lo = _mm_castsi128_ps(mant_lo);
-    __m128 t_lo = _mm_sub_ps(m_lo, _mm_set1_ps(1.0f));
-    __m128 log2_lo = _mm_mul_ps(t_lo, _mm_add_ps(_mm_set1_ps(1.44269504f),
-                     _mm_mul_ps(t_lo, _mm_add_ps(_mm_set1_ps(-0.72134752f),
-                     _mm_mul_ps(t_lo, _mm_add_ps(_mm_set1_ps(0.48089835f),
-                     _mm_mul_ps(t_lo, _mm_add_ps(_mm_set1_ps(-0.36067376f),
-                     _mm_mul_ps(t_lo, _mm_set1_ps(0.28854314f))))))))));
+    __m128 one_lo = _mm_set1_ps(1.0f);
+    __m128 s_lo  = _mm_div_ps(_mm_sub_ps(m_lo, one_lo), _mm_add_ps(m_lo, one_lo));
+    __m128 s2_lo = _mm_mul_ps(s_lo, s_lo);
+    __m128 lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/11.0f), _mm_mul_ps(s2_lo, _mm_set1_ps(1.0f/13.0f)));
+    lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/9.0f), _mm_mul_ps(s2_lo, lp_lo));
+    lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/7.0f), _mm_mul_ps(s2_lo, lp_lo));
+    lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/5.0f), _mm_mul_ps(s2_lo, lp_lo));
+    lp_lo = _mm_add_ps(_mm_set1_ps(1.0f/3.0f), _mm_mul_ps(s2_lo, lp_lo));
+    lp_lo = _mm_add_ps(one_lo, _mm_mul_ps(s2_lo, lp_lo));
+    __m128 log2_lo = _mm_mul_ps(_mm_set1_ps(2.8853901f), _mm_mul_ps(s_lo, lp_lo));
     __m128 y_lo = _mm_mul_ps(_mm_set1_ps(1.0f / 2.4f), _mm_add_ps(e_lo, log2_lo));
     __m128 yi_lo = _mm_floor_ps(y_lo);
     __m128 yf_lo = _mm_sub_ps(y_lo, yi_lo);
     __m128i n_lo = _mm_cvttps_epi32(yi_lo);
-    __m128 exp2_lo = _mm_add_ps(_mm_set1_ps(1.0f),
-                     _mm_mul_ps(yf_lo, _mm_add_ps(_mm_set1_ps(0.69314718f),
-                     _mm_mul_ps(yf_lo, _mm_add_ps(_mm_set1_ps(0.24022651f),
-                     _mm_mul_ps(yf_lo, _mm_add_ps(_mm_set1_ps(0.05550411f),
-                     _mm_mul_ps(yf_lo, _mm_add_ps(_mm_set1_ps(0.00961813f),
-                     _mm_mul_ps(yf_lo, _mm_set1_ps(0.00133335f)))))))))));
+    __m128 e2_lo = _mm_add_ps(_mm_set1_ps(1.5252734e-05f),
+                   _mm_mul_ps(yf_lo, _mm_set1_ps(1.3215487e-06f)));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.00015403530f), _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.0013333558f),  _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.009618129f),   _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.055504109f),   _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.24022651f),    _mm_mul_ps(yf_lo, e2_lo));
+    e2_lo = _mm_add_ps(_mm_set1_ps(0.6931472f),     _mm_mul_ps(yf_lo, e2_lo));
+    __m128 exp2_lo = _mm_add_ps(_mm_set1_ps(1.0f), _mm_mul_ps(yf_lo, e2_lo));
     __m128i sc_lo = _mm_slli_epi32(_mm_add_epi32(n_lo, _mm_set1_epi32(127)), 23);
     __m128 res_lo = _mm_and_ps(pos_lo, _mm_mul_ps(_mm_castsi128_ps(sc_lo), exp2_lo));
 
@@ -747,22 +768,29 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_pow_inv24(alwan_simd_f32 x) {
     __m128 e_hi = _mm_cvtepi32_ps(exp_hi);
     __m128i mant_hi = _mm_or_si128(_mm_and_si128(iv_hi, _mm_set1_epi32(0x007FFFFF)), _mm_set1_epi32(0x3F800000));
     __m128 m_hi = _mm_castsi128_ps(mant_hi);
-    __m128 t_hi = _mm_sub_ps(m_hi, _mm_set1_ps(1.0f));
-    __m128 log2_hi = _mm_mul_ps(t_hi, _mm_add_ps(_mm_set1_ps(1.44269504f),
-                     _mm_mul_ps(t_hi, _mm_add_ps(_mm_set1_ps(-0.72134752f),
-                     _mm_mul_ps(t_hi, _mm_add_ps(_mm_set1_ps(0.48089835f),
-                     _mm_mul_ps(t_hi, _mm_add_ps(_mm_set1_ps(-0.36067376f),
-                     _mm_mul_ps(t_hi, _mm_set1_ps(0.28854314f))))))))));
+    __m128 one_hi = _mm_set1_ps(1.0f);
+    __m128 s_hi  = _mm_div_ps(_mm_sub_ps(m_hi, one_hi), _mm_add_ps(m_hi, one_hi));
+    __m128 s2_hi = _mm_mul_ps(s_hi, s_hi);
+    __m128 lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/11.0f), _mm_mul_ps(s2_hi, _mm_set1_ps(1.0f/13.0f)));
+    lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/9.0f), _mm_mul_ps(s2_hi, lp_hi));
+    lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/7.0f), _mm_mul_ps(s2_hi, lp_hi));
+    lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/5.0f), _mm_mul_ps(s2_hi, lp_hi));
+    lp_hi = _mm_add_ps(_mm_set1_ps(1.0f/3.0f), _mm_mul_ps(s2_hi, lp_hi));
+    lp_hi = _mm_add_ps(one_hi, _mm_mul_ps(s2_hi, lp_hi));
+    __m128 log2_hi = _mm_mul_ps(_mm_set1_ps(2.8853901f), _mm_mul_ps(s_hi, lp_hi));
     __m128 y_hi = _mm_mul_ps(_mm_set1_ps(1.0f / 2.4f), _mm_add_ps(e_hi, log2_hi));
     __m128 yi_hi = _mm_floor_ps(y_hi);
     __m128 yf_hi = _mm_sub_ps(y_hi, yi_hi);
     __m128i n_hi = _mm_cvttps_epi32(yi_hi);
-    __m128 exp2_hi = _mm_add_ps(_mm_set1_ps(1.0f),
-                     _mm_mul_ps(yf_hi, _mm_add_ps(_mm_set1_ps(0.69314718f),
-                     _mm_mul_ps(yf_hi, _mm_add_ps(_mm_set1_ps(0.24022651f),
-                     _mm_mul_ps(yf_hi, _mm_add_ps(_mm_set1_ps(0.05550411f),
-                     _mm_mul_ps(yf_hi, _mm_add_ps(_mm_set1_ps(0.00961813f),
-                     _mm_mul_ps(yf_hi, _mm_set1_ps(0.00133335f)))))))))));
+    __m128 e2_hi = _mm_add_ps(_mm_set1_ps(1.5252734e-05f),
+                   _mm_mul_ps(yf_hi, _mm_set1_ps(1.3215487e-06f)));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.00015403530f), _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.0013333558f),  _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.009618129f),   _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.055504109f),   _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.24022651f),    _mm_mul_ps(yf_hi, e2_hi));
+    e2_hi = _mm_add_ps(_mm_set1_ps(0.6931472f),     _mm_mul_ps(yf_hi, e2_hi));
+    __m128 exp2_hi = _mm_add_ps(_mm_set1_ps(1.0f), _mm_mul_ps(yf_hi, e2_hi));
     __m128i sc_hi = _mm_slli_epi32(_mm_add_epi32(n_hi, _mm_set1_epi32(127)), 23);
     __m128 res_hi = _mm_and_ps(pos_hi, _mm_mul_ps(_mm_castsi128_ps(sc_hi), exp2_hi));
 
@@ -817,7 +845,7 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_cbrt_fast(alwan_simd_f32 x) {
  * ================================================================ */
 
 /* Process one 128-bit half: ALWAN_POW_F64(v_half, exp_val) via log2/exp2 */
-static ALWAN_INLINE __m128d alwan__f64_pow_half(__m128d x_half, double exp_val) {
+ALWAN_INLINE __m128d alwan__f64_pow_half(__m128d x_half, double exp_val) {
     __m128d zero   = _mm_setzero_pd();
     __m128d v      = _mm_max_pd(x_half, zero);
     __m128d is_pos = _mm_cmpgt_pd(v, zero);
@@ -834,12 +862,18 @@ static ALWAN_INLINE __m128d alwan__f64_pow_half(__m128d x_half, double exp_val) 
         _mm_and_si128(iv, _mm_set1_epi64x(0x000FFFFFFFFFFFFFLL)),
         _mm_set1_epi64x(0x3FF0000000000000LL));
     __m128d m  = _mm_castsi128_pd(mant_bits);
-    __m128d t  = _mm_sub_pd(m, _mm_set1_pd(1.0));
-    __m128d log2_m = _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(1.4426950408889634),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.7213475204049363),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(0.4808983469618909),
-                     _mm_mul_pd(t, _mm_add_pd(_mm_set1_pd(-0.3606737602744954),
-                     _mm_mul_pd(t, _mm_set1_pd(0.28854301595785953))))))))));
+    __m128d one_l = _mm_set1_pd(1.0);
+    __m128d s  = _mm_div_pd(_mm_sub_pd(m, one_l), _mm_add_pd(m, one_l));
+    __m128d s2 = _mm_mul_pd(s, s);
+    __m128d lp = _mm_add_pd(_mm_set1_pd(1.0/15.0), _mm_mul_pd(s2, _mm_set1_pd(1.0/17.0)));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/13.0), _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/11.0), _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/9.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/7.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/5.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(_mm_set1_pd(1.0/3.0),  _mm_mul_pd(s2, lp));
+    lp = _mm_add_pd(one_l, _mm_mul_pd(s2, lp));
+    __m128d log2_m = _mm_mul_pd(_mm_set1_pd(2.8853900817779268), _mm_mul_pd(s, lp));
     __m128d y  = _mm_mul_pd(_mm_set1_pd(exp_val), _mm_add_pd(e, log2_m));
 #if defined(__SSE4_1__)
     __m128d yi = _mm_floor_pd(y);
@@ -850,12 +884,17 @@ static ALWAN_INLINE __m128d alwan__f64_pow_half(__m128d x_half, double exp_val) 
     __m128d yi = _mm_sub_pd(tc, adj);
 #endif
     __m128d yf = _mm_sub_pd(y, yi);
-    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.6931471805599453),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.24022650695910071),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.05550410866482158),
-                    _mm_mul_pd(yf, _mm_add_pd(_mm_set1_pd(0.009618129107628477),
-                    _mm_mul_pd(yf, _mm_set1_pd(0.0013333558146428443)))))))))));
+    __m128d e2 = _mm_add_pd(_mm_set1_pd(1.0178086009239696e-07),
+                 _mm_mul_pd(yf, _mm_set1_pd(7.0549116208011209e-09)));
+    e2 = _mm_add_pd(_mm_set1_pd(1.3215486790144305e-06), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(1.5252733804059838e-05), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.00015403530393381606), _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.0013333558146428441),  _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.0096181291076284769),  _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.055504108664821576),   _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.24022650695910069),    _mm_mul_pd(yf, e2));
+    e2 = _mm_add_pd(_mm_set1_pd(0.69314718055994529),    _mm_mul_pd(yf, e2));
+    __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),         _mm_mul_pd(yf, e2));
     __m128i yi_i32  = _mm_cvttpd_epi32(yi);
     __m128i yi_sign = _mm_srai_epi32(yi_i32, 31);
     __m128i yi_i64  = _mm_unpacklo_epi32(yi_i32, yi_sign);

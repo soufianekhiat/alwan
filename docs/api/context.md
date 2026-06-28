@@ -1,6 +1,8 @@
 # Context Management API
 
-Context objects (`alwan_ctx`) manage library state, memory allocation, and reference data.
+Context objects (`alwan_ctx`) manage library state and memory allocation.
+
+Functions that take a `ctx` (e.g. `alwan_rgb_get_space_descriptor`, `alwan_rgb_convert`) need it to resolve the **embedded RGB color-space registry** — the primaries/whitepoint/transfer-function descriptors compiled into the binary from `src/alwan/data/**`. The context does **not** load anything from disk at runtime; it is the handle through which the embedded tables and the allocator are accessed. Per the v2.0 parameter convention, `ctx` is always the **last** argument (or absent on `_v` value-typed math).
 
 > **Note:** Runtime data loading (`runtime_data_root`) is NOT implemented. Only embedded mode (`ALWAN_EMBED_DATA=1`, the default) is supported. Runtime mode is planned for alwan 3.0.0.
 
@@ -98,7 +100,19 @@ Configuration for context creation.
 **Fields:**
 
 #### `alloc_cb`
-Custom allocation callback.
+Custom allocation callback for **context-lifetime** allocations — the context
+object itself and any data it owns (e.g. a copied `runtime_data_root`).
+
+> **Scope:** `alloc_cb`/`free_cb` govern context-lifetime allocations. The
+> transient scratch buffers used inside colour-math routines (SPD integration,
+> matrix solves, LUT baking, file I/O, etc.) are routed through the
+> compile-time `ALWAN_ALLOC`/`ALWAN_FREE` hooks instead, which are the canonical
+> library-wide allocation override. Define them at build time to replace the
+> allocator everywhere:
+> ```c
+> #define ALWAN_ALLOC(sz, align) my_aligned_alloc((sz), (align))
+> #define ALWAN_FREE(p)          my_free((p))
+> ```
 
 **Signature:**
 ```c
@@ -112,7 +126,7 @@ void* alloc_cb(size_t size, size_t align);
 **Returns:**
 - Pointer to aligned memory, or `NULL` on failure
 
-**Default:** System `malloc` (ignores alignment on platforms without aligned allocation)
+**Default:** `alwan_default_alloc` (aligned allocation; falls back to `malloc`)
 
 **Example:**
 ```c
@@ -209,16 +223,16 @@ alwan_destroy(ctx);
 // Create one shared context
 alwan_ctx *shared_ctx = alwan_create(NULL);
 
-/* Get descriptors once (thread-safe read) */
+/* Get descriptors once (thread-safe read; ctx is LAST) */
 alwan_rgb_space_desc_{T} srgb_desc, bt2020_desc;
-alwan_rgb_get_space_descriptor_{T}(&srgb_desc, shared_ctx, ALWAN_RGB_SPACE_SRGB);
-alwan_rgb_get_space_descriptor_{T}(&bt2020_desc, shared_ctx, ALWAN_RGB_SPACE_BT2020);
+alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ALWAN_RGB_SPACE_SRGB, shared_ctx);
+alwan_rgb_get_space_descriptor_{T}(&bt2020_desc, ALWAN_RGB_SPACE_BT2020, shared_ctx);
 
 /* Use from multiple threads (read-only operations) */
 #pragma omp parallel for
 for (int i = 0; i < n; i++) {
-    /* Safe: read-only color space conversion */
-    alwan_rgb_convert_{T}(&out[i], shared_ctx, &srgb_desc, &bt2020_desc, &rgb[i]);
+    /* Safe: read-only color space conversion (ctx is LAST) */
+    alwan_rgb_convert_{T}(&out[i], &srgb_desc, &bt2020_desc, &rgb[i], shared_ctx);
 }
 
 alwan_destroy(shared_ctx);
@@ -304,7 +318,7 @@ Most API functions handle `NULL` context gracefully:
 alwan_destroy(NULL);  // Safe, does nothing
 
 // Functions requiring context will return error
-int status = alwan_rgb_convert(&rgb_out, NULL, &src_desc, &dst_desc, &rgb_in);
+int status = alwan_rgb_convert(&rgb_out, &src_desc, &dst_desc, &rgb_in, NULL);
 // status == ALWAN_E_INVALID
 ```
 

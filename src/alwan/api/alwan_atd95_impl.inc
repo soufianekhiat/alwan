@@ -9,11 +9,8 @@ int ALWAN_CORE_FNLIT(alwan_atd95_forward)(
         return ALWAN_E_INVALID;
     }
 
-    /* Always call f64 core; cast inputs to f64. */
-    alwan_xyz_f64 xyz64 = { (alwan_f64)xyz->x, (alwan_f64)xyz->y, (alwan_f64)xyz->z };
-    alwan_xyz_f64 white64 = { (alwan_f64)vc->white_xyz.x, (alwan_f64)vc->white_xyz.y, (alwan_f64)vc->white_xyz.z };
-    alwan_atd95_v_correlates_f64 v = alwan_atd95_forward_f64_v(
-        xyz64, white64, (alwan_f64)vc->Y_0, (alwan_f64)vc->k1, (alwan_f64)vc->k2, (alwan_f64)vc->sigma
+    ALWAN_CORE_FNLIT(alwan_atd95_v_correlates) v = ALWAN_CORE_FNVLIT(alwan_atd95_forward)(
+        *xyz, vc->white_xyz, vc->Y_0, vc->k1, vc->k2, vc->sigma
     );
 
     out->H   = (ALWAN_CORE_T)v.H;

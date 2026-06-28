@@ -46,17 +46,68 @@ static inline size_t alwan_safe_array_size(size_t count, size_t elem_size) {
 
 #if ALWAN_EMBED_DATA
 
-/* CAT matrices (3x3 = 9 elements) */
-extern alwan_f64 const g_cat_bradford[9];
-extern alwan_f64 const g_cat_cat02[9];
-extern alwan_f64 const g_cat_cat16[9];
-extern alwan_f64 const g_cat_sharp[9];
-extern alwan_f64 const g_cat_fairchild[9];
-extern alwan_f64 const g_cat_cmccat97[9];
-extern alwan_f64 const g_cat_cmccat2000[9];
-extern alwan_f64 const g_cat_cat02_brill_2008[9];
-extern alwan_f64 const g_cat_bianco_2010[9];
-extern alwan_f64 const g_cat_bianco_pc_2010[9];
+/* CAT matrices (3x3 = 9 elements). Dual f32/f64 twins so the templated
+ * f32 path reads native float data; ALWAN_CORE_FNLIT(g_cat_NAME) selects. */
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_bradford_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_bradford_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_cat02_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_cat02_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_cat16_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_cat16_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_sharp_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_sharp_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_fairchild_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_fairchild_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_cmccat97_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_cmccat97_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_cmccat2000_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_cmccat2000_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_cat02_brill_2008_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_cat02_brill_2008_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_bianco_2010_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_bianco_2010_f64[9];
+#endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_bianco_pc_2010_f32[9];
+#endif
+#if ALWAN_WITH_F64
+extern alwan_f64 const g_cat_bianco_pc_2010_f64[9];
+#endif
 
 /* CAM matrices (Hunt-Pointer-Estevez) */
 extern alwan_f64 const g_hpe[9];

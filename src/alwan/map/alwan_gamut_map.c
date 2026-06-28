@@ -12,19 +12,25 @@
 #include "alwan_map_internal.h"
 #include "../core/alwan_gamut_core.h"
 
+#if ALWAN_WITH_F32
 /* === f32 pass === */
 #define ALWAN_MAP_F32
 #include "alwan_map_simd_defs.h"
 #include "alwan_map_simd_helpers.inc"
 #include "alwan_gamut_map_kernels.inc"
 #include "alwan_map_simd_undef.h"
+#endif
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
+ * (the always-compiled gamut-map _ex delegates dispatch to the f64 kernels). */
+#if ALWAN_WITH_F64_FACADE
 /* === f64 pass === */
 #define ALWAN_MAP_F64
 #include "alwan_map_simd_defs.h"
 #include "alwan_map_simd_helpers.inc"
 #include "alwan_gamut_map_kernels.inc"
 #include "alwan_map_simd_undef.h"
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* ================================================================
  * Backward-compatible aliases (unsuffixed -> compile-time selected)

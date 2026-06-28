@@ -33,10 +33,8 @@ int alwan_hero_wavelength_sample_f32(alwan_f32 *lambda_out, alwan_f32 u) {
 
 void alwan_hero_wavelength_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_f32 lambda) {
     if (!xyz_out) return;
-    alwan_xyz_f64 result = alwan_hero_wavelength_to_xyz_f64_v((alwan_f64)lambda);
-    xyz_out->x = (float)result.x;
-    xyz_out->y = (float)result.y;
-    xyz_out->z = (float)result.z;
+    alwan_xyz_f32 result = alwan_hero_wavelength_to_xyz_f32_v(lambda);
+    *xyz_out = result;
 }
 
 void alwan_hero_wavelength_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_f64 lambda) {

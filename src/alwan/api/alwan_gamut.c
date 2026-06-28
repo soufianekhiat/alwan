@@ -41,6 +41,8 @@ static alwan_f64 alwan_rng_uniform(alwan_rng *rng) {
  * M11: Gamut Volume Estimation (Monte Carlo)
  * ---------------------------------------------------------------- */
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
+#if ALWAN_WITH_F64_FACADE
 int alwan_gamut_volume_mc_f64(alwan_f64 *volume,
                           alwan_rgb_space_desc_f64 const *space,
                           size_t num_samples,
@@ -72,6 +74,7 @@ int alwan_gamut_volume_mc_f64(alwan_f64 *volume,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* ----------------------------------------------------------------
  * M11: Gamut Mapping
@@ -186,6 +189,7 @@ int alwan_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_
 }
 
 /* Map XYZ to RGB gamut with hue preservation */
+#if ALWAN_WITH_F64
 int alwan_gamut_map_xyz_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *space, alwan_xyz_f64 const *xyz_in, alwan_ctx *ctx) {
     (void)ctx;  /* Reserved for future use */
 
@@ -218,6 +222,7 @@ int alwan_gamut_map_xyz_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_
 
     return ALWAN_OK;
 }
+#endif
 
 /* ================================================================
  * Gamut Analysis & Mapping
@@ -531,6 +536,8 @@ int alwan_complementary_wavelength_f64(alwan_f64 *wavelength_out,
  * Gamut Coverage Metrics
  * ---------------------------------------------------------------- */
 
+/* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
+#if ALWAN_WITH_F64_FACADE
 int alwan_gamut_volume_ratio_f64(alwan_f64 *ratio_out,
                                alwan_rgb_space_desc_f64 const *space1,
                                alwan_rgb_space_desc_f64 const *space2) {
@@ -627,6 +634,7 @@ int alwan_gamut_coverage_f64(alwan_f64 *coverage_out,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* ================================================================
  * Advanced Gamut Mapping
@@ -1024,6 +1032,7 @@ ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_css_gamut_map_planar_ex,
  * Convert the f32 space descriptors to f64 and delegate.
  * ================================================================ */
 
+#if ALWAN_WITH_F32
 static void rgb_space_desc_f32_to_f64(alwan_rgb_space_desc_f64 *out, alwan_rgb_space_desc_f32 const *in) {
     for (int j = 0; j < 6; j++) out->primaries_xy[j] = (double)in->primaries_xy[j];
     out->white_xy[0] = (double)in->white_xy[0];
@@ -1049,25 +1058,72 @@ int alwan_gamut_volume_mc_f32(alwan_f32 *volume,
     if (rc == ALWAN_OK) *volume = (alwan_f32)vol_f64;
     return rc;
 }
+#endif /* ALWAN_WITH_F32 */
 
-int alwan_gamut_map_xyz_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *space, alwan_xyz_f32 const *xyz_in, alwan_ctx *ctx) {
-    if (!space || !xyz_in || !rgb_out) return ALWAN_E_INVALID;
-    alwan_rgb_space_desc_f64 tmp;
-    rgb_space_desc_f32_to_f64(&tmp, space);
-    alwan_xyz_f64 xyz64;
-    xyz64.x = (double)xyz_in->x;
-    xyz64.y = (double)xyz_in->y;
-    xyz64.z = (double)xyz_in->z;
-    alwan_rgb_f64 rgb64;
-    int rc = alwan_gamut_map_xyz_to_rgb_f64(&rgb64, &tmp, &xyz64, ctx);
-    if (rc == ALWAN_OK) {
-        rgb_out->r = (float)rgb64.r;
-        rgb_out->g = (float)rgb64.g;
-        rgb_out->b = (float)rgb64.b;
+#if ALWAN_WITH_F32
+/* Hue-preserving gamut mapping, native f32 (mirrors gamut_map_hue_preserving_single).
+ * XYZ->RGB is a genuine per-element colour transform, so it computes in float
+ * throughout rather than widening to double. The gamut *metrics* below
+ * (volume/coverage) intentionally stay f64-internal — they are scalar
+ * reductions where single precision costs accuracy for no benefit. */
+static void gamut_map_hue_preserving_single_f32(alwan_vec3_f32 const *rgb_in, alwan_vec3_f32 *rgb_out) {
+    if (rgb_in->v[0] >= 0.0f && rgb_in->v[0] <= 1.0f &&
+        rgb_in->v[1] >= 0.0f && rgb_in->v[1] <= 1.0f &&
+        rgb_in->v[2] >= 0.0f && rgb_in->v[2] <= 1.0f) {
+        *rgb_out = *rgb_in;
+        return;
     }
-    return rc;
+
+    alwan_f32 const L = (alwan_f32)ALWAN_LUMA_KR_BT709 * rgb_in->v[0] +
+                        (alwan_f32)ALWAN_LUMA_KG_BT709 * rgb_in->v[1] +
+                        (alwan_f32)ALWAN_LUMA_KB_BT709 * rgb_in->v[2];
+    alwan_f32 const L_clamped = (L < 0.0f) ? 0.0f : (L > 1.0f) ? 1.0f : L;
+
+    alwan_f32 t_min = 0.0f, t_max = 1.0f;
+    alwan_vec3_f32 neutral;
+    neutral.v[0] = neutral.v[1] = neutral.v[2] = L_clamped;
+    *rgb_out = neutral;
+
+    for (int iter = 0; iter < 20; iter++) {
+        alwan_f32 const t = (t_min + t_max) * 0.5f;
+        alwan_vec3_f32 test;
+        test.v[0] = t * rgb_in->v[0] + (1.0f - t) * neutral.v[0];
+        test.v[1] = t * rgb_in->v[1] + (1.0f - t) * neutral.v[1];
+        test.v[2] = t * rgb_in->v[2] + (1.0f - t) * neutral.v[2];
+        if (test.v[0] >= 0.0f && test.v[0] <= 1.0f &&
+            test.v[1] >= 0.0f && test.v[1] <= 1.0f &&
+            test.v[2] >= 0.0f && test.v[2] <= 1.0f) {
+            t_min = t; *rgb_out = test;
+        } else {
+            t_max = t;
+        }
+    }
 }
 
+int alwan_gamut_map_xyz_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *space, alwan_xyz_f32 const *xyz_in, alwan_ctx *ctx) {
+    (void)ctx;  /* Reserved for future use */
+    if (!space || !xyz_in || !rgb_out) return ALWAN_E_INVALID;
+
+    alwan_mat3x3_f32 rgb_to_xyz, xyz_to_rgb;
+    int status = alwan_rgb_derive_matrices_f32(&rgb_to_xyz, &xyz_to_rgb, space);
+    if (status != ALWAN_OK) return status;
+
+    alwan_vec3_f32 xyz_vec, rgb_raw, rgb_mapped;
+    xyz_vec.v[0] = xyz_in->x;
+    xyz_vec.v[1] = xyz_in->y;
+    xyz_vec.v[2] = xyz_in->z;
+
+    alwan_mat3_mulv_f32(&rgb_raw, &xyz_to_rgb, &xyz_vec);
+    gamut_map_hue_preserving_single_f32(&rgb_raw, &rgb_mapped);
+
+    rgb_out->r = rgb_mapped.v[0];
+    rgb_out->g = rgb_mapped.v[1];
+    rgb_out->b = rgb_mapped.v[2];
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F32 */
+
+#if ALWAN_WITH_F32
 int alwan_gamut_volume_ratio_f32(alwan_f32 *ratio_out,
                                alwan_rgb_space_desc_f32 const *space1,
                                alwan_rgb_space_desc_f32 const *space2) {
@@ -1095,3 +1151,4 @@ int alwan_gamut_coverage_f32(alwan_f32 *coverage_out,
     if (rc == ALWAN_OK) *coverage_out = (alwan_f32)cov64;
     return rc;
 }
+#endif /* ALWAN_WITH_F32 */

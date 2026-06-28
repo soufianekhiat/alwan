@@ -18,71 +18,26 @@
 /* ----------------------------------------------------------------
  * CAT Matrix Accessors
  * Load cone-response matrices from embedded global data arrays.
+ *
+ * The templated alwan_cat_matrix path selects its matrix directly from the
+ * native-precision data twin (g_cat_NAME_f32 / g_cat_NAME_f64) inside
+ * alwan_cat_impl.inc. Only the f64-only Zhai 2018 path below needs an
+ * accessor, so just CAT02 and CAT16 are kept here (reading the _f64 twin).
  * ---------------------------------------------------------------- */
 
-/* Bradford CAT matrix (most common, used in ICC profiles)
- * Data defined in alwan_data.c */
-static void get_bradford_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_bradford, sizeof(g_cat_bradford));
-}
-
+#if ALWAN_WITH_F64
 /* CAT02 matrix (from CIECAM02)
  * Data defined in alwan_data.c */
 static void get_cat02_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_cat02, sizeof(g_cat_cat02));
+    memcpy(out->m, g_cat_cat02_f64, sizeof(g_cat_cat02_f64));
 }
 
 /* CAT16 matrix (from CAM16)
  * Data defined in alwan_data.c */
 static void get_cat16_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_cat16, sizeof(g_cat_cat16));
+    memcpy(out->m, g_cat_cat16_f64, sizeof(g_cat_cat16_f64));
 }
-
-/* ----------------------------------------------------------------
- * Extended CAT Matrix Accessors
- * ---------------------------------------------------------------- */
-
-/* Sharp CAT matrix
- * Data defined in alwan_data.c */
-static void get_sharp_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_sharp, sizeof(g_cat_sharp));
-}
-
-/* Fairchild 1990 CAT matrix
- * Data defined in alwan_data.c */
-static void get_fairchild_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_fairchild, sizeof(g_cat_fairchild));
-}
-
-/* CMCCAT97 matrix
- * Data defined in alwan_data.c */
-static void get_cmccat97_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_cmccat97, sizeof(g_cat_cmccat97));
-}
-
-/* CMCCAT2000 matrix
- * Data defined in alwan_data.c */
-static void get_cmccat2000_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_cmccat2000, sizeof(g_cat_cmccat2000));
-}
-
-/* CAT02 Brill 2008 variant matrix
- * Data defined in alwan_data.c */
-static void get_cat02_brill_2008_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_cat02_brill_2008, sizeof(g_cat_cat02_brill_2008));
-}
-
-/* Bianco 2010 CAT matrix
- * Data defined in alwan_data.c */
-static void get_bianco_2010_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_bianco_2010, sizeof(g_cat_bianco_2010));
-}
-
-/* Bianco PC 2010 CAT matrix
- * Data defined in alwan_data.c */
-static void get_bianco_pc_2010_matrix(alwan_mat3x3_f64 *out) {
-    memcpy(out->m, g_cat_bianco_pc_2010, sizeof(g_cat_bianco_pc_2010));
-}
+#endif /* ALWAN_WITH_F64 */
 
 /* ----------------------------------------------------------------
  * CAT Matrix Computation
@@ -90,16 +45,20 @@ static void get_bianco_pc_2010_matrix(alwan_mat3x3_f64 *out) {
  * calls the core value-returning functions.
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 #include "alwan_api_f32_setup.h"
 #include "alwan_cat_impl.inc"
 #include "alwan_api_teardown.h"
 ALWAN_DIAG_POP
+#endif
 
+#if ALWAN_WITH_F64
 #include "alwan_api_f64_setup.h"
 #include "alwan_cat_impl.inc"
 #include "alwan_api_teardown.h"
+#endif
 
 /* ----------------------------------------------------------------
  * Bulk Chromatic Adaptation
@@ -109,6 +68,7 @@ ALWAN_DIAG_POP
  * header-only core.
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_F64
 int alwan_xyz_adapt_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f64 const *src_white_xyz, alwan_xyz_f64 const *dst_white_xyz, alwan_cat_method method) {
     if (!xyz_in || !xyz_out || !src_white_xyz || !dst_white_xyz) {
         return ALWAN_E_INVALID;
@@ -199,3 +159,4 @@ int alwan_cat_zhai2018_f64(alwan_xyz_f64 *xyz_out,
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F64 */

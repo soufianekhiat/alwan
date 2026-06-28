@@ -44,12 +44,14 @@
 #  define ALWAN_CORE_BT2020_OETF(x)  alwan_det_bt2020_oetf_f32(x)
 #  define ALWAN_CORE_BT2020_EOTF(x)  alwan_det_bt2020_eotf_f32(x)
 #else
+/* Fast mode: scalar pow twins of the SIMD kernels (alwan_fast_pow*_f32) so the
+ * scalar _v path matches the polynomial SIMD map path on non-SVML platforms. */
 #  define ALWAN_CORE_SRGB_OETF(x)  ((x) <= ALWAN_LITERAL_F32(0.0031308) ? \
         (x) * ALWAN_LITERAL_F32(12.92) : \
-        ALWAN_LITERAL_F32(1.055) * ALWAN_POW_F32((x), ALWAN_LITERAL_F32(1.0)/ALWAN_LITERAL_F32(2.4)) - ALWAN_LITERAL_F32(0.055))
+        ALWAN_LITERAL_F32(1.055) * alwan_fast_pow_inv24_f32(x) - ALWAN_LITERAL_F32(0.055))
 #  define ALWAN_CORE_SRGB_EOTF(x)  ((x) <= ALWAN_LITERAL_F32(0.04045) ? \
         (x) / ALWAN_LITERAL_F32(12.92) : \
-        ALWAN_POW_F32(((x) + ALWAN_LITERAL_F32(0.055)) / ALWAN_LITERAL_F32(1.055), ALWAN_LITERAL_F32(2.4)))
+        alwan_fast_pow24_f32(((x) + ALWAN_LITERAL_F32(0.055)) / ALWAN_LITERAL_F32(1.055)))
 #  define ALWAN_CORE_BT2020_OETF(x)  ((x) < ALWAN_LITERAL_F32(0.018) ? \
         (x) * ALWAN_LITERAL_F32(4.5) : \
         ALWAN_LITERAL_F32(1.099) * ALWAN_POW_F32((x), ALWAN_LITERAL_F32(0.45)) - ALWAN_LITERAL_F32(0.099))

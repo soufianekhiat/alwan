@@ -11,6 +11,7 @@
 #define ALWAN_TYPES_H
 
 #include "alwan_platform.h"
+#include "alwan_build_config.h"  /* ALWAN_WITH_F32 / ALWAN_WITH_F64 precision gates */
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
 /* ================================================================

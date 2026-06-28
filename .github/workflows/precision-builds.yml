@@ -1,0 +1,21 @@
+name: Precision builds
+# Verify the library compiles in each single-precision configuration
+# (ALWAN_BUILD_ONLY_F32 / ALWAN_BUILD_ONLY_F64) in addition to the default
+# dual-precision build covered by the platform CI jobs.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  single-precision:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        precision: [f32, f64]
+    name: ${{ matrix.precision }}-only
+    steps:
+      - uses: actions/checkout@v5
+      - run: cmake -B build -DALWAN_BUILD_PRECISION=${{ matrix.precision }} -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=ON
+      - run: cmake --build build --config Release
