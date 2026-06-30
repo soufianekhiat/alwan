@@ -37,13 +37,18 @@
 #define ALWAN_CORE_ATAN2(y, x)  ALWAN_ATAN2_F32(y, x)
 #define ALWAN_CORE_POW(x, y)    ALWAN_POW_F32(x, y)
 #define ALWAN_CORE_EXP(x)       ALWAN_EXP_F32(x)
-/* Deterministic-aware sRGB primitives. road_to_determinism.md §6.2. */
+/* Deterministic-aware sRGB primitives. road_to_determinism.md sec 6.2.
+ * Pull in the helper that backs the selected branch so header-only consumers
+ * (image_gen, GPU bootstraps, external users) are self-contained instead of
+ * relying on a .c TU having included it first. Both headers are guarded. */
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#  include "alwan_deterministic.h"
 #  define ALWAN_CORE_SRGB_OETF(x)    alwan_det_srgb_oetf_f32(x)
 #  define ALWAN_CORE_SRGB_EOTF(x)    alwan_det_srgb_eotf_f32(x)
 #  define ALWAN_CORE_BT2020_OETF(x)  alwan_det_bt2020_oetf_f32(x)
 #  define ALWAN_CORE_BT2020_EOTF(x)  alwan_det_bt2020_eotf_f32(x)
 #else
+#  include "alwan_fast_pow.h"
 /* Fast mode: scalar pow twins of the SIMD kernels (alwan_fast_pow*_f32) so the
  * scalar _v path matches the polynomial SIMD map path on non-SVML platforms. */
 #  define ALWAN_CORE_SRGB_OETF(x)  ((x) <= ALWAN_LITERAL_F32(0.0031308) ? \

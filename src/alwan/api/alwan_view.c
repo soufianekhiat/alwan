@@ -20,7 +20,7 @@
 #include <string.h>
 
 /* ----------------------------------------------------------------
- * Shared constant data — defined once at f64 precision and read at the
+ * Shared constant data -- defined once at f64 precision and read at the
  * active precision from the templated impl (with per-element casts).
  * ---------------------------------------------------------------- */
 ALWAN_DIAG_PUSH
@@ -53,7 +53,7 @@ static alwan_f64 const agx_outset_matrix[9] = {
 #include "../data/matrices/agx_outset.csv"
 };
 
-/* AgX Default Contrast LUT — from sobotka/AgX config.ocio.
+/* AgX Default Contrast LUT -- from sobotka/AgX config.ocio.
  * Defines agx_default_contrast_lut[] and AGX_LUT_SIZE. */
 #include "../data/agx_default_contrast_lut.h"
 

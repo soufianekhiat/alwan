@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 void ALWAN_CORE_FNLIT(alwan_hlg_ootf)(ALWAN_CORE_RGB *out, ALWAN_CORE_RGB const *in,
                                       ALWAN_CORE_T Lw, ALWAN_CORE_T gamma_sys) {

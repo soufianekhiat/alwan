@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 void ALWAN_CORE_FNLIT(alwan_xyz_to_jzazbz)(ALWAN_CORE_JZAZBZ *jzazbz, ALWAN_CORE_XYZ const *xyz) {
     *jzazbz = ALWAN_CORE_FNVLIT(alwan_xyz_to_jzazbz)(*xyz);

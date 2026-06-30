@@ -3,8 +3,8 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Image colour-space conversion — templated over descriptor precision.
- * No include guard — included twice (f32 and f64 passes).
+ * Image colour-space conversion -- templated over descriptor precision.
+ * No include guard -- included twice (f32 and f64 passes).
  *
  * Templating contract:
  *   - The RGB-space DESCRIPTOR and the combined-matrix construction are in

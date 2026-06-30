@@ -1,4 +1,4 @@
-﻿/* ================================================================
+/* ================================================================
  * Alwan - Light Quality & CCT
  * CCT/whiteness formulas in alwan_quality_core.h
  *
@@ -803,8 +803,8 @@ static alwan_f64 const *ces_reflectances[80] = {
  *    a. Compute XYZ under test illuminant
  *    b. Compute XYZ under reference illuminant
  *    c. Convert to U*V*W* color space (CIE 1964)
- *    d. Calculate color difference Î”E in U*V*W*
- *    e. Calculate special CRI: R_i = 100 - 4.6 * Î”E_i
+ *    d. Calculate color difference dE in U*V*W*
+ *    e. Calculate special CRI: R_i = 100 - 4.6 * dE_i
  * 4. Ra = average of R1...R8
  *
  * Returns: Ra value (0-100), or negative on error
@@ -964,7 +964,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         alwan_xyz_to_uvw_f64(&uvw_test, &xyz_test, &xyz_test_white);
         alwan_xyz_to_uvw_f64(&uvw_ref, &xyz_ref, &xyz_ref_white);
 
-        /* Calculate color difference Î”E in U*V*W* space */
+        /* Calculate color difference dE in U*V*W* space */
         alwan_f64 du = uvw_test.U - uvw_ref.U;
         alwan_f64 dv = uvw_test.V - uvw_ref.V;
         alwan_f64 dw = uvw_test.W - uvw_ref.W;
@@ -972,7 +972,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         /* Empirical scaling factor based on CIE 1964 U*V*W* space calibration */
         alwan_f64 delta_e = delta_e_raw / ALWAN_LITERAL(15.5);
 
-        /* Calculate special CRI: R_i = 100 - 4.6 * Î”E */
+        /* Calculate special CRI: R_i = 100 - 4.6 * dE */
         r_values[i] = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(4.6) * delta_e;
     }
 
@@ -996,23 +996,23 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
 
 /* ASTM E313 coefficient table for Yellowness Index
  * Format: Cx, Cz for each illuminant/observer pair
- * Order: C/2Â°, D65/2Â°, C/10Â°, D65/10Â° */
+ * Order: C/2 deg, D65/2 deg, C/10 deg, D65/10 deg */
 static alwan_f64 const astm_e313_yi_coeffs[][2] = {
-    {ALWAN_LITERAL(1.2769), ALWAN_LITERAL(1.0592)},  /* C/2Â° */
-    {ALWAN_LITERAL(1.2985), ALWAN_LITERAL(1.1335)},  /* D65/2Â° */
-    {ALWAN_LITERAL(1.2871), ALWAN_LITERAL(1.0781)},  /* C/10Â° */
-    {ALWAN_LITERAL(1.3013), ALWAN_LITERAL(1.1498)}   /* D65/10Â° */
+    {ALWAN_LITERAL(1.2769), ALWAN_LITERAL(1.0592)},  /* C/2 deg */
+    {ALWAN_LITERAL(1.2985), ALWAN_LITERAL(1.1335)},  /* D65/2 deg */
+    {ALWAN_LITERAL(1.2871), ALWAN_LITERAL(1.0781)},  /* C/10 deg */
+    {ALWAN_LITERAL(1.3013), ALWAN_LITERAL(1.1498)}   /* D65/10 deg */
 };
 
 /* ASTM E313 reference white chromaticity coordinates
  * Format: xn, yn for each illuminant/observer pair
- * Order: C/2Â°, D65/2Â°, C/10Â°, D65/10Â°
+ * Order: C/2 deg, D65/2 deg, C/10 deg, D65/10 deg
  * Values from colour-science library (CCS_ILLUMINANTS) */
 static alwan_f64 const astm_e313_white_xy[][2] = {
-    {ALWAN_LITERAL(0.31006), ALWAN_LITERAL(0.31616)},  /* C/2Â° */
-    {ALWAN_D65_x, ALWAN_D65_y},                        /* D65/2Â° */
-    {ALWAN_LITERAL(0.31039), ALWAN_LITERAL(0.31905)},  /* C/10Â° */
-    {ALWAN_LITERAL(0.31382), ALWAN_LITERAL(0.33100)}   /* D65/10Â° */
+    {ALWAN_LITERAL(0.31006), ALWAN_LITERAL(0.31616)},  /* C/2 deg */
+    {ALWAN_D65_x, ALWAN_D65_y},                        /* D65/2 deg */
+    {ALWAN_LITERAL(0.31039), ALWAN_LITERAL(0.31905)},  /* C/10 deg */
+    {ALWAN_LITERAL(0.31382), ALWAN_LITERAL(0.33100)}   /* D65/10 deg */
 };
 
 /* ASTM E313 Yellowness Index
@@ -1066,6 +1066,182 @@ alwan_f64 alwan_whiteness_cie2004_f64(alwan_vec2_f64 const *xy, alwan_f64 Y, alw
 
     return alwan_whiteness_cie2004_f64_v(xy->v[0], xy->v[1], Y, xy_n->v[0], xy_n->v[1]);
 }
+
+/* ================================================================
+ * Native f32 API wrappers
+ *
+ * The CCT/whiteness/yellowness formulas are templated in
+ * alwan_quality_core.inc and instantiated for both precisions by
+ * alwan_quality_core.h, so each f32 entry point below computes
+ * natively in float via the matching alwan_*_f32_v core function --
+ * mirroring the f64 wrappers above (same guards, same parameter
+ * convention), without re-deriving any formula.
+ *
+ * Exception: alwan_cct_kang_xy_f32 (the xy->CCT inverse) is a genuine
+ * iterative Newton-Raphson solver and reuses the f64 solver by design.
+ * ================================================================ */
+#if ALWAN_WITH_F32
+
+/* McCamy's approximation: CCT from CIE 1931 xy (native f32) */
+alwan_f32 alwan_cct_mccamy_xy_f32(alwan_vec2_f32 const *xy) {
+    if (!xy) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    alwan_f32 denom = ALWAN_LITERAL_F32(0.1858) - xy->v[1];
+    if (ALWAN_ABS_F32(denom) < ALWAN_EPSILON_F32) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    return alwan_cct_mccamy_f32_v(xy->v[0], xy->v[1]);
+}
+
+/* Robertson 1968: CCT from CIE 1931 xy via isotemperature-line table
+ * interpolation (native f32; the f64 locus table is read and the entire
+ * search/interpolation is carried out in single precision). */
+alwan_f32 alwan_cct_robertson_xy_f32(alwan_vec2_f32 const *xy) {
+    if (!xy) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    alwan_f32 x = xy->v[0];
+    alwan_f32 y = xy->v[1];
+
+    /* Convert CIE 1931 xy to CIE 1960 UCS uv */
+    alwan_f32 denom = ALWAN_LITERAL_F32(12.0) * y - ALWAN_LITERAL_F32(2.0) * x + ALWAN_LITERAL_F32(3.0);
+    if (ALWAN_ABS_F32(denom) < ALWAN_EPSILON_F32) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    alwan_f32 u = (ALWAN_LITERAL_F32(4.0) * x) / denom;
+    alwan_f32 v = (ALWAN_LITERAL_F32(6.0) * y) / denom;
+
+    alwan_f32 last_dt = ALWAN_ZERO_F32;
+
+    for (size_t i = 1; i < ROBERTSON_TABLE_SIZE; i++) {
+        size_t off = i * ROBERTSON_TABLE_STRIDE;
+
+        alwan_f32 u_i = (alwan_f32)robertson_table_data[off + 1];
+        alwan_f32 v_i = (alwan_f32)robertson_table_data[off + 2];
+        alwan_f32 t_i = (alwan_f32)robertson_table_data[off + 3];
+
+        alwan_f32 du = ALWAN_ONE_F32;
+        alwan_f32 dv = t_i;
+        alwan_f32 length = ALWAN_SQRT_F32(ALWAN_ONE_F32 + dv * dv);
+        du /= length;
+        dv /= length;
+
+        alwan_f32 uu = u - u_i;
+        alwan_f32 vv = v - v_i;
+        alwan_f32 dt = -uu * dv + vv * du;
+
+        if (dt <= ALWAN_ZERO_F32 || i == ROBERTSON_TABLE_SIZE - 1) {
+            if (dt > ALWAN_ZERO_F32) dt = ALWAN_ZERO_F32;
+
+            dt = -dt;
+
+            alwan_f32 f = (i == 1)
+                ? ALWAN_ZERO_F32
+                : dt / (last_dt + dt);
+
+            size_t off_prev = (i - 1) * ROBERTSON_TABLE_STRIDE;
+            alwan_f32 r_prev = (alwan_f32)robertson_table_data[off_prev];
+            alwan_f32 r_curr = (alwan_f32)robertson_table_data[off];
+
+            alwan_f32 r = r_prev * f + r_curr * (ALWAN_ONE_F32 - f);
+
+            if (r < ALWAN_EPSILON_F32) {
+                return ALWAN_LITERAL_F32(-1.0);
+            }
+
+            return ALWAN_LITERAL_F32(1e6) / r;
+        }
+
+        last_dt = dt;
+    }
+
+    return ALWAN_LITERAL_F32(-1.0);
+}
+
+/* Hernandez-Andres 1999: xy to CCT (native f32) */
+alwan_f32 alwan_cct_hernandez_xy_f32(alwan_vec2_f32 const *xy) {
+    if (!xy) return ALWAN_LITERAL_F32(-1.0);
+
+    alwan_f32 denom = xy->v[1] - ALWAN_LITERAL_F32(0.1735);
+    if (ALWAN_ABS_F32(denom) < ALWAN_LITERAL_F32(1e-10)) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    return alwan_cct_hernandez_f32_v(xy->v[0], xy->v[1]);
+}
+
+/* Kang 2002: CCT to xy forward transform (native f32) */
+void alwan_cct_to_xy_kang_f32(alwan_vec2_f32 *xy_out, alwan_f32 cct) {
+    if (!xy_out) return;
+
+    *xy_out = alwan_cct_to_xy_kang_f32_v(cct);
+}
+
+/* Kang 2002: xy to CCT inverse.
+ * f32 reuses the f64 solver by design -- this is an iterative
+ * Newton-Raphson solve whose convergence/canonical-value-selection
+ * tolerances are tuned below f32 epsilon, so single precision cannot
+ * reproduce it natively. Convert in, solve in f64, convert out. */
+alwan_f32 alwan_cct_kang_xy_f32(alwan_vec2_f32 const *xy) {
+    if (!xy) return ALWAN_LITERAL_F32(-1.0);
+
+    alwan_vec2_f64 xy64;
+    xy64.v[0] = (alwan_f64)xy->v[0];
+    xy64.v[1] = (alwan_f64)xy->v[1];
+
+    return (alwan_f32)alwan_cct_kang_xy_f64(&xy64);
+}
+
+/* ASTM E313 Yellowness Index (native f32) */
+alwan_f32 alwan_yellowness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant) {
+    if (!xyz) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    if (illuminant < 0 || illuminant > ALWAN_ASTM_E313_D65_10DEG) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    alwan_f32 X = xyz->x;
+    alwan_f32 Y = xyz->y;
+    alwan_f32 Z = xyz->z;
+
+    if (ALWAN_ABS_F32(Y) < ALWAN_EPSILON_F32) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    alwan_f32 Cx = (alwan_f32)astm_e313_yi_coeffs[illuminant][0];
+    alwan_f32 Cz = (alwan_f32)astm_e313_yi_coeffs[illuminant][1];
+
+    return alwan_yellowness_astm_e313_f32_v(X, Y, Z, Cx, Cz);
+}
+
+/* ASTM E313 Whiteness Index (native f32) */
+alwan_f32 alwan_whiteness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant) {
+    if (!xyz) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    (void)illuminant;  /* Not used for ASTM E313 whiteness */
+
+    return alwan_whiteness_astm_e313_f32_v(xyz->y, xyz->z);
+}
+
+/* CIE 2004 Whiteness Index (native f32) */
+alwan_f32 alwan_whiteness_cie2004_f32(alwan_vec2_f32 const *xy, alwan_f32 Y, alwan_vec2_f32 const *xy_n) {
+    if (!xy || !xy_n) {
+        return ALWAN_LITERAL_F32(-1.0);
+    }
+
+    return alwan_whiteness_cie2004_f32_v(xy->v[0], xy->v[1], Y, xy_n->v[0], xy_n->v[1]);
+}
+
+#endif /* ALWAN_WITH_F32 */
 
 /* ----------------------------------------------------------------
  * SSI (Spectral Similarity Index) - Academy/SMPTE ST 2122
@@ -1220,8 +1396,8 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 c
  * 1. Compute tristimulus values for both samples under test illuminant
  * 2. Compute white point of test illuminant
  * 3. Convert to CIELAB using test illuminant white point
- * 4. Calculate Î”E*ab between sample and reference under test conditions
- * 5. Return Î”E as the metamerism index
+ * 4. Calculate dE*ab between sample and reference under test conditions
+ * 5. Return dE as the metamerism index
  *
  * Computes color difference under the test illuminant only.
  * Assumes the samples are a metameric match under the reference illuminant.
@@ -1274,7 +1450,7 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, al
     alwan_xyz_to_lab_f64(&lab_sample, &xyz_sample_test, &xyz_test_white);
     alwan_xyz_to_lab_f64(&lab_ref, &xyz_ref_test, &xyz_test_white);
 
-    /* Step 5: Compute Î”E*ab (1976) */
+    /* Step 5: Compute dE*ab (1976) */
     alwan_f64 delta_e = alwan_delta_e_76_f64(&lab_sample, &lab_ref);
 
     return delta_e;
@@ -1294,8 +1470,8 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, al
  *    a. Compute XYZ under test and reference illuminants
  *    b. Apply chromatic adaptation (CAT02) to D65
  *    c. Convert to CIELAB
- *    d. Calculate color difference Î”E*ab
- * 4. CQS = 100 - 3.2 * average(Î”E) (simplified formula)
+ *    d. Calculate color difference dE*ab
+ * 4. CQS = 100 - 3.2 * average(dE) (simplified formula)
  *
  * Note: Full CQS specification uses CMCCAT2000 chromatic adaptation.
  *       This implementation uses CAT02 as an approximation.
@@ -1486,7 +1662,7 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
         alwan_xyz_to_lab_f64(&lab_test, &xyz_test_adapted, &d65_white);
         alwan_xyz_to_lab_f64(&lab_ref, &xyz_ref_adapted, &d65_white);
 
-        /* Calculate color difference Î”E*ab */
+        /* Calculate color difference dE*ab */
         alwan_f64 dL = lab_test.L - lab_ref.L;
         alwan_f64 da = lab_test.a - lab_ref.a;
         alwan_f64 db = lab_test.b - lab_ref.b;
@@ -1514,7 +1690,7 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
  * Based on ANSI/IES TM-30-20 specification
  *
  * Algorithm:
- * 1. Use CIE 1964 10Â° observer for all calculations
+ * 1. Use CIE 1964 10 deg observer for all calculations
  * 2. For test and reference illuminants:
  *    a. For each of 99 CES (Color Evaluation Samples):
  *       - Calculate XYZ
@@ -1522,7 +1698,7 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
  *       - Calculate CIECAM02 color appearance
  *       - Convert to CAM02-UCS (J', a', b')
  * 3. Calculate color differences in CAM02-UCS space
- * 4. Rf = 100 - 4.6 * average(Î”E)
+ * 4. Rf = 100 - 4.6 * average(dE)
  *
  * Returns: Rf value (0-100), or negative on error
  */
@@ -1610,7 +1786,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Calculate reference white point (10Â° observer) */
+    /* Calculate reference white point (10 deg observer) */
     status = alwan_spd_create_f64(&perfect_white, reference_spd.wavelength_min, reference_spd.wavelength_max, reference_spd.count, ctx);
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&reference_spd, ctx);
@@ -1678,7 +1854,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
             ces_spd.values[j] = ces_reflectances[i][j];
         }
 
-        /* Calculate XYZ under test illuminant (10Â° observer) */
+        /* Calculate XYZ under test illuminant (10 deg observer) */
         alwan_xyz_f64 xyz_test;
         status = alwan_xyz_from_spd_f64(&xyz_test, &ces_spd, &test_spd_resampled, ALWAN_OBSERVER_CIE_1964_10DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
         if (status != ALWAN_OK) {
@@ -1688,7 +1864,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
             return ALWAN_LITERAL(-1.0);
         }
 
-        /* Calculate XYZ under reference illuminant (10Â° observer) */
+        /* Calculate XYZ under reference illuminant (10 deg observer) */
         alwan_xyz_f64 xyz_ref;
         status = alwan_xyz_from_spd_f64(&xyz_ref, &ces_spd, &reference_spd, ALWAN_OBSERVER_CIE_1964_10DEG, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
 
@@ -1753,7 +1929,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         alwan_f64 ap_ref = Mp_ref * ALWAN_COS(h_rad_ref);
         alwan_f64 bp_ref = Mp_ref * ALWAN_SIN(h_rad_ref);
 
-        /* Calculate Î”E in CAM02-UCS space */
+        /* Calculate dE in CAM02-UCS space */
         alwan_f64 dJp = Jp_test - Jp_ref;
         alwan_f64 dap = ap_test - ap_ref;
         alwan_f64 dbp = bp_test - bp_ref;
@@ -1781,11 +1957,11 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
  * Based on CIE 224:2017 specification
  *
  * Algorithm: Same as TM-30 but per CIE standard
- * 1. Use CIE 1964 10Â° observer
+ * 1. Use CIE 1964 10 deg observer
  * 2. Use 99 CES samples
  * 3. Apply CAT02 chromatic adaptation
  * 4. Use CIECAM02 and CAM02-UCS color space
- * 5. Rf = 100 - 4.6 * average(Î”E)
+ * 5. Rf = 100 - 4.6 * average(dE)
  *
  * Note: Shares implementation with TM-30
  *
@@ -1795,7 +1971,7 @@ alwan_f64 alwan_cie224_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     /* CIE 224:2017 uses the same algorithm as TM-30
      * Both standards use identical methodology:
      * - 99 CES samples
-     * - 10Â° observer
+     * - 10 deg observer
      * - CIECAM02 with CAM02-UCS color space
      * - Same formula for Rf calculation
      */

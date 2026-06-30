@@ -723,7 +723,7 @@ ALWAN_DIAG_POP
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hsluv_l2y)(ALWAN_CORE_T L) {
     return ALWAN_CORE_SELECT(L <= ALWAN_CORE_LITERAL(8.0),
         L / ALWAN_CORE_LITERAL(903.29629629629629629630),
-        ALWAN_CORE_LITERAL(1.0));  /* placeholder — computed below for L > 8 */
+        ALWAN_CORE_LITERAL(1.0));  /* placeholder -- computed below for L > 8 */
 }
 
 /* Y -> L* */

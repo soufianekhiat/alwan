@@ -209,7 +209,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_compute_duv)(ALWAN_CORE_T x, A
  * Reference: McCamy (1992) "Correlated color temperature as an explicit function
  *   of chromaticity coordinates" Color Res. Appl. 17(2):142-144.
  * Coefficients: n = (x-0.3320)/(0.1858-y); CCT = 449n^3 + 3525n^2 + 6823.3n + 5520.33.
- * Valid approximately 2856–7000 K (incandescent to daylight). */
+ * Valid approximately 2856-7000 K (incandescent to daylight). */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_mccamy_cct)(ALWAN_CORE_T x, ALWAN_CORE_T y) {
     ALWAN_CORE_T n = (x - ALWAN_CORE_LITERAL(0.3320)) / (ALWAN_CORE_LITERAL(0.1858) - y);
     return ALWAN_CORE_LITERAL(449.0) * n * n * n + ALWAN_CORE_LITERAL(3525.0) * n * n +

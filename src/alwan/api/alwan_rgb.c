@@ -139,6 +139,65 @@ int alwan_xyz_to_rgb_f64(alwan_rgb_f64 *rgb,
 }
 #endif /* ALWAN_WITH_F64 */
 
+/* Native f32: mirrors alwan_rgb_to_xyz_f64 / alwan_xyz_to_rgb_f64 exactly using
+ * f32 building blocks (no widen-to-f64 facade). Uses precomputed matrices when
+ * present, else derives them in f32 via alwan_rgb_derive_matrices_f32. */
+#if ALWAN_WITH_F32
+int alwan_rgb_to_xyz_f32(alwan_xyz_f32 *xyz,
+                     alwan_rgb_space_desc_f32 const *space,
+                     alwan_rgb_f32 const *rgb) {
+    if (!space || !rgb || !xyz) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_mat3x3_f32 const *mat;
+    alwan_mat3x3_f32 derived_rgb_to_xyz, derived_xyz_to_rgb;
+
+    if (space->has_matrices) {
+        mat = &space->rgb_to_xyz;
+    } else {
+        int status = alwan_rgb_derive_matrices_f32(&derived_rgb_to_xyz, &derived_xyz_to_rgb, space);
+        if (status != ALWAN_OK) return status;
+        mat = &derived_rgb_to_xyz;
+    }
+
+    /* Apply RGB -> XYZ matrix */
+    alwan_vec3_f32 vec_in, vec_out;
+    ALWAN_MEMCPY(&vec_in, rgb, sizeof(alwan_vec3_f32));
+    alwan_mat3_mulv_f32(&vec_out, mat, &vec_in);
+    ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3_f32));
+
+    return ALWAN_OK;
+}
+
+int alwan_xyz_to_rgb_f32(alwan_rgb_f32 *rgb,
+                     alwan_rgb_space_desc_f32 const *space,
+                     alwan_xyz_f32 const *xyz) {
+    if (!space || !xyz || !rgb) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_mat3x3_f32 const *mat;
+    alwan_mat3x3_f32 derived_rgb_to_xyz, derived_xyz_to_rgb;
+
+    if (space->has_matrices) {
+        mat = &space->xyz_to_rgb;
+    } else {
+        int status = alwan_rgb_derive_matrices_f32(&derived_rgb_to_xyz, &derived_xyz_to_rgb, space);
+        if (status != ALWAN_OK) return status;
+        mat = &derived_xyz_to_rgb;
+    }
+
+    /* Apply XYZ -> RGB matrix */
+    alwan_vec3_f32 vec_in, vec_out;
+    ALWAN_MEMCPY(&vec_in, xyz, sizeof(alwan_vec3_f32));
+    alwan_mat3_mulv_f32(&vec_out, mat, &vec_in);
+    ALWAN_MEMCPY(rgb, &vec_out, sizeof(alwan_vec3_f32));
+
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F32 */
+
 /* ----------------------------------------------------------------
  * Transfer Function API
  * ---------------------------------------------------------------- */

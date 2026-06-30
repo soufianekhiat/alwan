@@ -234,7 +234,7 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__lab_f_inv_simd)(alwan_map_simd
  * usage differ across SSE/AVX/NEON; using the scalar polynomial keeps
  * SIMD and scalar paths bit-identical. ~10x slower per pixel than the
  * fast-mode vector path, but the determinism contract requires it.
- * road_to_determinism.md §4. */
+ * road_to_determinism.md sec 4. */
 
 ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_map_simd v) {
     ALWAN_ALIGN(64) alwan_map_lane lanes[ALWAN_MAP_SIMD_WIDTH];
@@ -254,7 +254,7 @@ ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_ma
     return alwan_map_simd_load(lanes);
 }
 
-#else /* fast mode — vectorised approximations */
+#else /* fast mode -- vectorised approximations */
 
 /* sRGB EOTF: encoded -> linear */
 ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_map_simd v) {
@@ -303,7 +303,7 @@ ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_ma
  * the scalar uses `linear / 10000.0`. Those differ by 1 ULP because
  * 1/10000 is not exactly representable, and the difference is amplified
  * through the two pow calls. Lane-unpacking sidesteps it entirely.
- * road_to_determinism.md §8. */
+ * road_to_determinism.md sec 8. */
 ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__pq_oetf_simd)(alwan_map_simd v) {
     ALWAN_ALIGN(64) alwan_map_lane lanes[ALWAN_MAP_SIMD_WIDTH];
     alwan_map_simd_store(lanes, v);

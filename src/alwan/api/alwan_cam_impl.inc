@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes).
+/* No include guard -- included twice (f32 and f64 passes).
  *
  * Native dual-precision CIECAM02 / CAM16 / CAM18sl / CAM20u scalar entry
  * points. The appearance math lives in the templated cores

@@ -52,7 +52,7 @@
 /* Both with int */
 #define ALWAN_PFWD_IFWD_I(n) ALWAN_PFWD_I(n); ALWAN_IFWD_I(n)
 
-/* Both with alwan_ycbcr_standard (enum) — avoids C4028 vs int mismatch (v2) */
+/* Both with alwan_ycbcr_standard (enum) -- avoids C4028 vs int mismatch (v2) */
 #define ALWAN_PFWD_IFWD_YCBCR(n) \
     int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,alwan_ycbcr_standard v); \
     int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,alwan_ycbcr_standard v); \

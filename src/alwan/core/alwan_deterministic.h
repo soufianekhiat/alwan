@@ -25,15 +25,15 @@
  * the same mathematical function within a documented error budget
  * (typically <0.05% absolute for sRGB-range inputs). The point is
  * that *every* deterministic build, on every platform, returns the
- * same bytes for the same inputs — that's what
+ * same bytes for the same inputs -- that's what
  * cross-platform-determinism CI verifies via output hashing.
  *
  * Currently covered:
  *   - sRGB     OETF/EOTF
- *   - BT.2020  OETF/EOTF (also valid for BT.709 — same constants)
+ *   - BT.2020  OETF/EOTF (also valid for BT.709 -- same constants)
  *
  * Pipeline (PQ, HLG, Lab cube root, ACES splines, ...) follow in
- * later phases — see road_to_determinism.md §6.8.
+ * later phases -- see road_to_determinism.md sec 6.8.
  */
 
 #ifndef ALWAN_DETERMINISTIC_H
@@ -43,7 +43,7 @@
  * passes `-ffp-contract=off` (clang/gcc) or `/fp:precise` (MSVC) for
  * defense in depth; the per-file pragma is belt-and-suspenders so a
  * downstream consumer can't accidentally re-fuse our polynomial
- * evaluations. MSVC's STDC support is incomplete — its equivalent is
+ * evaluations. MSVC's STDC support is incomplete -- its equivalent is
  * `#pragma fp_contract(off)` with different syntax. */
 #if defined(__clang__) || (defined(__GNUC__) && !defined(__INTEL_COMPILER))
 #  pragma STDC FP_CONTRACT OFF
@@ -63,7 +63,7 @@
 #include <math.h>
 
 /* ----------------------------------------------------------------
- * Horner evaluation — explicit `mul; add` so FP_CONTRACT OFF actually
+ * Horner evaluation -- explicit `mul; add` so FP_CONTRACT OFF actually
  * has something to refuse to fuse.
  * ---------------------------------------------------------------- */
 
@@ -72,7 +72,7 @@ alwan_det_horner_f64(alwan_f64 const *coeffs, int degree, alwan_f64 x) {
     alwan_f64 acc = coeffs[degree];
     for (int i = degree - 1; i >= 0; i--) {
         alwan_f64 const t = acc * x;        /* round 1 */
-        acc = t + coeffs[i];                /* round 2 — never fused */
+        acc = t + coeffs[i];                /* round 2 -- never fused */
     }
     return acc;
 }

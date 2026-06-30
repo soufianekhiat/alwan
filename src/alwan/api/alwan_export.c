@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * LUT export — .cube file writer
+ * LUT export -- .cube file writer
  * Per-pixel LUT math in alwan_lut_core.h
  */
 
@@ -165,7 +165,7 @@ int alwan_cube_export_3d_buffer_f64(char *buf, size_t buf_size, size_t *bytes_wr
     if (n < 0 || pos + (size_t)n >= buf_size) { err = ALWAN_E_RANGE; goto done; }
     pos += (size_t)n;
 
-    /* Data — %.17g for lossless f64 round-trip. */
+    /* Data -- %.17g for lossless f64 round-trip. */
     size_t const total = (size_t)size * (size_t)size * (size_t)size;
     for (size_t i = 0; i < total; i++) {
         n = snprintf(buf + pos, buf_size - pos, "%.17g %.17g %.17g\n",
@@ -184,7 +184,7 @@ done:
 }
 
 /* ----------------------------------------------------------------
- * f32 variants — native single-precision writers.
+ * f32 variants -- native single-precision writers.
  *
  * These format directly from the f32 LUT using %.9g (lossless f32
  * round-trip) rather than widening to f64 and emitting %.17g. This

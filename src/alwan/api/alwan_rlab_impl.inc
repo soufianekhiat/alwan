@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes).
+/* No include guard -- included twice (f32 and f64 passes).
  *
  * Native dual-precision RLAB scalar entry points. The core appearance
  * math lives in alwan_rlab_core.h (templated); these wrappers resolve

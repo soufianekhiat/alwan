@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 void ALWAN_CORE_FNLIT(alwan_lab_to_din99)(ALWAN_CORE_DIN99 *din99, ALWAN_CORE_LAB const *lab, int variant) {
     if (variant < 0 || variant > 3) return;

@@ -2,7 +2,7 @@
 
 Context objects (`alwan_ctx`) manage library state and memory allocation.
 
-Functions that take a `ctx` (e.g. `alwan_rgb_get_space_descriptor`, `alwan_rgb_convert`) need it to resolve the **embedded RGB color-space registry** — the primaries/whitepoint/transfer-function descriptors compiled into the binary from `src/alwan/data/**`. The context does **not** load anything from disk at runtime; it is the handle through which the embedded tables and the allocator are accessed. Per the v2.0 parameter convention, `ctx` is always the **last** argument (or absent on `_v` value-typed math).
+Functions that take a `ctx` (e.g. `alwan_rgb_get_space_descriptor_{T}`, `alwan_rgb_convert_{T}`) accept it as the handle through which the **allocator** and — in a future runtime mode — disk-loaded data are reached. In the current **embedded** build the RGB color-space registry (primaries/whitepoint/transfer-function descriptors) is compiled into the binary from `src/alwan/data/**`, so descriptor lookups index static tables and ignore `ctx` (it may even be `NULL`). The context does **not** load anything from disk at runtime. Where `ctx` matters today: it supplies the allocator for functions that allocate (e.g. SPD/LUT routines) and gates optional work such as the chromatic-adaptation step inside `alwan_rgb_convert_{T}` (passing `NULL` skips adaptation rather than erroring). Per the v2.0 parameter convention, `ctx` is always the **last** argument (or absent on `_v` value-typed math).
 
 > **Note:** Runtime data loading (`runtime_data_root`) is NOT implemented. Only embedded mode (`ALWAN_EMBED_DATA=1`, the default) is supported. Runtime mode is planned for alwan 3.0.0.
 
@@ -151,7 +151,7 @@ void free_cb(void *ptr);
 **Parameters:**
 - `ptr` — Pointer to free (can be `NULL`)
 
-**Default:** System `free`
+**Default:** `alwan_default_free` (matches `alwan_default_alloc`; uses `_aligned_free` on MSVC, `free` elsewhere)
 
 #### `runtime_data_root`
 Reserved. Runtime data loading is NOT implemented (planned for alwan 3.0.0).
@@ -297,29 +297,40 @@ alwan_destroy(shared_ctx);
 ```c
 alwan_ctx *ctx = alwan_create(config);
 if (!ctx) {
-    /* Possible causes:
-     * - Allocation failure
-     * - Invalid configuration (e.g., alloc_cb set without free_cb) */
+    /* The only failure mode: the allocator returned NULL for the
+     * context struct (or for the copied runtime_data_root). */
 }
 ```
 
+> **Note:** `alwan_create` does not cross-validate the config. `alloc_cb` and
+> `free_cb` default independently, so setting one without the other is accepted
+> (your custom function is paired with the default for the other) — make sure
+> the two are compatible, since a custom allocation may otherwise be released
+> with `alwan_default_free`.
+
 **Debugging:**
-1. Check `config` pointers are valid
-2. Ensure allocator callbacks work correctly
-3. Check available memory
+1. Ensure the allocator callback actually returns non-`NULL`
+2. Check available memory
 
 ---
 
 ### Null Context Handling
 
-Most API functions handle `NULL` context gracefully:
+API functions validate their **required** pointer arguments (outputs, descriptors,
+input colors) and return `ALWAN_E_INVALID` when those are `NULL`. The `ctx`
+argument itself is treated as optional in the embedded build:
 
 ```c
 alwan_destroy(NULL);  // Safe, does nothing
 
-// Functions requiring context will return error
-int status = alwan_rgb_convert(&rgb_out, &src_desc, &dst_desc, &rgb_in, NULL);
-// status == ALWAN_E_INVALID
+// ctx == NULL is tolerated: descriptor lookups ignore it, and
+// alwan_rgb_convert_f64 simply skips the chromatic-adaptation step.
+int status = alwan_rgb_convert_f64(&rgb_out, &src_desc, &dst_desc, &rgb_in, NULL);
+// status == ALWAN_OK (conversion runs, white-point adaptation is skipped)
+
+// A NULL *required* argument is what returns the error:
+status = alwan_rgb_convert_f64(NULL, &src_desc, &dst_desc, &rgb_in, ctx);
+// status == ALWAN_E_INVALID (dst_rgb is NULL)
 ```
 
 ---

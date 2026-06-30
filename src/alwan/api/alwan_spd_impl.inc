@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes).
+/* No include guard -- included twice (f32 and f64 passes).
  *
  * Native dual-precision Spectral Power Distribution (SPD) implementation.
  * Every function, file-static helper, and embedded data table is templated
@@ -679,7 +679,7 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
     ALWAN_DIAG_DISABLE_FLOAT_CONV
 
     if (observer == ALWAN_OBSERVER_CIE_1931_2DEG) {
-        /* CIE 1931 2° Standard Observer */
+        /* CIE 1931 2 deg Standard Observer */
         static ALWAN_CORE_T const x_data[] = {
 #include "../data/cmf/cie_1931_2deg_x_360_830_1nm.csv"
         };
@@ -697,7 +697,7 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_CIE_1964_10DEG) {
-        /* CIE 1964 10° Standard Observer */
+        /* CIE 1964 10 deg Standard Observer */
         static ALWAN_CORE_T const x_data[] = {
 #include "../data/cmf/cie_1964_10deg_x_360_830_1nm.csv"
         };
@@ -715,7 +715,7 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2012_2DEG) {
-        /* CIE 2012/2015 2° Standard Observer (390-830nm) */
+        /* CIE 2012/2015 2 deg Standard Observer (390-830nm) */
         static ALWAN_CORE_T const x_data[] = {
 #include "../data/cmf/cie_2012_2deg_x_360_830_1nm.csv"
         };
@@ -733,7 +733,7 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2012_10DEG) {
-        /* CIE 2012/2015 10° Standard Observer (390-830nm) */
+        /* CIE 2012/2015 10 deg Standard Observer (390-830nm) */
         static ALWAN_CORE_T const x_data[] = {
 #include "../data/cmf/cie_2012_10deg_x_360_830_1nm.csv"
         };
@@ -751,7 +751,7 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
-        /* Stockman & Sharpe 2000 2° Cone Fundamentals */
+        /* Stockman & Sharpe 2000 2 deg Cone Fundamentals */
         static ALWAN_CORE_T const x_data[] = {
 #include "../data/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv"
         };
@@ -769,7 +769,7 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG) {
-        /* CIE 2015 2° Cone Fundamental Observer */
+        /* CIE 2015 2 deg Cone Fundamental Observer */
         static ALWAN_CORE_T const x_data[] = {
 #include "../data/cmf/cie_2015_2deg_x_360_830_1nm.csv"
         };
@@ -787,7 +787,7 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG) {
-        /* CIE 2015 10° Cone Fundamental Observer */
+        /* CIE 2015 10 deg Cone Fundamental Observer */
         static ALWAN_CORE_T const x_data[] = {
 #include "../data/cmf/cie_2015_10deg_x_360_830_1nm.csv"
         };
@@ -805,7 +805,7 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
             z_bar->values[i] = z_data[i];
         }
     } else if (observer == ALWAN_OBSERVER_WRIGHT_GUILD_1931) {
-        /* Wright & Guild 1931 2° RGB CMFs (historical) */
+        /* Wright & Guild 1931 2 deg RGB CMFs (historical) */
         static ALWAN_CORE_T const r_data[] = {
 #include "../data/cmf/wright_guild_1931_r_360_830_1nm.csv"
         };

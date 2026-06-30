@@ -270,7 +270,7 @@ int alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, alwan_pixel_fo
 }
 
 /* ----------------------------------------------------------------
- * f32 helpers — native float twins of the f64 range/quantize math.
+ * f32 helpers -- native float twins of the f64 range/quantize math.
  * Mirror video_narrow_params / video_store / video_load exactly,
  * but compute entirely in alwan_f32.
  * ---------------------------------------------------------------- */
@@ -431,7 +431,7 @@ static void video_load_f32(alwan_f32 v[3], void const *src,
 }
 
 /* ----------------------------------------------------------------
- * f32 public API — native float pipeline.
+ * f32 public API -- native float pipeline.
  * Resolves OETF/EOTF with the native f32 resolvers and applies all
  * range/quantize math in f32; no widen/narrow round-trip.
  * ---------------------------------------------------------------- */

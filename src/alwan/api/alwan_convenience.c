@@ -106,24 +106,28 @@ int alwan_ycbcr_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr,
  * RGB <-> HWB
  * ---------------------------------------------------------------- */
 
-void alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb) {
-    if (!rgb || !hwb_out) return;
+int alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb) {
+    if (!rgb || !hwb_out) return ALWAN_E_INVALID;
     *hwb_out = alwan_rgb_to_hwb_f32_v(*rgb);
+    return ALWAN_OK;
 }
 
-void alwan_rgb_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_rgb_f64 const *rgb) {
-    if (!rgb || !hwb_out) return;
+int alwan_rgb_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_rgb_f64 const *rgb) {
+    if (!rgb || !hwb_out) return ALWAN_E_INVALID;
     *hwb_out = alwan_rgb_to_hwb_f64_v(*rgb);
+    return ALWAN_OK;
 }
 
-void alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hwb_f32 const *hwb) {
-    if (!rgb_out || !hwb) return;
+int alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hwb_f32 const *hwb) {
+    if (!rgb_out || !hwb) return ALWAN_E_INVALID;
     *rgb_out = alwan_hwb_to_rgb_f32_v(*hwb);
+    return ALWAN_OK;
 }
 
-void alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb) {
-    if (!rgb_out || !hwb) return;
+int alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb) {
+    if (!rgb_out || !hwb) return ALWAN_E_INVALID;
     *rgb_out = alwan_hwb_to_rgb_f64_v(*hwb);
+    return ALWAN_OK;
 }
 
 /* ----------------------------------------------------------------

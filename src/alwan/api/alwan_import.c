@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * LUT import — .cube file reader
+ * LUT import -- .cube file reader
  */
 
 #include "../alwan.h"
@@ -93,7 +93,7 @@ int alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;
 
-        /* Must be data — parse RGB triplet */
+        /* Must be data -- parse RGB triplet */
         if (size == 0) { err = ALWAN_E_INVALID; goto done; }
 
         double r, g, b;
@@ -250,11 +250,11 @@ done_buf:
 }
 
 /* ----------------------------------------------------------------
- * f32 variants — native single-precision parsers.
+ * f32 variants -- native single-precision parsers.
  *
  * Tokens are parsed as double (sscanf %lf, identical to the f64 path)
  * and stored as f32, so the result is bit-identical to widening the
- * f64 result — but without the large temporary f64 buffer (previously
+ * f64 result -- but without the large temporary f64 buffer (previously
  * up to 256^3*3*8 bytes ~= 400 MB regardless of actual LUT size).
  * ---------------------------------------------------------------- */
 

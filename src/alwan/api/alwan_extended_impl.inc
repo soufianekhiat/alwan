@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 /* ================================================================
  * Prismatic
@@ -54,12 +54,18 @@ void ALWAN_CORE_FNLIT(alwan_ihls_to_rgb)(ALWAN_CORE_RGB *rgb, ALWAN_CORE_IHLS co
 
 void ALWAN_CORE_FNLIT(alwan_lch_to_hlc)(ALWAN_CORE_HLC *hlc, ALWAN_CORE_LCH const *lch) {
     if (!hlc || !lch) return;
-    *hlc = ALWAN_CORE_FNVLIT(alwan_lch_to_hlc)(*lch);
+    ALWAN_CORE_LCH tmp = *lch;
+    ALWAN_DENORM_LCH(&tmp);
+    *hlc = ALWAN_CORE_FNVLIT(alwan_lch_to_hlc)(tmp);
+    ALWAN_NORM_HLC(hlc);
 }
 
 void ALWAN_CORE_FNLIT(alwan_hlc_to_lch)(ALWAN_CORE_LCH *lch, ALWAN_CORE_HLC const *hlc) {
     if (!lch || !hlc) return;
-    *lch = ALWAN_CORE_FNVLIT(alwan_hlc_to_lch)(*hlc);
+    ALWAN_CORE_HLC tmp = *hlc;
+    ALWAN_DENORM_HLC(&tmp);
+    *lch = ALWAN_CORE_FNVLIT(alwan_hlc_to_lch)(tmp);
+    ALWAN_NORM_LCH(lch);
 }
 
 /* ================================================================
@@ -68,12 +74,15 @@ void ALWAN_CORE_FNLIT(alwan_hlc_to_lch)(ALWAN_CORE_LCH *lch, ALWAN_CORE_HLC cons
 
 void ALWAN_CORE_FNLIT(alwan_cubehelix_to_rgb)(ALWAN_CORE_RGB *rgb, ALWAN_CORE_CUBEHELIX const *ch) {
     if (!rgb || !ch) return;
-    *rgb = ALWAN_CORE_FNVLIT(alwan_cubehelix_to_rgb)(*ch);
+    ALWAN_CORE_CUBEHELIX tmp = *ch;
+    ALWAN_DENORM_CUBEHELIX(&tmp);
+    *rgb = ALWAN_CORE_FNVLIT(alwan_cubehelix_to_rgb)(tmp);
 }
 
 void ALWAN_CORE_FNLIT(alwan_rgb_to_cubehelix)(ALWAN_CORE_CUBEHELIX *ch, ALWAN_CORE_RGB const *rgb) {
     if (!ch || !rgb) return;
     *ch = ALWAN_CORE_FNVLIT(alwan_rgb_to_cubehelix)(*rgb);
+    ALWAN_NORM_CUBEHELIX(ch);
 }
 
 /* ================================================================
@@ -82,22 +91,28 @@ void ALWAN_CORE_FNLIT(alwan_rgb_to_cubehelix)(ALWAN_CORE_CUBEHELIX *ch, ALWAN_CO
 
 void ALWAN_CORE_FNLIT(alwan_hsluv_to_srgb)(ALWAN_CORE_RGB *rgb, ALWAN_CORE_HSLUV const *hsluv) {
     if (!rgb || !hsluv) return;
-    *rgb = ALWAN_CORE_FNVLIT(alwan_hsluv_to_srgb)(*hsluv);
+    ALWAN_CORE_HSLUV tmp = *hsluv;
+    ALWAN_DENORM_HSLUV(&tmp);
+    *rgb = ALWAN_CORE_FNVLIT(alwan_hsluv_to_srgb)(tmp);
 }
 
 void ALWAN_CORE_FNLIT(alwan_srgb_to_hsluv)(ALWAN_CORE_HSLUV *hsluv, ALWAN_CORE_RGB const *srgb) {
     if (!hsluv || !srgb) return;
     *hsluv = ALWAN_CORE_FNVLIT(alwan_srgb_to_hsluv)(*srgb);
+    ALWAN_NORM_HSLUV(hsluv);
 }
 
 void ALWAN_CORE_FNLIT(alwan_hpluv_to_srgb)(ALWAN_CORE_RGB *rgb, ALWAN_CORE_HPLUV const *hpluv) {
     if (!rgb || !hpluv) return;
-    *rgb = ALWAN_CORE_FNVLIT(alwan_hpluv_to_srgb)(*hpluv);
+    ALWAN_CORE_HPLUV tmp = *hpluv;
+    ALWAN_DENORM_HPLUV(&tmp);
+    *rgb = ALWAN_CORE_FNVLIT(alwan_hpluv_to_srgb)(tmp);
 }
 
 void ALWAN_CORE_FNLIT(alwan_srgb_to_hpluv)(ALWAN_CORE_HPLUV *hpluv, ALWAN_CORE_RGB const *srgb) {
     if (!hpluv || !srgb) return;
     *hpluv = ALWAN_CORE_FNVLIT(alwan_srgb_to_hpluv)(*srgb);
+    ALWAN_NORM_HPLUV(hpluv);
 }
 
 /* ================================================================

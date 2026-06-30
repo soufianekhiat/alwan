@@ -4,18 +4,35 @@ using Sharpmake;
 
 namespace Alwan
 {
+    // Whole-tree determinism axis. Det builds compile the alwan lib with
+    // ALWAN_DETERMINISTIC=1 so transcendentals route through the portable
+    // polynomials and SIMD/FMA fusion is suppressed. Mirrors the CMake
+    // Debug_Det / Release_Det configurations and the alwan_dev solution's
+    // Determinism fragment. Crossed with Optimization it yields the four
+    // configs Debug / Debug_Det / Release / Release_Det.
+    [Fragment, Flags]
+    public enum Determinism
+    {
+        NonDet = 1 << 0,
+        Det    = 1 << 1,
+    }
+
     // Custom target
     [Generate]
     public class AlwanTarget : Target
     {
+        public Determinism Determinism = Determinism.NonDet;
+
         public AlwanTarget()
             : base()
         {
         }
 
-        public AlwanTarget(Platform platform, DevEnv devEnv, Optimization optimization)
+        public AlwanTarget(Platform platform, DevEnv devEnv, Optimization optimization,
+                           Determinism determinism = Determinism.NonDet)
             : base(platform, devEnv, optimization)
         {
+            Determinism = determinism;
         }
     }
 
@@ -33,14 +50,16 @@ namespace Alwan
             AddTargets(new AlwanTarget(
                 Platform.win64,
                 DevEnv.vs2022,
-                Optimization.Debug | Optimization.Release
+                Optimization.Debug | Optimization.Release,
+                Determinism.NonDet | Determinism.Det
             ));
         }
 
         [Configure()]
         public virtual void ConfigureAll(Configuration conf, AlwanTarget target)
         {
-            conf.Name = "[target.Optimization]";
+            bool det = (target.Determinism == Determinism.Det);
+            conf.Name = target.Optimization.ToString() + (det ? "_Det" : "");
 
             conf.ProjectFileName = "[project.Name]_[target.DevEnv]_[target.Platform]";
             conf.ProjectPath = Path.Combine("[project.SharpmakeCsPath]", "..", "..", "..", "projects", "[project.Name]");
@@ -80,6 +99,21 @@ namespace Alwan
             // Disable range normalization for tests (test references use native mathematical ranges).
             // Library header defaults to ALWAN_NORMALIZE_RANGES=1 for end users.
             conf.Defines.Add("ALWAN_NORMALIZE_RANGES=0");
+
+            if (det)
+            {
+                // Bit-exact polynomial math, no libm transcendentals, no FMA
+                // fusion. /fp:precise (added above for all configs) already
+                // blocks a*b+c -> FMA contraction on MSVC.
+                conf.Defines.Add("ALWAN_DETERMINISTIC=1");
+
+                // In det mode ALWAN_MAP_SIMD_WIDTH collapses to 1, so the SIMD
+                // bodies in *_map_kernels.inc are skipped and their precomputed
+                // set1/inv_* locals become unreferenced. Suppress C4189/C4101
+                // so /WX does not trip (matches the CMake det build).
+                conf.AdditionalCompilerOptions.Add("/wd4189");
+                conf.AdditionalCompilerOptions.Add("/wd4101");
+            }
 
             // Optimization settings
             if (target.Optimization == Optimization.Debug)

@@ -68,7 +68,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_agx_curve)(ALWAN_CORE_T t) {
 }
 
 /* ================================================================
- * ASC CDL (Color Decision List) — ASC-CDL v1.2
+ * ASC CDL (Color Decision List) -- ASC-CDL v1.2
  * Standard formula: out = clamp01(in * slope + offset) ^ power
  * Then saturation around BT.709 luma.
  * Used by AgX Punchy and Golden looks (sobotka/AgX config.ocio).
@@ -100,7 +100,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_cdl_apply)(
 }
 
 /* ================================================================
- * AgX Punchy Grade — CDL from sobotka/AgX config.ocio
+ * AgX Punchy Grade -- CDL from sobotka/AgX config.ocio
  * CDLTransform {power: [1.35, 1.35, 1.35], sat: 1.4}
  * ================================================================ */
 
@@ -113,7 +113,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_agx_punchy_grade)(ALWAN_COR
 }
 
 /* ================================================================
- * AgX Golden Grade — CDL from sobotka/AgX config.ocio
+ * AgX Golden Grade -- CDL from sobotka/AgX config.ocio
  * CDLTransform {slope: [1, 0.9, 0.5], power: [0.8, 0.8, 0.8], sat: 1.3}
  * ================================================================ */
 
@@ -156,7 +156,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_khronos_pbr_neutral)(ALWAN_
     peak = ALWAN_CORE_SELECT(color.v[1] > peak, color.v[1], peak);
     peak = ALWAN_CORE_SELECT(color.v[2] > peak, color.v[2], peak);
 
-    /* Soft rolloff — branchless: when peak < start_compression, new_peak=peak → scale=1, g=0 */
+    /* Soft rolloff -- branchless: when peak < start_compression, new_peak=peak -> scale=1, g=0 */
     ALWAN_CORE_T const d = ALWAN_CORE_LITERAL(1.0) - start_compression;
     ALWAN_CORE_T safe_peak = ALWAN_CORE_SELECT(peak < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_LITERAL(1e-10), peak);
     ALWAN_CORE_T new_peak = ALWAN_CORE_SELECT(
@@ -168,7 +168,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_khronos_pbr_neutral)(ALWAN_
     color.v[1] *= scale;
     color.v[2] *= scale;
 
-    /* Desaturation — g=0 when pass-through (safe_peak == new_peak) */
+    /* Desaturation -- g=0 when pass-through (safe_peak == new_peak) */
     ALWAN_CORE_T g = ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_LITERAL(1.0) /
                      (desaturation * (safe_peak - new_peak) + ALWAN_CORE_LITERAL(1.0));
     result.v[0] = color.v[0] + (new_peak - color.v[0]) * g;
@@ -359,7 +359,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_tony_mcmapface)(ALWAN_CORE_
 
     /* Blend between luminance-preserving and per-channel based on bt */
     ALWAN_CORE_T bt2 = bt * bt;
-    ALWAN_CORE_T final_mult = ALWAN_CORE_LITERAL(0.97); /* Stachowiak 2023 "Somewhat Boring Display Transform" — empirical rolloff */
+    ALWAN_CORE_T final_mult = ALWAN_CORE_LITERAL(0.97); /* Stachowiak 2023 "Somewhat Boring Display Transform" -- empirical rolloff */
 
     result.v[0] = (tm0_r + (tm1_r - tm0_r) * bt2) * final_mult;
     result.v[1] = (tm0_g + (tm1_g - tm0_g) * bt2) * final_mult;

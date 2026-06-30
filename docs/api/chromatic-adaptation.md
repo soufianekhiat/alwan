@@ -4,7 +4,8 @@ Functions for transforming colors between different illuminants (white points).
 
 > **Precision variants:** Every function and type shown as `name_{T}` exists in two forms:
 > `name_f32` (single precision, `float`) and `name_f64` (double precision, `double`).
-> `T = f32 | f64`.
+> `T = f32 | f64`. Both precisions compile by default; restrict with `ALWAN_BUILD_ONLY_F32`
+> / `ALWAN_BUILD_ONLY_F64` (see [configuration](../configuration.md)).
 
 ---
 
@@ -26,31 +27,34 @@ under different light sources (e.g., daylight vs tungsten), the perceived color 
 
 ```c
 int alwan_cat_matrix_{T}(alwan_mat3x3_{T} *out,
-                          alwan_xyz_{T} const *src_white_xyz,
-                          alwan_xyz_{T} const *dst_white_xyz,
-                          alwan_cat_method method);
+                         alwan_xyz_{T} const *src_white_xyz,
+                         alwan_xyz_{T} const *dst_white_xyz,
+                         alwan_cat_method method);
 ```
 
-Computes the chromatic adaptation matrix from source to destination white point.
+Computes the 3x3 chromatic adaptation matrix from source to destination white point.
+White points are XYZ normalized to Y=1.
 
-**Returns:** `ALWAN_OK` on success, `ALWAN_E_INVALID` if white points are invalid.
+**Returns:** `ALWAN_OK` on success, `ALWAN_E_INVALID` if the white points are invalid.
 
 ---
 
-### alwan_cat_adapt_{T}
+### alwan_xyz_adapt_{T}
 
 ```c
-int alwan_cat_adapt_{T}(alwan_{T} *xyz_out,
-                         alwan_xyz_{T} const *src_white_xyz,
-                         alwan_xyz_{T} const *dst_white_xyz,
-                         alwan_cat_method method,
-                         alwan_{T} const *xyz_in,
-                         size_t count,
-                         size_t in_stride,
-                         size_t out_stride);
+int alwan_xyz_adapt_{T}(alwan_{T} *xyz_out, size_t out_stride,
+                        alwan_{T} const *xyz_in, size_t in_stride,
+                        size_t count,
+                        alwan_xyz_{T} const *src_white_xyz,
+                        alwan_xyz_{T} const *dst_white_xyz,
+                        alwan_cat_method method);
 ```
 
-Applies chromatic adaptation to XYZ colors (bulk interleaved).
+Applies chromatic adaptation to a batch of XYZ colors (interleaved/AoS). Each `*_stride`
+is in bytes and immediately follows its buffer (memcpy argument order); use
+`sizeof(alwan_xyz_{T})` for a packed array.
+
+**Returns:** `ALWAN_OK` on success, `ALWAN_E_INVALID` if parameters are invalid.
 
 **Example:**
 ```c
@@ -60,9 +64,9 @@ alwan_xyz_{T} d65 = {0.95047, 1.0, 1.08883};
 alwan_xyz_{T} xyz_in  = {0.5, 0.6, 0.4};
 alwan_xyz_{T} xyz_out;
 
-alwan_cat_adapt_{T}((alwan_{T}*)&xyz_out, &d50, &d65, ALWAN_CAT_BRADFORD,
-                    (alwan_{T} const*)&xyz_in, 1,
-                    sizeof(alwan_xyz_{T}), sizeof(alwan_xyz_{T}));
+alwan_xyz_adapt_{T}((alwan_{T}*)&xyz_out, sizeof(alwan_xyz_{T}),
+                    (alwan_{T} const*)&xyz_in, sizeof(alwan_xyz_{T}),
+                    1, &d50, &d65, ALWAN_CAT_BRADFORD);
 ```
 
 ---
@@ -71,16 +75,26 @@ alwan_cat_adapt_{T}((alwan_{T}*)&xyz_out, &d50, &d65, ALWAN_CAT_BRADFORD,
 
 ```c
 int alwan_cat_zhai2018_{T}(alwan_xyz_{T} *xyz_out,
-                            alwan_xyz_{T} const *xyz_in,
-                            alwan_xyz_{T} const *xyz_src,
-                            alwan_xyz_{T} const *xyz_dst,
-                            alwan_{T} D_src,
-                            alwan_{T} D_dst,
-                            alwan_xyz_{T} const *xyz_baseline,
-                            alwan_cat_method transform);
+                           alwan_xyz_{T} const *xyz_in,
+                           alwan_xyz_{T} const *xyz_src,
+                           alwan_xyz_{T} const *xyz_dst,
+                           alwan_{T} D_src,
+                           alwan_{T} D_dst,
+                           alwan_xyz_{T} const *xyz_baseline,
+                           alwan_cat_method transform);
 ```
 
-Zhai & Luo (2018) two-step chromatic adaptation with degree of adaptation parameters.
+Zhai & Luo (2018) two-step chromatic adaptation. Adapts XYZ from the source illuminant to the
+destination illuminant via a baseline illuminant, with independent degree-of-adaptation factors:
+
+- `xyz_in` -- input XYZ under the source illuminant (Y=100 scale).
+- `xyz_src` / `xyz_dst` -- source / destination illuminant XYZ (Y=100 scale).
+- `D_src` / `D_dst` -- degree of adaptation in `[0,1]` for the source / destination
+  illuminant (`1` = full adaptation).
+- `xyz_baseline` -- baseline illuminant XYZ, or `NULL` for equal-energy white `{100,100,100}`.
+- `transform` -- underlying one-step CAT (`ALWAN_CAT_CAT02` or `ALWAN_CAT_CAT16`).
+
+**Returns:** `ALWAN_OK` on success.
 
 ---
 
@@ -88,20 +102,28 @@ Zhai & Luo (2018) two-step chromatic adaptation with degree of adaptation parame
 
 ```c
 typedef enum {
-    ALWAN_CAT_XYZ_SCALING = 0,    /* Simple XYZ scaling (von Kries) */
-    ALWAN_CAT_BRADFORD    = 1,    /* Bradford (industry standard) */
-    ALWAN_CAT_VON_KRIES   = 2,    /* von Kries */
-    ALWAN_CAT_CAT02       = 3,    /* CAT02 (CIECAM02) */
-    ALWAN_CAT_CAT16       = 4,    /* CAT16 (CAM16) */
-    ALWAN_CAT_CMCCAT97    = 5,    /* CMC CAT97 */
-    ALWAN_CAT_CMCCAT2000  = 6,    /* CMC CAT2000 */
-    ALWAN_CAT_SHARP       = 7,    /* Sharp */
-    ALWAN_CAT_BIANCO_SCHETTINI_2010 = 8,
-    ALWAN_CAT_FAIRCHILD   = 9,    /* Fairchild */
-    ALWAN_CAT_HUNT_POINTER_ESTEVEZ = 10,
-    ALWAN_CAT_ZHAI_2018   = 11    /* Zhai & Luo 2018 */
+    ALWAN_CAT_XYZ_SCALING      = 0,  /* Von Kries in XYZ space (simplest) */
+    ALWAN_CAT_BRADFORD         = 1,  /* Bradford (most common, used in ICC) */
+    ALWAN_CAT_CAT02            = 2,  /* CAT02 (from CIECAM02) */
+    ALWAN_CAT_CAT16            = 3,  /* CAT16 (from CAM16) */
+
+    /* Extended CAT methods */
+    ALWAN_CAT_SHARP            = 4,  /* Sharp transform */
+    ALWAN_CAT_FAIRCHILD        = 5,  /* Fairchild 1990 */
+    ALWAN_CAT_CMCCAT97         = 6,  /* CMC CAT97 */
+    ALWAN_CAT_CMCCAT2000       = 7,  /* CMC CAT2000 */
+    ALWAN_CAT_CAT02_BRILL_2008 = 8,  /* CAT02 Brill 2008 variant */
+    ALWAN_CAT_BIANCO_2010      = 9,  /* Bianco 2010 */
+    ALWAN_CAT_BIANCO_PC_2010   = 10, /* Bianco PC 2010 */
+
+    /* Two-step CAT methods */
+    ALWAN_CAT_ZHAI_2018        = 11  /* Zhai & Luo 2018 two-step CAT */
 } alwan_cat_method;
 ```
+
+12 methods total. `ALWAN_CAT_ZHAI_2018` is the only two-step method and is applied through
+`alwan_cat_zhai2018_{T}`; the others are one-step matrices usable with `alwan_cat_matrix_{T}`
+and `alwan_xyz_adapt_{T}`.
 
 ---
 
@@ -128,8 +150,8 @@ Used in the CAM16 color appearance model. Most accurate perceptual matching.
 
 ### ALWAN_CAT_XYZ_SCALING
 
-Simplest adaptation -- scales XYZ independently. Not recommended for perceptual accuracy.
-Use when maximum performance is required or legacy compatibility is needed.
+Simplest adaptation -- scales XYZ independently (Von Kries in XYZ space). Not recommended for
+perceptual accuracy. Use when maximum performance is required or legacy compatibility is needed.
 
 ---
 
@@ -143,12 +165,12 @@ alwan_xyz_{T} a   = {1.09850, 1.0, 0.35585};  /* Tungsten 2856K */
 alwan_xyz_{T} e   = {1.00000, 1.0, 1.00000};  /* Equal energy */
 ```
 
-Or compute from standard illuminant enum:
+Or compute from a standard illuminant enum:
 
 ```c
 alwan_xyz_{T} d65;
 alwan_illuminant_white_point_{T}(&d65, ALWAN_ILLUMINANT_D65,
-                                  ALWAN_OBSERVER_CIE_1931_2DEG);
+                                 ALWAN_OBSERVER_CIE_1931_2DEG);
 ```
 
 ---
@@ -162,9 +184,9 @@ alwan_xyz_{T} d50 = {0.96422, 1.0, 0.82521};
 alwan_xyz_{T} d65 = {0.95047, 1.0, 1.08883};
 
 /* Convert 1000 colors from D50 (print) to D65 (screen) */
-alwan_cat_adapt_{T}((double*)xyz_out, &d50, &d65, ALWAN_CAT_BRADFORD,
-                    (double const*)xyz_in, 1000,
-                    sizeof(alwan_xyz_{T}), sizeof(alwan_xyz_{T}));
+alwan_xyz_adapt_{T}((alwan_{T}*)xyz_out, sizeof(alwan_xyz_{T}),
+                    (alwan_{T} const*)xyz_in, sizeof(alwan_xyz_{T}),
+                    1000, &d50, &d65, ALWAN_CAT_BRADFORD);
 ```
 
 ---
@@ -198,7 +220,7 @@ alwan_mat3_mulv_{T}(&xyz_out_v, &adapt_matrix, &xyz_in_v);
 ## Error Codes
 
 - `ALWAN_OK` (0) -- Success
-- `ALWAN_E_INVALID` (-1) -- Invalid white point (e.g., Y=0)
+- `ALWAN_E_INVALID` (-1) -- Invalid white point or parameters (e.g., Y=0)
 - `ALWAN_E_DIVZERO` (-5) -- Division by zero in adaptation
 
 ---

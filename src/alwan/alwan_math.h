@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * alwan_math.h — math function routing layer.
+ * alwan_math.h -- math function routing layer.
  *
  * Single source of truth for math primitives. Every libm call in
  * src/alwan/ should route through one of these macros, never call
@@ -38,14 +38,14 @@
 /* ----------------------------------------------------------------
  * Fused multiply-add
  *
- * In fast mode we use libm fma() / fmaf() — on x86 + -mfma and on all
+ * In fast mode we use libm fma() / fmaf() -- on x86 + -mfma and on all
  * aarch64, this lowers to a hardware FMA instruction (1 rounding,
  * faster, more accurate). On platforms without HW FMA, libm falls
  * back to a software emulation that is still 1-rounding (slow but
  * correctly rounded).
  *
  * In deterministic mode (future), we force `(a)*(b)+(c)` with
- * 2 roundings — bit-identical regardless of hardware FMA support.
+ * 2 roundings -- bit-identical regardless of hardware FMA support.
  * The build also sets `-ffp-contract=off` (or `/fp:precise`) so the
  * compiler can't re-fuse it back into FMA behind our back.
  *

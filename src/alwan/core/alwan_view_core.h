@@ -266,7 +266,7 @@ ALWAN_INLINE alwan_vec3 alwan_tony_mcmapface_v(alwan_vec3 col) {
     alwan_scalar tm1_b = alwan_tony_curve_v(desat_b);
 
     alwan_scalar bt2 = bt * bt;
-    alwan_scalar final_mult = ALWAN_LITERAL(0.97); /* Stachowiak 2023 "Somewhat Boring Display Transform" — empirical rolloff */
+    alwan_scalar final_mult = ALWAN_LITERAL(0.97); /* Stachowiak 2023 "Somewhat Boring Display Transform" -- empirical rolloff */
 
     result.v[0] = (tm0_r + (tm1_r - tm0_r) * bt2) * final_mult;
     result.v[1] = (tm0_g + (tm1_g - tm0_g) * bt2) * final_mult;

@@ -2,17 +2,22 @@
 
 Compile-time SIMD layer used internally by the [map API](map.md). Not part of the public API -- exposed here for contributors and advanced users building custom map kernels.
 
+Related: [backends.md](backends.md) (HLSL/GLSL/Halide GPU backends and the cross-backend math contract) and [determinism.md](../determinism.md) (the bit-exact counterpart of this layer: SIMD width collapse, canonical reductions, polynomial transfer functions).
+
 ## ISA Selection
 
-Compile-time only, no runtime dispatch. Highest available ISA wins:
+Compile-time only, no runtime dispatch. Highest available ISA wins (`src/alwan/simd/alwan_simd.h`):
 
 ```
 alwan_simd.h
-  -> __AVX2__  : alwan_simd_avx2.h
-  -> __AVX__   : alwan_simd_avx.h
-  -> __SSE2__  : alwan_simd_sse2.h  (x64 baseline)
-  -> fallback  : alwan_simd_scalar.h (width=1, plain C)
+  -> __AVX2__                          : alwan_simd_avx2.h
+  -> __AVX__                           : alwan_simd_avx.h
+  -> __SSE2__ / _M_X64 / _M_AMD64      : alwan_simd_sse2.h   (x64 baseline)
+  -> __aarch64__ / __ARM_NEON          : alwan_simd_neon.h   (ARM)
+  -> fallback                          : alwan_simd_scalar.h (width=1, plain C)
 ```
+
+After the backend is selected, `alwan_simd.h` includes `alwan_simd_reduce.h`, which defines the public horizontal-reduction names (`alwan_simd_*_hsum` / `_hadd`) on top of the backend's `*_native` ops. The ISA is fixed at compile time by the target's `-march` / `/arch` flags -- see the `ALWAN_SIMD_ARCH` CMake cache var and the Sharpmake Release `/arch:AVX2` default.
 
 ## Lane Widths
 
@@ -21,7 +26,10 @@ alwan_simd.h
 | AVX2 | 8 | 4 | 32 | 16 |
 | AVX | 8 | 4 | 16 | 8 |
 | SSE2 | 4 | 2 | 16 | 8 |
+| NEON | 4 | 2 | 16 | 8 |
 | Scalar | 1 | 1 | 1 | 1 |
+
+NEON F64 width is 2 on `__aarch64__`; on ARMv7 (`__ARM_NEON` without `__aarch64__`) there is no f64 SIMD, so `alwan_simd_f64` falls back to scalar `double` (the f32 lanes still vectorize).
 
 Width macros:
 
@@ -37,24 +45,35 @@ ALWAN_SIMD_UINT16_WIDTH
 ### ISA-specific types
 
 ```c
-alwan_simd_f32       // __m256 on AVX2, __m128 on SSE2, float on scalar
-alwan_simd_f64       // __m256d on AVX2, __m128d on SSE2, double on scalar
-alwan_simd_u8        // __m256i on AVX2, __m128i on SSE2
-alwan_simd_u16       // __m256i on AVX2, __m128i on SSE2
-alwan_simd_i32       // __m256i on AVX2, __m128i on SSE2
-alwan_simd_f32_mask  // same as alwan_simd_f32 (bitwise masks)
-alwan_simd_f64_mask  // same as alwan_simd_f64
+alwan_simd_f32       // __m256 on AVX2, __m128 on SSE2, float32x4_t on NEON, float on scalar
+alwan_simd_f64       // __m256d on AVX2, __m128d on SSE2, float64x2_t on aarch64, double on scalar/ARMv7
+alwan_simd_u8        // __m256i on AVX2, __m128i on SSE2, uint8x16_t on NEON
+alwan_simd_u16       // __m256i on AVX2, __m128i on SSE2, uint16x8_t on NEON
+alwan_simd_i32       // __m256i on AVX2, __m128i on SSE2, int32x4_t on NEON
+alwan_simd_f32_mask  // same as alwan_simd_f32 (bitwise masks); uint32x4_t on NEON
+alwan_simd_f64_mask  // same as alwan_simd_f64; uint64x2_t on aarch64
 ```
 
-### Generic aliases (in `alwan_map_internal.h`)
+### Generic aliases
 
-Map kernels use type-generic aliases that resolve based on the active precision pass (f32 or f64):
+Two distinct alias sets exist:
+
+**Always-f64 aliases (in `alwan_map_internal.h`)** -- used by the image-conversion path and the color-math building blocks below. These are fixed to f64 regardless of build precision:
 
 ```c
-alwan_simd          // alwan_simd_f32 or alwan_simd_f64
-alwan_simd_mask     // corresponding mask type
-alwan_simd_lane     // float or double
-ALWAN_SIMD_WIDTH    // F32 or F64 width
+alwan_simd          // == alwan_simd_f64
+alwan_simd_mask     // == alwan_simd_f64_mask
+alwan_simd_lane     // double
+ALWAN_SIMD_WIDTH    // == ALWAN_SIMD_F64_WIDTH
+```
+
+**Precision-parameterized aliases (in `alwan_map_simd_defs.h`)** -- the `alwan_map_*`-prefixed set the per-precision map kernels (`*_map_kernels.inc`) use. The file is included once per precision pass (with `ALWAN_MAP_F32` or `ALWAN_MAP_F64` defined) and resolves to that pass's types:
+
+```c
+alwan_map_simd        // alwan_simd_f32 or alwan_simd_f64
+alwan_map_simd_mask   // corresponding mask type
+alwan_map_lane        // float or double
+ALWAN_MAP_SIMD_WIDTH  // F32 or F64 width (forced to 1 in ALWAN_DETERMINISTIC=1)
 ```
 
 ## Operations
@@ -73,7 +92,7 @@ All operations have `alwan_simd_f32_*` and `alwan_simd_f64_*` variants, plus gen
 | `abs(a)` | \|a\| |
 | `fmadd(a, b, c)` | a*b + c (fused on FMA-capable hardware) |
 | `fmsub(a, b, c)` | a*b - c |
-| `rcp(a)` | 1.0 / a (exact, not approximate) |
+| `rcp(a)` | 1.0 / a (exact true division, not the approximate `rcpps` / `vrecpeq`) |
 
 ### Math
 
@@ -90,7 +109,23 @@ All operations have `alwan_simd_f32_*` and `alwan_simd_f64_*` variants, plus gen
 | `cos(a)` | cosine |
 | `atan2(y, x)` | two-argument arctangent |
 
-Uses SVML (Intel Short Vector Math Library) when available (MSVC x64, Intel compilers). Falls back to per-lane `libm` calls otherwise.
+`ALWAN_HAS_SVML` (`alwan_simd_types.h`) is 1 on Intel compilers (`__INTEL_COMPILER` / `__INTEL_LLVM_COMPILER`) and on MSVC x64 (ships `svml_dispmd.lib`); 0 otherwise. When set, the transcendentals above call true vector intrinsics (`_mm_cbrt_ps`, `_mm_pow_ps`, `_mm256_*`, ...). When unset (notably GCC/Clang and **NEON**), they fall back to minimax-polynomial vector kernels in the backend, or to per-lane `libm` where no polynomial twin exists.
+
+### Fast-mode scalar/SIMD agreement (`alwan_fast_pow.h`)
+
+The sRGB / BT.1886 transfer functions reduce to `pow(x, 2.4)` and `pow(x, 1/2.4)`. The SIMD map kernels evaluate these with `alwan_simd_{f32,f64}_pow24` / `_pow_inv24`. Their **scalar twins** live in `src/alwan/core/alwan_fast_pow.h`:
+
+```c
+alwan_fast_pow24_f32(x)      alwan_fast_pow24_f64(x)        // pow(x, 2.4)
+alwan_fast_pow_inv24_f32(x)  alwan_fast_pow_inv24_f64(x)    // pow(x, 1/2.4)
+```
+
+Both files are gated on `ALWAN_HAS_SVML` so the scalar `_v` API and the SIMD map path agree on every platform:
+
+- **SVML present:** the SIMD pow kernels use libm-accurate `_mm_pow_*`, so the scalar twin also calls libm `pow`/`powf`.
+- **No SVML (e.g. NEON):** the SIMD kernels use the polynomial (atanh-series `log2` on the mantissa + degree-10 `exp2` Taylor), so the scalar twin runs the *identical* decomposition -- same coefficients, same operation order, same bit-exact mantissa/exponent split. This keeps `floor(y)` identical to the vector path (no power-of-two boundary divergence) and avoids the scalar path drifting from the SIMD path through libm.
+
+Accuracy of the polynomial path vs libm is ~5e-10 absolute over [0,1] -- the documented fast-mode floor. In **deterministic mode** these fast twins are not used: the `alwan_det_*` polynomials in `alwan_platform.h` replace them (see [determinism.md](../determinism.md)).
 
 ### Rounding
 
@@ -136,12 +171,15 @@ Per-lane: chooses `if_true` where mask bits are set, `if_false` otherwise. Core 
 | `set1(scalar)` | broadcast scalar to all lanes |
 | `zero()` | all-zero vector |
 
-### Reduction (F32 only)
+### Reduction
 
 | Operation | Description |
 |-----------|-------------|
-| `hadd(a, b)` | horizontal add (adjacent pairs) |
-| `hsum(a)` | sum all lanes to scalar |
+| `f32_hadd(a, b)` | horizontal add (adjacent pairs), F32 |
+| `f32_hsum(a)` | sum all F32 lanes to a broadcast scalar |
+| `f64_hsum(a)` | sum all F64 lanes to a broadcast scalar |
+
+These public names are defined in `alwan_simd_reduce.h`. In fast mode they forward to the backend's `*_native` op (whatever lane order the ISA finds convenient -- SSE2 4-lane tree, AVX 8-lane tree, NEON `vaddvq_*`). In `ALWAN_DETERMINISTIC=1` mode they instead use a canonical left-to-right scalar reduction that is bit-exact across SSE/AVX/NEON/scalar. Element-wise ops are unaffected by this switch; only reductions change. Never reference the `*_native` suffix from call sites.
 
 ## Color-Math Building Blocks
 
@@ -191,14 +229,16 @@ Map functions process pixels in tiles to maximize cache utilization.
 ### Tile dimensions
 
 ```c
-#define ALWAN_TILE_W       128   // pixels wide
+#define ALWAN_TILE_W        64   // pixels wide
 #define ALWAN_TILE_H        32   // pixels tall
-#define ALWAN_TILE_PIXELS  4096  // 128 * 32
+#define ALWAN_TILE_PIXELS 2048   // 64 * 32
 ```
 
 Scratch buffers per tile (3 channels, Structure-of-Arrays layout):
-- F32: 3 x 4096 x 4 = 48 KB (fits L1 cache)
-- F64: 3 x 4096 x 8 = 96 KB (fits L2)
+- F32: 3 x 2048 x 4 = 24 KB (fits L1 cache)
+- F64: 3 x 2048 x 8 = 48 KB (fits L1/L2)
+
+The per-precision map kernels (`*_map_kernels.inc`) use their own tile sizing through `alwan_map_simd_defs.h`: `ALWAN_MAP_TILE_PIXELS` is 4096 on the f32 pass and 2048 on the f64 pass.
 
 ### Data flow
 
@@ -292,21 +332,33 @@ ALWAN_MAP3_EX_V_SCALAR(name, ...)                       // value-returning + sca
 src/alwan/simd/
     alwan_simd.h             # ISA dispatch (include this one)
     alwan_simd_types.h       # width constants, type aliases, SVML detection
+    alwan_simd_reduce.h      # deterministic-aware horizontal reductions (hsum/hadd)
     alwan_simd_avx2.h        # AVX2 intrinsic wrappers
     alwan_simd_avx.h         # AVX intrinsic wrappers
     alwan_simd_sse2.h        # SSE2 intrinsic wrappers (+ SSE3/SSSE3/SSE4.x)
+    alwan_simd_neon.h        # ARM NEON intrinsic wrappers (aarch64 + ARMv7)
     alwan_simd_scalar.h      # scalar fallback (width=1)
 
+src/alwan/core/
+    alwan_fast_pow.h         # scalar pow24 / pow_inv24 twins of the SIMD kernels
+
 src/alwan/map/
-    alwan_map_internal.h     # SIMD building blocks, tile helpers, macros
-    alwan_rgb_map_interleave.c          # sRGB convenience map implementations
-    alwan_colorspace_map_interleave.c   # CIE colorspace maps
-    alwan_oklab_map_interleave.c        # Oklab/OkLCh maps
-    alwan_convenience_map_interleave.c  # HSV, HSL, CMY, YCoCg, HWB maps
-    alwan_ictcp_map_interleave.c        # ICtCp maps
-    alwan_ipt_map_interleave.c          # IPT maps
-    alwan_jzazbz_map_interleave.c       # Jzazbz/JzCzhz maps
-    alwan_cam_map_interleave.c          # CIECAM02, CAM16 maps
-    alwan_math_map_interleave.c         # mat3 transform map
-    alwan_typed_map_interleave.c        # all _map_interleave_ex instantiations (macro-generated)
+    alwan_map_internal.h     # always-f64 SIMD building blocks, tile helpers, macros
+    alwan_map_simd_defs.h    # per-precision alwan_map_* aliases (one pass each)
+    alwan_rgb_map.c          # sRGB convenience map implementations
+    alwan_colorspace_map.c   # CIE colorspace maps
+    alwan_oklab_map.c        # Oklab/OkLCh maps
+    alwan_convenience_map.c       # HSV, HSL, CMY, YCoCg, HWB maps
+    alwan_convenience_extra_map.c # additional convenience-model maps
+    alwan_ictcp_map.c        # ICtCp maps
+    alwan_ipt_map.c          # IPT maps
+    alwan_jzazbz_map.c       # Jzazbz/JzCzhz maps
+    alwan_cam_map.c          # CIECAM02, CAM16 maps
+    alwan_color_correction_map.c  # lift/gamma/gain, CDL, CCM maps
+    alwan_extended_map.c     # extended-space batch maps
+    alwan_vision_map.c       # CVD simulation maps
+    alwan_gamut_map.c        # gamut mapping (incl. NEON kernels)
+    alwan_mat3_map.c         # mat3 transform map
+    alwan_typed_map.c        # typed _ex instantiations (any U8/U16/F16/F32/F64)
+    alwan_typed_planar_map.c # typed planar (SoA) _ex instantiations
 ```

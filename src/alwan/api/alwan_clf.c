@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * CLF (Common LUT Format) export — SMPTE ST 2136-1:2024
+ * CLF (Common LUT Format) export -- SMPTE ST 2136-1:2024
  * Serializes Alwan transform chains as CLF XML for interchange
  * with OCIO, ACES, DaVinci Resolve, Baselight.
  *
@@ -382,7 +382,7 @@ static int clf_export_core(clf_writer *w,
     }
     clf_write_matrix(w, &xyz_to_dst, NULL, "XYZ to destination RGB (inverse NPM)");
 
-    /* Step 5: Gamut clamp (Range node) — clip to [0,1] in linear dst space */
+    /* Step 5: Gamut clamp (Range node) -- clip to [0,1] in linear dst space */
     clf_write_range(w, 0.0, 1.0, 0.0, 1.0, 1, "Gamut clamp to [0,1]");
 
     /* Step 6: View transform as 3D LUT (if requested) */
@@ -524,7 +524,7 @@ int alwan_clf_export_view_buffer_f64(char *buf, size_t *bytes_written, size_t bu
 }
 
 /* ----------------------------------------------------------------
- * f32 wrappers — widen f32 descriptors to f64 and delegate.
+ * f32 wrappers -- widen f32 descriptors to f64 and delegate.
  * ---------------------------------------------------------------- */
 
 static void clf_widen_desc_32(alwan_rgb_space_desc_f64 *out, alwan_rgb_space_desc_f32 const *in) {

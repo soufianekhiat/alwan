@@ -39,13 +39,15 @@
 #define ALWAN_CORE_EXP(x)       ALWAN_EXP_F64(x)
 /* Deterministic-aware sRGB primitives. In fast mode these compute via
  * libm pow; in det mode they call the polynomial implementations from
- * core/alwan_deterministic.h. road_to_determinism.md §6.2. */
+ * core/alwan_deterministic.h. road_to_determinism.md sec 6.2. */
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#  include "alwan_deterministic.h"
 #  define ALWAN_CORE_SRGB_OETF(x)    alwan_det_srgb_oetf_f64(x)
 #  define ALWAN_CORE_SRGB_EOTF(x)    alwan_det_srgb_eotf_f64(x)
 #  define ALWAN_CORE_BT2020_OETF(x)  alwan_det_bt2020_oetf_f64(x)
 #  define ALWAN_CORE_BT2020_EOTF(x)  alwan_det_bt2020_eotf_f64(x)
 #else
+#  include "alwan_fast_pow.h"
 /* Fast mode: route the gamma-2.4 leg through the scalar pow twins of the SIMD
  * kernels (alwan_fast_pow*_f64), so the scalar _v path and the polynomial SIMD
  * map path agree on platforms without SVML. */

@@ -23,6 +23,16 @@ Alwan provides a complete ACES implementation covering:
 - **AP1 (ACEScg)** -- Working space for VFX compositing
 - **JMh** -- ACES 2.0 perceptual color coordinates
 
+> **f64-internal facades.** The **ACES 1.x inverse** output transform and the
+> **ZCAM inverse** ([color-appearance](color-appearance.md)) are iterative
+> inverses whose convergence thresholds sit below `float` epsilon. Their `_f32`
+> entry points run the algorithm in `double` internally and narrow the result,
+> so they stay available and numerically stable even in an `f32`-only build
+> (`ALWAN_BUILD_ONLY_F32`). This machinery is gated by `ALWAN_WITH_F64_FACADE`
+> (always `1`) rather than `ALWAN_WITH_F64`. See
+> [configuration](../configuration.md) and
+> [precision-and-limits](../precision-and-limits.md).
+
 ---
 
 ## ACES 1.x Output Transforms
@@ -138,6 +148,27 @@ int alwan_aces2_output_transform_custom_{T}(alwan_rgb_{T} *rgb_out,
 
 Custom output transform with user-specified peak luminance, limiting primaries, and display EOTF.
 
+### alwan_aces2_output_transform_{T}_map_interleave
+
+```c
+int alwan_aces2_output_transform_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                    alwan_{T} const *in, size_t in_stride,
+                                                    size_t count,
+                                                    alwan_aces2_output output);
+```
+
+Batch (map) form over interleaved RGB triplets. The preset's parameters
+(limiting primaries, peak luminance, EOTF) are initialized **once** and reused
+across all `count` pixels, so this is much faster than calling the per-pixel
+`alwan_aces2_output_transform_{T}` in a loop. `out_stride` / `in_stride` are
+byte strides between consecutive RGB triplets (typically `3 * sizeof(alwan_{T})`
+for tightly packed data).
+
+The unified ACES 2.0 output transform therefore covers four entry shapes:
+**presets** (`_output_transform`), **inverse** (`_output_transform_inv`),
+**custom** (`_output_transform_custom`), and **batch-initialized**
+(`_output_transform_{T}_map_interleave`).
+
 ---
 
 ## ACES 2.0 Components
@@ -145,7 +176,7 @@ Custom output transform with user-specified peak luminance, limiting primaries, 
 ### Tonescale Compression
 
 ```c
-int alwan_aces_tonescale_compress20_{T}(alwan_rgb_{T} *rgb_out,
+void alwan_aces_tonescale_compress20_{T}(alwan_rgb_{T} *rgb_out,
                                          alwan_rgb_{T} const *rgb_in,
                                          alwan_{T} peak_luminance);
 ```
@@ -164,29 +195,44 @@ typedef struct {
 /* Initialize with AP1 defaults */
 void alwan_aces_primaries_ap1_default_{T}(alwan_aces_primaries_{T} *primaries);
 
-/* Convert to/from JMh appearance coordinates */
-int alwan_aces_rgb_to_jmh20_{T}(alwan_vec3_{T} *jmh_out,
+/* Convert to/from JMh appearance coordinates (forward + inverse) */
+void alwan_aces_rgb_to_jmh20_{T}(alwan_vec3_{T} *jmh_out,
                                   alwan_rgb_{T} const *rgb_in,
                                   alwan_aces_primaries_{T} const *primaries);
 
-int alwan_aces_jmh_to_rgb20_{T}(alwan_rgb_{T} *rgb_out,
+void alwan_aces_jmh_to_rgb20_{T}(alwan_rgb_{T} *rgb_out,
                                   alwan_vec3_{T} const *jmh_in,
                                   alwan_aces_primaries_{T} const *primaries);
 ```
 
+`rgb_to_jmh20` (forward) and `jmh_to_rgb20` (inverse) are exact inverses of each
+other and round-trip. They return `void` (no error code): the conversion is
+total over finite inputs.
+
 ### Gamut Compression (ACES 2.0)
 
 ```c
-int alwan_aces_gamut_compress20_{T}(alwan_vec3_{T} *jmh_out,
+void alwan_aces_gamut_compress20_{T}(alwan_vec3_{T} *jmh_out,
                                      alwan_vec3_{T} const *jmh_in,
                                      alwan_{T} peak_luminance,
                                      alwan_aces_primaries_{T} const *limit_primaries);
 
-int alwan_aces_gamut_compress20_inv_{T}(alwan_vec3_{T} *jmh_out,
+void alwan_aces_gamut_compress20_inv_{T}(alwan_vec3_{T} *jmh_out,
                                          alwan_vec3_{T} const *jmh_in,
                                          alwan_{T} peak_luminance,
                                          alwan_aces_primaries_{T} const *limit_primaries);
 ```
+
+**Embedded gamut-reach tables.** The ACES 2.0 gamut compressor reads
+per-display **gamut cusp / reach boundary** tables that are embedded into the
+library at compile time (`ALWAN_EMBED_DATA=1`, the only supported mode). The
+CSV sources live under `src/alwan/data/aces2/gamut_*.csv` (one per
+limiting-gamut + peak-luminance preset, e.g. `gamut_rec709_100.csv`,
+`gamut_p3d65_1000.csv`, `gamut_rec2020_4000.csv`) and are produced by the
+`gendata` pipeline (`alwan_dev/gendata/aces2_gamut_tables.py`), never
+hand-authored. The provenance of the related ACES 2.0 Fourier chroma
+normalization arrays is tracked as an open documentation item in
+[violations.md](../violations.md).
 
 ---
 
@@ -195,25 +241,25 @@ int alwan_aces_gamut_compress20_inv_{T}(alwan_vec3_{T} *jmh_out,
 ### RedMod -- Red channel desaturation
 
 ```c
-int alwan_aces_redmod03_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
-int alwan_aces_redmod10_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
-int alwan_aces_redmod03_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
-int alwan_aces_redmod10_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_redmod03_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_redmod10_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_redmod03_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_redmod10_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
 ```
 
 ### Glow -- Flare/glow compensation
 
 ```c
-int alwan_aces_glow03_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
-int alwan_aces_glow10_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
-int alwan_aces_glow03_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
-int alwan_aces_glow10_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_glow03_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_glow10_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_glow03_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_glow10_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
 ```
 
 ### DarkToDim -- Surround compensation
 
 ```c
-int alwan_aces_dark_to_dim10_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_dark_to_dim10_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
 ```
 
 ---
@@ -229,11 +275,11 @@ typedef struct {
 
 void alwan_aces_gamut_comp13_params_default_{T}(alwan_aces_gamut_comp13_params_{T} *params);
 
-int alwan_aces_gamut_comp13_{T}(alwan_rgb_{T} *rgb_out,
+void alwan_aces_gamut_comp13_{T}(alwan_rgb_{T} *rgb_out,
                                  alwan_rgb_{T} const *rgb_in,
                                  alwan_aces_gamut_comp13_params_{T} const *params);
 
-int alwan_aces_gamut_comp13_inv_{T}(alwan_rgb_{T} *rgb_out,
+void alwan_aces_gamut_comp13_inv_{T}(alwan_rgb_{T} *rgb_out,
                                      alwan_rgb_{T} const *rgb_in,
                                      alwan_aces_gamut_comp13_params_{T} const *params);
 ```
@@ -245,15 +291,15 @@ int alwan_aces_gamut_comp13_inv_{T}(alwan_rgb_{T} *rgb_out,
 ### Blue Light Artifact Fix
 
 ```c
-int alwan_aces_blue_light_fix_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
-int alwan_aces_blue_light_fix_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_blue_light_fix_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_blue_light_fix_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
 ```
 
 ### ACES 1.0 Look
 
 ```c
-int alwan_aces_look_1_0_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
-int alwan_aces_look_1_0_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_look_1_0_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
+void alwan_aces_look_1_0_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
 ```
 
 ### Parametric LMT (CDL-style)
@@ -268,7 +314,7 @@ typedef struct {
 
 void alwan_aces_lmt_params_init_{T}(alwan_aces_lmt_params_{T} *params);
 
-int alwan_aces_lmt_apply_{T}(alwan_rgb_{T} *rgb_out,
+void alwan_aces_lmt_apply_{T}(alwan_rgb_{T} *rgb_out,
                               alwan_rgb_{T} const *rgb_in,
                               alwan_aces_lmt_params_{T} const *params);
 ```
@@ -289,8 +335,15 @@ alwan_aces_lmt_apply_{T}(&result, &acescg_pixel, &lmt);
 
 ## Error Codes
 
+The ACES 1.x / ACES 2.0 **output transforms** (`alwan_aces1_output_transform*`,
+`alwan_aces2_output_transform*`, including the `_custom` and `_map_interleave`
+forms) return an `int` status:
+
 - `ALWAN_OK` (0) -- Success
 - `ALWAN_E_INVALID` (-1) -- Invalid output preset or NULL pointer
+
+The fixed functions, LMTs, JMh conversions, tonescale, and gamut-compression
+helpers shown above return `void` (total over finite inputs, no status code).
 
 ---
 

@@ -38,7 +38,7 @@
 /* Types: defines alwan_vec2/vec3/mat3x3 and all semantic color types */
 #include "alwan_types.h"
 
-/* ALWAN_CORE_* — GPU single-precision pass aliases used by *_core.inc files.
+/* ALWAN_CORE_* -- GPU single-precision pass aliases used by *_core.inc files.
  * Shared across glsl/hlsl/halide bootstraps. */
 #include "alwan_core_aliases.inc"
 

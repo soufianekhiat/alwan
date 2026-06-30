@@ -189,10 +189,14 @@ ALWAN_INLINE alwan_uvw alwan_xyz_to_uvw_v(alwan_xyz xyz, alwan_xyz white) {
                                    (ALWAN_LITERAL(4.0) * white.x) / sum_n);
     alwan_scalar vn = ALWAN_SELECT(ALWAN_ABS(sum_n) < ALWAN_EPSILON, ALWAN_LITERAL(0.0),
                                    (ALWAN_LITERAL(6.0) * white.y) / sum_n);
-    alwan_scalar Y_ratio = ALWAN_SELECT(white.y < ALWAN_EPSILON, ALWAN_LITERAL(0.0), xyz.y / white.y);
-    alwan_scalar W = ALWAN_SELECT(xyz.y < ALWAN_EPSILON,
+    /* W* = 25 * Yp^(1/3) - 17, where Yp is the luminance factor in percent [0,100].
+     * Computed scale-invariantly as (Y/Yn)*100 so callers may pass XYZ on either
+     * the [0,1] or the [0,100] scale and still match CIE 1964 / colour-science. */
+    alwan_scalar Yp = ALWAN_SELECT(white.y < ALWAN_EPSILON, ALWAN_LITERAL(0.0),
+                                   (xyz.y / white.y) * ALWAN_LITERAL(100.0));
+    alwan_scalar W = ALWAN_SELECT(Yp < ALWAN_EPSILON,
                                   ALWAN_LITERAL(-17.0),
-                                  ALWAN_LITERAL(25.0) * ALWAN_CBRT(Y_ratio) - ALWAN_LITERAL(17.0));
+                                  ALWAN_LITERAL(25.0) * ALWAN_CBRT(Yp) - ALWAN_LITERAL(17.0));
     result.U = ALWAN_LITERAL(13.0) * W * (u - un);
     result.V = ALWAN_LITERAL(13.0) * W * (v - vn);
     result.W = W;
@@ -204,7 +208,10 @@ ALWAN_INLINE alwan_xyz alwan_uvw_to_xyz_v(alwan_uvw uvw, alwan_xyz white) {
     alwan_scalar W_plus_17 = uvw.W + ALWAN_LITERAL(17.0);
     alwan_scalar Y_cbrt = ALWAN_SELECT(W_plus_17 < ALWAN_EPSILON, ALWAN_LITERAL(0.0),
                                        W_plus_17 / ALWAN_LITERAL(25.0));
-    alwan_scalar Y = Y_cbrt * Y_cbrt * Y_cbrt;
+    /* Y_cbrt^3 is the luminance factor in percent [0,100]; rescale to the caller's
+     * XYZ scale via Yn so the round-trip with xyz_to_uvw is exact (inverse of *100). */
+    alwan_scalar Yp = Y_cbrt * Y_cbrt * Y_cbrt;
+    alwan_scalar Y = Yp * white.y * ALWAN_LITERAL(0.01);
     alwan_scalar sum_n = white.x + ALWAN_LITERAL(15.0) * white.y + ALWAN_LITERAL(3.0) * white.z;
     alwan_scalar un = ALWAN_SELECT(ALWAN_ABS(sum_n) < ALWAN_EPSILON, ALWAN_LITERAL(0.0),
                                    (ALWAN_LITERAL(4.0) * white.x) / sum_n);
@@ -213,11 +220,13 @@ ALWAN_INLINE alwan_xyz alwan_uvw_to_xyz_v(alwan_uvw uvw, alwan_xyz white) {
     alwan_scalar W13 = ALWAN_LITERAL(13.0) * uvw.W;
     alwan_scalar u = ALWAN_SELECT(ALWAN_ABS(uvw.W) < ALWAN_EPSILON, un, uvw.U / W13 + un);
     alwan_scalar v = ALWAN_SELECT(ALWAN_ABS(uvw.W) < ALWAN_EPSILON, vn, uvw.V / W13 + vn);
+    /* X and Z from u, v, Y. Invert CIE 1960 UCS u=4X/D, v=6Y/D (D=X+15Y+3Z):
+     * D = 6Y/v, so X = u*D/4 = 6uY/(4v) and Z = (D - X - 15Y)/3 = (8 - 2u - 20v)*Y/(4v). */
     result.x = ALWAN_SELECT(ALWAN_ABS(v) < ALWAN_EPSILON, ALWAN_LITERAL(0.0),
-                            (ALWAN_LITERAL(9.0) * u * Y) / (ALWAN_LITERAL(4.0) * v));
+                            (ALWAN_LITERAL(6.0) * u * Y) / (ALWAN_LITERAL(4.0) * v));
     result.y = Y;
     result.z = ALWAN_SELECT(ALWAN_ABS(v) < ALWAN_EPSILON, ALWAN_LITERAL(0.0),
-                            ((ALWAN_LITERAL(12.0) - ALWAN_LITERAL(3.0) * u - ALWAN_LITERAL(20.0) * v) * Y) / (ALWAN_LITERAL(4.0) * v));
+                            ((ALWAN_LITERAL(8.0) - ALWAN_LITERAL(2.0) * u - ALWAN_LITERAL(20.0) * v) * Y) / (ALWAN_LITERAL(4.0) * v));
     return result;
 }
 

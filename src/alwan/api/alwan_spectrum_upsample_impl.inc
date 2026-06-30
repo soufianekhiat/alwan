@@ -1,10 +1,10 @@
-/* No include guard — included twice (f32 and f64 passes).
+/* No include guard -- included twice (f32 and f64 passes).
  *
  * Native dual-precision RGB->spectrum upsampling. The basis spectra and
  * Jakob2019 coefficient LUTs are dual-declared (f32 + f64 twins from the
  * same CSV) in alwan_spectrum_upsample.c and read here via
  * ALWAN_CORE_FNLIT(NAME), so the f32 pass reads native float data and
- * every operation runs at the selected precision — a genuine f32 path
+ * every operation runs at the selected precision -- a genuine f32 path
  * rather than a widen-to-f64 facade.
  */
 

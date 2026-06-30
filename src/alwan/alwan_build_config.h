@@ -32,7 +32,7 @@
  *
  * NOTE for contributors: `double` / `float` as C types are always available.
  * A handful of f32 public entry points are numerically f64-internal facades
- * (iterative inverses, least-squares fits) — their private double-precision
+ * (iterative inverses, least-squares fits) -- their private double-precision
  * helpers use the `double` type directly and are NOT gated by ALWAN_WITH_F64,
  * so they remain functional in an f32-only build.
  */
@@ -68,7 +68,7 @@
  * the result. So those entry points stay AVAILABLE in an f32-only build, their
  * f64 implementation (and the f64 data it reads) is compiled regardless of the
  * precision selection: gate that machinery with ALWAN_WITH_F64_FACADE rather
- * than ALWAN_WITH_F64. (Always 1 — at least one precision is always built.) */
+ * than ALWAN_WITH_F64. (Always 1 -- at least one precision is always built.) */
 #define ALWAN_WITH_F64_FACADE 1
 
 /* ----------------------------------------------------------------

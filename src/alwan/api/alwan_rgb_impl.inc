@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 /* ----------------------------------------------------------------
  * Arbitrary Gamma OETF/EOTF

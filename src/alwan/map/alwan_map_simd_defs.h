@@ -18,12 +18,12 @@
 
 /* Deterministic mode forces all *_map_kernels.inc SIMD bodies to fall
  * through to their scalar tail loops. Most colorspace kernels diverge
- * from their scalar-equivalent at last bit even with /fp:precise — the
+ * from their scalar-equivalent at last bit even with /fp:precise -- the
  * vector path uses precomputed reciprocals (`vx * (1/wx)` instead of
  * `vx / wx`), pre-multiplied constants, and slightly different operation
  * orderings in matrix multiplies. Lane-unpacking each one individually
  * is ~50 helpers; collapsing the SIMD width to 1 in det mode is one
- * line and every kernel benefits. road_to_determinism.md §8.
+ * line and every kernel benefits. road_to_determinism.md sec 8.
  *
  * Element-wise SIMD usage outside the kernel files (alwan_rgb.c's
  * OETF/EOTF apply functions through alwan_map_internal.h) is unaffected

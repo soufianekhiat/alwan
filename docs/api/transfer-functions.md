@@ -18,15 +18,17 @@ Transfer functions convert between linear and encoded (gamma-corrected) values:
 
 ## Core Functions
 
+All batch functions follow the canonical v2.0 argument convention: outputs
+before inputs, each `*_stride` (in bytes) immediately after its buffer, then
+`count`, then the trailing enum/knob/`ctx` arguments.
+
 ### alwan_oetf_apply_{T}
 
 ```c
-int alwan_oetf_apply_{T}(alwan_{T} *encoded,
-                          alwan_transfer_function tf,
-                          alwan_{T} const *linear,
+int alwan_oetf_apply_{T}(alwan_{T} *encoded_out, size_t out_stride,
+                          alwan_{T} const *linear_in, size_t in_stride,
                           size_t count,
-                          size_t in_stride,
-                          size_t out_stride);
+                          alwan_transfer_function tf);
 ```
 
 Applies OETF (linear -> encoded). Returns `ALWAN_OK` on success.
@@ -34,8 +36,8 @@ Applies OETF (linear -> encoded). Returns `ALWAN_OK` on success.
 **Example:**
 ```c
 double linear[300], encoded[300];  /* 100 RGB triplets */
-alwan_oetf_apply_{T}(encoded, ALWAN_TF_SRGB, linear, 300,
-                     sizeof(double), sizeof(double));
+alwan_oetf_apply_{T}(encoded, sizeof(double), linear, sizeof(double),
+                     300, ALWAN_TF_SRGB);
 ```
 
 ---
@@ -43,12 +45,10 @@ alwan_oetf_apply_{T}(encoded, ALWAN_TF_SRGB, linear, 300,
 ### alwan_eotf_apply_{T}
 
 ```c
-int alwan_eotf_apply_{T}(alwan_{T} *linear,
-                          alwan_transfer_function tf,
-                          alwan_{T} const *encoded,
+int alwan_eotf_apply_{T}(alwan_{T} *linear_out, size_t out_stride,
+                          alwan_{T} const *encoded_in, size_t in_stride,
                           size_t count,
-                          size_t in_stride,
-                          size_t out_stride);
+                          alwan_transfer_function tf);
 ```
 
 Applies EOTF (encoded -> linear). Returns `ALWAN_OK` on success.
@@ -58,16 +58,16 @@ Applies EOTF (encoded -> linear). Returns `ALWAN_OK` on success.
 ### alwan_view_transform_apply_{T}
 
 ```c
-int alwan_view_transform_apply_{T}(alwan_{T} *rgb_out,
-                                    alwan_ctx *ctx,
-                                    alwan_view_transform vt,
-                                    alwan_{T} const *rgb_in,
+int alwan_view_transform_apply_{T}(alwan_{T} *rgb_out, size_t out_stride,
+                                    alwan_{T} const *rgb_in, size_t in_stride,
                                     size_t count,
-                                    size_t in_stride,
-                                    size_t out_stride);
+                                    alwan_view_transform vt,
+                                    alwan_ctx *ctx);
 ```
 
 Applies view transforms (scene -> display). Returns `ALWAN_OK` on success.
+`ctx` is required (it carries the embedded RGB-space registry) and is the
+last argument, per convention.
 
 ---
 
@@ -79,8 +79,8 @@ typedef enum {
     ALWAN_TF_SRGB,         /* sRGB */
     ALWAN_TF_BT709,        /* ITU-R BT.709 */
     ALWAN_TF_BT2020,       /* ITU-R BT.2020 */
-    ALWAN_TF_PQ,           /* Perceptual Quantizer (ST.2084) */
-    /* ALWAN_TF_ST2084 is a #define alias for ALWAN_TF_PQ (declared after enum) */
+    ALWAN_TF_PQ,           /* Perceptual Quantizer (SMPTE ST 2084) */
+    ALWAN_TF_ST2084,       /* Alias for PQ */
     ALWAN_TF_HLG,          /* Hybrid Log-Gamma */
     ALWAN_TF_BT1886,       /* BT.1886 EOTF */
     ALWAN_TF_ACESPROXY,
@@ -108,18 +108,25 @@ typedef enum {
 } alwan_transfer_function;
 ```
 
+> **Camera log curves.** The `ALWAN_TF_SLOG*`, `ALWAN_TF_NLOG`, `ALWAN_TF_VLOG`,
+> `ALWAN_TF_CLOG*`, `ALWAN_TF_REDLOG*`/`ALWAN_TF_LOG3G10`, and related camera-vendor
+> log encodings are supported as ordinary `tf` values. These curves carry prior
+> correctness fixes: S-Log3 OETF performs no negative pre-clamp (negatives fall
+> into the linear segment, callers clip), and N-Log OETF uses a signed cube root
+> (`sign(arg) * |arg|^(1/3)`) to avoid `NaN` when `linear < -b`.
+
 ---
 
 ## Arbitrary Gamma
 
 ```c
-int alwan_gamma_oetf_{T}(alwan_{T} *out, alwan_{T} const *in,
-                          alwan_{T} gamma, size_t count,
-                          size_t in_stride, size_t out_stride);
+int alwan_gamma_oetf_{T}(alwan_{T} *out, size_t out_stride,
+                          alwan_{T} const *in, size_t in_stride,
+                          size_t count, alwan_{T} gamma);
 
-int alwan_gamma_eotf_{T}(alwan_{T} *out, alwan_{T} const *in,
-                          alwan_{T} gamma, size_t count,
-                          size_t in_stride, size_t out_stride);
+int alwan_gamma_eotf_{T}(alwan_{T} *out, size_t out_stride,
+                          alwan_{T} const *in, size_t in_stride,
+                          size_t count, alwan_{T} gamma);
 ```
 
 Apply arbitrary gamma values not covered by the enum. OETF: `pow(in, 1/gamma)`, EOTF: `pow(in, gamma)`.
@@ -171,15 +178,15 @@ typedef enum {
 ```c
 double linear_r = 0.5;
 double encoded_r;
-alwan_oetf_apply_{T}(&encoded_r, ALWAN_TF_SRGB, &linear_r, 1,
-                     sizeof(double), sizeof(double));
+alwan_oetf_apply_{T}(&encoded_r, sizeof(double), &linear_r, sizeof(double),
+                     1, ALWAN_TF_SRGB);
 ```
 
 ### HDR PQ Encoding
 
 ```c
-alwan_oetf_apply_{T}(encoded, ALWAN_TF_PQ, linear, count,
-                     sizeof(double), sizeof(double));
+alwan_oetf_apply_{T}(encoded, sizeof(double), linear, sizeof(double),
+                     count, ALWAN_TF_PQ);
 ```
 
 ---

@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 int ALWAN_CORE_FNLIT(alwan_uint_to_float)(ALWAN_CORE_T *out, alwan_uint16 const *in,
                                            int bit_depth, size_t count) {

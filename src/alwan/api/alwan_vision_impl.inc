@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 /* ================================================================
  * Accessibility Contrast Metrics
@@ -198,9 +198,9 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_maximum_angular_size_barten1999)(ALWAN_CORE_
 void ALWAN_CORE_FNLIT(alwan_csf_barten1999_params_default)(ALWAN_CORE_FNLIT(alwan_csf_barten1999_params) *params) {
     if (!params) return;
 
-    /* Default parameters for 1920×1080 display at ~3 m viewing distance.
+    /* Default parameters for 1920x1080 display at ~3 m viewing distance.
      * Values from Barten (1999) "Contrast Sensitivity of the Human Eye and its
-     * Effects on Image Quality", SPIE Press — Table 3.2 reference observer. */
+     * Effects on Image Quality", SPIE Press -- Table 3.2 reference observer. */
     params->sigma = ALWAN_CORE_FNVLIT(alwan_sigma_barten1999)(
         ALWAN_CORE_LITERAL(0.5) / ALWAN_CORE_LITERAL(60.0),
         ALWAN_CORE_LITERAL(0.08) / ALWAN_CORE_LITERAL(60.0),

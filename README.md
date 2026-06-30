@@ -15,9 +15,35 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 
+**Version: 2.0.0-rc** — the CMake project version is `2.0.0`, but no `v2.0.0`
+git tag has been cut yet; treat `main` as a release candidate. The latest
+tagged release is `v1.0.0`.
+
 A small, dependency-free colour science library in pure C11. Alwan provides production-ready colour math for applications that need precise, deterministic colour transformations without the overhead of external dependencies.
 
 **Alwan is a colour science library, not a colour management library.** It provides the mathematical foundations — colour space conversions, chromatic adaptation, appearance models, spectral operations — but does not handle ICC profiles, device characterization, rendering intents, or profile connection spaces. For ICC workflow support, use Alwan for the underlying math and a dedicated library (e.g. LittleCMS) for profile I/O.
+
+---
+
+## Contents
+
+- [Why Alwan?](#why-alwan)
+- [Install & Vendoring](#install--vendoring)
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Design Philosophy](#design-philosophy)
+- [Configuration](#configuration)
+- [Performance](#performance)
+- [API Examples](#api-examples)
+- [Data Strategy](#data-strategy)
+- [Numerical Stability](#numerical-stability)
+- [Testing](#testing)
+- [Project Structure](#project-structure)
+- [Build System](#build-system)
+- [Current Status](#current-status)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -28,8 +54,8 @@ A small, dependency-free colour science library in pure C11. Alwan provides prod
 - Six host targets verified in CI (Linux/macOS/Windows × x64/ARM)
 
 **Performance-First Design**
-- Both `float` and `double` precision in one binary; pick at the
-  call site
+- `_f32` (float) and `_f64` (double) variants compile into a single
+  binary by default; pick precision at the call site
 - SIMD bulk kernels with backends for SSE2 / AVX / AVX2 / NEON, plus
   a scalar fallback for any other ISA
 - Map kernels operate on AoS/SoA buffers with `memcpy`-style
@@ -50,13 +76,51 @@ A small, dependency-free colour science library in pure C11. Alwan provides prod
 
 ---
 
+## Install & Vendoring
+
+Alwan builds to a single static library (`alwan`) plus the public headers
+under `src/alwan/`. There is no amalgamated single-file distribution — you
+link the library and include `alwan.h`.
+
+**CMake `add_subdirectory` (vendored / git submodule):**
+```cmake
+# git submodule add https://github.com/soufianekhiat/alwan.git extern/alwan
+add_subdirectory(extern/alwan)
+target_link_libraries(my_app PRIVATE Alwan::alwan)
+```
+
+**CMake `FetchContent`:**
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+  alwan
+  GIT_REPOSITORY https://github.com/soufianekhiat/alwan.git
+  GIT_TAG        main)   # no v2.0.0 tag yet — pin a commit for reproducibility
+FetchContent_MakeAvailable(alwan)
+target_link_libraries(my_app PRIVATE Alwan::alwan)
+```
+
+**Installed package (`find_package`):** the install rules export an
+`Alwan::alwan` target and an `AlwanConfig.cmake`:
+```cmake
+find_package(Alwan REQUIRED)
+target_link_libraries(my_app PRIVATE Alwan::alwan)
+```
+
+The `Alwan::alwan` target carries its include directory, so `#include "alwan.h"`
+works without extra `target_include_directories`. CMake build options
+(`ALWAN_BUILD_PRECISION`, `ALWAN_DETERMINISTIC`, `ALWAN_SIMD_ARCH`, …) are
+described under [Configuration](#configuration).
+
+---
+
 ## Quick Start
 
 **Prerequisites (Sharpmake/MSVC):** Visual Studio 2022, .NET 6.0+ SDK, Git
 
 Or
 
-**Prerequisites (CMake):** CMake 3.15+, any C11 compiler, Git
+**Prerequisites (CMake):** CMake 3.20+, any C11 compiler, Git
 
 1. **Clone and bootstrap:**
    ```batch
@@ -91,7 +155,11 @@ Or
    alwan_lab_f64 lab;
 
    alwan_xyz_to_lab_f64(&lab, &xyz, &d65);
-   /* lab.L ≈ 53.24,  lab.a ≈ 80.09,  lab.b ≈ 67.20 */
+   /* Default build (ALWAN_NORMALIZE_RANGES=1) rescales the bounded L channel
+      to [0,1]:  lab.L ≈ 0.5324,  lab.a ≈ 80.09,  lab.b ≈ 67.20
+      (a and b are unbounded opponent axes and are not rescaled).
+      With ALWAN_NORMALIZE_RANGES=0, L is native CIE [0,100] ≈ 53.24.
+      See docs/ranges.md. */
    ```
 
    The optional `alwan_ctx` is only needed for APIs that allocate
@@ -170,7 +238,7 @@ decoding), threading helpers. Use a dedicated library for those.
 ## Design Philosophy
 
 ### Pure C, Zero Dependencies
-Built entirely in C11 with no external libraries. The only build dependency is Sharpmake (included as submodule). Deploy a single header and implementation — no package managers, no runtime surprises.
+Built entirely in C11 with no external libraries. The only build dependency is Sharpmake (included as submodule). Deploy a single static library plus the public headers — no package managers, no runtime surprises.
 
 ### Deterministic & Re-entrant
 No global mutable state. All state lives in explicit context objects
@@ -182,11 +250,16 @@ levels, ISA), opt in to [`ALWAN_DETERMINISTIC=ON`](docs/determinism.md).
 Override allocation with custom `ALWAN_ALLOC`/`ALWAN_FREE` macros. Integrate seamlessly with game engines, embedded systems, or custom allocators.
 
 ### Precision Where You Need It
-Both `float` (7 digits, faster) and `double` (16 digits) variants ship
-in every build with explicit `_f32` / `_f64` suffixes — pick precision
-at the call site, no recompile required. Test tolerances automatically
-adapt to the variant under test. Favour `double` for reference and
-agreement with colour-science.
+`float` (7 digits, faster) and `double` (16 digits) variants ship in a
+default build with explicit `_f32` / `_f64` suffixes — pick precision at
+the call site. Native dual-precision is complete for the allocator, the
+cube/LUT layer, and the image `view`; the larger model families
+(ACES, CAM, ZCAM, RLAB, SPD, gamut, spectrum) currently expose their
+`_f32` entry points as f64-internal facades (`ALWAN_WITH_F64_FACADE`,
+always available even in an f32-only build). You can also compile a
+single-precision-only library — see [Precision](#precision) below.
+Test tolerances automatically adapt to the variant under test. Favour
+`double` for reference and agreement with colour-science.
 
 ### Output-First API
 Bulk functions follow a consistent `memcpy`-style convention with the
@@ -207,13 +280,33 @@ suffixes) lives in [api-conventions.md](docs/api-conventions.md).
 
 ### Precision
 
-The library always compiles both `_f32` and `_f64` function variants
-in a single binary. Pick precision at the call site with the
-appropriate suffix; there is no global "default" precision flag.
+By default the library compiles both `_f32` and `_f64` function variants
+into one binary; pick precision at the call site with the appropriate
+suffix. To shrink code and embedded-data size you can build a single
+precision instead — define **at most one** of these before any alwan
+header (they resolve to the internal `ALWAN_WITH_F32` / `ALWAN_WITH_F64`
+gates in `alwan_build_config.h`):
 
-Sharpmake build configurations:
-- **`Debug_f64`** / **`Release_f64`** — double precision (testing reference)
-- **`Debug_f32`** / **`Release_f32`** — single precision (mobile/perf)
+| User macro              | Result                                   |
+|-------------------------|------------------------------------------|
+| *(neither — default)*   | both precisions (`ALWAN_WITH_BOTH`)      |
+| `ALWAN_BUILD_ONLY_F32`  | `_f32` API + data only                   |
+| `ALWAN_BUILD_ONLY_F64`  | `_f64` API + data only                   |
+
+Defining both is a compile `#error`. In a single-precision build the
+declarations for the other precision still exist, so calling an
+excluded-precision symbol fails at **link** time, not compile time. A few
+`_f32` entry points (ZCAM/ACES 1.x iterative inverses, Cheung2004 /
+Finlayson2015 CCM fits, gamut Monte-Carlo) run f64 internally via
+`ALWAN_WITH_F64_FACADE` and stay available even in an f32-only build.
+
+The CMake equivalent is `-DALWAN_BUILD_PRECISION=both|f32|f64` (default
+`both`). The Sharpmake solution exposes the same choice as build
+configurations — **`Debug_f64`** / **`Release_f64`** (double) and
+**`Debug_f32`** / **`Release_f32`** (single) — each maps to the
+corresponding `ALWAN_BUILD_ONLY_*` build. See
+[docs/build-and-precision.md](docs/build-and-precision.md) for the full
+matrix and binary-size trade-offs.
 
 ### Deterministic Mode
 
@@ -229,8 +322,9 @@ SIMD reductions through a canonical scalar fallback.
 
 The cross-platform CI matrix in
 [`alwan_dev/.github/workflows/determinism.yml`](https://github.com/soufianekhiat/alwan_dev/blob/main/.github/workflows/determinism.yml)
-diffs a 165k-line dump across six runners every commit. Full design
-notes in [docs/determinism.md](docs/determinism.md).
+diffs a ~407k-line dump — pinning the full public API surface — across
+six runners every commit. Full design notes in
+[docs/determinism.md](docs/determinism.md).
 
 ### Data Embedding
 
@@ -248,6 +342,23 @@ binary. Zero runtime I/O, instant startup. Runtime data loading
 #define ALWAN_ALLOC(sz, align) my_alloc(sz, align)
 #define ALWAN_FREE(p)          my_free(p)
 ```
+
+---
+
+## Performance
+
+Bulk conversions are SIMD-vectorised and run in the hundreds of
+megapixels per second. On a representative AVX2 host (`_f32`, interleaved,
+8-wide), a `mat3` transform reaches **~516 Mpix/s** and common pipelines
+such as sRGB↔XYZ and the Lab/Oklab family land in the **100–800 Mpix/s**
+band; the `_f64` (4-wide) paths run at roughly half that.
+
+The full picture — 103 benchmarks across `_f32`/`_f64`, interleaved vs
+planar, and per-pixel vs typed (U8/U16/F16) dispatch — is in
+[current_perf.md](current_perf.md). Regenerate it from the `alwan_bench`
+target in the sibling [alwan_dev](https://github.com/soufianekhiat/alwan_dev)
+repo. (Numbers are relative throughput for regression tracking, not a
+cross-library benchmark.)
 
 ---
 
@@ -405,23 +516,23 @@ to keep this repository's footprint focused on the production library.
 git clone https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build && cmake --build build --config Release
-./build/tests/alwan_tests           # 89 test suites, single binary
+./build/tests/alwan_tests           # 94 test suites, single binary
 ```
 
 **Test Strategy:**
 - **Authoritative fixtures:** Reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Comprehensive coverage:** Canonical cases, edge cases, sweeps for
-  each module — 89 suites, ~thousands of assertions
+  each module — 94 suites, ~thousands of assertions
 - **Precision-aware validation:** Error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
   mode where polynomial approximation replaces libm)
 - **SIMD-vs-scalar parity:** 58 dedicated bit-exact assertions in
   `88_simd_parity` confirm every public conversion produces
   byte-identical output through both code paths in deterministic mode
-- **Cross-platform regression:** `det_run_regression` dumps ~165k
-  hex-encoded f64/f32 values per platform; the CI matrix diffs all
-  six runners against each other
+- **Cross-platform regression:** `det_run_regression` dumps ~407k
+  hex-encoded f64/f32 values per platform — pinning the full public API
+  surface; the CI matrix diffs all six runners against each other
 
 **Data Generation:**
 Reference data and test fixtures are generated by Python scripts in
@@ -449,7 +560,7 @@ alwan/                       # this repo (library only)
 └── CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-├── tests/                   # 89 test suites + reference fixtures
+├── tests/                   # 94 test suites + reference fixtures
 ├── bench/                   # micro-benchmarks
 ├── det_regression/          # cross-platform determinism regression tool
 ├── image_gen/               # validation visuals
@@ -469,7 +580,7 @@ Alwan uses [Sharpmake](https://github.com/ubisoft/Sharpmake) for project generat
 
 Regenerate projects after modifying `.cs` files:
 ```batch
-generate_projects.bat
+buildsystem\generate_projects.bat
 ```
 
 ---
@@ -483,7 +594,7 @@ generate_projects.bat
 - ✅ Dual precision (f32 + f64 in one binary)
 - ✅ Data embedding with diagnostic guards
 - ✅ Sharpmake + CMake build systems
-- ✅ Unified test suite (89 suites, hosted in alwan_dev)
+- ✅ Unified test suite (94 suites, hosted in alwan_dev)
 - ✅ 25+ named RGB spaces, easy to add more via space descriptors
 - ✅ Comprehensive colour appearance models — CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, Nayatani 95, CAM18sl, CAM20u
@@ -502,7 +613,8 @@ generate_projects.bat
 - ✅ Vision — Machado CVD simulation (6 types), CSF (default + Barten)
 - ✅ Cross-platform CI on six host targets (Linux/macOS/Windows × x64/ARM)
 - ✅ Opt-in deterministic mode with cross-platform bit-exact CI matrix
-  covering ~270 public functions ([docs/determinism.md](docs/determinism.md))
+  pinning the full public API surface (~407k-line dump per platform)
+  ([docs/determinism.md](docs/determinism.md))
 
 ---
 
@@ -523,6 +635,10 @@ Comprehensive documentation is available in the [docs/](docs/) folder. Always re
   - Data embedding mode (embedded mode only; runtime loading planned)
   - Custom memory allocators
   - Platform-specific settings
+
+- **[Build & Precision](docs/build-and-precision.md)** — `ALWAN_BUILD_ONLY_F32/F64`, `ALWAN_WITH_*`, the f64-facade exceptions, Sharpmake/CMake configuration mapping, and binary-size trade-offs
+
+- **[CPU Backends](docs/backends-cpu.md)** — SIMD ISA selection (SSE2/AVX/AVX2/NEON + scalar), SVML gating, and the fast-vs-deterministic math paths
 
 - **[Examples](docs/examples.md)** — 13 practical examples covering real-world use cases
   - Basic color conversions
@@ -565,7 +681,7 @@ Detailed function documentation with signatures, parameters, and usage patterns:
   - Where last-bit divergence comes from (libm, FMA, SIMD reductions)
   - ULP-distance testing
   - Performance trade-off (~5–20%)
-  - Cross-platform CI matrix (~270 public functions)
+  - Cross-platform CI matrix pinning the full public API surface (~407k-line dump)
 
 ---
 
