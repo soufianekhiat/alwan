@@ -5,12 +5,12 @@
  *
  * Transfer-function resolver definitions.
  *
- * The four scalar resolvers (OETF/EOTF × f32/f64) used to live as static
+ * The four scalar resolvers (OETF/EOTF x f32/f64) used to live as static
  * inline in alwan_internal.h, which forced ~160 lines of switch and
  * address-taking of every TF function into all ~60 TUs that include the
  * header. They are now defined here exactly once, table-driven by
  * TF_TABLE_BODY in alwan_internal.h. Adding a new TF means adding one
- * row to that table — every resolver and SIMD dispatch site updates
+ * row to that table -- every resolver and SIMD dispatch site updates
  * automatically.
  */
 

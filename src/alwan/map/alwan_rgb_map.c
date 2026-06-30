@@ -28,7 +28,7 @@
  *
  * This produces a ~0.007 difference in Lab a* for saturated colors compared
  * to implementations that use the rounded IEC constants (e.g. colour-science).
- * Both are valid — ours is more precise, IEC is the published standard. */
+ * Both are valid -- ours is more precise, IEC is the published standard. */
 ALWAN_DIAG_PUSH
 ALWAN_CONSTEXPR alwan_mat3x3_f64 SRGB_TO_XYZ = {{
 #include "../data/matrices/aces_rec709_to_xyz.csv"
@@ -286,6 +286,89 @@ int alwan_delta_e_cmc_f64_batch(alwan_f64 *delta_e_out,
     return ALWAN_OK;
 }
 
+/* Native f32 batches: loop over the scalar f32 metric, mirroring the f64
+ * batch structure exactly (byte strides, {l0,l1,l2} unpacking). */
+#if ALWAN_WITH_F32
+int alwan_delta_e_76_f32_batch(alwan_f32 *delta_e_out,
+                           alwan_f32 const *lab1_in, size_t in1_stride,
+                           alwan_f32 const *lab2_in, size_t in2_stride,
+                           size_t count) {
+    if (!lab1_in || !lab2_in || !delta_e_out || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 const *in1_ptr = (alwan_f32 const *)((char const *)lab1_in + i * in1_stride);
+        alwan_f32 const *in2_ptr = (alwan_f32 const *)((char const *)lab2_in + i * in2_stride);
+        alwan_lab_f32 lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
+        alwan_lab_f32 lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
+        delta_e_out[i] = alwan_delta_e_76_f32(&lab1, &lab2);
+    }
+
+    return ALWAN_OK;
+}
+
+int alwan_delta_e_2000_f32_batch(alwan_f32 *delta_e_out,
+                             alwan_f32 const *lab1_in, size_t in1_stride,
+                             alwan_f32 const *lab2_in, size_t in2_stride,
+                             size_t count) {
+    if (!lab1_in || !lab2_in || !delta_e_out || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 const *in1_ptr = (alwan_f32 const *)((char const *)lab1_in + i * in1_stride);
+        alwan_f32 const *in2_ptr = (alwan_f32 const *)((char const *)lab2_in + i * in2_stride);
+        alwan_lab_f32 lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
+        alwan_lab_f32 lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
+        delta_e_out[i] = alwan_delta_e_2000_f32(&lab1, &lab2);
+    }
+
+    return ALWAN_OK;
+}
+
+int alwan_delta_e_94_f32_batch(alwan_f32 *delta_e_out,
+                           alwan_f32 const *lab1_in, size_t in1_stride,
+                           alwan_f32 const *lab2_in, size_t in2_stride,
+                           size_t count) {
+    if (!lab1_in || !lab2_in || !delta_e_out || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 const *in1_ptr = (alwan_f32 const *)((char const *)lab1_in + i * in1_stride);
+        alwan_f32 const *in2_ptr = (alwan_f32 const *)((char const *)lab2_in + i * in2_stride);
+        alwan_lab_f32 lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
+        alwan_lab_f32 lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
+        delta_e_out[i] = alwan_delta_e_94_f32(&lab1, &lab2);
+    }
+
+    return ALWAN_OK;
+}
+
+int alwan_delta_e_cmc_f32_batch(alwan_f32 *delta_e_out,
+                            alwan_f32 const *lab1_in, size_t in1_stride,
+                            alwan_f32 const *lab2_in, size_t in2_stride,
+                            size_t count,
+                            alwan_f32 l,
+                            alwan_f32 c) {
+    if (!lab1_in || !lab2_in || !delta_e_out || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 const *in1_ptr = (alwan_f32 const *)((char const *)lab1_in + i * in1_stride);
+        alwan_f32 const *in2_ptr = (alwan_f32 const *)((char const *)lab2_in + i * in2_stride);
+        alwan_lab_f32 lab1 = {in1_ptr[0], in1_ptr[1], in1_ptr[2]};
+        alwan_lab_f32 lab2 = {in2_ptr[0], in2_ptr[1], in2_ptr[2]};
+        alwan_delta_e_cmc_params_f32 cmc_p; cmc_p.l = l; cmc_p.c = c;
+        delta_e_out[i] = alwan_delta_e_cmc_f32(&lab1, &lab2, &cmc_p);
+    }
+
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F32 */
+
 /* ----------------------------------------------------------------
  * Image Color Space Conversion
  * ---------------------------------------------------------------- */
@@ -317,13 +400,13 @@ static size_t alwan__pixel_stride4(alwan_pixel_format fmt) {
 }
 
 /* ----------------------------------------------------------------
- * Image color-space conversion — descriptor-precision templated.
+ * Image color-space conversion -- descriptor-precision templated.
  *
  * The f32 and f64 public entries are PROPER instantiations of
  * alwan_image_convert_impl.inc: each builds its combined matrix natively
  * from its own descriptor precision (the f32 entry does NOT widen the
  * descriptor to f64). Pixel DATA precision is governed by
- * alwan_pixel_format, NOT the f32/f64 suffix — the per-pixel pipeline runs
+ * alwan_pixel_format, NOT the f32/f64 suffix -- the per-pixel pipeline runs
  * in f64 lanes for both passes.
  * ---------------------------------------------------------------- */
 

@@ -375,7 +375,7 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hdr_cielab_to_xyz_kernel)(alwan_map
     alwan_map_lane epsilon_s = (alwan_map_lane)(0.58 / (sf * lf));
     alwan_map_lane Km_s = (alwan_map_lane)(alwan_map_scalar_pow((alwan_map_lane)2.0, epsilon_s));
     alwan_map_lane inv_eps = (alwan_map_lane)(1.0 / epsilon_s);
-    /* SIMD-only constants — silence MSVC C4189 on Windows ARM. */
+    /* SIMD-only constants -- silence MSVC C4189 on Windows ARM. */
     (void)Km_s; (void)inv_eps;
 
     size_t i = 0;
@@ -454,7 +454,7 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_hdr_ipt_kernel)(alwan_map_la
     alwan_map_lane sf = (alwan_map_lane)(1.25 - 0.25 * (0.2 / 0.184));
     alwan_map_lane epsilon_s = (alwan_map_lane)(0.59 / (sf * lf));
     alwan_map_lane Km_s = (alwan_map_lane)(alwan_map_scalar_pow((alwan_map_lane)2.0, epsilon_s));
-    /* SIMD-only constant — silence MSVC C4189 on Windows ARM. */
+    /* SIMD-only constant -- silence MSVC C4189 on Windows ARM. */
     (void)Km_s;
 
     size_t i = 0;
@@ -537,7 +537,7 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hdr_ipt_to_xyz_kernel)(alwan_map_la
     alwan_map_lane epsilon_s = (alwan_map_lane)(0.59 / (sf * lf));
     alwan_map_lane Km_s = (alwan_map_lane)(alwan_map_scalar_pow((alwan_map_lane)2.0, epsilon_s));
     alwan_map_lane inv_eps = (alwan_map_lane)(1.0 / epsilon_s);
-    /* SIMD-only constants — silence MSVC C4189 on Windows ARM. */
+    /* SIMD-only constants -- silence MSVC C4189 on Windows ARM. */
     (void)Km_s; (void)inv_eps;
 
     size_t i = 0;
@@ -1431,6 +1431,7 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_uvw_kernel)(alwan_map_lane *
         alwan_map_simd k13 = alwan_map_simd_set1((alwan_map_lane)(13.0));
         alwan_map_simd k25 = alwan_map_simd_set1((alwan_map_lane)(25.0));
         alwan_map_simd kn17 = alwan_map_simd_set1((alwan_map_lane)(-17.0));
+        alwan_map_simd k100 = alwan_map_simd_set1((alwan_map_lane)(100.0));
         alwan_map_simd v_un = alwan_map_simd_set1((alwan_map_lane)(un_s));
         alwan_map_simd v_vn = alwan_map_simd_set1((alwan_map_lane)(vn_s));
         alwan_map_simd inv_wy = alwan_map_simd_set1((alwan_map_lane)(white_xyz->y > ALWAN_EPSILON ? 1.0 / white_xyz->y : 0.0));
@@ -1445,11 +1446,11 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_uvw_kernel)(alwan_map_lane *
             alwan_map_simd inv_sum = alwan_map_simd_div(alwan_map_simd_set1((alwan_map_lane)(1.0)), sum);
             alwan_map_simd u = alwan_map_simd_select(sum_tiny, zero, alwan_map_simd_mul(alwan_map_simd_mul(k4, vx), inv_sum));
             alwan_map_simd v = alwan_map_simd_select(sum_tiny, zero, alwan_map_simd_mul(alwan_map_simd_mul(k6, vy), inv_sum));
-            /* Y_ratio = y / white.y; W = 25*cbrt(Y_ratio) - 17 */
-            alwan_map_simd Y_ratio = alwan_map_simd_mul(vy, inv_wy);
-            alwan_map_simd_mask y_tiny = alwan_map_simd_cmplt(vy, eps);
+            /* Yp = (y / white.y) * 100 (luminance factor in percent); W = 25*cbrt(Yp) - 17 */
+            alwan_map_simd Yp = alwan_map_simd_mul(alwan_map_simd_mul(vy, inv_wy), k100);
+            alwan_map_simd_mask y_tiny = alwan_map_simd_cmplt(Yp, eps);
             alwan_map_simd Wstar = alwan_map_simd_select(y_tiny, kn17,
-                                alwan_map_simd_fmadd(k25, alwan_map_simd_cbrt(Y_ratio), kn17));
+                                alwan_map_simd_fmadd(k25, alwan_map_simd_cbrt(Yp), kn17));
             /* U* = 13*W*(u-un), V* = 13*W*(v-vn) */
             alwan_map_simd k13W = alwan_map_simd_mul(k13, Wstar);
             alwan_map_simd_store(&d0[i], alwan_map_simd_mul(k13W, alwan_map_simd_sub(u, v_un)));
@@ -1500,22 +1501,24 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel)(alwan_map_lane *
         alwan_map_simd k13 = alwan_map_simd_set1((alwan_map_lane)(13.0));
         alwan_map_simd k17 = alwan_map_simd_set1((alwan_map_lane)(17.0));
         alwan_map_simd inv25 = alwan_map_simd_set1((alwan_map_lane)(1.0 / 25.0));
-        alwan_map_simd k9 = alwan_map_simd_set1((alwan_map_lane)(9.0));
+        alwan_map_simd k6 = alwan_map_simd_set1((alwan_map_lane)(6.0));
         alwan_map_simd inv4 = alwan_map_simd_set1((alwan_map_lane)(0.25));
-        alwan_map_simd k12 = alwan_map_simd_set1((alwan_map_lane)(12.0));
-        alwan_map_simd kn3 = alwan_map_simd_set1((alwan_map_lane)(-3.0));
+        alwan_map_simd k8 = alwan_map_simd_set1((alwan_map_lane)(8.0));
+        alwan_map_simd kn2 = alwan_map_simd_set1((alwan_map_lane)(-2.0));
         alwan_map_simd kn20 = alwan_map_simd_set1((alwan_map_lane)(-20.0));
+        alwan_map_simd wy001 = alwan_map_simd_set1((alwan_map_lane)(white_xyz->y * 0.01));
         alwan_map_simd v_un = alwan_map_simd_set1((alwan_map_lane)(un_s));
         alwan_map_simd v_vn = alwan_map_simd_set1((alwan_map_lane)(vn_s));
         for (; i + W <= n; i += W) {
             alwan_map_simd vU = alwan_map_simd_load(&c0[i]);
             alwan_map_simd vV = alwan_map_simd_load(&c1[i]);
             alwan_map_simd vW = alwan_map_simd_load(&c2[i]);
-            /* Y from W*: Y_cbrt = (W+17)/25; Y = Y_cbrt^3 */
+            /* Y from W*: Y_cbrt = (W+17)/25; Yp = Y_cbrt^3 (percent); Y = Yp * white.y * 0.01 */
             alwan_map_simd W17 = alwan_map_simd_add(vW, k17);
             alwan_map_simd_mask w17_tiny = alwan_map_simd_cmplt(W17, eps);
             alwan_map_simd Y_cbrt = alwan_map_simd_select(w17_tiny, zero, alwan_map_simd_mul(W17, inv25));
-            alwan_map_simd Y = alwan_map_simd_mul(alwan_map_simd_mul(Y_cbrt, Y_cbrt), Y_cbrt);
+            alwan_map_simd Yp = alwan_map_simd_mul(alwan_map_simd_mul(Y_cbrt, Y_cbrt), Y_cbrt);
+            alwan_map_simd Y = alwan_map_simd_mul(Yp, wy001);
             /* Recover u, v from U*, V*, W* */
             alwan_map_simd W13 = alwan_map_simd_mul(k13, vW);
             alwan_map_simd abs_W = alwan_map_simd_abs(vW);
@@ -1524,15 +1527,15 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel)(alwan_map_lane *
                             alwan_map_simd_add(alwan_map_simd_div(vU, W13), v_un));
             alwan_map_simd v = alwan_map_simd_select(w_tiny, v_vn,
                             alwan_map_simd_add(alwan_map_simd_div(vV, W13), v_vn));
-            /* X = 9*u*Y / (4*v), Z = (12 - 3*u - 20*v)*Y / (4*v) */
+            /* X = 6*u*Y / (4*v), Z = (8 - 2*u - 20*v)*Y / (4*v) */
             alwan_map_simd abs_v = alwan_map_simd_abs(v);
             alwan_map_simd_mask v_tiny = alwan_map_simd_cmplt(abs_v, eps);
             alwan_map_simd inv_4v = alwan_map_simd_div(inv4, v);
             alwan_map_simd_store(&d0[i], alwan_map_simd_select(v_tiny, zero,
-                                alwan_map_simd_mul(alwan_map_simd_mul(k9, alwan_map_simd_mul(u, Y)), inv_4v)));
+                                alwan_map_simd_mul(alwan_map_simd_mul(k6, alwan_map_simd_mul(u, Y)), inv_4v)));
             alwan_map_simd_store(&d1[i], Y);
-            /* (12 - 3*u - 20*v) */
-            alwan_map_simd numer = alwan_map_simd_fmadd(kn3, u, alwan_map_simd_fmadd(kn20, v, k12));
+            /* (8 - 2*u - 20*v) */
+            alwan_map_simd numer = alwan_map_simd_fmadd(kn2, u, alwan_map_simd_fmadd(kn20, v, k8));
             alwan_map_simd_store(&d2[i], alwan_map_simd_select(v_tiny, zero,
                                 alwan_map_simd_mul(alwan_map_simd_mul(numer, Y), inv_4v)));
         }
@@ -1712,8 +1715,8 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_hcl_kernel)(alwan_map_lane *
                 alwan_map_simd_add(alwan_map_simd_abs(r_g),
                     alwan_map_simd_add(alwan_map_simd_abs(g_b), alwan_map_simd_abs(b_r)))));
 
-            /* h_temp = atan(g_b / r_g); fallback ±pi/2 when r_g≈0.
-             * Must use atan (not atan2) — the 4-way H correction below
+            /* h_temp = atan(g_b / r_g); fallback +/-pi/2 when r_g~0.
+             * Must use atan (not atan2) -- the 4-way H correction below
              * assumes atan output range [-pi/2, pi/2]. */
             alwan_map_simd_mask rg_small = alwan_map_simd_cmplt(alwan_map_simd_abs(r_g), eps);
             alwan_map_simd ratio = alwan_map_simd_div(g_b, alwan_map_simd_select(rg_small, one, r_g));

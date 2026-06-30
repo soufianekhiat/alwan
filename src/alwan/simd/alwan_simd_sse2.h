@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Alwan - Pure C colour science library
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
@@ -870,10 +870,10 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_pow24(alwan_simd_f64 x) {
     __m128d exp2f = _mm_add_pd(_mm_set1_pd(1.0),         _mm_mul_pd(yf, e2));
 
     /* Scale: 2^yi = float with exponent field = (yi + 1023) << 52
-     * _mm_cvttpd_epi32 gives 2Ã—i32 in low 64 bits; sign-extend to i64. */
+     * _mm_cvttpd_epi32 gives 2xi32 in low 64 bits; sign-extend to i64. */
     __m128i yi_i32  = _mm_cvttpd_epi32(yi);
     __m128i yi_sign = _mm_srai_epi32(yi_i32, 31);     /* all-ones if negative */
-    __m128i yi_i64  = _mm_unpacklo_epi32(yi_i32, yi_sign); /* 2Ã—i64 sign-extended */
+    __m128i yi_i64  = _mm_unpacklo_epi32(yi_i32, yi_sign); /* 2xi64 sign-extended */
     __m128i scale_i = _mm_slli_epi64(
         _mm_add_epi64(yi_i64, _mm_set1_epi64x(1023LL)), 52);
     __m128d scale   = _mm_castsi128_pd(scale_i);

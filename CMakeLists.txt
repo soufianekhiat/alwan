@@ -45,10 +45,59 @@ endif()
 
 set(_ALWAN_EMBED_DATA_VALUE 1)
 
+# ---------------------------------------------------------------------------
+# Deterministic build configurations (Debug_Det / Release_Det)
+#
+# Mirror the Sharpmake Determinism fragment: alongside Debug/Release expose
+# Debug_Det/Release_Det, identical to their base config plus ALWAN_DETERMINISTIC=1
+# (bit-exact polynomial math, no FMA fusion). The legacy `-DALWAN_DETERMINISTIC=ON`
+# switch still works and forces determinism onto ANY config (the determinism CI
+# relies on it); the _Det configs just make the choice selectable per-build
+# without reconfiguring. A config is "deterministic" when either is true:
+#   _ALWAN_IS_DET = ALWAN_DETERMINISTIC switch OR active config is *_Det
+# ---------------------------------------------------------------------------
+get_property(_alwan_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(_alwan_multi_config)
+  foreach(_cfg Debug_Det Release_Det)
+    if(NOT _cfg IN_LIST CMAKE_CONFIGURATION_TYPES)
+      list(APPEND CMAKE_CONFIGURATION_TYPES ${_cfg})
+    endif()
+  endforeach()
+  set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}"
+      CACHE STRING "Build configurations" FORCE)
+elseif(CMAKE_BUILD_TYPE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    Debug Release RelWithDebInfo MinSizeRel Debug_Det Release_Det)
+endif()
+
+# Each _Det variant inherits its base config's flags / runtime / imported-config
+# mapping so it is not a flag-less configuration (covers both multi- and
+# single-config generators).
+set(CMAKE_C_FLAGS_DEBUG_DET              "${CMAKE_C_FLAGS_DEBUG}"              CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE_DET            "${CMAKE_C_FLAGS_RELEASE}"            CACHE STRING "" FORCE)
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG_DET     "${CMAKE_EXE_LINKER_FLAGS_DEBUG}"     CACHE STRING "" FORCE)
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE_DET   "${CMAKE_EXE_LINKER_FLAGS_RELEASE}"   CACHE STRING "" FORCE)
+set(CMAKE_SHARED_LINKER_FLAGS_DEBUG_DET  "${CMAKE_SHARED_LINKER_FLAGS_DEBUG}"  CACHE STRING "" FORCE)
+set(CMAKE_SHARED_LINKER_FLAGS_RELEASE_DET "${CMAKE_SHARED_LINKER_FLAGS_RELEASE}" CACHE STRING "" FORCE)
+set(CMAKE_STATIC_LINKER_FLAGS_DEBUG_DET  "${CMAKE_STATIC_LINKER_FLAGS_DEBUG}"  CACHE STRING "" FORCE)
+set(CMAKE_STATIC_LINKER_FLAGS_RELEASE_DET "${CMAKE_STATIC_LINKER_FLAGS_RELEASE}" CACHE STRING "" FORCE)
+set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG_DET   Debug_Det Debug "")
+set(CMAKE_MAP_IMPORTED_CONFIG_RELEASE_DET Release_Det Release "")
+
+# Keep Debug_Det on the debug CRT (default MSVC runtime selection only treats
+# the literal "Debug" config as debug). Preserves the existing DLL-runtime
+# default while extending the debug condition to Debug_Det.
+if(MSVC AND NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug,Debug_Det>:Debug>DLL")
+endif()
+
+set(_ALWAN_IS_DET "$<OR:$<BOOL:${ALWAN_DETERMINISTIC}>,$<CONFIG:Debug_Det,Release_Det>>")
+
 set(ALWAN_SOURCES
   src/alwan/api/alwan_aces_ff.c
   src/alwan/api/alwan_atd95.c
   src/alwan/api/alwan_cam.c
+  src/alwan/api/alwan_nayatani95.c
   src/alwan/map/alwan_cam_map.c
   src/alwan/api/alwan_cat.c
   src/alwan/api/alwan_color_correction.c
@@ -153,27 +202,28 @@ elseif(NOT ALWAN_BUILD_PRECISION STREQUAL "both")
   message(FATAL_ERROR "ALWAN_BUILD_PRECISION must be 'both', 'f32', or 'f64' (got '${ALWAN_BUILD_PRECISION}')")
 endif()
 
-if(ALWAN_DETERMINISTIC)
-  # Public so consumers (alwan_dev tests, downstream code) see the same
-  # routing path through alwan_math.h.
-  target_compile_definitions(alwan PUBLIC ALWAN_DETERMINISTIC=1)
-  # Block the compiler from contracting `a*b + c` into a hardware FMA.
-  # FMA gives a different last-bit result on x86 (with -mfma) vs without,
-  # and ARM aarch64 always fuses since FMA is mandatory. Forcing 2
-  # roundings makes the build bit-exact regardless of platform.
-  if(MSVC)
-    target_compile_options(alwan PUBLIC /fp:precise)
-    # In det mode, ALWAN_MAP_SIMD_WIDTH collapses to 1 so all SIMD
-    # bodies in *_map_kernels.inc are skipped and their precomputed
-    # `set1`/`inv_*` locals become unused. C4189 (initialised but
-    # not referenced) and C4101 (unreferenced local) get tripped by
-    # tens of those; suppressing them here is cheaper than refactoring
-    # every kernel to scope the constants inside the `#if`.
-    target_compile_options(alwan PRIVATE /wd4189 /wd4101)
-  else()
-    target_compile_options(alwan PUBLIC -ffp-contract=off)
-    target_compile_options(alwan PRIVATE -Wno-unused-variable -Wno-unused-but-set-variable)
-  endif()
+# Determinism: active per-config for Debug_Det/Release_Det, or for any config
+# when -DALWAN_DETERMINISTIC=ON. _ALWAN_IS_DET (set above) is the genex guard.
+# Public so consumers (alwan_dev tests, downstream code) see the same routing
+# path through alwan_math.h.
+target_compile_definitions(alwan PUBLIC $<${_ALWAN_IS_DET}:ALWAN_DETERMINISTIC=1>)
+# Block the compiler from contracting `a*b + c` into a hardware FMA. FMA gives a
+# different last-bit result on x86 (with -mfma) vs without, and ARM aarch64
+# always fuses since FMA is mandatory. Forcing 2 roundings makes the build
+# bit-exact regardless of platform.
+if(MSVC)
+  target_compile_options(alwan PUBLIC $<${_ALWAN_IS_DET}:/fp:precise>)
+  # In det mode, ALWAN_MAP_SIMD_WIDTH collapses to 1 so all SIMD bodies in
+  # *_map_kernels.inc are skipped and their precomputed `set1`/`inv_*` locals
+  # become unused. C4189 (initialised but not referenced) and C4101
+  # (unreferenced local) get tripped by tens of those; suppressing them here is
+  # cheaper than refactoring every kernel to scope the constants inside the `#if`.
+  target_compile_options(alwan PRIVATE $<${_ALWAN_IS_DET}:/wd4189> $<${_ALWAN_IS_DET}:/wd4101>)
+else()
+  target_compile_options(alwan PUBLIC $<${_ALWAN_IS_DET}:-ffp-contract=off>)
+  target_compile_options(alwan PRIVATE
+    $<${_ALWAN_IS_DET}:-Wno-unused-variable>
+    $<${_ALWAN_IS_DET}:-Wno-unused-but-set-variable>)
 endif()
 
 if(MSVC)

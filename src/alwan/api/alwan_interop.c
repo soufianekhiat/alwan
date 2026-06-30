@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Color Interop Forum — Interop ID string table
+ * Color Interop Forum -- Interop ID string table
  * Bidirectional lookup between alwan_rgb_space enum and canonical string IDs.
  * Reference: ASWF Color Interop Forum specification
  */

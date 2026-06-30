@@ -110,7 +110,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt1886_eotf)(ALWAN_CORE_T encod
  * CIE Lab f(t) and f_inv(t) Functions
  * Reference: CIE 15:2004 "Colorimetry" 3rd edition, eq. (A1-A4).
  *   f(t) = t^(1/3) if t > (6/29)^3, else (29/6)^2 * t/3 + 16/116
- * Threshold delta = 6/29 is exact; (6/29)^3 ≈ 0.008856, 16/116 ≈ 0.13793.
+ * Threshold delta = 6/29 is exact; (6/29)^3 ~ 0.008856, 16/116 ~ 0.13793.
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_lab_f)(ALWAN_CORE_T t) {

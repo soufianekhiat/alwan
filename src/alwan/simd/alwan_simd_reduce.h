@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * alwan_simd_reduce.h — deterministic-aware horizontal reductions.
+ * alwan_simd_reduce.h -- deterministic-aware horizontal reductions.
  *
  * Each backend exposes its native horizontal-sum / pairwise-add as
  * `*_native` (e.g., `alwan_simd_f32_hsum_native`). Native impls are
@@ -21,7 +21,7 @@
  * This is platform-independent and bit-exact across SSE/AVX/NEON/
  * scalar. The cost is the loss of native horizontal-add hardware
  * acceleration; reductions become the bottleneck instead of element-
- * wise math, but the compromise is intentional — det mode trades
+ * wise math, but the compromise is intentional -- det mode trades
  * perf for reproducibility.
  *
  * Element-wise SIMD ops (per-lane add/mul/sqrt/...) are unaffected:
@@ -31,7 +31,7 @@
  * Include order: alwan_simd.h includes the chosen backend (which
  * defines the *_native ops), then includes this header which adds
  * the public dispatcher names. Call sites only ever use the public
- * names — they should never reference the *_native suffix directly.
+ * names -- they should never reference the *_native suffix directly.
  *
  * See road_to_determinism.md (workstream 4).
  */
@@ -43,7 +43,7 @@
 
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
 
-/* Canonical scalar reductions — bit-exact regardless of backend. */
+/* Canonical scalar reductions -- bit-exact regardless of backend. */
 
 ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum(alwan_simd_f32 a) {
     ALWAN_ALIGN(64) float lanes[ALWAN_SIMD_F32_WIDTH];
@@ -86,7 +86,7 @@ ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hadd(alwan_simd_f32 a, alwan_simd_f32
     return alwan_simd_f32_loadu(out);
 }
 
-#else /* !ALWAN_DETERMINISTIC — fast path, forward to native. */
+#else /* !ALWAN_DETERMINISTIC -- fast path, forward to native. */
 
 ALWAN_INLINE alwan_simd_f32 alwan_simd_f32_hsum(alwan_simd_f32 a) {
     return alwan_simd_f32_hsum_native(a);

@@ -417,8 +417,8 @@ typedef struct {
  *   CC = chromaticness (00-99)
  *   HH = hue percentage within hue pair (00-99)
  *   X[X] = one or two adjacent elementary hues from {Y, R, B, G} in circle order
- *           Y(0)→R(25)→B(50)→G(75)→Y, so valid pairs: YR RB BG GY
- * "S 1050-Y90R": s=10, c=50, hue=Y+90%×(R-Y)=22.5 on the NCS circle */
+ *           Y(0)->R(25)->B(50)->G(75)->Y, so valid pairs: YR RB BG GY
+ * "S 1050-Y90R": s=10, c=50, hue=Y+90%x(R-Y)=22.5 on the NCS circle */
 static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed) {
     if (!notation || !parsed) return ALWAN_E_INVALID;
 
@@ -464,13 +464,13 @@ static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed)
     if (idx1 < 0) return ALWAN_E_INVALID;
     p++;
 
-    /* Optional second letter — must be the next elementary in circle order */
+    /* Optional second letter -- must be the next elementary in circle order */
     if (*p != '\0') {
         int idx2 = -1;
         for (int i = 0; i < 4; i++) { if (*p == ELEM_CH[i]) { idx2 = i; break; } }
         if (idx2 < 0 || idx2 != (idx1 + 1) % 4) return ALWAN_E_INVALID;
         p++;
-        /* GY pair: G(75) → Y(100), wrapping */
+        /* GY pair: G(75) -> Y(100), wrapping */
         alwan_f64 pos2 = (idx2 == 0) ? 100.0 : ELEM_POS[idx2];
         alwan_f64 pos = ELEM_POS[idx1] + ((alwan_f64)hue_pct / 100.0) * (pos2 - ELEM_POS[idx1]);
         if (pos >= 100.0) pos -= 100.0;
@@ -489,9 +489,9 @@ static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed)
 
 /* Approximate CIE 1931 xy chromaticities for the four NCS elementary hues
  * under D65 illuminant, at maximum chromaticness.
- * Source: Hård & Sivik (1981) Color Res. Appl. 6(3), 129–138, and
- *         Sällström (1973) unpublished data cited therein.
- * Order: Y(0), R(25), B(50), G(75) — matching ELEM_POS above. */
+ * Source: Hard & Sivik (1981) Color Res. Appl. 6(3), 129-138, and
+ *         Sallstrom (1973) unpublished data cited therein.
+ * Order: Y(0), R(25), B(50), G(75) -- matching ELEM_POS above. */
 static const alwan_f64 NCS_ELEM_x[4] = {0.418, 0.621, 0.162, 0.199};
 static const alwan_f64 NCS_ELEM_y[4] = {0.503, 0.335, 0.083, 0.454};
 
@@ -501,9 +501,9 @@ static const alwan_f64 NCS_WP_y = 0.3290;
 
 /* Convert NCS notation to approximate XYZ tristimulus values.
  * Uses an approximation based on published elementary hue chromaticities
- * (Hård & Sivik 1981) with linear interpolation along the NCS hue circle
+ * (Hard & Sivik 1981) with linear interpolation along the NCS hue circle
  * and chromaticness-weighted mixing towards the D65 white point.
- * Luminance derived from blackness via Y ≈ (1 − s/100)².
+ * Luminance derived from blackness via Y ~ (1 - s/100)^2.
  * This approximation is suitable for colour-approximate use; it does not
  * reproduce the proprietary NCS colour atlas. */
 int alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation) {
@@ -516,14 +516,14 @@ int alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation) {
     alwan_f64 s = parsed.blackness     / 100.0;
     alwan_f64 c = parsed.chromaticness / 100.0;
 
-    /* NCS constraint: s + c ≤ 1; normalise if violated */
+    /* NCS constraint: s + c <= 1; normalise if violated */
     if (s + c > ALWAN_LITERAL(1.0)) {
         alwan_f64 total = s + c;
         s /= total;
         c /= total;
     }
 
-    /* Approximate CIE Y from NCS blackness: Y ≈ (1 − s)² × 100 */
+    /* Approximate CIE Y from NCS blackness: Y ~ (1 - s)^2 x 100 */
     alwan_f64 Y = (ALWAN_LITERAL(1.0) - s) * (ALWAN_LITERAL(1.0) - s) * 100.0;
 
     alwan_f64 cx, cy;
@@ -546,7 +546,7 @@ int alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation) {
         cy = NCS_WP_y + c * (hue_y - NCS_WP_y);
     }
 
-    /* xyY → XYZ */
+    /* xyY -> XYZ */
     if (cy < ALWAN_LITERAL(1e-12)) {
         xyz->x = xyz->y = xyz->z = ALWAN_LITERAL(0.0);
     } else {
@@ -705,6 +705,6 @@ int alwan_rgb_space_by_enum_f32(alwan_f32 primaries[6], alwan_vec2_f32 *white_po
 }
 
 int alwan_rgb_space_get_tfs_f32(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space) {
-    /* Transfer functions are enum values — precision-independent. */
+    /* Transfer functions are enum values -- precision-independent. */
     return alwan_rgb_space_get_tfs_f64(oetf, eotf, space);
 }

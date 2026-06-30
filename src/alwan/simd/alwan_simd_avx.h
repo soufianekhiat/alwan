@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Alwan - Pure C colour science library
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT

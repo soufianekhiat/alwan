@@ -11,8 +11,26 @@ source of truth.
 
 ## Key Rules
 
-1. Bounded channels can be normalized by the public API.
-2. Unbounded channels stay unbounded.
+The default convention is **`[0, 1]` for every bounded channel**. In the default
+build (`ALWAN_NORMALIZE_RANGES=1`) the public C API rescales each bounded output
+channel into `[0, 1]` and expects bounded inputs in `[0, 1]`.
+
+The exceptions are the **opponent / chroma axes** — Lab / Hunter-Lab / ProLab
+`a`, `b`; Luv `u`, `v`; the cylindrical chroma `C`; and Oklab `a`, `b`. These are
+**mathematically unbounded** (the CIE formulas impose no limit, and saturated or
+wide-gamut colours genuinely exceed the usual range), even though encodings give
+them a *conventional* span — CIE Lab `a`, `b` are stored as signed `[-128, 127]`
+in 8-bit / ICC formats (so `÷128` would map them to `≈ ]-1, 1[`), and Oklab
+`a`, `b` sit roughly in `[-0.4, 0.4]`. alwan deliberately leaves these axes in
+their **native signed range** rather than rescaling against a conventional bound,
+so out-of-gamut excursions past it are preserved exactly and reference
+comparisons stay 1:1. Only `L` (`÷100 → [0, 1]`) and the genuinely fixed-bound
+channels are normalized. Channels that *do* have a fixed bound are mapped into
+`[0, 1]`: centered chroma (YCbCr / YCoCg `Cb`, `Cr` in `[-0.5, 0.5]`, shifted by
+`+0.5`) and hue (degrees or radians).
+
+1. Bounded channels are normalized to `[0, 1]` by the public API.
+2. Unbounded channels stay in their native (often signed) range.
 3. Video signal range is a separate concept from semantic channel range.
 4. RGB-like values may still exceed `[0, 1]` in HDR or out-of-gamut workflows.
 
@@ -44,6 +62,23 @@ Disable it if you want native mathematical ranges:
 
 With normalization disabled, public APIs use the same native channel ranges
 described in papers and specifications.
+
+> **Compile-time, whole-program switch.** `ALWAN_NORMALIZE_RANGES` is baked into
+> the library when *it* is compiled — the rescaling lives inside the compiled API
+> functions. Defining it only in a consumer translation unit does **not** change a
+> prebuilt `alwan` library; build the library and your own code with the same
+> value.
+
+### Why the tests and benchmarks disable it
+
+The `alwan_dev` validation build — the unit tests, the benchmarks, and the
+`alwan` library they link — compiles with `ALWAN_NORMALIZE_RANGES=0` so channels
+come out in their **native mathematical ranges**. That is what the reference
+libraries the suite compares against use (colour-science, OpenColorIO, ACES), so
+disabling normalization makes the comparison apples-to-apples. For example
+`alwan_xyz_to_lab_f64` then returns CIE `L ≈ 53.24` (matching
+`colour.XYZ_to_Lab`) instead of the normalized `≈ 0.5324`. The switch is set in
+`tests/CMakeLists.txt`, `bench/CMakeLists.txt`, and the Sharpmake `common.cs`.
 
 ---
 
@@ -90,12 +125,12 @@ Notes:
 |-------|--------------------|----------------------------------------|
 | `alwan_xyz_*` | tristimulus values, typically non-negative and unbounded above | unchanged |
 | `alwan_xyy_*` | `x`, `y` bounded chromaticities, `Y` luminance-like and unbounded above | bounded chromaticities stay bounded; `Y` unchanged |
-| `alwan_lab_*` | `L` in `[0, 100]`, `a` / `b` unbounded | `L` maps to `[0, 1]`; `a` / `b` unchanged |
-| `alwan_luv_*` | `L` in `[0, 100]`, `u` / `v` unbounded | `L` maps to `[0, 1]`; `u` / `v` unchanged |
+| `alwan_lab_*` | `L` in `[0, 100]`; `a` / `b` mathematically unbounded (8-bit / ICC convention `[-128, 127]`) | `L` maps to `[0, 1]`; `a` / `b` unchanged (native, not `÷128`) |
+| `alwan_luv_*` | `L` in `[0, 100]`; `u` / `v` mathematically unbounded | `L` maps to `[0, 1]`; `u` / `v` unchanged (native) |
 | `alwan_lch_*` | `L` in `[0, 100]`, `C` unbounded, `h` in degrees `[0, 360)` | `L` and `h` map to `[0, 1]`; `C` unchanged |
 | `alwan_lchuv_*` | `L` in `[0, 100]`, `C` unbounded, `h` in degrees `[0, 360)` | `L` and `h` map to `[0, 1]`; `C` unchanged |
 | `alwan_ucs_*` | `U`, `V` bounded; `W` luminance-like | bounded coordinates remain bounded; `W` unchanged |
-| `alwan_uvw_*` | opponent-style coordinates with lightness-like `W` | finite bounded lightness rules do not apply generically here |
+| `alwan_uvw_*` | CIE 1964: `W*` is a `[0, 100]` lightness factor (`25·Y^(1/3)−17`, like Lab `L*`); `U*` / `V*` are mathematically unbounded opponent axes | `W*` maps to `[0, 1]`; `U*` / `V*` unchanged (native) |
 | `alwan_hunter_lab_*` | `L` bounded, `a` / `b` unbounded | `L` maps to `[0, 1]`; `a` / `b` unchanged |
 | `alwan_din99_*` | `L99` bounded, opponent axes unbounded | `L99` maps to `[0, 1]`; opponent axes unchanged |
 | `alwan_prolab_*` | `L` bounded, `a` / `b` unbounded | `L` maps to `[0, 1]`; `a` / `b` unchanged |
@@ -112,15 +147,15 @@ Notes:
 
 | Space | Native range shape | Public form with normalization enabled |
 |-------|--------------------|----------------------------------------|
-| `alwan_oklab_*` | `L` already lightness-like near `[0, 1]`; `a` / `b` signed | unchanged except for ordinary bounded handling of `L` |
+| `alwan_oklab_*` | `L` lightness-like, native ~`[0, 1]`; `a` / `b` signed, native ~`[-0.4, 0.4]` | unchanged — Oklab has **no** normalization macro, so even `L` stays native (it is already ~`[0, 1]`) |
 | `alwan_oklch_*` | `L` near `[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | `h` maps to `[0, 1]`; `L` remains `[0, 1]` |
-| `alwan_jzazbz_*` | `Jz` lightness-like, opponent axes signed | bounded lightness-like channels stay bounded; opponent axes unchanged |
-| `alwan_jzczhz_*` | `Jz` bounded, `Cz` unbounded, `hz` in radians `[-pi, pi]` | `Jz` remains bounded, `hz` maps to `[0, 1]`, `Cz` unchanged |
-| `alwan_ictcp_*` | intensity-like `I` plus centered opponent axes | `I` bounded; opponent axes remain native unless explicitly normalized by range macros for finite bounds |
-| `alwan_ipt_*` | `I` bounded, `P` / `T` signed | `I` bounded; `P` / `T` unchanged |
-| `alwan_iptch_*` | `I` bounded, `C` unbounded, `h` in radians `[-pi, pi]` | `h` maps to `[0, 1]`; `I` remains bounded |
-| `alwan_igpgtg_*` | intensity-like first channel, signed opponent axes | bounded first channel only |
-| `alwan_icacb_*` | intensity/chromatic axes without a simple finite opponent clamp | native-value channels |
+| `alwan_jzazbz_*` | `Jz` lightness-like (native ~`[0, 0.17]`), `Az` / `Bz` signed | unchanged — no normalization macro; `Jz` stays native |
+| `alwan_jzczhz_*` | `Jz` native ~`[0, 0.17]`, `Cz` unbounded, `hz` in radians `[-pi, pi]` | only `hz` maps to `[0, 1]`; `Jz` and `Cz` unchanged |
+| `alwan_ictcp_*` | intensity-like `I`, centered opponent `Ct` / `Cp` | unchanged — no normalization macro; all channels native |
+| `alwan_ipt_*` | `I` native ~`[0, 1]`, `P` / `T` signed | unchanged — no normalization macro; `I` stays native |
+| `alwan_iptch_*` | `I` native ~`[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | only `h` maps to `[0, 1]`; `I` and `C` unchanged |
+| `alwan_igpgtg_*` | intensity-like `Ig`, signed `Pg` / `Tg` | unchanged — no normalization macro; all channels native |
+| `alwan_icacb_*` | intensity / chromatic axes, signed | unchanged — no normalization macro; all channels native |
 | `alwan_hcl_*` | `H` in radians `[-pi, pi]`, `C` unbounded, `L` bounded | `H` maps to `[0, 1]`; `L` remains bounded |
 | `alwan_ihls_*` | `H` in radians `[0, 2pi)`, `L` and `S` bounded | `H` maps to `[0, 1]`; `L` and `S` unchanged |
 
@@ -151,7 +186,9 @@ Representative families:
 | `alwan_hellwig2022_correlates_*` | `J`, `h`, `H` bounded | those bounded channels map to `[0, 1]` |
 | `alwan_hunt_correlates_*`, `alwan_kim2009_correlates_*`, `alwan_llab_correlates_*`, `alwan_rlab_correlates_*` | bounded lightness and finite hue channels | bounded channels map to `[0, 1]` |
 | `alwan_atd95_correlates_*` | `H` bounded; other responses vary | bounded hue channel maps to `[0, 1]` |
-| `alwan_nayatani95_correlates_*` | bounded lightness-like and angle-like channels | bounded channels map to `[0, 1]` |
+| `alwan_nayatani95_correlates_*` | `L_star_N` in `[0,100]`, `theta` in radians `[0,2pi)`; `C` / `S` / `B_r` / `L_star_P` native | `L_star_N` and `theta` map to `[0,1]`; `C` / `S` / `B_r` / `L_star_P` unchanged |
+| `alwan_cam18sl_correlates_*`, `alwan_cam20u_correlates_*` | hue `h` in `[0, 360)` | `h` maps to `[0, 1]` |
+| CAM02-UCS / CAM16-UCS `J'a'b'` output | `J'` in `[0, 100]`, `a'` / `b'` signed | `J'` maps to `[0, 1]`; `a'` / `b'` unchanged |
 
 If you are comparing against a paper, it is usually easier to disable public
 range normalization so the reported correlates stay in native units.

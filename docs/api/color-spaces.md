@@ -17,10 +17,10 @@ Alwan supports conversions between:
 - **Encoding spaces:** HSV, HSL, HSP, HSPLog, HSY, HWB, YCbCr, YCoCg, YcCbcCrc, CMY, CMYK, HCL, HLC, IHLS, Prismatic, CubeHelix, HSLuv, HPLuv, OkHSL, OkHSV
 - **Relative luminance:** Multi-standard Y calculation from linear RGB
 
-**API Pattern:**
+**API Pattern** (follows the [API conventions](../api-conventions.md): outputs first, each `*_stride` immediately after its buffer, `ctx` last):
 - Single-element: `alwan_foo_{T}(out, in, ...)` — typed structs, no stride.
-- Bulk interleaved: `alwan_foo_{T}_map_interleave(alwan_{T} *out, alwan_{T} const *in, ..., count, in_stride, out_stride)` — raw scalar arrays, strides in bytes.
-- Bulk planar: `alwan_foo_{T}_map_planar(T *ch0, T *ch1, T *ch2, ...)` — separate channel arrays.
+- Bulk interleaved: `alwan_foo_{T}_map_interleave(alwan_{T} *out, size_t out_stride, alwan_{T} const *in, size_t in_stride, size_t count, ...)` — raw scalar arrays, strides in bytes.
+- Bulk planar: `alwan_foo_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride, alwan_{T} *out_ch1, alwan_{T} *out_ch2, alwan_{T} const *in_ch0, size_t in_stride, alwan_{T} const *in_ch1, alwan_{T} const *in_ch2, size_t count, ...)` — separate channel arrays.
 
 ---
 
@@ -34,20 +34,19 @@ void alwan_xyz_to_lab_{T}(alwan_lab_{T} *lab,
                            alwan_xyz_{T} const *xyz,
                            alwan_xyz_{T} const *white_xyz);
 
-// Bulk interleaved (strides in bytes)
-int alwan_xyz_to_lab_{T}_map_interleave(alwan_{T} *lab_out,
-                                         alwan_{T} const *xyz_in,
-                                         alwan_xyz_{T} const *white_xyz,
+// Bulk interleaved (strides in bytes, immediately after each buffer)
+int alwan_xyz_to_lab_{T}_map_interleave(alwan_{T} *lab_out, size_t out_stride,
+                                         alwan_{T} const *xyz_in, size_t in_stride,
                                          size_t count,
-                                         size_t in_stride,
-                                         size_t out_stride);
+                                         alwan_xyz_{T} const *white_xyz);
 
 // Bulk planar
-int alwan_xyz_to_lab_{T}_map_planar(alwan_{T} *out_ch0, alwan_{T} *out_ch1, alwan_{T} *out_ch2,
-                                     alwan_{T} const *in_ch0, alwan_{T} const *in_ch1,
-                                     alwan_{T} const *in_ch2,
-                                     alwan_xyz_{T} const *white_xyz,
-                                     size_t count, size_t in_stride, size_t out_stride);
+int alwan_xyz_to_lab_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride,
+                                     alwan_{T} *out_ch1, alwan_{T} *out_ch2,
+                                     alwan_{T} const *in_ch0, size_t in_stride,
+                                     alwan_{T} const *in_ch1, alwan_{T} const *in_ch2,
+                                     size_t count,
+                                     alwan_xyz_{T} const *white_xyz);
 ```
 
 Inverse: `alwan_lab_to_xyz_{T}` / `alwan_lab_to_xyz_{T}_map_interleave` / `alwan_lab_to_xyz_{T}_map_planar` — same pattern.
@@ -158,9 +157,9 @@ void alwan_ipt_to_xyz_{T}(alwan_xyz_{T} *xyz, alwan_ipt_{T} const *ipt);
 
 ```c
 void alwan_xyz_to_ictcp_{T}(alwan_ictcp_{T} *ictcp, alwan_xyz_{T} const *xyz,
-                              alwan_transfer_function tf);  /* ALWAN_TF_PQ or ALWAN_TF_HLG */
+                              int use_pq);  /* 1 = PQ (BT.2100), 0 = HLG */
 void alwan_ictcp_to_xyz_{T}(alwan_xyz_{T} *xyz, alwan_ictcp_{T} const *ictcp,
-                              alwan_transfer_function tf);
+                              int use_pq);
 ```
 
 ---
@@ -178,26 +177,54 @@ int alwan_xyz_to_rgb_{T}(alwan_rgb_{T} *rgb,
                           alwan_xyz_{T} const *xyz);
 ```
 
+To obtain the linear RGB↔XYZ (NPM) matrices for a space directly from its
+primaries and white point, use `alwan_rgb_derive_matrices_{T}`:
+
+```c
+int alwan_rgb_derive_matrices_{T}(alwan_mat3x3_{T} *rgb_to_xyz,
+                                   alwan_mat3x3_{T} *xyz_to_rgb,
+                                   alwan_rgb_space_desc_{T} const *desc);
+```
+
+Returns `ALWAN_OK` on success, `ALWAN_E_RANGE` if the primaries/white point form
+a singular matrix.
+
 ---
 
 ### alwan_rgb_convert_{T}
 
 ```c
-int alwan_rgb_convert_{T}(alwan_rgb_{T} *dst_rgb, alwan_ctx *ctx,
+int alwan_rgb_convert_{T}(alwan_rgb_{T} *dst_rgb,
                            alwan_rgb_space_desc_{T} const *src_space,
                            alwan_rgb_space_desc_{T} const *dst_space,
-                           alwan_rgb_{T} const *src_rgb);
+                           alwan_rgb_{T} const *src_rgb,
+                           alwan_ctx *ctx);
+```
+
+Converts a single RGB color between two spaces. When the source and destination
+white points differ, chromatic adaptation is applied automatically using the
+**Bradford CAT** by default. Returns `ALWAN_OK` on success, `ALWAN_E_INVALID` on error.
+
+A strided bulk variant is available:
+
+```c
+int alwan_rgb_convert_map_interleave_{T}(alwan_rgb_{T} *dst_rgb,
+                                          alwan_rgb_space_desc_{T} const *src_space,
+                                          alwan_rgb_space_desc_{T} const *dst_space,
+                                          alwan_rgb_{T} const *src_rgb,
+                                          size_t count,
+                                          alwan_ctx *ctx);
 ```
 
 **Example:**
 ```c
 alwan_rgb_space_desc_{T} srgb_desc, bt2020_desc;
-alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ctx, ALWAN_RGB_SPACE_SRGB);
-alwan_rgb_get_space_descriptor_{T}(&bt2020_desc, ctx, ALWAN_RGB_SPACE_BT2020);
+alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ALWAN_RGB_SPACE_SRGB, ctx);
+alwan_rgb_get_space_descriptor_{T}(&bt2020_desc, ALWAN_RGB_SPACE_BT2020, ctx);
 
 alwan_rgb_{T} rgb_in = {0.8, 0.3, 0.2};
 alwan_rgb_{T} rgb_out;
-alwan_rgb_convert_{T}(&rgb_out, ctx, &srgb_desc, &bt2020_desc, &rgb_in);
+alwan_rgb_convert_{T}(&rgb_out, &srgb_desc, &bt2020_desc, &rgb_in, ctx);
 ```
 
 ---

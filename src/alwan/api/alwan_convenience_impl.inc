@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 /* ----------------------------------------------------------------
  * RGB <-> HSV
@@ -158,11 +158,12 @@ int ALWAN_CORE_FNLIT(alwan_rgb_to_ycocg)(ALWAN_CORE_YCOCG *ycocg_out, ALWAN_CORE
     return ALWAN_OK;
 }
 
-void ALWAN_CORE_FNLIT(alwan_ycocg_to_rgb)(ALWAN_CORE_RGB *rgb_out, ALWAN_CORE_YCOCG const *ycocg) {
-    if (!ycocg || !rgb_out) return;
+int ALWAN_CORE_FNLIT(alwan_ycocg_to_rgb)(ALWAN_CORE_RGB *rgb_out, ALWAN_CORE_YCOCG const *ycocg) {
+    if (!ycocg || !rgb_out) return ALWAN_E_INVALID;
     ALWAN_CORE_YCOCG tmp = *ycocg;
     ALWAN_DENORM_YCOCG(&tmp);
     *rgb_out = ALWAN_CORE_FNVLIT(alwan_ycocg_to_rgb)(tmp);
+    return ALWAN_OK;
 }
 
 /* ----------------------------------------------------------------

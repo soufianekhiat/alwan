@@ -43,13 +43,8 @@ static alwan_f64 alwan_rng_uniform(alwan_rng *rng) {
 
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
-int alwan_gamut_volume_mc_f64(alwan_f64 *volume,
-                          alwan_rgb_space_desc_f64 const *space,
-                          size_t num_samples,
-                          unsigned int seed) {
-    (void)num_samples;  /* Not used - determinant is exact */
-    (void)seed;         /* Not used - determinant is exact */
-
+int alwan_gamut_volume_f64(alwan_f64 *volume,
+                          alwan_rgb_space_desc_f64 const *space) {
     if (!space || !volume) {
         return ALWAN_E_INVALID;
     }
@@ -286,7 +281,7 @@ alwan_vec2_f64 const* alwan_pointer_gamut_boundary(size_t *count_out) {
  * ---------------------------------------------------------------- */
 
 /* CIE 1931 spectral locus xy chromaticity data (360-830nm, 1nm interval, 471 points)
- * Computed from CIE 1931 2° observer CMFs */
+ * Computed from CIE 1931 2 deg observer CMFs */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_vec2_f64 const SPECTRAL_LOCUS_XY[471] = {
@@ -547,8 +542,8 @@ int alwan_gamut_volume_ratio_f64(alwan_f64 *ratio_out,
 
     /* Compute volume for both spaces */
     alwan_f64 volume1, volume2;
-    int status1 = alwan_gamut_volume_mc_f64(&volume1, space1, 0, 0);
-    int status2 = alwan_gamut_volume_mc_f64(&volume2, space2, 0, 0);
+    int status1 = alwan_gamut_volume_f64(&volume1, space1);
+    int status2 = alwan_gamut_volume_f64(&volume2, space2);
 
     if (status1 != ALWAN_OK || status2 != ALWAN_OK) {
         return ALWAN_E_INVALID;
@@ -673,6 +668,60 @@ static alwan_f64 alwan_find_gamut_intersection(alwan_f64 a, alwan_f64 b,
     return gamut_find_intersection_f64_v(a, b, L1, C1, L0, C0);
 }
 
+/* ----------------------------------------------------------------
+ * Working-space transform for the perceptual (Oklab) gamut methods.
+ *
+ * The Oklab cusp/boundary model used below is defined for *linear sRGB*.
+ * To honour the caller-supplied `space`, the input RGB (expressed in
+ * `space`) is converted into that linear-sRGB working space, mapped, then
+ * converted back. Different `space` -> different result, so the parameter
+ * is meaningful rather than ignored.
+ *
+ * When `space` is (colorimetrically) sRGB the composed transform is the
+ * identity and is snapped to *exact* identity, so the common path is
+ * bit-for-bit identical to a direct sRGB mapping (no round-trip noise).
+ * The 1e-3 element bound is far tighter than the matrix gap between sRGB
+ * and any other standard gamut (Adobe RGB, Display P3, BT.2020, ...), so
+ * only genuinely-sRGB spaces snap.
+ * ---------------------------------------------------------------- */
+static int gamut_working_xform_f64(alwan_mat3x3_f64 *to_srgb,
+                                   alwan_mat3x3_f64 *from_srgb,
+                                   alwan_rgb_space_desc_f64 const *space) {
+    alwan_mat3x3_f64 space_to_xyz, xyz_to_space;
+    int rc = alwan_rgb_derive_matrices_f64(&space_to_xyz, &xyz_to_space, space);
+    if (rc != ALWAN_OK) return rc;
+
+    /* Reference linear sRGB: BT.709 primaries + D65 (published standard). */
+    alwan_rgb_space_desc_f64 srgb;
+    srgb.primaries_xy[0] = ALWAN_BT709_RED_x;   srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x; srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;  srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
+    srgb.white_xy[0] = ALWAN_LITERAL(0.31271);  srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
+    srgb.oetf = ALWAN_TF_LINEAR; srgb.eotf = ALWAN_TF_LINEAR; srgb.has_matrices = 0;
+
+    alwan_mat3x3_f64 srgb_to_xyz, xyz_to_srgb;
+    rc = alwan_rgb_derive_matrices_f64(&srgb_to_xyz, &xyz_to_srgb, &srgb);
+    if (rc != ALWAN_OK) return rc;
+
+    alwan_mat3_mul_f64(to_srgb, &xyz_to_srgb, &space_to_xyz);
+    alwan_mat3_mul_f64(from_srgb, &xyz_to_space, &srgb_to_xyz);
+
+    {
+        int is_identity = 1;
+        for (int i = 0; i < 9 && is_identity; i++) {
+            alwan_f64 const want = (i % 4 == 0) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
+            if (ALWAN_ABS(to_srgb->m[i] - want) > ALWAN_LITERAL(1e-3)) is_identity = 0;
+        }
+        if (is_identity) {
+            for (int i = 0; i < 9; i++) {
+                alwan_f64 const v = (i % 4 == 0) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
+                to_srgb->m[i] = v; from_srgb->m[i] = v;
+            }
+        }
+    }
+    return ALWAN_OK;
+}
+
 /* Gamut mapping implementation */
 int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
                               alwan_gamut_map_method method,
@@ -699,9 +748,19 @@ int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
         return ALWAN_OK;
     }
 
+    /* Honour `space`: convert the input (expressed in `space`) into the
+     * linear-sRGB working space the Oklab gamut model is defined for. */
+    alwan_mat3x3_f64 to_srgb, from_srgb;
+    {
+        int xrc = gamut_working_xform_f64(&to_srgb, &from_srgb, space);
+        if (xrc != ALWAN_OK) return xrc;
+    }
+    alwan_vec3_f64 rgb_work;
+    alwan_mat3_mulv_f64(&rgb_work, &to_srgb, &rgb_vec);
+
     /* Convert to Oklab */
     alwan_vec3_f64 oklab;
-    alwan_linear_srgb_to_oklab(&rgb_vec, &oklab);
+    alwan_linear_srgb_to_oklab(&rgb_work, &oklab);
 
     alwan_f64 L = oklab.v[0];
     alwan_f64 a = oklab.v[1];
@@ -722,7 +781,8 @@ int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
     alwan_f64 b_norm = b / C;
 
     alwan_f64 L0, C0;
-    alwan_f64 alpha;
+    alwan_f64 alpha = ALWAN_LITERAL(0.0);
+    (void)alpha;  /* Selected per-method below; reserved for a future blend, presently unused (mirrors the f32 path). */
 
     /* Select projection point based on method */
     if (method == ALWAN_GAMUT_MAP_ADAPTIVE_L0) {
@@ -753,12 +813,12 @@ int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
         C0 = ALWAN_LITERAL(0.0);
         alpha = ALWAN_LITERAL(0.15);  /* Larger blend for softer knee */
     } else if (method == ALWAN_GAMUT_MAP_HPMINDE) {
-        /* HPMINDE: Hue-Preserving Minimum ΔE
+        /* HPMINDE: Hue-Preserving Minimum dE
          * Minimizes perceptual color difference while preserving hue */
         alwan_f64 L_cusp, C_cusp;
         alwan_find_cusp(a_norm, b_norm, &L_cusp, &C_cusp);
 
-        /* Find optimal projection point that minimizes ΔE */
+        /* Find optimal projection point that minimizes dE */
         /* For simplicity, use cusp as projection point with adaptive blending */
         L0 = L_cusp;
         C0 = ALWAN_LITERAL(0.0);
@@ -789,9 +849,13 @@ int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
     oklab_clipped.v[1] = C_clipped * a_norm;
     oklab_clipped.v[2] = C_clipped * b_norm;
 
-    /* Convert to linear RGB */
+    /* Convert clipped Oklab back to linear sRGB (the working space) ... */
+    alwan_vec3_f64 rgb_srgb;
+    alwan_oklab_to_linear_srgb(&oklab_clipped, &rgb_srgb);
+
+    /* ... then back into the caller's `space`. */
     alwan_vec3_f64 rgb_result;
-    alwan_oklab_to_linear_srgb(&oklab_clipped, &rgb_result);
+    alwan_mat3_mulv_f64(&rgb_result, &from_srgb, &rgb_srgb);
 
     /* Final safety clamp and convert to rgb */
     rgb_out->r = (rgb_result.v[0] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
@@ -1046,15 +1110,13 @@ static void rgb_space_desc_f32_to_f64(alwan_rgb_space_desc_f64 *out, alwan_rgb_s
     out->has_matrices = in->has_matrices;
 }
 
-int alwan_gamut_volume_mc_f32(alwan_f32 *volume,
-                          alwan_rgb_space_desc_f32 const *space,
-                          size_t num_samples,
-                          unsigned int seed) {
+int alwan_gamut_volume_f32(alwan_f32 *volume,
+                          alwan_rgb_space_desc_f32 const *space) {
     if (!space || !volume) return ALWAN_E_INVALID;
     alwan_rgb_space_desc_f64 tmp;
     rgb_space_desc_f32_to_f64(&tmp, space);
     alwan_f64 vol_f64 = 0.0;
-    int rc = alwan_gamut_volume_mc_f64(&vol_f64, &tmp, num_samples, seed);
+    int rc = alwan_gamut_volume_f64(&vol_f64, &tmp);
     if (rc == ALWAN_OK) *volume = (alwan_f32)vol_f64;
     return rc;
 }
@@ -1064,7 +1126,7 @@ int alwan_gamut_volume_mc_f32(alwan_f32 *volume,
 /* Hue-preserving gamut mapping, native f32 (mirrors gamut_map_hue_preserving_single).
  * XYZ->RGB is a genuine per-element colour transform, so it computes in float
  * throughout rather than widening to double. The gamut *metrics* below
- * (volume/coverage) intentionally stay f64-internal — they are scalar
+ * (volume/coverage) intentionally stay f64-internal -- they are scalar
  * reductions where single precision costs accuracy for no benefit. */
 static void gamut_map_hue_preserving_single_f32(alwan_vec3_f32 const *rgb_in, alwan_vec3_f32 *rgb_out) {
     if (rgb_in->v[0] >= 0.0f && rgb_in->v[0] <= 1.0f &&
@@ -1151,4 +1213,380 @@ int alwan_gamut_coverage_f32(alwan_f32 *coverage_out,
     if (rc == ALWAN_OK) *coverage_out = (alwan_f32)cov64;
     return rc;
 }
+#endif /* ALWAN_WITH_F32 */
+
+/* ================================================================
+ * Native f32 gamut analysis & advanced mapping.
+ *
+ * These mirror the f64 reference implementations above. They are
+ * closed-form geometry/formula routines (point-in-polygon, spectral
+ * locus table interpolation, wavelength/purity geometry, Oklab gamut
+ * compression) -- not iterative solvers -- so they compute entirely in
+ * single precision (a genuine native f32 path, no f64 widening). The
+ * shared geometry tables (POINTER_GAMUT_BOUNDARY / SPECTRAL_LOCUS_XY)
+ * are stored once as f64 and read as float at point-of-use.
+ * ================================================================ */
+
+#if ALWAN_WITH_F32
+
+/* Ray-casting point-in-polygon against the (f64) Pointer's Gamut table. */
+static int alwan_point_in_polygon_f32(alwan_vec2_f32 const *point,
+                                      alwan_vec2_f64 const *polygon,
+                                      size_t polygon_count) {
+    int inside = 0;
+    alwan_f32 px = point->v[0];
+    alwan_f32 py = point->v[1];
+
+    for (size_t i = 0, j = polygon_count - 1; i < polygon_count; j = i++) {
+        alwan_f32 xi = (alwan_f32)polygon[i].v[0], yi = (alwan_f32)polygon[i].v[1];
+        alwan_f32 xj = (alwan_f32)polygon[j].v[0], yj = (alwan_f32)polygon[j].v[1];
+
+        int intersect = ((yi > py) != (yj > py)) &&
+                        (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+        if (intersect) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+int alwan_is_within_pointer_gamut_f32(alwan_vec2_f32 const *xy) {
+    if (!xy) {
+        return 0;
+    }
+    return alwan_point_in_polygon_f32(xy, POINTER_GAMUT_BOUNDARY, 32);
+}
+
+int alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 wavelength) {
+    if (!xy_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    if (wavelength < (alwan_f32)SPECTRAL_LOCUS_WL_MIN ||
+        wavelength > (alwan_f32)SPECTRAL_LOCUS_WL_MAX) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_f32 t = (wavelength - (alwan_f32)SPECTRAL_LOCUS_WL_MIN) /
+                  (alwan_f32)SPECTRAL_LOCUS_WL_INTERVAL;
+    size_t idx = (size_t)floorf(t);
+    alwan_f32 frac = t - (alwan_f32)idx;
+
+    if (idx >= (size_t)(SPECTRAL_LOCUS_COUNT - 1)) {
+        idx = SPECTRAL_LOCUS_COUNT - 2;
+        frac = 1.0f;
+    }
+
+    alwan_vec2_f64 const *xy0 = &SPECTRAL_LOCUS_XY[idx];
+    alwan_vec2_f64 const *xy1 = &SPECTRAL_LOCUS_XY[idx + 1];
+
+    xy_out->v[0] = (alwan_f32)xy0->v[0] + frac * ((alwan_f32)xy1->v[0] - (alwan_f32)xy0->v[0]);
+    xy_out->v[1] = (alwan_f32)xy0->v[1] + frac * ((alwan_f32)xy1->v[1] - (alwan_f32)xy0->v[1]);
+    return ALWAN_OK;
+}
+
+/* Intersection of ray (p1 -> p2) with the spectral locus; f32 mirror of
+ * alwan_intersect_spectral_locus(). */
+static int alwan_intersect_spectral_locus_f32(alwan_vec2_f32 const *p1,
+                                              alwan_vec2_f32 const *p2,
+                                              alwan_f32 *wavelength_out,
+                                              alwan_vec2_f32 *xy_out) {
+    alwan_f32 best_t = -1.0f;
+    size_t best_idx = 0;
+
+    for (size_t i = 0; i < (size_t)(SPECTRAL_LOCUS_COUNT - 1); i++) {
+        alwan_f32 s1x = (alwan_f32)SPECTRAL_LOCUS_XY[i].v[0];
+        alwan_f32 s1y = (alwan_f32)SPECTRAL_LOCUS_XY[i].v[1];
+        alwan_f32 s2x = (alwan_f32)SPECTRAL_LOCUS_XY[i + 1].v[0];
+        alwan_f32 s2y = (alwan_f32)SPECTRAL_LOCUS_XY[i + 1].v[1];
+
+        alwan_f32 dx1 = p2->v[0] - p1->v[0];
+        alwan_f32 dy1 = p2->v[1] - p1->v[1];
+        alwan_f32 dx2 = s2x - s1x;
+        alwan_f32 dy2 = s2y - s1y;
+
+        alwan_f32 det = dx1 * dy2 - dy1 * dx2;
+        if (fabsf(det) < 1e-10f) {
+            continue;
+        }
+
+        alwan_f32 dx3 = s1x - p1->v[0];
+        alwan_f32 dy3 = s1y - p1->v[1];
+
+        alwan_f32 t = (dx3 * dy2 - dy3 * dx2) / det;
+        alwan_f32 u = (dx3 * dy1 - dy3 * dx1) / det;
+
+        if (t >= 0.0f && u >= 0.0f && u <= 1.0f) {
+            if (best_t < 0.0f || t < best_t) {
+                best_t = t;
+                best_idx = i;
+            }
+        }
+    }
+
+    if (best_t < 0.0f) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_f32 s1x = (alwan_f32)SPECTRAL_LOCUS_XY[best_idx].v[0];
+    alwan_f32 s1y = (alwan_f32)SPECTRAL_LOCUS_XY[best_idx].v[1];
+    alwan_f32 s2x = (alwan_f32)SPECTRAL_LOCUS_XY[best_idx + 1].v[0];
+    alwan_f32 s2y = (alwan_f32)SPECTRAL_LOCUS_XY[best_idx + 1].v[1];
+
+    alwan_f32 dx2 = s2x - s1x;
+    alwan_f32 dy2 = s2y - s1y;
+    alwan_f32 dx3 = s1x - p1->v[0];
+    alwan_f32 dy3 = s1y - p1->v[1];
+    alwan_f32 dx1 = p2->v[0] - p1->v[0];
+    alwan_f32 dy1 = p2->v[1] - p1->v[1];
+    alwan_f32 det = dx1 * dy2 - dy1 * dx2;
+    alwan_f32 u = (dx3 * dy1 - dy3 * dx1) / det;
+
+    if (xy_out) {
+        xy_out->v[0] = s1x + u * dx2;
+        xy_out->v[1] = s1y + u * dy2;
+    }
+
+    alwan_f32 wl = (alwan_f32)SPECTRAL_LOCUS_WL_MIN +
+                   (alwan_f32)best_idx * (alwan_f32)SPECTRAL_LOCUS_WL_INTERVAL;
+    wl += u * (alwan_f32)SPECTRAL_LOCUS_WL_INTERVAL;
+
+    if (wavelength_out) {
+        *wavelength_out = wl;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_dominant_wavelength_f32(alwan_f32 *wavelength_out,
+                              alwan_vec2_f32 *xy_wl_out,
+                              alwan_vec2_f32 *xy_cw_out,
+                              alwan_vec2_f32 const *xy,
+                              alwan_vec2_f32 const *xy_white) {
+    if (!xy || !xy_white || !wavelength_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_f32 wl;
+    alwan_vec2_f32 xy_intersection;
+    int status = alwan_intersect_spectral_locus_f32(xy_white, xy, &wl, &xy_intersection);
+    if (status != ALWAN_OK) {
+        return ALWAN_E_INVALID;
+    }
+
+    *wavelength_out = wl;
+    if (xy_wl_out) {
+        *xy_wl_out = xy_intersection;
+    }
+    if (xy_cw_out) {
+        *xy_cw_out = xy_intersection;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_excitation_purity_f32(alwan_f32 *purity_out,
+                            alwan_vec2_f32 const *xy,
+                            alwan_vec2_f32 const *xy_white) {
+    if (!xy || !xy_white || !purity_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_vec2_f32 xy_wl;
+    alwan_f32 wl;
+    int status = alwan_intersect_spectral_locus_f32(xy_white, xy, &wl, &xy_wl);
+    if (status != ALWAN_OK) {
+        alwan_vec2_f32 xy_opposite;
+        xy_opposite.v[0] = 2.0f * xy_white->v[0] - xy->v[0];
+        xy_opposite.v[1] = 2.0f * xy_white->v[1] - xy->v[1];
+
+        status = alwan_intersect_spectral_locus_f32(xy_white, &xy_opposite, &wl, &xy_wl);
+        if (status != ALWAN_OK) {
+            return ALWAN_E_INVALID;
+        }
+    }
+
+    alwan_f32 dx_color = xy->v[0] - xy_white->v[0];
+    alwan_f32 dy_color = xy->v[1] - xy_white->v[1];
+    alwan_f32 dist_color = sqrtf(dx_color * dx_color + dy_color * dy_color);
+
+    alwan_f32 dx_wl = xy_wl.v[0] - xy_white->v[0];
+    alwan_f32 dy_wl = xy_wl.v[1] - xy_white->v[1];
+    alwan_f32 dist_wl = sqrtf(dx_wl * dx_wl + dy_wl * dy_wl);
+
+    if (dist_wl < 1e-10f) {
+        *purity_out = 0.0f;
+        return ALWAN_OK;
+    }
+
+    *purity_out = dist_color / dist_wl;
+    if (*purity_out < 0.0f) {
+        *purity_out = 0.0f;
+    } else if (*purity_out > 1.0f) {
+        *purity_out = 1.0f;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_complementary_wavelength_f32(alwan_f32 *wavelength_out,
+                                   alwan_vec2_f32 *xy_wl_out,
+                                   alwan_vec2_f32 *xy_cw_out,
+                                   alwan_vec2_f32 const *xy,
+                                   alwan_vec2_f32 const *xy_white) {
+    if (!xy || !xy_white || !wavelength_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_vec2_f32 xy_opposite;
+    xy_opposite.v[0] = 2.0f * xy_white->v[0] - xy->v[0];
+    xy_opposite.v[1] = 2.0f * xy_white->v[1] - xy->v[1];
+
+    alwan_f32 wl;
+    alwan_vec2_f32 xy_intersection;
+    int status = alwan_intersect_spectral_locus_f32(xy_white, &xy_opposite, &wl, &xy_intersection);
+    if (status != ALWAN_OK) {
+        return ALWAN_E_INVALID;
+    }
+
+    *wavelength_out = wl;
+    if (xy_wl_out) {
+        *xy_wl_out = xy_intersection;
+    }
+    if (xy_cw_out) {
+        *xy_cw_out = xy_intersection;
+    }
+    return ALWAN_OK;
+}
+
+/* Working-space transform, f32 mirror of gamut_working_xform_f64. See that
+ * function for the rationale (honour `space`; snap to exact identity for
+ * colorimetric sRGB so the common path is unchanged). */
+static int gamut_working_xform_f32(alwan_mat3x3_f32 *to_srgb,
+                                   alwan_mat3x3_f32 *from_srgb,
+                                   alwan_rgb_space_desc_f32 const *space) {
+    alwan_mat3x3_f32 space_to_xyz, xyz_to_space;
+    int rc = alwan_rgb_derive_matrices_f32(&space_to_xyz, &xyz_to_space, space);
+    if (rc != ALWAN_OK) return rc;
+
+    alwan_rgb_space_desc_f32 srgb;
+    srgb.primaries_xy[0] = (alwan_f32)ALWAN_BT709_RED_x;   srgb.primaries_xy[1] = (alwan_f32)ALWAN_BT709_RED_y;
+    srgb.primaries_xy[2] = (alwan_f32)ALWAN_BT709_GREEN_x; srgb.primaries_xy[3] = (alwan_f32)ALWAN_BT709_GREEN_y;
+    srgb.primaries_xy[4] = (alwan_f32)ALWAN_BT709_BLUE_x;  srgb.primaries_xy[5] = (alwan_f32)ALWAN_BT709_BLUE_y;
+    srgb.white_xy[0] = 0.31271f; srgb.white_xy[1] = 0.32902f;
+    srgb.oetf = ALWAN_TF_LINEAR; srgb.eotf = ALWAN_TF_LINEAR; srgb.has_matrices = 0;
+
+    alwan_mat3x3_f32 srgb_to_xyz, xyz_to_srgb;
+    rc = alwan_rgb_derive_matrices_f32(&srgb_to_xyz, &xyz_to_srgb, &srgb);
+    if (rc != ALWAN_OK) return rc;
+
+    alwan_mat3_mul_f32(to_srgb, &xyz_to_srgb, &space_to_xyz);
+    alwan_mat3_mul_f32(from_srgb, &xyz_to_space, &srgb_to_xyz);
+
+    {
+        int is_identity = 1;
+        for (int i = 0; i < 9 && is_identity; i++) {
+            alwan_f32 want = (i % 4 == 0) ? 1.0f : 0.0f;
+            if (fabsf(to_srgb->m[i] - want) > 1e-3f) is_identity = 0;
+        }
+        if (is_identity) {
+            for (int i = 0; i < 9; i++) {
+                alwan_f32 v = (i % 4 == 0) ? 1.0f : 0.0f;
+                to_srgb->m[i] = v; from_srgb->m[i] = v;
+            }
+        }
+    }
+    return ALWAN_OK;
+}
+
+int alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
+                             alwan_gamut_map_method method,
+                             alwan_rgb_space_desc_f32 const *space,
+                             alwan_rgb_f32 const *rgb_linear) {
+    if (!space || !rgb_linear || !rgb_out) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_vec3_f32 rgb_vec;
+    rgb_vec.v[0] = rgb_linear->r;
+    rgb_vec.v[1] = rgb_linear->g;
+    rgb_vec.v[2] = rgb_linear->b;
+
+    /* Method 0: Simple clipping (in `space`'s own [0,1] cube). */
+    if (method == ALWAN_GAMUT_MAP_CLIP) {
+        rgb_out->r = (rgb_linear->r < 0.0f) ? 0.0f : (rgb_linear->r > 1.0f) ? 1.0f : rgb_linear->r;
+        rgb_out->g = (rgb_linear->g < 0.0f) ? 0.0f : (rgb_linear->g > 1.0f) ? 1.0f : rgb_linear->g;
+        rgb_out->b = (rgb_linear->b < 0.0f) ? 0.0f : (rgb_linear->b > 1.0f) ? 1.0f : rgb_linear->b;
+        return ALWAN_OK;
+    }
+
+    /* Honour `space`: into the linear-sRGB working space for the Oklab model. */
+    alwan_mat3x3_f32 to_srgb, from_srgb;
+    {
+        int xrc = gamut_working_xform_f32(&to_srgb, &from_srgb, space);
+        if (xrc != ALWAN_OK) return xrc;
+    }
+    alwan_vec3_f32 rgb_work;
+    alwan_mat3_mulv_f32(&rgb_work, &to_srgb, &rgb_vec);
+
+    alwan_vec3_f32 oklab = gamut_linear_srgb_to_oklab_f32_v(rgb_work);
+    alwan_f32 L = oklab.v[0];
+    alwan_f32 a = oklab.v[1];
+    alwan_f32 b = oklab.v[2];
+    alwan_f32 C = sqrtf(a * a + b * b);
+
+    if (C < 0.0001f ||
+        (rgb_linear->r >= 0.0f && rgb_linear->r <= 1.0f &&
+         rgb_linear->g >= 0.0f && rgb_linear->g <= 1.0f &&
+         rgb_linear->b >= 0.0f && rgb_linear->b <= 1.0f)) {
+        *rgb_out = *rgb_linear;
+        return ALWAN_OK;
+    }
+
+    alwan_f32 a_norm = a / C;
+    alwan_f32 b_norm = b / C;
+
+    alwan_f32 L0, C0;
+    alwan_f32 alpha = 0.0f;
+    (void)alpha;  /* Mirrors f64: alpha selected per-method, presently unused. */
+
+    if (method == ALWAN_GAMUT_MAP_ADAPTIVE_L0) {
+        L0 = 0.5f; C0 = 0.0f; alpha = 0.05f;
+    } else if (method == ALWAN_GAMUT_MAP_ADAPTIVE_CUSP) {
+        alwan_vec2_f32 cusp = gamut_find_cusp_f32_v(a_norm, b_norm);
+        L0 = cusp.v[0]; C0 = 0.0f; alpha = 0.05f;
+    } else if (method == ALWAN_GAMUT_MAP_CHROMA_COMPRESS) {
+        L0 = L; C0 = 0.0f; alpha = 0.1f;
+    } else if (method == ALWAN_GAMUT_MAP_SGCK) {
+        alwan_vec2_f32 cusp = gamut_find_cusp_f32_v(a_norm, b_norm);
+        L0 = cusp.v[0]; C0 = 0.0f; alpha = 0.15f;
+    } else if (method == ALWAN_GAMUT_MAP_HPMINDE) {
+        alwan_vec2_f32 cusp = gamut_find_cusp_f32_v(a_norm, b_norm);
+        L0 = cusp.v[0]; C0 = 0.0f; alpha = 0.02f;
+    } else if (method == ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE) {
+        L0 = L; C0 = 0.0f; alpha = 0.0f;
+    } else {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_f32 t = gamut_find_intersection_f32_v(a_norm, b_norm, L, C, L0, C0);
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+
+    alwan_f32 L_clipped = L0 * (1.0f - t) + t * L;
+    alwan_f32 C_clipped = t * C;
+
+    alwan_vec3_f32 oklab_clipped;
+    oklab_clipped.v[0] = L_clipped;
+    oklab_clipped.v[1] = C_clipped * a_norm;
+    oklab_clipped.v[2] = C_clipped * b_norm;
+
+    /* Back to linear sRGB (working space), then to the caller's `space`. */
+    alwan_vec3_f32 rgb_srgb = gamut_oklab_to_linear_srgb_f32_v(oklab_clipped);
+    alwan_vec3_f32 rgb_result;
+    alwan_mat3_mulv_f32(&rgb_result, &from_srgb, &rgb_srgb);
+
+    rgb_out->r = (rgb_result.v[0] < 0.0f) ? 0.0f : (rgb_result.v[0] > 1.0f) ? 1.0f : rgb_result.v[0];
+    rgb_out->g = (rgb_result.v[1] < 0.0f) ? 0.0f : (rgb_result.v[1] > 1.0f) ? 1.0f : rgb_result.v[1];
+    rgb_out->b = (rgb_result.v[2] < 0.0f) ? 0.0f : (rgb_result.v[2] > 1.0f) ? 1.0f : rgb_result.v[2];
+    return ALWAN_OK;
+}
+
 #endif /* ALWAN_WITH_F32 */

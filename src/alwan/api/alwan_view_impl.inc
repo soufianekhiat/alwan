@@ -1,10 +1,10 @@
-/* No include guard — included twice (f32 and f64 passes).
+/* No include guard -- included twice (f32 and f64 passes).
  *
  * Native dual-precision view transforms. Shared constant data
  * (ap1_to_ap0, agx_inset_matrix, agx_outset_matrix and the AgX contrast
  * LUT) is defined once at f64 precision in alwan_view.c and read here
  * with per-element casts to ALWAN_CORE_T, so every arithmetic operation
- * runs at the selected precision — a genuine f32 path, not a
+ * runs at the selected precision -- a genuine f32 path, not a
  * widen-to-f64 facade. The core _v helpers resolve to the matching
  * precision via ALWAN_CORE_FNVLIT / ALWAN_CORE_FNLIT.
  */
@@ -22,7 +22,7 @@ static void ALWAN_CORE_FN(aces_rec709_transform)(ALWAN_CORE_T const *rgb_in, ALW
     ALWAN_CORE_RGB out;
     ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(&out, &ap0, ALWAN_ACES1_OUT_SRGB_100NIT);
 
-    /* Output includes sRGB OETF — undo to get linear for the chain. */
+    /* Output includes sRGB OETF -- undo to get linear for the chain. */
     rgb_out[0] = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(out.r);
     rgb_out[1] = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(out.g);
     rgb_out[2] = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(out.b);

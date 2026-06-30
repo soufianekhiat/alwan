@@ -220,14 +220,14 @@ static inline void alwan__get_luma_coeffs(alwan_luma_standard standard,
 }
 
 /* TF inline definitions are exposed transitively to consumers that call
- * alwan_*_oetf/eotf_* directly (alwan_view.c, alwan_convenience_core.h, …). */
+ * alwan_*_oetf/eotf_* directly (alwan_view.c, alwan_convenience_core.h, ...). */
 #include "core/alwan_rgb_core.h"
 
 /* ----------------------------------------------------------------
  * Transfer function resolution (enum -> function pointer)
  *
  * Single-source-of-truth X-macro tables drive every TF dispatch in the
- * library. Adding a TF means adding one row — the four scalar resolvers
+ * library. Adding a TF means adding one row -- the four scalar resolvers
  * (defined in alwan_tf_resolve.c) and the SIMD dispatch sites are all
  * regenerated from these tables.
  *
@@ -235,7 +235,7 @@ static inline void alwan__get_luma_coeffs(alwan_luma_standard standard,
  *   TF_SIMD_TABLE_BODY(X) X(ENUM_SUFFIX, OETF_SIMD_FN, EOTF_SIMD_FN)
  *
  * Function names are alwan_<base>_oetf_<prec> / alwan_<base>_eotf_<prec>.
- * LINEAR is intentionally excluded from TF_TABLE_BODY — its identity is
+ * LINEAR is intentionally excluded from TF_TABLE_BODY -- its identity is
  * not named *_oetf or *_eotf so the resolvers handle it as a separate case.
  * SIMD entries omit LINEAR (identity = NULL) and asymmetric pairs are
  * encoded explicitly (e.g. HLG uses the "_full" EOTF variant).

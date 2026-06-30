@@ -1358,11 +1358,11 @@ int ALWAN_MAP_LITCAT(alwan_linear_srgb_to_hsv, _map_interleave)(alwan_map_lane *
                 alwan_map_simd sixty = alwan_map_simd_set1((alwan_map_lane)(60.0));
                 alwan_map_simd inv360 = alwan_map_simd_set1((alwan_map_lane)(1.0 / 360.0));
                 for (; i + W <= tile; i += W) {
-                    /* Apply sRGB OETF (linear → nonlinear) */
+                    /* Apply sRGB OETF (linear -> nonlinear) */
                     alwan_map_simd vr = ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd_load(&c0[i]));
                     alwan_map_simd vg = ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd_load(&c1[i]));
                     alwan_map_simd vb = ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd_load(&c2[i]));
-                    /* RGB→HSV */
+                    /* RGB->HSV */
                     alwan_map_simd mx = ALWAN_MAP_NAME(alwan__simd_max3)(vr, vg, vb);
                     alwan_map_simd mn = ALWAN_MAP_NAME(alwan__simd_min3)(vr, vg, vb);
                     alwan_map_simd delta = alwan_map_simd_sub(mx, mn);
@@ -1418,7 +1418,7 @@ int ALWAN_MAP_LITCAT(alwan_hsv_to_linear_srgb, _map_interleave)(alwan_map_lane *
                     alwan_map_simd vh = alwan_map_simd_load(&c0[i]);
                     alwan_map_simd vs = alwan_map_simd_load(&c1[i]);
                     alwan_map_simd vv = alwan_map_simd_load(&c2[i]);
-                    /* HSV→RGB (6-sector branchless) */
+                    /* HSV->RGB (6-sector branchless) */
                     alwan_map_simd h_deg = alwan_map_simd_mul(vh, v360);
                     h_deg = alwan_map_simd_sub(h_deg, alwan_map_simd_mul(alwan_map_simd_floor(alwan_map_simd_div(h_deg, v360)), v360));
                     h_deg = alwan_map_simd_select(alwan_map_simd_cmplt(h_deg, zero), alwan_map_simd_add(h_deg, v360), h_deg);
@@ -1444,7 +1444,7 @@ int ALWAN_MAP_LITCAT(alwan_hsv_to_linear_srgb, _map_interleave)(alwan_map_lane *
                     or_ = alwan_map_simd_select(alwan_map_simd_cmple(vs, zero), vv, or_);
                     og = alwan_map_simd_select(alwan_map_simd_cmple(vs, zero), vv, og);
                     ob = alwan_map_simd_select(alwan_map_simd_cmple(vs, zero), vv, ob);
-                    /* Apply sRGB EOTF (nonlinear → linear) */
+                    /* Apply sRGB EOTF (nonlinear -> linear) */
                     alwan_map_simd_store(&c0[i], ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(or_));
                     alwan_map_simd_store(&c1[i], ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(og));
                     alwan_map_simd_store(&c2[i], ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(ob));
@@ -1485,7 +1485,7 @@ int ALWAN_MAP_LITCAT(alwan_linear_srgb_to_hsl, _map_interleave)(alwan_map_lane *
                     alwan_map_simd vr = ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd_load(&c0[i]));
                     alwan_map_simd vg = ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd_load(&c1[i]));
                     alwan_map_simd vb = ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_map_simd_load(&c2[i]));
-                    /* RGB→HSL */
+                    /* RGB->HSL */
                     alwan_map_simd mx = ALWAN_MAP_NAME(alwan__simd_max3)(vr, vg, vb);
                     alwan_map_simd mn = ALWAN_MAP_NAME(alwan__simd_min3)(vr, vg, vb);
                     alwan_map_simd delta = alwan_map_simd_sub(mx, mn);
@@ -1543,7 +1543,7 @@ int ALWAN_MAP_LITCAT(alwan_hsl_to_linear_srgb, _map_interleave)(alwan_map_lane *
                     alwan_map_simd vh = alwan_map_simd_load(&c0[i]);
                     alwan_map_simd vs = alwan_map_simd_load(&c1[i]);
                     alwan_map_simd vl = alwan_map_simd_load(&c2[i]);
-                    /* HSL→RGB */
+                    /* HSL->RGB */
                     alwan_map_simd q = alwan_map_simd_select(alwan_map_simd_cmplt(vl, half),
                         alwan_map_simd_mul(vl, alwan_map_simd_add(one, vs)),
                         alwan_map_simd_sub(alwan_map_simd_add(vl, vs), alwan_map_simd_mul(vl, vs)));
@@ -1554,7 +1554,7 @@ int ALWAN_MAP_LITCAT(alwan_hsl_to_linear_srgb, _map_interleave)(alwan_map_lane *
                     or_ = alwan_map_simd_select(alwan_map_simd_cmple(vs, zero), vl, or_);
                     og = alwan_map_simd_select(alwan_map_simd_cmple(vs, zero), vl, og);
                     ob = alwan_map_simd_select(alwan_map_simd_cmple(vs, zero), vl, ob);
-                    /* Apply sRGB EOTF (nonlinear → linear) */
+                    /* Apply sRGB EOTF (nonlinear -> linear) */
                     alwan_map_simd_store(&c0[i], ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(or_));
                     alwan_map_simd_store(&c1[i], ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(og));
                     alwan_map_simd_store(&c2[i], ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(ob));

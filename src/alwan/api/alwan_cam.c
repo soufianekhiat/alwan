@@ -9,8 +9,8 @@
  * (alwan_cam_core.h, alwan_cam18sl_core.h, alwan_cam20u_core.h). The
  * scalar entry points are instantiated natively for both f32 and f64
  * from alwan_cam_impl.inc (included once per precision below), so the
- * single-precision path — including the bulk _map_interleave path that
- * calls these wrappers — computes in float throughout rather than
+ * single-precision path -- including the bulk _map_interleave path that
+ * calls these wrappers -- computes in float throughout rather than
  * widening to double.
  */
 

@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 /* Initialize atmosphere parameters with defaults */
 void ALWAN_CORE_FNLIT(alwan_atmosphere_params_default)(ALWAN_CORE_ATMOSPHERE_PARAMS *params)

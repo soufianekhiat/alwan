@@ -14,8 +14,21 @@ the library around that API surface.
 ## Start Here
 
 - [getting-started.md](getting-started.md) - first build, first program, and `{T}` convention
-- [configuration.md](configuration.md) - compile-time switches, allocators, deterministic mode
 - [examples.md](examples.md) - representative workflows, including typed, `_ex`, planar, image, LUT, and interop helpers
+
+## Build & Configuration
+
+- [build-and-precision.md](build-and-precision.md) - Sharpmake (reference) vs CMake (replica) builds, and the precision-build surface: `ALWAN_BUILD_ONLY_F32`/`ALWAN_BUILD_ONLY_F64` resolving to `ALWAN_WITH_F32`/`ALWAN_WITH_F64` (default both), `ALWAN_SCALAR_IS_FLOAT`, and the `ALWAN_WITH_F64_FACADE` exceptions
+- [configuration.md](configuration.md) - compile-time switches, allocators, deterministic mode, `ALWAN_EMBED_DATA`
+- [determinism.md](determinism.md) - what `ALWAN_DETERMINISTIC` changes and why
+
+> Precision questions (single- vs dual-precision builds, `ALWAN_BUILD_ONLY_F32`/`ALWAN_BUILD_ONLY_F64`) are answered in
+> [build-and-precision.md](build-and-precision.md).
+
+## Backends
+
+- [backends-cpu.md](backends-cpu.md) - CPU/SIMD backend: SSE2/AVX/AVX2/NEON dispatch, SVML gating, fast vs deterministic math paths
+- [api/backends.md](api/backends.md) - GPU/single-color shader backends (`ALWAN_BACKEND` C/HLSL/GLSL/Halide)
 
 ## Core Guides
 
@@ -23,7 +36,6 @@ the library around that API surface.
 - [map.md](map.md) - batch processing APIs, SIMD-backed map layer, typed-pixel entry points
 - [precision-and-limits.md](precision-and-limits.md) - choosing `_f32` vs `_f64`, numerical expectations, determinism trade-offs
 - [data-management.md](data-management.md) - embedded data today, runtime loading plan for a future release
-- [determinism.md](determinism.md) - what `ALWAN_DETERMINISTIC` changes and why
 - [ranges.md](ranges.md) - channel-range conventions and `ALWAN_NORMALIZE_RANGES`
 
 ## Companion Docs

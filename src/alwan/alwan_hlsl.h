@@ -11,7 +11,7 @@
  *   - ALWAN_LITERAL, ALWAN_SELECT, ALWAN_SQRT, ... are HLSL intrinsics
  *   - alwan_vec2, alwan_vec3, alwan_mat3x3 are struct { alwan_scalar v[N]; }
  *   - All semantic color types (alwan_rgb, alwan_xyz, ...) are structs
- *     (intentional — alwan never aliases to HLSL float3/swizzle types)
+ *     (intentional -- alwan never aliases to HLSL float3/swizzle types)
  *
  * Then include whichever *_core.h modules you need:
  *   #include "alwan_hlsl.h"
@@ -35,7 +35,7 @@
 /* Types: defines alwan_vec2/vec3/mat3x3 and all semantic color types */
 #include "alwan_types.h"
 
-/* ALWAN_CORE_* — GPU single-precision pass aliases used by *_core.inc files.
+/* ALWAN_CORE_* -- GPU single-precision pass aliases used by *_core.inc files.
  * Shared across glsl/hlsl/halide bootstraps. */
 #include "alwan_core_aliases.inc"
 

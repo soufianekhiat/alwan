@@ -133,7 +133,36 @@ buffers and just want the math.
 
 ---
 
-## 6. Positioning Summary
+## 6. Alwan Capability Detail
+
+The coarse matrix above marks presence; this section expands the **Alwan**
+column with the concrete methods, standards, and models shipped in
+`src/alwan/alwan.h`. Caveats are noted inline where a surface is incomplete.
+
+| Capability | Alwan |
+|------------|-------|
+| Spectral upsampling | Smits 1999, Mallett 2019, Jakob 2019 (6 LUT gamuts) — native f32/f64, deterministic |
+| Chromatic adaptation | 11 one-step CAT matrices + two-step Zhai 2018 (CAT02/CAT16) |
+| Color appearance models | CIECAM02, CAM16, ZCAM, RLAB, Hunt, Hellwig2022, Kim2009, LLAB, ATD95, Nayatani95, CAM18sl, CAM20u |
+| Color-difference metrics | 14 incl. dE2000, CMC, CAM02-UCS (LCD/SCD/UCS), CAM16-UCS (LCD/SCD/UCS), dE-OK, dE-ITP, HyAB, DIN99, ZCAM |
+| Camera profiling | Cheung 2004 + Finlayson 2015 root-polynomial colour correction, Vandermonde poly expansion |
+| Gamut mapping | 8 methods incl. Adaptive-L0/Cusp, Chroma-Compress, SGCK, HPMINDE, Lightness-Preserve; CSS Oklch gamut map; hue-preserving |
+| HDR tone mapping | ACES 1.x + ACES 2.0 output transforms, AgX (+Punchy/Golden), BT.2446 B/C, BT.2390 EETF, Reinhard calibrated, HLG OOTF |
+| HDR metadata | MaxCLL/MaxFALL, ST.2086 init, PQ peak normalize, content-light-level compute |
+| Accessibility / contrast | WCAG 2.x contrast ratio, APCA (WCAG 3.0 draft), Weber, Michelson |
+| Light-quality metrics | CRI Ra, CQS, TM-30 Rf, CIE 224 Rf, SSI, metamerism index, whiteness (ASTM E313, CIE 2004), yellowness (ASTM E313) |
+| Vision / Barten | Barten 1999 CSF (pupil diameter, retinal illuminance, optical MTF, sigma, max angular size), photopic/scotopic/mesopic luminance, simplified CSF |
+| CCT estimation | McCamy, Robertson, Hernandez xy; Kang forward/inverse; Duv optimize (f32 entry points currently link-broken) |
+| Colour-blindness simulation | Brettel and Machado CVD models with batch maps |
+| Spectral/wavelength | Hero-wavelength sampling (Wyman 2013), dominant/complementary wavelength, excitation purity, spectral locus, Rayleigh optical depth/SPD |
+| Picker/presentation spaces | HSLuv, HPLuv, OkHSL, OkHSV, Cubehelix, HCL, IHLS, HLC, Prismatic |
+| Codec/centered-chroma spaces | YCbCr, YcCbcCrc (constant-luminance), YCoCg, with NORM/DENORM centered-chroma wiring |
+| Atmosphere | Rayleigh scattering cross-section and SPD with latitude-dependent gravity |
+| Determinism | Cross-platform regression dump + polynomial math layer for pow/exp/log/cbrt (NOTE: trig not yet polynomial-replaced) |
+
+---
+
+## 7. Positioning Summary
 
 ### Where Alwan is stronger
 

@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 void ALWAN_CORE_FNLIT(alwan_rgb_to_ictcp)(ALWAN_CORE_ICTCP *ictcp, ALWAN_CORE_RGB const *rgb, int use_pq) {
     if (use_pq) {

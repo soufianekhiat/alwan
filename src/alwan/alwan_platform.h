@@ -49,7 +49,7 @@
  * ================================================================ */
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
-  /* C/C++ backend — always double */
+  /* C/C++ backend -- always double */
   typedef double alwan_scalar;
 # define ALWAN_EPSILON 1e-12
 # define ALWAN_LITERAL(x) (x)
@@ -67,7 +67,7 @@
 # define ALWAN_LITERAL(x) (x)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
-  /* Halide backend — supports both Float(32) and Float(64) at runtime.
+  /* Halide backend -- supports both Float(32) and Float(64) at runtime.
    * Set ALWAN_HALIDE_FLOAT_BITS to 32 or 64 before including this header.
    *
    * alwan_halide_scalar inherits from Halide::Expr and adds an implicit
@@ -188,7 +188,7 @@
  * where C `fmod` truncates toward zero) the wrapper must compensate.
  *
  * Adding a primitive: state the contract one-liner, then implement it
- * on all four backends to honor it — not "whatever the native intrinsic
+ * on all four backends to honor it -- not "whatever the native intrinsic
  * happens to do", which is how silent divergences slip in.
  *
  * Macros below assume side-effect-free arguments: some compensations
@@ -196,7 +196,7 @@
  * ================================================================ */
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
-  /* C/C++ backend — always double */
+  /* C/C++ backend -- always double */
 # include <math.h>
 # define ALWAN_ABS(x)       fabs(x)
 # define ALWAN_SQRT(x)      sqrt(x)
@@ -223,7 +223,7 @@
  * ALWAN_CORE_SRGB_OETF / _EOTF in alwan_core_*_setup.h but uses the
  * single-precision (alwan_scalar) macro vocabulary. The .h and .inc
  * core files both compute sRGB transfer through these macros, so
- * deterministic mode propagates uniformly. road_to_determinism.md §6.2. */
+ * deterministic mode propagates uniformly. road_to_determinism.md sec 6.2. */
 # if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
 #  define ALWAN_SRGB_OETF(x)     alwan_det_srgb_oetf_f64(x)
 #  define ALWAN_SRGB_EOTF(x)     alwan_det_srgb_eotf_f64(x)
@@ -248,7 +248,7 @@
   /* HLSL backend: intrinsics */
 # define ALWAN_ABS(x)       abs(x)
 # define ALWAN_SQRT(x)      sqrt(x)
-/* Signed cube root (parity with libm cbrt). pow(x,1/3) NaNs for x<0 — compensate. */
+/* Signed cube root (parity with libm cbrt). pow(x,1/3) NaNs for x<0 -- compensate. */
 # define ALWAN_CBRT(x)      (ALWAN_SELECT((x) < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE) * \
                              pow(ALWAN_ABS(x), ALWAN_LITERAL(1.0 / 3.0)))
 # define ALWAN_SIN(x)       sin(x)
@@ -271,7 +271,7 @@
   /* GLSL backend: intrinsics */
 # define ALWAN_ABS(x)       abs(x)
 # define ALWAN_SQRT(x)      sqrt(x)
-/* Signed cube root (parity with libm cbrt). pow(x,1/3) NaNs for x<0 — compensate. */
+/* Signed cube root (parity with libm cbrt). pow(x,1/3) NaNs for x<0 -- compensate. */
 # define ALWAN_CBRT(x)      (ALWAN_SELECT((x) < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE) * \
                              pow(ALWAN_ABS(x), ALWAN_LITERAL(1.0 / 3.0)))
 # define ALWAN_SIN(x)       sin(x)
@@ -295,7 +295,7 @@
 # define ALWAN_ABS(x)       Halide::abs(x)
 # define ALWAN_SQRT(x)      Halide::sqrt(x)
 /* Signed cube root (parity with libm cbrt). Halide::pow NaNs for negative
- * base — feed only |x| and reapply sign afterwards. */
+ * base -- feed only |x| and reapply sign afterwards. */
 # define ALWAN_CBRT(x)      (ALWAN_SELECT((x) < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE) * \
                              Halide::pow(ALWAN_ABS(x), ALWAN_LITERAL(1.0 / 3.0)))
 # define ALWAN_SIN(x)       Halide::sin(x)
@@ -779,7 +779,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 
 /* --- CIE Colorimetric Spaces --- */
 
-/* XYZ: all [0, +inf) — only MIN defined */
+/* XYZ: all [0, +inf) -- only MIN defined */
 #define ALWAN_XYZ_X_MIN   ALWAN_ZERO
 #define ALWAN_XYZ_Y_MIN   ALWAN_ZERO
 #define ALWAN_XYZ_Z_MIN   ALWAN_ZERO
@@ -994,7 +994,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  * output channels to [0, 1] and expect [0, 1] inputs for those
  * channels. Core (_v) functions are NOT affected.
  * Unbounded channels (e.g. Lab a*, chroma) are NOT rescaled.
- * Default: 1 (enabled — bounded channels normalized to [0, 1]).
+ * Default: 1 (enabled -- bounded channels normalized to [0, 1]).
  * Define ALWAN_NORMALIZE_RANGES=0 before including alwan.h to disable.
  * ================================================================ */
 
@@ -1007,10 +1007,10 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 /* Macros below use C pointer syntax ((p)->field). They are gated on the C
  * backend because GLSL/HLSL have no `->` operator; on GPU backends every
  * NORM/DENORM expands to ((void)0). No GPU-shareable *_core.h calls these,
- * so this is preventive — keeping the symbols available without breaking
+ * so this is preventive -- keeping the symbols available without breaking
  * shader compilation if a bootstrap header is included.
  *
- * Multi-field macros (CIECAM02, CAM16, ZCAM, …) evaluate `p` 2–4 times.
+ * Multi-field macros (CIECAM02, CAM16, ZCAM, ...) evaluate `p` 2-4 times.
  * Callers MUST pass a side-effect-free lvalue (e.g. `&local`, `out`).
  * Side-effecting expressions like `ALWAN_NORM_CIECAM02(get_ptr())` will
  * call `get_ptr()` multiple times. */
@@ -1020,6 +1020,10 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 /* Lab: L [0,100] -> [0,1] */
 #define ALWAN_NORM_LAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
 #define ALWAN_DENORM_LAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+
+/* UVW (CIE 1964): W* [0,100] -> [0,1] (lightness-like, as Lab L*); U*, V* are unbounded opponent axes -> native */
+#define ALWAN_NORM_UVW(p)   do { (p)->W *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_UVW(p) do { (p)->W *= ALWAN_LITERAL(100.0); } while(0)
 
 /* Luv: L [0,100] -> [0,1] */
 #define ALWAN_NORM_LUV(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
@@ -1139,10 +1143,32 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_NORM_CAM20U(p)   do { (p)->h /= ALWAN_LITERAL(360.0); } while(0)
 #define ALWAN_DENORM_CAM20U(p) do { (p)->h *= ALWAN_LITERAL(360.0); } while(0)
 
+/* UVW (CIE 1964): W-star is a signed lightness-like axis (alwan uses the
+ * fractional-Y form, 25*(Y/Yn)^(1/3)-17, ~[-17, 8]); U-star and V-star are
+ * unbounded opponent axes. None fit the [0,1] convention, so UVW stays native. */
+
+/* HSLuv: h [0,360) -> [0,1], s [0,100] -> [0,1], l [0,100] -> [0,1] */
+#define ALWAN_NORM_HSLUV(p)   do { (p)->h /= ALWAN_LITERAL(360.0); (p)->s *= ALWAN_LITERAL(0.01); (p)->l *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_HSLUV(p) do { (p)->h *= ALWAN_LITERAL(360.0); (p)->s *= ALWAN_LITERAL(100.0); (p)->l *= ALWAN_LITERAL(100.0); } while(0)
+
+/* HPLuv: h [0,360) -> [0,1], s [0,100] -> [0,1], l [0,100] -> [0,1] */
+#define ALWAN_NORM_HPLUV(p)   do { (p)->h /= ALWAN_LITERAL(360.0); (p)->s *= ALWAN_LITERAL(0.01); (p)->l *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_HPLUV(p) do { (p)->h *= ALWAN_LITERAL(360.0); (p)->s *= ALWAN_LITERAL(100.0); (p)->l *= ALWAN_LITERAL(100.0); } while(0)
+
+/* HLC: H [0,360) -> [0,1], L [0,100] -> [0,1] (C is chroma, unbounded) */
+#define ALWAN_NORM_HLC(p)   do { (p)->H /= ALWAN_LITERAL(360.0); (p)->L *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_HLC(p) do { (p)->H *= ALWAN_LITERAL(360.0); (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+
+/* Cubehelix: h [0,360) -> [0,1] (l is already [0,1]; s is saturation, unbounded) */
+#define ALWAN_NORM_CUBEHELIX(p)   do { (p)->h /= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_DENORM_CUBEHELIX(p) do { (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+
 #else /* ALWAN_NORMALIZE_RANGES == 0 or non-C backend: all no-ops */
 
 #define ALWAN_NORM_LAB(p)           ((void)0)
 #define ALWAN_DENORM_LAB(p)         ((void)0)
+#define ALWAN_NORM_UVW(p)           ((void)0)
+#define ALWAN_DENORM_UVW(p)         ((void)0)
 #define ALWAN_NORM_LUV(p)           ((void)0)
 #define ALWAN_DENORM_LUV(p)         ((void)0)
 #define ALWAN_NORM_LCH(p)           ((void)0)
@@ -1197,6 +1223,14 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_DENORM_CAM18SL(p)     ((void)0)
 #define ALWAN_NORM_CAM20U(p)        ((void)0)
 #define ALWAN_DENORM_CAM20U(p)      ((void)0)
+#define ALWAN_NORM_HSLUV(p)         ((void)0)
+#define ALWAN_DENORM_HSLUV(p)       ((void)0)
+#define ALWAN_NORM_HPLUV(p)         ((void)0)
+#define ALWAN_DENORM_HPLUV(p)       ((void)0)
+#define ALWAN_NORM_HLC(p)           ((void)0)
+#define ALWAN_DENORM_HLC(p)         ((void)0)
+#define ALWAN_NORM_CUBEHELIX(p)     ((void)0)
+#define ALWAN_DENORM_CUBEHELIX(p)   ((void)0)
 
 #endif /* ALWAN_NORMALIZE_RANGES */
 
@@ -1210,7 +1244,7 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  * approximated by polynomials within a documented absolute-error
  * budget (typically 5e-5 for sRGB-domain inputs). Existing tests
  * that compare against libm reference values must accept this looser
- * bound — the budget is intentionally larger than libm noise. The
+ * bound -- the budget is intentionally larger than libm noise. The
  * narrower assertions are exercised only in fast mode.
  *
  * Tests that need a precision-mode-independent assertion should use

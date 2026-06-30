@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Alwan - Pure C colour science library
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
@@ -179,7 +179,7 @@ ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_loadu(double const *ptr) { return *pt
 ALWAN_INLINE void alwan_simd_f64_store(double *ptr, alwan_simd_f64 v) { *ptr = v; }
 ALWAN_INLINE void alwan_simd_f64_storeu(double *ptr, alwan_simd_f64 v) { *ptr = v; }
 
-/* Scalar backend: 1-lane f64 vector — "horizontal sum" is identity. */
+/* Scalar backend: 1-lane f64 vector -- "horizontal sum" is identity. */
 ALWAN_INLINE alwan_simd_f64 alwan_simd_f64_hsum_native(alwan_simd_f64 a) { return a; }
 
 /* ----------------------------------------------------------------

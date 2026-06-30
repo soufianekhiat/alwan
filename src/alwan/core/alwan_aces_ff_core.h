@@ -20,7 +20,7 @@
 #define ACES2_REACH_TABLE_SIZE 360
 #define ACES2_CUSP_TABLE_SIZE 362
 
-/* ACES2 numeric constants (precision-agnostic — use ALWAN_LITERAL in per-pass .inc) */
+/* ACES2 numeric constants (precision-agnostic -- use ALWAN_LITERAL in per-pass .inc) */
 #define ACES_CAM_NL_OFFSET_VALUE             27.13
 #define ACES_J_SCALE_VALUE                  100.0
 #define ACES_GAMUT_COMPRESSION_THRESHOLD_VALUE  0.75
@@ -167,8 +167,8 @@ ALWAN_INLINE alwan_scalar aces_cone_response_fwd_v(alwan_scalar v) {
     if (abs_v < ALWAN_LITERAL(1e-10)) return ALWAN_LITERAL(0.0);
 
     alwan_scalar F_L_Y = ALWAN_POW(abs_v, ALWAN_LITERAL(0.42));
-    /* Guard: Inf or NaN F_L_Y (from Inf/NaN input) → Ra = Inf/Inf = NaN.
-     * Physically Ra → 1 as stimulus → ∞, so cap at 1. Also protects
+    /* Guard: Inf or NaN F_L_Y (from Inf/NaN input) -> Ra = Inf/Inf = NaN.
+     * Physically Ra -> 1 as stimulus -> inf, so cap at 1. Also protects
      * downstream hue lookups from (int)NaN undefined behaviour. */
     if (!(F_L_Y < ALWAN_LITERAL(1e15))) {
         return (v >= ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(-1.0);

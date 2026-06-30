@@ -200,7 +200,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_rgb_to_yc)(ALWAN_CORE_T red, AL
     return YC;
 }
 
-/* ACES sigmoid_shaper: smooth step function mapping [0,1] → [0,1].
+/* ACES sigmoid_shaper: smooth step function mapping [0,1] -> [0,1].
  * Input is pre-scaled: x = (sat - 0.4) / 0.2.
  * Source: aces-dev/lib/ACESlib.Utilities.ctl sigmoid_shaper */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_sigmoid_shaper)(ALWAN_CORE_T x) {
@@ -324,7 +324,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_cubic_basis_shaper)(ALWAN_CORE
     return ALWAN_CORE_SELECT(t < ALWAN_CORE_LITERAL(-1.0) || t > ALWAN_CORE_LITERAL(1.0), ALWAN_CORE_LITERAL(0.0), inside);
 }
 
-/* ACES Reference Segmented Spline C5 — full 10-coefficient B-spline evaluation.
+/* ACES Reference Segmented Spline C5 -- full 10-coefficient B-spline evaluation.
  * Source: Academy S-2014-003 / aces-dev lib/ACESlib.Tonescales.ctl
  * coefsLow / coefsHigh are the cubic B-spline control values.
  * N = 5 segments per half; knots are uniformly spaced in log10 domain. */
@@ -494,8 +494,8 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_cone_response_fwd)(ALWAN_CORE_T
     if (abs_v < ALWAN_CORE_LITERAL(1e-10)) return ALWAN_CORE_LITERAL(0.0);
 
     ALWAN_CORE_T F_L_Y = ALWAN_CORE_POW(abs_v, ALWAN_CORE_LITERAL(0.42));
-    /* Guard: Inf or NaN F_L_Y (from Inf/NaN input) → Ra = Inf/Inf = NaN.
-     * Physically Ra → 1 as stimulus → ∞, so cap at 1. Also protects
+    /* Guard: Inf or NaN F_L_Y (from Inf/NaN input) -> Ra = Inf/Inf = NaN.
+     * Physically Ra -> 1 as stimulus -> inf, so cap at 1. Also protects
      * downstream hue lookups from (int)NaN undefined behaviour. */
     if (!(F_L_Y < ALWAN_CORE_LITERAL(1e15))) {
         return (v >= ALWAN_CORE_LITERAL(0.0)) ? ALWAN_CORE_LITERAL(1.0) : ALWAN_CORE_LITERAL(-1.0);
@@ -662,7 +662,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_tonescale_fwd)(ALWAN_CORE_T x,
  * Gamut Compression Math
  * ================================================================ */
 
-/* Smooth minimum (cubic) — matches OCIO smin_scaled exactly.
+/* Smooth minimum (cubic) -- matches OCIO smin_scaled exactly.
  * Source: OCIO Transform.cpp smin_scaled */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_smin_scaled)(ALWAN_CORE_T a, ALWAN_CORE_T b, ALWAN_CORE_T cusp_M) {
     ALWAN_CORE_T s_scaled = cusp_M * ACES_GAMUT_SMOOTH_CUSPS_;
@@ -762,7 +762,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_solve_j_intersect)(ALWAN_CORE_
     }
 }
 
-/* Compression vector slope — matches OCIO compute_compression_vector_slope.
+/* Compression vector slope -- matches OCIO compute_compression_vector_slope.
  * Source: OCIO Transform.cpp */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_compression_vector_slope)(ALWAN_CORE_T J_intersect,
                                                             ALWAN_CORE_T focus_J,
@@ -772,7 +772,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_compression_vector_slope)(ALWA
     return direction_scaler * (J_intersect - focus_J) / (focus_J * slope_gain);
 }
 
-/* Estimate intersection of line with gamut boundary — matches OCIO exactly.
+/* Estimate intersection of line with gamut boundary -- matches OCIO exactly.
  * Source: OCIO Transform.cpp estimate_line_and_boundary_intersection_M */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_estimate_line_boundary_m)(ALWAN_CORE_T J_axis_intersect,
                                                             ALWAN_CORE_T slope,
@@ -796,12 +796,12 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_find_gamut_boundary)(ALWAN_COR
                                                        ALWAN_CORE_T slope,
                                                        ALWAN_CORE_T J_intersect_cusp) {
     /* Compute entire gamut boundary in float32 to match OCIO's precision.
-     * At near-degenerate hues (h≈267-270°) where AP1≈display gamut, float64
+     * At near-degenerate hues (h~267-270 deg) where AP1~display gamut, float64
      * catastrophic cancellation produces different boundary ratios than float32,
      * making the Reinhard remap extremely sensitive to precision. Using f32
      * for the full boundary computation (estimate + smin) keeps alwan's
      * boundaries consistent with OCIO's.  For non-degenerate hues, the f32
-     * result ≈ f64 result (difference is sub-LSB in 8-bit output). */
+     * result ~ f64 result (difference is sub-LSB in 8-bit output). */
     float fJ_src  = (float)J_intersect_source;
     float fslope  = (float)slope;
     float fJ_cusp = (float)J_intersect_cusp;
@@ -827,7 +827,7 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_fwd)(ALWAN_C
     ALWAN_UNUSED(h);
 
     /* Compute ALL intermediates in f32 to match OCIO's float32 pipeline.
-     * At near-degenerate hues (h≈267°), tiny f64-vs-f32 differences in
+     * At near-degenerate hues (h~267 deg), tiny f64-vs-f32 differences in
      * slope_gain/J_intersect/gamut_slope accumulate and produce wildly
      * different Reinhard remap outputs.  Using f32 throughout keeps alwan's
      * gamut compression numerically consistent with OCIO's.  For non-degenerate
@@ -865,9 +865,9 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_fwd)(ALWAN_C
         f_J_intersect, f_gamut_slope, (float)gcp->model_gamma_inv,
         fJ_max, (float)hdp->reach_m, fJ_max);
 
-    /* Degenerate guard: when reach ≤ gamut (precision artifact at hues
-     * where the display gamut boundary ≈ AP1 boundary), the Reinhard has a
-     * singularity.  Bypass compression — these pixels are already within
+    /* Degenerate guard: when reach <= gamut (precision artifact at hues
+     * where the display gamut boundary ~ AP1 boundary), the Reinhard has a
+     * singularity.  Bypass compression -- these pixels are already within
      * or at the gamut boundary. */
     if (reach_boundary_M <= gamut_boundary_M) {
         result.v[0] = J;

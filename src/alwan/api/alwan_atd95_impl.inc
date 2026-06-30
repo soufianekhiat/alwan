@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 int ALWAN_CORE_FNLIT(alwan_atd95_forward)(
     ALWAN_CORE_ATD95_CORRELATES *out,

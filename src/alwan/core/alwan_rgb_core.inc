@@ -367,7 +367,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_logc3_eotf)(ALWAN_CORE_T encode
     return ALWAN_CORE_SELECT(encoded < threshold, linear_result, log_result);
 }
 
-/* LogC4 — ARRI LogC4 (Cooper 2022) */
+/* LogC4 -- ARRI LogC4 (Cooper 2022) */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_logc4_oetf)(ALWAN_CORE_T linear) {
     ALWAN_CORE_T a = ALWAN_CORE_LITERAL(2231.8263090676883);
     ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.9071358748778103);

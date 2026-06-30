@@ -25,10 +25,10 @@ HDR pipeline utilities support:
 ### alwan_hlg_ootf_{T} / alwan_hlg_ootf_inv_{T}
 
 ```c
-int alwan_hlg_ootf_{T}(alwan_rgb_{T} *out, alwan_rgb_{T} const *in,
+void alwan_hlg_ootf_{T}(alwan_rgb_{T} *out, alwan_rgb_{T} const *in,
                         alwan_{T} Lw, alwan_{T} gamma_sys);
 
-int alwan_hlg_ootf_inv_{T}(alwan_rgb_{T} *out, alwan_rgb_{T} const *in,
+void alwan_hlg_ootf_inv_{T}(alwan_rgb_{T} *out, alwan_rgb_{T} const *in,
                             alwan_{T} Lw, alwan_{T} gamma_sys);
 ```
 
@@ -69,24 +69,26 @@ conditions (dim vs dark viewing).
 
 ```c
 int alwan_maxcll_{T}(alwan_{T} *maxcll_out,
-                     alwan_{T} const *rgb_data,
-                     size_t count, size_t stride);
+                     alwan_{T} const *rgb_in,
+                     size_t stride, size_t count);
 
 int alwan_maxfall_{T}(alwan_{T} *maxfall_out,
-                      alwan_{T} const *rgb_data,
-                      size_t count, size_t stride);
+                      alwan_{T} const *rgb_in,
+                      size_t stride, size_t count);
 ```
 
 - **MaxCLL**: Maximum Content Light Level -- max(R,G,B) across all pixels.
 - **MaxFALL**: Maximum Frame Average Light Level -- average of per-pixel max(R,G,B).
 
-Both expect `rgb_data` as interleaved linear-light RGB in nits.
+Both expect `rgb_in` as interleaved linear-light RGB in nits. `stride` is the
+per-pixel byte stride (memcpy convention -- it follows the buffer it describes)
+and `count` is the number of pixels.
 
 **Example:**
 ```c
 alwan_{T} maxcll, maxfall;
-alwan_maxcll_{T}(&maxcll,  pixels, width * height, 3 * sizeof(double));
-alwan_maxfall_{T}(&maxfall, pixels, width * height, 3 * sizeof(double));
+alwan_maxcll_{T}(&maxcll,  pixels, 3 * sizeof(double), width * height);
+alwan_maxfall_{T}(&maxfall, pixels, 3 * sizeof(double), width * height);
 printf("MaxCLL: %.1f nits, MaxFALL: %.1f nits\n", maxcll, maxfall);
 ```
 
@@ -97,13 +99,13 @@ printf("MaxCLL: %.1f nits, MaxFALL: %.1f nits\n", maxcll, maxfall);
 ### alwan_gamma_oetf_{T} / alwan_gamma_eotf_{T}
 
 ```c
-int alwan_gamma_oetf_{T}(alwan_{T} *out, alwan_{T} const *in,
-                          alwan_{T} gamma, size_t count,
-                          size_t in_stride, size_t out_stride);
+int alwan_gamma_oetf_{T}(alwan_{T} *out, size_t out_stride,
+                          alwan_{T} const *in, size_t in_stride,
+                          size_t count, alwan_{T} gamma);
 
-int alwan_gamma_eotf_{T}(alwan_{T} *out, alwan_{T} const *in,
-                          alwan_{T} gamma, size_t count,
-                          size_t in_stride, size_t out_stride);
+int alwan_gamma_eotf_{T}(alwan_{T} *out, size_t out_stride,
+                          alwan_{T} const *in, size_t in_stride,
+                          size_t count, alwan_{T} gamma);
 ```
 
 Apply arbitrary gamma encoding/decoding:

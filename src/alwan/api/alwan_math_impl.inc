@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 void ALWAN_CORE_FNLIT(alwan_mat3_identity)(ALWAN_CORE_MAT3X3 *out) {
     *out = ALWAN_CORE_FNVLIT(alwan_mat3_identity)();

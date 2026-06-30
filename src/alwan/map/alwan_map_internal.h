@@ -317,7 +317,7 @@ ALWAN_INLINE void alwan__store1_typed(void *ptr,
 ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane *ch1, alwan_simd_lane *ch2,
                                             void const *base, alwan_pixel_format fmt,
                                             size_t offset, size_t stride, size_t n) {
-    /* Fast path: native scalar format → use SIMD deinterleave */
+    /* Fast path: native scalar format -> use SIMD deinterleave */
     if (fmt == ALWAN_PIXEL_F64) {
         alwan__load_tile_aos3(ch0, ch1, ch2, (alwan_f64 const *)base, offset, stride, n);
         return;
@@ -436,7 +436,7 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
                                              size_t offset, size_t stride,
                                              alwan_simd_lane const *ch0, alwan_simd_lane const *ch1, alwan_simd_lane const *ch2,
                                              size_t n) {
-    /* Fast path: native scalar format → use SIMD interleave */
+    /* Fast path: native scalar format -> use SIMD interleave */
     if (fmt == ALWAN_PIXEL_F64) {
         alwan__store_tile_aos3((alwan_f64 *)base, offset, stride, ch0, ch1, ch2, n);
         return;
@@ -521,7 +521,7 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
                     __m128 rf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch0[j]));
                     __m128 gf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch1[j]));
                     __m128 bf = _mm256_cvtpd_ps(_mm256_loadu_pd(&ch2[j]));
-                    /* SoA → AoS interleave */
+                    /* SoA -> AoS interleave */
                     __m128 u0 = _mm_unpacklo_ps(rf, gf);
                     __m128 u1 = _mm_unpackhi_ps(rf, gf);
                     __m128 bc_hi = _mm_unpackhi_ps(gf, bf);
@@ -531,7 +531,7 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
                     __m128 v1 = _mm_shuffle_ps(tc2, u1, _MM_SHUFFLE(1, 0, 2, 0));
                     __m128 tc3 = _mm_shuffle_ps(bc_hi, u1, _MM_SHUFFLE(2, 2, 1, 1));
                     __m128 v2 = _mm_shuffle_ps(tc3, bc_hi, _MM_SHUFFLE(3, 2, 2, 0));
-                    /* F32 → F16 */
+                    /* F32 -> F16 */
                     __m128i h0 = _mm_cvtps_ph(v0, _MM_FROUND_TO_NEAREST_INT);
                     __m128i h1 = _mm_cvtps_ph(v1, _MM_FROUND_TO_NEAREST_INT);
                     __m128i h2 = _mm_cvtps_ph(v2, _MM_FROUND_TO_NEAREST_INT);
@@ -995,10 +995,10 @@ ALWAN_INLINE void alwan__store_tile_typed_ch(void *dst, alwan_pixel_format fmt,
 /* ================================================================
  * Precision-specific tile load/store (always available for dual dispatch)
  *
- * alwan__load_tile_typed_ch_f32  / _f64   — planar single-channel
- * alwan__store_tile_typed_ch_f32 / _f64   — planar single-channel
- * alwan__load_tile_typed_aos_f32 / _f64   — AoS interleaved
- * alwan__store_tile_typed_aos_f32/ _f64   — AoS interleaved
+ * alwan__load_tile_typed_ch_f32  / _f64   -- planar single-channel
+ * alwan__store_tile_typed_ch_f32 / _f64   -- planar single-channel
+ * alwan__load_tile_typed_aos_f32 / _f64   -- AoS interleaved
+ * alwan__store_tile_typed_aos_f32/ _f64   -- AoS interleaved
  * ================================================================ */
 
 #define ALWAN_TILE_PIXELS_F32  4096
@@ -1123,7 +1123,7 @@ ALWAN_INLINE alwan_simd alwan__lab_f_inv_simd(alwan_simd t) {
  * pow24/pow_inv24 paths use approximation polynomials whose lane order
  * and FMA usage differ across SSE/AVX/NEON; routing through the scalar
  * polynomial keeps SIMD and scalar paths bit-identical.
- * road_to_determinism.md §8. */
+ * road_to_determinism.md sec 8. */
 ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
     ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
     alwan_simd_store(lanes, v);
@@ -2077,7 +2077,7 @@ int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
  * Compiled away entirely when normalization is off (default).
  * ================================================================ */
 
-/* Always available — used for unconditional offsets (e.g. YCbCr ±0.5) */
+/* Always available -- used for unconditional offsets (e.g. YCbCr +/-0.5) */
 ALWAN_INLINE void alwan__norm_lane_add(alwan_simd_lane *d, size_t n, alwan_simd_lane offset) {
     for (size_t i = 0; i < n; i++) d[i] += offset;
 }

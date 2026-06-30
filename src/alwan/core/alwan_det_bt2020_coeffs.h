@@ -11,7 +11,7 @@
  * Indexed [c0, c1, ..., cN] for Horner:
  *     y = ((cN * u + c(N-1)) * u + c(N-2)) * u + ... + c0
  *
- * OETF (pow(x, 0.45)): piecewise — split at 0.1.
+ * OETF (pow(x, 0.45)): piecewise -- split at 0.1.
  *   lo segment [0.018, 0.1]: degree 12, max abs 2.481e-04.
  *   hi segment [0.1, 1.0]:        degree 14, max abs 2.379e-06.
  * EOTF (pow(z, 2.22222) with z=(x+0.09899999999999998)/1.099):
@@ -34,7 +34,7 @@
 #define ALWAN_DET_BT2020_EOTF_BREAK       +8.09999999999999887e-02  /* linear*break_x */
 #define ALWAN_DET_BT2020_EOTF_POLY_LO     +1.63785259326660576e-01
 
-/* OETF non-linear: pow(x, 0.45) — coefficients in u in [-1, 1]. */
+/* OETF non-linear: pow(x, 0.45) -- coefficients in u in [-1, 1]. */
 static const alwan_f64 alwan_det_bt2020_oetf_lo_coeffs_f64[13] = {
     +2.79822992577028029e-01,  /* c0 */
     +8.75037730329550206e-02,  /* c1 */

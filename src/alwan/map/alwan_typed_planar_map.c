@@ -35,7 +35,7 @@ ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_srgb_to_oklab_map_planar_ex, alwan_srgb_to_o
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_oklab_to_srgb_map_planar_ex, alwan_oklab_to_srgb_f32_map_planar, alwan_oklab_to_srgb_f64_map_planar)
 
 /* ----------------------------------------------------------------
- * Colorspace planar _ex (with white_xyz — delegate to SIMD planar)
+ * Colorspace planar _ex (with white_xyz -- delegate to SIMD planar)
  * ---------------------------------------------------------------- */
 
 ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(alwan_xyz_to_lab_map_planar_ex, alwan_xyz_to_lab_f32_map_planar, alwan_xyz_to_lab_f64_map_planar)
@@ -43,7 +43,7 @@ ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(alwan_lab_to_xyz_map_planar_ex, alwan_lab_to
 ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(alwan_xyz_to_luv_map_planar_ex, alwan_xyz_to_luv_f32_map_planar, alwan_xyz_to_luv_f64_map_planar)
 ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(alwan_luv_to_xyz_map_planar_ex, alwan_luv_to_xyz_f32_map_planar, alwan_luv_to_xyz_f64_map_planar)
 
-/* Colorspace planar _ex (simple 3->3 — delegate to SIMD planar) */
+/* Colorspace planar _ex (simple 3->3 -- delegate to SIMD planar) */
 
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_lab_to_lch_map_planar_ex,    alwan_lab_to_lch_f32_map_planar,    alwan_lab_to_lch_f64_map_planar)
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_lch_to_lab_map_planar_ex,    alwan_lch_to_lab_f32_map_planar,    alwan_lch_to_lab_f64_map_planar)
@@ -62,7 +62,7 @@ ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_oklab_to_oklch_map_planar_ex, alwan_oklab_to
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_oklch_to_oklab_map_planar_ex, alwan_oklch_to_oklab_f32_map_planar, alwan_oklch_to_oklab_f64_map_planar)
 
 /* ----------------------------------------------------------------
- * ICtCp planar _ex (with use_pq — delegate to SIMD planar)
+ * ICtCp planar _ex (with use_pq -- delegate to SIMD planar)
  * ---------------------------------------------------------------- */
 
 ALWAN_PLANAR_EX_DELEGATE_DUAL_INT(alwan_rgb_to_ictcp_map_planar_ex,  alwan_rgb_to_ictcp_f32_map_planar,  alwan_rgb_to_ictcp_f64_map_planar,  int, use_pq)

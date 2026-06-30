@@ -9,7 +9,7 @@
  * alwan_hlsl.h, alwan_halide.h). Adding a new semantic color type now
  * means editing one row here instead of three byte-identical files.
  *
- * Not for direct inclusion — only the bootstrap headers should pull this in,
+ * Not for direct inclusion -- only the bootstrap headers should pull this in,
  * after they have included alwan_platform.h and alwan_types.h.
  */
 

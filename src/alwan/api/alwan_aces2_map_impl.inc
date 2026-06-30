@@ -3,8 +3,8 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * ACES 2.0 batch output transform — parameterized pixel loop.
- * No include guard — included twice (f32 pass, f64 pass).
+ * ACES 2.0 batch output transform -- parameterized pixel loop.
+ * No include guard -- included twice (f32 pass, f64 pass).
  *
  * Requires before inclusion (via alwan_api_f32/f64_setup.h):
  *   ALWAN_CORE_T, ALWAN_CORE_FNLIT, ALWAN_CORE_FNVLIT, ALWAN_CORE_LITERAL, ALWAN_CORE_LN, ...
@@ -135,7 +135,7 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
      * primaries and (for D65 displays) a D60->D65 Bradford CAT in XYZ.
      * All linear, so combine into one 3x3 computed once in f64 and applied
      * per-pixel. (The previous code went JMh->RGB via the limit-primary
-     * JMhParams directly, skipping the matrix + CAT — diverged from OCIO.) */
+     * JMhParams directly, skipping the matrix + CAT -- diverged from OCIO.) */
     alwan_f64 M_out_f64[9];
     {
         alwan_f64 ap1_to_limit[9];
@@ -166,7 +166,7 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
         ALWAN_CORE_T const *px_in  = in  + i * in_step;
         ALWAN_CORE_T       *px_out = out + i * out_step;
 
-        /* Clamp AP1 input to [0, ap1_clamp_max] — matches OCIO pre-clamp.
+        /* Clamp AP1 input to [0, ap1_clamp_max] -- matches OCIO pre-clamp.
          * Use >= 0 test (not < 0) so NaN (which fails all comparisons) maps to 0
          * rather than passing through, avoiding (int)NaN UB in hue table lookup. */
         ALWAN_CORE_T ri = px_in[0], gi = px_in[1], bi = px_in[2];
@@ -174,7 +174,7 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
         if (!(gi >= 0)) gi = 0; else if (gi > ap1_clamp_max) gi = ap1_clamp_max;
         if (!(bi >= 0)) bi = 0; else if (bi > ap1_clamp_max) bi = ap1_clamp_max;
 
-        /* RGB → Aab → JMh */
+        /* RGB -> Aab -> JMh */
         ALWAN_CORE_VEC3 rgb_in_v; rgb_in_v.v[0] = ri; rgb_in_v.v[1] = gi; rgb_in_v.v[2] = bi;
         ALWAN_CORE_VEC3 aab = ALWAN_CORE_FNVLIT(aces2_rgb_to_aab)(rgb_in_v, jmh_params);
         ALWAN_CORE_VEC3 jmh = ALWAN_CORE_FNVLIT(aces2_aab_to_jmh)(aab, jmh_params);

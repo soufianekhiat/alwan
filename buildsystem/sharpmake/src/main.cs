@@ -19,14 +19,15 @@ namespace Alwan
             AddTargets(new AlwanTarget(
                 Platform.win64,
                 DevEnv.vs2022,
-                Optimization.Debug | Optimization.Release
+                Optimization.Debug | Optimization.Release,
+                Determinism.NonDet | Determinism.Det
             ));
         }
 
         [Configure]
         public void ConfigureAll(Configuration conf, AlwanTarget target)
         {
-            conf.Name = "[target.Optimization]";
+            conf.Name = target.Optimization.ToString() + (target.Determinism == Determinism.Det ? "_Det" : "");
 
             conf.SolutionFileName = "[solution.Name]_[target.DevEnv]_[target.Platform]";
             conf.SolutionPath = @"[solution.SharpmakeCsPath]\..\..\..";

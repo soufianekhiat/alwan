@@ -1,4 +1,4 @@
-/* No include guard — included twice (f32 and f64 passes) */
+/* No include guard -- included twice (f32 and f64 passes) */
 
 /* ================================================================
  * XYZ <-> xyY
@@ -48,10 +48,13 @@ void ALWAN_CORE_FNLIT(alwan_luv_to_xyz)(ALWAN_CORE_XYZ *xyz, ALWAN_CORE_LUV cons
 
 void ALWAN_CORE_FNLIT(alwan_xyz_to_uvw)(ALWAN_CORE_UVW *uvw, ALWAN_CORE_XYZ const *xyz, ALWAN_CORE_XYZ const *white_xyz) {
     *uvw = ALWAN_CORE_FNVLIT(alwan_xyz_to_uvw)(*xyz, *white_xyz);
+    ALWAN_NORM_UVW(uvw);
 }
 
 void ALWAN_CORE_FNLIT(alwan_uvw_to_xyz)(ALWAN_CORE_XYZ *xyz, ALWAN_CORE_UVW const *uvw, ALWAN_CORE_XYZ const *white_xyz) {
-    *xyz = ALWAN_CORE_FNVLIT(alwan_uvw_to_xyz)(*uvw, *white_xyz);
+    ALWAN_CORE_UVW tmp = *uvw;
+    ALWAN_DENORM_UVW(&tmp);
+    *xyz = ALWAN_CORE_FNVLIT(alwan_uvw_to_xyz)(tmp, *white_xyz);
 }
 
 /* ================================================================
@@ -117,6 +120,118 @@ void ALWAN_CORE_FNLIT(alwan_lchuv_to_xyz)(ALWAN_CORE_XYZ *xyz, ALWAN_CORE_LCHUV 
 }
 
 /* ================================================================
+ * Direct XYZ <-> Oklch (cylindrical Oklab, D65 assumed)
+ * Composes the D65-referred xyz<->oklab transform with the oklab<->oklch
+ * cylindrical step (whose API wrappers already apply NORM/DENORM). Mirrors the
+ * xyz_to_lch sibling pattern; no white point because Oklab fixes D65.
+ * ================================================================ */
+
+void ALWAN_CORE_FNLIT(alwan_xyz_to_oklch)(ALWAN_CORE_OKLCH *oklch, ALWAN_CORE_XYZ const *xyz) {
+    ALWAN_CORE_OKLAB oklab;
+    ALWAN_CORE_FNLIT(alwan_xyz_to_oklab)(&oklab, xyz);
+    ALWAN_CORE_FNLIT(alwan_oklab_to_oklch)(oklch, &oklab);
+}
+
+void ALWAN_CORE_FNLIT(alwan_oklch_to_xyz)(ALWAN_CORE_XYZ *xyz, ALWAN_CORE_OKLCH const *oklch) {
+    ALWAN_CORE_OKLAB oklab;
+    ALWAN_CORE_FNLIT(alwan_oklch_to_oklab)(&oklab, oklch);
+    ALWAN_CORE_FNLIT(alwan_oklab_to_xyz)(xyz, &oklab);
+}
+
+/* ================================================================
+ * Direct RGB <-> Perceptual Space Conversions
+ * Convenience wrappers that fold the RGB-space-descriptor RGB<->XYZ step
+ * (alwan_rgb_to_xyz / alwan_xyz_to_rgb) together with the XYZ<->perceptual step.
+ * Lab/Luv carry an explicit white point; Oklab/Oklch are D65-referred (the
+ * descriptor's primaries select the gamut, Oklab fixes the reference white).
+ * NORM/DENORM is inherited from the called XYZ<->perceptual API wrappers.
+ * ================================================================ */
+
+int ALWAN_CORE_FNLIT(alwan_rgb_to_lab)(ALWAN_CORE_LAB *lab,
+                                       ALWAN_CORE_RGB_SPACE_DESC const *space,
+                                       ALWAN_CORE_RGB const *rgb,
+                                       ALWAN_CORE_XYZ const *white_xyz) {
+    if (!lab || !space || !rgb || !white_xyz) return ALWAN_E_INVALID;
+    ALWAN_CORE_XYZ xyz;
+    int status = ALWAN_CORE_FNLIT(alwan_rgb_to_xyz)(&xyz, space, rgb);
+    if (status != ALWAN_OK) return status;
+    ALWAN_CORE_FNLIT(alwan_xyz_to_lab)(lab, &xyz, white_xyz);
+    return ALWAN_OK;
+}
+
+int ALWAN_CORE_FNLIT(alwan_lab_to_rgb)(ALWAN_CORE_RGB *rgb,
+                                       ALWAN_CORE_RGB_SPACE_DESC const *space,
+                                       ALWAN_CORE_LAB const *lab,
+                                       ALWAN_CORE_XYZ const *white_xyz) {
+    if (!rgb || !space || !lab || !white_xyz) return ALWAN_E_INVALID;
+    ALWAN_CORE_XYZ xyz;
+    ALWAN_CORE_FNLIT(alwan_lab_to_xyz)(&xyz, lab, white_xyz);
+    return ALWAN_CORE_FNLIT(alwan_xyz_to_rgb)(rgb, space, &xyz);
+}
+
+int ALWAN_CORE_FNLIT(alwan_rgb_to_luv)(ALWAN_CORE_LUV *luv,
+                                       ALWAN_CORE_RGB_SPACE_DESC const *space,
+                                       ALWAN_CORE_RGB const *rgb,
+                                       ALWAN_CORE_XYZ const *white_xyz) {
+    if (!luv || !space || !rgb || !white_xyz) return ALWAN_E_INVALID;
+    ALWAN_CORE_XYZ xyz;
+    int status = ALWAN_CORE_FNLIT(alwan_rgb_to_xyz)(&xyz, space, rgb);
+    if (status != ALWAN_OK) return status;
+    ALWAN_CORE_FNLIT(alwan_xyz_to_luv)(luv, &xyz, white_xyz);
+    return ALWAN_OK;
+}
+
+int ALWAN_CORE_FNLIT(alwan_luv_to_rgb)(ALWAN_CORE_RGB *rgb,
+                                       ALWAN_CORE_RGB_SPACE_DESC const *space,
+                                       ALWAN_CORE_LUV const *luv,
+                                       ALWAN_CORE_XYZ const *white_xyz) {
+    if (!rgb || !space || !luv || !white_xyz) return ALWAN_E_INVALID;
+    ALWAN_CORE_XYZ xyz;
+    ALWAN_CORE_FNLIT(alwan_luv_to_xyz)(&xyz, luv, white_xyz);
+    return ALWAN_CORE_FNLIT(alwan_xyz_to_rgb)(rgb, space, &xyz);
+}
+
+int ALWAN_CORE_FNLIT(alwan_rgb_to_oklab)(ALWAN_CORE_OKLAB *oklab,
+                                         ALWAN_CORE_RGB_SPACE_DESC const *space,
+                                         ALWAN_CORE_RGB const *rgb) {
+    if (!oklab || !space || !rgb) return ALWAN_E_INVALID;
+    ALWAN_CORE_XYZ xyz;
+    int status = ALWAN_CORE_FNLIT(alwan_rgb_to_xyz)(&xyz, space, rgb);
+    if (status != ALWAN_OK) return status;
+    ALWAN_CORE_FNLIT(alwan_xyz_to_oklab)(oklab, &xyz);
+    return ALWAN_OK;
+}
+
+int ALWAN_CORE_FNLIT(alwan_oklab_to_rgb)(ALWAN_CORE_RGB *rgb,
+                                         ALWAN_CORE_RGB_SPACE_DESC const *space,
+                                         ALWAN_CORE_OKLAB const *oklab) {
+    if (!rgb || !space || !oklab) return ALWAN_E_INVALID;
+    ALWAN_CORE_XYZ xyz;
+    ALWAN_CORE_FNLIT(alwan_oklab_to_xyz)(&xyz, oklab);
+    return ALWAN_CORE_FNLIT(alwan_xyz_to_rgb)(rgb, space, &xyz);
+}
+
+int ALWAN_CORE_FNLIT(alwan_rgb_to_oklch)(ALWAN_CORE_OKLCH *oklch,
+                                         ALWAN_CORE_RGB_SPACE_DESC const *space,
+                                         ALWAN_CORE_RGB const *rgb) {
+    if (!oklch || !space || !rgb) return ALWAN_E_INVALID;
+    ALWAN_CORE_XYZ xyz;
+    int status = ALWAN_CORE_FNLIT(alwan_rgb_to_xyz)(&xyz, space, rgb);
+    if (status != ALWAN_OK) return status;
+    ALWAN_CORE_FNLIT(alwan_xyz_to_oklch)(oklch, &xyz);
+    return ALWAN_OK;
+}
+
+int ALWAN_CORE_FNLIT(alwan_oklch_to_rgb)(ALWAN_CORE_RGB *rgb,
+                                         ALWAN_CORE_RGB_SPACE_DESC const *space,
+                                         ALWAN_CORE_OKLCH const *oklch) {
+    if (!rgb || !space || !oklch) return ALWAN_E_INVALID;
+    ALWAN_CORE_XYZ xyz;
+    ALWAN_CORE_FNLIT(alwan_oklch_to_xyz)(&xyz, oklch);
+    return ALWAN_CORE_FNLIT(alwan_xyz_to_rgb)(rgb, space, &xyz);
+}
+
+/* ================================================================
  * XYZ <-> CIE 1960 UCS
  * ================================================================ */
 
@@ -129,7 +244,7 @@ void ALWAN_CORE_FNLIT(alwan_ucs_to_xyz)(ALWAN_CORE_XYZ *xyz, ALWAN_CORE_UCS cons
 }
 
 /* ================================================================
- * Color Difference (ΔE) Metrics
+ * Color Difference (dE) Metrics
  * ================================================================ */
 
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_76)(ALWAN_CORE_LAB const *lab1, ALWAN_CORE_LAB const *lab2) {

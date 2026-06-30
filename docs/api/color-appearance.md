@@ -17,11 +17,25 @@ Color appearance models (CAMs) predict how colors appear under varying viewing c
 - Chromatic adaptation state
 
 **Implemented models:**
-- **CIECAM02** -- CIE Color Appearance Model 2002
-- **CAM16** -- Color Appearance Model 2016 (improved CIECAM02)
-- **ZCAM** -- Latest CIE color appearance model
-- **UCS variants** -- Uniform Color Space versions (JMh -> J'a'b')
-- **Additional models** -- RLAB, Hunt, Nayatani, LLAB, ATD95, Hellwig2022, Kim2009
+- **CIECAM02** -- CIE Color Appearance Model 2002 (forward + inverse, Map, `_ex`)
+- **CAM16** -- Color Appearance Model 2016 (forward + inverse, +CAM16-UCS Jab, Map, `_ex`)
+- **ZCAM** -- HDR CAM on Jzazbz, Safdar et al. 2021 (forward + inverse, +ZCAM-UCS)
+- **RLAB** -- Fairchild cross-media model (forward + inverse)
+- **Hellwig & Fairchild 2022** -- HK-effect CAM (forward + inverse)
+- **Kim 2009** -- forward + inverse
+- **Hunt** -- forward only (inverse not implemented)
+- **LLAB**, **ATD95 (Guth)**, **Nayatani 1995** -- forward only
+- **CAM18sl** -- self-luminous stimuli (forward + inverse)
+- **CAM20u** -- unrelated colors (forward + inverse)
+
+> **Precision:** CIECAM02/CAM16 and RLAB are natively dualized -- their `_f32`
+> entry points (and the bulk `_map_interleave` path) compute in `float` throughout
+> rather than widening to `double` (see `alwan_cam_impl.inc` / `alwan_rlab_impl.inc`,
+> instantiated once per precision). ZCAM's `_f32` entry points are still f64-internal
+> facades: the f32 API converts at the boundary and runs the f64 kernel, so they stay
+> callable even in an `ALWAN_BUILD_ONLY_F32` build. (The `ALWAN_WITH_F64_FACADE` gate,
+> always 1, additionally keeps the f64 machinery for the ZCAM inverse and ACES 1.x
+> inverse compiled in single-precision-only builds.)
 
 ---
 
@@ -122,8 +136,7 @@ int alwan_cam16_to_ucs_{T}(alwan_cam_jab_{T} *jab_out,
                             alwan_cam16_correlates_{T} const *correlates);
 
 int alwan_cam16_from_ucs_{T}(alwan_cam16_correlates_{T} *out,
-                              alwan_cam_jab_{T} const *jab,
-                              alwan_cam16_viewing_conditions_{T} const *vc);
+                              alwan_cam_jab_{T} const *jab);
 ```
 
 Convert CAM16 JMh to uniform color space J'a'b' for color difference calculations.
@@ -132,21 +145,57 @@ Convert CAM16 JMh to uniform color space J'a'b' for color difference calculation
 
 ## Batch Processing (CIECAM02 and CAM16)
 
+Each `*_stride` immediately follows the buffer it describes (memcpy argument order).
+The forward maps take only an `in_stride` (interleaved XYZ); the output is a packed
+array of correlates structs. The inverse maps take only an `out_stride` (interleaved XYZ);
+the input is a packed array of correlates structs.
+
 ```c
+/* Forward: interleaved XYZ -> packed correlates */
 int alwan_ciecam02_forward_{T}_map_interleave(
     alwan_ciecam02_correlates_{T} *correlates_out,
-    alwan_{T} const *xyz_in,
+    alwan_{T} const *xyz_in, size_t in_stride,
     alwan_ciecam02_viewing_conditions_{T} const *vc,
-    size_t count, size_t in_stride, size_t out_stride);
+    size_t count);
 
 int alwan_cam16_forward_{T}_map_interleave(
     alwan_cam16_correlates_{T} *correlates_out,
-    alwan_{T} const *xyz_in,
+    alwan_{T} const *xyz_in, size_t in_stride,
     alwan_cam16_viewing_conditions_{T} const *vc,
-    size_t count, size_t in_stride, size_t out_stride);
+    size_t count);
+
+/* Inverse: packed correlates -> interleaved XYZ */
+int alwan_ciecam02_inverse_{T}_map_interleave(
+    alwan_{T} *xyz_out, size_t out_stride,
+    alwan_ciecam02_correlates_{T} const *correlates_in,
+    alwan_ciecam02_viewing_conditions_{T} const *vc,
+    size_t count);
+
+int alwan_cam16_inverse_{T}_map_interleave(
+    alwan_{T} *xyz_out, size_t out_stride,
+    alwan_cam16_correlates_{T} const *correlates_in,
+    alwan_cam16_viewing_conditions_{T} const *vc,
+    size_t count);
 ```
 
-Inverse (`_inverse_{T}_map_interleave`) and typed `_map_interleave_ex` variants also available.
+Typed `_map_interleave_ex` variants accept a `void*` interleaved buffer plus an
+`alwan_pixel_format` (any of U8/U16/F16/F32/F64), with the precision-agnostic `f64`
+correlates struct. The pixel-format argument tails the signature:
+
+```c
+int alwan_ciecam02_forward_map_interleave_ex(
+    alwan_ciecam02_correlates_f64 *correlates_out,
+    void const *xyz_in, size_t in_stride,
+    alwan_ciecam02_viewing_conditions_f64 const *vc,
+    size_t count, alwan_pixel_format in_fmt);
+
+int alwan_ciecam02_inverse_map_interleave_ex(
+    void *xyz_out, size_t out_stride,
+    alwan_ciecam02_correlates_f64 const *correlates_in,
+    alwan_ciecam02_viewing_conditions_f64 const *vc,
+    size_t count, alwan_pixel_format out_fmt);
+/* alwan_cam16_forward_map_interleave_ex / _inverse_map_interleave_ex mirror these. */
+```
 
 ---
 
