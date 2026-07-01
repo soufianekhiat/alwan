@@ -121,7 +121,16 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
     }
 
     int is_pq = (config.eotf == ALWAN_TF_PQ);
+    int is_hlg = (config.eotf == ALWAN_TF_HLG);
     ALWAN_CORE_T peak = (ALWAN_CORE_T)config.peak_luminance;
+    /* HLG: display-linear is in n_r=100 units; normalise to [0,1] by the
+     * display peak, then apply the inverse OOTF (display->scene) so the basic
+     * HLG OETF produces the signal. System gamma per BT.2100:
+     * gamma = 1.2 + 0.42*log10(peak/1000) (= 1.2 at 1000 nits). */
+    ALWAN_CORE_T hlg_sc = ALWAN_CORE_LITERAL(100.0) / peak;
+    ALWAN_CORE_T hlg_gamma = ALWAN_CORE_LITERAL(1.2)
+        + ALWAN_CORE_LITERAL(0.42) * ALWAN_CORE_LOG10(peak / ALWAN_CORE_LITERAL(1000.0));
+    ALWAN_CORE_T hlg_exp = (ALWAN_CORE_LITERAL(1.0) - hlg_gamma) / hlg_gamma;
 
     ALWAN_CORE_T r_hit_ap1 =
         ALWAN_CORE_LITERAL(128.0)
@@ -219,16 +228,38 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
          * scalar uses (alwan_oetf_apply). */
         ALWAN_CORE_T lin[3];
         ALWAN_CORE_T const out_rgb[3] = { r, g, b };
-        for (int k = 0; k < 3; k++) {
-            ALWAN_CORE_T x = out_rgb[k];
-            if (is_pq) {
-                lin[k] = x < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0)
-                       : (x > ALWAN_CORE_LITERAL(1.0) ? peak : (x * peak));
-            } else {
-                lin[k] = x < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0)
-                       : (x > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : x);
+        if (is_hlg) {
+            /* Normalise display-linear (n_r=100 units) to [0,1] by peak, then
+             * inverse OOTF: E = Yd^((1-g)/g) * Fd (Lw=1). The OETF below
+             * (the basic HLG scene curve) then yields the signal. */
+            ALWAN_CORE_T fr = out_rgb[0] * hlg_sc, fg = out_rgb[1] * hlg_sc, fb = out_rgb[2] * hlg_sc;
+            fr = fr < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0) : (fr > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : fr);
+            fg = fg < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0) : (fg > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : fg);
+            fb = fb < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0) : (fb > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : fb);
+            ALWAN_CORE_T Yd = ALWAN_CORE_LITERAL(0.2627) * fr + ALWAN_CORE_LITERAL(0.6780) * fg + ALWAN_CORE_LITERAL(0.0593) * fb;
+            if (Yd < ALWAN_CORE_LITERAL(1e-12)) Yd = ALWAN_CORE_LITERAL(1e-12);
+            ALWAN_CORE_T factor = ALWAN_CORE_POW(Yd, hlg_exp);
+            lin[0] = factor * fr; lin[1] = factor * fg; lin[2] = factor * fb;
+        } else {
+            for (int k = 0; k < 3; k++) {
+                ALWAN_CORE_T x = out_rgb[k];
+                if (is_pq) {
+                    /* x is display-linear normalised to the ACES2 reference
+                     * luminance n_r = 100 nits (NOT to the display peak).
+                     * Convert to absolute nits with n_r, then clamp to the
+                     * display peak; the PQ OETF normalises by 10000. Scaling by
+                     * `peak` over-brightened every non-100-nit output by
+                     * peak/100 (e.g. 10x for the 1000-nit PQ outputs). */
+                    ALWAN_CORE_T nits = x * ALWAN_CORE_LITERAL(100.0);
+                    lin[k] = nits < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0)
+                           : (nits > peak ? peak : nits);
+                } else {
+                    lin[k] = x < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0)
+                           : (x > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : x);
+                }
             }
-        } ALWAN_CORE_FNLIT(alwan_oetf_apply)(lin, sizeof(ALWAN_CORE_T), lin, sizeof(ALWAN_CORE_T), 3, config.eotf);
+        }
+        ALWAN_CORE_FNLIT(alwan_oetf_apply)(lin, sizeof(ALWAN_CORE_T), lin, sizeof(ALWAN_CORE_T), 3, config.eotf);
         px_out[0] = lin[0];
         px_out[1] = lin[1];
         px_out[2] = lin[2];

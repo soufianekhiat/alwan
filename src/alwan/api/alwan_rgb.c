@@ -231,7 +231,7 @@ int alwan_oetf_apply_f64(alwan_f64 *encoded_out, size_t out_stride, alwan_f64 co
             size_t const W = ALWAN_SIMD_WIDTH;
             size_t i = 0;
             for (; i + W <= count; i += W)
-                alwan_simd_store(&out[i], oetf_simd(alwan_simd_load(&in[i])));
+                alwan_simd_storeu(&out[i], oetf_simd(alwan_simd_loadu(&in[i])));
             for (; i < count; i++)
                 out[i] = (alwan_simd_lane)oetf_fn((alwan_f64)in[i]);
             return ALWAN_OK;
@@ -309,7 +309,7 @@ int alwan_eotf_apply_f64(alwan_f64 *linear_out, size_t out_stride, alwan_f64 con
             size_t const W = ALWAN_SIMD_WIDTH;
             size_t i = 0;
             for (; i + W <= count; i += W)
-                alwan_simd_store(&out[i], eotf_simd(alwan_simd_load(&in[i])));
+                alwan_simd_storeu(&out[i], eotf_simd(alwan_simd_loadu(&in[i])));
             for (; i < count; i++)
                 out[i] = (alwan_simd_lane)eotf_fn((alwan_f64)in[i]);
             return ALWAN_OK;

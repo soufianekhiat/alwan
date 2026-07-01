@@ -20,8 +20,29 @@ namespace Alwan
         {
             base.ConfigureAll(conf, target);
 
-            // Output type: Static library
-            conf.Output = Configuration.OutputType.Lib;
+            // Output type follows the LinkType fragment: static .lib or shared .dll.
+            bool dll = (target.LinkType == LinkType.Dll);
+            conf.Output = dll ? Configuration.OutputType.Dll : Configuration.OutputType.Lib;
+
+            if (dll)
+            {
+                // MSVC has no "export all symbols" switch. Mirror CMake's
+                // WINDOWS_EXPORT_ALL_SYMBOLS exactly: dump the just-compiled
+                // object symbols into a .def, then link with it. EventPreLink
+                // runs after compile (objects exist) and before link, so the
+                // export set matches the build precisely -- no phantom symbols
+                // and nothing missed, regardless of the f32/f64/det defines.
+                string genDef = @"[project.SharpmakeCsPath]\..\..\..\tools\gen_exports_def.py";
+                string defOut = @"[project.SharpmakeCsPath]\..\..\alwan_exports.def";
+                // Note the trailing '.' on $(IntDir): the macro ends with a
+                // backslash, so a bare "$(IntDir)" would become ...dir\" -- the
+                // \" escapes the quote and corrupts arg parsing. "$(IntDir)."
+                // ends the quote with .\" which is safe.
+                conf.EventPreLink.Add(
+                    "python \"" + genDef + "\" \"$(IntDir).\" \"" + defOut + "\"");
+                // ModuleDefinitionFile resolves relative to SourceRootPath (src/alwan).
+                conf.ModuleDefinitionFile = @"..\..\buildsystem\alwan_exports.def";
+            }
 
             // Include paths
             conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\..\..\src\alwan");

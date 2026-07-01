@@ -1,9 +1,9 @@
 /* No include guard -- included twice (f32 and f64 passes).
  *
- * Native dual-precision view transforms. Shared constant data
- * (ap1_to_ap0, agx_inset_matrix, agx_outset_matrix and the AgX contrast
- * LUT) is defined once at f64 precision in alwan_view.c and read here
- * with per-element casts to ALWAN_CORE_T, so every arithmetic operation
+ * Native dual-precision view transforms. Shared constant data (ap1_to_ap0,
+ * the AgX inset matrices + contrast LUTs, the Blender 3D LUT) is defined
+ * natively at f32 and f64 in alwan_view.c and selected here via
+ * ALWAN_CORE_FNLIT, so every arithmetic operation
  * runs at the selected precision -- a genuine f32 path, not a
  * widen-to-f64 facade. The core _v helpers resolve to the matching
  * precision via ALWAN_CORE_FNVLIT / ALWAN_CORE_FNLIT.
@@ -31,7 +31,7 @@ static void ALWAN_CORE_FN(aces_rec709_transform)(ALWAN_CORE_T const *rgb_in, ALW
 /* ----------------------------------------------------------------
  * AgX View Transform (inset -> log encode -> contrast LUT -> linearize)
  * ---------------------------------------------------------------- */
-static ALWAN_CORE_T ALWAN_CORE_FN(agx_lut_eval)(ALWAN_CORE_T t) {
+static ALWAN_CORE_T ALWAN_CORE_FN(agx_lut_eval)(ALWAN_CORE_T t, ALWAN_CORE_T const *lut) {
     /* Linear interpolation in the 4096-entry contrast LUT. */
     t = ALWAN_CORE_SATURATE(t);
     ALWAN_CORE_T fi = t * (ALWAN_CORE_T)(AGX_LUT_SIZE - 1);
@@ -39,30 +39,49 @@ static ALWAN_CORE_T ALWAN_CORE_FN(agx_lut_eval)(ALWAN_CORE_T t) {
     int i1 = i0 + 1;
     if (i1 >= AGX_LUT_SIZE) i1 = AGX_LUT_SIZE - 1;
     ALWAN_CORE_T frac = fi - (ALWAN_CORE_T)i0;
-    return ALWAN_CORE_FNLIT(agx_default_contrast_lut)[i0]
-         + frac * (ALWAN_CORE_FNLIT(agx_default_contrast_lut)[i1] - ALWAN_CORE_FNLIT(agx_default_contrast_lut)[i0]);
+    return lut[i0] + frac * (lut[i1] - lut[i0]);
 }
 
-static void ALWAN_CORE_FN(agx_base_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+/* Parameterized AgX picture formation: clamp -> inset matrix -> log2 encode
+ * over [log2_min, log2_max] -> contrast LUT. The named experiments differ only
+ * in their inset matrix, log2 range and contrast LUT. */
+static void ALWAN_CORE_FN(agx_transform_impl)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out,
+        ALWAN_CORE_T const *inset, ALWAN_CORE_T log2_min, ALWAN_CORE_T log2_max,
+        ALWAN_CORE_T const *lut) {
     /* Clamp negatives to 0 (matches OCIO RangeTransform before inset). */
     ALWAN_CORE_T r_in = rgb_in[0] > ALWAN_CORE_ZERO ? rgb_in[0] : ALWAN_CORE_ZERO;
     ALWAN_CORE_T g_in = rgb_in[1] > ALWAN_CORE_ZERO ? rgb_in[1] : ALWAN_CORE_ZERO;
     ALWAN_CORE_T b_in = rgb_in[2] > ALWAN_CORE_ZERO ? rgb_in[2] : ALWAN_CORE_ZERO;
 
-    ALWAN_CORE_T inset_r = ALWAN_CORE_FNLIT(agx_inset_matrix)[0]*r_in + ALWAN_CORE_FNLIT(agx_inset_matrix)[1]*g_in + ALWAN_CORE_FNLIT(agx_inset_matrix)[2]*b_in;
-    ALWAN_CORE_T inset_g = ALWAN_CORE_FNLIT(agx_inset_matrix)[3]*r_in + ALWAN_CORE_FNLIT(agx_inset_matrix)[4]*g_in + ALWAN_CORE_FNLIT(agx_inset_matrix)[5]*b_in;
-    ALWAN_CORE_T inset_b = ALWAN_CORE_FNLIT(agx_inset_matrix)[6]*r_in + ALWAN_CORE_FNLIT(agx_inset_matrix)[7]*g_in + ALWAN_CORE_FNLIT(agx_inset_matrix)[8]*b_in;
+    ALWAN_CORE_T inset_r = inset[0]*r_in + inset[1]*g_in + inset[2]*b_in;
+    ALWAN_CORE_T inset_g = inset[3]*r_in + inset[4]*g_in + inset[5]*b_in;
+    ALWAN_CORE_T inset_b = inset[6]*r_in + inset[7]*g_in + inset[8]*b_in;
 
-    ALWAN_CORE_T const agx_min = ALWAN_CORE_LITERAL(-12.47393);
-    ALWAN_CORE_T const agx_max = ALWAN_CORE_LITERAL(4.026069);
+    ALWAN_CORE_T log_r = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(inset_r, log2_min, log2_max);
+    ALWAN_CORE_T log_g = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(inset_g, log2_min, log2_max);
+    ALWAN_CORE_T log_b = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(inset_b, log2_min, log2_max);
 
-    ALWAN_CORE_T log_r = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(inset_r, agx_min, agx_max);
-    ALWAN_CORE_T log_g = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(inset_g, agx_min, agx_max);
-    ALWAN_CORE_T log_b = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(inset_b, agx_min, agx_max);
+    rgb_out[0] = ALWAN_CORE_FN(agx_lut_eval)(log_r, lut);
+    rgb_out[1] = ALWAN_CORE_FN(agx_lut_eval)(log_g, lut);
+    rgb_out[2] = ALWAN_CORE_FN(agx_lut_eval)(log_b, lut);
+}
 
-    rgb_out[0] = ALWAN_CORE_FN(agx_lut_eval)(log_r);
-    rgb_out[1] = ALWAN_CORE_FN(agx_lut_eval)(log_g);
-    rgb_out[2] = ALWAN_CORE_FN(agx_lut_eval)(log_b);
+static void ALWAN_CORE_FN(agx_base_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    ALWAN_CORE_FN(agx_transform_impl)(rgb_in, rgb_out,
+        ALWAN_CORE_FNLIT(agx_inset_matrix),
+        ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(4.026069),
+        ALWAN_CORE_FNLIT(agx_default_contrast_lut));
+}
+
+/* SB2383: Sobotka's newer AgX experiment -- own inset + contrast LUT. Its
+ * -10/+6.5 EV range around mid-grey 0.18 is, in absolute log2 bounds (what
+ * alwan_agx_log_encode takes), log2(0.18)+[-10,+6.5] = [-12.47393, 4.026069]
+ * -- the same framing as the original; SB2383 differs in the inset + curve. */
+static void ALWAN_CORE_FN(agx_sb2383_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    ALWAN_CORE_FN(agx_transform_impl)(rgb_in, rgb_out,
+        ALWAN_CORE_FNLIT(agx_sb2383_inset_matrix),
+        ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(4.026069),
+        ALWAN_CORE_FNLIT(agx_sb2383_contrast_lut));
 }
 
 /* AgX LUT output is sRGB-encoded; sRGB EOTF linearizes it. */
@@ -75,6 +94,68 @@ static void ALWAN_CORE_FN(agx_encoded_to_linear)(ALWAN_CORE_T *rgb) {
 static void ALWAN_CORE_FN(agx_base_view)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
     ALWAN_CORE_FN(agx_base_transform)(rgb_in, rgb_out);
     ALWAN_CORE_FN(agx_encoded_to_linear)(rgb_out);
+}
+
+static void ALWAN_CORE_FN(agx_sb2383_view)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    ALWAN_CORE_FN(agx_sb2383_transform)(rgb_in, rgb_out);
+    ALWAN_CORE_FN(agx_encoded_to_linear)(rgb_out);
+}
+
+/* Blender AgX (EaryChow): a baked 57^3 3D LUT (guard-rail gamut compression
+ * cannot be decomposed to matrix+curve). Tetrahedral interpolation of the f32
+ * LUT in the working precision, matching OCIO's tetrahedral sampling (and
+ * keeping the neutral axis symmetric). */
+static void ALWAN_CORE_FN(agx_blender_lut3d_sample)(ALWAN_CORE_T r, ALWAN_CORE_T g, ALWAN_CORE_T b, ALWAN_CORE_T *out) {
+    int const n = AGX_BLENDER_LUT_SIZE;
+    ALWAN_CORE_T const mi = (ALWAN_CORE_T)(n - 1);
+    r = ALWAN_CORE_SATURATE(r) * mi;
+    g = ALWAN_CORE_SATURATE(g) * mi;
+    b = ALWAN_CORE_SATURATE(b) * mi;
+    int r0 = (int)r, g0 = (int)g, b0 = (int)b;
+    int r1 = r0 + 1 < n ? r0 + 1 : n - 1;
+    int g1 = g0 + 1 < n ? g0 + 1 : n - 1;
+    int b1 = b0 + 1 < n ? b0 + 1 : n - 1;
+    ALWAN_CORE_T fr = r - (ALWAN_CORE_T)r0, fg = g - (ALWAN_CORE_T)g0, fb = b - (ALWAN_CORE_T)b0;
+    #define ALWAN_BL_AT(rr,gg,bb) (ALWAN_CORE_FNLIT(agx_blender_lut3d) + ((size_t)(bb)*(size_t)n*(size_t)n + (size_t)(gg)*(size_t)n + (size_t)(rr))*3)
+    ALWAN_CORE_T const *c000 = ALWAN_BL_AT(r0,g0,b0), *c111 = ALWAN_BL_AT(r1,g1,b1);
+    /* Pick the tetrahedron by the ordering of (fr,fg,fb): two intermediate
+     * corners cP,cQ and sorted weights w1>=w2>=w3. */
+    ALWAN_CORE_T const *cP, *cQ;
+    ALWAN_CORE_T w1, w2, w3;
+    if (fr >= fg) {
+        if (fg >= fb)      { cP = ALWAN_BL_AT(r1,g0,b0); cQ = ALWAN_BL_AT(r1,g1,b0); w1 = fr; w2 = fg; w3 = fb; }
+        else if (fr >= fb) { cP = ALWAN_BL_AT(r1,g0,b0); cQ = ALWAN_BL_AT(r1,g0,b1); w1 = fr; w2 = fb; w3 = fg; }
+        else               { cP = ALWAN_BL_AT(r0,g0,b1); cQ = ALWAN_BL_AT(r1,g0,b1); w1 = fb; w2 = fr; w3 = fg; }
+    } else {
+        if (fb >= fg)      { cP = ALWAN_BL_AT(r0,g0,b1); cQ = ALWAN_BL_AT(r0,g1,b1); w1 = fb; w2 = fg; w3 = fr; }
+        else if (fb >= fr) { cP = ALWAN_BL_AT(r0,g1,b0); cQ = ALWAN_BL_AT(r0,g1,b1); w1 = fg; w2 = fb; w3 = fr; }
+        else               { cP = ALWAN_BL_AT(r0,g1,b0); cQ = ALWAN_BL_AT(r1,g1,b0); w1 = fg; w2 = fr; w3 = fb; }
+    }
+    #undef ALWAN_BL_AT
+    for (int ch = 0; ch < 3; ch++) {
+        ALWAN_CORE_T v0 = c000[ch];
+        out[ch] = v0
+                + w1 * (cP[ch]  - v0)
+                + w2 * (cQ[ch]  - cP[ch])
+                + w3 * (c111[ch] - cQ[ch]);
+    }
+}
+
+static void ALWAN_CORE_FN(agx_blender_view)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    ALWAN_CORE_T const *M = ALWAN_CORE_FNLIT(agx_blender_rec709_to_egamut);
+    ALWAN_CORE_T er = M[0]*rgb_in[0] + M[1]*rgb_in[1] + M[2]*rgb_in[2];
+    ALWAN_CORE_T eg = M[3]*rgb_in[0] + M[4]*rgb_in[1] + M[5]*rgb_in[2];
+    ALWAN_CORE_T eb = M[6]*rgb_in[0] + M[7]*rgb_in[1] + M[8]*rgb_in[2];
+    /* log2 allocation shaper: -10..+15 stops around 0.18 (matches Blender). */
+    ALWAN_CORE_T sr = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(er, ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(12.5260688117));
+    ALWAN_CORE_T sg = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(eg, ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(12.5260688117));
+    ALWAN_CORE_T sb = ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(eb, ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(12.5260688117));
+    ALWAN_CORE_T lut[3];
+    ALWAN_CORE_FN(agx_blender_lut3d_sample)(sr, sg, sb, lut);
+    /* Cube output is power-2.4 encoded; decode to display-linear (caller OETFs). */
+    rgb_out[0] = ALWAN_CORE_POW(lut[0], ALWAN_CORE_LITERAL(2.4));
+    rgb_out[1] = ALWAN_CORE_POW(lut[1], ALWAN_CORE_LITERAL(2.4));
+    rgb_out[2] = ALWAN_CORE_POW(lut[2], ALWAN_CORE_LITERAL(2.4));
 }
 
 static void ALWAN_CORE_FN(agx_punchy_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
@@ -245,9 +326,11 @@ int ALWAN_CORE_FNLIT(alwan_view_transform_apply)(ALWAN_CORE_T *rgb_out, size_t o
 
     switch (vt) {
         case ALWAN_VIEW_ACES_REC709:        transform_fn = ALWAN_CORE_FN(aces_rec709_transform); break;
-        case ALWAN_VIEW_AGX:                transform_fn = ALWAN_CORE_FN(agx_base_view); break;
+        case ALWAN_VIEW_AGX_ORIGINAL:                transform_fn = ALWAN_CORE_FN(agx_base_view); break;
         case ALWAN_VIEW_AGX_PUNCHY:         transform_fn = ALWAN_CORE_FN(agx_punchy_transform); break;
         case ALWAN_VIEW_AGX_GOLDEN:         transform_fn = ALWAN_CORE_FN(agx_golden_transform); break;
+        case ALWAN_VIEW_AGX_SB2383:         transform_fn = ALWAN_CORE_FN(agx_sb2383_view); break;
+        case ALWAN_VIEW_AGX_BLENDER:        transform_fn = ALWAN_CORE_FN(agx_blender_view); break;
         case ALWAN_VIEW_BT2446A_HDR_TO_SDR: transform_fn = ALWAN_CORE_FN(bt2446a_hdr_to_sdr_transform); break;
         case ALWAN_VIEW_BT2446A_SDR_TO_HDR: transform_fn = ALWAN_CORE_FN(bt2446a_sdr_to_hdr_transform); break;
         case ALWAN_VIEW_KHRONOS_PBR_NEUTRAL: transform_fn = ALWAN_CORE_FN(khronos_pbr_neutral_transform); break;

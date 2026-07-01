@@ -43,10 +43,22 @@
  * passes `-ffp-contract=off` (clang/gcc) or `/fp:precise` (MSVC) for
  * defense in depth; the per-file pragma is belt-and-suspenders so a
  * downstream consumer can't accidentally re-fuse our polynomial
- * evaluations. MSVC's STDC support is incomplete -- its equivalent is
- * `#pragma fp_contract(off)` with different syntax. */
-#if defined(__clang__) || (defined(__GNUC__) && !defined(__INTEL_COMPILER))
+ * evaluations. Each compiler needs its own spelling:
+ *   - clang implements the ISO C `#pragma STDC FP_CONTRACT`.
+ *   - GCC parses but does NOT implement that pragma -- it warns
+ *     -Wunknown-pragmas ("ignoring '#pragma STDC FP_CONTRACT'"), which
+ *     -Werror turns fatal. GCC's equivalent is `#pragma GCC optimize
+ *     ("fp-contract=off")`, which overrides even a command-line
+ *     -ffp-contract=fast (verified on gcc 13). ICC is excluded: it
+ *     defines __GNUC__ but does not honor this pragma cleanly.
+ *   - MSVC's STDC support is incomplete -- its equivalent is
+ *     `#pragma fp_contract(off)` with different syntax.
+ * This header is only included in deterministic builds (see
+ * alwan_math.h), so the TU-wide pragma never touches the fast path. */
+#if defined(__clang__)
 #  pragma STDC FP_CONTRACT OFF
+#elif defined(__GNUC__) && !defined(__INTEL_COMPILER)
+#  pragma GCC optimize ("fp-contract=off")
 #elif defined(_MSC_VER)
 #  pragma fp_contract(off)
 #endif

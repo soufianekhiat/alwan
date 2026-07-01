@@ -9,6 +9,13 @@
  * All _ex functions delegate to native SIMD interleave functions via tiled
  * typed load/store.  The format switch is outside the inner loop so the
  * compiler can auto-vectorize the typed conversion.
+ *
+ * Ops that take a parameter struct or an enum selector do not fit the
+ * paramless ALWAN_EX_DELEGATE macros used below, so their typed _ex variants
+ * live alongside their own kernels rather than here:
+ *   - alwan_jp2499_map_interleave_ex        (map/alwan_agx_jp2499_map.c)
+ *   - alwan_view_transform_map_interleave_ex (map/alwan_view_map.c)
+ * They follow the same tiled typed load/store contract.
  */
 
 #include "../alwan.h"

@@ -20,14 +20,17 @@ namespace Alwan
                 Platform.win64,
                 DevEnv.vs2022,
                 Optimization.Debug | Optimization.Release,
-                Determinism.NonDet | Determinism.Det
+                Determinism.NonDet | Determinism.Det,
+                LinkType.Lib | LinkType.Dll
             ));
         }
 
         [Configure]
         public void ConfigureAll(Configuration conf, AlwanTarget target)
         {
-            conf.Name = target.Optimization.ToString() + (target.Determinism == Determinism.Det ? "_Det" : "");
+            conf.Name = target.Optimization.ToString()
+                      + (target.Determinism == Determinism.Det ? "_Det" : "")
+                      + (target.LinkType == LinkType.Dll ? "_Dll" : "");
 
             conf.SolutionFileName = "[solution.Name]_[target.DevEnv]_[target.Platform]";
             conf.SolutionPath = @"[solution.SharpmakeCsPath]\..\..\..";

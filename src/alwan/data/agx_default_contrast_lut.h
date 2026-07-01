@@ -10,7 +10,7 @@
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static float const agx_default_contrast_lut_f32[AGX_LUT_SIZE] = {
+static alwan_f32 const agx_default_contrast_lut_f32[AGX_LUT_SIZE] = {
 #include "agx_default_contrast_lut.csv"
 };
 ALWAN_DIAG_POP
