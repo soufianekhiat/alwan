@@ -4070,21 +4070,40 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
     /* Step 8: Clamp and scale for display encoding */
     alwan_rgb_f64 rgb_clamped;
     if (eotf == ALWAN_TF_PQ) {
-        /* PQ: scale to absolute nits [0, peak_luminance], PQ OETF expects nits and normalizes by 10000 */
-        rgb_clamped.r = rgb_adapted.r < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
-                        (rgb_adapted.r > ALWAN_LITERAL(1.0) ? peak_luminance : rgb_adapted.r * peak_luminance);
-        rgb_clamped.g = rgb_adapted.g < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
-                        (rgb_adapted.g > ALWAN_LITERAL(1.0) ? peak_luminance : rgb_adapted.g * peak_luminance);
-        rgb_clamped.b = rgb_adapted.b < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
-                        (rgb_adapted.b > ALWAN_LITERAL(1.0) ? peak_luminance : rgb_adapted.b * peak_luminance);
+        /* PQ: rgb_adapted is display-linear normalised to the ACES2 reference
+         * luminance n_r = 100 nits (NOT to peak). Convert to absolute nits with
+         * n_r, then clamp to the display peak; the PQ OETF normalises by 10000.
+         * (Scaling by peak over-brightened every non-100-nit output by
+         * peak/100 -- e.g. 10x for the 1000-nit PQ outputs.) */
+        alwan_f64 const nr = ALWAN_LITERAL(100.0);
+        alwan_f64 nits_r = rgb_adapted.r * nr, nits_g = rgb_adapted.g * nr, nits_b = rgb_adapted.b * nr;
+        rgb_clamped.r = nits_r < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
+                        (nits_r > peak_luminance ? peak_luminance : nits_r);
+        rgb_clamped.g = nits_g < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
+                        (nits_g > peak_luminance ? peak_luminance : nits_g);
+        rgb_clamped.b = nits_b < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
+                        (nits_b > peak_luminance ? peak_luminance : nits_b);
     } else if (eotf == ALWAN_TF_HLG) {
-        /* HLG: clamp to [0, 1], HLG OETF expects normalized signal */
-        rgb_clamped.r = rgb_adapted.r < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
-                        (rgb_adapted.r > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb_adapted.r);
-        rgb_clamped.g = rgb_adapted.g < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
-                        (rgb_adapted.g > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb_adapted.g);
-        rgb_clamped.b = rgb_adapted.b < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :
-                        (rgb_adapted.b > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb_adapted.b);
+        /* HLG: rgb_adapted is display-linear in n_r=100 units. Normalise to
+         * [0,1] by the display peak, then apply the inverse OOTF (display->scene)
+         * -- E = Yd^((1-g)/g) * Fd with Lw=1 -- so the basic HLG OETF applied by
+         * alwan_oetf_apply below yields the signal. System gamma per BT.2100:
+         * 1.2 + 0.42*log10(peak/1000) (= 1.2 at 1000 nits). Clamping to [0,1]
+         * directly (the old code) treated display-linear as scene signal and
+         * skipped both the peak normalisation and the OOTF. */
+        alwan_f64 sc = ALWAN_LITERAL(100.0) / peak_luminance;
+        alwan_f64 fr = rgb_adapted.r * sc, fg = rgb_adapted.g * sc, fb = rgb_adapted.b * sc;
+        fr = fr < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (fr > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : fr);
+        fg = fg < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (fg > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : fg);
+        fb = fb < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (fb > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : fb);
+        alwan_f64 gamma = ALWAN_LITERAL(1.2)
+            + ALWAN_LITERAL(0.42) * (ALWAN_LN(peak_luminance / ALWAN_LITERAL(1000.0)) / ALWAN_LN(ALWAN_LITERAL(10.0)));
+        alwan_f64 Yd = ALWAN_LITERAL(0.2627) * fr + ALWAN_LITERAL(0.6780) * fg + ALWAN_LITERAL(0.0593) * fb;
+        if (Yd < ALWAN_LITERAL(1e-12)) Yd = ALWAN_LITERAL(1e-12);
+        alwan_f64 factor = ALWAN_POW(Yd, (ALWAN_LITERAL(1.0) - gamma) / gamma);
+        rgb_clamped.r = factor * fr;
+        rgb_clamped.g = factor * fg;
+        rgb_clamped.b = factor * fb;
     } else {
         /* SDR: clamp to [0, 1] */
         rgb_clamped.r = rgb_adapted.r < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) :

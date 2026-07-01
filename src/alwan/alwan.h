@@ -562,9 +562,11 @@ int alwan_data_get_illuminant_xy_f32(alwan_f32 **data, size_t *count, alwan_illu
 /* View transform identifiers */
 typedef enum {
     ALWAN_VIEW_ACES_REC709,        /* ACES RRT + ODT Rec.709 */
-    ALWAN_VIEW_AGX,                /* AgX base (full pipeline with inset/outset matrices) */
+    ALWAN_VIEW_AGX_ORIGINAL,       /* AgX original (Troy Sobotka's base picture formation) */
     ALWAN_VIEW_AGX_PUNCHY,         /* AgX punchy variant (high contrast + saturation) */
     ALWAN_VIEW_AGX_GOLDEN,         /* AgX golden variant (warm highlights, cool shadows) */
+    ALWAN_VIEW_AGX_SB2383,         /* AgX SB2383 experiment (Sobotka, rotate/inset + own log2 range) */
+    ALWAN_VIEW_AGX_BLENDER,        /* AgX Blender (EaryChow) -- baked 57^3 3D LUT with gamut guard rail */
     ALWAN_VIEW_BT2446A_HDR_TO_SDR, /* BT.2446 Method A: HDR to SDR tone mapping */
     ALWAN_VIEW_BT2446A_SDR_TO_HDR,  /* BT.2446 Method A: SDR to HDR inverse mapping */
     ALWAN_VIEW_KHRONOS_PBR_NEUTRAL, /* Khronos PBR Neutral tone mapping (glTF/WebGL) */
@@ -932,6 +934,110 @@ int alwan_float_to_uint_f32(alwan_uint16 *out, alwan_f32 const *in, int bit_dept
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if transform not supported */
 int alwan_view_transform_apply_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 int alwan_view_transform_apply_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
+/* Bulk (map) variants of the view transform. The view workers are scalar, so
+ * these are byte-identical to alwan_view_transform_apply; the _ex variant adds
+ * typed (u8/u16/f16/f32/f64) I/O for the image pipeline. */
+int alwan_view_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
+int alwan_view_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
+int alwan_view_transform_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_view_transform vt, alwan_ctx *ctx);
+
+/* JP2499 -- Juan Pablo Zambrano's "2499" picture formation, a purely analytical
+ * display-rendering transform (ratio-preserving Michaelis-Menten tonescale with
+ * per-primary hue-flight / chroma-attenuation / purity controls, plus optional
+ * cube-tip split-toning). Unlike the fixed AgX views this is parameterized;
+ * input is linear Rec.709, output is display-linear Rec.709 (apply the display
+ * OETF as with the AgX views).
+ *
+ * For log-encoded / non-Rec.709 footage, decode + convert to linear Rec.709
+ * first with the existing bulk helpers, then apply -- e.g.
+ *     alwan_eotf_apply_f64(buf, s, buf, s, n*3, ALWAN_TF_ARRI_LOGC3); // log->lin
+ *     alwan_rgb_convert_f64(...src_space, rec709_space...);           // gamut->709
+ *     alwan_jp2499_apply_f64(out, ..., &params);
+ * (kept out of the core so JP2499 stays reusable and byte-exact across paths.) */
+/* Fields: chroma_attenuation = per-primary path-to-white rate (cpr,cpg,cpb);
+ * hue_flight = per-primary hue rotation (ored,ogr,ob); purity = per-primary
+ * complementary restore (r/g/b_restore); peak_luminance = display nits (Lp,
+ * <=0 defaults to 100). Native dual precision like the other param structs. */
+/* white_tip / black_tip (alwan_rgb): cube-tip split-toning -- per-channel colour
+ * tint added to the display output, weighted toward highlights (white_tip) and
+ * shadows (black_tip). Zero = no tint (the default). The chroma_attenuation /
+ * hue_flight / purity triples are one scalar knob per primary (not colours), so
+ * they stay plain [3]. */
+typedef struct { alwan_f32 chroma_attenuation[3]; alwan_f32 hue_flight[3]; alwan_f32 purity[3]; alwan_f32 peak_luminance; alwan_rgb_f32 white_tip; alwan_rgb_f32 black_tip; } alwan_jp2499_params_f32;
+typedef struct { alwan_f64 chroma_attenuation[3]; alwan_f64 hue_flight[3]; alwan_f64 purity[3]; alwan_f64 peak_luminance; alwan_rgb_f64 white_tip; alwan_rgb_f64 black_tip; } alwan_jp2499_params_f64;
+
+/* JP2499's validated default look (non-zero hue geometry). All-zero params give
+ * the plain ratio-preserving tonescale with no hue shaping. */
+alwan_jp2499_params_f32 alwan_jp2499_default_params_f32(void);
+alwan_jp2499_params_f64 alwan_jp2499_default_params_f64(void);
+int alwan_jp2499_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_jp2499_params_f64 const *params);
+int alwan_jp2499_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_jp2499_params_f32 const *params);
+/* Interleaved bulk (map) variants -- byte-identical to the apply loop. */
+int alwan_jp2499_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_jp2499_params_f64 const *params);
+int alwan_jp2499_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_jp2499_params_f32 const *params);
+/* Typed (u8/u16/f16/f32/f64) variant for the image pipeline (f64 params). */
+int alwan_jp2499_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_jp2499_params_f64 const *params);
+
+/* Analytic AgX -- a fully parameterized, geometric AgX picture-formation engine
+ * (Troy Sobotka's design: everything geometric except the single 1D sigmoid).
+ * Pipeline: clamp -> inset matrix -> log2 guard-rail encode -> Jed Smith tunable
+ * sigmoid -> outset matrix (complementary restore) -> cube-tip split-tone ->
+ * sRGB EOTF. Input is linear Rec.709, output is display-linear (same convention
+ * as the fixed AgX views); for log/non-Rec.709 footage decode + convert first
+ * (see the JP2499 note above). The named AgX views are fixed presets; this is
+ * the tunable engine. With the default (SB2383) parameters it reproduces the
+ * ALWAN_VIEW_AGX_SB2383 view.
+ *
+ * Fields: inset/outset = geometric 3x3 (row-major); outset identity = none.
+ * log2_min/log2_max = absolute log2 guard-rail bounds (what the encoder takes,
+ * not EV). pivot_input = scene-linear grey the sigmoid pivots on (0.18);
+ * pivot_output = its display-encoded value; slope = contrast at the pivot;
+ * toe_power/shoulder_power = the sigmoid's lower/upper shape.
+ *
+ * inset/outset are alwan_mat3x3 (row-major 3x3); outset identity = no restore.
+ *
+ * Cube tips (Troy Sobotka's split-tone technique): instead of the sigmoid
+ * running a rigid 0->1 per channel, its upper (white) and lower (black)
+ * termination points "tilt" per channel, while the middle fulcrum stays pinned
+ * so the three channels cross cleanly at mid-grey (no muddy split tone). Each tip
+ * takes {angle, force, offset}: angle = hue on the wheel (radians, 0=R/2pi3=G/
+ * 4pi3=B); force = chromatic tilt (upper lowers the complementary channels toward
+ * the hue; lower raises the hue channels); offset = achromatic wash (upper washes
+ * the whites down, lower lifts the blacks -- a film-like haze). All zero = a rigid
+ * 0->1 sigmoid (no tinting). Native dual precision like the other param structs. */
+/* tip_middle_angle/force: middle tint (Troy's third control) -- tints the fulcrum
+ * itself (a per-channel pivot), so the axis reads lower-tip -> middle-tint ->
+ * upper-tip while the three channels still converge at one clean crossover.
+ * Balanced (chroma, not brightness); force 0 = neutral fulcrum.
+ *
+ * primary_rotation/primary_inset/primary_purity ([3], per primary -- scalar knobs,
+ * not colours): the geometric inset (Troy's "each primary a wheel"). rotation =
+ * per-primary hue turn, inset = pull toward achromatic (rendering-space
+ * desaturation), purity = complementary restore. They do NOT act until you call
+ * alwan_agx_build_geometry, which rebuilds inset/outset from them (reusing the
+ * JP2499 chromaticity construction); by default the baked SB2383 inset stands so
+ * the default reproduces the SB2383 view exactly. */
+typedef struct { alwan_mat3x3_f32 inset; alwan_f32 log2_min; alwan_f32 log2_max; alwan_f32 pivot_input; alwan_f32 pivot_output; alwan_f32 slope; alwan_f32 toe_power; alwan_f32 shoulder_power; alwan_mat3x3_f32 outset; alwan_f32 tip_upper_angle; alwan_f32 tip_upper_force; alwan_f32 tip_upper_offset; alwan_f32 tip_lower_angle; alwan_f32 tip_lower_force; alwan_f32 tip_lower_offset; alwan_f32 tip_middle_angle; alwan_f32 tip_middle_force; alwan_f32 primary_rotation[3]; alwan_f32 primary_inset[3]; alwan_f32 primary_purity[3]; } alwan_agx_params_f32;
+typedef struct { alwan_mat3x3_f64 inset; alwan_f64 log2_min; alwan_f64 log2_max; alwan_f64 pivot_input; alwan_f64 pivot_output; alwan_f64 slope; alwan_f64 toe_power; alwan_f64 shoulder_power; alwan_mat3x3_f64 outset; alwan_f64 tip_upper_angle; alwan_f64 tip_upper_force; alwan_f64 tip_upper_offset; alwan_f64 tip_lower_angle; alwan_f64 tip_lower_force; alwan_f64 tip_lower_offset; alwan_f64 tip_middle_angle; alwan_f64 tip_middle_force; alwan_f64 primary_rotation[3]; alwan_f64 primary_inset[3]; alwan_f64 primary_purity[3]; } alwan_agx_params_f64;
+
+/* Default parameters reproduce the SB2383 AgX look (Sobotka inset + Jed Smith
+ * sigmoid slope 2.4 / powers 1.5, identity outset, no split-tone, no middle
+ * tint; primary_* all zero). */
+alwan_agx_params_f32 alwan_agx_default_params_f32(void);
+alwan_agx_params_f64 alwan_agx_default_params_f64(void);
+/* Rebuild params->inset / params->outset from the per-primary geometry knobs
+ * (primary_rotation/inset/purity). Call after editing those (e.g. the primary
+ * wheels); overwrites the baked inset/outset. All-zero knobs -> identity (no
+ * inset). Reuses the JP2499 geometric chromaticity construction. */
+void alwan_agx_build_geometry_f32(alwan_agx_params_f32 *params);
+void alwan_agx_build_geometry_f64(alwan_agx_params_f64 *params);
+int alwan_agx_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_agx_params_f64 const *params);
+int alwan_agx_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_agx_params_f32 const *params);
+/* Interleaved bulk (map) variants -- byte-identical to the apply loop. */
+int alwan_agx_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_agx_params_f64 const *params);
+int alwan_agx_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_agx_params_f32 const *params);
+/* Typed (u8/u16/f16/f32/f64) variant for the image pipeline (f64 params). */
+int alwan_agx_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_agx_params_f64 const *params);
 
 /* ----------------------------------------------------------------
  * Color Space Conversions

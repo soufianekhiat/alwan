@@ -27,6 +27,8 @@
     #define alwan_simd_zero         alwan_simd_f64_zero
     #define alwan_simd_load         alwan_simd_f64_load
     #define alwan_simd_store        alwan_simd_f64_store
+    #define alwan_simd_loadu        alwan_simd_f64_loadu
+    #define alwan_simd_storeu       alwan_simd_f64_storeu
     #define alwan_simd_add          alwan_simd_f64_add
     #define alwan_simd_sub          alwan_simd_f64_sub
     #define alwan_simd_mul          alwan_simd_f64_mul

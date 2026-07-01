@@ -275,11 +275,13 @@ Coverage in the regression dump (manifest v49):
   cam20u — all under fixed viewing conditions.
 - 7 CAM inverses (cam16, zcam, ciecam02, hellwig2022, kim2009,
   cam18sl, cam20u) driven via forward+inverse round-trip XYZ.
-- 16 view transforms via `alwan_view_transform_apply_f32` /
-  `alwan_view_transform_apply_f64`: AgX (base/
-  punchy/golden), BT.2446 (Method A HDR↔SDR, B SDR→HDR, C HDR→SDR),
-  BT.2390 HDR→SDR, Tony McMapface, Reinhard (Extended + Calibrated),
-  Khronos PBR Neutral, Uchimura, Lottes, Exposure, ACES Rec.709.
+- 18 view transforms via `alwan_view_transform_apply_f32` /
+  `alwan_view_transform_apply_f64`: AgX (original/
+  punchy/golden/SB2383/Blender 57³ 3D LUT), BT.2446 (Method A HDR↔SDR,
+  B SDR→HDR, C HDR→SDR), BT.2390 HDR→SDR, Tony McMapface, Reinhard
+  (Extended + Calibrated), Khronos PBR Neutral, Uchimura, Lottes,
+  Exposure, ACES Rec.709. Plus JP2499 (parameterized analytic DRT via
+  `alwan_jp2499_apply_f32/f64`).
 - 16 ACES output transforms forward + 2 inverses: ACES 1.x (Rec.709,
   sRGB, Rec.2020 100nit/1000nit_PQ/4000nit_PQ, P3-D65, DCDM) + ACES
   2.0 (Rec.709, sRGB, P3-D65 100nit_sRGB/1000nit_PQ, Rec.2100
@@ -474,7 +476,7 @@ while `det_run_regression` asserts cross-platform stability of the
 scalar path across the full public API surface (~700 entry points,
 407,365 dumped lines): 10 CAMs forward, 7 CAM
 inverses, 14 dE metrics, 4 CCT estimators + duv optimisation, 6 CAT
-transforms, 8 gamut-mapping algorithms, 16 view transforms, 5 ACES
+transforms, 8 gamut-mapping algorithms, 18 view transforms, 5 ACES
 output transforms + 2 inverses, 19 transfer-function families with
 roundtrip, 9 RGB-to-RGB conversions, 3 spectrum upsamplers, blackbody
 SPD integration + shape analysis, hero wavelength sampling, 2

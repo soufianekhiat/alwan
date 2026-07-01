@@ -17,11 +17,25 @@ namespace Alwan
         Det    = 1 << 1,
     }
 
+    // Linkage axis: static library (.lib) vs shared library (.dll). The Dll
+    // configs build the same alwan sources as a DLL and export the full public
+    // API via a generated .def (see AlwanLib.cs / tools/gen_exports_def.py),
+    // mirroring CMake's BUILD_SHARED_LIBS + WINDOWS_EXPORT_ALL_SYMBOLS. Crossed
+    // with Determinism and Optimization this yields the eight configs
+    // Debug / Release / *_Det / *_Dll / *_Det_Dll.
+    [Fragment, Flags]
+    public enum LinkType
+    {
+        Lib = 1 << 0,
+        Dll = 1 << 1,
+    }
+
     // Custom target
     [Generate]
     public class AlwanTarget : Target
     {
         public Determinism Determinism = Determinism.NonDet;
+        public LinkType    LinkType    = LinkType.Lib;
 
         public AlwanTarget()
             : base()
@@ -29,10 +43,12 @@ namespace Alwan
         }
 
         public AlwanTarget(Platform platform, DevEnv devEnv, Optimization optimization,
-                           Determinism determinism = Determinism.NonDet)
+                           Determinism determinism = Determinism.NonDet,
+                           LinkType linkType = LinkType.Lib)
             : base(platform, devEnv, optimization)
         {
             Determinism = determinism;
+            LinkType    = linkType;
         }
     }
 
@@ -51,7 +67,8 @@ namespace Alwan
                 Platform.win64,
                 DevEnv.vs2022,
                 Optimization.Debug | Optimization.Release,
-                Determinism.NonDet | Determinism.Det
+                Determinism.NonDet | Determinism.Det,
+                LinkType.Lib | LinkType.Dll
             ));
         }
 
@@ -59,7 +76,8 @@ namespace Alwan
         public virtual void ConfigureAll(Configuration conf, AlwanTarget target)
         {
             bool det = (target.Determinism == Determinism.Det);
-            conf.Name = target.Optimization.ToString() + (det ? "_Det" : "");
+            bool dll = (target.LinkType == LinkType.Dll);
+            conf.Name = target.Optimization.ToString() + (det ? "_Det" : "") + (dll ? "_Dll" : "");
 
             conf.ProjectFileName = "[project.Name]_[target.DevEnv]_[target.Platform]";
             conf.ProjectPath = Path.Combine("[project.SharpmakeCsPath]", "..", "..", "..", "projects", "[project.Name]");
@@ -71,9 +89,15 @@ namespace Alwan
             // C11 standard (use compiler option directly)
             conf.AdditionalCompilerOptions.Add("/std:c11");
 
-            // Warning level 4, treat warnings as errors
+            // Warning level 4 (all configs). Warnings-as-errors only in Release
+            // configs (Release, Release_Det): ship-quality builds must compile
+            // clean, while Debug/Debug_Det stay lenient for iteration. (Release
+            // optimization is shared by the plain and _Det targets.)
             conf.AdditionalCompilerOptions.Add("/W4");
-            conf.AdditionalCompilerOptions.Add("/WX");
+            if (target.Optimization == Optimization.Release)
+            {
+                conf.AdditionalCompilerOptions.Add("/WX");
+            }
 
             // Compile as C code (not C++)
             conf.AdditionalCompilerOptions.Add("/TC");

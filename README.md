@@ -194,9 +194,12 @@ Support for modern display and camera encoding:
   Fujifilm F-Log/F-Log2, DJI D-Log, Blackmagic Film Gen4/5, Leica
   L-Log, GoPro Protune
 - **Film:** Cineon, ADX10/16
-- **View transforms:** AgX (base/punchy/golden), Tony McMapface,
-  Khronos PBR Neutral, Reinhard (extended + calibrated), Uchimura,
-  Lottes, exposure-with-shoulder
+- **View transforms:** AgX (original/punchy/golden/SB2383/Blender),
+  Tony McMapface, Khronos PBR Neutral, Reinhard (extended + calibrated),
+  Uchimura, Lottes, exposure-with-shoulder
+- **Parameterized DRT:** JP2499 (Juan Pablo Zambrano's "2499" analytic
+  display transform -- `alwan_jp2499_params_f32/f64` expose hue-flight,
+  chroma-attenuation, purity and peak luminance)
 
 ### ACES Pipeline
 Complete Academy Color Encoding System support:
@@ -607,8 +610,9 @@ buildsystem\generate_projects.bat
 - ✅ ACES 1.x RRT+ODT pipeline — 7 outputs, validated against OCIO
 - ✅ ACES 2.0 Output Transform — 9 outputs, JMh gamut mapping
 - ✅ 25+ transfer functions including all major camera log formats
-- ✅ 16 view transforms (AgX, BT.2446 A/B/C, BT.2390, Tony McMapface,
-  Reinhard, Khronos PBR Neutral, Uchimura, Lottes, Exposure, ACES Rec.709)
+- ✅ 18 view transforms (AgX original/punchy/golden/SB2383/Blender,
+  BT.2446 A/B/C, BT.2390, Tony McMapface, Reinhard, Khronos PBR Neutral,
+  Uchimura, Lottes, Exposure, ACES Rec.709) + JP2499 parameterized DRT
 - ✅ Spectrum upsampling — Smits 1999, Mallett 2019, Jakob 2019
 - ✅ Vision — Machado CVD simulation (6 types), CSF (default + Barten)
 - ✅ Cross-platform CI on six host targets (Linux/macOS/Windows × x64/ARM)

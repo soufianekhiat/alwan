@@ -95,9 +95,14 @@ set(_ALWAN_IS_DET "$<OR:$<BOOL:${ALWAN_DETERMINISTIC}>,$<CONFIG:Debug_Det,Releas
 
 set(ALWAN_SOURCES
   src/alwan/api/alwan_aces_ff.c
+  src/alwan/api/alwan_agx.c
+  src/alwan/api/alwan_agx_jp2499.c
   src/alwan/api/alwan_atd95.c
   src/alwan/api/alwan_cam.c
   src/alwan/api/alwan_nayatani95.c
+  src/alwan/map/alwan_agx_jp2499_map.c
+  src/alwan/map/alwan_agx_map.c
+  src/alwan/map/alwan_view_map.c
   src/alwan/map/alwan_cam_map.c
   src/alwan/api/alwan_cat.c
   src/alwan/api/alwan_color_correction.c
@@ -268,8 +273,11 @@ endif()
 if(ALWAN_ENABLE_WARNINGS)
   if(MSVC)
     target_compile_options(alwan PRIVATE /W4)
+    # Warnings-as-errors only in Release configs (Release, Release_Det):
+    # ship-quality builds must compile clean, while Debug/Debug_Det stay
+    # lenient so day-to-day iteration isn't blocked by an in-progress warning.
     if(ALWAN_WARNINGS_AS_ERRORS)
-      target_compile_options(alwan PRIVATE /WX)
+      target_compile_options(alwan PRIVATE $<$<CONFIG:Release,Release_Det>:/WX>)
     endif()
   else()
     # alwan is a public API library: -Wunused-* would flag symbols
@@ -309,8 +317,10 @@ if(ALWAN_ENABLE_WARNINGS)
       endif()
     endforeach()
     unset(_ALWAN_SILENCED_WARNINGS)
+    # Warnings-as-errors only in Release configs (Release, Release_Det) -- see
+    # the MSVC branch above for rationale. Debug/Debug_Det stay lenient.
     if(ALWAN_WARNINGS_AS_ERRORS)
-      target_compile_options(alwan PRIVATE -Werror)
+      target_compile_options(alwan PRIVATE $<$<CONFIG:Release,Release_Det>:-Werror>)
     endif()
   endif()
 endif()
