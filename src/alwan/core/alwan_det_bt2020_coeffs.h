@@ -35,6 +35,7 @@
 #define ALWAN_DET_BT2020_EOTF_POLY_LO     +1.63785259326660576e-01
 
 /* OETF non-linear: pow(x, 0.45) -- coefficients in u in [-1, 1]. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
 static const alwan_f64 alwan_det_bt2020_oetf_lo_coeffs_f64[13] = {
     +2.79822992577028029e-01,  /* c0 */
     +8.75037730329550206e-02,  /* c1 */
@@ -50,6 +51,7 @@ static const alwan_f64 alwan_det_bt2020_oetf_lo_coeffs_f64[13] = {
     +1.94287399824958371e-04,  /* c11 */
     -1.37811215601202228e-04,  /* c12 */
 };
+#endif
 
 static const alwan_f32 alwan_det_bt2020_oetf_lo_coeffs_f32[13] = {
     +2.79822992577028029e-01f,  /* c0 */
@@ -67,6 +69,7 @@ static const alwan_f32 alwan_det_bt2020_oetf_lo_coeffs_f32[13] = {
     -1.37811215601202228e-04f,  /* c12 */
 };
 
+#if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
 static const alwan_f64 alwan_det_bt2020_oetf_hi_coeffs_f64[15] = {
     +7.64122978325621927e-01,  /* c0 */
     +2.81338957667788048e-01,  /* c1 */
@@ -84,6 +87,7 @@ static const alwan_f64 alwan_det_bt2020_oetf_hi_coeffs_f64[15] = {
     +6.07505804161316554e-03,  /* c13 */
     -5.64201534409066244e-03,  /* c14 */
 };
+#endif
 
 static const alwan_f32 alwan_det_bt2020_oetf_hi_coeffs_f32[15] = {
     +7.64122978325621927e-01f,  /* c0 */
@@ -104,6 +108,7 @@ static const alwan_f32 alwan_det_bt2020_oetf_hi_coeffs_f32[15] = {
 };
 
 /* EOTF non-linear: pow(z, 2.22222); u in [-1, 1]. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
 static const alwan_f64 alwan_det_bt2020_eotf_coeffs_f64[13] = {
     +3.00212360690548241e-01,  /* c0 */
     +4.79359145486302207e-01,  /* c1 */
@@ -119,6 +124,7 @@ static const alwan_f64 alwan_det_bt2020_eotf_coeffs_f64[13] = {
     +7.47327694691492783e-06,  /* c11 */
     -4.57575971696491311e-06,  /* c12 */
 };
+#endif
 
 static const alwan_f32 alwan_det_bt2020_eotf_coeffs_f32[13] = {
     +3.00212360690548241e-01f,  /* c0 */
