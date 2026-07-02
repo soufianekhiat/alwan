@@ -31,11 +31,15 @@ int ALWAN_MAP_LITCAT(alwan_agx, _map_interleave)(
                                   params->tip_upper_angle, params->tip_upper_force, params->tip_upper_offset,
                                   params->tip_lower_angle, params->tip_lower_force, params->tip_lower_offset,
                                   params->tip_middle_angle, params->tip_middle_force, py3, st, ss);
+    ALWAN_MAP_LIT(alwan_vec3) pyv, stv, ssv;
+    for (int k = 0; k < 3; k++) { pyv.v[k] = py3[k]; stv.v[k] = st[k]; ssv.v[k] = ss[k]; }
 
     for (size_t i = 0; i < count; i++) {
         alwan_map_lane const *pi = (alwan_map_lane const *)((char const *)in + i * in_stride);
         alwan_map_lane *po = (alwan_map_lane *)((char *)out + i * out_stride);
-        ALWAN_MAP_LIT(agx_render)(pi, po, params->inset.m, lmin, lmax, px, py3, slope, tp, sp, st, ss, params->outset.m);
+        ALWAN_MAP_LIT(alwan_vec3) in_v; in_v.v[0] = pi[0]; in_v.v[1] = pi[1]; in_v.v[2] = pi[2];
+        ALWAN_MAP_LIT(alwan_vec3) out_v = ALWAN_MAP_LIT(agx_render)(in_v, params->inset, lmin, lmax, px, pyv, slope, tp, sp, stv, ssv, params->outset);
+        po[0] = out_v.v[0]; po[1] = out_v.v[1]; po[2] = out_v.v[2];
     }
     return ALWAN_OK;
 }

@@ -48,7 +48,13 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FN(agx_hue_weight)(ALWAN_CORE_T angle, ALWA
  * reads lower-bias -> middle-bias -> upper-bias, while the three channels still
  * converge at a single (now tinted) crossover -- so a split tone stays clean.
  * Middle tint is balanced (hue_mid - 0.5, zero-sum) so it shifts chroma, not
- * brightness. Outputs per-channel pivot py_out[3] and toe/shoulder scales. */
+ * brightness. Outputs per-channel pivot py_out[3] and toe/shoulder scales.
+ *
+ * Host-only: this is per-call setup that produces the shader uniforms, and it
+ * writes through pointer out-params, so it is excluded from the GPU pass (HLSL/
+ * GLSL/Halide have no raw pointers). The per-pixel agx_render below is the
+ * GPU-portable kernel; it consumes the scales this produces. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
 ALWAN_INLINE void ALWAN_CORE_FN(agx_tip_scales)(
         ALWAN_CORE_T px, ALWAN_CORE_T py, ALWAN_CORE_T slope,
         ALWAN_CORE_T toe_p, ALWAN_CORE_T shoulder_p,
@@ -81,6 +87,7 @@ ALWAN_INLINE void ALWAN_CORE_FN(agx_tip_scales)(
         scale_toe[c]      = -ALWAN_CORE_FN(agx_eq_scale)(px, py_c - k, slope, toe_p);
     }
 }
+#endif /* ALWAN_BACKEND_C -- agx_tip_scales is host-only setup */
 
 /* Jed Smith tunable sigmoid: log-encoded x in [0,1] -> display-encoded [0,1].
  * X = slope*(x - px)/scale is >= 0 on both sides (scale_toe is negative and
@@ -112,22 +119,29 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FN(agx_log_encode)(ALWAN_CORE_T x,
  * (scale_toe[3]/scale_shoulder[3]) are precomputed per call. The split-tone lives
  * entirely in those per-channel endpoints -- there is no post-sigmoid tint pass,
  * so the fulcrum (py) stays neutral. */
-ALWAN_INLINE void ALWAN_CORE_FN(agx_render)(ALWAN_CORE_T const *in, ALWAN_CORE_T *out,
-        ALWAN_CORE_T const *inset, ALWAN_CORE_T lmin, ALWAN_CORE_T lmax,
-        ALWAN_CORE_T px, ALWAN_CORE_T const *py, ALWAN_CORE_T slope,
+/* Struct-by-value signature (no pointers) so this per-pixel kernel is GPU-legal
+ * (HLSL/GLSL/Halide) as well as C. inset/outset are ALWAN_CORE_MAT3X3 (row-major
+ * .m[9]); in/py/scale_* are ALWAN_CORE_VEC3 (.v[3]); result is returned by value.
+ * The C codegen is identical to the old pointer form, so scalar-apply == tiled-
+ * map stays byte-exact. */
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FN(agx_render)(ALWAN_CORE_VEC3 rgb,
+        ALWAN_CORE_MAT3X3 inset, ALWAN_CORE_T lmin, ALWAN_CORE_T lmax,
+        ALWAN_CORE_T px, ALWAN_CORE_VEC3 py, ALWAN_CORE_T slope,
         ALWAN_CORE_T toe_p, ALWAN_CORE_T shoulder_p,
-        ALWAN_CORE_T const *scale_toe, ALWAN_CORE_T const *scale_shoulder,
-        ALWAN_CORE_T const *outset) {
-    /* Clamp negatives (matches the AgX RangeTransform before the inset). */
-    ALWAN_CORE_T r = ALWAN_CORE_MAX(in[0], ALWAN_CORE_ZERO);
-    ALWAN_CORE_T g = ALWAN_CORE_MAX(in[1], ALWAN_CORE_ZERO);
-    ALWAN_CORE_T b = ALWAN_CORE_MAX(in[2], ALWAN_CORE_ZERO);
+        ALWAN_CORE_VEC3 scale_toe, ALWAN_CORE_VEC3 scale_shoulder,
+        ALWAN_CORE_MAT3X3 outset) {
+    /* Clamp negatives (matches the AgX RangeTransform before the inset).
+     * NB: param is named 'rgb' and the result 'result' -- 'in'/'out' are HLSL
+     * parameter-modifier keywords. */
+    ALWAN_CORE_T r = ALWAN_CORE_MAX(rgb.v[0], ALWAN_CORE_ZERO);
+    ALWAN_CORE_T g = ALWAN_CORE_MAX(rgb.v[1], ALWAN_CORE_ZERO);
+    ALWAN_CORE_T b = ALWAN_CORE_MAX(rgb.v[2], ALWAN_CORE_ZERO);
 
     /* Inset (geometric attenuation toward the achromatic axis). */
     {
-        ALWAN_CORE_T ir = inset[0]*r + inset[1]*g + inset[2]*b;
-        ALWAN_CORE_T ig = inset[3]*r + inset[4]*g + inset[5]*b;
-        ALWAN_CORE_T ib = inset[6]*r + inset[7]*g + inset[8]*b;
+        ALWAN_CORE_T ir = inset.m[0]*r + inset.m[1]*g + inset.m[2]*b;
+        ALWAN_CORE_T ig = inset.m[3]*r + inset.m[4]*g + inset.m[5]*b;
+        ALWAN_CORE_T ib = inset.m[6]*r + inset.m[7]*g + inset.m[8]*b;
         r = ir; g = ig; b = ib;
     }
 
@@ -137,24 +151,26 @@ ALWAN_INLINE void ALWAN_CORE_FN(agx_render)(ALWAN_CORE_T const *in, ALWAN_CORE_T
     b = ALWAN_CORE_FN(agx_log_encode)(b, lmin, lmax);
 
     /* Per-channel tunable sigmoid with per-channel cube-tip endpoints and
-     * per-channel pivot py[3] (the only non-geometric stage). py is shared across
-     * channels unless the middle tint is used, so the mid-grey crossover stays a
-     * single clean point (neutral by default, or a chosen tint). */
-    r = ALWAN_CORE_FN(agx_sigmoid)(r, px, py[0], slope, toe_p, shoulder_p, scale_toe[0], scale_shoulder[0]);
-    g = ALWAN_CORE_FN(agx_sigmoid)(g, px, py[1], slope, toe_p, shoulder_p, scale_toe[1], scale_shoulder[1]);
-    b = ALWAN_CORE_FN(agx_sigmoid)(b, px, py[2], slope, toe_p, shoulder_p, scale_toe[2], scale_shoulder[2]);
+     * per-channel pivot py.v[3] (the only non-geometric stage). py is shared
+     * across channels unless the middle tint is used, so the mid-grey crossover
+     * stays a single clean point (neutral by default, or a chosen tint). */
+    r = ALWAN_CORE_FN(agx_sigmoid)(r, px, py.v[0], slope, toe_p, shoulder_p, scale_toe.v[0], scale_shoulder.v[0]);
+    g = ALWAN_CORE_FN(agx_sigmoid)(g, px, py.v[1], slope, toe_p, shoulder_p, scale_toe.v[1], scale_shoulder.v[1]);
+    b = ALWAN_CORE_FN(agx_sigmoid)(b, px, py.v[2], slope, toe_p, shoulder_p, scale_toe.v[2], scale_shoulder.v[2]);
 
     /* Outset (geometric complementary-energy restore; identity = none). */
     {
-        ALWAN_CORE_T or_ = outset[0]*r + outset[1]*g + outset[2]*b;
-        ALWAN_CORE_T og  = outset[3]*r + outset[4]*g + outset[5]*b;
-        ALWAN_CORE_T ob  = outset[6]*r + outset[7]*g + outset[8]*b;
+        ALWAN_CORE_T or_ = outset.m[0]*r + outset.m[1]*g + outset.m[2]*b;
+        ALWAN_CORE_T og  = outset.m[3]*r + outset.m[4]*g + outset.m[5]*b;
+        ALWAN_CORE_T ob  = outset.m[6]*r + outset.m[7]*g + outset.m[8]*b;
         r = or_; g = og; b = ob;
     }
 
     /* sRGB EOTF -> display-linear (det-aware macro; matches the SIMD map path). */
     r = ALWAN_CORE_SATURATE(r); g = ALWAN_CORE_SATURATE(g); b = ALWAN_CORE_SATURATE(b);
-    out[0] = ALWAN_CORE_SRGB_EOTF(r);
-    out[1] = ALWAN_CORE_SRGB_EOTF(g);
-    out[2] = ALWAN_CORE_SRGB_EOTF(b);
+    ALWAN_CORE_VEC3 result;
+    result.v[0] = ALWAN_CORE_SRGB_EOTF(r);
+    result.v[1] = ALWAN_CORE_SRGB_EOTF(g);
+    result.v[2] = ALWAN_CORE_SRGB_EOTF(b);
+    return result;
 }

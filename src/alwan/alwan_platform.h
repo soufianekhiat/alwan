@@ -130,7 +130,7 @@
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
 # define ALWAN_INLINE    inline
 # define ALWAN_CONSTEXPR static const
-# define ALWAN_TYPE_DEF
+# define ALWAN_TYPE_DEF  typedef   /* dxc supports typedef struct {...} Name; */
 # define ALWAN_UNUSED(x)
 #elif ALWAN_BACKEND == ALWAN_BACKEND_GLSL
 # define ALWAN_INLINE
@@ -314,6 +314,35 @@
 # define ALWAN_CEIL(x)      Halide::ceil(x)
 # define ALWAN_FMOD(x, y)   ((x) - Halide::floor((x) / (y)) * (y))
 
+#endif
+
+/* sRGB / BT.2020 transfer for the GPU backends (HLSL/GLSL/Halide). The C backend
+ * defines its own deterministic-aware ALWAN_SRGB_* above; the GPU backends get
+ * the piecewise curve here, written with ALWAN_SELECT + ALWAN_POW so one source
+ * compiles on all three. NOTE: this uses the hardware ALWAN_POW, so it matches
+ * the C *fast* (libm) leg, not the deterministic polynomial leg -- cross-backend
+ * parity is ULP-approximate (a deterministic GPU leg is future work). */
+#if ALWAN_BACKEND != ALWAN_BACKEND_C
+# if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+/* det GPU: route the sRGB EOTF through the deterministic polynomial (defined in
+ * core/alwan_deterministic.h, pulled into the GPU setup under det) so det-GPU is
+ * bit-exact with det-C on the determinism-critical transfer. General pow/log2
+ * stay hardware -- matching C-det, which also uses libm for those. */
+#  define ALWAN_SRGB_EOTF(x)  alwan_det_srgb_eotf(x)
+# else
+#  define ALWAN_SRGB_EOTF(x)  ALWAN_SELECT((x) <= ALWAN_LITERAL(0.04045), \
+        (x) / ALWAN_LITERAL(12.92), \
+        ALWAN_POW(((x) + ALWAN_LITERAL(0.055)) / ALWAN_LITERAL(1.055), ALWAN_LITERAL(2.4)))
+# endif
+# define ALWAN_SRGB_OETF(x)   ALWAN_SELECT((x) <= ALWAN_LITERAL(0.0031308), \
+        (x) * ALWAN_LITERAL(12.92), \
+        ALWAN_LITERAL(1.055) * ALWAN_POW((x), ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4)) - ALWAN_LITERAL(0.055))
+# define ALWAN_BT2020_OETF(x) ALWAN_SELECT((x) < ALWAN_LITERAL(0.018), \
+        (x) * ALWAN_LITERAL(4.5), \
+        ALWAN_LITERAL(1.099) * ALWAN_POW((x), ALWAN_LITERAL(0.45)) - ALWAN_LITERAL(0.099))
+# define ALWAN_BT2020_EOTF(x) ALWAN_SELECT((x) < (ALWAN_LITERAL(4.5) * ALWAN_LITERAL(0.018)), \
+        (x) / ALWAN_LITERAL(4.5), \
+        ALWAN_POW(((x) + ALWAN_LITERAL(0.099)) / ALWAN_LITERAL(1.099), ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.45)))
 #endif
 
 /* ================================================================
@@ -1249,6 +1278,9 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  *
  * Tests that need a precision-mode-independent assertion should use
  * ULP budgets via TEST_ASSERT_CLOSE_ULP_F* (test_common.h) instead. */
+/* SIMD SVML detection + test tolerances are C-backend concerns (the GPU
+ * backends have no <stdint.h>/SIMD headers and don't run the CPU test suite). */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
 #include "simd/alwan_simd_types.h"   /* ALWAN_HAS_SVML (for the tolerance below) */
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
 #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-3)
@@ -1260,5 +1292,6 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #else
 #define ALWAN_TEST_TOLERANCE ALWAN_LITERAL(1e-12)
 #endif
+#endif /* ALWAN_BACKEND_C */
 
 #endif /* ALWAN_PLATFORM_H */

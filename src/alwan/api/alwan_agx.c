@@ -99,10 +99,15 @@ int alwan_agx_apply_f64(alwan_f64 *out, size_t out_stride,
                        params->tip_upper_angle, params->tip_upper_force, params->tip_upper_offset,
                        params->tip_lower_angle, params->tip_lower_force, params->tip_lower_offset,
                        params->tip_middle_angle, params->tip_middle_force, py3, st, ss);
+    /* Pack the per-call scales into vec3 for the struct-based (GPU-portable) render. */
+    alwan_vec3_f64 pyv, stv, ssv;
+    for (int k = 0; k < 3; k++) { pyv.v[k] = py3[k]; stv.v[k] = st[k]; ssv.v[k] = ss[k]; }
     for (size_t i = 0; i < count; i++) {
         alwan_f64 const *pi = (alwan_f64 const *)((char const *)in + i * in_stride);
         alwan_f64 *po = (alwan_f64 *)((char *)out + i * out_stride);
-        agx_render_f64(pi, po, params->inset.m, lmin, lmax, px, py3, slope, tp, sp, st, ss, params->outset.m);
+        alwan_vec3_f64 in_v; in_v.v[0] = pi[0]; in_v.v[1] = pi[1]; in_v.v[2] = pi[2];
+        alwan_vec3_f64 out_v = agx_render_f64(in_v, params->inset, lmin, lmax, px, pyv, slope, tp, sp, stv, ssv, params->outset);
+        po[0] = out_v.v[0]; po[1] = out_v.v[1]; po[2] = out_v.v[2];
     }
     return ALWAN_OK;
 }
@@ -122,10 +127,14 @@ int alwan_agx_apply_f32(alwan_f32 *out, size_t out_stride,
                        params->tip_upper_angle, params->tip_upper_force, params->tip_upper_offset,
                        params->tip_lower_angle, params->tip_lower_force, params->tip_lower_offset,
                        params->tip_middle_angle, params->tip_middle_force, py3, st, ss);
+    alwan_vec3_f32 pyv, stv, ssv;
+    for (int k = 0; k < 3; k++) { pyv.v[k] = py3[k]; stv.v[k] = st[k]; ssv.v[k] = ss[k]; }
     for (size_t i = 0; i < count; i++) {
         alwan_f32 const *pi = (alwan_f32 const *)((char const *)in + i * in_stride);
         alwan_f32 *po = (alwan_f32 *)((char *)out + i * out_stride);
-        agx_render_f32(pi, po, params->inset.m, lmin, lmax, px, py3, slope, tp, sp, st, ss, params->outset.m);
+        alwan_vec3_f32 in_v; in_v.v[0] = pi[0]; in_v.v[1] = pi[1]; in_v.v[2] = pi[2];
+        alwan_vec3_f32 out_v = agx_render_f32(in_v, params->inset, lmin, lmax, px, pyv, slope, tp, sp, stv, ssv, params->outset);
+        po[0] = out_v.v[0]; po[1] = out_v.v[1]; po[2] = out_v.v[2];
     }
     return ALWAN_OK;
 }

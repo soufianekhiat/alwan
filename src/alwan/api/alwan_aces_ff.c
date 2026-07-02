@@ -4015,57 +4015,15 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
     alwan_vec3_f64 jmh_gc;
     alwan_aces_gamut_compress20_f64(&jmh_gc, &jmh_ts, peak_luminance, limit_primaries);
 
-    /* Step 5: Convert JMh back to RGB in AP1 space */
-    alwan_rgb_f64 rgb_ap1;
-    alwan_aces_jmh_to_rgb20_f64(&rgb_ap1, &jmh_gc, &ap1);
-
-    /* Step 6: Convert from AP1 to limiting primaries */
-    alwan_f64 ap1_to_limit[9];
-    compute_ap1_to_limit_matrix_f64(limit_primaries, ap1_to_limit);
-
-    alwan_rgb_f64 rgb_limit;
-    apply_matrix_rgb(ap1_to_limit, &rgb_ap1, &rgb_limit);
-
-    /* Step 7: Apply D60 to D65 chromatic adaptation if needed
-     * (for D65-based output transforms like Rec.709, P3-D65, Rec.2020) */
-    int needs_cat = (ALWAN_ABS(limit_primaries->white_x - ALWAN_D65_x) < ALWAN_LITERAL(0.01) &&
-                     ALWAN_ABS(limit_primaries->white_y - ALWAN_D65_y) < ALWAN_LITERAL(0.01));
-
+    /* Step 5: Convert the gamut-compressed JMh back to RGB directly in the LIMIT
+     * primaries. OCIO decodes with the limit-primary JMhParams (matching the
+     * gamut compression, which already targets the limit gamut). The old path
+     * decoded in AP1 then applied an AP1->limit matrix + D60->D65 CAT -- but
+     * JMh->RGB is a nonlinear CAM inverse, so that detour is not equivalent and
+     * diverges most at the blue cusp (up to dE_ITP ~8 at hue ~276). Decoding in
+     * the limit primaries is linear-exact vs OCIO across all hues (verified). */
     alwan_rgb_f64 rgb_adapted;
-    if (needs_cat) {
-        /* Apply D60 to D65 Bradford matrix in XYZ space */
-        /* First convert to XYZ */
-        alwan_f64 limit_to_xyz[9];
-        primaries_to_rgb_to_xyz_f64(
-            limit_primaries->red_x, limit_primaries->red_y,
-            limit_primaries->green_x, limit_primaries->green_y,
-            limit_primaries->blue_x, limit_primaries->blue_y,
-            limit_primaries->white_x, limit_primaries->white_y,
-            ALWAN_LITERAL(1.0),
-            limit_to_xyz
-        );
-
-        alwan_f64 xyz[3];
-        xyz[0] = limit_to_xyz[0] * rgb_limit.r + limit_to_xyz[1] * rgb_limit.g + limit_to_xyz[2] * rgb_limit.b;
-        xyz[1] = limit_to_xyz[3] * rgb_limit.r + limit_to_xyz[4] * rgb_limit.g + limit_to_xyz[5] * rgb_limit.b;
-        xyz[2] = limit_to_xyz[6] * rgb_limit.r + limit_to_xyz[7] * rgb_limit.g + limit_to_xyz[8] * rgb_limit.b;
-
-        /* Apply D60 to D65 CAT */
-        alwan_f64 xyz_d65[3];
-        xyz_d65[0] = g_d60_to_d65_bradford[0] * xyz[0] + g_d60_to_d65_bradford[1] * xyz[1] + g_d60_to_d65_bradford[2] * xyz[2];
-        xyz_d65[1] = g_d60_to_d65_bradford[3] * xyz[0] + g_d60_to_d65_bradford[4] * xyz[1] + g_d60_to_d65_bradford[5] * xyz[2];
-        xyz_d65[2] = g_d60_to_d65_bradford[6] * xyz[0] + g_d60_to_d65_bradford[7] * xyz[1] + g_d60_to_d65_bradford[8] * xyz[2];
-
-        /* Convert back to RGB */
-        alwan_f64 xyz_to_limit[9];
-        invert_mat3(limit_to_xyz, xyz_to_limit);
-
-        rgb_adapted.r = xyz_to_limit[0] * xyz_d65[0] + xyz_to_limit[1] * xyz_d65[1] + xyz_to_limit[2] * xyz_d65[2];
-        rgb_adapted.g = xyz_to_limit[3] * xyz_d65[0] + xyz_to_limit[4] * xyz_d65[1] + xyz_to_limit[5] * xyz_d65[2];
-        rgb_adapted.b = xyz_to_limit[6] * xyz_d65[0] + xyz_to_limit[7] * xyz_d65[1] + xyz_to_limit[8] * xyz_d65[2];
-    } else {
-        rgb_adapted = rgb_limit;
-    }
+    alwan_aces_jmh_to_rgb20_f64(&rgb_adapted, &jmh_gc, limit_primaries);
 
     /* Step 8: Clamp and scale for display encoding */
     alwan_rgb_f64 rgb_clamped;
