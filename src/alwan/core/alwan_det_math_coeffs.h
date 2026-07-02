@@ -23,6 +23,7 @@
 #define ALWAN_DET_EXP2_DEGREE 10
 
 /* log2(m), m in [0.5, 1.0]; u = 2*m - 1 in [-1, 1]. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
 static const alwan_f64 alwan_det_log2_coeffs_f64[15] = {
     -4.15037499278775868e-01,  /* c0 */
     +4.80898346969580948e-01,  /* c1 */
@@ -40,6 +41,7 @@ static const alwan_f64 alwan_det_log2_coeffs_f64[15] = {
     +1.00152545440049605e-07,  /* c13 */
     -3.19100097610913222e-08,  /* c14 */
 };
+#endif
 
 static const alwan_f32 alwan_det_log2_coeffs_f32[15] = {
     -4.15037499278775868e-01f,  /* c0 */
@@ -60,6 +62,7 @@ static const alwan_f32 alwan_det_log2_coeffs_f32[15] = {
 };
 
 /* exp2(t), t in [0.0, 1.0]; u = 2*t - 1 in [-1, 1]. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
 static const alwan_f64 alwan_det_exp2_coeffs_f64[11] = {
     +1.41421356237309759e+00,  /* c0 */
     +4.90129071734276667e-01,  /* c1 */
@@ -73,6 +76,7 @@ static const alwan_f64 alwan_det_exp2_coeffs_f64[11] = {
     +2.81861472178929525e-10,  /* c9 */
     +9.35977786593401558e-12,  /* c10 */
 };
+#endif
 
 static const alwan_f32 alwan_det_exp2_coeffs_f32[11] = {
     +1.41421356237309759e+00f,  /* c0 */
