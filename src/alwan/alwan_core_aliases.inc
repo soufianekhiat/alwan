@@ -16,6 +16,18 @@
 #define ALWAN_CORE_T                   alwan_scalar
 #define ALWAN_CORE_FNLIT(base)         base
 #define ALWAN_CORE_FNVLIT(base)        base##_v
+/* Name-mangling vocabulary: on GPU there is a single (float) instantiation, so
+ * the suffixed name IS the base name. (The C setup pastes _f32/_f64.) Without
+ * these, any core built on ALWAN_CORE_FN -- e.g. AgX -- can't compile for GPU. */
+#define ALWAN_CORE_SUFFIX
+#define ALWAN_CORE_FN(base)            base
+#define ALWAN_CORE_FNV(base)           base##_v
+/* Deterministic-aware in C; on GPU these route to the piecewise ALWAN_SRGB_*
+ * from alwan_platform.h (hardware pow -- ULP-approximate vs the C det leg). */
+#define ALWAN_CORE_SRGB_OETF(x)        ALWAN_SRGB_OETF(x)
+#define ALWAN_CORE_SRGB_EOTF(x)        ALWAN_SRGB_EOTF(x)
+#define ALWAN_CORE_BT2020_OETF(x)      ALWAN_BT2020_OETF(x)
+#define ALWAN_CORE_BT2020_EOTF(x)      ALWAN_BT2020_EOTF(x)
 #define ALWAN_CORE_ABS(x)              ALWAN_ABS(x)
 #define ALWAN_CORE_SQRT(x)             ALWAN_SQRT(x)
 #define ALWAN_CORE_CBRT(x)             ALWAN_CBRT(x)
@@ -95,3 +107,10 @@
 #define ALWAN_CORE_HLC                 alwan_hlc
 #define ALWAN_CORE_ST2086_METADATA     alwan_st2086_metadata
 #define ALWAN_CORE_CONTENT_LIGHT_LEVEL alwan_content_light_level
+
+/* In deterministic mode, pull in the GPU single-precision deterministic
+ * transcendentals (alwan_det_srgb_eotf etc.) so the det-aware ALWAN_SRGB_* macros
+ * from alwan_platform.h resolve. Mirrors the C setup, which includes it too. */
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#include "core/alwan_deterministic.h"
+#endif

@@ -87,6 +87,17 @@ typedef enum {
  * GPU Backends: Single-Precision Types Only
  * ================================================================ */
 
+/* alwan_f32/f64 so the shared data headers (e.g. deterministic coeff tables,
+ * declared as static const alwan_f32[]) compile on GPU. The f64 arrays are just
+ * declared (unused on GPU, which runs single precision). HLSL (dxc) and Halide
+ * both have real doubles; GLSL ES does not, so it aliases f64 to float. */
+ALWAN_TYPE_DEF float  alwan_f32;
+#if ALWAN_BACKEND == ALWAN_BACKEND_HLSL || ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
+ALWAN_TYPE_DEF double alwan_f64;
+#else
+ALWAN_TYPE_DEF float  alwan_f64;   /* GLSL ES has no double -- alias to float */
+#endif
+
 /* Math Types */
 ALWAN_TYPE_DEF struct {
     alwan_scalar v[2];

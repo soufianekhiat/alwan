@@ -103,6 +103,9 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
 
     ALWAN_CORE_FNLIT(aces2_JMhParams) jmh_params_storage; ALWAN_CORE_FNLIT(init_JMhParams)(&ap1, &jmh_params_storage);
     ALWAN_CORE_FNLIT(aces2_JMhParams) const *jmh_params = &jmh_params_storage;
+    /* JMhParams for the LIMIT primaries -- the gamut-compressed JMh is decoded
+     * with these (OCIO decodes in the limit primaries, not AP1 + matrix/CAT). */
+    ALWAN_CORE_FNLIT(aces2_JMhParams) limit_jmh_params; ALWAN_CORE_FNLIT(init_JMhParams)(&limit_prim, &limit_jmh_params);
 
     ALWAN_CORE_FNLIT(aces2_TSParams) ts;
     ALWAN_CORE_FNLIT(init_TSParams)((ALWAN_CORE_T)config.peak_luminance, &ts);
@@ -139,35 +142,8 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
              / ALWAN_CORE_LN(ALWAN_CORE_LITERAL(100.0)));
     ALWAN_CORE_T ap1_clamp_max = r_hit_ap1 * ALWAN_CORE_LITERAL(8.0);
 
-    /* Output stage matrix: the OCIO-validated scalar path converts the
-     * gamut-compressed JMh back to RGB in AP1, then applies AP1->limit
-     * primaries and (for D65 displays) a D60->D65 Bradford CAT in XYZ.
-     * All linear, so combine into one 3x3 computed once in f64 and applied
-     * per-pixel. (The previous code went JMh->RGB via the limit-primary
-     * JMhParams directly, skipping the matrix + CAT -- diverged from OCIO.) */
-    alwan_f64 M_out_f64[9];
-    {
-        alwan_f64 ap1_to_limit[9];
-        compute_ap1_to_limit_matrix_f64(&config.primaries, ap1_to_limit);
-        int needs_cat = (ALWAN_ABS(config.primaries.white_x - ALWAN_D65_x) < ALWAN_LITERAL(0.01) &&
-                         ALWAN_ABS(config.primaries.white_y - ALWAN_D65_y) < ALWAN_LITERAL(0.01));
-        if (needs_cat) {
-            alwan_f64 limit_to_xyz[9], xyz_to_limit[9], tmp[9], cat_limit[9];
-            primaries_to_rgb_to_xyz_f64(
-                config.primaries.red_x, config.primaries.red_y,
-                config.primaries.green_x, config.primaries.green_y,
-                config.primaries.blue_x, config.primaries.blue_y,
-                config.primaries.white_x, config.primaries.white_y,
-                ALWAN_LITERAL(1.0), limit_to_xyz);
-            invert_mat3(limit_to_xyz, xyz_to_limit);
-            mult_mat3(g_d60_to_d65_bradford, limit_to_xyz, tmp);
-            mult_mat3(xyz_to_limit, tmp, cat_limit);
-            mult_mat3(cat_limit, ap1_to_limit, M_out_f64);
-        } else {
-            for (int mi = 0; mi < 9; mi++) M_out_f64[mi] = ap1_to_limit[mi];
-        }
-    }
-
+    /* Output stage: the gamut-compressed JMh is decoded directly in the limit
+     * primaries (via limit_jmh_params above) -- no AP1 decode + matrix/CAT. */
     size_t in_step  = in_stride  / sizeof(ALWAN_CORE_T);
     size_t out_step = out_stride / sizeof(ALWAN_CORE_T);
 
@@ -213,14 +189,14 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
             }
         }
 
-        /* JMh -> Aab -> RGB in AP1, then the combined AP1->limit (+CAT) matrix.
-         * This is the OCIO-validated scalar output path. */
+        /* JMh -> Aab -> RGB decoded directly in the LIMIT primaries (matches OCIO;
+         * the old AP1 decode + AP1->limit matrix + CAT diverged at the blue cusp). */
         ALWAN_CORE_VEC3 jmh_gc; jmh_gc.v[0] = J_gc; jmh_gc.v[1] = M_gc; jmh_gc.v[2] = jmh.v[2];
-        ALWAN_CORE_VEC3 aab_out  = ALWAN_CORE_FNVLIT(aces2_jmh_to_aab)(jmh_gc, jmh_params);
-        ALWAN_CORE_VEC3 rgb_ap1  = ALWAN_CORE_FNVLIT(aces2_aab_to_rgb)(aab_out, jmh_params);
-        ALWAN_CORE_T r = (ALWAN_CORE_T)M_out_f64[0]*rgb_ap1.v[0] + (ALWAN_CORE_T)M_out_f64[1]*rgb_ap1.v[1] + (ALWAN_CORE_T)M_out_f64[2]*rgb_ap1.v[2];
-        ALWAN_CORE_T g = (ALWAN_CORE_T)M_out_f64[3]*rgb_ap1.v[0] + (ALWAN_CORE_T)M_out_f64[4]*rgb_ap1.v[1] + (ALWAN_CORE_T)M_out_f64[5]*rgb_ap1.v[2];
-        ALWAN_CORE_T b = (ALWAN_CORE_T)M_out_f64[6]*rgb_ap1.v[0] + (ALWAN_CORE_T)M_out_f64[7]*rgb_ap1.v[1] + (ALWAN_CORE_T)M_out_f64[8]*rgb_ap1.v[2];
+        ALWAN_CORE_VEC3 aab_out  = ALWAN_CORE_FNVLIT(aces2_jmh_to_aab)(jmh_gc, &limit_jmh_params);
+        ALWAN_CORE_VEC3 rgb_lim  = ALWAN_CORE_FNVLIT(aces2_aab_to_rgb)(aab_out, &limit_jmh_params);
+        ALWAN_CORE_T r = rgb_lim.v[0];
+        ALWAN_CORE_T g = rgb_lim.v[1];
+        ALWAN_CORE_T b = rgb_lim.v[2];
 
         /* Clamp + encode exactly as the scalar output transform: clamp the
          * normalized display-linear RGB to [0,1]; for PQ scale to absolute

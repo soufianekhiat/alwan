@@ -34,6 +34,16 @@ ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
 
 ALWAN_DIAG_POP
 
-#endif /* ALWAN_BACKEND_C */
+#else /* HLSL / GLSL / Halide */
+/* ================================================================
+ * GPU backends: single-precision pass via the same .inc. ALWAN_CORE_*
+ * are defined by alwan_{hlsl,glsl,halide}.h (alwan_core_aliases.inc).
+ * The per-pixel agx_render is GPU-portable (struct-by-value); the
+ * host-only setup agx_tip_scales is #if'd out inside the .inc.
+ * ================================================================ */
+
+#include "alwan_agx_core.inc"
+
+#endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_AGX_CORE_H */

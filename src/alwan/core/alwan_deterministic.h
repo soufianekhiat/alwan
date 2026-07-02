@@ -55,6 +55,7 @@
  *     `#pragma fp_contract(off)` with different syntax.
  * This header is only included in deterministic builds (see
  * alwan_math.h), so the TU-wide pragma never touches the fast path. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
 #if defined(__clang__)
 #  pragma STDC FP_CONTRACT OFF
 #elif defined(__GNUC__) && !defined(__INTEL_COMPILER)
@@ -62,6 +63,7 @@
 #elif defined(_MSC_VER)
 #  pragma fp_contract(off)
 #endif
+#endif /* ALWAN_BACKEND_C -- GPU blocks fusion with `precise` instead */
 
 #include "../alwan_types.h"
 #include "alwan_det_srgb_coeffs.h"
@@ -71,8 +73,15 @@
 /* frexp / ldexp are libm but pure IEEE-754 bit manipulation, not
  * transcendental approximation, so they're bit-identical across
  * platforms. Used by alwan_det_log2 / alwan_det_exp2 below for
- * argument reduction. */
+ * argument reduction. (GPU backends use the HLSL frexp/ldexp intrinsics.) */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
 #include <math.h>
+#endif
+
+/* The C path defines the full f32+f64 suffixed set (pointer-Horner + libm
+ * frexp). The GPU path can't take arrays by pointer or call libm, so it gets an
+ * inlined single-precision subset at the end of this header. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
 
 /* ----------------------------------------------------------------
  * Horner evaluation -- explicit `mul; add` so FP_CONTRACT OFF actually
@@ -356,5 +365,53 @@ ALWAN_INLINE alwan_f32 alwan_det_bt2020_eotf_f32(alwan_f32 x) {
         (alwan_f32)ALWAN_DET_BT2020_EOTF_POLY_LO,
         alwan_det_bt2020_eotf_coeffs_f32, ALWAN_DET_BT2020_EOTF_DEGREE);
 }
+
+#else /* ================= GPU backends (single precision) ================= *
+ * Inlined deterministic transcendentals for the AgX GPU kernel: same
+ * polynomials and coefficient tables as the C _f32 path, but frexp/ldexp/floor
+ * are HLSL intrinsics and the Horner loop is inlined with `precise` so dxc does
+ * not fuse mul+add into mad (the C path relies on FP_CONTRACT OFF for exactly
+ * that). Bit-exact with det-C by construction; runtime parity is pending a GPU
+ * test runner. */
+
+ALWAN_INLINE alwan_scalar alwan_det_log2(alwan_scalar x) {
+    alwan_scalar e; alwan_scalar m = frexp(x, e);   /* m in [0.5,1), e = exponent */
+    alwan_scalar u = (alwan_scalar)2.0 * (m - (alwan_scalar)0.5) / (alwan_scalar)0.5 - (alwan_scalar)1.0;
+    precise alwan_scalar acc = alwan_det_log2_coeffs_f32[ALWAN_DET_LOG2_DEGREE];
+    [unroll] for (int i = ALWAN_DET_LOG2_DEGREE - 1; i >= 0; --i) {
+        precise alwan_scalar t = acc * u; acc = t + alwan_det_log2_coeffs_f32[i];
+    }
+    return e + acc;
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_exp2(alwan_scalar t) {
+    alwan_scalar ip = floor(t);
+    alwan_scalar u = (alwan_scalar)2.0 * (t - ip) - (alwan_scalar)1.0;  /* frac[0,1)->[-1,1] */
+    precise alwan_scalar acc = alwan_det_exp2_coeffs_f32[ALWAN_DET_EXP2_DEGREE];
+    [unroll] for (int i = ALWAN_DET_EXP2_DEGREE - 1; i >= 0; --i) {
+        precise alwan_scalar tt = acc * u; acc = tt + alwan_det_exp2_coeffs_f32[i];
+    }
+    return ldexp(acc, ip);
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_pow_pos(alwan_scalar x, alwan_scalar e) {
+    if (x <= (alwan_scalar)0.0) return (alwan_scalar)0.0;
+    return alwan_det_exp2(e * alwan_det_log2(x));
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_srgb_eotf(alwan_scalar x) {
+    if (x <= (alwan_scalar)ALWAN_DET_SRGB_EOTF_BREAK)
+        return x / (alwan_scalar)ALWAN_DET_SRGB_OETF_LINEAR;
+    alwan_scalar z = (x + (alwan_scalar)ALWAN_DET_SRGB_OETF_BETA) / (alwan_scalar)ALWAN_DET_SRGB_OETF_ALPHA;
+    alwan_scalar lo = (alwan_scalar)ALWAN_DET_SRGB_EOTF_POLY_LO;
+    alwan_scalar u = (alwan_scalar)2.0 * (z - lo) / ((alwan_scalar)1.0 - lo) - (alwan_scalar)1.0;
+    precise alwan_scalar acc = alwan_det_srgb_eotf_coeffs_f32[ALWAN_DET_SRGB_EOTF_DEGREE];
+    [unroll] for (int i = ALWAN_DET_SRGB_EOTF_DEGREE - 1; i >= 0; --i) {
+        precise alwan_scalar t = acc * u; acc = t + alwan_det_srgb_eotf_coeffs_f32[i];
+    }
+    return acc;
+}
+
+#endif /* ALWAN_BACKEND_C else GPU */
 
 #endif /* ALWAN_DETERMINISTIC_H */
