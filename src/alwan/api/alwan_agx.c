@@ -75,13 +75,19 @@ alwan_agx_params_f64 alwan_agx_default_params_f64(void) {
 #if ALWAN_WITH_F32
 void alwan_agx_build_geometry_f32(alwan_agx_params_f32 *p) {
     if (!p) return;
-    jp2499_geometry_f32(p->primary_rotation, p->primary_inset, p->primary_purity, p->inset.m, p->outset.m);
+    alwan_vec3_f32 rot, ins, pur;
+    for (int k = 0; k < 3; k++) { rot.v[k] = p->primary_rotation[k]; ins.v[k] = p->primary_inset[k]; pur.v[k] = p->primary_purity[k]; }
+    jp2499_geom_f32 g = jp2499_geometry_f32(rot, ins, pur);
+    p->inset = g.inset; p->outset = g.outset_inv;
 }
 #endif
 #if ALWAN_WITH_F64
 void alwan_agx_build_geometry_f64(alwan_agx_params_f64 *p) {
     if (!p) return;
-    jp2499_geometry_f64(p->primary_rotation, p->primary_inset, p->primary_purity, p->inset.m, p->outset.m);
+    alwan_vec3_f64 rot, ins, pur;
+    for (int k = 0; k < 3; k++) { rot.v[k] = p->primary_rotation[k]; ins.v[k] = p->primary_inset[k]; pur.v[k] = p->primary_purity[k]; }
+    jp2499_geom_f64 g = jp2499_geometry_f64(rot, ins, pur);
+    p->inset = g.inset; p->outset = g.outset_inv;
 }
 #endif
 

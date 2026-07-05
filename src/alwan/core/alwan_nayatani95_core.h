@@ -38,6 +38,14 @@ ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
 
 ALWAN_DIAG_POP
 
+#else /* HLSL / GLSL / Halide */
+/* ================================================================
+ * GPU backends: single-precision pass via the same .inc.
+ * ALWAN_CORE_* macros come from alwan_{hlsl,glsl,halide}.h.
+ * ================================================================ */
+
+#include "alwan_nayatani95_core.inc"
+
 #endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_NAYATANI95_CORE_H */

@@ -93,6 +93,11 @@ typedef enum {
  * tables are guarded C-only in the coeff headers (GPU runs single precision), so
  * nothing on the GPU path references it. */
 ALWAN_TYPE_DEF float  alwan_f32;
+/* Unsigned integer types for the normalize core (bit-depth scaling). GPU
+ * shading languages have no 8/16-bit integer scalars by default -- a 32-bit
+ * uint holds every value the [0, 2^depth-1] domain produces. */
+ALWAN_TYPE_DEF uint   alwan_uint16;
+ALWAN_TYPE_DEF uint   alwan_uint8;
 
 /* Math Types */
 ALWAN_TYPE_DEF struct {

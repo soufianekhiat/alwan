@@ -324,25 +324,28 @@
  * parity is ULP-approximate (a deterministic GPU leg is future work). */
 #if ALWAN_BACKEND != ALWAN_BACKEND_C
 # if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
-/* det GPU: route the sRGB EOTF through the deterministic polynomial (defined in
- * core/alwan_deterministic.h, pulled into the GPU setup under det) so det-GPU is
- * bit-exact with det-C on the determinism-critical transfer. General pow/log2
- * stay hardware -- matching C-det, which also uses libm for those. */
-#  define ALWAN_SRGB_EOTF(x)  alwan_det_srgb_eotf(x)
+/* det GPU: route the sRGB / BT.2020 transfer through the deterministic
+ * polynomials (defined in core/alwan_deterministic.h, pulled into the GPU setup
+ * under det) so det-GPU is bit-exact with det-C on every determinized transfer.
+ * General pow/log2 stay hardware -- matching C-det, which also uses libm. */
+#  define ALWAN_SRGB_EOTF(x)    alwan_det_srgb_eotf(x)
+#  define ALWAN_SRGB_OETF(x)    alwan_det_srgb_oetf(x)
+#  define ALWAN_BT2020_OETF(x)  alwan_det_bt2020_oetf(x)
+#  define ALWAN_BT2020_EOTF(x)  alwan_det_bt2020_eotf(x)
 # else
 #  define ALWAN_SRGB_EOTF(x)  ALWAN_SELECT((x) <= ALWAN_LITERAL(0.04045), \
         (x) / ALWAN_LITERAL(12.92), \
         ALWAN_POW(((x) + ALWAN_LITERAL(0.055)) / ALWAN_LITERAL(1.055), ALWAN_LITERAL(2.4)))
-# endif
-# define ALWAN_SRGB_OETF(x)   ALWAN_SELECT((x) <= ALWAN_LITERAL(0.0031308), \
+#  define ALWAN_SRGB_OETF(x)  ALWAN_SELECT((x) <= ALWAN_LITERAL(0.0031308), \
         (x) * ALWAN_LITERAL(12.92), \
         ALWAN_LITERAL(1.055) * ALWAN_POW((x), ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4)) - ALWAN_LITERAL(0.055))
-# define ALWAN_BT2020_OETF(x) ALWAN_SELECT((x) < ALWAN_LITERAL(0.018), \
+#  define ALWAN_BT2020_OETF(x) ALWAN_SELECT((x) < ALWAN_LITERAL(0.018), \
         (x) * ALWAN_LITERAL(4.5), \
         ALWAN_LITERAL(1.099) * ALWAN_POW((x), ALWAN_LITERAL(0.45)) - ALWAN_LITERAL(0.099))
-# define ALWAN_BT2020_EOTF(x) ALWAN_SELECT((x) < (ALWAN_LITERAL(4.5) * ALWAN_LITERAL(0.018)), \
+#  define ALWAN_BT2020_EOTF(x) ALWAN_SELECT((x) < (ALWAN_LITERAL(4.5) * ALWAN_LITERAL(0.018)), \
         (x) / ALWAN_LITERAL(4.5), \
         ALWAN_POW(((x) + ALWAN_LITERAL(0.099)) / ALWAN_LITERAL(1.099), ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.45)))
+# endif
 #endif
 
 /* ================================================================

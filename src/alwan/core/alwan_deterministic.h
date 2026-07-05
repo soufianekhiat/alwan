@@ -412,6 +412,67 @@ ALWAN_INLINE alwan_scalar alwan_det_srgb_eotf(alwan_scalar x) {
     return acc;
 }
 
+/* Two-segment (lo/hi split) OETF evaluator, mirroring alwan__det_lin_pow_oetf_f32:
+ * same coefficient tables, same normalisation, same rounding order (precise
+ * blocks mad-fusion, matching the C FP_CONTRACT-off contract). */
+
+ALWAN_INLINE alwan_scalar alwan_det_srgb_oetf(alwan_scalar x) {
+    if (x <= (alwan_scalar)ALWAN_DET_SRGB_OETF_BREAK)
+        return (alwan_scalar)ALWAN_DET_SRGB_OETF_LINEAR * x;
+    precise alwan_scalar acc;
+    if (x < (alwan_scalar)ALWAN_DET_SRGB_OETF_SPLIT) {
+        alwan_scalar b = (alwan_scalar)ALWAN_DET_SRGB_OETF_BREAK, s = (alwan_scalar)ALWAN_DET_SRGB_OETF_SPLIT;
+        alwan_scalar u = (alwan_scalar)2.0 * (x - b) / (s - b) - (alwan_scalar)1.0;
+        acc = alwan_det_srgb_oetf_lo_coeffs_f32[ALWAN_DET_SRGB_OETF_LO_DEGREE];
+        [unroll] for (int i = ALWAN_DET_SRGB_OETF_LO_DEGREE - 1; i >= 0; --i) {
+            precise alwan_scalar t = acc * u; acc = t + alwan_det_srgb_oetf_lo_coeffs_f32[i];
+        }
+    } else {
+        alwan_scalar s = (alwan_scalar)ALWAN_DET_SRGB_OETF_SPLIT;
+        alwan_scalar u = (alwan_scalar)2.0 * (x - s) / ((alwan_scalar)1.0 - s) - (alwan_scalar)1.0;
+        acc = alwan_det_srgb_oetf_hi_coeffs_f32[ALWAN_DET_SRGB_OETF_HI_DEGREE];
+        [unroll] for (int i = ALWAN_DET_SRGB_OETF_HI_DEGREE - 1; i >= 0; --i) {
+            precise alwan_scalar t = acc * u; acc = t + alwan_det_srgb_oetf_hi_coeffs_f32[i];
+        }
+    }
+    return (alwan_scalar)ALWAN_DET_SRGB_OETF_ALPHA * acc - (alwan_scalar)ALWAN_DET_SRGB_OETF_BETA;
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_bt2020_oetf(alwan_scalar x) {
+    if (x <= (alwan_scalar)ALWAN_DET_BT2020_OETF_BREAK)
+        return (alwan_scalar)ALWAN_DET_BT2020_OETF_LINEAR * x;
+    precise alwan_scalar acc;
+    if (x < (alwan_scalar)ALWAN_DET_BT2020_OETF_SPLIT) {
+        alwan_scalar b = (alwan_scalar)ALWAN_DET_BT2020_OETF_BREAK, s = (alwan_scalar)ALWAN_DET_BT2020_OETF_SPLIT;
+        alwan_scalar u = (alwan_scalar)2.0 * (x - b) / (s - b) - (alwan_scalar)1.0;
+        acc = alwan_det_bt2020_oetf_lo_coeffs_f32[ALWAN_DET_BT2020_OETF_LO_DEGREE];
+        [unroll] for (int i = ALWAN_DET_BT2020_OETF_LO_DEGREE - 1; i >= 0; --i) {
+            precise alwan_scalar t = acc * u; acc = t + alwan_det_bt2020_oetf_lo_coeffs_f32[i];
+        }
+    } else {
+        alwan_scalar s = (alwan_scalar)ALWAN_DET_BT2020_OETF_SPLIT;
+        alwan_scalar u = (alwan_scalar)2.0 * (x - s) / ((alwan_scalar)1.0 - s) - (alwan_scalar)1.0;
+        acc = alwan_det_bt2020_oetf_hi_coeffs_f32[ALWAN_DET_BT2020_OETF_HI_DEGREE];
+        [unroll] for (int i = ALWAN_DET_BT2020_OETF_HI_DEGREE - 1; i >= 0; --i) {
+            precise alwan_scalar t = acc * u; acc = t + alwan_det_bt2020_oetf_hi_coeffs_f32[i];
+        }
+    }
+    return (alwan_scalar)ALWAN_DET_BT2020_OETF_ALPHA * acc - (alwan_scalar)ALWAN_DET_BT2020_OETF_BETA;
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_bt2020_eotf(alwan_scalar x) {
+    if (x <= (alwan_scalar)ALWAN_DET_BT2020_EOTF_BREAK)
+        return x / (alwan_scalar)ALWAN_DET_BT2020_OETF_LINEAR;
+    alwan_scalar z = (x + (alwan_scalar)ALWAN_DET_BT2020_OETF_BETA) / (alwan_scalar)ALWAN_DET_BT2020_OETF_ALPHA;
+    alwan_scalar lo = (alwan_scalar)ALWAN_DET_BT2020_EOTF_POLY_LO;
+    alwan_scalar u = (alwan_scalar)2.0 * (z - lo) / ((alwan_scalar)1.0 - lo) - (alwan_scalar)1.0;
+    precise alwan_scalar acc = alwan_det_bt2020_eotf_coeffs_f32[ALWAN_DET_BT2020_EOTF_DEGREE];
+    [unroll] for (int i = ALWAN_DET_BT2020_EOTF_DEGREE - 1; i >= 0; --i) {
+        precise alwan_scalar t = acc * u; acc = t + alwan_det_bt2020_eotf_coeffs_f32[i];
+    }
+    return acc;
+}
+
 #endif /* ALWAN_BACKEND_C else GPU */
 
 #endif /* ALWAN_DETERMINISTIC_H */
