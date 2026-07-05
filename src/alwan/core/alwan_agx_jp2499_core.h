@@ -32,6 +32,17 @@ ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
 
 ALWAN_DIAG_POP
 
-#endif /* ALWAN_BACKEND_C */
+#else /* HLSL / GLSL / Halide */
+/* ================================================================
+ * GPU backends: single-precision pass via the same .inc. The whole
+ * core is pointer-free (struct-by-value), so setup (tonescale params,
+ * hue geometry incl. the 3x3 inversions) AND the per-pixel render all
+ * compile for GPU; hosts typically run the setup once and feed the
+ * render its results as uniforms.
+ * ================================================================ */
+
+#include "alwan_agx_jp2499_core.inc"
+
+#endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_AGX_JP2499_CORE_H */

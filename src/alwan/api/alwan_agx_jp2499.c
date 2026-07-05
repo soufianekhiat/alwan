@@ -43,16 +43,24 @@ int alwan_jp2499_apply_f64(alwan_f64 *out, size_t out_stride,
                            alwan_jp2499_params_f64 const *params) {
     if (!out || !in || !params) return ALWAN_E_INVALID;
     alwan_f64 Lp = params->peak_luminance > 0.0 ? params->peak_luminance : 100.0;
-    alwan_f64 m, s, c, fl;
-    jp2499_tonescale_params_f64(Lp, &m, &s, &c, &fl);
-    alwan_f64 inset[9], outset_inv[9];
-    jp2499_geometry_f64(params->hue_flight, params->chroma_attenuation, params->purity, inset, outset_inv);
+    jp2499_ts_f64 ts = jp2499_tonescale_params_f64(Lp);
+    alwan_vec3_f64 hf, ca, pu, wt, bt;
+    for (int k = 0; k < 3; k++) {
+        hf.v[k] = params->hue_flight[k];
+        ca.v[k] = params->chroma_attenuation[k];
+        pu.v[k] = params->purity[k];
+    }
+    wt.v[0] = params->white_tip.r; wt.v[1] = params->white_tip.g; wt.v[2] = params->white_tip.b;
+    bt.v[0] = params->black_tip.r; bt.v[1] = params->black_tip.g; bt.v[2] = params->black_tip.b;
+    jp2499_geom_f64 geo = jp2499_geometry_f64(hf, ca, pu);
     alwan_f64 const ds = 1.0;  /* SDR display scale (linear output; caller encodes) */
     for (size_t i = 0; i < count; i++) {
         alwan_f64 const *pi = (alwan_f64 const *)((char const *)in + i * in_stride);
         alwan_f64 *po = (alwan_f64 *)((char *)out + i * out_stride);
-        jp2499_render_f64(pi, po, m, s, c, fl, ds, inset, outset_inv,
-                          (alwan_f64 const *)&params->white_tip, (alwan_f64 const *)&params->black_tip);
+        alwan_vec3_f64 in_v; in_v.v[0] = pi[0]; in_v.v[1] = pi[1]; in_v.v[2] = pi[2];
+        alwan_vec3_f64 out_v = jp2499_render_f64(in_v, ts.m, ts.s, ts.c, ts.fl, ds,
+                                                 geo.inset, geo.outset_inv, wt, bt);
+        po[0] = out_v.v[0]; po[1] = out_v.v[1]; po[2] = out_v.v[2];
     }
     return ALWAN_OK;
 }
@@ -64,16 +72,24 @@ int alwan_jp2499_apply_f32(alwan_f32 *out, size_t out_stride,
                            alwan_jp2499_params_f32 const *params) {
     if (!out || !in || !params) return ALWAN_E_INVALID;
     alwan_f32 Lp = params->peak_luminance > 0.0f ? params->peak_luminance : 100.0f;
-    alwan_f32 m, s, c, fl;
-    jp2499_tonescale_params_f32(Lp, &m, &s, &c, &fl);
-    alwan_f32 inset[9], outset_inv[9];
-    jp2499_geometry_f32(params->hue_flight, params->chroma_attenuation, params->purity, inset, outset_inv);
+    jp2499_ts_f32 ts = jp2499_tonescale_params_f32(Lp);
+    alwan_vec3_f32 hf, ca, pu, wt, bt;
+    for (int k = 0; k < 3; k++) {
+        hf.v[k] = params->hue_flight[k];
+        ca.v[k] = params->chroma_attenuation[k];
+        pu.v[k] = params->purity[k];
+    }
+    wt.v[0] = params->white_tip.r; wt.v[1] = params->white_tip.g; wt.v[2] = params->white_tip.b;
+    bt.v[0] = params->black_tip.r; bt.v[1] = params->black_tip.g; bt.v[2] = params->black_tip.b;
+    jp2499_geom_f32 geo = jp2499_geometry_f32(hf, ca, pu);
     alwan_f32 const ds = 1.0f;
     for (size_t i = 0; i < count; i++) {
         alwan_f32 const *pi = (alwan_f32 const *)((char const *)in + i * in_stride);
         alwan_f32 *po = (alwan_f32 *)((char *)out + i * out_stride);
-        jp2499_render_f32(pi, po, m, s, c, fl, ds, inset, outset_inv,
-                          (alwan_f32 const *)&params->white_tip, (alwan_f32 const *)&params->black_tip);
+        alwan_vec3_f32 in_v; in_v.v[0] = pi[0]; in_v.v[1] = pi[1]; in_v.v[2] = pi[2];
+        alwan_vec3_f32 out_v = jp2499_render_f32(in_v, ts.m, ts.s, ts.c, ts.fl, ds,
+                                                 geo.inset, geo.outset_inv, wt, bt);
+        po[0] = out_v.v[0]; po[1] = out_v.v[1]; po[2] = out_v.v[2];
     }
     return ALWAN_OK;
 }
