@@ -1,0 +1,36 @@
+name: Permutation builds
+# Verify the library compiles in every linkage x determinism x optimization
+# permutation -- the CMake mapping of the Sharpmake build matrix
+# {Lib,Dll} x {NonDet,Det} x {Debug,Release}:
+#   linkage      -> BUILD_SHARED_LIBS   = OFF (static) / ON (shared)
+#   determinism  -> ALWAN_DETERMINISTIC = OFF / ON
+#   optimization -> CMAKE_BUILD_TYPE    = Debug / Release
+# (Warnings-as-errors is Release-scoped, so the Release rows also enforce a
+# clean compile; the Det rows exercise the polynomial math + warning suppressions.)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  permutations:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+        deterministic: [OFF, ON]
+        shared: [OFF, ON]
+    name: ${{ matrix.build_type }}-det${{ matrix.deterministic }}-shared${{ matrix.shared }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DALWAN_DETERMINISTIC=${{ matrix.deterministic }}
+          -DBUILD_SHARED_LIBS=${{ matrix.shared }}
+          -DALWAN_ENABLE_WARNINGS=ON
+          -DALWAN_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
