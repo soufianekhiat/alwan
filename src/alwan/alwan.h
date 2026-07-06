@@ -2153,6 +2153,37 @@ int alwan_hdr_gamut_map_ictcp_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *r
 int alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *target_space, alwan_rgb_f32 const *rgb_in);
 int alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *target_space, alwan_rgb_f64 const *rgb_in);
 
+/* Spatial picture-formation gamut mapping (docs/gamut_spatial_formation.md).
+ * Image-aware: reshapes the whole record field to fit [0,peak]^3 while
+ * preserving local per-channel gradient structure (no increment<->decrement
+ * flips), spreading the correction spatially instead of clipping flat. Unlike
+ * the pixel-independent alwan_gamut_map_method family this needs width/height
+ * and works on a full interleaved RGB image.
+ *   s          : [0,1] spatial spread. 1 = touch only out-of-gamut pixels
+ *                (near clip); 0 = reshape the whole image; between = a smooth
+ *                spatial-distance falloff.
+ *   reach      : spatial falloff radius in pixels (<=0 => image diagonal).
+ *   beta       : structure-vs-fidelity balance (<=0 => default).
+ *   compress   : gradient compression c in (0,1] (<=0 => 1 = preserve).
+ *   depth_sigma: softness of depth-jump gating (<=0 or depth NULL => ignore).
+ *   iterations : fixed solver iterations (<=0 => default; determinism).
+ *   peak       : cube upper bound (1.0 for SDR).
+ * depth is optional (NULL => single global envelope): one scalar per pixel,
+ * used to stop coupling across occlusion boundaries. */
+typedef struct {
+    alwan_f32 s, reach, beta, compress, depth_sigma;
+    int iterations;
+    alwan_f32 peak;
+} alwan_gamut_spatial_params_f32;
+typedef struct {
+    alwan_f64 s, reach, beta, compress, depth_sigma;
+    int iterations;
+    alwan_f64 peak;
+} alwan_gamut_spatial_params_f64;
+
+int alwan_gamut_map_spatial_f32(alwan_f32 *out, alwan_f32 const *in, alwan_f32 const *depth, int width, int height, alwan_gamut_spatial_params_f32 const *params, alwan_ctx *ctx);
+int alwan_gamut_map_spatial_f64(alwan_f64 *out, alwan_f64 const *in, alwan_f64 const *depth, int width, int height, alwan_gamut_spatial_params_f64 const *params, alwan_ctx *ctx);
+
 /* ----------------------------------------------------------------
  * Spectral Upsampling - RGB to Spectrum Conversion
  * ---------------------------------------------------------------- */
