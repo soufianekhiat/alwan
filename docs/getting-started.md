@@ -43,27 +43,31 @@ git clone --recursive https://github.com/soufianekhiat/alwan.git
 cd alwan
 ```
 
-### 2. Bootstrap Sharpmake projects on Windows
-
-```batch
-buildsystem\bootstrap.bat
-```
-
-This generates `Alwan_vs2022_Win64.sln`.
-
-### 3. Build
-
-Sharpmake / MSVC:
-
-```batch
-msbuild Alwan_vs2022_Win64.sln /p:Configuration=Release_f64
-```
-
-Or CMake:
+### 2. Build with CMake (all platforms)
 
 ```sh
 cmake -S . -B build
 cmake --build build
+```
+
+This is the portable route and what CI uses on every host target.
+
+### 3. Optional: the Sharpmake / Visual Studio workflow
+
+Sharpmake generates `Alwan_vs2022_Win64.sln` (needs the .NET 6+ SDK; the
+generator runs on any OS, the produced solution builds with Visual Studio):
+
+```sh
+buildsystem/bootstrap.sh      # POSIX shells (also Git Bash on Windows)
+```
+```batch
+buildsystem\bootstrap.bat     # Windows cmd
+```
+
+Then:
+
+```batch
+msbuild Alwan_vs2022_Win64.sln /p:Configuration=Release_f64
 ```
 
 ### 4. Tests

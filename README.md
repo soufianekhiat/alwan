@@ -49,30 +49,58 @@ A small, dependency-free colour science library in pure C11. Alwan provides prod
 
 ## Why Alwan?
 
-**Built for Production**
-- Zero external dependencies — pure C11, single library target
+What makes Alwan different from other colour libraries:
+
+**1. Reference-validated correctness — with receipts**
+- Every algorithm is validated against the authority for that algorithm:
+  [OCIO](https://opencolorio.org/), Python's
+  [colour-science](https://github.com/colour-science/colour), the official
+  ACES CTL, and vendors' own code (Sobotka's AgX, Blender's AgX, Jp-DRT)
+- Measured, not asserted: the ACES 2.0 output transform matches OCIO to
+  **ΔE ITP 0.000 across the full hue sweep**; Blender AgX is an exact match
+- Every embedded constant traces to a gendata script that calls the
+  reference implementation — no mystery matrices
+
+**2. Deterministic — across platforms *and* backends**
+- Opt-in [`ALWAN_DETERMINISTIC=ON`](docs/determinism.md) produces
+  **byte-identical output across every supported platform, compiler, and
+  optimisation level** — golden files, audit pipelines, frame-accurate replay
+- The deterministic transfer functions are **bit-exact between the C build
+  and the GPU backends** (verified on D3D12): the CPU and the shader agree
+  to the last bit
+
+**3. One source, CPU and GPU**
+- The per-pixel core kernels compile unchanged as **C, HLSL, GLSL, and
+  Halide** — the same `.inc` source is your library code and your shader
+  code (see [backend limits](docs/backends_limits.md) for per-feature status)
+
+**4. No hidden behaviour**
+- **Raw math by default**: conversions and simulations never silently clamp
+  or destroy out-of-gamut information — explicit `_gamut_safe(..., method)`
+  and `_unclamped` variants exist when you want the guarantee spelled out
+  (see [gamut mapping](docs/gamut_mapping.md))
+- **Normalized ranges by default** (`ALWAN_NORMALIZE_RANGES=1`): bounded
+  channels arrive and leave in [0, 1] unless you opt out
+- Errors through one `alwan_status` contract; strides are explicit bytes
+
+**5. Native dual precision + byte-exact bulk paths**
+- Every function exists as real `_f32` **and** `_f64` — natively compiled
+  twins, not casting facades; pick precision at the call site
+- **Scalar == SIMD == planar == typed, byte-exact**: the bulk `map` kernels
+  are guaranteed byte-identical to the scalar path, in fast and
+  deterministic builds alike
+- SIMD backends for SSE2 / AVX / AVX2 / NEON, plus a scalar fallback;
+  typed pipeline for u8 / u16 / f16 / f32 / f64 buffers
+
+**6. Zero dependencies, zero runtime I/O, wide coverage**
+- Pure C11, single library target; all data (CMFs, illuminants, LUTs,
+  coefficient tables) embedded at compile time — no files to load at runtime
+- One coherent API for what usually takes several libraries: ACES 1.x *and*
+  2.0, camera logs for 9 vendors, the AgX family plus a parameterized
+  analytic engine and JP2499, 10 colour appearance models, spectral
+  upsampling, CVD simulation, 11 gamut-mapping algorithms (including an
+  HDR ICtCp mapper), the ΔE family, LUT baking and CLF interop
 - Six host targets verified in CI (Linux/macOS/Windows × x64/ARM)
-
-**Performance-First Design**
-- `_f32` (float) and `_f64` (double) variants compile into a single
-  binary by default; pick precision at the call site
-- SIMD bulk kernels with backends for SSE2 / AVX / AVX2 / NEON, plus
-  a scalar fallback for any other ISA
-- Map kernels operate on AoS/SoA buffers with `memcpy`-style
-  argument convention
-
-**Scientifically Rigorous**
-- Validated against Python's [colour-science](https://github.com/colour-science/colour) library
-- Comprehensive reference data (CMFs, illuminants, RGB spaces, ACES
-  matrices) embedded as full-precision CSV literals
-- Authoritative fixtures regenerated automatically from
-  colour-science via the gendata pipeline
-
-**Reproducible**
-- Opt-in [`ALWAN_DETERMINISTIC=ON`](docs/determinism.md) makes the
-  library produce **byte-identical output across every supported
-  platform, compiler, and optimisation level** — useful for golden
-  files, audit pipelines, and frame-accurate cross-platform replay
 
 ---
 
@@ -122,22 +150,28 @@ Or
 
 **Prerequisites (CMake):** CMake 3.20+, any C11 compiler, Git
 
-1. **Clone and bootstrap:**
-   ```batch
+1. **Clone:**
+   ```sh
    git clone --recursive https://github.com/soufianekhiat/alwan.git
    cd alwan
-   buildsystem\bootstrap.bat
    ```
 
-2. **Build the library (Sharpmake/MSVC):**
-   ```batch
-   msbuild Alwan_vs2022_Win64.sln /p:Configuration=Release_f64
-   ```
-
-   **Or with CMake:**
+2. **Build with CMake (all platforms):**
    ```sh
    cmake -S . -B build
    cmake --build build
+   ```
+
+   **Or bootstrap the Sharpmake / Visual Studio workflow** (generates
+   `Alwan_vs2022_Win64.sln`; needs the .NET 6+ SDK):
+   ```sh
+   buildsystem/bootstrap.sh      # POSIX shells (also Git Bash on Windows)
+   ```
+   ```batch
+   buildsystem\bootstrap.bat     # Windows cmd
+   ```
+   ```batch
+   msbuild Alwan_vs2022_Win64.sln /p:Configuration=Release_f64
    ```
 
    Tests, benchmarks, and image-gen tooling live in the sibling
@@ -575,15 +609,26 @@ alwan_dev/                   # sibling repo (tests, benches, tools)
 
 ## Build System
 
-Alwan uses [Sharpmake](https://github.com/ubisoft/Sharpmake) for project generation:
+Two build routes, one source of truth:
 
+- **CMake** — the portable route; what CI builds on all six host targets
+  (Linux/macOS/Windows × x64/ARM). No extra tooling beyond a C11 compiler.
+- **[Sharpmake](https://github.com/ubisoft/Sharpmake)** — the reference
+  project generator (Visual Studio 2022 solutions), optional and mostly a
+  Windows-development convenience. Sharpmake itself runs anywhere .NET 6+
+  runs; both script flavours are provided.
+
+Sharpmake perks:
 - **No vcpkg/Conan/etc:** Single submodule dependency
 - **Fast incremental builds:** Only regenerate when scripts change
 - **Multi-configuration:** Debug/Release × float32/float64 in one solution
 
 Regenerate projects after modifying `.cs` files:
+```sh
+buildsystem/generate_projects.sh    # POSIX shells (also Git Bash on Windows)
+```
 ```batch
-buildsystem\generate_projects.bat
+buildsystem\generate_projects.bat   # Windows cmd
 ```
 
 ---

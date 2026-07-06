@@ -1,0 +1,9 @@
+# Shell scripts must stay LF -- a CRLF shebang line breaks them on Unix.
+*.sh   text eol=lf
+
+# Windows cmd scripts stay CRLF.
+*.bat  text eol=crlf
+
+# Embedded data tables: normalize to LF so the byte content is identical on
+# every platform (they are #included into C arrays).
+*.csv  text eol=lf
