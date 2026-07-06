@@ -66,10 +66,7 @@ static int ALWAN_MAP_LIT(alwan__cvd_brettel_map_interleave)(
                     /* fused mat3 multiply */
                     alwan_map_simd cr, cg, cb;
                     ALWAN_MAP_NAME(alwan__mat3_mul_simd)(&cr, &cg, &cb, &fused, r, g, b);
-                    /* saturate [0,1] */
-                    cr = alwan_map_simd_clamp(cr, zero, one);
-                    cg = alwan_map_simd_clamp(cg, zero, one);
-                    cb = alwan_map_simd_clamp(cb, zero, one);
+                    /* raw simulation -- no gamut clamp (matches the scalar core) */
                     /* lerp(original, cvd, severity) = original*(1-sev) + cvd*sev */
                     alwan_map_simd_store(&d0[i], alwan_map_simd_fmadd(r, inv_sev, alwan_map_simd_mul(cr, sev)));
                     alwan_map_simd_store(&d1[i], alwan_map_simd_fmadd(g, inv_sev, alwan_map_simd_mul(cg, sev)));
@@ -183,9 +180,7 @@ static int ALWAN_MAP_LIT(alwan__cvd_brettel_map_planar)(
                     alwan_map_simd b = alwan_map_simd_load(&c2[i]);
                     alwan_map_simd cr, cg, cb;
                     ALWAN_MAP_NAME(alwan__mat3_mul_simd)(&cr, &cg, &cb, &fused, r, g, b);
-                    cr = alwan_map_simd_clamp(cr, zero, one);
-                    cg = alwan_map_simd_clamp(cg, zero, one);
-                    cb = alwan_map_simd_clamp(cb, zero, one);
+                    /* raw simulation -- no gamut clamp (matches the scalar core) */
                     alwan_map_simd_store(&d0[i], alwan_map_simd_fmadd(r, inv_sev, alwan_map_simd_mul(cr, sev)));
                     alwan_map_simd_store(&d1[i], alwan_map_simd_fmadd(g, inv_sev, alwan_map_simd_mul(cg, sev)));
                     alwan_map_simd_store(&d2[i], alwan_map_simd_fmadd(b, inv_sev, alwan_map_simd_mul(cb, sev)));
@@ -290,18 +285,19 @@ int ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_interleave)(alwan_map_lane
                     alwan_map_simd b = alwan_map_simd_load(&c2[i]);
                     alwan_map_simd o0, o1, o2;
                     ALWAN_MAP_NAME(alwan__mat3_mul_simd)(&o0, &o1, &o2, &mat, r, g, b);
-                    alwan_map_simd_store(&c0[i], alwan_map_simd_clamp(o0, zero, one));
-                    alwan_map_simd_store(&c1[i], alwan_map_simd_clamp(o1, zero, one));
-                    alwan_map_simd_store(&c2[i], alwan_map_simd_clamp(o2, zero, one));
+                    /* raw Machado product -- no gamut clamp (matches the scalar core) */
+                    alwan_map_simd_store(&c0[i], o0);
+                    alwan_map_simd_store(&c1[i], o1);
+                    alwan_map_simd_store(&c2[i], o2);
                 }
             }
 #endif
             for (; i < tile; i++) {
                 ALWAN_MAP_LIT(alwan_vec3) v = {{(alwan_map_lane)c0[i], (alwan_map_lane)c1[i], (alwan_map_lane)c2[i]}};
                 ALWAN_MAP_LIT(alwan_vec3) r = ALWAN_MAP_LITV(alwan_mat3_mulv)(mat, v);
-                c0[i] = (alwan_map_lane)ALWAN_MAP_LIT(alwan_saturate)(r.v[0]);
-                c1[i] = (alwan_map_lane)ALWAN_MAP_LIT(alwan_saturate)(r.v[1]);
-                c2[i] = (alwan_map_lane)ALWAN_MAP_LIT(alwan_saturate)(r.v[2]);
+                c0[i] = (alwan_map_lane)r.v[0];
+                c1[i] = (alwan_map_lane)r.v[1];
+                c2[i] = (alwan_map_lane)r.v[2];
             }
         }
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(rgb_out, processed, out_stride, c0, c1, c2, tile);
@@ -347,18 +343,19 @@ int ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_planar)(alwan_map_lane *ou
                     alwan_map_simd b = alwan_map_simd_load(&c2[i]);
                     alwan_map_simd o0, o1, o2;
                     ALWAN_MAP_NAME(alwan__mat3_mul_simd)(&o0, &o1, &o2, &mat, r, g, b);
-                    alwan_map_simd_store(&c0[i], alwan_map_simd_clamp(o0, zero, one));
-                    alwan_map_simd_store(&c1[i], alwan_map_simd_clamp(o1, zero, one));
-                    alwan_map_simd_store(&c2[i], alwan_map_simd_clamp(o2, zero, one));
+                    /* raw Machado product -- no gamut clamp (matches the scalar core) */
+                    alwan_map_simd_store(&c0[i], o0);
+                    alwan_map_simd_store(&c1[i], o1);
+                    alwan_map_simd_store(&c2[i], o2);
                 }
             }
 #endif
             for (; i < tile; i++) {
                 ALWAN_MAP_LIT(alwan_vec3) v = {{(alwan_map_lane)c0[i], (alwan_map_lane)c1[i], (alwan_map_lane)c2[i]}};
                 ALWAN_MAP_LIT(alwan_vec3) r = ALWAN_MAP_LITV(alwan_mat3_mulv)(mat, v);
-                c0[i] = (alwan_map_lane)ALWAN_MAP_LIT(alwan_saturate)(r.v[0]);
-                c1[i] = (alwan_map_lane)ALWAN_MAP_LIT(alwan_saturate)(r.v[1]);
-                c2[i] = (alwan_map_lane)ALWAN_MAP_LIT(alwan_saturate)(r.v[2]);
+                c0[i] = (alwan_map_lane)r.v[0];
+                c1[i] = (alwan_map_lane)r.v[1];
+                c2[i] = (alwan_map_lane)r.v[2];
             }
         }
         ALWAN_MAP_NAME(alwan__store_tile_planar3)(out_r, out_g, out_b, processed, out_stride, c0, c1, c2, tile);

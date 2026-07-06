@@ -832,6 +832,23 @@ typedef enum {
     ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE /* Lightness Preserving - P9.5 */
 } alwan_gamut_map_method;
 
+/* Method selection guide (see docs/gamut_mapping.md for the full discussion):
+ *
+ *   method              mechanism                   preserves            use when
+ *   ------------------  --------------------------  -------------------  -------------------------------------
+ *   CLIP                per-channel clamp           nothing perceptual   final encode; content already ~in gamut
+ *   HUE_PRESERVING      RGB scale toward neutral    RGB channel ratios   real-time paths (no Oklab cost)
+ *   ADAPTIVE_L0         Oklab project toward L=0.5  hue; balances L/C    general-purpose photographic default
+ *   ADAPTIVE_CUSP       Oklab project toward cusp   hue; max chroma      saturated graphics / brand colors
+ *   CHROMA_COMPRESS     reduce C, hold L and h      lightness + hue      hue fidelity paramount (CSS-like)
+ *   SGCK                knee-compressed segment     gradient smoothness  wide->narrow images with smooth ramps
+ *   HPMINDE             min dE on hue leaf          colorimetric close   proofing (smallest visible error)
+ *   LIGHTNESS_PRESERVE  hold L, sacrifice C         lightness contrast   text overlays / skin tones
+ *
+ * Honesty notes: (1) the perceptual (Oklab) boundary model is currently
+ * sRGB-anchored -- for targets wider than sRGB the Oklab methods over-compress;
+ * (2) for HDR (PQ/HLG, absolute nits) use alwan_hdr_gamut_map_ictcp instead. */
+
 /* Exact RGB gamut volume in linear XYZ.
  * The RGB unit cube maps to a parallelepiped under the RGB->XYZ matrix M,
  * whose volume is exactly |det(M)| -- a closed-form result, not an estimate.
@@ -934,6 +951,14 @@ int alwan_float_to_uint_f32(alwan_uint16 *out, alwan_f32 const *in, int bit_dept
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if transform not supported */
 int alwan_view_transform_apply_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 int alwan_view_transform_apply_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
+/* Unclamped variant: the per-channel tone mappers (REINHARD_EXT, UCHIMURA,
+ * LOTTES, TONY_MCMAPFACE, REINHARD_CALIBRATED, EXPOSURE) return the raw
+ * operator output -- no display [0,1] clamp, out-of-gamut chroma preserved
+ * (numerical pow-domain guards are retained where the math requires).
+ * Transforms whose [0,1] output is definitional (AgX, ACES, BT.2446/2390,
+ * PBR Neutral) return identical results through both entry points. */
+int alwan_view_transform_apply_unclamped_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
+int alwan_view_transform_apply_unclamped_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 /* Bulk (map) variants of the view transform. The view workers are scalar, so
  * these are byte-identical to alwan_view_transform_apply; the _ex variant adds
  * typed (u8/u16/f16/f32/f64) I/O for the image pipeline. */
@@ -2108,6 +2133,26 @@ int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
                                   alwan_rgb_space_desc_f64 const *space,
                                   alwan_rgb_f64 const *rgb_linear);
 
+/* HDR gamut mapping in ICtCp (PQ) -- the HDR counterpart of the SDR methods
+ * above. rgb_linear is linear BT.2020 RGB in ABSOLUTE cd/m2 (nits); the colour
+ * is mapped into the display volume [0, peak_nits]^3 by chroma reduction in
+ * ICtCp: intensity clamped to the displayable range, hue angle preserved
+ * (Ct/Cp scaled jointly), chroma binary-searched to the boundary, with a
+ * dE-ITP (BT.2124) JND early-out to the naive clip when indistinguishable.
+ * In-volume inputs pass through bit-exactly. Output guaranteed in [0, peak]. */
+int alwan_hdr_gamut_map_ictcp_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_linear, alwan_f32 peak_nits);
+int alwan_hdr_gamut_map_ictcp_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_linear, alwan_f64 peak_nits);
+
+/* CSS Color 4 gamut mapping parameterized by target space: same Oklch
+ * chroma-reduction + deltaEOK-JND algorithm as alwan_css_gamut_*, but the
+ * destination gamut is target_space's unit cube (e.g. Display-P3, Rec.2020)
+ * instead of hard-wired sRGB. Input/output are LINEAR target-space RGB.
+ * Assumes a D65-white target (no chromatic adaptation vs the sRGB-anchored
+ * Oklab pivot). With the sRGB descriptor this matches alwan_css_gamut_* on
+ * linear values. */
+int alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *target_space, alwan_rgb_f32 const *rgb_in);
+int alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *target_space, alwan_rgb_f64 const *rgb_in);
+
 /* ----------------------------------------------------------------
  * Spectral Upsampling - RGB to Spectrum Conversion
  * ---------------------------------------------------------------- */
@@ -2513,18 +2558,28 @@ typedef enum {
     ALWAN_YCBCR_BT2020    /* ITU-R BT.2020 (UHD) */
 } alwan_ycbcr_standard;
 
-/* RGB <-> YCbCr conversions (RGB in [0, 1], YCbCr full range [0, 1]) */
+/* RGB <-> YCbCr conversions (nominal ranges: RGB [0, 1], YCbCr full range [0, 1]).
+ * The decode is the RAW standard math: out-of-range excursions (super-black /
+ * super-white, xvYCC) decode to values outside [0,1] and are PRESERVED -- no
+ * silent gamut clamp. Use alwan_ycbcr_to_rgb_gamut_safe for guaranteed [0,1]
+ * output (ALWAN_GAMUT_MAP_CLIP reproduces the pre-2.0 implicit clamping). */
 int alwan_rgb_to_ycbcr_f64(alwan_ycbcr_f64 *ycbcr_out, alwan_rgb_f64 const *rgb, alwan_ycbcr_standard standard);
 int alwan_rgb_to_ycbcr_f32(alwan_ycbcr_f32 *ycbcr_out, alwan_rgb_f32 const *rgb, alwan_ycbcr_standard standard);
 int alwan_ycbcr_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr, alwan_ycbcr_standard standard);
 int alwan_ycbcr_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr, alwan_ycbcr_standard standard);
+int alwan_ycbcr_to_rgb_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr, alwan_ycbcr_standard standard, alwan_gamut_map_method method);
+int alwan_ycbcr_to_rgb_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr, alwan_ycbcr_standard standard, alwan_gamut_map_method method);
 
 /* RGB <-> YcCbcCrc conversions (constant luminance, BT.2020)
- * bit_depth: 8, 10, 12, or 16 -- controls legal range scaling */
+ * bit_depth: 8, 10, 12, or 16 -- controls legal range scaling
+ * The decode is raw (no gamut clamp -- see the YCbCr note above); use
+ * alwan_yccbccrc_to_rgb_gamut_safe for guaranteed [0,1] linear output. */
 int alwan_rgb_to_yccbccrc_f32(alwan_yccbccrc_f32 *yccbccrc_out, alwan_rgb_f32 const *rgb, int bit_depth);
 int alwan_rgb_to_yccbccrc_f64(alwan_yccbccrc_f64 *yccbccrc_out, alwan_rgb_f64 const *rgb, int bit_depth);
 int alwan_yccbccrc_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_yccbccrc_f32 const *yccbccrc, int bit_depth);
 int alwan_yccbccrc_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_yccbccrc_f64 const *yccbccrc, int bit_depth);
+int alwan_yccbccrc_to_rgb_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_yccbccrc_f32 const *yccbccrc, int bit_depth, alwan_gamut_map_method method);
+int alwan_yccbccrc_to_rgb_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_yccbccrc_f64 const *yccbccrc, int bit_depth, alwan_gamut_map_method method);
 
 /* YCbCr legal <-> full range conversion
  * Converts between full-range [0,1] and legal/narrow range with proper chroma centering.
@@ -2726,6 +2781,13 @@ int alwan_rgb_to_yccbccrc_f32_map_interleave(alwan_f32 *yccbccrc_out, size_t out
 int alwan_rgb_to_yccbccrc_f64_map_interleave(alwan_f64 *yccbccrc_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, int bit_depth);
 int alwan_yccbccrc_to_rgb_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *yccbccrc_in, size_t in_stride, size_t count, int bit_depth);
 int alwan_yccbccrc_to_rgb_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *yccbccrc_in, size_t in_stride, size_t count, int bit_depth);
+/* Gamut-safe bulk decode: raw decode, then per-pixel gamut mapping (output
+ * guaranteed in [0,1]; CLIP = the pre-2.0 implicit clamp). Non-CLIP methods
+ * run the scalar perceptual mapper per pixel -- prefer CLIP on hot paths. */
+int alwan_ycbcr_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *ycbcr_in, size_t in_stride, size_t count, alwan_ycbcr_standard standard, alwan_gamut_map_method method);
+int alwan_ycbcr_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *ycbcr_in, size_t in_stride, size_t count, alwan_ycbcr_standard standard, alwan_gamut_map_method method);
+int alwan_yccbccrc_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *yccbccrc_in, size_t in_stride, size_t count, int bit_depth, alwan_gamut_map_method method);
+int alwan_yccbccrc_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *yccbccrc_in, size_t in_stride, size_t count, int bit_depth, alwan_gamut_map_method method);
 int alwan_rgb_to_yccbccrc_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, int bit_depth);
 int alwan_yccbccrc_to_rgb_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, int bit_depth);
 
@@ -2842,7 +2904,11 @@ typedef enum {
  * cvd_type: type of color vision deficiency
  * severity: severity of deficiency [0, 1] (1.0 = complete, 0.0 = normal vision)
  *          (only applies to anomalous trichromacy types)
- * rgb_out: output simulated RGB color as seen by person with CVD
+ * rgb_out: output simulated RGB color as seen by person with CVD -- RAW
+ *          simulation result, NOT gamut-clamped: saturated inputs can land
+ *          outside [0,1]. Use alwan_simulate_cvd_gamut_safe (or the _machado/
+ *          _ex twins) for guaranteed [0,1] output; ALWAN_GAMUT_MAP_CLIP
+ *          reproduces the pre-2.0 implicit clamping.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
  * Algorithm: Brettel, Vienot & Mollon (1997) simulation using confusion lines */
 int alwan_simulate_cvd_f32(alwan_rgb_f32 *rgb_out,
@@ -2907,6 +2973,20 @@ int alwan_simulate_cvd_machado_f32_map_planar(alwan_f32 *out_r, size_t out_strid
 int alwan_simulate_cvd_machado_f64_map_planar(alwan_f64 *out_r, size_t out_stride, alwan_f64 *out_g, alwan_f64 *out_b, alwan_f64 const *in_r, size_t in_stride, alwan_f64 const *in_g, alwan_f64 const *in_b, size_t count, alwan_cvd_type cvd_type, alwan_f64 severity);
 int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity);
 int alwan_simulate_cvd_machado_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity);
+
+/* Gamut-safe CVD simulation: raw simulation, then gamut mapping into sRGB
+ * (output guaranteed in [0,1]; ALWAN_GAMUT_MAP_CLIP = the pre-2.0 implicit
+ * post-simulation clip). */
+int alwan_simulate_cvd_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method);
+int alwan_simulate_cvd_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method);
+int alwan_simulate_cvd_machado_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method);
+int alwan_simulate_cvd_machado_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method);
+int alwan_simulate_cvd_ex_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_cvd_model model, alwan_gamut_map_method method);
+int alwan_simulate_cvd_ex_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_cvd_model model, alwan_gamut_map_method method);
+int alwan_simulate_cvd_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method);
+int alwan_simulate_cvd_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method);
+int alwan_simulate_cvd_machado_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method);
+int alwan_simulate_cvd_machado_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method);
 
 /* Luminous Efficiency Functions */
 
@@ -3932,6 +4012,20 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
                                              alwan_f64 peak_luminance,
                                              alwan_aces_primaries_f64 const *limit_primaries,
                                              alwan_transfer_function eotf);
+
+/* Display-linear (pre-encode) front half of the custom ACES 2.0 output
+ * transform: tonescale + chroma compression + gamut compression, decoded in
+ * the LIMIT primaries -- WITHOUT the display encode ([0,peak] clamp + OETF).
+ * Out-of-gamut / over-range residuals are preserved (values can exceed [0,1]).
+ * alwan_aces2_output_transform_custom == this + clamp + EOTF encode, exactly. */
+int alwan_aces2_output_transform_custom_display_linear_f32(alwan_rgb_f32 *rgb_out,
+                                             alwan_rgb_f32 const *rgb_in,
+                                             alwan_f32 peak_luminance,
+                                             alwan_aces_primaries_f32 const *limit_primaries);
+int alwan_aces2_output_transform_custom_display_linear_f64(alwan_rgb_f64 *rgb_out,
+                                             alwan_rgb_f64 const *rgb_in,
+                                             alwan_f64 peak_luminance,
+                                             alwan_aces_primaries_f64 const *limit_primaries);
 
 /**
  * ACES 2.0 Output Transform (Batch)

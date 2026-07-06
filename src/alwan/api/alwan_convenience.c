@@ -175,3 +175,134 @@ int alwan_relative_luminance_space_f64(alwan_f64 *Y_out,
     *Y_out = alwan_relative_luminance_f64_v(*rgb, kr, kg, kb);
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * Gamut-safe decode variants
+ *
+ * The raw alwan_ycbcr_to_rgb / alwan_yccbccrc_to_rgb decoders perform the
+ * pure standard math and preserve out-of-range excursions (super-black /
+ * super-white, xvYCC). These variants run the raw decode and then map the
+ * result into the valid gamut with the requested method -- output is
+ * guaranteed in [0,1]. ALWAN_GAMUT_MAP_CLIP reproduces the old implicit
+ * clamping behaviour exactly.
+ * ---------------------------------------------------------------- */
+
+static alwan_rgb_space alwan__ycbcr_space_id(alwan_ycbcr_standard standard) {
+    return standard == ALWAN_YCBCR_BT2020 ? ALWAN_RGB_SPACE_BT2020 : ALWAN_RGB_SPACE_SRGB;
+}
+
+#if ALWAN_WITH_F64
+static int alwan__gamut_fixup_f64(alwan_rgb_f64 *rgb, alwan_rgb_space space_id, alwan_gamut_map_method method) {
+    alwan_rgb_space_desc_f64 space;
+    int st = alwan_rgb_get_space_descriptor_f64(&space, space_id, NULL);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_f64 raw = *rgb;
+    return alwan_gamut_map_advanced_f64(rgb, method, &space, &raw);
+}
+
+int alwan_ycbcr_to_rgb_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr,
+                                      alwan_ycbcr_standard standard, alwan_gamut_map_method method) {
+    int st = alwan_ycbcr_to_rgb_f64(rgb_out, ycbcr, standard);
+    if (st != ALWAN_OK) return st;
+    return alwan__gamut_fixup_f64(rgb_out, alwan__ycbcr_space_id(standard), method);
+}
+
+int alwan_yccbccrc_to_rgb_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_yccbccrc_f64 const *yccbccrc,
+                                         int bit_depth, alwan_gamut_map_method method) {
+    int st = alwan_yccbccrc_to_rgb_f64(rgb_out, yccbccrc, bit_depth);
+    if (st != ALWAN_OK) return st;
+    return alwan__gamut_fixup_f64(rgb_out, ALWAN_RGB_SPACE_BT2020, method);
+}
+
+int alwan_ycbcr_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
+        alwan_f64 const *ycbcr_in, size_t in_stride, size_t count,
+        alwan_ycbcr_standard standard, alwan_gamut_map_method method) {
+    int st = alwan_ycbcr_to_rgb_f64_map_interleave(rgb_out, out_stride, ycbcr_in, in_stride, count, standard);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_space_desc_f64 space;
+    st = alwan_rgb_get_space_descriptor_f64(&space, alwan__ycbcr_space_id(standard), NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb_f64 *px = (alwan_rgb_f64 *)((char *)rgb_out + i * out_stride);
+        alwan_rgb_f64 raw = *px;
+        st = alwan_gamut_map_advanced_f64(px, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_yccbccrc_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
+        alwan_f64 const *yccbccrc_in, size_t in_stride, size_t count,
+        int bit_depth, alwan_gamut_map_method method) {
+    int st = alwan_yccbccrc_to_rgb_f64_map_interleave(rgb_out, out_stride, yccbccrc_in, in_stride, count, bit_depth);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_space_desc_f64 space;
+    st = alwan_rgb_get_space_descriptor_f64(&space, ALWAN_RGB_SPACE_BT2020, NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb_f64 *px = (alwan_rgb_f64 *)((char *)rgb_out + i * out_stride);
+        alwan_rgb_f64 raw = *px;
+        st = alwan_gamut_map_advanced_f64(px, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F64 */
+
+#if ALWAN_WITH_F32
+static int alwan__gamut_fixup_f32(alwan_rgb_f32 *rgb, alwan_rgb_space space_id, alwan_gamut_map_method method) {
+    alwan_rgb_space_desc_f32 space;
+    int st = alwan_rgb_get_space_descriptor_f32(&space, space_id, NULL);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_f32 raw = *rgb;
+    return alwan_gamut_map_advanced_f32(rgb, method, &space, &raw);
+}
+
+int alwan_ycbcr_to_rgb_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr,
+                                      alwan_ycbcr_standard standard, alwan_gamut_map_method method) {
+    int st = alwan_ycbcr_to_rgb_f32(rgb_out, ycbcr, standard);
+    if (st != ALWAN_OK) return st;
+    return alwan__gamut_fixup_f32(rgb_out, alwan__ycbcr_space_id(standard), method);
+}
+
+int alwan_yccbccrc_to_rgb_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_yccbccrc_f32 const *yccbccrc,
+                                         int bit_depth, alwan_gamut_map_method method) {
+    int st = alwan_yccbccrc_to_rgb_f32(rgb_out, yccbccrc, bit_depth);
+    if (st != ALWAN_OK) return st;
+    return alwan__gamut_fixup_f32(rgb_out, ALWAN_RGB_SPACE_BT2020, method);
+}
+
+int alwan_ycbcr_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
+        alwan_f32 const *ycbcr_in, size_t in_stride, size_t count,
+        alwan_ycbcr_standard standard, alwan_gamut_map_method method) {
+    int st = alwan_ycbcr_to_rgb_f32_map_interleave(rgb_out, out_stride, ycbcr_in, in_stride, count, standard);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_space_desc_f32 space;
+    st = alwan_rgb_get_space_descriptor_f32(&space, alwan__ycbcr_space_id(standard), NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb_f32 *px = (alwan_rgb_f32 *)((char *)rgb_out + i * out_stride);
+        alwan_rgb_f32 raw = *px;
+        st = alwan_gamut_map_advanced_f32(px, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_yccbccrc_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
+        alwan_f32 const *yccbccrc_in, size_t in_stride, size_t count,
+        int bit_depth, alwan_gamut_map_method method) {
+    int st = alwan_yccbccrc_to_rgb_f32_map_interleave(rgb_out, out_stride, yccbccrc_in, in_stride, count, bit_depth);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_space_desc_f32 space;
+    st = alwan_rgb_get_space_descriptor_f32(&space, ALWAN_RGB_SPACE_BT2020, NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb_f32 *px = (alwan_rgb_f32 *)((char *)rgb_out + i * out_stride);
+        alwan_rgb_f32 raw = *px;
+        st = alwan_gamut_map_advanced_f32(px, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F32 */

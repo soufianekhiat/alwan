@@ -1590,3 +1590,308 @@ int alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
 }
 
 #endif /* ALWAN_WITH_F32 */
+
+/* ----------------------------------------------------------------
+ * HDR gamut mapping in ICtCp (PQ)
+ *
+ * Maps a linear BT.2020 RGB colour in ABSOLUTE nits into the display volume
+ * [0, peak_nits]^3 by chroma reduction in ICtCp: intensity I is clamped to the
+ * displayable range, hue angle atan2(Ct, Cp) is preserved by construction
+ * (Ct and Cp are scaled jointly), and chroma is reduced by binary search until
+ * the colour fits. CSS-Color-4-shaped, but in the BT.2100 HDR appearance space
+ * with the dE-ITP (BT.2124) just-noticeable-difference early-out.
+ * ---------------------------------------------------------------- */
+
+#define ALWAN__HDR_ICTCP_JND      ALWAN_LITERAL(1.0)   /* dE-ITP ~= 1 is just noticeable */
+#define ALWAN__HDR_ICTCP_ITERS    32
+
+#if ALWAN_WITH_F64
+static alwan_f64 alwan__de_itp_raw_f64(alwan_ictcp_f64 a, alwan_ictcp_f64 b) {
+    /* BT.2124: dE = 720 * sqrt(dI^2 + 0.25*dCt^2 + dCp^2) */
+    alwan_f64 dI = a.I - b.I;
+    alwan_f64 dT = (a.Ct - b.Ct) * ALWAN_LITERAL(0.5);
+    alwan_f64 dP = a.Cp - b.Cp;
+    return ALWAN_LITERAL(720.0) * ALWAN_SQRT(dI * dI + dT * dT + dP * dP);
+}
+
+int alwan_hdr_gamut_map_ictcp_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_linear, alwan_f64 peak_nits) {
+    if (!rgb_out || !rgb_linear) return ALWAN_E_INVALID;
+    if (peak_nits < ALWAN_LITERAL(1.0) || peak_nits > ALWAN_LITERAL(10000.0)) return ALWAN_E_INVALID;
+
+    alwan_f64 const eps = peak_nits * ALWAN_LITERAL(1e-9);
+
+    /* Fast path: already inside the display volume -> bit-exact passthrough. */
+    if (rgb_linear->r >= ALWAN_LITERAL(0.0) && rgb_linear->r <= peak_nits &&
+        rgb_linear->g >= ALWAN_LITERAL(0.0) && rgb_linear->g <= peak_nits &&
+        rgb_linear->b >= ALWAN_LITERAL(0.0) && rgb_linear->b <= peak_nits) {
+        *rgb_out = *rgb_linear;
+        return ALWAN_OK;
+    }
+
+    alwan_ictcp_f64 target;
+    alwan_rgb_to_ictcp_f64(&target, rgb_linear, 1 /* PQ */);
+
+    /* Clamp intensity to the displayable range: I of display black / white. */
+    {
+        alwan_rgb_f64 white; alwan_rgb_f64 black;
+        alwan_ictcp_f64 i_white, i_black;
+        white.r = peak_nits; white.g = peak_nits; white.b = peak_nits;
+        black.r = ALWAN_LITERAL(0.0); black.g = ALWAN_LITERAL(0.0); black.b = ALWAN_LITERAL(0.0);
+        alwan_rgb_to_ictcp_f64(&i_white, &white, 1);
+        alwan_rgb_to_ictcp_f64(&i_black, &black, 1);
+        if (target.I > i_white.I) target.I = i_white.I;
+        if (target.I < i_black.I) target.I = i_black.I;
+    }
+
+    /* Local-clip shortcut: if the naive clip is within one JND of the target,
+     * it is visually indistinguishable from any smarter mapping. */
+    {
+        alwan_rgb_f64 clip;
+        alwan_ictcp_f64 clip_ictcp;
+        clip.r = rgb_linear->r < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (rgb_linear->r > peak_nits ? peak_nits : rgb_linear->r);
+        clip.g = rgb_linear->g < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (rgb_linear->g > peak_nits ? peak_nits : rgb_linear->g);
+        clip.b = rgb_linear->b < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (rgb_linear->b > peak_nits ? peak_nits : rgb_linear->b);
+        alwan_rgb_to_ictcp_f64(&clip_ictcp, &clip, 1);
+        if (alwan__de_itp_raw_f64(clip_ictcp, target) < ALWAN__HDR_ICTCP_JND) {
+            *rgb_out = clip;
+            return ALWAN_OK;
+        }
+    }
+
+    /* Binary search on the joint chroma scale s in [0,1]: (I, s*Ct, s*Cp).
+     * s = 0 is the achromatic colour at I (inside the volume by construction),
+     * so the search always converges to the boundary along the hue leaf. */
+    {
+        alwan_rgb_f64 best;
+        alwan_ictcp_f64 achro = target;
+        alwan_f64 lo = ALWAN_LITERAL(0.0), hi = ALWAN_LITERAL(1.0);
+        int it;
+        achro.Ct = ALWAN_LITERAL(0.0); achro.Cp = ALWAN_LITERAL(0.0);
+        alwan_ictcp_to_rgb_f64(&best, &achro, 1);
+        for (it = 0; it < ALWAN__HDR_ICTCP_ITERS; it++) {
+            alwan_f64 s = (lo + hi) * ALWAN_LITERAL(0.5);
+            alwan_ictcp_f64 cand = target;
+            alwan_rgb_f64 cand_rgb;
+            cand.Ct = target.Ct * s; cand.Cp = target.Cp * s;
+            alwan_ictcp_to_rgb_f64(&cand_rgb, &cand, 1);
+            if (cand_rgb.r >= -eps && cand_rgb.r <= peak_nits + eps &&
+                cand_rgb.g >= -eps && cand_rgb.g <= peak_nits + eps &&
+                cand_rgb.b >= -eps && cand_rgb.b <= peak_nits + eps) {
+                lo = s; best = cand_rgb;
+            } else {
+                hi = s;
+            }
+        }
+
+        /* Final guarantee: the converged candidate can overhang the boundary by
+         * at most the search tolerance -- clip it (documented, not silent). */
+        rgb_out->r = best.r < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (best.r > peak_nits ? peak_nits : best.r);
+        rgb_out->g = best.g < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (best.g > peak_nits ? peak_nits : best.g);
+        rgb_out->b = best.b < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (best.b > peak_nits ? peak_nits : best.b);
+    }
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F64 */
+
+#if ALWAN_WITH_F32
+static alwan_f32 alwan__de_itp_raw_f32(alwan_ictcp_f32 a, alwan_ictcp_f32 b) {
+    alwan_f32 dI = a.I - b.I;
+    alwan_f32 dT = (a.Ct - b.Ct) * 0.5f;
+    alwan_f32 dP = a.Cp - b.Cp;
+    return 720.0f * ALWAN_SQRT_F32(dI * dI + dT * dT + dP * dP);
+}
+
+int alwan_hdr_gamut_map_ictcp_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_linear, alwan_f32 peak_nits) {
+    if (!rgb_out || !rgb_linear) return ALWAN_E_INVALID;
+    if (peak_nits < 1.0f || peak_nits > 10000.0f) return ALWAN_E_INVALID;
+
+    {
+        alwan_f32 const eps = peak_nits * 1e-6f;
+        alwan_ictcp_f32 target;
+
+        if (rgb_linear->r >= 0.0f && rgb_linear->r <= peak_nits &&
+            rgb_linear->g >= 0.0f && rgb_linear->g <= peak_nits &&
+            rgb_linear->b >= 0.0f && rgb_linear->b <= peak_nits) {
+            *rgb_out = *rgb_linear;
+            return ALWAN_OK;
+        }
+
+        alwan_rgb_to_ictcp_f32(&target, rgb_linear, 1);
+
+        {
+            alwan_rgb_f32 white; alwan_rgb_f32 black;
+            alwan_ictcp_f32 i_white, i_black;
+            white.r = peak_nits; white.g = peak_nits; white.b = peak_nits;
+            black.r = 0.0f; black.g = 0.0f; black.b = 0.0f;
+            alwan_rgb_to_ictcp_f32(&i_white, &white, 1);
+            alwan_rgb_to_ictcp_f32(&i_black, &black, 1);
+            if (target.I > i_white.I) target.I = i_white.I;
+            if (target.I < i_black.I) target.I = i_black.I;
+        }
+
+        {
+            alwan_rgb_f32 clip;
+            alwan_ictcp_f32 clip_ictcp;
+            clip.r = rgb_linear->r < 0.0f ? 0.0f : (rgb_linear->r > peak_nits ? peak_nits : rgb_linear->r);
+            clip.g = rgb_linear->g < 0.0f ? 0.0f : (rgb_linear->g > peak_nits ? peak_nits : rgb_linear->g);
+            clip.b = rgb_linear->b < 0.0f ? 0.0f : (rgb_linear->b > peak_nits ? peak_nits : rgb_linear->b);
+            alwan_rgb_to_ictcp_f32(&clip_ictcp, &clip, 1);
+            if (alwan__de_itp_raw_f32(clip_ictcp, target) < 1.0f) {
+                *rgb_out = clip;
+                return ALWAN_OK;
+            }
+        }
+
+        {
+            alwan_rgb_f32 best;
+            alwan_ictcp_f32 achro = target;
+            alwan_f32 lo = 0.0f, hi = 1.0f;
+            int it;
+            achro.Ct = 0.0f; achro.Cp = 0.0f;
+            alwan_ictcp_to_rgb_f32(&best, &achro, 1);
+            for (it = 0; it < ALWAN__HDR_ICTCP_ITERS; it++) {
+                alwan_f32 s = (lo + hi) * 0.5f;
+                alwan_ictcp_f32 cand = target;
+                alwan_rgb_f32 cand_rgb;
+                cand.Ct = target.Ct * s; cand.Cp = target.Cp * s;
+                alwan_ictcp_to_rgb_f32(&cand_rgb, &cand, 1);
+                if (cand_rgb.r >= -eps && cand_rgb.r <= peak_nits + eps &&
+                    cand_rgb.g >= -eps && cand_rgb.g <= peak_nits + eps &&
+                    cand_rgb.b >= -eps && cand_rgb.b <= peak_nits + eps) {
+                    lo = s; best = cand_rgb;
+                } else {
+                    hi = s;
+                }
+            }
+            rgb_out->r = best.r < 0.0f ? 0.0f : (best.r > peak_nits ? peak_nits : best.r);
+            rgb_out->g = best.g < 0.0f ? 0.0f : (best.g > peak_nits ? peak_nits : best.g);
+            rgb_out->b = best.b < 0.0f ? 0.0f : (best.b > peak_nits ? peak_nits : best.b);
+        }
+    }
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F32 */
+
+/* ----------------------------------------------------------------
+ * CSS Color 4 gamut mapping parameterized by target space
+ *
+ * Same algorithm as alwan_css_gamut_* (Oklch chroma reduction with the
+ * deltaEOK JND clip check) but the destination gamut is the TARGET space's
+ * unit cube instead of hard-wired sRGB. The Oklab pivot stays defined over
+ * linear sRGB (Ottosson's fit); candidates are converted linear-sRGB <->
+ * linear-target with matrices composed from the space descriptors, and the
+ * in-gamut test / clip run in the TARGET cube. Input and output are LINEAR
+ * target-space RGB. Assumes a D65-white target (P3, Rec.2020, ...); no
+ * chromatic adaptation is applied between sRGB and the target.
+ * ---------------------------------------------------------------- */
+
+#if ALWAN_WITH_F64
+int alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out,
+                              alwan_rgb_space_desc_f64 const *target_space,
+                              alwan_rgb_f64 const *rgb_in) {
+    if (!rgb_out || !target_space || !rgb_in) return ALWAN_E_INVALID;
+
+    alwan_f64 const JND = ALWAN_LITERAL(0.02);
+    int const MAX_ITER = 30;
+
+    /* Compose linear target <-> linear sRGB matrices via XYZ. */
+    alwan_mat3x3_f64 t_to_xyz, xyz_to_t, s_to_xyz, xyz_to_s, t2s, s2t;
+    alwan_rgb_space_desc_f64 srgb;
+    int st = alwan_rgb_get_space_descriptor_f64(&srgb, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    st = alwan_rgb_derive_matrices_f64(&t_to_xyz, &xyz_to_t, target_space);
+    if (st != ALWAN_OK) return st;
+    st = alwan_rgb_derive_matrices_f64(&s_to_xyz, &xyz_to_s, &srgb);
+    if (st != ALWAN_OK) return st;
+    alwan_mat3_mul_f64(&t2s, &xyz_to_s, &t_to_xyz);
+    alwan_mat3_mul_f64(&s2t, &xyz_to_t, &s_to_xyz);
+
+    alwan_vec3_f64 t_in = {{rgb_in->r, rgb_in->g, rgb_in->b}};
+
+    /* Already inside the target cube -> passthrough. */
+    if (t_in.v[0] >= ALWAN_LITERAL(0.0) && t_in.v[0] <= ALWAN_LITERAL(1.0) &&
+        t_in.v[1] >= ALWAN_LITERAL(0.0) && t_in.v[1] <= ALWAN_LITERAL(1.0) &&
+        t_in.v[2] >= ALWAN_LITERAL(0.0) && t_in.v[2] <= ALWAN_LITERAL(1.0)) {
+        *rgb_out = *rgb_in;
+        return ALWAN_OK;
+    }
+
+    /* Work in Oklab via the linear-sRGB expression of the colour. */
+    alwan_vec3_f64 s_in;
+    alwan_mat3_mulv_f64(&s_in, &t2s, &t_in);
+    alwan_vec3_f64 oklab_v = gamut_linear_srgb_to_oklab_f64_v(s_in);
+    alwan_oklab_f64 ok; ok.L = oklab_v.v[0]; ok.a = oklab_v.v[1]; ok.b = oklab_v.v[2];
+    alwan_oklch_f64 lch = alwan_oklab_to_oklch_f64_v(ok);
+
+    if (lch.L >= ALWAN_LITERAL(1.0)) { rgb_out->r = rgb_out->g = rgb_out->b = ALWAN_LITERAL(1.0); return ALWAN_OK; }
+    if (lch.L <= ALWAN_LITERAL(0.0)) { rgb_out->r = rgb_out->g = rgb_out->b = ALWAN_LITERAL(0.0); return ALWAN_OK; }
+
+    {
+        alwan_f64 lo = ALWAN_LITERAL(0.0), hi = lch.C;
+        alwan_oklch_f64 trial = lch;
+        alwan_vec3_f64 trial_t = t_in;
+        int i;
+        for (i = 0; i < MAX_ITER; i++) {
+            trial.C = (lo + hi) * ALWAN_LITERAL(0.5);
+            alwan_oklab_f64 trial_ok = alwan_oklch_to_oklab_f64_v(trial);
+            alwan_vec3_f64 trial_okv = {{trial_ok.L, trial_ok.a, trial_ok.b}};
+            alwan_vec3_f64 trial_s = gamut_oklab_to_linear_srgb_f64_v(trial_okv);
+            alwan_mat3_mulv_f64(&trial_t, &s2t, &trial_s);
+
+            /* Clip in the TARGET cube, express the clipped colour in Oklab. */
+            alwan_vec3_f64 clip_t = trial_t;
+            int in_cube = 1;
+            for (int c = 0; c < 3; c++) {
+                if (clip_t.v[c] < ALWAN_LITERAL(0.0)) { clip_t.v[c] = ALWAN_LITERAL(0.0); in_cube = 0; }
+                else if (clip_t.v[c] > ALWAN_LITERAL(1.0)) { clip_t.v[c] = ALWAN_LITERAL(1.0); in_cube = 0; }
+            }
+            alwan_vec3_f64 clip_s;
+            alwan_mat3_mulv_f64(&clip_s, &t2s, &clip_t);
+            alwan_vec3_f64 clip_okv = gamut_linear_srgb_to_oklab_f64_v(clip_s);
+            alwan_oklab_f64 clip_ok; clip_ok.L = clip_okv.v[0]; clip_ok.a = clip_okv.v[1]; clip_ok.b = clip_okv.v[2];
+
+            alwan_f64 de = alwan_delta_e_ok_f64_v(trial_ok, clip_ok);
+            if (de < JND) {
+                if (in_cube) break;
+                hi = trial.C;
+            } else {
+                hi = trial.C;
+            }
+            if (hi - lo < ALWAN_LITERAL(1e-12)) break;
+        }
+
+        /* Final clip in the target cube (guarantee, mirrors gamut_css_map). */
+        for (int c = 0; c < 3; c++) {
+            if (trial_t.v[c] < ALWAN_LITERAL(0.0)) trial_t.v[c] = ALWAN_LITERAL(0.0);
+            else if (trial_t.v[c] > ALWAN_LITERAL(1.0)) trial_t.v[c] = ALWAN_LITERAL(1.0);
+        }
+        rgb_out->r = trial_t.v[0]; rgb_out->g = trial_t.v[1]; rgb_out->b = trial_t.v[2];
+    }
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F64 */
+
+#if ALWAN_WITH_F32
+int alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out,
+                              alwan_rgb_space_desc_f32 const *target_space,
+                              alwan_rgb_f32 const *rgb_in) {
+    /* Single-precision entry widens to the f64 worker (matrix composition and
+     * the Oklab pivot are precision-sensitive; matches the _custom_f32 ACES
+     * precedent for setup-heavy scalar paths). */
+    if (!rgb_out || !target_space || !rgb_in) return ALWAN_E_INVALID;
+    alwan_rgb_space_desc_f64 t64;
+    alwan_rgb_f64 in64, out64;
+    for (int k = 0; k < 6; k++) t64.primaries_xy[k] = target_space->primaries_xy[k];
+    t64.white_xy[0] = target_space->white_xy[0]; t64.white_xy[1] = target_space->white_xy[1];
+    t64.oetf = target_space->oetf;
+    t64.eotf = target_space->eotf;
+    t64.has_matrices = 0;
+    in64.r = rgb_in->r; in64.g = rgb_in->g; in64.b = rgb_in->b;
+    {
+        int st = alwan_css_gamut_space_f64(&out64, &t64, &in64);
+        if (st != ALWAN_OK) return st;
+    }
+    rgb_out->r = (alwan_f32)out64.r; rgb_out->g = (alwan_f32)out64.g; rgb_out->b = (alwan_f32)out64.b;
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F32 */

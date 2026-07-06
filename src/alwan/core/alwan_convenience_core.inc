@@ -241,9 +241,12 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_ycbcr_to_rgb_kr_kb)(ALWAN_CO
     ALWAN_CORE_T b = y + cb * ALWAN_CORE_LITERAL(2.0) * (ALWAN_CORE_LITERAL(1.0) - kb);
     ALWAN_CORE_T g = (y - kr * r - kb * b) / kg;
 
-    result.r = ALWAN_CORE_CLAMP(r, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-    result.g = ALWAN_CORE_CLAMP(g, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-    result.b = ALWAN_CORE_CLAMP(b, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
+    /* Raw affine decode -- no gamut clamp. Super-black / super-white (xvYCC)
+     * excursions decode outside [0,1] and are preserved; callers wanting a
+     * guaranteed in-gamut result use alwan_ycbcr_to_rgb_gamut_safe. */
+    result.r = r;
+    result.g = g;
+    result.b = b;
 
     return result;
 }
@@ -378,9 +381,11 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_yccbccrc_to_rgb)(ALWAN_CORE_
 
     ALWAN_CORE_T g = (yc_linear - kr * r - kb * b) / kg;
 
-    result.r = ALWAN_CORE_CLAMP(r, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-    result.g = ALWAN_CORE_CLAMP(g, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-    result.b = ALWAN_CORE_CLAMP(b, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
+    /* Raw BT.2020-CL inverse -- no gamut clamp (see alwan_ycbcr_to_rgb note);
+     * use alwan_yccbccrc_to_rgb_gamut_safe for guaranteed [0,1] output. */
+    result.r = r;
+    result.g = g;
+    result.b = b;
 
     return result;
 }
