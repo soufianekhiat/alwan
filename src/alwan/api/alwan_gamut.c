@@ -1895,3 +1895,227 @@ int alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out,
     return ALWAN_OK;
 }
 #endif /* ALWAN_WITH_F32 */
+
+/* ================================================================
+ * Spatial picture-formation gamut mapping (docs/gamut_spatial_formation.md)
+ *
+ * Image-aware: reshapes the record field to fit [0,peak]^3 while preserving
+ * local per-channel gradient structure, spreading the correction spatially
+ * (controlled by `s`) instead of clipping samples flat. Optional depth map
+ * gates coupling across occlusion boundaries. Deterministic (fixed-iteration
+ * projected Jacobi, no RNG, order-independent update). f64 core; f32 entry
+ * widens (v1 -- may be templated natively later).
+ * ================================================================ */
+
+/* 1D squared Euclidean distance transform (Felzenszwalb-Huttenlocher).
+ * f = cost (0 at a site, large elsewhere); d = squared distance to nearest site. */
+static void alwan__edt_1d(const alwan_f64 *f, alwan_f64 *d, int n, int *v, alwan_f64 *z) {
+    const alwan_f64 INF = 1e30;
+    int k = 0;
+    v[0] = 0; z[0] = -INF; z[1] = INF;
+    for (int q = 1; q < n; q++) {
+        alwan_f64 s = ((f[q] + (alwan_f64)q*q) - (f[v[k]] + (alwan_f64)v[k]*v[k])) / (2.0*q - 2.0*v[k]);
+        while (s <= z[k]) {
+            k--;
+            s = ((f[q] + (alwan_f64)q*q) - (f[v[k]] + (alwan_f64)v[k]*v[k])) / (2.0*q - 2.0*v[k]);
+        }
+        k++; v[k] = q; z[k] = s; z[k+1] = INF;
+    }
+    k = 0;
+    for (int q = 0; q < n; q++) {
+        while (z[k+1] < q) k++;
+        d[q] = (alwan_f64)(q - v[k])*(q - v[k]) + f[v[k]];
+    }
+}
+
+/* Full 2D EDT: dist2[i] = squared spatial distance to the nearest site pixel
+ * (site = 1 in `mask`). Columns then rows (separable). */
+static void alwan__edt_2d(const unsigned char *mask, alwan_f64 *dist2, int W, int H,
+                          alwan_f64 *fbuf, alwan_f64 *dbuf, int *v, alwan_f64 *z) {
+    const alwan_f64 INF = 1e30;
+    /* pass 1: columns */
+    for (int x = 0; x < W; x++) {
+        for (int y = 0; y < H; y++) fbuf[y] = mask[y*W + x] ? 0.0 : INF;
+        alwan__edt_1d(fbuf, dbuf, H, v, z);
+        for (int y = 0; y < H; y++) dist2[y*W + x] = dbuf[y];
+    }
+    /* pass 2: rows (feed column results as the cost) */
+    for (int y = 0; y < H; y++) {
+        for (int x = 0; x < W; x++) fbuf[x] = dist2[y*W + x];
+        alwan__edt_1d(fbuf, dbuf, W, v, z);
+        for (int x = 0; x < W; x++) dist2[y*W + x] = dbuf[x];
+    }
+}
+
+static alwan_f64 alwan__smoothstep(alwan_f64 t) {
+    if (t <= 0.0) return 0.0;
+    if (t >= 1.0) return 1.0;
+    return t*t*(3.0 - 2.0*t);
+}
+
+#if ALWAN_WITH_F64
+static int alwan__gamut_spatial_core(alwan_f64 *out, const alwan_f64 *in, const alwan_f64 *depth,
+                                     int W, int H, const alwan_gamut_spatial_params_f64 *p, alwan_ctx *ctx) {
+    if (!out || !in || !p || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
+    size_t N = (size_t)W * (size_t)H;
+
+    alwan_f64 peak   = p->peak > 0.0 ? p->peak : 1.0;
+    alwan_f64 reach  = p->reach > 0.0 ? p->reach : sqrt((alwan_f64)W*W + (alwan_f64)H*H);
+    alwan_f64 s      = p->s < 0.0 ? 0.0 : (p->s > 1.0 ? 1.0 : p->s);
+    alwan_f64 beta   = p->beta > 0.0 ? p->beta : 8.0;
+    alwan_f64 c      = p->compress > 0.0 ? (p->compress > 1.0 ? 1.0 : p->compress) : 1.0;
+    alwan_f64 dsig   = p->depth_sigma;
+    int iters        = p->iterations > 0 ? p->iterations : 200;
+    alwan_f64 feather = 0.15;              /* transition width of the s band */
+    alwan_f64 lam0    = 1.0;               /* base fidelity weight (locked pixels) */
+    alwan_f64 eps     = peak * 1e-9;
+
+    /* scratch */
+    unsigned char *mask = (unsigned char *)ctx->alloc_fn(N, 16);
+    unsigned char *fixed = (unsigned char *)ctx->alloc_fn(N, 16);
+    alwan_f64 *dist2 = (alwan_f64 *)ctx->alloc_fn(N * sizeof(alwan_f64), 16);
+    alwan_f64 *lam   = (alwan_f64 *)ctx->alloc_fn(N * sizeof(alwan_f64), 16);
+    alwan_f64 *u     = (alwan_f64 *)ctx->alloc_fn(3 * N * sizeof(alwan_f64), 16);
+    alwan_f64 *un    = (alwan_f64 *)ctx->alloc_fn(3 * N * sizeof(alwan_f64), 16);
+    int mxwh = W > H ? W : H;
+    alwan_f64 *fbuf  = (alwan_f64 *)ctx->alloc_fn((size_t)mxwh * sizeof(alwan_f64), 16);
+    alwan_f64 *dbuf  = (alwan_f64 *)ctx->alloc_fn((size_t)mxwh * sizeof(alwan_f64), 16);
+    int       *vbuf  = (int *)      ctx->alloc_fn((size_t)(mxwh) * sizeof(int), 16);
+    alwan_f64 *zbuf  = (alwan_f64 *)ctx->alloc_fn((size_t)(mxwh + 1) * sizeof(alwan_f64), 16);
+    if (!mask || !fixed || !dist2 || !lam || !u || !un || !fbuf || !dbuf || !vbuf || !zbuf) {
+        ctx->free_fn(mask); ctx->free_fn(fixed); ctx->free_fn(dist2); ctx->free_fn(lam); ctx->free_fn(u);
+        ctx->free_fn(un); ctx->free_fn(fbuf); ctx->free_fn(dbuf); ctx->free_fn(vbuf); ctx->free_fn(zbuf);
+        return ALWAN_E_NOMEM;
+    }
+
+    /* out-of-gamut mask + init u = clamp(in) */
+    for (size_t i = 0; i < N; i++) {
+        int oog = 0;
+        for (int k = 0; k < 3; k++) {
+            alwan_f64 x = in[i*3 + k];
+            if (x < -eps || x > peak + eps) oog = 1;
+            u[i*3 + k] = x < 0.0 ? 0.0 : (x > peak ? peak : x);
+        }
+        mask[i] = (unsigned char)oog;
+    }
+
+    /* spatial distance to the OOG set -> per-pixel fidelity weight lambda */
+    alwan__edt_2d(mask, dist2, W, H, fbuf, dbuf, vbuf, zbuf);
+    for (size_t i = 0; i < N; i++) {
+        if (mask[i]) { lam[i] = 0.0; fixed[i] = 0; continue; }   /* OOG pixels fully free */
+        alwan_f64 D = sqrt(dist2[i]) / reach;            /* normalized spatial distance */
+        if (D > 1.0) D = 1.0;
+        /* far (D large) -> locked; near (D small) -> free (0). s shifts the band:
+         * s=1 -> band at 0 -> almost everything locked; s=0 -> band at 1 -> all free. */
+        alwan_f64 t = (D - (1.0 - s)) / feather;
+        lam[i] = lam0 * alwan__smoothstep(t);
+        /* Beyond the transition band, hard-fix as a Dirichlet boundary condition
+         * (an in-gamut pixel = its input) so `s` crisply bounds what can move. */
+        fixed[i] = (t >= 1.0) ? 1 : 0;
+    }
+
+    /* projected Jacobi: minimize  sum lam(u-x)^2 + beta sum w((ui-uj)-c*gij)^2
+     * subject to box [0,peak] and per-channel monotonicity (polarity). */
+    const int dx[4] = {-1, 1, 0, 0};
+    const int dy[4] = {0, 0, -1, 1};
+    for (int it = 0; it < iters; it++) {
+        for (int y = 0; y < H; y++) {
+            for (int x = 0; x < W; x++) {
+                size_t i = (size_t)y*W + x;
+                if (fixed[i]) { for (int k = 0; k < 3; k++) un[i*3+k] = u[i*3+k]; continue; }
+                alwan_f64 zi = depth ? depth[i] : 0.0;
+                for (int k = 0; k < 3; k++) {
+                    alwan_f64 acc = lam[i] * in[i*3 + k];
+                    alwan_f64 den = lam[i];
+                    for (int n = 0; n < 4; n++) {
+                        int nx = x + dx[n], ny = y + dy[n];
+                        if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+                        size_t j = (size_t)ny*W + nx;
+                        alwan_f64 w = beta;
+                        if (dsig > 0.0 && depth) {          /* gate coupling across depth jumps */
+                            alwan_f64 dz = (zi - depth[j]) / dsig;
+                            w *= exp(-dz*dz);
+                        }
+                        alwan_f64 gij = in[i*3 + k] - in[j*3 + k];   /* input gradient */
+                        acc += w * (u[j*3 + k] + c * gij);
+                        den += w;
+                    }
+                    alwan_f64 val = den > 0.0 ? acc / den : u[i*3 + k];
+                    if (val < 0.0) val = 0.0; else if (val > peak) val = peak;   /* box */
+                    un[i*3 + k] = val;
+                }
+            }
+        }
+        /* swap */
+        alwan_f64 *tmp = u; u = un; un = tmp;
+
+        /* polarity projection: repair per-channel sign reversals vs the input
+         * (a few fixed-order pairwise midpoint projections; deterministic). */
+        for (int rep = 0; rep < 2; rep++) {
+            for (int y = 0; y < H; y++) {
+                for (int x = 0; x < W; x++) {
+                    size_t i = (size_t)y*W + x;
+                    for (int n = 1; n < 4; n += 2) {       /* right (dx=1) and down (dy=1) edges only */
+                        int nx = x + dx[n], ny = y + dy[n];
+                        if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+                        size_t j = (size_t)ny*W + nx;
+                        if (fixed[i] && fixed[j]) continue;    /* both pinned: nothing to do */
+                        for (int k = 0; k < 3; k++) {
+                            alwan_f64 gin = in[i*3+k] - in[j*3+k];
+                            alwan_f64 gout = u[i*3+k] - u[j*3+k];
+                            if (gin > 0.0 ? gout < 0.0 : (gin < 0.0 ? gout > 0.0 : 0)) {
+                                if (fixed[i])      u[j*3+k] = u[i*3+k];   /* move only the free side */
+                                else if (fixed[j]) u[i*3+k] = u[j*3+k];
+                                else { alwan_f64 m = 0.5*(u[i*3+k]+u[j*3+k]); u[i*3+k]=m; u[j*3+k]=m; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < 3*N; i++) out[i] = u[i];
+
+    ctx->free_fn(mask); ctx->free_fn(fixed); ctx->free_fn(dist2); ctx->free_fn(lam); ctx->free_fn(u);
+    ctx->free_fn(un); ctx->free_fn(fbuf); ctx->free_fn(dbuf); ctx->free_fn(vbuf); ctx->free_fn(zbuf);
+    return ALWAN_OK;
+}
+
+int alwan_gamut_map_spatial_f64(alwan_f64 *out, const alwan_f64 *in, const alwan_f64 *depth,
+                                int width, int height,
+                                const alwan_gamut_spatial_params_f64 *params, alwan_ctx *ctx) {
+    return alwan__gamut_spatial_core(out, in, depth, width, height, params, ctx);
+}
+#endif /* ALWAN_WITH_F64 */
+
+#if ALWAN_WITH_F32
+int alwan_gamut_map_spatial_f32(alwan_f32 *out, const alwan_f32 *in, const alwan_f32 *depth,
+                                int width, int height,
+                                const alwan_gamut_spatial_params_f32 *params, alwan_ctx *ctx) {
+#if ALWAN_WITH_F64
+    if (!out || !in || !params || width <= 0 || height <= 0 || !ctx) return ALWAN_E_INVALID;
+    size_t N = (size_t)width * (size_t)height;
+    alwan_f64 *in64  = (alwan_f64 *)ctx->alloc_fn(3 * N * sizeof(alwan_f64), 16);
+    alwan_f64 *out64 = (alwan_f64 *)ctx->alloc_fn(3 * N * sizeof(alwan_f64), 16);
+    alwan_f64 *dep64 = depth ? (alwan_f64 *)ctx->alloc_fn(N * sizeof(alwan_f64), 16) : NULL;
+    if (!in64 || !out64 || (depth && !dep64)) {
+        ctx->free_fn(in64); ctx->free_fn(out64); ctx->free_fn(dep64);
+        return ALWAN_E_NOMEM;
+    }
+    for (size_t i = 0; i < 3*N; i++) in64[i] = (alwan_f64)in[i];
+    if (depth) for (size_t i = 0; i < N; i++) dep64[i] = (alwan_f64)depth[i];
+    alwan_gamut_spatial_params_f64 p64;
+    p64.s = params->s; p64.reach = params->reach; p64.beta = params->beta;
+    p64.compress = params->compress; p64.depth_sigma = params->depth_sigma;
+    p64.iterations = params->iterations; p64.peak = params->peak;
+    int st = alwan__gamut_spatial_core(out64, in64, dep64, width, height, &p64, ctx);
+    if (st == ALWAN_OK) for (size_t i = 0; i < 3*N; i++) out[i] = (alwan_f32)out64[i];
+    ctx->free_fn(in64); ctx->free_fn(out64); ctx->free_fn(dep64);
+    return st;
+#else
+    (void)out; (void)in; (void)depth; (void)width; (void)height; (void)params; (void)ctx;
+    return ALWAN_E_INVALID;
+#endif
+}
+#endif /* ALWAN_WITH_F32 */
