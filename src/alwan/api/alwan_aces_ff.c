@@ -3983,17 +3983,19 @@ int alwan_aces2_output_transform_f32(alwan_rgb_f32 *rgb_out,
 }
 #endif /* ALWAN_WITH_F32 */
 
-int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
+/* Display-linear front half of the ACES 2.0 output transform: tonescale,
+ * chroma compression and gamut compression, decoded into the LIMIT primaries,
+ * WITHOUT the display encode (no [0,peak] clamp, no OETF). Out-of-gamut /
+ * over-range residuals that the encode clamp would discard are preserved --
+ * this is the raw rendering result the encode tail consumes. */
+int alwan_aces2_output_transform_custom_display_linear_f64(alwan_rgb_f64 *rgb_out,
                                              alwan_rgb_f64 const *rgb_in,
                                              alwan_f64 peak_luminance,
-                                             alwan_aces_primaries_f64 const *limit_primaries,
-                                             alwan_transfer_function eotf) {
+                                             alwan_aces_primaries_f64 const *limit_primaries) {
     if (!rgb_out || !rgb_in || !limit_primaries) return ALWAN_E_INVALID;
     if (peak_luminance < ALWAN_LITERAL(1.0) || peak_luminance > ALWAN_LITERAL(10000.0)) {
         return ALWAN_E_INVALID;
     }
-
-    int status;
 
     /* Initialize AP1 primaries for JMh conversion */
     alwan_aces_primaries_f64 ap1;
@@ -4022,8 +4024,19 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
      * JMh->RGB is a nonlinear CAM inverse, so that detour is not equivalent and
      * diverges most at the blue cusp (up to dE_ITP ~8 at hue ~276). Decoding in
      * the limit primaries is linear-exact vs OCIO across all hues (verified). */
+    alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_gc, limit_primaries);
+    return ALWAN_OK;
+}
+
+int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
+                                             alwan_rgb_f64 const *rgb_in,
+                                             alwan_f64 peak_luminance,
+                                             alwan_aces_primaries_f64 const *limit_primaries,
+                                             alwan_transfer_function eotf) {
+    int status;
     alwan_rgb_f64 rgb_adapted;
-    alwan_aces_jmh_to_rgb20_f64(&rgb_adapted, &jmh_gc, limit_primaries);
+    status = alwan_aces2_output_transform_custom_display_linear_f64(&rgb_adapted, rgb_in, peak_luminance, limit_primaries);
+    if (status != ALWAN_OK) return status;
 
     /* Step 8: Clamp and scale for display encoding */
     alwan_rgb_f64 rgb_clamped;
@@ -4090,6 +4103,23 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
     rgb_out->b = encoded[2];
 
     return ALWAN_OK;
+}
+
+int alwan_aces2_output_transform_custom_display_linear_f32(alwan_rgb_f32 *rgb_out,
+                                             alwan_rgb_f32 const *rgb_in,
+                                             alwan_f32 peak_luminance,
+                                             alwan_aces_primaries_f32 const *limit_primaries) {
+    if (!rgb_out || !rgb_in || !limit_primaries) return ALWAN_E_INVALID;
+    alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
+    alwan_rgb_f64 out64;
+    alwan_aces_primaries_f64 lp64;
+    lp64.red_x = limit_primaries->red_x; lp64.red_y = limit_primaries->red_y;
+    lp64.green_x = limit_primaries->green_x; lp64.green_y = limit_primaries->green_y;
+    lp64.blue_x = limit_primaries->blue_x; lp64.blue_y = limit_primaries->blue_y;
+    lp64.white_x = limit_primaries->white_x; lp64.white_y = limit_primaries->white_y;
+    int s = alwan_aces2_output_transform_custom_display_linear_f64(&out64, &in64, (double)peak_luminance, &lp64);
+    rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
+    return s;
 }
 
 int alwan_aces2_output_transform_custom_f32(alwan_rgb_f32 *rgb_out,

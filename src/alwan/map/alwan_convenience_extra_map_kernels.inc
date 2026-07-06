@@ -411,9 +411,10 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ycbcr_to_rgb_kernel)(alwan_map_lane
             alwan_map_simd vr = alwan_map_simd_fmadd(vcr, scale_cr, vy);
             alwan_map_simd vb = alwan_map_simd_fmadd(vcb, scale_cb, vy);
             alwan_map_simd vg = alwan_map_simd_mul(alwan_map_simd_sub(vy, alwan_map_simd_fmadd(vkr, vr, alwan_map_simd_mul(vkb, vb))), vkg_inv);
-            alwan_map_simd_store(&d0[i], alwan_map_simd_clamp(vr, vzero, vone));
-            alwan_map_simd_store(&d1[i], alwan_map_simd_clamp(vg, vzero, vone));
-            alwan_map_simd_store(&d2[i], alwan_map_simd_clamp(vb, vzero, vone));
+            /* raw decode -- no gamut clamp (matches the scalar core) */
+            alwan_map_simd_store(&d0[i], vr);
+            alwan_map_simd_store(&d1[i], vg);
+            alwan_map_simd_store(&d2[i], vb);
         }
     }
 #endif
@@ -581,9 +582,10 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__yccbccrc_to_rgb_kernel)(alwan_map_l
             alwan_map_simd vr = BT2020_EOTF(rg);
             alwan_map_simd vb = BT2020_EOTF(bg);
             alwan_map_simd vg = alwan_map_simd_mul(alwan_map_simd_sub(yc_lin, alwan_map_simd_fmadd(vkr, vr, alwan_map_simd_mul(vkb, vb))), inv_kg);
-            alwan_map_simd_store(&d0[i], alwan_map_simd_clamp(vr, zero, one));
-            alwan_map_simd_store(&d1[i], alwan_map_simd_clamp(vg, zero, one));
-            alwan_map_simd_store(&d2[i], alwan_map_simd_clamp(vb, zero, one));
+            /* raw decode -- no gamut clamp (matches the scalar core) */
+            alwan_map_simd_store(&d0[i], vr);
+            alwan_map_simd_store(&d1[i], vg);
+            alwan_map_simd_store(&d2[i], vb);
         }
         #undef BT2020_EOTF
     }

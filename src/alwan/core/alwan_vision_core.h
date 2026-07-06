@@ -72,9 +72,10 @@ ALWAN_INLINE alwan_rgb alwan_simulate_cvd_matrix_v(alwan_rgb rgb,
     alwan_vec3 lms = alwan_mat3_mulv_v(CVD_RGB_TO_LMS, rgb_v);
     alwan_vec3 lms_cvd = alwan_mat3_mulv_v(cvd_matrix, lms);
     alwan_vec3 cvd_rgb = alwan_mat3_mulv_v(CVD_LMS_TO_RGB, lms_cvd);
-    alwan_scalar cr = alwan_saturate(cvd_rgb.v[0]);
-    alwan_scalar cg = alwan_saturate(cvd_rgb.v[1]);
-    alwan_scalar cb = alwan_saturate(cvd_rgb.v[2]);
+    /* Raw Brettel/Vienot simulation -- no gamut clamp (matches the dual-precision core). */
+    alwan_scalar cr = cvd_rgb.v[0];
+    alwan_scalar cg = cvd_rgb.v[1];
+    alwan_scalar cb = cvd_rgb.v[2];
     result.r = alwan_lerp(rgb.r, cr, severity);
     result.g = alwan_lerp(rgb.g, cg, severity);
     result.b = alwan_lerp(rgb.b, cb, severity);
@@ -195,10 +196,11 @@ ALWAN_INLINE alwan_rgb alwan_simulate_cvd_machado_v(
     alwan_mat3x3 mat = alwan_machado_interpolate_v(lut, severity);
     alwan_vec3 v = {{rgb.r, rgb.g, rgb.b}};
     alwan_vec3 out = alwan_mat3_mulv_v(mat, v);
+    /* Raw Machado 2009 matrix product -- no gamut clamp (matches the dual-precision core). */
     alwan_rgb result;
-    result.r = alwan_saturate(out.v[0]);
-    result.g = alwan_saturate(out.v[1]);
-    result.b = alwan_saturate(out.v[2]);
+    result.r = out.v[0];
+    result.g = out.v[1];
+    result.b = out.v[2];
     return result;
 }
 

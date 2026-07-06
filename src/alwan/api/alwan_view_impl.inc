@@ -312,10 +312,64 @@ static void ALWAN_CORE_FN(exposure_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_
     rgb_out[2] = ALWAN_CORE_SATURATE(out_v.v[2]);
 }
 
+
+/* ----------------------------------------------------------------
+ * Unclamped twins of the per-channel tone-mapping views. The raw operator
+ * output is returned without the display [0,1] SATURATE and without the
+ * negative-input clip (except where the operator's math requires it --
+ * Uchimura's toe is pow-based, so MAX(0) stays as a numerical guard).
+ * Used by alwan_view_transform_apply_unclamped.
+ * ---------------------------------------------------------------- */
+static void ALWAN_CORE_FN(reinhard_ext_transform_unclamped)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    ALWAN_CORE_VEC3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
+    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_reinhard_extended_luma)(in_v, ALWAN_CORE_LITERAL(4.0));
+    rgb_out[0] = out_v.v[0];
+    rgb_out[1] = out_v.v[1];
+    rgb_out[2] = out_v.v[2];
+}
+
+static void ALWAN_CORE_FN(uchimura_transform_unclamped)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    /* MAX(0) retained: the toe segment is POW-based and NaNs on negatives. */
+    rgb_out[0] = ALWAN_CORE_FNVLIT(alwan_uchimura_default)(ALWAN_CORE_MAX(rgb_in[0], ALWAN_CORE_ZERO));
+    rgb_out[1] = ALWAN_CORE_FNVLIT(alwan_uchimura_default)(ALWAN_CORE_MAX(rgb_in[1], ALWAN_CORE_ZERO));
+    rgb_out[2] = ALWAN_CORE_FNVLIT(alwan_uchimura_default)(ALWAN_CORE_MAX(rgb_in[2], ALWAN_CORE_ZERO));
+}
+
+static void ALWAN_CORE_FN(lottes_transform_unclamped)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    ALWAN_CORE_VEC3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
+    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_lottes_default)(in_v);
+    rgb_out[0] = out_v.v[0];
+    rgb_out[1] = out_v.v[1];
+    rgb_out[2] = out_v.v[2];
+}
+
+static void ALWAN_CORE_FN(tony_mcmapface_transform_unclamped)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    ALWAN_CORE_VEC3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
+    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_tony_mcmapface)(in_v);
+    rgb_out[0] = out_v.v[0];
+    rgb_out[1] = out_v.v[1];
+    rgb_out[2] = out_v.v[2];
+}
+
+static void ALWAN_CORE_FN(reinhard_calibrated_transform_unclamped)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    for (int i = 0; i < 3; i++) {
+        rgb_out[i] = ALWAN_CORE_FNVLIT(alwan_reinhard_calibrated)(rgb_in[i],
+                        ALWAN_CORE_LITERAL(0.18), ALWAN_CORE_LITERAL(0.18), ALWAN_CORE_LITERAL(4.0));
+    }
+}
+
+static void ALWAN_CORE_FN(exposure_transform_unclamped)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+    ALWAN_CORE_VEC3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
+    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_exposure_tonemap_rgb)(in_v, ALWAN_CORE_ZERO);
+    rgb_out[0] = out_v.v[0];
+    rgb_out[1] = out_v.v[1];
+    rgb_out[2] = out_v.v[2];
+}
+
 /* ----------------------------------------------------------------
  * View Transform API (native per-precision dispatch + bulk loop)
  * ---------------------------------------------------------------- */
-int ALWAN_CORE_FNLIT(alwan_view_transform_apply)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
+static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx, int unclamped) {
     (void)ctx;  /* Unused for stateless transforms */
 
     if (!rgb_in || !rgb_out) {
@@ -347,6 +401,23 @@ int ALWAN_CORE_FNLIT(alwan_view_transform_apply)(ALWAN_CORE_T *rgb_out, size_t o
             return ALWAN_E_INVALID;
     }
 
+    /* Unclamped entry: swap in the raw twins for the per-channel tone mappers.
+     * Transforms whose [0,1] output is definitional (AgX picture formation,
+     * ACES display encode, the BT.2446/2390 normalized-signal EETFs, PBR
+     * Neutral) keep their standard implementation -- for those the two entry
+     * points return identical results by design. */
+    if (unclamped) {
+        switch (vt) {
+            case ALWAN_VIEW_REINHARD_EXT:        transform_fn = ALWAN_CORE_FN(reinhard_ext_transform_unclamped); break;
+            case ALWAN_VIEW_UCHIMURA:            transform_fn = ALWAN_CORE_FN(uchimura_transform_unclamped); break;
+            case ALWAN_VIEW_LOTTES:              transform_fn = ALWAN_CORE_FN(lottes_transform_unclamped); break;
+            case ALWAN_VIEW_TONY_MCMAPFACE:      transform_fn = ALWAN_CORE_FN(tony_mcmapface_transform_unclamped); break;
+            case ALWAN_VIEW_REINHARD_CALIBRATED: transform_fn = ALWAN_CORE_FN(reinhard_calibrated_transform_unclamped); break;
+            case ALWAN_VIEW_EXPOSURE:            transform_fn = ALWAN_CORE_FN(exposure_transform_unclamped); break;
+            default: break;
+        }
+    }
+
     /* Apply view transform to RGB triplets (strides are in bytes). */
     for (size_t i = 0; i < count; i++) {
         ALWAN_CORE_T const *in_ptr = (ALWAN_CORE_T const *)((char const *)rgb_in + i * in_stride);
@@ -355,4 +426,12 @@ int ALWAN_CORE_FNLIT(alwan_view_transform_apply)(ALWAN_CORE_T *rgb_out, size_t o
     }
 
     return ALWAN_OK;
+}
+
+int ALWAN_CORE_FNLIT(alwan_view_transform_apply)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
+    return ALWAN_CORE_FN(alwan__view_apply_impl)(rgb_out, out_stride, rgb_in, in_stride, count, vt, ctx, 0);
+}
+
+int ALWAN_CORE_FNLIT(alwan_view_transform_apply_unclamped)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
+    return ALWAN_CORE_FN(alwan__view_apply_impl)(rgb_out, out_stride, rgb_in, in_stride, count, vt, ctx, 1);
 }

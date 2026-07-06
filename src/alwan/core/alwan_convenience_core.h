@@ -272,9 +272,10 @@ ALWAN_INLINE alwan_rgb alwan_ycbcr_to_rgb_kr_kb_v(alwan_ycbcr ycbcr, alwan_scala
     alwan_scalar r = y + cr * ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - kr);
     alwan_scalar b = y + cb * ALWAN_LITERAL(2.0) * (ALWAN_LITERAL(1.0) - kb);
     alwan_scalar g = (y - kr * r - kb * b) / kg;
-    result.r = alwan_clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    result.g = alwan_clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    result.b = alwan_clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    /* Raw affine decode -- no gamut clamp (matches the dual-precision core). */
+    result.r = r;
+    result.g = g;
+    result.b = b;
     return result;
 }
 
@@ -365,9 +366,10 @@ ALWAN_INLINE alwan_rgb alwan_yccbccrc_to_rgb_v(alwan_yccbccrc yccbccrc, int bit_
                                   ALWAN_POW((b_gamma + (alpha - ALWAN_LITERAL(1.0))) / alpha,
                                             ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.45)));
     alwan_scalar g = (yc_linear - kr * r - kb * b) / kg;
-    result.r = alwan_clamp(r, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    result.g = alwan_clamp(g, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    result.b = alwan_clamp(b, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    /* Raw BT.2020-CL inverse -- no gamut clamp (matches the dual-precision core). */
+    result.r = r;
+    result.g = g;
+    result.b = b;
     return result;
 }
 

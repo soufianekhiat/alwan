@@ -83,3 +83,150 @@ ALWAN_DIAG_POP
 /* SPD-based luminance functions (alwan_photopic_luminance_*, etc.)
  * are templatized in alwan_vision_impl.inc. */
 /* alwan_apca_contrast_f32 / alwan_apca_contrast_f64 generated via alwan_vision_impl.inc */
+
+/* ----------------------------------------------------------------
+ * Gamut-safe CVD simulation variants
+ *
+ * The raw CVD simulators (Brettel and Machado) return the mathematically
+ * simulated colour without any gamut clamp -- saturated inputs can land
+ * outside [0,1]. These variants run the raw simulation and then map the
+ * result into the sRGB gamut with the requested method; output is
+ * guaranteed in [0,1]. ALWAN_GAMUT_MAP_CLIP reproduces the old implicit
+ * clamping behaviour (post-simulation clip).
+ * ---------------------------------------------------------------- */
+
+#if ALWAN_WITH_F64
+static int alwan__cvd_gamut_fixup_f64(alwan_rgb_f64 *rgb, alwan_gamut_map_method method) {
+    alwan_rgb_space_desc_f64 space;
+    int st = alwan_rgb_get_space_descriptor_f64(&space, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_f64 raw = *rgb;
+    return alwan_gamut_map_advanced_f64(rgb, method, &space, &raw);
+}
+
+int alwan_simulate_cvd_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+                                      alwan_cvd_type cvd_type, alwan_f64 severity,
+                                      alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_f64(rgb_out, rgb_in, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_f64(rgb_out, method);
+}
+
+int alwan_simulate_cvd_machado_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+                                              alwan_cvd_type cvd_type, alwan_f64 severity,
+                                              alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_machado_f64(rgb_out, rgb_in, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_f64(rgb_out, method);
+}
+
+int alwan_simulate_cvd_ex_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+                                         alwan_cvd_type cvd_type, alwan_f64 severity,
+                                         alwan_cvd_model model, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_ex_f64(rgb_out, rgb_in, cvd_type, severity, model);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_f64(rgb_out, method);
+}
+
+int alwan_simulate_cvd_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
+        alwan_f64 const *rgb_in, size_t in_stride, size_t count,
+        alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_f64_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_space_desc_f64 space;
+    st = alwan_rgb_get_space_descriptor_f64(&space, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb_f64 *px = (alwan_rgb_f64 *)((char *)rgb_out + i * out_stride);
+        alwan_rgb_f64 raw = *px;
+        st = alwan_gamut_map_advanced_f64(px, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_simulate_cvd_machado_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
+        alwan_f64 const *rgb_in, size_t in_stride, size_t count,
+        alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_machado_f64_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_space_desc_f64 space;
+    st = alwan_rgb_get_space_descriptor_f64(&space, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb_f64 *px = (alwan_rgb_f64 *)((char *)rgb_out + i * out_stride);
+        alwan_rgb_f64 raw = *px;
+        st = alwan_gamut_map_advanced_f64(px, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F64 */
+
+#if ALWAN_WITH_F32
+static int alwan__cvd_gamut_fixup_f32(alwan_rgb_f32 *rgb, alwan_gamut_map_method method) {
+    alwan_rgb_space_desc_f32 space;
+    int st = alwan_rgb_get_space_descriptor_f32(&space, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_f32 raw = *rgb;
+    return alwan_gamut_map_advanced_f32(rgb, method, &space, &raw);
+}
+
+int alwan_simulate_cvd_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+                                      alwan_cvd_type cvd_type, alwan_f32 severity,
+                                      alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_f32(rgb_out, rgb_in, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_f32(rgb_out, method);
+}
+
+int alwan_simulate_cvd_machado_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+                                              alwan_cvd_type cvd_type, alwan_f32 severity,
+                                              alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_machado_f32(rgb_out, rgb_in, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_f32(rgb_out, method);
+}
+
+int alwan_simulate_cvd_ex_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+                                         alwan_cvd_type cvd_type, alwan_f32 severity,
+                                         alwan_cvd_model model, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_ex_f32(rgb_out, rgb_in, cvd_type, severity, model);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_f32(rgb_out, method);
+}
+
+int alwan_simulate_cvd_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
+        alwan_f32 const *rgb_in, size_t in_stride, size_t count,
+        alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_f32_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_space_desc_f32 space;
+    st = alwan_rgb_get_space_descriptor_f32(&space, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb_f32 *px = (alwan_rgb_f32 *)((char *)rgb_out + i * out_stride);
+        alwan_rgb_f32 raw = *px;
+        st = alwan_gamut_map_advanced_f32(px, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+
+int alwan_simulate_cvd_machado_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
+        alwan_f32 const *rgb_in, size_t in_stride, size_t count,
+        alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_machado_f32_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    alwan_rgb_space_desc_f32 space;
+    st = alwan_rgb_get_space_descriptor_f32(&space, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_rgb_f32 *px = (alwan_rgb_f32 *)((char *)rgb_out + i * out_stride);
+        alwan_rgb_f32 raw = *px;
+        st = alwan_gamut_map_advanced_f32(px, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+#endif /* ALWAN_WITH_F32 */

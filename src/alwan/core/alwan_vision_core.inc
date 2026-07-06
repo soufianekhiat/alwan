@@ -54,9 +54,12 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_matrix)(ALWAN_C
     ALWAN_CORE_VEC3 lms = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CVD_RGB_TO_LMS), rgb_v);
     ALWAN_CORE_VEC3 lms_cvd = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(cvd_matrix, lms);
     ALWAN_CORE_VEC3 cvd_rgb = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CVD_LMS_TO_RGB), lms_cvd);
-    ALWAN_CORE_T cr = ALWAN_CORE_SATURATE(cvd_rgb.v[0]);
-    ALWAN_CORE_T cg = ALWAN_CORE_SATURATE(cvd_rgb.v[1]);
-    ALWAN_CORE_T cb = ALWAN_CORE_SATURATE(cvd_rgb.v[2]);
+    /* Raw Brettel/Vienot simulation -- no gamut clamp. The LMS round-trip can
+     * legitimately land outside [0,1] for saturated inputs; use
+     * alwan_simulate_cvd_gamut_safe for a guaranteed in-gamut result. */
+    ALWAN_CORE_T cr = cvd_rgb.v[0];
+    ALWAN_CORE_T cg = cvd_rgb.v[1];
+    ALWAN_CORE_T cb = cvd_rgb.v[2];
 
     result.r = ALWAN_CORE_LERP(rgb.r, cr, severity);
     result.g = ALWAN_CORE_LERP(rgb.g, cg, severity);
@@ -224,10 +227,13 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_machado)(
     ALWAN_CORE_VEC3 v = {{rgb.r, rgb.g, rgb.b}};
     ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(mat, v);
 
+    /* Raw Machado 2009 matrix product -- no gamut clamp (the reference model
+     * defines only the matrix; colour-science does not clip either). Use
+     * alwan_simulate_cvd_machado_gamut_safe for a guaranteed in-gamut result. */
     ALWAN_CORE_RGB result;
-    result.r = ALWAN_CORE_SATURATE(out.v[0]);
-    result.g = ALWAN_CORE_SATURATE(out.v[1]);
-    result.b = ALWAN_CORE_SATURATE(out.v[2]);
+    result.r = out.v[0];
+    result.g = out.v[1];
+    result.b = out.v[2];
     return result;
 }
 
