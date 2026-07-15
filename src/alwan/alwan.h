@@ -2170,13 +2170,168 @@ int alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 c
  *   peak       : cube upper bound (1.0 for SDR).
  * depth is optional (NULL => single global envelope): one scalar per pixel,
  * used to stop coupling across occlusion boundaries. */
+/* Picture-formation (image-aware) gamut methods. Distinct from the
+ * pixel-independent alwan_gamut_map_method family; these reshape the whole
+ * field. Members share the alwan_gamut_map_spatial entry point + params.
+ *   GRADIENT : per-channel gradient-domain field reconstruction (polarity-safe,
+ *              spatial spread). The first/experimental one.
+ *   (future)  DENSITY : luminance-gradient in log/density space + chroma
+ *              collapse -- the surface-preserving redesign. */
+typedef enum {
+    ALWAN_GAMUT_FORM_GRADIENT = 0, /* per-channel gradient-domain field (halo-prone baseline).
+                                    * Objective: minimise |grad(out)-grad(in)| per channel (Poisson)
+                                    * s.t. gamut (POCS). NOT max(RGB)-monotone -> reverses the carrier. */
+    ALWAN_GAMUT_FORM_GAIN,         /* ratio-preserving smooth-gain field: scale each pixel to
+                                    * fit (hue/chroma kept, luminance lost), optionally spread. `s` = spread.
+                                    * Objective: per-pixel gain so max(RGB)<=peak, then spatially smoothed
+                                    * -> the smoothing breaks carrier monotonicity -> flips (worst case). */
+    ALWAN_GAMUT_FORM_DENSITY,      /* luminance-preserving: keep the luma gradient (the surface),
+                                    * collapse chroma per-channel to each bound. Zero luminance
+                                    * flips by construction. Per pixel.
+                                    * Objective: constrain luminance == input; minimise chroma to fit. */
+    ALWAN_GAMUT_FORM_SURFACE,      /* DENSITY + surface envelope: the chroma-collapse amount is
+                                    * smoothed *within* a segment (depth map = surface labels,
+                                    * gated at boundaries) so a surface is treated uniformly, plus
+                                    * a luminance shoulder for over-range luma. `s` = how uniform
+                                    * (1 = per pixel, 0 = fully surface-uniform). CONSUMES: segmentation.
+                                    * Objective: constrain luminance; minimise the within-segment variance
+                                    * of the collapse. Spatial coupling -> reverses max(RGB) carrier. */
+    ALWAN_GAMUT_FORM_OPTICAL,      /* SURFACE + the Kitaoka additive/multiplicative split (density
+                                    * model): bright *increments* (additive / light) desaturate to
+                                    * white, coloured *decrements* (multiplicative / absorptive
+                                    * surface) keep their hue. Increment weight from luminance.
+                                    * Luminance-preserving (0 luma flips). CONSUMES: segmentation.
+                                    * Objective: as SURFACE, but split the collapse target by luminance;
+                                    * spatial coupling -> reverses max(RGB) carrier. */
+    ALWAN_GAMUT_FORM_CARRIER,      /* Carrier-conserving (Hamiltonian): max(RGB) = luminance +
+                                    * chrominance is treated as a conserved carrier. A *per-pixel*
+                                    * monotone shoulder maps the carrier into gamut (0 max(RGB)
+                                    * flips by construction), then the non-max channels are
+                                    * refilled by the additive/multiplicative split: bright +
+                                    * desaturated (increment/light) -> white, saturated
+                                    * (decrement/surface) -> keep hue. No spatial coupling of the
+                                    * carrier, so it never reverses the envelope.
+                                    * Objective: CONSERVE max(RGB) carrier (monotone -> 0 flips); constrain
+                                    * purity to attenuate 0->1 from boundary to maximal emission (R=G=B). */
+    ALWAN_GAMUT_FORM_XJUNCTION,    /* CARRIER, additive veil = windowed dark channel (box min over
+                                    * a neighbourhood of min(RGB)) = Koschmieder airlight. High veil
+                                    * -> additive -> white; near-zero -> multiplicative -> keep hue.
+                                    * Spatial but only refills non-max channels, so carrier stays
+                                    * per-pixel monotone (0 flips). Box-window (crude) veil.
+                                    * Objective: same as CARRIER; airlight weight = box dark-channel veil. */
+    ALWAN_GAMUT_FORM_FLUX,         /* Like XJUNCTION but the veil is a *diffused field* (guided /
+                                    * matting-Laplacian filter of the dark channel) instead of a box
+                                    * window: no boundary/junction is ever detected, the veil is the
+                                    * smooth envelope the picture sits on and the residual is the
+                                    * surface (a flux-field / Grady-style decomposition). Reads
+                                    * boundary-free content (clouds) natively. Still 0 flips.
+                                    * Objective: same as CARRIER; airlight weight = diffused dark-channel veil. */
+    ALWAN_GAMUT_FORM_DENSITY_LOG,  /* Both-end density S-curve. A *monotone* S on the carrier gives a
+                                    * toe and a shoulder; chroma collapses at BOTH ends (toward black
+                                    * in shadows, toward white in highlights) via a factor that is 0 at
+                                    * black and at maximal emission, 1 in the mid. Because the collapse
+                                    * only refills non-max channels toward the shouldered carrier, it
+                                    * stays carrier-safe (0 max(RGB) flips) unlike a luminance toe.
+                                    * Objective: conserve carrier (monotone S); constrain chroma -> 0 at
+                                    * BOTH ends (toe = black, shoulder = white). */
+    ALWAN_GAMUT_FORM_COMPLETION,   /* FLUX + volumetric veil: the diffused dark-channel veil is scaled
+                                    * by depth (path length through the participating volume =
+                                    * Koschmieder airlight), so it is a diffuse layer filling the
+                                    * VOLUME (vision through layers of dye) rather than a flat 2D blur.
+                                    * Uses the `depth` argument; falls back to FLUX if depth is NULL.
+                                    * Carrier-safe (0 flips). CONSUMES: depth.
+                                    * Objective: same as FLUX; veil weighted by depth (path length). */
+    ALWAN_GAMUT_FORM_PICTURE,      /* The synthesis. A per-pixel monotone shoulder on the carrier
+                                    * max(RGB) (0 flips), and the non-max channels reconstructed as
+                                    * lerp(white(m'), ratio-preserve(m'), keep) with a SINGLE keep term:
+                                    *   keep = cf * (1 - a)
+                                    *   cf = toe(m)*shoulder(m)  -> both-end density collapse (chroma
+                                    *        -> black in shadow, -> white/R=G=B at the scene's actual
+                                    *        maximal emission; adaptive, gradual, integrable),
+                                    *   a  = diffused dark-channel veil / m  -> additive airlight
+                                    *        (light -> white) vs multiplicative surface (-> keep hue).
+                                    * Self-contained (veil from the pixels; no depth/seg needed),
+                                    * carrier-safe, both ends integrate, boundaries emergent. The
+                                    * culmination: carrier conservation + density S + field veil. */
+    ALWAN_GAMUT_FORM_MOMENT,       /* Energy-rotation formation (MacAdam moment + Troy's rotation).
+                                    * Two conserved quantities: the carrier max(RGB) (0 flips) and the
+                                    * energy E, with whiteness=kinetic=sin^2(phi) and chroma=potential=
+                                    * cos^2(phi) an orthogonal quadrature (matching orthogonal retinal
+                                    * ganglion firing). Expressed excitation purity = sin(2*phi) -> 0 at
+                                    * both the black and white infinities, peak at mid: the both-end
+                                    * collapse as an identity, not a fitted curve. phi rides the carrier
+                                    * in reciprocal/Binet coordinates (M ~ 1/Y). Per-pixel, self-contained.
+                                    * Stays linear (Grassmannian-additive) throughout: no Lab/Oklab.
+                                    * NOTE: ratio-preserve whitening drifts perceived hue (blue->purple,
+                                    * the Abney "varying textural base colour"), but per Troy that is a
+                                    * COGNITIVE/contextual computation, not fixable by any Cartesian
+                                    * colour space -- so it is deliberately left to the viewer's
+                                    * scene-level decomposition, not "corrected" per-pixel. */
+    ALWAN_GAMUT_FORM_HEMISPHERE,   /* The parameter-free synthesis (Troy's "hemisphere"). The scalar
+                                    * integration I = max(RGB) is mapped by a C2 log-logistic whose
+                                    * slope (gradient gain) is a smooth bump: maximal at the exposure,
+                                    * rolling to ZERO at both energy infinities. Every quantity is
+                                    * derived, nothing tuned: pivot = log geometric-mean carrier (scene
+                                    * adaptation, invariant per light field); width fixed by requiring
+                                    * unit log-log gamma at the pivot (contrast preserved at the
+                                    * exposure). Hue-agnostic purity collapse only near display max
+                                    * (no per-record adjustment). Per-pixel monotone => the global
+                                    * integration ordering is preserved (depth-safe, 0 carrier flips).
+                                    * Objective: invariant integration structure -- "not a creative
+                                    * decision"; C2 (no false segmentation from slope kinks). */
+    ALWAN_GAMUT_FORM_CHANNEL       /* Channel integration (Troy Sobotka's AgX architecture): SB2383
+                                    * per-primary inset -> per-channel C2 log-logistic -> matched inverse
+                                    * outset -> soft guard rails. Every constant is a display standard,
+                                    * NONE scene-derived (temporal constancy -- "not a creative decision"):
+                                    * window = log2(0.18) +/- (10, 6.5) stops (18% grey camera exposure);
+                                    * slope spans the 8-bit display across the window; the sigmoid is
+                                    * affine-normalized (window bottom -> display 0, top -> 1: neutral DC
+                                    * respected and the volume spanned) then anchored at 18% mid-grey via
+                                    * gamma = log(0.18)/log(0.5); outset = inset^-1 (per-primary
+                                    * complementary restore with negative lobes); rails = asymptotic toes
+                                    * 0.004 (black) / 0.02 (white), no clamp contour at the "discretized
+                                    * infinity". Whiteness and hue sweep EMERGE from staggered channel
+                                    * saturation -- no purity term. Per-pixel; output display-referred
+                                    * [0,1]. NOTE: not carrier-monotone (AgX-class inset crosstalk); the
+                                    * depth invariant rides the per-record integrations. */
+    ,ALWAN_GAMUT_FORM_HEMISPHERE_ABS /* The Absolute Hemisphere: HEMISPHERE's carrier tone made
+                                    * temporally invariant. Same C2 log-logistic on I = max(RGB),
+                                    * but on CHANNEL's FIXED absolute window (log2(0.18) +/- (10,6.5)),
+                                    * affine-normalized (DC respected), 18% mid-grey anchored, with
+                                    * asymptotic guard rails; hue-agnostic ratio-preserve
+                                    * reconstruction with purity collapse only at maximal emission.
+                                    * Carrier-monotone AND hue-agnostic AND scene-invariant -- it is
+                                    * the only method that satisfies every numerically-testable Troy
+                                    * constraint at once (see docs/picture_formation.md). The trade vs
+                                    * CHANNEL: being carrier-monotone and hue-agnostic rules out
+                                    * channel integration, so form-through-highlight is weaker. */
+} alwan_gamut_formation_method;
+
+/* `s` is a per-family knob (its meaning depends on `method`):
+ *   GRADIENT           : position of the locked/free band (s=1 -> almost all locked).
+ *   GAIN               : spread of the darkening / halo control (s=1 -> per-pixel, tightest).
+ *   SURFACE, OPTICAL   : spatial uniformity of the chroma collapse within a surface
+ *                        (0 = fully surface-uniform, 1 = per-pixel); smoothing iters = (1-s)*iterations.
+ *   DENSITY            : additive whitening beyond the minimal fit
+ *                        (0 = minimal collapse, keep colour; 1 = full neutral/white for OOG pixels).
+ *   CARRIER, XJUNCTION, FLUX : extra airlight whitening ON TOP of the mandatory purity
+ *                        attenuation. These always attenuate excitation purity linearly from 0 at the
+ *                        gamut boundary to full R=G=B (white) at the image's ACTUAL maximal emission
+ *                        (adaptive: a scene that barely exceeds gamut only desaturates a little), so
+ *                        the gradient tilts into desaturation across the boundary, spreads over the
+ *                        whole flux range, and stays integrable; `s` adds airlight bias beyond that
+ *                        (0 = just the mandatory attenuation, 1 = full white for airlight regions).
+ * The carrier family (DENSITY/CARRIER/XJUNCTION/FLUX) applies `s` per pixel, so it never
+ * reintroduces max(RGB) carrier flips. */
 typedef struct {
+    alwan_gamut_formation_method method;
     alwan_f32 s, reach, beta, compress, depth_sigma;
     int iterations;
     alwan_f32 peak;
 } alwan_gamut_spatial_params_f32;
 typedef struct {
-    alwan_f64 s, reach, beta, compress, depth_sigma;
+    alwan_gamut_formation_method method;
+    alwan_f64 s, reach, beta, compress, depth_sigma; /* see per-method note above; `s` meaning depends on `method` */
     int iterations;
     alwan_f64 peak;
 } alwan_gamut_spatial_params_f64;
