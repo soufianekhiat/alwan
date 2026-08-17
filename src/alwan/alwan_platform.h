@@ -291,28 +291,85 @@
 # define ALWAN_FMOD(x, y)   mod(x, y)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
-  /* Halide backend: uses ALWAN_HALIDE_FLOAT_BITS for constant precision */
-# define ALWAN_ABS(x)       Halide::abs(x)
-# define ALWAN_SQRT(x)      Halide::sqrt(x)
+  /* Halide backend: uses ALWAN_HALIDE_FLOAT_BITS for constant precision
+   *
+   * HOST OVERRIDE CONTRACT
+   * Every primitive below is #ifndef-guarded, in the same idiom as the
+   * ALWAN_MEMCPY and ALWAN_ALLOC hooks alwan_config.h already documents as
+   * "overrideable at compile time". A host that needs different semantics
+   * may define any of them BEFORE including this header, and alwan leaves
+   * that definition alone.
+   *
+   * The motivating case is automatic differentiation: Halide's reverse mode
+   * cannot differentiate max/min, and abs is a kink, so a host building a
+   * differentiable pipeline substitutes smooth surrogates. Because
+   * alwan_scalar IS Halide::Expr and the whole Halide backend is header-only,
+   * that substitution happens in the host's translation unit and needs no
+   * change to alwan beyond these guards.
+   *
+   * ONLY THE HALIDE BRANCH IS GUARDED. The C, HLSL and GLSL branches are
+   * untouched, so the C-backend colour-accuracy tests cannot be affected by
+   * this at all.
+   *
+   * Defining nothing leaves the defaults below, bit for bit.
+   */
+# ifndef ALWAN_ABS
+#   define ALWAN_ABS(x)     Halide::abs(x)
+# endif
+# ifndef ALWAN_SQRT
+#   define ALWAN_SQRT(x)    Halide::sqrt(x)
+# endif
 /* Signed cube root (parity with libm cbrt). Halide::pow NaNs for negative
  * base -- feed only |x| and reapply sign afterwards. */
-# define ALWAN_CBRT(x)      (ALWAN_SELECT((x) < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE) * \
+# ifndef ALWAN_CBRT
+#   define ALWAN_CBRT(x)    (ALWAN_SELECT((x) < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE) * \
                              Halide::pow(ALWAN_ABS(x), ALWAN_LITERAL(1.0 / 3.0)))
-# define ALWAN_SIN(x)       Halide::sin(x)
-# define ALWAN_COS(x)       Halide::cos(x)
-# define ALWAN_TAN(x)       Halide::tan(x)
-# define ALWAN_TANH(x)      Halide::tanh(x)
-# define ALWAN_ATAN(x)      Halide::atan(x)
-# define ALWAN_ACOS(x)      Halide::acos(x)
-# define ALWAN_ATAN2(y, x)  Halide::atan2(y, x)
-# define ALWAN_POW(x, y)    Halide::pow(x, y)
-# define ALWAN_EXP(x)       Halide::exp(x)
-# define ALWAN_LN(x)        Halide::log(x)
-# define ALWAN_LOG2(x)      (Halide::log(x) / Halide::log(ALWAN_LITERAL(2.0)))
-# define ALWAN_LOG10(x)     (Halide::log(x) / Halide::log(ALWAN_LITERAL(10.0)))
-# define ALWAN_FLOOR(x)     Halide::floor(x)
-# define ALWAN_CEIL(x)      Halide::ceil(x)
-# define ALWAN_FMOD(x, y)   ((x) - Halide::floor((x) / (y)) * (y))
+# endif
+# ifndef ALWAN_SIN
+#   define ALWAN_SIN(x)     Halide::sin(x)
+# endif
+# ifndef ALWAN_COS
+#   define ALWAN_COS(x)     Halide::cos(x)
+# endif
+# ifndef ALWAN_TAN
+#   define ALWAN_TAN(x)     Halide::tan(x)
+# endif
+# ifndef ALWAN_TANH
+#   define ALWAN_TANH(x)    Halide::tanh(x)
+# endif
+# ifndef ALWAN_ATAN
+#   define ALWAN_ATAN(x)    Halide::atan(x)
+# endif
+# ifndef ALWAN_ACOS
+#   define ALWAN_ACOS(x)    Halide::acos(x)
+# endif
+# ifndef ALWAN_ATAN2
+#   define ALWAN_ATAN2(y, x) Halide::atan2(y, x)
+# endif
+# ifndef ALWAN_POW
+#   define ALWAN_POW(x, y)  Halide::pow(x, y)
+# endif
+# ifndef ALWAN_EXP
+#   define ALWAN_EXP(x)     Halide::exp(x)
+# endif
+# ifndef ALWAN_LN
+#   define ALWAN_LN(x)      Halide::log(x)
+# endif
+# ifndef ALWAN_LOG2
+#   define ALWAN_LOG2(x)    (Halide::log(x) / Halide::log(ALWAN_LITERAL(2.0)))
+# endif
+# ifndef ALWAN_LOG10
+#   define ALWAN_LOG10(x)   (Halide::log(x) / Halide::log(ALWAN_LITERAL(10.0)))
+# endif
+# ifndef ALWAN_FLOOR
+#   define ALWAN_FLOOR(x)   Halide::floor(x)
+# endif
+# ifndef ALWAN_CEIL
+#   define ALWAN_CEIL(x)    Halide::ceil(x)
+# endif
+# ifndef ALWAN_FMOD
+#   define ALWAN_FMOD(x, y) ((x) - Halide::floor((x) / (y)) * (y))
+# endif
 
 #endif
 
@@ -452,7 +509,17 @@ static inline double alwan_lerp_f64(double a, double b, double t) { return (1.0 
  * ================================================================ */
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
-# define ALWAN_SELECT(cond, t, f) Halide::select((cond), (t), (f))
+  /* Overrideable -- see the HOST OVERRIDE CONTRACT above.
+   *
+   * A WORD OF WARNING to whoever overrides this one: ALWAN_SELECT has ~500
+   * uses, and most of them switch on an integer or positional condition, or
+   * guard a division. It is a control-flow primitive far more often than it
+   * is a value primitive, so routing it wholesale to a smooth surrogate is
+   * not a "smoother" library -- it is a wrong one. Override it per call site,
+   * not globally. */
+# ifndef ALWAN_SELECT
+#   define ALWAN_SELECT(cond, t, f) Halide::select((cond), (t), (f))
+# endif
 #else
 # define ALWAN_SELECT(cond, t, f) ((cond) ? (t) : (f))
 #endif
@@ -521,14 +588,31 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 # define alwan_lerp(a, b, t)   mix(a, b, t)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
-  /* Halide: map to Halide functions */
-# define alwan_min(a, b)       Halide::min(a, b)
-# define alwan_max(a, b)       Halide::max(a, b)
-# define alwan_min3(a, b, c)   Halide::min(Halide::min(a, b), c)
-# define alwan_max3(a, b, c)   Halide::max(Halide::max(a, b), c)
-# define alwan_clamp(x, lo, hi) Halide::clamp(x, lo, hi)
-# define alwan_saturate(x)     Halide::clamp(x, ALWAN_ZERO, ALWAN_ONE)
-# define alwan_lerp(a, b, t)   Halide::lerp(a, b, t)
+  /* Halide: map to Halide functions.
+   * Overrideable -- see the HOST OVERRIDE CONTRACT above. min and max are the
+   * primitives a differentiating host most wants to replace: Halide's reverse
+   * mode cannot differentiate either. */
+# ifndef alwan_min
+#   define alwan_min(a, b)      Halide::min(a, b)
+# endif
+# ifndef alwan_max
+#   define alwan_max(a, b)      Halide::max(a, b)
+# endif
+# ifndef alwan_min3
+#   define alwan_min3(a, b, c)  Halide::min(Halide::min(a, b), c)
+# endif
+# ifndef alwan_max3
+#   define alwan_max3(a, b, c)  Halide::max(Halide::max(a, b), c)
+# endif
+# ifndef alwan_clamp
+#   define alwan_clamp(x, lo, hi) Halide::clamp(x, lo, hi)
+# endif
+# ifndef alwan_saturate
+#   define alwan_saturate(x)    Halide::clamp(x, ALWAN_ZERO, ALWAN_ONE)
+# endif
+# ifndef alwan_lerp
+#   define alwan_lerp(a, b, t)  Halide::lerp(a, b, t)
+# endif
 
 #endif
 

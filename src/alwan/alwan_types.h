@@ -96,8 +96,18 @@ ALWAN_TYPE_DEF float  alwan_f32;
 /* Unsigned integer types for the normalize core (bit-depth scaling). GPU
  * shading languages have no 8/16-bit integer scalars by default -- a 32-bit
  * uint holds every value the [0, 2^depth-1] domain produces. */
+/* `uint` is a SHADING-LANGUAGE spelling. HLSL and GLSL have it; C++ does not,
+ * and the Halide backend is a C++ eDSL rather than a GPU language -- it only
+ * shares this branch because it, too, is single-precision. Spelling it
+ * `unsigned int` there is the same 32-bit type the comment above describes, so
+ * every backend keeps the width the [0, 2^depth-1] domain needs. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
+ALWAN_TYPE_DEF unsigned int alwan_uint16;
+ALWAN_TYPE_DEF unsigned int alwan_uint8;
+#else
 ALWAN_TYPE_DEF uint   alwan_uint16;
 ALWAN_TYPE_DEF uint   alwan_uint8;
+#endif
 
 /* Math Types */
 ALWAN_TYPE_DEF struct {

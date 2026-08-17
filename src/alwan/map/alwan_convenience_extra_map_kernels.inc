@@ -401,8 +401,6 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ycbcr_to_rgb_kernel)(alwan_map_lane
         alwan_map_simd scale_cr = alwan_map_simd_set1((alwan_map_lane)(2.0 * (1.0 - (alwan_map_lane)kr)));
         alwan_map_simd scale_cb = alwan_map_simd_set1((alwan_map_lane)(2.0 * (1.0 - (alwan_map_lane)kb)));
         alwan_map_simd vhalf = alwan_map_simd_set1((alwan_map_lane)(0.5));
-        alwan_map_simd vzero = alwan_map_simd_set1((alwan_map_lane)(0.0));
-        alwan_map_simd vone  = alwan_map_simd_set1((alwan_map_lane)(1.0));
         for (; i + W <= n; i += W) {
             alwan_map_simd vy  = alwan_map_simd_load(&c0[i]);
             /* Subtract 0.5 to match alwan_ycbcr_to_rgb_kr_kb_v which expects [0,1] Cb/Cr */
