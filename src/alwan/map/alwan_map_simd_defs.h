@@ -12,6 +12,15 @@
  * (exactly one must be defined)
  */
 
+#ifdef _MSC_VER
+/* The *_map_kernels.inc bodies precompute set1 constants (zero/one/vzero/vone/
+ * ...) that not every kernel consumes, and in det mode the SIMD bodies collapse
+ * to their scalar tails leaving more set1/inv_* locals unreferenced. Both are
+ * benign template artifacts, not bugs -- silence C4101/C4189 so /WX passes in
+ * every config (matches the det-only suppression already in the build system). */
+#pragma warning(disable: 4101 4189)
+#endif
+
 /* Name mangling */
 #define ALWAN_MAP_CAT2_(a, b) a##b
 #define ALWAN_MAP_CAT_(a, b)  ALWAN_MAP_CAT2_(a, b)

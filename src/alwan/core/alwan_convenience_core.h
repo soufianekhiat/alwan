@@ -412,9 +412,12 @@ ALWAN_INLINE alwan_cmy alwan_cmyk_to_cmy_v(alwan_cmyk cmyk) {
     return result;
 }
 
-typedef struct {
-    alwan_scalar h, w, b;
-} alwan_hwb;
+/* alwan_hwb is NOT declared here. Types belong in alwan_types.h, which this
+ * header already includes, and whose GPU/Halide branch declares it alongside
+ * every other semantic colour type. Declaring it a second time is not a
+ * harmless repeat in C++: each `struct { ... }` is a DISTINCT anonymous type,
+ * so the two collided as "redefinition; different basic types". C11 tolerates
+ * an identical typedef repeat, which is why this only ever broke Halide. */
 
 ALWAN_INLINE alwan_hwb alwan_hsv_to_hwb_v(alwan_hsv hsv) {
     alwan_hwb result;

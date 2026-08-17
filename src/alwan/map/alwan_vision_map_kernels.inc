@@ -55,7 +55,6 @@ static int ALWAN_MAP_LIT(alwan__cvd_brettel_map_interleave)(
 #if ALWAN_MAP_SIMD_WIDTH > 1
             {
                 size_t const W = ALWAN_MAP_SIMD_WIDTH;
-                alwan_map_simd zero = alwan_map_simd_set1(0);
                 alwan_map_simd one  = alwan_map_simd_set1(1);
                 alwan_map_simd sev  = alwan_map_simd_set1((alwan_map_lane)severity);
                 alwan_map_simd inv_sev = alwan_map_simd_sub(one, sev);
@@ -170,7 +169,6 @@ static int ALWAN_MAP_LIT(alwan__cvd_brettel_map_planar)(
 #if ALWAN_MAP_SIMD_WIDTH > 1
             {
                 size_t const W = ALWAN_MAP_SIMD_WIDTH;
-                alwan_map_simd zero = alwan_map_simd_set1(0);
                 alwan_map_simd one  = alwan_map_simd_set1(1);
                 alwan_map_simd sev  = alwan_map_simd_set1((alwan_map_lane)severity);
                 alwan_map_simd inv_sev = alwan_map_simd_sub(one, sev);
@@ -277,7 +275,6 @@ int ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_interleave)(alwan_map_lane
 #if ALWAN_MAP_SIMD_WIDTH > 1
             {
                 size_t const W = ALWAN_MAP_SIMD_WIDTH;
-                alwan_map_simd zero = alwan_map_simd_set1(0);
                 alwan_map_simd one  = alwan_map_simd_set1(1);
                 for (; i + W <= tile; i += W) {
                     alwan_map_simd r = alwan_map_simd_load(&c0[i]);
@@ -335,7 +332,6 @@ int ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_planar)(alwan_map_lane *ou
 #if ALWAN_MAP_SIMD_WIDTH > 1
             {
                 size_t const W = ALWAN_MAP_SIMD_WIDTH;
-                alwan_map_simd zero = alwan_map_simd_set1(0);
                 alwan_map_simd one  = alwan_map_simd_set1(1);
                 for (; i + W <= tile; i += W) {
                     alwan_map_simd r = alwan_map_simd_load(&c0[i]);
