@@ -4,8 +4,8 @@ Alwan's batch-processing layer for interleaved buffers, planar buffers, and
 typed-pixel frontends.
 
 This guide describes the current implementation and public entry points. It
-stays in `docs/` because it is a usage and architecture guide, not a per-module
-reference page.
+stays in `docs/` because it is a usage and architecture guide rather than a
+per-module reference page.
 
 ---
 
@@ -175,14 +175,9 @@ int alwan_xyz_to_lab_map_planar_ex(
     alwan_xyz_f64 const *white_xyz);
 ```
 
-A small legacy block at the end of `alwan.h` still ships with the older
-`(in_fmt, out_fmt)` order — affected functions include
-`alwan_srgb_to_xyz_map_planar_ex`, `alwan_srgb_to_lab_map_planar_ex`,
-`alwan_srgb_to_oklab_map_planar_ex`, `alwan_lab_to_lch_map_planar_ex`, and
-similar `srgb_to_*` / `lch <-> lab` / `lchuv <-> luv` planar helpers around
-lines 4117-4200 of `alwan.h`. Read the specific declaration in `alwan.h`
-before wiring one up; the goal is to migrate them to the canonical
-`(out_fmt, in_fmt)` order in a future release.
+All `_ex` variants, including every `_map_planar_ex` entry, use the
+canonical `(out_fmt, in_fmt)` order; the pre-2.0 legacy `(in_fmt, out_fmt)`
+block has been fully migrated.
 
 ### 5. Image-level helpers
 

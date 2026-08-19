@@ -29,6 +29,7 @@ the library around that API surface.
 
 - [backends-cpu.md](backends-cpu.md) - CPU/SIMD backend: SSE2/AVX/AVX2/NEON dispatch, SVML gating, fast vs deterministic math paths
 - [api/backends.md](api/backends.md) - GPU/single-color shader backends (`ALWAN_BACKEND` C/HLSL/GLSL/Halide)
+- [backends_limits.md](backends_limits.md) - per-feature status of the shader backends: what compiles on GPU today and what stays CPU-only
 
 ## Core Guides
 
@@ -38,10 +39,16 @@ the library around that API surface.
 - [data-management.md](data-management.md) - embedded data today, runtime loading plan for a future release
 - [ranges.md](ranges.md) - channel-range conventions and `ALWAN_NORMALIZE_RANGES`
 
+## Gamut & Picture Formation
+
+- [gamut_mapping.md](gamut_mapping.md) - the no-silent-clamp policy: raw math by default, explicit `_gamut_safe` / `_unclamped` variants, and the gamut-mapping entry points
+- [picture_formation.md](picture_formation.md) - the spatial picture-formation operators (`alwan_gamut_map_spatial`), the 15-constraint matrix, and the `COMPLETE` operators
+- [gamut_spatial_formation.md](gamut_spatial_formation.md) - the original spatial-solver formulation, kept as the algorithm-internals appendix to picture_formation.md
+
 ## Companion Docs
 
-These stay in `docs/` intentionally because they support the whole library, not
-just one API module.
+These stay in `docs/` because they support the whole library rather than a
+single API module.
 
 - [compare_api.md](compare_api.md) - capability comparison against related libraries
 - [lib_mem.md](lib_mem.md) - how external libraries lay out pixels in memory, and how Alwan maps onto them

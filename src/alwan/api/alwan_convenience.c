@@ -130,6 +130,30 @@ int alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb) {
     return ALWAN_OK;
 }
 
+int alwan_hsv_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_hsv_f32 const *hsv) {
+    if (!hsv || !hwb_out) return ALWAN_E_INVALID;
+    *hwb_out = alwan_hsv_to_hwb_f32_v(*hsv);
+    return ALWAN_OK;
+}
+
+int alwan_hsv_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_hsv_f64 const *hsv) {
+    if (!hsv || !hwb_out) return ALWAN_E_INVALID;
+    *hwb_out = alwan_hsv_to_hwb_f64_v(*hsv);
+    return ALWAN_OK;
+}
+
+int alwan_hwb_to_hsv_f32(alwan_hsv_f32 *hsv_out, alwan_hwb_f32 const *hwb) {
+    if (!hsv_out || !hwb) return ALWAN_E_INVALID;
+    *hsv_out = alwan_hwb_to_hsv_f32_v(*hwb);
+    return ALWAN_OK;
+}
+
+int alwan_hwb_to_hsv_f64(alwan_hsv_f64 *hsv_out, alwan_hwb_f64 const *hwb) {
+    if (!hsv_out || !hwb) return ALWAN_E_INVALID;
+    *hsv_out = alwan_hwb_to_hsv_f64_v(*hwb);
+    return ALWAN_OK;
+}
+
 /* ----------------------------------------------------------------
  * Relative Luminance
  * ---------------------------------------------------------------- */
@@ -163,6 +187,15 @@ int alwan_relative_luminance_kr_kb_f64(alwan_f64 *Y_out,
     return ALWAN_OK;
 }
 
+int alwan_relative_luminance_kr_kb_f32(alwan_f32 *Y_out,
+                                   alwan_rgb_f32 const *rgb,
+                                   alwan_f32 kr, alwan_f32 kb) {
+    if (!rgb || !Y_out) return ALWAN_E_INVALID;
+    alwan_f32 kg = 1.0f - kr - kb;
+    *Y_out = alwan_relative_luminance_f32_v(*rgb, kr, kg, kb);
+    return ALWAN_OK;
+}
+
 int alwan_relative_luminance_space_f64(alwan_f64 *Y_out,
                                    alwan_rgb_f64 const *rgb,
                                    alwan_rgb_space_desc_f64 const *space) {
@@ -173,6 +206,19 @@ int alwan_relative_luminance_space_f64(alwan_f64 *Y_out,
     alwan_f64 kg = space->rgb_to_xyz.m[4];
     alwan_f64 kb = space->rgb_to_xyz.m[5];
     *Y_out = alwan_relative_luminance_f64_v(*rgb, kr, kg, kb);
+    return ALWAN_OK;
+}
+
+int alwan_relative_luminance_space_f32(alwan_f32 *Y_out,
+                                   alwan_rgb_f32 const *rgb,
+                                   alwan_rgb_space_desc_f32 const *space) {
+    if (!rgb || !Y_out || !space) return ALWAN_E_INVALID;
+    if (!space->has_matrices) return ALWAN_E_INVALID;
+    /* Y row of the RGB-to-XYZ NPM (row-major: m[3], m[4], m[5]) */
+    alwan_f32 kr = space->rgb_to_xyz.m[3];
+    alwan_f32 kg = space->rgb_to_xyz.m[4];
+    alwan_f32 kb = space->rgb_to_xyz.m[5];
+    *Y_out = alwan_relative_luminance_f32_v(*rgb, kr, kg, kb);
     return ALWAN_OK;
 }
 

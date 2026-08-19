@@ -8,7 +8,7 @@ This page is the per-function reference. For the architecture/usage overview of
 the same layer, see the conceptual guide [../map.md](../map.md).
 
 > **Precision variants:** functions written here as `name_{T}` exist in two
-> native forms — `name_f32` (single precision, `alwan_f32`) and `name_f64`
+> native forms: `name_f32` (single precision, `alwan_f32`) and `name_f64`
 > (double precision, `alwan_f64`), with `T = f32 | f64`. Which precisions are
 > compiled is controlled by `ALWAN_WITH_F32` / `ALWAN_WITH_F64` (both by
 > default; see [../configuration.md](../configuration.md)). The typed `_ex`
@@ -69,13 +69,13 @@ int alwan_*_map_interleave_ex(void       *out, size_t out_stride,
 The pixel-format pair is `(out_fmt, in_fmt)` and comes **after `count`**, not
 interleaved with the buffers.
 
-**`count`** — number of pixels (3-channel unless noted).
+**`count`**: number of pixels (3-channel unless noted).
 
-**`out_stride` / `in_stride`** — byte offset between consecutive pixels. For
+**`out_stride` / `in_stride`**: byte offset between consecutive pixels. For
 tightly packed `alwan_{T}` triplets use `3 * sizeof(alwan_{T})`. Larger strides
 let you walk interleaved RGBA (`4 * sizeof(alwan_{T})`) or sparse layouts.
 
-**Return value** — `ALWAN_OK` (0) on success, `ALWAN_E_INVALID` on NULL
+**Return value**: `ALWAN_OK` (0) on success, `ALWAN_E_INVALID` on NULL
 pointers or bad parameters.
 
 ## Pixel Formats (`_ex`)
@@ -504,8 +504,8 @@ int alwan_xyz_to_lab_map_planar_ex(void *out0, size_t out_stride,
 
 `alwan_image_convert` is now its own unit
 (`src/alwan/map/alwan_image_convert_impl.inc`), separate from the generic
-colourspace maps. It runs a full 2D image pipeline —
-EOTF → matrix (with Bradford CAT across whitepoints) → OETF — with pixel-format
+colourspace maps. It runs a full 2D image pipeline,
+EOTF → matrix (with Bradford CAT across whitepoints) → OETF, with pixel-format
 conversion, driven by RGB space descriptors and row strides:
 
 ```c
@@ -560,9 +560,9 @@ int alwan_scatter3_{T}(void *out, size_t out_stride,
 
 ## See Also
 
-- [../map.md](../map.md) — conceptual/architecture guide for the map layer
-- [simd.md](simd.md) — the SIMD backend selection underneath these kernels
+- [../map.md](../map.md): conceptual/architecture guide for the map layer
+- [simd.md](simd.md): the SIMD backend selection underneath these kernels
 - [color-spaces.md](color-spaces.md), [gamut.md](gamut.md),
-  [color-appearance.md](color-appearance.md) — per-domain references
-- [../configuration.md](../configuration.md) — `ALWAN_WITH_F32` / `ALWAN_WITH_F64`
+  [color-appearance.md](color-appearance.md): per-domain references
+- [../configuration.md](../configuration.md): `ALWAN_WITH_F32` / `ALWAN_WITH_F64`
   precision build config

@@ -174,7 +174,7 @@ int alwan_css_gamut_map_planar_ex(
 
 Implements the CSS Color Level 4 §13.2 gamut-mapping algorithm: binary search on OKLCh
 chroma with a `deltaEOK` JND criterion (threshold 0.02). Maps out-of-gamut **linear sRGB**
-to in-gamut linear sRGB. No `method` parameter — the algorithm is fixed by the spec.
+to in-gamut linear sRGB. No `method` parameter; the algorithm is fixed by the spec.
 
 ---
 
@@ -187,12 +187,12 @@ int alwan_gamut_volume_{T}(alwan_{T} *volume,
 
 Returns the **exact** RGB gamut volume in linear XYZ (in XYZ units cubed). The RGB
 unit cube maps to a parallelepiped under the RGB→XYZ matrix `M`, whose volume is
-exactly `|det(M)|` — a closed-form result, not a stochastic estimate.
+exactly `|det(M)|`, a closed-form result rather than a stochastic estimate.
 
 > A *perceptual* gamut volume (the gamut's image in a nonlinear space such as
 > Lab/Oklab) has no closed form and would require Monte Carlo sampling; that is a
 > separate, currently unimplemented operation. An earlier `alwan_gamut_volume_mc`
-> with `num_samples`/`seed` parameters advertised sampling it never performed —
+> with `num_samples`/`seed` parameters advertised sampling it never performed;
 > it has been renamed to `alwan_gamut_volume` and the dead parameters removed.
 
 **Example:**
@@ -207,7 +207,7 @@ alwan_gamut_volume_{T}(&volume, &srgb_desc);
 > The numerical estimators (`alwan_gamut_volume_ratio`, `alwan_gamut_coverage`)
 > run their reduction in `f64` internally even in an `f32`-only build
 > (`ALWAN_WITH_F64_FACADE`), so they remain available everywhere. This is a
-> deliberate design choice — not a missing native-f32 path. See
+> design choice rather than a missing native-f32 path. See
 > [build-and-precision.md](../build-and-precision.md). (`alwan_gamut_volume`
 > itself is an exact determinant and equally cheap in either precision.)
 

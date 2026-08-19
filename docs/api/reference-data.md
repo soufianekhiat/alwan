@@ -8,13 +8,13 @@ Functions for accessing standard color reference datasets and color notation sys
 
 Reference data functions provide access to:
 
-- **Munsell Renotation Data** — Munsell HVC to/from XYZ
-- **Color Checker** — Standard color target patch data
-- **NCS** — Natural Color System notation (approximate, forward only)
-- **RGB Space Introspection** — Query primaries and transfer functions by enum
-- **Illuminant Utilities** — White points, xy chromaticities, and D-series generation
-- **Embedded Dataset Getters** — Raw illuminant-xy and sRGB-primaries arrays
-- **Interpolation & LUTs** — 1D/3D table lookup and (extra)interpolation helpers
+- **Munsell Renotation Data**: Munsell HVC to/from XYZ
+- **Color Checker**: Standard color target patch data
+- **NCS**: Natural Color System notation (approximate, forward only)
+- **RGB Space Introspection**: Query primaries and transfer functions by enum
+- **Illuminant Utilities**: White points, xy chromaticities, and D-series generation
+- **Embedded Dataset Getters**: Raw illuminant-xy and sRGB-primaries arrays
+- **Interpolation & LUTs**: 1D/3D table lookup and (extra)interpolation helpers
 
 All numeric reference data is **CSV-embedded** at compile time (`ALWAN_EMBED_DATA=1`,
 the only supported mode). The datasets live under `src/alwan/data/**` and are baked
@@ -36,16 +36,16 @@ variants. `{T}` below is a placeholder for one of:
 
 By default **both** precisions compile. Declarations are always present.
 
-> **f64-internal facades (by design).** The reference-data lookups on this page —
-> Munsell (`alwan_munsell_to_xyz` / `alwan_xyz_to_munsell`), NCS
+> **f64-internal facades (by design).** The reference-data lookups on this page,
+> namely Munsell (`alwan_munsell_to_xyz` / `alwan_xyz_to_munsell`), NCS
 > (`alwan_ncs_to_xyz`), ColorChecker (`alwan_color_checker_data`), and RGB-space
-> introspection (`alwan_rgb_space_by_enum` / `alwan_rgb_space_get_tfs`) — store
+> introspection (`alwan_rgb_space_by_enum` / `alwan_rgb_space_get_tfs`), store
 > their renotation/patch/primaries tables in `double`. The `_f32` twins are **not**
 > independent native-f32 paths: they run the f64 data + f64 lookup and narrow the
 > result at the boundary. There is **no** `#if` precision gating in
 > `alwan_reference_data.c`; the f32 accessors call straight through to the f64
-> implementation. This is intentional — the table data is f64 and re-quantising it
-> to f32 tables would only add error — and matches the f64-internal facade pattern
+> implementation. This is intentional (the table data is f64, and re-quantising it
+> to f32 tables would only add error) and matches the f64-internal facade pattern
 > already documented for ZCAM and the CCM fits (see
 > [precision-and-limits.md](../precision-and-limits.md)). A consequence is that
 > these `_f32` entry points stay available even in an `ALWAN_BUILD_ONLY_F32` build
@@ -78,10 +78,10 @@ int alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz,
 Convert Munsell notation (Hue, Value, Chroma) to XYZ using the Munsell Renotation Data (1943).
 
 **Parameters:**
-- `hue` — Munsell hue [0, 100] (continuous: 0=R, 10=YR, 20=Y, ..., 90=RP)
-- `value` — Munsell value [0, 10] (lightness)
-- `chroma` — Munsell chroma [0, 20+] (saturation)
-- `illuminant` — Illuminant for XYZ calculation
+- `hue`: Munsell hue [0, 100] (continuous: 0=R, 10=YR, 20=Y, ..., 90=RP)
+- `value`: Munsell value [0, 10] (lightness)
+- `chroma`: Munsell chroma [0, 20+] (saturation)
+- `illuminant`: Illuminant for XYZ calculation
 
 ### alwan_xyz_to_munsell_{T}
 
@@ -171,7 +171,7 @@ int alwan_xyz_to_ncs_f32(char *ncs_notation, size_t notation_size,
                          alwan_xyz_f32 const *xyz);
 ```
 
-> **Inverse unsupported.** These always return `ALWAN_E_INVALID` — recovering NCS
+> **Inverse unsupported.** These always return `ALWAN_E_INVALID`: recovering NCS
 > notation requires the proprietary NCS colour atlas. Reserve `notation_size >= 32`
 > for any future support.
 
@@ -252,7 +252,7 @@ alwan_illuminant_white_point_f64(&d65_white, ALWAN_ILLUMINANT_D65,
 ## Embedded Dataset Getters
 
 These return a pointer into the **embedded** static dataset plus its element `count`.
-In embedded mode (the only supported mode) the data is owned by the library — do not
+In embedded mode (the only supported mode) the data is owned by the library; do not
 free it. (`alwan_data_free_{T}` is declared only for the unimplemented runtime mode,
 reserved for a future release.)
 
@@ -350,9 +350,9 @@ int alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
 (`_f32` twins exist for all three.)
 
 **Parameters for 3D LUT:**
-- `table` — 3D LUT array (R-major: `table[r][g][b]`, 3 values per entry)
-- `sizes` — Dimensions [size_r, size_g, size_b]
-- `rgb_in` — Input RGB coordinates [0, 1] (normalized)
+- `table`: 3D LUT array (R-major: `table[r][g][b]`, 3 values per entry)
+- `sizes`: Dimensions [size_r, size_g, size_b]
+- `rgb_in`: Input RGB coordinates [0, 1] (normalized)
 
 ---
 
@@ -413,14 +413,14 @@ receives per-sample XYZ importance weights and may be `NULL`.
 
 ## Error Codes
 
-- `ALWAN_OK` (0) — Success
-- `ALWAN_E_INVALID` (-1) — Invalid parameter or notation (also the NCS inverse contract)
-- `ALWAN_E_NODATA` (-2) — Reference data not found
+- `ALWAN_OK` (0): Success
+- `ALWAN_E_INVALID` (-1): Invalid parameter or notation (also the NCS inverse contract)
+- `ALWAN_E_NODATA` (-2): Reference data not found
 
 ---
 
 ## See Also
 
-- [Spectral Operations](spectral.md) — SPD creation and XYZ integration
-- [Color Correction](color-correction.md) — Camera profiling with ColorChecker
-- [Color Spaces](color-spaces.md) — RGB space conversions
+- [Spectral Operations](spectral.md): SPD creation and XYZ integration
+- [Color Correction](color-correction.md): Camera profiling with ColorChecker
+- [Color Spaces](color-spaces.md): RGB space conversions

@@ -45,10 +45,10 @@ void alwan_lgg_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in,
 Apply lift/gamma/gain color correction. Formula: `out = ((in + lift) ^ (1/gamma)) * gain`
 
 **Parameters:**
-- `rgb_in` — Input RGB values (linear, [0,1] for normal range)
-- `lift` — Lift adjustment per channel (shadows). Typical range: [-1, 1]
-- `gamma` — Gamma adjustment per channel (midtones). Typical range: [0.0001, 10]
-- `gain` — Gain adjustment per channel (highlights). Typical range: [0, 2]
+- `rgb_in`: Input RGB values (linear, [0,1] for normal range)
+- `lift`: Lift adjustment per channel (shadows). Typical range: [-1, 1]
+- `gamma`: Gamma adjustment per channel (midtones). Typical range: [0.0001, 10]
+- `gain`: Gain adjustment per channel (highlights). Typical range: [0, 2]
 
 **Example:**
 ```c
@@ -82,7 +82,7 @@ Also available: `alwan_lgg_apply_{T}_map_planar`, `alwan_lgg_apply_map_planar_ex
 
 ## ASC CDL / SOP
 
-Slope-Offset-Power (SOP) plus Saturation — the ASC Color Decision List grading
+Slope-Offset-Power (SOP) plus Saturation: the ASC Color Decision List grading
 model. Parameters are carried in `alwan_aces_lmt_params_{T}` and operate in
 **AP1 (ACEScg) linear** space.
 
@@ -149,7 +149,7 @@ int alwan_color_matrix_get_preset_{T}(alwan_mat3x3_{T} *matrix_3x3,
 Get a preset creative color-grading matrix. Returns `ALWAN_OK`, or
 `ALWAN_E_INVALID` for an unknown preset.
 
-**Preset Enum** (`alwan_color_matrix_preset_{T}` — the enum is precision-independent;
+**Preset Enum** (`alwan_color_matrix_preset_{T}`: the enum is precision-independent;
 `alwan_color_matrix_preset_f32` is a typedef of `alwan_color_matrix_preset_f64`):
 ```c
 typedef enum {
@@ -206,7 +206,7 @@ Film-style printer-light color correction in **log exposure**. Each light unit i
 approximately `0.025` log-exposure change.
 
 **Parameters:**
-- `red_lights`, `green_lights`, `blue_lights` — Printer light values (0–50, default 25 = neutral)
+- `red_lights`, `green_lights`, `blue_lights`: Printer light values (0–50, default 25 = neutral)
 
 **Example:**
 ```c
@@ -301,7 +301,7 @@ camera-to-reference profiling.
 
 > **f64-facade note:** the CCM *fits* (`alwan_colour_correction_matrix_cheung2004_{T}`
 > and `..._finlayson2015_{T}`) run their least-squares normal-equations solve in
-> `double` internally regardless of the requested precision — squaring the
+> `double` internally regardless of the requested precision: squaring the
 > condition number in `float` would be numerically fragile. The f32 entry points
 > therefore stay available even in an f32-only build via `ALWAN_WITH_F64_FACADE`.
 > See [Build & Precision](../build-and-precision.md).
@@ -365,8 +365,8 @@ void alwan_colour_correct_finlayson2015_{T}(
         alwan_{T} const *matrix, int degree, int root_poly);
 ```
 
-- `degree` — polynomial degree (1–4)
-- `root_poly` — if non-zero, use root-polynomial expansion (must match between fit and apply)
+- `degree`: polynomial degree (1–4)
+- `root_poly`: if non-zero, use root-polynomial expansion (must match between fit and apply)
 
 **Example (camera profiling workflow):**
 ```c
@@ -422,8 +422,8 @@ skip the work on NULL pointers.
 
 ## See Also
 
-- [Transfer Functions](transfer-functions.md) — OETF/EOTF encoding
-- [ACES Pipeline](aces.md) — ACES LMT grading and output transforms
-- [HDR](hdr.md) — exposure tone-mapping operators
-- [Color Spaces](color-spaces.md) — RGB conversions
-- [Build & Precision](../build-and-precision.md) — `_{T}` variants and the f64-facade
+- [Transfer Functions](transfer-functions.md): OETF/EOTF encoding
+- [ACES Pipeline](aces.md): ACES LMT grading and output transforms
+- [HDR](hdr.md): exposure tone-mapping operators
+- [Color Spaces](color-spaces.md): RGB conversions
+- [Build & Precision](../build-and-precision.md): `_{T}` variants and the f64-facade

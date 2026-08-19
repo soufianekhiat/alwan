@@ -220,11 +220,11 @@ alwan_f64 alwan_mat3_det_f64(alwan_mat3x3_f64 const *m);
 /* Matrix-vector map multiplication: out[i] = m * in[i]
  * Transforms array of 3D vectors by the same matrix
  * vec_out: output vectors (stride out_stride between consecutive vectors)
- * matrix: transformation matrix (applied to all vectors)
- * vec_in: input vectors (stride in_stride between consecutive vectors)
- * count: number of vectors to transform
- * in_stride: input stride in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
  * out_stride: output stride in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
+ * vec_in: input vectors (stride in_stride between consecutive vectors)
+ * in_stride: input stride in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
+ * count: number of vectors to transform
+ * matrix: transformation matrix (applied to all vectors)
  * Returns ALWAN_OK on success */
 int alwan_mat3_transform_f32_map_interleave(alwan_f32 *vec_out, size_t out_stride, alwan_f32 const *vec_in, size_t in_stride, size_t count, alwan_mat3x3_f32 const *matrix);
 int alwan_mat3_transform_f64_map_interleave(alwan_f64 *vec_out, size_t out_stride, alwan_f64 const *vec_in, size_t in_stride, size_t count, alwan_mat3x3_f64 const *matrix);
@@ -866,22 +866,22 @@ int alwan_gamut_volume_f32(alwan_f32 *volume,
 /* Map RGB colors to [0,1] gamut using specified method
  * Map operation with stride support for efficient array processing
  * rgb_out: output RGB colors (stride out_stride between consecutive triplets)
+ * out_stride: stride for output (in bytes, typically 3*sizeof(alwan_f64) for packed)
+ * rgb_in: input RGB colors (may be out of gamut, stride in_stride between triplets)
+ * in_stride: stride for input (in bytes, typically 3*sizeof(alwan_f64) for packed)
+ * count: number of RGB triplets to process
  * method: gamut mapping method (one of alwan_gamut_map_method: CLIP,
  *         HUE_PRESERVING, ADAPTIVE_L0, ADAPTIVE_CUSP, CHROMA_COMPRESS,
  *         SGCK, HPMINDE, LIGHTNESS_PRESERVE)
- * rgb_in: input RGB colors (may be out of gamut, stride in_stride between triplets)
- * count: number of RGB triplets to process
- * in_stride: stride for input (in bytes, typically 3*sizeof(alwan_f64) for packed)
- * out_stride: stride for output (in bytes, typically 3*sizeof(alwan_f64) for packed)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if method not supported */
 int alwan_gamut_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_gamut_map_method method);
 int alwan_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_gamut_map_method method);
 
 /* Map XYZ color to RGB gamut with hue preservation
- * ctx: optional context (can be NULL)
+ * rgb_out: output RGB color (mapped to [0,1] with preserved hue in JCh)
  * space: target RGB space
  * xyz_in: input XYZ color (may be out of RGB gamut)
- * rgb_out: output RGB color (mapped to [0,1] with preserved hue in JCh)
+ * ctx: optional context (can be NULL)
  * Returns ALWAN_OK on success */
 int alwan_gamut_map_xyz_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *space, alwan_xyz_f64 const *xyz_in, alwan_ctx *ctx);
 int alwan_gamut_map_xyz_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *space, alwan_xyz_f32 const *xyz_in, alwan_ctx *ctx);
@@ -940,13 +940,13 @@ int alwan_float_to_uint_f32(alwan_uint16 *out, alwan_f32 const *in, int bit_dept
 /* Apply a view transform (display rendering transform) to RGB data
  * View transforms convert scene-referred RGB to display-referred RGB
  *
- * ctx: optional context (can be NULL for stateless transforms)
- * vt: view transform to apply
- * rgb_in: input RGB triplets (scene-referred, typically ACES AP1 or linear)
- * count: number of RGB triplets
- * in_stride: stride between input RGB triplets (in bytes, typically 3*sizeof(alwan_f64))
  * rgb_out: output RGB triplets (display-referred)
  * out_stride: stride between output RGB triplets (in bytes, typically 3*sizeof(alwan_f64))
+ * rgb_in: input RGB triplets (scene-referred, typically ACES AP1 or linear)
+ * in_stride: stride between input RGB triplets (in bytes, typically 3*sizeof(alwan_f64))
+ * count: number of RGB triplets
+ * vt: view transform to apply
+ * ctx: optional context (can be NULL for stateless transforms)
  *
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if transform not supported */
 int alwan_view_transform_apply_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
@@ -975,7 +975,7 @@ int alwan_view_transform_map_interleave_ex(void *out, size_t out_stride, void co
  *
  * For log-encoded / non-Rec.709 footage, decode + convert to linear Rec.709
  * first with the existing bulk helpers, then apply -- e.g.
- *     alwan_eotf_apply_f64(buf, s, buf, s, n*3, ALWAN_TF_ARRI_LOGC3); // log->lin
+ *     alwan_eotf_apply_f64(buf, s, buf, s, n*3, ALWAN_TF_LOGC3);      // log->lin
  *     alwan_rgb_convert_f64(...src_space, rec709_space...);           // gamut->709
  *     alwan_jp2499_apply_f64(out, ..., &params);
  * (kept out of the core so JP2499 stays reusable and byte-exact across paths.) */
@@ -1112,9 +1112,9 @@ void alwan_lchuv_to_luv_f64(alwan_luv_f64 *luv, alwan_lchuv_f64 const *lchuv);
  * ---------------------------------------------------------------- */
 
 /* MapXYZ <-> Lab conversions
- * count: number of color triplets to convert
+ * out_stride: output stride in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
  * in_stride: input stride in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
- * out_stride: output stride in bytes (typically 3*sizeof(alwan_f32/alwan_f64)) */
+ * count: number of color triplets to convert */
 int alwan_xyz_to_lab_f32_map_interleave(alwan_f32 *lab_out, size_t out_stride, alwan_f32 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f32 const *white_xyz);
 int alwan_xyz_to_lab_f64_map_interleave(alwan_f64 *lab_out, size_t out_stride, alwan_f64 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f64 const *white_xyz);
 
@@ -1695,10 +1695,10 @@ alwan_f64 alwan_delta_e_zcam_f64(alwan_jzazbz_f64 const *jab1, alwan_jzazbz_f64 
 /* Batch dE*76 - Euclidean distance in Lab space
  * delta_e_out: output dE values (count elements)
  * lab1_in: first array of Lab colors
- * lab2_in: second array of Lab colors
- * count: number of color pairs to compare
  * in1_stride: stride for lab1_in in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
+ * lab2_in: second array of Lab colors
  * in2_stride: stride for lab2_in in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
+ * count: number of color pairs to compare
  * Returns ALWAN_OK on success */
 int alwan_delta_e_76_f32_batch(alwan_f32 *delta_e_out, alwan_f32 const *lab1_in, size_t in1_stride, alwan_f32 const *lab2_in, size_t in2_stride, size_t count);
 int alwan_delta_e_76_f64_batch(alwan_f64 *delta_e_out, alwan_f64 const *lab1_in, size_t in1_stride, alwan_f64 const *lab2_in, size_t in2_stride, size_t count);
@@ -1817,14 +1817,14 @@ int alwan_cat_matrix_f64(alwan_mat3x3_f64 *out,
                          alwan_cat_method method);
 
 /* Apply chromatic adaptation to XYZ colors (map operation)
+ * xyz_out: output XYZ colors (stride out_stride between consecutive colors)
+ * out_stride: stride for output (in bytes, typically 3*sizeof(alwan_f32/alwan_f64) for packed array)
  * xyz_in: input XYZ colors (stride in_stride between consecutive colors)
- * count: number of colors to transform
  * in_stride: stride for input (in bytes, typically 3*sizeof(alwan_f32/alwan_f64) for packed array)
+ * count: number of colors to transform
  * src_white_xyz: source white point in XYZ
  * dst_white_xyz: destination white point in XYZ
  * method: CAT method
- * xyz_out: output XYZ colors (stride out_stride between consecutive colors)
- * out_stride: stride for output (in bytes, typically 3*sizeof(alwan_f32/alwan_f64) for packed array)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if parameters are invalid */
 int alwan_xyz_adapt_f32(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f32 const *src_white_xyz, alwan_xyz_f32 const *dst_white_xyz, alwan_cat_method method);
 int alwan_xyz_adapt_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f64 const *src_white_xyz, alwan_xyz_f64 const *dst_white_xyz, alwan_cat_method method);
@@ -1915,10 +1915,11 @@ typedef enum {
 } alwan_integrate_method;
 
 /* Create SPD with uniform sampling
+ * out: output SPD structure (values allocated internally)
  * wavelength_min: starting wavelength (nm)
  * wavelength_max: ending wavelength (nm)
  * count: number of samples
- * out: output SPD structure (values allocated internally)
+ * ctx: context (for allocation)
  * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
 int alwan_spd_create_f64(alwan_spd_f64 *out, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx);
 int alwan_spd_create_f32(alwan_spd_f32 *out, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx);
@@ -1928,46 +1929,46 @@ void alwan_spd_destroy_f64(alwan_spd_f64 *spd, alwan_ctx *ctx);
 void alwan_spd_destroy_f32(alwan_spd_f32 *spd, alwan_ctx *ctx);
 
 /* Load standard illuminant SPD
- * ctx: context (for data path and allocation)
- * ill: illuminant to load
  * out: output SPD structure
+ * ill: illuminant to load
+ * ctx: context (for data path and allocation)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if illuminant not supported */
 int alwan_spd_illuminant_f64(alwan_spd_f64 *out, alwan_illuminant ill, alwan_ctx *ctx);
 int alwan_spd_illuminant_f32(alwan_spd_f32 *out, alwan_illuminant ill, alwan_ctx *ctx);
 
 /* Generate blackbody (Planckian) SPD at given temperature
  * Uses Planck's law to compute spectral radiance
- * ctx: context
+ * out: output SPD structure (values allocated internally)
  * temperature_K: color temperature in Kelvin (typically 1000-25000K)
  * wavelength_min: starting wavelength (nm)
  * wavelength_max: ending wavelength (nm)
  * count: number of samples
- * out: output SPD structure (values allocated internally)
+ * ctx: context
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if temperature out of range */
 int alwan_spd_blackbody_f64(alwan_spd_f64 *out, alwan_f64 temperature_K, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx);
 int alwan_spd_blackbody_f32(alwan_spd_f32 *out, alwan_f32 temperature_K, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx);
 
 /* Resample SPD to new wavelength range/count
- * ctx: context
+ * dst: destination SPD (values allocated internally)
  * src: source SPD
  * wavelength_min: new starting wavelength (nm)
  * wavelength_max: new ending wavelength (nm)
  * count: new number of samples
  * method: resampling method (linear or Catmull-Rom)
  * extrapolate: extrapolation mode for out-of-range values
- * dst: destination SPD (values allocated internally)
+ * ctx: context
  * Returns ALWAN_OK on success */
 int alwan_spd_resample_f64(alwan_spd_f64 *dst, alwan_spd_f64 const *src, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx);
 int alwan_spd_resample_f32(alwan_spd_f32 *dst, alwan_spd_f32 const *src, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx);
 
 /* Compute XYZ tristimulus values from SPD
- * ctx: context
+ * xyz_out: output XYZ tristimulus values
  * spd: spectral power distribution (reflectance or emission)
  * illuminant: illuminant SPD (NULL = assume spd is already weighted by illuminant)
  * observer: observer type (CIE 1931/1964/2012 2 deg or 10 deg)
  * method: integration method (trapezoid or Simpson)
  * bandpass_nm: bandpass width for Stearns & Stearns correction (0 = no correction)
- * xyz_out: output XYZ tristimulus values
+ * ctx: context
  * Returns ALWAN_OK on success */
 int alwan_xyz_from_spd_f64(alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, alwan_f64 bandpass_nm, alwan_ctx *ctx);
 int alwan_xyz_from_spd_f32(alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, alwan_f32 bandpass_nm, alwan_ctx *ctx);
@@ -2018,8 +2019,8 @@ alwan_vec2_f64 const* alwan_pointer_gamut_boundary(size_t *count_out);
 
 /* Get CIE 1931 spectral locus xy chromaticity for a given wavelength
  * Computes xy chromaticity from CIE 1931 2 deg observer CMFs for monochromatic light
- * wavelength: wavelength in nm (360-830nm)
  * xy_out: output xy chromaticity coordinates
+ * wavelength: wavelength in nm (360-830nm)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if wavelength out of range */
 int alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 wavelength);
 int alwan_spectral_locus_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 wavelength);
@@ -2027,11 +2028,11 @@ int alwan_spectral_locus_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 wavelength);
 /* Compute dominant wavelength for a color
  * Dominant wavelength is the wavelength of monochromatic light that,
  * when mixed with the white point, matches the given color's hue
- * xy: CIE 1931 xy chromaticity coordinates of the color
- * xy_white: white point xy chromaticity (e.g., illuminant D65)
  * wavelength_out: receives dominant wavelength in nm (or negative for complementary)
  * xy_wl_out: receives xy of the spectral locus point (optional, can be NULL)
  * xy_cw_out: receives xy of the color-white intersection (optional, can be NULL)
+ * xy: CIE 1931 xy chromaticity coordinates of the color
+ * xy_white: white point xy chromaticity (e.g., illuminant D65)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if color is on/near the purple line */
 int alwan_dominant_wavelength_f32(alwan_f32 *wavelength_out,
                                alwan_vec2_f32 *xy_wl_out,
@@ -2172,11 +2173,12 @@ int alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 c
  * used to stop coupling across occlusion boundaries. */
 /* Picture-formation (image-aware) gamut methods. Distinct from the
  * pixel-independent alwan_gamut_map_method family; these reshape the whole
- * field. Members share the alwan_gamut_map_spatial entry point + params.
- *   GRADIENT : per-channel gradient-domain field reconstruction (polarity-safe,
- *              spatial spread). The first/experimental one.
- *   (future)  DENSITY : luminance-gradient in log/density space + chroma
- *              collapse -- the surface-preserving redesign. */
+ * field. All 18 members share the alwan_gamut_map_spatial entry point +
+ * params; each enumerator below documents its own method, and
+ * docs/picture_formation.md carries the measured 15-constraint matrix for
+ * every one of them. Implementation lives in src/alwan/experimental/
+ * (research tier: the enum and entry point are stable, the operators'
+ * internals may still evolve). */
 typedef enum {
     ALWAN_GAMUT_FORM_GRADIENT = 0, /* per-channel gradient-domain field (halo-prone baseline).
                                     * Objective: minimise |grad(out)-grad(in)| per channel (Poisson)
@@ -2300,11 +2302,12 @@ typedef enum {
                                     * affine-normalized (DC respected), 18% mid-grey anchored, with
                                     * asymptotic guard rails; hue-agnostic ratio-preserve
                                     * reconstruction with purity collapse only at maximal emission.
-                                    * Carrier-monotone AND hue-agnostic AND scene-invariant -- it is
-                                    * the only method that satisfies every numerically-testable Troy
-                                    * constraint at once (see docs/picture_formation.md). The trade vs
-                                    * CHANNEL: being carrier-monotone and hue-agnostic rules out
-                                    * channel integration, so form-through-highlight is weaker. */
+                                    * Carrier-monotone AND hue-agnostic AND scene-invariant -- the
+                                    * nearest-complete carrier operator (12-of-13 under the original
+                                    * constraint set; its lone RATIO failure is what the COMPLETE
+                                    * operators below remove -- see docs/picture_formation.md). The
+                                    * trade vs CHANNEL: being carrier-monotone and hue-agnostic rules
+                                    * out channel integration, so form-through-highlight is weaker. */
     ALWAN_GAMUT_FORM_WARP,          /* HEMISPHERE_ABS + a monotone smooth local-contrast WARP that
                                     * restores the scene curvature the tonescale flattened (a
                                     * form-through-highlight refinement). Closed-form, no solver:
@@ -2317,20 +2320,21 @@ typedef enum {
                                     * => no pooling. Inherits HEMISPHERE_ABS's constraint row but
                                     * raises isophote-through-highlight and removes its highlight
                                     * curvature steepening. See docs/picture_formation.md. */
-    ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK,/* The first 13-of-13 operator, look-preserving. HEMISPHERE_ABS's
-                                    * carrier tone with its lone RATIO failure removed by two changes:
-                                    * the asymptotic HIGH rail runs on the carrier (a single scalar) so
-                                    * reconstruction is a uniform per-pixel scale (never a per-channel
-                                    * clamp that rotates hue), and a desaturation FLOOR (purity-keep
-                                    * capped < 1) lifts the min channel off 0 as a uniform chroma scale
-                                    * (direction preserved). Pointwise => carrier-monotone, hue-agnostic
-                                    * and scene-invariant AND now RATIO-clean: satisfies ALL 13
-                                    * numerically-testable constraints. This variant keeps
-                                    * HEMISPHERE_ABS's exact window, so the look/contrast is unchanged.
+    ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK,/* The first all-constraints operator, look-preserving.
+                                    * HEMISPHERE_ABS's carrier tone with its lone RATIO failure removed
+                                    * by two changes: the asymptotic HIGH rail runs on the carrier (a
+                                    * single scalar) so reconstruction is a uniform per-pixel scale
+                                    * (never a per-channel clamp that rotates hue), and a desaturation
+                                    * FLOOR (purity-keep capped < 1) lifts the min channel off 0 as a
+                                    * uniform chroma scale (direction preserved). Pointwise =>
+                                    * carrier-monotone, hue-agnostic and scene-invariant AND
+                                    * RATIO-clean: satisfies ALL 15 numerically-testable constraints
+                                    * in the shipped matrix. This variant keeps HEMISPHERE_ABS's exact
+                                    * window, so the look/contrast is unchanged.
                                     * See docs/picture_formation.md. */
-    ALWAN_GAMUT_FORM_COMPLETE       /* The same 13-of-13 operator, isophote-through-highlight-maximised:
+    ALWAN_GAMUT_FORM_COMPLETE       /* The same all-15 operator, isophote-through-highlight-maximised:
                                     * a wider carrier window (the OpenSNOPT-optimal point of the
-                                    * 13-feasible set) preserves more scene curvature through the
+                                    * feasible set) preserves more scene curvature through the
                                     * highlight, at the cost of a brighter, softer, lifted look. Prefer
                                     * COMPLETE_HEMI_LOOK for the reference HEMISPHERE_ABS appearance;
                                     * this for maximum form-through-highlight. See
@@ -2391,8 +2395,8 @@ int alwan_picture_form_hybrid_exp_f64(alwan_f64 *out, alwan_f64 const *in, int w
  * evidence-driven target. 'pivot' (linear carrier units): > 0 anchors the curve at the FIXED
  * log2(pivot) (0.18 = mid-grey) -- frame-independent, TCONST/INVR-clean, the video mode; <= 0 uses
  * the scene-adaptive robust mean (per-frame centring; shifts with content). Interleaved RGB, W*H*3. */
-int alwan_picture_form_global_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, double strength, double pivot, alwan_ctx *ctx);
-int alwan_picture_form_global_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, double strength, double pivot, alwan_ctx *ctx);
+int alwan_picture_form_global_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
+int alwan_picture_form_global_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 
 /* Per-pixel junction evidence P(Continuation / Transmission / Occlusion) from local gradient structure
  * (the gradient-formation reframe). DIAGNOSTIC only -- does not modify the picture. Occlusion = strong
@@ -2412,8 +2416,8 @@ int alwan_picture_form_evidence_f64(alwan_f64 *out, alwan_f64 const *in, int wid
  * iterations = repair iterations (<=0 -> default). pivot: > 0 centres the drive at the FIXED
  * log2(pivot) (closes the frame-derived-pivot half of the TCONST gap; the operator stays spatially
  * local); <= 0 scene-adaptive. Interleaved RGB, W*H*3. */
-int alwan_picture_form_local_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, double strength, double pivot, alwan_ctx *ctx);
-int alwan_picture_form_local_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, double strength, double pivot, alwan_ctx *ctx);
+int alwan_picture_form_local_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
+int alwan_picture_form_local_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 
 /* PURE-corrected formation: COMPLETE_HEMI_LOOK's reconstruction with the purity rolloff gated by
  * emission evidence (junction P_T) -- "PURE = emission only". A brightly LIT SURFACE keeps its
@@ -2430,18 +2434,18 @@ int alwan_picture_form_pure_exp_f64(alwan_f64 *out, alwan_f64 const *in, int wid
 
 /* Smits1999: RGB to spectrum conversion using basis spectra mixing
  * Reference: Smits, Brian. "An RGB to Spectrum Conversion for Reflectances" (1999)
- * ctx: context (for allocation)
- * rgb: input RGB values (assumed to be in sRGB colorspace, clamped to [0, 1])
  * out_spd: output spectral power distribution (wavelength range: 380-720nm, 10 samples)
+ * rgb: input RGB values (assumed to be in sRGB colorspace, clamped to [0, 1])
+ * ctx: context (for allocation)
  * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
 int alwan_rgb_to_spectrum_smits1999_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx);
 int alwan_rgb_to_spectrum_smits1999_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx);
 
 /* Mallett2019: RGB to spectrum conversion using spectral primary decomposition
  * Reference: Mallett & Yuksel. "Spectral Primary Decomposition for Rendering with sRGB Reflectance" (2019)
- * ctx: context (for allocation)
- * rgb: input RGB values (assumed to be in sRGB colorspace)
  * out_spd: output spectral power distribution (wavelength range: 380-780nm, 81 samples at 5nm intervals)
+ * rgb: input RGB values (assumed to be in sRGB colorspace)
+ * ctx: context (for allocation)
  * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
 int alwan_rgb_to_spectrum_mallett2019_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx);
 int alwan_rgb_to_spectrum_mallett2019_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx);
@@ -2458,11 +2462,11 @@ typedef enum {
 
 /* Jakob2019: RGB to spectrum using polynomial LUT
  * Reference: Jakob & Hanika. "A Low-Dimensional Function Space for Efficient Spectral Upsampling" (2019)
- * ctx: context (for allocation)
+ * out_spd: output spectral power distribution (wavelength range: 360-780nm, 85 samples at 5nm intervals)
  * gamut: RGB color space / gamut to use for upsampling
  * rgb: input RGB values (in the specified gamut, clamped to [0, 1])
- * out_spd: output spectral power distribution (wavelength range: 360-780nm, 85 samples at 5nm intervals)
- * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure, ALWAN_E_INVALID_PARAM if gamut is invalid
+ * ctx: context (for allocation)
+ * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure, ALWAN_E_INVALID if gamut is invalid
  * Note: Requires pre-generated LUT data for the specified gamut (see generate_data.ps1) */
 int alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f64 const *rgb, alwan_ctx *ctx);
 int alwan_rgb_to_spectrum_jakob2019_f32(alwan_spd_f32 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f32 const *rgb, alwan_ctx *ctx);
@@ -2526,16 +2530,21 @@ int alwan_cam16_inverse_f64(alwan_xyz_f64 *xyz_out,
                              alwan_cam16_viewing_conditions_f64 const *vc);
 
 /* MapCIECAM02 forward transform
- * xyz_in: input XYZ colors (stride in_stride between consecutive colors)
- * count: number of colors to process
  * correlates_out: output appearance correlates (count elements)
+ * xyz_in: input XYZ colors (stride in_stride between consecutive colors)
+ * in_stride: input stride in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
+ * vc: viewing conditions
+ * count: number of colors to process
  * Returns ALWAN_OK on success */
 int alwan_ciecam02_forward_f32_map_interleave(alwan_ciecam02_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_ciecam02_viewing_conditions_f32 const *vc, size_t count);
 int alwan_ciecam02_forward_f64_map_interleave(alwan_ciecam02_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count);
 
 /* MapCIECAM02 inverse transform
- * correlates_in: input appearance correlates (count elements)
  * xyz_out: output XYZ colors (stride out_stride between consecutive colors)
+ * out_stride: output stride in bytes (typically 3*sizeof(alwan_f32/alwan_f64))
+ * correlates_in: input appearance correlates (count elements)
+ * vc: viewing conditions
+ * count: number of colors to process
  * Returns ALWAN_OK on success */
 int alwan_ciecam02_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f32 const *correlates_in, alwan_ciecam02_viewing_conditions_f32 const *vc, size_t count);
 int alwan_ciecam02_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f64 const *correlates_in, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count);
@@ -3025,6 +3034,12 @@ int alwan_ycocg_to_rgb_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
 int alwan_rgb_to_ycocg_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 int alwan_ycocg_to_rgb_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 
+/* Single-pixel HSV <-> HWB (same hexcone: w = (1-s)*v, b = 1-v) */
+int alwan_hsv_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_hsv_f32 const *hsv);
+int alwan_hsv_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_hsv_f64 const *hsv);
+int alwan_hwb_to_hsv_f32(alwan_hsv_f32 *hsv_out, alwan_hwb_f32 const *hwb);
+int alwan_hwb_to_hsv_f64(alwan_hsv_f64 *hsv_out, alwan_hwb_f64 const *hwb);
+
 /* Map HWB conversions */
 int alwan_rgb_to_hwb_f32_map_interleave(alwan_f32 *hwb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count);
 int alwan_rgb_to_hwb_f64_map_interleave(alwan_f64 *hwb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count);
@@ -3460,9 +3475,9 @@ int alwan_extrapolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t c
 /* CCT and Duv Optimization
  * Computes Correlated Color Temperature (CCT) and distance from Planckian locus (Duv)
  * using iterative least-squares optimization
- * xy: CIE 1931 xy chromaticity coordinates
  * cct_out: receives CCT in Kelvin
  * duv_out: receives Duv (distance from Planckian locus, can be NULL)
+ * xy: CIE 1931 xy chromaticity coordinates
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if xy is invalid
  * Accuracy: CCT <= 1K, Duv <= 0.0001 */
 int alwan_cct_duv_optimize_f64(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2_f64 const *xy);
@@ -3470,10 +3485,10 @@ int alwan_cct_duv_optimize_f32(alwan_f32 *cct_out, alwan_f32 *duv_out, alwan_vec
 
 /* Tristimulus Optimization
  * Finds a spectral power distribution that matches target XYZ tristimulus values
+ * spd_out: receives optimized SPD (must be pre-allocated with desired wavelength range)
  * target_xyz: target XYZ tristimulus values
  * observer: observer type (e.g., CIE 1931 2 deg)
  * ctx: context for SPD allocation
- * spd_out: receives optimized SPD (must be pre-allocated with desired wavelength range)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
  * Note: Multiple SPDs can match the same XYZ (metamerism), this finds one solution */
 int alwan_optimize_spectrum_for_xyz_f64(alwan_spd_f64 *spd_out, alwan_xyz_f64 const *target_xyz, alwan_observer_type observer, alwan_ctx *ctx);
@@ -3527,11 +3542,11 @@ int alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
 /* Munsell Renotation Data
  * Convert Munsell notation (Hue, Value, Chroma) to XYZ tristimulus values
  * Uses the Munsell Renotation Data (1943)
+ * xyz: receives XYZ tristimulus values
  * hue: Munsell hue [0, 100] (continuous)
  * value: Munsell value [0, 10]
  * chroma: Munsell chroma [0, 20+]
  * illuminant: illuminant for XYZ calculation
- * xyz: receives XYZ tristimulus values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 int alwan_munsell_to_xyz_f64(alwan_xyz_f64 *xyz,
                          alwan_f64 hue, alwan_f64 value, alwan_f64 chroma,
@@ -3541,11 +3556,11 @@ int alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz,
                          alwan_illuminant illuminant);
 
 /* Convert XYZ tristimulus values to Munsell notation (Hue, Value, Chroma)
- * xyz: XYZ tristimulus values
- * illuminant: illuminant for XYZ calculation
  * hue: receives Munsell hue [0, 100]
  * value: receives Munsell value [0, 10]
  * chroma: receives Munsell chroma [0, 20+]
+ * xyz: XYZ tristimulus values
+ * illuminant: illuminant for XYZ calculation
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 int alwan_xyz_to_munsell_f64(alwan_f64 *hue, alwan_f64 *value, alwan_f64 *chroma,
                          alwan_xyz_f64 const *xyz, alwan_illuminant illuminant);
@@ -3554,10 +3569,10 @@ int alwan_xyz_to_munsell_f32(alwan_f32 *hue, alwan_f32 *value, alwan_f32 *chroma
 
 /* Color Checker Data
  * Get XYZ tristimulus values for a Color Checker patch
+ * xyz: receives XYZ tristimulus values
  * type: Color Checker target type
  * illuminant: illuminant for XYZ calculation
  * patch_index: patch index [0, num_patches-1]
- * xyz: receives XYZ tristimulus values
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 int alwan_color_checker_data_f64(alwan_xyz_f64 *xyz,
                               alwan_colorchecker_type type, alwan_illuminant illuminant,
@@ -3573,8 +3588,8 @@ size_t alwan_color_checker_num_patches(alwan_colorchecker_type type);
 
 /* NCS (Natural Color System) Data
  * Convert NCS notation to XYZ tristimulus values
- * ncs_notation: NCS notation string (e.g., "S 1050-Y90R")
  * xyz: receives XYZ tristimulus values (Y=0--100 scale, D65)
+ * ncs_notation: NCS notation string (e.g., "S 1050-Y90R")
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on parse error
  * Approximate: uses published elementary-hue chromaticities (Hard & Sivik 1981)
  * with linear hue interpolation; does not reproduce the proprietary NCS atlas */
@@ -3582,26 +3597,26 @@ int alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation);
 int alwan_ncs_to_xyz_f32(alwan_xyz_f32 *xyz, char const *ncs_notation);
 
 /* Convert XYZ tristimulus values to NCS notation
- * xyz: XYZ tristimulus values
  * ncs_notation: receives NCS notation string (allocated by caller)
  * notation_size: size of notation buffer (should be >= 32)
+ * xyz: XYZ tristimulus values
  * Returns ALWAN_E_INVALID -- inverse requires the proprietary NCS colour atlas */
 int alwan_xyz_to_ncs_f64(char *ncs_notation, size_t notation_size, alwan_xyz_f64 const *xyz);
 int alwan_xyz_to_ncs_f32(char *ncs_notation, size_t notation_size, alwan_xyz_f32 const *xyz);
 
 /* Additional RGB Space Definitions
  * Get RGB space primaries and white point by enum
- * space: RGB color space identifier
  * primaries: receives RGB primaries as xy chromaticities (3x2 matrix)
  * white_point: receives white point xy chromaticity
+ * space: RGB color space identifier
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if space is invalid */
 int alwan_rgb_space_by_enum_f64(alwan_f64 primaries[6], alwan_vec2_f64 *white_point, alwan_rgb_space space);
 int alwan_rgb_space_by_enum_f32(alwan_f32 primaries[6], alwan_vec2_f32 *white_point, alwan_rgb_space space);
 
 /* Get RGB space transfer functions
- * space: RGB color space identifier
  * oetf: receives OETF (Opto-Electronic Transfer Function)
  * eotf: receives EOTF (Electro-Optical Transfer Function)
+ * space: RGB color space identifier
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if space is invalid */
 int alwan_rgb_space_get_tfs_f64(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space);
 int alwan_rgb_space_get_tfs_f32(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space);
@@ -3611,11 +3626,11 @@ int alwan_rgb_space_get_tfs_f32(alwan_transfer_function *oetf, alwan_transfer_fu
  * ---------------------------------------------------------------- */
 
 /* Lift/Gamma/Gain (LGG) color correction
+ * rgb_out: output RGB values
  * rgb_in: input RGB values (linear, [0,1] for normal range)
  * lift: lift adjustment per channel (shadows) - typical range [-1, 1]
  * gamma: gamma adjustment per channel (midtones) - typical range [0.0001, 10]
  * gain: gain adjustment per channel (highlights) - typical range [0, 2]
- * rgb_out: output RGB values
  * Formula: rgb_out = ((rgb_in + lift) ^ (1/gamma)) * gain
  * Writes the result to rgb_out; this is a void function (no status returned). */
 void alwan_lgg_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_rgb_f32 const *lift,
@@ -3637,9 +3652,9 @@ typedef enum {
 typedef alwan_color_matrix_preset_f64 alwan_color_matrix_preset_f32;
 
 /* Apply color matrix transformation (custom or preset)
+ * rgb_out: output RGB values
  * rgb_in: input RGB values
  * matrix_3x3: 3x3 color transformation matrix
- * rgb_out: output RGB values
  * Writes the result to rgb_out; this is a void function (no status returned). */
 void alwan_color_matrix_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
                               alwan_mat3x3_f32 const *matrix_3x3);
@@ -3647,18 +3662,18 @@ void alwan_color_matrix_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *r
                               alwan_mat3x3_f64 const *matrix_3x3);
 
 /* Get preset color grading matrix
- * preset: preset type from alwan_color_matrix_preset_f64
  * matrix_3x3: receives the preset matrix
+ * preset: preset type from alwan_color_matrix_preset_f64
  * Returns ALWAN_OK on success, ALWAN_E_INVALID for unknown preset */
 int alwan_color_matrix_get_preset_f64(alwan_mat3x3_f64 *matrix_3x3, alwan_color_matrix_preset_f64 preset);
 int alwan_color_matrix_get_preset_f32(alwan_mat3x3_f32 *matrix_3x3, alwan_color_matrix_preset_f32 preset);
 
 /* Printer lights color correction (film-style)
+ * rgb_out: output RGB values
  * rgb_in: input RGB values (linear)
  * red_lights: red printer light adjustment (0-50, default 25)
  * green_lights: green printer light adjustment (0-50, default 25)
  * blue_lights: blue printer light adjustment (0-50, default 25)
- * rgb_out: output RGB values
  * Each light unit represents approximately 0.025 log exposure change
  * Writes the result to rgb_out; this is a void function (no status returned). */
 void alwan_printer_lights_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
@@ -3705,9 +3720,9 @@ typedef enum {
 
 /* Polynomial expansion - Cheung 2004 method
  * Expands RGB to higher-dimensional polynomial space for camera profiling.
+ * out: output array (must be at least 'terms' elements)
  * rgb: input RGB triplet [0,1]
  * terms: number of terms (from alwan_poly_cheung_terms)
- * out: output array (must be at least 'terms' elements)
  * Returns ALWAN_OK on success */
 int alwan_poly_expand_cheung2004_f64(alwan_f64 *out, alwan_rgb_f64 const *rgb,
                                   alwan_poly_cheung_terms terms);
@@ -3715,11 +3730,11 @@ int alwan_poly_expand_cheung2004_f32(alwan_f32 *out, alwan_rgb_f32 const *rgb,
                                   alwan_poly_cheung_terms terms);
 
 /* Polynomial expansion - Finlayson 2015 method
+ * out: output array (size depends on degree: 3,6,10,15 for degrees 1,2,3,4)
+ * out_size: receives actual output size
  * rgb: input RGB triplet [0,1]
  * degree: polynomial degree (1-4)
  * root_poly: if true, use root-polynomial expansion
- * out: output array (size depends on degree: 3,6,10,15 for degrees 1,2,3,4)
- * out_size: receives actual output size
  * Returns ALWAN_OK on success */
 int alwan_poly_expand_finlayson2015_f64(alwan_f64 *out, int *out_size,
                                      alwan_rgb_f64 const *rgb, int degree, int root_poly);
@@ -3727,11 +3742,11 @@ int alwan_poly_expand_finlayson2015_f32(alwan_f32 *out, int *out_size,
                                      alwan_rgb_f32 const *rgb, int degree, int root_poly);
 
 /* Polynomial expansion - Vandermonde method
+ * out: output array
+ * out_size: receives actual output size
  * a: input array (typically RGB)
  * a_size: size of input array
  * degree: polynomial degree
- * out: output array
- * out_size: receives actual output size
  * Returns ALWAN_OK on success */
 int alwan_poly_expand_vandermonde_f64(alwan_f64 *out, int *out_size,
                                    alwan_f64 const *a, int a_size, int degree);
@@ -3739,11 +3754,11 @@ int alwan_poly_expand_vandermonde_f32(alwan_f32 *out, int *out_size,
                                    alwan_f32 const *a, int a_size, int degree);
 
 /* Compute colour correction matrix using Cheung 2004 method
+ * matrix_out: receives the correction matrix (terms x 3, row-major)
  * M_T: test (measured) RGB values, Nx3 array (row-major)
  * M_R: reference RGB values, Nx3 array (row-major)
  * num_samples: number of color samples (N)
  * terms: polynomial expansion terms
- * matrix_out: receives the correction matrix (terms x 3, row-major)
  * Returns ALWAN_OK on success */
 int alwan_colour_correction_matrix_cheung2004_f64(alwan_f64 *matrix_out,
                                                alwan_f64 const *M_T,
@@ -3757,10 +3772,10 @@ int alwan_colour_correction_matrix_cheung2004_f32(alwan_f32 *matrix_out,
                                                alwan_poly_cheung_terms terms);
 
 /* Apply colour correction using Cheung 2004 method
+ * rgb_out: corrected RGB output
  * rgb: input RGB to correct
  * matrix: correction matrix from alwan_colour_correction_matrix_cheung2004_f64
  * terms: must match terms used to compute the matrix
- * rgb_out: corrected RGB output
  * Writes the result to rgb_out; this is a void function (no status returned). */
 void alwan_colour_correct_cheung2004_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb,
                                      alwan_f32 const *matrix, alwan_poly_cheung_terms terms);
@@ -3768,13 +3783,13 @@ void alwan_colour_correct_cheung2004_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 c
                                      alwan_f64 const *matrix, alwan_poly_cheung_terms terms);
 
 /* Compute colour correction matrix using Finlayson 2015 method
+ * matrix_out: receives the correction matrix
+ * matrix_size: receives matrix size
  * M_T: test (measured) RGB values, Nx3 array (row-major)
  * M_R: reference RGB values, Nx3 array (row-major)
  * num_samples: number of color samples (N)
  * degree: polynomial degree (1-4)
  * root_poly: if true, use root-polynomial expansion
- * matrix_out: receives the correction matrix
- * matrix_size: receives matrix size
  * Returns ALWAN_OK on success */
 int alwan_colour_correction_matrix_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_size,
                                                   alwan_f64 const *M_T,
@@ -3786,11 +3801,11 @@ int alwan_colour_correction_matrix_finlayson2015_f32(alwan_f32 *matrix_out, int 
                                                   int num_samples, int degree, int root_poly);
 
 /* Apply colour correction using Finlayson 2015 method
+ * rgb_out: corrected RGB output
  * rgb: input RGB to correct
  * matrix: correction matrix from alwan_colour_correction_matrix_finlayson2015_f64
  * degree: must match degree used to compute the matrix
  * root_poly: must match root_poly used to compute the matrix
- * rgb_out: corrected RGB output
  * Writes the result to rgb_out; this is a void function (no status returned). */
 void alwan_colour_correct_finlayson2015_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb,
                                         alwan_f32 const *matrix, int degree, int root_poly);
@@ -3807,9 +3822,9 @@ void alwan_white_balance_from_gray_f32(alwan_rgb_f32 *multipliers_out, alwan_rgb
 void alwan_white_balance_from_gray_f64(alwan_rgb_f64 *multipliers_out, alwan_rgb_f64 const *measured_gray);
 
 /* Apply white balance multipliers
+ * rgb_out: white-balanced RGB output
  * rgb: input RGB
  * multipliers: RGB multipliers from alwan_white_balance_from_gray
- * rgb_out: white-balanced RGB output
  * Writes the result to rgb_out; this is a void function (no status returned). */
 void alwan_white_balance_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb,
                                alwan_rgb_f32 const *multipliers);
@@ -4286,9 +4301,9 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
 
 /* Display-linear (pre-encode) front half of the custom ACES 2.0 output
  * transform: tonescale + chroma compression + gamut compression, decoded in
- * the LIMIT primaries -- WITHOUT the display encode ([0,peak] clamp + OETF).
+ * the LIMIT primaries -- WITHOUT the [0,peak] clamp + display encode (eotf).
  * Out-of-gamut / over-range residuals are preserved (values can exceed [0,1]).
- * alwan_aces2_output_transform_custom == this + clamp + EOTF encode, exactly. */
+ * alwan_aces2_output_transform_custom == this + clamp + display encode (eotf), exactly. */
 int alwan_aces2_output_transform_custom_display_linear_f32(alwan_rgb_f32 *rgb_out,
                                              alwan_rgb_f32 const *rgb_in,
                                              alwan_f32 peak_luminance,
@@ -4303,13 +4318,13 @@ int alwan_aces2_output_transform_custom_display_linear_f64(alwan_rgb_f64 *rgb_ou
  * Pre-initializes parameters once, then processes count pixels.
  * Much faster than calling alwan_aces2_output_transform per pixel.
  *
- * @param out       Output interleaved RGB triplets (display-encoded)
- * @param in        Input interleaved RGB triplets (AP1 linear)
- * @param output    Output transform preset
- * @param count     Number of pixels
- * @param in_stride  Bytes between input RGB triplets (typically 3*sizeof(alwan_f64))
+ * @param out        Output interleaved RGB triplets (display-encoded)
  * @param out_stride Bytes between output RGB triplets
- * @return          ALWAN_OK on success
+ * @param in         Input interleaved RGB triplets (AP1 linear)
+ * @param in_stride  Bytes between input RGB triplets (typically 3*sizeof(alwan_f64))
+ * @param count      Number of pixels
+ * @param output     Output transform preset
+ * @return           ALWAN_OK on success
  */
 int alwan_aces2_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces2_output output);
 int alwan_aces2_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces2_output output);
@@ -4956,9 +4971,9 @@ int alwan_white_balance_apply_map_planar_ex(void *out0, size_t out_stride, void 
 /* Bake a 3D LUT by sampling an RGB color space conversion pipeline.
  * out: buffer of size^3 * 3 values (R-fastest, then G, then B)
  * size: cube edge length (e.g. 17, 33, 65)
- * ctx: context for chromatic adaptation (may be NULL if white points match)
  * src_space: source RGB color space descriptor
  * dst_space: destination RGB color space descriptor
+ * ctx: context for chromatic adaptation (may be NULL if white points match)
  * Returns ALWAN_OK on success */
 int alwan_bake_3dlut_f32(alwan_f32 *out, int size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_ctx *ctx);
 int alwan_bake_3dlut_f64(alwan_f64 *out, int size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_ctx *ctx);
@@ -5114,6 +5129,9 @@ int alwan_cube_export_1d_f32(char const *path,
  * buf: output buffer
  * buf_size: buffer capacity
  * bytes_written: actual bytes written (output)
+ * lut: 3D LUT data (size^3 * 3, R-fastest)
+ * size: cube edge length
+ * title: optional title string (NULL for no title)
  * Returns ALWAN_E_RANGE if buffer too small */
 int alwan_cube_export_3d_buffer_f64(char *buf, size_t buf_size, size_t *bytes_written,
                                  alwan_f64 const *lut,
@@ -5125,7 +5143,7 @@ int alwan_cube_export_3d_buffer_f32(char *buf, size_t buf_size, size_t *bytes_wr
                                  char const *title);
 
 /* Import a 3D LUT from a .cube file.
- * lut: output buffer (caller must allocate: size^3 * 3 alwan_scalars)
+ * lut: output buffer (caller must allocate: size^3 * 3 elements, alwan_f32 or alwan_f64 to match the call)
  * out_size: receives the cube edge length
  * path: input file path */
 int alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
@@ -5134,7 +5152,7 @@ int alwan_cube_import_3d_f32(alwan_f32 *lut, int *out_size,
                           char const *path);
 
 /* Import a 1D LUT from a .cube file.
- * lut: output buffer (caller must allocate: size alwan_scalars)
+ * lut: output buffer (caller must allocate: size elements, alwan_f32 or alwan_f64 to match the call)
  * out_size: receives the number of entries
  * path: input file path */
 int alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
@@ -5143,7 +5161,7 @@ int alwan_cube_import_1d_f32(alwan_f32 *lut, int *out_size,
                           char const *path);
 
 /* Import a 3D LUT from a .cube format memory buffer.
- * lut: output buffer (caller must allocate: size^3 * 3 alwan_scalars)
+ * lut: output buffer (caller must allocate: size^3 * 3 elements, alwan_f32 or alwan_f64 to match the call)
  * out_size: receives the cube edge length
  * buf: input buffer
  * buf_len: buffer length */
@@ -5210,11 +5228,11 @@ int alwan_float_to_half_f32(alwan_uint16 *out, alwan_f32 const *in, size_t count
  *   Range (gamut clamp) -> OETF (Exponent or LUT1D)
  *
  * path: output file path
- * ctx: context for chromatic adaptation (may be NULL if white points match)
  * src_space/dst_space: source and destination RGB space descriptors
  * id: CLF ProcessList id attribute (NULL for default)
  * name: CLF ProcessList name attribute (NULL to omit)
- * lut_size: resolution for baked LUT1D nodes (default 4096 if < 2) */
+ * lut_size: resolution for baked LUT1D nodes (default 4096 if < 2)
+ * ctx: context for chromatic adaptation (may be NULL if white points match) */
 int alwan_clf_export_f64(char const *path, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx);
 int alwan_clf_export_f32(char const *path, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx);
 
@@ -5244,24 +5262,24 @@ int alwan_clf_export_view_buffer_f32(char *buf, size_t *bytes_written, size_t bu
 /* Encode: linear RGB -> video signal (TF + range + quantization).
  * out: output buffer (3-channel packed pixels in out_fmt)
  * out_fmt: output pixel format (U8, U16, F32, F64)
- * rgb_linear: input linear RGB triplets (count * 3 alwan_scalars)
+ * rgb_linear: input linear RGB triplets (count * 3 elements, alwan_f32 or alwan_f64 to match the call)
  * count: number of pixels
- * ctx: context for space descriptor lookup
  * space: RGB color space (determines OETF)
  * range: ALWAN_VIDEO_RANGE_FULL or ALWAN_VIDEO_RANGE_NARROW
- * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from out_fmt */
+ * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from out_fmt
+ * ctx: context for space descriptor lookup */
 int alwan_video_encode_f64(void *out, alwan_pixel_format out_fmt, alwan_f64 const *rgb_linear, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 int alwan_video_encode_f32(void *out, alwan_pixel_format out_fmt, alwan_f32 const *rgb_linear, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 
 /* Decode: video signal -> linear RGB.
- * rgb_linear: output linear RGB triplets (count * 3 alwan_scalars)
+ * rgb_linear: output linear RGB triplets (count * 3 elements, alwan_f32 or alwan_f64 to match the call)
  * in: input buffer (3-channel packed pixels in in_fmt)
  * in_fmt: input pixel format (U8, U16, F32, F64)
  * count: number of pixels
- * ctx: context for space descriptor lookup
  * space: RGB color space (determines EOTF)
  * range: ALWAN_VIDEO_RANGE_FULL or ALWAN_VIDEO_RANGE_NARROW
- * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from in_fmt */
+ * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from in_fmt
+ * ctx: context for space descriptor lookup */
 int alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, alwan_pixel_format in_fmt, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 int alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, alwan_pixel_format in_fmt, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 

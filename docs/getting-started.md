@@ -73,7 +73,7 @@ msbuild Alwan_vs2022_Win64.sln /p:Configuration=Release_f64
 ### 4. Tests
 
 This repository ships the production library and headers. The test and benchmark
-runner lives in the sibling `alwan_dev` repository — clone it as a peer of
+runner lives in the sibling `alwan_dev` repository; clone it as a peer of
 `alwan/` and build:
 
 ```sh
@@ -83,7 +83,7 @@ runner lives in the sibling `alwan_dev` repository — clone it as a peer of
 git clone https://github.com/soufianekhiat/alwan_dev.git ../alwan_dev
 cd ../alwan_dev
 cmake -S . -B build && cmake --build build --config Release
-./build/tests/alwan_tests              # 89 suites, single binary
+./build/tests/alwan_tests              # 102 suites, single binary
 ./build/tests/alwan_tests 04_srgb_tf   # filter by substring
 ./build/tests/alwan_tests --list       # list all suite names
 ```
@@ -275,7 +275,7 @@ alwan_scalar_{T} rgb_out[1920 * 1080 * 3];
 alwan_view_transform_apply_{T}(
     rgb_out, sizeof(alwan_scalar_{T}) * 3,
     rgb_in, sizeof(alwan_scalar_{T}) * 3,
-    1920 * 1080, ALWAN_VIEW_AGX, ctx);
+    1920 * 1080, ALWAN_VIEW_AGX_ORIGINAL, ctx);
 ```
 
 ### Image conversion with typed pixels

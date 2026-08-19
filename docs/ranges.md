@@ -15,17 +15,17 @@ The default convention is **`[0, 1]` for every bounded channel**. In the default
 build (`ALWAN_NORMALIZE_RANGES=1`) the public C API rescales each bounded output
 channel into `[0, 1]` and expects bounded inputs in `[0, 1]`.
 
-The exceptions are the **opponent / chroma axes** — Lab / Hunter-Lab / ProLab
+The exceptions are the **opponent / chroma axes**: Lab / Hunter-Lab / ProLab
 `a`, `b`; Luv `u`, `v`; the cylindrical chroma `C`; and Oklab `a`, `b`. These are
 **mathematically unbounded** (the CIE formulas impose no limit, and saturated or
-wide-gamut colours genuinely exceed the usual range), even though encodings give
-them a *conventional* span — CIE Lab `a`, `b` are stored as signed `[-128, 127]`
+wide-gamut colours do exceed the usual range), even though encodings give
+them a *conventional* span: CIE Lab `a`, `b` are stored as signed `[-128, 127]`
 in 8-bit / ICC formats (so `÷128` would map them to `≈ ]-1, 1[`), and Oklab
-`a`, `b` sit roughly in `[-0.4, 0.4]`. alwan deliberately leaves these axes in
+`a`, `b` sit roughly in `[-0.4, 0.4]`. alwan leaves these axes in
 their **native signed range** rather than rescaling against a conventional bound,
 so out-of-gamut excursions past it are preserved exactly and reference
-comparisons stay 1:1. Only `L` (`÷100 → [0, 1]`) and the genuinely fixed-bound
-channels are normalized. Channels that *do* have a fixed bound are mapped into
+comparisons stay 1:1. Only `L` (`÷100 → [0, 1]`) and the channels with a true
+fixed bound are normalized. Channels that *do* have a fixed bound are mapped into
 `[0, 1]`: centered chroma (YCbCr / YCoCg `Cb`, `Cr` in `[-0.5, 0.5]`, shifted by
 `+0.5`) and hue (degrees or radians).
 
@@ -51,7 +51,7 @@ In that mode:
 - bounded outputs are rescaled to `[0, 1]`
 - bounded inputs are expected in `[0, 1]`
 - unbounded channels are left untouched
-- normalization happens at the public API boundary, not inside the core formulas
+- normalization happens at the public API boundary rather than inside the core formulas
 
 Disable it if you want native mathematical ranges:
 
@@ -64,15 +64,15 @@ With normalization disabled, public APIs use the same native channel ranges
 described in papers and specifications.
 
 > **Compile-time, whole-program switch.** `ALWAN_NORMALIZE_RANGES` is baked into
-> the library when *it* is compiled — the rescaling lives inside the compiled API
+> the library when *it* is compiled: the rescaling lives inside the compiled API
 > functions. Defining it only in a consumer translation unit does **not** change a
 > prebuilt `alwan` library; build the library and your own code with the same
 > value.
 
 ### Why the tests and benchmarks disable it
 
-The `alwan_dev` validation build — the unit tests, the benchmarks, and the
-`alwan` library they link — compiles with `ALWAN_NORMALIZE_RANGES=0` so channels
+The `alwan_dev` validation build (the unit tests, the benchmarks, and the
+`alwan` library they link) compiles with `ALWAN_NORMALIZE_RANGES=0` so channels
 come out in their **native mathematical ranges**. That is what the reference
 libraries the suite compares against use (colour-science, OpenColorIO, ACES), so
 disabling normalization makes the comparison apples-to-apples. For example
@@ -114,7 +114,7 @@ disabling normalization makes the comparison apples-to-apples. For example
 Notes:
 
 - `HSV` / `HSL` hue is already normalized, so multiply by `360` if you want degrees.
-- YCbCr-family spaces are about component coding, not perceptual uniformity.
+- YCbCr-family spaces are about component coding rather than perceptual uniformity.
 - For RGB-like spaces, `[0, 1]` is not a promise of clamping.
 
 ---
@@ -138,7 +138,7 @@ Notes:
 
 Notes:
 
-- `XYZ` and `xyY` remain colorimetric quantities, not normalized UI sliders.
+- `XYZ` and `xyY` remain colorimetric quantities rather than normalized UI sliders.
 - `LCh` families use degree hue natively, unlike `Oklch` and some newer cylindrical spaces.
 
 ---
@@ -147,15 +147,15 @@ Notes:
 
 | Space | Native range shape | Public form with normalization enabled |
 |-------|--------------------|----------------------------------------|
-| `alwan_oklab_*` | `L` lightness-like, native ~`[0, 1]`; `a` / `b` signed, native ~`[-0.4, 0.4]` | unchanged — Oklab has **no** normalization macro, so even `L` stays native (it is already ~`[0, 1]`) |
+| `alwan_oklab_*` | `L` lightness-like, native ~`[0, 1]`; `a` / `b` signed, native ~`[-0.4, 0.4]` | unchanged; Oklab has **no** normalization macro, so even `L` stays native (it is already ~`[0, 1]`) |
 | `alwan_oklch_*` | `L` near `[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | `h` maps to `[0, 1]`; `L` remains `[0, 1]` |
-| `alwan_jzazbz_*` | `Jz` lightness-like (native ~`[0, 0.17]`), `Az` / `Bz` signed | unchanged — no normalization macro; `Jz` stays native |
+| `alwan_jzazbz_*` | `Jz` lightness-like (native ~`[0, 0.17]`), `Az` / `Bz` signed | unchanged; no normalization macro; `Jz` stays native |
 | `alwan_jzczhz_*` | `Jz` native ~`[0, 0.17]`, `Cz` unbounded, `hz` in radians `[-pi, pi]` | only `hz` maps to `[0, 1]`; `Jz` and `Cz` unchanged |
-| `alwan_ictcp_*` | intensity-like `I`, centered opponent `Ct` / `Cp` | unchanged — no normalization macro; all channels native |
-| `alwan_ipt_*` | `I` native ~`[0, 1]`, `P` / `T` signed | unchanged — no normalization macro; `I` stays native |
+| `alwan_ictcp_*` | intensity-like `I`, centered opponent `Ct` / `Cp` | unchanged; no normalization macro; all channels native |
+| `alwan_ipt_*` | `I` native ~`[0, 1]`, `P` / `T` signed | unchanged; no normalization macro; `I` stays native |
 | `alwan_iptch_*` | `I` native ~`[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | only `h` maps to `[0, 1]`; `I` and `C` unchanged |
-| `alwan_igpgtg_*` | intensity-like `Ig`, signed `Pg` / `Tg` | unchanged — no normalization macro; all channels native |
-| `alwan_icacb_*` | intensity / chromatic axes, signed | unchanged — no normalization macro; all channels native |
+| `alwan_igpgtg_*` | intensity-like `Ig`, signed `Pg` / `Tg` | unchanged; no normalization macro; all channels native |
+| `alwan_icacb_*` | intensity / chromatic axes, signed | unchanged; no normalization macro; all channels native |
 | `alwan_hcl_*` | `H` in radians `[-pi, pi]`, `C` unbounded, `L` bounded | `H` maps to `[0, 1]`; `L` remains bounded |
 | `alwan_ihls_*` | `H` in radians `[0, 2pi)`, `L` and `S` bounded | `H` maps to `[0, 1]`; `L` and `S` unchanged |
 

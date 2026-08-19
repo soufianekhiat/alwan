@@ -132,7 +132,7 @@ alwan_view_transform_apply_{T}(
     dst_rgb, sizeof(alwan_scalar_{T}) * 3,
     src_rgb, sizeof(alwan_scalar_{T}) * 3,
     512 * 512,
-    ALWAN_VIEW_AGX,
+    ALWAN_VIEW_AGX_ORIGINAL,
     ctx);
 
 alwan_destroy(ctx);
@@ -216,7 +216,7 @@ CLF export works at the descriptor level:
 alwan_clf_export_view_{T}(
     "acescg_to_p3_agx.clf",
     &src_desc, &dst_desc,
-    ALWAN_VIEW_AGX,
+    ALWAN_VIEW_AGX_ORIGINAL,
     "acescg_to_p3_agx",
     "ACEScg to Display P3 with AgX",
     4096,
@@ -230,7 +230,7 @@ alwan_clf_export_view_{T}(
 ```c
 alwan_rgb_space space;
 
-if (alwan_interop_parse_{T}(&space, "lin_ap1_scene") == ALWAN_OK) {
+if (alwan_interop_parse_{T}(&space, "lin_ap1") == ALWAN_OK) {
     char const *id = alwan_interop_format(space);
     /* id is the canonical interop string for that enum */
 }
@@ -248,7 +248,7 @@ for (size_t i = 0; i < alwan_interop_count(); ++i) {
 
 ## 11. Half Conversion
 
-Half helpers intentionally expand to and from `alwan_f32`, because IEEE-754
+Half helpers expand to and from `alwan_f32`, because IEEE-754
 binary16 is typically used as a transport/storage format rather than a compute
 format.
 

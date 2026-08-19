@@ -79,9 +79,9 @@ For Alwan, the usual choice is:
 
 ### OpenCV
 
-`cv::Mat` is usually interleaved and row-strided. The main hazard is not the
-memory layout itself, but the channel convention: many pipelines are BGR or
-BGRA rather than RGB or RGBA.
+`cv::Mat` is usually interleaved and row-strided. The main hazard is the
+channel convention rather than the memory layout: many pipelines are BGR or
+BGRA instead of RGB or RGBA.
 
 Alwan can consume the storage directly, but the semantic swizzle remains the
 caller's responsibility. The natural entry points are:

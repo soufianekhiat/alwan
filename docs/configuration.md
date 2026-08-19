@@ -21,7 +21,7 @@ the macro-level summary.
 ### Precision build selection
 
 Defined in `alwan_build_config.h`. Alwan exposes every numeric entry point in
-two native precisions — a float `_f32` variant and a double `_f64` variant, each
+two native precisions: a float `_f32` variant and a double `_f64` variant, each
 with its own embedded data tables. By default **both** precisions are compiled.
 A caller who only needs one can shrink the compiled code and embedded-data
 footprint by selecting a single-precision build.
@@ -33,7 +33,7 @@ header):
 |-------|--------|
 | `ALWAN_BUILD_ONLY_F32` | Build only the single-precision (float) API + data |
 | `ALWAN_BUILD_ONLY_F64` | Build only the double-precision (double) API + data |
-| *(neither defined)* | Build BOTH precisions — the default |
+| *(neither defined)* | Build BOTH precisions (the default) |
 
 Defining both is a hard `#error`. These resolve to the internal gates the rest
 of the library tests:
@@ -50,10 +50,10 @@ Notes:
 - Public *declarations* and the `alwan_*_f32` / `alwan_*_f64` struct typedefs
   remain present in every build (they cost nothing). Only the *definitions* and
   embedded *data* twins are gated, so calling an excluded-precision symbol fails
-  at **link** time, not compile time.
+  at **link** time rather than compile time.
 - A handful of f32 public entry points are numerically f64-internal facades
-  (ZCAM inverse, ACES 1.x inverse, Cheung 2004 / Finlayson 2015 CCM fits, gamut
-  Monte-Carlo reductions). Their double-precision machinery is gated by
+  (ZCAM inverse, ACES 1.x inverse, Cheung 2004 / Finlayson 2015 CCM fits, the
+  gamut volume/coverage helpers). Their double-precision machinery is gated by
   `ALWAN_WITH_F64_FACADE` (always `1`), so it stays functional in an f32-only
   build.
 
@@ -68,7 +68,7 @@ it `float`. This interacts with the precision selection above:
 - `ALWAN_BUILD_ONLY_F64` combined with `ALWAN_SCALAR_IS_FLOAT=1` is a `#error`
   (the f32 scalar is not built).
 
-The explicit `_f32` / `_f64` entry points are unaffected — `alwan_scalar` only
+The explicit `_f32` / `_f64` entry points are unaffected; `alwan_scalar` only
 drives the default-precision convenience value types and the GPU backends.
 
 ### CMake precision option
@@ -216,7 +216,7 @@ throughput.
 ## `alwan_config`
 
 Runtime configuration currently focuses on allocation hooks. The
-`runtime_data_root` field is intentionally reserved for the future runtime-data
+`runtime_data_root` field is reserved for the future runtime-data
 mode.
 
 ```c
@@ -239,7 +239,7 @@ Notes:
 ## Build Notes
 
 > Selecting **which precisions** the library compiles (`ALWAN_BUILD_ONLY_F32` /
-> `ALWAN_BUILD_ONLY_F64` → `ALWAN_WITH_F32` / `ALWAN_WITH_F64`, the CMake
+> `ALWAN_BUILD_ONLY_F64` resolving to `ALWAN_WITH_F32` / `ALWAN_WITH_F64`, the CMake
 > `ALWAN_BUILD_PRECISION` option, `ALWAN_SCALAR_IS_FLOAT` coupling, and the
 > f64-facade exception) is covered in
 > [build-and-precision.md](build-and-precision.md).

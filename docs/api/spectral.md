@@ -1,6 +1,6 @@
 # Spectral Operations API
 
-Functions for spectral power distribution (SPD) lifecycle, resampling, integration to XYZ, spectral analysis, hero-wavelength sampling, and RGB→spectrum upsampling.
+Functions for spectral power distribution (SPD) lifecycle, resampling, integration to XYZ, spectral analysis, hero-wavelength sampling, and RGB-to-spectrum upsampling.
 
 ---
 
@@ -8,9 +8,9 @@ Functions for spectral power distribution (SPD) lifecycle, resampling, integrati
 
 Spectral operations convert between spectral power distributions (SPDs) and tristimulus values (XYZ) using color matching functions (CMFs) or measured camera sensitivities, and recover spectra from RGB/XYZ.
 
-All spectral entry points are **suffixed by precision** — `_f64` (double, `alwan_f64`) and `_f32` (float, `alwan_f32`); there are no unsuffixed aliases. Pick the suffix that matches the SPD/XYZ types you allocate. The SPD and spectral-upsampling layers are **native dual-precision**: the implementations are templated and instantiated once per precision, with native float data tables on the `_f32` pass, so single precision integrates in float over float data throughout — there is no widen-to-double facade (see [Precision and Limits](../precision-and-limits.md)).
+All spectral entry points are **suffixed by precision**: `_f64` (double, `alwan_f64`) and `_f32` (float, `alwan_f32`); there are no unsuffixed aliases. Pick the suffix that matches the SPD/XYZ types you allocate. The SPD and spectral-upsampling layers are **native dual-precision**: the implementations are templated and instantiated once per precision, with native float data tables on the `_f32` pass, so single precision integrates in float over float data throughout; there is no widen-to-double facade (see [Precision and Limits](../precision-and-limits.md)).
 
-This page shows the `_f64` signatures; every function has an identical `_f32` twin (swap `_f64`→`_f32`, `alwan_f64`→`alwan_f32`, `alwan_spd_f64`→`alwan_spd_f32`, `alwan_xyz_f64`→`alwan_xyz_f32`).
+This page shows the `_f64` signatures; every function has an identical `_f32` twin (replace `_f64` with `_f32`, `alwan_f64` with `alwan_f32`, `alwan_spd_f64` with `alwan_spd_f32`, `alwan_xyz_f64` with `alwan_xyz_f32`).
 
 > Argument convention (v2.0): outputs first, `alwan_ctx *ctx` **last** (or absent for pure math). The old `ctx`-second ordering used by earlier docs is gone.
 
@@ -180,7 +180,7 @@ typedef enum {
 } alwan_integrate_method;
 ```
 
-> **Reference-matching note.** alwan integrates with the trapezoidal or **Simpson** rule. Some reference libraries (e.g. colour-science) compute the tristimulus integral as a plain **Riemann summation** of `CMF · SPD · Δλ`. To reproduce such reference values exactly, match the quadrature on the reference side (colour-science exposes `scipy.integrate.simpson`) and use linear interpolation / matched wavelength sampling — see the project gendata notes.
+> **Reference-matching note.** alwan integrates with the trapezoidal or **Simpson** rule. Some reference libraries (e.g. colour-science) compute the tristimulus integral as a plain **Riemann summation** of `CMF · SPD · Δλ`. To reproduce such reference values exactly, match the quadrature on the reference side (colour-science exposes `scipy.integrate.simpson`) and use linear interpolation / matched wavelength sampling; see the project gendata notes.
 
 **Example:**
 ```c
@@ -243,7 +243,7 @@ int alwan_spd_analyze_shape_f64(alwan_spd_shape_f64 *shape_out,
                                 alwan_spd_f64 const *spd);
 ```
 
-Compute descriptive statistics for an SPD. Pure analysis — no `ctx`.
+Compute descriptive statistics for an SPD. Pure analysis; no `ctx`.
 
 ```c
 typedef struct {
@@ -361,10 +361,10 @@ typedef enum {
 
 Spectral functions return the `alwan_status` enum:
 
-- `ALWAN_OK` (0) — Success
-- `ALWAN_E_INVALID` (-1) — Invalid parameter (unsupported illuminant/camera/gamut, bad range)
-- `ALWAN_E_NODATA` (-2) — Required spectral data not present
-- `ALWAN_E_NOMEM` (-4) — Memory allocation failed
+- `ALWAN_OK` (0): Success
+- `ALWAN_E_INVALID` (-1): Invalid parameter (unsupported illuminant/camera/gamut, bad range)
+- `ALWAN_E_NODATA` (-2): Required spectral data not present
+- `ALWAN_E_NOMEM` (-4): Memory allocation failed
 
 `alwan_metamerism_index_*` instead returns the index directly (negative on error).
 
@@ -372,8 +372,8 @@ Spectral functions return the `alwan_status` enum:
 
 ## See Also
 
-- [CCT & Light Quality](cct-light-quality.md) — CRI, TM-30, SSI, metamerism
-- [Color Spaces](color-spaces.md) — XYZ conversions
-- [Atmospheric Optics](atmosphere.md) — Rayleigh scattering
-- [Precision and Limits](../precision-and-limits.md) — `_f32`/`_f64` and f64-facade behaviour
-- [Data Management](../data-management.md) — embedded CMF, illuminant, and spectral LUT data
+- [CCT & Light Quality](cct-light-quality.md): CRI, TM-30, SSI, metamerism
+- [Color Spaces](color-spaces.md): XYZ conversions
+- [Atmospheric Optics](atmosphere.md): Rayleigh scattering
+- [Precision and Limits](../precision-and-limits.md): `_f32`/`_f64` and f64-facade behaviour
+- [Data Management](../data-management.md): embedded CMF, illuminant, and spectral LUT data

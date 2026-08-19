@@ -13,6 +13,8 @@ EXPORTS
     alwan_aces1_output_transform_f64
     alwan_aces1_output_transform_inv_f32
     alwan_aces1_output_transform_inv_f64
+    alwan_aces2_output_transform_custom_display_linear_f32
+    alwan_aces2_output_transform_custom_display_linear_f64
     alwan_aces2_output_transform_custom_f32
     alwan_aces2_output_transform_custom_f64
     alwan_aces2_output_transform_f32
@@ -69,6 +71,15 @@ EXPORTS
     alwan_aces_rgb_to_jmh20_f64
     alwan_aces_tonescale_compress20_f32
     alwan_aces_tonescale_compress20_f64
+    alwan_agx_apply_f32
+    alwan_agx_apply_f64
+    alwan_agx_build_geometry_f32
+    alwan_agx_build_geometry_f64
+    alwan_agx_default_params_f32
+    alwan_agx_default_params_f64
+    alwan_agx_f32_map_interleave
+    alwan_agx_f64_map_interleave
+    alwan_agx_map_interleave_ex
     alwan_apca_contrast_f32
     alwan_apca_contrast_f64
     alwan_atd95_forward_f32
@@ -211,6 +222,8 @@ EXPORTS
     alwan_csf_barten1999_params_default_f64
     alwan_csf_f32
     alwan_csf_f64
+    alwan_css_gamut_f32_map_interleave
+    alwan_css_gamut_f32_map_planar
     alwan_css_gamut_f64_map_interleave
     alwan_css_gamut_f64_map_planar
     alwan_css_gamut_map_f32_map_interleave
@@ -219,6 +232,8 @@ EXPORTS
     alwan_css_gamut_map_f64_map_planar
     alwan_css_gamut_map_interleave_ex
     alwan_css_gamut_map_planar_ex
+    alwan_css_gamut_space_f32
+    alwan_css_gamut_space_f64
     alwan_cube_export_1d_f32
     alwan_cube_export_1d_f64
     alwan_cube_export_3d_buffer_f32
@@ -354,12 +369,16 @@ EXPORTS
     alwan_gamut_clip_f64_map_planar
     alwan_gamut_coverage_f32
     alwan_gamut_coverage_f64
+    alwan_gamut_f32_map_interleave
+    alwan_gamut_f32_map_planar
     alwan_gamut_f64_map_interleave
     alwan_gamut_f64_map_planar
     alwan_gamut_map_advanced_f32
     alwan_gamut_map_advanced_f64
     alwan_gamut_map_interleave_ex
     alwan_gamut_map_planar_ex
+    alwan_gamut_map_spatial_f32
+    alwan_gamut_map_spatial_f64
     alwan_gamut_map_xyz_to_rgb_f32
     alwan_gamut_map_xyz_to_rgb_f64
     alwan_gamut_volume_f32
@@ -385,6 +404,8 @@ EXPORTS
     alwan_hdr_cielab_to_xyz_f64_map_planar
     alwan_hdr_cielab_to_xyz_map_interleave_ex
     alwan_hdr_cielab_to_xyz_map_planar_ex
+    alwan_hdr_gamut_map_ictcp_f32
+    alwan_hdr_gamut_map_ictcp_f64
     alwan_hdr_gamut_map_jzczhz_f32
     alwan_hdr_gamut_map_jzczhz_f64
     alwan_hdr_ipt_to_xyz_f32
@@ -447,8 +468,10 @@ EXPORTS
     alwan_hsplog_to_rgb_f64_map_planar
     alwan_hsplog_to_rgb_map_interleave_ex
     alwan_hsplog_to_rgb_map_planar_ex
+    alwan_hsv_to_hwb_f32
     alwan_hsv_to_hwb_f32_map_interleave
     alwan_hsv_to_hwb_f32_map_planar
+    alwan_hsv_to_hwb_f64
     alwan_hsv_to_hwb_f64_map_interleave
     alwan_hsv_to_hwb_f64_map_planar
     alwan_hsv_to_hwb_map_interleave_ex
@@ -477,6 +500,7 @@ EXPORTS
     alwan_hsy_to_rgb_f64_map_planar
     alwan_hsy_to_rgb_map_interleave_ex
     alwan_hsy_to_rgb_map_planar_ex
+    alwan_hunt_forward_f32
     alwan_hunt_forward_f64
     alwan_hunter_lab_to_xyz_custom_f32
     alwan_hunter_lab_to_xyz_custom_f32_map_interleave
@@ -494,8 +518,10 @@ EXPORTS
     alwan_hunter_lab_to_xyz_f64_map_planar
     alwan_hunter_lab_to_xyz_map_interleave_ex
     alwan_hunter_lab_to_xyz_map_planar_ex
+    alwan_hwb_to_hsv_f32
     alwan_hwb_to_hsv_f32_map_interleave
     alwan_hwb_to_hsv_f32_map_planar
+    alwan_hwb_to_hsv_f64
     alwan_hwb_to_hsv_f64_map_interleave
     alwan_hwb_to_hsv_f64_map_planar
     alwan_hwb_to_hsv_map_interleave_ex
@@ -576,6 +602,13 @@ EXPORTS
     alwan_iptch_to_ipt_f64
     alwan_is_within_pointer_gamut_f32
     alwan_is_within_pointer_gamut_f64
+    alwan_jp2499_apply_f32
+    alwan_jp2499_apply_f64
+    alwan_jp2499_default_params_f32
+    alwan_jp2499_default_params_f64
+    alwan_jp2499_f32_map_interleave
+    alwan_jp2499_f64_map_interleave
+    alwan_jp2499_map_interleave_ex
     alwan_jzazbz_to_jzczhz_f32
     alwan_jzazbz_to_jzczhz_f32_map_interleave
     alwan_jzazbz_to_jzczhz_f32_map_planar
@@ -622,6 +655,7 @@ EXPORTS
     alwan_lab_to_lch_map_planar_ex
     alwan_lab_to_rgb_f32
     alwan_lab_to_rgb_f64
+    alwan_lab_to_srgb_f32
     alwan_lab_to_srgb_f32_map_interleave
     alwan_lab_to_srgb_f32_map_planar
     alwan_lab_to_srgb_f64
@@ -764,6 +798,7 @@ EXPORTS
     alwan_oklab_to_oklch_map_planar_ex
     alwan_oklab_to_rgb_f32
     alwan_oklab_to_rgb_f64
+    alwan_oklab_to_srgb_f32
     alwan_oklab_to_srgb_f32_map_interleave
     alwan_oklab_to_srgb_f32_map_planar
     alwan_oklab_to_srgb_f64
@@ -805,6 +840,16 @@ EXPORTS
     alwan_osa_ucs_to_xyz_map_planar_ex
     alwan_photopic_luminance_f32
     alwan_photopic_luminance_f64
+    alwan_picture_form_evidence_f32
+    alwan_picture_form_evidence_f64
+    alwan_picture_form_global_exp_f32
+    alwan_picture_form_global_exp_f64
+    alwan_picture_form_hybrid_exp_f32
+    alwan_picture_form_hybrid_exp_f64
+    alwan_picture_form_local_exp_f32
+    alwan_picture_form_local_exp_f64
+    alwan_picture_form_pure_exp_f32
+    alwan_picture_form_pure_exp_f64
     alwan_pointer_gamut_boundary
     alwan_poly_expand_cheung2004_f32
     alwan_poly_expand_cheung2004_f64
@@ -862,7 +907,9 @@ EXPORTS
     alwan_relative_luminance_f32_map_interleave
     alwan_relative_luminance_f64
     alwan_relative_luminance_f64_map_interleave
+    alwan_relative_luminance_kr_kb_f32
     alwan_relative_luminance_kr_kb_f64
+    alwan_relative_luminance_space_f32
     alwan_relative_luminance_space_f32_map_interleave
     alwan_relative_luminance_space_f64
     alwan_relative_luminance_space_f64_map_interleave
@@ -1023,18 +1070,28 @@ EXPORTS
     alwan_sigma_barten1999_f64
     alwan_simulate_cvd_ex_f32
     alwan_simulate_cvd_ex_f64
+    alwan_simulate_cvd_ex_gamut_safe_f32
+    alwan_simulate_cvd_ex_gamut_safe_f64
     alwan_simulate_cvd_f32
     alwan_simulate_cvd_f32_map_interleave
     alwan_simulate_cvd_f32_map_planar
     alwan_simulate_cvd_f64
     alwan_simulate_cvd_f64_map_interleave
     alwan_simulate_cvd_f64_map_planar
+    alwan_simulate_cvd_gamut_safe_f32
+    alwan_simulate_cvd_gamut_safe_f32_map_interleave
+    alwan_simulate_cvd_gamut_safe_f64
+    alwan_simulate_cvd_gamut_safe_f64_map_interleave
     alwan_simulate_cvd_machado_f32
     alwan_simulate_cvd_machado_f32_map_interleave
     alwan_simulate_cvd_machado_f32_map_planar
     alwan_simulate_cvd_machado_f64
     alwan_simulate_cvd_machado_f64_map_interleave
     alwan_simulate_cvd_machado_f64_map_planar
+    alwan_simulate_cvd_machado_gamut_safe_f32
+    alwan_simulate_cvd_machado_gamut_safe_f32_map_interleave
+    alwan_simulate_cvd_machado_gamut_safe_f64
+    alwan_simulate_cvd_machado_gamut_safe_f64_map_interleave
     alwan_simulate_cvd_machado_map_interleave_ex
     alwan_simulate_cvd_machado_map_planar_ex
     alwan_simulate_cvd_map_interleave_ex
@@ -1077,6 +1134,7 @@ EXPORTS
     alwan_srgb_to_hpluv_f64
     alwan_srgb_to_hsluv_f32
     alwan_srgb_to_hsluv_f64
+    alwan_srgb_to_lab_f32
     alwan_srgb_to_lab_f32_map_interleave
     alwan_srgb_to_lab_f32_map_planar
     alwan_srgb_to_lab_f64
@@ -1088,6 +1146,7 @@ EXPORTS
     alwan_srgb_to_okhsl_f64
     alwan_srgb_to_okhsv_f32
     alwan_srgb_to_okhsv_f64
+    alwan_srgb_to_oklab_f32
     alwan_srgb_to_oklab_f32_map_interleave
     alwan_srgb_to_oklab_f32_map_planar
     alwan_srgb_to_oklab_f64
@@ -1095,6 +1154,7 @@ EXPORTS
     alwan_srgb_to_oklab_f64_map_planar
     alwan_srgb_to_oklab_map_interleave_ex
     alwan_srgb_to_oklab_map_planar_ex
+    alwan_srgb_to_xyz_f32
     alwan_srgb_to_xyz_f32_map_interleave
     alwan_srgb_to_xyz_f32_map_planar
     alwan_srgb_to_xyz_f64
@@ -1138,6 +1198,11 @@ EXPORTS
     alwan_video_encode_f64
     alwan_view_transform_apply_f32
     alwan_view_transform_apply_f64
+    alwan_view_transform_apply_unclamped_f32
+    alwan_view_transform_apply_unclamped_f64
+    alwan_view_transform_f32_map_interleave
+    alwan_view_transform_f64_map_interleave
+    alwan_view_transform_map_interleave_ex
     alwan_wcag_contrast_ratio_f32
     alwan_wcag_contrast_ratio_f64
     alwan_weber_contrast_f32
@@ -1302,6 +1367,7 @@ EXPORTS
     alwan_xyz_to_prolab_map_planar_ex
     alwan_xyz_to_rgb_f32
     alwan_xyz_to_rgb_f64
+    alwan_xyz_to_srgb_f32
     alwan_xyz_to_srgb_f32_map_interleave
     alwan_xyz_to_srgb_f32_map_planar
     alwan_xyz_to_srgb_f64
@@ -1355,6 +1421,10 @@ EXPORTS
     alwan_ycbcr_to_rgb_f64
     alwan_ycbcr_to_rgb_f64_map_interleave
     alwan_ycbcr_to_rgb_f64_map_planar
+    alwan_ycbcr_to_rgb_gamut_safe_f32
+    alwan_ycbcr_to_rgb_gamut_safe_f32_map_interleave
+    alwan_ycbcr_to_rgb_gamut_safe_f64
+    alwan_ycbcr_to_rgb_gamut_safe_f64_map_interleave
     alwan_ycbcr_to_rgb_map_interleave_ex
     alwan_ycbcr_to_rgb_map_planar_ex
     alwan_yccbccrc_to_rgb_f32
@@ -1363,6 +1433,10 @@ EXPORTS
     alwan_yccbccrc_to_rgb_f64
     alwan_yccbccrc_to_rgb_f64_map_interleave
     alwan_yccbccrc_to_rgb_f64_map_planar
+    alwan_yccbccrc_to_rgb_gamut_safe_f32
+    alwan_yccbccrc_to_rgb_gamut_safe_f32_map_interleave
+    alwan_yccbccrc_to_rgb_gamut_safe_f64
+    alwan_yccbccrc_to_rgb_gamut_safe_f64_map_interleave
     alwan_yccbccrc_to_rgb_map_interleave_ex
     alwan_yccbccrc_to_rgb_map_planar_ex
     alwan_ycocg_to_rgb_f32

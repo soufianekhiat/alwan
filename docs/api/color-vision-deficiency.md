@@ -86,10 +86,10 @@ Simulate color vision deficiency for a single linear-RGB color using the Brettel
 confusion-line model.
 
 **Parameters:**
-- `rgb_out` — Output simulated RGB color as seen by a person with CVD
-- `rgb_in` — Input linear RGB color [0, 1]
-- `cvd_type` — Type of color vision deficiency
-- `severity` — Severity [0, 1] (1.0 = complete, 0.0 = normal vision). Applies to the anomalous
+- `rgb_out`: Output simulated RGB color as seen by a person with CVD
+- `rgb_in`: Input linear RGB color [0, 1]
+- `cvd_type`: Type of color vision deficiency
+- `severity`: Severity [0, 1] (1.0 = complete, 0.0 = normal vision). Applies to the anomalous
   trichromacy types (protanomaly, deuteranomaly, tritanomaly); the dichromacy types
   (protanopia, deuteranopia, tritanopia) always simulate full severity.
 
@@ -311,14 +311,14 @@ alwan_simulate_deuteranopia_f64_map_interleave(
 
 ## Error Codes
 
-- `ALWAN_OK` (0) — Success
-- `ALWAN_E_INVALID` (-1) — NULL pointer or invalid CVD type / pixel format
+- `ALWAN_OK` (0): Success
+- `ALWAN_E_INVALID` (-1): NULL pointer or invalid CVD type / pixel format
 
 ---
 
 ## See Also
 
-- [Color Spaces](color-spaces.md) — RGB/Lab conversions
-- [Color Difference](color-difference.md) — Measuring perceptual difference
-- [Vision Science](vision.md) — Visual perception models
-- [Map / Batch API](../map.md) — Stride-adjacent batch convention and `_ex` dispatch
+- [Color Spaces](color-spaces.md): RGB/Lab conversions
+- [Color Difference](color-difference.md): Measuring perceptual difference
+- [Vision Science](vision.md): Visual perception models
+- [Map / Batch API](../map.md): Stride-adjacent batch convention and `_ex` dispatch

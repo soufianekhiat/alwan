@@ -53,7 +53,7 @@ tables in the library sources.
 
 ## Public Access Pattern
 
-Data is accessed through API helpers in `alwan.h`, not by reaching into
+Data is accessed through API helpers in `alwan.h` rather than by reaching into
 `src/alwan/data/` at runtime.
 
 Examples:
@@ -147,7 +147,7 @@ Because those features all depend on the same embedded registry, keeping
 ## Guidance
 
 - Use embedded mode for all current integrations.
-- Treat runtime loading as roadmap material, not a shipping workflow.
+- Treat runtime loading as roadmap material rather than a shipping workflow.
 - If you need custom colour spaces today, build descriptors directly in memory
   with `alwan_rgb_space_desc_f32` / `alwan_rgb_space_desc_f64` rather than
   expecting a runtime registry extension.

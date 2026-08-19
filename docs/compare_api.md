@@ -11,8 +11,8 @@ Comparison of **Alwan** against three commonly adjacent projects:
 > `P` = partial / indirect / config-dependent
 > `--` = not a primary surface area
 >
-> This is a coarse capability matrix, not a line-by-line audit of external
-> projects. The **Alwan** column is based on the current `src/alwan/alwan.h`
+> This is a coarse capability matrix rather than a line-by-line audit of
+> external projects. The **Alwan** column is based on the current `src/alwan/alwan.h`
 > in this repository.
 
 ---
@@ -141,7 +141,7 @@ column with the concrete methods, standards, and models shipped in
 
 | Capability | Alwan |
 |------------|-------|
-| Spectral upsampling | Smits 1999, Mallett 2019, Jakob 2019 (6 LUT gamuts) — native f32/f64, deterministic |
+| Spectral upsampling | Smits 1999, Mallett 2019, Jakob 2019 (6 LUT gamuts); native f32/f64, deterministic |
 | Chromatic adaptation | 11 one-step CAT matrices + two-step Zhai 2018 (CAT02/CAT16) |
 | Color appearance models | CIECAM02, CAM16, ZCAM, RLAB, Hunt, Hellwig2022, Kim2009, LLAB, ATD95, Nayatani95, CAM18sl, CAM20u |
 | Color-difference metrics | 14 incl. dE2000, CMC, CAM02-UCS (LCD/SCD/UCS), CAM16-UCS (LCD/SCD/UCS), dE-OK, dE-ITP, HyAB, DIN99, ZCAM |
@@ -180,7 +180,7 @@ column with the concrete methods, standards, and models shipped in
 
 ### Important distinction
 
-Alwan is a colour-science library with interchange helpers, not a full
+Alwan is a colour-science library with interchange helpers rather than a full
 facility-grade colour-management framework. It is strongest when the caller
 already knows the pipeline policy and wants the transforms, descriptors, and
 buffer-processing surface in a native C library.

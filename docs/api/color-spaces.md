@@ -18,9 +18,9 @@ Alwan supports conversions between:
 - **Relative luminance:** Multi-standard Y calculation from linear RGB
 
 **API Pattern** (follows the [API conventions](../api-conventions.md): outputs first, each `*_stride` immediately after its buffer, `ctx` last):
-- Single-element: `alwan_foo_{T}(out, in, ...)` — typed structs, no stride.
-- Bulk interleaved: `alwan_foo_{T}_map_interleave(alwan_{T} *out, size_t out_stride, alwan_{T} const *in, size_t in_stride, size_t count, ...)` — raw scalar arrays, strides in bytes.
-- Bulk planar: `alwan_foo_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride, alwan_{T} *out_ch1, alwan_{T} *out_ch2, alwan_{T} const *in_ch0, size_t in_stride, alwan_{T} const *in_ch1, alwan_{T} const *in_ch2, size_t count, ...)` — separate channel arrays.
+- Single-element: `alwan_foo_{T}(out, in, ...)`: typed structs, no stride.
+- Bulk interleaved: `alwan_foo_{T}_map_interleave(alwan_{T} *out, size_t out_stride, alwan_{T} const *in, size_t in_stride, size_t count, ...)`: raw scalar arrays, strides in bytes.
+- Bulk planar: `alwan_foo_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride, alwan_{T} *out_ch1, alwan_{T} *out_ch2, alwan_{T} const *in_ch0, size_t in_stride, alwan_{T} const *in_ch1, alwan_{T} const *in_ch2, size_t count, ...)`: separate channel arrays.
 
 ---
 
@@ -49,7 +49,7 @@ int alwan_xyz_to_lab_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride,
                                      alwan_xyz_{T} const *white_xyz);
 ```
 
-Inverse: `alwan_lab_to_xyz_{T}` / `alwan_lab_to_xyz_{T}_map_interleave` / `alwan_lab_to_xyz_{T}_map_planar` — same pattern.
+Inverse: `alwan_lab_to_xyz_{T}` / `alwan_lab_to_xyz_{T}_map_interleave` / `alwan_lab_to_xyz_{T}_map_planar`: same pattern.
 
 **Example:**
 ```c
@@ -302,6 +302,6 @@ Applies sRGB OETF/EOTF internally so the caller works in linear light.
 
 ## See Also
 
-- [Transfer Functions](transfer-functions.md) — OETF/EOTF/view transforms
-- [Chromatic Adaptation](chromatic-adaptation.md) — White point transforms
-- [Color Difference](color-difference.md) — dE metrics
+- [Transfer Functions](transfer-functions.md): OETF/EOTF/view transforms
+- [Chromatic Adaptation](chromatic-adaptation.md): White point transforms
+- [Color Difference](color-difference.md): dE metrics

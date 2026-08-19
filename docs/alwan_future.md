@@ -80,13 +80,13 @@ Possible additions:
 - display/scene/HDR/basic query helpers
 - more convenience wrappers around common descriptor-driven workflows
 
-These are ergonomic improvements, not architectural prerequisites.
+These are ergonomic improvements rather than architectural prerequisites.
 
 ### 5. Deterministic Numeric Layer Extension
 
 `src/alwan/core/alwan_deterministic.h` already provides portable polynomial
 implementations for `alwan_det_log2/exp2/log/exp/pow` (and a deterministic cube
-root), and `ALWAN_LOG2`/`ALWAN_EXP2`/`ALWAN_POW` route through them under
+root), and `ALWAN_LOG2`/`ALWAN_EXP`/`ALWAN_POW` route through them under
 `ALWAN_DETERMINISTIC`. The trig and remaining transcendental macros do not yet
 have a deterministic path: `ALWAN_ATAN2/SIN/COS/TAN/TANH/LOG10` still expand to
 libm directly in `alwan_platform.h`.
@@ -130,7 +130,7 @@ normalization macros that signal an unfinished map kernel:
 - scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv` (currently map-only)
 - native f32 numeric kernels for the metrics implemented as f64-widening
   facades (CRI/CQS/TM30/CIE224/SSI/metamerism, gamut volume/ratio/coverage,
-  ZCAM) where single precision is genuinely sufficient — or formally document
+  ZCAM) where single precision is sufficient, or formally document
   them as intentional f64-internal facades (some already are)
 - f32 twin accessor for `alwan_pointer_gamut_boundary` and the other f64-only
   reference-data accessors, for full dual-precision interop
@@ -144,8 +144,8 @@ normalization macros that signal an unfinished map kernel:
   `alwan_rgb_space` and other ABI-facing enums, to allow safe future additions
 - ~~rename `gamut_volume_mc` to reflect that it returns an exact determinant~~
   *(done 2026-06-28: renamed to `alwan_gamut_volume`, dead params dropped)*; a
-  real Monte-Carlo **perceptual** gamut volume (Lab/Oklab solid) is still a
-  genuine future addition
+  real Monte-Carlo **perceptual** gamut volume (Lab/Oklab solid) remains
+  future work
 
 ### 10. Documentation Of The Undocumented Tail
 
@@ -174,8 +174,8 @@ present in the current codebase:
 - video range helpers
 - LUT/CLF export surface
 
-Any new planning should start from the current header, not from older drafts
-that predate those implementations.
+Any new planning should start from the current header rather than from older
+drafts that predate those implementations.
 
 ---
 

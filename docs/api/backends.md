@@ -13,7 +13,7 @@ Alwan's core math is header-only and cross-platform. The same `*_core.inc` files
 | **GLSL** | `alwan_glsl.h` | `float` | f32 | OpenGL / Vulkan shaders |
 | **Halide** | `alwan_halide.h` | `Halide::Expr` | f32 or f64 | Pipeline generators |
 
-The HLSL and GLSL backends are single-precision only; the Halide backend supports both single and double precision (set `ALWAN_HALIDE_FLOAT_BITS` to 32 or 64). The C backend exposes both `_f32` (float) and `_f64` (double) variants — choose the appropriate suffix at each call site.
+The HLSL and GLSL backends are single-precision only; the Halide backend supports both single and double precision (set `ALWAN_HALIDE_FLOAT_BITS` to 32 or 64). The C backend exposes both `_f32` (float) and `_f64` (double) variants; choose the appropriate suffix at each call site.
 
 ---
 
@@ -21,8 +21,8 @@ The HLSL and GLSL backends are single-precision only; the Halide backend support
 
 Each `*_core.h` module contains a `#if ALWAN_BACKEND == ALWAN_BACKEND_C` / `#else` split:
 
-- **C path** — includes the `.inc` twice via `alwan_core_f32_setup.h` and `alwan_core_f64_setup.h`, emitting `alwan_foo_f32` and `alwan_foo_f64` variants.
-- **GPU path** — includes the `.inc` once with `ALWAN_CORE_*` macros set by the bootstrap header (`alwan_hlsl.h` etc.), emitting unsuffixed `alwan_foo` variants that call GPU intrinsics.
+- **C path**: includes the `.inc` twice via `alwan_core_f32_setup.h` and `alwan_core_f64_setup.h`, emitting `alwan_foo_f32` and `alwan_foo_f64` variants.
+- **GPU path**: includes the `.inc` once with `ALWAN_CORE_*` macros set by the bootstrap header (`alwan_hlsl.h` etc.), emitting unsuffixed `alwan_foo` variants that call GPU intrinsics.
 
 The `ALWAN_CORE_*` macros bridge the `.inc` source to the active platform:
 
@@ -51,7 +51,7 @@ The `ALWAN_CORE_*` macros bridge the `.inc` source to the active platform:
 
 `alwan_hlsl.h` sets `ALWAN_BACKEND = ALWAN_BACKEND_HLSL` (also auto-detected from `__HLSL_VERSION`) and defines:
 - `alwan_scalar` = `float`
-- `ALWAN_LITERAL(x)` = `(x)` — no suffix needed (HLSL literals are float by default)
+- `ALWAN_LITERAL(x)` = `(x)`; no suffix needed (HLSL literals are float by default)
 - `ALWAN_SELECT(c,t,f)` = `(c) ? (t) : (f)`
 - Math macros routed to HLSL intrinsics: `pow`, `sqrt`, `exp`, `log`, `atan2`, `floor`, `ceil`
 - `alwan_min/max/clamp/saturate/lerp` = HLSL built-ins
@@ -67,7 +67,7 @@ The `ALWAN_CORE_*` macros bridge the `.inc` source to the active platform:
 | `alwan_lab` | `struct { float L, a, b; }` |
 | `alwan_mat3x3` | `struct { float m[9]; }` |
 
-Color types are always plain structs (`struct { alwan_scalar v[N]; }`) on every backend — they are **never** aliased to GPU vector types such as `float3` or to swizzle types. This keeps field access and per-channel semantics identical across C, HLSL, GLSL, and Halide; pack/unpack to `float3`/`vec3` explicitly at the shader boundary.
+Color types are always plain structs (`struct { alwan_scalar v[N]; }`) on every backend; they are **never** aliased to GPU vector types such as `float3` or to swizzle types. This keeps field access and per-channel semantics identical across C, HLSL, GLSL, and Halide; pack/unpack to `float3`/`vec3` explicitly at the shader boundary.
 
 ### Usage in a Pixel Shader
 
@@ -84,7 +84,7 @@ float4 PSMain(float2 uv : TEXCOORD) : SV_Target
     // GPU-backend core functions are single-precision and return by value.
     // Transfer functions are unsuffixed scalars (alwan_srgb_eotf/_oetf); the
     // colour-model conversions use the `_v` (value) form. There is no
-    // rgb<->xyz helper in the core — supply the sRGB<->XYZ 3x3 matrices from
+    // rgb<->xyz helper in the core; supply the sRGB<->XYZ 3x3 matrices from
     // the host and use the generic alwan_mat3_mulv_v(matrix, vector).
 
     // Decode sRGB gamma
@@ -115,11 +115,11 @@ float4 PSMain(float2 uv : TEXCOORD) : SV_Target
 
 ### HLSL Limitations
 
-- No context (`alwan_ctx`) — on the C backend `alwan_ctx` exists for the **embedded RGB-space registry** lookup (resolving an `ALWAN_RGB_*` enum to its `alwan_rgb_space_desc` primaries/whitepoint/TFs) and for the custom allocator; it is *not* a runtime data loader (runtime loading is not implemented). GPU code passes the descriptor explicitly, so no context is needed. All GPU functions are standalone.
-- No bulk/stride functions — GPU shaders process one pixel at a time or via texture samplers.
-- No `alwan_spd` operations — spectral data structures are C-only.
-- No camera profiling or Munsell/ColorChecker lookups — these need the C-side embedded data tables.
-- `ALWAN_CBRT(x)` is a **signed** cube root — `sign(x) * pow(abs(x), 1.0f/3.0f)` — so it matches libm `cbrtf` on negatives, where a bare `pow(x, 1/3)` returns NaN. There is no native HLSL cube root.
+- No context (`alwan_ctx`): on the C backend `alwan_ctx` exists for the **embedded RGB-space registry** lookup (resolving an `ALWAN_RGB_*` enum to its `alwan_rgb_space_desc` primaries/whitepoint/TFs) and for the custom allocator; it is *not* a runtime data loader (runtime loading is not implemented). GPU code passes the descriptor explicitly, so no context is needed. All GPU functions are standalone.
+- No bulk/stride functions: GPU shaders process one pixel at a time or via texture samplers.
+- No `alwan_spd` operations: spectral data structures are C-only.
+- No camera profiling or Munsell/ColorChecker lookups: these need the C-side embedded data tables.
+- `ALWAN_CBRT(x)` is a **signed** cube root, `sign(x) * pow(abs(x), 1.0f/3.0f)`, so it matches libm `cbrtf` on negatives, where a bare `pow(x, 1/3)` returns NaN. There is no native HLSL cube root.
 
 ---
 
@@ -141,7 +141,7 @@ float4 PSMain(float2 uv : TEXCOORD) : SV_Target
 - Math macros routed to GLSL built-ins
 - `alwan_min/max/clamp` = GLSL built-ins; `alwan_saturate(x)` = `clamp(x, 0.0, 1.0)`; `alwan_lerp(a,b,t)` = `mix(a,b,t)`
 - `ALWAN_ATAN2(y,x)` = `atan(y,x)` (GLSL two-argument form)
-- `ALWAN_FMOD(x,y)` = `mod(x,y)` — GLSL's built-in `mod` is the floored modulo (`x - y*floor(x/y)`), which differs from C `fmod` (truncated toward zero) for negative operands (the Halide backend uses the explicit floored form `x - floor(x/y)*y`)
+- `ALWAN_FMOD(x,y)` = `mod(x,y)`; GLSL's built-in `mod` is the floored modulo (`x - y*floor(x/y)`), which differs from C `fmod` (truncated toward zero) for negative operands (the Halide backend uses the explicit floored form `x - floor(x/y)*y`)
 - `ALWAN_LOG10(x)` = `log(x)/log(10.0)` (no native GLSL log10)
 - `ALWAN_CBRT(x)` = signed cube root, `sign(x) * pow(abs(x), 1.0/3.0)` (parity with libm `cbrt`; bare `pow` NaNs on negatives)
 
@@ -202,7 +202,7 @@ Both backends have identical function names and identical Alwan type definitions
 `alwan_halide.h` sets `ALWAN_BACKEND = ALWAN_BACKEND_HALIDE` (also auto-detected from `HALIDE_HALIDERUNTIME_H`) and configures:
 - `alwan_scalar` = `alwan_halide_scalar` (a `Halide::Expr` subclass with an implicit `double` constructor)
 - `ALWAN_LITERAL(x)` = `Halide::Internal::make_const(type, x)` where `type` is `Float(32)` or `Float(64)` depending on `ALWAN_HALIDE_FLOAT_BITS`
-- `ALWAN_SELECT(c,t,f)` = `Halide::select(c,t,f)` — lazy, symbolic
+- `ALWAN_SELECT(c,t,f)` = `Halide::select(c,t,f)` (lazy, symbolic)
 - All math macros = `Halide::pow`, `Halide::sqrt`, `Halide::log`, etc.
 - `alwan_min/max/clamp` = `Halide::min`, `Halide::max`, `Halide::clamp`
 
@@ -211,7 +211,7 @@ Both backends have identical function names and identical Alwan type definitions
 Set `ALWAN_HALIDE_FLOAT_BITS` before including `alwan_halide.h`:
 
 ```cpp
-#define ALWAN_HALIDE_FLOAT_BITS 32  // Float(32) — default
+#define ALWAN_HALIDE_FLOAT_BITS 32  // Float(32), the default
 // or
 #define ALWAN_HALIDE_FLOAT_BITS 64  // Float(64)
 #include "alwan_halide.h"
@@ -242,10 +242,10 @@ public:
         rgb_val.g = linear(x, y, 1);
         rgb_val.b = linear(x, y, 2);
 
-        // The Halide path uses symbolic computation — no actual values yet
+        // The Halide path uses symbolic computation; no actual values yet
         // alwan functions return Halide::Expr, which Halide schedules/compiles
 
-        output(x, y, 0) = rgb_val.r; // simplified — see full Oklab example below
+        output(x, y, 0) = rgb_val.r; // simplified; see full Oklab example below
         output(x, y, 1) = rgb_val.g;
         output(x, y, 2) = rgb_val.b;
     }
@@ -265,9 +265,9 @@ static alwan_scalar const OKLAB_M1[9] = {
 
 ### Halide Limitations
 
-- Operations are **symbolic** — no immediate results until `realize()` or AOT compilation.
-- Cannot use C `if`/`else` on `Halide::Expr` values — all conditionals must go through `Halide::select` (mapped by `ALWAN_SELECT`).
-- No `alwan_ctx` — context is C-only.
+- Operations are **symbolic**: no immediate results until `realize()` or AOT compilation.
+- Cannot use C `if`/`else` on `Halide::Expr` values; all conditionals must go through `Halide::select` (mapped by `ALWAN_SELECT`).
+- No `alwan_ctx`: context is C-only.
 - Loop-based spectral integration is not GPU-suitable; use precomputed LUT approaches for spectral work.
 
 ---
@@ -319,7 +319,7 @@ All core conversion functions (XYZ↔Lab, Oklab, ICtCp, transfer functions, CAT,
 
 ## See Also
 
-- [CPU / SIMD Backends](../backends-cpu.md) — the C backend's SSE2/AVX/AVX2/NEON kernels, SVML gating, and fast-vs-deterministic math paths
-- [Configuration](../configuration.md) — `ALWAN_EMBED_DATA`, custom allocators
-- [Getting Started](../getting-started.md) — C usage introduction
-- [Map / Bulk Operations](map.md) — CPU batch processing
+- [CPU / SIMD Backends](../backends-cpu.md): the C backend's SSE2/AVX/AVX2/NEON kernels, SVML gating, and fast-vs-deterministic math paths
+- [Configuration](../configuration.md): `ALWAN_EMBED_DATA`, custom allocators
+- [Getting Started](../getting-started.md): C usage introduction
+- [Map / Bulk Operations](map.md): CPU batch processing
