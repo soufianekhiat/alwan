@@ -2279,7 +2279,7 @@ typedef enum {
                                     * integration ordering is preserved (depth-safe, 0 carrier flips).
                                     * Objective: invariant integration structure -- "not a creative
                                     * decision"; C2 (no false segmentation from slope kinks). */
-    ALWAN_GAMUT_FORM_CHANNEL       /* Channel integration (Troy Sobotka's AgX architecture): SB2383
+    ALWAN_GAMUT_FORM_CHANNEL,      /* Channel integration (Troy Sobotka's AgX architecture): SB2383
                                     * per-primary inset -> per-channel C2 log-logistic -> matched inverse
                                     * outset -> soft guard rails. Every constant is a display standard,
                                     * NONE scene-derived (temporal constancy -- "not a creative decision"):
@@ -2294,7 +2294,7 @@ typedef enum {
                                     * saturation -- no purity term. Per-pixel; output display-referred
                                     * [0,1]. NOTE: not carrier-monotone (AgX-class inset crosstalk); the
                                     * depth invariant rides the per-record integrations. */
-    ,ALWAN_GAMUT_FORM_HEMISPHERE_ABS /* The Absolute Hemisphere: HEMISPHERE's carrier tone made
+    ALWAN_GAMUT_FORM_HEMISPHERE_ABS,/* The Absolute Hemisphere: HEMISPHERE's carrier tone made
                                     * temporally invariant. Same C2 log-logistic on I = max(RGB),
                                     * but on CHANNEL's FIXED absolute window (log2(0.18) +/- (10,6.5)),
                                     * affine-normalized (DC respected), 18% mid-grey anchored, with
@@ -2305,6 +2305,36 @@ typedef enum {
                                     * constraint at once (see docs/picture_formation.md). The trade vs
                                     * CHANNEL: being carrier-monotone and hue-agnostic rules out
                                     * channel integration, so form-through-highlight is weaker. */
+    ALWAN_GAMUT_FORM_WARP,          /* HEMISPHERE_ABS + a monotone smooth local-contrast WARP that
+                                    * restores the scene curvature the tonescale flattened (a
+                                    * form-through-highlight refinement). Closed-form, no solver:
+                                    * f_out = m + gamma*(f_H - m) on the log-carrier, m a smooth
+                                    * pivot, gamma = 1 + b*blur(|mean-curvature of the log scene
+                                    * carrier|) >= 0; reconstructed by a per-pixel POSITIVE
+                                    * ratio-preserving scale with a carrier cap (RATIO-safe: a
+                                    * uniform scale, never a per-channel clamp). gamma >= 0 and
+                                    * smooth => carrier-monotone (no flip) by construction, analytic
+                                    * => no pooling. Inherits HEMISPHERE_ABS's constraint row but
+                                    * raises isophote-through-highlight and removes its highlight
+                                    * curvature steepening. See docs/picture_formation.md. */
+    ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK,/* The first 13-of-13 operator, look-preserving. HEMISPHERE_ABS's
+                                    * carrier tone with its lone RATIO failure removed by two changes:
+                                    * the asymptotic HIGH rail runs on the carrier (a single scalar) so
+                                    * reconstruction is a uniform per-pixel scale (never a per-channel
+                                    * clamp that rotates hue), and a desaturation FLOOR (purity-keep
+                                    * capped < 1) lifts the min channel off 0 as a uniform chroma scale
+                                    * (direction preserved). Pointwise => carrier-monotone, hue-agnostic
+                                    * and scene-invariant AND now RATIO-clean: satisfies ALL 13
+                                    * numerically-testable constraints. This variant keeps
+                                    * HEMISPHERE_ABS's exact window, so the look/contrast is unchanged.
+                                    * See docs/picture_formation.md. */
+    ALWAN_GAMUT_FORM_COMPLETE       /* The same 13-of-13 operator, isophote-through-highlight-maximised:
+                                    * a wider carrier window (the OpenSNOPT-optimal point of the
+                                    * 13-feasible set) preserves more scene curvature through the
+                                    * highlight, at the cost of a brighter, softer, lifted look. Prefer
+                                    * COMPLETE_HEMI_LOOK for the reference HEMISPHERE_ABS appearance;
+                                    * this for maximum form-through-highlight. See
+                                    * docs/picture_formation.md. */
 } alwan_gamut_formation_method;
 
 /* `s` is a per-family knob (its meaning depends on `method`):
@@ -2338,6 +2368,61 @@ typedef struct {
 
 int alwan_gamut_map_spatial_f32(alwan_f32 *out, alwan_f32 const *in, alwan_f32 const *depth, int width, int height, alwan_gamut_spatial_params_f32 const *params, alwan_ctx *ctx);
 int alwan_gamut_map_spatial_f64(alwan_f64 *out, alwan_f64 const *in, alwan_f64 const *depth, int width, int height, alwan_gamut_spatial_params_f64 const *params, alwan_ctx *ctx);
+
+/* ----------------------------------------------------------------
+ * EXPERIMENTAL picture formation (src/alwan/experimental/)
+ * These relax the library's guarantees: NON-DETERMINISTIC, inlined constants (no gendata), and NOT
+ * part of the constraint-tested surface. Research code, subject to change. Interleaved RGB, W*H*3.
+ * ---------------------------------------------------------------- */
+
+/* HYBRID-point base operator: y = (1-q)*COMPLETE_HEMI_LOOK(x) + q*CHANNEL(x), q frozen from x. */
+int alwan_picture_form_hybrid_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, alwan_ctx *ctx);
+int alwan_picture_form_hybrid_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, alwan_ctx *ctx);
+
+/* Global exposure operator: y = F_base(2^e0 x), scalar per-pixel exposure e0, MONOTONE and hue-stable.
+ * Only a scalar exposure reaches the picture and the base is hue-stable => structurally hue-preserving
+ * (no chroma/illuminant/purity variable). 'strength' is the compression gain k: strength<=0 gives
+ * e0=0 = the exact pointwise baseline; ~0.15 applies e0 = -cap*tanh(k*(z-zbar)/cap) (z=log2(max x),
+ * zbar = mean of the non-near-black carrier), a global soft toe+shoulder whose z->z+e0 map is strictly
+ * increasing (slope >= 1-k), so the output carrier never inverts scene order -- no halos, no
+ * enclosed-region lift -- while burning highlights (recovering blown chroma) and gently lifting
+ * shadows. NB strict monotonicity in z makes this a GLOBAL curve; local surround-dependent adaptation
+ * is mathematically incompatible with it. 'iterations' is reserved for a future non-monotone
+ * evidence-driven target. 'pivot' (linear carrier units): > 0 anchors the curve at the FIXED
+ * log2(pivot) (0.18 = mid-grey) -- frame-independent, TCONST/INVR-clean, the video mode; <= 0 uses
+ * the scene-adaptive robust mean (per-frame centring; shifts with content). Interleaved RGB, W*H*3. */
+int alwan_picture_form_global_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, double strength, double pivot, alwan_ctx *ctx);
+int alwan_picture_form_global_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, double strength, double pivot, alwan_ctx *ctx);
+
+/* Per-pixel junction evidence P(Continuation / Transmission / Occlusion) from local gradient structure
+ * (the gradient-formation reframe). DIAGNOSTIC only -- does not modify the picture. Occlusion = strong
+ * carrier boundary; Transmission = additive light lifting the dark channel; Continuation = one
+ * integrated illuminated volume (a warm-lit surface reads here, not as a pink layer). 'out' is
+ * W*H*3 interleaved = (P_C, P_T, P_O) per pixel, summing to 1. */
+int alwan_picture_form_evidence_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, alwan_ctx *ctx);
+int alwan_picture_form_evidence_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, alwan_ctx *ctx);
+
+/* Evidence-gated LOCAL exposure operator: y = F_base(2^e x), where e adapts region-locally with
+ * region structure from the junction evidence (adaptation base smoothed within continuation, cut at
+ * occlusion boundaries), and carrier order on reliable edges (|dz|>0.05 stop) repaired by an
+ * increasing-penalty solve (rho 30->3000). The deliberate NON-monotone counterpart of
+ * alwan_picture_form_global_exp: z-monotonicity is traded for scene-structured local adaptation,
+ * with the explicit carrier-order constraint as the safety rail; hue safety unchanged (scalar
+ * exposure into the hue-stable base). strength = adaptation gain (<=0 => exact baseline);
+ * iterations = repair iterations (<=0 -> default). pivot: > 0 centres the drive at the FIXED
+ * log2(pivot) (closes the frame-derived-pivot half of the TCONST gap; the operator stays spatially
+ * local); <= 0 scene-adaptive. Interleaved RGB, W*H*3. */
+int alwan_picture_form_local_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, double strength, double pivot, alwan_ctx *ctx);
+int alwan_picture_form_local_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, double strength, double pivot, alwan_ctx *ctx);
+
+/* PURE-corrected formation: COMPLETE_HEMI_LOOK's reconstruction with the purity rolloff gated by
+ * emission evidence (junction P_T) -- "PURE = emission only". A brightly LIT SURFACE keeps its
+ * chroma (no pastel collapse); additive/emissive records (glow, veil, flare -- dark-channel lift)
+ * still roll to the white-infinity. Carrier and hue are EXACTLY those of COMPLETE_HEMI_LOOK
+ * (the gate only scales chroma), so ORDER/MONO/DRIFT/RATIO are inherited unchanged; below the
+ * purity shelf the picture is COMPLETE_HEMI_LOOK exactly. Interleaved RGB, W*H*3. */
+int alwan_picture_form_pure_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, alwan_ctx *ctx);
+int alwan_picture_form_pure_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
  * Spectral Upsampling - RGB to Spectrum Conversion
