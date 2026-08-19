@@ -14,7 +14,7 @@ Alwan uses 3×3 matrices for:
 All matrix functions are provided in both native precisions: `_f32`
 (`alwan_f32`, single) and `_f64` (`alwan_f64`, double). Pick the suffix that
 matches your data; the two compile independently and are gated by
-`ALWAN_WITH_F32` / `ALWAN_WITH_F64` (both on by default — see
+`ALWAN_WITH_F32` / `ALWAN_WITH_F64` (both on by default; see
 [Configuration](../configuration.md)).
 
 ---
@@ -85,8 +85,8 @@ int alwan_mat3_inv_f64(alwan_mat3x3_f64 *out, alwan_mat3x3_f64 const *m);
 Inverts a 3×3 matrix using partial-pivot Gaussian elimination.
 
 **Returns:**
-- `ALWAN_OK` — Success
-- `ALWAN_E_RANGE` — Matrix is singular
+- `ALWAN_OK`: Success
+- `ALWAN_E_RANGE`: Matrix is singular
 
 ---
 
@@ -167,7 +167,7 @@ Returns `ALWAN_OK` on success.
 ## Collect / Scatter Helpers (typed ↔ f64)
 
 Utilities to load/store typed 3-channel pixels as contiguous `alwan_scalar`
-triplets — convenient when feeding the scalar matrix functions from arbitrary
+triplets; convenient when feeding the scalar matrix functions from arbitrary
 pixel formats.
 
 ```c
@@ -227,8 +227,8 @@ alwan_mat3_transform_f32_map_interleave(
 
 ## Error Codes
 
-- `ALWAN_OK` (0) — Success
-- `ALWAN_E_RANGE` (-3) — Singular matrix
+- `ALWAN_OK` (0): Success
+- `ALWAN_E_RANGE` (-3): Singular matrix
 
 See [Error Handling](../api-conventions.md) for the full `alwan_status` enum.
 
@@ -236,6 +236,6 @@ See [Error Handling](../api-conventions.md) for the full `alwan_status` enum.
 
 ## See Also
 
-- [Chromatic Adaptation](chromatic-adaptation.md) — CAT matrices
-- [Color Spaces](color-spaces.md) — RGB/XYZ conversions
-- [API Conventions](../api-conventions.md) — parameter ordering rules
+- [Chromatic Adaptation](chromatic-adaptation.md): CAT matrices
+- [Color Spaces](color-spaces.md): RGB/XYZ conversions
+- [API Conventions](../api-conventions.md): parameter ordering rules

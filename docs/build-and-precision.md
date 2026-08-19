@@ -60,9 +60,9 @@ Single-precision builds gate **definitions and data**, never **declarations**.
   `#if ALWAN_WITH_F32` / `#if ALWAN_WITH_F64`.
 
 Consequence: calling an excluded-precision symbol **compiles** fine (the
-declaration exists) but fails at **link time** with an unresolved symbol — not at
-compile time. If you build `ALWAN_BUILD_ONLY_F32` and call `alwan_xyz_to_lab_f64`,
-the linker, not the compiler, reports the error.
+declaration exists) but fails at **link time** with an unresolved symbol rather
+than at compile time. If you build `ALWAN_BUILD_ONLY_F32` and call
+`alwan_xyz_to_lab_f64`, the linker is what reports the error.
 
 ---
 
@@ -74,8 +74,8 @@ an f32-only build, so the machinery they depend on is gated by
 `ALWAN_WITH_F64_FACADE` (always `1`, because at least one precision is always
 built) rather than by `ALWAN_WITH_F64`.
 
-These f32 entry points are f64-internal facades. This is a **deliberate design
-choice, not a gap**: each one is an iterative solver, a wavelength integration,
+These f32 entry points are f64-internal facades. This is a **design choice
+rather than a gap**: each one is an iterative solver, a wavelength integration,
 or a least-squares fit whose precision and run-to-run repeatability depend on a
 single f64 core. Reusing that core from the f32 entry point keeps the numerical
 result stable and avoids maintaining a second, lower-precision copy of the same
@@ -84,13 +84,13 @@ algorithm. They are **not** to be "fixed" to native f32.
 | Area | `_f32` entry points | Why it stays f64 internally |
 |------|---------------------|-----------------------------|
 | ZCAM forward + inverse | `alwan_zcam_*_f32`, `alwan_delta_e_zcam_f32` | Iterative inverse whose convergence threshold is below f32 epsilon |
-| ACES 1.x iterative inverses | `alwan_aces1_*_inverse_f32` | Same: convergence tighter than f32 can represent |
+| ACES 1.x iterative inverses | `alwan_aces1_output_transform_inv_f32` | Same: convergence tighter than f32 can represent |
 | CCM polynomial / least-squares fits | `alwan_colour_correction_matrix_cheung2004_f32`, `..._finlayson2015_f32` | Least-squares normal-equations solve squares the condition number |
 | Gamut volume / ratio / coverage | `alwan_gamut_volume_f32`, `alwan_gamut_volume_ratio_f32`, `alwan_gamut_coverage_f32` | Computed in f64 for stability; `volume` is an exact `\|det(M)\|`, ratio/coverage are reductions over it |
 | Spectral quality metrics (wavelength integration) | `alwan_cri_ra_f32`, `alwan_cqs_calculate_f32`, `alwan_tm30_rf_f32`, `alwan_cie224_rf_f32`, `alwan_ssi_calculate_f32`, `alwan_metamerism_index_f32` | Integrate over f64 CMF tables with an f64 integrator; an f32 SPD mirror is widened, then narrowed back |
 | Kang CCT solver | `alwan_cct_kang_xy_f32` | Newton-Raphson with sub-f32-epsilon tolerances; reuses the f64 solver by design |
 
-> Counterexamples — these *are* native f32, not facades: the other CCT estimators
+> Counterexamples, native f32 rather than facades: the other CCT estimators
 > (`alwan_cct_mccamy_xy_f32`, Robertson, Hernandez-Andres) compute natively in
 > float, and the SPD / spectral-upsampling layer is templated and instantiated per
 > precision with native f32 data tables. Only the entries listed above widen to f64.
@@ -119,7 +119,7 @@ that `alwan_scalar` always names a precision that is actually compiled in:
 On the **C backend**, `alwan_platform.h` always typedefs `alwan_scalar = double`
 for its internal math regardless of these settings; `ALWAN_SCALAR_IS_FLOAT`
 governs the default-precision *public* value-type aliases. (GPU backends typedef
-`alwan_scalar` to `float` / `Halide::Expr` — see
+`alwan_scalar` to `float` / `Halide::Expr`; see
 [`api/backends.md`](api/backends.md).)
 
 ---
@@ -150,7 +150,7 @@ Mapping (`CMakeLists.txt`):
 
 | `ALWAN_BUILD_PRECISION` | Compile definition added (PUBLIC) |
 |-------------------------|-----------------------------------|
-| `both` | *(none — dual precision)* |
+| `both` | *(none; dual precision)* |
 | `f32` | `ALWAN_BUILD_ONLY_F32=1` |
 | `f64` | `ALWAN_BUILD_ONLY_F64=1` |
 
@@ -161,8 +161,9 @@ behaviour for excluded-precision calls.
 ### Sharpmake (the reference build)
 
 Sharpmake is the reference build system; CMake replicates it. The reference
-project (`buildsystem/sharpmake/src/`) currently emits `Debug` and `Release`
-configurations, both **dual-precision** (it adds `ALWAN_EMBED_DATA=1` and
+project (`buildsystem/sharpmake/src/`) emits configurations along the axes
+Debug/Release × deterministic (`_Det`) × static/DLL (`_Dll`), all
+**dual-precision** (it adds `ALWAN_EMBED_DATA=1` and
 `ALWAN_NORMALIZE_RANGES=0`, no `ALWAN_BUILD_ONLY_*`). To produce a
 single-precision Sharpmake build, add the macro to the project `Defines` in
 `AlwanLib.cs` / `common.cs`:
@@ -171,10 +172,8 @@ single-precision Sharpmake build, add the macro to the project `Defines` in
 conf.Defines.Add("ALWAN_BUILD_ONLY_F32=1"); // or ALWAN_BUILD_ONLY_F64=1
 ```
 
-> Single-precision *flavors* (e.g. `Debug_f32` / `Release_f64`) are a workspace
-> convention layered on top of these same macros, not a separate API switch. The
-> macro is always the actual precision selector; the configuration name is just a
-> preset that defines it.
+> The macro is always the actual precision selector; there is no separate
+> precision axis in the configuration names.
 
 ---
 
@@ -189,7 +188,7 @@ conf.Defines.Add("ALWAN_BUILD_ONLY_F32=1"); // or ALWAN_BUILD_ONLY_F64=1
 Notes:
 
 - A single-precision build removes the *other* precision's function bodies and
-  embedded-data twins — that is where the size win comes from.
+  embedded-data twins; that is where the size win comes from.
 - It does **not** remove the f64-facade helpers (`ALWAN_WITH_F64_FACADE` stays
   `1`), so an f32-only build still carries the f64 code and data those few entry
   points need.

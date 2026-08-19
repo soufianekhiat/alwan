@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     # macos-latest is the Apple Silicon (arm64) runner. The sibling
-    # macos-f64 workflow pins macos-13 (Intel x86_64); this one
+    # macos-f64 workflow pins macos-15-intel (Intel x86_64); this one
     # exercises the aarch64 codegen path.
     runs-on: macos-latest
     steps:

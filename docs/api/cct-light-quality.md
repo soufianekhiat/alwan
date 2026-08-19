@@ -8,13 +8,13 @@ Functions for correlated color temperature estimation, color rendering indices, 
 
 Light quality functions evaluate illumination characteristics:
 
-- **CCT estimation** — Determine color temperature from chromaticity
-- **CRI (Ra)** — CIE Color Rendering Index
-- **CQS** — NIST Color Quality Scale
-- **TM-30 / CIE 224** — Modern fidelity indices
-- **SSI** — Spectral Similarity Index (Academy / SMPTE ST 2122)
-- **Metamerism Index** — Color mismatch under illuminant change
-- **Whiteness / Yellowness** — ASTM E313 and CIE 2004 indices
+- **CCT estimation**: Determine color temperature from chromaticity
+- **CRI (Ra)**: CIE Color Rendering Index
+- **CQS**: NIST Color Quality Scale
+- **TM-30 / CIE 224**: Modern fidelity indices
+- **SSI**: Spectral Similarity Index (Academy / SMPTE ST 2122)
+- **Metamerism Index**: Color mismatch under illuminant change
+- **Whiteness / Yellowness**: ASTM E313 and CIE 2004 indices
 
 ### Precision suffixes
 
@@ -24,15 +24,15 @@ value type pairs follow (`alwan_vec2_{T}`, `alwan_xyz_{T}`, `alwan_spd_{T}`). Wh
 precisions are compiled is gated by `ALWAN_WITH_F32` / `ALWAN_WITH_F64` (both by
 default; restrict with `ALWAN_BUILD_ONLY_F32` / `ALWAN_BUILD_ONLY_F64`). Calling a
 precision that was excluded from the build fails at link time. There is no unsuffixed
-alias — pick `_f32` or `_f64` at the call site.
+alias; pick `_f32` or `_f64` at the call site.
 
 > **f64-internal facades (by design).** `alwan_cct_kang_xy_f32` (a Newton-Raphson
 > inverse with sub-f32-epsilon tolerances) and the spectral quality metrics
 > `alwan_cri_ra_f32` / `alwan_cqs_calculate_f32` / `alwan_tm30_rf_f32` /
 > `alwan_cie224_rf_f32` / `alwan_ssi_calculate_f32` / `alwan_metamerism_index_f32`
 > (wavelength integration over f64 CMF tables) run the algorithm in `double` and
-> narrow the result. This is a deliberate choice — the iterative/integration core
-> needs f64 precision and repeatability — not a missing native-f32 path. They stay
+> narrow the result. This is a design choice rather than a missing native-f32
+> path: the iterative/integration core needs f64 precision and repeatability. They stay
 > callable even in an `ALWAN_BUILD_ONLY_F32` build (gated by `ALWAN_WITH_F64_FACADE`,
 > always `1`). The other CCT estimators (McCamy / Robertson / Hernandez-Andres) are
 > native f32. See [build-and-precision.md](../build-and-precision.md).
@@ -131,7 +131,7 @@ alwan_f32 alwan_cri_ra_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 ```
 
-CIE Color Rendering Index Ra — average of 8 TCS (test color samples). Returns a value
+CIE Color Rendering Index Ra: average of 8 TCS (test color samples). Returns a value
 in [0, 100], or negative on error.
 
 **Example:**
@@ -292,14 +292,14 @@ printf("YI = %.1f, WI = %.1f\n", yi, wi);
 The CCT/Duv and other `int`-returning helpers use the `alwan_status` enum; the metric
 functions return a score directly and signal failure with a negative value.
 
-- `ALWAN_OK` (0) — Success
-- `ALWAN_E_INVALID` (-1) — NULL pointer or unsupported parameter
-- `ALWAN_E_NODATA` (-2) — Required spectral data not loaded
+- `ALWAN_OK` (0): Success
+- `ALWAN_E_INVALID` (-1): NULL pointer or unsupported parameter
+- `ALWAN_E_NODATA` (-2): Required spectral data not loaded
 
 ---
 
 ## See Also
 
-- [Spectral Operations](spectral.md) — SPD creation and integration
-- [Chromatic Adaptation](chromatic-adaptation.md) — White point transforms
-- [Color Difference](color-difference.md) — ΔE metrics
+- [Spectral Operations](spectral.md): SPD creation and integration
+- [Chromatic Adaptation](chromatic-adaptation.md): White point transforms
+- [Color Difference](color-difference.md): ΔE metrics

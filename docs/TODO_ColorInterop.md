@@ -30,7 +30,7 @@ Implemented:
 This covers the basic parse / format / enumerate workflow.
 
 Surface inconsistency to fix: `parse` and `entry_at` carry `_f32`/`_f64`
-suffixes, but they touch no float data — they operate purely on the
+suffixes, but they touch no float data; they operate purely on the
 `alwan_rgb_space` enum and on string IDs. In `src/alwan/api/alwan_interop.c`
 the `_f32` variants simply forward to the `_f64` ones
 (`alwan_interop_parse_f32` -> `alwan_interop_parse_f64`,
@@ -51,7 +51,7 @@ Implemented:
 These are the current scalar normalization entry points for integer sample
 workflows. Combined with the `collect3` / `scatter3` gather-scatter helpers and
 the typed `image_convert` path, the integer<->float normalization story is
-solid and genuinely dual-precision for the canonical `(2^N - 1)` U8/U16
+solid and natively dual-precision for the canonical `(2^N - 1)` U8/U16
 mapping.
 
 Open gap before claiming full F16 interop: the per-format support is
@@ -105,10 +105,10 @@ These are Color-Interop-Forum-relevant HDR display-characterization and
 metadata surfaces. They are implemented in the header and backed by core code,
 but are not yet covered by this status doc (or by determinism coverage):
 
-- `alwan_st2086_init_f32` / `_f64` — ST.2086 (SMPTE) mastering-display metadata
-- `alwan_pq_normalize_peak_f32` / `_f64` — PQ peak normalization to a display
+- `alwan_st2086_init_f32` / `_f64`: ST.2086 (SMPTE) mastering-display metadata
+- `alwan_pq_normalize_peak_f32` / `_f64`: PQ peak normalization to a display
   peak luminance
-- `alwan_content_light_level_compute_f32` / `_f64` — MaxCLL / MaxFALL-style
+- `alwan_content_light_level_compute_f32` / `_f64`: MaxCLL / MaxFALL-style
   content-light-level computation over an RGB buffer
 
 (Backed by `src/alwan/core/alwan_hdr_core.{h,inc}` and
@@ -121,7 +121,7 @@ the emitted metadata values are byte-stable.
 `alwan_pointer_gamut_boundary(size_t *count_out)` returns the Pointer's-gamut
 boundary reference points (`src/alwan/api/alwan_gamut.c`). Two gaps:
 
-- It returns `alwan_vec2_f64 const *` only — there is no `_f32` twin, so an f32
+- It returns `alwan_vec2_f64 const *` only; there is no `_f32` twin, so an f32
   interop consumer must cast the boundary element-by-element rather than reading
   a native f32 array.
 - It is undocumented here. Add doc coverage and, ideally, an f32 accessor (or a
@@ -155,21 +155,15 @@ expected to be meaningful.
 ### Semantic data-type / descriptor surface
 
 The descriptor type (`alwan_rgb_space_desc_f32` / `_f64`) is the intended
-vehicle for descriptor-driven, semantically-tagged interop. Two correctness
-gaps currently undermine that for the f32 path:
+vehicle for descriptor-driven, semantically-tagged interop. Both earlier
+correctness gaps are now closed:
 
-- `alwan_gamut_map_advanced_f64` accepts an `alwan_rgb_space_desc_f64 const *`
-  but only uses it for a null check: the actual mapping in
-  `src/alwan/api/alwan_gamut.c` converts through a hard-coded sRGB->Oklab path
-  (`alwan_linear_srgb_to_oklab`) and never reads the descriptor's primaries or
-  white point. So the space descriptor is effectively ignored, and mapping a
-  wide-gamut descriptor gives sRGB-relative results.
-- The descriptor-based `alwan_rgb_to_xyz_f32` / `alwan_xyz_to_rgb_f32` (and
-  `alwan_gamut_map_advanced_f32`) are declared in `src/alwan/alwan.h` but have
-  no definition in any `.c` — only the `_f64` forms are implemented. Any f32
-  consumer that links against these descriptor-driven entry points fails to
-  link today. Descriptor-driven interop in f32 is currently non-functional and
-  must be implemented (or the declarations removed) before it can be relied on.
+- `alwan_gamut_map_advanced_f64` honours the descriptor: the input expressed
+  in `space` is converted before mapping (`src/alwan/api/alwan_gamut.c`).
+- The descriptor-based `alwan_rgb_to_xyz_f32` / `alwan_xyz_to_rgb_f32` and
+  `alwan_gamut_map_advanced_f32` are defined (`api/alwan_rgb.c`,
+  `api/alwan_gamut.c`); descriptor-driven interop links and works in both
+  precisions.
 
 ---
 
@@ -207,7 +201,7 @@ Still useful future work:
 CLF and `.cube` I/O are present in the API tail of `src/alwan/alwan.h`
 (`.cube`: `alwan_cube_export_3d_*` / `alwan_cube_export_1d_*` /
 `alwan_cube_import_3d_*` plus buffer variants; CLF: `alwan_clf_export_*` /
-`alwan_clf_export_view_*` plus buffer variants — note CLF is export-only in the
+`alwan_clf_export_view_*` plus buffer variants; note CLF is export-only in the
 public header today, no CLF import), but these paths are absent from the
 determinism regression dump. The determinism contract now explicitly covers
 file-I/O *byte content* (per the recent "I/O byte content is now on the
@@ -232,10 +226,11 @@ platforms and runs.
 - [ ] Drop the spurious `_f32`/`_f64` suffixes on `alwan_interop_parse` /
       `alwan_interop_entry_at` (expose single un-suffixed functions)
 - [ ] Add CLF / `.cube` read+write paths to determinism (byte-content) coverage
-- [ ] Make `alwan_gamut_map_advanced` honor its space descriptor, and
-      implement (or remove) the f32 descriptor entry points
+- [x] Make `alwan_gamut_map_advanced` honor its space descriptor, and
+      implement the f32 descriptor entry points
       `alwan_rgb_to_xyz_f32` / `alwan_xyz_to_rgb_f32` /
-      `alwan_gamut_map_advanced_f32`
+      `alwan_gamut_map_advanced_f32` *(done: defined in `api/alwan_rgb.c`
+      / `api/alwan_gamut.c`)*
 - [ ] Document ST.2086 / PQ-peak / MaxCLL HDR metadata helpers and add them to
       determinism coverage
 - [ ] Document `alwan_pointer_gamut_boundary` and consider an f32 accessor

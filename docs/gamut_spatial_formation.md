@@ -1,6 +1,13 @@
-# Spatial picture-formation gamut mapping — formulation (DRAFT, pre-implementation)
+# Spatial picture-formation gamut mapping: formulation
 
-Status: design only, not implemented. A new, image-aware gamut-mapping method
+Status: implemented; this is the original design memo, kept as the
+algorithm-internals appendix to
+[picture_formation.md](picture_formation.md). The shipped surface is
+`alwan_gamut_map_spatial_f32/f64` (`src/alwan/experimental/alwan_gamut_spatial.c`),
+whose `alwan_gamut_formation_method` enum grew to 18 methods beyond the
+solver described here; tests live in `alwan_dev/tests/97..99_*`.
+
+An image-aware gamut-mapping method
 that fits out-of-gamut records into the display volume while preserving local
 structure (no increment↔decrement polarity flips), derived from the Troy Sobotka
 exchange and Kitaoka (2005) transparency model.
@@ -11,15 +18,15 @@ Input image `I`: pixels `x_i ∈ ℝ³` (linear RGB records), some outside the c
 `[0,1]³` (or `[0, peak]³` for HDR).
 
 Output `I'` with every record inside the cube, such that:
-- **P1 — no polarity flip (hard):** for every neighbour pair `i~j` and channel
+- **P1, no polarity flip (hard):** for every neighbour pair `i~j` and channel
   `k`, `sign(x'_i[k] − x'_j[k]) = sign(x_i[k] − x_j[k])` (equality/collapse
   allowed, reversal forbidden). This is the convex per-channel proxy for Troy's
   `max(RGB)`/`min(RGB)` envelope preservation.
-- **P2 — structure fidelity:** local differences (the increments/decrements)
+- **P2, structure fidelity:** local differences (the increments/decrements)
   stay as close as possible to the originals.
-- **P3 — smoothness:** the correction spreads spatially instead of clipping one
+- **P3, smoothness:** the correction spreads spatially instead of clipping one
   sample flat; controlled by a user knob `s`.
-- **P4 — bounded:** `x'_i ∈ [0,1]³`; gradients collapse toward the bounds.
+- **P4, bounded:** `x'_i ∈ [0,1]³`; gradients collapse toward the bounds.
 
 ## 2. Energy
 
@@ -36,10 +43,11 @@ u_i ∈ [0,1]                                              (box / gamut)
 (u_i − u_j) · sign(g_ij) ≥ 0   ∀ i~j                     (P1, monotonicity)
 ```
 with `g_ij = x_i[k] − x_j[k]` (input gradient) and `0 < c ≤ 1` a gradient
-compression factor (`c = 1` = preserve; `< 1` = actively collapse — Kitaoka's
+compression factor (`c = 1` = preserve; `< 1` = actively collapse, Kitaoka's
 `α ≤ 1`).
 
-Quadratic energy + linear/box constraints ⇒ **convex QP** ⇒ unique minimum.
+Quadratic energy + linear/box constraints give a **convex QP**, hence a unique
+minimum.
 
 ### 2.1 The spatial spread weight `λ_i` (the `s` knob)
 
@@ -52,12 +60,12 @@ Let `Ω = { i : x_i ∉ [0,1]³ }` be the out-of-gamut set.
   ```
   λ_i = λ0 · smoothstep( (D̂_i − (1 − s)) / feather )
   ```
-  - `s = 1` → threshold at 0 → every in-gamut pixel locked → only `Ω` moves
-    (clip-like, kinks).
-  - `s = 0` → all pixels free → global smooth compression (film-like).
-  - `0 < s < 1` → pixels within spatial band of the trouble are free; a
+  - `s = 1`: threshold at 0, so every in-gamut pixel is locked and only `Ω`
+    moves (clip-like, kinks).
+  - `s = 0`: all pixels free, giving global smooth compression (film-like).
+  - `0 < s < 1`: pixels within spatial band of the trouble are free; a
     `smoothstep`/Gaussian `feather` avoids a sharp transition.
-- `Ω` pixels themselves get `λ_i = 0` (fully free — they must move).
+- `Ω` pixels themselves get `λ_i = 0` (fully free; they must move).
 
 `s` interpolates **clip (1) ↔ tone-form (0)**; Troy-valid results live below 1.
 
@@ -76,27 +84,27 @@ gates two things:
 
 - **Edge coupling:** `w_ij ← w_ij · f(|z_i − z_j|)`, `f → 0` across a depth jump
   (`exp(−(Δz/σ)²)` or a hard threshold). Across an occlusion boundary there is
-  then no gradient-preservation and no polarity constraint — each object is
+  then no gradient-preservation and no polarity constraint; each object is
   formed independently.
 - **Spread:** the spatial distance `D_i` (for `s`) is measured *within* a depth
-  region — geodesic on the image but blocked by depth edges — so a correction on
+  region (geodesic on the image but blocked by depth edges), so a correction on
   the foreground never bleeds onto the background it occludes.
 
 So depth realizes Troy's "envelope = segmented region" for the opaque case, with
-the segmentation supplied by the user. Optional: no depth ⇒ one global envelope.
-Depth's *transparency* role (disambiguating bistable front/behind for overlapping
-layers) is phase 2 (§6) — there depth cannot cut pixels spatially, it only
-selects the decomposition.
+the segmentation supplied by the user. Optional: no depth means one global
+envelope. Depth's *transparency* role (disambiguating bistable front/behind for
+overlapping layers) is phase 2 (§6); there depth cannot cut pixels spatially, it
+only selects the decomposition.
 
 ## 3. Solver (deterministic)
 
-Projected iterative solve, fixed iteration count (no data-dependent tolerance →
-survives the determinism harness):
+Projected iterative solve, fixed iteration count (no data-dependent tolerance,
+so it survives the determinism harness):
 
 1. **Init** `u = clamp(x, 0, 1)`.
 2. Repeat `N` times (fixed):
-   a. **Jacobi** update of the unconstrained linear system (order-independent →
-      bit-exact cross-platform; avoid Gauss-Seidel's traversal-order dependence,
+   a. **Jacobi** update of the unconstrained linear system (order-independent,
+      hence bit-exact cross-platform; avoid Gauss-Seidel's traversal-order dependence,
       or use a fixed red-black ordering).
    b. **Box projection**: `u_i ← clamp(u_i, 0, 1)`.
    c. **Polarity projection**: for each pair `i~j` that violates P1, project onto
@@ -107,17 +115,20 @@ survives the determinism harness):
 Notes:
 - Convex feasible set (box ∩ half-spaces) is non-empty (`u ≡ const` or the
   clamped input's monotone hull), so projected iteration converges.
-- Optional multigrid / reduced-res gain field for 4K perf — keep single-scale
+- Optional multigrid / reduced-res gain field for 4K perf; keep single-scale
   for v1 to protect determinism.
 - Per-channel independence can drift hue; acceptable for v1 (matches the
   per-edge polarity reasoning). A coupled/opponent-space or added chroma-gradient
   term is a later refinement.
 
-## 4. API (new — image-aware, not a pixel/stride map)
+## 4. API (image-aware, not a pixel/stride map)
+
+As shipped in `alwan.h`:
 
 ```c
 typedef struct {
-    alwan_f32 s;          /* [0,1] spatial spread; 1=only OOG, 0=whole image */
+    alwan_gamut_formation_method method; /* which of the 18 formation methods */
+    alwan_f32 s;          /* per-family knob; meaning depends on `method` */
     alwan_f32 reach;      /* R in pixels; <=0 => image diagonal */
     alwan_f32 beta;       /* structure vs fidelity */
     alwan_f32 compress;   /* c in (0,1]; 1 = preserve gradients */
@@ -129,29 +140,31 @@ typedef struct {
 /* `depth` is optional (NULL => single global envelope). One scalar per pixel
    (z or object id); used to gate edge coupling + spread across occlusion
    boundaries (see 2.3). */
-int alwan_gamut_map_spatial_f32(alwan_f32 *out, const alwan_f32 *in,
-                                const alwan_f32 *depth /* or NULL */,
+int alwan_gamut_map_spatial_f32(alwan_f32 *out, alwan_f32 const *in,
+                                alwan_f32 const *depth /* or NULL */,
                                 int width, int height,
-                                const alwan_gamut_spatial_params_f32 *params);
+                                alwan_gamut_spatial_params_f32 const *params,
+                                alwan_ctx *ctx);
 /* + _f64. Needs w,h (neighbours) => distinct from the pixel-independent
-   alwan_gamut_map_method enum. */
+   alwan_gamut_map_method enum. See alwan.h for the per-method meaning
+   of `s` and the full alwan_gamut_formation_method list. */
 ```
 
-## 5. Property tests (no external reference — validate by construction)
+## 5. Property tests (no external reference; validate by construction)
 
 - **In-gamut:** every output record ∈ [0, peak]³.
 - **Zero polarity flips:** per-channel neighbour sign-reversals == 0. Run the
   same counter on the 8 enum methods for a comparison table (expected: CLIP /
-  HUE_PRESERVING safe; Oklab projections flip near the boundary — empirically
-  confirms Troy's claim).
+  HUE_PRESERVING safe; Oklab projections flip near the boundary, empirically
+  confirming Troy's claim).
 - **Energy monotone:** `E` never increases across iterations.
-- **`s` endpoints:** `s=1` ⇒ in-gamut pixels unchanged (only `Ω` moves);
-  `s=0` ⇒ global smooth compression, still monotone.
-- **Identity:** fully in-gamut input ⇒ output == input (bit-exact).
+- **`s` endpoints:** `s=1` leaves in-gamut pixels unchanged (only `Ω` moves);
+  `s=0` gives global smooth compression, still monotone.
+- **Identity:** fully in-gamut input gives output == input (bit-exact).
 - **Determinism:** bit-exact across platforms (Jacobi/red-black, fixed iters).
 - **f32 vs f64** parity within budget.
 
-## 6. Later (phase 2) — segmentation via Kitaoka X-junction test
+## 6. Later (phase 2): segmentation via Kitaoka X-junction test
 
 For transparency/layered content, cut the image into coherent layers first,
 using the luminance-arithmetic X-junction test at 4-region junctions
@@ -162,6 +175,6 @@ valid layer  ⇔  0 ≤ α ≤ 1  and  t ≥ 0     (order-preserving affine cont
 polarity preserved on 1 edge / both / none  ⇒  unique / bistable / opaque
 ```
 Depth ordering for the bistable case is **user-provided** (authorial intent;
-no closed-form solution — Kitaoka's experiment: vision prefers *object* over
-*full-layer* transparency, driven by mean luminance + luminance difference, not
-Michelson contrast). v1 skips segmentation: single envelope = whole image.
+no closed-form solution. Kitaoka's experiment: vision prefers *object* over
+*full-layer* transparency, driven by mean luminance + luminance difference
+rather than Michelson contrast). v1 skips segmentation: single envelope = whole image.

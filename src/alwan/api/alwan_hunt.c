@@ -97,5 +97,45 @@ int alwan_hunt_forward_f64(alwan_hunt_correlates_f64 *out,
     return ALWAN_OK;
 }
 
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+int alwan_hunt_forward_f32(alwan_hunt_correlates_f32 *out,
+                       alwan_xyz_f32 const *xyz,
+                       alwan_hunt_viewing_conditions_f32 const *vc) {
+    if (!out || !xyz || !vc) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* Resolve surround enum to scalar parameters */
+    alwan_f64 Nc, Nb;
+    get_hunt_params(vc->surround, &Nc, &Nb);
+
+    /* Resolve discount_illuminant flag to degree of adaptation */
+    alwan_f32 D = vc->discount_illuminant ? 1.0f : 0.0f;
+
+    /* Delegate to the native f32 core (value-returning, cross-platform) */
+    alwan_hunt_v_correlates_f32 result = alwan_hunt_forward_f32_v(
+        *xyz,
+        vc->xyz_w.x, vc->xyz_w.y, vc->xyz_w.z,
+        vc->La, vc->Yb,
+        (alwan_f32)Nc, (alwan_f32)Nb,
+        D);
+
+    /* Map core result to public struct */
+    out->J = result.J;
+    out->C = result.C;
+    out->h = result.h;
+    out->s = result.s;
+    out->Q = result.Q;
+    out->M = result.M;
+
+    ALWAN_NORM_HUNT(out);
+
+    return ALWAN_OK;
+}
+ALWAN_DIAG_POP
+#endif /* ALWAN_WITH_F32 */
+
 /* Note: Hunt inverse is extremely complex and typically not implemented.
  * It requires iterative numerical methods due to the nonlinear response functions. */

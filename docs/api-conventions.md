@@ -25,8 +25,6 @@ Quick rules:
 - output buffer comes before input buffer
 - each buffer's stride sits next to that buffer
 - pixel-format pairs in `_ex` variants follow `(out_fmt, in_fmt)` after `count`
-  (a small block of legacy planar `_ex` entries still uses `(in_fmt, out_fmt)` —
-  see [map.md](map.md))
 - `alwan_ctx*` only appears on functions that allocate, look up registry data,
   or run descriptor-driven workflows; pure math helpers omit it
 - fallible functions return `int` matching `alwan_status`; output buffers are

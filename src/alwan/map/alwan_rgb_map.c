@@ -142,6 +142,67 @@ int alwan_oklab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_oklab_f64 const *oklab) {
     return ALWAN_OK;
 }
 
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+
+int alwan_srgb_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_rgb_f32 const *rgb) {
+    if (!rgb || !xyz) return ALWAN_E_INVALID;
+    alwan_vec3_f32 v = {{alwan_srgb_eotf_f32(rgb->r), alwan_srgb_eotf_f32(rgb->g), alwan_srgb_eotf_f32(rgb->b)}};
+    alwan_vec3_f32 r = alwan_mat3_mulv_f32_v(SRGB_TO_XYZ_f32, v);
+    xyz->x = r.v[0]; xyz->y = r.v[1]; xyz->z = r.v[2];
+    return ALWAN_OK;
+}
+
+int alwan_xyz_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_xyz_f32 const *xyz) {
+    if (!xyz || !rgb) return ALWAN_E_INVALID;
+    alwan_vec3_f32 v = {{xyz->x, xyz->y, xyz->z}};
+    alwan_vec3_f32 lin = alwan_mat3_mulv_f32_v(XYZ_TO_SRGB_f32, v);
+    rgb->r = alwan_srgb_oetf_f32(lin.v[0]); rgb->g = alwan_srgb_oetf_f32(lin.v[1]); rgb->b = alwan_srgb_oetf_f32(lin.v[2]);
+    return ALWAN_OK;
+}
+
+int alwan_srgb_to_lab_f32(alwan_lab_f32 *lab, alwan_rgb_f32 const *rgb) {
+    if (!rgb || !lab) return ALWAN_E_INVALID;
+    alwan_vec3_f32 v = {{alwan_srgb_eotf_f32(rgb->r), alwan_srgb_eotf_f32(rgb->g), alwan_srgb_eotf_f32(rgb->b)}};
+    alwan_vec3_f32 xyz = alwan_mat3_mulv_f32_v(SRGB_TO_XYZ_f32, v);
+    alwan_xyz_f32 wp = {D65_WP_Y1_f32[0], D65_WP_Y1_f32[1], D65_WP_Y1_f32[2]};
+    alwan_xyz_f32 xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
+    *lab = alwan_xyz_to_lab_f32_v(xyz_s, wp);
+    return ALWAN_OK;
+}
+
+int alwan_lab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_lab_f32 const *lab) {
+    if (!lab || !rgb) return ALWAN_E_INVALID;
+    alwan_xyz_f32 wp = {D65_WP_Y1_f32[0], D65_WP_Y1_f32[1], D65_WP_Y1_f32[2]};
+    alwan_xyz_f32 xyz = alwan_lab_to_xyz_f32_v(*lab, wp);
+    alwan_vec3_f32 v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3_f32 lin = alwan_mat3_mulv_f32_v(XYZ_TO_SRGB_f32, v);
+    rgb->r = alwan_srgb_oetf_f32(lin.v[0]); rgb->g = alwan_srgb_oetf_f32(lin.v[1]); rgb->b = alwan_srgb_oetf_f32(lin.v[2]);
+    return ALWAN_OK;
+}
+
+int alwan_srgb_to_oklab_f32(alwan_oklab_f32 *oklab, alwan_rgb_f32 const *rgb) {
+    if (!rgb || !oklab) return ALWAN_E_INVALID;
+    alwan_vec3_f32 v = {{alwan_srgb_eotf_f32(rgb->r), alwan_srgb_eotf_f32(rgb->g), alwan_srgb_eotf_f32(rgb->b)}};
+    alwan_vec3_f32 xyz = alwan_mat3_mulv_f32_v(SRGB_TO_XYZ_f32, v);
+    alwan_xyz_f32 xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
+    *oklab = alwan_xyz_to_oklab_f32_v(xyz_s);
+    return ALWAN_OK;
+}
+
+int alwan_oklab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_oklab_f32 const *oklab) {
+    if (!oklab || !rgb) return ALWAN_E_INVALID;
+    alwan_xyz_f32 xyz = alwan_oklab_to_xyz_f32_v(*oklab);
+    alwan_vec3_f32 v = {{xyz.x, xyz.y, xyz.z}};
+    alwan_vec3_f32 lin = alwan_mat3_mulv_f32_v(XYZ_TO_SRGB_f32, v);
+    rgb->r = alwan_srgb_oetf_f32(lin.v[0]); rgb->g = alwan_srgb_oetf_f32(lin.v[1]); rgb->b = alwan_srgb_oetf_f32(lin.v[2]);
+    return ALWAN_OK;
+}
+
+ALWAN_DIAG_POP
+#endif /* ALWAN_WITH_F32 */
+
 /* ================================================================
  * Dual-precision SIMD kernels + typed wrappers
  * ================================================================ */

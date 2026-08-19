@@ -2,7 +2,7 @@
 
 Alwan's default backend is the **C backend** (`ALWAN_BACKEND_C`). On the CPU, the
 batch (`Map` / `_map` / planar / `_ex`) kernels are accelerated with hand-written
-SIMD that is selected **entirely at compile time** — there is no runtime CPU
+SIMD that is selected **entirely at compile time**: there is no runtime CPU
 feature detection and no dynamic dispatch. The highest ISA the compiler is told to
 target wins, and the whole library is built for that one ISA.
 
@@ -29,7 +29,7 @@ After the backend header, `alwan_simd.h` includes `alwan_simd_reduce.h`, which
 defines the public horizontal-reduction names (`alwan_simd_*_hsum` / `_hadd`) on
 top of the backend's `*_native` reductions (see [Fast vs deterministic paths](#fast-vs-deterministic-paths)).
 
-There is no `cpuid` / `__builtin_cpu_supports` check anywhere — selecting the ISA
+There is no `cpuid` / `__builtin_cpu_supports` check anywhere; selecting the ISA
 is the compiler's job (via `/arch` or `-m` flags, below). A binary built for AVX2
 requires an AVX2 CPU to run.
 
@@ -39,8 +39,8 @@ requires an AVX2 CPU to run.
 
 Lane counts come from `simd/alwan_simd_types.h` as
 `ALWAN_SIMD_{F32,F64,UINT8,UINT16}_WIDTH`. Widths only change at the
-SSE2 → AVX → AVX2 boundaries; the SSE3/SSSE3/SSE4.x families add instructions, not
-register width.
+SSE2-to-AVX and AVX-to-AVX2 boundaries; the SSE3/SSSE3/SSE4.x families add
+instructions rather than register width.
 
 | ISA | F32 lanes | F64 lanes | UINT8 | UINT16 |
 |-----|:---------:|:---------:|:-----:|:------:|
@@ -77,13 +77,13 @@ implementations, gated by `ALWAN_HAS_SVML` in `alwan_simd_types.h`:
 
 | `ALWAN_HAS_SVML` | Compilers | SIMD transcendentals use |
 |------------------|-----------|--------------------------|
-| `1` | Intel C/C++, Intel LLVM, MSVC x64 | true vector intrinsics — `_mm_cbrt_ps`, `_mm_pow_ps`, `_mm256_*_pd`, … (libm-accurate) |
+| `1` | Intel C/C++, Intel LLVM, MSVC x64 | true vector intrinsics: `_mm_cbrt_ps`, `_mm_pow_ps`, `_mm256_*_pd`, … (libm-accurate) |
 | `0` | GCC/Clang on x86, **all NEON/ARM**, scalar | per-lane scalar / minimax-polynomial `_fast` impls |
 
 When SVML is absent, the SIMD kernels fall back to polynomial/bit-trick `_fast`
 impls in `simd/alwan_simd_scalar.h`, for example:
 
-- `alwan_simd_f32_cbrt_fast` / `alwan_simd_f64_cbrt_fast` — integer bit-trick seed
+- `alwan_simd_f32_cbrt_fast` / `alwan_simd_f64_cbrt_fast`: integer bit-trick seed
   plus Newton-Raphson refinement (2 steps f32, 3 steps f64).
 - `log2` / `exp2` Taylor polynomials (the f32 `exp2` is a degree-5 Taylor on
   `[0,1)`, coefficients `ln2^k/k!`) used to build `alwan_simd_f32_pow24`.
@@ -94,7 +94,7 @@ impls in `simd/alwan_simd_scalar.h`, for example:
 
 The scalar `_v` value API and the SIMD `Map` kernels must produce **matching**
 results in fast mode. The risk: on a platform with no accurate vector `pow`
-(no SVML — notably **NEON**), the SIMD path would use a polynomial while the
+(no SVML, notably **NEON**), the SIMD path would use a polynomial while the
 scalar path used libm `powf`, and the two would diverge.
 
 `core/alwan_fast_pow.h` closes that gap. It defines the *scalar twins* of the
@@ -112,8 +112,8 @@ ALWAN_INLINE alwan_f32 alwan_fast_pow_inv24_f32(alwan_f32 x) { return alwan__fas
 ```
 
 The polynomial twin (`alwan__fast_pow_pos_*`) evaluates the **identical**
-log2/exp2 decomposition — atanh-series `log2` on the mantissa plus a Taylor
-`exp2` — with the same coefficients and the same operation order as the vector
+log2/exp2 decomposition (atanh-series `log2` on the mantissa plus a Taylor
+`exp2`) with the same coefficients and the same operation order as the vector
 kernel. Because the mantissa/exponent split is bit-identical to the intrinsic
 path, there is no power-of-two boundary divergence between the scalar and SIMD
 results. Net effect:
@@ -123,7 +123,7 @@ results. Net effect:
   polynomial.
 
 Either way the scalar `_v` path and the SIMD map path agree on every platform.
-Accuracy floor of the polynomial twins vs libm is ~5e-10 absolute over `[0,1]` —
+Accuracy floor of the polynomial twins vs libm is ~5e-10 absolute over `[0,1]`:
 the documented "fast mode is approximate" trade-off. In deterministic mode this
 file is unused; the canonical `alwan_det_*` polynomials are used instead.
 
@@ -131,7 +131,7 @@ file is unused; the canonical `alwan_det_*` polynomials are used instead.
 
 ## Choosing the ISA at build time
 
-### CMake — `ALWAN_SIMD_ARCH`
+### CMake: `ALWAN_SIMD_ARCH`
 
 The cache variable `ALWAN_SIMD_ARCH` (in the root `CMakeLists.txt`) maps a target
 ISA to the right compiler flags. Empty (the default) leaves the compiler's own
@@ -156,7 +156,7 @@ Notes:
 - SSE2 needs no flag on 64-bit targets (it is baseline for x64, and `_M_X64`
   already selects the SSE2 backend on MSVC), so there is no SSE2 branch in the flag
   map.
-- `native` has no MSVC equivalent — MSVC has no `-march=native`.
+- `native` has no MSVC equivalent: MSVC has no `-march=native`.
 - These options are `PUBLIC`, so the chosen ISA propagates to consumers linking
   `Alwan::alwan`.
 
@@ -187,19 +187,19 @@ SSE2's 4-lane tree, AVX's 8-lane tree, and NEON's `vaddvq_*` sum in
 implementation-defined orders that differ in the last ULP. **Element-wise** SIMD
 ops (per-lane add/mul/sqrt/…) are bit-identical regardless of width, so only the
 reductions and the transcendentals need the deterministic treatment. The full
-det-mode contract — FMA, SVML, NEON, polynomial transfer functions — is documented
+det-mode contract (FMA, SVML, NEON, polynomial transfer functions) is documented
 in [determinism.md](determinism.md).
 
 ---
 
 ## Related configuration
 
-- **Precision** — the C backend builds both `_f32` and `_f64` variants by default;
+- **Precision**: the C backend builds both `_f32` and `_f64` variants by default;
   restrict with `ALWAN_BUILD_ONLY_F32` / `ALWAN_BUILD_ONLY_F64` (resolved to
   `ALWAN_WITH_F32` / `ALWAN_WITH_F64` in `alwan_build_config.h`). See
   [configuration.md](configuration.md) and [precision-and-limits.md](precision-and-limits.md).
-- **Embedded data** — SIMD has no bearing on data loading; alwan is embedded-only
+- **Embedded data**: SIMD has no bearing on data loading; alwan is embedded-only
   (`ALWAN_EMBED_DATA=1`); runtime loading is not implemented. See
   [data-management.md](data-management.md).
-- **GPU backends** — `ALWAN_BACKEND` C / HLSL / GLSL / Halide; the GPU shader
+- **GPU backends**: `ALWAN_BACKEND` C / HLSL / GLSL / Halide; the GPU shader
   backends are documented in [api/backends.md](api/backends.md).

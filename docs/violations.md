@@ -100,7 +100,7 @@ entries are contract/doc/naming nits that should be cleaned up before the
   lines 4298-4299) while the delegating macros
   (`ALWAN_PLANAR_EX_DELEGATE_DUAL` / `_DUAL_WHITE`) fix the positional order as
   `(out_fmt, in_fmt)`. Mixed-format callers who trust the header names silently
-  swap input/output pixel formats -> data corruption with no compiler error.
+  swap input/output pixel formats, causing data corruption with no compiler error.
   Unify all names to `(out_fmt, in_fmt)`.
 
 - **`gamut_map_advanced` ignores its space arg.** `alwan_gamut_map_advanced_f64`/
@@ -117,12 +117,6 @@ entries are contract/doc/naming nits that should be cleaned up before the
 
 ### Error-contract violations
 
-- **void inverses that should signal invalid input.**
-  `alwan_ycocg_to_rgb_f32`/`f64` (lines 2618-2619) and
-  `alwan_rgb_to_hwb`/`hwb_to_rgb_f32`/`f64` (lines 4014+) return `void`; on
-  NULL they silently return instead of `ALWAN_E_INVALID`. Change to
-  `int`/`alwan_status` to match every other inverse in the section.
-
 - **Unreachable documented error.** `alwan_rgb_derive_matrices_{f32,f64}` (doc +
   `color-spaces.md`) promise `ALWAN_E_RANGE` on singular primaries, but the impl
   unconditionally returns `ALWAN_OK` (the core returns matrices by value with no
@@ -136,7 +130,7 @@ entries are contract/doc/naming nits that should be cleaned up before the
 
 - **Misleading `_mc` name + dead params.** *(RESOLVED 2026-06-28)*
   `alwan_gamut_volume_mc_{f64,f32}` did `(void)num_samples; (void)seed;` and
-  returned exact `|det(rgb_to_xyz)|` — not Monte Carlo. Renamed to
+  returned exact `|det(rgb_to_xyz)|`, not Monte Carlo. Renamed to
   `alwan_gamut_volume_{f64,f32}`, dropped the two dead params, and rewrote the
   header/`gamut.md` docs to describe the exact-determinant method (with a note
   that a real perceptual-volume MC remains unimplemented).
@@ -167,7 +161,7 @@ entries are contract/doc/naming nits that should be cleaned up before the
   *(RESOLVED 2026-06-29)* `ALWAN_CORE_SRGB_OETF`/`EOTF` (and BT.2020) in the
   `alwan_core_f{32,64}_setup.h` macros call `alwan_fast_pow*` (fast mode) or
   `alwan_det_srgb_*` (det mode) but neither setup header included the file that
-  declares them — the lib `.c` TUs happened to pull them in first, but any
+  declares them; the lib `.c` TUs happened to pull them in first, but any
   header-only consumer (image_gen, GPU bootstraps, external users) hit C4013
   ("undefined; assuming extern returning int") which under `/WX` truncated the
   float result to int. Fixed by `#include "alwan_fast_pow.h"` / `"alwan_deterministic.h"`
@@ -235,12 +229,8 @@ entries are contract/doc/naming nits that should be cleaned up before the
 
 ### ABI / coverage
 
-- **Unpinned `alwan_rgb_space` enum.** The 130+ entry enum has no pinned
-  explicit values; inserting a space mid-list renumbers all following values and
-  breaks binary compat. Pin the values or document an append-only rule before
-  the 2.0.0 ABI freeze.
-
-- **Missing F16 in image_convert.** `image_convert` / `image_convert_rgba`
-  handle only U8/U16/F32/F64 (zero `ALWAN_PIXEL_F16` cases) while the typed
-  `_ex` map path handles F16, contradicting the project F16-coverage guidance.
-  Add F16 or document the unsupported case.
+- *(resolved)* **F16 in image_convert.** `image_convert` / `image_convert_rgba`
+  dispatch every pixel format through the shared typed helpers
+  (`alwan__load3_typed` / `alwan__store3_typed` / `alwan__load1_typed` in
+  `map/alwan_map_internal.h`), which handle `ALWAN_PIXEL_F16`: full
+  U8/U16/F16/F32/F64 coverage.

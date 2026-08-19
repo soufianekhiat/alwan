@@ -212,7 +212,7 @@ int ALWAN_CORE_FN(alwan_picture_form_evidence)(ALWAN_CORE_T *out, ALWAN_CORE_T c
  * -- the curve becomes an absolute per-pixel map, frame-independent: TCONST/INVR-clean (no framewise
  * auto-exposure, no flicker). <= 0 => scene-adaptive pivot (mean of the non-near-black carrier);
  * better centring per frame, but the pivot shifts with content, so video wants the fixed mode. */
-int ALWAN_CORE_FN(alwan_picture_form_global_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, double strength, double pivot, alwan_ctx *ctx){
+int ALWAN_CORE_FN(alwan_picture_form_global_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!out || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
     (void)iterations;                                  /* reserved (see note above) */
     size_t N = (size_t)W * (size_t)H;
@@ -277,7 +277,7 @@ done:
  * the FIXED log2(pivot) (removes the frame-derived pivot -- the GLOBAL half of the TCONST gap;
  * the operator stays spatially local, so full TCONST additionally needs temporal machinery);
  * <= 0 => scene-adaptive centring. Interleaved RGB, W*H*3. */
-int ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, double strength, double pivot, alwan_ctx *ctx){
+int ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!out || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
     if (iterations <= 0) iterations = 60;
     size_t N = (size_t)W * (size_t)H;

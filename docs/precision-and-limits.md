@@ -27,7 +27,7 @@ cache variable, which sets them for you):
 
 | User macro            | CMake `ALWAN_BUILD_PRECISION` | Result                          |
 |-----------------------|-------------------------------|---------------------------------|
-| *(neither — default)* | `both`                        | `ALWAN_WITH_F32=1`, `ALWAN_WITH_F64=1` |
+| *(neither; default)* | `both`                        | `ALWAN_WITH_F32=1`, `ALWAN_WITH_F64=1` |
 | `ALWAN_BUILD_ONLY_F32`| `f32`                         | f32 API + data only             |
 | `ALWAN_BUILD_ONLY_F64`| `f64`                         | f64 API + data only             |
 
@@ -35,8 +35,8 @@ cache variable, which sets them for you):
 `ALWAN_WITH_F64`, and `ALWAN_WITH_BOTH`. Defining both `ONLY_*` macros is a
 `#error`. Public *declarations* and the `alwan_*_f32` / `alwan_*_f64` struct
 typedefs stay present in every build (they cost nothing); only the *definitions*
-and embedded *data* twins are gated — so calling an excluded-precision symbol
-fails at **link** time, not compile time. A single-precision build also forces
+and embedded *data* twins are gated, so calling an excluded-precision symbol
+fails at **link** time rather than compile time. A single-precision build also forces
 `alwan_scalar` to the matching precision (`ALWAN_BUILD_ONLY_F32` implies
 `ALWAN_SCALAR_IS_FLOAT=1`; conflicting combinations are `#error`s).
 
@@ -44,28 +44,28 @@ fails at **link** time, not compile time. A single-precision build also forces
 
 A handful of `_f32` public entry points are numerically **f64-internal
 facades**: they run the algorithm in `double` and narrow the result, because
-their f32 path is not numerically viable. This is a **deliberate design choice,
-not a gap** — each is an iterative solver, a wavelength integration, or a
+their f32 path is not numerically viable. This is a **design choice rather than
+a gap**: each is an iterative solver, a wavelength integration, or a
 least-squares fit whose precision and run-to-run repeatability depend on a single
 f64 core; they should **not** be re-implemented in native f32. These stay
-**available even in an f32-only build** — their private double-precision
+**available even in an f32-only build**: their private double-precision
 machinery (and the f64 data it reads) is gated by `ALWAN_WITH_F64_FACADE`
-(always `1`), not `ALWAN_WITH_F64`. They are:
+(always `1`) rather than `ALWAN_WITH_F64`. They are:
 
 - **ZCAM** (forward + inverse, incl. `alwan_delta_e_zcam_f32`) and **ACES 1.x
-  inverse** — iterative inverses whose convergence thresholds fall below f32
+  inverse**: iterative inverses whose convergence thresholds fall below f32
   epsilon.
-- **Cheung 2004 / Finlayson 2015 CCM fits** — least-squares solves whose normal
+- **Cheung 2004 / Finlayson 2015 CCM fits**: least-squares solves whose normal
   equations square the condition number.
 - **Gamut volume / ratio / coverage** (`alwan_gamut_volume_f32`,
-  `alwan_gamut_volume_ratio_f32`, `alwan_gamut_coverage_f32`) — computed in f64 for
+  `alwan_gamut_volume_ratio_f32`, `alwan_gamut_coverage_f32`): computed in f64 for
   stability; `volume` is an exact `|det(M)|`, ratio/coverage are reductions over it.
 - **Spectral quality metrics** (`alwan_cri_ra_f32`, `alwan_cqs_calculate_f32`,
   `alwan_tm30_rf_f32`, `alwan_cie224_rf_f32`, `alwan_ssi_calculate_f32`,
-  `alwan_metamerism_index_f32`) — wavelength integration over f64 CMF tables.
-- **`alwan_cct_kang_xy_f32`** — Newton-Raphson solver with sub-f32-epsilon
+  `alwan_metamerism_index_f32`): wavelength integration over f64 CMF tables.
+- **`alwan_cct_kang_xy_f32`**: Newton-Raphson solver with sub-f32-epsilon
   tolerances (the other CCT estimators are native f32).
-- **Munsell / NCS / ColorChecker / RGB-space reference-data lookups** — the
+- **Munsell / NCS / ColorChecker / RGB-space reference-data lookups**: the
   renotation/patch/primaries tables are f64; the `_f32` accessors read them and
   narrow (see [reference-data.md](api/reference-data.md)).
 

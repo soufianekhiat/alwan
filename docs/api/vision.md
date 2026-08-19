@@ -6,16 +6,16 @@ Functions for modelling human visual perception, including contrast sensitivity,
 
 ## Overview
 
-Vision science functions model how the human visual system perceives contrast, brightness, and color under different conditions. These are essential for:
+Vision science functions model how the human visual system perceives contrast, brightness, and color under different conditions. They are used for:
 
-- **Display optimization** — Matching content to human perception limits
-- **Image quality metrics** — Predicting visible differences
-- **HDR tone mapping** — Perceptually-aware luminance compression
-- **Rendering optimization** — Adaptive detail based on visibility
+- **Display optimization**: Matching content to human perception limits
+- **Image quality metrics**: Predicting visible differences
+- **HDR tone mapping**: Perceptually-aware luminance compression
+- **Rendering optimization**: Adaptive detail based on visibility
 
 **Implemented models:**
-- **Barten 1999 CSF** — Contrast Sensitivity Function with full parameterization
-- **Rayleigh scattering** — Atmospheric optical effects (Bodhaine 1999)
+- **Barten 1999 CSF**: Contrast Sensitivity Function with full parameterization
+- **Rayleigh scattering**: Atmospheric optical effects (Bodhaine 1999)
 
 ---
 
@@ -43,9 +43,9 @@ Calculate pupil diameter based on luminance and stimulus angular size.
 **Formula:** `d = 5 - 3 * tanh(0.4 * log10(L * X_0 * Y_0 / 1600))`
 
 **Parameters:**
-- `L` — Adapting luminance in cd/m^2 (typical: 0.01 to 10000)
-- `X_0` — Horizontal angular size in degrees (default: 60)
-- `Y_0` — Vertical angular size in degrees (-1 means use X_0)
+- `L`: Adapting luminance in cd/m^2 (typical: 0.01 to 10000)
+- `X_0`: Horizontal angular size in degrees (default: 60)
+- `Y_0`: Vertical angular size in degrees (-1 means use X_0)
 
 **Returns:** Pupil diameter in mm (typically 2-8 mm)
 
@@ -75,9 +75,9 @@ Calculate retinal illuminance in Trolands, optionally with Stiles-Crawford effec
 **Formula (with Stiles-Crawford):** `E = (pi * d^2 / 4) * L * [1 - (d/9.7)^2 + (d/12.4)^4]`
 
 **Parameters:**
-- `L` — Luminance in cd/m^2
-- `d` — Pupil diameter in mm
-- `apply_stiles_crawford` — Apply directional sensitivity correction (1 = yes)
+- `L`: Luminance in cd/m^2
+- `d`: Pupil diameter in mm
+- `apply_stiles_crawford`: Apply directional sensitivity correction (1 = yes)
 
 **Returns:** Retinal illuminance in Trolands (Td)
 
@@ -104,8 +104,8 @@ Calculate the optical modulation transfer function representing blur from the ey
 **Formula:** `M_opt = exp(-2 * pi^2 * sigma^2 * u^2)`
 
 **Parameters:**
-- `u` — Spatial frequency in cycles per degree
-- `sigma` — Standard deviation of line-spread function in degrees
+- `u`: Spatial frequency in cycles per degree
+- `sigma`: Standard deviation of line-spread function in degrees
 
 **Returns:** Optical MTF value (0 to 1)
 
@@ -133,9 +133,9 @@ Calculate the standard deviation of the line-spread function combining base opti
 **Formula:** `sigma = sqrt(sigma_0^2 + (C_ab * d)^2)`
 
 **Parameters:**
-- `sigma_0` — Base optical sigma in degrees (default: 0.5/60 = 0.00833)
-- `C_ab` — Spherical aberration coefficient (default: 0.08/60 = 0.00133)
-- `d` — Pupil diameter in mm
+- `sigma_0`: Base optical sigma in degrees (default: 0.5/60 = 0.00833)
+- `C_ab`: Spherical aberration coefficient (default: 0.08/60 = 0.00133)
+- `d`: Pupil diameter in mm
 
 **Returns:** Combined sigma in degrees
 
@@ -165,10 +165,10 @@ Calculate the effective angular size for spatial integration.
 **Formula:** `X = (1/X_0^2 + 1/X_max^2 + u^2/N_max^2)^(-0.5)`
 
 **Parameters:**
-- `u` — Spatial frequency in cycles per degree
-- `X_0` — Object angular size in degrees (default: 60)
-- `X_max` — Maximum integration area in degrees (default: 12)
-- `N_max` — Maximum integration cycles (default: 15)
+- `u`: Spatial frequency in cycles per degree
+- `X_0`: Object angular size in degrees (default: 60)
+- `X_max`: Maximum integration area in degrees (default: 12)
+- `N_max`: Maximum integration cycles (default: 15)
 
 **Returns:** Effective angular size in degrees
 
@@ -207,8 +207,8 @@ alwan_scalar alwan_csf_barten1999(
 Compute contrast sensitivity at a given spatial frequency using the full Barten 1999 model.
 
 **Parameters:**
-- `u` — Spatial frequency in cycles per degree (typical: 0.1 to 100)
-- `params` — Model parameters (use `alwan_csf_barten1999_params_default()` for defaults)
+- `u`: Spatial frequency in cycles per degree (typical: 0.1 to 100)
+- `params`: Model parameters (use `alwan_csf_barten1999_params_default()` for defaults)
 
 **Returns:** Contrast sensitivity (dimensionless, higher = more sensitive)
 
@@ -346,9 +346,9 @@ Simplified contrast sensitivity function. Quick estimate without full Barten par
 ## Rayleigh Scattering
 
 See [Atmospheric Optics](atmosphere.md) for Rayleigh scattering functions:
-- `alwan_rayleigh_cross_section()` — Molecular cross section
-- `alwan_rayleigh_optical_depth()` — Atmospheric optical depth
-- `alwan_rayleigh_spd()` — Scattered light spectrum
+- `alwan_rayleigh_cross_section()`: Molecular cross section
+- `alwan_rayleigh_optical_depth()`: Atmospheric optical depth
+- `alwan_rayleigh_spd()`: Scattered light spectrum
 
 ---
 
@@ -380,7 +380,7 @@ The default parameters match colour-science's implementation:
 
 ## See Also
 
-- [Atmospheric Optics](atmosphere.md) — Rayleigh scattering
-- [Spectral Operations](spectral.md) — SPD operations
-- [Color Appearance](color-appearance.md) — Perceptual color models
-- [Color Difference](color-difference.md) — Visibility of color differences
+- [Atmospheric Optics](atmosphere.md): Rayleigh scattering
+- [Spectral Operations](spectral.md): SPD operations
+- [Color Appearance](color-appearance.md): Perceptual color models
+- [Color Difference](color-difference.md): Visibility of color differences

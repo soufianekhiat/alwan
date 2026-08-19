@@ -4,7 +4,7 @@ Functions for Rayleigh scattering and atmospheric optical effects.
 
 > **Precision variants:** Every function and type shown as `name_{T}` exists in two
 > forms: `name_f32` (single precision, `alwan_f32`) and `name_f64` (double precision,
-> `alwan_f64`). `T = f32 | f64`. These are native dual-precision entry points — there is
+> `alwan_f64`). `T = f32 | f64`. These are native dual-precision entry points; there is
 > no unsuffixed/`alwan_scalar` alias for the Rayleigh API; pick the precision explicitly.
 > Which precisions are compiled is gated by `ALWAN_WITH_F32` / `ALWAN_WITH_F64` (both by
 > default; `ALWAN_BUILD_ONLY_F32` / `ALWAN_BUILD_ONLY_F64` restrict to one). See
@@ -66,7 +66,7 @@ Bodhaine et al. (1999) corrections. Pass `NULL` for `params` to use defaults (on
 and temperature are used).
 
 **Returns:** Cross section in cm². This scalar-valued query has no `alwan_status`
-channel and no error path — it always evaluates the Bodhaine formula on the inputs
+channel and no error path: it always evaluates the Bodhaine formula on the inputs
 (`NULL` params falls back to defaults), so supply physically valid arguments.
 
 ### alwan_rayleigh_optical_depth_{T}
@@ -80,7 +80,7 @@ Rayleigh optical depth through the atmosphere, `τ_R(λ)`. Pass `NULL` for `para
 defaults.
 
 **Returns:** Optical depth (dimensionless). Like the cross-section query, this function
-has no `alwan_status` channel and no error path — supply physically valid arguments.
+has no `alwan_status` channel and no error path; supply physically valid arguments.
 
 ### alwan_rayleigh_spd_{T}
 
@@ -94,12 +94,12 @@ int alwan_rayleigh_spd_{T}(alwan_{T} wavelength_start, alwan_{T} wavelength_end,
 Generate Rayleigh optical depth values across a wavelength range.
 
 **Parameters:**
-- `wavelength_start`, `wavelength_end`, `wavelength_step` — Wavelength range in nm
-- `params` — Atmospheric parameters (`NULL` for defaults)
-- `out` — Output array (must be large enough for `(end - start) / step + 1` values)
-- `out_count` — Receives the number of values written
+- `wavelength_start`, `wavelength_end`, `wavelength_step`: Wavelength range in nm
+- `params`: Atmospheric parameters (`NULL` for defaults)
+- `out`: Output array (must be large enough for `(end - start) / step + 1` values)
+- `out_count`: Receives the number of values written
 
-**Returns:** an `alwan_status` value — `ALWAN_OK` (`0`) on success, `ALWAN_E_INVALID`
+**Returns:** an `alwan_status` value: `ALWAN_OK` (`0`) on success, `ALWAN_E_INVALID`
 (`-1`) if `out`/`out_count` is `NULL`, `ALWAN_E_RANGE` (`-3`) if `wavelength_step <= 0`
 or `wavelength_start > wavelength_end`. See the error-contract note below.
 
@@ -135,12 +135,12 @@ status codes.)
 
 The scalar-valued queries `alwan_rayleigh_cross_section_{T}` and
 `alwan_rayleigh_optical_depth_{T}` return the physical quantity directly and have no
-status channel and no error sentinel — they evaluate the formula unconditionally, so the
+status channel and no error sentinel; they evaluate the formula unconditionally, so the
 caller is responsible for passing physically valid inputs.
 
 ---
 
 ## See Also
 
-- [Spectral Operations](spectral.md) — SPD operations
-- [Vision Science](vision.md) — Human visual perception
+- [Spectral Operations](spectral.md): SPD operations
+- [Vision Science](vision.md): Human visual perception

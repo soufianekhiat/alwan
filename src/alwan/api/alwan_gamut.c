@@ -38,7 +38,7 @@ static alwan_f64 alwan_rng_uniform(alwan_rng *rng) {
 }
 
 /* ----------------------------------------------------------------
- * M11: Gamut Volume Estimation (Monte Carlo)
+ * M11: Gamut Volume Estimation (exact |det(M)| of the RGB->XYZ matrix)
  * ---------------------------------------------------------------- */
 
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
@@ -960,6 +960,79 @@ int alwan_css_gamut_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_
 }
 
 /* ----------------------------------------------------------------
+ * f32 twins of the gamut map entry points.
+ * CLIP and the CSS mapper route to the native f32 SIMD kernels;
+ * HUE_PRESERVING widens per pixel to the f64 scalar path (iterative
+ * binary search -- kept single-copy, see ALWAN_WITH_F64_FACADE).
+ * ---------------------------------------------------------------- */
+
+int alwan_gamut_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_gamut_map_method method) {
+    if (!rgb_in || !rgb_out || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    if (method == ALWAN_GAMUT_MAP_CLIP) {
+        return alwan_gamut_clip_f32_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count);
+    }
+    if (method != ALWAN_GAMUT_MAP_HUE_PRESERVING) {
+        return ALWAN_E_INVALID;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 const *in_ptr = (alwan_f32 const *)((char const *)rgb_in + i * in_stride);
+        alwan_f32 *out_ptr = (alwan_f32 *)((char *)rgb_out + i * out_stride);
+        alwan_vec3_f64 in_vec = {{(alwan_f64)in_ptr[0], (alwan_f64)in_ptr[1], (alwan_f64)in_ptr[2]}};
+        alwan_vec3_f64 out_vec;
+        gamut_map_hue_preserving_single(&in_vec, &out_vec);
+        out_ptr[0] = (alwan_f32)out_vec.v[0];
+        out_ptr[1] = (alwan_f32)out_vec.v[1];
+        out_ptr[2] = (alwan_f32)out_vec.v[2];
+    }
+    return ALWAN_OK;
+}
+
+int alwan_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_gamut_map_method method) {
+    if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+
+    if (method == ALWAN_GAMUT_MAP_CLIP) {
+        return alwan_gamut_clip_f32_map_planar(out_ch0, out_stride, out_ch1, out_ch2, in_ch0, in_stride, in_ch1, in_ch2, count);
+    }
+    if (method != ALWAN_GAMUT_MAP_HUE_PRESERVING) {
+        return ALWAN_E_INVALID;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        alwan_vec3_f64 in_vec = {{
+            (alwan_f64)*(alwan_f32 const *)((char const *)in_ch0 + i * in_stride),
+            (alwan_f64)*(alwan_f32 const *)((char const *)in_ch1 + i * in_stride),
+            (alwan_f64)*(alwan_f32 const *)((char const *)in_ch2 + i * in_stride)
+        }};
+        alwan_vec3_f64 out_vec;
+        gamut_map_hue_preserving_single(&in_vec, &out_vec);
+        *(alwan_f32 *)((char *)out_ch0 + i * out_stride) = (alwan_f32)out_vec.v[0];
+        *(alwan_f32 *)((char *)out_ch1 + i * out_stride) = (alwan_f32)out_vec.v[1];
+        *(alwan_f32 *)((char *)out_ch2 + i * out_stride) = (alwan_f32)out_vec.v[2];
+    }
+    return ALWAN_OK;
+}
+
+int alwan_css_gamut_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count) {
+    if (!rgb_in || !rgb_out) {
+        return ALWAN_E_INVALID;
+    }
+    return alwan_css_gamut_map_f32_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count);
+}
+
+int alwan_css_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count) {
+    if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    return alwan_css_gamut_map_f32_map_planar(out_ch0, out_stride, out_ch1, out_ch2, in_ch0, in_stride, in_ch1, in_ch2, count);
+}
+
+/* ----------------------------------------------------------------
  * Gamut map _ex (typed pixel format)
  * ---------------------------------------------------------------- */
 
@@ -1269,7 +1342,7 @@ int alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 wavelength) {
 
     alwan_f32 t = (wavelength - (alwan_f32)SPECTRAL_LOCUS_WL_MIN) /
                   (alwan_f32)SPECTRAL_LOCUS_WL_INTERVAL;
-    size_t idx = (size_t)floorf(t);
+    size_t idx = (size_t)ALWAN_FLOOR_F32(t);
     alwan_f32 frac = t - (alwan_f32)idx;
 
     if (idx >= (size_t)(SPECTRAL_LOCUS_COUNT - 1)) {
@@ -1306,7 +1379,7 @@ static int alwan_intersect_spectral_locus_f32(alwan_vec2_f32 const *p1,
         alwan_f32 dy2 = s2y - s1y;
 
         alwan_f32 det = dx1 * dy2 - dy1 * dx2;
-        if (fabsf(det) < 1e-10f) {
+        if (ALWAN_ABS_F32(det) < 1e-10f) {
             continue;
         }
 
@@ -1406,11 +1479,11 @@ int alwan_excitation_purity_f32(alwan_f32 *purity_out,
 
     alwan_f32 dx_color = xy->v[0] - xy_white->v[0];
     alwan_f32 dy_color = xy->v[1] - xy_white->v[1];
-    alwan_f32 dist_color = sqrtf(dx_color * dx_color + dy_color * dy_color);
+    alwan_f32 dist_color = ALWAN_SQRT_F32(dx_color * dx_color + dy_color * dy_color);
 
     alwan_f32 dx_wl = xy_wl.v[0] - xy_white->v[0];
     alwan_f32 dy_wl = xy_wl.v[1] - xy_white->v[1];
-    alwan_f32 dist_wl = sqrtf(dx_wl * dx_wl + dy_wl * dy_wl);
+    alwan_f32 dist_wl = ALWAN_SQRT_F32(dx_wl * dx_wl + dy_wl * dy_wl);
 
     if (dist_wl < 1e-10f) {
         *purity_out = 0.0f;
@@ -1484,7 +1557,7 @@ static int gamut_working_xform_f32(alwan_mat3x3_f32 *to_srgb,
         int is_identity = 1;
         for (int i = 0; i < 9 && is_identity; i++) {
             alwan_f32 want = (i % 4 == 0) ? 1.0f : 0.0f;
-            if (fabsf(to_srgb->m[i] - want) > 1e-3f) is_identity = 0;
+            if (ALWAN_ABS_F32(to_srgb->m[i] - want) > 1e-3f) is_identity = 0;
         }
         if (is_identity) {
             for (int i = 0; i < 9; i++) {
@@ -1530,7 +1603,7 @@ int alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
     alwan_f32 L = oklab.v[0];
     alwan_f32 a = oklab.v[1];
     alwan_f32 b = oklab.v[2];
-    alwan_f32 C = sqrtf(a * a + b * b);
+    alwan_f32 C = ALWAN_SQRT_F32(a * a + b * b);
 
     if (C < 0.0001f ||
         (rgb_linear->r >= 0.0f && rgb_linear->r <= 1.0f &&

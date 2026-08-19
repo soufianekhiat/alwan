@@ -73,21 +73,21 @@ alwan_agx_params_f64 alwan_agx_default_params_f64(void) {
  * yields the inset and the inverse-outset (the restore matrix), which is exactly
  * how AgX applies its outset (forward, after the sigmoid). */
 #if ALWAN_WITH_F32
-void alwan_agx_build_geometry_f32(alwan_agx_params_f32 *p) {
-    if (!p) return;
+void alwan_agx_build_geometry_f32(alwan_agx_params_f32 *params) {
+    if (!params) return;
     alwan_vec3_f32 rot, ins, pur;
-    for (int k = 0; k < 3; k++) { rot.v[k] = p->primary_rotation[k]; ins.v[k] = p->primary_inset[k]; pur.v[k] = p->primary_purity[k]; }
+    for (int k = 0; k < 3; k++) { rot.v[k] = params->primary_rotation[k]; ins.v[k] = params->primary_inset[k]; pur.v[k] = params->primary_purity[k]; }
     jp2499_geom_f32 g = jp2499_geometry_f32(rot, ins, pur);
-    p->inset = g.inset; p->outset = g.outset_inv;
+    params->inset = g.inset; params->outset = g.outset_inv;
 }
 #endif
 #if ALWAN_WITH_F64
-void alwan_agx_build_geometry_f64(alwan_agx_params_f64 *p) {
-    if (!p) return;
+void alwan_agx_build_geometry_f64(alwan_agx_params_f64 *params) {
+    if (!params) return;
     alwan_vec3_f64 rot, ins, pur;
-    for (int k = 0; k < 3; k++) { rot.v[k] = p->primary_rotation[k]; ins.v[k] = p->primary_inset[k]; pur.v[k] = p->primary_purity[k]; }
+    for (int k = 0; k < 3; k++) { rot.v[k] = params->primary_rotation[k]; ins.v[k] = params->primary_inset[k]; pur.v[k] = params->primary_purity[k]; }
     jp2499_geom_f64 g = jp2499_geometry_f64(rot, ins, pur);
-    p->inset = g.inset; p->outset = g.outset_inv;
+    params->inset = g.inset; params->outset = g.outset_inv;
 }
 #endif
 

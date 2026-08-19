@@ -2,7 +2,7 @@
 
 Context objects (`alwan_ctx`) manage library state and memory allocation.
 
-Functions that take a `ctx` (e.g. `alwan_rgb_get_space_descriptor_{T}`, `alwan_rgb_convert_{T}`) accept it as the handle through which the **allocator** and — in a future runtime mode — disk-loaded data are reached. In the current **embedded** build the RGB color-space registry (primaries/whitepoint/transfer-function descriptors) is compiled into the binary from `src/alwan/data/**`, so descriptor lookups index static tables and ignore `ctx` (it may even be `NULL`). The context does **not** load anything from disk at runtime. Where `ctx` matters today: it supplies the allocator for functions that allocate (e.g. SPD/LUT routines) and gates optional work such as the chromatic-adaptation step inside `alwan_rgb_convert_{T}` (passing `NULL` skips adaptation rather than erroring). Per the v2.0 parameter convention, `ctx` is always the **last** argument (or absent on `_v` value-typed math).
+Functions that take a `ctx` (e.g. `alwan_rgb_get_space_descriptor_{T}`, `alwan_rgb_convert_{T}`) accept it as the handle through which the **allocator** and (in a future runtime mode) disk-loaded data are reached. In the current **embedded** build the RGB color-space registry (primaries/whitepoint/transfer-function descriptors) is compiled into the binary from `src/alwan/data/**`, so descriptor lookups index static tables and ignore `ctx` (it may even be `NULL`). The context does **not** load anything from disk at runtime. Where `ctx` matters today: it supplies the allocator for functions that allocate (e.g. SPD/LUT routines) and gates optional work such as the chromatic-adaptation step inside `alwan_rgb_convert_{T}` (passing `NULL` skips adaptation rather than erroring). Per the v2.0 parameter convention, `ctx` is always the **last** argument (or absent on `_v` value-typed math).
 
 > **Note:** Runtime data loading (`runtime_data_root`) is NOT implemented. Only embedded mode (`ALWAN_EMBED_DATA=1`, the default) is supported. Runtime mode is planned for alwan 3.0.0.
 
@@ -19,7 +19,7 @@ alwan_ctx* alwan_create(const alwan_config *config);
 Creates and initializes a new Alwan context.
 
 **Parameters:**
-- `config` — Configuration structure, or `NULL` for defaults
+- `config`: Configuration structure, or `NULL` for defaults
 
 **Returns:**
 - Pointer to new context on success
@@ -51,7 +51,7 @@ void alwan_destroy(alwan_ctx *ctx);
 Destroys a context and frees all associated resources.
 
 **Parameters:**
-- `ctx` — Context to destroy (can be `NULL`, in which case this is a no-op)
+- `ctx`: Context to destroy (can be `NULL`, in which case this is a no-op)
 
 **Example:**
 ```c
@@ -90,7 +90,7 @@ Opaque context structure. Internal details are not exposed.
 typedef struct {
     alwan_alloc_fn alloc_cb;          // Optional custom allocator (NULL = default)
     alwan_free_fn  free_cb;           // Optional custom deallocator (NULL = default)
-    char const *runtime_data_root;    // Optional data path for ALWAN_EMBED_DATA=0
+    char const *runtime_data_root;    // Reserved (runtime data loading is planned); currently ignored
     uint32_t flags;                   // Reserved for future use (must be 0)
 } alwan_config;
 ```
@@ -100,7 +100,7 @@ Configuration for context creation.
 **Fields:**
 
 #### `alloc_cb`
-Custom allocation callback for **context-lifetime** allocations — the context
+Custom allocation callback for **context-lifetime** allocations: the context
 object itself and any data it owns (e.g. a copied `runtime_data_root`).
 
 > **Scope:** `alloc_cb`/`free_cb` govern context-lifetime allocations. The
@@ -120,8 +120,8 @@ void* alloc_cb(size_t size, size_t align);
 ```
 
 **Parameters:**
-- `size` — Number of bytes to allocate
-- `align` — Required alignment (power of 2)
+- `size`: Number of bytes to allocate
+- `align`: Required alignment (power of 2)
 
 **Returns:**
 - Pointer to aligned memory, or `NULL` on failure
@@ -149,7 +149,7 @@ void free_cb(void *ptr);
 ```
 
 **Parameters:**
-- `ptr` — Pointer to free (can be `NULL`)
+- `ptr`: Pointer to free (can be `NULL`)
 
 **Default:** `alwan_default_free` (matches `alwan_default_alloc`; uses `_aligned_free` on MSVC, `free` elsewhere)
 
@@ -284,7 +284,7 @@ alwan_destroy(shared_ctx);
 
 ---
 
-### Runtime Mode (ALWAN_EMBED_DATA=0) — NOT IMPLEMENTED
+### Runtime Mode (ALWAN_EMBED_DATA=0): NOT IMPLEMENTED
 
 > Runtime data loading is not implemented. Planned for alwan 3.0.0.
 
@@ -304,7 +304,7 @@ if (!ctx) {
 
 > **Note:** `alwan_create` does not cross-validate the config. `alloc_cb` and
 > `free_cb` default independently, so setting one without the other is accepted
-> (your custom function is paired with the default for the other) — make sure
+> (your custom function is paired with the default for the other). Make sure
 > the two are compatible, since a custom allocation may otherwise be released
 > with `alwan_default_free`.
 
@@ -393,6 +393,6 @@ status = alwan_rgb_convert_f64(NULL, &src_desc, &dst_desc, &rgb_in, ctx);
 
 ## See Also
 
-- [Configuration](../configuration.md) — Compile-time options
-- [Data Management](../data-management.md) — Embedded vs runtime data
-- [Examples](../examples.md) — Complete usage examples
+- [Configuration](../configuration.md): Compile-time options
+- [Data Management](../data-management.md): Embedded vs runtime data
+- [Examples](../examples.md): Complete usage examples
