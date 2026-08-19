@@ -609,6 +609,151 @@ static int ALWAN_CORE_FN(alwan__gamut_spatial_core)(ALWAN_CORE_T *out, ALWAN_COR
         return ALWAN_OK;
     }
 
+    /* ---- COMPLETE / COMPLETE_HEMI_LOOK: the 13-of-13 operator ----
+     * HEMISPHERE_ABS is 12/13: it misses only RATIO because its *per-channel* asymptotic rails lift
+     * the min channel of a saturated pixel disproportionately, rotating its hue near 0/1. COMPLETE is
+     * HEMISPHERE_ABS's carrier tone with two changes that clear RATIO while keeping every other row:
+     *   (1) the asymptotic HIGH rail is applied to the CARRIER ms (a single scalar) BEFORE
+     *       reconstruction; all three channels then take the SAME scale ms/m. A per-channel rail is
+     *       never used, so out_chroma stays || in_chroma (direction preserved => RATIO).
+     *   (2) a DESATURATION FLOOR replaces the per-channel LOW rail: the purity-keep is capped at
+     *       KEEPMAX (< 1), drawing every saturated pixel a hair toward its achromatic level ms. This
+     *       lifts the min channel off 0 (RAIL) as a UNIFORM chroma scale (1-keep) -- direction is
+     *       again preserved (RATIO), min = (1-keep)*ms > 0, and sat ~ KEEPMAX > 0.85 (SPAN). No hard
+     *       clamp is reached at either end (carrier high-rail below 1, floor above 0), so the final
+     *       [0,1] is a safety net, not a plateau.
+     * Pointwise + carrier-monotone (MONO) + a function of max(RGB)+ratios (HUEA) + a fixed window
+     * (INVR) + now RATIO-clean: the FIRST method to satisfy all 13 numerically-testable constraints
+     * (resolves docs/picture_formation.md's open question). Two constant sets, same operator:
+     * COMPLETE_HEMI_LOOK keeps HEMISPHERE_ABS's exact window (look/contrast unchanged); COMPLETE takes
+     * the isophote-through-highlight-max point of the 13-feasible set (wider window: brighter/softer). */
+    if (p->method == ALWAN_GAMUT_FORM_COMPLETE || p->method == ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK) {
+        int const look = (p->method == ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK);
+        ALWAN_CORE_T const w_win   = look ? ALWAN_CORE_LITERAL(16.5)  : ALWAN_CORE_LITERAL(19.85);
+        ALWAN_CORE_T const keepmax = look ? ALWAN_CORE_LITERAL(0.997) : ALWAN_CORE_LITERAL(0.861);
+        ALWAN_CORE_T const rhi     = look ? ALWAN_CORE_LITERAL(0.02)  : ALWAN_CORE_LITERAL(0.005);
+        ALWAN_CORE_T const mid   = ALWAN_CORE_LOG2(ALWAN_CORE_LITERAL(0.18));
+        ALWAN_CORE_T const lo    = mid - ALWAN_CORE_LITERAL(10.0);
+        ALWAN_CORE_T const vp    = ALWAN_CORE_LITERAL(10.0)/w_win;
+        ALWAN_CORE_T const g_slope = ALWAN_CORE_LITERAL(5.54)/(vp > ALWAN_CORE_LITERAL(1.0)-vp ? vp : ALWAN_CORE_LITERAL(1.0)-vp);
+        ALWAN_CORE_T const gamma = -ALWAN_CORE_LOG2(ALWAN_CORE_LITERAL(0.18));
+        ALWAN_CORE_T const d_lo = ALWAN_CORE_LITERAL(1.0)/(ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_EXP(-g_slope*(ALWAN_CORE_LITERAL(0.0)-vp)));
+        ALWAN_CORE_T const d_hi = ALWAN_CORE_LITERAL(1.0)/(ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_EXP(-g_slope*(ALWAN_CORE_LITERAL(1.0)-vp)));
+        ALWAN_CORE_T d_rng = d_hi - d_lo; if (d_rng < ALWAN_CORE_LITERAL(1e-6)) d_rng = ALWAN_CORE_LITERAL(1e-6);
+        for (size_t i = 0; i < N; i++) {
+            ALWAN_CORE_T rr = in[i*3], gg = in[i*3+1], bb = in[i*3+2];
+            if (rr < 0) rr = 0; if (gg < 0) gg = 0; if (bb < 0) bb = 0;   /* NEG: negative wattage -> 0 */
+            ALWAN_CORE_T m = rr > gg ? (rr > bb ? rr : bb) : (gg > bb ? gg : bb);
+            if (m <= ALWAN_CORE_LITERAL(1e-9)) { out[i*3]=0; out[i*3+1]=0; out[i*3+2]=0; continue; }
+            ALWAN_CORE_T vpos = (ALWAN_CORE_LOG2(m) - lo)/w_win;
+            ALWAN_CORE_T dv = ALWAN_CORE_LITERAL(1.0)/(ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_EXP(-g_slope*(vpos - vp)));
+            ALWAN_CORE_T dn = (dv - d_lo)/d_rng; if (dn < 0) dn = 0;
+            ALWAN_CORE_T ms = ALWAN_CORE_POW(dn, gamma) * peak;
+            /* (1) asymptotic HIGH rail on the CARRIER (scalar), applied ONCE so the reconstruction
+             *     scale ms/m below is uniform across channels -> RATIO-safe, and no plateau at 1. */
+            if (ms > ALWAN_CORE_LITERAL(1.0) - rhi) ms = ALWAN_CORE_LITERAL(1.0) - rhi*ALWAN_CORE_EXP(((ALWAN_CORE_LITERAL(1.0)-ms) - rhi)/rhi);
+            ALWAN_CORE_T sc = ms/m;
+            ALWAN_CORE_T t = (vpos - ALWAN_CORE_LITERAL(0.72))/ALWAN_CORE_LITERAL(0.48);
+            if (t < 0) t = 0; if (t > 1) t = 1;
+            ALWAN_CORE_T keep = ALWAN_CORE_LITERAL(0.5)*(ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_COS(ALWAN_CORE_LITERAL(3.141592653589793)*t));
+            /* (2) desaturation FLOOR: cap keep at KEEPMAX so the min channel lifts off 0 as a uniform
+             *     chroma scale (RAIL without a per-channel rail => RATIO-safe, no plateau at 0). */
+            if (keep > keepmax) keep = keepmax;
+            ALWAN_CORE_T o0 = ms + (rr*sc - ms)*keep;   /* max channel -> ms (carrier-safe => MONO) */
+            ALWAN_CORE_T o1 = ms + (gg*sc - ms)*keep;
+            ALWAN_CORE_T o2 = ms + (bb*sc - ms)*keep;
+            if (o0 < 0) o0 = 0; else if (o0 > ALWAN_CORE_LITERAL(1.0)) o0 = ALWAN_CORE_LITERAL(1.0);
+            if (o1 < 0) o1 = 0; else if (o1 > ALWAN_CORE_LITERAL(1.0)) o1 = ALWAN_CORE_LITERAL(1.0);
+            if (o2 < 0) o2 = 0; else if (o2 > ALWAN_CORE_LITERAL(1.0)) o2 = ALWAN_CORE_LITERAL(1.0);
+            out[i*3]=o0; out[i*3+1]=o1; out[i*3+2]=o2;
+        }
+        return ALWAN_OK;
+    }
+
+    /* ---- WARP: monotone smooth local-contrast refinement of HEMISPHERE_ABS ----
+     * Closed-form (NO solver). On the HEMISPHERE_ABS base, restore the scene curvature the tonescale
+     * flattened, as a monotone smooth warp of the base log-carrier:
+     *   f_out = m + gamma*(f_H - m),   m = box*3 smooth pivot of f_H = log2 max(base),
+     *   gamma = 1 + BETA_LC*blur(|mean-curvature of log2 max(scene)|) normalized to [0,1].
+     * gamma >= 0 and smooth => monotone at every significant carrier edge (no flip); analytic => no
+     * pooling/staircase. Reconstruct by a per-pixel POSITIVE scale r = 2^(f_out - f_H) applied to all
+     * three channels (ratio-preserving), capped so the carrier stays <= the base rail ceiling
+     * (RATIO-safe: a single uniform scale, never a per-channel clamp -> out_chroma stays || base_chroma,
+     * so WARP inherits HEMISPHERE_ABS's constraint row rather than rotating hue). Lifts
+     * isophote-through-highlight over HEMISPHERE_ABS and removes its highlight curvature steepening. */
+    if (p->method == ALWAN_GAMUT_FORM_WARP) {
+        ALWAN_CORE_T const BETA_LC = ALWAN_CORE_LITERAL(0.9);   /* local-contrast strength (validated default) */
+        ALWAN_CORE_T const GLIM    = ALWAN_CORE_LITERAL(0.30);  /* max |log2 gain|: bounds contrast, ring/clip-free */
+        ALWAN_CORE_T const rhi     = ALWAN_CORE_LITERAL(0.02);  /* HEMISPHERE_ABS high-rail width (asymptotic, no plateau) */
+        int rp = W/40; if (rp < 1) rp = 1;                      /* pivot radius     ~ 0.025 W */
+        int rg = W/20; if (rg < 1) rg = 1;                      /* gain-map radius  ~ 0.05  W */
+        /* 1) base = HEMISPHERE_ABS (recurse into out) */
+        ALWAN_CORE_FN(alwan_gamut_spatial_params) pb = *p; pb.method = ALWAN_GAMUT_FORM_HEMISPHERE_ABS;
+        { int st = ALWAN_CORE_FN(alwan__gamut_spatial_core)(out, in, depth, W, H, &pb, ctx); if (st != ALWAN_OK) return st; }
+        /* 2) scratch */
+        ALWAN_CORE_T *fH  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
+        ALWAN_CORE_T *pv  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
+        ALWAN_CORE_T *ll  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
+        ALWAN_CORE_T *kap = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
+        ALWAN_CORE_T *gm  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
+        ALWAN_CORE_T *tmp = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
+        if (!fH||!pv||!ll||!kap||!gm||!tmp){ ctx->free_fn(fH);ctx->free_fn(pv);ctx->free_fn(ll);ctx->free_fn(kap);ctx->free_fn(gm);ctx->free_fn(tmp); return ALWAN_E_NOMEM; }
+        /* 3) log2 carriers: fH = base, ll = scene */
+        for (size_t i=0;i<N;i++){
+            ALWAN_CORE_T bc = out[i*3]; if(out[i*3+1]>bc)bc=out[i*3+1]; if(out[i*3+2]>bc)bc=out[i*3+2];
+            fH[i] = ALWAN_CORE_LOG2(bc > ALWAN_CORE_LITERAL(1e-4) ? bc : ALWAN_CORE_LITERAL(1e-4));
+            ALWAN_CORE_T sr=in[i*3],sg=in[i*3+1],sb=in[i*3+2]; if(sr<0)sr=0;if(sg<0)sg=0;if(sb<0)sb=0;
+            ALWAN_CORE_T sc = sr>sg?(sr>sb?sr:sb):(sg>sb?sg:sb);
+            ll[i] = ALWAN_CORE_LOG2(sc > ALWAN_CORE_LITERAL(1e-4) ? sc : ALWAN_CORE_LITERAL(1e-4));
+        }
+        /* 4) mean-curvature magnitude of the scene log carrier (0 at border) */
+        for (size_t i=0;i<N;i++) kap[i]=ALWAN_CORE_LITERAL(0.0);
+        for (int y=1;y<H-1;y++) for (int x=1;x<W-1;x++){ size_t i=(size_t)y*W+x;
+            ALWAN_CORE_T fx=(ll[i+1]-ll[i-1])*ALWAN_CORE_LITERAL(0.5), fy=(ll[i+W]-ll[i-W])*ALWAN_CORE_LITERAL(0.5);
+            ALWAN_CORE_T fxx=ll[i+1]-ALWAN_CORE_LITERAL(2.0)*ll[i]+ll[i-1], fyy=ll[i+W]-ALWAN_CORE_LITERAL(2.0)*ll[i]+ll[i-W];
+            ALWAN_CORE_T fxy=(ll[i+1+W]-ll[i-1+W]-ll[i+1-W]+ll[i-1-W])*ALWAN_CORE_LITERAL(0.25);
+            ALWAN_CORE_T gmg=fx*fx+fy*fy;
+            ALWAN_CORE_T Hc=((ALWAN_CORE_LITERAL(1.0)+fx*fx)*fyy - ALWAN_CORE_LITERAL(2.0)*fx*fy*fxy + (ALWAN_CORE_LITERAL(1.0)+fy*fy)*fxx)
+                            /(ALWAN_CORE_LITERAL(2.0)*ALWAN_CORE_POW(ALWAN_CORE_LITERAL(1.0)+gmg,ALWAN_CORE_LITERAL(1.5)));
+            kap[i] = Hc < ALWAN_CORE_LITERAL(0.0) ? -Hc : Hc;
+        }
+        /* 5) winsorize the curvature to its p90 BEFORE blurring, then normalize to [0,1] -- concentrate the
+         *    boost on the strongest structural curvature and saturate the /|grad|-style spikes (a raw
+         *    max-normalize would let one spike flatten gamma to 1). Spike-robust p90 via a 256-bin histogram
+         *    (sort-free, precision-agnostic). Then gain map gm = box*3, normalized to [0,1]. */
+        { ALWAN_CORE_T mx=ALWAN_CORE_LITERAL(1e-12); for(size_t i=0;i<N;i++) if(kap[i]>mx)mx=kap[i];
+          int hist[256]; for(int b=0;b<256;b++) hist[b]=0;
+          ALWAN_CORE_T sc255=ALWAN_CORE_LITERAL(255.0)/mx;
+          for(size_t i=0;i<N;i++){ int b=(int)(kap[i]*sc255); if(b<0)b=0; if(b>255)b=255; hist[b]++; }
+          size_t target=(N/10)*9, cum=0; int pbin=255;   /* ~90th percentile (integer, no float cast) */
+          for(int b=0;b<256;b++){ cum+=(size_t)hist[b]; if(cum>=target){ pbin=b; break; } }
+          ALWAN_CORE_T K=((ALWAN_CORE_T)pbin+ALWAN_CORE_LITERAL(0.5))/ALWAN_CORE_LITERAL(256.0)*mx; if(K<ALWAN_CORE_LITERAL(1e-9))K=ALWAN_CORE_LITERAL(1.0);
+          for(size_t i=0;i<N;i++){ ALWAN_CORE_T v=kap[i]/K; if(v>ALWAN_CORE_LITERAL(1.0))v=ALWAN_CORE_LITERAL(1.0); kap[i]=v; } }
+        ALWAN_CORE_FN(alwan__boxfilter)(kap, gm,  tmp, W,H, rg);
+        ALWAN_CORE_FN(alwan__boxfilter)(gm,  kap, tmp, W,H, rg);
+        ALWAN_CORE_FN(alwan__boxfilter)(kap, gm,  tmp, W,H, rg);
+        { ALWAN_CORE_T mx=ALWAN_CORE_LITERAL(1e-12); for(size_t i=0;i<N;i++) if(gm[i]>mx)mx=gm[i];
+          ALWAN_CORE_T inv=ALWAN_CORE_LITERAL(1.0)/mx; for(size_t i=0;i<N;i++) gm[i]*=inv; }
+        /* 6) smooth pivot pv = box*3(fH) */
+        ALWAN_CORE_FN(alwan__boxfilter)(fH, pv,  tmp, W,H, rp);
+        ALWAN_CORE_FN(alwan__boxfilter)(pv, kap, tmp, W,H, rp);
+        ALWAN_CORE_FN(alwan__boxfilter)(kap,pv,  tmp, W,H, rp);
+        /* 7) warp + ratio-preserving scale with RATIO-safe carrier cap */
+        for (size_t i=0;i<N;i++){
+            ALWAN_CORE_T gamma = ALWAN_CORE_LITERAL(1.0) + BETA_LC*gm[i];
+            ALWAN_CORE_T fo = pv[i] + gamma*(fH[i]-pv[i]);
+            ALWAN_CORE_T dg = fo - fH[i]; if(dg>GLIM)dg=GLIM; if(dg<-GLIM)dg=-GLIM;
+            ALWAN_CORE_T r = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), dg);
+            ALWAN_CORE_T bc = out[i*3]; if(out[i*3+1]>bc)bc=out[i*3+1]; if(out[i*3+2]>bc)bc=out[i*3+2];
+            ALWAN_CORE_T co = bc*r;   /* boosted carrier -> asymptotic high rail (no plateau) -> uniform scale */
+            if (co > ALWAN_CORE_LITERAL(1.0) - rhi) co = ALWAN_CORE_LITERAL(1.0) - rhi*ALWAN_CORE_EXP(((ALWAN_CORE_LITERAL(1.0)-co) - rhi)/rhi);
+            r = bc > ALWAN_CORE_LITERAL(1e-9) ? co/bc : ALWAN_CORE_LITERAL(1.0);
+            for (int k=0;k<3;k++){ ALWAN_CORE_T v=out[i*3+k]*r; if(v<0)v=0; if(v>ALWAN_CORE_LITERAL(1.0))v=ALWAN_CORE_LITERAL(1.0); out[i*3+k]=v; }
+        }
+        ctx->free_fn(fH);ctx->free_fn(pv);ctx->free_fn(ll);ctx->free_fn(kap);ctx->free_fn(gm);ctx->free_fn(tmp);
+        return ALWAN_OK;
+    }
+
     /* ---- OPTICAL: SURFACE + Kitaoka additive/multiplicative split ----
      * Density model. Luminance preserved (0 luma flips). The chroma-collapse
      * target depends on whether the pixel is an ADDITIVE increment (bright /

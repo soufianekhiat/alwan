@@ -1907,17 +1907,10 @@ int alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out,
  * implementation (see alwan_gamut_spatial_impl.inc).
  * ================================================================ */
 
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-#include "alwan_api_f32_setup.h"
-#include "alwan_gamut_spatial_impl.inc"
-#include "alwan_api_teardown.h"
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F64
-#include "alwan_api_f64_setup.h"
-#include "alwan_gamut_spatial_impl.inc"
-#include "alwan_api_teardown.h"
-#endif
+/* The picture-formation spatial methods (the alwan_gamut_formation_method family and
+ * alwan_gamut_map_spatial_f32/f64) were RELOCATED to
+ *   src/alwan/experimental/alwan_gamut_spatial.c  (+ alwan_gamut_spatial_impl.inc)
+ * as experimental research code (relaxed rules: non-deterministic / inlined constants allowed, not
+ * part of the constraint-tested core). Their public declarations remain in alwan.h; only the
+ * implementation moved. The geometric gamut mapping (clip, CSS Color-4, volume, pointer gamut,
+ * spectral locus, dominant wavelength) stays in this file. */

@@ -65,3 +65,5 @@ tools/*.json
 *.pyc
 /build
 /build_*
+
+/working_dir/
