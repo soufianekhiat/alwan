@@ -81,6 +81,44 @@ embedded dataset.
 
 ---
 
+## Table Readers
+
+Tables that are *sampled* at a coordinate (curves, cubes, coefficient grids)
+are read through a reader rather than by indexing the array. The readers are
+declared in `alwan.h`; the definitions live beside them in
+`src/alwan/data/alwan_data_tables*.c`.
+
+```c
+alwan_f64 v;
+/* generic: caller-supplied table */
+alwan_table1d_sample_f64(&v, table, size, 0.5, ALWAN_SAMPLE_LINEAR);
+
+/* named: an embedded table, no size argument to get wrong */
+alwan_agx_contrast_sample_f64(&v, 0, 0.5, ALWAN_SAMPLE_LINEAR);
+```
+
+The mode selects reconstruction: `ALWAN_SAMPLE_LINEAR` (0, the default, and
+what a zero-initialized mode gives you), `NEAREST`, `TRILINEAR`,
+`TETRAHEDRAL`. Rank decides which are accepted; `LINEAR` always resolves to
+the linear reconstruction for that rank.
+
+**Out-of-range and non-finite coordinates.** One addressing gate converts a
+coordinate to a table cell, and it is the only place a float becomes an index.
+A coordinate outside [0, 1] addresses the nearest edge, and a NaN coordinate
+resolves to the low edge. This is an *address* clamp, not a value clamp: it
+does not conflict with the no-silent-clamp policy on colour values, because an
+address outside the table has no meaning, while an out-of-gamut colour does.
+
+If a non-finite coordinate should be an error instead of an edge sample, OR in
+`ALWAN_SAMPLE_STRICT`; the reader then returns `ALWAN_E_RANGE` and leaves the
+result untouched.
+
+Define `ALWAN_READ_DATA_NO_BOUND_CHECK=1` to compile the clamp out. Only do
+that when every coordinate is known finite and in range: without it, a NaN is
+an out-of-bounds read rather than a wrong colour.
+
+---
+
 ## Embedded Mode Benefits
 
 - no external file deployment

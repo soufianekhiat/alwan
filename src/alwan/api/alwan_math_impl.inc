@@ -355,8 +355,11 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_table_interp_1d)(ALWAN_CORE_T const *table, 
         return ALWAN_CORE_LITERAL(0.0);
     }
 
-    /* Clamp x to [0, 1] */
-    if (x <= ALWAN_CORE_LITERAL(0.0)) return table[0];
+    /* Clamp x to [0, 1]. Written as !(x > 0) rather than x <= 0 so a NaN takes
+     * this branch too: NaN fails every compare, and letting it reach the
+     * (size_t) cast below is undefined behaviour. Low edge matches the
+     * addressing gate in core/alwan_table_core. */
+    if (!(x > ALWAN_CORE_LITERAL(0.0))) return table[0];
     if (x >= ALWAN_CORE_LITERAL(1.0)) return table[size - 1];
 
     /* Map x to table index */

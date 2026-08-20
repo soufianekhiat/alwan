@@ -126,6 +126,12 @@ static ALWAN_CORE_T ALWAN_CORE_FN(spd_interpolate)(ALWAN_CORE_SPD const *spd, AL
     if (f_index >= (ALWAN_CORE_T)(spd->count - 1)) {
         return spd->values[spd->count - 1];
     }
+    /* Both range tests above are false for NaN, so a NaN index reaches the
+     * cast, and (size_t)NaN is undefined behaviour. Resolve it to the low edge,
+     * matching the addressing gate in core/alwan_table_core. */
+    if (!(f_index >= ALWAN_CORE_LITERAL(0.0))) {
+        return spd->values[0];
+    }
 
     size_t i0 = (size_t)f_index;
     ALWAN_CORE_T frac = f_index - (ALWAN_CORE_T)i0;

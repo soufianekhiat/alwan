@@ -10,6 +10,32 @@ First public release (tag `v2.0.0`). Everything below plus the dated
 foundation block that follows shipped together.
 
 ### Added
+- **Table reader layer** — every embedded table is now read through a
+  declared reader (`alwan_table1d_sample`, `alwan_table2d_sample`,
+  `alwan_table3d_sample`, `alwan_table1d_mat3_sample`, plus named readers
+  for the AgX contrast curves, the AgX Blender cube and the Jakob2019
+  coefficients). Readers take an `alwan_sample_mode`
+  (`LINEAR`/`NEAREST`/`TRILINEAR`/`TETRAHEDRAL`, optionally
+  `| ALWAN_SAMPLE_STRICT`), and a single addressing gate converts the
+  coordinate to a validated cell, so no reader indexes a table unchecked.
+  Definitions live in `src/alwan/data/`, declarations in `alwan.h`.
+- **`alwan_version_string()`** — reports the version compiled into the
+  binary, for checking a dynamically loaded library against the headers.
+- **`.cube` import size query** — passing `NULL` for the LUT buffer parses
+  the header and returns the cube size, so callers can allocate exactly.
+- **`ALWAN_READ_DATA_NO_BOUND_CHECK`** — opt-in switch that compiles the
+  addressing clamp out when every coordinate is known finite and in range.
+
+### Fixed
+- **Out-of-bounds table reads on non-finite coordinates** — a NaN
+  coordinate defeated every `SATURATE`/range guard (all comparisons against
+  NaN are false) and reached an `(int)`/`(size_t)` cast, which is undefined
+  behaviour and yields `INT_MIN` on x86-64. That indexed the table far out
+  of bounds. Affected the AgX contrast LUT, the AgX Blender cube, the public
+  `alwan_lut{1,2,3}d_sample` family, `alwan_table_interp_1d`,
+  `alwan_table_interp_3d_{trilinear,tetrahedral}` and SPD resampling.
+  A NaN coordinate now resolves to the low edge everywhere; results for
+  finite in-range input are unchanged, bit for bit.
 - **Picture formation** — `alwan_gamut_map_spatial` with 18 spatial
   formation methods (`alwan_gamut_formation_method`), developed in
   correspondence with Troy Sobotka; the `COMPLETE` /
