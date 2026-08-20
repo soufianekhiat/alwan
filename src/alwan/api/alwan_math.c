@@ -59,9 +59,11 @@ alwan_status alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
     alwan_f64 g = rgb_in->g;
     alwan_f64 b = rgb_in->b;
 
-    if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
-    if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
-    if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
+    /* !(v > 0) rather than v < 0 so NaN clamps here instead of reaching the
+     * (size_t) cast below, which is undefined behaviour for NaN. */
+    if (!(r > 0.0)) r = 0.0; else if (r > 1.0) r = 1.0;
+    if (!(g > 0.0)) g = 0.0; else if (g > 1.0) g = 1.0;
+    if (!(b > 0.0)) b = 0.0; else if (b > 1.0) b = 1.0;
 
     /* Map to table indices */
     alwan_f64 r_pos = r * (sizes[0] - 1);
@@ -135,9 +137,11 @@ alwan_status alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
     alwan_f64 g = rgb_in->g;
     alwan_f64 b = rgb_in->b;
 
-    if (r < 0.0) r = 0.0; if (r > 1.0) r = 1.0;
-    if (g < 0.0) g = 0.0; if (g > 1.0) g = 1.0;
-    if (b < 0.0) b = 0.0; if (b > 1.0) b = 1.0;
+    /* !(v > 0) rather than v < 0 so NaN clamps here instead of reaching the
+     * (size_t) cast below, which is undefined behaviour for NaN. */
+    if (!(r > 0.0)) r = 0.0; else if (r > 1.0) r = 1.0;
+    if (!(g > 0.0)) g = 0.0; else if (g > 1.0) g = 1.0;
+    if (!(b > 0.0)) b = 0.0; else if (b > 1.0) b = 1.0;
 
     /* Map to table indices */
     alwan_f64 r_pos = r * (sizes[0] - 1);
@@ -235,9 +239,11 @@ alwan_status alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
     alwan_f32 g = rgb_in->g;
     alwan_f32 b = rgb_in->b;
 
-    if (r < 0.0f) r = 0.0f; if (r > 1.0f) r = 1.0f;
-    if (g < 0.0f) g = 0.0f; if (g > 1.0f) g = 1.0f;
-    if (b < 0.0f) b = 0.0f; if (b > 1.0f) b = 1.0f;
+    /* !(v > 0) rather than v < 0 so NaN clamps here instead of reaching the
+     * (size_t) cast below, which is undefined behaviour for NaN. */
+    if (!(r > 0.0f)) r = 0.0f; else if (r > 1.0f) r = 1.0f;
+    if (!(g > 0.0f)) g = 0.0f; else if (g > 1.0f) g = 1.0f;
+    if (!(b > 0.0f)) b = 0.0f; else if (b > 1.0f) b = 1.0f;
 
     alwan_f32 r_pos = r * (alwan_f32)(sizes[0] - 1);
     alwan_f32 g_pos = g * (alwan_f32)(sizes[1] - 1);
@@ -306,9 +312,11 @@ alwan_status alwan_table_interp_3d_tetrahedral_f32(alwan_rgb_f32 *rgb_out,
     alwan_f32 g = rgb_in->g;
     alwan_f32 b = rgb_in->b;
 
-    if (r < 0.0f) r = 0.0f; if (r > 1.0f) r = 1.0f;
-    if (g < 0.0f) g = 0.0f; if (g > 1.0f) g = 1.0f;
-    if (b < 0.0f) b = 0.0f; if (b > 1.0f) b = 1.0f;
+    /* !(v > 0) rather than v < 0 so NaN clamps here instead of reaching the
+     * (size_t) cast below, which is undefined behaviour for NaN. */
+    if (!(r > 0.0f)) r = 0.0f; else if (r > 1.0f) r = 1.0f;
+    if (!(g > 0.0f)) g = 0.0f; else if (g > 1.0f) g = 1.0f;
+    if (!(b > 0.0f)) b = 0.0f; else if (b > 1.0f) b = 1.0f;
 
     alwan_f32 r_pos = r * (alwan_f32)(sizes[0] - 1);
     alwan_f32 g_pos = g * (alwan_f32)(sizes[1] - 1);
