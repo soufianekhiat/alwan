@@ -16,6 +16,10 @@
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
 #include "alwan_math_core.h"
+#include "alwan_table_core.h"
+
+/* Machado 2009 publishes 11 severity steps, 0.0 to 1.0 in 0.1. */
+#define ALWAN_MACHADO_SEVERITY_STEPS 11
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
 /* ================================================================
@@ -175,20 +179,11 @@ ALWAN_CONSTEXPR alwan_mat3x3 MACHADO_TRITAN[11] = {
 
 ALWAN_DIAG_POP
 
+/* See the .inc twin for why the old (int)(severity*10) was a crash on NaN. */
 ALWAN_INLINE alwan_mat3x3 alwan_machado_interpolate_v(
     alwan_mat3x3 const *lut, alwan_scalar severity) {
-    severity = alwan_clamp(severity, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
-    alwan_scalar idx_f = severity * ALWAN_LITERAL(10.0);
-    int lo = (int)idx_f;
-    if (lo >= 10) lo = 9;
-    int hi = lo + 1;
-    alwan_scalar t = idx_f - (alwan_scalar)lo;
-    alwan_mat3x3 result;
-    int i;
-    for (i = 0; i < 9; i++) {
-        result.m[i] = alwan_lerp(lut[lo].m[i], lut[hi].m[i], t);
-    }
-    return result;
+    return alwan_table1d_mat3_sample_linear_v(
+        lut, ALWAN_MACHADO_SEVERITY_STEPS, severity);
 }
 
 ALWAN_INLINE alwan_rgb alwan_simulate_cvd_machado_v(

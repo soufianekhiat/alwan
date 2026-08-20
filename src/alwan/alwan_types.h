@@ -68,6 +68,35 @@ typedef enum {
     ALWAN_LLAB_SURROUND_DARK = 2
 } alwan_llab_surround;
 
+/* --- Table addressing modes --------------------------------------------
+ *
+ * How a float coordinate becomes a table position. This is ADDRESSING, not
+ * 1-d signal reconstruction: alwan_interp_method and alwan_resample_method
+ * (Sprague, Lagrange, Akima, PCHIP) are shipped, pinned reconstruction enums
+ * with their own call sites, and renumbering one of those to merge them here
+ * would be an ABI event that buys no safety.
+ *
+ * Values are pinned from the first commit: never renamed, never renumbered,
+ * never reused. New modes append. */
+typedef enum {
+    /* LINEAR is 0 so a zero-initialized or default-constructed mode selects
+     * interpolation, not nearest-neighbour. A struct that is memset to zero
+     * then sampled would otherwise band silently, which is the failure this
+     * enum exists to prevent. Renumbered before the first public release;
+     * 1.0.0 was a private review. */
+    ALWAN_SAMPLE_LINEAR      = 0,
+    ALWAN_SAMPLE_NEAREST     = 1,
+    ALWAN_SAMPLE_BILINEAR    = 2,
+    ALWAN_SAMPLE_TRILINEAR   = 3,
+    ALWAN_SAMPLE_TETRAHEDRAL = 4,
+    ALWAN_SAMPLE_CATMULL_ROM = 5,
+    /* OR into the mode argument of a SCALAR reader. A non-finite or
+     * out-of-[0,1] coordinate then returns ALWAN_E_RANGE and leaves *result
+     * untouched instead of addressing the clamped edge. An enumerator rather
+     * than a bare #define so the parameter stays typed in C++. */
+    ALWAN_SAMPLE_STRICT      = 0x100
+} alwan_sample_mode;
+
 /* --- f32 types --- */
 #define ALWAN_T float
 #define ALWAN_SUFFIX _f32
@@ -109,10 +138,29 @@ ALWAN_TYPE_DEF uint   alwan_uint16;
 ALWAN_TYPE_DEF uint   alwan_uint8;
 #endif
 
+/* Table addressing modes. GLSL has no enum, so the mode is a plain int and
+ * the values are #defines; HLSL and Halide accept the same spelling. Values
+ * match the C enum above exactly -- see its comment for the pinning rule. */
+#define alwan_sample_mode int
+#define ALWAN_SAMPLE_LINEAR      0
+#define ALWAN_SAMPLE_NEAREST     1
+#define ALWAN_SAMPLE_BILINEAR    2
+#define ALWAN_SAMPLE_TRILINEAR   3
+#define ALWAN_SAMPLE_TETRAHEDRAL 4
+#define ALWAN_SAMPLE_CATMULL_ROM 5
+#define ALWAN_SAMPLE_STRICT      256
+
 /* Math Types */
 ALWAN_TYPE_DEF struct {
     alwan_scalar v[2];
 } alwan_vec2;
+
+/* Resolved table cell -- see the .inc twin for the invariant it carries. */
+ALWAN_TYPE_DEF struct {
+    int i0;
+    int i1;
+    alwan_scalar frac;
+} alwan_table_cell;
 
 ALWAN_TYPE_DEF struct {
     alwan_scalar v[3];
@@ -182,5 +230,10 @@ ALWAN_TYPE_DEF struct {
 } alwan_content_light_level;
 
 #endif /* ALWAN_BACKEND */
+
+/* Split the STRICT flag from the base mode. Outside the backend branch: both
+ * branches define the same values, so these macros are backend-independent. */
+#define ALWAN_SAMPLE_BASE(m) ((int)(m) & 0xFF)
+#define ALWAN_SAMPLE_IS_STRICT(m) (((int)(m) & ALWAN_SAMPLE_STRICT) != 0)
 
 #endif /* ALWAN_TYPES_H */

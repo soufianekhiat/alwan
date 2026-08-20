@@ -31,21 +31,12 @@ static void ALWAN_CORE_FN(aces_rec709_transform)(ALWAN_CORE_T const *rgb_in, ALW
 /* ----------------------------------------------------------------
  * AgX View Transform (inset -> log encode -> contrast LUT -> linearize)
  * ---------------------------------------------------------------- */
+/* Linear interpolation in the 4096-entry contrast LUT. The hand-written NaN
+ * guard that used to live here is now the shared addressing gate; the delta
+ * blend `a + f*(b-a)` is preserved because the AgX determinism MD5s pin it. */
 static ALWAN_CORE_T ALWAN_CORE_FN(agx_lut_eval)(ALWAN_CORE_T t, ALWAN_CORE_T const *lut) {
-    /* Linear interpolation in the 4096-entry contrast LUT. */
-    t = ALWAN_CORE_SATURATE(t);
-    ALWAN_CORE_T fi = t * (ALWAN_CORE_T)(AGX_LUT_SIZE - 1);
-    /* SATURATE cannot remove a NaN (both compares fail), and (int)NaN is
-     * undefined behaviour -- INT_MIN on x86 -- which indexes the LUT far out of
-     * bounds and segfaults. A NaN coordinate is mapped to 0 here: the >= test
-     * is false for NaN, so this also re-clamps any stray out-of-range value. */
-    fi = (fi >= ALWAN_CORE_ZERO) ? fi : ALWAN_CORE_ZERO;
-    int i0 = (int)fi;
-    if (i0 > AGX_LUT_SIZE - 1) i0 = AGX_LUT_SIZE - 1;
-    int i1 = i0 + 1;
-    if (i1 >= AGX_LUT_SIZE) i1 = AGX_LUT_SIZE - 1;
-    ALWAN_CORE_T frac = fi - (ALWAN_CORE_T)i0;
-    return lut[i0] + frac * (lut[i1] - lut[i0]);
+    return ALWAN_CORE_FNVLIT(alwan_table1d_sample_linear_delta)(
+        lut, ALWAN_TABLE_AGX_CONTRAST_SIZE, t);
 }
 
 /* Parameterized AgX picture formation: clamp -> inset matrix -> log2 encode
@@ -76,7 +67,7 @@ static void ALWAN_CORE_FN(agx_base_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_
     ALWAN_CORE_FN(agx_transform_impl)(rgb_in, rgb_out,
         ALWAN_CORE_FNLIT(agx_inset_matrix),
         ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(4.026069),
-        ALWAN_CORE_FNLIT(agx_default_contrast_lut));
+        ALWAN_CORE_FNLIT(alwan_table_agx_default_contrast));
 }
 
 /* SB2383: Sobotka's newer AgX experiment -- own inset + contrast LUT. Its
@@ -87,7 +78,7 @@ static void ALWAN_CORE_FN(agx_sb2383_transform)(ALWAN_CORE_T const *rgb_in, ALWA
     ALWAN_CORE_FN(agx_transform_impl)(rgb_in, rgb_out,
         ALWAN_CORE_FNLIT(agx_sb2383_inset_matrix),
         ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(4.026069),
-        ALWAN_CORE_FNLIT(agx_sb2383_contrast_lut));
+        ALWAN_CORE_FNLIT(alwan_table_agx_sb2383_contrast));
 }
 
 /* AgX LUT output is sRGB-encoded; sRGB EOTF linearizes it. */
@@ -112,48 +103,16 @@ static void ALWAN_CORE_FN(agx_sb2383_view)(ALWAN_CORE_T const *rgb_in, ALWAN_COR
  * LUT in the working precision, matching OCIO's tetrahedral sampling (and
  * keeping the neutral axis symmetric). */
 static void ALWAN_CORE_FN(agx_blender_lut3d_sample)(ALWAN_CORE_T r, ALWAN_CORE_T g, ALWAN_CORE_T b, ALWAN_CORE_T *out) {
-    int const n = AGX_BLENDER_LUT_SIZE;
-    ALWAN_CORE_T const mi = (ALWAN_CORE_T)(n - 1);
-    r = ALWAN_CORE_SATURATE(r) * mi;
-    g = ALWAN_CORE_SATURATE(g) * mi;
-    b = ALWAN_CORE_SATURATE(b) * mi;
-    /* Same NaN guard as agx_lut_eval: SATURATE leaves a NaN intact and
-     * (int)NaN is UB (INT_MIN), which reads far outside the 57^3 cube. A NaN
-     * channel resolves to index 0 rather than crashing. */
-    r = (r >= ALWAN_CORE_ZERO) ? r : ALWAN_CORE_ZERO;
-    g = (g >= ALWAN_CORE_ZERO) ? g : ALWAN_CORE_ZERO;
-    b = (b >= ALWAN_CORE_ZERO) ? b : ALWAN_CORE_ZERO;
-    int r0 = (int)r, g0 = (int)g, b0 = (int)b;
-    if (r0 > n - 1) r0 = n - 1;
-    if (g0 > n - 1) g0 = n - 1;
-    if (b0 > n - 1) b0 = n - 1;
-    int r1 = r0 + 1 < n ? r0 + 1 : n - 1;
-    int g1 = g0 + 1 < n ? g0 + 1 : n - 1;
-    int b1 = b0 + 1 < n ? b0 + 1 : n - 1;
-    ALWAN_CORE_T fr = r - (ALWAN_CORE_T)r0, fg = g - (ALWAN_CORE_T)g0, fb = b - (ALWAN_CORE_T)b0;
-    #define ALWAN_BL_AT(rr,gg,bb) (ALWAN_CORE_FNLIT(agx_blender_lut3d) + ((size_t)(bb)*(size_t)n*(size_t)n + (size_t)(gg)*(size_t)n + (size_t)(rr))*3)
-    ALWAN_CORE_T const *c000 = ALWAN_BL_AT(r0,g0,b0), *c111 = ALWAN_BL_AT(r1,g1,b1);
-    /* Pick the tetrahedron by the ordering of (fr,fg,fb): two intermediate
-     * corners cP,cQ and sorted weights w1>=w2>=w3. */
-    ALWAN_CORE_T const *cP, *cQ;
-    ALWAN_CORE_T w1, w2, w3;
-    if (fr >= fg) {
-        if (fg >= fb)      { cP = ALWAN_BL_AT(r1,g0,b0); cQ = ALWAN_BL_AT(r1,g1,b0); w1 = fr; w2 = fg; w3 = fb; }
-        else if (fr >= fb) { cP = ALWAN_BL_AT(r1,g0,b0); cQ = ALWAN_BL_AT(r1,g0,b1); w1 = fr; w2 = fb; w3 = fg; }
-        else               { cP = ALWAN_BL_AT(r0,g0,b1); cQ = ALWAN_BL_AT(r1,g0,b1); w1 = fb; w2 = fr; w3 = fg; }
-    } else {
-        if (fb >= fg)      { cP = ALWAN_BL_AT(r0,g0,b1); cQ = ALWAN_BL_AT(r0,g1,b1); w1 = fb; w2 = fg; w3 = fr; }
-        else if (fb >= fr) { cP = ALWAN_BL_AT(r0,g1,b0); cQ = ALWAN_BL_AT(r0,g1,b1); w1 = fg; w2 = fb; w3 = fr; }
-        else               { cP = ALWAN_BL_AT(r0,g1,b0); cQ = ALWAN_BL_AT(r1,g1,b0); w1 = fg; w2 = fr; w3 = fb; }
-    }
-    #undef ALWAN_BL_AT
-    for (int ch = 0; ch < 3; ch++) {
-        ALWAN_CORE_T v0 = c000[ch];
-        out[ch] = v0
-                + w1 * (cP[ch]  - v0)
-                + w2 * (cQ[ch]  - cP[ch])
-                + w3 * (c111[ch] - cQ[ch]);
-    }
+    /* Addressing, including the NaN guard that used to be written out inline
+     * here, is the shared gate. The tetrahedron selection and the corner blend
+     * moved verbatim into alwan_table3d_sample_tetrahedral, so the cube output
+     * is unchanged bit for bit. */
+    ALWAN_CORE_VEC3 coord;
+    coord.v[0] = r; coord.v[1] = g; coord.v[2] = b;
+    ALWAN_CORE_VEC3 const s = ALWAN_CORE_FNVLIT(alwan_table3d_sample_tetrahedral)(
+        ALWAN_CORE_FNLIT(alwan_table_agx_blender_cube),
+        ALWAN_TABLE_AGX_BLENDER_CUBE_RES, coord);
+    out[0] = s.v[0]; out[1] = s.v[1]; out[2] = s.v[2];
 }
 
 static void ALWAN_CORE_FN(agx_blender_view)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {

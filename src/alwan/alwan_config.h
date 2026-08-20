@@ -48,4 +48,21 @@ void *alwan_default_realloc(void *ptr, size_t old_size, size_t new_size, size_t 
 # define ALWAN_REALLOC(p, old_sz, new_sz, align) alwan_default_realloc((p), (old_sz), (new_sz), (align))
 #endif
 
+/* Table addressing bounds check.
+ *
+ * Every embedded table is read through the addressing gate in
+ * core/alwan_table_core, which clamps the coordinate into [0, size-1] and
+ * resolves NaN to the low edge. That guard is what stops a non-finite
+ * coordinate from becoming (int)NaN == INT_MIN and indexing far outside the
+ * array. It costs two compares per coordinate.
+ *
+ * Define this to 1 to compile the clamp out. Only do that when every
+ * coordinate reaching a reader is already known finite and in range: without
+ * it a NaN coordinate is an out-of-bounds read, not a wrong colour. The
+ * library never defines it for its own builds.
+ */
+#ifndef ALWAN_READ_DATA_NO_BOUND_CHECK
+# define ALWAN_READ_DATA_NO_BOUND_CHECK 0
+#endif
+
 #endif /* ALWAN_CONFIG_H */

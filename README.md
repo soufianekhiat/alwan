@@ -812,6 +812,15 @@ contributions and design discussions are welcome.
   scalar per-pixel workers). Hand-tuned AVX2/NEON paths for the hot
   pipelines are open ground; see [current_perf.md](current_perf.md) for
   where the time goes
+- **Iteration cores belong in the cross-backend layer**: when an operation
+  iterates (Newton solvers, gamut boundary search, chromatic adaptation
+  fixed points), put the body of the loop in the backend-neutral core and
+  leave only the loop itself to the caller. The step then compiles for
+  HLSL, GLSL, C and Halide from one source, and each backend drives it with
+  the control flow it can express: a bounded `for` on GPU, `while` with an
+  early exit on CPU. A solver written as one monolithic loop inside a `.c`
+  is effectively CPU-only, and porting it later means transcribing the maths
+  a second time and keeping two copies in agreement
 
 ---
 

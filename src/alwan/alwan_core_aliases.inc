@@ -63,6 +63,7 @@
 #define ALWAN_CORE_VEC3                alwan_vec3
 #define ALWAN_CORE_MAT3X3              alwan_mat3x3
 #define ALWAN_CORE_MAT4X4              alwan_mat4x4
+#define ALWAN_CORE_TABLE_CELL          alwan_table_cell
 #define ALWAN_CORE_RGB                 alwan_rgb
 #define ALWAN_CORE_CMYK                alwan_cmyk
 #define ALWAN_CORE_CMY                 alwan_cmy
