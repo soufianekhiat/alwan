@@ -14,7 +14,7 @@
  * fast and deterministic builds.
  */
 
-int ALWAN_MAP_LITCAT(alwan_agx, _map_interleave)(
+alwan_status ALWAN_MAP_LITCAT(alwan_agx, _map_interleave)(
         alwan_map_lane *out, size_t out_stride,
         alwan_map_lane const *in, size_t in_stride,
         size_t count, ALWAN_MAP_LIT(alwan_agx_params) const *params) {

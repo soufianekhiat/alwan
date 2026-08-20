@@ -413,11 +413,14 @@ binary. Zero runtime I/O, instant startup. Runtime data loading
 
 Bulk conversions are SIMD-vectorised and run in the hundreds of
 megapixels per second. On a representative AVX2 host (`_f32`, interleaved,
-8-wide), a `mat3` transform reaches **~516 Mpix/s** and common pipelines
-such as sRGB↔XYZ and the Lab/Oklab family land in the **100–800 Mpix/s**
-band; the `_f64` (4-wide) paths run at roughly half that.
+8-wide), the CVD simulation and gamut-map pipelines reach **600-850
+Mpix/s** and common pipelines such as sRGB↔XYZ and the Lab/Oklab family
+land in the **50-600 Mpix/s** band; the `_f64` (4-wide) paths run at
+roughly half that. The picture-formation transforms (AgX, JP2499, ACES
+output, full CAM models) use scalar per-pixel workers by design and run
+at 1-5 Mpix/s.
 
-The full set (103 benchmarks across `_f32`/`_f64`, interleaved vs
+The full set (117 benchmarks across `_f32`/`_f64`, interleaved vs
 planar, and per-pixel vs typed U8/U16/F16 dispatch) is in
 [current_perf.md](current_perf.md). Regenerate it from the `alwan_bench`
 target in the sibling [alwan_dev](https://github.com/soufianekhiat/alwan_dev)
@@ -804,6 +807,11 @@ contributions and design discussions are welcome.
   makes sense
 - **Picture-formation graduation**: promote the research operators from
   `experimental/` into the deterministic, gendata-backed main surface
+- **Real SIMD work**: current vectorization is minimal (generic lane
+  loops, and the view-transform / CAM / picture-formation kernels are
+  scalar per-pixel workers). Hand-tuned AVX2/NEON paths for the hot
+  pipelines are open ground; see [current_perf.md](current_perf.md) for
+  where the time goes
 
 ---
 

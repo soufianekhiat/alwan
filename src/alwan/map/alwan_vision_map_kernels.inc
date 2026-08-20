@@ -89,7 +89,7 @@ static int ALWAN_MAP_LIT(alwan__cvd_brettel_map_interleave)(
  * CVD Dispatch Interleave
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_simulate_cvd, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_cvd, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_map_lane severity)
 {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
@@ -123,19 +123,19 @@ int ALWAN_MAP_LITCAT(alwan_simulate_cvd, _map_interleave)(alwan_map_lane *rgb_ou
  * Individual CVD Type Map Functions (interleave)
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_simulate_protanopia, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_protanopia, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_map_lane severity)
 {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
     return ALWAN_MAP_LIT(alwan__cvd_brettel_map_interleave)(rgb_out, rgb_in, &ALWAN_MAP_LIT(CVD_PROTANOPIA), severity, count, in_stride, out_stride);
 }
 
-int ALWAN_MAP_LITCAT(alwan_simulate_deuteranopia, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_deuteranopia, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_map_lane severity)
 {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
     return ALWAN_MAP_LIT(alwan__cvd_brettel_map_interleave)(rgb_out, rgb_in, &ALWAN_MAP_LIT(CVD_DEUTERANOPIA), severity, count, in_stride, out_stride);
 }
 
-int ALWAN_MAP_LITCAT(alwan_simulate_tritanopia, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_tritanopia, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_map_lane severity)
 {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
     return ALWAN_MAP_LIT(alwan__cvd_brettel_map_interleave)(rgb_out, rgb_in, &ALWAN_MAP_LIT(CVD_TRITANOPIA), severity, count, in_stride, out_stride);
@@ -197,7 +197,7 @@ static int ALWAN_MAP_LIT(alwan__cvd_brettel_map_planar)(
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_simulate_cvd, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_cvd_type cvd_type, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_cvd, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_cvd_type cvd_type, alwan_map_lane severity)
 {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
     ALWAN_MAP_LIT(alwan_mat3x3) const *cvd_matrix;
@@ -216,19 +216,19 @@ int ALWAN_MAP_LITCAT(alwan_simulate_cvd, _map_planar)(alwan_map_lane *out0, size
     return ALWAN_MAP_LIT(alwan__cvd_brettel_map_planar)(out0, out1, out2, in0, in1, in2, cvd_matrix, severity, count, in_stride, out_stride);
 }
 
-int ALWAN_MAP_LITCAT(alwan_simulate_protanopia, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_protanopia, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_map_lane severity)
 {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
     return ALWAN_MAP_LIT(alwan__cvd_brettel_map_planar)(out0, out1, out2, in0, in1, in2, &ALWAN_MAP_LIT(CVD_PROTANOPIA), severity, count, in_stride, out_stride);
 }
 
-int ALWAN_MAP_LITCAT(alwan_simulate_deuteranopia, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_deuteranopia, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_map_lane severity)
 {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
     return ALWAN_MAP_LIT(alwan__cvd_brettel_map_planar)(out0, out1, out2, in0, in1, in2, &ALWAN_MAP_LIT(CVD_DEUTERANOPIA), severity, count, in_stride, out_stride);
 }
 
-int ALWAN_MAP_LITCAT(alwan_simulate_tritanopia, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_tritanopia, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count, alwan_map_lane severity)
 {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
     return ALWAN_MAP_LIT(alwan__cvd_brettel_map_planar)(out0, out1, out2, in0, in1, in2, &ALWAN_MAP_LIT(CVD_TRITANOPIA), severity, count, in_stride, out_stride);
@@ -238,7 +238,7 @@ int ALWAN_MAP_LITCAT(alwan_simulate_tritanopia, _map_planar)(alwan_map_lane *out
  * Machado 2009 CVD Batch Map (interleave)
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_interleave)(alwan_map_lane *rgb_out, size_t out_stride, alwan_map_lane const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_map_lane severity)
 {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
@@ -307,7 +307,7 @@ int ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_interleave)(alwan_map_lane
  * Machado 2009 CVD Planar Map
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_planar)(alwan_map_lane *out_r, size_t out_stride, alwan_map_lane *out_g, alwan_map_lane *out_b, alwan_map_lane const *in_r, size_t in_stride, alwan_map_lane const *in_g, alwan_map_lane const *in_b, size_t count, alwan_cvd_type cvd_type, alwan_map_lane severity)
+alwan_status ALWAN_MAP_LITCAT(alwan_simulate_cvd_machado, _map_planar)(alwan_map_lane *out_r, size_t out_stride, alwan_map_lane *out_g, alwan_map_lane *out_b, alwan_map_lane const *in_r, size_t in_stride, alwan_map_lane const *in_g, alwan_map_lane const *in_b, size_t count, alwan_cvd_type cvd_type, alwan_map_lane severity)
 {
     if (!in_r || !in_g || !in_b || !out_r || !out_g || !out_b || count == 0) return ALWAN_E_INVALID;
 

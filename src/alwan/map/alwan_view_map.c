@@ -20,14 +20,14 @@
 
 /* ---- Symmetric map_interleave names (forward to the apply bulk loop) ---- */
 #if ALWAN_WITH_F32
-int alwan_view_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride,
+alwan_status alwan_view_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride,
         alwan_f32 const *in, size_t in_stride, size_t count,
         alwan_view_transform vt, alwan_ctx *ctx) {
     return alwan_view_transform_apply_f32(out, out_stride, in, in_stride, count, vt, ctx);
 }
 #endif
 #if ALWAN_WITH_F64
-int alwan_view_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride,
+alwan_status alwan_view_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride,
         alwan_f64 const *in, size_t in_stride, size_t count,
         alwan_view_transform vt, alwan_ctx *ctx) {
     return alwan_view_transform_apply_f64(out, out_stride, in, in_stride, count, vt, ctx);
@@ -35,7 +35,7 @@ int alwan_view_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride,
 #endif
 
 /* ---- Typed (u8/u16/f16/f32/f64) delegate for the image pipeline ---- */
-int alwan_view_transform_map_interleave_ex(void *out, size_t out_stride,
+alwan_status alwan_view_transform_map_interleave_ex(void *out, size_t out_stride,
         void const *in, size_t in_stride, size_t count,
         alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
         alwan_view_transform vt, alwan_ctx *ctx) {

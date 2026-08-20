@@ -68,7 +68,7 @@ static void alwan_restore_lc_numeric(char *saved) {
  *   R G B (one triplet per line, R varies fastest)
  * ---------------------------------------------------------------- */
 
-int alwan_cube_export_3d_f64(char const *path,
+alwan_status alwan_cube_export_3d_f64(char const *path,
                           alwan_f64 const *lut,
                           int size,
                           char const *title) {
@@ -103,7 +103,7 @@ int alwan_cube_export_3d_f64(char const *path,
     return ALWAN_OK;
 }
 
-int alwan_cube_export_1d_f64(char const *path,
+alwan_status alwan_cube_export_1d_f64(char const *path,
                           alwan_f64 const *lut,
                           int size,
                           char const *title) {
@@ -138,7 +138,7 @@ int alwan_cube_export_1d_f64(char const *path,
  * .cube file export to memory buffer
  * ---------------------------------------------------------------- */
 
-int alwan_cube_export_3d_buffer_f64(char *buf, size_t buf_size, size_t *bytes_written,
+alwan_status alwan_cube_export_3d_buffer_f64(char *buf, size_t buf_size, size_t *bytes_written,
                                  alwan_f64 const *lut,
                                  int size,
                                  char const *title) {
@@ -192,7 +192,7 @@ done:
  * temporary f64 buffer (previously up to 256^3*3*8 bytes ~= 400 MB).
  * ---------------------------------------------------------------- */
 
-int alwan_cube_export_3d_f32(char const *path, alwan_f32 const *lut, int size, char const *title) {
+alwan_status alwan_cube_export_3d_f32(char const *path, alwan_f32 const *lut, int size, char const *title) {
     if (!path || !lut || size < 2 || size > 256) return ALWAN_E_INVALID;
 
     FILE *f = fopen(path, "wb");
@@ -221,7 +221,7 @@ int alwan_cube_export_3d_f32(char const *path, alwan_f32 const *lut, int size, c
     return ALWAN_OK;
 }
 
-int alwan_cube_export_1d_f32(char const *path, alwan_f32 const *lut, int size, char const *title) {
+alwan_status alwan_cube_export_1d_f32(char const *path, alwan_f32 const *lut, int size, char const *title) {
     if (!path || !lut || size < 2 || size > 65536) return ALWAN_E_INVALID;
 
     FILE *f = fopen(path, "wb");
@@ -247,7 +247,7 @@ int alwan_cube_export_1d_f32(char const *path, alwan_f32 const *lut, int size, c
     return ALWAN_OK;
 }
 
-int alwan_cube_export_3d_buffer_f32(char *buf, size_t buf_size, size_t *bytes_written,
+alwan_status alwan_cube_export_3d_buffer_f32(char *buf, size_t buf_size, size_t *bytes_written,
                                  alwan_f32 const *lut, int size, char const *title) {
     if (!buf || !lut || !bytes_written || size < 2 || size > 256 || buf_size == 0) return ALWAN_E_INVALID;
 

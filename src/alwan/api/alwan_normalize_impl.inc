@@ -1,6 +1,6 @@
 /* No include guard -- included twice (f32 and f64 passes) */
 
-int ALWAN_CORE_FNLIT(alwan_uint_to_float)(ALWAN_CORE_T *out, alwan_uint16 const *in,
+alwan_status ALWAN_CORE_FNLIT(alwan_uint_to_float)(ALWAN_CORE_T *out, alwan_uint16 const *in,
                                            int bit_depth, size_t count) {
     if (!out || !in || count == 0) {
         return ALWAN_E_INVALID;
@@ -19,7 +19,7 @@ int ALWAN_CORE_FNLIT(alwan_uint_to_float)(ALWAN_CORE_T *out, alwan_uint16 const 
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_float_to_uint)(alwan_uint16 *out, ALWAN_CORE_T const *in,
+alwan_status ALWAN_CORE_FNLIT(alwan_float_to_uint)(alwan_uint16 *out, ALWAN_CORE_T const *in,
                                            int bit_depth, size_t count) {
     if (!out || !in || count == 0) {
         return ALWAN_E_INVALID;

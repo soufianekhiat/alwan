@@ -4,7 +4,7 @@
  * Accessibility Contrast Metrics
  * ================================================================ */
 
-int ALWAN_CORE_FNLIT(alwan_apca_contrast)(ALWAN_CORE_T *Lc_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_apca_contrast)(ALWAN_CORE_T *Lc_out,
                                           ALWAN_CORE_RGB const *srgb_text,
                                           ALWAN_CORE_RGB const *srgb_bg) {
     if (!Lc_out || !srgb_text || !srgb_bg) return ALWAN_E_INVALID;
@@ -16,7 +16,7 @@ int ALWAN_CORE_FNLIT(alwan_apca_contrast)(ALWAN_CORE_T *Lc_out,
  * Color Vision Deficiency (CVD) Simulation
  * ================================================================ */
 
-int ALWAN_CORE_FNLIT(alwan_simulate_cvd)(ALWAN_CORE_RGB *rgb_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_simulate_cvd)(ALWAN_CORE_RGB *rgb_out,
                         ALWAN_CORE_RGB const *rgb_in,
                         alwan_cvd_type cvd_type,
                         ALWAN_CORE_T severity) {
@@ -54,7 +54,7 @@ int ALWAN_CORE_FNLIT(alwan_simulate_cvd)(ALWAN_CORE_RGB *rgb_out,
  * Machado 2009 CVD Simulation
  * ================================================================ */
 
-int ALWAN_CORE_FNLIT(alwan_simulate_cvd_machado)(ALWAN_CORE_RGB *rgb_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_simulate_cvd_machado)(ALWAN_CORE_RGB *rgb_out,
                                 ALWAN_CORE_RGB const *rgb_in,
                                 alwan_cvd_type cvd_type,
                                 ALWAN_CORE_T severity) {
@@ -83,7 +83,7 @@ int ALWAN_CORE_FNLIT(alwan_simulate_cvd_machado)(ALWAN_CORE_RGB *rgb_out,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_simulate_cvd_ex)(ALWAN_CORE_RGB *rgb_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_simulate_cvd_ex)(ALWAN_CORE_RGB *rgb_out,
                            ALWAN_CORE_RGB const *rgb_in,
                            alwan_cvd_type cvd_type,
                            ALWAN_CORE_T severity,
@@ -255,19 +255,19 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_csf_barten1999)(ALWAN_CORE_T u,
  * Accessibility Contrast Metrics
  * ================================================================ */
 
-int ALWAN_CORE_FNLIT(alwan_wcag_contrast_ratio)(ALWAN_CORE_T *result, ALWAN_CORE_T Y1, ALWAN_CORE_T Y2) {
+alwan_status ALWAN_CORE_FNLIT(alwan_wcag_contrast_ratio)(ALWAN_CORE_T *result, ALWAN_CORE_T Y1, ALWAN_CORE_T Y2) {
     if (!result) return ALWAN_E_INVALID;
     *result = ALWAN_CORE_FNVLIT(alwan_wcag_contrast_ratio)(Y1, Y2);
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_weber_contrast)(ALWAN_CORE_T *result, ALWAN_CORE_T L_target, ALWAN_CORE_T L_bg) {
+alwan_status ALWAN_CORE_FNLIT(alwan_weber_contrast)(ALWAN_CORE_T *result, ALWAN_CORE_T L_target, ALWAN_CORE_T L_bg) {
     if (!result) return ALWAN_E_INVALID;
     *result = ALWAN_CORE_FNVLIT(alwan_weber_contrast)(L_target, L_bg);
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_michelson_contrast)(ALWAN_CORE_T *result, ALWAN_CORE_T L_max, ALWAN_CORE_T L_min) {
+alwan_status ALWAN_CORE_FNLIT(alwan_michelson_contrast)(ALWAN_CORE_T *result, ALWAN_CORE_T L_max, ALWAN_CORE_T L_min) {
     if (!result) return ALWAN_E_INVALID;
     *result = ALWAN_CORE_FNVLIT(alwan_michelson_contrast)(L_max, L_min);
     return ALWAN_OK;

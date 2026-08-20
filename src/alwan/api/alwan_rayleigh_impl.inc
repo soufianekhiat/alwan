@@ -47,7 +47,7 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_rayleigh_optical_depth)(ALWAN_CORE_T wavelen
 }
 
 /* Rayleigh scattering spectral distribution */
-int ALWAN_CORE_FNLIT(alwan_rayleigh_spd)(ALWAN_CORE_T wavelength_start, ALWAN_CORE_T wavelength_end,
+alwan_status ALWAN_CORE_FNLIT(alwan_rayleigh_spd)(ALWAN_CORE_T wavelength_start, ALWAN_CORE_T wavelength_end,
                         ALWAN_CORE_T wavelength_step,
                         ALWAN_CORE_ATMOSPHERE_PARAMS const *params,
                         ALWAN_CORE_T *out, int *out_count)

@@ -35,7 +35,7 @@
  * Collect / Scatter utilities
  * ---------------------------------------------------------------- */
 
-int alwan_collect3_f64(alwan_f64 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt) {
+alwan_status alwan_collect3_f64(alwan_f64 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_f64 s[3];
@@ -46,7 +46,7 @@ int alwan_collect3_f64(alwan_f64 *out, size_t out_stride, void const *in, size_t
     return ALWAN_OK;
 }
 
-int alwan_collect3_f32(alwan_f32 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt) {
+alwan_status alwan_collect3_f32(alwan_f32 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_f64 s[3];
@@ -57,7 +57,7 @@ int alwan_collect3_f32(alwan_f32 *out, size_t out_stride, void const *in, size_t
     return ALWAN_OK;
 }
 
-int alwan_scatter3_f64(void *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt) {
+alwan_status alwan_scatter3_f64(void *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_f64 const *ip = (alwan_f64 const *)((char const *)in + i * in_stride);
@@ -66,7 +66,7 @@ int alwan_scatter3_f64(void *out, size_t out_stride, alwan_f64 const *in, size_t
     return ALWAN_OK;
 }
 
-int alwan_scatter3_f32(void *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt) {
+alwan_status alwan_scatter3_f32(void *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_f32 const *ip = (alwan_f32 const *)((char const *)in + i * in_stride);
@@ -231,7 +231,7 @@ ALWAN_EX_DELEGATE_DUAL_INT(alwan_din99_to_lab_map_interleave_ex, alwan_din99_to_
  * Color correction _ex (tiled delegation to native functions)
  * ---------------------------------------------------------------- */
 
-int alwan_lgg_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain) {
+alwan_status alwan_lgg_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain) {
     if (!in || !out || !lift || !gamma || !gain || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_rgb_f64 lift64 = {(double)lift->r, (double)lift->g, (double)lift->b};
@@ -267,7 +267,7 @@ int alwan_lgg_apply_map_interleave_ex(void *out, size_t out_stride, void const *
     return ALWAN_OK;
 }
 
-int alwan_color_matrix_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_mat3x3_f64 const *matrix) {
+alwan_status alwan_color_matrix_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_mat3x3_f64 const *matrix) {
     if (!in || !out || !matrix || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_mat3x3_f64 m64; for (int i = 0; i < 9; i++) m64.m[i] = (double)matrix->m[i];
@@ -299,7 +299,7 @@ int alwan_color_matrix_apply_map_interleave_ex(void *out, size_t out_stride, voi
     return ALWAN_OK;
 }
 
-int alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 red_lights, alwan_f64 green_lights, alwan_f64 blue_lights) {
+alwan_status alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 red_lights, alwan_f64 green_lights, alwan_f64 blue_lights) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -329,7 +329,7 @@ int alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_stride, v
     return ALWAN_OK;
 }
 
-int alwan_white_balance_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *multipliers) {
+alwan_status alwan_white_balance_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *multipliers) {
     if (!in || !out || !multipliers || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_rgb_f64 mul64 = {(double)multipliers->r, (double)multipliers->g, (double)multipliers->b};
@@ -369,7 +369,7 @@ ALWAN_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_protanopia_map_interleave_ex,   alw
 ALWAN_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_deuteranopia_map_interleave_ex, alwan_simulate_deuteranopia_f32_map_interleave, alwan_simulate_deuteranopia_f64_map_interleave)
 ALWAN_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_tritanopia_map_interleave_ex,   alwan_simulate_tritanopia_f32_map_interleave,   alwan_simulate_tritanopia_f64_map_interleave)
 
-int alwan_simulate_cvd_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
+alwan_status alwan_simulate_cvd_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -403,7 +403,7 @@ int alwan_simulate_cvd_map_interleave_ex(void *out, size_t out_stride, void cons
  * CVD Machado _ex
  * ---------------------------------------------------------------- */
 
-int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
+alwan_status alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -437,7 +437,7 @@ int alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, size_t out_strid
  * CMY <-> CMYK _ex (3<->4 channel, tiled delegation)
  * ---------------------------------------------------------------- */
 
-int alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, size_t out_stride, void const *cmy_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
+alwan_status alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, size_t out_stride, void const *cmy_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
     if (!cmy_in || !cmyk_out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -467,7 +467,7 @@ int alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, size_t out_stride, void 
     return ALWAN_OK;
 }
 
-int alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, size_t out_stride, void const *cmyk_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
+alwan_status alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, size_t out_stride, void const *cmyk_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
     if (!cmyk_in || !cmy_out || count == 0) return ALWAN_E_INVALID;
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
@@ -503,7 +503,7 @@ int alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, size_t out_stride, void c
  * and per-pixel error returns, so they remain per-pixel.
  * ---------------------------------------------------------------- */
 
-int alwan_ciecam02_forward_map_interleave_ex(alwan_ciecam02_correlates_f64 *correlates_out, void const *xyz_in, size_t in_stride, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format in_fmt) {
+alwan_status alwan_ciecam02_forward_map_interleave_ex(alwan_ciecam02_correlates_f64 *correlates_out, void const *xyz_in, size_t in_stride, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format in_fmt) {
     if (!xyz_in || !correlates_out || !vc || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_f64 s[3];
@@ -515,7 +515,7 @@ int alwan_ciecam02_forward_map_interleave_ex(alwan_ciecam02_correlates_f64 *corr
     return ALWAN_OK;
 }
 
-int alwan_ciecam02_inverse_map_interleave_ex(void *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f64 const *correlates_in, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format out_fmt) {
+alwan_status alwan_ciecam02_inverse_map_interleave_ex(void *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f64 const *correlates_in, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format out_fmt) {
     if (!correlates_in || !xyz_out || !vc || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_xyz_f64 xyz;
@@ -527,7 +527,7 @@ int alwan_ciecam02_inverse_map_interleave_ex(void *xyz_out, size_t out_stride, a
     return ALWAN_OK;
 }
 
-int alwan_cam16_forward_map_interleave_ex(alwan_cam16_correlates_f64 *correlates_out, void const *xyz_in, size_t in_stride, alwan_cam16_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format in_fmt) {
+alwan_status alwan_cam16_forward_map_interleave_ex(alwan_cam16_correlates_f64 *correlates_out, void const *xyz_in, size_t in_stride, alwan_cam16_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format in_fmt) {
     if (!xyz_in || !correlates_out || !vc || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_f64 s[3];
@@ -539,7 +539,7 @@ int alwan_cam16_forward_map_interleave_ex(alwan_cam16_correlates_f64 *correlates
     return ALWAN_OK;
 }
 
-int alwan_cam16_inverse_map_interleave_ex(void *xyz_out, size_t out_stride, alwan_cam16_correlates_f64 const *correlates_in, alwan_cam16_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format out_fmt) {
+alwan_status alwan_cam16_inverse_map_interleave_ex(void *xyz_out, size_t out_stride, alwan_cam16_correlates_f64 const *correlates_in, alwan_cam16_viewing_conditions_f64 const *vc, size_t count, alwan_pixel_format out_fmt) {
     if (!correlates_in || !xyz_out || !vc || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_xyz_f64 xyz;
@@ -556,7 +556,7 @@ int alwan_cam16_inverse_map_interleave_ex(void *xyz_out, size_t out_stride, alwa
  * Two typed inputs -> scalar output; remain per-pixel.
  * ---------------------------------------------------------------- */
 
-int alwan_delta_e_76_batch_ex(alwan_f64 *delta_e_out,
+alwan_status alwan_delta_e_76_batch_ex(alwan_f64 *delta_e_out,
                                void const *lab1_in, size_t in1_stride,
                                void const *lab2_in, size_t in2_stride,
                                size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt) {
@@ -572,7 +572,7 @@ int alwan_delta_e_76_batch_ex(alwan_f64 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_2000_batch_ex(alwan_f64 *delta_e_out,
+alwan_status alwan_delta_e_2000_batch_ex(alwan_f64 *delta_e_out,
                                  void const *lab1_in, size_t in1_stride,
                                  void const *lab2_in, size_t in2_stride,
                                  size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt) {
@@ -588,7 +588,7 @@ int alwan_delta_e_2000_batch_ex(alwan_f64 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_94_batch_ex(alwan_f64 *delta_e_out,
+alwan_status alwan_delta_e_94_batch_ex(alwan_f64 *delta_e_out,
                                void const *lab1_in, size_t in1_stride,
                                void const *lab2_in, size_t in2_stride,
                                size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt) {
@@ -604,7 +604,7 @@ int alwan_delta_e_94_batch_ex(alwan_f64 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
+alwan_status alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
                                 void const *lab1_in, size_t in1_stride,
                                 void const *lab2_in, size_t in2_stride,
                                 size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt,

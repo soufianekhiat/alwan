@@ -92,7 +92,7 @@ void alwan_agx_build_geometry_f64(alwan_agx_params_f64 *params) {
 #endif
 
 #if ALWAN_WITH_F64
-int alwan_agx_apply_f64(alwan_f64 *out, size_t out_stride,
+alwan_status alwan_agx_apply_f64(alwan_f64 *out, size_t out_stride,
                         alwan_f64 const *in, size_t in_stride, size_t count,
                         alwan_agx_params_f64 const *params) {
     if (!out || !in || !params) return ALWAN_E_INVALID;
@@ -120,7 +120,7 @@ int alwan_agx_apply_f64(alwan_f64 *out, size_t out_stride,
 #endif
 
 #if ALWAN_WITH_F32
-int alwan_agx_apply_f32(alwan_f32 *out, size_t out_stride,
+alwan_status alwan_agx_apply_f32(alwan_f32 *out, size_t out_stride,
                         alwan_f32 const *in, size_t in_stride, size_t count,
                         alwan_agx_params_f32 const *params) {
     if (!out || !in || !params) return ALWAN_E_INVALID;

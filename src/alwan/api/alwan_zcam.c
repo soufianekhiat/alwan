@@ -79,7 +79,7 @@ static void get_zcam_surround_params(alwan_zcam_surround surround,
  * ZCAM Forward Transform: XYZ -> Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_zcam_forward_f64(alwan_zcam_correlates_f64 *out,
+alwan_status alwan_zcam_forward_f64(alwan_zcam_correlates_f64 *out,
                        alwan_xyz_f64 const *xyz,
                        alwan_zcam_viewing_conditions_f64 const *vc) {
     if (!xyz || !vc || !out) {
@@ -116,7 +116,7 @@ int alwan_zcam_forward_f64(alwan_zcam_correlates_f64 *out,
  * ZCAM Inverse Transform: Correlates -> XYZ
  * ---------------------------------------------------------------- */
 
-int alwan_zcam_inverse_f64(alwan_xyz_f64 *xyz,
+alwan_status alwan_zcam_inverse_f64(alwan_xyz_f64 *xyz,
                        alwan_zcam_correlates_f64 const *correlates,
                        alwan_zcam_viewing_conditions_f64 const *vc) {
     if (!correlates || !vc || !xyz) {
@@ -155,7 +155,7 @@ int alwan_zcam_inverse_f64(alwan_xyz_f64 *xyz,
  * ZCAM to UCS (Uniform Color Space) for color difference
  * ---------------------------------------------------------------- */
 
-int alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
+alwan_status alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
                       alwan_zcam_correlates_f64 const *correlates) {
     if (!correlates || !Jab_out) {
         return ALWAN_E_INVALID;
@@ -230,7 +230,7 @@ static void zcam_correlates_f32_to_f64(alwan_zcam_correlates_f64 *dst,
     dst->Wz = (alwan_f64)src->Wz;
 }
 
-int alwan_zcam_forward_f32(alwan_zcam_correlates_f32 *out,
+alwan_status alwan_zcam_forward_f32(alwan_zcam_correlates_f32 *out,
                            alwan_xyz_f32 const *xyz,
                            alwan_zcam_viewing_conditions_f32 const *vc) {
     if (!out || !xyz || !vc) {
@@ -246,7 +246,7 @@ int alwan_zcam_forward_f32(alwan_zcam_correlates_f32 *out,
     return ALWAN_OK;
 }
 
-int alwan_zcam_inverse_f32(alwan_xyz_f32 *xyz,
+alwan_status alwan_zcam_inverse_f32(alwan_xyz_f32 *xyz,
                            alwan_zcam_correlates_f32 const *correlates,
                            alwan_zcam_viewing_conditions_f32 const *vc) {
     if (!xyz || !correlates || !vc) {
@@ -265,7 +265,7 @@ int alwan_zcam_inverse_f32(alwan_xyz_f32 *xyz,
     return ALWAN_OK;
 }
 
-int alwan_zcam_to_ucs_f32(alwan_jzazbz_f32 *Jab_out,
+alwan_status alwan_zcam_to_ucs_f32(alwan_jzazbz_f32 *Jab_out,
                           alwan_zcam_correlates_f32 const *correlates) {
     if (!Jab_out || !correlates) {
         return ALWAN_E_INVALID;

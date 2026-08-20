@@ -16,7 +16,7 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_mat3_det)(ALWAN_CORE_MAT3X3 const *m) {
     return ALWAN_CORE_FNVLIT(alwan_mat3_det)(*m);
 }
 
-int ALWAN_CORE_FNLIT(alwan_mat3_inv)(ALWAN_CORE_MAT3X3 *out, ALWAN_CORE_MAT3X3 const *m) {
+alwan_status ALWAN_CORE_FNLIT(alwan_mat3_inv)(ALWAN_CORE_MAT3X3 *out, ALWAN_CORE_MAT3X3 const *m) {
     ALWAN_CORE_T det = ALWAN_CORE_FNVLIT(alwan_mat3_det)(*m);
     if (ALWAN_CORE_ABS(det) < ALWAN_CORE_EPSILON) {
         return ALWAN_E_RANGE;
@@ -48,7 +48,7 @@ static size_t ALWAN_CORE_FNLIT(alwan_math_find_interval)(ALWAN_CORE_T const *x_i
  * Advanced Interpolation Methods
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_interpolate)(ALWAN_CORE_T const *x_in, ALWAN_CORE_T const *y_in, size_t count_in,
+alwan_status ALWAN_CORE_FNLIT(alwan_interpolate)(ALWAN_CORE_T const *x_in, ALWAN_CORE_T const *y_in, size_t count_in,
                        ALWAN_CORE_T const *x_out, ALWAN_CORE_T *y_out, size_t count_out,
                        alwan_interp_method method) {
     if (!x_in || !y_in || !x_out || !y_out || count_in < 2 || count_out == 0) {
@@ -215,7 +215,7 @@ int ALWAN_CORE_FNLIT(alwan_interpolate)(ALWAN_CORE_T const *x_in, ALWAN_CORE_T c
  * Enhanced Extrapolation Methods
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_extrapolate)(ALWAN_CORE_T const *x_in, ALWAN_CORE_T const *y_in, size_t count_in,
+alwan_status ALWAN_CORE_FNLIT(alwan_extrapolate)(ALWAN_CORE_T const *x_in, ALWAN_CORE_T const *y_in, size_t count_in,
                        ALWAN_CORE_T const *x_out, ALWAN_CORE_T *y_out, size_t count_out,
                        alwan_extrap_method method) {
     if (!x_in || !y_in || !x_out || !y_out || count_in < 2 || count_out == 0) {
@@ -391,7 +391,7 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_table_interp_1d)(ALWAN_CORE_T const *table, 
  * CCT and Duv Optimization
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_cct_duv_optimize)(ALWAN_CORE_T *cct_out, ALWAN_CORE_T *duv_out, ALWAN_CORE_VEC2 const *xy) {
+alwan_status ALWAN_CORE_FNLIT(alwan_cct_duv_optimize)(ALWAN_CORE_T *cct_out, ALWAN_CORE_T *duv_out, ALWAN_CORE_VEC2 const *xy) {
     if (!xy || !cct_out || !duv_out) {
         return ALWAN_E_RANGE;
     }
@@ -445,7 +445,7 @@ int ALWAN_CORE_FNLIT(alwan_cct_duv_optimize)(ALWAN_CORE_T *cct_out, ALWAN_CORE_T
  * Tristimulus Optimization (Gaussian basis approximation)
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_optimize_spectrum_for_xyz)(ALWAN_CORE_SPD *spd_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_optimize_spectrum_for_xyz)(ALWAN_CORE_SPD *spd_out,
                                       ALWAN_CORE_XYZ const *target_xyz,
                                       alwan_observer_type observer,
                                       alwan_ctx *ctx) {

@@ -27,7 +27,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rlab_get_D_factor)(int D_setting) {
 }
 
 /* RLAB forward: XYZ -> correlates. */
-int ALWAN_CORE_FNLIT(alwan_rlab_forward)(
+alwan_status ALWAN_CORE_FNLIT(alwan_rlab_forward)(
         ALWAN_CORE_RLAB_CORRELATES *out,
         ALWAN_CORE_XYZ const *xyz,
         ALWAN_CORE_RLAB_VIEWING_CONDITIONS const *vc) {
@@ -54,7 +54,7 @@ int ALWAN_CORE_FNLIT(alwan_rlab_forward)(
 }
 
 /* RLAB inverse: correlates -> XYZ. */
-int ALWAN_CORE_FNLIT(alwan_rlab_inverse)(
+alwan_status ALWAN_CORE_FNLIT(alwan_rlab_inverse)(
         ALWAN_CORE_XYZ *xyz,
         ALWAN_CORE_RLAB_CORRELATES const *correlates,
         ALWAN_CORE_RLAB_VIEWING_CONDITIONS const *vc) {

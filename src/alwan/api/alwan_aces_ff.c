@@ -1116,7 +1116,7 @@ static alwan_f64 pq_oetf(alwan_f64 Y, alwan_f64 peak_nits) {
     return aces_pq_oetf_f64_v(Y, peak_nits);
 }
 
-int alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                                       alwan_rgb_f64 const *rgb_in,
                                       alwan_aces1_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
@@ -1503,7 +1503,7 @@ ALWAN_DIAG_POP
 
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
-int alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
                                           alwan_rgb_f64 const *rgb_in,
                                           alwan_aces1_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
@@ -1678,7 +1678,7 @@ int alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
  * 5-iteration RRT inverse) whose f64-scale convergence thresholds (1e-10/
  * 1e-12) are below f32 epsilon, so a native-f32 inverse fails to converge.
  * The forward is native f32 (alwan_aces1_impl.inc); see test 90. */
-int alwan_aces1_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_aces1_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
                                           alwan_rgb_f32 const *rgb_in,
                                           alwan_aces1_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
@@ -3797,7 +3797,7 @@ static void compute_limit_to_ap1_matrix(alwan_aces_primaries_f64 const *limit,
  * ---------------------------------------------------------------- */
 
 #if ALWAN_WITH_F64
-int alwan_aces2_output_transform_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_aces2_output_transform_f64(alwan_rgb_f64 *rgb_out,
                                       alwan_rgb_f64 const *rgb_in,
                                       alwan_aces2_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
@@ -3956,7 +3956,7 @@ static int aces2_ot_map_impl_f32(alwan_f32 *out, alwan_f32 const *in,
                                  alwan_aces2_output output, size_t count,
                                  size_t in_stride, size_t out_stride);
 
-int alwan_aces2_output_transform_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_aces2_output_transform_f32(alwan_rgb_f32 *rgb_out,
                                       alwan_rgb_f32 const *rgb_in,
                                       alwan_aces2_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
@@ -3988,7 +3988,7 @@ int alwan_aces2_output_transform_f32(alwan_rgb_f32 *rgb_out,
  * WITHOUT the display encode (no [0,peak] clamp, no OETF). Out-of-gamut /
  * over-range residuals that the encode clamp would discard are preserved --
  * this is the raw rendering result the encode tail consumes. */
-int alwan_aces2_output_transform_custom_display_linear_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_aces2_output_transform_custom_display_linear_f64(alwan_rgb_f64 *rgb_out,
                                              alwan_rgb_f64 const *rgb_in,
                                              alwan_f64 peak_luminance,
                                              alwan_aces_primaries_f64 const *limit_primaries) {
@@ -4028,7 +4028,7 @@ int alwan_aces2_output_transform_custom_display_linear_f64(alwan_rgb_f64 *rgb_ou
     return ALWAN_OK;
 }
 
-int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
                                              alwan_rgb_f64 const *rgb_in,
                                              alwan_f64 peak_luminance,
                                              alwan_aces_primaries_f64 const *limit_primaries,
@@ -4105,7 +4105,7 @@ int alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
     return ALWAN_OK;
 }
 
-int alwan_aces2_output_transform_custom_display_linear_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_aces2_output_transform_custom_display_linear_f32(alwan_rgb_f32 *rgb_out,
                                              alwan_rgb_f32 const *rgb_in,
                                              alwan_f32 peak_luminance,
                                              alwan_aces_primaries_f32 const *limit_primaries) {
@@ -4122,7 +4122,7 @@ int alwan_aces2_output_transform_custom_display_linear_f32(alwan_rgb_f32 *rgb_ou
     return s;
 }
 
-int alwan_aces2_output_transform_custom_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_aces2_output_transform_custom_f32(alwan_rgb_f32 *rgb_out,
                                              alwan_rgb_f32 const *rgb_in,
                                              alwan_f32 peak_luminance,
                                              alwan_aces_primaries_f32 const *limit_primaries,
@@ -4164,20 +4164,20 @@ ALWAN_DIAG_POP
 #endif /* ALWAN_WITH_F64_FACADE */
 
 #if ALWAN_WITH_F64
-int alwan_aces2_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces2_output output) {
+alwan_status alwan_aces2_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces2_output output) {
     return aces2_ot_map_impl_f64(out, in, output, count, in_stride, out_stride);
 }
 #endif
 
 #if ALWAN_WITH_F32
-int alwan_aces2_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces2_output output) {
+alwan_status alwan_aces2_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces2_output output) {
     return aces2_ot_map_impl_f32(out, in, output, count, in_stride, out_stride);
 }
 #endif
 
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
-int alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
                                           alwan_rgb_f64 const *rgb_in,
                                           alwan_aces2_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
@@ -4376,7 +4376,7 @@ int alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
 #endif /* ALWAN_WITH_F64_FACADE */
 
 #if ALWAN_WITH_F32
-int alwan_aces2_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_aces2_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
                                           alwan_rgb_f32 const *rgb_in,
                                           alwan_aces2_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;

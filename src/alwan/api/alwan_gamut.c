@@ -43,7 +43,7 @@ static alwan_f64 alwan_rng_uniform(alwan_rng *rng) {
 
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
-int alwan_gamut_volume_f64(alwan_f64 *volume,
+alwan_status alwan_gamut_volume_f64(alwan_f64 *volume,
                           alwan_rgb_space_desc_f64 const *space) {
     if (!space || !volume) {
         return ALWAN_E_INVALID;
@@ -129,7 +129,7 @@ static void gamut_map_hue_preserving_single(alwan_vec3_f64 const *rgb_in, alwan_
     }
 }
 
-int alwan_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_gamut_map_method method) {
+alwan_status alwan_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_gamut_map_method method) {
     if (!rgb_in || !rgb_out || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -185,7 +185,7 @@ int alwan_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_
 
 /* Map XYZ to RGB gamut with hue preservation */
 #if ALWAN_WITH_F64
-int alwan_gamut_map_xyz_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *space, alwan_xyz_f64 const *xyz_in, alwan_ctx *ctx) {
+alwan_status alwan_gamut_map_xyz_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *space, alwan_xyz_f64 const *xyz_in, alwan_ctx *ctx) {
     (void)ctx;  /* Reserved for future use */
 
     if (!space || !xyz_in || !rgb_out) {
@@ -294,7 +294,7 @@ ALWAN_DIAG_POP
 #define SPECTRAL_LOCUS_WL_INTERVAL ALWAN_LITERAL(1.0)
 #define SPECTRAL_LOCUS_COUNT 471
 
-int alwan_spectral_locus_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 wavelength) {
+alwan_status alwan_spectral_locus_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 wavelength) {
     if (!xy_out) {
         return ALWAN_E_INVALID;
     }
@@ -407,7 +407,7 @@ static int alwan_intersect_spectral_locus(alwan_vec2_f64 const *p1,
     return ALWAN_OK;
 }
 
-int alwan_dominant_wavelength_f64(alwan_f64 *wavelength_out,
+alwan_status alwan_dominant_wavelength_f64(alwan_f64 *wavelength_out,
                                alwan_vec2_f64 *xy_wl_out,
                                alwan_vec2_f64 *xy_cw_out,
                                alwan_vec2_f64 const *xy,
@@ -440,7 +440,7 @@ int alwan_dominant_wavelength_f64(alwan_f64 *wavelength_out,
     return ALWAN_OK;
 }
 
-int alwan_excitation_purity_f64(alwan_f64 *purity_out,
+alwan_status alwan_excitation_purity_f64(alwan_f64 *purity_out,
                              alwan_vec2_f64 const *xy,
                              alwan_vec2_f64 const *xy_white) {
     if (!xy || !xy_white || !purity_out) {
@@ -492,7 +492,7 @@ int alwan_excitation_purity_f64(alwan_f64 *purity_out,
     return ALWAN_OK;
 }
 
-int alwan_complementary_wavelength_f64(alwan_f64 *wavelength_out,
+alwan_status alwan_complementary_wavelength_f64(alwan_f64 *wavelength_out,
                                      alwan_vec2_f64 *xy_wl_out,
                                      alwan_vec2_f64 *xy_cw_out,
                                      alwan_vec2_f64 const *xy,
@@ -533,7 +533,7 @@ int alwan_complementary_wavelength_f64(alwan_f64 *wavelength_out,
 
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
-int alwan_gamut_volume_ratio_f64(alwan_f64 *ratio_out,
+alwan_status alwan_gamut_volume_ratio_f64(alwan_f64 *ratio_out,
                                alwan_rgb_space_desc_f64 const *space1,
                                alwan_rgb_space_desc_f64 const *space2) {
     if (!space1 || !space2 || !ratio_out) {
@@ -558,7 +558,7 @@ int alwan_gamut_volume_ratio_f64(alwan_f64 *ratio_out,
     return ALWAN_OK;
 }
 
-int alwan_gamut_coverage_f64(alwan_f64 *coverage_out,
+alwan_status alwan_gamut_coverage_f64(alwan_f64 *coverage_out,
                           alwan_rgb_space_desc_f64 const *space1,
                           alwan_rgb_space_desc_f64 const *space2,
                           size_t num_samples,
@@ -723,7 +723,7 @@ static int gamut_working_xform_f64(alwan_mat3x3_f64 *to_srgb,
 }
 
 /* Gamut mapping implementation */
-int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
                               alwan_gamut_map_method method,
                               alwan_rgb_space_desc_f64 const *space,
                               alwan_rgb_f64 const *rgb_linear) {
@@ -868,7 +868,7 @@ int alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
     return ALWAN_OK;
 }
 
-int alwan_css_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count) {
+alwan_status alwan_css_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count) {
     if (!rgb_in || !rgb_out) {
         return ALWAN_E_INVALID;
     }
@@ -893,7 +893,7 @@ int alwan_css_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, al
  * Gamut map planar
  * ---------------------------------------------------------------- */
 
-int alwan_gamut_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_gamut_map_method method) {
+alwan_status alwan_gamut_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_gamut_map_method method) {
     if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -938,7 +938,7 @@ int alwan_gamut_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 
     return ALWAN_OK;
 }
 
-int alwan_css_gamut_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count) {
+alwan_status alwan_css_gamut_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count) {
     if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -966,7 +966,7 @@ int alwan_css_gamut_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_
  * binary search -- kept single-copy, see ALWAN_WITH_F64_FACADE).
  * ---------------------------------------------------------------- */
 
-int alwan_gamut_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_gamut_map_method method) {
+alwan_status alwan_gamut_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_gamut_map_method method) {
     if (!rgb_in || !rgb_out || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -991,7 +991,7 @@ int alwan_gamut_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_
     return ALWAN_OK;
 }
 
-int alwan_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_gamut_map_method method) {
+alwan_status alwan_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_gamut_map_method method) {
     if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -1018,14 +1018,14 @@ int alwan_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 
     return ALWAN_OK;
 }
 
-int alwan_css_gamut_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count) {
+alwan_status alwan_css_gamut_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count) {
     if (!rgb_in || !rgb_out) {
         return ALWAN_E_INVALID;
     }
     return alwan_css_gamut_map_f32_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count);
 }
 
-int alwan_css_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count) {
+alwan_status alwan_css_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count) {
     if (!in_ch0 || !in_ch1 || !in_ch2 || !out_ch0 || !out_ch1 || !out_ch2 || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -1036,7 +1036,7 @@ int alwan_css_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_
  * Gamut map _ex (typed pixel format)
  * ---------------------------------------------------------------- */
 
-int alwan_gamut_map_interleave_ex(void *rgb_out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_gamut_map_method method, alwan_pixel_format in_fmt) {
+alwan_status alwan_gamut_map_interleave_ex(void *rgb_out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_gamut_map_method method, alwan_pixel_format in_fmt) {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
 
     /* CLIP fast path: dual-precision dispatch */
@@ -1090,7 +1090,7 @@ int alwan_gamut_map_interleave_ex(void *rgb_out, size_t out_stride, void const *
     return ALWAN_OK;
 }
 
-int alwan_gamut_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_gamut_map_method method, alwan_pixel_format in_fmt) {
+alwan_status alwan_gamut_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_gamut_map_method method, alwan_pixel_format in_fmt) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
 
     /* CLIP fast path: dual-precision dispatch */
@@ -1183,7 +1183,7 @@ static void rgb_space_desc_f32_to_f64(alwan_rgb_space_desc_f64 *out, alwan_rgb_s
     out->has_matrices = in->has_matrices;
 }
 
-int alwan_gamut_volume_f32(alwan_f32 *volume,
+alwan_status alwan_gamut_volume_f32(alwan_f32 *volume,
                           alwan_rgb_space_desc_f32 const *space) {
     if (!space || !volume) return ALWAN_E_INVALID;
     alwan_rgb_space_desc_f64 tmp;
@@ -1235,7 +1235,7 @@ static void gamut_map_hue_preserving_single_f32(alwan_vec3_f32 const *rgb_in, al
     }
 }
 
-int alwan_gamut_map_xyz_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *space, alwan_xyz_f32 const *xyz_in, alwan_ctx *ctx) {
+alwan_status alwan_gamut_map_xyz_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *space, alwan_xyz_f32 const *xyz_in, alwan_ctx *ctx) {
     (void)ctx;  /* Reserved for future use */
     if (!space || !xyz_in || !rgb_out) return ALWAN_E_INVALID;
 
@@ -1259,7 +1259,7 @@ int alwan_gamut_map_xyz_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_
 #endif /* ALWAN_WITH_F32 */
 
 #if ALWAN_WITH_F32
-int alwan_gamut_volume_ratio_f32(alwan_f32 *ratio_out,
+alwan_status alwan_gamut_volume_ratio_f32(alwan_f32 *ratio_out,
                                alwan_rgb_space_desc_f32 const *space1,
                                alwan_rgb_space_desc_f32 const *space2) {
     if (!space1 || !space2 || !ratio_out) return ALWAN_E_INVALID;
@@ -1272,7 +1272,7 @@ int alwan_gamut_volume_ratio_f32(alwan_f32 *ratio_out,
     return rc;
 }
 
-int alwan_gamut_coverage_f32(alwan_f32 *coverage_out,
+alwan_status alwan_gamut_coverage_f32(alwan_f32 *coverage_out,
                           alwan_rgb_space_desc_f32 const *space1,
                           alwan_rgb_space_desc_f32 const *space2,
                           size_t num_samples,
@@ -1330,7 +1330,7 @@ int alwan_is_within_pointer_gamut_f32(alwan_vec2_f32 const *xy) {
     return alwan_point_in_polygon_f32(xy, POINTER_GAMUT_BOUNDARY, 32);
 }
 
-int alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 wavelength) {
+alwan_status alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 wavelength) {
     if (!xy_out) {
         return ALWAN_E_INVALID;
     }
@@ -1430,7 +1430,7 @@ static int alwan_intersect_spectral_locus_f32(alwan_vec2_f32 const *p1,
     return ALWAN_OK;
 }
 
-int alwan_dominant_wavelength_f32(alwan_f32 *wavelength_out,
+alwan_status alwan_dominant_wavelength_f32(alwan_f32 *wavelength_out,
                               alwan_vec2_f32 *xy_wl_out,
                               alwan_vec2_f32 *xy_cw_out,
                               alwan_vec2_f32 const *xy,
@@ -1456,7 +1456,7 @@ int alwan_dominant_wavelength_f32(alwan_f32 *wavelength_out,
     return ALWAN_OK;
 }
 
-int alwan_excitation_purity_f32(alwan_f32 *purity_out,
+alwan_status alwan_excitation_purity_f32(alwan_f32 *purity_out,
                             alwan_vec2_f32 const *xy,
                             alwan_vec2_f32 const *xy_white) {
     if (!xy || !xy_white || !purity_out) {
@@ -1499,7 +1499,7 @@ int alwan_excitation_purity_f32(alwan_f32 *purity_out,
     return ALWAN_OK;
 }
 
-int alwan_complementary_wavelength_f32(alwan_f32 *wavelength_out,
+alwan_status alwan_complementary_wavelength_f32(alwan_f32 *wavelength_out,
                                    alwan_vec2_f32 *xy_wl_out,
                                    alwan_vec2_f32 *xy_cw_out,
                                    alwan_vec2_f32 const *xy,
@@ -1569,7 +1569,7 @@ static int gamut_working_xform_f32(alwan_mat3x3_f32 *to_srgb,
     return ALWAN_OK;
 }
 
-int alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
                              alwan_gamut_map_method method,
                              alwan_rgb_space_desc_f32 const *space,
                              alwan_rgb_f32 const *rgb_linear) {
@@ -1687,7 +1687,7 @@ static alwan_f64 alwan__de_itp_raw_f64(alwan_ictcp_f64 a, alwan_ictcp_f64 b) {
     return ALWAN_LITERAL(720.0) * ALWAN_SQRT(dI * dI + dT * dT + dP * dP);
 }
 
-int alwan_hdr_gamut_map_ictcp_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_linear, alwan_f64 peak_nits) {
+alwan_status alwan_hdr_gamut_map_ictcp_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_linear, alwan_f64 peak_nits) {
     if (!rgb_out || !rgb_linear) return ALWAN_E_INVALID;
     if (peak_nits < ALWAN_LITERAL(1.0) || peak_nits > ALWAN_LITERAL(10000.0)) return ALWAN_E_INVALID;
 
@@ -1774,7 +1774,7 @@ static alwan_f32 alwan__de_itp_raw_f32(alwan_ictcp_f32 a, alwan_ictcp_f32 b) {
     return 720.0f * ALWAN_SQRT_F32(dI * dI + dT * dT + dP * dP);
 }
 
-int alwan_hdr_gamut_map_ictcp_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_linear, alwan_f32 peak_nits) {
+alwan_status alwan_hdr_gamut_map_ictcp_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_linear, alwan_f32 peak_nits) {
     if (!rgb_out || !rgb_linear) return ALWAN_E_INVALID;
     if (peak_nits < 1.0f || peak_nits > 10000.0f) return ALWAN_E_INVALID;
 
@@ -1859,7 +1859,7 @@ int alwan_hdr_gamut_map_ictcp_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *r
  * ---------------------------------------------------------------- */
 
 #if ALWAN_WITH_F64
-int alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out,
                               alwan_rgb_space_desc_f64 const *target_space,
                               alwan_rgb_f64 const *rgb_in) {
     if (!rgb_out || !target_space || !rgb_in) return ALWAN_E_INVALID;
@@ -1945,7 +1945,7 @@ int alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out,
 #endif /* ALWAN_WITH_F64 */
 
 #if ALWAN_WITH_F32
-int alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out,
                               alwan_rgb_space_desc_f32 const *target_space,
                               alwan_rgb_f32 const *rgb_in) {
     /* Single-precision entry widens to the f64 worker (matrix composition and

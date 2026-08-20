@@ -33,7 +33,7 @@
  * Bulk Matrix-Vector Transform _ex (typed I/O)
  * ---------------------------------------------------------------- */
 
-int alwan_mat3_transform_map_interleave_ex(void *vec_out, size_t out_stride, void const *vec_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_mat3x3_f64 const *matrix, alwan_pixel_format in_fmt) {
+alwan_status alwan_mat3_transform_map_interleave_ex(void *vec_out, size_t out_stride, void const *vec_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_mat3x3_f64 const *matrix) {
     if (!vec_in || !vec_out || !matrix || count == 0) return ALWAN_E_INVALID;
     for (size_t i = 0; i < count; i++) {
         alwan_f64 s[3];

@@ -14,7 +14,7 @@
  * SPD Creation and Destruction
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_spd_create)(ALWAN_CORE_SPD *out, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_create)(ALWAN_CORE_SPD *out, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count, alwan_ctx *ctx) {
     if (!out || count == 0 || wavelength_min >= wavelength_max) {
         return ALWAN_E_INVALID;
     }
@@ -158,7 +158,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(spd_interpolate)(ALWAN_CORE_SPD const *spd, AL
  * SPD Resampling
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_spd_resample)(ALWAN_CORE_SPD *dst, ALWAN_CORE_SPD const *src, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_resample)(ALWAN_CORE_SPD *dst, ALWAN_CORE_SPD const *src, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx) {
     if (!src || !dst || count == 0 || wavelength_min >= wavelength_max) {
         return ALWAN_E_INVALID;
     }
@@ -182,7 +182,7 @@ int ALWAN_CORE_FNLIT(alwan_spd_resample)(ALWAN_CORE_SPD *dst, ALWAN_CORE_SPD con
  * Illuminant Loading
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_spd_illuminant)(ALWAN_CORE_SPD *out, alwan_illuminant ill, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_illuminant)(ALWAN_CORE_SPD *out, alwan_illuminant ill, alwan_ctx *ctx) {
     if (!out) {
         return ALWAN_E_INVALID;
     }
@@ -601,7 +601,7 @@ int ALWAN_CORE_FNLIT(alwan_spd_illuminant)(ALWAN_CORE_SPD *out, alwan_illuminant
 /* Generate blackbody (Planckian) SPD using Planck's law
  * Spectral radiance: L(lambda,T) = c1 / (lambda^5 * (exp(c2/(lambda*T)) - 1))
  * where c1 = 3.741771e-16 W*m^2, c2 = 1.4388e-2 m*K */
-int ALWAN_CORE_FNLIT(alwan_spd_blackbody)(ALWAN_CORE_SPD *out, ALWAN_CORE_T temperature_K, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_blackbody)(ALWAN_CORE_SPD *out, ALWAN_CORE_T temperature_K, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count, alwan_ctx *ctx) {
     if (!out || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -877,7 +877,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(integrate_simpson)(ALWAN_CORE_T const *values,
     return result;
 }
 
-int ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN_CORE_SPD const *spd, ALWAN_CORE_SPD const *illuminant, alwan_observer_type observer, alwan_integrate_method method, ALWAN_CORE_T bandpass_nm, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN_CORE_SPD const *spd, ALWAN_CORE_SPD const *illuminant, alwan_observer_type observer, alwan_integrate_method method, ALWAN_CORE_T bandpass_nm, alwan_ctx *ctx) {
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
@@ -998,7 +998,7 @@ int ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN_CORE_SPD
  * Camera Sensitivity Functions
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(ALWAN_CORE_SPD *spd_r, ALWAN_CORE_SPD *spd_g, ALWAN_CORE_SPD *spd_b, alwan_camera_sensitivity camera, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(ALWAN_CORE_SPD *spd_r, ALWAN_CORE_SPD *spd_g, ALWAN_CORE_SPD *spd_b, alwan_camera_sensitivity camera, alwan_ctx *ctx) {
     if (!spd_r || !spd_g || !spd_b) {
         return ALWAN_E_INVALID;
     }
@@ -1066,7 +1066,7 @@ int ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(ALWAN_CORE_SPD *spd_r, ALWAN_
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(ALWAN_CORE_XYZ *xyz_out, ALWAN_CORE_SPD const *spd, ALWAN_CORE_SPD const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(ALWAN_CORE_XYZ *xyz_out, ALWAN_CORE_SPD const *spd, ALWAN_CORE_SPD const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx) {
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
@@ -1203,7 +1203,7 @@ int ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(ALWAN_CORE_XYZ *xyz_out, ALWAN_C
  * Spectral Shape Descriptors
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_spd_analyze_shape)(ALWAN_CORE_SPD_SHAPE *shape_out, ALWAN_CORE_SPD const *spd) {
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_analyze_shape)(ALWAN_CORE_SPD_SHAPE *shape_out, ALWAN_CORE_SPD const *spd) {
     if (!spd || !shape_out || spd->count == 0) {
         return ALWAN_E_INVALID;
     }

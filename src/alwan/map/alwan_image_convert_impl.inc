@@ -18,7 +18,7 @@
  *     byte-identical to the hand-written f64 body.
  */
 
-int ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space, alwan_ctx *ctx) {
 
     if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
         return ALWAN_E_INVALID;
@@ -226,7 +226,7 @@ int ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_stride, void
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_image_convert_rgba)(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space, alwan_alpha_mode alpha_mode, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_image_convert_rgba)(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space, alwan_alpha_mode alpha_mode, alwan_ctx *ctx) {
 
     if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
         return ALWAN_E_INVALID;

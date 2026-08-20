@@ -13,7 +13,7 @@
  * Bulk Matrix-Vector Transform (interleave)
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_mat3_transform, _map_interleave)(alwan_map_lane *vec_out, size_t out_stride, alwan_map_lane const *vec_in, size_t in_stride, size_t count, ALWAN_MAP_LIT(alwan_mat3x3) const *matrix)
+alwan_status ALWAN_MAP_LITCAT(alwan_mat3_transform, _map_interleave)(alwan_map_lane *vec_out, size_t out_stride, alwan_map_lane const *vec_in, size_t in_stride, size_t count, ALWAN_MAP_LIT(alwan_mat3x3) const *matrix)
 {
     if (!vec_in || !vec_out || !matrix || count == 0) {
         return ALWAN_E_INVALID;

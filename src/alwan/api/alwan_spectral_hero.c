@@ -15,13 +15,13 @@
  * Single Sample
  * ---------------------------------------------------------------- */
 
-int alwan_hero_wavelength_sample_f64(alwan_f64 *lambda_out, alwan_f64 u) {
+alwan_status alwan_hero_wavelength_sample_f64(alwan_f64 *lambda_out, alwan_f64 u) {
     if (!lambda_out) return ALWAN_E_INVALID;
     *lambda_out = alwan_hero_wavelength_sample_f64_v(u);
     return ALWAN_OK;
 }
 
-int alwan_hero_wavelength_sample_f32(alwan_f32 *lambda_out, alwan_f32 u) {
+alwan_status alwan_hero_wavelength_sample_f32(alwan_f32 *lambda_out, alwan_f32 u) {
     if (!lambda_out) return ALWAN_E_INVALID;
     *lambda_out = alwan_hero_wavelength_sample_f32_v(u);
     return ALWAN_OK;
@@ -46,7 +46,7 @@ void alwan_hero_wavelength_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_f64 lambda) 
  * Batch sampling with stratification
  * ---------------------------------------------------------------- */
 
-int alwan_hero_wavelength_batch_f64(alwan_f64 *lambda_out,
+alwan_status alwan_hero_wavelength_batch_f64(alwan_f64 *lambda_out,
                                  alwan_xyz_f64 *xyz_weights,
                                  size_t count,
                                  alwan_f64 seed) {
@@ -73,7 +73,7 @@ int alwan_hero_wavelength_batch_f64(alwan_f64 *lambda_out,
     return ALWAN_OK;
 }
 
-int alwan_hero_wavelength_batch_f32(alwan_f32 *lambda_out,
+alwan_status alwan_hero_wavelength_batch_f32(alwan_f32 *lambda_out,
                                  alwan_xyz_f32 *xyz_weights,
                                  size_t count,
                                  alwan_f32 seed) {

@@ -42,7 +42,7 @@ static size_t const g_munsell_renotation_count =
 
 /* Convert Munsell HVC to XYZ tristimulus values
  * Uses trilinear interpolation in the Munsell renotation data */
-int alwan_munsell_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_f64 hue, alwan_f64 value, alwan_f64 chroma,
+alwan_status alwan_munsell_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_f64 hue, alwan_f64 value, alwan_f64 chroma,
                          alwan_illuminant illuminant) {
     if (!xyz) {
         return ALWAN_E_INVALID;
@@ -166,7 +166,7 @@ int alwan_munsell_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_f64 hue, alwan_f64 value,
 
 /* Convert XYZ tristimulus values to Munsell HVC notation
  * Uses iterative search in the Munsell renotation data */
-int alwan_xyz_to_munsell_f64(alwan_f64 *hue, alwan_f64 *value, alwan_f64 *chroma,
+alwan_status alwan_xyz_to_munsell_f64(alwan_f64 *hue, alwan_f64 *value, alwan_f64 *chroma,
                          alwan_xyz_f64 const *xyz, alwan_illuminant illuminant) {
     if (!xyz || !hue || !value || !chroma) {
         return ALWAN_E_INVALID;
@@ -274,7 +274,7 @@ size_t alwan_color_checker_num_patches(alwan_colorchecker_type type) {
 }
 
 /* Get XYZ tristimulus values for a Color Checker patch */
-int alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker_type type, alwan_illuminant illuminant,
+alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker_type type, alwan_illuminant illuminant,
                               size_t patch_index) {
     if (!xyz) {
         return ALWAN_E_INVALID;
@@ -345,7 +345,7 @@ int alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker_type typ
     return ALWAN_OK;
 }
 
-int alwan_color_checker_data_f32(alwan_xyz_f32 *xyz, alwan_colorchecker_type type, alwan_illuminant illuminant,
+alwan_status alwan_color_checker_data_f32(alwan_xyz_f32 *xyz, alwan_colorchecker_type type, alwan_illuminant illuminant,
                               size_t patch_index) {
     if (!xyz) return ALWAN_E_INVALID;
     alwan_xyz_f64 f64_out;
@@ -357,7 +357,7 @@ int alwan_color_checker_data_f32(alwan_xyz_f32 *xyz, alwan_colorchecker_type typ
     return ALWAN_OK;
 }
 
-int alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_f32 hue, alwan_f32 value, alwan_f32 chroma,
+alwan_status alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_f32 hue, alwan_f32 value, alwan_f32 chroma,
                          alwan_illuminant illuminant) {
     if (!xyz) return ALWAN_E_INVALID;
     alwan_xyz_f64 f64_out;
@@ -369,7 +369,7 @@ int alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_f32 hue, alwan_f32 value,
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_munsell_f32(alwan_f32 *hue, alwan_f32 *value, alwan_f32 *chroma,
+alwan_status alwan_xyz_to_munsell_f32(alwan_f32 *hue, alwan_f32 *value, alwan_f32 *chroma,
                          alwan_xyz_f32 const *xyz, alwan_illuminant illuminant) {
     if (!xyz || !hue || !value || !chroma) return ALWAN_E_INVALID;
     alwan_xyz_f64 xyz64 = { (alwan_f64)xyz->x, (alwan_f64)xyz->y, (alwan_f64)xyz->z };
@@ -382,7 +382,7 @@ int alwan_xyz_to_munsell_f32(alwan_f32 *hue, alwan_f32 *value, alwan_f32 *chroma
     return ALWAN_OK;
 }
 
-int alwan_ncs_to_xyz_f32(alwan_xyz_f32 *xyz, char const *ncs_notation) {
+alwan_status alwan_ncs_to_xyz_f32(alwan_xyz_f32 *xyz, char const *ncs_notation) {
     if (!xyz || !ncs_notation) return ALWAN_E_INVALID;
     alwan_xyz_f64 f64_out;
     int rc = alwan_ncs_to_xyz_f64(&f64_out, ncs_notation);
@@ -393,7 +393,7 @@ int alwan_ncs_to_xyz_f32(alwan_xyz_f32 *xyz, char const *ncs_notation) {
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_ncs_f32(char *ncs_notation, size_t notation_size, alwan_xyz_f32 const *xyz) {
+alwan_status alwan_xyz_to_ncs_f32(char *ncs_notation, size_t notation_size, alwan_xyz_f32 const *xyz) {
     if (!xyz) return ALWAN_E_INVALID;
     alwan_xyz_f64 xyz64 = { (alwan_f64)xyz->x, (alwan_f64)xyz->y, (alwan_f64)xyz->z };
     return alwan_xyz_to_ncs_f64(ncs_notation, notation_size, &xyz64);
@@ -506,7 +506,7 @@ static const alwan_f64 NCS_WP_y = 0.3290;
  * Luminance derived from blackness via Y ~ (1 - s/100)^2.
  * This approximation is suitable for colour-approximate use; it does not
  * reproduce the proprietary NCS colour atlas. */
-int alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation) {
+alwan_status alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation) {
     if (!xyz || !ncs_notation) return ALWAN_E_INVALID;
 
     ncs_notation_parsed parsed;
@@ -561,7 +561,7 @@ int alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation) {
 /* Convert XYZ tristimulus values to NCS notation.
  * An accurate inverse requires the full NCS colour atlas (proprietary data).
  * Not implemented. */
-int alwan_xyz_to_ncs_f64(char *ncs_notation, size_t notation_size, alwan_xyz_f64 const *xyz) {
+alwan_status alwan_xyz_to_ncs_f64(char *ncs_notation, size_t notation_size, alwan_xyz_f64 const *xyz) {
     if (!ncs_notation || notation_size < 16 || !xyz) return ALWAN_E_INVALID;
     return ALWAN_E_INVALID;
 }
@@ -644,7 +644,7 @@ static int get_rgb_space_index(alwan_rgb_space space) {
 }
 
 /* Get RGB space primaries and white point by name */
-int alwan_rgb_space_by_enum_f64(alwan_f64 primaries[6], alwan_vec2_f64 *white_point, alwan_rgb_space space) {
+alwan_status alwan_rgb_space_by_enum_f64(alwan_f64 primaries[6], alwan_vec2_f64 *white_point, alwan_rgb_space space) {
     if (!primaries || !white_point) {
         return ALWAN_E_INVALID;
     }
@@ -671,7 +671,7 @@ int alwan_rgb_space_by_enum_f64(alwan_f64 primaries[6], alwan_vec2_f64 *white_po
 }
 
 /* Get RGB space transfer functions */
-int alwan_rgb_space_get_tfs_f64(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space) {
+alwan_status alwan_rgb_space_get_tfs_f64(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space) {
     if (!oetf || !eotf) {
         return ALWAN_E_INVALID;
     }
@@ -692,7 +692,7 @@ int alwan_rgb_space_get_tfs_f64(alwan_transfer_function *oetf, alwan_transfer_fu
     return ALWAN_OK;
 }
 
-int alwan_rgb_space_by_enum_f32(alwan_f32 primaries[6], alwan_vec2_f32 *white_point, alwan_rgb_space space) {
+alwan_status alwan_rgb_space_by_enum_f32(alwan_f32 primaries[6], alwan_vec2_f32 *white_point, alwan_rgb_space space) {
     if (!primaries || !white_point) return ALWAN_E_INVALID;
     alwan_f64 pri64[6];
     alwan_vec2_f64 wp64;
@@ -704,7 +704,7 @@ int alwan_rgb_space_by_enum_f32(alwan_f32 primaries[6], alwan_vec2_f32 *white_po
     return ALWAN_OK;
 }
 
-int alwan_rgb_space_get_tfs_f32(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space) {
+alwan_status alwan_rgb_space_get_tfs_f32(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space) {
     /* Transfer functions are enum values -- precision-independent. */
     return alwan_rgb_space_get_tfs_f64(oetf, eotf, space);
 }

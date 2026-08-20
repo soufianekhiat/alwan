@@ -64,7 +64,7 @@ static ALWAN_CORE_T ALWAN_CORE_FNLIT(kim2009_compute_degree_of_adaptation)(
  * Kim2009 Forward Transform: XYZ -> Appearance Correlates
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_kim2009_forward)(
+alwan_status ALWAN_CORE_FNLIT(alwan_kim2009_forward)(
     ALWAN_CORE_KIM2009_CORRELATES *out,
     ALWAN_CORE_XYZ const *xyz,
     ALWAN_CORE_KIM2009_VIEWING_CONDITIONS const *vc
@@ -103,7 +103,7 @@ int ALWAN_CORE_FNLIT(alwan_kim2009_forward)(
  * Kim2009 Inverse Transform: Appearance Correlates -> XYZ
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_kim2009_inverse)(
+alwan_status ALWAN_CORE_FNLIT(alwan_kim2009_inverse)(
     ALWAN_CORE_XYZ *xyz_out,
     ALWAN_CORE_KIM2009_CORRELATES const *correlates,
     ALWAN_CORE_KIM2009_VIEWING_CONDITIONS const *vc

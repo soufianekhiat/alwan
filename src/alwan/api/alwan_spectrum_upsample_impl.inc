@@ -17,7 +17,7 @@ static inline ALWAN_CORE_T ALWAN_CORE_FN(spu_clamp)(ALWAN_CORE_T x, ALWAN_CORE_T
 /* ----------------------------------------------------------------
  * Smits1999: RGB to Spectrum
  * ---------------------------------------------------------------- */
-int ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_smits1999)(
+alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_smits1999)(
         ALWAN_CORE_SPD *out_spd, ALWAN_CORE_RGB const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) return ALWAN_E_INVALID;
 
@@ -80,7 +80,7 @@ int ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_smits1999)(
 /* ----------------------------------------------------------------
  * Mallett2019: RGB to Spectrum (linear combination of basis functions)
  * ---------------------------------------------------------------- */
-int ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_mallett2019)(
+alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_mallett2019)(
         ALWAN_CORE_SPD *out_spd, ALWAN_CORE_RGB const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) return ALWAN_E_INVALID;
 
@@ -179,7 +179,7 @@ static inline ALWAN_CORE_T ALWAN_CORE_FN(jakob2019_eval_poly)(
     return ALWAN_CORE_FN(spu_clamp)(R, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
 }
 
-int ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_jakob2019)(
+alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_jakob2019)(
         ALWAN_CORE_SPD *out_spd, alwan_jakob2019_gamut gamut,
         ALWAN_CORE_RGB const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) return ALWAN_E_INVALID;

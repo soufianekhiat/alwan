@@ -1576,297 +1576,6 @@ static int name(alwan_simd_lane *o0, alwan_simd_lane *o1, alwan_simd_lane *o2, \
         } \
     } while (0)
 
-/* _ex macro patterns for typed map functions */
-
-#define ALWAN_MAP3_EX(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out, alwan_pixel_format out_fmt, \
-         void const *in, alwan_pixel_format in_fmt, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_; \
-        core(&dst_, &src_); \
-        alwan_f64 dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
-        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_EX_WHITE(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out, alwan_pixel_format out_fmt, \
-         void const *in, alwan_pixel_format in_fmt, \
-         alwan_xyz_f64 const *white_xyz, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in || !out || !white_xyz || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_; \
-        core(&dst_, &src_, white_xyz); \
-        alwan_f64 dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
-        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_EX_PQ(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out, alwan_pixel_format out_fmt, \
-         void const *in, alwan_pixel_format in_fmt, \
-         int use_pq, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_; \
-        core(&dst_, &src_, use_pq); \
-        alwan_f64 dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
-        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_EX_STATUS(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out, alwan_pixel_format out_fmt, \
-         void const *in, alwan_pixel_format in_fmt, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_; \
-        int st_ = core(&dst_, &src_); \
-        if (st_ != ALWAN_OK) return st_; \
-        alwan_f64 dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
-        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-/* ----------------------------------------------------------------
- * _ex macro: core returns value (not pointer-based), no extra params
- * core signature: OutT core(InT src)
- * ---------------------------------------------------------------- */
-
-#define ALWAN_MAP3_EX_V(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out, alwan_pixel_format out_fmt, \
-         void const *in, alwan_pixel_format in_fmt, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_ = core(src_); \
-        alwan_f64 dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
-        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-/* ----------------------------------------------------------------
- * _ex macro: core returns value, with white point param
- * core signature: OutT core(InT src, InT2 white)
- * ---------------------------------------------------------------- */
-
-#define ALWAN_MAP3_EX_V_WHITE(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out, alwan_pixel_format out_fmt, \
-         void const *in, alwan_pixel_format in_fmt, \
-         alwan_xyz_f64 const *white_xyz, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in || !out || !white_xyz || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_ = core(src_, *white_xyz); \
-        alwan_f64 dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
-        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-/* ----------------------------------------------------------------
- * _ex macro: core returns value, with int param
- * core signature: OutT core(InT src, int param)
- * ---------------------------------------------------------------- */
-
-#define ALWAN_MAP3_EX_V_INT(name, InT, OutT, core, extra_type, extra_name, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out, alwan_pixel_format out_fmt, \
-         void const *in, alwan_pixel_format in_fmt, \
-         extra_type extra_name, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_ = core(src_, extra_name); \
-        alwan_f64 dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
-        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-/* ----------------------------------------------------------------
- * _ex macro: core returns value, with alwan_f64 param
- * core signature: OutT core(InT src, alwan_f64 param)
- * ---------------------------------------------------------------- */
-
-#define ALWAN_MAP3_EX_V_SCALAR(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out, alwan_pixel_format out_fmt, \
-         void const *in, alwan_pixel_format in_fmt, \
-         alwan_f64 param, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        alwan__load3_typed(sv_, (char const *)in + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_ = core(src_, param); \
-        alwan_f64 dv_[3] = {dst_.fo0, dst_.fo1, dst_.fo2}; \
-        alwan__store3_typed((char *)out + ii_ * out_stride, dv_, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-/* ----------------------------------------------------------------
- * Scalar planar _map_interleave generation macros
- *
- * These generate _map_planar function bodies from core _v functions.
- * For SIMD-vectorized functions, use ALWAN_MAP3_TILED_PLANAR instead
- * with an extracted tile kernel.
- * ---------------------------------------------------------------- */
-
-#define ALWAN_MAP3_PLANAR_V(name, InT, OutT, core, fi0,fi1,fi2, fo0,fo1,fo2) \
-int name(alwan_f64 *out0, alwan_f64 *out1, alwan_f64 *out2, \
-         alwan_f64 const *in0, alwan_f64 const *in1, alwan_f64 const *in2, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t i_ = 0; i_ < count; i_++) { \
-        InT src_ = { \
-            *(alwan_f64 const *)((char const *)in0 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in1 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in2 + i_ * in_stride) \
-        }; \
-        OutT dst_ = core(src_); \
-        *(alwan_f64 *)((char *)out0 + i_ * out_stride) = dst_.fo0; \
-        *(alwan_f64 *)((char *)out1 + i_ * out_stride) = dst_.fo1; \
-        *(alwan_f64 *)((char *)out2 + i_ * out_stride) = dst_.fo2; \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_V_WHITE(name, InT, OutT, core, fi0,fi1,fi2, fo0,fo1,fo2) \
-int name(alwan_f64 *out0, alwan_f64 *out1, alwan_f64 *out2, \
-         alwan_f64 const *in0, alwan_f64 const *in1, alwan_f64 const *in2, \
-         alwan_xyz_f64 const *white_xyz, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !white_xyz || count == 0) return ALWAN_E_INVALID; \
-    for (size_t i_ = 0; i_ < count; i_++) { \
-        InT src_ = { \
-            *(alwan_f64 const *)((char const *)in0 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in1 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in2 + i_ * in_stride) \
-        }; \
-        OutT dst_ = core(src_, *white_xyz); \
-        *(alwan_f64 *)((char *)out0 + i_ * out_stride) = dst_.fo0; \
-        *(alwan_f64 *)((char *)out1 + i_ * out_stride) = dst_.fo1; \
-        *(alwan_f64 *)((char *)out2 + i_ * out_stride) = dst_.fo2; \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_V_INT(name, InT, OutT, core, extra_type, extra_name, fi0,fi1,fi2, fo0,fo1,fo2) \
-int name(alwan_f64 *out0, alwan_f64 *out1, alwan_f64 *out2, \
-         alwan_f64 const *in0, alwan_f64 const *in1, alwan_f64 const *in2, \
-         extra_type extra_name, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t i_ = 0; i_ < count; i_++) { \
-        InT src_ = { \
-            *(alwan_f64 const *)((char const *)in0 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in1 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in2 + i_ * in_stride) \
-        }; \
-        OutT dst_ = core(src_, extra_name); \
-        *(alwan_f64 *)((char *)out0 + i_ * out_stride) = dst_.fo0; \
-        *(alwan_f64 *)((char *)out1 + i_ * out_stride) = dst_.fo1; \
-        *(alwan_f64 *)((char *)out2 + i_ * out_stride) = dst_.fo2; \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_V_SCALAR(name, InT, OutT, core, fi0,fi1,fi2, fo0,fo1,fo2) \
-int name(alwan_f64 *out0, alwan_f64 *out1, alwan_f64 *out2, \
-         alwan_f64 const *in0, alwan_f64 const *in1, alwan_f64 const *in2, \
-         alwan_f64 param, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t i_ = 0; i_ < count; i_++) { \
-        InT src_ = { \
-            *(alwan_f64 const *)((char const *)in0 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in1 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in2 + i_ * in_stride) \
-        }; \
-        OutT dst_ = core(src_, param); \
-        *(alwan_f64 *)((char *)out0 + i_ * out_stride) = dst_.fo0; \
-        *(alwan_f64 *)((char *)out1 + i_ * out_stride) = dst_.fo1; \
-        *(alwan_f64 *)((char *)out2 + i_ * out_stride) = dst_.fo2; \
-    } \
-    return ALWAN_OK; \
-}
-
-/* Pointer-based core with status return */
-#define ALWAN_MAP3_PLANAR_STATUS(name, InT, OutT, core, fi0,fi1,fi2, fo0,fo1,fo2) \
-int name(alwan_f64 *out0, alwan_f64 *out1, alwan_f64 *out2, \
-         alwan_f64 const *in0, alwan_f64 const *in1, alwan_f64 const *in2, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t i_ = 0; i_ < count; i_++) { \
-        InT src_ = { \
-            *(alwan_f64 const *)((char const *)in0 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in1 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in2 + i_ * in_stride) \
-        }; \
-        OutT dst_; \
-        int st_ = core(&dst_, &src_); \
-        if (st_ != ALWAN_OK) return st_; \
-        *(alwan_f64 *)((char *)out0 + i_ * out_stride) = dst_.fo0; \
-        *(alwan_f64 *)((char *)out1 + i_ * out_stride) = dst_.fo1; \
-        *(alwan_f64 *)((char *)out2 + i_ * out_stride) = dst_.fo2; \
-    } \
-    return ALWAN_OK; \
-}
-
-/* Pointer-based core with white_xyz and status return */
-#define ALWAN_MAP3_PLANAR_WHITE(name, InT, OutT, core, fi0,fi1,fi2, fo0,fo1,fo2) \
-int name(alwan_f64 *out0, alwan_f64 *out1, alwan_f64 *out2, \
-         alwan_f64 const *in0, alwan_f64 const *in1, alwan_f64 const *in2, \
-         alwan_xyz_f64 const *white_xyz, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !white_xyz || count == 0) return ALWAN_E_INVALID; \
-    for (size_t i_ = 0; i_ < count; i_++) { \
-        InT src_ = { \
-            *(alwan_f64 const *)((char const *)in0 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in1 + i_ * in_stride), \
-            *(alwan_f64 const *)((char const *)in2 + i_ * in_stride) \
-        }; \
-        OutT dst_; \
-        core(&dst_, &src_, white_xyz); \
-        *(alwan_f64 *)((char *)out0 + i_ * out_stride) = dst_.fo0; \
-        *(alwan_f64 *)((char *)out1 + i_ * out_stride) = dst_.fo1; \
-        *(alwan_f64 *)((char *)out2 + i_ * out_stride) = dst_.fo2; \
-    } \
-    return ALWAN_OK; \
-}
-
 /* ----------------------------------------------------------------
  * Planar tiled loop macros
  * ---------------------------------------------------------------- */
@@ -1901,175 +1610,6 @@ int name(alwan_f64 *out0, alwan_f64 *out1, alwan_f64 *out2, \
             off_ += tile_; \
         } \
     } while (0)
-
-/* ----------------------------------------------------------------
- * Planar _ex macro patterns
- * ---------------------------------------------------------------- */
-
-#define ALWAN_MAP3_PLANAR_EX(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
-         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    size_t isz_ = alwan__fmt_size(in_fmt); \
-    size_t osz_ = alwan__fmt_size(out_fmt); \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        sv_[0] = alwan__load1_typed((char const *)in0 + ii_ * in_stride, in_fmt); \
-        sv_[1] = alwan__load1_typed((char const *)in1 + ii_ * in_stride, in_fmt); \
-        sv_[2] = alwan__load1_typed((char const *)in2 + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_; \
-        core(&dst_, &src_); \
-        alwan__store1_typed((char *)out0 + ii_ * out_stride, dst_.fo0, out_fmt); \
-        alwan__store1_typed((char *)out1 + ii_ * out_stride, dst_.fo1, out_fmt); \
-        alwan__store1_typed((char *)out2 + ii_ * out_stride, dst_.fo2, out_fmt); \
-    } \
-    (void)isz_; (void)osz_; \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_EX_WHITE(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
-         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
-         alwan_xyz_f64 const *white_xyz, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !white_xyz || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        sv_[0] = alwan__load1_typed((char const *)in0 + ii_ * in_stride, in_fmt); \
-        sv_[1] = alwan__load1_typed((char const *)in1 + ii_ * in_stride, in_fmt); \
-        sv_[2] = alwan__load1_typed((char const *)in2 + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_; \
-        core(&dst_, &src_, white_xyz); \
-        alwan__store1_typed((char *)out0 + ii_ * out_stride, dst_.fo0, out_fmt); \
-        alwan__store1_typed((char *)out1 + ii_ * out_stride, dst_.fo1, out_fmt); \
-        alwan__store1_typed((char *)out2 + ii_ * out_stride, dst_.fo2, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_EX_PQ(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
-         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
-         int use_pq, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        sv_[0] = alwan__load1_typed((char const *)in0 + ii_ * in_stride, in_fmt); \
-        sv_[1] = alwan__load1_typed((char const *)in1 + ii_ * in_stride, in_fmt); \
-        sv_[2] = alwan__load1_typed((char const *)in2 + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_; \
-        core(&dst_, &src_, use_pq); \
-        alwan__store1_typed((char *)out0 + ii_ * out_stride, dst_.fo0, out_fmt); \
-        alwan__store1_typed((char *)out1 + ii_ * out_stride, dst_.fo1, out_fmt); \
-        alwan__store1_typed((char *)out2 + ii_ * out_stride, dst_.fo2, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_EX_STATUS(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
-         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        sv_[0] = alwan__load1_typed((char const *)in0 + ii_ * in_stride, in_fmt); \
-        sv_[1] = alwan__load1_typed((char const *)in1 + ii_ * in_stride, in_fmt); \
-        sv_[2] = alwan__load1_typed((char const *)in2 + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_; \
-        int st_ = core(&dst_, &src_); \
-        if (st_ != ALWAN_OK) return st_; \
-        alwan__store1_typed((char *)out0 + ii_ * out_stride, dst_.fo0, out_fmt); \
-        alwan__store1_typed((char *)out1 + ii_ * out_stride, dst_.fo1, out_fmt); \
-        alwan__store1_typed((char *)out2 + ii_ * out_stride, dst_.fo2, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_EX_V(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
-         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        sv_[0] = alwan__load1_typed((char const *)in0 + ii_ * in_stride, in_fmt); \
-        sv_[1] = alwan__load1_typed((char const *)in1 + ii_ * in_stride, in_fmt); \
-        sv_[2] = alwan__load1_typed((char const *)in2 + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_ = core(src_); \
-        alwan__store1_typed((char *)out0 + ii_ * out_stride, dst_.fo0, out_fmt); \
-        alwan__store1_typed((char *)out1 + ii_ * out_stride, dst_.fo1, out_fmt); \
-        alwan__store1_typed((char *)out2 + ii_ * out_stride, dst_.fo2, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_EX_V_WHITE(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
-         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
-         alwan_xyz_f64 const *white_xyz, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !white_xyz || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        sv_[0] = alwan__load1_typed((char const *)in0 + ii_ * in_stride, in_fmt); \
-        sv_[1] = alwan__load1_typed((char const *)in1 + ii_ * in_stride, in_fmt); \
-        sv_[2] = alwan__load1_typed((char const *)in2 + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_ = core(src_, *white_xyz); \
-        alwan__store1_typed((char *)out0 + ii_ * out_stride, dst_.fo0, out_fmt); \
-        alwan__store1_typed((char *)out1 + ii_ * out_stride, dst_.fo1, out_fmt); \
-        alwan__store1_typed((char *)out2 + ii_ * out_stride, dst_.fo2, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_EX_V_INT(name, InT, OutT, core, extra_type, extra_name, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
-         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
-         extra_type extra_name, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        sv_[0] = alwan__load1_typed((char const *)in0 + ii_ * in_stride, in_fmt); \
-        sv_[1] = alwan__load1_typed((char const *)in1 + ii_ * in_stride, in_fmt); \
-        sv_[2] = alwan__load1_typed((char const *)in2 + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_ = core(src_, extra_name); \
-        alwan__store1_typed((char *)out0 + ii_ * out_stride, dst_.fo0, out_fmt); \
-        alwan__store1_typed((char *)out1 + ii_ * out_stride, dst_.fo1, out_fmt); \
-        alwan__store1_typed((char *)out2 + ii_ * out_stride, dst_.fo2, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_MAP3_PLANAR_EX_V_SCALAR(name, InT, OutT, core, fi0, fi1, fi2, fo0, fo1, fo2) \
-int name(void *out0, void *out1, void *out2, alwan_pixel_format out_fmt, \
-         void const *in0, void const *in1, void const *in2, alwan_pixel_format in_fmt, \
-         alwan_f64 param, \
-         size_t count, size_t in_stride, size_t out_stride) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    for (size_t ii_ = 0; ii_ < count; ii_++) { \
-        alwan_f64 sv_[3]; \
-        sv_[0] = alwan__load1_typed((char const *)in0 + ii_ * in_stride, in_fmt); \
-        sv_[1] = alwan__load1_typed((char const *)in1 + ii_ * in_stride, in_fmt); \
-        sv_[2] = alwan__load1_typed((char const *)in2 + ii_ * in_stride, in_fmt); \
-        InT src_ = {sv_[0], sv_[1], sv_[2]}; \
-        OutT dst_ = core(src_, param); \
-        alwan__store1_typed((char *)out0 + ii_ * out_stride, dst_.fo0, out_fmt); \
-        alwan__store1_typed((char *)out1 + ii_ * out_stride, dst_.fo1, out_fmt); \
-        alwan__store1_typed((char *)out2 + ii_ * out_stride, dst_.fo2, out_fmt); \
-    } \
-    return ALWAN_OK; \
-}
 
 /* ================================================================
  * Normalization helpers for planar channel data
@@ -2113,202 +1653,6 @@ ALWAN_INLINE void alwan__norm_lane_affine(alwan_simd_lane *d, size_t n, alwan_si
  * so the compiler can auto-vectorize the conversion.
  * ================================================================ */
 
-#define ALWAN_EX_DELEGATE(name, native_fn) \
-int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
-         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    if (in_fmt == ALWAN_NATIVE_PIXEL_FMT && out_fmt == ALWAN_NATIVE_PIXEL_FMT) \
-        return native_fn((alwan_f64 *)out, out_stride, (alwan_f64 const *)in, in_stride, count); \
-    { size_t off_ = 0; \
-    while (off_ < count) { \
-        size_t tile_ = count - off_; \
-        if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
-        ALWAN_ALIGN(32) alwan_f64 ibuf_[ALWAN_TILE_PIXELS * 3]; \
-        ALWAN_ALIGN(32) alwan_f64 obuf_[ALWAN_TILE_PIXELS * 3]; \
-        alwan__load_tile_typed_aos(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-        native_fn(obuf_, 3 * sizeof(alwan_f64), ibuf_, 3 * sizeof(alwan_f64), tile_); \
-        alwan__store_tile_typed_aos(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
-        off_ += tile_; \
-    } } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_EX_DELEGATE_WHITE(name, native_fn) \
-int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
-         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
-         alwan_xyz_f64 const *white_xyz) { \
-    if (!in || !out || !white_xyz || count == 0) return ALWAN_E_INVALID; \
-    if (in_fmt == ALWAN_NATIVE_PIXEL_FMT && out_fmt == ALWAN_NATIVE_PIXEL_FMT) \
-        return native_fn((alwan_f64 *)out, out_stride, (alwan_f64 const *)in, in_stride, count, white_xyz); \
-    { size_t off_ = 0; \
-    while (off_ < count) { \
-        size_t tile_ = count - off_; \
-        if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
-        ALWAN_ALIGN(32) alwan_f64 ibuf_[ALWAN_TILE_PIXELS * 3]; \
-        ALWAN_ALIGN(32) alwan_f64 obuf_[ALWAN_TILE_PIXELS * 3]; \
-        alwan__load_tile_typed_aos(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-        native_fn(obuf_, 3 * sizeof(alwan_f64), ibuf_, 3 * sizeof(alwan_f64), tile_, white_xyz); \
-        alwan__store_tile_typed_aos(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
-        off_ += tile_; \
-    } } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_EX_DELEGATE_INT(name, native_fn, extra_type, extra_name) \
-int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
-         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
-         extra_type extra_name) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    if (in_fmt == ALWAN_NATIVE_PIXEL_FMT && out_fmt == ALWAN_NATIVE_PIXEL_FMT) \
-        return native_fn((alwan_f64 *)out, out_stride, (alwan_f64 const *)in, in_stride, count, extra_name); \
-    { size_t off_ = 0; \
-    while (off_ < count) { \
-        size_t tile_ = count - off_; \
-        if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
-        ALWAN_ALIGN(32) alwan_f64 ibuf_[ALWAN_TILE_PIXELS * 3]; \
-        ALWAN_ALIGN(32) alwan_f64 obuf_[ALWAN_TILE_PIXELS * 3]; \
-        alwan__load_tile_typed_aos(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-        native_fn(obuf_, 3 * sizeof(alwan_f64), ibuf_, 3 * sizeof(alwan_f64), tile_, extra_name); \
-        alwan__store_tile_typed_aos(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
-        off_ += tile_; \
-    } } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_EX_DELEGATE_SCALAR(name, native_fn) \
-int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
-         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
-         alwan_f64 param) { \
-    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
-    if (in_fmt == ALWAN_NATIVE_PIXEL_FMT && out_fmt == ALWAN_NATIVE_PIXEL_FMT) \
-        return native_fn((alwan_f64 *)out, out_stride, (alwan_f64 const *)in, in_stride, count, param); \
-    { size_t off_ = 0; \
-    while (off_ < count) { \
-        size_t tile_ = count - off_; \
-        if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
-        ALWAN_ALIGN(32) alwan_f64 ibuf_[ALWAN_TILE_PIXELS * 3]; \
-        ALWAN_ALIGN(32) alwan_f64 obuf_[ALWAN_TILE_PIXELS * 3]; \
-        alwan__load_tile_typed_aos(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-        native_fn(obuf_, 3 * sizeof(alwan_f64), ibuf_, 3 * sizeof(alwan_f64), tile_, param); \
-        alwan__store_tile_typed_aos(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
-        off_ += tile_; \
-    } } \
-    return ALWAN_OK; \
-}
-
-/* Planar delegation macros */
-
-#define ALWAN_PLANAR_EX_DELEGATE(name, native_fn) \
-int name(void *out0, size_t out_stride, void *out1, void *out2, \
-         void const *in0, size_t in_stride, void const *in1, void const *in2, \
-         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    if (in_fmt == ALWAN_NATIVE_PIXEL_FMT && out_fmt == ALWAN_NATIVE_PIXEL_FMT) \
-        return native_fn((alwan_f64 *)out0, out_stride, (alwan_f64 *)out1, (alwan_f64 *)out2, \
-                         (alwan_f64 const *)in0, in_stride, (alwan_f64 const *)in1, (alwan_f64 const *)in2, \
-                         count); \
-    { size_t off_ = 0; \
-    while (off_ < count) { \
-        size_t tile_ = count - off_; \
-        if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
-        ALWAN_ALIGN(32) alwan_f64 ic0_[ALWAN_TILE_PIXELS], ic1_[ALWAN_TILE_PIXELS], ic2_[ALWAN_TILE_PIXELS]; \
-        ALWAN_ALIGN(32) alwan_f64 oc0_[ALWAN_TILE_PIXELS], oc1_[ALWAN_TILE_PIXELS], oc2_[ALWAN_TILE_PIXELS]; \
-        alwan__load_tile_typed_ch(ic0_, in0, in_fmt, off_, in_stride, tile_); \
-        alwan__load_tile_typed_ch(ic1_, in1, in_fmt, off_, in_stride, tile_); \
-        alwan__load_tile_typed_ch(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-        native_fn(oc0_, sizeof(alwan_f64), oc1_, oc2_, ic0_, sizeof(alwan_f64), ic1_, ic2_, tile_); \
-        alwan__store_tile_typed_ch(out0, out_fmt, off_, out_stride, oc0_, tile_); \
-        alwan__store_tile_typed_ch(out1, out_fmt, off_, out_stride, oc1_, tile_); \
-        alwan__store_tile_typed_ch(out2, out_fmt, off_, out_stride, oc2_, tile_); \
-        off_ += tile_; \
-    } } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_PLANAR_EX_DELEGATE_WHITE(name, native_fn) \
-int name(void *out0, size_t out_stride, void *out1, void *out2, \
-         void const *in0, size_t in_stride, void const *in1, void const *in2, \
-         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
-         alwan_xyz_f64 const *white_xyz) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !white_xyz || count == 0) return ALWAN_E_INVALID; \
-    if (in_fmt == ALWAN_NATIVE_PIXEL_FMT && out_fmt == ALWAN_NATIVE_PIXEL_FMT) \
-        return native_fn((alwan_f64 *)out0, out_stride, (alwan_f64 *)out1, (alwan_f64 *)out2, \
-                         (alwan_f64 const *)in0, in_stride, (alwan_f64 const *)in1, (alwan_f64 const *)in2, \
-                         count, white_xyz); \
-    { size_t off_ = 0; \
-    while (off_ < count) { \
-        size_t tile_ = count - off_; \
-        if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
-        ALWAN_ALIGN(32) alwan_f64 ic0_[ALWAN_TILE_PIXELS], ic1_[ALWAN_TILE_PIXELS], ic2_[ALWAN_TILE_PIXELS]; \
-        ALWAN_ALIGN(32) alwan_f64 oc0_[ALWAN_TILE_PIXELS], oc1_[ALWAN_TILE_PIXELS], oc2_[ALWAN_TILE_PIXELS]; \
-        alwan__load_tile_typed_ch(ic0_, in0, in_fmt, off_, in_stride, tile_); \
-        alwan__load_tile_typed_ch(ic1_, in1, in_fmt, off_, in_stride, tile_); \
-        alwan__load_tile_typed_ch(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-        native_fn(oc0_, sizeof(alwan_f64), oc1_, oc2_, ic0_, sizeof(alwan_f64), ic1_, ic2_, tile_, white_xyz); \
-        alwan__store_tile_typed_ch(out0, out_fmt, off_, out_stride, oc0_, tile_); \
-        alwan__store_tile_typed_ch(out1, out_fmt, off_, out_stride, oc1_, tile_); \
-        alwan__store_tile_typed_ch(out2, out_fmt, off_, out_stride, oc2_, tile_); \
-        off_ += tile_; \
-    } } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_PLANAR_EX_DELEGATE_INT(name, native_fn, extra_type, extra_name) \
-int name(void *out0, size_t out_stride, void *out1, void *out2, \
-         void const *in0, size_t in_stride, void const *in1, void const *in2, \
-         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
-         extra_type extra_name) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    if (in_fmt == ALWAN_NATIVE_PIXEL_FMT && out_fmt == ALWAN_NATIVE_PIXEL_FMT) \
-        return native_fn((alwan_f64 *)out0, out_stride, (alwan_f64 *)out1, (alwan_f64 *)out2, \
-                         (alwan_f64 const *)in0, in_stride, (alwan_f64 const *)in1, (alwan_f64 const *)in2, \
-                         count, extra_name); \
-    { size_t off_ = 0; \
-    while (off_ < count) { \
-        size_t tile_ = count - off_; \
-        if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
-        ALWAN_ALIGN(32) alwan_f64 ic0_[ALWAN_TILE_PIXELS], ic1_[ALWAN_TILE_PIXELS], ic2_[ALWAN_TILE_PIXELS]; \
-        ALWAN_ALIGN(32) alwan_f64 oc0_[ALWAN_TILE_PIXELS], oc1_[ALWAN_TILE_PIXELS], oc2_[ALWAN_TILE_PIXELS]; \
-        alwan__load_tile_typed_ch(ic0_, in0, in_fmt, off_, in_stride, tile_); \
-        alwan__load_tile_typed_ch(ic1_, in1, in_fmt, off_, in_stride, tile_); \
-        alwan__load_tile_typed_ch(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-        native_fn(oc0_, sizeof(alwan_f64), oc1_, oc2_, ic0_, sizeof(alwan_f64), ic1_, ic2_, tile_, extra_name); \
-        alwan__store_tile_typed_ch(out0, out_fmt, off_, out_stride, oc0_, tile_); \
-        alwan__store_tile_typed_ch(out1, out_fmt, off_, out_stride, oc1_, tile_); \
-        alwan__store_tile_typed_ch(out2, out_fmt, off_, out_stride, oc2_, tile_); \
-        off_ += tile_; \
-    } } \
-    return ALWAN_OK; \
-}
-
-#define ALWAN_PLANAR_EX_DELEGATE_SCALAR(name, native_fn) \
-int name(void *out0, size_t out_stride, void *out1, void *out2, \
-         void const *in0, size_t in_stride, void const *in1, void const *in2, \
-         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
-         alwan_f64 param) { \
-    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
-    if (in_fmt == ALWAN_NATIVE_PIXEL_FMT && out_fmt == ALWAN_NATIVE_PIXEL_FMT) \
-        return native_fn((alwan_f64 *)out0, out_stride, (alwan_f64 *)out1, (alwan_f64 *)out2, \
-                         (alwan_f64 const *)in0, in_stride, (alwan_f64 const *)in1, (alwan_f64 const *)in2, \
-                         count, param); \
-    { size_t off_ = 0; \
-    while (off_ < count) { \
-        size_t tile_ = count - off_; \
-        if (tile_ > ALWAN_TILE_PIXELS) tile_ = ALWAN_TILE_PIXELS; \
-        ALWAN_ALIGN(32) alwan_f64 ic0_[ALWAN_TILE_PIXELS], ic1_[ALWAN_TILE_PIXELS], ic2_[ALWAN_TILE_PIXELS]; \
-        ALWAN_ALIGN(32) alwan_f64 oc0_[ALWAN_TILE_PIXELS], oc1_[ALWAN_TILE_PIXELS], oc2_[ALWAN_TILE_PIXELS]; \
-        alwan__load_tile_typed_ch(ic0_, in0, in_fmt, off_, in_stride, tile_); \
-        alwan__load_tile_typed_ch(ic1_, in1, in_fmt, off_, in_stride, tile_); \
-        alwan__load_tile_typed_ch(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-        native_fn(oc0_, sizeof(alwan_f64), oc1_, oc2_, ic0_, sizeof(alwan_f64), ic1_, ic2_, tile_, param); \
-        alwan__store_tile_typed_ch(out0, out_fmt, off_, out_stride, oc0_, tile_); \
-        alwan__store_tile_typed_ch(out1, out_fmt, off_, out_stride, oc1_, tile_); \
-        alwan__store_tile_typed_ch(out2, out_fmt, off_, out_stride, oc2_, tile_); \
-        off_ += tile_; \
-    } } \
-    return ALWAN_OK; \
-}
-
 /* ================================================================
  * Dual-dispatch delegation macros (Phase 4)
  *
@@ -2322,7 +1666,7 @@ int name(void *out0, size_t out_stride, void *out1, void *out2, \
 /* -- Planar dual-dispatch: basic 3-channel ---------------------- */
 
 #define ALWAN_PLANAR_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
-int name(void *out0, size_t out_stride, void *out1, void *out2, \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
@@ -2373,7 +1717,7 @@ int name(void *out0, size_t out_stride, void *out1, void *out2, \
 /* -- Planar dual-dispatch: with white_xyz ----------------------- */
 
 #define ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
-int name(void *out0, size_t out_stride, void *out1, void *out2, \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_xyz_f64 const *white_xyz) { \
@@ -2431,7 +1775,7 @@ int name(void *out0, size_t out_stride, void *out1, void *out2, \
 /* -- Planar dual-dispatch: with extra typed param (int/enum) ---- */
 
 #define ALWAN_PLANAR_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
-int name(void *out0, size_t out_stride, void *out1, void *out2, \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          extra_type extra_name) { \
@@ -2483,7 +1827,7 @@ int name(void *out0, size_t out_stride, void *out1, void *out2, \
 /* -- Planar dual-dispatch: with alwan_f64 param -------------- */
 
 #define ALWAN_PLANAR_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
-int name(void *out0, size_t out_stride, void *out1, void *out2, \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_f64 param) { \
@@ -2535,7 +1879,7 @@ int name(void *out0, size_t out_stride, void *out1, void *out2, \
 /* -- Interleave dual-dispatch: basic 3-channel ------------------ */
 
 #define ALWAN_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
-int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
@@ -2573,7 +1917,7 @@ int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
 /* -- Interleave dual-dispatch: with white_xyz ------------------- */
 
 #define ALWAN_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
-int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_xyz_f64 const *white_xyz) { \
     if (!in || !out || !white_xyz || count == 0) return ALWAN_E_INVALID; \
@@ -2618,7 +1962,7 @@ int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
 /* -- Interleave dual-dispatch: with extra typed param (int/enum) */
 
 #define ALWAN_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
-int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          extra_type extra_name) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
@@ -2657,7 +2001,7 @@ int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
 /* -- Interleave dual-dispatch: with alwan_f64 param ---------- */
 
 #define ALWAN_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
-int name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_f64 param) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \

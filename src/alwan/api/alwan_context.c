@@ -137,3 +137,7 @@ void alwan_destroy(alwan_ctx *ctx) {
     /* Free context itself */
     ctx->free_fn(ctx);
 }
+
+char const *alwan_version_string(void) {
+    return ALWAN_VERSION_STRING;
+}

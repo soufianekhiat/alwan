@@ -433,7 +433,7 @@ static int clf_export_core(clf_writer *w,
  * Public API: Write CLF to file
  * ---------------------------------------------------------------- */
 
-int alwan_clf_export_f64(char const *path, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+alwan_status alwan_clf_export_f64(char const *path, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!path || !src_space || !dst_space) return ALWAN_E_INVALID;
     if (lut_size < 2) lut_size = 4096; /* default LUT size for 1D */
 
@@ -454,7 +454,7 @@ int alwan_clf_export_f64(char const *path, alwan_rgb_space_desc_f64 const *src_s
     return status;
 }
 
-int alwan_clf_export_view_f64(char const *path, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+alwan_status alwan_clf_export_view_f64(char const *path, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!path || !src_space || !dst_space) return ALWAN_E_INVALID;
     if (lut_size < 2) lut_size = 4096;
 
@@ -479,7 +479,7 @@ int alwan_clf_export_view_f64(char const *path, alwan_rgb_space_desc_f64 const *
  * Public API: Write CLF to buffer
  * ---------------------------------------------------------------- */
 
-int alwan_clf_export_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+alwan_status alwan_clf_export_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!buf || !src_space || !dst_space || !bytes_written || buf_size == 0) {
         return ALWAN_E_INVALID;
     }
@@ -501,7 +501,7 @@ int alwan_clf_export_buffer_f64(char *buf, size_t *bytes_written, size_t buf_siz
     return status;
 }
 
-int alwan_clf_export_view_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+alwan_status alwan_clf_export_view_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!buf || !src_space || !dst_space || !bytes_written || buf_size == 0) {
         return ALWAN_E_INVALID;
     }
@@ -540,7 +540,7 @@ static void clf_widen_desc_32(alwan_rgb_space_desc_f64 *out, alwan_rgb_space_des
     out->has_matrices = in->has_matrices;
 }
 
-int alwan_clf_export_f32(char const *path, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+alwan_status alwan_clf_export_f32(char const *path, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!src_space || !dst_space) return ALWAN_E_INVALID;
     alwan_rgb_space_desc_f64 s, d;
     clf_widen_desc_32(&s, src_space);
@@ -548,7 +548,7 @@ int alwan_clf_export_f32(char const *path, alwan_rgb_space_desc_f32 const *src_s
     return alwan_clf_export_f64(path, &s, &d, id, name, lut_size, ctx);
 }
 
-int alwan_clf_export_view_f32(char const *path, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+alwan_status alwan_clf_export_view_f32(char const *path, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!src_space || !dst_space) return ALWAN_E_INVALID;
     alwan_rgb_space_desc_f64 s, d;
     clf_widen_desc_32(&s, src_space);
@@ -556,7 +556,7 @@ int alwan_clf_export_view_f32(char const *path, alwan_rgb_space_desc_f32 const *
     return alwan_clf_export_view_f64(path, &s, &d, view, id, name, lut_size, ctx);
 }
 
-int alwan_clf_export_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+alwan_status alwan_clf_export_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!src_space || !dst_space) return ALWAN_E_INVALID;
     alwan_rgb_space_desc_f64 s, d;
     clf_widen_desc_32(&s, src_space);
@@ -564,7 +564,7 @@ int alwan_clf_export_buffer_f32(char *buf, size_t *bytes_written, size_t buf_siz
     return alwan_clf_export_buffer_f64(buf, bytes_written, buf_size, &s, &d, id, name, lut_size, ctx);
 }
 
-int alwan_clf_export_view_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
+alwan_status alwan_clf_export_view_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx) {
     if (!src_space || !dst_space) return ALWAN_E_INVALID;
     alwan_rgb_space_desc_f64 s, d;
     clf_widen_desc_32(&s, src_space);

@@ -153,7 +153,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(aces1_spline_c9)(ALWAN_CORE_T oces, const ALWA
 }
 
 /* ---- Forward ---- */
-int ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_out,
         ALWAN_CORE_RGB const *rgb_in, alwan_aces1_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;

@@ -147,7 +147,7 @@ void ALWAN_CORE_FNLIT(alwan_oklch_to_xyz)(ALWAN_CORE_XYZ *xyz, ALWAN_CORE_OKLCH 
  * NORM/DENORM is inherited from the called XYZ<->perceptual API wrappers.
  * ================================================================ */
 
-int ALWAN_CORE_FNLIT(alwan_rgb_to_lab)(ALWAN_CORE_LAB *lab,
+alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_lab)(ALWAN_CORE_LAB *lab,
                                        ALWAN_CORE_RGB_SPACE_DESC const *space,
                                        ALWAN_CORE_RGB const *rgb,
                                        ALWAN_CORE_XYZ const *white_xyz) {
@@ -159,7 +159,7 @@ int ALWAN_CORE_FNLIT(alwan_rgb_to_lab)(ALWAN_CORE_LAB *lab,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_lab_to_rgb)(ALWAN_CORE_RGB *rgb,
+alwan_status ALWAN_CORE_FNLIT(alwan_lab_to_rgb)(ALWAN_CORE_RGB *rgb,
                                        ALWAN_CORE_RGB_SPACE_DESC const *space,
                                        ALWAN_CORE_LAB const *lab,
                                        ALWAN_CORE_XYZ const *white_xyz) {
@@ -169,7 +169,7 @@ int ALWAN_CORE_FNLIT(alwan_lab_to_rgb)(ALWAN_CORE_RGB *rgb,
     return ALWAN_CORE_FNLIT(alwan_xyz_to_rgb)(rgb, space, &xyz);
 }
 
-int ALWAN_CORE_FNLIT(alwan_rgb_to_luv)(ALWAN_CORE_LUV *luv,
+alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_luv)(ALWAN_CORE_LUV *luv,
                                        ALWAN_CORE_RGB_SPACE_DESC const *space,
                                        ALWAN_CORE_RGB const *rgb,
                                        ALWAN_CORE_XYZ const *white_xyz) {
@@ -181,7 +181,7 @@ int ALWAN_CORE_FNLIT(alwan_rgb_to_luv)(ALWAN_CORE_LUV *luv,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_luv_to_rgb)(ALWAN_CORE_RGB *rgb,
+alwan_status ALWAN_CORE_FNLIT(alwan_luv_to_rgb)(ALWAN_CORE_RGB *rgb,
                                        ALWAN_CORE_RGB_SPACE_DESC const *space,
                                        ALWAN_CORE_LUV const *luv,
                                        ALWAN_CORE_XYZ const *white_xyz) {
@@ -191,7 +191,7 @@ int ALWAN_CORE_FNLIT(alwan_luv_to_rgb)(ALWAN_CORE_RGB *rgb,
     return ALWAN_CORE_FNLIT(alwan_xyz_to_rgb)(rgb, space, &xyz);
 }
 
-int ALWAN_CORE_FNLIT(alwan_rgb_to_oklab)(ALWAN_CORE_OKLAB *oklab,
+alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_oklab)(ALWAN_CORE_OKLAB *oklab,
                                          ALWAN_CORE_RGB_SPACE_DESC const *space,
                                          ALWAN_CORE_RGB const *rgb) {
     if (!oklab || !space || !rgb) return ALWAN_E_INVALID;
@@ -202,7 +202,7 @@ int ALWAN_CORE_FNLIT(alwan_rgb_to_oklab)(ALWAN_CORE_OKLAB *oklab,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_oklab_to_rgb)(ALWAN_CORE_RGB *rgb,
+alwan_status ALWAN_CORE_FNLIT(alwan_oklab_to_rgb)(ALWAN_CORE_RGB *rgb,
                                          ALWAN_CORE_RGB_SPACE_DESC const *space,
                                          ALWAN_CORE_OKLAB const *oklab) {
     if (!rgb || !space || !oklab) return ALWAN_E_INVALID;
@@ -211,7 +211,7 @@ int ALWAN_CORE_FNLIT(alwan_oklab_to_rgb)(ALWAN_CORE_RGB *rgb,
     return ALWAN_CORE_FNLIT(alwan_xyz_to_rgb)(rgb, space, &xyz);
 }
 
-int ALWAN_CORE_FNLIT(alwan_rgb_to_oklch)(ALWAN_CORE_OKLCH *oklch,
+alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_oklch)(ALWAN_CORE_OKLCH *oklch,
                                          ALWAN_CORE_RGB_SPACE_DESC const *space,
                                          ALWAN_CORE_RGB const *rgb) {
     if (!oklch || !space || !rgb) return ALWAN_E_INVALID;
@@ -222,7 +222,7 @@ int ALWAN_CORE_FNLIT(alwan_rgb_to_oklch)(ALWAN_CORE_OKLCH *oklch,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_oklch_to_rgb)(ALWAN_CORE_RGB *rgb,
+alwan_status ALWAN_CORE_FNLIT(alwan_oklch_to_rgb)(ALWAN_CORE_RGB *rgb,
                                          ALWAN_CORE_RGB_SPACE_DESC const *space,
                                          ALWAN_CORE_OKLCH const *oklch) {
     if (!rgb || !space || !oklch) return ALWAN_E_INVALID;

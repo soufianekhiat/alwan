@@ -88,7 +88,7 @@ ALWAN_DIAG_POP
  * Used by _map_interleave_ex macros; composite of EOTF/OETF + matrix + core
  * ---------------------------------------------------------------- */
 
-int alwan_srgb_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_rgb_f64 const *rgb) {
+alwan_status alwan_srgb_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_rgb_f64 const *rgb) {
     if (!rgb || !xyz) return ALWAN_E_INVALID;
     alwan_vec3_f64 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
     alwan_vec3_f64 r = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
@@ -96,7 +96,7 @@ int alwan_srgb_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_rgb_f64 const *rgb) {
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_xyz_f64 const *xyz) {
+alwan_status alwan_xyz_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_xyz_f64 const *xyz) {
     if (!xyz || !rgb) return ALWAN_E_INVALID;
     alwan_vec3_f64 v = {{xyz->x, xyz->y, xyz->z}};
     alwan_vec3_f64 lin = alwan_mat3_mulv_f64_v(XYZ_TO_SRGB, v);
@@ -104,7 +104,7 @@ int alwan_xyz_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_xyz_f64 const *xyz) {
     return ALWAN_OK;
 }
 
-int alwan_srgb_to_lab_f64(alwan_lab_f64 *lab, alwan_rgb_f64 const *rgb) {
+alwan_status alwan_srgb_to_lab_f64(alwan_lab_f64 *lab, alwan_rgb_f64 const *rgb) {
     if (!rgb || !lab) return ALWAN_E_INVALID;
     alwan_vec3_f64 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
     alwan_vec3_f64 xyz = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
@@ -114,7 +114,7 @@ int alwan_srgb_to_lab_f64(alwan_lab_f64 *lab, alwan_rgb_f64 const *rgb) {
     return ALWAN_OK;
 }
 
-int alwan_lab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_lab_f64 const *lab) {
+alwan_status alwan_lab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_lab_f64 const *lab) {
     if (!lab || !rgb) return ALWAN_E_INVALID;
     alwan_xyz_f64 wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
     alwan_xyz_f64 xyz = alwan_lab_to_xyz_f64_v(*lab, wp);
@@ -124,7 +124,7 @@ int alwan_lab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_lab_f64 const *lab) {
     return ALWAN_OK;
 }
 
-int alwan_srgb_to_oklab_f64(alwan_oklab_f64 *oklab, alwan_rgb_f64 const *rgb) {
+alwan_status alwan_srgb_to_oklab_f64(alwan_oklab_f64 *oklab, alwan_rgb_f64 const *rgb) {
     if (!rgb || !oklab) return ALWAN_E_INVALID;
     alwan_vec3_f64 v = {{alwan_srgb_eotf_f64(rgb->r), alwan_srgb_eotf_f64(rgb->g), alwan_srgb_eotf_f64(rgb->b)}};
     alwan_vec3_f64 xyz = alwan_mat3_mulv_f64_v(SRGB_TO_XYZ, v);
@@ -133,7 +133,7 @@ int alwan_srgb_to_oklab_f64(alwan_oklab_f64 *oklab, alwan_rgb_f64 const *rgb) {
     return ALWAN_OK;
 }
 
-int alwan_oklab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_oklab_f64 const *oklab) {
+alwan_status alwan_oklab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_oklab_f64 const *oklab) {
     if (!oklab || !rgb) return ALWAN_E_INVALID;
     alwan_xyz_f64 xyz = alwan_oklab_to_xyz_f64_v(*oklab);
     alwan_vec3_f64 v = {{xyz.x, xyz.y, xyz.z}};
@@ -146,7 +146,7 @@ int alwan_oklab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_oklab_f64 const *oklab) {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-int alwan_srgb_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_rgb_f32 const *rgb) {
+alwan_status alwan_srgb_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_rgb_f32 const *rgb) {
     if (!rgb || !xyz) return ALWAN_E_INVALID;
     alwan_vec3_f32 v = {{alwan_srgb_eotf_f32(rgb->r), alwan_srgb_eotf_f32(rgb->g), alwan_srgb_eotf_f32(rgb->b)}};
     alwan_vec3_f32 r = alwan_mat3_mulv_f32_v(SRGB_TO_XYZ_f32, v);
@@ -154,7 +154,7 @@ int alwan_srgb_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_rgb_f32 const *rgb) {
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_xyz_f32 const *xyz) {
+alwan_status alwan_xyz_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_xyz_f32 const *xyz) {
     if (!xyz || !rgb) return ALWAN_E_INVALID;
     alwan_vec3_f32 v = {{xyz->x, xyz->y, xyz->z}};
     alwan_vec3_f32 lin = alwan_mat3_mulv_f32_v(XYZ_TO_SRGB_f32, v);
@@ -162,7 +162,7 @@ int alwan_xyz_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_xyz_f32 const *xyz) {
     return ALWAN_OK;
 }
 
-int alwan_srgb_to_lab_f32(alwan_lab_f32 *lab, alwan_rgb_f32 const *rgb) {
+alwan_status alwan_srgb_to_lab_f32(alwan_lab_f32 *lab, alwan_rgb_f32 const *rgb) {
     if (!rgb || !lab) return ALWAN_E_INVALID;
     alwan_vec3_f32 v = {{alwan_srgb_eotf_f32(rgb->r), alwan_srgb_eotf_f32(rgb->g), alwan_srgb_eotf_f32(rgb->b)}};
     alwan_vec3_f32 xyz = alwan_mat3_mulv_f32_v(SRGB_TO_XYZ_f32, v);
@@ -172,7 +172,7 @@ int alwan_srgb_to_lab_f32(alwan_lab_f32 *lab, alwan_rgb_f32 const *rgb) {
     return ALWAN_OK;
 }
 
-int alwan_lab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_lab_f32 const *lab) {
+alwan_status alwan_lab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_lab_f32 const *lab) {
     if (!lab || !rgb) return ALWAN_E_INVALID;
     alwan_xyz_f32 wp = {D65_WP_Y1_f32[0], D65_WP_Y1_f32[1], D65_WP_Y1_f32[2]};
     alwan_xyz_f32 xyz = alwan_lab_to_xyz_f32_v(*lab, wp);
@@ -182,7 +182,7 @@ int alwan_lab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_lab_f32 const *lab) {
     return ALWAN_OK;
 }
 
-int alwan_srgb_to_oklab_f32(alwan_oklab_f32 *oklab, alwan_rgb_f32 const *rgb) {
+alwan_status alwan_srgb_to_oklab_f32(alwan_oklab_f32 *oklab, alwan_rgb_f32 const *rgb) {
     if (!rgb || !oklab) return ALWAN_E_INVALID;
     alwan_vec3_f32 v = {{alwan_srgb_eotf_f32(rgb->r), alwan_srgb_eotf_f32(rgb->g), alwan_srgb_eotf_f32(rgb->b)}};
     alwan_vec3_f32 xyz = alwan_mat3_mulv_f32_v(SRGB_TO_XYZ_f32, v);
@@ -191,7 +191,7 @@ int alwan_srgb_to_oklab_f32(alwan_oklab_f32 *oklab, alwan_rgb_f32 const *rgb) {
     return ALWAN_OK;
 }
 
-int alwan_oklab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_oklab_f32 const *oklab) {
+alwan_status alwan_oklab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_oklab_f32 const *oklab) {
     if (!oklab || !rgb) return ALWAN_E_INVALID;
     alwan_xyz_f32 xyz = alwan_oklab_to_xyz_f32_v(*oklab);
     alwan_vec3_f32 v = {{xyz.x, xyz.y, xyz.z}};
@@ -268,7 +268,7 @@ ALWAN_EX_DELEGATE_DUAL(alwan_oklab_to_srgb_map_interleave_ex,
  * Batch Delta E Computations
  * ---------------------------------------------------------------- */
 
-int alwan_delta_e_76_f64_batch(alwan_f64 *delta_e_out,
+alwan_status alwan_delta_e_76_f64_batch(alwan_f64 *delta_e_out,
                            alwan_f64 const *lab1_in, size_t in1_stride,
                            alwan_f64 const *lab2_in, size_t in2_stride,
                            size_t count) {
@@ -287,7 +287,7 @@ int alwan_delta_e_76_f64_batch(alwan_f64 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_2000_f64_batch(alwan_f64 *delta_e_out,
+alwan_status alwan_delta_e_2000_f64_batch(alwan_f64 *delta_e_out,
                              alwan_f64 const *lab1_in, size_t in1_stride,
                              alwan_f64 const *lab2_in, size_t in2_stride,
                              size_t count) {
@@ -306,7 +306,7 @@ int alwan_delta_e_2000_f64_batch(alwan_f64 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_94_f64_batch(alwan_f64 *delta_e_out,
+alwan_status alwan_delta_e_94_f64_batch(alwan_f64 *delta_e_out,
                            alwan_f64 const *lab1_in, size_t in1_stride,
                            alwan_f64 const *lab2_in, size_t in2_stride,
                            size_t count) {
@@ -325,7 +325,7 @@ int alwan_delta_e_94_f64_batch(alwan_f64 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_cmc_f64_batch(alwan_f64 *delta_e_out,
+alwan_status alwan_delta_e_cmc_f64_batch(alwan_f64 *delta_e_out,
                             alwan_f64 const *lab1_in, size_t in1_stride,
                             alwan_f64 const *lab2_in, size_t in2_stride,
                             size_t count,
@@ -350,7 +350,7 @@ int alwan_delta_e_cmc_f64_batch(alwan_f64 *delta_e_out,
 /* Native f32 batches: loop over the scalar f32 metric, mirroring the f64
  * batch structure exactly (byte strides, {l0,l1,l2} unpacking). */
 #if ALWAN_WITH_F32
-int alwan_delta_e_76_f32_batch(alwan_f32 *delta_e_out,
+alwan_status alwan_delta_e_76_f32_batch(alwan_f32 *delta_e_out,
                            alwan_f32 const *lab1_in, size_t in1_stride,
                            alwan_f32 const *lab2_in, size_t in2_stride,
                            size_t count) {
@@ -369,7 +369,7 @@ int alwan_delta_e_76_f32_batch(alwan_f32 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_2000_f32_batch(alwan_f32 *delta_e_out,
+alwan_status alwan_delta_e_2000_f32_batch(alwan_f32 *delta_e_out,
                              alwan_f32 const *lab1_in, size_t in1_stride,
                              alwan_f32 const *lab2_in, size_t in2_stride,
                              size_t count) {
@@ -388,7 +388,7 @@ int alwan_delta_e_2000_f32_batch(alwan_f32 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_94_f32_batch(alwan_f32 *delta_e_out,
+alwan_status alwan_delta_e_94_f32_batch(alwan_f32 *delta_e_out,
                            alwan_f32 const *lab1_in, size_t in1_stride,
                            alwan_f32 const *lab2_in, size_t in2_stride,
                            size_t count) {
@@ -407,7 +407,7 @@ int alwan_delta_e_94_f32_batch(alwan_f32 *delta_e_out,
     return ALWAN_OK;
 }
 
-int alwan_delta_e_cmc_f32_batch(alwan_f32 *delta_e_out,
+alwan_status alwan_delta_e_cmc_f32_batch(alwan_f32 *delta_e_out,
                             alwan_f32 const *lab1_in, size_t in1_stride,
                             alwan_f32 const *lab2_in, size_t in2_stride,
                             size_t count,
