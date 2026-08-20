@@ -73,8 +73,12 @@ EXPORTS
     alwan_aces_tonescale_compress20_f64
     alwan_agx_apply_f32
     alwan_agx_apply_f64
+    alwan_agx_blender_cube_sample_f32
+    alwan_agx_blender_cube_sample_f64
     alwan_agx_build_geometry_f32
     alwan_agx_build_geometry_f64
+    alwan_agx_contrast_sample_f32
+    alwan_agx_contrast_sample_f64
     alwan_agx_default_params_f32
     alwan_agx_default_params_f64
     alwan_agx_f32_map_interleave
@@ -602,6 +606,8 @@ EXPORTS
     alwan_iptch_to_ipt_f64
     alwan_is_within_pointer_gamut_f32
     alwan_is_within_pointer_gamut_f64
+    alwan_jakob2019_coeff_sample_f32
+    alwan_jakob2019_coeff_sample_f64
     alwan_jp2499_apply_f32
     alwan_jp2499_apply_f64
     alwan_jp2499_default_params_f32
@@ -751,6 +757,8 @@ EXPORTS
     alwan_luv_to_xyz_f64_map_planar
     alwan_luv_to_xyz_map_interleave_ex
     alwan_luv_to_xyz_map_planar_ex
+    alwan_machado_matrix_sample_f32
+    alwan_machado_matrix_sample_f64
     alwan_mat3_det_f32
     alwan_mat3_det_f64
     alwan_mat3_identity_f32
@@ -1166,6 +1174,14 @@ EXPORTS
     alwan_ssi_calculate_f64
     alwan_st2086_init_f32
     alwan_st2086_init_f64
+    alwan_table1d_mat3_sample_f32
+    alwan_table1d_mat3_sample_f64
+    alwan_table1d_sample_f32
+    alwan_table1d_sample_f64
+    alwan_table2d_sample_f32
+    alwan_table2d_sample_f64
+    alwan_table3d_sample_f32
+    alwan_table3d_sample_f64
     alwan_table_interp_1d_f32
     alwan_table_interp_1d_f64
     alwan_table_interp_3d_tetrahedral_f32

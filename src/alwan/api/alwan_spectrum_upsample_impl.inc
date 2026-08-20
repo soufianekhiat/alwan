@@ -107,67 +107,23 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_mallett2019)(
 /* ----------------------------------------------------------------
  * Jakob2019: trilinear LUT sample + polynomial evaluation
  * ---------------------------------------------------------------- */
+/* The three coefficient cubes are PLANAR and b-fastest, not the interleaved
+ * r-fastest layout alwan_table3d_sample_trilinear reads, so they go through
+ * the planar reader. Addressing is the shared gate: spu_clamp is
+ * NaN-transparent, so `(int)(clamp(NaN)*63)` used to land on INT_MIN and the
+ * index arithmetic signed-overflowed before dereferencing. Finite coordinates
+ * are bit-identical -- same clamp, same multiply, same corner blend. */
 static void ALWAN_CORE_FN(jakob2019_lut_sample)(
         ALWAN_CORE_T const *lut_c0, ALWAN_CORE_T const *lut_c1, ALWAN_CORE_T const *lut_c2,
         ALWAN_CORE_T r, ALWAN_CORE_T g, ALWAN_CORE_T b,
         ALWAN_CORE_T *out_c0, ALWAN_CORE_T *out_c1, ALWAN_CORE_T *out_c2) {
-    r = ALWAN_CORE_FN(spu_clamp)(r, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-    g = ALWAN_CORE_FN(spu_clamp)(g, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-    b = ALWAN_CORE_FN(spu_clamp)(b, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-
-    ALWAN_CORE_T const res_f = (ALWAN_CORE_T)(JAKOB2019_LUT_RES - 1);
-    ALWAN_CORE_T const rf = r * res_f;
-    ALWAN_CORE_T const gf = g * res_f;
-    ALWAN_CORE_T const bf = b * res_f;
-
-    int const r0 = (int)rf;
-    int const g0 = (int)gf;
-    int const b0 = (int)bf;
-
-    int const r1 = (r0 + 1 < JAKOB2019_LUT_RES) ? (r0 + 1) : r0;
-    int const g1 = (g0 + 1 < JAKOB2019_LUT_RES) ? (g0 + 1) : g0;
-    int const b1 = (b0 + 1 < JAKOB2019_LUT_RES) ? (b0 + 1) : b0;
-
-    ALWAN_CORE_T const fr = rf - (ALWAN_CORE_T)r0;
-    ALWAN_CORE_T const fg = gf - (ALWAN_CORE_T)g0;
-    ALWAN_CORE_T const fb = bf - (ALWAN_CORE_T)b0;
-
-#define LUT_INDEX(ri, gi, bi) ((ri) * JAKOB2019_LUT_RES * JAKOB2019_LUT_RES + (gi) * JAKOB2019_LUT_RES + (bi))
-    int const i000 = LUT_INDEX(r0, g0, b0);
-    int const i001 = LUT_INDEX(r0, g0, b1);
-    int const i010 = LUT_INDEX(r0, g1, b0);
-    int const i011 = LUT_INDEX(r0, g1, b1);
-    int const i100 = LUT_INDEX(r1, g0, b0);
-    int const i101 = LUT_INDEX(r1, g0, b1);
-    int const i110 = LUT_INDEX(r1, g1, b0);
-    int const i111 = LUT_INDEX(r1, g1, b1);
-#undef LUT_INDEX
-
-    ALWAN_CORE_T const one = ALWAN_CORE_LITERAL(1.0);
-
-    ALWAN_CORE_T const c0_00 = lut_c0[i000] * (one - fb) + lut_c0[i001] * fb;
-    ALWAN_CORE_T const c0_01 = lut_c0[i010] * (one - fb) + lut_c0[i011] * fb;
-    ALWAN_CORE_T const c0_10 = lut_c0[i100] * (one - fb) + lut_c0[i101] * fb;
-    ALWAN_CORE_T const c0_11 = lut_c0[i110] * (one - fb) + lut_c0[i111] * fb;
-    ALWAN_CORE_T const c0_0 = c0_00 * (one - fg) + c0_01 * fg;
-    ALWAN_CORE_T const c0_1 = c0_10 * (one - fg) + c0_11 * fg;
-    *out_c0 = c0_0 * (one - fr) + c0_1 * fr;
-
-    ALWAN_CORE_T const c1_00 = lut_c1[i000] * (one - fb) + lut_c1[i001] * fb;
-    ALWAN_CORE_T const c1_01 = lut_c1[i010] * (one - fb) + lut_c1[i011] * fb;
-    ALWAN_CORE_T const c1_10 = lut_c1[i100] * (one - fb) + lut_c1[i101] * fb;
-    ALWAN_CORE_T const c1_11 = lut_c1[i110] * (one - fb) + lut_c1[i111] * fb;
-    ALWAN_CORE_T const c1_0 = c1_00 * (one - fg) + c1_01 * fg;
-    ALWAN_CORE_T const c1_1 = c1_10 * (one - fg) + c1_11 * fg;
-    *out_c1 = c1_0 * (one - fr) + c1_1 * fr;
-
-    ALWAN_CORE_T const c2_00 = lut_c2[i000] * (one - fb) + lut_c2[i001] * fb;
-    ALWAN_CORE_T const c2_01 = lut_c2[i010] * (one - fb) + lut_c2[i011] * fb;
-    ALWAN_CORE_T const c2_10 = lut_c2[i100] * (one - fb) + lut_c2[i101] * fb;
-    ALWAN_CORE_T const c2_11 = lut_c2[i110] * (one - fb) + lut_c2[i111] * fb;
-    ALWAN_CORE_T const c2_0 = c2_00 * (one - fg) + c2_01 * fg;
-    ALWAN_CORE_T const c2_1 = c2_10 * (one - fg) + c2_11 * fg;
-    *out_c2 = c2_0 * (one - fr) + c2_1 * fr;
+    ALWAN_CORE_VEC3 coord;
+    coord.v[0] = r; coord.v[1] = g; coord.v[2] = b;
+    ALWAN_CORE_VEC3 const c = ALWAN_CORE_FNVLIT(alwan_table3d_planar3_sample_trilinear)(
+        lut_c0, lut_c1, lut_c2, ALWAN_TABLE_JAKOB2019_RES, coord);
+    *out_c0 = c.v[0];
+    *out_c1 = c.v[1];
+    *out_c2 = c.v[2];
 }
 
 static inline ALWAN_CORE_T ALWAN_CORE_FN(jakob2019_eval_poly)(
@@ -187,17 +143,17 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_jakob2019)(
     ALWAN_CORE_T const *lut_c0, *lut_c1, *lut_c2;
     switch (gamut) {
         case ALWAN_JAKOB2019_SRGB:
-            lut_c0 = ALWAN_CORE_FNLIT(jakob2019_srgb_lut_c0); lut_c1 = ALWAN_CORE_FNLIT(jakob2019_srgb_lut_c1); lut_c2 = ALWAN_CORE_FNLIT(jakob2019_srgb_lut_c2); break;
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c2); break;
         case ALWAN_JAKOB2019_PROPHOTO_RGB:
-            lut_c0 = ALWAN_CORE_FNLIT(jakob2019_prophoto_lut_c0); lut_c1 = ALWAN_CORE_FNLIT(jakob2019_prophoto_lut_c1); lut_c2 = ALWAN_CORE_FNLIT(jakob2019_prophoto_lut_c2); break;
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c2); break;
         case ALWAN_JAKOB2019_ACES2065_1:
-            lut_c0 = ALWAN_CORE_FNLIT(jakob2019_aces_lut_c0); lut_c1 = ALWAN_CORE_FNLIT(jakob2019_aces_lut_c1); lut_c2 = ALWAN_CORE_FNLIT(jakob2019_aces_lut_c2); break;
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c2); break;
         case ALWAN_JAKOB2019_REC2020:
-            lut_c0 = ALWAN_CORE_FNLIT(jakob2019_rec2020_lut_c0); lut_c1 = ALWAN_CORE_FNLIT(jakob2019_rec2020_lut_c1); lut_c2 = ALWAN_CORE_FNLIT(jakob2019_rec2020_lut_c2); break;
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c2); break;
         case ALWAN_JAKOB2019_ERGB:
-            lut_c0 = ALWAN_CORE_FNLIT(jakob2019_ergb_lut_c0); lut_c1 = ALWAN_CORE_FNLIT(jakob2019_ergb_lut_c1); lut_c2 = ALWAN_CORE_FNLIT(jakob2019_ergb_lut_c2); break;
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c2); break;
         case ALWAN_JAKOB2019_XYZ:
-            lut_c0 = ALWAN_CORE_FNLIT(jakob2019_xyz_lut_c0); lut_c1 = ALWAN_CORE_FNLIT(jakob2019_xyz_lut_c1); lut_c2 = ALWAN_CORE_FNLIT(jakob2019_xyz_lut_c2); break;
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c2); break;
         default:
             return ALWAN_E_INVALID;
     }

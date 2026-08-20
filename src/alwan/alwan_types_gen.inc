@@ -366,6 +366,15 @@ typedef struct {
     ALWAN_T b;   /* Yellow-blue */
 } ALWAN_TN(alwan_cam20u_correlates);
 
+/* Resolved table cell: the output of the addressing gate.
+ * i0/i1 are provably in [0, size-1] and frac is never NaN, which is what lets
+ * every table reader index its corners with no per-read bounds check. */
+typedef struct {
+    int   i0;
+    int   i1;
+    ALWAN_T frac;
+} ALWAN_TN(alwan_table_cell);
+
 #undef ALWAN_TN
 #undef ALWAN_TN_
 #undef ALWAN_TN2_

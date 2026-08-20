@@ -5046,6 +5046,157 @@ alwan_status alwan_lut2d_to_3d_f64(alwan_f64 *out,
 alwan_status alwan_bake_2dlut_f32(alwan_f32 *out, int size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_ctx *ctx);
 alwan_status alwan_bake_2dlut_f64(alwan_f64 *out, int size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_ctx *ctx);
 
+/* ----------------------------------------------------------------
+ * Table readers
+ *
+ * Every array in the library that is addressed by a FLOAT coordinate is read
+ * through one of these. The addressing gate lives in one place
+ * (core/alwan_table_core.inc) and runs once per COORDINATE, before the cast to
+ * int -- never per element read -- so the eight corner fetches of a trilinear
+ * sample carry no bounds checks at all.
+ *
+ * BOUNDS POLICY. alwan does not silently clamp COLOUR VALUES. An array ADDRESS
+ * is not a colour: lut[-3] has no unclamped meaning to preserve, and (int)NaN
+ * is undefined behaviour that reads far outside the table. These readers clamp
+ * ADDRESSES and leave every colour value untouched. By default:
+ *
+ *   coord < 0, or -inf  -> the table's first element, ALWAN_OK
+ *   coord > 1, or +inf  -> the table's last element,  ALWAN_OK
+ *   NaN                 -> the table's first element, ALWAN_OK
+ *
+ * Callers who need to be told instead of served the edge pass
+ * `mode | ALWAN_SAMPLE_STRICT`, which returns ALWAN_E_RANGE and leaves *result
+ * untouched. STRICT is scalar-only for now; a bulk reader given it returns
+ * ALWAN_E_INVALID rather than ignoring it.
+ *
+ * ALWAN_E_INVALID is returned for a null pointer, size < 2, or a mode the rank
+ * cannot honour. All three are loop-invariant and checked once at entry. A
+ * mode is REJECTED, never silently downgraded: passing ALWAN_SAMPLE_BILINEAR
+ * to the 2-d strip reader is an error, not a quiet substitution, because the
+ * strip is a flattened cube and is genuinely sampled trilinearly.
+ *
+ * Accepted modes by rank:
+ *   rank 1, scalar   NEAREST, LINEAR (default)
+ *   rank 1, mat3x3   NEAREST, LINEAR (default) -- not CATMULL_ROM: the
+ *                    reference CVD model defines linear severity interpolation
+ *   rank 2 strip     NEAREST, TRILINEAR (default) -- BILINEAR is rejected
+ *   rank 3 cube      NEAREST, TRILINEAR (default), TETRAHEDRAL
+ * ALWAN_SAMPLE_BILINEAR and ALWAN_SAMPLE_CATMULL_ROM are pinned in the enum
+ * but not implemented anywhere yet; they return ALWAN_E_INVALID.
+ * ---------------------------------------------------------------- */
+
+/* Caller-supplied 1D table.
+ * result: output interpolated value
+ * table: size entries
+ * size: number of entries (>= 2)
+ * coord: input [0,1] coordinate
+ * mode: LINEAR (0, the default) or NEAREST, optionally | ALWAN_SAMPLE_STRICT */
+alwan_status alwan_table1d_sample_f32(alwan_f32 *result,
+                        alwan_f32 const *table, int size,
+                        alwan_f32 coord, alwan_sample_mode mode);
+alwan_status alwan_table1d_sample_f64(alwan_f64 *result,
+                        alwan_f64 const *table, int size,
+                        alwan_f64 coord, alwan_sample_mode mode);
+
+/* Caller-supplied 2D strip: a cube flattened to (size*size) x size.
+ * result: output interpolated RGB
+ * strip: (size*size) * size * 3 values, RGB interleaved
+ * size: cube edge length (>= 2)
+ * coord: input [0,1] RGB coordinate
+ * mode: LINEAR (0, the default) or NEAREST or TRILINEAR, optionally
+ *       | ALWAN_SAMPLE_STRICT */
+alwan_status alwan_table2d_sample_f32(alwan_rgb_f32 *result,
+                        alwan_f32 const *strip, int size,
+                        alwan_rgb_f32 const *coord, alwan_sample_mode mode);
+alwan_status alwan_table2d_sample_f64(alwan_rgb_f64 *result,
+                        alwan_f64 const *strip, int size,
+                        alwan_rgb_f64 const *coord, alwan_sample_mode mode);
+
+/* Caller-supplied 3D cube, R-fastest, RGB interleaved.
+ * result: output interpolated RGB
+ * cube: size^3 * 3 values
+ * size: cube edge length (>= 2)
+ * coord: input [0,1] RGB coordinate
+ * mode: LINEAR (0, the default, resolves to trilinear), NEAREST, TRILINEAR
+ *       or TETRAHEDRAL, optionally | ALWAN_SAMPLE_STRICT */
+alwan_status alwan_table3d_sample_f32(alwan_rgb_f32 *result,
+                        alwan_f32 const *cube, int size,
+                        alwan_rgb_f32 const *coord, alwan_sample_mode mode);
+alwan_status alwan_table3d_sample_f64(alwan_rgb_f64 *result,
+                        alwan_f64 const *cube, int size,
+                        alwan_rgb_f64 const *coord, alwan_sample_mode mode);
+
+/* Caller-supplied 1D table of 3x3 matrices (a severity or temperature ramp).
+ * result: output interpolated matrix
+ * table: size matrices
+ * size: number of entries (>= 2)
+ * coord: input [0,1] coordinate
+ * mode: LINEAR (0, the default) or NEAREST, optionally | ALWAN_SAMPLE_STRICT */
+alwan_status alwan_table1d_mat3_sample_f32(alwan_mat3x3_f32 *result,
+                        alwan_mat3x3_f32 const *table, int size,
+                        alwan_f32 coord, alwan_sample_mode mode);
+alwan_status alwan_table1d_mat3_sample_f64(alwan_mat3x3_f64 *result,
+                        alwan_mat3x3_f64 const *table, int size,
+                        alwan_f64 coord, alwan_sample_mode mode);
+
+/* ---- Named readers for embedded tables ----
+ *
+ * No buffer parameter: the table IS the identity, so a caller cannot pass a
+ * mismatched size. These are declared and exported in every build
+ * configuration; a future per-table build switch changes what a reader
+ * RETURNS (ALWAN_E_NODATA), never whether it LINKS. */
+
+/* Machado 2009 CVD simulation matrix at a given severity.
+ * result: output 3x3 matrix
+ * cvd_type: which deficiency to look up
+ * severity: 0.0 (none) to 1.0 (full)
+ * mode: LINEAR (0, the default) or NEAREST, optionally | ALWAN_SAMPLE_STRICT */
+alwan_status alwan_machado_matrix_sample_f32(alwan_mat3x3_f32 *result,
+                        alwan_cvd_type cvd_type,
+                        alwan_f32 severity, alwan_sample_mode mode);
+alwan_status alwan_machado_matrix_sample_f64(alwan_mat3x3_f64 *result,
+                        alwan_cvd_type cvd_type,
+                        alwan_f64 severity, alwan_sample_mode mode);
+
+/* Jakob 2019 spectral upsampling polynomial coefficients for an RGB coordinate.
+ * result_c012: output 3 coefficients (c0, c1, c2)
+ * gamut: which gamut's coefficient cubes to read
+ * coord: input [0,1] RGB coordinate
+ * mode: LINEAR (0, the default) or NEAREST or TRILINEAR, optionally
+ *       | ALWAN_SAMPLE_STRICT */
+alwan_status alwan_jakob2019_coeff_sample_f32(alwan_f32 *result_c012,
+                        alwan_jakob2019_gamut gamut,
+                        alwan_rgb_f32 const *coord, alwan_sample_mode mode);
+alwan_status alwan_jakob2019_coeff_sample_f64(alwan_f64 *result_c012,
+                        alwan_jakob2019_gamut gamut,
+                        alwan_rgb_f64 const *coord, alwan_sample_mode mode);
+
+/* AgX contrast curve sample. Reads the same 4096-entry LUT the AgX view
+ * transform reads, with the same delta blend, so results match bit for bit.
+ * result: output display value
+ * sb2383: 0 for the original AgX curve, non-zero for the SB2383 curve
+ * coord: input [0,1] normalized log2 coordinate
+ * mode: LINEAR (0, the default) or NEAREST, optionally | ALWAN_SAMPLE_STRICT */
+alwan_status alwan_agx_contrast_sample_f32(alwan_f32 *result, int sb2383,
+                        alwan_f32 coord, alwan_sample_mode mode);
+alwan_status alwan_agx_contrast_sample_f64(alwan_f64 *result, int sb2383,
+                        alwan_f64 coord, alwan_sample_mode mode);
+
+/* AgX Blender 57^3 picture-formation cube sample.
+ * result: output RGB (power-2.4 encoded display values)
+ * coord: input [0,1] RGB coordinate in the log2 allocation space
+ * mode: LINEAR (0, the default, resolves to trilinear), NEAREST, TRILINEAR
+ *       or TETRAHEDRAL, optionally | ALWAN_SAMPLE_STRICT */
+alwan_status alwan_agx_blender_cube_sample_f32(alwan_rgb_f32 *result,
+                        alwan_rgb_f32 const *coord, alwan_sample_mode mode);
+alwan_status alwan_agx_blender_cube_sample_f64(alwan_rgb_f64 *result,
+                        alwan_rgb_f64 const *coord, alwan_sample_mode mode);
+
+/* The six alwan_lut*_sample_* entry points below keep their exact signatures
+ * and are one-line delegates passing LINEAR / TRILINEAR / TRILINEAR. No ABI
+ * break and no caller edit. Removing them is a 3.0.0 decision; two spellings
+ * in the docs is a real cost. */
+
 /* 1D LUT linear interpolation.
  * result: output interpolated value
  * lut: 1D LUT data (size entries)

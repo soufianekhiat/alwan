@@ -201,23 +201,17 @@ ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(MACHADO_TRITAN)[11] = {
 
 ALWAN_DIAG_POP
 
+/* ALWAN_CORE_CLAMP is NaN-transparent -- clamp(NaN,0,1) is NaN -- so the old
+ * `(int)(severity*10)` landed on INT_MIN for a NaN severity and `if (lo >= 10)`
+ * did not catch it, dereferencing lut[INT_MIN]. The shared gate resolves NaN to
+ * severity 0. Finite severities are bit-identical: the reader clamps the node
+ * index where this clamped the segment, and the two agree everywhere including
+ * severity exactly 1.0, where both evaluate to lut[10]. */
 ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_machado_interpolate)(
     ALWAN_CORE_MAT3X3 const *lut, ALWAN_CORE_T severity)
 {
-    severity = ALWAN_CORE_CLAMP(severity, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-
-    ALWAN_CORE_T idx_f = severity * ALWAN_CORE_LITERAL(10.0);
-    int lo = (int)idx_f;
-    if (lo >= 10) lo = 9;
-    int hi = lo + 1;
-    ALWAN_CORE_T t = idx_f - (ALWAN_CORE_T)lo;
-
-    ALWAN_CORE_MAT3X3 result;
-    int i;
-    for (i = 0; i < 9; i++) {
-        result.m[i] = ALWAN_CORE_LERP(lut[lo].m[i], lut[hi].m[i], t);
-    }
-    return result;
+    return ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample_linear)(
+        lut, ALWAN_MACHADO_SEVERITY_STEPS, severity);
 }
 
 ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_machado)(

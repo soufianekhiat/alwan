@@ -9,12 +9,18 @@
  * The recovery methods are instantiated natively for both f32 and f64
  * from alwan_spectrum_upsample_impl.inc (included once per precision
  * below), so the single-precision path computes in float throughout
- * rather than widening to double. Only the shared basis/LUT data lives
- * here.
+ * rather than widening to double.
+ *
+ * The Smits/Mallett basis spectra live here. The Jakob2019 coefficient cubes do
+ * not: they are declared in data/alwan_data_tables.h and defined in
+ * data/alwan_data_tables_spectral.c, which keeps ~110 MB of CSV preprocessing
+ * out of this translation unit.
  */
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
+#include "../core/alwan_table_core.h"
+#include "../data/alwan_data_tables.h"
 #include <string.h>
 #include <math.h>
 
@@ -236,334 +242,25 @@ ALWAN_DIAG_POP
  * Based on: Jakob & Hanika. "A Low-Dimensional Function Space for Efficient Spectral Upsampling" (2019)
  * RGB colorspace: sRGB
  * Wavelength range: 360-780nm, 85 samples (5nm intervals)
- * LUT resolution: 16x16x16 (4,096 entries)
+ * LUT resolution: 64x64x64 per coefficient, six gamuts
  * ---------------------------------------------------------------- */
 
 #define JAKOB2019_WAVELENGTH_COUNT 85
 #define JAKOB2019_WAVELENGTH_MIN ALWAN_LITERAL(360.0)
 #define JAKOB2019_WAVELENGTH_MAX ALWAN_LITERAL(780.0)
 
-/* Jakob2019 polynomial coefficient LUT (64x64x64 resolution for sRGB) */
-#define JAKOB2019_LUT_RES 64
-#define JAKOB2019_LUT_SIZE (JAKOB2019_LUT_RES * JAKOB2019_LUT_RES * JAKOB2019_LUT_RES)
-
-/* sRGB LUT (default). Dual-declared f32/f64 twins from the same CSV. */
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_srgb_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_srgb_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_srgb_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_srgb_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_srgb_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_srgb_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-/* ProPhoto RGB LUT. Dual-declared f32/f64 twins. */
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_prophoto_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_prophotorgb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_prophoto_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_prophotorgb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_prophoto_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_prophotorgb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_prophoto_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_prophotorgb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_prophoto_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_prophotorgb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_prophoto_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_prophotorgb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-/* ACES2065-1 LUT. Dual-declared f32/f64 twins. */
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_aces_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_aces2065_1.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_aces_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_aces2065_1.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_aces_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_aces2065_1.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_aces_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_aces2065_1.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_aces_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_aces2065_1.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_aces_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_aces2065_1.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-/* Rec.2020 LUT. Dual-declared f32/f64 twins. */
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_rec2020_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_rec2020.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_rec2020_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_rec2020.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_rec2020_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_rec2020.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_rec2020_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_rec2020.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_rec2020_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_rec2020.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_rec2020_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_rec2020.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-/* eRGB LUT. Dual-declared f32/f64 twins. */
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_ergb_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_ergb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_ergb_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_ergb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_ergb_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_ergb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_ergb_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_ergb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_ergb_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_ergb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_ergb_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_ergb.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-/* CIE XYZ LUT. Dual-declared f32/f64 twins. */
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_xyz_lut_c0_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_xyz.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_xyz_lut_c0_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c0_xyz.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_xyz_lut_c1_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_xyz.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_xyz_lut_c1_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c1_xyz.csv"
-};
-ALWAN_DIAG_POP
-#endif
-
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const jakob2019_xyz_lut_c2_f32[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_xyz.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const jakob2019_xyz_lut_c2_f64[JAKOB2019_LUT_SIZE] = {
-#include "../data/spectral_lut/jakob2019/jakob2019_lut_c2_xyz.csv"
-};
-ALWAN_DIAG_POP
-#endif
+/* The Jakob2019 coefficient cubes and their extents
+ * (ALWAN_TABLE_JAKOB2019_RES / _SIZE) are declared in
+ * data/alwan_data_tables.h and defined in data/alwan_data_tables_spectral.c.
+ * Moving them out of this file sheds ~110 MB of preprocessing: 18 cubes, each
+ * #included once per precision from the same CSV. */
 
 /* ----------------------------------------------------------------
  * Native dual-precision instantiation of the recovery methods.
- * The dual-declared f32/f64 basis/LUT twins above are selected per
- * precision via ALWAN_CORE_FNLIT(NAME) inside the impl, so each pass
- * reads native data of its own precision (no per-element casts).
+ * The dual-declared f32/f64 twins -- the Smits/Mallett basis spectra above and
+ * the Jakob2019 cubes in data/ -- are selected per precision via
+ * ALWAN_CORE_FNLIT(NAME) inside the impl, so each pass reads native data of
+ * its own precision (no per-element casts).
  * ---------------------------------------------------------------- */
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH

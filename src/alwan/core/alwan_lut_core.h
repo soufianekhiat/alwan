@@ -12,6 +12,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_table_core.h"
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
 /* ================================================================
@@ -75,123 +76,19 @@ ALWAN_INLINE void alwan_lut2d_to_3d_v(int px, int py, int size,
 ALWAN_INLINE alwan_scalar alwan_lut1d_sample_v(alwan_scalar const *lut,
                                                  alwan_scalar t,
                                                  int size) {
-    alwan_scalar const max_idx = (alwan_scalar)(size - 1);
-
-    alwan_scalar tc = ALWAN_SELECT(t < ALWAN_ZERO, ALWAN_ZERO, t);
-    tc = ALWAN_SELECT(tc > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), tc) * max_idx;
-
-    int i0 = (int)tc;
-    int i1 = i0 + 1;
-    if (i1 >= size) i1 = size - 1;
-
-    alwan_scalar frac = tc - (alwan_scalar)i0;
-    return lut[i0] * (ALWAN_LITERAL(1.0) - frac) + lut[i1] * frac;
+    return alwan_table1d_sample_linear_v(lut, size, t);
 }
 
 ALWAN_INLINE alwan_vec3 alwan_lut2d_sample_v(alwan_scalar const *lut2d,
                                                alwan_vec3 rgb,
                                                int size) {
-    alwan_scalar const max_idx = (alwan_scalar)(size - 1);
-    int const w = size * size;
-
-    alwan_scalar rf = ALWAN_SELECT(rgb.v[0] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[0]);
-    alwan_scalar gf = ALWAN_SELECT(rgb.v[1] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[1]);
-    alwan_scalar bf = ALWAN_SELECT(rgb.v[2] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[2]);
-    rf = ALWAN_SELECT(rf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), rf) * max_idx;
-    gf = ALWAN_SELECT(gf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), gf) * max_idx;
-    bf = ALWAN_SELECT(bf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), bf) * max_idx;
-
-    int r0 = (int)rf; int g0 = (int)gf; int b0 = (int)bf;
-    int r1 = r0 + 1;  int g1 = g0 + 1;  int b1 = b0 + 1;
-    if (r1 >= size) r1 = size - 1;
-    if (g1 >= size) g1 = size - 1;
-    if (b1 >= size) b1 = size - 1;
-
-    alwan_scalar fr = rf - (alwan_scalar)r0;
-    alwan_scalar fg = gf - (alwan_scalar)g0;
-    alwan_scalar fb = bf - (alwan_scalar)b0;
-
-    #define LUT2D_AT(rr, gg, bb) \
-        (lut2d + ((size_t)(gg) * (size_t)w + (size_t)(bb) * (size_t)size + (size_t)(rr)) * 3)
-
-    alwan_scalar const *c000 = LUT2D_AT(r0, g0, b0);
-    alwan_scalar const *c100 = LUT2D_AT(r1, g0, b0);
-    alwan_scalar const *c010 = LUT2D_AT(r0, g1, b0);
-    alwan_scalar const *c110 = LUT2D_AT(r1, g1, b0);
-    alwan_scalar const *c001 = LUT2D_AT(r0, g0, b1);
-    alwan_scalar const *c101 = LUT2D_AT(r1, g0, b1);
-    alwan_scalar const *c011 = LUT2D_AT(r0, g1, b1);
-    alwan_scalar const *c111 = LUT2D_AT(r1, g1, b1);
-
-    #undef LUT2D_AT
-
-    alwan_vec3 result;
-    for (int ch = 0; ch < 3; ch++) {
-        alwan_scalar c00 = c000[ch] * (ALWAN_LITERAL(1.0) - fr) + c100[ch] * fr;
-        alwan_scalar c01 = c001[ch] * (ALWAN_LITERAL(1.0) - fr) + c101[ch] * fr;
-        alwan_scalar c10 = c010[ch] * (ALWAN_LITERAL(1.0) - fr) + c110[ch] * fr;
-        alwan_scalar c11 = c011[ch] * (ALWAN_LITERAL(1.0) - fr) + c111[ch] * fr;
-
-        alwan_scalar c0 = c00 * (ALWAN_LITERAL(1.0) - fg) + c10 * fg;
-        alwan_scalar c1 = c01 * (ALWAN_LITERAL(1.0) - fg) + c11 * fg;
-
-        result.v[ch] = c0 * (ALWAN_LITERAL(1.0) - fb) + c1 * fb;
-    }
-
-    return result;
+    return alwan_table2d_sample_trilinear_v(lut2d, size, rgb);
 }
 
 ALWAN_INLINE alwan_vec3 alwan_lut3d_sample_v(alwan_scalar const *lut,
                                                alwan_vec3 rgb,
                                                int size) {
-    alwan_scalar const max_idx = (alwan_scalar)(size - 1);
-
-    alwan_scalar rf = ALWAN_SELECT(rgb.v[0] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[0]);
-    alwan_scalar gf = ALWAN_SELECT(rgb.v[1] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[1]);
-    alwan_scalar bf = ALWAN_SELECT(rgb.v[2] < ALWAN_ZERO, ALWAN_ZERO, rgb.v[2]);
-    rf = ALWAN_SELECT(rf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), rf) * max_idx;
-    gf = ALWAN_SELECT(gf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), gf) * max_idx;
-    bf = ALWAN_SELECT(bf > ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), bf) * max_idx;
-
-    int r0 = (int)rf; int g0 = (int)gf; int b0 = (int)bf;
-    int r1 = r0 + 1;  int g1 = g0 + 1;  int b1 = b0 + 1;
-    if (r1 >= size) r1 = size - 1;
-    if (g1 >= size) g1 = size - 1;
-    if (b1 >= size) b1 = size - 1;
-
-    alwan_scalar fr = rf - (alwan_scalar)r0;
-    alwan_scalar fg = gf - (alwan_scalar)g0;
-    alwan_scalar fb = bf - (alwan_scalar)b0;
-
-    #define LUT3D_AT(rr, gg, bb) \
-        (lut + ((size_t)(bb) * (size_t)size * (size_t)size + \
-                (size_t)(gg) * (size_t)size + (size_t)(rr)) * 3)
-
-    alwan_scalar const *c000 = LUT3D_AT(r0, g0, b0);
-    alwan_scalar const *c100 = LUT3D_AT(r1, g0, b0);
-    alwan_scalar const *c010 = LUT3D_AT(r0, g1, b0);
-    alwan_scalar const *c110 = LUT3D_AT(r1, g1, b0);
-    alwan_scalar const *c001 = LUT3D_AT(r0, g0, b1);
-    alwan_scalar const *c101 = LUT3D_AT(r1, g0, b1);
-    alwan_scalar const *c011 = LUT3D_AT(r0, g1, b1);
-    alwan_scalar const *c111 = LUT3D_AT(r1, g1, b1);
-
-    #undef LUT3D_AT
-
-    alwan_vec3 result;
-    for (int ch = 0; ch < 3; ch++) {
-        alwan_scalar c00 = c000[ch] * (ALWAN_LITERAL(1.0) - fr) + c100[ch] * fr;
-        alwan_scalar c01 = c001[ch] * (ALWAN_LITERAL(1.0) - fr) + c101[ch] * fr;
-        alwan_scalar c10 = c010[ch] * (ALWAN_LITERAL(1.0) - fr) + c110[ch] * fr;
-        alwan_scalar c11 = c011[ch] * (ALWAN_LITERAL(1.0) - fr) + c111[ch] * fr;
-
-        alwan_scalar c0 = c00 * (ALWAN_LITERAL(1.0) - fg) + c10 * fg;
-        alwan_scalar c1 = c01 * (ALWAN_LITERAL(1.0) - fg) + c11 * fg;
-
-        result.v[ch] = c0 * (ALWAN_LITERAL(1.0) - fb) + c1 * fb;
-    }
-
-    return result;
+    return alwan_table3d_sample_trilinear_v(lut, size, rgb);
 }
 
 #endif

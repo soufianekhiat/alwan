@@ -35,6 +35,15 @@ def dump_symbols(objs):
             # e.g. "008 0 SECT3 notype () External | alwan_create"
             if 'External' not in line or 'UNDEF' in line:
                 continue
+            # Functions only. dumpbin spells a function "notype ()" and a data
+            # object "notype" with no parens. The embedded tables in
+            # src/alwan/data are external so the declaration header can enforce
+            # their extents at compile time, but they are implementation, not
+            # API: the readers are the API. Exporting them would also need the
+            # DATA keyword to import correctly, and would pin a 60 MB byte
+            # layout into the DLL's ABI for nothing.
+            if 'notype ()' not in line:
+                continue
             m = re.search(r'\|\s+(alwan\w+)\s*$', line)
             if m:
                 names.add(m.group(1))
