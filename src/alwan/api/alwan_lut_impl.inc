@@ -147,7 +147,7 @@ static ALWAN_CORE_VEC3 ALWAN_CORE_FNLIT(lut__apply_view)(
  * 3D LUT Baking
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_bake_3dlut)(ALWAN_CORE_T *out, int size,
+alwan_status ALWAN_CORE_FNLIT(alwan_bake_3dlut)(ALWAN_CORE_T *out, int size,
                      ALWAN_CORE_RGB_SPACE_DESC const *src_space,
                      ALWAN_CORE_RGB_SPACE_DESC const *dst_space,
                      alwan_ctx *ctx) {
@@ -176,7 +176,7 @@ int ALWAN_CORE_FNLIT(alwan_bake_3dlut)(ALWAN_CORE_T *out, int size,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_bake_3dlut_view)(ALWAN_CORE_T *out, int size,
+alwan_status ALWAN_CORE_FNLIT(alwan_bake_3dlut_view)(ALWAN_CORE_T *out, int size,
                           ALWAN_CORE_RGB_SPACE_DESC const *src_space,
                           ALWAN_CORE_RGB_SPACE_DESC const *dst_space,
                           alwan_view_transform vt,
@@ -211,7 +211,7 @@ int ALWAN_CORE_FNLIT(alwan_bake_3dlut_view)(ALWAN_CORE_T *out, int size,
  * 1D LUT Baking
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_bake_1dlut)(ALWAN_CORE_T *out, int size,
+alwan_status ALWAN_CORE_FNLIT(alwan_bake_1dlut)(ALWAN_CORE_T *out, int size,
                      alwan_transfer_function tf,
                      int encode) {
     if (!out || size < 2 || size > 65536) return ALWAN_E_INVALID;
@@ -242,7 +242,7 @@ void ALWAN_CORE_FNLIT(alwan_lut2d_dimensions)(int size, int *width, int *height)
  * 3D -> 2D flatten
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_lut3d_to_2d)(ALWAN_CORE_T *out,
+alwan_status ALWAN_CORE_FNLIT(alwan_lut3d_to_2d)(ALWAN_CORE_T *out,
                        ALWAN_CORE_T const *lut3d,
                        int size) {
     if (!out || !lut3d || size < 2 || size > 256) return ALWAN_E_INVALID;
@@ -271,7 +271,7 @@ int ALWAN_CORE_FNLIT(alwan_lut3d_to_2d)(ALWAN_CORE_T *out,
  * 2D -> 3D unflatten
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_lut2d_to_3d)(ALWAN_CORE_T *out,
+alwan_status ALWAN_CORE_FNLIT(alwan_lut2d_to_3d)(ALWAN_CORE_T *out,
                        ALWAN_CORE_T const *lut2d,
                        int size) {
     if (!out || !lut2d || size < 2 || size > 256) return ALWAN_E_INVALID;
@@ -300,7 +300,7 @@ int ALWAN_CORE_FNLIT(alwan_lut2d_to_3d)(ALWAN_CORE_T *out,
  * Convenience: bake directly into 2D layout
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_bake_2dlut)(ALWAN_CORE_T *out, int size,
+alwan_status ALWAN_CORE_FNLIT(alwan_bake_2dlut)(ALWAN_CORE_T *out, int size,
                      ALWAN_CORE_RGB_SPACE_DESC const *src_space,
                      ALWAN_CORE_RGB_SPACE_DESC const *dst_space,
                      alwan_ctx *ctx) {
@@ -346,7 +346,7 @@ int ALWAN_CORE_FNLIT(alwan_bake_2dlut)(ALWAN_CORE_T *out, int size,
  * 1D LUT linear sampling (API wrapper)
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_lut1d_sample)(ALWAN_CORE_T *result,
+alwan_status ALWAN_CORE_FNLIT(alwan_lut1d_sample)(ALWAN_CORE_T *result,
                         ALWAN_CORE_T const *lut,
                         ALWAN_CORE_T t,
                         int size) {
@@ -359,7 +359,7 @@ int ALWAN_CORE_FNLIT(alwan_lut1d_sample)(ALWAN_CORE_T *result,
  * 2D LUT bilinear sampling (flattened 3D strip, API wrapper)
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_lut2d_sample)(ALWAN_CORE_RGB *result,
+alwan_status ALWAN_CORE_FNLIT(alwan_lut2d_sample)(ALWAN_CORE_RGB *result,
                         ALWAN_CORE_T const *lut2d,
                         ALWAN_CORE_RGB const *rgb,
                         int size) {
@@ -376,7 +376,7 @@ int ALWAN_CORE_FNLIT(alwan_lut2d_sample)(ALWAN_CORE_RGB *result,
  * 3D LUT trilinear sampling (API wrapper)
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_lut3d_sample)(ALWAN_CORE_RGB *result,
+alwan_status ALWAN_CORE_FNLIT(alwan_lut3d_sample)(ALWAN_CORE_RGB *result,
                         ALWAN_CORE_T const *lut,
                         ALWAN_CORE_RGB const *rgb,
                         int size) {

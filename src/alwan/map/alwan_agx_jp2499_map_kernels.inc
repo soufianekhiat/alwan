@@ -13,7 +13,7 @@
  * to the scalar output in both fast and deterministic builds.
  */
 
-int ALWAN_MAP_LITCAT(alwan_jp2499, _map_interleave)(
+alwan_status ALWAN_MAP_LITCAT(alwan_jp2499, _map_interleave)(
         alwan_map_lane *out, size_t out_stride,
         alwan_map_lane const *in, size_t in_stride,
         size_t count, ALWAN_MAP_LIT(alwan_jp2499_params) const *params) {

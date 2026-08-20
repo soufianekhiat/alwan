@@ -86,7 +86,7 @@ static size_t const g_interop_table_size =
  * Parse: string -> enum
  * ---------------------------------------------------------------- */
 
-int alwan_interop_parse_f64(alwan_rgb_space *space, char const *id) {
+alwan_status alwan_interop_parse_f64(alwan_rgb_space *space, char const *id) {
     if (!space || !id) return ALWAN_E_INVALID;
 
     for (size_t i = 0; i < g_interop_table_size; i++) {
@@ -99,7 +99,7 @@ int alwan_interop_parse_f64(alwan_rgb_space *space, char const *id) {
     return ALWAN_E_NODATA;
 }
 
-int alwan_interop_parse_f32(alwan_rgb_space *space, char const *id) {
+alwan_status alwan_interop_parse_f32(alwan_rgb_space *space, char const *id) {
     return alwan_interop_parse_f64(space, id);
 }
 
@@ -124,13 +124,13 @@ size_t alwan_interop_count(void) {
     return g_interop_table_size;
 }
 
-int alwan_interop_entry_at_f64(alwan_rgb_space *space, char const **id, size_t index) {
+alwan_status alwan_interop_entry_at_f64(alwan_rgb_space *space, char const **id, size_t index) {
     if (index >= g_interop_table_size) return ALWAN_E_RANGE;
     if (space) *space = g_interop_table[index].space;
     if (id) *id = g_interop_table[index].id;
     return ALWAN_OK;
 }
 
-int alwan_interop_entry_at_f32(alwan_rgb_space *space, char const **id, size_t index) {
+alwan_status alwan_interop_entry_at_f32(alwan_rgb_space *space, char const **id, size_t index) {
     return alwan_interop_entry_at_f64(space, id, index);
 }

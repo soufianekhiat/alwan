@@ -27,7 +27,7 @@ static ALWAN_CORE_FNLIT(llab_induction_factors) const ALWAN_CORE_FNLIT(LLAB_SURR
  * LLAB Forward Transform
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_llab_forward)(
+alwan_status ALWAN_CORE_FNLIT(alwan_llab_forward)(
     ALWAN_CORE_LLAB_CORRELATES *out,
     ALWAN_CORE_XYZ const *xyz,
     ALWAN_CORE_LLAB_VIEWING_CONDITIONS const *vc

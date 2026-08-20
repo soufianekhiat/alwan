@@ -62,7 +62,7 @@ static void get_hunt_params(alwan_hunt_surround surround,
  * Hunt Forward Transform: XYZ -> Correlates
  * ---------------------------------------------------------------- */
 
-int alwan_hunt_forward_f64(alwan_hunt_correlates_f64 *out,
+alwan_status alwan_hunt_forward_f64(alwan_hunt_correlates_f64 *out,
                        alwan_xyz_f64 const *xyz,
                        alwan_hunt_viewing_conditions_f64 const *vc) {
     if (!out || !xyz || !vc) {
@@ -100,7 +100,7 @@ int alwan_hunt_forward_f64(alwan_hunt_correlates_f64 *out,
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-int alwan_hunt_forward_f32(alwan_hunt_correlates_f32 *out,
+alwan_status alwan_hunt_forward_f32(alwan_hunt_correlates_f32 *out,
                        alwan_xyz_f32 const *xyz,
                        alwan_hunt_viewing_conditions_f32 const *vc) {
     if (!out || !xyz || !vc) {

@@ -205,7 +205,7 @@ static size_t video_pixel_stride(alwan_pixel_format fmt) {
  * Public API
  * ---------------------------------------------------------------- */
 
-int alwan_video_encode_f64(void *out, alwan_pixel_format out_fmt, alwan_f64 const *rgb_linear, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
+alwan_status alwan_video_encode_f64(void *out, alwan_f64 const *rgb_linear, size_t count, alwan_pixel_format out_fmt, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
     if (!out || !rgb_linear || count == 0) return ALWAN_E_INVALID;
 
     /* Get the space descriptor for the OETF */
@@ -237,7 +237,7 @@ int alwan_video_encode_f64(void *out, alwan_pixel_format out_fmt, alwan_f64 cons
     return ALWAN_OK;
 }
 
-int alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, alwan_pixel_format in_fmt, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
+alwan_status alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, size_t count, alwan_pixel_format in_fmt, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
     if (!rgb_linear || !in || count == 0) return ALWAN_E_INVALID;
 
     /* Get the space descriptor for the EOTF */
@@ -436,7 +436,7 @@ static void video_load_f32(alwan_f32 v[3], void const *src,
  * range/quantize math in f32; no widen/narrow round-trip.
  * ---------------------------------------------------------------- */
 
-int alwan_video_encode_f32(void *out, alwan_pixel_format out_fmt, alwan_f32 const *rgb_linear, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
+alwan_status alwan_video_encode_f32(void *out, alwan_f32 const *rgb_linear, size_t count, alwan_pixel_format out_fmt, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
     if (!out || !rgb_linear || count == 0) return ALWAN_E_INVALID;
 
     /* Get the space descriptor for the OETF */
@@ -468,7 +468,7 @@ int alwan_video_encode_f32(void *out, alwan_pixel_format out_fmt, alwan_f32 cons
     return ALWAN_OK;
 }
 
-int alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, alwan_pixel_format in_fmt, size_t count, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
+alwan_status alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, size_t count, alwan_pixel_format in_fmt, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx) {
     if (!rgb_linear || !in || count == 0) return ALWAN_E_INVALID;
 
     /* Get the space descriptor for the EOTF */

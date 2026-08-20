@@ -41,7 +41,7 @@ static void ALWAN_CORE_FNLIT(hw22_get_surround_params)(
  * Hellwig2022 Forward Transform
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_hellwig2022_forward)(
+alwan_status ALWAN_CORE_FNLIT(alwan_hellwig2022_forward)(
     ALWAN_CORE_HELLWIG2022_CORRELATES *out,
     ALWAN_CORE_XYZ const *xyz,
     ALWAN_CORE_HELLWIG2022_VIEWING_CONDITIONS const *vc) {
@@ -81,7 +81,7 @@ int ALWAN_CORE_FNLIT(alwan_hellwig2022_forward)(
  * Hellwig2022 Inverse Transform
  * ---------------------------------------------------------------- */
 
-int ALWAN_CORE_FNLIT(alwan_hellwig2022_inverse)(
+alwan_status ALWAN_CORE_FNLIT(alwan_hellwig2022_inverse)(
     ALWAN_CORE_XYZ *xyz_out,
     ALWAN_CORE_HELLWIG2022_CORRELATES const *correlates,
     ALWAN_CORE_HELLWIG2022_VIEWING_CONDITIONS const *vc) {

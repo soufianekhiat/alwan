@@ -47,7 +47,7 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 #if ALWAN_WITH_F64
-int alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
                                      alwan_f64 const *table, size_t const sizes[3],
                                      alwan_rgb_f64 const *rgb_in) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
@@ -123,7 +123,7 @@ int alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
     return ALWAN_OK;
 }
 
-int alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
+alwan_status alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
                                        alwan_f64 const *table, size_t const sizes[3],
                                        alwan_rgb_f64 const *rgb_in) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
@@ -224,7 +224,7 @@ int alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
 #endif /* ALWAN_WITH_F64 */
 
 #if ALWAN_WITH_F32
-int alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
                                      alwan_f32 const *table, size_t const sizes[3],
                                      alwan_rgb_f32 const *rgb_in) {
     if (!table || !sizes || !rgb_in || !rgb_out) {
@@ -295,7 +295,7 @@ int alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
     return ALWAN_OK;
 }
 
-int alwan_table_interp_3d_tetrahedral_f32(alwan_rgb_f32 *rgb_out,
+alwan_status alwan_table_interp_3d_tetrahedral_f32(alwan_rgb_f32 *rgb_out,
                                        alwan_f32 const *table, size_t const sizes[3],
                                        alwan_rgb_f32 const *rgb_in) {
     if (!table || !sizes || !rgb_in || !rgb_out) {

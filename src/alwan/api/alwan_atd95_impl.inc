@@ -1,6 +1,6 @@
 /* No include guard -- included twice (f32 and f64 passes) */
 
-int ALWAN_CORE_FNLIT(alwan_atd95_forward)(
+alwan_status ALWAN_CORE_FNLIT(alwan_atd95_forward)(
     ALWAN_CORE_ATD95_CORRELATES *out,
     ALWAN_CORE_XYZ const *xyz,
     ALWAN_CORE_ATD95_VIEWING_CONDITIONS const *vc

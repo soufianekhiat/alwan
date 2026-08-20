@@ -35,7 +35,13 @@ static ALWAN_CORE_T ALWAN_CORE_FN(agx_lut_eval)(ALWAN_CORE_T t, ALWAN_CORE_T con
     /* Linear interpolation in the 4096-entry contrast LUT. */
     t = ALWAN_CORE_SATURATE(t);
     ALWAN_CORE_T fi = t * (ALWAN_CORE_T)(AGX_LUT_SIZE - 1);
+    /* SATURATE cannot remove a NaN (both compares fail), and (int)NaN is
+     * undefined behaviour -- INT_MIN on x86 -- which indexes the LUT far out of
+     * bounds and segfaults. A NaN coordinate is mapped to 0 here: the >= test
+     * is false for NaN, so this also re-clamps any stray out-of-range value. */
+    fi = (fi >= ALWAN_CORE_ZERO) ? fi : ALWAN_CORE_ZERO;
     int i0 = (int)fi;
+    if (i0 > AGX_LUT_SIZE - 1) i0 = AGX_LUT_SIZE - 1;
     int i1 = i0 + 1;
     if (i1 >= AGX_LUT_SIZE) i1 = AGX_LUT_SIZE - 1;
     ALWAN_CORE_T frac = fi - (ALWAN_CORE_T)i0;
@@ -111,7 +117,16 @@ static void ALWAN_CORE_FN(agx_blender_lut3d_sample)(ALWAN_CORE_T r, ALWAN_CORE_T
     r = ALWAN_CORE_SATURATE(r) * mi;
     g = ALWAN_CORE_SATURATE(g) * mi;
     b = ALWAN_CORE_SATURATE(b) * mi;
+    /* Same NaN guard as agx_lut_eval: SATURATE leaves a NaN intact and
+     * (int)NaN is UB (INT_MIN), which reads far outside the 57^3 cube. A NaN
+     * channel resolves to index 0 rather than crashing. */
+    r = (r >= ALWAN_CORE_ZERO) ? r : ALWAN_CORE_ZERO;
+    g = (g >= ALWAN_CORE_ZERO) ? g : ALWAN_CORE_ZERO;
+    b = (b >= ALWAN_CORE_ZERO) ? b : ALWAN_CORE_ZERO;
     int r0 = (int)r, g0 = (int)g, b0 = (int)b;
+    if (r0 > n - 1) r0 = n - 1;
+    if (g0 > n - 1) g0 = n - 1;
+    if (b0 > n - 1) b0 = n - 1;
     int r1 = r0 + 1 < n ? r0 + 1 : n - 1;
     int g1 = g0 + 1 < n ? g0 + 1 : n - 1;
     int b1 = b0 + 1 < n ? b0 + 1 : n - 1;
@@ -428,10 +443,10 @@ static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t o
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_view_transform_apply)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_view_transform_apply)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
     return ALWAN_CORE_FN(alwan__view_apply_impl)(rgb_out, out_stride, rgb_in, in_stride, count, vt, ctx, 0);
 }
 
-int ALWAN_CORE_FNLIT(alwan_view_transform_apply_unclamped)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
+alwan_status ALWAN_CORE_FNLIT(alwan_view_transform_apply_unclamped)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx) {
     return ALWAN_CORE_FN(alwan__view_apply_impl)(rgb_out, out_stride, rgb_in, in_stride, count, vt, ctx, 1);
 }

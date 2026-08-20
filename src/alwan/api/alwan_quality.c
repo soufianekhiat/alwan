@@ -1988,7 +1988,7 @@ alwan_f64 alwan_cie224_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
  * D-Series Illuminant from CCT
  * ---------------------------------------------------------------- */
 
-int alwan_d_series_illuminant_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
+alwan_status alwan_d_series_illuminant_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
     if (!xy_out) return ALWAN_E_INVALID;
     if (cct < ALWAN_LITERAL(4000.0) || cct > ALWAN_LITERAL(25000.0))
         return ALWAN_E_RANGE;
@@ -1996,7 +1996,7 @@ int alwan_d_series_illuminant_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 cct) {
     return ALWAN_OK;
 }
 
-int alwan_d_series_illuminant_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 cct) {
+alwan_status alwan_d_series_illuminant_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 cct) {
     if (!xy_out) return ALWAN_E_INVALID;
     if (cct < 4000.0f || cct > 25000.0f)
         return ALWAN_E_RANGE;

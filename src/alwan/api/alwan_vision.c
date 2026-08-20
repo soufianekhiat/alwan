@@ -104,7 +104,7 @@ static int alwan__cvd_gamut_fixup_f64(alwan_rgb_f64 *rgb, alwan_gamut_map_method
     return alwan_gamut_map_advanced_f64(rgb, method, &space, &raw);
 }
 
-int alwan_simulate_cvd_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+alwan_status alwan_simulate_cvd_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
                                       alwan_cvd_type cvd_type, alwan_f64 severity,
                                       alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_f64(rgb_out, rgb_in, cvd_type, severity);
@@ -112,7 +112,7 @@ int alwan_simulate_cvd_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 cons
     return alwan__cvd_gamut_fixup_f64(rgb_out, method);
 }
 
-int alwan_simulate_cvd_machado_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+alwan_status alwan_simulate_cvd_machado_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
                                               alwan_cvd_type cvd_type, alwan_f64 severity,
                                               alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_machado_f64(rgb_out, rgb_in, cvd_type, severity);
@@ -120,7 +120,7 @@ int alwan_simulate_cvd_machado_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_
     return alwan__cvd_gamut_fixup_f64(rgb_out, method);
 }
 
-int alwan_simulate_cvd_ex_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+alwan_status alwan_simulate_cvd_ex_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
                                          alwan_cvd_type cvd_type, alwan_f64 severity,
                                          alwan_cvd_model model, alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_ex_f64(rgb_out, rgb_in, cvd_type, severity, model);
@@ -128,7 +128,7 @@ int alwan_simulate_cvd_ex_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 c
     return alwan__cvd_gamut_fixup_f64(rgb_out, method);
 }
 
-int alwan_simulate_cvd_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
+alwan_status alwan_simulate_cvd_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
         alwan_f64 const *rgb_in, size_t in_stride, size_t count,
         alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_f64_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count, cvd_type, severity);
@@ -145,7 +145,7 @@ int alwan_simulate_cvd_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t 
     return ALWAN_OK;
 }
 
-int alwan_simulate_cvd_machado_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
+alwan_status alwan_simulate_cvd_machado_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
         alwan_f64 const *rgb_in, size_t in_stride, size_t count,
         alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_machado_f64_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count, cvd_type, severity);
@@ -172,7 +172,7 @@ static int alwan__cvd_gamut_fixup_f32(alwan_rgb_f32 *rgb, alwan_gamut_map_method
     return alwan_gamut_map_advanced_f32(rgb, method, &space, &raw);
 }
 
-int alwan_simulate_cvd_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+alwan_status alwan_simulate_cvd_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
                                       alwan_cvd_type cvd_type, alwan_f32 severity,
                                       alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_f32(rgb_out, rgb_in, cvd_type, severity);
@@ -180,7 +180,7 @@ int alwan_simulate_cvd_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 cons
     return alwan__cvd_gamut_fixup_f32(rgb_out, method);
 }
 
-int alwan_simulate_cvd_machado_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+alwan_status alwan_simulate_cvd_machado_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
                                               alwan_cvd_type cvd_type, alwan_f32 severity,
                                               alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_machado_f32(rgb_out, rgb_in, cvd_type, severity);
@@ -188,7 +188,7 @@ int alwan_simulate_cvd_machado_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_
     return alwan__cvd_gamut_fixup_f32(rgb_out, method);
 }
 
-int alwan_simulate_cvd_ex_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+alwan_status alwan_simulate_cvd_ex_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
                                          alwan_cvd_type cvd_type, alwan_f32 severity,
                                          alwan_cvd_model model, alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_ex_f32(rgb_out, rgb_in, cvd_type, severity, model);
@@ -196,7 +196,7 @@ int alwan_simulate_cvd_ex_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 c
     return alwan__cvd_gamut_fixup_f32(rgb_out, method);
 }
 
-int alwan_simulate_cvd_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
+alwan_status alwan_simulate_cvd_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
         alwan_f32 const *rgb_in, size_t in_stride, size_t count,
         alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_f32_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count, cvd_type, severity);
@@ -213,7 +213,7 @@ int alwan_simulate_cvd_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t 
     return ALWAN_OK;
 }
 
-int alwan_simulate_cvd_machado_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
+alwan_status alwan_simulate_cvd_machado_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
         alwan_f32 const *rgb_in, size_t in_stride, size_t count,
         alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method) {
     int st = alwan_simulate_cvd_machado_f32_map_interleave(rgb_out, out_stride, rgb_in, in_stride, count, cvd_type, severity);

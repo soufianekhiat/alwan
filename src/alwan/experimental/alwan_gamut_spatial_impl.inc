@@ -1008,7 +1008,7 @@ static int ALWAN_CORE_FN(alwan__gamut_spatial_core)(ALWAN_CORE_T *out, ALWAN_COR
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FN(alwan_gamut_map_spatial)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, ALWAN_CORE_T const *depth,
+alwan_status ALWAN_CORE_FN(alwan_gamut_map_spatial)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, ALWAN_CORE_T const *depth,
                                            int width, int height,
                                            ALWAN_CORE_FN(alwan_gamut_spatial_params) const *params, alwan_ctx *ctx) {
     return ALWAN_CORE_FN(alwan__gamut_spatial_core)(out, in, depth, width, height, params, ctx);

@@ -41,7 +41,7 @@
  * Map CIECAM02 Conversions
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_ciecam02_forward, _map_interleave)(ALWAN_CAM_MAP_CIECAM02_CORR *correlates_out, alwan_map_lane const *xyz_in, size_t in_stride, ALWAN_CAM_MAP_CIECAM02_VC const *vc, size_t count)
+alwan_status ALWAN_MAP_LITCAT(alwan_ciecam02_forward, _map_interleave)(ALWAN_CAM_MAP_CIECAM02_CORR *correlates_out, alwan_map_lane const *xyz_in, size_t in_stride, ALWAN_CAM_MAP_CIECAM02_VC const *vc, size_t count)
 {
     if (!xyz_in || !correlates_out || !vc || count == 0) return ALWAN_E_INVALID;
 
@@ -88,7 +88,7 @@ int ALWAN_MAP_LITCAT(alwan_ciecam02_forward, _map_interleave)(ALWAN_CAM_MAP_CIEC
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_ciecam02_inverse, _map_interleave)(alwan_map_lane *xyz_out, size_t out_stride, ALWAN_CAM_MAP_CIECAM02_CORR const *correlates_in, ALWAN_CAM_MAP_CIECAM02_VC const *vc, size_t count)
+alwan_status ALWAN_MAP_LITCAT(alwan_ciecam02_inverse, _map_interleave)(alwan_map_lane *xyz_out, size_t out_stride, ALWAN_CAM_MAP_CIECAM02_CORR const *correlates_in, ALWAN_CAM_MAP_CIECAM02_VC const *vc, size_t count)
 {
     if (!correlates_in || !xyz_out || !vc || count == 0) return ALWAN_E_INVALID;
 
@@ -141,7 +141,7 @@ int ALWAN_MAP_LITCAT(alwan_ciecam02_inverse, _map_interleave)(alwan_map_lane *xy
  * Map CAM16 Conversions
  * ---------------------------------------------------------------- */
 
-int ALWAN_MAP_LITCAT(alwan_cam16_forward, _map_interleave)(ALWAN_CAM_MAP_CAM16_CORR *correlates_out, alwan_map_lane const *xyz_in, size_t in_stride, ALWAN_CAM_MAP_CAM16_VC const *vc, size_t count)
+alwan_status ALWAN_MAP_LITCAT(alwan_cam16_forward, _map_interleave)(ALWAN_CAM_MAP_CAM16_CORR *correlates_out, alwan_map_lane const *xyz_in, size_t in_stride, ALWAN_CAM_MAP_CAM16_VC const *vc, size_t count)
 {
     if (!xyz_in || !correlates_out || !vc || count == 0) return ALWAN_E_INVALID;
 
@@ -188,7 +188,7 @@ int ALWAN_MAP_LITCAT(alwan_cam16_forward, _map_interleave)(ALWAN_CAM_MAP_CAM16_C
     return ALWAN_OK;
 }
 
-int ALWAN_MAP_LITCAT(alwan_cam16_inverse, _map_interleave)(alwan_map_lane *xyz_out, size_t out_stride, ALWAN_CAM_MAP_CAM16_CORR const *correlates_in, ALWAN_CAM_MAP_CAM16_VC const *vc, size_t count)
+alwan_status ALWAN_MAP_LITCAT(alwan_cam16_inverse, _map_interleave)(alwan_map_lane *xyz_out, size_t out_stride, ALWAN_CAM_MAP_CAM16_CORR const *correlates_in, ALWAN_CAM_MAP_CAM16_VC const *vc, size_t count)
 {
     if (!correlates_in || !xyz_out || !vc || count == 0) return ALWAN_E_INVALID;
 

@@ -39,7 +39,7 @@ static void ALWAN_CORE_FN(get_cam16_surround_params)(alwan_cam16_surround surrou
 }
 
 /* ---- CIECAM02 forward / inverse ---- */
-int ALWAN_CORE_FNLIT(alwan_ciecam02_forward)(ALWAN_CORE_CIECAM02_CORRELATES *out,
+alwan_status ALWAN_CORE_FNLIT(alwan_ciecam02_forward)(ALWAN_CORE_CIECAM02_CORRELATES *out,
         ALWAN_CORE_XYZ const *xyz, ALWAN_CORE_CIECAM02_VIEWING_CONDITIONS const *vc) {
     if (!out || !xyz || !vc) return ALWAN_E_INVALID;
     if (vc->white_xyz.y <= ALWAN_CORE_LITERAL(0.0) ||
@@ -62,7 +62,7 @@ int ALWAN_CORE_FNLIT(alwan_ciecam02_forward)(ALWAN_CORE_CIECAM02_CORRELATES *out
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_ciecam02_inverse)(ALWAN_CORE_XYZ *xyz_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_ciecam02_inverse)(ALWAN_CORE_XYZ *xyz_out,
         ALWAN_CORE_CIECAM02_CORRELATES const *correlates, ALWAN_CORE_CIECAM02_VIEWING_CONDITIONS const *vc) {
     if (!xyz_out || !correlates || !vc) return ALWAN_E_INVALID;
     if (vc->white_xyz.y <= ALWAN_CORE_LITERAL(0.0) ||
@@ -85,7 +85,7 @@ int ALWAN_CORE_FNLIT(alwan_ciecam02_inverse)(ALWAN_CORE_XYZ *xyz_out,
 }
 
 /* ---- CAM16 forward / inverse / UCS ---- */
-int ALWAN_CORE_FNLIT(alwan_cam16_forward)(ALWAN_CORE_CAM16_CORRELATES *out,
+alwan_status ALWAN_CORE_FNLIT(alwan_cam16_forward)(ALWAN_CORE_CAM16_CORRELATES *out,
         ALWAN_CORE_XYZ const *xyz, ALWAN_CORE_CAM16_VIEWING_CONDITIONS const *vc) {
     if (!out || !xyz || !vc) return ALWAN_E_INVALID;
     if (vc->white_xyz.y <= ALWAN_CORE_LITERAL(0.0) ||
@@ -108,7 +108,7 @@ int ALWAN_CORE_FNLIT(alwan_cam16_forward)(ALWAN_CORE_CAM16_CORRELATES *out,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_cam16_inverse)(ALWAN_CORE_XYZ *xyz_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_cam16_inverse)(ALWAN_CORE_XYZ *xyz_out,
         ALWAN_CORE_CAM16_CORRELATES const *correlates, ALWAN_CORE_CAM16_VIEWING_CONDITIONS const *vc) {
     if (!xyz_out || !correlates || !vc) return ALWAN_E_INVALID;
     if (vc->white_xyz.y <= ALWAN_CORE_LITERAL(0.0) ||
@@ -130,7 +130,7 @@ int ALWAN_CORE_FNLIT(alwan_cam16_inverse)(ALWAN_CORE_XYZ *xyz_out,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_cam16_to_ucs)(ALWAN_CORE_CAM_JAB *Jab_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_cam16_to_ucs)(ALWAN_CORE_CAM_JAB *Jab_out,
         ALWAN_CORE_CAM16_CORRELATES const *correlates) {
     if (!Jab_out || !correlates) return ALWAN_E_INVALID;
     ALWAN_CORE_CAM16_CORRELATES tmp = *correlates;
@@ -140,7 +140,7 @@ int ALWAN_CORE_FNLIT(alwan_cam16_to_ucs)(ALWAN_CORE_CAM_JAB *Jab_out,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_cam16_from_ucs)(ALWAN_CORE_CAM16_CORRELATES *correlates_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_cam16_from_ucs)(ALWAN_CORE_CAM16_CORRELATES *correlates_out,
         ALWAN_CORE_CAM_JAB const *Jab) {
     if (!correlates_out || !Jab) return ALWAN_E_INVALID;
     ALWAN_CORE_CAM_JAB tmp = *Jab;
@@ -153,7 +153,7 @@ int ALWAN_CORE_FNLIT(alwan_cam16_from_ucs)(ALWAN_CORE_CAM16_CORRELATES *correlat
 }
 
 /* ---- CAM18sl forward / inverse ---- */
-int ALWAN_CORE_FNLIT(alwan_cam18sl_forward)(ALWAN_CORE_CAM18SL_CORRELATES *out,
+alwan_status ALWAN_CORE_FNLIT(alwan_cam18sl_forward)(ALWAN_CORE_CAM18SL_CORRELATES *out,
         ALWAN_CORE_XYZ const *xyz, ALWAN_CORE_T Y_b) {
     if (!out || !xyz) return ALWAN_E_INVALID;
     ALWAN_CORE_FNLIT(alwan_cam18sl_v_correlates) result = ALWAN_CORE_FNVLIT(alwan_cam18sl_forward)(*xyz, Y_b);
@@ -163,7 +163,7 @@ int ALWAN_CORE_FNLIT(alwan_cam18sl_forward)(ALWAN_CORE_CAM18SL_CORRELATES *out,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_cam18sl_inverse)(ALWAN_CORE_XYZ *xyz_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_cam18sl_inverse)(ALWAN_CORE_XYZ *xyz_out,
         ALWAN_CORE_CAM18SL_CORRELATES const *correlates, ALWAN_CORE_T Y_b) {
     if (!xyz_out || !correlates) return ALWAN_E_INVALID;
     ALWAN_CORE_CAM18SL_CORRELATES tmp = *correlates;
@@ -175,7 +175,7 @@ int ALWAN_CORE_FNLIT(alwan_cam18sl_inverse)(ALWAN_CORE_XYZ *xyz_out,
 }
 
 /* ---- CAM20u forward / inverse ---- */
-int ALWAN_CORE_FNLIT(alwan_cam20u_forward)(ALWAN_CORE_CAM20U_CORRELATES *out,
+alwan_status ALWAN_CORE_FNLIT(alwan_cam20u_forward)(ALWAN_CORE_CAM20U_CORRELATES *out,
         ALWAN_CORE_XYZ const *xyz, ALWAN_CORE_T Y_b, ALWAN_CORE_T L_a) {
     if (!out || !xyz) return ALWAN_E_INVALID;
     ALWAN_CORE_FNLIT(alwan_cam20u_v_correlates) result = ALWAN_CORE_FNVLIT(alwan_cam20u_forward)(*xyz, Y_b, L_a);
@@ -185,7 +185,7 @@ int ALWAN_CORE_FNLIT(alwan_cam20u_forward)(ALWAN_CORE_CAM20U_CORRELATES *out,
     return ALWAN_OK;
 }
 
-int ALWAN_CORE_FNLIT(alwan_cam20u_inverse)(ALWAN_CORE_XYZ *xyz_out,
+alwan_status ALWAN_CORE_FNLIT(alwan_cam20u_inverse)(ALWAN_CORE_XYZ *xyz_out,
         ALWAN_CORE_CAM20U_CORRELATES const *correlates, ALWAN_CORE_T Y_b, ALWAN_CORE_T L_a) {
     if (!xyz_out || !correlates) return ALWAN_E_INVALID;
     ALWAN_CORE_CAM20U_CORRELATES tmp = *correlates;

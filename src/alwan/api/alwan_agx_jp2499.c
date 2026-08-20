@@ -38,7 +38,7 @@ alwan_jp2499_params_f64 alwan_jp2499_default_params_f64(void) {
 }
 
 #if ALWAN_WITH_F64
-int alwan_jp2499_apply_f64(alwan_f64 *out, size_t out_stride,
+alwan_status alwan_jp2499_apply_f64(alwan_f64 *out, size_t out_stride,
                            alwan_f64 const *in, size_t in_stride, size_t count,
                            alwan_jp2499_params_f64 const *params) {
     if (!out || !in || !params) return ALWAN_E_INVALID;
@@ -67,7 +67,7 @@ int alwan_jp2499_apply_f64(alwan_f64 *out, size_t out_stride,
 #endif
 
 #if ALWAN_WITH_F32
-int alwan_jp2499_apply_f32(alwan_f32 *out, size_t out_stride,
+alwan_status alwan_jp2499_apply_f32(alwan_f32 *out, size_t out_stride,
                            alwan_f32 const *in, size_t in_stride, size_t count,
                            alwan_jp2499_params_f32 const *params) {
     if (!out || !in || !params) return ALWAN_E_INVALID;

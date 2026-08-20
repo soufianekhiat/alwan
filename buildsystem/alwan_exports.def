@@ -1192,6 +1192,7 @@ EXPORTS
     alwan_uvw_to_xyz_f64_map_planar
     alwan_uvw_to_xyz_map_interleave_ex
     alwan_uvw_to_xyz_map_planar_ex
+    alwan_version_string
     alwan_video_decode_f32
     alwan_video_decode_f64
     alwan_video_encode_f32

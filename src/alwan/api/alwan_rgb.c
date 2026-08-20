@@ -41,7 +41,7 @@ ALWAN_DIAG_POP
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
  * (gamut volume/coverage f32 facades derive matrices in f64). */
 #if ALWAN_WITH_F64_FACADE
-int alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
+alwan_status alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
                                alwan_mat3x3_f64 *xyz_to_rgb,
                                alwan_rgb_space_desc_f64 const *desc) {
     if (!desc || !rgb_to_xyz || !xyz_to_rgb) {
@@ -62,7 +62,7 @@ int alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
 #endif /* ALWAN_WITH_F64_FACADE */
 
 #if ALWAN_WITH_F32
-int alwan_rgb_derive_matrices_f32(alwan_mat3x3_f32 *rgb_to_xyz,
+alwan_status alwan_rgb_derive_matrices_f32(alwan_mat3x3_f32 *rgb_to_xyz,
                                alwan_mat3x3_f32 *xyz_to_rgb,
                                alwan_rgb_space_desc_f32 const *desc) {
     if (!desc || !rgb_to_xyz || !xyz_to_rgb) return ALWAN_E_INVALID;
@@ -84,7 +84,7 @@ int alwan_rgb_derive_matrices_f32(alwan_mat3x3_f32 *rgb_to_xyz,
  * ---------------------------------------------------------------- */
 
 #if ALWAN_WITH_F64
-int alwan_rgb_to_xyz_f64(alwan_xyz_f64 *xyz,
+alwan_status alwan_rgb_to_xyz_f64(alwan_xyz_f64 *xyz,
                      alwan_rgb_space_desc_f64 const *space,
                      alwan_rgb_f64 const *rgb) {
     if (!space || !rgb || !xyz) {
@@ -111,7 +111,7 @@ int alwan_rgb_to_xyz_f64(alwan_xyz_f64 *xyz,
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_rgb_f64(alwan_rgb_f64 *rgb,
+alwan_status alwan_xyz_to_rgb_f64(alwan_rgb_f64 *rgb,
                      alwan_rgb_space_desc_f64 const *space,
                      alwan_xyz_f64 const *xyz) {
     if (!space || !xyz || !rgb) {
@@ -143,7 +143,7 @@ int alwan_xyz_to_rgb_f64(alwan_rgb_f64 *rgb,
  * f32 building blocks (no widen-to-f64 facade). Uses precomputed matrices when
  * present, else derives them in f32 via alwan_rgb_derive_matrices_f32. */
 #if ALWAN_WITH_F32
-int alwan_rgb_to_xyz_f32(alwan_xyz_f32 *xyz,
+alwan_status alwan_rgb_to_xyz_f32(alwan_xyz_f32 *xyz,
                      alwan_rgb_space_desc_f32 const *space,
                      alwan_rgb_f32 const *rgb) {
     if (!space || !rgb || !xyz) {
@@ -170,7 +170,7 @@ int alwan_rgb_to_xyz_f32(alwan_xyz_f32 *xyz,
     return ALWAN_OK;
 }
 
-int alwan_xyz_to_rgb_f32(alwan_rgb_f32 *rgb,
+alwan_status alwan_xyz_to_rgb_f32(alwan_rgb_f32 *rgb,
                      alwan_rgb_space_desc_f32 const *space,
                      alwan_xyz_f32 const *xyz) {
     if (!space || !xyz || !rgb) {
@@ -205,7 +205,7 @@ int alwan_xyz_to_rgb_f32(alwan_rgb_f32 *rgb,
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
  * (referenced by the always-compiled alwan_aces2_output_transform_custom_f64). */
 #if ALWAN_WITH_F64_FACADE
-int alwan_oetf_apply_f64(alwan_f64 *encoded_out, size_t out_stride, alwan_f64 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
+alwan_status alwan_oetf_apply_f64(alwan_f64 *encoded_out, size_t out_stride, alwan_f64 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
     if (!linear_in || !encoded_out) {
         return ALWAN_E_INVALID;
     }
@@ -251,7 +251,7 @@ int alwan_oetf_apply_f64(alwan_f64 *encoded_out, size_t out_stride, alwan_f64 co
 #endif /* ALWAN_WITH_F64_FACADE */
 
 #if ALWAN_WITH_F32
-int alwan_oetf_apply_f32(alwan_f32 *encoded_out, size_t out_stride, alwan_f32 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
+alwan_status alwan_oetf_apply_f32(alwan_f32 *encoded_out, size_t out_stride, alwan_f32 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
     if (!linear_in || !encoded_out) return ALWAN_E_INVALID;
 
     alwan_tf_fn_f32 oetf_fn = alwan__resolve_oetf_f32(tf);
@@ -265,7 +265,7 @@ int alwan_oetf_apply_f32(alwan_f32 *encoded_out, size_t out_stride, alwan_f32 co
     return ALWAN_OK;
 }
 
-int alwan_eotf_apply_f32(alwan_f32 *linear_out, size_t out_stride, alwan_f32 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
+alwan_status alwan_eotf_apply_f32(alwan_f32 *linear_out, size_t out_stride, alwan_f32 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
     if (!encoded_in || !linear_out) return ALWAN_E_INVALID;
 
     alwan_tf_fn_f32 eotf_fn = alwan__resolve_eotf_f32(tf);
@@ -283,7 +283,7 @@ int alwan_eotf_apply_f32(alwan_f32 *linear_out, size_t out_stride, alwan_f32 con
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
  * (the aces2 inverse f32 facade applies the display EOTF in f64). */
 #if ALWAN_WITH_F64_FACADE
-int alwan_eotf_apply_f64(alwan_f64 *linear_out, size_t out_stride, alwan_f64 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
+alwan_status alwan_eotf_apply_f64(alwan_f64 *linear_out, size_t out_stride, alwan_f64 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf) {
     if (!encoded_in || !linear_out) {
         return ALWAN_E_INVALID;
     }
@@ -336,7 +336,7 @@ int alwan_eotf_apply_f64(alwan_f64 *linear_out, size_t out_stride, alwan_f64 con
  * Native f32: mirrors alwan_rgb_convert_f64's algorithm exactly using f32
  * building blocks (no widen-to-f64 facade). */
 #if ALWAN_WITH_F32
-int alwan_rgb_convert_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, alwan_ctx *ctx) {
+alwan_status alwan_rgb_convert_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, alwan_ctx *ctx) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb) {
         return ALWAN_E_INVALID;
     }
@@ -411,7 +411,7 @@ int alwan_rgb_convert_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const
 #endif /* ALWAN_WITH_F32 */
 
 #if ALWAN_WITH_F64
-int alwan_rgb_convert_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_rgb_f64 const *src_rgb, alwan_ctx *ctx) {
+alwan_status alwan_rgb_convert_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_rgb_f64 const *src_rgb, alwan_ctx *ctx) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb) {
         return ALWAN_E_INVALID;
     }
@@ -485,7 +485,7 @@ int alwan_rgb_convert_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const
 }
 
 /* Map RGB color space conversion */
-int alwan_rgb_convert_map_interleave_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_rgb_f64 const *src_rgb, size_t count, alwan_ctx *ctx) {
+alwan_status alwan_rgb_convert_map_interleave_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_rgb_f64 const *src_rgb, size_t count, alwan_ctx *ctx) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -568,7 +568,7 @@ int alwan_rgb_convert_map_interleave_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space
  * exactly using f32 building blocks. Matrices/CAT precomputed once; per-pixel
  * matrix-vector products in f32. No f64 scratch, no heap allocation. */
 #if ALWAN_WITH_F32
-int alwan_rgb_convert_map_interleave_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, size_t count, alwan_ctx *ctx) {
+alwan_status alwan_rgb_convert_map_interleave_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, size_t count, alwan_ctx *ctx) {
     if (!src_space || !dst_space || !src_rgb || !dst_rgb || count == 0) {
         return ALWAN_E_INVALID;
     }
@@ -796,7 +796,7 @@ _Static_assert(
  * ---------------------------------------------------------------- */
 
 #if ALWAN_WITH_F32
-int alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
+alwan_status alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
     if (!desc) {
         return ALWAN_E_INVALID;
     }
@@ -842,7 +842,7 @@ int alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, alwan_rgb
 #endif /* ALWAN_WITH_F32 */
 
 #if ALWAN_WITH_F64
-int alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
+alwan_status alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
     if (!desc) {
         return ALWAN_E_INVALID;
     }

@@ -33,7 +33,7 @@
  * Typed (u8/u16/f16/f32/f64) delegate -- mirrors ALWAN_EX_DELEGATE_DUAL with the
  * params passthrough, so analytic AgX runs through the typed image pipeline.
  * ---------------------------------------------------------------- */
-int alwan_agx_map_interleave_ex(void *out, size_t out_stride,
+alwan_status alwan_agx_map_interleave_ex(void *out, size_t out_stride,
                                 void const *in, size_t in_stride, size_t count,
                                 alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
                                 alwan_agx_params_f64 const *params) {

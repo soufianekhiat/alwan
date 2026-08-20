@@ -32,25 +32,25 @@ ALWAN_DIAG_POP
  * CMY <-> CMYK
  * ---------------------------------------------------------------- */
 
-int alwan_cmy_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_cmy_f32 const *cmy) {
+alwan_status alwan_cmy_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_cmy_f32 const *cmy) {
     if (!cmyk_out || !cmy) return ALWAN_E_INVALID;
     *cmyk_out = alwan_cmy_to_cmyk_f32_v(*cmy);
     return ALWAN_OK;
 }
 
-int alwan_cmy_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_cmy_f64 const *cmy) {
+alwan_status alwan_cmy_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_cmy_f64 const *cmy) {
     if (!cmyk_out || !cmy) return ALWAN_E_INVALID;
     *cmyk_out = alwan_cmy_to_cmyk_f64_v(*cmy);
     return ALWAN_OK;
 }
 
-int alwan_cmyk_to_cmy_f32(alwan_cmy_f32 *cmy_out, alwan_cmyk_f32 const *cmyk) {
+alwan_status alwan_cmyk_to_cmy_f32(alwan_cmy_f32 *cmy_out, alwan_cmyk_f32 const *cmyk) {
     if (!cmy_out || !cmyk) return ALWAN_E_INVALID;
     *cmy_out = alwan_cmyk_to_cmy_f32_v(*cmyk);
     return ALWAN_OK;
 }
 
-int alwan_cmyk_to_cmy_f64(alwan_cmy_f64 *cmy_out, alwan_cmyk_f64 const *cmyk) {
+alwan_status alwan_cmyk_to_cmy_f64(alwan_cmy_f64 *cmy_out, alwan_cmyk_f64 const *cmyk) {
     if (!cmy_out || !cmyk) return ALWAN_E_INVALID;
     *cmy_out = alwan_cmyk_to_cmy_f64_v(*cmyk);
     return ALWAN_OK;
@@ -63,7 +63,7 @@ int alwan_cmyk_to_cmy_f64(alwan_cmy_f64 *cmy_out, alwan_cmyk_f64 const *cmyk) {
 
 /* YCbCr coefficients resolved via alwan__get_ycbcr_coeffs() in alwan_internal.h */
 
-int alwan_rgb_to_ycbcr_f64(alwan_ycbcr_f64 *ycbcr_out, alwan_rgb_f64 const *rgb, alwan_ycbcr_standard standard) {
+alwan_status alwan_rgb_to_ycbcr_f64(alwan_ycbcr_f64 *ycbcr_out, alwan_rgb_f64 const *rgb, alwan_ycbcr_standard standard) {
     if (!rgb || !ycbcr_out) return ALWAN_E_INVALID;
     alwan_f64 kr, kb;
     alwan__get_ycbcr_coeffs(standard, &kr, &kb);
@@ -72,7 +72,7 @@ int alwan_rgb_to_ycbcr_f64(alwan_ycbcr_f64 *ycbcr_out, alwan_rgb_f64 const *rgb,
     return ALWAN_OK;
 }
 
-int alwan_rgb_to_ycbcr_f32(alwan_ycbcr_f32 *ycbcr_out, alwan_rgb_f32 const *rgb, alwan_ycbcr_standard standard) {
+alwan_status alwan_rgb_to_ycbcr_f32(alwan_ycbcr_f32 *ycbcr_out, alwan_rgb_f32 const *rgb, alwan_ycbcr_standard standard) {
     if (!rgb || !ycbcr_out) return ALWAN_E_INVALID;
     alwan_f64 kr, kb;
     alwan__get_ycbcr_coeffs(standard, &kr, &kb);
@@ -82,7 +82,7 @@ int alwan_rgb_to_ycbcr_f32(alwan_ycbcr_f32 *ycbcr_out, alwan_rgb_f32 const *rgb,
     return ALWAN_OK;
 }
 
-int alwan_ycbcr_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr, alwan_ycbcr_standard standard) {
+alwan_status alwan_ycbcr_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr, alwan_ycbcr_standard standard) {
     if (!ycbcr || !rgb_out) return ALWAN_E_INVALID;
     alwan_ycbcr_f64 tmp = *ycbcr;
     ALWAN_DENORM_YCBCR(&tmp);
@@ -92,7 +92,7 @@ int alwan_ycbcr_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr,
     return ALWAN_OK;
 }
 
-int alwan_ycbcr_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr, alwan_ycbcr_standard standard) {
+alwan_status alwan_ycbcr_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr, alwan_ycbcr_standard standard) {
     if (!ycbcr || !rgb_out) return ALWAN_E_INVALID;
     alwan_ycbcr_f32 tmp = *ycbcr;
     ALWAN_DENORM_YCBCR(&tmp);
@@ -106,49 +106,49 @@ int alwan_ycbcr_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr,
  * RGB <-> HWB
  * ---------------------------------------------------------------- */
 
-int alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb) {
+alwan_status alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb) {
     if (!rgb || !hwb_out) return ALWAN_E_INVALID;
     *hwb_out = alwan_rgb_to_hwb_f32_v(*rgb);
     return ALWAN_OK;
 }
 
-int alwan_rgb_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_rgb_f64 const *rgb) {
+alwan_status alwan_rgb_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_rgb_f64 const *rgb) {
     if (!rgb || !hwb_out) return ALWAN_E_INVALID;
     *hwb_out = alwan_rgb_to_hwb_f64_v(*rgb);
     return ALWAN_OK;
 }
 
-int alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hwb_f32 const *hwb) {
+alwan_status alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hwb_f32 const *hwb) {
     if (!rgb_out || !hwb) return ALWAN_E_INVALID;
     *rgb_out = alwan_hwb_to_rgb_f32_v(*hwb);
     return ALWAN_OK;
 }
 
-int alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb) {
+alwan_status alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb) {
     if (!rgb_out || !hwb) return ALWAN_E_INVALID;
     *rgb_out = alwan_hwb_to_rgb_f64_v(*hwb);
     return ALWAN_OK;
 }
 
-int alwan_hsv_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_hsv_f32 const *hsv) {
+alwan_status alwan_hsv_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_hsv_f32 const *hsv) {
     if (!hsv || !hwb_out) return ALWAN_E_INVALID;
     *hwb_out = alwan_hsv_to_hwb_f32_v(*hsv);
     return ALWAN_OK;
 }
 
-int alwan_hsv_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_hsv_f64 const *hsv) {
+alwan_status alwan_hsv_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_hsv_f64 const *hsv) {
     if (!hsv || !hwb_out) return ALWAN_E_INVALID;
     *hwb_out = alwan_hsv_to_hwb_f64_v(*hsv);
     return ALWAN_OK;
 }
 
-int alwan_hwb_to_hsv_f32(alwan_hsv_f32 *hsv_out, alwan_hwb_f32 const *hwb) {
+alwan_status alwan_hwb_to_hsv_f32(alwan_hsv_f32 *hsv_out, alwan_hwb_f32 const *hwb) {
     if (!hsv_out || !hwb) return ALWAN_E_INVALID;
     *hsv_out = alwan_hwb_to_hsv_f32_v(*hwb);
     return ALWAN_OK;
 }
 
-int alwan_hwb_to_hsv_f64(alwan_hsv_f64 *hsv_out, alwan_hwb_f64 const *hwb) {
+alwan_status alwan_hwb_to_hsv_f64(alwan_hsv_f64 *hsv_out, alwan_hwb_f64 const *hwb) {
     if (!hsv_out || !hwb) return ALWAN_E_INVALID;
     *hsv_out = alwan_hwb_to_hsv_f64_v(*hwb);
     return ALWAN_OK;
@@ -158,7 +158,7 @@ int alwan_hwb_to_hsv_f64(alwan_hsv_f64 *hsv_out, alwan_hwb_f64 const *hwb) {
  * Relative Luminance
  * ---------------------------------------------------------------- */
 
-int alwan_relative_luminance_f64(alwan_f64 *Y_out,
+alwan_status alwan_relative_luminance_f64(alwan_f64 *Y_out,
                              alwan_rgb_f64 const *rgb,
                              alwan_luma_standard standard) {
     if (!rgb || !Y_out) return ALWAN_E_INVALID;
@@ -168,7 +168,7 @@ int alwan_relative_luminance_f64(alwan_f64 *Y_out,
     return ALWAN_OK;
 }
 
-int alwan_relative_luminance_f32(alwan_f32 *Y_out,
+alwan_status alwan_relative_luminance_f32(alwan_f32 *Y_out,
                              alwan_rgb_f32 const *rgb,
                              alwan_luma_standard standard) {
     if (!rgb || !Y_out) return ALWAN_E_INVALID;
@@ -178,7 +178,7 @@ int alwan_relative_luminance_f32(alwan_f32 *Y_out,
     return ALWAN_OK;
 }
 
-int alwan_relative_luminance_kr_kb_f64(alwan_f64 *Y_out,
+alwan_status alwan_relative_luminance_kr_kb_f64(alwan_f64 *Y_out,
                                    alwan_rgb_f64 const *rgb,
                                    alwan_f64 kr, alwan_f64 kb) {
     if (!rgb || !Y_out) return ALWAN_E_INVALID;
@@ -187,7 +187,7 @@ int alwan_relative_luminance_kr_kb_f64(alwan_f64 *Y_out,
     return ALWAN_OK;
 }
 
-int alwan_relative_luminance_kr_kb_f32(alwan_f32 *Y_out,
+alwan_status alwan_relative_luminance_kr_kb_f32(alwan_f32 *Y_out,
                                    alwan_rgb_f32 const *rgb,
                                    alwan_f32 kr, alwan_f32 kb) {
     if (!rgb || !Y_out) return ALWAN_E_INVALID;
@@ -196,7 +196,7 @@ int alwan_relative_luminance_kr_kb_f32(alwan_f32 *Y_out,
     return ALWAN_OK;
 }
 
-int alwan_relative_luminance_space_f64(alwan_f64 *Y_out,
+alwan_status alwan_relative_luminance_space_f64(alwan_f64 *Y_out,
                                    alwan_rgb_f64 const *rgb,
                                    alwan_rgb_space_desc_f64 const *space) {
     if (!rgb || !Y_out || !space) return ALWAN_E_INVALID;
@@ -209,7 +209,7 @@ int alwan_relative_luminance_space_f64(alwan_f64 *Y_out,
     return ALWAN_OK;
 }
 
-int alwan_relative_luminance_space_f32(alwan_f32 *Y_out,
+alwan_status alwan_relative_luminance_space_f32(alwan_f32 *Y_out,
                                    alwan_rgb_f32 const *rgb,
                                    alwan_rgb_space_desc_f32 const *space) {
     if (!rgb || !Y_out || !space) return ALWAN_E_INVALID;
@@ -246,21 +246,21 @@ static int alwan__gamut_fixup_f64(alwan_rgb_f64 *rgb, alwan_rgb_space space_id, 
     return alwan_gamut_map_advanced_f64(rgb, method, &space, &raw);
 }
 
-int alwan_ycbcr_to_rgb_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr,
+alwan_status alwan_ycbcr_to_rgb_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_ycbcr_f64 const *ycbcr,
                                       alwan_ycbcr_standard standard, alwan_gamut_map_method method) {
     int st = alwan_ycbcr_to_rgb_f64(rgb_out, ycbcr, standard);
     if (st != ALWAN_OK) return st;
     return alwan__gamut_fixup_f64(rgb_out, alwan__ycbcr_space_id(standard), method);
 }
 
-int alwan_yccbccrc_to_rgb_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_yccbccrc_f64 const *yccbccrc,
+alwan_status alwan_yccbccrc_to_rgb_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_yccbccrc_f64 const *yccbccrc,
                                          int bit_depth, alwan_gamut_map_method method) {
     int st = alwan_yccbccrc_to_rgb_f64(rgb_out, yccbccrc, bit_depth);
     if (st != ALWAN_OK) return st;
     return alwan__gamut_fixup_f64(rgb_out, ALWAN_RGB_SPACE_BT2020, method);
 }
 
-int alwan_ycbcr_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
+alwan_status alwan_ycbcr_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
         alwan_f64 const *ycbcr_in, size_t in_stride, size_t count,
         alwan_ycbcr_standard standard, alwan_gamut_map_method method) {
     int st = alwan_ycbcr_to_rgb_f64_map_interleave(rgb_out, out_stride, ycbcr_in, in_stride, count, standard);
@@ -277,7 +277,7 @@ int alwan_ycbcr_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t 
     return ALWAN_OK;
 }
 
-int alwan_yccbccrc_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
+alwan_status alwan_yccbccrc_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride,
         alwan_f64 const *yccbccrc_in, size_t in_stride, size_t count,
         int bit_depth, alwan_gamut_map_method method) {
     int st = alwan_yccbccrc_to_rgb_f64_map_interleave(rgb_out, out_stride, yccbccrc_in, in_stride, count, bit_depth);
@@ -304,21 +304,21 @@ static int alwan__gamut_fixup_f32(alwan_rgb_f32 *rgb, alwan_rgb_space space_id, 
     return alwan_gamut_map_advanced_f32(rgb, method, &space, &raw);
 }
 
-int alwan_ycbcr_to_rgb_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr,
+alwan_status alwan_ycbcr_to_rgb_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_ycbcr_f32 const *ycbcr,
                                       alwan_ycbcr_standard standard, alwan_gamut_map_method method) {
     int st = alwan_ycbcr_to_rgb_f32(rgb_out, ycbcr, standard);
     if (st != ALWAN_OK) return st;
     return alwan__gamut_fixup_f32(rgb_out, alwan__ycbcr_space_id(standard), method);
 }
 
-int alwan_yccbccrc_to_rgb_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_yccbccrc_f32 const *yccbccrc,
+alwan_status alwan_yccbccrc_to_rgb_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_yccbccrc_f32 const *yccbccrc,
                                          int bit_depth, alwan_gamut_map_method method) {
     int st = alwan_yccbccrc_to_rgb_f32(rgb_out, yccbccrc, bit_depth);
     if (st != ALWAN_OK) return st;
     return alwan__gamut_fixup_f32(rgb_out, ALWAN_RGB_SPACE_BT2020, method);
 }
 
-int alwan_ycbcr_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
+alwan_status alwan_ycbcr_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
         alwan_f32 const *ycbcr_in, size_t in_stride, size_t count,
         alwan_ycbcr_standard standard, alwan_gamut_map_method method) {
     int st = alwan_ycbcr_to_rgb_f32_map_interleave(rgb_out, out_stride, ycbcr_in, in_stride, count, standard);
@@ -335,7 +335,7 @@ int alwan_ycbcr_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t 
     return ALWAN_OK;
 }
 
-int alwan_yccbccrc_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
+alwan_status alwan_yccbccrc_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride,
         alwan_f32 const *yccbccrc_in, size_t in_stride, size_t count,
         int bit_depth, alwan_gamut_map_method method) {
     int st = alwan_yccbccrc_to_rgb_f32_map_interleave(rgb_out, out_stride, yccbccrc_in, in_stride, count, bit_depth);
