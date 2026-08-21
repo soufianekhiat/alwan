@@ -15,59 +15,59 @@
 
 /* Basic 3-channel planar pair (v2: out_stride after o0, in_stride after i0) */
 #define ALWAN_PFWD(n) \
-    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count); \
-    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count)
+    alwan_status n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count); \
+    alwan_status n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count)
 
 /* Basic 3-channel interleave pair (v2: stride after each buffer) */
 #define ALWAN_IFWD(n) \
-    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count); \
-    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count)
+    alwan_status n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count); \
+    alwan_status n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count)
 
 /* Both planar + interleave, basic */
 #define ALWAN_PFWD_IFWD(n) ALWAN_PFWD(n); ALWAN_IFWD(n)
 
 /* Planar with white_xyz (v2) */
 #define ALWAN_PFWD_W(n) \
-    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,alwan_xyz_f32 const *w); \
-    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,alwan_xyz_f64 const *w)
+    alwan_status n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,alwan_xyz_f32 const *w); \
+    alwan_status n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,alwan_xyz_f64 const *w)
 
 /* Interleave with white_xyz (v2) */
 #define ALWAN_IFWD_W(n) \
-    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,alwan_xyz_f32 const *w); \
-    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,alwan_xyz_f64 const *w)
+    alwan_status n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,alwan_xyz_f32 const *w); \
+    alwan_status n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,alwan_xyz_f64 const *w)
 
 /* Both with white_xyz */
 #define ALWAN_PFWD_IFWD_W(n) ALWAN_PFWD_W(n); ALWAN_IFWD_W(n)
 
 /* Planar with int (v2) */
 #define ALWAN_PFWD_I(n) \
-    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,int v); \
-    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,int v)
+    alwan_status n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,int v); \
+    alwan_status n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,int v)
 
 /* Interleave with int (v2) */
 #define ALWAN_IFWD_I(n) \
-    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,int v); \
-    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,int v)
+    alwan_status n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,int v); \
+    alwan_status n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,int v)
 
 /* Both with int */
 #define ALWAN_PFWD_IFWD_I(n) ALWAN_PFWD_I(n); ALWAN_IFWD_I(n)
 
 /* Both with alwan_ycbcr_standard (enum) -- avoids C4028 vs int mismatch (v2) */
 #define ALWAN_PFWD_IFWD_YCBCR(n) \
-    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,alwan_ycbcr_standard v); \
-    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,alwan_ycbcr_standard v); \
-    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,alwan_ycbcr_standard v); \
-    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,alwan_ycbcr_standard v)
+    alwan_status n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,alwan_ycbcr_standard v); \
+    alwan_status n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,alwan_ycbcr_standard v); \
+    alwan_status n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,alwan_ycbcr_standard v); \
+    alwan_status n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,alwan_ycbcr_standard v)
 
 /* Planar with scalar (v2) */
 #define ALWAN_PFWD_S(n) \
-    int n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,float p); \
-    int n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,double p)
+    alwan_status n##_f32_map_planar(float *o0,size_t out_stride,float *o1,float *o2,float const *i0,size_t in_stride,float const *i1,float const *i2,size_t count,float p); \
+    alwan_status n##_f64_map_planar(double *o0,size_t out_stride,double *o1,double *o2,double const *i0,size_t in_stride,double const *i1,double const *i2,size_t count,double p)
 
 /* Interleave with scalar (v2) */
 #define ALWAN_IFWD_S(n) \
-    int n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,float p); \
-    int n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,double p)
+    alwan_status n##_f32_map_interleave(float *out,size_t out_stride,float const *in,size_t in_stride,size_t count,float p); \
+    alwan_status n##_f64_map_interleave(double *out,size_t out_stride,double const *in,size_t in_stride,size_t count,double p)
 
 /* Both with scalar */
 #define ALWAN_PFWD_IFWD_S(n) ALWAN_PFWD_S(n); ALWAN_IFWD_S(n)

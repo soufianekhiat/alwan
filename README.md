@@ -8,6 +8,12 @@
 | **Windows** | [![Windows build](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml) | [![Windows ARM build](https://github.com/soufianekhiat/alwan/actions/workflows/windows-arm-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-arm-f64.yml) |
 | **macOS**   | [![macOS build](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml)       | [![macOS ARM build](https://github.com/soufianekhiat/alwan/actions/workflows/macos-arm-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-arm-f64.yml)     |
 
+| **Matrix**  | [![Permutation builds](https://github.com/soufianekhiat/alwan/actions/workflows/permutation-builds.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/permutation-builds.yml) | [![Precision builds](https://github.com/soufianekhiat/alwan/actions/workflows/precision-builds.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/precision-builds.yml) |
+
+> The Matrix row covers the configurations the per-platform rows do not
+> compile: shared linkage, `ALWAN_DETERMINISTIC=ON`, Debug, and the
+> single-precision (`f32`-only / `f64`-only) builds.
+
 > Tests and benchmarks live in the sibling
 > [alwan_dev](https://github.com/soufianekhiat/alwan_dev) repo. The lib build
 > badges above only verify a clean compile across the six host targets.
