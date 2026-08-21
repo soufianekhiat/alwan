@@ -1638,7 +1638,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_relative_luminance_space, _map_interleave)(a
  * ---------------------------------------------------------------- */
 
 #define PLANAR_TILED_SCALAR(name, InT, OutT, core_fn, fi0,fi1,fi2, fo0,fo1,fo2) \
-int name(alwan_map_lane *out0, alwan_map_lane *out1, alwan_map_lane *out2, \
+alwan_status name(alwan_map_lane *out0, alwan_map_lane *out1, alwan_map_lane *out2, \
          alwan_map_lane const *in0, alwan_map_lane const *in1, alwan_map_lane const *in2, \
          size_t count, size_t in_stride, size_t out_stride) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \

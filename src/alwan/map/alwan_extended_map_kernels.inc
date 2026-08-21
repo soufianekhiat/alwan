@@ -2272,7 +2272,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_din99_to_lab, _map_interleave)(alwan_map_lan
 /* --- Simple kernel planar functions (no extra params) --- */
 
 #define ALWAN_MAP_P_PLANAR_FROM_KERNEL(name, kernel) \
-int name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
+alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
          alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, \
          size_t count) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
@@ -2329,7 +2329,7 @@ ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_ihls_to_rgb, _map_planar),
 /* --- Extra-param planar functions (white_xyz / variant) --- */
 
 #define ALWAN_MAP_P_PLANAR_TILED_WHITE(name, kernel) \
-int name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
+alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
          alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, \
          size_t count, \
          ALWAN_MAP_LIT(alwan_xyz) const *white_xyz) { \
@@ -2365,7 +2365,7 @@ ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_uvw_to_xyz, _map_planar), 
 /* Lab <-> DIN99 (int variant param) */
 
 #define ALWAN_MAP_P_PLANAR_TILED_INT(name, kernel) \
-int name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
+alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
          alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, \
          size_t count, \
          int variant) { \

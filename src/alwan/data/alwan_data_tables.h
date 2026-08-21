@@ -195,13 +195,13 @@ ALWAN_TABLE_EXTERN(alwan_table_jakob2019_xyz_c2, ALWAN_TABLE_JAKOB2019_SIZE)
  *   `if (!(h > -1e6 && h < 1e6)) h = 0;` before the cast, and the spline sites
  *   clamp the integer after it. They are runtime-built parameters inside a
  *   struct rather than embedded arrays, so they would not belong in a
- *   data/*.c either. Folding them onto the shared gate is phase 2 tidying, not
+ *   a data table .c either. Folding them onto the shared gate is phase 2 tidying, not
  *   a crash fix.
  *
  * ================================================================
  * MIGRATION NOTE -- what has NOT moved, and in what order it should
  *
- * ~600 further file-scope arrays live in api/*.c and core/*.h. They are NOT
+ * ~600 further file-scope arrays live in the api and core sources. They are NOT
  * moved here, deliberately:
  *
  *   * The copy-shaped tables (38 illuminant SPDs, 21 observer CMFs,
