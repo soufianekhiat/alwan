@@ -11,8 +11,8 @@
  * sRGB Transfer Functions
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_srgb_oetf)(ALWAN_CORE_T linear) {
-    return ALWAN_CORE_SRGB_OETF(linear);
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_srgb_oetf)(ALWAN_CORE_T lin) {
+    return ALWAN_CORE_SRGB_OETF(lin);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_srgb_eotf)(ALWAN_CORE_T encoded) {
@@ -23,8 +23,8 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_srgb_eotf)(ALWAN_CORE_T encoded
  * BT.2020 Transfer Functions
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_oetf)(ALWAN_CORE_T linear) {
-    return ALWAN_CORE_BT2020_OETF(linear);
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_oetf)(ALWAN_CORE_T lin) {
+    return ALWAN_CORE_BT2020_OETF(lin);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_eotf)(ALWAN_CORE_T encoded) {
@@ -35,15 +35,15 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_eotf)(ALWAN_CORE_T encod
  * PQ (ST.2084) Transfer Functions
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_pq_oetf)(ALWAN_CORE_T linear) {
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_pq_oetf)(ALWAN_CORE_T lin) {
     ALWAN_CORE_T m1 = ALWAN_CORE_LITERAL(2610.0) / ALWAN_CORE_LITERAL(16384.0);
     ALWAN_CORE_T m2 = ALWAN_CORE_LITERAL(2523.0) / ALWAN_CORE_LITERAL(32.0);
     ALWAN_CORE_T c1 = ALWAN_CORE_LITERAL(3424.0) / ALWAN_CORE_LITERAL(4096.0);
     ALWAN_CORE_T c2 = ALWAN_CORE_LITERAL(2413.0) / ALWAN_CORE_LITERAL(128.0);
     ALWAN_CORE_T c3 = ALWAN_CORE_LITERAL(2392.0) / ALWAN_CORE_LITERAL(128.0);
 
-    ALWAN_CORE_T Y = ALWAN_CORE_SELECT(linear < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO,
-                                        linear / ALWAN_CORE_LITERAL(10000.0));
+    ALWAN_CORE_T Y = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO,
+                                        lin / ALWAN_CORE_LITERAL(10000.0));
     ALWAN_CORE_T Y_pow_m1 = ALWAN_CORE_POW(Y, m1);
     ALWAN_CORE_T numerator = c1 + c2 * Y_pow_m1;
     ALWAN_CORE_T denominator = ALWAN_CORE_ONE + c3 * Y_pow_m1;
@@ -72,12 +72,12 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_pq_eotf)(ALWAN_CORE_T encoded) 
  * HLG (Hybrid Log-Gamma) Transfer Functions
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hlg_oetf)(ALWAN_CORE_T linear) {
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hlg_oetf)(ALWAN_CORE_T lin) {
     ALWAN_CORE_T a = ALWAN_CORE_LITERAL(0.17883277);
     ALWAN_CORE_T b = ALWAN_CORE_ONE - ALWAN_CORE_LITERAL(4.0) * a;
     ALWAN_CORE_T c = ALWAN_CORE_LITERAL(0.5) - a * ALWAN_CORE_LN(ALWAN_CORE_LITERAL(4.0) * a);
 
-    ALWAN_CORE_T L = ALWAN_CORE_SELECT(linear < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, linear);
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
     ALWAN_CORE_T sqrt_result = ALWAN_CORE_SQRT(ALWAN_CORE_LITERAL(3.0) * L);
     ALWAN_CORE_T log_result  = a * ALWAN_CORE_LN(ALWAN_CORE_LITERAL(12.0) * L - b) + c;
     return ALWAN_CORE_SELECT(L <= ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(12.0),
@@ -90,11 +90,11 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hlg_eotf)(ALWAN_CORE_T encoded)
     ALWAN_CORE_T c = ALWAN_CORE_LITERAL(0.5) - a * ALWAN_CORE_LN(ALWAN_CORE_LITERAL(4.0) * a);
 
     ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded);
-    ALWAN_CORE_T linear_lo = (E * E) / ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T linear_hi = (ALWAN_CORE_EXP((E - c) / a) + b) / ALWAN_CORE_LITERAL(12.0);
-    ALWAN_CORE_T linear = ALWAN_CORE_SELECT(E <= ALWAN_CORE_LITERAL(0.5),
-                                             linear_lo, linear_hi);
-    return ALWAN_CORE_POW(linear, ALWAN_CORE_LITERAL(1.2));
+    ALWAN_CORE_T lin_lo = (E * E) / ALWAN_CORE_LITERAL(3.0);
+    ALWAN_CORE_T lin_hi = (ALWAN_CORE_EXP((E - c) / a) + b) / ALWAN_CORE_LITERAL(12.0);
+    ALWAN_CORE_T lin = ALWAN_CORE_SELECT(E <= ALWAN_CORE_LITERAL(0.5),
+                                          lin_lo, lin_hi);
+    return ALWAN_CORE_POW(lin, ALWAN_CORE_LITERAL(1.2));
 }
 
 /* ================================================================
