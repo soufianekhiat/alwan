@@ -1702,8 +1702,8 @@ static const alwan_f64 AP1_GREEN_x = ALWAN_AP1_GREEN_x;
 static const alwan_f64 AP1_GREEN_y = ALWAN_AP1_GREEN_y;
 static const alwan_f64 AP1_BLUE_x  = ALWAN_AP1_BLUE_x;
 static const alwan_f64 AP1_BLUE_y  = ALWAN_AP1_BLUE_y;
-static const alwan_f64 AP1_WHITE_x = ALWAN_LITERAL(0.32168);
-static const alwan_f64 AP1_WHITE_y = ALWAN_LITERAL(0.33767);
+static const alwan_f64 AP1_WHITE_x = ALWAN_ACES_WHITE_x;
+static const alwan_f64 AP1_WHITE_y = ALWAN_ACES_WHITE_y;
 
 /* ----------------------------------------------------------------
  * ACES 2.0: Constants and Viewing Conditions

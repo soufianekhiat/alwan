@@ -683,6 +683,13 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_D65_Y  ALWAN_LITERAL(100.0)
 #define ALWAN_D65_Z  ALWAN_LITERAL(108.90577508)
 
+/* Standard illuminant D60 white point (CIE, computed from the D-series
+ * daylight locus). For ACES work use ALWAN_ACES_WHITE_* instead: the ACES
+ * specification rounds its white to 0.32168 / 0.33767, which is a different
+ * number in the fifth decimal. Values match data/illuminants_xy/d60_xy.csv. */
+#define ALWAN_D60_x  ALWAN_LITERAL(0.321616709705268011277)
+#define ALWAN_D60_y  ALWAN_LITERAL(0.337619916550817023015)
+
 /* Standard RGB primaries (CIE xy chromaticity) */
 
 /* ITU-R BT.709 / sRGB primaries */
@@ -716,6 +723,27 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_AP1_GREEN_y     ALWAN_LITERAL(0.830)
 #define ALWAN_AP1_BLUE_x      ALWAN_LITERAL(0.128)
 #define ALWAN_AP1_BLUE_y      ALWAN_LITERAL(0.044)
+
+/* ACES AP0 / ACES2065-1 primaries (SMPTE ST 2065-1). Green sits on the
+ * spectral locus and blue y is negative by construction: AP0 encloses the
+ * whole locus, so these are not typos. Values match
+ * data/rgb_spaces/aces2065-1.csv. */
+#define ALWAN_AP0_RED_x       ALWAN_LITERAL(0.7347)
+#define ALWAN_AP0_RED_y       ALWAN_LITERAL(0.2653)
+#define ALWAN_AP0_GREEN_x     ALWAN_LITERAL(0.0)
+#define ALWAN_AP0_GREEN_y     ALWAN_LITERAL(1.0)
+#define ALWAN_AP0_BLUE_x      ALWAN_LITERAL(0.0001)
+#define ALWAN_AP0_BLUE_y      ALWAN_LITERAL(-0.0770)
+
+/* The white point BOTH ACES gamuts use. Pair it with the AP0 or AP1
+ * primaries above to derive ACES matrices; pairing those primaries with
+ * ALWAN_D65_* yields a colour space that does not exist.
+ *
+ * This is NOT ALWAN_D60_*. The ACES specification pins its white at
+ * these rounded values, which differ from CIE D60 in the fifth decimal.
+ * Use ACES_WHITE for anything ACES, D60 for the CIE illuminant. */
+#define ALWAN_ACES_WHITE_x    ALWAN_LITERAL(0.32168)
+#define ALWAN_ACES_WHITE_y    ALWAN_LITERAL(0.33767)
 
 /* ITU luma coefficients (kr, kg, kb)
  * kg = 1 - kr - kb for each standard */
