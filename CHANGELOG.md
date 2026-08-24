@@ -10,6 +10,16 @@ First public release (tag `v2.0.0`). Everything below plus the dated
 foundation block that follows shipped together.
 
 ### Added
+- **ACES constants on the public macro surface** — `ALWAN_AP0_RED_x` .. 
+  `ALWAN_AP0_BLUE_y` (SMPTE ST 2065-1 primaries) and `ALWAN_ACES_WHITE_x/y`,
+  so ACES matrices can be derived from `alwan_platform.h` without hardcoding.
+  Previously only the AP1 primaries and a D65 white were exported, and pairing
+  those is a colour space that does not exist: the derived RGB-to-XYZ matrix is
+  off by 8e-2 per element against ACEScg, and it compiled without complaint.
+  `ALWAN_D60_x/y` (CIE D60) is also exported, and is deliberately NOT the same
+  number as `ALWAN_ACES_WHITE_x/y`: ACES pins its white to a rounded value that
+  differs from CIE D60 in the fifth decimal. Reported by the_flow2 after hitting
+  the AP1-plus-D65 combination in their EXR loader.
 - **Table reader layer** — every embedded table is now read through a
   declared reader (`alwan_table1d_sample`, `alwan_table2d_sample`,
   `alwan_table3d_sample`, `alwan_table1d_mat3_sample`, plus named readers
