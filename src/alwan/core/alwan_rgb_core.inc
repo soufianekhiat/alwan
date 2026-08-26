@@ -95,7 +95,22 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_full_to_legal_10bit)(ALWAN_CORE
 
 /* ================================================================
  * ACESproxy Transfer Functions
- * Reference: Academy S-2013-001
+ * Reference: Academy S-2013-001, "ACESproxy -- An Integer Log
+ * Encoding of ACES Image Data"
+ *
+ * The spec's final step rounds the code value to an integer. That step is left
+ * to the caller, so this stays a continuous float transfer function and the
+ * EOTF remains an exact inverse of the OETF. Everything else is normative and
+ * applied here: the 2^-9.72 floor, the [CV_min, CV_max] clamp, and
+ * mid_log_offset = 2.5. 10-bit constants.
+ *
+ * The visible consequence, which is deliberate: at linear 0.18 the code value
+ * is 426.30344, so this returns 426.30344 / 1023 = 0.4167189 where a rounding
+ * implementation (colour-science, and any integer ACESproxy encoder) returns
+ * 426 / 1023 = 0.4164223. The gap is 2.97e-04 and is bounded by half a code
+ * value across the whole range. Round the result yourself if you need bit-exact
+ * ACESproxy code values. Do not quantise inside the OETF: that turns the curve
+ * into a staircase and breaks EOTF(OETF(x)) == x for the float and GPU paths.
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_acesproxy_oetf)(ALWAN_CORE_T linear) {
