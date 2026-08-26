@@ -237,7 +237,8 @@ Support for modern display and camera encoding:
 - **Camera logs:** ARRI LogC3/LogC4, Sony S-Log/2/3, Canon C-Log/2/3,
   Panasonic V-Log, Nikon N-Log, RED REDLog/REDLogFilm/Log3G10,
   Fujifilm F-Log/F-Log2, DJI D-Log, Blackmagic Film Gen4/5, Leica
-  L-Log, Filmlight T-Log/E-Log, Apple Log, GoPro Protune
+  L-Log, FilmLight T-Log, Olympus OM-Log400 (E-Log), Apple Log,
+  GoPro Protune
 - **Film:** Cineon, ADX10/16
 - **View transforms:** AgX (original/punchy/golden/SB2383/Blender),
   Tony McMapface, Khronos PBR Neutral, Reinhard (extended + calibrated),

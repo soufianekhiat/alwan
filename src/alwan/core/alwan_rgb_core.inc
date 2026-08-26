@@ -499,29 +499,42 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bmdfilm4_eotf)(ALWAN_CORE_T enc
 }
 
 /* ================================================================
- * Filmlight T-Log / E-Log
+ * FilmLight T-Log, Olympus OM-Log400 (E-Log)
  * ================================================================ */
 
+/* T-Log -- FilmLight "T-Log" transfer characteristic (Baselight / Truelight
+ * colour space definition). Pairs with FilmLight E-Gamut primaries.
+ * Constants folded from the reference parameterisation w = 128, g = 16,
+ * o = 0.075:
+ *     b  = 1 / (0.7107 + 1.2359 * ln(w * g))
+ *     gs = g / (1 - o)                      C = b / gs
+ *     a  = 1 - b * ln(w + C)                y0 = a + b * ln(C)
+ *     s  = (1 - o) / (1 - y0)
+ *     A  = 1 + (a - 1) * s   B = b * s      G = gs * s
+ * The curve carries a black offset: T-Log(0) = o = 0.075, and is linear for
+ * negative scene values. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_tlog_oetf)(ALWAN_CORE_T linear) {
-    ALWAN_CORE_T a = ALWAN_CORE_LITERAL(0.01);
-    ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.0);
-    ALWAN_CORE_T c = ALWAN_CORE_LITERAL(0.33);
-    ALWAN_CORE_T d = ALWAN_CORE_LITERAL(0.02);
+    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(0.55201265686066547);
+    ALWAN_CORE_T B = ALWAN_CORE_LITERAL(0.092329025965773526);
+    ALWAN_CORE_T C = ALWAN_CORE_LITERAL(0.0057048244042473785);
+    ALWAN_CORE_T G = ALWAN_CORE_LITERAL(16.184376489665897);
+    ALWAN_CORE_T o = ALWAN_CORE_LITERAL(0.075);
 
-    ALWAN_CORE_T linear_result = linear / a * d;
-    ALWAN_CORE_T log_result    = c * ALWAN_CORE_LN((linear + b) / a) / ALWAN_CORE_LN(ALWAN_CORE_LITERAL(10.0)) + d;
-    return ALWAN_CORE_SELECT(linear <= a, linear_result, log_result);
+    ALWAN_CORE_T linear_result = linear * G + o;
+    ALWAN_CORE_T log_result    = ALWAN_CORE_LN(linear + C) * B + A;
+    return ALWAN_CORE_SELECT(linear < ALWAN_CORE_ZERO, linear_result, log_result);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_tlog_eotf)(ALWAN_CORE_T encoded) {
-    ALWAN_CORE_T a = ALWAN_CORE_LITERAL(0.01);
-    ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.0);
-    ALWAN_CORE_T c = ALWAN_CORE_LITERAL(0.33);
-    ALWAN_CORE_T d = ALWAN_CORE_LITERAL(0.02);
+    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(0.55201265686066547);
+    ALWAN_CORE_T B = ALWAN_CORE_LITERAL(0.092329025965773526);
+    ALWAN_CORE_T C = ALWAN_CORE_LITERAL(0.0057048244042473785);
+    ALWAN_CORE_T G = ALWAN_CORE_LITERAL(16.184376489665897);
+    ALWAN_CORE_T o = ALWAN_CORE_LITERAL(0.075);
 
-    ALWAN_CORE_T linear_result = encoded / d * a;
-    ALWAN_CORE_T log_result    = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), (encoded - d) / c) * a - b;
-    return ALWAN_CORE_SELECT(encoded <= d, linear_result, log_result);
+    ALWAN_CORE_T linear_result = (encoded - o) / G;
+    ALWAN_CORE_T log_result    = ALWAN_CORE_EXP((encoded - A) / B) - C;
+    return ALWAN_CORE_SELECT(encoded < o, linear_result, log_result);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_elog_oetf)(ALWAN_CORE_T linear) {
