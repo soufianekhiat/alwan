@@ -473,9 +473,10 @@ typedef enum {
     ALWAN_TF_BMDFILM = 23, /* Blackmagic Film Gen 5 */
     ALWAN_TF_BMDFILM4 = 24, /* Blackmagic Film Gen 4 (Broadcast Film) */
 
-    /* Filmlight T-Log / E-Log */
-    ALWAN_TF_TLOG = 25, /* Filmlight T-Log */
-    ALWAN_TF_ELOG = 26, /* Filmlight E-Log */
+    /* FilmLight T-Log, Olympus/OM System OM-Log400 */
+    ALWAN_TF_TLOG = 25, /* FilmLight T-Log (pairs with E-Gamut primaries) */
+    ALWAN_TF_ELOG = 26, /* Olympus/OM System OM-Log400. Named "E-Log" for
+                         * historical reasons; it is not a FilmLight curve. */
 
     /* GoPro Protune */
     ALWAN_TF_PROTUNE = 27, /* GoPro Protune */

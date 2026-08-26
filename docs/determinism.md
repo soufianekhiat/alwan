@@ -387,7 +387,7 @@ Coverage in the regression dump (manifest v49):
   resolution OETF + EOTF; alwan_bake_2dlut_f64 sRGB→P3 at edge=17;
   alwan_lut3d_to_2d / alwan_lut2d_to_3d round-trip on identity 17³.
 - Extended transfer functions (v42): ACESproxy, ARRI LogC3 + LogC4,
-  RED Log3G10, Blackmagic Film Gen 5 + Gen 4, Filmlight T-Log + E-Log,
+  RED Log3G10, Blackmagic Film Gen 5 + Gen 4, FilmLight T-Log + Olympus E-Log,
   Apple Log, Fujifilm F-Log + F-Log2, Leica L-Log, DJI D-Log, DCDM,
   ADX 10-bit + 16-bit. Combined with the v18 set, the contract now
   covers every TF enum in alwan.h.

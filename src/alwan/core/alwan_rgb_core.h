@@ -446,25 +446,37 @@ ALWAN_INLINE alwan_scalar alwan_bmdfilm4_eotf(alwan_scalar encoded) {
     return ALWAN_SELECT(encoded <= log_cut, linear_result, log_result);
 }
 
-/* T-Log -- Panasonic VariCam "V-Log / T-Log Transfer Function" specification */
+/* T-Log -- FilmLight "T-Log" transfer characteristic (Baselight / Truelight
+ * colour space definition). Pairs with FilmLight E-Gamut primaries.
+ * Constants folded from the reference parameterisation w = 128, g = 16,
+ * o = 0.075:
+ *     b  = 1 / (0.7107 + 1.2359 * ln(w * g))
+ *     gs = g / (1 - o)                      C = b / gs
+ *     a  = 1 - b * ln(w + C)                y0 = a + b * ln(C)
+ *     s  = (1 - o) / (1 - y0)
+ *     A  = 1 + (a - 1) * s   B = b * s      G = gs * s
+ * The curve carries a black offset: T-Log(0) = o = 0.075, and is linear for
+ * negative scene values. */
 ALWAN_INLINE alwan_scalar alwan_tlog_oetf(alwan_scalar linear) {
-    alwan_scalar a = ALWAN_LITERAL(0.01);
-    alwan_scalar b = ALWAN_LITERAL(0.0);
-    alwan_scalar c = ALWAN_LITERAL(0.33);
-    alwan_scalar d = ALWAN_LITERAL(0.02);
-    alwan_scalar linear_result = linear / a * d;
-    alwan_scalar log_result    = c * ALWAN_LN((linear + b) / a) / ALWAN_LN(ALWAN_LITERAL(10.0)) + d;
-    return ALWAN_SELECT(linear <= a, linear_result, log_result);
+    alwan_scalar A = ALWAN_LITERAL(0.55201265686066547);
+    alwan_scalar B = ALWAN_LITERAL(0.092329025965773526);
+    alwan_scalar C = ALWAN_LITERAL(0.0057048244042473785);
+    alwan_scalar G = ALWAN_LITERAL(16.184376489665897);
+    alwan_scalar o = ALWAN_LITERAL(0.075);
+    alwan_scalar linear_result = linear * G + o;
+    alwan_scalar log_result    = ALWAN_LN(linear + C) * B + A;
+    return ALWAN_SELECT(linear < ALWAN_ZERO, linear_result, log_result);
 }
 
 ALWAN_INLINE alwan_scalar alwan_tlog_eotf(alwan_scalar encoded) {
-    alwan_scalar a = ALWAN_LITERAL(0.01);
-    alwan_scalar b = ALWAN_LITERAL(0.0);
-    alwan_scalar c = ALWAN_LITERAL(0.33);
-    alwan_scalar d = ALWAN_LITERAL(0.02);
-    alwan_scalar linear_result = encoded / d * a;
-    alwan_scalar log_result    = ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - d) / c) * a - b;
-    return ALWAN_SELECT(encoded <= d, linear_result, log_result);
+    alwan_scalar A = ALWAN_LITERAL(0.55201265686066547);
+    alwan_scalar B = ALWAN_LITERAL(0.092329025965773526);
+    alwan_scalar C = ALWAN_LITERAL(0.0057048244042473785);
+    alwan_scalar G = ALWAN_LITERAL(16.184376489665897);
+    alwan_scalar o = ALWAN_LITERAL(0.075);
+    alwan_scalar linear_result = (encoded - o) / G;
+    alwan_scalar log_result    = ALWAN_EXP((encoded - A) / B) - C;
+    return ALWAN_SELECT(encoded < o, linear_result, log_result);
 }
 
 /* E-Log -- Olympus/OM System "OM-Log400 Transfer Characteristic" specification */
