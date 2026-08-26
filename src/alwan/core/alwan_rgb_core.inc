@@ -99,23 +99,27 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_full_to_legal_10bit)(ALWAN_CORE
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_acesproxy_oetf)(ALWAN_CORE_T linear) {
-    ALWAN_CORE_T mid_gray_in     = ALWAN_CORE_LITERAL(0.18);
-    ALWAN_CORE_T mid_code_value  = ALWAN_CORE_LITERAL(425.0) / ALWAN_CORE_LITERAL(1023.0);
-    ALWAN_CORE_T steps_per_stop  = ALWAN_CORE_LITERAL(50.0) / ALWAN_CORE_LITERAL(1023.0);
-    ALWAN_CORE_T min_code        = ALWAN_CORE_LITERAL(64.0) / ALWAN_CORE_LITERAL(1023.0);
-
-    ALWAN_CORE_T log_val    = ALWAN_CORE_LN(linear / mid_gray_in) / ALWAN_CORE_LN(ALWAN_CORE_LITERAL(2.0));
-    ALWAN_CORE_T log_result = mid_code_value + steps_per_stop * log_val;
-    return ALWAN_CORE_SELECT(linear <= ALWAN_CORE_ZERO, min_code, log_result);
+    ALWAN_CORE_T cv_min         = ALWAN_CORE_LITERAL(64.0);
+    ALWAN_CORE_T cv_max         = ALWAN_CORE_LITERAL(940.0);
+    ALWAN_CORE_T mid_cv_offset  = ALWAN_CORE_LITERAL(425.0);
+    ALWAN_CORE_T mid_log_offset = ALWAN_CORE_LITERAL(2.5);
+    ALWAN_CORE_T steps_per_stop = ALWAN_CORE_LITERAL(50.0);
+    ALWAN_CORE_T lin_cut        = ALWAN_CORE_LITERAL(0.0011857371917920374);  /* 2^-9.72 */
+    
+    ALWAN_CORE_T arg    = ALWAN_CORE_SELECT(linear <= ALWAN_CORE_ZERO, ALWAN_CORE_LITERAL(1e-10), linear);
+    ALWAN_CORE_T cv_raw = (ALWAN_CORE_LOG2(arg) + mid_log_offset) * steps_per_stop + mid_cv_offset;
+    ALWAN_CORE_T cv_lo  = ALWAN_CORE_SELECT(cv_raw < cv_min, cv_min, cv_raw);
+    ALWAN_CORE_T cv     = ALWAN_CORE_SELECT(cv_lo > cv_max, cv_max, cv_lo);
+    return ALWAN_CORE_SELECT(linear > lin_cut, cv, cv_min) / ALWAN_CORE_LITERAL(1023.0);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_acesproxy_eotf)(ALWAN_CORE_T encoded) {
-    ALWAN_CORE_T mid_gray_in     = ALWAN_CORE_LITERAL(0.18);
-    ALWAN_CORE_T mid_code_value  = ALWAN_CORE_LITERAL(425.0) / ALWAN_CORE_LITERAL(1023.0);
-    ALWAN_CORE_T steps_per_stop  = ALWAN_CORE_LITERAL(50.0) / ALWAN_CORE_LITERAL(1023.0);
-
-    ALWAN_CORE_T log_val = (encoded - mid_code_value) / steps_per_stop;
-    return mid_gray_in * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), log_val);
+    ALWAN_CORE_T mid_cv_offset  = ALWAN_CORE_LITERAL(425.0);
+    ALWAN_CORE_T mid_log_offset = ALWAN_CORE_LITERAL(2.5);
+    ALWAN_CORE_T steps_per_stop = ALWAN_CORE_LITERAL(50.0);
+    
+    ALWAN_CORE_T cv = encoded * ALWAN_CORE_LITERAL(1023.0);
+    return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), (cv - mid_cv_offset) / steps_per_stop - mid_log_offset);
 }
 
 /* ================================================================
@@ -319,7 +323,10 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_vlog_oetf)(ALWAN_CORE_T linear)
     ALWAN_CORE_T linear_result = ALWAN_CORE_LITERAL(5.6) * linear + ALWAN_CORE_LITERAL(0.125);
     ALWAN_CORE_T log_result    = c * ALWAN_CORE_LOG10(linear + b) + d;
 
-    return ALWAN_CORE_SELECT(linear <= cut1, linear_result, log_result);
+    /* Panasonic's spec splits at `linear < cut1`, so the cut point itself
+     * belongs to the log segment; the two segments are not exactly
+     * continuous there. */
+    return ALWAN_CORE_SELECT(linear < cut1, linear_result, log_result);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_vlog_eotf)(ALWAN_CORE_T encoded) {
@@ -399,21 +406,31 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_logc4_eotf)(ALWAN_CORE_T encode
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_redlog_oetf)(ALWAN_CORE_T linear) {
+    ALWAN_CORE_T black_offset = ALWAN_CORE_LITERAL(0.009955040995908344);
     ALWAN_CORE_T L = ALWAN_CORE_SELECT(linear < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, linear);
-    return (ALWAN_CORE_LOG10(L * ALWAN_CORE_LITERAL(0.9) + ALWAN_CORE_LITERAL(0.1)) + ALWAN_CORE_LITERAL(3.0)) / ALWAN_CORE_LITERAL(3.0);
+    ALWAN_CORE_T arg_raw = L * (ALWAN_CORE_ONE - black_offset) + black_offset;
+    ALWAN_CORE_T arg = ALWAN_CORE_SELECT(arg_raw <= ALWAN_CORE_ZERO, ALWAN_CORE_LITERAL(1e-10), arg_raw);
+    return (ALWAN_CORE_LITERAL(1023.0) + ALWAN_CORE_LITERAL(511.0) * ALWAN_CORE_LOG10(arg)) / ALWAN_CORE_LITERAL(1023.0);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_redlog_eotf)(ALWAN_CORE_T encoded) {
-    return (ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), encoded * ALWAN_CORE_LITERAL(3.0) - ALWAN_CORE_LITERAL(3.0)) - ALWAN_CORE_LITERAL(0.1)) / ALWAN_CORE_LITERAL(0.9);
+    ALWAN_CORE_T black_offset = ALWAN_CORE_LITERAL(0.009955040995908344);
+    ALWAN_CORE_T exponent = (ALWAN_CORE_LITERAL(1023.0) * encoded - ALWAN_CORE_LITERAL(1023.0)) / ALWAN_CORE_LITERAL(511.0);
+    return (ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), exponent) - black_offset) / (ALWAN_CORE_ONE - black_offset);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_redlogfilm_oetf)(ALWAN_CORE_T linear) {
+    ALWAN_CORE_T black_offset = ALWAN_CORE_LITERAL(0.010797751623277);
     ALWAN_CORE_T L = ALWAN_CORE_SELECT(linear < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, linear);
-    return (ALWAN_CORE_LOG10(L * ALWAN_CORE_LITERAL(0.8) + ALWAN_CORE_LITERAL(0.1)) + ALWAN_CORE_LITERAL(3.0)) / ALWAN_CORE_LITERAL(3.0);
+    ALWAN_CORE_T arg_raw = L * (ALWAN_CORE_ONE - black_offset) + black_offset;
+    ALWAN_CORE_T arg = ALWAN_CORE_SELECT(arg_raw <= ALWAN_CORE_ZERO, ALWAN_CORE_LITERAL(1e-10), arg_raw);
+    return (ALWAN_CORE_LITERAL(685.0) + ALWAN_CORE_LITERAL(300.0) * ALWAN_CORE_LOG10(arg)) / ALWAN_CORE_LITERAL(1023.0);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_redlogfilm_eotf)(ALWAN_CORE_T encoded) {
-    return (ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), encoded * ALWAN_CORE_LITERAL(3.0) - ALWAN_CORE_LITERAL(3.0)) - ALWAN_CORE_LITERAL(0.1)) / ALWAN_CORE_LITERAL(0.8);
+    ALWAN_CORE_T black_offset = ALWAN_CORE_LITERAL(0.010797751623277);
+    ALWAN_CORE_T exponent = (ALWAN_CORE_LITERAL(1023.0) * encoded - ALWAN_CORE_LITERAL(685.0)) / ALWAN_CORE_LITERAL(300.0);
+    return (ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), exponent) - black_offset) / (ALWAN_CORE_ONE - black_offset);
 }
 
 /* Log3G10 (RED whitepaper 915-0187 Rev-C) */
@@ -765,31 +782,29 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_flog2_eotf)(ALWAN_CORE_T encode
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_llog_oetf)(ALWAN_CORE_T linear) {
-    ALWAN_CORE_T cut = ALWAN_CORE_LITERAL(0.01);
-    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(5.555556);
-    ALWAN_CORE_T B = ALWAN_CORE_LITERAL(0.064);
-    ALWAN_CORE_T C = ALWAN_CORE_LITERAL(0.241514);
-    ALWAN_CORE_T D = ALWAN_CORE_LITERAL(0.598206);
-    ALWAN_CORE_T E = ALWAN_CORE_LITERAL(5.6);
-    ALWAN_CORE_T F = ALWAN_CORE_LITERAL(0.069);
-
-    ALWAN_CORE_T linear_result = E * linear + F;
-    ALWAN_CORE_T log_result    = C * ALWAN_CORE_LOG10(A * linear + B) + D;
-    return ALWAN_CORE_SELECT(linear < cut, linear_result, log_result);
+    ALWAN_CORE_T cut1 = ALWAN_CORE_LITERAL(0.006);
+    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(8.0);
+    ALWAN_CORE_T B = ALWAN_CORE_LITERAL(0.09);
+    ALWAN_CORE_T C = ALWAN_CORE_LITERAL(0.27);
+    ALWAN_CORE_T D = ALWAN_CORE_LITERAL(1.3);
+    ALWAN_CORE_T E = ALWAN_CORE_LITERAL(0.0115);
+    ALWAN_CORE_T F = ALWAN_CORE_LITERAL(0.6);
+    ALWAN_CORE_T linear_result = A * linear + B;
+    ALWAN_CORE_T log_result    = C * ALWAN_CORE_LOG10(D * linear + E) + F;
+    return ALWAN_CORE_SELECT(linear <= cut1, linear_result, log_result);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_llog_eotf)(ALWAN_CORE_T encoded) {
-    ALWAN_CORE_T cut_enc = ALWAN_CORE_LITERAL(0.125);
-    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(5.555556);
-    ALWAN_CORE_T B = ALWAN_CORE_LITERAL(0.064);
-    ALWAN_CORE_T C = ALWAN_CORE_LITERAL(0.241514);
-    ALWAN_CORE_T D = ALWAN_CORE_LITERAL(0.598206);
-    ALWAN_CORE_T E = ALWAN_CORE_LITERAL(5.6);
-    ALWAN_CORE_T F = ALWAN_CORE_LITERAL(0.069);
-
-    ALWAN_CORE_T linear_result = (encoded - F) / E;
-    ALWAN_CORE_T log_result    = (ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), (encoded - D) / C) - B) / A;
-    return ALWAN_CORE_SELECT(encoded < cut_enc, linear_result, log_result);
+    ALWAN_CORE_T cut2 = ALWAN_CORE_LITERAL(0.138);
+    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(8.0);
+    ALWAN_CORE_T B = ALWAN_CORE_LITERAL(0.09);
+    ALWAN_CORE_T C = ALWAN_CORE_LITERAL(0.27);
+    ALWAN_CORE_T D = ALWAN_CORE_LITERAL(1.3);
+    ALWAN_CORE_T E = ALWAN_CORE_LITERAL(0.0115);
+    ALWAN_CORE_T F = ALWAN_CORE_LITERAL(0.6);
+    ALWAN_CORE_T linear_result = (encoded - B) / A;
+    ALWAN_CORE_T log_result    = (ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), (encoded - F) / C) - E) / D;
+    return ALWAN_CORE_SELECT(encoded <= cut2, linear_result, log_result);
 }
 
 /* ================================================================

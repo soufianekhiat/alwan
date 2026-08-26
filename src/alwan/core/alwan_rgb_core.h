@@ -108,25 +108,33 @@ ALWAN_INLINE alwan_scalar alwan_full_to_legal_10bit(alwan_scalar full) {
     return full * ALWAN_LITERAL(0.856304985337243) + ALWAN_LITERAL(0.062561094819159);
 }
 
-/* ACESproxy -- ACES S-2013-001 "ACESproxy -- An Integer Log Encoding of ACES Image Data" */
+/* ACESproxy -- ACES S-2013-001 "ACESproxy -- An Integer Log Encoding of ACES
+ * Image Data". The spec rounds the code value to an integer; that step is left
+ * to the caller so the EOTF stays an exact inverse. Everything else (the
+ * 2^-9.72 floor, the [CV_min, CV_max] clamp, mid_log_offset = 2.5) is
+ * normative and applied here. 10-bit constants. */
 ALWAN_INLINE alwan_scalar alwan_acesproxy_oetf(alwan_scalar linear) {
-    alwan_scalar mid_gray_in     = ALWAN_LITERAL(0.18);
-    alwan_scalar mid_code_value  = ALWAN_LITERAL(425.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar steps_per_stop  = ALWAN_LITERAL(50.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar min_code        = ALWAN_LITERAL(64.0) / ALWAN_LITERAL(1023.0);
-
-    alwan_scalar log_val    = ALWAN_LN(linear / mid_gray_in) / ALWAN_LN(ALWAN_LITERAL(2.0));
-    alwan_scalar log_result = mid_code_value + steps_per_stop * log_val;
-    return ALWAN_SELECT(linear <= ALWAN_ZERO, min_code, log_result);
+    alwan_scalar cv_min         = ALWAN_LITERAL(64.0);
+    alwan_scalar cv_max         = ALWAN_LITERAL(940.0);
+    alwan_scalar mid_cv_offset  = ALWAN_LITERAL(425.0);
+    alwan_scalar mid_log_offset = ALWAN_LITERAL(2.5);
+    alwan_scalar steps_per_stop = ALWAN_LITERAL(50.0);
+    alwan_scalar lin_cut        = ALWAN_LITERAL(0.0011857371917920374);  /* 2^-9.72 */
+    
+    alwan_scalar arg    = ALWAN_SELECT(linear <= ALWAN_ZERO, ALWAN_LITERAL(1e-10), linear);
+    alwan_scalar cv_raw = (ALWAN_LOG2(arg) + mid_log_offset) * steps_per_stop + mid_cv_offset;
+    alwan_scalar cv_lo  = ALWAN_SELECT(cv_raw < cv_min, cv_min, cv_raw);
+    alwan_scalar cv     = ALWAN_SELECT(cv_lo > cv_max, cv_max, cv_lo);
+    return ALWAN_SELECT(linear > lin_cut, cv, cv_min) / ALWAN_LITERAL(1023.0);
 }
 
 ALWAN_INLINE alwan_scalar alwan_acesproxy_eotf(alwan_scalar encoded) {
-    alwan_scalar mid_gray_in     = ALWAN_LITERAL(0.18);
-    alwan_scalar mid_code_value  = ALWAN_LITERAL(425.0) / ALWAN_LITERAL(1023.0);
-    alwan_scalar steps_per_stop  = ALWAN_LITERAL(50.0) / ALWAN_LITERAL(1023.0);
-
-    alwan_scalar log_val = (encoded - mid_code_value) / steps_per_stop;
-    return mid_gray_in * ALWAN_POW(ALWAN_LITERAL(2.0), log_val);
+    alwan_scalar mid_cv_offset  = ALWAN_LITERAL(425.0);
+    alwan_scalar mid_log_offset = ALWAN_LITERAL(2.5);
+    alwan_scalar steps_per_stop = ALWAN_LITERAL(50.0);
+    
+    alwan_scalar cv = encoded * ALWAN_LITERAL(1023.0);
+    return ALWAN_POW(ALWAN_LITERAL(2.0), (cv - mid_cv_offset) / steps_per_stop - mid_log_offset);
 }
 
 /* ACEScc -- ACES S-2014-003 "ACEScc -- A Logarithmic Encoding of ACES Data for use within Color Grading Systems" */
@@ -288,7 +296,10 @@ ALWAN_INLINE alwan_scalar alwan_vlog_oetf(alwan_scalar linear) {
     alwan_scalar d = ALWAN_LITERAL(0.598206);
     alwan_scalar linear_result = ALWAN_LITERAL(5.6) * linear + ALWAN_LITERAL(0.125);
     alwan_scalar log_result    = c * ALWAN_LOG10(linear + b) + d;
-    return ALWAN_SELECT(linear <= cut1, linear_result, log_result);
+    /* Panasonic's spec splits at `linear < cut1`, so the cut point itself
+     * belongs to the log segment; the two segments are not exactly
+     * continuous there. */
+    return ALWAN_SELECT(linear < cut1, linear_result, log_result);
 }
 
 ALWAN_INLINE alwan_scalar alwan_vlog_eotf(alwan_scalar encoded) {
@@ -354,24 +365,38 @@ ALWAN_INLINE alwan_scalar alwan_logc4_eotf(alwan_scalar encoded) {
     return ALWAN_SELECT(encoded < ALWAN_ZERO, lin_val, scene);
 }
 
-/* REDLog -- RED Digital Cinema "RED Gamma and Log Curves" technical note */
+/* REDLog -- RED Digital Cinema, matching the Sony Imageworks OCIO reference
+ * implementation: (1023 + 511 * log10(x * (1 - bo) + bo)) / 1023 with a black
+ * offset of 10^(-1023/511). */
 ALWAN_INLINE alwan_scalar alwan_redlog_oetf(alwan_scalar linear) {
+    alwan_scalar black_offset = ALWAN_LITERAL(0.009955040995908344);
     alwan_scalar L = ALWAN_SELECT(linear < ALWAN_ZERO, ALWAN_ZERO, linear);
-    return (ALWAN_LOG10(L * ALWAN_LITERAL(0.9) + ALWAN_LITERAL(0.1)) + ALWAN_LITERAL(3.0)) / ALWAN_LITERAL(3.0);
+    alwan_scalar arg_raw = L * (ALWAN_ONE - black_offset) + black_offset;
+    alwan_scalar arg = ALWAN_SELECT(arg_raw <= ALWAN_ZERO, ALWAN_LITERAL(1e-10), arg_raw);
+    return (ALWAN_LITERAL(1023.0) + ALWAN_LITERAL(511.0) * ALWAN_LOG10(arg)) / ALWAN_LITERAL(1023.0);
 }
 
 ALWAN_INLINE alwan_scalar alwan_redlog_eotf(alwan_scalar encoded) {
-    return (ALWAN_POW(ALWAN_LITERAL(10.0), encoded * ALWAN_LITERAL(3.0) - ALWAN_LITERAL(3.0)) - ALWAN_LITERAL(0.1)) / ALWAN_LITERAL(0.9);
+    alwan_scalar black_offset = ALWAN_LITERAL(0.009955040995908344);
+    alwan_scalar exponent = (ALWAN_LITERAL(1023.0) * encoded - ALWAN_LITERAL(1023.0)) / ALWAN_LITERAL(511.0);
+    return (ALWAN_POW(ALWAN_LITERAL(10.0), exponent) - black_offset) / (ALWAN_ONE - black_offset);
 }
 
-/* REDLogFilm -- RED Digital Cinema; film-style log encoding with different black offset */
+/* REDLogFilm -- RED Digital Cinema. Identical to the Cineon encoding; the
+ * constants are repeated rather than delegated so each GPU backend stays
+ * self contained. Keep in step with alwan_cineon_oetf / _eotf. */
 ALWAN_INLINE alwan_scalar alwan_redlogfilm_oetf(alwan_scalar linear) {
+    alwan_scalar black_offset = ALWAN_LITERAL(0.010797751623277);
     alwan_scalar L = ALWAN_SELECT(linear < ALWAN_ZERO, ALWAN_ZERO, linear);
-    return (ALWAN_LOG10(L * ALWAN_LITERAL(0.8) + ALWAN_LITERAL(0.1)) + ALWAN_LITERAL(3.0)) / ALWAN_LITERAL(3.0);
+    alwan_scalar arg_raw = L * (ALWAN_ONE - black_offset) + black_offset;
+    alwan_scalar arg = ALWAN_SELECT(arg_raw <= ALWAN_ZERO, ALWAN_LITERAL(1e-10), arg_raw);
+    return (ALWAN_LITERAL(685.0) + ALWAN_LITERAL(300.0) * ALWAN_LOG10(arg)) / ALWAN_LITERAL(1023.0);
 }
 
 ALWAN_INLINE alwan_scalar alwan_redlogfilm_eotf(alwan_scalar encoded) {
-    return (ALWAN_POW(ALWAN_LITERAL(10.0), encoded * ALWAN_LITERAL(3.0) - ALWAN_LITERAL(3.0)) - ALWAN_LITERAL(0.1)) / ALWAN_LITERAL(0.8);
+    alwan_scalar black_offset = ALWAN_LITERAL(0.010797751623277);
+    alwan_scalar exponent = (ALWAN_LITERAL(1023.0) * encoded - ALWAN_LITERAL(685.0)) / ALWAN_LITERAL(300.0);
+    return (ALWAN_POW(ALWAN_LITERAL(10.0), exponent) - black_offset) / (ALWAN_ONE - black_offset);
 }
 
 /* Log3G10 -- RED Digital Cinema "IPP2 Image Processing Pipeline" (2017) */
@@ -668,31 +693,34 @@ ALWAN_INLINE alwan_scalar alwan_flog2_eotf(alwan_scalar encoded) {
     return ALWAN_SELECT(encoded < cut2, linear_result, log_result);
 }
 
-/* L-Log -- Leica "L-Log Transfer Characteristic" for Leica SL2-S and M11 Monochrom */
+/* L-Log -- Leica "L-Log Reference Manual" (2022).
+ *   LSR <= cut1 : A * LSR + B
+ *   else        : C * log10(D * LSR + E) + F
+ * cut2 = A * cut1 + B = 0.138 is the matching encoded-side split. */
 ALWAN_INLINE alwan_scalar alwan_llog_oetf(alwan_scalar linear) {
-    alwan_scalar cut = ALWAN_LITERAL(0.01);
-    alwan_scalar A = ALWAN_LITERAL(5.555556);
-    alwan_scalar B = ALWAN_LITERAL(0.064);
-    alwan_scalar C = ALWAN_LITERAL(0.241514);
-    alwan_scalar D = ALWAN_LITERAL(0.598206);
-    alwan_scalar E = ALWAN_LITERAL(5.6);
-    alwan_scalar F = ALWAN_LITERAL(0.069);
-    alwan_scalar linear_result = E * linear + F;
-    alwan_scalar log_result    = C * ALWAN_LOG10(A * linear + B) + D;
-    return ALWAN_SELECT(linear < cut, linear_result, log_result);
+    alwan_scalar cut1 = ALWAN_LITERAL(0.006);
+    alwan_scalar A = ALWAN_LITERAL(8.0);
+    alwan_scalar B = ALWAN_LITERAL(0.09);
+    alwan_scalar C = ALWAN_LITERAL(0.27);
+    alwan_scalar D = ALWAN_LITERAL(1.3);
+    alwan_scalar E = ALWAN_LITERAL(0.0115);
+    alwan_scalar F = ALWAN_LITERAL(0.6);
+    alwan_scalar linear_result = A * linear + B;
+    alwan_scalar log_result    = C * ALWAN_LOG10(D * linear + E) + F;
+    return ALWAN_SELECT(linear <= cut1, linear_result, log_result);
 }
 
 ALWAN_INLINE alwan_scalar alwan_llog_eotf(alwan_scalar encoded) {
-    alwan_scalar cut_enc = ALWAN_LITERAL(0.125);
-    alwan_scalar A = ALWAN_LITERAL(5.555556);
-    alwan_scalar B = ALWAN_LITERAL(0.064);
-    alwan_scalar C = ALWAN_LITERAL(0.241514);
-    alwan_scalar D = ALWAN_LITERAL(0.598206);
-    alwan_scalar E = ALWAN_LITERAL(5.6);
-    alwan_scalar F = ALWAN_LITERAL(0.069);
-    alwan_scalar linear_result = (encoded - F) / E;
-    alwan_scalar log_result    = (ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - D) / C) - B) / A;
-    return ALWAN_SELECT(encoded < cut_enc, linear_result, log_result);
+    alwan_scalar cut2 = ALWAN_LITERAL(0.138);
+    alwan_scalar A = ALWAN_LITERAL(8.0);
+    alwan_scalar B = ALWAN_LITERAL(0.09);
+    alwan_scalar C = ALWAN_LITERAL(0.27);
+    alwan_scalar D = ALWAN_LITERAL(1.3);
+    alwan_scalar E = ALWAN_LITERAL(0.0115);
+    alwan_scalar F = ALWAN_LITERAL(0.6);
+    alwan_scalar linear_result = (encoded - B) / A;
+    alwan_scalar log_result    = (ALWAN_POW(ALWAN_LITERAL(10.0), (encoded - F) / C) - E) / D;
+    return ALWAN_SELECT(encoded <= cut2, linear_result, log_result);
 }
 
 /* D-Log -- DJI "D-Log Color Transformation -- User Guide" Rev 1.0; for Zenmuse X and Inspire */

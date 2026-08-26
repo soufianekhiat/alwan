@@ -37,6 +37,36 @@ foundation block that follows shipped together.
   addressing clamp out when every coordinate is known finite and in range.
 
 ### Fixed
+- **Five camera log curves computed the wrong transfer function** — T-Log,
+  REDLog, REDLogFilm, L-Log and ACESproxy each shipped a plausible-looking but
+  incorrect curve, and V-Log picked the wrong branch exactly at its cut point.
+  All six now match colour-science (and therefore OCIO / aces-dev) to f64
+  round-off:
+  - `ALWAN_TF_TLOG` was `0.33*log10(lin/0.01)+0.02`, a generic Cineon-shaped
+    log that is neither FilmLight T-Log (0.21 away) nor Panasonic V-Log (0.16
+    away), while its comment claimed V-Log and the README claimed T-Log. It is
+    now the real FilmLight T-Log, including the `T-Log(0) = 0.075` black offset
+    the old curve lacked. Pairs with E-Gamut, whose primaries were already
+    correct.
+  - `ALWAN_TF_REDLOG` and `ALWAN_TF_REDLOGFILM` used an invented
+    `(log10(0.9x + 0.1) + 3)/3` form. They now use the Sony Imageworks
+    reference encodings; REDLogFilm is Cineon, as the reference defines it.
+  - `ALWAN_TF_LLOG` used Panasonic V-Log's constants. It now uses Leica's
+    published L-Log parameters (`cut1 = 0.006`, `a = 8`, `b = 0.09`,
+    `c = 0.27`, `d = 1.3`, `e = 0.0115`, `f = 0.6`).
+  - `ALWAN_TF_ACESPROXY` omitted the `2^-9.72` floor and the
+    `[CV_min, CV_max]` clamp entirely and used `log2(lin/0.18)` where
+    S-2013-001 specifies `mid_log_offset = 2.5`; it was off by up to 113 code
+    values. The spec's integer rounding is still left to the caller so the
+    EOTF stays an exact inverse.
+  - `ALWAN_TF_VLOG` split on `linear <= cut1`; Panasonic's spec splits on
+    `linear < cut1`, so the cut point itself belongs to the log segment.
+- **E-Log attributed to the wrong manufacturer** — `ALWAN_TF_ELOG` is
+  Olympus/OM System OM-Log400, not a FilmLight curve (FilmLight's companion to
+  T-Log is E-Gamut, a gamut, not a transfer function). The implementation was
+  always correct; the enum comment, README and `docs/determinism.md` were not.
+  The enum name is unchanged for compatibility.
+
 - **Out-of-bounds table reads on non-finite coordinates** — a NaN
   coordinate defeated every `SATURATE`/range guard (all comparisons against
   NaN are false) and reached an `(int)`/`(size_t)` cast, which is undefined
