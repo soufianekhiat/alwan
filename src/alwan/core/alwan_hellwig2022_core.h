@@ -160,7 +160,10 @@ ALWAN_INLINE alwan_scalar hw22_compute_Aw_v(
     *RGB_w1_out = RGB_w1;
     *RGB_w2_out = RGB_w2;
 
-    /* Chromatic adaptation of white (D_R/Y_w simplifies to D + 1 - D = 1 for each channel when source == white) */
+    /* Chromatic adaptation of the white onto itself. The per-channel factor
+     * collapses to D + 1 - D = 1 by construction here; it is written out rather
+     * than folded away so this stays visibly the same expression as the sample
+     * path above it. */
     alwan_scalar RGB_wc0 = (white_y * D / RGB_w0 + ALWAN_ONE - D) * RGB_w0;
     alwan_scalar RGB_wc1 = (white_y * D / RGB_w1 + ALWAN_ONE - D) * RGB_w1;
     alwan_scalar RGB_wc2 = (white_y * D / RGB_w2 + ALWAN_ONE - D) * RGB_w2;
@@ -222,7 +225,11 @@ ALWAN_INLINE alwan_hellwig2022_v_correlates alwan_hellwig2022_forward_v(
     /* Step 9: Eccentricity factor et (Hellwig2022 Fourier series) */
     alwan_scalar et = hw22_eccentricity_v(h_rad);
 
-    /* Step 10: Achromatic response A (Hellwig2022 simplified, no Nc factor) */
+    /* Step 10: Achromatic response A.
+     * A = 2R + G + 0.05B - 0.305, with no N_bb scaling and no N_c. That is
+     * Hellwig2022's own departure from CAM16, not a shortcut taken here:
+     * dropping the induction factors is the paper's contribution. Matches
+     * colour.appearance.XYZ_to_Hellwig2022 to 3.9e-10. */
     alwan_scalar A = ALWAN_LITERAL(2.0) * R_a + G_a + ALWAN_LITERAL(0.05) * B_a - ALWAN_LITERAL(0.305);
 
     /* Step 11: Base exponential nonlinearity z */
@@ -232,13 +239,13 @@ ALWAN_INLINE alwan_hellwig2022_v_correlates alwan_hellwig2022_forward_v(
     /* Step 12: Lightness J */
     result.J = ALWAN_LITERAL(100.0) * ALWAN_POW(A / A_w, c * z);
 
-    /* Step 13: Colorfulness M (Hellwig2022 simplified) */
+    /* Step 13: Colourfulness M = 43 * N_c * e_t * hypot(a, b), as published. */
     result.M = ALWAN_LITERAL(43.0) * Nc * et * ALWAN_SQRT(a * a + b * b);
 
-    /* Step 14: Chroma C (Hellwig2022 simplified) */
+    /* Step 14: Chroma C = 35 * M / A_w, as published. */
     result.C = ALWAN_LITERAL(35.0) * result.M / A_w;
 
-    /* Step 15: Brightness Q (Hellwig2022 simplified) */
+    /* Step 15: Brightness Q = (2/c) * (J/100) * A_w, as published. */
     result.Q = (ALWAN_LITERAL(2.0) / c) * (result.J / ALWAN_LITERAL(100.0)) * A_w;
 
     /* Step 16: Saturation s (no sqrt in Hellwig2022) */

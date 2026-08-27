@@ -131,6 +131,17 @@ The switch is at the model's published limit, not a tuned crossover.
 Measured against colour-science on 60 locus points: max 47.6 K, mean 8.0 K.
 Below 5000 K, max 1.2 K.
 
+### Hellwig2022 has no N_bb, N_cb or N_c in its achromatic response
+
+Not a simplification alwan made. Dropping CAM16's induction factors is
+Hellwig2022's own contribution, and `A = 2R + G + 0.05B - 0.305` is the
+published formula. Matches colour-science to 3.9e-10.
+
+The code once carried comments reading "Hellwig2022 simplified", which is true
+of the model relative to CAM16 and reads as though the implementation cut a
+corner. A vocabulary scan for incomplete work flagged all five of them as
+suspects. They now say what they mean.
+
 ---
 
 ## Data
