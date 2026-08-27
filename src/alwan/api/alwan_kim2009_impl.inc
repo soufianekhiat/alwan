@@ -60,6 +60,19 @@ static ALWAN_CORE_T ALWAN_CORE_FNLIT(kim2009_compute_degree_of_adaptation)(
     return D;
 }
 
+/* The four media parameters Kim, Weyrich and Kautz (2009) publish. An
+ * unrecognised value falls back to High-luminance LCD, which is what this
+ * function returned unconditionally before vc->media existed. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(kim2009_media_parameter)(alwan_kim2009_media media) {
+    switch (media) {
+        case ALWAN_KIM2009_MEDIA_TRANSPARENT_AD:   return ALWAN_CORE_LITERAL(1.2175);
+        case ALWAN_KIM2009_MEDIA_CRT:              return ALWAN_CORE_LITERAL(1.4572);
+        case ALWAN_KIM2009_MEDIA_REFLECTIVE_PAPER: return ALWAN_CORE_LITERAL(1.7526);
+        case ALWAN_KIM2009_MEDIA_HIGH_LUMINANCE_LCD:
+        default:                                   return ALWAN_CORE_LITERAL(1.0);
+    }
+}
+
 /* ----------------------------------------------------------------
  * Kim2009 Forward Transform: XYZ -> Appearance Correlates
  * ---------------------------------------------------------------- */
@@ -80,8 +93,13 @@ alwan_status ALWAN_CORE_FNLIT(alwan_kim2009_forward)(
 
     ALWAN_CORE_T D = ALWAN_CORE_FNLIT(kim2009_compute_degree_of_adaptation)(F, vc->La, vc->discount_illuminant);
 
-    /* Default media parameter E = 1.0 (CRT Displays) */
-    ALWAN_CORE_T media_E = ALWAN_CORE_LITERAL(1.0);
+    /* Media parameter E, selected by vc->media.
+     *
+     * This was hardcoded to 1.0 with the comment "CRT Displays" until
+     * 2026-08-27. 1.0 is the High-luminance LCD value; CRT is 1.4572, and the
+     * two give J = 51.18 and J = 28.86 for the same input. The number was right
+     * for one medium and the label named a different one, with no way to pick. */
+    ALWAN_CORE_T media_E = ALWAN_CORE_FNLIT(kim2009_media_parameter)(vc->media);
 
     /* Delegate to core */
     ALWAN_CORE_FNLIT(alwan_kim2009_v_correlates) result = ALWAN_CORE_FNVLIT(alwan_kim2009_forward)(
@@ -122,8 +140,13 @@ alwan_status ALWAN_CORE_FNLIT(alwan_kim2009_inverse)(
 
     ALWAN_CORE_T D = ALWAN_CORE_FNLIT(kim2009_compute_degree_of_adaptation)(F, vc->La, vc->discount_illuminant);
 
-    /* Default media parameter E = 1.0 (CRT Displays) */
-    ALWAN_CORE_T media_E = ALWAN_CORE_LITERAL(1.0);
+    /* Media parameter E, selected by vc->media.
+     *
+     * This was hardcoded to 1.0 with the comment "CRT Displays" until
+     * 2026-08-27. 1.0 is the High-luminance LCD value; CRT is 1.4572, and the
+     * two give J = 51.18 and J = 28.86 for the same input. The number was right
+     * for one medium and the label named a different one, with no way to pick. */
+    ALWAN_CORE_T media_E = ALWAN_CORE_FNLIT(kim2009_media_parameter)(vc->media);
 
     /* Build core correlates struct */
     ALWAN_CORE_FNLIT(alwan_kim2009_v_correlates) v_correlates;

@@ -2717,6 +2717,15 @@ alwan_status alwan_hellwig2022_inverse_f64(alwan_xyz_f64 *xyz_out,
  * Specialized for rendering applications
  * ---------------------------------------------------------------- */
 
+/* Kim2009 forward transform: XYZ -> appearance correlates
+ *
+ * vc->media selects the published media parameter E. It matters a great deal:
+ * for XYZ = [19.01, 20, 21.78] under D65 the four media give J = 51.18, 40.56,
+ * 28.86 and 14.44. Zero, from a zero-initialised struct, is High-luminance LCD
+ * (E = 1.0), which is what this returned unconditionally before the field
+ * existed, under a comment that called it "CRT Displays". CRT is E = 1.4572.
+ *
+ * Matches colour.appearance.XYZ_to_Kim2009 to 4e-11 for all four media. */
 /* Kim2009 forward transform: XYZ -> appearance correlates */
 alwan_status alwan_kim2009_forward_f32(alwan_kim2009_correlates_f32 *out,
                                alwan_xyz_f32 const *xyz,

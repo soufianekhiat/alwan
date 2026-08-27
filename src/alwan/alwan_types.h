@@ -44,6 +44,16 @@ typedef enum {
     ALWAN_ZCAM_SURROUND_DARK = 2
 } alwan_zcam_surround;
 
+/* Kim, Weyrich and Kautz (2009) media parameter E. The four values the paper
+ * publishes; the model has no continuum, so this is an enum rather than a
+ * float. Ordered by increasing E. */
+typedef enum {
+    ALWAN_KIM2009_MEDIA_HIGH_LUMINANCE_LCD = 0,  /* E = 1.0    */
+    ALWAN_KIM2009_MEDIA_TRANSPARENT_AD     = 1,  /* E = 1.2175 */
+    ALWAN_KIM2009_MEDIA_CRT                = 2,  /* E = 1.4572 */
+    ALWAN_KIM2009_MEDIA_REFLECTIVE_PAPER   = 3   /* E = 1.7526 */
+} alwan_kim2009_media;
+
 typedef enum {
     ALWAN_RLAB_SURROUND_AVERAGE = 0,
     ALWAN_RLAB_SURROUND_DIM = 1,

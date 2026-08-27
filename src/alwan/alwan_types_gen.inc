@@ -212,6 +212,10 @@ typedef struct {
     ALWAN_T La;                                /* Adapting luminance (cd/m^2) */
     ALWAN_T Yb;                                /* Background luminance factor */
     int discount_illuminant;                   /* 1 to discount illuminant, 0 otherwise */
+    alwan_kim2009_media media;                 /* Viewing medium; selects the E parameter.
+                                                * 0 is HIGH_LUMINANCE_LCD (E = 1.0), which is
+                                                * what a zero-initialised struct gets and what
+                                                * this always returned before the field existed. */
 } ALWAN_TN(alwan_kim2009_viewing_conditions);
 
 /* LLAB viewing conditions */
