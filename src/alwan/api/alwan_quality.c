@@ -1115,13 +1115,13 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, al
  * Returns: CQS value (0-100), or negative on error
  *
  * Accuracy, measured against colour.quality.colour_quality_scale
- * (NIST CQS 9.0) over 35 CIE illuminants: mean absolute deviation 0.91,
- * worst 12.2 (HP1, high-pressure sodium at ~2100 K). Sources that are their
+ * (NIST CQS 9.0) over 35 CIE illuminants: mean absolute deviation 0.447,
+ * worst 1.71 (HP1, high-pressure sodium at ~2100 K). Sources that are their
  * own reference are exact: D65 = 100.000, illuminant A = 99.999.
  *
- * The HP1-class residual is not diagnosed. It is concentrated in very low
- * CCT, narrow-band sources, which is also where the unimplemented CCT factor
- * would act, so the two are likely related. See before_public.md.
+ * The residual is almost entirely one-signed and concentrated at low CCT,
+ * which is the signature of the unimplemented CCT factor. See the comment
+ * at the return for why that factor is deliberately absent.
  */
 alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
@@ -1235,22 +1235,27 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
     d65_white.z = ALWAN_D65_Z;
 
     /* Get chromatic adaptation matrices */
-    alwan_mat3x3_f64 cat_test_to_d65, cat_ref_to_d65;
-    /* CQS specifies CMCCAT2000. CAT02 sat here until 2026-08-27 under a note
-     * that called it an approximation. */
-    status = alwan_cat_matrix_f64(&cat_test_to_d65, &xyz_test_white, &d65_white, ALWAN_CAT_CMCCAT2000);
+    /* CQS adapts the TEST samples onto the REFERENCE illuminant and leaves the
+     * reference samples alone, then expresses both in CIELAB relative to the
+     * REFERENCE white.
+     *
+     * Until 2026-08-27 this adapted both sets to D65 with two separate matrices
+     * and took Lab against D65. That is a different framework: it maps the two
+     * illuminants onto a common third white rather than mapping one onto the
+     * other, which is not what CQS specifies and not what the reference
+     * implementation does. Same mistake as the one fixed in alwan_cri_ra_f64.
+     *
+     * CMCCAT2000 is the specified transform; CAT02 sat here until the same date
+     * under a note calling it an approximation. */
+    alwan_mat3x3_f64 cat_test_to_ref;
+    status = alwan_cat_matrix_f64(&cat_test_to_ref, &xyz_test_white, &xyz_ref_white, ALWAN_CAT_CMCCAT2000);
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&reference_spd, ctx);
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
-    status = alwan_cat_matrix_f64(&cat_ref_to_d65, &xyz_ref_white, &d65_white, ALWAN_CAT_CMCCAT2000);
-    if (status != ALWAN_OK) {
-        alwan_spd_destroy_f64(&reference_spd, ctx);
-        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-        return ALWAN_LITERAL(-1.0);
-    }
+
 
     /* Step 4: Calculate color differences for every VS sample */
     alwan_f64 delta_e_sum = ALWAN_LITERAL(0.0);
@@ -1302,20 +1307,18 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
         xyz_ref.y *= ref_norm_factor;
         xyz_ref.z *= ref_norm_factor;
 
-        /* Apply chromatic adaptation to D65 */
-        alwan_xyz_f64 xyz_test_adapted, xyz_ref_adapted;
+        /* Adapt the TEST sample onto the reference illuminant. The reference
+         * sample is already under that illuminant and is not adapted. */
+        alwan_xyz_f64 xyz_test_adapted;
         alwan_vec3_f64 vec_in, vec_out;
         ALWAN_MEMCPY(&vec_in, &xyz_test, sizeof(alwan_vec3_f64));
-        alwan_mat3_mulv_f64(&vec_out, &cat_test_to_d65, &vec_in);
+        alwan_mat3_mulv_f64(&vec_out, &cat_test_to_ref, &vec_in);
         ALWAN_MEMCPY(&xyz_test_adapted, &vec_out, sizeof(alwan_vec3_f64));
-        ALWAN_MEMCPY(&vec_in, &xyz_ref, sizeof(alwan_vec3_f64));
-        alwan_mat3_mulv_f64(&vec_out, &cat_ref_to_d65, &vec_in);
-        ALWAN_MEMCPY(&xyz_ref_adapted, &vec_out, sizeof(alwan_vec3_f64));
 
-        /* Convert to CIELAB */
+        /* CIELAB, both relative to the REFERENCE white. */
         alwan_lab_f64 lab_test, lab_ref;
-        alwan_xyz_to_lab_f64(&lab_test, &xyz_test_adapted, &d65_white);
-        alwan_xyz_to_lab_f64(&lab_ref, &xyz_ref_adapted, &d65_white);
+        alwan_xyz_to_lab_f64(&lab_test, &xyz_test_adapted, &xyz_ref_white);
+        alwan_xyz_to_lab_f64(&lab_ref, &xyz_ref, &xyz_ref_white);
 
         /* dE*ab, then the CQS saturation correction: an INCREASE in chroma is
          * not a rendering failure, so the chroma component of the difference is
@@ -1339,6 +1342,7 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
         /* RMS, not mean: CQS averages the SQUARES. */
         delta_e_sum += d_ep * d_ep;
 
+
     }
 
     /* Cleanup */
@@ -1360,22 +1364,31 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
         alwan_f64 const d_ep_rms =
             ALWAN_SQRT(delta_e_sum / (alwan_f64)ALWAN_TABLE_VS_SAMPLES);
 
-        /* CQS's CCT factor -- CCT_f = min(1, gamut_area(reference Lab) / 8210),
-         * which penalises very low colour temperatures -- is NOT implemented.
+        /* CQS's CCT factor -- CCT_f = min(1, gamut_area(reference) / GAMUT_AREA_D65),
+         * which penalises sources whose reference renders a small gamut -- is NOT
+         * implemented.
          *
-         * It was, briefly, and it was wrong: measured against
-         * colour.quality.colour_quality_scale over 35 illuminants it made every
-         * result worse, mean absolute error 1.57 against 0.91 without it, and
-         * it broke the two cases that are exactly checkable. D65 must score
-         * exactly 100 (it is its own reference) and read 99.037; illuminant A
-         * must score 100 and read 97.054. Both are exact with the factor
-         * removed. The gamut area came out ~1% low and the fault was never
-         * isolated.
+         * It was implemented and measured twice, and made results worse both
+         * times. The second attempt was on the corrected adaptation framework,
+         * so the framework was not the fault:
          *
-         * Shipping no factor is a documented omission that costs accuracy only
-         * on very low CCT sources. Shipping a wrong one silently corrupts every
-         * result, including the ones a user would check first. Left open in
-         * before_public.md rather than papered over. */
+         *     without the factor   mean 0.447, max 1.707, D65 = 100.000 exactly
+         *     with it              mean 1.063, max 4.490, D65 =  99.037
+         *
+         * The normaliser is the problem. 8210 is colour-science's D65 gamut area
+         * measured in colour-science's pipeline; alwan's own is 8130.95, so that
+         * ratio cannot give D65 the CCT_f = 1 it must have by definition. But
+         * renormalising does not rescue it either: alwan computes illuminant A's
+         * reference gamut as 7968, SMALLER than its own D65 area, while
+         * colour-science's CCT_f for A is ~1.0, meaning its A gamut is LARGER
+         * than its D65 gamut. That is a qualitative disagreement about the
+         * samples, not a scale factor, and it was not isolated.
+         *
+         * The cost of omitting it is a uniformly POSITIVE residual, largest on
+         * very low CCT sources: HP1 reads 35.4 against 33.7. That is the shape
+         * you would expect from a missing penalty, and it is small. A wrong
+         * factor corrupts every result including D65 and A, which are exactly
+         * the values anyone would check first. Left open in before_public.md. */
         {
             alwan_f64 const t = (ALWAN_LITERAL(100.0) - ALWAN_LITERAL(3.104) * d_ep_rms) /
                                 ALWAN_LITERAL(10.0);
