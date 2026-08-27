@@ -79,13 +79,26 @@ ALWAN_INLINE alwan_rlab_v_correlates alwan_rlab_forward_v(
     alwan_vec3 xyz_w_v = {{xyz_w.x, xyz_w.y, xyz_w.z}};
     alwan_vec3 lms_w_v = alwan_mat3_mulv_v(RLAB_M_HPE, xyz_w_v);
     alwan_scalar lms_w0 = lms_w_v.v[0]; alwan_scalar lms_w1 = lms_w_v.v[1]; alwan_scalar lms_w2 = lms_w_v.v[2];
-    alwan_scalar Y_Yw = xyz_n.y / xyz_w.y;
-    alwan_scalar adapt_0 = ALWAN_SELECT(lms_w0 > ALWAN_LITERAL(1e-10), (D * (xyz_n.y / lms_w0) + ALWAN_LITERAL(1.0) - D) / Y_Yw, ALWAN_LITERAL(1.0));
+    /* RLAB adaptation: LMS_a = (p + D*(1-p)) / LMS_n, with the incomplete
+     * adaptation term p from l_E and the absolute adapting luminance.
+     * See the .inc twin for why Y_n is a fixed 318.31 here. */
+    alwan_scalar const Y_n_default = ALWAN_LITERAL(318.31);
+    alwan_scalar const y_n_cbrt = ALWAN_POW(Y_n_default, ALWAN_ONE / ALWAN_LITERAL(3.0));
+    alwan_scalar const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
+    alwan_scalar const lms_w_sum_safe = ALWAN_SELECT(ALWAN_ABS(lms_w_sum) > ALWAN_LITERAL(1e-10), lms_w_sum, ALWAN_ONE);
+    alwan_scalar const l_E0 = ALWAN_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
+    alwan_scalar const l_E1 = ALWAN_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
+    alwan_scalar const l_E2 = ALWAN_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
+    alwan_scalar const p0 = (ALWAN_ONE + y_n_cbrt + l_E0) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E0);
+    alwan_scalar const p1 = (ALWAN_ONE + y_n_cbrt + l_E1) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E1);
+    alwan_scalar const p2 = (ALWAN_ONE + y_n_cbrt + l_E2) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E2);
+    alwan_scalar adapt_0 = ALWAN_SELECT(lms_w0 > ALWAN_LITERAL(1e-10), (p0 + D * (ALWAN_ONE - p0)) / lms_w0, ALWAN_LITERAL(1.0));
     alwan_scalar lms_a0 = lms_0 * adapt_0;
-    alwan_scalar adapt_1 = ALWAN_SELECT(lms_w1 > ALWAN_LITERAL(1e-10), (D * (xyz_n.y / lms_w1) + ALWAN_LITERAL(1.0) - D) / Y_Yw, ALWAN_LITERAL(1.0));
+    alwan_scalar adapt_1 = ALWAN_SELECT(lms_w1 > ALWAN_LITERAL(1e-10), (p1 + D * (ALWAN_ONE - p1)) / lms_w1, ALWAN_LITERAL(1.0));
     alwan_scalar lms_a1 = lms_1 * adapt_1;
-    alwan_scalar adapt_2 = ALWAN_SELECT(lms_w2 > ALWAN_LITERAL(1e-10), (D * (xyz_n.y / lms_w2) + ALWAN_LITERAL(1.0) - D) / Y_Yw, ALWAN_LITERAL(1.0));
+    alwan_scalar adapt_2 = ALWAN_SELECT(lms_w2 > ALWAN_LITERAL(1e-10), (p2 + D * (ALWAN_ONE - p2)) / lms_w2, ALWAN_LITERAL(1.0));
     alwan_scalar lms_a2 = lms_2 * adapt_2;
+    ALWAN_UNUSED(xyz_n);
     alwan_vec3 lms_a_v = {{lms_a0, lms_a1, lms_a2}};
     alwan_vec3 xyz_ref_v = alwan_mat3_mulv_v(RLAB_M_RLAB, lms_a_v);
     alwan_scalar xyz_ref_0 = xyz_ref_v.v[0]; alwan_scalar xyz_ref_1 = xyz_ref_v.v[1]; alwan_scalar xyz_ref_2 = xyz_ref_v.v[2];
@@ -122,13 +135,24 @@ ALWAN_INLINE alwan_xyz alwan_rlab_inverse_v(
     alwan_vec3 xyz_w_v = {{xyz_w.x, xyz_w.y, xyz_w.z}};
     alwan_vec3 lms_w_v = alwan_mat3_mulv_v(RLAB_M_HPE, xyz_w_v);
     alwan_scalar lms_w0 = lms_w_v.v[0]; alwan_scalar lms_w1 = lms_w_v.v[1]; alwan_scalar lms_w2 = lms_w_v.v[2];
-    alwan_scalar Y_Yw = xyz_n.y / xyz_w.y;
-    alwan_scalar adapt_0 = ALWAN_SELECT(lms_w0 > ALWAN_LITERAL(1e-10), (D * (xyz_n.y / lms_w0) + ALWAN_LITERAL(1.0) - D) / Y_Yw, ALWAN_LITERAL(1.0));
+    /* Exact inverse of the forward's adaptation; see the .inc twin. */
+    alwan_scalar const Y_n_default = ALWAN_LITERAL(318.31);
+    alwan_scalar const y_n_cbrt = ALWAN_POW(Y_n_default, ALWAN_ONE / ALWAN_LITERAL(3.0));
+    alwan_scalar const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
+    alwan_scalar const lms_w_sum_safe = ALWAN_SELECT(ALWAN_ABS(lms_w_sum) > ALWAN_LITERAL(1e-10), lms_w_sum, ALWAN_ONE);
+    alwan_scalar const l_E0 = ALWAN_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
+    alwan_scalar const l_E1 = ALWAN_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
+    alwan_scalar const l_E2 = ALWAN_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
+    alwan_scalar const p0 = (ALWAN_ONE + y_n_cbrt + l_E0) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E0);
+    alwan_scalar const p1 = (ALWAN_ONE + y_n_cbrt + l_E1) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E1);
+    alwan_scalar const p2 = (ALWAN_ONE + y_n_cbrt + l_E2) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E2);
+    alwan_scalar adapt_0 = ALWAN_SELECT(lms_w0 > ALWAN_LITERAL(1e-10), (p0 + D * (ALWAN_ONE - p0)) / lms_w0, ALWAN_LITERAL(1.0));
     alwan_scalar lms_0 = lms_a0 / adapt_0;
-    alwan_scalar adapt_1 = ALWAN_SELECT(lms_w1 > ALWAN_LITERAL(1e-10), (D * (xyz_n.y / lms_w1) + ALWAN_LITERAL(1.0) - D) / Y_Yw, ALWAN_LITERAL(1.0));
+    alwan_scalar adapt_1 = ALWAN_SELECT(lms_w1 > ALWAN_LITERAL(1e-10), (p1 + D * (ALWAN_ONE - p1)) / lms_w1, ALWAN_LITERAL(1.0));
     alwan_scalar lms_1 = lms_a1 / adapt_1;
-    alwan_scalar adapt_2 = ALWAN_SELECT(lms_w2 > ALWAN_LITERAL(1e-10), (D * (xyz_n.y / lms_w2) + ALWAN_LITERAL(1.0) - D) / Y_Yw, ALWAN_LITERAL(1.0));
+    alwan_scalar adapt_2 = ALWAN_SELECT(lms_w2 > ALWAN_LITERAL(1e-10), (p2 + D * (ALWAN_ONE - p2)) / lms_w2, ALWAN_LITERAL(1.0));
     alwan_scalar lms_2 = lms_a2 / adapt_2;
+    ALWAN_UNUSED(xyz_n);
     alwan_vec3 lms_v = {{lms_0, lms_1, lms_2}};
     alwan_vec3 xyz_out_v = alwan_mat3_mulv_v(RLAB_M_HPE_INV, lms_v);
     result.x = xyz_out_v.v[0]; result.y = xyz_out_v.v[1]; result.z = xyz_out_v.v[2];

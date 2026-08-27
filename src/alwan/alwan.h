@@ -2641,6 +2641,22 @@ alwan_status alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
  * ---------------------------------------------------------------- */
 
 /* RLAB forward transform: XYZ -> appearance correlates
+ *
+ * Matches colour.appearance.XYZ_to_RLAB to 2.8e-08 for every D_factor at the
+ * RLAB reference adapting luminance of 318.31 cd/m^2.
+ *
+ * LIMITATION: the absolute adapting luminance Y_n is not a field of
+ * alwan_rlab_viewing_conditions, so it is fixed at 318.31 cd/m^2. RLAB's
+ * incomplete-adaptation term genuinely depends on it whenever D < 1, so
+ * Soft Copy and Projected Transparency results are correct only at that
+ * luminance. Adding the field is an ABI change; see before_public.md.
+ *
+ * Two defects were fixed 2026-08-27: the adaptation normalised by Y_n/Y_w
+ * instead of by LMS_n, which left the reference space scaled by the white's Y
+ * and returned L = 740.57 for the reference white instead of 100; and the
+ * incomplete-adaptation term was absent, adaptation being blended linearly
+ * toward none with (1 - D), which overpredicted the white's chroma by 4.4x at
+ * D = 0.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on null arguments */
 alwan_status alwan_rlab_forward_f32(alwan_rlab_correlates_f32 *out,
                             alwan_xyz_f32 const *xyz,
