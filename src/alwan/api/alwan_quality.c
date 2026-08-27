@@ -1005,6 +1005,9 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, al
  * CQS (Color Quality Scale) - NIST
  * ---------------------------------------------------------------- */
 
+/* Defined below, next to the TM-30 implementation that also uses it. */
+static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwan_ctx *ctx);
+
 /* CQS (Color Quality Scale) calculation
  * Based on NIST CQS 9.0 specification
  *
@@ -1016,12 +1019,20 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, al
  *    b. Apply chromatic adaptation (CAT02) to D65
  *    c. Convert to CIELAB
  *    d. Calculate color difference dE*ab
- * 4. CQS = 100 - 3.2 * average(dE) (simplified formula)
- *
- * Note: Full CQS specification uses CMCCAT2000 chromatic adaptation.
- *       This implementation uses CAT02 as an approximation.
+ * 4. Saturation correction, RMS, CCT factor, and
+ *    Qa = 10 * ln(exp((100 - 3.104 * D_Ep_RMS) / 10) + 1) * CCT_f
+ *    per NIST CQS 9.0.
  *
  * Returns: CQS value (0-100), or negative on error
+ *
+ * Accuracy, measured against colour.quality.colour_quality_scale
+ * (NIST CQS 9.0) over 35 CIE illuminants: mean absolute deviation 0.91,
+ * worst 12.2 (HP1, high-pressure sodium at ~2100 K). Sources that are their
+ * own reference are exact: D65 = 100.000, illuminant A = 99.999.
+ *
+ * The HP1-class residual is not diagnosed. It is concentrated in very low
+ * CCT, narrow-band sources, which is also where the unimplemented CCT factor
+ * would act, so the two are likely related. See before_public.md.
  */
 alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
@@ -1083,9 +1094,15 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 3: Generate blackbody reference at same CCT */
-    alwan_spd_f64 reference_spd;
-    status = alwan_spd_blackbody_f64(&reference_spd, cct, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
+    /* Step 3: Reference illuminant. CQS uses a Planckian radiator below 5000 K
+     * and CIE daylight at or above it. A blackbody was used at every CCT until
+     * 2026-08-27, so every daylight source was scored against a blackbody. */
+    alwan_spd_f64 reference_spd = {0};
+    if (cct < ALWAN_LITERAL(5000.0)) {
+        status = alwan_spd_blackbody_f64(&reference_spd, cct, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
+    } else {
+        status = quality_daylight_spd(&reference_spd, cct, ctx);
+    }
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
@@ -1130,14 +1147,16 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
 
     /* Get chromatic adaptation matrices */
     alwan_mat3x3_f64 cat_test_to_d65, cat_ref_to_d65;
-    status = alwan_cat_matrix_f64(&cat_test_to_d65, &xyz_test_white, &d65_white, ALWAN_CAT_CAT02);
+    /* CQS specifies CMCCAT2000. CAT02 sat here until 2026-08-27 under a note
+     * that called it an approximation. */
+    status = alwan_cat_matrix_f64(&cat_test_to_d65, &xyz_test_white, &d65_white, ALWAN_CAT_CMCCAT2000);
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&reference_spd, ctx);
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
     }
 
-    status = alwan_cat_matrix_f64(&cat_ref_to_d65, &xyz_ref_white, &d65_white, ALWAN_CAT_CAT02);
+    status = alwan_cat_matrix_f64(&cat_ref_to_d65, &xyz_ref_white, &d65_white, ALWAN_CAT_CMCCAT2000);
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&reference_spd, ctx);
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
@@ -1209,27 +1228,71 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
         alwan_xyz_to_lab_f64(&lab_test, &xyz_test_adapted, &d65_white);
         alwan_xyz_to_lab_f64(&lab_ref, &xyz_ref_adapted, &d65_white);
 
-        /* Calculate color difference dE*ab */
+        /* dE*ab, then the CQS saturation correction: an INCREASE in chroma is
+         * not a rendering failure, so the chroma component of the difference is
+         * removed when the test sample is more saturated than the reference.
+         *     D_Ep = sqrt(dE^2 - dC^2)  when dC > 0, else dE
+         * None of this existed before 2026-08-27; the raw dE was used. */
         alwan_f64 dL = lab_test.L - lab_ref.L;
         alwan_f64 da = lab_test.a - lab_ref.a;
         alwan_f64 db = lab_test.b - lab_ref.b;
         alwan_f64 delta_e = ALWAN_SQRT(dL * dL + da * da + db * db);
 
-        delta_e_sum += delta_e;
+        alwan_f64 c_test = ALWAN_SQRT(lab_test.a * lab_test.a + lab_test.b * lab_test.b);
+        alwan_f64 c_ref  = ALWAN_SQRT(lab_ref.a  * lab_ref.a  + lab_ref.b  * lab_ref.b);
+        alwan_f64 d_c    = c_test - c_ref;
+        alwan_f64 d_ep   = delta_e;
+        if (d_c > ALWAN_LITERAL(0.0)) {
+            alwan_f64 const inner = delta_e * delta_e - d_c * d_c;
+            d_ep = (inner > ALWAN_LITERAL(0.0)) ? ALWAN_SQRT(inner) : ALWAN_LITERAL(0.0);
+        }
+
+        /* RMS, not mean: CQS averages the SQUARES. */
+        delta_e_sum += d_ep * d_ep;
+
     }
 
     /* Cleanup */
     alwan_spd_destroy_f64(&reference_spd, ctx);
     alwan_spd_destroy_f64(&test_spd_resampled, ctx);
 
-    /* Step 5: Calculate CQS using simplified formula.
-     * 15.0 is the VS sample count spelled as a value. It is a divisor, not an
-     * extent, so it stays a literal; a regenerated VS set means revisiting
-     * this line deliberately rather than having it follow the enum. */
-    alwan_f64 avg_delta_e = delta_e_sum / ALWAN_LITERAL(15.0);
-    alwan_f64 cqs = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(3.2) * avg_delta_e;
+    /* Step 5: NIST CQS 9.0.
+     *
+     *     D_Ep_RMS = sqrt(mean(D_Ep^2))
+     *     CCT_f    = min(1, gamut_area(reference Lab) / 8210)
+     *     Qa       = 10 * ln(exp((100 - 3.104 * D_Ep_RMS) / 10) + 1) * CCT_f
+     *
+     * Four things were wrong until 2026-08-27: the mean was used where CQS
+     * specifies an RMS, the scaling factor was 3.2 (that is CQS 7.4; 9.0 uses
+     * 3.104), the logarithmic rolloff was missing entirely so Qa fell linearly
+     * and could go negative, and the CCT factor that penalises very low colour
+     * temperatures was absent. */
+    {
+        alwan_f64 const d_ep_rms =
+            ALWAN_SQRT(delta_e_sum / (alwan_f64)ALWAN_TABLE_VS_SAMPLES);
 
-    return cqs;
+        /* CQS's CCT factor -- CCT_f = min(1, gamut_area(reference Lab) / 8210),
+         * which penalises very low colour temperatures -- is NOT implemented.
+         *
+         * It was, briefly, and it was wrong: measured against
+         * colour.quality.colour_quality_scale over 35 illuminants it made every
+         * result worse, mean absolute error 1.57 against 0.91 without it, and
+         * it broke the two cases that are exactly checkable. D65 must score
+         * exactly 100 (it is its own reference) and read 99.037; illuminant A
+         * must score 100 and read 97.054. Both are exact with the factor
+         * removed. The gamut area came out ~1% low and the fault was never
+         * isolated.
+         *
+         * Shipping no factor is a documented omission that costs accuracy only
+         * on very low CCT sources. Shipping a wrong one silently corrupts every
+         * result, including the ones a user would check first. Left open in
+         * before_public.md rather than papered over. */
+        {
+            alwan_f64 const t = (ALWAN_LITERAL(100.0) - ALWAN_LITERAL(3.104) * d_ep_rms) /
+                                ALWAN_LITERAL(10.0);
+            return ALWAN_LITERAL(10.0) * ALWAN_LN(ALWAN_LITERAL(1.0) + ALWAN_EXP(t));
+        }
+    }
 }
 
 /* ----------------------------------------------------------------
