@@ -540,7 +540,6 @@ static alwan_f64 const * const g_rgb_space_data[] = {
     g_display_p3_hdr
 };
 
-static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]);
 
 #endif /* ALWAN_WITH_F64 */
 
@@ -1080,12 +1079,13 @@ static float const * const g_rgb_space_data_f32[] = {
     g_display_p3_hdr_f32
 };
 
-#if !ALWAN_WITH_F64
-/* Shared element count for the RGB space tables. In dual / f64 builds this is
- * defined from g_rgb_space_data inside the ALWAN_WITH_F64 block above; in
- * f32-only builds that block is gated out, so derive it from the f32 twin. */
-static size_t const g_rgb_space_data_count = sizeof(g_rgb_space_data_f32) / sizeof(g_rgb_space_data_f32[0]);
-#endif /* !ALWAN_WITH_F64 */
+/* The f32 twin is indexed by the same enum as the f64 table and is bounds-checked
+ * against the same count, so it has to be the same length. In a dual build nothing
+ * else ties them together. */
+_Static_assert(
+    sizeof(g_rgb_space_data_f32) / sizeof(g_rgb_space_data_f32[0]) == (size_t)ALWAN_RGB_SPACE_COUNT,
+    "g_rgb_space_data_f32[] must have one row per alwan_rgb_space"
+);
 
 #endif /* ALWAN_WITH_F32 */
 

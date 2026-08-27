@@ -1089,6 +1089,11 @@ static float const * const g_rgb_space_matrices_f32[] = {
     g_display_p3_hdr_matrices_f32
 };
 
+_Static_assert(
+    sizeof(g_rgb_space_matrices_f32) / sizeof(g_rgb_space_matrices_f32[0]) == (size_t)ALWAN_RGB_SPACE_COUNT,
+    "g_rgb_space_matrices_f32[] must have one row per alwan_rgb_space"
+);
+
 #endif /* ALWAN_WITH_F32 */
 
 #endif /* ALWAN_EMBED_DATA */

@@ -775,21 +775,15 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
     /* [103] DISPLAY_P3_HDR          */ { ALWAN_TF_PQ,       ALWAN_TF_PQ       },
 };
 
-/* Static assert: TF table must match embedded data array size */
-#if ALWAN_EMBED_DATA && ALWAN_WITH_F64
+/* The descriptor lookups below bounds-check `space` once and then subscript four
+ * separate tables with it: primaries, transfer functions, and matrices, in two
+ * precisions. Every one of them is asserted against alwan_rgb_space here or at its
+ * own definition, so the single check is sound. Comparing the tables against each
+ * other instead would let all of them drift away from the enum together. */
 _Static_assert(
-    sizeof(g_rgb_space_tf) / sizeof(g_rgb_space_tf[0]) ==
-    sizeof(g_rgb_space_data) / sizeof(g_rgb_space_data[0]),
-    "g_rgb_space_tf[] and g_rgb_space_data[] size mismatch"
+    sizeof(g_rgb_space_tf) / sizeof(g_rgb_space_tf[0]) == (size_t)ALWAN_RGB_SPACE_COUNT,
+    "g_rgb_space_tf[] must have one row per alwan_rgb_space"
 );
-#endif
-#if ALWAN_EMBED_DATA && !ALWAN_WITH_F64 && ALWAN_WITH_F32
-_Static_assert(
-    sizeof(g_rgb_space_tf) / sizeof(g_rgb_space_tf[0]) ==
-    sizeof(g_rgb_space_data_f32) / sizeof(g_rgb_space_data_f32[0]),
-    "g_rgb_space_tf[] and g_rgb_space_data_f32[] size mismatch"
-);
-#endif
 
 /* ----------------------------------------------------------------
  * Get RGB space descriptor by enum
@@ -807,7 +801,7 @@ alwan_status alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, 
     (void)ctx;  /* Unused in embedded mode */
 
     /* Bounds check: ensure enum value is within valid array range */
-    if (space < 0 || (size_t)space >= g_rgb_space_data_count) {
+    if (space < 0 || (size_t)space >= (size_t)ALWAN_RGB_SPACE_COUNT) {
         return ALWAN_E_INVALID;
     }
 
@@ -852,7 +846,7 @@ alwan_status alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, 
     (void)ctx;  /* Unused in embedded mode */
 
     /* Bounds check: ensure enum value is within valid array range */
-    if (space < 0 || (size_t)space >= g_rgb_space_data_count) {
+    if (space < 0 || (size_t)space >= (size_t)ALWAN_RGB_SPACE_COUNT) {
         return ALWAN_E_INVALID;
     }
 

@@ -294,13 +294,23 @@ ALWAN_DIAG_POP
 #define SPECTRAL_LOCUS_WL_INTERVAL ALWAN_LITERAL(1.0)
 #define SPECTRAL_LOCUS_COUNT 471
 
+/* 360-830 nm at 1 nm. The interpolators derive their index from the wavelength
+ * and clamp against SPECTRAL_LOCUS_COUNT, so a table that is not this length
+ * would read past the end. */
+_Static_assert(
+    sizeof(SPECTRAL_LOCUS_XY) / sizeof(SPECTRAL_LOCUS_XY[0]) == SPECTRAL_LOCUS_COUNT,
+    "SPECTRAL_LOCUS_XY[] length must equal SPECTRAL_LOCUS_COUNT"
+);
+
 alwan_status alwan_spectral_locus_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 wavelength) {
     if (!xy_out) {
         return ALWAN_E_INVALID;
     }
 
-    /* Check wavelength range */
-    if (wavelength < SPECTRAL_LOCUS_WL_MIN || wavelength > SPECTRAL_LOCUS_WL_MAX) {
+    /* Written as a negated range so NaN is rejected: `NaN < MIN` and `NaN > MAX`
+     * are both false, so the natural form lets NaN through, and the cast below
+     * then produces an unpredictable index. */
+    if (!(wavelength >= SPECTRAL_LOCUS_WL_MIN && wavelength <= SPECTRAL_LOCUS_WL_MAX)) {
         return ALWAN_E_INVALID;
     }
 
@@ -1335,8 +1345,9 @@ alwan_status alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 wavel
         return ALWAN_E_INVALID;
     }
 
-    if (wavelength < (alwan_f32)SPECTRAL_LOCUS_WL_MIN ||
-        wavelength > (alwan_f32)SPECTRAL_LOCUS_WL_MAX) {
+    /* Negated range, so NaN is rejected. See the f64 twin. */
+    if (!(wavelength >= (alwan_f32)SPECTRAL_LOCUS_WL_MIN &&
+          wavelength <= (alwan_f32)SPECTRAL_LOCUS_WL_MAX)) {
         return ALWAN_E_INVALID;
     }
 

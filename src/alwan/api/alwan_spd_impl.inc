@@ -193,16 +193,23 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_resample)(ALWAN_CORE_SPD *dst, ALWAN_COR
  * ---------------------------------------------------------------- */
 
 /* Copy one embedded table from data/alwan_data_tables.h into an SPD.
- * The extent is the table's enum constant, not a sizeof at the call site, and
- * every element goes through alwan_table1d_row so the read is governed by
+ * The extent is fixed at ALWAN_TABLE_SPD_360_830_1NM_SIZE rather than passed in.
+ * Taking it as a parameter meant the loop bound and the reader's clamp both came
+ * from the caller, so a caller that passed the wrong constant would read past the
+ * end of the table and the gate would clamp to the wrong number rather than catch
+ * it. Every table this helper is used with is on the 360-830 nm 1 nm grid; one
+ * that is not needs its own copy loop, and the compiler now says so.
+ *
+ * Every element goes through alwan_table1d_row so the read is governed by
  * ALWAN_READ_DATA_NO_BOUND_CHECK like every other table read in the library.
  * The loop is a plain copy with no arithmetic, so the values that land in the
  * SPD are the CSV bytes, unchanged. */
 static void ALWAN_CORE_FN(spd_copy_table)(ALWAN_CORE_SPD *dst,
-                                          ALWAN_CORE_T const *table, int size) {
-    size_t const n = (size_t)size;
+                                          ALWAN_CORE_T const *table) {
+    size_t const n = (size_t)ALWAN_TABLE_SPD_360_830_1NM_SIZE;
     for (size_t i = 0; i < n && i < dst->count; i++) {
-        dst->values[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(table, size, (int)i);
+        dst->values[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+            table, ALWAN_TABLE_SPD_360_830_1NM_SIZE, (int)i);
     }
 }
 
@@ -225,163 +232,163 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_illuminant)(ALWAN_CORE_SPD *out, alwan_i
     switch (ill) {
         case ALWAN_ILLUMINANT_A:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_a), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_a));
             break;
         case ALWAN_ILLUMINANT_D50:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d50), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d50));
             break;
         case ALWAN_ILLUMINANT_D55:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d55), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d55));
             break;
         case ALWAN_ILLUMINANT_D65:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d65), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d65));
             break;
         case ALWAN_ILLUMINANT_E:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_e), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_e));
             break;
         case ALWAN_ILLUMINANT_F1:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f1));
             break;
         case ALWAN_ILLUMINANT_F2:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f2), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f2));
             break;
         case ALWAN_ILLUMINANT_F3:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f3), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f3));
             break;
         case ALWAN_ILLUMINANT_F4:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f4), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f4));
             break;
         case ALWAN_ILLUMINANT_F5:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f5), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f5));
             break;
         case ALWAN_ILLUMINANT_F6:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f6), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f6));
             break;
         case ALWAN_ILLUMINANT_F7:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f7), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f7));
             break;
         case ALWAN_ILLUMINANT_F8:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f8), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f8));
             break;
         case ALWAN_ILLUMINANT_F9:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f9), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f9));
             break;
         case ALWAN_ILLUMINANT_F10:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f10), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f10));
             break;
         case ALWAN_ILLUMINANT_F11:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f11), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f11));
             break;
         case ALWAN_ILLUMINANT_F12:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f12), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f12));
             break;
 
         /* Extended illuminants */
         case ALWAN_ILLUMINANT_B:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_b), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_b));
             break;
         case ALWAN_ILLUMINANT_C:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_c), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_c));
             break;
         case ALWAN_ILLUMINANT_D60:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d60), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d60));
             break;
         case ALWAN_ILLUMINANT_D75:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d75), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d75));
             break;
 
         /* Additional D-series illuminants */
         case ALWAN_ILLUMINANT_D40:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d40), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d40));
             break;
         case ALWAN_ILLUMINANT_D45:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d45), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d45));
             break;
         case ALWAN_ILLUMINANT_D93:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d93), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d93));
             break;
 
         /* LED illuminants */
         case ALWAN_ILLUMINANT_LED_B1:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b1));
             break;
         case ALWAN_ILLUMINANT_LED_B2:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b2), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b2));
             break;
         case ALWAN_ILLUMINANT_LED_B3:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b3), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b3));
             break;
         case ALWAN_ILLUMINANT_LED_B4:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b4), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b4));
             break;
         case ALWAN_ILLUMINANT_LED_B5:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b5), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b5));
             break;
         case ALWAN_ILLUMINANT_LED_BH1:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_bh1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_bh1));
             break;
         case ALWAN_ILLUMINANT_LED_RGB1:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_rgb1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_rgb1));
             break;
         case ALWAN_ILLUMINANT_LED_V1:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_v1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_v1));
             break;
         case ALWAN_ILLUMINANT_LED_V2:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_v2), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_v2));
             break;
 
         /* High Pressure illuminants */
         case ALWAN_ILLUMINANT_HP1:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp1));
             break;
         case ALWAN_ILLUMINANT_HP2:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp2), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp2));
             break;
         case ALWAN_ILLUMINANT_HP3:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp3), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp3));
             break;
         case ALWAN_ILLUMINANT_HP4:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp4), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp4));
             break;
         case ALWAN_ILLUMINANT_HP5:
             ALWAN_CORE_FN(spd_copy_table)(out,
-                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp5), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp5));
             break;
 
         default:
@@ -472,44 +479,44 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
     /* Copy the observer's registry tables into the three SPDs */
     if (observer == ALWAN_OBSERVER_CIE_1931_2DEG) {
         /* CIE 1931 2 deg Standard Observer */
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_z));
     } else if (observer == ALWAN_OBSERVER_CIE_1964_10DEG) {
         /* CIE 1964 10 deg Standard Observer */
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_z));
     } else if (observer == ALWAN_OBSERVER_CIE_2012_2DEG) {
         /* CIE 2012/2015 2 deg Standard Observer (390-830nm) */
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_z));
     } else if (observer == ALWAN_OBSERVER_CIE_2012_10DEG) {
         /* CIE 2012/2015 10 deg Standard Observer (390-830nm) */
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_z));
     } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
         /* Stockman & Sharpe 2000 2 deg Cone Fundamentals */
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_z));
     } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG) {
         /* CIE 2015 2 deg Cone Fundamental Observer */
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_z));
     } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG) {
         /* CIE 2015 10 deg Cone Fundamental Observer */
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_z));
     } else if (observer == ALWAN_OBSERVER_WRIGHT_GUILD_1931) {
         /* Wright & Guild 1931 2 deg RGB CMFs (historical) */
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_r), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_g), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_b), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_r));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_g));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_b));
     } else {
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(x_bar, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(y_bar, ctx);
@@ -705,15 +712,15 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(ALWAN_CORE_SPD *spd_
     /* Copy the camera's registry tables into the three SPDs */
     switch (camera) {
         case ALWAN_CAMERA_NIKON_5100: {
-            ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_r), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-            ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_g), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-            ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_b), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+            ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_r));
+            ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_g));
+            ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_b));
             break;
         }
         case ALWAN_CAMERA_SIGMA_SDMERILL: {
-            ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_r), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-            ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_g), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
-            ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_b), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+            ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_r));
+            ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_g));
+            ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_b));
             break;
         }
         default:
