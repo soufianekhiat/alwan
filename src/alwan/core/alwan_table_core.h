@@ -87,6 +87,33 @@ ALWAN_INLINE alwan_scalar alwan_table_coord_unit_v(alwan_scalar pos, int size) {
 #endif
 }
 
+/* Row gate for tables addressed by an INTEGER index rather than a float
+ * coordinate. Same switch, same policy as alwan_table_coord above: the ADDRESS
+ * is clamped so a bad index cannot read outside the array, while the VALUE is
+ * never silently altered.
+ *
+ * This existed only for float coordinates until 2026-08-27, because the crash
+ * class that motivated the gate was NaN reaching an (int) cast. An integer
+ * index goes out of bounds just as easily: alwan_rgb_space_by_enum_* checked
+ * `index < g_rgb_spaces_count` -- the length of the METADATA table -- and then
+ * indexed the DATA table, which the generator had silently truncated by two
+ * rows. Seven spaces returned another colourspace's primaries and two read 16
+ * doubles past the end.
+ *
+ * Callers still validate and return ALWAN_E_INVALID for a genuinely bad index.
+ * This is the backstop for when that validation is itself wrong, which is
+ * exactly what happened. */
+ALWAN_INLINE int alwan_table_row_v(int index, int count) {
+#if ALWAN_READ_DATA_NO_BOUND_CHECK
+    (void)count;
+    return index;
+#else
+    int const lo = index < 0 ? 0 : index;
+    return lo >= count ? (count > 0 ? count - 1 : 0) : lo;
+#endif
+}
+
+
 /* Predicate backing ALWAN_SAMPLE_STRICT at the API tier. False for NaN,
  * because both compares fail, which is the whole point. */
 ALWAN_INLINE int alwan_table_coord_in_range_v(alwan_scalar coord) {

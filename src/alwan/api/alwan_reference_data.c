@@ -9,6 +9,7 @@
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
+#include "../core/alwan_table_core.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,13 +33,26 @@ ALWAN_DIAG_POP
 static size_t const g_munsell_renotation_count =
     sizeof(g_munsell_renotation_flat) / (MUNSELL_FIELDS_PER_ENTRY * sizeof(alwan_f64));
 
-/* Access helpers for flat Munsell data */
-#define MUNSELL_HUE(i)    g_munsell_renotation_flat[(i) * MUNSELL_FIELDS_PER_ENTRY + 0]
-#define MUNSELL_VALUE(i)  g_munsell_renotation_flat[(i) * MUNSELL_FIELDS_PER_ENTRY + 1]
-#define MUNSELL_CHROMA(i) g_munsell_renotation_flat[(i) * MUNSELL_FIELDS_PER_ENTRY + 2]
-#define MUNSELL_X(i)      g_munsell_renotation_flat[(i) * MUNSELL_FIELDS_PER_ENTRY + 3]
-#define MUNSELL_Y(i)      g_munsell_renotation_flat[(i) * MUNSELL_FIELDS_PER_ENTRY + 4]
-#define MUNSELL_YLUM(i)   g_munsell_renotation_flat[(i) * MUNSELL_FIELDS_PER_ENTRY + 5]
+/* Row readers for the three integer-indexed tables in this file.
+ *
+ * Every read goes through alwan_table_row_f64_v, the shared row gate in
+ * core/alwan_table_core, so ALWAN_READ_DATA_NO_BOUND_CHECK governs these the
+ * same way it governs the float-coordinate tables. Raw subscripting here is
+ * what let alwan_rgb_space_by_enum_* read 16 doubles past the end of
+ * g_rgb_lookup_data: the bounds check consulted a different table's length.
+ * A reader per table keeps the extent and the read in one expression, where
+ * they cannot drift apart. */
+static alwan_f64 const *munsell_row(size_t entry) {
+    int const r = alwan_table_row_f64_v((int)entry, (int)g_munsell_renotation_count);
+    return &g_munsell_renotation_flat[(size_t)r * MUNSELL_FIELDS_PER_ENTRY];
+}
+
+#define MUNSELL_HUE(i)    (munsell_row(i)[0])
+#define MUNSELL_VALUE(i)  (munsell_row(i)[1])
+#define MUNSELL_CHROMA(i) (munsell_row(i)[2])
+#define MUNSELL_X(i)      (munsell_row(i)[3])
+#define MUNSELL_Y(i)      (munsell_row(i)[4])
+#define MUNSELL_YLUM(i)   (munsell_row(i)[5])
 
 /* Convert Munsell HVC to XYZ tristimulus values
  * Uses trilinear interpolation in the Munsell renotation data */
@@ -253,6 +267,17 @@ ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_f64 const g_colorchecker_classic_d50_xyY[] = {
 #include "../data/colorchecker/classic_d50_xyy.csv"
 };
+
+/* 24 patches x (x, y, Y). Read through the shared row gate; see munsell_row. */
+enum { COLORCHECKER_FIELDS_PER_PATCH = 3 };
+static size_t const g_colorchecker_classic_count =
+    sizeof(g_colorchecker_classic_d50_xyY) /
+    (COLORCHECKER_FIELDS_PER_PATCH * sizeof(alwan_f64));
+
+static alwan_f64 const *colorchecker_row(size_t patch) {
+    int const r = alwan_table_row_f64_v((int)patch, (int)g_colorchecker_classic_count);
+    return &g_colorchecker_classic_d50_xyY[(size_t)r * COLORCHECKER_FIELDS_PER_PATCH];
+}
 ALWAN_DIAG_POP
 
 /* Get number of patches in a Color Checker target */
@@ -294,11 +319,11 @@ alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker
         return ALWAN_E_INVALID;
     }
 
-    /* Get xyY data under D50 (flat array: patch_index * 3 + offset) */
-    size_t const base_idx = patch_index * 3;
-    alwan_f64 x = g_colorchecker_classic_d50_xyY[base_idx + 0];
-    alwan_f64 y = g_colorchecker_classic_d50_xyY[base_idx + 1];
-    alwan_f64 Y = g_colorchecker_classic_d50_xyY[base_idx + 2];
+    /* Get xyY data under D50, through the row gate. */
+    alwan_f64 const *patch = colorchecker_row(patch_index);
+    alwan_f64 x = patch[0];
+    alwan_f64 y = patch[1];
+    alwan_f64 Y = patch[2];
 
     /* Convert xyY to XYZ */
     if (y <= ALWAN_LITERAL(0.0)) {
@@ -628,6 +653,13 @@ typedef char alwan_rgb_lookup_row_count_check[
     ((sizeof(g_rgb_lookup_data) / (RGB_LOOKUP_STRIDE * sizeof(g_rgb_lookup_data[0])))
      == (sizeof(g_rgb_spaces_meta) / sizeof(g_rgb_spaces_meta[0]))) ? 1 : -1];
 
+static alwan_f64 const *rgb_lookup_row(size_t space_index) {
+    int const rows = (int)(sizeof(g_rgb_lookup_data) /
+                           (RGB_LOOKUP_STRIDE * sizeof(g_rgb_lookup_data[0])));
+    int const r = alwan_table_row_f64_v((int)space_index, rows);
+    return &g_rgb_lookup_data[(size_t)r * RGB_LOOKUP_STRIDE];
+}
+
 /* Map enum value to g_rgb_spaces array index. Returns -1 if not found. */
 static int get_rgb_space_index(alwan_rgb_space space) {
     switch (space) {
@@ -667,8 +699,8 @@ alwan_status alwan_rgb_space_by_enum_f64(alwan_f64 primaries[6], alwan_vec2_f64 
         return ALWAN_E_INVALID;
     }
 
-    /* Lookup primaries + white from CSV data */
-    alwan_f64 const *row = &g_rgb_lookup_data[index * RGB_LOOKUP_STRIDE];
+    /* Lookup primaries + white from CSV data, through the row gate. */
+    alwan_f64 const *row = rgb_lookup_row((size_t)index);
 
     /* Copy primaries (first 6 values: rx, ry, gx, gy, bx, by) */
     for (int j = 0; j < 6; j++) {
