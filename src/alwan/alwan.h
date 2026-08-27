@@ -2645,11 +2645,10 @@ alwan_status alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
  * Matches colour.appearance.XYZ_to_RLAB to 2.8e-08 for every D_factor at the
  * RLAB reference adapting luminance of 318.31 cd/m^2.
  *
- * LIMITATION: the absolute adapting luminance Y_n is not a field of
- * alwan_rlab_viewing_conditions, so it is fixed at 318.31 cd/m^2. RLAB's
- * incomplete-adaptation term genuinely depends on it whenever D < 1, so
- * Soft Copy and Projected Transparency results are correct only at that
- * luminance. Adding the field is an ABI change; see before_public.md.
+ * The absolute adapting luminance is vc->Y_n, in cd/m^2. RLAB's
+ * incomplete-adaptation term depends on it whenever D < 1. A zero Y_n is
+ * treated as the reference 318.31 cd/m^2, so a zero-initialised struct behaves
+ * sensibly rather than taking a cube root of zero.
  *
  * Two defects were fixed 2026-08-27: the adaptation normalised by Y_n/Y_w
  * instead of by LMS_n, which left the reference space scaled by the white's Y

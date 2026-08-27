@@ -39,7 +39,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rlab_forward)(
     ALWAN_CORE_T D     = ALWAN_CORE_FN(rlab_get_D_factor)(vc->D_factor);
 
     ALWAN_CORE_FNLIT(alwan_rlab_v_correlates) result =
-        ALWAN_CORE_FNVLIT(alwan_rlab_forward)(*xyz, vc->xyz_w, vc->xyz_n, sigma, D);
+        ALWAN_CORE_FNVLIT(alwan_rlab_forward)(*xyz, vc->xyz_w, vc->xyz_n, sigma, D, vc->Y_n);
 
     out->L = result.L;
     out->a = result.a;
@@ -76,7 +76,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rlab_inverse)(
     vc_in.C = tmp.C;
     vc_in.s = tmp.s;
 
-    *xyz = ALWAN_CORE_FNVLIT(alwan_rlab_inverse)(vc_in, vc->xyz_w, vc->xyz_n, sigma, D);
+    *xyz = ALWAN_CORE_FNVLIT(alwan_rlab_inverse)(vc_in, vc->xyz_w, vc->xyz_n, sigma, D, vc->Y_n);
 
     return ALWAN_OK;
 }

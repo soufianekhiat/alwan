@@ -53,7 +53,8 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_rlab_v_correlates) ALWAN_CORE_FNVLIT(alwan_r
     ALWAN_CORE_XYZ xyz_w,
     ALWAN_CORE_XYZ xyz_n,
     ALWAN_CORE_T sigma,
-    ALWAN_CORE_T D)
+    ALWAN_CORE_T D,
+    ALWAN_CORE_T Y_n)
 {
     ALWAN_CORE_FNLIT(alwan_rlab_v_correlates) result;
 
@@ -93,8 +94,10 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_rlab_v_correlates) ALWAN_CORE_FNVLIT(alwan_r
      * correct at D = 1 and an approximation below it, where the true answer
      * depends on Y_n. Adding the field is an ABI change and is tracked in
      * before_public.md. */
-    ALWAN_CORE_T const Y_n_default = ALWAN_CORE_LITERAL(318.31);
-    ALWAN_CORE_T const y_n_cbrt = ALWAN_CORE_POW(Y_n_default, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
+        /* A zero Y_n means "unset"; fall back to the RLAB reference viewing
+     * condition rather than producing a cube root of zero. */
+    ALWAN_CORE_T const Y_n_used = ALWAN_CORE_SELECT(Y_n > ALWAN_CORE_LITERAL(0.0), Y_n, ALWAN_CORE_LITERAL(318.31));
+    ALWAN_CORE_T const y_n_cbrt = ALWAN_CORE_POW(Y_n_used, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
     ALWAN_CORE_T const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
     ALWAN_CORE_T const lms_w_sum_safe = ALWAN_CORE_SELECT(
         ALWAN_CORE_ABS(lms_w_sum) > ALWAN_CORE_LITERAL(1e-10), lms_w_sum, ALWAN_CORE_ONE);
@@ -168,7 +171,8 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_rlab_inverse)(
     ALWAN_CORE_XYZ xyz_w,
     ALWAN_CORE_XYZ xyz_n,
     ALWAN_CORE_T sigma,
-    ALWAN_CORE_T D)
+    ALWAN_CORE_T D,
+    ALWAN_CORE_T Y_n)
 {
     ALWAN_CORE_XYZ result;
 
@@ -200,8 +204,10 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_rlab_inverse)(
      * on 2026-08-27 the pair disagreed by the white's Y and the round-trip test
      * in 92_rlab_f32 failed with 0.5 coming back as 50, which is how the
      * omission was caught. */
-    ALWAN_CORE_T const Y_n_default = ALWAN_CORE_LITERAL(318.31);
-    ALWAN_CORE_T const y_n_cbrt = ALWAN_CORE_POW(Y_n_default, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
+        /* A zero Y_n means "unset"; fall back to the RLAB reference viewing
+     * condition rather than producing a cube root of zero. */
+    ALWAN_CORE_T const Y_n_used = ALWAN_CORE_SELECT(Y_n > ALWAN_CORE_LITERAL(0.0), Y_n, ALWAN_CORE_LITERAL(318.31));
+    ALWAN_CORE_T const y_n_cbrt = ALWAN_CORE_POW(Y_n_used, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
     ALWAN_CORE_T const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
     ALWAN_CORE_T const lms_w_sum_safe = ALWAN_CORE_SELECT(
         ALWAN_CORE_ABS(lms_w_sum) > ALWAN_CORE_LITERAL(1e-10), lms_w_sum, ALWAN_CORE_ONE);

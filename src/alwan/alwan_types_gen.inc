@@ -179,6 +179,11 @@ typedef struct {
 typedef struct {
     ALWAN_TN(alwan_xyz) xyz_w;                 /* White point (XYZ, Y=100) */
     ALWAN_TN(alwan_xyz) xyz_n;                 /* Reference white (usually D65) */
+    ALWAN_T Y_n;                               /* Absolute adapting luminance, cd/m^2.
+                                                * RLAB's incomplete-adaptation term depends on
+                                                * this whenever D < 1. Pass 318.31 for the
+                                                * reference viewing condition; 0 is treated as
+                                                * 318.31 so a zero-initialised struct behaves. */
     alwan_rlab_surround surround;              /* Viewing surround */
     int D_factor;                              /* Discounting factor: 0=auto, 1=hard, 2=soft, 3=trans */
 } ALWAN_TN(alwan_rlab_viewing_conditions);

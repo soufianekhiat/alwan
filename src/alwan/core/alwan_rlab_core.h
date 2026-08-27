@@ -71,7 +71,8 @@ ALWAN_CONSTEXPR alwan_mat3x3 RLAB_M_RLAB_INV = {{
 
 ALWAN_INLINE alwan_rlab_v_correlates alwan_rlab_forward_v(
     alwan_xyz xyz, alwan_xyz xyz_w, alwan_xyz xyz_n,
-    alwan_scalar sigma, alwan_scalar D) {
+    alwan_scalar sigma, alwan_scalar D,
+    alwan_scalar Y_n) {
     alwan_rlab_v_correlates result;
     alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
     alwan_vec3 lms_v = alwan_mat3_mulv_v(RLAB_M_HPE, xyz_v);
@@ -82,8 +83,10 @@ ALWAN_INLINE alwan_rlab_v_correlates alwan_rlab_forward_v(
     /* RLAB adaptation: LMS_a = (p + D*(1-p)) / LMS_n, with the incomplete
      * adaptation term p from l_E and the absolute adapting luminance.
      * See the .inc twin for why Y_n is a fixed 318.31 here. */
-    alwan_scalar const Y_n_default = ALWAN_LITERAL(318.31);
-    alwan_scalar const y_n_cbrt = ALWAN_POW(Y_n_default, ALWAN_ONE / ALWAN_LITERAL(3.0));
+        /* A zero Y_n means "unset"; fall back to the RLAB reference viewing
+     * condition rather than producing a cube root of zero. */
+    alwan_scalar const Y_n_used = ALWAN_SELECT(Y_n > ALWAN_LITERAL(0.0), Y_n, ALWAN_LITERAL(318.31));
+    alwan_scalar const y_n_cbrt = ALWAN_POW(Y_n_used, ALWAN_ONE / ALWAN_LITERAL(3.0));
     alwan_scalar const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
     alwan_scalar const lms_w_sum_safe = ALWAN_SELECT(ALWAN_ABS(lms_w_sum) > ALWAN_LITERAL(1e-10), lms_w_sum, ALWAN_ONE);
     alwan_scalar const l_E0 = ALWAN_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
@@ -120,7 +123,8 @@ ALWAN_INLINE alwan_rlab_v_correlates alwan_rlab_forward_v(
 
 ALWAN_INLINE alwan_xyz alwan_rlab_inverse_v(
     alwan_rlab_v_correlates correlates, alwan_xyz xyz_w, alwan_xyz xyz_n,
-    alwan_scalar sigma, alwan_scalar D) {
+    alwan_scalar sigma, alwan_scalar D,
+    alwan_scalar Y_n) {
     alwan_xyz result;
     alwan_scalar xyz_ref_sigma_1 = correlates.L / ALWAN_LITERAL(100.0);
     alwan_scalar xyz_ref_sigma_0 = xyz_ref_sigma_1 + correlates.a / ALWAN_LITERAL(430.0);
@@ -136,8 +140,10 @@ ALWAN_INLINE alwan_xyz alwan_rlab_inverse_v(
     alwan_vec3 lms_w_v = alwan_mat3_mulv_v(RLAB_M_HPE, xyz_w_v);
     alwan_scalar lms_w0 = lms_w_v.v[0]; alwan_scalar lms_w1 = lms_w_v.v[1]; alwan_scalar lms_w2 = lms_w_v.v[2];
     /* Exact inverse of the forward's adaptation; see the .inc twin. */
-    alwan_scalar const Y_n_default = ALWAN_LITERAL(318.31);
-    alwan_scalar const y_n_cbrt = ALWAN_POW(Y_n_default, ALWAN_ONE / ALWAN_LITERAL(3.0));
+        /* A zero Y_n means "unset"; fall back to the RLAB reference viewing
+     * condition rather than producing a cube root of zero. */
+    alwan_scalar const Y_n_used = ALWAN_SELECT(Y_n > ALWAN_LITERAL(0.0), Y_n, ALWAN_LITERAL(318.31));
+    alwan_scalar const y_n_cbrt = ALWAN_POW(Y_n_used, ALWAN_ONE / ALWAN_LITERAL(3.0));
     alwan_scalar const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
     alwan_scalar const lms_w_sum_safe = ALWAN_SELECT(ALWAN_ABS(lms_w_sum) > ALWAN_LITERAL(1e-10), lms_w_sum, ALWAN_ONE);
     alwan_scalar const l_E0 = ALWAN_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;

@@ -194,9 +194,6 @@ easy to miss; the cost of the default being interpolation is a little arithmetic
 
 Listed here so they are not mistaken for the above.
 
-- **RLAB `Y_n`** is fixed at 318.31 cd/m². Exact at `D = 1` and at that
-  luminance for all D, but a caller cannot express a different adapting
-  luminance.
 - **CQS CCT factor**, above.
 - **Hunt inverse** is not implemented.
 - **`ALWAN_EMBED_DATA=0`** (runtime data loading) is not implemented and
