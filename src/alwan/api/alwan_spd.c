@@ -15,11 +15,21 @@
  * pass, so the single-precision path carries no widen->f64->narrow facade:
  * it integrates in float over float data throughout. The f64 pass is
  * byte-for-byte equivalent to the former hand-written double code.
+ *
+ * The tables themselves are not embedded here. They are declared in
+ * data/alwan_data_tables.h, defined once per precision in
+ * data/alwan_data_tables_api.c, and read through alwan_table1d_row in
+ * core/alwan_table_core. Both headers must be included BEFORE the per-
+ * precision setup below: core/alwan_table_core.h runs its own
+ * setup/teardown pair, which would undefine the ALWAN_CORE_* macros the
+ * impl .inc is being compiled with.
  */
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_spd_core.h"
+#include "../core/alwan_table_core.h"
+#include "../data/alwan_data_tables.h"
 #include <string.h>
 
 /* f32 pass: native float tables + float integration. The CSV tables hold

@@ -12,24 +12,15 @@
  */
 #include "../alwan.h"
 #include "../alwan_internal.h"
+#include "../core/alwan_table_core.h"
+#include "../data/alwan_data_tables.h"
 #include "../core/alwan_agx_core.h"
 #include "../core/alwan_agx_jp2499_core.h"   /* jp2499_geometry_* for the primary wheels */
 
-/* SB2383 inset matrix (row-major) -- the same gendata CSV the SB2383 view bakes
- * from, so there are no duplicated matrix constants. */
-#if ALWAN_WITH_F32
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f32 const agx_sb2383_inset_default_f32[9] = {
-#include "../data/matrices/agx_sb2383_inset.csv"
-};
-ALWAN_DIAG_POP
-#endif
-#if ALWAN_WITH_F64
-static alwan_f64 const agx_sb2383_inset_default_f64[9] = {
-#include "../data/matrices/agx_sb2383_inset.csv"
-};
-#endif
+/* The SB2383 inset matrix (row-major, the same gendata CSV the SB2383 view bakes
+ * from) is homed in the registry as alwan_table_agx_sb2383_inset_{f32,f64},
+ * declared with its extent in data/alwan_data_tables.h. Read through
+ * alwan_table1d_row_{f32,f64}_v so ALWAN_READ_DATA_NO_BOUND_CHECK governs it. */
 
 /* SB2383 framing: -10/+6.5 EV around mid-grey 0.18, i.e. absolute log2 bounds
  * log2(0.18)+[-10,+6.5] = [-12.47393, 4.026069]. Sigmoid pivot output and slope
@@ -38,7 +29,9 @@ static alwan_f64 const agx_sb2383_inset_default_f64[9] = {
 alwan_agx_params_f32 alwan_agx_default_params_f32(void) {
     alwan_agx_params_f32 p;
     int i;
-    for (i = 0; i < 9; i++) p.inset.m[i] = agx_sb2383_inset_default_f32[i];
+    for (i = 0; i < ALWAN_TABLE_AGX_SB2383_INSET_SIZE; i++)
+        p.inset.m[i] = alwan_table1d_row_f32_v(alwan_table_agx_sb2383_inset_f32,
+                                               ALWAN_TABLE_AGX_SB2383_INSET_SIZE, i);
     p.log2_min = -12.47393f; p.log2_max = 4.026069f;
     p.pivot_input = 0.18f; p.pivot_output = 0.458656f;
     p.slope = 2.4f; p.toe_power = 1.5f; p.shoulder_power = 1.5f;
@@ -55,7 +48,9 @@ alwan_agx_params_f32 alwan_agx_default_params_f32(void) {
 alwan_agx_params_f64 alwan_agx_default_params_f64(void) {
     alwan_agx_params_f64 p;
     int i;
-    for (i = 0; i < 9; i++) p.inset.m[i] = agx_sb2383_inset_default_f64[i];
+    for (i = 0; i < ALWAN_TABLE_AGX_SB2383_INSET_SIZE; i++)
+        p.inset.m[i] = alwan_table1d_row_f64_v(alwan_table_agx_sb2383_inset_f64,
+                                               ALWAN_TABLE_AGX_SB2383_INSET_SIZE, i);
     p.log2_min = -12.47393; p.log2_max = 4.026069;
     p.pivot_input = 0.18; p.pivot_output = 0.458656;
     p.slope = 2.4; p.toe_power = 1.5; p.shoulder_power = 1.5;

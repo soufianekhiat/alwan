@@ -1,10 +1,14 @@
 /* No include guard -- included twice (f32 and f64 passes).
  *
  * Native dual-precision Spectral Power Distribution (SPD) implementation.
- * Every function, file-static helper, and embedded data table is templated
- * over ALWAN_CORE_T, so the f32 pass embeds native float CMF/illuminant/
- * camera tables and integrates in float throughout, while the f64 pass is
+ * Every function and file-static helper is templated over ALWAN_CORE_T, so
+ * the f32 pass integrates in float throughout while the f64 pass is
  * byte-for-byte identical to the former hand-written double implementation.
+ *
+ * The illuminant, observer CMF and camera-sensitivity tables are not embedded
+ * here. They are declared in data/alwan_data_tables.h, defined once per
+ * precision in data/alwan_data_tables_api.c, and read through
+ * alwan_table1d_row in core/alwan_table_core.
  *
  * Spectral primitives (Planck's law) live in core/alwan_spd_core.inc and are
  * reused here via ALWAN_CORE_FNVLIT(spd_planck_radiance).
@@ -185,6 +189,24 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_resample)(ALWAN_CORE_SPD *dst, ALWAN_COR
 }
 
 /* ----------------------------------------------------------------
+ * Registry table -> SPD copy
+ * ---------------------------------------------------------------- */
+
+/* Copy one embedded table from data/alwan_data_tables.h into an SPD.
+ * The extent is the table's enum constant, not a sizeof at the call site, and
+ * every element goes through alwan_table1d_row so the read is governed by
+ * ALWAN_READ_DATA_NO_BOUND_CHECK like every other table read in the library.
+ * The loop is a plain copy with no arithmetic, so the values that land in the
+ * SPD are the CSV bytes, unchanged. */
+static void ALWAN_CORE_FN(spd_copy_table)(ALWAN_CORE_SPD *dst,
+                                          ALWAN_CORE_T const *table, int size) {
+    size_t const n = (size_t)size;
+    for (size_t i = 0; i < n && i < dst->count; i++) {
+        dst->values[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(table, size, (int)i);
+    }
+}
+
+/* ----------------------------------------------------------------
  * Illuminant Loading
  * ---------------------------------------------------------------- */
 
@@ -199,406 +221,173 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_illuminant)(ALWAN_CORE_SPD *out, alwan_i
         return status;
     }
 
-    /* Load illuminant SPD data from embedded CSV */
-    ALWAN_DIAG_PUSH
-    ALWAN_DIAG_DISABLE_FLOAT_CONV
-
+    /* Copy the illuminant's registry table into the SPD */
     switch (ill) {
-        case ALWAN_ILLUMINANT_A: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/A_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_A:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_a), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_D50: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/D50_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_D50:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d50), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_D55: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/D55_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_D55:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d55), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_D65: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/D65_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_D65:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d65), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_E: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/E_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_E:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_e), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F1: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F1_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F1:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F2: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F2_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F2:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f2), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F3: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F3_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F3:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f3), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F4: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F4_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F4:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f4), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F5: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F5_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F5:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f5), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F6: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F6_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F6:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f6), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F7: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F7_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F7:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f7), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F8: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F8_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F8:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f8), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F9: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F9_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F9:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f9), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F10: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F10_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F10:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f10), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F11: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F11_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F11:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f11), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_F12: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/F12_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_F12:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f12), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
 
         /* Extended illuminants */
-        case ALWAN_ILLUMINANT_B: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/B_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_B:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_b), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_C: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/C_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_C:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_c), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_D60: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/D60_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_D60:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d60), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_D75: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/D75_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_D75:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d75), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
 
         /* Additional D-series illuminants */
-        case ALWAN_ILLUMINANT_D40: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/D40_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_D40:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d40), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_D45: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/D45_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_D45:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d45), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_D93: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/D93_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_D93:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d93), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
 
         /* LED illuminants */
-        case ALWAN_ILLUMINANT_LED_B1: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-B1_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_B1:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_LED_B2: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-B2_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_B2:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b2), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_LED_B3: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-B3_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_B3:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b3), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_LED_B4: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-B4_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_B4:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b4), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_LED_B5: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-B5_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_B5:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b5), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_LED_BH1: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-BH1_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_BH1:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_bh1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_LED_RGB1: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-RGB1_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_RGB1:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_rgb1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_LED_V1: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-V1_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_V1:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_v1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_LED_V2: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/LED-V2_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_LED_V2:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_v2), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
 
         /* High Pressure illuminants */
-        case ALWAN_ILLUMINANT_HP1: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/HP1_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_HP1:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp1), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_HP2: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/HP2_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_HP2:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp2), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_HP3: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/HP3_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_HP3:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp3), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_HP4: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/HP4_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_HP4:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp4), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
-        case ALWAN_ILLUMINANT_HP5: {
-            static ALWAN_CORE_T const data[] = {
-#include "../data/illuminants/HP5_360_830_1nm.csv"
-            };
-            size_t const n = sizeof(data) / sizeof(data[0]);
-            for (size_t i = 0; i < n && i < out->count; i++) {
-                out->values[i] = data[i];
-            }
+        case ALWAN_ILLUMINANT_HP5:
+            ALWAN_CORE_FN(spd_copy_table)(out,
+                ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp5), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
-        }
 
         default:
             ALWAN_CORE_FNLIT(alwan_spd_destroy)(out, ctx);
             return ALWAN_E_INVALID;
     }
-
-    ALWAN_DIAG_POP
 
     (void)ctx;
     return ALWAN_OK;
@@ -680,154 +469,47 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
         return status;
     }
 
-    /* Load CMF data from embedded CSV */
-    ALWAN_DIAG_PUSH
-    ALWAN_DIAG_DISABLE_FLOAT_CONV
-
+    /* Copy the observer's registry tables into the three SPDs */
     if (observer == ALWAN_OBSERVER_CIE_1931_2DEG) {
         /* CIE 1931 2 deg Standard Observer */
-        static ALWAN_CORE_T const x_data[] = {
-#include "../data/cmf/cie_1931_2deg_x_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const y_data[] = {
-#include "../data/cmf/cie_1931_2deg_y_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const z_data[] = {
-#include "../data/cmf/cie_1931_2deg_z_360_830_1nm.csv"
-        };
-
-        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
-        for (size_t i = 0; i < n && i < x_bar->count; i++) {
-            x_bar->values[i] = x_data[i];
-            y_bar->values[i] = y_data[i];
-            z_bar->values[i] = z_data[i];
-        }
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
     } else if (observer == ALWAN_OBSERVER_CIE_1964_10DEG) {
         /* CIE 1964 10 deg Standard Observer */
-        static ALWAN_CORE_T const x_data[] = {
-#include "../data/cmf/cie_1964_10deg_x_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const y_data[] = {
-#include "../data/cmf/cie_1964_10deg_y_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const z_data[] = {
-#include "../data/cmf/cie_1964_10deg_z_360_830_1nm.csv"
-        };
-
-        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
-        for (size_t i = 0; i < n && i < x_bar->count; i++) {
-            x_bar->values[i] = x_data[i];
-            y_bar->values[i] = y_data[i];
-            z_bar->values[i] = z_data[i];
-        }
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
     } else if (observer == ALWAN_OBSERVER_CIE_2012_2DEG) {
         /* CIE 2012/2015 2 deg Standard Observer (390-830nm) */
-        static ALWAN_CORE_T const x_data[] = {
-#include "../data/cmf/cie_2012_2deg_x_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const y_data[] = {
-#include "../data/cmf/cie_2012_2deg_y_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const z_data[] = {
-#include "../data/cmf/cie_2012_2deg_z_360_830_1nm.csv"
-        };
-
-        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
-        for (size_t i = 0; i < n && i < x_bar->count; i++) {
-            x_bar->values[i] = x_data[i];
-            y_bar->values[i] = y_data[i];
-            z_bar->values[i] = z_data[i];
-        }
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
     } else if (observer == ALWAN_OBSERVER_CIE_2012_10DEG) {
         /* CIE 2012/2015 10 deg Standard Observer (390-830nm) */
-        static ALWAN_CORE_T const x_data[] = {
-#include "../data/cmf/cie_2012_10deg_x_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const y_data[] = {
-#include "../data/cmf/cie_2012_10deg_y_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const z_data[] = {
-#include "../data/cmf/cie_2012_10deg_z_360_830_1nm.csv"
-        };
-
-        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
-        for (size_t i = 0; i < n && i < x_bar->count; i++) {
-            x_bar->values[i] = x_data[i];
-            y_bar->values[i] = y_data[i];
-            z_bar->values[i] = z_data[i];
-        }
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
     } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
         /* Stockman & Sharpe 2000 2 deg Cone Fundamentals */
-        static ALWAN_CORE_T const x_data[] = {
-#include "../data/cmf/stockman_sharpe_2deg_x_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const y_data[] = {
-#include "../data/cmf/stockman_sharpe_2deg_y_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const z_data[] = {
-#include "../data/cmf/stockman_sharpe_2deg_z_360_830_1nm.csv"
-        };
-
-        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
-        for (size_t i = 0; i < n && i < x_bar->count; i++) {
-            x_bar->values[i] = x_data[i];
-            y_bar->values[i] = y_data[i];
-            z_bar->values[i] = z_data[i];
-        }
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
     } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG) {
         /* CIE 2015 2 deg Cone Fundamental Observer */
-        static ALWAN_CORE_T const x_data[] = {
-#include "../data/cmf/cie_2015_2deg_x_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const y_data[] = {
-#include "../data/cmf/cie_2015_2deg_y_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const z_data[] = {
-#include "../data/cmf/cie_2015_2deg_z_360_830_1nm.csv"
-        };
-
-        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
-        for (size_t i = 0; i < n && i < x_bar->count; i++) {
-            x_bar->values[i] = x_data[i];
-            y_bar->values[i] = y_data[i];
-            z_bar->values[i] = z_data[i];
-        }
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
     } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG) {
         /* CIE 2015 10 deg Cone Fundamental Observer */
-        static ALWAN_CORE_T const x_data[] = {
-#include "../data/cmf/cie_2015_10deg_x_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const y_data[] = {
-#include "../data/cmf/cie_2015_10deg_y_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const z_data[] = {
-#include "../data/cmf/cie_2015_10deg_z_360_830_1nm.csv"
-        };
-
-        size_t const n = sizeof(x_data) / sizeof(x_data[0]);
-        for (size_t i = 0; i < n && i < x_bar->count; i++) {
-            x_bar->values[i] = x_data[i];
-            y_bar->values[i] = y_data[i];
-            z_bar->values[i] = z_data[i];
-        }
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_x), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_y), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_z), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
     } else if (observer == ALWAN_OBSERVER_WRIGHT_GUILD_1931) {
         /* Wright & Guild 1931 2 deg RGB CMFs (historical) */
-        static ALWAN_CORE_T const r_data[] = {
-#include "../data/cmf/wright_guild_1931_r_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const g_data[] = {
-#include "../data/cmf/wright_guild_1931_g_360_830_1nm.csv"
-        };
-        static ALWAN_CORE_T const b_data[] = {
-#include "../data/cmf/wright_guild_1931_b_360_830_1nm.csv"
-        };
-
-        size_t const n = sizeof(r_data) / sizeof(r_data[0]);
-        for (size_t i = 0; i < n && i < x_bar->count; i++) {
-            x_bar->values[i] = r_data[i];
-            y_bar->values[i] = g_data[i];
-            z_bar->values[i] = b_data[i];
-        }
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_r), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_g), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_b), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
     } else {
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(x_bar, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(y_bar, ctx);
@@ -835,7 +517,6 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
         return ALWAN_E_INVALID;
     }
 
-    ALWAN_DIAG_POP
     return ALWAN_OK;
 }
 
@@ -1021,52 +702,23 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(ALWAN_CORE_SPD *spd_
         return ALWAN_E_INVALID;
     }
 
-    /* Load camera sensitivity data from embedded CSV */
-    ALWAN_DIAG_PUSH
-    ALWAN_DIAG_DISABLE_FLOAT_CONV
-
+    /* Copy the camera's registry tables into the three SPDs */
     switch (camera) {
         case ALWAN_CAMERA_NIKON_5100: {
-            static ALWAN_CORE_T const data_r[] = {
-#include "../data/camera_sensitivities/nikon_5100_r.csv"
-            };
-            static ALWAN_CORE_T const data_g[] = {
-#include "../data/camera_sensitivities/nikon_5100_g.csv"
-            };
-            static ALWAN_CORE_T const data_b[] = {
-#include "../data/camera_sensitivities/nikon_5100_b.csv"
-            };
-            size_t const n = sizeof(data_r) / sizeof(data_r[0]);
-            for (size_t i = 0; i < n && i < spd_r->count; i++) {
-                spd_r->values[i] = data_r[i];
-                spd_g->values[i] = data_g[i];
-                spd_b->values[i] = data_b[i];
-            }
+            ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_r), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+            ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_g), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+            ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_b), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
         }
         case ALWAN_CAMERA_SIGMA_SDMERILL: {
-            static ALWAN_CORE_T const data_r[] = {
-#include "../data/camera_sensitivities/sigma_sdmerill_r.csv"
-            };
-            static ALWAN_CORE_T const data_g[] = {
-#include "../data/camera_sensitivities/sigma_sdmerill_g.csv"
-            };
-            static ALWAN_CORE_T const data_b[] = {
-#include "../data/camera_sensitivities/sigma_sdmerill_b.csv"
-            };
-            size_t const n = sizeof(data_r) / sizeof(data_r[0]);
-            for (size_t i = 0; i < n && i < spd_r->count; i++) {
-                spd_r->values[i] = data_r[i];
-                spd_g->values[i] = data_g[i];
-                spd_b->values[i] = data_b[i];
-            }
+            ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_r), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+            ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_g), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
+            ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_b), ALWAN_TABLE_SPD_360_830_1NM_SIZE);
             break;
         }
         default:
             return ALWAN_E_INVALID;
     }
-
-    ALWAN_DIAG_POP
 
     (void)ctx;
     return ALWAN_OK;

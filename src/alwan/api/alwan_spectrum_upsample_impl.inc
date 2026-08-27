@@ -2,10 +2,18 @@
  *
  * Native dual-precision RGB->spectrum upsampling. The basis spectra and
  * Jakob2019 coefficient LUTs are dual-declared (f32 + f64 twins from the
- * same CSV) in alwan_spectrum_upsample.c and read here via
+ * same CSV) in data/alwan_data_tables.h and read here via
  * ALWAN_CORE_FNLIT(NAME), so the f32 pass reads native float data and
  * every operation runs at the selected precision -- a genuine f32 path
  * rather than a widen-to-f64 facade.
+ *
+ * Every element read goes through a reader in core/alwan_table_core, so this
+ * file is governed by ALWAN_READ_DATA_NO_BOUND_CHECK rather than by whatever
+ * bound each loop happened to spell. The extents handed to the readers are the
+ * ALWAN_TABLE_*_SIZE enum constants from the registry, so they are immediate
+ * and the gate folds to nothing; the readers are header-only, which matters
+ * here because this build sets no /GL and no /LTCG and upsampling runs per
+ * pixel.
  */
 
 static inline ALWAN_CORE_T ALWAN_CORE_FN(spu_clamp)(ALWAN_CORE_T x, ALWAN_CORE_T lo, ALWAN_CORE_T hi) {
@@ -26,51 +34,79 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_smits1999)(
         SMITS1999_WAVELENGTH_COUNT, ctx);
     if (status != ALWAN_OK) return status;
 
+    /* One name per basis spectrum, resolved once, exactly as the Jakob2019
+     * path below names its three cubes before sampling. The per-sample read is
+     * alwan_table1d_row: for a loop counter already proved in range the gate is
+     * the identity on the address, so folding the old raw subscript onto it
+     * cannot move a value. */
+    ALWAN_CORE_T const *const basis_white   = ALWAN_CORE_FNLIT(alwan_table_smits1999_white);
+    ALWAN_CORE_T const *const basis_cyan    = ALWAN_CORE_FNLIT(alwan_table_smits1999_cyan);
+    ALWAN_CORE_T const *const basis_magenta = ALWAN_CORE_FNLIT(alwan_table_smits1999_magenta);
+    ALWAN_CORE_T const *const basis_yellow  = ALWAN_CORE_FNLIT(alwan_table_smits1999_yellow);
+    ALWAN_CORE_T const *const basis_red     = ALWAN_CORE_FNLIT(alwan_table_smits1999_red);
+    ALWAN_CORE_T const *const basis_green   = ALWAN_CORE_FNLIT(alwan_table_smits1999_green);
+    ALWAN_CORE_T const *const basis_blue    = ALWAN_CORE_FNLIT(alwan_table_smits1999_blue);
+
     ALWAN_CORE_T r = ALWAN_CORE_FN(spu_clamp)(rgb->r, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
     ALWAN_CORE_T g = ALWAN_CORE_FN(spu_clamp)(rgb->g, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
     ALWAN_CORE_T b = ALWAN_CORE_FN(spu_clamp)(rgb->b, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
 
     if (r <= g && r <= b) {
         for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-            out_spd->values[i] = ALWAN_CORE_FNLIT(smits1999_white)[i] * r;
+            out_spd->values[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                    basis_white, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * r;
         if (g <= b) {
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_cyan)[i] * (g - r);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_cyan, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (g - r);
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_blue)[i] * (b - g);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_blue, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (b - g);
         } else {
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_cyan)[i] * (b - r);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_cyan, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (b - r);
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_green)[i] * (g - b);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_green, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (g - b);
         }
     } else if (g <= r && g <= b) {
         for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-            out_spd->values[i] = ALWAN_CORE_FNLIT(smits1999_white)[i] * g;
+            out_spd->values[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                    basis_white, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * g;
         if (r <= b) {
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_magenta)[i] * (r - g);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_magenta, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (r - g);
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_blue)[i] * (b - r);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_blue, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (b - r);
         } else {
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_magenta)[i] * (b - g);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_magenta, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (b - g);
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_red)[i] * (r - b);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_red, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (r - b);
         }
     } else {
         for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-            out_spd->values[i] = ALWAN_CORE_FNLIT(smits1999_white)[i] * b;
+            out_spd->values[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                    basis_white, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * b;
         if (r <= g) {
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_yellow)[i] * (r - b);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_yellow, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (r - b);
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_green)[i] * (g - r);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_green, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (g - r);
         } else {
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_yellow)[i] * (g - b);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_yellow, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (g - b);
             for (size_t i = 0; i < SMITS1999_WAVELENGTH_COUNT; i++)
-                out_spd->values[i] += ALWAN_CORE_FNLIT(smits1999_red)[i] * (r - g);
+                out_spd->values[i] += ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                        basis_red, ALWAN_TABLE_SMITS1999_SIZE, (int)i) * (r - g);
         }
     }
 
@@ -91,10 +127,18 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_mallett2019)(
 
     ALWAN_CORE_T r = rgb->r, g = rgb->g, b = rgb->b;
 
+    /* Same name-then-read shape as smits1999 above. */
+    ALWAN_CORE_T const *const basis_red   = ALWAN_CORE_FNLIT(alwan_table_mallett2019_red);
+    ALWAN_CORE_T const *const basis_green = ALWAN_CORE_FNLIT(alwan_table_mallett2019_green);
+    ALWAN_CORE_T const *const basis_blue  = ALWAN_CORE_FNLIT(alwan_table_mallett2019_blue);
+
     for (size_t i = 0; i < MALLETT2019_WAVELENGTH_COUNT; i++) {
-        out_spd->values[i] = r * ALWAN_CORE_FNLIT(mallett2019_red)[i] +
-                             g * ALWAN_CORE_FNLIT(mallett2019_green)[i] +
-                             b * ALWAN_CORE_FNLIT(mallett2019_blue)[i];
+        out_spd->values[i] = r * ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                                     basis_red, ALWAN_TABLE_MALLETT2019_SIZE, (int)i) +
+                             g * ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                                     basis_green, ALWAN_TABLE_MALLETT2019_SIZE, (int)i) +
+                             b * ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                                     basis_blue, ALWAN_TABLE_MALLETT2019_SIZE, (int)i);
     }
     for (size_t i = 0; i < MALLETT2019_WAVELENGTH_COUNT; i++) {
         if (out_spd->values[i] < ALWAN_CORE_LITERAL(0.0))

@@ -16,6 +16,13 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+/* ALWAN_READ_DATA_NO_BOUND_CHECK lives here. Without this include the gate
+ * below reads an UNDEFINED macro, which `#if` silently evaluates to 0, so a
+ * user who sets the switch in alwan_config.h still gets the checked path in
+ * every TU that reaches this header without going through alwan.h first --
+ * including the GPU/Halide branch this file exists for. Fail-safe, but the
+ * documented opt-out simply did not work. */
+#include "../alwan_config.h"
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
 /* ================================================================
@@ -145,6 +152,20 @@ ALWAN_INLINE alwan_table_cell alwan_table_cell_unit_v(alwan_scalar pos, int size
  * Rank 1, scalar element
  * ================================================================ */
 
+/* Element read at an INTEGER index -- the rank-1 counterpart of the float
+ * readers below. Same gate, same policy, no interpolation and no arithmetic:
+ * for an index the caller has already proved in range this is the identity on
+ * the address, so folding an existing raw subscript onto it cannot move a
+ * value. It exists so a table addressed by a loop counter or a validated enum
+ * is governed by ALWAN_READ_DATA_NO_BOUND_CHECK exactly like a table addressed
+ * by a coordinate, instead of by whatever bound the call site happened to
+ * spell. Header-only for the same reason as everything else here: with no /GL
+ * and no /LTCG a reader in a .c is a real call per element. */
+ALWAN_INLINE alwan_scalar alwan_table1d_row_v(
+        alwan_scalar const *table, int size, int index) {
+    return table[alwan_table_row_v(index, size)];
+}
+
 /* Weighted form, a*(1-f) + b*f. Matches alwan_lerp and the shipped
  * alwan_lut1d_sample bit for bit. This is ALWAN_SAMPLE_LINEAR. */
 ALWAN_INLINE alwan_scalar alwan_table1d_sample_linear_v(
@@ -209,6 +230,24 @@ ALWAN_INLINE alwan_mat3x3 alwan_table1d_mat3_sample_v(
     if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
         return alwan_table1d_mat3_sample_nearest_v(table, size, coord);
     return alwan_table1d_mat3_sample_linear_v(table, size, coord);
+}
+
+/* ================================================================
+ * Rank 2, row-major with a fixed stride, INTEGER row and column
+ * index = row*stride + col
+ *
+ * Both coordinates go through the row gate, not just the row. A stride table
+ * is exactly where a correct row bound and a wrong column bound read into the
+ * NEXT ROW rather than off the end: silent wrong data, no crash, no warning.
+ * That is the shape the 109 reflectance sample sets had while they were 109
+ * separate arrays behind an array of pointers.
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_table2d_row_at_v(
+        alwan_scalar const *table, int rows, int stride, int row, int col) {
+    int const r = alwan_table_row_v(row, rows);
+    int const c = alwan_table_row_v(col, stride);
+    return table[(size_t)r * (size_t)stride + (size_t)c];
 }
 
 /* ================================================================

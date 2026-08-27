@@ -9,6 +9,8 @@
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_quality_core.h"
+#include "../core/alwan_table_core.h"
+#include "../data/alwan_data_tables.h"
 #include <math.h>
 
 /* ----------------------------------------------------------------
@@ -42,16 +44,21 @@ alwan_f64 alwan_cct_mccamy_xy_f64(alwan_vec2_f64 const *xy) {
  * CCT = 1e6 / reciprocal_mrd
  */
 
-/* Robertson 1968 isotemperature line table (31 entries, r=0..600 MRD^-1) */
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const robertson_table_data[] = {
-#include "../data/fixtures/robertson_cct_locus.csv"
-};
-ALWAN_DIAG_POP
-
-#define ROBERTSON_TABLE_SIZE 31
-#define ROBERTSON_TABLE_STRIDE 4  /* reciprocal_mrd, u, v, slope */
+/* The Robertson 1968 isotemperature locus is homed in the registry as
+ * alwan_table_robertson_locus_{f32,f64}: ALWAN_TABLE_ROBERTSON_ROWS rows of
+ * ALWAN_TABLE_ROBERTSON_STRIDE values (reciprocal_mrd, u, v, slope), declared
+ * with its extents in data/alwan_data_tables.h. ROBERTSON_AT reads it through
+ * alwan_table2d_row_at_f64_v, which gates the row AND the column, so
+ * ALWAN_READ_DATA_NO_BOUND_CHECK governs this table like every other one.
+ *
+ * Both precisions read the f64 table. alwan_cct_robertson_xy_f32 has always
+ * narrowed each value from f64, and repointing it at the f32 twin would change
+ * its output: decimal->f32 is not always equal to decimal->f64->f32. */
+#define ROBERTSON_AT(row, col)                                  \
+    alwan_table2d_row_at_f64_v(alwan_table_robertson_locus_f64, \
+                               ALWAN_TABLE_ROBERTSON_ROWS,      \
+                               ALWAN_TABLE_ROBERTSON_STRIDE,    \
+                               (row), (col))
 
 alwan_f64 alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy) {
     if (!xy) {
@@ -79,12 +86,10 @@ alwan_f64 alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy) {
      * Matches colour-science's _uv_to_CCT_Robertson1968 implementation. */
     alwan_f64 last_dt = ALWAN_ZERO;
 
-    for (size_t i = 1; i < ROBERTSON_TABLE_SIZE; i++) {
-        size_t off = i * ROBERTSON_TABLE_STRIDE;
-
-        alwan_f64 u_i = robertson_table_data[off + 1];
-        alwan_f64 v_i = robertson_table_data[off + 2];
-        alwan_f64 t_i = robertson_table_data[off + 3];
+    for (int i = 1; i < ALWAN_TABLE_ROBERTSON_ROWS; i++) {
+        alwan_f64 u_i = ROBERTSON_AT(i, 1);
+        alwan_f64 v_i = ROBERTSON_AT(i, 2);
+        alwan_f64 t_i = ROBERTSON_AT(i, 3);
 
         /* Normalized direction vector along the isotemperature line */
         alwan_f64 du = ALWAN_ONE;
@@ -98,7 +103,7 @@ alwan_f64 alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy) {
         alwan_f64 vv = v - v_i;
         alwan_f64 dt = -uu * dv + vv * du;
 
-        if (dt <= ALWAN_ZERO || i == ROBERTSON_TABLE_SIZE - 1) {
+        if (dt <= ALWAN_ZERO || i == ALWAN_TABLE_ROBERTSON_ROWS - 1) {
             if (dt > ALWAN_ZERO) dt = ALWAN_ZERO;
 
             dt = -dt;
@@ -107,9 +112,8 @@ alwan_f64 alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy) {
                 ? ALWAN_ZERO
                 : dt / (last_dt + dt);
 
-            size_t off_prev = (i - 1) * ROBERTSON_TABLE_STRIDE;
-            alwan_f64 r_prev = robertson_table_data[off_prev];
-            alwan_f64 r_curr = robertson_table_data[off];
+            alwan_f64 r_prev = ROBERTSON_AT(i - 1, 0);
+            alwan_f64 r_curr = ROBERTSON_AT(i, 0);
 
             alwan_f64 r = r_prev * f + r_curr * (ALWAN_ONE - f);
 
@@ -271,523 +275,46 @@ alwan_f64 alwan_cct_kang_xy_f64(alwan_vec2_f64 const *xy) {
  * CRI: Color Rendering Index (CIE 13.3-1995)
  * ---------------------------------------------------------------- */
 
-/* TCS (Test Color Samples) reflectance data
- * 14 samples, 360-830nm at 5nm intervals (95 values each)
- * Generated from colour-science library */
+/* TCS (Test Color Samples), CIE 13.3-1995 TCS01..TCS14.
+ *
+ * Homed in the registry as alwan_table_tcs_reflectance_{f32,f64}: one
+ * row-major table of ALWAN_TABLE_TCS_SAMPLES rows x
+ * ALWAN_TABLE_QUALITY_SPECTRUM wavelengths (360-830nm at 5nm), declared with
+ * its extents in data/alwan_data_tables.h and read through
+ * alwan_table2d_row_at_f64_v. That reader gates the row AND the column, which
+ * the 14 arrays behind an array of pointers could not: there, a sample index
+ * past the end of the set was invisible to the compiler. */
 #define TCS_WAVELENGTH_MIN ALWAN_LITERAL(360.0)
 #define TCS_WAVELENGTH_MAX ALWAN_LITERAL(830.0)
-#define TCS_COUNT 95
-
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-
-/* TCS 01-08: Standard test colors for Ra calculation */
-static alwan_f64 const tcs_01_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_01_reflectance.csv"
-};
-
-static alwan_f64 const tcs_02_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_02_reflectance.csv"
-};
-
-static alwan_f64 const tcs_03_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_03_reflectance.csv"
-};
-
-static alwan_f64 const tcs_04_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_04_reflectance.csv"
-};
-
-static alwan_f64 const tcs_05_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_05_reflectance.csv"
-};
-
-static alwan_f64 const tcs_06_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_06_reflectance.csv"
-};
-
-static alwan_f64 const tcs_07_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_07_reflectance.csv"
-};
-
-static alwan_f64 const tcs_08_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_08_reflectance.csv"
-};
-
-/* TCS 09-14: Special CRI colors (saturated red, yellow, green, blue, etc.) */
-static alwan_f64 const tcs_09_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_09_reflectance.csv"
-};
-
-static alwan_f64 const tcs_10_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_10_reflectance.csv"
-};
-
-static alwan_f64 const tcs_11_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_11_reflectance.csv"
-};
-
-static alwan_f64 const tcs_12_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_12_reflectance.csv"
-};
-
-static alwan_f64 const tcs_13_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_13_reflectance.csv"
-};
-
-static alwan_f64 const tcs_14_reflectance[TCS_COUNT] = {
-#include "../data/fixtures/tcs_14_reflectance.csv"
-};
-
-ALWAN_DIAG_POP
-
-/* Array of pointers to TCS reflectance data for easy iteration */
-static alwan_f64 const *tcs_reflectances[14] = {
-    tcs_01_reflectance, tcs_02_reflectance, tcs_03_reflectance, tcs_04_reflectance,
-    tcs_05_reflectance, tcs_06_reflectance, tcs_07_reflectance, tcs_08_reflectance,
-    tcs_09_reflectance, tcs_10_reflectance, tcs_11_reflectance, tcs_12_reflectance,
-    tcs_13_reflectance, tcs_14_reflectance
-};
 
 /* ----------------------------------------------------------------
  * VS (Vivid Saturated) Color Samples for CQS
  * ---------------------------------------------------------------- */
 
-/* VS (saturated Munsell) reflectance data for CQS calculation
- * 15 samples, 360-830nm at 5nm intervals (95 values each)
- * Data from NIST CQS 9.0 dataset via colour-science library */
+/* VS (saturated Munsell) samples for CQS, NIST CQS 9.0.
+ *
+ * Homed in the registry as alwan_table_vs_reflectance_{f32,f64}:
+ * ALWAN_TABLE_VS_SAMPLES rows x ALWAN_TABLE_QUALITY_SPECTRUM wavelengths,
+ * read through alwan_table2d_row_at_f64_v. */
 #define VS_WAVELENGTH_MIN ALWAN_LITERAL(360.0)
 #define VS_WAVELENGTH_MAX ALWAN_LITERAL(830.0)
-#define VS_COUNT 95
-
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-
-static alwan_f64 const vs_01_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_01_reflectance.csv"
-};
-
-static alwan_f64 const vs_02_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_02_reflectance.csv"
-};
-
-static alwan_f64 const vs_03_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_03_reflectance.csv"
-};
-
-static alwan_f64 const vs_04_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_04_reflectance.csv"
-};
-
-static alwan_f64 const vs_05_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_05_reflectance.csv"
-};
-
-static alwan_f64 const vs_06_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_06_reflectance.csv"
-};
-
-static alwan_f64 const vs_07_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_07_reflectance.csv"
-};
-
-static alwan_f64 const vs_08_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_08_reflectance.csv"
-};
-
-static alwan_f64 const vs_09_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_09_reflectance.csv"
-};
-
-static alwan_f64 const vs_10_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_10_reflectance.csv"
-};
-
-static alwan_f64 const vs_11_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_11_reflectance.csv"
-};
-
-static alwan_f64 const vs_12_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_12_reflectance.csv"
-};
-
-static alwan_f64 const vs_13_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_13_reflectance.csv"
-};
-
-static alwan_f64 const vs_14_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_14_reflectance.csv"
-};
-
-static alwan_f64 const vs_15_reflectance[VS_COUNT] = {
-#include "../data/fixtures/vs_15_reflectance.csv"
-};
-
-ALWAN_DIAG_POP
-
-/* Array of pointers to VS reflectance data for easy iteration */
-static alwan_f64 const *vs_reflectances[15] = {
-    vs_01_reflectance, vs_02_reflectance, vs_03_reflectance, vs_04_reflectance,
-    vs_05_reflectance, vs_06_reflectance, vs_07_reflectance, vs_08_reflectance,
-    vs_09_reflectance, vs_10_reflectance, vs_11_reflectance, vs_12_reflectance,
-    vs_13_reflectance, vs_14_reflectance, vs_15_reflectance
-};
 
 /* ----------------------------------------------------------------
  * CES (Color Evaluation Samples) for TM-30 and CIE 224:2017
  * ---------------------------------------------------------------- */
 
-/* CES (Color Evaluation Samples) reflectance data for TM-30 and CIE 224:2017
- * 80 samples, 360-830nm at 5nm intervals (95 values each)
- * Data from CIE 224:2017 via colour-science library */
+/* CES (Colour Evaluation Samples) for TM-30 and CIE 224:2017.
+ *
+ * Homed in the registry as alwan_table_ces_reflectance_{f32,f64}:
+ * ALWAN_TABLE_CES_SAMPLES rows x ALWAN_TABLE_QUALITY_SPECTRUM wavelengths,
+ * read through alwan_table2d_row_at_f64_v.
+ *
+ * ALWAN_TABLE_CES_SAMPLES is the one number that changes if the set is
+ * regenerated at 99 samples: the loop bound below reads it rather than a
+ * literal. The 99.0 divisor in alwan_tm30_rf_f64 is a SEPARATE, separately
+ * baselined decision and must not be changed with it. */
 #define CES_WAVELENGTH_MIN ALWAN_LITERAL(360.0)
 #define CES_WAVELENGTH_MAX ALWAN_LITERAL(830.0)
-#define CES_COUNT 95
-
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-
-static alwan_f64 const ces_01_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_01_reflectance.csv"
-};
-
-static alwan_f64 const ces_02_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_02_reflectance.csv"
-};
-
-static alwan_f64 const ces_03_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_03_reflectance.csv"
-};
-
-static alwan_f64 const ces_04_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_04_reflectance.csv"
-};
-
-static alwan_f64 const ces_05_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_05_reflectance.csv"
-};
-
-static alwan_f64 const ces_06_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_06_reflectance.csv"
-};
-
-static alwan_f64 const ces_07_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_07_reflectance.csv"
-};
-
-static alwan_f64 const ces_08_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_08_reflectance.csv"
-};
-
-static alwan_f64 const ces_09_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_09_reflectance.csv"
-};
-
-static alwan_f64 const ces_10_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_10_reflectance.csv"
-};
-
-static alwan_f64 const ces_11_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_11_reflectance.csv"
-};
-
-static alwan_f64 const ces_12_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_12_reflectance.csv"
-};
-
-static alwan_f64 const ces_13_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_13_reflectance.csv"
-};
-
-static alwan_f64 const ces_14_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_14_reflectance.csv"
-};
-
-static alwan_f64 const ces_15_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_15_reflectance.csv"
-};
-
-static alwan_f64 const ces_16_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_16_reflectance.csv"
-};
-
-static alwan_f64 const ces_17_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_17_reflectance.csv"
-};
-
-static alwan_f64 const ces_18_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_18_reflectance.csv"
-};
-
-static alwan_f64 const ces_19_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_19_reflectance.csv"
-};
-
-static alwan_f64 const ces_20_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_20_reflectance.csv"
-};
-
-static alwan_f64 const ces_21_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_21_reflectance.csv"
-};
-
-static alwan_f64 const ces_22_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_22_reflectance.csv"
-};
-
-static alwan_f64 const ces_23_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_23_reflectance.csv"
-};
-
-static alwan_f64 const ces_24_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_24_reflectance.csv"
-};
-
-static alwan_f64 const ces_25_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_25_reflectance.csv"
-};
-
-static alwan_f64 const ces_26_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_26_reflectance.csv"
-};
-
-static alwan_f64 const ces_27_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_27_reflectance.csv"
-};
-
-static alwan_f64 const ces_28_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_28_reflectance.csv"
-};
-
-static alwan_f64 const ces_29_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_29_reflectance.csv"
-};
-
-static alwan_f64 const ces_30_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_30_reflectance.csv"
-};
-
-static alwan_f64 const ces_31_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_31_reflectance.csv"
-};
-
-static alwan_f64 const ces_32_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_32_reflectance.csv"
-};
-
-static alwan_f64 const ces_33_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_33_reflectance.csv"
-};
-
-static alwan_f64 const ces_34_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_34_reflectance.csv"
-};
-
-static alwan_f64 const ces_35_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_35_reflectance.csv"
-};
-
-static alwan_f64 const ces_36_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_36_reflectance.csv"
-};
-
-static alwan_f64 const ces_37_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_37_reflectance.csv"
-};
-
-static alwan_f64 const ces_38_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_38_reflectance.csv"
-};
-
-static alwan_f64 const ces_39_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_39_reflectance.csv"
-};
-
-static alwan_f64 const ces_40_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_40_reflectance.csv"
-};
-
-static alwan_f64 const ces_41_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_41_reflectance.csv"
-};
-
-static alwan_f64 const ces_42_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_42_reflectance.csv"
-};
-
-static alwan_f64 const ces_43_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_43_reflectance.csv"
-};
-
-static alwan_f64 const ces_44_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_44_reflectance.csv"
-};
-
-static alwan_f64 const ces_45_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_45_reflectance.csv"
-};
-
-static alwan_f64 const ces_46_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_46_reflectance.csv"
-};
-
-static alwan_f64 const ces_47_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_47_reflectance.csv"
-};
-
-static alwan_f64 const ces_48_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_48_reflectance.csv"
-};
-
-static alwan_f64 const ces_49_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_49_reflectance.csv"
-};
-
-static alwan_f64 const ces_50_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_50_reflectance.csv"
-};
-
-static alwan_f64 const ces_51_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_51_reflectance.csv"
-};
-
-static alwan_f64 const ces_52_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_52_reflectance.csv"
-};
-
-static alwan_f64 const ces_53_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_53_reflectance.csv"
-};
-
-static alwan_f64 const ces_54_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_54_reflectance.csv"
-};
-
-static alwan_f64 const ces_55_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_55_reflectance.csv"
-};
-
-static alwan_f64 const ces_56_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_56_reflectance.csv"
-};
-
-static alwan_f64 const ces_57_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_57_reflectance.csv"
-};
-
-static alwan_f64 const ces_58_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_58_reflectance.csv"
-};
-
-static alwan_f64 const ces_59_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_59_reflectance.csv"
-};
-
-static alwan_f64 const ces_60_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_60_reflectance.csv"
-};
-
-static alwan_f64 const ces_61_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_61_reflectance.csv"
-};
-
-static alwan_f64 const ces_62_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_62_reflectance.csv"
-};
-
-static alwan_f64 const ces_63_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_63_reflectance.csv"
-};
-
-static alwan_f64 const ces_64_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_64_reflectance.csv"
-};
-
-static alwan_f64 const ces_65_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_65_reflectance.csv"
-};
-
-static alwan_f64 const ces_66_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_66_reflectance.csv"
-};
-
-static alwan_f64 const ces_67_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_67_reflectance.csv"
-};
-
-static alwan_f64 const ces_68_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_68_reflectance.csv"
-};
-
-static alwan_f64 const ces_69_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_69_reflectance.csv"
-};
-
-static alwan_f64 const ces_70_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_70_reflectance.csv"
-};
-
-static alwan_f64 const ces_71_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_71_reflectance.csv"
-};
-
-static alwan_f64 const ces_72_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_72_reflectance.csv"
-};
-
-static alwan_f64 const ces_73_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_73_reflectance.csv"
-};
-
-static alwan_f64 const ces_74_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_74_reflectance.csv"
-};
-
-static alwan_f64 const ces_75_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_75_reflectance.csv"
-};
-
-static alwan_f64 const ces_76_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_76_reflectance.csv"
-};
-
-static alwan_f64 const ces_77_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_77_reflectance.csv"
-};
-
-static alwan_f64 const ces_78_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_78_reflectance.csv"
-};
-
-static alwan_f64 const ces_79_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_79_reflectance.csv"
-};
-
-static alwan_f64 const ces_80_reflectance[CES_COUNT] = {
-#include "../data/fixtures/ces_80_reflectance.csv"
-};
-
-ALWAN_DIAG_POP
-
-/* Array of pointers to CES reflectance data for easy iteration */
-static alwan_f64 const *ces_reflectances[80] = {
-    ces_01_reflectance, ces_02_reflectance, ces_03_reflectance, ces_04_reflectance, ces_05_reflectance,
-    ces_06_reflectance, ces_07_reflectance, ces_08_reflectance, ces_09_reflectance, ces_10_reflectance,
-    ces_11_reflectance, ces_12_reflectance, ces_13_reflectance, ces_14_reflectance, ces_15_reflectance,
-    ces_16_reflectance, ces_17_reflectance, ces_18_reflectance, ces_19_reflectance, ces_20_reflectance,
-    ces_21_reflectance, ces_22_reflectance, ces_23_reflectance, ces_24_reflectance, ces_25_reflectance,
-    ces_26_reflectance, ces_27_reflectance, ces_28_reflectance, ces_29_reflectance, ces_30_reflectance,
-    ces_31_reflectance, ces_32_reflectance, ces_33_reflectance, ces_34_reflectance, ces_35_reflectance,
-    ces_36_reflectance, ces_37_reflectance, ces_38_reflectance, ces_39_reflectance, ces_40_reflectance,
-    ces_41_reflectance, ces_42_reflectance, ces_43_reflectance, ces_44_reflectance, ces_45_reflectance,
-    ces_46_reflectance, ces_47_reflectance, ces_48_reflectance, ces_49_reflectance, ces_50_reflectance,
-    ces_51_reflectance, ces_52_reflectance, ces_53_reflectance, ces_54_reflectance, ces_55_reflectance,
-    ces_56_reflectance, ces_57_reflectance, ces_58_reflectance, ces_59_reflectance, ces_60_reflectance,
-    ces_61_reflectance, ces_62_reflectance, ces_63_reflectance, ces_64_reflectance, ces_65_reflectance,
-    ces_66_reflectance, ces_67_reflectance, ces_68_reflectance, ces_69_reflectance, ces_70_reflectance,
-    ces_71_reflectance, ces_72_reflectance, ces_73_reflectance, ces_74_reflectance, ces_75_reflectance,
-    ces_76_reflectance, ces_77_reflectance, ces_78_reflectance, ces_79_reflectance, ces_80_reflectance
-};
 
 /* ----------------------------------------------------------------
  * CRI (Color Rendering Index)
@@ -816,7 +343,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
 
     /* Step 1: Resample test SPD to TCS wavelength range (360-830nm @ 5nm) */
     alwan_spd_f64 test_spd_resampled;
-    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, TCS_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
+    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -874,7 +401,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
      * Uses Planckian radiator for all CCTs; CIE 13.3-1995 specifies D-illuminant
      * for CCT >= 5000K but blackbody is a common substitute. */
     alwan_spd_f64 reference_spd;
-    status = alwan_spd_blackbody_f64(&reference_spd, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, TCS_COUNT, ctx);
+    status = alwan_spd_blackbody_f64(&reference_spd, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
@@ -916,15 +443,17 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     for (int i = 0; i < 8; i++) {
         /* Create TCS reflectance SPD */
         alwan_spd_f64 tcs_spd;
-        status = alwan_spd_create_f64(&tcs_spd, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, TCS_COUNT, ctx);
+        status = alwan_spd_create_f64(&tcs_spd, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
         if (status != ALWAN_OK) {
             alwan_spd_destroy_f64(&reference_spd, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
         /* Copy TCS reflectance data */
-        for (size_t j = 0; j < TCS_COUNT; j++) {
-            tcs_spd.values[j] = tcs_reflectances[i][j];
+        for (int j = 0; j < ALWAN_TABLE_QUALITY_SPECTRUM; j++) {
+            tcs_spd.values[j] = alwan_table2d_row_at_f64_v(
+                alwan_table_tcs_reflectance_f64, ALWAN_TABLE_TCS_SAMPLES,
+                ALWAN_TABLE_QUALITY_SPECTRUM, i, j);
         }
 
         /* Calculate XYZ under test illuminant */
@@ -1000,8 +529,18 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
 
 /* ASTM E313 coefficient table for Yellowness Index
  * Format: Cx, Cz for each illuminant/observer pair
- * Order: C/2 deg, D65/2 deg, C/10 deg, D65/10 deg */
-static alwan_f64 const astm_e313_yi_coeffs[][2] = {
+ * Order: C/2 deg, D65/2 deg, C/10 deg, D65/10 deg
+ *
+ * STAYS HERE, and data/alwan_data_tables.h records why: these eight numbers
+ * are published ASTM E313 coefficients written as ALWAN_LITERAL(), not a CSV
+ * payload, so moving them means retyping them. The extent is spelled once,
+ * below, and every subscript goes through alwan_table_row_f64_v -- the same
+ * row gate the registry tables use, under the same
+ * ALWAN_READ_DATA_NO_BOUND_CHECK. The callers validate the enum first; this is
+ * the backstop for when that validation is itself wrong. */
+enum { ASTM_E313_ROWS = 4 };
+
+static alwan_f64 const astm_e313_yi_coeffs[ASTM_E313_ROWS][2] = {
     {ALWAN_LITERAL(1.2769), ALWAN_LITERAL(1.0592)},  /* C/2 deg */
     {ALWAN_LITERAL(1.2985), ALWAN_LITERAL(1.1335)},  /* D65/2 deg */
     {ALWAN_LITERAL(1.2871), ALWAN_LITERAL(1.0781)},  /* C/10 deg */
@@ -1040,8 +579,9 @@ alwan_f64 alwan_yellowness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e3
         return ALWAN_LITERAL(-1.0);
     }
 
-    alwan_f64 Cx = astm_e313_yi_coeffs[illuminant][0];
-    alwan_f64 Cz = astm_e313_yi_coeffs[illuminant][1];
+    int const row = alwan_table_row_f64_v((int)illuminant, ASTM_E313_ROWS);
+    alwan_f64 Cx = astm_e313_yi_coeffs[row][0];
+    alwan_f64 Cz = astm_e313_yi_coeffs[row][1];
 
     return alwan_yellowness_astm_e313_f64_v(X, Y, Z, Cx, Cz);
 }
@@ -1122,12 +662,10 @@ alwan_f32 alwan_cct_robertson_xy_f32(alwan_vec2_f32 const *xy) {
 
     alwan_f32 last_dt = ALWAN_ZERO_F32;
 
-    for (size_t i = 1; i < ROBERTSON_TABLE_SIZE; i++) {
-        size_t off = i * ROBERTSON_TABLE_STRIDE;
-
-        alwan_f32 u_i = (alwan_f32)robertson_table_data[off + 1];
-        alwan_f32 v_i = (alwan_f32)robertson_table_data[off + 2];
-        alwan_f32 t_i = (alwan_f32)robertson_table_data[off + 3];
+    for (int i = 1; i < ALWAN_TABLE_ROBERTSON_ROWS; i++) {
+        alwan_f32 u_i = (alwan_f32)ROBERTSON_AT(i, 1);
+        alwan_f32 v_i = (alwan_f32)ROBERTSON_AT(i, 2);
+        alwan_f32 t_i = (alwan_f32)ROBERTSON_AT(i, 3);
 
         alwan_f32 du = ALWAN_ONE_F32;
         alwan_f32 dv = t_i;
@@ -1139,7 +677,7 @@ alwan_f32 alwan_cct_robertson_xy_f32(alwan_vec2_f32 const *xy) {
         alwan_f32 vv = v - v_i;
         alwan_f32 dt = -uu * dv + vv * du;
 
-        if (dt <= ALWAN_ZERO_F32 || i == ROBERTSON_TABLE_SIZE - 1) {
+        if (dt <= ALWAN_ZERO_F32 || i == ALWAN_TABLE_ROBERTSON_ROWS - 1) {
             if (dt > ALWAN_ZERO_F32) dt = ALWAN_ZERO_F32;
 
             dt = -dt;
@@ -1148,9 +686,8 @@ alwan_f32 alwan_cct_robertson_xy_f32(alwan_vec2_f32 const *xy) {
                 ? ALWAN_ZERO_F32
                 : dt / (last_dt + dt);
 
-            size_t off_prev = (i - 1) * ROBERTSON_TABLE_STRIDE;
-            alwan_f32 r_prev = (alwan_f32)robertson_table_data[off_prev];
-            alwan_f32 r_curr = (alwan_f32)robertson_table_data[off];
+            alwan_f32 r_prev = (alwan_f32)ROBERTSON_AT(i - 1, 0);
+            alwan_f32 r_curr = (alwan_f32)ROBERTSON_AT(i, 0);
 
             alwan_f32 r = r_prev * f + r_curr * (ALWAN_ONE_F32 - f);
 
@@ -1219,8 +756,9 @@ alwan_f32 alwan_yellowness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e3
         return ALWAN_LITERAL_F32(-1.0);
     }
 
-    alwan_f32 Cx = (alwan_f32)astm_e313_yi_coeffs[illuminant][0];
-    alwan_f32 Cz = (alwan_f32)astm_e313_yi_coeffs[illuminant][1];
+    int const row = alwan_table_row_f64_v((int)illuminant, ASTM_E313_ROWS);
+    alwan_f32 Cx = (alwan_f32)astm_e313_yi_coeffs[row][0];
+    alwan_f32 Cz = (alwan_f32)astm_e313_yi_coeffs[row][1];
 
     return alwan_yellowness_astm_e313_f32_v(X, Y, Z, Cx, Cz);
 }
@@ -1256,23 +794,22 @@ alwan_f32 alwan_whiteness_cie2004_f32(alwan_vec2_f32 const *xy, alwan_f32 Y, alw
 #define SSI_WAVELENGTH_MAX ALWAN_LITERAL(675.0)
 #define SSI_WAVELENGTH_COUNT 301
 
-/* SSI uses 10nm bins: 380-670nm (30 bins) */
-#define SSI_BIN_COUNT 30
+/* SSI uses 10nm bins: 380-670nm (30 bins). One spelling of that count, the
+ * registry enum, so the working buffers below cannot drift from the weight
+ * table they are multiplied by. */
+#define SSI_BIN_COUNT ALWAN_TABLE_SSI_BIN_COUNT
 
-/* Integration weights for 10nm binning (trapezoidal rule) */
+/* The 11-tap trapezoidal binning kernel and the 30 per-bin spectral weights
+ * are homed in the registry as alwan_table_ssi_bin_weights_{f32,f64} (extent
+ * ALWAN_TABLE_SSI_BIN_TAPS) and alwan_table_ssi_spectral_weights_{f32,f64}
+ * (extent ALWAN_TABLE_SSI_BIN_COUNT), read through alwan_table1d_row_f64_v.
+ *
+ * The 3-tap smoothing kernel stays here: all nine of its subscripts are the
+ * literals 0, 1 and 2, so no runtime value ever reaches them and there is
+ * nothing for the row gate to gate. */
+/* Convolution kernel for smoothing: [0.22, 0.56, 0.22] */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_f64 const ssi_bin_weights[11] = {
-#include "../data/ssi_bin_weights.csv"
-};
-
-/* SSI spectral weights (30 values for 10nm bins from 380-670nm)
- * Source: Academy S-2018-001 / SMPTE ST 2122 */
-static alwan_f64 const ssi_spectral_weights[SSI_BIN_COUNT] = {
-#include "../data/ssi_spectral_weights.csv"
-};
-
-/* Convolution kernel for smoothing: [0.22, 0.56, 0.22] */
 static alwan_f64 const ssi_smooth_kernel[3] = {
 #include "../data/ssi_smooth_kernel.csv"
 };
@@ -1318,10 +855,12 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 c
         /* Each bin covers 10nm, starting at 380nm (index 5 in resampled data) */
         size_t start_idx = 5 + i * 10;  /* 380nm = 375nm + 5nm */
 
-        for (size_t j = 0; j < 11; j++) {
+        for (size_t j = 0; j < ALWAN_TABLE_SSI_BIN_TAPS; j++) {
             if (start_idx + j < SSI_WAVELENGTH_COUNT) {
-                test_binned[i] += test_resampled.values[start_idx + j] * ssi_bin_weights[j];
-                ref_binned[i] += ref_resampled.values[start_idx + j] * ssi_bin_weights[j];
+                alwan_f64 const w = alwan_table1d_row_f64_v(
+                    alwan_table_ssi_bin_weights_f64, ALWAN_TABLE_SSI_BIN_TAPS, (int)j);
+                test_binned[i] += test_resampled.values[start_idx + j] * w;
+                ref_binned[i] += ref_resampled.values[start_idx + j] * w;
             }
         }
     }
@@ -1354,7 +893,8 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 c
         alwan_f64 dr = (test_binned[i] - ref_binned[i]) / (ref_binned[i] + ALWAN_LITERAL(1.0) / ALWAN_LITERAL(30.0));
 
         /* Apply spectral weight */
-        wdr[i] = dr * ssi_spectral_weights[i];
+        wdr[i] = dr * alwan_table1d_row_f64_v(alwan_table_ssi_spectral_weights_f64,
+                                              ALWAN_TABLE_SSI_BIN_COUNT, (int)i);
     }
 
     /* Step 5: Smooth with 1D convolution [0.22, 0.56, 0.22] */
@@ -1489,7 +1029,7 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
 
     /* Step 1: Resample test SPD to VS wavelength range (360-830nm @ 5nm) */
     alwan_spd_f64 test_spd_resampled;
-    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, VS_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
+    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1544,7 +1084,7 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
 
     /* Step 3: Generate blackbody reference at same CCT */
     alwan_spd_f64 reference_spd;
-    status = alwan_spd_blackbody_f64(&reference_spd, cct, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, VS_COUNT, ctx);
+    status = alwan_spd_blackbody_f64(&reference_spd, cct, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
@@ -1603,21 +1143,23 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 4: Calculate color differences for all 15 VS samples */
+    /* Step 4: Calculate color differences for every VS sample */
     alwan_f64 delta_e_sum = ALWAN_LITERAL(0.0);
 
-    for (int i = 0; i < 15; i++) {
+    for (int i = 0; i < ALWAN_TABLE_VS_SAMPLES; i++) {
         /* Create VS reflectance SPD */
         alwan_spd_f64 vs_spd;
-        status = alwan_spd_create_f64(&vs_spd, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, VS_COUNT, ctx);
+        status = alwan_spd_create_f64(&vs_spd, VS_WAVELENGTH_MIN, VS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
         if (status != ALWAN_OK) {
             alwan_spd_destroy_f64(&reference_spd, ctx);
             return ALWAN_LITERAL(-1.0);
         }
 
         /* Copy VS reflectance data */
-        for (size_t j = 0; j < VS_COUNT; j++) {
-            vs_spd.values[j] = vs_reflectances[i][j];
+        for (int j = 0; j < ALWAN_TABLE_QUALITY_SPECTRUM; j++) {
+            vs_spd.values[j] = alwan_table2d_row_at_f64_v(
+                alwan_table_vs_reflectance_f64, ALWAN_TABLE_VS_SAMPLES,
+                ALWAN_TABLE_QUALITY_SPECTRUM, i, j);
         }
 
         /* Calculate XYZ under test illuminant */
@@ -1679,7 +1221,10 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
     alwan_spd_destroy_f64(&reference_spd, ctx);
     alwan_spd_destroy_f64(&test_spd_resampled, ctx);
 
-    /* Step 5: Calculate CQS using simplified formula */
+    /* Step 5: Calculate CQS using simplified formula.
+     * 15.0 is the VS sample count spelled as a value. It is a divisor, not an
+     * extent, so it stays a literal; a regenerated VS set means revisiting
+     * this line deliberately rather than having it follow the enum. */
     alwan_f64 avg_delta_e = delta_e_sum / ALWAN_LITERAL(15.0);
     alwan_f64 cqs = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(3.2) * avg_delta_e;
 
@@ -1713,7 +1258,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
 
     /* Step 1: Resample test SPD to CES wavelength range (360-830nm @ 5nm) */
     alwan_spd_f64 test_spd_resampled;
-    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
+    int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
         return ALWAN_LITERAL(-1.0);
     }
@@ -1770,14 +1315,14 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     alwan_spd_f64 reference_spd;
     if (cct < ALWAN_LITERAL(5000.0)) {
         /* Use blackbody for low CCT */
-        status = alwan_spd_blackbody_f64(&reference_spd, cct, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT, ctx);
+        status = alwan_spd_blackbody_f64(&reference_spd, cct, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
     } else {
         /* Use D-illuminant for high CCT - use D65 as approximation */
         status = alwan_spd_illuminant_f64(&reference_spd, ALWAN_ILLUMINANT_D65, ctx);
         if (status == ALWAN_OK) {
             /* Resample to CES wavelength range */
             alwan_spd_f64 temp_spd;
-            status = alwan_spd_resample_f64(&temp_spd, &reference_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
+            status = alwan_spd_resample_f64(&temp_spd, &reference_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
             alwan_spd_destroy_f64(&reference_spd, ctx);
             if (status == ALWAN_OK) {
                 reference_spd = temp_spd;
@@ -1840,13 +1385,13 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     vc_ref.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
     vc_ref.discount_illuminant = 0;
 
-    /* Step 4: Calculate color differences for all 80 CES samples */
+    /* Step 4: Calculate color differences for every CES sample */
     alwan_f64 delta_e_sum = ALWAN_LITERAL(0.0);
 
-    for (int i = 0; i < 80; i++) {
+    for (int i = 0; i < ALWAN_TABLE_CES_SAMPLES; i++) {
         /* Create CES reflectance SPD */
         alwan_spd_f64 ces_spd;
-        status = alwan_spd_create_f64(&ces_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, CES_COUNT, ctx);
+        status = alwan_spd_create_f64(&ces_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
         if (status != ALWAN_OK) {
             alwan_spd_destroy_f64(&reference_spd, ctx);
             alwan_spd_destroy_f64(&test_spd_resampled, ctx);
@@ -1854,8 +1399,10 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         }
 
         /* Copy CES reflectance data */
-        for (size_t j = 0; j < CES_COUNT; j++) {
-            ces_spd.values[j] = ces_reflectances[i][j];
+        for (int j = 0; j < ALWAN_TABLE_QUALITY_SPECTRUM; j++) {
+            ces_spd.values[j] = alwan_table2d_row_at_f64_v(
+                alwan_table_ces_reflectance_f64, ALWAN_TABLE_CES_SAMPLES,
+                ALWAN_TABLE_QUALITY_SPECTRUM, i, j);
         }
 
         /* Calculate XYZ under test illuminant (10 deg observer) */
@@ -1946,7 +1493,11 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     alwan_spd_destroy_f64(&reference_spd, ctx);
     alwan_spd_destroy_f64(&test_spd_resampled, ctx);
 
-    /* Step 5: Calculate Rf */
+    /* Step 5: Calculate Rf.
+     * 99.0, not ALWAN_TABLE_CES_SAMPLES: the divisor is a separately
+     * baselined decision and is deliberately NOT coupled to how many samples
+     * the loop above ran. When the CES set is regenerated at 99 samples the
+     * enum changes and this line does not move with it. */
     alwan_f64 avg_delta_e = delta_e_sum / ALWAN_LITERAL(99.0);
     alwan_f64 rf = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(4.6) * avg_delta_e;
 

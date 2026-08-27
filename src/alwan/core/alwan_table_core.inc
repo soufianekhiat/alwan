@@ -132,6 +132,20 @@ ALWAN_INLINE ALWAN_CORE_TABLE_CELL ALWAN_CORE_FNVLIT(alwan_table_cell_unit)(ALWA
  * Rank 1, scalar element
  * ================================================================ */
 
+/* Element read at an INTEGER index -- the rank-1 counterpart of the float
+ * readers below. Same gate, same policy, no interpolation and no arithmetic:
+ * for an index the caller has already proved in range this is the identity on
+ * the address, so folding an existing raw subscript onto it cannot move a
+ * value. It exists so a table addressed by a loop counter or a validated enum
+ * is governed by ALWAN_READ_DATA_NO_BOUND_CHECK exactly like a table addressed
+ * by a coordinate, instead of by whatever bound the call site happened to
+ * spell. Header-only for the same reason as everything else here: with no /GL
+ * and no /LTCG a reader in a .c is a real call per element. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+        ALWAN_CORE_T const *table, int size, int index) {
+    return table[ALWAN_CORE_FNVLIT(alwan_table_row)(index, size)];
+}
+
 /* Weighted form, a*(1-f) + b*f. Matches alwan_lerp and the shipped
  * alwan_lut1d_sample bit for bit. This is ALWAN_SAMPLE_LINEAR. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_sample_linear)(
@@ -196,6 +210,24 @@ ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample)(
     if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
         return ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample_nearest)(table, size, coord);
     return ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample_linear)(table, size, coord);
+}
+
+/* ================================================================
+ * Rank 2, row-major with a fixed stride, INTEGER row and column
+ * index = row*stride + col
+ *
+ * Both coordinates go through the row gate, not just the row. A stride table
+ * is exactly where a correct row bound and a wrong column bound read into the
+ * NEXT ROW rather than off the end: silent wrong data, no crash, no warning.
+ * That is the shape the 109 reflectance sample sets had while they were 109
+ * separate arrays behind an array of pointers.
+ * ================================================================ */
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(
+        ALWAN_CORE_T const *table, int rows, int stride, int row, int col) {
+    int const r = ALWAN_CORE_FNVLIT(alwan_table_row)(row, rows);
+    int const c = ALWAN_CORE_FNVLIT(alwan_table_row)(col, stride);
+    return table[(size_t)r * (size_t)stride + (size_t)c];
 }
 
 /* ================================================================

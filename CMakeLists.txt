@@ -170,6 +170,7 @@ set(ALWAN_SOURCES
   src/alwan/data/alwan_data_tables.c
   src/alwan/data/alwan_data_tables_cubes.c
   src/alwan/data/alwan_data_tables_spectral.c
+  src/alwan/data/alwan_data_tables_api.c
 )
 
 add_library(alwan ${ALWAN_SOURCES})
