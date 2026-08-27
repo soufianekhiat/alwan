@@ -21,6 +21,7 @@ the library around that API surface.
 - [build-and-precision.md](build-and-precision.md) - Sharpmake (reference) vs CMake (replica) builds, and the precision-build surface: `ALWAN_BUILD_ONLY_F32`/`ALWAN_BUILD_ONLY_F64` resolving to `ALWAN_WITH_F32`/`ALWAN_WITH_F64` (default both), `ALWAN_SCALAR_IS_FLOAT`, and the `ALWAN_WITH_F64_FACADE` exceptions
 - [configuration.md](configuration.md) - compile-time switches, allocators, deterministic mode, `ALWAN_EMBED_DATA`
 - [determinism.md](determinism.md) - what `ALWAN_DETERMINISTIC` changes and why
+- [alwan_decisions.md](alwan_decisions.md) - where alwan knowingly differs from colour-science or a standard, and why
 
 > Precision questions (single- vs dual-precision builds, `ALWAN_BUILD_ONLY_F32`/`ALWAN_BUILD_ONLY_F64`) are answered in
 > [build-and-precision.md](build-and-precision.md).
