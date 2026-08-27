@@ -616,6 +616,18 @@ static rgb_space_meta const g_rgb_spaces_meta[] = {
 static size_t const g_rgb_spaces_count =
     sizeof(g_rgb_spaces_meta) / sizeof(g_rgb_spaces_meta[0]);
 
+/* The bounds check below uses g_rgb_spaces_count, which is the length of the
+ * METADATA table, but then indexes g_rgb_lookup_data. Those two must agree.
+ * They did not: the generator silently dropped two spaces it could not resolve
+ * ('Bruce RGB', and 'SMPTE-C' which colour-science spells 'SMPTE C'), so the
+ * data table shipped with 20 rows while the code addressed 22. Seven spaces
+ * returned a different colourspace's primaries and the last two read 16 doubles
+ * past the end of the array. Assert the agreement at compile time so a
+ * regenerated table that loses a row fails the build instead of the user. */
+typedef char alwan_rgb_lookup_row_count_check[
+    ((sizeof(g_rgb_lookup_data) / (RGB_LOOKUP_STRIDE * sizeof(g_rgb_lookup_data[0])))
+     == (sizeof(g_rgb_spaces_meta) / sizeof(g_rgb_spaces_meta[0]))) ? 1 : -1];
+
 /* Map enum value to g_rgb_spaces array index. Returns -1 if not found. */
 static int get_rgb_space_index(alwan_rgb_space space) {
     switch (space) {
