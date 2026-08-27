@@ -149,6 +149,11 @@ ALWAN_INLINE alwan_vec2 alwan_cct_to_xy_planckian_v(alwan_scalar cct) {
     return result;
 }
 
+/* Duv: signed distance from an xy point to the Planckian locus at a given CCT.
+ * Positive above the locus, negative below, per Ohno 2013 / ANSI C78.377. The
+ * sign is taken from v - v_locus, which is the convention colour-science and
+ * OCIO use. An unsigned distance makes greenish and pinkish whites
+ * indistinguishable in the output and the caller cannot recover the sign. */
 ALWAN_INLINE alwan_scalar alwan_compute_duv_v(alwan_scalar x, alwan_scalar y, alwan_scalar cct) {
     alwan_vec2 xy_p = alwan_cct_to_xy_planckian_v(cct);
     alwan_scalar x_p = xy_p.v[0];
@@ -166,7 +171,8 @@ ALWAN_INLINE alwan_scalar alwan_compute_duv_v(alwan_scalar x, alwan_scalar y, al
     alwan_scalar du = u - u_p;
     alwan_scalar dv = v - v_p;
 
-    return ALWAN_SQRT(du * du + dv * dv);
+    alwan_scalar dist = ALWAN_SQRT(du * du + dv * dv);
+    return ALWAN_SELECT(dv < ALWAN_ZERO, -dist, dist);
 }
 
 ALWAN_INLINE alwan_scalar alwan_mccamy_cct_v(alwan_scalar x, alwan_scalar y) {

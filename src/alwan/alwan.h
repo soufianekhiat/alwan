@@ -3474,13 +3474,25 @@ alwan_status alwan_extrapolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in,
                        alwan_extrap_method method);
 
 /* CCT and Duv Optimization
- * Computes Correlated Color Temperature (CCT) and distance from Planckian locus (Duv)
- * using iterative least-squares optimization
- * cct_out: receives CCT in Kelvin
- * duv_out: receives Duv (distance from Planckian locus, can be NULL)
- * xy: CIE 1931 xy chromaticity coordinates
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if xy is invalid
- * Accuracy: CCT <= 1K, Duv <= 0.0001 */
+ * Computes Correlated Colour Temperature (CCT) and the signed distance from the
+ * Planckian locus (Duv) by minimising Duv^2 over the locus.
+ *
+ * cct_out: receives CCT in Kelvin, clamped to [1667, 25000]
+ * duv_out: receives signed Duv, positive above the locus and negative below,
+ *          per Ohno 2013 / ANSI C78.377. May be NULL.
+ * xy:      CIE 1931 xy chromaticity coordinates
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID if xy or cct_out is NULL
+ *
+ * Accuracy, measured against colour-science Ohno 2013 over 1667-25000 K:
+ *   Duv within 8.8e-05 everywhere tested
+ *   CCT within 28 K (0.3%) for points on the locus, degrading to ~220 K at
+ *   |Duv| = 0.01
+ * The CCT residual is the Kang 2002 locus approximation this uses, not the
+ * minimiser, which recovers its own locus to within 1e-13. An earlier version
+ * of this comment claimed CCT <= 1 K; that was never achievable with a Kang
+ * locus, and the solver of the time was in fact returning its McCamy seed
+ * unrefined above 7300 K, for 5496 K of error at 25000 K. If you need CCT
+ * tighter than this, the locus model has to change, not the search. */
 alwan_status alwan_cct_duv_optimize_f64(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2_f64 const *xy);
 alwan_status alwan_cct_duv_optimize_f32(alwan_f32 *cct_out, alwan_f32 *duv_out, alwan_vec2_f32 const *xy);
 

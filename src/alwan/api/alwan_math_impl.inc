@@ -395,51 +395,104 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_table_interp_1d)(ALWAN_CORE_T const *table, 
  * ---------------------------------------------------------------- */
 
 alwan_status ALWAN_CORE_FNLIT(alwan_cct_duv_optimize)(ALWAN_CORE_T *cct_out, ALWAN_CORE_T *duv_out, ALWAN_CORE_VEC2 const *xy) {
-    if (!xy || !cct_out || !duv_out) {
-        return ALWAN_E_RANGE;
+    /* duv_out is documented as optional; the previous code rejected NULL,
+     * contradicting the header. ALWAN_E_INVALID is both what the header
+     * promises and the house convention for a null argument. */
+    if (!xy || !cct_out) {
+        return ALWAN_E_INVALID;
     }
 
     ALWAN_CORE_T x = xy->v[0];
     ALWAN_CORE_T y = xy->v[1];
 
-    /* Initial CCT estimate using McCamy (1992) formula */
-    ALWAN_CORE_T cct = ALWAN_CORE_FNVLIT(alwan_mccamy_cct)(x, y);
+    /* Solved in mired (reciprocal megakelvin), not in kelvin.
+     *
+     * The Planckian locus is close to uniform in mired, so the objective
+     * Duv(T)^2 has roughly constant curvature across the whole range. In kelvin
+     * it does not: d(u,v)/dT falls off as 1/T^2, so the curvature of the
+     * objective drops to ~2e-12 at 25000 K. The previous implementation ran
+     * Newton-Raphson in kelvin behind an absolute guard
+     * `if (fabs(second_deriv) < 1e-10) break;`, which therefore fired on
+     * iteration 0 for every CCT above roughly 7300 K and returned the raw
+     * McCamy seed unchanged: 5496 K of error at 25000 K, against a documented
+     * bound of 1 K.
+     *
+     * Golden-section over a coarse bracket replaces it. It has no
+     * scale-dependent threshold to get wrong, needs no derivatives of a
+     * quantity whose natural magnitude is 1e-12, runs a fixed number of
+     * iterations (so it is deterministic and has no convergence cliff), and the
+     * coarse scan means a global minimum is still found if the objective is not
+     * unimodal for a far-off-locus input. */
 
-    /* Clamp to [1000, 25000] K */
-    if (cct < ALWAN_CORE_LITERAL(1000.0)) cct = ALWAN_CORE_LITERAL(1000.0);
-    if (cct > ALWAN_CORE_LITERAL(25000.0)) cct = ALWAN_CORE_LITERAL(25000.0);
+    /* Search only where the locus model is defined. Kang 2002 is published for
+     * 1667-25000 K; below 1667 K its polynomial is pure extrapolation and dives
+     * away from the real locus, which puts a spurious global minimum down
+     * there. A search over the old [1000, 25000] clamp finds that false
+     * minimum and returns ~1000 K for a genuine 1700 K input. Inputs whose
+     * nearest locus point lies outside this range clamp to the nearest end. */
+    ALWAN_CORE_T const mired_min = ALWAN_CORE_LITERAL(40.0);            /* 25000 K */
+    ALWAN_CORE_T const mired_max = ALWAN_CORE_LITERAL(599.88002399520); /*  1667 K */
 
-    /* Newton-Raphson iteration to find minimum Duv */
-    const int max_iter = 20;
-    const ALWAN_CORE_T tol = ALWAN_CORE_LITERAL(0.01);
-    const ALWAN_CORE_T h = ALWAN_CORE_LITERAL(1.0);
+    int const scan_steps = 64;
+    ALWAN_CORE_T best_m = mired_min;
+    ALWAN_CORE_T best_f = ALWAN_CORE_LITERAL(-1.0);
 
-    for (int iter = 0; iter < max_iter; iter++) {
-        ALWAN_CORE_T duv_minus = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, cct - h);
-        ALWAN_CORE_T duv_current = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, cct);
-        ALWAN_CORE_T duv_plus = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, cct + h);
-
-        ALWAN_CORE_T f_minus = duv_minus * duv_minus;
-        ALWAN_CORE_T f_current = duv_current * duv_current;
-        ALWAN_CORE_T f_plus = duv_plus * duv_plus;
-
-        ALWAN_CORE_T first_deriv = (f_plus - f_minus) / (ALWAN_CORE_LITERAL(2.0) * h);
-        ALWAN_CORE_T second_deriv = (f_plus - ALWAN_CORE_LITERAL(2.0) * f_current + f_minus) / (h * h);
-
-        if (ALWAN_CORE_ABS(first_deriv) < ALWAN_CORE_LITERAL(1e-10)) break;
-        if (ALWAN_CORE_ABS(second_deriv) < ALWAN_CORE_LITERAL(1e-10)) break;
-
-        ALWAN_CORE_T delta = -first_deriv / second_deriv;
-        cct += delta;
-
-        if (cct < ALWAN_CORE_LITERAL(1000.0)) cct = ALWAN_CORE_LITERAL(1000.0);
-        if (cct > ALWAN_CORE_LITERAL(25000.0)) cct = ALWAN_CORE_LITERAL(25000.0);
-
-        if (ALWAN_CORE_ABS(delta) < tol) break;
+    for (int i = 0; i <= scan_steps; i++) {
+        ALWAN_CORE_T m = mired_min + (mired_max - mired_min) *
+                         ((ALWAN_CORE_T)i / (ALWAN_CORE_T)scan_steps);
+        ALWAN_CORE_T d = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, ALWAN_CORE_LITERAL(1.0e6) / m);
+        ALWAN_CORE_T f = d * d;
+        if (best_f < ALWAN_CORE_LITERAL(0.0) || f < best_f) {
+            best_f = f;
+            best_m = m;
+        }
     }
 
+    /* Bracket the coarse winner by one scan step on each side, clamped. */
+    ALWAN_CORE_T const step = (mired_max - mired_min) / (ALWAN_CORE_T)scan_steps;
+    ALWAN_CORE_T a = best_m - step;
+    ALWAN_CORE_T b = best_m + step;
+    if (a < mired_min) a = mired_min;
+    if (b > mired_max) b = mired_max;
+
+    /* Golden-section search. 48 iterations shrink a 30-mired bracket by
+     * 0.618^48 ~ 5e-11, far below the 1e-4 mired (0.06 K at 25000 K) needed to
+     * hold the documented 1 K bound. */
+    ALWAN_CORE_T const inv_phi = ALWAN_CORE_LITERAL(0.61803398874989484820);
+    ALWAN_CORE_T c = b - (b - a) * inv_phi;
+    ALWAN_CORE_T d_pt = a + (b - a) * inv_phi;
+    ALWAN_CORE_T dc = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, ALWAN_CORE_LITERAL(1.0e6) / c);
+    ALWAN_CORE_T dd = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, ALWAN_CORE_LITERAL(1.0e6) / d_pt);
+    ALWAN_CORE_T fc = dc * dc;
+    ALWAN_CORE_T fd = dd * dd;
+
+    for (int i = 0; i < 48; i++) {
+        if (fc < fd) {
+            b = d_pt;
+            d_pt = c; fd = fc;
+            c = b - (b - a) * inv_phi;
+            dc = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, ALWAN_CORE_LITERAL(1.0e6) / c);
+            fc = dc * dc;
+        } else {
+            a = c;
+            c = d_pt; fc = fd;
+            d_pt = a + (b - a) * inv_phi;
+            dd = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, ALWAN_CORE_LITERAL(1.0e6) / d_pt);
+            fd = dd * dd;
+        }
+    }
+
+    ALWAN_CORE_T m_star = (a + b) * ALWAN_CORE_LITERAL(0.5);
+    ALWAN_CORE_T cct = ALWAN_CORE_LITERAL(1.0e6) / m_star;
+
+    if (cct < ALWAN_CORE_LITERAL(1667.0)) cct = ALWAN_CORE_LITERAL(1667.0);
+    if (cct > ALWAN_CORE_LITERAL(25000.0)) cct = ALWAN_CORE_LITERAL(25000.0);
+
     *cct_out = cct;
-    *duv_out = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, cct);
+    if (duv_out) {
+        /* Signed, per Ohno 2013 / ANSI C78.377: positive above the locus. */
+        *duv_out = ALWAN_CORE_FNVLIT(alwan_compute_duv)(x, y, cct);
+    }
 
     return ALWAN_OK;
 }

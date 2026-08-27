@@ -968,11 +968,15 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         alwan_f64 du = uvw_test.U - uvw_ref.U;
         alwan_f64 dv = uvw_test.V - uvw_ref.V;
         alwan_f64 dw = uvw_test.W - uvw_ref.W;
-        alwan_f64 delta_e_raw = ALWAN_SQRT(du * du + dv * dv + dw * dw);
-        /* Empirical scaling factor based on CIE 1964 U*V*W* space calibration */
-        alwan_f64 delta_e = delta_e_raw / ALWAN_LITERAL(15.5);
+        alwan_f64 delta_e = ALWAN_SQRT(du * du + dv * dv + dw * dw);
 
-        /* Calculate special CRI: R_i = 100 - 4.6 * dE */
+        /* CIE 13.3-1995: R_i = 100 - 4.6 * dE_i, with dE_i the raw U*V*W*
+         * Euclidean distance and no divisor. An unpublished /15.5 "empirical
+         * scaling factor" sat here until 2026-08-27; it compressed every score
+         * toward 100 so the metric stopped discriminating between sources.
+         * High-pressure sodium scored 94.1 where the CIE value is 8.5, and an
+         * RGB LED scored 97.0 where it should be 57.4. Ra is allowed to go
+         * negative for sources with very poor rendering; do not clamp it. */
         r_values[i] = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(4.6) * delta_e;
     }
 

@@ -184,7 +184,11 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(alwan_cct_to_xy_planckian)(ALWAN_
     return result;
 }
 
-/* Duv: distance from xy point to Planckian locus at given CCT */
+/* Duv: signed distance from an xy point to the Planckian locus at a given CCT.
+ * Positive above the locus, negative below, per Ohno 2013 / ANSI C78.377. The
+ * sign is taken from v - v_locus, which is the convention colour-science and
+ * OCIO use. An unsigned distance makes greenish and pinkish whites
+ * indistinguishable in the output and the caller cannot recover the sign. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_compute_duv)(ALWAN_CORE_T x, ALWAN_CORE_T y, ALWAN_CORE_T cct) {
     ALWAN_CORE_VEC2 xy_p = ALWAN_CORE_FNVLIT(alwan_cct_to_xy_planckian)(cct);
     ALWAN_CORE_T x_p = xy_p.v[0];
@@ -202,7 +206,8 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_compute_duv)(ALWAN_CORE_T x, A
     ALWAN_CORE_T du = u - u_p;
     ALWAN_CORE_T dv = v - v_p;
 
-    return ALWAN_CORE_SQRT(du * du + dv * dv);
+    ALWAN_CORE_T dist = ALWAN_CORE_SQRT(du * du + dv * dv);
+    return ALWAN_CORE_SELECT(dv < ALWAN_CORE_ZERO, -dist, dist);
 }
 
 /* McCamy's CCT estimate from xy chromaticity.
