@@ -968,51 +968,6 @@ static alwan_f64 aces1_segmented_spline_c9(alwan_f64 oces, const aces1_c9_params
     return (display_nits - p->min_y) / (p->max_y - p->min_y);
 }
 
-/* ACES 1.x RRT core (simplified) */
-static void aces1_rrt_core_f64(alwan_rgb_f64 const *ap1_in, alwan_rgb_f64 *rrt_out) {
-    /* Apply glow module */
-    alwan_f64 sat = aces1_saturation(ap1_in->r, ap1_in->g, ap1_in->b);
-    alwan_f64 add_glow = ACES1_RRT_GLOW_GAIN * sigmoid_shaper(sat);
-
-    alwan_f64 r = ap1_in->r * (ALWAN_LITERAL(1.0) + add_glow);
-    alwan_f64 g = ap1_in->g * (ALWAN_LITERAL(1.0) + add_glow);
-    alwan_f64 b = ap1_in->b * (ALWAN_LITERAL(1.0) + add_glow);
-
-    /* Apply red modifier (RedMod10) inline */
-    alwan_f64 hue = aces1_rgb_to_hue(r, g, b);
-    alwan_f64 centeredHue = aces1_center_hue(hue, ALWAN_LITERAL(0.0));
-    alwan_f64 hueWeight = aces1_cubic_basis_shaper(centeredHue, ALWAN_LITERAL(135.0));
-
-    if (hueWeight > ALWAN_LITERAL(0.0)) {
-        /* ACES ref: r += hueWeight * saturation * (RRT_RED_PIVOT - r) * (1 - RRT_RED_SCALE)
-         * RRT_RED_PIVOT = 0.03, RRT_RED_SCALE = 0.82 */
-        r = r + hueWeight * sat * (ALWAN_LITERAL(0.03) - r) * ALWAN_LITERAL(0.18);
-    }
-
-    /* RRT global desaturation (RRT_SAT_FACTOR = 0.96) */
-    {
-        ALWAN_DIAG_PUSH
-        ALWAN_DIAG_DISABLE_FLOAT_CONV
-        /* AP1 luminance coefficients */
-        static alwan_f64 const rl = 0.2722287168, gl = 0.6740817658, bl = 0.0536895174;
-        static alwan_f64 const s = 0.96;
-        ALWAN_DIAG_POP
-        alwan_f64 luma = rl * r + gl * g + bl * b;
-        r = luma + s * (r - luma);
-        g = luma + s * (g - luma);
-        b = luma + s * (b - luma);
-    }
-
-    /* Apply RRT tone scale per channel (C5 spline: scene -> OCES nits) */
-    r = aces1_segmented_spline_c5(r);
-    g = aces1_segmented_spline_c5(g);
-    b = aces1_segmented_spline_c5(b);
-
-    /* Output is in OCES (nits), passed to ODT */
-    rrt_out->r = r;
-    rrt_out->g = g;
-    rrt_out->b = b;
-}
 #endif /* ALWAN_WITH_F64 */
 
 /* Matrix multiply helper.
@@ -1431,60 +1386,6 @@ static alwan_f64 aces1_segmented_spline_c5_inv(alwan_f64 y) {
     return aces1_segmented_spline_c5_inv_f64_v(y);
 }
 
-static void aces1_rrt_core_inv_f64(alwan_rgb_f64 const *rrt_in, alwan_rgb_f64 *ap1_out) {
-    /* Scale from display range */
-    alwan_f64 r_ts = rrt_in->r;
-    alwan_f64 g_ts = rrt_in->g;
-    alwan_f64 b_ts = rrt_in->b;
-
-    /* Invert RRT tone scale */
-    r_ts = aces1_segmented_spline_c5_inv(r_ts);
-    g_ts = aces1_segmented_spline_c5_inv(g_ts);
-    b_ts = aces1_segmented_spline_c5_inv(b_ts);
-
-    /* Start with tone-scale-inverted values as initial estimate */
-    alwan_f64 r = r_ts;
-    alwan_f64 g = g_ts;
-    alwan_f64 b = b_ts;
-
-    /* Iterative inverse of glow and red modifier for better accuracy
-     * We iterate because glow affects saturation which affects red mod */
-    for (int iter = 0; iter < 5; iter++) {
-        /* Compute what the forward transform would produce from current estimate */
-        alwan_f64 sat = aces1_saturation(r, g, b);
-        alwan_f64 add_glow = ACES1_RRT_GLOW_GAIN * sigmoid_shaper(sat);
-        alwan_f64 glow_scale = ALWAN_LITERAL(1.0) + add_glow;
-
-        /* Apply forward glow */
-        alwan_f64 r_glow = r * glow_scale;
-        alwan_f64 g_glow = g * glow_scale;
-        alwan_f64 b_glow = b * glow_scale;
-
-        /* Apply forward red modifier */
-        alwan_f64 hue = aces1_rgb_to_hue(r_glow, g_glow, b_glow);
-        alwan_f64 centeredHue = aces1_center_hue(hue, ALWAN_LITERAL(0.0));
-        alwan_f64 hueWeight = aces1_cubic_basis_shaper(centeredHue, ALWAN_LITERAL(135.0));
-
-        alwan_f64 r_mod = r_glow;
-        if (hueWeight > ALWAN_LITERAL(0.0)) {
-            r_mod = r_glow + hueWeight * sat * (ALWAN_LITERAL(0.03) - ALWAN_LITERAL(0.03) * r_glow);
-        }
-
-        /* Compute error: (forward_result - target) */
-        alwan_f64 err_r = r_mod - r_ts;
-        alwan_f64 err_g = g_glow - g_ts;
-        alwan_f64 err_b = b_glow - b_ts;
-
-        /* Correct estimate */
-        r = r - err_r;
-        g = g - err_g;
-        b = b - err_b;
-    }
-
-    ap1_out->r = r;
-    ap1_out->g = g;
-    ap1_out->b = b;
-}
 #endif /* ALWAN_WITH_F64_FACADE */
 
 /* Native single-precision ACES 1.x output transform + inverse, generated
@@ -1503,13 +1404,137 @@ ALWAN_DIAG_POP
 
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
+/* ----------------------------------------------------------------
+ * Inverse of the two AP0-space RRT steps (Glow10, then RedMod10)
+ *
+ * The forward order is Glow10 then RedMod10, so the inverse runs RedMod10
+ * first. Both are exact here. OCIO's own RedMod10 inverse is not: it takes
+ * the closed form below as its answer, which round-trips a saturated red to
+ * about 3.7e-03. See docs/alwan_decisions.md.
+ * ---------------------------------------------------------------- */
+
+/* The forward RedMod10 map restricted to red, with green and blue fixed. */
+static alwan_f64 aces1_redmod10_fwd_red(alwan_f64 red, alwan_f64 grn, alwan_f64 blu) {
+    alwan_f64 f_H = calc_hue_weight(red, grn, blu, REDMOD10_INV_WIDTH);
+    if (f_H > ALWAN_LITERAL(0.0)) {
+        alwan_f64 f_S = calc_sat_weight(red, grn, blu, REDMOD_NOISE_LIMIT);
+        red = red + f_H * f_S * (REDMOD10_PIVOT - red) *
+              (ALWAN_LITERAL(1.0) - REDMOD10_SCALE);
+    }
+    return red;
+}
+
+/* Solve aces1_redmod10_fwd_red(red) == red_out for red.
+ *
+ * Green and blue pass through the forward untouched, so this is a scalar root
+ * find. Writing w = f_H * f_S and k = 1 - scale, the forward is
+ *
+ *     red_out = red * (1 - w*k) + w*k*pivot
+ *
+ * and w*k is confined to [0, k] because both weights are in [0, 1]. Solving
+ * that relation at each end of the range brackets the root, so no search for a
+ * bracket is needed and the solve cannot run away. The map is monotonically
+ * increasing in red, verified over the full grid of green and blue, so the
+ * bracket contains exactly one root.
+ *
+ * Regula falsi with the Illinois correction: bracketed like bisection, but
+ * converges in single-digit iterations because the map is nearly linear. */
+static alwan_f64 aces1_redmod10_inv_red(alwan_f64 red_out, alwan_f64 grn, alwan_f64 blu) {
+    alwan_f64 const k = ALWAN_LITERAL(1.0) - REDMOD10_SCALE;
+    alwan_f64 const other = (red_out - k * REDMOD10_PIVOT) / (ALWAN_LITERAL(1.0) - k);
+    alwan_f64 lo = red_out < other ? red_out : other;
+    alwan_f64 hi = red_out < other ? other : red_out;
+    alwan_f64 f_lo = aces1_redmod10_fwd_red(lo, grn, blu) - red_out;
+    alwan_f64 f_hi = aces1_redmod10_fwd_red(hi, grn, blu) - red_out;
+    alwan_f64 const scale = ALWAN_ABS_F64(red_out) > ALWAN_LITERAL(1.0)
+                            ? ALWAN_ABS_F64(red_out) : ALWAN_LITERAL(1.0);
+    alwan_f64 const tol = ALWAN_LITERAL(1e-16) * scale;
+    int i;
+
+    if (f_lo == ALWAN_LITERAL(0.0)) return lo;
+    if (f_hi == ALWAN_LITERAL(0.0)) return hi;
+    /* Not bracketed: the only way here is a non-finite input, where there is
+     * nothing to solve. Leave the value alone rather than invent one. */
+    if (!(f_lo < ALWAN_LITERAL(0.0) && f_hi > ALWAN_LITERAL(0.0))) return red_out;
+
+    for (i = 0; i < 40 && (hi - lo) > tol; i++) {
+        alwan_f64 const denom = f_hi - f_lo;
+        alwan_f64 mid = denom != ALWAN_LITERAL(0.0)
+                        ? hi - f_hi * (hi - lo) / denom
+                        : lo + (hi - lo) * ALWAN_LITERAL(0.5);
+        alwan_f64 f_mid;
+
+        if (!(mid > lo && mid < hi)) {
+            mid = lo + (hi - lo) * ALWAN_LITERAL(0.5);
+        }
+        f_mid = aces1_redmod10_fwd_red(mid, grn, blu) - red_out;
+        if (f_mid == ALWAN_LITERAL(0.0)) return mid;
+        if (f_mid < ALWAN_LITERAL(0.0)) {
+            lo = mid; f_lo = f_mid;
+            f_hi *= ALWAN_LITERAL(0.5);   /* Illinois: stop the stalled end sticking */
+        } else {
+            hi = mid; f_hi = f_mid;
+            f_lo *= ALWAN_LITERAL(0.5);
+        }
+    }
+    return lo + (hi - lo) * ALWAN_LITERAL(0.5);
+}
+
+/* Exact inverse of the RRT Glow10 step.
+ *
+ * The forward multiplies all three channels by (1 + glow). Saturation is
+ * (max - min) / max, which a uniform scale leaves unchanged, and YC is
+ * homogeneous of degree one, so the gain and the branch are both recoverable
+ * from the output alone and the inverse is closed form. */
+static void aces1_glow10_inv(alwan_rgb_f64 *rgb) {
+    alwan_f64 const glow_mid = ACES1_RRT_GLOW_MID;
+    alwan_f64 const sat = aces1_saturation(rgb->r, rgb->g, rgb->b);
+    alwan_f64 const chroma = ALWAN_SQRT_F64(ALWAN_ABS_F64(
+        rgb->b * (rgb->b - rgb->g) +
+        rgb->g * (rgb->g - rgb->r) +
+        rgb->r * (rgb->r - rgb->b)));
+    alwan_f64 const yc_out = (rgb->r + rgb->g + rgb->b +
+                              ALWAN_LITERAL(1.75) * chroma) / ALWAN_LITERAL(3.0);
+    alwan_f64 const gain = ACES1_RRT_GLOW_GAIN * sigmoid_shaper(sat);
+    alwan_f64 const knee_hi = ALWAN_LITERAL(2.0) * glow_mid;
+    alwan_f64 const knee_lo = ALWAN_LITERAL(2.0) / ALWAN_LITERAL(3.0) * glow_mid *
+                              (ALWAN_LITERAL(1.0) + gain);
+    alwan_f64 yc_in;
+
+    /* Above the upper knee the forward added nothing. */
+    if (yc_out >= knee_hi) return;
+
+    if (yc_out <= knee_lo) {
+        /* Flat region: the forward applied the full gain. */
+        yc_in = yc_out / (ALWAN_LITERAL(1.0) + gain);
+    } else {
+        /* Falloff region. The forward is
+         *     yc_out = yc_in * (1 - gain/2) + gain * glow_mid
+         * which is linear in yc_in, so this inverts directly. */
+        yc_in = (yc_out - gain * glow_mid) /
+                (ALWAN_LITERAL(1.0) - ALWAN_LITERAL(0.5) * gain);
+    }
+
+    if (yc_out > ALWAN_LITERAL(0.0) && yc_in > ALWAN_LITERAL(0.0)) {
+        alwan_f64 const inv_scale = yc_in / yc_out;
+        rgb->r *= inv_scale;
+        rgb->g *= inv_scale;
+        rgb->b *= inv_scale;
+    }
+}
+
 alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
                                           alwan_rgb_f64 const *rgb_in,
                                           alwan_aces1_output output) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
 
-    alwan_rgb_f64 display, xyz, d60, ap1;
+    /* Each switch arm sets either `display` (with a matrix to convert it) or
+     * `xyz` directly. Zero-initialised because the compiler cannot see that
+     * `display_to_xyz == NULL` is exactly the case where `xyz` is already set. */
+    alwan_rgb_f64 display = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 xyz = {ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)};
+    alwan_rgb_f64 d60, ap1;
 
     /* Step 1: Inverse EOTF */
     alwan_f64 const *display_to_xyz = NULL;
@@ -1571,21 +1596,25 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
             display.b = pq_eotf(rgb_in->b, peak_nits);
             break;
         case ALWAN_ACES1_OUT_DCDM_48NIT:
-            /* DCDM is in XYZ */
+            /* DCDM is encoded directly in XYZ, so there is no display-primaries
+             * matrix to undo; display_to_xyz stays NULL and step 2 is skipped.
+             *
+             * This used to return here through a separate AP1-space RRT inverse,
+             * which did not invert the forward: the forward runs the whole
+             * pipeline and diverges only at this final encode. Falling through
+             * means DCDM is inverted by the same steps as every other output. */
             xyz.r = gamma26_eotf(rgb_in->r) * ALWAN_LITERAL(52.37) / ALWAN_LITERAL(48.0);
             xyz.g = gamma26_eotf(rgb_in->g) * ALWAN_LITERAL(52.37) / ALWAN_LITERAL(48.0);
             xyz.b = gamma26_eotf(rgb_in->b) * ALWAN_LITERAL(52.37) / ALWAN_LITERAL(48.0);
-            mat3_mul_vec3_aces1(ACES1_D65_TO_D60, &xyz, &d60);
-            mat3_mul_vec3_aces1(ACES1_XYZ_D60_TO_AP1, &d60, &ap1);
-            aces1_rrt_core_inv_f64(&ap1, &ap1);
-            mat3_mul_vec3_aces1(ACES1_AP1_TO_AP0, &ap1, rgb_out);
-            return ALWAN_OK;
+            break;
         default:
             return ALWAN_E_INVALID;
     }
 
-    /* Step 2: Display to XYZ */
-    mat3_mul_vec3_aces1(display_to_xyz, &display, &xyz);
+    /* Step 2: Display to XYZ. DCDM is already in XYZ and leaves this NULL. */
+    if (display_to_xyz != NULL) {
+        mat3_mul_vec3_aces1(display_to_xyz, &display, &xyz);
+    }
 
     /* Step 3: D65 to D60 (for D65 white point outputs) */
     int needs_d65 = (output != ALWAN_ACES1_OUT_SRGB_D60_100NIT &&
@@ -1617,10 +1646,27 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
             ap1.g = luma + (ap1.g - luma) / s;
             ap1.b = luma + (ap1.b - luma) / s;
 
-            /* Inverse dimSurround */
+            /* Inverse dimSurround.
+             *
+             * The forward is x' = x * Y^-g with Y = luma(x), so the luminance
+             * it produces is luma(x') = Y * Y^-g = Y^(1-g), which means
+             * Y = luma(x')^(1/(1-g)) and
+             *
+             *     x = x' * Y^g = x' * luma(x')^(g/(1-g)).
+             *
+             * The exponent is g/(1-g), not g: only the pre-scale luminance
+             * raised to g undoes the forward, and all we have here is the
+             * post-scale one. Using g inverted a slightly different transform
+             * and left 9.4e-04 of relative round-trip error on every 100-nit
+             * video output. The desaturation above preserves luma exactly, so
+             * Y here is the forward's output luminance.
+             *
+             * Cinema and HDR PQ outputs skip this block and already round-trip
+             * at 1.3e-11, which is what isolated this. */
+            alwan_f64 const dim_g = ALWAN_LITERAL(0.0189);
             alwan_f64 Y = rl * ap1.r + gl * ap1.g + bl * ap1.b;
             if (Y > ALWAN_LITERAL(1e-10)) {
-                alwan_f64 scale = ALWAN_POW_F64(Y, ALWAN_LITERAL(0.0189));
+                alwan_f64 scale = ALWAN_POW_F64(Y, dim_g / (ALWAN_LITERAL(1.0) - dim_g));
                 ap1.r *= scale;
                 ap1.g *= scale;
                 ap1.b *= scale;
@@ -1664,9 +1710,10 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
     /* Step 10: AP1 to AP0 */
     mat3_mul_vec3_aces1(ACES1_AP1_TO_AP0, &ap1, rgb_out);
 
-    /* Step 11: Inverse RedMod10 + Inverse Glow10 in AP0
-     * For achromatic inputs (the roundtrip test case), both are identity.
-     * Full inverse requires iterative solve -- omitted for now. */
+    /* Step 11: Inverse RedMod10 then Inverse Glow10 in AP0.
+     * Reverses step 0 of the forward, which applies Glow10 then RedMod10. */
+    rgb_out->r = aces1_redmod10_inv_red(rgb_out->r, rgb_out->g, rgb_out->b);
+    aces1_glow10_inv(rgb_out);
 
     return ALWAN_OK;
 }
@@ -4091,11 +4138,10 @@ alwan_status alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
 
     status = alwan_oetf_apply_f64(encoded, sizeof(alwan_f64), linear, sizeof(alwan_f64), 3, eotf);
     if (status != ALWAN_OK) {
-        /* Fallback: return linear values if OETF not supported */
-        rgb_out->r = rgb_clamped.r;
-        rgb_out->g = rgb_clamped.g;
-        rgb_out->b = rgb_clamped.b;
-        return ALWAN_OK;
+        /* The caller asked for display-encoded output. Returning the scene-linear
+         * values with ALWAN_OK would hand back a picture that is wrong by a whole
+         * transfer function and say it succeeded. */
+        return status;
     }
 
     rgb_out->r = encoded[0];
@@ -4302,10 +4348,9 @@ alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
 
     status = alwan_eotf_apply_f64(linear, sizeof(alwan_f64), encoded, sizeof(alwan_f64), 3, config.eotf);
     if (status != ALWAN_OK) {
-        /* Fallback: assume already linear */
-        linear[0] = rgb_in->r;
-        linear[1] = rgb_in->g;
-        linear[2] = rgb_in->b;
+        /* Input is display-encoded by construction; treating it as already linear
+         * silently skips a transfer function and inverts the wrong signal. */
+        return status;
     }
 
     alwan_rgb_f64 rgb_linear = {linear[0], linear[1], linear[2]};

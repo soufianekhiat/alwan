@@ -109,6 +109,94 @@ proves it was.
 
 ---
 
+## ACES 1.x
+
+### The inverse RedMod10 is exact, and OCIO's is not
+
+**Reference:** OCIO's `Renderer_ACES_RedMod10_Inv` solves
+
+    red_out = red * (1 - w*k) + w*k*pivot
+
+for `red` using weights `w = f_H * f_S` evaluated at the *output*. But the
+weights depend on red, so those are not the weights the forward used, and the
+result is an approximation. Measured on OCIO 2.5.0, forward then inverse
+round-trips a saturated red to 3.7e-03.
+
+**alwan:** green and blue pass through the forward untouched, so recovering red
+is a scalar root find. `w*k` is confined to `[0, k]` because both weights lie in
+`[0, 1]`, which brackets the root with no search, and the map is monotonically
+increasing in red over the full green/blue grid. Regula falsi with the Illinois
+correction converges inside the bracket in single digits.
+
+**Cost:** alwan's inverse differs from OCIO's by up to ~3.7e-03 on saturated
+reds, and agrees everywhere the forward left red alone. alwan is the more
+accurate of the two; the difference is OCIO's round-trip error, not alwan's.
+
+**Why:** reversibility is the first principle in this document, and an inverse
+output transform exists to recover scene-linear values.
+
+### The inverse Glow10 is closed form
+
+The forward multiplies all three channels by `1 + glow`. Saturation is
+`(max - min) / max`, which a uniform scale leaves unchanged, and YC is
+homogeneous of degree one, so both the gain and the piecewise branch are
+recoverable from the output alone. No iteration is needed. This matches OCIO,
+whose Glow10 inverse is also exact (measured round-trip 3.7e-09, at f32
+precision).
+
+### The ACES 1.x inverse now round-trips to 1.3e-11 on every output
+
+Three separate defects sat behind a single achromatic round-trip test. Together
+they cost 1.31e-01 of relative error on saturated chromatic input:
+
+1. **Step 11 omitted** (below).
+2. **DCDM_48NIT returned early** through a separate AP1-space RRT inverse that
+   did not invert its own forward. The forward runs the whole pipeline and
+   diverges only at the final XYZ gamma-2.6 encode, so the inverse now falls
+   through the common path with the display-primaries matrix skipped. The stale
+   `aces1_rrt_core_f64` / `aces1_rrt_core_inv_f64` pair it depended on is gone:
+   the forward half was already unreferenced, and neither matched the shipped
+   pipeline (glow with no YC falloff, a red modifier reading `0.03 - 0.03*r`,
+   and both working in AP1 where the real forward works in AP0).
+3. **The inverse dimSurround used the wrong exponent.** The forward is
+   `x' = x * Y^-g` with `Y = luma(x)`, so `luma(x') = Y^(1-g)` and recovering `x`
+   needs `x' * luma(x')^(g/(1-g))`. The code used `g`. Only `g/(1-g)` inverts the
+   forward; `g` inverts a slightly different transform, and it left 9.4e-04 on
+   every 100-nit video output.
+
+Cinema and HDR PQ outputs skip the dimSurround block entirely, so they were
+already at 1.3e-11 while the video outputs sat at 9.4e-04. That gap is what
+isolated the third defect.
+
+### Step 11 of the inverse was omitted, and the test hid it
+
+Both of the above were absent. The code said so:
+
+    /* For achromatic inputs (the roundtrip test case), both are identity.
+     * Full inverse requires iterative solve -- omitted for now. */
+
+The round-trip test used an achromatic input, which is exactly where the two
+omitted steps are the identity, so it passed. On non-clipping chromatic input the
+worst relative round-trip error was 1.31e-01, and implementing step 11 alone
+brought it to 9.44e-04. The remaining two defects above account for the rest.
+
+`alwan_dev/tests/56_aces1_output_transform.c::test_chromatic_roundtrip` pins
+this across all twelve outputs. It skips cases whose forward output clips, since
+a clipped channel has thrown information away and measures the display clamp
+rather than the inverse. Deterministic builds get a looser bar: alwan's own
+pow/exp/log replace libm and the chain runs several in series, which costs
+1.5e-05.
+
+### An unsupported transfer function is an error, not a passthrough
+
+Two paths in the ACES 1.x output transform returned `ALWAN_OK` when the OETF or
+EOTF they needed was unsupported: the forward handed back scene-linear values,
+and the inverse carried on as though its display-encoded input were already
+linear. Both now return the status they got. A picture that is wrong by an entire
+transfer function should not report success.
+
+---
+
 ## Colour appearance and quality metrics
 
 ### ATD95 returns H as a ratio
@@ -228,6 +316,43 @@ colour. See `alwan_config.h`.
 
 NaN resolves to the **low** edge everywhere, and that is pinned by
 `alwan_dev/tests/102_table_gate.c`.
+
+### A float argument that cannot address a table is an error, not an edge
+
+The address clamp above governs the *reader layer*, which has no way to report a
+problem. An API entry point that takes a float and turns it into an index does
+have a status return, so it uses it: `alwan_spectral_locus_xy_*` returns
+`ALWAN_E_INVALID` for NaN, either infinity, and any out-of-range wavelength, and
+leaves the output buffer untouched.
+
+The two rules are consistent, not in tension. NaN resolves to the low edge where
+the alternative is an out-of-bounds read, and is rejected where the alternative
+is a plausible-looking answer to an unanswerable question.
+
+Range tests on these paths are written negated:
+
+    if (!(x >= LO && x <= HI)) return ALWAN_E_INVALID;
+
+`x < LO || x > HI` is false for NaN in both halves, so the natural form lets NaN
+through to the cast. That is not a hypothetical: it is how
+`alwan_spectral_locus_xy_f64(NaN)` came to return `ALWAN_OK` and the 830 nm value.
+
+### Table extents come from the enum, never from a sibling table
+
+Where an index is checked against one count and used to subscript several tables,
+every one of those tables is `_Static_assert`ed against the enum that defines the
+index. Checking the tables against *each other* would let them all drift away from
+the enum together, which is the same bug one indirection further out.
+
+Concretely, `alwan_rgb_get_space_descriptor_*` validates `space` against
+`ALWAN_RGB_SPACE_COUNT` and then reads four tables: primaries, transfer functions
+and matrices, in two precisions. Each asserts its own length against that constant.
+
+A helper that copies a whole table takes no extent parameter for the same reason.
+An `int size` argument sitting next to a `T const *table` argument means the loop
+bound and the bounds-gate clamp both come from the caller, so a caller that passes
+the wrong constant reads past the end and the gate clamps to the wrong number
+rather than catching it.
 
 ### An unsupported sample mode is rejected, not downgraded
 
