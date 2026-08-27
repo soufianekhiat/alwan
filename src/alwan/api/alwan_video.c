@@ -220,6 +220,15 @@ alwan_status alwan_video_encode_f64(void *out, alwan_f64 const *rgb_linear, size
     /* Default bit depth from output format */
     if (bit_depth <= 0) bit_depth = video_default_bit_depth(out_fmt);
 
+    /* bit_depth is documented as 8, 10, 12 or 16. It was never checked: an
+     * out-of-range value left video_narrow_params' outputs uninitialised, the
+     * caller discarded its failure return, and the function wrote whatever was
+     * on the stack while returning ALWAN_OK. bit_depth = 20 reproducibly
+     * emitted the value left by the preceding bit_depth = 12 call. */
+    if (bit_depth != 8 && bit_depth != 10 && bit_depth != 12 && bit_depth != 16) {
+        return ALWAN_E_INVALID;
+    }
+
     size_t stride = video_pixel_stride(out_fmt);
     if (stride == 0) return ALWAN_E_INVALID;
 
@@ -251,6 +260,15 @@ alwan_status alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, size_
 
     /* Default bit depth from input format */
     if (bit_depth <= 0) bit_depth = video_default_bit_depth(in_fmt);
+
+    /* bit_depth is documented as 8, 10, 12 or 16. It was never checked: an
+     * out-of-range value left video_narrow_params' outputs uninitialised, the
+     * caller discarded its failure return, and the function wrote whatever was
+     * on the stack while returning ALWAN_OK. bit_depth = 20 reproducibly
+     * emitted the value left by the preceding bit_depth = 12 call. */
+    if (bit_depth != 8 && bit_depth != 10 && bit_depth != 12 && bit_depth != 16) {
+        return ALWAN_E_INVALID;
+    }
 
     size_t stride = video_pixel_stride(in_fmt);
     if (stride == 0) return ALWAN_E_INVALID;
@@ -451,6 +469,15 @@ alwan_status alwan_video_encode_f32(void *out, alwan_f32 const *rgb_linear, size
     /* Default bit depth from output format */
     if (bit_depth <= 0) bit_depth = video_default_bit_depth(out_fmt);
 
+    /* bit_depth is documented as 8, 10, 12 or 16. It was never checked: an
+     * out-of-range value left video_narrow_params' outputs uninitialised, the
+     * caller discarded its failure return, and the function wrote whatever was
+     * on the stack while returning ALWAN_OK. bit_depth = 20 reproducibly
+     * emitted the value left by the preceding bit_depth = 12 call. */
+    if (bit_depth != 8 && bit_depth != 10 && bit_depth != 12 && bit_depth != 16) {
+        return ALWAN_E_INVALID;
+    }
+
     size_t stride = video_pixel_stride(out_fmt);
     if (stride == 0) return ALWAN_E_INVALID;
 
@@ -482,6 +509,15 @@ alwan_status alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, size_
 
     /* Default bit depth from input format */
     if (bit_depth <= 0) bit_depth = video_default_bit_depth(in_fmt);
+
+    /* bit_depth is documented as 8, 10, 12 or 16. It was never checked: an
+     * out-of-range value left video_narrow_params' outputs uninitialised, the
+     * caller discarded its failure return, and the function wrote whatever was
+     * on the stack while returning ALWAN_OK. bit_depth = 20 reproducibly
+     * emitted the value left by the preceding bit_depth = 12 call. */
+    if (bit_depth != 8 && bit_depth != 10 && bit_depth != 12 && bit_depth != 16) {
+        return ALWAN_E_INVALID;
+    }
 
     size_t stride = video_pixel_stride(in_fmt);
     if (stride == 0) return ALWAN_E_INVALID;

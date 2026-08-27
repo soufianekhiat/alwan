@@ -399,8 +399,18 @@ ALWAN_INLINE ALWAN_CORE_YCBCR ALWAN_CORE_FNVLIT(alwan_ycbcr_full_to_legal)(ALWAN
     ALWAN_CORE_FNLIT(alwan_legal_range) lr = ALWAN_CORE_FNLIT(alwan_legal_range_from_bit_depth)(bit_depth);
     ALWAN_CORE_YCBCR result;
     result.Y  = ycbcr.Y  * (lr.y_max - lr.y_min) + lr.y_min;
-    result.Cb = ycbcr.Cb * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_CORE_LITERAL(2.0);
-    result.Cr = ycbcr.Cr * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_CORE_LITERAL(2.0);
+    /* Chroma is centred on 0.5 on the full-range side, because that is what
+     * every Y'CbCr producer in this library emits (see ALWAN_YCBCR_CB_MIN).
+     * Subtracting the 0.5 before scaling is what maps achromatic 0.5 onto the
+     * legal centre, 128/255 at 8 bits.
+     *
+     * Until 2026-08-27 this scaled Cb directly, as though it were centred on 0,
+     * so achromatic chroma landed at 240/255 -- the legal MAXIMUM -- instead of
+     * 128/255. */
+    result.Cb = (ycbcr.Cb - ALWAN_CORE_LITERAL(0.5)) * (lr.c_max - lr.c_min)
+              + (lr.c_max + lr.c_min) / ALWAN_CORE_LITERAL(2.0);
+    result.Cr = (ycbcr.Cr - ALWAN_CORE_LITERAL(0.5)) * (lr.c_max - lr.c_min)
+              + (lr.c_max + lr.c_min) / ALWAN_CORE_LITERAL(2.0);
     return result;
 }
 
@@ -409,8 +419,9 @@ ALWAN_INLINE ALWAN_CORE_YCBCR ALWAN_CORE_FNVLIT(alwan_ycbcr_legal_to_full)(ALWAN
     ALWAN_CORE_T c_center = (lr.c_max + lr.c_min) / ALWAN_CORE_LITERAL(2.0);
     ALWAN_CORE_YCBCR result;
     result.Y  = (ycbcr.Y  - lr.y_min) / (lr.y_max - lr.y_min);
-    result.Cb = (ycbcr.Cb - c_center) / (lr.c_max - lr.c_min);
-    result.Cr = (ycbcr.Cr - c_center) / (lr.c_max - lr.c_min);
+    /* Inverse of the above: back to chroma centred on 0.5, not on 0. */
+    result.Cb = (ycbcr.Cb - c_center) / (lr.c_max - lr.c_min) + ALWAN_CORE_LITERAL(0.5);
+    result.Cr = (ycbcr.Cr - c_center) / (lr.c_max - lr.c_min) + ALWAN_CORE_LITERAL(0.5);
     return result;
 }
 

@@ -437,8 +437,10 @@ alwan_status ALWAN_MAP_LITCAT(alwan_rgb_to_ycbcr, _map_interleave)(alwan_map_lan
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, rgb_in, processed, in_stride, tile);
         ALWAN_MAP_LIT(alwan__rgb_to_ycbcr_kernel)(d0, d1, d2, c0, c1, c2, tile, kr, kb);
-        ALWAN_MAP_P_NORM_ADD(d1, tile, 0.5);
-        ALWAN_MAP_P_NORM_ADD(d2, tile, 0.5);
+        /* No chroma offset here: alwan__rgb_to_ycbcr_kernel and
+         * alwan__rgb_to_yccbccrc_kernel already centre their chroma, unlike
+         * the YCoCg kernel above. Adding 0.5 on top shifted Cb/Cr by a full
+         * 1.0 in the default build until 2026-08-27. */
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(ycbcr_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -458,8 +460,10 @@ alwan_status ALWAN_MAP_LITCAT(alwan_ycbcr_to_rgb, _map_interleave)(alwan_map_lan
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, ycbcr_in, processed, in_stride, tile);
-        ALWAN_MAP_P_NORM_ADD(c1, tile, -0.5);
-        ALWAN_MAP_P_NORM_ADD(c2, tile, -0.5);
+        /* No chroma offset here: alwan__rgb_to_ycbcr_kernel and
+         * alwan__rgb_to_yccbccrc_kernel already centre their chroma, unlike
+         * the YCoCg kernel above. Adding 0.5 on top shifted Cb/Cr by a full
+         * 1.0 in the default build until 2026-08-27. */
         ALWAN_MAP_LIT(alwan__ycbcr_to_rgb_kernel)(d0, d1, d2, c0, c1, c2, tile, kr, kb);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(rgb_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
@@ -606,8 +610,10 @@ alwan_status ALWAN_MAP_LITCAT(alwan_rgb_to_yccbccrc, _map_interleave)(alwan_map_
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, rgb_in, processed, in_stride, tile);
         ALWAN_MAP_LIT(alwan__rgb_to_yccbccrc_kernel)(d0, d1, d2, c0, c1, c2, tile, bit_depth);
-        ALWAN_MAP_P_NORM_ADD(d1, tile, 0.5);
-        ALWAN_MAP_P_NORM_ADD(d2, tile, 0.5);
+        /* No chroma offset here: alwan__rgb_to_ycbcr_kernel and
+         * alwan__rgb_to_yccbccrc_kernel already centre their chroma, unlike
+         * the YCoCg kernel above. Adding 0.5 on top shifted Cb/Cr by a full
+         * 1.0 in the default build until 2026-08-27. */
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(yccbccrc_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -624,8 +630,10 @@ alwan_status ALWAN_MAP_LITCAT(alwan_yccbccrc_to_rgb, _map_interleave)(alwan_map_
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, yccbccrc_in, processed, in_stride, tile);
-        ALWAN_MAP_P_NORM_ADD(c1, tile, -0.5);
-        ALWAN_MAP_P_NORM_ADD(c2, tile, -0.5);
+        /* No chroma offset here: alwan__rgb_to_ycbcr_kernel and
+         * alwan__rgb_to_yccbccrc_kernel already centre their chroma, unlike
+         * the YCoCg kernel above. Adding 0.5 on top shifted Cb/Cr by a full
+         * 1.0 in the default build until 2026-08-27. */
         ALWAN_MAP_LIT(alwan__yccbccrc_to_rgb_kernel)(d0, d1, d2, c0, c1, c2, tile, bit_depth);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(rgb_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
@@ -647,8 +655,14 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ycbcr_full_to_legal_kernel)(alwan_m
         ALWAN_MAP_LIT(alwan_legal_range) lr = ALWAN_MAP_LIT(alwan_legal_range_from_bit_depth)(bit_depth);
         alwan_map_simd y_scale  = alwan_map_simd_set1((alwan_map_lane)(lr.y_max - lr.y_min));
         alwan_map_simd y_off    = alwan_map_simd_set1((alwan_map_lane)lr.y_min);
-        alwan_map_simd c_scale  = alwan_map_simd_set1((alwan_map_lane)(lr.c_max - lr.c_min));
-        alwan_map_simd c_center = alwan_map_simd_set1((alwan_map_lane)((lr.c_max + lr.c_min) / 2.0));
+        /* Chroma is centred on 0.5 in full range, so the scale applies to the
+         * signed offset from 0.5. Folded into the addend to keep one fmadd:
+         * (x - 0.5) * scale + centre  ==  x * scale + (centre - 0.5 * scale). */
+        alwan_map_lane const c_span = (alwan_map_lane)(lr.c_max - lr.c_min);
+        alwan_map_simd c_scale  = alwan_map_simd_set1(c_span);
+        alwan_map_simd c_center = alwan_map_simd_set1(
+            (alwan_map_lane)((lr.c_max + lr.c_min) / (alwan_map_lane)2.0
+                             - (alwan_map_lane)0.5 * c_span));
         for (; i + W <= n; i += W) {
             alwan_map_simd_store(&d0[i], alwan_map_simd_fmadd(alwan_map_simd_load(&c0[i]), y_scale, y_off));
             alwan_map_simd_store(&d1[i], alwan_map_simd_fmadd(alwan_map_simd_load(&c1[i]), c_scale, c_center));
@@ -675,10 +689,13 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__ycbcr_legal_to_full_kernel)(alwan_m
         alwan_map_simd y_off  = alwan_map_simd_set1((alwan_map_lane)lr.y_min);
         alwan_map_simd c_inv  = alwan_map_simd_set1((alwan_map_lane)(1.0 / (alwan_map_lane)(lr.c_max - lr.c_min)));
         alwan_map_simd c_center = alwan_map_simd_set1((alwan_map_lane)((lr.c_max + lr.c_min) / 2.0));
+        /* Inverse of the forward centring: the quotient is the signed offset
+         * from 0.5, so 0.5 goes back on. */
+        alwan_map_simd c_half = alwan_map_simd_set1((alwan_map_lane)0.5);
         for (; i + W <= n; i += W) {
             alwan_map_simd_store(&d0[i], alwan_map_simd_mul(alwan_map_simd_sub(alwan_map_simd_load(&c0[i]), y_off), y_inv));
-            alwan_map_simd_store(&d1[i], alwan_map_simd_mul(alwan_map_simd_sub(alwan_map_simd_load(&c1[i]), c_center), c_inv));
-            alwan_map_simd_store(&d2[i], alwan_map_simd_mul(alwan_map_simd_sub(alwan_map_simd_load(&c2[i]), c_center), c_inv));
+            alwan_map_simd_store(&d1[i], alwan_map_simd_fmadd(alwan_map_simd_sub(alwan_map_simd_load(&c1[i]), c_center), c_inv, c_half));
+            alwan_map_simd_store(&d2[i], alwan_map_simd_fmadd(alwan_map_simd_sub(alwan_map_simd_load(&c2[i]), c_center), c_inv, c_half));
         }
     }
 #endif
@@ -888,8 +905,6 @@ alwan_status ALWAN_MAP_LITCAT(alwan_rgb_to_ycbcr, _map_planar)(alwan_map_lane *o
         ALWAN_ALIGN(32) alwan_map_lane co0_[ALWAN_MAP_TILE_PIXELS], co1_[ALWAN_MAP_TILE_PIXELS], co2_[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_planar3)(ci0_, ci1_, ci2_, in0, in1, in2, off_, in_stride, tile_);
         ALWAN_MAP_LIT(alwan__rgb_to_ycbcr_kernel)(co0_, co1_, co2_, ci0_, ci1_, ci2_, tile_, kr, kb);
-        ALWAN_MAP_P_NORM_ADD(co1_, tile_, 0.5);
-        ALWAN_MAP_P_NORM_ADD(co2_, tile_, 0.5);
         ALWAN_MAP_NAME(alwan__store_tile_planar3)(out0, out1, out2, off_, out_stride, co0_, co1_, co2_, tile_);
         off_ += tile_;
     }
@@ -908,8 +923,6 @@ alwan_status ALWAN_MAP_LITCAT(alwan_ycbcr_to_rgb, _map_planar)(alwan_map_lane *o
         ALWAN_ALIGN(32) alwan_map_lane ci0_[ALWAN_MAP_TILE_PIXELS], ci1_[ALWAN_MAP_TILE_PIXELS], ci2_[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane co0_[ALWAN_MAP_TILE_PIXELS], co1_[ALWAN_MAP_TILE_PIXELS], co2_[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_planar3)(ci0_, ci1_, ci2_, in0, in1, in2, off_, in_stride, tile_);
-        ALWAN_MAP_P_NORM_ADD(ci1_, tile_, -0.5);
-        ALWAN_MAP_P_NORM_ADD(ci2_, tile_, -0.5);
         ALWAN_MAP_LIT(alwan__ycbcr_to_rgb_kernel)(co0_, co1_, co2_, ci0_, ci1_, ci2_, tile_, kr, kb);
         ALWAN_MAP_NAME(alwan__store_tile_planar3)(out0, out1, out2, off_, out_stride, co0_, co1_, co2_, tile_);
         off_ += tile_;

@@ -884,10 +884,16 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 /* YCbCr: Y [0,1], Cb/Cr [-0.5, 0.5] */
 #define ALWAN_YCBCR_Y_MIN  ALWAN_ZERO
 #define ALWAN_YCBCR_Y_MAX  ALWAN_ONE
-#define ALWAN_YCBCR_CB_MIN ALWAN_LITERAL(-0.5)
-#define ALWAN_YCBCR_CB_MAX ALWAN_LITERAL(0.5)
-#define ALWAN_YCBCR_CR_MIN ALWAN_LITERAL(-0.5)
-#define ALWAN_YCBCR_CR_MAX ALWAN_LITERAL(0.5)
+/* Cb and Cr are centred on 0.5 and span [0, 1], because that is what
+ * alwan_rgb_to_ycbcr_kr_kb_v emits: the kernel adds the 0.5 offset itself, and
+ * its inverse subtracts it. This matches colour-science's
+ * RGB_to_YCbCr(..., out_range=(0, 1, 0, 1)), where achromatic reads 0.5.
+ * These constants said [-0.5, 0.5] until 2026-08-27, which is where the
+ * double-offset bug in ALWAN_NORM_YCBCR came from. */
+#define ALWAN_YCBCR_CB_MIN ALWAN_ZERO
+#define ALWAN_YCBCR_CB_MAX ALWAN_ONE
+#define ALWAN_YCBCR_CR_MIN ALWAN_ZERO
+#define ALWAN_YCBCR_CR_MAX ALWAN_ONE
 
 /* YCoCg: Y [0,1], Co/Cg [-0.5, 0.5] */
 #define ALWAN_YCOCG_Y_MIN  ALWAN_ZERO
@@ -1194,8 +1200,16 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_DENORM_IPTCH(p) do { (p)->h = (p)->h * ALWAN__TWOPI - ALWAN_PI; } while(0)
 
 /* YCbCr: Cb [-0.5,0.5] -> [0,1], Cr [-0.5,0.5] -> [0,1] */
-#define ALWAN_NORM_YCBCR(p)   do { (p)->Cb += ALWAN_LITERAL(0.5); (p)->Cr += ALWAN_LITERAL(0.5); } while(0)
-#define ALWAN_DENORM_YCBCR(p) do { (p)->Cb -= ALWAN_LITERAL(0.5); (p)->Cr -= ALWAN_LITERAL(0.5); } while(0)
+/* YCbCr needs no normalisation: the core kernel already emits Cb and Cr on
+ * [0, 1] centred at 0.5.
+ *
+ * These added a further +0.5 until 2026-08-27, so in the shipped default build
+ * (ALWAN_NORMALIZE_RANGES=1) achromatic grey encoded to Cb = Cr = 1.0 instead
+ * of 0.5, in-gamut RGB spanned [0.5, 1.5] rather than the documented [0, 1],
+ * and the decode subtracted a full 1.0 -- meaning a standards-conformant
+ * Y'CbCr signal could not be decoded at all. */
+#define ALWAN_NORM_YCBCR(p)   ((void)(p))
+#define ALWAN_DENORM_YCBCR(p) ((void)(p))
 
 /* YCoCg: Co [-0.5,0.5] -> [0,1], Cg [-0.5,0.5] -> [0,1] */
 #define ALWAN_NORM_YCOCG(p)   do { (p)->Co += ALWAN_LITERAL(0.5); (p)->Cg += ALWAN_LITERAL(0.5); } while(0)

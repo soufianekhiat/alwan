@@ -65,6 +65,50 @@ to 3.1e-07. Panasonic's specification uses `<`, and so does alwan.
 
 ---
 
+## Video signal
+
+### Y'CbCr chroma is centred on 0.5, and normalisation leaves it there
+
+alwan's float Y'CbCr uses full-range [0,1] for all three channels, with achromatic
+chroma at 0.5. The alternative convention, luma in [0,1] and chroma signed in
+[-0.5,0.5], is equally defensible and is what several libraries use.
+
+The choice matters because `ALWAN_NORMALIZE_RANGES` (default 1) rescales bounded
+channels into [0,1]. Under the 0.5-centred convention there is nothing to rescale,
+so `ALWAN_NORM_YCBCR` and `ALWAN_DENORM_YCBCR` are deliberately no-ops. They exist
+as named macros rather than being deleted so that the normalisation table has an
+entry for every colour type, and so the next person to read it finds a decision
+instead of an omission.
+
+They were not always no-ops. Adding +0.5 there, on top of the +0.5 the core kernel
+already applies, offset chroma by a full 1.0 in the shipped default build.
+
+**If you change the convention to signed chroma**, these two macros become real
+conversions, the legal-range pair changes with them, and so do the SIMD kernels
+below. It is not a one-line switch.
+
+### YCoCg does keep its normalisation offsets
+
+The four `ALWAN_MAP_P_NORM_ADD(..., ±0.5)` on the YCoCg map path are correct and
+must stay. That kernel emits genuinely signed Co/Cg and does not self-centre, so
+unlike Y'CbCr it has something for the normalisation layer to do.
+
+### The legal-range SIMD kernels duplicate the scalar formula
+
+`alwan__ycbcr_full_to_legal_kernel` and its inverse compute the conversion inline in
+intrinsics for the vector lanes and call the core function for the scalar tail. The
+two forms are algebraically equal, not textually identical: the forward folds the
+0.5 into the addend so the lane path stays a single fmadd.
+
+This is a performance decision with a maintenance cost, and the cost is real: a fix
+applied to the core alone left the lanes wrong and the tail right, in the same
+function. `70_planar_map` compares `_v` against `_map_planar` and catches exactly
+this, which is the only reason the duplication is tolerable. **Any edit to the core
+legal-range conversion must be mirrored into both kernels**, and that test is what
+proves it was.
+
+---
+
 ## Colour appearance and quality metrics
 
 ### ATD95 returns H as a ratio

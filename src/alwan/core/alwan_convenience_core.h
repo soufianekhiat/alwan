@@ -377,8 +377,8 @@ ALWAN_INLINE alwan_ycbcr alwan_ycbcr_full_to_legal_v(alwan_ycbcr ycbcr, int bit_
     alwan_legal_range lr = alwan_legal_range_from_bit_depth(bit_depth);
     alwan_ycbcr result;
     result.Y  = ycbcr.Y  * (lr.y_max - lr.y_min) + lr.y_min;
-    result.Cb = ycbcr.Cb * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
-    result.Cr = ycbcr.Cr * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
+    result.Cb = (ycbcr.Cb - ALWAN_LITERAL(0.5)) * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
+    result.Cr = (ycbcr.Cr - ALWAN_LITERAL(0.5)) * (lr.c_max - lr.c_min) + (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
     return result;
 }
 
@@ -387,8 +387,8 @@ ALWAN_INLINE alwan_ycbcr alwan_ycbcr_legal_to_full_v(alwan_ycbcr ycbcr, int bit_
     alwan_scalar c_center = (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
     alwan_ycbcr result;
     result.Y  = (ycbcr.Y  - lr.y_min) / (lr.y_max - lr.y_min);
-    result.Cb = (ycbcr.Cb - c_center) / (lr.c_max - lr.c_min);
-    result.Cr = (ycbcr.Cr - c_center) / (lr.c_max - lr.c_min);
+    result.Cb = (ycbcr.Cb - c_center) / (lr.c_max - lr.c_min) + ALWAN_LITERAL(0.5);
+    result.Cr = (ycbcr.Cr - c_center) / (lr.c_max - lr.c_min) + ALWAN_LITERAL(0.5);
     return result;
 }
 
