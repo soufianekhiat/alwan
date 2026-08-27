@@ -36,27 +36,6 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 /* Resolve Hunt surround enum to Nc (chromatic induction) and Nb (brightness) */
-static void get_hunt_params(alwan_hunt_surround surround,
-                            alwan_f64 *Nc, alwan_f64 *Nb) {
-    switch (surround) {
-        case ALWAN_HUNT_SURROUND_NORMAL:
-            *Nc = ALWAN_LITERAL(1.0);
-            *Nb = ALWAN_LITERAL(75.0);
-            break;
-        case ALWAN_HUNT_SURROUND_DIM:
-            *Nc = ALWAN_LITERAL(1.0);
-            *Nb = ALWAN_LITERAL(25.0);
-            break;
-        case ALWAN_HUNT_SURROUND_DARK:
-            *Nc = ALWAN_LITERAL(0.7);
-            *Nb = ALWAN_LITERAL(10.0);
-            break;
-        default:
-            *Nc = ALWAN_LITERAL(1.0);
-            *Nb = ALWAN_LITERAL(75.0);
-            break;
-    }
-}
 
 /* ----------------------------------------------------------------
  * Hunt Forward Transform: XYZ -> Correlates
@@ -69,20 +48,10 @@ alwan_status alwan_hunt_forward_f64(alwan_hunt_correlates_f64 *out,
         return ALWAN_E_INVALID;
     }
 
-    /* Resolve surround enum to scalar parameters */
-    alwan_f64 Nc, Nb;
-    get_hunt_params(vc->surround, &Nc, &Nb);
 
-    /* Resolve discount_illuminant flag to degree of adaptation */
-    alwan_f64 D = vc->discount_illuminant ? ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
 
     /* Delegate to core (value-returning, cross-platform) */
-    alwan_hunt_v_correlates_f64 result = alwan_hunt_forward_f64_v(
-        *xyz,
-        vc->xyz_w.x, vc->xyz_w.y, vc->xyz_w.z,
-        vc->La, vc->Yb,
-        Nc, Nb,
-        D);
+    alwan_hunt_v_correlates_f64 result = alwan_hunt_forward_f64_v(*xyz, *vc);
 
     /* Map core result to public struct */
     out->J = result.J;
@@ -107,20 +76,12 @@ alwan_status alwan_hunt_forward_f32(alwan_hunt_correlates_f32 *out,
         return ALWAN_E_INVALID;
     }
 
-    /* Resolve surround enum to scalar parameters */
-    alwan_f64 Nc, Nb;
-    get_hunt_params(vc->surround, &Nc, &Nb);
 
-    /* Resolve discount_illuminant flag to degree of adaptation */
-    alwan_f32 D = vc->discount_illuminant ? 1.0f : 0.0f;
-
-    /* Delegate to the native f32 core (value-returning, cross-platform) */
-    alwan_hunt_v_correlates_f32 result = alwan_hunt_forward_f32_v(
-        *xyz,
-        vc->xyz_w.x, vc->xyz_w.y, vc->xyz_w.z,
-        vc->La, vc->Yb,
-        (alwan_f32)Nc, (alwan_f32)Nb,
-        D);
+    /* Delegate to the native f32 core (value-returning, cross-platform).
+     * The whole viewing-conditions struct goes through now: Hunt needs the
+     * background, the proximal field, the scotopic terms and the induction
+     * factors, none of which fit in a scalar argument list. */
+    alwan_hunt_v_correlates_f32 result = alwan_hunt_forward_f32_v(*xyz, *vc);
 
     /* Map core result to public struct */
     out->J = result.J;

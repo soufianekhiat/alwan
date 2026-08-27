@@ -201,6 +201,24 @@ easy to miss; the cost of the default being interpolation is a little arithmetic
 
 ---
 
+## Zero-initialise viewing-conditions structs
+
+Several appearance models take a viewing-conditions struct whose optional fields
+use 0 as a "derive this" sentinel: Hunt has ten of them, RLAB and Kim2009 one
+each. Always write
+
+    alwan_hunt_viewing_conditions_f64 vc = {0};
+
+and then set what you know. A struct left as stack garbage produces confident
+nonsense rather than an error, because there is no value the library can reject:
+a plausible-looking float is indistinguishable from a deliberate one.
+
+This is not hypothetical. alwan's own f32/f64 twin test set four Hunt fields and
+left the rest uninitialised; when the new fields landed, the two precisions read
+different stack rubbish and diverged by 34 units of lightness.
+
+---
+
 ## Known limitations, not decisions
 
 Listed here so they are not mistaken for the above.

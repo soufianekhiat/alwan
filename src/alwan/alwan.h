@@ -2681,6 +2681,25 @@ alwan_status alwan_rlab_inverse_f64(alwan_xyz_f64 *xyz,
 
 /* Hunt forward transform: XYZ -> appearance correlates
  * Returns ALWAN_OK on success, or ALWAN_E_INVALID if out, xyz, or vc is NULL
+ *
+ * ZERO-INITIALISE THE VIEWING CONDITIONS. Hunt needs a background, a proximal
+ * field, scotopic responses and two induction factors on top of the white and
+ * the adapting luminance. Every one of those uses 0 as its "derive this for me"
+ * sentinel, so
+ *
+ *     alwan_hunt_viewing_conditions_f64 vc = {0};
+ *
+ * and then set what you know. A struct left as stack garbage will produce
+ * confident nonsense, which is exactly what happened to alwan's own f32/f64
+ * twin test when the fields were added.
+ *
+ * Matches colour.appearance.XYZ_to_Hunt to 4.6e-08 on Fairchild's worked
+ * examples. Before 2026-08-27 the chromatic adaptation was the algebraic
+ * identity (D + 1 - D) * lms, the white's cone responses and both surround
+ * factors were computed then discarded, the eccentricity factor was omitted and
+ * brightness, lightness and chroma were ad-hoc, so every correlate was wrong by
+ * one to two orders of magnitude.
+ *
  * Note: Hunt inverse is not implemented due to extreme complexity */
 alwan_status alwan_hunt_forward_f32(alwan_hunt_correlates_f32 *out,
                             alwan_xyz_f32 const *xyz,

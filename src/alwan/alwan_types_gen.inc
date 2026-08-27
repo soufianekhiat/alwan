@@ -188,13 +188,35 @@ typedef struct {
     int D_factor;                              /* Discounting factor: 0=auto, 1=hard, 2=soft, 3=trans */
 } ALWAN_TN(alwan_rlab_viewing_conditions);
 
-/* Hunt viewing conditions */
+/* Hunt viewing conditions.
+ *
+ * Hunt needs considerably more than a white point and an adapting luminance.
+ * Fields left at 0 are derived the way Hunt (1995) and colour-science derive
+ * them, so a struct that only sets xyz_w, La and Yb still behaves. */
 typedef struct {
     ALWAN_TN(alwan_xyz) xyz_w;                 /* White point (XYZ, Y=100) */
     ALWAN_T La;                                /* Adapting luminance (cd/m^2) */
     ALWAN_T Yb;                                /* Background luminance factor */
     alwan_hunt_surround surround;              /* Viewing surround */
     int discount_illuminant;                   /* 1 to discount illuminant, 0 otherwise */
+
+    ALWAN_TN(alwan_xyz) xyz_b;                 /* Background. Y <= 0 derives it from Yb. */
+    ALWAN_TN(alwan_xyz) xyz_p;                 /* Proximal field. Y <= 0 uses the background. */
+    ALWAN_T p;                                 /* Simultaneous contrast / assimilation.
+                                                * 0 disables it, as Hunt allows. */
+    ALWAN_T L_AS;                              /* Scotopic luminance of the illuminant.
+                                                * <= 0 derives it from CCT_w. */
+    ALWAN_T CCT_w;                             /* CCT of the white, only used to derive L_AS.
+                                                * <= 0 with L_AS <= 0 falls back to 5000 K. */
+    ALWAN_T S;                                 /* Scotopic response of the stimulus.
+                                                * <= 0 uses the stimulus Y. */
+    ALWAN_T S_w;                               /* Scotopic response of the white.
+                                                * <= 0 uses the white Y. */
+    ALWAN_T N_cb;                              /* Chromatic background induction.
+                                                * <= 0 derives 0.725*(Y_w/Y_b)^0.2. */
+    ALWAN_T N_bb;                              /* Brightness background induction.
+                                                * <= 0 derives the same way. */
+    int helson_judd_effect;                    /* 1 to model it; Hunt's default is off. */
 } ALWAN_TN(alwan_hunt_viewing_conditions);
 
 /* Hellwig2022 viewing conditions */
