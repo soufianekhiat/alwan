@@ -72,11 +72,22 @@ static ALWAN_CORE_T const ALWAN_CORE_FNLIT(ATD95_V_T2_D)     = ALWAN_CORE_LITERA
  * Helper Functions
  * ---------------------------------------------------------------- */
 
-/* Sign-preserving power response for cone channels */
+/* Sign-preserving power response for cone channels.
+ *
+ * ATD95 applies the channel gain BEFORE the 0.7 power and adds the offset
+ * AFTER it: spow(scale * x, 0.7) + offset, where spow is sign-preserving.
+ *
+ * Two things were wrong here until 2026-08-27. The gain sat outside the power,
+ * scale * |x|^0.7 + offset, so the L channel was scaled by 0.66 where the model
+ * scales by 0.66^0.7 = 0.7492 and S by 0.43 instead of 0.43^0.7 = 0.5533. And
+ * the whole expression including the offset was negated for negative input, so
+ * the offset came back with the wrong sign there; only the power is
+ * sign-preserving, the offset is not. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(atd95_spow_response)(ALWAN_CORE_T linear, ALWAN_CORE_T scale, ALWAN_CORE_T offset, ALWAN_CORE_T exponent) {
-    ALWAN_CORE_T abs_lin = ALWAN_CORE_ABS(linear);
-    ALWAN_CORE_T result = scale * ALWAN_CORE_POW(abs_lin, exponent) + offset;
-    return ALWAN_CORE_SELECT(linear < ALWAN_CORE_ZERO, -result, result);
+    ALWAN_CORE_T scaled = scale * linear;
+    ALWAN_CORE_T mag = ALWAN_CORE_POW(ALWAN_CORE_ABS(scaled), exponent);
+    ALWAN_CORE_T signed_pow = ALWAN_CORE_SELECT(scaled < ALWAN_CORE_ZERO, -mag, mag);
+    return signed_pow + offset;
 }
 
 /* Final response normalization: value / (200 + |value|) */
@@ -175,9 +186,18 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_atd95_v_correlates) ALWAN_CORE_FNVLIT(alwan_
                                   ALWAN_CORE_SQRT(T_2 * T_2 + D_2 * D_2) / A_2,
                                   ALWAN_CORE_ZERO);
 
-    /* Hue angle */
-    ALWAN_CORE_T H = ALWAN_CORE_ATAN2(T_2, D_2) * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
-    H = ALWAN_CORE_SELECT(H < ALWAN_CORE_ZERO, H + ALWAN_CORE_LITERAL(360.0), H);
+    /* Hue.
+     *
+     * ATD95 defines H as the plain RATIO T_2 / D_2, not an angle. It is not
+     * bounded to [0, 360) and the reference implementation does not wrap it.
+     * Until 2026-08-27 this returned degrees(atan2(T_2, D_2)) wrapped into
+     * [0, 360), which is a different quantity with a different range.
+     *
+     * D_2 is a final_response output, value / (200 + |value|), so it is zero
+     * only when its input is exactly zero; guard rather than divide. */
+    ALWAN_CORE_T H = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(D_2) > ALWAN_CORE_LITERAL(1e-12),
+                                       T_2 / ALWAN_CORE_SELECT(ALWAN_CORE_ABS(D_2) > ALWAN_CORE_LITERAL(1e-12), D_2, ALWAN_CORE_ONE),
+                                       ALWAN_CORE_ZERO);
 
     /* Output correlates */
     result.H   = H;

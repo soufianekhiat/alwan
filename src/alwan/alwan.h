@@ -2738,7 +2738,15 @@ alwan_status alwan_llab_forward_f64(alwan_llab_correlates_f64 *out,
  * Advanced temporal dynamics model
  * ---------------------------------------------------------------- */
 
-/* ATD95 forward transform: XYZ -> correlates */
+/* ATD95 forward transform: XYZ -> correlates
+ *
+ * H is the RATIO T_2/D_2 as the model defines it, not an angle. It is
+ * unbounded and may be negative; do not expect [0, 360).
+ *
+ * Matches colour.appearance.XYZ_to_ATD95 to 4.3e-10 on Fairchild's worked
+ * examples. Two defects were fixed 2026-08-27: the cone gain was applied
+ * outside the 0.7 power instead of inside it, and H was returned as
+ * degrees(atan2(T_2, D_2)) wrapped into [0, 360). */
 alwan_status alwan_atd95_forward_f32(alwan_atd95_correlates_f32 *out,
                              alwan_xyz_f32 const *xyz,
                              alwan_atd95_viewing_conditions_f32 const *vc);

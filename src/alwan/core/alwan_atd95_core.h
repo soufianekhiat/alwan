@@ -39,48 +39,22 @@ ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
 ALWAN_DIAG_POP
 
 #else /* GPU backends - original code */
-/* ================================================================
- * GPU Backends: Single-precision only (original code)
- * ================================================================ */
-
-typedef struct {
-    alwan_scalar H, C, Br;
-    alwan_scalar A_1, T_1, D_1;
-    alwan_scalar A_2, T_2, D_2;
-} alwan_atd95_v_correlates;
-
-static alwan_scalar const ATD95_V_LMS_L_X = ALWAN_LITERAL(0.2435);
-static alwan_scalar const ATD95_V_LMS_L_Y = ALWAN_LITERAL(0.8524);
-static alwan_scalar const ATD95_V_LMS_L_Z = ALWAN_LITERAL(-0.0516);
-static alwan_scalar const ATD95_V_LMS_M_X = ALWAN_LITERAL(-0.3954);
-static alwan_scalar const ATD95_V_LMS_M_Y = ALWAN_LITERAL(1.1642);
-static alwan_scalar const ATD95_V_LMS_M_Z = ALWAN_LITERAL(0.0837);
-static alwan_scalar const ATD95_V_LMS_S_Y = ALWAN_LITERAL(0.04);
-static alwan_scalar const ATD95_V_LMS_S_Z = ALWAN_LITERAL(0.6225);
-static alwan_scalar const ATD95_V_L_SCALE  = ALWAN_LITERAL(0.66);
-static alwan_scalar const ATD95_V_L_OFFSET = ALWAN_LITERAL(0.024);
-static alwan_scalar const ATD95_V_L_EXP    = ALWAN_LITERAL(0.7);
-static alwan_scalar const ATD95_V_M_OFFSET = ALWAN_LITERAL(0.036);
-static alwan_scalar const ATD95_V_M_EXP    = ALWAN_LITERAL(0.7);
-static alwan_scalar const ATD95_V_S_SCALE  = ALWAN_LITERAL(0.43);
-static alwan_scalar const ATD95_V_S_OFFSET = ALWAN_LITERAL(0.31);
-static alwan_scalar const ATD95_V_S_EXP    = ALWAN_LITERAL(0.7);
-static alwan_scalar const ATD95_V_RETINAL_SCALE = ALWAN_LITERAL(18.0);
-static alwan_scalar const ATD95_V_RETINAL_EXP   = ALWAN_LITERAL(0.8);
-static alwan_scalar const ATD95_V_A1_L = ALWAN_LITERAL(3.57);
-static alwan_scalar const ATD95_V_A1_M = ALWAN_LITERAL(2.64);
-static alwan_scalar const ATD95_V_T1_L = ALWAN_LITERAL(7.18);
-static alwan_scalar const ATD95_V_T1_M = ALWAN_LITERAL(-6.21);
-static alwan_scalar const ATD95_V_D1_L = ALWAN_LITERAL(-0.7);
-static alwan_scalar const ATD95_V_D1_M = ALWAN_LITERAL(0.085);
-static alwan_scalar const ATD95_V_A2_SCALE = ALWAN_LITERAL(0.09);
-static alwan_scalar const ATD95_V_T2_T     = ALWAN_LITERAL(0.43);
-static alwan_scalar const ATD95_V_T2_D     = ALWAN_LITERAL(0.76);
-
+/* Sign-preserving power response for cone channels.
+ *
+ * ATD95 applies the channel gain BEFORE the 0.7 power and adds the offset
+ * AFTER it: spow(scale * x, 0.7) + offset, where spow is sign-preserving.
+ *
+ * Two things were wrong here until 2026-08-27. The gain sat outside the power,
+ * scale * |x|^0.7 + offset, so the L channel was scaled by 0.66 where the model
+ * scales by 0.66^0.7 = 0.7492 and S by 0.43 instead of 0.43^0.7 = 0.5533. And
+ * the whole expression including the offset was negated for negative input, so
+ * the offset came back with the wrong sign there; only the power is
+ * sign-preserving, the offset is not. */
 ALWAN_INLINE alwan_scalar atd95_spow_response_v(alwan_scalar linear, alwan_scalar scale, alwan_scalar offset, alwan_scalar exponent) {
-    alwan_scalar abs_lin = ALWAN_ABS(linear);
-    alwan_scalar result = scale * ALWAN_POW(abs_lin, exponent) + offset;
-    return ALWAN_SELECT(linear < ALWAN_ZERO, -result, result);
+    alwan_scalar scaled = scale * linear;
+    alwan_scalar mag = ALWAN_POW(ALWAN_ABS(scaled), exponent);
+    alwan_scalar signed_pow = ALWAN_SELECT(scaled < ALWAN_ZERO, -mag, mag);
+    return signed_pow + offset;
 }
 
 ALWAN_INLINE alwan_scalar atd95_final_response_v(alwan_scalar value) {
@@ -138,8 +112,15 @@ ALWAN_INLINE alwan_atd95_v_correlates alwan_atd95_forward_v(
     alwan_scalar abs_A2 = ALWAN_ABS(A_2);
     alwan_scalar C = ALWAN_SELECT(abs_A2 > ALWAN_LITERAL(1e-10),
                                   ALWAN_SQRT(T_2 * T_2 + D_2 * D_2) / A_2, ALWAN_ZERO);
-    alwan_scalar H = ALWAN_ATAN2(T_2, D_2) * ALWAN_LITERAL(180.0) / ALWAN_PI;
-    H = ALWAN_SELECT(H < ALWAN_ZERO, H + ALWAN_LITERAL(360.0), H);
+    /* Hue.
+     *
+     * ATD95 defines H as the plain RATIO T_2 / D_2, not an angle. It is not
+     * bounded to [0, 360) and the reference implementation does not wrap it.
+     * Until 2026-08-27 this returned degrees(atan2(T_2, D_2)) wrapped into
+     * [0, 360), which is a different quantity with a different range. */
+    alwan_scalar H = ALWAN_SELECT(ALWAN_ABS(D_2) > ALWAN_LITERAL(1e-12),
+                                  T_2 / ALWAN_SELECT(ALWAN_ABS(D_2) > ALWAN_LITERAL(1e-12), D_2, ALWAN_ONE),
+                                  ALWAN_ZERO);
     result.H = H; result.C = C; result.Br = Br;
     result.A_1 = A_1; result.T_1 = T_1; result.D_1 = D_1;
     result.A_2 = A_2; result.T_2 = T_2; result.D_2 = D_2;
