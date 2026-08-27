@@ -513,8 +513,8 @@ enum {
     ALWAN_TABLE_TCS_SIZE         = 14 * 95,
     ALWAN_TABLE_VS_SAMPLES       = 15,
     ALWAN_TABLE_VS_SIZE          = 15 * 95,
-    ALWAN_TABLE_CES_SAMPLES      = 80,
-    ALWAN_TABLE_CES_SIZE         = 80 * 95
+    ALWAN_TABLE_CES_SAMPLES      = 99,
+    ALWAN_TABLE_CES_SIZE         = 99 * 95
 };
 
 /* ---- tcs_reflectance -- rank 2, 14 x 95, INTEGER row ----------------
@@ -550,6 +550,22 @@ enum {
     ALWAN_TABLE_SSI_BIN_TAPS  = 11,
     ALWAN_TABLE_SSI_BIN_COUNT = 30
 };
+
+/* ---- daylight_basis_s012 -- rank 2, 3 x 95, INTEGER row -------------
+ * The CIE 15:2004 daylight basis S0/S1/S2 on the 360-830 nm 5 nm quality grid,
+ * concatenated in that order. Used to build the CIE 224:2017 / TM-30 reference
+ * illuminant at an arbitrary CCT: S = S0 + M1*S1 + M2*S2. Before this existed
+ * alwan_tm30_rf_* substituted D65 for every CCT >= 5000 K, which scored D50
+ * against D65.
+ * Reader: alwan_table2d_row_at_f64
+ * Source: fixtures/daylight_basis_s012.csv */
+enum {
+    ALWAN_TABLE_DAYLIGHT_BASIS_ROWS = 3,
+    ALWAN_TABLE_DAYLIGHT_BASIS_SIZE = 3 * 95
+};
+#if ALWAN_TABLE_DAYLIGHT_BASIS
+ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_daylight_basis, ALWAN_TABLE_DAYLIGHT_BASIS_SIZE)
+#endif
 
 /* ---- ssi_bin_weights / ssi_spectral_weights -- rank 1, INTEGER row --
  * Reader: alwan_table1d_row_{f32,f64}

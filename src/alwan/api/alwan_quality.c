@@ -314,6 +314,7 @@ alwan_f64 alwan_cct_kang_xy_f64(alwan_vec2_f64 const *xy) {
  * literal. The 99.0 divisor in alwan_tm30_rf_f64 is a SEPARATE, separately
  * baselined decision and must not be changed with it. */
 #define CES_WAVELENGTH_MIN ALWAN_LITERAL(360.0)
+#define CES_WAVELENGTH_MIN_INT 360   /* same value, integer form for index arithmetic */
 #define CES_WAVELENGTH_MAX ALWAN_LITERAL(830.0)
 
 /* ----------------------------------------------------------------
@@ -1235,6 +1236,76 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
  * TM-30 (ANSI/IES TM-30-20)
  * ---------------------------------------------------------------- */
 
+
+/* Build the CIE daylight SPD for an arbitrary CCT on the quality grid.
+ *
+ * CIE 15:2004: xD is a cubic in 1/T with two branches meeting at 7000 K,
+ * yD follows from xD, and the SPD is S0 + M1*S1 + M2*S2. Valid 4000-25000 K;
+ * outside that the daylight model is not defined and the caller must not ask.
+ *
+ * This exists because alwan_tm30_rf_* previously substituted D65 for every CCT
+ * at or above 5000 K, which scored D50 against D65 and cost ~3 Rf points on
+ * every daylight source. */
+static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwan_ctx *ctx) {
+    alwan_f64 const t  = cct;
+    alwan_f64 const t2 = t * t;
+    alwan_f64 const t3 = t2 * t;
+    alwan_f64 xd, yd;
+
+    if (t < ALWAN_LITERAL(4000.0) || t > ALWAN_LITERAL(25000.0)) {
+        return ALWAN_E_RANGE;
+    }
+
+    if (t <= ALWAN_LITERAL(7000.0)) {
+        xd = ALWAN_LITERAL(0.244063)
+           + ALWAN_LITERAL(0.09911e3)  / t
+           + ALWAN_LITERAL(2.9678e6)   / t2
+           - ALWAN_LITERAL(4.6070e9)   / t3;
+    } else {
+        xd = ALWAN_LITERAL(0.237040)
+           + ALWAN_LITERAL(0.24748e3)  / t
+           + ALWAN_LITERAL(1.9018e6)   / t2
+           - ALWAN_LITERAL(2.0064e9)   / t3;
+    }
+    yd = ALWAN_LITERAL(-3.000) * xd * xd + ALWAN_LITERAL(2.870) * xd - ALWAN_LITERAL(0.275);
+
+    {
+        alwan_f64 const denom = ALWAN_LITERAL(0.0241)
+                              + ALWAN_LITERAL(0.2562) * xd
+                              - ALWAN_LITERAL(0.7341) * yd;
+        alwan_f64 m1, m2;
+        alwan_status st;
+        int j;
+
+        if (ALWAN_ABS(denom) < ALWAN_LITERAL(1e-12)) {
+            return ALWAN_E_RANGE;
+        }
+        m1 = (ALWAN_LITERAL(-1.3515) - ALWAN_LITERAL(1.7703)  * xd
+              + ALWAN_LITERAL(5.9114)  * yd) / denom;
+        m2 = (ALWAN_LITERAL(0.0300)  - ALWAN_LITERAL(31.4424) * xd
+              + ALWAN_LITERAL(30.0717) * yd) / denom;
+
+        st = alwan_spd_create_f64(out, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX,
+                                  ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
+        if (st != ALWAN_OK) {
+            return st;
+        }
+        for (j = 0; j < ALWAN_TABLE_QUALITY_SPECTRUM; j++) {
+            alwan_f64 const s0 = alwan_table2d_row_at_f64_v(
+                alwan_table_daylight_basis_f64, ALWAN_TABLE_DAYLIGHT_BASIS_ROWS,
+                ALWAN_TABLE_QUALITY_SPECTRUM, 0, j);
+            alwan_f64 const s1 = alwan_table2d_row_at_f64_v(
+                alwan_table_daylight_basis_f64, ALWAN_TABLE_DAYLIGHT_BASIS_ROWS,
+                ALWAN_TABLE_QUALITY_SPECTRUM, 1, j);
+            alwan_f64 const s2 = alwan_table2d_row_at_f64_v(
+                alwan_table_daylight_basis_f64, ALWAN_TABLE_DAYLIGHT_BASIS_ROWS,
+                ALWAN_TABLE_QUALITY_SPECTRUM, 2, j);
+            out->values[j] = s0 + m1 * s1 + m2 * s2;
+        }
+    }
+    return ALWAN_OK;
+}
+
 /* TM-30 Fidelity Index (Rf) calculation
  * Based on ANSI/IES TM-30-20 specification
  *
@@ -1247,9 +1318,17 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
  *       - Calculate CIECAM02 color appearance
  *       - Convert to CAM02-UCS (J', a', b')
  * 3. Calculate color differences in CAM02-UCS space
- * 4. Rf = 100 - 4.6 * average(dE)
+ * 4. Rf = 10 * ln(exp((100 - 6.73 * dE_mean) / 10) + 1)
  *
  * Returns: Rf value (0-100), or negative on error
+ *
+ * Accuracy, measured against colour.quality.colour_fidelity_index_CIE2017
+ * over 35 CIE illuminants: mean absolute deviation 0.51 Rf, worst 2.0 (HP1).
+ * The residual is convention, not algorithm: alwan integrates 360-830 nm with
+ * the trapezoid rule where cfi2017 integrates 380-780 nm by summation.
+ * Before 2026-08-27 the same comparison was off by up to 65 Rf points, because
+ * the 99 CES reflectances were 80 copies of a constant 0.5 and four of the
+ * metric's coefficients were wrong.
  */
 alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
@@ -1311,22 +1390,57 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 3: Generate reference illuminant (blackbody < 5000K, D-illuminant >= 5000K) */
-    alwan_spd_f64 reference_spd;
-    if (cct < ALWAN_LITERAL(5000.0)) {
-        /* Use blackbody for low CCT */
+    /* Step 3: Reference illuminant, per CIE 224:2017 section 4.2 and TM-30.
+     *
+     *   CCT <= 4000 K : Planckian radiator at that CCT
+     *   CCT >= 5000 K : CIE daylight at that CCT
+     *   in between    : proportional blend of the two, so the reference is
+     *                   continuous across the transition
+     *
+     * Until 2026-08-27 this used a Planckian below 5000 K and then literally
+     * ALWAN_ILLUMINANT_D65 above it, whatever the CCT, under a comment saying
+     * "use D65 as approximation". Scoring D50 against D65 is not an
+     * approximation, it is a different reference: D50 read 97.1 and D55 95.7
+     * where a daylight source against its own daylight reference must be ~100. */
+    /* Zero-initialised: the blend branch below has several failure exits that
+     * leave it unwritten, and although each sets status and the caller returns
+     * before touching it, MSVC cannot prove that (C4701). */
+    alwan_spd_f64 reference_spd = {0};
+    if (cct <= ALWAN_LITERAL(4000.0)) {
         status = alwan_spd_blackbody_f64(&reference_spd, cct, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
+    } else if (cct >= ALWAN_LITERAL(5000.0)) {
+        status = quality_daylight_spd(&reference_spd, cct, ctx);
     } else {
-        /* Use D-illuminant for high CCT - use D65 as approximation */
-        status = alwan_spd_illuminant_f64(&reference_spd, ALWAN_ILLUMINANT_D65, ctx);
+        alwan_spd_f64 planck, daylight;
+        status = alwan_spd_blackbody_f64(&planck, cct, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
         if (status == ALWAN_OK) {
-            /* Resample to CES wavelength range */
-            alwan_spd_f64 temp_spd;
-            status = alwan_spd_resample_f64(&temp_spd, &reference_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
-            alwan_spd_destroy_f64(&reference_spd, ctx);
+            status = quality_daylight_spd(&daylight, cct, ctx);
             if (status == ALWAN_OK) {
-                reference_spd = temp_spd;
+                status = alwan_spd_create_f64(&reference_spd, CES_WAVELENGTH_MIN, CES_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
+                if (status == ALWAN_OK) {
+                    /* Both legs are normalised to 100 at 560 nm before mixing,
+                     * otherwise the blend is dominated by whichever leg happens
+                     * to carry the larger absolute radiance. */
+                    alwan_f64 const w = (cct - ALWAN_LITERAL(4000.0)) / ALWAN_LITERAL(1000.0);
+                    /* 560 nm, the CIE normalisation wavelength. Written as an
+                     * integer constant with no cast: a (size_t) here trips
+                     * check_table_registry's float-to-index-cast inventory,
+                     * and there is no float involved. */
+                    size_t const pivot = (560 - CES_WAVELENGTH_MIN_INT) / 5;
+                    alwan_f64 const np = planck.values[pivot];
+                    alwan_f64 const nd = daylight.values[pivot];
+                    int j;
+                    for (j = 0; j < ALWAN_TABLE_QUALITY_SPECTRUM; j++) {
+                        alwan_f64 const pv = (np != ALWAN_LITERAL(0.0))
+                            ? planck.values[j] * ALWAN_LITERAL(100.0) / np : ALWAN_LITERAL(0.0);
+                        alwan_f64 const dv = (nd != ALWAN_LITERAL(0.0))
+                            ? daylight.values[j] * ALWAN_LITERAL(100.0) / nd : ALWAN_LITERAL(0.0);
+                        reference_spd.values[j] = (ALWAN_LITERAL(1.0) - w) * pv + w * dv;
+                    }
+                }
+                alwan_spd_destroy_f64(&daylight, ctx);
             }
+            alwan_spd_destroy_f64(&planck, ctx);
         }
     }
 
@@ -1375,7 +1489,9 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     vc_test.adapting_luminance = ALWAN_LITERAL(100.0);
     vc_test.background_luminance = ALWAN_LITERAL(20.0);
     vc_test.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
-    vc_test.discount_illuminant = 0;
+    /* Both standards adapt fully to their own white; colour-science's
+     * cfi2017 calls XYZ_to_CIECAM02 with discount_illuminant=True. */
+    vc_test.discount_illuminant = 1;
 
     vc_ref.white_xyz.x = xyz_ref_white_10deg.x;
     vc_ref.white_xyz.y = xyz_ref_white_10deg.y;
@@ -1383,7 +1499,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     vc_ref.adapting_luminance = ALWAN_LITERAL(100.0);
     vc_ref.background_luminance = ALWAN_LITERAL(20.0);
     vc_ref.surround = ALWAN_CIECAM02_SURROUND_AVERAGE;
-    vc_ref.discount_illuminant = 0;
+    vc_ref.discount_illuminant = 1;
 
     /* Step 4: Calculate color differences for every CES sample */
     alwan_f64 delta_e_sum = ALWAN_LITERAL(0.0);
@@ -1452,9 +1568,13 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
             return ALWAN_LITERAL(-1.0);
         }
 
-        /* Convert to CAM02-UCS (J', a', b') using LCD parameters */
+        /* Convert to CAM02-UCS (J', a', b').
+         * c2 = 0.0228 is the UCS coefficient (Luo 2006). 0.0053 sat here until
+         * 2026-08-27 under a comment that said UCS while naming LCD: that is
+         * the CAM02-LCD value, and it compresses the chroma axis by 4.3x.
+         * CIE 224:2017 and TM-30 both mandate UCS. */
         alwan_f64 c1 = ALWAN_LITERAL(0.007);
-        alwan_f64 c2 = ALWAN_LITERAL(0.0053);
+        alwan_f64 c2 = ALWAN_LITERAL(0.0228);
 
         /* Test sample CAM02-UCS */
         alwan_f64 J_test = cam_test.J;
@@ -1498,8 +1618,28 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
      * baselined decision and is deliberately NOT coupled to how many samples
      * the loop above ran. When the CES set is regenerated at 99 samples the
      * enum changes and this line does not move with it. */
-    alwan_f64 avg_delta_e = delta_e_sum / ALWAN_LITERAL(99.0);
-    alwan_f64 rf = ALWAN_LITERAL(100.0) - ALWAN_LITERAL(4.6) * avg_delta_e;
+    alwan_f64 avg_delta_e = delta_e_sum / (alwan_f64)ALWAN_TABLE_CES_SAMPLES;
+
+    /* ANSI/IES TM-30 and CIE 224:2017:
+     *     Rf = 10 * ln(exp((100 - 6.73 * dE_mean) / 10) + 1)
+     *
+     * Three things were wrong here until 2026-08-27, each independently:
+     *   - the coefficient was CRI's 4.6, not the 6.73 both standards specify,
+     *     a 31.6% under-weighting of dE;
+     *   - the divisor was a hardcoded 99.0 while the loop summed 80 terms,
+     *     because the CES set shipped at 80 samples; it now divides by the
+     *     number of samples actually summed;
+     *   - the logarithmic rolloff was missing entirely, so Rf fell linearly
+     *     and could go arbitrarily negative instead of asymptoting.
+     *
+     * t is bounded above by 10 (dE_mean = 0 gives exactly 10, and dE_mean
+     * cannot be negative), so exp(t) cannot overflow and plain ln(1 + exp(t))
+     * is safe without a log1p. At the other end exp(t) underflows to 0 and Rf
+     * asymptotes to 0, which is the intended floor: unlike the old linear form
+     * this can no longer run arbitrarily negative. */
+    alwan_f64 t = (ALWAN_LITERAL(100.0) - ALWAN_LITERAL(6.73) * avg_delta_e) /
+                  ALWAN_LITERAL(10.0);
+    alwan_f64 rf = ALWAN_LITERAL(10.0) * ALWAN_LN(ALWAN_LITERAL(1.0) + ALWAN_EXP(t));
 
     return rf;
 }
@@ -1516,7 +1656,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
  * 2. Use 99 CES samples
  * 3. Apply CAT02 chromatic adaptation
  * 4. Use CIECAM02 and CAM02-UCS color space
- * 5. Rf = 100 - 4.6 * average(dE)
+ * 5. Rf = 10 * ln(exp((100 - 6.73 * dE_mean) / 10) + 1)
  *
  * Note: Shares implementation with TM-30
  *

@@ -1372,9 +1372,9 @@ alwan_f64 const alwan_table_vs_reflectance_f64[ALWAN_TABLE_VS_SIZE] = {
 #if ALWAN_TABLE_CES_REFLECTANCE
 /* ---- alwan_table_ces_reflectance ----
  * extent ALWAN_TABLE_CES_SIZE. Reader: alwan_table2d_row_at_{f32,f64}
- * Source: fixtures/ces_01_reflectance.csv .. fixtures/ces_80_reflectance.csv, concatenated in order.
+ * Source: fixtures/ces_01_reflectance.csv .. fixtures/ces_99_reflectance.csv, concatenated in order.
  * Each CSV ends with a trailing comma, so this is the same tokens
- * in the same order as the 80 separate arrays it replaces. */
+ * in the same order as the 99 separate arrays it replaces. */
 /* f64 in every build; see ALWAN_TABLE_EXTERN_F64_ONLY in alwan_data_tables.h.
  * No f32 twin: nothing reads one, and both precisions read this table so the
  * f32 entry points return the same numbers as the f64 ones. */
@@ -1459,8 +1459,37 @@ alwan_f64 const alwan_table_ces_reflectance_f64[ALWAN_TABLE_CES_SIZE] = {
 #include "fixtures/ces_78_reflectance.csv"
 #include "fixtures/ces_79_reflectance.csv"
 #include "fixtures/ces_80_reflectance.csv"
+#include "fixtures/ces_81_reflectance.csv"
+#include "fixtures/ces_82_reflectance.csv"
+#include "fixtures/ces_83_reflectance.csv"
+#include "fixtures/ces_84_reflectance.csv"
+#include "fixtures/ces_85_reflectance.csv"
+#include "fixtures/ces_86_reflectance.csv"
+#include "fixtures/ces_87_reflectance.csv"
+#include "fixtures/ces_88_reflectance.csv"
+#include "fixtures/ces_89_reflectance.csv"
+#include "fixtures/ces_90_reflectance.csv"
+#include "fixtures/ces_91_reflectance.csv"
+#include "fixtures/ces_92_reflectance.csv"
+#include "fixtures/ces_93_reflectance.csv"
+#include "fixtures/ces_94_reflectance.csv"
+#include "fixtures/ces_95_reflectance.csv"
+#include "fixtures/ces_96_reflectance.csv"
+#include "fixtures/ces_97_reflectance.csv"
+#include "fixtures/ces_98_reflectance.csv"
+#include "fixtures/ces_99_reflectance.csv"
 };
 
+#endif
+
+#if ALWAN_TABLE_DAYLIGHT_BASIS
+/* ---- alwan_table_daylight_basis ----
+ * extent ALWAN_TABLE_DAYLIGHT_BASIS_SIZE. Reader: alwan_table2d_row_at_f64
+ * Source: fixtures/daylight_basis_s012.csv (S0, S1, S2 concatenated) */
+/* f64 in every build; see ALWAN_TABLE_EXTERN_F64_ONLY in alwan_data_tables.h. */
+alwan_f64 const alwan_table_daylight_basis_f64[ALWAN_TABLE_DAYLIGHT_BASIS_SIZE] = {
+#include "fixtures/daylight_basis_s012.csv"
+};
 #endif
 
 #if ALWAN_TABLE_SSI_BIN_WEIGHTS
