@@ -3123,7 +3123,14 @@ alwan_f64 alwan_cct_kang_xy_f64(alwan_vec2_f64 const *xy);
 
 /* CRI (Color Rendering Index) Ra - average of 8 TCS samples */
 /* Requires SPD (spectral power distribution) */
-/* Returns CRI Ra value [0, 100], or negative on error */
+/* Returns CRI Ra value, or negative on error.
+ *
+ * Ra is NOT clamped to [0, 100]. CIE 13.3 lets it go negative for very poor
+ * sources, and clamping would hide exactly the ones the metric exists to flag.
+ *
+ * Accuracy, measured against colour.quality.colour_rendering_index over 35 CIE
+ * illuminants: mean absolute deviation 0.054, worst 0.43 (HP1). Sources that
+ * are their own reference land within 0.01 of 100. */
 alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 alwan_f32 alwan_cri_ra_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 

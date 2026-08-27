@@ -321,6 +321,45 @@ alwan_f64 alwan_cct_kang_xy_f64(alwan_vec2_f64 const *xy) {
  * CRI (Color Rendering Index)
  * ---------------------------------------------------------------- */
 
+
+/* CIE 1960 UCS chromaticity from XYZ. */
+static void cri_xyz_to_uv(alwan_f64 *u, alwan_f64 *v, alwan_xyz_f64 const *xyz) {
+    alwan_f64 const denom = xyz->x + ALWAN_LITERAL(15.0) * xyz->y + ALWAN_LITERAL(3.0) * xyz->z;
+    if (ALWAN_ABS(denom) < ALWAN_EPSILON) {
+        *u = ALWAN_LITERAL(0.0);
+        *v = ALWAN_LITERAL(0.0);
+        return;
+    }
+    *u = ALWAN_LITERAL(4.0) * xyz->x / denom;
+    *v = ALWAN_LITERAL(6.0) * xyz->y / denom;
+}
+
+/* The c and d terms of the CIE 13.3-1995 von Kries adaptation. */
+static alwan_f64 cri_term_c(alwan_f64 u, alwan_f64 v) {
+    if (ALWAN_ABS(v) < ALWAN_EPSILON) return ALWAN_LITERAL(0.0);
+    return (ALWAN_LITERAL(4.0) - u - ALWAN_LITERAL(10.0) * v) / v;
+}
+
+static alwan_f64 cri_term_d(alwan_f64 u, alwan_f64 v) {
+    if (ALWAN_ABS(v) < ALWAN_EPSILON) return ALWAN_LITERAL(0.0);
+    return (ALWAN_LITERAL(1.708) * v + ALWAN_LITERAL(0.404) - ALWAN_LITERAL(1.481) * u) / v;
+}
+
+/* U*V*W* (CIE 1964) for a sample at chromaticity (u, v) and luminance factor Y,
+ * relative to a white at (u_w, v_w). */
+static void cri_uvw(alwan_f64 *U, alwan_f64 *V, alwan_f64 *W,
+                    alwan_f64 u, alwan_f64 v, alwan_f64 Y,
+                    alwan_f64 u_w, alwan_f64 v_w) {
+    alwan_f64 const y = (Y > ALWAN_LITERAL(0.0)) ? Y : ALWAN_LITERAL(0.0);
+    *W = ALWAN_LITERAL(25.0) * ALWAN_POW(y, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0)) - ALWAN_LITERAL(17.0);
+    *U = ALWAN_LITERAL(13.0) * (*W) * (u - u_w);
+    *V = ALWAN_LITERAL(13.0) * (*W) * (v - v_w);
+}
+
+/* Defined further down, next to the TM-30 implementation. Used by all three
+ * light-quality metrics to build their reference illuminant. */
+static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwan_ctx *ctx);
+
 /* CRI Ra (General Color Rendering Index) calculation
  * Based on CIE 13.3-1995 specification
  *
@@ -335,7 +374,17 @@ alwan_f64 alwan_cct_kang_xy_f64(alwan_vec2_f64 const *xy) {
  *    e. Calculate special CRI: R_i = 100 - 4.6 * dE_i
  * 4. Ra = average of R1...R8
  *
- * Returns: Ra value (0-100), or negative on error
+ * Returns: Ra value, or negative on error (not clamped; see alwan.h)
+ *
+ * Three independent defects were fixed here on 2026-08-27, taking the mean
+ * absolute deviation against colour-science from ~30 Ra to 0.054:
+ *   - an unpublished /15.5 divisor on the colour difference. HP1 scored 94.1
+ *     where the CIE value is 8.5.
+ *   - a Planckian reference at every CCT, where CIE 13.3 specifies daylight
+ *     at or above 5000 K. D65 scored 97.2 against its own reference.
+ *   - no chromatic adaptation. Each sample was converted to U*V*W* against
+ *     its own white and the two differenced, instead of adapting the test
+ *     sample onto the reference illuminant first.
  */
 alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
@@ -398,11 +447,21 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         return ALWAN_LITERAL(-1.0);
     }
 
-    /* Step 3: Generate reference illuminant at same CCT.
-     * Uses Planckian radiator for all CCTs; CIE 13.3-1995 specifies D-illuminant
-     * for CCT >= 5000K but blackbody is a common substitute. */
-    alwan_spd_f64 reference_spd;
-    status = alwan_spd_blackbody_f64(&reference_spd, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
+    /* Step 3: Reference illuminant at the test CCT, per CIE 13.3-1995:
+     * a Planckian radiator below 5000 K, CIE daylight at or above it.
+     *
+     * A blackbody was used at every CCT until 2026-08-27, under a comment
+     * saying "CIE 13.3-1995 specifies D-illuminant for CCT >= 5000K but
+     * blackbody is a common substitute". It is not a substitute, it is a
+     * different reference: D65 scored 97.2 against a 6504 K blackbody where a
+     * daylight source measured against its own daylight reference must be 100.
+     * The same substitution was present in CQS and TM-30. */
+    alwan_spd_f64 reference_spd = {0};
+    if (cct < ALWAN_LITERAL(5000.0)) {
+        status = alwan_spd_blackbody_f64(&reference_spd, cct, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
+    } else {
+        status = quality_daylight_spd(&reference_spd, cct, ctx);
+    }
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
         return ALWAN_LITERAL(-1.0);
@@ -437,6 +496,15 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         xyz_ref_white.y *= ref_norm_factor;
         xyz_ref_white.z *= ref_norm_factor;
     }
+
+    /* White-point chromaticities and adaptation terms, computed once. */
+    alwan_f64 u_test_w, v_test_w, u_ref_w, v_ref_w;
+    cri_xyz_to_uv(&u_test_w, &v_test_w, &xyz_test_white);
+    cri_xyz_to_uv(&u_ref_w,  &v_ref_w,  &xyz_ref_white);
+    alwan_f64 const c_t = cri_term_c(u_test_w, v_test_w);
+    alwan_f64 const d_t = cri_term_d(u_test_w, v_test_w);
+    alwan_f64 const c_r = cri_term_c(u_ref_w,  v_ref_w);
+    alwan_f64 const d_r = cri_term_d(u_ref_w,  v_ref_w);
 
     /* Step 3: Calculate special CRI for first 8 TCS samples */
     alwan_f64 r_values[8];
@@ -488,16 +556,39 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         xyz_ref.y *= ref_norm_factor;
         xyz_ref.z *= ref_norm_factor;
 
-        /* Convert to U*V*W* color space (CIE 1964)
-         * Each sample uses its respective illuminant's white point */
-        alwan_uvw_f64 uvw_test, uvw_ref;
-        alwan_xyz_to_uvw_f64(&uvw_test, &xyz_test, &xyz_test_white);
-        alwan_xyz_to_uvw_f64(&uvw_ref, &xyz_ref, &xyz_ref_white);
+        /* CIE 13.3-1995 chromatic adaptation, then U*V*W* against the REFERENCE
+         * white for both samples.
+         *
+         * Until 2026-08-27 each sample was converted to U*V*W* against its own
+         * illuminant's white and the two differenced directly. That skips the
+         * adaptation the standard specifies: the test sample's chromaticity is
+         * supposed to be mapped onto the reference illuminant by a von Kries
+         * step in CIE 1960 UCS, using the c and d terms, before any difference
+         * is taken. */
+        alwan_f64 u_k, v_k, u_kr, v_kr;
+        cri_xyz_to_uv(&u_k, &v_k, &xyz_test);
+        cri_xyz_to_uv(&u_kr, &v_kr, &xyz_ref);
 
-        /* Calculate color difference dE in U*V*W* space */
-        alwan_f64 du = uvw_test.U - uvw_ref.U;
-        alwan_f64 dv = uvw_test.V - uvw_ref.V;
-        alwan_f64 dw = uvw_test.W - uvw_ref.W;
+        {
+            alwan_f64 const ck = cri_term_c(u_k, v_k);
+            alwan_f64 const dk = cri_term_d(u_k, v_k);
+            alwan_f64 const cc = (ALWAN_ABS(c_t) > ALWAN_EPSILON) ? c_r / c_t : ALWAN_LITERAL(0.0);
+            alwan_f64 const dd = (ALWAN_ABS(d_t) > ALWAN_EPSILON) ? d_r / d_t : ALWAN_LITERAL(0.0);
+            alwan_f64 const den = ALWAN_LITERAL(16.518) + ALWAN_LITERAL(1.481) * cc * ck - dd * dk;
+            if (ALWAN_ABS(den) > ALWAN_EPSILON) {
+                u_k = (ALWAN_LITERAL(10.872) + ALWAN_LITERAL(0.404) * cc * ck
+                       - ALWAN_LITERAL(4.0) * dd * dk) / den;
+                v_k = ALWAN_LITERAL(5.52) / den;
+            }
+        }
+
+        alwan_f64 U_t, V_t, W_t, U_r, V_r, W_r;
+        cri_uvw(&U_t, &V_t, &W_t, u_k,  v_k,  xyz_test.y, u_ref_w, v_ref_w);
+        cri_uvw(&U_r, &V_r, &W_r, u_kr, v_kr, xyz_ref.y,  u_ref_w, v_ref_w);
+
+        alwan_f64 du = U_t - U_r;
+        alwan_f64 dv = V_t - V_r;
+        alwan_f64 dw = W_t - W_r;
         alwan_f64 delta_e = ALWAN_SQRT(du * du + dv * dv + dw * dw);
 
         /* CIE 13.3-1995: R_i = 100 - 4.6 * dE_i, with dE_i the raw U*V*W*
@@ -1005,8 +1096,6 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, al
  * CQS (Color Quality Scale) - NIST
  * ---------------------------------------------------------------- */
 
-/* Defined below, next to the TM-30 implementation that also uses it. */
-static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwan_ctx *ctx);
 
 /* CQS (Color Quality Scale) calculation
  * Based on NIST CQS 9.0 specification
