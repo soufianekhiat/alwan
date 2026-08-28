@@ -107,7 +107,7 @@ sampling where linear leaves visible facets on a coarse grid.
 ```c
 alwan_status alwan_table2d_grid_sample_{T}(alwan_{T} *result,
                                            alwan_{T} const *table,
-                                           int rows, int stride,
+                                           int rows, int cols,
                                            alwan_{T} row_coord, alwan_{T} col_coord,
                                            alwan_sample_mode mode);
 ```

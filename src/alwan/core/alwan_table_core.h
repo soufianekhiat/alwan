@@ -282,13 +282,13 @@ ALWAN_INLINE alwan_mat3x3 alwan_table1d_mat3_sample_v(
  * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_table2d_row_at_v(
-        alwan_scalar const *table, int rows, int stride, int row, int col) {
+        alwan_scalar const *table, int rows, int cols, int row, int col) {
     int const r = alwan_table_row_v(row, rows);
-    int const c = alwan_table_row_v(col, stride);
-    return table[(size_t)r * (size_t)stride + (size_t)c];
+    int const c = alwan_table_row_v(col, cols);
+    return table[(size_t)r * (size_t)cols + (size_t)c];
 }
 
-/* Bilinear over the same rows x stride grid, both axes in [0,1].
+/* Bilinear over the same rows x cols grid, both axes in [0,1].
  *
  * This is what ALWAN_SAMPLE_BILINEAR means in alwan: a genuine 2-d grid, not
  * the flattened cube in the strip readers below, which is sampled trilinearly
@@ -297,15 +297,15 @@ ALWAN_INLINE alwan_scalar alwan_table2d_row_at_v(
  * Row and column are separate axes with separate extents, so each gets its own
  * cell and both go through the same gate as the integer reader above. */
 ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_bilinear_v(
-        alwan_scalar const *table, int rows, int stride,
+        alwan_scalar const *table, int rows, int cols,
         alwan_scalar row_coord, alwan_scalar col_coord) {
     alwan_table_cell const cr = alwan_table_cell_v(row_coord, rows);
-    alwan_table_cell const cc = alwan_table_cell_v(col_coord, stride);
+    alwan_table_cell const cc = alwan_table_cell_v(col_coord, cols);
 
-    alwan_scalar const v00 = alwan_table2d_row_at_v(table, rows, stride, cr.i0, cc.i0);
-    alwan_scalar const v01 = alwan_table2d_row_at_v(table, rows, stride, cr.i0, cc.i1);
-    alwan_scalar const v10 = alwan_table2d_row_at_v(table, rows, stride, cr.i1, cc.i0);
-    alwan_scalar const v11 = alwan_table2d_row_at_v(table, rows, stride, cr.i1, cc.i1);
+    alwan_scalar const v00 = alwan_table2d_row_at_v(table, rows, cols, cr.i0, cc.i0);
+    alwan_scalar const v01 = alwan_table2d_row_at_v(table, rows, cols, cr.i0, cc.i1);
+    alwan_scalar const v10 = alwan_table2d_row_at_v(table, rows, cols, cr.i1, cc.i0);
+    alwan_scalar const v11 = alwan_table2d_row_at_v(table, rows, cols, cr.i1, cc.i1);
 
     alwan_scalar const top = alwan_lerp(v00, v01, cc.frac);
     alwan_scalar const bot = alwan_lerp(v10, v11, cc.frac);
@@ -313,23 +313,23 @@ ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_bilinear_v(
 }
 
 ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_nearest_v(
-        alwan_scalar const *table, int rows, int stride,
+        alwan_scalar const *table, int rows, int cols,
         alwan_scalar row_coord, alwan_scalar col_coord) {
     alwan_table_cell const cr = alwan_table_cell_v(row_coord, rows);
-    alwan_table_cell const cc = alwan_table_cell_v(col_coord, stride);
+    alwan_table_cell const cc = alwan_table_cell_v(col_coord, cols);
     int const r = (cr.frac < ALWAN_LITERAL(0.5)) ? cr.i0 : cr.i1;
     int const c = (cc.frac < ALWAN_LITERAL(0.5)) ? cc.i0 : cc.i1;
-    return alwan_table2d_row_at_v(table, rows, stride, r, c);
+    return alwan_table2d_row_at_v(table, rows, cols, r, c);
 }
 
 /* LINEAR resolves to bilinear here, the same way it resolves to trilinear at
  * rank 3: it is the zero value, so a zero-initialised mode must interpolate. */
 ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_v(
-        alwan_scalar const *table, int rows, int stride,
+        alwan_scalar const *table, int rows, int cols,
         alwan_scalar row_coord, alwan_scalar col_coord, alwan_sample_mode mode) {
     if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
-        return alwan_table2d_grid_sample_nearest_v(table, rows, stride, row_coord, col_coord);
-    return alwan_table2d_grid_sample_bilinear_v(table, rows, stride, row_coord, col_coord);
+        return alwan_table2d_grid_sample_nearest_v(table, rows, cols, row_coord, col_coord);
+    return alwan_table2d_grid_sample_bilinear_v(table, rows, cols, row_coord, col_coord);
 }
 
 /* ================================================================

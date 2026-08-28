@@ -5175,10 +5175,10 @@ alwan_status alwan_table1d_sample_f64(alwan_f64 *result,
                         alwan_f64 const *table, int size,
                         alwan_f64 coord, alwan_sample_mode mode);
 
-/* Caller-supplied 2D grid: rows x stride scalars, row-major.
+/* Caller-supplied 2D grid: rows x cols scalars, row-major.
  * result: output interpolated value
- * table: rows * stride values, index = row*stride + col
- * rows, stride: extents (both >= 2)
+ * table: rows * cols values, index = row*cols + col
+ * rows, cols: extents (both >= 2)
  * row_coord, col_coord: input [0,1] coordinates on each axis
  * mode: LINEAR (0, the default, resolves to bilinear), NEAREST or BILINEAR,
  *       optionally | ALWAN_SAMPLE_STRICT
@@ -5187,11 +5187,11 @@ alwan_status alwan_table1d_sample_f64(alwan_f64 *result,
  * separates this from the 2-d strip reader below: that one is a cube flattened
  * into two dimensions and is sampled trilinearly. */
 alwan_status alwan_table2d_grid_sample_f32(alwan_f32 *result,
-                        alwan_f32 const *table, int rows, int stride,
+                        alwan_f32 const *table, int rows, int cols,
                         alwan_f32 row_coord, alwan_f32 col_coord,
                         alwan_sample_mode mode);
 alwan_status alwan_table2d_grid_sample_f64(alwan_f64 *result,
-                        alwan_f64 const *table, int rows, int stride,
+                        alwan_f64 const *table, int rows, int cols,
                         alwan_f64 row_coord, alwan_f64 col_coord,
                         alwan_sample_mode mode);
 

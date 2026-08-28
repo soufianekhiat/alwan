@@ -74,15 +74,15 @@ alwan_status ALWAN_CORE_FNLIT(alwan_table1d_sample)(ALWAN_CORE_T *result,
 }
 
 alwan_status ALWAN_CORE_FNLIT(alwan_table2d_grid_sample)(ALWAN_CORE_T *result,
-                        ALWAN_CORE_T const *table, int rows, int stride,
+                        ALWAN_CORE_T const *table, int rows, int cols,
                         ALWAN_CORE_T row_coord, ALWAN_CORE_T col_coord,
                         alwan_sample_mode mode) {
-    if (!result || !table || rows < 2 || stride < 2) return ALWAN_E_INVALID;
+    if (!result || !table || rows < 2 || cols < 2) return ALWAN_E_INVALID;
     if (!ALWAN_CORE_FN(table_mode_ok_grid2d)(mode)) return ALWAN_E_INVALID;
     ALWAN_TABLE_STRICT_CHECK_1(row_coord);
     ALWAN_TABLE_STRICT_CHECK_1(col_coord);
     *result = ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample)(
-        table, rows, stride, row_coord, col_coord, mode);
+        table, rows, cols, row_coord, col_coord, mode);
     return ALWAN_OK;
 }
 

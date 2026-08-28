@@ -262,13 +262,13 @@ ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample)(
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(
-        ALWAN_CORE_T const *table, int rows, int stride, int row, int col) {
+        ALWAN_CORE_T const *table, int rows, int cols, int row, int col) {
     int const r = ALWAN_CORE_FNVLIT(alwan_table_row)(row, rows);
-    int const c = ALWAN_CORE_FNVLIT(alwan_table_row)(col, stride);
-    return table[(size_t)r * (size_t)stride + (size_t)c];
+    int const c = ALWAN_CORE_FNVLIT(alwan_table_row)(col, cols);
+    return table[(size_t)r * (size_t)cols + (size_t)c];
 }
 
-/* Bilinear over the same rows x stride grid, both axes in [0,1].
+/* Bilinear over the same rows x cols grid, both axes in [0,1].
  *
  * This is what ALWAN_SAMPLE_BILINEAR means in alwan: a genuine 2-d grid, not
  * the flattened cube in the strip readers below, which is sampled trilinearly
@@ -277,15 +277,15 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(
  * Row and column are separate axes with separate extents, so each gets its own
  * cell and both go through the same gate as the integer reader above. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_bilinear)(
-        ALWAN_CORE_T const *table, int rows, int stride,
+        ALWAN_CORE_T const *table, int rows, int cols,
         ALWAN_CORE_T row_coord, ALWAN_CORE_T col_coord) {
     ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(row_coord, rows);
-    ALWAN_CORE_TABLE_CELL const cc = ALWAN_CORE_FNVLIT(alwan_table_cell)(col_coord, stride);
+    ALWAN_CORE_TABLE_CELL const cc = ALWAN_CORE_FNVLIT(alwan_table_cell)(col_coord, cols);
 
-    ALWAN_CORE_T const v00 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, stride, cr.i0, cc.i0);
-    ALWAN_CORE_T const v01 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, stride, cr.i0, cc.i1);
-    ALWAN_CORE_T const v10 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, stride, cr.i1, cc.i0);
-    ALWAN_CORE_T const v11 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, stride, cr.i1, cc.i1);
+    ALWAN_CORE_T const v00 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i0, cc.i0);
+    ALWAN_CORE_T const v01 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i0, cc.i1);
+    ALWAN_CORE_T const v10 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i1, cc.i0);
+    ALWAN_CORE_T const v11 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i1, cc.i1);
 
     ALWAN_CORE_T const top = ALWAN_CORE_LERP(v00, v01, cc.frac);
     ALWAN_CORE_T const bot = ALWAN_CORE_LERP(v10, v11, cc.frac);
@@ -293,23 +293,23 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_bilinear)(
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_nearest)(
-        ALWAN_CORE_T const *table, int rows, int stride,
+        ALWAN_CORE_T const *table, int rows, int cols,
         ALWAN_CORE_T row_coord, ALWAN_CORE_T col_coord) {
     ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(row_coord, rows);
-    ALWAN_CORE_TABLE_CELL const cc = ALWAN_CORE_FNVLIT(alwan_table_cell)(col_coord, stride);
+    ALWAN_CORE_TABLE_CELL const cc = ALWAN_CORE_FNVLIT(alwan_table_cell)(col_coord, cols);
     int const r = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
     int const c = (cc.frac < ALWAN_CORE_LITERAL(0.5)) ? cc.i0 : cc.i1;
-    return ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, stride, r, c);
+    return ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, r, c);
 }
 
 /* LINEAR resolves to bilinear here, the same way it resolves to trilinear at
  * rank 3: it is the zero value, so a zero-initialised mode must interpolate. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample)(
-        ALWAN_CORE_T const *table, int rows, int stride,
+        ALWAN_CORE_T const *table, int rows, int cols,
         ALWAN_CORE_T row_coord, ALWAN_CORE_T col_coord, alwan_sample_mode mode) {
     if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
-        return ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_nearest)(table, rows, stride, row_coord, col_coord);
-    return ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_bilinear)(table, rows, stride, row_coord, col_coord);
+        return ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_nearest)(table, rows, cols, row_coord, col_coord);
+    return ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_bilinear)(table, rows, cols, row_coord, col_coord);
 }
 
 /* ================================================================
