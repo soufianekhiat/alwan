@@ -98,19 +98,22 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_full_to_legal_10bit)(ALWAN_CORE
  * Reference: Academy S-2013-001, "ACESproxy -- An Integer Log
  * Encoding of ACES Image Data"
  *
- * The spec's final step rounds the code value to an integer. That step is left
- * to the caller, so this stays a continuous float transfer function and the
- * EOTF remains an exact inverse of the OETF. Everything else is normative and
- * applied here: the 2^-9.72 floor, the [CV_min, CV_max] clamp, and
+ * ACESproxy is defined as an INTEGER log encoding, so the rounding to a code
+ * value is part of the transfer function, not a step left to the caller. The
+ * spec's order is round, then clamp to [CV_min, CV_max]; both bounds are
+ * integers so the order is not observable, and colour-science does the same.
+ * Everything else is applied here too: the 2^-9.72 floor and
  * mid_log_offset = 2.5. 10-bit constants.
  *
- * The visible consequence, which is deliberate: at linear 0.18 the code value
- * is 426.30344, so this returns 426.30344 / 1023 = 0.4167189 where a rounding
- * implementation (colour-science, and any integer ACESproxy encoder) returns
- * 426 / 1023 = 0.4164223. The gap is 2.97e-04 and is bounded by half a code
- * value across the whole range. Round the result yourself if you need bit-exact
- * ACESproxy code values. Do not quantise inside the OETF: that turns the curve
- * into a staircase and breaks EOTF(OETF(x)) == x for the float and GPU paths.
+ * The consequence is that the curve is a staircase and EOTF(OETF(x)) != x in
+ * general: the round trip returns the centre of the code value x landed in,
+ * within half a step. That is what an integer encoding means, and matching the
+ * definition matters more here than reversibility. At linear 0.18 the code
+ * value is 426.30344, which encodes as 426 / 1023 = 0.4164223.
+ *
+ * The EOTF is the exact inverse of the unrounded curve, so it maps a code value
+ * back to the linear value at the centre of its bucket. Feeding it a
+ * non-quantised input is well defined and simply interpolates between codes.
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_acesproxy_oetf)(ALWAN_CORE_T linear) {
@@ -122,7 +125,8 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_acesproxy_oetf)(ALWAN_CORE_T li
     ALWAN_CORE_T lin_cut        = ALWAN_CORE_LITERAL(0.0011857371917920374);  /* 2^-9.72 */
     
     ALWAN_CORE_T arg    = ALWAN_CORE_SELECT(linear <= ALWAN_CORE_ZERO, ALWAN_CORE_LITERAL(1e-10), linear);
-    ALWAN_CORE_T cv_raw = (ALWAN_CORE_LOG2(arg) + mid_log_offset) * steps_per_stop + mid_cv_offset;
+    ALWAN_CORE_T cv_raw = ALWAN_CORE_ROUND(
+        (ALWAN_CORE_LOG2(arg) + mid_log_offset) * steps_per_stop + mid_cv_offset);
     ALWAN_CORE_T cv_lo  = ALWAN_CORE_SELECT(cv_raw < cv_min, cv_min, cv_raw);
     ALWAN_CORE_T cv     = ALWAN_CORE_SELECT(cv_lo > cv_max, cv_max, cv_lo);
     return ALWAN_CORE_SELECT(linear > lin_cut, cv, cv_min) / ALWAN_CORE_LITERAL(1023.0);

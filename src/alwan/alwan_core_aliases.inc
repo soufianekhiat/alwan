@@ -44,6 +44,7 @@
 #define ALWAN_CORE_LOG2(x)             ALWAN_LOG2(x)
 #define ALWAN_CORE_LOG10(x)            ALWAN_LOG10(x)
 #define ALWAN_CORE_FLOOR(x)            ALWAN_FLOOR(x)
+#define ALWAN_CORE_ROUND(x)            ALWAN_ROUND(x)
 #define ALWAN_CORE_CEIL(x)             ALWAN_CEIL(x)
 #define ALWAN_CORE_FMOD(x, y)          ALWAN_FMOD(x, y)
 #define ALWAN_CORE_LITERAL(x)          ALWAN_LITERAL(x)

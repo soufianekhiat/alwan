@@ -265,6 +265,7 @@
 # define ALWAN_LOG10(x)     log10(x)
 # define ALWAN_FLOOR(x)     floor(x)
 # define ALWAN_CEIL(x)      ceil(x)
+# define ALWAN_ROUND(x)     round(x)
 # define ALWAN_FMOD(x, y)   fmod(x, y)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_GLSL
@@ -288,6 +289,7 @@
 # define ALWAN_LOG10(x)     (log(x) / log(10.0))
 # define ALWAN_FLOOR(x)     floor(x)
 # define ALWAN_CEIL(x)      ceil(x)
+# define ALWAN_ROUND(x)     round(x)
 # define ALWAN_FMOD(x, y)   mod(x, y)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
@@ -363,6 +365,9 @@
 # endif
 # ifndef ALWAN_FLOOR
 #   define ALWAN_FLOOR(x)   Halide::floor(x)
+# endif
+# ifndef ALWAN_ROUND
+#   define ALWAN_ROUND(x)   Halide::round(x)
 # endif
 # ifndef ALWAN_CEIL
 #   define ALWAN_CEIL(x)    Halide::ceil(x)

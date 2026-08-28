@@ -134,7 +134,8 @@ ALWAN_INLINE alwan_scalar alwan_acesproxy_oetf(alwan_scalar linear) {
     alwan_scalar lin_cut        = ALWAN_LITERAL(0.0011857371917920374);  /* 2^-9.72 */
     
     alwan_scalar arg    = ALWAN_SELECT(linear <= ALWAN_ZERO, ALWAN_LITERAL(1e-10), linear);
-    alwan_scalar cv_raw = (ALWAN_LOG2(arg) + mid_log_offset) * steps_per_stop + mid_cv_offset;
+    alwan_scalar cv_raw = ALWAN_ROUND(
+        (ALWAN_LOG2(arg) + mid_log_offset) * steps_per_stop + mid_cv_offset);
     alwan_scalar cv_lo  = ALWAN_SELECT(cv_raw < cv_min, cv_min, cv_raw);
     alwan_scalar cv     = ALWAN_SELECT(cv_lo > cv_max, cv_max, cv_lo);
     return ALWAN_SELECT(linear > lin_cut, cv, cv_min) / ALWAN_LITERAL(1023.0);

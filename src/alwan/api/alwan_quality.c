@@ -1109,7 +1109,7 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, al
  *    c. Convert to CIELAB
  *    d. Calculate color difference dE*ab
  * 4. Saturation correction, RMS, CCT factor, and
- *    Qa = 10 * ln(exp((100 - 3.104 * D_Ep_RMS) / 10) + 1) * CCT_f
+ *    Qa = 10 * ln(exp((100 - 3.2 * D_Ep_RMS) / 10) + 1)   [CQS 9.0: no CCT factor]
  *    per NIST CQS 9.0.
  *
  * Returns: CQS value (0-100), or negative on error
@@ -1352,45 +1352,38 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
     /* Step 5: NIST CQS 9.0.
      *
      *     D_Ep_RMS = sqrt(mean(D_Ep^2))
-     *     CCT_f    = min(1, gamut_area(reference Lab) / 8210)
-     *     Qa       = 10 * ln(exp((100 - 3.104 * D_Ep_RMS) / 10) + 1) * CCT_f
+     *     Qa       = 10 * ln(exp((100 - 3.2 * D_Ep_RMS) / 10) + 1)
      *
-     * Four things were wrong until 2026-08-27: the mean was used where CQS
-     * specifies an RMS, the scaling factor was 3.2 (that is CQS 7.4; 9.0 uses
-     * 3.104), the logarithmic rolloff was missing entirely so Qa fell linearly
-     * and could go negative, and the CCT factor that penalises very low colour
-     * temperatures was absent. */
+     * Two things were wrong until 2026-08-27: the mean was used where CQS
+     * specifies an RMS, and the logarithmic rolloff was missing entirely, so Qa
+     * fell linearly and could go negative.
+     *
+     * The scaling factor was then changed 3.2 -> 3.104 on the belief that 3.2
+     * was 7.4's, and a CCT factor was chased as a missing step. Both were
+     * backwards: 3.2 and no CCT factor is exactly CQS 9.0. See below. */
     {
         alwan_f64 const d_ep_rms =
             ALWAN_SQRT(delta_e_sum / (alwan_f64)ALWAN_TABLE_VS_SAMPLES);
 
-        /* CQS's CCT factor -- CCT_f = min(1, gamut_area(reference) / GAMUT_AREA_D65),
-         * which penalises sources whose reference renders a small gamut -- is NOT
-         * implemented.
+        /* NIST CQS 9.0 has NO CCT factor and a scaling factor of 3.2. The
+         * factor belongs to CQS 7.4, which pairs it with 3.104:
          *
-         * It was implemented and measured twice, and made results worse both
-         * times. The second attempt was on the corrected adaptation framework,
-         * so the framework was not the fault:
+         *     9.0 : CCT_f = 1,          scaling_f = 3.2
+         *     7.4 : CCT_f = computed,   scaling_f = 3.104
          *
-         *     without the factor   mean 0.447, max 1.707, D65 = 100.000 exactly
-         *     with it              mean 1.063, max 4.490, D65 =  99.037
+         * alwan had these crossed, running 7.4's scaling factor with 9.0's
+         * absent CCT factor, which is neither method. Two earlier attempts to
+         * "restore" the missing factor were therefore chasing a step that 9.0
+         * does not have, and both made results worse, correctly.
          *
-         * The normaliser is the problem. 8210 is colour-science's D65 gamut area
-         * measured in colour-science's pipeline; alwan's own is 8130.95, so that
-         * ratio cannot give D65 the CCT_f = 1 it must have by definition. But
-         * renormalising does not rescue it either: alwan computes illuminant A's
-         * reference gamut as 7968, SMALLER than its own D65 area, while
-         * colour-science's CCT_f for A is ~1.0, meaning its A gamut is LARGER
-         * than its D65 gamut. That is a qualitative disagreement about the
-         * samples, not a scale factor, and it was not isolated.
-         *
-         * The cost of omitting it is a uniformly POSITIVE residual, largest on
-         * very low CCT sources: HP1 reads 35.4 against 33.7. That is the shape
-         * you would expect from a missing penalty, and it is small. A wrong
-         * factor corrupts every result including D65 and A, which are exactly
-         * the values anyone would check first. Left open in before_public.md. */
+         * Also worth recording, since the earlier note here blamed it: the 8210
+         * normaliser really does not match colour-science's own D65 gamut area,
+         * which is 8131.03 against alwan's 8130.95. That agreement is a check
+         * that alwan's gamut geometry is right; 8210 is simply a published
+         * constant that the sample set no longer reproduces. It is only ever
+         * used by 7.4, which alwan does not implement. */
         {
-            alwan_f64 const t = (ALWAN_LITERAL(100.0) - ALWAN_LITERAL(3.104) * d_ep_rms) /
+            alwan_f64 const t = (ALWAN_LITERAL(100.0) - ALWAN_LITERAL(3.2) * d_ep_rms) /
                                 ALWAN_LITERAL(10.0);
             return ALWAN_LITERAL(10.0) * ALWAN_LN(ALWAN_LITERAL(1.0) + ALWAN_EXP(t));
         }

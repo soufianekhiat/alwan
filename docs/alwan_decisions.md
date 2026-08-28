@@ -8,43 +8,56 @@ OCIO, and a future contributor diffing against either will find these. Each
 entry says what the difference is, what it costs, and what would break if
 someone "fixed" it.
 
-Two principles drive most of the list:
+Three principles drive most of the list, in this order of precedence:
 
-**Reversibility.** A forward transform paired with an inverse should round-trip
-to machine precision. Quantisation and clamping inside a transform destroy that,
-and the caller can always quantise afterwards. The caller cannot un-quantise.
+**The definition wins.** Where a standard prescribes behaviour, alwan implements
+it even when the result is inconvenient. ACESproxy is an integer encoding, so
+alwan quantises and the round trip becomes a staircase. A house principle does
+not get to overrule a specification.
+
+**Reversibility.** Where the definition leaves it open, a forward transform
+paired with an inverse should round-trip to machine precision. Clamping a *value*
+inside a transform destroys that and the caller can never undo it, so alwan does
+not. This is why an out-of-range colour is an error rather than a silent clamp,
+and why the ACES 1.x inverse was made exact.
 
 **GPU pairing.** The core headers compile to HLSL, GLSL and Halide as well as C.
-A transform that needs a table search, a variable-length loop, or an integer
-staircase is either slow or impossible on that path. Where a choice exists
-between a form that vectorises and one that does not, alwan takes the former and
-says so.
+A transform that needs a table search or a variable-length loop is either slow or
+impossible on that path. Where a choice exists between a form that vectorises and
+one that does not, alwan takes the former and says so.
+
+Gaps that are not decisions live in [future_work.md](future_work.md).
 
 ---
 
 ## Transfer functions
 
-### ACESproxy is not quantised
+### ACESproxy is quantised
 
 **Reference:** ANSI/SMPTE S-2013-001 defines ACESproxy as an *integer* log
-encoding. colour-science rounds to integer code values even when returning a
-normalised float.
+encoding. The rounding to a code value is part of the definition, not a step for
+the caller.
 
-**alwan:** returns the continuous code value. Everything else in the spec is
-applied: the `2^-9.72` floor, the `[CV_min, CV_max]` clamp, and
-`mid_log_offset = 2.5`.
+**alwan:** rounds, then clamps to `[CV_min, CV_max]`. Both bounds are integers so
+the order is not observable, and colour-science does the same. At linear 0.18 the
+code value is 426.30344, which encodes as `426 / 1023 = 0.4164223`, matching
+colour-science exactly.
 
-**Cost:** up to half a code value, 4.7e-04 normalised. At linear 0.18 alwan
-returns `426.30344 / 1023 = 0.4167189` where a rounding implementation returns
-`426 / 1023 = 0.4164223`.
+**Cost:** the curve is a staircase, so `EOTF(OETF(x)) != x` in general. The round
+trip returns the linear value at the centre of the code value the input landed
+in, within half a step, which is `2^(1/100) - 1 = 6.96e-03` in relative terms.
+`alwan_dev/tests/09_tf_hdr.c` bounds it by exactly that rather than by a
+precision tolerance.
 
-**Why:** quantising inside the OETF makes the curve a staircase and breaks
-`EOTF(OETF(x)) == x`. It also makes the function unusable in a shader, where the
-result feeds further float maths. Round the result yourself if you need bit-exact
-ACESproxy code values.
+**Why:** this is one place where matching the definition outranks the
+reversibility principle at the top of this document, because the quantisation
+*is* the transfer function. An earlier version returned the continuous code value
+to preserve the round trip; that made alwan the only implementation that
+disagreed with the spec and with every integer ACESproxy encoder.
 
-**Do not change** without also changing the EOTF, and expect every round-trip
-test to fail.
+The EOTF is the exact inverse of the unrounded curve, so it maps a code value
+back to its bucket centre, and feeding it a non-quantised input interpolates
+between codes rather than failing.
 
 ### Negative scene values clamp on some camera curves
 
@@ -144,49 +157,6 @@ recoverable from the output alone. No iteration is needed. This matches OCIO,
 whose Glow10 inverse is also exact (measured round-trip 3.7e-09, at f32
 precision).
 
-### The ACES 1.x inverse now round-trips to 1.3e-11 on every output
-
-Three separate defects sat behind a single achromatic round-trip test. Together
-they cost 1.31e-01 of relative error on saturated chromatic input:
-
-1. **Step 11 omitted** (below).
-2. **DCDM_48NIT returned early** through a separate AP1-space RRT inverse that
-   did not invert its own forward. The forward runs the whole pipeline and
-   diverges only at the final XYZ gamma-2.6 encode, so the inverse now falls
-   through the common path with the display-primaries matrix skipped. The stale
-   `aces1_rrt_core_f64` / `aces1_rrt_core_inv_f64` pair it depended on is gone:
-   the forward half was already unreferenced, and neither matched the shipped
-   pipeline (glow with no YC falloff, a red modifier reading `0.03 - 0.03*r`,
-   and both working in AP1 where the real forward works in AP0).
-3. **The inverse dimSurround used the wrong exponent.** The forward is
-   `x' = x * Y^-g` with `Y = luma(x)`, so `luma(x') = Y^(1-g)` and recovering `x`
-   needs `x' * luma(x')^(g/(1-g))`. The code used `g`. Only `g/(1-g)` inverts the
-   forward; `g` inverts a slightly different transform, and it left 9.4e-04 on
-   every 100-nit video output.
-
-Cinema and HDR PQ outputs skip the dimSurround block entirely, so they were
-already at 1.3e-11 while the video outputs sat at 9.4e-04. That gap is what
-isolated the third defect.
-
-### Step 11 of the inverse was omitted, and the test hid it
-
-Both of the above were absent. The code said so:
-
-    /* For achromatic inputs (the roundtrip test case), both are identity.
-     * Full inverse requires iterative solve -- omitted for now. */
-
-The round-trip test used an achromatic input, which is exactly where the two
-omitted steps are the identity, so it passed. On non-clipping chromatic input the
-worst relative round-trip error was 1.31e-01, and implementing step 11 alone
-brought it to 9.44e-04. The remaining two defects above account for the rest.
-
-`alwan_dev/tests/56_aces1_output_transform.c::test_chromatic_roundtrip` pins
-this across all twelve outputs. It skips cases whose forward output clips, since
-a clipped channel has thrown information away and measures the display clamp
-rather than the inverse. Deterministic builds get a looser bar: alwan's own
-pow/exp/log replace libm and the chain runs several in series, which costs
-1.5e-05.
-
 ### An unsupported transfer function is an error, not a passthrough
 
 Two paths in the ACES 1.x output transform returned `ALWAN_OK` when the OETF or
@@ -214,30 +184,25 @@ CIE 13.3 lets Ra go negative for very poor sources. Clamping would hide exactly
 the sources the metric exists to flag. High-pressure sodium scores 8.07; a bad
 enough source scores below zero, and it should.
 
-### CQS omits the CCT factor
+### CQS 9.0 has no CCT factor, and its scaling factor is 3.2
 
-**Reference:** NIST CQS 9.0 multiplies Qa by
-`CCT_f = min(1, gamut_area(reference) / GAMUT_AREA_D65)`, penalising sources
-whose reference renders a small gamut.
+Not a divergence. NIST CQS 9.0 sets `CCT_f = 1` and `scaling_f = 3.2`; the CCT
+factor belongs to CQS 7.4, which pairs it with `scaling_f = 3.104`.
+colour-science branches on exactly that. alwan implements 9.0.
 
-**alwan:** does not apply it.
+This entry previously claimed alwan omitted the factor as a deliberate
+divergence, and recorded two attempts to add it that measured worse. Both
+attempts were chasing a step 9.0 does not have. The real defect was next to it:
+alwan ran 7.4's scaling factor with 9.0's absent factor, which is neither method.
+With 3.2 restored, agreement with colour-science over 33 illuminants is mean
+0.065 and max 0.235, against mean 0.447 and max 4.490 before, and D65 lands on
+100.0001 where it must be 100.
 
-**Cost:** a uniformly positive residual, largest at low CCT. HP1 reads 35.4
-against colour-science's 33.7. Mean absolute deviation over 35 illuminants is
-0.447 without the factor and 1.063 with it.
-
-**Why:** it was implemented and measured twice, the second time on a fully
-corrected adaptation framework, and made results worse both times. The `8210`
-normaliser is colour-science's D65 gamut area measured in colour-science's
-pipeline; alwan's own is 8130.95, so that ratio cannot give D65 the `CCT_f = 1`
-it has by definition. Renormalising does not rescue it: alwan computes illuminant
-A's reference gamut as 7968, *smaller* than its own D65 area, while
-colour-science's `CCT_f` for A is ~1.0, meaning its A gamut is *larger*. That is
-a qualitative disagreement about the samples, not a scale factor, and it was not
-isolated.
-
-A wrong factor corrupts D65 and illuminant A, which are the first values anyone
-checks. This is an open item, not a settled preference.
+One number from those attempts is worth keeping, because it says something about
+alwan rather than about the method: the 8210 normaliser that 7.4 divides by is
+not the D65 gamut area colour-science itself computes, which is 8131.03 against
+alwan's 8130.95. That agreement is a check that alwan's gamut geometry is right;
+8210 is a published constant the sample set no longer reproduces.
 
 ### Light-quality metrics integrate 360-830 nm by trapezoid
 
@@ -245,8 +210,23 @@ colour-science's `cfi2017` integrates 380-780 nm by summation. alwan integrates
 its full 360-830 nm 5 nm grid with the trapezoid rule, because that is the grid
 every other spectral table in the library uses.
 
-**Cost:** the residual in TM-30 (mean 0.51) and CQS (mean 0.447) is mostly this.
-It is convention, not algorithm.
+**Cost:** smaller than this entry used to claim. It read "the residual in TM-30
+(mean 0.51) and CQS (mean 0.447) is mostly this", and that attribution was never
+measured. It is now known to be wrong for CQS: almost all of that 0.447 was a
+crossed scaling factor, and CQS sits at 0.065 with the integration unchanged.
+
+Measured against colour-science over 33 illuminants, all three metrics on the
+same 360-830 nm trapezoid grid:
+
+| metric | mean | max |
+|---|---|---|
+| CRI Ra | 0.057 | 0.428 |
+| CQS Qa | 0.065 | 0.235 |
+| TM-30 Rf | **0.530** | **1.990** |
+
+So the convention costs on the order of 0.06, and TM-30 is an order of magnitude
+above its neighbours for a reason not yet identified. Tracked in
+[future_work.md](future_work.md) rather than explained away here.
 
 ### Ohno 2013 switches locus model at 15000 K
 
@@ -395,8 +375,9 @@ rather than catching it.
 
 ### An unsupported sample mode is rejected, not downgraded
 
-`ALWAN_SAMPLE_BILINEAR` and `ALWAN_SAMPLE_CATMULL_ROM` are pinned in the enum but
-not implemented; they return `ALWAN_E_INVALID`. Passing a mode a table's rank
+`ALWAN_SAMPLE_BILINEAR` and `ALWAN_SAMPLE_CATMULL_ROM` return `ALWAN_E_INVALID`
+(they are pinned in the enum but not implemented; see
+[future_work.md](future_work.md)). Passing a mode a table's rank
 cannot honour is an error, never a silent fall back to the default. A silent
 downgrade means the caller gets a different interpolation than they asked for and
 no way to find out.
@@ -442,11 +423,19 @@ tolerable at all. The same applies to the legal-range Y'CbCr kernels above.
 
 ---
 
-## Known limitations, not decisions
+## Data is embedded, not loaded at runtime
 
-Listed here so they are not mistaken for the above.
+`ALWAN_EMBED_DATA=1` is the only supported mode. Setting it to 0 `#error`s rather
+than compiling something that would look for files that are not there.
 
-- **CQS CCT factor**, above.
-- **Hunt inverse** is not implemented.
-- **`ALWAN_EMBED_DATA=0`** (runtime data loading) is not implemented and
-  `#error`s rather than misbehaving.
+Every table is `#include`d from CSV into a C array at build time, so the library
+has no data path, no file I/O, no load-order failures, and nothing to ship
+alongside the binary. It is also what lets the table reader layer bound every
+access at compile time, and what makes the GPU backends possible at all: a shader
+cannot open a file.
+
+The cost is binary size and a rebuild to change data. Both are accepted.
+
+---
+
+Gaps that are not decisions live in [future_work.md](future_work.md).

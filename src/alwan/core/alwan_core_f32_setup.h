@@ -68,6 +68,7 @@
 #define ALWAN_CORE_LOG2(x)      ALWAN_LOG2_F32(x)
 #define ALWAN_CORE_LOG10(x)     ALWAN_LOG10_F32(x)
 #define ALWAN_CORE_FLOOR(x)     ALWAN_FLOOR_F32(x)
+#define ALWAN_CORE_ROUND(x)     ALWAN_ROUND_F32(x)
 #define ALWAN_CORE_CEIL(x)      ALWAN_CEIL_F32(x)
 #define ALWAN_CORE_FMOD(x, y)   ALWAN_FMOD_F32(x, y)
 
