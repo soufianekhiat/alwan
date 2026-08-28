@@ -13,6 +13,13 @@
  * Returns:        spectral radiance in W*sr^-1*m^-3 */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(spd_planck_radiance)(ALWAN_CORE_T wavelength_m,
                                                  ALWAN_CORE_T temperature_K) {
+    /* c1 = 2*pi*h*c^2 is the first radiation constant, so c1/(lambda^5 (e^x -1))
+     * is spectral radiant EXITANCE in W*m^-3. This function is documented, here
+     * and in the public header, as spectral RADIANCE in W*sr^-1*m^-3, which for
+     * a Lambertian emitter is exitance / pi. The division was missing, so every
+     * value came out pi times the documented quantity and pi times what
+     * colour-science's planck_law returns for the same input. Chromaticity is
+     * unaffected, being scale-invariant; absolute values were not. */
     ALWAN_CORE_T const c1 = ALWAN_CORE_LITERAL(3.741771e-16);  /* W*m^2 (first radiation constant) */
     ALWAN_CORE_T const c2 = ALWAN_CORE_LITERAL(1.4388e-2);     /* m*K  (second radiation constant) */
     ALWAN_CORE_T lambda5 = wavelength_m * wavelength_m * wavelength_m
@@ -20,5 +27,5 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(spd_planck_radiance)(ALWAN_CORE_T wa
     ALWAN_CORE_T exponent = c2 / (wavelength_m * temperature_K);
     ALWAN_CORE_T denominator = lambda5 * (ALWAN_CORE_EXP(exponent) - ALWAN_CORE_LITERAL(1.0));
     if (ALWAN_CORE_ABS(denominator) < ALWAN_CORE_LITERAL(1e-100)) return ALWAN_CORE_LITERAL(0.0);
-    return c1 / denominator;
+    return c1 / (ALWAN_CORE_PI * denominator);
 }

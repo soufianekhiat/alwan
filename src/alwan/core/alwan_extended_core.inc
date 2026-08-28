@@ -430,10 +430,17 @@ ALWAN_INLINE ALWAN_CORE_HCL ALWAN_CORE_FNVLIT(alwan_rgb_to_hcl)(ALWAN_CORE_RGB r
     ALWAN_CORE_T C = Q * (ALWAN_CORE_ABS(r_g) + ALWAN_CORE_ABS(g_b) + ALWAN_CORE_ABS(b_r)) / ALWAN_CORE_LITERAL(3.0);
 
     /* Hue with 4-way sector branching via nested ALWAN_CORE_SELECT */
+    /* atan(g_b / r_g) as r_g -> 0. The limit is +-pi/2 by the sign of g_b when
+     * r_g approaches from above, and the opposite when it approaches from
+     * below, because the quotient changes sign with the denominator. The sector
+     * select further down keys off r_g >= 0, so substituting the r_g > 0 limit
+     * for a small negative r_g put H at 5pi/3, outside the model's [-pi, pi],
+     * and the inverse diverged from there. */
+    ALWAN_CORE_T const half_pi = ALWAN_CORE_PI / ALWAN_CORE_LITERAL(2.0);
+    ALWAN_CORE_T atan_limit = ALWAN_CORE_SELECT(g_b >= ALWAN_CORE_LITERAL(0.0), half_pi, -half_pi);
+    atan_limit = ALWAN_CORE_SELECT(r_g >= ALWAN_CORE_LITERAL(0.0), atan_limit, -atan_limit);
     ALWAN_CORE_T h_temp = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(r_g) < ALWAN_CORE_EPSILON,
-                                       ALWAN_CORE_SELECT(g_b >= ALWAN_CORE_LITERAL(0.0),
-                                                    ALWAN_CORE_PI / ALWAN_CORE_LITERAL(2.0),
-                                                    -ALWAN_CORE_PI / ALWAN_CORE_LITERAL(2.0)),
+                                       atan_limit,
                                        ALWAN_CORE_ATAN(g_b / r_g));
     ALWAN_CORE_T two_h_3 = ALWAN_CORE_LITERAL(2.0) * h_temp / ALWAN_CORE_LITERAL(3.0);
     ALWAN_CORE_T four_h_3 = ALWAN_CORE_LITERAL(4.0) * h_temp / ALWAN_CORE_LITERAL(3.0);
@@ -721,9 +728,14 @@ ALWAN_DIAG_POP
 
 /* L* -> Y */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hsluv_l2y)(ALWAN_CORE_T L) {
+    /* Exact inverse of alwan_hsluv_y2l: Y = ((L+16)/116)^3 above the linear
+     * segment, and 116^3 = 1560896. The upper branch used to return a literal
+     * 1.0 for every L > 8, so every non-dark lightness decoded to white.
+     * alwan_hsluv_get_bounds already computed (L+16)^3 / 1560896 inline. */
+    ALWAN_CORE_T const tl = L + ALWAN_CORE_LITERAL(16.0);
     return ALWAN_CORE_SELECT(L <= ALWAN_CORE_LITERAL(8.0),
         L / ALWAN_CORE_LITERAL(903.29629629629629629630),
-        ALWAN_CORE_LITERAL(1.0));  /* placeholder -- computed below for L > 8 */
+        (tl * tl * tl) / ALWAN_CORE_LITERAL(1560896.0));
 }
 
 /* Y -> L* */

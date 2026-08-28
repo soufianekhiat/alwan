@@ -1056,6 +1056,12 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__rgb_to_hsy_kernel)(alwan_map_lane *
         alwan_map_simd h6 = alwan_map_simd_mul(oh, six);
         alwan_map_simd sector = alwan_map_simd_floor(h6);
         alwan_map_simd f = alwan_map_simd_sub(h6, sector);
+        /* Fold sector 6 back to 0 so hue 1.0 decodes to red, not magenta.
+         * Applied after f, which is the fractional part either way. Mirrors the
+         * scalar core; this kernel duplicates the sector tree rather than
+         * calling it, so the fix has to be made in both places. */
+        sector = alwan_map_simd_select(alwan_map_simd_cmplt(sector, six), sector,
+                                       alwan_map_simd_sub(sector, six));
         alwan_map_simd one_minus_f = alwan_map_simd_sub(one, f);
 
         /* Pure-hue RGB per sector */
@@ -1140,6 +1146,12 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hsy_to_rgb_kernel)(alwan_map_lane *
         alwan_map_simd h6 = alwan_map_simd_mul(vh, six);
         alwan_map_simd sector = alwan_map_simd_floor(h6);
         alwan_map_simd f = alwan_map_simd_sub(h6, sector);
+        /* Fold sector 6 back to 0 so hue 1.0 decodes to red, not magenta.
+         * Applied after f, which is the fractional part either way. Mirrors the
+         * scalar core; this kernel duplicates the sector tree rather than
+         * calling it, so the fix has to be made in both places. */
+        sector = alwan_map_simd_select(alwan_map_simd_cmplt(sector, six), sector,
+                                       alwan_map_simd_sub(sector, six));
         alwan_map_simd one_minus_f = alwan_map_simd_sub(one, f);
 
         /* Pure-hue RGB per sector */

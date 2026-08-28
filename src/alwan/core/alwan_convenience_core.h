@@ -559,6 +559,11 @@ ALWAN_INLINE alwan_scalar alwan__hsy_max_chroma(alwan_scalar h,
     alwan_scalar h6 = h * ALWAN_LITERAL(6.0);
     alwan_scalar sector = ALWAN_FLOOR(h6);
     alwan_scalar f = h6 - sector;
+    /* h == 1.0 is documented as in-domain and must land on sector 0. Without
+     * this, floor(1.0*6) = 6 falls through every `sector < N` test into the
+     * sector-5 leaf and hue 1.0 decodes to magenta instead of red. Folding by 6
+     * is also the correct wrap for any h in [1, 2). */
+    sector = ALWAN_SELECT(sector >= ALWAN_LITERAL(6.0), sector - ALWAN_LITERAL(6.0), sector);
     alwan_scalar r_01 = ALWAN_SELECT(sector < ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0) - f);
     alwan_scalar g_01 = ALWAN_SELECT(sector < ALWAN_LITERAL(1.0), f, ALWAN_LITERAL(1.0));
     alwan_scalar b_01 = ALWAN_LITERAL(0.0);
@@ -623,6 +628,11 @@ ALWAN_INLINE alwan_rgb alwan_hsy_to_rgb_v(alwan_hsy hsy) {
     alwan_scalar h6 = h * ALWAN_LITERAL(6.0);
     alwan_scalar sector = ALWAN_FLOOR(h6);
     alwan_scalar f = h6 - sector;
+    /* h == 1.0 is documented as in-domain and must land on sector 0. Without
+     * this, floor(1.0*6) = 6 falls through every `sector < N` test into the
+     * sector-5 leaf and hue 1.0 decodes to magenta instead of red. Folding by 6
+     * is also the correct wrap for any h in [1, 2). */
+    sector = ALWAN_SELECT(sector >= ALWAN_LITERAL(6.0), sector - ALWAN_LITERAL(6.0), sector);
     alwan_scalar r_01 = ALWAN_SELECT(sector < ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0) - f);
     alwan_scalar g_01 = ALWAN_SELECT(sector < ALWAN_LITERAL(1.0), f, ALWAN_LITERAL(1.0));
     alwan_scalar b_01 = ALWAN_LITERAL(0.0);

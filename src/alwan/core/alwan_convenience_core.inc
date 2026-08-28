@@ -710,6 +710,12 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan__hsy_max_chroma)(ALWAN_CORE_T h
     ALWAN_CORE_T h6 = h * ALWAN_CORE_LITERAL(6.0);
     ALWAN_CORE_T sector = ALWAN_CORE_FLOOR(h6);
     ALWAN_CORE_T f = h6 - sector;
+    /* h == 1.0 is documented as in-domain and must land on sector 0. Without
+     * this, floor(1.0*6) = 6 falls through every `sector < N` test into the
+     * sector-5 leaf and hue 1.0 decodes to magenta instead of red. Folding by 6
+     * is also the correct wrap for any h in [1, 2). */
+    sector = ALWAN_CORE_SELECT(sector >= ALWAN_CORE_LITERAL(6.0),
+                               sector - ALWAN_CORE_LITERAL(6.0), sector);
 
     /* Pure-hue RGB at this hue (same as hue_to_rgb from HSV with S=1,V=1) */
     /* Sector 0: (1, f, 0)   Sector 1: (1-f, 1, 0)
@@ -811,6 +817,12 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hsy_to_rgb)(ALWAN_CORE_HSY h
     ALWAN_CORE_T h6 = h * ALWAN_CORE_LITERAL(6.0);
     ALWAN_CORE_T sector = ALWAN_CORE_FLOOR(h6);
     ALWAN_CORE_T f = h6 - sector;
+    /* h == 1.0 is documented as in-domain and must land on sector 0. Without
+     * this, floor(1.0*6) = 6 falls through every `sector < N` test into the
+     * sector-5 leaf and hue 1.0 decodes to magenta instead of red. Folding by 6
+     * is also the correct wrap for any h in [1, 2). */
+    sector = ALWAN_CORE_SELECT(sector >= ALWAN_CORE_LITERAL(6.0),
+                               sector - ALWAN_CORE_LITERAL(6.0), sector);
 
     /* Pure-hue RGB (max channel = 1, mid channel = fractional, min = 0) */
     ALWAN_CORE_T r_01 = ALWAN_CORE_SELECT(sector < ALWAN_CORE_LITERAL(1.0), ALWAN_CORE_LITERAL(1.0), ALWAN_CORE_LITERAL(1.0) - f);

@@ -626,11 +626,14 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN
     ALWAN_CORE_T *prod_x = (ALWAN_CORE_T *)ALWAN_ALLOC(alloc_size, sizeof(ALWAN_CORE_T));
     ALWAN_CORE_T *prod_y = (ALWAN_CORE_T *)ALWAN_ALLOC(alloc_size, sizeof(ALWAN_CORE_T));
     ALWAN_CORE_T *prod_z = (ALWAN_CORE_T *)ALWAN_ALLOC(alloc_size, sizeof(ALWAN_CORE_T));
+    /* Holds the bandpass-corrected SPD when the caller asks for one. */
+    ALWAN_CORE_T *spd_corr = (ALWAN_CORE_T *)ALWAN_ALLOC(alloc_size, sizeof(ALWAN_CORE_T));
 
-    if (!prod_x || !prod_y || !prod_z) {
+    if (!prod_x || !prod_y || !prod_z || !spd_corr) {
         if (prod_x) ALWAN_FREE(prod_x);
         if (prod_y) ALWAN_FREE(prod_y);
         if (prod_z) ALWAN_FREE(prod_z);
+        if (spd_corr) ALWAN_FREE(spd_corr);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&x_bar, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&y_bar, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&z_bar, ctx);
@@ -640,9 +643,58 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN
         return ALWAN_E_NOMEM;
     }
 
+    /* Stearns & Stearns (1988) bandpass correction, applied to the measured SPD
+     * before it meets the CMFs.
+     *
+     * alpha = 0.083 is the paper's value and is not a free parameter: the
+     * correction is derived for a triangular passband whose width equals the
+     * sampling interval. bandpass_nm therefore asserts that interval rather than
+     * selecting a strength, and a value that disagrees with the SPD's own
+     * spacing is rejected instead of silently corrected for the wrong width.
+     * Pass 0 to skip the correction, which is the default and what every caller
+     * got before, since the parameter used to be discarded by a (void) cast
+     * while the header, README and API docs all said it was applied. */
+    {
+        ALWAN_CORE_T const interval = (spd->wavelength_max - spd->wavelength_min)
+                                    / (ALWAN_CORE_T)(spd->count - 1);
+        int const want_bandpass = (spd->count > 1) && (bandpass_nm > ALWAN_CORE_LITERAL(0.0));
+
+        if (want_bandpass) {
+            ALWAN_CORE_T const alpha = ALWAN_CORE_LITERAL(0.083);
+            size_t i;
+
+            if (spd->count < 3 ||
+                ALWAN_CORE_ABS(bandpass_nm - interval) > ALWAN_CORE_LITERAL(1e-6) * interval) {
+                ALWAN_FREE(prod_x); ALWAN_FREE(prod_y); ALWAN_FREE(prod_z); ALWAN_FREE(spd_corr);
+                ALWAN_CORE_FNLIT(alwan_spd_destroy)(&x_bar, ctx);
+                ALWAN_CORE_FNLIT(alwan_spd_destroy)(&y_bar, ctx);
+                ALWAN_CORE_FNLIT(alwan_spd_destroy)(&z_bar, ctx);
+                ALWAN_CORE_FNLIT(alwan_spd_destroy)(&x_bar_resampled, ctx);
+                ALWAN_CORE_FNLIT(alwan_spd_destroy)(&y_bar_resampled, ctx);
+                ALWAN_CORE_FNLIT(alwan_spd_destroy)(&z_bar_resampled, ctx);
+                return ALWAN_E_INVALID;
+            }
+
+            spd_corr[0] = (ALWAN_CORE_LITERAL(1.0) + alpha) * spd->values[0]
+                        - alpha * spd->values[1];
+            spd_corr[spd->count - 1] = (ALWAN_CORE_LITERAL(1.0) + alpha) * spd->values[spd->count - 1]
+                                     - alpha * spd->values[spd->count - 2];
+            for (i = 1; i + 1 < spd->count; i++) {
+                spd_corr[i] = -alpha * spd->values[i - 1]
+                            + (ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_LITERAL(2.0) * alpha) * spd->values[i]
+                            - alpha * spd->values[i + 1];
+            }
+        } else {
+            size_t i;
+            for (i = 0; i < spd->count; i++) {
+                spd_corr[i] = spd->values[i];
+            }
+        }
+    }
+
     /* Compute products: SPD * illuminant * CMF */
     for (size_t i = 0; i < spd->count; i++) {
-        ALWAN_CORE_T spd_value = spd->values[i];
+        ALWAN_CORE_T spd_value = spd_corr[i];
 
         /* If illuminant provided, multiply by it */
         if (illuminant) {
@@ -656,9 +708,6 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN
         prod_y[i] = spd_value * y_bar_resampled.values[i];
         prod_z[i] = spd_value * z_bar_resampled.values[i];
     }
-
-    /* Bandpass correction (Stearns & Stearns 1988) not implemented; parameter reserved. */
-    (void)bandpass_nm;
 
     /* Integrate to get XYZ */
     ALWAN_CORE_T dx = (spd->wavelength_max - spd->wavelength_min) / (ALWAN_CORE_T)(spd->count - 1);
@@ -678,6 +727,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN
     ALWAN_FREE(prod_x);
     ALWAN_FREE(prod_y);
     ALWAN_FREE(prod_z);
+    ALWAN_FREE(spd_corr);
     ALWAN_CORE_FNLIT(alwan_spd_destroy)(&x_bar, ctx);
     ALWAN_CORE_FNLIT(alwan_spd_destroy)(&y_bar, ctx);
     ALWAN_CORE_FNLIT(alwan_spd_destroy)(&z_bar, ctx);

@@ -276,6 +276,45 @@ suspects. They now say what they mean.
 
 ---
 
+## Spectral
+
+### Blackbody SPDs are spectral radiance
+
+`alwan_spd_blackbody` returns W*sr^-1*m^-3, matching colour-science's `planck_law`
+to 3.7e-10. The first radiation constant `c1 = 2*pi*h*c^2` gives radiant
+*exitance*, so the implementation divides by pi. Chromaticity is unaffected either
+way, being scale-invariant; absolute values are not, and they were pi times too
+large until this was fixed.
+
+### The bandpass correction follows the paper, not colour-science
+
+**Reference:** Stearns & Stearns (1988) correct a measured SPD for a triangular
+passband with
+
+    X'[i] = -a*X[i-1] + (1+2a)*X[i] - a*X[i+1],   a = 0.083
+
+and `X'[0] = (1+a)X[0] - a*X[1]` at the ends. Every X on the right is a *measured*
+value: it is a fixed linear filter.
+
+**colour-science:** `bandpass_correction_Stearns1988` writes into the same array it
+reads, so from the second element on it uses already-corrected neighbours. That is a
+sequential recursive filter, not the paper's.
+
+**alwan:** reads the original values throughout.
+
+**Cost:** the two disagree by 4.3e-3 on a spiky 31-sample SPD. The first element
+agrees exactly, and the difference grows through the array, which is the signature
+of the aliasing.
+
+### bandpass_nm asserts the sampling interval, it does not scale the correction
+
+`a = 0.083` is not a free parameter: the correction is derived for a passband whose
+width equals the sampling interval. So `bandpass_nm` says what that interval is, and
+a value disagreeing with the SPD's own spacing returns `ALWAN_E_INVALID` rather than
+applying the correction at a strength it was never derived for. Pass 0 to skip it.
+
+---
+
 ## Data
 
 ### `cie_2012_*` and `cie_2015_*` CMF tables are identical
@@ -385,6 +424,21 @@ a plausible-looking float is indistinguishable from a deliberate one.
 This is not hypothetical. alwan's own f32/f64 twin test set four Hunt fields and
 left the rest uninitialised; when the new fields landed, the two precisions read
 different stack rubbish and diverged by 34 units of lightness.
+
+---
+
+## Sector trees exist in three copies
+
+`alwan_hsy_to_rgb` and its chroma helper decide a colour from `floor(h*6)` using a
+branchless select tree. That tree is written out three times: in `_core.inc` for C,
+in `_core.h` for the GPU backends, and again inside the SIMD map kernel in
+`alwan_convenience_extra_map_kernels.inc`, which open-codes it in intrinsics rather
+than calling the core.
+
+Any change to the sector logic must be made in all three. Fixing the first two and
+not the third made the bulk path disagree with the scalar path by 2.0e16 ULP.
+`88_simd_parity` is what catches that, and it is the reason the duplication is
+tolerable at all. The same applies to the legal-range Y'CbCr kernels above.
 
 ---
 
