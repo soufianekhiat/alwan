@@ -29,10 +29,14 @@ does **not** carry over unchanged.
 
 ## 1. Double precision / the entire `_f64` API: **C only**
 
-GPU backends are single precision (`alwan_scalar = float`). There is no `f64`
-instantiation on GPU. Every `_f64` public function and any result that relies on
-double accuracy is C‑only. (Halide's scalar can be double, but the shipped GPU
-path runs single precision.)
+The shipped GPU backends are single precision (`alwan_scalar = float`). There is
+no `f64` instantiation on any of them, so every `_f64` public function and any
+result that relies on double accuracy is C-only. (Halide's scalar can be double,
+but the shipped GPU path runs single precision.)
+
+This follows from the backends, not from GPUs. HLSL and GLSL have no double.
+A CUDA backend would, and would be the first GPU path where `_f64` is reachable;
+see [alwan_future.md](alwan_future.md).
 
 ## 2. The compiled bulk / strided / typed API: **C only**
 

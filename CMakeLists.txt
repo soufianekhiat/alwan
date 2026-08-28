@@ -303,7 +303,7 @@ if(ALWAN_ENABLE_WARNINGS)
     target_compile_options(alwan PRIVATE -Wall -Wextra -Wpedantic)
     # gcc silently accepts unknown -Wno-X (the warning only fires when
     # another diagnostic does). To detect support reliably we probe
-    # the *positive* form -W<flag> — gcc/clang both reject unknown
+    # the *positive* form -W<flag>: gcc/clang both reject unknown
     # positive forms. If accepted, we add the negative form.
     set(_ALWAN_SILENCED_WARNINGS
       unused-function

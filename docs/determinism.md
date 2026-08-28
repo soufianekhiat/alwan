@@ -77,7 +77,7 @@ produce results that differ in the last bit.
 | `_oetf_apply` / `_eotf_apply` SIMD (sRGB/PQ/HLG) | Vectorised approximations (`pow24`, `pow_inv24`) | Lane-unpacked to canonical scalar polynomial |
 | `_map_interleave` / `_map_planar` colorspace SIMD (25+ spaces) | Vectorised matrix muls + per-channel pow/cbrt | `ALWAN_MAP_SIMD_WIDTH=1`: every map kernel runs its scalar tail loop |
 | Output stability across runs    | Last-bit may vary between platforms  | Byte-identical; verified by CI matrix      |
-| Throughput cost                 | —                                    | ~5–20% slower depending on workload        |
+| Throughput cost                 |,                                    | ~5–20% slower depending on workload        |
 
 The throughput cost is dominated by the polynomial `pow` (vs. a 1-instruction
 hardware FMA chain) and by the SIMD lane-unpack penalty for kernels that

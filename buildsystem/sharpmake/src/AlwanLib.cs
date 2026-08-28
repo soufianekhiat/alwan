@@ -55,7 +55,7 @@ namespace Alwan
             // alwan_*_core.h / alwan_*_core.inc pair, normalises macro layers,
             // and exits non-zero on any drift between function bodies. A failure
             // here means the C-backend dual-precision template (.inc) and the
-            // GPU/single-backend mirror (.h) have diverged — usually because a
+            // GPU/single-backend mirror (.h) have diverged, usually because a
             // fix was applied to one without the other (see feedback note
             // "Core .h and .inc parity" for the bug history).
             //

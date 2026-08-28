@@ -1,4 +1,4 @@
-/* alwan_form_global_exp.c — EXPERIMENTAL picture-formation global solver (translation unit).
+/* alwan_form_global_exp.c: EXPERIMENTAL picture-formation global solver (translation unit).
  *
  * experimental/ relaxes the library's usual guarantees: the code here may be non-deterministic and
  * may inline magic numbers (no gendata). It is not part of the constraint-tested surface. It builds

@@ -26,8 +26,15 @@ their **native signed range** rather than rescaling against a conventional bound
 so out-of-gamut excursions past it are preserved exactly and reference
 comparisons stay 1:1. Only `L` (`÷100 → [0, 1]`) and the channels with a true
 fixed bound are normalized. Channels that *do* have a fixed bound are mapped into
-`[0, 1]`: centered chroma (YCbCr / YCoCg `Cb`, `Cr` in `[-0.5, 0.5]`, shifted by
-`+0.5`) and hue (degrees or radians).
+`[0, 1]`: signed chroma and hue (degrees or radians).
+
+YCoCg is the signed-chroma case: `Co`, `Cg` come out of the kernel in
+`[-0.5, 0.5]` and the normalisation layer shifts them by `+0.5`. **Y'CbCr and
+YcCbcCrc are not.** Their kernels already emit `Cb`, `Cr` in `[0, 1]` centred on
+`0.5`, so normalising them is a no-op and `ALWAN_NORM_YCBCR` is deliberately
+empty. Adding the shift there on top of the kernel's own centring offset chroma
+by a full 1.0 in the shipped default build, which is what it did until
+2026-08-27. See `docs/alwan_decisions.md`.
 
 1. Bounded channels are normalized to `[0, 1]` by the public API.
 2. Unbounded channels stay in their native (often signed) range.
@@ -90,7 +97,8 @@ disabling normalization makes the comparison apples-to-apples. For example
 | CIE Lab / Luv cylindrical forms | `L` in `[0, 100]`, hue often in degrees | `L` and finite hue channels mapped to `[0, 1]` |
 | Oklch / JzCzhz / IPTch / HCL | hue stored as radians | hue mapped to `[0, 1]` |
 | CAM correlates | lightness in `[0, 100]`, hue in degrees, some `H` channels in `[0, 400]` | bounded lightness and hue-like channels mapped to `[0, 1]` |
-| YCbCr / YCoCg / YcCbcCrc | luma bounded, chroma centered around zero | centered chroma channels remapped into `[0, 1]` |
+| YCbCr / YcCbcCrc | luma bounded, chroma already centred on `0.5` in `[0, 1]` | unchanged; normalisation is a no-op |
+| YCoCg | luma bounded, chroma signed in `[-0.5, 0.5]` | chroma shifted by `+0.5` into `[0, 1]` |
 
 ---
 

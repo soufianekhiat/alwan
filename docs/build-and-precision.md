@@ -112,7 +112,7 @@ that `alwan_scalar` always names a precision that is actually compiled in:
 
 | Build | `ALWAN_SCALAR_IS_FLOAT` | Conflict guard |
 |-------|------------------------|----------------|
-| both *(default)* | unchanged (`double` unless you set `1`) | — |
+| both *(default)* | unchanged (`double` unless you set `1`) |, |
 | `ALWAN_BUILD_ONLY_F32` | forced to `1` if undefined | `ALWAN_SCALAR_IS_FLOAT=0` is a `#error` (f64 scalar not built) |
 | `ALWAN_BUILD_ONLY_F64` | left as default `double` | `ALWAN_SCALAR_IS_FLOAT=1` is a `#error` (f32 scalar not built) |
 

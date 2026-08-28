@@ -30,7 +30,7 @@ A fifth informal rule:
   from `memcpy_s`, BLAS, image libraries, and matches how callers think:
   *"I'm writing to X with this stride, reading from Y with that stride,
   this many elements."*
-- **`ctx` last** keeps it visually a footnote — it's plumbing, not part of
+- **`ctx` last** keeps it visually a footnote, it's plumbing, not part of
   the operation.
 - **Stride next to its buffer** removes any ambiguity over which stride
   applies to which pointer when there are multiple buffers (delta_e batch,
@@ -59,7 +59,7 @@ fn(dst, dst_row_stride,
 // Two-input batch (delta-E style)
 fn(out, in1, in1_stride, in2, in2_stride, count, [extras]...);
 
-// Typed _ex variant — pixel formats live in the extras tail
+// Typed _ex variant, pixel formats live in the extras tail
 fn_ex(out, out_stride, in, in_stride, count,
       out_fmt, in_fmt, [extras]..., [ctx]);
 ```
@@ -121,7 +121,7 @@ or use the short numbered form (`i0`/`i1`/`i2`).
 A `const *` to a small struct is a **knob**, not a bulk buffer:
 
 ```c
-alwan_xyz_f64 const *white_xyz   // knob — goes in the extras tail
+alwan_xyz_f64 const *white_xyz   // knob, goes in the extras tail
 alwan_rgb_f64 const *gain         // knob
 alwan_mat3x3_f64 const *matrix    // knob
 alwan_rgb_space_desc_f64 const *space  // knob
@@ -130,12 +130,12 @@ alwan_rgb_space_desc_f64 const *space  // knob
 vs.
 
 ```c
-alwan_f64 const *in              // bulk buffer — goes in the buffer-stride block
+alwan_f64 const *in              // bulk buffer, goes in the buffer-stride block
 alwan_f64 const *in_ch0
 void const *src
 ```
 
-The survey distinguishes them by element type — pointers to scalar types
+The survey distinguishes them by element type, pointers to scalar types
 (`alwan_f32`, `alwan_f64`, `float`, `double`, `void`, `uint8_t`,
 `alwan_map_lane`, …) and matching names are buffers; pointers to known
 struct types are knobs.
@@ -154,8 +154,8 @@ Within the extras tail (everything after `count`/`width`/`height`):
    `blue_lights`, `bandpass_nm`.
 5. **`alwan_ctx *ctx`** is always last.
 
-This is a soft convention — the survey doesn't enforce ordering within the
-tail — but it keeps signatures predictable.
+This is a soft convention, the survey doesn't enforce ordering within the
+tail, but it keeps signatures predictable.
 
 ---
 
@@ -220,7 +220,7 @@ cmake --build build
 
 Two-tier: **core `_core.h`** is header-only, uses `ALWAN_INLINE`, is
 GPU-compatible, and contains the actual math. **API `.c`** files are the
-thin shell — null checks, stride loops, dispatch to core. Core functions
+thin shell, null checks, stride loops, dispatch to core. Core functions
 use the `_v` suffix and return by value. All literals are wrapped in
 `ALWAN_LITERAL()`, math in `ALWAN_POW`/`ALWAN_EXP`/`ALWAN_LOG2`/etc.
 Branching uses `ALWAN_SELECT()` (branchless) instead of `if/else` where
@@ -241,10 +241,10 @@ gendata output.
 ## Before submitting
 
 ```sh
-# Check API compliance — must report 100%
+# Check API compliance: must report 100%
 python tools/api_convention_survey.py
 
-# Check core .h / .inc parity — must report no drift
+# Check core .h / .inc parity: must report no drift
 python tools/check_core_parity.py
 
 # Build (Sharpmake or CMake)

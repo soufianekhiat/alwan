@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     # Pin to macos-15-intel (Intel x86_64). macos-latest is Apple Silicon
-    # arm64 — SIMD/precision paths haven't been validated there yet.
+    # arm64: SIMD/precision paths haven't been validated there yet.
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v5

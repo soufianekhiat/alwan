@@ -26,7 +26,74 @@ A transform that needs a table search or a variable-length loop is either slow o
 impossible on that path. Where a choice exists between a form that vectorises and
 one that does not, alwan takes the former and says so.
 
-Gaps that are not decisions live in [future_work.md](future_work.md).
+Gaps that are not decisions live in [alwan_future.md](alwan_future.md).
+
+---
+
+## House defaults
+
+### Every default is the zero value, and the zero value interpolates
+
+`ALWAN_INTEGRATE_TRAPEZOID = 0` and `ALWAN_SAMPLE_LINEAR = 0`, so a
+zero-initialised or memset struct integrates by trapezoid and interpolates
+rather than snapping. Nothing in alwan defaults to nearest-neighbour or to
+"whatever the caller forgot to set".
+
+| axis | default | reached from the zero value |
+|---|---|---|
+| SPD integration | trapezoid | `ALWAN_INTEGRATE_TRAPEZOID = 0` |
+| rank 1 table | linear | `ALWAN_SAMPLE_LINEAR = 0` |
+| rank 2 grid | bilinear | LINEAR resolves to it |
+| rank 2 strip | trilinear | LINEAR resolves to it |
+| rank 3 cube | trilinear | LINEAR resolves to it |
+| SPD resampling | linear | `ALWAN_RESAMPLE_LINEAR` |
+
+LINEAR resolving to bilinear at rank 2 and trilinear at rank 3 is deliberate:
+LINEAR is the zero value, so rejecting it at the higher ranks would turn a
+zero-initialised mode into `ALWAN_E_INVALID` instead of the interpolated read
+the caller expects. It is the one place a mode is *resolved* rather than
+rejected, and it resolves only ever to the linear member of that rank's family,
+never across families.
+
+Simpson's rule is available and more accurate on smooth spectra, but trapezoid
+is the default because it is what the reference implementations use, and
+agreeing with them matters more than converging faster.
+
+### Values are never clamped to a gamut
+
+A transform returns the raw standard maths. An out-of-range excursion is
+preserved, not squeezed back into `[0, 1]`: super-black and super-white survive
+a Y'CbCr decode, xvYCC decodes outside the box, a CVD simulation may leave the
+display gamut, and a wide-gamut conversion may go negative.
+
+Where clamping is genuinely wanted it is a **separate, explicitly named entry
+point** that takes the mapping method as an argument, never a flag on the raw
+one:
+
+    alwan_ycbcr_to_rgb_f64            raw, may leave [0,1]
+    alwan_ycbcr_to_rgb_gamut_safe_f64 takes an alwan_gamut_map_method
+
+The same pairing exists for `yccbccrc` and for the three `simulate_cvd`
+entry points. `ALWAN_GAMUT_MAP_CLIP` reproduces the implicit clamping alwan did
+before 2.0.0, so the old behaviour is still reachable, by name.
+
+**Why:** a clamp is not recoverable. A caller who wanted the excursion cannot
+get it back, and a caller who wanted it clamped can always clamp. It is the same
+argument as the reversibility principle above, applied to range rather than to
+invertibility, and it is why "addresses are clamped, values never are" below
+reads the way it does.
+
+### Unbounded axes keep their native range
+
+`ALWAN_NORMALIZE_RANGES=1` rescales every channel with a true fixed bound into
+`[0, 1]`. It leaves the opponent axes alone: Lab / Hunter-Lab / ProLab `a` and
+`b`, Luv `u` and `v`, the cylindrical `C`, and Oklab `a` and `b`.
+
+Those axes are mathematically unbounded even though encodings give them a
+conventional span (`[-128, 127]` for Lab in 8-bit and ICC, roughly `[-0.4, 0.4]`
+for Oklab). Normalising against a convention would silently compress anything
+past it, which is exactly the wide-gamut and out-of-gamut colour a colour library
+exists to carry. Leaving them native also keeps reference comparisons 1:1.
 
 ---
 
@@ -80,25 +147,47 @@ to 3.1e-07. Panasonic's specification uses `<`, and so does alwan.
 
 ## Video signal
 
-### Y'CbCr chroma is centred on 0.5, and normalisation leaves it there
+### Y'CbCr chroma is centred on 0.5, which is the standard's digital stage
 
-alwan's float Y'CbCr uses full-range [0,1] for all three channels, with achromatic
-chroma at 0.5. The alternative convention, luma in [0,1] and chroma signed in
-[-0.5,0.5], is equally defensible and is what several libraries use.
+**What the standard says.** ITU-R BT.601-7, BT.709-6 and BT.2020-2 define the
+colour-difference signals in normalised form as
 
-The choice matters because `ALWAN_NORMALIZE_RANGES` (default 1) rescales bounded
-channels into [0,1]. Under the 0.5-centred convention there is nothing to rescale,
-so `ALWAN_NORM_YCBCR` and `ALWAN_DENORM_YCBCR` are deliberately no-ops. They exist
-as named macros rather than being deleted so that the normalisation table has an
-entry for every colour type, and so the next person to read it finds a decision
-instead of an omission.
+    E'Y  = kr E'R + kg E'G + kb E'B                  in [0, 1]
+    E'Cb = (E'B - E'Y) / (2 (1 - kb))                in [-0.5, +0.5]
+    E'Cr = (E'R - E'Y) / (2 (1 - kr))                in [-0.5, +0.5]
 
-They were not always no-ops. Adding +0.5 there, on top of the +0.5 the core kernel
+so at that stage chroma is **signed and centred on zero**. The standards then
+quantise, and the quantisation is where the offset appears:
+
+    narrow range, 8-bit :  Y' = 219 E'Y + 16,   Cb = 224 E'Cb + 128
+    full range,   8-bit :  Y' = 255 E'Y,        Cb = 255 E'Cb + 128
+
+The `+128` is `+0.5` of full scale. Both forms are the standard; they are two
+stages of it.
+
+**What alwan's API does.** `alwan_rgb_to_ycbcr_*` computes exactly the `E'Cb` and
+`E'Cr` above and then adds `0.5`, so it returns the **digital full-range**
+convention normalised to `[0, 1]`. That is what an 8-bit full-range code value
+divided by 255 gives you, which is what a decoded image buffer actually holds.
+The decode subtracts the same `0.5` before applying the standard's inverse.
+
+So alwan is not choosing against the standard here; it is choosing which stage of
+it the public type represents, and it picks the one that matches a pixel in
+memory rather than an analogue signal level.
+
+**What follows from it.** `ALWAN_NORMALIZE_RANGES` (default 1) rescales bounded
+channels into `[0, 1]`. Chroma is already there, so `ALWAN_NORM_YCBCR` and
+`ALWAN_DENORM_YCBCR` are deliberately no-ops. They exist as named macros rather
+than being deleted so the normalisation table has an entry for every colour type,
+and so the next reader finds a decision instead of an omission.
+
+They were not always no-ops. Adding `+0.5` there, on top of the `+0.5` the kernel
 already applies, offset chroma by a full 1.0 in the shipped default build.
 
-**If you change the convention to signed chroma**, these two macros become real
-conversions, the legal-range pair changes with them, and so do the SIMD kernels
-below. It is not a one-line switch.
+**If you want the signed `E'Cb` form**, subtract 0.5 from what the API returns.
+Changing the library convention instead is not a one-line switch: those two
+macros become real conversions, the legal-range pair changes with them, and so do
+the SIMD kernels below.
 
 ### YCoCg does keep its normalisation offsets
 
@@ -231,7 +320,7 @@ grid:
 | TM-30 Rf | **0.530** | **1.990** |
 
 CRI and CQS sit where the convention would predict. TM-30 does not, and the
-reason is not this. It is tracked in [future_work.md](future_work.md) with the
+reason is not this. It is tracked in [alwan_future.md](alwan_future.md) with the
 evidence.
 
 ### The TM-30 reference blend is normalised at 560 nm, not by Y
@@ -392,9 +481,9 @@ rather than catching it.
 
 ### An unsupported sample mode is rejected, not downgraded
 
-`ALWAN_SAMPLE_BILINEAR` and `ALWAN_SAMPLE_CATMULL_ROM` return `ALWAN_E_INVALID`
-(they are pinned in the enum but not implemented; see
-[future_work.md](future_work.md)). Passing a mode a table's rank
+`ALWAN_SAMPLE_BILINEAR` on the 2-d strip returns `ALWAN_E_INVALID`, because the
+strip is a flattened cube and is genuinely sampled trilinearly. It is accepted by
+the 2-d grid reader, which is a real 2-d table. Passing a mode a table's rank
 cannot honour is an error, never a silent fall back to the default. A silent
 downgrade means the caller gets a different interpolation than they asked for and
 no way to find out.
@@ -440,10 +529,74 @@ tolerable at all. The same applies to the legal-range Y'CbCr kernels above.
 
 ---
 
-## Data is embedded, not loaded at runtime
+## The shipped GPU backends are single precision
 
-`ALWAN_EMBED_DATA=1` is the only supported mode. Setting it to 0 `#error`s rather
-than compiling something that would look for files that are not there.
+`alwan_scalar` is `float` on the HLSL, GLSL and Halide backends. There is no
+`_f64` instantiation on any of them, so every `_f64` public function is C-only,
+and so is anything whose correctness depends on double accuracy.
+
+This is a property of *those* backends, not of GPUs. HLSL and GLSL have no
+double, and the shipped Halide path runs single precision even though Halide's
+scalar can be double. A CUDA backend would have a real `double` and would be the
+first GPU path where the `_f64` surface is reachable at all; it is on the roadmap
+in [alwan_future.md](alwan_future.md) and nothing here assumes it never lands.
+
+This is why the core headers are written the way they are. A core function is
+`ALWAN_CORE_T`-generic and value-returning so the same source compiles as f32 on
+GPU and as either precision on CPU, and why the parity checker exists at all: the
+`_core.h` copy is what a shader sees, the `_core.inc` copy is what C sees, and a
+divergence between them is a divergence between backends.
+
+What stays CPU-only follows from it, not from a separate decision: the compiled
+bulk and strided API, the typed pixel formats, the `_map_interleave` and tiled
+SIMD kernels, and the null-checking stride-loop wrappers. On GPU the application
+owns buffers and dispatch and calls the per-pixel core functions directly.
+
+Two consequences that catch people:
+
+- **An f64-validated result is not automatically a GPU result.** Where a metric
+  is only validated in double, that validation says nothing about the shader
+  path; `101_f32_twins.c` is what covers the crossing.
+- **Iterative solvers are the sharp edge.** The ACES 1.x inverse keeps f64
+  internals precisely because its convergence thresholds sit below f32 epsilon,
+  so a native-f32 version fails to converge rather than converging less well.
+
+---
+
+## The test suite runs in f64 against f32 references
+
+alwan's validation suite exercises the `_f64` surface, and the references it
+compares against are single precision. OCIO's published values are float32, and
+so are the ACES fixtures derived from it. colour-science is f64, so the metrics
+validated against it are held to 1e-12; the OCIO-derived ones cannot be.
+
+Tolerances are set from that, not from alwan's own precision. `54_aces20.c`
+allows 0.1 against the OCIO tonescale fixtures, and says why in the line above
+the constant: the reference is float32 and negative inputs diverge fastest
+between the two precisions.
+
+Two consequences worth being explicit about:
+
+- **A loose tolerance against an OCIO fixture is not slack in alwan.** It is the
+  reference's precision. Tightening it would be measuring float32 round-off.
+- **The f32 surface is validated against alwan's own f64 path**, not against
+  OCIO directly, in `90_aces_f32_validation.c`. That separates "is the f32 path
+  faithful to the f64 one" from "is the f64 one right", so a regression in
+  either is attributable.
+
+Deterministic builds are a third axis again: they replace libm with alwan's own
+pow/exp/log, which costs about 3.0e-11 relative on the transfer functions and
+1.5e-05 on the ACES chain, so several suites carry a separate
+`#if ALWAN_DETERMINISTIC` bar. Those are stated at each site with the measured
+number rather than rounded up to a comfortable constant.
+
+---
+
+## Data is embedded, not loaded at runtime -- in 2.0.0
+
+`ALWAN_EMBED_DATA=1` is the only supported build for 2.0.0. Setting it to 0
+`#error`s rather than compiling something that would look for files that are not
+there, and `alwan_config.runtime_data_root` is reserved and inert.
 
 Every table is `#include`d from CSV into a C array at build time, so the library
 has no data path, no file I/O, no load-order failures, and nothing to ship
@@ -451,8 +604,15 @@ alongside the binary. It is also what lets the table reader layer bound every
 access at compile time, and what makes the GPU backends possible at all: a shader
 cannot open a file.
 
-The cost is binary size and a rebuild to change data. Both are accepted.
+The cost is binary size and a rebuild to change data.
+
+**A runtime / on-demand mode is planned for 3.x.y.** This entry is here because
+embedding is a real decision with real consequences for 2.0.0, not because the
+alternative was rejected forever. When runtime loading lands, embedded and
+runtime paths are expected to expose the same public descriptors and getters, so
+the choice becomes a build option rather than a different API. See
+[alwan_future.md](alwan_future.md).
 
 ---
 
-Gaps that are not decisions live in [future_work.md](future_work.md).
+Gaps that are not decisions live in [alwan_future.md](alwan_future.md).

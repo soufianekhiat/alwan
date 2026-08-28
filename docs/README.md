@@ -22,7 +22,6 @@ the library around that API surface.
 - [configuration.md](configuration.md) - compile-time switches, allocators, deterministic mode, `ALWAN_EMBED_DATA`
 - [determinism.md](determinism.md) - what `ALWAN_DETERMINISTIC` changes and why
 - [alwan_decisions.md](alwan_decisions.md) - where alwan knowingly differs from colour-science or a standard, and why
-- [future_work.md](future_work.md) - known gaps, kept out of the decisions list
 
 > Precision questions (single- vs dual-precision builds, `ALWAN_BUILD_ONLY_F32`/`ALWAN_BUILD_ONLY_F64`) are answered in
 > [build-and-precision.md](build-and-precision.md).

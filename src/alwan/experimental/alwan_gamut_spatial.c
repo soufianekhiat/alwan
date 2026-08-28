@@ -1,4 +1,4 @@
-/* alwan_gamut_spatial.c — EXPERIMENTAL picture-formation spatial methods.
+/* alwan_gamut_spatial.c: EXPERIMENTAL picture-formation spatial methods.
  *
  * RELOCATED here from api/alwan_gamut.c. Everything under experimental/ relaxes the library's usual
  * guarantees: the picture-formation methods (the alwan_gamut_formation_method family, dispatched by
@@ -7,7 +7,7 @@
  * research code, subject to change.
  *
  * The PUBLIC declarations (the enum, alwan_gamut_spatial_params_f32/f64, and the two entry points)
- * stay in alwan.h, so callers, harnesses, and the formation-constraint tests are unchanged — only the
+ * stay in alwan.h, so callers, harnesses, and the formation-constraint tests are unchanged, only the
  * implementation moved. The templated body is alwan_gamut_spatial_impl.inc (self-contained: it defines
  * its own alwan__boxfilter and touches no gamut-core / map helpers), compiled once per precision via
  * the standard core setup/teardown pattern.

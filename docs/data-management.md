@@ -130,18 +130,21 @@ The trade-off is binary size: the library ships the data with the code.
 
 ---
 
-## Planned Runtime / On-Demand Loading
+## Runtime / On-Demand Loading -- planned for 3.x.y
 
-This topic stays documented because it is still part of the intended design, but
-it is not a current feature.
+Not a 2.0.0 feature, and 2.0.0's embedding is a stated decision rather than a
+gap: it is what removes the data path, the file I/O and the load-order failures,
+what lets the table reader bound every access at compile time, and what makes the
+GPU backends work at all, since a shader cannot open a file. See
+[alwan_decisions.md](alwan_decisions.md), "Data is embedded, not loaded at
+runtime".
 
 What the code says today:
 
-- `alwan_config.runtime_data_root` exists but is reserved
-- building with `ALWAN_EMBED_DATA=0` is not supported
-- docs should describe runtime loading as planned only
+- `alwan_config.runtime_data_root` exists but is reserved and inert
+- building with `ALWAN_EMBED_DATA=0` `#error`s rather than misbehaving
 
-The expected future direction is:
+The expected direction for 3.x.y is:
 
 - load datasets from a caller-provided root directory
 - populate the same public descriptors/getters from file-backed data

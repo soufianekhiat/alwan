@@ -1,4 +1,4 @@
-/* alwan_form_global_exp_impl.inc — EXPERIMENTAL picture-formation global solver.
+/* alwan_form_global_exp_impl.inc: EXPERIMENTAL picture-formation global solver.
  *
  * Under experimental/ the usual alwan guarantees are RELAXED: this code may be non-deterministic and
  * uses inlined magic constants (no gendata). It is NOT part of the constraint-tested surface. Compiled

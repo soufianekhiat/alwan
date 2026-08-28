@@ -56,7 +56,7 @@ def split_params(p: str) -> list[str]:
 def classify_param(p: str) -> dict:
     """Best-effort classification: kind + name + const-ness + pointer-depth.
 
-    Distinguishes BUFFER pointers (large arrays — scalar element type) from
+    Distinguishes BUFFER pointers (large arrays, scalar element type) from
     VALUE-INPUT pointers (small struct const-refs like alwan_xyz, alwan_rgb,
     alwan_mat3x3). Value-input pointers are NOT treated as input buffers.
     """
@@ -73,7 +73,7 @@ def classify_param(p: str) -> dict:
 
     # Recognise value-input pointers: pointers to small alwan struct types
     # used as parameters (white_xyz, lift, gain, gamma, src_space, etc.).
-    # These are NOT bulk buffers — they're tuning knobs / metadata.
+    # These are NOT bulk buffers: they're tuning knobs / metadata.
     _struct_value_types = (
         "alwan_xyz", "alwan_rgb", "alwan_lab", "alwan_luv", "alwan_lch",
         "alwan_oklab", "alwan_oklch", "alwan_jzazbz", "alwan_jzczhz",
