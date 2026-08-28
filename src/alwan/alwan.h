@@ -5147,13 +5147,13 @@ alwan_status alwan_bake_2dlut_f64(alwan_f64 *out, int size, alwan_rgb_space_desc
  * strip is a flattened cube and is genuinely sampled trilinearly.
  *
  * Accepted modes by rank:
- *   rank 1, scalar   NEAREST, LINEAR (default)
+ *   rank 1, scalar   NEAREST, LINEAR (default), CATMULL_ROM
  *   rank 1, mat3x3   NEAREST, LINEAR (default) -- not CATMULL_ROM: the
  *                    reference CVD model defines linear severity interpolation
- *   rank 2 strip     NEAREST, TRILINEAR (default) -- BILINEAR is rejected
+ *   rank 2 grid      NEAREST, BILINEAR (LINEAR is accepted and resolves to it)
+ *   rank 2 strip     NEAREST, TRILINEAR (default) -- BILINEAR is rejected here,
+ *                    because the strip is a flattened cube and not a 2-d grid
  *   rank 3 cube      NEAREST, TRILINEAR (default), TETRAHEDRAL
- * ALWAN_SAMPLE_BILINEAR and ALWAN_SAMPLE_CATMULL_ROM are pinned in the enum
- * but not implemented anywhere yet; they return ALWAN_E_INVALID.
  * ---------------------------------------------------------------- */
 
 /* Caller-supplied 1D table.
@@ -5161,13 +5161,39 @@ alwan_status alwan_bake_2dlut_f64(alwan_f64 *out, int size, alwan_rgb_space_desc
  * table: size entries
  * size: number of entries (>= 2)
  * coord: input [0,1] coordinate
- * mode: LINEAR (0, the default) or NEAREST, optionally | ALWAN_SAMPLE_STRICT */
+ * mode: LINEAR (0, the default), NEAREST or CATMULL_ROM, optionally
+ *       | ALWAN_SAMPLE_STRICT
+ *
+ * CATMULL_ROM is the four-tap interpolating cubic, with the outer taps clamped
+ * at the ends. It passes through every sample but, unlike LINEAR, it can
+ * OVERSHOOT the values it interpolates between, by up to about 1/8 of a step
+ * across a hard edge. Clamp the result if the table's range is a contract. */
 alwan_status alwan_table1d_sample_f32(alwan_f32 *result,
                         alwan_f32 const *table, int size,
                         alwan_f32 coord, alwan_sample_mode mode);
 alwan_status alwan_table1d_sample_f64(alwan_f64 *result,
                         alwan_f64 const *table, int size,
                         alwan_f64 coord, alwan_sample_mode mode);
+
+/* Caller-supplied 2D grid: rows x stride scalars, row-major.
+ * result: output interpolated value
+ * table: rows * stride values, index = row*stride + col
+ * rows, stride: extents (both >= 2)
+ * row_coord, col_coord: input [0,1] coordinates on each axis
+ * mode: LINEAR (0, the default, resolves to bilinear), NEAREST or BILINEAR,
+ *       optionally | ALWAN_SAMPLE_STRICT
+ *
+ * The two axes are independent and may have different extents, which is what
+ * separates this from the 2-d strip reader below: that one is a cube flattened
+ * into two dimensions and is sampled trilinearly. */
+alwan_status alwan_table2d_grid_sample_f32(alwan_f32 *result,
+                        alwan_f32 const *table, int rows, int stride,
+                        alwan_f32 row_coord, alwan_f32 col_coord,
+                        alwan_sample_mode mode);
+alwan_status alwan_table2d_grid_sample_f64(alwan_f64 *result,
+                        alwan_f64 const *table, int rows, int stride,
+                        alwan_f64 row_coord, alwan_f64 col_coord,
+                        alwan_sample_mode mode);
 
 /* Caller-supplied 2D strip: a cube flattened to (size*size) x size.
  * result: output interpolated RGB

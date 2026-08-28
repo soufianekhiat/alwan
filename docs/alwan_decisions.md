@@ -206,17 +206,23 @@ alwan's 8130.95. That agreement is a check that alwan's gamut geometry is right;
 
 ### Light-quality metrics integrate 360-830 nm by trapezoid
 
-colour-science's `cfi2017` integrates 380-780 nm by summation. alwan integrates
-its full 360-830 nm 5 nm grid with the trapezoid rule, because that is the grid
-every other spectral table in the library uses.
+colour-science's `cfi2017` works on 380-780 nm and trims the test spectrum to it.
+alwan integrates its full 360-830 nm 5 nm grid with the trapezoid rule, because
+that is the grid every other spectral table in the library uses.
 
-**Cost:** smaller than this entry used to claim. It read "the residual in TM-30
-(mean 0.51) and CQS (mean 0.447) is mostly this", and that attribution was never
-measured. It is now known to be wrong for CQS: almost all of that 0.447 was a
-crossed scaling factor, and CQS sits at 0.065 with the integration unchanged.
+**Cost: not measurable.** This entry used to read "the residual in TM-30 (mean
+0.51) and CQS (mean 0.447) is mostly this", which was asserted, never measured,
+and is wrong. Three measurements retire it:
 
-Measured against colour-science over 33 illuminants, all three metrics on the
-same 360-830 nm trapezoid grid:
+- CQS's 0.447 was a crossed scaling factor. With the integration untouched it is
+  now 0.065.
+- The white point of a blackbody computed over 360-830 against 380-780 differs by
+  **1e-6 in xy**, across 1959 K to 6504 K. Daylight is the same.
+- colour-science's own Rf at 1 nm against 5 nm differs by **0.0000** on eleven
+  illuminants, so the interval does not matter either.
+
+Measured against colour-science over 33 illuminants, all three metrics on this
+grid:
 
 | metric | mean | max |
 |---|---|---|
@@ -224,9 +230,20 @@ same 360-830 nm trapezoid grid:
 | CQS Qa | 0.065 | 0.235 |
 | TM-30 Rf | **0.530** | **1.990** |
 
-So the convention costs on the order of 0.06, and TM-30 is an order of magnitude
-above its neighbours for a reason not yet identified. Tracked in
-[future_work.md](future_work.md) rather than explained away here.
+CRI and CQS sit where the convention would predict. TM-30 does not, and the
+reason is not this. It is tracked in [future_work.md](future_work.md) with the
+evidence.
+
+### The TM-30 reference blend is normalised at 560 nm, not by Y
+
+In the 4000-5000 K region TM-30 blends a Planckian and a daylight reference. The
+two legs have to be brought to a common scale first or the blend is dominated by
+whichever carries more absolute radiance. alwan normalises both to 100 at 560 nm,
+the CIE normalisation wavelength; colour-science divides each by its own Y.
+
+The two agree on the endpoints and differ slightly in between. Residual in the
+blend region is 0.30 mean against 0.24 for pure daylight, so this is worth at
+most 0.06, and the blend region is not where TM-30's problem is.
 
 ### Ohno 2013 switches locus model at 15000 K
 

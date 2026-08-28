@@ -25,11 +25,20 @@
           ALWAN_CORE_FNVLIT(alwan_table_coord_in_range)((c)->g) &&                \
           ALWAN_CORE_FNVLIT(alwan_table_coord_in_range)((c)->b))) return ALWAN_E_RANGE
 
-/* Rank 1 accepts NEAREST and LINEAR. BILINEAR, TRILINEAR, TETRAHEDRAL are
- * nonsense here; CATMULL_ROM is pinned in the enum but unimplemented. */
+/* Rank 1 accepts NEAREST, LINEAR and CATMULL_ROM. BILINEAR, TRILINEAR and
+ * TETRAHEDRAL are nonsense here and stay rejected. */
 static int ALWAN_CORE_FN(table_mode_ok_rank1)(alwan_sample_mode mode) {
     int const base = ALWAN_SAMPLE_BASE(mode);
-    return base == ALWAN_SAMPLE_NEAREST || base == ALWAN_SAMPLE_LINEAR;
+    return base == ALWAN_SAMPLE_NEAREST || base == ALWAN_SAMPLE_LINEAR ||
+           base == ALWAN_SAMPLE_CATMULL_ROM;
+}
+
+/* The 2-d grid accepts NEAREST and BILINEAR, plus LINEAR meaning "the linear
+ * one for this rank", the same allowance rank 3 makes for the zero value. */
+static int ALWAN_CORE_FN(table_mode_ok_grid2d)(alwan_sample_mode mode) {
+    int const base = ALWAN_SAMPLE_BASE(mode);
+    return base == ALWAN_SAMPLE_NEAREST || base == ALWAN_SAMPLE_BILINEAR ||
+           base == ALWAN_SAMPLE_LINEAR;
 }
 
 /* The 2-d strip is a flattened cube: pass TRILINEAR, or LINEAR to mean "the
@@ -61,6 +70,19 @@ alwan_status ALWAN_CORE_FNLIT(alwan_table1d_sample)(ALWAN_CORE_T *result,
     if (!ALWAN_CORE_FN(table_mode_ok_rank1)(mode)) return ALWAN_E_INVALID;
     ALWAN_TABLE_STRICT_CHECK_1(coord);
     *result = ALWAN_CORE_FNVLIT(alwan_table1d_sample)(table, size, coord, mode);
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_table2d_grid_sample)(ALWAN_CORE_T *result,
+                        ALWAN_CORE_T const *table, int rows, int stride,
+                        ALWAN_CORE_T row_coord, ALWAN_CORE_T col_coord,
+                        alwan_sample_mode mode) {
+    if (!result || !table || rows < 2 || stride < 2) return ALWAN_E_INVALID;
+    if (!ALWAN_CORE_FN(table_mode_ok_grid2d)(mode)) return ALWAN_E_INVALID;
+    ALWAN_TABLE_STRICT_CHECK_1(row_coord);
+    ALWAN_TABLE_STRICT_CHECK_1(col_coord);
+    *result = ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample)(
+        table, rows, stride, row_coord, col_coord, mode);
     return ALWAN_OK;
 }
 

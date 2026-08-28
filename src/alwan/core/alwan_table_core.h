@@ -191,6 +191,42 @@ ALWAN_INLINE alwan_scalar alwan_table1d_sample_nearest_v(
     return (c.frac < ALWAN_LITERAL(0.5)) ? table[c.i0] : table[c.i1];
 }
 
+/* Catmull-Rom: the four-tap cubic through table[i-1 .. i+2], which is C1 and
+ * interpolating, so it passes through every sample rather than smoothing them.
+ * Worth having for LUT sampling, where linear leaves visible facets on a coarse
+ * grid.
+ *
+ * The two outer taps are clamped by alwan_table_row, so the end intervals see a
+ * doubled endpoint. That is the standard clamped-edge form: the curve stays
+ * interpolating at the ends and its slope there is one-sided.
+ *
+ * Unlike the linear reader this can OVERSHOOT: a 4-tap cubic through a step
+ * leaves the convex hull of its taps by up to about 1/8 of the step. Callers
+ * sampling a table whose values must stay in a range have to clamp the result,
+ * which is why this is not the default for any rank. */
+ALWAN_INLINE alwan_scalar alwan_table1d_sample_catmull_rom_v(
+        alwan_scalar const *table, int size, alwan_scalar coord) {
+    alwan_table_cell const c = alwan_table_cell_v(coord, size);
+    int const im1 = alwan_table_row_v(c.i0 - 1, size);
+    int const ip2 = alwan_table_row_v(c.i1 + 1, size);
+
+    alwan_scalar const p0 = table[im1];
+    alwan_scalar const p1 = table[c.i0];
+    alwan_scalar const p2 = table[c.i1];
+    alwan_scalar const p3 = table[ip2];
+
+    alwan_scalar const t  = c.frac;
+    alwan_scalar const t2 = t * t;
+    alwan_scalar const t3 = t2 * t;
+
+    return ALWAN_LITERAL(0.5) * (
+        (ALWAN_LITERAL(2.0) * p1) +
+        (p2 - p0) * t +
+        (ALWAN_LITERAL(2.0) * p0 - ALWAN_LITERAL(5.0) * p1 +
+         ALWAN_LITERAL(4.0) * p2 - p3) * t2 +
+        (ALWAN_LITERAL(3.0) * (p1 - p2) + p3 - p0) * t3);
+}
+
 /* Dispatch. The fallback returns the default mode for the rank: a core reader
  * has no status channel and must never leave the dispatch without a value, and
  * must stay free of error paths for the GPU backends. A mode the rank cannot
@@ -199,6 +235,8 @@ ALWAN_INLINE alwan_scalar alwan_table1d_sample_v(
         alwan_scalar const *table, int size, alwan_scalar coord, alwan_sample_mode mode) {
     if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
         return alwan_table1d_sample_nearest_v(table, size, coord);
+    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_CATMULL_ROM)
+        return alwan_table1d_sample_catmull_rom_v(table, size, coord);
     return alwan_table1d_sample_linear_v(table, size, coord);
 }
 
@@ -248,6 +286,50 @@ ALWAN_INLINE alwan_scalar alwan_table2d_row_at_v(
     int const r = alwan_table_row_v(row, rows);
     int const c = alwan_table_row_v(col, stride);
     return table[(size_t)r * (size_t)stride + (size_t)c];
+}
+
+/* Bilinear over the same rows x stride grid, both axes in [0,1].
+ *
+ * This is what ALWAN_SAMPLE_BILINEAR means in alwan: a genuine 2-d grid, not
+ * the flattened cube in the strip readers below, which is sampled trilinearly
+ * and still rejects BILINEAR.
+ *
+ * Row and column are separate axes with separate extents, so each gets its own
+ * cell and both go through the same gate as the integer reader above. */
+ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_bilinear_v(
+        alwan_scalar const *table, int rows, int stride,
+        alwan_scalar row_coord, alwan_scalar col_coord) {
+    alwan_table_cell const cr = alwan_table_cell_v(row_coord, rows);
+    alwan_table_cell const cc = alwan_table_cell_v(col_coord, stride);
+
+    alwan_scalar const v00 = alwan_table2d_row_at_v(table, rows, stride, cr.i0, cc.i0);
+    alwan_scalar const v01 = alwan_table2d_row_at_v(table, rows, stride, cr.i0, cc.i1);
+    alwan_scalar const v10 = alwan_table2d_row_at_v(table, rows, stride, cr.i1, cc.i0);
+    alwan_scalar const v11 = alwan_table2d_row_at_v(table, rows, stride, cr.i1, cc.i1);
+
+    alwan_scalar const top = alwan_lerp(v00, v01, cc.frac);
+    alwan_scalar const bot = alwan_lerp(v10, v11, cc.frac);
+    return alwan_lerp(top, bot, cr.frac);
+}
+
+ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_nearest_v(
+        alwan_scalar const *table, int rows, int stride,
+        alwan_scalar row_coord, alwan_scalar col_coord) {
+    alwan_table_cell const cr = alwan_table_cell_v(row_coord, rows);
+    alwan_table_cell const cc = alwan_table_cell_v(col_coord, stride);
+    int const r = (cr.frac < ALWAN_LITERAL(0.5)) ? cr.i0 : cr.i1;
+    int const c = (cc.frac < ALWAN_LITERAL(0.5)) ? cc.i0 : cc.i1;
+    return alwan_table2d_row_at_v(table, rows, stride, r, c);
+}
+
+/* LINEAR resolves to bilinear here, the same way it resolves to trilinear at
+ * rank 3: it is the zero value, so a zero-initialised mode must interpolate. */
+ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_v(
+        alwan_scalar const *table, int rows, int stride,
+        alwan_scalar row_coord, alwan_scalar col_coord, alwan_sample_mode mode) {
+    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
+        return alwan_table2d_grid_sample_nearest_v(table, rows, stride, row_coord, col_coord);
+    return alwan_table2d_grid_sample_bilinear_v(table, rows, stride, row_coord, col_coord);
 }
 
 /* ================================================================

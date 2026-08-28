@@ -1178,6 +1178,8 @@ EXPORTS
     alwan_table1d_mat3_sample_f64
     alwan_table1d_sample_f32
     alwan_table1d_sample_f64
+    alwan_table2d_grid_sample_f32
+    alwan_table2d_grid_sample_f64
     alwan_table2d_sample_f32
     alwan_table2d_sample_f64
     alwan_table3d_sample_f32

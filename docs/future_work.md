@@ -9,10 +9,10 @@ faster" and "might be nice" do not qualify.
 
 ---
 
-## Hunt inverse
+## Hunt inverse -- planned for 3.0.9
 
 `alwan_hunt_forward_*` is implemented and matches colour-science to 4.6e-08. The
-inverse is not implemented.
+inverse is not implemented, and is deliberately not in the 2.0.0 scope.
 
 The model is invertible in principle, but the forward runs a chromatic adaptation
 whose parameters depend on the adapted signal, so the inverse needs an iterative
@@ -21,10 +21,10 @@ which is a bracketed scalar root find; Hunt's is three-dimensional.
 
 Nothing else in the appearance-model set is missing its inverse.
 
-## TM-30 Rf sits an order of magnitude above CRI and CQS
+## TM-30 Rf residual, 0.53 mean against colour-science
 
-Measured against colour-science over 33 illuminants, on the same 360-830 nm
-trapezoid grid:
+Measured over 33 illuminants. CRI and CQS, on the same grid and the same
+integration, sit an order of magnitude lower:
 
 | metric | mean | max |
 |---|---|---|
@@ -32,27 +32,46 @@ trapezoid grid:
 | CQS Qa | 0.065 | 0.235 |
 | TM-30 Rf | **0.530** | **1.990** |
 
-`alwan_decisions.md` used to attribute TM-30's residual to the integration
-convention. That attribution was never measured, and it has since been disproved
-for CQS, whose residual was a crossed scaling factor and fell to 0.065 with the
-integration untouched. Since all three share the grid, the convention accounts
-for roughly 0.06, not 0.53.
+### Ruled out, with measurements
 
-Worst offenders are HP1 (1.99), FL4 (1.57) and HP3 (1.43): high-pressure sodium
-and a narrow-band fluorescent, which is the shape of a reference-illuminant or
-sample-set difference rather than an arithmetic one. The CES sample set was
-extended from 80 to the full 99 during the pre-release work, so the count is no
-longer a candidate. Unresolved.
+- **The integration convention**, which `alwan_decisions.md` used to blame. The
+  white point of a blackbody over 360-830 nm against 380-780 nm differs by 1e-6
+  in xy from 1959 K to 6504 K; colour-science's own Rf at 1 nm against 5 nm
+  differs by 0.0000; and CRI and CQS share the grid at 0.06.
+- **The blackbody SPD.** alwan's and colour-science's agree to 5.3e-15 in shape
+  at 2856 K over the whole 360-830 nm grid.
+- **The CCT method.** alwan uses Robertson, colour-science uses Ohno 2013. Mean
+  difference 1.9 K, max 7.1 K, and **uncorrelated** with the Rf error (r = -0.07).
+  Illuminant A differs by 0.2 K and is still off by 1.24.
+- **The Rf formula.** `10 ln(exp((100 - 6.73 dE)/10) + 1)` and the sample-count
+  divisor are both correct.
 
-## Sample modes pinned but not implemented
+### Where it is
 
-`ALWAN_SAMPLE_BILINEAR` and `ALWAN_SAMPLE_CATMULL_ROM` exist in the enum so their
-values are stable, and return `ALWAN_E_INVALID`. Rejecting rather than silently
-downgrading is deliberate and documented in alwan_decisions.md; the gap is that
-they are not implemented at all.
+Entirely in the Planckian branch:
 
-Catmull-Rom in particular is worth having for LUT sampling, where the current
-choice is linear or nearest.
+| reference branch | n | mean | max |
+|---|---|---|---|
+| Planckian, CCT < 4000 K | 12 | **0.980** | 1.990 |
+| blend, 4000-5000 K | 10 | 0.305 | 0.887 |
+| daylight, CCT > 5000 K | 11 | 0.244 | 0.408 |
+
+### The sharpest lead
+
+Self-referential cases do not return 100. Illuminant A **is** a Planckian at
+2856 K, so its reference is its own spectrum and every sample's dE should be
+zero. colour-science returns exactly 100.000; alwan returns 98.762, which back-
+solves to a mean dE of 0.183 in CAM02-UCS units. D65 against its own daylight
+reference returns 99.739 rather than 100.
+
+So something adds a small, roughly uniform offset between a spectrum and a
+reference built from that same spectrum, and it is about four times larger on the
+Planckian branch than the daylight one. That points at the reference construction
+or the CIECAM02 / CAM02-UCS path rather than at any of the items ruled out above.
+
+Next step is to dump alwan's per-sample dE for illuminant A and compare against
+colour-science's, which will separate "uniform offset" (adaptation or white
+point) from "a few samples" (CES data).
 
 ## Corpus files carry no chromaticities
 
@@ -68,3 +87,24 @@ pixel data does not settle it either way.
 Stamping the chromaticities attribute on those files would make the corpus
 self-describing and remove the disagreement for every downstream reader. That is
 a change to the corpus, not to alwan.
+
+## EXR loader, from `alwan_dev/to_alwan.txt`
+
+`image_gen/src/exr_loader.cpp` is a dev tool, not shipped library code. UINT
+channels are now rejected rather than converted into a plausible-looking image
+of nonsense. What the report raised and remains:
+
+- **FLOAT channels are converted, and values above 65504 saturate to inf.**
+  OpenEXR does the conversion, so this is correct up to that ceiling, but the
+  ceiling is silent. Worth fixing before the loader is pointed at the corpus for
+  the chromaticities question above, since an inf would corrupt exactly the
+  out-of-gamut statistics that question turns on.
+- **Non-zero data window origin is untested.** The code handles it through
+  `(y - dw.min.y)`, but no file in the corpus has overscan, so that path has
+  never run. Nice to have. The reporter notes their own loader has the same gap
+  for the same reason.
+- **Alpha is not read.** 165 of 247 files carry an A channel; only R, G and B
+  are routed into the buffer. This is by design for what image_gen does, and is
+  recorded here only so the next reader does not take it for an oversight.
+- **The reporter offered their loader and their header-survey script.** Worth
+  taking up; not yet done.
