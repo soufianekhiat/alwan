@@ -4,11 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased]: pre-2.0.0 hardening pass, 2026-08-27..28
+## [2.0.0], 2026-08-28
 
-A correctness pass over the areas that had no external ground truth. Several
-entries change published output; they are listed first because a caller pinning
-values will see them.
+First public release (tag `v2.0.0`).
+
+The tag sits after a correctness pass over the areas that had no external
+ground truth, 2026-08-27..28. Several entries below change published output
+relative to the 2026-08-19 pre-release build; they are listed first because a
+caller who pinned values against that build will see them.
 
 ### Changed: output differs
 
@@ -100,10 +103,10 @@ values will see them.
 
 ---
 
-## [2.0.0]: 2026-08-19
+### Foundation, 2026-08-19
 
-First public release (tag `v2.0.0`). Everything below plus the dated
-foundation block that follows shipped together.
+The pre-release build the hardening pass started from. Everything below plus
+the dated foundation block that follows is also in the tag.
 
 ### Added
 - **ACES constants on the public macro surface**: `ALWAN_AP0_RED_x` .. 
