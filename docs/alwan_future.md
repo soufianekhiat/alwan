@@ -195,16 +195,37 @@ normalization macros that signal an unfinished map kernel:
 
 ### 10. Documentation Of The Undocumented Tail
 
-A pass over the surface that exists but is not yet documented:
+Measured, not estimated. Of **411 distinct base operations** on the public
+surface (precision and `_map_*` variants folded together), **118 have no entry in
+`docs/api/`**.
 
-- the 18 named illuminant getters
-- ACES interp setters + OCIO mode
-- ~20 extended color spaces (signature-level)
-- UVW, the convenience/codec spaces
-- WCAG/APCA
-- standalone BT.2446 / BT.2390 / `reinhard_calibrated`
-- the Display Characterization group
-- `hdr_gamut_map_jzczhz`
+Two were closed on 2026-08-28: the table and LUT sampling family now has
+[api/tables.md](api/tables.md), and `alwan_gamut_map_spatial` plus the bulk gamut
+forms are in [api/gamut.md](api/gamut.md).
+
+The rest cluster, which is the useful part: they are whole areas with no page,
+not scattered omissions.
+
+| cluster | count | shape |
+|---|---|---|
+| `alwan_data_get_illuminant_*` | 9 | direct SPD getters, no page |
+| `alwan_delta_e_*_batch` | 7 | batch deltaE, only the scalar forms are documented |
+| `alwan_agx_*`, `alwan_jp2499_*` | 9 | params and cube sampling for the AgX family |
+| `alwan_cube_*`, `alwan_bake_*`, `alwan_clf_*`, `alwan_lut2d_*` | 17 | the LUT import/export/bake surface |
+| `alwan_picture_*` | 5 | picture formation, covered by the topic doc only |
+| appearance models | ~10 | `rlab`, `llab`, `kim2009`, `nayatani95`, `hellwig2022`, `atd95` forward/inverse |
+| perceptual spaces | ~12 | `hsluv`, `hpluv`, `okhsl`, `okhsv`, `cubehelix`, `iptch` |
+| contrast / tone | ~6 | `apca_contrast`, `wcag_contrast_ratio`, `bt2390_eetf`, `bt2446b/c`, `reinhard_calibrated` |
+
+The full list is reproducible:
+
+    python - <<'EOF'
+    # families in alwan.h with no mention in docs/api/*.md
+    EOF
+
+Rule for closing it: a cluster at a time with its own page, in the house style of
+the existing `docs/api/*.md`, rather than one function at a time. A page that
+explains why a reader exists is worth more than an entry per symbol.
 
 ---
 

@@ -83,7 +83,7 @@ runner lives in the sibling `alwan_dev` repository; clone it as a peer of
 git clone https://github.com/soufianekhiat/alwan_dev.git ../alwan_dev
 cd ../alwan_dev
 cmake -S . -B build && cmake --build build --config Release
-./build/tests/alwan_tests              # 102 suites, single binary
+./build/tests/alwan_tests              # 107 suites, single binary
 ./build/tests/alwan_tests 04_srgb_tf   # filter by substring
 ./build/tests/alwan_tests --list       # list all suite names
 ```

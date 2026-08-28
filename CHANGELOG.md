@@ -4,6 +4,102 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased]: pre-2.0.0 hardening pass, 2026-08-27..28
+
+A correctness pass over the areas that had no external ground truth. Several
+entries change published output; they are listed first because a caller pinning
+values will see them.
+
+### Changed: output differs
+
+- **ACESproxy is now quantised.** It is defined as an *integer* log encoding, so
+  the rounding is part of the transfer function. Linear 0.18 now encodes as
+  `426/1023 = 0.4164223`, matching colour-science exactly, where it previously
+  returned the continuous `426.30344/1023`. `EOTF(OETF(x))` is now a staircase and
+  returns the centre of the code value the input landed in, within half a step
+  (`2^(1/100) - 1 = 6.96e-03`).
+- **CQS Qa** ran NIST 7.4's scaling factor (3.104) with 9.0's absent CCT factor,
+  which is neither method. 9.0 uses 3.2. Deviation from colour-science over 33
+  illuminants: mean 0.447 -> 0.065, max 4.490 -> 0.235, D65 99.037 -> 100.0001.
+- **Y'CbCr and YcCbcCrc chroma** was centred twice in the default build
+  (`ALWAN_NORMALIZE_RANGES=1`), once by the kernel and once by the normalisation
+  layer, so it came out offset by 1.0 instead of 0.5. The legal/full range pair
+  assumed chroma centred on 0 while every producer emits it centred on 0.5.
+- **The ACES 1.x inverse output transform** now inverts its own forward. Worst
+  relative round-trip over non-clipping chromatic input, all twelve outputs:
+  1.31e-01 -> 1.337e-11. Three defects: the inverse RedMod10 and Glow10 were
+  omitted entirely, `DCDM_48NIT` returned early through an unrelated AP1-space
+  path, and the inverse dimSurround used exponent `g` where it needed `g/(1-g)`.
+  alwan's RedMod10 inverse is now more accurate than OCIO's, which stops at the
+  closed form and round-trips to 3.7e-03.
+- **Blackbody SPDs** are documented as spectral radiance but returned exitance,
+  so values were pi times too large. Now matches colour-science's `planck_law`
+  to 3.7e-10. Chromaticity was unaffected either way.
+- **HSLuv** returned a literal `1.0` from `l2y` for every `L > 8`, so every
+  non-dark lightness decoded to white. L now round-trips to 1.4e-14.
+- **HSY** decoded hue 1.0, documented as in-domain, to magenta instead of red.
+- **HCL** produced `H = 5pi/3`, outside the model's `[-pi, pi]`, when `R - G` was
+  small and negative.
+- **`alwan_xyz_from_spd`'s `bandpass_nm`** was consumed by a `(void)` cast while
+  four documents said the Stearns & Stearns 1988 correction was applied. It is
+  now implemented, using the original neighbours as the paper specifies.
+  colour-science's version updates its array in place and so uses already
+  corrected neighbours; the two differ by 4.3e-3 and alwan follows the paper.
+- **CRI, TM-30 and CQS** now use a CIE daylight reference at or above 5000 K
+  rather than D65 at every CCT, and adapt test-onto-reference rather than both
+  onto a common third white. CES data extended from 80 samples to the full 99.
+- **Colour appearance models**: Hunt implemented in full (4.6e-08), ATD95
+  `spow_response` corrected and `H` returned as the model's ratio, RLAB
+  adaptation fixed in both directions (5e-07), Kim2009 `media` exposed (4e-11).
+- **Unsupported transfer functions** in the ACES 1.x path returned `ALWAN_OK`
+  with scene-linear values. They now return the status they got.
+
+### Added
+
+- `alwan_table2d_grid_sample_f32` / `_f64`: bilinear and nearest sampling of a
+  genuine `rows x stride` 2-d grid, which is the rank `ALWAN_SAMPLE_BILINEAR`
+  fits. The 2-d strip is a flattened cube and still rejects BILINEAR.
+- `ALWAN_SAMPLE_CATMULL_ROM` implemented at rank 1: the four-tap interpolating
+  cubic with clamped outer taps. It can overshoot by about 1/8 of a step across
+  a hard edge, so it is not any rank's default.
+- `ALWAN_ROUND` on the HLSL, GLSL and Halide backends, and `ALWAN_CORE_ROUND`
+  through the core aliases and both precision setups.
+- `docs/alwan_decisions.md`: where alwan knowingly differs from a reference and
+  why, including the house defaults, the no-gamut-clamp rule, and the precision
+  model of the test suite.
+- `docs/api/tables.md`: the table and LUT sampling family, which had no
+  reference page. `alwan_gamut_map_spatial` and the bulk gamut forms added to
+  `docs/api/gamut.md`. The remaining documentation gap is now measured rather
+  than estimated: 118 of 411 base operations have no entry in `docs/api/`,
+  clustered by area in `docs/alwan_future.md` theme 10.
+
+### Fixed: no output change
+
+- Table indices are tied to the enum that bounds them.
+  `alwan_rgb_get_space_descriptor_*` bounds-checked `space` against one table's
+  count and then subscripted three others; all four are now
+  `_Static_assert`ed against `ALWAN_RGB_SPACE_COUNT`. `spd_copy_table` took its
+  extent as a parameter unrelated to the table it was given.
+- `alwan_spectral_locus_xy_*` accepted NaN: `x < MIN || x > MAX` is both-false
+  for NaN, so it reached the cast and resolved to the high edge with
+  `ALWAN_OK`. Range tests on float-indexed entry points are now negated.
+- Two test suites could not fail. `47_llab` discarded two of its three test
+  functions with `(void)` casts, and `33_rgb_spaces_p5` had twelve failure paths
+  returning the runner's success code. Both were latent; alwan was right in
+  every case, and the tests were wrong.
+- The EXR loader (dev tool) asked OpenEXR for HALF regardless of storage, so a
+  FLOAT channel saturated to inf above 65504. It now decodes as FLOAT, and
+  rejects UINT rather than converting it into a plausible-looking image.
+
+### Known
+
+- TM-30 Rf still deviates from colour-science by 0.53 mean, concentrated in the
+  Planckian branch. The integration convention, the blackbody SPD, the CCT
+  method and the Rf formula are all ruled out with measurements. Tracked in
+  `docs/alwan_future.md`.
+
+---
+
 ## [2.0.0]: 2026-08-19
 
 First public release (tag `v2.0.0`). Everything below plus the dated

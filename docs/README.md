@@ -74,6 +74,7 @@ Key entry points:
 - [`docs/api/chromatic-adaptation.md`](api/chromatic-adaptation.md)
 - [`docs/api/transfer-functions.md`](api/transfer-functions.md)
 - [`docs/api/gamut.md`](api/gamut.md)
+- [`docs/api/tables.md`](api/tables.md)
 - [`docs/api/backends.md`](api/backends.md)
 
 ## Notes On Templates

@@ -593,7 +593,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 102 test suites, single binary
+./build/tests/Release/alwan_tests   # 107 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -602,7 +602,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for
-  each module: 102 suites, thousands of assertions
+  each module: 107 suites, thousands of assertions
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
   mode where polynomial approximation replaces libm)
@@ -640,7 +640,7 @@ alwan/                       # this repo (library only)
 └── CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-├── tests/                   # 102 test suites + reference fixtures
+├── tests/                   # 107 test suites + reference fixtures
 ├── bench/                   # micro-benchmarks
 ├── det_regression/          # cross-platform determinism regression tool
 ├── image_gen/               # validation visuals
@@ -693,7 +693,7 @@ buildsystem\generate_projects.bat   # Windows cmd
 - ✅ Dual precision (f32 + f64 in one binary)
 - ✅ Data embedding with diagnostic guards
 - ✅ Sharpmake + CMake build systems
-- ✅ Unified test suite (102 suites, hosted in alwan_dev)
+- ✅ Unified test suite (107 suites, hosted in alwan_dev)
 - ✅ 104 named RGB spaces, easy to add more via space descriptors
 - ✅ Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,

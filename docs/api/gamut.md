@@ -283,6 +283,68 @@ static int is_in_gamut(alwan_rgb_{T} const *rgb) {
 
 ---
 
+## Spatial Gamut Mapping (experimental)
+
+### alwan_gamut_map_spatial_{T}
+
+```c
+alwan_status alwan_gamut_map_spatial_{T}(alwan_{T} *out, alwan_{T} const *in,
+                                         alwan_{T} const *depth,
+                                         int width, int height,
+                                         alwan_gamut_spatial_params_{T} const *params,
+                                         alwan_ctx *ctx);
+```
+
+Whole-image gamut mapping. Unlike the per-pixel mappers above, this one sees the
+image: it reconstructs a field over the frame rather than mapping each pixel in
+isolation, which is what lets it preserve the polarity of local contrast instead
+of flattening it.
+
+**Parameters:**
+- `out`, `in` -- `width * height * 3` interleaved RGB
+- `depth` -- optional `width * height` depth or flux field, may be `NULL`
+- `params` -- method and its parameters, see below
+- `ctx` -- context, may be `NULL`
+
+```c
+typedef struct {
+    alwan_gamut_formation_method method;
+    alwan_{T} s, reach, beta, compress, depth_sigma;
+    int iterations;
+    alwan_{T} peak;
+} alwan_gamut_spatial_params_{T};
+```
+
+The meaning of `s` depends on `method`: for the carrier family
+(DENSITY / CARRIER / XJUNCTION / FLUX) it is applied per pixel, so it cannot
+reintroduce `max(RGB)` carrier flips. The header carries the per-method note.
+
+> **Experimental.** This is a research surface, not a settled one. The method
+> enum is expected to grow and the parameter meanings are not frozen. It is
+> exported so the work is usable, not because the API is stable.
+
+Background, the constraint set it is measured against, and the reasoning behind
+each method are in [picture_formation.md](../picture_formation.md) and
+[gamut_spatial_formation.md](../gamut_spatial_formation.md).
+
+---
+
+## Bulk Gamut Checking
+
+### alwan_gamut_{T}_map_interleave / alwan_gamut_{T}_map_planar
+
+```c
+alwan_status alwan_gamut_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                            alwan_{T} const *in, size_t in_stride,
+                                            size_t count, ...);
+alwan_status alwan_gamut_{T}_map_planar(...);
+```
+
+Strided bulk forms of the per-pixel gamut mapping above. Stride and buffer
+conventions follow [map.md](map.md); the strides are in **bytes**, not elements.
+
+---
+
 ## Error Codes
 
 All functions on this page return an `int` from the `alwan_status` enum:
