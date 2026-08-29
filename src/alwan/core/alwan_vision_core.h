@@ -190,12 +190,12 @@ ALWAN_INLINE alwan_rgb alwan_simulate_cvd_machado_v(
     alwan_rgb rgb, alwan_mat3x3 const *lut, alwan_scalar severity) {
     alwan_mat3x3 mat = alwan_machado_interpolate_v(lut, severity);
     alwan_vec3 v = {{rgb.r, rgb.g, rgb.b}};
-    alwan_vec3 out = alwan_mat3_mulv_v(mat, v);
+    alwan_vec3 mapped = alwan_mat3_mulv_v(mat, v);
     /* Raw Machado 2009 matrix product -- no gamut clamp (matches the dual-precision core). */
     alwan_rgb result;
-    result.r = out.v[0];
-    result.g = out.v[1];
-    result.b = out.v[2];
+    result.r = mapped.v[0];
+    result.g = mapped.v[1];
+    result.b = mapped.v[2];
     return result;
 }
 
