@@ -44,15 +44,15 @@ ALWAN_DIAG_POP
  * ================================================================ */
 
 ALWAN_INLINE alwan_mat3x3 alwan_cat_xyz_scaling_v(alwan_xyz src_white, alwan_xyz dst_white) {
-    alwan_mat3x3 out;
+    alwan_mat3x3 result;
     alwan_scalar sx = dst_white.x / src_white.x;
     alwan_scalar sy = dst_white.y / src_white.y;
     alwan_scalar sz = dst_white.z / src_white.z;
 
-    out.m[0] = sx;         out.m[1] = ALWAN_ZERO; out.m[2] = ALWAN_ZERO;
-    out.m[3] = ALWAN_ZERO; out.m[4] = sy;         out.m[5] = ALWAN_ZERO;
-    out.m[6] = ALWAN_ZERO; out.m[7] = ALWAN_ZERO; out.m[8] = sz;
-    return out;
+    result.m[0] = sx;         result.m[1] = ALWAN_ZERO; result.m[2] = ALWAN_ZERO;
+    result.m[3] = ALWAN_ZERO; result.m[4] = sy;         result.m[5] = ALWAN_ZERO;
+    result.m[6] = ALWAN_ZERO; result.m[7] = ALWAN_ZERO; result.m[8] = sz;
+    return result;
 }
 
 ALWAN_INLINE alwan_mat3x3 alwan_cat_matrix_v(
@@ -92,11 +92,11 @@ ALWAN_INLINE alwan_xyz alwan_cat_adapt_v(alwan_mat3x3 cat_mat, alwan_xyz xyz_in)
     v.v[1] = xyz_in.y;
     v.v[2] = xyz_in.z;
     alwan_vec3 r = alwan_mat3_mulv_v(cat_mat, v);
-    alwan_xyz out;
-    out.x = r.v[0];
-    out.y = r.v[1];
-    out.z = r.v[2];
-    return out;
+    alwan_xyz result;
+    result.x = r.v[0];
+    result.y = r.v[1];
+    result.z = r.v[2];
+    return result;
 }
 
 ALWAN_INLINE alwan_xyz alwan_cat_zhai2018_v(
@@ -139,11 +139,11 @@ ALWAN_INLINE alwan_xyz alwan_cat_zhai2018_v(
     rgb_adapted.v[2] = (D_rgb_src_2 / D_rgb_dst_2) * rgb_in.v[2];
 
     alwan_vec3 vec_out = alwan_mat3_mulv_v(M_inv, rgb_adapted);
-    alwan_xyz out;
-    out.x = vec_out.v[0];
-    out.y = vec_out.v[1];
-    out.z = vec_out.v[2];
-    return out;
+    alwan_xyz result;
+    result.x = vec_out.v[0];
+    result.y = vec_out.v[1];
+    result.z = vec_out.v[2];
+    return result;
 }
 
 #endif /* ALWAN_BACKEND */

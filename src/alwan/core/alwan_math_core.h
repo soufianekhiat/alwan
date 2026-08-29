@@ -39,11 +39,11 @@ ALWAN_DIAG_POP
  * ================================================================ */
 
 ALWAN_INLINE alwan_mat3x3 alwan_mat3_identity_v(void) {
-    alwan_mat3x3 out;
-    out.m[0] = ALWAN_LITERAL(1.0); out.m[1] = ALWAN_LITERAL(0.0); out.m[2] = ALWAN_LITERAL(0.0);
-    out.m[3] = ALWAN_LITERAL(0.0); out.m[4] = ALWAN_LITERAL(1.0); out.m[5] = ALWAN_LITERAL(0.0);
-    out.m[6] = ALWAN_LITERAL(0.0); out.m[7] = ALWAN_LITERAL(0.0); out.m[8] = ALWAN_LITERAL(1.0);
-    return out;
+    alwan_mat3x3 result;
+    result.m[0] = ALWAN_LITERAL(1.0); result.m[1] = ALWAN_LITERAL(0.0); result.m[2] = ALWAN_LITERAL(0.0);
+    result.m[3] = ALWAN_LITERAL(0.0); result.m[4] = ALWAN_LITERAL(1.0); result.m[5] = ALWAN_LITERAL(0.0);
+    result.m[6] = ALWAN_LITERAL(0.0); result.m[7] = ALWAN_LITERAL(0.0); result.m[8] = ALWAN_LITERAL(1.0);
+    return result;
 }
 
 ALWAN_INLINE alwan_scalar alwan_mat3_det_v(alwan_mat3x3 m) {
@@ -53,25 +53,25 @@ ALWAN_INLINE alwan_scalar alwan_mat3_det_v(alwan_mat3x3 m) {
 }
 
 ALWAN_INLINE alwan_vec3 alwan_mat3_mulv_v(alwan_mat3x3 m, alwan_vec3 v) {
-    alwan_vec3 out;
-    out.v[0] = m.m[0] * v.v[0] + m.m[1] * v.v[1] + m.m[2] * v.v[2];
-    out.v[1] = m.m[3] * v.v[0] + m.m[4] * v.v[1] + m.m[5] * v.v[2];
-    out.v[2] = m.m[6] * v.v[0] + m.m[7] * v.v[1] + m.m[8] * v.v[2];
-    return out;
+    alwan_vec3 result;
+    result.v[0] = m.m[0] * v.v[0] + m.m[1] * v.v[1] + m.m[2] * v.v[2];
+    result.v[1] = m.m[3] * v.v[0] + m.m[4] * v.v[1] + m.m[5] * v.v[2];
+    result.v[2] = m.m[6] * v.v[0] + m.m[7] * v.v[1] + m.m[8] * v.v[2];
+    return result;
 }
 
 ALWAN_INLINE alwan_mat3x3 alwan_mat3_mul_v(alwan_mat3x3 a, alwan_mat3x3 b) {
-    alwan_mat3x3 out;
-    out.m[0] = a.m[0] * b.m[0] + a.m[1] * b.m[3] + a.m[2] * b.m[6];
-    out.m[1] = a.m[0] * b.m[1] + a.m[1] * b.m[4] + a.m[2] * b.m[7];
-    out.m[2] = a.m[0] * b.m[2] + a.m[1] * b.m[5] + a.m[2] * b.m[8];
-    out.m[3] = a.m[3] * b.m[0] + a.m[4] * b.m[3] + a.m[5] * b.m[6];
-    out.m[4] = a.m[3] * b.m[1] + a.m[4] * b.m[4] + a.m[5] * b.m[7];
-    out.m[5] = a.m[3] * b.m[2] + a.m[4] * b.m[5] + a.m[5] * b.m[8];
-    out.m[6] = a.m[6] * b.m[0] + a.m[7] * b.m[3] + a.m[8] * b.m[6];
-    out.m[7] = a.m[6] * b.m[1] + a.m[7] * b.m[4] + a.m[8] * b.m[7];
-    out.m[8] = a.m[6] * b.m[2] + a.m[7] * b.m[5] + a.m[8] * b.m[8];
-    return out;
+    alwan_mat3x3 result;
+    result.m[0] = a.m[0] * b.m[0] + a.m[1] * b.m[3] + a.m[2] * b.m[6];
+    result.m[1] = a.m[0] * b.m[1] + a.m[1] * b.m[4] + a.m[2] * b.m[7];
+    result.m[2] = a.m[0] * b.m[2] + a.m[1] * b.m[5] + a.m[2] * b.m[8];
+    result.m[3] = a.m[3] * b.m[0] + a.m[4] * b.m[3] + a.m[5] * b.m[6];
+    result.m[4] = a.m[3] * b.m[1] + a.m[4] * b.m[4] + a.m[5] * b.m[7];
+    result.m[5] = a.m[3] * b.m[2] + a.m[4] * b.m[5] + a.m[5] * b.m[8];
+    result.m[6] = a.m[6] * b.m[0] + a.m[7] * b.m[3] + a.m[8] * b.m[6];
+    result.m[7] = a.m[6] * b.m[1] + a.m[7] * b.m[4] + a.m[8] * b.m[7];
+    result.m[8] = a.m[6] * b.m[2] + a.m[7] * b.m[5] + a.m[8] * b.m[8];
+    return result;
 }
 
 ALWAN_INLINE alwan_mat3x3 alwan_mat3_inv_v(alwan_mat3x3 m) {
@@ -89,15 +89,15 @@ ALWAN_INLINE alwan_mat3x3 alwan_mat3_inv_v(alwan_mat3x3 m) {
                                         ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0) / det);
     alwan_scalar is_singular = ALWAN_SELECT(ALWAN_ABS(det) < ALWAN_EPSILON,
                                             ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0));
-    alwan_mat3x3 out;
-    out.m[0] = c00 * inv_det + is_singular * ALWAN_LITERAL(1.0);
-    out.m[1] = c10 * inv_det; out.m[2] = c20 * inv_det;
-    out.m[3] = c01 * inv_det;
-    out.m[4] = c11 * inv_det + is_singular * ALWAN_LITERAL(1.0);
-    out.m[5] = c21 * inv_det; out.m[6] = c02 * inv_det;
-    out.m[7] = c12 * inv_det;
-    out.m[8] = c22 * inv_det + is_singular * ALWAN_LITERAL(1.0);
-    return out;
+    alwan_mat3x3 result;
+    result.m[0] = c00 * inv_det + is_singular * ALWAN_LITERAL(1.0);
+    result.m[1] = c10 * inv_det; result.m[2] = c20 * inv_det;
+    result.m[3] = c01 * inv_det;
+    result.m[4] = c11 * inv_det + is_singular * ALWAN_LITERAL(1.0);
+    result.m[5] = c21 * inv_det; result.m[6] = c02 * inv_det;
+    result.m[7] = c12 * inv_det;
+    result.m[8] = c22 * inv_det + is_singular * ALWAN_LITERAL(1.0);
+    return result;
 }
 
 ALWAN_INLINE alwan_scalar alwan_lanczos_kernel_v(alwan_scalar x, alwan_scalar a) {
