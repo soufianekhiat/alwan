@@ -58,18 +58,18 @@ static alwan_scalar const ALWAN_PROLAB_D65_WHITE[3] = {
 
 ALWAN_DIAG_POP
 
-ALWAN_INLINE alwan_vec3 alwan_apply_projective_v(alwan_mat4x4 matrix, alwan_vec3 input) {
+ALWAN_INLINE alwan_vec3 alwan_apply_projective_v(alwan_mat4x4 mat, alwan_vec3 pt) {
     alwan_vec3 result;
-    alwan_scalar r0 = matrix.m[0]  * input.v[0] + matrix.m[1]  * input.v[1] + matrix.m[2]  * input.v[2] + matrix.m[3];
-    alwan_scalar r1 = matrix.m[4]  * input.v[0] + matrix.m[5]  * input.v[1] + matrix.m[6]  * input.v[2] + matrix.m[7];
-    alwan_scalar r2 = matrix.m[8]  * input.v[0] + matrix.m[9]  * input.v[1] + matrix.m[10] * input.v[2] + matrix.m[11];
-    alwan_scalar w  = matrix.m[12] * input.v[0] + matrix.m[13] * input.v[1] + matrix.m[14] * input.v[2] + matrix.m[15];
+    alwan_scalar r0 = mat.m[0]  * pt.v[0] + mat.m[1]  * pt.v[1] + mat.m[2]  * pt.v[2] + mat.m[3];
+    alwan_scalar r1 = mat.m[4]  * pt.v[0] + mat.m[5]  * pt.v[1] + mat.m[6]  * pt.v[2] + mat.m[7];
+    alwan_scalar r2 = mat.m[8]  * pt.v[0] + mat.m[9]  * pt.v[1] + mat.m[10] * pt.v[2] + mat.m[11];
+    alwan_scalar w  = mat.m[12] * pt.v[0] + mat.m[13] * pt.v[1] + mat.m[14] * pt.v[2] + mat.m[15];
     alwan_scalar abs_w = ALWAN_ABS(w);
     alwan_scalar safe = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
     alwan_scalar inv_w = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0) / w);
-    result.v[0] = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), input.v[0], r0 * inv_w);
-    result.v[1] = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), input.v[1], r1 * inv_w);
-    result.v[2] = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), input.v[2], r2 * inv_w);
+    result.v[0] = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), pt.v[0], r0 * inv_w);
+    result.v[1] = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), pt.v[1], r1 * inv_w);
+    result.v[2] = ALWAN_SELECT(abs_w < ALWAN_LITERAL(1e-10), pt.v[2], r2 * inv_w);
     ALWAN_UNUSED(safe);
     return result;
 }

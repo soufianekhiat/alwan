@@ -17,13 +17,29 @@ does **not** carry over unchanged.
 > **Read this first: verification status.** Run‑verified on a GPU (dxc + D3D12
 > WARP, matching the C reference; see `alwan_dev/hlsl_regression/`): the **AgX
 > analytic render** (fast ULP / det bit‑exact) and the **deterministic sRGB +
-> BT.2020 transfer set** (bit‑exact 64/64). Compile‑verified under dxc (fast +
-> det): **JP2499** (full pipeline incl. geometry), **Nayatani95**, **normalize**.
-> The remaining ~38 `*_core.h` files have a GPU `#else` branch (i.e. they are
-> *intended* to be portable) but **have never been compiled for a GPU backend**.
-> Until they are, treat "has a GPU branch" as *aspirational*: expect the latent
-> issue classes AgX/JP2499 had (pointer signatures, HLSL keyword collisions
-> (`in`/`out`), `ALWAN_CORE_*` macros the GPU setup didn't define).
+> BT.2020 transfer set** (bit‑exact 64/64).
+>
+> Compile‑verified under dxc, fast and `ALWAN_DETERMINISTIC=1`, one
+> translation unit per core through `alwan_hlsl.h`: **32 of 43 `*_core.h`**
+> (measured 2026-08-30, dxc 1.8.2502; the list is
+> `alwan_dev/hlsl_regression/cores_dxc_clean.txt`, gated by
+> `alwan_dev/tools/check_gpu_compile.py`). The 11 that do not compile, with
+> the first error class: `atd95`, `hunt`, `quality`, `view` (an `ALWAN_CORE_*`
+> constant or helper the GPU setup does not define), `extended` (pointer
+> out‑params in the `.inc` it feeds to the GPU), `hellwig2022` (an operator
+> HLSL lacks), `hdr` (a pointer stride loop in the GPU branch), `half`,
+> `lut`, `table`, `vision` (`<stdint.h>` / `<stddef.h>` reached from the GPU
+> branch, and `size_t`).
+>
+> Keyword collisions are a closed class: `alwan_dev/tools/check_gpu_identifiers.py`
+> scans every GPU‑reachable line of the cores (and the `.inc` files fed to the
+> GPU) for a reserved word used as a name, against a list of 101 words dxc
+> rejects (probed) plus the GLSL 4.60 and Metal keyword lists. It runs in the
+> Tooling CI job and as a post‑build step of the Alwan library, and is clean
+> (`out`, `linear`, `in`, `matrix`, `input` were renamed in 2.0.1). The same
+> tool reports, without gating, the C types and headers in GPU‑reachable code
+> (47 sites: `size_t` in the table/lut addressing, `uint32_t` and `<stdint.h>`
+> in `half`, one stride loop in `hdr`); `--strict` gates them once fixed.
 
 ---
 

@@ -53,11 +53,11 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 
 /* PQ OETF: linear -> encoded (using PQ-like formula with Jzazbz constants) */
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(pq_jz_oetf)(ALWAN_CORE_T linear) {
-    ALWAN_CORE_T linear_n = ALWAN_CORE_POW(ALWAN_CORE_SELECT(linear <= ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), linear) / ALWAN_CORE_LITERAL(10000.0), ALWAN_CORE_FNLIT(JZAZBZ_V_N));
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(pq_jz_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T linear_n = ALWAN_CORE_POW(ALWAN_CORE_SELECT(lin <= ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), lin) / ALWAN_CORE_LITERAL(10000.0), ALWAN_CORE_FNLIT(JZAZBZ_V_N));
     ALWAN_CORE_T numerator = ALWAN_CORE_FNLIT(JZAZBZ_V_C1) + ALWAN_CORE_FNLIT(JZAZBZ_V_C2) * linear_n;
     ALWAN_CORE_T denominator = ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_FNLIT(JZAZBZ_V_C3) * linear_n;
-    return ALWAN_CORE_SELECT(linear <= ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0),
+    return ALWAN_CORE_SELECT(lin <= ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0),
                         ALWAN_CORE_POW(numerator / denominator, ALWAN_CORE_FNLIT(JZAZBZ_V_P)));
 }
 

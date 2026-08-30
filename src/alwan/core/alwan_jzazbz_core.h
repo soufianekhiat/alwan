@@ -67,11 +67,11 @@ ALWAN_CONSTEXPR alwan_mat3x3 JZAZBZ_V_IZAZBZ_TO_LMS_P = {{
 }};
 ALWAN_DIAG_POP
 
-ALWAN_INLINE alwan_scalar pq_jz_oetf_v(alwan_scalar linear) {
-    alwan_scalar linear_n = ALWAN_POW(ALWAN_SELECT(linear <= ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), linear) / ALWAN_LITERAL(10000.0), JZAZBZ_V_N);
+ALWAN_INLINE alwan_scalar pq_jz_oetf_v(alwan_scalar lin) {
+    alwan_scalar linear_n = ALWAN_POW(ALWAN_SELECT(lin <= ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), lin) / ALWAN_LITERAL(10000.0), JZAZBZ_V_N);
     alwan_scalar numerator = JZAZBZ_V_C1 + JZAZBZ_V_C2 * linear_n;
     alwan_scalar denominator = ALWAN_LITERAL(1.0) + JZAZBZ_V_C3 * linear_n;
-    return ALWAN_SELECT(linear <= ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
+    return ALWAN_SELECT(lin <= ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0),
                         ALWAN_POW(numerator / denominator, JZAZBZ_V_P));
 }
 

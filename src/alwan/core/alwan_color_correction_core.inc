@@ -53,11 +53,11 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_lgg_apply)(ALWAN_CORE_RGB rg
  * Result = Matrix * RGB (treating RGB as column vector)
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_color_matrix_apply)(ALWAN_CORE_RGB rgb, ALWAN_CORE_MAT3X3 matrix) {
+ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_color_matrix_apply)(ALWAN_CORE_RGB rgb, ALWAN_CORE_MAT3X3 mat) {
     ALWAN_CORE_RGB result;
-    result.r = matrix.m[0] * rgb.r + matrix.m[1] * rgb.g + matrix.m[2] * rgb.b;
-    result.g = matrix.m[3] * rgb.r + matrix.m[4] * rgb.g + matrix.m[5] * rgb.b;
-    result.b = matrix.m[6] * rgb.r + matrix.m[7] * rgb.g + matrix.m[8] * rgb.b;
+    result.r = mat.m[0] * rgb.r + mat.m[1] * rgb.g + mat.m[2] * rgb.b;
+    result.g = mat.m[3] * rgb.r + mat.m[4] * rgb.g + mat.m[5] * rgb.b;
+    result.b = mat.m[6] * rgb.r + mat.m[7] * rgb.g + mat.m[8] * rgb.b;
     return result;
 }
 

@@ -125,7 +125,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(hunt_adapt)(
     ALWAN_CORE_T const rgb_w_sum = rgb_w.v[0] + rgb_w.v[1] + rgb_w.v[2];
     ALWAN_CORE_T const sum_safe = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(rgb_w_sum) > ALWAN_CORE_LITERAL(1e-12), rgb_w_sum, ALWAN_CORE_ONE);
     ALWAN_CORE_T h_rgb[3], F_rgb[3], D_rgb[3], B_rgb[3], w[3];
-    ALWAN_CORE_VEC3 out;
+    ALWAN_CORE_VEC3 result;
     int i;
 
     for (i = 0; i < 3; i++) {
@@ -170,9 +170,9 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(hunt_adapt)(
 
     for (i = 0; i < 3; i++) {
         ALWAN_CORE_T const denom = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(w[i]) > ALWAN_CORE_LITERAL(1e-12), w[i], ALWAN_CORE_ONE);
-        out.v[i] = ALWAN_CORE_ONE + B_rgb[i] * (ALWAN_CORE_FNVLIT(hunt_f_n)(FL * F_rgb[i] * rgb.v[i] / denom) + D_rgb[i]);
+        result.v[i] = ALWAN_CORE_ONE + B_rgb[i] * (ALWAN_CORE_FNVLIT(hunt_f_n)(FL * F_rgb[i] * rgb.v[i] / denom) + D_rgb[i]);
     }
-    return out;
+    return result;
 }
 
 ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_hunt_v_correlates) ALWAN_CORE_FNVLIT(alwan_hunt_forward)(ALWAN_CORE_XYZ xyz, ALWAN_CORE_HUNT_VIEWING_CONDITIONS vc) {

@@ -219,15 +219,15 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_machado)(
 {
     ALWAN_CORE_MAT3X3 mat = ALWAN_CORE_FNVLIT(alwan_machado_interpolate)(lut, severity);
     ALWAN_CORE_VEC3 v = {{rgb.r, rgb.g, rgb.b}};
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(mat, v);
+    ALWAN_CORE_VEC3 mapped = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(mat, v);
 
     /* Raw Machado 2009 matrix product -- no gamut clamp (the reference model
      * defines only the matrix; colour-science does not clip either). Use
      * alwan_simulate_cvd_machado_gamut_safe for a guaranteed in-gamut result. */
     ALWAN_CORE_RGB result;
-    result.r = out.v[0];
-    result.g = out.v[1];
-    result.b = out.v[2];
+    result.r = mapped.v[0];
+    result.g = mapped.v[1];
+    result.b = mapped.v[2];
     return result;
 }
 

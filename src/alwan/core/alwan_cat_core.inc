@@ -15,15 +15,15 @@
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_cat_xyz_scaling)(ALWAN_CORE_XYZ src_white, ALWAN_CORE_XYZ dst_white) {
-    ALWAN_CORE_MAT3X3 out;
+    ALWAN_CORE_MAT3X3 result;
     ALWAN_CORE_T sx = dst_white.x / src_white.x;
     ALWAN_CORE_T sy = dst_white.y / src_white.y;
     ALWAN_CORE_T sz = dst_white.z / src_white.z;
 
-    out.m[0] = sx;             out.m[1] = ALWAN_CORE_ZERO; out.m[2] = ALWAN_CORE_ZERO;
-    out.m[3] = ALWAN_CORE_ZERO; out.m[4] = sy;             out.m[5] = ALWAN_CORE_ZERO;
-    out.m[6] = ALWAN_CORE_ZERO; out.m[7] = ALWAN_CORE_ZERO; out.m[8] = sz;
-    return out;
+    result.m[0] = sx;             result.m[1] = ALWAN_CORE_ZERO; result.m[2] = ALWAN_CORE_ZERO;
+    result.m[3] = ALWAN_CORE_ZERO; result.m[4] = sy;             result.m[5] = ALWAN_CORE_ZERO;
+    result.m[6] = ALWAN_CORE_ZERO; result.m[7] = ALWAN_CORE_ZERO; result.m[8] = sz;
+    return result;
 }
 
 /* ================================================================
@@ -77,11 +77,11 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_adapt)(ALWAN_CORE_MAT3X3
     v.v[1] = xyz_in.y;
     v.v[2] = xyz_in.z;
     ALWAN_CORE_VEC3 r = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(cat_mat, v);
-    ALWAN_CORE_XYZ out;
-    out.x = r.v[0];
-    out.y = r.v[1];
-    out.z = r.v[2];
-    return out;
+    ALWAN_CORE_XYZ result;
+    result.x = r.v[0];
+    result.y = r.v[1];
+    result.z = r.v[2];
+    return result;
 }
 
 /* ================================================================
@@ -137,9 +137,9 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(
 
     /* Transform back to XYZ */
     ALWAN_CORE_VEC3 vec_out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(M_inv, rgb_adapted);
-    ALWAN_CORE_XYZ out;
-    out.x = vec_out.v[0];
-    out.y = vec_out.v[1];
-    out.z = vec_out.v[2];
-    return out;
+    ALWAN_CORE_XYZ result;
+    result.x = vec_out.v[0];
+    result.y = vec_out.v[1];
+    result.z = vec_out.v[2];
+    return result;
 }

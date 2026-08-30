@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Core headers compiled as HLSL failed on reserved words.** The cores are
+  one source for every backend and the_flow compiles them as HLSL through
+  `alwan_hlsl.h`; a local named `out` in `alwan_math_core.h`,
+  `alwan_cat_core.h` and `alwan_vision_core.h` was a hard syntax error there and
+  took the whole preview shader down. Every reserved word used as a name in
+  GPU-reachable core code is now renamed, in the `.h` and its `.inc` twin:
+  `out` (also `alwan_hunt_core`, `alwan_extended_core.inc`), `linear` (the
+  camera-log and gamma OETF parameters in `alwan_rgb_core`, `alwan_atd95_core`,
+  `alwan_jzazbz_core`, `alwan_convenience_core`, `alwan_extended_core.inc`),
+  `in` (`alwan_hdr_core`), `matrix` and `input` (`alwan_color_correction_core`,
+  `alwan_prolab_core`). 436 identifier sites, C semantics and output unchanged
+  (107/107 suites). Two more cores compile under dxc as a result: 32 of 43,
+  listed in `alwan_dev/hlsl_regression/cores_dxc_clean.txt`.
+
+### Added
+
+- `alwan_dev/tools/check_gpu_identifiers.py`: reserved-word lint over the
+  GPU-reachable lines of every core (101 words probed against dxc, plus the
+  GLSL 4.60 and Metal lists); gates the Tooling CI job and runs as a post-build
+  step of the library. Reports C types and C headers in the same code without
+  gating (`--strict` to gate).
+- `alwan_dev/tools/check_gpu_compile.py`: every core compiled under dxc, one
+  translation unit each, fast and deterministic, gated on the expected-clean
+  list; a `gpu-compile` CI job on Windows runs it.
+- `docs/backends_limits.md` verification status now carries the measured
+  32/43 and the error class of each core that does not compile.
+
 ## [2.0.0], 2026-08-28
 
 First public release (tag `v2.0.0`).

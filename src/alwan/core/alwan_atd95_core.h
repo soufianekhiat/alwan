@@ -50,8 +50,8 @@ ALWAN_DIAG_POP
  * the whole expression including the offset was negated for negative input, so
  * the offset came back with the wrong sign there; only the power is
  * sign-preserving, the offset is not. */
-ALWAN_INLINE alwan_scalar atd95_spow_response_v(alwan_scalar linear, alwan_scalar scale, alwan_scalar offset, alwan_scalar exponent) {
-    alwan_scalar scaled = scale * linear;
+ALWAN_INLINE alwan_scalar atd95_spow_response_v(alwan_scalar lin, alwan_scalar scale, alwan_scalar offset, alwan_scalar exponent) {
+    alwan_scalar scaled = scale * lin;
     alwan_scalar mag = ALWAN_POW(ALWAN_ABS(scaled), exponent);
     alwan_scalar signed_pow = ALWAN_SELECT(scaled < ALWAN_ZERO, -mag, mag);
     return signed_pow + offset;

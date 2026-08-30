@@ -14,17 +14,17 @@
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_mat3_identity)(void) {
-    ALWAN_CORE_MAT3X3 out;
-    out.m[0] = ALWAN_CORE_LITERAL(1.0);
-    out.m[1] = ALWAN_CORE_LITERAL(0.0);
-    out.m[2] = ALWAN_CORE_LITERAL(0.0);
-    out.m[3] = ALWAN_CORE_LITERAL(0.0);
-    out.m[4] = ALWAN_CORE_LITERAL(1.0);
-    out.m[5] = ALWAN_CORE_LITERAL(0.0);
-    out.m[6] = ALWAN_CORE_LITERAL(0.0);
-    out.m[7] = ALWAN_CORE_LITERAL(0.0);
-    out.m[8] = ALWAN_CORE_LITERAL(1.0);
-    return out;
+    ALWAN_CORE_MAT3X3 result;
+    result.m[0] = ALWAN_CORE_LITERAL(1.0);
+    result.m[1] = ALWAN_CORE_LITERAL(0.0);
+    result.m[2] = ALWAN_CORE_LITERAL(0.0);
+    result.m[3] = ALWAN_CORE_LITERAL(0.0);
+    result.m[4] = ALWAN_CORE_LITERAL(1.0);
+    result.m[5] = ALWAN_CORE_LITERAL(0.0);
+    result.m[6] = ALWAN_CORE_LITERAL(0.0);
+    result.m[7] = ALWAN_CORE_LITERAL(0.0);
+    result.m[8] = ALWAN_CORE_LITERAL(1.0);
+    return result;
 }
 
 /* ================================================================
@@ -42,11 +42,11 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_mat3_det)(ALWAN_CORE_MAT3X3 m)
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_MAT3X3 m, ALWAN_CORE_VEC3 v) {
-    ALWAN_CORE_VEC3 out;
-    out.v[0] = m.m[0] * v.v[0] + m.m[1] * v.v[1] + m.m[2] * v.v[2];
-    out.v[1] = m.m[3] * v.v[0] + m.m[4] * v.v[1] + m.m[5] * v.v[2];
-    out.v[2] = m.m[6] * v.v[0] + m.m[7] * v.v[1] + m.m[8] * v.v[2];
-    return out;
+    ALWAN_CORE_VEC3 result;
+    result.v[0] = m.m[0] * v.v[0] + m.m[1] * v.v[1] + m.m[2] * v.v[2];
+    result.v[1] = m.m[3] * v.v[0] + m.m[4] * v.v[1] + m.m[5] * v.v[2];
+    result.v[2] = m.m[6] * v.v[0] + m.m[7] * v.v[1] + m.m[8] * v.v[2];
+    return result;
 }
 
 /* ================================================================
@@ -54,20 +54,20 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_MAT3X
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_mat3_mul)(ALWAN_CORE_MAT3X3 a, ALWAN_CORE_MAT3X3 b) {
-    ALWAN_CORE_MAT3X3 out;
+    ALWAN_CORE_MAT3X3 result;
     /* Row 0 */
-    out.m[0] = a.m[0] * b.m[0] + a.m[1] * b.m[3] + a.m[2] * b.m[6];
-    out.m[1] = a.m[0] * b.m[1] + a.m[1] * b.m[4] + a.m[2] * b.m[7];
-    out.m[2] = a.m[0] * b.m[2] + a.m[1] * b.m[5] + a.m[2] * b.m[8];
+    result.m[0] = a.m[0] * b.m[0] + a.m[1] * b.m[3] + a.m[2] * b.m[6];
+    result.m[1] = a.m[0] * b.m[1] + a.m[1] * b.m[4] + a.m[2] * b.m[7];
+    result.m[2] = a.m[0] * b.m[2] + a.m[1] * b.m[5] + a.m[2] * b.m[8];
     /* Row 1 */
-    out.m[3] = a.m[3] * b.m[0] + a.m[4] * b.m[3] + a.m[5] * b.m[6];
-    out.m[4] = a.m[3] * b.m[1] + a.m[4] * b.m[4] + a.m[5] * b.m[7];
-    out.m[5] = a.m[3] * b.m[2] + a.m[4] * b.m[5] + a.m[5] * b.m[8];
+    result.m[3] = a.m[3] * b.m[0] + a.m[4] * b.m[3] + a.m[5] * b.m[6];
+    result.m[4] = a.m[3] * b.m[1] + a.m[4] * b.m[4] + a.m[5] * b.m[7];
+    result.m[5] = a.m[3] * b.m[2] + a.m[4] * b.m[5] + a.m[5] * b.m[8];
     /* Row 2 */
-    out.m[6] = a.m[6] * b.m[0] + a.m[7] * b.m[3] + a.m[8] * b.m[6];
-    out.m[7] = a.m[6] * b.m[1] + a.m[7] * b.m[4] + a.m[8] * b.m[7];
-    out.m[8] = a.m[6] * b.m[2] + a.m[7] * b.m[5] + a.m[8] * b.m[8];
-    return out;
+    result.m[6] = a.m[6] * b.m[0] + a.m[7] * b.m[3] + a.m[8] * b.m[6];
+    result.m[7] = a.m[6] * b.m[1] + a.m[7] * b.m[4] + a.m[8] * b.m[7];
+    result.m[8] = a.m[6] * b.m[2] + a.m[7] * b.m[5] + a.m[8] * b.m[8];
+    return result;
 }
 
 /* ================================================================
@@ -99,17 +99,17 @@ ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_mat3_inv)(ALWAN_CORE_MAT3
                                                   ALWAN_CORE_LITERAL(0.0));
 
     /* Adjugate (transposed cofactor matrix) / det */
-    ALWAN_CORE_MAT3X3 out;
-    out.m[0] = c00 * inv_det + is_singular * ALWAN_CORE_LITERAL(1.0);
-    out.m[1] = c10 * inv_det;
-    out.m[2] = c20 * inv_det;
-    out.m[3] = c01 * inv_det;
-    out.m[4] = c11 * inv_det + is_singular * ALWAN_CORE_LITERAL(1.0);
-    out.m[5] = c21 * inv_det;
-    out.m[6] = c02 * inv_det;
-    out.m[7] = c12 * inv_det;
-    out.m[8] = c22 * inv_det + is_singular * ALWAN_CORE_LITERAL(1.0);
-    return out;
+    ALWAN_CORE_MAT3X3 result;
+    result.m[0] = c00 * inv_det + is_singular * ALWAN_CORE_LITERAL(1.0);
+    result.m[1] = c10 * inv_det;
+    result.m[2] = c20 * inv_det;
+    result.m[3] = c01 * inv_det;
+    result.m[4] = c11 * inv_det + is_singular * ALWAN_CORE_LITERAL(1.0);
+    result.m[5] = c21 * inv_det;
+    result.m[6] = c02 * inv_det;
+    result.m[7] = c12 * inv_det;
+    result.m[8] = c22 * inv_det + is_singular * ALWAN_CORE_LITERAL(1.0);
+    return result;
 }
 
 /* ================================================================

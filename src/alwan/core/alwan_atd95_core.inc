@@ -83,8 +83,8 @@ static ALWAN_CORE_T const ALWAN_CORE_FNLIT(ATD95_V_T2_D)     = ALWAN_CORE_LITERA
  * the whole expression including the offset was negated for negative input, so
  * the offset came back with the wrong sign there; only the power is
  * sign-preserving, the offset is not. */
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(atd95_spow_response)(ALWAN_CORE_T linear, ALWAN_CORE_T scale, ALWAN_CORE_T offset, ALWAN_CORE_T exponent) {
-    ALWAN_CORE_T scaled = scale * linear;
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(atd95_spow_response)(ALWAN_CORE_T lin, ALWAN_CORE_T scale, ALWAN_CORE_T offset, ALWAN_CORE_T exponent) {
+    ALWAN_CORE_T scaled = scale * lin;
     ALWAN_CORE_T mag = ALWAN_CORE_POW(ALWAN_CORE_ABS(scaled), exponent);
     ALWAN_CORE_T signed_pow = ALWAN_CORE_SELECT(scaled < ALWAN_CORE_ZERO, -mag, mag);
     return signed_pow + offset;

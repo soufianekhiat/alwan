@@ -327,12 +327,12 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_gamut_compress_chroma)(ALWAN_C
     return Cz_out;
 }
 
-ALWAN_INLINE ALWAN_CORE_JZCZHZ ALWAN_CORE_FNVLIT(alwan_hdr_gamut_map_jzczhz)(ALWAN_CORE_JZCZHZ in,
+ALWAN_INLINE ALWAN_CORE_JZCZHZ ALWAN_CORE_FNVLIT(alwan_hdr_gamut_map_jzczhz)(ALWAN_CORE_JZCZHZ src,
                                                           ALWAN_CORE_T Cz_max) {
     ALWAN_CORE_JZCZHZ result;
-    result.Jz = in.Jz;
-    result.hz = in.hz;
-    result.Cz = ALWAN_CORE_FNVLIT(alwan_gamut_compress_chroma)(in.Cz, Cz_max);
+    result.Jz = src.Jz;
+    result.hz = src.hz;
+    result.Cz = ALWAN_CORE_FNVLIT(alwan_gamut_compress_chroma)(src.Cz, Cz_max);
     return result;
 }
 

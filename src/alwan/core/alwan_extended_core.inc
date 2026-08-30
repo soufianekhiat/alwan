@@ -274,8 +274,8 @@ ALWAN_INLINE ALWAN_CORE_IPT ALWAN_CORE_FNVLIT(alwan_xyz_to_hdr_ipt)(ALWAN_CORE_X
     lms.v[2] = sign2 * ALWAN_CORE_ABS(ALWAN_CORE_FNVLIT(alwan_lightness_fairchild2011)(lms.v[2], epsilon));
 
     /* LMS -> IPT */
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_IPT_HDR), lms);
-    result.I = out.v[0]; result.P = out.v[1]; result.T = out.v[2];
+    ALWAN_CORE_VEC3 mapped = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_IPT_HDR), lms);
+    result.I = mapped.v[0]; result.P = mapped.v[1]; result.T = mapped.v[2];
     return result;
 }
 
@@ -304,8 +304,8 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_hdr_ipt_to_xyz)(ALWAN_CORE_I
     lms.v[2] = sign2 * ALWAN_CORE_ABS(ALWAN_CORE_FNVLIT(alwan_luminance_fairchild2011)(lms.v[2], epsilon));
 
     /* LMS -> XYZ */
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_XYZ_IPT), lms);
-    result.x = out.v[0]; result.y = out.v[1]; result.z = out.v[2];
+    ALWAN_CORE_VEC3 mapped = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_XYZ_IPT), lms);
+    result.x = mapped.v[0]; result.y = mapped.v[1]; result.z = mapped.v[2];
     return result;
 }
 
@@ -330,8 +330,8 @@ ALWAN_INLINE ALWAN_CORE_IGPGTG ALWAN_CORE_FNVLIT(alwan_xyz_to_igpgtg)(ALWAN_CORE
     lms.v[2] = ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[2] / ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[2], exponent);
 
     /* LMS -> IgPgTg */
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_IGPGTG), lms);
-    result.Ig = out.v[0]; result.Pg = out.v[1]; result.Tg = out.v[2];
+    ALWAN_CORE_VEC3 mapped = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_IGPGTG), lms);
+    result.Ig = mapped.v[0]; result.Pg = mapped.v[1]; result.Tg = mapped.v[2];
     return result;
 }
 
@@ -350,8 +350,8 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_igpgtg_to_xyz)(ALWAN_CORE_IG
     lms.v[2] = ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[2] * ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[2], inv_exponent);
 
     /* LMS -> XYZ */
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_XYZ_IGPGTG), lms);
-    result.x = out.v[0]; result.y = out.v[1]; result.z = out.v[2];
+    ALWAN_CORE_VEC3 mapped = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_XYZ_IGPGTG), lms);
+    result.x = mapped.v[0]; result.y = mapped.v[1]; result.z = mapped.v[2];
     return result;
 }
 
@@ -373,8 +373,8 @@ ALWAN_INLINE ALWAN_CORE_ICACB ALWAN_CORE_FNVLIT(alwan_xyz_to_icacb)(ALWAN_CORE_X
     lms.v[2] = ALWAN_CORE_FNVLIT(alwan_eotf_inverse_st2084)(lms.v[2]);
 
     /* LMS -> ICaCb */
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_ICACB), lms);
-    result.I = out.v[0]; result.Ca = out.v[1]; result.Cb = out.v[2];
+    ALWAN_CORE_VEC3 mapped = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_ICACB), lms);
+    result.I = mapped.v[0]; result.Ca = mapped.v[1]; result.Cb = mapped.v[2];
     return result;
 }
 
@@ -392,8 +392,8 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_icacb_to_xyz)(ALWAN_CORE_ICA
     lms.v[2] = ALWAN_CORE_FNVLIT(alwan_eotf_st2084)(lms.v[2]);
 
     /* LMS -> XYZ */
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_XYZ_ICACB), lms);
-    result.x = out.v[0]; result.y = out.v[1]; result.z = out.v[2];
+    ALWAN_CORE_VEC3 mapped = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_XYZ_ICACB), lms);
+    result.x = mapped.v[0]; result.y = mapped.v[1]; result.z = mapped.v[2];
     return result;
 }
 
@@ -873,7 +873,7 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hsluv_to_srgb)(ALWAN_CORE_HS
     ALWAN_CORE_T S = hsluv.s;
     ALWAN_CORE_T L = hsluv.l;
     ALWAN_CORE_T C;
-    ALWAN_CORE_RGB linear;
+    ALWAN_CORE_RGB lin;
 
     if (L > ALWAN_CORE_LITERAL(99.9999999)) {
         ALWAN_CORE_RGB result = {ALWAN_CORE_ONE, ALWAN_CORE_ONE, ALWAN_CORE_ONE};
@@ -885,13 +885,13 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hsluv_to_srgb)(ALWAN_CORE_HS
     }
 
     C = ALWAN_CORE_FNLIT(alwan_hsluv_max_chroma_lh)(L, H) / ALWAN_CORE_LITERAL(100.0) * S;
-    linear = ALWAN_CORE_FNLIT(alwan_hsluv_lchuv_to_rgb)(L, C, H);
+    lin = ALWAN_CORE_FNLIT(alwan_hsluv_lchuv_to_rgb)(L, C, H);
 
     {
         ALWAN_CORE_RGB result;
-        result.r = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(linear.r);
-        result.g = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(linear.g);
-        result.b = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(linear.b);
+        result.r = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(lin.r);
+        result.g = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(lin.g);
+        result.b = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(lin.b);
         return result;
     }
 }
@@ -899,14 +899,14 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hsluv_to_srgb)(ALWAN_CORE_HS
 /* sRGB (encoded) -> HSLuv */
 ALWAN_INLINE ALWAN_CORE_HSLUV ALWAN_CORE_FNVLIT(alwan_srgb_to_hsluv)(ALWAN_CORE_RGB srgb) {
     ALWAN_CORE_HSLUV result;
-    ALWAN_CORE_RGB linear;
+    ALWAN_CORE_RGB lin;
     ALWAN_CORE_T L, C, H;
 
-    linear.r = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.r);
-    linear.g = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.g);
-    linear.b = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.b);
+    lin.r = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.r);
+    lin.g = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.g);
+    lin.b = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.b);
 
-    ALWAN_CORE_FNLIT(alwan_hsluv_rgb_to_lchuv)(&L, &C, &H, linear);
+    ALWAN_CORE_FNLIT(alwan_hsluv_rgb_to_lchuv)(&L, &C, &H, lin);
 
     if (L > ALWAN_CORE_LITERAL(99.9999999)) {
         result.h = H; result.s = ALWAN_CORE_ZERO; result.l = ALWAN_CORE_LITERAL(100.0);
@@ -929,7 +929,7 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hpluv_to_srgb)(ALWAN_CORE_HP
     ALWAN_CORE_T S = hpluv.s;
     ALWAN_CORE_T L = hpluv.l;
     ALWAN_CORE_T C;
-    ALWAN_CORE_RGB linear;
+    ALWAN_CORE_RGB lin;
 
     if (L > ALWAN_CORE_LITERAL(99.9999999)) {
         ALWAN_CORE_RGB result = {ALWAN_CORE_ONE, ALWAN_CORE_ONE, ALWAN_CORE_ONE};
@@ -941,13 +941,13 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hpluv_to_srgb)(ALWAN_CORE_HP
     }
 
     C = ALWAN_CORE_FNLIT(alwan_hsluv_max_safe_chroma)(L) / ALWAN_CORE_LITERAL(100.0) * S;
-    linear = ALWAN_CORE_FNLIT(alwan_hsluv_lchuv_to_rgb)(L, C, H);
+    lin = ALWAN_CORE_FNLIT(alwan_hsluv_lchuv_to_rgb)(L, C, H);
 
     {
         ALWAN_CORE_RGB result;
-        result.r = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(linear.r);
-        result.g = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(linear.g);
-        result.b = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(linear.b);
+        result.r = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(lin.r);
+        result.g = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(lin.g);
+        result.b = ALWAN_CORE_FNLIT(alwan_srgb_oetf)(lin.b);
         return result;
     }
 }
@@ -955,14 +955,14 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hpluv_to_srgb)(ALWAN_CORE_HP
 /* sRGB (encoded) -> HPLuv */
 ALWAN_INLINE ALWAN_CORE_HPLUV ALWAN_CORE_FNVLIT(alwan_srgb_to_hpluv)(ALWAN_CORE_RGB srgb) {
     ALWAN_CORE_HPLUV result;
-    ALWAN_CORE_RGB linear;
+    ALWAN_CORE_RGB lin;
     ALWAN_CORE_T L, C, H;
 
-    linear.r = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.r);
-    linear.g = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.g);
-    linear.b = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.b);
+    lin.r = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.r);
+    lin.g = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.g);
+    lin.b = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(srgb.b);
 
-    ALWAN_CORE_FNLIT(alwan_hsluv_rgb_to_lchuv)(&L, &C, &H, linear);
+    ALWAN_CORE_FNLIT(alwan_hsluv_rgb_to_lchuv)(&L, &C, &H, lin);
 
     if (L > ALWAN_CORE_LITERAL(99.9999999)) {
         result.h = H; result.s = ALWAN_CORE_ZERO; result.l = ALWAN_CORE_LITERAL(100.0);

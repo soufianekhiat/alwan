@@ -135,7 +135,7 @@ ALWAN_INLINE alwan_vec3 hunt_adapt_v(
     alwan_scalar const rgb_w_sum = rgb_w.v[0] + rgb_w.v[1] + rgb_w.v[2];
     alwan_scalar const sum_safe = ALWAN_SELECT(ALWAN_ABS(rgb_w_sum) > ALWAN_LITERAL(1e-12), rgb_w_sum, ALWAN_ONE);
     alwan_scalar h_rgb[3], F_rgb[3], D_rgb[3], B_rgb[3], w[3];
-    alwan_vec3 out;
+    alwan_vec3 result;
     int i;
 
     for (i = 0; i < 3; i++) {
@@ -180,9 +180,9 @@ ALWAN_INLINE alwan_vec3 hunt_adapt_v(
 
     for (i = 0; i < 3; i++) {
         alwan_scalar const denom = ALWAN_SELECT(ALWAN_ABS(w[i]) > ALWAN_LITERAL(1e-12), w[i], ALWAN_ONE);
-        out.v[i] = ALWAN_ONE + B_rgb[i] * (hunt_f_n_v(FL * F_rgb[i] * rgb.v[i] / denom) + D_rgb[i]);
+        result.v[i] = ALWAN_ONE + B_rgb[i] * (hunt_f_n_v(FL * F_rgb[i] * rgb.v[i] / denom) + D_rgb[i]);
     }
-    return out;
+    return result;
 }
 
 ALWAN_INLINE alwan_hunt_v_correlates alwan_hunt_forward_v(alwan_xyz xyz, alwan_hunt_viewing_conditions vc) {

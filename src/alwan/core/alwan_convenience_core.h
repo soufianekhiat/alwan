@@ -40,72 +40,72 @@ ALWAN_DIAG_POP
  * ---------------------------------------------------------------- */
 #ifdef ALWAN_CORE_H
 
-ALWAN_INLINE alwan_hsv_f32 alwan_linear_srgb_to_hsv_f32_v(alwan_rgb_f32 linear) {
+ALWAN_INLINE alwan_hsv_f32 alwan_linear_srgb_to_hsv_f32_v(alwan_rgb_f32 lin) {
     alwan_rgb_f32 encoded;
-    encoded.r = alwan_srgb_oetf_f32(linear.r);
-    encoded.g = alwan_srgb_oetf_f32(linear.g);
-    encoded.b = alwan_srgb_oetf_f32(linear.b);
+    encoded.r = alwan_srgb_oetf_f32(lin.r);
+    encoded.g = alwan_srgb_oetf_f32(lin.g);
+    encoded.b = alwan_srgb_oetf_f32(lin.b);
     return alwan_rgb_to_hsv_f32_v(encoded);
 }
 
 ALWAN_INLINE alwan_rgb_f32 alwan_hsv_to_linear_srgb_f32_v(alwan_hsv_f32 hsv) {
     alwan_rgb_f32 encoded = alwan_hsv_to_rgb_f32_v(hsv);
-    alwan_rgb_f32 linear;
-    linear.r = alwan_srgb_eotf_f32(encoded.r);
-    linear.g = alwan_srgb_eotf_f32(encoded.g);
-    linear.b = alwan_srgb_eotf_f32(encoded.b);
-    return linear;
+    alwan_rgb_f32 lin;
+    lin.r = alwan_srgb_eotf_f32(encoded.r);
+    lin.g = alwan_srgb_eotf_f32(encoded.g);
+    lin.b = alwan_srgb_eotf_f32(encoded.b);
+    return lin;
 }
 
-ALWAN_INLINE alwan_hsl_f32 alwan_linear_srgb_to_hsl_f32_v(alwan_rgb_f32 linear) {
+ALWAN_INLINE alwan_hsl_f32 alwan_linear_srgb_to_hsl_f32_v(alwan_rgb_f32 lin) {
     alwan_rgb_f32 encoded;
-    encoded.r = alwan_srgb_oetf_f32(linear.r);
-    encoded.g = alwan_srgb_oetf_f32(linear.g);
-    encoded.b = alwan_srgb_oetf_f32(linear.b);
+    encoded.r = alwan_srgb_oetf_f32(lin.r);
+    encoded.g = alwan_srgb_oetf_f32(lin.g);
+    encoded.b = alwan_srgb_oetf_f32(lin.b);
     return alwan_rgb_to_hsl_f32_v(encoded);
 }
 
 ALWAN_INLINE alwan_rgb_f32 alwan_hsl_to_linear_srgb_f32_v(alwan_hsl_f32 hsl) {
     alwan_rgb_f32 encoded = alwan_hsl_to_rgb_f32_v(hsl);
-    alwan_rgb_f32 linear;
-    linear.r = alwan_srgb_eotf_f32(encoded.r);
-    linear.g = alwan_srgb_eotf_f32(encoded.g);
-    linear.b = alwan_srgb_eotf_f32(encoded.b);
-    return linear;
+    alwan_rgb_f32 lin;
+    lin.r = alwan_srgb_eotf_f32(encoded.r);
+    lin.g = alwan_srgb_eotf_f32(encoded.g);
+    lin.b = alwan_srgb_eotf_f32(encoded.b);
+    return lin;
 }
 
-ALWAN_INLINE alwan_hsv_f64 alwan_linear_srgb_to_hsv_f64_v(alwan_rgb_f64 linear) {
+ALWAN_INLINE alwan_hsv_f64 alwan_linear_srgb_to_hsv_f64_v(alwan_rgb_f64 lin) {
     alwan_rgb_f64 encoded;
-    encoded.r = alwan_srgb_oetf_f64(linear.r);
-    encoded.g = alwan_srgb_oetf_f64(linear.g);
-    encoded.b = alwan_srgb_oetf_f64(linear.b);
+    encoded.r = alwan_srgb_oetf_f64(lin.r);
+    encoded.g = alwan_srgb_oetf_f64(lin.g);
+    encoded.b = alwan_srgb_oetf_f64(lin.b);
     return alwan_rgb_to_hsv_f64_v(encoded);
 }
 
 ALWAN_INLINE alwan_rgb_f64 alwan_hsv_to_linear_srgb_f64_v(alwan_hsv_f64 hsv) {
     alwan_rgb_f64 encoded = alwan_hsv_to_rgb_f64_v(hsv);
-    alwan_rgb_f64 linear;
-    linear.r = alwan_srgb_eotf_f64(encoded.r);
-    linear.g = alwan_srgb_eotf_f64(encoded.g);
-    linear.b = alwan_srgb_eotf_f64(encoded.b);
-    return linear;
+    alwan_rgb_f64 lin;
+    lin.r = alwan_srgb_eotf_f64(encoded.r);
+    lin.g = alwan_srgb_eotf_f64(encoded.g);
+    lin.b = alwan_srgb_eotf_f64(encoded.b);
+    return lin;
 }
 
-ALWAN_INLINE alwan_hsl_f64 alwan_linear_srgb_to_hsl_f64_v(alwan_rgb_f64 linear) {
+ALWAN_INLINE alwan_hsl_f64 alwan_linear_srgb_to_hsl_f64_v(alwan_rgb_f64 lin) {
     alwan_rgb_f64 encoded;
-    encoded.r = alwan_srgb_oetf_f64(linear.r);
-    encoded.g = alwan_srgb_oetf_f64(linear.g);
-    encoded.b = alwan_srgb_oetf_f64(linear.b);
+    encoded.r = alwan_srgb_oetf_f64(lin.r);
+    encoded.g = alwan_srgb_oetf_f64(lin.g);
+    encoded.b = alwan_srgb_oetf_f64(lin.b);
     return alwan_rgb_to_hsl_f64_v(encoded);
 }
 
 ALWAN_INLINE alwan_rgb_f64 alwan_hsl_to_linear_srgb_f64_v(alwan_hsl_f64 hsl) {
     alwan_rgb_f64 encoded = alwan_hsl_to_rgb_f64_v(hsl);
-    alwan_rgb_f64 linear;
-    linear.r = alwan_srgb_eotf_f64(encoded.r);
-    linear.g = alwan_srgb_eotf_f64(encoded.g);
-    linear.b = alwan_srgb_eotf_f64(encoded.b);
-    return linear;
+    alwan_rgb_f64 lin;
+    lin.r = alwan_srgb_eotf_f64(encoded.r);
+    lin.g = alwan_srgb_eotf_f64(encoded.g);
+    lin.b = alwan_srgb_eotf_f64(encoded.b);
+    return lin;
 }
 
 #endif /* ALWAN_CORE_H */
@@ -663,38 +663,38 @@ ALWAN_INLINE alwan_rgb alwan_hsy_to_rgb_v(alwan_hsy hsy) {
 
 #ifdef ALWAN_CORE_H
 
-ALWAN_INLINE alwan_hsv alwan_linear_srgb_to_hsv_v(alwan_rgb linear) {
+ALWAN_INLINE alwan_hsv alwan_linear_srgb_to_hsv_v(alwan_rgb lin) {
     alwan_rgb encoded;
-    encoded.r = alwan_srgb_oetf(linear.r);
-    encoded.g = alwan_srgb_oetf(linear.g);
-    encoded.b = alwan_srgb_oetf(linear.b);
+    encoded.r = alwan_srgb_oetf(lin.r);
+    encoded.g = alwan_srgb_oetf(lin.g);
+    encoded.b = alwan_srgb_oetf(lin.b);
     return alwan_rgb_to_hsv_v(encoded);
 }
 
 ALWAN_INLINE alwan_rgb alwan_hsv_to_linear_srgb_v(alwan_hsv hsv) {
     alwan_rgb encoded = alwan_hsv_to_rgb_v(hsv);
-    alwan_rgb linear;
-    linear.r = alwan_srgb_eotf(encoded.r);
-    linear.g = alwan_srgb_eotf(encoded.g);
-    linear.b = alwan_srgb_eotf(encoded.b);
-    return linear;
+    alwan_rgb lin;
+    lin.r = alwan_srgb_eotf(encoded.r);
+    lin.g = alwan_srgb_eotf(encoded.g);
+    lin.b = alwan_srgb_eotf(encoded.b);
+    return lin;
 }
 
-ALWAN_INLINE alwan_hsl alwan_linear_srgb_to_hsl_v(alwan_rgb linear) {
+ALWAN_INLINE alwan_hsl alwan_linear_srgb_to_hsl_v(alwan_rgb lin) {
     alwan_rgb encoded;
-    encoded.r = alwan_srgb_oetf(linear.r);
-    encoded.g = alwan_srgb_oetf(linear.g);
-    encoded.b = alwan_srgb_oetf(linear.b);
+    encoded.r = alwan_srgb_oetf(lin.r);
+    encoded.g = alwan_srgb_oetf(lin.g);
+    encoded.b = alwan_srgb_oetf(lin.b);
     return alwan_rgb_to_hsl_v(encoded);
 }
 
 ALWAN_INLINE alwan_rgb alwan_hsl_to_linear_srgb_v(alwan_hsl hsl) {
     alwan_rgb encoded = alwan_hsl_to_rgb_v(hsl);
-    alwan_rgb linear;
-    linear.r = alwan_srgb_eotf(encoded.r);
-    linear.g = alwan_srgb_eotf(encoded.g);
-    linear.b = alwan_srgb_eotf(encoded.b);
-    return linear;
+    alwan_rgb lin;
+    lin.r = alwan_srgb_eotf(encoded.r);
+    lin.g = alwan_srgb_eotf(encoded.g);
+    lin.b = alwan_srgb_eotf(encoded.b);
+    return lin;
 }
 
 #endif /* ALWAN_CORE_H */

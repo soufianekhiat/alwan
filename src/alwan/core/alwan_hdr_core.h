@@ -318,12 +318,12 @@ ALWAN_INLINE alwan_scalar alwan_gamut_compress_chroma_v(alwan_scalar Cz,
     return Cz_out;
 }
 
-ALWAN_INLINE alwan_jzczhz alwan_hdr_gamut_map_jzczhz_v(alwan_jzczhz in,
+ALWAN_INLINE alwan_jzczhz alwan_hdr_gamut_map_jzczhz_v(alwan_jzczhz src,
                                                           alwan_scalar Cz_max) {
     alwan_jzczhz result;
-    result.Jz = in.Jz;
-    result.hz = in.hz;
-    result.Cz = alwan_gamut_compress_chroma_v(in.Cz, Cz_max);
+    result.Jz = src.Jz;
+    result.hz = src.hz;
+    result.Cz = alwan_gamut_compress_chroma_v(src.Cz, Cz_max);
     return result;
 }
 
