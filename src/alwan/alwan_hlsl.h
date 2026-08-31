@@ -28,6 +28,18 @@
 #define ALWAN_BACKEND 1
 #endif
 
+/* HLSL reserves identifiers that ordinary C uses freely -- `linear` is an
+ * interpolation modifier, and a transfer function taking `alwan_scalar
+ * linear` is a hard syntax error ("unexpected token 'linear'", then
+ * "function must return a value" for the whole body). Remap it through the
+ * preprocessor: comments are stripped before substitution, alwan never uses
+ * the HLSL keyword itself, and the C build never sees this header. `out`
+ * (a parameter modifier) was handled by renaming the few locals instead --
+ * see the core headers -- because a remap here would also rewrite the
+ * `out` parameters of caller-side HLSL that includes us. `linear` has no
+ * such use in caller shaders' interface blocks that reach these headers. */
+#define linear alwan_hlsl_linear_id
+
 /* Platform: defines alwan_scalar (float), math macros, ALWAN_SELECT,
  * utility functions (alwan_min, alwan_max, alwan_clamp, ...) */
 #include "alwan_platform.h"
