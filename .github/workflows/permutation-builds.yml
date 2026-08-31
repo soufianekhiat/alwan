@@ -8,6 +8,7 @@ name: Permutation builds
 # (Warnings-as-errors is Release-scoped, so the Release rows also enforce a
 # clean compile; the Det rows exercise the polynomial math + warning suppressions.)
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:

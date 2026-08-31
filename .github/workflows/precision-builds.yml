@@ -3,6 +3,7 @@ name: Precision builds
 # (ALWAN_BUILD_ONLY_F32 / ALWAN_BUILD_ONLY_F64) in addition to the default
 # dual-precision build covered by the platform CI jobs.
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
