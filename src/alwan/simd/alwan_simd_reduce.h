@@ -33,7 +33,7 @@
  * the public dispatcher names. Call sites only ever use the public
  * names -- they should never reference the *_native suffix directly.
  *
- * See road_to_determinism.md (workstream 4).
+ * See docs/determinism.md.
  */
 
 #ifndef ALWAN_SIMD_REDUCE_H

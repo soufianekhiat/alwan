@@ -52,12 +52,8 @@ single API module.
 
 ## Planning And Audit Docs
 
-- [TODO_ColorInterop.md](TODO_ColorInterop.md) - current state of the Color Interop Forum work
-- [alwan_future.md](alwan_future.md) - forward-looking roadmap items
+- [alwan_future.md](alwan_future.md) - what is deliberately not implemented, and what it would take
 - [violations.md](violations.md) - code-quality audit notes and remaining follow-ups
-- [../road_to_determinism.md](../road_to_determinism.md) - workstream history
-  for the `ALWAN_DETERMINISTIC=ON` path; the user-facing summary is in
-  [determinism.md](determinism.md)
 
 ## API Reference
 

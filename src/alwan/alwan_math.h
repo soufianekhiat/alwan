@@ -21,7 +21,7 @@
  *      core/alwan_deterministic.h. While that file is being written,
  *      ALWAN_DETERMINISTIC=1 emits a compile error pointing here.
  *
- * See road_to_determinism.md for the full plan.
+ * See docs/determinism.md for the full plan.
  */
 
 #ifndef ALWAN_MATH_H

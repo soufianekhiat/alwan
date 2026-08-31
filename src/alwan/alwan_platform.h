@@ -223,7 +223,7 @@
  * ALWAN_CORE_SRGB_OETF / _EOTF in alwan_core_*_setup.h but uses the
  * single-precision (alwan_scalar) macro vocabulary. The .h and .inc
  * core files both compute sRGB transfer through these macros, so
- * deterministic mode propagates uniformly. road_to_determinism.md sec 6.2. */
+ * deterministic mode propagates uniformly. docs/determinism.md */
 # if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
 #  define ALWAN_SRGB_OETF(x)     alwan_det_srgb_oetf_f64(x)
 #  define ALWAN_SRGB_EOTF(x)     alwan_det_srgb_eotf_f64(x)

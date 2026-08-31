@@ -39,7 +39,7 @@
 #define ALWAN_CORE_EXP(x)       ALWAN_EXP_F64(x)
 /* Deterministic-aware sRGB primitives. In fast mode these compute via
  * libm pow; in det mode they call the polynomial implementations from
- * core/alwan_deterministic.h. road_to_determinism.md sec 6.2. */
+ * core/alwan_deterministic.h. docs/determinism.md */
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
 #  include "alwan_deterministic.h"
 #  define ALWAN_CORE_SRGB_OETF(x)    alwan_det_srgb_oetf_f64(x)

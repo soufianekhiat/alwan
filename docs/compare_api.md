@@ -192,4 +192,3 @@ buffer-processing surface in a native C library.
 - [README.md](README.md)
 - [examples.md](examples.md)
 - [api-conventions.md](api-conventions.md)
-- [TODO_ColorInterop.md](TODO_ColorInterop.md)

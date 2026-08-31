@@ -740,6 +740,5 @@ Background reading on the techniques used:
   proven minimax error.
 - ARM Architecture Reference Manual, Section A1.5.6 (FPCR / FZ flag).
   Why Apple Silicon flushes denormals.
-- The engineering history lives in
-  [`road_to_determinism.md`](../road_to_determinism.md) at the repo root: how
-  each source of drift was found and closed, in the order it happened.
+- Every source of drift this document names was found the hard way; the
+  mechanics above are what closing each one produced.

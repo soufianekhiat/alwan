@@ -1125,7 +1125,7 @@ ALWAN_INLINE alwan_simd alwan__lab_f_inv_simd(alwan_simd t) {
  * pow24/pow_inv24 paths use approximation polynomials whose lane order
  * and FMA usage differ across SSE/AVX/NEON; routing through the scalar
  * polynomial keeps SIMD and scalar paths bit-identical.
- * road_to_determinism.md sec 8. */
+ * docs/determinism.md */
 ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
     ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
     alwan_simd_store(lanes, v);

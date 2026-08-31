@@ -33,7 +33,7 @@
  *   - BT.2020  OETF/EOTF (also valid for BT.709 -- same constants)
  *
  * Pipeline (PQ, HLG, Lab cube root, ACES splines, ...) follow in
- * later phases -- see road_to_determinism.md sec 6.8.
+ * later phases -- see docs/determinism.md
  */
 
 #ifndef ALWAN_DETERMINISTIC_H

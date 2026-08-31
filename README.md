@@ -685,7 +685,6 @@ alwan/                       # this repo (library only)
 │   └── data/                # Embedded reference data (CSV)
 ├── buildsystem/sharpmake/   # Sharpmake project definitions
 ├── docs/                    # User-facing documentation
-├── road_to_determinism.md   # Determinism design history
 └── CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)

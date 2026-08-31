@@ -37,7 +37,7 @@
 #define ALWAN_CORE_ATAN2(y, x)  ALWAN_ATAN2_F32(y, x)
 #define ALWAN_CORE_POW(x, y)    ALWAN_POW_F32(x, y)
 #define ALWAN_CORE_EXP(x)       ALWAN_EXP_F32(x)
-/* Deterministic-aware sRGB primitives. road_to_determinism.md sec 6.2.
+/* Deterministic-aware sRGB primitives. docs/determinism.md
  * Pull in the helper that backs the selected branch so header-only consumers
  * (image_gen, GPU bootstraps, external users) are self-contained instead of
  * relying on a .c TU having included it first. Both headers are guarded. */

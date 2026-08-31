@@ -13,7 +13,7 @@
  * -- on platforms without an accurate vector pow (no SVML, e.g. NEON), where
  * the scalar path would otherwise use libm and diverge from the polynomial
  * SIMD path. In deterministic mode the det polynomials are used instead and
- * this file is unused. See road_to_determinism.md and the SIMD pow kernels.
+ * this file is unused. See docs/determinism.md and the SIMD pow kernels.
  *
  * Accuracy vs libm over [0,1]: ~5e-10 absolute (pow_inv24/pow24), i.e. the
  * f64 fast-mode floor; this is the documented "fast mode is approximate"

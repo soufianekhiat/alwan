@@ -32,7 +32,7 @@
  * `vx / wx`), pre-multiplied constants, and slightly different operation
  * orderings in matrix multiplies. Lane-unpacking each one individually
  * is ~50 helpers; collapsing the SIMD width to 1 in det mode is one
- * line and every kernel benefits. road_to_determinism.md sec 8.
+ * line and every kernel benefits. docs/determinism.md
  *
  * Element-wise SIMD usage outside the kernel files (alwan_rgb.c's
  * OETF/EOTF apply functions through alwan_map_internal.h) is unaffected
