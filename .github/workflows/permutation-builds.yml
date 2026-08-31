@@ -7,13 +7,11 @@ name: Permutation builds
 #   optimization -> CMAKE_BUILD_TYPE    = Debug / Release
 # (Warnings-as-errors is Release-scoped, so the Release rows also enforce a
 # clean compile; the Det rows exercise the polynomial math + warning suppressions.)
+# On-demand only: minutes on this private repo are billed. Run from the
+# Actions tab, or through the umbrella 'CI' workflow, which calls them all.
 on:
   workflow_dispatch:
   workflow_call:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
 jobs:
   permutations:
     runs-on: ubuntu-latest

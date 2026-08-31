@@ -1,11 +1,9 @@
 name: macOS
+# On-demand only: minutes on this private repo are billed. Run from the
+# Actions tab, or through the umbrella 'CI' workflow, which calls them all.
 on:
   workflow_dispatch:
   workflow_call:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
 jobs:
   build:
     # Pin to macos-15-intel (Intel x86_64). macos-latest is Apple Silicon

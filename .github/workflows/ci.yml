@@ -1,7 +1,7 @@
 name: CI
-# One button for the whole matrix. The eight workflows below also run on push
-# and pull request on their own; this one calls them together so a full check
-# can be started by hand from the Actions tab without a commit.
+# One button for the whole matrix. Nothing in this repo runs on push: its
+# minutes are billed, so a full check is started by hand from the Actions tab.
+# Each workflow below can also be dispatched on its own.
 on:
   workflow_dispatch:
 jobs:

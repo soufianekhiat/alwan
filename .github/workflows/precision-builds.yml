@@ -2,13 +2,11 @@ name: Precision builds
 # Verify the library compiles in each single-precision configuration
 # (ALWAN_BUILD_ONLY_F32 / ALWAN_BUILD_ONLY_F64) in addition to the default
 # dual-precision build covered by the platform CI jobs.
+# On-demand only: minutes on this private repo are billed. Run from the
+# Actions tab, or through the umbrella 'CI' workflow, which calls them all.
 on:
   workflow_dispatch:
   workflow_call:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
 jobs:
   single-precision:
     runs-on: ubuntu-latest

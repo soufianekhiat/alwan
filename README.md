@@ -2,21 +2,22 @@
 
 > **Alwan** (ألوان): Arabic for "colours"
 
-| Platform    | x64 | ARM |
-|-------------|-----|-----|
-| **Linux**   | [![Linux build](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/linux-f64.yml)       | [![Linux ARM build](https://github.com/soufianekhiat/alwan/actions/workflows/linux-arm-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/linux-arm-f64.yml)     |
-| **Windows** | [![Windows build](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-f64.yml) | [![Windows ARM build](https://github.com/soufianekhiat/alwan/actions/workflows/windows-arm-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/windows-arm-f64.yml) |
-| **macOS**   | [![macOS build](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-f64.yml)       | [![macOS ARM build](https://github.com/soufianekhiat/alwan/actions/workflows/macos-arm-f64.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/macos-arm-f64.yml)     |
+[![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
 
-| **Matrix**  | [![Permutation builds](https://github.com/soufianekhiat/alwan/actions/workflows/permutation-builds.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/permutation-builds.yml) | [![Precision builds](https://github.com/soufianekhiat/alwan/actions/workflows/precision-builds.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/precision-builds.yml) |
+> CI is on-demand: this repo's minutes are billed, so nothing runs on push.
+> `CI` in the Actions tab builds the whole matrix in one click (Linux, Windows
+> and macOS on x86_64 and ARM, plus the permutation and precision matrices),
+> and each workflow can still be dispatched on its own. Only the `CI` badge
+> tracks those runs: a workflow reached through `workflow_call` reports as a
+> job inside the CI run rather than a run of its own.
 
-> The Matrix row covers the configurations the per-platform rows do not
-> compile: shared linkage, `ALWAN_DETERMINISTIC=ON`, Debug, and the
+> The permutation and precision jobs cover the configurations the per-platform
+> jobs do not compile: shared linkage, `ALWAN_DETERMINISTIC=ON`, Debug, and the
 > single-precision (`f32`-only / `f64`-only) builds.
 
 > Tests and benchmarks live in the sibling
 > [alwan_dev](https://github.com/soufianekhiat/alwan_dev) repo. The lib build
-> badges above only verify a clean compile across the six host targets.
+> jobs above only verify a clean compile across the six host targets.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
