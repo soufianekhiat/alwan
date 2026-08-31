@@ -30,14 +30,63 @@ Gaps that are not decisions live in [alwan_future.md](alwan_future.md).
 
 ---
 
+## What you will see, if you diff against colour-science or OCIO
+
+These change **output values**. If a number does not match a reference, look
+here first: the difference is intentional and the entry says what it costs.
+
+| Where | The reference | alwan |
+|---|---|---|
+| [ACESproxy](#acesproxy-is-quantised) | continuous | quantised, because the encoding is defined on integers |
+| [ACES 1.x RedMod10 inverse](#the-inverse-redmod10-is-exact-and-ocios-is-not) | OCIO approximates, 3.7e-03 round-trip | exact root find |
+| [CQS Qa](#cqs-90-has-no-cct-factor-and-its-scaling-factor-is-32) | 7.4's scaling with 9.0's structure | 9.0 throughout: scaling 3.2, no CCT factor |
+| [CRI Ra](#cri-ra-is-not-clamped-to-0-100) | clamped to `[0, 100]` | unclamped, so a bad source stays diagnosable |
+| [TM-30 reference blend](#the-tm-30-reference-blend-is-normalised-at-560-nm-not-by-y) | normalised by Y | normalised at 560 nm, as TM-30-20 specifies |
+| [Bandpass correction](#the-bandpass-correction-follows-the-paper-not-colour-science) | colour-science's variant | the published formula |
+| [ATD95 hue](#atd95-returns-h-as-a-ratio) | degrees | the model's ratio `T_2 / D_2`, unbounded and signed |
+| [Hellwig2022 achromatic](#hellwig2022-has-no-n_bb-n_cb-or-n_c-in-its-achromatic-response) | carries `N_bb` | no `N_bb`, `N_cb` or `N_c`, per the 2022 paper |
+| [Blackbody SPDs](#blackbody-spds-are-spectral-radiance) | relative | spectral radiance, in physical units |
+| [Ohno 2013](#ohno-2013-switches-locus-model-at-15000-k) | one locus model | switches model at 15000 K |
+| [Y'CbCr chroma](#ycbcr-chroma-is-centred-on-05-which-is-the-standards-digital-stage) | signed `E'Cb` in `[-0.5, +0.5]` | the digital stage, `[0, 1]` centred on 0.5 |
+| [V-Log cut point](#v-log-splits-at-linear--cut1-not-) | splits at `<=` | splits at `<`, as Panasonic specifies |
+
+## What is different about alwan itself
+
+These are not value differences, they are properties of the library. They are
+the reason some of the table above reads the way it does.
+
+- **Nothing is clamped to a gamut, ever.** Super-black, super-white, xvYCC and
+  out-of-gamut appearance results survive. Clamping is a separately named entry
+  point that takes the mapping method, never a flag on the raw one, because a
+  clamp is not recoverable. See [Values are never clamped to a gamut](#values-are-never-clamped-to-a-gamut).
+- **Every default is the zero value, and the zero value interpolates.** A
+  `memset` struct integrates by trapezoid and interpolates rather than snapping.
+  See [Every default is the zero value](#every-default-is-the-zero-value-and-the-zero-value-interpolates).
+- **An unsupported mode is rejected, not downgraded.** A sample mode a table
+  cannot serve, a transfer function that does not resolve, or a coordinate that
+  cannot address a table, all return a status rather than quietly doing
+  something else.
+- **The same source compiles for C and for GPU.** Where a choice exists between
+  a form that vectorises and one that needs a table search or a variable-length
+  loop, alwan takes the former. The f64 API is C-only because HLSL and GLSL are
+  single precision, which is a statement about those languages rather than about
+  GPUs. See [The shipped GPU backends are single precision](#the-shipped-gpu-backends-are-single-precision).
+- **The tests run in f64 against references produced in f32.** A loose tolerance
+  against OCIO is the reference's precision, not slack in alwan; the f32 surface
+  is validated against alwan's own f64 path instead, which keeps the two
+  questions separable. See [The test suite runs in f64 against f32 references](#the-test-suite-runs-in-f64-against-f32-references).
+- **Data is embedded at build time.** Runtime loading is not implemented in
+  2.0.0. See [Data is embedded, not loaded at runtime](#data-is-embedded-not-loaded-at-runtime).
+
+---
+
 ## House defaults
 
 ### Every default is the zero value, and the zero value interpolates
 
-`ALWAN_INTEGRATE_TRAPEZOID = 0` and `ALWAN_SAMPLE_LINEAR = 0`, so a
-zero-initialised or memset struct integrates by trapezoid and interpolates
-rather than snapping. Nothing in alwan defaults to nearest-neighbour or to
-"whatever the caller forgot to set".
+`ALWAN_INTEGRATE_TRAPEZOID = 0` and `ALWAN_SAMPLE_LINEAR = 0`, so a memset
+struct integrates by trapezoid and interpolates rather than snapping. Nothing
+defaults to nearest-neighbour or to whatever the caller forgot to set.
 
 | axis | default | reached from the zero value |
 |---|---|---|
@@ -48,40 +97,36 @@ rather than snapping. Nothing in alwan defaults to nearest-neighbour or to
 | rank 3 cube | trilinear | LINEAR resolves to it |
 | SPD resampling | linear | `ALWAN_RESAMPLE_LINEAR` |
 
-LINEAR resolving to bilinear at rank 2 and trilinear at rank 3 is deliberate:
-LINEAR is the zero value, so rejecting it at the higher ranks would turn a
-zero-initialised mode into `ALWAN_E_INVALID` instead of the interpolated read
-the caller expects. It is the one place a mode is *resolved* rather than
-rejected, and it resolves only ever to the linear member of that rank's family,
-never across families.
+LINEAR resolving to bilinear at rank 2 and trilinear at rank 3 is the one place
+a mode is resolved rather than rejected: LINEAR is the zero value, so rejecting
+it at higher ranks would turn a zero-initialised mode into `ALWAN_E_INVALID`
+instead of the interpolated read the caller expects. It resolves only to the
+linear member of that rank's family, never across families.
 
-Simpson's rule is available and more accurate on smooth spectra, but trapezoid
-is the default because it is what the reference implementations use, and
-agreeing with them matters more than converging faster.
+Simpson's rule is available and more accurate on smooth spectra. Trapezoid is
+the default because it is what the reference implementations use, and agreeing
+with them matters more than converging faster.
 
 ### Values are never clamped to a gamut
 
-A transform returns the raw standard maths. An out-of-range excursion is
-preserved, not squeezed back into `[0, 1]`: super-black and super-white survive
+A transform returns the raw standard maths. Super-black and super-white survive
 a Y'CbCr decode, xvYCC decodes outside the box, a CVD simulation may leave the
-display gamut, and a wide-gamut conversion may go negative.
+display gamut, a wide-gamut conversion may go negative.
 
-Where clamping is genuinely wanted it is a **separate, explicitly named entry
-point** that takes the mapping method as an argument, never a flag on the raw
-one:
+Clamping is a separately named entry point taking the mapping method, never a
+flag on the raw one:
 
     alwan_ycbcr_to_rgb_f64            raw, may leave [0,1]
     alwan_ycbcr_to_rgb_gamut_safe_f64 takes an alwan_gamut_map_method
 
-The same pairing exists for `yccbccrc` and for the three `simulate_cvd`
-entry points. `ALWAN_GAMUT_MAP_CLIP` reproduces the implicit clamping alwan did
-before 2.0.0, so the old behaviour is still reachable, by name.
+The same pairing exists for `yccbccrc` and the three `simulate_cvd` entry
+points, and `ALWAN_GAMUT_MAP_CLIP` reproduces the implicit clamping alwan did
+before 2.0.0, so the old behaviour is reachable by name.
 
 **Why:** a clamp is not recoverable. A caller who wanted the excursion cannot
-get it back, and a caller who wanted it clamped can always clamp. It is the same
-argument as the reversibility principle above, applied to range rather than to
-invertibility, and it is why "addresses are clamped, values never are" below
-reads the way it does.
+get it back; a caller who wanted it clamped can always clamp. It is the
+reversibility principle applied to range, and it is why "addresses are clamped,
+values never are" below reads the way it does.
 
 ### Unbounded axes keep their native range
 
@@ -149,67 +194,39 @@ to 3.1e-07. Panasonic's specification uses `<`, and so does alwan.
 
 ### Y'CbCr chroma is centred on 0.5, which is the standard's digital stage
 
-**What the standard says.** ITU-R BT.601-7, BT.709-6 and BT.2020-2 define the
-colour-difference signals in normalised form as
+BT.601-7, BT.709-6 and BT.2020-2 define the colour-difference signals as `E'Cb`
+and `E'Cr` in `[-0.5, +0.5]`, then quantise them with an offset: `Cb = 224 E'Cb
++ 128` narrow, `255 E'Cb + 128` full. Both forms are the standard, at two
+different stages of it.
 
-    E'Y  = kr E'R + kg E'G + kb E'B                  in [0, 1]
-    E'Cb = (E'B - E'Y) / (2 (1 - kb))                in [-0.5, +0.5]
-    E'Cr = (E'R - E'Y) / (2 (1 - kr))                in [-0.5, +0.5]
+`alwan_rgb_to_ycbcr_*` computes `E'Cb` and adds `0.5`, so it returns the digital
+full-range stage normalised to `[0, 1]`. That is what an 8-bit full-range code
+value divided by 255 gives you, which is what a decoded buffer holds. The decode
+subtracts the same `0.5`. The choice is which stage the public type represents,
+not whether to follow the standard.
 
-so at that stage chroma is **signed and centred on zero**. The standards then
-quantise, and the quantisation is where the offset appears:
+If you want the signed `E'Cb` form, subtract 0.5 from what the API returns.
+Changing the library convention is not a one-line switch: `ALWAN_NORM_YCBCR` and
+`ALWAN_DENORM_YCBCR` are deliberate no-ops because chroma is already in `[0, 1]`,
+and they would become real conversions, taking the legal-range pair and the SIMD
+kernels with them. They stay as named no-ops so the normalisation table has an
+entry for every colour type and the next reader finds a decision rather than an
+omission. They were not always no-ops: adding `+0.5` there, on top of the `+0.5`
+the kernel already applies, offset chroma by a full 1.0 in a shipped build.
 
-    narrow range, 8-bit :  Y' = 219 E'Y + 16,   Cb = 224 E'Cb + 128
-    full range,   8-bit :  Y' = 255 E'Y,        Cb = 255 E'Cb + 128
-
-The `+128` is `+0.5` of full scale. Both forms are the standard; they are two
-stages of it.
-
-**What alwan's API does.** `alwan_rgb_to_ycbcr_*` computes exactly the `E'Cb` and
-`E'Cr` above and then adds `0.5`, so it returns the **digital full-range**
-convention normalised to `[0, 1]`. That is what an 8-bit full-range code value
-divided by 255 gives you, which is what a decoded image buffer actually holds.
-The decode subtracts the same `0.5` before applying the standard's inverse.
-
-So alwan is not choosing against the standard here; it is choosing which stage of
-it the public type represents, and it picks the one that matches a pixel in
-memory rather than an analogue signal level.
-
-**What follows from it.** `ALWAN_NORMALIZE_RANGES` (default 1) rescales bounded
-channels into `[0, 1]`. Chroma is already there, so `ALWAN_NORM_YCBCR` and
-`ALWAN_DENORM_YCBCR` are deliberately no-ops. They exist as named macros rather
-than being deleted so the normalisation table has an entry for every colour type,
-and so the next reader finds a decision instead of an omission.
-
-They were not always no-ops. Adding `+0.5` there, on top of the `+0.5` the kernel
-already applies, offset chroma by a full 1.0 in the shipped default build.
-
-**If you want the signed `E'Cb` form**, subtract 0.5 from what the API returns.
-Changing the library convention instead is not a one-line switch: those two
-macros become real conversions, the legal-range pair changes with them, and so do
-the SIMD kernels below.
+**Legal and full range are converted for you.** `alwan_ycbcr_legal_to_full` and
+`alwan_ycbcr_full_to_legal` take a bit depth (8, 10, 12, 16) and handle the
+chroma centring that the naive `(v - 16/255) / (235/255 - 16/255)` scaling gets
+wrong on Cb and Cr, because chroma is centred on `(c_max + c_min) / 2` in legal
+range and on `0.5` in full range. Both have `_map_planar` bulk forms and typed
+`_ex` forms for u8, u16, f32 and f64 buffers, so an 8-bit paletted decode does
+not need a hand-written loop.
 
 ### YCoCg does keep its normalisation offsets
 
 The four `ALWAN_MAP_P_NORM_ADD(..., ±0.5)` on the YCoCg map path are correct and
 must stay. That kernel emits genuinely signed Co/Cg and does not self-centre, so
 unlike Y'CbCr it has something for the normalisation layer to do.
-
-### The legal-range SIMD kernels duplicate the scalar formula
-
-`alwan__ycbcr_full_to_legal_kernel` and its inverse compute the conversion inline in
-intrinsics for the vector lanes and call the core function for the scalar tail. The
-two forms are algebraically equal, not textually identical: the forward folds the
-0.5 into the addend so the lane path stays a single fmadd.
-
-This is a performance decision with a maintenance cost, and the cost is real: a fix
-applied to the core alone left the lanes wrong and the tail right, in the same
-function. `70_planar_map` compares `_v` against `_map_planar` and catches exactly
-this, which is the only reason the duplication is tolerable. **Any edit to the core
-legal-range conversion must be mirrored into both kernels**, and that test is what
-proves it was.
-
----
 
 ## ACES 1.x
 
@@ -234,6 +251,15 @@ correction converges inside the bracket in single digits.
 reds, and agrees everywhere the forward left red alone. alwan is the more
 accurate of the two; the difference is OCIO's round-trip error, not alwan's.
 
+**It is not a precision difference.** The obvious objection is that OCIO
+computes in f32 while alwan's tests run in f64, so the gap is just rounding.
+It is not: f32 epsilon is ~1.2e-07, and 3.7e-03 is four orders of magnitude
+above it. The control is in the next entry, Glow10, where the same OCIO code at
+the same f32 precision round-trips to 3.7e-09. A precision explanation would
+have to explain why one transform loses 3.7e-03 and its neighbour loses
+3.7e-09. The difference is that Glow10's inverse is closed form and RedMod10's
+evaluates its weights at the wrong point.
+
 **Why:** reversibility is the first principle in this document, and an inverse
 output transform exists to recover scene-linear values.
 
@@ -253,6 +279,14 @@ EOTF they needed was unsupported: the forward handed back scene-linear values,
 and the inverse carried on as though its display-encoded input were already
 linear. Both now return the status they got. A picture that is wrong by an entire
 transfer function should not report success.
+
+**No transfer function is missing.** All 43 `alwan_transfer_function` values
+resolve to a real pair: 41 come from the table in `alwan_internal.h`, `LINEAR`
+and `ST2084` are handled explicitly in `alwan_tf_resolve.c`, and
+`ALWAN_TF_UNITY_LINEAR` is an alias of `ALWAN_TF_LINEAR` rather than a separate
+curve. The guard is there for an out-of-range value cast from an `int`, and for
+the next transfer function added to the enum without a table entry, which is
+exactly when a silent passthrough would be hardest to notice.
 
 ---
 
@@ -295,23 +329,14 @@ alwan's 8130.95. That agreement is a check that alwan's gamut geometry is right;
 
 ### Light-quality metrics integrate 360-830 nm by trapezoid
 
-colour-science's `cfi2017` works on 380-780 nm and trims the test spectrum to it.
-alwan integrates its full 360-830 nm 5 nm grid with the trapezoid rule, because
-that is the grid every other spectral table in the library uses.
+colour-science's `cfi2017` works on 380-780 nm and trims the test spectrum to
+it. alwan integrates its full 360-830 nm 5 nm grid, because that is the grid
+every other spectral table in the library uses.
 
-**Cost: not measurable.** This entry used to read "the residual in TM-30 (mean
-0.51) and CQS (mean 0.447) is mostly this", which was asserted, never measured,
-and is wrong. Three measurements retire it:
-
-- CQS's 0.447 was a crossed scaling factor. With the integration untouched it is
-  now 0.065.
-- The white point of a blackbody computed over 360-830 against 380-780 differs by
-  **1e-6 in xy**, across 1959 K to 6504 K. Daylight is the same.
-- colour-science's own Rf at 1 nm against 5 nm differs by **0.0000** on eleven
-  illuminants, so the interval does not matter either.
-
-Measured against colour-science over 33 illuminants, all three metrics on this
-grid:
+**The cost is not measurable.** The white point of a blackbody over 360-830
+against 380-780 differs by 1e-6 in xy from 1959 K to 6504 K, daylight likewise,
+and colour-science's own Rf at 1 nm against 5 nm differs by 0.0000 on eleven
+illuminants. Measured against colour-science over 33 illuminants:
 
 | metric | mean | max |
 |---|---|---|
@@ -319,9 +344,8 @@ grid:
 | CQS Qa | 0.065 | 0.235 |
 | TM-30 Rf | **0.530** | **1.990** |
 
-CRI and CQS sit where the convention would predict. TM-30 does not, and the
-reason is not this. It is tracked in [alwan_future.md](alwan_future.md) with the
-evidence.
+CRI and CQS sit where the convention predicts. TM-30 does not, and the reason is
+not the integration; the evidence is in [alwan_future.md](alwan_future.md).
 
 ### The TM-30 reference blend is normalised at 560 nm, not by Y
 
@@ -496,122 +520,97 @@ easy to miss; the cost of the default being interpolation is a little arithmetic
 
 ---
 
-## Zero-initialise viewing-conditions structs
-
-Several appearance models take a viewing-conditions struct whose optional fields
-use 0 as a "derive this" sentinel: Hunt has ten of them, RLAB and Kim2009 one
-each. Always write
-
-    alwan_hunt_viewing_conditions_f64 vc = {0};
-
-and then set what you know. A struct left as stack garbage produces confident
-nonsense rather than an error, because there is no value the library can reject:
-a plausible-looking float is indistinguishable from a deliberate one.
-
-This is not hypothetical. alwan's own f32/f64 twin test set four Hunt fields and
-left the rest uninitialised; when the new fields landed, the two precisions read
-different stack rubbish and diverged by 34 units of lightness.
-
----
-
-## Sector trees exist in three copies
-
-`alwan_hsy_to_rgb` and its chroma helper decide a colour from `floor(h*6)` using a
-branchless select tree. That tree is written out three times: in `_core.inc` for C,
-in `_core.h` for the GPU backends, and again inside the SIMD map kernel in
-`alwan_convenience_extra_map_kernels.inc`, which open-codes it in intrinsics rather
-than calling the core.
-
-Any change to the sector logic must be made in all three. Fixing the first two and
-not the third made the bulk path disagree with the scalar path by 2.0e16 ULP.
-`88_simd_parity` is what catches that, and it is the reason the duplication is
-tolerable at all. The same applies to the legal-range Y'CbCr kernels above.
-
----
-
 ## The shipped GPU backends are single precision
 
-`alwan_scalar` is `float` on the HLSL, GLSL and Halide backends. There is no
-`_f64` instantiation on any of them, so every `_f64` public function is C-only,
-and so is anything whose correctness depends on double accuracy.
+`alwan_scalar` is `float` on HLSL, GLSL and Halide, so every `_f64` function is
+C-only. That is a property of those languages, not of GPUs: HLSL and GLSL have
+no double, and the shipped Halide path runs single precision even though
+Halide's scalar can be double.
 
-This is a property of *those* backends, not of GPUs. HLSL and GLSL have no
-double, and the shipped Halide path runs single precision even though Halide's
-scalar can be double. A CUDA backend would have a real `double` and would be the
-first GPU path where the `_f64` surface is reachable at all; it is on the roadmap
-in [alwan_future.md](alwan_future.md) and nothing here assumes it never lands.
-
-This is why the core headers are written the way they are. A core function is
-`ALWAN_CORE_T`-generic and value-returning so the same source compiles as f32 on
-GPU and as either precision on CPU, and why the parity checker exists at all: the
-`_core.h` copy is what a shader sees, the `_core.inc` copy is what C sees, and a
-divergence between them is a divergence between backends.
-
-What stays CPU-only follows from it, not from a separate decision: the compiled
-bulk and strided API, the typed pixel formats, the `_map_interleave` and tiled
-SIMD kernels, and the null-checking stride-loop wrappers. On GPU the application
-owns buffers and dispatch and calls the per-pixel core functions directly.
+It is why the cores are written as they are. A core function is
+`ALWAN_CORE_T`-generic and value-returning so one source compiles as f32 on GPU
+and as either precision on CPU, and it is why the parity checker exists: the
+`_core.h` copy is what a shader sees, `_core.inc` is what C sees, and a
+divergence between them is a divergence between backends. What stays CPU-only
+follows from this rather than from a separate decision: the bulk and strided
+API, the typed pixel formats, `_map_interleave`, the tiled SIMD kernels and the
+null-checking wrappers. On GPU the application owns buffers and dispatch and
+calls the per-pixel cores directly.
 
 Two consequences that catch people:
 
-- **An f64-validated result is not automatically a GPU result.** Where a metric
-  is only validated in double, that validation says nothing about the shader
-  path; `101_f32_twins.c` is what covers the crossing.
+- **An f64-validated result is not a GPU result.** Where a metric is validated
+  only in double, that says nothing about the shader path; `101_f32_twins.c`
+  covers the crossing.
 - **Iterative solvers are the sharp edge.** The ACES 1.x inverse keeps f64
-  internals precisely because its convergence thresholds sit below f32 epsilon,
-  so a native-f32 version fails to converge rather than converging less well.
+  internals because its convergence thresholds sit below f32 epsilon, so a
+  native-f32 version fails to converge rather than converging less well.
 
 ---
 
 ## The test suite runs in f64 against f32 references
 
-alwan's validation suite exercises the `_f64` surface, and the references it
-compares against are single precision. OCIO's published values are float32, and
-so are the ACES fixtures derived from it. colour-science is f64, so the metrics
-validated against it are held to 1e-12; the OCIO-derived ones cannot be.
+The suite exercises the `_f64` surface, and some references are single
+precision: OCIO's published values are float32, and so are the ACES fixtures
+derived from them. colour-science is f64, so metrics validated against it are
+held to 1e-12; the OCIO-derived ones cannot be. `54_aces20.c` allows 0.1 against
+the OCIO tonescale fixtures and states why at the constant.
 
-Tolerances are set from that, not from alwan's own precision. `54_aces20.c`
-allows 0.1 against the OCIO tonescale fixtures, and says why in the line above
-the constant: the reference is float32 and negative inputs diverge fastest
-between the two precisions.
-
-Two consequences worth being explicit about:
-
-- **A loose tolerance against an OCIO fixture is not slack in alwan.** It is the
-  reference's precision. Tightening it would be measuring float32 round-off.
-- **The f32 surface is validated against alwan's own f64 path**, not against
-  OCIO directly, in `90_aces_f32_validation.c`. That separates "is the f32 path
-  faithful to the f64 one" from "is the f64 one right", so a regression in
-  either is attributable.
-
-Deterministic builds are a third axis again: they replace libm with alwan's own
-pow/exp/log, which costs about 3.0e-11 relative on the transfer functions and
-1.5e-05 on the ACES chain, so several suites carry a separate
-`#if ALWAN_DETERMINISTIC` bar. Those are stated at each site with the measured
-number rather than rounded up to a comfortable constant.
+- **A loose tolerance against an OCIO fixture is the reference's precision, not
+  slack in alwan.** Tightening it would measure float32 round-off.
+- **The f32 surface is validated against alwan's own f64 path**, in
+  `90_aces_f32_validation.c`, not against OCIO. That separates "is f32 faithful
+  to f64" from "is f64 right", so a regression in either is attributable.
+- **Deterministic builds are a third axis.** Replacing libm costs about 3.0e-11
+  relative on the transfer functions and 1.5e-05 on the ACES chain, so several
+  suites carry a separate `#if ALWAN_DETERMINISTIC` bar, stated with the
+  measured number rather than rounded to a comfortable constant.
 
 ---
 
-## Data is embedded, not loaded at runtime -- in 2.0.0
+## Data is embedded, not loaded at runtime
 
-`ALWAN_EMBED_DATA=1` is the only supported build for 2.0.0. Setting it to 0
-`#error`s rather than compiling something that would look for files that are not
-there, and `alwan_config.runtime_data_root` is reserved and inert.
+`ALWAN_EMBED_DATA=1` is the only supported build. Setting it to 0 `#error`s
+rather than compiling something that would look for files that are not there,
+and `alwan_config.runtime_data_root` is reserved and inert.
 
-Every table is `#include`d from CSV into a C array at build time, so the library
-has no data path, no file I/O, no load-order failures, and nothing to ship
-alongside the binary. It is also what lets the table reader layer bound every
-access at compile time, and what makes the GPU backends possible at all: a shader
-cannot open a file.
+Every table is `#include`d from CSV into a C array at build time, so there is no
+data path, no file I/O, no load-order failure and nothing to ship beside the
+binary. It is also what lets the reader layer bound every access at compile
+time, and what makes the GPU backends possible at all: a shader cannot open a
+file. The cost is binary size and a rebuild to change data.
 
-The cost is binary size and a rebuild to change data.
-
-**A runtime / on-demand mode is planned for 3.x.y.** This entry is here because
-embedding is a real decision with real consequences for 2.0.0, not because the
-alternative was rejected forever. When runtime loading lands, embedded and
-runtime paths are expected to expose the same public descriptors and getters, so
-the choice becomes a build option rather than a different API. See
+Runtime loading is not implemented. If it is added, embedded and runtime paths
+are expected to expose the same descriptors and getters, so the choice becomes a
+build option rather than a different API. See
 [alwan_future.md](alwan_future.md).
+
+---
+
+## Implementation notes
+
+Three things that are not user-visible divergences but will bite a contributor.
+
+**A formula that exists twice must be edited twice.** The legal-range Y'CbCr
+conversion is written in the core and again inline in
+`alwan__ycbcr_full_to_legal_kernel` and its inverse, which fold the 0.5 into the
+addend to keep the lane path a single fmadd. The HSY sector tree from
+`floor(h*6)` exists three times: `_core.inc` for C, `_core.h` for the GPU
+backends, and open-coded in intrinsics in
+`alwan_convenience_extra_map_kernels.inc`. Both duplications are performance
+decisions, and both have already been broken exactly once: a core-only fix left
+the Y'CbCr lanes wrong and the tail right, and fixing two of the three sector
+trees made the bulk path disagree with the scalar path by 2.0e16 ULP.
+`70_planar_map` and `88_simd_parity` compare `_v` against the bulk path and are
+the only reason the duplication is tolerable.
+
+**Zero-initialise viewing-conditions structs.** Several appearance models use 0
+as a "derive this" sentinel: Hunt has ten such fields, RLAB and Kim2009 one
+each. Write `alwan_hunt_viewing_conditions_f64 vc = {0};` and then set what you
+know. Stack garbage produces confident nonsense rather than an error, because a
+plausible float is indistinguishable from a deliberate one. alwan's own f32/f64
+twin test left the tail of that struct uninitialised, and when new fields landed
+the two precisions read different rubbish and diverged by 34 units of lightness.
 
 ---
 
