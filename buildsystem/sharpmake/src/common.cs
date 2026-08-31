@@ -124,6 +124,29 @@ namespace Alwan
             // Library header defaults to ALWAN_NORMALIZE_RANGES=1 for end users.
             conf.Defines.Add("ALWAN_NORMALIZE_RANGES=0");
 
+            // Precision selection, the same axis CMake exposes as
+            // ALWAN_BUILD_PRECISION. There is no precision fragment in the
+            // configuration names because a single-precision build is a
+            // packaging choice rather than something to switch between in one
+            // solution; set the environment variable and regenerate:
+            //
+            //   set ALWAN_BUILD_PRECISION=f32   (or f64, or both/unset)
+            //   buildsystem\sharpmake\generate.bat
+            //
+            // Unset or "both" is the default dual-precision build.
+            string precision = Environment.GetEnvironmentVariable("ALWAN_BUILD_PRECISION");
+            if (!string.IsNullOrEmpty(precision))
+            {
+                switch (precision.Trim().ToLowerInvariant())
+                {
+                    case "f32":  conf.Defines.Add("ALWAN_BUILD_ONLY_F32=1"); break;
+                    case "f64":  conf.Defines.Add("ALWAN_BUILD_ONLY_F64=1"); break;
+                    case "both": break;
+                    default:
+                        throw new Error("ALWAN_BUILD_PRECISION must be both, f32 or f64; got '" + precision + "'");
+                }
+            }
+
             if (det)
             {
                 // Bit-exact polynomial math, no libm transcendentals, no FMA
