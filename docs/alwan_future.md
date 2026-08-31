@@ -3,37 +3,14 @@
 Forward-looking notes for work that is still intentionally outside the current
 public release.
 
-This file is not an API reference. It records roadmap themes after accounting
-for what already exists in the current repository.
+This file is not an API reference. It records what is deliberately not
+implemented, and what would have to be decided before it could be.
 
 ---
 
-## What Already Exists
+## Themes
 
-The current codebase is further along than older roadmap drafts assumed.
-
-Implemented foundations already in this repo include:
-
-- `alwan_platform.h` backend detection and shared math/normalization layer
-- bootstrap headers for `C`, `HLSL`, `GLSL`, and `Halide`
-- header-only core modules under `src/alwan/core/`
-- explicit `_f32` / `_f64` public API in `alwan.h`
-- interleaved, planar, and typed-pixel batch frontends
-- image-level RGB conversion helpers
-- LUT bake / sample / import / export helpers
-- CLF export
-- interop ID parsing / formatting / enumeration
-- integer normalization helpers
-- video signal encode / decode helpers
-
-Because of that, future work should focus on the remaining gaps instead of
-re-describing the existing foundation.
-
----
-
-## Remaining Roadmap Themes
-
-### 1. Runtime / On-Demand Data Loading -- planned for 3.x.y
+### 1. Runtime / On-Demand Data Loading
 
 Not in 2.0.0, and the 2.0.0 behaviour is a stated decision rather than an
 oversight: embedding is what removes the data path, the file I/O and the
@@ -117,6 +94,51 @@ What would need deciding rather than just typing:
 
 Nothing here is started. It is recorded because the per-pixel core is already
 written in the form a CUDA port needs, and that is worth not losing.
+
+### 3c. An OpenCL Backend
+
+The same argument as CUDA, with a different trade. OpenCL C is C99 with a
+restricted pointer model, so the struct-by-value cores and `ALWAN_SELECT` carry
+over as directly as they do for CUDA, and `double` is available wherever the
+device reports `cl_khr_fp64`. What CUDA gets for free and OpenCL does not is a
+single vendor's math library: `native_*` versus the precise builtins differ per
+implementation, so the deterministic layer matters more here, not less. In
+exchange it is the only route that covers AMD, Intel and embedded GPUs from one
+source.
+
+What would need deciding:
+
+- **Which precision profile to target.** `cl_khr_fp64` is optional, so the f64
+  surface is per-device rather than per-backend. Either the build declares f32
+  only, or the API grows a device capability query.
+- **How kernels are delivered.** OpenCL compiles from source at runtime, so the
+  header-only cores would ship as embedded strings rather than as headers the
+  caller includes. That is a packaging decision, not a maths one.
+- **Determinism.** The ULP guarantees on the builtins are per-implementation.
+  A bit-exactness claim needs `ALWAN_DETERMINISTIC` polynomials plus a device
+  runner in the regression harness, exactly as CUDA does.
+
+### 3d. Fixed Point For Embedded Targets
+
+Every core computes in `alwan_scalar`, which is `float` or `double`. A part
+without an FPU, or with one too slow to use per pixel, cannot run any of it.
+The transforms themselves are not the obstacle: matrix products, the piecewise
+transfer functions and the gamut tests are all expressible in Q-format integers,
+and the deterministic polynomial layer already replaced libm with evaluations
+that a fixed-point core could share the shape of.
+
+What would need deciding:
+
+- **Where the radix point sits, per stage.** Scene-linear values are unbounded
+  above, display-encoded values live in [0,1], and chroma is signed. One global
+  Q format cannot serve all three, so the type has to carry its scale or the
+  API has to fix one per stage.
+- **What accuracy is promised.** The current tolerances are stated in ULP
+  against f64 references. A fixed-point path needs its own budget, expressed in
+  code values rather than ULP, and its own reference rows in the test suite.
+- **Which surface is worth it.** The whole library in fixed point is a large
+  project. The transfer functions, the RGB matrices and the video-signal
+  encode path would cover most embedded uses on their own.
 
 ### 4. Convenience Queries And Ergonomics
 
@@ -231,11 +253,11 @@ explains why a reader exists is worth more than an entry per symbol.
 
 ## Specific Known Gaps
 
-Roadmap themes above are directions. These are concrete, measured gaps with a
-known shape, kept apart from [alwan_decisions.md](alwan_decisions.md) because
+The themes above are directions. What follows are concrete, measured gaps with
+a known shape, kept apart from [alwan_decisions.md](alwan_decisions.md) because
 nothing here is a decision and nothing there is a plan.
 
-## Hunt inverse -- planned for 3.0.9
+## Hunt inverse, planned for 3.0.0
 
 `alwan_hunt_forward_*` is implemented and matches colour-science to 4.6e-08. The
 inverse is not implemented, and is deliberately not in the 2.0.0 scope.
@@ -301,8 +323,8 @@ point) from "a few samples" (CES data).
 
 ## Corpus files carry no chromaticities
 
-Raised by the_flow2 in `alwan_dev/to_alwan.txt`, and it is a corpus decision
-rather than a library one, so it sits here until someone makes it.
+This is a corpus decision rather than a library one, so it sits here until
+someone makes it.
 
 151 of the 166 SRIC EXR files declare no chromaticities attribute. alwan reads
 them as linear AP0 from provenance; a general reader must treat absent
@@ -314,11 +336,11 @@ Stamping the chromaticities attribute on those files would make the corpus
 self-describing and remove the disagreement for every downstream reader. That is
 a change to the corpus, not to alwan.
 
-## EXR loader, from `alwan_dev/to_alwan.txt`
+## EXR loader
 
 `image_gen/src/exr_loader.cpp` is a dev tool, not shipped library code. UINT
-channels are now rejected rather than converted into a plausible-looking image
-of nonsense. What the report raised and remains:
+channels are rejected rather than converted into a plausible-looking image of
+nonsense. What remains:
 
 - **FLOAT channels are converted, and values above 65504 saturate to inf.**
   OpenEXR does the conversion, so this is correct up to that ceiling, but the
@@ -327,40 +349,22 @@ of nonsense. What the report raised and remains:
   out-of-gamut statistics that question turns on.
 - **Non-zero data window origin is untested.** The code handles it through
   `(y - dw.min.y)`, but no file in the corpus has overscan, so that path has
-  never run. Nice to have. The reporter notes their own loader has the same gap
-  for the same reason.
+  never run. Nice to have.
 - **Alpha is not read.** 165 of 247 files carry an A channel; only R, G and B
   are routed into the buffer. This is by design for what image_gen does, and is
   recorded here only so the next reader does not take it for an oversight.
-- **The reporter offered their loader and their header-survey script.** Worth
-  taking up; not yet done.
-
----
-
-## Things This File No Longer Treats As Future Work
-
-These items used to appear in older planning notes, but they are already
-present in the current codebase:
-
-- platform abstraction headers
-- typed map frontends
-- interop ID parsing
-- integer normalization helpers
-- video range helpers
-- LUT/CLF export surface
-
-Any new planning should start from the current header rather than from older
-drafts that predate those implementations.
 
 ---
 
 ## Working Checklist
 
-- [ ] Support `ALWAN_EMBED_DATA=0` as a real runtime-data mode (3.x.y)
+- [ ] Support `ALWAN_EMBED_DATA=0` as a real runtime-data mode
 - [ ] Add richer interop metadata/query APIs
 - [ ] Thread data semantics through more public conversion workflows
 - [ ] Publish tighter GPU/backend examples around the current bootstrap headers
 - [ ] Evaluate a CUDA backend (`ALWAN_BACKEND_CUDA`, first GPU path with real f64)
+- [ ] Evaluate an OpenCL backend (one source across AMD, Intel and embedded GPUs)
+- [ ] Scope a fixed-point path for parts without an FPU (transfer functions, RGB matrices, video encode first)
 - [ ] Add ergonomic helpers only where they reduce real call-site boilerplate
 - [ ] Extend the deterministic layer to trig/log10 and route the macros
 - [ ] Close batch/map and `_map_planar` coverage gaps (CAMs, ZCAM, deltaE, CVD)
@@ -368,22 +372,20 @@ drafts that predate those implementations.
 - [ ] Fill API parity gaps (norm macros, ZCAM `from_ucs`, scalar HSV<->HWB)
 - [ ] Add native-f32 metric kernels or document the f64 facades
 - [ ] Harden `alwan_create` validation and pin ABI-facing enum values
-- [x] ~~Make `gamut_volume_mc` honor sampling, or rename it~~ (renamed to `alwan_gamut_volume` 2026-06-28)
 - [ ] Document the undocumented tail surface
-- [ ] Hunt inverse (3.0.9)
+- [ ] Hunt inverse (3.0.0)
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [ ] EXR loader: exercise a non-zero data window origin
-- [ ] Take up the_flow2's loader and header-survey script
 
 ---
 
-## Rule For Future Roadmap Updates
+## Keeping this file honest
 
-When updating this file:
+When updating it:
 
 1. check `src/alwan/alwan.h` first
-2. move implemented items out of the roadmap
-3. keep this file focused on real remaining gaps
+2. delete anything that has since been implemented
+3. keep it to real remaining gaps, not to what was once intended
 
-That keeps `docs/` aligned with the code instead of preserving stale plans.
+A file of intentions ages badly; a file of known gaps stays useful.

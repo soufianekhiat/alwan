@@ -208,7 +208,7 @@ alwan_gamut_volume_{T}(&volume, &srgb_desc);
 > run their reduction in `f64` internally even in an `f32`-only build
 > (`ALWAN_WITH_F64_FACADE`), so they remain available everywhere. This is a
 > design choice rather than a missing native-f32 path. See
-> [build-and-precision.md](../build-and-precision.md). (`alwan_gamut_volume`
+> [configuration.md](../configuration.md). (`alwan_gamut_volume`
 > itself is an exact determinant and equally cheap in either precision.)
 
 ---

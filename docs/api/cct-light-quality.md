@@ -35,7 +35,7 @@ alias; pick `_f32` or `_f64` at the call site.
 > path: the iterative/integration core needs f64 precision and repeatability. They stay
 > callable even in an `ALWAN_BUILD_ONLY_F32` build (gated by `ALWAN_WITH_F64_FACADE`,
 > always `1`). The other CCT estimators (McCamy / Robertson / Hernandez-Andres) are
-> native f32. See [build-and-precision.md](../build-and-precision.md).
+> native f32. See [configuration.md](../configuration.md).
 
 ### Argument convention
 

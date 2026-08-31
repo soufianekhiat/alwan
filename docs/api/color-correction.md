@@ -6,7 +6,7 @@ Functions for color grading, white balance, camera profiling, and creative color
 > `name_f32` (single precision, `float` / `alwan_f32` / `alwan_rgb_f32`) and
 > `name_f64` (double precision, `double` / `alwan_f64` / `alwan_rgb_f64`).
 > `T = f32 | f64`. Which precisions compile is controlled by the build config
-> (see [Build & Precision](../build-and-precision.md)). The `_map_interleave_ex`
+> (see [Configuration](../configuration.md)). The `_map_interleave_ex`
 > / `_map_planar_ex` typed dispatchers are single, precision-agnostic entry points
 > (`void*` buffers + `alwan_pixel_format`), so their scalar knobs are always the
 > f64 value types.
@@ -304,7 +304,7 @@ camera-to-reference profiling.
 > `double` internally regardless of the requested precision: squaring the
 > condition number in `float` would be numerically fragile. The f32 entry points
 > therefore stay available even in an f32-only build via `ALWAN_WITH_F64_FACADE`.
-> See [Build & Precision](../build-and-precision.md).
+> See [Configuration](../configuration.md).
 
 ### Cheung 2004 Method
 
@@ -426,4 +426,4 @@ skip the work on NULL pointers.
 - [ACES Pipeline](aces.md): ACES LMT grading and output transforms
 - [HDR](hdr.md): exposure tone-mapping operators
 - [Color Spaces](color-spaces.md): RGB conversions
-- [Build & Precision](../build-and-precision.md): `_{T}` variants and the f64-facade
+- [Configuration](../configuration.md): `_{T}` variants and the f64-facade

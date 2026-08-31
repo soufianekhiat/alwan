@@ -9,8 +9,9 @@ solver described here; tests live in `alwan_dev/tests/97..99_*`.
 
 An image-aware gamut-mapping method
 that fits out-of-gamut records into the display volume while preserving local
-structure (no increment↔decrement polarity flips), derived from the Troy Sobotka
-exchange and Kitaoka (2005) transparency model.
+structure (no increment↔decrement polarity flips), derived from the same
+correspondence as [`picture_formation.md`](picture_formation.md) (which carries
+the attribution and the reading list) and the Kitaoka (2005) transparency model.
 
 ## 1. Problem
 
@@ -20,7 +21,7 @@ Input image `I`: pixels `x_i ∈ ℝ³` (linear RGB records), some outside the c
 Output `I'` with every record inside the cube, such that:
 - **P1, no polarity flip (hard):** for every neighbour pair `i~j` and channel
   `k`, `sign(x'_i[k] − x'_j[k]) = sign(x_i[k] − x_j[k])` (equality/collapse
-  allowed, reversal forbidden). This is the convex per-channel proxy for Troy's
+  allowed, reversal forbidden). This is the convex per-channel proxy for the
   `max(RGB)`/`min(RGB)` envelope preservation.
 - **P2, structure fidelity:** local differences (the increments/decrements)
   stay as close as possible to the originals.
@@ -67,7 +68,7 @@ Let `Ω = { i : x_i ∉ [0,1]³ }` be the out-of-gamut set.
     `smoothstep`/Gaussian `feather` avoids a sharp transition.
 - `Ω` pixels themselves get `λ_i = 0` (fully free; they must move).
 
-`s` interpolates **clip (1) ↔ tone-form (0)**; Troy-valid results live below 1.
+`s` interpolates **clip (1) ↔ tone-form (0)**; constraint-valid results live below 1.
 
 ### 2.2 Weights and compression
 - `w_ij` = base weight, optionally reduced across large input gradients
@@ -90,10 +91,10 @@ gates two things:
   region (geodesic on the image but blocked by depth edges), so a correction on
   the foreground never bleeds onto the background it occludes.
 
-So depth realizes Troy's "envelope = segmented region" for the opaque case, with
+So depth realizes the "envelope = segmented region" reading for the opaque case, with
 the segmentation supplied by the user. Optional: no depth means one global
 envelope. Depth's *transparency* role (disambiguating bistable front/behind for
-overlapping layers) is phase 2 (§6); there depth cannot cut pixels spatially, it
+overlapping layers) is not implemented (§6); there depth cannot cut pixels spatially, it
 only selects the decomposition.
 
 ## 3. Solver (deterministic)
@@ -156,7 +157,7 @@ int alwan_gamut_map_spatial_f32(alwan_f32 *out, alwan_f32 const *in,
 - **Zero polarity flips:** per-channel neighbour sign-reversals == 0. Run the
   same counter on the 8 enum methods for a comparison table (expected: CLIP /
   HUE_PRESERVING safe; Oklab projections flip near the boundary, empirically
-  confirming Troy's claim).
+  confirming the prediction).
 - **Energy monotone:** `E` never increases across iterations.
 - **`s` endpoints:** `s=1` leaves in-gamut pixels unchanged (only `Ω` moves);
   `s=0` gives global smooth compression, still monotone.
@@ -164,7 +165,7 @@ int alwan_gamut_map_spatial_f32(alwan_f32 *out, alwan_f32 const *in,
 - **Determinism:** bit-exact across platforms (Jacobi/red-black, fixed iters).
 - **f32 vs f64** parity within budget.
 
-## 6. Later (phase 2): segmentation via Kitaoka X-junction test
+## 6. Not implemented: segmentation via the Kitaoka X-junction test
 
 For transparency/layered content, cut the image into coherent layers first,
 using the luminance-arithmetic X-junction test at 4-region junctions

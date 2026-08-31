@@ -378,7 +378,7 @@ The CMake equivalent is `-DALWAN_BUILD_PRECISION=both|f32|f64` (default
 configuration axes are Debug/Release × deterministic (`_Det`) ×
 static/DLL (`_Dll`). For a single-precision build there, define
 `ALWAN_BUILD_ONLY_F32` / `ALWAN_BUILD_ONLY_F64` project-wide. See
-[docs/build-and-precision.md](docs/build-and-precision.md) for the full
+[docs/configuration.md](docs/configuration.md) for the full
 matrix and binary-size trade-offs.
 
 ### Deterministic Mode
@@ -789,7 +789,6 @@ Documentation lives in the [docs/](docs/) folder. [alwan.h](src/alwan/alwan.h) i
   - Custom memory allocators
   - Platform-specific settings
 
-- **[Build & Precision](docs/build-and-precision.md)**: `ALWAN_BUILD_ONLY_F32/F64`, `ALWAN_WITH_*`, the f64-facade exceptions, Sharpmake/CMake configuration mapping, and binary-size trade-offs
 
 - **[CPU Backends](docs/backends-cpu.md)**: SIMD ISA selection (SSE2/AVX/AVX2/NEON + scalar), SVML gating, and the fast-vs-deterministic math paths
 

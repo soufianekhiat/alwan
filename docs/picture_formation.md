@@ -5,9 +5,14 @@
 Most colour libraries stop at *gamut mapping*: pushing out-of-gamut colour back inside the
 display volume. alwan additionally ships **picture-formation** operators: view transforms that
 turn an open-domain (scene-referred, wide-gamut, unbounded) light field into a formed picture,
-developed in an extended correspondence with **Troy Sobotka** (AgX). Instead of tone curves
-bolted onto a gamut clamp, they are constructed from a set of *constraints* about how a picture
-must behave for human depth and form cognition to read it correctly.
+developed in an extended correspondence with **Troy Sobotka**, the author of AgX. Instead of
+tone curves bolted onto a gamut clamp, they are constructed from a set of *constraints* about how
+a picture must behave for human depth and form cognition to read it correctly.
+
+The reasoning behind those constraints is his, and it is written up at length in his own words:
+start from *The Hitchhiker's Guide to Digital Colour* and the surrounding posts and threads. This
+document does not restate the argument, it records which constraints alwan tests and what each
+operator scores. Where a constraint is stated below without a source, the source is that work.
 
 This document is specific to those operators. For ordinary gamut mapping see
 [`gamut_mapping.md`](gamut_mapping.md); for the spatial-solver internals see
@@ -41,7 +46,7 @@ Output is display-referred, in `[0, 1]`.
 | `DENSITY_LOG` | carrier with a log/density shoulder (keeps highlight gradient) |
 | `COMPLETION`  | carrier + amodal-completion veil |
 | `PICTURE`     | carrier + local veil, "picture formation" reconstruction |
-| `MOMENT`      | energy-rotation formation (MacAdam complementary moment + Troy's rotation) |
+| `MOMENT`      | energy-rotation formation (MacAdam complementary moment plus the rotation) |
 | `HEMISPHERE`  | parameter-free C2 log-logistic on the integration `I = max(RGB)` |
 | `HEMISPHERE_ABS` | `HEMISPHERE` on a **fixed absolute window** (no per-frame adaptation); the nearest-complete carrier operator, 12-of-13 under the original set |
 | `CHANNEL`     | **channel integration** (AgX architecture) with every constant derived from display physics |
@@ -56,7 +61,7 @@ the full derivation.
 
 ---
 
-## The constraints (Troy Sobotka)
+## The constraints
 
 Fifteen of the constraints are **numerically testable** and are asserted in
 `tests/99_formation_constraints.c` (thirteen original + `REL`/`VEIL` from the later
@@ -80,16 +85,16 @@ correspondence, added 2026-08):
 | `REL`   | an increment/decrement keeps its **sign** vs the enclosing field | polarity preservation: a black object is read as black because it stays a *decrement* against its surround; formation must not flip it (tested with and without a moderate common veil) |
 | `VEIL`  | a decrement stays **readable** under a strong common veil (formed contrast ≥ 1/255 at `T = 0.1`) | **blackness-through-veil**: a veil `I = T·J + (1−T)·A` raises every code value, but the black reading must survive; merging the decrement into the white veil erases the object. All current methods pass, but at `T = 0.1` the formed contrast sits at ~1.3 display codes: technically readable, *practically marginal*; the column documents that margin and trips on any regression below one code |
 
-Further constraints Troy stated are **design principles or cognitive**; they have no per-frame
+Further constraints in the same set are **design principles or cognitive**; they have no per-frame
 pass/fail and are honoured structurally rather than tested: no `Lab`/`OkLab`/`ICtCp` (the Abney
 effect / "hueness" is cognitive and is not a Cartesian coordinate); nested envelopes (a local
 envelope must fit inside the super-set envelope). The "in front vs part of" reading of a haze
-(boundary-driven multistable segmentation) Troy holds to be cognition's territory, outside any
-per-pixel or global operator. (The Grassmann-linear / matched-inverse *ratio* invariant, previously listed here, is now
+(boundary-driven multistable segmentation) belongs to cognition rather than to any per-pixel or
+global operator. (The Grassmann-linear / matched-inverse *ratio* invariant, previously listed here, is now
 the numerically-tested `RATIO` column above.)
 
 > **A correction to `PURE` from the later correspondence.** The tested `PURE` is *per-record*:
-> any sufficiently bright record desaturates toward white. Troy later sharpened this: white-infinity
+> any sufficiently bright record desaturates toward white. The correspondence later sharpened this: white-infinity
 > belongs to the **additive/emissive component only** ("energy ≠ cause ≠ role"). A brightly *lit
 > surface* is not an emitter and must **keep** its chroma; applying per-record `PURE` to surface
 > radiance is exactly what turns a lit red surface salmon-pink (the pastel failure). The corrected
@@ -101,8 +106,8 @@ the numerically-tested `RATIO` column above.)
 
 ## The constraint matrix
 
-Measured by `tests/99_formation_constraints.c`. This table is the per-method record of which of
-Troy's constraints each operator honours.
+Measured by `tests/99_formation_constraints.c`. This table is the per-method record of which
+constraints each operator honours.
 
 ```
 method        MONO GAMUT  NEUT  PURE    DC    C2  HUEA  INVR  SPAN   NEG  RAIL SLOPE RATIO   REL  VEIL

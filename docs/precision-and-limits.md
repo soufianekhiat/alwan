@@ -70,7 +70,7 @@ machinery (and the f64 data it reads) is gated by `ALWAN_WITH_F64_FACADE`
   narrow (see [reference-data.md](api/reference-data.md)).
 
 For the full build matrix, Sharpmake/CMake flavor mapping, and binary-size
-trade-offs, see [build-and-precision.md](build-and-precision.md).
+trade-offs, see [configuration.md](configuration.md).
 
 ---
 
@@ -213,7 +213,7 @@ with `alwan_collect3_f64`.
 
 ## Related Docs
 
-- [build-and-precision.md](build-and-precision.md)
+- [configuration.md](configuration.md)
 - [configuration.md](configuration.md)
 - [ranges.md](ranges.md)
 - [determinism.md](determinism.md)
