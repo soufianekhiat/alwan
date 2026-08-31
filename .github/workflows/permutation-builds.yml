@@ -9,6 +9,7 @@ name: Permutation builds
 # clean compile; the Det rows exercise the polynomial math + warning suppressions.)
 on:
   workflow_dispatch:
+  workflow_call:
   push:
     branches: [main]
   pull_request:

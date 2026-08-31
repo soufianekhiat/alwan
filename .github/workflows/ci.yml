@@ -1,0 +1,23 @@
+name: CI
+# One button for the whole matrix. The eight workflows below also run on push
+# and pull request on their own; this one calls them together so a full check
+# can be started by hand from the Actions tab without a commit.
+on:
+  workflow_dispatch:
+jobs:
+  linux:
+    uses: ./.github/workflows/linux-f64.yml
+  linux-arm:
+    uses: ./.github/workflows/linux-arm-f64.yml
+  windows:
+    uses: ./.github/workflows/windows-f64.yml
+  windows-arm:
+    uses: ./.github/workflows/windows-arm-f64.yml
+  macos:
+    uses: ./.github/workflows/macos-f64.yml
+  macos-arm:
+    uses: ./.github/workflows/macos-arm-f64.yml
+  precision:
+    uses: ./.github/workflows/precision-builds.yml
+  permutation:
+    uses: ./.github/workflows/permutation-builds.yml
