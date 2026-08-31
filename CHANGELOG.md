@@ -4,45 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased]
-
-### Fixed
-
-- **Core headers compiled as HLSL failed on reserved words.** The cores are
-  one source for every backend and the_flow compiles them as HLSL through
-  `alwan_hlsl.h`; a local named `out` in `alwan_math_core.h`,
-  `alwan_cat_core.h` and `alwan_vision_core.h` was a hard syntax error there and
-  took the whole preview shader down. Every reserved word used as a name in
-  GPU-reachable core code is now renamed, in the `.h` and its `.inc` twin:
-  `out` (also `alwan_hunt_core`, `alwan_extended_core.inc`), `linear` (the
-  camera-log and gamma OETF parameters in `alwan_rgb_core`, `alwan_atd95_core`,
-  `alwan_jzazbz_core`, `alwan_convenience_core`, `alwan_extended_core.inc`),
-  `in` (`alwan_hdr_core`), `matrix` and `input` (`alwan_color_correction_core`,
-  `alwan_prolab_core`). 436 identifier sites, C semantics and output unchanged
-  (107/107 suites). Two more cores compile under dxc as a result: 32 of 43,
-  listed in `alwan_dev/hlsl_regression/cores_dxc_clean.txt`.
-
-### Added
-
-- `alwan_dev/tools/check_gpu_identifiers.py`: reserved-word lint over the
-  GPU-reachable lines of every core (101 words probed against dxc, plus the
-  GLSL 4.60 and Metal lists); gates the Tooling CI job and runs as a post-build
-  step of the library. Reports C types and C headers in the same code without
-  gating (`--strict` to gate).
-- `alwan_dev/tools/check_gpu_compile.py`: every core compiled under dxc, one
-  translation unit each, fast and deterministic, gated on the expected-clean
-  list; a `gpu-compile` CI job on Windows runs it.
-- `docs/backends_limits.md` verification status now carries the measured
-  32/43 and the error class of each core that does not compile.
-
-## [2.0.0], 2026-08-28
+## [2.0.0], 2026-08-31
 
 First public release (tag `v2.0.0`).
 
 The tag sits after a correctness pass over the areas that had no external
-ground truth, 2026-08-27..28. Several entries below change published output
-relative to the 2026-08-19 pre-release build; they are listed first because a
-caller who pinned values against that build will see them.
+ground truth, 2026-08-27..28, and a pass over the GPU-reachable core,
+2026-08-30..31. Several entries below change published output relative to the
+2026-08-19 pre-release build; they are listed first because a caller who
+pinned values against that build will see them.
 
 ### Changed: output differs
 
@@ -90,6 +60,17 @@ caller who pinned values against that build will see them.
 
 ### Added
 
+- `alwan_dev/tools/check_gpu_identifiers.py`: reserved-word lint over the
+  GPU-reachable lines of every core (101 words probed against dxc, plus the
+  GLSL 4.60 and Metal lists); gates the Tooling CI job and runs as a post-build
+  step of the library. Reports C types and C headers in the same code without
+  gating (`--strict` to gate).
+- `alwan_dev/tools/check_gpu_compile.py`: every core compiled under dxc, one
+  translation unit each, fast and deterministic, gated on the expected-clean
+  list; a `gpu-compile` CI job on Windows runs it.
+- `docs/backends_limits.md` verification status now carries the measured
+  32/43 and the error class of each core that does not compile.
+
 - `alwan_table2d_grid_sample_f32` / `_f64`: bilinear and nearest sampling of a
   genuine `rows x stride` 2-d grid, which is the rank `ALWAN_SAMPLE_BILINEAR`
   fits. The 2-d strip is a flattened cube and still rejects BILINEAR.
@@ -108,6 +89,20 @@ caller who pinned values against that build will see them.
   clustered by area in `docs/alwan_future.md` theme 10.
 
 ### Fixed: no output change
+
+- **Core headers compiled as HLSL failed on reserved words.** The cores are
+  one source for every backend and the_flow compiles them as HLSL through
+  `alwan_hlsl.h`; a local named `out` in `alwan_math_core.h`,
+  `alwan_cat_core.h` and `alwan_vision_core.h` was a hard syntax error there and
+  took the whole preview shader down. Every reserved word used as a name in
+  GPU-reachable core code is now renamed, in the `.h` and its `.inc` twin:
+  `out` (also `alwan_hunt_core`, `alwan_extended_core.inc`), `linear` (the
+  camera-log and gamma OETF parameters in `alwan_rgb_core`, `alwan_atd95_core`,
+  `alwan_jzazbz_core`, `alwan_convenience_core`, `alwan_extended_core.inc`),
+  `in` (`alwan_hdr_core`), `matrix` and `input` (`alwan_color_correction_core`,
+  `alwan_prolab_core`). 436 identifier sites, C semantics and output unchanged
+  (107/107 suites). Two more cores compile under dxc as a result: 32 of 43,
+  listed in `alwan_dev/hlsl_regression/cores_dxc_clean.txt`.
 
 - Table indices are tied to the enum that bounds them.
   `alwan_rgb_get_space_descriptor_*` bounds-checked `space` against one table's
