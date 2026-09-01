@@ -37,17 +37,16 @@ Debug_Det_Dll      Release_Det_Dll
 ```
 
 The full suite runs in all eight. CMake covers the same eight in the
-permutation CI job (`build_type` x `deterministic` x `shared`) and the two
-single-precision builds in the precision job, so every value of every axis is
-compiled on every push that runs CI, and the eight linkage/math/optimisation
-combinations are also run, not merely built.
+permutation CI job (`build_type` x `deterministic` x `shared`), and the
+precision job covers each single-precision selection in **both linkages**, with
+`-Wl,--no-undefined` on the shared rows.
 
-A single-precision **and** deterministic **and** shared build is a valid point
-in the matrix; it is compiled by neither job today, because the axes are
-independent in the source (the precision gates decide which definitions exist,
-the determinism gates decide which math they call, and linkage is a linker
-concern). If you rely on a corner the matrix does not cover, the combination
-still works, it just is not proven by CI.
+That last detail is not decoration. A static archive never resolves a symbol
+nothing references, and an ELF shared object permits undefined symbols by
+default, so a single-precision build that reaches into the excluded precision
+links quietly on Linux and fails only when someone builds a DLL. The whole
+matrix was verified by hand across both build systems, MSVC and gcc, before
+2.0.0, and the linkage axis is in CI so it stays verified.
 
 ---
 
@@ -102,6 +101,11 @@ repeatability depend on a single f64 core. Reusing that core from the f32 entry
 point keeps the result stable instead of maintaining a second, less accurate
 copy of the same algorithm. They are not to be "fixed" to native f32.
 
+The gate covers the whole chain, not just the entry point. A facade that widens
+to f64 needs the f64 code and tables it calls, so the f64 halves of the
+spectral, colorspace, CAT, CAM, LUT, Oklab and reference-data modules are
+compiled in every build. See the size table below for what that costs.
+
 | Area | `_f32` entry points | Why it stays f64 internally |
 |---|---|---|
 | ZCAM forward and inverse | `alwan_zcam_*_f32`, `alwan_delta_e_zcam_f32` | iterative inverse whose convergence threshold is below f32 epsilon |
@@ -136,16 +140,27 @@ GPU backends typedef `alwan_scalar` to `float` or `Halide::Expr`, see
 
 ### Size trade-off
 
-| Build | Code | Embedded data |
-|---|---|---|
-| both *(default)* | f32 and f64 instantiations of every kernel | f32 and f64 twins of every table |
-| f32 only | f32 instantiations plus the facade helpers | f32 twins plus the f64 data the facades read |
-| f64 only | f64 instantiations | f64 twins |
+Measured, static library, MSVC Release:
 
-A single-precision build removes the other precision's function bodies and data
-twins; that is where the win comes from. It does not remove the facade helpers.
+| Build | Size | vs dual |
+|---|---|---|
+| both *(default)* | 69.3 MB | |
+| f32 only | 67.1 MB | -3% |
+| f64 only | 45.8 MB | -34% |
+
+The asymmetry is the facades. A single-precision build drops the other
+precision's function bodies and data twins, which is where a saving would come
+from, but it cannot drop what the f64-internal facades need: an `_f32` entry
+point that computes in double pulls in the f64 spectral, colorspace, CAT, CAM,
+LUT and Oklab code together with the f64 reference tables it reads. Since those
+facades are f32 entry points, the obligation runs one way only. An f64-only
+build has no such debt and drops the whole f32 half.
+
+So choose `f64` for size and `f32` for a float-only surface, not for footprint.
+If the f32 saving matters to you, the lever is the facade list rather than the
+build flag: each entry moved to a native f32 implementation returns its share.
 The large tables (the Jakob 2019 spectral upsampling LUTs above all) dominate
-the data footprint, and halving them is the main reason to pick one precision.
+what remains.
 
 ---
 
