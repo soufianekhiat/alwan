@@ -8,8 +8,18 @@
 #define ALWAN_CONFIG_H
 
 #include "alwan_platform.h"
-#include <stddef.h>
-#include <stdint.h>
+
+/* A shading language has no C standard library. HLSL and GLSL get the size and
+ * fixed-width spellings from alwan_types.h instead; Halide is a C++ eDSL, so it
+ * takes the real headers. Without this guard, every core that reaches
+ * alwan_config.h (table, lut, vision) fails to compile as a shader on the
+ * include line, before any of its own code is even parsed. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C || ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
+# include <stddef.h>
+# include <stdint.h>
+#else
+# include "alwan_types.h"
+#endif
 
 /* ----------------------------------------------------------------
  * Data embedding mode
@@ -23,13 +33,23 @@
  * Used for safe type punning between layout-compatible color types
  * ---------------------------------------------------------------- */
 #ifndef ALWAN_MEMCPY
-# include <string.h>
-# define ALWAN_MEMCPY(dst, src, sz) memcpy((dst), (src), (sz))
+# if ALWAN_BACKEND == ALWAN_BACKEND_C || ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
+#  include <string.h>
+#  define ALWAN_MEMCPY(dst, src, sz) memcpy((dst), (src), (sz))
+# endif
+/* No definition on a shading language: memcpy takes addresses, and there are
+ * none. The one core that punned bits this way (half) uses the asuint/asfloat
+ * intrinsics on its GPU branch instead. */
 #endif
 
 /* ----------------------------------------------------------------
  * Allocation hooks (overrideable at compile time)
  * ---------------------------------------------------------------- */
+
+/* CPU backends only: these take addresses, and a shading language has none.
+ * A core reaches this header for ALWAN_READ_DATA_NO_BOUND_CHECK below, which
+ * is a plain #define, so the GPU branch needs nothing else from this section. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C || ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
 
 /* Forward declarations for default allocators */
 void *alwan_default_alloc(size_t size, size_t align);
@@ -47,6 +67,8 @@ void *alwan_default_realloc(void *ptr, size_t old_size, size_t new_size, size_t 
 #ifndef ALWAN_REALLOC
 # define ALWAN_REALLOC(p, old_sz, new_sz, align) alwan_default_realloc((p), (old_sz), (new_sz), (align))
 #endif
+
+#endif /* CPU backends */
 
 /* Table addressing bounds check.
  *

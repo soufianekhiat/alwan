@@ -24,12 +24,12 @@ reference implementation.
 
 | Stage | Status | Where |
 |-------|--------|-------|
-| Refractive index of air `n(λ)` (Peck & Reeder 1972 + Bodhaine CO₂ correction) | implemented internally | building block of the cross section |
-| Scattering cross section per molecule `σ(λ)` | public | `alwan_rayleigh_cross_section_{T}` |
-| Rayleigh optical depth `τ_R(λ)` | public | `alwan_rayleigh_optical_depth_{T}` |
+| Refractive index of air `n(lambda)` (Peck & Reeder 1972 + Bodhaine CO2 correction) | implemented internally | building block of the cross section |
+| Scattering cross section per molecule `sigma(lambda)` | public | `alwan_rayleigh_cross_section_{T}` |
+| Rayleigh optical depth `tau_R(lambda)` | public | `alwan_rayleigh_optical_depth_{T}` |
 | Spectral array of optical depths over a wavelength range | public | `alwan_rayleigh_spd_{T}` |
 
-The refractive index, King correction factor (N₂/O₂ depolarisation), molecular density,
+The refractive index, King correction factor (N2/O2 depolarisation), molecular density,
 mean molecular weight, and latitude/altitude gravity term are computed inside the core
 math and feed the cross section / optical depth. They are not exposed as standalone
 public functions.
@@ -61,11 +61,11 @@ alwan_{T} alwan_rayleigh_cross_section_{T}(alwan_{T} wavelength_nm,
                                            alwan_atmosphere_params_{T} const *params);
 ```
 
-Rayleigh scattering cross section per molecule (σ). Van de Hulst (1957) method with
-Bodhaine et al. (1999) corrections. Pass `NULL` for `params` to use defaults (only CO₂
+Rayleigh scattering cross section per molecule (sigma). Van de Hulst (1957) method with
+Bodhaine et al. (1999) corrections. Pass `NULL` for `params` to use defaults (only CO2
 and temperature are used).
 
-**Returns:** Cross section in cm². This scalar-valued query has no `alwan_status`
+**Returns:** Cross section in cm^2. This scalar-valued query has no `alwan_status`
 channel and no error path: it always evaluates the Bodhaine formula on the inputs
 (`NULL` params falls back to defaults), so supply physically valid arguments.
 
@@ -76,7 +76,7 @@ alwan_{T} alwan_rayleigh_optical_depth_{T}(alwan_{T} wavelength_nm,
                                            alwan_atmosphere_params_{T} const *params);
 ```
 
-Rayleigh optical depth through the atmosphere, `τ_R(λ)`. Pass `NULL` for `params` to use
+Rayleigh optical depth through the atmosphere, `tau_R(lambda)`. Pass `NULL` for `params` to use
 defaults.
 
 **Returns:** Optical depth (dimensionless). Like the cross-section query, this function

@@ -54,8 +54,8 @@ Output is display-referred, in `[0, 1]`.
 | `COMPLETE_HEMI_LOOK` | the **first 13-of-13** operator: `HEMISPHERE_ABS`'s tone with a carrier high-rail + desaturation floor that clear its lone `RATIO` failure. Look-preserving (keeps the `HEMISPHERE_ABS` window) |
 | `COMPLETE`    | the same 13-of-13 operator, isophote-through-highlight-maximised: a wider carrier window (more form through the highlight, at a brighter/softer look) |
 
-`CHANNEL` is the current recommendation: `SB2383 inset → per-channel C2 log-logistic on a fixed
-absolute window → 18% mid-grey anchor → matched inverse outset → asymptotic guard rails`, every
+`CHANNEL` is the current recommendation: `SB2383 inset -> per-channel C2 log-logistic on a fixed
+absolute window -> 18% mid-grey anchor -> matched inverse outset -> asymptotic guard rails`, every
 constant a display standard (nothing scene-derived). See the enum documentation in `alwan.h` for
 the full derivation.
 
@@ -83,7 +83,7 @@ correspondence, added 2026-08):
 | `SLOPE` | the gradient gain is a bump, ~0 at both energy ends | **the hemisphere**: gradients are maximal at the chosen exposure and roll to zero at both the black and white infinities |
 | `RATIO` | the output chroma **direction** (linear hue) is preserved from the input | the **lum + chrom invariant**: the restore carries the linear chroma ratio through (Grassmann additivity / matched-inverse restore); a hue *rotation* invents chroma the scene never emitted. Desaturation toward white (`PURE`) is allowed; only a change of *direction* fails |
 | `REL`   | an increment/decrement keeps its **sign** vs the enclosing field | polarity preservation: a black object is read as black because it stays a *decrement* against its surround; formation must not flip it (tested with and without a moderate common veil) |
-| `VEIL`  | a decrement stays **readable** under a strong common veil (formed contrast ≥ 1/255 at `T = 0.1`) | **blackness-through-veil**: a veil `I = T·J + (1−T)·A` raises every code value, but the black reading must survive; merging the decrement into the white veil erases the object. All current methods pass, but at `T = 0.1` the formed contrast sits at ~1.3 display codes: technically readable, *practically marginal*; the column documents that margin and trips on any regression below one code |
+| `VEIL`  | a decrement stays **readable** under a strong common veil (formed contrast >= 1/255 at `T = 0.1`) | **blackness-through-veil**: a veil `I = T*J + (1-T)*A` raises every code value, but the black reading must survive; merging the decrement into the white veil erases the object. All current methods pass, but at `T = 0.1` the formed contrast sits at ~1.3 display codes: technically readable, *practically marginal*; the column documents that margin and trips on any regression below one code |
 
 Further constraints in the same set are **design principles or cognitive**; they have no per-frame
 pass/fail and are honoured structurally rather than tested: no `Lab`/`OkLab`/`ICtCp` (the Abney
@@ -95,7 +95,7 @@ the numerically-tested `RATIO` column above.)
 
 > **A correction to `PURE` from the later correspondence.** The tested `PURE` is *per-record*:
 > any sufficiently bright record desaturates toward white. The correspondence later sharpened this: white-infinity
-> belongs to the **additive/emissive component only** ("energy ≠ cause ≠ role"). A brightly *lit
+> belongs to the **additive/emissive component only** ("energy != cause != role"). A brightly *lit
 > surface* is not an emitter and must **keep** its chroma; applying per-record `PURE` to surface
 > radiance is exactly what turns a lit red surface salmon-pink (the pastel failure). The corrected
 > constraint is not pointwise-testable; deciding *emission vs illuminated surface* needs context
@@ -143,7 +143,7 @@ columns exist to document that margin and to catch any regression below one code
 
 `RATIO` is the **lum + chrom invariant** and it splits the family cleanly by *mechanism*:
 - **ratio-preserve / luminance-scale methods keep it** (`ok`): every carrier method plus the
-  luminance family scale chroma without turning it, so `out_chroma ∥ in_chroma`.
+  luminance family scale chroma without turning it, so `out_chroma parallel to in_chroma`.
 - **the per-channel / matrix operators rotate it** (`xacc`): `CHANNEL`'s inset crosstalk and
   `GRADIENT`'s independent per-channel Poisson both invent a hue the scene never emitted. This is
   the same mechanism that costs them `HUEA`/`MONO`; the hue rotation is that mechanism made visible.
@@ -190,13 +190,13 @@ the baseline.
 
 `HEMISPHERE` was `ok` in every column but `INVR`, and it failed `INVR` for exactly the reason
 `CHANNEL` was built to fix: a scene-adaptive pivot. `HEMISPHERE_ABS` is the **Absolute
-Hemisphere**: the `HEMISPHERE` carrier tone with `CHANNEL`'s absolute `log2(0.18) ± (10, 6.5)`
+Hemisphere**: the `HEMISPHERE` carrier tone with `CHANNEL`'s absolute `log2(0.18) +/- (10, 6.5)`
 window, 18% mid-grey anchor, and asymptotic rails. It is:
 
-- `MONO` ✓ (per-pixel monotone function of `max(RGB)`; `out max = ms`),
-- `HUEA` ✓ (a function of the carrier + ratio-preserve, so channel-permutation equivariant),
-- `INVR` ✓ (fixed window, so no per-scene decision),
-- `SLOPE` ✓, `PURE` ✓, `SPAN` ✓, `C2` ✓, `DC` ✓, `NEUT` ✓, `GAMUT` ✓, `NEG` ✓, `RAIL` ✓,
+- `MONO` [x] (per-pixel monotone function of `max(RGB)`; `out max = ms`),
+- `HUEA` [x] (a function of the carrier + ratio-preserve, so channel-permutation equivariant),
+- `INVR` [x] (fixed window, so no per-scene decision),
+- `SLOPE` [x], `PURE` [x], `SPAN` [x], `C2` [x], `DC` [x], `NEUT` [x], `GAMUT` [x], `NEG` [x], `RAIL` [x],
 
 i.e. **twelve of the thirteen**: the fullest carrier row *until* `COMPLETE`, and notably
 *carrier-monotone* where `CHANNEL` is not. The one it misses is `RATIO`: the same asymptotic rails
@@ -229,11 +229,11 @@ that one mechanism with two changes and the whole matrix goes green:
 
 1. **Carrier rail, then a single scale.** Apply the asymptotic high rail to the *carrier* `ms` (one
    scalar) before reconstruction, then scale all three channels by the same `ms / max(RGB)`. The rail
-   never touches channels independently, so `out_chroma ∥ in_chroma` exactly (`RATIO`).
+   never touches channels independently, so `out_chroma parallel to in_chroma` exactly (`RATIO`).
 2. **A desaturation floor instead of a low rail.** Cap the purity-keep at `KEEPMAX < 1`, drawing every
    saturated pixel a hair toward its own achromatic level `ms`. That lifts the minimum channel off 0
-   (`RAIL`) as a *uniform* chroma scale `1 − keep`: direction preserved (`RATIO`), minimum
-   `= (1−keep)·ms > 0`, and saturation `≈ KEEPMAX > 0.85` (`SPAN`). The escape from 0 is now uniform
+   (`RAIL`) as a *uniform* chroma scale `1 - keep`: direction preserved (`RATIO`), minimum
+   `= (1-keep)*ms > 0`, and saturation `~= KEEPMAX > 0.85` (`SPAN`). The escape from 0 is now uniform
    across channels, so the `SPAN`/`RATIO`/`RAIL` conflict dissolves.
 
 Everything else is `HEMISPHERE_ABS`: carrier-monotone (`MONO`), a function of `max(RGB)` + ratios
@@ -310,14 +310,14 @@ structure) and with it a second constraint set. These apply to the **experimenta
 
 | key | constraint | status in the experimental operators |
 |---|---|---|
-| `ORDER` | spatial carrier order: `sign(Δz)·ΔC ≥ 0` between neighbouring pixels on reliable edges (`\|Δz\| > 0.05` stop); the spatial generalisation of `MONO` | **global: exact** (strictly monotone by construction, 0 violations); **local: approximate** (order-repair solve; residuals ≤ `4e-3`, sub-visible; tested) |
-| `DRIFT` | a global stage adds **zero hue rotation** over its own pointwise base; the spatial generalisation of `RATIO`, and the *structural pink-immunity* guarantee | **exact, structural**: only a scalar exposure reaches the hue-stable base; measured `~4e-14°` (tested) |
+| `ORDER` | spatial carrier order: `sign(Deltaz)*DeltaC >= 0` between neighbouring pixels on reliable edges (`\|Deltaz\| > 0.05` stop); the spatial generalisation of `MONO` | **global: exact** (strictly monotone by construction, 0 violations); **local: approximate** (order-repair solve; residuals <= `4e-3`, sub-visible; tested) |
+| `DRIFT` | a global stage adds **zero hue rotation** over its own pointwise base; the spatial generalisation of `RATIO`, and the *structural pink-immunity* guarantee | **exact, structural**: only a scalar exposure reaches the hue-stable base; measured `~4e-14 deg` (tested) |
 | `GAUGE` / `NOLOW` | no unconstrained low-frequency mode (the free harmonic Poisson mode *is* the haze) | **carried by construction**: the exposure field is explicitly anchored; there is no gradient integration, so the free mode does not exist |
 | *no-pink-objective* | pink metrics are regression **displays**, never terms in a loss (a pink penalty suppresses legitimately pink objects) | **carried**: the local solve minimises anchor + carrier-order only |
 | *rivalry preservation* | competing scene organisations stay **soft**: genuine ambiguity is represented and never forced to a single labelling | **partial**: the evidence field is a continuous distribution `P(C)/P(T)/P(O)` (never hard labels); its entropy is not yet exposed |
 | `INTG` | every local gradient interpretation participates in **one** globally-consistent integration | **partial**: the local operator uses evidence-gated smoothing; the full junction-rivalry integration (X-junction `C`/`T`/`O` posteriors, regional coherence) is prototype-validated but not yet ported |
-| `PURE` (corrected) | white-infinity belongs to the **emissive component only**; lit surfaces keep chroma (see the `PURE` caveat above) | **carried by `alwan_picture_form_pure_exp`**: `COMPLETE_HEMI_LOOK`'s purity rolloff gated by the emission evidence `P_T`. A lit red surface keeps sat `0.95` where the per-record shelf pastelises it to `0.72` (tested); real frames: bulbs and neutral-glow beams still roll white, bright warm surfaces keep chroma. Carrier and hue are *exactly* the base's (the gate only scales chroma), so `ORDER`/`DRIFT` are inherited. **Known limit**: `P_T` (dark-channel lift) detects *neutral-ish* additive light; a pure-primary emitter with no neutral glow (a CG laser blade) reads as surface and keeps chroma instead of rolling; the missing measure is *per-channel emissive coherence* from Troy's diagnostic battery. The gate is **regionally coherent** (the `INTG` lesson): the emission verdict is smoothed within continuation regions behind surface-identity boundaries judged on the glow-discounted carrier `log2(max−min)`, so an object crossing a glow (a blade over a tube light) receives **one verdict along its length**, with zero white holes, instead of flipping per-pixel where the glow lifts its dark channel |
-| `TCONST` | temporal stability of the latent fields (replaces `INVR` for global operators; no framewise auto-exposure) | **carried in fixed-pivot mode, measured under a synthetic camera pan** (sliding crop, identical scene content in the overlap): `global_exp` fixed-pivot is *exactly* 0, bit-stable under motion; adaptive pivot drifts ≤ `5e-4`; `local_exp` and `pure_exp` are **interior-stable ≤ `6e-3` / `1e-3`**, their residual instability confined to regions touching the moving frame edge (new content legitimately re-informs a contextual operator, the part Phase-5 temporal filtering owns). One continuity lesson: the evidence gates must be *steep clamped smoothsteps*, never hard 0/1: a hard threshold flips verdicts under sub-pixel content shifts (measured 0.20 of flicker), while a clamped smoothstep keeps clear cases exactly sealed and near-threshold pixels continuous |
+| `PURE` (corrected) | white-infinity belongs to the **emissive component only**; lit surfaces keep chroma (see the `PURE` caveat above) | **carried by `alwan_picture_form_pure_exp`**: `COMPLETE_HEMI_LOOK`'s purity rolloff gated by the emission evidence `P_T`. A lit red surface keeps sat `0.95` where the per-record shelf pastelises it to `0.72` (tested); real frames: bulbs and neutral-glow beams still roll white, bright warm surfaces keep chroma. Carrier and hue are *exactly* the base's (the gate only scales chroma), so `ORDER`/`DRIFT` are inherited. **Known limit**: `P_T` (dark-channel lift) detects *neutral-ish* additive light; a pure-primary emitter with no neutral glow (a CG laser blade) reads as surface and keeps chroma instead of rolling; the missing measure is *per-channel emissive coherence* from Troy's diagnostic battery. The gate is **regionally coherent** (the `INTG` lesson): the emission verdict is smoothed within continuation regions behind surface-identity boundaries judged on the glow-discounted carrier `log2(max-min)`, so an object crossing a glow (a blade over a tube light) receives **one verdict along its length**, with zero white holes, instead of flipping per-pixel where the glow lifts its dark channel |
+| `TCONST` | temporal stability of the latent fields (replaces `INVR` for global operators; no framewise auto-exposure) | **carried in fixed-pivot mode, measured under a synthetic camera pan** (sliding crop, identical scene content in the overlap): `global_exp` fixed-pivot is *exactly* 0, bit-stable under motion; adaptive pivot drifts <= `5e-4`; `local_exp` and `pure_exp` are **interior-stable <= `6e-3` / `1e-3`**, their residual instability confined to regions touching the moving frame edge (new content legitimately re-informs a contextual operator, the part Phase-5 temporal filtering owns). One continuity lesson: the evidence gates must be *steep clamped smoothsteps*, never hard 0/1: a hard threshold flips verdicts under sub-pixel content shifts (measured 0.20 of flicker), while a clamped smoothstep keeps clear cases exactly sealed and near-threshold pixels continuous |
 
 Two structural notes. First, `REL`'s *sign* half is inherited free by any `ORDER`-exact operator:
 if the carrier map is monotone, a decrement against its surround cannot flip, which is why the

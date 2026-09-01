@@ -86,7 +86,7 @@ int alwan_spd_blackbody_f64(alwan_spd_f64 *out,
                             alwan_ctx *ctx);
 ```
 
-Generate a Planckian (blackbody) radiator SPD via Planck's law. `temperature_K` is typically 1000–25000 K; out-of-range returns `ALWAN_E_INVALID`.
+Generate a Planckian (blackbody) radiator SPD via Planck's law. `temperature_K` is typically 1000-25000 K; out-of-range returns `ALWAN_E_INVALID`.
 
 **Example:**
 ```c
@@ -180,7 +180,7 @@ typedef enum {
 } alwan_integrate_method;
 ```
 
-> **Reference-matching note.** alwan integrates with the trapezoidal or **Simpson** rule. Some reference libraries (e.g. colour-science) compute the tristimulus integral as a plain **Riemann summation** of `CMF · SPD · Δλ`. To reproduce such reference values exactly, match the quadrature on the reference side (colour-science exposes `scipy.integrate.simpson`) and use linear interpolation / matched wavelength sampling; see the project gendata notes.
+> **Reference-matching note.** alwan integrates with the trapezoidal or **Simpson** rule. Some reference libraries (e.g. colour-science) compute the tristimulus integral as a plain **Riemann summation** of `CMF * SPD * Deltalambda`. To reproduce such reference values exactly, match the quadrature on the reference side (colour-science exposes `scipy.integrate.simpson`) and use linear interpolation / matched wavelength sampling; see the project gendata notes.
 
 **Example:**
 ```c
@@ -281,7 +281,7 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance,
                                      alwan_ctx *ctx);
 ```
 
-CIE Special Metamerism Index (change in illuminant): the ΔE\*ab between a metameric sample/reference pair under the test illuminant. Returns a negative value on error. (See also [CCT & Light Quality](cct-light-quality.md) for CRI/TM-30/SSI.)
+CIE Special Metamerism Index (change in illuminant): the DeltaE\*ab between a metameric sample/reference pair under the test illuminant. Returns a negative value on error. (See also [CCT & Light Quality](cct-light-quality.md) for CRI/TM-30/SSI.)
 
 ---
 
@@ -318,7 +318,7 @@ int alwan_rgb_to_spectrum_smits1999_f64(alwan_spd_f64 *out_spd,
                                         alwan_ctx *ctx);
 ```
 
-Smits 1999 basis-spectra mixing. Input is sRGB, clamped to `[0,1]`. Output: **380–720 nm, 10 samples**. Fast; intended for spectral rendering.
+Smits 1999 basis-spectra mixing. Input is sRGB, clamped to `[0,1]`. Output: **380-720 nm, 10 samples**. Fast; intended for spectral rendering.
 
 ### alwan_rgb_to_spectrum_mallett2019
 
@@ -328,7 +328,7 @@ int alwan_rgb_to_spectrum_mallett2019_f64(alwan_spd_f64 *out_spd,
                                           alwan_ctx *ctx);
 ```
 
-Mallett & Yuksel 2019 spectral primary decomposition. Input is sRGB. Output: **380–780 nm, 81 samples at 5 nm**. Higher spectral fidelity than Smits.
+Mallett & Yuksel 2019 spectral primary decomposition. Input is sRGB. Output: **380-780 nm, 81 samples at 5 nm**. Higher spectral fidelity than Smits.
 
 ### alwan_rgb_to_spectrum_jakob2019
 
@@ -339,7 +339,7 @@ int alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd,
                                         alwan_ctx *ctx);
 ```
 
-Jakob & Hanika 2019 polynomial coefficient model. Input RGB is in the selected `gamut`, clamped to `[0,1]`. Output: **360–780 nm, 85 samples at 5 nm**.
+Jakob & Hanika 2019 polynomial coefficient model. Input RGB is in the selected `gamut`, clamped to `[0,1]`. Output: **360-780 nm, 85 samples at 5 nm**.
 
 > **Requires generated LUT data.** Jakob2019 reads a per-gamut polynomial coefficient table embedded from `src/alwan/data/spectral_lut/**`. These tables are produced by the gendata pipeline (`generate_data.ps1` in the `alwan_dev` repo) and compiled in via `ALWAN_EMBED_DATA`. If a gamut's table was not generated, the call returns an error. Smits1999 and Mallett2019 use small embedded basis spectra and do not need this step.
 

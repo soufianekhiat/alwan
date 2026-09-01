@@ -67,7 +67,7 @@ What makes Alwan different from other colour libraries:
   [colour-science](https://github.com/colour-science/colour), the official
   ACES CTL, and vendors' own code (Sobotka's AgX, Blender's AgX, Jp-DRT)
 - The ACES 2.0 output transform matches OCIO to
-  **ΔE ITP 0.000 across the full hue sweep**; Blender AgX is an exact match
+  **DeltaE ITP 0.000 across the full hue sweep**; Blender AgX is an exact match
 - Every embedded constant traces to a gendata script that calls the
   reference implementation, so there are no hand-copied matrices
 
@@ -112,9 +112,9 @@ What makes Alwan different from other colour libraries:
   2.0, camera logs for 13 vendors, the AgX family plus a parameterized
   analytic engine and JP2499, 12 colour appearance models, spectral
   upsampling, CVD simulation, 11 gamut-mapping entry points (including an
-  HDR ICtCp mapper and 18 spatial picture-formation methods), the ΔE
+  HDR ICtCp mapper and 18 spatial picture-formation methods), the DeltaE
   family, LUT baking and CLF interop
-- Six host targets verified in CI (Linux/macOS/Windows × x64/ARM)
+- Six host targets verified in CI (Linux/macOS/Windows x x64/ARM)
 
 ---
 
@@ -151,7 +151,7 @@ target_link_libraries(my_app PRIVATE Alwan::alwan)
 
 The `Alwan::alwan` target carries its include directory, so `#include "alwan.h"`
 works without extra `target_include_directories`. CMake build options
-(`ALWAN_BUILD_PRECISION`, `ALWAN_DETERMINISTIC`, `ALWAN_SIMD_ARCH`, …) are
+(`ALWAN_BUILD_PRECISION`, `ALWAN_DETERMINISTIC`, `ALWAN_SIMD_ARCH`, ...) are
 described under [Configuration](#configuration).
 
 ---
@@ -204,9 +204,9 @@ Or
 
    alwan_xyz_to_lab_f64(&lab, &xyz, &d65);
    /* Default build (ALWAN_NORMALIZE_RANGES=1) rescales the bounded L channel
-      to [0,1]:  lab.L ≈ 0.5324,  lab.a ≈ 80.09,  lab.b ≈ 67.20
+      to [0,1]:  lab.L ~= 0.5324,  lab.a ~= 80.09,  lab.b ~= 67.20
       (a and b are unbounded opponent axes and are not rescaled).
-      With ALWAN_NORMALIZE_RANGES=0, L is native CIE [0,100] ≈ 53.24.
+      With ALWAN_NORMALIZE_RANGES=0, L is native CIE [0,100] ~= 53.24.
       See docs/ranges.md. */
    ```
 
@@ -264,12 +264,12 @@ Perceptual modelling and light quality metrics:
 - **Appearance models:** CIECAM02, CAM16, Hellwig 2022, Kim 2009,
   ZCAM, Hunt, LLAB, ATD95, RLAB, Nayatani 95, CAM18sl, CAM20u (most
   have forward + inverse + UCS variants)
-- **Colour differences:** ΔE76, ΔE94, ΔE00, CMC, hyAB, ΔE_OK,
-  ΔE_DIN99, ΔE_ITP, ΔE_CAM02 (LCD/SCD/UCS), ΔE_CAM16 (LCD/SCD/UCS),
-  ΔE_ZCAM
+- **Colour differences:** DeltaE76, DeltaE94, DeltaE00, CMC, hyAB, DeltaE_OK,
+  DeltaE_DIN99, DeltaE_ITP, DeltaE_CAM02 (LCD/SCD/UCS), DeltaE_CAM16 (LCD/SCD/UCS),
+  DeltaE_ZCAM
 - **Light quality:** CRI, CQS, SSI, TM-30 Rf
 - **CCT estimation:** McCamy, Robertson, Hernandez-Andres, Kang,
-  plus Δuv refinement (`alwan_cct_duv_optimize`, Ohno-style)
+  plus Deltauv refinement (`alwan_cct_duv_optimize`, Ohno-style)
 - **Vision:** Machado 2009 + Brettel 1997 CVD simulation
   (protan/deutan/tritan, full anomaly + dichromacy variants),
   CSF (Barten 1999)
@@ -279,7 +279,7 @@ Low-level colour science operations:
 - SPD integration to tristimulus values (trapezoid + Simpson)
 - CMFs: CIE 1931/1964/2012/2015, Stockman & Sharpe, Wright & Guild
 - Standard illuminants: A, D-series, E, F-series, HP discharge
-- RGB→spectrum upsampling: Smits 1999, Mallett 2019, Jakob & Hanika 2019
+- RGB->spectrum upsampling: Smits 1999, Mallett 2019, Jakob & Hanika 2019
 - Hero wavelength sampling for spectral renderers
 - Gamut mapping (8 core algorithms + HDR ICtCp/JzCzHz mappers),
   matrix-determinant volume estimation, coverage analysis
@@ -375,7 +375,7 @@ f32-only build.
 
 The CMake equivalent is `-DALWAN_BUILD_PRECISION=both|f32|f64` (default
 `both`). The Sharpmake solution always builds both precisions; its
-configuration axes are Debug/Release × deterministic (`_Det`) ×
+configuration axes are Debug/Release x deterministic (`_Det`) x
 static/DLL (`_Dll`). For a single-precision build there, define
 `ALWAN_BUILD_ONLY_F32` / `ALWAN_BUILD_ONLY_F64` project-wide. See
 [docs/configuration.md](docs/configuration.md) for the full
@@ -388,7 +388,7 @@ cmake -DALWAN_DETERMINISTIC=ON ...
 ```
 
 Opt in to **byte-identical output across compilers, optimization
-levels, and CPU architectures** (Linux/macOS/Windows × x86_64/aarch64).
+levels, and CPU architectures** (Linux/macOS/Windows x x86_64/aarch64).
 The library swaps libm `pow / exp / log / cbrt` for in-house
 polynomial implementations, disables FMA contraction, and routes
 SIMD reductions through a canonical scalar fallback. Both build
@@ -425,7 +425,7 @@ binary. Zero runtime I/O, instant startup. Runtime data loading
 Bulk conversions are SIMD-vectorised and run in the hundreds of
 megapixels per second. On a representative AVX2 host (`_f32`, interleaved,
 8-wide), the CVD simulation and gamut-map pipelines reach **600-850
-Mpix/s** and common pipelines such as sRGB↔XYZ and the Lab/Oklab family
+Mpix/s** and common pipelines such as sRGB<->XYZ and the Lab/Oklab family
 land in the **50-600 Mpix/s** band; the `_f64` (4-wide) paths run at
 roughly half that. The picture-formation transforms (AgX, JP2499, ACES
 output, full CAM models) use scalar per-pixel workers by design and run
@@ -444,7 +444,7 @@ cross-library benchmark.)
 
 All public functions have explicit `_f32` / `_f64` suffixes. Bulk
 APIs follow the convention
-`(out, out_stride, in, in_stride, count, [extras]…, [ctx])`
+`(out, out_stride, in, in_stride, count, [extras]..., [ctx])`
 mirroring `memcpy`. See [api-conventions.md](docs/api-conventions.md)
 for the complete rule set.
 
@@ -482,7 +482,7 @@ alwan_xyz_to_lab_f64_map_interleave(
     100, &d65);
 ```
 
-### Chromatic Adaptation (D65 → D50, Bradford)
+### Chromatic Adaptation (D65 -> D50, Bradford)
 
 ```c
 alwan_xyz_f64 d65 = {95.047, 100.000, 108.883};
@@ -498,7 +498,7 @@ alwan_xyz_adapt_f64(out, sizeof(alwan_f64) * 3,
 ### RGB Space Operations
 
 ```c
-/* Derive RGB ↔ XYZ matrices for a custom space. */
+/* Derive RGB <-> XYZ matrices for a custom space. */
 alwan_rgb_space_desc_f64 desc = {
     .primaries_xy = {0.64, 0.33, 0.30, 0.60, 0.15, 0.06},
     .white_xy     = {0.3127, 0.3290},
@@ -568,7 +568,7 @@ Filenames encode identity and sampling: `cie_1931_2deg_xbar_360_830_1nm.csv`
 
 Alwan prioritises correctness and determinism:
 
-- **Matrix operations:** 3×3 inversion via partial-pivot Gaussian
+- **Matrix operations:** 3x3 inversion via partial-pivot Gaussian
   elimination; row order preserved for cross-platform stability
 - **Transfer functions:** clamped branches to avoid NaN/Inf
   propagation; OETF/EOTF pairs verified bit-stable in
@@ -673,27 +673,27 @@ hardcoded; expected *outputs* come from colour-science.
 
 ```
 alwan/                       # this repo (library only)
-├── src/alwan/               # Library source (pure C11)
-│   ├── alwan.h              # Main public API
-│   ├── alwan_config.h       # Compile-time configuration
-│   ├── alwan_math.h         # Math routing (libm or det polynomials)
-│   ├── api/                 # API wrapper implementations
-│   ├── core/                # Header-only GPU-compatible core
-│   ├── experimental/        # Research-tier picture-formation operators (see note)
-│   ├── map/                 # SIMD-accelerated bulk kernels
-│   ├── simd/                # SIMD backend (SSE2 / AVX / AVX2 / NEON / scalar)
-│   └── data/                # Embedded reference data (CSV)
-├── buildsystem/sharpmake/   # Sharpmake project definitions
-├── docs/                    # User-facing documentation
-└── CMakeLists.txt           # CMake build (alternative to Sharpmake)
++-- src/alwan/               # Library source (pure C11)
+|   +-- alwan.h              # Main public API
+|   +-- alwan_config.h       # Compile-time configuration
+|   +-- alwan_math.h         # Math routing (libm or det polynomials)
+|   +-- api/                 # API wrapper implementations
+|   +-- core/                # Header-only GPU-compatible core
+|   +-- experimental/        # Research-tier picture-formation operators (see note)
+|   +-- map/                 # SIMD-accelerated bulk kernels
+|   +-- simd/                # SIMD backend (SSE2 / AVX / AVX2 / NEON / scalar)
+|   \-- data/                # Embedded reference data (CSV)
++-- buildsystem/sharpmake/   # Sharpmake project definitions
++-- docs/                    # User-facing documentation
+\-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-├── tests/                   # 107 test suites + reference fixtures
-├── bench/                   # micro-benchmarks
-├── det_regression/          # cross-platform determinism regression tool
-├── image_gen/               # validation visuals
-├── gendata/                 # Python reference-data generators
-└── tools/                   # API survey, lint, no-raw-libm checks
++-- tests/                   # 107 test suites + reference fixtures
++-- bench/                   # micro-benchmarks
++-- det_regression/          # cross-platform determinism regression tool
++-- image_gen/               # validation visuals
++-- gendata/                 # Python reference-data generators
+\-- tools/                   # API survey, lint, no-raw-libm checks
 ```
 
 > **Note on `src/alwan/experimental/`**: this tier relaxes the
@@ -711,7 +711,7 @@ alwan_dev/                   # sibling repo (tests, benches, tools)
 Two build routes, one source of truth:
 
 - **CMake**: the portable route; what CI builds on all six host targets
-  (Linux/macOS/Windows × x64/ARM). No extra tooling beyond a C11 compiler.
+  (Linux/macOS/Windows x x64/ARM). No extra tooling beyond a C11 compiler.
 - **[Sharpmake](https://github.com/ubisoft/Sharpmake)**: the reference
   project generator (Visual Studio 2022 solutions), optional and mostly a
   Windows-development convenience. Sharpmake itself runs anywhere .NET 6+
@@ -720,7 +720,7 @@ Two build routes, one source of truth:
 Sharpmake perks:
 - **No vcpkg/Conan/etc:** Single submodule dependency
 - **Fast incremental builds:** Only regenerate when scripts change
-- **Multi-configuration:** Debug/Release × deterministic × static/DLL in one solution
+- **Multi-configuration:** Debug/Release x deterministic x static/DLL in one solution
 
 Regenerate projects after modifying `.cs` files:
 ```sh
@@ -736,35 +736,35 @@ buildsystem\generate_projects.bat   # Windows cmd
 
 **Foundation Complete**
 
-- ✅ Context management with custom allocators
-- ✅ Matrix operations (3×3 multiply, inverse, derived RGB↔XYZ)
-- ✅ Dual precision (f32 + f64 in one binary)
-- ✅ Data embedding with diagnostic guards
-- ✅ Sharpmake + CMake build systems
-- ✅ Unified test suite (107 suites, hosted in alwan_dev)
-- ✅ 104 named RGB spaces, easy to add more via space descriptors
-- ✅ Colour appearance models: CIECAM02, CAM16, ZCAM,
+- [x] Context management with custom allocators
+- [x] Matrix operations (3x3 multiply, inverse, derived RGB<->XYZ)
+- [x] Dual precision (f32 + f64 in one binary)
+- [x] Data embedding with diagnostic guards
+- [x] Sharpmake + CMake build systems
+- [x] Unified test suite (107 suites, hosted in alwan_dev)
+- [x] 104 named RGB spaces, easy to add more via space descriptors
+- [x] Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,
   CAM18sl, CAM20u
-- ✅ Modern colour spaces: Oklab/Oklch, JzAzBz/JzCzHz, ICtCp,
+- [x] Modern colour spaces: Oklab/Oklch, JzAzBz/JzCzHz, ICtCp,
   IPT, IgPgTg, ICaCb, ProLab, OSA-UCS, Hunter Lab, DIN99
-- ✅ ΔE metrics: ΔE76 / ΔE94 / ΔE00 / CMC / hyAB / OK / DIN99 /
+- [x] DeltaE metrics: DeltaE76 / DeltaE94 / DeltaE00 / CMC / hyAB / OK / DIN99 /
   ITP / CAM02-LCD/SCD/UCS / CAM16-LCD/SCD/UCS / ZCAM
-- ✅ Light-quality metrics: CRI, CQS, SSI, TM-30 Rf
-- ✅ Spectral operations and gamut tools (8 core mapping algorithms
+- [x] Light-quality metrics: CRI, CQS, SSI, TM-30 Rf
+- [x] Spectral operations and gamut tools (8 core mapping algorithms
   + HDR ICtCp/JzCzHz + spatial)
-- ✅ ACES 1.x RRT+ODT pipeline: 12 output presets, validated against OCIO
-- ✅ ACES 2.0 Output Transform: 12 output presets, JMh gamut mapping
-- ✅ 43 transfer functions including all major camera log formats
-- ✅ 18 view transforms (AgX original/punchy/golden/SB2383/Blender,
+- [x] ACES 1.x RRT+ODT pipeline: 12 output presets, validated against OCIO
+- [x] ACES 2.0 Output Transform: 12 output presets, JMh gamut mapping
+- [x] 43 transfer functions including all major camera log formats
+- [x] 18 view transforms (AgX original/punchy/golden/SB2383/Blender,
   BT.2446 A/B/C, BT.2390, Tony McMapface, Reinhard, Khronos PBR Neutral,
   Uchimura, Lottes, Exposure, ACES Rec.709) + JP2499 parameterized DRT
-- ✅ Spatial picture formation: 18 methods incl. the 15/15-constraint
+- [x] Spatial picture formation: 18 methods incl. the 15/15-constraint
   `COMPLETE` operators ([docs/picture_formation.md](docs/picture_formation.md))
-- ✅ Spectrum upsampling: Smits 1999, Mallett 2019, Jakob 2019
-- ✅ Vision: Machado CVD simulation (6 types), CSF (default + Barten)
-- ✅ Cross-platform CI on six host targets (Linux/macOS/Windows × x64/ARM)
-- ✅ Opt-in deterministic mode with cross-platform bit-exact CI matrix
+- [x] Spectrum upsampling: Smits 1999, Mallett 2019, Jakob 2019
+- [x] Vision: Machado CVD simulation (6 types), CSF (default + Barten)
+- [x] Cross-platform CI on six host targets (Linux/macOS/Windows x x64/ARM)
+- [x] Opt-in deterministic mode with cross-platform bit-exact CI matrix
   pinning the full public API surface (~407k-line dump per platform)
   ([docs/determinism.md](docs/determinism.md))
 
@@ -805,10 +805,10 @@ Function documentation with signatures, parameters, and usage patterns:
 - **[Color Spaces](docs/api/color-spaces.md)**: CIE XYZ/Lab/Luv, RGB conversions, perceptual models (Oklab, JzAzBz, ICtCp)
 - **[Chromatic Adaptation](docs/api/chromatic-adaptation.md)**: white point transforms (Bradford, CAT02, CAT16)
 - **[Transfer Functions](docs/api/transfer-functions.md)**: EOTFs/OETFs for SDR/HDR (sRGB, PQ, HLG, log curves)
-- **[Matrix Operations](docs/api/matrix-operations.md)**: 3×3 matrix math for linear transforms
+- **[Matrix Operations](docs/api/matrix-operations.md)**: 3x3 matrix math for linear transforms
 - **[Spectral Operations](docs/api/spectral.md)**: SPD integration, CMFs, illuminants
 - **[Color Appearance](docs/api/color-appearance.md)**: CIECAM02, CAM16, LLAB, Hellwig2022, Kim2009, ATD95
-- **[Color Difference](docs/api/color-difference.md)**: ΔE metrics (ΔE76, ΔE94, ΔE00, CMC, CAM02/16-LCD/SCD)
+- **[Color Difference](docs/api/color-difference.md)**: DeltaE metrics (DeltaE76, DeltaE94, DeltaE00, CMC, CAM02/16-LCD/SCD)
 - **[Gamut Operations](docs/api/gamut.md)**: gamut mapping and analysis
 
 ### Technical Details
@@ -829,7 +829,7 @@ Function documentation with signatures, parameters, and usage patterns:
   and CPU architectures
   - Where last-bit divergence comes from (libm, FMA, SIMD reductions)
   - ULP-distance testing
-  - Performance trade-off (~5–20%)
+  - Performance trade-off (~5-20%)
   - Cross-platform CI matrix pinning the full public API surface (~407k-line dump)
 
 ---

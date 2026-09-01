@@ -224,7 +224,7 @@ not need a hand-written loop.
 
 ### YCoCg does keep its normalisation offsets
 
-The four `ALWAN_MAP_P_NORM_ADD(..., ±0.5)` on the YCoCg map path are correct and
+The four `ALWAN_MAP_P_NORM_ADD(..., +/-0.5)` on the YCoCg map path are correct and
 must stay. That kernel emits genuinely signed Co/Cg and does not self-centre, so
 unlike Y'CbCr it has something for the normalisation layer to do.
 

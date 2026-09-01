@@ -177,7 +177,7 @@ int alwan_xyz_to_rgb_{T}(alwan_rgb_{T} *rgb,
                           alwan_xyz_{T} const *xyz);
 ```
 
-To obtain the linear RGB↔XYZ (NPM) matrices for a space directly from its
+To obtain the linear RGB<->XYZ (NPM) matrices for a space directly from its
 primaries and white point, use `alwan_rgb_derive_matrices_{T}`:
 
 ```c

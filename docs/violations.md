@@ -136,15 +136,15 @@ entries are contract/doc/naming nits that should be cleaned up before the
   that a real perceptual-volume MC remains unimplemented).
 
 - **CIE 1964 U\*V\*W\* conversion incorrect.** *(RESOLVED 2026-06-28)*
-  `alwan_xyz_to_uvw` divided Y by `white.y` before `25·Y^(1/3)−17`, yielding a
-  non-standard `W* ∈ [−17,8]` (red `W*=−2.08` vs colour-science `52.27`); the
+  `alwan_xyz_to_uvw` divided Y by `white.y` before `25*Y^(1/3)-17`, yielding a
+  non-standard `W* in [-17,8]` (red `W*=-2.08` vs colour-science `52.27`); the
   inverse meanwhile assumed absolute `[0,100]`, so forward/inverse disagreed by
-  ~100× and never round-tripped. Two latent bugs: (1) the spurious `/white.y`
+  ~100x and never round-tripped. Two latent bugs: (1) the spurious `/white.y`
   (now forms the luminance factor in percent scale-invariantly as
-  `(Y/Yn)*100`), and (2) the inverse X/Z recovery coefficients (`9·u` and
-  `12−3u−20v` → correct `6·u` and `8−2u−20v`, from inverting CIE 1960 UCS).
+  `(Y/Yn)*100`), and (2) the inverse X/Z recovery coefficients (`9*u` and
+  `12-3u-20v` -> correct `6*u` and `8-2u-20v`, from inverting CIE 1960 UCS).
   Now matches colour-science to ~2e-8 and round-trips to ~1e-16. W\* gained an
-  `ALWAN_NORM_UVW` ([0,100]→[0,1], like Lab L\*); U\*,V\* stay native. Pinned by
+  `ALWAN_NORM_UVW` ([0,100]->[0,1], like Lab L\*); U\*,V\* stay native. Pinned by
   a new colour-science fixture test `05:test_xyz_uvw_d65_roundtrip`. Was
   uncaught because UVW previously had no value-vs-reference or round-trip test.
   **Follow-up (2026-06-29):** the formula lives in THREE copies and the first
@@ -191,8 +191,8 @@ entries are contract/doc/naming nits that should be cleaned up before the
   `gamut_*_map` comment lists 2 of 8 methods. Align comments with signatures +
   enum.
 
-- **Mojibake in public header.** "Hue-Preserving Minimum Î”E", "2Â°"/"Î”E*ab"
-  (lines 2691-2692, 3001), "APCA â€” WCAG 3.0 draft" (3899); plus
+- **Mojibake in public header.** a UTF-8 Delta and a degree sign each decoded as two Latin-1 characters, in "Hue-Preserving Minimum <?>E", "2<?>" and "<?>E*ab"
+  (lines 2691-2692, 3001), and an em dash decoded the same way in "APCA <?> WCAG 3.0 draft" (3899); plus
   "half-alwan_f32" (line 71) and "Mapmatrix-vector multiplication" (line 220)
   from a blanket `float`->`alwan_f32` substitution. (Lines 71, 220, and 4694
   verified.) Restore ASCII.

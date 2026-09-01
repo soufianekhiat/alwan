@@ -60,6 +60,12 @@
 #define ALWAN_CORE_CLAMP               alwan_clamp
 #define ALWAN_CORE_SATURATE            alwan_saturate
 #define ALWAN_CORE_LERP                alwan_lerp
+
+/* Output parameter, GPU spelling: `out T name`, and the name IS the value. */
+#define ALWAN_CORE_PARAM_OUT           out ALWAN_CORE_T
+#define ALWAN_CORE_REF(p)              (p)
+#define ALWAN_CORE_ADDR(x)             (x)
+#define ALWAN_CORE_PARAM_ARRAY_OUT(type, name, n) out type name[n]
 #define ALWAN_CORE_VEC2                alwan_vec2
 #define ALWAN_CORE_VEC3                alwan_vec3
 #define ALWAN_CORE_MAT3X3              alwan_mat3x3

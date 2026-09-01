@@ -146,11 +146,38 @@ ALWAN_TYPE_DEF unsigned int alwan_uint8;
 #else
 ALWAN_TYPE_DEF uint   alwan_uint16;
 ALWAN_TYPE_DEF uint   alwan_uint8;
+
+/* The <stddef.h> and <stdint.h> spellings, for a target that has neither.
+ * alwan_config.h and alwan_half_core.h include those headers only on the CPU
+ * backends; on HLSL and GLSL these stand in, so table/lut/vision addressing and
+ * the half bit layout keep one spelling across all four backends.
+ *
+ * #define rather than typedef because GLSL has no typedef, the same reason
+ * alwan_sample_mode below is a #define. Both languages spell a 32-bit unsigned
+ * `uint`, which is wide enough for every index and bit pattern the cores form:
+ * table addressing is bounded by the embedded table sizes, and the half
+ * conversions work on 32-bit float bits. Halide is C++ and takes the real
+ * headers, so it never reaches this branch. */
+# define size_t   uint
+# define uint32_t uint
+# define uint16_t uint
+# define uint8_t  uint
+# define int32_t  int
+# define int16_t  int
+# define int8_t   int
 #endif
 
 /* Table addressing modes. GLSL has no enum, so the mode is a plain int and
  * the values are #defines; HLSL and Halide accept the same spelling. Values
  * match the C enum above exactly -- see its comment for the pinning rule. */
+/* Hunt viewing surround, same treatment: the C branch spells it as an enum,
+ * and hunt_surround_Nc_v / _Nb_v take it by value on every backend. Values
+ * match the C enum exactly. */
+#define alwan_hunt_surround int
+#define ALWAN_HUNT_SURROUND_NORMAL 0
+#define ALWAN_HUNT_SURROUND_DIM    1
+#define ALWAN_HUNT_SURROUND_DARK   2
+
 #define alwan_sample_mode int
 #define ALWAN_SAMPLE_LINEAR      0
 #define ALWAN_SAMPLE_NEAREST     1

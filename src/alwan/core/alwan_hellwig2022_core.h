@@ -156,9 +156,9 @@ ALWAN_INLINE alwan_scalar hw22_compute_Aw_v(
     alwan_scalar RGB_w2 = RGB_w_v.v[2];
 
     /* Store for caller */
-    *RGB_w0_out = RGB_w0;
-    *RGB_w1_out = RGB_w1;
-    *RGB_w2_out = RGB_w2;
+    ALWAN_REF(RGB_w0_out) = RGB_w0;
+    ALWAN_REF(RGB_w1_out) = RGB_w1;
+    ALWAN_REF(RGB_w2_out) = RGB_w2;
 
     /* Chromatic adaptation of the white onto itself. The per-channel factor
      * collapses to D + 1 - D = 1 by construction here; it is written out rather
@@ -194,7 +194,7 @@ ALWAN_INLINE alwan_hellwig2022_v_correlates alwan_hellwig2022_forward_v(
     /* Step 3: White-point achromatic response A_w and white RGB_w */
     alwan_scalar RGB_w0, RGB_w1, RGB_w2;
     alwan_scalar A_w = hw22_compute_Aw_v(white_x, white_y, white_z, D, FL,
-                                         &RGB_w0, &RGB_w1, &RGB_w2);
+                                         ALWAN_ADDR(RGB_w0), ALWAN_ADDR(RGB_w1), ALWAN_ADDR(RGB_w2));
 
     /* Step 4: Transform test color XYZ -> RGB via CAT16 */
     alwan_vec3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
@@ -277,7 +277,7 @@ ALWAN_INLINE alwan_xyz alwan_hellwig2022_inverse_v(
     /* Step 3: White-point achromatic response A_w and white RGB_w */
     alwan_scalar RGB_w0, RGB_w1, RGB_w2;
     alwan_scalar A_w = hw22_compute_Aw_v(white_x, white_y, white_z, D, FL,
-                                         &RGB_w0, &RGB_w1, &RGB_w2);
+                                         ALWAN_ADDR(RGB_w0), ALWAN_ADDR(RGB_w1), ALWAN_ADDR(RGB_w2));
 
     /* Step 4: Base exponential nonlinearity z */
     alwan_scalar n = Y_b / Y_w;

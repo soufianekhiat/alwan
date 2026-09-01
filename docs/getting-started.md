@@ -78,8 +78,8 @@ runner lives in the sibling `alwan_dev` repository; clone it as a peer of
 
 ```sh
 # Layout: parent/
-#   ├── alwan/         (this repo)
-#   └── alwan_dev/     (cloned next to it)
+#   +-- alwan/         (this repo)
+#   \-- alwan_dev/     (cloned next to it)
 git clone https://github.com/soufianekhiat/alwan_dev.git ../alwan_dev
 cd ../alwan_dev
 cmake -S . -B build && cmake --build build --config Release

@@ -20,11 +20,11 @@ The exceptions are the **opponent / chroma axes**: Lab / Hunter-Lab / ProLab
 **mathematically unbounded** (the CIE formulas impose no limit, and saturated or
 wide-gamut colours do exceed the usual range), even though encodings give
 them a *conventional* span: CIE Lab `a`, `b` are stored as signed `[-128, 127]`
-in 8-bit / ICC formats (so `÷128` would map them to `≈ ]-1, 1[`), and Oklab
+in 8-bit / ICC formats (so `/128` would map them to `~= ]-1, 1[`), and Oklab
 `a`, `b` sit roughly in `[-0.4, 0.4]`. alwan leaves these axes in
 their **native signed range** rather than rescaling against a conventional bound,
 so out-of-gamut excursions past it are preserved exactly and reference
-comparisons stay 1:1. Only `L` (`÷100 → [0, 1]`) and the channels with a true
+comparisons stay 1:1. Only `L` (`/100 -> [0, 1]`) and the channels with a true
 fixed bound are normalized. Channels that *do* have a fixed bound are mapped into
 `[0, 1]`: signed chroma and hue (degrees or radians).
 
@@ -83,8 +83,8 @@ The `alwan_dev` validation build (the unit tests, the benchmarks, and the
 come out in their **native mathematical ranges**. That is what the reference
 libraries the suite compares against use (colour-science, OpenColorIO, ACES), so
 disabling normalization makes the comparison apples-to-apples. For example
-`alwan_xyz_to_lab_f64` then returns CIE `L ≈ 53.24` (matching
-`colour.XYZ_to_Lab`) instead of the normalized `≈ 0.5324`. The switch is set in
+`alwan_xyz_to_lab_f64` then returns CIE `L ~= 53.24` (matching
+`colour.XYZ_to_Lab`) instead of the normalized `~= 0.5324`. The switch is set in
 `tests/CMakeLists.txt`, `bench/CMakeLists.txt`, and the Sharpmake `common.cs`.
 
 ---
@@ -133,12 +133,12 @@ Notes:
 |-------|--------------------|----------------------------------------|
 | `alwan_xyz_*` | tristimulus values, typically non-negative and unbounded above | unchanged |
 | `alwan_xyy_*` | `x`, `y` bounded chromaticities, `Y` luminance-like and unbounded above | bounded chromaticities stay bounded; `Y` unchanged |
-| `alwan_lab_*` | `L` in `[0, 100]`; `a` / `b` mathematically unbounded (8-bit / ICC convention `[-128, 127]`) | `L` maps to `[0, 1]`; `a` / `b` unchanged (native, not `÷128`) |
+| `alwan_lab_*` | `L` in `[0, 100]`; `a` / `b` mathematically unbounded (8-bit / ICC convention `[-128, 127]`) | `L` maps to `[0, 1]`; `a` / `b` unchanged (native, not `/128`) |
 | `alwan_luv_*` | `L` in `[0, 100]`; `u` / `v` mathematically unbounded | `L` maps to `[0, 1]`; `u` / `v` unchanged (native) |
 | `alwan_lch_*` | `L` in `[0, 100]`, `C` unbounded, `h` in degrees `[0, 360)` | `L` and `h` map to `[0, 1]`; `C` unchanged |
 | `alwan_lchuv_*` | `L` in `[0, 100]`, `C` unbounded, `h` in degrees `[0, 360)` | `L` and `h` map to `[0, 1]`; `C` unchanged |
 | `alwan_ucs_*` | `U`, `V` bounded; `W` luminance-like | bounded coordinates remain bounded; `W` unchanged |
-| `alwan_uvw_*` | CIE 1964: `W*` is a `[0, 100]` lightness factor (`25·Y^(1/3)−17`, like Lab `L*`); `U*` / `V*` are mathematically unbounded opponent axes | `W*` maps to `[0, 1]`; `U*` / `V*` unchanged (native) |
+| `alwan_uvw_*` | CIE 1964: `W*` is a `[0, 100]` lightness factor (`25*Y^(1/3)-17`, like Lab `L*`); `U*` / `V*` are mathematically unbounded opponent axes | `W*` maps to `[0, 1]`; `U*` / `V*` unchanged (native) |
 | `alwan_hunter_lab_*` | `L` bounded, `a` / `b` unbounded | `L` maps to `[0, 1]`; `a` / `b` unchanged |
 | `alwan_din99_*` | `L99` bounded, opponent axes unbounded | `L99` maps to `[0, 1]`; opponent axes unchanged |
 | `alwan_prolab_*` | `L` bounded, `a` / `b` unbounded | `L` maps to `[0, 1]`; `a` / `b` unchanged |

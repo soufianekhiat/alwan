@@ -1,13 +1,13 @@
 # Matrix Operations API
 
-Functions for 3×3 matrix mathematics used in color transformations.
+Functions for 3x3 matrix mathematics used in color transformations.
 
 ---
 
 ## Overview
 
-Alwan uses 3×3 matrices for:
-- RGB ↔ XYZ conversions
+Alwan uses 3x3 matrices for:
+- RGB <-> XYZ conversions
 - Chromatic adaptation transforms
 - Color space derivations
 
@@ -34,7 +34,7 @@ typedef struct { alwan_f64 m[9]; } alwan_mat3x3_f64;
 Default-precision aliases (`alwan_vec3`, `alwan_mat3x3`) over `alwan_scalar`
 also exist for GPU backends and convenience value types.
 
-3×3 matrices are stored in **row-major** order (flat array of 9 elements):
+3x3 matrices are stored in **row-major** order (flat array of 9 elements):
 
 ```
 m[0] m[1] m[2]    (row 0)
@@ -60,7 +60,7 @@ void alwan_mat3_mul_f32(alwan_mat3x3_f32 *out, alwan_mat3x3_f32 const *a, alwan_
 void alwan_mat3_mul_f64(alwan_mat3x3_f64 *out, alwan_mat3x3_f64 const *a, alwan_mat3x3_f64 const *b);
 ```
 
-Multiplies two 3×3 matrices: `out = a * b`.
+Multiplies two 3x3 matrices: `out = a * b`.
 
 ---
 
@@ -82,7 +82,7 @@ int alwan_mat3_inv_f32(alwan_mat3x3_f32 *out, alwan_mat3x3_f32 const *m);
 int alwan_mat3_inv_f64(alwan_mat3x3_f64 *out, alwan_mat3x3_f64 const *m);
 ```
 
-Inverts a 3×3 matrix using partial-pivot Gaussian elimination.
+Inverts a 3x3 matrix using partial-pivot Gaussian elimination.
 
 **Returns:**
 - `ALWAN_OK`: Success
@@ -108,7 +108,7 @@ alwan_f32 alwan_mat3_det_f32(alwan_mat3x3_f32 const *m);
 alwan_f64 alwan_mat3_det_f64(alwan_mat3x3_f64 const *m);
 ```
 
-Returns the determinant of a 3×3 matrix.
+Returns the determinant of a 3x3 matrix.
 
 ---
 
@@ -164,7 +164,7 @@ Returns `ALWAN_OK` on success.
 
 ---
 
-## Collect / Scatter Helpers (typed ↔ f64)
+## Collect / Scatter Helpers (typed <-> f64)
 
 Utilities to load/store typed 3-channel pixels as contiguous `alwan_scalar`
 triplets; convenient when feeding the scalar matrix functions from arbitrary
@@ -181,7 +181,7 @@ int alwan_scatter3_f32(void *out, size_t out_stride, alwan_f32 const *in, size_t
 ```
 
 `in_fmt` / `out_fmt` is the format of the **typed** (`void*`) side; the other
-side is native `alwan_f32` / `alwan_f64`. Strides are in bytes. Integer↔float
+side is native `alwan_f32` / `alwan_f64`. Strides are in bytes. Integer<->float
 conversion uses the standard `(2^N - 1)` normalization. Each returns
 `ALWAN_OK` on success.
 

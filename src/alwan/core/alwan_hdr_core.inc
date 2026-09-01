@@ -358,10 +358,10 @@ ALWAN_INLINE void ALWAN_CORE_FNVLIT(alwan_st2086_init)(ALWAN_CORE_T display_prim
                                        ALWAN_CORE_T white_point_xy[2],
                                        ALWAN_CORE_T max_luminance,
                                        ALWAN_CORE_T min_luminance,
-                                       ALWAN_CORE_T *out_primaries_xy,
-                                       ALWAN_CORE_T *out_white_xy,
-                                       ALWAN_CORE_T *out_max_lum,
-                                       ALWAN_CORE_T *out_min_lum) {
+                                       ALWAN_CORE_PARAM_ARRAY_OUT(ALWAN_CORE_T, out_primaries_xy, 6),
+                                       ALWAN_CORE_PARAM_ARRAY_OUT(ALWAN_CORE_T, out_white_xy, 2),
+                                       ALWAN_CORE_PARAM_OUT out_max_lum,
+                                       ALWAN_CORE_PARAM_OUT out_min_lum) {
     out_primaries_xy[0] = display_primaries_xy[0];
     out_primaries_xy[1] = display_primaries_xy[1];
     out_primaries_xy[2] = display_primaries_xy[2];
@@ -370,8 +370,8 @@ ALWAN_INLINE void ALWAN_CORE_FNVLIT(alwan_st2086_init)(ALWAN_CORE_T display_prim
     out_primaries_xy[5] = display_primaries_xy[5];
     out_white_xy[0] = white_point_xy[0];
     out_white_xy[1] = white_point_xy[1];
-    *out_max_lum = max_luminance;
-    *out_min_lum = min_luminance;
+    ALWAN_CORE_REF(out_max_lum) = max_luminance;
+    ALWAN_CORE_REF(out_min_lum) = min_luminance;
 }
 
 /* Compute MaxCLL from linear RGB pixel data (absolute luminance, cd/m2) */

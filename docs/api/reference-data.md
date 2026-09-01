@@ -157,9 +157,9 @@ int alwan_ncs_to_xyz_f32(alwan_xyz_f32 *xyz, char const *ncs_notation);
 ```
 
 Convert an NCS notation string to XYZ. Example notation: `"S 1050-Y90R"`.
-Output XYZ is on the Y = 0–100 scale, D65.
+Output XYZ is on the Y = 0-100 scale, D65.
 
-> **Approximate.** Uses published elementary-hue chromaticities (Hård & Sivik 1981)
+> **Approximate.** Uses published elementary-hue chromaticities (Hard & Sivik 1981)
 > with linear hue interpolation; it does **not** reproduce the proprietary NCS atlas.
 
 ### alwan_xyz_to_ncs_{T}

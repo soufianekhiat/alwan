@@ -98,7 +98,7 @@ float4 PSMain(float2 uv : TEXCOORD) : SV_Target
     alwan_oklab oklab = alwan_xyz_to_oklab_v(xyz);
     alwan_oklch oklch = alwan_oklab_to_oklch_v(oklab);
 
-    // Shift hue (~18°). Oklch components are { L, C, h } at v[0..2].
+    // Shift hue (~18 deg). Oklch components are { L, C, h } at v[0..2].
     oklch.v[2] += 0.05;
 
     // Oklch -> Oklab -> XYZ -> RGB (host-supplied inverse matrix)
@@ -306,14 +306,14 @@ All `*_core.h` files compile on all backends. The following are **C-only** (requ
 | Feature | Reason |
 |---------|--------|
 | `alwan_create` / `alwan_destroy` | Dynamic allocation |
-| `alwan_rgb_get_space_descriptor` | Embedded RGB-space registry lookup (enum → descriptor) |
+| `alwan_rgb_get_space_descriptor` | Embedded RGB-space registry lookup (enum -> descriptor) |
 | `alwan_spd_*` | Dynamic SPD struct |
 | `alwan_munsell_*`, `alwan_colorchecker_*` | Atlas data lookup |
 | Bulk `_map_interleave` / `_map_interleave_ex` | Loop + stride logic |
 | Camera profiling | Matrix fitting |
 | CCT estimation | Requires illuminant tables |
 
-All core conversion functions (XYZ↔Lab, Oklab, ICtCp, transfer functions, CAT, gamut mapping primitives, etc.) are GPU-compatible.
+All core conversion functions (XYZ<->Lab, Oklab, ICtCp, transfer functions, CAT, gamut mapping primitives, etc.) are GPU-compatible.
 
 ---
 

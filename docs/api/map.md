@@ -384,7 +384,7 @@ int alwan_css_gamut_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
 
 `alwan_gamut_{T}_map_interleave` supports the methods in
 `alwan_gamut_map_method` (clip, compress, etc.).
-`alwan_css_gamut_{T}_map_interleave` implements CSS Color Level 4 §13.2 OKLCh
+`alwan_css_gamut_{T}_map_interleave` implements CSS Color Level 4 section 13.2 OKLCh
 binary search. Both have `_map_interleave_ex` and `_map_planar_ex` variants.
 
 ### Color Appearance Models (CAM)
@@ -505,7 +505,7 @@ int alwan_xyz_to_lab_map_planar_ex(void *out0, size_t out_stride,
 `alwan_image_convert` is now its own unit
 (`src/alwan/map/alwan_image_convert_impl.inc`), separate from the generic
 colourspace maps. It runs a full 2D image pipeline,
-EOTF → matrix (with Bradford CAT across whitepoints) → OETF, with pixel-format
+EOTF -> matrix (with Bradford CAT across whitepoints) -> OETF, with pixel-format
 conversion, driven by RGB space descriptors and row strides:
 
 ```c

@@ -12,9 +12,9 @@
 
 /* Convert float32 -> float16 (with rounding to nearest even) */
 ALWAN_INLINE alwan_half ALWAN_CORE_FNVLIT(alwan_float_to_half)(float f) {
-    uint32_t fbits;
-    /* Type-pun via memcpy to avoid strict aliasing violations */
-    ALWAN_MEMCPY(&fbits, &f, sizeof(fbits));
+    /* Reinterpret the float's bits; see alwan_half_asuint above for why each
+     * backend spells this differently. */
+    uint32_t fbits = alwan_half_asuint(f);
 
     uint32_t sign = (fbits >> 16) & 0x8000u;
     int32_t  exp  = (int32_t)((fbits >> 23) & 0xFFu) - 127;
@@ -105,7 +105,5 @@ ALWAN_INLINE float ALWAN_CORE_FNVLIT(alwan_half_to_float)(alwan_half h) {
         fbits = sign | ((uint32_t)(exp + 127 - 15) << 23) | (mant << 13);
     }
 
-    float result;
-    ALWAN_MEMCPY(&result, &fbits, sizeof(result));
-    return result;
+    return alwan_half_asfloat(fbits);
 }

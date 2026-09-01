@@ -14,7 +14,39 @@
 #define ALWAN_HALF_CORE_H
 
 #include "../alwan_platform.h"
-#include <stdint.h>
+#include "../alwan_types.h"
+
+/* uint32_t and friends come from <stdint.h> on the CPU backends and from the
+ * GPU spellings in alwan_types.h on a shading language, which has no C standard
+ * library. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C || ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
+# include <stdint.h>
+#endif
+
+/* Reinterpret the bits of a float as a uint and back.
+ *
+ * C puns through memcpy, which is the only way that does not violate strict
+ * aliasing. A shading language has no addresses to hand to memcpy and provides
+ * the reinterpretation as an intrinsic instead, so each backend spells it its
+ * own way and the conversions below stay identical on all four. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C || ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
+ALWAN_INLINE uint32_t alwan_half_asuint(float f) {
+    uint32_t u;
+    ALWAN_MEMCPY(&u, &f, sizeof(u));
+    return u;
+}
+ALWAN_INLINE float alwan_half_asfloat(uint32_t u) {
+    float f;
+    ALWAN_MEMCPY(&f, &u, sizeof(f));
+    return f;
+}
+#elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL
+ALWAN_INLINE uint32_t alwan_half_asuint(float f) { return asuint(f); }
+ALWAN_INLINE float alwan_half_asfloat(uint32_t u) { return asfloat(u); }
+#else /* GLSL */
+ALWAN_INLINE uint32_t alwan_half_asuint(float f) { return floatBitsToUint(f); }
+ALWAN_INLINE float alwan_half_asfloat(uint32_t u) { return uintBitsToFloat(u); }
+#endif
 
 /* ================================================================
  * Half-float (binary16) representation
@@ -61,9 +93,9 @@ ALWAN_DIAG_POP
 
 /* Convert float32 -> float16 (with rounding to nearest even) */
 ALWAN_INLINE alwan_half alwan_float_to_half_v(float f) {
-    uint32_t fbits;
-    /* Type-pun via memcpy to avoid strict aliasing violations */
-    ALWAN_MEMCPY(&fbits, &f, sizeof(fbits));
+    /* Reinterpret the float's bits; see alwan_half_asuint above for why each
+     * backend spells this differently. */
+    uint32_t fbits = alwan_half_asuint(f);
 
     uint32_t sign = (fbits >> 16) & 0x8000u;
     int32_t  exp  = (int32_t)((fbits >> 23) & 0xFFu) - 127;
@@ -154,9 +186,7 @@ ALWAN_INLINE float alwan_half_to_float_v(alwan_half h) {
         fbits = sign | ((uint32_t)(exp + 127 - 15) << 23) | (mant << 13);
     }
 
-    float result;
-    ALWAN_MEMCPY(&result, &fbits, sizeof(result));
-    return result;
+    return alwan_half_asfloat(fbits);
 }
 
 #endif

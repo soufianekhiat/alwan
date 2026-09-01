@@ -51,6 +51,29 @@ typedef struct {
     alwan_scalar M;
 } alwan_hunt_v_correlates;
 
+/* The viewing-conditions struct the C branch emits per precision from
+ * alwan_types_gen.inc, in the single-precision GPU spelling. Field names,
+ * order and derive-from-zero semantics match the C struct exactly; see the
+ * comments there for what each field falls back to when left at 0. */
+typedef struct {
+    alwan_xyz    xyz_w;
+    alwan_scalar La;
+    alwan_scalar Yb;
+    alwan_hunt_surround surround;
+    int          discount_illuminant;
+
+    alwan_xyz    xyz_b;
+    alwan_xyz    xyz_p;
+    alwan_scalar p;
+    alwan_scalar L_AS;
+    alwan_scalar CCT_w;
+    alwan_scalar S;
+    alwan_scalar S_w;
+    alwan_scalar N_cb;
+    alwan_scalar N_bb;
+    int          helson_judd_effect;
+} alwan_hunt_viewing_conditions;
+
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 ALWAN_CONSTEXPR alwan_mat3x3 HUNT_V_M_HPE = {{

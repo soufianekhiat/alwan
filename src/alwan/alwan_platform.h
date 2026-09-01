@@ -166,6 +166,10 @@
 # define ALWAN_PARAM_MAT3_OUT   out alwan_mat3x3
 # define ALWAN_PARAM_VEC3_OUT   out alwan_vec3
 # define ALWAN_PARAM_SCALAR_OUT out alwan_scalar
+/* A fixed-extent output array. HLSL and GLSL pass arrays by value, so writes
+ * only reach the caller through `out`; C takes the same spelling and decays it
+ * to a pointer, so one signature serves every backend. */
+# define ALWAN_PARAM_ARRAY_OUT(type, name, n) out type name[n]
 # define ALWAN_REF(p)           (p)
 # define ALWAN_ADDR(x)          (x)
 #else
@@ -174,6 +178,7 @@
 # define ALWAN_PARAM_MAT3_OUT   alwan_mat3x3 *
 # define ALWAN_PARAM_VEC3_OUT   alwan_vec3 *
 # define ALWAN_PARAM_SCALAR_OUT alwan_scalar *
+# define ALWAN_PARAM_ARRAY_OUT(type, name, n) type name[n]
 # define ALWAN_REF(p)           (*(p))
 # define ALWAN_ADDR(x)          (&(x))
 #endif

@@ -170,7 +170,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(hw22_hue_to_quadrature)(ALWAN_CORE_T
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(hw22_compute_Aw)(
     ALWAN_CORE_T white_x, ALWAN_CORE_T white_y, ALWAN_CORE_T white_z,
     ALWAN_CORE_T D, ALWAN_CORE_T FL,
-    ALWAN_CORE_T *RGB_w0_out, ALWAN_CORE_T *RGB_w1_out, ALWAN_CORE_T *RGB_w2_out)
+    ALWAN_CORE_PARAM_OUT RGB_w0_out, ALWAN_CORE_PARAM_OUT RGB_w1_out, ALWAN_CORE_PARAM_OUT RGB_w2_out)
 {
     /* White point XYZ -> RGB via CAT16 */
     ALWAN_CORE_VEC3 white_v = {{white_x, white_y, white_z}};
@@ -180,9 +180,9 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(hw22_compute_Aw)(
     ALWAN_CORE_T RGB_w2 = RGB_w_v.v[2];
 
     /* Store for caller */
-    *RGB_w0_out = RGB_w0;
-    *RGB_w1_out = RGB_w1;
-    *RGB_w2_out = RGB_w2;
+    ALWAN_CORE_REF(RGB_w0_out) = RGB_w0;
+    ALWAN_CORE_REF(RGB_w1_out) = RGB_w1;
+    ALWAN_CORE_REF(RGB_w2_out) = RGB_w2;
 
     /* Chromatic adaptation of the white onto itself. The per-channel factor
      * collapses to D + 1 - D = 1 by construction here; it is written out rather
@@ -236,7 +236,7 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_hellwig2022_v_correlates) ALWAN_CORE_FNVLIT(
     /* Step 3: White-point achromatic response A_w and white RGB_w */
     ALWAN_CORE_T RGB_w0, RGB_w1, RGB_w2;
     ALWAN_CORE_T A_w = ALWAN_CORE_FNVLIT(hw22_compute_Aw)(white_x, white_y, white_z, D, FL,
-                                         &RGB_w0, &RGB_w1, &RGB_w2);
+                                         ALWAN_CORE_ADDR(RGB_w0), ALWAN_CORE_ADDR(RGB_w1), ALWAN_CORE_ADDR(RGB_w2));
 
     /* Step 4: Transform test color XYZ -> RGB via CAT16 */
     ALWAN_CORE_VEC3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
@@ -339,7 +339,7 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_hellwig2022_inverse)(
     /* Step 3: White-point achromatic response A_w and white RGB_w */
     ALWAN_CORE_T RGB_w0, RGB_w1, RGB_w2;
     ALWAN_CORE_T A_w = ALWAN_CORE_FNVLIT(hw22_compute_Aw)(white_x, white_y, white_z, D, FL,
-                                         &RGB_w0, &RGB_w1, &RGB_w2);
+                                         ALWAN_CORE_ADDR(RGB_w0), ALWAN_CORE_ADDR(RGB_w1), ALWAN_CORE_ADDR(RGB_w2));
 
     /* Step 4: Base exponential nonlinearity z */
     ALWAN_CORE_T n = Y_b / Y_w;

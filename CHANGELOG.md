@@ -26,14 +26,45 @@ with fxc; every issue was invisible to the dxc-only matrix in 2.0.0.
   passed under dxc. Now routed through `ALWAN_UNUSED(x)`, which already existed
   and is empty on the GPU branches. 12 sites in `half`, `hero_wavelength` and
   `table`.
+- **Eight more cores now compile as shaders**, taking the total from 32 of 43
+  to **40 of 43** under both compilers. `atd95` (correlate struct), `hunt`
+  (surround enum and viewing-conditions struct), `quality` (Krystek coefficient
+  block) and `view` (`alwan_cdl_apply_v`) were each missing a declaration from
+  their GPU branch. `extended`, `hellwig2022` and `hdr` used raw pointer
+  out-parameters where the house macros exist for exactly that; they now use
+  `ALWAN_PARAM_*` / `ALWAN_CORE_PARAM_*`, so C still gets pointers and a shader
+  gets `out`. `half` punned float bits through `memcpy` and now goes through
+  `alwan_half_asuint` / `_asfloat`, which map to `asuint` / `asfloat` on HLSL
+  and `floatBitsToUint` / `uintBitsToFloat` on GLSL.
+- **`alwan_config.h` no longer drags the C standard library into a shader.**
+  `<stddef.h>`, `<stdint.h>` and `<string.h>` were included unconditionally, so
+  every core reaching this header failed on the include line before any of its
+  own code was parsed. They are now guarded to the CPU backends, with the size
+  and fixed-width spellings coming from `alwan_types.h` on HLSL and GLSL. The
+  allocator hooks, which take addresses, are guarded the same way.
+- `alwan_content_light_level_v` is CPU-only: it walks a strided host buffer,
+  which a shader has no equivalent for.
 
 ### Changed
 
 - The GPU compile gate runs **both** shader compilers, not just dxc:
   `check_gpu_compile.py --compiler dxc|fxc|both`, with a per-compiler
-  expected-clean list. fxc now compiles the same 32 of 43 cores as dxc, and
-  both run in the Tooling CI job. Gating on dxc alone is what let this class
-  ship, and it had already happened once, with the `linear` keyword in 2.0.0.
+  expected-clean list, and both run in the Tooling CI job. Gating on dxc alone
+  is what let this class ship, and it had already happened once, with the
+  `linear` keyword in 2.0.0.
+- **`check_core_parity.py` now compares declarations, not just function
+  bodies.** Named constants, embedded CSVs and struct definitions in the GPU
+  branch were unchecked, which is how `quality` lost its coefficient block and
+  `view` lost a whole function with nothing going red. A missing declaration is
+  caught by the compilers; what only this catches is a constant whose *value*
+  differs between the two copies, which compiles cleanly on both sides and
+  silently gives the GPU a different answer from the C reference.
+- `table`, `lut` and `vision` remain CPU-only. Their readers take the table by
+  pointer and a shading language has no pointer type; serving them needs a
+  resource abstraction, not a syntax fix. See `docs/backends_limits.md`.
+- Documentation is now plain ASCII, except the Arabic spelling of the project
+  name. 540 typographic characters (arrows, dashes, Greek, box drawing, check
+  marks) were replaced with ASCII equivalents across 25 files.
 - New lint `alwan_dev/tools/check_east_const.py` (with `--fix`) gates east
   const over `src/alwan/core` and the platform layer, without needing a shader
   compiler. Outside that tier east const is legal C and is not flagged. It
@@ -41,7 +72,9 @@ with fxc; every issue was invisible to the dxc-only matrix in 2.0.0.
   definition, and reordering it would redefine the `const` keyword itself.
 
 No behaviour change on the C side: 107 test suites and 75,034 checks pass
-unchanged, and the rewrite is a pure reordering of tokens.
+unchanged. The east-const pass is a pure reordering of tokens; the out-parameter
+macros expand to the same pointers C always had; and the bit-punning helper is
+the same memcpy it replaced.
 
 ---
 
@@ -300,7 +333,7 @@ the dated foundation block that follows is also in the tag.
 - **NEON gamut kernel completion**: the aarch64 NEON gamut-mapping kernel
   reaches parity with the SSE2/AVX/AVX2 kernels (select-vs-mask path).
 - **Determinism CI on six runners**: `determinism.yml` runs on all six
-  Linux/Windows/macOS × x86_64/aarch64 targets and asserts byte/hash
+  Linux/Windows/macOS x x86_64/aarch64 targets and asserts byte/hash
   equality; the `det_run_regression` dump pins the full public API surface
   (~407k lines), with NEON f64 exercised so FMA-contraction or SIMD
   reduction-order drift fails the build.
@@ -323,7 +356,7 @@ the dated foundation block that follows is also in the tag.
 - **GPU shader backends**: GLSL, HLSL, Halide header-only backends
 
 ### Improved
-- **SIMD vectorization**: AVX2 kernels for sRGB↔XYZ, sRGB↔CIELab, sRGB↔Oklab; force-inlined eotf/oetf under SVML
+- **SIMD vectorization**: AVX2 kernels for sRGB<->XYZ, sRGB<->CIELab, sRGB<->Oklab; force-inlined eotf/oetf under SVML
 - **U16 SIMD**: AVX2 paths for U16 planar (8 px/batch) and AoS (4 px/batch); previously scalar
 - **SIMD scalar arrays**: `alwan_eotf_apply` / `alwan_oetf_apply` gain contiguous SIMD fast paths
 - **Test coverage**: 84 test suites (up from 75)

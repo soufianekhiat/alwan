@@ -144,7 +144,7 @@ Map an XYZ color into the target RGB gamut with hue preservation (in JCh). `ctx`
 
 ---
 
-### CSS Color Level 4 §13.2 (OKLCh binary search)
+### CSS Color Level 4 section 13.2 (OKLCh binary search)
 
 ```c
 int alwan_css_gamut_{T}_map_interleave(
@@ -172,7 +172,7 @@ int alwan_css_gamut_map_planar_ex(
     alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 ```
 
-Implements the CSS Color Level 4 §13.2 gamut-mapping algorithm: binary search on OKLCh
+Implements the CSS Color Level 4 section 13.2 gamut-mapping algorithm: binary search on OKLCh
 chroma with a `deltaEOK` JND criterion (threshold 0.02). Maps out-of-gamut **linear sRGB**
 to in-gamut linear sRGB. No `method` parameter; the algorithm is fixed by the spec.
 
@@ -186,7 +186,7 @@ int alwan_gamut_volume_{T}(alwan_{T} *volume,
 ```
 
 Returns the **exact** RGB gamut volume in linear XYZ (in XYZ units cubed). The RGB
-unit cube maps to a parallelepiped under the RGB→XYZ matrix `M`, whose volume is
+unit cube maps to a parallelepiped under the RGB->XYZ matrix `M`, whose volume is
 exactly `|det(M)|`, a closed-form result rather than a stochastic estimate.
 
 > A *perceptual* gamut volume (the gamut's image in a nonlinear space such as

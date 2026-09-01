@@ -96,6 +96,16 @@
 #define ALWAN_CORE_SATURATE  alwan_saturate_f32
 #define ALWAN_CORE_LERP      alwan_lerp_f32
 
+/* Output parameter of the per-pass scalar type. C takes a pointer and
+ * dereferences; a shading language has no pointers and uses `out`, where the
+ * name is already the value. Mirrors ALWAN_PARAM_SCALAR_OUT in
+ * alwan_platform.h, which is fixed to alwan_scalar and so cannot serve a .inc
+ * that is compiled once per precision. */
+#define ALWAN_CORE_PARAM_OUT ALWAN_CORE_T *
+#define ALWAN_CORE_REF(p)    (*(p))
+#define ALWAN_CORE_ADDR(x)   (&(x))
+#define ALWAN_CORE_PARAM_ARRAY_OUT(type, name, n) type name[n]
+
 /* Type aliases */
 #define ALWAN_CORE_VEC2               alwan_vec2_f32
 #define ALWAN_CORE_VEC3               alwan_vec3_f32

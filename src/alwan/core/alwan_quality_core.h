@@ -34,6 +34,23 @@ ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
 ALWAN_DIAG_POP
 
 #else /* HLSL / GLSL / Halide */
+
+/* Krystek 1985 rational-polynomial locus coefficients: the GPU-side mirror of
+ * the two CSVs the .inc embeds per precision, the same way cam, aces_ff and 14
+ * other cores mirror their small coefficient blocks. Six values read at literal
+ * indices, so they are not table-registry data; that registry covers arrays
+ * reached through a float coordinate or a row index, through the bounds gate.
+ * The scan below reads these on every backend. */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+ALWAN_CONSTEXPR alwan_scalar KRYSTEK_U_COEFFS[6] = {
+#include "../data/planckian_locus_krystek_u.csv"
+};
+ALWAN_CONSTEXPR alwan_scalar KRYSTEK_V_COEFFS[6] = {
+#include "../data/planckian_locus_krystek_v.csv"
+};
+ALWAN_DIAG_POP
+
 /* ================================================================
  * Ohno 2013 CCT from CIE 1960 UCS (u, v)
  *

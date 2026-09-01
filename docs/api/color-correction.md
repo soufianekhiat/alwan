@@ -206,7 +206,7 @@ Film-style printer-light color correction in **log exposure**. Each light unit i
 approximately `0.025` log-exposure change.
 
 **Parameters:**
-- `red_lights`, `green_lights`, `blue_lights`: Printer light values (0–50, default 25 = neutral)
+- `red_lights`, `green_lights`, `blue_lights`: Printer light values (0-50, default 25 = neutral)
 
 **Example:**
 ```c
@@ -365,7 +365,7 @@ void alwan_colour_correct_finlayson2015_{T}(
         alwan_{T} const *matrix, int degree, int root_poly);
 ```
 
-- `degree`: polynomial degree (1–4)
+- `degree`: polynomial degree (1-4)
 - `root_poly`: if non-zero, use root-polynomial expansion (must match between fit and apply)
 
 **Example (camera profiling workflow):**

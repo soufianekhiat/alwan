@@ -45,14 +45,14 @@ instructions rather than register width.
 | ISA | F32 lanes | F64 lanes | UINT8 | UINT16 |
 |-----|:---------:|:---------:|:-----:|:------:|
 | AVX2 | 8 | 4 | 32 | 16 |
-| AVX | 8 | 4 | 16¹ | 8¹ |
+| AVX | 8 | 4 | 16^1 | 8^1 |
 | SSE2 | 4 | 2 | 16 | 8 |
 | NEON (aarch64) | 4 | 2 | 16 | 8 |
-| NEON (ARMv7) | 4 | 1² | 16 | 8 |
+| NEON (ARMv7) | 4 | 1^2 | 16 | 8 |
 | scalar | 1 | 1 | 1 | 1 |
 
-¹ AVX has no 256-bit integer ops, so the integer lane vectors stay 128-bit.
-² ARMv7 has no f64 SIMD: `alwan_simd_f64` is a plain `double` and f64 work runs
+^1 AVX has no 256-bit integer ops, so the integer lane vectors stay 128-bit.
+^2 ARMv7 has no f64 SIMD: `alwan_simd_f64` is a plain `double` and f64 work runs
 scalar (one lane). `aarch64` has native `float64x2_t`.
 
 `ALWAN_ALIGN(n)` (same header) maps to `__declspec(align(n))` on MSVC and
@@ -62,7 +62,7 @@ scalar (one lane). `aarch64` has native `float64x2_t`.
 
 ## Transcendentals and `ALWAN_HAS_SVML`
 
-Element-wise SIMD transcendentals (`pow`, `cbrt`, `log2`, `exp2`, …) have two
+Element-wise SIMD transcendentals (`pow`, `cbrt`, `log2`, `exp2`, ...) have two
 implementations, gated by `ALWAN_HAS_SVML` in `alwan_simd_types.h`:
 
 ```c
@@ -77,7 +77,7 @@ implementations, gated by `ALWAN_HAS_SVML` in `alwan_simd_types.h`:
 
 | `ALWAN_HAS_SVML` | Compilers | SIMD transcendentals use |
 |------------------|-----------|--------------------------|
-| `1` | Intel C/C++, Intel LLVM, MSVC x64 | true vector intrinsics: `_mm_cbrt_ps`, `_mm_pow_ps`, `_mm256_*_pd`, … (libm-accurate) |
+| `1` | Intel C/C++, Intel LLVM, MSVC x64 | true vector intrinsics: `_mm_cbrt_ps`, `_mm_pow_ps`, `_mm256_*_pd`, ... (libm-accurate) |
 | `0` | GCC/Clang on x86, **all NEON/ARM**, scalar | per-lane scalar / minimax-polynomial `_fast` impls |
 
 When SVML is absent, the SIMD kernels fall back to polynomial/bit-trick `_fast`
@@ -90,7 +90,7 @@ impls in `simd/alwan_simd_scalar.h`, for example:
 - f64 `alwan_simd_f64_pow24` / `_pow_inv24` route through `ALWAN_POW_F64` (libm)
   even on the fast path, since f64 has no polynomial twin.
 
-### Fast-mode scalar ↔ SIMD agreement (incl. NEON)
+### Fast-mode scalar <-> SIMD agreement (incl. NEON)
 
 The scalar `_v` value API and the SIMD `Map` kernels must produce **matching**
 results in fast mode. The risk: on a platform with no accurate vector `pow`
@@ -165,7 +165,7 @@ Notes:
 Sharpmake is the reference build system; CMake replicates it. The Sharpmake
 Release configuration **hardcodes** `/arch:AVX2`
 (`buildsystem/sharpmake/src/common.cs`), so the reference Windows Release binary
-selects the AVX2 backend (f32 ×8, f64 ×4). Debug builds use the compiler default.
+selects the AVX2 backend (f32 x8, f64 x4). Debug builds use the compiler default.
 
 ---
 
@@ -185,7 +185,7 @@ throughput; **deterministic mode** (`ALWAN_DETERMINISTIC=1`, CMake
 The reason native horizontal reductions are not deterministic is lane order:
 SSE2's 4-lane tree, AVX's 8-lane tree, and NEON's `vaddvq_*` sum in
 implementation-defined orders that differ in the last ULP. **Element-wise** SIMD
-ops (per-lane add/mul/sqrt/…) are bit-identical regardless of width, so only the
+ops (per-lane add/mul/sqrt/...) are bit-identical regardless of width, so only the
 reductions and the transcendentals need the deterministic treatment. The full
 det-mode contract (FMA, SVML, NEON, polynomial transfer functions) is documented
 in [determinism.md](determinism.md).

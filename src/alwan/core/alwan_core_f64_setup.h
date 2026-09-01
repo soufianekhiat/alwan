@@ -96,6 +96,12 @@
 #define ALWAN_CORE_SATURATE  alwan_saturate_f64
 #define ALWAN_CORE_LERP      alwan_lerp_f64
 
+/* See the note in alwan_core_f32_setup.h. */
+#define ALWAN_CORE_PARAM_OUT ALWAN_CORE_T *
+#define ALWAN_CORE_REF(p)    (*(p))
+#define ALWAN_CORE_ADDR(x)   (&(x))
+#define ALWAN_CORE_PARAM_ARRAY_OUT(type, name, n) type name[n]
+
 /* Type aliases */
 #define ALWAN_CORE_VEC2               alwan_vec2_f64
 #define ALWAN_CORE_VEC3               alwan_vec3_f64

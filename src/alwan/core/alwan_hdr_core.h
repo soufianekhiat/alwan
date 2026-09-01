@@ -341,10 +341,10 @@ ALWAN_INLINE void alwan_st2086_init_v(alwan_scalar display_primaries_xy[6],
                                        alwan_scalar white_point_xy[2],
                                        alwan_scalar max_luminance,
                                        alwan_scalar min_luminance,
-                                       alwan_scalar *out_primaries_xy,
-                                       alwan_scalar *out_white_xy,
-                                       alwan_scalar *out_max_lum,
-                                       alwan_scalar *out_min_lum) {
+                                       ALWAN_PARAM_ARRAY_OUT(alwan_scalar, out_primaries_xy, 6),
+                                       ALWAN_PARAM_ARRAY_OUT(alwan_scalar, out_white_xy, 2),
+                                       ALWAN_PARAM_SCALAR_OUT out_max_lum,
+                                       ALWAN_PARAM_SCALAR_OUT out_min_lum) {
     out_primaries_xy[0] = display_primaries_xy[0];
     out_primaries_xy[1] = display_primaries_xy[1];
     out_primaries_xy[2] = display_primaries_xy[2];
@@ -353,10 +353,14 @@ ALWAN_INLINE void alwan_st2086_init_v(alwan_scalar display_primaries_xy[6],
     out_primaries_xy[5] = display_primaries_xy[5];
     out_white_xy[0] = white_point_xy[0];
     out_white_xy[1] = white_point_xy[1];
-    *out_max_lum = max_luminance;
-    *out_min_lum = min_luminance;
+    ALWAN_REF(out_max_lum) = max_luminance;
+    ALWAN_REF(out_min_lum) = min_luminance;
 }
 
+/* Scans a strided host buffer, so it is a CPU function: a shader reads pixels
+ * from a resource, not from a pointer walked with a byte stride. Kept out of
+ * the shader translation unit rather than left to fail on the pointer. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C || ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
 ALWAN_INLINE alwan_scalar alwan_content_light_level_v(alwan_scalar const *rgb_data,
                                                         size_t count,
                                                         size_t stride_bytes) {
@@ -370,6 +374,7 @@ ALWAN_INLINE alwan_scalar alwan_content_light_level_v(alwan_scalar const *rgb_da
     }
     return max_val;
 }
+#endif /* CPU backends */
 
 #endif
 

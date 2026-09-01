@@ -51,7 +51,7 @@ Calculate pupil diameter based on luminance and stimulus angular size.
 
 **Example:**
 ```c
-// Pupil size for 100 cd/m^2 display, 60° field of view
+// Pupil size for 100 cd/m^2 display, 60 deg field of view
 alwan_scalar d = alwan_pupil_diameter_barten1999(100.0, 60.0, 60.0);
 // d ~= 3.2 mm
 ```
@@ -214,7 +214,7 @@ Compute contrast sensitivity at a given spatial frequency using the full Barten 
 
 **Example:**
 ```c
-// Full workflow: luminance → pupil → sigma, E → CSF
+// Full workflow: luminance -> pupil -> sigma, E -> CSF
 alwan_scalar L = 100.0;  // 100 cd/m^2 display
 
 // Calculate optical parameters

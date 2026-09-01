@@ -75,6 +75,34 @@ ALWAN_INLINE alwan_scalar alwan_agx_curve_v(alwan_scalar t) {
         ALWAN_LITERAL( -0.00232));
 }
 
+/* ASC CDL: slope, offset, power, then saturation around BT.709 luma. The GPU
+ * mirror of the .inc definition; both graders below call it, so without it this
+ * core names an undefined function and cannot compile as a shader. */
+ALWAN_INLINE alwan_vec3 alwan_cdl_apply_v(
+    alwan_vec3 rgb,
+    alwan_scalar slope_r, alwan_scalar slope_g, alwan_scalar slope_b,
+    alwan_scalar offset_r, alwan_scalar offset_g, alwan_scalar offset_b,
+    alwan_scalar power_r, alwan_scalar power_g, alwan_scalar power_b,
+    alwan_scalar sat) {
+    alwan_vec3 result;
+    /* Slope + Offset + Clamp */
+    alwan_scalar r = alwan_saturate(rgb.v[0] * slope_r + offset_r);
+    alwan_scalar g = alwan_saturate(rgb.v[1] * slope_g + offset_g);
+    alwan_scalar b = alwan_saturate(rgb.v[2] * slope_b + offset_b);
+    /* Power */
+    r = ALWAN_POW(r, power_r);
+    g = ALWAN_POW(g, power_g);
+    b = ALWAN_POW(b, power_b);
+    /* Saturation around BT.709 luma */
+    alwan_scalar luma = ALWAN_LUMA_KR_BT709 * r
+                      + ALWAN_LUMA_KG_BT709 * g
+                      + ALWAN_LUMA_KB_BT709 * b;
+    result.v[0] = alwan_saturate(luma + sat * (r - luma));
+    result.v[1] = alwan_saturate(luma + sat * (g - luma));
+    result.v[2] = alwan_saturate(luma + sat * (b - luma));
+    return result;
+}
+
 ALWAN_INLINE alwan_vec3 alwan_agx_punchy_grade_v(alwan_vec3 rgb) {
     return alwan_cdl_apply_v(rgb,
         ALWAN_ONE, ALWAN_ONE, ALWAN_ONE,           /* slope = 1 */

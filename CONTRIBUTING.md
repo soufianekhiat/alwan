@@ -137,7 +137,7 @@ void const *src
 
 The survey distinguishes them by element type, pointers to scalar types
 (`alwan_f32`, `alwan_f64`, `float`, `double`, `void`, `uint8_t`,
-`alwan_map_lane`, …) and matching names are buffers; pointers to known
+`alwan_map_lane`, ...) and matching names are buffers; pointers to known
 struct types are knobs.
 
 ---
@@ -207,7 +207,7 @@ return their result by value (suffix `_v`).
 
 ```sh
 # Sharpmake (reference)
-# … see buildsystem/sharpmake/README
+# ... see buildsystem/sharpmake/README
 
 # CMake
 cmake -S . -B build

@@ -73,7 +73,7 @@ alwan_f32 alwan_cct_hernandez_xy_f32(alwan_vec2_f32 const *xy);
 alwan_f64 alwan_cct_hernandez_xy_f64(alwan_vec2_f64 const *xy);
 ```
 
-Hernández-Andrés et al. 1999 analytical formula. Valid range: 3000K-50000K.
+Hernandez-Andres et al. 1999 analytical formula. Valid range: 3000K-50000K.
 
 ### alwan_cct_kang_xy
 
@@ -225,7 +225,7 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance,
 
 CIE Special Metamerism Index (change in illuminant): quantifies color mismatch when
 samples that match under a reference illuminant are viewed under a test illuminant.
-Returns the metamerism index as ΔE*ab under the test illuminant, or negative on error.
+Returns the metamerism index as DeltaE*ab under the test illuminant, or negative on error.
 
 ---
 
@@ -302,4 +302,4 @@ functions return a score directly and signal failure with a negative value.
 
 - [Spectral Operations](spectral.md): SPD creation and integration
 - [Chromatic Adaptation](chromatic-adaptation.md): White point transforms
-- [Color Difference](color-difference.md): ΔE metrics
+- [Color Difference](color-difference.md): DeltaE metrics

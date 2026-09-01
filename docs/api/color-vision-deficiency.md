@@ -11,11 +11,11 @@ color vision deficiencies. Alwan implements two complementary models, selectable
 
 | Model | Enum | Method | Best for |
 |-------|------|--------|----------|
-| **Brettel, Viénot & Mollon (1997)** | `ALWAN_CVD_MODEL_BRETTEL` | Confusion lines (projection onto the dichromat plane in LMS) | Full dichromacy |
-| **Machado, Oliveira & Fernandes (2009)** | `ALWAN_CVD_MODEL_MACHADO` | Cone spectral-sensitivity shift, applied as a per-severity sRGB→sRGB 3×3 matrix | Anomalous (partial) trichromacy |
+| **Brettel, Vienot & Mollon (1997)** | `ALWAN_CVD_MODEL_BRETTEL` | Confusion lines (projection onto the dichromat plane in LMS) | Full dichromacy |
+| **Machado, Oliveira & Fernandes (2009)** | `ALWAN_CVD_MODEL_MACHADO` | Cone spectral-sensitivity shift, applied as a per-severity sRGB->sRGB 3x3 matrix | Anomalous (partial) trichromacy |
 
 The Machado model uses precomputed matrices at **11 discrete severity levels**
-(`severity = 0.0, 0.1, … 1.0`) and linearly interpolates between them for continuous
+(`severity = 0.0, 0.1, ... 1.0`) and linearly interpolates between them for continuous
 parameterization. The matrices are embedded via the gendata pipeline (`ALWAN_EMBED_DATA`).
 
 **Types of color vision deficiency:**
@@ -61,8 +61,8 @@ typedef enum {
 } alwan_cvd_model;
 ```
 
-For Machado, `cvd_type` is folded onto its dimension: `PROTANOPIA`/`PROTANOMALY` → protan,
-`DEUTERANOPIA`/`DEUTERANOMALY` → deutan, `TRITANOPIA`/`TRITANOMALY` → tritan.
+For Machado, `cvd_type` is folded onto its dimension: `PROTANOPIA`/`PROTANOMALY` -> protan,
+`DEUTERANOPIA`/`DEUTERANOMALY` -> deutan, `TRITANOPIA`/`TRITANOMALY` -> tritan.
 
 ---
 
@@ -82,7 +82,7 @@ int alwan_simulate_cvd_f64(alwan_rgb_f64 *rgb_out,
                            alwan_f64 severity);
 ```
 
-Simulate color vision deficiency for a single linear-RGB color using the Brettel/Viénot/Mollon
+Simulate color vision deficiency for a single linear-RGB color using the Brettel/Vienot/Mollon
 confusion-line model.
 
 **Parameters:**
@@ -109,7 +109,7 @@ int alwan_simulate_cvd_machado_f64(alwan_rgb_f64 *rgb_out,
                                    alwan_f64 severity);
 ```
 
-Cone-shift model. `severity` in [0, 1] indexes/interpolates the 11 precomputed sRGB→sRGB
+Cone-shift model. `severity` in [0, 1] indexes/interpolates the 11 precomputed sRGB->sRGB
 matrices, where 0 = normal vision and 1 = full dichromacy.
 
 ### alwan_simulate_cvd_ex_{T} (model-selectable)
