@@ -4,13 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [2.0.0], 2026-08-31
+## [2.0.0], 2026-09-01
 
 First public release (tag `v2.0.0`).
 
 The tag sits after a correctness pass over the areas that had no external
-ground truth, 2026-08-27..28, and a pass over the GPU-reachable core,
-2026-08-30..31. Several entries below change published output relative to the
+ground truth, 2026-08-27..28, a pass over the GPU-reachable core, 2026-08-30..31,
+and a build-matrix pass over every combination of build system, precision,
+determinism, linkage and toolchain, 2026-09-01. Several entries below change published output relative to the
 2026-08-19 pre-release build; they are listed first because a caller who
 pinned values against that build will see them.
 
@@ -60,6 +61,11 @@ pinned values against that build will see them.
 
 ### Added
 
+- **Sharpmake reaches the precision axis.** `ALWAN_BUILD_PRECISION` (`both`,
+  `f32`, `f64`) is read at generation time and adds the matching define, so the
+  same axis is drivable from both build systems instead of requiring an edit to
+  `AlwanLib.cs`.
+
 - `alwan_dev/tools/check_gpu_identifiers.py`: reserved-word lint over the
   GPU-reachable lines of every core (101 words probed against dxc, plus the
   GLSL 4.60 and Metal lists); gates the Tooling CI job and runs as a post-build
@@ -89,6 +95,26 @@ pinned values against that build will see them.
   clustered by area in `docs/alwan_future.md` theme 10.
 
 ### Fixed: no output change
+
+- **A single-precision build could not be linked as a shared library.**
+  `ALWAN_BUILD_ONLY_F32` left 219 unresolved symbols and `ALWAN_BUILD_ONLY_F64`
+  left 203, because entry points written by hand rather than emitted from the
+  dual-precision `.inc` carried no precision gate, the typed `_ex` delegates
+  named both precisions' workers unconditionally, and the f64-internal facades
+  reached past the extent of `ALWAN_WITH_F64_FACADE`. A static archive never
+  resolves a symbol nothing references and an ELF shared object permits
+  undefined symbols by default, so only an MSVC DLL failed. Every pixel format
+  keeps working in a single-precision build: the typed tile loaders read and
+  write all of them through whichever worker was compiled. Output in the
+  default dual-precision build is unchanged, and the suite executes the same
+  75,034 checks it did before.
+- **An f32-only build is no longer meaningfully smaller.** Measured on a static
+  MSVC Release build: dual 69.3 MB, f32-only 67.1 MB, f64-only 45.8 MB. Keeping
+  the f64-internal facades means an f32 entry point defined to compute in
+  double pulls in the f64 spectral, colorspace, CAT, CAM, LUT and Oklab code
+  and the tables it reads. `ALWAN_BUILD_ONLY_F32` selects a float-only API
+  surface; `ALWAN_BUILD_ONLY_F64` is the one that selects a smaller library.
+  See [docs/configuration.md](docs/configuration.md).
 
 - **Core headers compiled as HLSL failed on reserved words.** The cores are
   one source for every backend and the_flow compiles them as HLSL through
