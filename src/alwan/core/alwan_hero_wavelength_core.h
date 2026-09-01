@@ -89,7 +89,7 @@ ALWAN_INLINE alwan_xyz alwan_hero_wavelength_to_xyz_v(alwan_scalar lambda) {
 }
 
 ALWAN_INLINE alwan_scalar alwan_hero_wavelength_pdf_v(alwan_scalar lambda) {
-    (void)lambda;
+    ALWAN_UNUSED(lambda);
     return ALWAN_ONE / ALWAN_LITERAL(400.0);
 }
 

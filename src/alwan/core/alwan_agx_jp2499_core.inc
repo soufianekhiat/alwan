@@ -41,7 +41,7 @@ typedef struct {
  * log(x)/log(base) == log2(x)/log2(base), so the natural logs become log2
  * (ALWAN_CORE has no natural LOG on every backend). */
 ALWAN_INLINE ALWAN_CORE_FNLIT(jp2499_ts) ALWAN_CORE_FN(jp2499_tonescale_params)(ALWAN_CORE_T Lp) {
-    ALWAN_CORE_T const C = ALWAN_CORE_LITERAL(1.15), FL = ALWAN_CORE_LITERAL(0.041), gb = ALWAN_CORE_LITERAL(0.12);
+    const ALWAN_CORE_T C = ALWAN_CORE_LITERAL(1.15), FL = ALWAN_CORE_LITERAL(0.041), gb = ALWAN_CORE_LITERAL(0.12);
     ALWAN_CORE_T px = ALWAN_CORE_LITERAL(256.0) * ALWAN_CORE_LOG2(Lp) / ALWAN_CORE_LOG2(ALWAN_CORE_LITERAL(100.0)) - ALWAN_CORE_LITERAL(128.0);
     ALWAN_CORE_T py = Lp / ALWAN_CORE_LITERAL(100.0);
     ALWAN_CORE_T gx = ALWAN_CORE_LITERAL(0.18);
@@ -59,8 +59,8 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(jp2499_ts) ALWAN_CORE_FN(jp2499_tonescale_params)(
 
 /* Hexagonal boundary. asin(x) == pi/2 - acos(x) (ALWAN_CORE has no ASIN). */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FN(jp2499_triangle)(ALWAN_CORE_T t) {
-    ALWAN_CORE_T const pi = ALWAN_CORE_LITERAL(3.14159265358979323846);
-    ALWAN_CORE_T const halfpi = ALWAN_CORE_LITERAL(1.57079632679489661923);
+    const ALWAN_CORE_T pi = ALWAN_CORE_LITERAL(3.14159265358979323846);
+    const ALWAN_CORE_T halfpi = ALWAN_CORE_LITERAL(1.57079632679489661923);
     ALWAN_CORE_T asin_c = halfpi - ALWAN_CORE_ACOS(ALWAN_CORE_COS(ALWAN_CORE_LITERAL(3.0) * t));
     return ALWAN_CORE_COS(pi / ALWAN_CORE_LITERAL(3.0))
          / ALWAN_CORE_COS((ALWAN_CORE_LITERAL(2.0) * asin_c + pi) / ALWAN_CORE_LITERAL(6.0))
@@ -70,8 +70,8 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FN(jp2499_triangle)(ALWAN_CORE_T t) {
 /* Rotated/scaled "moment" chromaticities around white (1/3, 1/3). */
 ALWAN_INLINE ALWAN_CORE_FNLIT(jp2499_chr) ALWAN_CORE_FN(jp2499_inset_chr)(
         ALWAN_CORE_VEC3 rot, ALWAN_CORE_VEC3 scale) {
-    ALWAN_CORE_T const pi = ALWAN_CORE_LITERAL(3.14159265358979323846);
-    ALWAN_CORE_T const third = ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T pi = ALWAN_CORE_LITERAL(3.14159265358979323846);
+    const ALWAN_CORE_T third = ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0);
     ALWAN_CORE_FNLIT(jp2499_chr) out_chr;
     for (int i = 0; i < 3; i++) {
         ALWAN_CORE_T off = (ALWAN_CORE_T)i * ALWAN_CORE_LITERAL(2.0) * pi / ALWAN_CORE_LITERAL(3.0);
@@ -179,11 +179,11 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FN(jp2499_powerptoe)(ALWAN_CORE_T x,
 
 /* One ratio pass: normalise by the weighted norm, toe the ratios, recombine. */
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FN(jp2499_ratio_toe)(ALWAN_CORE_VEC3 rgb) {
-    ALWAN_CORE_T const w0 = ALWAN_CORE_LITERAL(0.25), w1 = ALWAN_CORE_LITERAL(0.45), w2 = ALWAN_CORE_LITERAL(0.3);
+    const ALWAN_CORE_T w0 = ALWAN_CORE_LITERAL(0.25), w1 = ALWAN_CORE_LITERAL(0.45), w2 = ALWAN_CORE_LITERAL(0.3);
     ALWAN_CORE_T lum = w0 * ALWAN_CORE_MAX(ALWAN_CORE_ZERO, rgb.v[0])
                      + w1 * ALWAN_CORE_MAX(ALWAN_CORE_ZERO, rgb.v[1])
                      + w2 * ALWAN_CORE_MAX(ALWAN_CORE_ZERO, rgb.v[2]);
-    ALWAN_CORE_T const pp_p = ALWAN_CORE_LITERAL(0.05);
+    const ALWAN_CORE_T pp_p = ALWAN_CORE_LITERAL(0.05);
     ALWAN_CORE_T rr = ALWAN_CORE_FN(jp2499_powerptoe)(ALWAN_CORE_FN(jp2499_sdiv)(rgb.v[0], lum), pp_p, ALWAN_CORE_ZERO, ALWAN_CORE_ONE);
     ALWAN_CORE_T rg = ALWAN_CORE_FN(jp2499_powerptoe)(ALWAN_CORE_FN(jp2499_sdiv)(rgb.v[1], lum), pp_p, ALWAN_CORE_ZERO, ALWAN_CORE_ONE);
     ALWAN_CORE_T rb = ALWAN_CORE_FN(jp2499_powerptoe)(ALWAN_CORE_FN(jp2499_sdiv)(rgb.v[2], lum), pp_p, ALWAN_CORE_ZERO, ALWAN_CORE_ONE);

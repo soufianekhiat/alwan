@@ -19,17 +19,34 @@ does **not** carry over unchanged.
 > analytic render** (fast ULP / det bit‑exact) and the **deterministic sRGB +
 > BT.2020 transfer set** (bit‑exact 64/64).
 >
-> Compile‑verified under dxc, fast and `ALWAN_DETERMINISTIC=1`, one
-> translation unit per core through `alwan_hlsl.h`: **32 of 43 `*_core.h`**
-> (measured 2026-08-30, dxc 1.8.2502; the list is
-> `alwan_dev/hlsl_regression/cores_dxc_clean.txt`, gated by
-> `alwan_dev/tools/check_gpu_compile.py`). The 11 that do not compile, with
-> the first error class: `atd95`, `hunt`, `quality`, `view` (an `ALWAN_CORE_*`
-> constant or helper the GPU setup does not define), `extended` (pointer
-> out‑params in the `.inc` it feeds to the GPU), `hellwig2022` (an operator
-> HLSL lacks), `hdr` (a pointer stride loop in the GPU branch), `half`,
-> `lut`, `table`, `vision` (`<stdint.h>` / `<stddef.h>` reached from the GPU
-> branch, and `size_t`).
+> Compile-verified under **both** shader compilers, fast and
+> `ALWAN_DETERMINISTIC=1`, one translation unit per core through
+> `alwan_hlsl.h`: **32 of 43 `*_core.h`** under dxc (Shader Model 6, DXIL) and
+> the **same 32 of 43** under fxc (Shader Model 5, DXBC). Measured 2026-09-01,
+> dxc 1.8.2502 and fxc 10.1 from Windows SDK 10.0.26100. The lists are
+> `alwan_dev/hlsl_regression/cores_dxc_clean.txt` and `cores_fxc_clean.txt`,
+> both gated by `alwan_dev/tools/check_gpu_compile.py`. The 11 that do not
+> compile are the same set on both, with the first error class: `atd95`,
+> `hunt`, `quality`, `view` (an `ALWAN_CORE_*` constant or helper the GPU setup
+> does not define), `extended` (pointer out-params in the `.inc` it feeds to
+> the GPU), `hellwig2022` (an operator HLSL lacks), `hdr` (a pointer stride
+> loop in the GPU branch), `half`, `lut`, `table`, `vision` (`<stdint.h>` /
+> `<stddef.h>` reached from the GPU branch, and `size_t`).
+>
+> **Both compilers are gated, because they disagree about what HLSL is.** dxc
+> is Clang-based and accepts C-shaped syntax that the legacy grammar never
+> allowed. fxc is what Shader Model 5 and D3D11 content compiles with, and it
+> is stricter. Two constructs that compile under dxc and are hard errors under
+> fxc shipped in 2.0.0 and were fixed in 2.0.1:
+>
+> - **East const.** `alwan_scalar const a = ...` is `error X3000: syntax error:
+>   unexpected token 'const'` under fxc, followed by a spurious `X3080:
+>   function must return a value` because the enclosing function failed to
+>   parse. Qualifiers must precede the type. `alwan_dev/tools/check_east_const.py`
+>   gates this without needing a compiler, over `src/alwan/core` and the
+>   platform layer; outside that tier east const is legal C and is left alone.
+> - **`(void)x;` casts.** Not valid HLSL. Use `ALWAN_UNUSED(x)`, which is empty
+>   on the HLSL and GLSL branches.
 >
 > Keyword collisions are a closed class: `alwan_dev/tools/check_gpu_identifiers.py`
 > scans every GPU‑reachable line of the cores (and the `.inc` files fed to the

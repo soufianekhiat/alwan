@@ -291,17 +291,17 @@ ALWAN_INLINE ALWAN_CORE_YCCBCCRC ALWAN_CORE_FNVLIT(alwan_rgb_to_yccbccrc)(ALWAN_
     ALWAN_CORE_YCCBCCRC result;
 
     /* BT.2020 constant-luminance luma coefficients -- ITU-R BT.2020-2 Table 4 */
-    ALWAN_CORE_T const kr = ALWAN_CORE_LITERAL(0.2627);
-    ALWAN_CORE_T const kg = ALWAN_CORE_LITERAL(0.6780);
-    ALWAN_CORE_T const kb = ALWAN_CORE_LITERAL(0.0593);
+    const ALWAN_CORE_T kr = ALWAN_CORE_LITERAL(0.2627);
+    const ALWAN_CORE_T kg = ALWAN_CORE_LITERAL(0.6780);
+    const ALWAN_CORE_T kb = ALWAN_CORE_LITERAL(0.0593);
 
     /* Linear Yc */
     ALWAN_CORE_T yc_linear = kr * rgb.r + kg * rgb.g + kb * rgb.b;
 
     /* BT.2020 OETF -- ITU-R BT.2020-2 sec 4 (same form as BT.709, different threshold)
      * alpha=1.099, beta=0.018 are the 10/12-bit precision constants from Table 5. */
-    ALWAN_CORE_T const beta = ALWAN_CORE_LITERAL(0.018);
-    ALWAN_CORE_T const alpha = ALWAN_CORE_LITERAL(1.099);
+    const ALWAN_CORE_T beta = ALWAN_CORE_LITERAL(0.018);
+    const ALWAN_CORE_T alpha = ALWAN_CORE_LITERAL(1.099);
 
     ALWAN_CORE_T yc = ALWAN_CORE_SELECT(yc_linear < beta,
                                    ALWAN_CORE_LITERAL(4.5) * yc_linear,
@@ -338,9 +338,9 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_yccbccrc_to_rgb)(ALWAN_CORE_
     ALWAN_CORE_RGB result;
 
     /* BT.2020 constant-luminance luma coefficients -- ITU-R BT.2020-2 Table 4 */
-    ALWAN_CORE_T const kr = ALWAN_CORE_LITERAL(0.2627);
-    ALWAN_CORE_T const kg = ALWAN_CORE_LITERAL(0.6780);
-    ALWAN_CORE_T const kb = ALWAN_CORE_LITERAL(0.0593);
+    const ALWAN_CORE_T kr = ALWAN_CORE_LITERAL(0.2627);
+    const ALWAN_CORE_T kg = ALWAN_CORE_LITERAL(0.6780);
+    const ALWAN_CORE_T kb = ALWAN_CORE_LITERAL(0.0593);
 
     /* Reverse legal range scaling */
     ALWAN_CORE_FNLIT(alwan_legal_range) lr = ALWAN_CORE_FNLIT(alwan_legal_range_from_bit_depth)(bit_depth);
@@ -362,9 +362,9 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_yccbccrc_to_rgb)(ALWAN_CORE_
     ALWAN_CORE_T b_gamma = yc + diff_b;
 
     /* BT.2020 EOTF -- ITU-R BT.2020-2 sec 4, inverse of OETF */
-    ALWAN_CORE_T const beta = ALWAN_CORE_LITERAL(0.018);
-    ALWAN_CORE_T const alpha = ALWAN_CORE_LITERAL(1.099);
-    ALWAN_CORE_T const threshold = ALWAN_CORE_LITERAL(4.5) * beta;
+    const ALWAN_CORE_T beta = ALWAN_CORE_LITERAL(0.018);
+    const ALWAN_CORE_T alpha = ALWAN_CORE_LITERAL(1.099);
+    const ALWAN_CORE_T threshold = ALWAN_CORE_LITERAL(4.5) * beta;
 
     ALWAN_CORE_T yc_linear = ALWAN_CORE_SELECT(yc < threshold,
                                           yc / ALWAN_CORE_LITERAL(4.5),
@@ -531,9 +531,9 @@ ALWAN_INLINE ALWAN_CORE_HSP ALWAN_CORE_FNVLIT(alwan_rgb_to_hsp)(ALWAN_CORE_RGB r
     result.s = hsv.s;
 
     /* P = sqrt(Pr*R^2 + Pg*G^2 + Pb*B^2) */
-    ALWAN_CORE_T const Pr = ALWAN_CORE_LITERAL(0.299);
-    ALWAN_CORE_T const Pg = ALWAN_CORE_LITERAL(0.587);
-    ALWAN_CORE_T const Pb = ALWAN_CORE_LITERAL(0.114);
+    const ALWAN_CORE_T Pr = ALWAN_CORE_LITERAL(0.299);
+    const ALWAN_CORE_T Pg = ALWAN_CORE_LITERAL(0.587);
+    const ALWAN_CORE_T Pb = ALWAN_CORE_LITERAL(0.114);
     result.p = ALWAN_CORE_SQRT(Pr * rgb.r * rgb.r + Pg * rgb.g * rgb.g + Pb * rgb.b * rgb.b);
 
     return result;
@@ -542,9 +542,9 @@ ALWAN_INLINE ALWAN_CORE_HSP ALWAN_CORE_FNVLIT(alwan_rgb_to_hsp)(ALWAN_CORE_RGB r
 ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hsp_to_rgb)(ALWAN_CORE_HSP hsp) {
     ALWAN_CORE_RGB result;
 
-    ALWAN_CORE_T const Pr = ALWAN_CORE_LITERAL(0.299);
-    ALWAN_CORE_T const Pg = ALWAN_CORE_LITERAL(0.587);
-    ALWAN_CORE_T const Pb = ALWAN_CORE_LITERAL(0.114);
+    const ALWAN_CORE_T Pr = ALWAN_CORE_LITERAL(0.299);
+    const ALWAN_CORE_T Pg = ALWAN_CORE_LITERAL(0.587);
+    const ALWAN_CORE_T Pb = ALWAN_CORE_LITERAL(0.114);
 
     ALWAN_CORE_T h = hsp.h * ALWAN_CORE_LITERAL(360.0);
     ALWAN_CORE_T s = hsp.s;
@@ -748,9 +748,9 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan__hsy_max_chroma)(ALWAN_CORE_T h
 ALWAN_INLINE ALWAN_CORE_HSY ALWAN_CORE_FNVLIT(alwan_rgb_to_hsy)(ALWAN_CORE_RGB rgb) {
     ALWAN_CORE_HSY result;
 
-    ALWAN_CORE_T const kr = ALWAN_CORE_LITERAL(0.299);
-    ALWAN_CORE_T const kg = ALWAN_CORE_LITERAL(0.587);
-    ALWAN_CORE_T const kb = ALWAN_CORE_LITERAL(0.114);
+    const ALWAN_CORE_T kr = ALWAN_CORE_LITERAL(0.299);
+    const ALWAN_CORE_T kg = ALWAN_CORE_LITERAL(0.587);
+    const ALWAN_CORE_T kb = ALWAN_CORE_LITERAL(0.114);
 
     /* H is identical to HSV */
     ALWAN_CORE_HSV hsv = ALWAN_CORE_FNVLIT(alwan_rgb_to_hsv)(rgb);
@@ -790,9 +790,9 @@ ALWAN_INLINE ALWAN_CORE_HSY ALWAN_CORE_FNVLIT(alwan_rgb_to_hsy)(ALWAN_CORE_RGB r
 ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hsy_to_rgb)(ALWAN_CORE_HSY hsy) {
     ALWAN_CORE_RGB result;
 
-    ALWAN_CORE_T const kr = ALWAN_CORE_LITERAL(0.299);
-    ALWAN_CORE_T const kg = ALWAN_CORE_LITERAL(0.587);
-    ALWAN_CORE_T const kb = ALWAN_CORE_LITERAL(0.114);
+    const ALWAN_CORE_T kr = ALWAN_CORE_LITERAL(0.299);
+    const ALWAN_CORE_T kg = ALWAN_CORE_LITERAL(0.587);
+    const ALWAN_CORE_T kb = ALWAN_CORE_LITERAL(0.114);
 
     ALWAN_CORE_T h = hsy.h;
     ALWAN_CORE_T s = hsy.s;

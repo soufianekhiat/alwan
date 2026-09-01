@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.0.1], 2026-09-01
+
+Fixes the HLSL headers under fxc (Shader Model 5, D3D11). Reported by a
+consumer who includes the headers into a generated pixel shader and compiles
+with fxc; every issue was invisible to the dxc-only matrix in 2.0.0.
+
+### Fixed
+
+- **East const in the GPU-portable tier.** Type qualifiers were written after
+  the type (`alwan_scalar const a = ...`). fxc's legacy grammar requires them
+  before the type and rejects the east form with `error X3000: syntax error:
+  unexpected token 'const'`, followed by a spurious `X3080: function must
+  return a value` from the enclosing function failing to parse. dxc is
+  Clang-based and accepts both orders, which is why this shipped. Rewritten to
+  the west form at 814 sites across 50 files, in both the `.h` GPU branch and
+  the `.inc` template so the two stay in lockstep. Value declarations only:
+  pointer forms are untouched, since `T *const p` is not `const T *p`.
+- **`(void)x;` casts in `core/`.** Not valid HLSL, and the reason
+  `alwan_hero_wavelength_core.h` was the one core that failed under fxc but
+  passed under dxc. Now routed through `ALWAN_UNUSED(x)`, which already existed
+  and is empty on the GPU branches. 12 sites in `half`, `hero_wavelength` and
+  `table`.
+
+### Changed
+
+- The GPU compile gate runs **both** shader compilers, not just dxc:
+  `check_gpu_compile.py --compiler dxc|fxc|both`, with a per-compiler
+  expected-clean list. fxc now compiles the same 32 of 43 cores as dxc, and
+  both run in the Tooling CI job. Gating on dxc alone is what let this class
+  ship, and it had already happened once, with the `linear` keyword in 2.0.0.
+- New lint `alwan_dev/tools/check_east_const.py` (with `--fix`) gates east
+  const over `src/alwan/core` and the platform layer, without needing a shader
+  compiler. Outside that tier east const is legal C and is not flagged. It
+  skips preprocessor directives: `# define ALWAN_CONSTEXPR const` is a macro
+  definition, and reordering it would redefine the `const` keyword itself.
+
+No behaviour change on the C side: 107 test suites and 75,034 checks pass
+unchanged, and the rewrite is a pure reordering of tokens.
+
+---
+
 ## [2.0.0], 2026-09-01
 
 First public release (tag `v2.0.0`).

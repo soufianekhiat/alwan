@@ -40,10 +40,10 @@ ALWAN_DIAG_POP
  * ================================================================ */
 
 ALWAN_INLINE alwan_vec3 alwan_lut3d_index_to_rgb_v(size_t index, int size) {
-    alwan_scalar const inv = ALWAN_LITERAL(1.0) / (alwan_scalar)(size - 1);
-    int const r = (int)(index % (size_t)size);
-    int const g = (int)((index / (size_t)size) % (size_t)size);
-    int const b = (int)(index / ((size_t)size * (size_t)size));
+    const alwan_scalar inv = ALWAN_LITERAL(1.0) / (alwan_scalar)(size - 1);
+    const int r = (int)(index % (size_t)size);
+    const int g = (int)((index / (size_t)size) % (size_t)size);
+    const int b = (int)(index / ((size_t)size * (size_t)size));
     alwan_vec3 result;
     result.v[0] = (alwan_scalar)r * inv;
     result.v[1] = (alwan_scalar)g * inv;

@@ -16,10 +16,10 @@
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lut3d_index_to_rgb)(size_t index, int size) {
-    ALWAN_CORE_T const inv = ALWAN_CORE_LITERAL(1.0) / (ALWAN_CORE_T)(size - 1);
-    int const r = (int)(index % (size_t)size);
-    int const g = (int)((index / (size_t)size) % (size_t)size);
-    int const b = (int)(index / ((size_t)size * (size_t)size));
+    const ALWAN_CORE_T inv = ALWAN_CORE_LITERAL(1.0) / (ALWAN_CORE_T)(size - 1);
+    const int r = (int)(index % (size_t)size);
+    const int g = (int)((index / (size_t)size) % (size_t)size);
+    const int b = (int)(index / ((size_t)size * (size_t)size));
     ALWAN_CORE_VEC3 result;
     result.v[0] = (ALWAN_CORE_T)r * inv;
     result.v[1] = (ALWAN_CORE_T)g * inv;

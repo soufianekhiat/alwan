@@ -354,8 +354,8 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_delta_e_zcam)(ALWAN_CORE_JZAZB
 
 /* dE94: CIE94 color difference (graphic arts defaults) */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_delta_e_94)(ALWAN_CORE_LAB lab1, ALWAN_CORE_LAB lab2) {
-    ALWAN_CORE_T const K1 = ALWAN_CORE_LITERAL(0.045);
-    ALWAN_CORE_T const K2 = ALWAN_CORE_LITERAL(0.015);
+    const ALWAN_CORE_T K1 = ALWAN_CORE_LITERAL(0.045);
+    const ALWAN_CORE_T K2 = ALWAN_CORE_LITERAL(0.015);
 
     ALWAN_CORE_T dL = lab1.L - lab2.L;
     ALWAN_CORE_T C1 = ALWAN_CORE_SQRT(lab1.a * lab1.a + lab1.b * lab1.b);

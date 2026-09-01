@@ -241,8 +241,8 @@ ALWAN_INLINE int ALWAN_CORE_FNVLIT(gamut_css_in_gamut)(ALWAN_CORE_VEC3 rgb) {
 }
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(gamut_css_map)(ALWAN_CORE_VEC3 origin) {
-    ALWAN_CORE_T const JND = ALWAN_CORE_LITERAL(0.02);
-    int const MAX_ITER = 30;
+    const ALWAN_CORE_T JND = ALWAN_CORE_LITERAL(0.02);
+    const int MAX_ITER = 30;
 
     if (ALWAN_CORE_FNVLIT(gamut_css_in_gamut)(origin)) {
         return origin;

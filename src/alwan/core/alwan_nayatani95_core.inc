@@ -62,11 +62,11 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_nayatani95_v_correlates) ALWAN_CORE_FNVLIT(a
     ALWAN_CORE_T E_or
 ) {
     ALWAN_CORE_FNLIT(alwan_nayatani95_v_correlates) r;
-    ALWAN_CORE_T const n = ALWAN_CORE_ONE;
-    ALWAN_CORE_T const PI = ALWAN_CORE_PI;
-    ALWAN_CORE_T const c20 = ALWAN_CORE_LITERAL(20.0);
-    ALWAN_CORE_T const twothirds = ALWAN_CORE_LITERAL(2.0) / ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T const onethird  = ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T n = ALWAN_CORE_ONE;
+    const ALWAN_CORE_T PI = ALWAN_CORE_PI;
+    const ALWAN_CORE_T c20 = ALWAN_CORE_LITERAL(20.0);
+    const ALWAN_CORE_T twothirds = ALWAN_CORE_LITERAL(2.0) / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T onethird  = ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0);
 
     /* Intermediate xi/eta/zeta from the reference-white chromaticity. */
     ALWAN_CORE_T sum = white_xyz.x + white_xyz.y + white_xyz.z;

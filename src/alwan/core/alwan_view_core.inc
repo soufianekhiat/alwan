@@ -16,11 +16,11 @@
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_aces_tonemap)(ALWAN_CORE_T x) {
-    ALWAN_CORE_T const a = ALWAN_CORE_LITERAL(2.51);
-    ALWAN_CORE_T const b = ALWAN_CORE_LITERAL(0.03);
-    ALWAN_CORE_T const c = ALWAN_CORE_LITERAL(2.43);
-    ALWAN_CORE_T const d = ALWAN_CORE_LITERAL(0.59);
-    ALWAN_CORE_T const e = ALWAN_CORE_LITERAL(0.14);
+    const ALWAN_CORE_T a = ALWAN_CORE_LITERAL(2.51);
+    const ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.03);
+    const ALWAN_CORE_T c = ALWAN_CORE_LITERAL(2.43);
+    const ALWAN_CORE_T d = ALWAN_CORE_LITERAL(0.59);
+    const ALWAN_CORE_T e = ALWAN_CORE_LITERAL(0.14);
 
     return (x * (a * x + b)) / (x * (c * x + d) + e);
 }
@@ -137,8 +137,8 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_agx_golden_grade)(ALWAN_COR
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_khronos_pbr_neutral)(ALWAN_CORE_VEC3 color) {
     ALWAN_CORE_VEC3 result;
-    ALWAN_CORE_T const start_compression = ALWAN_CORE_LITERAL(0.8) - ALWAN_CORE_LITERAL(0.04);
-    ALWAN_CORE_T const desaturation = ALWAN_CORE_LITERAL(0.15);
+    const ALWAN_CORE_T start_compression = ALWAN_CORE_LITERAL(0.8) - ALWAN_CORE_LITERAL(0.04);
+    const ALWAN_CORE_T desaturation = ALWAN_CORE_LITERAL(0.15);
 
     /* Compute offset from min channel */
     ALWAN_CORE_T x = color.v[0];
@@ -157,7 +157,7 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_khronos_pbr_neutral)(ALWAN_
     peak = ALWAN_CORE_SELECT(color.v[2] > peak, color.v[2], peak);
 
     /* Soft rolloff -- branchless: when peak < start_compression, new_peak=peak -> scale=1, g=0 */
-    ALWAN_CORE_T const d = ALWAN_CORE_LITERAL(1.0) - start_compression;
+    const ALWAN_CORE_T d = ALWAN_CORE_LITERAL(1.0) - start_compression;
     ALWAN_CORE_T safe_peak = ALWAN_CORE_SELECT(peak < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_LITERAL(1e-10), peak);
     ALWAN_CORE_T new_peak = ALWAN_CORE_SELECT(
         peak < start_compression,

@@ -374,7 +374,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_wcag_contrast_ratio)(ALWAN_COR
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_apca_contrast)(ALWAN_CORE_RGB srgb_text,
                                                   ALWAN_CORE_RGB srgb_bg) {
-    ALWAN_CORE_T const mainTRC = ALWAN_CORE_LITERAL(2.4);
+    const ALWAN_CORE_T mainTRC = ALWAN_CORE_LITERAL(2.4);
 
     ALWAN_CORE_T Rtxt = ALWAN_CORE_POW(srgb_text.r, mainTRC);
     ALWAN_CORE_T Gtxt = ALWAN_CORE_POW(srgb_text.g, mainTRC);
@@ -384,28 +384,28 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_apca_contrast)(ALWAN_CORE_RGB 
     ALWAN_CORE_T Gbg = ALWAN_CORE_POW(srgb_bg.g, mainTRC);
     ALWAN_CORE_T Bbg = ALWAN_CORE_POW(srgb_bg.b, mainTRC);
 
-    ALWAN_CORE_T const Rco = ALWAN_CORE_LITERAL(0.2126729);
-    ALWAN_CORE_T const Gco = ALWAN_CORE_LITERAL(0.7151522);
-    ALWAN_CORE_T const Bco = ALWAN_CORE_LITERAL(0.0721750);
+    const ALWAN_CORE_T Rco = ALWAN_CORE_LITERAL(0.2126729);
+    const ALWAN_CORE_T Gco = ALWAN_CORE_LITERAL(0.7151522);
+    const ALWAN_CORE_T Bco = ALWAN_CORE_LITERAL(0.0721750);
 
     ALWAN_CORE_T Ytxt = Rco * Rtxt + Gco * Gtxt + Bco * Btxt;
     ALWAN_CORE_T Ybg  = Rco * Rbg  + Gco * Gbg  + Bco * Bbg;
 
-    ALWAN_CORE_T const blkThrs = ALWAN_CORE_LITERAL(0.022);
-    ALWAN_CORE_T const blkClmp = ALWAN_CORE_LITERAL(1.414);
+    const ALWAN_CORE_T blkThrs = ALWAN_CORE_LITERAL(0.022);
+    const ALWAN_CORE_T blkClmp = ALWAN_CORE_LITERAL(1.414);
 
     ALWAN_CORE_T diffTxt = ALWAN_CORE_SELECT(Ytxt < blkThrs, blkThrs - Ytxt, ALWAN_CORE_ZERO);
     ALWAN_CORE_T diffBg  = ALWAN_CORE_SELECT(Ybg  < blkThrs, blkThrs - Ybg,  ALWAN_CORE_ZERO);
     Ytxt = ALWAN_CORE_SELECT(Ytxt < blkThrs, Ytxt + ALWAN_CORE_POW(diffTxt, blkClmp), Ytxt);
     Ybg  = ALWAN_CORE_SELECT(Ybg  < blkThrs, Ybg  + ALWAN_CORE_POW(diffBg,  blkClmp), Ybg);
 
-    ALWAN_CORE_T const normBG  = ALWAN_CORE_LITERAL(0.56);
-    ALWAN_CORE_T const normTXT = ALWAN_CORE_LITERAL(0.57);
-    ALWAN_CORE_T const revBG   = ALWAN_CORE_LITERAL(0.65);
-    ALWAN_CORE_T const revTXT  = ALWAN_CORE_LITERAL(0.62);
-    ALWAN_CORE_T const scaleBO = ALWAN_CORE_LITERAL(1.14);
-    ALWAN_CORE_T const loClip  = ALWAN_CORE_LITERAL(0.1);
-    ALWAN_CORE_T const loBoWoffset = ALWAN_CORE_LITERAL(0.027);
+    const ALWAN_CORE_T normBG  = ALWAN_CORE_LITERAL(0.56);
+    const ALWAN_CORE_T normTXT = ALWAN_CORE_LITERAL(0.57);
+    const ALWAN_CORE_T revBG   = ALWAN_CORE_LITERAL(0.65);
+    const ALWAN_CORE_T revTXT  = ALWAN_CORE_LITERAL(0.62);
+    const ALWAN_CORE_T scaleBO = ALWAN_CORE_LITERAL(1.14);
+    const ALWAN_CORE_T loClip  = ALWAN_CORE_LITERAL(0.1);
+    const ALWAN_CORE_T loBoWoffset = ALWAN_CORE_LITERAL(0.027);
 
     ALWAN_CORE_T Sapc_normal = (ALWAN_CORE_POW(Ybg, normBG) - ALWAN_CORE_POW(Ytxt, normTXT)) * scaleBO;
     ALWAN_CORE_T Sapc_reverse = (ALWAN_CORE_POW(Ybg, revBG) - ALWAN_CORE_POW(Ytxt, revTXT)) * scaleBO;

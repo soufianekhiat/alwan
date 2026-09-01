@@ -43,7 +43,7 @@ ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static alwan_scalar const IPT_V_EXPONENT = {
+static const alwan_scalar IPT_V_EXPONENT = {
 #include "../data/ipt_exponent.csv"
 };
 

@@ -39,11 +39,11 @@ ALWAN_DIAG_POP
  * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_aces_tonemap_v(alwan_scalar x) {
-    alwan_scalar const a = ALWAN_LITERAL(2.51);
-    alwan_scalar const b = ALWAN_LITERAL(0.03);
-    alwan_scalar const c = ALWAN_LITERAL(2.43);
-    alwan_scalar const d = ALWAN_LITERAL(0.59);
-    alwan_scalar const e = ALWAN_LITERAL(0.14);
+    const alwan_scalar a = ALWAN_LITERAL(2.51);
+    const alwan_scalar b = ALWAN_LITERAL(0.03);
+    const alwan_scalar c = ALWAN_LITERAL(2.43);
+    const alwan_scalar d = ALWAN_LITERAL(0.59);
+    const alwan_scalar e = ALWAN_LITERAL(0.14);
 
     return (x * (a * x + b)) / (x * (c * x + d) + e);
 }
@@ -93,8 +93,8 @@ ALWAN_INLINE alwan_vec3 alwan_agx_golden_grade_v(alwan_vec3 rgb) {
 
 ALWAN_INLINE alwan_vec3 alwan_khronos_pbr_neutral_v(alwan_vec3 color) {
     alwan_vec3 result;
-    alwan_scalar const start_compression = ALWAN_LITERAL(0.8) - ALWAN_LITERAL(0.04);
-    alwan_scalar const desaturation = ALWAN_LITERAL(0.15);
+    const alwan_scalar start_compression = ALWAN_LITERAL(0.8) - ALWAN_LITERAL(0.04);
+    const alwan_scalar desaturation = ALWAN_LITERAL(0.15);
 
     alwan_scalar x = color.v[0];
     x = ALWAN_SELECT(color.v[1] < x, color.v[1], x);
@@ -110,7 +110,7 @@ ALWAN_INLINE alwan_vec3 alwan_khronos_pbr_neutral_v(alwan_vec3 color) {
     peak = ALWAN_SELECT(color.v[1] > peak, color.v[1], peak);
     peak = ALWAN_SELECT(color.v[2] > peak, color.v[2], peak);
 
-    alwan_scalar const d = ALWAN_LITERAL(1.0) - start_compression;
+    const alwan_scalar d = ALWAN_LITERAL(1.0) - start_compression;
     alwan_scalar safe_peak = ALWAN_SELECT(peak < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1e-10), peak);
     alwan_scalar new_peak = ALWAN_SELECT(
         peak < start_compression,

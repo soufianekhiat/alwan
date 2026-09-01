@@ -14,19 +14,19 @@
  * ---------------------------------------------------------------- */
 
 /* Chromatic adaptation coefficients */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_B) = ALWAN_CORE_LITERAL(1.15);
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_G) = ALWAN_CORE_LITERAL(0.66);
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_B) = ALWAN_CORE_LITERAL(1.15);
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_G) = ALWAN_CORE_LITERAL(0.66);
 
 /* Perceptual quantizer (PQ) constants from ST 2084 */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_C1) = ALWAN_CORE_LITERAL(0.8359375);              /* 3424/4096 */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_C2) = ALWAN_CORE_LITERAL(18.8515625);             /* 2413/128 */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_C3) = ALWAN_CORE_LITERAL(18.6875);                /* 2392/128 */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_N)  = ALWAN_CORE_LITERAL(0.1593017578125);        /* 2610/16384 */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_P)  = ALWAN_CORE_LITERAL(134.034375);             /* 1.7 * 2523/32 */
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_C1) = ALWAN_CORE_LITERAL(0.8359375);              /* 3424/4096 */
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_C2) = ALWAN_CORE_LITERAL(18.8515625);             /* 2413/128 */
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_C3) = ALWAN_CORE_LITERAL(18.6875);                /* 2392/128 */
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_N)  = ALWAN_CORE_LITERAL(0.1593017578125);        /* 2610/16384 */
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_P)  = ALWAN_CORE_LITERAL(134.034375);             /* 1.7 * 2523/32 */
 
 /* Lightness transformation constants */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_D)  = ALWAN_CORE_LITERAL(-0.56);
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(JZAZBZ_V_D0) = ALWAN_CORE_LITERAL(1.6295499532821566e-11);
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_D)  = ALWAN_CORE_LITERAL(-0.56);
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(JZAZBZ_V_D0) = ALWAN_CORE_LITERAL(1.6295499532821566e-11);
 
 /* ----------------------------------------------------------------
  * Jzazbz Transformation Matrices

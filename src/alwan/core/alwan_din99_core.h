@@ -43,7 +43,7 @@ ALWAN_DIAG_POP
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-static alwan_scalar const ALWAN_DIN99_COEFFS[4][8] = {
+static const alwan_scalar ALWAN_DIN99_COEFFS[4][8] = {
     /* DIN99 / ASTM D2244-07 */
     {
         ALWAN_LITERAL(105.509),
@@ -95,8 +95,8 @@ ALWAN_DIAG_POP
 ALWAN_INLINE alwan_din99 alwan_lab_to_din99_v(alwan_lab lab, int variant) {
     alwan_din99 result;
     int v = ALWAN_SELECT(variant < 0, 0, ALWAN_SELECT(variant > 3, 3, variant));
-    alwan_scalar const k_E = ALWAN_LITERAL(1.0);
-    alwan_scalar const k_CH = ALWAN_LITERAL(1.0);
+    const alwan_scalar k_E = ALWAN_LITERAL(1.0);
+    const alwan_scalar k_CH = ALWAN_LITERAL(1.0);
 
     result.L99 = ALWAN_DIN99_COEFFS[v][0] * ALWAN_LN(ALWAN_LITERAL(1.0) + ALWAN_DIN99_COEFFS[v][1] * lab.L) * k_E;
     alwan_scalar lab_chroma_sq = lab.a * lab.a + lab.b * lab.b;
@@ -119,8 +119,8 @@ ALWAN_INLINE alwan_din99 alwan_lab_to_din99_v(alwan_lab lab, int variant) {
 ALWAN_INLINE alwan_lab alwan_din99_to_lab_v(alwan_din99 din99, int variant) {
     alwan_lab result;
     int v = ALWAN_SELECT(variant < 0, 0, ALWAN_SELECT(variant > 3, 3, variant));
-    alwan_scalar const k_E = ALWAN_LITERAL(1.0);
-    alwan_scalar const k_CH = ALWAN_LITERAL(1.0);
+    const alwan_scalar k_E = ALWAN_LITERAL(1.0);
+    const alwan_scalar k_CH = ALWAN_LITERAL(1.0);
     alwan_scalar c3_rad = ALWAN_DIN99_COEFFS[v][2] * ALWAN_PI / ALWAN_LITERAL(180.0);
     alwan_scalar c7_rad = ALWAN_DIN99_COEFFS[v][6] * ALWAN_PI / ALWAN_LITERAL(180.0);
     alwan_scalar cos_c3 = ALWAN_COS(c3_rad);

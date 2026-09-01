@@ -282,8 +282,8 @@ ALWAN_INLINE alwan_scalar alwan_delta_e_zcam_v(alwan_jzazbz jab1, alwan_jzazbz j
 }
 
 ALWAN_INLINE alwan_scalar alwan_delta_e_94_v(alwan_lab lab1, alwan_lab lab2) {
-    alwan_scalar const K1 = ALWAN_LITERAL(0.045);
-    alwan_scalar const K2 = ALWAN_LITERAL(0.015);
+    const alwan_scalar K1 = ALWAN_LITERAL(0.045);
+    const alwan_scalar K2 = ALWAN_LITERAL(0.015);
     alwan_scalar dL = lab1.L - lab2.L;
     alwan_scalar C1 = ALWAN_SQRT(lab1.a * lab1.a + lab1.b * lab1.b);
     alwan_scalar C2 = ALWAN_SQRT(lab2.a * lab2.a + lab2.b * lab2.b);

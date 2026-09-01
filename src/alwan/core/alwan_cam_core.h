@@ -99,19 +99,19 @@ ALWAN_DIAG_POP
  * Hue Quadrature Data (shared by CIECAM02 and CAM16)
  * ---------------------------------------------------------------- */
 
-static alwan_scalar const CAM_HQ_h_i[5] = {
+static const alwan_scalar CAM_HQ_h_i[5] = {
     ALWAN_LITERAL(20.14), ALWAN_LITERAL(90.00),
     ALWAN_LITERAL(164.25), ALWAN_LITERAL(237.53),
     ALWAN_LITERAL(380.14)
 };
 
-static alwan_scalar const CAM_HQ_e_i[5] = {
+static const alwan_scalar CAM_HQ_e_i[5] = {
     ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.7),
     ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.2),
     ALWAN_LITERAL(0.8)  /* wraparound: e_i[4] == e_i[0] */
 };
 
-static alwan_scalar const CAM_HQ_H_i[5] = {
+static const alwan_scalar CAM_HQ_H_i[5] = {
     ALWAN_LITERAL(0.0), ALWAN_LITERAL(100.0),
     ALWAN_LITERAL(200.0), ALWAN_LITERAL(300.0),
     ALWAN_LITERAL(400.0)

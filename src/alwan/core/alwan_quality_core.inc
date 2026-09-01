@@ -246,12 +246,12 @@ ALWAN_DIAG_POP
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_cct_ohno2013)(ALWAN_CORE_T u, ALWAN_CORE_T v) {
     /* Hernandez-Andres 1999, via CIE 1931 xy. Kept as the high-temperature leg:
      * see the return at the end. */
-    ALWAN_CORE_T const den0 = ALWAN_CORE_LITERAL(2.0) * u - ALWAN_CORE_LITERAL(8.0) * v + ALWAN_CORE_LITERAL(4.0);
-    ALWAN_CORE_T const den  = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(den0) < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_LITERAL(1e-10), den0);
-    ALWAN_CORE_T const xc = ALWAN_CORE_LITERAL(3.0) * u / den;
-    ALWAN_CORE_T const yc = ALWAN_CORE_LITERAL(2.0) * v / den;
-    ALWAN_CORE_T const nn = (xc - ALWAN_CORE_LITERAL(0.3366)) / (yc - ALWAN_CORE_LITERAL(0.1735));
-    ALWAN_CORE_T const cct_ha = ALWAN_CORE_LITERAL(-949.86315)
+    const ALWAN_CORE_T den0 = ALWAN_CORE_LITERAL(2.0) * u - ALWAN_CORE_LITERAL(8.0) * v + ALWAN_CORE_LITERAL(4.0);
+    const ALWAN_CORE_T den  = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(den0) < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_LITERAL(1e-10), den0);
+    const ALWAN_CORE_T xc = ALWAN_CORE_LITERAL(3.0) * u / den;
+    const ALWAN_CORE_T yc = ALWAN_CORE_LITERAL(2.0) * v / den;
+    const ALWAN_CORE_T nn = (xc - ALWAN_CORE_LITERAL(0.3366)) / (yc - ALWAN_CORE_LITERAL(0.1735));
+    const ALWAN_CORE_T cct_ha = ALWAN_CORE_LITERAL(-949.86315)
         + ALWAN_CORE_LITERAL(6253.80338) * ALWAN_CORE_EXP(-nn / ALWAN_CORE_LITERAL(0.92159))
         + ALWAN_CORE_LITERAL(28.70599)   * ALWAN_CORE_EXP(-nn / ALWAN_CORE_LITERAL(0.20039))
         + ALWAN_CORE_LITERAL(0.00004)    * ALWAN_CORE_EXP(-nn / ALWAN_CORE_LITERAL(0.07125));
@@ -259,25 +259,25 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_cct_ohno2013)(ALWAN_CORE_T u, 
     /* 1000 K to 25000 K, matching the rest of alwan's CCT surface. Krystek is
      * published for 1000-15000 K; above that it is an extrapolation, which is
      * why the high end is sampled densely rather than trusted pointwise. */
-    ALWAN_CORE_T const mired_min = ALWAN_CORE_LITERAL(66.667);   /* 15000 K, Krystek's published limit */
-    ALWAN_CORE_T const mired_max = ALWAN_CORE_LITERAL(1000.0);
-    int const steps = 256;
+    const ALWAN_CORE_T mired_min = ALWAN_CORE_LITERAL(66.667);   /* 15000 K, Krystek's published limit */
+    const ALWAN_CORE_T mired_max = ALWAN_CORE_LITERAL(1000.0);
+    const int steps = 256;
 
     int best = 1;
     ALWAN_CORE_T best_d = ALWAN_CORE_LITERAL(-1.0);
     int i;
 
     for (i = 0; i <= steps; i++) {
-        ALWAN_CORE_T const m = mired_min + (mired_max - mired_min) * ((ALWAN_CORE_T)i / (ALWAN_CORE_T)steps);
-        ALWAN_CORE_T const T_i = ALWAN_CORE_LITERAL(1.0e6) / m;
-        ALWAN_CORE_T const T2 = T_i * T_i;
-        ALWAN_CORE_T const up = (ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[0] + ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[1] * T_i + ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[2] * T2) /
+        const ALWAN_CORE_T m = mired_min + (mired_max - mired_min) * ((ALWAN_CORE_T)i / (ALWAN_CORE_T)steps);
+        const ALWAN_CORE_T T_i = ALWAN_CORE_LITERAL(1.0e6) / m;
+        const ALWAN_CORE_T T2 = T_i * T_i;
+        const ALWAN_CORE_T up = (ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[0] + ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[1] * T_i + ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[2] * T2) /
                       (ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[3] + ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[4] * T_i + ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[5] * T2);
-        ALWAN_CORE_T const vp = (ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[0] + ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[1] * T_i + ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[2] * T2) /
+        const ALWAN_CORE_T vp = (ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[0] + ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[1] * T_i + ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[2] * T2) /
                       (ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[3] + ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[4] * T_i + ALWAN_CORE_FNLIT(KRYSTEK_V_COEFFS)[5] * T2);
-        ALWAN_CORE_T const du = u - up;
-        ALWAN_CORE_T const dv = v - vp;
-        ALWAN_CORE_T const d  = ALWAN_CORE_SQRT(du * du + dv * dv);
+        const ALWAN_CORE_T du = u - up;
+        const ALWAN_CORE_T dv = v - vp;
+        const ALWAN_CORE_T d  = ALWAN_CORE_SQRT(du * du + dv * dv);
         if (best_d < ALWAN_CORE_LITERAL(0.0) || d < best_d) {
             best_d = d;
             best = i;
@@ -292,10 +292,10 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_cct_ohno2013)(ALWAN_CORE_T u, 
         ALWAN_CORE_T Tn[3], Mn[3], un[3], vn[3], dn[3];
         int k;
         for (k = 0; k < 3; k++) {
-            ALWAN_CORE_T const m = mired_min + (mired_max - mired_min) *
+            const ALWAN_CORE_T m = mired_min + (mired_max - mired_min) *
                          ((ALWAN_CORE_T)(best - 1 + k) / (ALWAN_CORE_T)steps);
-            ALWAN_CORE_T const T_k = ALWAN_CORE_LITERAL(1.0e6) / m;
-            ALWAN_CORE_T const T2 = T_k * T_k;
+            const ALWAN_CORE_T T_k = ALWAN_CORE_LITERAL(1.0e6) / m;
+            const ALWAN_CORE_T T2 = T_k * T_k;
             Tn[k] = T_k;
             Mn[k] = m;
             un[k] = (ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[0] + ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[1] * T_k + ALWAN_CORE_FNLIT(KRYSTEK_U_COEFFS)[2] * T2) /
@@ -308,20 +308,20 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_cct_ohno2013)(ALWAN_CORE_T u, 
         {
             /* Triangular solution: project the point onto the chord joining the
              * two outer samples. */
-            ALWAN_CORE_T const lu = un[2] - un[0];
-            ALWAN_CORE_T const lv = vn[2] - vn[0];
-            ALWAN_CORE_T const l  = ALWAN_CORE_SQRT(lu * lu + lv * lv);
+            const ALWAN_CORE_T lu = un[2] - un[0];
+            const ALWAN_CORE_T lv = vn[2] - vn[0];
+            const ALWAN_CORE_T l  = ALWAN_CORE_SQRT(lu * lu + lv * lv);
             ALWAN_CORE_T t_tri = Tn[1];
             ALWAN_CORE_T duv = dn[1];
             if (l > ALWAN_CORE_LITERAL(1e-12)) {
-                ALWAN_CORE_T const x = (dn[0] * dn[0] - dn[2] * dn[2] + l * l) / (ALWAN_CORE_LITERAL(2.0) * l);
-                ALWAN_CORE_T const s = dn[0] * dn[0] - x * x;
+                const ALWAN_CORE_T x = (dn[0] * dn[0] - dn[2] * dn[2] + l * l) / (ALWAN_CORE_LITERAL(2.0) * l);
+                const ALWAN_CORE_T s = dn[0] * dn[0] - x * x;
                 /* Interpolate in MIRED, not kelvin. The samples are uniform
                  * in mired and T = 1e6/m is strongly nonlinear, so a linear
                  * blend of Tn[0] and Tn[2] is wrong by hundreds of kelvin
                  * wherever T changes fast per step. */
                 {
-                    ALWAN_CORE_T const m_tri = Mn[0] + (Mn[2] - Mn[0]) * (x / l);
+                    const ALWAN_CORE_T m_tri = Mn[0] + (Mn[2] - Mn[0]) * (x / l);
                     t_tri = (ALWAN_CORE_ABS(m_tri) > ALWAN_CORE_LITERAL(1e-9)) ? ALWAN_CORE_LITERAL(1.0e6) / m_tri : Tn[1];
                 }
                 duv = (s > ALWAN_CORE_LITERAL(0.0)) ? ALWAN_CORE_SQRT(s) : ALWAN_CORE_LITERAL(0.0);
@@ -331,24 +331,24 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_cct_ohno2013)(ALWAN_CORE_T u, 
              * the vertex. Ohno uses it once |Duv| reaches 0.002, where the
              * chord approximation starts to bite. */
             {
-                ALWAN_CORE_T const X = (Mn[2] - Mn[1]) * (Mn[0] - Mn[2]) * (Mn[1] - Mn[0]);
+                const ALWAN_CORE_T X = (Mn[2] - Mn[1]) * (Mn[0] - Mn[2]) * (Mn[1] - Mn[0]);
                 ALWAN_CORE_T t_par = t_tri;
                 if (ALWAN_CORE_ABS(X) > ALWAN_CORE_LITERAL(1e-12)) {
-                    ALWAN_CORE_T const a = (Mn[0] * (dn[2] - dn[1]) +
+                    const ALWAN_CORE_T a = (Mn[0] * (dn[2] - dn[1]) +
                                   Mn[1] * (dn[0] - dn[2]) +
                                   Mn[2] * (dn[1] - dn[0])) / X;
-                    ALWAN_CORE_T const b = -(Mn[0] * Mn[0] * (dn[2] - dn[1]) +
+                    const ALWAN_CORE_T b = -(Mn[0] * Mn[0] * (dn[2] - dn[1]) +
                                    Mn[1] * Mn[1] * (dn[0] - dn[2]) +
                                    Mn[2] * Mn[2] * (dn[1] - dn[0])) / X;
                     if (ALWAN_CORE_ABS(a) > ALWAN_CORE_LITERAL(1e-20)) {
                         {
-                            ALWAN_CORE_T const m_par = -b / (ALWAN_CORE_LITERAL(2.0) * a);
+                            const ALWAN_CORE_T m_par = -b / (ALWAN_CORE_LITERAL(2.0) * a);
                             t_par = (ALWAN_CORE_ABS(m_par) > ALWAN_CORE_LITERAL(1e-9)) ? ALWAN_CORE_LITERAL(1.0e6) / m_par : t_tri;
                         }
                     }
                 }
                 {
-                    ALWAN_CORE_T const t_ohno = (ALWAN_CORE_ABS(duv) >= ALWAN_CORE_LITERAL(0.002)) ? t_par : t_tri;
+                    const ALWAN_CORE_T t_ohno = (ALWAN_CORE_ABS(duv) >= ALWAN_CORE_LITERAL(0.002)) ? t_par : t_tri;
 
                     /* Krystek 1985 is published for 1000-15000 K. Above that it
                      * is an extrapolation and its own deviation from the true

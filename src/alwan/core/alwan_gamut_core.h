@@ -183,8 +183,8 @@ ALWAN_INLINE int gamut_css_in_gamut_v(alwan_vec3 rgb) {
 }
 
 ALWAN_INLINE alwan_vec3 gamut_css_map_v(alwan_vec3 origin) {
-    alwan_scalar const JND = ALWAN_LITERAL(0.02);
-    int const MAX_ITER = 30;
+    const alwan_scalar JND = ALWAN_LITERAL(0.02);
+    const int MAX_ITER = 30;
     if (gamut_css_in_gamut_v(origin)) { return origin; }
     alwan_vec3 oklab = gamut_linear_srgb_to_oklab_v(origin);
     alwan_oklab ok; ok.L = oklab.v[0]; ok.a = oklab.v[1]; ok.b = oklab.v[2];

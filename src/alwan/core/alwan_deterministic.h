@@ -92,7 +92,7 @@ ALWAN_INLINE alwan_f64
 alwan_det_horner_f64(alwan_f64 const *coeffs, int degree, alwan_f64 x) {
     alwan_f64 acc = coeffs[degree];
     for (int i = degree - 1; i >= 0; i--) {
-        alwan_f64 const t = acc * x;        /* round 1 */
+        const alwan_f64 t = acc * x;        /* round 1 */
         acc = t + coeffs[i];                /* round 2 -- never fused */
     }
     return acc;
@@ -102,7 +102,7 @@ ALWAN_INLINE alwan_f32
 alwan_det_horner_f32(alwan_f32 const *coeffs, int degree, alwan_f32 x) {
     alwan_f32 acc = coeffs[degree];
     for (int i = degree - 1; i >= 0; i--) {
-        alwan_f32 const t = acc * x;
+        const alwan_f32 t = acc * x;
         acc = t + coeffs[i];
     }
     return acc;
@@ -138,9 +138,9 @@ ALWAN_INLINE alwan_f32 alwan_det_normalize_f32(alwan_f32 x, alwan_f32 lo, alwan_
 ALWAN_INLINE alwan_f64 alwan_det_log2_f64(alwan_f64 x) {
     if (x <= 0.0) return -INFINITY;  /* IEEE convention */
     int k;
-    alwan_f64 const m = frexp(x, &k);
+    const alwan_f64 m = frexp(x, &k);
     /* m in [0.5, 1.0); normalise to u in [-1, 1] for the polynomial. */
-    alwan_f64 const u = alwan_det_normalize_f64(m, 0.5, 1.0);
+    const alwan_f64 u = alwan_det_normalize_f64(m, 0.5, 1.0);
     return (alwan_f64)k + alwan_det_horner_f64(
         alwan_det_log2_coeffs_f64, ALWAN_DET_LOG2_DEGREE, u);
 }
@@ -148,8 +148,8 @@ ALWAN_INLINE alwan_f64 alwan_det_log2_f64(alwan_f64 x) {
 ALWAN_INLINE alwan_f32 alwan_det_log2_f32(alwan_f32 x) {
     if (x <= 0.0f) return -INFINITY;
     int k;
-    alwan_f32 const m = frexpf(x, &k);
-    alwan_f32 const u = alwan_det_normalize_f32(m, 0.5f, 1.0f);
+    const alwan_f32 m = frexpf(x, &k);
+    const alwan_f32 u = alwan_det_normalize_f32(m, 0.5f, 1.0f);
     return (alwan_f32)k + alwan_det_horner_f32(
         alwan_det_log2_coeffs_f32, ALWAN_DET_LOG2_DEGREE, u);
 }
@@ -157,19 +157,19 @@ ALWAN_INLINE alwan_f32 alwan_det_log2_f32(alwan_f32 x) {
 ALWAN_INLINE alwan_f64 alwan_det_exp2_f64(alwan_f64 t) {
     /* Split t into integer and fractional parts. floor() works for
      * negative t too (frac stays in [0, 1)). */
-    alwan_f64 const int_part = floor(t);
-    alwan_f64 const frac_part = t - int_part;
-    alwan_f64 const u = alwan_det_normalize_f64(frac_part, 0.0, 1.0);
-    alwan_f64 const exp2_frac = alwan_det_horner_f64(
+    const alwan_f64 int_part = floor(t);
+    const alwan_f64 frac_part = t - int_part;
+    const alwan_f64 u = alwan_det_normalize_f64(frac_part, 0.0, 1.0);
+    const alwan_f64 exp2_frac = alwan_det_horner_f64(
         alwan_det_exp2_coeffs_f64, ALWAN_DET_EXP2_DEGREE, u);
     return ldexp(exp2_frac, (int)int_part);
 }
 
 ALWAN_INLINE alwan_f32 alwan_det_exp2_f32(alwan_f32 t) {
-    alwan_f32 const int_part = floorf(t);
-    alwan_f32 const frac_part = t - int_part;
-    alwan_f32 const u = alwan_det_normalize_f32(frac_part, 0.0f, 1.0f);
-    alwan_f32 const exp2_frac = alwan_det_horner_f32(
+    const alwan_f32 int_part = floorf(t);
+    const alwan_f32 frac_part = t - int_part;
+    const alwan_f32 u = alwan_det_normalize_f32(frac_part, 0.0f, 1.0f);
+    const alwan_f32 exp2_frac = alwan_det_horner_f32(
         alwan_det_exp2_coeffs_f32, ALWAN_DET_EXP2_DEGREE, u);
     return ldexpf(exp2_frac, (int)int_part);
 }
@@ -206,14 +206,14 @@ ALWAN_INLINE alwan_f32 alwan_det_pow_pos_f32(alwan_f32 x, alwan_f32 e) {
  * (matches libm cbrt behaviour). */
 ALWAN_INLINE alwan_f64 alwan_det_cbrt_f64(alwan_f64 x) {
     if (x == 0.0) return 0.0;
-    alwan_f64 const a = (x < 0.0) ? -x : x;
-    alwan_f64 const r = alwan_det_pow_pos_f64(a, 1.0 / 3.0);
+    const alwan_f64 a = (x < 0.0) ? -x : x;
+    const alwan_f64 r = alwan_det_pow_pos_f64(a, 1.0 / 3.0);
     return (x < 0.0) ? -r : r;
 }
 ALWAN_INLINE alwan_f32 alwan_det_cbrt_f32(alwan_f32 x) {
     if (x == 0.0f) return 0.0f;
-    alwan_f32 const a = (x < 0.0f) ? -x : x;
-    alwan_f32 const r = alwan_det_pow_pos_f32(a, 1.0f / 3.0f);
+    const alwan_f32 a = (x < 0.0f) ? -x : x;
+    const alwan_f32 r = alwan_det_pow_pos_f32(a, 1.0f / 3.0f);
     return (x < 0.0f) ? -r : r;
 }
 
@@ -234,10 +234,10 @@ ALWAN_INLINE alwan_f64 alwan__det_lin_pow_oetf_f64(
     if (x <= break_x) return linear_slope * x;
     alwan_f64 power;
     if (x < split) {
-        alwan_f64 const u = alwan_det_normalize_f64(x, break_x, split);
+        const alwan_f64 u = alwan_det_normalize_f64(x, break_x, split);
         power = alwan_det_horner_f64(lo_coeffs, lo_degree, u);
     } else {
-        alwan_f64 const u = alwan_det_normalize_f64(x, split, 1.0);
+        const alwan_f64 u = alwan_det_normalize_f64(x, split, 1.0);
         power = alwan_det_horner_f64(hi_coeffs, hi_degree, u);
     }
     return alpha * power - beta;
@@ -253,10 +253,10 @@ ALWAN_INLINE alwan_f32 alwan__det_lin_pow_oetf_f32(
     if (x <= break_x) return linear_slope * x;
     alwan_f32 power;
     if (x < split) {
-        alwan_f32 const u = alwan_det_normalize_f32(x, break_x, split);
+        const alwan_f32 u = alwan_det_normalize_f32(x, break_x, split);
         power = alwan_det_horner_f32(lo_coeffs, lo_degree, u);
     } else {
-        alwan_f32 const u = alwan_det_normalize_f32(x, split, 1.0f);
+        const alwan_f32 u = alwan_det_normalize_f32(x, split, 1.0f);
         power = alwan_det_horner_f32(hi_coeffs, hi_degree, u);
     }
     return alpha * power - beta;
@@ -270,8 +270,8 @@ ALWAN_INLINE alwan_f64 alwan__det_lin_pow_eotf_f64(
     alwan_f64 const *coeffs, int degree
 ) {
     if (x <= enc_break) return x / linear_slope;
-    alwan_f64 const z = (x + beta) / alpha;
-    alwan_f64 const u = alwan_det_normalize_f64(z, poly_lo, 1.0);
+    const alwan_f64 z = (x + beta) / alpha;
+    const alwan_f64 u = alwan_det_normalize_f64(z, poly_lo, 1.0);
     return alwan_det_horner_f64(coeffs, degree, u);
 }
 
@@ -283,8 +283,8 @@ ALWAN_INLINE alwan_f32 alwan__det_lin_pow_eotf_f32(
     alwan_f32 const *coeffs, int degree
 ) {
     if (x <= enc_break) return x / linear_slope;
-    alwan_f32 const z = (x + beta) / alpha;
-    alwan_f32 const u = alwan_det_normalize_f32(z, poly_lo, 1.0f);
+    const alwan_f32 z = (x + beta) / alpha;
+    const alwan_f32 u = alwan_det_normalize_f32(z, poly_lo, 1.0f);
     return alwan_det_horner_f32(coeffs, degree, u);
 }
 

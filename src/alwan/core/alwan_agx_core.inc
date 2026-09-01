@@ -62,10 +62,10 @@ ALWAN_INLINE void ALWAN_CORE_FN(agx_tip_scales)(
         ALWAN_CORE_T lo_angle, ALWAN_CORE_T lo_force, ALWAN_CORE_T lo_offset,
         ALWAN_CORE_T mid_angle, ALWAN_CORE_T mid_force,
         ALWAN_CORE_T *py_out, ALWAN_CORE_T *scale_toe, ALWAN_CORE_T *scale_shoulder) {
-    ALWAN_CORE_T const phase[3] = { ALWAN_CORE_ZERO,
+    const ALWAN_CORE_T phase[3] = { ALWAN_CORE_ZERO,
                                     ALWAN_CORE_LITERAL(2.09439510239319549231),   /* 2pi/3 */
                                     ALWAN_CORE_LITERAL(4.18879020478639098462) }; /* 4pi/3 */
-    ALWAN_CORE_T const eps = ALWAN_CORE_LITERAL(1e-4);
+    const ALWAN_CORE_T eps = ALWAN_CORE_LITERAL(1e-4);
     for (int c = 0; c < 3; c++) {
         ALWAN_CORE_T hue_up  = ALWAN_CORE_FN(agx_hue_weight)(up_angle,  phase[c]);
         ALWAN_CORE_T hue_lo  = ALWAN_CORE_FN(agx_hue_weight)(lo_angle,  phase[c]);

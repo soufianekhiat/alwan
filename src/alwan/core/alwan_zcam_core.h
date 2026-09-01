@@ -55,15 +55,15 @@ typedef struct {
     alwan_scalar Wz;
 } alwan_zcam_v_correlates;
 
-static alwan_scalar const ZCAM_V_B = ALWAN_LITERAL(1.15);
-static alwan_scalar const ZCAM_V_G = ALWAN_LITERAL(0.66);
-static alwan_scalar const ZCAM_V_PQ_C1 = ALWAN_LITERAL(0.8359375);
-static alwan_scalar const ZCAM_V_PQ_C2 = ALWAN_LITERAL(18.8515625);
-static alwan_scalar const ZCAM_V_PQ_C3 = ALWAN_LITERAL(18.6875);
-static alwan_scalar const ZCAM_V_PQ_N  = ALWAN_LITERAL(0.1593017578125);
-static alwan_scalar const ZCAM_V_PQ_P  = ALWAN_LITERAL(134.034375);
-static alwan_scalar const ZCAM_V_PQ_D  = ALWAN_LITERAL(-0.56);
-static alwan_scalar const ZCAM_V_PQ_D0 = ALWAN_LITERAL(1.6295499532821566e-11);
+static const alwan_scalar ZCAM_V_B = ALWAN_LITERAL(1.15);
+static const alwan_scalar ZCAM_V_G = ALWAN_LITERAL(0.66);
+static const alwan_scalar ZCAM_V_PQ_C1 = ALWAN_LITERAL(0.8359375);
+static const alwan_scalar ZCAM_V_PQ_C2 = ALWAN_LITERAL(18.8515625);
+static const alwan_scalar ZCAM_V_PQ_C3 = ALWAN_LITERAL(18.6875);
+static const alwan_scalar ZCAM_V_PQ_N  = ALWAN_LITERAL(0.1593017578125);
+static const alwan_scalar ZCAM_V_PQ_P  = ALWAN_LITERAL(134.034375);
+static const alwan_scalar ZCAM_V_PQ_D  = ALWAN_LITERAL(-0.56);
+static const alwan_scalar ZCAM_V_PQ_D0 = ALWAN_LITERAL(1.6295499532821566e-11);
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV

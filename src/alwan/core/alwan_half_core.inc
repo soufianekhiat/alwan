@@ -48,7 +48,7 @@ ALWAN_INLINE alwan_half ALWAN_CORE_FNVLIT(alwan_float_to_half)(float f) {
                 }
             }
         }
-        (void)round_bit; (void)sticky; (void)guard;
+        ALWAN_UNUSED(round_bit); ALWAN_UNUSED(sticky); ALWAN_UNUSED(guard);
 
         return (alwan_half)(sign | (uint32_t)((exp + 15) << 10) | half_mant);
     }

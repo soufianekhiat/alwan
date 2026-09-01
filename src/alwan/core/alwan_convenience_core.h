@@ -302,12 +302,12 @@ ALWAN_INLINE alwan_legal_range alwan_legal_range_from_bit_depth(int bit_depth) {
 
 ALWAN_INLINE alwan_yccbccrc alwan_rgb_to_yccbccrc_v(alwan_rgb rgb, int bit_depth) {
     alwan_yccbccrc result;
-    alwan_scalar const kr = ALWAN_LUMA_KR_BT2020;
-    alwan_scalar const kg = ALWAN_LUMA_KG_BT2020;
-    alwan_scalar const kb = ALWAN_LUMA_KB_BT2020;
+    const alwan_scalar kr = ALWAN_LUMA_KR_BT2020;
+    const alwan_scalar kg = ALWAN_LUMA_KG_BT2020;
+    const alwan_scalar kb = ALWAN_LUMA_KB_BT2020;
     alwan_scalar yc_linear = kr * rgb.r + kg * rgb.g + kb * rgb.b;
-    alwan_scalar const beta = ALWAN_LITERAL(0.018);
-    alwan_scalar const alpha = ALWAN_LITERAL(1.099);
+    const alwan_scalar beta = ALWAN_LITERAL(0.018);
+    const alwan_scalar alpha = ALWAN_LITERAL(1.099);
     alwan_scalar yc = ALWAN_SELECT(yc_linear < beta,
                                    ALWAN_LITERAL(4.5) * yc_linear,
                                    alpha * ALWAN_POW(yc_linear, ALWAN_LITERAL(0.45)) - (alpha - ALWAN_LITERAL(1.0)));
@@ -334,9 +334,9 @@ ALWAN_INLINE alwan_yccbccrc alwan_rgb_to_yccbccrc_v(alwan_rgb rgb, int bit_depth
 
 ALWAN_INLINE alwan_rgb alwan_yccbccrc_to_rgb_v(alwan_yccbccrc yccbccrc, int bit_depth) {
     alwan_rgb result;
-    alwan_scalar const kr = ALWAN_LUMA_KR_BT2020;
-    alwan_scalar const kg = ALWAN_LUMA_KG_BT2020;
-    alwan_scalar const kb = ALWAN_LUMA_KB_BT2020;
+    const alwan_scalar kr = ALWAN_LUMA_KR_BT2020;
+    const alwan_scalar kg = ALWAN_LUMA_KG_BT2020;
+    const alwan_scalar kb = ALWAN_LUMA_KB_BT2020;
     alwan_legal_range lr = alwan_legal_range_from_bit_depth(bit_depth);
     alwan_scalar c_center = (lr.c_max + lr.c_min) / ALWAN_LITERAL(2.0);
     alwan_scalar yc = (yccbccrc.Yc - lr.y_min) / (lr.y_max - lr.y_min);
@@ -350,9 +350,9 @@ ALWAN_INLINE alwan_rgb alwan_yccbccrc_to_rgb_v(alwan_yccbccrc yccbccrc, int bit_
                                        crc * ALWAN_LITERAL(0.9936));
     alwan_scalar r_gamma = yc + diff_r;
     alwan_scalar b_gamma = yc + diff_b;
-    alwan_scalar const beta = ALWAN_LITERAL(0.018);
-    alwan_scalar const alpha = ALWAN_LITERAL(1.099);
-    alwan_scalar const threshold = ALWAN_LITERAL(4.5) * beta;
+    const alwan_scalar beta = ALWAN_LITERAL(0.018);
+    const alwan_scalar alpha = ALWAN_LITERAL(1.099);
+    const alwan_scalar threshold = ALWAN_LITERAL(4.5) * beta;
     alwan_scalar yc_linear = ALWAN_SELECT(yc < threshold,
                                           yc / ALWAN_LITERAL(4.5),
                                           ALWAN_POW((yc + (alpha - ALWAN_LITERAL(1.0))) / alpha,
@@ -465,18 +465,18 @@ ALWAN_INLINE alwan_hsp alwan_rgb_to_hsp_v(alwan_rgb rgb) {
     alwan_hsv hsv = alwan_rgb_to_hsv_v(rgb);
     result.h = hsv.h;
     result.s = hsv.s;
-    alwan_scalar const Pr = ALWAN_LUMA_KR_BT601;
-    alwan_scalar const Pg = ALWAN_LUMA_KG_BT601;
-    alwan_scalar const Pb = ALWAN_LUMA_KB_BT601;
+    const alwan_scalar Pr = ALWAN_LUMA_KR_BT601;
+    const alwan_scalar Pg = ALWAN_LUMA_KG_BT601;
+    const alwan_scalar Pb = ALWAN_LUMA_KB_BT601;
     result.p = ALWAN_SQRT(Pr * rgb.r * rgb.r + Pg * rgb.g * rgb.g + Pb * rgb.b * rgb.b);
     return result;
 }
 
 ALWAN_INLINE alwan_rgb alwan_hsp_to_rgb_v(alwan_hsp hsp) {
     alwan_rgb result;
-    alwan_scalar const Pr = ALWAN_LUMA_KR_BT601;
-    alwan_scalar const Pg = ALWAN_LUMA_KG_BT601;
-    alwan_scalar const Pb = ALWAN_LUMA_KB_BT601;
+    const alwan_scalar Pr = ALWAN_LUMA_KR_BT601;
+    const alwan_scalar Pg = ALWAN_LUMA_KG_BT601;
+    const alwan_scalar Pb = ALWAN_LUMA_KB_BT601;
     alwan_scalar h = hsp.h * ALWAN_LITERAL(360.0);
     alwan_scalar s = hsp.s;
     alwan_scalar p = hsp.p;
@@ -584,9 +584,9 @@ ALWAN_INLINE alwan_scalar alwan__hsy_max_chroma(alwan_scalar h,
 
 ALWAN_INLINE alwan_hsy alwan_rgb_to_hsy_v(alwan_rgb rgb) {
     alwan_hsy result;
-    alwan_scalar const kr = ALWAN_LUMA_KR_BT601;
-    alwan_scalar const kg = ALWAN_LUMA_KG_BT601;
-    alwan_scalar const kb = ALWAN_LUMA_KB_BT601;
+    const alwan_scalar kr = ALWAN_LUMA_KR_BT601;
+    const alwan_scalar kg = ALWAN_LUMA_KG_BT601;
+    const alwan_scalar kb = ALWAN_LUMA_KB_BT601;
     alwan_hsv hsv = alwan_rgb_to_hsv_v(rgb);
     result.h = hsv.h;
     alwan_scalar y = kr * rgb.r + kg * rgb.g + kb * rgb.b;
@@ -610,9 +610,9 @@ ALWAN_INLINE alwan_hsy alwan_rgb_to_hsy_v(alwan_rgb rgb) {
 
 ALWAN_INLINE alwan_rgb alwan_hsy_to_rgb_v(alwan_hsy hsy) {
     alwan_rgb result;
-    alwan_scalar const kr = ALWAN_LUMA_KR_BT601;
-    alwan_scalar const kg = ALWAN_LUMA_KG_BT601;
-    alwan_scalar const kb = ALWAN_LUMA_KB_BT601;
+    const alwan_scalar kr = ALWAN_LUMA_KR_BT601;
+    const alwan_scalar kg = ALWAN_LUMA_KG_BT601;
+    const alwan_scalar kb = ALWAN_LUMA_KB_BT601;
     alwan_scalar h = hsy.h;
     alwan_scalar s = hsy.s;
     alwan_scalar y = hsy.y;

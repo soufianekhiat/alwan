@@ -58,12 +58,12 @@ ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(ALWAN_EXT_LMS_TO_XYZ_ICACB) =
 }};
 
 /* IgPgTg LMS scaling factors */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[3] = {
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[3] = {
 #include "../data/igpgtg_lms_scale.csv"
 };
 
 /* D65 white point for HDR calculations (Y=1 scale) */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(ALWAN_EXT_HDR_D65_WHITE)[3] = {
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_EXT_HDR_D65_WHITE)[3] = {
 #include "../data/hdr_d65_white.csv"
 };
 
@@ -92,7 +92,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_spow)(ALWAN_CORE_T x, ALWAN_CO
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_lightness_fairchild2011)(ALWAN_CORE_T Y, ALWAN_CORE_T epsilon) {
-    ALWAN_CORE_T const V_max = ALWAN_CORE_LITERAL(247.0);
+    const ALWAN_CORE_T V_max = ALWAN_CORE_LITERAL(247.0);
     ALWAN_CORE_T K_m = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), epsilon);
     ALWAN_CORE_T Y_p = ALWAN_CORE_FNVLIT(alwan_spow)(Y, epsilon);
     return (V_max * Y_p) / (K_m + Y_p) + ALWAN_CORE_LITERAL(0.02);
@@ -103,7 +103,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_lightness_fairchild2011)(ALWAN
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_luminance_fairchild2011)(ALWAN_CORE_T L_hdr, ALWAN_CORE_T epsilon) {
-    ALWAN_CORE_T const V_max = ALWAN_CORE_LITERAL(247.0);
+    const ALWAN_CORE_T V_max = ALWAN_CORE_LITERAL(247.0);
     ALWAN_CORE_T K_m = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), epsilon);
     ALWAN_CORE_T v = L_hdr - ALWAN_CORE_LITERAL(0.02);
     ALWAN_CORE_T denom = V_max - v;
@@ -119,12 +119,12 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_luminance_fairchild2011)(ALWAN
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_eotf_inverse_st2084)(ALWAN_CORE_T C) {
-    ALWAN_CORE_T const L_p = ALWAN_CORE_LITERAL(10000.0);
-    ALWAN_CORE_T const c1 = ALWAN_CORE_LITERAL(0.8359375);
-    ALWAN_CORE_T const c2 = ALWAN_CORE_LITERAL(18.8515625);
-    ALWAN_CORE_T const c3 = ALWAN_CORE_LITERAL(18.6875);
-    ALWAN_CORE_T const m1 = ALWAN_CORE_LITERAL(0.1593017578125);
-    ALWAN_CORE_T const m2 = ALWAN_CORE_LITERAL(78.84375);
+    const ALWAN_CORE_T L_p = ALWAN_CORE_LITERAL(10000.0);
+    const ALWAN_CORE_T c1 = ALWAN_CORE_LITERAL(0.8359375);
+    const ALWAN_CORE_T c2 = ALWAN_CORE_LITERAL(18.8515625);
+    const ALWAN_CORE_T c3 = ALWAN_CORE_LITERAL(18.6875);
+    const ALWAN_CORE_T m1 = ALWAN_CORE_LITERAL(0.1593017578125);
+    const ALWAN_CORE_T m2 = ALWAN_CORE_LITERAL(78.84375);
 
     ALWAN_CORE_T Y_p = ALWAN_CORE_POW(C / L_p, m1);
     ALWAN_CORE_T numerator = c1 + c2 * Y_p;
@@ -137,14 +137,14 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_eotf_inverse_st2084)(ALWAN_COR
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_eotf_st2084)(ALWAN_CORE_T N) {
-    ALWAN_CORE_T const L_p = ALWAN_CORE_LITERAL(10000.0);
-    ALWAN_CORE_T const c1 = ALWAN_CORE_LITERAL(0.8359375);
-    ALWAN_CORE_T const c2 = ALWAN_CORE_LITERAL(18.8515625);
-    ALWAN_CORE_T const c3 = ALWAN_CORE_LITERAL(18.6875);
-    ALWAN_CORE_T const m1 = ALWAN_CORE_LITERAL(0.1593017578125);
-    ALWAN_CORE_T const m2 = ALWAN_CORE_LITERAL(78.84375);
-    ALWAN_CORE_T const inv_m2 = ALWAN_CORE_LITERAL(1.0) / m2;
-    ALWAN_CORE_T const inv_m1 = ALWAN_CORE_LITERAL(1.0) / m1;
+    const ALWAN_CORE_T L_p = ALWAN_CORE_LITERAL(10000.0);
+    const ALWAN_CORE_T c1 = ALWAN_CORE_LITERAL(0.8359375);
+    const ALWAN_CORE_T c2 = ALWAN_CORE_LITERAL(18.8515625);
+    const ALWAN_CORE_T c3 = ALWAN_CORE_LITERAL(18.6875);
+    const ALWAN_CORE_T m1 = ALWAN_CORE_LITERAL(0.1593017578125);
+    const ALWAN_CORE_T m2 = ALWAN_CORE_LITERAL(78.84375);
+    const ALWAN_CORE_T inv_m2 = ALWAN_CORE_LITERAL(1.0) / m2;
+    const ALWAN_CORE_T inv_m1 = ALWAN_CORE_LITERAL(1.0) / m1;
 
     ALWAN_CORE_T N_p = ALWAN_CORE_POW(N, inv_m2);
     ALWAN_CORE_T numerator = N_p - c1;
@@ -206,7 +206,7 @@ ALWAN_INLINE ALWAN_CORE_LAB ALWAN_CORE_FNVLIT(alwan_xyz_to_hdr_cielab)(ALWAN_COR
     ALWAN_CORE_T zr = xyz.z / ALWAN_CORE_FNLIT(ALWAN_EXT_HDR_D65_WHITE)[2];
 
     /* Use Fairchild2011 lightness with POW (not spow, since these are ratios) */
-    ALWAN_CORE_T const V_max = ALWAN_CORE_LITERAL(247.0);
+    const ALWAN_CORE_T V_max = ALWAN_CORE_LITERAL(247.0);
     ALWAN_CORE_T K_m = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), epsilon);
 
     ALWAN_CORE_T yr_eps = ALWAN_CORE_POW(yr, epsilon);
@@ -324,7 +324,7 @@ ALWAN_INLINE ALWAN_CORE_IGPGTG ALWAN_CORE_FNVLIT(alwan_xyz_to_igpgtg)(ALWAN_CORE
     /* Scaled nonlinearity: spow(LMS / scale, 0.427)
      * Exponent 0.427 from Ebner & Fairchild (1998) "Development and testing
      * of a color space (IPT) with improved hue uniformity" IS&T 6th CIC, Table 3. */
-    ALWAN_CORE_T const exponent = ALWAN_CORE_LITERAL(0.427);
+    const ALWAN_CORE_T exponent = ALWAN_CORE_LITERAL(0.427);
     lms.v[0] = ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[0] / ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[0], exponent);
     lms.v[1] = ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[1] / ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[1], exponent);
     lms.v[2] = ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[2] / ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[2], exponent);
@@ -344,7 +344,7 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_igpgtg_to_xyz)(ALWAN_CORE_IG
     ALWAN_CORE_VEC3 lms = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_TO_LMS), vec_in);
 
     /* Inverse scaled nonlinearity: scale * spow(LMS, 1/0.427) */
-    ALWAN_CORE_T const inv_exponent = ALWAN_CORE_LITERAL(1.0) / ALWAN_CORE_LITERAL(0.427);
+    const ALWAN_CORE_T inv_exponent = ALWAN_CORE_LITERAL(1.0) / ALWAN_CORE_LITERAL(0.427);
     lms.v[0] = ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[0] * ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[0], inv_exponent);
     lms.v[1] = ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[1] * ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[1], inv_exponent);
     lms.v[2] = ALWAN_CORE_FNLIT(ALWAN_EXT_IGPGTG_LMS_SCALE)[2] * ALWAN_CORE_FNVLIT(alwan_spow)(lms.v[2], inv_exponent);
@@ -409,8 +409,8 @@ ALWAN_INLINE ALWAN_CORE_HCL ALWAN_CORE_FNVLIT(alwan_rgb_to_hcl)(ALWAN_CORE_RGB r
     ALWAN_CORE_HCL result;
 
     /* gamma=3.0, Y_0=100.0 per Sarifuddin & Missaoui (2005) eqs. 9-11 */
-    ALWAN_CORE_T const gamma = ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T const Y_0 = ALWAN_CORE_LITERAL(100.0);
+    const ALWAN_CORE_T gamma = ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T Y_0 = ALWAN_CORE_LITERAL(100.0);
 
     ALWAN_CORE_T max_val = ALWAN_CORE_MAX3(rgb.r, rgb.g, rgb.b);
     ALWAN_CORE_T min_val = ALWAN_CORE_MIN3(rgb.r, rgb.g, rgb.b);
@@ -436,7 +436,7 @@ ALWAN_INLINE ALWAN_CORE_HCL ALWAN_CORE_FNVLIT(alwan_rgb_to_hcl)(ALWAN_CORE_RGB r
      * select further down keys off r_g >= 0, so substituting the r_g > 0 limit
      * for a small negative r_g put H at 5pi/3, outside the model's [-pi, pi],
      * and the inverse diverged from there. */
-    ALWAN_CORE_T const half_pi = ALWAN_CORE_PI / ALWAN_CORE_LITERAL(2.0);
+    const ALWAN_CORE_T half_pi = ALWAN_CORE_PI / ALWAN_CORE_LITERAL(2.0);
     ALWAN_CORE_T atan_limit = ALWAN_CORE_SELECT(g_b >= ALWAN_CORE_LITERAL(0.0), half_pi, -half_pi);
     atan_limit = ALWAN_CORE_SELECT(r_g >= ALWAN_CORE_LITERAL(0.0), atan_limit, -atan_limit);
     ALWAN_CORE_T h_temp = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(r_g) < ALWAN_CORE_EPSILON,
@@ -470,8 +470,8 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hcl_to_rgb)(ALWAN_CORE_HCL h
     ALWAN_CORE_T C = hcl.C;
     ALWAN_CORE_T L = hcl.L;
 
-    ALWAN_CORE_T const gamma = ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T const Y_0 = ALWAN_CORE_LITERAL(100.0);
+    const ALWAN_CORE_T gamma = ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T Y_0 = ALWAN_CORE_LITERAL(100.0);
 
     /* Compute Q, Min, Max */
     ALWAN_CORE_T Q = ALWAN_CORE_SELECT(L > ALWAN_CORE_EPSILON,
@@ -490,10 +490,10 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hcl_to_rgb)(ALWAN_CORE_HCL h
         ALWAN_CORE_LITERAL(0.0));
 
     /* Sector boundaries */
-    ALWAN_CORE_T const r_p60 = ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T const r_p120 = ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T const r_n60 = -ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T const r_n120 = -ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T r_p60 = ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T r_p120 = ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T r_n60 = -ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T r_n120 = -ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
 
     /* Sector 0: [0, 60) */
     ALWAN_CORE_T tan0 = ALWAN_CORE_TAN(ALWAN_CORE_LITERAL(3.0) * H / ALWAN_CORE_LITERAL(2.0));
@@ -601,8 +601,8 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_ihls_to_rgb)(ALWAN_CORE_IHLS
     ALWAN_CORE_T Y = ihls.L;
     ALWAN_CORE_T S = ihls.S;
 
-    ALWAN_CORE_T const pi_3 = ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T const two_pi_3 = ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T pi_3 = ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
+    const ALWAN_CORE_T two_pi_3 = ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(3.0);
 
     ALWAN_CORE_T k = ALWAN_CORE_FLOOR(H / pi_3);
     ALWAN_CORE_T H_s = H - k * pi_3;
@@ -671,9 +671,9 @@ ALWAN_INLINE ALWAN_CORE_CUBEHELIX ALWAN_CORE_FNVLIT(alwan_rgb_to_cubehelix)(ALWA
     ALWAN_CORE_CUBEHELIX result;
 
     /* Derived inverse constants */
-    ALWAN_CORE_T const ED    = ALWAN_CUBEHELIX_E * ALWAN_CUBEHELIX_D;
-    ALWAN_CORE_T const EB    = ALWAN_CUBEHELIX_E * ALWAN_CUBEHELIX_B;
-    ALWAN_CORE_T const BC_DA = ALWAN_CUBEHELIX_B * ALWAN_CUBEHELIX_C
+    const ALWAN_CORE_T ED    = ALWAN_CUBEHELIX_E * ALWAN_CUBEHELIX_D;
+    const ALWAN_CORE_T EB    = ALWAN_CUBEHELIX_E * ALWAN_CUBEHELIX_B;
+    const ALWAN_CORE_T BC_DA = ALWAN_CUBEHELIX_B * ALWAN_CUBEHELIX_C
                              - ALWAN_CUBEHELIX_D * ALWAN_CUBEHELIX_A;
 
     /* Recover lightness (luminance under Rec.601 via the matrix inverse) */
@@ -713,13 +713,13 @@ ALWAN_INLINE ALWAN_CORE_CUBEHELIX ALWAN_CORE_FNVLIT(alwan_rgb_to_cubehelix)(ALWA
 /* sRGB D65 XYZ-to-linear-RGB matrix (IEC 61966-2-1) */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(ALWAN_HSLUV_M)[3][3] = {
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_HSLUV_M)[3][3] = {
     { 3.24096994190452134377, -1.53738317757009345794, -0.49861076029300328366},
     {-0.96924363628087982613,  1.87596750150772066772,  0.04155505740717561247},
     { 0.05563007969699360846, -0.20397695888897656435,  1.05697151424287856072}
 };
 /* sRGB D65 linear-RGB-to-XYZ matrix */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(ALWAN_HSLUV_M_INV)[3][3] = {
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_HSLUV_M_INV)[3][3] = {
     { 0.41239079926595948129,  0.35758433938387796373,  0.18048078840183428751},
     { 0.21263900587151035754,  0.71516867876775592746,  0.07219231536073371500},
     { 0.01933081871559185069,  0.11919477979462598791,  0.95053215224966058086}
@@ -732,7 +732,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hsluv_l2y)(ALWAN_CORE_T L) {
      * segment, and 116^3 = 1560896. The upper branch used to return a literal
      * 1.0 for every L > 8, so every non-dark lightness decoded to white.
      * alwan_hsluv_get_bounds already computed (L+16)^3 / 1560896 inline. */
-    ALWAN_CORE_T const tl = L + ALWAN_CORE_LITERAL(16.0);
+    const ALWAN_CORE_T tl = L + ALWAN_CORE_LITERAL(16.0);
     return ALWAN_CORE_SELECT(L <= ALWAN_CORE_LITERAL(8.0),
         L / ALWAN_CORE_LITERAL(903.29629629629629629630),
         (tl * tl * tl) / ALWAN_CORE_LITERAL(1560896.0));
@@ -998,18 +998,18 @@ ALWAN_INLINE void ALWAN_CORE_FNLIT(alwan_ok_lab_to_srgb)(ALWAN_CORE_T *r, ALWAN_
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_ok_toe)(ALWAN_CORE_T x) {
-    ALWAN_CORE_T const k1 = ALWAN_CORE_LITERAL(0.206);
-    ALWAN_CORE_T const k2 = ALWAN_CORE_LITERAL(0.03);
-    ALWAN_CORE_T const k3 = (ALWAN_CORE_ONE + k1) / (ALWAN_CORE_ONE + k2);
+    const ALWAN_CORE_T k1 = ALWAN_CORE_LITERAL(0.206);
+    const ALWAN_CORE_T k2 = ALWAN_CORE_LITERAL(0.03);
+    const ALWAN_CORE_T k3 = (ALWAN_CORE_ONE + k1) / (ALWAN_CORE_ONE + k2);
     ALWAN_CORE_T t = k3 * x - k1;
     return ALWAN_CORE_LITERAL(0.5) * (t + ALWAN_CORE_SQRT(t * t
          + ALWAN_CORE_LITERAL(4.0) * k2 * k3 * x));
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_ok_toe_inv)(ALWAN_CORE_T x) {
-    ALWAN_CORE_T const k1 = ALWAN_CORE_LITERAL(0.206);
-    ALWAN_CORE_T const k2 = ALWAN_CORE_LITERAL(0.03);
-    ALWAN_CORE_T const k3 = (ALWAN_CORE_ONE + k1) / (ALWAN_CORE_ONE + k2);
+    const ALWAN_CORE_T k1 = ALWAN_CORE_LITERAL(0.206);
+    const ALWAN_CORE_T k2 = ALWAN_CORE_LITERAL(0.03);
+    const ALWAN_CORE_T k3 = (ALWAN_CORE_ONE + k1) / (ALWAN_CORE_ONE + k2);
     return (x * x + k1 * x) / (k3 * (x + k2));
 }
 

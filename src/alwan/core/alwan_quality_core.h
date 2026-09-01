@@ -68,12 +68,12 @@ ALWAN_DIAG_POP
 ALWAN_INLINE alwan_scalar alwan_cct_ohno2013_v(alwan_scalar u, alwan_scalar v) {
     /* Hernandez-Andres 1999, via CIE 1931 xy. Kept as the high-temperature leg:
      * see the return at the end. */
-    alwan_scalar const den0 = ALWAN_LITERAL(2.0) * u - ALWAN_LITERAL(8.0) * v + ALWAN_LITERAL(4.0);
-    alwan_scalar const den  = ALWAN_SELECT(ALWAN_ABS(den0) < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1e-10), den0);
-    alwan_scalar const xc = ALWAN_LITERAL(3.0) * u / den;
-    alwan_scalar const yc = ALWAN_LITERAL(2.0) * v / den;
-    alwan_scalar const nn = (xc - ALWAN_LITERAL(0.3366)) / (yc - ALWAN_LITERAL(0.1735));
-    alwan_scalar const cct_ha = ALWAN_LITERAL(-949.86315)
+    const alwan_scalar den0 = ALWAN_LITERAL(2.0) * u - ALWAN_LITERAL(8.0) * v + ALWAN_LITERAL(4.0);
+    const alwan_scalar den  = ALWAN_SELECT(ALWAN_ABS(den0) < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1e-10), den0);
+    const alwan_scalar xc = ALWAN_LITERAL(3.0) * u / den;
+    const alwan_scalar yc = ALWAN_LITERAL(2.0) * v / den;
+    const alwan_scalar nn = (xc - ALWAN_LITERAL(0.3366)) / (yc - ALWAN_LITERAL(0.1735));
+    const alwan_scalar cct_ha = ALWAN_LITERAL(-949.86315)
         + ALWAN_LITERAL(6253.80338) * ALWAN_EXP(-nn / ALWAN_LITERAL(0.92159))
         + ALWAN_LITERAL(28.70599)   * ALWAN_EXP(-nn / ALWAN_LITERAL(0.20039))
         + ALWAN_LITERAL(0.00004)    * ALWAN_EXP(-nn / ALWAN_LITERAL(0.07125));
@@ -81,25 +81,25 @@ ALWAN_INLINE alwan_scalar alwan_cct_ohno2013_v(alwan_scalar u, alwan_scalar v) {
     /* 1000 K to 25000 K, matching the rest of alwan's CCT surface. Krystek is
      * published for 1000-15000 K; above that it is an extrapolation, which is
      * why the high end is sampled densely rather than trusted pointwise. */
-    alwan_scalar const mired_min = ALWAN_LITERAL(66.667);   /* 15000 K, Krystek's published limit */
-    alwan_scalar const mired_max = ALWAN_LITERAL(1000.0);
-    int const steps = 256;
+    const alwan_scalar mired_min = ALWAN_LITERAL(66.667);   /* 15000 K, Krystek's published limit */
+    const alwan_scalar mired_max = ALWAN_LITERAL(1000.0);
+    const int steps = 256;
 
     int best = 1;
     alwan_scalar best_d = ALWAN_LITERAL(-1.0);
     int i;
 
     for (i = 0; i <= steps; i++) {
-        alwan_scalar const m = mired_min + (mired_max - mired_min) * ((alwan_scalar)i / (alwan_scalar)steps);
-        alwan_scalar const T_i = ALWAN_LITERAL(1.0e6) / m;
-        alwan_scalar const T2 = T_i * T_i;
-        alwan_scalar const up = (KRYSTEK_U_COEFFS[0] + KRYSTEK_U_COEFFS[1] * T_i + KRYSTEK_U_COEFFS[2] * T2) /
+        const alwan_scalar m = mired_min + (mired_max - mired_min) * ((alwan_scalar)i / (alwan_scalar)steps);
+        const alwan_scalar T_i = ALWAN_LITERAL(1.0e6) / m;
+        const alwan_scalar T2 = T_i * T_i;
+        const alwan_scalar up = (KRYSTEK_U_COEFFS[0] + KRYSTEK_U_COEFFS[1] * T_i + KRYSTEK_U_COEFFS[2] * T2) /
                       (KRYSTEK_U_COEFFS[3] + KRYSTEK_U_COEFFS[4] * T_i + KRYSTEK_U_COEFFS[5] * T2);
-        alwan_scalar const vp = (KRYSTEK_V_COEFFS[0] + KRYSTEK_V_COEFFS[1] * T_i + KRYSTEK_V_COEFFS[2] * T2) /
+        const alwan_scalar vp = (KRYSTEK_V_COEFFS[0] + KRYSTEK_V_COEFFS[1] * T_i + KRYSTEK_V_COEFFS[2] * T2) /
                       (KRYSTEK_V_COEFFS[3] + KRYSTEK_V_COEFFS[4] * T_i + KRYSTEK_V_COEFFS[5] * T2);
-        alwan_scalar const du = u - up;
-        alwan_scalar const dv = v - vp;
-        alwan_scalar const d  = ALWAN_SQRT(du * du + dv * dv);
+        const alwan_scalar du = u - up;
+        const alwan_scalar dv = v - vp;
+        const alwan_scalar d  = ALWAN_SQRT(du * du + dv * dv);
         if (best_d < ALWAN_LITERAL(0.0) || d < best_d) {
             best_d = d;
             best = i;
@@ -114,10 +114,10 @@ ALWAN_INLINE alwan_scalar alwan_cct_ohno2013_v(alwan_scalar u, alwan_scalar v) {
         alwan_scalar Tn[3], Mn[3], un[3], vn[3], dn[3];
         int k;
         for (k = 0; k < 3; k++) {
-            alwan_scalar const m = mired_min + (mired_max - mired_min) *
+            const alwan_scalar m = mired_min + (mired_max - mired_min) *
                          ((alwan_scalar)(best - 1 + k) / (alwan_scalar)steps);
-            alwan_scalar const T_k = ALWAN_LITERAL(1.0e6) / m;
-            alwan_scalar const T2 = T_k * T_k;
+            const alwan_scalar T_k = ALWAN_LITERAL(1.0e6) / m;
+            const alwan_scalar T2 = T_k * T_k;
             Tn[k] = T_k;
             Mn[k] = m;
             un[k] = (KRYSTEK_U_COEFFS[0] + KRYSTEK_U_COEFFS[1] * T_k + KRYSTEK_U_COEFFS[2] * T2) /
@@ -130,20 +130,20 @@ ALWAN_INLINE alwan_scalar alwan_cct_ohno2013_v(alwan_scalar u, alwan_scalar v) {
         {
             /* Triangular solution: project the point onto the chord joining the
              * two outer samples. */
-            alwan_scalar const lu = un[2] - un[0];
-            alwan_scalar const lv = vn[2] - vn[0];
-            alwan_scalar const l  = ALWAN_SQRT(lu * lu + lv * lv);
+            const alwan_scalar lu = un[2] - un[0];
+            const alwan_scalar lv = vn[2] - vn[0];
+            const alwan_scalar l  = ALWAN_SQRT(lu * lu + lv * lv);
             alwan_scalar t_tri = Tn[1];
             alwan_scalar duv = dn[1];
             if (l > ALWAN_LITERAL(1e-12)) {
-                alwan_scalar const x = (dn[0] * dn[0] - dn[2] * dn[2] + l * l) / (ALWAN_LITERAL(2.0) * l);
-                alwan_scalar const s = dn[0] * dn[0] - x * x;
+                const alwan_scalar x = (dn[0] * dn[0] - dn[2] * dn[2] + l * l) / (ALWAN_LITERAL(2.0) * l);
+                const alwan_scalar s = dn[0] * dn[0] - x * x;
                 /* Interpolate in MIRED, not kelvin. The samples are uniform
                  * in mired and T = 1e6/m is strongly nonlinear, so a linear
                  * blend of Tn[0] and Tn[2] is wrong by hundreds of kelvin
                  * wherever T changes fast per step. */
                 {
-                    alwan_scalar const m_tri = Mn[0] + (Mn[2] - Mn[0]) * (x / l);
+                    const alwan_scalar m_tri = Mn[0] + (Mn[2] - Mn[0]) * (x / l);
                     t_tri = (ALWAN_ABS(m_tri) > ALWAN_LITERAL(1e-9)) ? ALWAN_LITERAL(1.0e6) / m_tri : Tn[1];
                 }
                 duv = (s > ALWAN_LITERAL(0.0)) ? ALWAN_SQRT(s) : ALWAN_LITERAL(0.0);
@@ -153,24 +153,24 @@ ALWAN_INLINE alwan_scalar alwan_cct_ohno2013_v(alwan_scalar u, alwan_scalar v) {
              * the vertex. Ohno uses it once |Duv| reaches 0.002, where the
              * chord approximation starts to bite. */
             {
-                alwan_scalar const X = (Mn[2] - Mn[1]) * (Mn[0] - Mn[2]) * (Mn[1] - Mn[0]);
+                const alwan_scalar X = (Mn[2] - Mn[1]) * (Mn[0] - Mn[2]) * (Mn[1] - Mn[0]);
                 alwan_scalar t_par = t_tri;
                 if (ALWAN_ABS(X) > ALWAN_LITERAL(1e-12)) {
-                    alwan_scalar const a = (Mn[0] * (dn[2] - dn[1]) +
+                    const alwan_scalar a = (Mn[0] * (dn[2] - dn[1]) +
                                   Mn[1] * (dn[0] - dn[2]) +
                                   Mn[2] * (dn[1] - dn[0])) / X;
-                    alwan_scalar const b = -(Mn[0] * Mn[0] * (dn[2] - dn[1]) +
+                    const alwan_scalar b = -(Mn[0] * Mn[0] * (dn[2] - dn[1]) +
                                    Mn[1] * Mn[1] * (dn[0] - dn[2]) +
                                    Mn[2] * Mn[2] * (dn[1] - dn[0])) / X;
                     if (ALWAN_ABS(a) > ALWAN_LITERAL(1e-20)) {
                         {
-                            alwan_scalar const m_par = -b / (ALWAN_LITERAL(2.0) * a);
+                            const alwan_scalar m_par = -b / (ALWAN_LITERAL(2.0) * a);
                             t_par = (ALWAN_ABS(m_par) > ALWAN_LITERAL(1e-9)) ? ALWAN_LITERAL(1.0e6) / m_par : t_tri;
                         }
                     }
                 }
                 {
-                    alwan_scalar const t_ohno = (ALWAN_ABS(duv) >= ALWAN_LITERAL(0.002)) ? t_par : t_tri;
+                    const alwan_scalar t_ohno = (ALWAN_ABS(duv) >= ALWAN_LITERAL(0.002)) ? t_par : t_tri;
 
                     /* Krystek 1985 is published for 1000-15000 K. Above that it
                      * is an extrapolation and its own deviation from the true

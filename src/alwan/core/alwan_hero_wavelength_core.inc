@@ -81,7 +81,7 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_hero_wavelength_to_xyz)(ALWA
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hero_wavelength_pdf)(ALWAN_CORE_T lambda) {
-    (void)lambda;
+    ALWAN_UNUSED(lambda);
     return ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(400.0);  /* 1 / (780 - 380) */
 }
 

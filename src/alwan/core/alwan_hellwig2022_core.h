@@ -66,16 +66,16 @@ ALWAN_CONSTEXPR alwan_mat3x3 HW22_V_M_CAT16_INV = {{
 }};
 ALWAN_DIAG_POP
 
-static alwan_scalar const HW22_V_H_I[5] = {
+static const alwan_scalar HW22_V_H_I[5] = {
     ALWAN_LITERAL(20.14), ALWAN_LITERAL(90.00),
     ALWAN_LITERAL(164.25), ALWAN_LITERAL(237.53),
     ALWAN_LITERAL(380.14)
 };
-static alwan_scalar const HW22_V_E_I[4] = {
+static const alwan_scalar HW22_V_E_I[4] = {
     ALWAN_LITERAL(0.8), ALWAN_LITERAL(0.7),
     ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.2)
 };
-static alwan_scalar const HW22_V_HQ_I[4] = {
+static const alwan_scalar HW22_V_HQ_I[4] = {
     ALWAN_LITERAL(0.0), ALWAN_LITERAL(100.0),
     ALWAN_LITERAL(200.0), ALWAN_LITERAL(300.0)
 };

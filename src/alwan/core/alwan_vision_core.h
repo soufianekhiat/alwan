@@ -290,21 +290,21 @@ ALWAN_INLINE alwan_scalar alwan_wcag_contrast_ratio_v(alwan_scalar Y1, alwan_sca
 }
 
 ALWAN_INLINE alwan_scalar alwan_apca_contrast_v(alwan_rgb srgb_text, alwan_rgb srgb_bg) {
-    alwan_scalar const mainTRC = ALWAN_LITERAL(2.4);
+    const alwan_scalar mainTRC = ALWAN_LITERAL(2.4);
     alwan_scalar Rtxt = ALWAN_POW(srgb_text.r, mainTRC); alwan_scalar Gtxt = ALWAN_POW(srgb_text.g, mainTRC); alwan_scalar Btxt = ALWAN_POW(srgb_text.b, mainTRC);
     alwan_scalar Rbg = ALWAN_POW(srgb_bg.r, mainTRC); alwan_scalar Gbg = ALWAN_POW(srgb_bg.g, mainTRC); alwan_scalar Bbg = ALWAN_POW(srgb_bg.b, mainTRC);
-    alwan_scalar const Rco = ALWAN_LITERAL(0.2126729); alwan_scalar const Gco = ALWAN_LITERAL(0.7151522); alwan_scalar const Bco = ALWAN_LITERAL(0.0721750);
+    const alwan_scalar Rco = ALWAN_LITERAL(0.2126729); const alwan_scalar Gco = ALWAN_LITERAL(0.7151522); const alwan_scalar Bco = ALWAN_LITERAL(0.0721750);
     alwan_scalar Ytxt = Rco * Rtxt + Gco * Gtxt + Bco * Btxt;
     alwan_scalar Ybg = Rco * Rbg + Gco * Gbg + Bco * Bbg;
-    alwan_scalar const blkThrs = ALWAN_LITERAL(0.022); alwan_scalar const blkClmp = ALWAN_LITERAL(1.414);
+    const alwan_scalar blkThrs = ALWAN_LITERAL(0.022); const alwan_scalar blkClmp = ALWAN_LITERAL(1.414);
     alwan_scalar diffTxt = ALWAN_SELECT(Ytxt < blkThrs, blkThrs - Ytxt, ALWAN_ZERO);
     alwan_scalar diffBg = ALWAN_SELECT(Ybg < blkThrs, blkThrs - Ybg, ALWAN_ZERO);
     Ytxt = ALWAN_SELECT(Ytxt < blkThrs, Ytxt + ALWAN_POW(diffTxt, blkClmp), Ytxt);
     Ybg = ALWAN_SELECT(Ybg < blkThrs, Ybg + ALWAN_POW(diffBg, blkClmp), Ybg);
-    alwan_scalar const normBG = ALWAN_LITERAL(0.56); alwan_scalar const normTXT = ALWAN_LITERAL(0.57);
-    alwan_scalar const revBG = ALWAN_LITERAL(0.65); alwan_scalar const revTXT = ALWAN_LITERAL(0.62);
-    alwan_scalar const scaleBO = ALWAN_LITERAL(1.14); alwan_scalar const loClip = ALWAN_LITERAL(0.1);
-    alwan_scalar const loBoWoffset = ALWAN_LITERAL(0.027);
+    const alwan_scalar normBG = ALWAN_LITERAL(0.56); const alwan_scalar normTXT = ALWAN_LITERAL(0.57);
+    const alwan_scalar revBG = ALWAN_LITERAL(0.65); const alwan_scalar revTXT = ALWAN_LITERAL(0.62);
+    const alwan_scalar scaleBO = ALWAN_LITERAL(1.14); const alwan_scalar loClip = ALWAN_LITERAL(0.1);
+    const alwan_scalar loBoWoffset = ALWAN_LITERAL(0.027);
     alwan_scalar Sapc_normal = (ALWAN_POW(Ybg, normBG) - ALWAN_POW(Ytxt, normTXT)) * scaleBO;
     alwan_scalar Sapc_reverse = (ALWAN_POW(Ybg, revBG) - ALWAN_POW(Ytxt, revTXT)) * scaleBO;
     alwan_scalar SAPC = ALWAN_SELECT(Ybg > Ytxt, Sapc_normal, Sapc_reverse);

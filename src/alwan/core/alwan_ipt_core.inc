@@ -16,7 +16,7 @@
 /* IPT nonlinearity exponent */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(IPT_V_EXPONENT) = {
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(IPT_V_EXPONENT) = {
 #include "../data/ipt_exponent.csv"
 };
 

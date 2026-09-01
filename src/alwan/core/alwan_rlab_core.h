@@ -85,16 +85,16 @@ ALWAN_INLINE alwan_rlab_v_correlates alwan_rlab_forward_v(
      * See the .inc twin for why Y_n is a fixed 318.31 here. */
         /* A zero Y_n means "unset"; fall back to the RLAB reference viewing
      * condition rather than producing a cube root of zero. */
-    alwan_scalar const Y_n_used = ALWAN_SELECT(Y_n > ALWAN_LITERAL(0.0), Y_n, ALWAN_LITERAL(318.31));
-    alwan_scalar const y_n_cbrt = ALWAN_POW(Y_n_used, ALWAN_ONE / ALWAN_LITERAL(3.0));
-    alwan_scalar const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
-    alwan_scalar const lms_w_sum_safe = ALWAN_SELECT(ALWAN_ABS(lms_w_sum) > ALWAN_LITERAL(1e-10), lms_w_sum, ALWAN_ONE);
-    alwan_scalar const l_E0 = ALWAN_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
-    alwan_scalar const l_E1 = ALWAN_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
-    alwan_scalar const l_E2 = ALWAN_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
-    alwan_scalar const p0 = (ALWAN_ONE + y_n_cbrt + l_E0) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E0);
-    alwan_scalar const p1 = (ALWAN_ONE + y_n_cbrt + l_E1) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E1);
-    alwan_scalar const p2 = (ALWAN_ONE + y_n_cbrt + l_E2) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E2);
+    const alwan_scalar Y_n_used = ALWAN_SELECT(Y_n > ALWAN_LITERAL(0.0), Y_n, ALWAN_LITERAL(318.31));
+    const alwan_scalar y_n_cbrt = ALWAN_POW(Y_n_used, ALWAN_ONE / ALWAN_LITERAL(3.0));
+    const alwan_scalar lms_w_sum = lms_w0 + lms_w1 + lms_w2;
+    const alwan_scalar lms_w_sum_safe = ALWAN_SELECT(ALWAN_ABS(lms_w_sum) > ALWAN_LITERAL(1e-10), lms_w_sum, ALWAN_ONE);
+    const alwan_scalar l_E0 = ALWAN_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
+    const alwan_scalar l_E1 = ALWAN_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
+    const alwan_scalar l_E2 = ALWAN_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
+    const alwan_scalar p0 = (ALWAN_ONE + y_n_cbrt + l_E0) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E0);
+    const alwan_scalar p1 = (ALWAN_ONE + y_n_cbrt + l_E1) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E1);
+    const alwan_scalar p2 = (ALWAN_ONE + y_n_cbrt + l_E2) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E2);
     alwan_scalar adapt_0 = ALWAN_SELECT(lms_w0 > ALWAN_LITERAL(1e-10), (p0 + D * (ALWAN_ONE - p0)) / lms_w0, ALWAN_LITERAL(1.0));
     alwan_scalar lms_a0 = lms_0 * adapt_0;
     alwan_scalar adapt_1 = ALWAN_SELECT(lms_w1 > ALWAN_LITERAL(1e-10), (p1 + D * (ALWAN_ONE - p1)) / lms_w1, ALWAN_LITERAL(1.0));
@@ -142,16 +142,16 @@ ALWAN_INLINE alwan_xyz alwan_rlab_inverse_v(
     /* Exact inverse of the forward's adaptation; see the .inc twin. */
         /* A zero Y_n means "unset"; fall back to the RLAB reference viewing
      * condition rather than producing a cube root of zero. */
-    alwan_scalar const Y_n_used = ALWAN_SELECT(Y_n > ALWAN_LITERAL(0.0), Y_n, ALWAN_LITERAL(318.31));
-    alwan_scalar const y_n_cbrt = ALWAN_POW(Y_n_used, ALWAN_ONE / ALWAN_LITERAL(3.0));
-    alwan_scalar const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
-    alwan_scalar const lms_w_sum_safe = ALWAN_SELECT(ALWAN_ABS(lms_w_sum) > ALWAN_LITERAL(1e-10), lms_w_sum, ALWAN_ONE);
-    alwan_scalar const l_E0 = ALWAN_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
-    alwan_scalar const l_E1 = ALWAN_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
-    alwan_scalar const l_E2 = ALWAN_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
-    alwan_scalar const p0 = (ALWAN_ONE + y_n_cbrt + l_E0) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E0);
-    alwan_scalar const p1 = (ALWAN_ONE + y_n_cbrt + l_E1) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E1);
-    alwan_scalar const p2 = (ALWAN_ONE + y_n_cbrt + l_E2) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E2);
+    const alwan_scalar Y_n_used = ALWAN_SELECT(Y_n > ALWAN_LITERAL(0.0), Y_n, ALWAN_LITERAL(318.31));
+    const alwan_scalar y_n_cbrt = ALWAN_POW(Y_n_used, ALWAN_ONE / ALWAN_LITERAL(3.0));
+    const alwan_scalar lms_w_sum = lms_w0 + lms_w1 + lms_w2;
+    const alwan_scalar lms_w_sum_safe = ALWAN_SELECT(ALWAN_ABS(lms_w_sum) > ALWAN_LITERAL(1e-10), lms_w_sum, ALWAN_ONE);
+    const alwan_scalar l_E0 = ALWAN_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
+    const alwan_scalar l_E1 = ALWAN_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
+    const alwan_scalar l_E2 = ALWAN_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
+    const alwan_scalar p0 = (ALWAN_ONE + y_n_cbrt + l_E0) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E0);
+    const alwan_scalar p1 = (ALWAN_ONE + y_n_cbrt + l_E1) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E1);
+    const alwan_scalar p2 = (ALWAN_ONE + y_n_cbrt + l_E2) / (ALWAN_ONE + y_n_cbrt + ALWAN_ONE / l_E2);
     alwan_scalar adapt_0 = ALWAN_SELECT(lms_w0 > ALWAN_LITERAL(1e-10), (p0 + D * (ALWAN_ONE - p0)) / lms_w0, ALWAN_LITERAL(1.0));
     alwan_scalar lms_0 = lms_a0 / adapt_0;
     alwan_scalar adapt_1 = ALWAN_SELECT(lms_w1 > ALWAN_LITERAL(1e-10), (p1 + D * (ALWAN_ONE - p1)) / lms_w1, ALWAN_LITERAL(1.0));

@@ -96,21 +96,21 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_rlab_v_correlates) ALWAN_CORE_FNVLIT(alwan_r
      * before_public.md. */
         /* A zero Y_n means "unset"; fall back to the RLAB reference viewing
      * condition rather than producing a cube root of zero. */
-    ALWAN_CORE_T const Y_n_used = ALWAN_CORE_SELECT(Y_n > ALWAN_CORE_LITERAL(0.0), Y_n, ALWAN_CORE_LITERAL(318.31));
-    ALWAN_CORE_T const y_n_cbrt = ALWAN_CORE_POW(Y_n_used, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
-    ALWAN_CORE_T const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
-    ALWAN_CORE_T const lms_w_sum_safe = ALWAN_CORE_SELECT(
+    const ALWAN_CORE_T Y_n_used = ALWAN_CORE_SELECT(Y_n > ALWAN_CORE_LITERAL(0.0), Y_n, ALWAN_CORE_LITERAL(318.31));
+    const ALWAN_CORE_T y_n_cbrt = ALWAN_CORE_POW(Y_n_used, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
+    const ALWAN_CORE_T lms_w_sum = lms_w0 + lms_w1 + lms_w2;
+    const ALWAN_CORE_T lms_w_sum_safe = ALWAN_CORE_SELECT(
         ALWAN_CORE_ABS(lms_w_sum) > ALWAN_CORE_LITERAL(1e-10), lms_w_sum, ALWAN_CORE_ONE);
 
-    ALWAN_CORE_T const l_E0 = ALWAN_CORE_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
-    ALWAN_CORE_T const l_E1 = ALWAN_CORE_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
-    ALWAN_CORE_T const l_E2 = ALWAN_CORE_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
+    const ALWAN_CORE_T l_E0 = ALWAN_CORE_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
+    const ALWAN_CORE_T l_E1 = ALWAN_CORE_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
+    const ALWAN_CORE_T l_E2 = ALWAN_CORE_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
 
-    ALWAN_CORE_T const p0 = (ALWAN_CORE_ONE + y_n_cbrt + l_E0) /
+    const ALWAN_CORE_T p0 = (ALWAN_CORE_ONE + y_n_cbrt + l_E0) /
                             (ALWAN_CORE_ONE + y_n_cbrt + ALWAN_CORE_ONE / l_E0);
-    ALWAN_CORE_T const p1 = (ALWAN_CORE_ONE + y_n_cbrt + l_E1) /
+    const ALWAN_CORE_T p1 = (ALWAN_CORE_ONE + y_n_cbrt + l_E1) /
                             (ALWAN_CORE_ONE + y_n_cbrt + ALWAN_CORE_ONE / l_E1);
-    ALWAN_CORE_T const p2 = (ALWAN_CORE_ONE + y_n_cbrt + l_E2) /
+    const ALWAN_CORE_T p2 = (ALWAN_CORE_ONE + y_n_cbrt + l_E2) /
                             (ALWAN_CORE_ONE + y_n_cbrt + ALWAN_CORE_ONE / l_E2);
 
     ALWAN_CORE_T adapt_0 = ALWAN_CORE_SELECT(lms_w0 > ALWAN_CORE_LITERAL(1e-10),
@@ -206,21 +206,21 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_rlab_inverse)(
      * omission was caught. */
         /* A zero Y_n means "unset"; fall back to the RLAB reference viewing
      * condition rather than producing a cube root of zero. */
-    ALWAN_CORE_T const Y_n_used = ALWAN_CORE_SELECT(Y_n > ALWAN_CORE_LITERAL(0.0), Y_n, ALWAN_CORE_LITERAL(318.31));
-    ALWAN_CORE_T const y_n_cbrt = ALWAN_CORE_POW(Y_n_used, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
-    ALWAN_CORE_T const lms_w_sum = lms_w0 + lms_w1 + lms_w2;
-    ALWAN_CORE_T const lms_w_sum_safe = ALWAN_CORE_SELECT(
+    const ALWAN_CORE_T Y_n_used = ALWAN_CORE_SELECT(Y_n > ALWAN_CORE_LITERAL(0.0), Y_n, ALWAN_CORE_LITERAL(318.31));
+    const ALWAN_CORE_T y_n_cbrt = ALWAN_CORE_POW(Y_n_used, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
+    const ALWAN_CORE_T lms_w_sum = lms_w0 + lms_w1 + lms_w2;
+    const ALWAN_CORE_T lms_w_sum_safe = ALWAN_CORE_SELECT(
         ALWAN_CORE_ABS(lms_w_sum) > ALWAN_CORE_LITERAL(1e-10), lms_w_sum, ALWAN_CORE_ONE);
 
-    ALWAN_CORE_T const l_E0 = ALWAN_CORE_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
-    ALWAN_CORE_T const l_E1 = ALWAN_CORE_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
-    ALWAN_CORE_T const l_E2 = ALWAN_CORE_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
+    const ALWAN_CORE_T l_E0 = ALWAN_CORE_LITERAL(3.0) * lms_w0 / lms_w_sum_safe;
+    const ALWAN_CORE_T l_E1 = ALWAN_CORE_LITERAL(3.0) * lms_w1 / lms_w_sum_safe;
+    const ALWAN_CORE_T l_E2 = ALWAN_CORE_LITERAL(3.0) * lms_w2 / lms_w_sum_safe;
 
-    ALWAN_CORE_T const p0 = (ALWAN_CORE_ONE + y_n_cbrt + l_E0) /
+    const ALWAN_CORE_T p0 = (ALWAN_CORE_ONE + y_n_cbrt + l_E0) /
                             (ALWAN_CORE_ONE + y_n_cbrt + ALWAN_CORE_ONE / l_E0);
-    ALWAN_CORE_T const p1 = (ALWAN_CORE_ONE + y_n_cbrt + l_E1) /
+    const ALWAN_CORE_T p1 = (ALWAN_CORE_ONE + y_n_cbrt + l_E1) /
                             (ALWAN_CORE_ONE + y_n_cbrt + ALWAN_CORE_ONE / l_E1);
-    ALWAN_CORE_T const p2 = (ALWAN_CORE_ONE + y_n_cbrt + l_E2) /
+    const ALWAN_CORE_T p2 = (ALWAN_CORE_ONE + y_n_cbrt + l_E2) /
                             (ALWAN_CORE_ONE + y_n_cbrt + ALWAN_CORE_ONE / l_E2);
 
     ALWAN_CORE_T adapt_0 = ALWAN_CORE_SELECT(lms_w0 > ALWAN_CORE_LITERAL(1e-10),

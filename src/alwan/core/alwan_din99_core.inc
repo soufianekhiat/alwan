@@ -16,7 +16,7 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[4][8] = {
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[4][8] = {
     /* DIN99 / ASTM D2244-07 */
     {
         ALWAN_CORE_LITERAL(105.509),
@@ -75,8 +75,8 @@ ALWAN_INLINE ALWAN_CORE_DIN99 ALWAN_CORE_FNVLIT(alwan_lab_to_din99)(ALWAN_CORE_L
     /* Clamp variant to [0,3] */
     int v = ALWAN_CORE_SELECT(variant < 0, 0, ALWAN_CORE_SELECT(variant > 3, 3, variant));
 
-    ALWAN_CORE_T const k_E = ALWAN_CORE_LITERAL(1.0);
-    ALWAN_CORE_T const k_CH = ALWAN_CORE_LITERAL(1.0);
+    const ALWAN_CORE_T k_E = ALWAN_CORE_LITERAL(1.0);
+    const ALWAN_CORE_T k_CH = ALWAN_CORE_LITERAL(1.0);
 
     /* DIN99 lightness */
     result.L99 = ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[v][0] * ALWAN_CORE_LN(ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[v][1] * lab.L) * k_E;
@@ -121,8 +121,8 @@ ALWAN_INLINE ALWAN_CORE_LAB ALWAN_CORE_FNVLIT(alwan_din99_to_lab)(ALWAN_CORE_DIN
     /* Clamp variant to [0,3] */
     int v = ALWAN_CORE_SELECT(variant < 0, 0, ALWAN_CORE_SELECT(variant > 3, 3, variant));
 
-    ALWAN_CORE_T const k_E = ALWAN_CORE_LITERAL(1.0);
-    ALWAN_CORE_T const k_CH = ALWAN_CORE_LITERAL(1.0);
+    const ALWAN_CORE_T k_E = ALWAN_CORE_LITERAL(1.0);
+    const ALWAN_CORE_T k_CH = ALWAN_CORE_LITERAL(1.0);
 
     /* Convert angle to radians */
     ALWAN_CORE_T c3_rad = ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[v][2] * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0);

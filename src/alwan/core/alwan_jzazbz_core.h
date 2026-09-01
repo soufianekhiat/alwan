@@ -41,15 +41,15 @@ ALWAN_DIAG_POP
  * GPU Backends: Single-precision only (original code)
  * ================================================================ */
 
-static alwan_scalar const JZAZBZ_V_B = ALWAN_LITERAL(1.15);
-static alwan_scalar const JZAZBZ_V_G = ALWAN_LITERAL(0.66);
-static alwan_scalar const JZAZBZ_V_C1 = ALWAN_LITERAL(0.8359375);
-static alwan_scalar const JZAZBZ_V_C2 = ALWAN_LITERAL(18.8515625);
-static alwan_scalar const JZAZBZ_V_C3 = ALWAN_LITERAL(18.6875);
-static alwan_scalar const JZAZBZ_V_N  = ALWAN_LITERAL(0.1593017578125);
-static alwan_scalar const JZAZBZ_V_P  = ALWAN_LITERAL(134.034375);
-static alwan_scalar const JZAZBZ_V_D  = ALWAN_LITERAL(-0.56);
-static alwan_scalar const JZAZBZ_V_D0 = ALWAN_LITERAL(1.6295499532821566e-11);
+static const alwan_scalar JZAZBZ_V_B = ALWAN_LITERAL(1.15);
+static const alwan_scalar JZAZBZ_V_G = ALWAN_LITERAL(0.66);
+static const alwan_scalar JZAZBZ_V_C1 = ALWAN_LITERAL(0.8359375);
+static const alwan_scalar JZAZBZ_V_C2 = ALWAN_LITERAL(18.8515625);
+static const alwan_scalar JZAZBZ_V_C3 = ALWAN_LITERAL(18.6875);
+static const alwan_scalar JZAZBZ_V_N  = ALWAN_LITERAL(0.1593017578125);
+static const alwan_scalar JZAZBZ_V_P  = ALWAN_LITERAL(134.034375);
+static const alwan_scalar JZAZBZ_V_D  = ALWAN_LITERAL(-0.56);
+static const alwan_scalar JZAZBZ_V_D0 = ALWAN_LITERAL(1.6295499532821566e-11);
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV

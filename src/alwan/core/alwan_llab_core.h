@@ -60,14 +60,14 @@ ALWAN_CONSTEXPR alwan_mat3x3 LLAB_RGB_TO_XYZ = {{
 }};
 ALWAN_DIAG_POP
 
-static alwan_scalar const LLAB_V_EPSILON = ALWAN_LITERAL(0.008856);
-static alwan_scalar const LLAB_V_COEF_116 = ALWAN_LITERAL(116.0);
-static alwan_scalar const LLAB_V_COEF_16 = ALWAN_LITERAL(16.0);
-static alwan_scalar const LLAB_V_COEF_500 = ALWAN_LITERAL(500.0);
-static alwan_scalar const LLAB_V_COEF_200 = ALWAN_LITERAL(200.0);
-static alwan_scalar const LLAB_V_CHROMA_SCALE = ALWAN_LITERAL(25.0);
-static alwan_scalar const LLAB_V_CHROMA_CONST = ALWAN_LITERAL(0.05);
-static alwan_scalar const LLAB_V_BETA_EXP = ALWAN_LITERAL(0.0834);
+static const alwan_scalar LLAB_V_EPSILON = ALWAN_LITERAL(0.008856);
+static const alwan_scalar LLAB_V_COEF_116 = ALWAN_LITERAL(116.0);
+static const alwan_scalar LLAB_V_COEF_16 = ALWAN_LITERAL(16.0);
+static const alwan_scalar LLAB_V_COEF_500 = ALWAN_LITERAL(500.0);
+static const alwan_scalar LLAB_V_COEF_200 = ALWAN_LITERAL(200.0);
+static const alwan_scalar LLAB_V_CHROMA_SCALE = ALWAN_LITERAL(25.0);
+static const alwan_scalar LLAB_V_CHROMA_CONST = ALWAN_LITERAL(0.05);
+static const alwan_scalar LLAB_V_BETA_EXP = ALWAN_LITERAL(0.0834);
 
 ALWAN_INLINE alwan_scalar llab_f_v(alwan_scalar t, alwan_scalar F_S) {
     alwan_scalar power_result = ALWAN_POW(t, ALWAN_LITERAL(1.0) / F_S);

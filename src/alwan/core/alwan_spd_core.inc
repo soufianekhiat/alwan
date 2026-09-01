@@ -20,8 +20,8 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(spd_planck_radiance)(ALWAN_CORE_T wa
      * value came out pi times the documented quantity and pi times what
      * colour-science's planck_law returns for the same input. Chromaticity is
      * unaffected, being scale-invariant; absolute values were not. */
-    ALWAN_CORE_T const c1 = ALWAN_CORE_LITERAL(3.741771e-16);  /* W*m^2 (first radiation constant) */
-    ALWAN_CORE_T const c2 = ALWAN_CORE_LITERAL(1.4388e-2);     /* m*K  (second radiation constant) */
+    const ALWAN_CORE_T c1 = ALWAN_CORE_LITERAL(3.741771e-16);  /* W*m^2 (first radiation constant) */
+    const ALWAN_CORE_T c2 = ALWAN_CORE_LITERAL(1.4388e-2);     /* m*K  (second radiation constant) */
     ALWAN_CORE_T lambda5 = wavelength_m * wavelength_m * wavelength_m
                          * wavelength_m * wavelength_m;
     ALWAN_CORE_T exponent = c2 / (wavelength_m * temperature_K);

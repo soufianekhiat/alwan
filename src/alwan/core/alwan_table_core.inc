@@ -80,10 +80,10 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table_coord)(ALWAN_CORE_T coor
  * exactly what happened. */
 ALWAN_INLINE int ALWAN_CORE_FNVLIT(alwan_table_row)(int index, int count) {
 #if ALWAN_READ_DATA_NO_BOUND_CHECK
-    (void)count;
+    ALWAN_UNUSED(count);
     return index;
 #else
-    int const lo = index < 0 ? 0 : index;
+    const int lo = index < 0 ? 0 : index;
     return lo >= count ? (count > 0 ? count - 1 : 0) : lo;
 #endif
 }
@@ -92,10 +92,10 @@ ALWAN_INLINE int ALWAN_CORE_FNVLIT(alwan_table_row)(int index, int count) {
  * rather than normalized [0,1]. No rescale, same NaN-to-low-edge rule. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table_coord_unit)(ALWAN_CORE_T pos, int size) {
 #if ALWAN_READ_DATA_NO_BOUND_CHECK
-    (void)size;
+    ALWAN_UNUSED(size);
     return pos;
 #else
-    ALWAN_CORE_T const hi = (ALWAN_CORE_T)(size - 1);
+    const ALWAN_CORE_T hi = (ALWAN_CORE_T)(size - 1);
     ALWAN_CORE_T c = ALWAN_CORE_SELECT(pos >= ALWAN_CORE_ZERO, pos, ALWAN_CORE_ZERO);
     return ALWAN_CORE_SELECT(c <= hi, c, hi);
 #endif
@@ -110,7 +110,7 @@ ALWAN_INLINE int ALWAN_CORE_FNVLIT(alwan_table_coord_in_range)(ALWAN_CORE_T coor
 /* Resolve a normalized coordinate to a cell. Holding the i1 clamp and the frac
  * subtraction here means they exist once instead of once per reader. */
 ALWAN_INLINE ALWAN_CORE_TABLE_CELL ALWAN_CORE_FNVLIT(alwan_table_cell)(ALWAN_CORE_T coord, int size) {
-    ALWAN_CORE_T const p = ALWAN_CORE_FNVLIT(alwan_table_coord)(coord, size);
+    const ALWAN_CORE_T p = ALWAN_CORE_FNVLIT(alwan_table_coord)(coord, size);
     ALWAN_CORE_TABLE_CELL r;
     r.i0 = (int)p;                                    /* gate proves [0, size-1] */
     r.i1 = (r.i0 + 1 < size) ? (r.i0 + 1) : (size - 1);
@@ -120,7 +120,7 @@ ALWAN_INLINE ALWAN_CORE_TABLE_CELL ALWAN_CORE_FNVLIT(alwan_table_cell)(ALWAN_COR
 
 /* Cell from a coordinate already in table units. */
 ALWAN_INLINE ALWAN_CORE_TABLE_CELL ALWAN_CORE_FNVLIT(alwan_table_cell_unit)(ALWAN_CORE_T pos, int size) {
-    ALWAN_CORE_T const p = ALWAN_CORE_FNVLIT(alwan_table_coord_unit)(pos, size);
+    const ALWAN_CORE_T p = ALWAN_CORE_FNVLIT(alwan_table_coord_unit)(pos, size);
     ALWAN_CORE_TABLE_CELL r;
     r.i0 = (int)p;
     r.i1 = (r.i0 + 1 < size) ? (r.i0 + 1) : (size - 1);
@@ -150,7 +150,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_row)(
  * alwan_lut1d_sample bit for bit. This is ALWAN_SAMPLE_LINEAR. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_sample_linear)(
         ALWAN_CORE_T const *table, int size, ALWAN_CORE_T coord) {
-    ALWAN_CORE_TABLE_CELL const c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
+    const ALWAN_CORE_TABLE_CELL c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
     return table[c.i0] * (ALWAN_CORE_LITERAL(1.0) - c.frac) + table[c.i1] * c.frac;
 }
 
@@ -161,13 +161,13 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_sample_linear)(
  * guarantee -- only the blend differs. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_sample_linear_delta)(
         ALWAN_CORE_T const *table, int size, ALWAN_CORE_T coord) {
-    ALWAN_CORE_TABLE_CELL const c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
+    const ALWAN_CORE_TABLE_CELL c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
     return table[c.i0] + c.frac * (table[c.i1] - table[c.i0]);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_sample_nearest)(
         ALWAN_CORE_T const *table, int size, ALWAN_CORE_T coord) {
-    ALWAN_CORE_TABLE_CELL const c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
+    const ALWAN_CORE_TABLE_CELL c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
     return (c.frac < ALWAN_CORE_LITERAL(0.5)) ? table[c.i0] : table[c.i1];
 }
 
@@ -186,18 +186,18 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_sample_nearest)(
  * which is why this is not the default for any rank. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_sample_catmull_rom)(
         ALWAN_CORE_T const *table, int size, ALWAN_CORE_T coord) {
-    ALWAN_CORE_TABLE_CELL const c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
-    int const im1 = ALWAN_CORE_FNVLIT(alwan_table_row)(c.i0 - 1, size);
-    int const ip2 = ALWAN_CORE_FNVLIT(alwan_table_row)(c.i1 + 1, size);
+    const ALWAN_CORE_TABLE_CELL c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
+    const int im1 = ALWAN_CORE_FNVLIT(alwan_table_row)(c.i0 - 1, size);
+    const int ip2 = ALWAN_CORE_FNVLIT(alwan_table_row)(c.i1 + 1, size);
 
-    ALWAN_CORE_T const p0 = table[im1];
-    ALWAN_CORE_T const p1 = table[c.i0];
-    ALWAN_CORE_T const p2 = table[c.i1];
-    ALWAN_CORE_T const p3 = table[ip2];
+    const ALWAN_CORE_T p0 = table[im1];
+    const ALWAN_CORE_T p1 = table[c.i0];
+    const ALWAN_CORE_T p2 = table[c.i1];
+    const ALWAN_CORE_T p3 = table[ip2];
 
-    ALWAN_CORE_T const t  = c.frac;
-    ALWAN_CORE_T const t2 = t * t;
-    ALWAN_CORE_T const t3 = t2 * t;
+    const ALWAN_CORE_T t  = c.frac;
+    const ALWAN_CORE_T t2 = t * t;
+    const ALWAN_CORE_T t3 = t2 * t;
 
     return ALWAN_CORE_LITERAL(0.5) * (
         (ALWAN_CORE_LITERAL(2.0) * p1) +
@@ -226,7 +226,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table1d_sample)(
 
 ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample_linear)(
         ALWAN_CORE_MAT3X3 const *table, int size, ALWAN_CORE_T coord) {
-    ALWAN_CORE_TABLE_CELL const c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
+    const ALWAN_CORE_TABLE_CELL c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
     ALWAN_CORE_MAT3X3 result;
     int i;
     for (i = 0; i < 9; i++) {
@@ -237,7 +237,7 @@ ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample_linea
 
 ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample_nearest)(
         ALWAN_CORE_MAT3X3 const *table, int size, ALWAN_CORE_T coord) {
-    ALWAN_CORE_TABLE_CELL const c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
+    const ALWAN_CORE_TABLE_CELL c = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord, size);
     return (c.frac < ALWAN_CORE_LITERAL(0.5)) ? table[c.i0] : table[c.i1];
 }
 
@@ -263,8 +263,8 @@ ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample)(
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(
         ALWAN_CORE_T const *table, int rows, int cols, int row, int col) {
-    int const r = ALWAN_CORE_FNVLIT(alwan_table_row)(row, rows);
-    int const c = ALWAN_CORE_FNVLIT(alwan_table_row)(col, cols);
+    const int r = ALWAN_CORE_FNVLIT(alwan_table_row)(row, rows);
+    const int c = ALWAN_CORE_FNVLIT(alwan_table_row)(col, cols);
     return table[(size_t)r * (size_t)cols + (size_t)c];
 }
 
@@ -279,26 +279,26 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_bilinear)(
         ALWAN_CORE_T const *table, int rows, int cols,
         ALWAN_CORE_T row_coord, ALWAN_CORE_T col_coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(row_coord, rows);
-    ALWAN_CORE_TABLE_CELL const cc = ALWAN_CORE_FNVLIT(alwan_table_cell)(col_coord, cols);
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(row_coord, rows);
+    const ALWAN_CORE_TABLE_CELL cc = ALWAN_CORE_FNVLIT(alwan_table_cell)(col_coord, cols);
 
-    ALWAN_CORE_T const v00 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i0, cc.i0);
-    ALWAN_CORE_T const v01 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i0, cc.i1);
-    ALWAN_CORE_T const v10 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i1, cc.i0);
-    ALWAN_CORE_T const v11 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i1, cc.i1);
+    const ALWAN_CORE_T v00 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i0, cc.i0);
+    const ALWAN_CORE_T v01 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i0, cc.i1);
+    const ALWAN_CORE_T v10 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i1, cc.i0);
+    const ALWAN_CORE_T v11 = ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, cr.i1, cc.i1);
 
-    ALWAN_CORE_T const top = ALWAN_CORE_LERP(v00, v01, cc.frac);
-    ALWAN_CORE_T const bot = ALWAN_CORE_LERP(v10, v11, cc.frac);
+    const ALWAN_CORE_T top = ALWAN_CORE_LERP(v00, v01, cc.frac);
+    const ALWAN_CORE_T bot = ALWAN_CORE_LERP(v10, v11, cc.frac);
     return ALWAN_CORE_LERP(top, bot, cr.frac);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample_nearest)(
         ALWAN_CORE_T const *table, int rows, int cols,
         ALWAN_CORE_T row_coord, ALWAN_CORE_T col_coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(row_coord, rows);
-    ALWAN_CORE_TABLE_CELL const cc = ALWAN_CORE_FNVLIT(alwan_table_cell)(col_coord, cols);
-    int const r = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
-    int const c = (cc.frac < ALWAN_CORE_LITERAL(0.5)) ? cc.i0 : cc.i1;
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(row_coord, rows);
+    const ALWAN_CORE_TABLE_CELL cc = ALWAN_CORE_FNVLIT(alwan_table_cell)(col_coord, cols);
+    const int r = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
+    const int c = (cc.frac < ALWAN_CORE_LITERAL(0.5)) ? cc.i0 : cc.i1;
     return ALWAN_CORE_FNVLIT(alwan_table2d_row_at)(table, rows, cols, r, c);
 }
 
@@ -323,13 +323,13 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table2d_grid_sample)(
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_sample_trilinear)(
         ALWAN_CORE_T const *cube, int size, ALWAN_CORE_VEC3 coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
-    ALWAN_CORE_TABLE_CELL const cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
-    ALWAN_CORE_TABLE_CELL const cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
 
-    ALWAN_CORE_T const fr = cr.frac;
-    ALWAN_CORE_T const fg = cg.frac;
-    ALWAN_CORE_T const fb = cb.frac;
+    const ALWAN_CORE_T fr = cr.frac;
+    const ALWAN_CORE_T fg = cg.frac;
+    const ALWAN_CORE_T fb = cb.frac;
 
     ALWAN_CORE_T const *c000 = ALWAN_TABLE3D_AT_(cube, size, cr.i0, cg.i0, cb.i0);
     ALWAN_CORE_T const *c100 = ALWAN_TABLE3D_AT_(cube, size, cr.i1, cg.i0, cb.i0);
@@ -360,15 +360,15 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_sample_trilinear)(
  * keeps the neutral axis symmetric, which trilinear does not. */
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_sample_tetrahedral)(
         ALWAN_CORE_T const *cube, int size, ALWAN_CORE_VEC3 coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
-    ALWAN_CORE_TABLE_CELL const cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
-    ALWAN_CORE_TABLE_CELL const cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
 
-    int const r0 = cr.i0, g0 = cg.i0, b0 = cb.i0;
-    int const r1 = cr.i1, g1 = cg.i1, b1 = cb.i1;
-    ALWAN_CORE_T const fr = cr.frac;
-    ALWAN_CORE_T const fg = cg.frac;
-    ALWAN_CORE_T const fb = cb.frac;
+    const int r0 = cr.i0, g0 = cg.i0, b0 = cb.i0;
+    const int r1 = cr.i1, g1 = cg.i1, b1 = cb.i1;
+    const ALWAN_CORE_T fr = cr.frac;
+    const ALWAN_CORE_T fg = cg.frac;
+    const ALWAN_CORE_T fb = cb.frac;
 
     ALWAN_CORE_T const *c000 = ALWAN_TABLE3D_AT_(cube, size, r0, g0, b0);
     ALWAN_CORE_T const *c111 = ALWAN_TABLE3D_AT_(cube, size, r1, g1, b1);
@@ -398,12 +398,12 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_sample_tetrahedral)
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_sample_nearest)(
         ALWAN_CORE_T const *cube, int size, ALWAN_CORE_VEC3 coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
-    ALWAN_CORE_TABLE_CELL const cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
-    ALWAN_CORE_TABLE_CELL const cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
-    int const ri = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
-    int const gi = (cg.frac < ALWAN_CORE_LITERAL(0.5)) ? cg.i0 : cg.i1;
-    int const bi = (cb.frac < ALWAN_CORE_LITERAL(0.5)) ? cb.i0 : cb.i1;
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const int ri = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
+    const int gi = (cg.frac < ALWAN_CORE_LITERAL(0.5)) ? cg.i0 : cg.i1;
+    const int bi = (cb.frac < ALWAN_CORE_LITERAL(0.5)) ? cb.i0 : cb.i1;
     ALWAN_CORE_T const *c = ALWAN_TABLE3D_AT_(cube, size, ri, gi, bi);
     ALWAN_CORE_VEC3 result;
     result.v[0] = c[0];
@@ -437,13 +437,13 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_sample)(
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table2d_sample_trilinear)(
         ALWAN_CORE_T const *strip, int size, ALWAN_CORE_VEC3 coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
-    ALWAN_CORE_TABLE_CELL const cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
-    ALWAN_CORE_TABLE_CELL const cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
 
-    ALWAN_CORE_T const fr = cr.frac;
-    ALWAN_CORE_T const fg = cg.frac;
-    ALWAN_CORE_T const fb = cb.frac;
+    const ALWAN_CORE_T fr = cr.frac;
+    const ALWAN_CORE_T fg = cg.frac;
+    const ALWAN_CORE_T fb = cb.frac;
 
     ALWAN_CORE_T const *c000 = ALWAN_TABLE2D_AT_(strip, size, cr.i0, cg.i0, cb.i0);
     ALWAN_CORE_T const *c100 = ALWAN_TABLE2D_AT_(strip, size, cr.i1, cg.i0, cb.i0);
@@ -471,12 +471,12 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table2d_sample_trilinear)(
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table2d_sample_nearest)(
         ALWAN_CORE_T const *strip, int size, ALWAN_CORE_VEC3 coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
-    ALWAN_CORE_TABLE_CELL const cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
-    ALWAN_CORE_TABLE_CELL const cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
-    int const ri = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
-    int const gi = (cg.frac < ALWAN_CORE_LITERAL(0.5)) ? cg.i0 : cg.i1;
-    int const bi = (cb.frac < ALWAN_CORE_LITERAL(0.5)) ? cb.i0 : cb.i1;
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const int ri = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
+    const int gi = (cg.frac < ALWAN_CORE_LITERAL(0.5)) ? cg.i0 : cg.i1;
+    const int bi = (cb.frac < ALWAN_CORE_LITERAL(0.5)) ? cb.i0 : cb.i1;
     ALWAN_CORE_T const *c = ALWAN_TABLE2D_AT_(strip, size, ri, gi, bi);
     ALWAN_CORE_VEC3 result;
     result.v[0] = c[0];
@@ -509,48 +509,48 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table2d_sample)(
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_planar3_sample_trilinear)(
         ALWAN_CORE_T const *cube0, ALWAN_CORE_T const *cube1, ALWAN_CORE_T const *cube2,
         int size, ALWAN_CORE_VEC3 coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
-    ALWAN_CORE_TABLE_CELL const cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
-    ALWAN_CORE_TABLE_CELL const cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
 
-    ALWAN_CORE_T const fr = cr.frac;
-    ALWAN_CORE_T const fg = cg.frac;
-    ALWAN_CORE_T const fb = cb.frac;
+    const ALWAN_CORE_T fr = cr.frac;
+    const ALWAN_CORE_T fg = cg.frac;
+    const ALWAN_CORE_T fb = cb.frac;
 
-    size_t const i000 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i0, cb.i0);
-    size_t const i001 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i0, cb.i1);
-    size_t const i010 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i1, cb.i0);
-    size_t const i011 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i1, cb.i1);
-    size_t const i100 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i0, cb.i0);
-    size_t const i101 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i0, cb.i1);
-    size_t const i110 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i1, cb.i0);
-    size_t const i111 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i1, cb.i1);
+    const size_t i000 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i0, cb.i0);
+    const size_t i001 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i0, cb.i1);
+    const size_t i010 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i1, cb.i0);
+    const size_t i011 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i1, cb.i1);
+    const size_t i100 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i0, cb.i0);
+    const size_t i101 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i0, cb.i1);
+    const size_t i110 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i1, cb.i0);
+    const size_t i111 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i1, cb.i1);
 
-    ALWAN_CORE_T const one = ALWAN_CORE_LITERAL(1.0);
+    const ALWAN_CORE_T one = ALWAN_CORE_LITERAL(1.0);
     ALWAN_CORE_VEC3 result;
 
-    ALWAN_CORE_T const a_00 = cube0[i000] * (one - fb) + cube0[i001] * fb;
-    ALWAN_CORE_T const a_01 = cube0[i010] * (one - fb) + cube0[i011] * fb;
-    ALWAN_CORE_T const a_10 = cube0[i100] * (one - fb) + cube0[i101] * fb;
-    ALWAN_CORE_T const a_11 = cube0[i110] * (one - fb) + cube0[i111] * fb;
-    ALWAN_CORE_T const a_0 = a_00 * (one - fg) + a_01 * fg;
-    ALWAN_CORE_T const a_1 = a_10 * (one - fg) + a_11 * fg;
+    const ALWAN_CORE_T a_00 = cube0[i000] * (one - fb) + cube0[i001] * fb;
+    const ALWAN_CORE_T a_01 = cube0[i010] * (one - fb) + cube0[i011] * fb;
+    const ALWAN_CORE_T a_10 = cube0[i100] * (one - fb) + cube0[i101] * fb;
+    const ALWAN_CORE_T a_11 = cube0[i110] * (one - fb) + cube0[i111] * fb;
+    const ALWAN_CORE_T a_0 = a_00 * (one - fg) + a_01 * fg;
+    const ALWAN_CORE_T a_1 = a_10 * (one - fg) + a_11 * fg;
     result.v[0] = a_0 * (one - fr) + a_1 * fr;
 
-    ALWAN_CORE_T const b_00 = cube1[i000] * (one - fb) + cube1[i001] * fb;
-    ALWAN_CORE_T const b_01 = cube1[i010] * (one - fb) + cube1[i011] * fb;
-    ALWAN_CORE_T const b_10 = cube1[i100] * (one - fb) + cube1[i101] * fb;
-    ALWAN_CORE_T const b_11 = cube1[i110] * (one - fb) + cube1[i111] * fb;
-    ALWAN_CORE_T const b_0 = b_00 * (one - fg) + b_01 * fg;
-    ALWAN_CORE_T const b_1 = b_10 * (one - fg) + b_11 * fg;
+    const ALWAN_CORE_T b_00 = cube1[i000] * (one - fb) + cube1[i001] * fb;
+    const ALWAN_CORE_T b_01 = cube1[i010] * (one - fb) + cube1[i011] * fb;
+    const ALWAN_CORE_T b_10 = cube1[i100] * (one - fb) + cube1[i101] * fb;
+    const ALWAN_CORE_T b_11 = cube1[i110] * (one - fb) + cube1[i111] * fb;
+    const ALWAN_CORE_T b_0 = b_00 * (one - fg) + b_01 * fg;
+    const ALWAN_CORE_T b_1 = b_10 * (one - fg) + b_11 * fg;
     result.v[1] = b_0 * (one - fr) + b_1 * fr;
 
-    ALWAN_CORE_T const c_00 = cube2[i000] * (one - fb) + cube2[i001] * fb;
-    ALWAN_CORE_T const c_01 = cube2[i010] * (one - fb) + cube2[i011] * fb;
-    ALWAN_CORE_T const c_10 = cube2[i100] * (one - fb) + cube2[i101] * fb;
-    ALWAN_CORE_T const c_11 = cube2[i110] * (one - fb) + cube2[i111] * fb;
-    ALWAN_CORE_T const c_0 = c_00 * (one - fg) + c_01 * fg;
-    ALWAN_CORE_T const c_1 = c_10 * (one - fg) + c_11 * fg;
+    const ALWAN_CORE_T c_00 = cube2[i000] * (one - fb) + cube2[i001] * fb;
+    const ALWAN_CORE_T c_01 = cube2[i010] * (one - fb) + cube2[i011] * fb;
+    const ALWAN_CORE_T c_10 = cube2[i100] * (one - fb) + cube2[i101] * fb;
+    const ALWAN_CORE_T c_11 = cube2[i110] * (one - fb) + cube2[i111] * fb;
+    const ALWAN_CORE_T c_0 = c_00 * (one - fg) + c_01 * fg;
+    const ALWAN_CORE_T c_1 = c_10 * (one - fg) + c_11 * fg;
     result.v[2] = c_0 * (one - fr) + c_1 * fr;
 
     return result;
@@ -559,13 +559,13 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_planar3_sample_tril
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_table3d_planar3_sample_nearest)(
         ALWAN_CORE_T const *cube0, ALWAN_CORE_T const *cube1, ALWAN_CORE_T const *cube2,
         int size, ALWAN_CORE_VEC3 coord) {
-    ALWAN_CORE_TABLE_CELL const cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
-    ALWAN_CORE_TABLE_CELL const cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
-    ALWAN_CORE_TABLE_CELL const cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
-    int const ri = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
-    int const gi = (cg.frac < ALWAN_CORE_LITERAL(0.5)) ? cg.i0 : cg.i1;
-    int const bi = (cb.frac < ALWAN_CORE_LITERAL(0.5)) ? cb.i0 : cb.i1;
-    size_t const i = ALWAN_TABLE3D_PLANAR_AT_(size, ri, gi, bi);
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const int ri = (cr.frac < ALWAN_CORE_LITERAL(0.5)) ? cr.i0 : cr.i1;
+    const int gi = (cg.frac < ALWAN_CORE_LITERAL(0.5)) ? cg.i0 : cg.i1;
+    const int bi = (cb.frac < ALWAN_CORE_LITERAL(0.5)) ? cb.i0 : cb.i1;
+    const size_t i = ALWAN_TABLE3D_PLANAR_AT_(size, ri, gi, bi);
     ALWAN_CORE_VEC3 result;
     result.v[0] = cube0[i];
     result.v[1] = cube1[i];

@@ -103,17 +103,17 @@ typedef struct {
 } aces2_HueDependentGamutParams;
 
 ALWAN_INLINE alwan_scalar aces_bt1886_oetf_v(alwan_scalar x) {
-    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    const alwan_scalar safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
     return ALWAN_POW(safe_x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
 }
 
 ALWAN_INLINE alwan_scalar aces_srgb_oetf_v(alwan_scalar x) {
-    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    const alwan_scalar safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
     return ALWAN_SRGB_OETF(safe_x);
 }
 
 ALWAN_INLINE alwan_scalar aces_gamma26_oetf_v(alwan_scalar x) {
-    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    const alwan_scalar safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
     return ALWAN_POW(safe_x, ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.6));
 }
 
@@ -132,17 +132,17 @@ ALWAN_INLINE alwan_scalar aces_pq_oetf_v(alwan_scalar Y, alwan_scalar peak_nits)
 }
 
 ALWAN_INLINE alwan_scalar aces_bt1886_eotf_v(alwan_scalar x) {
-    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    const alwan_scalar safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
     return ALWAN_POW(safe_x, ALWAN_LITERAL(2.4));
 }
 
 ALWAN_INLINE alwan_scalar aces_srgb_eotf_v(alwan_scalar x) {
-    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    const alwan_scalar safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
     return ALWAN_SRGB_EOTF(safe_x);
 }
 
 ALWAN_INLINE alwan_scalar aces_gamma26_eotf_v(alwan_scalar x) {
-    alwan_scalar const safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
+    const alwan_scalar safe_x = alwan_max(x, ALWAN_LITERAL(0.0));
     return ALWAN_POW(safe_x, ALWAN_LITERAL(2.6));
 }
 
@@ -189,11 +189,11 @@ ALWAN_INLINE alwan_scalar aces_cone_response_inv_v(alwan_scalar Ra) {
 }
 
 ALWAN_INLINE alwan_vec3 aces_dark_to_dim10_v(alwan_vec3 rgb) {
-    alwan_scalar const MIN_LUM = ALWAN_LITERAL(1e-10);
-    alwan_scalar const Y_r = ALWAN_LUMA_KR_AP1;
-    alwan_scalar const Y_g = ALWAN_LUMA_KG_AP1;
-    alwan_scalar const Y_b = ALWAN_LUMA_KB_AP1;
-    alwan_scalar const GAMMA = ALWAN_LITERAL(-0.0189);
+    const alwan_scalar MIN_LUM = ALWAN_LITERAL(1e-10);
+    const alwan_scalar Y_r = ALWAN_LUMA_KR_AP1;
+    const alwan_scalar Y_g = ALWAN_LUMA_KG_AP1;
+    const alwan_scalar Y_b = ALWAN_LUMA_KB_AP1;
+    const alwan_scalar GAMMA = ALWAN_LITERAL(-0.0189);
 
     alwan_scalar Y = Y_r * rgb.v[0] + Y_g * rgb.v[1] + Y_b * rgb.v[2];
     if (Y < MIN_LUM) Y = MIN_LUM;
@@ -207,10 +207,10 @@ ALWAN_INLINE alwan_vec3 aces_dark_to_dim10_v(alwan_vec3 rgb) {
 }
 
 ALWAN_INLINE alwan_vec3 aces_rec2100_surround_v(alwan_vec3 rgb, alwan_scalar gamma) {
-    alwan_scalar const MIN_LUM = ALWAN_LITERAL(1e-4);
-    alwan_scalar const Y_r = ALWAN_LUMA_KR_BT2020;
-    alwan_scalar const Y_g = ALWAN_LUMA_KG_BT2020;
-    alwan_scalar const Y_b = ALWAN_LUMA_KB_BT2020;
+    const alwan_scalar MIN_LUM = ALWAN_LITERAL(1e-4);
+    const alwan_scalar Y_r = ALWAN_LUMA_KR_BT2020;
+    const alwan_scalar Y_g = ALWAN_LUMA_KG_BT2020;
+    const alwan_scalar Y_b = ALWAN_LUMA_KB_BT2020;
 
     alwan_scalar Y = Y_r * rgb.v[0] + Y_g * rgb.v[1] + Y_b * rgb.v[2];
     Y = ALWAN_ABS(Y);

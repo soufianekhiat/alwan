@@ -822,16 +822,16 @@ ALWAN_INLINE alwan_scalar alwan_gamma_eotf_v(alwan_scalar encoded, alwan_scalar 
 }
 
 ALWAN_INLINE alwan_scalar alwan_dicom_gsdf_eotf_v(alwan_scalar jnd) {
-    alwan_scalar const a = ALWAN_LITERAL(-1.3011877);
-    alwan_scalar const b = ALWAN_LITERAL(-2.5840191e-2);
-    alwan_scalar const c = ALWAN_LITERAL( 8.0242636e-2);
-    alwan_scalar const d = ALWAN_LITERAL(-1.0320229e-1);
-    alwan_scalar const e = ALWAN_LITERAL( 1.3646699e-1);
-    alwan_scalar const f = ALWAN_LITERAL( 2.8745620e-2);
-    alwan_scalar const g = ALWAN_LITERAL(-2.5468404e-2);
-    alwan_scalar const h = ALWAN_LITERAL(-3.1978977e-3);
-    alwan_scalar const k = ALWAN_LITERAL( 1.2992634e-4);
-    alwan_scalar const m = ALWAN_LITERAL( 1.3635334e-3);
+    const alwan_scalar a = ALWAN_LITERAL(-1.3011877);
+    const alwan_scalar b = ALWAN_LITERAL(-2.5840191e-2);
+    const alwan_scalar c = ALWAN_LITERAL( 8.0242636e-2);
+    const alwan_scalar d = ALWAN_LITERAL(-1.0320229e-1);
+    const alwan_scalar e = ALWAN_LITERAL( 1.3646699e-1);
+    const alwan_scalar f = ALWAN_LITERAL( 2.8745620e-2);
+    const alwan_scalar g = ALWAN_LITERAL(-2.5468404e-2);
+    const alwan_scalar h = ALWAN_LITERAL(-3.1978977e-3);
+    const alwan_scalar k = ALWAN_LITERAL( 1.2992634e-4);
+    const alwan_scalar m = ALWAN_LITERAL( 1.3635334e-3);
     alwan_scalar safe_jnd = ALWAN_SELECT(jnd < ALWAN_LITERAL(1.0),
                                           ALWAN_LITERAL(1.0), jnd);
     alwan_scalar lj = ALWAN_LN(safe_jnd);
@@ -849,15 +849,15 @@ ALWAN_INLINE alwan_scalar alwan_dicom_gsdf_eotf_v(alwan_scalar jnd) {
 }
 
 ALWAN_INLINE alwan_scalar alwan_dicom_gsdf_oetf_v(alwan_scalar luminance) {
-    alwan_scalar const a = ALWAN_LITERAL( 71.498068);
-    alwan_scalar const b = ALWAN_LITERAL( 94.593053);
-    alwan_scalar const c = ALWAN_LITERAL( 41.912053);
-    alwan_scalar const d = ALWAN_LITERAL(  9.8247004);
-    alwan_scalar const e = ALWAN_LITERAL(  0.28175407);
-    alwan_scalar const f = ALWAN_LITERAL( -1.1878455);
-    alwan_scalar const g = ALWAN_LITERAL( -0.18014349);
-    alwan_scalar const h = ALWAN_LITERAL(  0.14710899);
-    alwan_scalar const k = ALWAN_LITERAL( -0.017046845);
+    const alwan_scalar a = ALWAN_LITERAL( 71.498068);
+    const alwan_scalar b = ALWAN_LITERAL( 94.593053);
+    const alwan_scalar c = ALWAN_LITERAL( 41.912053);
+    const alwan_scalar d = ALWAN_LITERAL(  9.8247004);
+    const alwan_scalar e = ALWAN_LITERAL(  0.28175407);
+    const alwan_scalar f = ALWAN_LITERAL( -1.1878455);
+    const alwan_scalar g = ALWAN_LITERAL( -0.18014349);
+    const alwan_scalar h = ALWAN_LITERAL(  0.14710899);
+    const alwan_scalar k = ALWAN_LITERAL( -0.017046845);
     alwan_scalar safe_L = ALWAN_SELECT(luminance < ALWAN_LITERAL(0.05),
                                         ALWAN_LITERAL(0.05), luminance);
     alwan_scalar ll = ALWAN_LOG10(safe_L);

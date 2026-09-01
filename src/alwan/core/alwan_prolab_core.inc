@@ -28,7 +28,7 @@ ALWAN_CONSTEXPR ALWAN_CORE_MAT4X4 ALWAN_CORE_FNLIT(ALWAN_PROLAB_MATRIX_Q_INV) = 
 }};
 
 /* D65 reference white XYZ (Y=1 normalized) */
-static ALWAN_CORE_T const ALWAN_CORE_FNLIT(ALWAN_PROLAB_D65_WHITE)[3] = {
+static const ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_PROLAB_D65_WHITE)[3] = {
 #include "../data/white_d65_xyz_y1.csv"
 };
 
@@ -110,7 +110,7 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_prolab_to_xyz)(ALWAN_CORE_PR
 ALWAN_INLINE ALWAN_CORE_PROLAB ALWAN_CORE_FNVLIT(alwan_xyz_to_prolab_custom)(ALWAN_CORE_XYZ xyz, ALWAN_CORE_XYZ xyz_n) {
     ALWAN_CORE_PROLAB result;
 
-    ALWAN_CORE_T const eps = ALWAN_CORE_LITERAL(1e-10);
+    const ALWAN_CORE_T eps = ALWAN_CORE_LITERAL(1e-10);
     ALWAN_CORE_T xn = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(xyz_n.x) > eps, xyz_n.x, eps);
     ALWAN_CORE_T yn = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(xyz_n.y) > eps, xyz_n.y, eps);
     ALWAN_CORE_T zn = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(xyz_n.z) > eps, xyz_n.z, eps);

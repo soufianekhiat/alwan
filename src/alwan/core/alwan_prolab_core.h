@@ -52,7 +52,7 @@ ALWAN_CONSTEXPR alwan_mat4x4 ALWAN_PROLAB_MATRIX_Q_INV = {{
 #include "../data/prolab_matrix_q_inv.csv"
 }};
 
-static alwan_scalar const ALWAN_PROLAB_D65_WHITE[3] = {
+static const alwan_scalar ALWAN_PROLAB_D65_WHITE[3] = {
 #include "../data/white_d65_xyz_y1.csv"
 };
 
@@ -98,7 +98,7 @@ ALWAN_INLINE alwan_xyz alwan_prolab_to_xyz_v(alwan_prolab prolab) {
 
 ALWAN_INLINE alwan_prolab alwan_xyz_to_prolab_custom_v(alwan_xyz xyz, alwan_xyz xyz_n) {
     alwan_prolab result;
-    alwan_scalar const eps = ALWAN_LITERAL(1e-10);
+    const alwan_scalar eps = ALWAN_LITERAL(1e-10);
     alwan_scalar xn = ALWAN_SELECT(ALWAN_ABS(xyz_n.x) > eps, xyz_n.x, eps);
     alwan_scalar yn = ALWAN_SELECT(ALWAN_ABS(xyz_n.y) > eps, xyz_n.y, eps);
     alwan_scalar zn = ALWAN_SELECT(ALWAN_ABS(xyz_n.z) > eps, xyz_n.z, eps);
