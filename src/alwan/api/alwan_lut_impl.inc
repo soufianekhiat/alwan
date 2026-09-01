@@ -90,7 +90,7 @@ static int ALWAN_CORE_FNLIT(lut__build_combined_matrix)(
  * ---------------------------------------------------------------- */
 
 static ALWAN_CORE_VEC3 ALWAN_CORE_FNLIT(lut__apply_view)(
-    alwan_view_transform vt, ALWAN_CORE_VEC3 rgb)
+    alwan_view_transform vt, ALWAN_CORE_VEC3 rgb, alwan_ctx *ctx)
 {
     ALWAN_CORE_VEC3 in = {{
         alwan_max(rgb.v[0], ALWAN_CORE_LITERAL(0.0)),
@@ -138,8 +138,25 @@ static ALWAN_CORE_VEC3 ALWAN_CORE_FNLIT(lut__apply_view)(
         return r;
     case ALWAN_VIEW_KHRONOS_PBR_NEUTRAL:
         return ALWAN_CORE_FNVLIT(alwan_khronos_pbr_neutral)(in);
-    default:
-        return rgb;
+    default: {
+        /* Everything not special-cased above goes through the real view
+         * transform. Returning rgb unchanged here silently baked an IDENTITY
+         * LUT for eleven of the eighteen transforms, including the whole AgX
+         * family, Tony McMapface and the BT.2446/2390 set: the call returned
+         * ALWAN_OK and the caller got a plausible-looking cube that did
+         * nothing. That also reached CLF export, which bakes through this
+         * same path. */
+        ALWAN_CORE_T in3[3] = { in.v[0], in.v[1], in.v[2] };
+        ALWAN_CORE_T out3[3];
+        if (ALWAN_CORE_FNLIT(alwan_view_transform_apply)(
+                out3, 3 * sizeof(ALWAN_CORE_T),
+                in3, 3 * sizeof(ALWAN_CORE_T), 1, vt, ctx) != ALWAN_OK)
+            return rgb;
+        r.v[0] = out3[0];
+        r.v[1] = out3[1];
+        r.v[2] = out3[2];
+        return r;
+    }
     }
 }
 
@@ -198,7 +215,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_bake_3dlut_view)(ALWAN_CORE_T *out, int size
         ALWAN_CORE_VEC3 coord = ALWAN_CORE_FNVLIT(alwan_lut3d_index_to_rgb)(i, size);
         ALWAN_CORE_VEC3 lin = {{eotf_fn(coord.v[0]), eotf_fn(coord.v[1]), eotf_fn(coord.v[2])}};
         ALWAN_CORE_VEC3 dst_lin = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(combined, lin);
-        dst_lin = ALWAN_CORE_FNLIT(lut__apply_view)(vt, dst_lin);
+        dst_lin = ALWAN_CORE_FNLIT(lut__apply_view)(vt, dst_lin, ctx);
         out[i * 3 + 0] = oetf_fn(dst_lin.v[0]);
         out[i * 3 + 1] = oetf_fn(dst_lin.v[1]);
         out[i * 3 + 2] = oetf_fn(dst_lin.v[2]);
