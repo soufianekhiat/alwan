@@ -76,6 +76,21 @@ ALWAN_DIAG_POP
  * Kim2009 Forward: XYZ -> Appearance Correlates (value-returning)
  * ---------------------------------------------------------------- */
 
+/* Sign-preserving power, sign(x) * |x|^p.
+ *
+ * The cone responses below can be negative: the HPE matrix maps a saturated or
+ * out-of-gamut XYZ to a negative L, M or S, and a plain pow() of that is NaN.
+ * The forward transform then returned ALWAN_OK carrying NaN, which on an
+ * ordinary frame was 79% of the pixels.
+ *
+ * colour-science uses spow at exactly these sites (LMS, LMS_w, L_A and J_p in
+ * appearance/kim2009.py), so this follows the reference rather than inventing a
+ * guard. Where the argument is provably non-negative, the o_j constant and the
+ * hypot in the chroma step, plain pow is kept. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(kim2009_spow)(ALWAN_CORE_T x, ALWAN_CORE_T p) {
+    ALWAN_CORE_T m = ALWAN_CORE_POW(ALWAN_CORE_ABS(x), p);
+    return ALWAN_CORE_SELECT(x < ALWAN_CORE_ZERO, -m, m);
+}
 ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_kim2009_v_correlates) ALWAN_CORE_FNVLIT(alwan_kim2009_forward)(
     ALWAN_CORE_XYZ xyz,
     ALWAN_CORE_T white_x,
@@ -142,15 +157,15 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_kim2009_v_correlates) ALWAN_CORE_FNVLIT(alwa
     ALWAN_CORE_T S_w = lmsw_v.v[2];
 
     /* Step 8: Cone response - power law with additive term (n_c = 0.57) */
-    ALWAN_CORE_T La_nc = ALWAN_CORE_POW(La, KIM2009_V_N_C);
+    ALWAN_CORE_T La_nc = ALWAN_CORE_FNVLIT(kim2009_spow)(La, KIM2009_V_N_C);
 
-    ALWAN_CORE_T L_nc   = ALWAN_CORE_POW(L, KIM2009_V_N_C);
-    ALWAN_CORE_T M_nc   = ALWAN_CORE_POW(M, KIM2009_V_N_C);
-    ALWAN_CORE_T S_nc   = ALWAN_CORE_POW(S, KIM2009_V_N_C);
+    ALWAN_CORE_T L_nc   = ALWAN_CORE_FNVLIT(kim2009_spow)(L, KIM2009_V_N_C);
+    ALWAN_CORE_T M_nc   = ALWAN_CORE_FNVLIT(kim2009_spow)(M, KIM2009_V_N_C);
+    ALWAN_CORE_T S_nc   = ALWAN_CORE_FNVLIT(kim2009_spow)(S, KIM2009_V_N_C);
 
-    ALWAN_CORE_T L_w_nc = ALWAN_CORE_POW(L_w, KIM2009_V_N_C);
-    ALWAN_CORE_T M_w_nc = ALWAN_CORE_POW(M_w, KIM2009_V_N_C);
-    ALWAN_CORE_T S_w_nc = ALWAN_CORE_POW(S_w, KIM2009_V_N_C);
+    ALWAN_CORE_T L_w_nc = ALWAN_CORE_FNVLIT(kim2009_spow)(L_w, KIM2009_V_N_C);
+    ALWAN_CORE_T M_w_nc = ALWAN_CORE_FNVLIT(kim2009_spow)(M_w, KIM2009_V_N_C);
+    ALWAN_CORE_T S_w_nc = ALWAN_CORE_FNVLIT(kim2009_spow)(S_w, KIM2009_V_N_C);
 
     ALWAN_CORE_T Lp   = L_nc   / (L_nc   + La_nc);
     ALWAN_CORE_T Mp   = M_nc   / (M_nc   + La_nc);
@@ -169,7 +184,7 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_kim2009_v_correlates) ALWAN_CORE_FNVLIT(alwa
     ALWAN_CORE_T o_j_n_j    = ALWAN_CORE_POW(KIM2009_V_O_J, KIM2009_V_N_J);
     ALWAN_CORE_T num_jp     = -(A_A_w - KIM2009_V_B_J) * o_j_n_j;
     ALWAN_CORE_T den_jp     = A_A_w - KIM2009_V_B_J - KIM2009_V_A_J;
-    ALWAN_CORE_T J_p        = ALWAN_CORE_POW(num_jp / den_jp, ALWAN_CORE_ONE / KIM2009_V_N_J);
+    ALWAN_CORE_T J_p        = ALWAN_CORE_FNVLIT(kim2009_spow)(num_jp / den_jp, ALWAN_CORE_ONE / KIM2009_V_N_J);
 
     /* Step 11: Media-dependent lightness J */
     ALWAN_CORE_T J_val = ALWAN_CORE_LITERAL(100.0) * (media_E * (J_p - ALWAN_CORE_ONE) + ALWAN_CORE_ONE);
@@ -245,11 +260,11 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_kim2009_inverse)(
     ALWAN_CORE_T S_w = lmsw_v.v[2];
 
     /* Step 6: Cone response for white */
-    ALWAN_CORE_T La_nc = ALWAN_CORE_POW(La, KIM2009_V_N_C);
+    ALWAN_CORE_T La_nc = ALWAN_CORE_FNVLIT(kim2009_spow)(La, KIM2009_V_N_C);
 
-    ALWAN_CORE_T L_w_nc = ALWAN_CORE_POW(L_w, KIM2009_V_N_C);
-    ALWAN_CORE_T M_w_nc = ALWAN_CORE_POW(M_w, KIM2009_V_N_C);
-    ALWAN_CORE_T S_w_nc = ALWAN_CORE_POW(S_w, KIM2009_V_N_C);
+    ALWAN_CORE_T L_w_nc = ALWAN_CORE_FNVLIT(kim2009_spow)(L_w, KIM2009_V_N_C);
+    ALWAN_CORE_T M_w_nc = ALWAN_CORE_FNVLIT(kim2009_spow)(M_w, KIM2009_V_N_C);
+    ALWAN_CORE_T S_w_nc = ALWAN_CORE_FNVLIT(kim2009_spow)(S_w, KIM2009_V_N_C);
 
     ALWAN_CORE_T Lp_w = L_w_nc / (L_w_nc + La_nc);
     ALWAN_CORE_T Mp_w = M_w_nc / (M_w_nc + La_nc);
@@ -262,7 +277,7 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_kim2009_inverse)(
     ALWAN_CORE_T J_p = (correlates.J / ALWAN_CORE_LITERAL(100.0) - ALWAN_CORE_ONE) / media_E + ALWAN_CORE_ONE;
 
     /* Step 9: Recover achromatic signal A from J_p */
-    ALWAN_CORE_T J_p_nj  = ALWAN_CORE_POW(J_p, KIM2009_V_N_J);
+    ALWAN_CORE_T J_p_nj  = ALWAN_CORE_FNVLIT(kim2009_spow)(J_p, KIM2009_V_N_J);
     ALWAN_CORE_T o_j_nj  = ALWAN_CORE_POW(KIM2009_V_O_J, KIM2009_V_N_J);
     ALWAN_CORE_T A_val   = A_w * ((KIM2009_V_A_J * J_p_nj) / (J_p_nj + o_j_nj) + KIM2009_V_B_J);
 

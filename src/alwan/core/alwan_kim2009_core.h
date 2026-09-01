@@ -82,6 +82,13 @@ ALWAN_CONSTEXPR alwan_mat3x3 KIM2009_V_M_HPE_INV = {{
 }};
 ALWAN_DIAG_POP
 
+/* Sign-preserving power, sign(x) * |x|^p. See the note in the .inc: the cone
+ * responses can be negative and a plain pow() of that is NaN, which the forward
+ * transform then returned alongside ALWAN_OK. */
+ALWAN_INLINE alwan_scalar kim2009_spow_v(alwan_scalar x, alwan_scalar p) {
+    alwan_scalar m = ALWAN_POW(ALWAN_ABS(x), p);
+    return ALWAN_SELECT(x < ALWAN_ZERO, -m, m);
+}
 ALWAN_INLINE alwan_kim2009_v_correlates alwan_kim2009_forward_v(
     alwan_xyz xyz, alwan_scalar white_x, alwan_scalar white_y,
     alwan_scalar white_z, alwan_scalar La, alwan_scalar D, alwan_scalar media_E) {
@@ -109,9 +116,9 @@ ALWAN_INLINE alwan_kim2009_v_correlates alwan_kim2009_forward_v(
     alwan_vec3 xyzwc_in = {{Xwc, Ywc, Zwc}};
     alwan_vec3 lmsw_v = alwan_mat3_mulv_v(KIM2009_V_M_HPE, xyzwc_in);
     alwan_scalar L_w = lmsw_v.v[0]; alwan_scalar M_w = lmsw_v.v[1]; alwan_scalar S_w = lmsw_v.v[2];
-    alwan_scalar La_nc = ALWAN_POW(La, KIM2009_V_N_C);
-    alwan_scalar L_nc = ALWAN_POW(L, KIM2009_V_N_C); alwan_scalar M_nc = ALWAN_POW(M, KIM2009_V_N_C); alwan_scalar S_nc = ALWAN_POW(S, KIM2009_V_N_C);
-    alwan_scalar L_w_nc = ALWAN_POW(L_w, KIM2009_V_N_C); alwan_scalar M_w_nc = ALWAN_POW(M_w, KIM2009_V_N_C); alwan_scalar S_w_nc = ALWAN_POW(S_w, KIM2009_V_N_C);
+    alwan_scalar La_nc = kim2009_spow_v(La, KIM2009_V_N_C);
+    alwan_scalar L_nc = kim2009_spow_v(L, KIM2009_V_N_C); alwan_scalar M_nc = kim2009_spow_v(M, KIM2009_V_N_C); alwan_scalar S_nc = kim2009_spow_v(S, KIM2009_V_N_C);
+    alwan_scalar L_w_nc = kim2009_spow_v(L_w, KIM2009_V_N_C); alwan_scalar M_w_nc = kim2009_spow_v(M_w, KIM2009_V_N_C); alwan_scalar S_w_nc = kim2009_spow_v(S_w, KIM2009_V_N_C);
     alwan_scalar Lp = L_nc / (L_nc + La_nc); alwan_scalar Mp = M_nc / (M_nc + La_nc); alwan_scalar Sp = S_nc / (S_nc + La_nc);
     alwan_scalar Lp_w = L_w_nc / (L_w_nc + La_nc); alwan_scalar Mp_w = M_w_nc / (M_w_nc + La_nc); alwan_scalar Sp_w = S_w_nc / (S_w_nc + La_nc);
     alwan_scalar A = (KIM2009_V_W_L * Lp + KIM2009_V_W_M * Mp + KIM2009_V_W_S * Sp) / KIM2009_V_W_SUM;
@@ -120,7 +127,7 @@ ALWAN_INLINE alwan_kim2009_v_correlates alwan_kim2009_forward_v(
     alwan_scalar o_j_n_j = ALWAN_POW(KIM2009_V_O_J, KIM2009_V_N_J);
     alwan_scalar num_jp = -(A_A_w - KIM2009_V_B_J) * o_j_n_j;
     alwan_scalar den_jp = A_A_w - KIM2009_V_B_J - KIM2009_V_A_J;
-    alwan_scalar J_p = ALWAN_POW(num_jp / den_jp, ALWAN_ONE / KIM2009_V_N_J);
+    alwan_scalar J_p = kim2009_spow_v(num_jp / den_jp, ALWAN_ONE / KIM2009_V_N_J);
     alwan_scalar J_val = ALWAN_LITERAL(100.0) * (media_E * (J_p - ALWAN_ONE) + ALWAN_ONE);
     alwan_scalar opp_a = (ALWAN_LITERAL(11.0) * Lp - ALWAN_LITERAL(12.0) * Mp + ALWAN_ONE * Sp) / ALWAN_LITERAL(11.0);
     alwan_scalar opp_b = (ALWAN_ONE * Lp + ALWAN_ONE * Mp - ALWAN_LITERAL(2.0) * Sp) / ALWAN_LITERAL(9.0);
@@ -149,12 +156,12 @@ ALWAN_INLINE alwan_xyz alwan_kim2009_inverse_v(
     alwan_vec3 xyzwc_in = {{Xwc, Ywc, Zwc}};
     alwan_vec3 lmsw_v = alwan_mat3_mulv_v(KIM2009_V_M_HPE, xyzwc_in);
     alwan_scalar L_w = lmsw_v.v[0]; alwan_scalar M_w = lmsw_v.v[1]; alwan_scalar S_w = lmsw_v.v[2];
-    alwan_scalar La_nc = ALWAN_POW(La, KIM2009_V_N_C);
-    alwan_scalar L_w_nc = ALWAN_POW(L_w, KIM2009_V_N_C); alwan_scalar M_w_nc = ALWAN_POW(M_w, KIM2009_V_N_C); alwan_scalar S_w_nc = ALWAN_POW(S_w, KIM2009_V_N_C);
+    alwan_scalar La_nc = kim2009_spow_v(La, KIM2009_V_N_C);
+    alwan_scalar L_w_nc = kim2009_spow_v(L_w, KIM2009_V_N_C); alwan_scalar M_w_nc = kim2009_spow_v(M_w, KIM2009_V_N_C); alwan_scalar S_w_nc = kim2009_spow_v(S_w, KIM2009_V_N_C);
     alwan_scalar Lp_w = L_w_nc / (L_w_nc + La_nc); alwan_scalar Mp_w = M_w_nc / (M_w_nc + La_nc); alwan_scalar Sp_w = S_w_nc / (S_w_nc + La_nc);
     alwan_scalar A_w = (KIM2009_V_W_L * Lp_w + KIM2009_V_W_M * Mp_w + KIM2009_V_W_S * Sp_w) / KIM2009_V_W_SUM;
     alwan_scalar J_p = (correlates.J / ALWAN_LITERAL(100.0) - ALWAN_ONE) / media_E + ALWAN_ONE;
-    alwan_scalar J_p_nj = ALWAN_POW(J_p, KIM2009_V_N_J);
+    alwan_scalar J_p_nj = kim2009_spow_v(J_p, KIM2009_V_N_J);
     alwan_scalar o_j_nj = ALWAN_POW(KIM2009_V_O_J, KIM2009_V_N_J);
     alwan_scalar A_val = A_w * ((KIM2009_V_A_J * J_p_nj) / (J_p_nj + o_j_nj) + KIM2009_V_B_J);
     alwan_scalar hr = correlates.h * ALWAN_PI / ALWAN_LITERAL(180.0);
