@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Illuminants F2, F7 and F11 had xy data but no way to reach it.**
+  `illuminants_xy/f2_xy.csv`, `f7_xy.csv` and `f11_xy.csv` were generated and
+  shipped, but never embedded and never given a case in
+  `alwan_data_get_illuminant_xy_*`, so `alwan_illuminant_white_point_*`
+  returned `ALWAN_E_INVALID` for the whole F series. The three CIE 15 names
+  for practical use now resolve; the other nine fluorescents still have no xy
+  table. Illuminants resolvable through the enum: 26 -> 29.
+
+---
+
 ## [2.0.0]
 
 First public release (tag `v2.0.0`).

@@ -332,6 +332,45 @@ static alwan_f64 const g_hp5_xy_f64[] = {
 };
 #endif
 
+/* Illuminant F2 (x, y). F2, F7 and F11 are the three fluorescents CIE
+ * 15 names for practical use; the rest of the F series has no xy table here. */
+#if ALWAN_WITH_F32
+static alwan_f32 const g_f2_xy_f32[] = {
+#include "../data/illuminants_xy/f2_xy.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+static alwan_f64 const g_f2_xy_f64[] = {
+#include "../data/illuminants_xy/f2_xy.csv"
+};
+#endif
+
+/* Illuminant F7 (x, y). F2, F7 and F11 are the three fluorescents CIE
+ * 15 names for practical use; the rest of the F series has no xy table here. */
+#if ALWAN_WITH_F32
+static alwan_f32 const g_f7_xy_f32[] = {
+#include "../data/illuminants_xy/f7_xy.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+static alwan_f64 const g_f7_xy_f64[] = {
+#include "../data/illuminants_xy/f7_xy.csv"
+};
+#endif
+
+/* Illuminant F11 (x, y). F2, F7 and F11 are the three fluorescents CIE
+ * 15 names for practical use; the rest of the F series has no xy table here. */
+#if ALWAN_WITH_F32
+static alwan_f32 const g_f11_xy_f32[] = {
+#include "../data/illuminants_xy/f11_xy.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+static alwan_f64 const g_f11_xy_f64[] = {
+#include "../data/illuminants_xy/f11_xy.csv"
+};
+#endif
+
 /* sRGB primaries (rx, ry, gx, gy, bx, by) */
 #if ALWAN_WITH_F32
 static alwan_f32 const g_srgb_primaries_3x2_f32[] = {
@@ -747,6 +786,27 @@ int alwan_data_get_illuminant_hp5(alwan_f64 **data, size_t *count, alwan_ctx *ct
     return ALWAN_OK;
 }
 
+int alwan_data_get_illuminant_f2(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    *data = (alwan_f64 *)g_f2_xy_f64;
+    *count = sizeof(g_f2_xy_f64) / sizeof(g_f2_xy_f64[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_f7(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    *data = (alwan_f64 *)g_f7_xy_f64;
+    *count = sizeof(g_f7_xy_f64) / sizeof(g_f7_xy_f64[0]);
+    return ALWAN_OK;
+}
+
+int alwan_data_get_illuminant_f11(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    (void)ctx;
+    *data = (alwan_f64 *)g_f11_xy_f64;
+    *count = sizeof(g_f11_xy_f64) / sizeof(g_f11_xy_f64[0]);
+    return ALWAN_OK;
+}
+
 alwan_status alwan_data_get_illuminant_xy_f64(alwan_f64 **data, size_t *count, alwan_illuminant illuminant, alwan_ctx *ctx) {
     switch (illuminant) {
         case ALWAN_ILLUMINANT_A:   return alwan_data_get_illuminant_a_f64(data, count, ctx);
@@ -776,6 +836,9 @@ alwan_status alwan_data_get_illuminant_xy_f64(alwan_f64 **data, size_t *count, a
         case ALWAN_ILLUMINANT_HP3: return alwan_data_get_illuminant_hp3(data, count, ctx);
         case ALWAN_ILLUMINANT_HP4: return alwan_data_get_illuminant_hp4(data, count, ctx);
         case ALWAN_ILLUMINANT_HP5: return alwan_data_get_illuminant_hp5(data, count, ctx);
+        case ALWAN_ILLUMINANT_F2:  return alwan_data_get_illuminant_f2(data, count, ctx);
+        case ALWAN_ILLUMINANT_F7:  return alwan_data_get_illuminant_f7(data, count, ctx);
+        case ALWAN_ILLUMINANT_F11: return alwan_data_get_illuminant_f11(data, count, ctx);
         default:
             return ALWAN_E_INVALID;  /* Unsupported illuminant or no xy data */
     }
@@ -908,6 +971,12 @@ alwan_status alwan_data_get_illuminant_xy_f32(alwan_f32 **data, size_t *count, a
             *data = (alwan_f32 *)g_hp4_xy_f32; *count = sizeof(g_hp4_xy_f32) / sizeof(g_hp4_xy_f32[0]); return ALWAN_OK;
         case ALWAN_ILLUMINANT_HP5:
             *data = (alwan_f32 *)g_hp5_xy_f32; *count = sizeof(g_hp5_xy_f32) / sizeof(g_hp5_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_F2:
+            *data = (alwan_f32 *)g_f2_xy_f32; *count = sizeof(g_f2_xy_f32) / sizeof(g_f2_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_F7:
+            *data = (alwan_f32 *)g_f7_xy_f32; *count = sizeof(g_f7_xy_f32) / sizeof(g_f7_xy_f32[0]); return ALWAN_OK;
+        case ALWAN_ILLUMINANT_F11:
+            *data = (alwan_f32 *)g_f11_xy_f32; *count = sizeof(g_f11_xy_f32) / sizeof(g_f11_xy_f32[0]); return ALWAN_OK;
         default:
             return ALWAN_E_INVALID;  /* Unsupported illuminant or no xy data */
     }
