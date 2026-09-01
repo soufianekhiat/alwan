@@ -22,7 +22,7 @@ does **not** carry over unchanged.
 > Compile-verified under **both** shader compilers, fast and
 > `ALWAN_DETERMINISTIC=1`, one translation unit per core through
 > `alwan_hlsl.h`: **40 of 43 `*_core.h`** under dxc (Shader Model 6, DXIL) and
-> the **same 40 of 43** under fxc (Shader Model 5, DXBC). Measured 2026-09-01,
+> the **same 40 of 43** under fxc (Shader Model 5, DXBC). Measured with
 > dxc 1.8.2502 and fxc 10.1 from Windows SDK 10.0.26100. The lists are
 > `alwan_dev/hlsl_regression/cores_dxc_clean.txt` and `cores_fxc_clean.txt`,
 > both gated by `alwan_dev/tools/check_gpu_compile.py`.
@@ -35,8 +35,8 @@ does **not** carry over unchanged.
 > (`Buffer` / `StructuredBuffer`, or a texture), which is a design change rather
 > than a syntax fix, so they stay CPU-only for now.
 >
-> Eight cores were fixed in 2.0.1 and are new to the list: `atd95`, `hunt`,
-> `quality` and `view` were missing a struct, an enum, a constant block or a
+> Eight cores were fixed during the fxc pass and are new to the list. `atd95`,
+> `hunt`, `quality` and `view` were missing a struct, an enum, a constant block or a
 > whole function from their GPU branch; `extended`, `hellwig2022` and `hdr` used
 > raw pointer out-parameters instead of the `ALWAN_PARAM_*` macros; `half`
 > punned float bits through `memcpy`, which needs `asuint` / `asfloat` on a
@@ -48,7 +48,7 @@ does **not** carry over unchanged.
 > is Clang-based and accepts C-shaped syntax that the legacy grammar never
 > allowed. fxc is what Shader Model 5 and D3D11 content compiles with, and it
 > is stricter. Two constructs that compile under dxc and are hard errors under
-> fxc shipped in 2.0.0 and were fixed in 2.0.1:
+> fxc were both fixed:
 >
 > - **East const.** `alwan_scalar const a = ...` is `error X3000: syntax error:
 >   unexpected token 'const'` under fxc, followed by a spurious `X3080:
@@ -64,7 +64,7 @@ does **not** carry over unchanged.
 > GPU) for a reserved word used as a name, against a list of 101 words dxc
 > rejects (probed) plus the GLSL 4.60 and Metal keyword lists. It runs in the
 > Tooling CI job and as a post-build step of the Alwan library, and is clean
-> (`out`, `linear`, `in`, `matrix`, `input` were renamed in 2.0.1). The same
+> (`out`, `linear`, `in`, `matrix` and `input` were renamed). The same
 > tool reports, without gating, the C types and headers in GPU-reachable code
 > (47 sites: `size_t` in the table/lut addressing, `uint32_t` and `<stdint.h>`
 > in `half`, one stride loop in `hdr`); `--strict` gates them once fixed.

@@ -33,8 +33,8 @@ YCoCg is the signed-chroma case: `Co`, `Cg` come out of the kernel in
 YcCbcCrc are not.** Their kernels already emit `Cb`, `Cr` in `[0, 1]` centred on
 `0.5`, so normalising them is a no-op and `ALWAN_NORM_YCBCR` is deliberately
 empty. Adding the shift there on top of the kernel's own centring offset chroma
-by a full 1.0 in the shipped default build, which is what it did until
-2026-08-27. See `docs/alwan_decisions.md`.
+by a full 1.0 in the shipped default build, which is what it did before this
+was fixed. See `docs/alwan_decisions.md`.
 
 1. Bounded channels are normalized to `[0, 1]` by the public API.
 2. Unbounded channels stay in their native (often signed) range.

@@ -65,7 +65,7 @@ the full derivation.
 
 Fifteen of the constraints are **numerically testable** and are asserted in
 `tests/99_formation_constraints.c` (thirteen original + `REL`/`VEIL` from the later
-correspondence, added 2026-08):
+correspondence, added later):
 
 | key | constraint | why |
 |---|---|---|

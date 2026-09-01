@@ -4,90 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [2.0.1], 2026-09-01
-
-Fixes the HLSL headers under fxc (Shader Model 5, D3D11). Reported by a
-consumer who includes the headers into a generated pixel shader and compiles
-with fxc; every issue was invisible to the dxc-only matrix in 2.0.0.
-
-### Fixed
-
-- **East const in the GPU-portable tier.** Type qualifiers were written after
-  the type (`alwan_scalar const a = ...`). fxc's legacy grammar requires them
-  before the type and rejects the east form with `error X3000: syntax error:
-  unexpected token 'const'`, followed by a spurious `X3080: function must
-  return a value` from the enclosing function failing to parse. dxc is
-  Clang-based and accepts both orders, which is why this shipped. Rewritten to
-  the west form at 814 sites across 50 files, in both the `.h` GPU branch and
-  the `.inc` template so the two stay in lockstep. Value declarations only:
-  pointer forms are untouched, since `T *const p` is not `const T *p`.
-- **`(void)x;` casts in `core/`.** Not valid HLSL, and the reason
-  `alwan_hero_wavelength_core.h` was the one core that failed under fxc but
-  passed under dxc. Now routed through `ALWAN_UNUSED(x)`, which already existed
-  and is empty on the GPU branches. 12 sites in `half`, `hero_wavelength` and
-  `table`.
-- **Eight more cores now compile as shaders**, taking the total from 32 of 43
-  to **40 of 43** under both compilers. `atd95` (correlate struct), `hunt`
-  (surround enum and viewing-conditions struct), `quality` (Krystek coefficient
-  block) and `view` (`alwan_cdl_apply_v`) were each missing a declaration from
-  their GPU branch. `extended`, `hellwig2022` and `hdr` used raw pointer
-  out-parameters where the house macros exist for exactly that; they now use
-  `ALWAN_PARAM_*` / `ALWAN_CORE_PARAM_*`, so C still gets pointers and a shader
-  gets `out`. `half` punned float bits through `memcpy` and now goes through
-  `alwan_half_asuint` / `_asfloat`, which map to `asuint` / `asfloat` on HLSL
-  and `floatBitsToUint` / `uintBitsToFloat` on GLSL.
-- **`alwan_config.h` no longer drags the C standard library into a shader.**
-  `<stddef.h>`, `<stdint.h>` and `<string.h>` were included unconditionally, so
-  every core reaching this header failed on the include line before any of its
-  own code was parsed. They are now guarded to the CPU backends, with the size
-  and fixed-width spellings coming from `alwan_types.h` on HLSL and GLSL. The
-  allocator hooks, which take addresses, are guarded the same way.
-- `alwan_content_light_level_v` is CPU-only: it walks a strided host buffer,
-  which a shader has no equivalent for.
-
-### Changed
-
-- The GPU compile gate runs **both** shader compilers, not just dxc:
-  `check_gpu_compile.py --compiler dxc|fxc|both`, with a per-compiler
-  expected-clean list, and both run in the Tooling CI job. Gating on dxc alone
-  is what let this class ship, and it had already happened once, with the
-  `linear` keyword in 2.0.0.
-- **`check_core_parity.py` now compares declarations, not just function
-  bodies.** Named constants, embedded CSVs and struct definitions in the GPU
-  branch were unchecked, which is how `quality` lost its coefficient block and
-  `view` lost a whole function with nothing going red. A missing declaration is
-  caught by the compilers; what only this catches is a constant whose *value*
-  differs between the two copies, which compiles cleanly on both sides and
-  silently gives the GPU a different answer from the C reference.
-- `table`, `lut` and `vision` remain CPU-only. Their readers take the table by
-  pointer and a shading language has no pointer type; serving them needs a
-  resource abstraction, not a syntax fix. See `docs/backends_limits.md`.
-- Documentation is now plain ASCII, except the Arabic spelling of the project
-  name. 540 typographic characters (arrows, dashes, Greek, box drawing, check
-  marks) were replaced with ASCII equivalents across 25 files.
-- New lint `alwan_dev/tools/check_east_const.py` (with `--fix`) gates east
-  const over `src/alwan/core` and the platform layer, without needing a shader
-  compiler. Outside that tier east const is legal C and is not flagged. It
-  skips preprocessor directives: `# define ALWAN_CONSTEXPR const` is a macro
-  definition, and reordering it would redefine the `const` keyword itself.
-
-No behaviour change on the C side: 107 test suites and 75,034 checks pass
-unchanged. The east-const pass is a pure reordering of tokens; the out-parameter
-macros expand to the same pointers C always had; and the bit-punning helper is
-the same memcpy it replaced.
-
----
-
-## [2.0.0], 2026-09-01
+## [2.0.0]
 
 First public release (tag `v2.0.0`).
 
 The tag sits after a correctness pass over the areas that had no external
-ground truth, 2026-08-27..28, a pass over the GPU-reachable core, 2026-08-30..31,
-and a build-matrix pass over every combination of build system, precision,
-determinism, linkage and toolchain, 2026-09-01. Several entries below change published output relative to the
-2026-08-19 pre-release build; they are listed first because a caller who
-pinned values against that build will see them.
+ground truth, a pass over the GPU-reachable core,
+a build-matrix pass over every combination of build system, precision,
+determinism, linkage and toolchain, and a pass making the GPU-portable core
+compile under both shader compilers. Several entries below change
+published output relative to the pre-release build; they are listed
+first because a caller who pinned values against that build will see them.
 
 ### Changed: output differs
 
@@ -145,11 +72,11 @@ pinned values against that build will see them.
   GLSL 4.60 and Metal lists); gates the Tooling CI job and runs as a post-build
   step of the library. Reports C types and C headers in the same code without
   gating (`--strict` to gate).
-- `alwan_dev/tools/check_gpu_compile.py`: every core compiled under dxc, one
-  translation unit each, fast and deterministic, gated on the expected-clean
-  list; a `gpu-compile` CI job on Windows runs it.
+- `alwan_dev/tools/check_gpu_compile.py`: every core compiled as a shader, one
+  translation unit each, fast and deterministic, gated on a per-compiler
+  expected-clean list; a `gpu-compile` CI job on Windows runs it.
 - `docs/backends_limits.md` verification status now carries the measured
-  32/43 and the error class of each core that does not compile.
+  40/43 under each compiler, and why the remaining three cannot compile.
 
 - `alwan_table2d_grid_sample_f32` / `_f64`: bilinear and nearest sampling of a
   genuine `rows x stride` 2-d grid, which is the rank `ALWAN_SAMPLE_BILINEAR`
@@ -167,6 +94,21 @@ pinned values against that build will see them.
   `docs/api/gamut.md`. The remaining documentation gap is now measured rather
   than estimated: 118 of 411 base operations have no entry in `docs/api/`,
   clustered by area in `docs/alwan_future.md` theme 10.
+- Both shader compilers gate it, via `--compiler dxc|fxc|both`, and both run in
+  the Tooling CI job. dxc is Clang-based and accepts C-shaped syntax the legacy
+  HLSL grammar never allowed; fxc (Shader Model 5, D3D11) rejects it, so
+  checking only dxc hides a whole class of breakage.
+- `alwan_dev/tools/check_east_const.py` (with `--fix`): gates qualifiers
+  written after the type over `src/alwan/core` and the platform layer, without
+  needing a shader compiler. Outside that tier east const is legal C and is not
+  flagged. Preprocessor directives are skipped, since reordering
+  `# define ALWAN_CONSTEXPR const` would redefine the `const` keyword itself.
+- `check_core_parity.py` now compares declarations, not just function bodies.
+  Named constants, embedded CSVs and struct definitions in the GPU branch were
+  unchecked. A missing declaration is caught by the compilers; what only this
+  catches is a constant whose *value* differs between the two copies, which
+  compiles cleanly on both sides and silently gives the GPU a different answer
+  from the C reference.
 
 ### Fixed: no output change
 
@@ -219,6 +161,38 @@ pinned values against that build will see them.
 - The EXR loader (dev tool) asked OpenEXR for HALF regardless of storage, so a
   FLOAT channel saturated to inf above 65504. It now decodes as FLOAT, and
   rejects UINT rather than converting it into a plausible-looking image.
+- **The HLSL headers did not compile under fxc** (Shader Model 5, D3D11), which
+  a dxc-only matrix never sees. Type qualifiers were written after the type
+  (`alwan_scalar const a = ...`); the legacy grammar requires them before it and
+  rejects the east form with `error X3000: syntax error: unexpected token
+  'const'`, then a spurious `X3080: function must return a value` from the
+  enclosing function failing to parse. Rewritten to the west form at 814 sites
+  across 50 files, in both the `.h` GPU branch and the `.inc` template so the
+  two stay in lockstep. Value declarations only: pointer forms are untouched,
+  since `T *const p` is not `const T *p`.
+- `(void)x;` casts in `core/` are not valid HLSL, and were why
+  `alwan_hero_wavelength_core.h` failed under fxc while passing under dxc. Now
+  routed through `ALWAN_UNUSED(x)`, which is empty on the GPU branches.
+- **Eight more cores compile as shaders, 32 of 43 to 40 of 43** under both
+  compilers. `atd95` (correlate struct), `hunt` (surround enum and
+  viewing-conditions struct), `quality` (Krystek coefficient block) and `view`
+  (`alwan_cdl_apply_v`) were each missing a declaration from their GPU branch.
+  `extended`, `hellwig2022` and `hdr` used raw pointer out-parameters where the
+  house macros exist for exactly that; they now use `ALWAN_PARAM_*` and
+  `ALWAN_CORE_PARAM_*`, so C still gets pointers and a shader gets `out`.
+  `half` punned float bits through `memcpy` and now goes through
+  `alwan_half_asuint` / `_asfloat`, which map to `asuint` / `asfloat` on HLSL
+  and `floatBitsToUint` / `uintBitsToFloat` on GLSL.
+- `alwan_config.h` included `<stddef.h>`, `<stdint.h>` and `<string.h>`
+  unconditionally, so every core reaching it failed on the include line before
+  any of its own code was parsed. Those, and the allocator hooks that take
+  addresses, are now guarded to the CPU backends; the size and fixed-width
+  spellings come from `alwan_types.h` on HLSL and GLSL.
+- `alwan_content_light_level_v` is CPU-only: it walks a strided host buffer,
+  which a shader has no equivalent for.
+- Documentation is plain ASCII, except the Arabic spelling of the project name.
+  540 typographic characters (arrows, dashes, Greek, box drawing, check marks)
+  replaced with ASCII equivalents across 25 files.
 
 ### Known
 
@@ -226,10 +200,16 @@ pinned values against that build will see them.
   Planckian branch. The integration convention, the blackbody SPD, the CCT
   method and the Rf formula are all ruled out with measurements. Tracked in
   `docs/alwan_future.md`.
+- `table`, `lut` and `vision` do not compile as shaders under either compiler.
+  Their readers take the table by pointer and a shading language has no pointer
+  type; the addressing gate itself is pure integer and float maths and would
+  compile, the fetch is what does not. Serving them on GPU needs a resource
+  abstraction (`Buffer` / `StructuredBuffer`, or a texture) rather than a syntax
+  fix. See `docs/backends_limits.md`.
 
 ---
 
-### Foundation, 2026-08-19
+### Foundation
 
 The pre-release build the hardening pass started from. Everything below plus
 the dated foundation block that follows is also in the tag.
@@ -341,7 +321,7 @@ the dated foundation block that follows is also in the tag.
 
 ---
 
-## [2.0.0-foundation], 2026-03-24
+## [2.0.0-foundation]
 
 ### Added
 - **F16 pixel format**: half-float as a first-class pixel format (U8/U16/F16/F32/F64 parity)
@@ -363,6 +343,6 @@ the dated foundation block that follows is also in the tag.
 
 ---
 
-## [1.0.0]: 2025
+## [1.0.0]
 
 Initial release.

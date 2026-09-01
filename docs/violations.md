@@ -64,7 +64,7 @@ When adding to this file:
 
 ---
 
-## New Follow-Ups (2026-06-28 Audit Pass)
+## New Follow-Ups (Audit Pass)
 
 The items below come from a fresh API-surface audit. They are grouped by
 severity. Blockers break linking, ABI, or data correctness; the remaining
@@ -128,14 +128,14 @@ entries are contract/doc/naming nits that should be cleaned up before the
   return `-1.0` as the NULL/invalid sentinel, but all three are legitimately
   negative for some inputs. Use NaN or document the ambiguity.
 
-- **Misleading `_mc` name + dead params.** *(RESOLVED 2026-06-28)*
+- **Misleading `_mc` name + dead params.** *(RESOLVED)*
   `alwan_gamut_volume_mc_{f64,f32}` did `(void)num_samples; (void)seed;` and
   returned exact `|det(rgb_to_xyz)|`, not Monte Carlo. Renamed to
   `alwan_gamut_volume_{f64,f32}`, dropped the two dead params, and rewrote the
   header/`gamut.md` docs to describe the exact-determinant method (with a note
   that a real perceptual-volume MC remains unimplemented).
 
-- **CIE 1964 U\*V\*W\* conversion incorrect.** *(RESOLVED 2026-06-28)*
+- **CIE 1964 U\*V\*W\* conversion incorrect.** *(RESOLVED)*
   `alwan_xyz_to_uvw` divided Y by `white.y` before `25*Y^(1/3)-17`, yielding a
   non-standard `W* in [-17,8]` (red `W*=-2.08` vs colour-science `52.27`); the
   inverse meanwhile assumed absolute `[0,100]`, so forward/inverse disagreed by
@@ -147,7 +147,7 @@ entries are contract/doc/naming nits that should be cleaned up before the
   `ALWAN_NORM_UVW` ([0,100]->[0,1], like Lab L\*); U\*,V\* stay native. Pinned by
   a new colour-science fixture test `05:test_xyz_uvw_d65_roundtrip`. Was
   uncaught because UVW previously had no value-vs-reference or round-trip test.
-  **Follow-up (2026-06-29):** the formula lives in THREE copies and the first
+  **Follow-up:** the formula lives in THREE copies and the first
   pass only fixed `_core.inc`. The remaining two were fixed after a full
   Sharpmake build + test run: (a) the generic header `alwan_*_uvw_v` in
   `core/alwan_colorspace_core.h` (caught by the post-build `check_core_parity.py`
@@ -158,7 +158,7 @@ entries are contract/doc/naming nits that should be cleaned up before the
   All three now agree; Release and Release_Det suites are 95/95.
 
 - **Header-only core not self-contained for sRGB/BT.2020 TF.**
-  *(RESOLVED 2026-06-29)* `ALWAN_CORE_SRGB_OETF`/`EOTF` (and BT.2020) in the
+  *(RESOLVED)* `ALWAN_CORE_SRGB_OETF`/`EOTF` (and BT.2020) in the
   `alwan_core_f{32,64}_setup.h` macros call `alwan_fast_pow*` (fast mode) or
   `alwan_det_srgb_*` (det mode) but neither setup header included the file that
   declares them; the lib `.c` TUs happened to pull them in first, but any

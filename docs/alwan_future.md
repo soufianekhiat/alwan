@@ -211,7 +211,7 @@ normalization macros that signal an unfinished map kernel:
 - append-only ABI policy, or pinned explicit enumerator values, for
   `alwan_rgb_space` and other ABI-facing enums, to allow safe future additions
 - ~~rename `gamut_volume_mc` to reflect that it returns an exact determinant~~
-  *(done 2026-06-28: renamed to `alwan_gamut_volume`, dead params dropped)*; a
+  *(done: renamed to `alwan_gamut_volume`, dead params dropped)*; a
   real Monte-Carlo **perceptual** gamut volume (Lab/Oklab solid) remains
   future work
 
@@ -221,7 +221,7 @@ Measured, not estimated. Of **411 distinct base operations** on the public
 surface (precision and `_map_*` variants folded together), **118 have no entry in
 `docs/api/`**.
 
-Two were closed on 2026-08-28: the table and LUT sampling family now has
+Two are closed: the table and LUT sampling family now has
 [api/tables.md](api/tables.md), and `alwan_gamut_map_spatial` plus the bulk gamut
 forms are in [api/gamut.md](api/gamut.md).
 

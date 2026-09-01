@@ -9,7 +9,7 @@ endif()
 
 project(
   Alwan
-  VERSION 2.0.1
+  VERSION 2.0.0
   DESCRIPTION "Dependency-free C11 colour science library"
   LANGUAGES C
 )
