@@ -7,7 +7,9 @@
  * ---------------------------------------------------------------- */
 #if ALWAN_EMBED_DATA
 
-#if ALWAN_WITH_F64
+/* Compiled in every build: the f64-internal facades resolve RGB space matrices
+ * in f64 from their f32 entry points. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 
 /* Disable float conversion warnings for embedded CSV data */
 ALWAN_DIAG_PUSH
@@ -551,7 +553,7 @@ _Static_assert(
     "alwan_rgb_space, g_rgb_space_data[], and g_rgb_space_matrices[] must have matching size"
 );
 
-#endif /* ALWAN_WITH_F64 */
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* ----------------------------------------------------------------
  * f32 native twins of the embedded tables above.

@@ -51,61 +51,64 @@ static inline size_t alwan_safe_array_size(size_t count, size_t elem_size) {
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_bradford_f32[9];
 #endif
-#if ALWAN_WITH_F64
+/* Compiled in every build: the documented f64-internal facades read these f64
+ * tables from their f32 entry points, so the data has to exist even when the
+ * f64 public surface is excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_bradford_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_cat02_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_cat02_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_cat16_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_cat16_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_sharp_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_sharp_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_fairchild_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_fairchild_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_cmccat97_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_cmccat97_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_cmccat2000_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_cmccat2000_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_cat02_brill_2008_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_cat02_brill_2008_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_bianco_2010_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_bianco_2010_f64[9];
 #endif
 #if ALWAN_WITH_F32
 extern alwan_f32 const g_cat_bianco_pc_2010_f32[9];
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_bianco_pc_2010_f64[9];
 #endif
 

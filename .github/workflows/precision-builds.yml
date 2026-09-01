@@ -2,6 +2,12 @@ name: Precision builds
 # Verify the library compiles in each single-precision configuration
 # (ALWAN_BUILD_ONLY_F32 / ALWAN_BUILD_ONLY_F64) in addition to the default
 # dual-precision build covered by the platform CI jobs.
+#
+# Both linkages, and -Wl,--no-undefined on the shared ones. A static archive
+# never resolves a symbol nobody references, and an ELF shared object permits
+# undefined symbols by default, so a single-precision build that calls into the
+# excluded precision links fine on Linux and only fails when someone builds a
+# DLL. That is exactly how a whole class of these reached a release candidate.
 # On-demand only: minutes on this private repo are billed. Run from the
 # Actions tab, or through the umbrella 'CI' workflow, which calls them all.
 on:
@@ -14,8 +20,14 @@ jobs:
       fail-fast: false
       matrix:
         precision: [f32, f64]
-    name: ${{ matrix.precision }}-only
+        shared: [OFF, ON]
+    name: ${{ matrix.precision }}-only-shared${{ matrix.shared }}
     steps:
       - uses: actions/checkout@v5
-      - run: cmake -B build -DALWAN_BUILD_PRECISION=${{ matrix.precision }} -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=ON
+      - run: >
+          cmake -B build
+          -DALWAN_BUILD_PRECISION=${{ matrix.precision }}
+          -DBUILD_SHARED_LIBS=${{ matrix.shared }}
+          -DALWAN_ENABLE_WARNINGS=ON -DALWAN_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--no-undefined"
       - run: cmake --build build --config Release

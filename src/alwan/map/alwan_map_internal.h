@@ -1665,6 +1665,13 @@ ALWAN_INLINE void alwan__norm_lane_affine(alwan_simd_lane *d, size_t n, alwan_si
 
 /* -- Planar dual-dispatch: basic 3-channel ---------------------- */
 
+/* One definition per precision selection. A single-precision build must not
+ * name the other precision's worker at all: the declaration exists in every
+ * build but the definition is gated, so an unguarded reference resolves in a
+ * static archive and fails to link in a shared one. Every pixel format still
+ * works, because the typed tile loaders read and write all of them, the
+ * excluded precision's buffers included, through whichever worker exists. */
+#if ALWAN_WITH_BOTH
 #define ALWAN_PLANAR_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
 alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
@@ -1713,9 +1720,75 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
     } \
     return ALWAN_OK; \
 }
+#elif ALWAN_WITH_F32
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
+         void const *in0, size_t in_stride, void const *in1, void const *in2, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
+                      (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
+                      count); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
+            ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
+            alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_); \
+            alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#else /* ALWAN_WITH_F64 */
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
+         void const *in0, size_t in_stride, void const *in1, void const *in2, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out0, out_stride, (double *)out1, (double *)out2, \
+                      (double const *)in0, in_stride, (double const *)in1, (double const *)in2, \
+                      count); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
+            ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
+            alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_); \
+            alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#endif
 
 /* -- Planar dual-dispatch: with white_xyz ----------------------- */
 
+/* One definition per precision selection. A single-precision build must not
+ * name the other precision's worker at all: the declaration exists in every
+ * build but the definition is gated, so an unguarded reference resolves in a
+ * static archive and fails to link in a shared one. Every pixel format still
+ * works, because the typed tile loaders read and write all of them, the
+ * excluded precision's buffers included, through whichever worker exists. */
+#if ALWAN_WITH_BOTH
 #define ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
 alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
@@ -1771,9 +1844,83 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
     } \
     return ALWAN_OK; \
 }
+#elif ALWAN_WITH_F32
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
+         void const *in0, size_t in_stride, void const *in1, void const *in2, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         alwan_xyz_f64 const *white_xyz) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !white_xyz || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) { \
+        alwan_xyz_f32 w_ = {(float)white_xyz->x, (float)white_xyz->y, (float)white_xyz->z}; \
+        return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
+                      (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
+                      count, &w_); \
+    } \
+    { \
+        alwan_xyz_f32 w_ = {(float)white_xyz->x, (float)white_xyz->y, (float)white_xyz->z}; \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
+            ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
+            alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, &w_); \
+            alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#else /* ALWAN_WITH_F64 */
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
+         void const *in0, size_t in_stride, void const *in1, void const *in2, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         alwan_xyz_f64 const *white_xyz) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || !white_xyz || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) { \
+        alwan_xyz_f64 w_ = {(double)white_xyz->x, (double)white_xyz->y, (double)white_xyz->z}; \
+        return fn_f64((double *)out0, out_stride, (double *)out1, (double *)out2, \
+                      (double const *)in0, in_stride, (double const *)in1, (double const *)in2, \
+                      count, &w_); \
+    } \
+    { \
+        alwan_xyz_f64 w_ = {(double)white_xyz->x, (double)white_xyz->y, (double)white_xyz->z}; \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
+            ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
+            alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, &w_); \
+            alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#endif
 
 /* -- Planar dual-dispatch: with extra typed param (int/enum) ---- */
 
+/* One definition per precision selection. A single-precision build must not
+ * name the other precision's worker at all: the declaration exists in every
+ * build but the definition is gated, so an unguarded reference resolves in a
+ * static archive and fails to link in a shared one. Every pixel format still
+ * works, because the typed tile loaders read and write all of them, the
+ * excluded precision's buffers included, through whichever worker exists. */
+#if ALWAN_WITH_BOTH
 #define ALWAN_PLANAR_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
 alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
@@ -1823,9 +1970,77 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
     } \
     return ALWAN_OK; \
 }
+#elif ALWAN_WITH_F32
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
+         void const *in0, size_t in_stride, void const *in1, void const *in2, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         extra_type extra_name) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
+                      (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
+                      count, extra_name); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
+            ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
+            alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, extra_name); \
+            alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#else /* ALWAN_WITH_F64 */
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
+         void const *in0, size_t in_stride, void const *in1, void const *in2, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         extra_type extra_name) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out0, out_stride, (double *)out1, (double *)out2, \
+                      (double const *)in0, in_stride, (double const *)in1, (double const *)in2, \
+                      count, extra_name); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
+            ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
+            alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, extra_name); \
+            alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#endif
 
 /* -- Planar dual-dispatch: with alwan_f64 param -------------- */
 
+/* One definition per precision selection. A single-precision build must not
+ * name the other precision's worker at all: the declaration exists in every
+ * build but the definition is gated, so an unguarded reference resolves in a
+ * static archive and fails to link in a shared one. Every pixel format still
+ * works, because the typed tile loaders read and write all of them, the
+ * excluded precision's buffers included, through whichever worker exists. */
+#if ALWAN_WITH_BOTH
 #define ALWAN_PLANAR_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
 alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
@@ -1875,9 +2090,77 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
     } \
     return ALWAN_OK; \
 }
+#elif ALWAN_WITH_F32
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
+         void const *in0, size_t in_stride, void const *in1, void const *in2, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         alwan_f64 param) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
+                      (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
+                      count, (float)param); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
+            ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
+            alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, (float)param); \
+            alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#else /* ALWAN_WITH_F64 */
+#define ALWAN_PLANAR_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
+alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
+         void const *in0, size_t in_stride, void const *in1, void const *in2, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         alwan_f64 param) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out0, out_stride, (double *)out1, (double *)out2, \
+                      (double const *)in0, in_stride, (double const *)in1, (double const *)in2, \
+                      count, (double)param); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
+            ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
+            alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
+            alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
+            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, (double)param); \
+            alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
+            alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
+            alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#endif
 
 /* -- Interleave dual-dispatch: basic 3-channel ------------------ */
 
+/* One definition per precision selection. A single-precision build must not
+ * name the other precision's worker at all: the declaration exists in every
+ * build but the definition is gated, so an unguarded reference resolves in a
+ * static archive and fails to link in a shared one. Every pixel format still
+ * works, because the typed tile loaders read and write all of them, the
+ * excluded precision's buffers included, through whichever worker exists. */
+#if ALWAN_WITH_BOTH
 #define ALWAN_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
 alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
@@ -1913,9 +2196,61 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
     } \
     return ALWAN_OK; \
 }
+#elif ALWAN_WITH_F32
+#define ALWAN_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_); \
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#else /* ALWAN_WITH_F64 */
+#define ALWAN_EX_DELEGATE_DUAL(name, fn_f32, fn_f64) \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out, out_stride, (double const *)in, in_stride, count); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_); \
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#endif
 
 /* -- Interleave dual-dispatch: with white_xyz ------------------- */
 
+/* One definition per precision selection. A single-precision build must not
+ * name the other precision's worker at all: the declaration exists in every
+ * build but the definition is gated, so an unguarded reference resolves in a
+ * static archive and fails to link in a shared one. Every pixel format still
+ * works, because the typed tile loaders read and write all of them, the
+ * excluded precision's buffers included, through whichever worker exists. */
+#if ALWAN_WITH_BOTH
 #define ALWAN_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
 alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
@@ -1958,9 +2293,69 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
     } \
     return ALWAN_OK; \
 }
+#elif ALWAN_WITH_F32
+#define ALWAN_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         alwan_xyz_f64 const *white_xyz) { \
+    if (!in || !out || !white_xyz || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) { \
+        alwan_xyz_f32 w_ = {(float)white_xyz->x, (float)white_xyz->y, (float)white_xyz->z}; \
+        return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count, &w_); \
+    } \
+    { \
+        alwan_xyz_f32 w_ = {(float)white_xyz->x, (float)white_xyz->y, (float)white_xyz->z}; \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &w_); \
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#else /* ALWAN_WITH_F64 */
+#define ALWAN_EX_DELEGATE_DUAL_WHITE(name, fn_f32, fn_f64) \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         alwan_xyz_f64 const *white_xyz) { \
+    if (!in || !out || !white_xyz || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) { \
+        alwan_xyz_f64 w_ = {(double)white_xyz->x, (double)white_xyz->y, (double)white_xyz->z}; \
+        return fn_f64((double *)out, out_stride, (double const *)in, in_stride, count, &w_); \
+    } \
+    { \
+        alwan_xyz_f64 w_ = {(double)white_xyz->x, (double)white_xyz->y, (double)white_xyz->z}; \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &w_); \
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#endif
 
 /* -- Interleave dual-dispatch: with extra typed param (int/enum) */
 
+/* One definition per precision selection. A single-precision build must not
+ * name the other precision's worker at all: the declaration exists in every
+ * build but the definition is gated, so an unguarded reference resolves in a
+ * static archive and fails to link in a shared one. Every pixel format still
+ * works, because the typed tile loaders read and write all of them, the
+ * excluded precision's buffers included, through whichever worker exists. */
+#if ALWAN_WITH_BOTH
 #define ALWAN_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
 alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
@@ -1997,9 +2392,63 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
     } \
     return ALWAN_OK; \
 }
+#elif ALWAN_WITH_F32
+#define ALWAN_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         extra_type extra_name) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count, extra_name); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, extra_name); \
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#else /* ALWAN_WITH_F64 */
+#define ALWAN_EX_DELEGATE_DUAL_INT(name, fn_f32, fn_f64, extra_type, extra_name) \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         extra_type extra_name) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out, out_stride, (double const *)in, in_stride, count, extra_name); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, extra_name); \
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#endif
 
 /* -- Interleave dual-dispatch: with alwan_f64 param ---------- */
 
+/* One definition per precision selection. A single-precision build must not
+ * name the other precision's worker at all: the declaration exists in every
+ * build but the definition is gated, so an unguarded reference resolves in a
+ * static archive and fails to link in a shared one. Every pixel format still
+ * works, because the typed tile loaders read and write all of them, the
+ * excluded precision's buffers included, through whichever worker exists. */
+#if ALWAN_WITH_BOTH
 #define ALWAN_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
 alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
@@ -2036,6 +2485,53 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
     } \
     return ALWAN_OK; \
 }
+#elif ALWAN_WITH_F32
+#define ALWAN_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         alwan_f64 param) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
+        return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count, (float)param); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, (float)param); \
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#else /* ALWAN_WITH_F64 */
+#define ALWAN_EX_DELEGATE_DUAL_SCALAR(name, fn_f32, fn_f64) \
+alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
+         size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
+         alwan_f64 param) { \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
+        return fn_f64((double *)out, out_stride, (double const *)in, in_stride, count, (double)param); \
+    { \
+        size_t off_ = 0; \
+        while (off_ < count) { \
+            size_t tile_ = count - off_; \
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
+            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, (double)param); \
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
+            off_ += tile_; \
+        } \
+    } \
+    return ALWAN_OK; \
+}
+#endif
 
 /* ================================================================
  * Gamut map kernels (alwan_gamut_map.c) - dual precision

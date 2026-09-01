@@ -49,7 +49,10 @@ alwan_f32 const alwan_table_spd_illuminant_a_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZ
 #include "illuminants/A_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+/* Compiled in every build: the documented f64-internal facades read these f64
+ * tables from their f32 entry points, so the data has to exist even when the
+ * f64 public surface is excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_a_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/A_360_830_1nm.csv"
 };
@@ -66,7 +69,7 @@ alwan_f32 const alwan_table_spd_illuminant_d50_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/D50_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_d50_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/D50_360_830_1nm.csv"
 };
@@ -83,7 +86,7 @@ alwan_f32 const alwan_table_spd_illuminant_d55_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/D55_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_d55_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/D55_360_830_1nm.csv"
 };
@@ -100,7 +103,7 @@ alwan_f32 const alwan_table_spd_illuminant_d65_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/D65_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_d65_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/D65_360_830_1nm.csv"
 };
@@ -117,7 +120,7 @@ alwan_f32 const alwan_table_spd_illuminant_e_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZ
 #include "illuminants/E_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_e_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/E_360_830_1nm.csv"
 };
@@ -134,7 +137,7 @@ alwan_f32 const alwan_table_spd_illuminant_f1_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F1_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F1_360_830_1nm.csv"
 };
@@ -151,7 +154,7 @@ alwan_f32 const alwan_table_spd_illuminant_f2_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F2_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f2_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F2_360_830_1nm.csv"
 };
@@ -168,7 +171,7 @@ alwan_f32 const alwan_table_spd_illuminant_f3_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F3_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f3_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F3_360_830_1nm.csv"
 };
@@ -185,7 +188,7 @@ alwan_f32 const alwan_table_spd_illuminant_f4_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F4_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f4_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F4_360_830_1nm.csv"
 };
@@ -202,7 +205,7 @@ alwan_f32 const alwan_table_spd_illuminant_f5_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F5_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f5_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F5_360_830_1nm.csv"
 };
@@ -219,7 +222,7 @@ alwan_f32 const alwan_table_spd_illuminant_f6_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F6_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f6_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F6_360_830_1nm.csv"
 };
@@ -236,7 +239,7 @@ alwan_f32 const alwan_table_spd_illuminant_f7_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F7_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f7_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F7_360_830_1nm.csv"
 };
@@ -253,7 +256,7 @@ alwan_f32 const alwan_table_spd_illuminant_f8_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F8_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f8_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F8_360_830_1nm.csv"
 };
@@ -270,7 +273,7 @@ alwan_f32 const alwan_table_spd_illuminant_f9_f32[ALWAN_TABLE_SPD_360_830_1NM_SI
 #include "illuminants/F9_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f9_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F9_360_830_1nm.csv"
 };
@@ -287,7 +290,7 @@ alwan_f32 const alwan_table_spd_illuminant_f10_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/F10_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f10_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F10_360_830_1nm.csv"
 };
@@ -304,7 +307,7 @@ alwan_f32 const alwan_table_spd_illuminant_f11_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/F11_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f11_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F11_360_830_1nm.csv"
 };
@@ -321,7 +324,7 @@ alwan_f32 const alwan_table_spd_illuminant_f12_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/F12_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_f12_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/F12_360_830_1nm.csv"
 };
@@ -338,7 +341,7 @@ alwan_f32 const alwan_table_spd_illuminant_b_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZ
 #include "illuminants/B_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_b_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/B_360_830_1nm.csv"
 };
@@ -355,7 +358,7 @@ alwan_f32 const alwan_table_spd_illuminant_c_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZ
 #include "illuminants/C_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_c_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/C_360_830_1nm.csv"
 };
@@ -372,7 +375,7 @@ alwan_f32 const alwan_table_spd_illuminant_d60_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/D60_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_d60_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/D60_360_830_1nm.csv"
 };
@@ -389,7 +392,7 @@ alwan_f32 const alwan_table_spd_illuminant_d75_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/D75_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_d75_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/D75_360_830_1nm.csv"
 };
@@ -406,7 +409,7 @@ alwan_f32 const alwan_table_spd_illuminant_d40_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/D40_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_d40_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/D40_360_830_1nm.csv"
 };
@@ -423,7 +426,7 @@ alwan_f32 const alwan_table_spd_illuminant_d45_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/D45_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_d45_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/D45_360_830_1nm.csv"
 };
@@ -440,7 +443,7 @@ alwan_f32 const alwan_table_spd_illuminant_d93_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/D93_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_d93_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/D93_360_830_1nm.csv"
 };
@@ -457,7 +460,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_b1_f32[ALWAN_TABLE_SPD_360_830_1N
 #include "illuminants/LED-B1_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_b1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-B1_360_830_1nm.csv"
 };
@@ -474,7 +477,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_b2_f32[ALWAN_TABLE_SPD_360_830_1N
 #include "illuminants/LED-B2_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_b2_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-B2_360_830_1nm.csv"
 };
@@ -491,7 +494,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_b3_f32[ALWAN_TABLE_SPD_360_830_1N
 #include "illuminants/LED-B3_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_b3_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-B3_360_830_1nm.csv"
 };
@@ -508,7 +511,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_b4_f32[ALWAN_TABLE_SPD_360_830_1N
 #include "illuminants/LED-B4_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_b4_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-B4_360_830_1nm.csv"
 };
@@ -525,7 +528,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_b5_f32[ALWAN_TABLE_SPD_360_830_1N
 #include "illuminants/LED-B5_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_b5_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-B5_360_830_1nm.csv"
 };
@@ -542,7 +545,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_bh1_f32[ALWAN_TABLE_SPD_360_830_1
 #include "illuminants/LED-BH1_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_bh1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-BH1_360_830_1nm.csv"
 };
@@ -559,7 +562,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_rgb1_f32[ALWAN_TABLE_SPD_360_830_
 #include "illuminants/LED-RGB1_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_rgb1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-RGB1_360_830_1nm.csv"
 };
@@ -576,7 +579,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_v1_f32[ALWAN_TABLE_SPD_360_830_1N
 #include "illuminants/LED-V1_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_v1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-V1_360_830_1nm.csv"
 };
@@ -593,7 +596,7 @@ alwan_f32 const alwan_table_spd_illuminant_led_v2_f32[ALWAN_TABLE_SPD_360_830_1N
 #include "illuminants/LED-V2_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_led_v2_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/LED-V2_360_830_1nm.csv"
 };
@@ -610,7 +613,7 @@ alwan_f32 const alwan_table_spd_illuminant_hp1_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/HP1_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_hp1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/HP1_360_830_1nm.csv"
 };
@@ -627,7 +630,7 @@ alwan_f32 const alwan_table_spd_illuminant_hp2_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/HP2_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_hp2_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/HP2_360_830_1nm.csv"
 };
@@ -644,7 +647,7 @@ alwan_f32 const alwan_table_spd_illuminant_hp3_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/HP3_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_hp3_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/HP3_360_830_1nm.csv"
 };
@@ -661,7 +664,7 @@ alwan_f32 const alwan_table_spd_illuminant_hp4_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/HP4_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_hp4_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/HP4_360_830_1nm.csv"
 };
@@ -678,7 +681,7 @@ alwan_f32 const alwan_table_spd_illuminant_hp5_f32[ALWAN_TABLE_SPD_360_830_1NM_S
 #include "illuminants/HP5_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_spd_illuminant_hp5_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "illuminants/HP5_360_830_1nm.csv"
 };
@@ -695,7 +698,7 @@ alwan_f32 const alwan_table_cmf_cie_1931_2deg_x_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_1931_2deg_x_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_1931_2deg_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_1931_2deg_x_360_830_1nm.csv"
 };
@@ -709,7 +712,7 @@ alwan_f32 const alwan_table_cmf_cie_1931_2deg_y_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_1931_2deg_y_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_1931_2deg_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_1931_2deg_y_360_830_1nm.csv"
 };
@@ -723,7 +726,7 @@ alwan_f32 const alwan_table_cmf_cie_1931_2deg_z_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_1931_2deg_z_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_1931_2deg_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_1931_2deg_z_360_830_1nm.csv"
 };
@@ -740,7 +743,7 @@ alwan_f32 const alwan_table_cmf_cie_1964_10deg_x_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_1964_10deg_x_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_1964_10deg_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_1964_10deg_x_360_830_1nm.csv"
 };
@@ -754,7 +757,7 @@ alwan_f32 const alwan_table_cmf_cie_1964_10deg_y_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_1964_10deg_y_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_1964_10deg_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_1964_10deg_y_360_830_1nm.csv"
 };
@@ -768,7 +771,7 @@ alwan_f32 const alwan_table_cmf_cie_1964_10deg_z_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_1964_10deg_z_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_1964_10deg_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_1964_10deg_z_360_830_1nm.csv"
 };
@@ -785,7 +788,7 @@ alwan_f32 const alwan_table_cmf_cie_2012_2deg_x_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_2012_2deg_x_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2012_2deg_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2012_2deg_x_360_830_1nm.csv"
 };
@@ -799,7 +802,7 @@ alwan_f32 const alwan_table_cmf_cie_2012_2deg_y_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_2012_2deg_y_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2012_2deg_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2012_2deg_y_360_830_1nm.csv"
 };
@@ -813,7 +816,7 @@ alwan_f32 const alwan_table_cmf_cie_2012_2deg_z_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_2012_2deg_z_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2012_2deg_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2012_2deg_z_360_830_1nm.csv"
 };
@@ -830,7 +833,7 @@ alwan_f32 const alwan_table_cmf_cie_2012_10deg_x_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_2012_10deg_x_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2012_10deg_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2012_10deg_x_360_830_1nm.csv"
 };
@@ -844,7 +847,7 @@ alwan_f32 const alwan_table_cmf_cie_2012_10deg_y_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_2012_10deg_y_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2012_10deg_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2012_10deg_y_360_830_1nm.csv"
 };
@@ -858,7 +861,7 @@ alwan_f32 const alwan_table_cmf_cie_2012_10deg_z_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_2012_10deg_z_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2012_10deg_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2012_10deg_z_360_830_1nm.csv"
 };
@@ -875,7 +878,7 @@ alwan_f32 const alwan_table_cmf_stockman_sharpe_2deg_x_f32[ALWAN_TABLE_SPD_360_8
 #include "cmf/stockman_sharpe_2deg_x_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_stockman_sharpe_2deg_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/stockman_sharpe_2deg_x_360_830_1nm.csv"
 };
@@ -889,7 +892,7 @@ alwan_f32 const alwan_table_cmf_stockman_sharpe_2deg_y_f32[ALWAN_TABLE_SPD_360_8
 #include "cmf/stockman_sharpe_2deg_y_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_stockman_sharpe_2deg_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/stockman_sharpe_2deg_y_360_830_1nm.csv"
 };
@@ -903,7 +906,7 @@ alwan_f32 const alwan_table_cmf_stockman_sharpe_2deg_z_f32[ALWAN_TABLE_SPD_360_8
 #include "cmf/stockman_sharpe_2deg_z_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_stockman_sharpe_2deg_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/stockman_sharpe_2deg_z_360_830_1nm.csv"
 };
@@ -920,7 +923,7 @@ alwan_f32 const alwan_table_cmf_cie_2015_2deg_x_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_2015_2deg_x_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2015_2deg_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2015_2deg_x_360_830_1nm.csv"
 };
@@ -934,7 +937,7 @@ alwan_f32 const alwan_table_cmf_cie_2015_2deg_y_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_2015_2deg_y_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2015_2deg_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2015_2deg_y_360_830_1nm.csv"
 };
@@ -948,7 +951,7 @@ alwan_f32 const alwan_table_cmf_cie_2015_2deg_z_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "cmf/cie_2015_2deg_z_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2015_2deg_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2015_2deg_z_360_830_1nm.csv"
 };
@@ -965,7 +968,7 @@ alwan_f32 const alwan_table_cmf_cie_2015_10deg_x_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_2015_10deg_x_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2015_10deg_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2015_10deg_x_360_830_1nm.csv"
 };
@@ -979,7 +982,7 @@ alwan_f32 const alwan_table_cmf_cie_2015_10deg_y_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_2015_10deg_y_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2015_10deg_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2015_10deg_y_360_830_1nm.csv"
 };
@@ -993,7 +996,7 @@ alwan_f32 const alwan_table_cmf_cie_2015_10deg_z_f32[ALWAN_TABLE_SPD_360_830_1NM
 #include "cmf/cie_2015_10deg_z_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_cie_2015_10deg_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/cie_2015_10deg_z_360_830_1nm.csv"
 };
@@ -1010,7 +1013,7 @@ alwan_f32 const alwan_table_cmf_wright_guild_1931_r_f32[ALWAN_TABLE_SPD_360_830_
 #include "cmf/wright_guild_1931_r_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_wright_guild_1931_r_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/wright_guild_1931_r_360_830_1nm.csv"
 };
@@ -1024,7 +1027,7 @@ alwan_f32 const alwan_table_cmf_wright_guild_1931_g_f32[ALWAN_TABLE_SPD_360_830_
 #include "cmf/wright_guild_1931_g_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_wright_guild_1931_g_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/wright_guild_1931_g_360_830_1nm.csv"
 };
@@ -1038,7 +1041,7 @@ alwan_f32 const alwan_table_cmf_wright_guild_1931_b_f32[ALWAN_TABLE_SPD_360_830_
 #include "cmf/wright_guild_1931_b_360_830_1nm.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_cmf_wright_guild_1931_b_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "cmf/wright_guild_1931_b_360_830_1nm.csv"
 };
@@ -1055,7 +1058,7 @@ alwan_f32 const alwan_table_camera_nikon_5100_r_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "camera_sensitivities/nikon_5100_r.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_camera_nikon_5100_r_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "camera_sensitivities/nikon_5100_r.csv"
 };
@@ -1069,7 +1072,7 @@ alwan_f32 const alwan_table_camera_nikon_5100_g_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "camera_sensitivities/nikon_5100_g.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_camera_nikon_5100_g_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "camera_sensitivities/nikon_5100_g.csv"
 };
@@ -1083,7 +1086,7 @@ alwan_f32 const alwan_table_camera_nikon_5100_b_f32[ALWAN_TABLE_SPD_360_830_1NM_
 #include "camera_sensitivities/nikon_5100_b.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_camera_nikon_5100_b_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "camera_sensitivities/nikon_5100_b.csv"
 };
@@ -1100,7 +1103,7 @@ alwan_f32 const alwan_table_camera_sigma_sdmerill_r_f32[ALWAN_TABLE_SPD_360_830_
 #include "camera_sensitivities/sigma_sdmerill_r.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_camera_sigma_sdmerill_r_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "camera_sensitivities/sigma_sdmerill_r.csv"
 };
@@ -1114,7 +1117,7 @@ alwan_f32 const alwan_table_camera_sigma_sdmerill_g_f32[ALWAN_TABLE_SPD_360_830_
 #include "camera_sensitivities/sigma_sdmerill_g.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_camera_sigma_sdmerill_g_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "camera_sensitivities/sigma_sdmerill_g.csv"
 };
@@ -1128,7 +1131,7 @@ alwan_f32 const alwan_table_camera_sigma_sdmerill_b_f32[ALWAN_TABLE_SPD_360_830_
 #include "camera_sensitivities/sigma_sdmerill_b.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_camera_sigma_sdmerill_b_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
 #include "camera_sensitivities/sigma_sdmerill_b.csv"
 };
@@ -1145,7 +1148,7 @@ alwan_f32 const alwan_table_smits1999_white_f32[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/white.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_smits1999_white_f64[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/white.csv"
 };
@@ -1159,7 +1162,7 @@ alwan_f32 const alwan_table_smits1999_cyan_f32[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/cyan.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_smits1999_cyan_f64[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/cyan.csv"
 };
@@ -1173,7 +1176,7 @@ alwan_f32 const alwan_table_smits1999_magenta_f32[ALWAN_TABLE_SMITS1999_SIZE] = 
 #include "spectral_basis/smits1999/magenta.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_smits1999_magenta_f64[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/magenta.csv"
 };
@@ -1187,7 +1190,7 @@ alwan_f32 const alwan_table_smits1999_yellow_f32[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/yellow.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_smits1999_yellow_f64[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/yellow.csv"
 };
@@ -1201,7 +1204,7 @@ alwan_f32 const alwan_table_smits1999_red_f32[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/red.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_smits1999_red_f64[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/red.csv"
 };
@@ -1215,7 +1218,7 @@ alwan_f32 const alwan_table_smits1999_green_f32[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/green.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_smits1999_green_f64[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/green.csv"
 };
@@ -1229,7 +1232,7 @@ alwan_f32 const alwan_table_smits1999_blue_f32[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/blue.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_smits1999_blue_f64[ALWAN_TABLE_SMITS1999_SIZE] = {
 #include "spectral_basis/smits1999/blue.csv"
 };
@@ -1246,7 +1249,7 @@ alwan_f32 const alwan_table_mallett2019_red_f32[ALWAN_TABLE_MALLETT2019_SIZE] = 
 #include "spectral_basis/mallett2019/red.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_mallett2019_red_f64[ALWAN_TABLE_MALLETT2019_SIZE] = {
 #include "spectral_basis/mallett2019/red.csv"
 };
@@ -1260,7 +1263,7 @@ alwan_f32 const alwan_table_mallett2019_green_f32[ALWAN_TABLE_MALLETT2019_SIZE] 
 #include "spectral_basis/mallett2019/green.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_mallett2019_green_f64[ALWAN_TABLE_MALLETT2019_SIZE] = {
 #include "spectral_basis/mallett2019/green.csv"
 };
@@ -1274,7 +1277,7 @@ alwan_f32 const alwan_table_mallett2019_blue_f32[ALWAN_TABLE_MALLETT2019_SIZE] =
 #include "spectral_basis/mallett2019/blue.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_mallett2019_blue_f64[ALWAN_TABLE_MALLETT2019_SIZE] = {
 #include "spectral_basis/mallett2019/blue.csv"
 };
@@ -1291,7 +1294,7 @@ alwan_f32 const alwan_table_agx_sb2383_inset_f32[ALWAN_TABLE_AGX_SB2383_INSET_SI
 #include "matrices/agx_sb2383_inset.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_agx_sb2383_inset_f64[ALWAN_TABLE_AGX_SB2383_INSET_SIZE] = {
 #include "matrices/agx_sb2383_inset.csv"
 };

@@ -39,7 +39,10 @@ alwan_f32 const alwan_table_agx_blender_cube_f32[ALWAN_TABLE_AGX_BLENDER_CUBE_SI
 #include "agx_blender_lut3d.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+/* Compiled in every build: the documented f64-internal facades read these f64
+ * tables from their f32 entry points, so the data has to exist even when the
+ * f64 public surface is excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_agx_blender_cube_f64[ALWAN_TABLE_AGX_BLENDER_CUBE_SIZE] = {
 #include "agx_blender_lut3d.csv"
 };

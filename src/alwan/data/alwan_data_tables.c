@@ -42,7 +42,10 @@ alwan_f32 const alwan_table_agx_default_contrast_f32[ALWAN_TABLE_AGX_CONTRAST_SI
 #include "agx_default_contrast_lut.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+/* Compiled in every build: the documented f64-internal facades read these f64
+ * tables from their f32 entry points, so the data has to exist even when the
+ * f64 public surface is excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_agx_default_contrast_f64[ALWAN_TABLE_AGX_CONTRAST_SIZE] = {
 #include "agx_default_contrast_lut.csv"
 };
@@ -58,7 +61,7 @@ alwan_f32 const alwan_table_agx_sb2383_contrast_f32[ALWAN_TABLE_AGX_CONTRAST_SIZ
 #include "agx_sb2383_contrast_lut.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_agx_sb2383_contrast_f64[ALWAN_TABLE_AGX_CONTRAST_SIZE] = {
 #include "agx_sb2383_contrast_lut.csv"
 };

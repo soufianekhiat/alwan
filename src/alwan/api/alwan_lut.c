@@ -30,8 +30,12 @@ ALWAN_DIAG_DISABLE_FLOAT_CONV
 ALWAN_DIAG_POP
 #endif
 
-#if ALWAN_WITH_F64
+/* Compiled in every build, not just an f64 one: the documented f64-internal
+ * facades (the spectral quality metrics, the CCM fits, the iterative inverses)
+ * call this f64 API from their f32 entry points, so it has to exist even when
+ * the f64 public surface is otherwise excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 #include "alwan_api_f64_setup.h"
 #include "alwan_lut_impl.inc"
 #include "alwan_api_teardown.h"
-#endif
+#endif /* ALWAN_WITH_F64_FACADE */

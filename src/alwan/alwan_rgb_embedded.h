@@ -5,7 +5,10 @@
  * ---------------------------------------------------------------- */
 #if ALWAN_EMBED_DATA
 
-#if ALWAN_WITH_F64
+/* Compiled in every build: the f64-internal facades resolve RGB space
+ * descriptors in f64 from their f32 entry points, so this half has to exist
+ * even when the f64 public surface is excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 
 /* Disable float conversion warnings for embedded CSV data */
 ALWAN_DIAG_PUSH
@@ -541,7 +544,7 @@ static alwan_f64 const * const g_rgb_space_data[] = {
 };
 
 
-#endif /* ALWAN_WITH_F64 */
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* ----------------------------------------------------------------
  * f32 native twins of the embedded tables above.

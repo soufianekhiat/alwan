@@ -46,11 +46,15 @@ ALWAN_DIAG_POP
 #endif
 
 /* f64 pass: native double tables + double integration. */
-#if ALWAN_WITH_F64
+/* Compiled in every build, not just an f64 one: the documented f64-internal
+ * facades (the spectral quality metrics, the CCM fits, the iterative inverses)
+ * call this f64 API from their f32 entry points, so it has to exist even when
+ * the f64 public surface is otherwise excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
 #include "alwan_api_f64_setup.h"
 #include "alwan_spd_impl.inc"
 #include "alwan_api_teardown.h"
 ALWAN_DIAG_POP
-#endif
+#endif /* ALWAN_WITH_F64_FACADE */

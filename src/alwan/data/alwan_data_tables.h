@@ -55,11 +55,12 @@ extern "C" {
 #else
 #  define ALWAN_TABLE_EXTERN_F32(name, extent)
 #endif
-#if ALWAN_WITH_F64
-#  define ALWAN_TABLE_EXTERN_F64(name, extent) extern alwan_f64 const name##_f64[extent];
-#else
-#  define ALWAN_TABLE_EXTERN_F64(name, extent)
-#endif
+/* Declared in every build, not only an f64 one. A declaration costs nothing,
+ * and the f64-internal facades read f64 tables from their f32 entry points, so
+ * gating the declaration on ALWAN_WITH_F64 deletes the table out from under the
+ * f32 API exactly as the ALWAN_TABLE_EXTERN_F64_ONLY comment below describes.
+ * The definitions are gated the same way, on ALWAN_WITH_F64_FACADE. */
+#define ALWAN_TABLE_EXTERN_F64(name, extent) extern alwan_f64 const name##_f64[extent];
 
 /* One table, both precisions, one extent. The extent cannot drift between the
  * twins because there is only one of it. */

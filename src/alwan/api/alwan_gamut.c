@@ -969,6 +969,11 @@ alwan_status alwan_css_gamut_f64_map_planar(alwan_f64 *out_ch0, size_t out_strid
     return ALWAN_OK;
 }
 
+/* Hand-written f32 entry points: they dispatch to SIMD kernels and so do not
+ * come from the dual-precision .inc, which means the precision gate has to be
+ * written here. Without it an f64-only build compiles these and then fails to
+ * link against the f32 kernels the .inc correctly left out. */
+#if ALWAN_WITH_F32
 /* ----------------------------------------------------------------
  * f32 twins of the gamut map entry points.
  * CLIP and the CSS mapper route to the native f32 SIMD kernels;
@@ -1041,6 +1046,7 @@ alwan_status alwan_css_gamut_f32_map_planar(alwan_f32 *out_ch0, size_t out_strid
     }
     return alwan_css_gamut_map_f32_map_planar(out_ch0, out_stride, out_ch1, out_ch2, in_ch0, in_stride, in_ch1, in_ch2, count);
 }
+#endif /* ALWAN_WITH_F32 */
 
 /* ----------------------------------------------------------------
  * Gamut map _ex (typed pixel format)
@@ -1051,10 +1057,15 @@ alwan_status alwan_gamut_map_interleave_ex(void *rgb_out, size_t out_stride, voi
 
     /* CLIP fast path: dual-precision dispatch */
     if (method == ALWAN_GAMUT_MAP_CLIP) {
+#if ALWAN_WITH_F32
         if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32)
             return alwan_gamut_clip_f32_map_interleave((float *)rgb_out, out_stride, (float const *)rgb_in, in_stride, count);
+#endif
+#if ALWAN_WITH_F64
         if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64)
             return alwan_gamut_clip_f64_map_interleave((double *)rgb_out, out_stride, (double const *)rgb_in, in_stride, count);
+#endif
+#if ALWAN_WITH_BOTH
         if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
             size_t off_ = 0;
             while (off_ < count) {
@@ -1080,6 +1091,35 @@ alwan_status alwan_gamut_map_interleave_ex(void *rgb_out, size_t out_stride, voi
                 off_ += tile_;
             }
         }
+#elif ALWAN_WITH_F64
+        {
+            size_t off_ = 0;
+            while (off_ < count) {
+                size_t tile_ = count - off_;
+                if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+                ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
+                ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
+                alwan__load_tile_typed_aos_f64(ibuf_, rgb_in, in_fmt, off_, in_stride, tile_, 3);
+                alwan_gamut_clip_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_);
+                alwan__store_tile_typed_aos_f64(rgb_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+                off_ += tile_;
+            }
+        }
+#else
+        {
+            size_t off_ = 0;
+            while (off_ < count) {
+                size_t tile_ = count - off_;
+                if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+                ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
+                ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
+                alwan__load_tile_typed_aos_f32(ibuf_, rgb_in, in_fmt, off_, in_stride, tile_, 3);
+                alwan_gamut_clip_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_);
+                alwan__store_tile_typed_aos_f32(rgb_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+                off_ += tile_;
+            }
+        }
+#endif
         return ALWAN_OK;
     }
 
@@ -1105,10 +1145,15 @@ alwan_status alwan_gamut_map_planar_ex(void *out0, size_t out_stride, void *out1
 
     /* CLIP fast path: dual-precision dispatch */
     if (method == ALWAN_GAMUT_MAP_CLIP) {
+#if ALWAN_WITH_F32
         if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32)
             return alwan_gamut_clip_f32_map_planar((float *)out0, out_stride, (float *)out1, (float *)out2, (float const *)in0, in_stride, (float const *)in1, (float const *)in2, count);
+#endif
+#if ALWAN_WITH_F64
         if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64)
             return alwan_gamut_clip_f64_map_planar((double *)out0, out_stride, (double *)out1, (double *)out2, (double const *)in0, in_stride, (double const *)in1, (double const *)in2, count);
+#endif
+#if ALWAN_WITH_BOTH
         if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
             size_t off_ = 0;
             while (off_ < count) {
@@ -1142,6 +1187,43 @@ alwan_status alwan_gamut_map_planar_ex(void *out0, size_t out_stride, void *out1
                 off_ += tile_;
             }
         }
+#elif ALWAN_WITH_F64
+        {
+            size_t off_ = 0;
+            while (off_ < count) {
+                size_t tile_ = count - off_;
+                if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+                ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64];
+                ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64];
+                alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_);
+                alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_);
+                alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_);
+                alwan_gamut_clip_f64_map_planar(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_);
+                alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_);
+                alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_);
+                alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_);
+                off_ += tile_;
+            }
+        }
+#else
+        {
+            size_t off_ = 0;
+            while (off_ < count) {
+                size_t tile_ = count - off_;
+                if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+                ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32];
+                ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32];
+                alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_);
+                alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_);
+                alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_);
+                alwan_gamut_clip_f32_map_planar(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_);
+                alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_);
+                alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_);
+                alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_);
+                off_ += tile_;
+            }
+        }
+#endif
         return ALWAN_OK;
     }
 
@@ -1869,7 +1951,10 @@ alwan_status alwan_hdr_gamut_map_ictcp_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32
  * chromatic adaptation is applied between sRGB and the target.
  * ---------------------------------------------------------------- */
 
-#if ALWAN_WITH_F64
+/* Compiled in every build: an f64-internal facade calls this from its f32 entry
+ * point, so it has to exist even when the f64 public surface is excluded.
+ * See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 alwan_status alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out,
                               alwan_rgb_space_desc_f64 const *target_space,
                               alwan_rgb_f64 const *rgb_in) {
@@ -1953,7 +2038,7 @@ alwan_status alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out,
     }
     return ALWAN_OK;
 }
-#endif /* ALWAN_WITH_F64 */
+#endif /* ALWAN_WITH_F64_FACADE */
 
 #if ALWAN_WITH_F32
 alwan_status alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out,

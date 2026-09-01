@@ -43,7 +43,10 @@ alwan_f32 const alwan_table_jakob2019_srgb_c0_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c0.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+/* Compiled in every build: the documented f64-internal facades read these f64
+ * tables from their f32 entry points, so the data has to exist even when the
+ * f64 public surface is excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_srgb_c0_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c0.csv"
 };
@@ -59,7 +62,7 @@ alwan_f32 const alwan_table_jakob2019_srgb_c1_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c1.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_srgb_c1_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c1.csv"
 };
@@ -75,7 +78,7 @@ alwan_f32 const alwan_table_jakob2019_srgb_c2_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c2.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_srgb_c2_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c2.csv"
 };
@@ -91,7 +94,7 @@ alwan_f32 const alwan_table_jakob2019_prophoto_c0_f32[ALWAN_TABLE_JAKOB2019_SIZE
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_prophotorgb.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_prophoto_c0_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_prophotorgb.csv"
 };
@@ -107,7 +110,7 @@ alwan_f32 const alwan_table_jakob2019_prophoto_c1_f32[ALWAN_TABLE_JAKOB2019_SIZE
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_prophotorgb.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_prophoto_c1_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_prophotorgb.csv"
 };
@@ -123,7 +126,7 @@ alwan_f32 const alwan_table_jakob2019_prophoto_c2_f32[ALWAN_TABLE_JAKOB2019_SIZE
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_prophotorgb.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_prophoto_c2_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_prophotorgb.csv"
 };
@@ -139,7 +142,7 @@ alwan_f32 const alwan_table_jakob2019_aces_c0_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_aces2065_1.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_aces_c0_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_aces2065_1.csv"
 };
@@ -155,7 +158,7 @@ alwan_f32 const alwan_table_jakob2019_aces_c1_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_aces2065_1.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_aces_c1_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_aces2065_1.csv"
 };
@@ -171,7 +174,7 @@ alwan_f32 const alwan_table_jakob2019_aces_c2_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_aces2065_1.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_aces_c2_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_aces2065_1.csv"
 };
@@ -187,7 +190,7 @@ alwan_f32 const alwan_table_jakob2019_rec2020_c0_f32[ALWAN_TABLE_JAKOB2019_SIZE]
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_rec2020.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_rec2020_c0_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_rec2020.csv"
 };
@@ -203,7 +206,7 @@ alwan_f32 const alwan_table_jakob2019_rec2020_c1_f32[ALWAN_TABLE_JAKOB2019_SIZE]
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_rec2020.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_rec2020_c1_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_rec2020.csv"
 };
@@ -219,7 +222,7 @@ alwan_f32 const alwan_table_jakob2019_rec2020_c2_f32[ALWAN_TABLE_JAKOB2019_SIZE]
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_rec2020.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_rec2020_c2_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_rec2020.csv"
 };
@@ -235,7 +238,7 @@ alwan_f32 const alwan_table_jakob2019_ergb_c0_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_ergb.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_ergb_c0_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_ergb.csv"
 };
@@ -251,7 +254,7 @@ alwan_f32 const alwan_table_jakob2019_ergb_c1_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_ergb.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_ergb_c1_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_ergb.csv"
 };
@@ -267,7 +270,7 @@ alwan_f32 const alwan_table_jakob2019_ergb_c2_f32[ALWAN_TABLE_JAKOB2019_SIZE] = 
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_ergb.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_ergb_c2_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_ergb.csv"
 };
@@ -283,7 +286,7 @@ alwan_f32 const alwan_table_jakob2019_xyz_c0_f32[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_xyz.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_xyz_c0_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c0_xyz.csv"
 };
@@ -299,7 +302,7 @@ alwan_f32 const alwan_table_jakob2019_xyz_c1_f32[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_xyz.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_xyz_c1_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c1_xyz.csv"
 };
@@ -315,7 +318,7 @@ alwan_f32 const alwan_table_jakob2019_xyz_c2_f32[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_xyz.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_jakob2019_xyz_c2_f64[ALWAN_TABLE_JAKOB2019_SIZE] = {
 #include "spectral_lut/jakob2019/jakob2019_lut_c2_xyz.csv"
 };

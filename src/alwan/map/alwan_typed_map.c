@@ -233,6 +233,7 @@ ALWAN_EX_DELEGATE_DUAL_INT(alwan_din99_to_lab_map_interleave_ex, alwan_din99_to_
 
 alwan_status alwan_lgg_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain) {
     if (!in || !out || !lift || !gamma || !gain || count == 0) return ALWAN_E_INVALID;
+#if ALWAN_WITH_BOTH
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_rgb_f64 lift64 = {(double)lift->r, (double)lift->g, (double)lift->b};
         alwan_rgb_f64 gamma64 = {(double)gamma->r, (double)gamma->g, (double)gamma->b};
@@ -264,11 +265,47 @@ alwan_status alwan_lgg_apply_map_interleave_ex(void *out, size_t out_stride, voi
             off_ += tile_;
         }
     }
+#elif ALWAN_WITH_F64
+    {
+        alwan_rgb_f64 lift64 = {(double)lift->r, (double)lift->g, (double)lift->b};
+        alwan_rgb_f64 gamma64 = {(double)gamma->r, (double)gamma->g, (double)gamma->b};
+        alwan_rgb_f64 gain64 = {(double)gain->r, (double)gain->g, (double)gain->b};
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_lgg_apply_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &gain64, &gamma64, &lift64);
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#else
+    {
+        alwan_rgb_f32 lift32 = {(float)lift->r, (float)lift->g, (float)lift->b};
+        alwan_rgb_f32 gamma32 = {(float)gamma->r, (float)gamma->g, (float)gamma->b};
+        alwan_rgb_f32 gain32 = {(float)gain->r, (float)gain->g, (float)gain->b};
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_lgg_apply_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &gain32, &gamma32, &lift32);
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#endif
     return ALWAN_OK;
 }
 
 alwan_status alwan_color_matrix_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_mat3x3_f64 const *matrix) {
     if (!in || !out || !matrix || count == 0) return ALWAN_E_INVALID;
+#if ALWAN_WITH_BOTH
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_mat3x3_f64 m64; for (int i = 0; i < 9; i++) m64.m[i] = (double)matrix->m[i];
         size_t off_ = 0;
@@ -296,11 +333,43 @@ alwan_status alwan_color_matrix_apply_map_interleave_ex(void *out, size_t out_st
             off_ += tile_;
         }
     }
+#elif ALWAN_WITH_F64
+    {
+        alwan_mat3x3_f64 m64; for (int i = 0; i < 9; i++) m64.m[i] = (double)matrix->m[i];
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_color_matrix_apply_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &m64);
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#else
+    {
+        alwan_mat3x3_f32 m32; for (int i = 0; i < 9; i++) m32.m[i] = (float)matrix->m[i];
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_color_matrix_apply_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &m32);
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#endif
     return ALWAN_OK;
 }
 
 alwan_status alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 red_lights, alwan_f64 green_lights, alwan_f64 blue_lights) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
+#if ALWAN_WITH_BOTH
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
         while (off_ < count) {
@@ -326,11 +395,41 @@ alwan_status alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_
             off_ += tile_;
         }
     }
+#elif ALWAN_WITH_F64
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_printer_lights_apply_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, (double)blue_lights, (double)green_lights, (double)red_lights);
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#else
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_printer_lights_apply_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, (float)blue_lights, (float)green_lights, (float)red_lights);
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#endif
     return ALWAN_OK;
 }
 
 alwan_status alwan_white_balance_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *multipliers) {
     if (!in || !out || !multipliers || count == 0) return ALWAN_E_INVALID;
+#if ALWAN_WITH_BOTH
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         alwan_rgb_f64 mul64 = {(double)multipliers->r, (double)multipliers->g, (double)multipliers->b};
         size_t off_ = 0;
@@ -358,6 +457,37 @@ alwan_status alwan_white_balance_apply_map_interleave_ex(void *out, size_t out_s
             off_ += tile_;
         }
     }
+#elif ALWAN_WITH_F64
+    {
+        alwan_rgb_f64 mul64 = {(double)multipliers->r, (double)multipliers->g, (double)multipliers->b};
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_white_balance_apply_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &mul64);
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#else
+    {
+        alwan_rgb_f32 mul32 = {(float)multipliers->r, (float)multipliers->g, (float)multipliers->b};
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_white_balance_apply_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &mul32);
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#endif
     return ALWAN_OK;
 }
 
@@ -371,6 +501,7 @@ ALWAN_EX_DELEGATE_DUAL_SCALAR(alwan_simulate_tritanopia_map_interleave_ex,   alw
 
 alwan_status alwan_simulate_cvd_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
     if (!in || !out || count == 0) return ALWAN_E_INVALID;
+#if ALWAN_WITH_BOTH
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
         while (off_ < count) {
@@ -396,6 +527,35 @@ alwan_status alwan_simulate_cvd_map_interleave_ex(void *out, size_t out_stride, 
             off_ += tile_;
         }
     }
+#elif ALWAN_WITH_F64
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_simulate_cvd_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, cvd_type, (double)severity);
+            alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#else
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_simulate_cvd_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, cvd_type, (float)severity);
+            alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#endif
     return ALWAN_OK;
 }
 
@@ -405,6 +565,7 @@ alwan_status alwan_simulate_cvd_map_interleave_ex(void *out, size_t out_stride, 
 
 alwan_status alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_cvd_type cvd_type, alwan_f64 severity) {
     if (!rgb_in || !rgb_out || count == 0) return ALWAN_E_INVALID;
+#if ALWAN_WITH_BOTH
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
         while (off_ < count) {
@@ -430,6 +591,35 @@ alwan_status alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, size_t 
             off_ += tile_;
         }
     }
+#elif ALWAN_WITH_F64
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            alwan__load_tile_typed_aos_f64(ibuf_, rgb_in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_simulate_cvd_machado_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, cvd_type, (double)severity);
+            alwan__store_tile_typed_aos_f64(rgb_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#else
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            alwan__load_tile_typed_aos_f32(ibuf_, rgb_in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_simulate_cvd_machado_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, cvd_type, (float)severity);
+            alwan__store_tile_typed_aos_f32(rgb_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#endif
     return ALWAN_OK;
 }
 
@@ -439,6 +629,7 @@ alwan_status alwan_simulate_cvd_machado_map_interleave_ex(void *rgb_out, size_t 
 
 alwan_status alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, size_t out_stride, void const *cmy_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
     if (!cmy_in || !cmyk_out || count == 0) return ALWAN_E_INVALID;
+#if ALWAN_WITH_BOTH
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
         while (off_ < count) {
@@ -464,11 +655,41 @@ alwan_status alwan_cmy_to_cmyk_map_interleave_ex(void *cmyk_out, size_t out_stri
             off_ += tile_;
         }
     }
+#elif ALWAN_WITH_F64
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 4];
+            alwan__load_tile_typed_aos_f64(ibuf_, cmy_in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_cmy_to_cmyk_f64_map_interleave(obuf_, 4 * sizeof(double), ibuf_, 3 * sizeof(double), tile_);
+            alwan__store_tile_typed_aos_f64(cmyk_out, out_fmt, off_, out_stride, obuf_, tile_, 4);
+            off_ += tile_;
+        }
+    }
+#else
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 4];
+            alwan__load_tile_typed_aos_f32(ibuf_, cmy_in, in_fmt, off_, in_stride, tile_, 3);
+            alwan_cmy_to_cmyk_f32_map_interleave(obuf_, 4 * sizeof(float), ibuf_, 3 * sizeof(float), tile_);
+            alwan__store_tile_typed_aos_f32(cmyk_out, out_fmt, off_, out_stride, obuf_, tile_, 4);
+            off_ += tile_;
+        }
+    }
+#endif
     return ALWAN_OK;
 }
 
 alwan_status alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, size_t out_stride, void const *cmyk_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) {
     if (!cmyk_in || !cmy_out || count == 0) return ALWAN_E_INVALID;
+#if ALWAN_WITH_BOTH
     if (in_fmt == ALWAN_PIXEL_F64 || out_fmt == ALWAN_PIXEL_F64) {
         size_t off_ = 0;
         while (off_ < count) {
@@ -494,6 +715,35 @@ alwan_status alwan_cmyk_to_cmy_map_interleave_ex(void *cmy_out, size_t out_strid
             off_ += tile_;
         }
     }
+#elif ALWAN_WITH_F64
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64;
+            ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 4];
+            ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3];
+            alwan__load_tile_typed_aos_f64(ibuf_, cmyk_in, in_fmt, off_, in_stride, tile_, 4);
+            alwan_cmyk_to_cmy_f64_map_interleave(obuf_, 3 * sizeof(double), ibuf_, 4 * sizeof(double), tile_);
+            alwan__store_tile_typed_aos_f64(cmy_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#else
+    {
+        size_t off_ = 0;
+        while (off_ < count) {
+            size_t tile_ = count - off_;
+            if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32;
+            ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 4];
+            ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3];
+            alwan__load_tile_typed_aos_f32(ibuf_, cmyk_in, in_fmt, off_, in_stride, tile_, 4);
+            alwan_cmyk_to_cmy_f32_map_interleave(obuf_, 3 * sizeof(float), ibuf_, 4 * sizeof(float), tile_);
+            alwan__store_tile_typed_aos_f32(cmy_out, out_fmt, off_, out_stride, obuf_, tile_, 3);
+            off_ += tile_;
+        }
+    }
+#endif
     return ALWAN_OK;
 }
 

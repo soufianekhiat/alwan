@@ -201,6 +201,10 @@ static size_t video_pixel_stride(alwan_pixel_format fmt) {
     }
 }
 
+/* Hand-written per-precision entry points: they resolve transfer functions and
+ * do the range/quantise math natively rather than coming from the shared .inc,
+ * so the precision gate is written here. */
+#if ALWAN_WITH_F64
 /* ----------------------------------------------------------------
  * Public API
  * ---------------------------------------------------------------- */
@@ -287,6 +291,9 @@ alwan_status alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, size_
     return ALWAN_OK;
 }
 
+#endif /* ALWAN_WITH_F64 */
+
+#if ALWAN_WITH_F32
 /* ----------------------------------------------------------------
  * f32 helpers -- native float twins of the f64 range/quantize math.
  * Mirror video_narrow_params / video_store / video_load exactly,
@@ -304,6 +311,7 @@ static int video_narrow_params_f32(int bit_depth,
     *max_code = (alwan_f32)((1 << bit_depth) - 1);
     return 1;
 }
+
 
 /* Store a single encoded+range-scaled triplet to output buffer (f32 math) */
 static void video_store_f32(void *dst, alwan_f32 const v[3],
@@ -535,3 +543,4 @@ alwan_status alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, size_
 
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */

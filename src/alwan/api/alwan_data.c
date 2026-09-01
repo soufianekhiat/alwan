@@ -37,7 +37,10 @@ static alwan_f32 const g_a_xy_f32[] = {
 #include "../data/illuminants_xy/a_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+/* Compiled in every build: the documented f64-internal facades read these f64
+ * tables from their f32 entry points, so the data has to exist even when the
+ * f64 public surface is excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_a_xy_f64[] = {
 #include "../data/illuminants_xy/a_xy.csv"
 };
@@ -49,7 +52,7 @@ static alwan_f32 const g_d50_xy_f32[] = {
 #include "../data/illuminants_xy/d50_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_d50_xy_f64[] = {
 #include "../data/illuminants_xy/d50_xy.csv"
 };
@@ -61,7 +64,7 @@ static alwan_f32 const g_d55_xy_f32[] = {
 #include "../data/illuminants_xy/d55_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_d55_xy_f64[] = {
 #include "../data/illuminants_xy/d55_xy.csv"
 };
@@ -73,7 +76,7 @@ static alwan_f32 const g_d60_xy_f32[] = {
 #include "../data/illuminants_xy/d60_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_d60_xy_f64[] = {
 #include "../data/illuminants_xy/d60_xy.csv"
 };
@@ -85,7 +88,7 @@ static alwan_f32 const g_d65_xy_f32[] = {
 #include "../data/illuminants_xy/d65_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_d65_xy_f64[] = {
 #include "../data/illuminants_xy/d65_xy.csv"
 };
@@ -97,7 +100,7 @@ static alwan_f32 const g_e_xy_f32[] = {
 #include "../data/illuminants_xy/e_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_e_xy_f64[] = {
 #include "../data/illuminants_xy/e_xy.csv"
 };
@@ -109,7 +112,7 @@ static alwan_f32 const g_b_xy_f32[] = {
 #include "../data/illuminants_xy/b_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_b_xy_f64[] = {
 #include "../data/illuminants_xy/b_xy.csv"
 };
@@ -121,7 +124,7 @@ static alwan_f32 const g_c_xy_f32[] = {
 #include "../data/illuminants_xy/c_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_c_xy_f64[] = {
 #include "../data/illuminants_xy/c_xy.csv"
 };
@@ -133,7 +136,7 @@ static alwan_f32 const g_d75_xy_f32[] = {
 #include "../data/illuminants_xy/d75_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_d75_xy_f64[] = {
 #include "../data/illuminants_xy/d75_xy.csv"
 };
@@ -145,7 +148,7 @@ static alwan_f32 const g_d40_xy_f32[] = {
 #include "../data/illuminants_xy/d40_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_d40_xy_f64[] = {
 #include "../data/illuminants_xy/d40_xy.csv"
 };
@@ -156,7 +159,7 @@ static alwan_f32 const g_d45_xy_f32[] = {
 #include "../data/illuminants_xy/d45_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_d45_xy_f64[] = {
 #include "../data/illuminants_xy/d45_xy.csv"
 };
@@ -167,7 +170,7 @@ static alwan_f32 const g_d93_xy_f32[] = {
 #include "../data/illuminants_xy/d93_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_d93_xy_f64[] = {
 #include "../data/illuminants_xy/d93_xy.csv"
 };
@@ -179,7 +182,7 @@ static alwan_f32 const g_led_b1_xy_f32[] = {
 #include "../data/illuminants_xy/led-b1_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_b1_xy_f64[] = {
 #include "../data/illuminants_xy/led-b1_xy.csv"
 };
@@ -190,7 +193,7 @@ static alwan_f32 const g_led_b2_xy_f32[] = {
 #include "../data/illuminants_xy/led-b2_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_b2_xy_f64[] = {
 #include "../data/illuminants_xy/led-b2_xy.csv"
 };
@@ -201,7 +204,7 @@ static alwan_f32 const g_led_b3_xy_f32[] = {
 #include "../data/illuminants_xy/led-b3_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_b3_xy_f64[] = {
 #include "../data/illuminants_xy/led-b3_xy.csv"
 };
@@ -212,7 +215,7 @@ static alwan_f32 const g_led_b4_xy_f32[] = {
 #include "../data/illuminants_xy/led-b4_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_b4_xy_f64[] = {
 #include "../data/illuminants_xy/led-b4_xy.csv"
 };
@@ -223,7 +226,7 @@ static alwan_f32 const g_led_b5_xy_f32[] = {
 #include "../data/illuminants_xy/led-b5_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_b5_xy_f64[] = {
 #include "../data/illuminants_xy/led-b5_xy.csv"
 };
@@ -234,7 +237,7 @@ static alwan_f32 const g_led_bh1_xy_f32[] = {
 #include "../data/illuminants_xy/led-bh1_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_bh1_xy_f64[] = {
 #include "../data/illuminants_xy/led-bh1_xy.csv"
 };
@@ -245,7 +248,7 @@ static alwan_f32 const g_led_rgb1_xy_f32[] = {
 #include "../data/illuminants_xy/led-rgb1_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_rgb1_xy_f64[] = {
 #include "../data/illuminants_xy/led-rgb1_xy.csv"
 };
@@ -256,7 +259,7 @@ static alwan_f32 const g_led_v1_xy_f32[] = {
 #include "../data/illuminants_xy/led-v1_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_v1_xy_f64[] = {
 #include "../data/illuminants_xy/led-v1_xy.csv"
 };
@@ -267,7 +270,7 @@ static alwan_f32 const g_led_v2_xy_f32[] = {
 #include "../data/illuminants_xy/led-v2_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_led_v2_xy_f64[] = {
 #include "../data/illuminants_xy/led-v2_xy.csv"
 };
@@ -279,7 +282,7 @@ static alwan_f32 const g_hp1_xy_f32[] = {
 #include "../data/illuminants_xy/hp1_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_hp1_xy_f64[] = {
 #include "../data/illuminants_xy/hp1_xy.csv"
 };
@@ -290,7 +293,7 @@ static alwan_f32 const g_hp2_xy_f32[] = {
 #include "../data/illuminants_xy/hp2_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_hp2_xy_f64[] = {
 #include "../data/illuminants_xy/hp2_xy.csv"
 };
@@ -301,7 +304,7 @@ static alwan_f32 const g_hp3_xy_f32[] = {
 #include "../data/illuminants_xy/hp3_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_hp3_xy_f64[] = {
 #include "../data/illuminants_xy/hp3_xy.csv"
 };
@@ -312,7 +315,7 @@ static alwan_f32 const g_hp4_xy_f32[] = {
 #include "../data/illuminants_xy/hp4_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_hp4_xy_f64[] = {
 #include "../data/illuminants_xy/hp4_xy.csv"
 };
@@ -323,7 +326,7 @@ static alwan_f32 const g_hp5_xy_f32[] = {
 #include "../data/illuminants_xy/hp5_xy.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_hp5_xy_f64[] = {
 #include "../data/illuminants_xy/hp5_xy.csv"
 };
@@ -335,7 +338,7 @@ static alwan_f32 const g_srgb_primaries_3x2_f32[] = {
 #include "../data/srgb_primaries_3x2.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 static alwan_f64 const g_srgb_primaries_3x2_f64[] = {
 #include "../data/srgb_primaries_3x2.csv"
 };
@@ -355,7 +358,7 @@ alwan_f32 const g_cat_bradford_f32[9] = {
 #include "../data/matrices/cat_bradford.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_bradford_f64[9] = {
 #include "../data/matrices/cat_bradford.csv"
 };
@@ -367,7 +370,7 @@ alwan_f32 const g_cat_cat02_f32[9] = {
 #include "../data/matrices/cat_cat02.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_cat02_f64[9] = {
 #include "../data/matrices/cat_cat02.csv"
 };
@@ -379,7 +382,7 @@ alwan_f32 const g_cat_cat16_f32[9] = {
 #include "../data/matrices/cat_cat16.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_cat16_f64[9] = {
 #include "../data/matrices/cat_cat16.csv"
 };
@@ -391,7 +394,7 @@ alwan_f32 const g_cat_sharp_f32[9] = {
 #include "../data/matrices/cat_sharp.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_sharp_f64[9] = {
 #include "../data/matrices/cat_sharp.csv"
 };
@@ -403,7 +406,7 @@ alwan_f32 const g_cat_fairchild_f32[9] = {
 #include "../data/matrices/cat_fairchild.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_fairchild_f64[9] = {
 #include "../data/matrices/cat_fairchild.csv"
 };
@@ -415,7 +418,7 @@ alwan_f32 const g_cat_cmccat97_f32[9] = {
 #include "../data/matrices/cat_cmccat97.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_cmccat97_f64[9] = {
 #include "../data/matrices/cat_cmccat97.csv"
 };
@@ -427,7 +430,7 @@ alwan_f32 const g_cat_cmccat2000_f32[9] = {
 #include "../data/matrices/cat_cmccat2000.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_cmccat2000_f64[9] = {
 #include "../data/matrices/cat_cmccat2000.csv"
 };
@@ -439,7 +442,7 @@ alwan_f32 const g_cat_cat02_brill_2008_f32[9] = {
 #include "../data/matrices/cat_cat02_brill_2008.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_cat02_brill_2008_f64[9] = {
 #include "../data/matrices/cat_cat02_brill_2008.csv"
 };
@@ -451,7 +454,7 @@ alwan_f32 const g_cat_bianco_2010_f32[9] = {
 #include "../data/matrices/cat_bianco_2010.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_bianco_2010_f64[9] = {
 #include "../data/matrices/cat_bianco_2010.csv"
 };
@@ -463,7 +466,7 @@ alwan_f32 const g_cat_bianco_pc_2010_f32[9] = {
 #include "../data/matrices/cat_bianco_pc_2010.csv"
 };
 #endif
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_f64 const g_cat_bianco_pc_2010_f64[9] = {
 #include "../data/matrices/cat_bianco_pc_2010.csv"
 };
@@ -558,7 +561,7 @@ alwan_f64 const g_ipt_ipt_to_lms_p[9] = {
 
 ALWAN_DIAG_POP
 
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_status alwan_data_get_illuminant_a_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
     (void)ctx;  /* Unused in embedded mode */
     *data = (alwan_f64 *)g_a_xy_f64;
@@ -928,7 +931,7 @@ alwan_status alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, 
  * Illuminant White Point Calculation (works in both modes)
  * ---------------------------------------------------------------- */
 
-#if ALWAN_WITH_F64
+#if ALWAN_WITH_F64_FACADE
 alwan_status alwan_illuminant_white_point_f64(alwan_xyz_f64 *out_xyz,
                                    alwan_illuminant illuminant,
                                    alwan_observer_type observer) {

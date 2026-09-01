@@ -83,7 +83,10 @@ alwan_status alwan_rgb_derive_matrices_f32(alwan_mat3x3_f32 *rgb_to_xyz,
  * RGB <-> XYZ Direct Conversion
  * ---------------------------------------------------------------- */
 
-#if ALWAN_WITH_F64
+/* Compiled in every build: an f64-internal facade calls this from its f32 entry
+ * point, so it has to exist even when the f64 public surface is excluded.
+ * See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 alwan_status alwan_rgb_to_xyz_f64(alwan_xyz_f64 *xyz,
                      alwan_rgb_space_desc_f64 const *space,
                      alwan_rgb_f64 const *rgb) {
@@ -137,7 +140,7 @@ alwan_status alwan_xyz_to_rgb_f64(alwan_rgb_f64 *rgb,
 
     return ALWAN_OK;
 }
-#endif /* ALWAN_WITH_F64 */
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* Native f32: mirrors alwan_rgb_to_xyz_f64 / alwan_xyz_to_rgb_f64 exactly using
  * f32 building blocks (no widen-to-f64 facade). Uses precomputed matrices when
@@ -835,7 +838,10 @@ alwan_status alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, 
 }
 #endif /* ALWAN_WITH_F32 */
 
-#if ALWAN_WITH_F64
+/* Compiled in every build: the f64-internal facades reach this f64 API from
+ * their f32 entry points, so it exists even when the f64 public surface is
+ * excluded. See ALWAN_WITH_F64_FACADE. */
+#if ALWAN_WITH_F64_FACADE
 alwan_status alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, alwan_rgb_space space, alwan_ctx *ctx) {
     if (!desc) {
         return ALWAN_E_INVALID;
@@ -878,7 +884,7 @@ alwan_status alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, 
     #error "Only ALWAN_EMBED_DATA mode is supported. Runtime CSV loading has been removed."
 #endif /* ALWAN_EMBED_DATA */
 }
-#endif /* ALWAN_WITH_F64 */
+#endif /* ALWAN_WITH_F64_FACADE */
 
 /* ----------------------------------------------------------------
  * Arbitrary Gamma OETF/EOTF
