@@ -4,37 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [2.1.0]
-
-Tag `v2.1.0`. One formation operator added and one data-access fix. No
-existing entry point changes its output.
-
-### Added
-
-- **`ALWAN_GAMUT_FORM_COMPLETE_PEAK`.** `COMPLETE`'s wider window turned out to
-  be a flat 0.945 gain on the carrier with the display peak 9.85 stops over
-  mid-grey, so ordinary footage never reached white (scene 16 formed to
-  0.945), and its 0.861 purity cap desaturates every saturated pixel by
-  13.9% from black up, which reads as a veil inside the display range. The
-  new variant keeps `COMPLETE`'s white rail, purity shelf (held at its scene
-  positions, +4.3 to +13.8 stops, rather than moving with the window) and
-  exact 18% anchor on the family's 16.5-stop window, with the tone exponent
-  derived from the pivot's actual position (2.559) instead of assuming a
-  symmetric window, and the 0.997 cap. Same operator, same 15-of-15 row.
-  `COMPLETE` and `COMPLETE_HEMI_LOOK` are unchanged.
-
-### Fixed
-
-- **Illuminants F2, F7 and F11 had xy data but no way to reach it.**
-  `illuminants_xy/f2_xy.csv`, `f7_xy.csv` and `f11_xy.csv` were generated and
-  shipped, but never embedded and never given a case in
-  `alwan_data_get_illuminant_xy_*`, so `alwan_illuminant_white_point_*`
-  returned `ALWAN_E_INVALID` for the whole F series. The three CIE 15 names
-  for practical use now resolve; the other nine fluorescents still have no xy
-  table. Illuminants resolvable through the enum: 26 -> 29.
-
----
-
 ## [2.0.0]
 
 First public release (tag `v2.0.0`).
@@ -90,8 +59,27 @@ first because a caller who pinned values against that build will see them.
   adaptation fixed in both directions (5e-07), Kim2009 `media` exposed (4e-11).
 - **Unsupported transfer functions** in the ACES 1.x path returned `ALWAN_OK`
   with scene-linear values. They now return the status they got.
+- **Illuminants F2, F7 and F11 had xy data but no way to reach it.**
+  `illuminants_xy/f2_xy.csv`, `f7_xy.csv` and `f11_xy.csv` were generated and
+  shipped, but never embedded and never given a case in
+  `alwan_data_get_illuminant_xy_*`, so `alwan_illuminant_white_point_*`
+  returned `ALWAN_E_INVALID` for the whole F series. The three CIE 15 names
+  for practical use now resolve; the other nine fluorescents still have no xy
+  table. Illuminants resolvable through the enum: 26 -> 29.
 
 ### Added
+
+- **`ALWAN_GAMUT_FORM_COMPLETE_PEAK`.** `COMPLETE`'s wider window turned out to
+  be a flat 0.945 gain on the carrier with the display peak 9.85 stops over
+  mid-grey, so ordinary footage never reached white (scene 16 formed to
+  0.945), and its 0.861 purity cap desaturates every saturated pixel by
+  13.9% from black up, which reads as a veil inside the display range. The
+  new variant keeps `COMPLETE`'s white rail, purity shelf (held at its scene
+  positions, +4.3 to +13.8 stops, rather than moving with the window) and
+  exact 18% anchor on the family's 16.5-stop window, with the tone exponent
+  derived from the pivot's actual position (2.559) instead of assuming a
+  symmetric window, and the 0.997 cap. Same operator, same 15-of-15 row.
+  `COMPLETE` and `COMPLETE_HEMI_LOOK` are unchanged.
 
 - **Sharpmake reaches the precision axis.** `ALWAN_BUILD_PRECISION` (`both`,
   `f32`, `f64`) is read at generation time and adds the matching define, so the

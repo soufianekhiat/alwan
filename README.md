@@ -24,8 +24,8 @@ CI run rather than a run of its own. Those jobs verify a clean compile; the
 test suite lives in the sibling
 [alwan_dev](https://github.com/soufianekhiat/alwan_dev) repo.
 
-**Version: 2.1.0**, tagged
-[`v2.1.0`](https://github.com/soufianekhiat/alwan/releases/tag/v2.1.0).
+**Version: 2.0.0**, tagged
+[`v2.0.0`](https://github.com/soufianekhiat/alwan/releases/tag/v2.0.0).
 
 A small, dependency-free colour science library in pure C11, for applications that need precise, deterministic colour transforms.
 
@@ -137,7 +137,7 @@ include(FetchContent)
 FetchContent_Declare(
   alwan
   GIT_REPOSITORY https://github.com/soufianekhiat/alwan.git
-  GIT_TAG        v2.1.0)
+  GIT_TAG        v2.0.0)
 FetchContent_MakeAvailable(alwan)
 target_link_libraries(my_app PRIVATE Alwan::alwan)
 ```
