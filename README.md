@@ -24,8 +24,8 @@ CI run rather than a run of its own. Those jobs verify a clean compile; the
 test suite lives in the sibling
 [alwan_dev](https://github.com/soufianekhiat/alwan_dev) repo.
 
-**Version: 2.0.0**, tagged
-[`v2.0.0`](https://github.com/soufianekhiat/alwan/releases/tag/v2.0.0).
+**Version: 2.1.0**, tagged
+[`v2.1.0`](https://github.com/soufianekhiat/alwan/releases/tag/v2.1.0).
 
 A small, dependency-free colour science library in pure C11, for applications that need precise, deterministic colour transforms.
 
@@ -112,7 +112,7 @@ What makes Alwan different from other colour libraries:
   2.0, camera logs for 13 vendors, the AgX family plus a parameterized
   analytic engine and JP2499, 12 colour appearance models, spectral
   upsampling, CVD simulation, 11 gamut-mapping entry points (including an
-  HDR ICtCp mapper and 18 spatial picture-formation methods), the DeltaE
+  HDR ICtCp mapper and 19 spatial picture-formation methods), the DeltaE
   family, LUT baking and CLF interop
 - Six host targets verified in CI (Linux/macOS/Windows x x64/ARM)
 
@@ -137,7 +137,7 @@ include(FetchContent)
 FetchContent_Declare(
   alwan
   GIT_REPOSITORY https://github.com/soufianekhiat/alwan.git
-  GIT_TAG        v2.0.0)
+  GIT_TAG        v2.1.0)
 FetchContent_MakeAvailable(alwan)
 target_link_libraries(my_app PRIVATE Alwan::alwan)
 ```
@@ -289,8 +289,8 @@ Low-level colour science operations:
 Spatial view transforms that turn open-domain scene light into a formed
 picture, built for depth and form cognition. Developed in correspondence
 with Troy Sobotka (creator of AgX):
-- `alwan_gamut_map_spatial`: 18 formation methods, from the `GRADIENT`
-  baseline to `CHANNEL` and the `COMPLETE` operators (the first to
+- `alwan_gamut_map_spatial`: 19 formation methods, from the `GRADIENT`
+  baseline to `CHANNEL` and the three `COMPLETE` operators (the first to
   satisfy all 15 numerically testable formation constraints at once)
 - The full constraint matrix ships as a regression test in alwan_dev
 - `src/alwan/experimental/`: evidence-driven research operators
@@ -759,7 +759,7 @@ buildsystem\generate_projects.bat   # Windows cmd
 - [x] 18 view transforms (AgX original/punchy/golden/SB2383/Blender,
   BT.2446 A/B/C, BT.2390, Tony McMapface, Reinhard, Khronos PBR Neutral,
   Uchimura, Lottes, Exposure, ACES Rec.709) + JP2499 parameterized DRT
-- [x] Spatial picture formation: 18 methods incl. the 15/15-constraint
+- [x] Spatial picture formation: 19 methods incl. the 15/15-constraint
   `COMPLETE` operators ([docs/picture_formation.md](docs/picture_formation.md))
 - [x] Spectrum upsampling: Smits 1999, Mallett 2019, Jakob 2019
 - [x] Vision: Machado CVD simulation (6 types), CSF (default + Barten)

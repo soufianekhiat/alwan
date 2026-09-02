@@ -4,7 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased]
+## [2.1.0]
+
+Tag `v2.1.0`. One formation operator added and one data-access fix. No
+existing entry point changes its output.
+
+### Added
+
+- **`ALWAN_GAMUT_FORM_COMPLETE_PEAK`.** `COMPLETE`'s wider window turned out to
+  be a flat 0.945 gain on the carrier with the display peak 9.85 stops over
+  mid-grey, so ordinary footage never reached white (scene 16 formed to
+  0.945), and its 0.861 purity cap desaturates every saturated pixel by
+  13.9% from black up, which reads as a veil inside the display range. The
+  new variant keeps `COMPLETE`'s white rail, purity shelf (held at its scene
+  positions, +4.3 to +13.8 stops, rather than moving with the window) and
+  exact 18% anchor on the family's 16.5-stop window, with the tone exponent
+  derived from the pivot's actual position (2.559) instead of assuming a
+  symmetric window, and the 0.997 cap. Same operator, same 15-of-15 row.
+  `COMPLETE` and `COMPLETE_HEMI_LOOK` are unchanged.
 
 ### Fixed
 
@@ -117,7 +134,7 @@ first because a caller who pinned values against that build will see them.
   needing a shader compiler. Outside that tier east const is legal C and is not
   flagged. Preprocessor directives are skipped, since reordering
   `# define ALWAN_CONSTEXPR const` would redefine the `const` keyword itself.
-- `check_core_parity.py` now compares declarations, not just function bodies.
+- `check_core_parity.py` now compares declarations as well as function bodies.
   Named constants, embedded CSVs and struct definitions in the GPU branch were
   unchecked. A missing declaration is caught by the compilers; what only this
   catches is a constant whose *value* differs between the two copies, which
@@ -313,7 +330,7 @@ the dated foundation block that follows is also in the tag.
   on every supported platform/precision, including native-f32 cube export.
 - **File-I/O byte content on the determinism contract**: the determinism
   guarantee explicitly covers the exact bytes written to `.cube`/`.clf`
-  files, not just in-memory numeric output; the harness MD5s the on-disk
+  files as well as in-memory numeric output; the harness MD5s the on-disk
   files and asserts hash equality across runners.
 
 ### Improved
