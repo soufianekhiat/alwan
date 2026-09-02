@@ -2343,13 +2343,27 @@ typedef enum {
                                     * in the shipped matrix. This variant keeps HEMISPHERE_ABS's exact
                                     * window, so the look/contrast is unchanged.
                                     * See docs/picture_formation.md. */
-    ALWAN_GAMUT_FORM_COMPLETE = 17 /* The same all-15 operator, isophote-through-highlight-maximised:
+    ALWAN_GAMUT_FORM_COMPLETE = 17, /* The same all-15 operator, isophote-through-highlight-maximised:
                                     * a wider carrier window (the OpenSNOPT-optimal point of the
                                     * feasible set) preserves more scene curvature through the
                                     * highlight, at the cost of a brighter, softer, lifted look. Prefer
                                     * COMPLETE_HEMI_LOOK for the reference HEMISPHERE_ABS appearance;
-                                    * this for maximum form-through-highlight. See
+                                    * this for maximum form-through-highlight. NOTE: the wider window
+                                    * puts the display peak 9.85 stops over mid-grey (scene 166), so
+                                    * ordinary footage never reaches white (scene 16 -> 0.945). See
                                     * docs/picture_formation.md. */
+    ALWAN_GAMUT_FORM_COMPLETE_PEAK = 18 /* COMPLETE's purity shelf, white rail and exact 18% anchor on
+                                    * the family's 16.5-stop window, so the display peak is reached at
+                                    * the same scene value as HEMISPHERE_ABS and CHANNEL (6.5 stops
+                                    * over mid-grey, scene 16.3), with the 0.997 purity cap so the
+                                    * interior of the display range is left alone. The anchor is kept
+                                    * by deriving the tone exponent from the pivot's actual normalised
+                                    * position instead of assuming it sits at 0.5, which only holds for
+                                    * a symmetric window; the shelf stays at COMPLETE's scene positions
+                                    * (+4.3 to +13.8 stops) rather than moving with the window; the
+                                    * cap is HEMISPHERE_ABS's, since COMPLETE's 0.861 desaturates every
+                                    * saturated pixel by 13.9% from black up. Same operator, same
+                                    * 15-of-15 row. See docs/picture_formation.md. */
 } alwan_gamut_formation_method;
 
 /* `s` is a per-family knob (its meaning depends on `method`):

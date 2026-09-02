@@ -624,22 +624,50 @@ static int ALWAN_CORE_FN(alwan__gamut_spatial_core)(ALWAN_CORE_T *out, ALWAN_COR
      *       [0,1] is a safety net, not a plateau.
      * Pointwise + carrier-monotone (MONO) + a function of max(RGB)+ratios (HUEA) + a fixed window
      * (INVR) + now RATIO-clean: the FIRST method to satisfy all 13 numerically-testable constraints
-     * (resolves docs/picture_formation.md's open question). Two constant sets, same operator:
+     * (resolves docs/picture_formation.md's open question). Three constant sets, same operator:
      * COMPLETE_HEMI_LOOK keeps HEMISPHERE_ABS's exact window (look/contrast unchanged); COMPLETE takes
-     * the isophote-through-highlight-max point of the 13-feasible set (wider window: brighter/softer). */
-    if (p->method == ALWAN_GAMUT_FORM_COMPLETE || p->method == ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK) {
+     * the isophote-through-highlight-max point of the 13-feasible set (wider window: brighter/softer);
+     * COMPLETE_PEAK keeps COMPLETE's shelf, rail and 18% anchor on the 16.5-stop window, with the
+     * 0.997 cap so the interior of the display range is left alone (see below).
+     *
+     * On the window. The logistic slope is tied to the window (g_slope/w_win = 0.554 per stop) and the
+     * floor is fixed at 10 stops under mid-grey, so widening the window changes only the normalisation
+     * top d_hi: COMPLETE's carrier is HEMI_LOOK's carrier times 0.945 everywhere below the rail, and its
+     * display peak sits at the window top, 9.85 stops over mid-grey (scene 166). Ordinary footage never
+     * gets there (scene 16 -> 0.945, scene 72 -> 0.99). The solver chose 19.85 because a near-symmetric
+     * window puts the pivot at dn = 0.5, where gamma = -log2(0.18) lands 18% grey on 0.18 exactly; on
+     * the 16.5-stop window the pivot sits at dn = 0.5117 and 18% grey lands on 0.19. */
+    if (p->method == ALWAN_GAMUT_FORM_COMPLETE || p->method == ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK
+        || p->method == ALWAN_GAMUT_FORM_COMPLETE_PEAK) {
         int const look = (p->method == ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK);
-        ALWAN_CORE_T const w_win   = look ? ALWAN_CORE_LITERAL(16.5)  : ALWAN_CORE_LITERAL(19.85);
-        ALWAN_CORE_T const keepmax = look ? ALWAN_CORE_LITERAL(0.997) : ALWAN_CORE_LITERAL(0.861);
+        int const top  = (p->method == ALWAN_GAMUT_FORM_COMPLETE_PEAK);
+        /* COMPLETE_PEAK: 16.5-stop window (peak at +6.5 stops), COMPLETE's shelf and rail, and the
+         * 0.997 purity cap. COMPLETE's 0.861 cap is not a highlight device: it mixes 13.9% of the
+         * achromatic level into every saturated pixel from black up, cutting interior chroma and
+         * lifting luminance (pure red x1.51), which reads as a veil inside the display range. 0.997
+         * keeps the min channel off zero (RAIL) without touching the interior. */
+        ALWAN_CORE_T const w_win   = (look || top) ? ALWAN_CORE_LITERAL(16.5)  : ALWAN_CORE_LITERAL(19.85);
+        ALWAN_CORE_T const keepmax = (look || top) ? ALWAN_CORE_LITERAL(0.997) : ALWAN_CORE_LITERAL(0.861);
         ALWAN_CORE_T const rhi     = look ? ALWAN_CORE_LITERAL(0.02)  : ALWAN_CORE_LITERAL(0.005);
         ALWAN_CORE_T const mid   = ALWAN_CORE_LOG2(ALWAN_CORE_LITERAL(0.18));
         ALWAN_CORE_T const lo    = mid - ALWAN_CORE_LITERAL(10.0);
         ALWAN_CORE_T const vp    = ALWAN_CORE_LITERAL(10.0)/w_win;
         ALWAN_CORE_T const g_slope = ALWAN_CORE_LITERAL(5.54)/(vp > ALWAN_CORE_LITERAL(1.0)-vp ? vp : ALWAN_CORE_LITERAL(1.0)-vp);
-        ALWAN_CORE_T const gamma = -ALWAN_CORE_LOG2(ALWAN_CORE_LITERAL(0.18));
         ALWAN_CORE_T const d_lo = ALWAN_CORE_LITERAL(1.0)/(ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_EXP(-g_slope*(ALWAN_CORE_LITERAL(0.0)-vp)));
         ALWAN_CORE_T const d_hi = ALWAN_CORE_LITERAL(1.0)/(ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_EXP(-g_slope*(ALWAN_CORE_LITERAL(1.0)-vp)));
         ALWAN_CORE_T d_rng = d_hi - d_lo; if (d_rng < ALWAN_CORE_LITERAL(1e-6)) d_rng = ALWAN_CORE_LITERAL(1e-6);
+        /* 18% anchor. The family's gamma = -log2(0.18) assumes the pivot sits at dn = 0.5. COMPLETE_PEAK
+         * derives gamma from the pivot's actual normalised position on the 16.5-stop window, so 18% grey
+         * lands on 0.18 exactly AND dn = 1 (display peak) stays at the window top, 6.5 stops over mid-grey,
+         * where HEMISPHERE_ABS and CHANNEL reach it. The other two variants keep their exact expression. */
+        ALWAN_CORE_T const dn_piv = (ALWAN_CORE_LITERAL(0.5) - d_lo)/d_rng;
+        ALWAN_CORE_T const gamma = top ? ALWAN_CORE_LOG2(ALWAN_CORE_LITERAL(0.18))/ALWAN_CORE_LOG2(dn_piv)
+                                       : -ALWAN_CORE_LOG2(ALWAN_CORE_LITERAL(0.18));
+        /* The purity shelf below is written in window position (0.72 .. 1.2 of the window), so it
+         * moves with the window: on 19.85 stops it runs from +4.3 to +13.8 stops over mid-grey, on
+         * 16.5 stops from +1.9 to +9.8. COMPLETE_PEAK keeps COMPLETE's shelf, in scene stops, so its
+         * colour handling is COMPLETE's exactly and only the carrier differs. */
+        ALWAN_CORE_T const w_shelf = top ? ALWAN_CORE_LITERAL(19.85) : w_win;
         for (size_t i = 0; i < N; i++) {
             ALWAN_CORE_T rr = in[i*3], gg = in[i*3+1], bb = in[i*3+2];
             if (rr < 0) rr = 0; if (gg < 0) gg = 0; if (bb < 0) bb = 0;   /* NEG: negative wattage -> 0 */
@@ -653,7 +681,8 @@ static int ALWAN_CORE_FN(alwan__gamut_spatial_core)(ALWAN_CORE_T *out, ALWAN_COR
              *     scale ms/m below is uniform across channels -> RATIO-safe, and no plateau at 1. */
             if (ms > ALWAN_CORE_LITERAL(1.0) - rhi) ms = ALWAN_CORE_LITERAL(1.0) - rhi*ALWAN_CORE_EXP(((ALWAN_CORE_LITERAL(1.0)-ms) - rhi)/rhi);
             ALWAN_CORE_T sc = ms/m;
-            ALWAN_CORE_T t = (vpos - ALWAN_CORE_LITERAL(0.72))/ALWAN_CORE_LITERAL(0.48);
+            ALWAN_CORE_T vshelf = (ALWAN_CORE_LOG2(m) - lo)/w_shelf;
+            ALWAN_CORE_T t = (vshelf - ALWAN_CORE_LITERAL(0.72))/ALWAN_CORE_LITERAL(0.48);
             if (t < 0) t = 0; if (t > 1) t = 1;
             ALWAN_CORE_T keep = ALWAN_CORE_LITERAL(0.5)*(ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_COS(ALWAN_CORE_LITERAL(3.141592653589793)*t));
             /* (2) desaturation FLOOR: cap keep at KEEPMAX so the min channel lifts off 0 as a uniform

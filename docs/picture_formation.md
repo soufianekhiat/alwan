@@ -53,6 +53,7 @@ Output is display-referred, in `[0, 1]`.
 | `WARP`        | `HEMISPHERE_ABS` + a monotone smooth **local-contrast** warp (closed-form, no solver) that restores scene curvature the tonescale flattened |
 | `COMPLETE_HEMI_LOOK` | the **first 13-of-13** operator: `HEMISPHERE_ABS`'s tone with a carrier high-rail + desaturation floor that clear its lone `RATIO` failure. Look-preserving (keeps the `HEMISPHERE_ABS` window) |
 | `COMPLETE`    | the same 13-of-13 operator, isophote-through-highlight-maximised: a wider carrier window (more form through the highlight, at a brighter/softer look) |
+| `COMPLETE_PEAK` | the same operator with `COMPLETE`'s purity shelf, rail and exact 18% anchor on the 16.5-stop window, so the display peak is reached at +6.5 stops like `HEMISPHERE_ABS` and `CHANNEL`, and the 0.997 cap so the interior of the range keeps its saturation |
 
 `CHANNEL` is the current recommendation: `SB2383 inset -> per-channel C2 log-logistic on a fixed
 absolute window -> 18% mid-grey anchor -> matched inverse outset -> asymptotic guard rails`, every
@@ -243,7 +244,7 @@ numerically-testable constraint, and the first all-`ok` row in the matrix. It is
 spatial or whole-image solve; so a "global solver" here fits the operator's *fixed constants*, it
 never runs per-image.
 
-Two constant sets ship, the same operator:
+Three constant sets ship, the same operator (window stops / purity cap / white rail):
 
 - **`COMPLETE_HEMI_LOOK`** (`16.5 / 0.997 / 0.02`) keeps `HEMISPHERE_ABS`'s exact window: visually the
   same picture, now `RATIO`-clean. On the real saber/kids frames it takes `RATIO` from `0.24`/`0.35`
@@ -255,6 +256,33 @@ Two constant sets ship, the same operator:
   `0.81`/`0.71`), at the cost of a brighter, softer look. Pure isophote-maximisation is
   under-specified for appearance (it rewards a wider window and more desaturation), which is why the
   constants are a *design choice* and not a solver output.
+- **`COMPLETE_PEAK`** (`16.5 / 0.997 / 0.005`) is `COMPLETE` with the top of the range put back and
+  the interior left alone. The
+  logistic slope is tied to the window (0.554 per stop) and the floor is fixed at 10 stops under
+  mid-grey, so the wider window changes only where the normalisation reaches 1: `COMPLETE`'s carrier
+  is `COMPLETE_HEMI_LOOK`'s times 0.945 everywhere below the rail, with the display peak 9.85 stops
+  over mid-grey (scene 166). Scene 16 forms to 0.945 and scene 72 to 0.99, so ordinary footage never
+  reaches white. The solver landed on 19.85 because a near-symmetric window puts the pivot at
+  `dn = 0.5`, where the family's `gamma = -log2(0.18)` places 18% grey on 0.18 exactly; the 16.5-stop
+  window puts the pivot at `dn = 0.5117` and 18% grey on 0.19. `COMPLETE_PEAK` derives `gamma` from
+  the pivot's actual position (2.559 instead of 2.474), so the anchor holds and the peak sits at
+  +6.5 stops, where `HEMISPHERE_ABS` and `CHANNEL` put it. The purity shelf is written in window
+  position, so on its own it would move with the window (from +4.3 stops on 19.85 to +1.9 stops on
+  16.5, which is where `COMPLETE_HEMI_LOOK` starts whitening); `COMPLETE_PEAK` keeps it at
+  `COMPLETE`'s scene positions, +4.3 to +13.8 stops. The purity cap is `HEMISPHERE_ABS`'s 0.997, not
+  `COMPLETE`'s 0.861: the cap is not a highlight device, it applies to every saturated pixel from
+  black up, so at 0.861 the whole interior of the display range carries 13.9% of its achromatic
+  level in the min channel. Measured on the HSV sweep below value 1.0, mean saturation is 0.861 with
+  `COMPLETE`'s cap and 0.997 with `COMPLETE_PEAK`'s; the 0.997 exists only to keep the min channel off
+  exact zero for `RAIL`.
+
+  On that softness. The roll and the cap both mix toward the pixel's own carrier level `ms`, so the
+  max channel stays put and the other two rise: `RATIO` holds (direction unchanged) but luminance
+  climbs as purity falls. A pure red at the 0.861 cap carries 1.51x the luminance of the
+  ratio-preserved red, and at 0.35 min/max (scene 6 on the 16.5-stop shelf) 2.29x. That lift, not
+  the tone, is what reads as a veil on saturated content, and it is what `COMPLETE`'s soft look is
+  made of. `COMPLETE_PEAK` keeps `COMPLETE`'s late shelf, so above +4.3 stops the two whiten
+  identically; below it `COMPLETE_PEAK` is a pure ratio-preserving scale like `COMPLETE_HEMI_LOOK`.
 
 This settles the open question's testable half: one operator **does** hold all thirteen. The
 perceptual half (form rendered *through* a highlight) `COMPLETE` closes most of on the isophote
@@ -284,7 +312,7 @@ an analytic function of the base it manufactures no plateaus. It measures **11-o
 row as `HEMISPHERE_ABS` except that it loses `INVR` (it is a *spatial* operator, so a patch's output
 depends on its surround: the same gap `HEMISPHERE` has, and the reason the veil operators are
 `INVR` `xacc`) and inherits `HEMISPHERE_ABS`'s `RATIO` `xacc` (the ratio-preserving scale does
-not add rotation, but the base rails already spent `RATIO`).
+not add rotation; the base rails had already spent `RATIO`).
 
 Its use is *visible local form* (restoring detail the tonescale compressed) while staying
 carrier-monotone and artifact-free. It is **not** a shortcut to channel integration:
