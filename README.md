@@ -11,25 +11,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 
-Every count above is measured, not claimed: see [Validation](#validation) for
-the table and the script that reproduces it.
-
-CI is on-demand, since this repo's minutes are billed. `CI` in the Actions tab
-builds the whole matrix in one click (Linux, Windows and macOS on x86_64 and
-ARM, plus the permutation and precision matrices: shared linkage,
-`ALWAN_DETERMINISTIC=ON`, Debug, and the single-precision builds), and each
-workflow can still be dispatched on its own. Only the `CI` badge tracks those
-runs: a workflow reached through `workflow_call` reports as a job inside the
-CI run rather than a run of its own. Those jobs verify a clean compile; the
-test suite lives in the sibling
-[alwan_dev](https://github.com/soufianekhiat/alwan_dev) repo.
-
-**Version: 2.0.0**, tagged
-[`v2.0.0`](https://github.com/soufianekhiat/alwan/releases/tag/v2.0.0).
-
 A small, dependency-free colour science library in pure C11, for applications that need precise, deterministic colour transforms.
 
 **Alwan is a colour science library, not a colour management library.** It provides the mathematical foundations (colour space conversions, chromatic adaptation, appearance models, spectral operations) and leaves ICC profiles, device characterization, rendering intents, and profile connection spaces to dedicated tools. For ICC workflows, use Alwan for the math and a library such as LittleCMS for profile I/O.
+
+**Version: 2.0.0**, tagged
+[`v2.0.0`](https://github.com/soufianekhiat/alwan/releases/tag/v2.0.0).
+Every count in the badges is measured: see [Validation](#validation) for the
+table and the script that reproduces it. The test suite lives in the sibling
+[alwan_dev](https://github.com/soufianekhiat/alwan_dev) repo; how CI is run
+is described under [Build System](#build-system).
 
 ---
 
@@ -729,6 +720,17 @@ buildsystem/generate_projects.sh    # POSIX shells (also Git Bash on Windows)
 ```batch
 buildsystem\generate_projects.bat   # Windows cmd
 ```
+
+### Continuous integration
+
+CI runs on demand. `CI` in the Actions tab builds the whole matrix in one
+click (Linux, Windows and macOS on x86_64 and ARM, plus the permutation and
+precision matrices: shared linkage, `ALWAN_DETERMINISTIC=ON`, Debug, and the
+single-precision builds), and each workflow can still be dispatched on its
+own. Only the `CI` badge tracks those runs: a workflow reached through
+`workflow_call` reports as a job inside the CI run rather than a run of its
+own. Those jobs verify a clean compile; the test suite runs from
+[alwan_dev](https://github.com/soufianekhiat/alwan_dev).
 
 ---
 
