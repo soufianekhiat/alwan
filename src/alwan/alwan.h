@@ -2422,6 +2422,10 @@ alwan_status alwan_picture_form_hybrid_exp_f64(alwan_f64 *out, alwan_f64 const *
  * the scene-adaptive robust mean (per-frame centring; shifts with content). Interleaved RGB, W*H*3. */
 alwan_status alwan_picture_form_global_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_global_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
+/* The same solve, returning the exposure field it applied: e_out is width*height scalars in stops,
+ * one per pixel, so that Y = F_base(2^e_out X). out receives the picture and may be NULL. */
+alwan_status alwan_picture_form_global_exp_field_f32(alwan_f32 *e_out, alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
+alwan_status alwan_picture_form_global_exp_field_f64(alwan_f64 *e_out, alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 
 /* Per-pixel junction evidence P(Continuation / Transmission / Occlusion) from local gradient structure
  * (the gradient-formation reframe). DIAGNOSTIC only -- does not modify the picture. Occlusion = strong
@@ -2443,6 +2447,10 @@ alwan_status alwan_picture_form_evidence_f64(alwan_f64 *out, alwan_f64 const *in
  * local); <= 0 scene-adaptive. Interleaved RGB, W*H*3. */
 alwan_status alwan_picture_form_local_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_local_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
+/* The same solve, returning the exposure field it converged to: e_out is width*height scalars in
+ * stops. out receives the picture and may be NULL. */
+alwan_status alwan_picture_form_local_exp_field_f32(alwan_f32 *e_out, alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
+alwan_status alwan_picture_form_local_exp_field_f64(alwan_f64 *e_out, alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 
 /* PURE-corrected formation: COMPLETE_HEMI_LOOK's reconstruction with the purity rolloff gated by
  * emission evidence (junction P_T) -- "PURE = emission only". A brightly LIT SURFACE keeps its

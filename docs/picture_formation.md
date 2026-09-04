@@ -334,7 +334,9 @@ surround. The later correspondence developed *global* picture formation (operato
 structure) and with it a second constraint set. These apply to the **experimental operators** in
 `src/alwan/experimental/` (`alwan_picture_form_global_exp`, `alwan_picture_form_local_exp`,
 `alwan_picture_form_evidence`, `alwan_picture_form_pure_exp`, plus the earlier single-image
-`alwan_picture_form_hybrid_exp` prototype), tested in `tests/100_formation_experimental.c`:
+`alwan_picture_form_hybrid_exp` prototype), tested in `tests/100_formation_experimental.c`.
+The two exposure operators also come as `_field` variants that return the per-pixel exposure
+`e` in stops alongside, or instead of, the picture, so the field can be inspected or drawn:
 
 | key | constraint | status in the experimental operators |
 |---|---|---|

@@ -212,14 +212,17 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_evidence)(ALWAN_CORE_T *out, ALWAN
  * -- the curve becomes an absolute per-pixel map, frame-independent: TCONST/INVR-clean (no framewise
  * auto-exposure, no flicker). <= 0 => scene-adaptive pivot (mean of the non-near-black carrier);
  * better centring per frame, but the pivot shifts with content, so video wants the fixed mode. */
-alwan_status ALWAN_CORE_FN(alwan_picture_form_global_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
-    if (!out || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
+/* Core shared by the picture call and the field call: out and e_out may each be NULL, not both. */
+static alwan_status ALWAN_CORE_FN(alwan__global_exp_core)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    if ((!out && !e_out) || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
     (void)iterations;                                  /* reserved (see note above) */
     size_t N = (size_t)W * (size_t)H;
     ALWAN_CORE_T *xe = (ALWAN_CORE_T*)ctx->alloc_fn(N*3*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *zM = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *e0 = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
-    int ok = xe && zM && e0, st = ALWAN_OK;
+    ALWAN_CORE_T *own = out ? NULL : (ALWAN_CORE_T*)ctx->alloc_fn(N*3*sizeof(ALWAN_CORE_T),16);
+    ALWAN_CORE_T *dst = out ? out : own;
+    int ok = xe && zM && e0 && dst, st = ALWAN_OK;
     if (!ok) { st = ALWAN_E_NOMEM; goto done; }
 
     for (size_t i = 0; i < N; i++) {
@@ -253,10 +256,20 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_global_exp)(ALWAN_CORE_T *out, ALW
         ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e0[i]);
         for (int k = 0; k < 3; k++) xe[i*3+k] = s * in[i*3+k];
     }
-    st = ALWAN_CORE_FN(alwan__exp_form_base)(out, xe, W, H, ctx);
+    st = ALWAN_CORE_FN(alwan__exp_form_base)(dst, xe, W, H, ctx);
+    if (st == ALWAN_OK && e_out) memcpy(e_out, e0, N*sizeof(ALWAN_CORE_T));
 done:
-    ctx->free_fn(xe); ctx->free_fn(zM); ctx->free_fn(e0);
+    ctx->free_fn(xe); ctx->free_fn(zM); ctx->free_fn(e0); if (own) ctx->free_fn(own);
     return st;
+}
+alwan_status ALWAN_CORE_FN(alwan_picture_form_global_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    if (!out) return ALWAN_E_INVALID;
+    return ALWAN_CORE_FN(alwan__global_exp_core)(out, NULL, in, W, H, iterations, strength, pivot, ctx);
+}
+/* Same solve, and the exposure field it used: e_out is W*H scalars in stops. out may be NULL. */
+alwan_status ALWAN_CORE_FN(alwan_picture_form_global_exp_field)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    if (!e_out) return ALWAN_E_INVALID;
+    return ALWAN_CORE_FN(alwan__global_exp_core)(out, e_out, in, W, H, iterations, strength, pivot, ctx);
 }
 
 /* Public: EVIDENCE-GATED local exposure operator.  Y = F_base(2^e X), where the exposure field e
@@ -277,10 +290,12 @@ done:
  * the FIXED log2(pivot) (removes the frame-derived pivot -- the GLOBAL half of the TCONST gap;
  * the operator stays spatially local, so full TCONST additionally needs temporal machinery);
  * <= 0 => scene-adaptive centring. Interleaved RGB, W*H*3. */
-alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
-    if (!out || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
+static alwan_status ALWAN_CORE_FN(alwan__local_exp_core)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    if ((!out && !e_out) || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
     if (iterations <= 0) iterations = 60;
     size_t N = (size_t)W * (size_t)H;
+    ALWAN_CORE_T *own = out ? NULL : (ALWAN_CORE_T*)ctx->alloc_fn(N*3*sizeof(ALWAN_CORE_T),16);
+    ALWAN_CORE_T *dst = out ? out : own;
     ALWAN_CORE_T *zM  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *PO  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *csh = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
@@ -297,7 +312,7 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWA
     ALWAN_CORE_T *Cm  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *Jc  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *g   = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
-    int ok = zM && PO && csh && csv && tmp && bs && bs2 && e0 && e && xe && Y && C && Cp && Cm && Jc && g, st = ALWAN_OK;
+    int ok = zM && PO && csh && csv && tmp && bs && bs2 && e0 && e && xe && Y && C && Cp && Cm && Jc && g && dst, st = ALWAN_OK;
     if (!ok) { st = ALWAN_E_NOMEM; goto done; }
 
     for (size_t i = 0; i < N; i++) {
@@ -400,12 +415,23 @@ have_bbar:
     }
     }
     for (size_t i = 0; i < N; i++) { ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]); for (int k=0;k<3;k++) xe[i*3+k]=s*in[i*3+k]; }
-    st = ALWAN_CORE_FN(alwan__exp_form_base)(out, xe, W, H, ctx);
+    st = ALWAN_CORE_FN(alwan__exp_form_base)(dst, xe, W, H, ctx);
+    if (st == ALWAN_OK && e_out) memcpy(e_out, e, N*sizeof(ALWAN_CORE_T));
 done:
     ctx->free_fn(zM); ctx->free_fn(PO); ctx->free_fn(csh); ctx->free_fn(csv); ctx->free_fn(tmp);
     ctx->free_fn(bs); ctx->free_fn(bs2); ctx->free_fn(e0); ctx->free_fn(e); ctx->free_fn(xe);
     ctx->free_fn(Y); ctx->free_fn(C); ctx->free_fn(Cp); ctx->free_fn(Cm); ctx->free_fn(Jc); ctx->free_fn(g);
+    if (own) ctx->free_fn(own);
     return st;
+}
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    if (!out) return ALWAN_E_INVALID;
+    return ALWAN_CORE_FN(alwan__local_exp_core)(out, NULL, in, W, H, iterations, strength, pivot, ctx);
+}
+/* Same solve, and the exposure field it converged to: e_out is W*H scalars in stops. out may be NULL. */
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    if (!e_out) return ALWAN_E_INVALID;
+    return ALWAN_CORE_FN(alwan__local_exp_core)(out, e_out, in, W, H, iterations, strength, pivot, ctx);
 }
 
 /* Public: PURE-corrected formation.  COMPLETE_HEMI_LOOK's reconstruction with the purity rolloff

@@ -852,10 +852,14 @@ EXPORTS
     alwan_picture_form_evidence_f64
     alwan_picture_form_global_exp_f32
     alwan_picture_form_global_exp_f64
+    alwan_picture_form_global_exp_field_f32
+    alwan_picture_form_global_exp_field_f64
     alwan_picture_form_hybrid_exp_f32
     alwan_picture_form_hybrid_exp_f64
     alwan_picture_form_local_exp_f32
     alwan_picture_form_local_exp_f64
+    alwan_picture_form_local_exp_field_f32
+    alwan_picture_form_local_exp_field_f64
     alwan_picture_form_pure_exp_f32
     alwan_picture_form_pure_exp_f64
     alwan_pointer_gamut_boundary
