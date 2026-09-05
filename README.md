@@ -11,6 +11,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 
+<img width="1920" height="1080" alt="post_01_00_branding" src="https://github.com/user-attachments/assets/e0d348f8-6caf-48b1-a90a-dd5fc1eb398e" />
+
 A small, dependency-free colour science library in pure C11, for applications that need precise, deterministic colour transforms.
 
 **Alwan is a colour science library, not a colour management library.** It provides the mathematical foundations (colour space conversions, chromatic adaptation, appearance models, spectral operations) and leaves ICC profiles, device characterization, rendering intents, and profile connection spaces to dedicated tools. For ICC workflows, use Alwan for the math and a library such as LittleCMS for profile I/O.
