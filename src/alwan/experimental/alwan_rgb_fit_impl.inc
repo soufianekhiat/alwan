@@ -9,8 +9,9 @@
  * ALWAN_CORE_* macros; every static is suffixed with ALWAN_CORE_FN so the two passes coexist
  * in one translation unit.
  *
- * The metric decides what "error" means: Oklab, ITP, dE2000, or DISPLAY, which measures in the
- * sRGB code values an ordinary screen shows (Rec.709, clamped, sRGB-encoded).
+ * The metric decides what "error" means: Oklab, ITP, dE2000, DISPLAY (the sRGB code values an
+ * ordinary screen shows: Rec.709, clamped, sRGB-encoded), or LINEAR (the stored values, for
+ * data textures whose channels are numbers rather than an appearance).
  *
  * The objective the solver descends is smooth: the expected quantisation error at a sample is
  * the code step times the norm of the Jacobian from encoded code to perceptual coordinates,
@@ -87,6 +88,12 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_dlin_denc)(ALWAN_CORE_T enc, int kind, ALWA
  * used by the DISPLAY metric only. */
 static void ALWAN_CORE_FN(rf_pcoord)(ALWAN_CORE_T const xyz[3], int metric, ALWAN_CORE_T const *disp, ALWAN_CORE_T out[3]) {
     ALWAN_CORE_FN(alwan_xyz) X; X.x = xyz[0]; X.y = xyz[1]; X.z = xyz[2];
+    if (metric == ALWAN_FIT_METRIC_LINEAR) {
+        /* the stored values themselves: for data textures (a normal map, a roughness map) the
+         * quantity that must survive is the number, not an appearance of it */
+        for (int r = 0; r < 3; r++) out[r] = disp[r*3]*xyz[0] + disp[r*3+1]*xyz[1] + disp[r*3+2]*xyz[2];
+        return;
+    }
     if (metric == ALWAN_FIT_METRIC_DISPLAY) {
         /* what an sRGB screen actually shows: Rec.709 linear, clamped to the display's own
          * range, then the sRGB OETF. Colours the screen cannot show clamp for the original and
@@ -573,7 +580,7 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     if (!s) return ALWAN_E_NOMEM;
     memset(s, 0, sizeof *s);
     s->ctx = ctx; s->prm = *params; s->n = count; s->tf_kind = params->tf;
-    if (params->metric == ALWAN_FIT_METRIC_DISPLAY) {
+    if (params->metric == ALWAN_FIT_METRIC_DISPLAY || params->metric == ALWAN_FIT_METRIC_LINEAR) {
         ALWAN_CORE_FN(alwan_rgb_space_desc) d709;
         if (ALWAN_CORE_FN(alwan_rgb_get_space_descriptor)(&d709, ALWAN_RGB_SPACE_SRGB, ctx) != ALWAN_OK) { ctx->free_fn(s); return ALWAN_E_NODATA; }
         if (!d709.has_matrices && ALWAN_CORE_FN(alwan_rgb_derive_matrices)(&d709.rgb_to_xyz, &d709.xyz_to_rgb, &d709) != ALWAN_OK) { ctx->free_fn(s); return ALWAN_E_RANGE; }

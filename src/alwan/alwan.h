@@ -2478,12 +2478,14 @@ alwan_status alwan_picture_form_local_exp_field_f64(alwan_f64 *e_out, alwan_f64 
  * ---------------------------------------------------------------- */
 
 typedef enum { ALWAN_FIT_TF_POWER = 0, ALWAN_FIT_TF_SRGB = 1, ALWAN_FIT_TF_AUTO = 2 } alwan_fit_tf_kind;
-/* What "error" means to the fit. OKLAB, ITP and DE2000 measure the stimulus; DISPLAY measures
+/* What "error" means to the fit. OKLAB, ITP and DE2000 measure the stimulus. DISPLAY measures
  * what an ordinary sRGB screen shows: XYZ to Rec.709, clamped to the display's range, sRGB
- * OETF, euclidean on the code values (a distance of 0.0039 is one 8-bit code). Under DISPLAY a
- * colour the screen cannot show costs nothing, because it clamps to the same place either way. */
+ * OETF, euclidean on the code values (a distance of 0.0039 is one 8-bit code); a colour the
+ * screen cannot show costs nothing there, because it clamps to the same place either way.
+ * LINEAR measures the stored values themselves, euclidean, for a data texture whose channels
+ * are numbers and not an appearance: a normal map, a roughness or displacement map. */
 typedef enum { ALWAN_FIT_METRIC_OKLAB = 0, ALWAN_FIT_METRIC_ITP = 1, ALWAN_FIT_METRIC_DE2000 = 2,
-               ALWAN_FIT_METRIC_DISPLAY = 3 } alwan_rgb_fit_metric;
+               ALWAN_FIT_METRIC_DISPLAY = 3, ALWAN_FIT_METRIC_LINEAR = 4 } alwan_rgb_fit_metric;
 enum { ALWAN_FIT_LOCK_WHITE = 1, ALWAN_FIT_LOCK_PRIMARIES = 2, ALWAN_FIT_LOCK_TF = 4, ALWAN_FIT_LOCK_SCALE = 8 };
 
 /* The fitted transfer function. gamma is used by POWER only: linear = scale * encoded ^ gamma.
