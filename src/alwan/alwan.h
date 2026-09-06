@@ -2486,7 +2486,8 @@ typedef enum { ALWAN_FIT_TF_POWER = 0, ALWAN_FIT_TF_SRGB = 1, ALWAN_FIT_TF_AUTO 
  * are numbers and not an appearance: a normal map, a roughness or displacement map. */
 typedef enum { ALWAN_FIT_METRIC_OKLAB = 0, ALWAN_FIT_METRIC_ITP = 1, ALWAN_FIT_METRIC_DE2000 = 2,
                ALWAN_FIT_METRIC_DISPLAY = 3, ALWAN_FIT_METRIC_LINEAR = 4 } alwan_rgb_fit_metric;
-enum { ALWAN_FIT_LOCK_WHITE = 1, ALWAN_FIT_LOCK_PRIMARIES = 2, ALWAN_FIT_LOCK_TF = 4, ALWAN_FIT_LOCK_SCALE = 8 };
+enum { ALWAN_FIT_LOCK_WHITE = 1, ALWAN_FIT_LOCK_PRIMARIES = 2, ALWAN_FIT_LOCK_TF = 4, ALWAN_FIT_LOCK_SCALE = 8,
+       ALWAN_FIT_LOCK_OFFSET = 16 };
 
 /* What going out of the fitted gamut costs the objective.
  *
@@ -2501,14 +2502,23 @@ enum { ALWAN_FIT_LOCK_WHITE = 1, ALWAN_FIT_LOCK_PRIMARIES = 2, ALWAN_FIT_LOCK_TF
  * clip_weight still scales the charge: above 1 buys back caution, below 1 more aggression. */
 typedef enum { ALWAN_FIT_CLIP_FORBID = 0, ALWAN_FIT_CLIP_PRICED = 1 } alwan_fit_clip_policy;
 
-/* The fitted transfer function. gamma is used by POWER only: linear = scale * encoded ^ gamma.
- * scale is the linear value that encodes to 1.0; on input 0 means 1, else 1e-8..1e8. */
-typedef struct { alwan_fit_tf_kind kind; alwan_f32 gamma; alwan_f32 scale; } alwan_fit_tf_f32;
-typedef struct { alwan_fit_tf_kind kind; alwan_f64 gamma; alwan_f64 scale; } alwan_fit_tf_f64;
+/* The fitted transfer function. The full decode of a channel c is
+ *
+ *     linear_c = scale * ( offset_c + (1 - offset_c) * eotf(code_c) )
+ *
+ * gamma is used by POWER only (eotf(x) = x^gamma). scale is the linear value that code 1.0
+ * reaches when offset is 0; on input 0 means 1, else 1e-8..1e8. offset is the per-channel black
+ * point in units of the scale, 0..0.95: code 0 decodes to it rather than to zero. Data that
+ * lives away from the origin cannot use its code range without it, because a gamut is a cone
+ * from the origin; set params.fit_offset to let the solver move it. */
+typedef struct { alwan_fit_tf_kind kind; alwan_f32 gamma; alwan_f32 scale; alwan_f32 offset[3]; } alwan_fit_tf_f32;
+typedef struct { alwan_fit_tf_kind kind; alwan_f64 gamma; alwan_f64 scale; alwan_f64 offset[3]; } alwan_fit_tf_f64;
 
 /* Fit parameters. Fill with alwan_rgb_fit_params_init, then change what you need. */
 typedef struct {
     int bits;                          /* target depth, 8 */
+    int bits_channel[3];               /* per-channel depth, 0 to take `bits`; {5,6,5} is a BC1 endpoint */
+    int fit_offset;                    /* non-zero: the per-channel black point joins the search */
     alwan_fit_tf_kind tf;              /* POWER or SRGB; AUTO is accepted by solve() only */
     alwan_rgb_fit_metric metric;       /* objective and report units, Oklab by default */
     alwan_f32 percentile;              /* tail the objective minimises, 0.999; 0 means mean only */
@@ -2528,6 +2538,8 @@ typedef struct {
 } alwan_rgb_fit_params_f32;
 typedef struct {
     int bits;
+    int bits_channel[3];
+    int fit_offset;
     alwan_fit_tf_kind tf;
     alwan_rgb_fit_metric metric;
     alwan_f64 percentile;

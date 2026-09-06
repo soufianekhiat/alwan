@@ -32,7 +32,8 @@
  * best vertex never gets worse, which is what lets a fit be continued or restarted.
  */
 
-#define RF_NP 10                /* rx ry gx gy bx by wx wy log(gamma) log(scale) */
+#define RF_NP 13                /* rx ry gx gy bx by wx wy log(gamma) log(scale) off_r off_g off_b */
+#define RF_OFF_MAX ALWAN_CORE_LITERAL(0.95)   /* an offset past this leaves no range to encode */
 #define RF_INF ALWAN_CORE_LITERAL(1e30)      /* fits float too */
 
 typedef struct ALWAN_CORE_FN(alwan_rgb_fit_state) {
@@ -48,7 +49,9 @@ typedef struct ALWAN_CORE_FN(alwan_rgb_fit_state) {
     ALWAN_CORE_T disp[9];           /* XYZ -> Rec.709, for the DISPLAY metric */
     ALWAN_CORE_T data_prim[8];      /* the dataset's own primaries and white, a cold-start candidate */
     int have_data_prim;
-    int free_idx[RF_NP]; int k;     /* which of the 10 move */
+    int free_idx[RF_NP]; int k;     /* which of the 13 move */
+    ALWAN_CORE_T step[3];           /* code step per channel, from bits or bits_channel */
+    ALWAN_CORE_T maxv[3];
     ALWAN_CORE_T theta[RF_NP];      /* current best */
     ALWAN_CORE_T fbest;
     ALWAN_CORE_T simplex[RF_NP + 1][RF_NP];
@@ -179,6 +182,14 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_gamma_of)(ALWAN_CORE_FN(alwan_rgb_fit_state
     return s->tf_kind == ALWAN_FIT_TF_SRGB ? ALWAN_CORE_LITERAL(2.2) : ALWAN_CORE_EXP(th[8]);
 }
 static ALWAN_CORE_T ALWAN_CORE_FN(rf_scale_of)(ALWAN_CORE_T const th[RF_NP]) { return ALWAN_CORE_EXP(th[9]); }
+
+/* The offsets are the per-channel black point: code 0 decodes to offset, not to 0. Data that
+ * lives away from the origin (a normal map around 0.5n + 0.5, a roughness map in a narrow band)
+ * cannot use its code range without them, because a gamut is a cone from the origin. */
+static int ALWAN_CORE_FN(rf_offsets_ok)(ALWAN_CORE_T const th[RF_NP]) {
+    for (int c = 0; c < 3; c++) if (th[10 + c] < ALWAN_CORE_ZERO || th[10 + c] > RF_OFF_MAX) return 0;
+    return 1;
+}
 #define RF_LOG_SCALE_LIMIT ALWAN_CORE_LITERAL(20.0)   /* e^20 either way is far past any dataset */
 
 static int ALWAN_CORE_FN(rf_cmp)(void const *a, void const *b) {
@@ -210,9 +221,10 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_objective)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     if (ALWAN_CORE_ABS(th[9]) > RF_LOG_SCALE_LIMIT) return RF_INF;
     if (!ALWAN_CORE_FN(rf_desc_from_theta)(th, &d)) return RF_INF;
     ALWAN_CORE_T const *A = d.xyz_to_rgb.m, *B = d.rgb_to_xyz.m;
+    if (!ALWAN_CORE_FN(rf_offsets_ok)(th)) return RF_INF;
     ALWAN_CORE_T const scale = ALWAN_CORE_FN(rf_scale_of)(th), inv_scale = ALWAN_CORE_ONE / scale;
-    ALWAN_CORE_T const step = ALWAN_CORE_ONE / (ALWAN_CORE_T)((1 << s->prm.bits) - 1);
-    ALWAN_CORE_T const noise = step * step / ALWAN_CORE_LITERAL(12.0);
+    ALWAN_CORE_T noise[3];
+    for (int c = 0; c < 3; c++) noise[c] = s->step[c] * s->step[c] / ALWAN_CORE_LITERAL(12.0);
     ALWAN_CORE_T const gain = ALWAN_CORE_FN(rf_metric_gain)(s->prm.metric);
     int const priced = (s->prm.clip_policy == ALWAN_FIT_CLIP_PRICED);
     ALWAN_CORE_T worst_clip = ALWAN_CORE_ZERO;
@@ -220,31 +232,38 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_objective)(ALWAN_CORE_FN(alwan_rgb_fit_stat
         ALWAN_CORE_T const *X = s->xyz + i * 3, *J = s->jp + i * 9;
         ALWAN_CORE_T lin[3], dl[3], clip = ALWAN_CORE_ZERO;
         for (int r = 0; r < 3; r++) {
-            /* channel value normalised so that the scale is 1: the hinge and the code step live there */
-            lin[r] = (A[r*3]*X[0] + A[r*3+1]*X[1] + A[r*3+2]*X[2]) * inv_scale;
-            if (lin[r] < ALWAN_CORE_ZERO) { clip -= lin[r]; lin[r] = ALWAN_CORE_ZERO; }
-            else if (lin[r] > ALWAN_CORE_ONE) { clip += lin[r] - ALWAN_CORE_ONE; lin[r] = ALWAN_CORE_ONE; }
-            dl[r] = scale * ALWAN_CORE_FN(rf_dlin_denc)(ALWAN_CORE_FN(rf_encode)(lin[r], s->tf_kind, gamma), s->tf_kind, gamma);
+            /* channel value normalised so that the scale is 1, then mapped into the channel's
+             * own 0..1 code domain by its offset: the hinge and the code step live there */
+            ALWAN_CORE_T span = ALWAN_CORE_ONE - th[10 + r];
+            ALWAN_CORE_T v = ((A[r*3]*X[0] + A[r*3+1]*X[1] + A[r*3+2]*X[2]) * inv_scale - th[10 + r]) / span;
+            if (v < ALWAN_CORE_ZERO) { clip -= v * span; v = ALWAN_CORE_ZERO; }
+            else if (v > ALWAN_CORE_ONE) { clip += (v - ALWAN_CORE_ONE) * span; v = ALWAN_CORE_ONE; }
+            lin[r] = v;
+            dl[r] = scale * span * ALWAN_CORE_FN(rf_dlin_denc)(ALWAN_CORE_FN(rf_encode)(v, s->tf_kind, gamma), s->tf_kind, gamma);
         }
-        /* JF = J (3x3, dP/dXYZ) . B (3x3, RGB->XYZ) . diag(dl); squared Frobenius norm */
+        /* JF = J (3x3, dP/dXYZ) . B (3x3, RGB->XYZ) . diag(dl), column by column, because each
+         * column carries its own code step when the channels have different depths */
         ALWAN_CORE_T fro = ALWAN_CORE_ZERO;
         for (int c = 0; c < 3; c++) {
             ALWAN_CORE_T bx = B[c] * dl[c], by = B[3+c] * dl[c], bz = B[6+c] * dl[c];   /* column c of B.diag(dl) */
+            ALWAN_CORE_T col = ALWAN_CORE_ZERO;
             for (int r = 0; r < 3; r++) {
                 ALWAN_CORE_T v = J[r*3]*bx + J[r*3+1]*by + J[r*3+2]*bz;
-                fro += v * v;
+                col += v * v;
             }
+            fro += noise[c] * col;
         }
         ALWAN_CORE_T cost = clip;
         if (priced && clip > ALWAN_CORE_ZERO) {
             /* the part that quantisation cannot explain and no bit depth can fix: where this
              * colour lands once the encoder has clamped it into the gamut */
-            ALWAN_CORE_T xyzc[3], pclip[3];
-            for (int r = 0; r < 3; r++) xyzc[r] = (B[r*3]*lin[0] + B[r*3+1]*lin[1] + B[r*3+2]*lin[2]) * scale;
+            ALWAN_CORE_T xyzc[3], pclip[3], back[3];
+            for (int r = 0; r < 3; r++) back[r] = th[10 + r] + lin[r] * (ALWAN_CORE_ONE - th[10 + r]);
+            for (int r = 0; r < 3; r++) xyzc[r] = (B[r*3]*back[0] + B[r*3+1]*back[1] + B[r*3+2]*back[2]) * scale;
             ALWAN_CORE_FN(rf_pcoord)(xyzc, s->prm.metric, s->disp, pclip);
             cost = ALWAN_CORE_FN(rf_pdist)(s->pc + i * 3, pclip, s->prm.metric);
         }
-        s->scratch[i] = gain * ALWAN_CORE_SQRT(noise * fro) + s->prm.clip_weight * cost;
+        s->scratch[i] = gain * ALWAN_CORE_SQRT(fro) + s->prm.clip_weight * cost;
         if (clip > worst_clip) worst_clip = clip;
     }
     /* Under FORBID the mean and the percentile are joined by the single worst overshoot,
@@ -264,20 +283,21 @@ static alwan_status ALWAN_CORE_FN(rf_true_report)(ALWAN_CORE_FN(alwan_rgb_fit_st
     ALWAN_CORE_FN(alwan_rgb_space_desc) d;
     ALWAN_CORE_T gamma = ALWAN_CORE_FN(rf_gamma_of)(s, th);
     if (ALWAN_CORE_ABS(th[9]) > RF_LOG_SCALE_LIMIT) return ALWAN_E_RANGE;
+    if (!ALWAN_CORE_FN(rf_offsets_ok)(th)) return ALWAN_E_RANGE;
     if (!ALWAN_CORE_FN(rf_desc_from_theta)(th, &d)) return ALWAN_E_RANGE;
     ALWAN_CORE_T const *A = d.xyz_to_rgb.m, *B = d.rgb_to_xyz.m;
     ALWAN_CORE_T const scale = ALWAN_CORE_FN(rf_scale_of)(th), inv_scale = ALWAN_CORE_ONE / scale;
-    ALWAN_CORE_T const maxv = (ALWAN_CORE_T)((1 << s->prm.bits) - 1);
     ALWAN_CORE_T clipped = ALWAN_CORE_ZERO;
     for (size_t i = 0; i < s->n; i++) {
         ALWAN_CORE_T const *X = s->xyz + i * 3;
         ALWAN_CORE_T lin[3], back[3], xyz2[3], p2[3]; int any = 0;
         for (int r = 0; r < 3; r++) {
-            lin[r] = (A[r*3]*X[0] + A[r*3+1]*X[1] + A[r*3+2]*X[2]) * inv_scale;
+            ALWAN_CORE_T span = ALWAN_CORE_ONE - th[10 + r];
+            lin[r] = ((A[r*3]*X[0] + A[r*3+1]*X[1] + A[r*3+2]*X[2]) * inv_scale - th[10 + r]) / span;
             if (lin[r] < -ALWAN_CORE_LITERAL(1e-9) || lin[r] > ALWAN_CORE_ONE + ALWAN_CORE_LITERAL(1e-9)) any = 1;
             ALWAN_CORE_T enc = ALWAN_CORE_FN(rf_clamp01)(ALWAN_CORE_FN(rf_encode)(ALWAN_CORE_FN(rf_clamp01)(lin[r]), s->tf_kind, gamma));
-            ALWAN_CORE_T q = ALWAN_CORE_FLOOR(enc * maxv + ALWAN_CORE_LITERAL(0.5)) / maxv;   /* the (2^N - 1) quantiser */
-            back[r] = scale * ALWAN_CORE_FN(rf_decode)(q, s->tf_kind, gamma);
+            ALWAN_CORE_T q = ALWAN_CORE_FLOOR(enc * s->maxv[r] + ALWAN_CORE_LITERAL(0.5)) / s->maxv[r];   /* the channel's own quantiser */
+            back[r] = scale * (th[10 + r] + span * ALWAN_CORE_FN(rf_decode)(q, s->tf_kind, gamma));
         }
         if (any) clipped += s->w[i];
         for (int r = 0; r < 3; r++) xyz2[r] = B[r*3]*back[0] + B[r*3+1]*back[1] + B[r*3+2]*back[2];
@@ -396,6 +416,21 @@ static void ALWAN_CORE_FN(rf_search_gamma)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s
     th[8] = fa < fb ? a : b;
 }
 
+/* The per-channel black point the data actually reaches in the triangle th[0..7] with the
+ * given scale, so a free offset starts where it belongs instead of at zero. */
+static void ALWAN_CORE_FN(rf_offsets_from_data)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s, ALWAN_CORE_T th[RF_NP]) {
+    ALWAN_CORE_FN(alwan_rgb_space_desc) d;
+    for (int c = 0; c < 3; c++) th[10 + c] = ALWAN_CORE_ZERO;
+    if (!ALWAN_CORE_FN(rf_desc_from_theta)(th, &d)) return;
+    ALWAN_CORE_T const *A = d.xyz_to_rgb.m, inv = ALWAN_CORE_ONE / ALWAN_CORE_FN(rf_scale_of)(th);
+    ALWAN_CORE_T lo[3] = { RF_INF, RF_INF, RF_INF };
+    for (size_t i = 0; i < s->n; i++) {
+        ALWAN_CORE_T const *X = s->xyz + i * 3;
+        for (int c = 0; c < 3; c++) { ALWAN_CORE_T v = (A[c*3]*X[0] + A[c*3+1]*X[1] + A[c*3+2]*X[2]) * inv; if (v < lo[c]) lo[c] = v; }
+    }
+    for (int c = 0; c < 3; c++) th[10 + c] = lo[c] > ALWAN_CORE_ZERO ? (lo[c] < RF_OFF_MAX ? lo[c] : RF_OFF_MAX) : ALWAN_CORE_ZERO;
+}
+
 /* Finish a cold-start candidate whose chromaticities are in th[0..7]: scale from the data's
  * peak in that triangle, exponent 2.2 or searched when it is free. Returns the objective
  * there, RF_INF when the candidate is unusable. */
@@ -404,6 +439,8 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_complete_start)(ALWAN_CORE_FN(alwan_rgb_fit
     if (peak <= ALWAN_CORE_LITERAL(1e-9)) return RF_INF;
     th[8] = ALWAN_CORE_LN(ALWAN_CORE_LITERAL(2.2));
     th[9] = ALWAN_CORE_LN(peak);
+    for (int c = 0; c < 3; c++) th[10 + c] = ALWAN_CORE_ZERO;
+    if (!(s->prm.lock & ALWAN_FIT_LOCK_OFFSET) && s->prm.fit_offset) ALWAN_CORE_FN(rf_offsets_from_data)(s, th);
     if (s->tf_kind == ALWAN_FIT_TF_POWER && !(s->prm.lock & ALWAN_FIT_LOCK_TF)) ALWAN_CORE_FN(rf_search_gamma)(s, th);
     return ALWAN_CORE_FN(rf_objective)(s, th);
 }
@@ -420,6 +457,14 @@ static alwan_status ALWAN_CORE_FN(rf_init_theta)(ALWAN_CORE_FN(alwan_rgb_fit_sta
         th[6] = space->white_xy[0]; th[7] = space->white_xy[1];
         th[8] = ALWAN_CORE_LN(tf && tf->gamma > ALWAN_CORE_ZERO ? tf->gamma : ALWAN_CORE_LITERAL(2.2));
         th[9] = (tf && tf->scale > ALWAN_CORE_ZERO) ? ALWAN_CORE_LN(tf->scale) : ALWAN_CORE_ZERO;
+        int given = 0;
+        for (int q = 0; q < 3; q++) {
+            th[10 + q] = (tf && tf->offset[q] > ALWAN_CORE_ZERO && tf->offset[q] < RF_OFF_MAX) ? tf->offset[q] : ALWAN_CORE_ZERO;
+            if (th[10 + q] > ALWAN_CORE_ZERO) given = 1;
+        }
+        /* a warm start that is allowed to move the black point but was handed none starts it
+         * where the data sits, not at zero, so the search begins inside the useful region */
+        if (!given && s->prm.fit_offset && !(s->prm.lock & ALWAN_FIT_LOCK_OFFSET)) ALWAN_CORE_FN(rf_offsets_from_data)(s, th);
         if (s->tf_kind == ALWAN_FIT_TF_POWER && !(s->prm.lock & ALWAN_FIT_LOCK_TF) && !(tf && tf->gamma > ALWAN_CORE_ZERO))
             ALWAN_CORE_FN(rf_search_gamma)(s, th);
         memcpy(s->theta, th, sizeof th);
@@ -476,9 +521,10 @@ static void ALWAN_CORE_FN(rf_build_simplex)(ALWAN_CORE_FN(alwan_rgb_fit_state) *
     if (!(s->prm.lock & ALWAN_FIT_LOCK_WHITE)) { s->free_idx[s->k++] = 6; s->free_idx[s->k++] = 7; }
     if (s->tf_kind == ALWAN_FIT_TF_POWER && !(s->prm.lock & ALWAN_FIT_LOCK_TF)) s->free_idx[s->k++] = 8;
     if (!(s->prm.lock & ALWAN_FIT_LOCK_SCALE)) s->free_idx[s->k++] = 9;
+    if (s->prm.fit_offset && !(s->prm.lock & ALWAN_FIT_LOCK_OFFSET)) for (int c = 0; c < 3; c++) s->free_idx[s->k++] = 10 + c;
     for (int v = 0; v <= s->k; v++) {
         memcpy(s->simplex[v], s->theta, sizeof s->theta);
-        if (v > 0) { int j = s->free_idx[v - 1]; s->simplex[v][j] += (j >= 8) ? step_lg : step_xy; }
+        if (v > 0) { int j = s->free_idx[v - 1]; s->simplex[v][j] += (j == 8 || j == 9) ? step_lg : step_xy; }
         s->fval[v] = ALWAN_CORE_FN(rf_objective)(s, s->simplex[v]);
     }
     s->have_simplex = 1; s->converged = 0;
@@ -547,7 +593,8 @@ static void ALWAN_CORE_FN(rf_nm_step)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s) {
 static void ALWAN_CORE_FN(rf_write_answer)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s,
                                            ALWAN_CORE_FN(alwan_rgb_space_desc) *space, ALWAN_CORE_FN(alwan_fit_tf) *tf) {
     ALWAN_CORE_FN(rf_desc_from_theta)(s->theta, space);
-    if (tf) tf->scale = ALWAN_CORE_FN(rf_scale_of)(s->theta);
+    if (tf) { tf->scale = ALWAN_CORE_FN(rf_scale_of)(s->theta);
+              for (int c = 0; c < 3; c++) tf->offset[c] = s->theta[10 + c]; }
     if (s->tf_kind == ALWAN_FIT_TF_SRGB) {
         space->oetf = ALWAN_TF_SRGB; space->eotf = ALWAN_TF_SRGB;
         if (tf) { tf->kind = ALWAN_FIT_TF_SRGB; tf->gamma = ALWAN_CORE_ZERO; }
@@ -600,6 +647,12 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     if (!s) return ALWAN_E_NOMEM;
     memset(s, 0, sizeof *s);
     s->ctx = ctx; s->prm = *params; s->n = count; s->tf_kind = params->tf;
+    for (int c = 0; c < 3; c++) {
+        int b = params->bits_channel[c] > 0 ? params->bits_channel[c] : params->bits;
+        if (b < 2 || b > 16) { ctx->free_fn(s); return ALWAN_E_INVALID; }
+        s->maxv[c] = (ALWAN_CORE_T)((1 << b) - 1);
+        s->step[c] = ALWAN_CORE_ONE / s->maxv[c];
+    }
     if (params->metric == ALWAN_FIT_METRIC_DISPLAY || params->metric == ALWAN_FIT_METRIC_LINEAR) {
         ALWAN_CORE_FN(alwan_rgb_space_desc) d709;
         if (ALWAN_CORE_FN(alwan_rgb_get_space_descriptor)(&d709, ALWAN_RGB_SPACE_SRGB, ctx) != ALWAN_OK) { ctx->free_fn(s); return ALWAN_E_NODATA; }
