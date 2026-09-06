@@ -860,6 +860,20 @@ EXPORTS
     alwan_picture_form_local_exp_f64
     alwan_picture_form_local_exp_field_f32
     alwan_picture_form_local_exp_field_f64
+    alwan_rgb_fit_params_init_f32
+    alwan_rgb_fit_params_init_f64
+    alwan_rgb_fit_begin_f32
+    alwan_rgb_fit_begin_f64
+    alwan_rgb_fit_step_f32
+    alwan_rgb_fit_step_f64
+    alwan_rgb_fit_restart_f32
+    alwan_rgb_fit_restart_f64
+    alwan_rgb_fit_end_f32
+    alwan_rgb_fit_end_f64
+    alwan_rgb_fit_solve_f32
+    alwan_rgb_fit_solve_f64
+    alwan_rgb_fit_evaluate_f32
+    alwan_rgb_fit_evaluate_f64
     alwan_picture_form_pure_exp_f32
     alwan_picture_form_pure_exp_f64
     alwan_pointer_gamut_boundary

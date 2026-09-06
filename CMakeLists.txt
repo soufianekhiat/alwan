@@ -120,6 +120,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_gamut.c
   src/alwan/experimental/alwan_gamut_spatial.c
   src/alwan/experimental/alwan_form_global_exp.c
+  src/alwan/experimental/alwan_rgb_fit.c
   src/alwan/map/alwan_gamut_map.c
   src/alwan/api/alwan_hellwig2022.c
   src/alwan/api/alwan_hunt.c

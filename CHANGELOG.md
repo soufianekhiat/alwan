@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Experimental RGB space fit** (`src/alwan/experimental/alwan_rgb_fit.c`).
+  From a dataset of colours in any RGB space, find primaries, a white point,
+  a transfer function, a free power or the sRGB curve, and a scale (the
+  linear value that encodes to code 1.0) that minimise the perceptual error
+  of the quantised round trip at a given bit depth. The
+  solver is a deterministic Nelder-Mead on a smooth surrogate of the
+  quantisation error; the report carries the true quantised numbers. Three
+  ways to run again: `step` resumes, `restart` tightens the search around the
+  current best, and a filled descriptor warm-starts `begin` or `solve`. The
+  result is an ordinary `alwan_rgb_space_desc` plus `alwan_fit_tf`.
+
 ## [2.0.0]
 
 First public release (tag `v2.0.0`).

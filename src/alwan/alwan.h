@@ -2452,6 +2452,118 @@ alwan_status alwan_picture_form_local_exp_f64(alwan_f64 *out, alwan_f64 const *i
 alwan_status alwan_picture_form_local_exp_field_f32(alwan_f32 *e_out, alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_local_exp_field_f64(alwan_f64 *e_out, alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 
+/* ----------------------------------------------------------------
+ * EXPERIMENTAL: fit an RGB encoding space to a dataset
+ *
+ * Given colours in some RGB space, find primaries, a white point, a transfer function and a
+ * scale so that the dataset survives quantisation to `bits` with the least perceptual damage.
+ * The transfer function is a free power, or the sRGB curve because its decode is free on a
+ * GPU. The scale is the linear value that encodes to code 1.0 (1 is the usual Y = 1 white):
+ * without it a dataset that stops short of the white, or whose bright colours sit off the
+ * white, cannot reach the top codes in any tight triangle. It costs one multiply on a GPU
+ * and can be folded into the matrix. The result comes back in the ordinary
+ * alwan_rgb_space_desc (chromaticities and Y = 1 matrices) plus alwan_fit_tf: under the sRGB
+ * branch the descriptor is complete (oetf/eotf = ALWAN_TF_SRGB); under the power branch the
+ * exponent rides in alwan_fit_tf and the descriptor's enums are set only when the exponent
+ * lands on one of 2.2, 2.4, 2.6 or 2.8. Encoding is code = oetf(linear / scale).
+ *
+ * The solver descends a smooth surrogate (the expected quantisation error, code step times
+ * the Jacobian from code to perceptual coordinates, plus a hinge on values outside 0..scale) with
+ * a deterministic Nelder-Mead; the report always carries the TRUE quantised round trip. Three
+ * ways to run again: step() resumes, restart() rebuilds the simplex around the current best
+ * with new move sizes, and begin() or solve() with a filled descriptor warm-starts from it.
+ * The returned space is always the best candidate evaluated so far on the current dataset.
+ * ---------------------------------------------------------------- */
+
+typedef enum { ALWAN_FIT_TF_POWER = 0, ALWAN_FIT_TF_SRGB = 1, ALWAN_FIT_TF_AUTO = 2 } alwan_fit_tf_kind;
+typedef enum { ALWAN_FIT_METRIC_OKLAB = 0, ALWAN_FIT_METRIC_ITP = 1, ALWAN_FIT_METRIC_DE2000 = 2 } alwan_rgb_fit_metric;
+enum { ALWAN_FIT_LOCK_WHITE = 1, ALWAN_FIT_LOCK_PRIMARIES = 2, ALWAN_FIT_LOCK_TF = 4, ALWAN_FIT_LOCK_SCALE = 8 };
+
+/* The fitted transfer function. gamma is used by POWER only: linear = scale * encoded ^ gamma.
+ * scale is the linear value that encodes to 1.0; on input 0 means 1, else 1e-8..1e8. */
+typedef struct { alwan_fit_tf_kind kind; alwan_f32 gamma; alwan_f32 scale; } alwan_fit_tf_f32;
+typedef struct { alwan_fit_tf_kind kind; alwan_f64 gamma; alwan_f64 scale; } alwan_fit_tf_f64;
+
+/* Fit parameters. Fill with alwan_rgb_fit_params_init, then change what you need. */
+typedef struct {
+    int bits;                          /* target depth, 8 */
+    alwan_fit_tf_kind tf;              /* POWER or SRGB; AUTO is accepted by solve() only */
+    alwan_rgb_fit_metric metric;       /* objective and report units, Oklab by default */
+    alwan_f32 percentile;              /* tail the objective minimises, 0.999; 0 means mean only */
+    alwan_f32 clip_weight;             /* penalty per unit of linear value outside 0..scale, in units of the scale */
+    alwan_f32 srgb_margin;             /* AUTO: power must beat sRGB by this fraction, 0.10 */
+    unsigned lock;                     /* ALWAN_FIT_LOCK_* bits: keep those where the start put them */
+    alwan_f32 gamma_min, gamma_max;    /* 1.0 and 3.0 */
+    alwan_f32 step_xy, step_log_gamma; /* initial move sizes: 0.01 in xy, 0.1 in log gamma and log scale */
+    alwan_f32 tolerance;               /* converged when the simplex spread falls under this, 1e-6 */
+    alwan_f32 const *weights;          /* optional, one per sample, NULL for uniform */
+} alwan_rgb_fit_params_f32;
+typedef struct {
+    int bits;
+    alwan_fit_tf_kind tf;
+    alwan_rgb_fit_metric metric;
+    alwan_f64 percentile;
+    alwan_f64 clip_weight;
+    alwan_f64 srgb_margin;
+    unsigned lock;
+    alwan_f64 gamma_min, gamma_max;
+    alwan_f64 step_xy, step_log_gamma;
+    alwan_f64 tolerance;
+    alwan_f64 const *weights;
+} alwan_rgb_fit_params_f64;
+
+/* What a space does to the dataset, measured with the real quantiser. */
+typedef struct {
+    alwan_f32 mean_error, tail_error, max_error;   /* metric units, weighted mean / percentile / worst */
+    alwan_f32 clipped_fraction;                    /* weighted share of samples with a channel outside 0..scale */
+    alwan_f32 objective;                           /* the smooth surrogate the solver minimised */
+    int iterations;                                /* Nelder-Mead iterations so far on this state */
+    int converged;
+} alwan_rgb_fit_report_f32;
+typedef struct {
+    alwan_f64 mean_error, tail_error, max_error;
+    alwan_f64 clipped_fraction;
+    alwan_f64 objective;
+    int iterations;
+    int converged;
+} alwan_rgb_fit_report_f64;
+
+typedef struct alwan_rgb_fit_state_f32 alwan_rgb_fit_state_f32;   /* opaque: dataset cache and simplex */
+typedef struct alwan_rgb_fit_state_f64 alwan_rgb_fit_state_f64;
+
+void alwan_rgb_fit_params_init_f32(alwan_rgb_fit_params_f32 *params);
+void alwan_rgb_fit_params_init_f64(alwan_rgb_fit_params_f64 *params);
+
+/* Cache the dataset (linear RGB triplets in data_space, `stride` bytes apart) and set the
+ * starting point. space and tf NULL: the analytic start from the data (enclosing triangle,
+ * weighted white, exponent by a bracketed search, scale from the largest channel value).
+ * Given: the warm start; a given space with no scale starts at scale 1. */
+alwan_status alwan_rgb_fit_begin_f32(alwan_rgb_fit_state_f32 **state, alwan_f32 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f32 const *data_space, alwan_rgb_space_desc_f32 const *space, alwan_fit_tf_f32 const *tf, alwan_rgb_fit_params_f32 const *params, alwan_ctx *ctx);
+alwan_status alwan_rgb_fit_begin_f64(alwan_rgb_fit_state_f64 **state, alwan_f64 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f64 const *data_space, alwan_rgb_space_desc_f64 const *space, alwan_fit_tf_f64 const *tf, alwan_rgb_fit_params_f64 const *params, alwan_ctx *ctx);
+
+/* One move. Writes the best space so far and its true report on every call; never worse
+ * than the previous call. report may be NULL. */
+alwan_status alwan_rgb_fit_step_f32(alwan_rgb_space_desc_f32 *space, alwan_fit_tf_f32 *tf, alwan_rgb_fit_report_f32 *report, alwan_rgb_fit_state_f32 *state);
+alwan_status alwan_rgb_fit_step_f64(alwan_rgb_space_desc_f64 *space, alwan_fit_tf_f64 *tf, alwan_rgb_fit_report_f64 *report, alwan_rgb_fit_state_f64 *state);
+
+/* Rebuild the simplex around the current best with new move sizes (step_log_gamma also
+ * moves log scale), keeping the dataset cache: converge coarse, tighten, go again. */
+alwan_status alwan_rgb_fit_restart_f32(alwan_rgb_fit_state_f32 *state, alwan_f32 step_xy, alwan_f32 step_log_gamma);
+alwan_status alwan_rgb_fit_restart_f64(alwan_rgb_fit_state_f64 *state, alwan_f64 step_xy, alwan_f64 step_log_gamma);
+
+void alwan_rgb_fit_end_f32(alwan_rgb_fit_state_f32 *state);
+void alwan_rgb_fit_end_f64(alwan_rgb_fit_state_f64 *state);
+
+/* begin, step until converged or max_iterations, end. space and tf are in-out: a zeroed
+ * descriptor starts from the data, a filled one is the warm start. With params->tf = AUTO
+ * both branches are solved and sRGB is kept unless the power wins by srgb_margin. */
+alwan_status alwan_rgb_fit_solve_f32(alwan_rgb_space_desc_f32 *space, alwan_fit_tf_f32 *tf, alwan_rgb_fit_report_f32 *report, alwan_f32 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f32 const *data_space, alwan_rgb_fit_params_f32 const *params, int max_iterations, alwan_ctx *ctx);
+alwan_status alwan_rgb_fit_solve_f64(alwan_rgb_space_desc_f64 *space, alwan_fit_tf_f64 *tf, alwan_rgb_fit_report_f64 *report, alwan_f64 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f64 const *data_space, alwan_rgb_fit_params_f64 const *params, int max_iterations, alwan_ctx *ctx);
+
+/* Score any space on the dataset, fitted or not: the baseline comparison. */
+alwan_status alwan_rgb_fit_evaluate_f32(alwan_rgb_fit_report_f32 *report, alwan_rgb_space_desc_f32 const *space, alwan_fit_tf_f32 const *tf, alwan_f32 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f32 const *data_space, alwan_rgb_fit_params_f32 const *params, alwan_ctx *ctx);
+alwan_status alwan_rgb_fit_evaluate_f64(alwan_rgb_fit_report_f64 *report, alwan_rgb_space_desc_f64 const *space, alwan_fit_tf_f64 const *tf, alwan_f64 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f64 const *data_space, alwan_rgb_fit_params_f64 const *params, alwan_ctx *ctx);
+
 /* PURE-corrected formation: COMPLETE_HEMI_LOOK's reconstruction with the purity rolloff gated by
  * emission evidence (junction P_T) -- "PURE = emission only". A brightly LIT SURFACE keeps its
  * chroma (no pastel collapse); additive/emissive records (glow, veil, flare -- dark-channel lift)
