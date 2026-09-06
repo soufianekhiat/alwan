@@ -2478,7 +2478,12 @@ alwan_status alwan_picture_form_local_exp_field_f64(alwan_f64 *e_out, alwan_f64 
  * ---------------------------------------------------------------- */
 
 typedef enum { ALWAN_FIT_TF_POWER = 0, ALWAN_FIT_TF_SRGB = 1, ALWAN_FIT_TF_AUTO = 2 } alwan_fit_tf_kind;
-typedef enum { ALWAN_FIT_METRIC_OKLAB = 0, ALWAN_FIT_METRIC_ITP = 1, ALWAN_FIT_METRIC_DE2000 = 2 } alwan_rgb_fit_metric;
+/* What "error" means to the fit. OKLAB, ITP and DE2000 measure the stimulus; DISPLAY measures
+ * what an ordinary sRGB screen shows: XYZ to Rec.709, clamped to the display's range, sRGB
+ * OETF, euclidean on the code values (a distance of 0.0039 is one 8-bit code). Under DISPLAY a
+ * colour the screen cannot show costs nothing, because it clamps to the same place either way. */
+typedef enum { ALWAN_FIT_METRIC_OKLAB = 0, ALWAN_FIT_METRIC_ITP = 1, ALWAN_FIT_METRIC_DE2000 = 2,
+               ALWAN_FIT_METRIC_DISPLAY = 3 } alwan_rgb_fit_metric;
 enum { ALWAN_FIT_LOCK_WHITE = 1, ALWAN_FIT_LOCK_PRIMARIES = 2, ALWAN_FIT_LOCK_TF = 4, ALWAN_FIT_LOCK_SCALE = 8 };
 
 /* The fitted transfer function. gamma is used by POWER only: linear = scale * encoded ^ gamma.
@@ -2493,8 +2498,11 @@ typedef struct {
     alwan_rgb_fit_metric metric;       /* objective and report units, Oklab by default */
     alwan_f32 percentile;              /* tail the objective minimises, 0.999; 0 means mean only */
     alwan_f32 clip_weight;             /* penalty per unit of linear value outside 0..scale (in units of the scale),
-                                          per sample and on the single worst overshoot; 1.0. Lower it to trade clipped
-                                          outliers for precision, 0 lets the percentile decide alone */
+                                          per sample and on the single worst overshoot; 1.0. It buys clipping with
+                                          precision, so it sets where on that trade the answer lands, and it is in the
+                                          METRIC's units: 1.0 is calibrated for OKLAB, and a metric whose numbers run
+                                          larger (DISPLAY, ITP) needs it raised in proportion or the fit will accept
+                                          clipped pixels. 0 lets the percentile decide alone */
     alwan_f32 srgb_margin;             /* AUTO: power must beat sRGB by this fraction, 0.10 */
     unsigned lock;                     /* ALWAN_FIT_LOCK_* bits: keep those where the start put them */
     alwan_f32 gamma_min, gamma_max;    /* 1.0 and 3.0 */

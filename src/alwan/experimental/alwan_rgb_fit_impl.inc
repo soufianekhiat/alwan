@@ -9,6 +9,9 @@
  * ALWAN_CORE_* macros; every static is suffixed with ALWAN_CORE_FN so the two passes coexist
  * in one translation unit.
  *
+ * The metric decides what "error" means: Oklab, ITP, dE2000, or DISPLAY, which measures in the
+ * sRGB code values an ordinary screen shows (Rec.709, clamped, sRGB-encoded).
+ *
  * The objective the solver descends is smooth: the expected quantisation error at a sample is
  * the code step times the norm of the Jacobian from encoded code to perceptual coordinates,
  * which is analytic for both transfer functions, plus a hinge on linear values outside 0..scale
@@ -34,6 +37,7 @@ typedef struct ALWAN_CORE_FN(alwan_rgb_fit_state) {
     ALWAN_CORE_T *w;                /* n, weights summing to 1 */
     ALWAN_CORE_T *scratch;          /* n, per-sample errors for the percentile */
     int tf_kind;                    /* POWER or SRGB for this state */
+    ALWAN_CORE_T disp[9];           /* XYZ -> Rec.709, for the DISPLAY metric */
     ALWAN_CORE_T data_prim[8];      /* the dataset's own primaries and white, a cold-start candidate */
     int have_data_prim;
     int free_idx[RF_NP]; int k;     /* which of the 10 move */
@@ -79,9 +83,20 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_dlin_denc)(ALWAN_CORE_T enc, int kind, ALWA
     return gamma * ALWAN_CORE_POW(enc, gamma - ALWAN_CORE_ONE);
 }
 
-/* Perceptual coordinates of an XYZ (dataset scale: white Y = 1). */
-static void ALWAN_CORE_FN(rf_pcoord)(ALWAN_CORE_T const xyz[3], int metric, ALWAN_CORE_T out[3]) {
+/* Perceptual coordinates of an XYZ (dataset scale: white Y = 1). disp is XYZ -> Rec.709,
+ * used by the DISPLAY metric only. */
+static void ALWAN_CORE_FN(rf_pcoord)(ALWAN_CORE_T const xyz[3], int metric, ALWAN_CORE_T const *disp, ALWAN_CORE_T out[3]) {
     ALWAN_CORE_FN(alwan_xyz) X; X.x = xyz[0]; X.y = xyz[1]; X.z = xyz[2];
+    if (metric == ALWAN_FIT_METRIC_DISPLAY) {
+        /* what an sRGB screen actually shows: Rec.709 linear, clamped to the display's own
+         * range, then the sRGB OETF. Colours the screen cannot show clamp for the original and
+         * for the round trip alike, so precision spent outside Rec.709 counts for nothing. */
+        for (int r = 0; r < 3; r++) {
+            ALWAN_CORE_T v = disp[r*3]*xyz[0] + disp[r*3+1]*xyz[1] + disp[r*3+2]*xyz[2];
+            out[r] = ALWAN_CORE_FN(rf_encode)(ALWAN_CORE_FN(rf_clamp01)(v), ALWAN_FIT_TF_SRGB, ALWAN_CORE_LITERAL(2.2));
+        }
+        return;
+    }
     if (metric == ALWAN_FIT_METRIC_ITP) {
         ALWAN_CORE_FN(alwan_ictcp) c; ALWAN_CORE_FN(alwan_xyz) A = X;
         A.x *= ALWAN_CORE_LITERAL(100.0); A.y *= ALWAN_CORE_LITERAL(100.0); A.z *= ALWAN_CORE_LITERAL(100.0);   /* Y = 1 is 100 cd/m2 */
@@ -240,7 +255,7 @@ static alwan_status ALWAN_CORE_FN(rf_true_report)(ALWAN_CORE_FN(alwan_rgb_fit_st
         }
         if (any) clipped += s->w[i];
         for (int r = 0; r < 3; r++) xyz2[r] = B[r*3]*back[0] + B[r*3+1]*back[1] + B[r*3+2]*back[2];
-        ALWAN_CORE_FN(rf_pcoord)(xyz2, s->prm.metric, p2);
+        ALWAN_CORE_FN(rf_pcoord)(xyz2, s->prm.metric, s->disp, p2);
         s->scratch[i] = ALWAN_CORE_FN(rf_pdist)(s->pc + i * 3, p2, s->prm.metric);
     }
     ALWAN_CORE_FN(rf_stats)(s, &rep->mean_error, &rep->tail_error, &rep->max_error);
@@ -558,6 +573,12 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     if (!s) return ALWAN_E_NOMEM;
     memset(s, 0, sizeof *s);
     s->ctx = ctx; s->prm = *params; s->n = count; s->tf_kind = params->tf;
+    if (params->metric == ALWAN_FIT_METRIC_DISPLAY) {
+        ALWAN_CORE_FN(alwan_rgb_space_desc) d709;
+        if (ALWAN_CORE_FN(alwan_rgb_get_space_descriptor)(&d709, ALWAN_RGB_SPACE_SRGB, ctx) != ALWAN_OK) { ctx->free_fn(s); return ALWAN_E_NODATA; }
+        if (!d709.has_matrices && ALWAN_CORE_FN(alwan_rgb_derive_matrices)(&d709.rgb_to_xyz, &d709.xyz_to_rgb, &d709) != ALWAN_OK) { ctx->free_fn(s); return ALWAN_E_RANGE; }
+        memcpy(s->disp, d709.xyz_to_rgb.m, sizeof s->disp);
+    }
     if (data_space->primaries_xy[1] > ALWAN_CORE_ZERO && data_space->white_xy[1] > ALWAN_CORE_ZERO) {
         for (int i = 0; i < 6; i++) s->data_prim[i] = data_space->primaries_xy[i];
         s->data_prim[6] = data_space->white_xy[0]; s->data_prim[7] = data_space->white_xy[1];
@@ -593,12 +614,12 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     /* perceptual coordinates and their Jacobian, once */
     for (size_t i = 0; i < count; i++) {
         ALWAN_CORE_T const *X = s->xyz + i * 3;
-        ALWAN_CORE_FN(rf_pcoord)(X, params->metric, s->pc + i * 3);
+        ALWAN_CORE_FN(rf_pcoord)(X, params->metric, s->disp, s->pc + i * 3);
         for (int c = 0; c < 3; c++) {
             ALWAN_CORE_T h = ALWAN_CORE_LITERAL(1e-4) * (ALWAN_CORE_ABS(X[c]) > ALWAN_CORE_LITERAL(1e-2) ? ALWAN_CORE_ABS(X[c]) : ALWAN_CORE_LITERAL(1e-2));
             ALWAN_CORE_T xp[3] = { X[0], X[1], X[2] }, xm[3] = { X[0], X[1], X[2] }, pp[3], pm[3];
             xp[c] += h; xm[c] -= h; if (xm[c] < ALWAN_CORE_ZERO) xm[c] = ALWAN_CORE_ZERO;
-            ALWAN_CORE_FN(rf_pcoord)(xp, params->metric, pp); ALWAN_CORE_FN(rf_pcoord)(xm, params->metric, pm);
+            ALWAN_CORE_FN(rf_pcoord)(xp, params->metric, s->disp, pp); ALWAN_CORE_FN(rf_pcoord)(xm, params->metric, s->disp, pm);
             ALWAN_CORE_T den = xp[c] - xm[c]; if (den <= ALWAN_CORE_ZERO) den = h;
             for (int r = 0; r < 3; r++) s->jp[i*9 + r*3 + c] = (pp[r] - pm[r]) / den;
         }
