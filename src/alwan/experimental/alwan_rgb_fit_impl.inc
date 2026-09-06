@@ -11,7 +11,8 @@
  *
  * The objective the solver descends is smooth: the expected quantisation error at a sample is
  * the code step times the norm of the Jacobian from encoded code to perceptual coordinates,
- * which is analytic for both transfer functions, plus a hinge on linear values outside 0..scale.
+ * which is analytic for both transfer functions, plus a hinge on linear values outside 0..scale
+ * (per sample, and once more on the single worst overshoot so that no fraction clips unseen).
  * The scale is the linear value that encodes to code 1.0: the white's own luminance in the
  * usual Y = 1 convention, and free here because a dataset that never reaches the white, or
  * one whose bright colours sit off the white, cannot use the top codes without it.
@@ -184,6 +185,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_objective)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     ALWAN_CORE_T const step = ALWAN_CORE_ONE / (ALWAN_CORE_T)((1 << s->prm.bits) - 1);
     ALWAN_CORE_T const noise = step * step / ALWAN_CORE_LITERAL(12.0);
     ALWAN_CORE_T const gain = ALWAN_CORE_FN(rf_metric_gain)(s->prm.metric);
+    ALWAN_CORE_T worst_clip = ALWAN_CORE_ZERO;
     for (size_t i = 0; i < s->n; i++) {
         ALWAN_CORE_T const *X = s->xyz + i * 3, *J = s->jp + i * 9;
         ALWAN_CORE_T lin[3], dl[3], clip = ALWAN_CORE_ZERO;
@@ -204,8 +206,12 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_objective)(ALWAN_CORE_FN(alwan_rgb_fit_stat
             }
         }
         s->scratch[i] = gain * ALWAN_CORE_SQRT(noise * fro) + s->prm.clip_weight * clip;
+        if (clip > worst_clip) worst_clip = clip;
     }
-    { ALWAN_CORE_T mean, tail, mx; ALWAN_CORE_FN(rf_stats)(s, &mean, &tail, &mx); return mean + tail; }
+    /* mean, percentile, and the single worst overshoot: the percentile alone lets a
+     * fraction smaller than 1 - percentile clip for free, and a clipped texel is a visible
+     * defect however few there are */
+    { ALWAN_CORE_T mean, tail, mx; ALWAN_CORE_FN(rf_stats)(s, &mean, &tail, &mx); return mean + tail + s->prm.clip_weight * worst_clip; }
 }
 
 /* ---------------------------------------------------------------- */

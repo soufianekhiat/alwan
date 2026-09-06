@@ -2473,6 +2473,8 @@ alwan_status alwan_picture_form_local_exp_field_f64(alwan_f64 *e_out, alwan_f64 
  * ways to run again: step() resumes, restart() rebuilds the simplex around the current best
  * with new move sizes, and begin() or solve() with a filled descriptor warm-starts from it.
  * The returned space is always the best candidate evaluated so far on the current dataset.
+ * When the dataset is a sample of a larger image, put the image's extremes in it (brightest
+ * pixels, outermost chromaticities): the clip penalty only protects the samples it sees.
  * ---------------------------------------------------------------- */
 
 typedef enum { ALWAN_FIT_TF_POWER = 0, ALWAN_FIT_TF_SRGB = 1, ALWAN_FIT_TF_AUTO = 2 } alwan_fit_tf_kind;
@@ -2490,7 +2492,9 @@ typedef struct {
     alwan_fit_tf_kind tf;              /* POWER or SRGB; AUTO is accepted by solve() only */
     alwan_rgb_fit_metric metric;       /* objective and report units, Oklab by default */
     alwan_f32 percentile;              /* tail the objective minimises, 0.999; 0 means mean only */
-    alwan_f32 clip_weight;             /* penalty per unit of linear value outside 0..scale, in units of the scale */
+    alwan_f32 clip_weight;             /* penalty per unit of linear value outside 0..scale (in units of the scale),
+                                          per sample and on the single worst overshoot; 1.0. Lower it to trade clipped
+                                          outliers for precision, 0 lets the percentile decide alone */
     alwan_f32 srgb_margin;             /* AUTO: power must beat sRGB by this fraction, 0.10 */
     unsigned lock;                     /* ALWAN_FIT_LOCK_* bits: keep those where the start put them */
     alwan_f32 gamma_min, gamma_max;    /* 1.0 and 3.0 */
