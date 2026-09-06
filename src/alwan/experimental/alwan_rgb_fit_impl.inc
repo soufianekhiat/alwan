@@ -15,8 +15,15 @@
  *
  * The objective the solver descends is smooth: the expected quantisation error at a sample is
  * the code step times the norm of the Jacobian from encoded code to perceptual coordinates,
- * which is analytic for both transfer functions, plus a hinge on linear values outside 0..scale
- * (per sample, and once more on the single worst overshoot so that no fraction clips unseen).
+ * which is analytic for both transfer functions, plus what going out of gamut costs.
+ *
+ * That cost has two policies. FORBID charges the overshoot itself, per sample and once more on
+ * the single worst, which drives the answer to a gamut that holds everything. PRICED charges
+ * the damage instead: the metric distance between the colour and what it becomes once clamped,
+ * in the same units as the quantisation error, so the two are directly comparable and the
+ * solver finds the trade on its own. Under PRICED a gamut that clips the rare colours at the
+ * border to buy precision for the frequent ones in the middle wins whenever that arithmetic
+ * works out, which on a peaked distribution it usually does.
  * The scale is the linear value that encodes to code 1.0: the white's own luminance in the
  * usual Y = 1 convention, and free here because a dataset that never reaches the white, or
  * one whose bright colours sit off the white, cannot use the top codes without it.
@@ -207,6 +214,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_objective)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     ALWAN_CORE_T const step = ALWAN_CORE_ONE / (ALWAN_CORE_T)((1 << s->prm.bits) - 1);
     ALWAN_CORE_T const noise = step * step / ALWAN_CORE_LITERAL(12.0);
     ALWAN_CORE_T const gain = ALWAN_CORE_FN(rf_metric_gain)(s->prm.metric);
+    int const priced = (s->prm.clip_policy == ALWAN_FIT_CLIP_PRICED);
     ALWAN_CORE_T worst_clip = ALWAN_CORE_ZERO;
     for (size_t i = 0; i < s->n; i++) {
         ALWAN_CORE_T const *X = s->xyz + i * 3, *J = s->jp + i * 9;
@@ -227,13 +235,24 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_objective)(ALWAN_CORE_FN(alwan_rgb_fit_stat
                 fro += v * v;
             }
         }
-        s->scratch[i] = gain * ALWAN_CORE_SQRT(noise * fro) + s->prm.clip_weight * clip;
+        ALWAN_CORE_T cost = clip;
+        if (priced && clip > ALWAN_CORE_ZERO) {
+            /* the part that quantisation cannot explain and no bit depth can fix: where this
+             * colour lands once the encoder has clamped it into the gamut */
+            ALWAN_CORE_T xyzc[3], pclip[3];
+            for (int r = 0; r < 3; r++) xyzc[r] = (B[r*3]*lin[0] + B[r*3+1]*lin[1] + B[r*3+2]*lin[2]) * scale;
+            ALWAN_CORE_FN(rf_pcoord)(xyzc, s->prm.metric, s->disp, pclip);
+            cost = ALWAN_CORE_FN(rf_pdist)(s->pc + i * 3, pclip, s->prm.metric);
+        }
+        s->scratch[i] = gain * ALWAN_CORE_SQRT(noise * fro) + s->prm.clip_weight * cost;
         if (clip > worst_clip) worst_clip = clip;
     }
-    /* mean, percentile, and the single worst overshoot: the percentile alone lets a
-     * fraction smaller than 1 - percentile clip for free, and a clipped texel is a visible
-     * defect however few there are */
-    { ALWAN_CORE_T mean, tail, mx; ALWAN_CORE_FN(rf_stats)(s, &mean, &tail, &mx); return mean + tail + s->prm.clip_weight * worst_clip; }
+    /* Under FORBID the mean and the percentile are joined by the single worst overshoot,
+     * because the percentile alone lets a fraction smaller than 1 - percentile clip for free.
+     * Under PRICED the clip damage already rides in every sample's own cost, so the mean and
+     * the percentile weigh it exactly as often as it happens: that is the point. */
+    { ALWAN_CORE_T mean, tail, mx; ALWAN_CORE_FN(rf_stats)(s, &mean, &tail, &mx);
+      return mean + tail + (priced ? ALWAN_CORE_ZERO : s->prm.clip_weight * worst_clip); }
 }
 
 /* ---------------------------------------------------------------- */
@@ -555,6 +574,7 @@ void ALWAN_CORE_FN(alwan_rgb_fit_params_init)(ALWAN_CORE_FN(alwan_rgb_fit_params
     p->metric = ALWAN_FIT_METRIC_OKLAB;
     p->percentile = ALWAN_CORE_LITERAL(0.999);
     p->clip_weight = ALWAN_CORE_LITERAL(1.0);
+    p->clip_policy = ALWAN_FIT_CLIP_FORBID;
     p->srgb_margin = ALWAN_CORE_LITERAL(0.10);
     p->gamma_min = ALWAN_CORE_LITERAL(1.0);
     p->gamma_max = ALWAN_CORE_LITERAL(3.0);

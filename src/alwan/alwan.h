@@ -2488,6 +2488,19 @@ typedef enum { ALWAN_FIT_METRIC_OKLAB = 0, ALWAN_FIT_METRIC_ITP = 1, ALWAN_FIT_M
                ALWAN_FIT_METRIC_DISPLAY = 3, ALWAN_FIT_METRIC_LINEAR = 4 } alwan_rgb_fit_metric;
 enum { ALWAN_FIT_LOCK_WHITE = 1, ALWAN_FIT_LOCK_PRIMARIES = 2, ALWAN_FIT_LOCK_TF = 4, ALWAN_FIT_LOCK_SCALE = 8 };
 
+/* What going out of the fitted gamut costs the objective.
+ *
+ * FORBID charges the overshoot itself, per sample and once more on the single worst one, so
+ * the answer is a gamut that holds the whole dataset.
+ *
+ * PRICED charges what clipping actually does: the metric distance between the colour and what
+ * it becomes once clamped, in the same units as the quantisation error. The two are then
+ * comparable and the solver weighs them itself, sample by sample, as often as each happens. On
+ * a peaked distribution (a normal map, one material, a single-lit scene) it will trade a small
+ * fraction of clipped border colours for a tighter gamut and more precision everywhere else.
+ * clip_weight still scales the charge: above 1 buys back caution, below 1 more aggression. */
+typedef enum { ALWAN_FIT_CLIP_FORBID = 0, ALWAN_FIT_CLIP_PRICED = 1 } alwan_fit_clip_policy;
+
 /* The fitted transfer function. gamma is used by POWER only: linear = scale * encoded ^ gamma.
  * scale is the linear value that encodes to 1.0; on input 0 means 1, else 1e-8..1e8. */
 typedef struct { alwan_fit_tf_kind kind; alwan_f32 gamma; alwan_f32 scale; } alwan_fit_tf_f32;
@@ -2506,6 +2519,7 @@ typedef struct {
                                           larger (DISPLAY, ITP) needs it raised in proportion or the fit will accept
                                           clipped pixels. 0 lets the percentile decide alone */
     alwan_f32 srgb_margin;             /* AUTO: power must beat sRGB by this fraction, 0.10 */
+    alwan_fit_clip_policy clip_policy;  /* FORBID (default) or PRICED, see above */
     unsigned lock;                     /* ALWAN_FIT_LOCK_* bits: keep those where the start put them */
     alwan_f32 gamma_min, gamma_max;    /* 1.0 and 3.0 */
     alwan_f32 step_xy, step_log_gamma; /* initial move sizes: 0.01 in xy, 0.1 in log gamma and log scale */
@@ -2519,6 +2533,7 @@ typedef struct {
     alwan_f64 percentile;
     alwan_f64 clip_weight;
     alwan_f64 srgb_margin;
+    alwan_fit_clip_policy clip_policy;
     unsigned lock;
     alwan_f64 gamma_min, gamma_max;
     alwan_f64 step_xy, step_log_gamma;
