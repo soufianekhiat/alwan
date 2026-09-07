@@ -305,13 +305,14 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_global_exp_field)(ALWAN_CORE_T *e_
 static alwan_status ALWAN_CORE_FN(alwan__local_exp_core_ex)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out,
         ALWAN_CORE_T const *e_in, ALWAN_CORE_T *base_io, int base_warm, int base_sweeps,
         ALWAN_CORE_T *v_io, int v_warm,
+        ALWAN_CORE_T *carrier_out, ALWAN_CORE_T *base_out, ALWAN_CORE_T *target_out, int inputs_only,
         ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot,
         ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
-    if ((!out && !e_out) || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
+    if ((!out && !e_out && !inputs_only) || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
     if (iterations <= 0) iterations = 60;
     if (base_sweeps <= 0) base_sweeps = 200;
     size_t N = (size_t)W * (size_t)H;
-    ALWAN_CORE_T *own = out ? NULL : (ALWAN_CORE_T*)ctx->alloc_fn(N*3*sizeof(ALWAN_CORE_T),16);
+    ALWAN_CORE_T *own = (out || inputs_only) ? NULL : (ALWAN_CORE_T*)ctx->alloc_fn(N*3*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *dst = out ? out : own;
     ALWAN_CORE_T *zM  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *PO  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
@@ -331,7 +332,7 @@ static alwan_status ALWAN_CORE_FN(alwan__local_exp_core_ex)(ALWAN_CORE_T *out, A
     ALWAN_CORE_T *g   = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *vel = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *hs  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
-    int ok = zM && PO && csh && csv && tmp && bs && bs2 && e0 && e && xe && Y && C && Cp && Cm && Jc && g && vel && hs && dst, st = ALWAN_OK;
+    int ok = zM && PO && csh && csv && tmp && bs && bs2 && e0 && e && xe && Y && C && Cp && Cm && Jc && g && vel && hs && (dst || inputs_only), st = ALWAN_OK;
     if (!ok) { st = ALWAN_E_NOMEM; goto done; }
 
     for (size_t i = 0; i < N; i++) {
@@ -392,6 +393,11 @@ have_bbar:
         }
     }
     }
+    /* what the frame gave the solver, before a single repair iteration has run */
+    if (carrier_out) memcpy(carrier_out, zM, N*sizeof(ALWAN_CORE_T));
+    if (base_out)    memcpy(base_out,    bs, N*sizeof(ALWAN_CORE_T));
+    if (target_out)  memcpy(target_out,  e0, N*sizeof(ALWAN_CORE_T));
+    if (inputs_only) goto done;
     /* --- carrier-order repair: increasing-penalty gradient solve, anchored to e0 --- */
     for (size_t i = 0; i < N; i++) e[i] = e_in ? e_in[i] : e0[i];
     /* Heavy-ball velocity. The gradient's smooth part is the anchor 2*(e-e0), so a plain step
@@ -476,7 +482,7 @@ done:
     return st;
 }
 static alwan_status ALWAN_CORE_FN(alwan__local_exp_core)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
-    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, in, W, H, iterations, strength, pivot, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, in, W, H, iterations, strength, pivot, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
@@ -496,7 +502,7 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume)(ALWAN_CORE_T *e_
         int iterations, int base_sweeps, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!e_io || !base_io) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm, base_sweeps,
-                                                   NULL, 0, in, W, H, iterations, strength, pivot,
+                                                   NULL, 0, NULL, NULL, NULL, 0, in, W, H, iterations, strength, pivot,
                                                    ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 
@@ -526,7 +532,7 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume_m)(ALWAN_CORE_T *
         ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
     if (!e_io || !v_io || !base_io) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm, base_sweeps,
-                                                   v_io, warm, in, W, H, iterations, strength, pivot,
+                                                   v_io, warm, NULL, NULL, NULL, 0, in, W, H, iterations, strength, pivot,
                                                    momentum, relax, ctx);
 }
 /* Same solve, and the exposure field it converged to: e_out is W*H scalars in stops. out may be NULL. */
@@ -539,7 +545,28 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field)(ALWAN_CORE_T *e_o
  * momentum 0 with relax 0 is alwan_picture_form_local_exp_field exactly. */
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field_m)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
     if (!e_out) return ALWAN_E_INVALID;
-    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, in, W, H, iterations, strength, pivot, momentum, relax, ctx);
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, in, W, H, iterations, strength, pivot, momentum, relax, ctx);
+}
+
+/* What a frame gives the solver, before any repair iteration has run.
+ *
+ * Three width*height fields, each of which may be NULL:
+ *   carrier_out  log2(max(R,G,B)), the scene's own carrier in stops
+ *   base_out     that carrier smoothed by evidence-gated Jacobi, cut at occlusion boundaries,
+ *                which is the solver's reading of "how lit is this region" rather than this pixel
+ *   target_out   the anchor the exposure field is pulled toward, -strength*(base - log2(pivot)),
+ *                capped at one stop either way. That cap is why a scene that brightens by four
+ *                stops does not get four stops back.
+ *
+ * The exposure field is not one of these: it is state, carried between frames, and it is what the
+ * caller already holds in e_io. These are what changes when the scene does. */
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_inputs)(ALWAN_CORE_T *carrier_out,
+        ALWAN_CORE_T *base_out, ALWAN_CORE_T *target_out, ALWAN_CORE_T const *in, int W, int H,
+        ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    if (!carrier_out && !base_out && !target_out) return ALWAN_E_INVALID;
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(NULL, NULL, NULL, NULL, 0, 200, NULL, 0,
+            carrier_out, base_out, target_out, 1, in, W, H, 1, strength, pivot,
+            ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 
 /* Public: PURE-corrected formation.  COMPLETE_HEMI_LOOK's reconstruction with the purity rolloff

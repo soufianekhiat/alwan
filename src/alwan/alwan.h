@@ -2494,6 +2494,21 @@ alwan_status alwan_picture_form_local_exp_resume_f64(alwan_f64 *e_io, alwan_f64 
 alwan_status alwan_picture_form_local_exp_resume_m_f32(alwan_f32 *e_io, alwan_f32 *v_io, alwan_f32 *base_io, alwan_f32 *out, alwan_f32 const *in, int width, int height, int warm, int iterations, int base_sweeps, alwan_f32 strength, alwan_f32 pivot, alwan_f32 momentum, alwan_f32 relax, alwan_ctx *ctx);
 alwan_status alwan_picture_form_local_exp_resume_m_f64(alwan_f64 *e_io, alwan_f64 *v_io, alwan_f64 *base_io, alwan_f64 *out, alwan_f64 const *in, int width, int height, int warm, int iterations, int base_sweeps, alwan_f64 strength, alwan_f64 pivot, alwan_f64 momentum, alwan_f64 relax, alwan_ctx *ctx);
 
+/* EXPERIMENTAL: what a frame gives the solver, before any repair iteration has run.
+ *
+ * Three width*height fields, each of which may be NULL:
+ *   carrier_out  log2(max(R,G,B)), the scene's own carrier in stops
+ *   base_out     that carrier smoothed by evidence-gated Jacobi and cut at occlusion boundaries,
+ *                the solver's reading of how lit a region is rather than a pixel
+ *   target_out   the anchor the exposure field is pulled toward, -strength*(base - log2(pivot)),
+ *                capped at one stop either way. That cap is why a scene that brightens by four
+ *                stops does not get four stops back.
+ *
+ * The exposure field itself is not here: it is state carried between frames, which the caller
+ * already holds in e_io. These three are what changes when the scene does. */
+alwan_status alwan_picture_form_local_exp_inputs_f32(alwan_f32 *carrier_out, alwan_f32 *base_out, alwan_f32 *target_out, alwan_f32 const *in, int width, int height, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
+alwan_status alwan_picture_form_local_exp_inputs_f64(alwan_f64 *carrier_out, alwan_f64 *base_out, alwan_f64 *target_out, alwan_f64 const *in, int width, int height, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
+
 /* ----------------------------------------------------------------
  * EXPERIMENTAL: fit an RGB encoding space to a dataset
  *
