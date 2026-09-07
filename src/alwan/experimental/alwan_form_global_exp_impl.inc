@@ -306,6 +306,7 @@ static alwan_status ALWAN_CORE_FN(alwan__local_exp_core_ex)(ALWAN_CORE_T *out, A
         ALWAN_CORE_T const *e_in, ALWAN_CORE_T *base_io, int base_warm, int base_sweeps,
         ALWAN_CORE_T *v_io, int v_warm,
         ALWAN_CORE_T *carrier_out, ALWAN_CORE_T *base_out, ALWAN_CORE_T *target_out, int inputs_only,
+        int reseat,
         ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot,
         ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
     if ((!out && !e_out && !inputs_only) || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
@@ -400,6 +401,26 @@ have_bbar:
     if (inputs_only) goto done;
     /* --- carrier-order repair: increasing-penalty gradient solve, anchored to e0 --- */
     for (size_t i = 0; i < N; i++) e[i] = e_in ? e_in[i] : e0[i];
+    /* Across a cut, carrying the field carries a picture of the previous shot. The field's shape
+     * is the old scene's shape, and the step cap means it needs the better part of a second to
+     * lose it, which shows as the old shot ghosting through the new one. An eye does not do that.
+     * What it carries across a cut is its level of adaptation, not a memory of what it was looking
+     * at. So reseat the field on this frame's target and keep only the scalar offset it had:
+     * the mean is preserved exactly, so the adaptation still lags, and the structure is the new
+     * scene's from the first frame. */
+    if (e_in && reseat) {
+        double se = 0.0, s0 = 0.0;
+        for (size_t i = 0; i < N; i++) { se += (double)e[i]; s0 += (double)e0[i]; }
+        {
+        ALWAN_CORE_T lvl = (ALWAN_CORE_T)((se - s0) / (double)N);
+        for (size_t i = 0; i < N; i++) {
+            ALWAN_CORE_T v = e0[i] + lvl;
+            if (v < ALWAN_CORE_LITERAL(-3.0)) v = ALWAN_CORE_LITERAL(-3.0);
+            if (v > ALWAN_CORE_LITERAL(3.0)) v = ALWAN_CORE_LITERAL(3.0);
+            e[i] = v;
+        }
+        }
+    }
     /* Heavy-ball velocity. The gradient's smooth part is the anchor 2*(e-e0), so a plain step
      * relaxes at lr*aw = 0.04 per iteration and needs ~60 to arrive. Momentum mu turns that into
      * roughly 0.04/(1-mu). It is carried across frames alongside the field, because a velocity
@@ -482,7 +503,7 @@ done:
     return st;
 }
 static alwan_status ALWAN_CORE_FN(alwan__local_exp_core)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
-    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, in, W, H, iterations, strength, pivot, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, 0, in, W, H, iterations, strength, pivot, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
@@ -502,7 +523,7 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume)(ALWAN_CORE_T *e_
         int iterations, int base_sweeps, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!e_io || !base_io) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm, base_sweeps,
-                                                   NULL, 0, NULL, NULL, NULL, 0, in, W, H, iterations, strength, pivot,
+                                                   NULL, 0, NULL, NULL, NULL, 0, 0, in, W, H, iterations, strength, pivot,
                                                    ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 
@@ -510,6 +531,13 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume)(ALWAN_CORE_T *e_
  *
  * v_io is W*H and is read and written exactly like e_io: warm = 0 starts it at rest.
  * momentum 0 with relax 0 reproduces alwan_picture_form_local_exp_resume bit for bit.
+ *
+ * warm takes a third value here. 0 is a cold start, 1 resumes, and 2 says the frame begins a new
+ * shot: the level of adaptation is carried and nothing with a shape to it is. Across a cut, warm 1
+ * carries the old scene's field into the new one and the step cap holds it there for the better
+ * part of a second, which reads as the previous shot ghosting through. warm 2 keeps the field's
+ * mean exactly, so the adaptation still lags the way an eye does, and takes its structure from the
+ * frame in hand.
  *
  * relax > 0 replaces the fixed 0.02 step with relax * g / diag(H), a diagonal Newton step. This is
  * what actually makes the solve fast: the anchor's curvature is 2 everywhere and the order
@@ -531,8 +559,9 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume_m)(ALWAN_CORE_T *
         int iterations, int base_sweeps, ALWAN_CORE_T strength, ALWAN_CORE_T pivot,
         ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
     if (!e_io || !v_io || !base_io) return ALWAN_E_INVALID;
-    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm, base_sweeps,
-                                                   v_io, warm, NULL, NULL, NULL, 0, in, W, H, iterations, strength, pivot,
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm == 1, base_sweeps,
+                                                   v_io, warm == 1, NULL, NULL, NULL, 0, warm == 2,
+                                                   in, W, H, iterations, strength, pivot,
                                                    momentum, relax, ctx);
 }
 /* Same solve, and the exposure field it converged to: e_out is W*H scalars in stops. out may be NULL. */
@@ -545,7 +574,7 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field)(ALWAN_CORE_T *e_o
  * momentum 0 with relax 0 is alwan_picture_form_local_exp_field exactly. */
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field_m)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
     if (!e_out) return ALWAN_E_INVALID;
-    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, in, W, H, iterations, strength, pivot, momentum, relax, ctx);
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, 0, in, W, H, iterations, strength, pivot, momentum, relax, ctx);
 }
 
 /* What a frame gives the solver, before any repair iteration has run.
@@ -565,7 +594,7 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_inputs)(ALWAN_CORE_T *ca
         ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!carrier_out && !base_out && !target_out) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core_ex)(NULL, NULL, NULL, NULL, 0, 200, NULL, 0,
-            carrier_out, base_out, target_out, 1, in, W, H, 1, strength, pivot,
+            carrier_out, base_out, target_out, 1, 0, in, W, H, 1, strength, pivot,
             ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 

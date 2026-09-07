@@ -2483,6 +2483,14 @@ alwan_status alwan_picture_form_local_exp_resume_f64(alwan_f64 *e_io, alwan_f64 
  * v_io is a third width*height state, read and written exactly like e_io, starting at rest when
  * warm is 0. momentum 0 with relax 0 reproduces alwan_picture_form_local_exp_resume bit for bit.
  *
+ * warm takes a third value here: 0 is a cold start, 1 resumes the previous frame, and 2 says this
+ * frame begins a new shot. On a cut, warm 1 carries the previous scene's field into the new one,
+ * and since the field may only move so far per frame it stays there for the better part of a
+ * second, which reads as the old shot ghosting through the new one. An eye carries its level of
+ * adaptation across a cut, not a memory of what it was looking at, so warm 2 keeps the field's
+ * mean exactly and takes its structure from the frame in hand. Detecting the cut is the caller's,
+ * since only the caller knows whether a large change is an edit or an event in the scene.
+ *
  * This separates two things the plain call ties together. Without it the per-frame budget is
  * both how much work a frame costs and how long the picture takes to follow a change in the
  * light, so a real-time budget also fixes the adaptation time and a slow adaptation can only be
