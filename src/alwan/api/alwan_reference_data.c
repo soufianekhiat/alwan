@@ -306,6 +306,21 @@ static alwan_f64 const g_te226_v2_d65_xyY[] = {
 #include "../data/colorchecker/te226_v2_d65_xyy.csv"
 };
 
+/* Reflectance spectra, patch by patch, each on its own uniform grid.
+ *
+ * These are the better data: a spectrum answers for any illuminant and any observer, where a
+ * tristimulus table can only be chromatically adapted, which is an approximation of the
+ * question rather than an answer to it. Where a target appears in both forms, prefer these. */
+static alwan_f64 const g_colorchecker_ohta_reflectance[] = {     /* 24 x 81, 380-780 at 5 nm */
+#include "../data/colorchecker/classic_ohta_reflectance.csv"
+};
+static alwan_f64 const g_babelcolor_average_reflectance[] = {    /* 24 x 36, 380-730 at 10 nm */
+#include "../data/colorchecker/babelcolor_average_reflectance.csv"
+};
+static alwan_f64 const g_pmc_reflectance[] = {                   /* 30 x 31, 400-700 at 10 nm */
+#include "../data/colorchecker/pmc_reflectance.csv"
+};
+
 /* Each table is patches x (x, y, Y). Read through the shared row gate; see munsell_row. */
 enum { COLORCHECKER_FIELDS_PER_PATCH = 3 };
 #define COLORCHECKER_COUNT_OF(table) \
@@ -346,6 +361,12 @@ static alwan_f64 const *colorchecker_table(alwan_colorchecker_type type, size_t 
             *native = ALWAN_ILLUMINANT_D65;
             *count = COLORCHECKER_COUNT_OF(g_te226_v2_d65_xyY);
             return g_te226_v2_d65_xyY;
+        /* the spectral sets have no tristimulus table; alwan_color_checker_data integrates
+         * their spectra under the illuminant asked for, which is the whole point of having them */
+        case ALWAN_COLORCHECKER_CLASSIC_OHTA:
+        case ALWAN_COLORCHECKER_PMC:
+            *count = 0;
+            return NULL;
         default:
             *count = 0;
             return NULL;   /* a known type alwan has no measurements for */
@@ -358,6 +379,25 @@ static alwan_f64 const *colorchecker_row(alwan_f64 const *table, size_t count, s
 }
 ALWAN_DIAG_POP
 
+/* The reflectance table for a type, or NULL when alwan carries no spectra for it. */
+static alwan_f64 const *colorchecker_reflectance_table(alwan_colorchecker_type type, size_t *patches,
+                                                       size_t *bands, alwan_f64 *lo, alwan_f64 *hi) {
+    switch (type) {
+        case ALWAN_COLORCHECKER_CLASSIC_OHTA:
+            *patches = 24; *bands = 81; *lo = ALWAN_LITERAL(380.0); *hi = ALWAN_LITERAL(780.0);
+            return g_colorchecker_ohta_reflectance;
+        case ALWAN_BABELCOLOR_AVERAGE:
+            *patches = 24; *bands = 36; *lo = ALWAN_LITERAL(380.0); *hi = ALWAN_LITERAL(730.0);
+            return g_babelcolor_average_reflectance;
+        case ALWAN_COLORCHECKER_PMC:
+            *patches = 30; *bands = 31; *lo = ALWAN_LITERAL(400.0); *hi = ALWAN_LITERAL(700.0);
+            return g_pmc_reflectance;
+        default:
+            *patches = 0; *bands = 0; *lo = ALWAN_LITERAL(0.0); *hi = ALWAN_LITERAL(0.0);
+            return NULL;
+    }
+}
+
 /* Get number of patches in a Color Checker target.
  *
  * This counts the patches alwan can HAND YOU, so it is the length of the embedded table and not
@@ -366,8 +406,122 @@ ALWAN_DIAG_POP
 size_t alwan_color_checker_num_patches(alwan_colorchecker_type type) {
     size_t count = 0;
     alwan_illuminant native;
-    (void)colorchecker_table(type, &count, &native);
-    return count;
+    if (colorchecker_table(type, &count, &native)) {
+        return count;
+    }
+    /* a spectral-only target still answers alwan_color_checker_data, by integration */
+    return alwan_color_checker_num_reflectances(type);
+}
+
+/* One patch's reflectance spectrum, on the grid it was measured on.
+ *
+ * Creates the SPD; the caller destroys it with alwan_spd_destroy. Feed it to
+ * alwan_xyz_from_spd with any illuminant and observer, which is the correct way to ask what a
+ * patch looks like under a light that is not the one the chart was published under. */
+alwan_status alwan_color_checker_reflectance_f64(alwan_spd_f64 *out, alwan_colorchecker_type type,
+                                                 size_t patch_index, alwan_ctx *ctx) {
+    if (!out) {
+        return ALWAN_E_INVALID;
+    }
+    size_t patches = 0, bands = 0;
+    alwan_f64 lo = ALWAN_LITERAL(0.0), hi = ALWAN_LITERAL(0.0);
+    alwan_f64 const *table = colorchecker_reflectance_table(type, &patches, &bands, &lo, &hi);
+    if (!table) {
+        return type <= ALWAN_COLORCHECKER_PMC ? ALWAN_E_NODATA : ALWAN_E_INVALID;
+    }
+    if (patch_index >= patches) {
+        return ALWAN_E_RANGE;
+    }
+    alwan_status status = alwan_spd_create_f64(out, lo, hi, bands, ctx);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+    alwan_f64 const *row = &table[patch_index * bands];
+    for (size_t i = 0; i < bands; i++) {
+        out->values[i] = row[i];
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_color_checker_reflectance_f32(alwan_spd_f32 *out, alwan_colorchecker_type type,
+                                                 size_t patch_index, alwan_ctx *ctx) {
+    if (!out) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_spd_f64 wide;
+    alwan_status status = alwan_color_checker_reflectance_f64(&wide, type, patch_index, ctx);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+    status = alwan_spd_create_f32(out, (alwan_f32)wide.wavelength_min, (alwan_f32)wide.wavelength_max, wide.count, ctx);
+    if (status == ALWAN_OK) {
+        for (size_t i = 0; i < wide.count; i++) {
+            out->values[i] = (alwan_f32)wide.values[i];
+        }
+    }
+    alwan_spd_destroy_f64(&wide, ctx);
+    return status;
+}
+
+/* How many patches of a target alwan has spectra for, 0 when it has none. */
+size_t alwan_color_checker_num_reflectances(alwan_colorchecker_type type) {
+    size_t patches = 0, bands = 0;
+    alwan_f64 lo, hi;
+    (void)colorchecker_reflectance_table(type, &patches, &bands, &lo, &hi);
+    return patches;
+}
+
+/* A patch of a spectral-only target, integrated under the illuminant asked for.
+ *
+ * This is the answer a chromatic adaptation only approximates: the spectrum is what the patch
+ * does to light, so putting a different light in front of it is a different integral, not a
+ * matrix. Y is normalised by a perfect diffuser under the same light, so white lands at 1 and
+ * the numbers sit on the same scale as the tristimulus tables. */
+static alwan_status colorchecker_from_spectrum(alwan_xyz_f64 *xyz, alwan_colorchecker_type type,
+                                               alwan_illuminant illuminant, size_t patch_index) {
+    alwan_spd_f64 reflectance;
+    alwan_status status = alwan_color_checker_reflectance_f64(&reflectance, type, patch_index, NULL);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+    alwan_spd_f64 light;
+    status = alwan_spd_illuminant_f64(&light, illuminant, NULL);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy_f64(&reflectance, NULL);
+        return status;
+    }
+    alwan_spd_f64 perfect_diffuser;
+    status = alwan_spd_create_f64(&perfect_diffuser, reflectance.wavelength_min,
+                                  reflectance.wavelength_max, reflectance.count, NULL);
+    if (status != ALWAN_OK) {
+        alwan_spd_destroy_f64(&reflectance, NULL);
+        alwan_spd_destroy_f64(&light, NULL);
+        return status;
+    }
+    for (size_t i = 0; i < perfect_diffuser.count; i++) {
+        perfect_diffuser.values[i] = ALWAN_LITERAL(1.0);
+    }
+
+    alwan_xyz_f64 patch_xyz = {0}, white_xyz = {0};
+    status = alwan_xyz_from_spd_f64(&patch_xyz, &reflectance, &light, ALWAN_OBSERVER_CIE_1931_2DEG,
+                                    ALWAN_INTEGRATE_SIMPSON, ALWAN_LITERAL(0.0), NULL);
+    if (status == ALWAN_OK) {
+        status = alwan_xyz_from_spd_f64(&white_xyz, &perfect_diffuser, &light, ALWAN_OBSERVER_CIE_1931_2DEG,
+                                        ALWAN_INTEGRATE_SIMPSON, ALWAN_LITERAL(0.0), NULL);
+    }
+    alwan_spd_destroy_f64(&reflectance, NULL);
+    alwan_spd_destroy_f64(&light, NULL);
+    alwan_spd_destroy_f64(&perfect_diffuser, NULL);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+    if (white_xyz.y <= ALWAN_LITERAL(0.0)) {
+        return ALWAN_E_DIVZERO;
+    }
+    xyz->x = patch_xyz.x / white_xyz.y;
+    xyz->y = patch_xyz.y / white_xyz.y;
+    xyz->z = patch_xyz.z / white_xyz.y;
+    return ALWAN_OK;
 }
 
 /* The illuminant a target's published values are under, before any adaptation. */
@@ -378,7 +532,8 @@ alwan_status alwan_color_checker_native_illuminant(alwan_illuminant *illuminant,
     size_t count = 0;
     alwan_illuminant native;
     if (!colorchecker_table(type, &count, &native)) {
-        return type <= ALWAN_TE226_V2 ? ALWAN_E_NODATA : ALWAN_E_INVALID;
+        /* a spectral target has no native illuminant: it answers for whichever one you ask */
+        return type <= ALWAN_COLORCHECKER_PMC ? ALWAN_E_NODATA : ALWAN_E_INVALID;
     }
     *illuminant = native;
     return ALWAN_OK;
@@ -395,8 +550,17 @@ alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker
     alwan_illuminant native = ALWAN_ILLUMINANT_D50;
     alwan_f64 const *table = colorchecker_table(type, &num_patches, &native);
     if (!table) {
+        /* a spectral-only target: integrate it under the light that was asked for, which is a
+         * better answer than adapting a tristimulus table and is why these are carried as
+         * spectra in the first place */
+        if (alwan_color_checker_num_reflectances(type) > 0) {
+            if (patch_index >= alwan_color_checker_num_reflectances(type)) {
+                return ALWAN_E_RANGE;
+            }
+            return colorchecker_from_spectrum(xyz, type, illuminant, patch_index);
+        }
         /* a type alwan carries no measurements for, or not a type at all */
-        return type <= ALWAN_TE226_V2 ? ALWAN_E_NODATA : ALWAN_E_INVALID;
+        return type <= ALWAN_COLORCHECKER_PMC ? ALWAN_E_NODATA : ALWAN_E_INVALID;
     }
     if (patch_index >= num_patches) {
         return ALWAN_E_RANGE;

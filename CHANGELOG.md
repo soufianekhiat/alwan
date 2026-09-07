@@ -23,6 +23,18 @@ All notable changes to this project will be documented in this file.
   than assuming D50, so reading one of those as D50 no longer silently
   chromatic-adapts the reference data itself.
 
+- **Spectral chart data, integrated rather than adapted.** Reflectance
+  spectra for the ColorChecker (Ohta 1997, 24 patches, 380-780 nm at 5 nm,
+  the same numbers ISO 17321-1 carries), BabelColor Average (380-730 nm at
+  10 nm) and PMC (30 patches of skin tones and memory colours, 400-700 nm
+  at 10 nm). `alwan_color_checker_reflectance` hands back one patch's
+  spectrum on the grid it was measured on, and
+  `alwan_color_checker_data` integrates it under whichever illuminant is
+  asked for, normalised by a perfect diffuser so white lands at Y = 1 like
+  the tristimulus tables. That is a different answer from adapting a
+  tristimulus table, and the correct one: a spectrum is what a patch does
+  to light, so a different light is a different integral, not a matrix.
+
 - **Reading an OpenQualia measurement file** (`alwan_dev`,
   `gendata/openqualia.py`). OpenQualia standardises the measurement that
   ships with an individual target as CGATS.17-2009, reached from a QR label

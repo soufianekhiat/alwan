@@ -194,6 +194,9 @@ EXPORTS
     alwan_color_checker_data_f64
     alwan_color_checker_native_illuminant
     alwan_color_checker_num_patches
+    alwan_color_checker_num_reflectances
+    alwan_color_checker_reflectance_f32
+    alwan_color_checker_reflectance_f64
     alwan_color_matrix_apply_f32
     alwan_color_matrix_apply_f32_map_interleave
     alwan_color_matrix_apply_f32_map_planar

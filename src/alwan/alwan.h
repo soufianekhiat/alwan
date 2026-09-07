@@ -3684,7 +3684,14 @@ typedef enum {
     ALWAN_COLORCHECKER_CLASSIC_PRE2014 = 6,
     ALWAN_COLORCHECKER_CLASSIC_POST2014 = 7,
     ALWAN_COLORCHECKER_SG_PRE2014 = 8, /* the SG before the same change */
-    ALWAN_TE226_V2 = 9 /* Image Engineering TE226 V2, 45 patches, published under D65 */
+    ALWAN_TE226_V2 = 9, /* Image Engineering TE226 V2, 45 patches, published under D65 */
+    /* Measured as reflectance rather than as tristimulus values, so these answer for any
+     * illuminant and observer instead of only for the one they were published under. They have
+     * no tristimulus table: alwan_color_checker_data integrates the spectrum for you. */
+    ALWAN_COLORCHECKER_CLASSIC_OHTA = 10, /* Ohta 1997, 24 patches, 380-780 nm at 5 nm. ISO
+                                           * 17321-1 carries the same numbers. */
+    ALWAN_COLORCHECKER_PMC = 11 /* 30 patches of skin tones and memory colours, 400-700 nm at
+                                 * 10 nm */
 } alwan_colorchecker_type;
 
 /* Advanced Interpolation
@@ -3852,6 +3859,18 @@ size_t alwan_color_checker_num_patches(alwan_colorchecker_type type);
  * adapts FROM. D50 for most, Illuminant C for the 1976 Classic, D65 for the TE226. Returns
  * ALWAN_E_NODATA for a type alwan carries no measurements for. */
 alwan_status alwan_color_checker_native_illuminant(alwan_illuminant *illuminant, alwan_colorchecker_type type);
+
+/* One patch's reflectance spectrum, on the grid it was measured on. Creates the SPD, which the
+ * caller destroys with alwan_spd_destroy. Hand it to alwan_xyz_from_spd with any illuminant and
+ * observer: that is the right way to ask what a patch looks like under a light other than the
+ * one its chart was published under, and it is not the same answer as adapting a tristimulus
+ * table, which is an approximation of the question. Returns ALWAN_E_NODATA for a target alwan
+ * has no spectra for. */
+alwan_status alwan_color_checker_reflectance_f64(alwan_spd_f64 *out, alwan_colorchecker_type type, size_t patch_index, alwan_ctx *ctx);
+alwan_status alwan_color_checker_reflectance_f32(alwan_spd_f32 *out, alwan_colorchecker_type type, size_t patch_index, alwan_ctx *ctx);
+
+/* How many patches of a target alwan has spectra for, 0 when it has none. */
+size_t alwan_color_checker_num_reflectances(alwan_colorchecker_type type);
 
 /* NCS (Natural Color System) Data
  * Convert NCS notation to XYZ tristimulus values
