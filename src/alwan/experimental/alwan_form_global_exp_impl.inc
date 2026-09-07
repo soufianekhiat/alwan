@@ -103,10 +103,16 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_hybrid_exp)(ALWAN_CORE_T *out, ALW
  * (0.000 deg opponent drift at any e), so the scalar-e solver on this base is provably pink-immune;
  * it is also a full 13/13 constraint row. (CHANNEL, by contrast, rotates hue ~3.8 deg per 0.1 EV,
  * which is why the HYBRID blend is NOT used as the solver base.) */
-static int ALWAN_CORE_FN(alwan__exp_form_base)(ALWAN_CORE_T *out, ALWAN_CORE_T const *xin, int W, int H, alwan_ctx *ctx){
+/* Which formation operator the exposure solve is wrapped around. COMPLETE_HEMI_LOOK is the
+ * default and reaches display white 6.35 stops over mid grey with a 0.861 purity cap, so every
+ * saturated pixel is desaturated by about 14% from black up. COMPLETE_PEAK reaches white at
+ * essentially the same place with a 0.997 cap, which leaves the interior of the display range
+ * alone. The solve does not care which: it only ever reads max(RGB) of the result. */
+static int ALWAN_CORE_FN(alwan__exp_form_base)(ALWAN_CORE_T *out, ALWAN_CORE_T const *xin, int W, int H,
+                                               alwan_gamut_formation_method method, alwan_ctx *ctx){
     ALWAN_CORE_FN(alwan_gamut_spatial_params) p; memset(&p, 0, sizeof(p));
     p.s = ALWAN_CORE_LITERAL(1.0); p.beta = ALWAN_CORE_LITERAL(8.0); p.compress = ALWAN_CORE_LITERAL(1.0);
-    p.peak = ALWAN_CORE_LITERAL(1.0); p.iterations = 120; p.method = ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK;
+    p.peak = ALWAN_CORE_LITERAL(1.0); p.iterations = 120; p.method = method;
     return ALWAN_CORE_FN(alwan_gamut_map_spatial)(out, xin, NULL, W, H, &p, ctx);
 }
 
@@ -256,7 +262,7 @@ static alwan_status ALWAN_CORE_FN(alwan__global_exp_core)(ALWAN_CORE_T *out, ALW
         ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e0[i]);
         for (int k = 0; k < 3; k++) xe[i*3+k] = s * in[i*3+k];
     }
-    st = ALWAN_CORE_FN(alwan__exp_form_base)(dst, xe, W, H, ctx);
+    st = ALWAN_CORE_FN(alwan__exp_form_base)(dst, xe, W, H, ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK, ctx);
     if (st == ALWAN_OK && e_out) memcpy(e_out, e0, N*sizeof(ALWAN_CORE_T));
 done:
     ctx->free_fn(xe); ctx->free_fn(zM); ctx->free_fn(e0); if (own) ctx->free_fn(own);
@@ -306,7 +312,7 @@ static alwan_status ALWAN_CORE_FN(alwan__local_exp_core_ex)(ALWAN_CORE_T *out, A
         ALWAN_CORE_T const *e_in, ALWAN_CORE_T *base_io, int base_warm, int base_sweeps,
         ALWAN_CORE_T *v_io, int v_warm,
         ALWAN_CORE_T *carrier_out, ALWAN_CORE_T *base_out, ALWAN_CORE_T *target_out, int inputs_only,
-        int reseat,
+        int reseat, alwan_gamut_formation_method form_method,
         ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot,
         ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
     if ((!out && !e_out && !inputs_only) || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
@@ -444,13 +450,13 @@ have_bbar:
                           : ALWAN_CORE_LITERAL(30.0) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0),
                             ALWAN_CORE_LITERAL(2.0) * ((ALWAN_CORE_T)it) / (ALWAN_CORE_T)(iterations > 1 ? iterations - 1 : 1)); /* 30 -> 3000 */
         for (size_t i = 0; i < N; i++) { ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]);    for (int k=0;k<3;k++) xe[i*3+k]=s*in[i*3+k]; }
-        st = ALWAN_CORE_FN(alwan__exp_form_base)(Y, xe, W, H, ctx); if (st != ALWAN_OK) goto done;
+        st = ALWAN_CORE_FN(alwan__exp_form_base)(Y, xe, W, H, form_method, ctx); if (st != ALWAN_OK) goto done;
         for (size_t i = 0; i < N; i++) { ALWAN_CORE_T m = Y[i*3]; if (Y[i*3+1]>m) m=Y[i*3+1]; if (Y[i*3+2]>m) m=Y[i*3+2]; C[i]=m; }
         for (size_t i = 0; i < N; i++) { ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]+hh); for (int k=0;k<3;k++) xe[i*3+k]=s*in[i*3+k]; }
-        st = ALWAN_CORE_FN(alwan__exp_form_base)(Y, xe, W, H, ctx); if (st != ALWAN_OK) goto done;
+        st = ALWAN_CORE_FN(alwan__exp_form_base)(Y, xe, W, H, form_method, ctx); if (st != ALWAN_OK) goto done;
         for (size_t i = 0; i < N; i++) { ALWAN_CORE_T m = Y[i*3]; if (Y[i*3+1]>m) m=Y[i*3+1]; if (Y[i*3+2]>m) m=Y[i*3+2]; Cp[i]=m; }
         for (size_t i = 0; i < N; i++) { ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]-hh); for (int k=0;k<3;k++) xe[i*3+k]=s*in[i*3+k]; }
-        st = ALWAN_CORE_FN(alwan__exp_form_base)(Y, xe, W, H, ctx); if (st != ALWAN_OK) goto done;
+        st = ALWAN_CORE_FN(alwan__exp_form_base)(Y, xe, W, H, form_method, ctx); if (st != ALWAN_OK) goto done;
         for (size_t i = 0; i < N; i++) { ALWAN_CORE_T m = Y[i*3]; if (Y[i*3+1]>m) m=Y[i*3+1]; if (Y[i*3+2]>m) m=Y[i*3+2]; Cm[i]=m; }
         for (size_t i = 0; i < N; i++) Jc[i] = (Cp[i] - Cm[i]) / (ALWAN_CORE_LITERAL(2.0)*hh);
         /* weak anchor to the evidence target. Its curvature is aw and it is the same everywhere;
@@ -491,7 +497,7 @@ have_bbar:
     }
     }
     for (size_t i = 0; i < N; i++) { ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]); for (int k=0;k<3;k++) xe[i*3+k]=s*in[i*3+k]; }
-    st = ALWAN_CORE_FN(alwan__exp_form_base)(dst, xe, W, H, ctx);
+    st = ALWAN_CORE_FN(alwan__exp_form_base)(dst, xe, W, H, form_method, ctx);
     if (st == ALWAN_OK && e_out) memcpy(e_out, e, N*sizeof(ALWAN_CORE_T));
     if (st == ALWAN_OK && base_io) memcpy(base_io, bs, N*sizeof(ALWAN_CORE_T));
     if (st == ALWAN_OK && v_io) memcpy(v_io, vel, N*sizeof(ALWAN_CORE_T));
@@ -503,7 +509,7 @@ done:
     return st;
 }
 static alwan_status ALWAN_CORE_FN(alwan__local_exp_core)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
-    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, 0, in, W, H, iterations, strength, pivot, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, 0, ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK, in, W, H, iterations, strength, pivot, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
@@ -523,7 +529,8 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume)(ALWAN_CORE_T *e_
         int iterations, int base_sweeps, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!e_io || !base_io) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm, base_sweeps,
-                                                   NULL, 0, NULL, NULL, NULL, 0, 0, in, W, H, iterations, strength, pivot,
+                                                   NULL, 0, NULL, NULL, NULL, 0, 0, ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK,
+                                                   in, W, H, iterations, strength, pivot,
                                                    ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 
@@ -557,10 +564,10 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume)(ALWAN_CORE_T *e_
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume_m)(ALWAN_CORE_T *e_io, ALWAN_CORE_T *v_io,
         ALWAN_CORE_T *base_io, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int warm,
         int iterations, int base_sweeps, ALWAN_CORE_T strength, ALWAN_CORE_T pivot,
-        ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
+        ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_gamut_formation_method form_method, alwan_ctx *ctx){
     if (!e_io || !v_io || !base_io) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm == 1, base_sweeps,
-                                                   v_io, warm == 1, NULL, NULL, NULL, 0, warm == 2,
+                                                   v_io, warm == 1, NULL, NULL, NULL, 0, warm == 2, form_method,
                                                    in, W, H, iterations, strength, pivot,
                                                    momentum, relax, ctx);
 }
@@ -572,9 +579,9 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field)(ALWAN_CORE_T *e_o
 
 /* The still solve with both accelerators, for measuring what they buy on a cold start.
  * momentum 0 with relax 0 is alwan_picture_form_local_exp_field exactly. */
-alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field_m)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field_m)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_gamut_formation_method form_method, alwan_ctx *ctx){
     if (!e_out) return ALWAN_E_INVALID;
-    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, 0, in, W, H, iterations, strength, pivot, momentum, relax, ctx);
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, NULL, NULL, NULL, 0, 0, form_method, in, W, H, iterations, strength, pivot, momentum, relax, ctx);
 }
 
 /* What a frame gives the solver, before any repair iteration has run.
@@ -594,7 +601,7 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_inputs)(ALWAN_CORE_T *ca
         ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!carrier_out && !base_out && !target_out) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core_ex)(NULL, NULL, NULL, NULL, 0, 200, NULL, 0,
-            carrier_out, base_out, target_out, 1, 0, in, W, H, 1, strength, pivot,
+            carrier_out, base_out, target_out, 1, 0, ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK, in, W, H, 1, strength, pivot,
             ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 

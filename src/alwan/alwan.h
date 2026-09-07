@@ -2457,8 +2457,8 @@ alwan_status alwan_picture_form_local_exp_field_f64(alwan_f64 *e_out, alwan_f64 
  * glacial on the first, and 0.02 chose glacial. Scaling by the diagonal leaves the fixed point
  * alone, so relax is a rate and not a different answer. momentum is a heavy ball on top and buys
  * much less: at a fixed step its rate floor is sqrt(momentum). Both 0 is the plain step exactly. */
-alwan_status alwan_picture_form_local_exp_field_m_f32(alwan_f32 *e_out, alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_f32 momentum, alwan_f32 relax, alwan_ctx *ctx);
-alwan_status alwan_picture_form_local_exp_field_m_f64(alwan_f64 *e_out, alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_f64 momentum, alwan_f64 relax, alwan_ctx *ctx);
+alwan_status alwan_picture_form_local_exp_field_m_f32(alwan_f32 *e_out, alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_f32 momentum, alwan_f32 relax, alwan_gamut_formation_method form_method, alwan_ctx *ctx);
+alwan_status alwan_picture_form_local_exp_field_m_f64(alwan_f64 *e_out, alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_f64 momentum, alwan_f64 relax, alwan_gamut_formation_method form_method, alwan_ctx *ctx);
 
 /* EXPERIMENTAL: one frame of a moving picture, resuming the previous frame's solve.
  *
@@ -2483,6 +2483,12 @@ alwan_status alwan_picture_form_local_exp_resume_f64(alwan_f64 *e_io, alwan_f64 
  * v_io is a third width*height state, read and written exactly like e_io, starting at rest when
  * warm is 0. momentum 0 with relax 0 reproduces alwan_picture_form_local_exp_resume bit for bit.
  *
+ * form_method chooses the formation operator the solve is wrapped around.
+ * ALWAN_GAMUT_FORM_COMPLETE_HEMI_LOOK is what the non-_m entries use; its 0.861 purity cap
+ * desaturates every saturated pixel by about 14% from black up. ALWAN_GAMUT_FORM_COMPLETE_PEAK
+ * reaches display white at essentially the same scene value with a 0.997 cap, so the interior of
+ * the display range is left alone. The solve is indifferent: it only reads max(RGB) of the result.
+ *
  * warm takes a third value here: 0 is a cold start, 1 resumes the previous frame, and 2 says this
  * frame begins a new shot. On a cut, warm 1 carries the previous scene's field into the new one,
  * and since the field may only move so far per frame it stays there for the better part of a
@@ -2499,8 +2505,8 @@ alwan_status alwan_picture_form_local_exp_resume_f64(alwan_f64 *e_io, alwan_f64 
  * filter the returned field toward the solved one, uniformly. A small relax also slows the
  * picture down, but it slows each pixel by its own curvature, so a hinge-bound pixel lags a free
  * one and the field arrives unevenly. relax is a solver rate; a filter is a time constant. */
-alwan_status alwan_picture_form_local_exp_resume_m_f32(alwan_f32 *e_io, alwan_f32 *v_io, alwan_f32 *base_io, alwan_f32 *out, alwan_f32 const *in, int width, int height, int warm, int iterations, int base_sweeps, alwan_f32 strength, alwan_f32 pivot, alwan_f32 momentum, alwan_f32 relax, alwan_ctx *ctx);
-alwan_status alwan_picture_form_local_exp_resume_m_f64(alwan_f64 *e_io, alwan_f64 *v_io, alwan_f64 *base_io, alwan_f64 *out, alwan_f64 const *in, int width, int height, int warm, int iterations, int base_sweeps, alwan_f64 strength, alwan_f64 pivot, alwan_f64 momentum, alwan_f64 relax, alwan_ctx *ctx);
+alwan_status alwan_picture_form_local_exp_resume_m_f32(alwan_f32 *e_io, alwan_f32 *v_io, alwan_f32 *base_io, alwan_f32 *out, alwan_f32 const *in, int width, int height, int warm, int iterations, int base_sweeps, alwan_f32 strength, alwan_f32 pivot, alwan_f32 momentum, alwan_f32 relax, alwan_gamut_formation_method form_method, alwan_ctx *ctx);
+alwan_status alwan_picture_form_local_exp_resume_m_f64(alwan_f64 *e_io, alwan_f64 *v_io, alwan_f64 *base_io, alwan_f64 *out, alwan_f64 const *in, int width, int height, int warm, int iterations, int base_sweeps, alwan_f64 strength, alwan_f64 pivot, alwan_f64 momentum, alwan_f64 relax, alwan_gamut_formation_method form_method, alwan_ctx *ctx);
 
 /* EXPERIMENTAL: what a frame gives the solver, before any repair iteration has run.
  *
