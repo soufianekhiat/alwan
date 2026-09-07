@@ -23,6 +23,22 @@ All notable changes to this project will be documented in this file.
   than assuming D50, so reading one of those as D50 no longer silently
   chromatic-adapts the reference data itself.
 
+- **Temporal picture formation** (`alwan_picture_form_local_exp_resume`).
+  One frame of a moving picture, resuming the previous frame's solve: the
+  exposure field and the smoothed adaptation base are carried by the
+  caller, and `iterations` and `base_sweeps` are the budget spent catching
+  up this frame. At full budget it reproduces the still-picture solve
+  exactly; below it the field lags the scene, and that lag is the
+  adaptation, for a few sweeps of work per frame instead of a full solve.
+
+  Measured: a static scene settles (0.222 stops of movement on the first
+  frame, 0.0078 by the twentieth); a four-stop step produces a monotone
+  walk with no overshoot, reaching 63% of its travel after 17 frames at 2
+  iterations and 5 at 8, so the budget steers the lag rather than the lag
+  being whatever the solver happens to give. Note that with the
+  scene-adaptive pivot the operator is *invariant* to a uniform change in
+  the light, so a step response needs a fixed pivot to exist at all.
+
 - **A block-aware RGB space fit** (`alwan_rgb_fit_blocks_solve`,
   `alwan_rgb_fit_blocks_evaluate`). A block format stores two endpoints per
   tile and an index per texel, so a tile is forced onto a line segment;

@@ -866,6 +866,8 @@ EXPORTS
     alwan_picture_form_local_exp_f32
     alwan_picture_form_local_exp_f64
     alwan_picture_form_local_exp_field_f32
+    alwan_picture_form_local_exp_resume_f32
+    alwan_picture_form_local_exp_resume_f64
     alwan_picture_form_local_exp_field_f64
     alwan_rgb_fit_params_init_f32
     alwan_rgb_fit_params_init_f64

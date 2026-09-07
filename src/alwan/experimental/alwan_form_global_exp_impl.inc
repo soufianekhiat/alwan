@@ -290,9 +290,24 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_global_exp_field)(ALWAN_CORE_T *e_
  * the FIXED log2(pivot) (removes the frame-derived pivot -- the GLOBAL half of the TCONST gap;
  * the operator stays spatially local, so full TCONST additionally needs temporal machinery);
  * <= 0 => scene-adaptive centring. Interleaved RGB, W*H*3. */
-static alwan_status ALWAN_CORE_FN(alwan__local_exp_core)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+/* The solve, with both of its stages resumable.
+ *
+ * It has two: a Jacobi smoothing of log-carrier that produces the adaptation base, and a
+ * gradient solve on the exposure field anchored to that base. Both converge from a starting
+ * point, and on a moving picture the previous frame's answer is a far better starting point
+ * than a cold one, because the scene is temporally coherent. So both can be carried:
+ * base_io holds the smoothed base and e_io the field, and base_sweeps and iterations say how
+ * much work to spend catching up this frame.
+ *
+ * Spending less than convergence is what makes it interesting rather than merely faster: the
+ * residual lag is the picture arriving at the new light over several frames instead of at
+ * once, which is what an eye does. warm = 0 ignores the incoming fields and starts cold. */
+static alwan_status ALWAN_CORE_FN(alwan__local_exp_core_ex)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out,
+        ALWAN_CORE_T const *e_in, ALWAN_CORE_T *base_io, int base_warm, int base_sweeps,
+        ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if ((!out && !e_out) || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
     if (iterations <= 0) iterations = 60;
+    if (base_sweeps <= 0) base_sweeps = 200;
     size_t N = (size_t)W * (size_t)H;
     ALWAN_CORE_T *own = out ? NULL : (ALWAN_CORE_T*)ctx->alloc_fn(N*3*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *dst = out ? out : own;
@@ -340,8 +355,10 @@ static alwan_status ALWAN_CORE_FN(alwan__local_exp_core)(ALWAN_CORE_T *out, ALWA
         /* --- evidence-gated adaptation base: weighted Jacobi smoothing of z, cut at occlusion --- */
         {
         ALWAN_CORE_T const ld = ALWAN_CORE_LITERAL(1.0), ls = ALWAN_CORE_LITERAL(16.0);
-        memcpy(bs, zM, N*sizeof(ALWAN_CORE_T));
-        for (int s2 = 0; s2 < 200; s2++) {
+        /* the previous frame's base if there is one to resume, else this frame's carrier */
+        if (base_io && base_warm) memcpy(bs, base_io, N*sizeof(ALWAN_CORE_T));
+        else memcpy(bs, zM, N*sizeof(ALWAN_CORE_T));
+        for (int s2 = 0; s2 < base_sweeps; s2++) {
             for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
                 size_t i = (size_t)y*W + x;
                 ALWAN_CORE_T acc = ALWAN_CORE_LITERAL(0.0), wsum = ALWAN_CORE_LITERAL(0.0), w;
@@ -372,12 +389,18 @@ have_bbar:
     }
     }
     /* --- carrier-order repair: increasing-penalty gradient solve, anchored to e0 --- */
-    for (size_t i = 0; i < N; i++) e[i] = e0[i];
+    for (size_t i = 0; i < N; i++) e[i] = e_in ? e_in[i] : e0[i];
     {
     ALWAN_CORE_T const hh = ALWAN_CORE_LITERAL(0.05), aw = ALWAN_CORE_LITERAL(2.0);
     ALWAN_CORE_T const lr = ALWAN_CORE_LITERAL(0.02), step_cap = ALWAN_CORE_LITERAL(0.15);
     for (int it = 0; it < iterations; it++) {
-        ALWAN_CORE_T lrho = ALWAN_CORE_LITERAL(30.0) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0),
+        /* The penalty ramp is a homotopy for a cold start: it lets the field find its shape
+         * under a weak constraint before the constraint is made hard. A field resumed from the
+         * previous frame is already past that, so re-running the ramp every frame would make
+         * each frame a different operator and leave the field permanently in motion. A warm
+         * start therefore holds the penalty at the value the ramp ends on. */
+        ALWAN_CORE_T lrho = e_in ? ALWAN_CORE_LITERAL(3000.0)
+                          : ALWAN_CORE_LITERAL(30.0) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0),
                             ALWAN_CORE_LITERAL(2.0) * ((ALWAN_CORE_T)it) / (ALWAN_CORE_T)(iterations > 1 ? iterations - 1 : 1)); /* 30 -> 3000 */
         for (size_t i = 0; i < N; i++) { ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]);    for (int k=0;k<3;k++) xe[i*3+k]=s*in[i*3+k]; }
         st = ALWAN_CORE_FN(alwan__exp_form_base)(Y, xe, W, H, ctx); if (st != ALWAN_OK) goto done;
@@ -417,6 +440,7 @@ have_bbar:
     for (size_t i = 0; i < N; i++) { ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]); for (int k=0;k<3;k++) xe[i*3+k]=s*in[i*3+k]; }
     st = ALWAN_CORE_FN(alwan__exp_form_base)(dst, xe, W, H, ctx);
     if (st == ALWAN_OK && e_out) memcpy(e_out, e, N*sizeof(ALWAN_CORE_T));
+    if (st == ALWAN_OK && base_io) memcpy(base_io, bs, N*sizeof(ALWAN_CORE_T));
 done:
     ctx->free_fn(zM); ctx->free_fn(PO); ctx->free_fn(csh); ctx->free_fn(csv); ctx->free_fn(tmp);
     ctx->free_fn(bs); ctx->free_fn(bs2); ctx->free_fn(e0); ctx->free_fn(e); ctx->free_fn(xe);
@@ -424,9 +448,28 @@ done:
     if (own) ctx->free_fn(own);
     return st;
 }
+static alwan_status ALWAN_CORE_FN(alwan__local_exp_core)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, in, W, H, iterations, strength, pivot, ctx);
+}
+
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!out) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core)(out, NULL, in, W, H, iterations, strength, pivot, ctx);
+}
+
+/* One frame of a moving picture, resuming the previous frame's solve.
+ *
+ * e_io is W*H stops and base_io W*H log-carrier, both read when warm and both written back.
+ * The first frame passes warm = 0, which ignores their contents; every frame after passes 1.
+ * iterations and base_sweeps are the budget for this frame: at convergence (about 60 and 200)
+ * every frame is solved independently and the result is the same as the still-picture call. Far
+ * below it, the fields lag the scene, and that lag is the adaptation. */
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume)(ALWAN_CORE_T *e_io, ALWAN_CORE_T *base_io,
+        ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int warm,
+        int iterations, int base_sweeps, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+    if (!e_io || !base_io) return ALWAN_E_INVALID;
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm, base_sweeps,
+                                                   in, W, H, iterations, strength, pivot, ctx);
 }
 /* Same solve, and the exposure field it converged to: e_out is W*H scalars in stops. out may be NULL. */
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){

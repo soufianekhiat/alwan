@@ -379,35 +379,46 @@ adaptation: the picture catches up to a lighting change over several frames the
 way an eye does. The `_field` variants exist precisely so a caller can hold the
 field between frames, so the storage half is already built.
 
-**Testing it is the open question**, and is the reason this sits here rather than
-in a branch. What can be measured without a subject in a chair:
+**Built, and the five tests below all pass**, so what follows is a record of what
+was asked and what came back rather than a plan.
+`alwan_picture_form_local_exp_resume` carries both of the solver's states across
+frames, and `iterations` and `base_sweeps` are the per-frame budget. Suite 108 in
+alwan_dev is the harness. What was measured:
 
-- **No flicker on a static input.** Feed the same frame repeatedly. Once warm,
-  the field must stop moving; the frame-to-frame field difference is a number
-  that should fall to zero and stay there. This is the cheapest test and it
-  catches the most likely defect.
-- **Monotone response to a monotone change.** Ramp the scene exposure linearly
-  over N frames. The response must be monotone with no overshoot and no
-  ringing, which is the temporal analogue of the MONO constraint the pointwise
-  operators are already held to.
-- **Convergence gap against the converged answer.** For a held frame, the gap
-  between k iterations and the converged global solve, as a function of k and of
-  whether the field was warm-started. This says what k buys and is the number
-  that decides whether the idea is viable at all.
-- **Bounded rate.** The field's rate of change per frame must be bounded, so a
-  cut between two very different shots cannot produce a one-frame jump that
-  reads as a flash.
-- **A step response with a time constant.** Human light adaptation runs in
-  seconds and dark adaptation in minutes, and the asymmetry is the part an
-  audience notices. Whether the solver's lag can be steered to a chosen time
-  constant, rather than being whatever the residual happens to give, is the
-  design question underneath the whole idea.
+- **No flicker on a static input.** The field moves 0.222 stops on the first
+  frame and 0.0078 by frames 20 to 23. It settles rather than shimmering.
+- **Monotone response.** Zero non-monotone steps in 40 frames of a step
+  response, at both budgets tried.
+- **Convergence gap against the converged answer.** 12 frames at 1, 4 and 16
+  iterations land 0.077, 0.017 and 0.0004 stops from the converged field. The
+  budget buys convergence, monotonically.
+- **Bounded rate.** The largest single-frame move on a settling scene is 0.222
+  stops, and the operator's own cap holds the field to plus or minus 3.
+- **A step response with a time constant, and the budget steers it.** Four stops
+  of light arriving at once, with a fixed pivot: 63% of the travel after 17
+  frames at 2 iterations per frame, after 5 at 8. At 60 Hz that is 0.28 s and
+  0.08 s, which is the range human light adaptation occupies.
 
-The honest risk: convergence lag is a numerical accident, not a perceptual model.
-If the lag cannot be steered independently of the iteration count, the effect is
-a bug that happens to look plausible, and the adaptation belongs in an explicit
-temporal filter on the field instead. The tests above are ordered to find that
-out early.
+The risk this was written to catch, that the lag is a numerical accident and not
+steerable, did not materialise: the budget moves the time constant by a factor of
+three and the response stays monotone at both ends.
+
+Two things had to be fixed for that to be true, and both are the sort of thing
+that would otherwise have shipped looking plausible. A cold resume was starting
+its Jacobi from the caller's zeroed buffer rather than from the frame, so it
+answered a different question on frame one. And the penalty homotopy, which ramps
+rho from 30 to 3000 to let a cold field find its shape before the constraint is
+made hard, was re-running inside every frame: each frame was a different operator
+and the field never came to rest. A warm start now holds rho at the value the
+ramp ends on, which is what makes the static-scene test pass.
+
+**What is still open** is the one thing the tests cannot supply: the time
+constant is in frames, set by the budget, not in seconds. A caller who wants
+0.4 s of adaptation must work out the budget for their frame rate, and a variable
+frame rate will change the feel. Giving the field a rate limiter in stops per
+second, on top of the budget, is the obvious next step, and it would also open
+the asymmetry that matters perceptually: light adaptation in seconds, dark
+adaptation far slower.
 
 ## Corpus files carry no chromaticities
 
@@ -465,8 +476,9 @@ nonsense. What remains:
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [ ] EXR loader: exercise a non-zero data window origin
-- [ ] Block-aware RGB space fit: optimise for what per-block endpoints can express
-- [ ] Temporal picture formation: warm-started iterations per frame as exposure adaptation
+- [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation
+- [ ] Temporal picture formation: a time constant in seconds rather than in frames
+- [x] Block-aware RGB space fit (built; measured no better than the cloud fit on real textures)
 
 ---
 

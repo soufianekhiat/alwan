@@ -2452,6 +2452,24 @@ alwan_status alwan_picture_form_local_exp_f64(alwan_f64 *out, alwan_f64 const *i
 alwan_status alwan_picture_form_local_exp_field_f32(alwan_f32 *e_out, alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_local_exp_field_f64(alwan_f64 *e_out, alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 
+/* EXPERIMENTAL: one frame of a moving picture, resuming the previous frame's solve.
+ *
+ * The still-picture call solves each frame from nothing, which is not tractable per frame and
+ * would in any case make the picture jump the instant the light changes. This carries both of
+ * the solver's states between frames instead: e_io is the exposure field in stops and base_io
+ * the smoothed adaptation base, each width*height, both read when warm is non-zero and both
+ * written back. Allocate them once, pass warm = 0 on the first frame and 1 on every frame
+ * after.
+ *
+ * iterations and base_sweeps are this frame's budget. At convergence (about 60 and 200) every
+ * frame is solved independently and the answer matches the still-picture call. Far below it the
+ * fields lag the scene, and the lag is the point: the picture arrives at the new light over
+ * several frames the way an eye does, for a few sweeps of work per frame rather than a full
+ * solve. What the lag cannot yet be given is a time constant in seconds, so it is whatever the
+ * budget and the frame rate make it; see docs/alwan_future.md. */
+alwan_status alwan_picture_form_local_exp_resume_f32(alwan_f32 *e_io, alwan_f32 *base_io, alwan_f32 *out, alwan_f32 const *in, int width, int height, int warm, int iterations, int base_sweeps, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
+alwan_status alwan_picture_form_local_exp_resume_f64(alwan_f64 *e_io, alwan_f64 *base_io, alwan_f64 *out, alwan_f64 const *in, int width, int height, int warm, int iterations, int base_sweeps, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
+
 /* ----------------------------------------------------------------
  * EXPERIMENTAL: fit an RGB encoding space to a dataset
  *
