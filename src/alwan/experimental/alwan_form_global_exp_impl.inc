@@ -304,7 +304,9 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_global_exp_field)(ALWAN_CORE_T *e_
  * once, which is what an eye does. warm = 0 ignores the incoming fields and starts cold. */
 static alwan_status ALWAN_CORE_FN(alwan__local_exp_core_ex)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out,
         ALWAN_CORE_T const *e_in, ALWAN_CORE_T *base_io, int base_warm, int base_sweeps,
-        ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
+        ALWAN_CORE_T *v_io, int v_warm,
+        ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot,
+        ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
     if ((!out && !e_out) || !in || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
     if (iterations <= 0) iterations = 60;
     if (base_sweeps <= 0) base_sweeps = 200;
@@ -327,7 +329,9 @@ static alwan_status ALWAN_CORE_FN(alwan__local_exp_core_ex)(ALWAN_CORE_T *out, A
     ALWAN_CORE_T *Cm  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *Jc  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
     ALWAN_CORE_T *g   = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
-    int ok = zM && PO && csh && csv && tmp && bs && bs2 && e0 && e && xe && Y && C && Cp && Cm && Jc && g && dst, st = ALWAN_OK;
+    ALWAN_CORE_T *vel = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
+    ALWAN_CORE_T *hs  = (ALWAN_CORE_T*)ctx->alloc_fn(N*sizeof(ALWAN_CORE_T),16);
+    int ok = zM && PO && csh && csv && tmp && bs && bs2 && e0 && e && xe && Y && C && Cp && Cm && Jc && g && vel && hs && dst, st = ALWAN_OK;
     if (!ok) { st = ALWAN_E_NOMEM; goto done; }
 
     for (size_t i = 0; i < N; i++) {
@@ -390,6 +394,16 @@ have_bbar:
     }
     /* --- carrier-order repair: increasing-penalty gradient solve, anchored to e0 --- */
     for (size_t i = 0; i < N; i++) e[i] = e_in ? e_in[i] : e0[i];
+    /* Heavy-ball velocity. The gradient's smooth part is the anchor 2*(e-e0), so a plain step
+     * relaxes at lr*aw = 0.04 per iteration and needs ~60 to arrive. Momentum mu turns that into
+     * roughly 0.04/(1-mu). It is carried across frames alongside the field, because a velocity
+     * reset every frame would throw away exactly the history that makes it worth having. */
+    {
+    ALWAN_CORE_T mu = momentum, rx = relax;
+    if (mu < ALWAN_CORE_LITERAL(0.0)) mu = ALWAN_CORE_LITERAL(0.0);
+    if (mu > ALWAN_CORE_LITERAL(0.98)) mu = ALWAN_CORE_LITERAL(0.98);
+    if (rx > ALWAN_CORE_LITERAL(1.0)) rx = ALWAN_CORE_LITERAL(1.0);
+    for (size_t i = 0; i < N; i++) vel[i] = (v_io && v_warm) ? v_io[i] : ALWAN_CORE_LITERAL(0.0);
     {
     ALWAN_CORE_T const hh = ALWAN_CORE_LITERAL(0.05), aw = ALWAN_CORE_LITERAL(2.0);
     ALWAN_CORE_T const lr = ALWAN_CORE_LITERAL(0.02), step_cap = ALWAN_CORE_LITERAL(0.15);
@@ -412,15 +426,18 @@ have_bbar:
         st = ALWAN_CORE_FN(alwan__exp_form_base)(Y, xe, W, H, ctx); if (st != ALWAN_OK) goto done;
         for (size_t i = 0; i < N; i++) { ALWAN_CORE_T m = Y[i*3]; if (Y[i*3+1]>m) m=Y[i*3+1]; if (Y[i*3+2]>m) m=Y[i*3+2]; Cm[i]=m; }
         for (size_t i = 0; i < N; i++) Jc[i] = (Cp[i] - Cm[i]) / (ALWAN_CORE_LITERAL(2.0)*hh);
-        /* weak anchor to the evidence target */
-        for (size_t i = 0; i < N; i++) g[i] = aw*(e[i]-e0[i]);
+        /* weak anchor to the evidence target. Its curvature is aw and it is the same everywhere;
+         * the order penalty's is 2*rho*Jc^2 and only where the hinge is active, which is where the
+         * two differ by three orders of magnitude and why a single step size serves neither. */
+        for (size_t i = 0; i < N; i++) { g[i] = aw*(e[i]-e0[i]); hs[i] = aw; }
         /* carrier-order on reliable edges: sign(dz)*dC >= 0 */
         for (int y = 0; y < H; y++) for (int x = 0; x < W-1; x++) {
             size_t i = (size_t)y*W + x, j = i+1; ALWAN_CORE_T dz = zM[i]-zM[j];
             if (dz > ALWAN_CORE_LITERAL(0.05) || dz < ALWAN_CORE_LITERAL(-0.05)) {
                 ALWAN_CORE_T s = dz > ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(1.0) : ALWAN_CORE_LITERAL(-1.0);
                 ALWAN_CORE_T gr = s*(C[i]-C[j]);
-                if (gr < ALWAN_CORE_LITERAL(0.0)) { ALWAN_CORE_T co = ALWAN_CORE_LITERAL(2.0)*lrho*gr*s; g[i]+=co*Jc[i]; g[j]-=co*Jc[j]; }
+                if (gr < ALWAN_CORE_LITERAL(0.0)) { ALWAN_CORE_T co = ALWAN_CORE_LITERAL(2.0)*lrho*gr*s; g[i]+=co*Jc[i]; g[j]-=co*Jc[j];
+                    hs[i] += ALWAN_CORE_LITERAL(2.0)*lrho*Jc[i]*Jc[i]; hs[j] += ALWAN_CORE_LITERAL(2.0)*lrho*Jc[j]*Jc[j]; }
             }
         }
         for (int y = 0; y < H-1; y++) for (int x = 0; x < W; x++) {
@@ -428,28 +445,38 @@ have_bbar:
             if (dz > ALWAN_CORE_LITERAL(0.05) || dz < ALWAN_CORE_LITERAL(-0.05)) {
                 ALWAN_CORE_T s = dz > ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(1.0) : ALWAN_CORE_LITERAL(-1.0);
                 ALWAN_CORE_T gr = s*(C[i]-C[j]);
-                if (gr < ALWAN_CORE_LITERAL(0.0)) { ALWAN_CORE_T co = ALWAN_CORE_LITERAL(2.0)*lrho*gr*s; g[i]+=co*Jc[i]; g[j]-=co*Jc[j]; }
+                if (gr < ALWAN_CORE_LITERAL(0.0)) { ALWAN_CORE_T co = ALWAN_CORE_LITERAL(2.0)*lrho*gr*s; g[i]+=co*Jc[i]; g[j]-=co*Jc[j];
+                    hs[i] += ALWAN_CORE_LITERAL(2.0)*lrho*Jc[i]*Jc[i]; hs[j] += ALWAN_CORE_LITERAL(2.0)*lrho*Jc[j]*Jc[j]; }
             }
         }
         for (size_t i = 0; i < N; i++) {
-            ALWAN_CORE_T d = lr*g[i]; if (d > step_cap) d = step_cap; if (d < -step_cap) d = -step_cap;
+            /* A diagonal Newton step where relax asks for one: g/hs is the exact move for a pixel
+             * the hinge is not touching, so the anchor is satisfied in a single iteration instead
+             * of the sixty a 0.02 step needs, and a pixel under an active hinge is stepped small
+             * automatically. The fixed point is untouched because the whole gradient is scaled,
+             * so relax buys speed without buying a different answer. */
+            ALWAN_CORE_T d = rx > ALWAN_CORE_LITERAL(0.0) ? rx*g[i]/hs[i] : lr*g[i];
+            if (mu > ALWAN_CORE_LITERAL(0.0)) { vel[i] = mu*vel[i] + d; d = vel[i]; }
+            if (d > step_cap) d = step_cap; if (d < -step_cap) d = -step_cap;
             ALWAN_CORE_T ne = e[i] - d; if (ne < ALWAN_CORE_LITERAL(-3.0)) ne = ALWAN_CORE_LITERAL(-3.0); if (ne > ALWAN_CORE_LITERAL(3.0)) ne = ALWAN_CORE_LITERAL(3.0); e[i] = ne;
         }
+    }
     }
     }
     for (size_t i = 0; i < N; i++) { ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]); for (int k=0;k<3;k++) xe[i*3+k]=s*in[i*3+k]; }
     st = ALWAN_CORE_FN(alwan__exp_form_base)(dst, xe, W, H, ctx);
     if (st == ALWAN_OK && e_out) memcpy(e_out, e, N*sizeof(ALWAN_CORE_T));
     if (st == ALWAN_OK && base_io) memcpy(base_io, bs, N*sizeof(ALWAN_CORE_T));
+    if (st == ALWAN_OK && v_io) memcpy(v_io, vel, N*sizeof(ALWAN_CORE_T));
 done:
     ctx->free_fn(zM); ctx->free_fn(PO); ctx->free_fn(csh); ctx->free_fn(csv); ctx->free_fn(tmp);
     ctx->free_fn(bs); ctx->free_fn(bs2); ctx->free_fn(e0); ctx->free_fn(e); ctx->free_fn(xe);
-    ctx->free_fn(Y); ctx->free_fn(C); ctx->free_fn(Cp); ctx->free_fn(Cm); ctx->free_fn(Jc); ctx->free_fn(g);
+    ctx->free_fn(Y); ctx->free_fn(C); ctx->free_fn(Cp); ctx->free_fn(Cm); ctx->free_fn(Jc); ctx->free_fn(g); ctx->free_fn(vel); ctx->free_fn(hs);
     if (own) ctx->free_fn(own);
     return st;
 }
 static alwan_status ALWAN_CORE_FN(alwan__local_exp_core)(ALWAN_CORE_T *out, ALWAN_CORE_T *e_out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
-    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, in, W, H, iterations, strength, pivot, ctx);
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, in, W, H, iterations, strength, pivot, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
 }
 
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
@@ -469,12 +496,50 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume)(ALWAN_CORE_T *e_
         int iterations, int base_sweeps, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!e_io || !base_io) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm, base_sweeps,
-                                                   in, W, H, iterations, strength, pivot, ctx);
+                                                   NULL, 0, in, W, H, iterations, strength, pivot,
+                                                   ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), ctx);
+}
+
+/* The same frame with the two accelerators, and a heavy-ball velocity carried alongside the field.
+ *
+ * v_io is W*H and is read and written exactly like e_io: warm = 0 starts it at rest.
+ * momentum 0 with relax 0 reproduces alwan_picture_form_local_exp_resume bit for bit.
+ *
+ * relax > 0 replaces the fixed 0.02 step with relax * g / diag(H), a diagonal Newton step. This is
+ * what actually makes the solve fast: the anchor's curvature is 2 everywhere and the order
+ * penalty's is 2*rho*Jc^2 only where its hinge is active, three orders of magnitude apart, so one
+ * step size is either unstable on the second or glacial on the first, and 0.02 chose glacial.
+ * Scaling by the diagonal leaves the fixed point where it was.
+ *
+ * momentum is the heavy ball, and on its own it buys little: at a fixed step its asymptotic rate
+ * floor is sqrt(momentum), so 0.9 turns 0.96 per iteration into 0.95 and does it while ringing.
+ * On top of relax it is worth a little more.
+ *
+ * Both are solver settings, not a look. Before this the two were one knob, so a real-time budget
+ * also fixed the adaptation time and a slow adaptation could only be bought by refusing to
+ * converge. To ask for a time constant in seconds, converge with relax near 1 and filter the
+ * returned field toward the solved one. A small relax also slows the picture, but by each pixel's
+ * own curvature, so hinge-bound pixels lag free ones and the field arrives unevenly. */
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_resume_m)(ALWAN_CORE_T *e_io, ALWAN_CORE_T *v_io,
+        ALWAN_CORE_T *base_io, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int warm,
+        int iterations, int base_sweeps, ALWAN_CORE_T strength, ALWAN_CORE_T pivot,
+        ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
+    if (!e_io || !v_io || !base_io) return ALWAN_E_INVALID;
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_io, warm ? e_io : NULL, base_io, warm, base_sweeps,
+                                                   v_io, warm, in, W, H, iterations, strength, pivot,
+                                                   momentum, relax, ctx);
 }
 /* Same solve, and the exposure field it converged to: e_out is W*H scalars in stops. out may be NULL. */
 alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, alwan_ctx *ctx){
     if (!e_out) return ALWAN_E_INVALID;
     return ALWAN_CORE_FN(alwan__local_exp_core)(out, e_out, in, W, H, iterations, strength, pivot, ctx);
+}
+
+/* The still solve with both accelerators, for measuring what they buy on a cold start.
+ * momentum 0 with relax 0 is alwan_picture_form_local_exp_field exactly. */
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_field_m)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *out, ALWAN_CORE_T const *in, int W, int H, int iterations, ALWAN_CORE_T strength, ALWAN_CORE_T pivot, ALWAN_CORE_T momentum, ALWAN_CORE_T relax, alwan_ctx *ctx){
+    if (!e_out) return ALWAN_E_INVALID;
+    return ALWAN_CORE_FN(alwan__local_exp_core_ex)(out, e_out, NULL, NULL, 0, 0, NULL, 0, in, W, H, iterations, strength, pivot, momentum, relax, ctx);
 }
 
 /* Public: PURE-corrected formation.  COMPLETE_HEMI_LOOK's reconstruction with the purity rolloff

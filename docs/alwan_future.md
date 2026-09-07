@@ -359,10 +359,34 @@ texture built to have turning per-tile axes it takes 16% off the 99.9th
 percentile while leaving the mean alone, so what it buys, when it buys anything,
 is the worst tiles rather than the average one.
 
+**Looked at, the columns are indistinguishable, and that is the result.** A recap
+sheet rendering five Poly Haven textures through BC1 in sRGB, in a per-texture
+fit and in the pooled fit, each with its error map on one shared scale and a zoom
+on the worst tile, shows three compressed columns no reader can tell apart. The
+decomposition says why: BC1's index alone, with exact endpoints, already accounts
+for most of the error.
+
+| texture | sRGB, codes | index alone | its share |
+| --- | --- | --- | --- |
+| brick | 7.87 | 7.04 | 89% |
+| gravel | 12.87 | 12.16 | 94% |
+| cobble | 4.48 | 3.36 | 75% |
+| denim | 11.42 | 10.77 | 94% |
+| wood | 3.68 | 2.47 | 67% |
+
+So the most any choice of encoding space can remove is 6% to 33% depending on the
+texture, and the fit gets 1% to 2% on four of the five. The exception is the one
+texture whose error is least index-dominated: wood, at 67%, gives up 15% to a fit
+of its own. That is the shape of the whole result. The encoding space is not the
+binding constraint in BC1, the 2-bit index is, and no amount of solver work moves
+it.
+
 What is left open is whether an objective over *tile geometry* rather than over
 tile error would do better: choosing a space so that tiles are collinear, scored
 before any quantisation. That is a different and cheaper objective and it has not
-been tried.
+been tried. On these numbers it would be competing for at most a tenth of the
+error, so it is worth trying only where a texture looks like wood rather than
+like gravel.
 
 ## Temporal picture formation, exposure adaptation across frames
 
@@ -412,13 +436,55 @@ made hard, was re-running inside every frame: each frame was a different operato
 and the field never came to rest. A warm start now holds rho at the value the
 ramp ends on, which is what makes the static-scene test pass.
 
-**What is still open** is the one thing the tests cannot supply: the time
-constant is in frames, set by the budget, not in seconds. A caller who wants
-0.4 s of adaptation must work out the budget for their frame rate, and a variable
-frame rate will change the feel. Giving the field a rate limiter in stops per
-second, on top of the budget, is the obvious next step, and it would also open
-the asymmetry that matters perceptually: light adaptation in seconds, dark
-adaptation far slower.
+**The step size was the whole cost, and it was the wrong size.** The field update
+was gradient descent with a fixed step of 0.02, and the smooth half of its
+gradient is the anchor `2*(e - e0)`, so each iteration removed 4% of the
+remaining error and the solve needed tens of them. That step was not chosen for
+the anchor. It was chosen for the order penalty, whose curvature is
+`2*rho*Jc^2` with rho at 3000, three orders of magnitude away, and only at the
+pixels where its hinge is active. One step size for both meant either instability
+on the stiff term or a crawl on the smooth one, and 0.02 chose the crawl for
+every pixel in the picture to protect the few under an active hinge.
+
+Scaling the step by the local diagonal curvature fixes it, because the whole
+gradient is scaled and the fixed point does not move. `relax * g / diag(H)` is
+the exact move for a pixel the hinge is not touching, so the anchor is satisfied
+in one iteration rather than sixty, and a hinge-bound pixel is stepped small
+automatically. Measured on a 4-stop step from a settled field, frames to come
+within 0.02 stops rms of the answer:
+
+| per-frame budget | plain step | momentum 0.9 | relax 1.0 |
+| --- | --- | --- | --- |
+| 1 iteration | 102 | 72 | 13 |
+| 2 iterations | 51 | 36 | 7 |
+| 8 iterations | 13 | 9 | 2 |
+
+One iteration a frame with the scaled step matches eight with the plain one, and
+all rows settle on the same field to four decimals.
+
+**Momentum was asked for and is the weaker answer.** A heavy ball at a fixed step
+has an asymptotic rate floor of `sqrt(mu)`, so 0.9 turns 0.96 per iteration into
+0.95, worth about 1.4x, and it rings getting there. At 0.95 it never settles at
+all: 300 frames later it is still 0.25 stops rms out. It is available, carried
+across frames like the field, and it is not the thing to reach for. On top of the
+scaled step it is slightly worse than the scaled step alone.
+
+At relax 1.0 the remaining limit is the deliberate one. The per-iteration cap of
+0.15 stops means a 1.25-stop move needs at least 9 iterations, which is most of
+the 13 measured, so the solve is now bounded by the rail that stops a frame
+jumping rather than by the arithmetic.
+
+**What is still open** is the same thing as before, and the accelerator sharpens
+rather than closes it: the time constant is in frames, not seconds. What has
+changed is that it is no longer forced to equal the budget. Converging in two
+frames at one iteration each leaves the adaptation rate free to be chosen. A
+small relax does slow the picture, but it slows each pixel by its own curvature,
+so hinge-bound pixels lag free ones and the field arrives unevenly, which shows
+as speckle in the field maps at relax 0.12. The uniform way is to converge with
+relax near 1 and filter the returned field toward the solved one, which is a
+caller-side line today and wants to be a rate limiter in stops per second in the
+library. That is also where the asymmetry that matters perceptually belongs:
+light adaptation in seconds, dark adaptation far slower.
 
 ## ACES 1.x HDR: the embedded spline targets a 10-nit mid point
 
@@ -526,6 +592,7 @@ nonsense. What remains:
 - [ ] Document the undocumented tail surface
 - [ ] Hunt inverse (3.0.0)
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
+- [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
 - [ ] ACES 1.x HDR: regenerate the c9 splines for the 15-nit ODTs (default path is 10-nit)
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [ ] EXR loader: exercise a non-zero data window origin
