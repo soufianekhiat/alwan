@@ -610,29 +610,54 @@ simply be edited: the whole table encodes the 10-nit curve. Two routes:
 Whichever route, it is a change to the default output of a shipped transform, so
 it wants to be a deliberate decision rather than a quiet fix.
 
-## Two RGB-space transfer-function tables disagree
+## RGB-space transfer functions: audited, and nine still wrong
 
-`alwan_rgb_space_get_tfs` used a hand-written switch into a metadata table that
-names 20 of the 104 RGB spaces, so it refused 84 of them, ACEScct and every
-camera log space among them. It now falls back to the generated descriptor table,
-which carries a static assertion of one row per enum value, and refuses nothing.
+`alwan_rgb_space_get_tfs` used a hand-written switch naming 20 of the 104 RGB
+spaces and refused the rest, ACEScct and every camera log space among them. It
+now delegates to the descriptor table, which is generated with one row per enum
+value, so nothing is refused and there is one source rather than two.
 
-What is left is a data question. On twelve classic spaces the two tables disagree
-and the switch is the one that is right:
+That exposed the larger problem: neither table had ever been checked against
+anything. Evaluating the library's own OETF for every space and comparing against
+colour-science 0.4.6 found **40 of the 65 matched spaces disagreeing**. Twenty-one
+of those are a convention rather than an error, and it is worth writing down: a
+"wide gamut" entry such as `ARRI_WIDE_GAMUT_3` or `S_GAMUT3` is primaries only
+and is linear here, with the curve in its own entry (`ARRI_LOGC3`, `S_LOG3`),
+while colour-science bundles the two. Any comparison against it will show every
+such row differing by design.
 
-| space | switch | descriptor | what it should be |
-| --- | --- | --- | --- |
-| CIE RGB | gamma 2.2 | linear | gamma 2.2 |
-| Best RGB | gamma 2.2 | linear | gamma 2.2 |
-| Adobe Wide Gamut | gamma 2.2 | linear | gamma 2.19921875 |
-| SMPTE-C | gamma 2.2 | BT.709 | a real choice |
-| NTSC 1953 | gamma 2.2 | BT.709 | a real choice |
-| PAL/SECAM | gamma 2.2 | BT.709 | 2.8 by the standard, 2.2 in practice |
+Seventeen were real and are fixed, sourced from
+`RGB_COLOURSPACES[...].cctf_encoding`:
 
-The first three are simply wrong in the descriptor table, which is the one every
-other part of the library reads. The rest are a decision about what the library
-should claim, not a bug. Both belong in gendata rather than in a switch, and the
-count is pinned in suite 43 so a change to either table is noticed.
+| correction | spaces |
+| --- | --- |
+| linear to gamma 2.2 | CIE RGB, Adobe Wide Gamut, Best, Beta, Don 4, Ekta Space PS5, Max, Russell, Xtreme |
+| BT.709 to gamma 2.2 | SMPTE-C, NTSC 1987 |
+| BT.709 to gamma 2.8 | NTSC 1953, PAL/SECAM, BT.470-525, BT.470-625 |
+| sRGB to gamma 2.6 | P3-D65 |
+| BT.709 to linear | EBU Tech. 3213-E, which defines primaries only |
+
+Adobe Wide Gamut is gamma 2.19921875 and is carried as GAMMA22, which is exact to
+2e-4 and the closest the enum offers.
+
+**Nine remain wrong, each needing a transfer function the library does not have:**
+
+| space | needs | worst error |
+| --- | --- | --- |
+| ERIMM RGB | the ERIMM log encoding | 3.35 |
+| RIMM RGB | the RIMM curve | 2.61 |
+| ECI RGB v2 | CIE 1976 lightness | 2.32 |
+| Apple RGB, ColorMatch RGB | gamma 1.8 | 1.84 |
+| ProPhoto RGB, ROMM RGB | the ROMM curve, 1.8 with a linear toe | 1.84 |
+| DCDM XYZ | its direction checked; it has an enum and still differs | 1.28 |
+| SMPTE 240M | the SMPTE 240M OETF rather than BT.709 | 0.011 |
+
+Gamma 1.8 is the cheapest of these and closes two rows on its own. Adding any of
+them means a new `alwan_transfer_function` value, which is ABI-facing and belongs
+with the enum-pinning item rather than being slipped in.
+
+Suite 43 walks every space asserting that nothing is refused and that the two
+entry points cannot disagree, since there is now only one table behind both.
 
 ## Corpus files carry no chromaticities
 
@@ -688,7 +713,7 @@ nonsense. What remains:
 - [ ] Document the undocumented tail surface
 - [ ] Hunt inverse (3.0.0)
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
-- [ ] Reconcile the two RGB-space transfer-function tables (12 disagree, 3 clearly wrong)
+- [ ] RGB-space transfer functions: the nine that need a curve the library lacks (gamma 1.8 first)
 - [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
 - [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all

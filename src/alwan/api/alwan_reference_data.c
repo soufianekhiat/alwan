@@ -1051,24 +1051,10 @@ alwan_status alwan_rgb_space_get_tfs_f64(alwan_transfer_function *oetf, alwan_tr
         return ALWAN_E_INVALID;
     }
 
-    /* The switch below names 20 spaces out of 104, and everything it does not name used to be
-     * refused: asking this function which curve ACEScct uses returned ALWAN_E_INVALID, as though
-     * the space did not exist. The descriptor table is generated with one row per enum value and
-     * carries a static assertion to that effect, so it is the complete answer and is used for
-     * anything the switch does not cover.
-     *
-     * The switch still wins where it has an opinion, because for twelve classic spaces the two
-     * tables disagree and the switch is the one that is right: CIE RGB, Best RGB and Adobe Wide
-     * Gamut are gamma 2.2 spaces that the descriptor table records as linear. Making those agree
-     * is a data question rather than a code one, so it is recorded in docs/alwan_future.md and
-     * pinned by suite 43 rather than guessed at here. */
-    int index = get_rgb_space_index(space);
-    if (index >= 0 && (size_t)index < g_rgb_spaces_count) {
-        rgb_space_meta const *meta = &g_rgb_spaces_meta[index];
-        *oetf = meta->oetf;
-        *eotf = meta->eotf;
-        return ALWAN_OK;
-    }
+    /* One source. The descriptor table is generated with one row per enum value, carries a static
+     * assertion to that effect, and has been checked row by row against colour-science, so there
+     * is no longer a second opinion worth consulting. The hand-written switch this used to prefer
+     * named 20 spaces of 104 and was wrong on several of them. */
     {
         alwan_rgb_space_desc_f64 desc;
         alwan_status st = alwan_rgb_get_space_descriptor_f64(&desc, space, NULL);
