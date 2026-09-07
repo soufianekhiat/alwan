@@ -259,43 +259,71 @@ alwan_status alwan_xyz_to_munsell_f64(alwan_f64 *hue, alwan_f64 *value, alwan_f6
  * Color Checker Data
  * ---------------------------------------------------------------- */
 
-/* ColorChecker Classic 24-patch data (D50, xyY)
- * Generated from colour-science SDS_COLOURCHECKERS['ColorChecker N Ohta']
- * Format: 24 patches x 3 values (x, y, Y) = 72 values total */
+/* Chart reference values, all xyY under D50 for the CIE 1931 2 degree observer, in the target's
+ * own patch order: ColorChecker Classic reading order, and A1..N10 for the SG.
+ *
+ * These are the published averages for a target TYPE. A physical sheet is not its type: two
+ * charts off the same press differ, and every chart drifts as it ages. Where the individual
+ * sheet's own measurement exists, which is what OpenQualia's measurement files carry, use that
+ * instead; gendata/openqualia.py turns one into this same layout. */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_f64 const g_colorchecker_classic_d50_xyY[] = {
 #include "../data/colorchecker/classic_d50_xyy.csv"
 };
 
-/* 24 patches x (x, y, Y). Read through the shared row gate; see munsell_row. */
-enum { COLORCHECKER_FIELDS_PER_PATCH = 3 };
-static size_t const g_colorchecker_classic_count =
-    sizeof(g_colorchecker_classic_d50_xyY) /
-    (COLORCHECKER_FIELDS_PER_PATCH * sizeof(alwan_f64));
+/* The 140-patch SG, current formulation. X-Rite changed the pigments in November 2014; these
+ * are the values after that change. */
+static alwan_f64 const g_colorchecker_sg_d50_xyY[] = {
+#include "../data/colorchecker/sg_d50_xyy.csv"
+};
 
-static alwan_f64 const *colorchecker_row(size_t patch) {
-    int const r = alwan_table_row_f64_v((int)patch, (int)g_colorchecker_classic_count);
-    return &g_colorchecker_classic_d50_xyY[(size_t)r * COLORCHECKER_FIELDS_PER_PATCH];
+/* BabelColor's average of 30 ColorChecker Classic charts: a different measurement of the same
+ * 24 patches, not a different target. */
+static alwan_f64 const g_babelcolor_average_d50_xyY[] = {
+#include "../data/colorchecker/babelcolor_average_d50_xyy.csv"
+};
+
+/* Each table is patches x (x, y, Y). Read through the shared row gate; see munsell_row. */
+enum { COLORCHECKER_FIELDS_PER_PATCH = 3 };
+#define COLORCHECKER_COUNT_OF(table) \
+    (sizeof(table) / (COLORCHECKER_FIELDS_PER_PATCH * sizeof(alwan_f64)))
+
+/* The table for a type, or NULL when alwan carries no data for it. */
+static alwan_f64 const *colorchecker_table(alwan_colorchecker_type type, size_t *count) {
+    switch (type) {
+        case ALWAN_COLORCHECKER_CLASSIC:
+            *count = COLORCHECKER_COUNT_OF(g_colorchecker_classic_d50_xyY);
+            return g_colorchecker_classic_d50_xyY;
+        /* the SG and the Digital SG are the same physical target under two names */
+        case ALWAN_COLORCHECKER_SG:
+        case ALWAN_COLORCHECKER_DIGITAL_SG:
+            *count = COLORCHECKER_COUNT_OF(g_colorchecker_sg_d50_xyY);
+            return g_colorchecker_sg_d50_xyY;
+        case ALWAN_BABELCOLOR_AVERAGE:
+            *count = COLORCHECKER_COUNT_OF(g_babelcolor_average_d50_xyY);
+            return g_babelcolor_average_d50_xyY;
+        default:
+            *count = 0;
+            return NULL;   /* a known type alwan has no measurements for */
+    }
+}
+
+static alwan_f64 const *colorchecker_row(alwan_f64 const *table, size_t count, size_t patch) {
+    int const r = alwan_table_row_f64_v((int)patch, (int)count);
+    return &table[(size_t)r * COLORCHECKER_FIELDS_PER_PATCH];
 }
 ALWAN_DIAG_POP
 
-/* Get number of patches in a Color Checker target */
+/* Get number of patches in a Color Checker target.
+ *
+ * This counts the patches alwan can HAND YOU, so it is the length of the embedded table and not
+ * the patch count of the physical product. A type with no data reports 0 rather than a number
+ * every lookup would then refuse. */
 size_t alwan_color_checker_num_patches(alwan_colorchecker_type type) {
-    switch (type) {
-        case ALWAN_COLORCHECKER_CLASSIC:
-            return 24;
-        case ALWAN_COLORCHECKER_SG:
-            return 140;
-        case ALWAN_COLORCHECKER_DIGITAL_SG:
-            return 140;
-        case ALWAN_BABELCOLOR_AVERAGE:
-            return 24;
-        case ALWAN_BABELCOLOR_HCT:
-            return 24;
-        default:
-            return 0;
-    }
+    size_t count = 0;
+    (void)colorchecker_table(type, &count);
+    return count;
 }
 
 /* Get XYZ tristimulus values for a Color Checker patch */
@@ -305,22 +333,18 @@ alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker
         return ALWAN_E_INVALID;
     }
 
-    /* Get number of patches for validation */
-    size_t num_patches = alwan_color_checker_num_patches(type);
-    if (num_patches == 0) {
-        return ALWAN_E_INVALID;  /* Unknown type */
+    size_t num_patches = 0;
+    alwan_f64 const *table = colorchecker_table(type, &num_patches);
+    if (!table) {
+        /* a type alwan carries no measurements for, or not a type at all */
+        return type <= ALWAN_BABELCOLOR_HCT ? ALWAN_E_NODATA : ALWAN_E_INVALID;
     }
     if (patch_index >= num_patches) {
         return ALWAN_E_RANGE;
     }
 
-    /* Currently only ColorChecker Classic is implemented */
-    if (type != ALWAN_COLORCHECKER_CLASSIC) {
-        return ALWAN_E_INVALID;
-    }
-
     /* Get xyY data under D50, through the row gate. */
-    alwan_f64 const *patch = colorchecker_row(patch_index);
+    alwan_f64 const *patch = colorchecker_row(table, num_patches, patch_index);
     alwan_f64 x = patch[0];
     alwan_f64 y = patch[1];
     alwan_f64 Y = patch[2];

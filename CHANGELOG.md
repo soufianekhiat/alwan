@@ -8,6 +8,28 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **ColorChecker SG and BabelColor Average reference data.** The SG's 140
+  patches (A1..N10, the formulation after November 2014) and BabelColor's
+  average of 30 Classic charts, both xyY under D50 for the 1931 2 degree
+  observer, from colour-science through `gendata`. The Digital SG resolves
+  to the SG: it is the same physical target under its product name.
+
+- **Reading an OpenQualia measurement file** (`alwan_dev`,
+  `gendata/openqualia.py`). OpenQualia standardises the measurement that
+  ships with an individual target as CGATS.17-2009, reached from a QR label
+  on the chart itself. The reader takes XYZ, Lab or spectral data out of one
+  and writes the same layout alwan embeds, so a specific sheet's own values,
+  including targets alwan carries no averages for such as the DT NGT2, can
+  be used instead of a published average.
+
+### Changed
+
+- **`alwan_color_checker_num_patches` reports what alwan can hand you.** It
+  returned 140 for the SG and 24 for BabelColor HCT while every lookup for
+  those types returned an error. It now returns the length of the embedded
+  table, so a type with no data reports 0, and its lookups return
+  `ALWAN_E_NODATA` rather than `ALWAN_E_INVALID`.
+
 - **Experimental RGB space fit** (`src/alwan/experimental/alwan_rgb_fit.c`).
   From a dataset of colours in any RGB space, find primaries, a white point,
   a transfer function, a free power or the sRGB curve, and a scale (the

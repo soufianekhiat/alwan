@@ -3662,13 +3662,22 @@ typedef enum {
     ALWAN_EXTRAP_NATURAL = 5 /* Natural neighbor extrapolation */
 } alwan_extrap_method;
 
-/* Color Checker target types */
+/* Color Checker target types.
+ *
+ * The values alwan carries are the published averages for a TYPE, xyY under D50 for the 1931 2
+ * degree observer. A physical sheet is not its type: charts differ between production runs and
+ * drift as they age, so for real calibration work use the individual target's own measurement.
+ * OpenQualia (openqualia.org) standardises exactly that file, and alwan_dev's
+ * gendata/openqualia.py reads one into this layout.
+ *
+ * alwan_color_checker_num_patches reports what is available, so a type with no data reports 0
+ * and its lookups return ALWAN_E_NODATA. */
 typedef enum {
     ALWAN_COLORCHECKER_CLASSIC = 0,      /* ColorChecker Classic 24-patch */
-    ALWAN_COLORCHECKER_SG = 1, /* ColorChecker SG 140-patch */
-    ALWAN_COLORCHECKER_DIGITAL_SG = 2, /* ColorChecker Digital SG */
-    ALWAN_BABELCOLOR_AVERAGE = 3, /* BabelColor Average */
-    ALWAN_BABELCOLOR_HCT = 4 /* BabelColor HCT */
+    ALWAN_COLORCHECKER_SG = 1, /* ColorChecker SG 140-patch, A1..N10, current formulation */
+    ALWAN_COLORCHECKER_DIGITAL_SG = 2, /* the same physical target under its product name */
+    ALWAN_BABELCOLOR_AVERAGE = 3, /* BabelColor's average of 30 Classic charts, 24 patches */
+    ALWAN_BABELCOLOR_HCT = 4 /* BabelColor HCT: no data, reports 0 patches */
 } alwan_colorchecker_type;
 
 /* Advanced Interpolation
