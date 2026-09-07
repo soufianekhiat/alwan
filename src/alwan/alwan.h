@@ -3690,8 +3690,14 @@ typedef enum {
      * no tristimulus table: alwan_color_checker_data integrates the spectrum for you. */
     ALWAN_COLORCHECKER_CLASSIC_OHTA = 10, /* Ohta 1997, 24 patches, 380-780 nm at 5 nm. ISO
                                            * 17321-1 carries the same numbers. */
-    ALWAN_COLORCHECKER_PMC = 11 /* 30 patches of skin tones and memory colours, 400-700 nm at
-                                 * 10 nm */
+    ALWAN_COLORCHECKER_PMC = 11, /* 30 patches of skin tones and memory colours, 400-700 nm at
+                                  * 10 nm */
+    /* Layout only. ISO 12641 fixes an IT8's 288 patches, A1..L22 then a 24 step grey ramp, and
+     * leaves the colorimetry to the manufacturer and the production run, so there is no such
+     * thing as canonical IT8 values and alwan carries none. Every target ships with its own
+     * batch reference file, which is where its numbers live; alwan_dev's gendata/openqualia.py
+     * reads one. What is standard, and what alwan can therefore give you, is the layout. */
+    ALWAN_IT8_7_2 = 12
 } alwan_colorchecker_type;
 
 /* Advanced Interpolation
@@ -3871,6 +3877,22 @@ alwan_status alwan_color_checker_reflectance_f32(alwan_spd_f32 *out, alwan_color
 
 /* How many patches of a target alwan has spectra for, 0 when it has none. */
 size_t alwan_color_checker_num_reflectances(alwan_colorchecker_type type);
+
+/* The name of a patch in the order the data tables are stored: "dark skin" for a Classic, "A1"
+ * for an SG or an IT8, "GS0" for the first grey of an IT8's ramp. NULL when alwan does not know
+ * the target's layout or the index is past its end; the string is static.
+ *
+ * A name belongs to the target rather than to a measurement, so these are carried even where
+ * the colorimetry is not, and alwan_color_checker_num_patch_names can therefore differ from
+ * alwan_color_checker_num_patches: an IT8.7/2 has 288 patches and alwan has none of their
+ * values. */
+char const *alwan_color_checker_patch_name(alwan_colorchecker_type type, size_t patch_index);
+size_t alwan_color_checker_num_patch_names(alwan_colorchecker_type type);
+
+/* The rectangular colour field of a target: 6 by 4 for a Classic, 14 by 10 for an SG, 22 by 12
+ * for an IT8.7/2 whose 24 greys follow that field in the name order. ALWAN_E_NODATA for a
+ * target with no rectangular layout. */
+alwan_status alwan_color_checker_grid(int *columns, int *rows, alwan_colorchecker_type type);
 
 /* NCS (Natural Color System) Data
  * Convert NCS notation to XYZ tristimulus values

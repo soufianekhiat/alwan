@@ -23,6 +23,20 @@ All notable changes to this project will be documented in this file.
   than assuming D50, so reading one of those as D50 no longer silently
   chromatic-adapts the reference data itself.
 
+- **Patch names and layouts, including for a target with no colorimetry.**
+  `alwan_color_checker_patch_name` says which patch an index is ("dark
+  skin", "A1", "GS0"), and `alwan_color_checker_grid` gives the
+  rectangular colour field: 6 by 4 for a Classic, 14 by 10 for an SG,
+  22 by 12 for an IT8.7/2 whose 24 greys follow it. A name belongs to the
+  target rather than to a measurement, so `ALWAN_IT8_7_2` is carried for
+  its layout alone: ISO 12641 fixes 288 patches and leaves the values to
+  the manufacturer and the production run, so there is no canonical IT8
+  colorimetry to carry. `alwan_color_checker_num_patch_names` therefore
+  answers a different question from `alwan_color_checker_num_patches`,
+  which stays the count of patches alwan has values for, 0 for an IT8.
+  Its numbers live in its batch reference file, which
+  `gendata/openqualia.py` reads.
+
 - **Spectral chart data, integrated rather than adapted.** Reflectance
   spectra for the ColorChecker (Ohta 1997, 24 patches, 380-780 nm at 5 nm,
   the same numbers ISO 17321-1 carries), BabelColor Average (380-730 nm at

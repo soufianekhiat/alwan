@@ -192,9 +192,12 @@ EXPORTS
     alwan_collect3_f64
     alwan_color_checker_data_f32
     alwan_color_checker_data_f64
+    alwan_color_checker_grid
     alwan_color_checker_native_illuminant
+    alwan_color_checker_num_patch_names
     alwan_color_checker_num_patches
     alwan_color_checker_num_reflectances
+    alwan_color_checker_patch_name
     alwan_color_checker_reflectance_f32
     alwan_color_checker_reflectance_f64
     alwan_color_matrix_apply_f32

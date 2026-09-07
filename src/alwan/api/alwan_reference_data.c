@@ -321,6 +321,13 @@ static alwan_f64 const g_pmc_reflectance[] = {                   /* 30 x 31, 400
 #include "../data/colorchecker/pmc_reflectance.csv"
 };
 
+/* Patch names, in the order the tables above are stored. A name comes from the target rather
+ * than from a measurement, so it is carried even for a target whose colorimetry alwan does not
+ * have: IT8.7/2's layout is ISO 12641, while its values belong to the batch. */
+#include "../data/colorchecker/patch_names.inc"
+
+#define COLORCHECKER_NAMES_OF(table) (sizeof(table) / sizeof((table)[0]))
+
 /* Each table is patches x (x, y, Y). Read through the shared row gate; see munsell_row. */
 enum { COLORCHECKER_FIELDS_PER_PATCH = 3 };
 #define COLORCHECKER_COUNT_OF(table) \
@@ -398,6 +405,84 @@ static alwan_f64 const *colorchecker_reflectance_table(alwan_colorchecker_type t
     }
 }
 
+/* The name table for a type, or NULL when alwan does not know its layout. */
+static char const *const *colorchecker_name_table(alwan_colorchecker_type type, size_t *count) {
+    switch (type) {
+        /* every Classic-shaped target shares the 24 names in reading order */
+        case ALWAN_COLORCHECKER_CLASSIC:
+        case ALWAN_COLORCHECKER_CLASSIC_1976:
+        case ALWAN_COLORCHECKER_CLASSIC_PRE2014:
+        case ALWAN_COLORCHECKER_CLASSIC_POST2014:
+        case ALWAN_COLORCHECKER_CLASSIC_OHTA:
+        case ALWAN_BABELCOLOR_AVERAGE:
+        case ALWAN_BABELCOLOR_HCT:
+            *count = COLORCHECKER_NAMES_OF(g_colorchecker_names_classic);
+            return g_colorchecker_names_classic;
+        case ALWAN_COLORCHECKER_SG:
+        case ALWAN_COLORCHECKER_DIGITAL_SG:
+        case ALWAN_COLORCHECKER_SG_PRE2014:
+            *count = COLORCHECKER_NAMES_OF(g_colorchecker_names_sg);
+            return g_colorchecker_names_sg;
+        case ALWAN_TE226_V2:
+            *count = COLORCHECKER_NAMES_OF(g_colorchecker_names_te226);
+            return g_colorchecker_names_te226;
+        case ALWAN_COLORCHECKER_PMC:
+            *count = COLORCHECKER_NAMES_OF(g_colorchecker_names_pmc);
+            return g_colorchecker_names_pmc;
+        case ALWAN_IT8_7_2:
+            *count = COLORCHECKER_NAMES_OF(g_colorchecker_names_it8_72);
+            return g_colorchecker_names_it8_72;
+        default:
+            *count = 0;
+            return NULL;
+    }
+}
+
+/* The name of a patch, or NULL when alwan does not know the target's layout or the index is
+ * past its end. The string is static and outlives any call. */
+char const *alwan_color_checker_patch_name(alwan_colorchecker_type type, size_t patch_index) {
+    size_t count = 0;
+    char const *const *names = colorchecker_name_table(type, &count);
+    if (!names || patch_index >= count) {
+        return NULL;
+    }
+    return names[patch_index];
+}
+
+/* How many patches the target's layout has, which is not the same question as how many alwan
+ * has colorimetry for: an IT8.7/2 has 288 either way, and alwan has none of their values. */
+size_t alwan_color_checker_num_patch_names(alwan_colorchecker_type type) {
+    size_t count = 0;
+    (void)colorchecker_name_table(type, &count);
+    return count;
+}
+
+/* The rectangular colour field of a target, when it has one. The greys of an IT8.7/2 sit
+ * outside its 22 by 12 field and follow it in the name order. */
+alwan_status alwan_color_checker_grid(int *columns, int *rows, alwan_colorchecker_type type) {
+    if (!columns || !rows) {
+        return ALWAN_E_INVALID;
+    }
+    switch (type) {
+        case ALWAN_COLORCHECKER_CLASSIC:
+        case ALWAN_COLORCHECKER_CLASSIC_1976:
+        case ALWAN_COLORCHECKER_CLASSIC_PRE2014:
+        case ALWAN_COLORCHECKER_CLASSIC_POST2014:
+        case ALWAN_COLORCHECKER_CLASSIC_OHTA:
+        case ALWAN_BABELCOLOR_AVERAGE:
+            *columns = 6; *rows = 4; return ALWAN_OK;
+        case ALWAN_COLORCHECKER_SG:
+        case ALWAN_COLORCHECKER_DIGITAL_SG:
+        case ALWAN_COLORCHECKER_SG_PRE2014:
+            *columns = 14; *rows = 10; return ALWAN_OK;
+        case ALWAN_IT8_7_2:
+            *columns = 22; *rows = 12; return ALWAN_OK;
+        default:
+            *columns = 0; *rows = 0;
+            return ALWAN_E_NODATA;   /* no rectangular field, or an unknown target */
+    }
+}
+
 /* Get number of patches in a Color Checker target.
  *
  * This counts the patches alwan can HAND YOU, so it is the length of the embedded table and not
@@ -427,7 +512,7 @@ alwan_status alwan_color_checker_reflectance_f64(alwan_spd_f64 *out, alwan_color
     alwan_f64 lo = ALWAN_LITERAL(0.0), hi = ALWAN_LITERAL(0.0);
     alwan_f64 const *table = colorchecker_reflectance_table(type, &patches, &bands, &lo, &hi);
     if (!table) {
-        return type <= ALWAN_COLORCHECKER_PMC ? ALWAN_E_NODATA : ALWAN_E_INVALID;
+        return type <= ALWAN_IT8_7_2 ? ALWAN_E_NODATA : ALWAN_E_INVALID;
     }
     if (patch_index >= patches) {
         return ALWAN_E_RANGE;
@@ -533,7 +618,7 @@ alwan_status alwan_color_checker_native_illuminant(alwan_illuminant *illuminant,
     alwan_illuminant native;
     if (!colorchecker_table(type, &count, &native)) {
         /* a spectral target has no native illuminant: it answers for whichever one you ask */
-        return type <= ALWAN_COLORCHECKER_PMC ? ALWAN_E_NODATA : ALWAN_E_INVALID;
+        return type <= ALWAN_IT8_7_2 ? ALWAN_E_NODATA : ALWAN_E_INVALID;
     }
     *illuminant = native;
     return ALWAN_OK;
@@ -560,7 +645,7 @@ alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker
             return colorchecker_from_spectrum(xyz, type, illuminant, patch_index);
         }
         /* a type alwan carries no measurements for, or not a type at all */
-        return type <= ALWAN_COLORCHECKER_PMC ? ALWAN_E_NODATA : ALWAN_E_INVALID;
+        return type <= ALWAN_IT8_7_2 ? ALWAN_E_NODATA : ALWAN_E_INVALID;
     }
     if (patch_index >= num_patches) {
         return ALWAN_E_RANGE;
