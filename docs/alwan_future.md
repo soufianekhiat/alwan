@@ -334,16 +334,35 @@ the endpoint quantisation for the rest. A fitted space can only touch the
 endpoints, so it gained 1 to 18% end to end, and the 18% was the texture with
 both the tightest gamut and the lowest index share.
 
-The global objective is therefore near its ceiling here. A block-aware fit would
-optimise what per-block endpoints can express: for each block the two endpoints
-already adapt to local content, so what the space controls is how well a block's
-colours fall on a line, and how much of the 565 grid that line's endpoints land
-on. That is a different objective, over blocks rather than over pixels, and it
-would need the image rather than a sample cloud.
+**Built and measured, and the answer is no.** `alwan_rgb_fit_blocks_solve` runs
+the codec itself as the objective, on a subsample of tiles, with no surrogate in
+between: endpoints on each tile's principal axis, quantised per channel, a
+nearest-of-four palette assignment. It converges, and on the five Poly Haven
+diffuse maps it does not beat the ordinary fit through a real BC1 codec:
 
-`bits_channel` already carries the per-channel depth a BC1 endpoint needs, and
-`tools/rgb_fit_bc1.py` in alwan_dev already measures the end-to-end result and
-splits the error into the two parts, so the measurement harness for this exists.
+| texture | cloud fit | block-aware fit |
+|---|---|---|
+| brick | 1% | 1% |
+| gravel | 2% | 1% |
+| cobble | 6% | 2% |
+| denim | 0% | 2% |
+| wood | 18% | 15% |
+
+That is a ceiling and not an unconverged simplex: four times the iteration budget
+converges at 202 iterations to the identical answer, to every printed digit.
+
+Two things came out of it that are worth keeping. The block-aware answer is
+qualitatively different: it holds sRGB's triangle (area 1.00 to 1.02) and moves
+only the scale, which is the right instinct for a format whose endpoints already
+adapt per tile, where shrinking the global gamut buys nothing. And on a synthetic
+texture built to have turning per-tile axes it takes 16% off the 99.9th
+percentile while leaving the mean alone, so what it buys, when it buys anything,
+is the worst tiles rather than the average one.
+
+What is left open is whether an objective over *tile geometry* rather than over
+tile error would do better: choosing a space so that tiles are collinear, scored
+before any quantisation. That is a different and cheaper objective and it has not
+been tried.
 
 ## Temporal picture formation, exposure adaptation across frames
 

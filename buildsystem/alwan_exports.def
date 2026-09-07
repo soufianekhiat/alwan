@@ -870,6 +870,10 @@ EXPORTS
     alwan_rgb_fit_params_init_f32
     alwan_rgb_fit_params_init_f64
     alwan_rgb_fit_begin_f32
+    alwan_rgb_fit_blocks_evaluate_f32
+    alwan_rgb_fit_blocks_evaluate_f64
+    alwan_rgb_fit_blocks_solve_f32
+    alwan_rgb_fit_blocks_solve_f64
     alwan_rgb_fit_begin_f64
     alwan_rgb_fit_step_f32
     alwan_rgb_fit_step_f64

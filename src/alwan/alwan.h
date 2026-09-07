@@ -2519,6 +2519,8 @@ typedef struct {
     int bits;                          /* target depth, 8 */
     int bits_channel[3];               /* per-channel depth, 0 to take `bits`; {5,6,5} is a BC1 endpoint */
     int fit_offset;                    /* non-zero: the per-channel black point joins the search */
+    int block_size;                    /* block fit only: tile edge in texels, 4 for BC1 */
+    int index_bits;                    /* block fit only: bits per texel index, 2 for BC1 */
     alwan_fit_tf_kind tf;              /* POWER or SRGB; AUTO is accepted by solve() only */
     alwan_rgb_fit_metric metric;       /* objective and report units, Oklab by default */
     alwan_f32 percentile;              /* tail the objective minimises, 0.999; 0 means mean only */
@@ -2540,6 +2542,8 @@ typedef struct {
     int bits;
     int bits_channel[3];
     int fit_offset;
+    int block_size;
+    int index_bits;
     alwan_fit_tf_kind tf;
     alwan_rgb_fit_metric metric;
     alwan_f64 percentile;
@@ -2600,6 +2604,33 @@ void alwan_rgb_fit_end_f64(alwan_rgb_fit_state_f64 *state);
  * both branches are solved and sRGB is kept unless the power wins by srgb_margin. */
 alwan_status alwan_rgb_fit_solve_f32(alwan_rgb_space_desc_f32 *space, alwan_fit_tf_f32 *tf, alwan_rgb_fit_report_f32 *report, alwan_f32 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f32 const *data_space, alwan_rgb_fit_params_f32 const *params, int max_iterations, alwan_ctx *ctx);
 alwan_status alwan_rgb_fit_solve_f64(alwan_rgb_space_desc_f64 *space, alwan_fit_tf_f64 *tf, alwan_rgb_fit_report_f64 *report, alwan_f64 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f64 const *data_space, alwan_rgb_fit_params_f64 const *params, int max_iterations, alwan_ctx *ctx);
+
+/* The fit for a block-compressed texture.
+ *
+ * A block format does not store a colour per texel. It stores two endpoints for a tile and an
+ * index per texel choosing among a few colours evenly spaced between them, so a tile is forced
+ * onto a line segment: BC1 is two RGB565 endpoints per 4x4 tile and a 2-bit index, which is
+ * params.bits_channel = {5,6,5}, block_size = 4, index_bits = 2.
+ *
+ * This exists because the ordinary fit is the wrong objective for such a format. Measured
+ * through a real BC1 codec, two thirds to nine tenths of its error is the index rather than the
+ * endpoint quantisation, so a fit that only makes endpoints land better works on the smaller
+ * half. The index error is not a constant either: it is how far a tile's colours sit off the
+ * line through them, and a different space is a different linear map, so the residual moves
+ * with it.
+ *
+ * The objective here is the codec itself, run on a subsample of tiles, with no smooth surrogate
+ * in between: the palette assignment is a nearest-of-few choice, so the objective is piecewise
+ * constant and only usable because it is averaged over thousands of texels. The number reported
+ * is therefore the number minimised. It costs more per iteration than the cloud fit.
+ *
+ * image is width*height interleaved triplets in data_space, tightly packed. */
+alwan_status alwan_rgb_fit_blocks_solve_f32(alwan_rgb_space_desc_f32 *space, alwan_fit_tf_f32 *tf, alwan_rgb_fit_report_f32 *report, alwan_f32 const *image, int width, int height, alwan_rgb_space_desc_f32 const *data_space, alwan_rgb_fit_params_f32 const *params, int max_iterations, alwan_ctx *ctx);
+alwan_status alwan_rgb_fit_blocks_solve_f64(alwan_rgb_space_desc_f64 *space, alwan_fit_tf_f64 *tf, alwan_rgb_fit_report_f64 *report, alwan_f64 const *image, int width, int height, alwan_rgb_space_desc_f64 const *data_space, alwan_rgb_fit_params_f64 const *params, int max_iterations, alwan_ctx *ctx);
+
+/* Score any space on the same block round trip, fitted or not: the baseline comparison. */
+alwan_status alwan_rgb_fit_blocks_evaluate_f32(alwan_rgb_fit_report_f32 *report, alwan_rgb_space_desc_f32 const *space, alwan_fit_tf_f32 const *tf, alwan_f32 const *image, int width, int height, alwan_rgb_space_desc_f32 const *data_space, alwan_rgb_fit_params_f32 const *params, alwan_ctx *ctx);
+alwan_status alwan_rgb_fit_blocks_evaluate_f64(alwan_rgb_fit_report_f64 *report, alwan_rgb_space_desc_f64 const *space, alwan_fit_tf_f64 const *tf, alwan_f64 const *image, int width, int height, alwan_rgb_space_desc_f64 const *data_space, alwan_rgb_fit_params_f64 const *params, alwan_ctx *ctx);
 
 /* Score any space on the dataset, fitted or not: the baseline comparison. */
 alwan_status alwan_rgb_fit_evaluate_f32(alwan_rgb_fit_report_f32 *report, alwan_rgb_space_desc_f32 const *space, alwan_fit_tf_f32 const *tf, alwan_f32 const *data, size_t stride, size_t count, alwan_rgb_space_desc_f32 const *data_space, alwan_rgb_fit_params_f32 const *params, alwan_ctx *ctx);

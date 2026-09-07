@@ -52,6 +52,9 @@ typedef struct ALWAN_CORE_FN(alwan_rgb_fit_state) {
     int free_idx[RF_NP]; int k;     /* which of the 13 move */
     ALWAN_CORE_T step[3];           /* code step per channel, from bits or bits_channel */
     ALWAN_CORE_T maxv[3];
+    int width, height;              /* block mode: the image the texels came from */
+    int block_size, index_bits;     /* block mode: 4 and 2 are BC1 */
+    int block_stride;               /* block mode: take one block in this many, both ways */
     ALWAN_CORE_T theta[RF_NP];      /* current best */
     ALWAN_CORE_T fbest;
     ALWAN_CORE_T simplex[RF_NP + 1][RF_NP];
@@ -214,7 +217,14 @@ static void ALWAN_CORE_FN(rf_stats)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s, ALWAN
 /* the smooth objective                                               */
 /* ---------------------------------------------------------------- */
 
+static ALWAN_CORE_T ALWAN_CORE_FN(rf_block_error)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s, ALWAN_CORE_T const th[RF_NP],
+                                                  ALWAN_CORE_T *mean_out, ALWAN_CORE_T *tail_out,
+                                                  ALWAN_CORE_T *max_out, ALWAN_CORE_T *clip_out);
+
 static ALWAN_CORE_T ALWAN_CORE_FN(rf_objective)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s, ALWAN_CORE_T const th[RF_NP]) {
+    if (s->block_size > 0) {
+        return ALWAN_CORE_FN(rf_block_error)(s, th, NULL, NULL, NULL, NULL);
+    }
     ALWAN_CORE_FN(alwan_rgb_space_desc) d;
     ALWAN_CORE_T gamma = ALWAN_CORE_FN(rf_gamma_of)(s, th);
     if (gamma < s->prm.gamma_min || gamma > s->prm.gamma_max) return RF_INF;
@@ -275,11 +285,163 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_objective)(ALWAN_CORE_FN(alwan_rgb_fit_stat
 }
 
 /* ---------------------------------------------------------------- */
+/* the block codec                                                    */
+/* ---------------------------------------------------------------- */
+
+/* A block format does not store a colour per texel. It stores two endpoints for a tile and an
+ * index per texel choosing among a few colours evenly spaced between them, so a tile is forced
+ * onto a line segment. BC1 is two RGB565 endpoints per 4x4 tile and a 2-bit index.
+ *
+ * That changes what an encoding space is for. Measured through a real BC1 codec, two thirds to
+ * nine tenths of its error is the index rather than the endpoint quantisation, so a fit that
+ * only makes the endpoints land better is working on the smaller half of the problem. But the
+ * index error is not a constant either: it is how far a tile's colours sit off the line through
+ * them, and a different space is a different linear map, so it stretches some directions and
+ * compresses others and the residual moves with it. A space can therefore be chosen to make
+ * tiles more collinear where it matters, which is what this objective asks for.
+ *
+ * There is no smooth surrogate here. The palette assignment is a nearest-of-four choice, so the
+ * objective is piecewise constant in the parameters; what makes it usable is that it is
+ * averaged over thousands of texels, which leaves it flat enough for a simplex to descend and,
+ * more importantly, exactly the number being reported. */
+
+/* The principal axis of n points, by power iteration on their covariance. */
+static void ALWAN_CORE_FN(rf_principal_axis)(ALWAN_CORE_T const *pts, int n, ALWAN_CORE_T const centre[3],
+                                             ALWAN_CORE_T axis[3]) {
+    ALWAN_CORE_T cov[9] = { ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, ALWAN_CORE_ZERO,
+                            ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, ALWAN_CORE_ZERO,
+                            ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, ALWAN_CORE_ZERO };
+    for (int i = 0; i < n; i++) {
+        ALWAN_CORE_T d[3];
+        for (int c = 0; c < 3; c++) d[c] = pts[i * 3 + c] - centre[c];
+        for (int r = 0; r < 3; r++) for (int c = 0; c < 3; c++) cov[r * 3 + c] += d[r] * d[c];
+    }
+    ALWAN_CORE_T v[3] = { ALWAN_CORE_ONE, ALWAN_CORE_ONE, ALWAN_CORE_ONE };
+    for (int it = 0; it < 8; it++) {
+        ALWAN_CORE_T o[3];
+        for (int r = 0; r < 3; r++) o[r] = cov[r * 3] * v[0] + cov[r * 3 + 1] * v[1] + cov[r * 3 + 2] * v[2];
+        ALWAN_CORE_T len = ALWAN_CORE_SQRT(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]);
+        if (len <= ALWAN_CORE_LITERAL(1e-20)) { v[0] = ALWAN_CORE_ONE; v[1] = v[2] = ALWAN_CORE_ZERO; break; }
+        for (int r = 0; r < 3; r++) v[r] = o[r] / len;
+    }
+    for (int c = 0; c < 3; c++) axis[c] = v[c];
+}
+
+/* One tile through the block codec, in code space. codes in, reconstructed codes out. */
+static void ALWAN_CORE_FN(rf_block_codec)(ALWAN_CORE_T *codes, int n, ALWAN_CORE_T const maxv[3], int levels) {
+    ALWAN_CORE_T centre[3] = { ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, ALWAN_CORE_ZERO };
+    for (int i = 0; i < n; i++) for (int c = 0; c < 3; c++) centre[c] += codes[i * 3 + c];
+    for (int c = 0; c < 3; c++) centre[c] /= (ALWAN_CORE_T)n;
+    ALWAN_CORE_T axis[3];
+    ALWAN_CORE_FN(rf_principal_axis)(codes, n, centre, axis);
+
+    /* the endpoints are the extremes along that axis, which is what a real encoder starts from */
+    int lo = 0, hi = 0;
+    ALWAN_CORE_T tlo = RF_INF, thi = -RF_INF;
+    for (int i = 0; i < n; i++) {
+        ALWAN_CORE_T t = ALWAN_CORE_ZERO;
+        for (int c = 0; c < 3; c++) t += (codes[i * 3 + c] - centre[c]) * axis[c];
+        if (t < tlo) { tlo = t; lo = i; }
+        if (t > thi) { thi = t; hi = i; }
+    }
+    ALWAN_CORE_T e0[3], e1[3];
+    for (int c = 0; c < 3; c++) {
+        /* the endpoints are stored at the format's own per-channel depth */
+        e0[c] = ALWAN_CORE_FLOOR(ALWAN_CORE_FN(rf_clamp01)(codes[hi * 3 + c]) * maxv[c] + ALWAN_CORE_LITERAL(0.5)) / maxv[c];
+        e1[c] = ALWAN_CORE_FLOOR(ALWAN_CORE_FN(rf_clamp01)(codes[lo * 3 + c]) * maxv[c] + ALWAN_CORE_LITERAL(0.5)) / maxv[c];
+    }
+    ALWAN_CORE_T palette[8 * 3];
+    if (levels > 8) levels = 8;
+    for (int k = 0; k < levels; k++) {
+        ALWAN_CORE_T f = (ALWAN_CORE_T)k / (ALWAN_CORE_T)(levels - 1);
+        for (int c = 0; c < 3; c++) palette[k * 3 + c] = e0[c] + f * (e1[c] - e0[c]);
+    }
+    for (int i = 0; i < n; i++) {
+        int best = 0; ALWAN_CORE_T bestd = RF_INF;
+        for (int k = 0; k < levels; k++) {
+            ALWAN_CORE_T d = ALWAN_CORE_ZERO;
+            for (int c = 0; c < 3; c++) { ALWAN_CORE_T e = codes[i * 3 + c] - palette[k * 3 + c]; d += e * e; }
+            if (d < bestd) { bestd = d; best = k; }
+        }
+        for (int c = 0; c < 3; c++) codes[i * 3 + c] = palette[best * 3 + c];
+    }
+}
+
+/* The block round trip of the whole image, in the metric. Also the objective: there is no
+ * surrogate for a nearest-of-four choice, and none is wanted, since this is the real number. */
+static ALWAN_CORE_T ALWAN_CORE_FN(rf_block_error)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s, ALWAN_CORE_T const th[RF_NP],
+                                                  ALWAN_CORE_T *mean_out, ALWAN_CORE_T *tail_out,
+                                                  ALWAN_CORE_T *max_out, ALWAN_CORE_T *clip_out) {
+    ALWAN_CORE_FN(alwan_rgb_space_desc) d;
+    ALWAN_CORE_T gamma = ALWAN_CORE_FN(rf_gamma_of)(s, th);
+    if (gamma < s->prm.gamma_min || gamma > s->prm.gamma_max) return RF_INF;
+    if (ALWAN_CORE_ABS(th[9]) > RF_LOG_SCALE_LIMIT) return RF_INF;
+    if (!ALWAN_CORE_FN(rf_offsets_ok)(th)) return RF_INF;
+    if (!ALWAN_CORE_FN(rf_desc_from_theta)(th, &d)) return RF_INF;
+    ALWAN_CORE_T const *A = d.xyz_to_rgb.m, *B = d.rgb_to_xyz.m;
+    ALWAN_CORE_T const scale = ALWAN_CORE_FN(rf_scale_of)(th), inv_scale = ALWAN_CORE_ONE / scale;
+    int const bs = s->block_size, texels = bs * bs, levels = 1 << s->index_bits;
+    ALWAN_CORE_T codes[64 * 3];
+    size_t used = 0;
+    ALWAN_CORE_T clipped = ALWAN_CORE_ZERO;
+
+    for (int by = 0; by + bs <= s->height; by += bs * s->block_stride) {
+        for (int bx = 0; bx + bs <= s->width; bx += bs * s->block_stride) {
+            /* the tile into code space */
+            for (int ty = 0; ty < bs; ty++) for (int tx = 0; tx < bs; tx++) {
+                size_t src = (size_t)(by + ty) * (size_t)s->width + (size_t)(bx + tx);
+                ALWAN_CORE_T const *X = s->xyz + src * 3;
+                int const at = (ty * bs + tx) * 3;
+                for (int c = 0; c < 3; c++) {
+                    ALWAN_CORE_T span = ALWAN_CORE_ONE - th[10 + c];
+                    ALWAN_CORE_T v = ((A[c*3]*X[0] + A[c*3+1]*X[1] + A[c*3+2]*X[2]) * inv_scale - th[10 + c]) / span;
+                    if (v < ALWAN_CORE_ZERO || v > ALWAN_CORE_ONE) clipped += ALWAN_CORE_ONE;
+                    codes[at + c] = ALWAN_CORE_FN(rf_encode)(ALWAN_CORE_FN(rf_clamp01)(v), s->tf_kind, gamma);
+                }
+            }
+            ALWAN_CORE_FN(rf_block_codec)(codes, texels, s->maxv, levels);
+            /* back out, and measure where the caller asked to measure */
+            for (int ty = 0; ty < bs; ty++) for (int tx = 0; tx < bs; tx++) {
+                size_t src = (size_t)(by + ty) * (size_t)s->width + (size_t)(bx + tx);
+                int const at = (ty * bs + tx) * 3;
+                ALWAN_CORE_T lin[3], xyz2[3], p2[3];
+                for (int c = 0; c < 3; c++) {
+                    ALWAN_CORE_T span = ALWAN_CORE_ONE - th[10 + c];
+                    lin[c] = scale * (th[10 + c] + span * ALWAN_CORE_FN(rf_decode)(codes[at + c], s->tf_kind, gamma));
+                }
+                for (int r = 0; r < 3; r++) xyz2[r] = B[r*3]*lin[0] + B[r*3+1]*lin[1] + B[r*3+2]*lin[2];
+                ALWAN_CORE_FN(rf_pcoord)(xyz2, s->prm.metric, s->disp, p2);
+                if (used < s->n) s->scratch[used++] = ALWAN_CORE_FN(rf_pdist)(s->pc + src * 3, p2, s->prm.metric);
+            }
+        }
+    }
+    if (used == 0) return RF_INF;
+
+    /* the statistics over the texels actually visited, weights uniform: a block format treats
+     * every texel of a tile alike, so weighting them differently would describe nothing */
+    ALWAN_CORE_T m = ALWAN_CORE_ZERO, big = ALWAN_CORE_ZERO;
+    for (size_t i = 0; i < used; i++) { m += s->scratch[i]; if (s->scratch[i] > big) big = s->scratch[i]; }
+    m /= (ALWAN_CORE_T)used;
+    qsort(s->scratch, used, sizeof(ALWAN_CORE_T), ALWAN_CORE_FN(rf_cmp));
+    ALWAN_CORE_T tail = s->scratch[(size_t)((ALWAN_CORE_T)(used - 1) * s->prm.percentile + ALWAN_CORE_LITERAL(0.5))];
+    if (mean_out) *mean_out = m;
+    if (tail_out) *tail_out = tail;
+    if (max_out) *max_out = big;
+    if (clip_out) *clip_out = clipped / (ALWAN_CORE_T)(used * 3);
+    return m + tail;
+}
+
+/* ---------------------------------------------------------------- */
 /* the true quantised round trip                                      */
 /* ---------------------------------------------------------------- */
 
 static alwan_status ALWAN_CORE_FN(rf_true_report)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s, ALWAN_CORE_T const th[RF_NP],
                                                   ALWAN_CORE_FN(alwan_rgb_fit_report) *rep) {
+    if (s->block_size > 0) {
+        ALWAN_CORE_T v = ALWAN_CORE_FN(rf_block_error)(s, th, &rep->mean_error, &rep->tail_error,
+                                                       &rep->max_error, &rep->clipped_fraction);
+        return v >= RF_INF ? ALWAN_E_RANGE : ALWAN_OK;
+    }
     ALWAN_CORE_FN(alwan_rgb_space_desc) d;
     ALWAN_CORE_T gamma = ALWAN_CORE_FN(rf_gamma_of)(s, th);
     if (ALWAN_CORE_ABS(th[9]) > RF_LOG_SCALE_LIMIT) return ALWAN_E_RANGE;
@@ -631,12 +793,13 @@ void ALWAN_CORE_FN(alwan_rgb_fit_params_init)(ALWAN_CORE_FN(alwan_rgb_fit_params
     p->weights = NULL;
 }
 
-alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_state) **state,
-                                                ALWAN_CORE_T const *data, size_t stride, size_t count,
-                                                ALWAN_CORE_FN(alwan_rgb_space_desc) const *data_space,
-                                                ALWAN_CORE_FN(alwan_rgb_space_desc) const *space,
-                                                ALWAN_CORE_FN(alwan_fit_tf) const *tf,
-                                                ALWAN_CORE_FN(alwan_rgb_fit_params) const *params, alwan_ctx *ctx) {
+static alwan_status ALWAN_CORE_FN(rf_begin)(ALWAN_CORE_FN(alwan_rgb_fit_state) **state,
+                                            ALWAN_CORE_T const *data, size_t stride, size_t count,
+                                            int width, int height,
+                                            ALWAN_CORE_FN(alwan_rgb_space_desc) const *data_space,
+                                            ALWAN_CORE_FN(alwan_rgb_space_desc) const *space,
+                                            ALWAN_CORE_FN(alwan_fit_tf) const *tf,
+                                            ALWAN_CORE_FN(alwan_rgb_fit_params) const *params, alwan_ctx *ctx) {
     if (!state || !data || !data_space || !params || !ctx || count < 3) return ALWAN_E_INVALID;
     if (params->bits < 2 || params->bits > 16) return ALWAN_E_INVALID;
     if (params->tf != ALWAN_FIT_TF_POWER && params->tf != ALWAN_FIT_TF_SRGB) return ALWAN_E_INVALID;   /* AUTO is solve's */
@@ -647,6 +810,17 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     if (!s) return ALWAN_E_NOMEM;
     memset(s, 0, sizeof *s);
     s->ctx = ctx; s->prm = *params; s->n = count; s->tf_kind = params->tf;
+    if (width > 0 && height > 0 && params->block_size > 0) {
+        s->width = width; s->height = height;
+        s->block_size = params->block_size;
+        s->index_bits = params->index_bits > 0 ? params->index_bits : 2;
+        /* visit about 4000 tiles: enough for the mean to settle, few enough that a simplex of
+         * a few hundred steps finishes in seconds rather than minutes */
+        int const tiles = (width / s->block_size) * (height / s->block_size);
+        int stride_blocks = 1;
+        while (tiles / (stride_blocks * stride_blocks) > 4000) stride_blocks++;
+        s->block_stride = stride_blocks;
+    }
     for (int c = 0; c < 3; c++) {
         int b = params->bits_channel[c] > 0 ? params->bits_channel[c] : params->bits;
         if (b < 2 || b > 16) { ctx->free_fn(s); return ALWAN_E_INVALID; }
@@ -666,10 +840,11 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     }
     s->xyz = (ALWAN_CORE_T *)ctx->alloc_fn(count * 3 * sizeof(ALWAN_CORE_T), 16);
     s->pc  = (ALWAN_CORE_T *)ctx->alloc_fn(count * 3 * sizeof(ALWAN_CORE_T), 16);
-    s->jp  = (ALWAN_CORE_T *)ctx->alloc_fn(count * 9 * sizeof(ALWAN_CORE_T), 16);
+    /* the Jacobian serves the smooth surrogate only; the block objective is the codec itself */
+    s->jp  = s->block_size > 0 ? NULL : (ALWAN_CORE_T *)ctx->alloc_fn(count * 9 * sizeof(ALWAN_CORE_T), 16);
     s->w   = (ALWAN_CORE_T *)ctx->alloc_fn(count * sizeof(ALWAN_CORE_T), 16);
     s->scratch = (ALWAN_CORE_T *)ctx->alloc_fn(count * sizeof(ALWAN_CORE_T), 16);
-    if (!s->xyz || !s->pc || !s->jp || !s->w || !s->scratch) { ALWAN_CORE_FN(rf_free_state)(s); return ALWAN_E_NOMEM; }
+    if (!s->xyz || !s->pc || !s->w || !s->scratch || (s->block_size == 0 && !s->jp)) { ALWAN_CORE_FN(rf_free_state)(s); return ALWAN_E_NOMEM; }
 
     /* the dataset into XYZ, through the caller's space */
     ALWAN_CORE_FN(alwan_rgb_space_desc) src = *data_space;
@@ -695,6 +870,7 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     for (size_t i = 0; i < count; i++) {
         ALWAN_CORE_T const *X = s->xyz + i * 3;
         ALWAN_CORE_FN(rf_pcoord)(X, params->metric, s->disp, s->pc + i * 3);
+        if (!s->jp) continue;
         for (int c = 0; c < 3; c++) {
             ALWAN_CORE_T h = ALWAN_CORE_LITERAL(1e-4) * (ALWAN_CORE_ABS(X[c]) > ALWAN_CORE_LITERAL(1e-2) ? ALWAN_CORE_ABS(X[c]) : ALWAN_CORE_LITERAL(1e-2));
             ALWAN_CORE_T xp[3] = { X[0], X[1], X[2] }, xm[3] = { X[0], X[1], X[2] }, pp[3], pm[3];
@@ -711,6 +887,16 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_stat
     if (s->fbest >= RF_INF) { ALWAN_CORE_FN(rf_free_state)(s); return ALWAN_E_RANGE; }   /* the start itself is infeasible */
     *state = s;
     return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FN(alwan_rgb_fit_begin)(ALWAN_CORE_FN(alwan_rgb_fit_state) **state,
+                                                ALWAN_CORE_T const *data, size_t stride, size_t count,
+                                                ALWAN_CORE_FN(alwan_rgb_space_desc) const *data_space,
+                                                ALWAN_CORE_FN(alwan_rgb_space_desc) const *space,
+                                                ALWAN_CORE_FN(alwan_fit_tf) const *tf,
+                                                ALWAN_CORE_FN(alwan_rgb_fit_params) const *params, alwan_ctx *ctx) {
+    if (params && params->block_size > 0) return ALWAN_E_INVALID;   /* a cloud has no tiles */
+    return ALWAN_CORE_FN(rf_begin)(state, data, stride, count, 0, 0, data_space, space, tf, params, ctx);
 }
 
 alwan_status ALWAN_CORE_FN(alwan_rgb_fit_step)(ALWAN_CORE_FN(alwan_rgb_space_desc) *space, ALWAN_CORE_FN(alwan_fit_tf) *tf,
@@ -749,7 +935,7 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_evaluate)(ALWAN_CORE_FN(alwan_rgb_fit_r
     if (p.tf == ALWAN_FIT_TF_POWER && tf->gamma > ALWAN_CORE_ZERO) {
         if (tf->gamma < p.gamma_min) p.gamma_min = tf->gamma; if (tf->gamma > p.gamma_max) p.gamma_max = tf->gamma; }
     ALWAN_CORE_FN(alwan_rgb_fit_state) *s = NULL;
-    alwan_status st = ALWAN_CORE_FN(alwan_rgb_fit_begin)(&s, data, stride, count, data_space, space, tf, &p, ctx);
+    alwan_status st = ALWAN_CORE_FN(rf_begin)(&s, data, stride, count, 0, 0, data_space, space, tf, &p, ctx);
     if (st != ALWAN_OK) return st;
     memset(report, 0, sizeof *report);
     st = ALWAN_CORE_FN(rf_true_report)(s, s->theta, report);
@@ -765,8 +951,8 @@ static alwan_status ALWAN_CORE_FN(rf_solve_one)(ALWAN_CORE_FN(alwan_rgb_space_de
                                                 ALWAN_CORE_FN(alwan_rgb_fit_params) const *params, int max_iterations,
                                                 int warm, alwan_ctx *ctx) {
     ALWAN_CORE_FN(alwan_rgb_fit_state) *s = NULL;
-    alwan_status st = ALWAN_CORE_FN(alwan_rgb_fit_begin)(&s, data, stride, count, data_space,
-                                                         warm ? space : NULL, warm ? tf : NULL, params, ctx);
+    alwan_status st = ALWAN_CORE_FN(rf_begin)(&s, data, stride, count, 0, 0, data_space,
+                                              warm ? space : NULL, warm ? tf : NULL, params, ctx);
     if (st != ALWAN_OK) return st;
     for (int it = 0; it < max_iterations && !s->converged; it++) ALWAN_CORE_FN(rf_nm_step)(s);
     ALWAN_CORE_FN(rf_write_answer)(s, space, tf);
@@ -804,6 +990,85 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_solve)(ALWAN_CORE_FN(alwan_rgb_space_de
     if (pow_score < srgb_score * (ALWAN_CORE_ONE - params->srgb_margin)) { *space = s_pow; *tf = t_pow; *report = r_pow; }
     else { *space = s_srgb; *tf = t_srgb; *report = r_srgb; }
     return ALWAN_OK;
+}
+
+/* ---------------------------------------------------------------- */
+/* the block-format fit                                               */
+/* ---------------------------------------------------------------- */
+
+static alwan_status ALWAN_CORE_FN(rf_blocks_run)(ALWAN_CORE_FN(alwan_rgb_space_desc) *space, ALWAN_CORE_FN(alwan_fit_tf) *tf,
+                                                 ALWAN_CORE_FN(alwan_rgb_fit_report) *report,
+                                                 ALWAN_CORE_T const *image, int width, int height,
+                                                 ALWAN_CORE_FN(alwan_rgb_space_desc) const *data_space,
+                                                 ALWAN_CORE_FN(alwan_rgb_fit_params) const *params,
+                                                 int max_iterations, int warm, int evaluate_only, alwan_ctx *ctx) {
+    if (!space || !report || !params || !image || width <= 0 || height <= 0) return ALWAN_E_INVALID;
+    if (params->block_size < 2 || params->block_size > 8) return ALWAN_E_INVALID;
+    if (width < params->block_size || height < params->block_size) return ALWAN_E_INVALID;
+    if (params->index_bits < 1 || params->index_bits > 3) return ALWAN_E_INVALID;
+    ALWAN_CORE_FN(alwan_rgb_fit_state) *s = NULL;
+    alwan_status st = ALWAN_CORE_FN(rf_begin)(&s, image, 3 * sizeof(ALWAN_CORE_T), (size_t)width * (size_t)height,
+                                              width, height, data_space,
+                                              warm ? space : NULL, warm ? tf : NULL, params, ctx);
+    if (st != ALWAN_OK) return st;
+    if (!evaluate_only) {
+        for (int it = 0; it < max_iterations && !s->converged; it++) ALWAN_CORE_FN(rf_nm_step)(s);
+    }
+    ALWAN_CORE_FN(rf_write_answer)(s, space, tf);
+    memset(report, 0, sizeof *report);
+    st = ALWAN_CORE_FN(rf_true_report)(s, s->theta, report);
+    report->objective = s->fbest; report->iterations = s->iterations; report->converged = s->converged;
+    ALWAN_CORE_FN(rf_free_state)(s);
+    return st;
+}
+
+alwan_status ALWAN_CORE_FN(alwan_rgb_fit_blocks_solve)(ALWAN_CORE_FN(alwan_rgb_space_desc) *space, ALWAN_CORE_FN(alwan_fit_tf) *tf,
+                                                       ALWAN_CORE_FN(alwan_rgb_fit_report) *report,
+                                                       ALWAN_CORE_T const *image, int width, int height,
+                                                       ALWAN_CORE_FN(alwan_rgb_space_desc) const *data_space,
+                                                       ALWAN_CORE_FN(alwan_rgb_fit_params) const *params,
+                                                       int max_iterations, alwan_ctx *ctx) {
+    if (!tf || max_iterations < 0) return ALWAN_E_INVALID;
+    int const warm = (space->primaries_xy[1] > ALWAN_CORE_ZERO && space->white_xy[1] > ALWAN_CORE_ZERO);
+    if (params->tf != ALWAN_FIT_TF_AUTO) {
+        return ALWAN_CORE_FN(rf_blocks_run)(space, tf, report, image, width, height, data_space, params,
+                                            max_iterations, warm, 0, ctx);
+    }
+    ALWAN_CORE_FN(alwan_rgb_space_desc) s_pow = *space, s_srgb = *space;
+    ALWAN_CORE_FN(alwan_fit_tf) t_pow = *tf, t_srgb = *tf;
+    ALWAN_CORE_FN(alwan_rgb_fit_report) r_pow, r_srgb;
+    ALWAN_CORE_FN(alwan_rgb_fit_params) p = *params;
+    p.tf = ALWAN_FIT_TF_POWER;
+    alwan_status st = ALWAN_CORE_FN(rf_blocks_run)(&s_pow, &t_pow, &r_pow, image, width, height, data_space, &p,
+                                                   max_iterations, warm, 0, ctx);
+    if (st != ALWAN_OK) return st;
+    p.tf = ALWAN_FIT_TF_SRGB;
+    st = ALWAN_CORE_FN(rf_blocks_run)(&s_srgb, &t_srgb, &r_srgb, image, width, height, data_space, &p,
+                                      max_iterations, warm, 0, ctx);
+    if (st != ALWAN_OK) return st;
+    ALWAN_CORE_T pow_score = r_pow.mean_error + r_pow.tail_error, srgb_score = r_srgb.mean_error + r_srgb.tail_error;
+    if (pow_score < srgb_score * (ALWAN_CORE_ONE - params->srgb_margin)) { *space = s_pow; *tf = t_pow; *report = r_pow; }
+    else { *space = s_srgb; *tf = t_srgb; *report = r_srgb; }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FN(alwan_rgb_fit_blocks_evaluate)(ALWAN_CORE_FN(alwan_rgb_fit_report) *report,
+                                                          ALWAN_CORE_FN(alwan_rgb_space_desc) const *space,
+                                                          ALWAN_CORE_FN(alwan_fit_tf) const *tf,
+                                                          ALWAN_CORE_T const *image, int width, int height,
+                                                          ALWAN_CORE_FN(alwan_rgb_space_desc) const *data_space,
+                                                          ALWAN_CORE_FN(alwan_rgb_fit_params) const *params, alwan_ctx *ctx) {
+    if (!report || !space || !tf || !params) return ALWAN_E_INVALID;
+    ALWAN_CORE_FN(alwan_rgb_space_desc) sp = *space;
+    ALWAN_CORE_FN(alwan_fit_tf) t2 = *tf;
+    ALWAN_CORE_FN(alwan_rgb_fit_params) p = *params;
+    p.tf = tf->kind == ALWAN_FIT_TF_SRGB ? ALWAN_FIT_TF_SRGB : ALWAN_FIT_TF_POWER;
+    p.lock = ALWAN_FIT_LOCK_WHITE | ALWAN_FIT_LOCK_PRIMARIES | ALWAN_FIT_LOCK_TF | ALWAN_FIT_LOCK_SCALE | ALWAN_FIT_LOCK_OFFSET;
+    if (p.tf == ALWAN_FIT_TF_POWER && tf->gamma > ALWAN_CORE_ZERO) {
+        if (tf->gamma < p.gamma_min) p.gamma_min = tf->gamma;
+        if (tf->gamma > p.gamma_max) p.gamma_max = tf->gamma;
+    }
+    return ALWAN_CORE_FN(rf_blocks_run)(&sp, &t2, report, image, width, height, data_space, &p, 0, 1, 1, ctx);
 }
 
 #undef RF_NP

@@ -23,6 +23,22 @@ All notable changes to this project will be documented in this file.
   than assuming D50, so reading one of those as D50 no longer silently
   chromatic-adapts the reference data itself.
 
+- **A block-aware RGB space fit** (`alwan_rgb_fit_blocks_solve`,
+  `alwan_rgb_fit_blocks_evaluate`). A block format stores two endpoints per
+  tile and an index per texel, so a tile is forced onto a line segment;
+  BC1 is `bits_channel = {5,6,5}`, `block_size = 4`, `index_bits = 2`.
+  The objective is the codec itself on a subsample of tiles, with no
+  smooth surrogate, so the number reported is the number minimised.
+
+  Measured against the ordinary fit through a real BC1 codec on five
+  textures, it does not win: 1, 1, 2, 2 and 15 percent against the cloud
+  fit's 1, 2, 6, 0 and 18. That is a ceiling rather than an unconverged
+  search, since four times the budget converges to the identical answer.
+  It is shipped because it is the correct objective for the format, it
+  converges in about 200 iterations, and its answer is qualitatively
+  different: it holds sRGB's triangle and moves only the scale, which is
+  what a format with per-tile endpoints should want.
+
 - **Patch names and layouts, including for a target with no colorimetry.**
   `alwan_color_checker_patch_name` says which patch an index is ("dark
   skin", "A1", "GS0"), and `alwan_color_checker_grid` gives the
