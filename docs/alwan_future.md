@@ -420,6 +420,58 @@ second, on top of the budget, is the obvious next step, and it would also open
 the asymmetry that matters perceptually: light adaptation in seconds, dark
 adaptation far slower.
 
+## ACES 1.x HDR: the embedded spline targets a 10-nit mid point
+
+The sweep on the light-saber frame reported 10.3% of pixels differing from OCIO
+by more than 4 PQ codes on `ALWAN_ACES1_OUT_REC2020_1000NIT_PQ`. Chasing it
+turned up two separate things, and neither is the one the report suggested.
+
+**The transform is right, under one of its two paths.** With
+`ALWAN_ACES_INTERP_OCIO`, which is what the sweep uses, alwan agrees with OCIO's
+"ACES 1.1 - HDR Video (1000 nits & Rec.2020 lim)" view to **0.05 of a 10-bit
+code** on everything away from black, mid-grey included: 0.18 lands at PQ
+0.332589, which is 15.00 cd/m2 exactly, the mid point the ODT is named for. The
+matrix chain AP1 to Rec.2020 through the D60 to D65 Bradford CAT reproduces one
+built from the published ACES primaries to 2.2e-16, so the matrices are not
+involved either.
+
+**The reported disagreement is PQ steepness near black.** What differs is
+channels whose linear value is about a thousandth of peak or less: for AP0 blue,
+OCIO's Rec.2020 red is +1.1e-3 and alwan's is at or below zero. In linear light
+that is nothing, one part in a thousand of a channel that is already black. PQ
+near zero is steep enough to turn it into 66 code values, which is how a
+difference invisible on any display becomes 10% of pixels over a threshold. The
+lesson is about the metric: a PQ code count is the wrong yardstick below a few
+cd/m2, and the sweep should compare in linear or in a perceptual space there.
+
+**The real defect is elsewhere and was not what was being measured.** Under the
+DEFAULT `ALWAN_ACES_INTERP_BSPLINE`, the same enum puts 0.18 at PQ 0.299698,
+which is 10.00 cd/m2 exactly. The embedded c9 breakpoints say so:
+`aces1_c9_1000nit_breakpoints.csv` carries yMid = 10, as do the 2000 and 4000
+nit files. That is the older ACES HDR ODT; every current ACES config ships the
+15-nit one, and OCIO offers no 10-nit view to validate against. So the same enum
+value is two different output transforms depending on a setting documented as a
+choice of how to evaluate a curve, and they sit **34 codes apart on mid-grey**,
+which is half a stop of luminance on every pixel of every frame.
+
+Suite 56 now pins all of it, including the 34-code gap, so a change is noticed
+rather than absorbed.
+
+Fixing it means regenerating the c9 coefficients for the 15-nit ODTs. The
+coefficients are log10 luminances at the spline knots, so the mid point cannot
+simply be edited: the whole table encodes the 10-nit curve. Two routes:
+
+- Take them from the ACES CTL for `Rec2020_1000nits_15nits_ST2084` and its 2000
+  and 4000 nit siblings. This is the correct source and needs the file, which
+  could not be fetched here.
+- Recover the curve from OCIO. For a neutral input the whole chain is diagonal,
+  so inverting OCIO's PQ output on a dense grey ramp gives c9(c5(x)) in cd/m2
+  directly, and the c9 knots can be refitted from that. This is within gendata's
+  rule of taking a reference implementation as the source, and needs no file.
+
+Whichever route, it is a change to the default output of a shipped transform, so
+it wants to be a deliberate decision rather than a quiet fix.
+
 ## Corpus files carry no chromaticities
 
 This is a corpus decision rather than a library one, so it sits here until
@@ -474,6 +526,7 @@ nonsense. What remains:
 - [ ] Document the undocumented tail surface
 - [ ] Hunt inverse (3.0.0)
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
+- [ ] ACES 1.x HDR: regenerate the c9 splines for the 15-nit ODTs (default path is 10-nit)
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [ ] EXR loader: exercise a non-zero data window origin
 - [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation
