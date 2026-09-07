@@ -610,7 +610,7 @@ simply be edited: the whole table encodes the 10-nit curve. Two routes:
 Whichever route, it is a change to the default output of a shipped transform, so
 it wants to be a deliberate decision rather than a quiet fix.
 
-## RGB-space transfer functions: audited, and nine still wrong
+## RGB-space transfer functions: audited against a reference, and fixed
 
 `alwan_rgb_space_get_tfs` used a hand-written switch naming 20 of the 104 RGB
 spaces and refused the rest, ACEScct and every camera log space among them. It
@@ -640,24 +640,30 @@ Seventeen were real and are fixed, sourced from
 Adobe Wide Gamut is gamma 2.19921875 and is carried as GAMMA22, which is exact to
 2e-4 and the closest the enum offers.
 
-**Nine remain wrong, each needing a transfer function the library does not have:**
+**Nine more were wrong because the library had no curve for them.** Seven were
+added: gamma 1.8, the ROMM encoding, RIMM, ERIMM, CIE 1976 lightness, the SMPTE
+240M OETF, and the Adobe 563/256 gamma. That last one came out of tightening the
+test rather than the audit: Adobe RGB (1998) and Adobe Wide Gamut are 2.19921875
+and were both carried as 2.2, wrong by 4.2e-4.
 
-| space | needs | worst error |
-| --- | --- | --- |
-| ERIMM RGB | the ERIMM log encoding | 3.35 |
-| RIMM RGB | the RIMM curve | 2.61 |
-| ECI RGB v2 | CIE 1976 lightness | 2.32 |
-| Apple RGB, ColorMatch RGB | gamma 1.8 | 1.84 |
-| ProPhoto RGB, ROMM RGB | the ROMM curve, 1.8 with a linear toe | 1.84 |
-| DCDM XYZ | its direction checked; it has an enum and still differs | 1.28 |
-| SMPTE 240M | the SMPTE 240M OETF rather than BT.709 | 0.011 |
+| space | now uses |
+| --- | --- |
+| Apple RGB, ColorMatch RGB | gamma 1.8 |
+| ProPhoto RGB, ROMM RGB | the ROMM curve, 1.8 with a linear toe below 1/512 |
+| RIMM RGB | the RIMM curve |
+| ERIMM RGB | the ERIMM log encoding, 0.001 to 316.2 |
+| ECI RGB v2 | CIE 1976 lightness |
+| SMPTE 240M | its own OETF rather than BT.709 |
+| Adobe RGB (1998), Adobe Wide Gamut | gamma 563/256 |
 
-Gamma 1.8 is the cheapest of these and closes two rows on its own. Adding any of
-them means a new `alwan_transfer_function` value, which is ABI-facing and belongs
-with the enum-pinning item rather than being slipped in.
+DCDM XYZ turned out not to be a defect. alwan normalises to the 48 cd/m2
+reference white where colour-science works in absolute cd/m2, and at 48 the two
+agree exactly.
 
-Suite 43 walks every space asserting that nothing is refused and that the two
-entry points cannot disagree, since there is now only one table behind both.
+**Every space colour-science knows now matches it to 1e-6.** The wide-gamut
+entries stay excluded by design, and the new enum values are appended so nothing
+renumbers. `gendata/gen_rgb_space_tf_reference.py` emits the reference and suite
+43 walks it, so the table cannot drift again without a test noticing.
 
 ## Corpus files carry no chromaticities
 
@@ -713,7 +719,8 @@ nonsense. What remains:
 - [ ] Document the undocumented tail surface
 - [ ] Hunt inverse (3.0.0)
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
-- [ ] RGB-space transfer functions: the nine that need a curve the library lacks (gamma 1.8 first)
+- [x] RGB-space transfer functions: audited against colour-science, 24 rows corrected, 7 curves added
+- [ ] RGB-space transfer functions: cover the 38 spaces colour-science has no counterpart for
 - [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
 - [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all
