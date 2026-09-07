@@ -3677,7 +3677,14 @@ typedef enum {
     ALWAN_COLORCHECKER_SG = 1, /* ColorChecker SG 140-patch, A1..N10, current formulation */
     ALWAN_COLORCHECKER_DIGITAL_SG = 2, /* the same physical target under its product name */
     ALWAN_BABELCOLOR_AVERAGE = 3, /* BabelColor's average of 30 Classic charts, 24 patches */
-    ALWAN_BABELCOLOR_HCT = 4 /* BabelColor HCT: no data, reports 0 patches */
+    ALWAN_BABELCOLOR_HCT = 4, /* BabelColor HCT: no data, reports 0 patches */
+    /* The Classic through its production runs: the pigments changed in November 2014, and the
+     * 1976 values are published under Illuminant C rather than D50. */
+    ALWAN_COLORCHECKER_CLASSIC_1976 = 5,
+    ALWAN_COLORCHECKER_CLASSIC_PRE2014 = 6,
+    ALWAN_COLORCHECKER_CLASSIC_POST2014 = 7,
+    ALWAN_COLORCHECKER_SG_PRE2014 = 8, /* the SG before the same change */
+    ALWAN_TE226_V2 = 9 /* Image Engineering TE226 V2, 45 patches, published under D65 */
 } alwan_colorchecker_type;
 
 /* Advanced Interpolation
@@ -3840,6 +3847,11 @@ alwan_status alwan_color_checker_data_f32(alwan_xyz_f32 *xyz,
  * type: Color Checker target type
  * Returns number of patches, or 0 on error */
 size_t alwan_color_checker_num_patches(alwan_colorchecker_type type);
+
+/* The illuminant a target's published values are under, which is what alwan_color_checker_data
+ * adapts FROM. D50 for most, Illuminant C for the 1976 Classic, D65 for the TE226. Returns
+ * ALWAN_E_NODATA for a type alwan carries no measurements for. */
+alwan_status alwan_color_checker_native_illuminant(alwan_illuminant *illuminant, alwan_colorchecker_type type);
 
 /* NCS (Natural Color System) Data
  * Convert NCS notation to XYZ tristimulus values

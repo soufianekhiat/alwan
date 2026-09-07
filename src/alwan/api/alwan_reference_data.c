@@ -284,13 +284,39 @@ static alwan_f64 const g_babelcolor_average_d50_xyY[] = {
 #include "../data/colorchecker/babelcolor_average_d50_xyy.csv"
 };
 
+/* The Classic through its production runs. The 1976 values are published under Illuminant C,
+ * which is why every table carries its own illuminant below rather than assuming D50. */
+static alwan_f64 const g_colorchecker_1976_c_xyY[] = {
+#include "../data/colorchecker/classic_1976_c_xyy.csv"
+};
+static alwan_f64 const g_colorchecker_pre2014_d50_xyY[] = {
+#include "../data/colorchecker/classic_pre2014_d50_xyy.csv"
+};
+static alwan_f64 const g_colorchecker_post2014_d50_xyY[] = {
+#include "../data/colorchecker/classic_post2014_d50_xyy.csv"
+};
+
+/* The SG before the November 2014 pigment change. */
+static alwan_f64 const g_colorchecker_sg_pre2014_d50_xyY[] = {
+#include "../data/colorchecker/sg_pre2014_d50_xyy.csv"
+};
+
+/* Image Engineering's TE226 V2, 45 patches, published under D65. */
+static alwan_f64 const g_te226_v2_d65_xyY[] = {
+#include "../data/colorchecker/te226_v2_d65_xyy.csv"
+};
+
 /* Each table is patches x (x, y, Y). Read through the shared row gate; see munsell_row. */
 enum { COLORCHECKER_FIELDS_PER_PATCH = 3 };
 #define COLORCHECKER_COUNT_OF(table) \
     (sizeof(table) / (COLORCHECKER_FIELDS_PER_PATCH * sizeof(alwan_f64)))
 
-/* The table for a type, or NULL when alwan carries no data for it. */
-static alwan_f64 const *colorchecker_table(alwan_colorchecker_type type, size_t *count) {
+/* The table for a type, or NULL when alwan carries no data for it. Each table also reports the
+ * illuminant its values are published under, which is not D50 for all of them: the 1976 Classic
+ * is under Illuminant C and the TE226 under D65. The lookup adapts from there. */
+static alwan_f64 const *colorchecker_table(alwan_colorchecker_type type, size_t *count,
+                                           alwan_illuminant *native) {
+    *native = ALWAN_ILLUMINANT_D50;
     switch (type) {
         case ALWAN_COLORCHECKER_CLASSIC:
             *count = COLORCHECKER_COUNT_OF(g_colorchecker_classic_d50_xyY);
@@ -303,6 +329,23 @@ static alwan_f64 const *colorchecker_table(alwan_colorchecker_type type, size_t 
         case ALWAN_BABELCOLOR_AVERAGE:
             *count = COLORCHECKER_COUNT_OF(g_babelcolor_average_d50_xyY);
             return g_babelcolor_average_d50_xyY;
+        case ALWAN_COLORCHECKER_CLASSIC_1976:
+            *native = ALWAN_ILLUMINANT_C;
+            *count = COLORCHECKER_COUNT_OF(g_colorchecker_1976_c_xyY);
+            return g_colorchecker_1976_c_xyY;
+        case ALWAN_COLORCHECKER_CLASSIC_PRE2014:
+            *count = COLORCHECKER_COUNT_OF(g_colorchecker_pre2014_d50_xyY);
+            return g_colorchecker_pre2014_d50_xyY;
+        case ALWAN_COLORCHECKER_CLASSIC_POST2014:
+            *count = COLORCHECKER_COUNT_OF(g_colorchecker_post2014_d50_xyY);
+            return g_colorchecker_post2014_d50_xyY;
+        case ALWAN_COLORCHECKER_SG_PRE2014:
+            *count = COLORCHECKER_COUNT_OF(g_colorchecker_sg_pre2014_d50_xyY);
+            return g_colorchecker_sg_pre2014_d50_xyY;
+        case ALWAN_TE226_V2:
+            *native = ALWAN_ILLUMINANT_D65;
+            *count = COLORCHECKER_COUNT_OF(g_te226_v2_d65_xyY);
+            return g_te226_v2_d65_xyY;
         default:
             *count = 0;
             return NULL;   /* a known type alwan has no measurements for */
@@ -322,8 +365,23 @@ ALWAN_DIAG_POP
  * every lookup would then refuse. */
 size_t alwan_color_checker_num_patches(alwan_colorchecker_type type) {
     size_t count = 0;
-    (void)colorchecker_table(type, &count);
+    alwan_illuminant native;
+    (void)colorchecker_table(type, &count, &native);
     return count;
+}
+
+/* The illuminant a target's published values are under, before any adaptation. */
+alwan_status alwan_color_checker_native_illuminant(alwan_illuminant *illuminant, alwan_colorchecker_type type) {
+    if (!illuminant) {
+        return ALWAN_E_INVALID;
+    }
+    size_t count = 0;
+    alwan_illuminant native;
+    if (!colorchecker_table(type, &count, &native)) {
+        return type <= ALWAN_TE226_V2 ? ALWAN_E_NODATA : ALWAN_E_INVALID;
+    }
+    *illuminant = native;
+    return ALWAN_OK;
 }
 
 /* Get XYZ tristimulus values for a Color Checker patch */
@@ -334,16 +392,17 @@ alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker
     }
 
     size_t num_patches = 0;
-    alwan_f64 const *table = colorchecker_table(type, &num_patches);
+    alwan_illuminant native = ALWAN_ILLUMINANT_D50;
+    alwan_f64 const *table = colorchecker_table(type, &num_patches, &native);
     if (!table) {
         /* a type alwan carries no measurements for, or not a type at all */
-        return type <= ALWAN_BABELCOLOR_HCT ? ALWAN_E_NODATA : ALWAN_E_INVALID;
+        return type <= ALWAN_TE226_V2 ? ALWAN_E_NODATA : ALWAN_E_INVALID;
     }
     if (patch_index >= num_patches) {
         return ALWAN_E_RANGE;
     }
 
-    /* Get xyY data under D50, through the row gate. */
+    /* Get the patch's xyY under the table's own illuminant, through the row gate. */
     alwan_f64 const *patch = colorchecker_row(table, num_patches, patch_index);
     alwan_f64 x = patch[0];
     alwan_f64 y = patch[1];
@@ -354,16 +413,15 @@ alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker
         return ALWAN_E_INVALID;
     }
 
-    alwan_xyz_f64 xyz_d50;
-    xyz_d50.x = x * Y / y;
-    xyz_d50.y = Y;
-    xyz_d50.z = (ALWAN_LITERAL(1.0) - x - y) * Y / y;
+    alwan_xyz_f64 xyz_native;
+    xyz_native.x = x * Y / y;
+    xyz_native.y = Y;
+    xyz_native.z = (ALWAN_LITERAL(1.0) - x - y) * Y / y;
 
-    /* Adapt from D50 to requested illuminant */
-    if (illuminant != ALWAN_ILLUMINANT_D50) {
-        /* Get white points for both illuminants */
+    /* Adapt from the table's own illuminant to the requested one */
+    if (illuminant != native) {
         alwan_xyz_f64 white_d50, white_dst;
-        int status = alwan_illuminant_white_point_f64(&white_d50, ALWAN_ILLUMINANT_D50,
+        int status = alwan_illuminant_white_point_f64(&white_d50, native,
                                                     ALWAN_OBSERVER_CIE_1931_2DEG);
         if (status != ALWAN_OK) {
             return status;
@@ -384,11 +442,11 @@ alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz, alwan_colorchecker
 
         /* Apply adaptation */
         alwan_vec3_f64 vec_in, vec_out;
-        ALWAN_MEMCPY(&vec_in, &xyz_d50, sizeof(alwan_vec3_f64));
+        ALWAN_MEMCPY(&vec_in, &xyz_native, sizeof(alwan_vec3_f64));
         alwan_mat3_mulv_f64(&vec_out, &cat_matrix, &vec_in);
         ALWAN_MEMCPY(xyz, &vec_out, sizeof(alwan_vec3_f64));
     } else {
-        *xyz = xyz_d50;
+        *xyz = xyz_native;
     }
 
     return ALWAN_OK;

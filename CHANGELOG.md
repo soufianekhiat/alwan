@@ -14,6 +14,15 @@ All notable changes to this project will be documented in this file.
   observer, from colour-science through `gendata`. The Digital SG resolves
   to the SG: it is the same physical target under its product name.
 
+- **Five more chart tables, each under its own illuminant.** The Classic
+  through its production runs (1976, before and after the November 2014
+  pigment change), the SG before that change, and Image Engineering's
+  TE226 V2, 45 patches. `alwan_color_checker_native_illuminant` reports
+  what a table's values are published under, which is Illuminant C for the
+  1976 Classic and D65 for the TE226; the lookup adapts from there rather
+  than assuming D50, so reading one of those as D50 no longer silently
+  chromatic-adapts the reference data itself.
+
 - **Reading an OpenQualia measurement file** (`alwan_dev`,
   `gendata/openqualia.py`). OpenQualia standardises the measurement that
   ships with an individual target as CGATS.17-2009, reached from a QR label
