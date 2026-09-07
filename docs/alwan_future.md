@@ -486,6 +486,78 @@ caller-side line today and wants to be a rate limiter in stops per second in the
 library. That is also where the asymmetry that matters perceptually belongs:
 light adaptation in seconds, dark adaptation far slower.
 
+### Running it on real footage: three halos, and only one of them temporal
+
+Put through 2048x858 ACES frames from the ASC StEM2 delivery, the operator draws
+a visible halo around high-contrast edges. Taking it apart needed three controls
+that now exist in image_gen: the formation operator with no exposure field at
+all, a field solved cold on each frame carrying nothing, and the ordinary
+resumed solve. Three points place an artefact; one does not.
+
+**The formation operator is not involved.** With no field there is no halo, at
+any edge, in any of the shots tried.
+
+**A sharp moving edge trails, and that is the resume.** The field may only move
+0.15 stops per iteration, so at one iteration a frame it lags. Correlating the
+field against the scene carrier at the current frame and at earlier ones says how
+far:
+
+| iterations a frame | the field matches |
+| --- | --- |
+| 1 | 3 frames back |
+| 2 | 2 frames back |
+| 4 | 1 frame back |
+| 8 | the current frame |
+
+**A defocused edge halos, and that is not temporal at all.** A cold solve, with
+no state carried whatsoever, still puts the field 1.5 stops above the background
+across the blur of an out-of-focus foreground; the resumed version reads 1.7, so
+the resume adds about a seventh and the rest is there in a single frame. The
+cause is that the base's gate has nothing to cut at. Measured on the cabin shot's
+foreground window frame, the carrier falls 0.69 stops across the blur but only
+**0.069 stops between adjacent pixels**, against 3.55 for a sharp edge in the
+same frame. Perona-Malik conductance was tried on that stencil and changed the
+result by nothing at four decimal places, for the obvious reason: at one pixel a
+defocused edge is texture. Cutting it needs a measure taken over a distance
+comparable to the blur, which means a multi-scale base rather than a one-pixel
+one, and that is real work rather than a constant.
+
+**The field is unstable frame to frame independent of any of this, and the resume
+is what damps it.** Over a nearly static second:
+
+| | field movement, stops rms |
+| --- | --- |
+| cold solve, every frame independent | 0.145 |
+| resumed, 1 iteration | 0.071 |
+| resumed, 8 iterations | 0.123 |
+
+So converging harder moves the field toward the per-frame answer, and the
+per-frame answer flickers. Raising the budget to fix the trail made the flicker
+worse in the same shot. Whatever the per-frame solve is doing differently from
+one frame to the next has not been chased; it is the next thing to look at, since
+it caps how converged a frame is allowed to be.
+
+**The one lever that helps all three is the adaptation strength**, and it costs
+the effect in proportion:
+
+| strength | halo step | flicker, rms | adaptation swing |
+| --- | --- | --- | --- |
+| 0.60 | 1.72 stops | 0.071 | 0.81 stops |
+| 0.30 | 1.30 | 0.060 | 0.60 |
+| 0.15 | 0.65 | 0.034 | 0.36 |
+
+At 0.6 the anchor saturates its one-stop cap across the blur, so the transition
+becomes a block with a hard boundary that shifts with the shot. At 0.15 nothing
+saturates. That cap is worth questioning on its own: a scene that falls 4.9 stops
+gets 0.8 back.
+
+**A level lag exists, in the tool rather than the library.** `--exp-video
+lag=<seconds>` converges the field every frame and filters only its mean with a
+first-order response, putting the difference back as a uniform offset before the
+picture is formed. That is the separation the section above asks for, and it
+belongs in the library once the flicker above is understood, because the two
+interact: the lag smooths the level and does nothing for structure.
+
 ## ACES 1.x HDR: the embedded spline targets a 10-nit mid point
 
 The sweep on the light-saber frame reported 10.3% of pixels differing from OCIO
@@ -618,11 +690,14 @@ nonsense. What remains:
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
 - [ ] Reconcile the two RGB-space transfer-function tables (12 disagree, 3 clearly wrong)
 - [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
+- [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
+- [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all
+- [ ] Exposure anchor: the one-stop cap gives back 0.8 of a 4.9-stop change; is that the right number
 - [ ] ACES 1.x HDR: regenerate the c9 splines for the 15-nit ODTs (default path is 10-nit)
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [ ] EXR loader: exercise a non-zero data window origin
 - [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation
-- [ ] Temporal picture formation: a time constant in seconds rather than in frames
+- [ ] Temporal picture formation: a time constant in seconds in the library (image_gen has one)
 - [x] Block-aware RGB space fit (built; measured no better than the cloud fit on real textures)
 
 ---
