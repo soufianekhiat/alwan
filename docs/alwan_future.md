@@ -538,6 +538,30 @@ simply be edited: the whole table encodes the 10-nit curve. Two routes:
 Whichever route, it is a change to the default output of a shipped transform, so
 it wants to be a deliberate decision rather than a quiet fix.
 
+## Two RGB-space transfer-function tables disagree
+
+`alwan_rgb_space_get_tfs` used a hand-written switch into a metadata table that
+names 20 of the 104 RGB spaces, so it refused 84 of them, ACEScct and every
+camera log space among them. It now falls back to the generated descriptor table,
+which carries a static assertion of one row per enum value, and refuses nothing.
+
+What is left is a data question. On twelve classic spaces the two tables disagree
+and the switch is the one that is right:
+
+| space | switch | descriptor | what it should be |
+| --- | --- | --- | --- |
+| CIE RGB | gamma 2.2 | linear | gamma 2.2 |
+| Best RGB | gamma 2.2 | linear | gamma 2.2 |
+| Adobe Wide Gamut | gamma 2.2 | linear | gamma 2.19921875 |
+| SMPTE-C | gamma 2.2 | BT.709 | a real choice |
+| NTSC 1953 | gamma 2.2 | BT.709 | a real choice |
+| PAL/SECAM | gamma 2.2 | BT.709 | 2.8 by the standard, 2.2 in practice |
+
+The first three are simply wrong in the descriptor table, which is the one every
+other part of the library reads. The rest are a decision about what the library
+should claim, not a bug. Both belong in gendata rather than in a switch, and the
+count is pinned in suite 43 so a change to either table is noticed.
+
 ## Corpus files carry no chromaticities
 
 This is a corpus decision rather than a library one, so it sits here until
@@ -592,6 +616,7 @@ nonsense. What remains:
 - [ ] Document the undocumented tail surface
 - [ ] Hunt inverse (3.0.0)
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
+- [ ] Reconcile the two RGB-space transfer-function tables (12 disagree, 3 clearly wrong)
 - [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
 - [ ] ACES 1.x HDR: regenerate the c9 splines for the 15-nit ODTs (default path is 10-nit)
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
