@@ -321,6 +321,75 @@ Next step is to dump alwan's per-sample dE for illuminant A and compare against
 colour-science's, which will separate "uniform offset" (adaptation or white
 point) from "a few samples" (CES data).
 
+## Block-aware RGB space fit
+
+The experimental fit minimises quantisation error over a whole dataset, which is
+the right objective for a texture stored as plain codes and the wrong one for a
+texture stored in a block format.
+
+Measured, on five Poly Haven diffuse maps through a real BC1 codec (two RGB565
+endpoints per 4x4 block on the block's principal axis, a 2-bit index per texel):
+the index interpolation alone accounts for 67 to 94% of BC1's total error, and
+the endpoint quantisation for the rest. A fitted space can only touch the
+endpoints, so it gained 1 to 18% end to end, and the 18% was the texture with
+both the tightest gamut and the lowest index share.
+
+The global objective is therefore near its ceiling here. A block-aware fit would
+optimise what per-block endpoints can express: for each block the two endpoints
+already adapt to local content, so what the space controls is how well a block's
+colours fall on a line, and how much of the 565 grid that line's endpoints land
+on. That is a different objective, over blocks rather than over pixels, and it
+would need the image rather than a sample cloud.
+
+`bits_channel` already carries the per-channel depth a BC1 endpoint needs, and
+`tools/rgb_fit_bc1.py` in alwan_dev already measures the end-to-end result and
+splits the error into the two parts, so the measurement harness for this exists.
+
+## Temporal picture formation, exposure adaptation across frames
+
+`alwan_picture_form_global_exp` solves a whole image at once, and
+`alwan_picture_form_local_exp_field` already returns the per-pixel exposure field
+it converged to. Neither is tractable per frame at real-time rates: the global
+solve is an iteration to convergence on the whole frame.
+
+The shape of the idea: run the same solver for a few iterations per frame,
+warm-started from the previous frame's exposure field rather than from scratch.
+A Jacobi or Gauss-Seidel sweep is cheap and parallel, the field is temporally
+coherent because the scene is, and the residual convergence lag then reads as
+adaptation: the picture catches up to a lighting change over several frames the
+way an eye does. The `_field` variants exist precisely so a caller can hold the
+field between frames, so the storage half is already built.
+
+**Testing it is the open question**, and is the reason this sits here rather than
+in a branch. What can be measured without a subject in a chair:
+
+- **No flicker on a static input.** Feed the same frame repeatedly. Once warm,
+  the field must stop moving; the frame-to-frame field difference is a number
+  that should fall to zero and stay there. This is the cheapest test and it
+  catches the most likely defect.
+- **Monotone response to a monotone change.** Ramp the scene exposure linearly
+  over N frames. The response must be monotone with no overshoot and no
+  ringing, which is the temporal analogue of the MONO constraint the pointwise
+  operators are already held to.
+- **Convergence gap against the converged answer.** For a held frame, the gap
+  between k iterations and the converged global solve, as a function of k and of
+  whether the field was warm-started. This says what k buys and is the number
+  that decides whether the idea is viable at all.
+- **Bounded rate.** The field's rate of change per frame must be bounded, so a
+  cut between two very different shots cannot produce a one-frame jump that
+  reads as a flash.
+- **A step response with a time constant.** Human light adaptation runs in
+  seconds and dark adaptation in minutes, and the asymmetry is the part an
+  audience notices. Whether the solver's lag can be steered to a chosen time
+  constant, rather than being whatever the residual happens to give, is the
+  design question underneath the whole idea.
+
+The honest risk: convergence lag is a numerical accident, not a perceptual model.
+If the lag cannot be steered independently of the iteration count, the effect is
+a bug that happens to look plausible, and the adaptation belongs in an explicit
+temporal filter on the field instead. The tests above are ordered to find that
+out early.
+
 ## Corpus files carry no chromaticities
 
 This is a corpus decision rather than a library one, so it sits here until
@@ -377,6 +446,8 @@ nonsense. What remains:
 - [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [ ] EXR loader: exercise a non-zero data window origin
+- [ ] Block-aware RGB space fit: optimise for what per-block endpoints can express
+- [ ] Temporal picture formation: warm-started iterations per frame as exposure adaptation
 
 ---
 
