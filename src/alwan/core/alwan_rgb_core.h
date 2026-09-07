@@ -577,6 +577,125 @@ ALWAN_INLINE alwan_scalar alwan_gamma28_eotf(alwan_scalar encoded) {
     return ALWAN_POW(E, ALWAN_LITERAL(2.8));
 }
 
+/* Adobe gamma 563/256 = 2.19921875, used by Adobe RGB (1998) and Adobe Wide Gamut RGB.
+ * Carrying these as gamma 2.2 is wrong by 4.2e-4: small, and needless. */
+ALWAN_INLINE alwan_scalar alwan_adobergb_oetf(alwan_scalar lin) {
+    alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    return ALWAN_POW(L, ALWAN_ONE / ALWAN_LITERAL(2.19921875));
+}
+
+ALWAN_INLINE alwan_scalar alwan_adobergb_eotf(alwan_scalar encoded) {
+    alwan_scalar E = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded);
+    return ALWAN_POW(E, ALWAN_LITERAL(2.19921875));
+}
+
+/* Gamma 1.8 -- Apple RGB, ColorMatch RGB */
+ALWAN_INLINE alwan_scalar alwan_gamma18_oetf(alwan_scalar lin) {
+    alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    return ALWAN_POW(L, ALWAN_ONE / ALWAN_LITERAL(1.8));
+}
+
+ALWAN_INLINE alwan_scalar alwan_gamma18_eotf(alwan_scalar encoded) {
+    alwan_scalar E = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded);
+    return ALWAN_POW(E, ALWAN_LITERAL(1.8));
+}
+
+/* ROMM RGB (ISO 22028-2), the encoding ProPhoto RGB uses: gamma 1.8 with a linear toe below
+ * E_t = 16^(1.8/(1-1.8)) = 1/512, where the slope is 16. */
+ALWAN_INLINE alwan_scalar alwan_romm_oetf(alwan_scalar lin) {
+    alwan_scalar const Et = ALWAN_LITERAL(0.001953125);
+    alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    alwan_scalar toe = L * ALWAN_LITERAL(16.0);
+    alwan_scalar pw  = ALWAN_POW(L, ALWAN_ONE / ALWAN_LITERAL(1.8));
+    return ALWAN_SELECT(L < Et, toe, pw);
+}
+
+ALWAN_INLINE alwan_scalar alwan_romm_eotf(alwan_scalar encoded) {
+    alwan_scalar const Ebr = ALWAN_LITERAL(0.03125);   /* 16 * Et */
+    alwan_scalar E = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded);
+    alwan_scalar toe = E / ALWAN_LITERAL(16.0);
+    alwan_scalar pw  = ALWAN_POW(E, ALWAN_LITERAL(1.8));
+    return ALWAN_SELECT(E < Ebr, toe, pw);
+}
+
+/* RIMM RGB (ISO 22028-3): the BT.709 OETF shape normalised by its own value at the clip point,
+ * E_clip = 2.0, so that scene exposure 2.0 encodes to 1.0. */
+ALWAN_INLINE alwan_scalar alwan_rimm_oetf(alwan_scalar lin) {
+    alwan_scalar const Vclip = ALWAN_LITERAL(1.4022782421730806); /* 1.099*2^0.45 - 0.099 */
+    alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    alwan_scalar toe = ALWAN_LITERAL(4.5) * L;
+    alwan_scalar pw  = ALWAN_LITERAL(1.099) * ALWAN_POW(L, ALWAN_LITERAL(0.45)) - ALWAN_LITERAL(0.099);
+    return ALWAN_SELECT(L < ALWAN_LITERAL(0.018), toe, pw) / Vclip;
+}
+
+ALWAN_INLINE alwan_scalar alwan_rimm_eotf(alwan_scalar encoded) {
+    alwan_scalar const Vclip = ALWAN_LITERAL(1.4022782421730806);
+    alwan_scalar E = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded) * Vclip;
+    alwan_scalar toe = E / ALWAN_LITERAL(4.5);
+    alwan_scalar pw  = ALWAN_POW((E + ALWAN_LITERAL(0.099)) / ALWAN_LITERAL(1.099),
+                                 ALWAN_ONE / ALWAN_LITERAL(0.45));
+    return ALWAN_SELECT(E < ALWAN_LITERAL(0.081), toe, pw);
+}
+
+/* ERIMM RGB (ISO 22028-3): log over 0.001 to 316.2, with a linear toe up to e*E_min so the two
+ * meet with matching slope. The numerator ln(E_t) - ln(E_min) is exactly 1 by that construction. */
+ALWAN_INLINE alwan_scalar alwan_erimm_oetf(alwan_scalar lin) {
+    alwan_scalar const Et    = ALWAN_LITERAL(0.0027182818284590453);
+    alwan_scalar const lnmin = ALWAN_LITERAL(-6.907755278982137);   /* ln(0.001)  */
+    alwan_scalar const den   = ALWAN_LITERAL(12.664130203757509);   /* ln(316.2) - ln(0.001) */
+    alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    alwan_scalar toe = L / (Et * den);
+    alwan_scalar lg  = (ALWAN_LN(ALWAN_SELECT(L < Et, Et, L)) - lnmin) / den;
+    return ALWAN_SELECT(L <= Et, toe, lg);
+}
+
+ALWAN_INLINE alwan_scalar alwan_erimm_eotf(alwan_scalar encoded) {
+    alwan_scalar const Et    = ALWAN_LITERAL(0.0027182818284590453);
+    alwan_scalar const lnmin = ALWAN_LITERAL(-6.907755278982137);
+    alwan_scalar const den   = ALWAN_LITERAL(12.664130203757509);
+    alwan_scalar const Ebr   = ALWAN_LITERAL(0.078963180566739205);
+    alwan_scalar E = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded);
+    alwan_scalar toe = E * Et * den;
+    alwan_scalar ex  = ALWAN_EXP(E * den + lnmin);
+    return ALWAN_SELECT(E <= Ebr, toe, ex);
+}
+
+/* CIE 1976 lightness, the encoding ECI RGB v2 uses. Domain and range are both 0..1, so the
+ * standard L* of 0..100 is scaled by 100 at both ends. */
+ALWAN_INLINE alwan_scalar alwan_lstar_oetf(alwan_scalar lin) {
+    alwan_scalar const eps   = ALWAN_LITERAL(0.008856451679035631);  /* 216/24389 */
+    alwan_scalar const kappa = ALWAN_LITERAL(903.2962962962963);     /* 24389/27  */
+    alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    alwan_scalar toe = kappa * L / ALWAN_LITERAL(100.0);
+    alwan_scalar cb  = (ALWAN_LITERAL(116.0) * ALWAN_POW(L, ALWAN_ONE / ALWAN_LITERAL(3.0))
+                        - ALWAN_LITERAL(16.0)) / ALWAN_LITERAL(100.0);
+    return ALWAN_SELECT(L <= eps, toe, cb);
+}
+
+ALWAN_INLINE alwan_scalar alwan_lstar_eotf(alwan_scalar encoded) {
+    alwan_scalar const kappa = ALWAN_LITERAL(903.2962962962963);
+    alwan_scalar E = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded) * ALWAN_LITERAL(100.0);
+    alwan_scalar toe = E / kappa;
+    alwan_scalar t   = (E + ALWAN_LITERAL(16.0)) / ALWAN_LITERAL(116.0);
+    return ALWAN_SELECT(E <= ALWAN_LITERAL(8.0), toe, t * t * t);
+}
+
+/* SMPTE 240M OETF (SMPTE ST 240:1999), the curve the 240M primaries are defined with. */
+ALWAN_INLINE alwan_scalar alwan_smpte240m_oetf(alwan_scalar lin) {
+    alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    alwan_scalar toe = ALWAN_LITERAL(4.0) * L;
+    alwan_scalar pw  = ALWAN_LITERAL(1.1115) * ALWAN_POW(L, ALWAN_LITERAL(0.45)) - ALWAN_LITERAL(0.1115);
+    return ALWAN_SELECT(L < ALWAN_LITERAL(0.0228), toe, pw);
+}
+
+ALWAN_INLINE alwan_scalar alwan_smpte240m_eotf(alwan_scalar encoded) {
+    alwan_scalar E = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded);
+    alwan_scalar toe = E / ALWAN_LITERAL(4.0);
+    alwan_scalar pw  = ALWAN_POW((E + ALWAN_LITERAL(0.1115)) / ALWAN_LITERAL(1.1115),
+                                 ALWAN_ONE / ALWAN_LITERAL(0.45));
+    return ALWAN_SELECT(E < ALWAN_LITERAL(0.0912), toe, pw);
+}
+
 /* N-Log -- Nikon "N-Log Specification Document" Ver. 1.0.0 (2018) */
 ALWAN_INLINE alwan_scalar alwan_nlog_oetf(alwan_scalar lin) {
     /* Nikon N-Log: a*(y+b)^(1/3)  for y < cut1;  c*ln(y)+d  for y >= cut1

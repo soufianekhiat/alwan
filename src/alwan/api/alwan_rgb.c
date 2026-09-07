@@ -708,10 +708,10 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
     /* [23] S_LOG2                   */ { ALWAN_TF_SLOG2,    ALWAN_TF_SLOG2    },
     /* [24] S_LOG3                   */ { ALWAN_TF_SLOG3,    ALWAN_TF_SLOG3    },
     /* [25] CIE_RGB                  */ { ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22  },  /* gamma 2.2 */
-    /* [26] ADOBE_WIDE_GAMUT_RGB     */ { ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22  },  /* gamma 2.19921875, GAMMA22 to 2e-4 */
-    /* [27] ROMM_RGB                 */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
-    /* [28] RIMM_RGB                 */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
-    /* [29] ERIMM_RGB                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [26] ADOBE_WIDE_GAMUT_RGB     */ { ALWAN_TF_ADOBE_RGB, ALWAN_TF_ADOBE_RGB },  /* gamma 563/256 */
+    /* [27] ROMM_RGB                 */ { ALWAN_TF_ROMM,    ALWAN_TF_ROMM     },  /* from colour-science */
+    /* [28] RIMM_RGB                 */ { ALWAN_TF_RIMM,    ALWAN_TF_RIMM     },  /* from colour-science */
+    /* [29] ERIMM_RGB                */ { ALWAN_TF_ERIMM,   ALWAN_TF_ERIMM    },  /* from colour-science */
     /* [30] FILMLIGHT_E_GAMUT        */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
     /* [31] FILMLIGHT_T_LOG          */ { ALWAN_TF_TLOG,     ALWAN_TF_TLOG     },
     /* [32] F_GAMUT                  */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
@@ -722,7 +722,7 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
     /* [37] PROTUNE_NATIVE           */ { ALWAN_TF_PROTUNE,  ALWAN_TF_PROTUNE  },
     /* [38] ITU_R_BT470_525          */ { ALWAN_TF_GAMMA28, ALWAN_TF_GAMMA28  },  /* gamma 2.8 */
     /* [39] ITU_R_BT470_625          */ { ALWAN_TF_GAMMA28, ALWAN_TF_GAMMA28  },  /* gamma 2.8 */
-    /* [40] SMPTE_240M               */ { ALWAN_TF_BT709,    ALWAN_TF_BT709    },
+    /* [40] SMPTE_240M               */ { ALWAN_TF_SMPTE240M, ALWAN_TF_SMPTE240M },  /* from colour-science */
     /* [41] SMPTE_C                  */ { ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22  },  /* gamma 2.2 */
     /* [42] DCDM_XYZ                 */ { ALWAN_TF_DCDM,     ALWAN_TF_DCDM     },
     /* [43] BEST_RGB                 */ { ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22  },  /* gamma 2.2 */
@@ -732,9 +732,9 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
     /* [47] MAX_RGB                  */ { ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22  },  /* gamma 2.2 */
     /* [48] RUSSELL_RGB              */ { ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22  },  /* gamma 2.2 */
     /* [49] SHARP_RGB                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
-    /* [50] ECI_RGB_V2               */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
-    /* [51] ADOBE_RGB_1998           */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
-    /* [52] PROPHOTO_RGB             */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [50] ECI_RGB_V2               */ { ALWAN_TF_LSTAR,   ALWAN_TF_LSTAR    },  /* from colour-science */
+    /* [51] ADOBE_RGB_1998           */ { ALWAN_TF_ADOBE_RGB, ALWAN_TF_ADOBE_RGB },  /* gamma 563/256 */
+    /* [52] PROPHOTO_RGB             */ { ALWAN_TF_ROMM,    ALWAN_TF_ROMM     },  /* from colour-science */
     /* [53] DAVINCI_WIDE_GAMUT       */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
     /* [54] DAVINCI_INTERMEDIATE     */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
     /* [55] BLACKMAGIC_WIDE_GAMUT    */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
@@ -755,8 +755,8 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
     /* [70] NTSC_1987                */ { ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22  },  /* gamma 2.2 */
     /* [71] PAL_SECAM                */ { ALWAN_TF_GAMMA28, ALWAN_TF_GAMMA28  },  /* gamma 2.8 */
     /* [72] EBU_TECH_3213_E          */ { ALWAN_TF_LINEAR,  ALWAN_TF_LINEAR   },  /* linear, the standard defines primaries only */
-    /* [73] APPLE_RGB                */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
-    /* [74] COLORMATCH_RGB           */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [73] APPLE_RGB                */ { ALWAN_TF_GAMMA18, ALWAN_TF_GAMMA18  },  /* from colour-science */
+    /* [74] COLORMATCH_RGB           */ { ALWAN_TF_GAMMA18, ALWAN_TF_GAMMA18  },  /* from colour-science */
     /* [75] ALEXA_WIDE_GAMUT         */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
     /* [76] P3_D60                   */ { ALWAN_TF_GAMMA26,  ALWAN_TF_GAMMA26  },
     /* [77] XTREME_RGB               */ { ALWAN_TF_GAMMA22, ALWAN_TF_GAMMA22  },  /* gamma 2.2 */

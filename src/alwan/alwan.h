@@ -513,6 +513,15 @@ typedef enum {
     ALWAN_TF_ADX10 = 40, /* ADX 10-bit (printing density to code value) */
     ALWAN_TF_ADX16 = 41, /* ADX 16-bit (printing density to code value) */
 
+    /* Photographic and legacy working-space curves. Appended, so nothing above renumbers. */
+    ALWAN_TF_GAMMA18 = 42,   /* Gamma 1.8 (Apple RGB, ColorMatch RGB) */
+    ALWAN_TF_ROMM = 43,      /* ROMM RGB (ISO 22028-2), the ProPhoto RGB encoding */
+    ALWAN_TF_RIMM = 44,      /* RIMM RGB (ISO 22028-3) */
+    ALWAN_TF_ERIMM = 45,     /* ERIMM RGB (ISO 22028-3), log over 0.001 to 316.2 */
+    ALWAN_TF_LSTAR = 46,     /* CIE 1976 lightness (ECI RGB v2) */
+    ALWAN_TF_SMPTE240M = 47, /* SMPTE ST 240 OETF */
+    ALWAN_TF_ADOBE_RGB = 48, /* Adobe gamma 563/256 = 2.19921875 */
+
     /* Game Engine Interop */
     ALWAN_TF_UNITY_LINEAR = ALWAN_TF_LINEAR  /* Unity linear (alias for ALWAN_TF_LINEAR) */
 } alwan_transfer_function;

@@ -639,6 +639,125 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_gamma28_eotf)(ALWAN_CORE_T enco
     return ALWAN_CORE_POW(E, ALWAN_CORE_LITERAL(2.8));
 }
 
+/* Adobe gamma 563/256 = 2.19921875, used by Adobe RGB (1998) and Adobe Wide Gamut RGB.
+ * Carrying these as gamma 2.2 is wrong by 4.2e-4: small, and needless. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_adobergb_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    return ALWAN_CORE_POW(L, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(2.19921875));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_adobergb_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded);
+    return ALWAN_CORE_POW(E, ALWAN_CORE_LITERAL(2.19921875));
+}
+
+/* Gamma 1.8 -- Apple RGB, ColorMatch RGB */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_gamma18_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    return ALWAN_CORE_POW(L, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(1.8));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_gamma18_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded);
+    return ALWAN_CORE_POW(E, ALWAN_CORE_LITERAL(1.8));
+}
+
+/* ROMM RGB (ISO 22028-2), the encoding ProPhoto RGB uses: gamma 1.8 with a linear toe below
+ * E_t = 16^(1.8/(1-1.8)) = 1/512, where the slope is 16. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_romm_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T const Et = ALWAN_CORE_LITERAL(0.001953125);
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    ALWAN_CORE_T toe = L * ALWAN_CORE_LITERAL(16.0);
+    ALWAN_CORE_T pw  = ALWAN_CORE_POW(L, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(1.8));
+    return ALWAN_CORE_SELECT(L < Et, toe, pw);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_romm_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T const Ebr = ALWAN_CORE_LITERAL(0.03125);   /* 16 * Et */
+    ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded);
+    ALWAN_CORE_T toe = E / ALWAN_CORE_LITERAL(16.0);
+    ALWAN_CORE_T pw  = ALWAN_CORE_POW(E, ALWAN_CORE_LITERAL(1.8));
+    return ALWAN_CORE_SELECT(E < Ebr, toe, pw);
+}
+
+/* RIMM RGB (ISO 22028-3): the BT.709 OETF shape normalised by its own value at the clip point,
+ * E_clip = 2.0, so that scene exposure 2.0 encodes to 1.0. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_rimm_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T const Vclip = ALWAN_CORE_LITERAL(1.4022782421730806); /* 1.099*2^0.45 - 0.099 */
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    ALWAN_CORE_T toe = ALWAN_CORE_LITERAL(4.5) * L;
+    ALWAN_CORE_T pw  = ALWAN_CORE_LITERAL(1.099) * ALWAN_CORE_POW(L, ALWAN_CORE_LITERAL(0.45)) - ALWAN_CORE_LITERAL(0.099);
+    return ALWAN_CORE_SELECT(L < ALWAN_CORE_LITERAL(0.018), toe, pw) / Vclip;
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_rimm_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T const Vclip = ALWAN_CORE_LITERAL(1.4022782421730806);
+    ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded) * Vclip;
+    ALWAN_CORE_T toe = E / ALWAN_CORE_LITERAL(4.5);
+    ALWAN_CORE_T pw  = ALWAN_CORE_POW((E + ALWAN_CORE_LITERAL(0.099)) / ALWAN_CORE_LITERAL(1.099),
+                                 ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(0.45));
+    return ALWAN_CORE_SELECT(E < ALWAN_CORE_LITERAL(0.081), toe, pw);
+}
+
+/* ERIMM RGB (ISO 22028-3): log over 0.001 to 316.2, with a linear toe up to e*E_min so the two
+ * meet with matching slope. The numerator ln(E_t) - ln(E_min) is exactly 1 by that construction. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_erimm_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T const Et    = ALWAN_CORE_LITERAL(0.0027182818284590453);
+    ALWAN_CORE_T const lnmin = ALWAN_CORE_LITERAL(-6.907755278982137);   /* ln(0.001)  */
+    ALWAN_CORE_T const den   = ALWAN_CORE_LITERAL(12.664130203757509);   /* ln(316.2) - ln(0.001) */
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    ALWAN_CORE_T toe = L / (Et * den);
+    ALWAN_CORE_T lg  = (ALWAN_CORE_LN(ALWAN_CORE_SELECT(L < Et, Et, L)) - lnmin) / den;
+    return ALWAN_CORE_SELECT(L <= Et, toe, lg);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_erimm_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T const Et    = ALWAN_CORE_LITERAL(0.0027182818284590453);
+    ALWAN_CORE_T const lnmin = ALWAN_CORE_LITERAL(-6.907755278982137);
+    ALWAN_CORE_T const den   = ALWAN_CORE_LITERAL(12.664130203757509);
+    ALWAN_CORE_T const Ebr   = ALWAN_CORE_LITERAL(0.078963180566739205);
+    ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded);
+    ALWAN_CORE_T toe = E * Et * den;
+    ALWAN_CORE_T ex  = ALWAN_CORE_EXP(E * den + lnmin);
+    return ALWAN_CORE_SELECT(E <= Ebr, toe, ex);
+}
+
+/* CIE 1976 lightness, the encoding ECI RGB v2 uses. Domain and range are both 0..1, so the
+ * standard L* of 0..100 is scaled by 100 at both ends. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_lstar_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T const eps   = ALWAN_CORE_LITERAL(0.008856451679035631);  /* 216/24389 */
+    ALWAN_CORE_T const kappa = ALWAN_CORE_LITERAL(903.2962962962963);     /* 24389/27  */
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    ALWAN_CORE_T toe = kappa * L / ALWAN_CORE_LITERAL(100.0);
+    ALWAN_CORE_T cb  = (ALWAN_CORE_LITERAL(116.0) * ALWAN_CORE_POW(L, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0))
+                        - ALWAN_CORE_LITERAL(16.0)) / ALWAN_CORE_LITERAL(100.0);
+    return ALWAN_CORE_SELECT(L <= eps, toe, cb);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_lstar_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T const kappa = ALWAN_CORE_LITERAL(903.2962962962963);
+    ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded) * ALWAN_CORE_LITERAL(100.0);
+    ALWAN_CORE_T toe = E / kappa;
+    ALWAN_CORE_T t   = (E + ALWAN_CORE_LITERAL(16.0)) / ALWAN_CORE_LITERAL(116.0);
+    return ALWAN_CORE_SELECT(E <= ALWAN_CORE_LITERAL(8.0), toe, t * t * t);
+}
+
+/* SMPTE 240M OETF (SMPTE ST 240:1999), the curve the 240M primaries are defined with. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_smpte240m_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    ALWAN_CORE_T toe = ALWAN_CORE_LITERAL(4.0) * L;
+    ALWAN_CORE_T pw  = ALWAN_CORE_LITERAL(1.1115) * ALWAN_CORE_POW(L, ALWAN_CORE_LITERAL(0.45)) - ALWAN_CORE_LITERAL(0.1115);
+    return ALWAN_CORE_SELECT(L < ALWAN_CORE_LITERAL(0.0228), toe, pw);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_smpte240m_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded);
+    ALWAN_CORE_T toe = E / ALWAN_CORE_LITERAL(4.0);
+    ALWAN_CORE_T pw  = ALWAN_CORE_POW((E + ALWAN_CORE_LITERAL(0.1115)) / ALWAN_CORE_LITERAL(1.1115),
+                                 ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(0.45));
+    return ALWAN_CORE_SELECT(E < ALWAN_CORE_LITERAL(0.0912), toe, pw);
+}
+
 /* ================================================================
  * Nikon N-Log
  * ================================================================ */

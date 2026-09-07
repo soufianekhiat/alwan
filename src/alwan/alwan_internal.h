@@ -284,7 +284,14 @@ static inline void alwan__get_luma_coeffs(alwan_luma_standard standard,
     X(DLOG,       dlog,         dlog)                     \
     X(DCDM,       dcdm,         dcdm)                     \
     X(ADX10,      adx10,        adx10)                    \
-    X(ADX16,      adx16,        adx16)
+    X(ADX16,      adx16,        adx16)                    \
+    X(GAMMA18,    gamma18,      gamma18)                  \
+    X(ROMM,       romm,         romm)                     \
+    X(RIMM,       rimm,         rimm)                     \
+    X(ERIMM,      erimm,        erimm)                    \
+    X(LSTAR,      lstar,        lstar)                    \
+    X(SMPTE240M,  smpte240m,    smpte240m)                \
+    X(ADOBE_RGB,  adobergb,     adobergb)
 
 #define TF_SIMD_TABLE_BODY(X)                             \
     X(SRGB, srgb_oetf_simd, srgb_eotf_simd)               \
