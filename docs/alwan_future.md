@@ -806,10 +806,13 @@ All 166 files now carry E-Gamut chromaticities, from alwan's own table for
 only a new header; `--exr-diff` decodes old and new through the same loader and
 reports zero differing values on every file, and every other attribute survives,
 the RED files' 118 nuke/r3d/* names included. `tools/stamp_chromaticities.py`
-drives it. The corpus is a submodule of alwan_dev, so the stamping lives in its
-working tree: `git -C extern/SRIC checkout -- exr` undoes it and the tool redoes
-it. Making it permanent means a fork of the collection with the stamped files,
-which is the owner's call.
+drives it. image_gen's loader now converts from the attribute when a file has
+one, deriving the matrices through alwan, and falls back to the by-corpus route
+only for a file that declares nothing; `--exr-chroma-check` shows the two agree
+to float rounding on both collections. The corpus is a submodule of alwan_dev,
+so the stamping lives in its working tree: `git -C extern/SRIC checkout -- exr`
+undoes it and the tool redoes it. Making it permanent means a fork of the
+collection with the stamped files, which is the owner's call.
 
 ## EXR loader
 
