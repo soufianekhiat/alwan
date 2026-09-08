@@ -89,6 +89,20 @@ All notable changes to this project will be documented in this file.
   including targets alwan carries no averages for such as the DT NGT2, can
   be used instead of a published average.
 
+- **A time constant in seconds for the exposure adaptation**
+  (`alwan_picture_form_local_exp_lag`, `alwan_picture_form_local_exp_apply`).
+  The temporal solve converges every frame, so the field's structure is
+  always the frame in hand; what carries from one frame to the next is a
+  level, which is also what an eye carries. `lag` filters the solved field's
+  mean toward a level the caller keeps, by `1 - exp(-dt / tau)` of the gap
+  per frame, with `tau_light` when the light has gone up and `tau_dark` when
+  it has gone down, and puts the difference back as a uniform offset; the
+  structure does not move. `apply` forms the picture from whatever field the
+  caller ends up with, and is the solve's own last step bit for bit. Before
+  this the adaptation rate was whatever the per-frame budget left
+  unconverged, which also left a moving edge trailing a halo of where it
+  had been.
+
 - **`alwan_zcam_from_ucs`**, the inverse of `alwan_zcam_to_ucs`. Jz, Mz
   and hz come back exactly and the other correlates are 0, as CAM16's
   `from_ucs` does. ZCAM was the one appearance model with a UCS and no way

@@ -515,6 +515,15 @@ caller-side line today and wants to be a rate limiter in stops per second in the
 library. That is also where the asymmetry that matters perceptually belongs:
 light adaptation in seconds, dark adaptation far slower.
 
+**Closed.** `alwan_picture_form_local_exp_lag` filters the solved field's mean
+toward a level the caller carries, by `1 - exp(-dt / tau)` of the gap per frame,
+with `tau_light` for a field that is falling (the light went up) and `tau_dark`
+for one that is rising, and puts the difference back as a uniform offset; the
+structure is the frame's own and does not move. `alwan_picture_form_local_exp_apply`
+forms the picture from whatever field the caller ends up with, and is the solve's
+own last step bit for bit. Suite 108 holds the mean to the formula and the
+structure to zero at 1e-12, and image_gen's `lag=` runs on the two calls.
+
 ### Running it on real footage: three halos, and only one of them temporal
 
 Put through 2048x858 ACES frames from the ASC StEM2 delivery, the operator draws
@@ -802,7 +811,7 @@ nonsense. What remains:
 - [x] RGB-space transfer functions: audited against colour-science, 24 rows corrected, 7 curves added
 - [x] RGB-space transfer functions: 79 of 104 in the reference; found GAMMA18_REC709 and DaVinci Intermediate recorded as linear, added the DaVinci curve
 - [x] RGB-space transfer functions: Blackmagic Film Gen 4 is the psychopath.io fit to Resolve; pinned to it and said so in the header
-- [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
+- [x] Exposure adaptation: a time constant in seconds on the level, tau_light and tau_dark apart (alwan_picture_form_local_exp_lag)
 - [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all
 - [ ] Exposure anchor: the one-stop cap gives back 0.8 of a 4.9-stop change; is that the right number
@@ -810,7 +819,7 @@ nonsense. What remains:
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [x] EXR loader: non-zero data window origin, 40 of 40 files pixel-exact in tools/exr_window_check.py
 - [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation
-- [ ] Temporal picture formation: a time constant in seconds in the library (image_gen has one)
+- [x] Temporal picture formation: a time constant in seconds in the library, and the picture from a chosen field (alwan_picture_form_local_exp_apply)
 - [x] Block-aware RGB space fit (built; measured no better than the cloud fit on real textures)
 
 ---

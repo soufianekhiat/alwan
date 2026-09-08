@@ -839,3 +839,60 @@ alwan_status ALWAN_CORE_FN(alwan_picture_form_pure_exp)(ALWAN_CORE_T *out, ALWAN
     ctx->free_fn(coh); ctx->free_fn(em); ctx->free_fn(eb);
     return ALWAN_OK;
 }
+
+/* The picture from a given exposure field: y = F_base(2^e x), the same formation the solve ends
+ * on, so a caller who does something to the field between the solve and the picture, filters it
+ * toward a level, blends two, clamps it, still gets the operator's answer for the field it chose. */
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_apply)(ALWAN_CORE_T *out, ALWAN_CORE_T const *in,
+        ALWAN_CORE_T const *e, int W, int H, alwan_gamut_formation_method form_method, alwan_ctx *ctx){
+    if (!out || !in || !e || W <= 0 || H <= 0 || !ctx) return ALWAN_E_INVALID;
+    size_t N = (size_t)W * (size_t)H;
+    ALWAN_CORE_T *xe = (ALWAN_CORE_T *)ctx->alloc_fn(N * 3 * sizeof(ALWAN_CORE_T), 16);
+    if (!xe) return ALWAN_E_NOMEM;
+    for (size_t i = 0; i < N; i++) {
+        ALWAN_CORE_T s = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), e[i]);
+        for (int k = 0; k < 3; k++) xe[i*3+k] = s * in[i*3+k];
+    }
+    alwan_status st = (alwan_status)ALWAN_CORE_FN(alwan__exp_form_base)(out, xe, W, H, form_method, ctx);
+    ctx->free_fn(xe);
+    return st;
+}
+
+/* A time constant in seconds on the level, and its asymmetry.
+ *
+ * The solve converges every frame, so the field's structure is the frame in hand and nothing
+ * smears. What carries from one frame to the next is a level of adaptation, which is also what an
+ * eye carries, so the lag is applied to the mean alone: level_io follows the solved mean with a
+ * first-order response, closing 1 - exp(-dt / tau) of the remaining gap per frame, and the
+ * difference goes back on every pixel as a uniform offset. The structure does not move.
+ *
+ * tau_light applies when the field is falling, the light having gone up; tau_dark when it is
+ * rising. Light adaptation is a matter of seconds and dark adaptation of minutes, which is the
+ * asymmetry, and both are the caller's numbers. A tau <= 0 is instant in that direction.
+ *
+ * e_in is the solved field and e_out the lagged one; they may be the same buffer. level_io is one
+ * scalar the caller keeps between frames. warm 0 sets it to the solved mean, so a first frame is
+ * not dragged toward zero; any other value filters. A cut is not a reset: an eye does not
+ * re-adapt the instant an edit happens, and the lag across a cut is the point of having one. */
+alwan_status ALWAN_CORE_FN(alwan_picture_form_local_exp_lag)(ALWAN_CORE_T *e_out, ALWAN_CORE_T *level_io,
+        ALWAN_CORE_T const *e_in, int W, int H, int warm, ALWAN_CORE_T dt_seconds,
+        ALWAN_CORE_T tau_light_seconds, ALWAN_CORE_T tau_dark_seconds){
+    if (!e_out || !level_io || !e_in || W <= 0 || H <= 0) return ALWAN_E_INVALID;
+    if (!(dt_seconds >= ALWAN_CORE_LITERAL(0.0))) return ALWAN_E_INVALID;   /* negative, or NaN */
+    size_t N = (size_t)W * (size_t)H;
+    ALWAN_CORE_T sum = ALWAN_CORE_LITERAL(0.0);
+    for (size_t i = 0; i < N; i++) sum += e_in[i];
+    ALWAN_CORE_T target = sum / (ALWAN_CORE_T)N;
+    ALWAN_CORE_T level = target;
+    if (warm) {
+        ALWAN_CORE_T tau = target < *level_io ? tau_light_seconds : tau_dark_seconds;
+        ALWAN_CORE_T alpha = tau > ALWAN_CORE_LITERAL(0.0)
+            ? ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_EXP(-dt_seconds / tau)
+            : ALWAN_CORE_LITERAL(1.0);
+        level = *level_io + alpha * (target - *level_io);
+    }
+    ALWAN_CORE_T shift = level - target;
+    for (size_t i = 0; i < N; i++) e_out[i] = e_in[i] + shift;
+    *level_io = level;
+    return ALWAN_OK;
+}

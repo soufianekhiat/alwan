@@ -869,6 +869,16 @@ EXPORTS
     alwan_picture_form_local_exp_resume_f32
     alwan_picture_form_local_exp_resume_f64
     alwan_picture_form_local_exp_field_f64
+    alwan_picture_form_local_exp_field_m_f32
+    alwan_picture_form_local_exp_field_m_f64
+    alwan_picture_form_local_exp_resume_m_f32
+    alwan_picture_form_local_exp_resume_m_f64
+    alwan_picture_form_local_exp_inputs_f32
+    alwan_picture_form_local_exp_inputs_f64
+    alwan_picture_form_local_exp_apply_f32
+    alwan_picture_form_local_exp_apply_f64
+    alwan_picture_form_local_exp_lag_f32
+    alwan_picture_form_local_exp_lag_f64
     alwan_rgb_fit_params_init_f32
     alwan_rgb_fit_params_init_f64
     alwan_rgb_fit_begin_f32

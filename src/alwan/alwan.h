@@ -2535,6 +2535,36 @@ alwan_status alwan_picture_form_local_exp_resume_m_f64(alwan_f64 *e_io, alwan_f6
 alwan_status alwan_picture_form_local_exp_inputs_f32(alwan_f32 *carrier_out, alwan_f32 *base_out, alwan_f32 *target_out, alwan_f32 const *in, int width, int height, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_local_exp_inputs_f64(alwan_f64 *carrier_out, alwan_f64 *base_out, alwan_f64 *target_out, alwan_f64 const *in, int width, int height, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 
+/* EXPERIMENTAL: the picture from a given exposure field, y = F_base(2^e x).
+ *
+ * This is the solve's own last step, so a caller who does something to the field between the
+ * solve and the picture, filters it toward a level, blends two, clamps it, still gets the
+ * operator's answer for the field it chose. e is width*height stops; in and out are interleaved
+ * RGB, width*height*3. */
+alwan_status alwan_picture_form_local_exp_apply_f32(alwan_f32 *out, alwan_f32 const *in, alwan_f32 const *e, int width, int height, alwan_gamut_formation_method form_method, alwan_ctx *ctx);
+alwan_status alwan_picture_form_local_exp_apply_f64(alwan_f64 *out, alwan_f64 const *in, alwan_f64 const *e, int width, int height, alwan_gamut_formation_method form_method, alwan_ctx *ctx);
+
+/* EXPERIMENTAL: a time constant in seconds on the exposure level, and its asymmetry.
+ *
+ * The resumed solve converges every frame at a small budget, so the field's structure is the
+ * frame in hand and nothing smears. What carries from one frame to the next is a level of
+ * adaptation, which is also what an eye carries, so the lag is applied to the mean alone:
+ * level_io follows the solved field's mean with a first-order response, closing
+ * 1 - exp(-dt_seconds / tau) of the remaining gap per frame, and the difference goes back on every
+ * pixel as a uniform offset. The structure does not move.
+ *
+ * tau_light_seconds applies when the field is falling, the light having gone up, and
+ * tau_dark_seconds when it is rising: light adaptation is a matter of seconds and dark adaptation
+ * of minutes. A tau <= 0 is instant in that direction.
+ *
+ * e_in is the solved field and e_out the lagged one, each width*height stops; they may be the
+ * same buffer. level_io is one scalar the caller keeps between frames. warm 0 sets it to the
+ * solved mean, so a first frame is not dragged toward zero; any other value filters. A cut is
+ * not a reset: an eye does not re-adapt the instant an edit happens. Form the picture from
+ * e_out with alwan_picture_form_local_exp_apply. */
+alwan_status alwan_picture_form_local_exp_lag_f32(alwan_f32 *e_out, alwan_f32 *level_io, alwan_f32 const *e_in, int width, int height, int warm, alwan_f32 dt_seconds, alwan_f32 tau_light_seconds, alwan_f32 tau_dark_seconds);
+alwan_status alwan_picture_form_local_exp_lag_f64(alwan_f64 *e_out, alwan_f64 *level_io, alwan_f64 const *e_in, int width, int height, int warm, alwan_f64 dt_seconds, alwan_f64 tau_light_seconds, alwan_f64 tau_dark_seconds);
+
 /* ----------------------------------------------------------------
  * EXPERIMENTAL: fit an RGB encoding space to a dataset
  *
