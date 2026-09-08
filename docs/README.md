@@ -67,6 +67,7 @@ Key entry points:
 - [`docs/api/transfer-functions.md`](api/transfer-functions.md)
 - [`docs/api/gamut.md`](api/gamut.md)
 - [`docs/api/tables.md`](api/tables.md)
+- [`docs/api/luts.md`](api/luts.md)
 - [`docs/api/backends.md`](api/backends.md)
 
 ## Notes On Templates
