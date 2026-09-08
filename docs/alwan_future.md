@@ -891,7 +891,7 @@ nonsense. What remains:
 - [ ] Add richer interop metadata/query APIs
 - [ ] Thread data semantics through more public conversion workflows
 - [ ] Publish tighter GPU/backend examples around the current bootstrap headers
-- [ ] Evaluate a CUDA backend (`ALWAN_BACKEND_CUDA`, first GPU path with real f64)
+- [x] CUDA backend: kernel-side core, both precisions, run-verified on sm_86. No `ALWAN_BACKEND_CUDA` id in the end, because the emission path is the C one; test `ALWAN_CUDA`
 - [ ] Evaluate an OpenCL backend (one source across AMD, Intel and embedded GPUs)
 - [ ] Scope a fixed-point path for parts without an FPU (transfer functions, RGB matrices, video encode first)
 - [ ] Add ergonomic helpers only where they reduce real call-site boilerplate
