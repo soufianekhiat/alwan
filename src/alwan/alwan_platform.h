@@ -115,12 +115,24 @@
  * 1.3 Qualifier Macros
  * ================================================================ */
 
-/* CUDA is not a fifth backend. It is the C backend compiled for a different
- * processor: nvcc is a C++ compiler, it has a real `double`, and the dual-pass
- * .inc include works there unchanged, so a CUDA build gets the whole core at
- * both precisions rather than the single-precision subset the shading languages
- * take. The only thing it needs is the qualifier, on every header-only function
- * and on the constant tables they read.
+/* CUDA. Like HLSL, GLSL and Halide, this is a GPU backend in the sense that
+ * matters: a header-only per-pixel core you call from inside your own kernel.
+ * Write a __global__ function, index your pixel, call alwan_xyz_to_oklab_f32_v
+ * on it. Nothing here launches a kernel or owns device memory; that stays the
+ * caller's, exactly as the shader backends leave the dispatch to the caller.
+ *
+ * Where it differs from the shading languages is what it costs to get there.
+ * They need a whole substitute vocabulary (alwan_core_aliases.inc) and give up
+ * double precision, pointers and the C library. nvcc needs none of that: it is
+ * a C++ compiler with a real `double`, so the dual-pass .inc include works
+ * unchanged and a CUDA kernel can call BOTH the _f32 and the _f64 core, the
+ * whole surface rather than the single-precision subset. That is why there is
+ * no ALWAN_BACKEND_CUDA id: the emission path is genuinely the C one, and
+ * claiming a separate id would only make every `ALWAN_BACKEND == ALWAN_BACKEND_C`
+ * guard in the tree wrong. ALWAN_CUDA below is the flag to test instead.
+ *
+ * What it does need is the qualifier, on every header-only function and on the
+ * constant tables they read.
  *
  * `__host__ __device__` rather than `__device__`: the same translation unit
  * usually wants both, and a host-only call site must keep working.
@@ -141,6 +153,9 @@
  *
  * The C build keeps `static const` unchanged. */
 #if defined(__CUDACC__)
+/* Test this, not ALWAN_BACKEND, to ask "am I being compiled for CUDA".
+ * ALWAN_BACKEND stays ALWAN_BACKEND_C because the emission path is the C one. */
+# define ALWAN_CUDA      1
 # define ALWAN_HD        __host__ __device__
 # if defined(__CUDA_ARCH__)
 #  define ALWAN_HD_CONST static const __device__
@@ -148,6 +163,7 @@
 #  define ALWAN_HD_CONST static const
 # endif
 #else
+# define ALWAN_CUDA      0
 # define ALWAN_HD
 # define ALWAN_HD_CONST  static const
 #endif

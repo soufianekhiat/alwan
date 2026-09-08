@@ -32,13 +32,23 @@ All notable changes to this project will be documented in this file.
   negative cone response is not recoverable, and a negative saturation is
   reported as `C = 0`. Neither is reachable from inside a real display gamut.
 
-- **The core builds and runs as CUDA device code.** Not as a fifth backend:
-  nvcc is a C++ compiler with a real `double`, so a CUDA build takes the C
-  backend unchanged, dual-pass `.inc` and all, and gets the whole core at both
-  precisions rather than the single-precision subset the shading languages
-  take. What it needed was `__host__ __device__` on the header-only functions
-  and a storage class for the constant tables that works from both passes, both
-  keyed off `__CUDACC__` in `alwan_platform.h`.
+- **CUDA backend: the per-pixel core is callable from your own kernel.** The
+  same shape as HLSL, GLSL and Halide. Alwan does not dispatch, allocate device
+  memory or own the image; you write the `__global__` function, index the pixel
+  and call the core on it. `ALWAN_CUDA` is 1 under nvcc.
+
+  The difference from the shading languages is what it costs to get there. They
+  need a substitute vocabulary and give up double precision, pointers and the C
+  library. nvcc needs none of that, so a CUDA build takes the C emission path
+  unchanged and **a kernel can call both the `_f32` and the `_f64` core**, the
+  whole surface rather than a single-precision subset. That is also why there is
+  no `ALWAN_BACKEND_CUDA` id: the emission really is the C one, and a separate
+  id would make every `ALWAN_BACKEND == ALWAN_BACKEND_C` guard wrong about a
+  CUDA build.
+
+  What it needed was `__host__ __device__` on the header-only functions and a
+  storage class for the constant tables that works from both passes, both keyed
+  off `__CUDACC__` in `alwan_platform.h`.
 
   The tables were the interesting part. Plain `__device__` makes them
   unreadable from the host, and `constexpr` covers the matrices, which pass by

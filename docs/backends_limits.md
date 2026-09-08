@@ -1,29 +1,58 @@
 # Backend limitations: what is *not* available on every backend
 
-Alwan targets four backends via `ALWAN_BACKEND` (`alwan_platform.h`):
+Alwan targets these backends:
 
-| id | backend | scalar | how the core emits |
+| selected by | backend | scalar | how the core emits |
 |----|---------|--------|--------------------|
-| 0 | **C / C++** | `double` (or `float` via `ALWAN_SCALAR_IS_FLOAT`) | dual pass: the shared `.inc` is included twice -> native `_f32` **and** `_f64` |
-| 1 | **HLSL** | `float` | single pass: `.inc` included once against `alwan_core_aliases.inc` |
-| 2 | **GLSL** | `float` | single pass |
-| 3 | **Halide** | `Halide::Expr` (real `double` available) | single pass |
+| `ALWAN_BACKEND` 0 | **C / C++** | `double` (or `float` via `ALWAN_SCALAR_IS_FLOAT`) | dual pass: the shared `.inc` is included twice -> native `_f32` **and** `_f64` |
+| `ALWAN_BACKEND` 1 | **HLSL** | `float` | single pass: `.inc` included once against `alwan_core_aliases.inc` |
+| `ALWAN_BACKEND` 2 | **GLSL** | `float` | single pass |
+| `ALWAN_BACKEND` 3 | **Halide** | `Halide::Expr` (real `double` available) | single pass |
+| `ALWAN_CUDA` 1 | **CUDA** | `float` **and** `double` | dual pass, the same as C: a CUDA kernel can call both `_f32` and `_f64` |
 
-The C backend is the full, compiled, dual-precision library. The GPU backends
-compile the *same* header-only per-pixel core kernels a second time, at single
-precision, by swapping a macro vocabulary. This document lists everything that
-does **not** carry over unchanged.
+Every one of these except the first is the same idea: **a header-only per-pixel
+core you call from inside your own kernel**. Alwan does not dispatch, does not
+allocate device memory and does not own the image. You write the shader or the
+`__global__` function, you index the pixel, you call the core on it. The C
+backend is the outlier, being the full compiled library with an API layer on
+top. This document lists everything that does **not** carry over unchanged.
 
-## CUDA is not a fifth backend
+## CUDA
 
-There is no `ALWAN_BACKEND_CUDA`, and adding one would have been the wrong
-shape. nvcc is a C++ compiler with a real `double`, so a CUDA build takes the C
-backend unchanged: the same dual-pass `.inc`, the same `_f32` and `_f64`
-functions, the whole core rather than a single-precision subset. Nothing in
-this document's list of what the shading languages lose applies to it.
+Used the same way as the shader backends, and it is worth stating what that
+looks like before the caveats:
 
-What it needs instead is a qualifier, keyed off `__CUDACC__` rather than off a
-backend id:
+```cuda
+#include "alwan_types.h"
+#include "core/alwan_oklab_core.h"
+
+__global__ void to_oklab(float *out, const float *xyz, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    alwan_xyz_f32 x;
+    x.x = xyz[i*3+0]; x.y = xyz[i*3+1]; x.z = xyz[i*3+2];
+    alwan_oklab_f32 lab = alwan_xyz_to_oklab_f32_v(x);
+    out[i*3+0] = lab.L; out[i*3+1] = lab.a; out[i*3+2] = lab.b;
+}
+```
+
+`alwan_dev/cuda_regression/example_kernel.cu` is that, compiled and run by the
+regression script so this snippet cannot rot.
+
+Where CUDA differs from HLSL and GLSL is what it costs to get there. They need
+a whole substitute vocabulary (`alwan_core_aliases.inc`) and give up double
+precision, pointers and the C library, which is what the rest of this document
+is about. nvcc needs none of that: it is a C++ compiler with a real `double`,
+so the dual-pass `.inc` include works unchanged and **a CUDA kernel can call
+both the `_f32` and the `_f64` core**, the whole surface rather than a
+single-precision subset. Nothing in the per-feature tables below applies to it.
+
+That is also why there is no `ALWAN_BACKEND_CUDA` id. The emission path really
+is the C one, and minting a separate id would make every
+`ALWAN_BACKEND == ALWAN_BACKEND_C` guard in the tree wrong about a CUDA build.
+Test `ALWAN_CUDA` instead; it is 1 under nvcc and 0 everywhere else.
+
+What a CUDA build does need is qualifiers, keyed off `__CUDACC__`:
 
 | macro | C build | CUDA build |
 |---|---|---|
