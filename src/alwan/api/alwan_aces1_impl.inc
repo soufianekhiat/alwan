@@ -152,6 +152,50 @@ static ALWAN_CORE_T ALWAN_CORE_FN(aces1_spline_c9)(ALWAN_CORE_T oces, const ALWA
     return (display_nits - p->min_y) / (p->max_y - p->min_y);
 }
 
+/* ACES 1.1 to 1.3 Single Stage Tone Scale, the twin of aces1_ssts in the enclosing TU. */
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts_segment)(ALWAN_CORE_T const *cf, ALWAN_CORE_T t) {
+    return ALWAN_CORE_LITERAL(0.5) * t * t * (cf[0] - ALWAN_CORE_LITERAL(2.0) * cf[1] + cf[2])
+         + t * (cf[1] - cf[0])
+         + ALWAN_CORE_LITERAL(0.5) * (cf[0] + cf[1]);
+}
+
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts)(ALWAN_CORE_T x, const ALWAN_CORE_FNLIT(aces1_ssts_params) *p) {
+    ALWAN_CORE_T logx = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(x, ALWAN_CORE_LITERAL(5.96046448e-08)));
+    ALWAN_CORE_T log_min = ALWAN_CORE_LOG10(p->min_x);
+    ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(p->mid_x);
+    ALWAN_CORE_T log_max = ALWAN_CORE_LOG10(p->max_x);
+    ALWAN_CORE_T logy;
+    if (logx <= log_min) {
+        logy = logx * p->min_slope + (ALWAN_CORE_LOG10(p->min_y) - p->min_slope * log_min);
+    } else if (logx < log_mid) {
+        ALWAN_CORE_T kc = ALWAN_CORE_LITERAL(3.0) * (logx - log_min) / (log_mid - log_min);
+        int j = (int)kc;
+        if (j > 2) j = 2;
+        logy = ALWAN_CORE_FN(aces1_ssts_segment)(p->coefsLow + j, kc - (ALWAN_CORE_T)j);
+    } else if (logx < log_max) {
+        ALWAN_CORE_T kc = ALWAN_CORE_LITERAL(3.0) * (logx - log_mid) / (log_max - log_mid);
+        int j = (int)kc;
+        if (j > 2) j = 2;
+        logy = ALWAN_CORE_FN(aces1_ssts_segment)(p->coefsHigh + j, kc - (ALWAN_CORE_T)j);
+    } else {
+        logy = logx * p->max_slope + (ALWAN_CORE_LOG10(p->max_y) - p->max_slope * log_max);
+    }
+    return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), logy);
+}
+
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts_lincv)(ALWAN_CORE_T x, const ALWAN_CORE_FNLIT(aces1_ssts_params) *p) {
+    return (ALWAN_CORE_FN(aces1_ssts)(x, p) - p->min_y) / (p->max_y - p->min_y);
+}
+
+static const ALWAN_CORE_FNLIT(aces1_ssts_params) *ALWAN_CORE_FN(aces1_ssts_for_output)(alwan_aces1_output output) {
+    switch (output) {
+        case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ: return &ALWAN_CORE_FNLIT(ssts_1000nit);
+        case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ: return &ALWAN_CORE_FNLIT(ssts_2000nit);
+        case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ: return &ALWAN_CORE_FNLIT(ssts_4000nit);
+        default: return NULL;
+    }
+}
+
 /* ---- Forward ---- */
 alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_out,
         ALWAN_CORE_RGB const *rgb_in, alwan_aces1_output output) {
@@ -159,6 +203,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
 
     ALWAN_CORE_RGB ap0_mod = *rgb_in, ap1, rrt, xyz, d65, display;
+    const ALWAN_CORE_FNLIT(aces1_ssts_params) *ssts = ALWAN_CORE_FN(aces1_ssts_for_output)(output);
+    int is_v103 = (output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103 ||
+                   output == ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103 ||
+                   output == ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103);
 
     /* Glow10 (AP0) */
     {
@@ -204,17 +252,22 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
         rrt.g = luma + ALWAN_CORE_LITERAL(0.96) * (ap1.g - luma);
         rrt.b = luma + ALWAN_CORE_LITERAL(0.96) * (ap1.b - luma);
 
-        int is_hdr_1000 = (output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ);
-        if (g_aces_interp == ALWAN_ACES_INTERP_OCIO) {
-            if (is_hdr_1000) {
+        if (ssts) {
+            /* ACES 1.1 to 1.3: one SSTS in place of C5 + C9; the OCIO setting keeps OCIO's own
+             * fit for the 1000-nit output, as in the f64 path */
+            if (g_aces_interp == ALWAN_ACES_INTERP_OCIO && output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ) {
                 rrt.r = ALWAN_CORE_FN(aces1_ocio_hdr1000)(rrt.r);
                 rrt.g = ALWAN_CORE_FN(aces1_ocio_hdr1000)(rrt.g);
                 rrt.b = ALWAN_CORE_FN(aces1_ocio_hdr1000)(rrt.b);
             } else {
-                rrt.r = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.r);
-                rrt.g = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.g);
-                rrt.b = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.b);
+                rrt.r = ALWAN_CORE_FN(aces1_ssts_lincv)(rrt.r, ssts);
+                rrt.g = ALWAN_CORE_FN(aces1_ssts_lincv)(rrt.g, ssts);
+                rrt.b = ALWAN_CORE_FN(aces1_ssts_lincv)(rrt.b, ssts);
             }
+        } else if (g_aces_interp == ALWAN_ACES_INTERP_OCIO && !is_v103) {
+            rrt.r = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.r);
+            rrt.g = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.g);
+            rrt.b = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.b);
         } else {
             if (g_aces_interp == ALWAN_ACES_INTERP_HERMITE) {
                 rrt.r = ALWAN_CORE_FN(aces1_rrt_hermite)(rrt.r);
@@ -227,9 +280,9 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
             }
             const ALWAN_CORE_FNLIT(aces1_c9_params) *c9p;
             switch (output) {
-                case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ: c9p = &ALWAN_CORE_FNLIT(c9_1000nit); break;
-                case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ: c9p = &ALWAN_CORE_FNLIT(c9_2000nit); break;
-                case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ: c9p = &ALWAN_CORE_FNLIT(c9_4000nit); break;
+                case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103: c9p = &ALWAN_CORE_FNLIT(c9_1000nit); break;
+                case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103: c9p = &ALWAN_CORE_FNLIT(c9_2000nit); break;
+                case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103: c9p = &ALWAN_CORE_FNLIT(c9_4000nit); break;
                 default: c9p = &ALWAN_CORE_FNLIT(c9_48nit); break;
             }
             if (g_aces_interp == ALWAN_ACES_INTERP_HERMITE && c9p == &ALWAN_CORE_FNLIT(c9_48nit)) {
@@ -248,8 +301,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
     {
         int is_cinema = (output == ALWAN_ACES1_OUT_P3DCI_48NIT || output == ALWAN_ACES1_OUT_P3D60_48NIT ||
                          output == ALWAN_ACES1_OUT_P3D65_48NIT || output == ALWAN_ACES1_OUT_DCDM_48NIT);
-        int is_hdr_pq = (output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ || output == ALWAN_ACES1_OUT_REC2020_2000NIT_PQ ||
-                         output == ALWAN_ACES1_OUT_REC2020_4000NIT_PQ);
+        int is_hdr_pq = (ssts != NULL || is_v103);
         if (!is_cinema && !is_hdr_pq) {
             ALWAN_CORE_T rl = ALWAN_CORE_LITERAL(0.2722287168), gl = ALWAN_CORE_LITERAL(0.6740817658), bl = ALWAN_CORE_LITERAL(0.0536895174);
             ALWAN_CORE_T Y = rl * rrt.r + gl * rrt.g + bl * rrt.b;
@@ -266,6 +318,14 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
     }
 
     xyz = ALWAN_CORE_FN(aces1_mat3)(ALWAN_CORE_FNLIT(ACES1_AP1_TO_XYZ_D60), rrt);
+    if (ssts) {
+        /* ACES 1.1 limit_to_primaries, before the CAT, as in the f64 path */
+        ALWAN_CORE_RGB lim = ALWAN_CORE_FN(aces1_mat3)(ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020), xyz);
+        lim.r = ALWAN_CORE_MIN(ALWAN_CORE_MAX(lim.r, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
+        lim.g = ALWAN_CORE_MIN(ALWAN_CORE_MAX(lim.g, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
+        lim.b = ALWAN_CORE_MIN(ALWAN_CORE_MAX(lim.b, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
+        xyz = ALWAN_CORE_FN(aces1_mat3)(ALWAN_CORE_FNLIT(ACES1_REC2020_TO_XYZ), lim);
+    }
     int needs_d65 = (output != ALWAN_ACES1_OUT_SRGB_D60_100NIT && output != ALWAN_ACES1_OUT_P3D60_48NIT);
     d65 = needs_d65 ? ALWAN_CORE_FN(aces1_mat3)(ALWAN_CORE_FNLIT(ACES1_D60_TO_D65), xyz) : xyz;
 
@@ -281,9 +341,12 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
         case ALWAN_ACES1_OUT_P3D65_48NIT:        xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_P3D65); use_gamma26 = 1; break;
         case ALWAN_ACES1_OUT_P3D65_100NIT:       xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_P3D65); use_srgb = 1; break;
         case ALWAN_ACES1_OUT_REC2020_100NIT:     xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020); break;
-        case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ: xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020); use_pq = 1; peak_nits = ALWAN_CORE_LITERAL(1000.0); break;
-        case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ: xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020); use_pq = 1; peak_nits = ALWAN_CORE_LITERAL(2000.0); break;
-        case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ: xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020); use_pq = 1; peak_nits = ALWAN_CORE_LITERAL(4000.0); break;
+        case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ:
+        case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103: xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020); use_pq = 1; peak_nits = ALWAN_CORE_LITERAL(1000.0); break;
+        case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ:
+        case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103: xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020); use_pq = 1; peak_nits = ALWAN_CORE_LITERAL(2000.0); break;
+        case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ:
+        case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103: xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020); use_pq = 1; peak_nits = ALWAN_CORE_LITERAL(4000.0); break;
         case ALWAN_ACES1_OUT_DCDM_48NIT:
             display = d65;
             display.r = ALWAN_CORE_FNVLIT(aces_gamma26_oetf)(display.r * ALWAN_CORE_LITERAL(48.0) / ALWAN_CORE_LITERAL(52.37));
@@ -295,9 +358,16 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
     }
 
     display = ALWAN_CORE_FN(aces1_mat3)(xyz_to_display, d65);
-    display.r = ALWAN_CORE_MIN(ALWAN_CORE_MAX(display.r, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
-    display.g = ALWAN_CORE_MIN(ALWAN_CORE_MAX(display.g, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
-    display.b = ALWAN_CORE_MIN(ALWAN_CORE_MAX(display.b, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
+    if (ssts) {
+        /* the 1.1 RRTODT only floors after the CAT; the clip happened in the limiting primaries */
+        display.r = ALWAN_CORE_MAX(display.r, ALWAN_CORE_LITERAL(0.0));
+        display.g = ALWAN_CORE_MAX(display.g, ALWAN_CORE_LITERAL(0.0));
+        display.b = ALWAN_CORE_MAX(display.b, ALWAN_CORE_LITERAL(0.0));
+    } else {
+        display.r = ALWAN_CORE_MIN(ALWAN_CORE_MAX(display.r, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
+        display.g = ALWAN_CORE_MIN(ALWAN_CORE_MAX(display.g, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
+        display.b = ALWAN_CORE_MIN(ALWAN_CORE_MAX(display.b, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
+    }
 
     if (use_pq) {
         rgb_out->r = ALWAN_CORE_FNVLIT(aces_pq_oetf)(display.r, peak_nits);

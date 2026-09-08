@@ -4511,6 +4511,8 @@ typedef enum {
 
     /* Rec.2020 Displays */
     ALWAN_ACES1_OUT_REC2020_100NIT = 7, /* Rec.2020, 100 nits, BT.1886 */
+    /* ACES 1.1 to 1.3 RRTODT.Academy.Rec2020_*nits_15nits_ST2084: the SSTS tone scale, 0.18
+     * at 15 cd/m2, which is what every current ACES config ships. */
     ALWAN_ACES1_OUT_REC2020_1000NIT_PQ = 8, /* Rec.2020, 1000 nits, PQ */
     ALWAN_ACES1_OUT_REC2020_2000NIT_PQ = 9, /* Rec.2020, 2000 nits, PQ */
     ALWAN_ACES1_OUT_REC2020_4000NIT_PQ = 10, /* Rec.2020, 4000 nits, PQ */
@@ -4518,7 +4520,13 @@ typedef enum {
     /* Cinema */
     ALWAN_ACES1_OUT_DCDM_48NIT = 11, /* DCDM X'Y'Z', 48 nits, Gamma 2.6 */
 
-    ALWAN_ACES1_OUT_COUNT = 12
+    /* ACES 1.0.3 ODT.Academy.Rec2020_ST2084_*nits: the earlier HDR ODTs, C5 + C9 splines with
+     * 0.18 at 10 cd/m2. Kept under their own names; the values above are the current transforms. */
+    ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103 = 12, /* Rec.2020, 1000 nits, PQ, ACES 1.0.3 */
+    ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103 = 13, /* Rec.2020, 2000 nits, PQ, ACES 1.0.3 */
+    ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103 = 14, /* Rec.2020, 4000 nits, PQ, ACES 1.0.3 */
+
+    ALWAN_ACES1_OUT_COUNT = 15
 } alwan_aces1_output;
 
 /**

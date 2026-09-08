@@ -585,7 +585,7 @@ picture is formed. That is the separation the section above asks for, and it
 belongs in the library once the flicker above is understood, because the two
 interact: the lag smooths the level and does nothing for structure.
 
-## ACES 1.x HDR: the embedded spline targets a 10-nit mid point
+## ACES 1.x HDR: the embedded spline targeted a 10-nit mid point; now the SSTS
 
 The sweep on the light-saber frame reported 10.3% of pixels differing from OCIO
 by more than 4 PQ codes on `ALWAN_ACES1_OUT_REC2020_1000NIT_PQ`. Chasing it
@@ -637,21 +637,27 @@ does not have a coefficient table to copy: `ACESlib.SSTS.ctl` constructs its
 knots at run time from the three luminances, so there is nothing to regenerate
 and no fitting to do.
 
-So `alwan_set_aces_interp` is not choosing how to evaluate a curve. It is
-choosing between two ACES revisions, and the enum name says neither. That is the
-defect, and it is as much an API one as a data one.
+So `alwan_set_aces_interp` was not choosing how to evaluate a curve. It was
+choosing between two ACES revisions, and the enum name said neither.
 
-What closing it actually needs:
+**Closed.** The SSTS is implemented. `gendata/data/aces1_ssts.py` builds the
+knots from Y_MIN, Y_MID and Y_MAX exactly as `init_TsParams` and the RRTODT's
+exposure shift do, and `alwan_aces_ff.c` evaluates the spline forward and
+inverse, with the RRTODT's clip to the limiting primaries before the CAT and its
+stretched black. `ALWAN_ACES1_OUT_REC2020_{1000,2000,4000}NIT_PQ` are the 1.1 to
+1.3 transforms under every setting; the 1.0.3 ODTs keep their C9 tables under
+`ALWAN_ACES1_OUT_REC2020_*NIT_PQ_V103`. Measured: the evaluator matches the
+transcription to 1.3e-13 over three curves, 0.18 lands on 15.000000000 cd/m2 for
+each peak and 10.000000000 for the V103 outputs, the default path sits 0.05 of a
+PQ code from OCIO's ACES 1.1 view away from black, and all fifteen outputs
+round-trip at 1.3e-11. The 34-code gap suite 56 used to pin is now the stated
+difference between two named outputs.
 
-- Implement the SSTS, about 330 lines of CTL including `init_TsParams`, the knot
-  construction and the forward evaluation. It is a new transform rather than new
-  data, and it is what every current ACES config ships.
-- Then name the two honestly. One enum value cannot mean both a 2015 transform
-  and a 2019 one depending on an interpolation setting. The 1.0.3 ODT is still a
-  real published transform and worth keeping, under a name that says so.
-
-Until then the default output is the older revision, and suite 56 pins the
-34-code gap so it stays visible.
+One thing the CTL does that is worth knowing: `limit_to_primaries` clips in the
+limiting primaries before the D60 to D65 adaptation, so a D60 grey within a few
+percent of peak, which is not grey in Rec.2020 coordinates, loses a little red
+there. It is 1.3e-5 at peak, it is what the reference does, and the tone-scale
+test leaves the top five percent out for that reason.
 
 ## RGB-space transfer functions: audited against a reference, and fixed
 
@@ -798,7 +804,7 @@ nonsense. What remains:
 - [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all
 - [ ] Exposure anchor: the one-stop cap gives back 0.8 of a 4.9-stop change; is that the right number
-- [ ] ACES 1.x HDR: implement the SSTS, then name the 1.0.3 and 1.3 transforms separately
+- [x] ACES 1.x HDR: the SSTS is implemented; the 1.1 to 1.3 outputs are the default, the 1.0.3 ODTs are _V103
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [x] EXR loader: non-zero data window origin, 40 of 40 files pixel-exact in tools/exr_window_check.py
 - [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation

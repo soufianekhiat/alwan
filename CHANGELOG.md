@@ -115,6 +115,23 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed: output differs
 
+- **The ACES 1.x HDR outputs are the ACES 1.1 to 1.3 transforms.**
+  `ALWAN_ACES1_OUT_REC2020_{1000,2000,4000}NIT_PQ` evaluated the 1.0.3
+  `ODT.Academy.Rec2020_ST2084_*nits` C9 spline, 0.18 at 10 cd/m2, under the
+  default setting, and OCIO's fit of the 1.1 curve, 0.18 at 15 cd/m2, under
+  `ALWAN_ACES_INTERP_OCIO`: one enum value, two transforms half a stop
+  apart. The Single Stage Tone Scale of `ACESlib.SSTS.ctl` is implemented
+  now, knots built from Y_MIN, Y_MID and Y_MAX as the CTL builds them,
+  forward and inverse, with the RRTODT's clip to the Rec.2020 primaries
+  before the adaptation to D65 and its stretched black. Those three values
+  are the `RRTODT.Academy.Rec2020_*nits_15nits_ST2084` transforms in every
+  setting, so mid-grey moves from 10 to 15 cd/m2 on the default path, 34 PQ
+  codes of 1023. Against OCIO's ACES 1.1 view the default path now sits
+  within 0.05 of a code away from black, and the evaluator matches the CTL
+  transcription to 1.3e-13. The 1.0.3 ODTs remain under
+  `ALWAN_ACES1_OUT_REC2020_*NIT_PQ_V103`; all fifteen outputs round-trip
+  through the inverse at 1.3e-11.
+
 - **RGB-space transfer functions audited against colour-science.** Neither of
   the two tables naming each space's curve had ever been compared with
   anything. 19 spaces were wrong: CIE RGB, Adobe Wide Gamut, Best, Beta,

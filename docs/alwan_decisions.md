@@ -230,6 +230,29 @@ unlike Y'CbCr it has something for the normalisation layer to do.
 
 ## ACES 1.x
 
+### The HDR outputs are the 1.1 to 1.3 transforms; the 1.0.3 ODTs carry a suffix
+
+`ALWAN_ACES1_OUT_REC2020_{1000,2000,4000}NIT_PQ` evaluate the Single Stage Tone
+Scale of `RRTODT.Academy.Rec2020_*nits_15nits_ST2084`, with 0.18 at 15 cd/m2,
+under every `alwan_aces_interp` setting. The ACES 1.0.3
+`ODT.Academy.Rec2020_ST2084_*nits` ODTs, C5 and C9 splines with 0.18 at
+10 cd/m2, are `ALWAN_ACES1_OUT_REC2020_*NIT_PQ_V103`.
+
+The unsuffixed names went to the newer revision because it is what every ACES
+config since 2018 ships, and because under `ALWAN_ACES_INTERP_OCIO` they already
+produced it: before the SSTS existed the same enum value meant the 2015
+transform on the default path and OCIO's fit of the 2019 one on the OCIO path,
+half a stop apart at mid-grey. An interpolation setting should not choose a
+transform. The 1.0.3 ODTs stay because they are published transforms that
+material was mastered through; the suffix says which revision, which the old
+name never did.
+
+The SSTS knots are built once by `gendata/data/aces1_ssts.py`, exactly as
+`ACESlib.SSTS.ctl` builds them at run time, and embedded like the C9 tables. The
+evaluator follows the CTL's order, including `limit_to_primaries` before the
+adaptation to D65: a D60 grey near peak is not grey in Rec.2020 coordinates and
+loses 1.3e-5 of red there. That is the reference's behaviour, so it is alwan's.
+
 ### The inverse RedMod10 is exact, and OCIO's is not
 
 **Reference:** OCIO's `Renderer_ACES_RedMod10_Inv` solves

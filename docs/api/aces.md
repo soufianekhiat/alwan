@@ -54,9 +54,14 @@ typedef enum {
 
     /* Rec.2020 / HDR */
     ALWAN_ACES1_OUT_REC2020_100NIT,       /* Rec.2020, 100 nits, BT.1886 */
+    /* ACES 1.1 to 1.3 RRTODT.Academy.Rec2020_*nits_15nits_ST2084: the SSTS, 0.18 at 15 cd/m2 */
     ALWAN_ACES1_OUT_REC2020_1000NIT_PQ,   /* Rec.2020, 1000 nits, PQ */
     ALWAN_ACES1_OUT_REC2020_2000NIT_PQ,   /* Rec.2020, 2000 nits, PQ */
     ALWAN_ACES1_OUT_REC2020_4000NIT_PQ,   /* Rec.2020, 4000 nits, PQ */
+    /* ACES 1.0.3 ODT.Academy.Rec2020_ST2084_*nits: C5 + C9 splines, 0.18 at 10 cd/m2 */
+    ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103,
+    ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103,
+    ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103,
 
     /* Cinema */
     ALWAN_ACES1_OUT_DCDM_48NIT,           /* DCDM X'Y'Z', 48 nits, Gamma 2.6 */
