@@ -220,33 +220,38 @@ macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
 
 ### 10. Documentation Of The Undocumented Tail
 
-Measured, not estimated. Of **411 distinct base operations** on the public
-surface (precision and `_map_*` variants folded together), **73 have no entry in
-`docs/api/`**.
+Measured, not estimated, and re-measured after each pass. Counting base
+operations on the public surface with precision and `_map_*` variants folded
+together: **641 base operations, 445 documented, 196 without an entry** anywhere
+under `docs/`. It was 324 undocumented before the documentation passes of
+2026-09-08.
 
-Four are closed: the table sampling family now has [api/tables.md](api/tables.md),
-`alwan_gamut_map_spatial` plus the bulk gamut forms are in
-[api/gamut.md](api/gamut.md), the LUT bake, interchange and sampling surface
-(`alwan_bake_*`, `alwan_lut*`, `alwan_cube_*`, `alwan_clf_*`) is in
-[api/luts.md](api/luts.md), the seven additional appearance models have their
-viewing conditions and their traps in
-[api/color-appearance.md](api/color-appearance.md), and the perceptual pickers
-(HSLuv, HPLuv, Okhsl, Okhsv, Cubehelix, IPTch) are in
-[api/color-spaces.md](api/color-spaces.md) with their ranges in
-[ranges.md](ranges.md). The accessibility contrast pair and the HDR tone-mapping
-operators (BT.2390 EETF, BT.2446 B and C, exposure, Reinhard) are in
-[api/hdr.md](api/hdr.md).
+Closed so far, each as its own page or as sections on an existing one:
 
-The rest cluster, which is the useful part: they are whole areas with no page,
-not scattered omissions.
+| surface | page |
+| --- | --- |
+| table sampling | [api/tables.md](api/tables.md) |
+| spatial and bulk gamut forms | [api/gamut.md](api/gamut.md) |
+| LUT bake, interchange, sampling | [api/luts.md](api/luts.md) |
+| the seven additional appearance models | [api/color-appearance.md](api/color-appearance.md) |
+| perceptual pickers, and their ranges | [api/color-spaces.md](api/color-spaces.md), [ranges.md](ranges.md) |
+| accessibility contrast, HDR tone mapping | [api/hdr.md](api/hdr.md) |
+| AgX and JP2499 view transforms | [api/view-transforms.md](api/view-transforms.md) |
+| experimental picture formation | [api/picture-formation-experimental.md](api/picture-formation-experimental.md) |
+| the RGB encoding-space fit | [api/rgb-space-fit.md](api/rgb-space-fit.md) |
+| interop IDs, half floats, video signals | [api/interchange.md](api/interchange.md) |
+| embedded illuminant SPDs and chart data | [api/reference-data.md](api/reference-data.md) |
+| version, global settings, the allocator | [api/context.md](api/context.md) |
 
-| cluster | count | shape |
-|---|---|---|
-| `alwan_data_get_illuminant_*` | 9 | direct SPD getters, no page |
-| `alwan_delta_e_*_batch` | 7 | batch deltaE, only the scalar forms are documented |
-| `alwan_agx_*`, `alwan_jp2499_*` | 9 | params and cube sampling for the AgX family |
-| `alwan_picture_*` | 5 | picture formation, covered by the topic doc only |
+The four families this section used to list by name (illuminant SPD getters,
+batch deltaE, the AgX and JP2499 family, picture formation) are all in that
+table now.
 
+What is left is mostly the bulk `_map_interleave` / `_map_planar` twins of
+conversions whose scalar forms are documented, concentrated in `alwan_xyz_*`
+(36) and `alwan_rgb_*` (27). Those need a convention stated once in
+[map.md](map.md) rather than an entry each, which is a different job from the
+cluster pages above.
 The full list is reproducible:
 
     python - <<'EOF'
@@ -877,6 +882,36 @@ nonsense. What remains:
 
 ---
 
+## No build exercises the shipped default of ALWAN_NORMALIZE_RANGES
+
+`ALWAN_NORMALIZE_RANGES` defaults to `1` in `alwan_platform.h`, and that is what
+a consumer linking a stock build gets: the API wrappers rescale bounded channels
+through `ALWAN_NORM_*` on the way out and `ALWAN_DENORM_*` on the way in.
+
+Nothing in either repo compiles the library that way. `alwan_dev/CMakeLists.txt`
+puts the library target in `ALWAN_NORMALIZE_RANGES=0`, and the Sharpmake
+reference build defines `=0` for every project. The macros expand inside the
+library's own translation units, so a consumer cannot change the setting from
+its own code either; it is a library-compile-time decision, and
+`alwan_platform.h` telling the reader to define it before including `alwan.h` is
+wrong for anyone linking a built library.
+
+The result is that the default code path has no test coverage at all, and both
+defects found in it so far were found by reading rather than by a failure:
+YCbCr double-offsetting chroma, fixed 2026-08-27, and YcCbcCrc doing the same,
+found on 2026-09-08 while documenting the conversions and fixed the same way.
+In the second case the scalar path disagreed with the bulk kernels and with the
+committed reference CSV, and no test noticed, because every test build takes the
+other branch.
+
+What closing it needs is a second test configuration that builds the library at
+`ALWAN_NORMALIZE_RANGES=1` and asserts the documented ranges: achromatic grey on
+the chroma midpoint for each `Y*` encoding, hue on `[0, 1]` for the cylindrical
+spaces, and a scalar-against-bulk agreement check for every space with a
+`ALWAN_NORM_*` macro. The agreement check is the one that would have caught both
+defects.
+
+---
 ## Keeping this file honest
 
 When updating it:

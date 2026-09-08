@@ -68,6 +68,10 @@ Key entry points:
 - [`docs/api/gamut.md`](api/gamut.md)
 - [`docs/api/tables.md`](api/tables.md)
 - [`docs/api/luts.md`](api/luts.md)
+- [`docs/api/view-transforms.md`](api/view-transforms.md)
+- [`docs/api/interchange.md`](api/interchange.md)
+- [`docs/api/rgb-space-fit.md`](api/rgb-space-fit.md)
+- [`docs/api/picture-formation-experimental.md`](api/picture-formation-experimental.md)
 - [`docs/api/backends.md`](api/backends.md)
 
 ## Notes On Templates
