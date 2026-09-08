@@ -595,20 +595,36 @@ which is half a stop of luminance on every pixel of every frame.
 Suite 56 now pins all of it, including the 34-code gap, so a change is noticed
 rather than absorbed.
 
-Fixing it means regenerating the c9 coefficients for the 15-nit ODTs. The
-coefficients are log10 luminances at the spline knots, so the mid point cannot
-simply be edited: the whole table encodes the 10-nit curve. Two routes:
+**The plan this section used to carry was wrong, and the CTL says why.** It said
+to regenerate the c9 coefficients for the 15-nit ODTs. There are none. The two
+transforms are not two tunings of one spline, they are different constructions
+from different ACES revisions:
 
-- Take them from the ACES CTL for `Rec2020_1000nits_15nits_ST2084` and its 2000
-  and 4000 nit siblings. This is the correct source and needs the file, which
-  could not be fetched here.
-- Recover the curve from OCIO. For a neutral input the whole chain is diagonal,
-  so inverting OCIO's PQ output on a dense grey ramp gives c9(c5(x)) in cd/m2
-  directly, and the c9 knots can be refitted from that. This is within gendata's
-  rule of taking a reference implementation as the source, and needs no file.
+| | transform | spline | mid |
+| --- | --- | --- | --- |
+| ACES 1.0.3 | `ODT.Academy.Rec2020_ST2084_1000nits` | `segmented_spline_c9_fwd`, 10 coefficients a side | 10 cd/m2 |
+| ACES 1.1 to 1.3 | `RRTODT.Academy.Rec2020_1000nits_15nits_ST2084` | SSTS, 6 coefficients a side, built from Y_MIN/Y_MID/Y_MAX | 15 cd/m2 |
 
-Whichever route, it is a change to the default output of a shipped transform, so
-it wants to be a deliberate decision rather than a quiet fix.
+alwan's embedded c9 tables are the 1.0.3 transform, faithfully. The 15-nit one
+does not have a coefficient table to copy: `ACESlib.SSTS.ctl` constructs its
+knots at run time from the three luminances, so there is nothing to regenerate
+and no fitting to do.
+
+So `alwan_set_aces_interp` is not choosing how to evaluate a curve. It is
+choosing between two ACES revisions, and the enum name says neither. That is the
+defect, and it is as much an API one as a data one.
+
+What closing it actually needs:
+
+- Implement the SSTS, about 330 lines of CTL including `init_TsParams`, the knot
+  construction and the forward evaluation. It is a new transform rather than new
+  data, and it is what every current ACES config ships.
+- Then name the two honestly. One enum value cannot mean both a 2015 transform
+  and a 2019 one depending on an interpolation setting. The 1.0.3 ODT is still a
+  real published transform and worth keeping, under a name that says so.
+
+Until then the default output is the older revision, and suite 56 pins the
+34-code gap so it stays visible.
 
 ## RGB-space transfer functions: audited against a reference, and fixed
 
@@ -725,7 +741,7 @@ nonsense. What remains:
 - [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all
 - [ ] Exposure anchor: the one-stop cap gives back 0.8 of a 4.9-stop change; is that the right number
-- [ ] ACES 1.x HDR: regenerate the c9 splines for the 15-nit ODTs (default path is 10-nit)
+- [ ] ACES 1.x HDR: implement the SSTS, then name the 1.0.3 and 1.3 transforms separately
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
 - [ ] EXR loader: exercise a non-zero data window origin
 - [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation
