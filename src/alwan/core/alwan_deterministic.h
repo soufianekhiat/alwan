@@ -23,7 +23,9 @@
  *
  * The polynomial does NOT match libm bit-for-bit. It approximates
  * the same mathematical function within a documented error budget
- * (typically <0.05% absolute for sRGB-range inputs). The point is
+ * (the sRGB and BT.2020 transfer functions land at 3.3e-16, the f64
+ * rounding floor, since their power branch became alwan_det_pow_pos;
+ * see docs/determinism.md for the per-family table). The point is
  * that *every* deterministic build, on every platform, returns the
  * same bytes for the same inputs -- that's what
  * cross-platform-determinism CI verifies via output hashing.
@@ -140,9 +142,14 @@ ALWAN_INLINE alwan_f64 alwan_det_log2_f64(alwan_f64 x) {
     if (x <= 0.0) return -INFINITY;  /* IEEE convention */
     int k;
     const alwan_f64 m = frexp(x, &k);
-    /* m in [0.5, 1.0); normalise to u in [-1, 1] for the polynomial. */
+    /* m in [0.5, 1.0); normalise to u in [-1, 1] for the polynomial.
+     * The polynomial is log2(m)/(m-1), not log2(m): the quotient is
+     * analytic and nonzero across the domain, so it can be fitted by a
+     * relative-error minimax, which log2 itself cannot be because of its
+     * zero at m = 1. Reconstructing costs one multiply and buys four
+     * orders of accuracy. See gendata/gen_math_minimax.wls. */
     const alwan_f64 u = alwan_det_normalize_f64(m, 0.5, 1.0);
-    return (alwan_f64)k + alwan_det_horner_f64(
+    return (alwan_f64)k + (m - 1.0) * alwan_det_horner_f64(
         alwan_det_log2_coeffs_f64, ALWAN_DET_LOG2_DEGREE, u);
 }
 
@@ -151,7 +158,7 @@ ALWAN_INLINE alwan_f32 alwan_det_log2_f32(alwan_f32 x) {
     int k;
     const alwan_f32 m = frexpf(x, &k);
     const alwan_f32 u = alwan_det_normalize_f32(m, 0.5f, 1.0f);
-    return (alwan_f32)k + alwan_det_horner_f32(
+    return (alwan_f32)k + (m - 1.0f) * alwan_det_horner_f32(
         alwan_det_log2_coeffs_f32, ALWAN_DET_LOG2_DEGREE, u);
 }
 
@@ -443,86 +450,63 @@ ALWAN_INLINE alwan_f32 alwan_det_acos_f32(alwan_f32 x) {
  * Generic linear+power OETF/EOTF evaluator. Used by every TF whose
  * shape is `linear * x for x < break, alpha * pow(x, exp) - beta`
  * (sRGB, BT.2020, BT.709, ...). Each TF supplies its own constants
- * and polynomial coefficients via the per-TF `alwan_det_<tf>_coeffs.h`.
+ * via the per-TF `alwan_det_<tf>_coeffs.h`.
+ *
+ * The power branch goes through alwan_det_pow_pos. These used to hold
+ * per-TF Chebyshev tables instead, split into a lo and a hi piece,
+ * because pow() reaches libm. Three things were wrong with that.
+ *
+ * Accuracy: the tables sat between 4.8e-08 and 2.5e-04. x^(1/2.4) has
+ * an algebraic branch point at 0 and the OETF domain starts at
+ * 0.0031308, so polynomial convergence is slow no matter the degree;
+ * a true minimax fit at the same degrees only doubles it. pow_pos
+ * reduces the argument (frexp, then floor+ldexp) rather than
+ * approximating through the singularity, and lands at 3.3e-16.
+ *
+ * Extrapolation: a fitted polynomial evaluated outside its domain is
+ * not merely inaccurate. The sRGB OETF of linear 4.0 returned -9.2e10.
+ * Scene-linear above 1 is ordinary input. Nothing extrapolates now.
+ *
+ * Surface: no tables, no split points, no branch on which piece.
+ *
+ * The cost is a log2 and an exp2 in place of one Horner. That is the
+ * right trade for a build whose whole purpose is reproducibility.
  * ---------------------------------------------------------------- */
 
 ALWAN_INLINE alwan_f64 alwan__det_lin_pow_oetf_f64(
     alwan_f64 x,
-    alwan_f64 break_x, alwan_f64 split, alwan_f64 exponent,
-    alwan_f64 linear_slope, alwan_f64 alpha, alwan_f64 beta,
-    alwan_f64 const *lo_coeffs, int lo_degree,
-    alwan_f64 const *hi_coeffs, int hi_degree
+    alwan_f64 break_x, alwan_f64 exponent,
+    alwan_f64 linear_slope, alwan_f64 alpha, alwan_f64 beta
 ) {
     if (x <= break_x) return linear_slope * x;
-    alwan_f64 power;
-    if (x > 1.0) {
-        /* Above the fitted domain. The hi polynomial is fitted on [split, 1]
-         * and a degree-14 polynomial does not extrapolate: at x = 4 it returned
-         * -9.2e10 instead of 1.82. Scene-linear values above 1 are ordinary, so
-         * this branch is not exotic. pow_pos is unbounded in x and costs a
-         * log2 and an exp2, both already deterministic. */
-        power = alwan_det_pow_pos_f64(x, exponent);
-    } else if (x < split) {
-        const alwan_f64 u = alwan_det_normalize_f64(x, break_x, split);
-        power = alwan_det_horner_f64(lo_coeffs, lo_degree, u);
-    } else {
-        const alwan_f64 u = alwan_det_normalize_f64(x, split, 1.0);
-        power = alwan_det_horner_f64(hi_coeffs, hi_degree, u);
-    }
-    return alpha * power - beta;
+    return alpha * alwan_det_pow_pos_f64(x, exponent) - beta;
 }
 
 ALWAN_INLINE alwan_f32 alwan__det_lin_pow_oetf_f32(
     alwan_f32 x,
-    alwan_f32 break_x, alwan_f32 split, alwan_f32 exponent,
-    alwan_f32 linear_slope, alwan_f32 alpha, alwan_f32 beta,
-    alwan_f32 const *lo_coeffs, int lo_degree,
-    alwan_f32 const *hi_coeffs, int hi_degree
+    alwan_f32 break_x, alwan_f32 exponent,
+    alwan_f32 linear_slope, alwan_f32 alpha, alwan_f32 beta
 ) {
     if (x <= break_x) return linear_slope * x;
-    alwan_f32 power;
-    if (x > 1.0f) {
-        power = alwan_det_pow_pos_f32(x, exponent);   /* see the f64 twin */
-    } else if (x < split) {
-        const alwan_f32 u = alwan_det_normalize_f32(x, break_x, split);
-        power = alwan_det_horner_f32(lo_coeffs, lo_degree, u);
-    } else {
-        const alwan_f32 u = alwan_det_normalize_f32(x, split, 1.0f);
-        power = alwan_det_horner_f32(hi_coeffs, hi_degree, u);
-    }
-    return alpha * power - beta;
+    return alpha * alwan_det_pow_pos_f32(x, exponent) - beta;
 }
 
 ALWAN_INLINE alwan_f64 alwan__det_lin_pow_eotf_f64(
     alwan_f64 x,
     alwan_f64 enc_break, alwan_f64 linear_slope,
-    alwan_f64 alpha, alwan_f64 beta, alwan_f64 inv_exponent,
-    alwan_f64 poly_lo,
-    alwan_f64 const *coeffs, int degree
+    alwan_f64 alpha, alwan_f64 beta, alwan_f64 inv_exponent
 ) {
     if (x <= enc_break) return x / linear_slope;
-    const alwan_f64 z = (x + beta) / alpha;
-    /* The mirror of the OETF's out-of-domain case: the polynomial is fitted
-     * on [poly_lo, 1] and an encoded value above 1 puts z past its end. */
-    if (z > 1.0) return alwan_det_pow_pos_f64(z, inv_exponent);
-    const alwan_f64 u = alwan_det_normalize_f64(z, poly_lo, 1.0);
-    return alwan_det_horner_f64(coeffs, degree, u);
+    return alwan_det_pow_pos_f64((x + beta) / alpha, inv_exponent);
 }
 
 ALWAN_INLINE alwan_f32 alwan__det_lin_pow_eotf_f32(
     alwan_f32 x,
     alwan_f32 enc_break, alwan_f32 linear_slope,
-    alwan_f32 alpha, alwan_f32 beta, alwan_f32 inv_exponent,
-    alwan_f32 poly_lo,
-    alwan_f32 const *coeffs, int degree
+    alwan_f32 alpha, alwan_f32 beta, alwan_f32 inv_exponent
 ) {
     if (x <= enc_break) return x / linear_slope;
-    const alwan_f32 z = (x + beta) / alpha;
-    /* The mirror of the OETF's out-of-domain case: the polynomial is fitted
-     * on [poly_lo, 1] and an encoded value above 1 puts z past its end. */
-    if (z > 1.0f) return alwan_det_pow_pos_f32(z, inv_exponent);
-    const alwan_f32 u = alwan_det_normalize_f32(z, poly_lo, 1.0f);
-    return alwan_det_horner_f32(coeffs, degree, u);
+    return alwan_det_pow_pos_f32((x + beta) / alpha, inv_exponent);
 }
 
 /* ----------------------------------------------------------------
@@ -532,35 +516,27 @@ ALWAN_INLINE alwan_f32 alwan__det_lin_pow_eotf_f32(
 
 ALWAN_INLINE alwan_f64 alwan_det_srgb_oetf_f64(alwan_f64 x) {
     return alwan__det_lin_pow_oetf_f64(x,
-        ALWAN_DET_SRGB_OETF_BREAK, ALWAN_DET_SRGB_OETF_SPLIT, (1.0 / 2.4),
-        ALWAN_DET_SRGB_OETF_LINEAR, ALWAN_DET_SRGB_OETF_ALPHA, ALWAN_DET_SRGB_OETF_BETA,
-        alwan_det_srgb_oetf_lo_coeffs_f64, ALWAN_DET_SRGB_OETF_LO_DEGREE,
-        alwan_det_srgb_oetf_hi_coeffs_f64, ALWAN_DET_SRGB_OETF_HI_DEGREE);
+        ALWAN_DET_SRGB_OETF_BREAK, (1.0 / 2.4),
+        ALWAN_DET_SRGB_OETF_LINEAR, ALWAN_DET_SRGB_OETF_ALPHA, ALWAN_DET_SRGB_OETF_BETA);
 }
 
 ALWAN_INLINE alwan_f32 alwan_det_srgb_oetf_f32(alwan_f32 x) {
     return alwan__det_lin_pow_oetf_f32(x,
-        (alwan_f32)ALWAN_DET_SRGB_OETF_BREAK, (alwan_f32)ALWAN_DET_SRGB_OETF_SPLIT, (1.0f / 2.4f),
+        (alwan_f32)ALWAN_DET_SRGB_OETF_BREAK, (1.0f / 2.4f),
         (alwan_f32)ALWAN_DET_SRGB_OETF_LINEAR, (alwan_f32)ALWAN_DET_SRGB_OETF_ALPHA,
-        (alwan_f32)ALWAN_DET_SRGB_OETF_BETA,
-        alwan_det_srgb_oetf_lo_coeffs_f32, ALWAN_DET_SRGB_OETF_LO_DEGREE,
-        alwan_det_srgb_oetf_hi_coeffs_f32, ALWAN_DET_SRGB_OETF_HI_DEGREE);
+        (alwan_f32)ALWAN_DET_SRGB_OETF_BETA);
 }
 
 ALWAN_INLINE alwan_f64 alwan_det_srgb_eotf_f64(alwan_f64 x) {
     return alwan__det_lin_pow_eotf_f64(x,
         ALWAN_DET_SRGB_EOTF_BREAK, ALWAN_DET_SRGB_OETF_LINEAR,
-        ALWAN_DET_SRGB_OETF_ALPHA, ALWAN_DET_SRGB_OETF_BETA, 2.4,
-        ALWAN_DET_SRGB_EOTF_POLY_LO,
-        alwan_det_srgb_eotf_coeffs_f64, ALWAN_DET_SRGB_EOTF_DEGREE);
+        ALWAN_DET_SRGB_OETF_ALPHA, ALWAN_DET_SRGB_OETF_BETA, 2.4);
 }
 
 ALWAN_INLINE alwan_f32 alwan_det_srgb_eotf_f32(alwan_f32 x) {
     return alwan__det_lin_pow_eotf_f32(x,
         (alwan_f32)ALWAN_DET_SRGB_EOTF_BREAK, (alwan_f32)ALWAN_DET_SRGB_OETF_LINEAR,
-        (alwan_f32)ALWAN_DET_SRGB_OETF_ALPHA, (alwan_f32)ALWAN_DET_SRGB_OETF_BETA, 2.4f,
-        (alwan_f32)ALWAN_DET_SRGB_EOTF_POLY_LO,
-        alwan_det_srgb_eotf_coeffs_f32, ALWAN_DET_SRGB_EOTF_DEGREE);
+        (alwan_f32)ALWAN_DET_SRGB_OETF_ALPHA, (alwan_f32)ALWAN_DET_SRGB_OETF_BETA, 2.4f);
 }
 
 /* ----------------------------------------------------------------
@@ -572,35 +548,27 @@ ALWAN_INLINE alwan_f32 alwan_det_srgb_eotf_f32(alwan_f32 x) {
 
 ALWAN_INLINE alwan_f64 alwan_det_bt2020_oetf_f64(alwan_f64 x) {
     return alwan__det_lin_pow_oetf_f64(x,
-        ALWAN_DET_BT2020_OETF_BREAK, ALWAN_DET_BT2020_OETF_SPLIT, 0.45,
-        ALWAN_DET_BT2020_OETF_LINEAR, ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA,
-        alwan_det_bt2020_oetf_lo_coeffs_f64, ALWAN_DET_BT2020_OETF_LO_DEGREE,
-        alwan_det_bt2020_oetf_hi_coeffs_f64, ALWAN_DET_BT2020_OETF_HI_DEGREE);
+        ALWAN_DET_BT2020_OETF_BREAK, 0.45,
+        ALWAN_DET_BT2020_OETF_LINEAR, ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA);
 }
 
 ALWAN_INLINE alwan_f32 alwan_det_bt2020_oetf_f32(alwan_f32 x) {
     return alwan__det_lin_pow_oetf_f32(x,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_BREAK, (alwan_f32)ALWAN_DET_BT2020_OETF_SPLIT, 0.45f,
+        (alwan_f32)ALWAN_DET_BT2020_OETF_BREAK, 0.45f,
         (alwan_f32)ALWAN_DET_BT2020_OETF_LINEAR, (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_BETA,
-        alwan_det_bt2020_oetf_lo_coeffs_f32, ALWAN_DET_BT2020_OETF_LO_DEGREE,
-        alwan_det_bt2020_oetf_hi_coeffs_f32, ALWAN_DET_BT2020_OETF_HI_DEGREE);
+        (alwan_f32)ALWAN_DET_BT2020_OETF_BETA);
 }
 
 ALWAN_INLINE alwan_f64 alwan_det_bt2020_eotf_f64(alwan_f64 x) {
     return alwan__det_lin_pow_eotf_f64(x,
         ALWAN_DET_BT2020_EOTF_BREAK, ALWAN_DET_BT2020_OETF_LINEAR,
-        ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA, (1.0 / 0.45),
-        ALWAN_DET_BT2020_EOTF_POLY_LO,
-        alwan_det_bt2020_eotf_coeffs_f64, ALWAN_DET_BT2020_EOTF_DEGREE);
+        ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA, (1.0 / 0.45));
 }
 
 ALWAN_INLINE alwan_f32 alwan_det_bt2020_eotf_f32(alwan_f32 x) {
     return alwan__det_lin_pow_eotf_f32(x,
         (alwan_f32)ALWAN_DET_BT2020_EOTF_BREAK, (alwan_f32)ALWAN_DET_BT2020_OETF_LINEAR,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA, (alwan_f32)ALWAN_DET_BT2020_OETF_BETA, (1.0f / 0.45f),
-        (alwan_f32)ALWAN_DET_BT2020_EOTF_POLY_LO,
-        alwan_det_bt2020_eotf_coeffs_f32, ALWAN_DET_BT2020_EOTF_DEGREE);
+        (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA, (alwan_f32)ALWAN_DET_BT2020_OETF_BETA, (1.0f / 0.45f));
 }
 
 #else /* ================= GPU backends (single precision) ================= *
@@ -618,7 +586,9 @@ ALWAN_INLINE alwan_scalar alwan_det_log2(alwan_scalar x) {
     [unroll] for (int i = ALWAN_DET_LOG2_DEGREE - 1; i >= 0; --i) {
         precise alwan_scalar t = acc * u; acc = t + alwan_det_log2_coeffs_f32[i];
     }
-    return e + acc;
+    /* The table is log2(m)/(m-1); reconstruct. Mirrors the C _f32 path. */
+    precise alwan_scalar lg = (m - (alwan_scalar)1.0) * acc;
+    return e + lg;
 }
 
 ALWAN_INLINE alwan_scalar alwan_det_exp2(alwan_scalar t) {
@@ -636,78 +606,40 @@ ALWAN_INLINE alwan_scalar alwan_det_pow_pos(alwan_scalar x, alwan_scalar e) {
     return alwan_det_exp2(e * alwan_det_log2(x));
 }
 
-ALWAN_INLINE alwan_scalar alwan_det_srgb_eotf(alwan_scalar x) {
-    if (x <= (alwan_scalar)ALWAN_DET_SRGB_EOTF_BREAK)
-        return x / (alwan_scalar)ALWAN_DET_SRGB_OETF_LINEAR;
-    alwan_scalar z = (x + (alwan_scalar)ALWAN_DET_SRGB_OETF_BETA) / (alwan_scalar)ALWAN_DET_SRGB_OETF_ALPHA;
-    alwan_scalar lo = (alwan_scalar)ALWAN_DET_SRGB_EOTF_POLY_LO;
-    alwan_scalar u = (alwan_scalar)2.0 * (z - lo) / ((alwan_scalar)1.0 - lo) - (alwan_scalar)1.0;
-    precise alwan_scalar acc = alwan_det_srgb_eotf_coeffs_f32[ALWAN_DET_SRGB_EOTF_DEGREE];
-    [unroll] for (int i = ALWAN_DET_SRGB_EOTF_DEGREE - 1; i >= 0; --i) {
-        precise alwan_scalar t = acc * u; acc = t + alwan_det_srgb_eotf_coeffs_f32[i];
-    }
-    return acc;
-}
-
-/* Two-segment (lo/hi split) OETF evaluator, mirroring alwan__det_lin_pow_oetf_f32:
- * same coefficient tables, same normalisation, same rounding order (precise
- * blocks mad-fusion, matching the C FP_CONTRACT-off contract). */
+/* The four TFs, mirroring the C _f32 helpers exactly: same pow_pos, same
+ * constants, same rounding order. Because the power branch is now pow_pos
+ * rather than a per-TF table, C and GPU share one code path in all but
+ * spelling, so cross-backend parity no longer rests on two hand-kept copies of
+ * a Horner loop. This also gives the GPU path the out-of-domain behaviour it
+ * never had: the old tables extrapolated above 1.0 the same way the C ones did,
+ * and nothing here guarded it. */
 
 ALWAN_INLINE alwan_scalar alwan_det_srgb_oetf(alwan_scalar x) {
     if (x <= (alwan_scalar)ALWAN_DET_SRGB_OETF_BREAK)
         return (alwan_scalar)ALWAN_DET_SRGB_OETF_LINEAR * x;
-    precise alwan_scalar acc;
-    if (x < (alwan_scalar)ALWAN_DET_SRGB_OETF_SPLIT) {
-        alwan_scalar b = (alwan_scalar)ALWAN_DET_SRGB_OETF_BREAK, s = (alwan_scalar)ALWAN_DET_SRGB_OETF_SPLIT;
-        alwan_scalar u = (alwan_scalar)2.0 * (x - b) / (s - b) - (alwan_scalar)1.0;
-        acc = alwan_det_srgb_oetf_lo_coeffs_f32[ALWAN_DET_SRGB_OETF_LO_DEGREE];
-        [unroll] for (int i = ALWAN_DET_SRGB_OETF_LO_DEGREE - 1; i >= 0; --i) {
-            precise alwan_scalar t = acc * u; acc = t + alwan_det_srgb_oetf_lo_coeffs_f32[i];
-        }
-    } else {
-        alwan_scalar s = (alwan_scalar)ALWAN_DET_SRGB_OETF_SPLIT;
-        alwan_scalar u = (alwan_scalar)2.0 * (x - s) / ((alwan_scalar)1.0 - s) - (alwan_scalar)1.0;
-        acc = alwan_det_srgb_oetf_hi_coeffs_f32[ALWAN_DET_SRGB_OETF_HI_DEGREE];
-        [unroll] for (int i = ALWAN_DET_SRGB_OETF_HI_DEGREE - 1; i >= 0; --i) {
-            precise alwan_scalar t = acc * u; acc = t + alwan_det_srgb_oetf_hi_coeffs_f32[i];
-        }
-    }
-    return (alwan_scalar)ALWAN_DET_SRGB_OETF_ALPHA * acc - (alwan_scalar)ALWAN_DET_SRGB_OETF_BETA;
+    precise alwan_scalar p = alwan_det_pow_pos(x, (alwan_scalar)(1.0 / 2.4));
+    return (alwan_scalar)ALWAN_DET_SRGB_OETF_ALPHA * p - (alwan_scalar)ALWAN_DET_SRGB_OETF_BETA;
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_srgb_eotf(alwan_scalar x) {
+    if (x <= (alwan_scalar)ALWAN_DET_SRGB_EOTF_BREAK)
+        return x / (alwan_scalar)ALWAN_DET_SRGB_OETF_LINEAR;
+    alwan_scalar z = (x + (alwan_scalar)ALWAN_DET_SRGB_OETF_BETA) / (alwan_scalar)ALWAN_DET_SRGB_OETF_ALPHA;
+    return alwan_det_pow_pos(z, (alwan_scalar)2.4);
 }
 
 ALWAN_INLINE alwan_scalar alwan_det_bt2020_oetf(alwan_scalar x) {
     if (x <= (alwan_scalar)ALWAN_DET_BT2020_OETF_BREAK)
         return (alwan_scalar)ALWAN_DET_BT2020_OETF_LINEAR * x;
-    precise alwan_scalar acc;
-    if (x < (alwan_scalar)ALWAN_DET_BT2020_OETF_SPLIT) {
-        alwan_scalar b = (alwan_scalar)ALWAN_DET_BT2020_OETF_BREAK, s = (alwan_scalar)ALWAN_DET_BT2020_OETF_SPLIT;
-        alwan_scalar u = (alwan_scalar)2.0 * (x - b) / (s - b) - (alwan_scalar)1.0;
-        acc = alwan_det_bt2020_oetf_lo_coeffs_f32[ALWAN_DET_BT2020_OETF_LO_DEGREE];
-        [unroll] for (int i = ALWAN_DET_BT2020_OETF_LO_DEGREE - 1; i >= 0; --i) {
-            precise alwan_scalar t = acc * u; acc = t + alwan_det_bt2020_oetf_lo_coeffs_f32[i];
-        }
-    } else {
-        alwan_scalar s = (alwan_scalar)ALWAN_DET_BT2020_OETF_SPLIT;
-        alwan_scalar u = (alwan_scalar)2.0 * (x - s) / ((alwan_scalar)1.0 - s) - (alwan_scalar)1.0;
-        acc = alwan_det_bt2020_oetf_hi_coeffs_f32[ALWAN_DET_BT2020_OETF_HI_DEGREE];
-        [unroll] for (int i = ALWAN_DET_BT2020_OETF_HI_DEGREE - 1; i >= 0; --i) {
-            precise alwan_scalar t = acc * u; acc = t + alwan_det_bt2020_oetf_hi_coeffs_f32[i];
-        }
-    }
-    return (alwan_scalar)ALWAN_DET_BT2020_OETF_ALPHA * acc - (alwan_scalar)ALWAN_DET_BT2020_OETF_BETA;
+    precise alwan_scalar p = alwan_det_pow_pos(x, (alwan_scalar)0.45);
+    return (alwan_scalar)ALWAN_DET_BT2020_OETF_ALPHA * p - (alwan_scalar)ALWAN_DET_BT2020_OETF_BETA;
 }
 
 ALWAN_INLINE alwan_scalar alwan_det_bt2020_eotf(alwan_scalar x) {
     if (x <= (alwan_scalar)ALWAN_DET_BT2020_EOTF_BREAK)
         return x / (alwan_scalar)ALWAN_DET_BT2020_OETF_LINEAR;
     alwan_scalar z = (x + (alwan_scalar)ALWAN_DET_BT2020_OETF_BETA) / (alwan_scalar)ALWAN_DET_BT2020_OETF_ALPHA;
-    alwan_scalar lo = (alwan_scalar)ALWAN_DET_BT2020_EOTF_POLY_LO;
-    alwan_scalar u = (alwan_scalar)2.0 * (z - lo) / ((alwan_scalar)1.0 - lo) - (alwan_scalar)1.0;
-    precise alwan_scalar acc = alwan_det_bt2020_eotf_coeffs_f32[ALWAN_DET_BT2020_EOTF_DEGREE];
-    [unroll] for (int i = ALWAN_DET_BT2020_EOTF_DEGREE - 1; i >= 0; --i) {
-        precise alwan_scalar t = acc * u; acc = t + alwan_det_bt2020_eotf_coeffs_f32[i];
-    }
-    return acc;
+    return alwan_det_pow_pos(z, (alwan_scalar)(1.0 / 0.45));
 }
 
 #endif /* ALWAN_BACKEND_C else GPU */

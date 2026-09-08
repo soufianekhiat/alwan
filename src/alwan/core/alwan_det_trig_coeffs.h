@@ -62,6 +62,7 @@
 #define ALWAN_DET_LOG10_2 +3.01029995663981198e-01
 
 /* sin(r) / r as a polynomial in y = r*r, r in [-pi/4, pi/4]. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
 static const alwan_f64 alwan_det_sin_coeffs_f64[8] = {
     +1.00000000000000000e+00,  /* c0 */
     -1.66666666666666657e-01,  /* c1 */
@@ -72,6 +73,7 @@ static const alwan_f64 alwan_det_sin_coeffs_f64[8] = {
     +1.60583476309273415e-10,  /* c6 */
     -7.57786825836233383e-13,  /* c7 */
 };
+#endif
 
 static const alwan_f32 alwan_det_sin_coeffs_f32[8] = {
     +1.00000000000000000e+00f,  /* c0 */
@@ -85,6 +87,7 @@ static const alwan_f32 alwan_det_sin_coeffs_f32[8] = {
 };
 
 /* cos(r) as a polynomial in y = r*r, r in [-pi/4, pi/4]. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
 static const alwan_f64 alwan_det_cos_coeffs_f64[9] = {
     +1.00000000000000000e+00,  /* c0 */
     -5.00000000000000000e-01,  /* c1 */
@@ -96,6 +99,7 @@ static const alwan_f64 alwan_det_cos_coeffs_f64[9] = {
     -1.14702367856243792e-11,  /* c7 */
     +4.73589391497267162e-14,  /* c8 */
 };
+#endif
 
 static const alwan_f32 alwan_det_cos_coeffs_f32[9] = {
     +1.00000000000000000e+00f,  /* c0 */
@@ -110,6 +114,7 @@ static const alwan_f32 alwan_det_cos_coeffs_f32[9] = {
 };
 
 /* atan(s) / s as a polynomial in y = s*s, |s| <= tan(pi/8). */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
 static const alwan_f64 alwan_det_atan_coeffs_f64[14] = {
     +1.00000000000000000e+00,  /* c0 */
     -3.33333333333333315e-01,  /* c1 */
@@ -126,6 +131,7 @@ static const alwan_f64 alwan_det_atan_coeffs_f64[14] = {
     +2.95583168774332383e-02,  /* c12 */
     -1.29338319364224689e-02,  /* c13 */
 };
+#endif
 
 static const alwan_f32 alwan_det_atan_coeffs_f32[14] = {
     +1.00000000000000000e+00f,  /* c0 */

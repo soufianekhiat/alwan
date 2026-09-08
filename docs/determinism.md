@@ -72,9 +72,9 @@ produce results that differ in the last bit.
 
 | Concern                         | Fast (default)                       | Deterministic                              |
 | :------------------------------ | :----------------------------------- | :----------------------------------------- |
-| `pow / exp / log / log2 / cbrt / fma` | libm                           | Polynomial: argument reduction + Chebyshev |
+| `pow / exp / log / log2 / cbrt / fma` | libm                           | `alwan_det_*`; argument reduction + minimax polynomials, at the f64 rounding floor |
 | `sin / cos / tan / tanh / atan / atan2 / acos / log10` | libm | `alwan_det_*`; minimax polynomials, 0.5-1 ULP against libm |
-| sRGB / BT.2020 / BT.709 OETF, EOTF | libm `pow`                        | Domain-split minimax polynomials           |
+| sRGB / BT.2020 / BT.709 OETF, EOTF | libm `pow`                        | `alwan_det_pow_pos` on the power branch, 3.3e-16 against libm |
 | FMA contraction (`a*b + c`)     | Compiler decides; hardware FMA on aarch64, often on x86 with `-mfma` | `-ffp-contract=off` / `/fp:precise`; never fused |
 | SIMD horizontal sum             | Native pairwise (`vpaddq_pd`, `_mm_hadd_pd`, `vaddvq_f64`) | Canonical scalar left-to-right reduction |
 | SIMD per-lane libm              | Lane-unpack to libm                  | Lane-unpack to deterministic polynomial    |
@@ -101,8 +101,35 @@ specs, but the specs aren't byte-exact.
 **Fix:** ship a polynomial implementation that does not call libm.
 `alwan_det_log2 / exp2 / pow_pos / cbrt` use frexp/ldexp argument
 reduction (which IS bit-deterministic on IEEE-754 platforms) plus a
-Chebyshev minimax polynomial fitted to the normalised domain. Output
+minimax polynomial fitted to the normalised domain. Output
 is bit-identical wherever IEEE-754 is honoured.
+
+The two that everything else is built on, `log2` and `exp2`, are Remez
+fits computed at 60 digits (`alwan_dev/gendata/gen_math_minimax.wls`).
+`log2` fits the quotient `log2(m)/(m-1)` and reconstructs by
+multiplying `(m - 1)` back in: `log2` has a zero at `m = 1`, which
+rules out a relative-error fit, while the quotient is analytic and
+bounded away from zero across `[0.5, 1]`. Both land at the f64
+rounding floor, `3.3e-16` and `4.4e-16` against libm, so what reaches
+the caller is limited by Horner rounding rather than by the
+approximation. Everything defined over them inherits that: `ln`,
+`exp`, `pow_pos`, `cbrt`, `log10`, `tanh`.
+
+The transfer functions are the visible consequence. `alwan_det_srgb_*`
+and `alwan_det_bt2020_*` used to carry their own piecewise fits, split
+into a lo and a hi segment, and those sat between `4.8e-08` and
+`2.5e-04`. Raising the degree does not fix that: `x^(1/2.4)` has an
+algebraic branch point at 0 and the OETF domain starts at `0.0031308`,
+so polynomial convergence is slow no matter how many terms are spent,
+and a true minimax fit at the same degrees is only about twice as
+good. The power branch now calls `alwan_det_pow_pos`, whose argument
+reduction removes the singularity instead of approximating through it,
+and measures `3.3e-16`. The tables, the split points and the two-branch
+dispatch are gone with them, and so is a class of bug they carried: a
+fitted polynomial evaluated outside its domain is not merely
+inaccurate, and the sRGB OETF of linear `4.0` used to return
+`-9.2e10`. Nothing extrapolates now. The cost is a `log2` and an `exp2`
+per call in place of one Horner.
 
 ### 2. FMA contraction
 
@@ -578,8 +605,8 @@ reversible without breaking the bit-exact contract for existing users.
 
 **Own polynomials, not a deterministic libm.** A wrapper around CRlibm or musl
 would tie the build to a libm fork that may not exist on the target, and
-CRlibm's licence is viral for MIT consumers. The Chebyshev minimax fits give
-1e-12-class accuracy in a fraction of the code. The consequence to know:
+CRlibm's licence is viral for MIT consumers. The Remez fits give
+f64-rounding-floor accuracy in a fraction of the code. The consequence to know:
 `alwan_det_pow_pos` is not bit-equal to libm `pow`, so a baseline generated
 against libm (a Python script using `math.pow`, say) shifts by a fixed,
 reproducible amount when deterministic mode is enabled.
@@ -618,7 +645,7 @@ rule has a concrete observable failure mode if you skip it.
    `log`, `log2`, `cbrt`, `sin`, `cos`, `atan2`: every platform's
    `libm` differs in the last 1-3 ULPs. Ship your own: `frexp` /
    `ldexp` argument reduction (bit-deterministic on IEEE-754) plus a
-   Chebyshev minimax polynomial fitted to the *normalised* domain
+   minimax polynomial fitted to the *normalised* domain
    (pre-normalise x to `[-1, 1]` before fitting, or f32 coefficients
    blow up; see *Polynomial fitting in normalised basis* above).
 2. **Domain-split minimax polynomials for piecewise transfer
@@ -688,7 +715,7 @@ rule has a concrete observable failure mode if you skip it.
 
 | Hazard | Symptom | Fix |
 | :--- | :--- | :--- |
-| `libm pow`/`log` precision | 1-3 ULP cross-platform drift | Polynomial + `frexp`/`ldexp` + Chebyshev minimax |
+| `libm pow`/`log` precision | 1-3 ULP cross-platform drift | Polynomial + `frexp`/`ldexp` + Remez minimax |
 | FMA contraction | 0.5 ULP delta on FMA hardware | `-ffp-contract=off`; non-fusing `FMA` macro |
 | SIMD horizontal-sum order | 1-2 ULP delta varying with lane width | Canonical scalar left-to-right reduction |
 | SIMD per-lane libm | 1-3 ULP delta | Lane-unpack to deterministic polynomial |

@@ -110,6 +110,34 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Deterministic `log2` is a minimax fit of `log2(m)/(m-1)`, not of
+  `log2(m)`.** `log2` has a zero at the `m = 1` end of its fitted domain,
+  which rules out a relative-error Remez, and the absolute fit that forced
+  read `2.6e-12`. The quotient is analytic and bounded away from zero across
+  `[0.5, 1]`, so it fits cleanly; `alwan_det_log2` multiplies `(m - 1)` back
+  in. Degree 18, and the reading is `3.3e-16`, the f64 rounding floor.
+  `exp2` is refit in the same pass at degree 12 and reads `4.4e-16`. Every
+  primitive defined over the pair inherits it: `ln`, `exp`, `pow_pos`,
+  `cbrt`, `log10`, `tanh`. Fits are computed with Wolfram at 60 digits
+  (`alwan_dev/gendata/gen_math_minimax.wls`); the header regenerates from the
+  committed coefficients with Python alone, which re-derives the achieved
+  error rather than trusting the recorded one.
+
+- **The sRGB and BT.2020 transfer functions drop their own polynomials for
+  `alwan_det_pow_pos`.** `alwan_det_srgb_*` and `alwan_det_bt2020_*` carried
+  per-TF Chebyshev tables, a lo and a hi segment each, reading between
+  `4.8e-08` and `2.5e-04`. Degree was not the problem: `x^(1/2.4)` has an
+  algebraic branch point at 0 and the OETF domain starts at `0.0031308`, so
+  convergence is slow whatever is spent on it, and a true minimax fit at the
+  same degrees is about twice as good. `pow_pos` reduces the argument instead
+  of approximating through the singularity and reads `3.3e-16`. The tables,
+  the split points and the two-branch dispatch are gone, on the C and the GPU
+  path alike, and with them a class of failure: a fitted polynomial evaluated
+  outside its domain is not merely inaccurate, and the sRGB OETF of linear
+  `4.0` returned `-9.2e10`. The C path guarded that case; the GPU path never
+  did. Nothing extrapolates now. The cost is a `log2` and an `exp2` per call
+  in place of one Horner, in a build that exists for reproducibility.
+
 - **`alwan_create` refuses a configuration that cannot be meant.** A
   non-zero `flags`, which the header has always documented as reserved and
   zero, or an `alloc_cb` without its `free_cb` and the reverse, now return
