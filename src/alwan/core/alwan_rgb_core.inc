@@ -505,7 +505,11 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bmdfilm_eotf)(ALWAN_CORE_T enco
 }
 
 /* ================================================================
- * Blackmagic Film Gen 4
+ * Blackmagic Film Gen 4 ("Broadcast Film Gen 4": URSA Mini Pro 4.6K, URSA Broadcast)
+ *
+ * Blackmagic has not published this curve. The constants are Nathan Vegdahl's fit against
+ * LUTs extracted from DaVinci Resolve (psychopath.io, 2022), relative error at most 1.7e-5;
+ * suite 43 pins the code to that fit. The Pocket 4K and 6K "Gen 4" curves are different fits.
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bmdfilm4_oetf)(ALWAN_CORE_T lin) {

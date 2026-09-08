@@ -724,9 +724,16 @@ published log with a linear toe below 0.00262409). A log-encoded delivery read a
 scene light is the kind of error that survives a long time, since the picture is
 merely flat rather than broken.
 
-78 of the 104 spaces are now in the reference, all within 8e-16. The 26 outside
-it are the 24 primaries-only entries, DCDM XYZ for the white convention above, and
-`BLACKMAGIC_FILM`, the Gen 4 curve, for which colour-science has only Gen 5.
+79 of the 104 spaces are now in the reference, all within 8e-16. The 25 outside
+it are the 24 primaries-only entries and DCDM XYZ for the white convention above.
+
+`BLACKMAGIC_FILM` needed its own answer. Blackmagic has never published the Gen 4
+curve; what alwan carries is Nathan Vegdahl's "Broadcast Film Gen 4" fit against
+LUTs extracted from Resolve (psychopath.io, 2022, relative error at most 1.7e-5),
+constant for constant. The reference re-implements that fit from the post, so it
+pins the transcription rather than the truth, and the header now says where the
+numbers came from. The space's comment said "Film Generation 1-4"; the post shows
+those are five different curves, and alwan has the Broadcast one.
 
 ## Corpus files carry no chromaticities
 
@@ -785,8 +792,8 @@ nonsense. What remains:
 - [ ] Hunt inverse (3.0.0)
 - [x] TM-30 residual: the CCT was read on the 10 degree observer against a 2 degree locus; sweep now 0.0010 mean
 - [x] RGB-space transfer functions: audited against colour-science, 24 rows corrected, 7 curves added
-- [x] RGB-space transfer functions: 78 of 104 in the reference; found GAMMA18_REC709 and DaVinci Intermediate recorded as linear, added the DaVinci curve
-- [ ] RGB-space transfer functions: Blackmagic Film Gen 4 has no public reference; find one or say so in the header
+- [x] RGB-space transfer functions: 79 of 104 in the reference; found GAMMA18_REC709 and DaVinci Intermediate recorded as linear, added the DaVinci curve
+- [x] RGB-space transfer functions: Blackmagic Film Gen 4 is the psychopath.io fit to Resolve; pinned to it and said so in the header
 - [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
 - [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all

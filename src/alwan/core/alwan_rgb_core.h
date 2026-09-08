@@ -459,7 +459,11 @@ ALWAN_INLINE alwan_scalar alwan_bmdfilm_eotf(alwan_scalar encoded) {
     return ALWAN_SELECT(encoded < threshold, linear_result, log_result);
 }
 
-/* BMDFilm Gen4 -- Blackmagic Design Generation 4 Film color science (URSA Mini Pro 4.6K) */
+/* BMDFilm Gen4 -- Blackmagic Design "Broadcast Film Gen 4" (URSA Mini Pro 4.6K, URSA Broadcast).
+ * Blackmagic has not published this curve. The constants are Nathan Vegdahl's fit against LUTs
+ * extracted from DaVinci Resolve (psychopath.io, 2022), relative error at most 1.7e-5 over the
+ * fitted range; suite 43 pins the code to that fit. The Pocket 4K and 6K "Gen 4" curves are
+ * different fits and are not this one. */
 ALWAN_INLINE alwan_scalar alwan_bmdfilm4_oetf(alwan_scalar lin) {
     alwan_scalar A       = ALWAN_LITERAL(5.2212906000378565);
     alwan_scalar B       = ALWAN_LITERAL(-0.00007134598996420424);

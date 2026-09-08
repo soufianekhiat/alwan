@@ -89,6 +89,11 @@ All notable changes to this project will be documented in this file.
   including targets alwan carries no averages for such as the DT NGT2, can
   be used instead of a published average.
 
+- **`alwan_zcam_from_ucs`**, the inverse of `alwan_zcam_to_ucs`. Jz, Mz
+  and hz come back exactly and the other correlates are 0, as CAM16's
+  `from_ucs` does. ZCAM was the one appearance model with a UCS and no way
+  back from it.
+
 ### Changed
 
 - **`alwan_color_checker_num_patches` reports what alwan can hand you.** It
@@ -108,11 +113,6 @@ All notable changes to this project will be documented in this file.
   current best, and a filled descriptor warm-starts `begin` or `solve`. The
   result is an ordinary `alwan_rgb_space_desc` plus `alwan_fit_tf`.
 
-- **`alwan_zcam_from_ucs`**, the inverse of `alwan_zcam_to_ucs`. Jz, Mz
-  and hz come back exactly and the other correlates are 0, as CAM16's
-  `from_ucs` does. ZCAM was the one appearance model with a UCS and no way
-  back from it.
-
 ### Fixed: output differs
 
 - **RGB-space transfer functions audited against colour-science.** Neither of
@@ -124,7 +124,7 @@ All notable changes to this project will be documented in this file.
   is gamma 2.6; EBU Tech. 3213-E defines primaries only and is linear;
   GAMMA18_REC709 and DaVinci Intermediate were linear and now carry their
   curves. `gendata/gen_rgb_space_tf_reference.py` emits the reference for
-  78 of the 104 spaces and suite 43 holds every one to 1e-6.
+  79 of the 104 spaces and suite 43 holds every one to 1e-6.
 
 - **Eight transfer functions the library did not have**, appended to the
   enum so nothing renumbers: `ALWAN_TF_GAMMA18` (Apple RGB, ColorMatch),

@@ -367,7 +367,7 @@ typedef enum {
     ALWAN_RGB_SPACE_DAVINCI_WIDE_GAMUT = 53,
     ALWAN_RGB_SPACE_DAVINCI_INTERMEDIATE = 54, /* DaVinci Intermediate (DaVinci WG primaries + intermediate encoding) */
     ALWAN_RGB_SPACE_BLACKMAGIC_WIDE_GAMUT = 55,
-    ALWAN_RGB_SPACE_BLACKMAGIC_FILM = 56,      /* Blackmagic Design Film (Film Generation 1-4) */
+    ALWAN_RGB_SPACE_BLACKMAGIC_FILM = 56,      /* Blackmagic Design Film, the Broadcast Film Gen 4 curve */
     ALWAN_RGB_SPACE_BLACKMAGIC_FILM_GEN5 = 57, /* Blackmagic Film Generation 5 */
     ALWAN_RGB_SPACE_V_GAMUT = 58,
     ALWAN_RGB_SPACE_V_LOG = 59,          /* V-Log (V-Gamut primaries + V-Log OETF) */
