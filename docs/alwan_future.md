@@ -784,20 +784,32 @@ pins the transcription rather than the truth, and the header now says where the
 numbers came from. The space's comment said "Film Generation 1-4"; the post shows
 those are five different curves, and alwan has the Broadcast one.
 
-## Corpus files carry no chromaticities
+## Corpus files carried no chromaticities: stamped
 
-This is a corpus decision rather than a library one, so it sits here until
-someone makes it.
+151 of the 166 SRIC EXR files declared no chromaticities attribute, and a
+general reader must treat absent chromaticities as Rec.709, because that is what
+the OpenEXR specification says. The collection's README says every file is
+FilmLight E-Gamut linear, which is what image_gen's loader converts it as; an
+earlier version of this note said AP0, and that was wrong.
 
-151 of the 166 SRIC EXR files declare no chromaticities attribute. alwan reads
-them as linear AP0 from provenance; a general reader must treat absent
-chromaticities as Rec.709, because that is what the OpenEXR specification says.
-Both readings are correct in their own scope, and the report established that the
-pixel data does not settle it either way.
+The 15 files that did declare chromaticities, all ACES VWG frames, said AP0,
+which contradicts the README. Matching them against the original ACES VWG sample
+frames settled it: `SRIC_vwg_output-transforms.01015` is frame 0065 at 0.996
+correlation and reads 0.0167 stops rms as E-Gamut against 0.249 as AP0, and
+`gamut-mapping.01014` is frame 0061 at 0.962 with 0.39 against 1.08. The AP0
+attribute was carried over from the source files, not a description of the
+pixels.
 
-Stamping the chromaticities attribute on those files would make the corpus
-self-describing and remove the disagreement for every downstream reader. That is
-a change to the corpus, not to alwan.
+All 166 files now carry E-Gamut chromaticities, from alwan's own table for
+`ALWAN_RGB_SPACE_FILMLIGHT_E_GAMUT`. The files are DWAA, which is lossy, so
+`image_gen --exr-stamp` copies each chunk's packed bytes as they are and writes
+only a new header; `--exr-diff` decodes old and new through the same loader and
+reports zero differing values on every file, and every other attribute survives,
+the RED files' 118 nuke/r3d/* names included. `tools/stamp_chromaticities.py`
+drives it. The corpus is a submodule of alwan_dev, so the stamping lives in its
+working tree: `git -C extern/SRIC checkout -- exr` undoes it and the tool redoes
+it. Making it permanent means a fork of the collection with the stamped files,
+which is the owner's call.
 
 ## EXR loader
 
@@ -849,7 +861,7 @@ nonsense. What remains:
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all
 - [ ] Exposure anchor: the one-stop cap gives back 0.8 of a 4.9-stop change; is that the right number
 - [x] ACES 1.x HDR: the SSTS is implemented; the 1.1 to 1.3 outputs are the default, the 1.0.3 ODTs are _V103
-- [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
+- [x] Stamp chromaticities on the corpus EXRs: all 166 SRIC files are E-Gamut now, pixels untouched; the 15 that said AP0 were stale
 - [x] EXR loader: non-zero data window origin, 40 of 40 files pixel-exact in tools/exr_window_check.py
 - [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation
 - [x] Temporal picture formation: a time constant in seconds in the library, and the picture from a chosen field (alwan_picture_form_local_exp_apply)
