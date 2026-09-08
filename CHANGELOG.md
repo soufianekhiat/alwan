@@ -8,6 +8,30 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **`alwan_hunt_inverse_f32` / `_f64`: Hunt appearance correlates back to
+  XYZ.** Reads `J`, `C` and `h`; `Q`, `s` and `M` are functions of those under
+  the given viewing conditions, so they are recomputed rather than trusted.
+  Pass the same conditions the forward was given.
+
+  It is closed form. The roadmap had this deferred to 3.0.0 as a
+  three-dimensional iterative solve, because the chromatic adaptation appeared
+  to depend on the adapted signal. It does not: its four per-channel terms read
+  the white, the background, the proximal field and the adapting luminance
+  only, so the adaptation undoes exactly. What remains is algebra. The hue
+  fixes the direction of the opponent pair; the three colour-difference signals
+  sum to zero so they fix only the differences, leaving one achromatic level;
+  saturation ties the two together linearly; and brightness then gives the
+  level from one linear equation. The single iteration left is a scalar fixed
+  point on the scotopic response, and it runs only when `vc.S` is left at 0,
+  since that is the field whose default is the stimulus `Y`.
+
+  Round-trips the sRGB gamut to `6.5e-11` in f64 across ten viewing-condition
+  variants, covering the Helson-Judd, proximal-field, discounting,
+  coloured-background and explicit-scotopic paths. Two limits are inherited
+  from clamps in the forward rather than introduced here: a stimulus with a
+  negative cone response is not recoverable, and a negative saturation is
+  reported as `C = 0`. Neither is reachable from inside a real display gamut.
+
 - **ColorChecker SG and BabelColor Average reference data.** The SG's 140
   patches (A1..N10, the formulation after November 2014) and BabelColor's
   average of 30 Classic charts, both xyY under D50 for the 1931 2 degree
@@ -109,6 +133,16 @@ All notable changes to this project will be documented in this file.
   back from it.
 
 ### Changed
+
+- **The Hunt forward agrees with colour-science to `2.8e-14`, not `4.6e-08`.**
+  Nothing in the forward moved. Its reference file was written five values per
+  colour, `J` through `M` with no `XYZ`, while the test read nine and indexed at
+  stride nine, so it compared three colours against numbers describing none of
+  them. That never failed, because the comparison printed a mismatch without
+  asserting on it. The reference is regenerated with `XYZ` first over the sRGB
+  cube, 45 colours under conditions that match what the test builds, and the
+  test now asserts per correlate. The generator's bare `except` that turned a
+  failed reference call into a row of zeros is gone as well.
 
 - **Deterministic `log2` is a minimax fit of `log2(m)/(m-1)`, not of
   `log2(m)`.** `log2` has a zero at the `m = 1` end of its fitted domain,

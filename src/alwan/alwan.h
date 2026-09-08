@@ -3026,14 +3026,44 @@ alwan_status alwan_rlab_inverse_f64(alwan_xyz_f64 *xyz,
  * identity (D + 1 - D) * lms, the white's cone responses and both surround
  * factors were computed then discarded, the eccentricity factor was omitted and
  * brightness, lightness and chroma were ad-hoc, so every correlate was wrong by
- * one to two orders of magnitude.
- *
- * Note: Hunt inverse is not implemented due to extreme complexity */
+ * one to two orders of magnitude. */
 alwan_status alwan_hunt_forward_f32(alwan_hunt_correlates_f32 *out,
                             alwan_xyz_f32 const *xyz,
                             alwan_hunt_viewing_conditions_f32 const *vc);
 alwan_status alwan_hunt_forward_f64(alwan_hunt_correlates_f64 *out,
                             alwan_xyz_f64 const *xyz,
+                            alwan_hunt_viewing_conditions_f64 const *vc);
+
+/* Hunt inverse: appearance correlates -> XYZ.
+ * Returns ALWAN_OK, or ALWAN_E_INVALID if xyz, correlates or vc is NULL.
+ *
+ * PASS THE SAME VIEWING CONDITIONS THE FORWARD WAS GIVEN. Every derived
+ * quantity is recomputed from them, so a different white, background or
+ * adapting luminance answers a different question rather than failing.
+ *
+ * Reads J, C and h only. Q, s and M are functions of those three under the
+ * given conditions, so they are recomputed rather than trusted, and a caller
+ * building the struct by hand need only fill the three.
+ *
+ * This is closed form, not a search. The chromatic adaptation looks
+ * stimulus-dependent but is not: its four per-channel parameters read the
+ * white, the background and the proximal field only, so it undoes exactly, and
+ * what remains reduces to one linear equation. The only iteration is a scalar
+ * fixed point on the scotopic response, and it runs only when vc.S is left at
+ * 0, since that is the field whose default is the stimulus Y. Round-trips the
+ * sRGB gamut to 2.6e-13 in f64.
+ *
+ * Two limits, both inherited from clamps in the forward. A stimulus whose cone
+ * response is negative is not recoverable, because the forward's f_n sends
+ * every negative argument to the same value; the boundary member of that set
+ * comes back instead. And a negative saturation is reported by the forward as
+ * C = 0, which discards the chroma. Neither is reachable from inside a real
+ * display gamut. */
+alwan_status alwan_hunt_inverse_f32(alwan_xyz_f32 *xyz,
+                            alwan_hunt_correlates_f32 const *correlates,
+                            alwan_hunt_viewing_conditions_f32 const *vc);
+alwan_status alwan_hunt_inverse_f64(alwan_xyz_f64 *xyz,
+                            alwan_hunt_correlates_f64 const *correlates,
                             alwan_hunt_viewing_conditions_f64 const *vc);
 
 /* ----------------------------------------------------------------

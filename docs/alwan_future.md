@@ -279,17 +279,47 @@ The themes above are directions. What follows are concrete, measured gaps with
 a known shape, kept apart from [alwan_decisions.md](alwan_decisions.md) because
 nothing here is a decision and nothing there is a plan.
 
-## Hunt inverse, planned for 3.0.0
+## Hunt inverse: done, and the premise for deferring it was wrong
 
-`alwan_hunt_forward_*` is implemented and matches colour-science to 4.6e-08. The
-inverse is not implemented, and is deliberately not in the 2.0.0 scope.
+`alwan_hunt_inverse_f32` / `_f64` are implemented. This section used to plan them
+for 3.0.0 on the grounds that "the forward runs a chromatic adaptation whose
+parameters depend on the adapted signal, so the inverse needs an iterative solve
+rather than a closed form ... Hunt's is three-dimensional".
 
-The model is invertible in principle, but the forward runs a chromatic adaptation
-whose parameters depend on the adapted signal, so the inverse needs an iterative
-solve rather than a closed form. The same shape as the ACES 1.x RedMod10 inverse,
-which is a bracketed scalar root find; Hunt's is three-dimensional.
+The adaptation's parameters do not depend on the adapted signal. Its four
+per-channel terms, cone bleaching, the chromatic adaptation factor, the
+Helson-Judd term and the proximal-field-adjusted white, read the white, the
+background, the proximal field and the adapting luminance and nothing else. So
+the adaptation is a per-channel monotone map on each cone response and undoes
+exactly, and what is left is algebra rather than a search:
 
-Nothing else in the appearance-model set is missing its inverse.
+- The hue fixes the direction of the opponent pair, leaving one length.
+- The three colour-difference signals sum to zero, so they fix only the
+  differences between the adapted responses, leaving one achromatic level.
+- Saturation ties the length to the level linearly, which makes both the
+  achromatic signal and the colourfulness affine in the level.
+- Brightness then gives the level from one linear equation.
+
+The one implicit term is the scotopic response, and only because it defaults to
+the stimulus Y. It enters through a single scalar, so it is a fixed point that
+converges in under 20 passes, and it is skipped whenever the caller sets `S`.
+
+Measured: the round trip over the sRGB gamut lands at 6.5e-11 in f64, across ten
+viewing-condition variants covering the Helson-Judd, proximal-field,
+discounting, coloured-background and explicit-scotopic paths. Suite 29 pins it.
+
+Two limits remain, and both are properties of the forward rather than of the
+inverse. `f_n` clamps its argument at zero, so a stimulus with a negative cone
+response is not recoverable and the boundary member of that set comes back. And
+a negative saturation is reported as `C = 0`, which discards the chroma. Neither
+is reachable from inside a real display gamut.
+
+The forward's agreement with colour-science was also re-measured in the course
+of this, and it is not 4.6e-08. It is 2.8e-14 on lightness and 2.0e-13 on
+chroma. The old figure came from a reference file whose layout did not match
+what the test read, and from a test that printed mismatches without failing.
+
+Nothing in the appearance-model set is missing its inverse.
 
 ## TM-30 Rf residual: found, the CCT was taken on the wrong observer
 
@@ -872,7 +902,7 @@ nonsense. What remains:
 - [x] The f64 facades are documented, each with its reason, in precision-and-limits.md; they stay facades by design
 - [x] Harden `alwan_create` validation (non-zero flags and a half allocator pair return NULL); the 44 public enums were already fully pinned
 - [ ] Document the undocumented tail surface
-- [ ] Hunt inverse (3.0.0)
+- [x] Hunt inverse: closed form, not the three-dimensional solve this planned; round-trips the sRGB gamut to 6.5e-11
 - [x] TM-30 residual: the CCT was read on the 10 degree observer against a 2 degree locus; sweep now 0.0010 mean
 - [x] RGB-space transfer functions: audited against colour-science, 24 rows corrected, 7 curves added
 - [x] RGB-space transfer functions: 79 of 104 in the reference; found GAMMA18_REC709 and DaVinci Intermediate recorded as linear, added the DaVinci curve

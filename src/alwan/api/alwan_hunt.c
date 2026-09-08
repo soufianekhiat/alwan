@@ -98,5 +98,62 @@ alwan_status alwan_hunt_forward_f32(alwan_hunt_correlates_f32 *out,
 ALWAN_DIAG_POP
 #endif /* ALWAN_WITH_F32 */
 
-/* Note: Hunt inverse is extremely complex and typically not implemented.
- * It requires iterative numerical methods due to the nonlinear response functions. */
+/* ----------------------------------------------------------------
+ * Hunt Inverse Transform: Correlates -> XYZ
+ *
+ * Reads J, C and h. See alwan_hunt_core.inc for why this is closed form
+ * rather than the three-dimensional solve it was planned as.
+ * ---------------------------------------------------------------- */
+
+alwan_status alwan_hunt_inverse_f64(alwan_xyz_f64 *xyz,
+                       alwan_hunt_correlates_f64 const *correlates,
+                       alwan_hunt_viewing_conditions_f64 const *vc) {
+    if (!xyz || !correlates || !vc) {
+        return ALWAN_E_INVALID;
+    }
+
+    {
+    alwan_hunt_correlates_f64 tmp = *correlates;
+    alwan_hunt_v_correlates_f64 in;
+    ALWAN_DENORM_HUNT(&tmp);
+
+    in.J = tmp.J;
+    in.C = tmp.C;
+    in.h = tmp.h;
+    in.s = tmp.s;
+    in.Q = tmp.Q;
+    in.M = tmp.M;
+
+    *xyz = alwan_hunt_inverse_f64_v(in, *vc);
+    }
+    return ALWAN_OK;
+}
+
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+alwan_status alwan_hunt_inverse_f32(alwan_xyz_f32 *xyz,
+                       alwan_hunt_correlates_f32 const *correlates,
+                       alwan_hunt_viewing_conditions_f32 const *vc) {
+    if (!xyz || !correlates || !vc) {
+        return ALWAN_E_INVALID;
+    }
+
+    {
+    alwan_hunt_correlates_f32 tmp = *correlates;
+    alwan_hunt_v_correlates_f32 in;
+    ALWAN_DENORM_HUNT(&tmp);
+
+    in.J = tmp.J;
+    in.C = tmp.C;
+    in.h = tmp.h;
+    in.s = tmp.s;
+    in.Q = tmp.Q;
+    in.M = tmp.M;
+
+    *xyz = alwan_hunt_inverse_f32_v(in, *vc);
+    }
+    return ALWAN_OK;
+}
+ALWAN_DIAG_POP
+#endif /* ALWAN_WITH_F32 */
