@@ -135,7 +135,44 @@ All notable changes to this project will be documented in this file.
   current best, and a filled descriptor warm-starts `begin` or `solve`. The
   result is an ordinary `alwan_rgb_space_desc` plus `alwan_fit_tf`.
 
+- **The deterministic angle family** (`ALWAN_DETERMINISTIC`). `sin`, `cos`,
+  `tan`, `tanh`, `atan`, `atan2`, `acos` and `log10` are polynomial
+  implementations now rather than platform libm, joining the `pow` / `exp`
+  / `log` / `cbrt` set. Three minimax polynomials carry all eight, fitted
+  by Remez at 60 digits; parity is factored out, so `sin(0)` and `atan(0)`
+  are exactly zero and the fits sit three or more orders below f64
+  epsilon. What reaches the caller is Horner rounding: 0.5 ULP for sin and
+  cos, 1 ULP for atan, measured against libm.
+
+  This is what the byte-identity contract was waiting on. Thirty families
+  were outside it -- every CAM hue correlate, every LCh-style conversion,
+  dE2000 and dE CMC, ACES JMh, the log10 camera curves, the Barten CSF and
+  the Lanczos kernel -- for the single reason that they reached libm
+  through an angle. The only math macros still reaching libm are ABS,
+  CEIL, FLOOR, FMOD, ROUND, SQRT and TRUNC, all exact IEEE-754 operations.
+  See [determinism.md](docs/determinism.md) for what the resulting claim
+  does and does not rest on.
+
 ### Fixed: output differs
+
+- **The deterministic sRGB and BT.2020 OETF returned garbage above 1.0.**
+  The high-side polynomial is fitted on `[split, 1]`, and the evaluator
+  extrapolated it for any larger input instead of falling back: a
+  degree-14 polynomial outside its domain diverges, so linear `4.0`
+  encoded to `-9.2e+10` rather than `1.82`. Scene-linear values above 1
+  are ordinary, so this was reachable by any HDR or ACES caller of a
+  deterministic build. Both OETFs and both EOTFs now hand the
+  out-of-domain case to `alwan_det_pow_pos`, which is unbounded. Values
+  inside the fitted domain are untouched, so no already-correct output
+  moves.
+
+- **`ALWAN_FIT_LOCK_SCALE` and `ALWAN_FIT_LOCK_TF` did not hold their
+  value.** The fit stores scale and exponent as logarithms, and the
+  result was decoded back with `exp` even when locked. libm returns
+  exactly `1.0` for `exp(log(1.0))`, which hid it; the deterministic
+  polynomials do not, and a locked scale of 1.0 came back
+  `1.0000000000026`. A locked parameter is now written back as the caller
+  gave it rather than round-tripped.
 
 - **YcCbcCrc double-offset its chroma in a default build.**
   `alwan_rgb_to_yccbccrc_{T}` already centres `Cbc` and `Crc` on the

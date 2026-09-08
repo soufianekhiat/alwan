@@ -11,35 +11,39 @@ operating systems, and CPU architectures. The same input gives the same
 bytes on Windows MSVC x64, Linux gcc x64, Linux clang ARM, and macOS
 Apple Silicon.
 
-> **WARNING: Scope of the byte-identity guarantee: trig is not covered (yet).**
-> `ALWAN_DETERMINISTIC` polynomial-replaces only `pow / exp / log / log2 /
-> cbrt / fma` (see `alwan_math.h` and `core/alwan_deterministic.h`). It does
-> **not** replace `atan2 / sin / cos / tan / tanh / log10`; those still expand
-> to the platform `libm`, which differs in the last 1-3 ULPs between vendors.
+> **Scope of the byte-identity guarantee: the angle family is now covered.**
+> `ALWAN_DETERMINISTIC` polynomial-replaces `pow / exp / log / log2 / cbrt /
+> fma` and, since 2026-09-08, `sin / cos / tan / tanh / atan / atan2 / acos /
+> log10` as well (see `alwan_math.h` and `core/alwan_deterministic.h`).
 >
-> Consequently, any output that flows through a hue angle, a cylindrical/polar
-> conversion, or another trig-dependent term is **not** structurally
-> byte-identical across platforms: its cross-platform agreement is *empirical*
-> (it happens to match on the runners we test) and is not *guaranteed* by the
-> implementation. Specifically **not** covered by the byte-identity contract:
+> The remaining `ALWAN_*` math macros that still reach `libm` are `ABS`, `CEIL`,
+> `FLOOR`, `FMOD`, `ROUND`, `SQRT` and `TRUNC`. Every one of those is an exact
+> IEEE-754 operation rather than an approximation, so none of them can differ
+> between vendors. Nothing in `src/alwan` calls a libm transcendental directly,
+> bypassing the macros.
 >
-> - **all CAM hue correlates** (CAM16/CIECAM02/ZCAM/Hellwig2022/... `h`),
-> - **all cylindrical / LCh-style conversions** (LCh, LCHuv, JzCzHz, Oklch,
->   HCL, and every `*_to_lch` / hue-angle channel),
-> - **dE2000** and **dE CMC** (both use `atan2` / `sin` / `cos` on hue),
-> - **ACES JMh** (the `M`/`h` appearance path),
-> - **CSS gamut** mapping (Oklch hue),
-> - **Barten** CSF `pupil` / contrast-sensitivity helpers, and
-> - **Rayleigh scattering at non-zero latitude**: the latitude term multiplies
->   in a `cos(latitude)`, so only the default (zero-latitude) call is on the
->   contract; any non-zero latitude reintroduces a `libm cos` and forfeits
->   byte-identity.
+> That closes the caveat this section used to carry. The families it named as
+> outside the contract -- all CAM hue correlates, every LCh-style cylindrical
+> conversion, dE2000 and dE CMC, ACES JMh, CSS gamut mapping on Oklch hue, the
+> Barten CSF helpers, and Rayleigh scattering at non-zero latitude -- no longer
+> reach a platform libm through an angle, and their exclusions have been removed
+> from `alwan_dev/det_regression/empirical_sections.grep`.
 >
-> A deterministic trig layer (`det_atan2 / det_sin / det_cos / det_tan /
-> det_tanh / det_log10`) is **not implemented**; what it would take is in
-> [`alwan_future.md`](alwan_future.md). Until it exists, treat the angle and hue
-> channels above as fast-mode even when the rest of the pipeline is
-> deterministic.
+> **What that claim rests on.** It is a source-level argument: no libm
+> approximation is reachable, therefore no vendor difference can be. It is not
+> the same as having observed six runners agree, which is what the determinism
+> workflow measures, and the first run after the removal is what confirms it. If
+> a section does drift, the cause is something this argument does not cover --
+> FMA contraction the pragmas missed, x87 excess precision on a 32-bit target,
+> or genuine non-determinism -- and the fix is to find it rather than to re-add
+> the exclusion.
+>
+> The angle polynomials are minimax-fitted (Remez at 60 digits, see
+> `alwan_dev/gendata/gen_trig_minimax.wls`) three or more orders below f64
+> epsilon, so what reaches the caller is limited by Horner rounding rather than
+> by the approximation: measured against libm, 0.5 ULP for `sin` and `cos` and
+> 1 ULP for `atan`. Suite 109 pins all of it, and checks the C against the
+> generator's own model of the algorithm, where it agrees bit for bit.
 
 The cross-platform regression harness for this mode lives in the sibling
 `alwan_dev` repository; this repository contains the production implementation.
@@ -69,7 +73,7 @@ produce results that differ in the last bit.
 | Concern                         | Fast (default)                       | Deterministic                              |
 | :------------------------------ | :----------------------------------- | :----------------------------------------- |
 | `pow / exp / log / log2 / cbrt / fma` | libm                           | Polynomial: argument reduction + Chebyshev |
-| `atan2 / sin / cos / tan / tanh / log10` | libm                      | **Still libm**; not replaced (see trig caveat above) |
+| `sin / cos / tan / tanh / atan / atan2 / acos / log10` | libm | `alwan_det_*`; minimax polynomials, 0.5-1 ULP against libm |
 | sRGB / BT.2020 / BT.709 OETF, EOTF | libm `pow`                        | Domain-split minimax polynomials           |
 | FMA contraction (`a*b + c`)     | Compiler decides; hardware FMA on aarch64, often on x86 with `-mfma` | `-ffp-contract=off` / `/fp:precise`; never fused |
 | SIMD horizontal sum             | Native pairwise (`vpaddq_pd`, `_mm_hadd_pd`, `vaddvq_f64`) | Canonical scalar left-to-right reduction |

@@ -50,6 +50,14 @@ typedef struct ALWAN_CORE_FN(alwan_rgb_fit_state) {
     ALWAN_CORE_T data_prim[8];      /* the dataset's own primaries and white, a cold-start candidate */
     int have_data_prim;
     int free_idx[RF_NP]; int k;     /* which of the 13 move */
+    /* A locked scale or exponent is held here as the caller gave it, and written
+     * straight back out. The optimiser never moves those entries of theta, but
+     * theta stores them as logarithms, so decoding one costs an exp(log(v))
+     * round trip that is not the identity. libm happens to return exactly 1.0
+     * for exp(log(1.0)), which hid this; the deterministic polynomials do not,
+     * and a locked scale of 1.0 came back 1.0000000000026. A lock should hold
+     * the value, not a value near it. */
+    ALWAN_CORE_T lock_scale, lock_gamma;
     ALWAN_CORE_T step[3];           /* code step per channel, from bits or bits_channel */
     ALWAN_CORE_T maxv[3];
     int width, height;              /* block mode: the image the texels came from */
@@ -617,8 +625,10 @@ static alwan_status ALWAN_CORE_FN(rf_init_theta)(ALWAN_CORE_FN(alwan_rgb_fit_sta
         /* the warm start: what was handed in, scale 1 (the Y = 1 convention) unless given */
         for (int i = 0; i < 6; i++) th[i] = space->primaries_xy[i];
         th[6] = space->white_xy[0]; th[7] = space->white_xy[1];
-        th[8] = ALWAN_CORE_LN(tf && tf->gamma > ALWAN_CORE_ZERO ? tf->gamma : ALWAN_CORE_LITERAL(2.2));
-        th[9] = (tf && tf->scale > ALWAN_CORE_ZERO) ? ALWAN_CORE_LN(tf->scale) : ALWAN_CORE_ZERO;
+        s->lock_gamma = (tf && tf->gamma > ALWAN_CORE_ZERO) ? tf->gamma : ALWAN_CORE_LITERAL(2.2);
+        s->lock_scale = (tf && tf->scale > ALWAN_CORE_ZERO) ? tf->scale : ALWAN_CORE_ONE;
+        th[8] = ALWAN_CORE_LN(s->lock_gamma);
+        th[9] = ALWAN_CORE_LN(s->lock_scale);
         int given = 0;
         for (int q = 0; q < 3; q++) {
             th[10 + q] = (tf && tf->offset[q] > ALWAN_CORE_ZERO && tf->offset[q] < RF_OFF_MAX) ? tf->offset[q] : ALWAN_CORE_ZERO;
@@ -755,13 +765,17 @@ static void ALWAN_CORE_FN(rf_nm_step)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s) {
 static void ALWAN_CORE_FN(rf_write_answer)(ALWAN_CORE_FN(alwan_rgb_fit_state) *s,
                                            ALWAN_CORE_FN(alwan_rgb_space_desc) *space, ALWAN_CORE_FN(alwan_fit_tf) *tf) {
     ALWAN_CORE_FN(rf_desc_from_theta)(s->theta, space);
-    if (tf) { tf->scale = ALWAN_CORE_FN(rf_scale_of)(s->theta);
+    if (tf) { tf->scale = (s->prm.lock & ALWAN_FIT_LOCK_SCALE)
+                  ? s->lock_scale                                /* held, not decoded */
+                  : ALWAN_CORE_FN(rf_scale_of)(s->theta);
               for (int c = 0; c < 3; c++) tf->offset[c] = s->theta[10 + c]; }
     if (s->tf_kind == ALWAN_FIT_TF_SRGB) {
         space->oetf = ALWAN_TF_SRGB; space->eotf = ALWAN_TF_SRGB;
         if (tf) { tf->kind = ALWAN_FIT_TF_SRGB; tf->gamma = ALWAN_CORE_ZERO; }
     } else {
-        ALWAN_CORE_T g = ALWAN_CORE_EXP(s->theta[8]);
+        ALWAN_CORE_T g = (s->prm.lock & ALWAN_FIT_LOCK_TF)
+            ? s->lock_gamma                                      /* held, not decoded */
+            : ALWAN_CORE_EXP(s->theta[8]);
         if (tf) { tf->kind = ALWAN_FIT_TF_POWER; tf->gamma = g; }
         /* when the exponent lands on one the descriptor can name, name it */
         struct { ALWAN_CORE_T g; alwan_transfer_function t; } const named[4] = {

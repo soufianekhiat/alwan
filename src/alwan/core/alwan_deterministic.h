@@ -69,6 +69,7 @@
 #include "alwan_det_srgb_coeffs.h"
 #include "alwan_det_bt2020_coeffs.h"
 #include "alwan_det_math_coeffs.h"
+#include "alwan_det_trig_coeffs.h"
 
 /* frexp / ldexp are libm but pure IEEE-754 bit manipulation, not
  * transcendental approximation, so they're bit-identical across
@@ -218,6 +219,227 @@ ALWAN_INLINE alwan_f32 alwan_det_cbrt_f32(alwan_f32 x) {
 }
 
 /* ----------------------------------------------------------------
+ * The angle family: sin, cos, tan, atan, atan2, acos, plus log10 and tanh.
+ *
+ * These are what stood between the determinism contract and every hue channel
+ * in the library. Coefficients are in alwan_det_trig_coeffs.h, minimax-fitted
+ * at 60 digits; parity is factored out, so
+ *
+ *   sin(r)  = r * P(r*r)   cos(r) = Q(r*r)   for |r| <= pi/4
+ *   atan(s) = s * R(s*s)                     for |s| <= tan(pi/8)
+ *
+ * and sin(0), atan(0) are exactly 0. Every fit sits three or more orders below
+ * f64 epsilon, so what you get back is limited by Horner rounding: measured
+ * against libm, 0.5 ULP for sin and cos and 1 ULP for atan.
+ *
+ * log10 and tanh need no polynomial of their own. They are exact identities
+ * over the log2/exp2 pair above, so they inherit its determinism for free.
+ * ---------------------------------------------------------------- */
+
+ALWAN_INLINE alwan_f64 alwan_det_log10_f64(alwan_f64 x) {
+    return alwan_det_log2_f64(x) * ALWAN_DET_LOG10_2;
+}
+ALWAN_INLINE alwan_f32 alwan_det_log10_f32(alwan_f32 x) {
+    return alwan_det_log2_f32(x) * (alwan_f32)ALWAN_DET_LOG10_2;
+}
+
+/* tanh via the negative exponential, so the argument to exp is never positive:
+ * e^-2|x| stays in (0, 1], nothing overflows, and large |x| saturates to +-1 by
+ * construction rather than by a magnitude test. */
+ALWAN_INLINE alwan_f64 alwan_det_tanh_f64(alwan_f64 x) {
+    /* Computing from |x| and restoring the sign makes this exactly odd, except
+     * at the origin: alwan_det_exp2(0) carries the polynomial's own residual, so
+     * (1-e)/(1+e) lands about 2e-15 off zero rather than on it. Returning x
+     * itself there costs one compare, keeps the signed zero, and is what makes
+     * tanh odd everywhere rather than almost everywhere. */
+    if (x == 0.0) return x;
+    {
+    const alwan_f64 a = (x < 0.0) ? -x : x;
+    const alwan_f64 e = alwan_det_exp_f64(-2.0 * a);
+    const alwan_f64 t = (1.0 - e) / (1.0 + e);
+    return (x < 0.0) ? -t : t;
+    }
+}
+ALWAN_INLINE alwan_f32 alwan_det_tanh_f32(alwan_f32 x) {
+    if (x == 0.0f) return x;
+    {
+    const alwan_f32 a = (x < 0.0f) ? -x : x;
+    const alwan_f32 e = alwan_det_exp_f32(-2.0f * a);
+    const alwan_f32 t = (1.0f - e) / (1.0f + e);
+    return (x < 0.0f) ? -t : t;
+    }
+}
+
+/* Cody-Waite reduction: x = n*(pi/2) + r with |r| <= pi/4. Writes n mod 4 to
+ * `quadrant` and returns r. pi/2 is subtracted in three parts whose leading two
+ * have trailing zero mantissa bits, so n*hi and n*mid are exact and the only
+ * rounding lands in the lo term, where it cannot cancel against anything.
+ *
+ * The quadrant is taken as fn - 4*floor(fn/4) in floating point rather than by
+ * casting to an integer, so a large |x| cannot overflow the cast. Accuracy
+ * still degrades once |x| passes roughly 2^40, as it does for any Cody-Waite
+ * reduction; libm switches to Payne-Hanek there and this does not. Colour
+ * science works in hue angles, so the reduction never sees such a value. */
+ALWAN_INLINE alwan_f64 alwan__det_reduce_pio2_f64(alwan_f64 x, int *quadrant) {
+    const alwan_f64 fn = floor(x * ALWAN_DET_TWO_OVER_PI + 0.5);
+    const alwan_f64 k  = fn - 4.0 * floor(fn * 0.25);
+    *quadrant = (int)k;
+    return ((x - fn * ALWAN_DET_PIO2_HI) - fn * ALWAN_DET_PIO2_MID)
+           - fn * ALWAN_DET_PIO2_LO;
+}
+ALWAN_INLINE alwan_f32 alwan__det_reduce_pio2_f32(alwan_f32 x, int *quadrant) {
+    const alwan_f32 fn = floorf(x * (alwan_f32)ALWAN_DET_TWO_OVER_PI + 0.5f);
+    const alwan_f32 k  = fn - 4.0f * floorf(fn * 0.25f);
+    *quadrant = (int)k;
+    return ((x - fn * ALWAN_DET_PIO2_HI_F32) - fn * ALWAN_DET_PIO2_MID_F32)
+           - fn * ALWAN_DET_PIO2_LO_F32;
+}
+
+#define ALWAN__DET_SINPOLY_F64(r, y) \
+    ((r) * alwan_det_horner_f64(alwan_det_sin_coeffs_f64, ALWAN_DET_SIN_DEGREE, (y)))
+#define ALWAN__DET_COSPOLY_F64(y) \
+    (alwan_det_horner_f64(alwan_det_cos_coeffs_f64, ALWAN_DET_COS_DEGREE, (y)))
+#define ALWAN__DET_SINPOLY_F32(r, y) \
+    ((r) * alwan_det_horner_f32(alwan_det_sin_coeffs_f32, ALWAN_DET_SIN_DEGREE, (y)))
+#define ALWAN__DET_COSPOLY_F32(y) \
+    (alwan_det_horner_f32(alwan_det_cos_coeffs_f32, ALWAN_DET_COS_DEGREE, (y)))
+
+ALWAN_INLINE alwan_f64 alwan_det_sin_f64(alwan_f64 x) {
+    int q; const alwan_f64 r = alwan__det_reduce_pio2_f64(x, &q);
+    const alwan_f64 y = r * r;
+    if (q == 0) return  ALWAN__DET_SINPOLY_F64(r, y);
+    if (q == 1) return  ALWAN__DET_COSPOLY_F64(y);
+    if (q == 2) return -ALWAN__DET_SINPOLY_F64(r, y);
+    return              -ALWAN__DET_COSPOLY_F64(y);
+}
+ALWAN_INLINE alwan_f32 alwan_det_sin_f32(alwan_f32 x) {
+    int q; const alwan_f32 r = alwan__det_reduce_pio2_f32(x, &q);
+    const alwan_f32 y = r * r;
+    if (q == 0) return  ALWAN__DET_SINPOLY_F32(r, y);
+    if (q == 1) return  ALWAN__DET_COSPOLY_F32(y);
+    if (q == 2) return -ALWAN__DET_SINPOLY_F32(r, y);
+    return              -ALWAN__DET_COSPOLY_F32(y);
+}
+
+ALWAN_INLINE alwan_f64 alwan_det_cos_f64(alwan_f64 x) {
+    int q; const alwan_f64 r = alwan__det_reduce_pio2_f64(x, &q);
+    const alwan_f64 y = r * r;
+    if (q == 0) return  ALWAN__DET_COSPOLY_F64(y);
+    if (q == 1) return -ALWAN__DET_SINPOLY_F64(r, y);
+    if (q == 2) return -ALWAN__DET_COSPOLY_F64(y);
+    return               ALWAN__DET_SINPOLY_F64(r, y);
+}
+ALWAN_INLINE alwan_f32 alwan_det_cos_f32(alwan_f32 x) {
+    int q; const alwan_f32 r = alwan__det_reduce_pio2_f32(x, &q);
+    const alwan_f32 y = r * r;
+    if (q == 0) return  ALWAN__DET_COSPOLY_F32(y);
+    if (q == 1) return -ALWAN__DET_SINPOLY_F32(r, y);
+    if (q == 2) return -ALWAN__DET_COSPOLY_F32(y);
+    return               ALWAN__DET_SINPOLY_F32(r, y);
+}
+
+/* tan from the same single reduction. An even quadrant is tan(r) = sin/cos; an
+ * odd one is tan(pi/2 + r) = -cot(r) = -cos/sin. Poles return the sign-correct
+ * infinity the division produces, as libm does. */
+ALWAN_INLINE alwan_f64 alwan_det_tan_f64(alwan_f64 x) {
+    int q; const alwan_f64 r = alwan__det_reduce_pio2_f64(x, &q);
+    const alwan_f64 y = r * r;
+    const alwan_f64 s = ALWAN__DET_SINPOLY_F64(r, y);
+    const alwan_f64 c = ALWAN__DET_COSPOLY_F64(y);
+    return (q & 1) ? (-c / s) : (s / c);
+}
+ALWAN_INLINE alwan_f32 alwan_det_tan_f32(alwan_f32 x) {
+    int q; const alwan_f32 r = alwan__det_reduce_pio2_f32(x, &q);
+    const alwan_f32 y = r * r;
+    const alwan_f32 s = ALWAN__DET_SINPOLY_F32(r, y);
+    const alwan_f32 c = ALWAN__DET_COSPOLY_F32(y);
+    return (q & 1) ? (-c / s) : (s / c);
+}
+
+/* atan on [0, 1]. Above tan(pi/8) the identity
+ *   atan(t) = pi/4 + atan((t - 1) / (t + 1))
+ * maps the argument back into |s| <= tan(pi/8), which is the domain the
+ * polynomial was fitted on. Without that second reduction a single polynomial
+ * over the whole of [0, 1] needs a much higher degree for the same accuracy. */
+ALWAN_INLINE alwan_f64 alwan__det_atan_core_f64(alwan_f64 t) {
+    if (t > ALWAN_DET_TAN_PI_8) {
+        const alwan_f64 s = (t - 1.0) / (t + 1.0);
+        return ALWAN_DET_PIO4 + s * alwan_det_horner_f64(
+            alwan_det_atan_coeffs_f64, ALWAN_DET_ATAN_DEGREE, s * s);
+    }
+    return t * alwan_det_horner_f64(
+        alwan_det_atan_coeffs_f64, ALWAN_DET_ATAN_DEGREE, t * t);
+}
+ALWAN_INLINE alwan_f32 alwan__det_atan_core_f32(alwan_f32 t) {
+    if (t > (alwan_f32)ALWAN_DET_TAN_PI_8) {
+        const alwan_f32 s = (t - 1.0f) / (t + 1.0f);
+        return (alwan_f32)ALWAN_DET_PIO4 + s * alwan_det_horner_f32(
+            alwan_det_atan_coeffs_f32, ALWAN_DET_ATAN_DEGREE, s * s);
+    }
+    return t * alwan_det_horner_f32(
+        alwan_det_atan_coeffs_f32, ALWAN_DET_ATAN_DEGREE, t * t);
+}
+
+ALWAN_INLINE alwan_f64 alwan_det_atan_f64(alwan_f64 x) {
+    const alwan_f64 a = (x < 0.0) ? -x : x;
+    /* |x| > 1 folds through atan(t) = pi/2 - atan(1/t). An infinite argument
+     * reciprocates to 0, so it returns pi/2 without a special case. */
+    const alwan_f64 r = (a > 1.0)
+        ? (ALWAN_DET_PIO2 - alwan__det_atan_core_f64(1.0 / a))
+        : alwan__det_atan_core_f64(a);
+    return (x < 0.0) ? -r : r;
+}
+ALWAN_INLINE alwan_f32 alwan_det_atan_f32(alwan_f32 x) {
+    const alwan_f32 a = (x < 0.0f) ? -x : x;
+    const alwan_f32 r = (a > 1.0f)
+        ? ((alwan_f32)ALWAN_DET_PIO2 - alwan__det_atan_core_f32(1.0f / a))
+        : alwan__det_atan_core_f32(a);
+    return (x < 0.0f) ? -r : r;
+}
+
+/* atan2 with the C99 quadrant conventions, including atan2(0, 0) = 0. */
+ALWAN_INLINE alwan_f64 alwan_det_atan2_f64(alwan_f64 y, alwan_f64 x) {
+    if (x == 0.0) {
+        if (y > 0.0) return  ALWAN_DET_PIO2;
+        if (y < 0.0) return -ALWAN_DET_PIO2;
+        return 0.0;
+    }
+    {
+        const alwan_f64 a = alwan_det_atan_f64(y / x);
+        if (x > 0.0) return a;
+        return (y >= 0.0) ? (a + ALWAN_DET_PI) : (a - ALWAN_DET_PI);
+    }
+}
+ALWAN_INLINE alwan_f32 alwan_det_atan2_f32(alwan_f32 y, alwan_f32 x) {
+    if (x == 0.0f) {
+        if (y > 0.0f) return  (alwan_f32)ALWAN_DET_PIO2;
+        if (y < 0.0f) return -(alwan_f32)ALWAN_DET_PIO2;
+        return 0.0f;
+    }
+    {
+        const alwan_f32 a = alwan_det_atan_f32(y / x);
+        if (x > 0.0f) return a;
+        return (y >= 0.0f) ? (a + (alwan_f32)ALWAN_DET_PI) : (a - (alwan_f32)ALWAN_DET_PI);
+    }
+}
+
+/* acos through atan2, which keeps it accurate near both ends where the naive
+ * form loses precision. sqrt is correctly rounded by IEEE-754, so it carries no
+ * platform variation of its own.
+ *
+ * Out of domain returns the endpoint rather than NaN. libm returns NaN; det
+ * mode prefers a defined value, the same choice alwan_det_pow_pos makes for a
+ * negative base. */
+ALWAN_INLINE alwan_f64 alwan_det_acos_f64(alwan_f64 x) {
+    const alwan_f64 c = (x < -1.0) ? -1.0 : ((x > 1.0) ? 1.0 : x);
+    return alwan_det_atan2_f64(sqrt(1.0 - c * c), c);
+}
+ALWAN_INLINE alwan_f32 alwan_det_acos_f32(alwan_f32 x) {
+    const alwan_f32 c = (x < -1.0f) ? -1.0f : ((x > 1.0f) ? 1.0f : x);
+    return alwan_det_atan2_f32(sqrtf(1.0f - c * c), c);
+}
+
+/* ----------------------------------------------------------------
  * Generic linear+power OETF/EOTF evaluator. Used by every TF whose
  * shape is `linear * x for x < break, alpha * pow(x, exp) - beta`
  * (sRGB, BT.2020, BT.709, ...). Each TF supplies its own constants
@@ -226,14 +448,21 @@ ALWAN_INLINE alwan_f32 alwan_det_cbrt_f32(alwan_f32 x) {
 
 ALWAN_INLINE alwan_f64 alwan__det_lin_pow_oetf_f64(
     alwan_f64 x,
-    alwan_f64 break_x, alwan_f64 split,
+    alwan_f64 break_x, alwan_f64 split, alwan_f64 exponent,
     alwan_f64 linear_slope, alwan_f64 alpha, alwan_f64 beta,
     alwan_f64 const *lo_coeffs, int lo_degree,
     alwan_f64 const *hi_coeffs, int hi_degree
 ) {
     if (x <= break_x) return linear_slope * x;
     alwan_f64 power;
-    if (x < split) {
+    if (x > 1.0) {
+        /* Above the fitted domain. The hi polynomial is fitted on [split, 1]
+         * and a degree-14 polynomial does not extrapolate: at x = 4 it returned
+         * -9.2e10 instead of 1.82. Scene-linear values above 1 are ordinary, so
+         * this branch is not exotic. pow_pos is unbounded in x and costs a
+         * log2 and an exp2, both already deterministic. */
+        power = alwan_det_pow_pos_f64(x, exponent);
+    } else if (x < split) {
         const alwan_f64 u = alwan_det_normalize_f64(x, break_x, split);
         power = alwan_det_horner_f64(lo_coeffs, lo_degree, u);
     } else {
@@ -245,14 +474,16 @@ ALWAN_INLINE alwan_f64 alwan__det_lin_pow_oetf_f64(
 
 ALWAN_INLINE alwan_f32 alwan__det_lin_pow_oetf_f32(
     alwan_f32 x,
-    alwan_f32 break_x, alwan_f32 split,
+    alwan_f32 break_x, alwan_f32 split, alwan_f32 exponent,
     alwan_f32 linear_slope, alwan_f32 alpha, alwan_f32 beta,
     alwan_f32 const *lo_coeffs, int lo_degree,
     alwan_f32 const *hi_coeffs, int hi_degree
 ) {
     if (x <= break_x) return linear_slope * x;
     alwan_f32 power;
-    if (x < split) {
+    if (x > 1.0f) {
+        power = alwan_det_pow_pos_f32(x, exponent);   /* see the f64 twin */
+    } else if (x < split) {
         const alwan_f32 u = alwan_det_normalize_f32(x, break_x, split);
         power = alwan_det_horner_f32(lo_coeffs, lo_degree, u);
     } else {
@@ -265,12 +496,15 @@ ALWAN_INLINE alwan_f32 alwan__det_lin_pow_oetf_f32(
 ALWAN_INLINE alwan_f64 alwan__det_lin_pow_eotf_f64(
     alwan_f64 x,
     alwan_f64 enc_break, alwan_f64 linear_slope,
-    alwan_f64 alpha, alwan_f64 beta,
+    alwan_f64 alpha, alwan_f64 beta, alwan_f64 inv_exponent,
     alwan_f64 poly_lo,
     alwan_f64 const *coeffs, int degree
 ) {
     if (x <= enc_break) return x / linear_slope;
     const alwan_f64 z = (x + beta) / alpha;
+    /* The mirror of the OETF's out-of-domain case: the polynomial is fitted
+     * on [poly_lo, 1] and an encoded value above 1 puts z past its end. */
+    if (z > 1.0) return alwan_det_pow_pos_f64(z, inv_exponent);
     const alwan_f64 u = alwan_det_normalize_f64(z, poly_lo, 1.0);
     return alwan_det_horner_f64(coeffs, degree, u);
 }
@@ -278,12 +512,15 @@ ALWAN_INLINE alwan_f64 alwan__det_lin_pow_eotf_f64(
 ALWAN_INLINE alwan_f32 alwan__det_lin_pow_eotf_f32(
     alwan_f32 x,
     alwan_f32 enc_break, alwan_f32 linear_slope,
-    alwan_f32 alpha, alwan_f32 beta,
+    alwan_f32 alpha, alwan_f32 beta, alwan_f32 inv_exponent,
     alwan_f32 poly_lo,
     alwan_f32 const *coeffs, int degree
 ) {
     if (x <= enc_break) return x / linear_slope;
     const alwan_f32 z = (x + beta) / alpha;
+    /* The mirror of the OETF's out-of-domain case: the polynomial is fitted
+     * on [poly_lo, 1] and an encoded value above 1 puts z past its end. */
+    if (z > 1.0f) return alwan_det_pow_pos_f32(z, inv_exponent);
     const alwan_f32 u = alwan_det_normalize_f32(z, poly_lo, 1.0f);
     return alwan_det_horner_f32(coeffs, degree, u);
 }
@@ -295,7 +532,7 @@ ALWAN_INLINE alwan_f32 alwan__det_lin_pow_eotf_f32(
 
 ALWAN_INLINE alwan_f64 alwan_det_srgb_oetf_f64(alwan_f64 x) {
     return alwan__det_lin_pow_oetf_f64(x,
-        ALWAN_DET_SRGB_OETF_BREAK, ALWAN_DET_SRGB_OETF_SPLIT,
+        ALWAN_DET_SRGB_OETF_BREAK, ALWAN_DET_SRGB_OETF_SPLIT, (1.0 / 2.4),
         ALWAN_DET_SRGB_OETF_LINEAR, ALWAN_DET_SRGB_OETF_ALPHA, ALWAN_DET_SRGB_OETF_BETA,
         alwan_det_srgb_oetf_lo_coeffs_f64, ALWAN_DET_SRGB_OETF_LO_DEGREE,
         alwan_det_srgb_oetf_hi_coeffs_f64, ALWAN_DET_SRGB_OETF_HI_DEGREE);
@@ -303,7 +540,7 @@ ALWAN_INLINE alwan_f64 alwan_det_srgb_oetf_f64(alwan_f64 x) {
 
 ALWAN_INLINE alwan_f32 alwan_det_srgb_oetf_f32(alwan_f32 x) {
     return alwan__det_lin_pow_oetf_f32(x,
-        (alwan_f32)ALWAN_DET_SRGB_OETF_BREAK, (alwan_f32)ALWAN_DET_SRGB_OETF_SPLIT,
+        (alwan_f32)ALWAN_DET_SRGB_OETF_BREAK, (alwan_f32)ALWAN_DET_SRGB_OETF_SPLIT, (1.0f / 2.4f),
         (alwan_f32)ALWAN_DET_SRGB_OETF_LINEAR, (alwan_f32)ALWAN_DET_SRGB_OETF_ALPHA,
         (alwan_f32)ALWAN_DET_SRGB_OETF_BETA,
         alwan_det_srgb_oetf_lo_coeffs_f32, ALWAN_DET_SRGB_OETF_LO_DEGREE,
@@ -313,7 +550,7 @@ ALWAN_INLINE alwan_f32 alwan_det_srgb_oetf_f32(alwan_f32 x) {
 ALWAN_INLINE alwan_f64 alwan_det_srgb_eotf_f64(alwan_f64 x) {
     return alwan__det_lin_pow_eotf_f64(x,
         ALWAN_DET_SRGB_EOTF_BREAK, ALWAN_DET_SRGB_OETF_LINEAR,
-        ALWAN_DET_SRGB_OETF_ALPHA, ALWAN_DET_SRGB_OETF_BETA,
+        ALWAN_DET_SRGB_OETF_ALPHA, ALWAN_DET_SRGB_OETF_BETA, 2.4,
         ALWAN_DET_SRGB_EOTF_POLY_LO,
         alwan_det_srgb_eotf_coeffs_f64, ALWAN_DET_SRGB_EOTF_DEGREE);
 }
@@ -321,7 +558,7 @@ ALWAN_INLINE alwan_f64 alwan_det_srgb_eotf_f64(alwan_f64 x) {
 ALWAN_INLINE alwan_f32 alwan_det_srgb_eotf_f32(alwan_f32 x) {
     return alwan__det_lin_pow_eotf_f32(x,
         (alwan_f32)ALWAN_DET_SRGB_EOTF_BREAK, (alwan_f32)ALWAN_DET_SRGB_OETF_LINEAR,
-        (alwan_f32)ALWAN_DET_SRGB_OETF_ALPHA, (alwan_f32)ALWAN_DET_SRGB_OETF_BETA,
+        (alwan_f32)ALWAN_DET_SRGB_OETF_ALPHA, (alwan_f32)ALWAN_DET_SRGB_OETF_BETA, 2.4f,
         (alwan_f32)ALWAN_DET_SRGB_EOTF_POLY_LO,
         alwan_det_srgb_eotf_coeffs_f32, ALWAN_DET_SRGB_EOTF_DEGREE);
 }
@@ -335,7 +572,7 @@ ALWAN_INLINE alwan_f32 alwan_det_srgb_eotf_f32(alwan_f32 x) {
 
 ALWAN_INLINE alwan_f64 alwan_det_bt2020_oetf_f64(alwan_f64 x) {
     return alwan__det_lin_pow_oetf_f64(x,
-        ALWAN_DET_BT2020_OETF_BREAK, ALWAN_DET_BT2020_OETF_SPLIT,
+        ALWAN_DET_BT2020_OETF_BREAK, ALWAN_DET_BT2020_OETF_SPLIT, 0.45,
         ALWAN_DET_BT2020_OETF_LINEAR, ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA,
         alwan_det_bt2020_oetf_lo_coeffs_f64, ALWAN_DET_BT2020_OETF_LO_DEGREE,
         alwan_det_bt2020_oetf_hi_coeffs_f64, ALWAN_DET_BT2020_OETF_HI_DEGREE);
@@ -343,7 +580,7 @@ ALWAN_INLINE alwan_f64 alwan_det_bt2020_oetf_f64(alwan_f64 x) {
 
 ALWAN_INLINE alwan_f32 alwan_det_bt2020_oetf_f32(alwan_f32 x) {
     return alwan__det_lin_pow_oetf_f32(x,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_BREAK, (alwan_f32)ALWAN_DET_BT2020_OETF_SPLIT,
+        (alwan_f32)ALWAN_DET_BT2020_OETF_BREAK, (alwan_f32)ALWAN_DET_BT2020_OETF_SPLIT, 0.45f,
         (alwan_f32)ALWAN_DET_BT2020_OETF_LINEAR, (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA,
         (alwan_f32)ALWAN_DET_BT2020_OETF_BETA,
         alwan_det_bt2020_oetf_lo_coeffs_f32, ALWAN_DET_BT2020_OETF_LO_DEGREE,
@@ -353,7 +590,7 @@ ALWAN_INLINE alwan_f32 alwan_det_bt2020_oetf_f32(alwan_f32 x) {
 ALWAN_INLINE alwan_f64 alwan_det_bt2020_eotf_f64(alwan_f64 x) {
     return alwan__det_lin_pow_eotf_f64(x,
         ALWAN_DET_BT2020_EOTF_BREAK, ALWAN_DET_BT2020_OETF_LINEAR,
-        ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA,
+        ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA, (1.0 / 0.45),
         ALWAN_DET_BT2020_EOTF_POLY_LO,
         alwan_det_bt2020_eotf_coeffs_f64, ALWAN_DET_BT2020_EOTF_DEGREE);
 }
@@ -361,7 +598,7 @@ ALWAN_INLINE alwan_f64 alwan_det_bt2020_eotf_f64(alwan_f64 x) {
 ALWAN_INLINE alwan_f32 alwan_det_bt2020_eotf_f32(alwan_f32 x) {
     return alwan__det_lin_pow_eotf_f32(x,
         (alwan_f32)ALWAN_DET_BT2020_EOTF_BREAK, (alwan_f32)ALWAN_DET_BT2020_OETF_LINEAR,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA, (alwan_f32)ALWAN_DET_BT2020_OETF_BETA,
+        (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA, (alwan_f32)ALWAN_DET_BT2020_OETF_BETA, (1.0f / 0.45f),
         (alwan_f32)ALWAN_DET_BT2020_EOTF_POLY_LO,
         alwan_det_bt2020_eotf_coeffs_f32, ALWAN_DET_BT2020_EOTF_DEGREE);
 }

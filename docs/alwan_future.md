@@ -152,22 +152,31 @@ These are ergonomic improvements rather than architectural prerequisites.
 
 ### 5. Deterministic Numeric Layer Extension
 
-`src/alwan/core/alwan_deterministic.h` already provides portable polynomial
-implementations for `alwan_det_log2/exp2/log/exp/pow` (and a deterministic cube
-root), and `ALWAN_LOG2`/`ALWAN_EXP`/`ALWAN_POW` route through them under
-`ALWAN_DETERMINISTIC`. The trig and remaining transcendental macros do not yet
-have a deterministic path: `ALWAN_ATAN2/SIN/COS/TAN/TANH/LOG10` still expand to
-libm directly in `alwan_platform.h`.
+**Done, 2026-09-08.** `core/alwan_deterministic.h` now covers the angle family
+alongside the original `log2 / exp2 / log / exp / pow / cbrt`: `sin`, `cos`,
+`tan`, `tanh`, `atan`, `atan2`, `acos` and `log10`, with `alwan_math.h` routing
+every corresponding macro.
 
-Desired end state:
+Three polynomials carry all eight. Parity is factored out, so `sin(r) = r*P(r*r)`
+and `atan(s) = s*R(s*s)` are exactly zero at the origin rather than approximately
+so, and `tan`, `atan2`, `acos`, `log10` and `tanh` are exact identities on top of
+those and of the existing `log2`/`exp2` pair. Coefficients come from a Remez
+minimax fit at 60 digits (`alwan_dev/gendata/gen_trig_minimax.wls`), which a
+float64 Chebyshev fit could not match: that plateaus near 1e-15 because the fit
+and the basis conversion both round at double precision, and raising the degree
+made it worse. The committed fits sit at 1.9e-21, 1.8e-23 and 1.6e-21, three or
+more orders below f64 epsilon, so the realised accuracy is Horner rounding: 0.5
+ULP for sin and cos, 1 ULP for atan.
 
-- add `det_atan2` / `det_sin` / `det_cos` / `det_tan` / `det_tanh` / `det_log10`
-- route `ALWAN_ATAN2/SIN/COS/TAN/TANH/LOG10` through them under
-  `ALWAN_DETERMINISTIC`
+What it bought: the byte-identity gate covered 70.7% of the determinism dump,
+with thirty families excluded for the single reason that they reached libm
+through an angle. Those exclusions are gone. The only `ALWAN_*` macros still
+reaching libm are ABS, CEIL, FLOOR, FMOD, ROUND, SQRT and TRUNC, all exact
+IEEE-754 operations that cannot differ between vendors.
 
-This makes hue/angle channels structurally byte-identical across platforms
-(all CAMs, all cylindrical spaces, dE2000/CMC, ACES, Rayleigh, Barten) instead
-of relying on libm agreement.
+Still open, and it is a confirmation rather than an implementation: the argument
+above is source-level. A determinism CI run is what turns "no libm is reachable"
+into "six runners agree", and that run has not happened yet.
 
 ### 6. Batch / Map / Planar Coverage Gaps
 
@@ -856,7 +865,7 @@ nonsense. What remains:
 - [ ] Evaluate an OpenCL backend (one source across AMD, Intel and embedded GPUs)
 - [ ] Scope a fixed-point path for parts without an FPU (transfer functions, RGB matrices, video encode first)
 - [ ] Add ergonomic helpers only where they reduce real call-site boilerplate
-- [ ] Extend the deterministic layer to trig/log10 and route the macros
+- [x] Extend the deterministic layer to trig/log10 and route the macros; the 30 CI exclusions are removed, pending a confirming run
 - [ ] Close batch/map and `_map_planar` coverage gaps (CAMs, ZCAM, deltaE, CVD)
 - [ ] Add the bulk two-step Zhai 2018 CAT
 - [x] Fill API parity gaps: norm macros and scalar HSV<->HWB were already in; ZCAM `from_ucs` added

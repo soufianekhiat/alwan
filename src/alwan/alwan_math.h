@@ -129,6 +129,67 @@
 /* exp2 has no top-level fast-mode macro; we add it now since the
  * det path makes it cheap to expose. */
 
+/* The angle family. These are the last transcendentals that reached libm, and
+ * routing them is what lets the byte-identity gate cover hue: every CAM hue
+ * correlate, every cylindrical space, dE2000 and dE CMC, the ACES JMh output
+ * transforms, the Barten CSF and the Lanczos kernel go through one of these.
+ * See core/alwan_deterministic.h for the polynomials and their measured error. */
+# undef  ALWAN_SIN
+# undef  ALWAN_SIN_F32
+# undef  ALWAN_SIN_F64
+# define ALWAN_SIN(x)         alwan_det_sin_f64((x))
+# define ALWAN_SIN_F32(x)     alwan_det_sin_f32((x))
+# define ALWAN_SIN_F64(x)     alwan_det_sin_f64((x))
+
+# undef  ALWAN_COS
+# undef  ALWAN_COS_F32
+# undef  ALWAN_COS_F64
+# define ALWAN_COS(x)         alwan_det_cos_f64((x))
+# define ALWAN_COS_F32(x)     alwan_det_cos_f32((x))
+# define ALWAN_COS_F64(x)     alwan_det_cos_f64((x))
+
+# undef  ALWAN_TAN
+# undef  ALWAN_TAN_F32
+# undef  ALWAN_TAN_F64
+# define ALWAN_TAN(x)         alwan_det_tan_f64((x))
+# define ALWAN_TAN_F32(x)     alwan_det_tan_f32((x))
+# define ALWAN_TAN_F64(x)     alwan_det_tan_f64((x))
+
+# undef  ALWAN_TANH
+# undef  ALWAN_TANH_F32
+# undef  ALWAN_TANH_F64
+# define ALWAN_TANH(x)        alwan_det_tanh_f64((x))
+# define ALWAN_TANH_F32(x)    alwan_det_tanh_f32((x))
+# define ALWAN_TANH_F64(x)    alwan_det_tanh_f64((x))
+
+# undef  ALWAN_ATAN
+# undef  ALWAN_ATAN_F32
+# undef  ALWAN_ATAN_F64
+# define ALWAN_ATAN(x)        alwan_det_atan_f64((x))
+# define ALWAN_ATAN_F32(x)    alwan_det_atan_f32((x))
+# define ALWAN_ATAN_F64(x)    alwan_det_atan_f64((x))
+
+# undef  ALWAN_ATAN2
+# undef  ALWAN_ATAN2_F32
+# undef  ALWAN_ATAN2_F64
+# define ALWAN_ATAN2(y, x)      alwan_det_atan2_f64((y), (x))
+# define ALWAN_ATAN2_F32(y, x)  alwan_det_atan2_f32((y), (x))
+# define ALWAN_ATAN2_F64(y, x)  alwan_det_atan2_f64((y), (x))
+
+# undef  ALWAN_ACOS
+# undef  ALWAN_ACOS_F32
+# undef  ALWAN_ACOS_F64
+# define ALWAN_ACOS(x)        alwan_det_acos_f64((x))
+# define ALWAN_ACOS_F32(x)    alwan_det_acos_f32((x))
+# define ALWAN_ACOS_F64(x)    alwan_det_acos_f64((x))
+
+# undef  ALWAN_LOG10
+# undef  ALWAN_LOG10_F32
+# undef  ALWAN_LOG10_F64
+# define ALWAN_LOG10(x)       alwan_det_log10_f64((x))
+# define ALWAN_LOG10_F32(x)   alwan_det_log10_f32((x))
+# define ALWAN_LOG10_F64(x)   alwan_det_log10_f64((x))
+
 /* Force 2-rounding multiply-add. The build also passes
  * `-ffp-contract=off` (clang/gcc) or `/fp:precise` (MSVC) so the
  * compiler can't re-fuse this back into hardware FMA. */
