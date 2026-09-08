@@ -1537,9 +1537,48 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         return ALWAN_LITERAL(-1.0);
     }
 
+    /* The CCT is taken on the CIE 1931 2 degree observer, not the 10 degree one the rendition
+     * samples use. The Planckian locus and every isotemperature table, Robertson's included, are
+     * defined on the 2 degree observer, and a 10 degree chromaticity handed to them is simply a
+     * different point on a chart it does not belong to.
+     *
+     * This was the residual. A Planckian at 2856 K read back as 2789 K, 67 K low, so the reference
+     * was built as a different Planckian from the source and a source scored against itself came
+     * out at 98.76 instead of 100. On the 2 degree observer the same white reads 2856.08 K, which
+     * is Robertson working as intended. The error grew with temperature, 33 K at 2000 K and 72 K
+     * at 3500 K, which is why the Planckian branch carried four times the error of the daylight
+     * one. */
+    alwan_xyz_f64 xyz_test_white_2deg;
+    {
+        alwan_spd_f64 flat_2deg;
+        status = alwan_spd_create_f64(&flat_2deg, test_spd_resampled.wavelength_min,
+                                      test_spd_resampled.wavelength_max, test_spd_resampled.count, ctx);
+        if (status != ALWAN_OK) {
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
+            return ALWAN_LITERAL(-1.0);
+        }
+        for (size_t i = 0; i < flat_2deg.count; i++) {
+            flat_2deg.values[i] = ALWAN_LITERAL(1.0);
+        }
+        status = alwan_xyz_from_spd_f64(&xyz_test_white_2deg, &flat_2deg, &test_spd_resampled,
+                                        ALWAN_OBSERVER_CIE_1931_2DEG, ALWAN_INTEGRATE_TRAPEZOID,
+                                        ALWAN_LITERAL(0.0), ctx);
+        alwan_spd_destroy_f64(&flat_2deg, ctx);
+        if (status != ALWAN_OK) {
+            alwan_spd_destroy_f64(&test_spd_resampled, ctx);
+            return ALWAN_LITERAL(-1.0);
+        }
+    }
+
+    alwan_f64 sum_2deg = xyz_test_white_2deg.x + xyz_test_white_2deg.y + xyz_test_white_2deg.z;
+    if (sum_2deg < ALWAN_EPSILON) {
+        alwan_spd_destroy_f64(&test_spd_resampled, ctx);
+        return ALWAN_LITERAL(-1.0);
+    }
+
     alwan_vec2_f64 xy_test;
-    xy_test.v[0] = xyz_test_white_10deg.x / sum;
-    xy_test.v[1] = xyz_test_white_10deg.y / sum;
+    xy_test.v[0] = xyz_test_white_2deg.x / sum_2deg;
+    xy_test.v[1] = xyz_test_white_2deg.y / sum_2deg;
 
     /* Calculate CCT */
     alwan_f64 cct = alwan_cct_robertson_xy_f64(&xy_test);
