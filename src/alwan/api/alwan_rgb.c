@@ -736,7 +736,7 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
     /* [51] ADOBE_RGB_1998           */ { ALWAN_TF_ADOBE_RGB, ALWAN_TF_ADOBE_RGB },  /* gamma 563/256 */
     /* [52] PROPHOTO_RGB             */ { ALWAN_TF_ROMM,    ALWAN_TF_ROMM     },  /* from colour-science */
     /* [53] DAVINCI_WIDE_GAMUT       */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
-    /* [54] DAVINCI_INTERMEDIATE     */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [54] DAVINCI_INTERMEDIATE     */ { ALWAN_TF_DAVINCI_INTERMEDIATE, ALWAN_TF_DAVINCI_INTERMEDIATE },  /* was LINEAR */
     /* [55] BLACKMAGIC_WIDE_GAMUT    */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
     /* [56] BLACKMAGIC_FILM          */ { ALWAN_TF_BMDFILM4, ALWAN_TF_BMDFILM4 },
     /* [57] BLACKMAGIC_FILM_GEN5     */ { ALWAN_TF_BMDFILM,  ALWAN_TF_BMDFILM  },
@@ -781,7 +781,7 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
     /* [96] GAMMA22_ADOBE_RGB        */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
     /* [97] GAMMA22_P3_D65           */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
     /* [98] GAMMA22_AP1              */ { ALWAN_TF_GAMMA22,  ALWAN_TF_GAMMA22  },
-    /* [99] GAMMA18_REC709           */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [99] GAMMA18_REC709           */ { ALWAN_TF_GAMMA18,  ALWAN_TF_GAMMA18  },  /* was LINEAR: the space is named for its curve */
     /* ColorInterop Display Color Spaces */
     /* [100] REC1886_REC709          */ { ALWAN_TF_BT709,    ALWAN_TF_BT1886   },
     /* [101] REC2100_PQ              */ { ALWAN_TF_PQ,       ALWAN_TF_PQ       },

@@ -651,6 +651,28 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_adobergb_eotf)(ALWAN_CORE_T enc
     return ALWAN_CORE_POW(E, ALWAN_CORE_LITERAL(2.19921875));
 }
 
+/* DaVinci Intermediate (Blackmagic Design, "DaVinci Wide Gamut Intermediate", 2020): a log curve
+ * with a linear toe, the encoding DaVinci Wide Gamut is delivered in. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_davinci_intermediate_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T const A = ALWAN_CORE_LITERAL(0.0075), B = ALWAN_CORE_LITERAL(7.0);
+    ALWAN_CORE_T const C = ALWAN_CORE_LITERAL(0.07329248), M = ALWAN_CORE_LITERAL(10.44426855);
+    ALWAN_CORE_T const LIN_CUT = ALWAN_CORE_LITERAL(0.00262409);
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    ALWAN_CORE_T toe = L * M;
+    ALWAN_CORE_T lg  = C * (ALWAN_CORE_LOG2(L + A) + B);
+    return ALWAN_CORE_SELECT(L <= LIN_CUT, toe, lg);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_davinci_intermediate_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T const A = ALWAN_CORE_LITERAL(0.0075), B = ALWAN_CORE_LITERAL(7.0);
+    ALWAN_CORE_T const C = ALWAN_CORE_LITERAL(0.07329248), M = ALWAN_CORE_LITERAL(10.44426855);
+    ALWAN_CORE_T const LOG_CUT = ALWAN_CORE_LITERAL(0.02740668);
+    ALWAN_CORE_T E = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded);
+    ALWAN_CORE_T toe = E / M;
+    ALWAN_CORE_T ex  = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), E / C - B) - A;
+    return ALWAN_CORE_SELECT(E <= LOG_CUT, toe, ex);
+}
+
 /* Gamma 1.8 -- Apple RGB, ColorMatch RGB */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_gamma18_oetf)(ALWAN_CORE_T lin) {
     ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);

@@ -521,6 +521,7 @@ typedef enum {
     ALWAN_TF_LSTAR = 46,     /* CIE 1976 lightness (ECI RGB v2) */
     ALWAN_TF_SMPTE240M = 47, /* SMPTE ST 240 OETF */
     ALWAN_TF_ADOBE_RGB = 48, /* Adobe gamma 563/256 = 2.19921875 */
+    ALWAN_TF_DAVINCI_INTERMEDIATE = 49, /* DaVinci Intermediate, the DaVinci Wide Gamut delivery curve */
 
     /* Game Engine Interop */
     ALWAN_TF_UNITY_LINEAR = ALWAN_TF_LINEAR  /* Unity linear (alias for ALWAN_TF_LINEAR) */

@@ -589,6 +589,29 @@ ALWAN_INLINE alwan_scalar alwan_adobergb_eotf(alwan_scalar encoded) {
     return ALWAN_POW(E, ALWAN_LITERAL(2.19921875));
 }
 
+/* DaVinci Intermediate (Blackmagic Design, "DaVinci Wide Gamut Intermediate", 2020): a log curve
+ * with a linear toe, the encoding DaVinci Wide Gamut is delivered in. The space was recorded as
+ * linear before this existed, which made a log-encoded delivery read as scene light. */
+ALWAN_INLINE alwan_scalar alwan_davinci_intermediate_oetf(alwan_scalar lin) {
+    alwan_scalar const A = ALWAN_LITERAL(0.0075), B = ALWAN_LITERAL(7.0);
+    alwan_scalar const C = ALWAN_LITERAL(0.07329248), M = ALWAN_LITERAL(10.44426855);
+    alwan_scalar const LIN_CUT = ALWAN_LITERAL(0.00262409);
+    alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    alwan_scalar toe = L * M;
+    alwan_scalar lg  = C * (ALWAN_LOG2(L + A) + B);
+    return ALWAN_SELECT(L <= LIN_CUT, toe, lg);
+}
+
+ALWAN_INLINE alwan_scalar alwan_davinci_intermediate_eotf(alwan_scalar encoded) {
+    alwan_scalar const A = ALWAN_LITERAL(0.0075), B = ALWAN_LITERAL(7.0);
+    alwan_scalar const C = ALWAN_LITERAL(0.07329248), M = ALWAN_LITERAL(10.44426855);
+    alwan_scalar const LOG_CUT = ALWAN_LITERAL(0.02740668);
+    alwan_scalar E = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded);
+    alwan_scalar toe = E / M;
+    alwan_scalar ex  = ALWAN_POW(ALWAN_LITERAL(2.0), E / C - B) - A;
+    return ALWAN_SELECT(E <= LOG_CUT, toe, ex);
+}
+
 /* Gamma 1.8 -- Apple RGB, ColorMatch RGB */
 ALWAN_INLINE alwan_scalar alwan_gamma18_oetf(alwan_scalar lin) {
     alwan_scalar L = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);

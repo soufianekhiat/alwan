@@ -104,9 +104,23 @@ typedef enum {
     ALWAN_TF_LLOG,
     ALWAN_TF_DLOG,
     ALWAN_TF_DCDM,
-    ALWAN_TF_ADX10, ALWAN_TF_ADX16
+    ALWAN_TF_ADX10, ALWAN_TF_ADX16,
+
+    /* Working and print spaces */
+    ALWAN_TF_GAMMA18,              /* Apple RGB, ColorMatch RGB */
+    ALWAN_TF_ROMM,                 /* ProPhoto / ROMM RGB, gamma 1.8 with a linear toe below 1/512 */
+    ALWAN_TF_RIMM,                 /* RIMM RGB */
+    ALWAN_TF_ERIMM,                /* ERIMM RGB, log over 0.001 to 316.2 */
+    ALWAN_TF_LSTAR,                /* CIE 1976 lightness, ECI RGB v2 */
+    ALWAN_TF_SMPTE240M,            /* SMPTE ST 240 OETF */
+    ALWAN_TF_ADOBE_RGB,            /* Adobe gamma 563/256 = 2.19921875 */
+    ALWAN_TF_DAVINCI_INTERMEDIATE  /* DaVinci Intermediate, the DaVinci Wide Gamut delivery curve */
 } alwan_transfer_function;
 ```
+
+`ALWAN_TF_PQ` takes and returns cd/m2: linear 100.0 encodes to the PQ code for
+100 nits. `ALWAN_TF_HLG` takes scene light normalised so that 1.0 is the
+nominal peak, with the 12x of the standard applied inside.
 
 > **Camera log curves.** The `ALWAN_TF_SLOG*`, `ALWAN_TF_NLOG`, `ALWAN_TF_VLOG`,
 > `ALWAN_TF_CLOG*`, `ALWAN_TF_REDLOG*`/`ALWAN_TF_LOG3G10`, and related camera-vendor
