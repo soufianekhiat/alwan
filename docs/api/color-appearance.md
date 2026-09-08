@@ -268,18 +268,133 @@ int alwan_cam20u_inverse_{T}(alwan_xyz_{T} *xyz_out,
 
 ## Additional Color Appearance Models
 
-Alwan also implements several historical and specialized CAMs. These are forward-only unless noted.
-All follow the `alwan_<model>_forward_{T}(correlates_out, xyz, vc)` pattern.
+Alwan also implements several historical and specialized CAMs. All follow the same shape:
 
-| Model | Function prefix | Invertible |
-|---|---|---|
-| RLAB (Fairchild 1996) | `alwan_rlab_{T}` | Yes |
-| Hunt | `alwan_hunt_{T}` | No |
-| Hellwig & Fairchild 2022 | `alwan_hellwig2022_{T}` | Yes |
-| Kim 2009 | `alwan_kim2009_{T}` | Yes |
-| LLAB (Luo, Lo, Kuo 1996) | `alwan_llab_{T}` | No |
-| ATD95 (Guth 1995) | `alwan_atd95_{T}` | No |
-| Nayatani 1995 | `alwan_nayatani95_{T}` | No |
+```c
+alwan_status alwan_<model>_forward_{T}(alwan_<model>_correlates_{T} *out,
+                                       alwan_xyz_{T} const *xyz,
+                                       alwan_<model>_viewing_conditions_{T} const *vc);
+
+alwan_status alwan_<model>_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                                       alwan_<model>_correlates_{T} const *correlates,
+                                       alwan_<model>_viewing_conditions_{T} const *vc);
+```
+
+| Model | Prefix | Inverse | Agrees with colour-science to |
+|---|---|---|---|
+| RLAB (Fairchild 1996) | `alwan_rlab_` | Yes | 2.8e-08 |
+| Hunt (1991, 1995) | `alwan_hunt_` | No | 4.6e-08 |
+| Hellwig and Fairchild 2022 | `alwan_hellwig2022_` | Yes | -- |
+| Kim, Weyrich and Kautz 2009 | `alwan_kim2009_` | Yes | 4e-11 |
+| LLAB (Luo, Lo, Kuo 1996) | `alwan_llab_` | No | -- |
+| ATD95 (Guth 1995) | `alwan_atd95_` | No | 4.3e-10 |
+| Nayatani 1995 | `alwan_nayatani95_` | No | validated |
+
+Hunt has no inverse because inverting it is disproportionately complex, not
+because the forward is approximate. LLAB, ATD95 and Nayatani95 are forward-only
+as published.
+
+> **Zero-initialise the viewing conditions.** Several of these structs use `0` as
+> a "derive this for me" sentinel, so `alwan_hunt_viewing_conditions_f64 vc = {0};`
+> and then setting what you know is the correct idiom. A struct left as stack
+> garbage produces confident nonsense rather than an error, which is what happened
+> to alwan's own f32/f64 twin test when Hunt's fields were added.
+
+### RLAB
+
+```c
+typedef struct {
+    alwan_xyz_{T} xyz_w;          /* white point, Y = 100 */
+    alwan_xyz_{T} xyz_n;          /* reference white, usually D65 */
+    alwan_{T} Y_n;                /* absolute adapting luminance, cd/m^2 */
+    alwan_rlab_surround surround; /* AVERAGE | DIM | DARK */
+    int D_factor;                 /* 0 auto, 1 hard copy, 2 soft copy, 3 transparency */
+} alwan_rlab_viewing_conditions_{T};
+```
+
+`Y_n` is **absolute**, in cd/m², and it is not decoration: RLAB's
+incomplete-adaptation term depends on it whenever `D < 1`. The reference viewing
+condition is 318.31 cd/m², and `0` is treated as that value so a zero-initialised
+struct behaves rather than taking a cube root of zero.
+
+### Hunt
+
+The most demanding struct in the library. On top of the white and the adapting
+luminance it takes a background, a proximal field, two scotopic responses and two
+induction factors, and **every one of them derives itself from `0` or a
+non-positive value**:
+
+| field | left at 0 or below |
+|---|---|
+| `xyz_b` | derived from `Yb` |
+| `xyz_p` | uses the background |
+| `p` | simultaneous contrast disabled, which Hunt allows |
+| `L_AS` | derived from `CCT_w` |
+| `CCT_w` | with `L_AS` also unset, falls back to 5000 K |
+| `S`, `S_w` | use the stimulus and white `Y` |
+| `N_cb`, `N_bb` | derive `0.725 * (Y_w / Y_b)^0.2` |
+
+`helson_judd_effect` is off by default, matching Hunt's own default.
+
+### Hellwig2022
+
+CAM16 with Helmholtz-Kohlrausch support. The viewing conditions mirror CAM16's:
+white in XYZ, `adapting_luminance` in cd/m², `background_luminance` as the
+relative `Yb/Yw`, a surround and `discount_illuminant`.
+
+### Kim2009
+
+```c
+typedef struct {
+    alwan_xyz_{T} white_xyz;
+    alwan_{T} La;                 /* adapting luminance, cd/m^2 */
+    alwan_{T} Yb;                 /* background luminance factor */
+    int discount_illuminant;
+    alwan_kim2009_media media;    /* selects the published E parameter */
+} alwan_kim2009_viewing_conditions_{T};
+```
+
+```c
+ALWAN_KIM2009_MEDIA_HIGH_LUMINANCE_LCD = 0   /* E = 1.0    */
+ALWAN_KIM2009_MEDIA_TRANSPARENT_AD     = 1   /* E = 1.2175 */
+ALWAN_KIM2009_MEDIA_CRT                = 2   /* E = 1.4572 */
+ALWAN_KIM2009_MEDIA_REFLECTIVE_PAPER   = 3   /* E = 1.7526 */
+```
+
+**`media` changes the answer by more than a factor of three.** For
+`XYZ = [19.01, 20, 21.78]` under D65 the four media give `J` = 51.18, 40.56,
+28.86 and 14.44. It is an enum rather than a float because the model publishes
+four values and defines no continuum between them. Zero, which is what a
+zero-initialised struct gets, is the high-luminance LCD.
+
+### LLAB
+
+Takes two illuminants, `xyz_0` for the test condition and `xyz_r` for the
+reference, alongside the white, the background factor `Y_b`, a surround and
+`D_factor`. Forward only.
+
+### ATD95
+
+```c
+typedef struct {
+    alwan_xyz_{T} white_xyz;
+    alwan_{T} Y_0;      /* absolute adapting field luminance, cd/m^2 */
+    alwan_{T} sigma;    /* saturation adjustment */
+    alwan_{T} k1, k2;   /* adaptation parameters */
+} alwan_atd95_viewing_conditions_{T};
+```
+
+> **`H` is a ratio, not an angle.** ATD95 defines `H` as `T_2 / D_2`. It is
+> unbounded and may be negative. Do not wrap it into `[0, 360)` or feed it to
+> anything expecting degrees; alwan returned degrees here until 2026-08-27 and it
+> was wrong.
+
+### Nayatani95
+
+Works in the **`[0, 100]` domain** for both the stimulus and the reference white.
+`E_0` is the field illuminance and `E_0r` the normalising illuminance, both in
+**lux**; `Y_0` is the background luminance factor. The noise term is fixed at the
+model default of 1.0. Forward only.
 
 ---
 
