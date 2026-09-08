@@ -137,6 +137,25 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed: output differs
 
+- **YcCbcCrc double-offset its chroma in a default build.**
+  `alwan_rgb_to_yccbccrc_{T}` already centres `Cbc` and `Crc` on the
+  legal-range midpoint, `0.500489` at 10 bit, and `ALWAN_NORM_YCCBCCRC`
+  then added a further `+0.5`. With `ALWAN_NORMALIZE_RANGES` at its
+  shipped default of `1`, achromatic grey encoded to `1.000489` instead
+  of `0.500489`, in-gamut chroma spanned roughly `[0.5626, 1.4384]`
+  rather than `[0, 1]`, and a standards-conformant Y'cCbcCrc signal could
+  not be decoded. The macro is a no-op now, as `ALWAN_NORM_YCBCR` has
+  been since the identical defect was fixed there on 2026-08-27; this is
+  the constant-luminance twin that was missed then.
+
+  The scalar path had been disagreeing with the bulk kernels, which never
+  added the offset, and with the committed reference CSV, which holds the
+  un-offset value. No test caught it because every build in both repos
+  compiles the library at `ALWAN_NORMALIZE_RANGES=0`, where the macro was
+  already inert. YCoCg is not affected: its kernel emits `Co` and `Cg`
+  centred on 0, so the `+0.5` there is the correct mapping.
+
+
 - **The ACES 1.x HDR outputs are the ACES 1.1 to 1.3 transforms.**
   `ALWAN_ACES1_OUT_REC2020_{1000,2000,4000}NIT_PQ` evaluated the 1.0.3
   `ODT.Academy.Rec2020_ST2084_*nits` C9 spline, 0.18 at 10 cd/m2, under the

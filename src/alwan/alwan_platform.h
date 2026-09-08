@@ -1225,9 +1225,18 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_NORM_YCOCG(p)   do { (p)->Co += ALWAN_LITERAL(0.5); (p)->Cg += ALWAN_LITERAL(0.5); } while(0)
 #define ALWAN_DENORM_YCOCG(p) do { (p)->Co -= ALWAN_LITERAL(0.5); (p)->Cg -= ALWAN_LITERAL(0.5); } while(0)
 
-/* YcCbcCrc: Cbc [-0.5,0.5] -> [0,1], Crc [-0.5,0.5] -> [0,1] */
-#define ALWAN_NORM_YCCBCCRC(p)   do { (p)->Cbc += ALWAN_LITERAL(0.5); (p)->Crc += ALWAN_LITERAL(0.5); } while(0)
-#define ALWAN_DENORM_YCCBCCRC(p) do { (p)->Cbc -= ALWAN_LITERAL(0.5); (p)->Crc -= ALWAN_LITERAL(0.5); } while(0)
+/* YcCbcCrc needs no normalisation, for the same reason YCbCr does not: the core
+ * kernel already emits Cbc and Crc on [0, 1], centred on the legal-range midpoint
+ * (c_max + c_min) / 2, which alwan_rgb_to_yccbccrc adds itself.
+ *
+ * These added a further +0.5 until this was found, so in the shipped default build
+ * (ALWAN_NORMALIZE_RANGES=1) achromatic grey encoded to Cbc = Crc = 1.0005 instead
+ * of 0.5005, and a standards-conformant Y'cCbcCrc signal could not be decoded. It is
+ * the YCbCr defect fixed on 2026-08-27, in the constant-luminance twin that was
+ * missed then. YCoCg is NOT affected: its kernel emits Co and Cg centred on 0, so
+ * the +0.5 there is the correct mapping. */
+#define ALWAN_NORM_YCCBCCRC(p)   ((void)(p))
+#define ALWAN_DENORM_YCCBCCRC(p) ((void)(p))
 
 /* HCL: H [-pi, pi] -> [0,1] (L already [0,1]) */
 #define ALWAN_NORM_HCL(p)   do { (p)->H = ((p)->H + ALWAN_PI) / ALWAN__TWOPI; } while(0)
