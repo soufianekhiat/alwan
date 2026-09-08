@@ -269,7 +269,7 @@ which is a bracketed scalar root find; Hunt's is three-dimensional.
 
 Nothing else in the appearance-model set is missing its inverse.
 
-## TM-30 Rf residual, 0.53 mean against colour-science
+## TM-30 Rf residual: found, the CCT was taken on the wrong observer
 
 Measured over 33 illuminants. CRI and CQS, on the same grid and the same
 integration, sit an order of magnitude lower:
@@ -304,22 +304,41 @@ Entirely in the Planckian branch:
 | blend, 4000-5000 K | 10 | 0.305 | 0.887 |
 | daylight, CCT > 5000 K | 11 | 0.244 | 0.408 |
 
-### The sharpest lead
+### Found: the CCT was taken on the wrong observer
 
-Self-referential cases do not return 100. Illuminant A **is** a Planckian at
-2856 K, so its reference is its own spectrum and every sample's dE should be
-zero. colour-science returns exactly 100.000; alwan returns 98.762, which back-
-solves to a mean dE of 0.183 in CAM02-UCS units. D65 against its own daylight
-reference returns 99.739 rather than 100.
+The lead was that self-referential cases did not return 100. Illuminant A **is** a
+Planckian at 2856 K, so its reference is its own spectrum and every sample's dE
+should be zero, yet alwan returned 98.762 where colour-science returns 100.0003.
 
-So something adds a small, roughly uniform offset between a spectrum and a
-reference built from that same spectrum, and it is about four times larger on the
-Planckian branch than the daylight one. That points at the reference construction
-or the CIECAM02 / CAM02-UCS path rather than at any of the items ruled out above.
+TM-30 uses the CIE 1964 10 degree observer for the rendition samples, which is
+correct, and alwan was also using it for the white point handed to the CCT
+routine. The Planckian locus and every isotemperature table, Robertson's
+included, are defined on the 1931 2 degree observer. Handing a 10 degree
+chromaticity to them asks a chart about a point that is not on it:
 
-Next step is to dump alwan's per-sample dE for illuminant A and compare against
-colour-science's, which will separate "uniform offset" (adaptation or white
-point) from "a few samples" (CES data).
+| built at | read back, 10 degree | read back, 2 degree |
+| --- | --- | --- |
+| 2000 K | 1966.69 K | 2000.03 K |
+| 2856 K | 2789.12 K | 2856.08 K |
+| 3500 K | 3427.91 K | 3499.71 K |
+
+So the reference was built as a different Planckian from the source. The error
+grew with temperature, which is exactly why the residual was four times larger on
+the Planckian branch than the daylight one, and why chasing the formula, the
+blackbody and the integration all came back clean: none of them was wrong.
+
+Fixed by computing a second white point on the 2 degree observer for the CCT
+alone. A self-referential Planckian is now 0.003 from 100 rather than 1.29, and
+illuminant A reads 99.9990 against colour-science's 100.0003, a difference of
+0.0013 where it was 1.238.
+
+CRI and CQS were never affected: both use the 2 degree observer throughout, which
+is why their residuals sat an order of magnitude lower and made this look like
+something in TM-30's formula rather than one line in its setup.
+
+What is not yet done is re-measuring the full 33-illuminant sweep, which is where
+the 0.53 mean came from. The sharpest case improved by a factor of 950, so the
+sweep is expected to follow, but expected is not measured.
 
 ## Block-aware RGB space fit
 
@@ -734,7 +753,8 @@ nonsense. What remains:
 - [ ] Harden `alwan_create` validation and pin ABI-facing enum values
 - [ ] Document the undocumented tail surface
 - [ ] Hunt inverse (3.0.0)
-- [ ] Find TM-30's 0.53 residual: not the integration, the blackbody, or the CCT
+- [x] TM-30 residual: the CCT was read on the 10 degree observer against a 2 degree locus
+- [ ] TM-30: re-measure the 33-illuminant sweep now the observer is fixed
 - [x] RGB-space transfer functions: audited against colour-science, 24 rows corrected, 7 curves added
 - [ ] RGB-space transfer functions: cover the 38 spaces colour-science has no counterpart for
 - [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
