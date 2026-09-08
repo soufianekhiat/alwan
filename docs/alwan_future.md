@@ -195,10 +195,12 @@ Done since this list was written: the UVW, HSLuv, HPLuv and HLC normalisation
 macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
 `alwan_zcam_from_ucs`, which gives ZCAM the round-trip symmetry CAM16 had.
 
-- native f32 numeric kernels for the metrics implemented as f64-widening
+- ~~native f32 numeric kernels for the metrics implemented as f64-widening
   facades (CRI/CQS/TM30/CIE224/SSI/metamerism, gamut volume/ratio/coverage,
   ZCAM) where single precision is sufficient, or formally document
-  them as intentional f64-internal facades (some already are)
+  them as intentional f64-internal facades (some already are)~~ *(documented:
+  [precision-and-limits.md](precision-and-limits.md) lists every facade and why
+  it stays one; the position taken there is that they should not be made native)*
 - f32 twin accessor for `alwan_pointer_gamut_boundary` and the other f64-only
   reference-data accessors, for full dual-precision interop
 
@@ -833,7 +835,7 @@ nonsense. What remains:
 - [ ] Close batch/map and `_map_planar` coverage gaps (CAMs, ZCAM, deltaE, CVD)
 - [ ] Add the bulk two-step Zhai 2018 CAT
 - [x] Fill API parity gaps: norm macros and scalar HSV<->HWB were already in; ZCAM `from_ucs` added
-- [ ] Add native-f32 metric kernels or document the f64 facades
+- [x] The f64 facades are documented, each with its reason, in precision-and-limits.md; they stay facades by design
 - [x] Harden `alwan_create` validation (non-zero flags and a half allocator pair return NULL); the 44 public enums were already fully pinned
 - [ ] Document the undocumented tail surface
 - [ ] Hunt inverse (3.0.0)
