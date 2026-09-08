@@ -2921,6 +2921,15 @@ alwan_status alwan_zcam_to_ucs_f32(alwan_jzazbz_f32 *Jab_out,
 alwan_status alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
                            alwan_zcam_correlates_f64 const *correlates);
 
+/* ZCAM-UCS back to correlates, the inverse of alwan_zcam_to_ucs
+ * Jab: input ZCAM-UCS coordinates [Jz, az, bz]
+ * correlates_out: output ZCAM correlates (Jz, Mz, hz filled; other fields set to 0)
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on null arguments */
+alwan_status alwan_zcam_from_ucs_f32(alwan_zcam_correlates_f32 *correlates_out,
+                             alwan_jzazbz_f32 const *Jab);
+alwan_status alwan_zcam_from_ucs_f64(alwan_zcam_correlates_f64 *correlates_out,
+                             alwan_jzazbz_f64 const *Jab);
+
 /* ----------------------------------------------------------------
  * RLAB Color Appearance Model
  * Based on Fairchild (1993, 1996)

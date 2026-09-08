@@ -215,12 +215,18 @@ int alwan_zcam_inverse_{T}(alwan_xyz_{T} *xyz,
 
 Latest CIE color appearance model with improved HDR support. Built on Jzazbz color space.
 
-### alwan_zcam_to_ucs_{T}
+### alwan_zcam_to_ucs_{T} / alwan_zcam_from_ucs_{T}
 
 ```c
 int alwan_zcam_to_ucs_{T}(alwan_jzazbz_{T} *Jab_out,
                             alwan_zcam_correlates_{T} const *correlates);
+
+int alwan_zcam_from_ucs_{T}(alwan_zcam_correlates_{T} *out,
+                              alwan_jzazbz_{T} const *Jab);
 ```
+
+The UCS is Jz with Mz and hz in Cartesian form, so the pair round-trips Jz, Mz
+and hz exactly; `from_ucs` sets the other correlates to 0, as CAM16's does.
 
 ---
 

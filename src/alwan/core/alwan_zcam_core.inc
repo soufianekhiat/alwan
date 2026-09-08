@@ -319,6 +319,21 @@ ALWAN_INLINE ALWAN_CORE_JZAZBZ ALWAN_CORE_FNVLIT(alwan_zcam_to_ucs)(ALWAN_CORE_F
     return result;
 }
 
+/* ZCAM-UCS back to correlates: Jz, Mz and hz exactly, the rest zero. */
+ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) ALWAN_CORE_FNVLIT(alwan_zcam_from_ucs)(ALWAN_CORE_JZAZBZ Jab) {
+    ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) result;
+
+    ALWAN_CORE_T hz = ALWAN_CORE_ATAN2(Jab.bz, Jab.az) * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
+    hz = ALWAN_CORE_SELECT(hz < ALWAN_CORE_ZERO, hz + ALWAN_CORE_LITERAL(360.0), hz);
+    result.Jz = Jab.Jz;
+    result.Mz = ALWAN_CORE_SQRT(Jab.az * Jab.az + Jab.bz * Jab.bz);
+    result.hz = hz;
+    result.Cz = ALWAN_CORE_ZERO; result.Qz = ALWAN_CORE_ZERO; result.Sz = ALWAN_CORE_ZERO;
+    result.Vz = ALWAN_CORE_ZERO; result.Kz = ALWAN_CORE_ZERO; result.Wz = ALWAN_CORE_ZERO;
+
+    return result;
+}
+
 /* Undefine local constants to avoid redefinition on second pass */
 #undef ZCAM_V_B
 #undef ZCAM_V_G

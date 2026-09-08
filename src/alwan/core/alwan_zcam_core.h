@@ -213,6 +213,20 @@ ALWAN_INLINE alwan_jzazbz alwan_zcam_to_ucs_v(alwan_zcam_v_correlates correlates
     return result;
 }
 
+/* ZCAM-UCS back to correlates. The UCS is the polar form of Mz and hz around Jz, so Jz, Mz and
+ * hz come back exactly and the other correlates, which the UCS does not carry, are zero. */
+ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_from_ucs_v(alwan_jzazbz Jab) {
+    alwan_zcam_v_correlates result;
+    alwan_scalar hz = ALWAN_ATAN2(Jab.bz, Jab.az) * ALWAN_LITERAL(180.0) / ALWAN_PI;
+    hz = ALWAN_SELECT(hz < ALWAN_ZERO, hz + ALWAN_LITERAL(360.0), hz);
+    result.Jz = Jab.Jz;
+    result.Mz = ALWAN_SQRT(Jab.az * Jab.az + Jab.bz * Jab.bz);
+    result.hz = hz;
+    result.Cz = ALWAN_ZERO; result.Qz = ALWAN_ZERO; result.Sz = ALWAN_ZERO;
+    result.Vz = ALWAN_ZERO; result.Kz = ALWAN_ZERO; result.Wz = ALWAN_ZERO;
+    return result;
+}
+
 #endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_ZCAM_CORE_H */

@@ -182,6 +182,29 @@ alwan_status alwan_zcam_to_ucs_f64(alwan_jzazbz_f64 *Jab_out,
 
     return ALWAN_OK;
 }
+
+alwan_status alwan_zcam_from_ucs_f64(alwan_zcam_correlates_f64 *correlates_out,
+                             alwan_jzazbz_f64 const *Jab) {
+    if (!correlates_out || !Jab) {
+        return ALWAN_E_INVALID;
+    }
+
+    alwan_zcam_v_correlates_f64 v = alwan_zcam_from_ucs_f64_v(*Jab);
+    correlates_out->Jz = v.Jz;
+    correlates_out->Cz = v.Cz;
+    correlates_out->hz = v.hz;
+    correlates_out->Qz = v.Qz;
+    correlates_out->Mz = v.Mz;
+    correlates_out->Sz = v.Sz;
+    correlates_out->Vz = v.Vz;
+    correlates_out->Kz = v.Kz;
+    correlates_out->Wz = v.Wz;
+
+    /* Same normalisation as the forward transform's output */
+    ALWAN_NORM_ZCAM(correlates_out);
+
+    return ALWAN_OK;
+}
 #endif /* ALWAN_WITH_F64_FACADE */
 
 #if ALWAN_WITH_F32
@@ -278,6 +301,22 @@ alwan_status alwan_zcam_to_ucs_f32(alwan_jzazbz_f32 *Jab_out,
     Jab_out->Jz = (alwan_f32)jab64.Jz;
     Jab_out->az = (alwan_f32)jab64.az;
     Jab_out->bz = (alwan_f32)jab64.bz;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_zcam_from_ucs_f32(alwan_zcam_correlates_f32 *correlates_out,
+                             alwan_jzazbz_f32 const *Jab) {
+    if (!correlates_out || !Jab) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_jzazbz_f64 jab64;
+    jab64.Jz = (alwan_f64)Jab->Jz;
+    jab64.az = (alwan_f64)Jab->az;
+    jab64.bz = (alwan_f64)Jab->bz;
+    alwan_zcam_correlates_f64 c64;
+    int rc = alwan_zcam_from_ucs_f64(&c64, &jab64);
+    if (rc != ALWAN_OK) return rc;
+    zcam_correlates_f64_to_f32(correlates_out, &c64);
     return ALWAN_OK;
 }
 #endif /* ALWAN_WITH_F32 */

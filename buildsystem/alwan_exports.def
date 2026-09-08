@@ -1501,6 +1501,8 @@ EXPORTS
     alwan_yellowness_astm_e313_f64
     alwan_zcam_forward_f32
     alwan_zcam_forward_f64
+    alwan_zcam_from_ucs_f32
+    alwan_zcam_from_ucs_f64
     alwan_zcam_inverse_f32
     alwan_zcam_inverse_f64
     alwan_zcam_to_ucs_f32

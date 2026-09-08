@@ -191,11 +191,10 @@ normalization macros that signal an unfinished map kernel:
 
 ### 8. API Parity And Dual-Precision Completeness
 
-- normalization macros for UVW (`ALWAN_NORM_UVW`), HSLuv/HPLuv
-  (`ALWAN_NORM_HSLUV` / `ALWAN_NORM_HPLUV`) and HLC (`ALWAN_NORM_HLC`) for
-  parity with HCL / IHLS / LCH under `ALWAN_NORMALIZE_RANGES`
-- ZCAM inverse-UCS (`from_ucs`) to match CAM16's round-trip symmetry
-- scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv` (currently map-only)
+Done since this list was written: the UVW, HSLuv, HPLuv and HLC normalisation
+macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
+`alwan_zcam_from_ucs`, which gives ZCAM the round-trip symmetry CAM16 had.
+
 - native f32 numeric kernels for the metrics implemented as f64-widening
   facades (CRI/CQS/TM30/CIE224/SSI/metamerism, gamut volume/ratio/coverage,
   ZCAM) where single precision is sufficient, or formally document
@@ -779,7 +778,7 @@ nonsense. What remains:
 - [ ] Extend the deterministic layer to trig/log10 and route the macros
 - [ ] Close batch/map and `_map_planar` coverage gaps (CAMs, ZCAM, deltaE, CVD)
 - [ ] Add the bulk two-step Zhai 2018 CAT
-- [ ] Fill API parity gaps (norm macros, ZCAM `from_ucs`, scalar HSV<->HWB)
+- [x] Fill API parity gaps: norm macros and scalar HSV<->HWB were already in; ZCAM `from_ucs` added
 - [ ] Add native-f32 metric kernels or document the f64 facades
 - [ ] Harden `alwan_create` validation and pin ABI-facing enum values
 - [ ] Document the undocumented tail surface

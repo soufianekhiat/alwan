@@ -108,6 +108,11 @@ All notable changes to this project will be documented in this file.
   current best, and a filled descriptor warm-starts `begin` or `solve`. The
   result is an ordinary `alwan_rgb_space_desc` plus `alwan_fit_tf`.
 
+- **`alwan_zcam_from_ucs`**, the inverse of `alwan_zcam_to_ucs`. Jz, Mz
+  and hz come back exactly and the other correlates are 0, as CAM16's
+  `from_ucs` does. ZCAM was the one appearance model with a UCS and no way
+  back from it.
+
 ### Fixed: output differs
 
 - **RGB-space transfer functions audited against colour-science.** Neither of
