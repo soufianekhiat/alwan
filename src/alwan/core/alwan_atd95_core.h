@@ -52,33 +52,33 @@ typedef struct {
 
 /* The constants the .inc emits per precision. Same values, single precision,
  * spelled for the GPU branch. */
-static const alwan_scalar ATD95_V_LMS_L_X = ALWAN_LITERAL(0.2435);
-static const alwan_scalar ATD95_V_LMS_L_Y = ALWAN_LITERAL(0.8524);
-static const alwan_scalar ATD95_V_LMS_L_Z = ALWAN_LITERAL(-0.0516);
-static const alwan_scalar ATD95_V_LMS_M_X = ALWAN_LITERAL(-0.3954);
-static const alwan_scalar ATD95_V_LMS_M_Y = ALWAN_LITERAL(1.1642);
-static const alwan_scalar ATD95_V_LMS_M_Z = ALWAN_LITERAL(0.0837);
-static const alwan_scalar ATD95_V_LMS_S_Y = ALWAN_LITERAL(0.04);
-static const alwan_scalar ATD95_V_LMS_S_Z = ALWAN_LITERAL(0.6225);
-static const alwan_scalar ATD95_V_L_SCALE = ALWAN_LITERAL(0.66);
-static const alwan_scalar ATD95_V_L_OFFSET = ALWAN_LITERAL(0.024);
-static const alwan_scalar ATD95_V_L_EXP = ALWAN_LITERAL(0.7);
-static const alwan_scalar ATD95_V_M_OFFSET = ALWAN_LITERAL(0.036);
-static const alwan_scalar ATD95_V_M_EXP = ALWAN_LITERAL(0.7);
-static const alwan_scalar ATD95_V_S_SCALE = ALWAN_LITERAL(0.43);
-static const alwan_scalar ATD95_V_S_OFFSET = ALWAN_LITERAL(0.31);
-static const alwan_scalar ATD95_V_S_EXP = ALWAN_LITERAL(0.7);
-static const alwan_scalar ATD95_V_RETINAL_SCALE = ALWAN_LITERAL(18.0);
-static const alwan_scalar ATD95_V_RETINAL_EXP = ALWAN_LITERAL(0.8);
-static const alwan_scalar ATD95_V_A1_L = ALWAN_LITERAL(3.57);
-static const alwan_scalar ATD95_V_A1_M = ALWAN_LITERAL(2.64);
-static const alwan_scalar ATD95_V_T1_L = ALWAN_LITERAL(7.18);
-static const alwan_scalar ATD95_V_T1_M = ALWAN_LITERAL(-6.21);
-static const alwan_scalar ATD95_V_D1_L = ALWAN_LITERAL(-0.7);
-static const alwan_scalar ATD95_V_D1_M = ALWAN_LITERAL(0.085);
-static const alwan_scalar ATD95_V_A2_SCALE = ALWAN_LITERAL(0.09);
-static const alwan_scalar ATD95_V_T2_T = ALWAN_LITERAL(0.43);
-static const alwan_scalar ATD95_V_T2_D = ALWAN_LITERAL(0.76);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_LMS_L_X = ALWAN_LITERAL(0.2435);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_LMS_L_Y = ALWAN_LITERAL(0.8524);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_LMS_L_Z = ALWAN_LITERAL(-0.0516);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_LMS_M_X = ALWAN_LITERAL(-0.3954);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_LMS_M_Y = ALWAN_LITERAL(1.1642);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_LMS_M_Z = ALWAN_LITERAL(0.0837);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_LMS_S_Y = ALWAN_LITERAL(0.04);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_LMS_S_Z = ALWAN_LITERAL(0.6225);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_L_SCALE = ALWAN_LITERAL(0.66);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_L_OFFSET = ALWAN_LITERAL(0.024);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_L_EXP = ALWAN_LITERAL(0.7);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_M_OFFSET = ALWAN_LITERAL(0.036);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_M_EXP = ALWAN_LITERAL(0.7);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_S_SCALE = ALWAN_LITERAL(0.43);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_S_OFFSET = ALWAN_LITERAL(0.31);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_S_EXP = ALWAN_LITERAL(0.7);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_RETINAL_SCALE = ALWAN_LITERAL(18.0);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_RETINAL_EXP = ALWAN_LITERAL(0.8);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_A1_L = ALWAN_LITERAL(3.57);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_A1_M = ALWAN_LITERAL(2.64);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_T1_L = ALWAN_LITERAL(7.18);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_T1_M = ALWAN_LITERAL(-6.21);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_D1_L = ALWAN_LITERAL(-0.7);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_D1_M = ALWAN_LITERAL(0.085);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_A2_SCALE = ALWAN_LITERAL(0.09);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_T2_T = ALWAN_LITERAL(0.43);
+ALWAN_CONSTEXPR alwan_scalar ATD95_V_T2_D = ALWAN_LITERAL(0.76);
 
 /* Sign-preserving power response for cone channels.
  *

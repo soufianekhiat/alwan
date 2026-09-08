@@ -52,7 +52,7 @@ ALWAN_CONSTEXPR alwan_mat4x4 ALWAN_PROLAB_MATRIX_Q_INV = {{
 #include "../data/prolab_matrix_q_inv.csv"
 }};
 
-static const alwan_scalar ALWAN_PROLAB_D65_WHITE[3] = {
+ALWAN_CONSTEXPR alwan_scalar ALWAN_PROLAB_D65_WHITE[3] = {
 #include "../data/white_d65_xyz_y1.csv"
 };
 

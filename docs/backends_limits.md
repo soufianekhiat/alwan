@@ -14,6 +14,53 @@ compile the *same* header-only per-pixel core kernels a second time, at single
 precision, by swapping a macro vocabulary. This document lists everything that
 does **not** carry over unchanged.
 
+## CUDA is not a fifth backend
+
+There is no `ALWAN_BACKEND_CUDA`, and adding one would have been the wrong
+shape. nvcc is a C++ compiler with a real `double`, so a CUDA build takes the C
+backend unchanged: the same dual-pass `.inc`, the same `_f32` and `_f64`
+functions, the whole core rather than a single-precision subset. Nothing in
+this document's list of what the shading languages lose applies to it.
+
+What it needs instead is a qualifier, keyed off `__CUDACC__` rather than off a
+backend id:
+
+| macro | C build | CUDA build |
+|---|---|---|
+| `ALWAN_INLINE` | `static inline` | `static __host__ __device__ inline` |
+| `ALWAN_FORCE_INLINE` | compiler-specific | `static __host__ __device__ __forceinline__` |
+| `ALWAN_CONSTEXPR` | `static const` | `static const __device__` in the device pass, `static const` in the host pass |
+
+That last row took two wrong turns first. Plain `__device__` on the tables makes
+them unreadable from the host, and the same table is wanted from both.
+`constexpr` covers the matrices, which are passed by value and so can be folded,
+but not the deterministic coefficient arrays, which reach Horner **by address**,
+and taking the address of a host object in device code is still an error. What
+works is the pass split: nvcc compiles the translation unit twice, and
+`__CUDA_ARCH__` is defined only in the device pass.
+
+Two compile flags are not optional:
+
+- `--expt-relaxed-constexpr`.
+- `--fmad=false`, the CUDA spelling of `-ffp-contract=off`. The
+  `#pragma STDC FP_CONTRACT OFF` in `alwan_deterministic.h` is a C compiler
+  pragma and **nvcc's device compiler does not honour it**, so on CUDA the
+  determinism contract rests on the command line instead.
+
+**Verified, RTX 3060 (sm_86) with CUDA 12.6.** All 43 core headers parse and
+type-check under nvcc, fast and deterministic
+(`alwan_dev/tools/check_cuda_compile.py`). Kernels run on the device and are
+compared against the same source on the host
+(`alwan_dev/cuda_regression/`). The deterministic sRGB transfer functions are
+**bit-exact between the CPU and the GPU**, both precisions, every sample.
+
+**Not closed:** the colour conversions differ between host and device by 6e-15
+to 1.7e-13 in f64, and `ALWAN_DETERMINISTIC` does not change that by a single
+digit. The residual is not in the transcendentals; it is in `alwan_mat3_mulv`,
+a plain sum of products that no `ALWAN_*` macro governs and that the determinism
+layer therefore does not reach. Closing it means giving that reduction the
+canonical ordered non-fusing treatment the SIMD horizontal sum already gets.
+
 > **Read this first: verification status.** Run-verified on a GPU (dxc + D3D12
 > WARP, matching the C reference; see `alwan_dev/hlsl_regression/`): the **AgX
 > analytic render** (fast ULP / det bit-exact) and the **deterministic sRGB +

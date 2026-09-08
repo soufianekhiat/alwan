@@ -15,6 +15,11 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+/* ALWAN_MEMCPY. This header used it without including its definition and
+ * compiled anyway, because every translation unit that reached it had already
+ * pulled in alwan_config.h through something else. Including a header on its
+ * own found it: nvcc reported ALWAN_MEMCPY undefined. */
+#include "../alwan_config.h"
 
 /* uint32_t and friends come from <stdint.h> on the CPU backends and from the
  * GPU spellings in alwan_types.h on a shading language, which has no C standard

@@ -26,6 +26,16 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(spd_planck_radiance)(ALWAN_CORE_T wa
                          * wavelength_m * wavelength_m;
     ALWAN_CORE_T exponent = c2 / (wavelength_m * temperature_K);
     ALWAN_CORE_T denominator = lambda5 * (ALWAN_CORE_EXP(exponent) - ALWAN_CORE_LITERAL(1.0));
-    if (ALWAN_CORE_ABS(denominator) < ALWAN_CORE_LITERAL(1e-100)) return ALWAN_CORE_LITERAL(0.0);
+    /* 1e-37, not 1e-100. This template is instantiated at both precisions, and
+     * 1e-100f is not a representable float: the f32 pass got an out-of-range
+     * constant, which is undefined behaviour and in practice folds to zero, so
+     * the guard was dead there and a zero denominator reached the division.
+     * nvcc rejects the literal outright, which is how this surfaced.
+     *
+     * 1e-37 is representable in both and is not reachable by any real
+     * temperature. The denominator is lambda^5 (exp(c2/(lambda T)) - 1), and
+     * lambda^5 is at least 6e-33 over the visible range, so falling below 1e-37
+     * needs exp(x) - 1 < 1.6e-5, which needs T above 2.5e9 K. */
+    if (ALWAN_CORE_ABS(denominator) < ALWAN_CORE_LITERAL(1e-37)) return ALWAN_CORE_LITERAL(0.0);
     return c1 / (ALWAN_CORE_PI * denominator);
 }

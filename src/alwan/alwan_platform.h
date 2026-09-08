@@ -115,12 +115,51 @@
  * 1.3 Qualifier Macros
  * ================================================================ */
 
+/* CUDA is not a fifth backend. It is the C backend compiled for a different
+ * processor: nvcc is a C++ compiler, it has a real `double`, and the dual-pass
+ * .inc include works there unchanged, so a CUDA build gets the whole core at
+ * both precisions rather than the single-precision subset the shading languages
+ * take. The only thing it needs is the qualifier, on every header-only function
+ * and on the constant tables they read.
+ *
+ * `__host__ __device__` rather than `__device__`: the same translation unit
+ * usually wants both, and a host-only call site must keep working.
+ *
+ * The tables are `static const` at file scope, which nvcc will not resolve from
+ * device code. Two spellings look like the fix and are not. Plain `__device__`
+ * makes them unreadable from the host, and the same table is wanted from both.
+ * `constexpr` covers the matrices, which are passed by value and so can be
+ * folded, but not the deterministic coefficient arrays, which are passed to
+ * Horner by address: taking the address of a host object in device code is
+ * still an error.
+ *
+ * What works for both is the pass split. nvcc compiles the translation unit
+ * twice, and `__CUDA_ARCH__` is defined only in the device pass, so the same
+ * declaration can carry `__device__` there and nothing in the host pass. Each
+ * pass then sees a table with the storage class it needs, by value or by
+ * address.
+ *
+ * The C build keeps `static const` unchanged. */
+#if defined(__CUDACC__)
+# define ALWAN_HD        __host__ __device__
+# if defined(__CUDA_ARCH__)
+#  define ALWAN_HD_CONST static const __device__
+# else
+#  define ALWAN_HD_CONST static const
+# endif
+#else
+# define ALWAN_HD
+# define ALWAN_HD_CONST  static const
+#endif
+
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
-# define ALWAN_INLINE    static inline
-# define ALWAN_CONSTEXPR static const
+# define ALWAN_INLINE    static ALWAN_HD inline
+# define ALWAN_CONSTEXPR ALWAN_HD_CONST
 # define ALWAN_TYPE_DEF  typedef
 # define ALWAN_UNUSED(x) (void)(x)
-# if defined(_MSC_VER)
+# if defined(__CUDACC__)
+#  define ALWAN_FORCE_INLINE static ALWAN_HD __forceinline__
+# elif defined(_MSC_VER)
 #  define ALWAN_FORCE_INLINE static __forceinline
 # elif defined(__GNUC__) || defined(__clang__)
 #  define ALWAN_FORCE_INLINE static __attribute__((always_inline)) inline

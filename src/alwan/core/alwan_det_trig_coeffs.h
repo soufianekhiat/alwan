@@ -63,7 +63,7 @@
 
 /* sin(r) / r as a polynomial in y = r*r, r in [-pi/4, pi/4]. */
 #if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
-static const alwan_f64 alwan_det_sin_coeffs_f64[8] = {
+ALWAN_CONSTEXPR alwan_f64 alwan_det_sin_coeffs_f64[8] = {
     +1.00000000000000000e+00,  /* c0 */
     -1.66666666666666657e-01,  /* c1 */
     +8.33333333333332107e-03,  /* c2 */
@@ -75,7 +75,7 @@ static const alwan_f64 alwan_det_sin_coeffs_f64[8] = {
 };
 #endif
 
-static const alwan_f32 alwan_det_sin_coeffs_f32[8] = {
+ALWAN_CONSTEXPR alwan_f32 alwan_det_sin_coeffs_f32[8] = {
     +1.00000000000000000e+00f,  /* c0 */
     -1.66666666666666657e-01f,  /* c1 */
     +8.33333333333332107e-03f,  /* c2 */
@@ -88,7 +88,7 @@ static const alwan_f32 alwan_det_sin_coeffs_f32[8] = {
 
 /* cos(r) as a polynomial in y = r*r, r in [-pi/4, pi/4]. */
 #if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
-static const alwan_f64 alwan_det_cos_coeffs_f64[9] = {
+ALWAN_CONSTEXPR alwan_f64 alwan_det_cos_coeffs_f64[9] = {
     +1.00000000000000000e+00,  /* c0 */
     -5.00000000000000000e-01,  /* c1 */
     +4.16666666666666644e-02,  /* c2 */
@@ -101,7 +101,7 @@ static const alwan_f64 alwan_det_cos_coeffs_f64[9] = {
 };
 #endif
 
-static const alwan_f32 alwan_det_cos_coeffs_f32[9] = {
+ALWAN_CONSTEXPR alwan_f32 alwan_det_cos_coeffs_f32[9] = {
     +1.00000000000000000e+00f,  /* c0 */
     -5.00000000000000000e-01f,  /* c1 */
     +4.16666666666666644e-02f,  /* c2 */
@@ -115,7 +115,7 @@ static const alwan_f32 alwan_det_cos_coeffs_f32[9] = {
 
 /* atan(s) / s as a polynomial in y = s*s, |s| <= tan(pi/8). */
 #if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
-static const alwan_f64 alwan_det_atan_coeffs_f64[14] = {
+ALWAN_CONSTEXPR alwan_f64 alwan_det_atan_coeffs_f64[14] = {
     +1.00000000000000000e+00,  /* c0 */
     -3.33333333333333315e-01,  /* c1 */
     +1.99999999999998568e-01,  /* c2 */
@@ -133,7 +133,7 @@ static const alwan_f64 alwan_det_atan_coeffs_f64[14] = {
 };
 #endif
 
-static const alwan_f32 alwan_det_atan_coeffs_f32[14] = {
+ALWAN_CONSTEXPR alwan_f32 alwan_det_atan_coeffs_f32[14] = {
     +1.00000000000000000e+00f,  /* c0 */
     -3.33333333333333315e-01f,  /* c1 */
     +1.99999999999998568e-01f,  /* c2 */

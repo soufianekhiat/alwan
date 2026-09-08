@@ -32,6 +32,34 @@ All notable changes to this project will be documented in this file.
   negative cone response is not recoverable, and a negative saturation is
   reported as `C = 0`. Neither is reachable from inside a real display gamut.
 
+- **The core builds and runs as CUDA device code.** Not as a fifth backend:
+  nvcc is a C++ compiler with a real `double`, so a CUDA build takes the C
+  backend unchanged, dual-pass `.inc` and all, and gets the whole core at both
+  precisions rather than the single-precision subset the shading languages
+  take. What it needed was `__host__ __device__` on the header-only functions
+  and a storage class for the constant tables that works from both passes, both
+  keyed off `__CUDACC__` in `alwan_platform.h`.
+
+  The tables were the interesting part. Plain `__device__` makes them
+  unreadable from the host, and `constexpr` covers the matrices, which pass by
+  value, but not the deterministic coefficient arrays, which reach Horner by
+  address. The answer is the pass split, since `__CUDA_ARCH__` is defined only
+  in the device pass. Getting there also routed 121 file-scope `static const`
+  declarations across 19 core headers through `ALWAN_CONSTEXPR`, which is the
+  macro that exists for exactly this and which they had been bypassing.
+
+  Verified on an RTX 3060 with CUDA 12.6: all 43 core headers compile, fast and
+  deterministic, and kernels run on the device and are compared against the same
+  source on the host. **The deterministic sRGB transfer functions are bit-exact
+  between the CPU and the GPU**, both precisions, every sample. The colour
+  conversions are not, and `ALWAN_DETERMINISTIC` does not change them at all:
+  the residual is in `alwan_mat3_mulv`, a plain sum of products that no
+  `ALWAN_*` macro governs. See `docs/backends_limits.md`.
+
+  `--fmad=false` is required. The `#pragma STDC FP_CONTRACT OFF` in
+  `alwan_deterministic.h` is a C compiler pragma and nvcc's device compiler does
+  not honour it.
+
 - **ColorChecker SG and BabelColor Average reference data.** The SG's 140
   patches (A1..N10, the formulation after November 2014) and BabelColor's
   average of 30 Classic charts, both xyY under D50 for the 1931 2 degree
@@ -133,6 +161,20 @@ All notable changes to this project will be documented in this file.
   back from it.
 
 ### Changed
+
+- **Planck's law: the zero-denominator guard was dead in single precision.**
+  `alwan_spd_core` compared against `1e-100`, and this template is instantiated
+  at both precisions. `1e-100f` is not a representable float, so the f32 pass
+  had an out-of-range constant, which is undefined behaviour and in practice
+  folds to zero; the guard could never fire there and a zero denominator reached
+  the division. It is `1e-37` now, representable in both and unreachable by any
+  real temperature: the denominator falls below it only above 2.5e9 K. Found by
+  compiling the core as CUDA, where nvcc rejects the literal outright.
+
+- **`alwan_half_core.h` includes the header defining `ALWAN_MEMCPY`.** It used
+  the macro without including `alwan_config.h` and compiled anyway, because
+  every translation unit that reached it had already pulled that in through
+  something else. Compiling the header on its own found it.
 
 - **The Hunt forward agrees with colour-science to `2.8e-14`, not `4.6e-08`.**
   Nothing in the forward moved. Its reference file was written five values per

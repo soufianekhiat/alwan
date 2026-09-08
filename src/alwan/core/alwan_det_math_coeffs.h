@@ -28,7 +28,7 @@
  * The caller multiplies by (m - 1). Fitting the quotient is what allows a
  * relative-error Remez here: log2 itself has a zero at m = 1. */
 #if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
-static const alwan_f64 alwan_det_log2_coeffs_f64[19] = {
+ALWAN_CONSTEXPR alwan_f64 alwan_det_log2_coeffs_f64[19] = {
     +1.66014999711537525e+00,  /* c0 */
     -2.63443390736583627e-01,  /* c1 */
     +5.71555072387625318e-02,  /* c2 */
@@ -51,7 +51,7 @@ static const alwan_f64 alwan_det_log2_coeffs_f64[19] = {
 };
 #endif
 
-static const alwan_f32 alwan_det_log2_coeffs_f32[19] = {
+ALWAN_CONSTEXPR alwan_f32 alwan_det_log2_coeffs_f32[19] = {
     +1.66014999711537525e+00f,  /* c0 */
     -2.63443390736583627e-01f,  /* c1 */
     +5.71555072387625318e-02f,  /* c2 */
@@ -75,7 +75,7 @@ static const alwan_f32 alwan_det_log2_coeffs_f32[19] = {
 
 /* exp2(t), t in [0.0, 1.0]; u = 2*t - 1 in [-1, 1]. */
 #if ALWAN_BACKEND == ALWAN_BACKEND_C  /* f64 table: C-only (GPU is single precision) */
-static const alwan_f64 alwan_det_exp2_coeffs_f64[13] = {
+ALWAN_CONSTEXPR alwan_f64 alwan_det_exp2_coeffs_f64[13] = {
     +1.41421356237309515e+00,  /* c0 */
     +4.90129071734273614e-01,  /* c1 */
     +8.49328960457687299e-02,  /* c2 */
@@ -92,7 +92,7 @@ static const alwan_f64 alwan_det_exp2_coeffs_f64[13] = {
 };
 #endif
 
-static const alwan_f32 alwan_det_exp2_coeffs_f32[13] = {
+ALWAN_CONSTEXPR alwan_f32 alwan_det_exp2_coeffs_f32[13] = {
     +1.41421356237309515e+00f,  /* c0 */
     +4.90129071734273614e-01f,  /* c1 */
     +8.49328960457687299e-02f,  /* c2 */
