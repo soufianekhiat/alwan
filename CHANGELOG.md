@@ -96,6 +96,14 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **`alwan_create` refuses a configuration that cannot be meant.** A
+  non-zero `flags`, which the header has always documented as reserved and
+  zero, or an `alloc_cb` without its `free_cb` and the reverse, now return
+  NULL. Before, the flags were stored and ignored, and a lone allocator was
+  paired with the default free, so custom memory was released by the wrong
+  function some time later. NULL is also what an allocation failure returns,
+  so a caller that already checks the result needs nothing new.
+
 - **`alwan_color_checker_num_patches` reports what alwan can hand you.** It
   returned 140 for the SG and 24 for BabelColor HCT while every lookup for
   those types returned an error. It now returns the length of the embedded

@@ -106,13 +106,15 @@ typedef void  (*alwan_free_fn)(void *ptr);
 
 /* Configuration structure */
 typedef struct {
-    alwan_alloc_fn alloc_cb;          /* Optional custom allocator (NULL = default) */
+    alwan_alloc_fn alloc_cb;          /* Optional custom allocator (NULL = default); set both callbacks or neither */
     alwan_free_fn  free_cb;           /* Optional custom deallocator (NULL = default) */
     char const *runtime_data_root;    /* Reserved: runtime data loading is not implemented (planned for alwan 3.0.0). Field is ignored. */
     uint32_t flags;                   /* Reserved for future use (must be 0) */
 } alwan_config;
 
-/* Create a new context with optional configuration */
+/* Create a new context with optional configuration.
+ * Returns NULL when allocation fails, and also when the configuration cannot be meant: a
+ * non-zero `flags`, or one of `alloc_cb` / `free_cb` without the other. */
 alwan_ctx *alwan_create(alwan_config const *cfg);
 
 /* Destroy context and release all resources */

@@ -24,6 +24,8 @@ Creates and initializes a new Alwan context.
 **Returns:**
 - Pointer to new context on success
 - `NULL` on allocation failure or initialization error
+- `NULL` for a configuration that cannot be meant: a non-zero `flags`, or one
+  of `alloc_cb` / `free_cb` without the other
 
 **Default behavior (config = NULL):**
 - Uses system `malloc`/`free` for allocation
@@ -88,7 +90,7 @@ Opaque context structure. Internal details are not exposed.
 
 ```c
 typedef struct {
-    alwan_alloc_fn alloc_cb;          // Optional custom allocator (NULL = default)
+    alwan_alloc_fn alloc_cb;          // Optional custom allocator (NULL = default); set both or neither
     alwan_free_fn  free_cb;           // Optional custom deallocator (NULL = default)
     char const *runtime_data_root;    // Reserved (runtime data loading is planned); currently ignored
     uint32_t flags;                   // Reserved for future use (must be 0)

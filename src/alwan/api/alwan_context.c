@@ -96,6 +96,13 @@ alwan_ctx *alwan_create(alwan_config const *cfg) {
     uint32_t flags          = 0;
 
     if (cfg) {
+        /* Refuse what cannot be meant. A non-zero reserved flag is a header/library mismatch or
+         * a stray value; an allocator without its free, or a free without its allocator, would
+         * pair custom memory with the default release, and the failure would come much later
+         * and somewhere else. Either is worth a NULL now. */
+        if (cfg->flags != 0) return NULL;
+        if ((cfg->alloc_cb == NULL) != (cfg->free_cb == NULL)) return NULL;
+
         if (cfg->alloc_cb) alloc_fn = cfg->alloc_cb;
         if (cfg->free_cb)  free_fn  = cfg->free_cb;
         data_root = cfg->runtime_data_root;

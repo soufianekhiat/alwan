@@ -204,11 +204,13 @@ macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
 
 ### 9. Robustness And ABI Stability
 
-- defensive validation in `alwan_create` (reject non-zero reserved flags,
+- ~~defensive validation in `alwan_create` (reject non-zero reserved flags,
   reject mismatched alloc/free callback pairs) instead of silently accepting
-  misuse
-- append-only ABI policy, or pinned explicit enumerator values, for
-  `alwan_rgb_space` and other ABI-facing enums, to allow safe future additions
+  misuse~~ *(done: both return NULL, suite 00 checks them)*
+- ~~append-only ABI policy, or pinned explicit enumerator values, for
+  `alwan_rgb_space` and other ABI-facing enums, to allow safe future additions~~
+  *(done: every enumerator in the 44 public enums carries an explicit value;
+  new values are appended, as the transfer-function and ACES 1.x additions were)*
 - ~~rename `gamut_volume_mc` to reflect that it returns an exact determinant~~
   *(done: renamed to `alwan_gamut_volume`, dead params dropped)*; a
   real Monte-Carlo **perceptual** gamut volume (Lab/Oklab solid) remains
@@ -793,7 +795,7 @@ nonsense. What remains:
 - [ ] Add the bulk two-step Zhai 2018 CAT
 - [x] Fill API parity gaps: norm macros and scalar HSV<->HWB were already in; ZCAM `from_ucs` added
 - [ ] Add native-f32 metric kernels or document the f64 facades
-- [ ] Harden `alwan_create` validation and pin ABI-facing enum values
+- [x] Harden `alwan_create` validation (non-zero flags and a half allocator pair return NULL); the 44 public enums were already fully pinned
 - [ ] Document the undocumented tail surface
 - [ ] Hunt inverse (3.0.0)
 - [x] TM-30 residual: the CCT was read on the 10 degree observer against a 2 degree locus; sweep now 0.0010 mean
