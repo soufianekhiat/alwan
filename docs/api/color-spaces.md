@@ -164,6 +164,70 @@ void alwan_ictcp_to_xyz_{T}(alwan_xyz_{T} *xyz, alwan_ictcp_{T} const *ictcp,
 
 ---
 
+### alwan_ipt_to_iptch_{T} / alwan_iptch_to_ipt_{T}
+
+```c
+void alwan_ipt_to_iptch_{T}(alwan_iptch_{T} *iptch, alwan_ipt_{T} const *ipt);
+void alwan_iptch_to_ipt_{T}(alwan_ipt_{T} *ipt, alwan_iptch_{T} const *iptch);
+```
+
+The cylindrical form of IPT: intensity, chroma, hue. Hue is **radians** natively,
+and maps to `[0, 1]` under the default normalization. See
+[ranges.md](../ranges.md).
+
+---
+
+## Perceptual Pickers
+
+Five spaces exist to be steered by hand rather than to measure with. They are
+defined against the **sRGB gamut**, and they take and return **encoded** sRGB,
+`[0, 1]` with the OETF applied, not linear light. All return `void`; see
+[api-conventions.md](../api-conventions.md) for what that means about null
+pointers.
+
+```c
+void alwan_hsluv_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_hsluv_{T} const *hsluv);
+void alwan_srgb_to_hsluv_{T}(alwan_hsluv_{T} *hsluv, alwan_rgb_{T} const *srgb);
+
+void alwan_hpluv_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_hpluv_{T} const *hpluv);
+void alwan_srgb_to_hpluv_{T}(alwan_hpluv_{T} *hpluv, alwan_rgb_{T} const *srgb);
+
+void alwan_okhsl_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_okhsl_{T} const *okhsl);
+void alwan_srgb_to_okhsl_{T}(alwan_okhsl_{T} *okhsl, alwan_rgb_{T} const *srgb);
+
+void alwan_okhsv_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_okhsv_{T} const *okhsv);
+void alwan_srgb_to_okhsv_{T}(alwan_okhsv_{T} *okhsv, alwan_rgb_{T} const *srgb);
+
+void alwan_cubehelix_to_rgb_{T}(alwan_rgb_{T} *rgb, alwan_cubehelix_{T} const *ch);
+void alwan_rgb_to_cubehelix_{T}(alwan_cubehelix_{T} *ch, alwan_rgb_{T} const *rgb);
+```
+
+| space | built on | what `s` means |
+|---|---|---|
+| HSLuv (Boronine) | CIE LCHuv | percentage of the maximum chroma sRGB holds at that hue and lightness |
+| HPLuv (Boronine) | CIE LCHuv | percentage of the minimum chroma across **all** hues at that lightness, so every triple is in gamut |
+| Okhsl (Ottosson 2021) | Oklab | perceptual saturation, gamut-aware |
+| Okhsv (Ottosson 2021) | Oklab | perceptual saturation, value rather than lightness |
+| Cubehelix (Green 2011) | Rec.601 luminance helix | amplitude of the helix, unbounded |
+
+**Choosing between them.** HSLuv keeps the saturated corners of sRGB reachable at
+the cost of `s` meaning a different chroma at every hue, so a swatch set built by
+sweeping hue at fixed `s` will not look equally colourful. HPLuv gives up those
+corners so that `s` is comparable across hues, which is why it produces pastels
+and why it is the better choice for categorical palettes. Okhsl and Okhsv are the
+Oklab equivalents and are the better default for a picker UI. Cubehelix is a
+visualization ramp with monotonically increasing luminance: it survives being
+printed in greyscale, which is what it was designed for.
+
+> **Read [ranges.md](../ranges.md) before passing literals.** The three
+> conventions disagree, and the default build normalizes two of them. HSLuv and
+> HPLuv are `h` `[0, 360)` and `s`, `l` `[0, 100]` in the model, but with
+> `ALWAN_NORMALIZE_RANGES` at its default of `1` the converters here take and
+> return all three in `[0, 1]`. Okhsl and Okhsv are `[0, 1]` either way.
+> Cubehelix normalizes only `h`, and clamps nothing on output.
+
+---
+
 ## RGB Conversions
 
 ### alwan_rgb_to_xyz_{T} / alwan_xyz_to_rgb_{T}

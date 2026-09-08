@@ -166,11 +166,51 @@ Notes:
 | `alwan_icacb_*` | intensity / chromatic axes, signed | unchanged; no normalization macro; all channels native |
 | `alwan_hcl_*` | `H` in radians `[-pi, pi]`, `C` unbounded, `L` bounded | `H` maps to `[0, 1]`; `L` remains bounded |
 | `alwan_ihls_*` | `H` in radians `[0, 2pi)`, `L` and `S` bounded | `H` maps to `[0, 1]`; `L` and `S` unchanged |
+| `alwan_hlc_*` | `H` in **degrees** `[0, 360)`, `L` `[0, 100]`, `C` unbounded | `H` and `L` map to `[0, 1]`; `C` unchanged |
 
 Notes:
 
 - The cylindrical modern spaces are where hue-unit confusion happens most often.
-- `Oklch`, `JzCzhz`, `IPTch`, and `HCL` do not use degrees natively.
+- `Oklch`, `JzCzhz`, `IPTch`, and `HCL` do not use degrees natively. `HLC` does,
+  despite the similar name: it is `LCH` with the channels reordered.
+
+---
+
+## Gamut-Anchored Pickers
+
+`HSLuv`, `HPLuv`, `Okhsl`, `Okhsv` and `Cubehelix` are picker spaces defined
+against the **sRGB gamut** rather than against colorimetry alone. They convert to
+and from **encoded** sRGB, `[0, 1]` with the OETF applied, not linear light. Their
+range conventions do not agree with one another, which is the trap:
+
+| Space | Native range shape | Public form with normalization enabled |
+|-------|--------------------|----------------------------------------|
+| `alwan_hsluv_*` | `h` degrees `[0, 360)`, `s` `[0, 100]`, `l` `[0, 100]` | **all three map to `[0, 1]`** |
+| `alwan_hpluv_*` | `h` degrees `[0, 360)`, `s` `[0, 100]`, `l` `[0, 100]` | **all three map to `[0, 1]`** |
+| `alwan_okhsl_*` | `h`, `s`, `l` all `[0, 1]` | unchanged; no normalization macro, the space is already `[0, 1]` |
+| `alwan_okhsv_*` | `h`, `s`, `v` all `[0, 1]` | unchanged; no normalization macro |
+| `alwan_cubehelix_*` | `h` degrees, `s` `[0, +)` unbounded, `l` `[0, 1]` | only `h` maps to `[0, 1]`; `s` and `l` unchanged |
+
+> **The header comments state the native ranges, not what you get.** `alwan.h`
+> documents HSLuv as `h: [0-360], s: [0-100], l: [0-100]`, and that is the
+> model's own convention. With `ALWAN_NORMALIZE_RANGES` at its default of `1`
+> the public converters apply `ALWAN_NORM_HSLUV` on the way out and
+> `ALWAN_DENORM_HSLUV` on the way in, so `alwan_srgb_to_hsluv_{T}` hands back all
+> three channels in `[0, 1]` and `alwan_hsluv_to_srgb_{T}` expects them that way.
+> Feeding a literal `h = 240` to the default build asks for hue 86400 degrees.
+
+The three that differ are worth keeping straight:
+
+- **HSLuv** at `s = 1` (normalized) is the most saturated colour sRGB holds at
+  that hue and lightness, so saturation means "fraction of what is available
+  here" and the same `s` is a different chroma at every hue.
+- **HPLuv** instead uses the *minimum* chroma available across all hues at that
+  lightness, so every `(h, s, l)` triple is inside sRGB and `s` is comparable
+  between hues. That is why it looks pastel: it gives up the saturated corners.
+- **Cubehelix** is a visualization scheme with monotonically increasing
+  luminance, not a picker. `alwan_cubehelix_to_rgb_{T}` evaluates
+  `l + s*l*(1-l) * (...)` and clamps nothing, so an unbounded `s` puts the result
+  outside `[0, 1]` by construction. Clamp what it returns, or keep `s` near 1.
 
 ---
 

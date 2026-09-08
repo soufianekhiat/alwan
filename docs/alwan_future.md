@@ -221,16 +221,19 @@ macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
 ### 10. Documentation Of The Undocumented Tail
 
 Measured, not estimated. Of **411 distinct base operations** on the public
-surface (precision and `_map_*` variants folded together), **91 have no entry in
+surface (precision and `_map_*` variants folded together), **79 have no entry in
 `docs/api/`**.
 
 Four are closed: the table sampling family now has [api/tables.md](api/tables.md),
 `alwan_gamut_map_spatial` plus the bulk gamut forms are in
 [api/gamut.md](api/gamut.md), the LUT bake, interchange and sampling surface
 (`alwan_bake_*`, `alwan_lut*`, `alwan_cube_*`, `alwan_clf_*`) is in
-[api/luts.md](api/luts.md), and the seven additional appearance models have their
+[api/luts.md](api/luts.md), the seven additional appearance models have their
 viewing conditions and their traps in
-[api/color-appearance.md](api/color-appearance.md).
+[api/color-appearance.md](api/color-appearance.md), and the perceptual pickers
+(HSLuv, HPLuv, Okhsl, Okhsv, Cubehelix, IPTch) are in
+[api/color-spaces.md](api/color-spaces.md) with their ranges in
+[ranges.md](ranges.md).
 
 The rest cluster, which is the useful part: they are whole areas with no page,
 not scattered omissions.
@@ -241,7 +244,6 @@ not scattered omissions.
 | `alwan_delta_e_*_batch` | 7 | batch deltaE, only the scalar forms are documented |
 | `alwan_agx_*`, `alwan_jp2499_*` | 9 | params and cube sampling for the AgX family |
 | `alwan_picture_*` | 5 | picture formation, covered by the topic doc only |
-| perceptual spaces | ~12 | `hsluv`, `hpluv`, `okhsl`, `okhsv`, `cubehelix`, `iptch` |
 | contrast / tone | ~6 | `apca_contrast`, `wcag_contrast_ratio`, `bt2390_eetf`, `bt2446b/c`, `reinhard_calibrated` |
 
 The full list is reproducible:

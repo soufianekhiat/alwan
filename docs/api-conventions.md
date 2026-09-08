@@ -254,6 +254,23 @@ ALWAN_PIXEL_F16
 - In general, callers should treat output buffers as undefined unless the
   function returned `ALWAN_OK`.
 
+### `void` converters do not validate pointers
+
+The per-pixel converters that return `void`, the `alwan_xyz_to_oklab_{T}` family
+and its neighbours, have no way to report a bad argument and do not check for
+one. They dereference what they are given, which is the same contract `memcpy`
+and the BLAS kernels use: the call is a few arithmetic operations, and a branch
+per call to catch a bug the caller already has is not worth paying for.
+
+**Do not pass `NULL` to a `void` converter.** Across the templated converters in
+`src/alwan/api/*_impl.inc`, 54 dereference directly and 30 happen to check, and
+26 of those 30 are in one file, the perceptual pickers. That split is an
+implementation detail, not a promise. If you need validation, do it once at your
+own boundary rather than relying on which side of it a given converter falls on.
+
+Fallible functions are a different matter: they take pointers they may reject
+and return `ALWAN_E_INVALID` for a null one, and that behaviour is contractual.
+
 ---
 
 ## Context Usage
