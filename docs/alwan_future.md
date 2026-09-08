@@ -750,14 +750,16 @@ a change to the corpus, not to alwan.
 channels are rejected rather than converted into a plausible-looking image of
 nonsense. What remains:
 
-- **FLOAT channels are converted, and values above 65504 saturate to inf.**
-  OpenEXR does the conversion, so this is correct up to that ceiling, but the
-  ceiling is silent. Worth fixing before the loader is pointed at the corpus for
-  the chromaticities question above, since an inf would corrupt exactly the
-  out-of-gamut statistics that question turns on.
-- **Non-zero data window origin is untested.** The code handles it through
-  `(y - dw.min.y)`, but no file in the corpus has overscan, so that path has
-  never run. Nice to have.
+- **FLOAT channels are decoded as FLOAT.** The loader once asked OpenEXR for
+  half on the way out, which saturated any FLOAT value above 65504 to inf,
+  silently. It asks for float now; HALF widens losslessly and FLOAT passes
+  through. `tools/exr_window_check.py` writes FLOAT files with values up to
+  191900 and reads them back exact.
+- **Non-zero data window origin is exercised.** No file in the corpus has
+  overscan, so the `(y - dw.min.y)` path had never run. `tools/exr_window_check.py`
+  writes a known pattern under four origins, including a negative one and one at
+  (1000, 2000), five compressions and both pixel types, and loads each through
+  `image_gen --exr-probe`: 40 of 40 pixel-exact, partial last chunk included.
 - **Alpha is not read.** 165 of 247 files carry an A channel; only R, G and B
   are routed into the buffer. This is by design for what image_gen does, and is
   recorded here only so the next reader does not take it for an oversight.
@@ -792,7 +794,7 @@ nonsense. What remains:
 - [ ] Exposure anchor: the one-stop cap gives back 0.8 of a 4.9-stop change; is that the right number
 - [ ] ACES 1.x HDR: implement the SSTS, then name the 1.0.3 and 1.3 transforms separately
 - [ ] Stamp chromaticities on the 151 undeclared corpus EXRs
-- [ ] EXR loader: exercise a non-zero data window origin
+- [x] EXR loader: non-zero data window origin, 40 of 40 files pixel-exact in tools/exr_window_check.py
 - [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation
 - [ ] Temporal picture formation: a time constant in seconds in the library (image_gen has one)
 - [x] Block-aware RGB space fit (built; measured no better than the cloud fit on real textures)
