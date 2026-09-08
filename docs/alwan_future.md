@@ -571,9 +571,39 @@ is what damps it.** Over a nearly static second:
 
 So converging harder moves the field toward the per-frame answer, and the
 per-frame answer flickers. Raising the budget to fix the trail made the flicker
-worse in the same shot. Whatever the per-frame solve is doing differently from
-one frame to the next has not been chased; it is the next thing to look at, since
-it caps how converged a frame is allowed to be.
+worse in the same shot.
+
+**Diagnosed: the flicker enters on the input side, and the solve is well posed.**
+Suite 108 rebuilds the situation with a known input, the same scene every frame
+with noise redrawn per frame, and measures the frame-to-frame rms movement of
+four things: the evidence base, the target it hands the solver, a cold solve at
+16 and at 200 iterations, and the resumed solve at 16.
+
+| scene, noise | base | target | cold 16 | cold 200 | resumed 16 |
+| --- | --- | --- | --- | --- | --- |
+| structured, 2% white | 0.0051 | 0.0028 | 0.0042 | 0.0042 | 0.0057 |
+| one edge 0 to 3 stops, 2% white | 0.0033 to 0.0050 | 0.0020 to 0.0030 | 0.0020 to 0.0038 | 0.0020 to 0.0046 | 0.0013 to 0.0050 |
+| structured, 5% grain | 0.0706 | 0.0366 | 0.0367 | 0.0366 | 0.0210 |
+| one edge 1.5 stops, 5% grain | 0.0695 | 0.0417 | 0.0417 | 0.0417 | 0.0228 |
+
+White noise does nothing: everything sits at a few thousandths of a stop and the
+cold solve moves at most 1.5 times what its target moves, at every edge contrast
+across the gate's thresholds. Grain, white noise blurred to a few pixels, which
+is what debayered and compressed footage carries, is a different matter: the
+evidence base follows it at 0.07 stops rms, the target at 0.04, and the cold
+solve reproduces its target to four decimals whether it runs 16 iterations or
+200. There is nothing in the solve that flickers; it renders the target it is
+given, and the target moves because the base's Jacobi is a regional consensus
+with a weak data anchor, which passes low spatial frequencies by design. The
+resumed solve halves the movement because it carries the base between frames.
+
+That is what the 0.145 on footage was: low-frequency change in the frames, grain
+and compression and small motion, read faithfully by a per-frame base. The remedy
+is temporal and belongs on the base, a filter on `base_io` that a cut resets,
+not in the solver; the level lag above takes the uniform part of it already. It
+is not done because on a moving picture a temporal filter on the base trades this
+flicker for a trail, the same trade the halo work went through, and choosing
+where to sit on it needs footage in front of it.
 
 **The one lever that helps all three is the adaptation strength**, and it costs
 the effect in proportion:
@@ -812,7 +842,8 @@ nonsense. What remains:
 - [x] RGB-space transfer functions: 79 of 104 in the reference; found GAMMA18_REC709 and DaVinci Intermediate recorded as linear, added the DaVinci curve
 - [x] RGB-space transfer functions: Blackmagic Film Gen 4 is the psychopath.io fit to Resolve; pinned to it and said so in the header
 - [x] Exposure adaptation: a time constant in seconds on the level, tau_light and tau_dark apart (alwan_picture_form_local_exp_lag)
-- [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
+- [x] Exposure field: the cold per-frame flicker is input side, the base following grain; the solve reproduces its target to four decimals (suite 108)
+- [ ] Exposure base: a temporal filter on base_io, reset at a cut, for grain and compression noise; needs footage to place the flicker/trail trade
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all
 - [ ] Exposure anchor: the one-stop cap gives back 0.8 of a 4.9-stop change; is that the right number
 - [x] ACES 1.x HDR: the SSTS is implemented; the 1.1 to 1.3 outputs are the default, the 1.0.3 ODTs are _V103
