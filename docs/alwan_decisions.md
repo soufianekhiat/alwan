@@ -280,8 +280,8 @@ and the inverse carried on as though its display-encoded input were already
 linear. Both now return the status they got. A picture that is wrong by an entire
 transfer function should not report success.
 
-**No transfer function is missing.** All 43 `alwan_transfer_function` values
-resolve to a real pair: 41 come from the table in `alwan_internal.h`, `LINEAR`
+**No transfer function is missing.** All 50 `alwan_transfer_function` values
+resolve to a real pair: 48 come from the table in `alwan_internal.h`, `LINEAR`
 and `ST2084` are handled explicitly in `alwan_tf_resolve.c`, and
 `ALWAN_TF_UNITY_LINEAR` is an alias of `ALWAN_TF_LINEAR` rather than a separate
 curve. The guard is there for an out-of-range value cast from an `int`, and for

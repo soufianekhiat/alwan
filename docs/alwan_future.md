@@ -681,8 +681,8 @@ Seventeen were real and are fixed, sourced from
 | sRGB to gamma 2.6 | P3-D65 |
 | BT.709 to linear | EBU Tech. 3213-E, which defines primaries only |
 
-Adobe Wide Gamut is gamma 2.19921875 and is carried as GAMMA22, which is exact to
-2e-4 and the closest the enum offers.
+Adobe Wide Gamut is gamma 2.19921875 and first went to GAMMA22, exact to 2e-4; it
+has its own value now, below.
 
 **Nine more were wrong because the library had no curve for them.** Seven were
 added: gamma 1.8, the ROMM encoding, RIMM, ERIMM, CIE 1976 lightness, the SMPTE
@@ -708,6 +708,26 @@ agree exactly.
 entries stay excluded by design, and the new enum values are appended so nothing
 renumbers. `gendata/gen_rgb_space_tf_reference.py` emits the reference and suite
 43 walks it, so the table cannot drift again without a test noticing.
+
+That left 38 spaces with no `RGB_COLOURSPACES` counterpart, and they are covered
+another way now. The ten log-curve entries (`ARRI_LOGC3`, `S_LOG3`, `V_LOG`, and
+so on) are checked against the colour-science gamut that bundles the same curve,
+the mirror of the exclusion above. S-Log, Canon Log and REDLog go against the
+curve functions directly, `REC1886_REC709` against the BT.709 OETF, `REC2100_PQ`
+and `DISPLAY_P3_HDR` against ST 2084 in cd/m2, which is alwan's PQ convention
+too, and `REC2100_HLG` against BT.2100. The fourteen `LINEAR_*` entries are
+checked against the identity and the composites against the gamma in their name.
+
+Two of those were wrong. `GAMMA18_REC709` was recorded as linear, and
+`DAVINCI_INTERMEDIATE` was recorded as linear because the library had no DaVinci
+Intermediate curve; it has one now (`ALWAN_TF_DAVINCI_INTERMEDIATE`, the
+published log with a linear toe below 0.00262409). A log-encoded delivery read as
+scene light is the kind of error that survives a long time, since the picture is
+merely flat rather than broken.
+
+78 of the 104 spaces are now in the reference, all within 8e-16. The 26 outside
+it are the 24 primaries-only entries, DCDM XYZ for the white convention above, and
+`BLACKMAGIC_FILM`, the Gen 4 curve, for which colour-science has only Gen 5.
 
 ## Corpus files carry no chromaticities
 
@@ -764,7 +784,8 @@ nonsense. What remains:
 - [ ] Hunt inverse (3.0.0)
 - [x] TM-30 residual: the CCT was read on the 10 degree observer against a 2 degree locus; sweep now 0.0010 mean
 - [x] RGB-space transfer functions: audited against colour-science, 24 rows corrected, 7 curves added
-- [ ] RGB-space transfer functions: cover the 38 spaces colour-science has no counterpart for
+- [x] RGB-space transfer functions: 78 of 104 in the reference; found GAMMA18_REC709 and DaVinci Intermediate recorded as linear, added the DaVinci curve
+- [ ] RGB-space transfer functions: Blackmagic Film Gen 4 has no public reference; find one or say so in the header
 - [ ] Exposure adaptation: a rate limiter in stops per second, and the dark/light asymmetry
 - [ ] Exposure field: why a cold per-frame solve moves 0.145 stops rms on a static scene
 - [ ] Exposure field: a multi-scale gate, so a defocused edge can be cut at all

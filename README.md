@@ -757,7 +757,7 @@ own. Those jobs verify a clean compile; the test suite runs from
   + HDR ICtCp/JzCzHz + spatial)
 - [x] ACES 1.x RRT+ODT pipeline: 12 output presets, validated against OCIO
 - [x] ACES 2.0 Output Transform: 12 output presets, JMh gamut mapping
-- [x] 43 transfer functions including all major camera log formats
+- [x] 50 transfer functions including all major camera log formats
 - [x] 18 view transforms (AgX original/punchy/golden/SB2383/Blender,
   BT.2446 A/B/C, BT.2390, Tony McMapface, Reinhard, Khronos PBR Neutral,
   Uchimura, Lottes, Exposure, ACES Rec.709) + JP2499 parameterized DRT

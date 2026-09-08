@@ -108,6 +108,39 @@ All notable changes to this project will be documented in this file.
   current best, and a filled descriptor warm-starts `begin` or `solve`. The
   result is an ordinary `alwan_rgb_space_desc` plus `alwan_fit_tf`.
 
+### Fixed: output differs
+
+- **RGB-space transfer functions audited against colour-science.** Neither of
+  the two tables naming each space's curve had ever been compared with
+  anything. 19 spaces were wrong: CIE RGB, Adobe Wide Gamut, Best, Beta,
+  Don 4, Ekta Space PS5, Max, Russell and Xtreme were linear and are gamma
+  2.2; SMPTE-C and NTSC 1987 were BT.709 and are gamma 2.2; NTSC 1953,
+  PAL/SECAM and BT.470 were BT.709 and are gamma 2.8; P3-D65 was sRGB and
+  is gamma 2.6; EBU Tech. 3213-E defines primaries only and is linear;
+  GAMMA18_REC709 and DaVinci Intermediate were linear and now carry their
+  curves. `gendata/gen_rgb_space_tf_reference.py` emits the reference for
+  78 of the 104 spaces and suite 43 holds every one to 1e-6.
+
+- **Eight transfer functions the library did not have**, appended to the
+  enum so nothing renumbers: `ALWAN_TF_GAMMA18` (Apple RGB, ColorMatch),
+  `ALWAN_TF_ROMM` (ProPhoto and ROMM, gamma 1.8 with a linear toe below
+  1/512), `ALWAN_TF_RIMM`, `ALWAN_TF_ERIMM`, `ALWAN_TF_LSTAR` (ECI RGB v2),
+  `ALWAN_TF_SMPTE240M`, `ALWAN_TF_ADOBE_RGB` (563/256 = 2.19921875, which
+  Adobe RGB and Adobe Wide Gamut carried as 2.2, wrong by 4.2e-4) and
+  `ALWAN_TF_DAVINCI_INTERMEDIATE`.
+
+- **`alwan_rgb_space_get_tfs` answers for every space.** It named 20 of the
+  104 spaces in a hand-written switch and refused the rest, ACEScct and every
+  camera log space among them. It reads the descriptor table now.
+
+- **TM-30 Rf took the CCT on the wrong observer.** The reference illuminant
+  was chosen from a CCT computed with the 10 degree white against the 2
+  degree Robertson locus, which put Illuminant A at 2789 K rather than
+  2856 K and pulled every Planckian reference off. The CCT is read on the 2
+  degree observer, as CRI and CQS already did. The sweep against
+  colour-science over 35 illuminants goes from 0.530 mean and 1.990 max to
+  0.0010 and 0.0058, which closes the item listed as known in 2.0.0.
+
 ## [2.0.0]
 
 First public release (tag `v2.0.0`).
