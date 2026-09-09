@@ -261,6 +261,48 @@
 #endif
 
 /* ================================================================
+ * 1.3.2 Deterministic GPU spellings
+ *
+ * The deterministic core's GPU branch is one body serving every
+ * single-pass backend, and three things in it are spelled per language.
+ *
+ *   ALWAN_DET_FREXP   HLSL writes the exponent through a reference and
+ *                     returns the mantissa; OpenCL takes a pointer, as C
+ *                     does. Same operation, different call.
+ *   ALWAN_DET_PRECISE Blocks mul+add fusion. HLSL has `precise`. OpenCL
+ *                     has no such qualifier and does not need one: the
+ *                     deterministic header issues `#pragma OPENCL
+ *                     FP_CONTRACT OFF`, which the spec defines and which
+ *                     the HLSL compilers have no equivalent of.
+ *   ALWAN_DET_UNROLL  A hint, never a correctness requirement.
+ *
+ * These exist so there is one GPU implementation rather than one per
+ * shading language. A second copy is how the two drift.
+ * ================================================================ */
+/* ALWAN_DET_EXPT is the fourth: the type the exponent is carried in. OpenCL
+ * follows C and makes it `int`; HLSL makes it the same float as the mantissa.
+ * That is why frexp and ldexp both need a spelling rather than just frexp. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_OPENCL
+# define ALWAN_DET_EXPT         int
+# define ALWAN_DET_FREXP(x, e)  frexp((x), &(e))
+# define ALWAN_DET_LDEXP(x, e)  ldexp((x), (int)(e))
+# define ALWAN_DET_PRECISE
+# define ALWAN_DET_UNROLL
+#elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL || ALWAN_BACKEND == ALWAN_BACKEND_GLSL
+# define ALWAN_DET_EXPT         alwan_scalar
+# define ALWAN_DET_FREXP(x, e)  frexp((x), (e))
+# define ALWAN_DET_LDEXP(x, e)  ldexp((x), (e))
+# define ALWAN_DET_PRECISE      precise
+# define ALWAN_DET_UNROLL       [unroll]
+#else
+# define ALWAN_DET_EXPT         int
+# define ALWAN_DET_FREXP(x, e)  frexp((x), &(e))
+# define ALWAN_DET_LDEXP(x, e)  ldexp((x), (int)(e))
+# define ALWAN_DET_PRECISE
+# define ALWAN_DET_UNROLL
+#endif
+
+/* ================================================================
  * 1.3.1 Parameter Passing Macros
  *
  * Abstraction for passing large types (mat3x3) and output params:
@@ -541,14 +583,39 @@
  * parity is ULP-approximate (a deterministic GPU leg is future work). */
 #if ALWAN_BACKEND != ALWAN_BACKEND_C
 # if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
-/* det GPU: route the sRGB / BT.2020 transfer through the deterministic
- * polynomials (defined in core/alwan_deterministic.h, pulled into the GPU setup
- * under det) so det-GPU is bit-exact with det-C on every determinized transfer.
- * General pow/log2 stay hardware -- matching C-det, which also uses libm. */
+/* det GPU: route through the deterministic polynomials in
+ * core/alwan_deterministic.h, so a deterministic GPU build is bit-exact with a
+ * deterministic C one.
+ *
+ * This used to route the four transfer functions and stop, on the stated
+ * grounds that "general pow/log2 stay hardware, matching C-det, which also uses
+ * libm". C-det does not use libm for those, and never did: alwan_math.h routes
+ * them to the polynomials. The claim came from the same misreading that left
+ * the header-only core on libm, and the effect here was the same. Measured on
+ * OpenCL against a deterministic host, srgb_oetf was exact and xyz_to_oklab was
+ * not, because the cube root fell through to the hardware intrinsic.
+ *
+ * The angle family is deliberately still hardware on this path, and that is the
+ * remaining gap rather than a decision: sin, cos, tan, tanh, atan, atan2 and
+ * acos need their argument reduction ported to this branch. Nothing in the
+ * current GPU kernels reaches them, and claiming a deterministic GPU build
+ * without them would be claiming more than is true. See docs/determinism.md. */
 #  define ALWAN_SRGB_EOTF(x)    alwan_det_srgb_eotf(x)
 #  define ALWAN_SRGB_OETF(x)    alwan_det_srgb_oetf(x)
 #  define ALWAN_BT2020_OETF(x)  alwan_det_bt2020_oetf(x)
 #  define ALWAN_BT2020_EOTF(x)  alwan_det_bt2020_eotf(x)
+#  undef  ALWAN_POW
+#  undef  ALWAN_CBRT
+#  undef  ALWAN_EXP
+#  undef  ALWAN_LN
+#  undef  ALWAN_LOG2
+#  undef  ALWAN_LOG10
+#  define ALWAN_POW(x, y)       alwan_det_pow_pos((x), (y))
+#  define ALWAN_CBRT(x)         alwan_det_cbrt(x)
+#  define ALWAN_EXP(x)          alwan_det_exp(x)
+#  define ALWAN_LN(x)           alwan_det_log(x)
+#  define ALWAN_LOG2(x)         alwan_det_log2(x)
+#  define ALWAN_LOG10(x)        alwan_det_log10(x)
 # else
 #  define ALWAN_SRGB_EOTF(x)  ALWAN_SELECT((x) <= ALWAN_LITERAL(0.04045), \
         (x) / ALWAN_LITERAL(12.92), \

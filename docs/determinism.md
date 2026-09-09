@@ -45,6 +45,24 @@ Apple Silicon.
 > 1 ULP for `atan`. Suite 109 pins all of it, and checks the C against the
 > generator's own model of the algorithm, where it agrees bit for bit.
 
+> **Where the GPU paths stand.** A deterministic CUDA build is bit-exact against
+> a deterministic CPU on every kernel measured, both precisions
+> (`alwan_dev/cuda_regression/`). CUDA takes the C emission path, so it gets the
+> whole deterministic layer.
+>
+> The single-pass GPU backends (HLSL, GLSL, OpenCL) have their own smaller
+> implementation of that layer, and it is not complete. It covers `log2`,
+> `exp2`, `pow_pos`, `cbrt`, `exp`, `ln`, `log10` and the four sRGB / BT.2020
+> transfer functions. **The angle family is still on hardware there**: `sin`,
+> `cos`, `tan`, `tanh`, `atan`, `atan2` and `acos` need their argument reduction
+> ported to that branch. Nothing in the current GPU kernels reaches them, which
+> is why it has not bitten, and it is a gap rather than a decision.
+>
+> Measured on OpenCL against a deterministic host, two of six conversions are
+> bit-exact and four differ by 2 ULP to 1.2e-04. That is undiagnosed and is not
+> asserted away; `alwan_dev/opencl_regression/` names the exact ones, holds them
+> at zero so they cannot regress, and records what has been ruled out.
+
 The cross-platform regression harness for this mode lives in the sibling
 `alwan_dev` repository; this repository contains the production implementation.
 

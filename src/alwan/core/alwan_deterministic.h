@@ -65,7 +65,13 @@
 #elif defined(_MSC_VER)
 #  pragma fp_contract(off)
 #endif
-#endif /* ALWAN_BACKEND_C -- GPU blocks fusion with `precise` instead */
+#elif ALWAN_BACKEND == ALWAN_BACKEND_OPENCL
+/* OpenCL's own spelling of the same contract. The C pragma above is spelled
+ * `STDC`, this one `OPENCL`, and both say the compiler may not fuse a*b+c into
+ * a single-rounding fma. HLSL and GLSL have no pragma for it and use `precise`
+ * on the accumulator instead. */
+#pragma OPENCL FP_CONTRACT OFF
+#endif /* per-backend contraction control */
 
 #include "../alwan_types.h"
 #include "alwan_det_srgb_coeffs.h"
@@ -572,38 +578,80 @@ ALWAN_INLINE alwan_f32 alwan_det_bt2020_eotf_f32(alwan_f32 x) {
 }
 
 #else /* ================= GPU backends (single precision) ================= *
- * Inlined deterministic transcendentals for the AgX GPU kernel: same
- * polynomials and coefficient tables as the C _f32 path, but frexp/ldexp/floor
- * are HLSL intrinsics and the Horner loop is inlined with `precise` so dxc does
- * not fuse mul+add into mad (the C path relies on FP_CONTRACT OFF for exactly
- * that). Bit-exact with det-C by construction; runtime parity is pending a GPU
- * test runner. */
+ * Inlined deterministic transcendentals, one body for every single-pass
+ * backend: HLSL, GLSL and OpenCL. Same polynomials and the same committed
+ * coefficient tables as the C _f32 path.
+ *
+ * The three per-language spellings live in alwan_platform.h. frexp writes its
+ * exponent through a reference in HLSL and through a pointer in OpenCL.
+ * Blocking mul+add fusion is `precise` in HLSL and the FP_CONTRACT pragma above
+ * in OpenCL, which is why ALWAN_DET_PRECISE is empty there rather than missing.
+ * The unroll is a hint either way.
+ *
+ * Bit-exact with det-C by construction. Verified on OpenCL against the C
+ * library (alwan_dev/opencl_regression); the HLSL runtime check covers the
+ * transfer functions only. */
 
 ALWAN_INLINE alwan_scalar alwan_det_log2(alwan_scalar x) {
-    alwan_scalar e; alwan_scalar m = frexp(x, e);   /* m in [0.5,1), e = exponent */
+    /* The C twin returns -INFINITY here and this branch had no guard at all,
+     * so log2 of zero or a negative went into frexp and came back as whatever
+     * the polynomial made of a zero mantissa. Not reachable from the transfer
+     * functions, which clamp first, but reachable the moment anything else on
+     * a GPU path calls it, and a silent difference from the C path either way. */
+    if (x <= (alwan_scalar)0.0) return -ALWAN_LITERAL(1.0) / (alwan_scalar)0.0;
+    {
+    ALWAN_DET_EXPT e; alwan_scalar m = ALWAN_DET_FREXP(x, e);   /* m in [0.5,1), e = exponent */
     alwan_scalar u = (alwan_scalar)2.0 * (m - (alwan_scalar)0.5) / (alwan_scalar)0.5 - (alwan_scalar)1.0;
-    precise alwan_scalar acc = alwan_det_log2_coeffs_f32[ALWAN_DET_LOG2_DEGREE];
-    [unroll] for (int i = ALWAN_DET_LOG2_DEGREE - 1; i >= 0; --i) {
-        precise alwan_scalar t = acc * u; acc = t + alwan_det_log2_coeffs_f32[i];
+    ALWAN_DET_PRECISE alwan_scalar acc = alwan_det_log2_coeffs_f32[ALWAN_DET_LOG2_DEGREE];
+    ALWAN_DET_UNROLL for (int i = ALWAN_DET_LOG2_DEGREE - 1; i >= 0; --i) {
+        ALWAN_DET_PRECISE alwan_scalar t = acc * u; acc = t + alwan_det_log2_coeffs_f32[i];
     }
     /* The table is log2(m)/(m-1); reconstruct. Mirrors the C _f32 path. */
-    precise alwan_scalar lg = (m - (alwan_scalar)1.0) * acc;
-    return e + lg;
+    ALWAN_DET_PRECISE alwan_scalar lg = (m - (alwan_scalar)1.0) * acc;
+    return (alwan_scalar)e + lg;
+    }
 }
 
 ALWAN_INLINE alwan_scalar alwan_det_exp2(alwan_scalar t) {
     alwan_scalar ip = floor(t);
     alwan_scalar u = (alwan_scalar)2.0 * (t - ip) - (alwan_scalar)1.0;  /* frac[0,1)->[-1,1] */
-    precise alwan_scalar acc = alwan_det_exp2_coeffs_f32[ALWAN_DET_EXP2_DEGREE];
-    [unroll] for (int i = ALWAN_DET_EXP2_DEGREE - 1; i >= 0; --i) {
-        precise alwan_scalar tt = acc * u; acc = tt + alwan_det_exp2_coeffs_f32[i];
+    ALWAN_DET_PRECISE alwan_scalar acc = alwan_det_exp2_coeffs_f32[ALWAN_DET_EXP2_DEGREE];
+    ALWAN_DET_UNROLL for (int i = ALWAN_DET_EXP2_DEGREE - 1; i >= 0; --i) {
+        ALWAN_DET_PRECISE alwan_scalar tt = acc * u; acc = tt + alwan_det_exp2_coeffs_f32[i];
     }
-    return ldexp(acc, ip);
+    return ALWAN_DET_LDEXP(acc, ip);
 }
 
 ALWAN_INLINE alwan_scalar alwan_det_pow_pos(alwan_scalar x, alwan_scalar e) {
     if (x <= (alwan_scalar)0.0) return (alwan_scalar)0.0;
     return alwan_det_exp2(e * alwan_det_log2(x));
+}
+
+/* Everything that is an exact identity over the pair above, mirroring the C
+ * _f32 definitions line for line. These were missing from this branch, and the
+ * absence was not visible: without them ALWAN_CORE_CBRT and friends fell
+ * through to the hardware intrinsic, so a deterministic GPU build was
+ * deterministic for the four transfer functions and nothing else. Measured on
+ * OpenCL against a deterministic host, that showed as xyz_to_oklab differing
+ * while srgb_oetf was exact. */
+ALWAN_INLINE alwan_scalar alwan_det_cbrt(alwan_scalar x) {
+    if (x == (alwan_scalar)0.0) return (alwan_scalar)0.0;
+    {
+    alwan_scalar a = (x < (alwan_scalar)0.0) ? -x : x;
+    alwan_scalar r = alwan_det_pow_pos(a, (alwan_scalar)(1.0 / 3.0));
+    return (x < (alwan_scalar)0.0) ? -r : r;
+    }
+}
+ALWAN_INLINE alwan_scalar alwan_det_exp(alwan_scalar x) {
+    /* e^x = 2^(x * log2(e)) */
+    return alwan_det_exp2(x * (alwan_scalar)1.4426950408889634073599246810018922);
+}
+ALWAN_INLINE alwan_scalar alwan_det_log(alwan_scalar x) {
+    /* ln(x) = log2(x) * ln(2) */
+    return alwan_det_log2(x) * (alwan_scalar)0.69314718055994530941723212145817657;
+}
+ALWAN_INLINE alwan_scalar alwan_det_log10(alwan_scalar x) {
+    return alwan_det_log2(x) * (alwan_scalar)ALWAN_DET_LOG10_2;
 }
 
 /* The four TFs, mirroring the C _f32 helpers exactly: same pow_pos, same
@@ -617,7 +665,7 @@ ALWAN_INLINE alwan_scalar alwan_det_pow_pos(alwan_scalar x, alwan_scalar e) {
 ALWAN_INLINE alwan_scalar alwan_det_srgb_oetf(alwan_scalar x) {
     if (x <= (alwan_scalar)ALWAN_DET_SRGB_OETF_BREAK)
         return (alwan_scalar)ALWAN_DET_SRGB_OETF_LINEAR * x;
-    precise alwan_scalar p = alwan_det_pow_pos(x, (alwan_scalar)(1.0 / 2.4));
+    ALWAN_DET_PRECISE alwan_scalar p = alwan_det_pow_pos(x, (alwan_scalar)(1.0 / 2.4));
     return (alwan_scalar)ALWAN_DET_SRGB_OETF_ALPHA * p - (alwan_scalar)ALWAN_DET_SRGB_OETF_BETA;
 }
 
@@ -631,7 +679,7 @@ ALWAN_INLINE alwan_scalar alwan_det_srgb_eotf(alwan_scalar x) {
 ALWAN_INLINE alwan_scalar alwan_det_bt2020_oetf(alwan_scalar x) {
     if (x <= (alwan_scalar)ALWAN_DET_BT2020_OETF_BREAK)
         return (alwan_scalar)ALWAN_DET_BT2020_OETF_LINEAR * x;
-    precise alwan_scalar p = alwan_det_pow_pos(x, (alwan_scalar)0.45);
+    ALWAN_DET_PRECISE alwan_scalar p = alwan_det_pow_pos(x, (alwan_scalar)0.45);
     return (alwan_scalar)ALWAN_DET_BT2020_OETF_ALPHA * p - (alwan_scalar)ALWAN_DET_BT2020_OETF_BETA;
 }
 
