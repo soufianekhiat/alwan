@@ -58,6 +58,21 @@ All notable changes to this project will be documented in this file.
   each need compensation. `ALWAN_ABS` maps to `fabs`, since OpenCL C `abs` is
   the integer one.
 
+  **A deterministic OpenCL build is bit-exact against a deterministic CPU**, all
+  six kernels measured, every sample. That is determinism across an architecture
+  boundary and across two different languages, which is more than the CUDA
+  result shows, since CUDA compiles the same source on both sides.
+
+  It needs two things beyond the polynomials. Contraction is handled by
+  `#pragma OPENCL FP_CONTRACT OFF` in the deterministic header. Division is not:
+  **OpenCL does not require single-precision divide to be correctly rounded**,
+  it allows 2.5 ULP, so `-cl-fp32-correctly-rounded-divide-sqrt` is required.
+  Without it four of the six differ. It hides behind the primitives, because
+  `log2`, `exp2`, `pow_pos` and `cbrt` divide only by `0.5` and are exact
+  either way, while the sRGB EOTF divides by `1.055` and Lab by the white
+  point. The flag is an optional device capability, so
+  `CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT` has to be checked before the claim.
+
 - **CUDA backend: the per-pixel core is callable from your own kernel.** The
   same shape as HLSL, GLSL and Halide. Alwan does not dispatch, allocate device
   memory or own the image; you write the `__global__` function, index the pixel

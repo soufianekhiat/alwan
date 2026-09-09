@@ -58,10 +58,21 @@ Apple Silicon.
 > ported to that branch. Nothing in the current GPU kernels reaches them, which
 > is why it has not bitten, and it is a gap rather than a decision.
 >
-> Measured on OpenCL against a deterministic host, two of six conversions are
-> bit-exact and four differ by 2 ULP to 1.2e-04. That is undiagnosed and is not
-> asserted away; `alwan_dev/opencl_regression/` names the exact ones, holds them
-> at zero so they cannot regress, and records what has been ruled out.
+> Measured on OpenCL against a deterministic host, **all six conversions are
+> bit-exact**. Determinism therefore holds across an architecture boundary and
+> across two different languages, which is more than the CUDA harness shows:
+> that one compiles the same source on both sides.
+>
+> A deterministic OpenCL build needs TWO things beyond the polynomials, and the
+> second is easy to miss. Contraction is handled by `#pragma OPENCL FP_CONTRACT
+> OFF` in the deterministic header. **Division is not**: OpenCL does not require
+> single-precision divide to be correctly rounded, it allows 2.5 ULP, and
+> `-cl-fp32-correctly-rounded-divide-sqrt` is what asks for IEEE. Without it,
+> four of the six differ. It hides behind the primitives, because `log2`,
+> `exp2`, `pow_pos` and `cbrt` divide only by `0.5` and are exact either way;
+> the sRGB EOTF divides by `1.055` and Lab by the white point. The flag is an
+> optional device capability, so a device that does not report
+> `CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT` cannot make the claim.
 
 The cross-platform regression harness for this mode lives in the sibling
 `alwan_dev` repository; this repository contains the production implementation.

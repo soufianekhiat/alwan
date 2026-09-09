@@ -30,6 +30,16 @@ headers build, and six conversions run on the device and agree with the compiled
 C library to the f32 rounding scale of each (`alwan_dev/opencl_regression/`).
 The runtime is the compiler, so `clBuildProgram` is the compile check.
 
+**A deterministic OpenCL build is bit-exact against a deterministic CPU**, all
+six kernels, every sample. That needs two things beyond the polynomials.
+Contraction is handled by `#pragma OPENCL FP_CONTRACT OFF` in the deterministic
+header. Division is not: OpenCL does not require single-precision divide to be
+correctly rounded, it allows 2.5 ULP, so
+**`-cl-fp32-correctly-rounded-divide-sqrt` is required**. Without it four of the
+six differ, and it hides behind the primitives because `log2`, `exp2`,
+`pow_pos` and `cbrt` divide only by `0.5`. It is an optional device capability,
+so check `CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT` before claiming bit-exactness.
+
 Two things carry over better than they do to the shading languages. OpenCL C has
 a signed `cbrt` and a truncating `fmod`, both matching libm, where HLSL and GLSL
 need compensation for each. And it has real pointers, so an output parameter is
