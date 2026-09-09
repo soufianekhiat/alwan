@@ -111,13 +111,16 @@ alwan_status alwan_srgb_to_lab_f64(alwan_lab_f64 *lab, alwan_rgb_f64 const *rgb)
     alwan_xyz_f64 wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
     alwan_xyz_f64 xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
     *lab = alwan_xyz_to_lab_f64_v(xyz_s, wp);
+    ALWAN_NORM_LAB(lab);
     return ALWAN_OK;
 }
 
 alwan_status alwan_lab_to_srgb_f64(alwan_rgb_f64 *rgb, alwan_lab_f64 const *lab) {
     if (!lab || !rgb) return ALWAN_E_INVALID;
     alwan_xyz_f64 wp = {D65_WP_Y1[0], D65_WP_Y1[1], D65_WP_Y1[2]};
-    alwan_xyz_f64 xyz = alwan_lab_to_xyz_f64_v(*lab, wp);
+    alwan_lab_f64 lab_n = *lab;
+    ALWAN_DENORM_LAB(&lab_n);
+    alwan_xyz_f64 xyz = alwan_lab_to_xyz_f64_v(lab_n, wp);
     alwan_vec3_f64 v = {{xyz.x, xyz.y, xyz.z}};
     alwan_vec3_f64 lin = alwan_mat3_mulv_f64_v(XYZ_TO_SRGB, v);
     rgb->r = alwan_srgb_oetf_f64(lin.v[0]); rgb->g = alwan_srgb_oetf_f64(lin.v[1]); rgb->b = alwan_srgb_oetf_f64(lin.v[2]);
@@ -169,13 +172,16 @@ alwan_status alwan_srgb_to_lab_f32(alwan_lab_f32 *lab, alwan_rgb_f32 const *rgb)
     alwan_xyz_f32 wp = {D65_WP_Y1_f32[0], D65_WP_Y1_f32[1], D65_WP_Y1_f32[2]};
     alwan_xyz_f32 xyz_s = {xyz.v[0], xyz.v[1], xyz.v[2]};
     *lab = alwan_xyz_to_lab_f32_v(xyz_s, wp);
+    ALWAN_NORM_LAB(lab);
     return ALWAN_OK;
 }
 
 alwan_status alwan_lab_to_srgb_f32(alwan_rgb_f32 *rgb, alwan_lab_f32 const *lab) {
     if (!lab || !rgb) return ALWAN_E_INVALID;
     alwan_xyz_f32 wp = {D65_WP_Y1_f32[0], D65_WP_Y1_f32[1], D65_WP_Y1_f32[2]};
-    alwan_xyz_f32 xyz = alwan_lab_to_xyz_f32_v(*lab, wp);
+    alwan_lab_f32 lab_n = *lab;
+    ALWAN_DENORM_LAB(&lab_n);
+    alwan_xyz_f32 xyz = alwan_lab_to_xyz_f32_v(lab_n, wp);
     alwan_vec3_f32 v = {{xyz.x, xyz.y, xyz.z}};
     alwan_vec3_f32 lin = alwan_mat3_mulv_f32_v(XYZ_TO_SRGB_f32, v);
     rgb->r = alwan_srgb_oetf_f32(lin.v[0]); rgb->g = alwan_srgb_oetf_f32(lin.v[1]); rgb->b = alwan_srgb_oetf_f32(lin.v[2]);

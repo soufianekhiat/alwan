@@ -856,13 +856,37 @@ alwan_status ALWAN_MAP_LITCAT(alwan_cmy_to_rgb, _map_planar)(alwan_map_lane *out
 /* RGB <-> YCoCg */
 alwan_status ALWAN_MAP_LITCAT(alwan_rgb_to_ycocg, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
-    ALWAN_MAP3_P_TILED_PLANAR(in0, in1, in2, in_stride, out0, out1, out2, out_stride, count, ALWAN_MAP_LIT(alwan__rgb_to_ycocg_kernel));
+    size_t off = 0;
+    while (off < count) {
+        size_t tile = count - off;
+        if (tile > ALWAN_MAP_TILE_PIXELS) tile = ALWAN_MAP_TILE_PIXELS;
+        ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
+        ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
+        ALWAN_MAP_NAME(alwan__load_tile_planar3)(c0, c1, c2, in0, in1, in2, off, in_stride, tile);
+        ALWAN_MAP_LIT(alwan__rgb_to_ycocg_kernel)(d0, d1, d2, c0, c1, c2, tile);
+        ALWAN_MAP_P_NORM_ADD(d1, tile, 0.5);
+        ALWAN_MAP_P_NORM_ADD(d2, tile, 0.5);
+        ALWAN_MAP_NAME(alwan__store_tile_planar3)(out0, out1, out2, off, out_stride, d0, d1, d2, tile);
+        off += tile;
+    }
     return ALWAN_OK;
 }
 
 alwan_status ALWAN_MAP_LITCAT(alwan_ycocg_to_rgb, _map_planar)(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, size_t count) {
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID;
-    ALWAN_MAP3_P_TILED_PLANAR(in0, in1, in2, in_stride, out0, out1, out2, out_stride, count, ALWAN_MAP_LIT(alwan__ycocg_to_rgb_kernel));
+    size_t off = 0;
+    while (off < count) {
+        size_t tile = count - off;
+        if (tile > ALWAN_MAP_TILE_PIXELS) tile = ALWAN_MAP_TILE_PIXELS;
+        ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
+        ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
+        ALWAN_MAP_NAME(alwan__load_tile_planar3)(c0, c1, c2, in0, in1, in2, off, in_stride, tile);
+        ALWAN_MAP_P_NORM_ADD(c1, tile, -0.5);
+        ALWAN_MAP_P_NORM_ADD(c2, tile, -0.5);
+        ALWAN_MAP_LIT(alwan__ycocg_to_rgb_kernel)(d0, d1, d2, c0, c1, c2, tile);
+        ALWAN_MAP_NAME(alwan__store_tile_planar3)(out0, out1, out2, off, out_stride, d0, d1, d2, tile);
+        off += tile;
+    }
     return ALWAN_OK;
 }
 

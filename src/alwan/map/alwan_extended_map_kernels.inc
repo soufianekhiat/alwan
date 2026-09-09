@@ -967,6 +967,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_xyz_to_hunter_lab, _map_interleave)(alwan_ma
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, xyz_in, processed, in_stride, tile);
         ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_kernel)(d0, d1, d2, c0, c1, c2, tile);
+        ALWAN_MAP_P_NORM_MUL(d0, tile, 0.01);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(hl_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -1020,6 +1021,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz, _map_interleave)(alwan_ma
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, hl_in, processed, in_stride, tile);
+        ALWAN_MAP_P_NORM_MUL(c0, tile, 100.0);
         ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_kernel)(d0, d1, d2, c0, c1, c2, tile);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(xyz_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
@@ -1094,6 +1096,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_xyz_to_hunter_lab_custom, _map_interleave)(a
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, xyz_in, processed, in_stride, tile);
         ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_custom_kernel)(d0, d1, d2, c0, c1, c2, tile, white_xyz);
+        ALWAN_MAP_P_NORM_MUL(d0, tile, 0.01);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(hl_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -1147,6 +1150,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz_custom, _map_interleave)(a
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, hl_in, processed, in_stride, tile);
+        ALWAN_MAP_P_NORM_MUL(c0, tile, 100.0);
         ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_custom_kernel)(d0, d1, d2, c0, c1, c2, tile, white_xyz);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(xyz_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
@@ -1216,6 +1220,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_xyz_to_prolab, _map_interleave)(alwan_map_la
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, xyz_in, processed, in_stride, tile);
         ALWAN_MAP_LIT(alwan__xyz_to_prolab_kernel)(d0, d1, d2, c0, c1, c2, tile);
+        ALWAN_MAP_P_NORM_MUL(d0, tile, 0.01);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(prolab_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -1276,6 +1281,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_prolab_to_xyz, _map_interleave)(alwan_map_la
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, prolab_in, processed, in_stride, tile);
+        ALWAN_MAP_P_NORM_MUL(c0, tile, 100.0);
         ALWAN_MAP_LIT(alwan__prolab_to_xyz_kernel)(d0, d1, d2, c0, c1, c2, tile);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(xyz_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
@@ -1343,6 +1349,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_xyz_to_prolab_custom, _map_interleave)(alwan
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, xyz_in, processed, in_stride, tile);
         ALWAN_MAP_LIT(alwan__xyz_to_prolab_custom_kernel)(d0, d1, d2, c0, c1, c2, tile, white_xyz);
+        ALWAN_MAP_P_NORM_MUL(d0, tile, 0.01);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(prolab_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -1398,6 +1405,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_prolab_to_xyz_custom, _map_interleave)(alwan
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, prolab_in, processed, in_stride, tile);
+        ALWAN_MAP_P_NORM_MUL(c0, tile, 100.0);
         ALWAN_MAP_LIT(alwan__prolab_to_xyz_custom_kernel)(d0, d1, d2, c0, c1, c2, tile, white_xyz);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(xyz_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
@@ -1477,6 +1485,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_xyz_to_uvw, _map_interleave)(alwan_map_lane 
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, xyz_in, processed, in_stride, tile);
         ALWAN_MAP_LIT(alwan__xyz_to_uvw_kernel)(d0, d1, d2, c0, c1, c2, tile, white_xyz);
+        ALWAN_MAP_P_NORM_MUL(d2, tile, 0.01);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(uvw_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -1558,6 +1567,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_uvw_to_xyz, _map_interleave)(alwan_map_lane 
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, uvw_in, processed, in_stride, tile);
+        ALWAN_MAP_P_NORM_MUL(c2, tile, 100.0);
         ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel)(d0, d1, d2, c0, c1, c2, tile, white_xyz);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(xyz_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
@@ -2179,7 +2189,9 @@ alwan_status ALWAN_MAP_LITCAT(alwan_lab_to_din99, _map_interleave)(alwan_map_lan
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, lab_in, processed, in_stride, tile);
+        ALWAN_MAP_P_NORM_MUL(c0, tile, 100.0);
         ALWAN_MAP_LIT(alwan__lab_to_din99_kernel)(d0, d1, d2, c0, c1, c2, tile, variant);
+        ALWAN_MAP_P_NORM_MUL(d0, tile, 0.01);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(din99_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -2258,7 +2270,9 @@ alwan_status ALWAN_MAP_LITCAT(alwan_din99_to_lab, _map_interleave)(alwan_map_lan
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, din99_in, processed, in_stride, tile);
+        ALWAN_MAP_P_NORM_MUL(c0, tile, 100.0);
         ALWAN_MAP_LIT(alwan__din99_to_lab_kernel)(d0, d1, d2, c0, c1, c2, tile, variant);
+        ALWAN_MAP_P_NORM_MUL(d0, tile, 0.01);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(lab_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -2270,6 +2284,53 @@ alwan_status ALWAN_MAP_LITCAT(alwan_din99_to_lab, _map_interleave)(alwan_map_lan
  * ================================================================ */
 
 /* --- Simple kernel planar functions (no extra params) --- */
+
+/* Range hooks for the generators below.
+ *
+ * A space with a bounded channel carries an ALWAN_NORM_* macro that the
+ * scalar API applies. The bulk paths have to apply the same scaling or the
+ * two halves of the public API answer different questions for the same
+ * conversion. Each hook names the channel and the direction, takes the three
+ * tile buffers so it can pick its own channel, and expands to nothing when
+ * ALWAN_NORMALIZE_RANGES is off.
+ *
+ * _UNIT converts native to [0,1] (kernel output), _NATIVE converts back
+ * (kernel input). They must stay exact inverses of the ALWAN_NORM_* /
+ * ALWAN_DENORM_* pair for the same space. */
+#define ALWAN_MAP_P_N_KEEP(c0, c1, c2, n)     ((void)0)
+/* L * 0.01: Hunter Lab, ProLab, DIN99 L99 */
+#define ALWAN_MAP_P_N_L_UNIT(c0, c1, c2, n)   ALWAN_MAP_P_NORM_MUL((c0), (n), 0.01)
+#define ALWAN_MAP_P_N_L_NATIVE(c0, c1, c2, n) ALWAN_MAP_P_NORM_MUL((c0), (n), 100.0)
+/* W * 0.01: UVW, where the bounded channel is the third */
+#define ALWAN_MAP_P_N_W_UNIT(c0, c1, c2, n)   ALWAN_MAP_P_NORM_MUL((c2), (n), 0.01)
+#define ALWAN_MAP_P_N_W_NATIVE(c0, c1, c2, n) ALWAN_MAP_P_NORM_MUL((c2), (n), 100.0)
+/* H / 2pi: IHLS, hue already in [0, 2pi) */
+#define ALWAN_MAP_P_N_H_UNIT(c0, c1, c2, n)   ALWAN_MAP_P_NORM_MUL((c0), (n), 0.15915494309189533577)
+#define ALWAN_MAP_P_N_H_NATIVE(c0, c1, c2, n) ALWAN_MAP_P_NORM_MUL((c0), (n), 6.28318530717958647692)
+/* (H + pi) / 2pi: HCL, hue in [-pi, pi) */
+#define ALWAN_MAP_P_N_HS_UNIT(c0, c1, c2, n)   ALWAN_MAP_P_NORM_AFFINE((c0), (n), 0.15915494309189533577, 0.5)
+#define ALWAN_MAP_P_N_HS_NATIVE(c0, c1, c2, n) ALWAN_MAP_P_NORM_AFFINE((c0), (n), 6.28318530717958647692, -3.14159265358979323846)
+
+#define ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(name, kernel, pre_l, post_l) \
+alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
+         alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, \
+         size_t count) { \
+    if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    size_t off_ = 0; \
+    while (off_ < count) { \
+        size_t tile_ = count - off_; \
+        if (tile_ > ALWAN_MAP_TILE_PIXELS) tile_ = ALWAN_MAP_TILE_PIXELS; \
+        ALWAN_ALIGN(32) alwan_map_lane ci0_[ALWAN_MAP_TILE_PIXELS], ci1_[ALWAN_MAP_TILE_PIXELS], ci2_[ALWAN_MAP_TILE_PIXELS]; \
+        ALWAN_ALIGN(32) alwan_map_lane co0_[ALWAN_MAP_TILE_PIXELS], co1_[ALWAN_MAP_TILE_PIXELS], co2_[ALWAN_MAP_TILE_PIXELS]; \
+        ALWAN_MAP_NAME(alwan__load_tile_planar3)(ci0_, ci1_, ci2_, in0, in1, in2, off_, in_stride, tile_); \
+        pre_l(ci0_, ci1_, ci2_, tile_); \
+        kernel(co0_, co1_, co2_, ci0_, ci1_, ci2_, tile_); \
+        post_l(co0_, co1_, co2_, tile_); \
+        ALWAN_MAP_NAME(alwan__store_tile_planar3)(out0, out1, out2, off_, out_stride, co0_, co1_, co2_, tile_); \
+        off_ += tile_; \
+    } \
+    return ALWAN_OK; \
+}
 
 #define ALWAN_MAP_P_PLANAR_FROM_KERNEL(name, kernel) \
 alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
@@ -2304,31 +2365,32 @@ ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_ucs_to_xyz, _map_planar), 
 ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_xyz_to_osa_ucs, _map_planar), ALWAN_MAP_LIT(alwan__xyz_to_osa_ucs_kernel))
 ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_osa_ucs_to_xyz, _map_planar), ALWAN_MAP_LIT(alwan__osa_ucs_to_xyz_kernel))
 
-/* XYZ <-> Hunter Lab */
-ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_xyz_to_hunter_lab, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_kernel))
-ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz, _map_planar),  ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_kernel))
+/* XYZ <-> Hunter Lab (L is bounded) */
+ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_xyz_to_hunter_lab, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_kernel), ALWAN_MAP_P_N_KEEP, ALWAN_MAP_P_N_L_UNIT)
+ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz, _map_planar),  ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_kernel), ALWAN_MAP_P_N_L_NATIVE, ALWAN_MAP_P_N_KEEP)
 
-/* XYZ <-> ProLab */
-ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_xyz_to_prolab, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_prolab_kernel))
-ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_prolab_to_xyz, _map_planar),  ALWAN_MAP_LIT(alwan__prolab_to_xyz_kernel))
+/* XYZ <-> ProLab (L is bounded) */
+ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_xyz_to_prolab, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_prolab_kernel), ALWAN_MAP_P_N_KEEP, ALWAN_MAP_P_N_L_UNIT)
+ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_prolab_to_xyz, _map_planar),  ALWAN_MAP_LIT(alwan__prolab_to_xyz_kernel), ALWAN_MAP_P_N_L_NATIVE, ALWAN_MAP_P_N_KEEP)
 
 /* RGB <-> Prismatic */
 ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_rgb_to_prismatic, _map_planar),  ALWAN_MAP_LIT(alwan__rgb_to_prismatic_kernel))
 ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_prismatic_to_rgb, _map_planar),  ALWAN_MAP_LIT(alwan__prismatic_to_rgb_kernel))
 
-/* RGB <-> HCL */
-ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_rgb_to_hcl, _map_planar),  ALWAN_MAP_LIT(alwan__rgb_to_hcl_kernel))
-ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_hcl_to_rgb, _map_planar),  ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel))
+/* RGB <-> HCL (H is bounded, signed) */
+ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_rgb_to_hcl, _map_planar),  ALWAN_MAP_LIT(alwan__rgb_to_hcl_kernel), ALWAN_MAP_P_N_KEEP, ALWAN_MAP_P_N_HS_UNIT)
+ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_hcl_to_rgb, _map_planar),  ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel), ALWAN_MAP_P_N_HS_NATIVE, ALWAN_MAP_P_N_KEEP)
 
-/* RGB <-> IHLS */
-ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_rgb_to_ihls, _map_planar), ALWAN_MAP_LIT(alwan__rgb_to_ihls_kernel))
-ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_ihls_to_rgb, _map_planar), ALWAN_MAP_LIT(alwan__ihls_to_rgb_kernel))
+/* RGB <-> IHLS (H is bounded) */
+ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_rgb_to_ihls, _map_planar), ALWAN_MAP_LIT(alwan__rgb_to_ihls_kernel), ALWAN_MAP_P_N_KEEP, ALWAN_MAP_P_N_H_UNIT)
+ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_ihls_to_rgb, _map_planar), ALWAN_MAP_LIT(alwan__ihls_to_rgb_kernel), ALWAN_MAP_P_N_H_NATIVE, ALWAN_MAP_P_N_KEEP)
 
 #undef ALWAN_MAP_P_PLANAR_FROM_KERNEL
+#undef ALWAN_MAP_P_PLANAR_FROM_KERNEL_N
 
 /* --- Extra-param planar functions (white_xyz / variant) --- */
 
-#define ALWAN_MAP_P_PLANAR_TILED_WHITE(name, kernel) \
+#define ALWAN_MAP_P_PLANAR_TILED_WHITE(name, kernel, pre_l, post_l) \
 alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
          alwan_map_lane const *in0, size_t in_stride, alwan_map_lane const *in1, alwan_map_lane const *in2, \
          size_t count, \
@@ -2341,28 +2403,32 @@ alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1,
         ALWAN_ALIGN(32) alwan_map_lane ci0_[ALWAN_MAP_TILE_PIXELS], ci1_[ALWAN_MAP_TILE_PIXELS], ci2_[ALWAN_MAP_TILE_PIXELS]; \
         ALWAN_ALIGN(32) alwan_map_lane co0_[ALWAN_MAP_TILE_PIXELS], co1_[ALWAN_MAP_TILE_PIXELS], co2_[ALWAN_MAP_TILE_PIXELS]; \
         ALWAN_MAP_NAME(alwan__load_tile_planar3)(ci0_, ci1_, ci2_, in0, in1, in2, off_, in_stride, tile_); \
+        pre_l(ci0_, ci1_, ci2_, tile_); \
         kernel(co0_, co1_, co2_, ci0_, ci1_, ci2_, tile_, white_xyz); \
+        post_l(co0_, co1_, co2_, tile_); \
         ALWAN_MAP_NAME(alwan__store_tile_planar3)(out0, out1, out2, off_, out_stride, co0_, co1_, co2_, tile_); \
         off_ += tile_; \
     } \
     return ALWAN_OK; \
 }
 
-/* XYZ <-> Hunter Lab custom */
-ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_xyz_to_hunter_lab_custom, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_custom_kernel))
-ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz_custom, _map_planar),  ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_custom_kernel))
+/* XYZ <-> Hunter Lab custom (L is bounded) */
+ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_xyz_to_hunter_lab_custom, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_hunter_lab_custom_kernel), ALWAN_MAP_P_N_KEEP, ALWAN_MAP_P_N_L_UNIT)
+ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz_custom, _map_planar),  ALWAN_MAP_LIT(alwan__hunter_lab_to_xyz_custom_kernel), ALWAN_MAP_P_N_L_NATIVE, ALWAN_MAP_P_N_KEEP)
 
-/* XYZ <-> ProLab custom */
-ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_xyz_to_prolab_custom, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_prolab_custom_kernel))
-ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_prolab_to_xyz_custom, _map_planar),  ALWAN_MAP_LIT(alwan__prolab_to_xyz_custom_kernel))
+/* XYZ <-> ProLab custom (L is bounded) */
+ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_xyz_to_prolab_custom, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_prolab_custom_kernel), ALWAN_MAP_P_N_KEEP, ALWAN_MAP_P_N_L_UNIT)
+ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_prolab_to_xyz_custom, _map_planar),  ALWAN_MAP_LIT(alwan__prolab_to_xyz_custom_kernel), ALWAN_MAP_P_N_L_NATIVE, ALWAN_MAP_P_N_KEEP)
 
-/* XYZ <-> UVW */
-ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_xyz_to_uvw, _map_planar), ALWAN_MAP_LIT(alwan__xyz_to_uvw_kernel))
-ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_uvw_to_xyz, _map_planar), ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel))
+/* XYZ <-> UVW (W is bounded) */
+ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_xyz_to_uvw, _map_planar), ALWAN_MAP_LIT(alwan__xyz_to_uvw_kernel), ALWAN_MAP_P_N_KEEP, ALWAN_MAP_P_N_W_UNIT)
+ALWAN_MAP_P_PLANAR_TILED_WHITE(ALWAN_MAP_LITCAT(alwan_uvw_to_xyz, _map_planar), ALWAN_MAP_LIT(alwan__uvw_to_xyz_kernel), ALWAN_MAP_P_N_W_NATIVE, ALWAN_MAP_P_N_KEEP)
 
 #undef ALWAN_MAP_P_PLANAR_TILED_WHITE
 
-/* Lab <-> DIN99 (int variant param) */
+/* Lab <-> DIN99 (int variant param). Both directions have a bounded
+ * lightness on each side (Lab L, DIN99 L99), so the scaling is fixed in the
+ * generator instead of being passed per user. */
 
 #define ALWAN_MAP_P_PLANAR_TILED_INT(name, kernel) \
 alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \
@@ -2377,7 +2443,9 @@ alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1,
         ALWAN_ALIGN(32) alwan_map_lane ci0_[ALWAN_MAP_TILE_PIXELS], ci1_[ALWAN_MAP_TILE_PIXELS], ci2_[ALWAN_MAP_TILE_PIXELS]; \
         ALWAN_ALIGN(32) alwan_map_lane co0_[ALWAN_MAP_TILE_PIXELS], co1_[ALWAN_MAP_TILE_PIXELS], co2_[ALWAN_MAP_TILE_PIXELS]; \
         ALWAN_MAP_NAME(alwan__load_tile_planar3)(ci0_, ci1_, ci2_, in0, in1, in2, off_, in_stride, tile_); \
+        ALWAN_MAP_P_N_L_NATIVE(ci0_, ci1_, ci2_, tile_); \
         kernel(co0_, co1_, co2_, ci0_, ci1_, ci2_, tile_, variant); \
+        ALWAN_MAP_P_N_L_UNIT(co0_, co1_, co2_, tile_); \
         ALWAN_MAP_NAME(alwan__store_tile_planar3)(out0, out1, out2, off_, out_stride, co0_, co1_, co2_, tile_); \
         off_ += tile_; \
     } \
@@ -2388,3 +2456,13 @@ ALWAN_MAP_P_PLANAR_TILED_INT(ALWAN_MAP_LITCAT(alwan_lab_to_din99, _map_planar), 
 ALWAN_MAP_P_PLANAR_TILED_INT(ALWAN_MAP_LITCAT(alwan_din99_to_lab, _map_planar), ALWAN_MAP_LIT(alwan__din99_to_lab_kernel))
 
 #undef ALWAN_MAP_P_PLANAR_TILED_INT
+
+#undef ALWAN_MAP_P_N_KEEP
+#undef ALWAN_MAP_P_N_L_UNIT
+#undef ALWAN_MAP_P_N_L_NATIVE
+#undef ALWAN_MAP_P_N_W_UNIT
+#undef ALWAN_MAP_P_N_W_NATIVE
+#undef ALWAN_MAP_P_N_H_UNIT
+#undef ALWAN_MAP_P_N_H_NATIVE
+#undef ALWAN_MAP_P_N_HS_UNIT
+#undef ALWAN_MAP_P_N_HS_NATIVE

@@ -76,6 +76,13 @@ described in papers and specifications.
 > prebuilt `alwan` library; build the library and your own code with the same
 > value.
 
+The rule covers the whole public C API, not just the scalar entry points. A
+conversion's `_map_interleave` and `_map_planar` forms apply the same scaling as
+its scalar form, so the two are interchangeable in either setting and a program
+may mix them freely. The core `_v` functions are the exception, and deliberately
+so: they are always native, because they are what the GPU backends and the
+kernels compile.
+
 ### Why the tests and benchmarks disable it
 
 The `alwan_dev` validation build (the unit tests, the benchmarks, and the
@@ -86,6 +93,12 @@ disabling normalization makes the comparison apples-to-apples. For example
 `alwan_xyz_to_lab_f64` then returns CIE `L ~= 53.24` (matching
 `colour.XYZ_to_Lab`) instead of the normalized `~= 0.5324`. The switch is set in
 `tests/CMakeLists.txt`, `bench/CMakeLists.txt`, and the Sharpmake `common.cs`.
+
+The shipped default is built and tested too. `cmake -S . -B build_norm
+-DALWAN_DEV_NORMALIZE_RANGES=1` compiles the library and the suite at `=1`, and
+the tests of configuration-independent properties -- scalar against bulk,
+scalar against SIMD, and round trips -- pass in it. Suites whose expected values
+are reference CSVs written for native ranges do not, and are not meant to.
 
 ---
 

@@ -350,6 +350,28 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed: output differs
 
+- **The bulk paths ignored `ALWAN_NORMALIZE_RANGES` for some spaces and
+  honoured it for others.** At the shipped default,
+  `alwan_xyz_to_hunter_lab_f64` and `alwan_xyz_to_hunter_lab_f64_map_interleave`
+  are the same public conversion and disagreed in `L` by 99.0, the whole
+  normalisation factor: the scalar wrapper applied `ALWAN_NORM_HUNTER_LAB` and
+  the bulk path did not, while `alwan_xyz_to_lab_f64` and its bulk twin agreed
+  to 3e-16 in the same build. A caller mixing the two got lightness a hundred
+  times out on one of them, and hue three hundred and sixty times out for the
+  cylindrical spaces.
+
+  Every bulk entry point for a space with an `ALWAN_NORM_*` macro now applies
+  it: the interleave wrappers for Hunter Lab, ProLab, DIN99 and UVW, the planar
+  wrappers for those plus HCL and IHLS, the YCoCg planar pair, and both
+  directions of the sRGB/Lab convenience pair. The planar generators take
+  explicit channel hooks so each generated function states its scaling at the
+  call site; they expand to nothing when the setting is off, so a default build
+  is untouched.
+
+  `alwan_srgb_to_lab_{T}` and `alwan_lab_to_srgb_{T}` were wrong on the scalar
+  side as well. They call the `_v` core directly and so skipped the
+  `ALWAN_NORM_LAB` that every other scalar wrapper applies.
+
 - **The deterministic sRGB and BT.2020 OETF returned garbage above 1.0.**
   The high-side polynomial is fitted on `[split, 1]`, and the evaluator
   extrapolated it for any larger input instead of falling back: a

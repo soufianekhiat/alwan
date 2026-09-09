@@ -932,7 +932,7 @@ nonsense. What remains:
 
 ---
 
-## No build exercises the shipped default of ALWAN_NORMALIZE_RANGES
+## Test data still assumes native ranges under ALWAN_NORMALIZE_RANGES
 
 `ALWAN_NORMALIZE_RANGES` defaults to `1` in `alwan_platform.h`, and that is what
 a consumer linking a stock build gets: the API wrappers rescale bounded channels
@@ -974,13 +974,37 @@ documented split. `alwan_xyz_to_lab_f64` and its bulk twin agree to 3e-16 in the
 same build. So some conversions honour the setting on both paths and some honour
 it on one, and nothing says which.
 
-What remains is the fix. Every bulk entry point for a space with an
-`ALWAN_NORM_*` macro has to apply it, or the header has to say plainly that
-bulk paths are always native and the scalar ones are not. The first is almost
-certainly right, because the second makes the two halves of the public API
-answer different questions. Suite 111 is red on exactly this one check in
-`build_norm` until then, and green everywhere else; the default build is
-unaffected.
+**Fixed 2026-09-09.** Every bulk entry point for a space with an `ALWAN_NORM_*`
+macro now applies it, which was the right half of the choice: the alternative
+makes the two halves of the public API answer different questions. The sweep
+covered the interleave wrappers for Hunter Lab, ProLab, DIN99 and UVW, the
+planar generators for all of those plus HCL and IHLS, the YCoCg planar pair,
+and both directions of the sRGB/Lab convenience pair. The planar generators in
+`alwan_extended_map_kernels.inc` take a pair of channel hooks
+(`ALWAN_MAP_P_N_L_UNIT`, `..._W_NATIVE`, `..._HS_UNIT`, and so on) so each
+generated function states its scaling at the call site instead of leaving it
+implicit; they expand to nothing when the setting is off.
+
+Two things worth keeping:
+
+- `alwan_srgb_to_lab_f64` and `alwan_lab_to_srgb_f64` were wrong on the
+  *scalar* side. They call `alwan_xyz_to_lab_f64_v` directly, so they skipped
+  the `ALWAN_NORM_LAB` that every other scalar wrapper applies. The bug was
+  visible only once the bulk path was correct.
+- Suite 88's grid generators fed native-range values into a normalised API.
+  Both paths accepted them, but `LCh->Lab` denormalised a hue of 360 into
+  1.3e5 degrees, where SIMD and scalar argument reduction legitimately part
+  company: 8.9e18 ULP. The grids now scale with the setting.
+
+Suites 70, 88 and 111 are green in `build_norm`; the default and deterministic
+builds stay at 111 of 111.
+
+Nineteen suites still fail in `build_norm`, and that number is not a bug count.
+They are reference CSVs and test inputs written for native ranges: suite 106
+feeds `h=20, s=60, l=50` into HSLuv, which at the shipped default denormalises
+to 7200 degrees. Making those configuration-aware is a separate job, and the
+signal to keep watching is the tests of configuration-independent properties,
+which are the three above.
 
 Also still true, and the reason this went unnoticed for so long: the macros
 expand inside the library's own translation units, so a consumer cannot change
