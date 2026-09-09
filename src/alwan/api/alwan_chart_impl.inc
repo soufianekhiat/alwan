@@ -179,9 +179,13 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
         char const *k = c->header_keys[i];
         size_t klen = strlen(k);
         if (alwan__chart_eq_n(k, klen, "NUMBER_OF_SETS")) {
-            /* When it is present and disagrees with the row count the file is
-             * damaged, and guessing which of the two is right helps nobody. */
-            if (alwan__chart_atoz(c->header_values[i], &declared_sets) && declared_sets != row) {
+            /* Declared once, it has to be a plain count and it has to be the
+             * count. A value that disagrees means the file is damaged, and
+             * guessing which of the two is right helps nobody; a value that
+             * does not parse at all means the same thing, so it is rejected
+             * rather than ignored, which is how every other malformed field
+             * here behaves. */
+            if (!alwan__chart_atoz(c->header_values[i], &declared_sets) || declared_sets != row) {
                 st = ALWAN_E_INVALID;
                 goto fail;
             }

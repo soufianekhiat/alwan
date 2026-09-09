@@ -20,6 +20,11 @@
 
 #define ALWAN_CHART_MAX_FIELDS 4096
 
+/* Bounds the decimal exponent a cell may carry. Past this a double is zero or
+ * infinity anyway, so clamping loses nothing and keeps both the accumulator
+ * and the scaling loop bounded on hostile input. */
+#define ALWAN_CHART_EXP_CAP 400
+
 typedef struct {
     char const *p;
     size_t      len;
@@ -75,12 +80,25 @@ static double alwan__chart_strtod(char const *s, size_t n, int *ok) {
         int edigits = 0;
         i++;
         if (i < n && (s[i] == '+' || s[i] == '-')) { exp_neg = (s[i] == '-'); i++; }
-        for (; i < n && s[i] >= '0' && s[i] <= '9'; i++) { exp_val = exp_val * 10 + (s[i] - '0'); edigits = 1; }
+        for (; i < n && s[i] >= '0' && s[i] <= '9'; i++) {
+            /* Stop accumulating rather than overflow. A double runs out of
+             * range well before 1e400, so any exponent past the cap already
+             * means zero or infinity, and the cap also bounds the scaling
+             * loop below: without it "1e2000000000" is a two-billion
+             * iteration spin, and "1e99999999999" is signed overflow. */
+            if (exp_val <= ALWAN_CHART_EXP_CAP) exp_val = exp_val * 10 + (s[i] - '0');
+            edigits = 1;
+        }
         if (!edigits) { i = save; exp_val = 0; exp_neg = 0; }
     }
     while (i < n && alwan__chart_is_space(s[i])) i++;
     if (i != n) return 0.0;                          /* trailing junk: not a number */
+    if (exp_val > ALWAN_CHART_EXP_CAP) exp_val = ALWAN_CHART_EXP_CAP;
     while (exp_val-- > 0) mant = exp_neg ? mant * 0.1 : mant * 10.0;
+    /* A long enough digit string reaches infinity on its own, with no
+     * exponent involved. A measurement file has no business carrying either,
+     * and letting one through would put it in the chart. */
+    if (!(mant <= 1.0e308 && mant >= -1.0e308)) return 0.0;
     *ok = 1;
     return neg ? -mant : mant;
 }
@@ -90,7 +108,13 @@ static int alwan__chart_atoz(char const *s, size_t *out) {
     size_t v = 0, i = 0;
     int any = 0;
     while (s[i] && alwan__chart_is_space(s[i])) i++;
-    for (; s[i] >= '0' && s[i] <= '9'; i++) { v = v * 10 + (size_t)(s[i] - '0'); any = 1; }
+    for (; s[i] >= '0' && s[i] <= '9'; i++) {
+        /* No row count near this is real, and wrapping would make a damaged
+         * NUMBER_OF_SETS agree with the row count by accident. */
+        if (v > (size_t)1 << 40) return 0;
+        v = v * 10 + (size_t)(s[i] - '0');
+        any = 1;
+    }
     while (s[i] && alwan__chart_is_space(s[i])) i++;
     if (!any || s[i]) return 0;
     *out = v;
@@ -216,7 +240,11 @@ static void alwan__chart_put_num(alwan__chart_sink *s, double x, int dp) {
     int i;
     size_t whole;
     unsigned long frac;
-    if (x != x) { alwan__chart_puts(s, "0"); return; }   /* NaN is not writable */
+    /* NaN has no representation here, and a magnitude this large would make
+     * the (size_t) cast below undefined. The reader rejects both, so neither
+     * reaches a chart from a file; this is the guard for a caller who builds
+     * one another way. */
+    if (!(x >= -1.0e18 && x <= 1.0e18)) { alwan__chart_puts(s, "0"); return; }
     if (x < 0) { alwan__chart_puts(s, "-"); x = -x; }
     for (i = 0; i < dp; i++) scale *= 10.0;
     x += 0.5 / scale;                                    /* round half up */
