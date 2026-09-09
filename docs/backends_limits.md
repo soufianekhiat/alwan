@@ -8,6 +8,7 @@ Alwan targets these backends:
 | `ALWAN_BACKEND` 1 | **HLSL** | `float` | single pass: `.inc` included once against `alwan_core_aliases.inc` |
 | `ALWAN_BACKEND` 2 | **GLSL** | `float` | single pass |
 | `ALWAN_BACKEND` 3 | **Halide** | `Halide::Expr` (real `double` available) | single pass |
+| `ALWAN_BACKEND` 4 | **OpenCL** | `float`, or `double` with `ALWAN_OPENCL_FP64=1` | single pass |
 | `ALWAN_CUDA` 1 | **CUDA** | `float` **and** `double` | dual pass, the same as C: a CUDA kernel can call both `_f32` and `_f64` |
 
 Every one of these except the first is the same idea: **a header-only per-pixel
@@ -16,6 +17,39 @@ allocate device memory and does not own the image. You write the shader or the
 `__global__` function, you index the pixel, you call the core on it. The C
 backend is the outlier, being the full compiled library with an API layer on
 top. This document lists everything that does **not** carry over unchanged.
+
+## OpenCL
+
+A backend id, unlike CUDA, because OpenCL C is not C: program scope needs
+address spaces, there is no C library, and `double` is an extension. So it takes
+the same single-pass GPU branch HLSL and GLSL take. Bootstrap with
+`alwan_opencl.h`, then the core headers, and call the core from your `__kernel`.
+
+**Verified on an RTX 3060 through the NVIDIA OpenCL runtime**: all 43 core
+headers build, and six conversions run on the device and agree with the compiled
+C library to the f32 rounding scale of each (`alwan_dev/opencl_regression/`).
+The runtime is the compiler, so `clBuildProgram` is the compile check.
+
+Two things carry over better than they do to the shading languages. OpenCL C has
+a signed `cbrt` and a truncating `fmod`, both matching libm, where HLSL and GLSL
+need compensation for each. And it has real pointers, so an output parameter is
+a pointer rather than an `out` qualifier.
+
+The address space is where the work is. `ALWAN_CONSTEXPR` is `__global const`,
+not `__constant`, and the reflex choice fails structurally rather than
+incidentally: **`__constant` is not part of the generic address space**, in 1.2
+or 2.0, so a `__constant T *` cannot reach a function that also takes runtime
+data. `alwan_table_core`'s samplers are called both with a compile-time table
+(the eleven Machado CVD matrices, selected by severity) and with a caller's own
+LUT, so under `__constant` one of the two cannot compile. `__global const` is
+generic-compatible and both work, at the cost of ordinary device memory instead
+of the constant cache, which for a per-pixel read is not a real cost. It needs
+program-scope globals, hence `-cl-std=CL2.0`. Set
+`ALWAN_OPENCL_CONSTANT_TABLES=1` for a 1.2-only device and expect the
+table-by-pointer headers not to build there.
+
+`ALWAN_ABS` maps to `fabs`, not `abs`: OpenCL C `abs` is the integer one and a
+float argument silently converts.
 
 ## CUDA
 
@@ -79,16 +113,24 @@ Two compile flags are not optional:
 **Verified, RTX 3060 (sm_86) with CUDA 12.6.** All 43 core headers parse and
 type-check under nvcc, fast and deterministic
 (`alwan_dev/tools/check_cuda_compile.py`). Kernels run on the device and are
-compared against the same source on the host
-(`alwan_dev/cuda_regression/`). The deterministic sRGB transfer functions are
-**bit-exact between the CPU and the GPU**, both precisions, every sample.
+compared against the same source on the host (`alwan_dev/cuda_regression/`).
 
-**Not closed:** the colour conversions differ between host and device by 6e-15
-to 1.7e-13 in f64, and `ALWAN_DETERMINISTIC` does not change that by a single
-digit. The residual is not in the transcendentals; it is in `alwan_mat3_mulv`,
-a plain sum of products that no `ALWAN_*` macro governs and that the determinism
-layer therefore does not reach. Closing it means giving that reduction the
-canonical ordered non-fusing treatment the SIMD horizontal sum already gets.
+**A deterministic build is bit-exact between the CPU and the GPU.** Every kernel
+measured, both precisions, every sample, zero difference. That is the
+determinism contract holding across an architecture boundary, which the CPU-only
+CI matrix cannot show.
+
+Getting there closed a hole worth knowing about, because it was not
+CUDA-specific. `ALWAN_CORE_POW` and its siblings forwarded to `ALWAN_POW_F64`,
+and `alwan_math.h` is what redefines those to the deterministic polynomials.
+Macros expand at the use site, so the compiled library was always fine: its API
+`.c` files include `alwan.h` first. **A core-only translation unit never
+includes `alwan_math.h`**, so a CUDA kernel, an HLSL shader, or any header-only
+consumer got libm for `pow`, `cbrt`, `exp`, `log` and the angles under
+`ALWAN_DETERMINISTIC=1`, silently. The transfer functions were the exception
+only because `alwan_core_f*_setup.h` routed those four by name. Every
+transcendental is routed there now, so the core is deterministic on its own
+terms rather than on include order.
 
 > **Read this first: verification status.** Run-verified on a GPU (dxc + D3D12
 > WARP, matching the C reference; see `alwan_dev/hlsl_regression/`): the **AgX

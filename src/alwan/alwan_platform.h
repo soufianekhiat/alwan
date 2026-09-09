@@ -31,10 +31,13 @@
 #define ALWAN_BACKEND_HLSL   1
 #define ALWAN_BACKEND_GLSL   2
 #define ALWAN_BACKEND_HALIDE 3
+#define ALWAN_BACKEND_OPENCL 4
 
 #ifndef ALWAN_BACKEND
 # if defined(__HLSL_VERSION)
 #   define ALWAN_BACKEND ALWAN_BACKEND_HLSL
+# elif defined(__OPENCL_VERSION__)
+#   define ALWAN_BACKEND ALWAN_BACKEND_OPENCL
 # elif defined(GL_core_profile) || defined(GL_es_profile)
 #   define ALWAN_BACKEND ALWAN_BACKEND_GLSL
 # elif defined(HALIDE_HALIDERUNTIME_H)
@@ -43,6 +46,13 @@
 #   define ALWAN_BACKEND ALWAN_BACKEND_C
 # endif
 #endif
+
+/* OpenCL is checked before GLSL deliberately: an OpenCL C compiler defines
+ * __OPENCL_VERSION__, and some also predefine GL interop symbols. Unlike CUDA,
+ * this IS a backend id, because OpenCL C is not C: program-scope constants live
+ * in the __constant address space, `double` is an extension rather than a given,
+ * and there is no C library. It consumes the same single-pass GPU branch of the
+ * core headers that HLSL and GLSL do. */
 
 /* ================================================================
  * 1.2 Scalar Type + Literals
@@ -65,6 +75,27 @@
   typedef float  alwan_scalar;
 # define ALWAN_EPSILON 1e-6
 # define ALWAN_LITERAL(x) (x)
+
+#elif ALWAN_BACKEND == ALWAN_BACKEND_OPENCL
+  /* OpenCL backend. Single precision by default, which is what every device
+   * supports. Build the program with -DALWAN_OPENCL_FP64=1 to get double, and
+   * only after checking the device actually reports cl_khr_fp64: OpenCL makes
+   * double an extension, not a guarantee, so this cannot be decided here.
+   *
+   * The literal suffix matters more than it looks. Without the `f`, an OpenCL C
+   * compiler promotes the constant to double, and on a device without fp64 that
+   * is a build error rather than a silent demotion. The core's data files are
+   * full of bare literals, so ALWAN_LITERAL is what keeps them single. */
+# if defined(ALWAN_OPENCL_FP64) && ALWAN_OPENCL_FP64
+#   pragma OPENCL EXTENSION cl_khr_fp64 : enable
+    typedef double alwan_scalar;
+#   define ALWAN_EPSILON 1e-12
+#   define ALWAN_LITERAL(x) ((double)(x))
+# else
+    typedef float  alwan_scalar;
+#   define ALWAN_EPSILON 1e-6f
+#   define ALWAN_LITERAL(x) ((float)(x))
+# endif
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
   /* Halide backend -- supports both Float(32) and Float(64) at runtime.
@@ -192,6 +223,36 @@
 # define ALWAN_CONSTEXPR const
 # define ALWAN_TYPE_DEF
 # define ALWAN_UNUSED(x)
+#elif ALWAN_BACKEND == ALWAN_BACKEND_OPENCL
+/* OpenCL C is C99 with address spaces, so this is closer to the C backend than
+ * to a shading language: real functions, real pointers, `static inline`.
+ *
+ *
+ * ALWAN_CONSTEXPR is the one that is not obvious, and the obvious answer is
+ * wrong. A program-scope variable in OpenCL C must carry an address space;
+ * plain `static const` is a build error. `__constant` is the reflex choice and
+ * it does not work here, because __constant is NOT part of the generic address
+ * space: a `__constant T *` cannot be passed to a function that also takes
+ * runtime data, in 1.2 or in 2.0. The core has exactly that shape, and it is
+ * not an accident. alwan_table_core's samplers are called both with a
+ * compile-time table (the Machado CVD matrices, eleven selected by severity)
+ * and with a caller's own LUT. One of the two has to lose under __constant.
+ *
+ * `__global const` is part of the generic address space, so both callers work.
+ * The cost is that the tables sit in ordinary device memory rather than the
+ * constant cache, which for something read once per pixel is not a real cost.
+ * It needs program-scope global variables, which is OpenCL 2.0.
+ *
+ * Set ALWAN_OPENCL_CONSTANT_TABLES=1 to get __constant back on a 1.2-only
+ * device, and expect the table-by-pointer headers not to compile there. */
+# define ALWAN_INLINE    static inline
+# if defined(ALWAN_OPENCL_CONSTANT_TABLES) && ALWAN_OPENCL_CONSTANT_TABLES
+#  define ALWAN_CONSTEXPR __constant
+# else
+#  define ALWAN_CONSTEXPR __global const
+# endif
+# define ALWAN_TYPE_DEF  typedef
+# define ALWAN_UNUSED(x) (void)(x)
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
 # define ALWAN_INLINE    inline
 # define ALWAN_CONSTEXPR static const
@@ -351,6 +412,40 @@
 # define ALWAN_CEIL(x)      ceil(x)
 # define ALWAN_ROUND(x)     round(x)
 # define ALWAN_FMOD(x, y)   mod(x, y)
+
+#elif ALWAN_BACKEND == ALWAN_BACKEND_OPENCL
+  /* OpenCL backend: the C99 math builtins, which is most of why this backend
+   * is cheap. Two things are worth naming because they are where the shading
+   * languages needed compensation and OpenCL does not:
+   *
+   *   cbrt exists and is signed, matching libm. HLSL and GLSL have to build it
+   *   out of pow(|x|, 1/3) with the sign put back, and that is a real
+   *   divergence risk; here it is the same function C calls.
+   *
+   *   fmod truncates toward zero, again matching C. GLSL's `mod` is Euclidean
+   *   and has to be compensated.
+   *
+   * The one trap is integer/float overloading: OpenCL C `abs` is the integer
+   * one, so a float argument silently converts. ALWAN_ABS must be fabs. */
+# define ALWAN_ABS(x)       fabs(x)
+# define ALWAN_SQRT(x)      sqrt(x)
+# define ALWAN_CBRT(x)      cbrt(x)
+# define ALWAN_SIN(x)       sin(x)
+# define ALWAN_COS(x)       cos(x)
+# define ALWAN_TAN(x)       tan(x)
+# define ALWAN_TANH(x)      tanh(x)
+# define ALWAN_ATAN(x)      atan(x)
+# define ALWAN_ACOS(x)      acos(x)
+# define ALWAN_ATAN2(y, x)  atan2(y, x)
+# define ALWAN_POW(x, y)    pow(x, y)
+# define ALWAN_EXP(x)       exp(x)
+# define ALWAN_LN(x)        log(x)
+# define ALWAN_LOG2(x)      log2(x)
+# define ALWAN_LOG10(x)     log10(x)
+# define ALWAN_FLOOR(x)     floor(x)
+# define ALWAN_CEIL(x)      ceil(x)
+# define ALWAN_ROUND(x)     round(x)
+# define ALWAN_FMOD(x, y)   fmod(x, y)
 
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HALIDE
   /* Halide backend: uses ALWAN_HALIDE_FLOAT_BITS for constant precision

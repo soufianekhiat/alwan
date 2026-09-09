@@ -42,11 +42,35 @@
  * (image_gen, GPU bootstraps, external users) are self-contained instead of
  * relying on a .c TU having included it first. Both headers are guarded. */
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
-#  include "alwan_deterministic.h"
+#  include "../alwan_math.h"   /* routes BOTH the top-level ALWAN_* macros and, below, ALWAN_CORE_* */
 #  define ALWAN_CORE_SRGB_OETF(x)    alwan_det_srgb_oetf_f32(x)
 #  define ALWAN_CORE_SRGB_EOTF(x)    alwan_det_srgb_eotf_f32(x)
 #  define ALWAN_CORE_BT2020_OETF(x)  alwan_det_bt2020_oetf_f32(x)
 #  define ALWAN_CORE_BT2020_EOTF(x)  alwan_det_bt2020_eotf_f32(x)
+/* And every other transcendental. The f64 twin carries the explanation; the
+ * short version is that the macros above forward to ALWAN_*_F32, alwan_math.h
+ * is what redefines those under ALWAN_DETERMINISTIC, and a core-only
+ * translation unit never includes alwan_math.h. */
+#  undef  ALWAN_CORE_CBRT
+#  undef  ALWAN_CORE_POW
+#  undef  ALWAN_CORE_EXP
+#  undef  ALWAN_CORE_SIN
+#  undef  ALWAN_CORE_COS
+#  undef  ALWAN_CORE_TAN
+#  undef  ALWAN_CORE_TANH
+#  undef  ALWAN_CORE_ATAN
+#  undef  ALWAN_CORE_ACOS
+#  undef  ALWAN_CORE_ATAN2
+#  define ALWAN_CORE_CBRT(x)      alwan_det_cbrt_f32(x)
+#  define ALWAN_CORE_POW(x, y)    alwan_det_pow_pos_f32((x), (y))
+#  define ALWAN_CORE_EXP(x)       alwan_det_exp_f32(x)
+#  define ALWAN_CORE_SIN(x)       alwan_det_sin_f32(x)
+#  define ALWAN_CORE_COS(x)       alwan_det_cos_f32(x)
+#  define ALWAN_CORE_TAN(x)       alwan_det_tan_f32(x)
+#  define ALWAN_CORE_TANH(x)      alwan_det_tanh_f32(x)
+#  define ALWAN_CORE_ATAN(x)      alwan_det_atan_f32(x)
+#  define ALWAN_CORE_ACOS(x)      alwan_det_acos_f32(x)
+#  define ALWAN_CORE_ATAN2(y, x)  alwan_det_atan2_f32((y), (x))
 #else
 #  include "alwan_fast_pow.h"
 /* Fast mode: scalar pow twins of the SIMD kernels (alwan_fast_pow*_f32) so the
@@ -67,6 +91,15 @@
 #define ALWAN_CORE_LN(x)        ALWAN_LN_F32(x)
 #define ALWAN_CORE_LOG2(x)      ALWAN_LOG2_F32(x)
 #define ALWAN_CORE_LOG10(x)     ALWAN_LOG10_F32(x)
+/* Defined below the block above, so routed here. See the f64 twin. */
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#  undef  ALWAN_CORE_LN
+#  undef  ALWAN_CORE_LOG2
+#  undef  ALWAN_CORE_LOG10
+#  define ALWAN_CORE_LN(x)      alwan_det_log_f32(x)
+#  define ALWAN_CORE_LOG2(x)    alwan_det_log2_f32(x)
+#  define ALWAN_CORE_LOG10(x)   alwan_det_log10_f32(x)
+#endif
 #define ALWAN_CORE_FLOOR(x)     ALWAN_FLOOR_F32(x)
 #define ALWAN_CORE_ROUND(x)     ALWAN_ROUND_F32(x)
 #define ALWAN_CORE_CEIL(x)      ALWAN_CEIL_F32(x)

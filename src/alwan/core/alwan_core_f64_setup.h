@@ -41,11 +41,51 @@
  * libm pow; in det mode they call the polynomial implementations from
  * core/alwan_deterministic.h. docs/determinism.md */
 #if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
-#  include "alwan_deterministic.h"
+#  include "../alwan_math.h"   /* routes BOTH the top-level ALWAN_* macros and, below, ALWAN_CORE_* */
 #  define ALWAN_CORE_SRGB_OETF(x)    alwan_det_srgb_oetf_f64(x)
 #  define ALWAN_CORE_SRGB_EOTF(x)    alwan_det_srgb_eotf_f64(x)
 #  define ALWAN_CORE_BT2020_OETF(x)  alwan_det_bt2020_oetf_f64(x)
 #  define ALWAN_CORE_BT2020_EOTF(x)  alwan_det_bt2020_eotf_f64(x)
+/* And every other transcendental, for the same reason, which is less obvious
+ * than it looks.
+ *
+ * The macros above forward to ALWAN_*_F64, and alwan_math.h redefines those to
+ * alwan_det_* under ALWAN_DETERMINISTIC. A macro expands at its use site, so in
+ * the compiled library that works: the API .c includes alwan.h, which pulls in
+ * alwan_math.h, long before any core header expands ALWAN_CORE_POW.
+ *
+ * A core-only translation unit never includes alwan_math.h. A CUDA kernel, an
+ * HLSL shader, anyone using the header-only core directly: they got libm for
+ * pow, cbrt, exp, log and the angles even with ALWAN_DETERMINISTIC=1, and
+ * nothing said so. Measured on an RTX 3060, a det CUDA build differed from the
+ * host by exactly as much as a fast one and for exactly the same reason, while
+ * the four transfer functions above were bit-exact because they are the four
+ * that were already routed here.
+ *
+ * Routing at this level rather than relying on include order makes the core
+ * deterministic on its own terms. ABS, SQRT, FLOOR, CEIL, ROUND, FMOD and TRUNC
+ * are deliberately not here: they are exact IEEE-754 operations and cannot
+ * differ between vendors. */
+#  undef  ALWAN_CORE_CBRT
+#  undef  ALWAN_CORE_POW
+#  undef  ALWAN_CORE_EXP
+#  undef  ALWAN_CORE_SIN
+#  undef  ALWAN_CORE_COS
+#  undef  ALWAN_CORE_TAN
+#  undef  ALWAN_CORE_TANH
+#  undef  ALWAN_CORE_ATAN
+#  undef  ALWAN_CORE_ACOS
+#  undef  ALWAN_CORE_ATAN2
+#  define ALWAN_CORE_CBRT(x)      alwan_det_cbrt_f64(x)
+#  define ALWAN_CORE_POW(x, y)    alwan_det_pow_pos_f64((x), (y))
+#  define ALWAN_CORE_EXP(x)       alwan_det_exp_f64(x)
+#  define ALWAN_CORE_SIN(x)       alwan_det_sin_f64(x)
+#  define ALWAN_CORE_COS(x)       alwan_det_cos_f64(x)
+#  define ALWAN_CORE_TAN(x)       alwan_det_tan_f64(x)
+#  define ALWAN_CORE_TANH(x)      alwan_det_tanh_f64(x)
+#  define ALWAN_CORE_ATAN(x)      alwan_det_atan_f64(x)
+#  define ALWAN_CORE_ACOS(x)      alwan_det_acos_f64(x)
+#  define ALWAN_CORE_ATAN2(y, x)  alwan_det_atan2_f64((y), (x))
 #else
 #  include "alwan_fast_pow.h"
 /* Fast mode: route the gamma-2.4 leg through the scalar pow twins of the SIMD
@@ -67,6 +107,17 @@
 #define ALWAN_CORE_LN(x)        ALWAN_LN_F64(x)
 #define ALWAN_CORE_LOG2(x)      ALWAN_LOG2_F64(x)
 #define ALWAN_CORE_LOG10(x)     ALWAN_LOG10_F64(x)
+/* The logarithms are defined below the block above rather than inside it, so
+ * they get the same treatment here. See that block for why routing at the core
+ * level and not through alwan_math.h is what makes this hold. */
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+#  undef  ALWAN_CORE_LN
+#  undef  ALWAN_CORE_LOG2
+#  undef  ALWAN_CORE_LOG10
+#  define ALWAN_CORE_LN(x)      alwan_det_log_f64(x)
+#  define ALWAN_CORE_LOG2(x)    alwan_det_log2_f64(x)
+#  define ALWAN_CORE_LOG10(x)   alwan_det_log10_f64(x)
+#endif
 #define ALWAN_CORE_FLOOR(x)     ALWAN_FLOOR_F64(x)
 #define ALWAN_CORE_ROUND(x)     ALWAN_ROUND_F64(x)
 #define ALWAN_CORE_CEIL(x)      ALWAN_CEIL_F64(x)

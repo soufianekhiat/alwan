@@ -61,11 +61,24 @@
 #define ALWAN_CORE_SATURATE            alwan_saturate
 #define ALWAN_CORE_LERP                alwan_lerp
 
-/* Output parameter, GPU spelling: `out T name`, and the name IS the value. */
+/* Output parameter.
+ *
+ * The shading languages spell it `out T name`, and inside the function the name
+ * IS the value. OpenCL C has no `out` qualifier and no need for one: it is C99
+ * with pointers, so an output is a pointer and the body dereferences, exactly
+ * as the C backend does. This is the one place the four single-pass backends
+ * genuinely disagree. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_OPENCL
+#define ALWAN_CORE_PARAM_OUT           ALWAN_CORE_T *
+#define ALWAN_CORE_REF(p)              (*(p))
+#define ALWAN_CORE_ADDR(x)             (&(x))
+#define ALWAN_CORE_PARAM_ARRAY_OUT(type, name, n) type name[n]
+#else
 #define ALWAN_CORE_PARAM_OUT           out ALWAN_CORE_T
 #define ALWAN_CORE_REF(p)              (p)
 #define ALWAN_CORE_ADDR(x)             (x)
 #define ALWAN_CORE_PARAM_ARRAY_OUT(type, name, n) out type name[n]
+#endif
 #define ALWAN_CORE_VEC2                alwan_vec2
 #define ALWAN_CORE_VEC3                alwan_vec3
 #define ALWAN_CORE_MAT3X3              alwan_mat3x3

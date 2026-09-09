@@ -32,6 +32,32 @@ All notable changes to this project will be documented in this file.
   negative cone response is not recoverable, and a negative saturation is
   reported as `C = 0`. Neither is reachable from inside a real display gamut.
 
+- **OpenCL backend (`ALWAN_BACKEND` 4).** Bootstrap with `alwan_opencl.h`, then
+  the core headers, and call the core from your own `__kernel`. Single
+  precision by default; `ALWAN_OPENCL_FP64=1` switches to `double` on a device
+  that reports `cl_khr_fp64`. A backend id, unlike CUDA, because OpenCL C is not
+  C: program scope needs address spaces, there is no C library, and `double` is
+  an extension. It takes the single-pass GPU branch HLSL and GLSL take.
+
+  Verified on an RTX 3060 through the NVIDIA runtime: all 43 core headers build,
+  and six conversions run on the device and agree with the compiled C library to
+  the f32 rounding scale of each. The runtime is the compiler, so
+  `clBuildProgram` is the compile check.
+
+  `ALWAN_CONSTEXPR` is `__global const`, not `__constant`, and the reflex choice
+  fails structurally: `__constant` is not part of the generic address space, in
+  1.2 or 2.0, so a `__constant T *` cannot reach a function that also takes
+  runtime data. `alwan_table_core`'s samplers are called both with a
+  compile-time table and with a caller's own LUT, so under `__constant` one of
+  the two cannot compile. Hence `-cl-std=CL2.0`, which is what program-scope
+  globals need. `ALWAN_OPENCL_CONSTANT_TABLES=1` restores `__constant` for a
+  1.2-only device.
+
+  Two things carry over better than to the shading languages: OpenCL C has a
+  signed `cbrt` and a truncating `fmod`, both matching libm, where HLSL and GLSL
+  each need compensation. `ALWAN_ABS` maps to `fabs`, since OpenCL C `abs` is
+  the integer one.
+
 - **CUDA backend: the per-pixel core is callable from your own kernel.** The
   same shape as HLSL, GLSL and Halide. Alwan does not dispatch, allocate device
   memory or own the image; you write the `__global__` function, index the pixel
@@ -171,6 +197,28 @@ All notable changes to this project will be documented in this file.
   back from it.
 
 ### Changed
+
+- **`ALWAN_DETERMINISTIC` now reaches the header-only core, which it did not.**
+  `ALWAN_CORE_POW` and its siblings forwarded to `ALWAN_POW_F64`, and
+  `alwan_math.h` is what redefines those to the deterministic polynomials. A
+  macro expands at its use site, so the compiled library was always correct: its
+  API `.c` files include `alwan.h`, and so `alwan_math.h`, before any core
+  header expands anything. **A core-only translation unit never includes
+  `alwan_math.h`.** A CUDA kernel, an HLSL shader, or any header-only consumer
+  got libm for `pow`, `cbrt`, `exp`, `log` and the whole angle family under
+  `ALWAN_DETERMINISTIC=1`, silently. The four transfer functions were the
+  exception only because `alwan_core_f*_setup.h` routed those four by name.
+
+  Every transcendental is routed there now, so the core is deterministic on its
+  own terms rather than on include order. `ABS`, `SQRT`, `FLOOR`, `CEIL`,
+  `ROUND`, `FMOD` and `TRUNC` are deliberately left alone: exact IEEE-754
+  operations cannot differ between vendors.
+
+  The consequence is measurable. A deterministic CUDA build is now **bit-exact
+  against the CPU** on every kernel in the parity harness, both precisions,
+  every sample. It was previously indistinguishable from a fast build, which is
+  the symptom that led here. This class of hole is invisible to a CPU-only test
+  matrix, because every runner has the same libm behind the macro.
 
 - **Planck's law: the zero-denominator guard was dead in single precision.**
   `alwan_spd_core` compared against `1e-100`, and this template is instantiated
