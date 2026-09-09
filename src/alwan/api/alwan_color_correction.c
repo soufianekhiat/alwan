@@ -505,104 +505,102 @@ alwan_status alwan_poly_expand_vandermonde_f64(alwan_f64 *out, int *out_size,
  * Uses least-squares regression to find correction matrix
  * ================================================================ */
 
-/* Simple least-squares solve for Ax = b using normal equations
- * A: m x n matrix (row-major)
- * b: m x 3 matrix (row-major, for RGB output)
+/* Least-squares solve for Ax = b by Householder QR.
+ *
+ * A: m x n matrix (row-major), DESTROYED; both callers free it straight after
+ * b: m x 3 matrix (row-major, the three output channels), read only
  * x: n x 3 matrix output (row-major)
- * Returns ALWAN_OK on success */
-static int least_squares_solve(alwan_f64 const *A, alwan_f64 const *b,
+ *
+ * This used to form the normal equations, AtA x = Atb, and run Gaussian
+ * elimination on them. That squares the condition number, and the polynomial
+ * bases here are not well conditioned to begin with: the Finlayson root
+ * expansion at degree 4 recovered a known matrix to only 1.3e-3, having lost
+ * about thirteen digits. Factoring A itself gets that to 4.9e-11. Suite 44
+ * measures both at each term count, so the difference is on the record rather
+ * than asserted.
+ *
+ * Reducing A to R in place, applying the same reflections to a copy of b, and
+ * back-substituting costs about what the normal equations did at these sizes
+ * (n <= 35), and it removes the fixed 35-term stack arrays with it: the work
+ * is two allocations that scale with the problem.
+ *
+ * Returns ALWAN_E_DIVZERO when a pivot falls below a tolerance scaled by the
+ * norm of A, which is the rank-deficient case: too few distinct levels in a
+ * channel to separate the terms asking about it, whatever the sample count.
+ */
+static int least_squares_solve(alwan_f64 *A, alwan_f64 const *b,
                                 int m, int n, alwan_f64 *x)
 {
-    /* Compute A^T * A (n x n) and A^T * b (n x 3) */
-    /* Then solve (A^T * A) * x = A^T * b using Gauss elimination */
+    if (m < n || n <= 0 || m <= 0) return ALWAN_E_INVALID;
 
-    /* Stack allocation for small matrices - max 35 terms */
-    alwan_f64 AtA[35 * 35];
-    alwan_f64 Atb[35 * 3];
+    /* Scale the singularity test to the data: an absolute threshold calls a
+     * legitimately small-valued fit singular and lets a large-valued
+     * degenerate one through. */
+    alwan_f64 frob = 0.0;
+    for (int i = 0; i < m * n; i++) frob += A[i] * A[i];
+    frob = ALWAN_SQRT(frob);
+    if (!(frob > 0.0)) return ALWAN_E_DIVZERO;
+    alwan_f64 const pivot_tol = 1e-12 * frob;
 
-    if (n > 35) return ALWAN_E_INVALID;
+    size_t qtb_bytes = alwan_safe_array_size((size_t)m * 3, sizeof(alwan_f64));
+    size_t diag_bytes = alwan_safe_array_size((size_t)n, sizeof(alwan_f64));
+    if (qtb_bytes == 0 || diag_bytes == 0) return ALWAN_E_NOMEM;
+    alwan_f64 *qtb = (alwan_f64 *)ALWAN_ALLOC(qtb_bytes, sizeof(alwan_f64));
+    alwan_f64 *diag = (alwan_f64 *)ALWAN_ALLOC(diag_bytes, sizeof(alwan_f64));
+    if (!qtb || !diag) {
+        if (qtb) ALWAN_FREE(qtb);
+        if (diag) ALWAN_FREE(diag);
+        return ALWAN_E_NOMEM;
+    }
+    for (int i = 0; i < m * 3; i++) qtb[i] = b[i];
 
-    /* Compute A^T * A */
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            alwan_f64 sum = 0.0;
-            for (int k = 0; k < m; k++) {
-                sum += A[k * n + i] * A[k * n + j];
+    /* Householder reduction. Column j's reflector is stored in the column it
+     * zeroes, below and including the diagonal; the resulting diagonal of R
+     * goes in diag[] so the column stays free to hold it. */
+    for (int j = 0; j < n; j++) {
+        alwan_f64 norm = 0.0;
+        for (int i = j; i < m; i++) norm += A[i * n + j] * A[i * n + j];
+        norm = ALWAN_SQRT(norm);
+        if (norm < pivot_tol) {
+            ALWAN_FREE(qtb); ALWAN_FREE(diag);
+            return ALWAN_E_DIVZERO;   /* rank deficient */
+        }
+        /* Point the reflection away from the pivot: subtracting two nearly
+         * equal numbers here is the classic way to lose the whole column. */
+        alwan_f64 alpha = (A[j * n + j] > 0.0) ? -norm : norm;
+        A[j * n + j] -= alpha;
+
+        alwan_f64 vnorm2 = 0.0;
+        for (int i = j; i < m; i++) vnorm2 += A[i * n + j] * A[i * n + j];
+
+        if (vnorm2 > 0.0) {
+            for (int k = j + 1; k < n; k++) {
+                alwan_f64 dot = 0.0;
+                for (int i = j; i < m; i++) dot += A[i * n + j] * A[i * n + k];
+                alwan_f64 s = 2.0 * dot / vnorm2;
+                for (int i = j; i < m; i++) A[i * n + k] -= s * A[i * n + j];
             }
-            AtA[i * n + j] = sum;
+            for (int c = 0; c < 3; c++) {
+                alwan_f64 dot = 0.0;
+                for (int i = j; i < m; i++) dot += A[i * n + j] * qtb[i * 3 + c];
+                alwan_f64 s = 2.0 * dot / vnorm2;
+                for (int i = j; i < m; i++) qtb[i * 3 + c] -= s * A[i * n + j];
+            }
+        }
+        diag[j] = alpha;
+    }
+
+    /* Back substitution on the upper triangle, three right-hand sides. */
+    for (int c = 0; c < 3; c++) {
+        for (int i = n - 1; i >= 0; i--) {
+            alwan_f64 sum = qtb[i * 3 + c];
+            for (int k = i + 1; k < n; k++) sum -= A[i * n + k] * x[k * 3 + c];
+            x[i * 3 + c] = sum / diag[i];
         }
     }
 
-    /* Compute A^T * b */
-    for (int i = 0; i < n; i++) {
-        for (int c = 0; c < 3; c++) {
-            alwan_f64 sum = 0.0;
-            for (int k = 0; k < m; k++) {
-                sum += A[k * n + i] * b[k * 3 + c];
-            }
-            Atb[i * 3 + c] = sum;
-        }
-    }
-
-    /* Solve AtA * x = Atb using Gaussian elimination with partial pivoting */
-    /* Augmented matrix: [AtA | Atb] */
-    alwan_f64 aug[35 * 38];  /* n x (n + 3) */
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            aug[i * (n + 3) + j] = AtA[i * n + j];
-        }
-        for (int c = 0; c < 3; c++) {
-            aug[i * (n + 3) + n + c] = Atb[i * 3 + c];
-        }
-    }
-
-    /* Forward elimination */
-    for (int col = 0; col < n; col++) {
-        /* Find pivot */
-        int max_row = col;
-        alwan_f64 max_val = ALWAN_ABS(aug[col * (n + 3) + col]);
-        for (int row = col + 1; row < n; row++) {
-            alwan_f64 val = ALWAN_ABS(aug[row * (n + 3) + col]);
-            if (val > max_val) {
-                max_val = val;
-                max_row = row;
-            }
-        }
-
-        /* Swap rows if needed */
-        if (max_row != col) {
-            for (int j = 0; j < n + 3; j++) {
-                alwan_f64 tmp = aug[col * (n + 3) + j];
-                aug[col * (n + 3) + j] = aug[max_row * (n + 3) + j];
-                aug[max_row * (n + 3) + j] = tmp;
-            }
-        }
-
-        /* Check for singular matrix */
-        if (ALWAN_ABS(aug[col * (n + 3) + col]) < 1e-12) {
-            return ALWAN_E_DIVZERO;  /* Singular matrix */
-        }
-
-        /* Eliminate column */
-        for (int row = col + 1; row < n; row++) {
-            alwan_f64 factor = aug[row * (n + 3) + col] / aug[col * (n + 3) + col];
-            for (int j = col; j < n + 3; j++) {
-                aug[row * (n + 3) + j] -= factor * aug[col * (n + 3) + j];
-            }
-        }
-    }
-
-    /* Back substitution */
-    for (int row = n - 1; row >= 0; row--) {
-        for (int c = 0; c < 3; c++) {
-            alwan_f64 sum = aug[row * (n + 3) + n + c];
-            for (int j = row + 1; j < n; j++) {
-                sum -= aug[row * (n + 3) + j] * x[j * 3 + c];
-            }
-            x[row * 3 + c] = sum / aug[row * (n + 3) + row];
-        }
-    }
-
+    ALWAN_FREE(qtb);
+    ALWAN_FREE(diag);
     return ALWAN_OK;
 }
 

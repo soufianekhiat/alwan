@@ -376,6 +376,29 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed: output differs
 
+- **The CCM fits solved through the normal equations and lost most of their
+  precision doing it.** `alwan_colour_correction_matrix_cheung2004_{T}` and
+  `..._finlayson2015_{T}` formed `AtA` and ran Gaussian elimination on it,
+  which squares the condition number. They now factor `A` itself with a
+  Householder QR. Same call, same arguments, same results on well-conditioned
+  input; the difference is how much of the answer survives when the basis is
+  not.
+
+  Measured by recovering a known matrix from samples generated through it,
+  which is exact in the linear case, so every digit lost belongs to the
+  solver. Cheung at 35 terms goes from 2.9e-10 to 1.1e-13. The Finlayson
+  root-polynomial at degree 4, 22 terms, goes from **1.3e-03 to 4.9e-11**.
+
+  That last one was the case worth fixing. Its terms are `sqrt(RG)`,
+  `cbrt(R2G)`, `(R3G)^(1/4)`: the same shape with slowly separating exponents,
+  so the columns crowd together and the fit was losing about thirteen digits.
+  It is the exposure-invariant model, which is what a caller reaches for when
+  the lighting is uncertain, so it was least trustworthy exactly where it was
+  most wanted.
+
+  The fixed 35-term stack arrays went with the old body. The solver allocates
+  to the problem now, so nothing structural caps the term count.
+
 - **The bulk paths ignored `ALWAN_NORMALIZE_RANGES` for some spaces and
   honoured it for others.** At the shipped default,
   `alwan_xyz_to_hunter_lab_f64` and `alwan_xyz_to_hunter_lab_f64_map_interleave`

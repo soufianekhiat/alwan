@@ -927,34 +927,36 @@ existing two-line call keeps its behaviour and the knobs are opt-in:
 
 Options worth having, roughly in the order they are worth adding:
 
-1. **Householder QR on `A` directly**, instead of forming `AtA`. Normal
-   equations square the condition number. The `double` solve is a mitigation,
-   not a fix. QR costs about the same at these sizes and gives back roughly
-   half the lost digits. Changes nothing on well-conditioned input, so it is
-   safe to make the default once it exists.
+1. **Householder QR on `A` directly**, instead of forming `AtA`. **Done.**
 
-   Suite 44 now measures this, by recovering a known matrix from samples
-   generated through it, which is exact in the linear case so every digit lost
-   belongs to the solver:
+   Suite 44 measured both, by recovering a known matrix from samples generated
+   through it, which is exact in the linear case so every digit lost belongs
+   to the solver:
 
-   | basis | terms | worst coefficient error |
-   |---|---|---|
-   | Cheung | 3 | 2.1e-15 |
-   | Cheung | 11 | 4.5e-13 |
-   | Cheung | 22 | 5.7e-12 |
-   | Cheung | 35 | 2.9e-10 |
-   | Finlayson plain, degree 4 | 34 | 1.5e-10 |
-   | Finlayson **root**, degree 3 | 13 | 7.2e-09 |
-   | Finlayson **root**, degree 4 | 22 | **1.3e-03** |
+   | basis | terms | normal equations | QR |
+   |---|---|---|---|
+   | Cheung | 3 | 2.1e-15 | 9.4e-16 |
+   | Cheung | 11 | 4.5e-13 | 8.9e-15 |
+   | Cheung | 22 | 5.7e-12 | 2.0e-14 |
+   | Cheung | 35 | 2.9e-10 | 1.1e-13 |
+   | Finlayson plain, degree 4 | 34 | 1.5e-10 | 1.2e-13 |
+   | Finlayson **root**, degree 3 | 13 | 7.2e-09 | 2.6e-13 |
+   | Finlayson **root**, degree 4 | 22 | **1.3e-03** | **4.9e-11** |
 
-   The root basis is the case that matters, and it is much worse than its term
-   count suggests. `sqrt(RG)`, `cbrt(R2G)` and `(R3G)^(1/4)` are all "R-ish
-   times G-ish" with slowly separating exponents, so the columns crowd
-   together as the degree rises. At degree 4 the fit loses about thirteen
-   digits, which is what `1.3e-03` on coefficients of order 1 means. That is
-   the exposure-invariant model, the one a caller reaches for precisely when
-   the lighting is uncertain, and it is currently the least trustworthy fit in
-   the library. A QR would put it near `1e-10`.
+   The root basis was the case that mattered, and it was much worse than its
+   term count suggested. `sqrt(RG)`, `cbrt(R2G)` and `(R3G)^(1/4)` are all
+   "R-ish times G-ish" with slowly separating exponents, so the columns crowd
+   together as the degree rises, and the normal equations squared that. At
+   degree 4 the fit lost about thirteen digits: `1.3e-03` on coefficients of
+   order 1. It is the exposure-invariant model, the one a caller reaches for
+   precisely when the lighting is uncertain, and it was the least trustworthy
+   fit in the library. Seven orders back.
+
+   No API changed. The fit is the same call with the same arguments, and the
+   fixed 35-term stack arrays went with the old body: the work is now two
+   allocations that scale with the problem. Suite 44's budgets are tightened
+   to roughly an order above the QR numbers, so a future solver change cannot
+   quietly hand the digits back.
 
    A second measured consequence, worth knowing before anyone debugs a
    profile: past degree 2 the root fit's **coefficients are not identifiable**.
@@ -1033,10 +1035,9 @@ Two things to fix alongside, both found while reading this code:
   behaviour, measured, not a target. When the solver options land they should
   drop by orders, and tightening them is how the improvement gets recorded.
 
-- **The stack arrays cap the fit at 35 terms** (`AtA[35 * 35]`,
-  `aug[35 * 38]`). Fine for the Cheung ladder, but it is a structural ceiling
-  rather than a chosen one, and a solver rewrite should take the allocation
-  with it.
+- **The stack arrays capped the fit at 35 terms** (`AtA[35 * 35]`,
+  `aug[35 * 38]`). Gone with the normal-equations body; the QR solve allocates
+  what the problem needs.
 
 Worth recording: the usable term count is bounded by the patch count, since the
 fit rejects `num_samples < terms`. A Classic caps at 22, an SG at 140 patches
@@ -1060,7 +1061,8 @@ target's own numbers.
 - [ ] Close batch/map and `_map_planar` coverage gaps (CAMs, ZCAM, deltaE, CVD)
 - [ ] Add the bulk two-step Zhai 2018 CAT
 - [ ] CCM fit: a params struct, so the solver, objective, weighting and regularisation are the caller's choice; today all four are fixed
-- [ ] CCM fit: QR or SVD instead of the normal equations, which square the condition number at 22 and 35 terms
+- [x] CCM fit: Householder QR replaces the normal equations; root-polynomial degree 4 went from 1.3e-3 to 4.9e-11, no API change
+- [ ] CCM fit: SVD as an option on top of QR, for the rank-deficient case QR still cannot answer
 - [ ] CCM fit: per-patch weights, and the robust loss that reuses them
 - [ ] CCM fit: a dE2000 or CAM16-UCS objective; the current least squares in linear RGB spends its accuracy on the bright patches
 - [ ] CCM fit: a neutral-preserving constraint, so a profile cannot tint greys
