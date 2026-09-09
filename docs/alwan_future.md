@@ -892,7 +892,7 @@ nonsense. What remains:
 - [ ] Thread data semantics through more public conversion workflows
 - [ ] Publish tighter GPU/backend examples around the current bootstrap headers
 - [x] CUDA backend: kernel-side core, both precisions, run-verified on sm_86. No `ALWAN_BACKEND_CUDA` id in the end, because the emission path is the C one; test `ALWAN_CUDA`
-- [ ] Evaluate an OpenCL backend (one source across AMD, Intel and embedded GPUs)
+- [x] OpenCL backend (ALWAN_BACKEND 4): 43 of 43 core headers build, run-verified against the C library on an RTX 3060. Needs -cl-std=CL2.0, because __constant is not generic-compatible and the table samplers serve both compile-time tables and runtime LUTs
 - [ ] Scope a fixed-point path for parts without an FPU (transfer functions, RGB matrices, video encode first)
 - [ ] Add ergonomic helpers only where they reduce real call-site boilerplate
 - [x] Extend the deterministic layer to trig/log10 and route the macros; the 30 CI exclusions are removed, pending a confirming run
