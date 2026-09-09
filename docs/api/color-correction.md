@@ -367,6 +367,23 @@ void alwan_colour_correct_finlayson2015_{T}(
 
 - `degree`: polynomial degree (1-4)
 - `root_poly`: if non-zero, use root-polynomial expansion (must match between fit and apply)
+- `matrix_size`: receives the **element** count, terms x 3, which is what
+  `matrix_out` must hold. Not the term count. The expansion sizes are 3, 9, 19
+  and 34 plain, and 3, 6, 13 and 22 root, so a degree-4 plain fit reports 102.
+
+> **Exposure invariance holds on predictions, not on coefficients.** Every root
+> term is homogeneous of degree 1, so a matrix fitted at one exposure keeps
+> working when the light changes, exactly. The fitted coefficients are a
+> different matter: past degree 2 the root basis is near-degenerate, many
+> coefficient vectors reproduce the data about equally well, and two fits of
+> the same scene at different exposures land on different ones. Compare two
+> CCMs by what they predict, never coefficient by coefficient.
+
+> **A fit needs distinct levels, not just samples.** The `num_samples < terms`
+> check is necessary and not sufficient. The 35-term Cheung set contains `1`,
+> `R`, `R^2`, `R^3` and `R^4`, so it needs at least five distinct R levels
+> whatever the patch count; a chart short of levels in one channel passes the
+> count check and returns `ALWAN_E_DIVZERO` from the solve.
 
 **Example (camera profiling workflow):**
 ```c

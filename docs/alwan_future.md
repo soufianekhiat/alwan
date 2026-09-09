@@ -928,17 +928,58 @@ existing two-line call keeps its behaviour and the knobs are opt-in:
 Options worth having, roughly in the order they are worth adding:
 
 1. **Householder QR on `A` directly**, instead of forming `AtA`. Normal
-   equations square the condition number, and `AtA` at 22 or 35 terms on real
-   chart data is genuinely ill-conditioned. The `double` solve is a mitigation,
+   equations square the condition number. The `double` solve is a mitigation,
    not a fix. QR costs about the same at these sizes and gives back roughly
    half the lost digits. Changes nothing on well-conditioned input, so it is
    safe to make the default once it exists.
+
+   Suite 44 now measures this, by recovering a known matrix from samples
+   generated through it, which is exact in the linear case so every digit lost
+   belongs to the solver:
+
+   | basis | terms | worst coefficient error |
+   |---|---|---|
+   | Cheung | 3 | 2.1e-15 |
+   | Cheung | 11 | 4.5e-13 |
+   | Cheung | 22 | 5.7e-12 |
+   | Cheung | 35 | 2.9e-10 |
+   | Finlayson plain, degree 4 | 34 | 1.5e-10 |
+   | Finlayson **root**, degree 3 | 13 | 7.2e-09 |
+   | Finlayson **root**, degree 4 | 22 | **1.3e-03** |
+
+   The root basis is the case that matters, and it is much worse than its term
+   count suggests. `sqrt(RG)`, `cbrt(R2G)` and `(R3G)^(1/4)` are all "R-ish
+   times G-ish" with slowly separating exponents, so the columns crowd
+   together as the degree rises. At degree 4 the fit loses about thirteen
+   digits, which is what `1.3e-03` on coefficients of order 1 means. That is
+   the exposure-invariant model, the one a caller reaches for precisely when
+   the lighting is uncertain, and it is currently the least trustworthy fit in
+   the library. A QR would put it near `1e-10`.
+
+   A second measured consequence, worth knowing before anyone debugs a
+   profile: past degree 2 the root fit's **coefficients are not identifiable**.
+   Many coefficient vectors reproduce the data about equally well, so two fits
+   of the same data at different exposures land on quite different matrices
+   while predicting the same answers. Compare CCMs by what they predict, never
+   coefficient by coefficient. The exposure invariance itself is exact and
+   holds to 1.8e-15 when measured on predictions.
 
 2. **SVD with rank truncation.** Answers the case QR still cannot: a design
    matrix that is actually rank deficient. Duplicate patches, a chart shot with
    a clipped channel, a term set wider than the chart can support. It also lets
    the fit report its rank, so a caller learns the fit was degenerate instead
    of receiving `ALWAN_E_DIVZERO` with no reason attached.
+
+   The `num_samples < terms` guard is **necessary and not sufficient**, which
+   is the concrete case for this. What a fit needs is not a sample count but
+   enough distinct levels per channel: the 35-term Cheung set contains `1`,
+   `R`, `R2`, `R3` and `R4`, five functions of R, so it needs at least five
+   distinct R levels no matter how many patches there are. Suite 44 pins both
+   halves: 24 samples that pass the count guard but share one R level are
+   singular at 22 terms, and the same 24 spread across the levels fit fine.
+   A real chart is not a grid, so its patches can be short of levels in
+   exactly this way while looking like plenty of data, and today the only
+   signal is `ALWAN_E_DIVZERO` with nothing attached to it.
 
 3. **Tikhonov regularisation.** One parameter, shrinking the high-order terms.
    This is the honest answer to overfitting when the term count approaches the
@@ -979,15 +1020,18 @@ validation data.
 
 Two things to fix alongside, both found while reading this code:
 
-- **The fits have no test coverage.** Suite 44 covers
-  `alwan_poly_expand_cheung2004` and `alwan_poly_expand_finlayson2015`, but
-  `alwan_colour_correction_matrix_cheung2004` and `..._finlayson2015` are
-  called from no test in the repo. The expansions are checked and the solve
-  that consumes them is not. The first test is synthetic and exact: take a
-  known matrix, generate camera RGB from reference patches through it, fit, and
-  require the matrix back. That is exact in the linear case, and running it at
-  each term count is what will show the conditioning limit as a number rather
-  than as a worry.
+- **The fits had no test coverage. Done.** Suite 44 covered the expansions and
+  nothing called `alwan_colour_correction_matrix_cheung2004` or
+  `..._finlayson2015`. Six tests now do: exact recovery of a known matrix
+  across the Cheung ladder and every Finlayson degree, exposure invariance
+  measured on predictions with the plain basis as a control, the sample-count
+  guard and the rank case behind it, the apply round trip (which is what would
+  catch a term-ordering slip between fit and apply, since the two read the
+  expansion independently), and the f32 twin. The numbers above come from it.
+
+  The Finlayson budgets in that suite are the current normal-equations
+  behaviour, measured, not a target. When the solver options land they should
+  drop by orders, and tightening them is how the improvement gets recorded.
 
 - **The stack arrays cap the fit at 35 terms** (`AtA[35 * 35]`,
   `aug[35 * 38]`). Fine for the Cheung ladder, but it is a structural ceiling
@@ -1020,7 +1064,8 @@ target's own numbers.
 - [ ] CCM fit: per-patch weights, and the robust loss that reuses them
 - [ ] CCM fit: a dE2000 or CAM16-UCS objective; the current least squares in linear RGB spends its accuracy on the bright patches
 - [ ] CCM fit: a neutral-preserving constraint, so a profile cannot tint greys
-- [ ] CCM fit: no test covers the solve at all, only the expansions; start with the synthetic exact round trip
+- [x] CCM fit: the solve is covered now (suite 44, exact recovery of a known matrix); it measured the conditioning, and the root-polynomial at degree 4 errs by 1.3e-3
+- [ ] CCM fit: report rank, not just ALWAN_E_DIVZERO; the count guard is necessary and not sufficient, a chart can pass it and still be short of levels
 - [x] Measured chart files: alwan_chart_* reads CGATS.17 / OpenQualia, so a target's own numbers reach the solvers; no network needed
 - [x] Fill API parity gaps: norm macros and scalar HSV<->HWB were already in; ZCAM `from_ucs` added
 - [x] The f64 facades are documented, each with its reason, in precision-and-limits.md; they stay facades by design
