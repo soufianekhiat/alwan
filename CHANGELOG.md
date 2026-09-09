@@ -101,11 +101,9 @@ All notable changes to this project will be documented in this file.
 
   Verified on an RTX 3060 with CUDA 12.6: all 43 core headers compile, fast and
   deterministic, and kernels run on the device and are compared against the same
-  source on the host. **The deterministic sRGB transfer functions are bit-exact
-  between the CPU and the GPU**, both precisions, every sample. The colour
-  conversions are not, and `ALWAN_DETERMINISTIC` does not change them at all:
-  the residual is in `alwan_mat3_mulv`, a plain sum of products that no
-  `ALWAN_*` macro governs. See `docs/backends_limits.md`.
+  source on the host. **A deterministic build is bit-exact between the CPU and
+  the GPU**, every kernel measured, both precisions, every sample. See
+  `docs/backends_limits.md`.
 
   `--fmad=false` is required. The `#pragma STDC FP_CONTRACT OFF` in
   `alwan_deterministic.h` is a C compiler pragma and nvcc's device compiler does
