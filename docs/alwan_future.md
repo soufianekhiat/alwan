@@ -59,64 +59,75 @@ Future work here is mostly documentation and workflow polish:
   backends
 - a narrower story around what is public-facing versus experimental
 
-### 3b. A CUDA Backend
+### 3b. CUDA: done, and not as a fifth backend
 
-`ALWAN_BACKEND` currently selects between C, HLSL, GLSL and Halide, auto-detected
-from `__HLSL_VERSION`, `GL_core_profile`, `HALIDE_HALIDERUNTIME_H` or nothing.
-CUDA would be a fifth: `ALWAN_BACKEND_CUDA`, detected from `__CUDACC__`.
+Shipped. A CUDA kernel calls the per-pixel core directly, the same way an HLSL
+shader does. `ALWAN_CUDA` is 1 under nvcc.
 
-It is the cheapest of the remaining backends to add, because CUDA is the one that
-looks most like the C backend:
+This section planned it as `ALWAN_BACKEND_CUDA`, a fifth id detected from
+`__CUDACC__`. That turned out to be the wrong shape. nvcc is a C++ compiler with
+a real `double`, so it compiles the **C** emission path unchanged, dual-pass
+`.inc` and all, and a kernel gets both the `_f32` and the `_f64` core rather than
+a single-precision subset. Minting a separate id would only have made every
+`ALWAN_BACKEND == ALWAN_BACKEND_C` guard in the tree wrong about a CUDA build.
+What it needed instead was qualifiers: `__host__ __device__` on the header-only
+functions, and a storage class for the constant tables that works in both of
+nvcc's compilation passes.
 
-- device code is C++ with C semantics, so `alwan_scalar`, the struct-by-value core
-  functions and the branchless `ALWAN_SELECT` form all carry over unchanged;
-- `__device__` is the only decoration the core functions need, which is what
-  `ALWAN_INLINE` already abstracts per backend;
-- the ~24 `ALWAN_*` math macros map onto CUDA intrinsics directly, and unlike the
-  shader backends CUDA has a real `double`, so this would be the **first GPU
-  backend where the `_f64` surface is reachable**. Everything the decisions doc
-  says about f64 being C-only is a statement about HLSL and GLSL, not about GPUs
-  in general.
+The three questions this section raised, answered:
 
-What would need deciding rather than just typing:
+- **Is `_f64` on device wanted?** It is there, and it is not silent: a caller
+  writes `alwan_xyz_to_oklab_f64_v` deliberately. No separate opt-in was needed
+  because the name already says which one you asked for.
+- **Determinism.** `--fmad=false` is required, as predicted, because the
+  `#pragma STDC FP_CONTRACT OFF` in the deterministic header is a C compiler
+  pragma that nvcc's device compiler ignores. The device runner this section
+  asked for exists (`alwan_dev/cuda_regression/`), and with it a deterministic
+  build is **bit-exact against the CPU** on every kernel measured, both
+  precisions, every sample. Getting there closed a hole that was not
+  CUDA-specific: the deterministic routing lived in `alwan_math.h`, which a
+  core-only translation unit never includes.
+- **Where the boundary sits.** Unchanged and still a design question. The
+  compiled bulk, strided and typed API stays CPU-side; the backend is the core,
+  not a device-side bulk layer.
 
-- **Whether `_f64` on device is actually wanted.** It is available but slow on
-  consumer parts; offering it invites people to use it by accident. A separate
-  opt-in is probably better than silent availability.
-- **Determinism.** `ALWAN_DETERMINISTIC` currently swaps libm for alwan's own
-  pow/exp/log to get bit-identical results across compilers. CUDA has its own
-  fast-math and FMA contraction rules, so a deterministic CUDA build needs the
-  same treatment plus `--fmad=false`, and the det regression suite would need a
-  device runner before any bit-exactness claim is made.
-- **Where the boundary sits.** The compiled bulk, strided and typed API is
-  CPU-side by design. CUDA is the first backend where a device-side bulk layer
-  would actually make sense, which is a design question and not a port.
+### 3c. OpenCL: done, as a real backend id
 
-Nothing here is started. It is recorded because the per-pixel core is already
-written in the form a CUDA port needs, and that is worth not losing.
+Shipped as `ALWAN_BACKEND` 4. Bootstrap with `alwan_opencl.h`, then the core
+headers, and call the core from your own `__kernel`. All 43 core headers build,
+and six conversions run on an RTX 3060 through the NVIDIA runtime and agree with
+the compiled C library to the f32 rounding scale of each
+(`alwan_dev/opencl_regression/`).
 
-### 3c. An OpenCL Backend
+Unlike CUDA this **is** a backend id, because OpenCL C is not C: program scope
+needs address spaces, there is no C library, and `double` is an extension. So it
+takes the single-pass GPU branch HLSL and GLSL take.
 
-The same argument as CUDA, with a different trade. OpenCL C is C99 with a
-restricted pointer model, so the struct-by-value cores and `ALWAN_SELECT` carry
-over as directly as they do for CUDA, and `double` is available wherever the
-device reports `cl_khr_fp64`. What CUDA gets for free and OpenCL does not is a
-single vendor's math library: `native_*` versus the precise builtins differ per
-implementation, so the deterministic layer matters more here, not less. In
-exchange it is the only route that covers AMD, Intel and embedded GPUs from one
-source.
+The three questions, answered:
 
-What would need deciding:
+- **Which precision profile.** f32 by default, `ALWAN_OPENCL_FP64=1` for
+  `double`, and the device capability query stays the caller's: a program that
+  enables `cl_khr_fp64` on a device without it fails to build, which is the
+  right failure and not one a header can pre-empt.
+- **How kernels are delivered.** As headers the caller includes, not embedded
+  strings. OpenCL compiles from source at runtime, so the runtime IS the
+  compiler and `-I` at `clBuildProgram` does the rest. That also makes
+  `clBuildProgram` the compile check, since there is no offline OpenCL C
+  compiler to invoke.
+- **Determinism.** Not claimed yet, and the reason is worth stating: the
+  deterministic layer is reachable here in principle, but nothing has run the
+  device against a reference to prove it, and this document's own standard is
+  that a bit-exactness claim needs a device runner behind it. The f32 tolerance
+  above is a two-implementation comparison, not a determinism result.
 
-- **Which precision profile to target.** `cl_khr_fp64` is optional, so the f64
-  surface is per-device rather than per-backend. Either the build declares f32
-  only, or the API grows a device capability query.
-- **How kernels are delivered.** OpenCL compiles from source at runtime, so the
-  header-only cores would ship as embedded strings rather than as headers the
-  caller includes. That is a packaging decision, not a maths one.
-- **Determinism.** The ULP guarantees on the builtins are per-implementation.
-  A bit-exactness claim needs `ALWAN_DETERMINISTIC` polynomials plus a device
-  runner in the regression harness, exactly as CUDA does.
+What actually cost the time was none of the three. `ALWAN_CONSTEXPR` is
+`__global const`, not `__constant`, and the reflex choice fails structurally:
+**`__constant` is not part of the generic address space**, in 1.2 or in 2.0, so a
+`__constant T *` cannot reach a function that also takes runtime data.
+`alwan_table_core`'s samplers are called both with a compile-time table, the
+eleven Machado CVD matrices selected by severity, and with a caller's own LUT,
+so under `__constant` one of the two cannot compile. `__global const` is
+generic-compatible and needs program-scope globals, hence `-cl-std=CL2.0`.
 
 ### 3d. Fixed Point For Embedded Targets
 
