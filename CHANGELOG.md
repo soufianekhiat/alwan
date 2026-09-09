@@ -376,6 +376,22 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed: output differs
 
+- **The .cube reader accepted infinities and NaN.** `sscanf("%lf")` turns
+  `1e999` into `HUGE_VAL` and `nan` into a quiet NaN without failing, so a row
+  that parsed was not yet a row worth storing, and nothing checked. One
+  infinity in a 3D LUT is worse than one bad entry: every sample that
+  interpolates through that corner comes back non-finite, so a single
+  character in a downloaded `.cube` poisoned a whole cell of the table.
+
+  All six readers now reject a non-finite entry with `ALWAN_E_RANGE`: 3D and
+  1D, path and buffer, `f32` and `f64`. The declared-size and row-count
+  guards were already sound and are unchanged.
+
+  Also worth knowing, and now covered by a test rather than left implicit: the
+  size query (passing a `NULL` lut) returns as soon as it reads
+  `LUT_3D_SIZE` and never looks at the body. A successful size query says the
+  header is sane and nothing more, so it is not validation of the file.
+
 - **The CCM fits solved through the normal equations and lost most of their
   precision doing it.** `alwan_colour_correction_matrix_cheung2004_{T}` and
   `..._finlayson2015_{T}` formed `AtA` and ran Gaussian elimination on it,

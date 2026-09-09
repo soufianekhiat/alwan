@@ -62,6 +62,23 @@ static int is_comment_or_empty(char const *line) {
     return (*s == '#' || *s == '\0' || *s == '\n' || *s == '\r');
 }
 
+/* A LUT entry has to be finite.
+ *
+ * sscanf("%lf") turns "1e999" into HUGE_VAL and "nan" into a quiet NaN, both
+ * without failing, so a row that parses is not yet a row that can be stored.
+ * One infinity in a 3D LUT is worse than one bad entry: every sample that
+ * interpolates through that corner comes back non-finite, so a single
+ * character in the file poisons a whole cell of the cube.
+ *
+ * The bound is 1e308 rather than a comparison against HUGE_VAL so it holds
+ * under a compiler told to assume finite math. */
+static int cube_values_finite(double r, double g, double b) {
+    return (r == r) && (g == g) && (b == b)
+        && (r > -1e308) && (r < 1e308)
+        && (g > -1e308) && (g < 1e308)
+        && (b > -1e308) && (b < 1e308);
+}
+
 alwan_status alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
                           char const *path) {
     if (!out_size || !path) return ALWAN_E_INVALID;
@@ -101,6 +118,7 @@ alwan_status alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
         if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) {
             err = ALWAN_E_INVALID; goto done;
         }
+        if (!cube_values_finite(r, g, b)) { err = ALWAN_E_RANGE; goto done; }
 
         size_t total = (size_t)size * (size_t)size * (size_t)size;
         if (data_count >= total) { err = ALWAN_E_RANGE; goto done; }
@@ -160,6 +178,7 @@ alwan_status alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
         if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) {
             err = ALWAN_E_INVALID; goto done_1d;
         }
+        if (!cube_values_finite(r, g, b)) { err = ALWAN_E_RANGE; goto done_1d; }
 
         if (data_count >= size) { err = ALWAN_E_RANGE; goto done_1d; }
 
@@ -230,6 +249,7 @@ alwan_status alwan_cube_import_3d_buffer_f64(alwan_f64 *lut, int *out_size,
 
         double r, g, b;
         if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) { err = ALWAN_E_INVALID; goto done_buf; }
+        if (!cube_values_finite(r, g, b)) { err = ALWAN_E_RANGE; goto done_buf; }
 
         size_t total = (size_t)size * (size_t)size * (size_t)size;
         if (data_count >= total) { err = ALWAN_E_RANGE; goto done_buf; }
@@ -294,6 +314,7 @@ alwan_status alwan_cube_import_3d_f32(alwan_f32 *lut, int *out_size, char const 
 
         double r, g, b;
         if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) { err = ALWAN_E_INVALID; goto done_3d_f32; }
+        if (!cube_values_finite(r, g, b)) { err = ALWAN_E_RANGE; goto done_3d_f32; }
 
         size_t total = (size_t)size * (size_t)size * (size_t)size;
         if (data_count >= total) { err = ALWAN_E_RANGE; goto done_3d_f32; }
@@ -352,6 +373,7 @@ alwan_status alwan_cube_import_1d_f32(alwan_f32 *lut, int *out_size, char const 
 
         double r, g, b;
         if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) { err = ALWAN_E_INVALID; goto done_1d_f32; }
+        if (!cube_values_finite(r, g, b)) { err = ALWAN_E_RANGE; goto done_1d_f32; }
 
         if (data_count >= size) { err = ALWAN_E_RANGE; goto done_1d_f32; }
 
@@ -414,6 +436,7 @@ alwan_status alwan_cube_import_3d_buffer_f32(alwan_f32 *lut, int *out_size,
 
         double r, g, b;
         if (sscanf(s, "%lf %lf %lf", &r, &g, &b) != 3) { err = ALWAN_E_INVALID; goto done_buf_f32; }
+        if (!cube_values_finite(r, g, b)) { err = ALWAN_E_RANGE; goto done_buf_f32; }
 
         size_t total = (size_t)size * (size_t)size * (size_t)size;
         if (data_count >= total) { err = ALWAN_E_RANGE; goto done_buf_f32; }

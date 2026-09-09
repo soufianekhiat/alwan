@@ -1047,6 +1047,47 @@ target's own numbers.
 
 ---
 
+## Untrusted file input: what the surface is, and what it survives
+
+Everything in alwan that reads a file the program did not write:
+
+- `alwan_chart_load_{T}` and `..._load_buffer_{T}`, CGATS.17 / OpenQualia
+- `alwan_cube_import_3d_{T}`, `..._1d_{T}` and their `_buffer` twins
+
+That is all of it. CLF is export only, and the ACES dump path writes rather
+than reads and is behind `ALWAN_GENDATA_DUMP_ACES2` in any case.
+
+Both were given an adversarial pass on 2026-09-09, and both had the same class
+of defect: a value that parses is not yet a value worth storing.
+
+- The chart parser had three, all in code written that morning: an unbounded
+  exponent accumulator (`1e99999999999`, signed overflow), a scaling loop that
+  ran once per unit of it (`1e2000000000`, a two-billion iteration spin), and a
+  400-digit mantissa reaching infinity unremarked. Fixed, covered in suite 112.
+- The `.cube` reader accepted `1e999` and `nan` into the table. Its size and
+  count guards were sound, which is what made the value check the thing left
+  to find. Fixed at all six readers, covered in suite 79.
+
+Two things worth keeping in mind for the next reader added:
+
+- **`sscanf("%lf")` does not fail on overflow.** It returns `HUGE_VAL` and a
+  successful conversion count. Any parser using it needs a finiteness check of
+  its own, and the check should compare against a bound rather than against
+  `HUGE_VAL`, so it holds under a compiler told to assume finite math.
+- **The `.cube` size query is not validation.** Passing a `NULL` lut returns
+  the moment `LUT_3D_SIZE` is read; the body is never examined. The documented
+  flow is query, allocate, read, and it would be easy to mistake the first call
+  for a check of the file.
+
+One gap left, not yet closed. The `.cube` readers take a destination buffer
+and no capacity, so they cannot be used safely against a file that might change
+between the size query and the read: the second call trusts the header it finds
+the second time. The buffer forms are fine, since the caller holds the same
+bytes for both calls. The path forms want either a capacity argument or a
+one-call form that allocates.
+
+---
+
 ## Working Checklist
 
 - [ ] Support `ALWAN_EMBED_DATA=0` as a real runtime-data mode
@@ -1073,6 +1114,8 @@ target's own numbers.
 - [x] The f64 facades are documented, each with its reason, in precision-and-limits.md; they stay facades by design
 - [x] Harden `alwan_create` validation (non-zero flags and a half allocator pair return NULL); the 44 public enums were already fully pinned
 - [ ] Document the undocumented tail surface
+- [x] Adversarial pass over every reader of an outside file; the .cube reader was storing infinities and NaN, fixed at all six entry points
+- [ ] .cube path readers take no capacity, so the read call trusts whatever header it finds the second time; add a capacity argument or a one-call form that allocates
 - [x] Hunt inverse: closed form, not the three-dimensional solve this planned; round-trips the sRGB gamut to 6.5e-11
 - [x] TM-30 residual: the CCT was read on the 10 degree observer against a 2 degree locus; sweep now 0.0010 mean
 - [x] RGB-space transfer functions: audited against colour-science, 24 rows corrected, 7 curves added
