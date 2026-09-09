@@ -486,8 +486,8 @@ ALWAN_INLINE void alwan_simd_f64_storeu(double *ptr, alwan_simd_f64 v) { _mm256_
  * Integer ops remain 128-bit (AVX has no 256-bit integer)
  * ================================================================ */
 
-ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_load(uint8_t const *ptr) { return _mm_load_si128((const __m128i *)ptr); }
-ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_loadu(uint8_t const *ptr) { return _mm_loadu_si128((const __m128i *)ptr); }
+ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_load(uint8_t const *ptr) { return _mm_load_si128((__m128i const *)ptr); }
+ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_loadu(uint8_t const *ptr) { return _mm_loadu_si128((__m128i const *)ptr); }
 ALWAN_INLINE void alwan_simd_u8_store(uint8_t *ptr, alwan_simd_u8 v) { _mm_store_si128((__m128i *)ptr, v); }
 ALWAN_INLINE void alwan_simd_u8_storeu(uint8_t *ptr, alwan_simd_u8 v) { _mm_storeu_si128((__m128i *)ptr, v); }
 

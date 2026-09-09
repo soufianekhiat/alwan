@@ -778,7 +778,7 @@ typedef struct {
 static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed) {
     if (!notation || !parsed) return ALWAN_E_INVALID;
 
-    const char *p = notation;
+    char const *p = notation;
 
     /* Skip optional "S " or "W " prefix */
     if ((*p == 'S' || *p == 'W') && p[1] == ' ') p += 2;
@@ -811,8 +811,8 @@ static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed)
     p += 2;
 
     /* Elementary hue letters and their NCS circle positions */
-    static const char   ELEM_CH[4]  = {'Y', 'R', 'B', 'G'};
-    static const alwan_f64 ELEM_POS[4] = {0.0, 25.0, 50.0, 75.0};
+    static char const   ELEM_CH[4]  = {'Y', 'R', 'B', 'G'};
+    static alwan_f64 const ELEM_POS[4] = {0.0, 25.0, 50.0, 75.0};
 
     /* First letter */
     int idx1 = -1;
@@ -848,12 +848,12 @@ static int parse_ncs_notation(char const *notation, ncs_notation_parsed *parsed)
  * Source: Hard & Sivik (1981) Color Res. Appl. 6(3), 129-138, and
  *         Sallstrom (1973) unpublished data cited therein.
  * Order: Y(0), R(25), B(50), G(75) -- matching ELEM_POS above. */
-static const alwan_f64 NCS_ELEM_x[4] = {0.418, 0.621, 0.162, 0.199};
-static const alwan_f64 NCS_ELEM_y[4] = {0.503, 0.335, 0.083, 0.454};
+static alwan_f64 const NCS_ELEM_x[4] = {0.418, 0.621, 0.162, 0.199};
+static alwan_f64 const NCS_ELEM_y[4] = {0.503, 0.335, 0.083, 0.454};
 
 /* D65 chromaticity */
-static const alwan_f64 NCS_WP_x = 0.3127;
-static const alwan_f64 NCS_WP_y = 0.3290;
+static alwan_f64 const NCS_WP_x = 0.3127;
+static alwan_f64 const NCS_WP_y = 0.3290;
 
 /* Convert NCS notation to approximate XYZ tristimulus values.
  * Uses an approximation based on published elementary hue chromaticities
@@ -888,7 +888,7 @@ alwan_status alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation) 
         cy = NCS_WP_y;
     } else {
         /* Interpolate xy between adjacent elementary hues */
-        static const alwan_f64 ELEM_POS[4] = {0.0, 25.0, 50.0, 75.0};
+        static alwan_f64 const ELEM_POS[4] = {0.0, 25.0, 50.0, 75.0};
         alwan_f64 pos = parsed.hue_pos;
         int seg      = (int)(pos / 25.0) % 4;
         int seg_next = (seg + 1) % 4;

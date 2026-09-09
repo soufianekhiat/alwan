@@ -60,13 +60,13 @@ static alwan_f64 hermite_quad_eval(alwan_f64 x,
 
 /* RRT tone curve (C5 equivalent) -- 7 control points from OCIO */
 static alwan_f64 aces1_rrt_hermite(alwan_f64 x) {
-    static const alwan_f64 px[7] = {
+    static alwan_f64 const px[7] = {
         -5.26017743, -3.75502745, -2.24987747,
         -0.74472749,  1.06145248,  2.86763245, 4.67381243 };
-    static const alwan_f64 py[7] = {
+    static alwan_f64 const py[7] = {
         -4.0, -3.57868829, -1.82131329,
          0.68124124,  2.87457742,  3.83406206, 4.0 };
-    static const alwan_f64 ps[7] = {
+    static alwan_f64 const ps[7] = {
          0.0,  0.55982688,  1.77532247,
          1.55, 0.8787017,   0.18374463, 0.0 };
     alwan_f64 lx = ALWAN_LOG10_F64(fmax(x, 1e-10));
@@ -76,19 +76,19 @@ static alwan_f64 aces1_rrt_hermite(alwan_f64 x) {
 
 /* SDR ODT tone curve (C9 equivalent, 48 nit) -- 15 control points from OCIO */
 static alwan_f64 aces1_odt48_hermite(alwan_f64 x) {
-    static const alwan_f64 px[15] = {
+    static alwan_f64 const px[15] = {
         -2.54062362, -2.08035721, -1.6200908,  -1.15982439, -0.69955799,
         -0.23929158,  0.22097483,  0.68124124,  1.01284632,  1.3444514,
          1.67605648,  2.00766156,  2.33926665,  2.67087173,  3.00247681 };
-    static const alwan_f64 py[15] = {
+    static alwan_f64 const py[15] = {
         -1.69897,    -1.588435,   -1.3535,     -1.04695,    -0.6564,
         -0.22141,     0.22814402,  0.68124124,  0.99142189,  1.258,
          1.44995,     1.5591,      1.6226,      1.66065457,  1.68124124 };
-    static const alwan_f64 ps[15] = {
+    static alwan_f64 const ps[15] = {
          0.0,         0.4803088,   0.5405565,   0.79149813,  0.9055625,
          0.98460368,  0.96884766,  1.0,         0.87078346,  0.73702127,
          0.42068113,  0.23763206,  0.14535362,  0.08416378,  0.04 };
-    static const alwan_f64 cinema_white = 48.0, cinema_black = 0.02;
+    static alwan_f64 const cinema_white = 48.0, cinema_black = 0.02;
     alwan_f64 lx = ALWAN_LOG10_F64(fmax(x, 1e-10));
     alwan_f64 ly = hermite_quad_eval(lx, px, py, ps, 15);
     alwan_f64 nits = ALWAN_POW_F64(10.0, ly);
@@ -569,14 +569,14 @@ void alwan_aces_gamut_comp13_inv_f32(alwan_rgb_f32 *rgb_out,
 
 /* ACES 1.x RRT tone scale constants -- shared by the native f32 impl
  * (alwan_aces1_impl.inc) and the f64 workers, so NOT precision-gated. */
-static const alwan_f64 ACES1_MIN_STOP_SDR = ALWAN_LITERAL(-6.5);
-static const alwan_f64 ACES1_MAX_STOP_SDR = ALWAN_LITERAL(6.5);
-static const alwan_f64 ACES1_MIN_STOP_RRT = ALWAN_LITERAL(-15.0);
-static const alwan_f64 ACES1_MAX_STOP_RRT = ALWAN_LITERAL(18.0);
+static alwan_f64 const ACES1_MIN_STOP_SDR = ALWAN_LITERAL(-6.5);
+static alwan_f64 const ACES1_MAX_STOP_SDR = ALWAN_LITERAL(6.5);
+static alwan_f64 const ACES1_MIN_STOP_RRT = ALWAN_LITERAL(-15.0);
+static alwan_f64 const ACES1_MAX_STOP_RRT = ALWAN_LITERAL(18.0);
 
 /* ACES 1.x RRT parameters */
-static const alwan_f64 ACES1_RRT_GLOW_GAIN = ALWAN_LITERAL(0.05);
-static const alwan_f64 ACES1_RRT_GLOW_MID = ALWAN_LITERAL(0.08);
+static alwan_f64 const ACES1_RRT_GLOW_GAIN = ALWAN_LITERAL(0.05);
+static alwan_f64 const ACES1_RRT_GLOW_MID = ALWAN_LITERAL(0.08);
 
 /* ACES 1.x helper functions (f64 workers) */
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
@@ -608,7 +608,7 @@ static alwan_f64 aces1_cubic_basis_shaper(alwan_f64 x, alwan_f64 width) {
 #if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_AP0_TO_AP1_f64[9] = {
+static alwan_f64 const ACES1_AP0_TO_AP1_f64[9] = {
 #include "../data/matrices/aces_ap0_to_ap1.csv"
 };
 ALWAN_DIAG_POP
@@ -616,7 +616,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const float ACES1_AP0_TO_AP1_f32[9] = {
+static float const ACES1_AP0_TO_AP1_f32[9] = {
 #include "../data/matrices/aces_ap0_to_ap1.csv"
 };
 ALWAN_DIAG_POP
@@ -627,7 +627,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F64_FACADE
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_AP1_TO_AP0[9] = {
+static alwan_f64 const ACES1_AP1_TO_AP0[9] = {
 #include "../data/matrices/aces_ap1_to_ap0.csv"
 };
 ALWAN_DIAG_POP
@@ -637,7 +637,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_D60_TO_D65_f64[9] = {
+static alwan_f64 const ACES1_D60_TO_D65_f64[9] = {
 #include "../data/matrices/aces_d60_to_d65_bradford.csv"
 };
 ALWAN_DIAG_POP
@@ -645,7 +645,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const float ACES1_D60_TO_D65_f32[9] = {
+static float const ACES1_D60_TO_D65_f32[9] = {
 #include "../data/matrices/aces_d60_to_d65_bradford.csv"
 };
 ALWAN_DIAG_POP
@@ -656,7 +656,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F64_FACADE
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_D65_TO_D60[9] = {
+static alwan_f64 const ACES1_D65_TO_D60[9] = {
 #include "../data/matrices/aces_d65_to_d60_bradford.csv"
 };
 ALWAN_DIAG_POP
@@ -721,7 +721,7 @@ ALWAN_DIAG_DISABLE_FLOAT_CONV
 /* SDR 48 nit (cinema + video -- all SDR outputs use this) */
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
-static const aces1_c9_params_f64 c9_48nit_f64 = {
+static aces1_c9_params_f64 const c9_48nit_f64 = {
     { /* coefs_low[10] */
 #include "../data/splines/aces1_c9_48nit_coefs_low.csv"
     },
@@ -737,7 +737,7 @@ static const aces1_c9_params_f64 c9_48nit_f64 = {
  * included, and these are the results for the three Rec.2020 ST 2084 RRTODTs. Below them is the
  * evaluation, forward and inverse: a quadratic B-spline in log10 with linear extensions. Input is
  * rendering-space RGB after the RRT sweeteners, output is absolute cd/m2. */
-static const aces1_ssts_params_f64 ssts_1000nit_f64 = {
+static aces1_ssts_params_f64 const ssts_1000nit_f64 = {
 #include "../data/splines/aces1_ssts_1000nit_points.csv"
     {
 #include "../data/splines/aces1_ssts_1000nit_coefs_low.csv"
@@ -746,7 +746,7 @@ static const aces1_ssts_params_f64 ssts_1000nit_f64 = {
 #include "../data/splines/aces1_ssts_1000nit_coefs_high.csv"
     }
 };
-static const aces1_ssts_params_f64 ssts_2000nit_f64 = {
+static aces1_ssts_params_f64 const ssts_2000nit_f64 = {
 #include "../data/splines/aces1_ssts_2000nit_points.csv"
     {
 #include "../data/splines/aces1_ssts_2000nit_coefs_low.csv"
@@ -755,7 +755,7 @@ static const aces1_ssts_params_f64 ssts_2000nit_f64 = {
 #include "../data/splines/aces1_ssts_2000nit_coefs_high.csv"
     }
 };
-static const aces1_ssts_params_f64 ssts_4000nit_f64 = {
+static aces1_ssts_params_f64 const ssts_4000nit_f64 = {
 #include "../data/splines/aces1_ssts_4000nit_points.csv"
     {
 #include "../data/splines/aces1_ssts_4000nit_coefs_low.csv"
@@ -765,7 +765,7 @@ static const aces1_ssts_params_f64 ssts_4000nit_f64 = {
     }
 };
 
-static const aces1_ssts_params_f64 *aces1_ssts_for_output_f64(alwan_aces1_output output) {
+static aces1_ssts_params_f64 const *aces1_ssts_for_output_f64(alwan_aces1_output output) {
     switch (output) {
         case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ: return &ssts_1000nit_f64;
         case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ: return &ssts_2000nit_f64;
@@ -781,7 +781,7 @@ static alwan_f64 aces1_ssts_segment(alwan_f64 const *cf, alwan_f64 t) {
          + ALWAN_LITERAL(0.5) * (cf[0] + cf[1]);
 }
 
-static alwan_f64 aces1_ssts(alwan_f64 x, const aces1_ssts_params_f64 *p) {
+static alwan_f64 aces1_ssts(alwan_f64 x, aces1_ssts_params_f64 const *p) {
     alwan_f64 logx = ALWAN_LOG10_F64(fmax(x, ALWAN_LITERAL(5.96046448e-08)));  /* HALF_MIN */
     alwan_f64 log_min = ALWAN_LOG10_F64(p->min_x);
     alwan_f64 log_mid = ALWAN_LOG10_F64(p->mid_x);
@@ -806,7 +806,7 @@ static alwan_f64 aces1_ssts(alwan_f64 x, const aces1_ssts_params_f64 *p) {
 }
 
 /* Tone scale then Y_2_linCV, so the caller gets the same [0,1] the C9 path hands back. */
-static alwan_f64 aces1_ssts_lincv(alwan_f64 x, const aces1_ssts_params_f64 *p) {
+static alwan_f64 aces1_ssts_lincv(alwan_f64 x, aces1_ssts_params_f64 const *p) {
     return (aces1_ssts(x, p) - p->min_y) / (p->max_y - p->min_y);
 }
 
@@ -819,7 +819,7 @@ static alwan_f64 aces1_ssts_solve_t(alwan_f64 const *cf, alwan_f64 logy) {
     return (ALWAN_LITERAL(2.0) * c) / (-d - b);
 }
 
-static alwan_f64 aces1_ssts_inv(alwan_f64 y, const aces1_ssts_params_f64 *p) {
+static alwan_f64 aces1_ssts_inv(alwan_f64 y, aces1_ssts_params_f64 const *p) {
     alwan_f64 log_min = ALWAN_LOG10_F64(p->min_x);
     alwan_f64 log_mid = ALWAN_LOG10_F64(p->mid_x);
     alwan_f64 log_max = ALWAN_LOG10_F64(p->max_x);
@@ -847,7 +847,7 @@ static alwan_f64 aces1_ssts_inv(alwan_f64 y, const aces1_ssts_params_f64 *p) {
 }
 
 /* HDR 1000 nit (Rec.2020 PQ) */
-static const aces1_c9_params_f64 c9_1000nit_f64 = {
+static aces1_c9_params_f64 const c9_1000nit_f64 = {
     {
 #include "../data/splines/aces1_c9_1000nit_coefs_low.csv"
     },
@@ -858,7 +858,7 @@ static const aces1_c9_params_f64 c9_1000nit_f64 = {
 };
 
 /* HDR 2000 nit */
-static const aces1_c9_params_f64 c9_2000nit_f64 = {
+static aces1_c9_params_f64 const c9_2000nit_f64 = {
     {
 #include "../data/splines/aces1_c9_2000nit_coefs_low.csv"
     },
@@ -869,7 +869,7 @@ static const aces1_c9_params_f64 c9_2000nit_f64 = {
 };
 
 /* HDR 4000 nit */
-static const aces1_c9_params_f64 c9_4000nit_f64 = {
+static aces1_c9_params_f64 const c9_4000nit_f64 = {
     {
 #include "../data/splines/aces1_c9_4000nit_coefs_low.csv"
     },
@@ -882,7 +882,7 @@ static const aces1_c9_params_f64 c9_4000nit_f64 = {
 
 #if ALWAN_WITH_F32
 /* ---- Native single-precision twins (same CSV data, float storage) ---- */
-static const aces1_c9_params_f32 c9_48nit_f32 = {
+static aces1_c9_params_f32 const c9_48nit_f32 = {
     {
 #include "../data/splines/aces1_c9_48nit_coefs_low.csv"
     },
@@ -892,7 +892,7 @@ static const aces1_c9_params_f32 c9_48nit_f32 = {
 #include "../data/splines/aces1_c9_48nit_breakpoints.csv"
 };
 
-static const aces1_ssts_params_f32 ssts_1000nit_f32 = {
+static aces1_ssts_params_f32 const ssts_1000nit_f32 = {
 #include "../data/splines/aces1_ssts_1000nit_points.csv"
     {
 #include "../data/splines/aces1_ssts_1000nit_coefs_low.csv"
@@ -901,7 +901,7 @@ static const aces1_ssts_params_f32 ssts_1000nit_f32 = {
 #include "../data/splines/aces1_ssts_1000nit_coefs_high.csv"
     }
 };
-static const aces1_ssts_params_f32 ssts_2000nit_f32 = {
+static aces1_ssts_params_f32 const ssts_2000nit_f32 = {
 #include "../data/splines/aces1_ssts_2000nit_points.csv"
     {
 #include "../data/splines/aces1_ssts_2000nit_coefs_low.csv"
@@ -910,7 +910,7 @@ static const aces1_ssts_params_f32 ssts_2000nit_f32 = {
 #include "../data/splines/aces1_ssts_2000nit_coefs_high.csv"
     }
 };
-static const aces1_ssts_params_f32 ssts_4000nit_f32 = {
+static aces1_ssts_params_f32 const ssts_4000nit_f32 = {
 #include "../data/splines/aces1_ssts_4000nit_points.csv"
     {
 #include "../data/splines/aces1_ssts_4000nit_coefs_low.csv"
@@ -919,7 +919,7 @@ static const aces1_ssts_params_f32 ssts_4000nit_f32 = {
 #include "../data/splines/aces1_ssts_4000nit_coefs_high.csv"
     }
 };
-static const aces1_c9_params_f32 c9_1000nit_f32 = {
+static aces1_c9_params_f32 const c9_1000nit_f32 = {
     {
 #include "../data/splines/aces1_c9_1000nit_coefs_low.csv"
     },
@@ -929,7 +929,7 @@ static const aces1_c9_params_f32 c9_1000nit_f32 = {
 #include "../data/splines/aces1_c9_1000nit_breakpoints.csv"
 };
 
-static const aces1_c9_params_f32 c9_2000nit_f32 = {
+static aces1_c9_params_f32 const c9_2000nit_f32 = {
     {
 #include "../data/splines/aces1_c9_2000nit_coefs_low.csv"
     },
@@ -939,7 +939,7 @@ static const aces1_c9_params_f32 c9_2000nit_f32 = {
 #include "../data/splines/aces1_c9_2000nit_breakpoints.csv"
 };
 
-static const aces1_c9_params_f32 c9_4000nit_f32 = {
+static aces1_c9_params_f32 const c9_4000nit_f32 = {
     {
 #include "../data/splines/aces1_c9_4000nit_coefs_low.csv"
     },
@@ -955,7 +955,7 @@ ALWAN_DIAG_POP
 /* Evaluate C9 spline raw: OCES nits -> display nits (no Y_to_linCV) */
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
-static alwan_f64 aces1_c9_raw(alwan_f64 oces, const aces1_c9_params_f64 *p) {
+static alwan_f64 aces1_c9_raw(alwan_f64 oces, aces1_c9_params_f64 const *p) {
     alwan_f64 lx = ALWAN_LOG10_F64(fmax(oces, ALWAN_LITERAL(1e-10)));
     alwan_f64 log_min = ALWAN_LOG10_F64(p->min_x);
     alwan_f64 log_mid = ALWAN_LOG10_F64(p->mid_x);
@@ -987,7 +987,7 @@ static alwan_f64 aces1_c9_raw(alwan_f64 oces, const aces1_c9_params_f64 *p) {
 }
 
 /* Inverse C9 spline: display nits -> OCES nits (Newton-Raphson) */
-static alwan_f64 aces1_c9_inv(alwan_f64 display_nits, const aces1_c9_params_f64 *p) {
+static alwan_f64 aces1_c9_inv(alwan_f64 display_nits, aces1_c9_params_f64 const *p) {
     alwan_f64 x = fmax(display_nits, ALWAN_LITERAL(1e-10));
     for (int i = 0; i < 40; i++) {
         alwan_f64 fx = aces1_c9_raw(x, p) - display_nits;
@@ -1012,30 +1012,30 @@ ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 /* SDR: C5 curve (7 knots) -- ALWAN_LOG10_F64(scene) -> ALWAN_LOG10_F64(OCES nits) */
 #if ALWAN_WITH_F64
-static const alwan_f64 ocio_sdr_c5_f64[7 * 3] = {
+static alwan_f64 const ocio_sdr_c5_f64[7 * 3] = {
 #include "../data/splines/aces1_ocio_sdr_c5.csv"
 };
 
 /* SDR: C9 curve (15 knots) -- ALWAN_LOG10_F64(OCES nits) -> ALWAN_LOG10_F64(display nits) */
-static const alwan_f64 ocio_sdr_c9_f64[15 * 3] = {
+static alwan_f64 const ocio_sdr_c9_f64[15 * 3] = {
 #include "../data/splines/aces1_ocio_sdr_c9.csv"
 };
 
 /* HDR 1000 nit: combined curve (7 knots) -- ALWAN_LOG10_F64(scene) -> ALWAN_LOG10_F64(display nits) */
-static const alwan_f64 ocio_hdr1000_f64[7 * 3] = {
+static alwan_f64 const ocio_hdr1000_f64[7 * 3] = {
 #include "../data/splines/aces1_ocio_hdr1000.csv"
 };
 #endif /* ALWAN_WITH_F64 */
 
 #if ALWAN_WITH_F32
 /* ---- Native single-precision twins (same CSV data, float storage) ---- */
-static const float ocio_sdr_c5_f32[7 * 3] = {
+static float const ocio_sdr_c5_f32[7 * 3] = {
 #include "../data/splines/aces1_ocio_sdr_c5.csv"
 };
-static const float ocio_sdr_c9_f32[15 * 3] = {
+static float const ocio_sdr_c9_f32[15 * 3] = {
 #include "../data/splines/aces1_ocio_sdr_c9.csv"
 };
-static const float ocio_hdr1000_f32[7 * 3] = {
+static float const ocio_hdr1000_f32[7 * 3] = {
 #include "../data/splines/aces1_ocio_hdr1000.csv"
 };
 #endif /* ALWAN_WITH_F32 */
@@ -1047,7 +1047,7 @@ ALWAN_DIAG_POP
  * Input/output in log10 domain. */
 #if ALWAN_WITH_F64
 static alwan_f64 ocio_curve_eval(alwan_f64 log_in,
-                                  const alwan_f64 *knots, int n_knots) {
+                                  alwan_f64 const *knots, int n_knots) {
     /* Clamp to curve endpoints */
     if (log_in <= knots[0]) return knots[1];
     if (log_in >= knots[(n_knots - 1) * 3]) return knots[(n_knots - 1) * 3 + 1];
@@ -1095,7 +1095,7 @@ static alwan_f64 aces1_ocio_hdr1000_eval(alwan_f64 scene_val) {
 }
 
 /* Evaluate C9 spline + Y_to_linCV.  Input: OCES nits (from C5), output: [0,1] */
-static alwan_f64 aces1_segmented_spline_c9(alwan_f64 oces, const aces1_c9_params_f64 *p) {
+static alwan_f64 aces1_segmented_spline_c9(alwan_f64 oces, aces1_c9_params_f64 const *p) {
     alwan_f64 lx = ALWAN_LOG10_F64(fmax(oces, ALWAN_LITERAL(1e-10)));
     alwan_f64 log_min = ALWAN_LOG10_F64(p->min_x);
     alwan_f64 log_mid = ALWAN_LOG10_F64(p->mid_x);
@@ -1144,7 +1144,7 @@ static void mat3_mul_vec3_aces1(alwan_f64 const *m, alwan_rgb_f64 const *v, alwa
 #if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_XYZ_TO_REC709_f64[9] = {
+static alwan_f64 const ACES1_XYZ_TO_REC709_f64[9] = {
 #include "../data/matrices/aces_xyz_to_rec709.csv"
 };
 ALWAN_DIAG_POP
@@ -1152,7 +1152,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const float ACES1_XYZ_TO_REC709_f32[9] = {
+static float const ACES1_XYZ_TO_REC709_f32[9] = {
 #include "../data/matrices/aces_xyz_to_rec709.csv"
 };
 ALWAN_DIAG_POP
@@ -1161,7 +1161,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_XYZ_TO_P3D65_f64[9] = {
+static alwan_f64 const ACES1_XYZ_TO_P3D65_f64[9] = {
 #include "../data/matrices/aces_xyz_to_p3d65.csv"
 };
 ALWAN_DIAG_POP
@@ -1169,7 +1169,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const float ACES1_XYZ_TO_P3D65_f32[9] = {
+static float const ACES1_XYZ_TO_P3D65_f32[9] = {
 #include "../data/matrices/aces_xyz_to_p3d65.csv"
 };
 ALWAN_DIAG_POP
@@ -1178,7 +1178,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_XYZ_TO_REC2020_f64[9] = {
+static alwan_f64 const ACES1_XYZ_TO_REC2020_f64[9] = {
 #include "../data/matrices/aces_xyz_to_rec2020.csv"
 };
 ALWAN_DIAG_POP
@@ -1186,7 +1186,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const float ACES1_XYZ_TO_REC2020_f32[9] = {
+static float const ACES1_XYZ_TO_REC2020_f32[9] = {
 #include "../data/matrices/aces_xyz_to_rec2020.csv"
 };
 ALWAN_DIAG_POP
@@ -1197,7 +1197,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_REC2020_TO_XYZ_f64[9] = {
+static alwan_f64 const ACES1_REC2020_TO_XYZ_f64[9] = {
 #include "../data/matrices/aces_rec2020_to_xyz.csv"
 };
 ALWAN_DIAG_POP
@@ -1205,7 +1205,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const float ACES1_REC2020_TO_XYZ_f32[9] = {
+static float const ACES1_REC2020_TO_XYZ_f32[9] = {
 #include "../data/matrices/aces_rec2020_to_xyz.csv"
 };
 ALWAN_DIAG_POP
@@ -1214,7 +1214,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_AP1_TO_XYZ_D60_f64[9] = {
+static alwan_f64 const ACES1_AP1_TO_XYZ_D60_f64[9] = {
 #include "../data/matrices/aces_ap1_to_xyz_d60.csv"
 };
 ALWAN_DIAG_POP
@@ -1222,7 +1222,7 @@ ALWAN_DIAG_POP
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const float ACES1_AP1_TO_XYZ_D60_f32[9] = {
+static float const ACES1_AP1_TO_XYZ_D60_f32[9] = {
 #include "../data/matrices/aces_ap1_to_xyz_d60.csv"
 };
 ALWAN_DIAG_POP
@@ -1258,7 +1258,7 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
     alwan_rgb_f64 ap0_mod, ap1, rrt, xyz, d65, display;
 
     /* The ACES 1.1 to 1.3 HDR outputs take the SSTS; the _V103 ones keep the 1.0.3 C9 tables. */
-    const aces1_ssts_params_f64 *ssts = aces1_ssts_for_output_f64(output);
+    aces1_ssts_params_f64 const *ssts = aces1_ssts_for_output_f64(output);
     int is_v103 = (output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103 ||
                    output == ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103 ||
                    output == ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103);
@@ -1358,7 +1358,7 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
             }
 
             /* C9 spline: the 48-nit table, or the 1.0.3 HDR tables for the _V103 outputs */
-            const aces1_c9_params_f64 *c9p;
+            aces1_c9_params_f64 const *c9p;
             switch (output) {
                 case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103: c9p = &c9_1000nit_f64; break;
                 case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103: c9p = &c9_2000nit_f64; break;
@@ -1563,28 +1563,28 @@ static alwan_f64 pq_eotf(alwan_f64 E, alwan_f64 peak_nits) {
 /* Inverse XYZ to output primaries matrices */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_REC709_TO_XYZ[9] = {
+static alwan_f64 const ACES1_REC709_TO_XYZ[9] = {
 #include "../data/matrices/aces_rec709_to_xyz.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_P3D65_TO_XYZ[9] = {
+static alwan_f64 const ACES1_P3D65_TO_XYZ[9] = {
 #include "../data/matrices/aces_p3d65_to_xyz.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_REC2020_TO_XYZ[9] = {
+static alwan_f64 const ACES1_REC2020_TO_XYZ[9] = {
 #include "../data/matrices/aces_rec2020_to_xyz.csv"
 };
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-static const alwan_f64 ACES1_XYZ_D60_TO_AP1[9] = {
+static alwan_f64 const ACES1_XYZ_D60_TO_AP1[9] = {
 #include "../data/matrices/aces_xyz_d60_to_ap1.csv"
 };
 ALWAN_DIAG_POP
@@ -1890,7 +1890,7 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
 
     /* Step 7 and 8: back through the tone scale to rendering-space RGB */
     {
-        const aces1_ssts_params_f64 *ssts = aces1_ssts_for_output_f64(output);
+        aces1_ssts_params_f64 const *ssts = aces1_ssts_for_output_f64(output);
         if (ssts) {
             /* ACES 1.1 to 1.3. The PQ decode gave display = nits / peak, which under the
              * RRTODT's STRETCH_BLACK is linearCV itself; Y = linCV_2_Y(linearCV, Y_MAX, Y_MIN)
@@ -1902,7 +1902,7 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
             ap1.b = aces1_ssts_inv(ap1.b * span + ssts->min_y, ssts);
         } else {
             /* Inverse C9 + Y_to_linCV -> OCES nits, then the inverse C5 */
-            const aces1_c9_params_f64 *c9p;
+            aces1_c9_params_f64 const *c9p;
             switch (output) {
                 case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103: c9p = &c9_1000nit_f64; break;
                 case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103: c9p = &c9_2000nit_f64; break;
@@ -1969,14 +1969,14 @@ alwan_status alwan_aces1_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
  * ---------------------------------------------------------------- */
 
 /* ACES AP1 (ACEScg) primaries -- D60 white */
-static const alwan_f64 AP1_RED_x   = ALWAN_AP1_RED_x;
-static const alwan_f64 AP1_RED_y   = ALWAN_AP1_RED_y;
-static const alwan_f64 AP1_GREEN_x = ALWAN_AP1_GREEN_x;
-static const alwan_f64 AP1_GREEN_y = ALWAN_AP1_GREEN_y;
-static const alwan_f64 AP1_BLUE_x  = ALWAN_AP1_BLUE_x;
-static const alwan_f64 AP1_BLUE_y  = ALWAN_AP1_BLUE_y;
-static const alwan_f64 AP1_WHITE_x = ALWAN_ACES_WHITE_x;
-static const alwan_f64 AP1_WHITE_y = ALWAN_ACES_WHITE_y;
+static alwan_f64 const AP1_RED_x   = ALWAN_AP1_RED_x;
+static alwan_f64 const AP1_RED_y   = ALWAN_AP1_RED_y;
+static alwan_f64 const AP1_GREEN_x = ALWAN_AP1_GREEN_x;
+static alwan_f64 const AP1_GREEN_y = ALWAN_AP1_GREEN_y;
+static alwan_f64 const AP1_BLUE_x  = ALWAN_AP1_BLUE_x;
+static alwan_f64 const AP1_BLUE_y  = ALWAN_AP1_BLUE_y;
+static alwan_f64 const AP1_WHITE_x = ALWAN_ACES_WHITE_x;
+static alwan_f64 const AP1_WHITE_y = ALWAN_ACES_WHITE_y;
 
 /* ----------------------------------------------------------------
  * ACES 2.0: Constants and Viewing Conditions
@@ -1984,43 +1984,43 @@ static const alwan_f64 AP1_WHITE_y = ALWAN_ACES_WHITE_y;
  * ---------------------------------------------------------------- */
 
 /* CAM16 primaries - used for computing cone response matrices */
-static const alwan_f64 CAM16_PRI_RED_X = ALWAN_LITERAL(0.8336);
-static const alwan_f64 CAM16_PRI_RED_Y = ALWAN_LITERAL(0.1735);
-static const alwan_f64 CAM16_PRI_GREEN_X = ALWAN_LITERAL(2.3854);
-static const alwan_f64 CAM16_PRI_GREEN_Y = ALWAN_LITERAL(-1.4659);
-static const alwan_f64 CAM16_PRI_BLUE_X = ALWAN_LITERAL(0.087);
-static const alwan_f64 CAM16_PRI_BLUE_Y = ALWAN_LITERAL(-0.125);
-static const alwan_f64 CAM16_WHITE_X = ALWAN_LITERAL(0.333333333333);
-static const alwan_f64 CAM16_WHITE_Y = ALWAN_LITERAL(0.333333333333);
+static alwan_f64 const CAM16_PRI_RED_X = ALWAN_LITERAL(0.8336);
+static alwan_f64 const CAM16_PRI_RED_Y = ALWAN_LITERAL(0.1735);
+static alwan_f64 const CAM16_PRI_GREEN_X = ALWAN_LITERAL(2.3854);
+static alwan_f64 const CAM16_PRI_GREEN_Y = ALWAN_LITERAL(-1.4659);
+static alwan_f64 const CAM16_PRI_BLUE_X = ALWAN_LITERAL(0.087);
+static alwan_f64 const CAM16_PRI_BLUE_Y = ALWAN_LITERAL(-0.125);
+static alwan_f64 const CAM16_WHITE_X = ALWAN_LITERAL(0.333333333333);
+static alwan_f64 const CAM16_WHITE_Y = ALWAN_LITERAL(0.333333333333);
 
 /* ACES viewing condition parameters */
-static const alwan_f64 ACES2_REF_LUMINANCE = ALWAN_LITERAL(100.0);
-static const alwan_f64 ACES2_L_A = ALWAN_LITERAL(100.0);  /* Adapting luminance */
-static const alwan_f64 ACES2_Y_b = ALWAN_LITERAL(20.0);   /* Background luminance factor */
+static alwan_f64 const ACES2_REF_LUMINANCE = ALWAN_LITERAL(100.0);
+static alwan_f64 const ACES2_L_A = ALWAN_LITERAL(100.0);  /* Adapting luminance */
+static alwan_f64 const ACES2_Y_b = ALWAN_LITERAL(20.0);   /* Background luminance factor */
 
 /* Surround parameters (Dim surround) */
-static const alwan_f64 ACES2_SURROUND_F = ALWAN_LITERAL(0.9);
-static const alwan_f64 ACES2_SURROUND_C = ALWAN_LITERAL(0.59);
-static const alwan_f64 ACES2_SURROUND_N_c = ALWAN_LITERAL(0.9);
+static alwan_f64 const ACES2_SURROUND_F = ALWAN_LITERAL(0.9);
+static alwan_f64 const ACES2_SURROUND_C = ALWAN_LITERAL(0.59);
+static alwan_f64 const ACES2_SURROUND_N_c = ALWAN_LITERAL(0.9);
 
 /* CAM16 nonlinearity constants (use core header for OFFSET) */
-static const alwan_f64 CAM_NL_Y_REF = ALWAN_LITERAL(100.0);
-static const alwan_f64 CAM_NL_OFFSET = ACES_CAM_NL_OFFSET_VALUE;
-static const alwan_f64 CAM_NL_SCALE = ALWAN_LITERAL(400.0);   /* 4.0 * 100.0 */
+static alwan_f64 const CAM_NL_Y_REF = ALWAN_LITERAL(100.0);
+static alwan_f64 const CAM_NL_OFFSET = ACES_CAM_NL_OFFSET_VALUE;
+static alwan_f64 const CAM_NL_SCALE = ALWAN_LITERAL(400.0);   /* 4.0 * 100.0 */
 
 /* Lightness scale factor (J_scale = 100) */
-static const alwan_f64 J_SCALE = ACES_J_SCALE_VALUE;
+static alwan_f64 const J_SCALE = ACES_J_SCALE_VALUE;
 
 /* ----------------------------------------------------------------
  * ACES 2.0: Chroma Compression Constants (from OCIO Common.h)
  * ---------------------------------------------------------------- */
 
 /* Chroma compression parameters */
-static const alwan_f64 ACES2_CHROMA_COMPRESS = ALWAN_LITERAL(2.4);
-static const alwan_f64 ACES2_CHROMA_COMPRESS_FACT = ALWAN_LITERAL(3.3);
-static const alwan_f64 ACES2_CHROMA_EXPAND = ALWAN_LITERAL(1.3);
-static const alwan_f64 ACES2_CHROMA_EXPAND_FACT = ALWAN_LITERAL(0.69);
-static const alwan_f64 ACES2_CHROMA_EXPAND_THR = ALWAN_LITERAL(0.5);
+static alwan_f64 const ACES2_CHROMA_COMPRESS = ALWAN_LITERAL(2.4);
+static alwan_f64 const ACES2_CHROMA_COMPRESS_FACT = ALWAN_LITERAL(3.3);
+static alwan_f64 const ACES2_CHROMA_EXPAND = ALWAN_LITERAL(1.3);
+static alwan_f64 const ACES2_CHROMA_EXPAND_FACT = ALWAN_LITERAL(0.69);
+static alwan_f64 const ACES2_CHROMA_EXPAND_THR = ALWAN_LITERAL(0.5);
 
 /* Fourier coefficients -- alias core CSV-loaded arrays */
 #define ACES2_CHROMA_NORM_COS ACES2_CHROMA_NORM_COS_V
@@ -2031,7 +2031,7 @@ static const alwan_f64 ACES2_CHROMA_EXPAND_THR = ALWAN_LITERAL(0.5);
  * Row 1: [1, -12/11, 1/11]    - Red-green opponent
  * Row 2: [1/9, 1/9, -2/9]     - Yellow-blue opponent
  */
-static const alwan_f64 CONE_TO_AAB_BASE[9] = {
+static alwan_f64 const CONE_TO_AAB_BASE[9] = {
     ALWAN_LITERAL(2.0),                  ALWAN_LITERAL(1.0),                  ALWAN_LITERAL(0.05),             /* 1/20 */
     ALWAN_LITERAL(1.0),                  ALWAN_LITERAL(-1.090909090909090909), ALWAN_LITERAL(0.090909090909090909), /* -12/11, 1/11 */
     ALWAN_LITERAL(0.111111111111111111), ALWAN_LITERAL(0.111111111111111111), ALWAN_LITERAL(-0.222222222222222222)  /* 1/9, 1/9, -2/9 */
@@ -2340,14 +2340,14 @@ void alwan_aces_primaries_ap1_default_f64(alwan_aces_primaries_f64 *primaries);
 
 static void init_TSParams_f64(alwan_f64 peak_luminance, aces2_TSParams_f64 *ts) {
     /* Constants from ACES CTL */
-    static const alwan_f64 n_r = ALWAN_LITERAL(100.0);
-    static const alwan_f64 g = ALWAN_LITERAL(1.15);
-    static const alwan_f64 c = ALWAN_LITERAL(0.18);
-    static const alwan_f64 c_d = ALWAN_LITERAL(10.013);
-    static const alwan_f64 w_g = ALWAN_LITERAL(0.14);
-    static const alwan_f64 t_1 = ALWAN_LITERAL(0.04);
-    static const alwan_f64 r_hit_min = ALWAN_LITERAL(128.0);
-    static const alwan_f64 r_hit_max = ALWAN_LITERAL(896.0);
+    static alwan_f64 const n_r = ALWAN_LITERAL(100.0);
+    static alwan_f64 const g = ALWAN_LITERAL(1.15);
+    static alwan_f64 const c = ALWAN_LITERAL(0.18);
+    static alwan_f64 const c_d = ALWAN_LITERAL(10.013);
+    static alwan_f64 const w_g = ALWAN_LITERAL(0.14);
+    static alwan_f64 const t_1 = ALWAN_LITERAL(0.04);
+    static alwan_f64 const r_hit_min = ALWAN_LITERAL(128.0);
+    static alwan_f64 const r_hit_max = ALWAN_LITERAL(896.0);
 
     ts->n = peak_luminance;
     ts->n_r = n_r;
@@ -2394,9 +2394,9 @@ static alwan_f64 tonescale_fwd(alwan_f64 x, aces2_TSParams_f64 const *ts) {
 static void make_reach_m_table_f64(aces2_JMhParams_f64 const *p, alwan_f64 limit_J_max,
                                alwan_f64 reach_table[ACES2_REACH_TABLE_SIZE],
                                int use_conservative) {
-    static const alwan_f64 SEARCH_RANGE = ALWAN_LITERAL(50.0);
-    static const alwan_f64 SEARCH_MAX = ALWAN_LITERAL(1300.0);
-    static const alwan_f64 SEARCH_TOL = ALWAN_LITERAL(0.01);
+    static alwan_f64 const SEARCH_RANGE = ALWAN_LITERAL(50.0);
+    static alwan_f64 const SEARCH_MAX = ALWAN_LITERAL(1300.0);
+    static alwan_f64 const SEARCH_TOL = ALWAN_LITERAL(0.01);
 
     for (int i = 0; i < ACES2_REACH_TABLE_SIZE; i++) {
         alwan_f64 hue = (alwan_f64)i;  /* Hue in degrees [0, 359] */
@@ -2505,7 +2505,7 @@ static void make_reach_m_table_gamut_f32_as_f64(
 static void init_ChromaCompressParams_f64(alwan_f64 peak_luminance,
                                        aces2_JMhParams_f64 const *jmh_params,
                                        ChromaCompressParams_f64 *cp) {
-    static const alwan_f64 n_r = ALWAN_LITERAL(100.0);
+    static alwan_f64 const n_r = ALWAN_LITERAL(100.0);
 
     /* Compute log_peak = ALWAN_LOG10_F64(peak_luminance / n_r) */
     alwan_f64 log_peak = ALWAN_LN(peak_luminance / n_r) / ALWAN_LN(ALWAN_LITERAL(10.0));
@@ -2884,18 +2884,18 @@ void alwan_aces_jmh_to_rgb20_f32(alwan_rgb_f32 *rgb_out,
  * Reference: OpenColorIO/src/OpenColorIO/ops/fixedfunction/ACES2/Common.h
  * ---------------------------------------------------------------- */
 
-static const alwan_f64 GAMUT_COMPRESSION_THRESHOLD = ACES_GAMUT_COMPRESSION_THRESHOLD_VALUE;
-static const alwan_f64 GAMUT_SMOOTH_CUSPS = ACES_GAMUT_SMOOTH_CUSPS_VALUE;
-static const alwan_f64 GAMUT_FOCUS_GAIN_BLEND = ALWAN_LITERAL(0.3);
-static const alwan_f64 GAMUT_CUSP_MID_BLEND = ACES_GAMUT_CUSP_MID_BLEND_VALUE;
-static const alwan_f64 GAMUT_FOCUS_DISTANCE = ALWAN_LITERAL(1.35);
-static const alwan_f64 GAMUT_FOCUS_ADJUST_GAIN_INV = ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.55);
+static alwan_f64 const GAMUT_COMPRESSION_THRESHOLD = ACES_GAMUT_COMPRESSION_THRESHOLD_VALUE;
+static alwan_f64 const GAMUT_SMOOTH_CUSPS = ACES_GAMUT_SMOOTH_CUSPS_VALUE;
+static alwan_f64 const GAMUT_FOCUS_GAIN_BLEND = ALWAN_LITERAL(0.3);
+static alwan_f64 const GAMUT_CUSP_MID_BLEND = ACES_GAMUT_CUSP_MID_BLEND_VALUE;
+static alwan_f64 const GAMUT_FOCUS_DISTANCE = ALWAN_LITERAL(1.35);
+static alwan_f64 const GAMUT_FOCUS_ADJUST_GAIN_INV = ALWAN_LITERAL(1.0) / ALWAN_LITERAL(0.55);
 
 /* Number of gamut corners (R, Y, G, C, B, M) */
 #define ACES2_CUSP_CORNER_COUNT 6
 
 /* Lower hull gamma (constant across all hues) */
-static const alwan_f64 GAMUT_LOWER_HULL_GAMMA = ALWAN_LITERAL(1.14);
+static alwan_f64 const GAMUT_LOWER_HULL_GAMMA = ALWAN_LITERAL(1.14);
 
 /* ----------------------------------------------------------------
  * ACES 2.0: Gamut Compression Parameter Structures
@@ -3013,9 +3013,9 @@ static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 
     /* Binary search for maximum M at this hue while staying in-gamut.
      * lum_limit = peak_luminance / 100.0: the max valid display channel value
      * (1.0 for SDR 100 nit, 10.0 for HDR 1000 nit). */
-    static const alwan_f64 SEARCH_RANGE = ALWAN_LITERAL(50.0);
-    static const alwan_f64 SEARCH_MAX = ALWAN_LITERAL(500.0);
-    static const alwan_f64 SEARCH_TOL = ALWAN_LITERAL(0.001);
+    static alwan_f64 const SEARCH_RANGE = ALWAN_LITERAL(50.0);
+    static alwan_f64 const SEARCH_MAX = ALWAN_LITERAL(500.0);
+    static alwan_f64 const SEARCH_TOL = ALWAN_LITERAL(0.001);
 
     /* Find J at cusp by searching for max M */
     alwan_f64 best_M = ALWAN_LITERAL(0.0);
@@ -3139,12 +3139,12 @@ static void make_upper_hull_gamma_f64(aces2_GamutCompressParams_f64 *gcp,
                                        alwan_f64 mid_J,
                                        alwan_f64 focus_dist,
                                        aces2_JMhParams_f64 const *limit_params) {
-    static const alwan_f64 GAMMA_MIN = ALWAN_LITERAL(0.0);
-    static const alwan_f64 GAMMA_MAX = ALWAN_LITERAL(5.0);
-    static const alwan_f64 GAMMA_STEP = ALWAN_LITERAL(0.4);
-    static const alwan_f64 GAMMA_ACC = ALWAN_LITERAL(1e-5);
-    static const int NTEST = 5;
-    static const alwan_f64 test_pos[5] = {0.01, 0.1, 0.5, 0.8, 0.99};
+    static alwan_f64 const GAMMA_MIN = ALWAN_LITERAL(0.0);
+    static alwan_f64 const GAMMA_MAX = ALWAN_LITERAL(5.0);
+    static alwan_f64 const GAMMA_STEP = ALWAN_LITERAL(0.4);
+    static alwan_f64 const GAMMA_ACC = ALWAN_LITERAL(1e-5);
+    static int const NTEST = 5;
+    static alwan_f64 const test_pos[5] = {0.01, 0.1, 0.5, 0.8, 0.99};
 
     alwan_f64 lum_limit = peak_luminance / ALWAN_LITERAL(100.0);
 
@@ -3273,28 +3273,28 @@ static struct {
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 #define ALWAN_ACES2_GCP_LEN (ACES2_CUSP_TABLE_SIZE * 3 + ACES2_REACH_TABLE_SIZE)
-static const alwan_f64 g_aces2_gamut_rec709_100[ALWAN_ACES2_GCP_LEN]  = {
+static alwan_f64 const g_aces2_gamut_rec709_100[ALWAN_ACES2_GCP_LEN]  = {
 #include "../data/aces2/gamut_rec709_100.csv"
 };
-static const alwan_f64 g_aces2_gamut_p3d65_100[ALWAN_ACES2_GCP_LEN]   = {
+static alwan_f64 const g_aces2_gamut_p3d65_100[ALWAN_ACES2_GCP_LEN]   = {
 #include "../data/aces2/gamut_p3d65_100.csv"
 };
-static const alwan_f64 g_aces2_gamut_p3d65_1000[ALWAN_ACES2_GCP_LEN]  = {
+static alwan_f64 const g_aces2_gamut_p3d65_1000[ALWAN_ACES2_GCP_LEN]  = {
 #include "../data/aces2/gamut_p3d65_1000.csv"
 };
-static const alwan_f64 g_aces2_gamut_p3d65_48[ALWAN_ACES2_GCP_LEN]    = {
+static alwan_f64 const g_aces2_gamut_p3d65_48[ALWAN_ACES2_GCP_LEN]    = {
 #include "../data/aces2/gamut_p3d65_48.csv"
 };
-static const alwan_f64 g_aces2_gamut_rec2020_500[ALWAN_ACES2_GCP_LEN] = {
+static alwan_f64 const g_aces2_gamut_rec2020_500[ALWAN_ACES2_GCP_LEN] = {
 #include "../data/aces2/gamut_rec2020_500.csv"
 };
-static const alwan_f64 g_aces2_gamut_rec2020_1000[ALWAN_ACES2_GCP_LEN]= {
+static alwan_f64 const g_aces2_gamut_rec2020_1000[ALWAN_ACES2_GCP_LEN]= {
 #include "../data/aces2/gamut_rec2020_1000.csv"
 };
-static const alwan_f64 g_aces2_gamut_rec2020_2000[ALWAN_ACES2_GCP_LEN]= {
+static alwan_f64 const g_aces2_gamut_rec2020_2000[ALWAN_ACES2_GCP_LEN]= {
 #include "../data/aces2/gamut_rec2020_2000.csv"
 };
-static const alwan_f64 g_aces2_gamut_rec2020_4000[ALWAN_ACES2_GCP_LEN]= {
+static alwan_f64 const g_aces2_gamut_rec2020_4000[ALWAN_ACES2_GCP_LEN]= {
 #include "../data/aces2/gamut_rec2020_4000.csv"
 };
 ALWAN_DIAG_POP
@@ -3306,8 +3306,8 @@ static void primaries_rec2020(alwan_aces_primaries_f64 *p);
 /* Return the embedded table for (peak, primaries) if it is one of the standard
  * presets, else NULL (the caller then builds the tables at runtime). Matches the
  * full primaries via memcmp so a custom gamut never aliases a preset. */
-static const alwan_f64 *aces2_find_embedded_gamut_tables(
-        alwan_f64 peak, const alwan_aces_primaries_f64 *p) {
+static alwan_f64 const *aces2_find_embedded_gamut_tables(
+        alwan_f64 peak, alwan_aces_primaries_f64 const *p) {
     alwan_aces_primaries_f64 ref;
     if (peak == ALWAN_LITERAL(100.0)) {
         primaries_rec709(&ref); if (memcmp(&ref, p, sizeof(ref)) == 0) return g_aces2_gamut_rec709_100;
@@ -3334,13 +3334,13 @@ static const alwan_f64 *aces2_find_embedded_gamut_tables(
 /* Dump each unique (peak, primaries) config's tables once to
  * $ALWAN_ACES2_DUMP_DIR (in the embedded layout). gendata-only. */
 static void alwan__gendata_dump_aces2_gamut(alwan_f64 peak,
-        const alwan_aces_primaries_f64 *p, const aces2_GamutCompressParams_f64 *gcp) {
+        alwan_aces_primaries_f64 const *p, aces2_GamutCompressParams_f64 const *gcp) {
     static double seen_peak[32]; static alwan_aces_primaries_f64 seen_prim[32]; static int nseen = 0;
     int k;
     for (k = 0; k < nseen; k++)
         if (seen_peak[k] == peak && memcmp(&seen_prim[k], p, sizeof(*p)) == 0) return;
     {
-        const char *dir = getenv("ALWAN_ACES2_DUMP_DIR"); char fn[512]; FILE *f; int i;
+        char const *dir = getenv("ALWAN_ACES2_DUMP_DIR"); char fn[512]; FILE *f; int i;
         if (!dir) dir = ".";
         snprintf(fn, sizeof(fn), "%s/gcp_peak%g_rx%.4f_gx%.4f_bx%.4f.csv",
                  dir, peak, p->red_x, p->green_x, p->blue_x);
@@ -3397,7 +3397,7 @@ static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
      * cheap scalars above are still computed at runtime. Byte-identical to the
      * runtime build, since the embedded tables are that build's output. */
     {
-        const alwan_f64 *emb = aces2_find_embedded_gamut_tables(peak_luminance, limit_primaries);
+        alwan_f64 const *emb = aces2_find_embedded_gamut_tables(peak_luminance, limit_primaries);
         if (emb) {
             int i;
             for (i = 0; i < ACES2_CUSP_TABLE_SIZE; i++) {
@@ -3406,7 +3406,7 @@ static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
                 gcp->cusp_table[i].gamma_top_inv = emb[i * 3 + 2];
             }
             {
-                const alwan_f64 *reach = emb + ACES2_CUSP_TABLE_SIZE * 3;
+                alwan_f64 const *reach = emb + ACES2_CUSP_TABLE_SIZE * 3;
                 gcp->reach_max_M = ALWAN_LITERAL(0.0);
                 for (i = 0; i < ACES2_REACH_TABLE_SIZE; i++) {
                     gcp->reach_m_table[i] = reach[i];
@@ -3689,7 +3689,7 @@ static void compress_gamut_inv_f64(alwan_f64 J, alwan_f64 M, alwan_f64 h,
 
 /* Check if primaries are approximately equal to AP1 */
 static int primaries_are_ap1(alwan_aces_primaries_f64 const *p) {
-    static const alwan_f64 tol = ALWAN_LITERAL(0.001);
+    static alwan_f64 const tol = ALWAN_LITERAL(0.001);
     return ALWAN_ABS(p->red_x - AP1_RED_x) < tol &&
            ALWAN_ABS(p->red_y - AP1_RED_y) < tol &&
            ALWAN_ABS(p->green_x - AP1_GREEN_x) < tol &&
@@ -4003,14 +4003,14 @@ static int get_output_config(alwan_aces2_output output, aces2_output_config *con
 }
 
 /* D60 to D65 chromatic adaptation matrix (Bradford) */
-static const alwan_f64 g_d60_to_d65_bradford[9] = {
+static alwan_f64 const g_d60_to_d65_bradford[9] = {
     ALWAN_LITERAL( 0.98722400870301763), ALWAN_LITERAL(-0.00611322860685689), ALWAN_LITERAL( 0.01595328833591263),
     ALWAN_LITERAL(-0.00759837181166235), ALWAN_LITERAL( 1.00186148473965364), ALWAN_LITERAL( 0.00533003579138894),
     ALWAN_LITERAL( 0.00307257705853153), ALWAN_LITERAL(-0.00509596151113058), ALWAN_LITERAL( 1.08168060306579528)
 };
 
 /* D65 to D60 chromatic adaptation matrix (Bradford, inverse) */
-static const alwan_f64 g_d65_to_d60_bradford[9] = {
+static alwan_f64 const g_d65_to_d60_bradford[9] = {
     ALWAN_LITERAL( 1.01303000), ALWAN_LITERAL( 0.00610531), ALWAN_LITERAL(-0.01497100),
     ALWAN_LITERAL( 0.00769823), ALWAN_LITERAL( 0.99816500), ALWAN_LITERAL(-0.00503203),
     ALWAN_LITERAL(-0.00284131), ALWAN_LITERAL( 0.00468516), ALWAN_LITERAL( 0.92450700)
@@ -4127,8 +4127,8 @@ alwan_status alwan_aces2_output_transform_f64(alwan_rgb_f64 *rgb_out,
         /* Step 6: Normalize XYZ to equal-energy white for DCDM
          * D60 white point in XYZ is approximately (0.9526, 1.0, 1.0089)
          * We scale each component so that neutral colors have X=Y=Z */
-        static const alwan_f64 D60_WHITE_X = ALWAN_LITERAL(0.952646074569846);
-        static const alwan_f64 D60_WHITE_Z = ALWAN_LITERAL(1.008825184351586);
+        static alwan_f64 const D60_WHITE_X = ALWAN_LITERAL(0.952646074569846);
+        static alwan_f64 const D60_WHITE_Z = ALWAN_LITERAL(1.008825184351586);
         xyz[0] /= D60_WHITE_X;
         xyz[2] /= D60_WHITE_Z;
 
@@ -4189,7 +4189,7 @@ alwan_status alwan_aces2_output_transform_f64(alwan_rgb_f64 *rgb_out,
         xyz_d65[2] = ACES1_D60_TO_D65_f64[6] * xyz_d60[0] + ACES1_D60_TO_D65_f64[7] * xyz_d60[1] + ACES1_D60_TO_D65_f64[8] * xyz_d60[2];
 
         /* XYZ (D65) to P3-D65 matrix (same primaries as P3-DCI) */
-        static const alwan_f64 XYZ_D65_TO_P3[9] = {
+        static alwan_f64 const XYZ_D65_TO_P3[9] = {
             ALWAN_LITERAL( 2.4934969119), ALWAN_LITERAL(-0.9313836179), ALWAN_LITERAL(-0.4027107845),
             ALWAN_LITERAL(-0.8294889696), ALWAN_LITERAL( 1.7626640603), ALWAN_LITERAL( 0.0236246858),
             ALWAN_LITERAL( 0.0358458302), ALWAN_LITERAL(-0.0761723893), ALWAN_LITERAL( 0.9568845240)
@@ -4472,13 +4472,13 @@ alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
 
         /* Step 2: De-normalize from equal-energy white to D60
          * This is the inverse of the forward transform's normalization */
-        static const alwan_f64 D60_WHITE_X = ALWAN_LITERAL(0.952646074569846);
-        static const alwan_f64 D60_WHITE_Z = ALWAN_LITERAL(1.008825184351586);
+        static alwan_f64 const D60_WHITE_X = ALWAN_LITERAL(0.952646074569846);
+        static alwan_f64 const D60_WHITE_Z = ALWAN_LITERAL(1.008825184351586);
         xyz[0] *= D60_WHITE_X;
         xyz[2] *= D60_WHITE_Z;
 
         /* Step 3: Convert XYZ (D60) to AP1 */
-        static const alwan_f64 XYZ_D60_TO_AP1[9] = {
+        static alwan_f64 const XYZ_D60_TO_AP1[9] = {
             ALWAN_LITERAL( 1.6410233797), ALWAN_LITERAL(-0.3248032942), ALWAN_LITERAL(-0.2364246952),
             ALWAN_LITERAL(-0.6636628587), ALWAN_LITERAL( 1.6153315917), ALWAN_LITERAL( 0.0167563477),
             ALWAN_LITERAL( 0.0030476112), ALWAN_LITERAL(-0.0164295295), ALWAN_LITERAL( 0.9888322028)
@@ -4519,7 +4519,7 @@ alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
         p3_linear[2] = aces_gamma26_eotf_f64_v(rgb_in->b);
 
         /* Step 2: P3 to XYZ (D65) */
-        static const alwan_f64 P3_D65_TO_XYZ[9] = {
+        static alwan_f64 const P3_D65_TO_XYZ[9] = {
             ALWAN_LITERAL(0.4865709486), ALWAN_LITERAL(0.2656676932), ALWAN_LITERAL(0.1982172852),
             ALWAN_LITERAL(0.2289745641), ALWAN_LITERAL(0.6917385218), ALWAN_LITERAL(0.0792869141),
             ALWAN_LITERAL(0.0000000000), ALWAN_LITERAL(0.0451133819), ALWAN_LITERAL(1.0439443689)
@@ -4537,7 +4537,7 @@ alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
         xyz_d60[2] = ACES1_D65_TO_D60[6] * xyz_d65[0] + ACES1_D65_TO_D60[7] * xyz_d65[1] + ACES1_D65_TO_D60[8] * xyz_d65[2];
 
         /* Step 4: Convert XYZ (D60) to AP1 */
-        static const alwan_f64 XYZ_D60_TO_AP1[9] = {
+        static alwan_f64 const XYZ_D60_TO_AP1[9] = {
             ALWAN_LITERAL( 1.6410233797), ALWAN_LITERAL(-0.3248032942), ALWAN_LITERAL(-0.2364246952),
             ALWAN_LITERAL(-0.6636628587), ALWAN_LITERAL( 1.6153315917), ALWAN_LITERAL( 0.0167563477),
             ALWAN_LITERAL( 0.0030476112), ALWAN_LITERAL(-0.0164295295), ALWAN_LITERAL( 0.9888322028)

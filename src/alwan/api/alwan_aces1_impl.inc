@@ -47,25 +47,25 @@ static ALWAN_CORE_T ALWAN_CORE_FN(aces1_hermite_quad)(ALWAN_CORE_T x,
 }
 
 static ALWAN_CORE_T ALWAN_CORE_FN(aces1_rrt_hermite)(ALWAN_CORE_T x) {
-    static const ALWAN_CORE_T px[7] = { -5.26017743, -3.75502745, -2.24987747, -0.74472749, 1.06145248, 2.86763245, 4.67381243 };
-    static const ALWAN_CORE_T py[7] = { -4.0, -3.57868829, -1.82131329, 0.68124124, 2.87457742, 3.83406206, 4.0 };
-    static const ALWAN_CORE_T ps[7] = { 0.0, 0.55982688, 1.77532247, 1.55, 0.8787017, 0.18374463, 0.0 };
+    static ALWAN_CORE_T const px[7] = { -5.26017743, -3.75502745, -2.24987747, -0.74472749, 1.06145248, 2.86763245, 4.67381243 };
+    static ALWAN_CORE_T const py[7] = { -4.0, -3.57868829, -1.82131329, 0.68124124, 2.87457742, 3.83406206, 4.0 };
+    static ALWAN_CORE_T const ps[7] = { 0.0, 0.55982688, 1.77532247, 1.55, 0.8787017, 0.18374463, 0.0 };
     ALWAN_CORE_T lx = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(x, ALWAN_CORE_LITERAL(1e-10)));
     ALWAN_CORE_T ly = ALWAN_CORE_FN(aces1_hermite_quad)(lx, px, py, ps, 7);
     return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), ly);
 }
 
 static ALWAN_CORE_T ALWAN_CORE_FN(aces1_odt48_hermite)(ALWAN_CORE_T x) {
-    static const ALWAN_CORE_T px[15] = { -2.54062362, -2.08035721, -1.6200908, -1.15982439, -0.69955799, -0.23929158, 0.22097483, 0.68124124, 1.01284632, 1.3444514, 1.67605648, 2.00766156, 2.33926665, 2.67087173, 3.00247681 };
-    static const ALWAN_CORE_T py[15] = { -1.69897, -1.588435, -1.3535, -1.04695, -0.6564, -0.22141, 0.22814402, 0.68124124, 0.99142189, 1.258, 1.44995, 1.5591, 1.6226, 1.66065457, 1.68124124 };
-    static const ALWAN_CORE_T ps[15] = { 0.0, 0.4803088, 0.5405565, 0.79149813, 0.9055625, 0.98460368, 0.96884766, 1.0, 0.87078346, 0.73702127, 0.42068113, 0.23763206, 0.14535362, 0.08416378, 0.04 };
+    static ALWAN_CORE_T const px[15] = { -2.54062362, -2.08035721, -1.6200908, -1.15982439, -0.69955799, -0.23929158, 0.22097483, 0.68124124, 1.01284632, 1.3444514, 1.67605648, 2.00766156, 2.33926665, 2.67087173, 3.00247681 };
+    static ALWAN_CORE_T const py[15] = { -1.69897, -1.588435, -1.3535, -1.04695, -0.6564, -0.22141, 0.22814402, 0.68124124, 0.99142189, 1.258, 1.44995, 1.5591, 1.6226, 1.66065457, 1.68124124 };
+    static ALWAN_CORE_T const ps[15] = { 0.0, 0.4803088, 0.5405565, 0.79149813, 0.9055625, 0.98460368, 0.96884766, 1.0, 0.87078346, 0.73702127, 0.42068113, 0.23763206, 0.14535362, 0.08416378, 0.04 };
     ALWAN_CORE_T lx = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(x, ALWAN_CORE_LITERAL(1e-10)));
     ALWAN_CORE_T ly = ALWAN_CORE_FN(aces1_hermite_quad)(lx, px, py, ps, 15);
     ALWAN_CORE_T nits = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), ly);
     return (nits - ALWAN_CORE_LITERAL(0.02)) / (ALWAN_CORE_LITERAL(48.0) - ALWAN_CORE_LITERAL(0.02));
 }
 
-static ALWAN_CORE_T ALWAN_CORE_FN(aces1_c9_raw)(ALWAN_CORE_T oces, const ALWAN_CORE_FNLIT(aces1_c9_params) *p) {
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_c9_raw)(ALWAN_CORE_T oces, ALWAN_CORE_FNLIT(aces1_c9_params) const *p) {
     ALWAN_CORE_T lx = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(oces, ALWAN_CORE_LITERAL(1e-10)));
     ALWAN_CORE_T log_min = ALWAN_CORE_LOG10(p->min_x);
     ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(p->mid_x);
@@ -91,7 +91,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(aces1_c9_raw)(ALWAN_CORE_T oces, const ALWAN_C
     return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), ly);
 }
 
-static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ocio_curve)(ALWAN_CORE_T log_in, const ALWAN_CORE_T *knots, int n_knots) {
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ocio_curve)(ALWAN_CORE_T log_in, ALWAN_CORE_T const *knots, int n_knots) {
     if (log_in <= knots[0]) return knots[1];
     if (log_in >= knots[(n_knots - 1) * 3]) return knots[(n_knots - 1) * 3 + 1];
     int seg = 0;
@@ -125,7 +125,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ocio_hdr1000)(ALWAN_CORE_T scene_val) {
     return (display_nits - ALWAN_CORE_LITERAL(0.0001)) / (ALWAN_CORE_LITERAL(1000.0) - ALWAN_CORE_LITERAL(0.0001));
 }
 
-static ALWAN_CORE_T ALWAN_CORE_FN(aces1_spline_c9)(ALWAN_CORE_T oces, const ALWAN_CORE_FNLIT(aces1_c9_params) *p) {
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_spline_c9)(ALWAN_CORE_T oces, ALWAN_CORE_FNLIT(aces1_c9_params) const *p) {
     ALWAN_CORE_T lx = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(oces, ALWAN_CORE_LITERAL(1e-10)));
     ALWAN_CORE_T log_min = ALWAN_CORE_LOG10(p->min_x);
     ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(p->mid_x);
@@ -159,7 +159,7 @@ static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts_segment)(ALWAN_CORE_T const *cf, AL
          + ALWAN_CORE_LITERAL(0.5) * (cf[0] + cf[1]);
 }
 
-static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts)(ALWAN_CORE_T x, const ALWAN_CORE_FNLIT(aces1_ssts_params) *p) {
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts)(ALWAN_CORE_T x, ALWAN_CORE_FNLIT(aces1_ssts_params) const *p) {
     ALWAN_CORE_T logx = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(x, ALWAN_CORE_LITERAL(5.96046448e-08)));
     ALWAN_CORE_T log_min = ALWAN_CORE_LOG10(p->min_x);
     ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(p->mid_x);
@@ -183,11 +183,11 @@ static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts)(ALWAN_CORE_T x, const ALWAN_CORE_F
     return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), logy);
 }
 
-static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts_lincv)(ALWAN_CORE_T x, const ALWAN_CORE_FNLIT(aces1_ssts_params) *p) {
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ssts_lincv)(ALWAN_CORE_T x, ALWAN_CORE_FNLIT(aces1_ssts_params) const *p) {
     return (ALWAN_CORE_FN(aces1_ssts)(x, p) - p->min_y) / (p->max_y - p->min_y);
 }
 
-static const ALWAN_CORE_FNLIT(aces1_ssts_params) *ALWAN_CORE_FN(aces1_ssts_for_output)(alwan_aces1_output output) {
+static ALWAN_CORE_FNLIT(aces1_ssts_params) const *ALWAN_CORE_FN(aces1_ssts_for_output)(alwan_aces1_output output) {
     switch (output) {
         case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ: return &ALWAN_CORE_FNLIT(ssts_1000nit);
         case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ: return &ALWAN_CORE_FNLIT(ssts_2000nit);
@@ -203,7 +203,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
 
     ALWAN_CORE_RGB ap0_mod = *rgb_in, ap1, rrt, xyz, d65, display;
-    const ALWAN_CORE_FNLIT(aces1_ssts_params) *ssts = ALWAN_CORE_FN(aces1_ssts_for_output)(output);
+    ALWAN_CORE_FNLIT(aces1_ssts_params) const *ssts = ALWAN_CORE_FN(aces1_ssts_for_output)(output);
     int is_v103 = (output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103 ||
                    output == ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103 ||
                    output == ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103);
@@ -278,7 +278,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
                 rrt.g = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(rrt.g);
                 rrt.b = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(rrt.b);
             }
-            const ALWAN_CORE_FNLIT(aces1_c9_params) *c9p;
+            ALWAN_CORE_FNLIT(aces1_c9_params) const *c9p;
             switch (output) {
                 case ALWAN_ACES1_OUT_REC2020_1000NIT_PQ_V103: c9p = &ALWAN_CORE_FNLIT(c9_1000nit); break;
                 case ALWAN_ACES1_OUT_REC2020_2000NIT_PQ_V103: c9p = &ALWAN_CORE_FNLIT(c9_2000nit); break;

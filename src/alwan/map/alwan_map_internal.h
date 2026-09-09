@@ -338,7 +338,7 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
                 __m128i const shuf_b = _mm_setr_epi8(2,5,8,11, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1);
                 __m256d const inv256d = _mm256_set1_pd(1.0 / 255.0);
                 for (; j + 4 <= n; j += 4) {
-                    __m128i raw = _mm_loadu_si128((const __m128i *)(src + j * 3));
+                    __m128i raw = _mm_loadu_si128((__m128i const *)(src + j * 3));
                     __m128i ri32 = _mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_r));
                     __m128i gi32 = _mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_g));
                     __m128i bi32 = _mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_b));
@@ -399,8 +399,8 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
             {
                 for (; j + 4 <= n; j += 4) {
                     uint16_t const *sp = src_u16 + j * 3;
-                    __m128i h0 = _mm_loadu_si128((const __m128i *)sp);
-                    __m128i h1 = _mm_loadl_epi64((const __m128i *)(sp + 8));
+                    __m128i h0 = _mm_loadu_si128((__m128i const *)sp);
+                    __m128i h1 = _mm_loadl_epi64((__m128i const *)(sp + 8));
                     __m128 f0 = _mm_cvtph_ps(h0);
                     __m128 f1 = _mm_cvtph_ps(_mm_srli_si128(h0, 8));
                     __m128 f2 = _mm_cvtph_ps(h1);
@@ -674,7 +674,7 @@ ALWAN_INLINE void alwan__load_tile_typed_aos(alwan_f64 *dst,
             {
                 __m256d const inv256d = _mm256_set1_pd(1.0 / 255.0);
                 for (; j + 4 <= n; j += 4) {
-                    __m128i raw = _mm_loadu_si128((const __m128i *)(src_u8 + j * 3));
+                    __m128i raw = _mm_loadu_si128((__m128i const *)(src_u8 + j * 3));
                     _mm256_storeu_pd(&dst[j * 3],     _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(raw)), inv256d));
                     _mm256_storeu_pd(&dst[j * 3 + 4], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 4))), inv256d));
                     _mm256_storeu_pd(&dst[j * 3 + 8], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 8))), inv256d));
@@ -706,8 +706,8 @@ ALWAN_INLINE void alwan__load_tile_typed_aos(alwan_f64 *dst,
             j = 0;
 #if defined(__AVX2__)
             for (; j + 4 <= n; j += 4) {
-                __m128i h0 = _mm_loadu_si128((const __m128i *)(src_u16 + j * 3));
-                __m128i h1 = _mm_loadl_epi64((const __m128i *)(src_u16 + j * 3 + 8));
+                __m128i h0 = _mm_loadu_si128((__m128i const *)(src_u16 + j * 3));
+                __m128i h1 = _mm_loadl_epi64((__m128i const *)(src_u16 + j * 3 + 8));
                 __m128 f0 = _mm_cvtph_ps(h0);
                 __m128 f1 = _mm_cvtph_ps(_mm_srli_si128(h0, 8));
                 __m128 f2 = _mm_cvtph_ps(h1);
@@ -890,7 +890,7 @@ ALWAN_INLINE void alwan__load_tile_typed_ch(alwan_f64 *dst,
 #if defined(__AVX2__)
             {
                 for (; j + 4 <= n; j += 4) {
-                    __m128i h = _mm_loadl_epi64((const __m128i *)(src_u16 + j));
+                    __m128i h = _mm_loadl_epi64((__m128i const *)(src_u16 + j));
                     __m128 f = _mm_cvtph_ps(h);
                     _mm256_storeu_pd(&dst[j], _mm256_cvtps_pd(f));
                 }

@@ -374,6 +374,34 @@ All notable changes to this project will be documented in this file.
   See [determinism.md](docs/determinism.md) for what the resulting claim
   does and does not rest on.
 
+### Changed
+
+- **Const placement is a rule now, and gated in CI.** The project is east
+  const. The GPU-portable tier is the exception and stays west, because it has
+  to parse as HLSL: legacy fxc requires the qualifier before the type and
+  rejects `alwan_scalar const a` outright.
+
+  Half of this was already enforced. `check_east_const.py` banned the east form
+  in the shader tier; outside it the docs said east const "is legal C and is
+  left alone", so the rest of the tree was a mix. It is uniform now: 210 sites
+  in the library and 100 in alwan_dev moved to east.
+
+  Neither direction changes a type. `const T x` and `T const x` are the same,
+  as are `const T *p` and `T const *p`; `T *const p` is a const pointer, a
+  different type, and is untouched under either style.
+
+  `check_const_style.py` replaces `check_east_const.py` and gates both
+  directions. It also closes a gap in the old scope: the shader tier is the
+  include closure of a bootstrap, not `src/alwan/core` alone, and
+  `alwan_types_gen.inc` and `alwan_build_config.h` reach a shader through
+  `alwan_types.h` without having been scanned. Both were clean, so the gap was
+  latent rather than live.
+
+  Vendored code is excluded and stays byte-identical to upstream: tinyexr,
+  miniz, kb_text_shape and rgb2spec account for 881 of the west-const sites in
+  alwan_dev, and reformatting them would cost the ability to diff against the
+  version they came from.
+
 ### Fixed: output differs
 
 - **The .cube reader accepted infinities and NaN.** `sscanf("%lf")` turns

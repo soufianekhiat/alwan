@@ -31,7 +31,7 @@ static void ALWAN_CORE_FN(alwan__edt_1d)(ALWAN_CORE_T const *f, ALWAN_CORE_T *d,
 
 /* Full 2D EDT: dist2[i] = squared spatial distance to the nearest site pixel
  * (site = 1 in `mask`). Columns then rows (separable). */
-static void ALWAN_CORE_FN(alwan__edt_2d)(const unsigned char *mask, ALWAN_CORE_T *dist2, int W, int H,
+static void ALWAN_CORE_FN(alwan__edt_2d)(unsigned char const *mask, ALWAN_CORE_T *dist2, int W, int H,
                           ALWAN_CORE_T *fbuf, ALWAN_CORE_T *dbuf, int *v, ALWAN_CORE_T *z) {
     ALWAN_CORE_T const INF = ALWAN_CORE_LITERAL(1e30);
     /* pass 1: columns */

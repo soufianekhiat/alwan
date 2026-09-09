@@ -565,13 +565,13 @@ ALWAN_INLINE void alwan_simd_f64_storeu(double *ptr, alwan_simd_f64 v) { _mm_sto
  * Integer Load / Store & Conversion
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_load(uint8_t const *ptr) { return _mm_load_si128((const __m128i *)ptr); }
-ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_loadu(uint8_t const *ptr) { return _mm_loadu_si128((const __m128i *)ptr); }
+ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_load(uint8_t const *ptr) { return _mm_load_si128((__m128i const *)ptr); }
+ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_loadu(uint8_t const *ptr) { return _mm_loadu_si128((__m128i const *)ptr); }
 ALWAN_INLINE void alwan_simd_u8_store(uint8_t *ptr, alwan_simd_u8 v) { _mm_store_si128((__m128i *)ptr, v); }
 ALWAN_INLINE void alwan_simd_u8_storeu(uint8_t *ptr, alwan_simd_u8 v) { _mm_storeu_si128((__m128i *)ptr, v); }
 
-ALWAN_INLINE alwan_simd_u16 alwan_simd_u16_load(uint16_t const *ptr) { return _mm_load_si128((const __m128i *)ptr); }
-ALWAN_INLINE alwan_simd_u16 alwan_simd_u16_loadu(uint16_t const *ptr) { return _mm_loadu_si128((const __m128i *)ptr); }
+ALWAN_INLINE alwan_simd_u16 alwan_simd_u16_load(uint16_t const *ptr) { return _mm_load_si128((__m128i const *)ptr); }
+ALWAN_INLINE alwan_simd_u16 alwan_simd_u16_loadu(uint16_t const *ptr) { return _mm_loadu_si128((__m128i const *)ptr); }
 ALWAN_INLINE void alwan_simd_u16_store(uint16_t *ptr, alwan_simd_u16 v) { _mm_store_si128((__m128i *)ptr, v); }
 ALWAN_INLINE void alwan_simd_u16_storeu(uint16_t *ptr, alwan_simd_u16 v) { _mm_storeu_si128((__m128i *)ptr, v); }
 
@@ -609,7 +609,7 @@ ALWAN_INLINE alwan_simd_u8 alwan_simd_u8_shuffle(alwan_simd_u8 v, alwan_simd_u8 
     _mm_store_si128((__m128i *)mb, mask);
     for (int i = 0; i < 16; i++)
         rb[i] = (mb[i] & 0x80) ? 0 : vb[mb[i] & 0x0F];
-    return _mm_load_si128((const __m128i *)rb);
+    return _mm_load_si128((__m128i const *)rb);
 #endif
 }
 

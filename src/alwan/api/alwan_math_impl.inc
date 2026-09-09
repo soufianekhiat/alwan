@@ -90,7 +90,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_interpolate)(ALWAN_CORE_T const *x_in, ALWAN
             }
 
             case ALWAN_INTERP_LANCZOS: {
-                const int a = 3;
+                int const a = 3;
                 ALWAN_CORE_T sum = ALWAN_CORE_LITERAL(0.0);
                 ALWAN_CORE_T weight_sum = ALWAN_CORE_LITERAL(0.0);
 
@@ -511,13 +511,13 @@ alwan_status ALWAN_CORE_FNLIT(alwan_optimize_spectrum_for_xyz)(ALWAN_CORE_SPD *s
         return ALWAN_E_RANGE;
     }
 
-    const size_t num_gaussians = 7;
-    const ALWAN_CORE_T centers[7] = {
+    size_t const num_gaussians = 7;
+    ALWAN_CORE_T const centers[7] = {
         ALWAN_CORE_LITERAL(420.0), ALWAN_CORE_LITERAL(470.0), ALWAN_CORE_LITERAL(520.0),
         ALWAN_CORE_LITERAL(570.0), ALWAN_CORE_LITERAL(600.0), ALWAN_CORE_LITERAL(630.0),
         ALWAN_CORE_LITERAL(680.0)
     };
-    const ALWAN_CORE_T widths[7] = {
+    ALWAN_CORE_T const widths[7] = {
         ALWAN_CORE_LITERAL(40.0), ALWAN_CORE_LITERAL(40.0), ALWAN_CORE_LITERAL(40.0),
         ALWAN_CORE_LITERAL(40.0), ALWAN_CORE_LITERAL(40.0), ALWAN_CORE_LITERAL(40.0),
         ALWAN_CORE_LITERAL(40.0)

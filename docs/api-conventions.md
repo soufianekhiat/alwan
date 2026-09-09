@@ -73,6 +73,40 @@ The docs sometimes use `{T}` as a template placeholder:
 
 ---
 
+## Const Placement
+
+**East const**, with one exception:
+
+```c
+alwan_f64 const *lut;        /* yes */
+const alwan_f64 *lut;        /* no, outside the GPU tier */
+```
+
+The exception is the GPU-portable tier, which is **west const** because it has
+to parse as HLSL. Legacy fxc requires the qualifier before the type and rejects
+the east form outright, so anything a shader can include writes it the other
+way round:
+
+```c
+/* src/alwan/core and the rest of the shader include closure */
+const ALWAN_CORE_T a = ALWAN_CORE_LITERAL(0.5);
+```
+
+That tier is `src/alwan/core`, plus `alwan_platform.h`, `alwan_types.h`,
+`alwan_types_gen.inc`, `alwan_build_config.h`, `alwan_core_aliases.inc` and the
+`alwan_hlsl.h` / `alwan_glsl.h` / `alwan_opencl.h` / `alwan_halide.h`
+bootstraps. Everything else in `src/alwan` is east.
+
+Neither form changes a type: `const T x` and `T const x` are the same, as are
+`const T *p` and `T const *p`. `T *const p` is a const **pointer**, a different
+type again, and is spelled with the qualifier after the star under either
+style.
+
+`alwan_dev/tools/check_const_style.py` gates both tiers and rewrites with
+`--fix`. It runs in CI.
+
+---
+
 ## Signature Families
 
 Alwan does not force one signature shape for every function. Instead, it uses a

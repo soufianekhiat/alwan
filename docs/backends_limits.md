@@ -186,9 +186,15 @@ terms rather than on include order.
 > - **East const.** `alwan_scalar const a = ...` is `error X3000: syntax error:
 >   unexpected token 'const'` under fxc, followed by a spurious `X3080:
 >   function must return a value` because the enclosing function failed to
->   parse. Qualifiers must precede the type. `alwan_dev/tools/check_east_const.py`
->   gates this without needing a compiler, over `src/alwan/core` and the
->   platform layer; outside that tier east const is legal C and is left alone.
+>   parse. Qualifiers must precede the type.
+>
+>   This is the one place the project writes west const. Everywhere else it is
+>   east, and `alwan_dev/tools/check_const_style.py` gates both directions
+>   without needing a compiler. The west tier is the include closure of a
+>   shader bootstrap rather than `src/alwan/core` alone: `alwan_platform.h`,
+>   `alwan_types.h`, `alwan_types_gen.inc`, `alwan_build_config.h` and
+>   `alwan_core_aliases.inc` all reach a shader through the bootstrap, and east
+>   const in any of them breaks a shader with nothing visible in the C build.
 > - **`(void)x;` casts.** Not valid HLSL. Use `ALWAN_UNUSED(x)`, which is empty
 >   on the HLSL and GLSL branches.
 >

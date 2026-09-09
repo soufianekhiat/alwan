@@ -172,7 +172,7 @@ static int alwan__chart_spectral_nm(char const *f, size_t n, double *nm) {
  * keeps D50, which is what CGATS assumes when ILLUMINANT is absent; the raw
  * string stays reachable through alwan_chart_header either way. */
 static alwan_illuminant alwan__chart_illuminant_from_name(char const *s) {
-    static const struct { char const *name; alwan_illuminant ill; } table[] = {
+    static struct { char const *name; alwan_illuminant ill; } const table[] = {
         { "A",   ALWAN_ILLUMINANT_A   }, { "B",   ALWAN_ILLUMINANT_B   },
         { "C",   ALWAN_ILLUMINANT_C   }, { "D40", ALWAN_ILLUMINANT_D40 },
         { "D45", ALWAN_ILLUMINANT_D45 }, { "D50", ALWAN_ILLUMINANT_D50 },
