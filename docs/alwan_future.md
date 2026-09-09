@@ -896,6 +896,112 @@ nonsense. What remains:
 
 ---
 
+## The CCM fit has one solver, one objective, and no way to choose either
+
+What a caller gets today, in `api/alwan_color_correction.c`:
+
+- `least_squares_solve` at line 513. Normal equations, `AtA x = Atb`, by Gaussian
+  elimination with partial pivoting. The three output channels share one
+  elimination. A pivot under `1e-12` returns `ALWAN_E_DIVZERO`.
+- Always in `double`. The f32 entry points widen, call the f64 fit, and narrow,
+  which is why these are on the `ALWAN_WITH_F64_FACADE` list.
+- Two expansions to fit through: Cheung 2004 (3 to 35 terms) and Finlayson 2015
+  (degree 1 to 4, optionally root-polynomial, which is the exposure-invariant
+  one because every term stays degree 1 in intensity).
+- The interface is N paired samples and a term count. It never learns which
+  chart it is looking at, which is the right design and should stay.
+
+What is missing is any choice about how the fit is made. A camera profile is a
+fit, and the numerical method, the objective, the weighting and the
+regularisation all change the answer. None of the four is reachable.
+
+The shape this wants is a params struct with a defaulted initialiser, so the
+existing two-line call keeps its behaviour and the knobs are opt-in:
+
+    alwan_ccm_fit_params_f64 p;
+    alwan_ccm_fit_params_init_f64(&p);      /* today's behaviour exactly */
+    p.solver    = ALWAN_CCM_SOLVER_QR;
+    p.objective = ALWAN_CCM_OBJECTIVE_DE2000;
+    p.weights   = per_patch;                /* NULL for uniform */
+    alwan_ccm_fit_cheung2004_f64(matrix, &p, camera, reference, 24, terms);
+
+Options worth having, roughly in the order they are worth adding:
+
+1. **Householder QR on `A` directly**, instead of forming `AtA`. Normal
+   equations square the condition number, and `AtA` at 22 or 35 terms on real
+   chart data is genuinely ill-conditioned. The `double` solve is a mitigation,
+   not a fix. QR costs about the same at these sizes and gives back roughly
+   half the lost digits. Changes nothing on well-conditioned input, so it is
+   safe to make the default once it exists.
+
+2. **SVD with rank truncation.** Answers the case QR still cannot: a design
+   matrix that is actually rank deficient. Duplicate patches, a chart shot with
+   a clipped channel, a term set wider than the chart can support. It also lets
+   the fit report its rank, so a caller learns the fit was degenerate instead
+   of receiving `ALWAN_E_DIVZERO` with no reason attached.
+
+3. **Tikhonov regularisation.** One parameter, shrinking the high-order terms.
+   This is the honest answer to overfitting when the term count approaches the
+   patch count, which a ColorChecker Classic reaches at 22 terms for 24
+   patches. Cheap: it is a diagonal added before the solve.
+
+4. **Per-patch weights.** Skin and the neutral ramp matter more than a
+   saturated cyan for most work, and a uniform fit does not know that. The same
+   mechanism drops a patch that glared or is scratched, by weighting it zero,
+   which is currently only possible by rebuilding the input arrays.
+
+5. **A perceptual objective.** Minimise dE2000 or CAM16-UCS instead of squared
+   error in linear RGB. This is the option that changes results most: least
+   squares in linear RGB spends its accuracy where the numbers are large, which
+   is the bright patches, not where the eye is sensitive. It is not linear, so
+   it needs an iterative solve, with the linear fit as the starting point. It
+   also needs a reference to validate against before it can be trusted.
+
+6. **A robust loss**, Huber or plain IRLS. One bad patch currently moves the
+   whole matrix. IRLS is a loop around the same linear solve, so it costs
+   almost nothing once weights from 4 exist.
+
+7. **A neutral-preserving constraint.** Force the fit so equal RGB maps to the
+   reference neutral. A profile that tints greys is worse in use than a
+   slightly less accurate one that does not, and this is the constraint most
+   profiling tools apply by default. Equality-constrained least squares, or
+   solve in a reduced basis and reconstruct.
+
+8. **Term selection by cross-validation.** Choose the Cheung term count from the
+   data instead of by hand. Leave-one-out over N patches is N solves of a small
+   system, which is nothing at these sizes, and it stops a caller reaching for
+   35 terms because it sounds better than 11.
+
+Notes on sequencing. Items 1 and 2 are numerics and change no result on good
+data, so they can land first and independently. Items 4 and 6 share one
+mechanism. Item 5 is the largest change and the only one that needs external
+validation data.
+
+Two things to fix alongside, both found while reading this code:
+
+- **The fits have no test coverage.** Suite 44 covers
+  `alwan_poly_expand_cheung2004` and `alwan_poly_expand_finlayson2015`, but
+  `alwan_colour_correction_matrix_cheung2004` and `..._finlayson2015` are
+  called from no test in the repo. The expansions are checked and the solve
+  that consumes them is not. The first test is synthetic and exact: take a
+  known matrix, generate camera RGB from reference patches through it, fit, and
+  require the matrix back. That is exact in the linear case, and running it at
+  each term count is what will show the conditioning limit as a number rather
+  than as a worry.
+
+- **The stack arrays cap the fit at 35 terms** (`AtA[35 * 35]`,
+  `aug[35 * 38]`). Fine for the Cheung ladder, but it is a structural ceiling
+  rather than a chosen one, and a solver rewrite should take the allocation
+  with it.
+
+Worth recording: the usable term count is bounded by the patch count, since the
+fit rejects `num_samples < terms`. A Classic caps at 22, an SG at 140 patches
+and an IT8 at 288 reach all 35. Bigger charts are not a nicety, they unlock
+model capacity, which is a second argument for `alwan_chart_*` beyond reading a
+target's own numbers.
+
+---
+
 ## Working Checklist
 
 - [ ] Support `ALWAN_EMBED_DATA=0` as a real runtime-data mode
@@ -909,6 +1015,13 @@ nonsense. What remains:
 - [x] Extend the deterministic layer to trig/log10 and route the macros; the 30 CI exclusions are removed, pending a confirming run
 - [ ] Close batch/map and `_map_planar` coverage gaps (CAMs, ZCAM, deltaE, CVD)
 - [ ] Add the bulk two-step Zhai 2018 CAT
+- [ ] CCM fit: a params struct, so the solver, objective, weighting and regularisation are the caller's choice; today all four are fixed
+- [ ] CCM fit: QR or SVD instead of the normal equations, which square the condition number at 22 and 35 terms
+- [ ] CCM fit: per-patch weights, and the robust loss that reuses them
+- [ ] CCM fit: a dE2000 or CAM16-UCS objective; the current least squares in linear RGB spends its accuracy on the bright patches
+- [ ] CCM fit: a neutral-preserving constraint, so a profile cannot tint greys
+- [ ] CCM fit: no test covers the solve at all, only the expansions; start with the synthetic exact round trip
+- [x] Measured chart files: alwan_chart_* reads CGATS.17 / OpenQualia, so a target's own numbers reach the solvers; no network needed
 - [x] Fill API parity gaps: norm macros and scalar HSV<->HWB were already in; ZCAM `from_ucs` added
 - [x] The f64 facades are documented, each with its reason, in precision-and-limits.md; they stay facades by design
 - [x] Harden `alwan_create` validation (non-zero flags and a half allocator pair return NULL); the 44 public enums were already fully pinned
