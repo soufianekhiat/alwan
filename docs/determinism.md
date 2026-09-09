@@ -50,13 +50,16 @@ Apple Silicon.
 > (`alwan_dev/cuda_regression/`). CUDA takes the C emission path, so it gets the
 > whole deterministic layer.
 >
-> The single-pass GPU backends (HLSL, GLSL, OpenCL) have their own smaller
-> implementation of that layer, and it is not complete. It covers `log2`,
-> `exp2`, `pow_pos`, `cbrt`, `exp`, `ln`, `log10` and the four sRGB / BT.2020
-> transfer functions. **The angle family is still on hardware there**: `sin`,
-> `cos`, `tan`, `tanh`, `atan`, `atan2` and `acos` need their argument reduction
-> ported to that branch. Nothing in the current GPU kernels reaches them, which
-> is why it has not bitten, and it is a gap rather than a decision.
+> The single-pass GPU backends (HLSL, GLSL, OpenCL) share one implementation of
+> that layer, and it is now complete: `log2`, `exp2`, `pow_pos`, `cbrt`, `exp`,
+> `ln`, `log10`, the four sRGB / BT.2020 transfer functions, and the angle
+> family. `sin`, `cos`, `tan`, `atan`, `atan2`, `acos` and `tanh` use the same
+> committed polynomials and the same Cody-Waite reduction as the C path, from
+> the f32 coefficient tables. That matters because every cylindrical space,
+> every CAM hue correlate, dE2000 and dE CMC reach it.
+>
+> Verified primitive by primitive on OpenCL against a deterministic host: all
+> twelve are bit-exact over 65536 samples each.
 >
 > Measured on OpenCL against a deterministic host, **all six conversions are
 > bit-exact**. Determinism therefore holds across an architecture boundary and

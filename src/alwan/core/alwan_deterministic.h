@@ -654,6 +654,145 @@ ALWAN_INLINE alwan_scalar alwan_det_log10(alwan_scalar x) {
     return alwan_det_log2(x) * (alwan_scalar)ALWAN_DET_LOG10_2;
 }
 
+ALWAN_INLINE alwan_scalar alwan_det_tanh(alwan_scalar x) {
+    if (x == (alwan_scalar)0.0) return x;   /* keep it exactly odd at 0 */
+    {
+    alwan_scalar a = (x < (alwan_scalar)0.0) ? -x : x;
+    alwan_scalar e = alwan_det_exp((alwan_scalar)-2.0 * a);
+    alwan_scalar t = ((alwan_scalar)1.0 - e) / ((alwan_scalar)1.0 + e);
+    return (x < (alwan_scalar)0.0) ? -t : t;
+    }
+}
+
+/* ----------------------------------------------------------------
+ * The angle family, mirroring the C _f32 path.
+ *
+ * This was the last thing on these backends still reaching the hardware
+ * intrinsic under ALWAN_DETERMINISTIC, and therefore the last reason a
+ * deterministic GPU build could disagree with a deterministic CPU one. Every
+ * cylindrical space, every CAM hue correlate, dE2000 and dE CMC reach it.
+ *
+ * Same three polynomials as the C path, from the same committed f32 tables, and
+ * the same Cody-Waite reduction. The f32 constants exist because the C f32 pass
+ * needs its own 12-bit split of pi/2: casting the f64 parts to float would
+ * round away exactly the extra precision the split exists to carry.
+ * ---------------------------------------------------------------- */
+
+/* x = n*(pi/2) + r with |r| <= pi/4; returns r and writes n mod 4.
+ * The quadrant is taken in floating point rather than through an integer cast,
+ * so a large |x| cannot overflow it. Accuracy still degrades past roughly 2^40,
+ * as it does for any Cody-Waite reduction; hue angles never go there. */
+/* Split into three plain functions rather than one with an out-parameter. HLSL
+ * spells an out-parameter `out int`, OpenCL and C spell it `int *`, and the
+ * quadrant has to be an integer either way because tan tests its low bit. Three
+ * value-returning calls need no spelling at all, and the caller pays one extra
+ * floor for it. */
+ALWAN_INLINE alwan_scalar alwan__det_reduce_fn(alwan_scalar x) {
+    return floor(x * (alwan_scalar)ALWAN_DET_TWO_OVER_PI + (alwan_scalar)0.5);
+}
+ALWAN_INLINE alwan_scalar alwan__det_reduce_r(alwan_scalar x, alwan_scalar fn) {
+    return ((x - fn * (alwan_scalar)ALWAN_DET_PIO2_HI_F32)
+               - fn * (alwan_scalar)ALWAN_DET_PIO2_MID_F32)
+               - fn * (alwan_scalar)ALWAN_DET_PIO2_LO_F32;
+}
+ALWAN_INLINE int alwan__det_quadrant(alwan_scalar fn) {
+    return (int)(fn - (alwan_scalar)4.0 * floor(fn * (alwan_scalar)0.25));
+}
+
+/* sin(r)/r and cos(r) as polynomials in y = r*r. Factoring the parity out is
+ * what makes sin(0) and atan(0) exactly zero rather than approximately so. */
+ALWAN_INLINE alwan_scalar alwan__det_sinpoly(alwan_scalar r, alwan_scalar y) {
+    ALWAN_DET_PRECISE alwan_scalar acc = alwan_det_sin_coeffs_f32[ALWAN_DET_SIN_DEGREE];
+    ALWAN_DET_UNROLL for (int i = ALWAN_DET_SIN_DEGREE - 1; i >= 0; --i) {
+        ALWAN_DET_PRECISE alwan_scalar t = acc * y; acc = t + alwan_det_sin_coeffs_f32[i];
+    }
+    return r * acc;
+}
+ALWAN_INLINE alwan_scalar alwan__det_cospoly(alwan_scalar y) {
+    ALWAN_DET_PRECISE alwan_scalar acc = alwan_det_cos_coeffs_f32[ALWAN_DET_COS_DEGREE];
+    ALWAN_DET_UNROLL for (int i = ALWAN_DET_COS_DEGREE - 1; i >= 0; --i) {
+        ALWAN_DET_PRECISE alwan_scalar t = acc * y; acc = t + alwan_det_cos_coeffs_f32[i];
+    }
+    return acc;
+}
+ALWAN_INLINE alwan_scalar alwan__det_atanpoly(alwan_scalar y) {
+    ALWAN_DET_PRECISE alwan_scalar acc = alwan_det_atan_coeffs_f32[ALWAN_DET_ATAN_DEGREE];
+    ALWAN_DET_UNROLL for (int i = ALWAN_DET_ATAN_DEGREE - 1; i >= 0; --i) {
+        ALWAN_DET_PRECISE alwan_scalar t = acc * y; acc = t + alwan_det_atan_coeffs_f32[i];
+    }
+    return acc;
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_sin(alwan_scalar x) {
+    alwan_scalar fn = alwan__det_reduce_fn(x);
+    alwan_scalar r = alwan__det_reduce_r(x, fn);
+    int q = alwan__det_quadrant(fn);
+    alwan_scalar y = r * r;
+    if (q == 0) return  alwan__det_sinpoly(r, y);
+    if (q == 1) return  alwan__det_cospoly(y);
+    if (q == 2) return -alwan__det_sinpoly(r, y);
+    return              -alwan__det_cospoly(y);
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_cos(alwan_scalar x) {
+    alwan_scalar fn = alwan__det_reduce_fn(x);
+    alwan_scalar r = alwan__det_reduce_r(x, fn);
+    int q = alwan__det_quadrant(fn);
+    alwan_scalar y = r * r;
+    if (q == 0) return  alwan__det_cospoly(y);
+    if (q == 1) return -alwan__det_sinpoly(r, y);
+    if (q == 2) return -alwan__det_cospoly(y);
+    return               alwan__det_sinpoly(r, y);
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_tan(alwan_scalar x) {
+    alwan_scalar fn = alwan__det_reduce_fn(x);
+    alwan_scalar r = alwan__det_reduce_r(x, fn);
+    int q = alwan__det_quadrant(fn);
+    alwan_scalar y = r * r;
+    alwan_scalar s = alwan__det_sinpoly(r, y);
+    alwan_scalar c = alwan__det_cospoly(y);
+    return (q & 1) ? (-c / s) : (s / c);
+}
+
+/* A second reduction at tan(pi/8), fdlibm style. One polynomial over the whole
+ * of [0, 1] converges too slowly: degree 12 only reaches 9e-12. */
+ALWAN_INLINE alwan_scalar alwan__det_atan_core(alwan_scalar t) {
+    if (t > (alwan_scalar)ALWAN_DET_TAN_PI_8) {
+        alwan_scalar s = (t - (alwan_scalar)1.0) / (t + (alwan_scalar)1.0);
+        return (alwan_scalar)ALWAN_DET_PIO4 + s * alwan__det_atanpoly(s * s);
+    }
+    return t * alwan__det_atanpoly(t * t);
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_atan(alwan_scalar x) {
+    alwan_scalar a = (x < (alwan_scalar)0.0) ? -x : x;
+    alwan_scalar r = (a > (alwan_scalar)1.0)
+        ? ((alwan_scalar)ALWAN_DET_PIO2 - alwan__det_atan_core((alwan_scalar)1.0 / a))
+        : alwan__det_atan_core(a);
+    return (x < (alwan_scalar)0.0) ? -r : r;
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_atan2(alwan_scalar y, alwan_scalar x) {
+    if (x == (alwan_scalar)0.0) {
+        if (y > (alwan_scalar)0.0) return  (alwan_scalar)ALWAN_DET_PIO2;
+        if (y < (alwan_scalar)0.0) return -(alwan_scalar)ALWAN_DET_PIO2;
+        return (alwan_scalar)0.0;
+    }
+    {
+    alwan_scalar a = alwan_det_atan(y / x);
+    if (x > (alwan_scalar)0.0) return a;
+    return (y >= (alwan_scalar)0.0) ? (a + (alwan_scalar)ALWAN_DET_PI)
+                                    : (a - (alwan_scalar)ALWAN_DET_PI);
+    }
+}
+
+ALWAN_INLINE alwan_scalar alwan_det_acos(alwan_scalar x) {
+    alwan_scalar c = (x < (alwan_scalar)-1.0) ? (alwan_scalar)-1.0
+                   : ((x > (alwan_scalar)1.0) ? (alwan_scalar)1.0 : x);
+    return alwan_det_atan2(sqrt((alwan_scalar)1.0 - c * c), c);
+}
+
 /* The four TFs, mirroring the C _f32 helpers exactly: same pow_pos, same
  * constants, same rounding order. Because the power branch is now pow_pos
  * rather than a per-TF table, C and GPU share one code path in all but

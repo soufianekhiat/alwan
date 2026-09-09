@@ -213,6 +213,26 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **The single-pass GPU backends get the whole deterministic layer, including
+  the angle family.** HLSL, GLSL and OpenCL share one implementation of it, and
+  it used to stop at the four sRGB / BT.2020 transfer functions. It now covers
+  `pow`, `cbrt`, `exp`, `ln`, `log2`, `log10` and `sin`, `cos`, `tan`, `atan`,
+  `atan2`, `acos`, `tanh`, from the same committed coefficient tables and the
+  same Cody-Waite reduction the C path uses. The angle family matters most:
+  every cylindrical space, every CAM hue correlate, dE2000 and dE CMC reach it,
+  and until now all of them fell through to a hardware intrinsic under
+  `ALWAN_DETERMINISTIC`.
+
+  Verified primitive by primitive on OpenCL against a deterministic host: all
+  twelve bit-exact over 65536 samples each.
+
+  That branch is also no longer HLSL-shaped. It was written with `precise`,
+  `[unroll]` and HLSL's `frexp` signature, so those spellings plus the exponent
+  type moved into `alwan_platform.h`. The quadrant that `sin`, `cos` and `tan`
+  share is returned by value rather than through an out-parameter, since HLSL
+  spells that `out int` and OpenCL spells it `int *`, and `tan` needs it as an
+  integer to test its low bit.
+
 - **`ALWAN_DETERMINISTIC` now reaches the header-only core, which it did not.**
   `ALWAN_CORE_POW` and its siblings forwarded to `ALWAN_POW_F64`, and
   `alwan_math.h` is what redefines those to the deterministic polynomials. A

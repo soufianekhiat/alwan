@@ -595,11 +595,10 @@
  * OpenCL against a deterministic host, srgb_oetf was exact and xyz_to_oklab was
  * not, because the cube root fell through to the hardware intrinsic.
  *
- * The angle family is deliberately still hardware on this path, and that is the
- * remaining gap rather than a decision: sin, cos, tan, tanh, atan, atan2 and
- * acos need their argument reduction ported to this branch. Nothing in the
- * current GPU kernels reaches them, and claiming a deterministic GPU build
- * without them would be claiming more than is true. See docs/determinism.md. */
+ * The angle family is routed too now. It was the last thing here still reaching
+ * a hardware intrinsic under determinism, and therefore the last reason a
+ * deterministic GPU build could disagree with a deterministic CPU one. Every
+ * cylindrical space, every CAM hue correlate, dE2000 and dE CMC go through it. */
 #  define ALWAN_SRGB_EOTF(x)    alwan_det_srgb_eotf(x)
 #  define ALWAN_SRGB_OETF(x)    alwan_det_srgb_oetf(x)
 #  define ALWAN_BT2020_OETF(x)  alwan_det_bt2020_oetf(x)
@@ -610,12 +609,26 @@
 #  undef  ALWAN_LN
 #  undef  ALWAN_LOG2
 #  undef  ALWAN_LOG10
+#  undef  ALWAN_SIN
+#  undef  ALWAN_COS
+#  undef  ALWAN_TAN
+#  undef  ALWAN_TANH
+#  undef  ALWAN_ATAN
+#  undef  ALWAN_ATAN2
+#  undef  ALWAN_ACOS
 #  define ALWAN_POW(x, y)       alwan_det_pow_pos((x), (y))
 #  define ALWAN_CBRT(x)         alwan_det_cbrt(x)
 #  define ALWAN_EXP(x)          alwan_det_exp(x)
 #  define ALWAN_LN(x)           alwan_det_log(x)
 #  define ALWAN_LOG2(x)         alwan_det_log2(x)
 #  define ALWAN_LOG10(x)        alwan_det_log10(x)
+#  define ALWAN_SIN(x)          alwan_det_sin(x)
+#  define ALWAN_COS(x)          alwan_det_cos(x)
+#  define ALWAN_TAN(x)          alwan_det_tan(x)
+#  define ALWAN_TANH(x)         alwan_det_tanh(x)
+#  define ALWAN_ATAN(x)         alwan_det_atan(x)
+#  define ALWAN_ATAN2(y, x)     alwan_det_atan2((y), (x))
+#  define ALWAN_ACOS(x)         alwan_det_acos(x)
 # else
 #  define ALWAN_SRGB_EOTF(x)  ALWAN_SELECT((x) <= ALWAN_LITERAL(0.04045), \
         (x) / ALWAN_LITERAL(12.92), \
