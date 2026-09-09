@@ -946,20 +946,47 @@ its own code either; it is a library-compile-time decision, and
 `alwan_platform.h` telling the reader to define it before including `alwan.h` is
 wrong for anyone linking a built library.
 
-The result is that the default code path has no test coverage at all, and both
-defects found in it so far were found by reading rather than by a failure:
+The result was that the default code path had no test coverage at all, and both
+defects found in it up to then were found by reading rather than by a failure:
 YCbCr double-offsetting chroma, fixed 2026-08-27, and YcCbcCrc doing the same,
 found on 2026-09-08 while documenting the conversions and fixed the same way.
 In the second case the scalar path disagreed with the bulk kernels and with the
 committed reference CSV, and no test noticed, because every test build takes the
 other branch.
 
-What closing it needs is a second test configuration that builds the library at
-`ALWAN_NORMALIZE_RANGES=1` and asserts the documented ranges: achromatic grey on
-the chroma midpoint for each `Y*` encoding, hue on `[0, 1]` for the cylindrical
-spaces, and a scalar-against-bulk agreement check for every space with a
-`ALWAN_NORM_*` macro. The agreement check is the one that would have caught both
-defects.
+**The configuration now exists.** `cmake -S . -B build_norm
+-DALWAN_DEV_NORMALIZE_RANGES=1` builds the library and the tests at the shipped
+default, and suite 111 asserts the documented ranges in it: achromatic grey on
+the chroma midpoint for each `Y*` encoding, bounded channels inside `[0, 1]`,
+round trips through the public API, and the scalar-against-bulk agreement check
+this section asked for.
+
+**That check found the defect it was predicted to find.** At the default
+setting, `alwan_xyz_to_hunter_lab_f64` and
+`alwan_xyz_to_hunter_lab_f64_map_interleave` are the same public conversion and
+disagree in `L` by 99.0, the whole normalisation factor: the scalar wrapper
+applies `ALWAN_NORM_HUNTER_LAB`, the bulk path does not. A caller mixing the two
+in a stock build gets lightness a hundred times out on one of them, and hue
+three hundred and sixty times out for the cylindrical spaces.
+
+It is not uniform, which is the part that makes it a bug rather than a
+documented split. `alwan_xyz_to_lab_f64` and its bulk twin agree to 3e-16 in the
+same build. So some conversions honour the setting on both paths and some honour
+it on one, and nothing says which.
+
+What remains is the fix. Every bulk entry point for a space with an
+`ALWAN_NORM_*` macro has to apply it, or the header has to say plainly that
+bulk paths are always native and the scalar ones are not. The first is almost
+certainly right, because the second makes the two halves of the public API
+answer different questions. Suite 111 is red on exactly this one check in
+`build_norm` until then, and green everywhere else; the default build is
+unaffected.
+
+Also still true, and the reason this went unnoticed for so long: the macros
+expand inside the library's own translation units, so a consumer cannot change
+the setting from its own code. It is a library-compile-time decision, and
+`alwan_platform.h` telling the reader to define it before including `alwan.h` is
+wrong for anyone linking a built library.
 
 ---
 ## Keeping this file honest
