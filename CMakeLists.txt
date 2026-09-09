@@ -105,6 +105,7 @@ set(ALWAN_SOURCES
   src/alwan/map/alwan_view_map.c
   src/alwan/map/alwan_cam_map.c
   src/alwan/api/alwan_cat.c
+  src/alwan/api/alwan_chart.c
   src/alwan/api/alwan_color_correction.c
   src/alwan/api/alwan_colorspace.c
   src/alwan/map/alwan_color_correction_map.c

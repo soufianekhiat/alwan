@@ -8,6 +8,32 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **`alwan_chart_*`: read a target's own measurement file.** OpenQualia's
+  Measurement File Standard, which is CGATS.17-2009 with a fixed set of header
+  keys, plus the plain CGATS batch reference files that share its structure.
+  `XYZ_*` columns are used as written, then `LAB_*` under the file's
+  illuminant, then reflectance columns (`SPEC_560`, `SPECTRAL_NM560`, `nm560`)
+  integrated against its `ILLUMINANT` and `OBSERVER` and normalised so a
+  perfect diffuser reads Y = 1. Loads from a path or from bytes you already
+  hold, and writes back out.
+
+  This is the other half of a distinction the library already made. The
+  `alwan_color_checker_*` functions answer for a target as a product, from
+  embedded values; these answer for it as an object. A ColorChecker has
+  published values because every one is meant to be the same chart, and a
+  professional target does not: an IT8 or a DT NGT2 is measured per sheet or
+  per batch, two off the same press differ, and a chart fades. ISO 12641 fixes
+  an IT8's layout and leaves its colorimetry to the manufacturer, which is why
+  `ALWAN_IT8_7_2` carries 288 patch names and no numbers. They were always
+  meant to come from the file that ships with the target.
+
+  No network access, and none needed: the measurement is a file the user
+  downloads once. `SERIAL` is a header key like any other, so an application
+  reads the QR code on the target, scans a directory, compares
+  `alwan_chart_header_{T}(chart, "SERIAL")`, and on a miss points the user at
+  the vendor's measurement page. Thanks to Doug Peterson for pointing out that
+  the network API this appeared to need was not needed at all.
+
 - **`alwan_hunt_inverse_f32` / `_f64`: Hunt appearance correlates back to
   XYZ.** Reads `J`, `C` and `h`; `Q`, `s` and `M` are functions of those under
   the given viewing conditions, so they are recomputed rather than trusted.

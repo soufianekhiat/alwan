@@ -137,6 +137,8 @@
 /* SPD structs */
 #undef ALWAN_CORE_SPD
 #undef ALWAN_CORE_SPD_SHAPE
+#undef ALWAN_CORE_CHART
+#undef ALWAN_CORE_CHART_S
 
 /* CAM viewing conditions */
 #undef ALWAN_CORE_CIECAM02_VIEWING_CONDITIONS

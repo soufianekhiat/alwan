@@ -4077,6 +4077,96 @@ size_t alwan_color_checker_num_patch_names(alwan_colorchecker_type type);
  * target with no rectangular layout. */
 alwan_status alwan_color_checker_grid(int *columns, int *rows, alwan_colorchecker_type type);
 
+/* ----------------------------------------------------------------
+ * Measured Charts
+ *
+ * The enum-keyed functions above answer for a target as a product, from values alwan embeds.
+ * These answer for a target as an object, from the measurement file that shipped with it.
+ *
+ * That split is not a convenience. A ColorChecker has published values because every one is
+ * meant to be the same chart. A professional target does not: an IT8 or a DT NGT2 is measured
+ * per sheet or per batch, two off the same press differ, and a chart fades. ISO 12641 fixes an
+ * IT8's layout and leaves the colorimetry to the manufacturer, which is why alwan carries
+ * ALWAN_IT8_7_2's 288 patch names and none of its numbers. The numbers live in a file.
+ *
+ * alwan reads OpenQualia's Measurement File Standard (CGATS.17-2009 with a fixed set of header
+ * keys, carried as .oqm.txt beside the target or reached from the QR label on it) and plain
+ * CGATS batch reference files, which are the same structure. XYZ_* columns are used when
+ * present, then LAB_*, then reflectance columns spelled SPEC_560, SPECTRAL_NM560 or nm560,
+ * which are integrated against the file's own ILLUMINANT and OBSERVER.
+ *
+ * A serial lookup is the application's job, and the pieces are here for it: read the QR code,
+ * scan a directory of measurements, compare alwan_chart_header(chart, "SERIAL"), and on a miss
+ * point the user at the vendor's measurement page. alwan does no network access.
+ * ---------------------------------------------------------------- */
+
+/* Which column family a loaded chart's XYZ came from. */
+typedef enum {
+    ALWAN_CHART_SOURCE_XYZ = 0,      /* XYZ_X / XYZ_Y / XYZ_Z, used as written */
+    ALWAN_CHART_SOURCE_LAB = 1,      /* LAB_L / LAB_A / LAB_B, converted under the file's illuminant */
+    ALWAN_CHART_SOURCE_SPECTRAL = 2  /* reflectance columns, integrated at load */
+} alwan_chart_source;
+
+/* Read a measurement file. The chart is allocated; release it with alwan_chart_destroy.
+ * Returns ALWAN_E_INVALID for an unreadable or malformed file, ALWAN_E_NODATA for a
+ * well-formed file that carries no colorimetry alwan can use. The buffer form does no file
+ * I/O and does not take ownership of, or write to, the bytes it is given. */
+alwan_status alwan_chart_load_f64(alwan_chart_f64 **out, char const *path, alwan_ctx *ctx);
+alwan_status alwan_chart_load_f32(alwan_chart_f32 **out, char const *path, alwan_ctx *ctx);
+alwan_status alwan_chart_load_buffer_f64(alwan_chart_f64 **out, char const *buf, size_t len, alwan_ctx *ctx);
+alwan_status alwan_chart_load_buffer_f32(alwan_chart_f32 **out, char const *buf, size_t len, alwan_ctx *ctx);
+
+void alwan_chart_destroy_f64(alwan_chart_f64 *chart, alwan_ctx *ctx);
+void alwan_chart_destroy_f32(alwan_chart_f32 *chart, alwan_ctx *ctx);
+
+/* One patch's XYZ under the file's own illuminant and observer, Y normalised to 1. Adapt it
+ * with a CAT if you need another illuminant, or integrate the reflectance if the file has one:
+ * those are different questions and the second is the better answer. */
+alwan_status alwan_chart_xyz_f64(alwan_xyz_f64 *xyz, alwan_chart_f64 const *chart, size_t patch_index);
+alwan_status alwan_chart_xyz_f32(alwan_xyz_f32 *xyz, alwan_chart_f32 const *chart, size_t patch_index);
+
+size_t alwan_chart_num_patches_f64(alwan_chart_f64 const *chart);
+size_t alwan_chart_num_patches_f32(alwan_chart_f32 const *chart);
+
+/* SAMPLE_NAME if the file declared one, else SAMPLE_ID, else the 1-based row number. The
+ * string belongs to the chart and dies with it. NULL past the end. */
+char const *alwan_chart_patch_name_f64(alwan_chart_f64 const *chart, size_t patch_index);
+char const *alwan_chart_patch_name_f32(alwan_chart_f32 const *chart, size_t patch_index);
+
+/* The illuminant and observer the file declared, defaulting to D50 and the CIE 1931 2 degree
+ * observer, which is what CGATS assumes when the keys are absent. */
+alwan_status alwan_chart_native_illuminant_f64(alwan_illuminant *illuminant, alwan_observer_type *observer, alwan_chart_f64 const *chart);
+alwan_status alwan_chart_native_illuminant_f32(alwan_illuminant *illuminant, alwan_observer_type *observer, alwan_chart_f32 const *chart);
+
+alwan_chart_source alwan_chart_get_source_f64(alwan_chart_f64 const *chart);
+alwan_chart_source alwan_chart_get_source_f32(alwan_chart_f32 const *chart);
+
+/* A header value by key, case-insensitively: "SERIAL", "DESCRIPTOR", "TARGET_INSTRUMENT" and
+ * whatever else the file carried. NULL when the file did not declare it. The _at form walks
+ * every key in file order instead. Strings belong to the chart. */
+char const *alwan_chart_header_f64(alwan_chart_f64 const *chart, char const *key);
+char const *alwan_chart_header_f32(alwan_chart_f32 const *chart, char const *key);
+size_t alwan_chart_num_headers_f64(alwan_chart_f64 const *chart);
+size_t alwan_chart_num_headers_f32(alwan_chart_f32 const *chart);
+alwan_status alwan_chart_header_at_f64(char const **key, char const **value, alwan_chart_f64 const *chart, size_t index);
+alwan_status alwan_chart_header_at_f32(char const **key, char const **value, alwan_chart_f32 const *chart, size_t index);
+
+/* One patch's reflectance on the grid the file measured it on. Creates the SPD, which the
+ * caller destroys with alwan_spd_destroy. ALWAN_E_NODATA when the file carried no spectra.
+ * alwan_chart_num_bands reports 0 in that case. */
+alwan_status alwan_chart_reflectance_f64(alwan_spd_f64 *out, alwan_chart_f64 const *chart, size_t patch_index, alwan_ctx *ctx);
+alwan_status alwan_chart_reflectance_f32(alwan_spd_f32 *out, alwan_chart_f32 const *chart, size_t patch_index, alwan_ctx *ctx);
+size_t alwan_chart_num_bands_f64(alwan_chart_f64 const *chart);
+size_t alwan_chart_num_bands_f32(alwan_chart_f32 const *chart);
+
+/* Write the chart back out as OQM. The buffer form reports the length it needs when called
+ * with a NULL buffer, and returns ALWAN_E_RANGE if what it was given cannot hold the result
+ * and its terminator. Spectra are written when the chart has them. */
+alwan_status alwan_chart_write_f64(char const *path, alwan_chart_f64 const *chart);
+alwan_status alwan_chart_write_f32(char const *path, alwan_chart_f32 const *chart);
+alwan_status alwan_chart_write_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_chart_f64 const *chart);
+alwan_status alwan_chart_write_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_chart_f32 const *chart);
+
 /* NCS (Natural Color System) Data
  * Convert NCS notation to XYZ tristimulus values
  * xyz: receives XYZ tristimulus values (Y=0--100 scale, D65)

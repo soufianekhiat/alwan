@@ -831,6 +831,70 @@ receives per-sample XYZ importance weights and may be `NULL`.
 
 ---
 
+## Measured Charts
+
+The `alwan_color_checker_*` functions above answer for a target as a **product**, from values
+alwan embeds. The `alwan_chart_*` functions answer for a target as an **object**, from the
+measurement file that shipped with it.
+
+That split follows the targets themselves. A ColorChecker has published values because every
+one is meant to be the same chart. A professional target does not: an IT8 or a DT NGT2 is
+measured per sheet or per batch, two off the same press differ, and a chart fades. ISO 12641
+fixes an IT8's layout and leaves its colorimetry to the manufacturer, which is why
+`ALWAN_IT8_7_2` carries 288 patch names and no numbers. The numbers live in a file, and this is
+how they get in.
+
+alwan reads OpenQualia's Measurement File Standard, which is CGATS.17-2009 with a fixed set of
+header keys, carried as `.oqm.txt` beside the target or downloaded from the QR label on it. The
+same parser reads a plain CGATS batch reference file, since it is the same structure.
+
+```c
+alwan_chart_f64 *chart = NULL;
+if (alwan_chart_load_f64(&chart, "DT-AR-2023088.oqm.txt", ctx) == ALWAN_OK) {
+    for (size_t i = 0; i < alwan_chart_num_patches_f64(chart); i++) {
+        alwan_xyz_f64 xyz;
+        alwan_chart_xyz_f64(&xyz, chart, i);
+        /* alwan_chart_patch_name_f64(chart, i) names it */
+    }
+    alwan_chart_destroy_f64(chart, ctx);
+}
+```
+
+**Column families**, in the order the reader prefers them. `XYZ_X` / `XYZ_Y` / `XYZ_Z` are used
+as written, rescaled from the standard's Y = 100 to alwan's Y = 1. Failing those, `LAB_L` /
+`LAB_A` / `LAB_B` are converted under the file's own illuminant. Failing those, reflectance
+columns spelled `SPEC_560`, `SPECTRAL_NM560` or `nm560` are integrated against the file's
+`ILLUMINANT` and `OBSERVER` and normalised so a perfect diffuser reads Y = 1, which is the
+convention `alwan_color_checker_data_{T}` uses for its own spectral targets. A file carrying
+both keeps its spectra: `alwan_chart_reflectance_{T}` still returns them, so you can integrate
+under a different light. `alwan_chart_get_source_{T}` reports which family was used.
+
+Reflectance may be written as `[0, 1]` or as percent, and the standard marks neither, so the
+reader decides per row on the magnitude.
+
+**Serial lookup is the application's job**, and deliberately so: alwan does no network access.
+`SERIAL` is a header key like any other, so the pieces for the workflow are all here. Read the
+QR code on the target, scan a directory of measurement files, compare
+`alwan_chart_header_{T}(chart, "SERIAL")`, and on a miss send the user to the vendor's
+measurement page to download it.
+
+**Functions.** `alwan_chart_load_{T}` and `alwan_chart_load_buffer_{T}` read a file or bytes
+you already hold; the buffer form does no I/O and neither takes ownership of nor writes to what
+it is given. `alwan_chart_destroy_{T}` releases the chart. `alwan_chart_xyz_{T}`,
+`alwan_chart_patch_name_{T}`, `alwan_chart_num_patches_{T}`,
+`alwan_chart_native_illuminant_{T}`, `alwan_chart_reflectance_{T}` and
+`alwan_chart_num_bands_{T}` read it. `alwan_chart_header_{T}`, `alwan_chart_num_headers_{T}` and
+`alwan_chart_header_at_{T}` reach the header keys. `alwan_chart_write_{T}` and
+`alwan_chart_write_buffer_{T}` write the chart back out as OQM; the buffer form reports the
+length it needs when handed a `NULL` buffer, and returns `ALWAN_E_RANGE` rather than truncating.
+
+**Errors.** `ALWAN_E_INVALID` for an unreadable or malformed file: no `DATA_FORMAT` block, no
+`DATA` block, a `NUMBER_OF_SETS` that disagrees with the row count, a row whose width does not
+match the format, or a cell that is not a number. `ALWAN_E_NODATA` for a well-formed file that
+carries no colorimetry alwan can use.
+
+---
+
 ## See Also
 
 - [Spectral Operations](spectral.md): SPD creation and XYZ integration

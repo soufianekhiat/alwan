@@ -145,6 +145,16 @@ typedef struct {
 } ALWAN_TN(alwan_spd_shape);
 
 /* ----------------------------------------------------------------
+ * Measured Chart
+ * ---------------------------------------------------------------- */
+
+/* One target's measurement, read from a file rather than embedded. Opaque:
+ * it holds a variable number of patches, their names, the header keys the
+ * file declared and, when the file carried them, per-patch spectra. Create
+ * with alwan_chart_load, release with alwan_chart_destroy. */
+typedef struct ALWAN_TN(alwan_chart_s) ALWAN_TN(alwan_chart);
+
+/* ----------------------------------------------------------------
  * CAM Viewing Conditions
  * ---------------------------------------------------------------- */
 

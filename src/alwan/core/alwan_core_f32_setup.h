@@ -203,6 +203,10 @@
 #define ALWAN_CORE_SPD                         alwan_spd_f32
 #define ALWAN_CORE_SPD_SHAPE                   alwan_spd_shape_f32
 
+/* Measured chart (opaque) */
+#define ALWAN_CORE_CHART                       alwan_chart_f32
+#define ALWAN_CORE_CHART_S                     alwan_chart_s_f32
+
 /* CAM viewing conditions */
 #define ALWAN_CORE_CIECAM02_VIEWING_CONDITIONS alwan_ciecam02_viewing_conditions_f32
 #define ALWAN_CORE_CAM16_VIEWING_CONDITIONS    alwan_cam16_viewing_conditions_f32
