@@ -1319,6 +1319,13 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
         alwan_lab_f64 lab_test, lab_ref;
         alwan_xyz_to_lab_f64(&lab_test, &xyz_test_adapted, &xyz_ref_white);
         alwan_xyz_to_lab_f64(&lab_ref, &xyz_ref, &xyz_ref_white);
+        /* The difference below is computed by hand rather than through
+         * alwan_delta_e_76, which would have denormalised for us. Only L is a
+         * bounded channel, so at ALWAN_NORMALIZE_RANGES=1 dL would arrive a
+         * hundred times smaller than da and db and the root would mix two
+         * scales. A no-op at =0. */
+        ALWAN_DENORM_LAB(&lab_test);
+        ALWAN_DENORM_LAB(&lab_ref);
 
         /* dE*ab, then the CQS saturation correction: an INCREASE in chroma is
          * not a rendering failure, so the chroma component of the difference is
@@ -1752,6 +1759,12 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         /* Calculate CIECAM02 correlates */
         alwan_ciecam02_correlates_f64 cam_test, cam_ref;
         status = alwan_ciecam02_forward_f64(&cam_test, &xyz_test, &vc_test);
+        /* The CAM02-UCS arithmetic below is written in native units: it uses
+         * the literal 100.0 in J' and converts h with PI/180. The public
+         * wrapper answers in the build's convention, so at
+         * ALWAN_NORMALIZE_RANGES=1 it would hand J and h to formulas expecting
+         * the other scale and quietly return a different Rf. A no-op at =0. */
+        ALWAN_DENORM_CIECAM02(&cam_test);
         if (status != ALWAN_OK) {
             alwan_spd_destroy_f64(&reference_spd, ctx);
             alwan_spd_destroy_f64(&test_spd_resampled, ctx);
@@ -1759,6 +1772,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         }
 
         status = alwan_ciecam02_forward_f64(&cam_ref, &xyz_ref, &vc_ref);
+        ALWAN_DENORM_CIECAM02(&cam_ref);   /* see above */
         if (status != ALWAN_OK) {
             alwan_spd_destroy_f64(&reference_spd, ctx);
             alwan_spd_destroy_f64(&test_spd_resampled, ctx);

@@ -404,6 +404,30 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed: output differs
 
+- **TM-30 Rf and the CQS colour differences were wrong at the shipped**
+  **default.** Both computed appearance differences through the public API and
+  then did arithmetic on the result in native units.
+
+  `alwan_tm30_rf_{T}` calls `alwan_ciecam02_forward` and then forms CAM02-UCS
+  by hand, with the literal `100.0` in `J'` and `PI / 180` on the hue. At
+  `ALWAN_NORMALIZE_RANGES=1` the wrapper hands back `J` scaled by `0.01` and
+  `h` by `1/360`, so both went into formulas written for the other scale. The
+  measured residual against colour-science over 35 illuminants was a mean of
+  0.82 where it should be 0.0010, and no test saw it because every build in
+  both repos compiled the other branch.
+
+  CQS has the same shape: it takes two `alwan_xyz_to_lab` results and computes
+  `sqrt(dL^2 + da^2 + db^2)` itself. Only `L` is a bounded channel, so `dL`
+  arrived a hundred times smaller than `da` and `db` and the root mixed two
+  scales.
+
+  Both denormalise before the arithmetic now. A default build is unchanged and
+  the two configurations agree to every digit printed.
+
+  The neighbouring CRI path was checked and is correct: it hands its Lab
+  straight to `alwan_delta_e_76`, which denormalises its own inputs, so the
+  two cancel.
+
 - **The .cube reader accepted infinities and NaN.** `sscanf("%lf")` turns
   `1e999` into `HUGE_VAL` and `nan` into a quiet NaN without failing, so a row
   that parsed was not yet a row worth storing, and nothing checked. One
