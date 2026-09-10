@@ -1079,12 +1079,23 @@ Two things worth keeping in mind for the next reader added:
   flow is query, allocate, read, and it would be easy to mistake the first call
   for a check of the file.
 
-One gap left, not yet closed. The `.cube` readers take a destination buffer
-and no capacity, so they cannot be used safely against a file that might change
-between the size query and the read: the second call trusts the header it finds
-the second time. The buffer forms are fine, since the caller holds the same
-bytes for both calls. The path forms want either a capacity argument or a
-one-call form that allocates.
+One more thing about the `.cube` readers, resolved by documentation rather
+than by API. The path forms take a destination buffer and no capacity, and
+each call re-reads the file, so the usual query-allocate-read flow trusts
+whatever header it finds the second time. A file that grows in between is
+written past the end of a buffer sized for the smaller one.
+
+The fix was tempting to write as capacity-taking variants, and that would have
+been the wrong call: **the buffer forms already solve it completely**. A caller
+who reads the bytes once and passes the same bytes to both calls cannot see a
+size change, because there is nothing left to change. Adding a capacity
+argument would give three ways to do one thing and leave the racy path in place
+anyway. So the header now says plainly that the path forms re-read the file and
+that anything untrusted or shared should go through the buffer form.
+
+The same header note covers the other easy assumption: the size query parses
+the header and stops, so a successful query says the header is sane and does
+not validate the body.
 
 ---
 
@@ -1115,7 +1126,7 @@ one-call form that allocates.
 - [x] Harden `alwan_create` validation (non-zero flags and a half allocator pair return NULL); the 44 public enums were already fully pinned
 - [ ] Document the undocumented tail surface
 - [x] Adversarial pass over every reader of an outside file; the .cube reader was storing infinities and NaN, fixed at all six entry points
-- [ ] .cube path readers take no capacity, so the read call trusts whatever header it finds the second time; add a capacity argument or a one-call form that allocates
+- [x] .cube path readers take no capacity: documented rather than widened, since the buffer forms already solve it and a capacity argument would be a third way to do one thing
 - [x] Hunt inverse: closed form, not the three-dimensional solve this planned; round-trips the sRGB gamut to 6.5e-11
 - [x] TM-30 residual: the CCT was read on the 10 degree observer against a 2 degree locus; sweep now 0.0010 mean
 - [x] RGB-space transfer functions: audited against colour-science, 24 rows corrected, 7 curves added

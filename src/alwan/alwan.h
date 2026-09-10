@@ -5913,7 +5913,22 @@ alwan_status alwan_cube_export_3d_buffer_f32(char *buf, size_t buf_size, size_t 
  *      alwan_f64 to match the call), or NULL to query the size only: the
  *      header is parsed, out_size is set, and no data is read
  * out_size: receives the cube edge length
- * path: input file path */
+ * path: input file path
+ *
+ * These take no capacity, so they write as many entries as the file's own
+ * LUT_3D_SIZE declares, and each call re-reads the file. The usual flow is
+ * query, allocate, read, and between those two reads the file is whatever is
+ * on disk at the time: a file that grows in between is written past the end of
+ * a buffer sized for the smaller one.
+ *
+ * For a file you did not write, or one something else can touch, read the
+ * bytes once and use alwan_cube_import_3d_buffer_{T} for both calls. The
+ * buffer form parses the bytes you are holding, so the size it reports and the
+ * size it obeys cannot differ, and no capacity argument is needed to say so.
+ *
+ * Note also that the size query parses the header and stops. It does not
+ * validate the body, so a successful query means the header is sane and
+ * nothing more. */
 alwan_status alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
                           char const *path);
 alwan_status alwan_cube_import_3d_f32(alwan_f32 *lut, int *out_size,
@@ -5923,7 +5938,11 @@ alwan_status alwan_cube_import_3d_f32(alwan_f32 *lut, int *out_size,
  * lut: output buffer (caller must allocate: size elements, alwan_f32 or
  *      alwan_f64 to match the call), or NULL to query the size only
  * out_size: receives the number of entries
- * path: input file path */
+ * path: input file path
+ *
+ * The same applies as for the 3D path form above: no capacity, the file is
+ * read twice, and a file that can change between the two reads should go
+ * through the buffer form instead. */
 alwan_status alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
                           char const *path);
 alwan_status alwan_cube_import_1d_f32(alwan_f32 *lut, int *out_size,
