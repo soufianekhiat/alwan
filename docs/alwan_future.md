@@ -1152,6 +1152,7 @@ not validate the body.
 - [x] Exposure model (ISO 2720, ISO 12232, EV100, Lagarde 2014) and the weighted bracket merge (suite 118)
 - [x] Camera response recovery: Debevec 1997 with Grossberg 2003 sampling (suite 119)
 - [x] Bayer demosaicing: bilinear, Malvar 2004, Menon 2007, bit-exact to colour-demosaicing (suite 120)
+- [x] Camera sensitivities from a chart: Jiang 2013 over a PCA basis of the rawtoaces cameras, 2e-14 to colour-science (suite 121)
 - [ ] Demosaicing, experimental tier: the optimisation-based formulation of the FlexISP and ProxImaL line
 - [ ] Camera response recovery: Robertson 2003 and Mitsunaga-Nayar; Mertens exposure fusion
 - [ ] Spectral film characterisation: dye densities, print stock, enlarger filtration, on top of the camera work

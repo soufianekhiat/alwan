@@ -459,6 +459,37 @@ Jzazbz), can skip the adaptation, and sets the iteration budget; the zero value 
 the default. It matches `colour.matrix_idt` to the precision that optimiser
 reaches, about 1e-8.
 
+### alwan_camera_sensitivities_from_chart_{T}
+
+```c
+alwan_spd_f64 r, g, b;
+alwan_camera_sensitivities_from_chart_f64(&r, &g, &b, chart_rgb, 3 * sizeof(alwan_f64),
+                                          patches, 24, &d65, 0, ctx);
+alwan_idt_matrix_f64(&idt, &wb, &r, &g, &b, &d65, NULL, 0, NULL, ctx);
+```
+
+For a camera the pack does not hold: Jiang, Liu, Gu and Suesstrunk 2013. The input is
+the linear, black-subtracted response to each patch of a chart whose reflectances are
+known, shot under a known light. Each channel is fitted by least squares as a
+combination of principal components of the 52 rawtoaces-data cameras (all 6 when
+`basis_components` is 0), and the three curves are scaled together to a peak of 1.
+With the same basis it matches `colour.recovery.RGB_to_msds_camera_sensitivities_Jiang2013`
+to 2e-14.
+
+The basis is alwan's own, derived by colour-science's `PCA_Jiang2013` from data whose
+licence is known; colour-science's `BASIS_FUNCTIONS_DYER2017` is not in the pinned
+rawtoaces-data. A basis spans what its cameras share, so the recovery gives the
+shape of a sensor, not its fine structure.
+
+Measured on a ColorChecker 24 under D65 with noise-free responses, four cameras
+from the pack come back within 0.007 to 0.026 RMS of their measured curves, and
+within 0.010 to 0.052 when the basis is rebuilt without the camera. Close curves do
+not guarantee the same IDT: the chart through the recovered Canon EOS 5D Mark II
+lands within 0.07 ΔE00 of the measured camera, the Nikon D5100 within 1.9. Noise
+costs more than the basis does. 1 % noise on the chart raises the error to 0.018 to
+0.12 with 6 components and 0.028 to 0.055 with 3, so pass fewer components for a
+noisy chart, and use more patches with more spectral variety where possible.
+
 ### alwan_spd_to_aces2065_1_{T}
 
 Spectral radiance, or a reflectance with the illuminant lighting it, to ACES2065-1

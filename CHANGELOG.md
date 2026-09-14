@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Camera sensitivities from a chart.** `alwan_camera_sensitivities_from_chart_{T}`
+  recovers the spectral sensitivities of a camera nobody has measured from a
+  photographed chart, Jiang, Liu, Gu and Suesstrunk 2013. The basis is alwan's own,
+  colour-science's `PCA_Jiang2013` over the 52 rawtoaces-data cameras, shipped as a
+  table (`ALWAN_TABLE_CAMERA_BASIS`). colour-science's Dyer 2017 basis is not in the
+  pinned rawtoaces-data, so its licence could not be checked. Given the same basis
+  the result matches `RGB_to_msds_camera_sensitivities_Jiang2013` to 2e-14, and the
+  curves go straight to `alwan_idt_matrix`.
+
 - **Bayer demosaicing.** `alwan_cfa_bayer_demosaic_{T}` with bilinear, Malvar,
   He and Cutler 2004, and Menon, Andriani and Calvagno 2007 (DDFAPD) with or
   without its refining step, for the four Bayer layouts, and
