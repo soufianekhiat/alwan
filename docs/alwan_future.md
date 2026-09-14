@@ -1143,6 +1143,13 @@ not validate the body.
 - [x] Temporal picture formation: warm-started iterations per frame as exposure adaptation
 - [x] Temporal picture formation: a time constant in seconds in the library, and the picture from a chosen field (alwan_picture_form_local_exp_apply)
 - [x] Block-aware RGB space fit (built; measured no better than the cloud fit on real textures)
+- [x] Spectral camera characterisation: the rawtoaces-data pack, a spectral IDT that matches colour.matrix_idt to 5e-9, spectral-to-ACES through the RICD (suite 115)
+- [x] Spectral foundation: CIE daylight at any chromaticity, Gaussian and Ohno LED sources, multispectral integration weights (suite 114)
+- [x] HDR interchange: BT.2408 HLG/PQ/SDR conversions and ISO 21496-1 gain maps (suite 116)
+- [x] Tables can be compiled out: ALWAN_DATA_TABLES_MINIMAL and per-table switches, a missing table is ALWAN_E_NODATA (suite 113)
+- [x] alwan_get_build_info reports the switches the linked library was built with
+- [ ] Spectral film characterisation: dye densities, print stock, enlarger filtration, on top of the camera work
+- [ ] CCM fit: a params struct (weights, ridge) to carry the open CCM items above
 
 ---
 
@@ -1156,9 +1163,10 @@ Nothing in either repo compiles the library that way. `alwan_dev/CMakeLists.txt`
 puts the library target in `ALWAN_NORMALIZE_RANGES=0`, and the Sharpmake
 reference build defines `=0` for every project. The macros expand inside the
 library's own translation units, so a consumer cannot change the setting from
-its own code either; it is a library-compile-time decision, and
-`alwan_platform.h` telling the reader to define it before including `alwan.h` is
-wrong for anyone linking a built library.
+its own code either; it is a library-compile-time decision. `alwan_platform.h`
+used to tell the reader to define it before including `alwan.h`, which is wrong
+for anyone linking a built library. It now says the switch belongs to the library
+build, and `alwan_get_build_info` reports the value a binary was built with.
 
 The result was that the default code path had no test coverage at all, and both
 defects found in it up to then were found by reading rather than by a failure:

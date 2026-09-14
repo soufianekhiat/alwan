@@ -610,6 +610,57 @@ build option rather than a different API. See
 
 ---
 
+## Spectral and camera characterisation
+
+### Spectral-to-ACES takes the illuminant's white over 360-830 nm
+
+`alwan_spd_to_aces2065_1` adapts from the illuminant's white to the ACES white,
+and takes that white by integrating the illuminant against the CIE 1931 observer
+over 360-830 nm, the grid every SPD table in alwan shares.
+`colour.sd_to_aces_relative_exposure_values` trims to 360-780 nm first. The two
+whites differ by 6.3e-7 in xy, which moves the adapted result by up to 3.3e-7;
+without adaptation the two agree to 1.6e-15.
+
+**Why:** 360-830 nm is the CIE range, and trimming would give this one function a
+different white from every other place alwan integrates an illuminant.
+
+### The IDT fit uses alwan's own solver
+
+`alwan_idt_matrix` minimises the rawtoaces v1 objective with its own BFGS:
+central differences with scipy's step, an Armijo line search, starting from the
+identity. It does not reproduce scipy's iterates, only the minimum. The matrices
+agree with `colour.matrix_idt` to 5.3e-9 on the Lab objective and 2.1e-8 on
+Jzazbz. Two good optimisers disagree by about as much on these inputs (3e-9 and
+4e-8), so that is the precision any reference can claim, and the tests hold alwan
+to it.
+
+### Camera data is embedded only under a licence that allows it
+
+rawtoaces-data is Apache-2.0 and is embedded at a pinned commit, with its licence.
+Most records in colour-science's datasets carry no licence, and Jiang 2013 is
+CC-BY-NC-SA. alwan_dev may fetch those to validate against, but they are not
+embedded, and gendata refuses to write them into the library.
+
+---
+
+## Build configuration
+
+### `ALWAN_NORMALIZE_RANGES` stays a compile-time switch
+
+A runtime switch would put a branch in every wrapper and make two answers correct
+for the same call in the same binary. The switch stays fixed when the library is
+built, and `alwan_get_build_info` reports it, so a mismatch between library and
+application is caught at startup instead of read off wrong numbers.
+
+### A table compiled out is `ALWAN_E_NODATA`, not a link error
+
+The public surface is the same in every table configuration: a function whose
+data is missing still exists and says so. A build that drops tables for size
+cannot break a caller at link time, and table identities are append-only, so a
+switch never renumbers another table.
+
+---
+
 ## Implementation notes
 
 Three things that are not user-visible divergences but will bite a contributor.

@@ -8,6 +8,63 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Spectral camera characterisation.** 52 measured cameras from the Academy's
+  rawtoaces-data (Apache-2.0, pinned to commit e9b8503, licence and source kept
+  beside the tables), looked up by make and model through rawtoaces' own aliases:
+  `alwan_camera_find`, `alwan_camera_info`, `alwan_camera_sensitivities_{T}`. The
+  190-patch IDT training set and ISO 7589 studio tungsten come with them.
+
+  `alwan_idt_matrix_{T}` is ACES P-2013-001 Method A as rawtoaces v1 solves it:
+  white balance multipliers and a white-preserving 3x3 to ACES2065-1, fitted over
+  the training reflectances on the CIE Lab objective or, optionally, Jzazbz.
+  `alwan_camera_rgb_to_aces2065_1_{T}_map_interleave` applies the pair. Against
+  `colour.matrix_idt` on the same bytes the matrices agree to 5.3e-9 (Lab) and
+  2.1e-8 (Jzazbz). That is inside the precision the reference itself reaches:
+  scipy's BFGS and a tight Nelder-Mead disagree by 3e-9 and 4e-8 on these inputs.
+
+  `alwan_spd_to_aces2065_1_{T}` takes a spectrum to relative exposure values
+  through the Reference Input Capture Device, with the ACES flare and CAT02 to the
+  ACES white. It matches `colour.sd_to_aces_relative_exposure_values` to 1.6e-15
+  without adaptation and 3.3e-7 with it; the difference is the illuminant white,
+  which alwan takes over 360-830 nm (docs/alwan_decisions.md).
+
+- **Spectral foundation.** CIE daylight at any chromaticity
+  (`alwan_spd_cie_daylight_{T}`), Gaussian sources and Ohno's 2005 LED model,
+  single or summed, all matching colour-science to 2e-15. `alwan_spd_observer_{T}`
+  hands out an observer's functions as SPDs. For multispectral images,
+  `alwan_spectral_weights_{T}` folds the illuminant, three responses and the
+  integration rule into one 3 x N matrix, computed once, and
+  `alwan_spectral_to_tristimulus_{T}_map_interleave` applies it per pixel; the
+  result equals `alwan_xyz_from_spd` to 7.5e-16. `alwan_camera_rgb_from_spd_{T}` is
+  `alwan_xyz_from_spd_camera` under a name that says it returns RGB.
+
+- **BT.2408 conversions.** HLG to PQ and back through display light on the
+  reference display, and SDR placed at the 203 cd/m2 HDR reference white:
+  `alwan_bt2408_{hlg_to_pq,pq_to_hlg,sdr_to_pq,sdr_to_hlg}_{T}_map_interleave`. The
+  HLG system gamma follows the display peak (BT.2100-2), and PQ above that peak is
+  clipped only when asked. Against colour-science compositions of the BT.2100
+  functions: 6.6e-15.
+
+- **ISO 21496-1 gain maps.** `alwan_gain_map_params_{T}` holds the standard's
+  metadata in its own log2 units. `alwan_gain_map_weight_{T}` gives the fraction a
+  display of a given headroom applies, `alwan_gain_map_measure_{T}` fits the gain
+  range to a pair of renditions, and the encode and apply maps go between them, for
+  three-channel and single-channel maps. The core functions are GPU-portable, so a
+  shader can apply a map. A round trip returns the alternate to 4e-16, and the f32
+  path agrees with libultrahdr's arithmetic to 1.6e-7.
+
+- **`alwan_get_build_info`.** The switches that change results are fixed when the
+  library is built: `ALWAN_NORMALIZE_RANGES`, `ALWAN_DETERMINISTIC`, the
+  precisions and the table configuration. The linked binary now reports them, so
+  an application can check it got the library it was written against.
+
+- **Tables can be compiled out.** `ALWAN_DATA_TABLES_MINIMAL=1` drops every
+  switchable table; group and per-table switches in
+  `data/alwan_data_tables_config.h` choose more finely. The public surface does not
+  change: a reader of a missing table returns `ALWAN_E_NODATA` (a count returns 0,
+  a metric its documented error value), never a link failure. The minimal static
+  library is 7.4 MB against 71.5 MB (MSVC x64 Release).
+
 - **`alwan_chart_*`: read a target's own measurement file.** OpenQualia's
   Measurement File Standard, which is CGATS.17-2009 with a fixed set of header
   keys, plus the plain CGATS batch reference files that share its structure.
@@ -236,6 +293,12 @@ All notable changes to this project will be documented in this file.
   back from it.
 
 ### Changed
+
+- **`ALWAN_NORMALIZE_RANGES` is documented as a library build switch.** The note in
+  `alwan_platform.h` said to define it before including `alwan.h`. For a linked
+  library that changes the header's NORM/DENORM helpers and nothing else. It now
+  says to build alwan and the application with the same value, and
+  `alwan_get_build_info` reports the library's.
 
 - **The single-pass GPU backends get the whole deterministic layer, including
   the angle family.** HLSL, GLSL and OpenCL share one implementation of it, and

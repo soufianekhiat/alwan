@@ -203,6 +203,31 @@ your own code with the same value. The alwan_dev tests and benchmarks build with
 `0` so results match the native ranges of the references they validate against.
 See [ranges.md](ranges.md) for the per-space table.
 
+`alwan_get_build_info` reports the value the linked library was compiled with. An
+application that uses the NORM/DENORM helpers itself can compare it with its own
+`ALWAN_NORMALIZE_RANGES` at startup.
+
+---
+
+## `ALWAN_DATA_TABLES_MINIMAL` and the table switches
+
+Define `ALWAN_DATA_TABLES_MINIMAL=1` when compiling the library to leave out every
+table that can be left out: the spectral upsampling LUTs, the AgX cubes and
+curves, the quality-metric sample sets, the illuminant, observer and camera SPDs,
+the ACES RICD and the rawtoaces-data camera pack. Groups (`ALWAN_TABLES_AGX`,
+`ALWAN_TABLES_SPECTRAL`, `ALWAN_TABLES_SPD`, `ALWAN_TABLES_QUALITY`,
+`ALWAN_TABLES_CAMERAS`) and single tables have their own switches, listed in
+`src/alwan/data/alwan_data_tables_config.h`; each is on unless the minimal build
+turns it off. The SB2383 inset matrix always stays in, because
+`alwan_agx_default_params` has no way to report it missing.
+
+The public surface does not depend on the configuration. A function whose table
+is out still links and returns `ALWAN_E_NODATA`; a count returns 0, and a metric
+that returns a number returns its documented error value. An enum value out of
+range is still `ALWAN_E_INVALID`, so a caller can tell "not in this build" from
+"no such thing". The minimal static library is 7.4 MB against 71.5 MB for the
+default (MSVC x64 Release), and `alwan_get_build_info` reports which one is linked.
+
 ---
 
 ## `ALWAN_DETERMINISTIC`

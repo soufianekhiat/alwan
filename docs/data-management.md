@@ -119,6 +119,29 @@ an out-of-bounds read rather than a wrong colour.
 
 ---
 
+## Compiling Tables Out
+
+Most of the embedded bytes are a few large tables. `ALWAN_DATA_TABLES_MINIMAL=1`
+and the per-table switches leave them out, and the functions that read them
+return `ALWAN_E_NODATA` instead; see [configuration.md](configuration.md).
+
+---
+
+## Third-Party Data
+
+Tables are written by alwan_dev's `gendata/` scripts, and each source's licence
+travels with it:
+
+| Tables | Source | Licence |
+|---|---|---|
+| `camera_sensitivities/rawtoaces/`: 52 cameras, 190 training reflectances, ISO 7589 tungsten | Academy Software Foundation rawtoaces-data, commit e9b8503 | Apache-2.0; `LICENSE.txt` and `SOURCE.txt` sit beside the tables |
+| `camera_sensitivities/aces_ricd_{r,g,b}.csv` | colour-science `MSDS_ACES_RICD`, after the Academy's tables | BSD-3-Clause |
+
+Datasets whose licence does not allow redistribution are not embedded. alwan_dev
+fetches some of them to validate against, and they stay there.
+
+---
+
 ## Embedded Mode Benefits
 
 - no external file deployment

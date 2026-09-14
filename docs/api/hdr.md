@@ -496,6 +496,64 @@ take exist only on the C backend.
 
 ---
 
+## BT.2408 Conversions
+
+### alwan_bt2408_hlg_to_pq_{T}_map_interleave / alwan_bt2408_pq_to_hlg_{T}_map_interleave
+
+```c
+alwan_bt2408_hlg_to_pq_f64_map_interleave(pq, 3 * sizeof(alwan_f64),
+                                          hlg, 3 * sizeof(alwan_f64), n, 0.0);
+```
+
+BT.2408's transcoding through display light: the HLG EOTF of a reference display
+of peak `hlg_peak_nits` (0 for 1000 cd/m2, black at 0, system gamma
+1.2 + 0.42 log10(Lw / 1000)), then the PQ inverse EOTF, or the reverse. PQ can carry
+light above the HLG display's peak: `clip_to_peak` limits it before the
+conversion, otherwise it comes out as an HLG signal above 1.
+
+### alwan_bt2408_sdr_to_pq_{T}_map_interleave / alwan_bt2408_sdr_to_hlg_{T}_map_interleave
+
+SDR display light, linear with 1 at SDR reference white, placed at `sdr_white_nits`
+(0 for 203 cd/m2) and encoded. At the default, SDR white lands at 58 % PQ and 75 %
+HLG, as BT.2408 tabulates.
+
+All four match colour-science compositions of the BT.2100 functions to 1e-14.
+
+---
+
+## ISO 21496-1 Gain Maps
+
+```c
+alwan_gain_map_params_f64 gm;
+memset(&gm, 0, sizeof(gm));
+for (int c = 0; c < 3; c++) {
+    gm.base_offset[c] = 1.0 / 64.0;
+    gm.alternate_offset[c] = 1.0 / 64.0;
+}
+gm.alternate_hdr_headroom = 2.0;              /* HDR peak four times SDR white */
+alwan_gain_map_measure_f64(&gm, sdr, stride, hdr, stride, n);
+alwan_gain_map_encode_f64_map_interleave(gain, stride, sdr, stride, hdr, stride, n, &gm);
+
+/* at display time */
+alwan_f64 w;
+alwan_gain_map_weight_f64(&w, &gm, log2(display_peak / sdr_white));
+alwan_gain_map_apply_f64_map_interleave(out, stride, sdr, stride, gain, stride, 3, n, &gm, w);
+```
+
+`alwan_gain_map_params_{T}` holds the metadata in the standard's log2 units: the
+gain range, the encoding gamma (0 reads as 1), the two offsets, and the headrooms
+of the base and alternate renditions. The weight is (H - H_base) / (H_alt - H_base)
+limited to [0, 1], and the rendition is (base + k_base) 2^(G W) - k_alt. A
+single-channel map (`gain_channels` = 1) applies one gain and the channel-0
+metadata to all three channels. The core functions `alwan_gain_map_weight_v`,
+`alwan_gain_map_encode_v` and `alwan_gain_map_apply_v` also build on the GPU
+backends.
+
+The formulas are the standard's and libultrahdr's, and the f32 path agrees with
+libultrahdr's arithmetic to 2e-7.
+
+---
+
 ## Error Codes
 
 - `ALWAN_OK` (0) -- Success

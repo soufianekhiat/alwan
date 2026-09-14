@@ -357,6 +357,118 @@ typedef enum {
 
 ---
 
+## Observers as SPDs
+
+### alwan_spd_observer_{T}
+
+```c
+alwan_spd_f64 xbar, ybar, zbar;
+alwan_spd_observer_f64(&xbar, &ybar, &zbar, ALWAN_OBSERVER_CIE_1931_2DEG, ctx);
+/* 360-830 nm at 1 nm; destroy all three */
+```
+
+An observer's three functions: x-bar, y-bar and z-bar, or L, M and S for
+`ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG`.
+
+---
+
+## Generated Sources
+
+### alwan_spd_cie_daylight_{T}
+
+```c
+alwan_vec2_f64 xy;
+alwan_d_series_illuminant_xy_f64(&xy, 6500.0 * 1.4388 / 1.4380); /* D65 */
+alwan_spd_f64 d;
+alwan_spd_cie_daylight_f64(&d, &xy, 1, 380.0, 780.0, 401, ctx);
+```
+
+CIE 015 daylight, S0 + M1 S1 + M2 S2, at any chromaticity. `round_m1_m2` rounds M1
+and M2 to three decimals, as CIE 015 does for the tabulated illuminants. The grid
+must lie inside 360-830 nm (`ALWAN_E_RANGE` otherwise), and the basis is
+interpolated linearly between its 5 nm samples.
+
+### alwan_spd_gaussian_{T} / alwan_spd_led_ohno2005_{T}
+
+A Gaussian of peak 1 and the given FWHM, and Ohno's (2005) LED model,
+(g + 2 g^5) / 3 with g = exp(-((lambda - peak) / half_width)^2), for one LED or a
+weighted sum of several. They match colour-science's `sd_gaussian(method="FWHM")`,
+`sd_single_led_Ohno2005` and `sd_multi_leds_Ohno2005`.
+
+---
+
+## Multispectral Integration
+
+### alwan_spectral_weights_{T} / alwan_spectral_to_tristimulus_{T}_map_interleave
+
+```c
+enum { BANDS = 31 };                         /* 400-700 nm at 10 nm */
+alwan_f64 w[3 * BANDS];
+alwan_spectral_weights_observer_f64(w, BANDS, 400.0, 700.0, &d65,
+                                    ALWAN_OBSERVER_CIE_1931_2DEG,
+                                    ALWAN_INTEGRATE_TRAPEZOID, 1, ctx);
+alwan_spectral_to_tristimulus_f64_map_interleave(xyz, 3 * sizeof(alwan_f64),
+                                                 cube, BANDS * sizeof(alwan_f64),
+                                                 pixel_count, BANDS, w);
+```
+
+The weights fold the illuminant, three responses and the integration rule into a
+3 x N matrix, so channel c of a spectrum is sum_i w[c N + i] s_i: what
+`alwan_xyz_from_spd` computes for that spectrum. `normalize` scales the rows so a
+perfect reflector has Y = 1. `alwan_spectral_weights_{T}` takes any three
+responses: an observer, cone fundamentals, or a camera.
+
+---
+
+## Camera Characterisation
+
+The camera pack is rawtoaces-data (Apache-2.0): 52 cameras on 380-780 nm at 5 nm,
+the 190-patch IDT training set, and ISO 7589 studio tungsten. The f32 entry points
+widen, compute in f64 and narrow.
+
+### Finding a camera
+
+```c
+size_t cam;
+if (alwan_camera_find(&cam, "Canon", "EOS 5D Mark II") == ALWAN_OK) {
+    alwan_spd_f64 r, g, b;
+    alwan_camera_sensitivities_f64(&r, &g, &b, cam, ctx);
+}
+```
+
+Make and model compare ASCII case-insensitively, through rawtoaces' alias tables.
+`alwan_camera_count` and `alwan_camera_info` enumerate the pack. An index is
+stable: new cameras are appended.
+
+### alwan_idt_matrix_{T}
+
+```c
+alwan_mat3x3_f64 idt;
+alwan_rgb_f64 wb;
+alwan_idt_matrix_f64(&idt, &wb, &r, &g, &b, &d55, NULL, 0, NULL, ctx);
+alwan_camera_rgb_to_aces2065_1_f64_map_interleave(aces, stride, raw, stride, n,
+                                                  &idt, &wb, 1.0, 1);
+```
+
+ACES P-2013-001 Method A as rawtoaces v1 computes it. The training reflectances
+(NULL for the built-in 190) are rendered under the illuminant into white-balanced
+camera RGB and, through the CIE 1931 observer, into XYZ adapted to the ACES white
+with CAT02. The 3x3 is fitted by BFGS with every row summing to 1, so camera white
+maps to ACES white. `alwan_idt_params` picks the objective (CIE Lab by default, or
+Jzazbz), can skip the adaptation, and sets the iteration budget; the zero value is
+the default. It matches `colour.matrix_idt` to the precision that optimiser
+reaches, about 1e-8.
+
+### alwan_spd_to_aces2065_1_{T}
+
+Spectral radiance, or a reflectance with the illuminant lighting it, to ACES2065-1
+relative exposure values through the Academy's Reference Input Capture Device, with
+the ACES 0.5 % flare and CAT02 to the ACES white. This is
+`colour.sd_to_aces_relative_exposure_values`, with the illuminant white taken over
+360-830 nm ([alwan_decisions.md](../alwan_decisions.md)).
+
+---
+
 ## Error Codes
 
 Spectral functions return the `alwan_status` enum:
