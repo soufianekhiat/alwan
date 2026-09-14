@@ -1148,6 +1148,10 @@ not validate the body.
 - [x] HDR interchange: BT.2408 HLG/PQ/SDR conversions and ISO 21496-1 gain maps (suite 116)
 - [x] Tables can be compiled out: ALWAN_DATA_TABLES_MINIMAL and per-table switches, a missing table is ALWAN_E_NODATA (suite 113)
 - [x] alwan_get_build_info reports the switches the linked library was built with
+- [x] DNG colour model: profile tags, AsShotNeutral to white and back, camera to XYZ D50, dcraw's highlight blend (suite 117)
+- [x] Exposure model (ISO 2720, ISO 12232, EV100, Lagarde 2014) and the weighted bracket merge (suite 118)
+- [x] Camera response recovery: Debevec 1997 with Grossberg 2003 sampling (suite 119)
+- [ ] Camera response recovery: Robertson 2003 and Mitsunaga-Nayar; Mertens exposure fusion
 - [ ] Spectral film characterisation: dye densities, print stock, enlarger filtration, on top of the camera work
 - [ ] CCM fit: a params struct (weights, ridge) to carry the open CCM items above
 

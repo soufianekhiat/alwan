@@ -231,6 +231,10 @@ Support for modern display and camera encoding:
 - **HDR:** ST.2084 (PQ), HLG, BT.2390 EETF, BT.2446 A/B/C
 - **HDR interchange:** BT.2408 HLG/PQ conversion and SDR placement at 203 cd/m2,
   ISO 21496-1 gain maps (display weight, measure, encode, apply)
+- **Exposure:** ISO 2720 / ISO 12232 exposure model, EV100, Lagarde 2014
+  absolute scale, weighted merge of exposure brackets
+- **Camera response:** Debevec 1997 recovery from a bracket, Grossberg 2003
+  sampling
 - **Camera logs:** ARRI LogC3/LogC4, Sony S-Log/2/3, Canon C-Log/2/3,
   Panasonic V-Log, Nikon N-Log, RED REDLog/REDLogFilm/Log3G10,
   Fujifilm F-Log/F-Log2, DJI D-Log, Blackmagic Film Gen4/5, Leica
@@ -277,6 +281,8 @@ Low-level colour science operations:
   applied per pixel
 - Camera characterisation: 52 measured cameras (rawtoaces-data), spectral IDT
   to ACES2065-1, spectral-to-ACES through the RICD
+- DNG colour model: profile tags to camera-to-XYZ matrices, AsShotNeutral to
+  white and back, dcraw's highlight blend
 - RGB->spectrum upsampling: Smits 1999, Mallett 2019, Jakob & Hanika 2019
 - Hero wavelength sampling for spectral renderers
 - Gamut mapping (8 core algorithms + HDR ICtCp/JzCzHz mappers),
@@ -596,13 +602,13 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 116, all passing |
-| Test cases | 867 |
-| Checks executed per run | 83,056 |
-| Assertion sites in the tests | 2,798 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 349 |
+| Test suites | 120, all passing |
+| Test cases | 879 |
+| Checks executed per run | 87,138 |
+| Assertion sites in the tests | 2,894 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 362 |
 | Embedded data tables | 746 |
-| Exported symbols | 1,516 |
+| Exported symbols | 1,641 |
 | Internal symbols reached by a test or a public entry point | 152 of 176 (86%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -610,7 +616,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**83,056 checks per run** is what actually executes, not what is written. A
+**87,138 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -645,7 +651,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 116 test suites, single binary
+./build/tests/Release/alwan_tests   # 120 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -654,7 +660,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 116 suites, 867 cases, 83,056 checks executed per run
+  module: 120 suites, 879 cases, 87,138 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
@@ -692,7 +698,7 @@ alwan/                       # this repo (library only)
 \-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-+-- tests/                   # 116 test suites + reference fixtures
++-- tests/                   # 120 test suites + reference fixtures
 +-- bench/                   # micro-benchmarks
 +-- det_regression/          # cross-platform determinism regression tool
 +-- image_gen/               # validation visuals
@@ -756,7 +762,7 @@ own. Those jobs verify a clean compile; the test suite runs from
 - [x] Dual precision (f32 + f64 in one binary)
 - [x] Data embedding with diagnostic guards
 - [x] Sharpmake + CMake build systems
-- [x] Unified test suite (116 suites, hosted in alwan_dev)
+- [x] Unified test suite (120 suites, hosted in alwan_dev)
 - [x] 104 named RGB spaces, easy to add more via space descriptors
 - [x] Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,

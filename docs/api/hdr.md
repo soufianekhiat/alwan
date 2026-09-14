@@ -554,6 +554,53 @@ libultrahdr's arithmetic to 2e-7.
 
 ---
 
+## Exposure and Bracket Merging
+
+```c
+alwan_exposure_settings_f64 bracket[3] = {
+    { 8.0, 1.0 / 500.0, 100.0 }, { 8.0, 1.0 / 60.0, 100.0 }, { 8.0, 1.0 / 8.0, 100.0 },
+};
+alwan_f64 const *images[3] = { short_exposure, mid_exposure, long_exposure };
+alwan_hdr_merge_f64_map_interleave(radiance, 3 * sizeof(alwan_f64),
+                                   images, 3 * sizeof(alwan_f64), pixel_count,
+                                   bracket, 3, ALWAN_MERGE_WEIGHT_DEBEVEC1997, NULL, 0);
+```
+
+The exposure functions take N, t and S as EXIF records them. `alwan_average_luminance`
+is the ISO 2720 reflected-light meter, N^2 / t / S x k with k = 12.5, and the merge
+reports radiance on that scale. The bracket is ordered from the shortest exposure
+to the longest: the shortest is trusted fully at and above 0.5, the longest at and
+below it. Values are normalised sensor data, limited to [2.2e-16, 1]. A response
+curve, when given, is sampled on [0, 1] per channel after weighting.
+
+The four weights are colour-hdri's: Debevec 1997's triangle (the default), the hat,
+a Gaussian and an anchored double sigmoid. The Debevec triangle is normalised by
+its own peak; colour-hdri normalises by the image's largest weight, which is the
+same number whenever the image holds a value at 0.5.
+
+---
+
+## Camera Response Recovery
+
+```c
+alwan_f64 response[3 * 256];
+alwan_crf_debevec1997_f64(response, images, 3 * sizeof(alwan_f64), pixel_count,
+                          bracket, 3, NULL);
+alwan_hdr_merge_f64_map_interleave(radiance, 3 * sizeof(alwan_f64), images,
+                                   3 * sizeof(alwan_f64), pixel_count, bracket, 3,
+                                   ALWAN_MERGE_WEIGHT_DEBEVEC1997, response, 256);
+```
+
+Debevec and Malik 1997: per channel, the log exposure each pixel value records is
+the least-squares solution over sampled pixels of every exposure, with a smoothness
+term weighted by lambda (30) and the middle value pinned at 0. The samples are
+Grossberg and Nayar's 2003 histogram points, 1000 per exposure. Where the weight is
+zero the response is extrapolated with a degree 7 polynomial, and each channel is
+scaled to peak at 1. `alwan_crf_debevec1997_params` changes any of these; its zero
+value is colour-hdri's default, which the tests match.
+
+---
+
 ## Error Codes
 
 - `ALWAN_OK` (0) -- Success

@@ -469,6 +469,35 @@ the ACES 0.5 % flare and CAT02 to the ACES white. This is
 
 ---
 
+## DNG Colour Model
+
+```c
+alwan_dng_profile_f64 p = { 0 };
+p.calibration_cct_1 = 2856.0;              /* Standard light A */
+p.calibration_cct_2 = 6504.0;              /* D65 */
+/* color_matrix_1/2, forward_matrix_1/2 ... from the DNG tags; all zero = absent */
+alwan_vec2_f64 white;
+alwan_dng_camera_neutral_to_xy_f64(&white, &p, &as_shot_neutral);
+alwan_mat3x3_f64 to_xyz;
+alwan_dng_camera_to_xyz_matrix_f64(&to_xyz, &p, &white, ALWAN_CAT_BRADFORD);
+```
+
+The tags are interpolated in inverse CCT between the two calibration illuminants,
+at the white's CCT (Robertson 1968). `alwan_dng_camera_to_xyz_matrix` gives camera
+space to XYZ under the connection white, D50 at (0.3457, 0.3585): through the
+ForwardMatrix tags when the profile has them, otherwise through the inverse colour
+matrix and a chromatic adaptation. It matches colour-hdri's `colour_hdri.models.dng`
+to 2e-15; [alwan_decisions.md](../alwan_decisions.md) lists the two places alwan
+reads a profile differently.
+
+### alwan_highlights_recovery_blend_{T}_map_interleave
+
+dcraw's highlight blend for white-balanced camera RGB: channels clipped at
+min(multipliers) x threshold, each pixel keeping its lightness and taking the chroma
+magnitude of its clipped version, so clipped highlights stay neutral.
+
+---
+
 ## Error Codes
 
 Spectral functions return the `alwan_status` enum:

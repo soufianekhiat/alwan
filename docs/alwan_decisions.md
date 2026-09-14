@@ -641,6 +641,24 @@ Most records in colour-science's datasets carry no licence, and Jiang 2013 is
 CC-BY-NC-SA. alwan_dev may fetch those to validate against, but they are not
 embedded, and gendata refuses to write them into the library.
 
+### DNG: an all-zero tag is absent, and a single-illuminant profile is not interpolated
+
+colour-hdri, the reference for the DNG model, marks a missing ColorMatrix or
+ForwardMatrix with the identity. alwan uses the all-zero matrix, which is the zero
+value of the struct and cannot be a real tag. For a single-illuminant profile,
+colour-hdri still interpolates CameraCalibration and ForwardMatrix against the
+identity it filled in; alwan uses the profile's one set of tags, as the DNG SDK
+does. The two agree whenever that set has identity calibration and no forward
+matrix, and the tests hold alwan to colour-hdri on those profiles.
+
+### The Debevec merge weight is normalised by its own peak
+
+colour-hdri divides the Debevec 1997 triangle by the largest weight in the image,
+so one pixel's weight depends on every other pixel. alwan divides by the peak of
+the triangle, 0.49, which keeps the merge pointwise and lets it run a tile at a
+time. The two agree whenever the image holds a value at 0.5, and the tests build
+their brackets that way.
+
 ---
 
 ## Build configuration

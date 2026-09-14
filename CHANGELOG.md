@@ -8,6 +8,32 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Camera response recovery.** `alwan_crf_debevec1997_{T}` recovers a camera's
+  response from an exposure bracket, Debevec and Malik 1997 over Grossberg and
+  Nayar 2003 samples (`alwan_crf_samples_grossberg2003_{T}`), with the polynomial
+  extrapolation and normalisation colour-hdri applies. The result is the response
+  `alwan_hdr_merge` takes. Each sample's log exposure is eliminated before the
+  least-squares solve, so it runs on 250 unknowns instead of 1250.
+
+- **Exposure and bracket merging.** The ISO 2720 meter equations
+  (`alwan_average_luminance_{T}`, `alwan_average_illuminance_{T}`, EV from either,
+  EV100), ISO 12232 focal plane exposure, saturation-based speed and exposure
+  index, and Lagarde's 2014 photometric scale, with EXIF numbers as plain inputs.
+  `alwan_hdr_merge_{T}_map_interleave` merges an exposure bracket into radiance
+  with colour-hdri's four weighting functions and an optional response curve.
+  Against colour-hdri: 1e-13 on the exposure model, 1e-12 on the merge, and an
+  unclipped pixel merges back to the scene value.
+
+- **The DNG colour model.** `alwan_dng_profile_{T}` holds a DNG camera profile's
+  colour tags, and `alwan_dng_xyz_to_camera_matrix_{T}`,
+  `alwan_dng_xy_to_camera_neutral_{T}`, `alwan_dng_camera_neutral_to_xy_{T}` and
+  `alwan_dng_camera_to_xyz_matrix_{T}` compute what a raw converter does with them:
+  ColorMatrix, CameraCalibration and ForwardMatrix interpolated in inverse CCT
+  between the calibration illuminants, AsShotNeutral to a white and back, camera
+  space to XYZ D50. Against colour-hdri on five profiles and six whites: 2.2e-15.
+  `alwan_highlights_recovery_blend_{T}_map_interleave` is dcraw's highlight blend,
+  to 2.2e-16.
+
 - **Spectral camera characterisation.** 52 measured cameras from the Academy's
   rawtoaces-data (Apache-2.0, pinned to commit e9b8503, licence and source kept
   beside the tables), looked up by make and model through rawtoaces' own aliases:
