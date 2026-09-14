@@ -123,6 +123,19 @@ typedef struct {
     ALWAN_T altitude;           /* Altitude in meters (default: 0) */
 } ALWAN_TN(alwan_atmosphere_params);
 
+/* ISO 21496-1 gain map metadata, per channel; a single-channel map uses [0].
+ * Log2 units throughout, as the standard stores them. A zero-initialised struct is
+ * a valid set: zero offsets, gamma 1 (0 reads as 1), both headrooms 0. */
+typedef struct {
+    ALWAN_T gain_map_min[3];        /* log2 of the smallest alternate/base ratio encoded */
+    ALWAN_T gain_map_max[3];        /* log2 of the largest */
+    ALWAN_T gamma[3];               /* encoding gamma of the normalised gain; 0 reads as 1 */
+    ALWAN_T base_offset[3];         /* k_base, added to the base before the ratio */
+    ALWAN_T alternate_offset[3];    /* k_alt, added to the alternate */
+    ALWAN_T base_hdr_headroom;      /* log2 of the base rendition's peak over SDR white; 0 for SDR */
+    ALWAN_T alternate_hdr_headroom; /* log2 of the alternate rendition's */
+} ALWAN_TN(alwan_gain_map_params);
+
 /* ----------------------------------------------------------------
  * SPD Structs
  * ---------------------------------------------------------------- */

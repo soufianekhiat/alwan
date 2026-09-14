@@ -357,6 +357,53 @@ ALWAN_INLINE void alwan_st2086_init_v(alwan_scalar display_primaries_xy[6],
     ALWAN_REF(out_min_lum) = min_luminance;
 }
 
+/* ISO 21496-1 gain maps; the dual-precision pass above documents them. */
+ALWAN_INLINE alwan_scalar alwan_gain_map_weight_v(alwan_scalar display_headroom,
+                                                   alwan_scalar base_headroom,
+                                                   alwan_scalar alternate_headroom) {
+    alwan_scalar w = (display_headroom - base_headroom) / (alternate_headroom - base_headroom);
+    w = ALWAN_SELECT(w < ALWAN_ZERO, ALWAN_ZERO, w);
+    return ALWAN_SELECT(w > ALWAN_ONE, ALWAN_ONE, w);
+}
+
+ALWAN_INLINE alwan_scalar alwan_gain_map_encode_v(alwan_scalar base,
+                                                   alwan_scalar alternate,
+                                                   alwan_scalar gain_min,
+                                                   alwan_scalar gain_max,
+                                                   alwan_scalar gamma,
+                                                   alwan_scalar base_offset,
+                                                   alwan_scalar alternate_offset) {
+    alwan_scalar range = gain_max - gain_min;
+    alwan_scalar g = ALWAN_LOG2((alternate + alternate_offset) / (base + base_offset));
+    alwan_scalar n = ALWAN_SELECT(range > ALWAN_ZERO,
+                                  (g - gain_min) / ALWAN_SELECT(range > ALWAN_ZERO, range, ALWAN_ONE),
+                                  g * ALWAN_ZERO);
+    n = ALWAN_SELECT(n < ALWAN_ZERO, ALWAN_ZERO, n);
+    n = ALWAN_SELECT(n > ALWAN_ONE, ALWAN_ONE, n);
+    /* Limited to 1 again: a pow approximation can land an ulp above it. */
+    n = ALWAN_SELECT(n > ALWAN_ZERO,
+                     ALWAN_POW(ALWAN_SELECT(n > ALWAN_ZERO, n, ALWAN_ONE), gamma),
+                     n * ALWAN_ZERO);
+    return ALWAN_SELECT(n > ALWAN_ONE, ALWAN_ONE, n);
+}
+
+ALWAN_INLINE alwan_scalar alwan_gain_map_apply_v(alwan_scalar base,
+                                                  alwan_scalar stored_gain,
+                                                  alwan_scalar gain_min,
+                                                  alwan_scalar gain_max,
+                                                  alwan_scalar gamma,
+                                                  alwan_scalar base_offset,
+                                                  alwan_scalar alternate_offset,
+                                                  alwan_scalar weight) {
+    alwan_scalar n = ALWAN_SELECT(stored_gain > ALWAN_ZERO,
+                                  ALWAN_POW(ALWAN_SELECT(stored_gain > ALWAN_ZERO, stored_gain, ALWAN_ONE),
+                                            ALWAN_ONE / gamma),
+                                  stored_gain * ALWAN_ZERO);
+    alwan_scalar g = gain_min * (ALWAN_ONE - n) + gain_max * n;
+    return (base + base_offset) * ALWAN_EXP(g * weight * ALWAN_LITERAL(0.69314718055994530942))
+         - alternate_offset;
+}
+
 /* Scans a strided host buffer, so it is a CPU function: a shader reads pixels
  * from a resource, not from a pointer walked with a byte stride. Kept out of
  * the shader translation unit rather than left to fail on the pointer. */

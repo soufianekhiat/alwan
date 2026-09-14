@@ -12,6 +12,7 @@
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_hdr_core.h"
+#include "../core/alwan_ictcp_core.h"
 
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH

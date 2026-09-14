@@ -5220,6 +5220,89 @@ alwan_status alwan_reinhard_calibrated_f64(alwan_f64 *out, alwan_f64 L,
                                alwan_f64 L_white);
 
 /* ----------------------------------------------------------------
+ * BT.2408: HLG and PQ in display light
+ *
+ * ITU-R BT.2408 converts between the two BT.2100 systems through display light on
+ * a reference display, with HDR reference white at 203 cd/m2 (58 % PQ, 75 % HLG).
+ * Inputs and outputs are three values per pixel, R G B; the primaries are BT.2020
+ * on both sides and are not touched.
+ *
+ * hlg_peak_nits is the nominal peak of the HLG reference display, 0 for
+ * 1000 cd/m2. The HLG system gamma follows it, 1.2 + 0.42 log10(Lw / 1000)
+ * (BT.2100-2), with black at 0 cd/m2. sdr_white_nits is where SDR 100 % lands, 0 for
+ * BT.2408's 203 cd/m2. A negative level is ALWAN_E_INVALID.
+ * ---------------------------------------------------------------- */
+
+/* HLG to PQ: the HLG EOTF of the reference display, then the PQ inverse EOTF. */
+alwan_status alwan_bt2408_hlg_to_pq_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 hlg_peak_nits);
+alwan_status alwan_bt2408_hlg_to_pq_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 hlg_peak_nits);
+
+/* PQ to HLG: the PQ EOTF, then the HLG inverse EOTF of the reference display. PQ can
+ * carry light above that display's peak: clip_to_peak non-zero limits it to the peak
+ * first, as BT.2408 describes; zero keeps it, as an HLG signal above 1. */
+alwan_status alwan_bt2408_pq_to_hlg_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 hlg_peak_nits, int clip_to_peak);
+alwan_status alwan_bt2408_pq_to_hlg_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 hlg_peak_nits, int clip_to_peak);
+
+/* SDR display light (linear, 1 = SDR reference white) placed at sdr_white_nits and
+ * PQ-encoded. Apply the SDR EOTF (BT.1886, sRGB) first. */
+alwan_status alwan_bt2408_sdr_to_pq_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 sdr_white_nits);
+alwan_status alwan_bt2408_sdr_to_pq_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 sdr_white_nits);
+
+/* The same placement for HLG, through the HLG inverse EOTF of the reference display. */
+alwan_status alwan_bt2408_sdr_to_hlg_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 sdr_white_nits, alwan_f64 hlg_peak_nits);
+alwan_status alwan_bt2408_sdr_to_hlg_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 sdr_white_nits, alwan_f32 hlg_peak_nits);
+
+/* ----------------------------------------------------------------
+ * ISO 21496-1 gain maps
+ *
+ * A gain map stores, per pixel and channel, the log2 ratio between a base rendition
+ * and an alternate one, typically SDR and HDR, so one file serves every display in
+ * between:
+ *
+ *     G = log2((alternate + k_alt) / (base + k_base))
+ *
+ * normalised to [0, 1] between gain_map_min and gain_map_max and raised to gamma. A
+ * display with headroom H applies the fraction
+ *
+ *     W = (H - H_base) / (H_alt - H_base), limited to [0, 1]
+ *     out = (base + k_base) * 2^(G W) - k_alt
+ *
+ * A headroom is log2 of a peak over SDR reference white: 0 for SDR, 2 for a display
+ * four times brighter. Values are linear light in the gain map's colour space. The
+ * stored gains are before quantisation; an 8-bit map holds round(gain * 255). Either
+ * rendition can be the base: H_alt < H_base is a map from HDR down to SDR. These are
+ * the standard's formulas and libultrahdr's (lib/src/gainmapmath.cpp).
+ *
+ * alwan_gain_map_params_{T} is declared with the other parameter structs. Offsets
+ * are used as given, 0 included; writers commonly use 1/64.
+ * ---------------------------------------------------------------- */
+
+/* The weight a display with the given headroom applies. ALWAN_E_INVALID when both
+ * renditions have the same headroom, as the map then describes no range. */
+alwan_status alwan_gain_map_weight_f64(alwan_f64 *weight_out, alwan_gain_map_params_f64 const *params, alwan_f64 display_hdr_headroom);
+alwan_status alwan_gain_map_weight_f32(alwan_f32 *weight_out, alwan_gain_map_params_f32 const *params, alwan_f32 display_hdr_headroom);
+
+/* Set gain_map_min and gain_map_max to the smallest and largest log2 ratios of a
+ * pair of renditions, per channel, under the offsets already in params. A pixel with
+ * no finite ratio in a channel (a value at or below minus its offset) is skipped
+ * there; ALWAN_E_RANGE when a channel has none at all. */
+alwan_status alwan_gain_map_measure_f64(alwan_gain_map_params_f64 *params, alwan_f64 const *base, size_t base_stride, alwan_f64 const *alternate, size_t alternate_stride, size_t count);
+alwan_status alwan_gain_map_measure_f32(alwan_gain_map_params_f32 *params, alwan_f32 const *base, size_t base_stride, alwan_f32 const *alternate, size_t alternate_stride, size_t count);
+
+/* A three-channel gain map from a base and an alternate rendition. A ratio outside
+ * [gain_map_min, gain_map_max] stores 0 or 1, the standard's limits; a negative
+ * ratio stores NaN. ALWAN_E_INVALID for gain_map_max < gain_map_min or a gamma that
+ * is not positive. */
+alwan_status alwan_gain_map_encode_f64_map_interleave(alwan_f64 *gain_out, size_t gain_stride, alwan_f64 const *base, size_t base_stride, alwan_f64 const *alternate, size_t alternate_stride, size_t count, alwan_gain_map_params_f64 const *params);
+alwan_status alwan_gain_map_encode_f32_map_interleave(alwan_f32 *gain_out, size_t gain_stride, alwan_f32 const *base, size_t base_stride, alwan_f32 const *alternate, size_t alternate_stride, size_t count, alwan_gain_map_params_f32 const *params);
+
+/* The rendition at a weight: 0 gives the base, 1 the alternate. gain_channels is 3,
+ * or 1 for a single-channel map, whose one gain and channel-0 metadata apply to all
+ * three channels. out may be base. */
+alwan_status alwan_gain_map_apply_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *base, size_t base_stride, alwan_f64 const *gain, size_t gain_stride, size_t gain_channels, size_t count, alwan_gain_map_params_f64 const *params, alwan_f64 weight);
+alwan_status alwan_gain_map_apply_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *base, size_t base_stride, alwan_f32 const *gain, size_t gain_stride, size_t gain_channels, size_t count, alwan_gain_map_params_f32 const *params, alwan_f32 weight);
+
+/* ----------------------------------------------------------------
  * HDR Gamut Mapping
  * ---------------------------------------------------------------- */
 

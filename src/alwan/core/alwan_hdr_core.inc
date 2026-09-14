@@ -388,3 +388,72 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_content_light_level)(ALWAN_COR
     }
     return max_val;
 }
+
+/* ================================================================
+ * ISO 21496-1 gain maps
+ *
+ * A gain map holds, per pixel and channel, the log2 ratio of two renditions of one
+ * picture, each offset so black keeps a finite ratio:
+ *
+ *     G = log2((alternate + k_alt) / (base + k_base))
+ *
+ * stored normalised to [0, 1] between gain_map_min and gain_map_max and raised to
+ * gamma. A display with headroom H (log2 of its peak over SDR white) applies the
+ * fraction W = (H - H_base) / (H_alt - H_base), limited to [0, 1]:
+ *
+ *     out = (base + k_base) * 2^(G W) - k_alt
+ *
+ * The limits are the standard's: a stored gain lies in [0, 1], and a display never
+ * extrapolates past either rendition. A NaN ratio (a value below minus its offset)
+ * stays NaN.
+ * ================================================================ */
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_gain_map_weight)(ALWAN_CORE_T display_headroom,
+                                                                  ALWAN_CORE_T base_headroom,
+                                                                  ALWAN_CORE_T alternate_headroom) {
+    ALWAN_CORE_T w = (display_headroom - base_headroom) / (alternate_headroom - base_headroom);
+    w = ALWAN_CORE_SELECT(w < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, w);
+    return ALWAN_CORE_SELECT(w > ALWAN_CORE_ONE, ALWAN_CORE_ONE, w);
+}
+
+/* One channel's stored gain. gain_max == gain_min stores 0. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_gain_map_encode)(ALWAN_CORE_T base,
+                                                                  ALWAN_CORE_T alternate,
+                                                                  ALWAN_CORE_T gain_min,
+                                                                  ALWAN_CORE_T gain_max,
+                                                                  ALWAN_CORE_T gamma,
+                                                                  ALWAN_CORE_T base_offset,
+                                                                  ALWAN_CORE_T alternate_offset) {
+    ALWAN_CORE_T range = gain_max - gain_min;
+    ALWAN_CORE_T g = ALWAN_CORE_LOG2((alternate + alternate_offset) / (base + base_offset));
+    ALWAN_CORE_T n = ALWAN_CORE_SELECT(range > ALWAN_CORE_ZERO,
+                                       (g - gain_min) / ALWAN_CORE_SELECT(range > ALWAN_CORE_ZERO, range, ALWAN_CORE_ONE),
+                                       g * ALWAN_CORE_ZERO);
+    n = ALWAN_CORE_SELECT(n < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, n);
+    n = ALWAN_CORE_SELECT(n > ALWAN_CORE_ONE, ALWAN_CORE_ONE, n);
+    /* The stored range is [0, 1] by definition, and the deterministic pow gives
+     * pow(1, 1) = 1 + 1 ulp, so the result is limited to 1 again. A NaN stays NaN. */
+    n = ALWAN_CORE_SELECT(n > ALWAN_CORE_ZERO,
+                          ALWAN_CORE_POW(ALWAN_CORE_SELECT(n > ALWAN_CORE_ZERO, n, ALWAN_CORE_ONE), gamma),
+                          n * ALWAN_CORE_ZERO);
+    return ALWAN_CORE_SELECT(n > ALWAN_CORE_ONE, ALWAN_CORE_ONE, n);
+}
+
+/* One channel of the rendition at weight W, from a stored gain. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_gain_map_apply)(ALWAN_CORE_T base,
+                                                                 ALWAN_CORE_T stored_gain,
+                                                                 ALWAN_CORE_T gain_min,
+                                                                 ALWAN_CORE_T gain_max,
+                                                                 ALWAN_CORE_T gamma,
+                                                                 ALWAN_CORE_T base_offset,
+                                                                 ALWAN_CORE_T alternate_offset,
+                                                                 ALWAN_CORE_T weight) {
+    ALWAN_CORE_T n = ALWAN_CORE_SELECT(stored_gain > ALWAN_CORE_ZERO,
+                                       ALWAN_CORE_POW(ALWAN_CORE_SELECT(stored_gain > ALWAN_CORE_ZERO,
+                                                                        stored_gain, ALWAN_CORE_ONE),
+                                                      ALWAN_CORE_ONE / gamma),
+                                       stored_gain * ALWAN_CORE_ZERO);
+    ALWAN_CORE_T g = gain_min * (ALWAN_CORE_ONE - n) + gain_max * n;
+    return (base + base_offset) * ALWAN_CORE_EXP(g * weight * ALWAN_CORE_LITERAL(0.69314718055994530942))
+         - alternate_offset;
+}

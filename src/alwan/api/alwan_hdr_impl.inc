@@ -188,3 +188,250 @@ alwan_status ALWAN_CORE_FNLIT(alwan_content_light_level_compute)(ALWAN_CORE_CONT
     cll_out->max_fall = sum / (ALWAN_CORE_T)count;
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * BT.2408: HLG <-> PQ in display light, SDR at HDR reference white
+ * ---------------------------------------------------------------- */
+
+#ifndef ALWAN_HDR_MAPNAME
+#  define ALWAN_HDR_MAPNAME_(base, sfx) base##sfx##_map_interleave
+#  define ALWAN_HDR_MAPNAME(base, sfx)  ALWAN_HDR_MAPNAME_(base, sfx)
+#endif
+
+/* BT.2100-2's system gamma for an HLG display of nominal peak Lw: 1.2 at 1000 cd/m2. */
+static ALWAN_CORE_T ALWAN_CORE_FN(bt2408_hlg_gamma)(ALWAN_CORE_T peak_nits) {
+    return ALWAN_CORE_LITERAL(1.2)
+         + ALWAN_CORE_LITERAL(0.42) * ALWAN_CORE_LOG10(peak_nits / ALWAN_CORE_LITERAL(1000.0));
+}
+
+/* A luminance argument: 0 takes the default, anything else must be positive. */
+static int ALWAN_CORE_FN(bt2408_nits)(ALWAN_CORE_T *out, ALWAN_CORE_T value, ALWAN_CORE_T fallback) {
+    if (value == ALWAN_CORE_ZERO) {
+        *out = fallback;
+        return 1;
+    }
+    *out = value;
+    return value > ALWAN_CORE_ZERO;
+}
+
+alwan_status ALWAN_HDR_MAPNAME(alwan_bt2408_hlg_to_pq, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *out, size_t out_stride, ALWAN_CORE_T const *in, size_t in_stride, size_t count,
+        ALWAN_CORE_T hlg_peak_nits) {
+    ALWAN_CORE_T peak, gamma_sys;
+    if (!out || !in || !ALWAN_CORE_FN(bt2408_nits)(&peak, hlg_peak_nits, ALWAN_CORE_LITERAL(1000.0))) {
+        return ALWAN_E_INVALID;
+    }
+    gamma_sys = ALWAN_CORE_FN(bt2408_hlg_gamma)(peak);
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)in + p * in_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
+        ALWAN_CORE_RGB scene, display;
+        scene.r = ALWAN_CORE_FNVLIT(alwan_hlg_inverse_oetf)(s[0]);
+        scene.g = ALWAN_CORE_FNVLIT(alwan_hlg_inverse_oetf)(s[1]);
+        scene.b = ALWAN_CORE_FNVLIT(alwan_hlg_inverse_oetf)(s[2]);
+        display = ALWAN_CORE_FNVLIT(alwan_hlg_ootf)(scene, peak, gamma_sys);
+        o[0] = ALWAN_CORE_FNLIT(alwan_pq_oetf)(display.r);
+        o[1] = ALWAN_CORE_FNLIT(alwan_pq_oetf)(display.g);
+        o[2] = ALWAN_CORE_FNLIT(alwan_pq_oetf)(display.b);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_HDR_MAPNAME(alwan_bt2408_pq_to_hlg, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *out, size_t out_stride, ALWAN_CORE_T const *in, size_t in_stride, size_t count,
+        ALWAN_CORE_T hlg_peak_nits, int clip_to_peak) {
+    ALWAN_CORE_T peak, gamma_sys;
+    if (!out || !in || !ALWAN_CORE_FN(bt2408_nits)(&peak, hlg_peak_nits, ALWAN_CORE_LITERAL(1000.0))) {
+        return ALWAN_E_INVALID;
+    }
+    gamma_sys = ALWAN_CORE_FN(bt2408_hlg_gamma)(peak);
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)in + p * in_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
+        ALWAN_CORE_RGB scene, display;
+        display.r = ALWAN_CORE_FNLIT(alwan_pq_eotf)(s[0]);
+        display.g = ALWAN_CORE_FNLIT(alwan_pq_eotf)(s[1]);
+        display.b = ALWAN_CORE_FNLIT(alwan_pq_eotf)(s[2]);
+        if (clip_to_peak) {
+            if (display.r > peak) display.r = peak;
+            if (display.g > peak) display.g = peak;
+            if (display.b > peak) display.b = peak;
+        }
+        scene = ALWAN_CORE_FNVLIT(alwan_hlg_ootf_inv)(display, peak, gamma_sys);
+        o[0] = ALWAN_CORE_FNLIT(alwan_hlg_oetf)(scene.r);
+        o[1] = ALWAN_CORE_FNLIT(alwan_hlg_oetf)(scene.g);
+        o[2] = ALWAN_CORE_FNLIT(alwan_hlg_oetf)(scene.b);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_HDR_MAPNAME(alwan_bt2408_sdr_to_pq, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *out, size_t out_stride, ALWAN_CORE_T const *in, size_t in_stride, size_t count,
+        ALWAN_CORE_T sdr_white_nits) {
+    ALWAN_CORE_T white;
+    if (!out || !in || !ALWAN_CORE_FN(bt2408_nits)(&white, sdr_white_nits, ALWAN_CORE_LITERAL(203.0))) {
+        return ALWAN_E_INVALID;
+    }
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)in + p * in_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
+        o[0] = ALWAN_CORE_FNLIT(alwan_pq_oetf)(s[0] * white);
+        o[1] = ALWAN_CORE_FNLIT(alwan_pq_oetf)(s[1] * white);
+        o[2] = ALWAN_CORE_FNLIT(alwan_pq_oetf)(s[2] * white);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_HDR_MAPNAME(alwan_bt2408_sdr_to_hlg, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *out, size_t out_stride, ALWAN_CORE_T const *in, size_t in_stride, size_t count,
+        ALWAN_CORE_T sdr_white_nits, ALWAN_CORE_T hlg_peak_nits) {
+    ALWAN_CORE_T white, peak, gamma_sys;
+    if (!out || !in || !ALWAN_CORE_FN(bt2408_nits)(&white, sdr_white_nits, ALWAN_CORE_LITERAL(203.0))
+        || !ALWAN_CORE_FN(bt2408_nits)(&peak, hlg_peak_nits, ALWAN_CORE_LITERAL(1000.0))) {
+        return ALWAN_E_INVALID;
+    }
+    gamma_sys = ALWAN_CORE_FN(bt2408_hlg_gamma)(peak);
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)in + p * in_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
+        ALWAN_CORE_RGB scene, display;
+        display.r = s[0] * white;
+        display.g = s[1] * white;
+        display.b = s[2] * white;
+        scene = ALWAN_CORE_FNVLIT(alwan_hlg_ootf_inv)(display, peak, gamma_sys);
+        o[0] = ALWAN_CORE_FNLIT(alwan_hlg_oetf)(scene.r);
+        o[1] = ALWAN_CORE_FNLIT(alwan_hlg_oetf)(scene.g);
+        o[2] = ALWAN_CORE_FNLIT(alwan_hlg_oetf)(scene.b);
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * ISO 21496-1 gain maps
+ * ---------------------------------------------------------------- */
+
+/* The params type of this pass: alwan_gain_map_params_f32 or _f64. */
+#define ALWAN__GAIN_MAP_PARAMS ALWAN_CORE_FNLIT(alwan_gain_map_params)
+
+/* The gamma a channel is stored with; the zero value reads as 1. */
+static ALWAN_CORE_T ALWAN_CORE_FN(gain_map_gamma)(ALWAN_CORE_T g) {
+    return g == ALWAN_CORE_ZERO ? ALWAN_CORE_ONE : g;
+}
+
+/* Metadata the standard allows: a positive gamma, max >= min, offsets that are numbers. */
+static int ALWAN_CORE_FN(gain_map_params_ok)(ALWAN__GAIN_MAP_PARAMS const *p, size_t channels) {
+    for (size_t c = 0; c < channels; c++) {
+        if (!(ALWAN_CORE_FN(gain_map_gamma)(p->gamma[c]) > ALWAN_CORE_ZERO)) return 0;
+        if (!(p->gain_map_max[c] >= p->gain_map_min[c])) return 0;
+        if (!(p->base_offset[c] == p->base_offset[c]) || !(p->alternate_offset[c] == p->alternate_offset[c])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_gain_map_weight)(ALWAN_CORE_T *weight_out, ALWAN__GAIN_MAP_PARAMS const *params,
+                                                     ALWAN_CORE_T display_hdr_headroom) {
+    if (!weight_out || !params || !(display_hdr_headroom == display_hdr_headroom)) {
+        return ALWAN_E_INVALID;
+    }
+    /* Equal headrooms (or a NaN) describe no range to interpolate over. */
+    if (!(params->alternate_hdr_headroom > params->base_hdr_headroom)
+        && !(params->alternate_hdr_headroom < params->base_hdr_headroom)) {
+        return ALWAN_E_INVALID;
+    }
+    *weight_out = ALWAN_CORE_FNVLIT(alwan_gain_map_weight)(display_hdr_headroom, params->base_hdr_headroom,
+                                                          params->alternate_hdr_headroom);
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_gain_map_measure)(ALWAN__GAIN_MAP_PARAMS *params,
+                                                      ALWAN_CORE_T const *base, size_t base_stride,
+                                                      ALWAN_CORE_T const *alternate, size_t alternate_stride,
+                                                      size_t count) {
+    ALWAN_CORE_T lo[3] = { ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, ALWAN_CORE_ZERO };
+    ALWAN_CORE_T hi[3] = { ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, ALWAN_CORE_ZERO };
+    int seen[3] = { 0, 0, 0 };
+    if (!params || !base || !alternate || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *b = (ALWAN_CORE_T const *)((char const *)base + p * base_stride);
+        ALWAN_CORE_T const *a = (ALWAN_CORE_T const *)((char const *)alternate + p * alternate_stride);
+        for (int c = 0; c < 3; c++) {
+            ALWAN_CORE_T const num = a[c] + params->alternate_offset[c];
+            ALWAN_CORE_T const den = b[c] + params->base_offset[c];
+            ALWAN_CORE_T g;
+            if (!(num > ALWAN_CORE_ZERO) || !(den > ALWAN_CORE_ZERO)) {
+                continue; /* no finite ratio */
+            }
+            g = ALWAN_CORE_LOG2(num / den);
+            if (!seen[c] || g < lo[c]) lo[c] = g;
+            if (!seen[c] || g > hi[c]) hi[c] = g;
+            seen[c] = 1;
+        }
+    }
+    if (!seen[0] || !seen[1] || !seen[2]) {
+        return ALWAN_E_RANGE;
+    }
+    for (int c = 0; c < 3; c++) {
+        params->gain_map_min[c] = lo[c];
+        params->gain_map_max[c] = hi[c];
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_HDR_MAPNAME(alwan_gain_map_encode, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *gain_out, size_t gain_stride,
+        ALWAN_CORE_T const *base, size_t base_stride,
+        ALWAN_CORE_T const *alternate, size_t alternate_stride,
+        size_t count, ALWAN__GAIN_MAP_PARAMS const *params) {
+    if (!gain_out || !base || !alternate || !params || !ALWAN_CORE_FN(gain_map_params_ok)(params, 3)) {
+        return ALWAN_E_INVALID;
+    }
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *b = (ALWAN_CORE_T const *)((char const *)base + p * base_stride);
+        ALWAN_CORE_T const *a = (ALWAN_CORE_T const *)((char const *)alternate + p * alternate_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)gain_out + p * gain_stride);
+        for (int c = 0; c < 3; c++) {
+            o[c] = ALWAN_CORE_FNVLIT(alwan_gain_map_encode)(b[c], a[c], params->gain_map_min[c],
+                                                           params->gain_map_max[c],
+                                                           ALWAN_CORE_FN(gain_map_gamma)(params->gamma[c]),
+                                                           params->base_offset[c], params->alternate_offset[c]);
+        }
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_HDR_MAPNAME(alwan_gain_map_apply, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *out, size_t out_stride,
+        ALWAN_CORE_T const *base, size_t base_stride,
+        ALWAN_CORE_T const *gain, size_t gain_stride, size_t gain_channels,
+        size_t count, ALWAN__GAIN_MAP_PARAMS const *params, ALWAN_CORE_T weight) {
+    if (!out || !base || !gain || !params || (gain_channels != 1 && gain_channels != 3)
+        || !(weight == weight) || !ALWAN_CORE_FN(gain_map_params_ok)(params, gain_channels)) {
+        return ALWAN_E_INVALID;
+    }
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *b = (ALWAN_CORE_T const *)((char const *)base + p * base_stride);
+        ALWAN_CORE_T const *g = (ALWAN_CORE_T const *)((char const *)gain + p * gain_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
+        ALWAN_CORE_T bv[3], gv[3];
+        /* Read the pixel before writing it: out may be base, or even the gains. */
+        for (int c = 0; c < 3; c++) {
+            bv[c] = b[c];
+            gv[c] = g[gain_channels == 3 ? c : 0];
+        }
+        for (int c = 0; c < 3; c++) {
+            int const m = gain_channels == 3 ? c : 0;
+            o[c] = ALWAN_CORE_FNVLIT(alwan_gain_map_apply)(bv[c], gv[c], params->gain_map_min[m],
+                                                          params->gain_map_max[m],
+                                                          ALWAN_CORE_FN(gain_map_gamma)(params->gamma[m]),
+                                                          params->base_offset[m], params->alternate_offset[m],
+                                                          weight);
+        }
+    }
+    return ALWAN_OK;
+}
+
+#undef ALWAN__GAIN_MAP_PARAMS
