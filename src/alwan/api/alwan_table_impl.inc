@@ -162,37 +162,57 @@ alwan_status ALWAN_CORE_FNLIT(alwan_jakob2019_coeff_sample)(ALWAN_CORE_T *result
     if (!result_c012 || !coord) return ALWAN_E_INVALID;
     if (!ALWAN_CORE_FN(table_mode_ok_strip)(mode)) return ALWAN_E_INVALID;
 
-    ALWAN_CORE_T const *c0;
-    ALWAN_CORE_T const *c1;
-    ALWAN_CORE_T const *c2;
+    /* A gamut whose cubes were compiled out leaves these NULL: ALWAN_E_NODATA. */
+    ALWAN_CORE_T const *c0 = NULL;
+    ALWAN_CORE_T const *c1 = NULL;
+    ALWAN_CORE_T const *c2 = NULL;
     switch (gamut) {
         case ALWAN_JAKOB2019_SRGB:
+#if ALWAN_TABLE_JAKOB2019_SRGB
             c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c0);
             c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c2); break;
+            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_PROPHOTO_RGB:
+#if ALWAN_TABLE_JAKOB2019_PROPHOTO
             c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c0);
             c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c2); break;
+            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_ACES2065_1:
+#if ALWAN_TABLE_JAKOB2019_ACES
             c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c0);
             c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c2); break;
+            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_REC2020:
+#if ALWAN_TABLE_JAKOB2019_REC2020
             c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c0);
             c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c2); break;
+            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_ERGB:
+#if ALWAN_TABLE_JAKOB2019_ERGB
             c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c0);
             c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c2); break;
+            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_XYZ:
+#if ALWAN_TABLE_JAKOB2019_XYZ
             c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c0);
             c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c2); break;
+            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c2);
+#endif
+            break;
         default: return ALWAN_E_INVALID;
     }
     ALWAN_TABLE_STRICT_CHECK_3(coord);
+    if (!c0 || !c1 || !c2) return ALWAN_E_NODATA;
     ALWAN_CORE_VEC3 in;
     in.v[0] = coord->r; in.v[1] = coord->g; in.v[2] = coord->b;
     ALWAN_CORE_VEC3 const out = ALWAN_CORE_FNVLIT(alwan_table3d_planar3_sample)(
@@ -209,9 +229,17 @@ alwan_status ALWAN_CORE_FNLIT(alwan_agx_contrast_sample)(ALWAN_CORE_T *result, i
     if (!ALWAN_CORE_FN(table_mode_ok_rank1)(mode)) return ALWAN_E_INVALID;
     ALWAN_TABLE_STRICT_CHECK_1(coord);
 
-    ALWAN_CORE_T const *table = sb2383
-        ? ALWAN_CORE_FNLIT(alwan_table_agx_sb2383_contrast)
-        : ALWAN_CORE_FNLIT(alwan_table_agx_default_contrast);
+    ALWAN_CORE_T const *table = NULL;
+    if (sb2383) {
+#if ALWAN_TABLE_AGX_SB2383_CONTRAST
+        table = ALWAN_CORE_FNLIT(alwan_table_agx_sb2383_contrast);
+#endif
+    } else {
+#if ALWAN_TABLE_AGX_DEFAULT_CONTRAST
+        table = ALWAN_CORE_FNLIT(alwan_table_agx_default_contrast);
+#endif
+    }
+    if (!table) return ALWAN_E_NODATA;   /* compiled out: alwan_data_tables_config.h */
 
     /* Delta blend, matching agx_lut_eval exactly, so this reader and the view
      * transform cannot disagree in the last bit. */
@@ -230,6 +258,9 @@ alwan_status ALWAN_CORE_FNLIT(alwan_agx_blender_cube_sample)(ALWAN_CORE_RGB *res
     if (!result || !coord) return ALWAN_E_INVALID;
     if (!ALWAN_CORE_FN(table_mode_ok_rank3)(mode)) return ALWAN_E_INVALID;
     ALWAN_TABLE_STRICT_CHECK_3(coord);
+#if !ALWAN_TABLE_AGX_BLENDER_CUBE
+    return ALWAN_E_NODATA;   /* compiled out: alwan_data_tables_config.h */
+#else
     ALWAN_CORE_VEC3 in;
     in.v[0] = coord->r; in.v[1] = coord->g; in.v[2] = coord->b;
     ALWAN_CORE_VEC3 const out = ALWAN_CORE_FNVLIT(alwan_table3d_sample)(
@@ -239,6 +270,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_agx_blender_cube_sample)(ALWAN_CORE_RGB *res
     result->g = out.v[1];
     result->b = out.v[2];
     return ALWAN_OK;
+#endif
 }
 
 #undef ALWAN_TABLE_STRICT_CHECK_1

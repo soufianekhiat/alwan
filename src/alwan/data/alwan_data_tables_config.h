@@ -5,12 +5,23 @@
  *
  * Per-table enable switches for the embedded data tables.
  *
- * NOT IMPLEMENTED YET. Every switch defaults to 1 and every definition block in
- * data/alwan_data_tables*.c is already wrapped in its switch, so turning the
- * feature on later flips defaults here instead of editing forty blocks. Nothing
- * in the library reads these for any purpose other than that wrapping.
+ * Every switch defaults to 1, so a default build carries every table. Define one
+ * to 0, or ALWAN_DATA_TABLES_MINIMAL=1 to start from none, when the library is
+ * compiled (these are read inside the library's own translation units, so a
+ * consumer's -D against the headers alone changes nothing). A table switched off
+ * is not compiled at all, and every reader of it answers as below:
  *
- * Two rules are already binding, because they are expensive to retrofit:
+ *   status-returning readers    ALWAN_E_NODATA for a valid enum whose table is
+ *                               off; an out-of-range enum is still ALWAN_E_INVALID
+ *   view transforms             ALWAN_E_NODATA for the AgX views whose table is off
+ *   value-returning metrics     their documented error value (-1 for Robertson CCT,
+ *                               CRI, CQS, TM-30 / CIE 224 and SSI)
+ *
+ * Anything built on a switched-off table inherits that: alwan_xyz_from_spd with a
+ * compiled-out observer returns ALWAN_E_NODATA, and so does everything that calls it.
+ * alwan_dev suite 113 and its minimal-tables configuration check both sides.
+ *
+ * Two rules are binding:
  *
  *   1. TABLE IDENTITY IS PINNED. Table names are never renamed, never reused,
  *      and new tables append. If identity were positional, disabling one table
@@ -55,6 +66,11 @@
  * TCS / VS / CES reflectance sample sets. */
 #ifndef ALWAN_TABLES_QUALITY
 #  define ALWAN_TABLES_QUALITY (!ALWAN_DATA_TABLES_MINIMAL)
+#endif
+/* Spectral camera characterisation: the rawtoaces camera pack (52 cameras), its
+ * 190-patch IDT training set and ISO 7589 tungsten source, and the ACES RICD. */
+#ifndef ALWAN_TABLES_CAMERAS
+#  define ALWAN_TABLES_CAMERAS (!ALWAN_DATA_TABLES_MINIMAL)
 #endif
 
 /* --- AgX --- */
@@ -246,9 +262,16 @@
 #  define ALWAN_TABLE_MALLETT2019 ALWAN_TABLES_SPECTRAL
 #endif
 
-/* --- AgX SB2383 inset matrix --- */
+/* --- AgX SB2383 inset matrix ---
+ * Always on, and not part of the AgX group. alwan_agx_default_params returns its
+ * parameters by value, so it has no way to report that the inset is missing, and
+ * substituting identity would silently change the look. Nine numbers are not worth
+ * a wrong picture. */
 #ifndef ALWAN_TABLE_AGX_SB2383_INSET
-#  define ALWAN_TABLE_AGX_SB2383_INSET ALWAN_TABLES_AGX
+#  define ALWAN_TABLE_AGX_SB2383_INSET 1
+#endif
+#if !ALWAN_TABLE_AGX_SB2383_INSET
+#  error "ALWAN_TABLE_AGX_SB2383_INSET cannot be switched off: alwan_agx_default_params has no error channel"
 #endif
 
 /* --- Light quality: CCT locus and reflectance sample sets --- */
@@ -273,6 +296,20 @@
 #endif
 #ifndef ALWAN_TABLE_SSI_SPECTRAL_WEIGHTS
 #  define ALWAN_TABLE_SSI_SPECTRAL_WEIGHTS ALWAN_TABLES_QUALITY
+#endif
+
+/* --- Spectral camera characterisation --- */
+#ifndef ALWAN_TABLE_ACES_RICD
+#  define ALWAN_TABLE_ACES_RICD ALWAN_TABLES_CAMERAS
+#endif
+#ifndef ALWAN_TABLE_CAMERA_RAWTOACES
+#  define ALWAN_TABLE_CAMERA_RAWTOACES ALWAN_TABLES_CAMERAS
+#endif
+#ifndef ALWAN_TABLE_IDT_TRAINING_190
+#  define ALWAN_TABLE_IDT_TRAINING_190 ALWAN_TABLES_CAMERAS
+#endif
+#ifndef ALWAN_TABLE_ISO7589_TUNGSTEN
+#  define ALWAN_TABLE_ISO7589_TUNGSTEN ALWAN_TABLES_CAMERAS
 #endif
 
 #endif /* ALWAN_DATA_TABLES_CONFIG_H */

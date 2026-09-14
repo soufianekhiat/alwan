@@ -31,6 +31,10 @@ static void ALWAN_CORE_FN(aces_rec709_transform)(ALWAN_CORE_T const *rgb_in, ALW
 /* ----------------------------------------------------------------
  * AgX View Transform (inset -> log encode -> contrast LUT -> linearize)
  * ---------------------------------------------------------------- */
+/* Each helper below is compiled only with the table it reads, so a build with
+ * the AgX tables switched off (data/alwan_data_tables_config.h) carries no
+ * unreferenced statics, and the dispatch reports ALWAN_E_NODATA for those views. */
+#if ALWAN_TABLE_AGX_DEFAULT_CONTRAST || ALWAN_TABLE_AGX_SB2383_CONTRAST
 /* Linear interpolation in the 4096-entry contrast LUT. The hand-written NaN
  * guard that used to live here is now the shared addressing gate; the delta
  * blend `a + f*(b-a)` is preserved because the AgX determinism MD5s pin it. */
@@ -62,14 +66,18 @@ static void ALWAN_CORE_FN(agx_transform_impl)(ALWAN_CORE_T const *rgb_in, ALWAN_
     rgb_out[1] = ALWAN_CORE_FN(agx_lut_eval)(log_g, lut);
     rgb_out[2] = ALWAN_CORE_FN(agx_lut_eval)(log_b, lut);
 }
+#endif
 
+#if ALWAN_TABLE_AGX_DEFAULT_CONTRAST
 static void ALWAN_CORE_FN(agx_base_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
     ALWAN_CORE_FN(agx_transform_impl)(rgb_in, rgb_out,
         ALWAN_CORE_FNLIT(agx_inset_matrix),
         ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(4.026069),
         ALWAN_CORE_FNLIT(alwan_table_agx_default_contrast));
 }
+#endif
 
+#if ALWAN_TABLE_AGX_SB2383_CONTRAST
 /* SB2383: Sobotka's newer AgX experiment -- own inset + contrast LUT. Its
  * -10/+6.5 EV range around mid-grey 0.18 is, in absolute log2 bounds (what
  * alwan_agx_log_encode takes), log2(0.18)+[-10,+6.5] = [-12.47393, 4.026069]
@@ -80,24 +88,32 @@ static void ALWAN_CORE_FN(agx_sb2383_transform)(ALWAN_CORE_T const *rgb_in, ALWA
         ALWAN_CORE_LITERAL(-12.47393), ALWAN_CORE_LITERAL(4.026069),
         ALWAN_CORE_FNLIT(alwan_table_agx_sb2383_contrast));
 }
+#endif
 
+#if ALWAN_TABLE_AGX_DEFAULT_CONTRAST || ALWAN_TABLE_AGX_SB2383_CONTRAST
 /* AgX LUT output is sRGB-encoded; sRGB EOTF linearizes it. */
 static void ALWAN_CORE_FN(agx_encoded_to_linear)(ALWAN_CORE_T *rgb) {
     rgb[0] = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(ALWAN_CORE_SATURATE(rgb[0]));
     rgb[1] = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(ALWAN_CORE_SATURATE(rgb[1]));
     rgb[2] = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(ALWAN_CORE_SATURATE(rgb[2]));
 }
+#endif
 
+#if ALWAN_TABLE_AGX_DEFAULT_CONTRAST
 static void ALWAN_CORE_FN(agx_base_view)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
     ALWAN_CORE_FN(agx_base_transform)(rgb_in, rgb_out);
     ALWAN_CORE_FN(agx_encoded_to_linear)(rgb_out);
 }
+#endif
 
+#if ALWAN_TABLE_AGX_SB2383_CONTRAST
 static void ALWAN_CORE_FN(agx_sb2383_view)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
     ALWAN_CORE_FN(agx_sb2383_transform)(rgb_in, rgb_out);
     ALWAN_CORE_FN(agx_encoded_to_linear)(rgb_out);
 }
+#endif
 
+#if ALWAN_TABLE_AGX_BLENDER_CUBE
 /* Blender AgX (EaryChow): a baked 57^3 3D LUT (guard-rail gamut compression
  * cannot be decomposed to matrix+curve). Tetrahedral interpolation of the f32
  * LUT in the working precision, matching OCIO's tetrahedral sampling (and
@@ -131,7 +147,9 @@ static void ALWAN_CORE_FN(agx_blender_view)(ALWAN_CORE_T const *rgb_in, ALWAN_CO
     rgb_out[1] = ALWAN_CORE_POW(lut[1], ALWAN_CORE_LITERAL(2.4));
     rgb_out[2] = ALWAN_CORE_POW(lut[2], ALWAN_CORE_LITERAL(2.4));
 }
+#endif
 
+#if ALWAN_TABLE_AGX_DEFAULT_CONTRAST
 static void ALWAN_CORE_FN(agx_punchy_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
     ALWAN_CORE_FN(agx_base_transform)(rgb_in, rgb_out);
     ALWAN_CORE_VEC3 enc;
@@ -149,6 +167,7 @@ static void ALWAN_CORE_FN(agx_golden_transform)(ALWAN_CORE_T const *rgb_in, ALWA
     rgb_out[0] = graded.v[0]; rgb_out[1] = graded.v[1]; rgb_out[2] = graded.v[2];
     ALWAN_CORE_FN(agx_encoded_to_linear)(rgb_out);
 }
+#endif
 
 /* ----------------------------------------------------------------
  * BT.2446 Method A HDR<->SDR
@@ -354,11 +373,27 @@ static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t o
 
     switch (vt) {
         case ALWAN_VIEW_ACES_REC709:        transform_fn = ALWAN_CORE_FN(aces_rec709_transform); break;
+        /* An AgX view whose table was compiled out leaves transform_fn NULL and
+         * reports ALWAN_E_NODATA below. */
+#if ALWAN_TABLE_AGX_DEFAULT_CONTRAST
         case ALWAN_VIEW_AGX_ORIGINAL:                transform_fn = ALWAN_CORE_FN(agx_base_view); break;
         case ALWAN_VIEW_AGX_PUNCHY:         transform_fn = ALWAN_CORE_FN(agx_punchy_transform); break;
         case ALWAN_VIEW_AGX_GOLDEN:         transform_fn = ALWAN_CORE_FN(agx_golden_transform); break;
+#else
+        case ALWAN_VIEW_AGX_ORIGINAL:
+        case ALWAN_VIEW_AGX_PUNCHY:
+        case ALWAN_VIEW_AGX_GOLDEN:         break;
+#endif
+#if ALWAN_TABLE_AGX_SB2383_CONTRAST
         case ALWAN_VIEW_AGX_SB2383:         transform_fn = ALWAN_CORE_FN(agx_sb2383_view); break;
+#else
+        case ALWAN_VIEW_AGX_SB2383:         break;
+#endif
+#if ALWAN_TABLE_AGX_BLENDER_CUBE
         case ALWAN_VIEW_AGX_BLENDER:        transform_fn = ALWAN_CORE_FN(agx_blender_view); break;
+#else
+        case ALWAN_VIEW_AGX_BLENDER:        break;
+#endif
         case ALWAN_VIEW_BT2446A_HDR_TO_SDR: transform_fn = ALWAN_CORE_FN(bt2446a_hdr_to_sdr_transform); break;
         case ALWAN_VIEW_BT2446A_SDR_TO_HDR: transform_fn = ALWAN_CORE_FN(bt2446a_sdr_to_hdr_transform); break;
         case ALWAN_VIEW_KHRONOS_PBR_NEUTRAL: transform_fn = ALWAN_CORE_FN(khronos_pbr_neutral_transform); break;
@@ -373,6 +408,9 @@ static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t o
         case ALWAN_VIEW_EXPOSURE:           transform_fn = ALWAN_CORE_FN(exposure_transform); break;
         default:
             return ALWAN_E_INVALID;
+    }
+    if (!transform_fn) {
+        return ALWAN_E_NODATA;
     }
 
     /* Unclamped entry: swap in the raw twins for the per-channel tone mappers.

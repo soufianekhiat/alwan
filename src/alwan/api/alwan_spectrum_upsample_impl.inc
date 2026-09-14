@@ -28,6 +28,11 @@ static inline ALWAN_CORE_T ALWAN_CORE_FN(spu_clamp)(ALWAN_CORE_T x, ALWAN_CORE_T
 alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_smits1999)(
         ALWAN_CORE_SPD *out_spd, ALWAN_CORE_RGB const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) return ALWAN_E_INVALID;
+#if !ALWAN_TABLE_SMITS1999
+    /* The basis spectra were compiled out: data/alwan_data_tables_config.h. */
+    (void)ctx;
+    return ALWAN_E_NODATA;
+#else
 
     int status = ALWAN_CORE_FNLIT(alwan_spd_create)(out_spd,
         (ALWAN_CORE_T)SMITS1999_WAVELENGTH_MIN, (ALWAN_CORE_T)SMITS1999_WAVELENGTH_MAX,
@@ -111,6 +116,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_smits1999)(
     }
 
     return ALWAN_OK;
+#endif
 }
 
 /* ----------------------------------------------------------------
@@ -119,6 +125,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_smits1999)(
 alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_mallett2019)(
         ALWAN_CORE_SPD *out_spd, ALWAN_CORE_RGB const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) return ALWAN_E_INVALID;
+#if !ALWAN_TABLE_MALLETT2019
+    (void)ctx;
+    return ALWAN_E_NODATA;
+#else
 
     int status = ALWAN_CORE_FNLIT(alwan_spd_create)(out_spd,
         (ALWAN_CORE_T)MALLETT2019_WAVELENGTH_MIN, (ALWAN_CORE_T)MALLETT2019_WAVELENGTH_MAX,
@@ -146,6 +156,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_mallett2019)(
     }
 
     return ALWAN_OK;
+#endif
 }
 
 /* ----------------------------------------------------------------
@@ -184,23 +195,44 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_jakob2019)(
         ALWAN_CORE_RGB const *rgb, alwan_ctx *ctx) {
     if (!rgb || !out_spd) return ALWAN_E_INVALID;
 
-    ALWAN_CORE_T const *lut_c0, *lut_c1, *lut_c2;
+    /* A gamut whose cubes were compiled out (data/alwan_data_tables_config.h)
+     * leaves the pointers NULL and reports ALWAN_E_NODATA below. */
+    ALWAN_CORE_T const *lut_c0 = NULL, *lut_c1 = NULL, *lut_c2 = NULL;
     switch (gamut) {
         case ALWAN_JAKOB2019_SRGB:
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c2); break;
+#if ALWAN_TABLE_JAKOB2019_SRGB
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_PROPHOTO_RGB:
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c2); break;
+#if ALWAN_TABLE_JAKOB2019_PROPHOTO
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_ACES2065_1:
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c2); break;
+#if ALWAN_TABLE_JAKOB2019_ACES
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_REC2020:
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c2); break;
+#if ALWAN_TABLE_JAKOB2019_REC2020
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_ERGB:
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c2); break;
+#if ALWAN_TABLE_JAKOB2019_ERGB
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c2);
+#endif
+            break;
         case ALWAN_JAKOB2019_XYZ:
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c2); break;
+#if ALWAN_TABLE_JAKOB2019_XYZ
+            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c2);
+#endif
+            break;
         default:
             return ALWAN_E_INVALID;
     }
+    if (!lut_c0 || !lut_c1 || !lut_c2) return ALWAN_E_NODATA;
 
     int status = ALWAN_CORE_FNLIT(alwan_spd_create)(out_spd,
         (ALWAN_CORE_T)JAKOB2019_WAVELENGTH_MIN, (ALWAN_CORE_T)JAKOB2019_WAVELENGTH_MAX,

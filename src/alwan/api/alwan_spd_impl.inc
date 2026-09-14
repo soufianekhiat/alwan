@@ -228,172 +228,331 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_illuminant)(ALWAN_CORE_SPD *out, alwan_i
         return status;
     }
 
-    /* Copy the illuminant's registry table into the SPD */
+    /* Copy the illuminant's registry table into the SPD. A valid illuminant whose
+     * table was compiled out (data/alwan_data_tables_config.h) sets `missing` and
+     * reports ALWAN_E_NODATA; an out-of-range enum is still ALWAN_E_INVALID. */
+    int missing = 0;
     switch (ill) {
         case ALWAN_ILLUMINANT_A:
+#if ALWAN_TABLE_SPD_ILLUMINANT_A
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_a));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_D50:
+#if ALWAN_TABLE_SPD_ILLUMINANT_D50
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d50));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_D55:
+#if ALWAN_TABLE_SPD_ILLUMINANT_D55
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d55));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_D65:
+#if ALWAN_TABLE_SPD_ILLUMINANT_D65
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d65));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_E:
+#if ALWAN_TABLE_SPD_ILLUMINANT_E
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_e));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F1:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F1
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f1));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F2:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F2
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f2));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F3:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f3));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F4:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F4
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f4));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F5:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F5
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f5));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F6:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F6
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f6));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F7:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F7
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f7));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F8:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F8
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f8));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F9:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F9
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f9));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F10:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F10
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f10));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F11:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F11
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f11));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_F12:
+#if ALWAN_TABLE_SPD_ILLUMINANT_F12
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_f12));
+#else
+            missing = 1;
+#endif
             break;
 
         /* Extended illuminants */
         case ALWAN_ILLUMINANT_B:
+#if ALWAN_TABLE_SPD_ILLUMINANT_B
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_b));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_C:
+#if ALWAN_TABLE_SPD_ILLUMINANT_C
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_c));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_D60:
+#if ALWAN_TABLE_SPD_ILLUMINANT_D60
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d60));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_D75:
+#if ALWAN_TABLE_SPD_ILLUMINANT_D75
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d75));
+#else
+            missing = 1;
+#endif
             break;
 
         /* Additional D-series illuminants */
         case ALWAN_ILLUMINANT_D40:
+#if ALWAN_TABLE_SPD_ILLUMINANT_D40
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d40));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_D45:
+#if ALWAN_TABLE_SPD_ILLUMINANT_D45
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d45));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_D93:
+#if ALWAN_TABLE_SPD_ILLUMINANT_D93
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_d93));
+#else
+            missing = 1;
+#endif
             break;
 
         /* LED illuminants */
         case ALWAN_ILLUMINANT_LED_B1:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_B1
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b1));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_LED_B2:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_B2
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b2));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_LED_B3:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_B3
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b3));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_LED_B4:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_B4
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b4));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_LED_B5:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_B5
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_b5));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_LED_BH1:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_BH1
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_bh1));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_LED_RGB1:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_RGB1
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_rgb1));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_LED_V1:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_V1
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_v1));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_LED_V2:
+#if ALWAN_TABLE_SPD_ILLUMINANT_LED_V2
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_led_v2));
+#else
+            missing = 1;
+#endif
             break;
 
         /* High Pressure illuminants */
         case ALWAN_ILLUMINANT_HP1:
+#if ALWAN_TABLE_SPD_ILLUMINANT_HP1
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp1));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_HP2:
+#if ALWAN_TABLE_SPD_ILLUMINANT_HP2
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp2));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_HP3:
+#if ALWAN_TABLE_SPD_ILLUMINANT_HP3
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp3));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_HP4:
+#if ALWAN_TABLE_SPD_ILLUMINANT_HP4
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp4));
+#else
+            missing = 1;
+#endif
             break;
         case ALWAN_ILLUMINANT_HP5:
+#if ALWAN_TABLE_SPD_ILLUMINANT_HP5
             ALWAN_CORE_FN(spd_copy_table)(out,
                 ALWAN_CORE_FNLIT(alwan_table_spd_illuminant_hp5));
+#else
+            missing = 1;
+#endif
             break;
 
         default:
             ALWAN_CORE_FNLIT(alwan_spd_destroy)(out, ctx);
             return ALWAN_E_INVALID;
+    }
+    if (missing) {
+        ALWAN_CORE_FNLIT(alwan_spd_destroy)(out, ctx);
+        return ALWAN_E_NODATA;
     }
 
     (void)ctx;
@@ -476,52 +635,92 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
         return status;
     }
 
-    /* Copy the observer's registry tables into the three SPDs */
+    /* Copy the observer's registry tables into the three SPDs. A table compiled
+     * out sets `missing`: ALWAN_E_NODATA, as for the illuminants above. */
+    int missing = 0;
     if (observer == ALWAN_OBSERVER_CIE_1931_2DEG) {
         /* CIE 1931 2 deg Standard Observer */
+#if ALWAN_TABLE_CMF_CIE_1931_2DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_y));
         ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1931_2deg_z));
+#else
+        missing = 1;
+#endif
     } else if (observer == ALWAN_OBSERVER_CIE_1964_10DEG) {
         /* CIE 1964 10 deg Standard Observer */
+#if ALWAN_TABLE_CMF_CIE_1964_10DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_y));
         ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_1964_10deg_z));
+#else
+        missing = 1;
+#endif
     } else if (observer == ALWAN_OBSERVER_CIE_2012_2DEG) {
         /* CIE 2012/2015 2 deg Standard Observer (390-830nm) */
+#if ALWAN_TABLE_CMF_CIE_2012_2DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_y));
         ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_z));
+#else
+        missing = 1;
+#endif
     } else if (observer == ALWAN_OBSERVER_CIE_2012_10DEG) {
         /* CIE 2012/2015 10 deg Standard Observer (390-830nm) */
+#if ALWAN_TABLE_CMF_CIE_2012_10DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_y));
         ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_z));
+#else
+        missing = 1;
+#endif
     } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
         /* Stockman & Sharpe 2000 2 deg Cone Fundamentals */
+#if ALWAN_TABLE_CMF_STOCKMAN_SHARPE_2DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_y));
         ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_2deg_z));
+#else
+        missing = 1;
+#endif
     } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG) {
         /* CIE 2015 2 deg Cone Fundamental Observer */
+#if ALWAN_TABLE_CMF_CIE_2015_2DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_y));
         ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_z));
+#else
+        missing = 1;
+#endif
     } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG) {
         /* CIE 2015 10 deg Cone Fundamental Observer */
+#if ALWAN_TABLE_CMF_CIE_2015_10DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_y));
         ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_z));
+#else
+        missing = 1;
+#endif
     } else if (observer == ALWAN_OBSERVER_WRIGHT_GUILD_1931) {
         /* Wright & Guild 1931 2 deg RGB CMFs (historical) */
+#if ALWAN_TABLE_CMF_WRIGHT_GUILD_1931
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_r));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_g));
         ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_wright_guild_1931_b));
+#else
+        missing = 1;
+#endif
     } else {
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(x_bar, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(y_bar, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(z_bar, ctx);
         return ALWAN_E_INVALID;
+    }
+    if (missing) {
+        ALWAN_CORE_FNLIT(alwan_spd_destroy)(x_bar, ctx);
+        ALWAN_CORE_FNLIT(alwan_spd_destroy)(y_bar, ctx);
+        ALWAN_CORE_FNLIT(alwan_spd_destroy)(z_bar, ctx);
+        return ALWAN_E_NODATA;
     }
 
     return ALWAN_OK;
@@ -759,22 +958,35 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(ALWAN_CORE_SPD *spd_
         return ALWAN_E_INVALID;
     }
 
-    /* Copy the camera's registry tables into the three SPDs */
+    /* Copy the camera's registry tables into the three SPDs. A table compiled out
+     * sets `missing`: ALWAN_E_NODATA. */
+    int missing = 0;
     switch (camera) {
         case ALWAN_CAMERA_NIKON_5100: {
+#if ALWAN_TABLE_CAMERA_NIKON_5100
             ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_r));
             ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_g));
             ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_b));
+#else
+            missing = 1;
+#endif
             break;
         }
         case ALWAN_CAMERA_SIGMA_SDMERILL: {
+#if ALWAN_TABLE_CAMERA_SIGMA_SDMERILL
             ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_r));
             ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_g));
             ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_b));
+#else
+            missing = 1;
+#endif
             break;
         }
         default:
             return ALWAN_E_INVALID;
+    }
+    if (missing) {
+        return ALWAN_E_NODATA;
     }
 
     (void)ctx;

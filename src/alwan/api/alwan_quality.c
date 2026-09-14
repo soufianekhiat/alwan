@@ -64,6 +64,11 @@ alwan_f64 alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy) {
     if (!xy) {
         return ALWAN_LITERAL(-1.0);
     }
+#if !ALWAN_TABLE_ROBERTSON_LOCUS
+    /* The isotemperature table was compiled out (data/alwan_data_tables_config.h).
+     * -1 is this function's documented error value. */
+    return ALWAN_LITERAL(-1.0);
+#else
 
     alwan_f64 x = xy->v[0];
     alwan_f64 y = xy->v[1];
@@ -128,6 +133,7 @@ alwan_f64 alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy) {
     }
 
     return ALWAN_LITERAL(-1.0);
+#endif
 }
 
 /* Hernandez-Andres 1999: xy to CCT
@@ -390,6 +396,11 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
+#if !ALWAN_TABLE_TCS_REFLECTANCE
+    /* The TCS reflectances were compiled out (data/alwan_data_tables_config.h).
+     * -1 is this function's documented error value. */
+    return ALWAN_LITERAL(-1.0);
+#else
 
     /* Step 1: Resample test SPD to TCS wavelength range (360-830nm @ 5nm) */
     alwan_spd_f64 test_spd_resampled;
@@ -613,6 +624,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     ra /= ALWAN_LITERAL(8.0);
 
     return ra;
+#endif
 }
 
 /* ----------------------------------------------------------------
@@ -739,6 +751,9 @@ alwan_f32 alwan_cct_robertson_xy_f32(alwan_vec2_f32 const *xy) {
     if (!xy) {
         return ALWAN_LITERAL_F32(-1.0);
     }
+#if !ALWAN_TABLE_ROBERTSON_LOCUS
+    return ALWAN_LITERAL_F32(-1.0);   /* table compiled out, as in the f64 twin */
+#else
 
     alwan_f32 x = xy->v[0];
     alwan_f32 y = xy->v[1];
@@ -794,6 +809,7 @@ alwan_f32 alwan_cct_robertson_xy_f32(alwan_vec2_f32 const *xy) {
     }
 
     return ALWAN_LITERAL_F32(-1.0);
+#endif
 }
 
 /* Hernandez-Andres 1999: xy to CCT (native f32) */
@@ -922,6 +938,9 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 c
     if (!ctx || !test_spd || !reference_spd) {
         return ALWAN_LITERAL(-1.0);
     }
+#if !(ALWAN_TABLE_SSI_BIN_WEIGHTS && ALWAN_TABLE_SSI_SPECTRAL_WEIGHTS)
+    return ALWAN_LITERAL(-1.0);   /* SSI weights compiled out: the documented error value */
+#else
 
     /* Step 1: Resample both SPDs to SSI spectral shape (375-675nm, 1nm) */
     alwan_spd_f64 test_resampled, ref_resampled;
@@ -1017,6 +1036,7 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 c
     alwan_spd_destroy_f64(&ref_resampled, ctx);
 
     return ssi;
+#endif
 }
 
 /* ================================================================
@@ -1127,6 +1147,9 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
     if (!ctx || !test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
+#if !ALWAN_TABLE_VS_REFLECTANCE
+    return ALWAN_LITERAL(-1.0);   /* VS reflectances compiled out: the documented error value */
+#else
 
     /* Step 1: Resample test SPD to VS wavelength range (360-830nm @ 5nm) */
     alwan_spd_f64 test_spd_resampled;
@@ -1395,6 +1418,7 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
             return ALWAN_LITERAL(10.0) * ALWAN_LN(ALWAN_LITERAL(1.0) + ALWAN_EXP(t));
         }
     }
+#endif
 }
 
 /* ----------------------------------------------------------------
@@ -1412,6 +1436,12 @@ alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx)
  * at or above 5000 K, which scored D50 against D65 and cost ~3 Rf points on
  * every daylight source. */
 static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwan_ctx *ctx) {
+#if !ALWAN_TABLE_DAYLIGHT_BASIS
+    /* The S0/S1/S2 basis was compiled out (data/alwan_data_tables_config.h). Every
+     * caller already propagates a failed status as its own error value. */
+    (void)out; (void)cct; (void)ctx;
+    return ALWAN_E_NODATA;
+#else
     alwan_f64 const t  = cct;
     alwan_f64 const t2 = t * t;
     alwan_f64 const t3 = t2 * t;
@@ -1469,6 +1499,7 @@ static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwa
         }
     }
     return ALWAN_OK;
+#endif
 }
 
 /* TM-30 Fidelity Index (Rf) calculation
@@ -1499,6 +1530,9 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (!ctx || !test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
+#if !ALWAN_TABLE_CES_REFLECTANCE
+    return ALWAN_LITERAL(-1.0);   /* CES reflectances compiled out: the documented error value */
+#else
 
     /* Step 1: Resample test SPD to CES wavelength range (360-830nm @ 5nm) */
     alwan_spd_f64 test_spd_resampled;
@@ -1853,6 +1887,7 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     alwan_f64 rf = ALWAN_LITERAL(10.0) * ALWAN_LN(ALWAN_LITERAL(1.0) + ALWAN_EXP(t));
 
     return rf;
+#endif
 }
 
 /* ----------------------------------------------------------------
