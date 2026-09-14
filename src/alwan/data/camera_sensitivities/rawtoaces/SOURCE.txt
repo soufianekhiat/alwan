@@ -1,0 +1,64 @@
+rawtoaces-data, Academy Software Foundation
+https://github.com/AcademySoftwareFoundation/rawtoaces-data
+commit e9b8503cf8a0641f40e5345d9757bde60c15f423
+licence Apache-2.0 (LICENSE.txt), per-file headers checked
+
+Files used, unmodified values:
+  data/camera/ARRI_D21_380_780_5.json
+  data/camera/Arashi_Vision_Insta360_X5_380_780_5.json
+  data/camera/Canon_Digital_Rebel_XTi_380_780_5.json
+  data/camera/Canon_EOS-1D_X_Mark_II_380_780_5.json
+  data/camera/Canon_EOS-1Ds_Mark_III_380_780_5.json
+  data/camera/Canon_EOS-1Ds_Mark_II_380_780_5.json
+  data/camera/Canon_EOS_100D_380_780_5.json
+  data/camera/Canon_EOS_200D_380_780_5.json
+  data/camera/Canon_EOS_200D_II_380_780_5.json
+  data/camera/Canon_EOS_5DS_380_780_5.json
+  data/camera/Canon_EOS_5D_380_780_5.json
+  data/camera/Canon_EOS_5D_Mark_III_380_780_5.json
+  data/camera/Canon_EOS_5D_Mark_II_380_780_5.json
+  data/camera/Canon_EOS_5D_Mark_IV_380_780_5.json
+  data/camera/Canon_EOS_600D_380_780_5.json
+  data/camera/Canon_EOS_M_380_780_5.json
+  data/camera/Canon_EOS_R10_380_780_5.json
+  data/camera/Canon_EOS_R5_380_780_5.json
+  data/camera/Canon_EOS_R5m2_380_780_5.json
+  data/camera/Canon_EOS_R6_380_780_5.json
+  data/camera/Canon_EOS_R6m2_380_780_5.json
+  data/camera/Canon_EOS_RP_380_780_5.json
+  data/camera/Canon_EOS_R_380_780_5.json
+  data/camera/Canon_PowerShot_S90_380_780_5.json
+  data/camera/Fujifilm_GFX_100_380_780_5.json
+  data/camera/Fujifilm_X-T3_380_780_5.json
+  data/camera/Fujifilm_X-T4_380_780_5.json
+  data/camera/Hasselblad_L1D-20c_380_780_5.json
+  data/camera/Hasselblad_L2D-20c_380_780_5.json
+  data/camera/Nikon_D200_380_780_5.json
+  data/camera/Nikon_D3300_380_780_5.json
+  data/camera/Nikon_D5100_380_780_5.json
+  data/camera/Nikon_D5300_380_780_5.json
+  data/camera/Nikon_D7000_380_780_5.json
+  data/camera/Nikon_D700_380_780_5.json
+  data/camera/Nikon_D70_380_780_5.json
+  data/camera/Nikon_D800E_380_780_5.json
+  data/camera/Nikon_D810_380_780_5.json
+  data/camera/Nikon_D850_380_780_5.json
+  data/camera/Nikon_Z_f_380_780_5.json
+  data/camera/Panasonic_DC-GX9_380_780_5.json
+  data/camera/Sony_DSC-RX100M4_380_780_5.json
+  data/camera/Sony_ILCE-6400_380_780_5.json
+  data/camera/Sony_ILCE-7CM2_380_780_5.json
+  data/camera/Sony_ILCE-7M3_380_780_5.json
+  data/camera/Sony_ILCE-7M4_380_780_5.json
+  data/camera/Sony_ILCE-7RM2_380_780_5.json
+  data/camera/Sony_ILCE-7RM3_380_780_5.json
+  data/camera/Sony_ILCE-7RM4_380_780_5.json
+  data/camera/Sony_ILCE-7SM2_380_780_5.json
+  data/camera/Sony_ILCE-7SM3_380_780_5.json
+  data/camera/Sony_ILCE-9_380_780_5.json
+  data/training/training_spectral.json
+  data/illuminant/iso7589_stutung_380_780_5.json
+  data/aliases.json
+
+Derived from the cameras above by gendata/data/camera_basis.py:
+  basis_pca6.csv, their principal components (colour-science PCA_Jiang2013)

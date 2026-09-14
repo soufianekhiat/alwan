@@ -1588,5 +1588,15 @@ alwan_f64 const alwan_table_iso7589_tungsten_f64[ALWAN_TABLE_RAWTOACES_BANDS] = 
 
 #endif
 
+#if ALWAN_TABLE_CAMERA_BASIS
+/* ---- alwan_table_camera_basis_rawtoaces ----
+ * extent ALWAN_TABLE_CAMERA_BASIS_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: camera_sensitivities/rawtoaces/basis_pca6.csv (derived from Apache-2.0 data) */
+alwan_f64 const alwan_table_camera_basis_rawtoaces_f64[ALWAN_TABLE_CAMERA_BASIS_SIZE] = {
+#include "camera_sensitivities/rawtoaces/basis_pca6.csv"
+};
+
+#endif
+
 
 ALWAN_DIAG_POP

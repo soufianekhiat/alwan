@@ -605,7 +605,9 @@ enum {
     ALWAN_TABLE_CAMERA_RAWTOACES_STRIDE  = 81 * 3,
     ALWAN_TABLE_CAMERA_RAWTOACES_SIZE    = 52 * 81 * 3,
     ALWAN_TABLE_IDT_TRAINING_PATCHES     = 190,
-    ALWAN_TABLE_IDT_TRAINING_SIZE        = 190 * 81
+    ALWAN_TABLE_IDT_TRAINING_SIZE        = 190 * 81,
+    ALWAN_TABLE_CAMERA_BASIS_COMPONENTS  = 6,
+    ALWAN_TABLE_CAMERA_BASIS_SIZE        = 3 * 6 * 81
 };
 
 /* ---- camera_rawtoaces -- rank 2, 52 x (81 x RGB), INTEGER row ----
@@ -632,6 +634,16 @@ ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_idt_training_190, ALWAN_TABLE_IDT_TRAINI
  *         Academy's variant, the tungsten source of the rawtoaces illuminant bank. */
 #if ALWAN_TABLE_ISO7589_TUNGSTEN
 ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_iso7589_tungsten, ALWAN_TABLE_RAWTOACES_BANDS)
+#endif
+
+/* ---- camera_basis_rawtoaces -- rank 1, 3 x 6 x 81, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata/data/camera_basis.py, colour-science PCA_Jiang2013 over
+ *         the 52 rawtoaces-data cameras above: per channel, the six leading
+ *         eigenvectors of the peak-normalised sensitivities. Channel-major, then
+ *         component, then wavelength. Read by alwan_camera_sensitivities_from_chart. */
+#if ALWAN_TABLE_CAMERA_BASIS
+ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_camera_basis_rawtoaces, ALWAN_TABLE_CAMERA_BASIS_SIZE)
 #endif
 
 /* ================================================================

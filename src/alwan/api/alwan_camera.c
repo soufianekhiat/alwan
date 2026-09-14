@@ -1040,3 +1040,196 @@ alwan_status alwan_camera_rgb_to_aces2065_1_f32_map_interleave(alwan_f32 *out, s
     return ALWAN_OK;
 }
 #endif /* ALWAN_WITH_F32 */
+
+/* ================================================================
+ * Sensitivity recovery from a chart: Jiang, Liu, Gu and Suesstrunk 2013
+ *
+ * A camera photographs a chart of known reflectances under a known illuminant. Each
+ * channel's sensitivity is taken as a combination of k basis vectors, and the
+ * weights are the least-squares fit of the patch responses:
+ *
+ *     rgb_c = R diag(S) W_c x_c,    sensitivity_c = W_c x_c
+ *
+ * The basis is alwan's own, the principal components of the 52 rawtoaces-data
+ * cameras, so recovery works for a camera that was never measured. The three
+ * channels are scaled together so the largest value is 1, as colour-science does.
+ * ================================================================ */
+
+#if ALWAN_TABLE_CAMERA_BASIS
+/* Least squares by Householder QR: A is m x n row-major, m >= n; A and b are destroyed. */
+static int alwan__camera_lsq(double *A, size_t m, size_t n, double *b, double *x) {
+    size_t k, i, j;
+    for (k = 0; k < n; k++) {
+        double norm2 = 0.0, norm, alpha, vk, vtv;
+        for (i = k; i < m; i++) norm2 += A[i * n + k] * A[i * n + k];
+        norm = ALWAN_SQRT(norm2);
+        if (!(norm > 0.0)) return 0;
+        alpha = A[k * n + k] > 0.0 ? -norm : norm;
+        vk = A[k * n + k] - alpha;
+        vtv = vk * vk + (norm2 - A[k * n + k] * A[k * n + k]);
+        if (!(vtv > 0.0)) return 0;
+        for (j = k + 1; j < n; j++) {
+            double s = vk * A[k * n + j];
+            double f;
+            for (i = k + 1; i < m; i++) s += A[i * n + k] * A[i * n + j];
+            f = 2.0 * s / vtv;
+            A[k * n + j] -= f * vk;
+            for (i = k + 1; i < m; i++) A[i * n + j] -= f * A[i * n + k];
+        }
+        {
+            double s = vk * b[k];
+            double f;
+            for (i = k + 1; i < m; i++) s += A[i * n + k] * b[i];
+            f = 2.0 * s / vtv;
+            b[k] -= f * vk;
+            for (i = k + 1; i < m; i++) b[i] -= f * A[i * n + k];
+        }
+        A[k * n + k] = alpha;
+    }
+    for (k = n; k-- > 0;) {
+        double s = b[k];
+        for (j = k + 1; j < n; j++) s -= A[k * n + j] * x[j];
+        x[k] = s / A[k * n + k];
+    }
+    return 1;
+}
+#endif
+
+static alwan_status alwan__sensitivities_from_chart(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b,
+                                                    alwan_f64 const *rgb, size_t rgb_stride,
+                                                    alwan_spd_f64 const *refl, size_t patches,
+                                                    alwan_spd_f64 const *ill, size_t k, alwan_ctx *ctx) {
+    size_t p;
+    if (!spd_r || !spd_g || !spd_b || !rgb || !refl || !ill || !ill->values || ill->count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    for (p = 0; p < patches; p++) {
+        if (!refl[p].values || refl[p].count == 0) return ALWAN_E_INVALID;
+    }
+#if !ALWAN_TABLE_CAMERA_BASIS
+    (void)rgb_stride; (void)k; (void)ctx;
+    return ALWAN_E_NODATA;
+#else
+    {
+        size_t const n = ALWAN_TABLE_RAWTOACES_BANDS;
+        size_t const comps = ALWAN_TABLE_CAMERA_BASIS_COMPONENTS;
+        alwan_spd_f64 *out[3];
+        double *RS, *A, *b, *x, *X, peak = 0.0;
+        alwan_status st = ALWAN_OK;
+        size_t i, j, c;
+        if (k == 0) k = comps;
+        if (k > comps || patches < k) {
+            return ALWAN_E_INVALID;
+        }
+        RS = (double *)ALWAN_ALLOC((patches * n + patches * k + patches + k + 3 * n) * sizeof(double), sizeof(double));
+        if (!RS) return ALWAN_E_NOMEM;
+        A = RS + patches * n;
+        b = A + patches * k;
+        x = b + patches;
+        X = x + k;
+        for (i = 0; i < n; i++) {
+            double const wl = 380.0 + 5.0 * (double)i;
+            double const s = alwan__spd_at(ill, wl, 1);
+            for (p = 0; p < patches; p++) RS[p * n + i] = alwan__spd_at(&refl[p], wl, 1) * s;
+        }
+        for (c = 0; c < 3 && st == ALWAN_OK; c++) {
+            for (p = 0; p < patches; p++) {
+                alwan_f64 const *px = (alwan_f64 const *)((char const *)rgb + p * rgb_stride);
+                for (j = 0; j < k; j++) {
+                    double acc = 0.0;
+                    for (i = 0; i < n; i++) {
+                        acc += RS[p * n + i] * alwan_table1d_row_f64_v(alwan_table_camera_basis_rawtoaces_f64,
+                            ALWAN_TABLE_CAMERA_BASIS_SIZE, (int)((c * comps + j) * n + i));
+                    }
+                    A[p * k + j] = acc;
+                }
+                b[p] = px[c];
+            }
+            if (!alwan__camera_lsq(A, patches, k, b, x)) {
+                st = ALWAN_E_RANGE;
+                break;
+            }
+            for (i = 0; i < n; i++) {
+                double acc = 0.0;
+                for (j = 0; j < k; j++) {
+                    acc += alwan_table1d_row_f64_v(alwan_table_camera_basis_rawtoaces_f64,
+                        ALWAN_TABLE_CAMERA_BASIS_SIZE, (int)((c * comps + j) * n + i)) * x[j];
+                }
+                X[c * n + i] = acc;
+                if (acc > peak) peak = acc;
+            }
+        }
+        if (st == ALWAN_OK && !(peak > 0.0)) st = ALWAN_E_RANGE;
+        out[0] = spd_r; out[1] = spd_g; out[2] = spd_b;
+        for (c = 0; c < 3 && st == ALWAN_OK; c++) {
+            st = alwan_spd_create_f64(out[c], 380.0, 780.0, n, ctx);
+            if (st != ALWAN_OK) {
+                while (c > 0) { c--; alwan_spd_destroy_f64(out[c], ctx); }
+                break;
+            }
+            for (i = 0; i < n; i++) out[c]->values[i] = X[c * n + i] / peak;
+        }
+        ALWAN_FREE(RS);
+        return st;
+    }
+#endif
+}
+
+#if ALWAN_WITH_F64_FACADE
+alwan_status alwan_camera_sensitivities_from_chart_f64(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b,
+                                                       alwan_f64 const *camera_rgb, size_t rgb_stride,
+                                                       alwan_spd_f64 const *reflectances, size_t patch_count,
+                                                       alwan_spd_f64 const *illuminant, size_t basis_components,
+                                                       alwan_ctx *ctx) {
+    return alwan__sensitivities_from_chart(spd_r, spd_g, spd_b, camera_rgb, rgb_stride, reflectances, patch_count,
+                                           illuminant, basis_components, ctx);
+}
+#endif
+
+#if ALWAN_WITH_F32
+alwan_status alwan_camera_sensitivities_from_chart_f32(alwan_spd_f32 *spd_r, alwan_spd_f32 *spd_g, alwan_spd_f32 *spd_b,
+                                                       alwan_f32 const *camera_rgb, size_t rgb_stride,
+                                                       alwan_spd_f32 const *reflectances, size_t patch_count,
+                                                       alwan_spd_f32 const *illuminant, size_t basis_components,
+                                                       alwan_ctx *ctx) {
+    alwan_spd_f64 *refl = NULL;
+    alwan_spd_f64 ill = { 0 };
+    alwan_spd_f64 out[3] = { { 0 } };
+    alwan_spd_f32 *dst[3];
+    alwan_f64 *rgb = NULL;
+    alwan_status st = ALWAN_OK;
+    size_t p, made = 0;
+    int c;
+    if (!spd_r || !spd_g || !spd_b || !camera_rgb || !reflectances || !illuminant || patch_count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    refl = (alwan_spd_f64 *)ALWAN_ALLOC(patch_count * sizeof(alwan_spd_f64), sizeof(double));
+    rgb = (alwan_f64 *)ALWAN_ALLOC(patch_count * 3 * sizeof(alwan_f64), sizeof(double));
+    if (!refl || !rgb) st = ALWAN_E_NOMEM;
+    for (p = 0; p < patch_count && st == ALWAN_OK; p++) {
+        alwan_f32 const *px = (alwan_f32 const *)((char const *)camera_rgb + p * rgb_stride);
+        rgb[3 * p + 0] = (alwan_f64)px[0];
+        rgb[3 * p + 1] = (alwan_f64)px[1];
+        rgb[3 * p + 2] = (alwan_f64)px[2];
+        st = alwan__spd_widen(&refl[p], &reflectances[p], ctx);
+        if (st == ALWAN_OK) made++;
+    }
+    if (st == ALWAN_OK) st = alwan__spd_widen(&ill, illuminant, ctx);
+    if (st == ALWAN_OK) {
+        st = alwan__sensitivities_from_chart(&out[0], &out[1], &out[2], rgb, 3 * sizeof(alwan_f64), refl,
+                                             patch_count, &ill, basis_components, ctx);
+        alwan_spd_destroy_f64(&ill, ctx);
+        if (st == ALWAN_OK) {
+            dst[0] = spd_r; dst[1] = spd_g; dst[2] = spd_b;
+            for (c = 0; c < 3; c++) {
+                if (st == ALWAN_OK) st = alwan__spd_narrow(dst[c], &out[c], ctx);
+                alwan_spd_destroy_f64(&out[c], ctx);
+            }
+        }
+    }
+    for (p = 0; p < made; p++) alwan_spd_destroy_f64(&refl[p], ctx);
+    if (refl) ALWAN_FREE(refl);
+    if (rgb) ALWAN_FREE(rgb);
+    return st;
+}
+#endif /* ALWAN_WITH_F32 */
