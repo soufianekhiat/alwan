@@ -149,6 +149,8 @@ EXPORTS
     alwan_camera_rgb_to_aces2065_1_f64_map_interleave
     alwan_camera_sensitivities_f32
     alwan_camera_sensitivities_f64
+    alwan_camera_sensitivities_from_chart_f32
+    alwan_camera_sensitivities_from_chart_f64
     alwan_cat_matrix_f32
     alwan_cat_matrix_f64
     alwan_cat_zhai2018_f32
