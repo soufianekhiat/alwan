@@ -165,6 +165,10 @@ EXPORTS
     alwan_cct_robertson_xy_f64
     alwan_cct_to_xy_kang_f32
     alwan_cct_to_xy_kang_f64
+    alwan_cfa_bayer_demosaic_f32
+    alwan_cfa_bayer_demosaic_f64
+    alwan_cfa_bayer_mosaic_f32
+    alwan_cfa_bayer_mosaic_f64
     alwan_chart_destroy_f32
     alwan_chart_destroy_f64
     alwan_chart_get_source_f32
