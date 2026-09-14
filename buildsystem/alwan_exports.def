@@ -90,6 +90,10 @@ EXPORTS
     alwan_atd95_forward_f64
     alwan_atmosphere_params_default_f32
     alwan_atmosphere_params_default_f64
+    alwan_average_illuminance_f32
+    alwan_average_illuminance_f64
+    alwan_average_luminance_f32
+    alwan_average_luminance_f64
     alwan_bake_1dlut_f32
     alwan_bake_1dlut_f64
     alwan_bake_2dlut_f32
@@ -272,6 +276,10 @@ EXPORTS
     alwan_cqs_calculate_f32
     alwan_cqs_calculate_f64
     alwan_create
+    alwan_crf_debevec1997_f32
+    alwan_crf_debevec1997_f64
+    alwan_crf_samples_grossberg2003_f32
+    alwan_crf_samples_grossberg2003_f64
     alwan_cri_ra_f32
     alwan_cri_ra_f64
     alwan_csf_barten1999_f32
@@ -406,20 +414,36 @@ EXPORTS
     alwan_din99_to_lab_f64_map_planar
     alwan_din99_to_lab_map_interleave_ex
     alwan_din99_to_lab_map_planar_ex
+    alwan_dng_camera_neutral_to_xy_f32
+    alwan_dng_camera_neutral_to_xy_f64
+    alwan_dng_camera_to_xyz_matrix_f32
+    alwan_dng_camera_to_xyz_matrix_f64
+    alwan_dng_interpolate_matrix_f32
+    alwan_dng_interpolate_matrix_f64
+    alwan_dng_xy_to_camera_neutral_f32
+    alwan_dng_xy_to_camera_neutral_f64
+    alwan_dng_xyz_to_camera_matrix_f32
+    alwan_dng_xyz_to_camera_matrix_f64
     alwan_dominant_wavelength_f32
     alwan_dominant_wavelength_f64
     alwan_eotf_apply_f32
     alwan_eotf_apply_f64
     alwan_excitation_purity_f32
     alwan_excitation_purity_f64
+    alwan_exposure_index_f32
+    alwan_exposure_index_f64
     alwan_exposure_tonemap_f32
     alwan_exposure_tonemap_f64
+    alwan_exposure_value_100_f32
+    alwan_exposure_value_100_f64
     alwan_extrapolate_f32
     alwan_extrapolate_f64
     alwan_float_to_half_f32
     alwan_float_to_half_f64
     alwan_float_to_uint_f32
     alwan_float_to_uint_f64
+    alwan_focal_plane_exposure_f32
+    alwan_focal_plane_exposure_f64
     alwan_gain_map_apply_f32_map_interleave
     alwan_gain_map_apply_f64_map_interleave
     alwan_gain_map_encode_f32_map_interleave
@@ -486,6 +510,10 @@ EXPORTS
     alwan_hdr_ipt_to_xyz_f64_map_planar
     alwan_hdr_ipt_to_xyz_map_interleave_ex
     alwan_hdr_ipt_to_xyz_map_planar_ex
+    alwan_hdr_merge_f32_map_interleave
+    alwan_hdr_merge_f64_map_interleave
+    alwan_hdr_merge_weight_f32
+    alwan_hdr_merge_weight_f64
     alwan_hellwig2022_forward_f32
     alwan_hellwig2022_forward_f64
     alwan_hellwig2022_inverse_f32
@@ -496,6 +524,8 @@ EXPORTS
     alwan_hero_wavelength_sample_f64
     alwan_hero_wavelength_to_xyz_f32
     alwan_hero_wavelength_to_xyz_f64
+    alwan_highlights_recovery_blend_f32_map_interleave
+    alwan_highlights_recovery_blend_f64_map_interleave
     alwan_hlc_to_lch_f32
     alwan_hlc_to_lch_f64
     alwan_hlg_ootf_f32
@@ -652,6 +682,8 @@ EXPORTS
     alwan_ihls_to_rgb_f64_map_planar
     alwan_ihls_to_rgb_map_interleave_ex
     alwan_ihls_to_rgb_map_planar_ex
+    alwan_illuminance_to_exposure_value_f32
+    alwan_illuminance_to_exposure_value_f64
     alwan_illuminant_white_point_f32
     alwan_illuminant_white_point_f64
     alwan_image_convert_f32
@@ -799,6 +831,8 @@ EXPORTS
     alwan_linear_srgb_to_hsv_map_planar_ex
     alwan_llab_forward_f32
     alwan_llab_forward_f64
+    alwan_luminance_to_exposure_value_f32
+    alwan_luminance_to_exposure_value_f64
     alwan_luminous_efficiency_f32
     alwan_luminous_efficiency_f64
     alwan_lut1d_sample_f32
@@ -920,6 +954,8 @@ EXPORTS
     alwan_osa_ucs_to_xyz_f64_map_planar
     alwan_osa_ucs_to_xyz_map_interleave_ex
     alwan_osa_ucs_to_xyz_map_planar_ex
+    alwan_photometric_exposure_scale_factor_lagarde2014_f32
+    alwan_photometric_exposure_scale_factor_lagarde2014_f64
     alwan_photopic_luminance_f32
     alwan_photopic_luminance_f64
     alwan_picture_form_evidence_f32
@@ -1177,6 +1213,8 @@ EXPORTS
     alwan_rlab_forward_f64
     alwan_rlab_inverse_f32
     alwan_rlab_inverse_f64
+    alwan_saturation_based_speed_focal_plane_exposure_f32
+    alwan_saturation_based_speed_focal_plane_exposure_f64
     alwan_scatter3_f32
     alwan_scatter3_f64
     alwan_scotopic_luminance_f32
