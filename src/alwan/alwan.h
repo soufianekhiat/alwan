@@ -2239,6 +2239,40 @@ alwan_status alwan_highlights_recovery_blend_f64_map_interleave(alwan_f64 *out, 
 alwan_status alwan_highlights_recovery_blend_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_rgb_f32 const *multipliers, alwan_f32 threshold);
 
 /* ----------------------------------------------------------------
+ * Bayer demosaicing
+ *
+ * A Bayer colour filter array records one channel per photosite. Demosaicing
+ * rebuilds the other two. Input is a linear, black-subtracted CFA plane, one value
+ * per pixel; output is camera RGB, three values per pixel. Row strides are in bytes.
+ * Decoding raw files is out of scope (LibRaw, the DNG SDK). Matches colour-demosaicing
+ * (colour_demosaicing.bayer), borders included. The images must be at least 2 x 2.
+ * ---------------------------------------------------------------- */
+
+/* The colour of the top-left 2 x 2 block, read row by row. */
+typedef enum {
+    ALWAN_CFA_RGGB = 0,
+    ALWAN_CFA_BGGR = 1,
+    ALWAN_CFA_GRBG = 2,
+    ALWAN_CFA_GBRG = 3
+} alwan_cfa_pattern;
+
+typedef enum {
+    ALWAN_DEMOSAIC_BILINEAR            = 0, /* each channel averaged over its own sites */
+    ALWAN_DEMOSAIC_MALVAR2004          = 1, /* Malvar, He and Cutler: gradient-corrected linear filters */
+    ALWAN_DEMOSAIC_MENON2007           = 2, /* Menon, Andriani and Calvagno: directional filtering with an
+                                             * a posteriori decision (DDFAPD), with its refining step */
+    ALWAN_DEMOSAIC_MENON2007_NO_REFINE = 3  /* the same, without the refining step */
+} alwan_demosaic_method;
+
+/* The mosaic an RGB image would record: each site keeps its layout's channel. */
+alwan_status alwan_cfa_bayer_mosaic_f64(alwan_f64 *cfa_out, size_t cfa_row_stride, alwan_f64 const *rgb, size_t rgb_row_stride, size_t width, size_t height, alwan_cfa_pattern pattern);
+alwan_status alwan_cfa_bayer_mosaic_f32(alwan_f32 *cfa_out, size_t cfa_row_stride, alwan_f32 const *rgb, size_t rgb_row_stride, size_t width, size_t height, alwan_cfa_pattern pattern);
+
+/* Demosaic a Bayer plane into RGB. */
+alwan_status alwan_cfa_bayer_demosaic_f64(alwan_f64 *rgb_out, size_t rgb_row_stride, alwan_f64 const *cfa, size_t cfa_row_stride, size_t width, size_t height, alwan_cfa_pattern pattern, alwan_demosaic_method method);
+alwan_status alwan_cfa_bayer_demosaic_f32(alwan_f32 *rgb_out, size_t rgb_row_stride, alwan_f32 const *cfa, size_t cfa_row_stride, size_t width, size_t height, alwan_cfa_pattern pattern, alwan_demosaic_method method);
+
+/* ----------------------------------------------------------------
  * Spectral Shape Descriptors
  * ---------------------------------------------------------------- */
 
