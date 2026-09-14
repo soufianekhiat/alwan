@@ -581,6 +581,60 @@ ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_ssi_spectral_weights, ALWAN_TABLE_SSI_BI
 #endif
 
 /* ================================================================
+ * HOMED HERE -- spectral camera characterisation
+ * ================================================================ */
+
+/* ---- aces_ricd r/g/b -- rank 1, 471, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata/data/aces_ricd.py, colour-science MSDS_ACES_RICD
+ *         (the Academy's Reference Input Capture Device), 360-830nm at 1nm,
+ *         the grid every SPD table here shares. Read by alwan_spd_to_aces2065_1. */
+#if ALWAN_TABLE_ACES_RICD
+ALWAN_TABLE_EXTERN(alwan_table_aces_ricd_r, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_aces_ricd_g, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_aces_ricd_b, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+
+/* rawtoaces-data (Academy Software Foundation, Apache-2.0; the licence travels
+ * with the values as data/camera_sensitivities/rawtoaces/LICENSE.txt). Every
+ * table below is on rawtoaces' own 380-780nm 5nm grid, 81 samples, and is f64 in
+ * every build: the camera API is an f64 facade, like the light-quality metrics. */
+enum {
+    ALWAN_TABLE_RAWTOACES_BANDS          = 81,
+    ALWAN_TABLE_RAWTOACES_CAMERAS        = 52,
+    ALWAN_TABLE_CAMERA_RAWTOACES_STRIDE  = 81 * 3,
+    ALWAN_TABLE_CAMERA_RAWTOACES_SIZE    = 52 * 81 * 3,
+    ALWAN_TABLE_IDT_TRAINING_PATCHES     = 190,
+    ALWAN_TABLE_IDT_TRAINING_SIZE        = 190 * 81
+};
+
+/* ---- camera_rawtoaces -- rank 2, 52 x (81 x RGB), INTEGER row ----
+ * Reader: alwan_table2d_row_at_{f32,f64}
+ * Source: alwan_dev/gendata/data/rawtoaces.py. One row per camera in the
+ *         generator's pinned CAMERA_ORDER, RGB interleaved per wavelength. A
+ *         camera's index is its row, and rows only ever append, so an index a
+ *         caller stored keeps naming the same camera. */
+#if ALWAN_TABLE_CAMERA_RAWTOACES
+ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_camera_rawtoaces, ALWAN_TABLE_CAMERA_RAWTOACES_SIZE)
+#endif
+
+/* ---- idt_training_190 -- rank 2, 190 x 81, INTEGER row ----
+ * Reader: alwan_table2d_row_at_{f32,f64}
+ * Source: alwan_dev/gendata/data/rawtoaces.py, the rawtoaces 190-patch IDT
+ *         training reflectances, one row per patch. */
+#if ALWAN_TABLE_IDT_TRAINING_190
+ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_idt_training_190, ALWAN_TABLE_IDT_TRAINING_SIZE)
+#endif
+
+/* ---- iso7589_tungsten -- rank 1, 81, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata/data/rawtoaces.py, ISO 7589 studio tungsten in the
+ *         Academy's variant, the tungsten source of the rawtoaces illuminant bank. */
+#if ALWAN_TABLE_ISO7589_TUNGSTEN
+ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_iso7589_tungsten, ALWAN_TABLE_RAWTOACES_BANDS)
+#endif
+
+/* ================================================================
  * STAYS PUT, AND WHY
  *
  * Compiler-unenforceable, so tools/check_table_registry.py checks it: any

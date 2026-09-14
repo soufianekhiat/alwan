@@ -2013,6 +2013,166 @@ alwan_status alwan_spd_camera_sensitivity_f32(alwan_spd_f32 *spd_r, alwan_spd_f3
 alwan_status alwan_xyz_from_spd_camera_f64(alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx);
 alwan_status alwan_xyz_from_spd_camera_f32(alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx);
 
+/* The same integration under its right name. A camera's response is RGB, and
+ * alwan_xyz_from_spd_camera returns it in an alwan_xyz only because of when it was
+ * written; the two return identical numbers. Prefer this one. */
+alwan_status alwan_camera_rgb_from_spd_f64(alwan_rgb_f64 *rgb_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx);
+alwan_status alwan_camera_rgb_from_spd_f32(alwan_rgb_f32 *rgb_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx);
+
+/* ----------------------------------------------------------------
+ * Spectral foundation: observers, generated sources, multispectral images
+ * ---------------------------------------------------------------- */
+
+/* An observer's three functions as SPDs on 360-830 nm at 1 nm, created by the call
+ * and destroyed by the caller: x-bar, y-bar and z-bar, or the L, M and S cone
+ * fundamentals for ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG. ALWAN_E_NODATA when the
+ * observer's table was compiled out (data/alwan_data_tables_config.h). */
+alwan_status alwan_spd_observer_f64(alwan_spd_f64 *x_bar, alwan_spd_f64 *y_bar, alwan_spd_f64 *z_bar, alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_spd_observer_f32(alwan_spd_f32 *x_bar, alwan_spd_f32 *y_bar, alwan_spd_f32 *z_bar, alwan_observer_type observer, alwan_ctx *ctx);
+
+/* CIE daylight: the D-series SPD at a chromaticity, CIE 015:2004, S0 + M1 S1 + M2 S2.
+ * round_m1_m2 non-zero rounds M1 and M2 to three decimals, as CIE 015 does for the
+ * tabulated illuminants and colour-science does by default. The basis is carried on
+ * 360-830 nm at 5 nm and interpolated linearly; a grid reaching outside 360-830 nm is
+ * ALWAN_E_RANGE. For the chromaticity of a nominal temperature use
+ * alwan_d_series_illuminant_xy, scaling the CIE illuminants' nominal CCT by
+ * 1.4388 / 1.4380 (D65 is 6504 K). Creates the SPD. */
+alwan_status alwan_spd_cie_daylight_f64(alwan_spd_f64 *out, alwan_vec2_f64 const *xy, int round_m1_m2, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx);
+alwan_status alwan_spd_cie_daylight_f32(alwan_spd_f32 *out, alwan_vec2_f32 const *xy, int round_m1_m2, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx);
+
+/* A Gaussian source: peak 1 at peak_nm, fwhm_nm wide at half maximum. Creates the SPD. */
+alwan_status alwan_spd_gaussian_f64(alwan_spd_f64 *out, alwan_f64 peak_nm, alwan_f64 fwhm_nm, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx);
+alwan_status alwan_spd_gaussian_f32(alwan_spd_f32 *out, alwan_f32 peak_nm, alwan_f32 fwhm_nm, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx);
+
+/* LEDs by Ohno (2005): each emitter is (g + 2 g^5) / 3 with
+ * g = exp(-((lambda - peak) / half_width)^2), and the SPD is their sum weighted by
+ * peak_power (NULL for 1 each). led_count = 1 is a single LED. Creates the SPD. */
+alwan_status alwan_spd_led_ohno2005_f64(alwan_spd_f64 *out, alwan_f64 const *peak_nm, alwan_f64 const *half_width_nm, alwan_f64 const *peak_power, size_t led_count, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx);
+alwan_status alwan_spd_led_ohno2005_f32(alwan_spd_f32 *out, alwan_f32 const *peak_nm, alwan_f32 const *half_width_nm, alwan_f32 const *peak_power, size_t led_count, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx);
+
+/* Integration weights for multispectral images.
+ *
+ * weights_out receives 3 x band_count values, row-major, such that for a spectrum of
+ * band_count samples uniformly on [wavelength_min, wavelength_max]
+ *
+ *     channel_c = sum_i weights_out[c * band_count + i] * sample_i
+ *
+ * is alwan_xyz_from_spd's integral of that spectrum against the three responses under
+ * the illuminant (NULL for none): same interpolation of the responses (linear, edges
+ * held) and the illuminant (linear, zero outside), same trapezoid or Simpson rule. The
+ * responses are any three SPDs, an observer or a camera. normalize non-zero scales every
+ * row so a perfect reflector, all ones, gives channel 1 exactly 1: Y = 1 for an observer.
+ * Compute the weights once per illuminant and apply them to every pixel with
+ * alwan_spectral_to_tristimulus_{T}_map_interleave. */
+alwan_status alwan_spectral_weights_f64(alwan_f64 *weights_out, size_t band_count, alwan_f64 wavelength_min, alwan_f64 wavelength_max, alwan_spd_f64 const *illuminant, alwan_spd_f64 const *response_0, alwan_spd_f64 const *response_1, alwan_spd_f64 const *response_2, alwan_integrate_method method, int normalize);
+alwan_status alwan_spectral_weights_f32(alwan_f32 *weights_out, size_t band_count, alwan_f32 wavelength_min, alwan_f32 wavelength_max, alwan_spd_f32 const *illuminant, alwan_spd_f32 const *response_0, alwan_spd_f32 const *response_1, alwan_spd_f32 const *response_2, alwan_integrate_method method, int normalize);
+
+/* The same weights for a standard observer. */
+alwan_status alwan_spectral_weights_observer_f64(alwan_f64 *weights_out, size_t band_count, alwan_f64 wavelength_min, alwan_f64 wavelength_max, alwan_spd_f64 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, int normalize, alwan_ctx *ctx);
+alwan_status alwan_spectral_weights_observer_f32(alwan_f32 *weights_out, size_t band_count, alwan_f32 wavelength_min, alwan_f32 wavelength_max, alwan_spd_f32 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, int normalize, alwan_ctx *ctx);
+
+/* A multispectral buffer to three channels: in holds band_count samples per pixel
+ * (in_stride bytes between pixels), out three values per pixel. Sums run left to right,
+ * so the result is the same in every build. */
+alwan_status alwan_spectral_to_tristimulus_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t band_count, alwan_f64 const *weights);
+alwan_status alwan_spectral_to_tristimulus_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t band_count, alwan_f32 const *weights);
+
+/* ----------------------------------------------------------------
+ * Spectral camera characterisation
+ *
+ * The camera pack is rawtoaces-data (Academy Software Foundation, Apache-2.0,
+ * data/camera_sensitivities/rawtoaces/LICENSE.txt): 52 cameras on 380-780 nm at 5 nm,
+ * plus the 190-patch IDT training set and ISO 7589 studio tungsten. A camera's index
+ * is stable: new cameras are appended. Everything here is compiled out with
+ * ALWAN_TABLES_CAMERAS=0, and then reports ALWAN_E_NODATA (counts report 0).
+ *
+ * The f32 entry points widen to f64, compute and narrow, like the CCM fits.
+ * ---------------------------------------------------------------- */
+
+/* How many cameras the pack carries; 0 when it was compiled out. */
+size_t alwan_camera_count(void);
+
+/* A camera's index by make and model, ASCII case-insensitive. Alternative model and
+ * maker names from rawtoaces' alias table are accepted ("Canon" "EOS 400D" is the
+ * Digital Rebel XTi). ALWAN_E_NODATA when no camera matches. */
+alwan_status alwan_camera_find(size_t *index_out, char const *make, char const *model);
+
+/* The make and model of a camera; the strings are static. ALWAN_E_RANGE past the end. */
+alwan_status alwan_camera_info(char const **make_out, char const **model_out, size_t index);
+
+/* A camera's R, G, B spectral sensitivities as three SPDs on 380-780 nm at 5 nm,
+ * relative units. Creates the SPDs. */
+alwan_status alwan_camera_sensitivities_f64(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b, size_t index, alwan_ctx *ctx);
+alwan_status alwan_camera_sensitivities_f32(alwan_spd_f32 *spd_r, alwan_spd_f32 *spd_g, alwan_spd_f32 *spd_b, size_t index, alwan_ctx *ctx);
+
+/* The IDT training reflectances: how many, and one as an SPD on 380-780 nm at 5 nm. */
+size_t alwan_idt_training_count(void);
+alwan_status alwan_spd_idt_training_f64(alwan_spd_f64 *out, size_t patch_index, alwan_ctx *ctx);
+alwan_status alwan_spd_idt_training_f32(alwan_spd_f32 *out, size_t patch_index, alwan_ctx *ctx);
+
+/* ISO 7589 studio tungsten, the Academy's variant, on 380-780 nm at 5 nm. */
+alwan_status alwan_spd_iso7589_tungsten_f64(alwan_spd_f64 *out, alwan_ctx *ctx);
+alwan_status alwan_spd_iso7589_tungsten_f32(alwan_spd_f32 *out, alwan_ctx *ctx);
+
+/* White balance multipliers of a camera under an illuminant:
+ * 1 / sum(sensitivity * illuminant) per channel, scaled so the smallest is 1. The
+ * three sensitivities must share one grid; the illuminant is read on it. */
+alwan_status alwan_idt_white_balance_f64(alwan_rgb_f64 *white_balance_out, alwan_spd_f64 const *sens_r, alwan_spd_f64 const *sens_g, alwan_spd_f64 const *sens_b, alwan_spd_f64 const *illuminant);
+alwan_status alwan_idt_white_balance_f32(alwan_rgb_f32 *white_balance_out, alwan_spd_f32 const *sens_r, alwan_spd_f32 const *sens_g, alwan_spd_f32 const *sens_b, alwan_spd_f32 const *illuminant);
+
+/* What the IDT fit minimises. LAB is rawtoaces v1: the norm of the CIE Lab
+ * differences, against the ACES white, over every training patch. JZAZBZ is the sum of
+ * per-patch Jzazbz distances (colour-science's optimisation_factory_Jzazbz). */
+typedef enum {
+    ALWAN_IDT_OBJECTIVE_LAB    = 0,
+    ALWAN_IDT_OBJECTIVE_JZAZBZ = 1
+} alwan_idt_objective;
+
+/* IDT options. Zero-initialised is the default: rawtoaces v1's Lab objective, the
+ * training XYZ adapted to the ACES white with CAT02, and a 500-iteration budget. */
+typedef struct {
+    alwan_idt_objective objective;
+    int skip_chromatic_adaptation;   /* non-zero: leave the training XYZ under the illuminant's white */
+    int max_iterations;              /* 0: 500 */
+} alwan_idt_params;
+
+void alwan_idt_params_init(alwan_idt_params *params);
+
+/* The ACES input transform of a camera from its spectral sensitivities, ACES P-2013-001
+ * Method A as rawtoaces v1 computes it.
+ *
+ * The training reflectances (NULL for the built-in 190 patches) are rendered under the
+ * illuminant, normalised by the camera's peak channel, into white-balanced camera RGB
+ * and, through the CIE 1931 observer, into XYZ adapted to the ACES white. idt_out is the
+ * 3x3 from white-balanced camera RGB to ACES2065-1 whose rows sum to 1, so camera white
+ * lands on ACES white, fitted by BFGS on the chosen objective; white_balance_out is the
+ * multipliers. Apply both with alwan_camera_rgb_to_aces2065_1_{T}_map_interleave.
+ *
+ * The solve runs on the sensitivities' own grid, which must be shared by all three; the
+ * illuminant, training spectra and observer are read on it. rawtoaces-data and
+ * colour-science both use 380-780 nm at 5 nm. params may be NULL for the defaults.
+ * Agrees with colour.matrix_idt to the precision its optimiser reaches, about 1e-8. */
+alwan_status alwan_idt_matrix_f64(alwan_mat3x3_f64 *idt_out, alwan_rgb_f64 *white_balance_out, alwan_spd_f64 const *sens_r, alwan_spd_f64 const *sens_g, alwan_spd_f64 const *sens_b, alwan_spd_f64 const *illuminant, alwan_spd_f64 const *training, size_t training_count, alwan_idt_params const *params, alwan_ctx *ctx);
+alwan_status alwan_idt_matrix_f32(alwan_mat3x3_f32 *idt_out, alwan_rgb_f32 *white_balance_out, alwan_spd_f32 const *sens_r, alwan_spd_f32 const *sens_g, alwan_spd_f32 const *sens_b, alwan_spd_f32 const *illuminant, alwan_spd_f32 const *training, size_t training_count, alwan_idt_params const *params, alwan_ctx *ctx);
+
+/* Camera RGB to ACES2065-1 with an IDT: white balance normalised so its smallest
+ * multiplier is 1, clip at 1 when clip is non-zero (keeps saturated sensor values
+ * achromatic), the IDT matrix, then the exposure factor (1 for none; the value that puts
+ * an 18 % grey at 0.18). colour.camera_RGB_to_ACES2065_1. */
+alwan_status alwan_camera_rgb_to_aces2065_1_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_mat3x3_f64 const *idt, alwan_rgb_f64 const *white_balance, alwan_f64 exposure, int clip);
+alwan_status alwan_camera_rgb_to_aces2065_1_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_mat3x3_f32 const *idt, alwan_rgb_f32 const *white_balance, alwan_f32 exposure, int clip);
+
+/* Spectral radiance (or a reflectance, with the illuminant it is lit by) to ACES2065-1
+ * relative exposure values through the Academy's Reference Input Capture Device, with
+ * the ACES 0.5 % flare. illuminant NULL is D65. Unless skip_chromatic_adaptation is
+ * set, the result is adapted from the illuminant's white to the ACES white with CAT02.
+ * The SPDs are read on the RICD's 360-830 nm 1 nm grid, linearly, edges held.
+ * colour.sd_to_aces_relative_exposure_values, with one difference recorded in
+ * docs/alwan_decisions.md: alwan takes the illuminant's white over 360-830 nm where
+ * colour-science trims to 360-780 nm. */
+alwan_status alwan_spd_to_aces2065_1_f64(alwan_rgb_f64 *out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, int skip_chromatic_adaptation, alwan_ctx *ctx);
+alwan_status alwan_spd_to_aces2065_1_f32(alwan_rgb_f32 *out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, int skip_chromatic_adaptation, alwan_ctx *ctx);
+
 /* ----------------------------------------------------------------
  * Spectral Shape Descriptors
  * ---------------------------------------------------------------- */

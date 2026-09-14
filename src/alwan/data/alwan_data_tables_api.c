@@ -1521,5 +1521,72 @@ alwan_f64 const alwan_table_ssi_spectral_weights_f64[ALWAN_TABLE_SSI_BIN_COUNT] 
 
 #endif
 
+#if ALWAN_TABLE_ACES_RICD
+/* ---- alwan_table_aces_ricd_r / _g / _b ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: camera_sensitivities/aces_ricd_{r,g,b}.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_aces_ricd_r_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "camera_sensitivities/aces_ricd_r.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_aces_ricd_r_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "camera_sensitivities/aces_ricd_r.csv"
+};
+#endif
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_aces_ricd_g_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "camera_sensitivities/aces_ricd_g.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_aces_ricd_g_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "camera_sensitivities/aces_ricd_g.csv"
+};
+#endif
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_aces_ricd_b_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "camera_sensitivities/aces_ricd_b.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_aces_ricd_b_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "camera_sensitivities/aces_ricd_b.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_CAMERA_RAWTOACES
+/* ---- alwan_table_camera_rawtoaces ----
+ * extent ALWAN_TABLE_CAMERA_RAWTOACES_SIZE. Reader: alwan_table2d_row_at_{f32,f64}
+ * Source: camera_sensitivities/rawtoaces/sensitivities.csv (Apache-2.0) */
+alwan_f64 const alwan_table_camera_rawtoaces_f64[ALWAN_TABLE_CAMERA_RAWTOACES_SIZE] = {
+#include "camera_sensitivities/rawtoaces/sensitivities.csv"
+};
+
+#endif
+
+#if ALWAN_TABLE_IDT_TRAINING_190
+/* ---- alwan_table_idt_training_190 ----
+ * extent ALWAN_TABLE_IDT_TRAINING_SIZE. Reader: alwan_table2d_row_at_{f32,f64}
+ * Source: camera_sensitivities/rawtoaces/training_190.csv (Apache-2.0) */
+alwan_f64 const alwan_table_idt_training_190_f64[ALWAN_TABLE_IDT_TRAINING_SIZE] = {
+#include "camera_sensitivities/rawtoaces/training_190.csv"
+};
+
+#endif
+
+#if ALWAN_TABLE_ISO7589_TUNGSTEN
+/* ---- alwan_table_iso7589_tungsten ----
+ * extent ALWAN_TABLE_RAWTOACES_BANDS. Reader: alwan_table1d_row_{f32,f64}
+ * Source: camera_sensitivities/rawtoaces/iso7589_tungsten.csv (Apache-2.0) */
+alwan_f64 const alwan_table_iso7589_tungsten_f64[ALWAN_TABLE_RAWTOACES_BANDS] = {
+#include "camera_sensitivities/rawtoaces/iso7589_tungsten.csv"
+};
+
+#endif
+
 
 ALWAN_DIAG_POP

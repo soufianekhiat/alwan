@@ -1206,3 +1206,309 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_analyze_shape)(ALWAN_CORE_SPD_SHAPE *sha
 
     return ALWAN_OK;
 }
+
+/* ================================================================
+ * Spectral foundation: observers as SPDs, SPD generators, and the
+ * weights that integrate a whole multispectral image at once.
+ * ================================================================ */
+
+/* The observer's three functions as SPDs on the 360-830 nm 1 nm grid. */
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_observer)(ALWAN_CORE_SPD *x_bar, ALWAN_CORE_SPD *y_bar,
+                                                  ALWAN_CORE_SPD *z_bar, alwan_observer_type observer,
+                                                  alwan_ctx *ctx) {
+    if (!x_bar || !y_bar || !z_bar) {
+        return ALWAN_E_INVALID;
+    }
+    return (alwan_status)ALWAN_CORE_FN(load_observer_cmf)(ctx, observer, x_bar, y_bar, z_bar);
+}
+
+/* Round half to even at three decimals, which is numpy.around(v, 3) and so what
+ * colour-science applies to M1 and M2: scale, round to the nearest integer with
+ * ties to even, unscale. */
+static ALWAN_CORE_T ALWAN_CORE_FN(spd_round3)(ALWAN_CORE_T v) {
+    ALWAN_CORE_T const s = v * ALWAN_CORE_LITERAL(1000.0);
+    ALWAN_CORE_T const f = ALWAN_CORE_FLOOR(s);
+    ALWAN_CORE_T const d = s - f;
+    ALWAN_CORE_T r;
+    if (d > ALWAN_CORE_LITERAL(0.5)) {
+        r = f + ALWAN_CORE_LITERAL(1.0);
+    } else if (d < ALWAN_CORE_LITERAL(0.5)) {
+        r = f;
+    } else {
+        r = (ALWAN_CORE_FLOOR(f * ALWAN_CORE_LITERAL(0.5)) * ALWAN_CORE_LITERAL(2.0) == f)
+            ? f : f + ALWAN_CORE_LITERAL(1.0);
+    }
+    return r / ALWAN_CORE_LITERAL(1000.0);
+}
+
+/* CIE daylight at a chromaticity, CIE 015:2004. The basis S0/S1/S2 is the table the
+ * TM-30 and CRI reference illuminants already use, on 360-830 nm at 5 nm; the SPD is
+ * formed at the basis wavelengths and interpolated linearly between them, which is
+ * colour.sd_CIE_illuminant_D_series followed by a linear align. */
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_cie_daylight)(ALWAN_CORE_SPD *out, ALWAN_CORE_VEC2 const *xy,
+        int round_m1_m2, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count,
+        alwan_ctx *ctx) {
+    if (!out || !xy) {
+        return ALWAN_E_INVALID;
+    }
+    if (!(wavelength_min >= ALWAN_CORE_LITERAL(360.0)) || !(wavelength_max <= ALWAN_CORE_LITERAL(830.0))) {
+        return ALWAN_E_RANGE;
+    }
+#if !ALWAN_TABLE_DAYLIGHT_BASIS
+    (void)round_m1_m2; (void)count; (void)ctx;
+    return ALWAN_E_NODATA;
+#else
+    {
+        ALWAN_CORE_T const x = xy->v[0];
+        ALWAN_CORE_T const y = xy->v[1];
+        ALWAN_CORE_T const m = ALWAN_CORE_LITERAL(0.0241) + ALWAN_CORE_LITERAL(0.2562) * x
+                             - ALWAN_CORE_LITERAL(0.7341) * y;
+        ALWAN_CORE_T m1, m2;
+        alwan_status st;
+        size_t i;
+        if (!(ALWAN_CORE_ABS(m) > ALWAN_CORE_LITERAL(1e-12))) {
+            return ALWAN_E_RANGE;
+        }
+        m1 = (ALWAN_CORE_LITERAL(-1.3515) - ALWAN_CORE_LITERAL(1.7703) * x
+              + ALWAN_CORE_LITERAL(5.9114) * y) / m;
+        m2 = (ALWAN_CORE_LITERAL(0.0300) - ALWAN_CORE_LITERAL(31.4424) * x
+              + ALWAN_CORE_LITERAL(30.0717) * y) / m;
+        if (round_m1_m2) {
+            m1 = ALWAN_CORE_FN(spd_round3)(m1);
+            m2 = ALWAN_CORE_FN(spd_round3)(m2);
+        }
+        st = ALWAN_CORE_FNLIT(alwan_spd_create)(out, wavelength_min, wavelength_max, count, ctx);
+        if (st != ALWAN_OK) {
+            return st;
+        }
+        for (i = 0; i < count; i++) {
+            ALWAN_CORE_T const wl = ALWAN_CORE_FN(spd_wavelength_at)(out, i);
+            ALWAN_CORE_T const p = (wl - ALWAN_CORE_LITERAL(360.0)) / ALWAN_CORE_LITERAL(5.0);
+            int lo = (int)ALWAN_CORE_FLOOR(p);
+            ALWAN_CORE_T f, s_lo, s_hi;
+            if (lo < 0) lo = 0;
+            if (lo > ALWAN_TABLE_QUALITY_SPECTRUM - 2) lo = ALWAN_TABLE_QUALITY_SPECTRUM - 2;
+            f = p - (ALWAN_CORE_T)lo;
+            s_lo = (ALWAN_CORE_T)alwan_table2d_row_at_f64_v(alwan_table_daylight_basis_f64,
+                       ALWAN_TABLE_DAYLIGHT_BASIS_ROWS, ALWAN_TABLE_QUALITY_SPECTRUM, 0, lo)
+                 + m1 * (ALWAN_CORE_T)alwan_table2d_row_at_f64_v(alwan_table_daylight_basis_f64,
+                       ALWAN_TABLE_DAYLIGHT_BASIS_ROWS, ALWAN_TABLE_QUALITY_SPECTRUM, 1, lo)
+                 + m2 * (ALWAN_CORE_T)alwan_table2d_row_at_f64_v(alwan_table_daylight_basis_f64,
+                       ALWAN_TABLE_DAYLIGHT_BASIS_ROWS, ALWAN_TABLE_QUALITY_SPECTRUM, 2, lo);
+            s_hi = (ALWAN_CORE_T)alwan_table2d_row_at_f64_v(alwan_table_daylight_basis_f64,
+                       ALWAN_TABLE_DAYLIGHT_BASIS_ROWS, ALWAN_TABLE_QUALITY_SPECTRUM, 0, lo + 1)
+                 + m1 * (ALWAN_CORE_T)alwan_table2d_row_at_f64_v(alwan_table_daylight_basis_f64,
+                       ALWAN_TABLE_DAYLIGHT_BASIS_ROWS, ALWAN_TABLE_QUALITY_SPECTRUM, 1, lo + 1)
+                 + m2 * (ALWAN_CORE_T)alwan_table2d_row_at_f64_v(alwan_table_daylight_basis_f64,
+                       ALWAN_TABLE_DAYLIGHT_BASIS_ROWS, ALWAN_TABLE_QUALITY_SPECTRUM, 2, lo + 1);
+            out->values[i] = s_lo + f * (s_hi - s_lo);
+        }
+        return ALWAN_OK;
+    }
+#endif
+}
+
+/* A Gaussian source by peak and full width at half maximum. 2 sqrt(2 ln 2) is the
+ * FWHM of a unit-sigma Gaussian. */
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_gaussian)(ALWAN_CORE_SPD *out, ALWAN_CORE_T peak_nm,
+        ALWAN_CORE_T fwhm_nm, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count,
+        alwan_ctx *ctx) {
+    alwan_status st;
+    ALWAN_CORE_T sigma, two_sigma_sq;
+    size_t i;
+    if (!out || !(fwhm_nm > ALWAN_CORE_LITERAL(0.0))) {
+        return ALWAN_E_INVALID;
+    }
+    st = ALWAN_CORE_FNLIT(alwan_spd_create)(out, wavelength_min, wavelength_max, count, ctx);
+    if (st != ALWAN_OK) {
+        return st;
+    }
+    sigma = fwhm_nm / ALWAN_CORE_LITERAL(2.3548200450309493);
+    two_sigma_sq = ALWAN_CORE_LITERAL(2.0) * sigma * sigma;
+    for (i = 0; i < count; i++) {
+        ALWAN_CORE_T const d = ALWAN_CORE_FN(spd_wavelength_at)(out, i) - peak_nm;
+        out->values[i] = ALWAN_CORE_EXP(-(d * d) / two_sigma_sq);
+    }
+    return ALWAN_OK;
+}
+
+/* Ohno 2005 LED model, one or several emitters: each is (g + 2 g^5) / 3 with
+ * g = exp(-((lambda - peak) / half_width)^2), weighted by its peak power. */
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_led_ohno2005)(ALWAN_CORE_SPD *out, ALWAN_CORE_T const *peak_nm,
+        ALWAN_CORE_T const *half_width_nm, ALWAN_CORE_T const *peak_power, size_t led_count,
+        ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count, alwan_ctx *ctx) {
+    alwan_status st;
+    size_t i, k;
+    if (!out || !peak_nm || !half_width_nm || led_count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    for (k = 0; k < led_count; k++) {
+        if (!(half_width_nm[k] > ALWAN_CORE_LITERAL(0.0))) {
+            return ALWAN_E_INVALID;
+        }
+    }
+    st = ALWAN_CORE_FNLIT(alwan_spd_create)(out, wavelength_min, wavelength_max, count, ctx);
+    if (st != ALWAN_OK) {
+        return st;
+    }
+    for (i = 0; i < count; i++) {
+        ALWAN_CORE_T const wl = ALWAN_CORE_FN(spd_wavelength_at)(out, i);
+        ALWAN_CORE_T sum = ALWAN_CORE_LITERAL(0.0);
+        for (k = 0; k < led_count; k++) {
+            ALWAN_CORE_T const u = (wl - peak_nm[k]) / half_width_nm[k];
+            ALWAN_CORE_T const g = ALWAN_CORE_EXP(-(u * u));
+            ALWAN_CORE_T const g2 = g * g;
+            ALWAN_CORE_T const v = (g + ALWAN_CORE_LITERAL(2.0) * (g2 * g2 * g)) / ALWAN_CORE_LITERAL(3.0);
+            sum += v * (peak_power ? peak_power[k] : ALWAN_CORE_LITERAL(1.0));
+        }
+        out->values[i] = sum;
+    }
+    return ALWAN_OK;
+}
+
+/* The coefficient each sample carries in alwan_xyz_from_spd's integrators, so that
+ * the weights below reproduce it: trapezoid, or Simpson's 1/3 rule with a closing
+ * trapezoid when the sample count is even. Multiply by the sample interval. */
+static ALWAN_CORE_T ALWAN_CORE_FN(integration_coefficient)(size_t i, size_t n, alwan_integrate_method method) {
+    if (n == 1) return ALWAN_CORE_LITERAL(1.0);
+    if (method == ALWAN_INTEGRATE_TRAPEZOID || n == 2) {
+        return (i == 0 || i == n - 1) ? ALWAN_CORE_LITERAL(0.5) : ALWAN_CORE_LITERAL(1.0);
+    } else {
+        size_t const m = (n % 2 == 0) ? n - 1 : n;   /* points covered by Simpson */
+        ALWAN_CORE_T c = ALWAN_CORE_LITERAL(0.0);
+        if (i < m) {
+            if (i == 0 || i == m - 1) c = ALWAN_CORE_LITERAL(1.0);
+            else c = (i % 2 == 1) ? ALWAN_CORE_LITERAL(4.0) : ALWAN_CORE_LITERAL(2.0);
+            c /= ALWAN_CORE_LITERAL(3.0);
+        }
+        if (m != n) {
+            if (i == m - 1) c += ALWAN_CORE_LITERAL(0.5);
+            if (i == n - 1) c = ALWAN_CORE_LITERAL(0.5);
+        }
+        return c;
+    }
+}
+
+/* Weights that integrate a band_count-sample spectrum against three responses. */
+alwan_status ALWAN_CORE_FNLIT(alwan_spectral_weights)(ALWAN_CORE_T *weights_out, size_t band_count,
+        ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, ALWAN_CORE_SPD const *illuminant,
+        ALWAN_CORE_SPD const *response_0, ALWAN_CORE_SPD const *response_1, ALWAN_CORE_SPD const *response_2,
+        alwan_integrate_method method, int normalize) {
+    ALWAN_CORE_SPD const *resp[3];
+    ALWAN_CORE_SPD grid;
+    ALWAN_CORE_T dx;
+    size_t i, c;
+    if (!weights_out || !response_0 || !response_1 || !response_2 || band_count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    if (band_count > 1 && !(wavelength_max > wavelength_min)) {
+        return ALWAN_E_INVALID;
+    }
+    if (method != ALWAN_INTEGRATE_TRAPEZOID && method != ALWAN_INTEGRATE_SIMPSON) {
+        return ALWAN_E_INVALID;
+    }
+    resp[0] = response_0; resp[1] = response_1; resp[2] = response_2;
+    for (c = 0; c < 3; c++) {
+        if (!resp[c]->values || resp[c]->count == 0) return ALWAN_E_INVALID;
+    }
+    if (illuminant && (!illuminant->values || illuminant->count == 0)) {
+        return ALWAN_E_INVALID;
+    }
+    /* A view of the band grid, used only for its wavelengths. */
+    grid.values = NULL;
+    grid.wavelength_min = wavelength_min;
+    grid.wavelength_max = wavelength_max;
+    grid.count = band_count;
+    dx = (band_count > 1)
+       ? (wavelength_max - wavelength_min) / (ALWAN_CORE_T)(band_count - 1)
+       : ALWAN_CORE_LITERAL(1.0);
+    for (i = 0; i < band_count; i++) {
+        ALWAN_CORE_T const wl = ALWAN_CORE_FN(spd_wavelength_at)(&grid, i);
+        ALWAN_CORE_T const e = illuminant
+            ? ALWAN_CORE_FN(spd_interpolate)(illuminant, wl, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO)
+            : ALWAN_CORE_LITERAL(1.0);
+        ALWAN_CORE_T const k = ALWAN_CORE_FN(integration_coefficient)(i, band_count, method) * dx;
+        for (c = 0; c < 3; c++) {
+            weights_out[c * band_count + i] = k * e * ALWAN_CORE_FN(spd_interpolate)(
+                resp[c], wl, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT);
+        }
+    }
+    if (normalize) {
+        ALWAN_CORE_T white = ALWAN_CORE_LITERAL(0.0);
+        for (i = 0; i < band_count; i++) white += weights_out[band_count + i];
+        if (!(white > ALWAN_CORE_LITERAL(0.0))) {
+            return ALWAN_E_RANGE;
+        }
+        for (i = 0; i < 3 * band_count; i++) weights_out[i] /= white;
+    }
+    return ALWAN_OK;
+}
+
+/* The same weights for a standard observer, whose functions this loads. */
+alwan_status ALWAN_CORE_FNLIT(alwan_spectral_weights_observer)(ALWAN_CORE_T *weights_out, size_t band_count,
+        ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, ALWAN_CORE_SPD const *illuminant,
+        alwan_observer_type observer, alwan_integrate_method method, int normalize, alwan_ctx *ctx) {
+    ALWAN_CORE_SPD x_bar, y_bar, z_bar;
+    alwan_status st;
+    if (!weights_out || band_count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    st = (alwan_status)ALWAN_CORE_FN(load_observer_cmf)(ctx, observer, &x_bar, &y_bar, &z_bar);
+    if (st != ALWAN_OK) {
+        return st;
+    }
+    st = ALWAN_CORE_FNLIT(alwan_spectral_weights)(weights_out, band_count, wavelength_min, wavelength_max,
+                                                  illuminant, &x_bar, &y_bar, &z_bar, method, normalize);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&x_bar, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&y_bar, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&z_bar, ctx);
+    return st;
+}
+
+#ifndef ALWAN_SPD_MAPNAME
+#  define ALWAN_SPD_MAPNAME_(base, sfx) base##sfx##_map_interleave
+#  define ALWAN_SPD_MAPNAME(base, sfx)  ALWAN_SPD_MAPNAME_(base, sfx)
+#endif
+
+/* A multispectral buffer to three channels: out_c = sum_i weights[c][i] * sample_i,
+ * summed left to right so the result is the same in every build. */
+alwan_status ALWAN_SPD_MAPNAME(alwan_spectral_to_tristimulus, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *out, size_t out_stride, ALWAN_CORE_T const *in, size_t in_stride, size_t count,
+        size_t band_count, ALWAN_CORE_T const *weights) {
+    size_t p, i;
+    if (!out || !in || !weights || band_count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    for (p = 0; p < count; p++) {
+        ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)in + p * in_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
+        ALWAN_CORE_T a0 = ALWAN_CORE_LITERAL(0.0), a1 = ALWAN_CORE_LITERAL(0.0), a2 = ALWAN_CORE_LITERAL(0.0);
+        for (i = 0; i < band_count; i++) {
+            ALWAN_CORE_T const v = s[i];
+            a0 += weights[i] * v;
+            a1 += weights[band_count + i] * v;
+            a2 += weights[2 * band_count + i] * v;
+        }
+        o[0] = a0; o[1] = a1; o[2] = a2;
+    }
+    return ALWAN_OK;
+}
+
+/* Camera RGB from an SPD, under its own name: alwan_xyz_from_spd_camera returns the
+ * same three numbers in an alwan_xyz. */
+alwan_status ALWAN_CORE_FNLIT(alwan_camera_rgb_from_spd)(ALWAN_CORE_RGB *rgb_out, ALWAN_CORE_SPD const *spd,
+        ALWAN_CORE_SPD const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method,
+        alwan_ctx *ctx) {
+    ALWAN_CORE_XYZ t;
+    alwan_status st;
+    if (!rgb_out) {
+        return ALWAN_E_INVALID;
+    }
+    st = ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(&t, spd, illuminant, camera, method, ctx);
+    if (st == ALWAN_OK) {
+        rgb_out->r = t.x;
+        rgb_out->g = t.y;
+        rgb_out->b = t.z;
+    }
+    return st;
+}
