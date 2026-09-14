@@ -1151,6 +1151,8 @@ not validate the body.
 - [x] DNG colour model: profile tags, AsShotNeutral to white and back, camera to XYZ D50, dcraw's highlight blend (suite 117)
 - [x] Exposure model (ISO 2720, ISO 12232, EV100, Lagarde 2014) and the weighted bracket merge (suite 118)
 - [x] Camera response recovery: Debevec 1997 with Grossberg 2003 sampling (suite 119)
+- [x] Bayer demosaicing: bilinear, Malvar 2004, Menon 2007, bit-exact to colour-demosaicing (suite 120)
+- [ ] Demosaicing, experimental tier: the optimisation-based formulation of the FlexISP and ProxImaL line
 - [ ] Camera response recovery: Robertson 2003 and Mitsunaga-Nayar; Mertens exposure fusion
 - [ ] Spectral film characterisation: dye densities, print stock, enlarger filtration, on top of the camera work
 - [ ] CCM fit: a params struct (weights, ridge) to carry the open CCM items above

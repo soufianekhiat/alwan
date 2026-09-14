@@ -498,6 +498,28 @@ magnitude of its clipped version, so clipped highlights stay neutral.
 
 ---
 
+## Bayer Demosaicing
+
+```c
+alwan_cfa_bayer_demosaic_f64(rgb, 3 * width * sizeof(alwan_f64),
+                             cfa, width * sizeof(alwan_f64), width, height,
+                             ALWAN_CFA_RGGB, ALWAN_DEMOSAIC_MENON2007);
+```
+
+The input is a linear, black-subtracted CFA plane; decoding raw files stays with
+LibRaw or the DNG SDK. Bilinear averages each channel's own sites. Malvar, He and
+Cutler 2004 adds a gradient correction from the other channels with fixed 5 x 5
+filters. Menon, Andriani and Calvagno 2007 interpolates green horizontally and
+vertically, keeps the direction with the smaller colour-difference gradient, and
+can refine all three channels afterwards.
+
+The borders are colour-demosaicing's, the reference: bilinear and Malvar extend the
+image by repeating the edge sample, Menon's one-dimensional filters mirror it
+without repeating it, and its direction decision reads zero outside. The sums run
+in scipy's order, and the results match colour-demosaicing bit for bit.
+
+---
+
 ## Error Codes
 
 Spectral functions return the `alwan_status` enum:

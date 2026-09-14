@@ -283,6 +283,8 @@ Low-level colour science operations:
   to ACES2065-1, spectral-to-ACES through the RICD
 - DNG colour model: profile tags to camera-to-XYZ matrices, AsShotNeutral to
   white and back, dcraw's highlight blend
+- Bayer demosaicing: bilinear, Malvar 2004, Menon 2007, bit-exact to
+  colour-demosaicing
 - RGB->spectrum upsampling: Smits 1999, Mallett 2019, Jakob & Hanika 2019
 - Hero wavelength sampling for spectral renderers
 - Gamut mapping (8 core algorithms + HDR ICtCp/JzCzHz mappers),
@@ -604,11 +606,11 @@ Re-run it against any checkout to reproduce the table.
 |---|---|
 | Test suites | 120, all passing |
 | Test cases | 879 |
-| Checks executed per run | 87,138 |
+| Checks executed per run | 89,889 |
 | Assertion sites in the tests | 2,894 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 362 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 365 |
 | Embedded data tables | 746 |
-| Exported symbols | 1,641 |
+| Exported symbols | 1,645 |
 | Internal symbols reached by a test or a public entry point | 152 of 176 (86%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -616,7 +618,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**87,138 checks per run** is what actually executes, not what is written. A
+**89,889 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -660,7 +662,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 120 suites, 879 cases, 87,138 checks executed per run
+  module: 120 suites, 879 cases, 89,889 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic

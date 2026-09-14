@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Bayer demosaicing.** `alwan_cfa_bayer_demosaic_{T}` with bilinear, Malvar,
+  He and Cutler 2004, and Menon, Andriani and Calvagno 2007 (DDFAPD) with or
+  without its refining step, for the four Bayer layouts, and
+  `alwan_cfa_bayer_mosaic_{T}`. Borders and summation order follow
+  colour-demosaicing, and the results match it bit for bit. With the DNG model and
+  the spectral IDT this completes a path from a Bayer buffer to ACES2065-1.
+
 - **Camera response recovery.** `alwan_crf_debevec1997_{T}` recovers a camera's
   response from an exposure bracket, Debevec and Malik 1997 over Grossberg and
   Nayar 2003 samples (`alwan_crf_samples_grossberg2003_{T}`), with the polynomial
