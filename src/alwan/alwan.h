@@ -2191,6 +2191,54 @@ alwan_status alwan_spd_to_aces2065_1_f64(alwan_rgb_f64 *out, alwan_spd_f64 const
 alwan_status alwan_spd_to_aces2065_1_f32(alwan_rgb_f32 *out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, int skip_chromatic_adaptation, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
+ * The DNG colour model
+ *
+ * What a raw converter computes from a DNG camera profile's colour tags (DNG 1.6,
+ * chapter 6). alwan_dng_profile_{T} holds the tags. They are interpolated between
+ * the two calibration illuminants linearly in 1/CCT, the white's CCT read by
+ * Robertson 1968; outside the two CCTs the nearer tag is used. This follows the
+ * white paper where it and the DNG SDK differ, as colour-hdri does, and matches
+ * colour_hdri.models.dng. ALWAN_E_NODATA when the Robertson locus table is
+ * compiled out. The f32 entry points compute in f64.
+ * ---------------------------------------------------------------- */
+
+/* One tag at a CCT: m1 at or below cct_1, m2 at or above cct_2, linear in 1/CCT
+ * between. The two illuminants may come in either order. */
+alwan_status alwan_dng_interpolate_matrix_f64(alwan_mat3x3_f64 *matrix_out, alwan_f64 cct, alwan_f64 cct_1, alwan_f64 cct_2, alwan_mat3x3_f64 const *m1, alwan_mat3x3_f64 const *m2);
+alwan_status alwan_dng_interpolate_matrix_f32(alwan_mat3x3_f32 *matrix_out, alwan_f32 cct, alwan_f32 cct_1, alwan_f32 cct_2, alwan_mat3x3_f32 const *m1, alwan_mat3x3_f32 const *m2);
+
+/* XYZ to camera space at a white: AnalogBalance x CameraCalibration x ColorMatrix,
+ * each interpolated at the white's CCT. */
+alwan_status alwan_dng_xyz_to_camera_matrix_f64(alwan_mat3x3_f64 *matrix_out, alwan_dng_profile_f64 const *profile, alwan_vec2_f64 const *white_xy);
+alwan_status alwan_dng_xyz_to_camera_matrix_f32(alwan_mat3x3_f32 *matrix_out, alwan_dng_profile_f32 const *profile, alwan_vec2_f32 const *white_xy);
+
+/* The camera neutral of a white (what AsShotNeutral stores), with G = 1. */
+alwan_status alwan_dng_xy_to_camera_neutral_f64(alwan_rgb_f64 *neutral_out, alwan_dng_profile_f64 const *profile, alwan_vec2_f64 const *white_xy);
+alwan_status alwan_dng_xy_to_camera_neutral_f32(alwan_rgb_f32 *neutral_out, alwan_dng_profile_f32 const *profile, alwan_vec2_f32 const *white_xy);
+
+/* The white of a camera neutral: the fixed point of the function above, iterated
+ * from (1/3, 1/3). ALWAN_E_RANGE when it has not converged after 200 steps. */
+alwan_status alwan_dng_camera_neutral_to_xy_f64(alwan_vec2_f64 *white_xy_out, alwan_dng_profile_f64 const *profile, alwan_rgb_f64 const *camera_neutral);
+alwan_status alwan_dng_camera_neutral_to_xy_f32(alwan_vec2_f32 *white_xy_out, alwan_dng_profile_f32 const *profile, alwan_rgb_f32 const *camera_neutral);
+
+/* Camera space to XYZ under the DNG connection white, D50 at (0.3457, 0.3585), for
+ * a white balance. With ForwardMatrix tags: ForwardMatrix x the diagonal that takes
+ * the white's reference neutral to 1 x (AnalogBalance x CameraCalibration)^-1, and
+ * cat is not used. Without: the inverse of alwan_dng_xyz_to_camera_matrix, then a
+ * chromatic adaptation from the white to D50 with cat; the DNG SDK uses
+ * ALWAN_CAT_BRADFORD. */
+alwan_status alwan_dng_camera_to_xyz_matrix_f64(alwan_mat3x3_f64 *matrix_out, alwan_dng_profile_f64 const *profile, alwan_vec2_f64 const *white_xy, alwan_cat_method cat);
+alwan_status alwan_dng_camera_to_xyz_matrix_f32(alwan_mat3x3_f32 *matrix_out, alwan_dng_profile_f32 const *profile, alwan_vec2_f32 const *white_xy, alwan_cat_method cat);
+
+/* dcraw's highlight blend, as colour-hdri carries it, for white-balanced camera RGB.
+ * Channels at or above min(multipliers) x threshold are clipped there in an
+ * opponent space; each pixel keeps its own lightness and takes the chroma magnitude
+ * of its clipped version, so clipped highlights stay neutral instead of turning
+ * magenta. threshold 0 reads as 0.99. */
+alwan_status alwan_highlights_recovery_blend_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_rgb_f64 const *multipliers, alwan_f64 threshold);
+alwan_status alwan_highlights_recovery_blend_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_rgb_f32 const *multipliers, alwan_f32 threshold);
+
+/* ----------------------------------------------------------------
  * Spectral Shape Descriptors
  * ---------------------------------------------------------------- */
 
@@ -5318,6 +5366,113 @@ alwan_status alwan_gain_map_encode_f32_map_interleave(alwan_f32 *gain_out, size_
  * three channels. out may be base. */
 alwan_status alwan_gain_map_apply_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *base, size_t base_stride, alwan_f64 const *gain, size_t gain_stride, size_t gain_channels, size_t count, alwan_gain_map_params_f64 const *params, alwan_f64 weight);
 alwan_status alwan_gain_map_apply_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *base, size_t base_stride, alwan_f32 const *gain, size_t gain_stride, size_t gain_channels, size_t count, alwan_gain_map_params_f32 const *params, alwan_f32 weight);
+
+/* ----------------------------------------------------------------
+ * Exposure and bracket merging
+ *
+ * The camera exposure equations with EXIF numbers as plain inputs, and the
+ * weighted radiance merge of an exposure bracket. N is the f-number, t the
+ * exposure time in seconds, S the ISO speed. Matches colour-hdri
+ * (colour_hdri.exposure, colour_hdri.generation).
+ * ---------------------------------------------------------------- */
+
+/* ISO 2720 reflected-light meter: the average scene luminance, cd/m2, that the
+ * settings expose correctly, N^2 / t / S x k. k 0 is 12.5. */
+alwan_status alwan_average_luminance_f64(alwan_f64 *luminance_out, alwan_f64 f_number, alwan_f64 exposure_time, alwan_f64 iso, alwan_f64 k);
+alwan_status alwan_average_luminance_f32(alwan_f32 *luminance_out, alwan_f32 f_number, alwan_f32 exposure_time, alwan_f32 iso, alwan_f32 k);
+
+/* ISO 2720 incident-light meter: the average illuminance, lux, N^2 / t / S x c.
+ * c 0 is 250. */
+alwan_status alwan_average_illuminance_f64(alwan_f64 *illuminance_out, alwan_f64 f_number, alwan_f64 exposure_time, alwan_f64 iso, alwan_f64 c);
+alwan_status alwan_average_illuminance_f32(alwan_f32 *illuminance_out, alwan_f32 f_number, alwan_f32 exposure_time, alwan_f32 iso, alwan_f32 c);
+
+/* Exposure value from a luminance, log2(L S / k), or an illuminance, log2(E S / c);
+ * 0 takes the default k or c. */
+alwan_status alwan_luminance_to_exposure_value_f64(alwan_f64 *ev_out, alwan_f64 luminance, alwan_f64 iso, alwan_f64 k);
+alwan_status alwan_luminance_to_exposure_value_f32(alwan_f32 *ev_out, alwan_f32 luminance, alwan_f32 iso, alwan_f32 k);
+alwan_status alwan_illuminance_to_exposure_value_f64(alwan_f64 *ev_out, alwan_f64 illuminance, alwan_f64 iso, alwan_f64 c);
+alwan_status alwan_illuminance_to_exposure_value_f32(alwan_f32 *ev_out, alwan_f32 illuminance, alwan_f32 iso, alwan_f32 c);
+
+/* EV100: the exposure value of the settings referred to ISO 100. */
+alwan_status alwan_exposure_value_100_f64(alwan_f64 *ev100_out, alwan_f64 f_number, alwan_f64 exposure_time, alwan_f64 iso);
+alwan_status alwan_exposure_value_100_f32(alwan_f32 *ev100_out, alwan_f32 f_number, alwan_f32 exposure_time, alwan_f32 iso);
+
+/* ISO 12232 focal plane exposure, lux-seconds:
+ * q L t F^2 / (N^2 i^2) + flare, with q = pi / 4 T f_v cos^4(angle). focal_length F
+ * and image_distance i in metres, transmittance T (0.9 typical), vignetting f_v
+ * (0.98), angle off axis in degrees (10). */
+alwan_status alwan_focal_plane_exposure_f64(alwan_f64 *exposure_out, alwan_f64 luminance, alwan_f64 f_number, alwan_f64 exposure_time, alwan_f64 focal_length, alwan_f64 image_distance, alwan_f64 flare, alwan_f64 transmittance, alwan_f64 vignetting, alwan_f64 angle);
+alwan_status alwan_focal_plane_exposure_f32(alwan_f32 *exposure_out, alwan_f32 luminance, alwan_f32 f_number, alwan_f32 exposure_time, alwan_f32 focal_length, alwan_f32 image_distance, alwan_f32 flare, alwan_f32 transmittance, alwan_f32 vignetting, alwan_f32 angle);
+
+/* The focal plane exposure scaled for saturation-based speed, H S / 78. */
+alwan_status alwan_saturation_based_speed_focal_plane_exposure_f64(alwan_f64 *exposure_out, alwan_f64 luminance, alwan_f64 f_number, alwan_f64 exposure_time, alwan_f64 iso, alwan_f64 focal_length, alwan_f64 image_distance, alwan_f64 flare, alwan_f64 transmittance, alwan_f64 vignetting, alwan_f64 angle);
+alwan_status alwan_saturation_based_speed_focal_plane_exposure_f32(alwan_f32 *exposure_out, alwan_f32 luminance, alwan_f32 f_number, alwan_f32 exposure_time, alwan_f32 iso, alwan_f32 focal_length, alwan_f32 image_distance, alwan_f32 flare, alwan_f32 transmittance, alwan_f32 vignetting, alwan_f32 angle);
+
+/* ISO 12232 exposure index, 10 / H. */
+alwan_status alwan_exposure_index_f64(alwan_f64 *index_out, alwan_f64 focal_plane_exposure);
+alwan_status alwan_exposure_index_f32(alwan_f32 *index_out, alwan_f32 focal_plane_exposure);
+
+/* Lagarde and de Rousiers 2014: the factor that turns a camera's pixel values
+ * into absolute luminance, 1 / (78 / (100 q) 2^EV100). */
+alwan_status alwan_photometric_exposure_scale_factor_lagarde2014_f64(alwan_f64 *scale_out, alwan_f64 ev100, alwan_f64 transmittance, alwan_f64 vignetting, alwan_f64 angle);
+alwan_status alwan_photometric_exposure_scale_factor_lagarde2014_f32(alwan_f32 *scale_out, alwan_f32 ev100, alwan_f32 transmittance, alwan_f32 vignetting, alwan_f32 angle);
+
+/* How much a merged pixel trusts each exposure, from its normalised value. */
+typedef enum {
+    ALWAN_MERGE_WEIGHT_DEBEVEC1997     = 0, /* triangle on [0.01, 0.99], peak 1 at 0.5 */
+    ALWAN_MERGE_WEIGHT_HAT             = 1, /* 1 - (2a - 1)^12 */
+    ALWAN_MERGE_WEIGHT_NORMAL          = 2, /* Gaussian, mean 0.5, sigma 0.15 */
+    ALWAN_MERGE_WEIGHT_DOUBLE_SIGMOID  = 3  /* 0 below 0.025 and above 0.975, 1 on [0.2, 0.8] */
+} alwan_merge_weight;
+
+/* One weighting function at one value. */
+alwan_status alwan_hdr_merge_weight_f64(alwan_f64 *weight_out, alwan_f64 value, alwan_merge_weight fn);
+alwan_status alwan_hdr_merge_weight_f32(alwan_f32 *weight_out, alwan_f32 value, alwan_merge_weight fn);
+
+/* Merge an exposure bracket into one radiance image.
+ *
+ * images holds image_count pointers to RGB buffers of count pixels, one per
+ * exposure, ordered from the shortest exposure to the longest; settings gives each
+ * one's N, t and S. Values are normalised sensor data: they are limited to
+ * [2.2e-16, 1], 1 being saturation. Each channel is weighted by fn, the shortest
+ * exposure trusted fully at and above 0.5 and the longest at and below it, and the
+ * result is sum(w d N^2 k / (t S)) / sum(w) with k = 12.5: the scene luminance scale
+ * of an ISO 2720 meter.
+ *
+ * response, when not NULL, is the camera response curve applied to each value after
+ * weighting: response_size samples on [0, 1] per channel, planar, R then G then B.
+ * alwan_hdr_merge matches colour_hdri.image_stack_to_HDRI, except that the Debevec
+ * weight is normalised by its own peak rather than by the image's largest weight. */
+alwan_status alwan_hdr_merge_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_merge_weight fn, alwan_f64 const *response, size_t response_size);
+alwan_status alwan_hdr_merge_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_merge_weight fn, alwan_f32 const *response, size_t response_size);
+
+/* Camera response recovery, Debevec and Malik 1997. The zero value of every field
+ * is colour-hdri's default. */
+typedef struct {
+    size_t samples;            /* Grossberg 2003 samples per exposure and channel; 0 is 1000 */
+    size_t bins;               /* histogram bins and response resolution; 0 is 256 */
+    alwan_f64 smoothing;       /* Debevec's lambda; 0 is 30 */
+    alwan_merge_weight weight; /* weighting function; the zero value is Debevec 1997 */
+    int extrapolation_degree;  /* polynomial through the weighted values, evaluated where the
+                                * weight is 0; 0 is 7, negative leaves those values as solved */
+    int keep_scale;            /* non-zero: leave exp(g) unscaled instead of peaking at 1 */
+} alwan_crf_debevec1997_params;
+
+/* Grossberg and Nayar 2003: the pixel values to sample, chosen so that each sample
+ * sits at the same point of every exposure's histogram. For each of samples points
+ * u on [0, 1], the bin whose cumulative histogram is nearest u, per exposure and
+ * channel. bins_out receives samples x image_count x 3 bin indices. */
+alwan_status alwan_crf_samples_grossberg2003_f64(size_t *bins_out, alwan_f64 const *const *images, size_t in_stride, size_t count, size_t image_count, size_t samples, size_t bins);
+alwan_status alwan_crf_samples_grossberg2003_f32(size_t *bins_out, alwan_f32 const *const *images, size_t in_stride, size_t count, size_t image_count, size_t samples, size_t bins);
+
+/* The camera response of a bracket, Debevec and Malik 1997: per channel, the exposure
+ * that each normalised pixel value records, solved by least squares over Grossberg
+ * samples with a smoothness term. response_out receives bins values per channel,
+ * planar, R then G then B, which is the response alwan_hdr_merge takes. The bracket
+ * is given as for alwan_hdr_merge. params NULL is the defaults. Matches
+ * colour_hdri.camera_response_functions_Debevec1997. */
+alwan_status alwan_crf_debevec1997_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_crf_debevec1997_params const *params);
+alwan_status alwan_crf_debevec1997_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_crf_debevec1997_params const *params);
 
 /* ----------------------------------------------------------------
  * HDR Gamut Mapping

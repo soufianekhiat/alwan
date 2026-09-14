@@ -136,6 +136,31 @@ typedef struct {
     ALWAN_T alternate_hdr_headroom; /* log2 of the alternate rendition's */
 } ALWAN_TN(alwan_gain_map_params);
 
+/* A DNG camera profile's colour tags (DNG 1.6, chapter 6). The zero value of an
+ * optional field is its absence: an all-zero color_matrix_2 makes a
+ * single-illuminant profile, all-zero camera calibrations read as identity, all-zero
+ * forward matrices mean the profile has none, and a zero analog_balance reads as
+ * (1, 1, 1). The calibration illuminants are given as CCTs: EXIF light source 17,
+ * Standard light A, is 2856 K and 21, D65, is 6504 K. */
+typedef struct {
+    ALWAN_T calibration_cct_1;               /* CalibrationIlluminant1, kelvin */
+    ALWAN_T calibration_cct_2;               /* CalibrationIlluminant2, kelvin */
+    ALWAN_TN(alwan_mat3x3) color_matrix_1;   /* ColorMatrix1: XYZ to reference camera space */
+    ALWAN_TN(alwan_mat3x3) color_matrix_2;   /* ColorMatrix2 */
+    ALWAN_TN(alwan_mat3x3) camera_calibration_1; /* CameraCalibration1 */
+    ALWAN_TN(alwan_mat3x3) camera_calibration_2; /* CameraCalibration2 */
+    ALWAN_TN(alwan_mat3x3) forward_matrix_1; /* ForwardMatrix1: white-balanced camera to XYZ D50 */
+    ALWAN_TN(alwan_mat3x3) forward_matrix_2; /* ForwardMatrix2 */
+    ALWAN_TN(alwan_rgb) analog_balance;      /* AnalogBalance */
+} ALWAN_TN(alwan_dng_profile);
+
+/* One exposure of a bracket, as EXIF records it. */
+typedef struct {
+    ALWAN_T f_number;       /* FNumber, N */
+    ALWAN_T exposure_time;  /* ExposureTime, seconds */
+    ALWAN_T iso;            /* ISOSpeedRatings, S */
+} ALWAN_TN(alwan_exposure_settings);
+
 /* ----------------------------------------------------------------
  * SPD Structs
  * ---------------------------------------------------------------- */
