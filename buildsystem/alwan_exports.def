@@ -102,6 +102,14 @@ EXPORTS
     alwan_bt2390_eetf_f64
     alwan_bt2390_eetf_luminance_f32
     alwan_bt2390_eetf_luminance_f64
+    alwan_bt2408_hlg_to_pq_f32_map_interleave
+    alwan_bt2408_hlg_to_pq_f64_map_interleave
+    alwan_bt2408_pq_to_hlg_f32_map_interleave
+    alwan_bt2408_pq_to_hlg_f64_map_interleave
+    alwan_bt2408_sdr_to_hlg_f32_map_interleave
+    alwan_bt2408_sdr_to_hlg_f64_map_interleave
+    alwan_bt2408_sdr_to_pq_f32_map_interleave
+    alwan_bt2408_sdr_to_pq_f64_map_interleave
     alwan_bt2446b_forward_f32
     alwan_bt2446b_forward_f64
     alwan_bt2446c_forward_f32
@@ -128,6 +136,15 @@ EXPORTS
     alwan_cam20u_forward_f64
     alwan_cam20u_inverse_f32
     alwan_cam20u_inverse_f64
+    alwan_camera_count
+    alwan_camera_find
+    alwan_camera_info
+    alwan_camera_rgb_from_spd_f32
+    alwan_camera_rgb_from_spd_f64
+    alwan_camera_rgb_to_aces2065_1_f32_map_interleave
+    alwan_camera_rgb_to_aces2065_1_f64_map_interleave
+    alwan_camera_sensitivities_f32
+    alwan_camera_sensitivities_f64
     alwan_cat_matrix_f32
     alwan_cat_matrix_f64
     alwan_cat_zhai2018_f32
@@ -144,6 +161,36 @@ EXPORTS
     alwan_cct_robertson_xy_f64
     alwan_cct_to_xy_kang_f32
     alwan_cct_to_xy_kang_f64
+    alwan_chart_destroy_f32
+    alwan_chart_destroy_f64
+    alwan_chart_get_source_f32
+    alwan_chart_get_source_f64
+    alwan_chart_header_at_f32
+    alwan_chart_header_at_f64
+    alwan_chart_header_f32
+    alwan_chart_header_f64
+    alwan_chart_load_buffer_f32
+    alwan_chart_load_buffer_f64
+    alwan_chart_load_f32
+    alwan_chart_load_f64
+    alwan_chart_native_illuminant_f32
+    alwan_chart_native_illuminant_f64
+    alwan_chart_num_bands_f32
+    alwan_chart_num_bands_f64
+    alwan_chart_num_headers_f32
+    alwan_chart_num_headers_f64
+    alwan_chart_num_patches_f32
+    alwan_chart_num_patches_f64
+    alwan_chart_patch_name_f32
+    alwan_chart_patch_name_f64
+    alwan_chart_reflectance_f32
+    alwan_chart_reflectance_f64
+    alwan_chart_write_buffer_f32
+    alwan_chart_write_buffer_f64
+    alwan_chart_write_f32
+    alwan_chart_write_f64
+    alwan_chart_xyz_f32
+    alwan_chart_xyz_f64
     alwan_cie224_rf_f32
     alwan_cie224_rf_f64
     alwan_ciecam02_forward_f32
@@ -282,6 +329,9 @@ EXPORTS
     alwan_data_get_illuminant_d93
     alwan_data_get_illuminant_e_f32
     alwan_data_get_illuminant_e_f64
+    alwan_data_get_illuminant_f11
+    alwan_data_get_illuminant_f2
+    alwan_data_get_illuminant_f7
     alwan_data_get_illuminant_hp1
     alwan_data_get_illuminant_hp2
     alwan_data_get_illuminant_hp3
@@ -370,6 +420,14 @@ EXPORTS
     alwan_float_to_half_f64
     alwan_float_to_uint_f32
     alwan_float_to_uint_f64
+    alwan_gain_map_apply_f32_map_interleave
+    alwan_gain_map_apply_f64_map_interleave
+    alwan_gain_map_encode_f32_map_interleave
+    alwan_gain_map_encode_f64_map_interleave
+    alwan_gain_map_measure_f32
+    alwan_gain_map_measure_f64
+    alwan_gain_map_weight_f32
+    alwan_gain_map_weight_f64
     alwan_gamma_eotf_f32
     alwan_gamma_eotf_f64
     alwan_gamma_oetf_f32
@@ -397,6 +455,7 @@ EXPORTS
     alwan_gamut_volume_ratio_f32
     alwan_gamut_volume_ratio_f64
     alwan_get_aces_interp
+    alwan_get_build_info
     alwan_half_to_float_f32
     alwan_half_to_float_f64
     alwan_hcl_to_rgb_f32
@@ -513,6 +572,8 @@ EXPORTS
     alwan_hsy_to_rgb_map_planar_ex
     alwan_hunt_forward_f32
     alwan_hunt_forward_f64
+    alwan_hunt_inverse_f32
+    alwan_hunt_inverse_f64
     alwan_hunter_lab_to_xyz_custom_f32
     alwan_hunter_lab_to_xyz_custom_f32_map_interleave
     alwan_hunter_lab_to_xyz_custom_f32_map_planar
@@ -569,6 +630,12 @@ EXPORTS
     alwan_ictcp_to_xyz_f64_map_planar
     alwan_ictcp_to_xyz_map_interleave_ex
     alwan_ictcp_to_xyz_map_planar_ex
+    alwan_idt_matrix_f32
+    alwan_idt_matrix_f64
+    alwan_idt_params_init
+    alwan_idt_training_count
+    alwan_idt_white_balance_f32
+    alwan_idt_white_balance_f64
     alwan_igpgtg_to_xyz_f32
     alwan_igpgtg_to_xyz_f32_map_interleave
     alwan_igpgtg_to_xyz_f32_map_planar
@@ -863,40 +930,22 @@ EXPORTS
     alwan_picture_form_global_exp_field_f64
     alwan_picture_form_hybrid_exp_f32
     alwan_picture_form_hybrid_exp_f64
+    alwan_picture_form_local_exp_apply_f32
+    alwan_picture_form_local_exp_apply_f64
     alwan_picture_form_local_exp_f32
     alwan_picture_form_local_exp_f64
     alwan_picture_form_local_exp_field_f32
-    alwan_picture_form_local_exp_resume_f32
-    alwan_picture_form_local_exp_resume_f64
     alwan_picture_form_local_exp_field_f64
     alwan_picture_form_local_exp_field_m_f32
     alwan_picture_form_local_exp_field_m_f64
-    alwan_picture_form_local_exp_resume_m_f32
-    alwan_picture_form_local_exp_resume_m_f64
     alwan_picture_form_local_exp_inputs_f32
     alwan_picture_form_local_exp_inputs_f64
-    alwan_picture_form_local_exp_apply_f32
-    alwan_picture_form_local_exp_apply_f64
     alwan_picture_form_local_exp_lag_f32
     alwan_picture_form_local_exp_lag_f64
-    alwan_rgb_fit_params_init_f32
-    alwan_rgb_fit_params_init_f64
-    alwan_rgb_fit_begin_f32
-    alwan_rgb_fit_blocks_evaluate_f32
-    alwan_rgb_fit_blocks_evaluate_f64
-    alwan_rgb_fit_blocks_solve_f32
-    alwan_rgb_fit_blocks_solve_f64
-    alwan_rgb_fit_begin_f64
-    alwan_rgb_fit_step_f32
-    alwan_rgb_fit_step_f64
-    alwan_rgb_fit_restart_f32
-    alwan_rgb_fit_restart_f64
-    alwan_rgb_fit_end_f32
-    alwan_rgb_fit_end_f64
-    alwan_rgb_fit_solve_f32
-    alwan_rgb_fit_solve_f64
-    alwan_rgb_fit_evaluate_f32
-    alwan_rgb_fit_evaluate_f64
+    alwan_picture_form_local_exp_resume_f32
+    alwan_picture_form_local_exp_resume_f64
+    alwan_picture_form_local_exp_resume_m_f32
+    alwan_picture_form_local_exp_resume_m_f64
     alwan_picture_form_pure_exp_f32
     alwan_picture_form_pure_exp_f64
     alwan_pointer_gamut_boundary
@@ -970,6 +1019,24 @@ EXPORTS
     alwan_rgb_convert_map_interleave_f64
     alwan_rgb_derive_matrices_f32
     alwan_rgb_derive_matrices_f64
+    alwan_rgb_fit_begin_f32
+    alwan_rgb_fit_begin_f64
+    alwan_rgb_fit_blocks_evaluate_f32
+    alwan_rgb_fit_blocks_evaluate_f64
+    alwan_rgb_fit_blocks_solve_f32
+    alwan_rgb_fit_blocks_solve_f64
+    alwan_rgb_fit_end_f32
+    alwan_rgb_fit_end_f64
+    alwan_rgb_fit_evaluate_f32
+    alwan_rgb_fit_evaluate_f64
+    alwan_rgb_fit_params_init_f32
+    alwan_rgb_fit_params_init_f64
+    alwan_rgb_fit_restart_f32
+    alwan_rgb_fit_restart_f64
+    alwan_rgb_fit_solve_f32
+    alwan_rgb_fit_solve_f64
+    alwan_rgb_fit_step_f32
+    alwan_rgb_fit_step_f64
     alwan_rgb_get_space_descriptor_f32
     alwan_rgb_get_space_descriptor_f64
     alwan_rgb_space_by_enum_f32
@@ -1169,16 +1236,36 @@ EXPORTS
     alwan_spd_blackbody_f64
     alwan_spd_camera_sensitivity_f32
     alwan_spd_camera_sensitivity_f64
+    alwan_spd_cie_daylight_f32
+    alwan_spd_cie_daylight_f64
     alwan_spd_create_f32
     alwan_spd_create_f64
     alwan_spd_destroy_f32
     alwan_spd_destroy_f64
+    alwan_spd_gaussian_f32
+    alwan_spd_gaussian_f64
+    alwan_spd_idt_training_f32
+    alwan_spd_idt_training_f64
     alwan_spd_illuminant_f32
     alwan_spd_illuminant_f64
+    alwan_spd_iso7589_tungsten_f32
+    alwan_spd_iso7589_tungsten_f64
+    alwan_spd_led_ohno2005_f32
+    alwan_spd_led_ohno2005_f64
+    alwan_spd_observer_f32
+    alwan_spd_observer_f64
     alwan_spd_resample_f32
     alwan_spd_resample_f64
+    alwan_spd_to_aces2065_1_f32
+    alwan_spd_to_aces2065_1_f64
     alwan_spectral_locus_xy_f32
     alwan_spectral_locus_xy_f64
+    alwan_spectral_to_tristimulus_f32_map_interleave
+    alwan_spectral_to_tristimulus_f64_map_interleave
+    alwan_spectral_weights_f32
+    alwan_spectral_weights_f64
+    alwan_spectral_weights_observer_f32
+    alwan_spectral_weights_observer_f64
     alwan_srgb_to_hpluv_f32
     alwan_srgb_to_hpluv_f64
     alwan_srgb_to_hsluv_f32
