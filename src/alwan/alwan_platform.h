@@ -1385,7 +1385,12 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  * channels. Core (_v) functions are NOT affected.
  * Unbounded channels (e.g. Lab a*, chroma) are NOT rescaled.
  * Default: 1 (enabled -- bounded channels normalized to [0, 1]).
- * Define ALWAN_NORMALIZE_RANGES=0 before including alwan.h to disable.
+ *
+ * It changes what the library's own functions return, so it belongs to the
+ * library build: set ALWAN_NORMALIZE_RANGES=0 when compiling alwan, and compile
+ * the application with the same value so the NORM/DENORM helpers below agree.
+ * Defining it only in the application changes those helpers and nothing else.
+ * alwan_get_build_info reports the value the linked library was built with.
  * ================================================================ */
 
 #ifndef ALWAN_NORMALIZE_RANGES

@@ -126,6 +126,23 @@ void alwan_destroy(alwan_ctx *ctx);
  * reports the binary's own version (compare with ALWAN_VERSION_STRING). */
 char const *alwan_version_string(void);
 
+/* How the linked library was compiled. These switches change results, not only
+ * speed, and they are fixed when alwan is built: an application compiled with other
+ * values gets numbers it does not expect. Compare normalize_ranges with the
+ * ALWAN_NORMALIZE_RANGES your own code sees. */
+typedef struct {
+    int version_major;
+    int version_minor;
+    int version_patch;
+    int normalize_ranges;    /* ALWAN_NORMALIZE_RANGES: bounded channels reported on [0, 1] */
+    int deterministic;       /* ALWAN_DETERMINISTIC: polynomial transcendentals, same bits everywhere */
+    int with_f32;            /* the _f32 entry points are compiled */
+    int with_f64;            /* the _f64 entry points are compiled */
+    int data_tables_minimal; /* ALWAN_DATA_TABLES_MINIMAL: the switchable tables are out */
+} alwan_build_info;
+
+alwan_status alwan_get_build_info(alwan_build_info *info_out);
+
 /* ACES tone curve interpolation method */
 typedef enum {
     ALWAN_ACES_INTERP_BSPLINE = 0,  /* Quadratic B-spline (Academy CTL reference, default) */

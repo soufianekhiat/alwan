@@ -8,6 +8,7 @@
 #include "../alwan_internal.h"
 #include <stdlib.h>
 #include <string.h>
+#include "../data/alwan_data_tables_config.h"
 
 /* ----------------------------------------------------------------
  * Default allocators
@@ -147,4 +148,23 @@ void alwan_destroy(alwan_ctx *ctx) {
 
 char const *alwan_version_string(void) {
     return ALWAN_VERSION_STRING;
+}
+
+alwan_status alwan_get_build_info(alwan_build_info *info_out) {
+    if (!info_out) {
+        return ALWAN_E_INVALID;
+    }
+    info_out->version_major = ALWAN_VERSION_MAJOR;
+    info_out->version_minor = ALWAN_VERSION_MINOR;
+    info_out->version_patch = ALWAN_VERSION_PATCH;
+    info_out->normalize_ranges = !!(ALWAN_NORMALIZE_RANGES);
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+    info_out->deterministic = 1;
+#else
+    info_out->deterministic = 0;
+#endif
+    info_out->with_f32 = ALWAN_WITH_F32;
+    info_out->with_f64 = ALWAN_WITH_F64;
+    info_out->data_tables_minimal = !!(ALWAN_DATA_TABLES_MINIMAL);
+    return ALWAN_OK;
 }
