@@ -4710,6 +4710,29 @@ alwan_status alwan_ccm_fit_cheung2004_f32(alwan_f32 *matrix_out, alwan_f32 const
 alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_size, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
 alwan_status alwan_ccm_fit_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
 
+/* Leave-one-out: each sample of positive weight left out in turn, the rest fitted with
+ * params (its weights, ridge and solver; rank_out is not written), and the fit's
+ * prediction of the one left out compared with its reference. rms_out receives the root
+ * mean square of those residuals over the samples predicted and the three channels, in
+ * the reference's units. pred_out, when not NULL, receives num_samples x 3 predictions,
+ * NaN for a sample of weight 0, for scoring in another space (dE, say). A fit that
+ * learned the chart rather than the camera shows here and not in its own residuals.
+ * When the samples left cannot fit the basis, the status is that fit's:
+ * ALWAN_E_INVALID for fewer samples than terms, ALWAN_E_DIVZERO when QR finds the
+ * system rank deficient. Matches scikit-learn's LeaveOneOut over LinearRegression and
+ * Ridge. */
+alwan_status alwan_ccm_loo_cheung2004_f64(alwan_f64 *rms_out, alwan_f64 *pred_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_loo_cheung2004_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_loo_finlayson2015_f64(alwan_f64 *rms_out, alwan_f64 *pred_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_loo_finlayson2015_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
+
+/* The Cheung term count with the lowest leave-one-out error, of all 14. rms_out, when not
+ * NULL, receives the 14 errors in the enum's order (3, 4, 5, 7, 8, 10, 11, 14, 16, 17, 19,
+ * 20, 22, 35), NaN for a count the samples left cannot fit. The smaller count wins a
+ * tie. When no count can be fitted, the status is the first failure. */
+alwan_status alwan_ccm_select_cheung2004_f64(alwan_poly_cheung_terms *terms_out, alwan_f64 *rms_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_select_cheung2004_f32(alwan_poly_cheung_terms *terms_out, alwan_f32 *rms_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_ccm_fit_params const *params);
+
 /* White balance multipliers from neutral gray measurement
  * Given a measured RGB value that should be neutral gray,
  * computes the multipliers to normalize it.
