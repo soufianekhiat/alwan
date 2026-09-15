@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Global tone mapping operators.** `alwan_tonemap_global_{T}` maps an image by one
+  of colour-hdri's eleven global operators: simple, normalisation, gamma,
+  logarithmic, exponential, Schlick's two mappings, Schlick 1994, Tumblin 1999,
+  Reinhard and Devlin 2005, and Hable's filmic curve. One parameter struct serves
+  them all, and its zero value is every published default with luminance by the
+  sRGB primaries. They agree with colour-hdri to 3e-15. Reinhard 2004 follows the
+  paper where colour-hdri does not, for chromatic adaptation and the automatic
+  contrast; see `docs/alwan_decisions.md`.
+
 - **ASTM E308 and E2022.** `alwan_xyz_from_spd_astm_e308_{T}` computes XYZ the way
   industrial colorimetry reports it, scaled so a perfect reflector has Y = 100. It
   takes data at 1, 5, 10 or 20 nm. At 10 nm, and at 5 or 20 nm on request, it uses

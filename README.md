@@ -3,9 +3,9 @@
 > **Alwan** (ألوان): Arabic for "colours"
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-129%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-99%2C221%20per%20run-brightgreen)](#validation)
-[![reference data](https://img.shields.io/badge/reference%20data-374%20sets-blue)](#validation)
+[![tests](https://img.shields.io/badge/tests-130%20suites-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-101%2C794%20per%20run-brightgreen)](#validation)
+[![reference data](https://img.shields.io/badge/reference%20data-375%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -238,6 +238,8 @@ Support for modern display and camera encoding:
 - **SSIM:** Wang et al. 2004 with the paper's settings, matching scikit-image
 - **Exposure fusion:** Mertens 2007, a bracket of pictures to one picture with no
   radiance map, matching OpenCV's MergeMertens
+- **Global tone mapping:** colour-hdri's eleven global operators, Schlick 1994,
+  Tumblin 1999, Reinhard 2004 and Hable's filmic curve among them, matching it to 3e-15
 - **Camera response:** Robertson 2003 recovery from every pixel, matching OpenCV;
   Debevec 1997 recovery from a bracket, Grossberg 2003
   sampling
@@ -613,13 +615,13 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 129, all passing |
-| Test cases | 905 |
-| Checks executed per run | 99,221 |
-| Assertion sites in the tests | 3,107 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 374 |
+| Test suites | 130, all passing |
+| Test cases | 908 |
+| Checks executed per run | 101,794 |
+| Assertion sites in the tests | 3,144 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 375 |
 | Embedded data tables | 747 |
-| Exported symbols | 1,679 |
+| Exported symbols | 1,681 |
 | Internal symbols reached by a test or a public entry point | 152 of 176 (86%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -627,7 +629,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**99,221 checks per run** is what actually executes, not what is written. A
+**101,794 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -662,7 +664,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 129 test suites, single binary
+./build/tests/Release/alwan_tests   # 130 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -671,7 +673,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 129 suites, 905 cases, 99,221 checks executed per run
+  module: 130 suites, 908 cases, 101,794 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
@@ -709,7 +711,7 @@ alwan/                       # this repo (library only)
 \-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-+-- tests/                   # 129 test suites + reference fixtures
++-- tests/                   # 130 test suites + reference fixtures
 +-- bench/                   # micro-benchmarks
 +-- det_regression/          # cross-platform determinism regression tool
 +-- image_gen/               # validation visuals
@@ -773,7 +775,7 @@ own. Those jobs verify a clean compile; the test suite runs from
 - [x] Dual precision (f32 + f64 in one binary)
 - [x] Data embedding with diagnostic guards
 - [x] Sharpmake + CMake build systems
-- [x] Unified test suite (129 suites, hosted in alwan_dev)
+- [x] Unified test suite (130 suites, hosted in alwan_dev)
 - [x] 104 named RGB spaces, easy to add more via space descriptors
 - [x] Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,

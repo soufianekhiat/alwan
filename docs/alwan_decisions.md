@@ -49,6 +49,8 @@ here first: the difference is intentional and the entry says what it costs.
 | [Ohno 2013](#ohno-2013-switches-locus-model-at-15000-k) | one locus model | switches model at 15000 K |
 | [Y'CbCr chroma](#ycbcr-chroma-is-centred-on-05-which-is-the-standards-digital-stage) | signed `E'Cb` in `[-0.5, +0.5]` | the digital stage, `[0, 1]` centred on 0.5 |
 | [V-Log cut point](#v-log-splits-at-linear--cut1-not-) | splits at `<=` | splits at `<`, as Panasonic specifies |
+| [Reinhard 2004 tone map](#reinhard-2004-follows-the-paper-where-colour-hdri-does-not) | colour-hdri's local term and automatic contrast | Reinhard and Devlin 2005 |
+| [Logarithmic and exponential tone maps](#reinhard-2004-follows-the-paper-where-colour-hdri-does-not) | `q`, `k` below 1 raised to 1 | `ALWAN_E_INVALID` |
 
 ## What is different about alwan itself
 
@@ -660,6 +662,29 @@ time. The two agree whenever the image holds a value at 0.5, and the tests build
 their brackets that way.
 
 ---
+
+### Reinhard 2004 follows the paper where colour-hdri does not
+
+**Reference:** colour-hdri 0.2.6, `tonemapping_operator_Reinhard2004`, against
+Reinhard and Devlin 2005, "Dynamic Range Reduction Inspired by Photoreceptor
+Physiology".
+
+The paper moves each channel's local adaptation level between the channel and the
+pixel's luminance, `I_l = c x + (1 - c) L`. colour-hdri computes `(c x + 1 - c) L`,
+which is the same at `c = 0`, its default, and a colour times a luminance anywhere
+else. Its automatic contrast, `m = 0.3 + 0.7 k^1.4`, takes
+`k = (ln L_max - L_av) / (ln L_max - ln L_min)^1.4`: the exponent lands on the
+denominator alone, and a log average is subtracted from a log. On the 64-pixel image
+of suite 130 the paper's `k` gives `m = 0.592`, and colour-hdri's line gives 0.405.
+
+alwan computes the paper, with every log taken of luminance plus the log average's
+epsilon so that `k` stays in `[0, 1]`. At `c = 0` with an explicit `m`, every
+Reinhard case of suite 130 matches colour-hdri to 8e-16; the other two parts are
+checked against the paper's formulas.
+
+The logarithmic and exponential operators take `q` and `k` from 1 up. colour-hdri
+raises a smaller value to 1 without saying so; alwan returns `ALWAN_E_INVALID`, the
+same rule against silent clamps as everywhere else.
 
 ## Build configuration
 

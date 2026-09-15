@@ -249,6 +249,61 @@ These are the classic per-pixel operators and they work on a scalar luminance.
 For picture formation that keeps hue and carrier order rather than tone-mapping a
 luminance, see [gamut.md](gamut.md).
 
+### alwan_tonemap_global_{T}
+
+```c
+alwan_status alwan_tonemap_global_{T}(alwan_{T} *rgb_out, size_t out_stride,
+                                      alwan_{T} const *rgb_in, size_t in_stride,
+                                      size_t count, alwan_tonemap_operator op,
+                                      alwan_tonemap_params_{T} const *params);
+```
+
+The eleven global operators of colour-hdri, over an image of interleaved RGB.
+They agree with `colour_hdri.tonemapping_operator_*` to 3e-15 (suite 130).
+
+| Operator | Maps | Parameters, and what zero reads as |
+|---|---|---|
+| `SIMPLE` | `x / (x + 1)` per channel | none |
+| `NORMALIZATION` | `RGB / L_max` | none |
+| `GAMMA` | `(2^ev x)^(1/gamma)` per channel | `gamma` (1), `ev` |
+| `LOGARITHMIC` | `log10(1 + qL) / log10(1 + k L_max)` | `q` (1), `k` (1), both at least 1 |
+| `EXPONENTIAL` | `1 - exp(-qL / (k L_avg))` | `q` (1), `k` (1), both at least 1 |
+| `LOGARITHMIC_MAPPING` | `(ln(1 + pL) / ln(1 + p L_max))^(1/q)` | `p` (1), `q` (1) |
+| `EXPONENTIATION_MAPPING` | `(L / L_max)^(p/q)` | `p` (1), `q` (1) |
+| `SCHLICK1994` | `pL / (pL - L + L_max)` | `p` (1) |
+| `TUMBLIN1999` | `m L_da (L / L_wa)^(g_w / g_d)`, over `display_peak` | `display_adaptation` (20 cd/m2), `display_contrast` (100), `display_peak` (100 cd/m2) |
+| `REINHARD2004` | `x / (x + (e^-f I_a)^m)` per channel | `intensity` f, `contrast` m (0.3), `light_adaptation` a, `chromatic_adaptation` c, `automatic_contrast` |
+| `FILMIC` | Hable's curve at `exposure_bias * x`, over its value at `linear_white` | `shoulder_strength` (0.22), `linear_strength` (0.3), `linear_angle` (0.1), `toe_strength` (0.2), `toe_numerator` (0.01), `toe_denominator` (0.3), `exposure_bias` (2), `linear_white` (11.2) |
+
+`L` is a pixel's luminance, `luminance_weights` times RGB, with sRGB's weights when
+all three are zero; `L_max` is the image's peak, `L_avg` and `L_wa` its log averages.
+A zeroed params struct, or `NULL`, is every operator at colour-hdri's defaults.
+
+The operators from `LOGARITHMIC` to `TUMBLIN1999` scale RGB by `L_d / L`, which keeps
+the ratios between the channels, and map a pixel with zero luminance to black.
+`REINHARD2004` maps each channel against its adaptation level `I_a`, which `a` moves
+from the image's (0) to the pixel's (1) and `c` from luminance (0) to the channel
+itself (1). Every operator but `SIMPLE`, `GAMMA` and `FILMIC` reads statistics of the
+whole image, so map an image in one call: a tile has its own peak and log average.
+The luminance operators need every luminance finite and not negative; the
+per-channel ones apply their formula to any value.
+
+Where the result differs from colour-hdri, on purpose
+([alwan_decisions.md](../alwan_decisions.md#reinhard-2004-follows-the-paper-where-colour-hdri-does-not)):
+
+- `REINHARD2004` follows Reinhard and Devlin 2005 for `chromatic_adaptation` above 0
+  and for `automatic_contrast`. colour-hdri multiplies the local term by luminance,
+  `(c x + 1 - c) L` for the paper's `c x + (1 - c) L`, and its automatic `m` raises
+  only the denominator of `k` to 1.4 and subtracts a log average from a log. alwan
+  takes `k = (ln L_max - ln L_avg) / (ln L_max - ln L_min)`, all of luminance plus
+  the log average's epsilon, so `k` lies in `[0, 1]`.
+- `q` or `k` below 1 is `ALWAN_E_INVALID` for `LOGARITHMIC` and `EXPONENTIAL`; colour-hdri
+  raises it to 1.
+- A pixel with zero luminance is black where colour-hdri divides zero by zero.
+
+`TUMBLIN1999` takes the natural log of `L_da` in `g_wd` and base-10 logs in the
+gammas, as colour-hdri does.
+
 ---
 
 ## D-Series Illuminant from CCT

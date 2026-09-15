@@ -1152,6 +1152,7 @@ not validate the body.
 - [x] Spectral camera characterisation: the rawtoaces-data pack, a spectral IDT that matches colour.matrix_idt to 5e-9, spectral-to-ACES through the RICD (suite 115)
 - [x] Spectral foundation: CIE daylight at any chromaticity, Gaussian and Ohno LED sources, multispectral integration weights (suite 114)
 - [x] ASTM E308 / E2022: tristimulus values and weighting factors, colour-science's sd_to_XYZ_ASTME308 to 7e-14 (suite 129)
+- [x] Global tone mapping: colour-hdri's eleven global operators to 3e-15, Reinhard 2004 per the paper (suite 130)
 - [x] HDR interchange: BT.2408 HLG/PQ/SDR conversions and ISO 21496-1 gain maps (suite 116)
 - [x] Tables can be compiled out: ALWAN_DATA_TABLES_MINIMAL and per-table switches, a missing table is ALWAN_E_NODATA (suite 113)
 - [x] alwan_get_build_info reports the switches the linked library was built with
