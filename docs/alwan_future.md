@@ -1156,6 +1156,7 @@ not validate the body.
 - [x] ITU-T H.273 code points, and the six transfer curves they name that alwan lacked (suites 131 and 103)
 - [x] colour-science's whole log registry: Log3G12, Panalog, ViperLog, pivoted log, FiLMiC Pro 6, Mi-Log, Log2 (suite 103, 36 curves)
 - [x] Color Interop Forum: the published `_scene` / `_display` IDs, the three texture spaces alwan lacked, E-Gamut 2 and F-Gamut C (suites 80 and 43)
+- [x] Lightness (Glasser, Wyszecki, Fairchild 2010/2011, Abebe 2017), seven Munsell value functions, whiteness Berger/Taube/Stensby/Ganz, yellowness ASTM D1925 and E313 alternative (suite 132)
 - [x] HDR interchange: BT.2408 HLG/PQ/SDR conversions and ISO 21496-1 gain maps (suite 116)
 - [x] Tables can be compiled out: ALWAN_DATA_TABLES_MINIMAL and per-table switches, a missing table is ALWAN_E_NODATA (suite 113)
 - [x] alwan_get_build_info reports the switches the linked library was built with

@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Lightness, Munsell value, whiteness and yellowness methods.** The rest of
+  colour-science's registries: `alwan_lightness_{T}` and its inverse for CIE 1976,
+  Glasser 1958, Wyszecki 1963, Fairchild 2010 and 2011 and Abebe 2017;
+  `alwan_munsell_value_{T}` for seven value functions, ASTM D1535 by exact inversion
+  of its quintic where colour-science interpolates; the D1535 and Newhall 1943
+  quintics back to luminance; whiteness Berger 1959, Taube 1960, Stensby 1968 and
+  Ganz 1979, yellowness ASTM D1925 and the ASTM E313 alternative. Every one matches
+  colour-science exactly in double precision, the inverses to 5e-16 (suite 132).
+
 - **Five RGB spaces.** `ALWAN_RGB_SPACE_LINEAR_CIE_XYZ_D65`, `ALWAN_RGB_SPACE_SRGB_AP1`
   and `ALWAN_RGB_SPACE_GAMMA24_REC709`, the Color Interop Forum texture spaces alwan
   lacked (`REC1886_REC709` encodes with BT.709's camera curve, not a 2.4 power), and

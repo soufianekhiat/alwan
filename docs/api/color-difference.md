@@ -276,6 +276,76 @@ CIE 2004 Whiteness (W). `xy` is the sample's CIE 1931 chromaticity, `Y` its lumi
 and `xy_n` the reference white chromaticity. Returns W only (the companion Tint value is not
 returned).
 
+### More whiteness and yellowness indices
+
+```c
+alwan_status alwan_whiteness_berger1959_{T}(alwan_{T} *W_out, alwan_xyz_{T} const *xyz, alwan_xyz_{T} const *xyz_0);
+alwan_status alwan_whiteness_taube1960_{T}(alwan_{T} *W_out, alwan_xyz_{T} const *xyz, alwan_xyz_{T} const *xyz_0);
+alwan_status alwan_whiteness_stensby1968_{T}(alwan_{T} *W_out, alwan_lab_{T} const *lab);
+alwan_status alwan_whiteness_ganz1979_{T}(alwan_{T} *W_out, alwan_{T} *T_out, alwan_vec2_{T} const *xy, alwan_{T} Y);
+alwan_status alwan_yellowness_astm_d1925_{T}(alwan_{T} *YI_out, alwan_xyz_{T} const *xyz);
+alwan_status alwan_yellowness_astm_e313_alternative_{T}(alwan_{T} *YI_out, alwan_xyz_{T} const *xyz);
+```
+
+| Index | Formula |
+|---|---|
+| Berger 1959 | `0.333 Y + 125 Z / Z_0 - 125 X / X_0`, against the illuminant's XYZ_0 |
+| Taube 1960 | `400 Z / Z_0 - 3 Y` |
+| Stensby 1968 | `L* - 3 b* + 3 a*` |
+| Ganz 1979 | `W = Y - 1868.322 x - 3695.690 y + 1809.441`, and the tint `T = -1001.223 x + 748.366 y + 68.261` |
+| ASTM D1925 | `100 (1.28 X - 1.06 Z) / Y` |
+| ASTM E313 alternative | `100 (1 - 0.847 Z / Y)` |
+
+XYZ in [0, 100]. Unlike the E313 and CIE 2004 functions above, these return an
+`alwan_status`: `ALWAN_E_INVALID` for a NULL pointer or a divisor of zero, a Y of 0
+in the yellowness indices included, where colour-science returns 0. They match
+colour-science's `colour.colorimetry` functions exactly (suite 132).
+
+---
+
+## Lightness and Munsell Value
+
+### alwan_lightness_{T} / alwan_luminance_from_lightness_{T}
+
+```c
+alwan_status alwan_lightness_{T}(alwan_{T} *L_out, alwan_{T} Y, alwan_lightness_method method,
+                                 alwan_lightness_params_{T} const *params);
+alwan_status alwan_luminance_from_lightness_{T}(alwan_{T} *Y_out, alwan_{T} L,
+                                                alwan_lightness_method method,
+                                                alwan_lightness_params_{T} const *params);
+```
+
+| Method | Y | Parameters (zero reads as) |
+|---|---|---|
+| `ALWAN_LIGHTNESS_CIE1976` | [0, 100] against `Y_n` | `Y_n` (100) |
+| `ALWAN_LIGHTNESS_GLASSER1958` | [0, 100] | none |
+| `ALWAN_LIGHTNESS_WYSZECKI1963` | [0, 100], meant for 1 to 98 | none |
+| `ALWAN_LIGHTNESS_FAIRCHILD2010` | relative to diffuse white, 1, and above | `epsilon` (1.836) |
+| `ALWAN_LIGHTNESS_FAIRCHILD2011_CIELAB`, `_IPT` | relative to diffuse white | `epsilon` (0.474) |
+| `ALWAN_LIGHTNESS_ABEBE2017_MICHAELIS_MENTEN`, `_STEVENS` | cd/m2 against the adapting `Y_n` | `Y_n` (100); above 100 the second set of constants |
+
+The Fairchild scales run past 100 for Y above diffuse white; Abebe 2017 returns
+lightness near [0, 1]. The inverse returns the Y of a lightness. colour-science has no
+inverse for Glasser 1958 and Wyszecki 1963, and alwan inverts them in closed form.
+
+### alwan_munsell_value_{T} / alwan_luminance_from_munsell_value_{T}
+
+```c
+alwan_status alwan_munsell_value_{T}(alwan_{T} *V_out, alwan_{T} Y, alwan_munsell_value_method method);
+alwan_status alwan_luminance_from_munsell_value_{T}(alwan_{T} *Y_out, alwan_{T} V,
+                                                    alwan_munsell_luminance_method method);
+```
+
+Munsell value, 0 to 10, of Y in [0, 100] by ASTM D1535 (the default, 0), Priest 1920,
+Munsell 1933, Moon 1943, Saunderson 1944, Ladd 1955 or McCamy 1987, and the Y of a
+value by the ASTM D1535 or Newhall 1943 quintic. ASTM D1535 defines luminance as a
+quintic in value; `alwan_munsell_value_{T}` inverts it exactly by Newton's method, where
+colour-science interpolates a table of it at 0.001 steps. The two agree to 2.1e-7, and
+alwan's value returns Y through the quintic to 4e-16.
+
+Every method matches colour-science exactly in double precision, the inverses to 5e-16
+(suite 132).
+
 ---
 
 ## Usage Example
