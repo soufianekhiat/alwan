@@ -111,6 +111,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_lightness.c
   src/alwan/api/alwan_locus.c
   src/alwan/api/alwan_colour_models.c
+  src/alwan/api/alwan_palette.c
   src/alwan/api/alwan_nayatani95.c
   src/alwan/map/alwan_agx_jp2499_map.c
   src/alwan/map/alwan_agx_map.c

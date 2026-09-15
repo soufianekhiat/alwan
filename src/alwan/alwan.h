@@ -1516,6 +1516,56 @@ alwan_status alwan_hunter_rdab_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_vec3_f32
 alwan_status alwan_hunter_rdab_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_vec3_f64 const *rdab,
                                           alwan_xyz_f64 const *xyz_n, alwan_vec2_f64 const *k_ab);
 
+/* ----------------------------------------------------------------
+ * Named colour palettes
+ *
+ * Lookup and search compare names as ASCII lowercase with every space, tab and
+ * newline removed, so "pinkest pink", "PINKEST PINK" and "PinkestPink" are one name.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_PALETTE_FREETONE = 0,     /* Stuart Semple's Freetone: 1,310 colours in device CMYK */
+    ALWAN_PALETTE_CSS_COLOR_3 = 1,  /* CSS Color Module Level 3 keywords: 147 sRGB colours */
+    ALWAN_PALETTE_COUNT
+} alwan_palette;
+
+typedef enum {
+    ALWAN_PALETTE_MODEL_CMYK = 0,   /* device C, M, Y, K in [0, 1]; no printing condition attached */
+    ALWAN_PALETTE_MODEL_SRGB = 1    /* sRGB-encoded R, G, B in [0, 1], value[3] = 0 */
+} alwan_palette_model;
+
+typedef struct {
+    char const *name;               /* as the palette spells it, spacing included; static storage */
+    alwan_palette_model model;
+    alwan_f64 value[4];
+} alwan_palette_entry;
+
+/* The number of colours in a palette; 0 for an unknown one. */
+size_t alwan_palette_size(alwan_palette palette);
+/* The colour at an index; ALWAN_E_INVALID past the end or for an unknown palette. */
+alwan_status alwan_palette_entry_at(alwan_palette_entry *entry_out, alwan_palette palette, size_t index);
+/* The index of the colour whose name matches; ALWAN_E_NODATA when none does. */
+alwan_status alwan_palette_find(size_t *index_out, alwan_palette palette, char const *name);
+/* Every colour whose name contains text. match_count_out receives the number of matches;
+ * the first capacity indices go to indices_out, which may be NULL when capacity is 0. */
+alwan_status alwan_palette_search(size_t *match_count_out, size_t *indices_out, size_t capacity, alwan_palette palette,
+                                  char const *text);
+
+/* HEX notation. alwan_rgb_to_hex writes "#rrggbb" and its terminator, 8 chars, each
+ * channel truncated to 0-255 as colour-science's RGB_to_HEX does; a channel outside
+ * [0, 1] is ALWAN_E_INVALID. alwan_hex_to_rgb reads six digits as colour-science's
+ * HEX_to_RGB does and three as CSS does, each digit doubled (#abc is #aabbcc); the
+ * '#' is optional, and any other length or a non-hex digit is ALWAN_E_INVALID. */
+alwan_status alwan_rgb_to_hex_f32(char *hex_out, alwan_rgb_f32 const *rgb);
+alwan_status alwan_rgb_to_hex_f64(char *hex_out, alwan_rgb_f64 const *rgb);
+alwan_status alwan_hex_to_rgb_f32(alwan_rgb_f32 *rgb_out, char const *hex);
+alwan_status alwan_hex_to_rgb_f64(alwan_rgb_f64 *rgb_out, char const *hex);
+
+/* A CSS Color 3 keyword to sRGB-encoded RGB in [0, 1], as colour-science's
+ * keyword_to_RGB_CSSColor3; ALWAN_E_NODATA for an unknown keyword. */
+alwan_status alwan_css_color_3_keyword_to_rgb_f32(alwan_rgb_f32 *rgb_out, char const *keyword);
+alwan_status alwan_css_color_3_keyword_to_rgb_f64(alwan_rgb_f64 *rgb_out, char const *keyword);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics
