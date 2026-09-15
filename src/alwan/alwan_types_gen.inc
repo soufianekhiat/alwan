@@ -165,6 +165,13 @@ typedef struct {
     ALWAN_T linear_white;         /* the input value mapped to 1; 0 reads as 11.2 */
 } ALWAN_TN(alwan_tonemap_params);
 
+/* Parameters of alwan_lightness_{T} and alwan_luminance_from_lightness_{T}. A zero
+ * field is colour-science's default. */
+typedef struct {
+    ALWAN_T Y_n;     /* reference white, CIE 1976 and Abebe 2017; 0 reads as 100 */
+    ALWAN_T epsilon; /* Fairchild's exponent; 0 reads as 1.836 (2010) or 0.474 (2011) */
+} ALWAN_TN(alwan_lightness_params);
+
 /* A DNG camera profile's colour tags (DNG 1.6, chapter 6). The zero value of an
  * optional field is its absence: an all-zero color_matrix_2 makes a
  * single-illuminant profile, all-zero camera calibrations read as identity, all-zero

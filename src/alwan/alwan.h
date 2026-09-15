@@ -1844,6 +1844,70 @@ alwan_f32  alwan_whiteness_cie2004_f32(alwan_vec2_f32 const *xy, alwan_f32 Y, al
 alwan_f64 alwan_whiteness_cie2004_f64(alwan_vec2_f64 const *xy, alwan_f64 Y, alwan_vec2_f64 const *xy_n);
 
 /* ----------------------------------------------------------------
+ * Lightness, luminance, Munsell value, whiteness and yellowness
+ *
+ * The rest of colour-science's lightness, luminance, Munsell value, whiteness and
+ * yellowness registries, in its forms. Each method takes Y in its own domain, noted
+ * with it. ALWAN_E_INVALID for an unknown method, a NULL output or a divisor of zero.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_LIGHTNESS_CIE1976 = 0,                    /* L*, Y in [0, 100] against Y_n */
+    ALWAN_LIGHTNESS_GLASSER1958 = 1,                /* Y in [0, 100] */
+    ALWAN_LIGHTNESS_WYSZECKI1963 = 2,               /* W*, Y in [0, 100], meant for 1 to 98 */
+    ALWAN_LIGHTNESS_FAIRCHILD2010 = 3,              /* hdr-CIELAB 2010, Y in [0, 1] and above */
+    ALWAN_LIGHTNESS_FAIRCHILD2011_CIELAB = 4,       /* hdr-CIELAB 2011, Y in [0, 1] and above */
+    ALWAN_LIGHTNESS_FAIRCHILD2011_IPT = 5,          /* hdr-IPT 2011 */
+    ALWAN_LIGHTNESS_ABEBE2017_MICHAELIS_MENTEN = 6, /* Y in cd/m2 against the adapting Y_n */
+    ALWAN_LIGHTNESS_ABEBE2017_STEVENS = 7
+} alwan_lightness_method;
+
+/* Lightness of Y, and the luminance of a lightness. Glasser 1958 and Wyszecki 1963
+ * invert in closed form, as colour-science does not. params NULL is every default. */
+alwan_status alwan_lightness_f64(alwan_f64 *L_out, alwan_f64 Y, alwan_lightness_method method, alwan_lightness_params_f64 const *params);
+alwan_status alwan_lightness_f32(alwan_f32 *L_out, alwan_f32 Y, alwan_lightness_method method, alwan_lightness_params_f32 const *params);
+alwan_status alwan_luminance_from_lightness_f64(alwan_f64 *Y_out, alwan_f64 L, alwan_lightness_method method, alwan_lightness_params_f64 const *params);
+alwan_status alwan_luminance_from_lightness_f32(alwan_f32 *Y_out, alwan_f32 L, alwan_lightness_method method, alwan_lightness_params_f32 const *params);
+
+typedef enum {
+    ALWAN_MUNSELL_VALUE_ASTM_D1535 = 0,     /* the exact inverse of D1535's quintic */
+    ALWAN_MUNSELL_VALUE_PRIEST1920 = 1,
+    ALWAN_MUNSELL_VALUE_MUNSELL1933 = 2,
+    ALWAN_MUNSELL_VALUE_MOON1943 = 3,
+    ALWAN_MUNSELL_VALUE_SAUNDERSON1944 = 4,
+    ALWAN_MUNSELL_VALUE_LADD1955 = 5,
+    ALWAN_MUNSELL_VALUE_MCCAMY1987 = 6
+} alwan_munsell_value_method;
+
+typedef enum {
+    ALWAN_MUNSELL_LUMINANCE_ASTM_D1535 = 0, /* ASTM D1535-08 */
+    ALWAN_MUNSELL_LUMINANCE_NEWHALL1943 = 1 /* Newhall, Nickerson and Judd 1943 */
+} alwan_munsell_luminance_method;
+
+/* Munsell value, 0 to 10, of Y in [0, 100], and the Y of a Munsell value. */
+alwan_status alwan_munsell_value_f64(alwan_f64 *V_out, alwan_f64 Y, alwan_munsell_value_method method);
+alwan_status alwan_munsell_value_f32(alwan_f32 *V_out, alwan_f32 Y, alwan_munsell_value_method method);
+alwan_status alwan_luminance_from_munsell_value_f64(alwan_f64 *Y_out, alwan_f64 V, alwan_munsell_luminance_method method);
+alwan_status alwan_luminance_from_munsell_value_f32(alwan_f32 *Y_out, alwan_f32 V, alwan_munsell_luminance_method method);
+
+/* Whiteness: Berger 1959 and Taube 1960 against the illuminant's XYZ_0, Stensby 1968 of
+ * CIELAB, Ganz 1979 of xy and Y, with its tint. XYZ in [0, 100]. */
+alwan_status alwan_whiteness_berger1959_f64(alwan_f64 *W_out, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *xyz_0);
+alwan_status alwan_whiteness_berger1959_f32(alwan_f32 *W_out, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *xyz_0);
+alwan_status alwan_whiteness_taube1960_f64(alwan_f64 *W_out, alwan_xyz_f64 const *xyz, alwan_xyz_f64 const *xyz_0);
+alwan_status alwan_whiteness_taube1960_f32(alwan_f32 *W_out, alwan_xyz_f32 const *xyz, alwan_xyz_f32 const *xyz_0);
+alwan_status alwan_whiteness_stensby1968_f64(alwan_f64 *W_out, alwan_lab_f64 const *lab);
+alwan_status alwan_whiteness_stensby1968_f32(alwan_f32 *W_out, alwan_lab_f32 const *lab);
+alwan_status alwan_whiteness_ganz1979_f64(alwan_f64 *W_out, alwan_f64 *T_out, alwan_vec2_f64 const *xy, alwan_f64 Y);
+alwan_status alwan_whiteness_ganz1979_f32(alwan_f32 *W_out, alwan_f32 *T_out, alwan_vec2_f32 const *xy, alwan_f32 Y);
+
+/* Yellowness: ASTM D1925 and the ASTM E313 alternative. XYZ in [0, 100]; a Y of 0 is
+ * ALWAN_E_INVALID, where colour-science returns 0. */
+alwan_status alwan_yellowness_astm_d1925_f64(alwan_f64 *YI_out, alwan_xyz_f64 const *xyz);
+alwan_status alwan_yellowness_astm_d1925_f32(alwan_f32 *YI_out, alwan_xyz_f32 const *xyz);
+alwan_status alwan_yellowness_astm_e313_alternative_f64(alwan_f64 *YI_out, alwan_xyz_f64 const *xyz);
+alwan_status alwan_yellowness_astm_e313_alternative_f32(alwan_f32 *YI_out, alwan_xyz_f32 const *xyz);
+
+/* ----------------------------------------------------------------
  * Chromatic Adaptation Transform (CAT)
  * ---------------------------------------------------------------- */
 
