@@ -284,6 +284,8 @@ EXPORTS
     alwan_create
     alwan_crf_debevec1997_f32
     alwan_crf_debevec1997_f64
+    alwan_crf_robertson2003_f32
+    alwan_crf_robertson2003_f64
     alwan_crf_samples_grossberg2003_f32
     alwan_crf_samples_grossberg2003_f64
     alwan_cri_ra_f32
