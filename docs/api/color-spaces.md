@@ -177,6 +177,48 @@ and maps to `[0, 1]` under the default normalization. See
 
 ---
 
+### Yrg, IPT Ragoo 2021, sUCS, Izazbz and Hunter Rdab
+
+```c
+alwan_status alwan_xyz_to_yrg_{T}(alwan_vec3_{T} *yrg_out, alwan_xyz_{T} const *xyz);
+alwan_status alwan_yrg_to_xyz_{T}(alwan_xyz_{T} *xyz_out, alwan_vec3_{T} const *yrg);
+alwan_status alwan_xyz_to_ipt_ragoo2021_{T}(alwan_ipt_{T} *ipt_out, alwan_xyz_{T} const *xyz);
+alwan_status alwan_ipt_ragoo2021_to_xyz_{T}(alwan_xyz_{T} *xyz_out, alwan_ipt_{T} const *ipt);
+alwan_status alwan_xyz_to_sucs_{T}(alwan_vec3_{T} *iab_out, alwan_xyz_{T} const *xyz);
+alwan_status alwan_sucs_to_xyz_{T}(alwan_xyz_{T} *xyz_out, alwan_vec3_{T} const *iab);
+alwan_status alwan_xyz_to_izazbz_{T}(alwan_vec3_{T} *izazbz_out, alwan_xyz_{T} const *xyz_d65,
+                                     alwan_izazbz_method method);
+alwan_status alwan_izazbz_to_xyz_{T}(alwan_xyz_{T} *xyz_out, alwan_vec3_{T} const *izazbz,
+                                     alwan_izazbz_method method);
+alwan_status alwan_xyz_to_hunter_rdab_{T}(alwan_vec3_{T} *rdab_out, alwan_xyz_{T} const *xyz,
+                                          alwan_xyz_{T} const *xyz_n, alwan_vec2_{T} const *k_ab);
+alwan_status alwan_hunter_rdab_to_xyz_{T}(alwan_xyz_{T} *xyz_out, alwan_vec3_{T} const *rdab,
+                                          alwan_xyz_{T} const *xyz_n, alwan_vec2_{T} const *k_ab);
+```
+
+Each follows colour-science's function of the same name, in its order of operations and
+with its signed power `sign(a) |a|^p`, and matches it to 1.1e-13 (suite 135).
+
+| Model | XYZ scale | Output | Source |
+|---|---|---|---|
+| Yrg | 0-1 | Y, r, g | Kirk 2019 |
+| IPT Ragoo 2021 | 0-1 | I, P, T | Ragoo 2021: IPT's four matrices refitted, exponent 0.4071 |
+| sUCS | 0-1 | I, a, b in 0-100 | Li and Luo 2024: IPT's LMS, exponent 0.43, its own Iab matrix |
+| Izazbz | absolute, cd/m² | I, az, bz | Safdar 2017, or Safdar 2021 as ZCAM uses it |
+| Hunter Rdab | 0-100 | Rd, a, b | Hunter; Rd is Y |
+
+- Yrg: black has l = m = 0, as colour-science's safe division gives. The inverse is
+  `ALWAN_E_INVALID` where `0.68990272 l + 0.34832189 m` is 0.
+- Izazbz is Jzazbz before its lightness step. `ALWAN_IZAZBZ_SAFDAR2021` uses ZCAM's LMS'
+  matrix and offsets I by d_0 = 3.7035226210190005e-11. Another method value is
+  `ALWAN_E_INVALID`.
+- Hunter Rdab with `xyz_n` NULL uses Hunter's D65 table, (95.02, 100, 108.82), and its
+  K_ab, (172.3, 67.2). With an `xyz_n` and `k_ab` NULL, K_a and K_b come from Hunter
+  1966, as `alwan_hunter_coefficients`. A white with a component <= 0 is
+  `ALWAN_E_INVALID`, and so is K_a or K_b = 0 in the inverse.
+
+---
+
 ## Perceptual Pickers
 
 Five spaces exist to be steered by hand rather than to measure with. They are

@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Yrg, IPT Ragoo 2021, sUCS, Izazbz and Hunter Rdab.** The colour models
+  colour-science has and alwan lacked, each with its inverse: `alwan_xyz_to_yrg_{T}`
+  (Kirk 2019); `alwan_xyz_to_ipt_ragoo2021_{T}`, whose four matrices Ragoo refitted
+  along with the exponent; `alwan_xyz_to_sucs_{T}` (Li and Luo 2024);
+  `alwan_xyz_to_izazbz_{T}` for Safdar 2017 and ZCAM's Safdar 2021; and
+  `alwan_xyz_to_hunter_rdab_{T}` with an optional white and K_ab. Against colour-science
+  to 1.1e-13 in double precision (suite 135).
+
 - **Colorimetric purity.** `alwan_colorimetric_purity_{T}`, excitation purity times
   y_wl / y, as colour-science's `colorimetric_purity` (suite 134).
 
