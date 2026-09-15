@@ -2444,15 +2444,13 @@ alwan_vec2_f64 const* alwan_pointer_gamut_boundary(size_t *count_out);
 alwan_status alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 wavelength);
 alwan_status alwan_spectral_locus_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 wavelength);
 
-/* Compute dominant wavelength for a color
- * Dominant wavelength is the wavelength of monochromatic light that,
- * when mixed with the white point, matches the given color's hue
- * wavelength_out: receives dominant wavelength in nm (or negative for complementary)
- * xy_wl_out: receives xy of the spectral locus point (optional, can be NULL)
- * xy_cw_out: receives xy of the color-white intersection (optional, can be NULL)
- * xy: CIE 1931 xy chromaticity coordinates of the color
- * xy_white: white point xy chromaticity (e.g., illuminant D65)
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if color is on/near the purple line */
+/* Dominant wavelength, as colour-science's dominant_wavelength on the CIE 1931 2 deg
+ * locus at 1 nm. The ray from xy_white through xy meets the locus, closed by the line
+ * of purples from 830 nm to 360 nm, at xy_wl_out. On the spectrum locus the wavelength
+ * is that point's, interpolated between the 1 nm samples where colour-science snaps to
+ * the nearest, and xy_cw_out is xy_wl_out. On the line of purples the wavelength is the
+ * negated complementary one, the opposite ray's, and xy_cw_out is that locus point.
+ * xy_wl_out and xy_cw_out may be NULL. ALWAN_E_INVALID when xy is xy_white. */
 alwan_status alwan_dominant_wavelength_f32(alwan_f32 *wavelength_out,
                                alwan_vec2_f32 *xy_wl_out,
                                alwan_vec2_f32 *xy_cw_out,
@@ -2464,30 +2462,28 @@ alwan_status alwan_dominant_wavelength_f64(alwan_f64 *wavelength_out,
                                alwan_vec2_f64 const *xy,
                                alwan_vec2_f64 const *xy_white);
 
-/* Compute excitation purity for a color
- * Excitation purity is the ratio of the distance from the white point to the color,
- * divided by the distance from the white point to the spectrum locus, along the
- * line connecting them (0 = white, 1 = spectral/maximum saturation)
- * xy: CIE 1931 xy chromaticity coordinates of the color
- * xy_white: white point xy chromaticity (e.g., illuminant D65)
- * purity_out: receives excitation purity [0-1]
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+/* Excitation purity, |xy - xy_white| / |xy_wl - xy_white| with xy_wl the dominant
+ * wavelength's point, on the line of purples for a purple: 0 at the white point, 1 on
+ * the closed locus, above 1 outside it (not clamped), as colour-science's
+ * excitation_purity. Colorimetric purity is excitation purity times y_wl / y, as
+ * colour-science's colorimetric_purity; ALWAN_E_INVALID for y = 0. */
 alwan_status alwan_excitation_purity_f32(alwan_f32 *purity_out,
                              alwan_vec2_f32 const *xy,
                              alwan_vec2_f32 const *xy_white);
 alwan_status alwan_excitation_purity_f64(alwan_f64 *purity_out,
                              alwan_vec2_f64 const *xy,
                              alwan_vec2_f64 const *xy_white);
+alwan_status alwan_colorimetric_purity_f32(alwan_f32 *purity_out,
+                               alwan_vec2_f32 const *xy,
+                               alwan_vec2_f32 const *xy_white);
+alwan_status alwan_colorimetric_purity_f64(alwan_f64 *purity_out,
+                               alwan_vec2_f64 const *xy,
+                               alwan_vec2_f64 const *xy_white);
 
-/* Compute complementary wavelength for a color
- * Complementary wavelength is used for colors on the purple line (no dominant wavelength)
- * It is the wavelength on the opposite side of the white point
- * xy: CIE 1931 xy chromaticity coordinates of the color
- * xy_white: white point xy chromaticity (e.g., illuminant D65)
- * wavelength_out: receives complementary wavelength in nm
- * xy_wl_out: receives xy of the spectral locus point (optional, can be NULL)
- * xy_cw_out: receives xy of the color-white intersection (optional, can be NULL)
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+/* Complementary wavelength, as colour-science's complementary_wavelength: the dominant
+ * wavelength of the ray from xy_white away from xy, with the same outputs. When that
+ * ray meets the line of purples, the wavelength is the negated dominant one of xy.
+ * The f32 twins of these functions compute in double. */
 alwan_status alwan_complementary_wavelength_f32(alwan_f32 *wavelength_out,
                                      alwan_vec2_f32 *xy_wl_out,
                                      alwan_vec2_f32 *xy_cw_out,

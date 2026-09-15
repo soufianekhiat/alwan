@@ -339,81 +339,108 @@ alwan_status alwan_spectral_locus_xy_f64(alwan_vec2_f64 *xy_out, alwan_f64 wavel
  * Dominant Wavelength & Excitation Purity
  * ---------------------------------------------------------------- */
 
-/* Compute intersection of line (p1, p2) with spectral locus
- * Returns wavelength and xy coordinates of intersection point
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if no intersection found */
-static int alwan_intersect_spectral_locus(alwan_vec2_f64 const *p1,
-                                           alwan_vec2_f64 const *p2,
-                                           alwan_f64 *wavelength_out,
-                                           alwan_vec2_f64 *xy_out) {
-    /* Find intersection by testing each segment of the spectral locus */
-    alwan_f64 best_t = ALWAN_LITERAL(-1.0);
-    size_t best_idx = 0;
-
-    for (size_t i = 0; i < SPECTRAL_LOCUS_COUNT - 1; i++) {
+/* The nearest crossing of the ray from n through p with the closed locus: the
+ * polyline from 360 to 830 nm, closed by the line of purples from 830 nm back to
+ * 360 nm, as colour-science closes it. *seg_out is the segment index,
+ * SPECTRAL_LOCUS_COUNT - 1 on the line of purples, and *u_out the position along
+ * it. ALWAN_E_INVALID when p is n or the ray misses. Parallel segments are skipped
+ * only when exactly parallel: the locus's 1 nm steps near 830 nm are shorter than
+ * 1e-6. Double in both precisions. */
+static int alwan_locus_ray(alwan_f64 nx, alwan_f64 ny, alwan_f64 px, alwan_f64 py, alwan_f64 *x_out,
+                           alwan_f64 *y_out, int *seg_out, alwan_f64 *u_out) {
+    alwan_f64 const dx = px - nx, dy = py - ny;
+    alwan_f64 best_t = ALWAN_LITERAL(0.0), best_u = ALWAN_LITERAL(0.0);
+    int best = -1;
+    if (dx == ALWAN_LITERAL(0.0) && dy == ALWAN_LITERAL(0.0)) return ALWAN_E_INVALID;
+    for (int i = 0; i < SPECTRAL_LOCUS_COUNT; i++) {
         alwan_vec2_f64 const *s1 = &SPECTRAL_LOCUS_XY[i];
-        alwan_vec2_f64 const *s2 = &SPECTRAL_LOCUS_XY[i + 1];
-
-        /* Line-line intersection using parametric form:
-         * p1 + t*(p2-p1) = s1 + u*(s2-s1) */
-        alwan_f64 dx1 = p2->v[0] - p1->v[0];
-        alwan_f64 dy1 = p2->v[1] - p1->v[1];
-        alwan_f64 dx2 = s2->v[0] - s1->v[0];
-        alwan_f64 dy2 = s2->v[1] - s1->v[1];
-
-        alwan_f64 det = dx1 * dy2 - dy1 * dx2;
-        if (ALWAN_ABS(det) < ALWAN_LITERAL(1e-10)) {
-            continue;  /* Lines are parallel */
-        }
-
-        alwan_f64 dx3 = s1->v[0] - p1->v[0];
-        alwan_f64 dy3 = s1->v[1] - p1->v[1];
-
-        alwan_f64 t = (dx3 * dy2 - dy3 * dx2) / det;
-        alwan_f64 u = (dx3 * dy1 - dy3 * dx1) / det;
-
-        /* Check if intersection is on the ray (t >= 0) and on the spectral locus segment (u in [0,1])
-         * We allow t > 1 to extend the ray beyond the color point to the spectral locus */
-        if (t >= ALWAN_LITERAL(0.0) &&
-            u >= ALWAN_LITERAL(0.0) && u <= ALWAN_LITERAL(1.0)) {
-            if (best_t < ALWAN_LITERAL(0.0) || t < best_t) {
-                best_t = t;
-                best_idx = i;
-            }
+        alwan_vec2_f64 const *s2 = &SPECTRAL_LOCUS_XY[i + 1 < SPECTRAL_LOCUS_COUNT ? i + 1 : 0];
+        alwan_f64 const ex = s2->v[0] - s1->v[0], ey = s2->v[1] - s1->v[1];
+        alwan_f64 const wx = s1->v[0] - nx, wy = s1->v[1] - ny;
+        alwan_f64 const det = dx * ey - dy * ex;
+        if (det == ALWAN_LITERAL(0.0)) continue;
+        alwan_f64 const t = (wx * ey - wy * ex) / det;
+        alwan_f64 const u = (wx * dy - wy * dx) / det;
+        if (t > ALWAN_LITERAL(0.0) && u >= ALWAN_LITERAL(0.0) && u <= ALWAN_LITERAL(1.0) && (best < 0 || t < best_t)) {
+            best_t = t;
+            best_u = u;
+            best = i;
         }
     }
+    if (best < 0) return ALWAN_E_INVALID;
+    alwan_vec2_f64 const *s1 = &SPECTRAL_LOCUS_XY[best];
+    alwan_vec2_f64 const *s2 = &SPECTRAL_LOCUS_XY[best + 1 < SPECTRAL_LOCUS_COUNT ? best + 1 : 0];
+    *x_out = s1->v[0] + best_u * (s2->v[0] - s1->v[0]);
+    *y_out = s1->v[1] + best_u * (s2->v[1] - s1->v[1]);
+    *seg_out = best;
+    *u_out = best_u;
+    return ALWAN_OK;
+}
 
-    if (best_t < ALWAN_LITERAL(0.0)) {
-        return ALWAN_E_INVALID;  /* No intersection found */
+/* colour-science's dominant_wavelength (inverse 0) and complementary_wavelength
+ * (inverse 1). xy_wl is where the ray from the white point meets the closed locus;
+ * on the line of purples the wavelength is the opposite ray's, negated, and xy_cw is
+ * that opposite point, else xy_cw is xy_wl. The wavelength is interpolated along the
+ * locus segment, where colour-science snaps it to the nearest 1 nm sample. */
+static int alwan_dominant_core(alwan_f64 *wl, alwan_f64 *xy_wl, alwan_f64 *xy_cw, alwan_f64 x, alwan_f64 y,
+                               alwan_f64 nx, alwan_f64 ny, int inverse) {
+    alwan_f64 const px = inverse ? ALWAN_LITERAL(2.0) * nx - x : x;
+    alwan_f64 const py = inverse ? ALWAN_LITERAL(2.0) * ny - y : y;
+    alwan_f64 u;
+    int seg;
+    if (alwan_locus_ray(nx, ny, px, py, &xy_wl[0], &xy_wl[1], &seg, &u) != ALWAN_OK) return ALWAN_E_INVALID;
+    if (seg < SPECTRAL_LOCUS_COUNT - 1) {
+        *wl = SPECTRAL_LOCUS_WL_MIN + ((alwan_f64)seg + u) * SPECTRAL_LOCUS_WL_INTERVAL;
+        xy_cw[0] = xy_wl[0];
+        xy_cw[1] = xy_wl[1];
+        return ALWAN_OK;
     }
-
-    /* Compute intersection point */
-    alwan_vec2_f64 const *s1 = &SPECTRAL_LOCUS_XY[best_idx];
-    alwan_vec2_f64 const *s2 = &SPECTRAL_LOCUS_XY[best_idx + 1];
-
-    alwan_f64 dx2 = s2->v[0] - s1->v[0];
-    alwan_f64 dy2 = s2->v[1] - s1->v[1];
-    alwan_f64 dx3 = s1->v[0] - p1->v[0];
-    alwan_f64 dy3 = s1->v[1] - p1->v[1];
-
-    alwan_f64 dx1 = p2->v[0] - p1->v[0];
-    alwan_f64 dy1 = p2->v[1] - p1->v[1];
-    alwan_f64 det = dx1 * dy2 - dy1 * dx2;
-    alwan_f64 u = (dx3 * dy1 - dy3 * dx1) / det;
-
-    if (xy_out) {
-        xy_out->v[0] = s1->v[0] + u * dx2;
-        xy_out->v[1] = s1->v[1] + u * dy2;
+    if (alwan_locus_ray(nx, ny, ALWAN_LITERAL(2.0) * nx - px, ALWAN_LITERAL(2.0) * ny - py, &xy_cw[0], &xy_cw[1], &seg,
+                        &u) != ALWAN_OK ||
+        seg == SPECTRAL_LOCUS_COUNT - 1) {
+        return ALWAN_E_INVALID;
     }
+    *wl = -(SPECTRAL_LOCUS_WL_MIN + ((alwan_f64)seg + u) * SPECTRAL_LOCUS_WL_INTERVAL);
+    return ALWAN_OK;
+}
 
-    /* Interpolate wavelength */
-    alwan_f64 wl = SPECTRAL_LOCUS_WL_MIN + (alwan_f64)best_idx * SPECTRAL_LOCUS_WL_INTERVAL;
-    wl += u * SPECTRAL_LOCUS_WL_INTERVAL;
-
-    if (wavelength_out) {
-        *wavelength_out = wl;
+/* Excitation purity, |xy - n| / |xy_wl - n|, and colorimetric purity, P_e y_wl / y,
+ * as colour-science computes them, xy_wl on the line of purples for a purple. Not
+ * clamped: a chromaticity outside the locus has P_e above 1. The white point itself
+ * is 0. */
+static int alwan_purity_core(alwan_f64 *pe, alwan_f64 *pc, alwan_f64 x, alwan_f64 y, alwan_f64 nx, alwan_f64 ny) {
+    alwan_f64 wl, xy_wl[2], xy_cw[2];
+    if (x == nx && y == ny) {
+        *pe = ALWAN_LITERAL(0.0);
+        if (pc) *pc = ALWAN_LITERAL(0.0);
+        return ALWAN_OK;
     }
+    if (pc && y == ALWAN_LITERAL(0.0)) return ALWAN_E_INVALID;
+    if (alwan_dominant_core(&wl, xy_wl, xy_cw, x, y, nx, ny, 0) != ALWAN_OK) return ALWAN_E_INVALID;
+    *pe = ALWAN_SQRT((x - nx) * (x - nx) + (y - ny) * (y - ny)) /
+          ALWAN_SQRT((xy_wl[0] - nx) * (xy_wl[0] - nx) + (xy_wl[1] - ny) * (xy_wl[1] - ny));
+    if (pc) *pc = *pe * (xy_wl[1] / y);
+    return ALWAN_OK;
+}
 
+static alwan_status alwan_dominant_f64_impl(alwan_f64 *wavelength_out, alwan_vec2_f64 *xy_wl_out,
+                                           alwan_vec2_f64 *xy_cw_out, alwan_vec2_f64 const *xy,
+                                           alwan_vec2_f64 const *xy_white, int inverse) {
+    alwan_f64 wl, xy_wl[2], xy_cw[2];
+    if (!xy || !xy_white || !wavelength_out) return ALWAN_E_INVALID;
+    if (alwan_dominant_core(&wl, xy_wl, xy_cw, xy->v[0], xy->v[1], xy_white->v[0], xy_white->v[1], inverse) !=
+        ALWAN_OK) {
+        return ALWAN_E_INVALID;
+    }
+    *wavelength_out = wl;
+    if (xy_wl_out) {
+        xy_wl_out->v[0] = xy_wl[0];
+        xy_wl_out->v[1] = xy_wl[1];
+    }
+    if (xy_cw_out) {
+        xy_cw_out->v[0] = xy_cw[0];
+        xy_cw_out->v[1] = xy_cw[1];
+    }
     return ALWAN_OK;
 }
 
@@ -422,84 +449,7 @@ alwan_status alwan_dominant_wavelength_f64(alwan_f64 *wavelength_out,
                                alwan_vec2_f64 *xy_cw_out,
                                alwan_vec2_f64 const *xy,
                                alwan_vec2_f64 const *xy_white) {
-    if (!xy || !xy_white || !wavelength_out) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Extend line from white point through xy to spectral locus */
-    alwan_f64 wl;
-    alwan_vec2_f64 xy_intersection;
-    int status = alwan_intersect_spectral_locus(xy_white, xy, &wl, &xy_intersection);
-
-    if (status != ALWAN_OK) {
-        /* No intersection with spectral locus - color is on purple line
-         * Return negative value to indicate complementary wavelength needed */
-        return ALWAN_E_INVALID;
-    }
-
-    *wavelength_out = wl;
-
-    if (xy_wl_out) {
-        *xy_wl_out = xy_intersection;
-    }
-
-    if (xy_cw_out) {
-        *xy_cw_out = xy_intersection;  /* For dominant wavelength, cw = wl */
-    }
-
-    return ALWAN_OK;
-}
-
-alwan_status alwan_excitation_purity_f64(alwan_f64 *purity_out,
-                             alwan_vec2_f64 const *xy,
-                             alwan_vec2_f64 const *xy_white) {
-    if (!xy || !xy_white || !purity_out) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Get dominant wavelength (intersection with spectral locus) */
-    alwan_vec2_f64 xy_wl;
-    alwan_f64 wl;
-    int status = alwan_intersect_spectral_locus(xy_white, xy, &wl, &xy_wl);
-
-    if (status != ALWAN_OK) {
-        /* For purple line colors, use complementary wavelength */
-        /* Find intersection in opposite direction */
-        alwan_vec2_f64 xy_opposite;
-        xy_opposite.v[0] = ALWAN_LITERAL(2.0) * xy_white->v[0] - xy->v[0];
-        xy_opposite.v[1] = ALWAN_LITERAL(2.0) * xy_white->v[1] - xy->v[1];
-
-        status = alwan_intersect_spectral_locus(xy_white, &xy_opposite, &wl, &xy_wl);
-        if (status != ALWAN_OK) {
-            return ALWAN_E_INVALID;
-        }
-    }
-
-    /* Compute excitation purity as ratio of distances:
-     * pe = |white - color| / |white - spectral_locus| */
-    alwan_f64 dx_color = xy->v[0] - xy_white->v[0];
-    alwan_f64 dy_color = xy->v[1] - xy_white->v[1];
-    alwan_f64 dist_color = ALWAN_SQRT(dx_color * dx_color + dy_color * dy_color);
-
-    alwan_f64 dx_wl = xy_wl.v[0] - xy_white->v[0];
-    alwan_f64 dy_wl = xy_wl.v[1] - xy_white->v[1];
-    alwan_f64 dist_wl = ALWAN_SQRT(dx_wl * dx_wl + dy_wl * dy_wl);
-
-    if (dist_wl < ALWAN_LITERAL(1e-10)) {
-        *purity_out = ALWAN_LITERAL(0.0);  /* White point */
-        return ALWAN_OK;
-    }
-
-    *purity_out = dist_color / dist_wl;
-
-    /* Clamp to [0, 1] range */
-    if (*purity_out < ALWAN_LITERAL(0.0)) {
-        *purity_out = ALWAN_LITERAL(0.0);
-    } else if (*purity_out > ALWAN_LITERAL(1.0)) {
-        *purity_out = ALWAN_LITERAL(1.0);
-    }
-
-    return ALWAN_OK;
+    return alwan_dominant_f64_impl(wavelength_out, xy_wl_out, xy_cw_out, xy, xy_white, 0);
 }
 
 alwan_status alwan_complementary_wavelength_f64(alwan_f64 *wavelength_out,
@@ -507,34 +457,22 @@ alwan_status alwan_complementary_wavelength_f64(alwan_f64 *wavelength_out,
                                      alwan_vec2_f64 *xy_cw_out,
                                      alwan_vec2_f64 const *xy,
                                      alwan_vec2_f64 const *xy_white) {
-    if (!xy || !xy_white || !wavelength_out) {
-        return ALWAN_E_INVALID;
-    }
+    return alwan_dominant_f64_impl(wavelength_out, xy_wl_out, xy_cw_out, xy, xy_white, 1);
+}
 
-    /* Extend line from color through white point to spectral locus (opposite direction) */
-    alwan_vec2_f64 xy_opposite;
-    xy_opposite.v[0] = ALWAN_LITERAL(2.0) * xy_white->v[0] - xy->v[0];
-    xy_opposite.v[1] = ALWAN_LITERAL(2.0) * xy_white->v[1] - xy->v[1];
+alwan_status alwan_excitation_purity_f64(alwan_f64 *purity_out,
+                             alwan_vec2_f64 const *xy,
+                             alwan_vec2_f64 const *xy_white) {
+    if (!xy || !xy_white || !purity_out) return ALWAN_E_INVALID;
+    return (alwan_status)alwan_purity_core(purity_out, NULL, xy->v[0], xy->v[1], xy_white->v[0], xy_white->v[1]);
+}
 
-    alwan_f64 wl;
-    alwan_vec2_f64 xy_intersection;
-    int status = alwan_intersect_spectral_locus(xy_white, &xy_opposite, &wl, &xy_intersection);
-
-    if (status != ALWAN_OK) {
-        return ALWAN_E_INVALID;
-    }
-
-    *wavelength_out = wl;
-
-    if (xy_wl_out) {
-        *xy_wl_out = xy_intersection;
-    }
-
-    if (xy_cw_out) {
-        *xy_cw_out = xy_intersection;
-    }
-
-    return ALWAN_OK;
+alwan_status alwan_colorimetric_purity_f64(alwan_f64 *purity_out,
+                               alwan_vec2_f64 const *xy,
+                               alwan_vec2_f64 const *xy_white) {
+    alwan_f64 pe;
+    if (!xy || !xy_white || !purity_out) return ALWAN_E_INVALID;
+    return (alwan_status)alwan_purity_core(&pe, purity_out, xy->v[0], xy->v[1], xy_white->v[0], xy_white->v[1]);
 }
 
 /* ----------------------------------------------------------------
@@ -1451,74 +1389,24 @@ alwan_status alwan_spectral_locus_xy_f32(alwan_vec2_f32 *xy_out, alwan_f32 wavel
     return ALWAN_OK;
 }
 
-/* Intersection of ray (p1 -> p2) with the spectral locus; f32 mirror of
- * alwan_intersect_spectral_locus(). */
-static int alwan_intersect_spectral_locus_f32(alwan_vec2_f32 const *p1,
-                                              alwan_vec2_f32 const *p2,
-                                              alwan_f32 *wavelength_out,
-                                              alwan_vec2_f32 *xy_out) {
-    alwan_f32 best_t = -1.0f;
-    size_t best_idx = 0;
-
-    for (size_t i = 0; i < (size_t)(SPECTRAL_LOCUS_COUNT - 1); i++) {
-        alwan_f32 s1x = (alwan_f32)SPECTRAL_LOCUS_XY[i].v[0];
-        alwan_f32 s1y = (alwan_f32)SPECTRAL_LOCUS_XY[i].v[1];
-        alwan_f32 s2x = (alwan_f32)SPECTRAL_LOCUS_XY[i + 1].v[0];
-        alwan_f32 s2y = (alwan_f32)SPECTRAL_LOCUS_XY[i + 1].v[1];
-
-        alwan_f32 dx1 = p2->v[0] - p1->v[0];
-        alwan_f32 dy1 = p2->v[1] - p1->v[1];
-        alwan_f32 dx2 = s2x - s1x;
-        alwan_f32 dy2 = s2y - s1y;
-
-        alwan_f32 det = dx1 * dy2 - dy1 * dx2;
-        if (ALWAN_ABS_F32(det) < 1e-10f) {
-            continue;
-        }
-
-        alwan_f32 dx3 = s1x - p1->v[0];
-        alwan_f32 dy3 = s1y - p1->v[1];
-
-        alwan_f32 t = (dx3 * dy2 - dy3 * dx2) / det;
-        alwan_f32 u = (dx3 * dy1 - dy3 * dx1) / det;
-
-        if (t >= 0.0f && u >= 0.0f && u <= 1.0f) {
-            if (best_t < 0.0f || t < best_t) {
-                best_t = t;
-                best_idx = i;
-            }
-        }
-    }
-
-    if (best_t < 0.0f) {
+/* The f32 twins compute in double through the cores of the f64 section. */
+static alwan_status alwan_dominant_f32_impl(alwan_f32 *wavelength_out, alwan_vec2_f32 *xy_wl_out,
+                                           alwan_vec2_f32 *xy_cw_out, alwan_vec2_f32 const *xy,
+                                           alwan_vec2_f32 const *xy_white, int inverse) {
+    alwan_f64 wl, xy_wl[2], xy_cw[2];
+    if (!xy || !xy_white || !wavelength_out) return ALWAN_E_INVALID;
+    if (alwan_dominant_core(&wl, xy_wl, xy_cw, (alwan_f64)xy->v[0], (alwan_f64)xy->v[1], (alwan_f64)xy_white->v[0],
+                            (alwan_f64)xy_white->v[1], inverse) != ALWAN_OK) {
         return ALWAN_E_INVALID;
     }
-
-    alwan_f32 s1x = (alwan_f32)SPECTRAL_LOCUS_XY[best_idx].v[0];
-    alwan_f32 s1y = (alwan_f32)SPECTRAL_LOCUS_XY[best_idx].v[1];
-    alwan_f32 s2x = (alwan_f32)SPECTRAL_LOCUS_XY[best_idx + 1].v[0];
-    alwan_f32 s2y = (alwan_f32)SPECTRAL_LOCUS_XY[best_idx + 1].v[1];
-
-    alwan_f32 dx2 = s2x - s1x;
-    alwan_f32 dy2 = s2y - s1y;
-    alwan_f32 dx3 = s1x - p1->v[0];
-    alwan_f32 dy3 = s1y - p1->v[1];
-    alwan_f32 dx1 = p2->v[0] - p1->v[0];
-    alwan_f32 dy1 = p2->v[1] - p1->v[1];
-    alwan_f32 det = dx1 * dy2 - dy1 * dx2;
-    alwan_f32 u = (dx3 * dy1 - dy3 * dx1) / det;
-
-    if (xy_out) {
-        xy_out->v[0] = s1x + u * dx2;
-        xy_out->v[1] = s1y + u * dy2;
+    *wavelength_out = (alwan_f32)wl;
+    if (xy_wl_out) {
+        xy_wl_out->v[0] = (alwan_f32)xy_wl[0];
+        xy_wl_out->v[1] = (alwan_f32)xy_wl[1];
     }
-
-    alwan_f32 wl = (alwan_f32)SPECTRAL_LOCUS_WL_MIN +
-                   (alwan_f32)best_idx * (alwan_f32)SPECTRAL_LOCUS_WL_INTERVAL;
-    wl += u * (alwan_f32)SPECTRAL_LOCUS_WL_INTERVAL;
-
-    if (wavelength_out) {
-        *wavelength_out = wl;
+    if (xy_cw_out) {
+        xy_cw_out->v[0] = (alwan_f32)xy_cw[0];
+        xy_cw_out->v[1] = (alwan_f32)xy_cw[1];
     }
     return ALWAN_OK;
 }
@@ -1528,68 +1416,7 @@ alwan_status alwan_dominant_wavelength_f32(alwan_f32 *wavelength_out,
                               alwan_vec2_f32 *xy_cw_out,
                               alwan_vec2_f32 const *xy,
                               alwan_vec2_f32 const *xy_white) {
-    if (!xy || !xy_white || !wavelength_out) {
-        return ALWAN_E_INVALID;
-    }
-
-    alwan_f32 wl;
-    alwan_vec2_f32 xy_intersection;
-    int status = alwan_intersect_spectral_locus_f32(xy_white, xy, &wl, &xy_intersection);
-    if (status != ALWAN_OK) {
-        return ALWAN_E_INVALID;
-    }
-
-    *wavelength_out = wl;
-    if (xy_wl_out) {
-        *xy_wl_out = xy_intersection;
-    }
-    if (xy_cw_out) {
-        *xy_cw_out = xy_intersection;
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_excitation_purity_f32(alwan_f32 *purity_out,
-                            alwan_vec2_f32 const *xy,
-                            alwan_vec2_f32 const *xy_white) {
-    if (!xy || !xy_white || !purity_out) {
-        return ALWAN_E_INVALID;
-    }
-
-    alwan_vec2_f32 xy_wl;
-    alwan_f32 wl;
-    int status = alwan_intersect_spectral_locus_f32(xy_white, xy, &wl, &xy_wl);
-    if (status != ALWAN_OK) {
-        alwan_vec2_f32 xy_opposite;
-        xy_opposite.v[0] = 2.0f * xy_white->v[0] - xy->v[0];
-        xy_opposite.v[1] = 2.0f * xy_white->v[1] - xy->v[1];
-
-        status = alwan_intersect_spectral_locus_f32(xy_white, &xy_opposite, &wl, &xy_wl);
-        if (status != ALWAN_OK) {
-            return ALWAN_E_INVALID;
-        }
-    }
-
-    alwan_f32 dx_color = xy->v[0] - xy_white->v[0];
-    alwan_f32 dy_color = xy->v[1] - xy_white->v[1];
-    alwan_f32 dist_color = ALWAN_SQRT_F32(dx_color * dx_color + dy_color * dy_color);
-
-    alwan_f32 dx_wl = xy_wl.v[0] - xy_white->v[0];
-    alwan_f32 dy_wl = xy_wl.v[1] - xy_white->v[1];
-    alwan_f32 dist_wl = ALWAN_SQRT_F32(dx_wl * dx_wl + dy_wl * dy_wl);
-
-    if (dist_wl < 1e-10f) {
-        *purity_out = 0.0f;
-        return ALWAN_OK;
-    }
-
-    *purity_out = dist_color / dist_wl;
-    if (*purity_out < 0.0f) {
-        *purity_out = 0.0f;
-    } else if (*purity_out > 1.0f) {
-        *purity_out = 1.0f;
-    }
-    return ALWAN_OK;
+    return alwan_dominant_f32_impl(wavelength_out, xy_wl_out, xy_cw_out, xy, xy_white, 0);
 }
 
 alwan_status alwan_complementary_wavelength_f32(alwan_f32 *wavelength_out,
@@ -1597,28 +1424,32 @@ alwan_status alwan_complementary_wavelength_f32(alwan_f32 *wavelength_out,
                                    alwan_vec2_f32 *xy_cw_out,
                                    alwan_vec2_f32 const *xy,
                                    alwan_vec2_f32 const *xy_white) {
-    if (!xy || !xy_white || !wavelength_out) {
+    return alwan_dominant_f32_impl(wavelength_out, xy_wl_out, xy_cw_out, xy, xy_white, 1);
+}
+
+alwan_status alwan_excitation_purity_f32(alwan_f32 *purity_out,
+                            alwan_vec2_f32 const *xy,
+                            alwan_vec2_f32 const *xy_white) {
+    alwan_f64 pe;
+    if (!xy || !xy_white || !purity_out) return ALWAN_E_INVALID;
+    if (alwan_purity_core(&pe, NULL, (alwan_f64)xy->v[0], (alwan_f64)xy->v[1], (alwan_f64)xy_white->v[0],
+                          (alwan_f64)xy_white->v[1]) != ALWAN_OK) {
         return ALWAN_E_INVALID;
     }
+    *purity_out = (alwan_f32)pe;
+    return ALWAN_OK;
+}
 
-    alwan_vec2_f32 xy_opposite;
-    xy_opposite.v[0] = 2.0f * xy_white->v[0] - xy->v[0];
-    xy_opposite.v[1] = 2.0f * xy_white->v[1] - xy->v[1];
-
-    alwan_f32 wl;
-    alwan_vec2_f32 xy_intersection;
-    int status = alwan_intersect_spectral_locus_f32(xy_white, &xy_opposite, &wl, &xy_intersection);
-    if (status != ALWAN_OK) {
+alwan_status alwan_colorimetric_purity_f32(alwan_f32 *purity_out,
+                              alwan_vec2_f32 const *xy,
+                              alwan_vec2_f32 const *xy_white) {
+    alwan_f64 pe, pc;
+    if (!xy || !xy_white || !purity_out) return ALWAN_E_INVALID;
+    if (alwan_purity_core(&pe, &pc, (alwan_f64)xy->v[0], (alwan_f64)xy->v[1], (alwan_f64)xy_white->v[0],
+                          (alwan_f64)xy_white->v[1]) != ALWAN_OK) {
         return ALWAN_E_INVALID;
     }
-
-    *wavelength_out = wl;
-    if (xy_wl_out) {
-        *xy_wl_out = xy_intersection;
-    }
-    if (xy_cw_out) {
-        *xy_cw_out = xy_intersection;
-    }
+    *purity_out = (alwan_f32)pc;
     return ALWAN_OK;
 }
 
