@@ -436,6 +436,8 @@ EXPORTS
     alwan_eotf_apply_f64
     alwan_excitation_purity_f32
     alwan_excitation_purity_f64
+    alwan_exposure_fusion_mertens2007_f32
+    alwan_exposure_fusion_mertens2007_f64
     alwan_exposure_index_f32
     alwan_exposure_index_f64
     alwan_exposure_tonemap_f32
