@@ -136,6 +136,35 @@ typedef struct {
     ALWAN_T alternate_hdr_headroom; /* log2 of the alternate rendition's */
 } ALWAN_TN(alwan_gain_map_params);
 
+/* The global tone mapping operators of alwan_tonemap_global_{T}. Each operator reads
+ * its own fields. A zero field is its default, colour-hdri's, so a zero-initialised
+ * struct is every operator at its published defaults with luminance by the sRGB
+ * primaries. */
+typedef struct {
+    ALWAN_T luminance_weights[3]; /* luminance from R, G and B; all zero: sRGB / BT.709 */
+    ALWAN_T p;                    /* the two mappings and Schlick 1994; 0 reads as 1 */
+    ALWAN_T q;                    /* logarithmic, exponential and the two mappings; 0 reads as 1 */
+    ALWAN_T k;                    /* logarithmic and exponential; 0 reads as 1 */
+    ALWAN_T gamma;                /* gamma; 0 reads as 1 */
+    ALWAN_T ev;                   /* gamma: exposure in stops */
+    ALWAN_T display_adaptation;   /* Tumblin 1999 L_da, cd/m2; 0 reads as 20 */
+    ALWAN_T display_contrast;     /* Tumblin 1999 C_max; 0 reads as 100 */
+    ALWAN_T display_peak;         /* Tumblin 1999 L_max, cd/m2; 0 reads as 100 */
+    ALWAN_T intensity;            /* Reinhard 2004 f: the adaptation level is scaled by exp(-f) */
+    ALWAN_T contrast;             /* Reinhard 2004 m; 0 reads as 0.3 */
+    ALWAN_T light_adaptation;     /* Reinhard 2004 a in [0, 1]: 0 the image, 1 the pixel */
+    ALWAN_T chromatic_adaptation; /* Reinhard 2004 c in [0, 1]: 0 luminance, 1 each channel */
+    int automatic_contrast;       /* Reinhard 2004: non-zero computes m from the image */
+    ALWAN_T shoulder_strength;    /* filmic, Hable 2010, A; 0 reads as 0.22 */
+    ALWAN_T linear_strength;      /* B; 0 reads as 0.3 */
+    ALWAN_T linear_angle;         /* C; 0 reads as 0.1 */
+    ALWAN_T toe_strength;         /* D; 0 reads as 0.2 */
+    ALWAN_T toe_numerator;        /* E; 0 reads as 0.01 */
+    ALWAN_T toe_denominator;      /* F; 0 reads as 0.3 */
+    ALWAN_T exposure_bias;        /* 0 reads as 2 */
+    ALWAN_T linear_white;         /* the input value mapped to 1; 0 reads as 11.2 */
+} ALWAN_TN(alwan_tonemap_params);
+
 /* A DNG camera profile's colour tags (DNG 1.6, chapter 6). The zero value of an
  * optional field is its absence: an all-zero color_matrix_2 makes a
  * single-illuminant profile, all-zero camera calibrations read as identity, all-zero

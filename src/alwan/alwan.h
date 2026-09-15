@@ -5433,6 +5433,45 @@ alwan_status alwan_reinhard_calibrated_f64(alwan_f64 *out, alwan_f64 L,
                                alwan_f64 L_white);
 
 /* ----------------------------------------------------------------
+ * Global tone mapping operators
+ *
+ * The eleven global operators of colour-hdri over an image of interleaved RGB: the
+ * simple mappings collected by Banterle et al. 2011, Schlick 1994, Tumblin, Hodgins
+ * and Guenter 1999, Reinhard and Devlin 2005 and Hable 2010. All but SIMPLE, GAMMA
+ * and FILMIC read statistics of the whole image (its peak or log-average luminance),
+ * so a pixel's result depends on every other pixel: map an image in one call, not
+ * in tiles. alwan_tonemap_params_{T} is declared with the other parameter structs.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_TONEMAP_SIMPLE = 0,                 /* RGB / (RGB + 1), per channel */
+    ALWAN_TONEMAP_NORMALIZATION = 1,          /* RGB / peak luminance */
+    ALWAN_TONEMAP_GAMMA = 2,                  /* (2^ev RGB)^(1/gamma), per channel */
+    ALWAN_TONEMAP_LOGARITHMIC = 3,            /* log10(1 + qL) / log10(1 + k L_max) */
+    ALWAN_TONEMAP_EXPONENTIAL = 4,            /* 1 - exp(-qL / (k L_avg)), L_avg the log average */
+    ALWAN_TONEMAP_LOGARITHMIC_MAPPING = 5,    /* (ln(1 + pL) / ln(1 + p L_max))^(1/q) */
+    ALWAN_TONEMAP_EXPONENTIATION_MAPPING = 6, /* (L / L_max)^(p/q) */
+    ALWAN_TONEMAP_SCHLICK1994 = 7,            /* pL / (pL - L + L_max) */
+    ALWAN_TONEMAP_TUMBLIN1999 = 8,            /* Tumblin, Hodgins and Guenter 1999 */
+    ALWAN_TONEMAP_REINHARD2004 = 9,           /* Reinhard and Devlin 2005, photoreceptor model */
+    ALWAN_TONEMAP_FILMIC = 10                 /* Hable 2010, per channel */
+} alwan_tonemap_operator;
+
+/* Tone maps count pixels, rows stride bytes apart; out may be in. params NULL is every
+ * default. The luminance operators, NORMALIZATION and LOGARITHMIC to REINHARD2004,
+ * take luminance as the weighted sum of R, G and B, and need every luminance finite
+ * and not negative. NORMALIZATION divides by the peak luminance (a zero peak gives
+ * black). REINHARD2004 maps each channel against its adaptation level; a zero channel
+ * stays zero, and with chromatic_adaptation above 0 no channel may be negative. The
+ * others scale RGB by L_d / L and map a pixel with zero luminance to black. SIMPLE,
+ * GAMMA and FILMIC apply their formula to each value as it is. ALWAN_E_INVALID for an
+ * unknown operator, a luminance or channel out of range as above, and a parameter out
+ * of range: a negative p, q, k, gamma, contrast or display value, q or k below 1 for
+ * LOGARITHMIC and EXPONENTIAL (colour-hdri raises them to 1), an adaptation outside
+ * [0, 1], or automatic_contrast together with a contrast. */
+alwan_status alwan_tonemap_global_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_tonemap_operator op, alwan_tonemap_params_f64 const *params);
+alwan_status alwan_tonemap_global_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_tonemap_operator op, alwan_tonemap_params_f32 const *params);
+
+/* ----------------------------------------------------------------
  * BT.2408: HLG and PQ in display light
  *
  * ITU-R BT.2408 converts between the two BT.2100 systems through display light on
