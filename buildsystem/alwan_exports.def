@@ -191,12 +191,18 @@ EXPORTS
     alwan_cfa_bayer_mosaic_f64
     alwan_chart_destroy_f32
     alwan_chart_destroy_f64
+    alwan_chart_device_model_f32
+    alwan_chart_device_model_f64
+    alwan_chart_device_values_f32
+    alwan_chart_device_values_f64
     alwan_chart_get_source_f32
     alwan_chart_get_source_f64
     alwan_chart_header_at_f32
     alwan_chart_header_at_f64
     alwan_chart_header_f32
     alwan_chart_header_f64
+    alwan_chart_lab_f32
+    alwan_chart_lab_f64
     alwan_chart_load_buffer_f32
     alwan_chart_load_buffer_f64
     alwan_chart_load_f32
@@ -255,6 +261,10 @@ EXPORTS
     alwan_cmy_to_rgb_f64_map_planar
     alwan_cmy_to_rgb_map_interleave_ex
     alwan_cmy_to_rgb_map_planar_ex
+    alwan_cmyk_model_destroy
+    alwan_cmyk_model_fogra39
+    alwan_cmyk_model_from_chart_f32
+    alwan_cmyk_model_from_chart_f64
     alwan_cmyk_to_cmy_f32
     alwan_cmyk_to_cmy_f32_map_interleave
     alwan_cmyk_to_cmy_f32_map_planar
@@ -263,6 +273,8 @@ EXPORTS
     alwan_cmyk_to_cmy_f64_map_planar
     alwan_cmyk_to_cmy_map_interleave_ex
     alwan_cmyk_to_cmy_map_planar_ex
+    alwan_cmyk_to_lab_f32
+    alwan_cmyk_to_lab_f64
     alwan_collect3_f32
     alwan_collect3_f64
     alwan_color_checker_data_f32
@@ -1014,6 +1026,8 @@ EXPORTS
     alwan_osa_ucs_to_xyz_map_planar_ex
     alwan_palette_entry_at
     alwan_palette_find
+    alwan_palette_nearest_f32
+    alwan_palette_nearest_f64
     alwan_palette_search
     alwan_palette_size
     alwan_photometric_exposure_scale_factor_lagarde2014_f32
