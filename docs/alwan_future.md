@@ -1013,7 +1013,8 @@ Options worth having, roughly in the order they are worth adding:
    profiling tools apply by default. Equality-constrained least squares, or
    solve in a reduced basis and reconstruct.
 
-8. **Term selection by cross-validation.** Choose the Cheung term count from the
+8. **Term selection by cross-validation.** **Done:** `alwan_ccm_select_cheung2004`,
+   scored by `alwan_ccm_loo_*`. Choose the Cheung term count from the
    data instead of by hand. Leave-one-out over N patches is N solves of a small
    system, which is nothing at these sizes, and it stops a caller reaching for
    35 terms because it sounds better than 11.
@@ -1124,6 +1125,7 @@ not validate the body.
 - [ ] CCM fit: a neutral-preserving constraint, so a profile cannot tint greys
 - [x] CCM fit: the solve is covered now (suite 44, exact recovery of a known matrix); it measured the conditioning, and the root-polynomial at degree 4 errs by 1.3e-3
 - [x] CCM fit: report rank, not just ALWAN_E_DIVZERO: `rank_out`, the numerical rank from the SVD, -1 from a QR that finds the system deficient (suite 125)
+- [x] CCM fit: leave-one-out scoring, and the Cheung term count chosen by it, scikit-learn's LeaveOneOut to 2e-13 (suite 128)
 - [x] Measured chart files: alwan_chart_* reads CGATS.17 / OpenQualia, so a target's own numbers reach the solvers; no network needed
 - [x] Fill API parity gaps: norm macros and scalar HSV<->HWB were already in; ZCAM `from_ucs` added
 - [x] The f64 facades are documented, each with its reason, in precision-and-limits.md; they stay facades by design

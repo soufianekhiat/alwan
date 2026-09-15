@@ -451,6 +451,36 @@ that truncates the weak directions on purpose, predicts held-out patches better.
 Use the rank to learn what a chart can support, then fit with that many terms or
 with a ridge.
 
+### Leave-One-Out and Choosing the Terms
+
+```c
+alwan_poly_cheung_terms terms;
+alwan_f64 held_out[14];
+alwan_ccm_select_cheung2004_f64(&terms, held_out, camera_rgb, reference_rgb, 24, NULL);
+alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24, terms, NULL);
+```
+
+A fit's own residuals always improve with more terms, since each term gives it more
+freedom to pass through the patches it was fitted to. What matters for a profile is
+how it does on colours it has not seen. `alwan_ccm_loo_cheung2004_{T}` and
+`alwan_ccm_loo_finlayson2015_{T}` measure that. Each patch of positive weight is left
+out in turn, by giving it weight 0, the others are fitted with the caller's params
+(weights, ridge, solver), and the fit predicts the patch left out. `rms_out` is the
+root mean square of those held-out residuals in the reference's units. `pred_out`,
+when given, receives every held-out prediction, NaN for a patch of weight 0, so a
+caller can score them in ΔE instead.
+
+`alwan_ccm_select_cheung2004_{T}` runs that for all 14 Cheung term counts and returns
+the one with the lowest held-out error; the smaller count wins a tie. It also reports
+the 14 errors, NaN for a count the patches left cannot fit. On a synthetic 24-patch
+chart the plain fit's held-out error is lowest at 14 terms and seven times higher at
+22, where the fit's own residuals are at their smallest. A ridge flattens that rise.
+
+This is scikit-learn's `LeaveOneOut` over `LinearRegression` and `Ridge`, which the
+tests match to 2e-13, prediction by prediction. The selection minimises squared error
+in the reference's space, linear RGB for a CCM; to choose perceptually, score the
+predictions in ΔE.
+
 **Example (camera profiling workflow):**
 ```c
 /* 1. Photograph a ColorChecker under scene lighting */

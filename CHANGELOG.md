@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CCM fit: leave-one-out and the term count.** `alwan_ccm_loo_cheung2004_{T}` and
+  `alwan_ccm_loo_finlayson2015_{T}` score a fit by its held-out error: each patch
+  predicted by a fit to the others, with the caller's weights, ridge and solver.
+  `alwan_ccm_select_cheung2004_{T}` picks the Cheung term count with the lowest.
+  Matches scikit-learn's `LeaveOneOut` to 2e-13.
+
 - **SSIM and PU-SSIM.** `alwan_ssim_{T}` is Wang, Bovik, Sheikh and Simoncelli 2004
   with the paper's settings, and matches scikit-image's `structural_similarity` to
   2e-14. `alwan_pu21_ssim_{T}` is `pu21_metric.m`'s PU-SSIM: luminance with its
