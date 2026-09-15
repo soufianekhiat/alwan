@@ -1039,6 +1039,16 @@ EXPORTS
     alwan_prolab_to_xyz_f64_map_planar
     alwan_prolab_to_xyz_map_interleave_ex
     alwan_prolab_to_xyz_map_planar_ex
+    alwan_pu21_decode_f32
+    alwan_pu21_decode_f32_map_interleave
+    alwan_pu21_decode_f64
+    alwan_pu21_decode_f64_map_interleave
+    alwan_pu21_encode_f32
+    alwan_pu21_encode_f32_map_interleave
+    alwan_pu21_encode_f64
+    alwan_pu21_encode_f64_map_interleave
+    alwan_pu21_psnr_f32
+    alwan_pu21_psnr_f64
     alwan_pupil_diameter_barten1999_f32
     alwan_pupil_diameter_barten1999_f64
     alwan_rayleigh_cross_section_f32
