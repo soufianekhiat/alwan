@@ -55,6 +55,14 @@ def build_macro_map():
         if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", gpu):
             gpu = "ALWAN_" + name[len("ALWAN_CORE_"):]
         m[name] = gpu
+    # Macros defined only inside the backend blocks are indented ("#  define") and
+    # escape the scan above. Their GPU form is the parallel ALWAN_<X> macro
+    # (ALWAN_CORE_SRGB_OETF -> ALWAN_SRGB_OETF); a name the scan above mapped keeps
+    # that spelling, so a deterministic override never replaces it.
+    for mo in re.finditer(r"^[ \t]*#[ \t]*define[ \t]+(ALWAN_CORE_[A-Z0-9_]+)", txt, re.M):
+        name = mo.group(1)
+        if name not in m and name not in skip:
+            m[name] = "ALWAN_" + name[len("ALWAN_CORE_"):]
     return m
 
 
