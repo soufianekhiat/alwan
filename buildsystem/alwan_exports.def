@@ -1049,6 +1049,8 @@ EXPORTS
     alwan_pu21_encode_f64_map_interleave
     alwan_pu21_psnr_f32
     alwan_pu21_psnr_f64
+    alwan_pu21_ssim_f32
+    alwan_pu21_ssim_f64
     alwan_pupil_diameter_barten1999_f32
     alwan_pupil_diameter_barten1999_f64
     alwan_rayleigh_cross_section_f32
@@ -1362,6 +1364,8 @@ EXPORTS
     alwan_srgb_to_xyz_map_planar_ex
     alwan_ssi_calculate_f32
     alwan_ssi_calculate_f64
+    alwan_ssim_f32
+    alwan_ssim_f64
     alwan_st2086_init_f32
     alwan_st2086_init_f64
     alwan_table1d_mat3_sample_f32
