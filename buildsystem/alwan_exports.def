@@ -843,6 +843,8 @@ EXPORTS
     alwan_lgg_apply_f64_map_planar
     alwan_lgg_apply_map_interleave_ex
     alwan_lgg_apply_map_planar_ex
+    alwan_lightness_f32
+    alwan_lightness_f64
     alwan_linear_srgb_to_hsl_f32
     alwan_linear_srgb_to_hsl_f32_map_interleave
     alwan_linear_srgb_to_hsl_f32_map_planar
@@ -861,6 +863,10 @@ EXPORTS
     alwan_linear_srgb_to_hsv_map_planar_ex
     alwan_llab_forward_f32
     alwan_llab_forward_f64
+    alwan_luminance_from_lightness_f32
+    alwan_luminance_from_lightness_f64
+    alwan_luminance_from_munsell_value_f32
+    alwan_luminance_from_munsell_value_f64
     alwan_luminance_to_exposure_value_f32
     alwan_luminance_to_exposure_value_f64
     alwan_luminous_efficiency_f32
@@ -924,6 +930,8 @@ EXPORTS
     alwan_michelson_contrast_f64
     alwan_munsell_to_xyz_f32
     alwan_munsell_to_xyz_f64
+    alwan_munsell_value_f32
+    alwan_munsell_value_f64
     alwan_nayatani95_forward_f32
     alwan_nayatani95_forward_f64
     alwan_ncs_to_xyz_f32
@@ -1450,8 +1458,16 @@ EXPORTS
     alwan_white_balance_from_gray_f64
     alwan_whiteness_astm_e313_f32
     alwan_whiteness_astm_e313_f64
+    alwan_whiteness_berger1959_f32
+    alwan_whiteness_berger1959_f64
     alwan_whiteness_cie2004_f32
     alwan_whiteness_cie2004_f64
+    alwan_whiteness_ganz1979_f32
+    alwan_whiteness_ganz1979_f64
+    alwan_whiteness_stensby1968_f32
+    alwan_whiteness_stensby1968_f64
+    alwan_whiteness_taube1960_f32
+    alwan_whiteness_taube1960_f64
     alwan_xyy_to_xyz_f32
     alwan_xyy_to_xyz_f32_map_interleave
     alwan_xyy_to_xyz_f32_map_planar
@@ -1680,6 +1696,10 @@ EXPORTS
     alwan_ycocg_to_rgb_f64_map_planar
     alwan_ycocg_to_rgb_map_interleave_ex
     alwan_ycocg_to_rgb_map_planar_ex
+    alwan_yellowness_astm_d1925_f32
+    alwan_yellowness_astm_d1925_f64
+    alwan_yellowness_astm_e313_alternative_f32
+    alwan_yellowness_astm_e313_alternative_f64
     alwan_yellowness_astm_e313_f32
     alwan_yellowness_astm_e313_f64
     alwan_zcam_forward_f32
