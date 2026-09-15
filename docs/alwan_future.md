@@ -1161,7 +1161,7 @@ not validate the body.
 - [x] Exposure fusion: Mertens 2007, matching OpenCV's MergeMertens to its float rounding (suite 122)
 - [x] Camera response recovery, Robertson 2003: OpenCV's CalibrateRobertson to 5e-6, empty values filled instead of NaN (suite 123)
 - [x] PU21 perceptual HDR encoding and PU-PSNR, against the authors' pu21_encoder.m at 50 digits (suite 126)
-- [ ] PU-SSIM: needs an SSIM first
+- [x] SSIM, Wang 2004 with the paper's settings (scikit-image to 2e-14), and PU-SSIM (suite 127)
 - [ ] Camera response recovery: Mitsunaga-Nayar
 - [ ] Spectral film characterisation: dye densities, print stock, enlarger filtration, on top of the camera work
 - [x] CCM fit: a params struct (weights, ridge), scikit-learn's Ridge to 1.3e-13 (suite 124); the f32 Finlayson fit no longer writes past its buffers

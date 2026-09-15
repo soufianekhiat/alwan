@@ -581,8 +581,38 @@ pixel, and +inf for images that encode identically.
 The parameters are the published ones, read by gendata from the pinned
 `pu21_encoder.m` (BSD-3-Clause), and the tests evaluate that file's equation in
 50-digit arithmetic. The encode matches it to a few 1e-13, which is the formula's own
-conditioning in double, and PU-PSNR to 1e-9 dB. Only PSNR is provided; PU-SSIM needs
-an SSIM, which alwan does not have yet.
+conditioning in double, and PU-PSNR to 1e-9 dB. PU-SSIM is in the next section.
+
+---
+
+## SSIM and PU-SSIM
+
+```c
+alwan_f64 s, pu;
+alwan_ssim_f64(&s, test, width * sizeof(alwan_f64), ref, width * sizeof(alwan_f64),
+               width, height, 1.0);                          /* one channel, range 1 */
+alwan_pu21_ssim_f64(&pu, test_rgb, 3 * width * sizeof(alwan_f64),
+                    ref_rgb, 3 * width * sizeof(alwan_f64),
+                    width, height, 3, ALWAN_PU21_BANDING_GLARE);   /* cd/m2 in */
+```
+
+`alwan_ssim_{T}` is the structural similarity index of Wang, Bovik, Sheikh and
+Simoncelli 2004 on one channel, with the paper's settings as scikit-image's
+`structural_similarity` computes them when asked to match it (`gaussian_weights=True`,
+`sigma=1.5`, `use_sample_covariance=False`). The means, variances and covariance come
+from an 11-tap Gaussian window of sigma 1.5, the constants are K1 = 0.01 and K2 = 0.03
+times the data range, the borders are reflected with the edge sample repeated, and the
+index is the mean of the map with a 5-pixel strip dropped at every edge. Both sides of
+the image must be at least 11 pixels. The data range is the span the values can take:
+1 for [0, 1], 255 for 8-bit. Identical images give exactly 1. Either precision reads
+its images and computes in double. It matches scikit-image to 2e-14.
+
+`alwan_pu21_ssim_{T}` is `pu21_metric.m`'s SSIM. It takes luminance from RGB with
+that file's weights (0.212656, 0.715158, 0.072186), or uses the values directly with
+one channel, in cd/m2. It limits them to [0.005, 10000], encodes them with PU21, and
+takes the SSIM over a range of 256. `pu21_metric.m` calls MATLAB's `ssim`, which pads
+and averages the borders its own way. alwan follows scikit-image, which the tests hold
+it to, so the two agree away from the image edges and not at them.
 
 ---
 

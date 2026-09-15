@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **SSIM and PU-SSIM.** `alwan_ssim_{T}` is Wang, Bovik, Sheikh and Simoncelli 2004
+  with the paper's settings, and matches scikit-image's `structural_similarity` to
+  2e-14. `alwan_pu21_ssim_{T}` is `pu21_metric.m`'s PU-SSIM: luminance with its
+  weights, limited to the PU21 range, PU21 encoded, then SSIM over 256. At the image
+  borders it follows scikit-image, where MATLAB's `ssim` differs.
+
 - **PU21 and PU-PSNR.** `alwan_pu21_encode_{T}` and `alwan_pu21_decode_{T}`, scalar
   and interleaved, map absolute HDR luminance to Mantiuk and Azimi's 2021
   perceptually uniform scale in all four published variants, so PSNR on HDR says
