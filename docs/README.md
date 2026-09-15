@@ -63,6 +63,7 @@ Key entry points:
 
 - [`docs/api/context.md`](api/context.md)
 - [`docs/api/color-spaces.md`](api/color-spaces.md)
+- [`docs/api/palettes.md`](api/palettes.md)
 - [`docs/api/chromatic-adaptation.md`](api/chromatic-adaptation.md)
 - [`docs/api/transfer-functions.md`](api/transfer-functions.md)
 - [`docs/api/gamut.md`](api/gamut.md)

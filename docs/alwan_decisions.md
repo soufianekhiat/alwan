@@ -491,6 +491,21 @@ reference does, not because it measured better.
 
 ---
 
+## Notation
+
+### Three HEX digits read as CSS reads them
+
+`alwan_hex_to_rgb` reads `#abc` as `#aabbcc`, as CSS does. colour-science's
+`HEX_to_RGB` cuts any string into three equal parts and reads each part as the
+whole channel, so `#abc` gives 10/255, 11/255 and 12/255. Six digits read the same
+in both.
+
+Encoding follows colour-science: `alwan_rgb_to_hex` truncates each channel to
+0-255, so 0.999 is `fe` where rounding would give `ff`. A channel outside [0, 1]
+is an error, where colour-science clips or rescales with a warning.
+
+---
+
 ## Bounds and sampling
 
 ### Addresses are clamped; values never are

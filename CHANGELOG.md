@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Named palettes and HEX.** `alwan_palette_*` looks colours up by name and searches
+  names by substring in two palettes: Stuart Semple's Freetone, 1,310 colours in device
+  CMYK from the Freetone bundle, which states no licence; and the 147 CSS Color 3
+  keywords. `alwan_rgb_to_hex_{T}`, `alwan_hex_to_rgb_{T}` and
+  `alwan_css_color_3_keyword_to_rgb_{T}` follow colour-science, except that three HEX
+  digits read as CSS reads them (suite 136, `docs/api/palettes.md`).
+
 - **Yrg, IPT Ragoo 2021, sUCS, Izazbz and Hunter Rdab.** The colour models
   colour-science has and alwan lacked, each with its inverse: `alwan_xyz_to_yrg_{T}`
   (Kirk 2019); `alwan_xyz_to_ipt_ragoo2021_{T}`, whose four matrices Ragoo refitted
