@@ -154,7 +154,7 @@ alwan_status alwan_h273_transfer_to_tf(alwan_transfer_function *tf_out, int tran
 
 alwan_status alwan_h273_transfer_from_tf(int *transfer_characteristics_out, alwan_transfer_function tf) {
     size_t i;
-    if (!transfer_characteristics_out || (int)tf < (int)ALWAN_TF_LINEAR || (int)tf > (int)ALWAN_TF_BT2020_12BIT) {
+    if (!transfer_characteristics_out || (int)tf < (int)ALWAN_TF_LINEAR || (int)tf >= (int)ALWAN_TF_COUNT) {
         return ALWAN_E_INVALID;
     }
     /* sRGB is transfer 13 on [0, 1]; below 0 alwan's curve continues the linear

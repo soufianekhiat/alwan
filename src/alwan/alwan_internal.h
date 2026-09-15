@@ -298,7 +298,14 @@ static inline void alwan__get_luma_coeffs(alwan_luma_standard standard,
     X(XVYCC,         xvycc,         xvycc)                \
     X(BT1361,        bt1361,        bt1361)               \
     X(SYCC,          sycc,          sycc)                 \
-    X(BT2020_12BIT,  bt2020_12bit,  bt2020_12bit)
+    X(BT2020_12BIT,  bt2020_12bit,  bt2020_12bit)         \
+    X(LOG3G12,       log3g12,       log3g12)              \
+    X(PANALOG,       panalog,       panalog)              \
+    X(VIPERLOG,      viperlog,      viperlog)             \
+    X(PLOG,          plog,          plog)                 \
+    X(FILMIC_PRO6,   filmic_pro6,   filmic_pro6)          \
+    X(MILOG,         milog,         milog)                \
+    X(LOG2,          log2_shaper,   log2_shaper)
 
 #define TF_SIMD_TABLE_BODY(X)                             \
     X(SRGB, srgb_oetf_simd, srgb_eotf_simd)               \

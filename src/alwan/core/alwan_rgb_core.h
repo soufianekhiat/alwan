@@ -1014,6 +1014,111 @@ ALWAN_INLINE alwan_scalar alwan_bt2020_12bit_eotf(alwan_scalar encoded) {
                              ALWAN_POW((E + (a - ALWAN_ONE)) / a, ALWAN_ONE / ALWAN_LITERAL(0.45)));
 }
 
+/* Log curves from colour-science's registry; see alwan_rgb_core.inc. */
+ALWAN_INLINE alwan_scalar alwan_log3g12_oetf(alwan_scalar lin) {
+    alwan_scalar v = ALWAN_LITERAL(0.184904) *
+                     ALWAN_LOG10(ALWAN_ABS(lin) * ALWAN_LITERAL(347.189667) + ALWAN_ONE);
+    return ALWAN_SELECT(lin < ALWAN_ZERO, -v, v);
+}
+
+ALWAN_INLINE alwan_scalar alwan_log3g12_eotf(alwan_scalar encoded) {
+    alwan_scalar v = (ALWAN_POW(ALWAN_LITERAL(10.0), ALWAN_ABS(encoded) / ALWAN_LITERAL(0.184904)) -
+                      ALWAN_ONE) / ALWAN_LITERAL(347.189667);
+    return ALWAN_SELECT(encoded < ALWAN_ZERO, -v, v);
+}
+
+ALWAN_INLINE alwan_scalar alwan_panalog_oetf(alwan_scalar lin) {
+    alwan_scalar bo = ALWAN_POW(ALWAN_LITERAL(10.0),
+                                     (ALWAN_LITERAL(64.0) - ALWAN_LITERAL(681.0)) / ALWAN_LITERAL(444.0));
+    return (ALWAN_LITERAL(681.0) + ALWAN_LITERAL(444.0) * ALWAN_LOG10(lin * (ALWAN_ONE - bo) + bo)) /
+           ALWAN_LITERAL(1023.0);
+}
+
+ALWAN_INLINE alwan_scalar alwan_panalog_eotf(alwan_scalar encoded) {
+    alwan_scalar bo = ALWAN_POW(ALWAN_LITERAL(10.0),
+                                     (ALWAN_LITERAL(64.0) - ALWAN_LITERAL(681.0)) / ALWAN_LITERAL(444.0));
+    return (ALWAN_POW(ALWAN_LITERAL(10.0), (ALWAN_LITERAL(1023.0) * encoded - ALWAN_LITERAL(681.0)) /
+                                                      ALWAN_LITERAL(444.0)) - bo) / (ALWAN_ONE - bo);
+}
+
+ALWAN_INLINE alwan_scalar alwan_viperlog_oetf(alwan_scalar lin) {
+    return (ALWAN_LITERAL(1023.0) + ALWAN_LITERAL(500.0) * ALWAN_LOG10(lin)) / ALWAN_LITERAL(1023.0);
+}
+
+ALWAN_INLINE alwan_scalar alwan_viperlog_eotf(alwan_scalar encoded) {
+    return ALWAN_POW(ALWAN_LITERAL(10.0), (ALWAN_LITERAL(1023.0) * encoded - ALWAN_LITERAL(1023.0)) /
+                                                     ALWAN_LITERAL(500.0));
+}
+
+ALWAN_INLINE alwan_scalar alwan_plog_oetf(alwan_scalar lin) {
+    return (ALWAN_LITERAL(445.0) + ALWAN_LOG10(lin / ALWAN_LITERAL(0.18)) /
+                                        (ALWAN_LITERAL(0.002) / ALWAN_LITERAL(0.6))) / ALWAN_LITERAL(1023.0);
+}
+
+ALWAN_INLINE alwan_scalar alwan_plog_eotf(alwan_scalar encoded) {
+    return ALWAN_POW(ALWAN_LITERAL(10.0), (encoded * ALWAN_LITERAL(1023.0) - ALWAN_LITERAL(445.0)) *
+                                                     (ALWAN_LITERAL(0.002) / ALWAN_LITERAL(0.6))) *
+           ALWAN_LITERAL(0.18);
+}
+
+ALWAN_INLINE alwan_scalar alwan_filmic_pro6_oetf(alwan_scalar lin) {
+    return ALWAN_LITERAL(0.371) *
+           (ALWAN_SQRT(lin) + ALWAN_LITERAL(0.28257) * ALWAN_LN(lin) + ALWAN_LITERAL(1.69542));
+}
+
+ALWAN_INLINE alwan_scalar alwan_filmic_pro6_eotf(alwan_scalar encoded) {
+    alwan_scalar a = ALWAN_LITERAL(0.28257) * ALWAN_LITERAL(2.0);
+    alwan_scalar c = encoded / ALWAN_LITERAL(0.371) - ALWAN_LITERAL(1.69542);
+    alwan_scalar u = ALWAN_SELECT(c < ALWAN_ONE, ALWAN_EXP((c - ALWAN_ONE) / a), ALWAN_ONE);
+    int i;
+    for (i = 0; i < 48; i++) {
+        u = u - (u + a * ALWAN_LN(u) - c) / (ALWAN_ONE + a / u);
+    }
+    return u * u;
+}
+
+ALWAN_INLINE alwan_scalar alwan_milog_oetf(alwan_scalar lin) {
+    alwan_scalar R0    = ALWAN_LITERAL(-0.09023729);
+    alwan_scalar Rt    = ALWAN_LITERAL(0.01974185);
+    alwan_scalar C     = ALWAN_LITERAL(18.10531998);
+    alwan_scalar beta  = ALWAN_LITERAL(0.01384578);
+    alwan_scalar gamma = ALWAN_LITERAL(0.09271529);
+    alwan_scalar delta = ALWAN_LITERAL(0.6729185);
+
+    alwan_scalar diff = lin - R0;
+    alwan_scalar quad_result = C * (diff * diff);
+    alwan_scalar log_result  = gamma * ALWAN_LOG2(lin + beta) + delta;
+
+    return ALWAN_SELECT(lin < R0, ALWAN_ZERO,
+           ALWAN_SELECT(lin < Rt, quad_result, log_result));
+}
+
+ALWAN_INLINE alwan_scalar alwan_milog_eotf(alwan_scalar encoded) {
+    alwan_scalar R0    = ALWAN_LITERAL(-0.09023729);
+    alwan_scalar Rt    = ALWAN_LITERAL(0.01974185);
+    alwan_scalar C     = ALWAN_LITERAL(18.10531998);
+    alwan_scalar beta  = ALWAN_LITERAL(0.01384578);
+    alwan_scalar gamma = ALWAN_LITERAL(0.09271529);
+    alwan_scalar delta = ALWAN_LITERAL(0.6729185);
+    alwan_scalar Pt    = C * ((Rt - R0) * (Rt - R0));
+
+    alwan_scalar sqrt_result = ALWAN_SQRT(encoded / C) + R0;
+    alwan_scalar pow_result  = ALWAN_POW(ALWAN_LITERAL(2.0), (encoded - delta) / gamma) - beta;
+
+    return ALWAN_SELECT(encoded < ALWAN_ZERO, R0,
+           ALWAN_SELECT(encoded < Pt, sqrt_result, pow_result));
+}
+
+ALWAN_INLINE alwan_scalar alwan_log2_shaper_oetf(alwan_scalar lin) {
+    return (ALWAN_LOG2(lin / ALWAN_LITERAL(0.18)) - ALWAN_LITERAL(-6.5)) /
+           (ALWAN_LITERAL(6.5) - ALWAN_LITERAL(-6.5));
+}
+
+ALWAN_INLINE alwan_scalar alwan_log2_shaper_eotf(alwan_scalar encoded) {
+    return ALWAN_POW(ALWAN_LITERAL(2.0), encoded * (ALWAN_LITERAL(6.5) - ALWAN_LITERAL(-6.5)) +
+                                                    ALWAN_LITERAL(-6.5)) * ALWAN_LITERAL(0.18);
+}
+
 ALWAN_INLINE alwan_scalar alwan_linear_identity(alwan_scalar v) {
     return v;
 }

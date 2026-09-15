@@ -550,6 +550,17 @@ typedef enum {
     ALWAN_TF_SYCC = 54,          /* IEC 61966-2-1 sYCC, H.273 transfer 13: sRGB extended by symmetry */
     ALWAN_TF_BT2020_12BIT = 55,  /* BT.2020 for 12-bit systems, alpha 1.0993 and beta 0.0181, H.273 transfer 15 */
 
+    /* Log curves from colour-science's registry */
+    ALWAN_TF_LOG3G12 = 56,       /* RED Log3G12, odd about 0 */
+    ALWAN_TF_PANALOG = 57,       /* Panavision Panalog */
+    ALWAN_TF_VIPERLOG = 58,      /* Thomson ViperLog */
+    ALWAN_TF_PLOG = 59,          /* Josh Pines' pivoted log: 445 at 0.18, negative gamma 0.6, 0.002 density per code value */
+    ALWAN_TF_FILMIC_PRO6 = 60,   /* FiLMiC Pro 6; the EOTF inverts it by Newton's method */
+    ALWAN_TF_MILOG = 61,         /* Xiaomi Mi-Log, Apple Log's form with Xiaomi's constants */
+    ALWAN_TF_LOG2 = 62,          /* log2 over -6.5 to +6.5 stops around 0.18 */
+
+    ALWAN_TF_COUNT = 63,         /* Sentinel: number of curves */
+
     /* Game Engine Interop */
     ALWAN_TF_UNITY_LINEAR = ALWAN_TF_LINEAR  /* Unity linear (alias for ALWAN_TF_LINEAR) */
 } alwan_transfer_function;

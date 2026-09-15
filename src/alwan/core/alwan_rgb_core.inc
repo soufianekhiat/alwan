@@ -1129,6 +1129,127 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_12bit_eotf)(ALWAN_CORE_T
 }
 
 /* ================================================================
+ * Log curves from colour-science's registry, in its forms: RED Log3G12,
+ * Panavision Panalog, Thomson ViperLog, Josh Pines' pivoted log, FiLMiC Pro 6,
+ * Xiaomi Mi-Log, and log2 around 18 % grey.
+ * ================================================================ */
+
+/* RED Log3G12, odd about 0. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_log3g12_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T v = ALWAN_CORE_LITERAL(0.184904) *
+                     ALWAN_CORE_LOG10(ALWAN_CORE_ABS(lin) * ALWAN_CORE_LITERAL(347.189667) + ALWAN_CORE_ONE);
+    return ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, -v, v);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_log3g12_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T v = (ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), ALWAN_CORE_ABS(encoded) / ALWAN_CORE_LITERAL(0.184904)) -
+                      ALWAN_CORE_ONE) / ALWAN_CORE_LITERAL(347.189667);
+    return ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, -v, v);
+}
+
+/* Panavision Panalog: (681 + 444 log10) / 1023, with a black offset at code 64. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_panalog_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T bo = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0),
+                                     (ALWAN_CORE_LITERAL(64.0) - ALWAN_CORE_LITERAL(681.0)) / ALWAN_CORE_LITERAL(444.0));
+    return (ALWAN_CORE_LITERAL(681.0) + ALWAN_CORE_LITERAL(444.0) * ALWAN_CORE_LOG10(lin * (ALWAN_CORE_ONE - bo) + bo)) /
+           ALWAN_CORE_LITERAL(1023.0);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_panalog_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T bo = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0),
+                                     (ALWAN_CORE_LITERAL(64.0) - ALWAN_CORE_LITERAL(681.0)) / ALWAN_CORE_LITERAL(444.0));
+    return (ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), (ALWAN_CORE_LITERAL(1023.0) * encoded - ALWAN_CORE_LITERAL(681.0)) /
+                                                      ALWAN_CORE_LITERAL(444.0)) - bo) / (ALWAN_CORE_ONE - bo);
+}
+
+/* Thomson ViperLog: (1023 + 500 log10) / 1023. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_viperlog_oetf)(ALWAN_CORE_T lin) {
+    return (ALWAN_CORE_LITERAL(1023.0) + ALWAN_CORE_LITERAL(500.0) * ALWAN_CORE_LOG10(lin)) / ALWAN_CORE_LITERAL(1023.0);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_viperlog_eotf)(ALWAN_CORE_T encoded) {
+    return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), (ALWAN_CORE_LITERAL(1023.0) * encoded - ALWAN_CORE_LITERAL(1023.0)) /
+                                                     ALWAN_CORE_LITERAL(500.0));
+}
+
+/* Josh Pines' pivoted log: code 445 at 0.18, negative gamma 0.6, 0.002 density per code value. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_plog_oetf)(ALWAN_CORE_T lin) {
+    return (ALWAN_CORE_LITERAL(445.0) + ALWAN_CORE_LOG10(lin / ALWAN_CORE_LITERAL(0.18)) /
+                                        (ALWAN_CORE_LITERAL(0.002) / ALWAN_CORE_LITERAL(0.6))) / ALWAN_CORE_LITERAL(1023.0);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_plog_eotf)(ALWAN_CORE_T encoded) {
+    return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), (encoded * ALWAN_CORE_LITERAL(1023.0) - ALWAN_CORE_LITERAL(445.0)) *
+                                                     (ALWAN_CORE_LITERAL(0.002) / ALWAN_CORE_LITERAL(0.6))) *
+           ALWAN_CORE_LITERAL(0.18);
+}
+
+/* FiLMiC Pro 6: 0.371 (sqrt(t) + 0.28257 ln(t) + 1.69542). */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_filmic_pro6_oetf)(ALWAN_CORE_T lin) {
+    return ALWAN_CORE_LITERAL(0.371) *
+           (ALWAN_CORE_SQRT(lin) + ALWAN_CORE_LITERAL(0.28257) * ALWAN_CORE_LN(lin) + ALWAN_CORE_LITERAL(1.69542));
+}
+
+/* No closed form. With u = sqrt(t) the curve is u + 0.56514 ln(u) = y / 0.371 - 1.69542,
+ * increasing and concave in u, so Newton's method started left of the root climbs to it
+ * without overshooting: from 1 when the right-hand side is at least 1, else from
+ * exp((c - 1) / 0.56514). colour-science interpolates a table instead. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_filmic_pro6_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T a = ALWAN_CORE_LITERAL(0.28257) * ALWAN_CORE_LITERAL(2.0);
+    ALWAN_CORE_T c = encoded / ALWAN_CORE_LITERAL(0.371) - ALWAN_CORE_LITERAL(1.69542);
+    ALWAN_CORE_T u = ALWAN_CORE_SELECT(c < ALWAN_CORE_ONE, ALWAN_CORE_EXP((c - ALWAN_CORE_ONE) / a), ALWAN_CORE_ONE);
+    int i;
+    for (i = 0; i < 48; i++) {
+        u = u - (u + a * ALWAN_CORE_LN(u) - c) / (ALWAN_CORE_ONE + a / u);
+    }
+    return u * u;
+}
+
+/* Xiaomi Mi-Log: Apple Log's form with Xiaomi's constants. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_milog_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T R0    = ALWAN_CORE_LITERAL(-0.09023729);
+    ALWAN_CORE_T Rt    = ALWAN_CORE_LITERAL(0.01974185);
+    ALWAN_CORE_T C     = ALWAN_CORE_LITERAL(18.10531998);
+    ALWAN_CORE_T beta  = ALWAN_CORE_LITERAL(0.01384578);
+    ALWAN_CORE_T gamma = ALWAN_CORE_LITERAL(0.09271529);
+    ALWAN_CORE_T delta = ALWAN_CORE_LITERAL(0.6729185);
+
+    ALWAN_CORE_T diff = lin - R0;
+    ALWAN_CORE_T quad_result = C * (diff * diff);
+    ALWAN_CORE_T log_result  = gamma * ALWAN_CORE_LOG2(lin + beta) + delta;
+
+    return ALWAN_CORE_SELECT(lin < R0, ALWAN_CORE_ZERO,
+           ALWAN_CORE_SELECT(lin < Rt, quad_result, log_result));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_milog_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T R0    = ALWAN_CORE_LITERAL(-0.09023729);
+    ALWAN_CORE_T Rt    = ALWAN_CORE_LITERAL(0.01974185);
+    ALWAN_CORE_T C     = ALWAN_CORE_LITERAL(18.10531998);
+    ALWAN_CORE_T beta  = ALWAN_CORE_LITERAL(0.01384578);
+    ALWAN_CORE_T gamma = ALWAN_CORE_LITERAL(0.09271529);
+    ALWAN_CORE_T delta = ALWAN_CORE_LITERAL(0.6729185);
+    ALWAN_CORE_T Pt    = C * ((Rt - R0) * (Rt - R0));
+
+    ALWAN_CORE_T sqrt_result = ALWAN_CORE_SQRT(encoded / C) + R0;
+    ALWAN_CORE_T pow_result  = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), (encoded - delta) / gamma) - beta;
+
+    return ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, R0,
+           ALWAN_CORE_SELECT(encoded < Pt, sqrt_result, pow_result));
+}
+
+/* log2 over -6.5 to +6.5 stops around 0.18, colour-science's defaults. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_log2_shaper_oetf)(ALWAN_CORE_T lin) {
+    return (ALWAN_CORE_LOG2(lin / ALWAN_CORE_LITERAL(0.18)) - ALWAN_CORE_LITERAL(-6.5)) /
+           (ALWAN_CORE_LITERAL(6.5) - ALWAN_CORE_LITERAL(-6.5));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_log2_shaper_eotf)(ALWAN_CORE_T encoded) {
+    return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), encoded * (ALWAN_CORE_LITERAL(6.5) - ALWAN_CORE_LITERAL(-6.5)) +
+                                                    ALWAN_CORE_LITERAL(-6.5)) * ALWAN_CORE_LITERAL(0.18);
+}
+
+/* ================================================================
  * Linear / Identity
  * ================================================================ */
 
