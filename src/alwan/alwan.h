@@ -2006,12 +2006,45 @@ alwan_status alwan_spd_resample_f32(alwan_spd_f32 *dst, alwan_spd_f32 const *src
  * spd: spectral power distribution (reflectance or emission)
  * illuminant: illuminant SPD (NULL = assume spd is already weighted by illuminant)
  * observer: observer type (CIE 1931/1964/2012 2 deg or 10 deg)
- * method: integration method (trapezoid or Simpson)
+ * method: integration method (trapezoid or Simpson; any other value is ALWAN_E_INVALID)
  * bandpass_nm: bandpass width for Stearns & Stearns correction (0 = no correction)
  * ctx: context
  * Returns ALWAN_OK on success */
 alwan_status alwan_xyz_from_spd_f64(alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, alwan_f64 bandpass_nm, alwan_ctx *ctx);
 alwan_status alwan_xyz_from_spd_f32(alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, alwan_f32 bandpass_nm, alwan_ctx *ctx);
+
+/* ASTM E308 tristimulus values, the method industrial colorimetry reports. The zero
+ * value of every field is E308's preferred practice and colour-science's default. */
+typedef struct {
+    int observer_range;  /* 0: E308's practice range, 360-780 nm; non-zero: the observer's 360-830 */
+    int tables_at_5nm;   /* 0: 5 nm data summed on its own samples (the omission method);
+                          * non-zero: through E2022 weighting tables at 5 nm */
+    int tables_at_20nm;  /* 0: 20 nm data interpolated to 10 nm first; non-zero: E2022 tables at 20 nm */
+} alwan_astm_e308_params;
+
+/* XYZ of a spectrum by ASTM E308-15, as colour-science's sd_to_XYZ_ASTME308 computes it,
+ * scaled so a perfect reflector has Y = 100. The spectrum is sampled at 1, 5, 10 or
+ * 20 nm on whole nanometres, starting and ending on a multiple of its interval (of
+ * 10 nm for 20 nm data that is interpolated). At 1 nm, and at 5 nm by the omission
+ * method, it is summed on its own samples over the range, held at its end values where
+ * it is shorter. At 10 nm, and at 5 or 20 nm through tables, E2022 weighting factors
+ * are folded onto its own extent (the E308 adjustment). At 20 nm the default
+ * interpolates to 10 nm first. The illuminant is read at every whole nanometre,
+ * linearly between its samples, so a 1 nm illuminant agrees with colour-science
+ * exactly; NULL is the equal-energy illuminant E. ALWAN_E_INVALID for any other
+ * interval or alignment, a spectrum outside the range, or fewer than three 20 nm
+ * samples to interpolate. alwan_xyz_from_spd, the trapezoid and Simpson integrals, is
+ * unscaled; this is what a spectrophotometer's software reports. */
+alwan_status alwan_xyz_from_spd_astm_e308_f64(alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_observer_type observer, alwan_astm_e308_params const *params, alwan_ctx *ctx);
+alwan_status alwan_xyz_from_spd_astm_e308_f32(alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_observer_type observer, alwan_astm_e308_params const *params, alwan_ctx *ctx);
+
+/* ASTM E2022 tristimulus weighting factors for a measurement interval of interval_nm (5,
+ * 10 or 20) over 360-780 nm (observer_range 0) or 360-830 (non-zero): *node_count rows of
+ * X, Y and Z weights at 360, 360 + interval, ..., scaled so the Y weights sum to 100.
+ * weights_out NULL returns the row count alone. colour-science's
+ * tristimulus_weighting_factors_ASTME2022. */
+alwan_status alwan_astm_e2022_weights_f64(alwan_f64 *weights_out, size_t *node_count, alwan_spd_f64 const *illuminant, alwan_observer_type observer, int interval_nm, int observer_range, alwan_ctx *ctx);
+alwan_status alwan_astm_e2022_weights_f32(alwan_f32 *weights_out, size_t *node_count, alwan_spd_f32 const *illuminant, alwan_observer_type observer, int interval_nm, int observer_range, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
  * Camera Sensitivities

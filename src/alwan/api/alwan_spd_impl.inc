@@ -774,6 +774,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
+    /* Anything but the two rules used to fall through to Simpson. */
+    if ((int)method != (int)ALWAN_INTEGRATE_TRAPEZOID && (int)method != (int)ALWAN_INTEGRATE_SIMPSON) {
+        return ALWAN_E_INVALID;
+    }
 
     /* Load observer CMFs */
     ALWAN_CORE_SPD x_bar, y_bar, z_bar;
@@ -938,6 +942,259 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN
 }
 
 /* ----------------------------------------------------------------
+ * ASTM E308 and E2022: XYZ as industrial colorimetry reports it
+ *
+ * E2022 builds tables of tristimulus weighting factors from the 1 nm observer and
+ * illuminant: each 1 nm product S(l) cmf(l) is spread onto the nodes of the
+ * measurement interval by Lagrange coefficients, cubic over the first and last
+ * intervals and over four nodes elsewhere, and the table is scaled so its Y weights
+ * sum to 100. E308 folds the weights of nodes a spectrum does not reach onto its first
+ * and last node. Data at 1 nm, and at 5 nm by the omission method, are summed on
+ * their own samples instead, and data at 20 nm are interpolated to 10 nm first. This
+ * follows colour-science's sd_to_XYZ_ASTME308 loop for loop, which the tests hold it
+ * to. Computes in double in both precisions.
+ * ---------------------------------------------------------------- */
+
+#ifndef ALWAN__ASTM_E308_ONCE
+#define ALWAN__ASTM_E308_ONCE
+
+#define ALWAN__E308_START        360   /* the observers' first sample, nm */
+#define ALWAN__E308_PRACTICE_END 780   /* E308's practice range */
+#define ALWAN__E308_FULL_END     830   /* the observers' last sample */
+#define ALWAN__E308_MAX_NODES    96    /* (830 - 360) / 5 + 1 */
+
+/* A wavelength as a whole number of nanometres, when it is one. */
+static int alwan__e308_whole(double v, long *out) {
+    long const n = (long)(v + 0.5);
+    if (!(v > 0.0) || ALWAN_ABS(v - (double)n) > 1e-9 * v) return 0;
+    *out = n;
+    return 1;
+}
+
+/* colour.algebra.lagrange_coefficients: the Lagrange basis on nodes 0 .. n - 1 at r. */
+static void alwan__e308_lagrange(double *out, double r, int n) {
+    int i, j;
+    for (j = 0; j < n; j++) {
+        double v = 1.0;
+        for (i = 0; i < n; i++) {
+            if (i != j) v *= (r - (double)i) / ((double)j - (double)i);
+        }
+        out[j] = v;
+    }
+}
+
+/* E2022: S and Y (w_c x 3) at 1 nm from the range's start, interval d in {5, 10, 20};
+ * W receives (w_c - 1) / d + 1 nodes x 3, scaled so the Y weights sum to 100. The
+ * loops are colour-science's, in its order, so every weight gathers its terms alike. */
+static void alwan__e2022(double *W, double const *S, double const *Y, int w_c, int d) {
+    int const i_c = (w_c - 1) / d + 1, i_cm = i_c - 1, r_c = d - 1;
+    int const w_lif = w_c - (w_c - 1) % d - 1 - r_c;
+    double const lo = 1.0 / (double)d, hi = 1.0 - 1.0 / (double)d;
+    double const step = r_c > 1 ? (hi - lo) / (double)(r_c - 1) : 0.0;
+    double cc[19 * 3], cb[19 * 4];
+    double sum_y = 0.0, scale;
+    int h, g, i, k;
+    for (h = 0; h < r_c; h++) {
+        double const r = (r_c > 1 && h == r_c - 1) ? hi : (double)h * step + lo;   /* numpy.linspace */
+        alwan__e308_lagrange(cc + 3 * h, r, 3);
+        alwan__e308_lagrange(cb + 4 * h, r + 1.0, 4);
+    }
+    for (k = 0; k < i_c; k++) {
+        for (i = 0; i < 3; i++) W[k * 3 + i] = S[k * d] * Y[(k * d) * 3 + i];
+    }
+    for (i = 0; i < 3; i++) {
+        for (h = 0; h < r_c; h++) {                                  /* the first interval */
+            for (g = 0; g < 3; g++) W[g * 3 + i] = W[g * 3 + i] + cc[h * 3 + g] * S[h + 1] * Y[(h + 1) * 3 + i];
+        }
+        for (h = 0; h < r_c; h++) {                                  /* the last interval */
+            for (g = i_cm; g > i_cm - 3; g--) {
+                W[g * 3 + i] = W[g * 3 + i]
+                             + cc[(r_c - h - 1) * 3 + (i_cm - g)] * S[h + w_lif] * Y[(h + w_lif) * 3 + i];
+            }
+        }
+        for (h = 0; h < i_c - 3; h++) {                              /* the intervals between */
+            for (g = 0; g < r_c; g++) {
+                int const w_i = (r_c + 1) * (h + 1) + 1 + g;
+                W[h * 3 + i] = W[h * 3 + i] + cb[g * 4 + 0] * S[w_i] * Y[w_i * 3 + i];
+                W[(h + 1) * 3 + i] = W[(h + 1) * 3 + i] + cb[g * 4 + 1] * S[w_i] * Y[w_i * 3 + i];
+                W[(h + 2) * 3 + i] = W[(h + 2) * 3 + i] + cb[g * 4 + 2] * S[w_i] * Y[w_i * 3 + i];
+                W[(h + 3) * 3 + i] = W[(h + 3) * 3 + i] + cb[g * 4 + 3] * S[w_i] * Y[w_i * 3 + i];
+            }
+        }
+        for (h = w_c - (w_c - 1) % d; h < w_c; h++) {               /* an incomplete last interval */
+            W[i_cm * 3 + i] = W[i_cm * 3 + i] + S[h] * Y[h * 3 + i];
+        }
+    }
+    for (k = 0; k < i_c; k++) sum_y += W[k * 3 + 1];
+    scale = 100.0 / sum_y;
+    for (k = 0; k < 3 * i_c; k++) W[k] *= scale;
+}
+
+/* E308's adjustment and sum: W's nodes a .. b (inclusive), the weights below a folded
+ * onto a and those above b onto b, as colour-science folds them; R holds b - a + 1
+ * values. */
+static void alwan__e308_weighted(double xyz[3], double const *W, long i_c, long a, long b, double const *R) {
+    double adj[ALWAN__E308_MAX_NODES * 3];
+    long const n = b - a + 1;
+    long k;
+    int c;
+    for (k = 0; k < 3 * n; k++) adj[k] = W[a * 3 + k];
+    for (k = 0; k < a; k++) {
+        for (c = 0; c < 3; c++) adj[c] += W[k * 3 + c];
+    }
+    for (k = 0; k < i_c - 1 - b; k++) {
+        for (c = 0; c < 3; c++) adj[(n - 1) * 3 + c] += W[(i_c - 1 - k) * 3 + c];
+    }
+    for (c = 0; c < 3; c++) {
+        double acc = 0.0;
+        for (k = 0; k < n; k++) acc += adj[k * 3 + c] * R[k];
+        xyz[c] = acc;
+    }
+}
+
+#endif /* ALWAN__ASTM_E308_ONCE */
+
+/* S and Y at every whole nanometre of the range, w_c of each. */
+static alwan_status ALWAN_CORE_FN(e308_tables)(double *S, double *Y, int w_c, ALWAN_CORE_SPD const *illuminant,
+                                                alwan_observer_type observer, alwan_ctx *ctx) {
+    ALWAN_CORE_SPD xb, yb, zb;
+    int j;
+    int const st = ALWAN_CORE_FN(load_observer_cmf)(ctx, observer, &xb, &yb, &zb);
+    if (st != ALWAN_OK) return (alwan_status)st;
+    for (j = 0; j < w_c; j++) {
+        ALWAN_CORE_T const wl = (ALWAN_CORE_T)(ALWAN__E308_START + j);
+        S[j] = illuminant ? (double)ALWAN_CORE_FN(spd_interpolate)(illuminant, wl, ALWAN_RESAMPLE_LINEAR,
+                                                                   ALWAN_EXTRAPOLATE_CONSTANT)
+                          : 1.0;
+        Y[j * 3 + 0] = (double)xb.values[j];
+        Y[j * 3 + 1] = (double)yb.values[j];
+        Y[j * 3 + 2] = (double)zb.values[j];
+    }
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&xb, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&yb, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&zb, ctx);
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_astm_e2022_weights)(ALWAN_CORE_T *weights_out, size_t *node_count,
+                                                        ALWAN_CORE_SPD const *illuminant, alwan_observer_type observer,
+                                                        int interval_nm, int observer_range, alwan_ctx *ctx) {
+    int const end = observer_range ? ALWAN__E308_FULL_END : ALWAN__E308_PRACTICE_END;
+    int const w_c = end - ALWAN__E308_START + 1;
+    double *buf;
+    alwan_status st;
+    int i_c, k;
+    if (!node_count || (interval_nm != 5 && interval_nm != 10 && interval_nm != 20)) return ALWAN_E_INVALID;
+    i_c = (w_c - 1) / interval_nm + 1;
+    *node_count = (size_t)i_c;
+    if (!weights_out) return ALWAN_OK;
+    buf = (double *)ALWAN_ALLOC((size_t)(4 * w_c + 3 * i_c) * sizeof(double), sizeof(double));
+    if (!buf) return ALWAN_E_NOMEM;
+    st = ALWAN_CORE_FN(e308_tables)(buf, buf + w_c, w_c, illuminant, observer, ctx);
+    if (st == ALWAN_OK) {
+        double *W = buf + 4 * w_c;
+        alwan__e2022(W, buf, buf + w_c, w_c, interval_nm);
+        for (k = 0; k < 3 * i_c; k++) weights_out[k] = (ALWAN_CORE_T)W[k];
+    }
+    ALWAN_FREE(buf);
+    return st;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd_astm_e308)(ALWAN_CORE_XYZ *xyz_out, ALWAN_CORE_SPD const *spd,
+                                                           ALWAN_CORE_SPD const *illuminant,
+                                                           alwan_observer_type observer,
+                                                           alwan_astm_e308_params const *params, alwan_ctx *ctx) {
+    alwan_astm_e308_params const zero = { 0, 0, 0 };
+    alwan_astm_e308_params const *p = params ? params : &zero;
+    long const end = p->observer_range ? ALWAN__E308_FULL_END : ALWAN__E308_PRACTICE_END;
+    int const w_c = (int)(end - ALWAN__E308_START) + 1;
+    long lo = 0, hi = 0, d, grid, a, b, k;
+    size_t const n_spd = spd ? spd->count : 0;
+    double *buf, *S, *Y, *W, *R, xyz[3] = { 0.0, 0.0, 0.0 };
+    alwan_status st;
+
+    if (!xyz_out || !spd || !spd->values || n_spd < 2) return ALWAN_E_INVALID;
+    if (!alwan__e308_whole((double)spd->wavelength_min, &lo) || !alwan__e308_whole((double)spd->wavelength_max, &hi)
+        || hi <= lo || (hi - lo) % (long)(n_spd - 1) != 0) {
+        return ALWAN_E_INVALID;
+    }
+    d = (hi - lo) / (long)(n_spd - 1);
+    if (d != 1 && d != 5 && d != 10 && d != 20) return ALWAN_E_INVALID;
+    grid = (d == 20 && !p->tables_at_20nm) ? 10 : d;
+    if (lo % grid != 0 || hi % grid != 0) return ALWAN_E_INVALID;
+    /* The spectrum's first and last sample inside the range. */
+    a = lo >= ALWAN__E308_START ? lo : lo + ((ALWAN__E308_START - lo + d - 1) / d) * d;
+    b = hi <= end ? hi : hi - ((hi - end + d - 1) / d) * d;
+    if (a > b) return ALWAN_E_INVALID;
+
+    buf = (double *)ALWAN_ALLOC((size_t)(4 * w_c + 3 * ALWAN__E308_MAX_NODES + 2 * (long)n_spd + w_c + 8)
+                                * sizeof(double), sizeof(double));
+    if (!buf) return ALWAN_E_NOMEM;
+    S = buf;
+    Y = S + w_c;
+    W = Y + 3 * w_c;
+    R = W + 3 * ALWAN__E308_MAX_NODES;
+    st = ALWAN_CORE_FN(e308_tables)(S, Y, w_c, illuminant, observer, ctx);
+
+    if (st == ALWAN_OK && (d == 1 || (d == 5 && !p->tables_at_5nm))) {
+        /* Summed on the spectrum's own grid over the range, held at its end values
+         * beyond it: sd_to_XYZ_integration after colour aligns the spectrum. */
+        double sum_y = 0.0, dot[3] = { 0.0, 0.0, 0.0 }, kk;
+        for (k = ALWAN__E308_START; k <= end; k += d) {
+            long const at = k < lo ? 0 : (k > hi ? (long)n_spd - 1 : (k - lo) / d);
+            double const r = (double)spd->values[at];
+            double const s = S[k - ALWAN__E308_START];
+            double const *y = Y + 3 * (k - ALWAN__E308_START);
+            sum_y += y[1] * s;
+            dot[0] += r * s * y[0];
+            dot[1] += r * s * y[1];
+            dot[2] += r * s * y[2];
+        }
+        kk = 100.0 / (sum_y * (double)d);
+        xyz[0] = kk * dot[0] * (double)d;
+        xyz[1] = kk * dot[1] * (double)d;
+        xyz[2] = kk * dot[2] * (double)d;
+    } else if (st == ALWAN_OK && d == 20 && !p->tables_at_20nm) {
+        /* 20 nm to 10 nm: padded 20 nm beyond each end by cubic extrapolation, each
+         * midpoint from the four 20 nm samples around it, then the 10 nm tables. */
+        long const n20 = (b - a) / 20 + 1;
+        long const L = 2 * (n20 - 1) + 5;
+        double *P = R;
+        if (n20 < 3) {
+            st = ALWAN_E_INVALID;
+        } else {
+            for (k = 0; k < n20; k++) P[2 + 2 * k] = (double)spd->values[(a - lo) / 20 + k];
+            P[0] = 3.0 * P[2] - 3.0 * P[4] + P[6];
+            P[L - 1] = P[L - 7] - 3.0 * P[L - 5] + 3.0 * P[L - 3];
+            for (k = 3; k < L - 3; k += 2) {
+                P[k] = -0.0625 * P[k - 3] + 0.5625 * P[k - 1] + 0.5625 * P[k + 1] - 0.0625 * P[k + 3];
+            }
+            alwan__e2022(W, S, Y, w_c, 10);
+            alwan__e308_weighted(xyz, W, (long)((w_c - 1) / 10 + 1), (a - ALWAN__E308_START) / 10,
+                                 (b - ALWAN__E308_START) / 10, P + 2);
+        }
+    } else if (st == ALWAN_OK) {
+        /* E2022 tables at the spectrum's own interval, folded to its extent. */
+        long const i_c = (long)((w_c - 1) / (int)d + 1);
+        long const last = ALWAN__E308_START + d * (i_c - 1);
+        if (b > last) {
+            st = ALWAN_E_INVALID;          /* past the table's last node */
+        } else {
+            for (k = 0; k <= (b - a) / d; k++) R[k] = (double)spd->values[(a - lo) / d + k];
+            alwan__e2022(W, S, Y, w_c, (int)d);
+            alwan__e308_weighted(xyz, W, i_c, (a - ALWAN__E308_START) / d, (b - ALWAN__E308_START) / d, R);
+        }
+    }
+    if (st == ALWAN_OK) {
+        xyz_out->x = (ALWAN_CORE_T)xyz[0];
+        xyz_out->y = (ALWAN_CORE_T)xyz[1];
+        xyz_out->z = (ALWAN_CORE_T)xyz[2];
+    }
+    ALWAN_FREE(buf);
+    return st;
+}
+
+/* ----------------------------------------------------------------
  * Camera Sensitivity Functions
  * ---------------------------------------------------------------- */
 
@@ -995,6 +1252,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(ALWAN_CORE_SPD *spd_
 
 alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(ALWAN_CORE_XYZ *xyz_out, ALWAN_CORE_SPD const *spd, ALWAN_CORE_SPD const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx) {
     if (!spd || !xyz_out) {
+        return ALWAN_E_INVALID;
+    }
+    /* Anything but the two rules used to fall through to Simpson. */
+    if ((int)method != (int)ALWAN_INTEGRATE_TRAPEZOID && (int)method != (int)ALWAN_INTEGRATE_SIMPSON) {
         return ALWAN_E_INVALID;
     }
 
