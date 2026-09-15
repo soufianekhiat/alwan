@@ -554,6 +554,38 @@ libultrahdr's arithmetic to 2e-7.
 
 ---
 
+## PU21 Perceptual Encoding
+
+```c
+alwan_f64 v, psnr;
+alwan_pu21_encode_f64(&v, 100.0, ALWAN_PU21_BANDING_GLARE);          /* 256.38 */
+alwan_pu21_psnr_f64(&psnr, test, 3 * sizeof(alwan_f64), ref, 3 * sizeof(alwan_f64),
+                    pixel_count, 3, ALWAN_PU21_BANDING_GLARE);         /* dB */
+```
+
+Mantiuk and Azimi 2021. PSNR and SSIM were built for display-referred SDR values, where
+equal steps are roughly equally visible. On HDR luminance they are not: an error of
+1 cd/m2 is invisible at 1000 cd/m2 and glaring at 0.1. PU21 maps absolute luminance, as
+a reference display would emit it, to a scale where equal steps are about equally
+visible again, fitted so that 0.005 cd/m2 encodes to about 0, 100 cd/m2 to about 256,
+and 10000 cd/m2 to about 595 for `ALWAN_PU21_BANDING_GLARE`. That is the variant the
+authors recommend and the zero value. The other three are the paper's fits for
+other conditions.
+
+`alwan_pu21_encode_{T}` is the curve alone. The authors' `pu21_encoder.m` limits
+luminance to [0.005, 10000] cd/m2 before encoding; a caller that wants its numbers does
+the same, and `alwan_pu21_psnr_{T}` does, since `pu21_metric.m` encodes through it.
+PU-PSNR is 10 log10(256^2 / MSE) over every value, with one or three channels per
+pixel, and +inf for images that encode identically.
+
+The parameters are the published ones, read by gendata from the pinned
+`pu21_encoder.m` (BSD-3-Clause), and the tests evaluate that file's equation in
+50-digit arithmetic. The encode matches it to a few 1e-13, which is the formula's own
+conditioning in double, and PU-PSNR to 1e-9 dB. Only PSNR is provided; PU-SSIM needs
+an SSIM, which alwan does not have yet.
+
+---
+
 ## Exposure and Bracket Merging
 
 ```c

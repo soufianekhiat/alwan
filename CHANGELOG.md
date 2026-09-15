@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **PU21 and PU-PSNR.** `alwan_pu21_encode_{T}` and `alwan_pu21_decode_{T}`, scalar
+  and interleaved, map absolute HDR luminance to Mantiuk and Azimi's 2021
+  perceptually uniform scale in all four published variants, so PSNR on HDR says
+  something. `alwan_pu21_psnr_{T}` is `pu21_metric.m`'s PU-PSNR. The core builds on
+  the GPU backends. Against the authors' `pu21_encoder.m`, evaluated at 50 digits, the
+  encode agrees to a few 1e-13 and PU-PSNR to 1e-9 dB.
+
 - **CCM fit: an SVD solver and the rank.** `alwan_ccm_fit_params` gains `solver`,
   `rcond` and `rank_out`. `ALWAN_CCM_SOLVER_SVD`, a one-sided Jacobi SVD, answers the
   rank-deficient fits QR refuses with the minimum-norm solution, and fits with fewer
