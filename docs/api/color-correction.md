@@ -479,7 +479,11 @@ chart the plain fit's held-out error is lowest at 14 terms and seven times highe
 This is scikit-learn's `LeaveOneOut` over `LinearRegression` and `Ridge`, which the
 tests match to 2e-13, prediction by prediction. The selection minimises squared error
 in the reference's space, linear RGB for a CCM; to choose perceptually, score the
-predictions in ΔE.
+predictions in ΔE. The two can disagree. For a Canon EOS 5D Mark II on a ColorChecker
+under D65, the held-out RMS in linear sRGB is lowest at 4 terms, while the same held-out
+predictions scored in ΔE00 are best at 22 terms with a ridge of 2e-5 (0.80 against
+0.97). Squared error in linear light is dominated by the bright patches, and ΔE is
+not.
 
 **Example (camera profiling workflow):**
 ```c
