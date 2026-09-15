@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **The rest of colour-science's log curves.** `ALWAN_TF_LOG3G12`, `ALWAN_TF_PANALOG`,
+  `ALWAN_TF_VIPERLOG`, `ALWAN_TF_PLOG`, `ALWAN_TF_FILMIC_PRO6`, `ALWAN_TF_MILOG` and
+  `ALWAN_TF_LOG2`, pinned against colour-science in suite 103, now 36 curves.
+  FiLMiC Pro 6's EOTF is exact, by Newton's method, where colour-science interpolates.
+  `ALWAN_TF_COUNT` counts the curves.
+
 - **ITU-T H.273 code points.** `alwan_h273_*` maps the three numbers a video stream
   signals its colour with, colour_primaries, transfer_characteristics and
   matrix_coefficients, to alwan's RGB spaces, transfer functions and Kr, Kb, and

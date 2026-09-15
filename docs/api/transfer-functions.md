@@ -122,7 +122,18 @@ typedef enum {
     ALWAN_TF_XVYCC,                /* transfer 11, IEC 61966-2-4: BT.709 odd about 0 */
     ALWAN_TF_BT1361,               /* transfer 12: BT.709, light down to -0.25 at a quarter scale */
     ALWAN_TF_SYCC,                 /* transfer 13, IEC 61966-2-1: sRGB odd about 0 */
-    ALWAN_TF_BT2020_12BIT          /* transfer 15: BT.2020 with alpha 1.0993, beta 0.0181 */
+    ALWAN_TF_BT2020_12BIT,         /* transfer 15: BT.2020 with alpha 1.0993, beta 0.0181 */
+
+    /* The rest of colour-science's log registry */
+    ALWAN_TF_LOG3G12,              /* RED Log3G12, odd about 0 */
+    ALWAN_TF_PANALOG,              /* Panavision Panalog */
+    ALWAN_TF_VIPERLOG,             /* Thomson ViperLog */
+    ALWAN_TF_PLOG,                 /* Josh Pines' pivoted log, code 445 at 0.18 */
+    ALWAN_TF_FILMIC_PRO6,          /* FiLMiC Pro 6 */
+    ALWAN_TF_MILOG,                /* Xiaomi Mi-Log */
+    ALWAN_TF_LOG2,                 /* log2 over -6.5 to +6.5 stops around 0.18 */
+
+    ALWAN_TF_COUNT                 /* sentinel: the number of curves */
 } alwan_transfer_function;
 ```
 
@@ -136,6 +147,12 @@ code to its curve. They follow colour-science, splits included, except
 `ALWAN_TF_XVYCC` ([alwan_decisions.md](../alwan_decisions.md#h273-transfer-11-is-xvycc-as-ffmpeg-and-zimg-define-it)).
 Below 0, `ALWAN_TF_SRGB` continues its linear segment and `ALWAN_TF_SYCC` mirrors the
 curve, as sYCC does.
+
+The last seven complete colour-science's log registry, in its forms and at its
+defaults. The pure logs (ViperLog, the pivoted log, FiLMiC Pro 6 and Log2) have no
+code for 0 and return -inf there, as colour-science does. FiLMiC Pro 6 has no closed
+inverse: its EOTF solves the curve by Newton's method, where colour-science
+interpolates a sampled table.
 
 > **Camera log curves.** The `ALWAN_TF_SLOG*`, `ALWAN_TF_NLOG`, `ALWAN_TF_VLOG`,
 > `ALWAN_TF_CLOG*`, `ALWAN_TF_REDLOG*`/`ALWAN_TF_LOG3G10`, and related camera-vendor

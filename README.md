@@ -5,7 +5,7 @@
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/badge/tests-131%20suites-brightgreen)](#validation)
 [![checks](https://img.shields.io/badge/checks-102%2C392%20per%20run-brightgreen)](#validation)
-[![reference data](https://img.shields.io/badge/reference%20data-382%20sets-blue)](#validation)
+[![reference data](https://img.shields.io/badge/reference%20data-389%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -247,7 +247,8 @@ Support for modern display and camera encoding:
   Panasonic V-Log, Nikon N-Log, RED REDLog/REDLogFilm/Log3G10,
   Fujifilm F-Log/F-Log2, DJI D-Log, Blackmagic Film Gen4/5, Leica
   L-Log, FilmLight T-Log, Olympus OM-Log400 (E-Log), Apple Log,
-  GoPro Protune
+  GoPro Protune, RED Log3G12, Panavision Panalog, Thomson ViperLog, Xiaomi
+  Mi-Log, FiLMiC Pro 6, Pines' pivoted log, Log2
 - **Film:** Cineon, ADX10/16
 - **Video, ITU-T H.273:** the code points a stream signals its colour with, to
   alwan's spaces, curves and Kr, Kb, and back; the H.273 log pair, xvYCC, BT.1361,
@@ -622,7 +623,7 @@ Re-run it against any checkout to reproduce the table.
 | Test cases | 910 |
 | Checks executed per run | 102,392 |
 | Assertion sites in the tests | 3,188 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 382 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 389 |
 | Embedded data tables | 747 |
 | Exported symbols | 1,689 |
 | Internal symbols reached by a test or a public entry point | 152 of 176 (86%) |
@@ -792,7 +793,7 @@ own. Those jobs verify a clean compile; the test suite runs from
   + HDR ICtCp/JzCzHz + spatial)
 - [x] ACES 1.x RRT+ODT pipeline: 12 output presets, validated against OCIO
 - [x] ACES 2.0 Output Transform: 12 output presets, JMh gamut mapping
-- [x] 56 transfer functions including all major camera log formats
+- [x] 63 transfer functions including all major camera log formats
 - [x] 18 view transforms (AgX original/punchy/golden/SB2383/Blender,
   BT.2446 A/B/C, BT.2390, Tony McMapface, Reinhard, Khronos PBR Neutral,
   Uchimura, Lottes, Exposure, ACES Rec.709) + JP2499 parameterized DRT
