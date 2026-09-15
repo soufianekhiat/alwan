@@ -8,6 +8,18 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **ITU-T H.273 code points.** `alwan_h273_*` maps the three numbers a video stream
+  signals its colour with, colour_primaries, transfer_characteristics and
+  matrix_coefficients, to alwan's RGB spaces, transfer functions and Kr, Kb, and
+  back. Against colour-science's H.273 tables: the chromaticities exactly, Kr and Kb
+  to 2e-16, every transfer code through its curve to 6e-17, except transfer 11 (see
+  `docs/alwan_decisions.md`).
+
+- **Six H.273 transfer functions.** `ALWAN_TF_H273_LOG`, `ALWAN_TF_H273_LOG_SQRT`,
+  `ALWAN_TF_XVYCC`, `ALWAN_TF_BT1361`, `ALWAN_TF_SYCC` and `ALWAN_TF_BT2020_12BIT`,
+  appended to the enum and pinned against colour-science in suite 103, which now
+  covers 29 curves.
+
 - **Global tone mapping operators.** `alwan_tonemap_global_{T}` maps an image by one
   of colour-hdri's eleven global operators: simple, normalisation, gamma,
   logarithmic, exponential, Schlick's two mappings, Schlick 1994, Tumblin 1999,
@@ -573,6 +585,12 @@ All notable changes to this project will be documented in this file.
   version they came from.
 
 ### Fixed: output differs
+
+- **The deterministic BT.709 and BT.2020 curves split at the wrong side of 0.018.**
+  They shared sRGB's helper, which puts the break itself on the linear segment; the
+  fast build and colour-science put it on the power segment. At exactly 0.018 the
+  deterministic OETF returned 0.081 instead of 0.081248, and the EOTF likewise at
+  0.081. Only those two inputs change, to the fast build's values.
 
 - **An unknown integration method ran Simpson's rule.** `alwan_xyz_from_spd_{T}` and
   `alwan_xyz_from_spd_camera_{T}` treated every value other than

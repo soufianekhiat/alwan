@@ -51,6 +51,7 @@ here first: the difference is intentional and the entry says what it costs.
 | [V-Log cut point](#v-log-splits-at-linear--cut1-not-) | splits at `<=` | splits at `<`, as Panasonic specifies |
 | [Reinhard 2004 tone map](#reinhard-2004-follows-the-paper-where-colour-hdri-does-not) | colour-hdri's local term and automatic contrast | Reinhard and Devlin 2005 |
 | [Logarithmic and exponential tone maps](#reinhard-2004-follows-the-paper-where-colour-hdri-does-not) | `q`, `k` below 1 raised to 1 | `ALWAN_E_INVALID` |
+| [H.273 transfer 11](#h273-transfer-11-is-xvycc-as-ffmpeg-and-zimg-define-it) | sRGB's curve odd about 0 | BT.709's, as FFmpeg and zimg define xvYCC |
 
 ## What is different about alwan itself
 
@@ -191,6 +192,21 @@ continuous there, so the choice is observable: at exactly 0.01 the branch matter
 to 3.1e-07. Panasonic's specification uses `<`, and so does alwan.
 
 ---
+
+### H.273 transfer 11 is xvYCC as FFmpeg and zimg define it
+
+**Reference:** colour-science 0.4.7, `TRANSFER_CHARACTERISTICS_ITUTH273[11]`, against
+FFmpeg's `trc_iec61966_2_4` (libavutil/csp.c) and zimg's `xvycc_oetf`.
+
+H.273 transfer 11 is IEC 61966-2-4, the xvYCC curve: BT.709's, odd about 0 so that
+negative light has a code. colour-science maps it to `oetf_H273_IEC61966_2`, its one
+function for the IEC 61966-2 family, which is sRGB's curve odd about 0. That is right
+for transfer 13, sRGB and sYCC, and not for 11. FFmpeg and zimg both implement 11 as
+BT.709 odd about 0, and so does `ALWAN_TF_XVYCC`. At -0.1 the two give -0.2909 and
+-0.3492; on [0, 1] they differ as BT.709 and sRGB do.
+
+Suite 131 takes transfer 11 from colour-science's `oetf_BT709`, extended by symmetry,
+and every other code from colour-science's table.
 
 ## Video signal
 

@@ -3,9 +3,9 @@
 > **Alwan** (ألوان): Arabic for "colours"
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-130%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-101%2C794%20per%20run-brightgreen)](#validation)
-[![reference data](https://img.shields.io/badge/reference%20data-375%20sets-blue)](#validation)
+[![tests](https://img.shields.io/badge/tests-131%20suites-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-102%2C392%20per%20run-brightgreen)](#validation)
+[![reference data](https://img.shields.io/badge/reference%20data-382%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -249,6 +249,9 @@ Support for modern display and camera encoding:
   L-Log, FilmLight T-Log, Olympus OM-Log400 (E-Log), Apple Log,
   GoPro Protune
 - **Film:** Cineon, ADX10/16
+- **Video, ITU-T H.273:** the code points a stream signals its colour with, to
+  alwan's spaces, curves and Kr, Kb, and back; the H.273 log pair, xvYCC, BT.1361,
+  sYCC and 12-bit BT.2020 curves
 - **View transforms:** AgX (original/punchy/golden/SB2383/Blender),
   Tony McMapface, Khronos PBR Neutral, Reinhard (extended + calibrated),
   Uchimura, Lottes, exposure-with-shoulder
@@ -615,13 +618,13 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 130, all passing |
-| Test cases | 908 |
-| Checks executed per run | 101,794 |
-| Assertion sites in the tests | 3,144 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 375 |
+| Test suites | 131, all passing |
+| Test cases | 910 |
+| Checks executed per run | 102,392 |
+| Assertion sites in the tests | 3,188 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 382 |
 | Embedded data tables | 747 |
-| Exported symbols | 1,681 |
+| Exported symbols | 1,689 |
 | Internal symbols reached by a test or a public entry point | 152 of 176 (86%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -629,7 +632,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**101,794 checks per run** is what actually executes, not what is written. A
+**102,392 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -664,7 +667,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 130 test suites, single binary
+./build/tests/Release/alwan_tests   # 131 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -673,7 +676,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 130 suites, 908 cases, 101,794 checks executed per run
+  module: 131 suites, 910 cases, 102,392 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
@@ -711,7 +714,7 @@ alwan/                       # this repo (library only)
 \-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-+-- tests/                   # 130 test suites + reference fixtures
++-- tests/                   # 131 test suites + reference fixtures
 +-- bench/                   # micro-benchmarks
 +-- det_regression/          # cross-platform determinism regression tool
 +-- image_gen/               # validation visuals
@@ -775,7 +778,7 @@ own. Those jobs verify a clean compile; the test suite runs from
 - [x] Dual precision (f32 + f64 in one binary)
 - [x] Data embedding with diagnostic guards
 - [x] Sharpmake + CMake build systems
-- [x] Unified test suite (130 suites, hosted in alwan_dev)
+- [x] Unified test suite (131 suites, hosted in alwan_dev)
 - [x] 104 named RGB spaces, easy to add more via space descriptors
 - [x] Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,
@@ -789,7 +792,7 @@ own. Those jobs verify a clean compile; the test suite runs from
   + HDR ICtCp/JzCzHz + spatial)
 - [x] ACES 1.x RRT+ODT pipeline: 12 output presets, validated against OCIO
 - [x] ACES 2.0 Output Transform: 12 output presets, JMh gamut mapping
-- [x] 50 transfer functions including all major camera log formats
+- [x] 56 transfer functions including all major camera log formats
 - [x] 18 view transforms (AgX original/punchy/golden/SB2383/Blender,
   BT.2446 A/B/C, BT.2390, Tony McMapface, Reinhard, Khronos PBR Neutral,
   Uchimura, Lottes, Exposure, ACES Rec.709) + JP2499 parameterized DRT

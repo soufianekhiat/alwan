@@ -19,6 +19,8 @@ banner, with the CLF export block between them.
 - **Interop IDs** -- string <-> `alwan_rgb_space` lookup over a 41-row static table
 - **Half floats** -- batch binary16 <-> binary32 conversion, no lookup table
 - **Video signals** -- linear RGB <-> packed video codes, with SMPTE narrow or full range
+- **ITU-T H.273 code points** -- a stream's colour_primaries, transfer_characteristics
+  and matrix_coefficients <-> alwan's spaces, curves and Kr, Kb
 
 Two suffix exceptions. `alwan_interop_format` and `alwan_interop_count` take no
 `{T}` suffix. The half-float pair takes the suffix without it meaning anything
@@ -537,6 +539,98 @@ alwan_video_encode_{T}(pq, nits, 1, ALWAN_PIXEL_U16,
 > feeds `REC2100_PQ` from a buffer of normalised values. Do not copy either.
 
 ---
+
+## ITU-T H.273 Code Points
+
+H.273 (ISO/IEC 23091-2) is how a video stream or file says what its numbers mean:
+three small integers, `colour_primaries`, `transfer_characteristics` and
+`matrix_coefficients`, carried in H.264 and HEVC VUI, the AV1 sequence header, MP4
+`colr` boxes, Matroska and PNG's `cICP` chunk. These functions map them to alwan's
+enums and back. Code 2, unspecified, is `ALWAN_E_NODATA`; a reserved or
+out-of-range code is `ALWAN_E_INVALID`.
+
+```c
+alwan_status alwan_h273_color_primaries_{T}(alwan_{T} primaries_xy[6], alwan_{T} white_xy[2],
+                                            int color_primaries);
+alwan_status alwan_h273_color_primaries_to_space(alwan_rgb_space *space_out, int color_primaries);
+alwan_status alwan_h273_color_primaries_from_space(int *color_primaries_out, alwan_rgb_space space);
+alwan_status alwan_h273_transfer_to_tf(alwan_transfer_function *tf_out, int transfer_characteristics);
+alwan_status alwan_h273_transfer_from_tf(int *transfer_characteristics_out, alwan_transfer_function tf);
+alwan_status alwan_h273_matrix_coefficients_{T}(alwan_{T} *kr_out, alwan_{T} *kb_out,
+                                                int matrix_coefficients, int color_primaries);
+```
+
+Against colour-science's `colour.models.rgb.itut_h_273` (suite 131): the
+chromaticities exactly, Kr and Kb to 2e-16, and every transfer code through its alwan
+curve to 6e-17.
+
+### colour_primaries
+
+| Code | Primaries | alwan space |
+|---|---|---|
+| 1 | BT.709, sRGB | `ALWAN_RGB_SPACE_LINEAR_REC709` |
+| 4 | BT.470 System M, Illuminant C | `ALWAN_RGB_SPACE_LINEAR_BT470_525` |
+| 5 | BT.470 System B and G, BT.601 625 | `ALWAN_RGB_SPACE_LINEAR_BT470_625` |
+| 6, 7 | SMPTE 170M, SMPTE 240M | `ALWAN_RGB_SPACE_LINEAR_SMPTE_240M` |
+| 8 | Generic film, Illuminant C | `ALWAN_RGB_SPACE_ITU_T_H273_GENERIC_FILM` |
+| 9 | BT.2020, BT.2100 | `ALWAN_RGB_SPACE_LINEAR_REC2020` |
+| 10 | SMPTE ST 428-1, CIE XYZ | `ALWAN_RGB_SPACE_DCDM_XYZ` |
+| 11 | SMPTE RP 431-2, DCI-P3 | `ALWAN_RGB_SPACE_LINEAR_DCI_P3` |
+| 12 | SMPTE EG 432-1, P3 D65 | `ALWAN_RGB_SPACE_LINEAR_P3_D65` |
+| 22 | no industry specification identified | `ALWAN_RGB_SPACE_ITU_T_H273_22_UNSPECIFIED` |
+
+`alwan_h273_color_primaries_{T}` returns H.273's own numbers. `_to_space` returns the
+linear space where alwan has one, because the curve comes from its own code.
+`_from_space` returns the lowest code whose primaries are the space's and whose white
+point agrees within 5e-4 in xy, which is H.273's rounding: System M's Illuminant C is
+(0.310, 0.316) in H.273 and (0.31006, 0.31616) in alwan, and EBU Tech 3213-E rounds
+D65 to (0.313, 0.329). 7 comes back as 6, which has the same chromaticities. A space
+whose primaries H.273 does not list is `ALWAN_E_NODATA`.
+
+### transfer_characteristics
+
+| Code | Curve | alwan |
+|---|---|---|
+| 1, 6 | BT.709, BT.601 | `ALWAN_TF_BT709` |
+| 4 | gamma 2.2, BT.470 System M | `ALWAN_TF_GAMMA22` |
+| 5 | gamma 2.8, BT.470 System B and G | `ALWAN_TF_GAMMA28` |
+| 7 | SMPTE 240M | `ALWAN_TF_SMPTE240M` |
+| 8 | linear | `ALWAN_TF_LINEAR` |
+| 9 | logarithmic, 100:1 | `ALWAN_TF_H273_LOG` |
+| 10 | logarithmic, 100 sqrt(10):1 | `ALWAN_TF_H273_LOG_SQRT` |
+| 11 | IEC 61966-2-4, xvYCC | `ALWAN_TF_XVYCC` |
+| 12 | BT.1361 extended colour gamut | `ALWAN_TF_BT1361` |
+| 13 | IEC 61966-2-1, sRGB and sYCC | `ALWAN_TF_SYCC` |
+| 14 | BT.2020, 10-bit | `ALWAN_TF_BT2020` |
+| 15 | BT.2020, 12-bit | `ALWAN_TF_BT2020_12BIT` |
+| 16 | SMPTE ST 2084, PQ | `ALWAN_TF_PQ`, in cd/m2 |
+| 17 | SMPTE ST 428-1 | `ALWAN_TF_DCDM` |
+| 18 | ARIB STD-B67, HLG | `ALWAN_TF_HLG` |
+
+`_from_tf` returns the lowest code for a curve, so `ALWAN_TF_BT709` is 1.
+`ALWAN_TF_SRGB` is 13, the same curve on [0, 1]; below 0, sYCC mirrors it where
+alwan's sRGB continues its linear segment. `ALWAN_TF_ST2084` is 16. A curve H.273 does
+not list, BT.1886 or a camera log, is `ALWAN_E_NODATA`.
+
+Transfer 11 is BT.709 odd about 0, as FFmpeg and zimg define IEC 61966-2-4.
+colour-science's table gives it sRGB's curve instead; see
+[alwan_decisions.md](../alwan_decisions.md#h273-transfer-11-is-xvycc-as-ffmpeg-and-zimg-define-it).
+
+### matrix_coefficients
+
+| Code | Kr | Kb | |
+|---|---|---|---|
+| 1 | 0.2126 | 0.0722 | BT.709 |
+| 4 | 0.30 | 0.11 | FCC |
+| 5, 6 | 0.299 | 0.114 | BT.601 |
+| 7 | 0.212 | 0.087 | SMPTE 240M |
+| 9, 10 | 0.2627 | 0.0593 | BT.2020; 10 is constant luminance |
+| 12, 13 | from the primaries | | chromaticity-derived; 13 is constant luminance |
+
+For 12 and 13, Kr and Kb are the Y row of the primaries' RGB to XYZ matrix (H.273's
+equations 32 to 37), from `color_primaries`, which the other codes ignore. 0 (identity,
+GBR), 8 (YCgCo), 11 (Y'D'zD'x) and 14 (ICtCp) are specified but have no Kr and Kb:
+`ALWAN_E_NODATA`.
 
 ## Error Codes
 

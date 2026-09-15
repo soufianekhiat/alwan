@@ -114,13 +114,28 @@ typedef enum {
     ALWAN_TF_LSTAR,                /* CIE 1976 lightness, ECI RGB v2 */
     ALWAN_TF_SMPTE240M,            /* SMPTE ST 240 OETF */
     ALWAN_TF_ADOBE_RGB,            /* Adobe gamma 563/256 = 2.19921875 */
-    ALWAN_TF_DAVINCI_INTERMEDIATE  /* DaVinci Intermediate, the DaVinci Wide Gamut delivery curve */
+    ALWAN_TF_DAVINCI_INTERMEDIATE, /* DaVinci Intermediate, the DaVinci Wide Gamut delivery curve */
+
+    /* ITU-T H.273 transfer characteristics */
+    ALWAN_TF_H273_LOG,             /* transfer 9: 1 + log10(L) / 2 from 0.01 up, 0 below */
+    ALWAN_TF_H273_LOG_SQRT,        /* transfer 10: 1 + log10(L) / 2.5 from sqrt(10) / 1000 up */
+    ALWAN_TF_XVYCC,                /* transfer 11, IEC 61966-2-4: BT.709 odd about 0 */
+    ALWAN_TF_BT1361,               /* transfer 12: BT.709, light down to -0.25 at a quarter scale */
+    ALWAN_TF_SYCC,                 /* transfer 13, IEC 61966-2-1: sRGB odd about 0 */
+    ALWAN_TF_BT2020_12BIT          /* transfer 15: BT.2020 with alpha 1.0993, beta 0.0181 */
 } alwan_transfer_function;
 ```
 
 `ALWAN_TF_PQ` takes and returns cd/m2: linear 100.0 encodes to the PQ code for
 100 nits. `ALWAN_TF_HLG` takes scene light normalised so that 1.0 is the
 nominal peak, with the 12x of the standard applied inside.
+
+The H.273 curves are the transfer characteristics video streams signal that alwan
+had no curve for; [interchange.md](interchange.md#itu-t-h273-code-points) maps every
+code to its curve. They follow colour-science, splits included, except
+`ALWAN_TF_XVYCC` ([alwan_decisions.md](../alwan_decisions.md#h273-transfer-11-is-xvycc-as-ffmpeg-and-zimg-define-it)).
+Below 0, `ALWAN_TF_SRGB` continues its linear segment and `ALWAN_TF_SYCC` mirrors the
+curve, as sYCC does.
 
 > **Camera log curves.** The `ALWAN_TF_SLOG*`, `ALWAN_TF_NLOG`, `ALWAN_TF_VLOG`,
 > `ALWAN_TF_CLOG*`, `ALWAN_TF_REDLOG*`/`ALWAN_TF_LOG3G10`, and related camera-vendor
