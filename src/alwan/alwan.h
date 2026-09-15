@@ -1578,6 +1578,48 @@ alwan_status alwan_palette_nearest_f32(size_t *index_out, alwan_f32 *delta_e_out
 alwan_status alwan_palette_nearest_f64(size_t *index_out, alwan_f64 *delta_e_out, alwan_palette palette,
                                        alwan_lab_f64 const *lab, alwan_cmyk_model const *cmyk_model);
 
+/* ----------------------------------------------------------------
+ * Test patterns
+ *
+ * Rendered at any size as the pattern's native R'G'B' signal in fractions of white,
+ * 0 black and 1 100 % white, below 0 where the pattern goes below black. Stripe edges
+ * are the pattern's own fractions of the width rounded to the nearest sample, band
+ * edges the same of the height. row_stride is in bytes: at least width x 3 values
+ * interleaved, width values planar.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_PATTERN_BARS_100_0_100_0 = 0,    /* ITU-R BT.471-1 (a), eight bars at 100 % */
+    ALWAN_PATTERN_BARS_100_0_75_0 = 1,     /* ITU-R BT.471-1 (b), the EBU colour bars */
+    ALWAN_PATTERN_BARS_100_0_100_25 = 2,   /* ITU-R BT.471-1 (c) */
+    ALWAN_PATTERN_BARS_75_7_5_75_7_5 = 3,  /* ITU-R BT.471-1 (d), 7.5 % setup */
+    ALWAN_PATTERN_ARIB_STD_B28 = 4,        /* ARIB STD-B28 multiformat colour bar, the basis of SMPTE RP 219 */
+    ALWAN_PATTERN_COUNT
+} alwan_pattern;
+
+/* The ARIB STD-B28 pattern 2 area the standard leaves to the user. */
+typedef enum {
+    ALWAN_PATTERN_B28_75_WHITE = 0,
+    ALWAN_PATTERN_B28_100_WHITE = 1,
+    ALWAN_PATTERN_B28_PLUS_I = 2
+} alwan_pattern_b28_choice;
+
+/* Zero-initialise; NULL means every default. */
+typedef struct {
+    alwan_pattern_b28_choice b28_choice;
+} alwan_pattern_params;
+
+alwan_status alwan_pattern_render_f32(alwan_f32 *rgb_out, size_t row_stride, size_t width, size_t height,
+                                      alwan_pattern pattern, alwan_pattern_params const *params);
+alwan_status alwan_pattern_render_f64(alwan_f64 *rgb_out, size_t row_stride, size_t width, size_t height,
+                                      alwan_pattern pattern, alwan_pattern_params const *params);
+alwan_status alwan_pattern_render_planar_f32(alwan_f32 *r_out, size_t row_stride, alwan_f32 *g_out, alwan_f32 *b_out,
+                                             size_t width, size_t height, alwan_pattern pattern,
+                                             alwan_pattern_params const *params);
+alwan_status alwan_pattern_render_planar_f64(alwan_f64 *r_out, size_t row_stride, alwan_f64 *g_out, alwan_f64 *b_out,
+                                             size_t width, size_t height, alwan_pattern pattern,
+                                             alwan_pattern_params const *params);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics
