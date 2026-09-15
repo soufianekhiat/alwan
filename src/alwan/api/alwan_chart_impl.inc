@@ -35,6 +35,13 @@ struct ALWAN_CORE_CHART_S {
     alwan_illuminant    illuminant;
     alwan_observer_type observer;
     alwan_chart_source  source;     /* which column family the XYZ came from */
+
+    /* Device values as the file wrote them, four per patch whatever the model, and
+     * the file's own Lab. NULL when the file carried no such columns. */
+    ALWAN_CORE_T      *device;
+    int                device_channels;
+    alwan_chart_device device_model;
+    ALWAN_CORE_T      *lab;
 };
 
 /* ----------------------------------------------------------------
@@ -59,6 +66,8 @@ void ALWAN_CORE_FNLIT(alwan_chart_destroy)(ALWAN_CORE_CHART *chart, alwan_ctx *c
     }
     ALWAN_FREE(chart->xyz);
     ALWAN_FREE(chart->spectra);
+    ALWAN_FREE(chart->device);
+    ALWAN_FREE(chart->lab);
     ALWAN_FREE(chart);
 }
 
@@ -108,6 +117,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
     size_t ix_id = (size_t)-1, ix_name = (size_t)-1;
     size_t ix_X = (size_t)-1, ix_Y = (size_t)-1, ix_Z = (size_t)-1;
     size_t ix_L = (size_t)-1, ix_a = (size_t)-1, ix_b = (size_t)-1;
+    size_t ix_dev[4] = { (size_t)-1, (size_t)-1, (size_t)-1, (size_t)-1 };
+    size_t ix_rgb[3] = { (size_t)-1, (size_t)-1, (size_t)-1 };
     size_t *spec_col = NULL;
     double *spec_nm = NULL;
     size_t nspec = 0;
@@ -212,6 +223,13 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
         else if (alwan__chart_eq_n(f, n, "LAB_L")) ix_L = i;
         else if (alwan__chart_eq_n(f, n, "LAB_A")) ix_a = i;
         else if (alwan__chart_eq_n(f, n, "LAB_B")) ix_b = i;
+        else if (alwan__chart_eq_n(f, n, "CMYK_C")) ix_dev[0] = i;
+        else if (alwan__chart_eq_n(f, n, "CMYK_M")) ix_dev[1] = i;
+        else if (alwan__chart_eq_n(f, n, "CMYK_Y")) ix_dev[2] = i;
+        else if (alwan__chart_eq_n(f, n, "CMYK_K")) ix_dev[3] = i;
+        else if (alwan__chart_eq_n(f, n, "RGB_R")) ix_rgb[0] = i;
+        else if (alwan__chart_eq_n(f, n, "RGB_G")) ix_rgb[1] = i;
+        else if (alwan__chart_eq_n(f, n, "RGB_B")) ix_rgb[2] = i;
         else if (alwan__chart_spectral_nm(f, n, &nm)) {
             spec_col[nspec] = i;
             spec_nm[nspec] = nm;
@@ -226,6 +244,18 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
     else if (ix_L != (size_t)-1 && ix_a != (size_t)-1 && ix_b != (size_t)-1) c->source = ALWAN_CHART_SOURCE_LAB;
     else if (nspec >= 2)                                                    c->source = ALWAN_CHART_SOURCE_SPECTRAL;
     else { st = ALWAN_E_NODATA; goto fail; }   /* no XYZ, no Lab, no spectrum */
+
+    /* Device columns ride along with whichever colorimetry the file carried. */
+    if (ix_dev[0] != (size_t)-1 && ix_dev[1] != (size_t)-1 && ix_dev[2] != (size_t)-1 && ix_dev[3] != (size_t)-1) {
+        c->device_model = ALWAN_CHART_DEVICE_CMYK;
+        c->device_channels = 4;
+    } else if (ix_rgb[0] != (size_t)-1 && ix_rgb[1] != (size_t)-1 && ix_rgb[2] != (size_t)-1) {
+        c->device_model = ALWAN_CHART_DEVICE_RGB;
+        c->device_channels = 3;
+        ix_dev[0] = ix_rgb[0];
+        ix_dev[1] = ix_rgb[1];
+        ix_dev[2] = ix_rgb[2];
+    }
 
     /* alwan_spd is uniformly sampled, so the bands have to be evenly spaced
      * and in order. A file that is neither is likelier damaged than exotic:
@@ -254,6 +284,15 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
     if (!c->xyz || !c->patch_names) { st = ALWAN_E_NOMEM; goto fail; }
     memset(c->xyz, 0, sizeof(ALWAN_CORE_T) * row * 3);
     memset(c->patch_names, 0, sizeof(char *) * row);
+    if (c->device_channels > 0) {
+        c->device = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(row * 4, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
+        if (!c->device) { st = ALWAN_E_NOMEM; goto fail; }
+        memset(c->device, 0, sizeof(ALWAN_CORE_T) * row * 4);
+    }
+    if (ix_L != (size_t)-1 && ix_a != (size_t)-1 && ix_b != (size_t)-1) {
+        c->lab = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(row * 3, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
+        if (!c->lab) { st = ALWAN_E_NOMEM; goto fail; }
+    }
     if (nspec >= 2) {
         c->spectra = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(row * nspec, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
         if (!c->spectra) { st = ALWAN_E_NOMEM; goto fail; }
@@ -297,6 +336,22 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
             c->patch_names[row] = alwan__chart_strdup_n(tmp, d);
         }
         if (!c->patch_names[row]) { st = ALWAN_E_NOMEM; goto fail; }
+
+        for (i = 0; i < (size_t)c->device_channels; i++) {
+            int ok;
+            double v = alwan__chart_strtod(cells[ix_dev[i]].p, cells[ix_dev[i]].len, &ok);
+            if (!ok) { st = ALWAN_E_INVALID; goto fail; }
+            c->device[row * 4 + i] = (ALWAN_CORE_T)v;
+        }
+        if (c->lab) {
+            size_t const ixl[3] = { ix_L, ix_a, ix_b };
+            for (i = 0; i < 3; i++) {
+                int ok;
+                double v = alwan__chart_strtod(cells[ixl[i]].p, cells[ixl[i]].len, &ok);
+                if (!ok) { st = ALWAN_E_INVALID; goto fail; }
+                c->lab[row * 3 + i] = (ALWAN_CORE_T)v;
+            }
+        }
 
         if (c->spectra) {
             /* Reflectance is [0,1] or percent. The standard permits both and
@@ -517,6 +572,30 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_reflectance)(ALWAN_CORE_SPD *out,
     return ALWAN_OK;
 }
 
+alwan_chart_device ALWAN_CORE_FNLIT(alwan_chart_device_model)(ALWAN_CORE_CHART const *chart) {
+    return chart ? chart->device_model : ALWAN_CHART_DEVICE_NONE;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_chart_device_values)(ALWAN_CORE_T *values_out,
+                                                         ALWAN_CORE_CHART const *chart, size_t patch_index) {
+    int i;
+    if (!values_out || !chart || patch_index >= chart->patch_count) return ALWAN_E_INVALID;
+    if (!chart->device) return ALWAN_E_NODATA;
+    for (i = 0; i < 4; i++) values_out[i] = chart->device[patch_index * 4 + (size_t)i];
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_chart_lab)(ALWAN_CORE_LAB *lab_out,
+                                               ALWAN_CORE_CHART const *chart, size_t patch_index) {
+    if (!lab_out || !chart || patch_index >= chart->patch_count) return ALWAN_E_INVALID;
+    if (!chart->lab) return ALWAN_E_NODATA;
+    lab_out->L = chart->lab[patch_index * 3 + 0];
+    lab_out->a = chart->lab[patch_index * 3 + 1];
+    lab_out->b = chart->lab[patch_index * 3 + 2];
+    ALWAN_NORM_LAB(lab_out);
+    return ALWAN_OK;
+}
+
 /* ----------------------------------------------------------------
  * Write
  *
@@ -560,8 +639,11 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_write_buffer)(char *buf, size_t *bytes
     }
 
     alwan__chart_puts(&s, "NUMBER_OF_FIELDS ");
-    alwan__chart_put_size(&s, 5 + chart->bands);
+    alwan__chart_put_size(&s, 5 + (size_t)chart->device_channels + (chart->lab ? 3u : 0u) + chart->bands);
     alwan__chart_puts(&s, "\nBEGIN_DATA_FORMAT\nSAMPLE_ID SAMPLE_NAME XYZ_X XYZ_Y XYZ_Z");
+    if (chart->device_model == ALWAN_CHART_DEVICE_CMYK) alwan__chart_puts(&s, " CMYK_C CMYK_M CMYK_Y CMYK_K");
+    if (chart->device_model == ALWAN_CHART_DEVICE_RGB) alwan__chart_puts(&s, " RGB_R RGB_G RGB_B");
+    if (chart->lab) alwan__chart_puts(&s, " LAB_L LAB_A LAB_B");
     for (i = 0; i < chart->bands; i++) {
         double nm = chart->bands < 2
             ? (double)chart->spectral_min_nm
@@ -584,6 +666,16 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_write_buffer)(char *buf, size_t *bytes
             alwan__chart_puts(&s, " ");
             /* back to the Y=100 the standard normalises to */
             alwan__chart_put_num(&s, (double)chart->xyz[p * 3 + i] * 100.0, 4);
+        }
+        for (i = 0; i < (size_t)chart->device_channels; i++) {
+            alwan__chart_puts(&s, " ");
+            alwan__chart_put_num(&s, (double)chart->device[p * 4 + i], 4);
+        }
+        if (chart->lab) {
+            for (i = 0; i < 3; i++) {
+                alwan__chart_puts(&s, " ");
+                alwan__chart_put_num(&s, (double)chart->lab[p * 3 + i], 4);
+            }
         }
         for (i = 0; i < chart->bands; i++) {
             alwan__chart_puts(&s, " ");
