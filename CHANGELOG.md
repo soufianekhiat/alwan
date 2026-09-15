@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **EBU Tech 3325 test patterns.** `ALWAN_PATTERN_EBU_1` to `ALWAN_PATTERN_EBU_12_GREY`
+  render the monitor measurement patterns of EBU Tech 3325: EBU_1 and EBU_2, the 13
+  measurement-point patches and four windows of EBU_3, the 20 grey steps of EBU_4, and
+  the primaries and 15 EBU test colours of EBU_5, chosen by the standard's own numbers in
+  `alwan_pattern_params`. At 1920 x 1080 every sample matches the 59 official BT.709 SDR
+  files code for code (suite 139, `docs/api/patterns.md`).
+
 - **Colour bar test patterns.** `alwan_pattern_render_{T}` and its planar twin render
   the four ITU-R BT.471-1 colour bar signals, the EBU bars among them, and the ARIB
   STD-B28 multiformat colour bar SMPTE RP 219 is based on, at any size, as the native
