@@ -98,6 +98,61 @@ ALWAN_INLINE alwan_scalar alwan_bt2408_ref_white_v(int use_pq) {
                         ALWAN_LITERAL(0.75));
 }
 
+/* ================================================================
+ * PU21: perceptually uniform encoding of absolute luminance
+ * Mantiuk and Azimi 2021. The parameters are the published ones, from
+ * gfxdisp/pu21 matlab/pu21_encoder.m (BSD-3-Clause) at 78340c0. Variant 0 is
+ * banding_glare, which the authors recommend; 1 banding, 2 peaks, 3 peaks_glare.
+ * The encoder there limits Y to [0.005, 10000] cd/m2 first; this is the curve alone.
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_pu21_pick_v(int variant, alwan_scalar banding_glare,
+                                                            alwan_scalar banding, alwan_scalar peaks,
+                                                            alwan_scalar peaks_glare) {
+    return ALWAN_SELECT(variant == 1, banding,
+           ALWAN_SELECT(variant == 2, peaks,
+           ALWAN_SELECT(variant == 3, peaks_glare, banding_glare)));
+}
+
+ALWAN_INLINE alwan_scalar alwan_pu21_encode_v(alwan_scalar Y, int variant) {
+    alwan_scalar p1 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.353487901),
+        ALWAN_LITERAL(1.070275272), ALWAN_LITERAL(1.043882782), ALWAN_LITERAL(816.885024));
+    alwan_scalar p2 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.3734658629),
+        ALWAN_LITERAL(0.4088273932), ALWAN_LITERAL(0.6459495343), ALWAN_LITERAL(1479.463946));
+    alwan_scalar p3 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(8.277049286e-05),
+        ALWAN_LITERAL(0.153224308), ALWAN_LITERAL(0.3194584211), ALWAN_LITERAL(0.001253215609));
+    alwan_scalar p4 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.9062562627),
+        ALWAN_LITERAL(0.2520326168), ALWAN_LITERAL(0.374025247), ALWAN_LITERAL(0.9329636822));
+    alwan_scalar p5 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.09150303166),
+        ALWAN_LITERAL(1.063512885), ALWAN_LITERAL(1.114783422), ALWAN_LITERAL(0.06746643971));
+    alwan_scalar p6 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.9099517204),
+        ALWAN_LITERAL(1.14115047), ALWAN_LITERAL(1.095360363), ALWAN_LITERAL(1.573435413));
+    alwan_scalar p7 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(596.3148142),
+        ALWAN_LITERAL(521.4527484), ALWAN_LITERAL(384.9217577), ALWAN_LITERAL(419.6006374));
+    alwan_scalar yp = ALWAN_POW(Y, p4);
+    alwan_scalar v = p7 * (ALWAN_POW((p1 + p2 * yp) / (ALWAN_ONE + p3 * yp), p5) - p6);
+    return alwan_max(v, ALWAN_ZERO);
+}
+
+ALWAN_INLINE alwan_scalar alwan_pu21_decode_v(alwan_scalar V, int variant) {
+    alwan_scalar p1 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.353487901),
+        ALWAN_LITERAL(1.070275272), ALWAN_LITERAL(1.043882782), ALWAN_LITERAL(816.885024));
+    alwan_scalar p2 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.3734658629),
+        ALWAN_LITERAL(0.4088273932), ALWAN_LITERAL(0.6459495343), ALWAN_LITERAL(1479.463946));
+    alwan_scalar p3 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(8.277049286e-05),
+        ALWAN_LITERAL(0.153224308), ALWAN_LITERAL(0.3194584211), ALWAN_LITERAL(0.001253215609));
+    alwan_scalar p4 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.9062562627),
+        ALWAN_LITERAL(0.2520326168), ALWAN_LITERAL(0.374025247), ALWAN_LITERAL(0.9329636822));
+    alwan_scalar p5 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.09150303166),
+        ALWAN_LITERAL(1.063512885), ALWAN_LITERAL(1.114783422), ALWAN_LITERAL(0.06746643971));
+    alwan_scalar p6 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(0.9099517204),
+        ALWAN_LITERAL(1.14115047), ALWAN_LITERAL(1.095360363), ALWAN_LITERAL(1.573435413));
+    alwan_scalar p7 = alwan_pu21_pick_v(variant, ALWAN_LITERAL(596.3148142),
+        ALWAN_LITERAL(521.4527484), ALWAN_LITERAL(384.9217577), ALWAN_LITERAL(419.6006374));
+    alwan_scalar vp = ALWAN_POW(alwan_max(V / p7 + p6, ALWAN_ZERO), ALWAN_ONE / p5);
+    return ALWAN_POW(alwan_max(vp - p1, ALWAN_ZERO) / (p2 - p3 * vp), ALWAN_ONE / p4);
+}
+
 ALWAN_INLINE alwan_scalar alwan_tf_mirror_v(alwan_scalar x,
                                              alwan_scalar tf_abs_x) {
     alwan_scalar sign_x = ALWAN_SELECT(x < ALWAN_ZERO, -ALWAN_ONE, ALWAN_ONE);

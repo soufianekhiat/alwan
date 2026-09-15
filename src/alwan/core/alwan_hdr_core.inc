@@ -71,6 +71,61 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_bt2408_ref_white)(int use_pq) 
 }
 
 /* ================================================================
+ * PU21: perceptually uniform encoding of absolute luminance
+ * Mantiuk and Azimi 2021. The parameters are the published ones, from
+ * gfxdisp/pu21 matlab/pu21_encoder.m (BSD-3-Clause) at 78340c0. Variant 0 is
+ * banding_glare, which the authors recommend; 1 banding, 2 peaks, 3 peaks_glare.
+ * The encoder there limits Y to [0.005, 10000] cd/m2 first; this is the curve alone.
+ * ================================================================ */
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_pu21_pick)(int variant, ALWAN_CORE_T banding_glare,
+                                                            ALWAN_CORE_T banding, ALWAN_CORE_T peaks,
+                                                            ALWAN_CORE_T peaks_glare) {
+    return ALWAN_CORE_SELECT(variant == 1, banding,
+           ALWAN_CORE_SELECT(variant == 2, peaks,
+           ALWAN_CORE_SELECT(variant == 3, peaks_glare, banding_glare)));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_pu21_encode)(ALWAN_CORE_T Y, int variant) {
+    ALWAN_CORE_T p1 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.353487901),
+        ALWAN_CORE_LITERAL(1.070275272), ALWAN_CORE_LITERAL(1.043882782), ALWAN_CORE_LITERAL(816.885024));
+    ALWAN_CORE_T p2 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.3734658629),
+        ALWAN_CORE_LITERAL(0.4088273932), ALWAN_CORE_LITERAL(0.6459495343), ALWAN_CORE_LITERAL(1479.463946));
+    ALWAN_CORE_T p3 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(8.277049286e-05),
+        ALWAN_CORE_LITERAL(0.153224308), ALWAN_CORE_LITERAL(0.3194584211), ALWAN_CORE_LITERAL(0.001253215609));
+    ALWAN_CORE_T p4 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.9062562627),
+        ALWAN_CORE_LITERAL(0.2520326168), ALWAN_CORE_LITERAL(0.374025247), ALWAN_CORE_LITERAL(0.9329636822));
+    ALWAN_CORE_T p5 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.09150303166),
+        ALWAN_CORE_LITERAL(1.063512885), ALWAN_CORE_LITERAL(1.114783422), ALWAN_CORE_LITERAL(0.06746643971));
+    ALWAN_CORE_T p6 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.9099517204),
+        ALWAN_CORE_LITERAL(1.14115047), ALWAN_CORE_LITERAL(1.095360363), ALWAN_CORE_LITERAL(1.573435413));
+    ALWAN_CORE_T p7 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(596.3148142),
+        ALWAN_CORE_LITERAL(521.4527484), ALWAN_CORE_LITERAL(384.9217577), ALWAN_CORE_LITERAL(419.6006374));
+    ALWAN_CORE_T yp = ALWAN_CORE_POW(Y, p4);
+    ALWAN_CORE_T v = p7 * (ALWAN_CORE_POW((p1 + p2 * yp) / (ALWAN_CORE_ONE + p3 * yp), p5) - p6);
+    return ALWAN_CORE_MAX(v, ALWAN_CORE_ZERO);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_pu21_decode)(ALWAN_CORE_T V, int variant) {
+    ALWAN_CORE_T p1 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.353487901),
+        ALWAN_CORE_LITERAL(1.070275272), ALWAN_CORE_LITERAL(1.043882782), ALWAN_CORE_LITERAL(816.885024));
+    ALWAN_CORE_T p2 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.3734658629),
+        ALWAN_CORE_LITERAL(0.4088273932), ALWAN_CORE_LITERAL(0.6459495343), ALWAN_CORE_LITERAL(1479.463946));
+    ALWAN_CORE_T p3 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(8.277049286e-05),
+        ALWAN_CORE_LITERAL(0.153224308), ALWAN_CORE_LITERAL(0.3194584211), ALWAN_CORE_LITERAL(0.001253215609));
+    ALWAN_CORE_T p4 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.9062562627),
+        ALWAN_CORE_LITERAL(0.2520326168), ALWAN_CORE_LITERAL(0.374025247), ALWAN_CORE_LITERAL(0.9329636822));
+    ALWAN_CORE_T p5 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.09150303166),
+        ALWAN_CORE_LITERAL(1.063512885), ALWAN_CORE_LITERAL(1.114783422), ALWAN_CORE_LITERAL(0.06746643971));
+    ALWAN_CORE_T p6 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(0.9099517204),
+        ALWAN_CORE_LITERAL(1.14115047), ALWAN_CORE_LITERAL(1.095360363), ALWAN_CORE_LITERAL(1.573435413));
+    ALWAN_CORE_T p7 = ALWAN_CORE_FNVLIT(alwan_pu21_pick)(variant, ALWAN_CORE_LITERAL(596.3148142),
+        ALWAN_CORE_LITERAL(521.4527484), ALWAN_CORE_LITERAL(384.9217577), ALWAN_CORE_LITERAL(419.6006374));
+    ALWAN_CORE_T vp = ALWAN_CORE_POW(ALWAN_CORE_MAX(V / p7 + p6, ALWAN_CORE_ZERO), ALWAN_CORE_ONE / p5);
+    return ALWAN_CORE_POW(ALWAN_CORE_MAX(vp - p1, ALWAN_CORE_ZERO) / (p2 - p3 * vp), ALWAN_CORE_ONE / p4);
+}
+
+/* ================================================================
  * Mirrored Transfer Function Extension
  * ================================================================ */
 

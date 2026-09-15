@@ -5410,6 +5410,42 @@ alwan_status alwan_bt2408_sdr_to_hlg_f64_map_interleave(alwan_f64 *out, size_t o
 alwan_status alwan_bt2408_sdr_to_hlg_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 sdr_white_nits, alwan_f32 hlg_peak_nits);
 
 /* ----------------------------------------------------------------
+ * PU21: perceptually uniform encoding of HDR luminance
+ *
+ * Mantiuk and Azimi 2021. Absolute linear values in cd/m2, as a reference display
+ * would emit them, to values in which equal steps are about equally visible: the
+ * encoding that lets PSNR and SSIM, built for display-referred SDR, say something
+ * about HDR. For banding_glare, the variant the authors recommend and the zero value,
+ * 0.005 cd/m2 encodes to about 0, 100 cd/m2 to about 256 (an 8-bit SDR display's
+ * range, and the PU-PSNR peak) and 10000 to about 595. Luminance must not be negative. The
+ * encode is the curve alone: pu21_encoder.m limits luminance to [0.005, 10000] first,
+ * which a caller matching it does too. alwan_pu21_psnr does, as pu21_metric does.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_PU21_BANDING_GLARE = 0, /* banding with glare: the recommended default */
+    ALWAN_PU21_BANDING       = 1,
+    ALWAN_PU21_PEAKS         = 2,
+    ALWAN_PU21_PEAKS_GLARE   = 3
+} alwan_pu21_variant;
+
+alwan_status alwan_pu21_encode_f64(alwan_f64 *out, alwan_f64 luminance, alwan_pu21_variant variant);
+alwan_status alwan_pu21_encode_f32(alwan_f32 *out, alwan_f32 luminance, alwan_pu21_variant variant);
+alwan_status alwan_pu21_decode_f64(alwan_f64 *out, alwan_f64 value, alwan_pu21_variant variant);
+alwan_status alwan_pu21_decode_f32(alwan_f32 *out, alwan_f32 value, alwan_pu21_variant variant);
+/* Each of R, G and B encoded or decoded alone, as pu21_metric treats colour images. */
+alwan_status alwan_pu21_encode_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pu21_variant variant);
+alwan_status alwan_pu21_encode_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pu21_variant variant);
+alwan_status alwan_pu21_decode_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pu21_variant variant);
+alwan_status alwan_pu21_decode_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pu21_variant variant);
+
+/* PU-PSNR in dB, pu21_metric's PSNR: count pixels of channels values each (1 for
+ * luminance, 3 for RGB), rows of values stride bytes apart, every value limited to
+ * [0.005, 10000] cd/m2 and PU21 encoded, then 10 log10(256^2 / MSE). +inf when the
+ * two images encode identically. */
+alwan_status alwan_pu21_psnr_f64(alwan_f64 *psnr_out, alwan_f64 const *test, size_t test_stride, alwan_f64 const *ref, size_t ref_stride, size_t count, size_t channels, alwan_pu21_variant variant);
+alwan_status alwan_pu21_psnr_f32(alwan_f32 *psnr_out, alwan_f32 const *test, size_t test_stride, alwan_f32 const *ref, size_t ref_stride, size_t count, size_t channels, alwan_pu21_variant variant);
+
+/* ----------------------------------------------------------------
  * ISO 21496-1 gain maps
  *
  * A gain map stores, per pixel and channel, the log2 ratio between a base rendition

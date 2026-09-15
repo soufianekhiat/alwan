@@ -19,6 +19,101 @@ void ALWAN_CORE_FNLIT(alwan_hdr_gamut_map_jzczhz)(ALWAN_CORE_JZCZHZ *out, ALWAN_
 }
 
 /* ----------------------------------------------------------------
+ * PU21 - perceptually uniform encoding, Mantiuk and Azimi 2021
+ * ---------------------------------------------------------------- */
+
+#ifndef ALWAN__PU21_ONCE
+#define ALWAN__PU21_ONCE
+/* pu21_encoder.m's valid range, which pu21_metric enforces through encode. */
+#define ALWAN__PU21_L_MIN 0.005
+#define ALWAN__PU21_L_MAX 10000.0
+#define ALWAN__PU21_PEAK  256.0     /* pu21_metric: psnr(T, R, 256) */
+static int alwan__pu21_variant_ok(alwan_pu21_variant v) {
+    return (int)v >= (int)ALWAN_PU21_BANDING_GLARE && (int)v <= (int)ALWAN_PU21_PEAKS_GLARE;
+}
+#endif
+
+alwan_status ALWAN_CORE_FNLIT(alwan_pu21_encode)(ALWAN_CORE_T *out, ALWAN_CORE_T luminance,
+                                                 alwan_pu21_variant variant) {
+    if (!out || !alwan__pu21_variant_ok(variant)) return ALWAN_E_INVALID;
+    *out = ALWAN_CORE_FNVLIT(alwan_pu21_encode)(luminance, (int)variant);
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_pu21_decode)(ALWAN_CORE_T *out, ALWAN_CORE_T value,
+                                                 alwan_pu21_variant variant) {
+    if (!out || !alwan__pu21_variant_ok(variant)) return ALWAN_E_INVALID;
+    *out = ALWAN_CORE_FNVLIT(alwan_pu21_decode)(value, (int)variant);
+    return ALWAN_OK;
+}
+
+#ifndef ALWAN_HDR_MAPNAME
+#  define ALWAN_HDR_MAPNAME_(base, sfx) base##sfx##_map_interleave
+#  define ALWAN_HDR_MAPNAME(base, sfx)  ALWAN_HDR_MAPNAME_(base, sfx)
+#endif
+
+alwan_status ALWAN_HDR_MAPNAME(alwan_pu21_encode, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *out, size_t out_stride, ALWAN_CORE_T const *in, size_t in_stride, size_t count,
+        alwan_pu21_variant variant) {
+    if (!out || !in || !alwan__pu21_variant_ok(variant)) return ALWAN_E_INVALID;
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)in + p * in_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
+        ALWAN_CORE_T const r = s[0], g = s[1], b = s[2];
+        o[0] = ALWAN_CORE_FNVLIT(alwan_pu21_encode)(r, (int)variant);
+        o[1] = ALWAN_CORE_FNVLIT(alwan_pu21_encode)(g, (int)variant);
+        o[2] = ALWAN_CORE_FNVLIT(alwan_pu21_encode)(b, (int)variant);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_HDR_MAPNAME(alwan_pu21_decode, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *out, size_t out_stride, ALWAN_CORE_T const *in, size_t in_stride, size_t count,
+        alwan_pu21_variant variant) {
+    if (!out || !in || !alwan__pu21_variant_ok(variant)) return ALWAN_E_INVALID;
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)in + p * in_stride);
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
+        ALWAN_CORE_T const r = s[0], g = s[1], b = s[2];
+        o[0] = ALWAN_CORE_FNVLIT(alwan_pu21_decode)(r, (int)variant);
+        o[1] = ALWAN_CORE_FNVLIT(alwan_pu21_decode)(g, (int)variant);
+        o[2] = ALWAN_CORE_FNVLIT(alwan_pu21_decode)(b, (int)variant);
+    }
+    return ALWAN_OK;
+}
+
+/* PU-PSNR as pu21_metric computes it: every value limited to [0.005, 10000], PU21
+ * encoded, and psnr with a peak of 256 over all values. The squared error accumulates
+ * in double in both precisions. */
+alwan_status ALWAN_CORE_FNLIT(alwan_pu21_psnr)(ALWAN_CORE_T *psnr_out, ALWAN_CORE_T const *test,
+                                               size_t test_stride, ALWAN_CORE_T const *ref, size_t ref_stride,
+                                               size_t count, size_t channels, alwan_pu21_variant variant) {
+    ALWAN_CORE_T const lo = ALWAN_CORE_LITERAL(ALWAN__PU21_L_MIN), hi = ALWAN_CORE_LITERAL(ALWAN__PU21_L_MAX);
+    double sum = 0.0, mse, peak2;
+    if (!psnr_out || !test || !ref || count == 0 || channels == 0 || !alwan__pu21_variant_ok(variant)) {
+        return ALWAN_E_INVALID;
+    }
+    for (size_t p = 0; p < count; p++) {
+        ALWAN_CORE_T const *t = (ALWAN_CORE_T const *)((char const *)test + p * test_stride);
+        ALWAN_CORE_T const *r = (ALWAN_CORE_T const *)((char const *)ref + p * ref_stride);
+        for (size_t c = 0; c < channels; c++) {
+            ALWAN_CORE_T tv = t[c], rv = r[c];
+            double d;
+            tv = tv < lo ? lo : (tv > hi ? hi : tv);
+            rv = rv < lo ? lo : (rv > hi ? hi : rv);
+            d = (double)ALWAN_CORE_FNVLIT(alwan_pu21_encode)(tv, (int)variant)
+              - (double)ALWAN_CORE_FNVLIT(alwan_pu21_encode)(rv, (int)variant);
+            sum += d * d;
+        }
+    }
+    mse = sum / ((double)count * (double)channels);
+    peak2 = ALWAN__PU21_PEAK * ALWAN__PU21_PEAK;
+    /* Identical images: peak2 / 0 is +inf, which is MATLAB's psnr too. */
+    *psnr_out = (ALWAN_CORE_T)(mse > 0.0 ? 10.0 * ALWAN_LOG10_F64(peak2 / mse) : peak2 / mse);
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
  * MaxCLL - Maximum Content Light Level
  * ---------------------------------------------------------------- */
 
