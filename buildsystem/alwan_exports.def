@@ -502,6 +502,14 @@ EXPORTS
     alwan_gamut_volume_ratio_f64
     alwan_get_aces_interp
     alwan_get_build_info
+    alwan_h273_color_primaries_f32
+    alwan_h273_color_primaries_f64
+    alwan_h273_color_primaries_from_space
+    alwan_h273_color_primaries_to_space
+    alwan_h273_matrix_coefficients_f32
+    alwan_h273_matrix_coefficients_f64
+    alwan_h273_transfer_from_tf
+    alwan_h273_transfer_to_tf
     alwan_half_to_float_f32
     alwan_half_to_float_f64
     alwan_hcl_to_rgb_f32
