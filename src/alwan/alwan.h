@@ -5522,6 +5522,37 @@ alwan_status alwan_crf_samples_grossberg2003_f32(size_t *bins_out, alwan_f32 con
 alwan_status alwan_crf_debevec1997_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_crf_debevec1997_params const *params);
 alwan_status alwan_crf_debevec1997_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_crf_debevec1997_params const *params);
 
+/* Exposure fusion, Mertens, Kautz and Van Reeth 2007. The zero value of every field is
+ * the paper's choice. OpenCV's createMergeMertens() default leaves well-exposedness
+ * out: ignore = ALWAN_FUSION_IGNORE_EXPOSURE. */
+enum {
+    ALWAN_FUSION_IGNORE_CONTRAST   = 1, /* leave out contrast (exponent 0) */
+    ALWAN_FUSION_IGNORE_SATURATION = 2, /* leave out saturation */
+    ALWAN_FUSION_IGNORE_EXPOSURE   = 4  /* leave out well-exposedness */
+};
+typedef struct {
+    alwan_f64 contrast;   /* exponent on |Laplacian| of the luma; 0 is 1 */
+    alwan_f64 saturation; /* exponent on the spread of R, G and B about their mean; 0 is 1 */
+    alwan_f64 exposure;   /* exponent on the closeness of each channel to 0.5; 0 is 1 */
+    alwan_f64 sigma;      /* width of that closeness; 0 is 0.2 */
+    unsigned ignore;      /* ALWAN_FUSION_IGNORE_* bits */
+    int levels;           /* pyramid levels, at most 64; 0 is floor(log2(min(width, height))) + 1 */
+} alwan_exposure_fusion_params;
+
+/* Fuse an exposure bracket into one displayable image, Mertens, Kautz and Van Reeth
+ * 2007, with no response curve, radiance map or tone curve in between. images holds
+ * image_count pointers to interleaved RGB images of width x height, rows
+ * in_row_stride bytes apart, in any order. The values are display-encoded, as a
+ * camera's JPEGs are, 1 being white. Each pixel of each exposure is weighted by its
+ * contrast, saturation and well-exposedness, and the images blend as Laplacian
+ * pyramids under Gaussian pyramids of the weights. The result is not clamped: the
+ * pyramid can overshoot [0, 1] near strong edges. params NULL is the defaults.
+ * Matches OpenCV's MergeMertens given 8-bit images divided by 255, except in flat
+ * regions where every exposure's weight is near OpenCV's 1e-12 floor: there OpenCV's
+ * float32 rounding decides the blend, and alwan computes the weights exactly. */
+alwan_status alwan_exposure_fusion_mertens2007_f64(alwan_f64 *rgb_out, size_t out_row_stride, alwan_f64 const *const *images, size_t in_row_stride, size_t image_count, size_t width, size_t height, alwan_exposure_fusion_params const *params);
+alwan_status alwan_exposure_fusion_mertens2007_f32(alwan_f32 *rgb_out, size_t out_row_stride, alwan_f32 const *const *images, size_t in_row_stride, size_t image_count, size_t width, size_t height, alwan_exposure_fusion_params const *params);
+
 /* ----------------------------------------------------------------
  * HDR Gamut Mapping
  * ---------------------------------------------------------------- */

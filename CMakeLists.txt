@@ -104,6 +104,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_exposure.c
   src/alwan/api/alwan_crf.c
   src/alwan/api/alwan_demosaic.c
+  src/alwan/api/alwan_fusion.c
   src/alwan/api/alwan_nayatani95.c
   src/alwan/map/alwan_agx_jp2499_map.c
   src/alwan/map/alwan_agx_map.c
