@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Colour bar test patterns.** `alwan_pattern_render_{T}` and its planar twin render
+  the four ITU-R BT.471-1 colour bar signals, the EBU bars among them, and the ARIB
+  STD-B28 multiformat colour bar SMPTE RP 219 is based on, at any size, as the native
+  R'G'B' signal with below-black levels kept. Every ARIB level matches the standard's
+  mV tables within their rounding and its 10-bit codes exactly (suite 138,
+  `docs/api/patterns.md`).
+
 - **CMYK printing characterisations, FOGRA39 embedded.** `alwan_cmyk_model_*` turns
   CMYK into CIELAB through an ISO 12642-2 (IT8.7/4) data set: Lab interpolated
   multilinearly inside the target's CMY cubes on six K planes, then linearly in K,
