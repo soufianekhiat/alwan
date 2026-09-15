@@ -599,6 +599,40 @@ zero the response is extrapolated with a degree 7 polynomial, and each channel i
 scaled to peak at 1. `alwan_crf_debevec1997_params` changes any of these; its zero
 value is colour-hdri's default, which the tests match.
 
+```c
+alwan_crf_robertson2003_f64(response, images, 3 * sizeof(alwan_f64), pixel_count,
+                            bracket, 3, NULL);
+```
+
+Robertson, Borman and Stevenson 2003 uses every pixel instead of samples. Starting
+from a linear response, it merges the bracket with the current response, takes the
+new response at each value as the mean exposure of the pixels holding it, pins the
+middle value at 1, and repeats: 30 rounds, or fewer once the change is below 0.01.
+The weight is OpenCV's, a Gaussian over the values, 0 at both ends. Only the ratios
+of the exposures matter. `alwan_crf_robertson2003_params` sets the resolution, the
+rounds and the threshold; its zero value is OpenCV's default, and the result matches
+OpenCV's CalibrateRobertson to its float rounding, 5e-6.
+
+Robertson's estimate has no smoothness term. The response is tied down only where
+exposures overlap, and between those ties it keeps the shape of its linear start, so
+it needs closely spaced exposures. On a fairground bracket from an 8-bit 2.2 power
+camera, merged afterwards with the Debevec weight:
+
+| bracket | Robertson, merge error p90 | Debevec, merge error p90 |
+|---|---|---|
+| 3 exposures, 3 stops apart | 0.51 stops, a sawtooth | 0.035 stops |
+| 7 exposures, 1 stop apart | 0.027 stops | 0.019 stops |
+| 13 exposures, 1/2 stop apart | 0.009 stops | 0.021 stops |
+
+At 3 stops more rounds do not help (1000 rounds leave 0.46 stops of response error),
+and OpenCV gives the same curve. For widely spaced brackets use Debevec.
+
+A value no pixel holds is filled linearly from its neighbours, and held beyond the
+first and last value seen. OpenCV leaves it NaN, and that NaN also stops its
+convergence test from ever passing, so OpenCV always runs every round on such a
+bracket. Without a pixel at the middle value there is nothing to pin, and the call
+returns `ALWAN_E_RANGE`.
+
 ---
 
 ## Exposure Fusion

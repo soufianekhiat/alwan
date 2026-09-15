@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Robertson response recovery.** `alwan_crf_robertson2003_{T}` recovers a camera's
+  response from every pixel of a bracket by alternating merge and re-estimation,
+  Robertson, Borman and Stevenson 2003, and matches OpenCV's CalibrateRobertson to
+  5e-6. Values no pixel holds are filled from their neighbours where OpenCV leaves
+  NaN. The response goes to `alwan_hdr_merge` like Debevec's. It needs closely
+  spaced exposures: 1/2 stop apart it merges to 0.009 stops, 3 stops apart it
+  leaves a half-stop sawtooth that Debevec's smoothness term avoids.
+
 - **Exposure fusion.** `alwan_exposure_fusion_mertens2007_{T}` fuses a bracket of
   display-encoded pictures into one, Mertens, Kautz and Van Reeth 2007: contrast,
   saturation and well-exposedness weights, blended through Laplacian pyramids.
