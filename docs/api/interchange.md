@@ -16,7 +16,7 @@ under Color Interop Forum banners ("Interop ID Strings", "float16 (half-float)
 Conversion"). The video pair has its own "Video Signal Encoding / Decoding"
 banner, with the CLF export block between them.
 
-- **Interop IDs** -- string <-> `alwan_rgb_space` lookup over a 41-row static table
+- **Interop IDs** -- string <-> `alwan_rgb_space` lookup, writing the Color Interop Forum's published IDs
 - **Half floats** -- batch binary16 <-> binary32 conversion, no lookup table
 - **Video signals** -- linear RGB <-> packed video codes, with SMPTE narrow or full range
 - **ITU-T H.273 code points** -- a stream's colour_primaries, transfer_characteristics
@@ -33,9 +33,20 @@ the video functions, because `ALWAN_PIXEL_F16` is rejected by both of them.
 
 ## Interop IDs
 
-Bidirectional lookup between `alwan_rgb_space` and Color Interop Forum string
-identifiers. The whole implementation is a linear scan over one 41-row
-file-scope `static const` table.
+Bidirectional lookup between `alwan_rgb_space` and the identifiers of the ASWF
+Color Interop Forum, as its recommendations publish them: texture asset colour
+spaces (v1.1.0, 2026-07-14), whose IDs end in `_scene`, and display colour spaces
+(v1.0.0, 2026-01-26), whose IDs end in `_display`. The implementation is a linear
+scan over two file-scope `static const` tables:
+
+- **The formatted table**, one row per space, 52 rows. A space with a Forum ID
+  carries it as published; where the Forum publishes a scene-referred and a
+  display-referred ID for the same space, the row holds the scene one. A space the
+  Forum has not published carries an ID in the `alwan:` namespace, as the Forum's
+  ID rules (03_ColorInteropID, v1.0.0) require of IDs an organisation generates.
+- **The alias table**, parse only: the Forum's display IDs of the spaces formatted
+  as scene-referred, and the bare IDs alwan wrote before 3.0.0 (`lin_ap1`,
+  `srgb_texture`, `rec2100_pq` and the rest), so files written then still read.
 
 ### alwan_interop_parse_{T}
 
@@ -43,15 +54,20 @@ file-scope `static const` table.
 alwan_status alwan_interop_parse_{T}(alwan_rgb_space *space, char const *id);
 ```
 
-Looks `id` up in the table and writes the matching enum through `space`.
+Looks `id` up in the formatted table, then in the alias table, and writes the
+matching enum through `space`.
 
 **Parameters:**
 - `space` -- output, receives the matched `alwan_rgb_space`. NULL is an error.
 - `id` -- NUL-terminated ID string. NULL is an error.
 
-Matching is `strcmp`. Byte-exact, case-sensitive, no whitespace trimming, no
-case folding, no aliases, no prefix or namespace handling. `"SRGB_TEXTURE"`,
-`"srgb_texture "` and `"lin-srgb"` all return `ALWAN_E_NODATA`.
+Matching is `strcmp`: byte-exact, case-sensitive, no whitespace trimming or case
+folding. A namespace is part of the string, so `"alwan:logc4_awg4"` matches its
+row and `"ocio:logc4_awg4"` matches nothing. `"SRGB_REC709_SCENE"`,
+`"srgb_rec709_scene "` and `"lin-rec709-scene"` all return `ALWAN_E_NODATA`, and
+so do the Forum IDs alwan has no space for: `srgbe_p3d65_display` (the extended
+sRGB curve on P3), `g26_xyzd65_display`, `pq_xyzd65_display`, `data` and
+`unknown`.
 
 The header documents two outcomes. There is a third: either pointer NULL
 returns `ALWAN_E_INVALID`, checked before the scan. `ALWAN_E_NODATA` means "no
@@ -63,7 +79,7 @@ the same code.
 **Example:**
 ```c
 alwan_rgb_space space;
-if (alwan_interop_parse_{T}(&space, "lin_ap1") == ALWAN_OK) {
+if (alwan_interop_parse_{T}(&space, "lin_ap1_scene") == ALWAN_OK) {
     /* space == ALWAN_RGB_SPACE_ACESCG */
 }
 ```
@@ -76,8 +92,9 @@ if (alwan_interop_parse_{T}(&space, "lin_ap1") == ALWAN_OK) {
 char const *alwan_interop_format(alwan_rgb_space space);
 ```
 
-Scans the same table for the first row whose enum equals `space` and returns its
-string. No `{T}` suffix.
+Scans the formatted table for the row whose enum equals `space` and returns its
+string: the Forum's ID where it publishes one, the scene-referred one where it
+publishes both, else the `alwan:` ID. No `{T}` suffix.
 
 **Parameters:**
 - `space` -- the enum to look up
@@ -88,7 +105,7 @@ the process lifetime, and must never be freed. The header states no ownership.
 The same applies to the `id` written by `alwan_interop_entry_at_{T}`.
 
 > **NULL conflates two conditions.** The function returns NULL both for a valid
-> space with no ID (63 of the 104 enum values) and for a completely out-of-range
+> space with no ID (57 of the 109 enum values) and for a completely out-of-range
 > or garbage `alwan_rgb_space`. Unlike `alwan_rgb_get_space_descriptor_{T}`,
 > which bounds-checks against `ALWAN_RGB_SPACE_COUNT` and reports
 > `ALWAN_E_INVALID`, this function never validates the enum. It scans and falls
@@ -102,13 +119,14 @@ The same applies to the `id` written by `alwan_interop_entry_at_{T}`.
 size_t alwan_interop_count(void);
 ```
 
-Returns 41, the row count of the static table. No `{T}` suffix.
+Returns 52, the row count of the formatted table; the aliases are not counted. No
+`{T}` suffix.
 
-`alwan_rgb_space` has 104 members (`ALWAN_RGB_SPACE_COUNT`, held by a
-`_Static_assert` against the transfer-function table). 41 of them have an
-interop ID; the other 63 do not. A caller enumerating spaces through
-`alwan_interop_entry_at_{T}` sees that 41-row subset, not the library's space
-list.
+`alwan_rgb_space` has 109 members (`ALWAN_RGB_SPACE_COUNT`, held by a
+`_Static_assert` against the transfer-function table). 52 of them have an
+interop ID; the other 57 do not. A caller enumerating spaces through
+`alwan_interop_entry_at_{T}` sees that 52-row subset, not the library's space
+list. Every row it enumerates round-trips: `format(parse(id))` is `id`.
 
 ---
 
@@ -118,12 +136,12 @@ list.
 alwan_status alwan_interop_entry_at_{T}(alwan_rgb_space *space, char const **id, size_t index);
 ```
 
-Reads row `index` of the table.
+Reads row `index` of the formatted table.
 
 **Parameters:**
 - `space` -- output, may be NULL
 - `id` -- output, may be NULL; receives a pointer to a string literal owned by the library
-- `index` -- `[0, 40]`; `index >= alwan_interop_count()` returns `ALWAN_E_RANGE`
+- `index` -- `[0, 51]`; `index >= alwan_interop_count()` returns `ALWAN_E_RANGE`
 
 Both outputs are optional. Passing NULL for both is a legal no-op returning
 `ALWAN_OK`. `index` is `size_t`, so a negative `int` argument converts to a huge
@@ -143,35 +161,34 @@ for (size_t i = 0; i < alwan_interop_count(); i++) {
 
 ---
 
-### The 41 registered IDs
+### The 52 formatted IDs
 
-Scene-referred linear: `lin_ap0` (ACES2065-1), `lin_ap1` (ACEScg), `lin_srgb`
-(linear Rec.709), `lin_rec2020`, `lin_displayp3`, `lin_p3d65`.
+Forum texture asset spaces, scene-referred: `lin_ap1_scene` (ACEScg),
+`lin_ap0_scene` (ACES2065-1), `lin_rec709_scene`, `lin_p3d65_scene`,
+`lin_rec2020_scene`, `lin_adobergb_scene`, `lin_ciexyzd65_scene`,
+`srgb_rec709_scene` (sRGB), `g24_rec709_scene`, `g22_rec709_scene`,
+`g18_rec709_scene`, `srgb_ap1_scene`, `g22_ap1_scene`, `srgb_p3d65_scene`
+(Display P3), `g22_adobergb_scene`.
 
-ACES non-linear: `acescc`, `acescct`, `acesproxy`.
+Forum display spaces with no scene-referred ID: `pq_p3d65_display`
+(`ALWAN_RGB_SPACE_DISPLAY_P3_HDR`, P3 with PQ; the Forum's "Display P3 HDR" is
+`srgbe_p3d65_display`, a different curve), `pq_rec2020_display`,
+`hlg_rec2020_display`, `g26_p3d65_display` (P3-D65).
 
-Camera log: `logc3_awg3`, `logc4_awg4`, `slog3_sgamut3`, `vlog_vgamut`,
-`clog_cgamut`, `redlog_rwg`, `tlog_egamut`, `di_dwg`, `flog_fgamut`,
-`nlog_ngamut`.
+The alwan namespace: `alwan:acescc`, `alwan:acescct`, `alwan:acesproxy`; the
+camera logs `alwan:logc3_awg3`, `alwan:logc4_awg4`, `alwan:slog3_sgamut3`,
+`alwan:vlog_vgamut`, `alwan:clog_cgamut`, `alwan:redlog_rwg`, `alwan:tlog_egamut`,
+`alwan:di_dwg`, `alwan:flog_fgamut`, `alwan:nlog_ngamut`; the camera gamuts
+`alwan:lin_awg3`, `alwan:lin_awg4`, `alwan:lin_sgamut3`, `alwan:lin_sgamut3cine`,
+`alwan:lin_vgamut`, `alwan:lin_cgamut`, `alwan:lin_rwg`, `alwan:lin_egamut`,
+`alwan:lin_egamut2`, `alwan:lin_dwg`, `alwan:lin_fgamut`, `alwan:lin_fgamutc`,
+`alwan:lin_ngamut`; and `alwan:lin_displayp3`, `alwan:rec1886_rec709`,
+`alwan:bt709`, `alwan:bt2020`, `alwan:dci_p3`, `alwan:adobergb`, `alwan:prophoto`.
 
-Camera linear gamuts: `lin_awg3`, `lin_awg4`, `lin_sgamut3`, `lin_sgamut3cine`,
-`lin_vgamut`, `lin_cgamut`, `lin_rwg`, `lin_egamut`, `lin_dwg`, `lin_fgamut`,
-`lin_ngamut`.
-
-Display-referred: `srgb_texture`, `srgb_displayp3`, `rec1886_rec709`,
-`rec2100_pq`, `rec2100_hlg`, `display_p3_hdr`.
-
-Additional well-known spaces: `bt709`, `bt2020`, `dci_p3`, `adobergb`,
-`prophoto`.
-
-> **The last five sit outside the CIF sections of the table.** The source groups
-> them under a comment reading "Additional well-known spaces", separate from the
-> sections above, while the file's own preamble claims "Only spaces with
-> official interop IDs are included" and the header calls every returned string
-> "the canonical string". Nothing in the repo records whether `bt709`, `bt2020`,
-> `dci_p3`, `adobergb` and `prophoto` are Color Interop Forum identifiers. Check
-> them against the current CIF ID list before writing them into an interchange
-> file.
+`ALWAN_RGB_SPACE_REC1886_REC709` is not the Forum's `g24_rec709`: it encodes with
+BT.709's camera curve and decodes with BT.1886. `ALWAN_RGB_SPACE_GAMMA24_REC709`, a
+2.4 power both ways, is, and parses from both `g24_rec709_scene` and
+`g24_rec709_display`.
 
 ---
 

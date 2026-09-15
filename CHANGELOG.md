@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Five RGB spaces.** `ALWAN_RGB_SPACE_LINEAR_CIE_XYZ_D65`, `ALWAN_RGB_SPACE_SRGB_AP1`
+  and `ALWAN_RGB_SPACE_GAMMA24_REC709`, the Color Interop Forum texture spaces alwan
+  lacked (`REC1886_REC709` encodes with BT.709's camera curve, not a 2.4 power), and
+  the camera gamuts `ALWAN_RGB_SPACE_FILMLIGHT_E_GAMUT_2` and
+  `ALWAN_RGB_SPACE_F_GAMUT_C`. Their curves are checked against colour-science in
+  suite 43, now 82 spaces.
+
 - **The rest of colour-science's log curves.** `ALWAN_TF_LOG3G12`, `ALWAN_TF_PANALOG`,
   `ALWAN_TF_VIPERLOG`, `ALWAN_TF_PLOG`, `ALWAN_TF_FILMIC_PRO6`, `ALWAN_TF_MILOG` and
   `ALWAN_TF_LOG2`, pinned against colour-science in suite 103, now 36 curves.
@@ -418,6 +425,16 @@ All notable changes to this project will be documented in this file.
   back from it.
 
 ### Changed
+
+- **Interop IDs are the Color Interop Forum's published ones.** `alwan_interop_format`
+  wrote `lin_ap1`, `srgb_texture`, `rec2100_pq` and the like, none of which the Forum
+  publishes. It now writes the IDs of the Forum's texture (v1.1.0) and display
+  (v1.0.0) recommendations, `lin_ap1_scene`, `srgb_rec709_scene`,
+  `pq_rec2020_display`, the scene-referred one where both exist, and `alwan:` IDs,
+  such as `alwan:logc3_awg3`, for spaces the Forum has not published, as its ID rules
+  require. `alwan_interop_parse` still reads every ID alwan wrote before, and the
+  Forum's display IDs. `ALWAN_RGB_SPACE_DISPLAY_P3_HDR`, P3 with PQ, is the Forum's
+  `pq_p3d65_display`, not its "Display P3 HDR".
 
 - **`ALWAN_NORMALIZE_RANGES` is documented as a library build switch.** The note in
   `alwan_platform.h` said to define it before including `alwan.h`. For a linked

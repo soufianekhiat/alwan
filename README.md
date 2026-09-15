@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/badge/tests-131%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-102%2C392%20per%20run-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-102%2C407%20per%20run-brightgreen)](#validation)
 [![reference data](https://img.shields.io/badge/reference%20data-389%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
@@ -621,10 +621,10 @@ Re-run it against any checkout to reproduce the table.
 |---|---|
 | Test suites | 131, all passing |
 | Test cases | 910 |
-| Checks executed per run | 102,392 |
+| Checks executed per run | 102,407 |
 | Assertion sites in the tests | 3,188 |
 | Reference datasets (colour-science, OCIO, ACES-dev) | 389 |
-| Embedded data tables | 747 |
+| Embedded data tables | 751 |
 | Exported symbols | 1,689 |
 | Internal symbols reached by a test or a public entry point | 152 of 176 (86%) |
 | Build configurations exercised | 8 |
@@ -633,7 +633,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**102,392 checks per run** is what actually executes, not what is written. A
+**102,407 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -677,7 +677,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 131 suites, 910 cases, 102,392 checks executed per run
+  module: 131 suites, 910 cases, 102,407 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
@@ -780,7 +780,7 @@ own. Those jobs verify a clean compile; the test suite runs from
 - [x] Data embedding with diagnostic guards
 - [x] Sharpmake + CMake build systems
 - [x] Unified test suite (131 suites, hosted in alwan_dev)
-- [x] 104 named RGB spaces, easy to add more via space descriptors
+- [x] 109 named RGB spaces, easy to add more via space descriptors
 - [x] Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,
   CAM18sl, CAM20u
