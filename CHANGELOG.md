@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CCM fits with weights and a ridge.** `alwan_ccm_fit_cheung2004_{T}` and
+  `alwan_ccm_fit_finlayson2015_{T}` take `alwan_ccm_fit_params`: a weight per
+  sample, 0 dropping one, and Tikhonov regularisation on every coefficient. Both
+  are rows of the same QR, and a ridge lets a fit have more terms than samples.
+  The result matches scikit-learn's Ridge with sample weights on colour-science's
+  expansions to 1.3e-13. The existing fits are these with no params, bit for bit.
+
 - **Robertson response recovery.** `alwan_crf_robertson2003_{T}` recovers a camera's
   response from every pixel of a bracket by alternating merge and re-estimation,
   Robertson, Borman and Stevenson 2003, and matches OpenCV's CalibrateRobertson to
@@ -523,6 +530,13 @@ All notable changes to this project will be documented in this file.
   version they came from.
 
 ### Fixed: output differs
+
+- **The f32 Finlayson 2015 fit wrote past its buffers.** It solved into a stack
+  array of 22 x 3 values, where the plain degree-4 basis has 34 terms, and then
+  copied `matrix_size` x 3 values, although `matrix_size` is already the element
+  count. Every basis of 8 or more terms wrote past the caller's matrix. It now
+  copies exactly `matrix_size` values from a buffer of the widest basis. Suite 124
+  guards the caller's buffer at every degree.
 
 - **TM-30 Rf and the CQS colour differences were wrong at the shipped**
   **default.** Both computed appearance differences through the public API and

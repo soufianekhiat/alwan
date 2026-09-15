@@ -983,12 +983,14 @@ Options worth having, roughly in the order they are worth adding:
    exactly this way while looking like plenty of data, and today the only
    signal is `ALWAN_E_DIVZERO` with nothing attached to it.
 
-3. **Tikhonov regularisation.** One parameter, shrinking the high-order terms.
+3. **Tikhonov regularisation.** **Done:** `alwan_ccm_fit_params.ridge`, solved
+   as extra rows of the same QR. One parameter, shrinking the high-order terms.
    This is the honest answer to overfitting when the term count approaches the
    patch count, which a ColorChecker Classic reaches at 22 terms for 24
    patches. Cheap: it is a diagonal added before the solve.
 
-4. **Per-patch weights.** Skin and the neutral ramp matter more than a
+4. **Per-patch weights.** **Done:** `alwan_ccm_fit_params.weights`, each row
+   scaled by the root of its weight. Skin and the neutral ramp matter more than a
    saturated cyan for most work, and a uniform fit does not know that. The same
    mechanism drops a patch that glared or is scratched, by weighting it zero,
    which is currently only possible by rebuilding the input arrays.
@@ -1112,10 +1114,11 @@ not validate the body.
 - [x] Extend the deterministic layer to trig/log10 and route the macros; the 30 CI exclusions are removed, pending a confirming run
 - [ ] Close batch/map and `_map_planar` coverage gaps (CAMs, ZCAM, deltaE, CVD)
 - [ ] Add the bulk two-step Zhai 2018 CAT
-- [ ] CCM fit: a params struct, so the solver, objective, weighting and regularisation are the caller's choice; today all four are fixed
+- [x] CCM fit: a params struct, `alwan_ccm_fit_params`, with per-sample weights and a ridge (suite 124); the solver and the objective are still fixed
 - [x] CCM fit: Householder QR replaces the normal equations; root-polynomial degree 4 went from 1.3e-3 to 4.9e-11, no API change
 - [ ] CCM fit: SVD as an option on top of QR, for the rank-deficient case QR still cannot answer
-- [ ] CCM fit: per-patch weights, and the robust loss that reuses them
+- [x] CCM fit: per-patch weights; a weight of 0 drops a patch (suite 124)
+- [ ] CCM fit: the robust loss (IRLS) that reuses the weights
 - [ ] CCM fit: a dE2000 or CAM16-UCS objective; the current least squares in linear RGB spends its accuracy on the bright patches
 - [ ] CCM fit: a neutral-preserving constraint, so a profile cannot tint greys
 - [x] CCM fit: the solve is covered now (suite 44, exact recovery of a known matrix); it measured the conditioning, and the root-polynomial at degree 4 errs by 1.3e-3
@@ -1158,7 +1161,7 @@ not validate the body.
 - [x] Camera response recovery, Robertson 2003: OpenCV's CalibrateRobertson to 5e-6, empty values filled instead of NaN (suite 123)
 - [ ] Camera response recovery: Mitsunaga-Nayar
 - [ ] Spectral film characterisation: dye densities, print stock, enlarger filtration, on top of the camera work
-- [ ] CCM fit: a params struct (weights, ridge) to carry the open CCM items above
+- [x] CCM fit: a params struct (weights, ridge), scikit-learn's Ridge to 1.3e-13 (suite 124); the f32 Finlayson fit no longer writes past its buffers
 
 ---
 

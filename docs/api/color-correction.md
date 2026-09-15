@@ -299,12 +299,11 @@ Also available: `alwan_white_balance_apply_{T}_map_planar`, `alwan_white_balance
 Polynomial and root-polynomial color-correction matrix (CCM) fitting for
 camera-to-reference profiling.
 
-> **f64-facade note:** the CCM *fits* (`alwan_colour_correction_matrix_cheung2004_{T}`
-> and `..._finlayson2015_{T}`) run their least-squares normal-equations solve in
-> `double` internally regardless of the requested precision: squaring the
-> condition number in `float` would be numerically fragile. The f32 entry points
-> therefore stay available even in an f32-only build via `ALWAN_WITH_F64_FACADE`.
-> See [Configuration](../configuration.md).
+> **f64-facade note:** the CCM *fits* (`alwan_colour_correction_matrix_*`,
+> `alwan_ccm_fit_*`) run their least-squares solve, Householder QR on the
+> expanded samples, in `double` internally regardless of the requested
+> precision. The f32 entry points therefore stay available even in an f32-only
+> build via `ALWAN_WITH_F64_FACADE`. See [Configuration](../configuration.md).
 
 ### Cheung 2004 Method
 
@@ -384,6 +383,42 @@ void alwan_colour_correct_finlayson2015_{T}(
 > `R`, `R^2`, `R^3` and `R^4`, so it needs at least five distinct R levels
 > whatever the patch count; a chart short of levels in one channel passes the
 > count check and returns `ALWAN_E_DIVZERO` from the solve.
+
+### Weights and Ridge
+
+```c
+alwan_f64 weights[24];                  /* 1 each, 0 for a patch that glared */
+alwan_ccm_fit_params p = { weights, 1e-4 };
+alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24,
+                             ALWAN_POLY_CHEUNG_22, &p);
+```
+
+`alwan_ccm_fit_cheung2004_{T}` and `alwan_ccm_fit_finlayson2015_{T}` take the fits'
+arguments and an `alwan_ccm_fit_params`, and minimise
+
+    sum_i w_i |reference_i - expanded(test_i) X|^2 + ridge |X|_F^2
+
+- `weights`: one per sample, finite and not negative, `alwan_f64` in both
+  precisions; `NULL` for uniform. A weight of 0 leaves the sample out, which is
+  how to drop a patch that glared or is scratched without rebuilding the arrays,
+  and how to run a leave-one-out test. A higher weight spends the fit's accuracy on
+  the patches that matter for the job, the neutral ramp or skin.
+- `ridge`: Tikhonov regularisation on every coefficient alike, finite and not
+  negative; 0 for none. It shrinks the high-order terms, which overfit as the term
+  count nears the patch count: a ColorChecker Classic has 24 patches and Cheung's
+  22-term set almost interpolates it. With a ridge the fit also exists with more
+  terms than samples.
+
+Both are extra rows of the same QR, `[sqrt(w) A ; sqrt(ridge) I]`, so the normal
+equations are still never formed. `NULL` params, or the zero value, give the old
+fits bit for bit; `alwan_colour_correction_matrix_*` are those calls. The result is
+scikit-learn's `Ridge(fit_intercept=False)` with `sample_weight` (or
+`LinearRegression` without a ridge) on colour-science's expansions, which are
+alwan's term for term, to 1.3e-13.
+
+The ridge depends on the scale of the data: it is added to squared residuals of
+the reference values, so a chart normalised to white at 1 wants a smaller ridge
+than one in 8-bit units. Choose it by leave-one-out error, not by eye.
 
 **Example (camera profiling workflow):**
 ```c
