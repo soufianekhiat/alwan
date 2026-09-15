@@ -316,6 +316,8 @@ EXPORTS
     alwan_csf_barten1999_params_default_f64
     alwan_csf_f32
     alwan_csf_f64
+    alwan_css_color_3_keyword_to_rgb_f32
+    alwan_css_color_3_keyword_to_rgb_f64
     alwan_css_gamut_f32_map_interleave
     alwan_css_gamut_f32_map_planar
     alwan_css_gamut_f64_map_interleave
@@ -562,6 +564,8 @@ EXPORTS
     alwan_hero_wavelength_sample_f64
     alwan_hero_wavelength_to_xyz_f32
     alwan_hero_wavelength_to_xyz_f64
+    alwan_hex_to_rgb_f32
+    alwan_hex_to_rgb_f64
     alwan_highlights_recovery_blend_f32_map_interleave
     alwan_highlights_recovery_blend_f64_map_interleave
     alwan_hlc_to_lch_f32
@@ -1008,6 +1012,10 @@ EXPORTS
     alwan_osa_ucs_to_xyz_f64_map_planar
     alwan_osa_ucs_to_xyz_map_interleave_ex
     alwan_osa_ucs_to_xyz_map_planar_ex
+    alwan_palette_entry_at
+    alwan_palette_find
+    alwan_palette_search
+    alwan_palette_size
     alwan_photometric_exposure_scale_factor_lagarde2014_f32
     alwan_photometric_exposure_scale_factor_lagarde2014_f64
     alwan_photopic_luminance_f32
@@ -1163,6 +1171,8 @@ EXPORTS
     alwan_rgb_to_hcl_f64_map_planar
     alwan_rgb_to_hcl_map_interleave_ex
     alwan_rgb_to_hcl_map_planar_ex
+    alwan_rgb_to_hex_f32
+    alwan_rgb_to_hex_f64
     alwan_rgb_to_hsl_f32
     alwan_rgb_to_hsl_f32_map_interleave
     alwan_rgb_to_hsl_f32_map_planar
