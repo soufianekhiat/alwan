@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CCM fit: an SVD solver and the rank.** `alwan_ccm_fit_params` gains `solver`,
+  `rcond` and `rank_out`. `ALWAN_CCM_SOLVER_SVD`, a one-sided Jacobi SVD, answers the
+  rank-deficient fits QR refuses with the minimum-norm solution, and fits with fewer
+  samples than terms. `rank_out` says how many terms the data supports, and QR
+  reports -1 when it finds the system deficient instead of a bare `ALWAN_E_DIVZERO`.
+  Rank and coefficients match `numpy.linalg.lstsq`.
+
 - **CCM fits with weights and a ridge.** `alwan_ccm_fit_cheung2004_{T}` and
   `alwan_ccm_fit_finlayson2015_{T}` take `alwan_ccm_fit_params`: a weight per
   sample, 0 dropping one, and Tikhonov regularisation on every coefficient. Both

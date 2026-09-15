@@ -966,7 +966,8 @@ Options worth having, roughly in the order they are worth adding:
    coefficient by coefficient. The exposure invariance itself is exact and
    holds to 1.8e-15 when measured on predictions.
 
-2. **SVD with rank truncation.** Answers the case QR still cannot: a design
+2. **SVD with rank truncation.** **Done:** `ALWAN_CCM_SOLVER_SVD`, `rcond` and
+   `rank_out`. Answers the case QR still cannot: a design
    matrix that is actually rank deficient. Duplicate patches, a chart shot with
    a clipped channel, a term set wider than the chart can support. It also lets
    the fit report its rank, so a caller learns the fit was degenerate instead
@@ -1116,13 +1117,13 @@ not validate the body.
 - [ ] Add the bulk two-step Zhai 2018 CAT
 - [x] CCM fit: a params struct, `alwan_ccm_fit_params`, with per-sample weights and a ridge (suite 124); the solver and the objective are still fixed
 - [x] CCM fit: Householder QR replaces the normal equations; root-polynomial degree 4 went from 1.3e-3 to 4.9e-11, no API change
-- [ ] CCM fit: SVD as an option on top of QR, for the rank-deficient case QR still cannot answer
+- [x] CCM fit: SVD as an option on top of QR, the minimum-norm fit of a rank-deficient system, numpy's lstsq rank included (suite 125)
 - [x] CCM fit: per-patch weights; a weight of 0 drops a patch (suite 124)
 - [ ] CCM fit: the robust loss (IRLS) that reuses the weights
 - [ ] CCM fit: a dE2000 or CAM16-UCS objective; the current least squares in linear RGB spends its accuracy on the bright patches
 - [ ] CCM fit: a neutral-preserving constraint, so a profile cannot tint greys
 - [x] CCM fit: the solve is covered now (suite 44, exact recovery of a known matrix); it measured the conditioning, and the root-polynomial at degree 4 errs by 1.3e-3
-- [ ] CCM fit: report rank, not just ALWAN_E_DIVZERO; the count guard is necessary and not sufficient, a chart can pass it and still be short of levels
+- [x] CCM fit: report rank, not just ALWAN_E_DIVZERO: `rank_out`, the numerical rank from the SVD, -1 from a QR that finds the system deficient (suite 125)
 - [x] Measured chart files: alwan_chart_* reads CGATS.17 / OpenQualia, so a target's own numbers reach the solvers; no network needed
 - [x] Fill API parity gaps: norm macros and scalar HSV<->HWB were already in; ZCAM `from_ucs` added
 - [x] The f64 facades are documented, each with its reason, in precision-and-limits.md; they stay facades by design

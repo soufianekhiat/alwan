@@ -420,6 +420,37 @@ The ridge depends on the scale of the data: it is added to squared residuals of
 the reference values, so a chart normalised to white at 1 wants a smaller ridge
 than one in 8-bit units. Choose it by leave-one-out error, not by eye.
 
+Zero the struct before setting fields (`alwan_ccm_fit_params p = { 0 };` or
+`memset`): fields are added to it over time, and a field left uninitialised is
+read.
+
+### Solver and Rank
+
+```c
+int rank = 0;
+alwan_ccm_fit_params p = { 0 };
+p.solver = ALWAN_CCM_SOLVER_SVD;
+p.rank_out = &rank;
+alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24,
+                             ALWAN_POLY_CHEUNG_35, &p);   /* rank 24: 11 terms unsupported */
+```
+
+The default solver, QR, refuses a rank-deficient system with `ALWAN_E_DIVZERO`
+and sets `rank_out` to -1: duplicate patches, a channel clipped on every patch, a
+chart short of levels, or more terms than patches. `ALWAN_CCM_SOLVER_SVD` answers
+it. A one-sided Jacobi SVD finds the singular values, those at or below `rcond`
+times the largest count as zero (`rcond` 0 is numpy's default, `DBL_EPSILON` times
+the larger of rows and terms), and the fit is the minimum-norm solution over the
+rest. `rank_out` reports how many terms the data actually supports. This is
+LAPACK's `gelsd` and `numpy.linalg.lstsq`, which the tests hold it to, rank
+included; on a full-rank system it equals QR to 2e-14.
+
+The SVD answers the question QR cannot, but the minimum-norm fit is not the best
+profile. Where the data cannot pin every coefficient, a ridge, or a larger `rcond`
+that truncates the weak directions on purpose, predicts held-out patches better.
+Use the rank to learn what a chart can support, then fit with that many terms or
+with a ridge.
+
 **Example (camera profiling workflow):**
 ```c
 /* 1. Photograph a ColorChecker under scene lighting */
