@@ -292,7 +292,13 @@ static inline void alwan__get_luma_coeffs(alwan_luma_standard standard,
     X(LSTAR,      lstar,        lstar)                    \
     X(SMPTE240M,  smpte240m,    smpte240m)                \
     X(ADOBE_RGB,  adobergb,     adobergb)                 \
-    X(DAVINCI_INTERMEDIATE, davinci_intermediate, davinci_intermediate)
+    X(DAVINCI_INTERMEDIATE, davinci_intermediate, davinci_intermediate) \
+    X(H273_LOG,      h273_log,      h273_log)             \
+    X(H273_LOG_SQRT, h273_log_sqrt, h273_log_sqrt)        \
+    X(XVYCC,         xvycc,         xvycc)                \
+    X(BT1361,        bt1361,        bt1361)               \
+    X(SYCC,          sycc,          sycc)                 \
+    X(BT2020_12BIT,  bt2020_12bit,  bt2020_12bit)
 
 #define TF_SIMD_TABLE_BODY(X)                             \
     X(SRGB, srgb_oetf_simd, srgb_eotf_simd)               \

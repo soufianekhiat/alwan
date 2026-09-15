@@ -924,6 +924,96 @@ ALWAN_INLINE alwan_scalar alwan_dcdm_eotf(alwan_scalar encoded) {
     return ALWAN_POW(E, gamma) * inv_scale;
 }
 
+/* ITU-T H.273 transfer characteristics 9 to 13 and 15; see alwan_rgb_core.inc. */
+ALWAN_INLINE alwan_scalar alwan_h273_log_oetf(alwan_scalar lin) {
+    alwan_scalar lo = ALWAN_LITERAL(0.01);
+    alwan_scalar L  = ALWAN_SELECT(lin < lo, lo, lin);
+    return ALWAN_SELECT(lin < lo, ALWAN_ZERO, ALWAN_ONE + ALWAN_LOG10(L) / ALWAN_LITERAL(2.0));
+}
+
+ALWAN_INLINE alwan_scalar alwan_h273_log_eotf(alwan_scalar encoded) {
+    alwan_scalar cut = ALWAN_ONE + ALWAN_LOG10(ALWAN_LITERAL(0.01)) / ALWAN_LITERAL(2.0);
+    alwan_scalar V   = ALWAN_SELECT(encoded < cut, cut, encoded);
+    return ALWAN_SELECT(encoded < cut, ALWAN_ZERO,
+                             ALWAN_POW(ALWAN_LITERAL(10.0), (V - ALWAN_ONE) * ALWAN_LITERAL(2.0)));
+}
+
+ALWAN_INLINE alwan_scalar alwan_h273_log_sqrt_oetf(alwan_scalar lin) {
+    alwan_scalar lo = ALWAN_SQRT(ALWAN_LITERAL(10.0)) / ALWAN_LITERAL(1000.0);
+    alwan_scalar L  = ALWAN_SELECT(lin < lo, lo, lin);
+    return ALWAN_SELECT(lin < lo, ALWAN_ZERO, ALWAN_ONE + ALWAN_LOG10(L) / ALWAN_LITERAL(2.5));
+}
+
+ALWAN_INLINE alwan_scalar alwan_h273_log_sqrt_eotf(alwan_scalar encoded) {
+    alwan_scalar lo  = ALWAN_SQRT(ALWAN_LITERAL(10.0)) / ALWAN_LITERAL(1000.0);
+    alwan_scalar cut = ALWAN_ONE + ALWAN_LOG10(lo) / ALWAN_LITERAL(2.5);
+    alwan_scalar V   = ALWAN_SELECT(encoded < cut, cut, encoded);
+    return ALWAN_SELECT(encoded < cut, ALWAN_ZERO,
+                             ALWAN_POW(ALWAN_LITERAL(10.0), (V - ALWAN_ONE) * ALWAN_LITERAL(2.5)));
+}
+
+ALWAN_INLINE alwan_scalar alwan_xvycc_oetf(alwan_scalar lin) {
+    alwan_scalar a = ALWAN_ABS(lin);
+    alwan_scalar v = ALWAN_BT2020_OETF(a);
+    return ALWAN_SELECT(lin < ALWAN_ZERO, -v, v);
+}
+
+ALWAN_INLINE alwan_scalar alwan_xvycc_eotf(alwan_scalar encoded) {
+    alwan_scalar a = ALWAN_ABS(encoded);
+    alwan_scalar v = ALWAN_BT2020_EOTF(a);
+    return ALWAN_SELECT(encoded < ALWAN_ZERO, -v, v);
+}
+
+ALWAN_INLINE alwan_scalar alwan_bt1361_oetf(alwan_scalar lin) {
+    alwan_scalar pos = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_ZERO, lin);
+    alwan_scalar neg = ALWAN_SELECT(lin < ALWAN_ZERO, ALWAN_LITERAL(-4.0) * lin, ALWAN_ONE);
+    alwan_scalar up  = ALWAN_BT2020_OETF(pos);
+    alwan_scalar low = -(ALWAN_LITERAL(1.099) * ALWAN_POW(neg, ALWAN_LITERAL(0.45)) - ALWAN_LITERAL(0.099)) /
+                       ALWAN_LITERAL(4.0);
+    return ALWAN_SELECT(lin >= ALWAN_ZERO, up,
+                             ALWAN_SELECT(lin <= ALWAN_LITERAL(-0.0045), low, ALWAN_LITERAL(4.5) * lin));
+}
+
+ALWAN_INLINE alwan_scalar alwan_bt1361_eotf(alwan_scalar encoded) {
+    alwan_scalar pos = ALWAN_SELECT(encoded < ALWAN_ZERO, ALWAN_ZERO, encoded);
+    alwan_scalar neg = ALWAN_SELECT(encoded < ALWAN_ZERO,
+                                         (ALWAN_LITERAL(-4.0) * encoded + ALWAN_LITERAL(0.099)) / ALWAN_LITERAL(1.099),
+                                         ALWAN_ONE);
+    alwan_scalar up  = ALWAN_BT2020_EOTF(pos);
+    alwan_scalar low = -ALWAN_POW(neg, ALWAN_ONE / ALWAN_LITERAL(0.45)) / ALWAN_LITERAL(4.0);
+    return ALWAN_SELECT(encoded >= ALWAN_ZERO, up,
+                             ALWAN_SELECT(encoded <= ALWAN_LITERAL(4.5) * ALWAN_LITERAL(-0.0045), low,
+                                               encoded / ALWAN_LITERAL(4.5)));
+}
+
+ALWAN_INLINE alwan_scalar alwan_sycc_oetf(alwan_scalar lin) {
+    alwan_scalar a = ALWAN_ABS(lin);
+    alwan_scalar v = ALWAN_SRGB_OETF(a);
+    return ALWAN_SELECT(lin < ALWAN_ZERO, -v, v);
+}
+
+ALWAN_INLINE alwan_scalar alwan_sycc_eotf(alwan_scalar encoded) {
+    alwan_scalar a = ALWAN_ABS(encoded);
+    alwan_scalar v = ALWAN_SRGB_EOTF(a);
+    return ALWAN_SELECT(encoded < ALWAN_ZERO, -v, v);
+}
+
+ALWAN_INLINE alwan_scalar alwan_bt2020_12bit_oetf(alwan_scalar lin) {
+    alwan_scalar a = ALWAN_LITERAL(1.0993);
+    alwan_scalar b = ALWAN_LITERAL(0.0181);
+    alwan_scalar L = ALWAN_SELECT(lin < b, b, lin);
+    return ALWAN_SELECT(lin < b, lin * ALWAN_LITERAL(4.5), a * ALWAN_POW(L, ALWAN_LITERAL(0.45)) - (a - ALWAN_ONE));
+}
+
+ALWAN_INLINE alwan_scalar alwan_bt2020_12bit_eotf(alwan_scalar encoded) {
+    alwan_scalar a   = ALWAN_LITERAL(1.0993);
+    alwan_scalar b   = ALWAN_LITERAL(0.0181);
+    alwan_scalar cut = a * ALWAN_POW(b, ALWAN_LITERAL(0.45)) - (a - ALWAN_ONE);
+    alwan_scalar E   = ALWAN_SELECT(encoded < cut, cut, encoded);
+    return ALWAN_SELECT(encoded < cut, encoded / ALWAN_LITERAL(4.5),
+                             ALWAN_POW((E + (a - ALWAN_ONE)) / a, ALWAN_ONE / ALWAN_LITERAL(0.45)));
+}
+
 ALWAN_INLINE alwan_scalar alwan_linear_identity(alwan_scalar v) {
     return v;
 }

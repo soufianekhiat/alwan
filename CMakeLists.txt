@@ -107,6 +107,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_fusion.c
   src/alwan/api/alwan_ssim.c
   src/alwan/api/alwan_tonemap.c
+  src/alwan/api/alwan_h273.c
   src/alwan/api/alwan_nayatani95.c
   src/alwan/map/alwan_agx_jp2499_map.c
   src/alwan/map/alwan_agx_map.c

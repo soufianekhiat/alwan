@@ -1025,6 +1025,110 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_dcdm_eotf)(ALWAN_CORE_T encoded
 }
 
 /* ================================================================
+ * ITU-T H.273 transfer characteristics 9 to 13 and 15, in the forms of
+ * colour-science 0.4.7, except xvYCC: IEC 61966-2-4 is BT.709 extended by
+ * symmetry, as FFmpeg and zimg define it.
+ * ================================================================ */
+
+/* Transfer 9: 1 + log10(L) / 2 from 0.01 up, 0 below. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_h273_log_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T lo = ALWAN_CORE_LITERAL(0.01);
+    ALWAN_CORE_T L  = ALWAN_CORE_SELECT(lin < lo, lo, lin);
+    return ALWAN_CORE_SELECT(lin < lo, ALWAN_CORE_ZERO, ALWAN_CORE_ONE + ALWAN_CORE_LOG10(L) / ALWAN_CORE_LITERAL(2.0));
+}
+
+/* Decodes from the code value of 0.01 up, and to 0 below it. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_h273_log_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T cut = ALWAN_CORE_ONE + ALWAN_CORE_LOG10(ALWAN_CORE_LITERAL(0.01)) / ALWAN_CORE_LITERAL(2.0);
+    ALWAN_CORE_T V   = ALWAN_CORE_SELECT(encoded < cut, cut, encoded);
+    return ALWAN_CORE_SELECT(encoded < cut, ALWAN_CORE_ZERO,
+                             ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), (V - ALWAN_CORE_ONE) * ALWAN_CORE_LITERAL(2.0)));
+}
+
+/* Transfer 10: 1 + log10(L) / 2.5 from sqrt(10) / 1000 up, 0 below. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_h273_log_sqrt_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T lo = ALWAN_CORE_SQRT(ALWAN_CORE_LITERAL(10.0)) / ALWAN_CORE_LITERAL(1000.0);
+    ALWAN_CORE_T L  = ALWAN_CORE_SELECT(lin < lo, lo, lin);
+    return ALWAN_CORE_SELECT(lin < lo, ALWAN_CORE_ZERO, ALWAN_CORE_ONE + ALWAN_CORE_LOG10(L) / ALWAN_CORE_LITERAL(2.5));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_h273_log_sqrt_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T lo  = ALWAN_CORE_SQRT(ALWAN_CORE_LITERAL(10.0)) / ALWAN_CORE_LITERAL(1000.0);
+    ALWAN_CORE_T cut = ALWAN_CORE_ONE + ALWAN_CORE_LOG10(lo) / ALWAN_CORE_LITERAL(2.5);
+    ALWAN_CORE_T V   = ALWAN_CORE_SELECT(encoded < cut, cut, encoded);
+    return ALWAN_CORE_SELECT(encoded < cut, ALWAN_CORE_ZERO,
+                             ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), (V - ALWAN_CORE_ONE) * ALWAN_CORE_LITERAL(2.5)));
+}
+
+/* Transfer 11, xvYCC: the BT.709 curve, odd about 0. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_xvycc_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T a = ALWAN_CORE_ABS(lin);
+    ALWAN_CORE_T v = ALWAN_CORE_BT2020_OETF(a);
+    return ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, -v, v);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_xvycc_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T a = ALWAN_CORE_ABS(encoded);
+    ALWAN_CORE_T v = ALWAN_CORE_BT2020_EOTF(a);
+    return ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, -v, v);
+}
+
+/* Transfer 12, BT.1361: BT.709 above 0; light down to -0.25 is encoded at a quarter
+ * scale, linear down to -0.0045. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt1361_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T pos = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, lin);
+    ALWAN_CORE_T neg = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, ALWAN_CORE_LITERAL(-4.0) * lin, ALWAN_CORE_ONE);
+    ALWAN_CORE_T up  = ALWAN_CORE_BT2020_OETF(pos);
+    ALWAN_CORE_T low = -(ALWAN_CORE_LITERAL(1.099) * ALWAN_CORE_POW(neg, ALWAN_CORE_LITERAL(0.45)) - ALWAN_CORE_LITERAL(0.099)) /
+                       ALWAN_CORE_LITERAL(4.0);
+    return ALWAN_CORE_SELECT(lin >= ALWAN_CORE_ZERO, up,
+                             ALWAN_CORE_SELECT(lin <= ALWAN_CORE_LITERAL(-0.0045), low, ALWAN_CORE_LITERAL(4.5) * lin));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt1361_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T pos = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, encoded);
+    ALWAN_CORE_T neg = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO,
+                                         (ALWAN_CORE_LITERAL(-4.0) * encoded + ALWAN_CORE_LITERAL(0.099)) / ALWAN_CORE_LITERAL(1.099),
+                                         ALWAN_CORE_ONE);
+    ALWAN_CORE_T up  = ALWAN_CORE_BT2020_EOTF(pos);
+    ALWAN_CORE_T low = -ALWAN_CORE_POW(neg, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(0.45)) / ALWAN_CORE_LITERAL(4.0);
+    return ALWAN_CORE_SELECT(encoded >= ALWAN_CORE_ZERO, up,
+                             ALWAN_CORE_SELECT(encoded <= ALWAN_CORE_LITERAL(4.5) * ALWAN_CORE_LITERAL(-0.0045), low,
+                                               encoded / ALWAN_CORE_LITERAL(4.5)));
+}
+
+/* Transfer 13, sYCC: the sRGB curve, odd about 0. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_sycc_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T a = ALWAN_CORE_ABS(lin);
+    ALWAN_CORE_T v = ALWAN_CORE_SRGB_OETF(a);
+    return ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, -v, v);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_sycc_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T a = ALWAN_CORE_ABS(encoded);
+    ALWAN_CORE_T v = ALWAN_CORE_SRGB_EOTF(a);
+    return ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, -v, v);
+}
+
+/* Transfer 15: BT.2020 with the 12-bit system's alpha 1.0993 and beta 0.0181. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_12bit_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T a = ALWAN_CORE_LITERAL(1.0993);
+    ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.0181);
+    ALWAN_CORE_T L = ALWAN_CORE_SELECT(lin < b, b, lin);
+    return ALWAN_CORE_SELECT(lin < b, lin * ALWAN_CORE_LITERAL(4.5), a * ALWAN_CORE_POW(L, ALWAN_CORE_LITERAL(0.45)) - (a - ALWAN_CORE_ONE));
+}
+
+/* Splits at the code value of beta on the power segment, as colour-science does. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_bt2020_12bit_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T a   = ALWAN_CORE_LITERAL(1.0993);
+    ALWAN_CORE_T b   = ALWAN_CORE_LITERAL(0.0181);
+    ALWAN_CORE_T cut = a * ALWAN_CORE_POW(b, ALWAN_CORE_LITERAL(0.45)) - (a - ALWAN_CORE_ONE);
+    ALWAN_CORE_T E   = ALWAN_CORE_SELECT(encoded < cut, cut, encoded);
+    return ALWAN_CORE_SELECT(encoded < cut, encoded / ALWAN_CORE_LITERAL(4.5),
+                             ALWAN_CORE_POW((E + (a - ALWAN_CORE_ONE)) / a, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(0.45)));
+}
+
+/* ================================================================
  * Linear / Identity
  * ================================================================ */
 

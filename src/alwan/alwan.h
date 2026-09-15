@@ -542,6 +542,14 @@ typedef enum {
     ALWAN_TF_ADOBE_RGB = 48, /* Adobe gamma 563/256 = 2.19921875 */
     ALWAN_TF_DAVINCI_INTERMEDIATE = 49, /* DaVinci Intermediate, the DaVinci Wide Gamut delivery curve */
 
+    /* ITU-T H.273 transfer characteristics without an earlier alwan curve */
+    ALWAN_TF_H273_LOG = 50,      /* H.273 transfer 9: logarithmic, 100:1 range, 0 below 0.01 */
+    ALWAN_TF_H273_LOG_SQRT = 51, /* H.273 transfer 10: logarithmic, 100 sqrt(10):1 range */
+    ALWAN_TF_XVYCC = 52,         /* IEC 61966-2-4 xvYCC, H.273 transfer 11: BT.709 extended by symmetry */
+    ALWAN_TF_BT1361 = 53,        /* BT.1361 extended colour gamut, H.273 transfer 12 */
+    ALWAN_TF_SYCC = 54,          /* IEC 61966-2-1 sYCC, H.273 transfer 13: sRGB extended by symmetry */
+    ALWAN_TF_BT2020_12BIT = 55,  /* BT.2020 for 12-bit systems, alpha 1.0993 and beta 0.0181, H.273 transfer 15 */
+
     /* Game Engine Interop */
     ALWAN_TF_UNITY_LINEAR = ALWAN_TF_LINEAR  /* Unity linear (alias for ALWAN_TF_LINEAR) */
 } alwan_transfer_function;
@@ -4507,6 +4515,43 @@ alwan_status alwan_rgb_space_by_enum_f32(alwan_f32 primaries[6], alwan_vec2_f32 
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if space is invalid */
 alwan_status alwan_rgb_space_get_tfs_f64(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space);
 alwan_status alwan_rgb_space_get_tfs_f32(alwan_transfer_function *oetf, alwan_transfer_function *eotf, alwan_rgb_space space);
+
+/* ----------------------------------------------------------------
+ * ITU-T H.273 code points (ISO/IEC 23091-2)
+ *
+ * colour_primaries, transfer_characteristics and matrix_coefficients, the colour
+ * signalling of video streams and containers, to alwan's enums and back. Code 2,
+ * unspecified, is ALWAN_E_NODATA; a reserved or out-of-range code is ALWAN_E_INVALID.
+ * ---------------------------------------------------------------- */
+
+/* H.273's chromaticities for a colour_primaries code: xy of R, G and B, and the white
+ * point. */
+alwan_status alwan_h273_color_primaries_f64(alwan_f64 primaries_xy[6], alwan_f64 white_xy[2], int color_primaries);
+alwan_status alwan_h273_color_primaries_f32(alwan_f32 primaries_xy[6], alwan_f32 white_xy[2], int color_primaries);
+
+/* The alwan space with a code's chromaticities, the linear one where alwan has it; 6
+ * and 7 are the same. System M (4) carries Illuminant C as (0.31006, 0.31616), which
+ * H.273 rounds to (0.310, 0.316). */
+alwan_status alwan_h273_color_primaries_to_space(alwan_rgb_space *space_out, int color_primaries);
+
+/* The lowest code whose primaries are the space's and whose white point agrees to
+ * H.273's rounding (5e-4 in xy); ALWAN_E_NODATA when none does. */
+alwan_status alwan_h273_color_primaries_from_space(int *color_primaries_out, alwan_rgb_space space);
+
+/* The alwan curve for a transfer_characteristics code. 1 and 6 are BT.709's curve, 14
+ * BT.2020's, 15 BT2020_12BIT, 16 PQ in cd/m2, 17 DCDM, 18 HLG. */
+alwan_status alwan_h273_transfer_to_tf(alwan_transfer_function *tf_out, int transfer_characteristics);
+
+/* The code for an alwan curve, ALWAN_E_NODATA for one H.273 does not list. ALWAN_TF_SRGB
+ * is 13, the same on [0, 1]; below 0 sYCC mirrors the curve and alwan's sRGB continues
+ * its linear segment. */
+alwan_status alwan_h273_transfer_from_tf(int *transfer_characteristics_out, alwan_transfer_function tf);
+
+/* Kr and Kb of a matrix_coefficients code. 12 and 13 derive them from the chromaticities
+ * of color_primaries (H.273 equations 32 to 37), which the other codes ignore. 0
+ * (identity), 8 (YCgCo), 11 (Y'D'zD'x) and 14 (ICtCp) have none: ALWAN_E_NODATA. */
+alwan_status alwan_h273_matrix_coefficients_f64(alwan_f64 *kr_out, alwan_f64 *kb_out, int matrix_coefficients, int color_primaries);
+alwan_status alwan_h273_matrix_coefficients_f32(alwan_f32 *kr_out, alwan_f32 *kb_out, int matrix_coefficients, int color_primaries);
 
 /* ----------------------------------------------------------------
  * Color Correction & Grading Tools
