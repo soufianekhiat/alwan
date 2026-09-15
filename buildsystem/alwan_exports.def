@@ -1030,6 +1030,10 @@ EXPORTS
     alwan_palette_nearest_f64
     alwan_palette_search
     alwan_palette_size
+    alwan_pattern_render_f32
+    alwan_pattern_render_f64
+    alwan_pattern_render_planar_f32
+    alwan_pattern_render_planar_f64
     alwan_photometric_exposure_scale_factor_lagarde2014_f32
     alwan_photometric_exposure_scale_factor_lagarde2014_f64
     alwan_photopic_luminance_f32
