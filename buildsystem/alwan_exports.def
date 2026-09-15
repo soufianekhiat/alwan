@@ -658,6 +658,8 @@ EXPORTS
     alwan_hunter_lab_to_xyz_f64_map_planar
     alwan_hunter_lab_to_xyz_map_interleave_ex
     alwan_hunter_lab_to_xyz_map_planar_ex
+    alwan_hunter_rdab_to_xyz_f32
+    alwan_hunter_rdab_to_xyz_f64
     alwan_hwb_to_hsv_f32
     alwan_hwb_to_hsv_f32_map_interleave
     alwan_hwb_to_hsv_f32_map_planar
@@ -736,6 +738,8 @@ EXPORTS
     alwan_interop_parse_f64
     alwan_interpolate_f32
     alwan_interpolate_f64
+    alwan_ipt_ragoo2021_to_xyz_f32
+    alwan_ipt_ragoo2021_to_xyz_f64
     alwan_ipt_to_iptch_f32
     alwan_ipt_to_iptch_f64
     alwan_ipt_to_xyz_f32
@@ -750,6 +754,8 @@ EXPORTS
     alwan_iptch_to_ipt_f64
     alwan_is_within_pointer_gamut_f32
     alwan_is_within_pointer_gamut_f64
+    alwan_izazbz_to_xyz_f32
+    alwan_izazbz_to_xyz_f64
     alwan_jakob2019_coeff_sample_f32
     alwan_jakob2019_coeff_sample_f64
     alwan_jp2499_apply_f32
@@ -1408,6 +1414,8 @@ EXPORTS
     alwan_ssim_f64
     alwan_st2086_init_f32
     alwan_st2086_init_f64
+    alwan_sucs_to_xyz_f32
+    alwan_sucs_to_xyz_f64
     alwan_table1d_mat3_sample_f32
     alwan_table1d_mat3_sample_f64
     alwan_table1d_sample_f32
@@ -1536,6 +1544,8 @@ EXPORTS
     alwan_xyz_to_hunter_lab_f64_map_planar
     alwan_xyz_to_hunter_lab_map_interleave_ex
     alwan_xyz_to_hunter_lab_map_planar_ex
+    alwan_xyz_to_hunter_rdab_f32
+    alwan_xyz_to_hunter_rdab_f64
     alwan_xyz_to_icacb_f32
     alwan_xyz_to_icacb_f32_map_interleave
     alwan_xyz_to_icacb_f32_map_planar
@@ -1568,6 +1578,10 @@ EXPORTS
     alwan_xyz_to_ipt_f64_map_planar
     alwan_xyz_to_ipt_map_interleave_ex
     alwan_xyz_to_ipt_map_planar_ex
+    alwan_xyz_to_ipt_ragoo2021_f32
+    alwan_xyz_to_ipt_ragoo2021_f64
+    alwan_xyz_to_izazbz_f32
+    alwan_xyz_to_izazbz_f64
     alwan_xyz_to_jzazbz_f32
     alwan_xyz_to_jzazbz_f32_map_interleave
     alwan_xyz_to_jzazbz_f32_map_planar
@@ -1644,6 +1658,8 @@ EXPORTS
     alwan_xyz_to_srgb_f64_map_planar
     alwan_xyz_to_srgb_map_interleave_ex
     alwan_xyz_to_srgb_map_planar_ex
+    alwan_xyz_to_sucs_f32
+    alwan_xyz_to_sucs_f64
     alwan_xyz_to_ucs_f32
     alwan_xyz_to_ucs_f32_map_interleave
     alwan_xyz_to_ucs_f32_map_planar
@@ -1668,6 +1684,8 @@ EXPORTS
     alwan_xyz_to_xyy_f64_map_planar
     alwan_xyz_to_xyy_map_interleave_ex
     alwan_xyz_to_xyy_map_planar_ex
+    alwan_xyz_to_yrg_f32
+    alwan_xyz_to_yrg_f64
     alwan_ycbcr_full_to_legal_f32
     alwan_ycbcr_full_to_legal_f32_map_interleave
     alwan_ycbcr_full_to_legal_f32_map_planar
@@ -1722,6 +1740,8 @@ EXPORTS
     alwan_yellowness_astm_e313_alternative_f64
     alwan_yellowness_astm_e313_f32
     alwan_yellowness_astm_e313_f64
+    alwan_yrg_to_xyz_f32
+    alwan_yrg_to_xyz_f64
     alwan_zcam_forward_f32
     alwan_zcam_forward_f64
     alwan_zcam_from_ucs_f32
