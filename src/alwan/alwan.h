@@ -5446,6 +5446,28 @@ alwan_status alwan_pu21_psnr_f64(alwan_f64 *psnr_out, alwan_f64 const *test, siz
 alwan_status alwan_pu21_psnr_f32(alwan_f32 *psnr_out, alwan_f32 const *test, size_t test_stride, alwan_f32 const *ref, size_t ref_stride, size_t count, size_t channels, alwan_pu21_variant variant);
 
 /* ----------------------------------------------------------------
+ * SSIM: structural similarity, Wang, Bovik, Sheikh and Simoncelli 2004
+ *
+ * One channel of width x height values, rows row_stride bytes apart, both sides at
+ * least 11. The paper's settings, as scikit-image's structural_similarity computes
+ * them with gaussian_weights=True, sigma=1.5 and use_sample_covariance=False: an
+ * 11-tap Gaussian window of sigma 1.5, K1 0.01 and K2 0.03, the borders reflected
+ * with the edge sample repeated, and the mean of the map with a 5-pixel strip dropped
+ * at every edge. data_range is the span the values can take: 1 for [0, 1], 255 for
+ * 8-bit. 1 for identical images. Computes in double in both precisions.
+ * ---------------------------------------------------------------- */
+alwan_status alwan_ssim_f64(alwan_f64 *ssim_out, alwan_f64 const *test, size_t test_row_stride, alwan_f64 const *ref, size_t ref_row_stride, size_t width, size_t height, alwan_f64 data_range);
+alwan_status alwan_ssim_f32(alwan_f32 *ssim_out, alwan_f32 const *test, size_t test_row_stride, alwan_f32 const *ref, size_t ref_row_stride, size_t width, size_t height, alwan_f32 data_range);
+
+/* PU-SSIM, pu21_metric.m's SSIM: luminance from RGB with its weights (0.212656,
+ * 0.715158, 0.072186) when channels is 3, or the values themselves when it is 1, in
+ * cd/m2; limited to [0.005, 10000] and PU21 encoded; then alwan_ssim with a data range
+ * of 256. pu21_metric.m calls MATLAB's ssim, which handles the borders differently:
+ * this follows scikit-image, and the two agree away from the edges. */
+alwan_status alwan_pu21_ssim_f64(alwan_f64 *ssim_out, alwan_f64 const *test, size_t test_row_stride, alwan_f64 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, alwan_pu21_variant variant);
+alwan_status alwan_pu21_ssim_f32(alwan_f32 *ssim_out, alwan_f32 const *test, size_t test_row_stride, alwan_f32 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, alwan_pu21_variant variant);
+
+/* ----------------------------------------------------------------
  * ISO 21496-1 gain maps
  *
  * A gain map stores, per pixel and channel, the log2 ratio between a base rendition
