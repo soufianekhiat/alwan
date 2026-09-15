@@ -1465,6 +1465,57 @@ void alwan_xyz_to_igpgtg_f64(alwan_igpgtg_f64 *igpgtg, alwan_xyz_f64 const *xyz)
 void alwan_igpgtg_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_igpgtg_f32 const *igpgtg);
 void alwan_igpgtg_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_igpgtg_f64 const *igpgtg);
 
+/* The rest of colour-science's colour models, each as its function of the same name, in
+ * its order of operations and with its signed power sign(a) |a|^p. */
+
+/* Yrg (Kirk 2019): luminance Y and chromaticities r, g from Kirk's LMS, XYZ in 0-1, as
+ * XYZ_to_Yrg and Yrg_to_XYZ. Black has l = m = 0, as colour-science's safe division
+ * gives; the inverse is ALWAN_E_INVALID where 0.68990272 l + 0.34832189 m is 0. */
+alwan_status alwan_xyz_to_yrg_f32(alwan_vec3_f32 *yrg_out, alwan_xyz_f32 const *xyz);
+alwan_status alwan_xyz_to_yrg_f64(alwan_vec3_f64 *yrg_out, alwan_xyz_f64 const *xyz);
+alwan_status alwan_yrg_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_vec3_f32 const *yrg);
+alwan_status alwan_yrg_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_vec3_f64 const *yrg);
+
+/* IPT Ragoo 2021: IPT's structure refitted, with its own four matrices and exponent
+ * 0.4071 where IPT has 0.43, XYZ in 0-1, as XYZ_to_IPT_Ragoo2021 and
+ * IPT_Ragoo2021_to_XYZ. */
+alwan_status alwan_xyz_to_ipt_ragoo2021_f32(alwan_ipt_f32 *ipt_out, alwan_xyz_f32 const *xyz);
+alwan_status alwan_xyz_to_ipt_ragoo2021_f64(alwan_ipt_f64 *ipt_out, alwan_xyz_f64 const *xyz);
+alwan_status alwan_ipt_ragoo2021_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_ipt_f32 const *ipt);
+alwan_status alwan_ipt_ragoo2021_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_ipt_f64 const *ipt);
+
+/* sUCS (Li and Luo 2024): IPT's LMS, exponent 0.43 and sUCS's own Iab matrix, Iab in
+ * 0-100 for XYZ in 0-1, as XYZ_to_sUCS and sUCS_to_XYZ. */
+alwan_status alwan_xyz_to_sucs_f32(alwan_vec3_f32 *iab_out, alwan_xyz_f32 const *xyz);
+alwan_status alwan_xyz_to_sucs_f64(alwan_vec3_f64 *iab_out, alwan_xyz_f64 const *xyz);
+alwan_status alwan_sucs_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_vec3_f32 const *iab);
+alwan_status alwan_sucs_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_vec3_f64 const *iab);
+
+/* Izazbz: the Jzazbz pipeline before its lightness step, for absolute D65 XYZ in cd/m^2,
+ * as XYZ_to_Izazbz and Izazbz_to_XYZ. SAFDAR2021 is ZCAM's form, with its own LMS' matrix
+ * and I offset by d_0 = 3.7035226210190005e-11. An unknown method is ALWAN_E_INVALID. */
+typedef enum {
+    ALWAN_IZAZBZ_SAFDAR2017 = 0,
+    ALWAN_IZAZBZ_SAFDAR2021 = 1
+} alwan_izazbz_method;
+alwan_status alwan_xyz_to_izazbz_f32(alwan_vec3_f32 *izazbz_out, alwan_xyz_f32 const *xyz_d65, alwan_izazbz_method method);
+alwan_status alwan_xyz_to_izazbz_f64(alwan_vec3_f64 *izazbz_out, alwan_xyz_f64 const *xyz_d65, alwan_izazbz_method method);
+alwan_status alwan_izazbz_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_vec3_f32 const *izazbz, alwan_izazbz_method method);
+alwan_status alwan_izazbz_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_vec3_f64 const *izazbz, alwan_izazbz_method method);
+
+/* Hunter Rdab, XYZ in 0-100, as XYZ_to_Hunter_Rdab and Hunter_Rdab_to_XYZ. xyz_n NULL is
+ * Hunter's D65 table (95.02, 100, 108.82) with its K_ab (172.3, 67.2); k_ab NULL with an
+ * xyz_n derives K_a, K_b by Hunter 1966 (alwan_hunter_coefficients). ALWAN_E_INVALID for a
+ * white with a component <= 0, and in the inverse for K_a or K_b = 0. */
+alwan_status alwan_xyz_to_hunter_rdab_f32(alwan_vec3_f32 *rdab_out, alwan_xyz_f32 const *xyz,
+                                          alwan_xyz_f32 const *xyz_n, alwan_vec2_f32 const *k_ab);
+alwan_status alwan_xyz_to_hunter_rdab_f64(alwan_vec3_f64 *rdab_out, alwan_xyz_f64 const *xyz,
+                                          alwan_xyz_f64 const *xyz_n, alwan_vec2_f64 const *k_ab);
+alwan_status alwan_hunter_rdab_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_vec3_f32 const *rdab,
+                                          alwan_xyz_f32 const *xyz_n, alwan_vec2_f32 const *k_ab);
+alwan_status alwan_hunter_rdab_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_vec3_f64 const *rdab,
+                                          alwan_xyz_f64 const *xyz_n, alwan_vec2_f64 const *k_ab);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics
