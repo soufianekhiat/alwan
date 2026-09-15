@@ -113,6 +113,74 @@ alwan_status alwan_palette_search(size_t *match_count_out, size_t *indices_out, 
     return ALWAN_OK;
 }
 
+/* ---------------------------------------------------------------- nearest colour */
+
+/* A palette colour's Lab in the public convention: through the characterisation for a
+ * CMYK palette, through sRGB and D65 for an sRGB one. */
+static alwan_status alwan__palette_lab(alwan_lab_f64 *lab, alwan_palette palette, size_t i,
+                                       alwan_cmyk_model const *model, alwan_xyz_f64 const *d65) {
+    if (palette == ALWAN_PALETTE_FREETONE) {
+        alwan_cmyk_f64 q;
+        q.c = k_freetone[i].c;
+        q.m = k_freetone[i].m;
+        q.y = k_freetone[i].y;
+        q.k = k_freetone[i].k;
+        return alwan_cmyk_to_lab_f64(lab, &q, model);
+    } else {
+        alwan_rgb_f64 rgb;
+        alwan_xyz_f64 xyz;
+        alwan_status st;
+        rgb.r = (double)k_css3[i].r / 255.0;
+        rgb.g = (double)k_css3[i].g / 255.0;
+        rgb.b = (double)k_css3[i].b / 255.0;
+        st = alwan_srgb_to_xyz_f64(&xyz, &rgb);
+        if (st != ALWAN_OK) return st;
+        alwan_xyz_to_lab_f64(lab, &xyz, d65);
+        return ALWAN_OK;
+    }
+}
+
+alwan_status alwan_palette_nearest_f64(size_t *index_out, alwan_f64 *delta_e_out, alwan_palette palette,
+                                       alwan_lab_f64 const *lab, alwan_cmyk_model const *cmyk_model) {
+    size_t const n = alwan_palette_size(palette);
+    size_t i, best_i = 0;
+    double best = 0.0;
+    alwan_xyz_f64 d65;
+    if (!index_out || !lab || n == 0) return ALWAN_E_INVALID;
+    if (palette == ALWAN_PALETTE_FREETONE && !cmyk_model) return ALWAN_E_INVALID;
+    if (alwan_illuminant_white_point_f64(&d65, ALWAN_ILLUMINANT_D65, ALWAN_OBSERVER_CIE_1931_2DEG) != ALWAN_OK) {
+        return ALWAN_E_INVALID;
+    }
+    for (i = 0; i < n; i++) {
+        alwan_lab_f64 e;
+        double de;
+        alwan_status const st = alwan__palette_lab(&e, palette, i, cmyk_model, &d65);
+        if (st != ALWAN_OK) return st;
+        de = alwan_delta_e_2000_f64(lab, &e);
+        if (i == 0 || de < best) {
+            best = de;
+            best_i = i;
+        }
+    }
+    *index_out = best_i;
+    if (delta_e_out) *delta_e_out = best;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_palette_nearest_f32(size_t *index_out, alwan_f32 *delta_e_out, alwan_palette palette,
+                                       alwan_lab_f32 const *lab, alwan_cmyk_model const *cmyk_model) {
+    alwan_lab_f64 l;
+    alwan_f64 de = 0.0;
+    alwan_status st;
+    if (!lab) return ALWAN_E_INVALID;
+    l.L = (double)lab->L;
+    l.a = (double)lab->a;
+    l.b = (double)lab->b;
+    st = alwan_palette_nearest_f64(index_out, &de, palette, &l, cmyk_model);
+    if (st == ALWAN_OK && delta_e_out) *delta_e_out = (alwan_f32)de;
+    return st;
+}
+
 /* ---------------------------------------------------------------- HEX */
 
 /* colour-science's RGB_to_HEX: each channel truncated to an integer of 0-255

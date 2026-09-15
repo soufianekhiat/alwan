@@ -1566,6 +1566,18 @@ alwan_status alwan_hex_to_rgb_f64(alwan_rgb_f64 *rgb_out, char const *hex);
 alwan_status alwan_css_color_3_keyword_to_rgb_f32(alwan_rgb_f32 *rgb_out, char const *keyword);
 alwan_status alwan_css_color_3_keyword_to_rgb_f64(alwan_rgb_f64 *rgb_out, char const *keyword);
 
+/* A CMYK printing characterisation, built by alwan_cmyk_model_* in the charts section. */
+typedef struct alwan_cmyk_model_s alwan_cmyk_model;
+
+/* The palette colour nearest a Lab value by CIEDE2000. lab is relative to the
+ * palette's white: the characterisation's (D50 for FOGRA39) for a CMYK palette, which
+ * needs cmyk_model and is ALWAN_E_INVALID without one; D65 for an sRGB palette, which
+ * ignores it. Ties go to the lower index. delta_e_out may be NULL. */
+alwan_status alwan_palette_nearest_f32(size_t *index_out, alwan_f32 *delta_e_out, alwan_palette palette,
+                                       alwan_lab_f32 const *lab, alwan_cmyk_model const *cmyk_model);
+alwan_status alwan_palette_nearest_f64(size_t *index_out, alwan_f64 *delta_e_out, alwan_palette palette,
+                                       alwan_lab_f64 const *lab, alwan_cmyk_model const *cmyk_model);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics
@@ -4640,6 +4652,13 @@ typedef enum {
     ALWAN_CHART_SOURCE_SPECTRAL = 2  /* reflectance columns, integrated at load */
 } alwan_chart_source;
 
+/* The device values a file carried beside its colorimetry. */
+typedef enum {
+    ALWAN_CHART_DEVICE_NONE = 0,     /* no device columns */
+    ALWAN_CHART_DEVICE_CMYK = 1,     /* CMYK_C, CMYK_M, CMYK_Y, CMYK_K, in percent */
+    ALWAN_CHART_DEVICE_RGB = 2       /* RGB_R, RGB_G, RGB_B, in the file's own scale */
+} alwan_chart_device;
+
 /* Read a measurement file. The chart is allocated; release it with alwan_chart_destroy.
  * Returns ALWAN_E_INVALID for an unreadable or malformed file, ALWAN_E_NODATA for a
  * well-formed file that carries no colorimetry alwan can use. The buffer form does no file
@@ -4691,6 +4710,32 @@ alwan_status alwan_chart_reflectance_f64(alwan_spd_f64 *out, alwan_chart_f64 con
 alwan_status alwan_chart_reflectance_f32(alwan_spd_f32 *out, alwan_chart_f32 const *chart, size_t patch_index, alwan_ctx *ctx);
 size_t alwan_chart_num_bands_f64(alwan_chart_f64 const *chart);
 size_t alwan_chart_num_bands_f32(alwan_chart_f32 const *chart);
+/* The device values of a patch as the file wrote them: four for CMYK, three for RGB
+ * with values_out[3] = 0. ALWAN_E_NODATA when the file carried none. */
+alwan_chart_device alwan_chart_device_model_f64(alwan_chart_f64 const *chart);
+alwan_chart_device alwan_chart_device_model_f32(alwan_chart_f32 const *chart);
+alwan_status alwan_chart_device_values_f64(alwan_f64 *values_out, alwan_chart_f64 const *chart, size_t patch_index);
+alwan_status alwan_chart_device_values_f32(alwan_f32 *values_out, alwan_chart_f32 const *chart, size_t patch_index);
+/* The file's own LAB_L, LAB_A, LAB_B for a patch, as written, where alwan_chart_xyz
+ * gives the tristimulus the loader derived. ALWAN_E_NODATA when the file had no Lab. */
+alwan_status alwan_chart_lab_f64(alwan_lab_f64 *lab_out, alwan_chart_f64 const *chart, size_t patch_index);
+alwan_status alwan_chart_lab_f32(alwan_lab_f32 *lab_out, alwan_chart_f32 const *chart, size_t patch_index);
+
+/* CMYK printing characterisations: CMYK in [0, 1] to CIELAB relative to the data's
+ * white (D50 for the ISO printing conditions), through an ISO 12642-2 (IT8.7/4) data
+ * set. The target's complete CMY cubes on K = 0, 20, 40, 60, 80 and 100 are
+ * interpolated multilinearly in Lab, then linearly in K; repeated patches are
+ * averaged. alwan_cmyk_model_fogra39 builds from the embedded FOGRA39 (Fogra's
+ * FOGRA39L data, ISO 12647-2:2004/Amd 1 coated paper, distributed unmodified with
+ * Fogra as the source); _from_chart builds from any loaded IT8.7/4 set, such as a
+ * CGATS.21 CRPC file, and is ALWAN_E_NODATA for a chart without CMYK or without the
+ * IT8.7/4 cubes. CMYK outside [0, 1] is ALWAN_E_INVALID. */
+alwan_status alwan_cmyk_model_from_chart_f64(alwan_cmyk_model **out, alwan_chart_f64 const *chart, alwan_ctx *ctx);
+alwan_status alwan_cmyk_model_from_chart_f32(alwan_cmyk_model **out, alwan_chart_f32 const *chart, alwan_ctx *ctx);
+alwan_status alwan_cmyk_model_fogra39(alwan_cmyk_model **out, alwan_ctx *ctx);
+void alwan_cmyk_model_destroy(alwan_cmyk_model *model, alwan_ctx *ctx);
+alwan_status alwan_cmyk_to_lab_f32(alwan_lab_f32 *lab_out, alwan_cmyk_f32 const *cmyk, alwan_cmyk_model const *model);
+alwan_status alwan_cmyk_to_lab_f64(alwan_lab_f64 *lab_out, alwan_cmyk_f64 const *cmyk, alwan_cmyk_model const *model);
 
 /* Write the chart back out as OQM. The buffer form reports the length it needs when called
  * with a NULL buffer, and returns ALWAN_E_RANGE if what it was given cannot hold the result
