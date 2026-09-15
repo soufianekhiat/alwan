@@ -445,7 +445,14 @@ typedef enum {
     ALWAN_RGB_SPACE_REC2100_HLG = 102,        /* Rec.2020 primaries + HLG (BT.2100) */
     ALWAN_RGB_SPACE_DISPLAY_P3_HDR = 103,     /* Display P3 primaries + PQ (SMPTE ST.2084) */
 
-    ALWAN_RGB_SPACE_COUNT = 104  /* Sentinel: number of enum values */
+    /* The Color Interop Forum's texture spaces alwan lacked, and two camera gamuts */
+    ALWAN_RGB_SPACE_LINEAR_CIE_XYZ_D65 = 104, /* CIE XYZ, linear, D65-relative (lin_ciexyzd65_scene) */
+    ALWAN_RGB_SPACE_SRGB_AP1 = 105,           /* ACEScg (AP1) primaries + sRGB curve (srgb_ap1_scene) */
+    ALWAN_RGB_SPACE_GAMMA24_REC709 = 106,     /* Rec.709 primaries + gamma 2.4 (g24_rec709_scene) */
+    ALWAN_RGB_SPACE_FILMLIGHT_E_GAMUT_2 = 107, /* FilmLight E-Gamut 2, primaries only */
+    ALWAN_RGB_SPACE_F_GAMUT_C = 108,          /* Fujifilm F-Gamut C, primaries only */
+
+    ALWAN_RGB_SPACE_COUNT = 109  /* Sentinel: number of enum values */
 } alwan_rgb_space;
 
 /* Backward compatibility alias */

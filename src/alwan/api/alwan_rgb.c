@@ -787,6 +787,12 @@ static alwan_tf_pair const g_rgb_space_tf[] = {
     /* [101] REC2100_PQ              */ { ALWAN_TF_PQ,       ALWAN_TF_PQ       },
     /* [102] REC2100_HLG             */ { ALWAN_TF_HLG,      ALWAN_TF_HLG      },
     /* [103] DISPLAY_P3_HDR          */ { ALWAN_TF_PQ,       ALWAN_TF_PQ       },
+    /* Color Interop Forum texture spaces, and two camera gamuts */
+    /* [104] LINEAR_CIE_XYZ_D65      */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [105] SRGB_AP1                */ { ALWAN_TF_SRGB,     ALWAN_TF_SRGB     },
+    /* [106] GAMMA24_REC709          */ { ALWAN_TF_GAMMA24,  ALWAN_TF_GAMMA24  },
+    /* [107] FILMLIGHT_E_GAMUT_2     */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
+    /* [108] F_GAMUT_C               */ { ALWAN_TF_LINEAR,   ALWAN_TF_LINEAR   },
 };
 
 /* The descriptor lookups below bounds-check `space` once and then subscript four

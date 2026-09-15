@@ -434,6 +434,23 @@ static alwan_f64 const g_display_p3_hdr_matrices[] = {
 #include "data/rgb_matrices/display_p3.csv"
 };
 
+/* Color Interop Forum texture spaces, and two camera gamuts */
+static alwan_f64 const g_linear_cie_xyz_d65_matrices[] = {
+#include "data/rgb_matrices/dcdm_xyz.csv"
+};
+static alwan_f64 const g_srgb_ap1_matrices[] = {
+#include "data/rgb_matrices/acescg.csv"
+};
+static alwan_f64 const g_gamma24_rec709_matrices[] = {
+#include "data/rgb_matrices/bt709.csv"
+};
+static alwan_f64 const g_filmlight_e_gamut_2_matrices[] = {
+#include "data/rgb_matrices/filmlight_e-gamut_2.csv"
+};
+static alwan_f64 const g_f_gamut_c_matrices[] = {
+#include "data/rgb_matrices/f-gamut_c.csv"
+};
+
 ALWAN_DIAG_POP
 
 /* Array of pointers to RGB space matrix data - Order MUST match enum */
@@ -541,7 +558,12 @@ static alwan_f64 const * const g_rgb_space_matrices[] = {
     g_rec1886_rec709_matrices,
     g_rec2100_pq_matrices,
     g_rec2100_hlg_matrices,
-    g_display_p3_hdr_matrices
+    g_display_p3_hdr_matrices,
+    g_linear_cie_xyz_d65_matrices,
+    g_srgb_ap1_matrices,
+    g_gamma24_rec709_matrices,
+    g_filmlight_e_gamut_2_matrices,
+    g_f_gamut_c_matrices
 };
 
 static size_t const g_rgb_space_matrices_count = sizeof(g_rgb_space_matrices) / sizeof(g_rgb_space_matrices[0]);
@@ -982,6 +1004,22 @@ static float const g_display_p3_hdr_matrices_f32[] = {
 #include "data/rgb_matrices/display_p3.csv"
 };
 
+static float const g_linear_cie_xyz_d65_matrices_f32[] = {
+#include "data/rgb_matrices/dcdm_xyz.csv"
+};
+static float const g_srgb_ap1_matrices_f32[] = {
+#include "data/rgb_matrices/acescg.csv"
+};
+static float const g_gamma24_rec709_matrices_f32[] = {
+#include "data/rgb_matrices/bt709.csv"
+};
+static float const g_filmlight_e_gamut_2_matrices_f32[] = {
+#include "data/rgb_matrices/filmlight_e-gamut_2.csv"
+};
+static float const g_f_gamut_c_matrices_f32[] = {
+#include "data/rgb_matrices/f-gamut_c.csv"
+};
+
 ALWAN_DIAG_POP
 
 static float const * const g_rgb_space_matrices_f32[] = {
@@ -1088,7 +1126,12 @@ static float const * const g_rgb_space_matrices_f32[] = {
     g_rec1886_rec709_matrices_f32,
     g_rec2100_pq_matrices_f32,
     g_rec2100_hlg_matrices_f32,
-    g_display_p3_hdr_matrices_f32
+    g_display_p3_hdr_matrices_f32,
+    g_linear_cie_xyz_d65_matrices_f32,
+    g_srgb_ap1_matrices_f32,
+    g_gamma24_rec709_matrices_f32,
+    g_filmlight_e_gamut_2_matrices_f32,
+    g_f_gamut_c_matrices_f32
 };
 
 _Static_assert(

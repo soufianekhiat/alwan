@@ -433,6 +433,23 @@ static alwan_f64 const g_display_p3_hdr[] = {
 #include "data/rgb_spaces/display_p3.csv"
 };
 
+/* Color Interop Forum texture spaces, and two camera gamuts */
+static alwan_f64 const g_linear_cie_xyz_d65[] = {
+#include "data/rgb_spaces/dcdm_xyz.csv"
+};
+static alwan_f64 const g_srgb_ap1[] = {
+#include "data/rgb_spaces/acescg.csv"
+};
+static alwan_f64 const g_gamma24_rec709[] = {
+#include "data/rgb_spaces/bt709.csv"
+};
+static alwan_f64 const g_filmlight_e_gamut_2[] = {
+#include "data/rgb_spaces/filmlight_e-gamut_2.csv"
+};
+static alwan_f64 const g_f_gamut_c[] = {
+#include "data/rgb_spaces/f-gamut_c.csv"
+};
+
 ALWAN_DIAG_POP
 
 /* Array of pointers to RGB space data - Order MUST match enum */
@@ -540,7 +557,12 @@ static alwan_f64 const * const g_rgb_space_data[] = {
     g_rec1886_rec709,
     g_rec2100_pq,
     g_rec2100_hlg,
-    g_display_p3_hdr
+    g_display_p3_hdr,
+    g_linear_cie_xyz_d65,
+    g_srgb_ap1,
+    g_gamma24_rec709,
+    g_filmlight_e_gamut_2,
+    g_f_gamut_c
 };
 
 
@@ -973,6 +995,22 @@ static float const g_display_p3_hdr_f32[] = {
 #include "data/rgb_spaces/display_p3.csv"
 };
 
+static float const g_linear_cie_xyz_d65_f32[] = {
+#include "data/rgb_spaces/dcdm_xyz.csv"
+};
+static float const g_srgb_ap1_f32[] = {
+#include "data/rgb_spaces/acescg.csv"
+};
+static float const g_gamma24_rec709_f32[] = {
+#include "data/rgb_spaces/bt709.csv"
+};
+static float const g_filmlight_e_gamut_2_f32[] = {
+#include "data/rgb_spaces/filmlight_e-gamut_2.csv"
+};
+static float const g_f_gamut_c_f32[] = {
+#include "data/rgb_spaces/f-gamut_c.csv"
+};
+
 ALWAN_DIAG_POP
 
 static float const * const g_rgb_space_data_f32[] = {
@@ -1079,7 +1117,12 @@ static float const * const g_rgb_space_data_f32[] = {
     g_rec1886_rec709_f32,
     g_rec2100_pq_f32,
     g_rec2100_hlg_f32,
-    g_display_p3_hdr_f32
+    g_display_p3_hdr_f32,
+    g_linear_cie_xyz_d65_f32,
+    g_srgb_ap1_f32,
+    g_gamma24_rec709_f32,
+    g_filmlight_e_gamut_2_f32,
+    g_f_gamut_c_f32
 };
 
 /* The f32 twin is indexed by the same enum as the f64 table and is bounds-checked
