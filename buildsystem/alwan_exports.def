@@ -1394,6 +1394,8 @@ EXPORTS
     alwan_table_interp_3d_trilinear_f64
     alwan_tm30_rf_f32
     alwan_tm30_rf_f64
+    alwan_tonemap_global_f32
+    alwan_tonemap_global_f64
     alwan_ucs_to_xyz_f32
     alwan_ucs_to_xyz_f32_map_interleave
     alwan_ucs_to_xyz_f32_map_planar
