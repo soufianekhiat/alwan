@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Exposure fusion.** `alwan_exposure_fusion_mertens2007_{T}` fuses a bracket of
+  display-encoded pictures into one, Mertens, Kautz and Van Reeth 2007: contrast,
+  saturation and well-exposedness weights, blended through Laplacian pyramids.
+  Native in both precisions. With OpenCV's borders and weighting, it matches
+  MergeMertens to 4e-6, except in regions flat in every exposure, where OpenCV's
+  float32 weights meet its 1e-12 floor and its rounding decides the blend.
+
 - **Camera sensitivities from a chart.** `alwan_camera_sensitivities_from_chart_{T}`
   recovers the spectral sensitivities of a camera nobody has measured from a
   photographed chart, Jiang, Liu, Gu and Suesstrunk 2013. The basis is alwan's own,

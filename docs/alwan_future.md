@@ -1154,7 +1154,8 @@ not validate the body.
 - [x] Bayer demosaicing: bilinear, Malvar 2004, Menon 2007, bit-exact to colour-demosaicing (suite 120)
 - [x] Camera sensitivities from a chart: Jiang 2013 over a PCA basis of the rawtoaces cameras, 2e-14 to colour-science (suite 121)
 - [ ] Demosaicing, experimental tier: the optimisation-based formulation of the FlexISP and ProxImaL line
-- [ ] Camera response recovery: Robertson 2003 and Mitsunaga-Nayar; Mertens exposure fusion
+- [x] Exposure fusion: Mertens 2007, matching OpenCV's MergeMertens to its float rounding (suite 122)
+- [ ] Camera response recovery: Robertson 2003 and Mitsunaga-Nayar
 - [ ] Spectral film characterisation: dye densities, print stock, enlarger filtration, on top of the camera work
 - [ ] CCM fit: a params struct (weights, ridge) to carry the open CCM items above
 

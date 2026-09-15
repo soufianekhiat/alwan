@@ -601,6 +601,44 @@ value is colour-hdri's default, which the tests match.
 
 ---
 
+## Exposure Fusion
+
+```c
+alwan_f64 const *images[3] = { under, metered, over };   /* display-encoded RGB */
+alwan_exposure_fusion_mertens2007_f64(fused, 3 * width * sizeof(alwan_f64),
+                                      images, 3 * width * sizeof(alwan_f64), 3,
+                                      width, height, NULL);
+```
+
+Mertens, Kautz and Van Reeth 2007. Where merging recovers radiance and still needs a
+tone curve, fusion goes straight from a bracket of finished pictures to one finished
+picture: no response curve, no exposure settings, and the images in any order. Every
+pixel of every exposure is weighted by three measures: contrast, the absolute 3 x 3
+Laplacian of its BT.601 luma; saturation, the spread of R, G and B about their mean;
+and well-exposedness, a Gaussian of width 0.2 around 0.5 per channel. The weights
+are normalised per pixel, and the images blend as Laplacian pyramids, each level
+under that level of the weights' Gaussian pyramid. Blending a single level instead
+leaves visible seams where the weights change quickly.
+
+`alwan_exposure_fusion_params` sets each measure's exponent (0 is 1), leaves a measure
+out through `ignore`, and sets sigma and the number of pyramid levels. Its zero value
+is the paper's weighting. OpenCV's `createMergeMertens()` default leaves
+well-exposedness out, which is `ignore = ALWAN_FUSION_IGNORE_EXPOSURE`. Borders are
+OpenCV's. The result is not clamped, and the pyramid can overshoot [0, 1] next to
+strong edges.
+
+Given 8-bit images divided by 255, the result matches OpenCV's MergeMertens to 4e-6
+on the synthetic brackets of the tests. Photographs differ more. Where a region is
+flat in every exposure, every weight falls to OpenCV's floor of 1e-12, and OpenCV's
+float32 rounding in the three measures is of the same order, so its rounding decides
+the blend there. alwan computes the weights in the working precision. On a 960 x 540
+fairground bracket the two agree to 2e-3 at the 99th percentile and differ by up to
+0.06 in flat saturated areas. Computing the weights in float32 the way OpenCV does
+closes the difference to 4e-7, so the pyramids and borders agree and the difference
+is the weights' precision.
+
+---
+
 ## Error Codes
 
 - `ALWAN_OK` (0) -- Success
