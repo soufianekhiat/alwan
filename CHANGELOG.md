@@ -8,6 +8,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CMYK printing characterisations, FOGRA39 embedded.** `alwan_cmyk_model_*` turns
+  CMYK into CIELAB through an ISO 12642-2 (IT8.7/4) data set: Lab interpolated
+  multilinearly inside the target's CMY cubes on six K planes, then linearly in K,
+  which matches scipy's interpolation to 1e-10 and puts the 321 FOGRA39 patches it does
+  not use at dE2000 mean 0.13, maximum 1.21. FOGRA39 (Fogra's FOGRA39L data,
+  ISO 12647-2:2004/Amd 1) is embedded byte for byte, unmodified and with Fogra named
+  as the source, as Fogra's terms require, and parsed at run time by alwan's own CGATS
+  reader; any other IT8.7/4 file loads through `alwan_chart_*`. The chart reader and
+  writer now keep CMYK and RGB device columns (`alwan_chart_device_values_{T}`) and the
+  file's own Lab (`alwan_chart_lab_{T}`). `alwan_palette_nearest_{T}` finds the
+  palette colour nearest a Lab value by CIEDE2000, Freetone through a CMYK
+  characterisation (suite 137).
+
 - **Named palettes and HEX.** `alwan_palette_*` looks colours up by name and searches
   names by substring in two palettes: Stuart Semple's Freetone, 1,310 colours in device
   CMYK from the Freetone bundle, which states no licence; and the 147 CSS Color 3

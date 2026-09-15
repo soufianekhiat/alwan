@@ -42,6 +42,29 @@ for (size_t i = 0; i < count && i < 16; i++) {
 }
 ```
 
+## Nearest colour
+
+```c
+alwan_status alwan_palette_nearest_{T}(size_t *index_out, alwan_{T} *delta_e_out, alwan_palette palette,
+                                       alwan_lab_{T} const *lab, alwan_cmyk_model const *cmyk_model);
+```
+
+The palette colour nearest a Lab value by CIEDE2000. The Lab is relative to the palette's white:
+for a CMYK palette, the white of the printing characterisation it goes through (D50 for
+FOGRA39, see [reference-data.md](reference-data.md#cmyk-printing-characterisations)), and
+`cmyk_model` is required; for an sRGB palette, D65, and `cmyk_model` is ignored. Ties go to the
+lower index; `delta_e_out` may be `NULL`.
+
+```c
+alwan_cmyk_model *fogra = NULL;
+alwan_cmyk_model_fogra39(&fogra, ctx);
+alwan_lab_f64 lab = { 60.0, 40.0, 20.0 };          /* D50 */
+size_t idx;
+alwan_f64 de;
+alwan_palette_nearest_f64(&idx, &de, ALWAN_PALETTE_FREETONE, &lab, fogra);
+alwan_cmyk_model_destroy(fogra, ctx);
+```
+
 ## HEX notation
 
 ```c

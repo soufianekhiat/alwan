@@ -872,6 +872,14 @@ under a different light. `alwan_chart_get_source_{T}` reports which family was u
 Reflectance may be written as `[0, 1]` or as percent, and the standard marks neither, so the
 reader decides per row on the magnitude.
 
+**Device columns and the file's own Lab.** A characterisation data set pairs device values with
+colorimetry. `CMYK_C` / `CMYK_M` / `CMYK_Y` / `CMYK_K` (percent) or `RGB_R` / `RGB_G` / `RGB_B`
+(the file's own scale) are kept as written: `alwan_chart_device_model_{T}` says which,
+`alwan_chart_device_values_{T}` returns four values per patch (three and a zero for RGB), and
+both are `ALWAN_CHART_DEVICE_NONE` / `ALWAN_E_NODATA` for a file without them. When the file has
+`LAB_*` columns, `alwan_chart_lab_{T}` returns them as written, beside the XYZ the reader derived.
+The writer emits both families, so a write and read back keeps them.
+
 **Serial lookup is the application's job**, and deliberately so: alwan does no network access.
 `SERIAL` is a header key like any other, so the pieces for the workflow are all here. Read the
 QR code on the target, scan a directory of measurement files, compare
@@ -892,6 +900,39 @@ length it needs when handed a `NULL` buffer, and returns `ALWAN_E_RANGE` rather 
 `DATA` block, a `NUMBER_OF_SETS` that disagrees with the row count, a row whose width does not
 match the format, or a cell that is not a number. `ALWAN_E_NODATA` for a well-formed file that
 carries no colorimetry alwan can use.
+
+---
+
+## CMYK Printing Characterisations
+
+```c
+alwan_status alwan_cmyk_model_fogra39(alwan_cmyk_model **out, alwan_ctx *ctx);
+alwan_status alwan_cmyk_model_from_chart_{T}(alwan_cmyk_model **out, alwan_chart_{T} const *chart, alwan_ctx *ctx);
+void alwan_cmyk_model_destroy(alwan_cmyk_model *model, alwan_ctx *ctx);
+alwan_status alwan_cmyk_to_lab_{T}(alwan_lab_{T} *lab_out, alwan_cmyk_{T} const *cmyk, alwan_cmyk_model const *model);
+```
+
+Device CMYK means nothing colorimetric until a printing condition is attached. A model turns
+CMYK in [0, 1] into CIELAB relative to the data's white, D50 for the ISO printing conditions,
+through an ISO 12642-2 (IT8.7/4) characterisation data set.
+
+The IT8.7/4 target lays out complete CMY cubes on six K planes: K = 0 on nine levels, 20 on six,
+40 and 60 on five, 80 on four, 100 on two. The model interpolates Lab multilinearly inside a
+plane's cube, taking cells as scipy's `RegularGridInterpolator` does, then linearly in K between
+the two planes around the query. Patches the target repeats are averaged. It interpolates Lab
+rather than XYZ because Lab measured better: on the 321 FOGRA39 patches the model does not use,
+dE2000 is mean 0.13 and maximum 1.21 in Lab, 0.24 and 1.52 in XYZ (suite 137).
+
+`alwan_cmyk_model_fogra39` builds from FOGRA39, which alwan embeds: Fogra's FOGRA39L data
+(ISO 12647-2:2004/Amd 1, coated paper), byte for byte. Fogra's terms allow redistribution in
+software when the data are unmodified and Fogra is named as the source, so the file goes in
+as Fogra publishes it and alwan's own CGATS reader parses it at run time. The FOGRAxx name
+identifies the data set only and implies no certification by Fogra.
+
+`alwan_cmyk_model_from_chart_{T}` builds from any loaded IT8.7/4 set with CMYK columns, a
+CGATS.21 CRPC file for instance, using its `LAB_*` columns when it has them and its XYZ
+otherwise. It is `ALWAN_E_NODATA` for a chart without CMYK, or without every node of the six
+cubes. CMYK outside [0, 1] is `ALWAN_E_INVALID`.
 
 ---
 

@@ -3,9 +3,9 @@
 > **Alwan** (ألوان): Arabic for "colours"
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-136%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-107%2C188%20per%20run-brightgreen)](#validation)
-[![reference data](https://img.shields.io/badge/reference%20data-394%20sets-blue)](#validation)
+[![tests](https://img.shields.io/badge/tests-137%20suites-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-108%2C228%20per%20run-brightgreen)](#validation)
+[![reference data](https://img.shields.io/badge/reference%20data-395%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -623,13 +623,13 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 136, all passing |
-| Test cases | 927 |
-| Checks executed per run | 107,188 |
-| Assertion sites in the tests | 3,302 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 394 |
+| Test suites | 137, all passing |
+| Test cases | 931 |
+| Checks executed per run | 108,228 |
+| Assertion sites in the tests | 3,333 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 395 |
 | Embedded data tables | 761 |
-| Exported symbols | 1,759 |
+| Exported symbols | 1,773 |
 | Internal symbols reached by a test or a public entry point | 155 of 179 (87%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -637,7 +637,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**107,188 checks per run** is what actually executes, not what is written. A
+**108,228 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -672,7 +672,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 136 test suites, single binary
+./build/tests/Release/alwan_tests   # 137 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -681,7 +681,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 136 suites, 927 cases, 107,188 checks executed per run
+  module: 137 suites, 931 cases, 108,228 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
@@ -719,7 +719,7 @@ alwan/                       # this repo (library only)
 \-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-+-- tests/                   # 136 test suites + reference fixtures
++-- tests/                   # 137 test suites + reference fixtures
 +-- bench/                   # micro-benchmarks
 +-- det_regression/          # cross-platform determinism regression tool
 +-- image_gen/               # validation visuals
@@ -783,7 +783,7 @@ own. Those jobs verify a clean compile; the test suite runs from
 - [x] Dual precision (f32 + f64 in one binary)
 - [x] Data embedding with diagnostic guards
 - [x] Sharpmake + CMake build systems
-- [x] Unified test suite (136 suites, hosted in alwan_dev)
+- [x] Unified test suite (137 suites, hosted in alwan_dev)
 - [x] 109 named RGB spaces, easy to add more via space descriptors
 - [x] Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,
