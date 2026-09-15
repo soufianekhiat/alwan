@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Luminous flux, mired and the Planckian and daylight loci.**
+  `alwan_spd_luminous_flux_{T}`, `_efficiency_{T}` and `_efficacy_{T}`, photopic and
+  scotopic, as colour-science integrates them, to 2e-15; `alwan_cct_to_mired_{T}` and
+  back; Krystek 1985's locus, `alwan_cct_to_uv_krystek1985_{T}`; Planck's law against
+  an observer's CMFs, `alwan_cct_to_uv_planck1900_{T}`, to 7e-16; and exact inverses
+  of both loci, `alwan_uv_to_cct_krystek1985_{T}` and `alwan_xy_to_cct_cie_d_{T}`,
+  where colour-science runs a search that stops within 5e-5 K of them (suite 133).
+
 - **Lightness, Munsell value, whiteness and yellowness methods.** The rest of
   colour-science's registries: `alwan_lightness_{T}` and its inverse for CIE 1976,
   Glasser 1958, Wyszecki 1963, Fairchild 2010 and 2011 and Abebe 2017;
@@ -617,6 +625,13 @@ All notable changes to this project will be documented in this file.
   version they came from.
 
 ### Fixed: output differs
+
+- **V(lambda) and V'(lambda) were 10 nm tables.** gendata resampled colour-science's
+  1 nm CIE data to 10 nm over 380-780 nm, and alwan interpolated linearly between the
+  samples, so `alwan_luminous_efficiency_{T}` was off between every tenth nanometre
+  and the photopic, scotopic and mesopic luminance integrals of a narrow band were off
+  by up to 1.5e-2. The tables are colour-science's own now, 1 nm over 360-830 nm and
+  380-780 nm, and suite 41 checks them to 1e-12 where it allowed 0.01.
 
 - **The deterministic BT.709 and BT.2020 curves split at the wrong side of 0.018.**
   They shared sRGB's helper, which puts the break itself on the linear segment; the

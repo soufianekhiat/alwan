@@ -120,6 +120,42 @@ alwan_cct_duv_optimize_f64(&cct, &duv, &xy);
 printf("CCT: %.0fK, Duv: %.5f\n", cct, duv);
 ```
 
+### Mired
+
+```c
+alwan_status alwan_cct_to_mired_f64(alwan_f64 *mired_out, alwan_f64 cct);
+alwan_status alwan_mired_to_cct_f64(alwan_f64 *cct_out, alwan_f64 mired);
+```
+
+1e6 / CCT and back. `ALWAN_E_INVALID` for 0.
+
+### Planckian and daylight loci
+
+```c
+alwan_status alwan_cct_to_uv_krystek1985_f64(alwan_vec2_f64 *uv_out, alwan_f64 cct);
+alwan_status alwan_uv_to_cct_krystek1985_f64(alwan_f64 *cct_out, alwan_vec2_f64 const *uv);
+alwan_status alwan_cct_to_uv_planck1900_f64(alwan_vec2_f64 *uv_out, alwan_f64 cct,
+                                            alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_xy_to_cct_cie_d_f64(alwan_f64 *cct_out, alwan_vec2_f64 const *xy);
+```
+
+`alwan_cct_to_uv_krystek1985` is Krystek's 1985 rational fit of the Planckian locus in
+CIE 1960 uv, valid 1000 K to 15000 K. `alwan_cct_to_uv_planck1900` computes the locus
+itself: Planck's law with c2 = 1.4388e-2 m K summed against the observer's 1 nm CMFs,
+as colour-science's `CCT_to_uv_Planck1900`.
+
+The two inverses return the CCT whose locus point is nearest the input: in uv on
+Krystek's curve over 1000 K to 15000 K, in xy on the CIE daylight locus
+(`alwan_d_series_illuminant_xy`) over 4000 K to 25000 K. They sample the range evenly
+in mired, then bisect on the derivative of the squared distance, so the answer is the
+exact minimum. colour-science's `uv_to_CCT_Krystek1985` and `xy_to_CCT_CIE_D` run a
+general minimiser and land within 5e-5 K of it (suite 133). A point whose nearest
+locus point lies past the range is `ALWAN_E_RANGE`; a point on the locus at the range
+end itself is in range. The daylight locus switches formula at 7000 K, and the
+inverse searches each side separately.
+
+All take f32 twins; the searches and Planck's sum run in double.
+
 ---
 
 ## Color Rendering Index (CRI)

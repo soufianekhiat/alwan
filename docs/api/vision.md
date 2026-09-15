@@ -313,7 +313,7 @@ alwan_scalar alwan_luminous_efficiency(alwan_scalar wavelength,
                                        alwan_vision_type vision_type);
 ```
 
-Get luminous efficiency for a wavelength [360, 830] nm. Returns value [0, 1]. Data: CIE photopic V(lambda) 1924/1988, CIE scotopic V'(lambda) 1951.
+Get luminous efficiency for a wavelength [360, 830] nm. Returns value [0, 1]. Data: CIE photopic V(lambda) 1924 at 1 nm over 360-830 nm, CIE scotopic V'(lambda) 1951 at 1 nm over 380-780 nm, as colour-science ships them, interpolated linearly between samples. Inside [360, 830] but outside the scotopic table's range it returns the table's end value.
 
 ### alwan_photopic_luminance / alwan_scotopic_luminance
 
@@ -323,6 +323,25 @@ alwan_scalar alwan_scotopic_luminance(alwan_ctx *ctx, alwan_spd const *spd);
 ```
 
 Calculate photopic or scotopic luminance from an SPD. Returns luminance in cd/m^2.
+
+### alwan_spd_luminous_flux / _efficiency / _efficacy
+
+```c
+alwan_status alwan_spd_luminous_flux_f64(alwan_f64 *flux_out, alwan_spd_f64 const *spd,
+                                         alwan_vision_type vision, alwan_f64 K_m);
+alwan_status alwan_spd_luminous_efficiency_f64(alwan_f64 *efficiency_out,
+                                               alwan_spd_f64 const *spd, alwan_vision_type vision);
+alwan_status alwan_spd_luminous_efficacy_f64(alwan_f64 *efficacy_out, alwan_spd_f64 const *spd,
+                                             alwan_vision_type vision, alwan_f64 K_m);
+```
+
+colour-science's `luminous_flux`, `luminous_efficiency` and `luminous_efficacy`: the
+trapezoid of V(lambda) S(lambda) over the SPD's own samples, V 0 outside its table,
+times K_m for the flux; over the plain trapezoid of S for the efficiency; K_m times the
+efficiency for the efficacy, in lm/W. `vision` is photopic or scotopic; `K_m` 0 means
+683 or 1700, colour-science's constants (`alwan_photopic_luminance` uses 683.002). Mesopic
+needs an adaptation level and is `ALWAN_E_INVALID` here, as is a negative `K_m` or an
+SPD of fewer than two samples. Matches colour-science to 2e-15 (suite 133).
 
 ### alwan_mesopic_luminance
 
