@@ -3926,6 +3926,32 @@ void alwan_cct_to_xy_kang_f64(alwan_vec2_f64 *xy_out, alwan_f64 cct);
 alwan_f32  alwan_cct_kang_xy_f32(alwan_vec2_f32 const *xy);
 alwan_f64 alwan_cct_kang_xy_f64(alwan_vec2_f64 const *xy);
 
+/* Mired, 1e6 / CCT, and back. 0 is ALWAN_E_INVALID. */
+alwan_status alwan_cct_to_mired_f64(alwan_f64 *mired_out, alwan_f64 cct);
+alwan_status alwan_cct_to_mired_f32(alwan_f32 *mired_out, alwan_f32 cct);
+alwan_status alwan_mired_to_cct_f64(alwan_f64 *cct_out, alwan_f64 mired);
+alwan_status alwan_mired_to_cct_f32(alwan_f32 *cct_out, alwan_f32 mired);
+
+/* The Planckian locus in CIE 1960 uv by Krystek 1985's rational fit, for 1000 K to
+ * 15000 K; and its inverse, the CCT in that range whose locus point is nearest uv, solved
+ * exactly where colour-science runs a Nelder-Mead search. ALWAN_E_RANGE when the nearest
+ * point is an end of the range. */
+alwan_status alwan_cct_to_uv_krystek1985_f64(alwan_vec2_f64 *uv_out, alwan_f64 cct);
+alwan_status alwan_cct_to_uv_krystek1985_f32(alwan_vec2_f32 *uv_out, alwan_f32 cct);
+alwan_status alwan_uv_to_cct_krystek1985_f64(alwan_f64 *cct_out, alwan_vec2_f64 const *uv);
+alwan_status alwan_uv_to_cct_krystek1985_f32(alwan_f32 *cct_out, alwan_vec2_f32 const *uv);
+
+/* The Planckian locus in CIE 1960 uv from Planck's law summed against an observer's 1 nm
+ * CMFs, c2 = 1.4388e-2 m K, as colour-science's CCT_to_uv_Planck1900. */
+alwan_status alwan_cct_to_uv_planck1900_f64(alwan_vec2_f64 *uv_out, alwan_f64 cct, alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_cct_to_uv_planck1900_f32(alwan_vec2_f32 *uv_out, alwan_f32 cct, alwan_observer_type observer, alwan_ctx *ctx);
+
+/* The CCT, 4000 K to 25000 K, whose CIE daylight locus point (alwan_d_series_illuminant_xy)
+ * is nearest xy, solved exactly on each side of the locus's 7000 K joint. ALWAN_E_RANGE
+ * when the nearest point is an end of the range. */
+alwan_status alwan_xy_to_cct_cie_d_f64(alwan_f64 *cct_out, alwan_vec2_f64 const *xy);
+alwan_status alwan_xy_to_cct_cie_d_f32(alwan_f32 *cct_out, alwan_vec2_f32 const *xy);
+
 /* CRI (Color Rendering Index) Ra - average of 8 TCS samples */
 /* Requires SPD (spectral power distribution) */
 /* Returns CRI Ra value, or negative on error.
@@ -4126,6 +4152,20 @@ alwan_f32 alwan_scotopic_luminance_f32(alwan_spd_f32 const *spd, alwan_ctx *ctx)
  * L_mes = m*L_p + (1-m)*(K_m/K_m')*L_s */
 alwan_f64 alwan_mesopic_luminance_f64(alwan_spd_f64 const *spd, alwan_f64 adaptation_level, alwan_ctx *ctx);
 alwan_f32 alwan_mesopic_luminance_f32(alwan_spd_f32 const *spd, alwan_f32 adaptation_level, alwan_ctx *ctx);
+
+/* Luminous flux of an SPD: K_m times the trapezoid of V(lambda) S(lambda) over the SPD's
+ * own samples, V(lambda) 0 outside its data, as colour-science computes it. vision is
+ * ALWAN_VISION_PHOTOPIC (CIE 1924) or ALWAN_VISION_SCOTOPIC (CIE 1951); K_m 0 reads as 683
+ * or 1700, colour-science's constants (alwan_photopic_luminance uses 683.002). Efficiency
+ * is the V-weighted trapezoid over the plain one; efficacy is K_m times it, in lm/W.
+ * ALWAN_E_INVALID for MESOPIC, which needs an adaptation level, a negative K_m, or an SPD
+ * of fewer than two samples. */
+alwan_status alwan_spd_luminous_flux_f64(alwan_f64 *flux_out, alwan_spd_f64 const *spd, alwan_vision_type vision, alwan_f64 K_m);
+alwan_status alwan_spd_luminous_flux_f32(alwan_f32 *flux_out, alwan_spd_f32 const *spd, alwan_vision_type vision, alwan_f32 K_m);
+alwan_status alwan_spd_luminous_efficiency_f64(alwan_f64 *efficiency_out, alwan_spd_f64 const *spd, alwan_vision_type vision);
+alwan_status alwan_spd_luminous_efficiency_f32(alwan_f32 *efficiency_out, alwan_spd_f32 const *spd, alwan_vision_type vision);
+alwan_status alwan_spd_luminous_efficacy_f64(alwan_f64 *efficacy_out, alwan_spd_f64 const *spd, alwan_vision_type vision, alwan_f64 K_m);
+alwan_status alwan_spd_luminous_efficacy_f32(alwan_f32 *efficacy_out, alwan_spd_f32 const *spd, alwan_vision_type vision, alwan_f32 K_m);
 
 /* Contrast Sensitivity Function (CSF) */
 

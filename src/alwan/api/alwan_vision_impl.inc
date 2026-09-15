@@ -102,8 +102,9 @@ alwan_status ALWAN_CORE_FNLIT(alwan_simulate_cvd_ex)(ALWAN_CORE_RGB *rgb_out,
  * Luminous Efficiency Functions
  * ================================================================ */
 
-/* Interpolate interleaved {wavelength, value} pairs (stride 2).
- * Templatized per precision so the f32 path reads native float LUTs. */
+/* Interpolate interleaved {wavelength, value} pairs (stride 2) on the tables'
+ * regular 1 nm grid, clamped to the end values. Templatized per precision so the
+ * f32 path reads native float LUTs. */
 static ALWAN_CORE_T ALWAN_CORE_FNLIT(interpolate_lut)(ALWAN_CORE_T const *data,
                                                       int count,
                                                       ALWAN_CORE_T wavelength) {
@@ -114,17 +115,9 @@ static ALWAN_CORE_T ALWAN_CORE_FNLIT(interpolate_lut)(ALWAN_CORE_T const *data,
         return data[(count - 1) * 2 + 1];
     }
 
-    int i;
-    for (i = 0; i < count - 1; i++) {
-        ALWAN_CORE_T wl_lo = data[i * 2];
-        ALWAN_CORE_T wl_hi = data[(i + 1) * 2];
-        if (wavelength >= wl_lo && wavelength <= wl_hi) {
-            ALWAN_CORE_T t = (wavelength - wl_lo) / (wl_hi - wl_lo);
-            return data[i * 2 + 1] + t * (data[(i + 1) * 2 + 1] - data[i * 2 + 1]);
-        }
-    }
-
-    return ALWAN_CORE_LITERAL(0.0);
+    ALWAN_CORE_TABLE_CELL const c =
+        ALWAN_CORE_FNVLIT(alwan_table_cell_unit)((wavelength - data[0]) / (data[2] - data[0]), count);
+    return data[c.i0 * 2 + 1] + c.frac * (data[c.i1 * 2 + 1] - data[c.i0 * 2 + 1]);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_vision_interpolate_photopic_lut)(ALWAN_CORE_T wavelength) {
@@ -320,6 +313,75 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_scotopic_luminance)(ALWAN_CORE_SPD const *sp
     }
 
     return Kmp * sum * step;
+}
+
+/* ================================================================
+ * Luminous flux, efficiency and efficacy
+ *
+ * colour-science's luminous_flux / luminous_efficiency / luminous_efficacy:
+ * trapezoids over the SPD's own samples, V 0 outside its table. Summed in double
+ * in both precisions.
+ * ================================================================ */
+
+static double ALWAN_CORE_FNLIT(alwan__lef_or_zero)(double wl, alwan_vision_type vision) {
+    int const scotopic = (int)vision == (int)ALWAN_VISION_SCOTOPIC;
+    ALWAN_CORE_T const *d = scotopic ? ALWAN_CORE_FNLIT(SCOTOPIC_VP_DATA) : ALWAN_CORE_FNLIT(PHOTOPIC_V_DATA);
+    int const n = scotopic ? SCOTOPIC_VP_COUNT : PHOTOPIC_V_COUNT;
+    if (wl < (double)d[0] || wl > (double)d[(n - 1) * 2]) return 0.0;
+    return (double)ALWAN_CORE_FNLIT(interpolate_lut)(d, n, (ALWAN_CORE_T)wl);
+}
+
+static alwan_status ALWAN_CORE_FNLIT(alwan__luminous_integrals)(double *vs, double *s, ALWAN_CORE_SPD const *spd,
+                                                               alwan_vision_type vision) {
+    double step, w0, v0;
+    size_t i;
+    if (!spd || !spd->values || spd->count < 2) return ALWAN_E_INVALID;
+    if ((int)vision != (int)ALWAN_VISION_PHOTOPIC && (int)vision != (int)ALWAN_VISION_SCOTOPIC) return ALWAN_E_INVALID;
+    step = ((double)spd->wavelength_max - (double)spd->wavelength_min) / (double)(spd->count - 1);
+    *vs = 0.0;
+    *s = 0.0;
+    w0 = (double)spd->wavelength_min;
+    v0 = ALWAN_CORE_FNLIT(alwan__lef_or_zero)(w0, vision) * (double)spd->values[0];
+    for (i = 1; i < spd->count; i++) {
+        double const w1 = (double)spd->wavelength_min + (double)i * step;
+        double const v1 = ALWAN_CORE_FNLIT(alwan__lef_or_zero)(w1, vision) * (double)spd->values[i];
+        *vs += (w1 - w0) * (v1 + v0) / 2.0;
+        *s += (w1 - w0) * ((double)spd->values[i] + (double)spd->values[i - 1]) / 2.0;
+        w0 = w1;
+        v0 = v1;
+    }
+    return ALWAN_OK;
+}
+
+static double ALWAN_CORE_FNLIT(alwan__luminous_km)(ALWAN_CORE_T K_m, alwan_vision_type vision) {
+    return K_m != ALWAN_CORE_LITERAL(0.0) ? (double)K_m : ((int)vision == (int)ALWAN_VISION_SCOTOPIC ? 1700.0 : 683.0);
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_luminous_flux)(ALWAN_CORE_T *flux_out, ALWAN_CORE_SPD const *spd,
+                                                       alwan_vision_type vision, ALWAN_CORE_T K_m) {
+    double vs, s;
+    if (!flux_out || K_m < ALWAN_CORE_LITERAL(0.0)) return ALWAN_E_INVALID;
+    if (ALWAN_CORE_FNLIT(alwan__luminous_integrals)(&vs, &s, spd, vision) != ALWAN_OK) return ALWAN_E_INVALID;
+    *flux_out = (ALWAN_CORE_T)(ALWAN_CORE_FNLIT(alwan__luminous_km)(K_m, vision) * vs);
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_luminous_efficiency)(ALWAN_CORE_T *efficiency_out, ALWAN_CORE_SPD const *spd,
+                                                             alwan_vision_type vision) {
+    double vs, s;
+    if (!efficiency_out) return ALWAN_E_INVALID;
+    if (ALWAN_CORE_FNLIT(alwan__luminous_integrals)(&vs, &s, spd, vision) != ALWAN_OK || s == 0.0) return ALWAN_E_INVALID;
+    *efficiency_out = (ALWAN_CORE_T)(vs / s);
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_luminous_efficacy)(ALWAN_CORE_T *efficacy_out, ALWAN_CORE_SPD const *spd,
+                                                           alwan_vision_type vision, ALWAN_CORE_T K_m) {
+    double vs, s;
+    if (!efficacy_out || K_m < ALWAN_CORE_LITERAL(0.0)) return ALWAN_E_INVALID;
+    if (ALWAN_CORE_FNLIT(alwan__luminous_integrals)(&vs, &s, spd, vision) != ALWAN_OK || s == 0.0) return ALWAN_E_INVALID;
+    *efficacy_out = (ALWAN_CORE_T)(ALWAN_CORE_FNLIT(alwan__luminous_km)(K_m, vision) * (vs / s));
+    return ALWAN_OK;
 }
 
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_mesopic_luminance)(ALWAN_CORE_SPD const *spd, ALWAN_CORE_T adaptation_level,

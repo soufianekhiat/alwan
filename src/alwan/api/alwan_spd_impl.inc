@@ -1195,6 +1195,42 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd_astm_e308)(ALWAN_CORE_XYZ *xyz_
 }
 
 /* ----------------------------------------------------------------
+ * Planck 1900 locus
+ *
+ * Planck's law summed against the observer's 1 nm CMFs, then CIE 1960 uv, as
+ * colour-science's CCT_to_uv_Planck1900. c1, pi and the integration step multiply
+ * X, Y and Z alike and cancel in uv.
+ * ---------------------------------------------------------------- */
+
+alwan_status ALWAN_CORE_FNLIT(alwan_cct_to_uv_planck1900)(ALWAN_CORE_VEC2 *uv_out, ALWAN_CORE_T cct,
+                                                          alwan_observer_type observer, alwan_ctx *ctx) {
+    ALWAN_CORE_SPD xb, yb, zb;
+    double X = 0.0, Y = 0.0, Z = 0.0, U, V, W, s;
+    size_t i;
+    int st;
+    if (!uv_out || !(cct > ALWAN_CORE_LITERAL(0.0))) return ALWAN_E_INVALID;
+    st = ALWAN_CORE_FN(load_observer_cmf)(ctx, observer, &xb, &yb, &zb);
+    if (st != ALWAN_OK) return (alwan_status)st;
+    for (i = 0; i < xb.count; i++) {
+        double const l = ((double)xb.wavelength_min + (double)i) * 1e-9;
+        double const p = (1.0 / (l * l * l * l * l)) / (ALWAN_EXP_F64(1.4388e-2 / (l * (double)cct)) - 1.0);
+        X += p * (double)xb.values[i];
+        Y += p * (double)yb.values[i];
+        Z += p * (double)zb.values[i];
+    }
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&xb, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&yb, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&zb, ctx);
+    U = 2.0 / 3.0 * X;
+    V = Y;
+    W = 1.0 / 2.0 * (-X + 3.0 * Y + Z);
+    s = U + V + W;
+    uv_out->v[0] = (ALWAN_CORE_T)(U / s);
+    uv_out->v[1] = (ALWAN_CORE_T)(V / s);
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
  * Camera Sensitivity Functions
  * ---------------------------------------------------------------- */
 
