@@ -604,6 +604,64 @@ static int least_squares_solve(alwan_f64 *A, alwan_f64 const *b,
     return ALWAN_OK;
 }
 
+/* Weighted, ridge-regularised least squares on the expanded samples A (m x n):
+ *
+ *     minimise  sum_i w_i |r_i - a_i X|^2 + ridge |X|_F^2
+ *
+ * by the same QR, on the augmented system [sqrt(w_i) a_i ; sqrt(ridge) I] X =
+ * [sqrt(w_i) r_i ; 0], so the normal equations are still never formed. This is
+ * sklearn's Ridge(fit_intercept=False) with sample_weight, every coefficient
+ * penalised alike. A sample of weight 0 is left out. With no weights and no ridge the
+ * system is A itself and the result is the unweighted fit, bit for bit. */
+static alwan_status alwan__ccm_solve(alwan_f64 *matrix_out, alwan_f64 const *A, alwan_f64 const *M_R, int m, int n,
+                                     alwan_ccm_fit_params const *params)
+{
+    alwan_f64 const *w = params ? params->weights : NULL;
+    alwan_f64 const ridge = params ? params->ridge : 0.0;
+    int rows = 0, extra, total, i, j, r;
+    alwan_f64 *Aa, *ba;
+    alwan_status st;
+
+    if (m < 1 || n < 1 || !(ridge >= 0.0) || ridge - ridge != 0.0) return ALWAN_E_INVALID;
+    for (i = 0; i < m; i++) {
+        if (w && (!(w[i] >= 0.0) || w[i] - w[i] != 0.0)) return ALWAN_E_INVALID;
+        if (!w || w[i] > 0.0) rows++;
+    }
+    extra = ridge > 0.0 ? n : 0;
+    total = rows + extra;
+    if (total < n) return ALWAN_E_INVALID;   /* fewer equations than terms and no ridge to close the gap */
+
+    size_t a_bytes = alwan_safe_array_size((size_t)total * (size_t)n, sizeof(alwan_f64));
+    size_t b_bytes = alwan_safe_array_size((size_t)total * 3, sizeof(alwan_f64));
+    if (a_bytes == 0 || b_bytes == 0) return ALWAN_E_NOMEM;
+    Aa = (alwan_f64 *)ALWAN_ALLOC(a_bytes, sizeof(alwan_f64));
+    ba = (alwan_f64 *)ALWAN_ALLOC(b_bytes, sizeof(alwan_f64));
+    if (!Aa || !ba) {
+        if (Aa) ALWAN_FREE(Aa);
+        if (ba) ALWAN_FREE(ba);
+        return ALWAN_E_NOMEM;
+    }
+    for (i = 0, r = 0; i < m; i++) {
+        alwan_f64 s;
+        if (w && !(w[i] > 0.0)) continue;
+        s = w ? ALWAN_SQRT(w[i]) : 1.0;
+        for (j = 0; j < n; j++) Aa[r * n + j] = w ? s * A[i * n + j] : A[i * n + j];
+        for (j = 0; j < 3; j++) ba[r * 3 + j] = w ? s * M_R[i * 3 + j] : M_R[i * 3 + j];
+        r++;
+    }
+    if (extra) {
+        alwan_f64 const s = ALWAN_SQRT(ridge);
+        for (i = 0; i < n; i++, r++) {
+            for (j = 0; j < n; j++) Aa[r * n + j] = i == j ? s : 0.0;
+            for (j = 0; j < 3; j++) ba[r * 3 + j] = 0.0;
+        }
+    }
+    st = (alwan_status)least_squares_solve(Aa, ba, total, n, matrix_out);
+    ALWAN_FREE(Aa);
+    ALWAN_FREE(ba);
+    return st;
+}
+
 alwan_status alwan_colour_correction_matrix_cheung2004_f64(alwan_f64 *matrix_out,
                                                alwan_f64 const *M_T,
                                                alwan_f64 const *M_R,
@@ -611,6 +669,16 @@ alwan_status alwan_colour_correction_matrix_cheung2004_f64(alwan_f64 *matrix_out
                                                alwan_poly_cheung_terms terms)
 {
     if (!M_T || !M_R || !matrix_out || num_samples < (int)terms) {
+        return ALWAN_E_INVALID;
+    }
+    return alwan_ccm_fit_cheung2004_f64(matrix_out, M_T, M_R, num_samples, terms, NULL);
+}
+
+alwan_status alwan_ccm_fit_cheung2004_f64(alwan_f64 *matrix_out, alwan_f64 const *M_T, alwan_f64 const *M_R,
+                                          int num_samples, alwan_poly_cheung_terms terms,
+                                          alwan_ccm_fit_params const *params)
+{
+    if (!M_T || !M_R || !matrix_out || num_samples < 1 || (int)terms < 1) {
         return ALWAN_E_INVALID;
     }
 
@@ -637,7 +705,7 @@ alwan_status alwan_colour_correction_matrix_cheung2004_f64(alwan_f64 *matrix_out
     }
 
     /* Solve least squares: A * matrix = M_R */
-    int result = least_squares_solve(A, M_R, num_samples, terms, matrix_out);
+    int result = alwan__ccm_solve(matrix_out, A, M_R, num_samples, (int)terms, params);
     ALWAN_FREE(A);
 
     return result;
@@ -705,7 +773,14 @@ alwan_status alwan_colour_correction_matrix_finlayson2015_f64(alwan_f64 *matrix_
                                                   alwan_f64 const *M_R,
                                                   int num_samples, int degree, int root_poly)
 {
-    if (!M_T || !M_R || !matrix_out || !matrix_size) {
+    return alwan_ccm_fit_finlayson2015_f64(matrix_out, matrix_size, M_T, M_R, num_samples, degree, root_poly, NULL);
+}
+
+alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_size, alwan_f64 const *M_T,
+                                             alwan_f64 const *M_R, int num_samples, int degree, int root_poly,
+                                             alwan_ccm_fit_params const *params)
+{
+    if (!M_T || !M_R || !matrix_out || !matrix_size || num_samples < 1) {
         return ALWAN_E_INVALID;
     }
 
@@ -720,7 +795,9 @@ alwan_status alwan_colour_correction_matrix_finlayson2015_f64(alwan_f64 *matrix_
     int result = alwan_poly_expand_finlayson2015_f64(test_out, &exp_size, &test_rgb, degree, root_poly);
     if (result != ALWAN_OK) return result;
 
-    if (num_samples < exp_size) {
+    /* Without a ridge there must be at least as many samples as terms; the solve
+     * checks the samples that carry weight. */
+    if (num_samples < exp_size && !(params && params->ridge > 0.0)) {
         return ALWAN_E_INVALID;
     }
 
@@ -748,7 +825,7 @@ alwan_status alwan_colour_correction_matrix_finlayson2015_f64(alwan_f64 *matrix_
     }
 
     /* Solve least squares */
-    result = least_squares_solve(A, M_R, num_samples, exp_size, matrix_out);
+    result = alwan__ccm_solve(matrix_out, A, M_R, num_samples, exp_size, params);
     ALWAN_FREE(A);
 
     *matrix_size = exp_size * 3;
@@ -1181,6 +1258,22 @@ alwan_status alwan_colour_correction_matrix_cheung2004_f32(alwan_f32 *matrix_out
                                                int num_samples,
                                                alwan_poly_cheung_terms terms) {
     if (!M_T || !M_R || !matrix_out || num_samples < (int)terms) return ALWAN_E_INVALID;
+    return alwan_ccm_fit_cheung2004_f32(matrix_out, M_T, M_R, num_samples, terms, NULL);
+}
+
+alwan_status alwan_colour_correction_matrix_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size,
+                                                  alwan_f32 const *M_T,
+                                                  alwan_f32 const *M_R,
+                                                  int num_samples, int degree, int root_poly) {
+    if (!M_T || !M_R || !matrix_out || !matrix_size) return ALWAN_E_INVALID;
+
+    return alwan_ccm_fit_finlayson2015_f32(matrix_out, matrix_size, M_T, M_R, num_samples, degree, root_poly, NULL);
+}
+
+alwan_status alwan_ccm_fit_cheung2004_f32(alwan_f32 *matrix_out, alwan_f32 const *M_T, alwan_f32 const *M_R,
+                                          int num_samples, alwan_poly_cheung_terms terms,
+                                          alwan_ccm_fit_params const *params) {
+    if (!M_T || !M_R || !matrix_out || num_samples < 1 || (int)terms < 1) return ALWAN_E_INVALID;
 
     size_t ns = (size_t)num_samples * 3;
     alwan_f64 *MT64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
@@ -1195,7 +1288,7 @@ alwan_status alwan_colour_correction_matrix_cheung2004_f32(alwan_f32 *matrix_out
     }
     for (size_t i = 0; i < ns; i++) { MT64[i] = (alwan_f64)M_T[i]; MR64[i] = (alwan_f64)M_R[i]; }
 
-    int rc = alwan_colour_correction_matrix_cheung2004_f64(mat64, MT64, MR64, num_samples, terms);
+    int rc = alwan_ccm_fit_cheung2004_f64(mat64, MT64, MR64, num_samples, terms, params);
     if (rc == ALWAN_OK) {
         for (size_t i = 0; i < mat_sz; i++) matrix_out[i] = (alwan_f32)mat64[i];
     }
@@ -1203,17 +1296,17 @@ alwan_status alwan_colour_correction_matrix_cheung2004_f32(alwan_f32 *matrix_out
     return rc;
 }
 
-alwan_status alwan_colour_correction_matrix_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size,
-                                                  alwan_f32 const *M_T,
-                                                  alwan_f32 const *M_R,
-                                                  int num_samples, int degree, int root_poly) {
-    if (!M_T || !M_R || !matrix_out || !matrix_size) return ALWAN_E_INVALID;
+alwan_status alwan_ccm_fit_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size, alwan_f32 const *M_T,
+                                             alwan_f32 const *M_R, int num_samples, int degree, int root_poly,
+                                             alwan_ccm_fit_params const *params) {
+    if (!M_T || !M_R || !matrix_out || !matrix_size || num_samples < 1) return ALWAN_E_INVALID;
 
     size_t ns = (size_t)num_samples * 3;
     alwan_f64 *MT64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
     alwan_f64 *MR64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
-    /* max size for finlayson is 22 features * 3 */
-    alwan_f64 mat64[22 * 3];
+    /* The widest basis, plain degree 4, has 34 terms. matrix_size comes back as the
+     * element count, terms x 3, which is exactly what is copied out. */
+    alwan_f64 mat64[34 * 3];
     if (!MT64 || !MR64) {
         if (MT64) ALWAN_FREE(MT64);
         if (MR64) ALWAN_FREE(MR64);
@@ -1221,10 +1314,9 @@ alwan_status alwan_colour_correction_matrix_finlayson2015_f32(alwan_f32 *matrix_
     }
     for (size_t i = 0; i < ns; i++) { MT64[i] = (alwan_f64)M_T[i]; MR64[i] = (alwan_f64)M_R[i]; }
 
-    int rc = alwan_colour_correction_matrix_finlayson2015_f64(mat64, matrix_size, MT64, MR64, num_samples, degree, root_poly);
+    int rc = alwan_ccm_fit_finlayson2015_f64(mat64, matrix_size, MT64, MR64, num_samples, degree, root_poly, params);
     if (rc == ALWAN_OK) {
-        int total = (*matrix_size) * 3;
-        for (int i = 0; i < total; i++) matrix_out[i] = (alwan_f32)mat64[i];
+        for (int i = 0; i < *matrix_size; i++) matrix_out[i] = (alwan_f32)mat64[i];
     }
     ALWAN_FREE(MT64); ALWAN_FREE(MR64);
     return rc;

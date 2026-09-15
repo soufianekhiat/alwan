@@ -4666,6 +4666,31 @@ void alwan_colour_correct_finlayson2015_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f3
 void alwan_colour_correct_finlayson2015_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb,
                                         alwan_f64 const *matrix, int degree, int root_poly);
 
+/* How a colour correction matrix is fitted. The zero value, or NULL, is the plain
+ * least-squares fit of alwan_colour_correction_matrix_*, bit for bit.
+ *
+ *     minimise  sum_i w_i |reference_i - expanded(test_i) X|^2 + ridge |X|_F^2
+ *
+ * weights: one per sample, finite and not negative, f64 in both precisions; NULL for
+ *          uniform. A weight of 0 drops a patch that glared or is scratched; weighting
+ *          the neutral ramp or skin higher spends the fit's accuracy there.
+ * ridge:   Tikhonov regularisation, finite and not negative, on every coefficient
+ *          alike; 0 for none. It shrinks the high-order terms when the term count
+ *          nears the patch count, and lets a fit have more terms than patches.
+ * Matches scikit-learn's Ridge(fit_intercept=False) with sample_weight on colour's
+ * expansions, which are these term for term. */
+typedef struct {
+    alwan_f64 const *weights;
+    alwan_f64 ridge;
+} alwan_ccm_fit_params;
+
+/* The two fits above with alwan_ccm_fit_params; the arguments before it are theirs.
+ * Without a ridge the samples of non-zero weight must number at least the terms. */
+alwan_status alwan_ccm_fit_cheung2004_f64(alwan_f64 *matrix_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_fit_cheung2004_f32(alwan_f32 *matrix_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_size, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_fit_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
+
 /* White balance multipliers from neutral gray measurement
  * Given a measured RGB value that should be neutral gray,
  * computes the multipliers to normalize it.
