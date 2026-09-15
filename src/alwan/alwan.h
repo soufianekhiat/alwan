@@ -1586,6 +1586,11 @@ alwan_status alwan_palette_nearest_f64(size_t *index_out, alwan_f64 *delta_e_out
  * are the pattern's own fractions of the width rounded to the nearest sample, band
  * edges the same of the height. row_stride is in bytes: at least width x 3 values
  * interleaved, width values planar.
+ *
+ * The EBU Tech 3325 patterns read a 10-bit code c as (c - 64) / 876, so 50 % grey (502)
+ * is 0.5 and super white (1019) 955/876. Their patches are squares of H/7.5 samples, 1 %
+ * of a 16:9 picture, centred on the standard's measurement points; the windows keep the
+ * picture's aspect. Every edge rounds to the nearest sample.
  * ---------------------------------------------------------------- */
 
 typedef enum {
@@ -1594,6 +1599,15 @@ typedef enum {
     ALWAN_PATTERN_BARS_100_0_100_25 = 2,   /* ITU-R BT.471-1 (c) */
     ALWAN_PATTERN_BARS_75_7_5_75_7_5 = 3,  /* ITU-R BT.471-1 (d), 7.5 % setup */
     ALWAN_PATTERN_ARIB_STD_B28 = 4,        /* ARIB STD-B28 multiformat colour bar, the basis of SMPTE RP 219 */
+    ALWAN_PATTERN_EBU_1 = 5,               /* EBU Tech 3325 EBU_1: peak white and four black patches on 50 % grey */
+    ALWAN_PATTERN_EBU_2 = 6,               /* EBU_2: EBU_1 with the white patch at 109 % super white */
+    ALWAN_PATTERN_EBU_3 = 7,               /* EBU_3-1 to 3-13: a white patch at measurement point ebu_point */
+    ALWAN_PATTERN_EBU_3_WINDOW = 8,        /* EBU_3-1_4, _10, _25, _81: a centred white window of ebu_area % */
+    ALWAN_PATTERN_EBU_3_BLACK = 9,         /* EBU_3-black */
+    ALWAN_PATTERN_EBU_3_WHITE = 10,        /* EBU_3-white: peak white frame */
+    ALWAN_PATTERN_EBU_4 = 11,              /* EBU_4-1 to 4-20: the grey-scale patch ebu_step, on black */
+    ALWAN_PATTERN_EBU_5 = 12,              /* EBU_5: a BT.709 primary or EBU test colour, ebu_colour, on black */
+    ALWAN_PATTERN_EBU_12_GREY = 13,        /* EBU_12-grey: 50 % grey frame */
     ALWAN_PATTERN_COUNT
 } alwan_pattern;
 
@@ -1604,9 +1618,15 @@ typedef enum {
     ALWAN_PATTERN_B28_PLUS_I = 2
 } alwan_pattern_b28_choice;
 
-/* Zero-initialise; NULL means every default. */
+/* Zero-initialise; NULL means every default. The ebu_ numbers are Tech 3325's own
+ * (EBU_3-7 is ebu_point 7), 0 reads as the first of each series, and a number outside
+ * its series is ALWAN_E_INVALID whatever the pattern. */
 typedef struct {
     alwan_pattern_b28_choice b28_choice;
+    unsigned ebu_point;   /* EBU_3: measurement point 1 to 13 (Tech 3325 Figure 7) */
+    unsigned ebu_area;    /* EBU_3_WINDOW: white area in percent, 4, 10, 25 or 81 */
+    unsigned ebu_step;    /* EBU_4: grey-scale measurement number 1 to 20 (Table 5) */
+    unsigned ebu_colour;  /* EBU_5: 1 to 15 the EBU test colours (Table 7), 16 red, 17 green, 18 blue (Table 6) */
 } alwan_pattern_params;
 
 alwan_status alwan_pattern_render_f32(alwan_f32 *rgb_out, size_t row_stride, size_t width, size_t height,

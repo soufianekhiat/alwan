@@ -3,9 +3,9 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Test patterns rendered at any resolution: the colour bar signals of ITU-R BT.471-1
- * and the ARIB STD-B28 multiformat colour bar, as their native R'G'B' signal in
- * fractions of white, interleaved or planar.
+ * Test patterns rendered at any resolution: the colour bar signals of ITU-R BT.471-1,
+ * the ARIB STD-B28 multiformat colour bar and the EBU Tech 3325 monitor test patterns,
+ * as their native R'G'B' signal in fractions of white, interleaved or planar.
  *
  * Every stripe edge is the pattern's own fraction of the width, rounded to the nearest
  * sample, and every band edge the same fraction of the height, so a pattern keeps its
@@ -48,6 +48,34 @@ static double const k_b28[ALWAN__B28_LEVELS][3] = {
     { -0.02, -0.02, -0.02 }, { 0.02, 0.02, 0.02 }, { 0.04, 0.04, 0.04 }, { 0.0, 0.0, 0.0 },
 };
 
+/* EBU Tech 3325 Table 5: luma codes of the grey-scale patches EBU_4-1 to EBU_4-20. */
+static unsigned short const k_ebu_steps[20] = { 64,  86,  138, 190, 242, 294, 346, 398, 450, 502,
+                                                554, 606, 658, 710, 762, 814, 866, 918, 940, 1019 };
+
+/* Tables 7 and 6: D'Y, D'CB, D'CR of the 15 EBU test colours, then red, green and blue. */
+static unsigned short const k_ebu_colours[18][3] = {
+    { 381, 470, 578 }, { 636, 457, 599 }, { 582, 478, 592 }, { 577, 340, 480 }, { 579, 544, 411 },
+    { 586, 597, 543 }, { 433, 443, 487 }, { 460, 465, 703 }, { 658, 380, 370 }, { 470, 639, 468 },
+    { 319, 490, 616 }, { 487, 422, 396 }, { 321, 617, 491 }, { 655, 349, 673 }, { 494, 601, 593 },
+    { 250, 409, 960 }, { 691, 167, 105 }, { 127, 960, 471 },
+};
+
+/* A 10-bit narrow-range luma code as R'G'B': 64 is black, 940 white. */
+static double alwan__ebu_level(unsigned code) {
+    return ((double)code - 64.0) / 876.0;
+}
+
+/* The R'G'B' a D'Y, D'CB, D'CR triple decodes to, through the four-digit BT.709
+ * coefficients Tech 3325 Annex 3 encodes with. The codes are quantised, so a primary's
+ * other two channels land a little off 0 (red's blue is -0.00098) and stay there. */
+static void alwan__ebu_colour(double *rgb, unsigned short const *cv) {
+    double const y = ((double)cv[0] - 64.0) / 876.0;
+    double const cb = ((double)cv[1] - 512.0) / 896.0, cr = ((double)cv[2] - 512.0) / 896.0;
+    rgb[0] = y + 1.5748 * cr;
+    rgb[2] = y + 1.8556 * cb;
+    rgb[1] = (y - 0.2126 * rgb[0] - 0.0722 * rgb[2]) / 0.7152;
+}
+
 /* ---------------------------------------------------------------- geometry */
 
 /* The sample an edge at fraction f of the width falls on, rounded to the nearest. */
@@ -79,10 +107,97 @@ static void alwan__stripes(double *row, size_t w, double const *edges, int const
     }
 }
 
+static void alwan__fill_row(double *row, size_t w, double v) {
+    size_t x;
+    for (x = 0; x < 3 * w; x++) row[x] = v;
+}
+
+/* Paint, in row y, the rectangle centred on (cx, cy) samples with half sides hw and hh.
+ * Each edge rounds to the nearest sample and the rectangle is cut to the picture. */
+static void alwan__rect_row(double *row, size_t w, size_t y, double cx, double cy, double hw, double hh,
+                            double const *rgb) {
+    double const x0 = ALWAN_FLOOR(cx - hw + 0.5), x1 = ALWAN_FLOOR(cx + hw + 0.5);
+    double const y0 = ALWAN_FLOOR(cy - hh + 0.5), y1 = ALWAN_FLOOR(cy + hh + 0.5);
+    size_t x, xa, xb;
+    if ((double)y < y0 || (double)y >= y1) return;
+    xa = x0 <= 0.0 ? 0 : x0 >= (double)w ? w : (size_t)x0;
+    xb = x1 <= 0.0 ? 0 : x1 >= (double)w ? w : (size_t)x1;
+    for (x = xa; x < xb; x++) {
+        row[3 * x + 0] = rgb[0];
+        row[3 * x + 1] = rgb[1];
+        row[3 * x + 2] = rgb[2];
+    }
+}
+
+/* A Tech 3325 patch, an H/7.5 square, at measurement point p (1 to 13, Figure 7):
+ * w and h from the centre in fractions of the width and height, h upwards. */
+static void alwan__ebu_patch(double *row, size_t w, size_t h, size_t y, unsigned p, double const *rgb) {
+    static double const k_points[13][2] = {
+        { 0.0, 0.0 },  { 0.0, 0.4 },  { 0.2, 0.2 },   { 0.2, -0.2 }, { 0.0, -0.4 }, { -0.2, -0.2 }, { -0.2, 0.2 },
+        { 0.4, 0.4 },  { 0.4, 0.0 },  { 0.4, -0.4 },  { -0.4, 0.4 }, { -0.4, 0.0 }, { -0.4, -0.4 },
+    };
+    double const half = (double)h / 15.0;
+    double const cx = (double)w * 0.5 + k_points[p - 1][0] * (double)w;
+    double const cy = (double)h * 0.5 - k_points[p - 1][1] * (double)h;
+    alwan__rect_row(row, w, y, cx, cy, half, half, rgb);
+}
+
+/* One row of an EBU Tech 3325 pattern. */
+static void alwan__ebu_row(double *row, alwan_pattern pattern, alwan_pattern_params const *pr, size_t y, size_t w,
+                           size_t h) {
+    static double const k_black[3] = { 0.0, 0.0, 0.0 }, k_white[3] = { 1.0, 1.0, 1.0 };
+    double rgb[3];
+    switch (pattern) {
+    case ALWAN_PATTERN_EBU_1:
+    case ALWAN_PATTERN_EBU_2:
+        rgb[0] = rgb[1] = rgb[2] = alwan__ebu_level(1019);
+        alwan__fill_row(row, w, alwan__ebu_level(502));
+        alwan__ebu_patch(row, w, h, y, 2, k_black);
+        alwan__ebu_patch(row, w, h, y, 5, k_black);
+        alwan__ebu_patch(row, w, h, y, 9, k_black);
+        alwan__ebu_patch(row, w, h, y, 12, k_black);
+        alwan__ebu_patch(row, w, h, y, 1, pattern == ALWAN_PATTERN_EBU_2 ? rgb : k_white);
+        break;
+    case ALWAN_PATTERN_EBU_3:
+        alwan__fill_row(row, w, 0.0);
+        alwan__ebu_patch(row, w, h, y, pr && pr->ebu_point ? pr->ebu_point : 1, k_white);
+        break;
+    case ALWAN_PATTERN_EBU_3_WINDOW: {
+        /* A window of p % of the area keeps the picture's aspect: sqrt(p %) of each side. */
+        double const side = ALWAN_SQRT((double)(pr && pr->ebu_area ? pr->ebu_area : 4) / 100.0);
+        alwan__fill_row(row, w, 0.0);
+        alwan__rect_row(row, w, y, (double)w * 0.5, (double)h * 0.5, side * (double)w * 0.5, side * (double)h * 0.5,
+                        k_white);
+        break;
+    }
+    case ALWAN_PATTERN_EBU_3_WHITE:
+        alwan__fill_row(row, w, 1.0);
+        break;
+    case ALWAN_PATTERN_EBU_4:
+        rgb[0] = rgb[1] = rgb[2] = alwan__ebu_level(k_ebu_steps[(pr && pr->ebu_step ? pr->ebu_step : 1) - 1]);
+        alwan__fill_row(row, w, 0.0);
+        alwan__ebu_patch(row, w, h, y, 1, rgb);
+        break;
+    case ALWAN_PATTERN_EBU_5:
+        alwan__ebu_colour(rgb, k_ebu_colours[(pr && pr->ebu_colour ? pr->ebu_colour : 1) - 1]);
+        alwan__fill_row(row, w, 0.0);
+        alwan__ebu_patch(row, w, h, y, 1, rgb);
+        break;
+    case ALWAN_PATTERN_EBU_12_GREY:
+        alwan__fill_row(row, w, alwan__ebu_level(502));
+        break;
+    default: /* ALWAN_PATTERN_EBU_3_BLACK */
+        alwan__fill_row(row, w, 0.0);
+        break;
+    }
+}
+
 /* One row of a pattern, R'G'B' per sample. */
 static void alwan__pattern_row(double *row, alwan_pattern pattern, alwan_pattern_params const *pr, size_t y, size_t w,
                                size_t h) {
-    if (pattern <= ALWAN_PATTERN_BARS_75_7_5_75_7_5) {
+    if (pattern >= ALWAN_PATTERN_EBU_1) {
+        alwan__ebu_row(row, pattern, pr, y, w, h);
+    } else if (pattern <= ALWAN_PATTERN_BARS_75_7_5_75_7_5) {
         static double const k_sig[4][4] = { { 1.0, 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.75, 0.0 },
                                             { 1.0, 0.0, 1.0, 0.25 }, { 0.75, 0.075, 0.75, 0.075 } };
         double const *s = k_sig[pattern];
@@ -135,8 +250,13 @@ static void alwan__pattern_row(double *row, alwan_pattern pattern, alwan_pattern
 
 static alwan_status alwan__pattern_check(alwan_pattern pattern, alwan_pattern_params const *params, size_t w, size_t h) {
     if ((int)pattern < 0 || (int)pattern >= (int)ALWAN_PATTERN_COUNT || w == 0 || h == 0) return ALWAN_E_INVALID;
-    if (params && ((int)params->b28_choice < 0 || (int)params->b28_choice > (int)ALWAN_PATTERN_B28_PLUS_I)) {
-        return ALWAN_E_INVALID;
+    if (params) {
+        unsigned const a = params->ebu_area;
+        if ((int)params->b28_choice < 0 || (int)params->b28_choice > (int)ALWAN_PATTERN_B28_PLUS_I) {
+            return ALWAN_E_INVALID;
+        }
+        if (params->ebu_point > 13 || params->ebu_step > 20 || params->ebu_colour > 18) return ALWAN_E_INVALID;
+        if (a != 0 && a != 4 && a != 10 && a != 25 && a != 81) return ALWAN_E_INVALID;
     }
     return ALWAN_OK;
 }
