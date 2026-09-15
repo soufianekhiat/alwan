@@ -86,6 +86,8 @@ EXPORTS
     alwan_agx_map_interleave_ex
     alwan_apca_contrast_f32
     alwan_apca_contrast_f64
+    alwan_astm_e2022_weights_f32
+    alwan_astm_e2022_weights_f64
     alwan_atd95_forward_f32
     alwan_atd95_forward_f64
     alwan_atmosphere_params_default_f32
@@ -1450,6 +1452,8 @@ EXPORTS
     alwan_xyy_to_xyz_map_planar_ex
     alwan_xyz_adapt_f32
     alwan_xyz_adapt_f64
+    alwan_xyz_from_spd_astm_e308_f32
+    alwan_xyz_from_spd_astm_e308_f64
     alwan_xyz_from_spd_camera_f32
     alwan_xyz_from_spd_camera_f64
     alwan_xyz_from_spd_f32
