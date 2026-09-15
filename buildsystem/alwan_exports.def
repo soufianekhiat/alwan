@@ -155,6 +155,10 @@ EXPORTS
     alwan_cat_matrix_f64
     alwan_cat_zhai2018_f32
     alwan_cat_zhai2018_f64
+    alwan_ccm_fit_cheung2004_f32
+    alwan_ccm_fit_cheung2004_f64
+    alwan_ccm_fit_finlayson2015_f32
+    alwan_ccm_fit_finlayson2015_f64
     alwan_cct_duv_optimize_f32
     alwan_cct_duv_optimize_f64
     alwan_cct_hernandez_xy_f32
