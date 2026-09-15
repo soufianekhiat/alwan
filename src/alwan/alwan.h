@@ -5522,6 +5522,29 @@ alwan_status alwan_crf_samples_grossberg2003_f32(size_t *bins_out, alwan_f32 con
 alwan_status alwan_crf_debevec1997_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_crf_debevec1997_params const *params);
 alwan_status alwan_crf_debevec1997_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_crf_debevec1997_params const *params);
 
+/* Camera response recovery, Robertson, Borman and Stevenson 2003. The zero value of
+ * every field is OpenCV's default. */
+typedef struct {
+    size_t bins;         /* response resolution; 0 is 256 */
+    size_t iterations;   /* at most this many merge-and-re-estimate rounds; 0 is 30 */
+    alwan_f64 threshold; /* stop once the summed absolute change of the response, averaged over the
+                          * channels, falls below it; 0 is 0.01, a tiny value runs every round */
+} alwan_crf_robertson2003_params;
+
+/* The camera response of a bracket, Robertson, Borman and Stevenson 2003: merge every
+ * pixel with the current response, re-estimate the response as the mean exposure each
+ * pixel value records, and repeat, starting from a linear response. The bracket is
+ * given as for alwan_hdr_merge, and only the ratios of the exposures matter.
+ * response_out receives bins values per channel, planar, R then G then B, normalised
+ * to 1 at the middle value, which is the response alwan_hdr_merge takes. A value that
+ * no pixel holds is filled from its neighbours; OpenCV leaves it NaN. ALWAN_E_RANGE
+ * when no pixel holds the middle value. params NULL is the defaults. Matches OpenCV's
+ * CalibrateRobertson on 8-bit brackets divided by 255. With no smoothness term it
+ * needs exposures about a stop apart or closer: 3 stops apart leaves a sawtooth of
+ * half a stop, where alwan_crf_debevec1997 does not. */
+alwan_status alwan_crf_robertson2003_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_crf_robertson2003_params const *params);
+alwan_status alwan_crf_robertson2003_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_crf_robertson2003_params const *params);
+
 /* Exposure fusion, Mertens, Kautz and Van Reeth 2007. The zero value of every field is
  * the paper's choice. OpenCV's createMergeMertens() default leaves well-exposedness
  * out: ignore = ALWAN_FUSION_IGNORE_EXPOSURE. */

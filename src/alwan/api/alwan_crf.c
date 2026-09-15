@@ -22,12 +22,17 @@
  * set by that row. The responses are then exp(g), extrapolated by a polynomial
  * where the weight is zero, and scaled so each channel peaks at 1.
  *
+ * Robertson, Borman and Stevenson 2003 is the other recovery here, after OpenCV's
+ * CalibrateRobertson: it alternates between merging the bracket with the current
+ * response and re-estimating the response from that merge, over every pixel.
+ *
  * Everything computes in f64; the f32 entry points read f32 images.
  */
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_table_core.h"
+#include <float.h>
 #include <string.h>
 
 #define ALWAN__CRF_MAX_BINS 65536
@@ -468,6 +473,167 @@ static alwan_status alwan__crf_log_exposures(double *B, double const *N, double 
 }
 
 /* ================================================================
+ * Robertson, Borman and Stevenson 2003
+ *
+ * Start from a linear response I(z) = z / (n / 2). Then repeat:
+ *
+ *     E_p   = sum_j t_j w(z_pj) I(z_pj) / (sum_j t_j^2 w(z_pj) + DBL_EPSILON)
+ *     I(z)  = the mean of t_j E_p over every pixel p and exposure j with z_pj = z
+ *     I    /= I(n / 2)
+ *
+ * until the summed absolute change, averaged over the channels, is below the
+ * threshold. w is OpenCV's weight, a Gaussian over the bins scaled and shifted to 1
+ * at the centre and 0 at both ends. The exposures t_j only matter by their ratios.
+ * OpenCV leaves a bin that no pixel falls in at NaN, and the NaN then also keeps its
+ * stopping test from ever passing. Here such bins are left out of the stopping test
+ * and filled afterwards, linearly between their seen neighbours and held beyond the
+ * first and last. Every pixel takes part, so no image buffer is kept: the merge and
+ * the new response are accumulated in one pass.
+ * ================================================================ */
+
+static void alwan__robertson_weights(double *w, size_t bins) {
+    double const q = (double)(bins - 1) / 4.0;
+    double const e4 = ALWAN_EXP(4.0);
+    double const scale = e4 / (e4 - 1.0), shift = 1.0 / (1.0 - e4);
+    size_t i;
+    for (i = 0; i < bins; i++) {
+        double const v = (double)i / q - 2.0;
+        w[i] = scale * ALWAN_EXP(-v * v) + shift;
+    }
+    /* Exactly 0, which the formula is; in f64 rounding leaves -3.5e-18 there, and in
+     * OpenCV's f32 it is 0. */
+    w[0] = 0.0;
+    w[bins - 1] = 0.0;
+}
+
+static alwan_status alwan__robertson(double *out, void const *const *images, int f32, size_t stride, size_t count,
+                                     double const *e, size_t image_count,
+                                     alwan_crf_robertson2003_params const *params) {
+    alwan_crf_robertson2003_params const zero = { 0, 0, 0.0 };
+    alwan_crf_robertson2003_params const *pr = params ? params : &zero;
+    size_t const bins = pr->bins ? pr->bins : 256;
+    size_t const iterations = pr->iterations ? pr->iterations : 30;
+    double const threshold = pr->threshold == 0.0 ? 0.01 : pr->threshold;
+    size_t const mid = bins / 2;
+    double *w, *card, *resp, *next;
+    int *zk;
+    size_t it, p, k, b;
+    int c;
+    alwan_status st = ALWAN_OK;
+
+    if (bins < 3 || bins > ALWAN__CRF_MAX_BINS || !(threshold >= 0.0) || threshold - threshold != 0.0) {
+        return ALWAN_E_INVALID;
+    }
+    w = (double *)ALWAN_ALLOC(10 * bins * sizeof(double), sizeof(double));
+    zk = (int *)ALWAN_ALLOC(image_count * sizeof(int), sizeof(int));
+    if (!w || !zk) {
+        if (w) ALWAN_FREE(w);
+        if (zk) ALWAN_FREE(zk);
+        return ALWAN_E_NOMEM;
+    }
+    card = w + bins;
+    resp = card + 3 * bins;
+    next = resp + 3 * bins;
+    alwan__robertson_weights(w, bins);
+    memset(card, 0, 3 * bins * sizeof(double));
+    for (k = 0; k < image_count; k++) {
+        for (p = 0; p < count; p++) {
+            for (c = 0; c < 3; c++) {
+                int const bin = alwan__crf_bin(alwan__crf_px(images[k], f32, stride, p, c), bins);
+                if (bin >= 0) card[(size_t)c * bins + (size_t)bin] += 1.0;
+            }
+        }
+    }
+    for (c = 0; c < 3; c++) {
+        if (card[(size_t)c * bins + mid] == 0.0) {
+            st = ALWAN_E_RANGE; /* the response is pinned at the middle value, which no pixel holds */
+            goto done;
+        }
+        for (b = 0; b < bins; b++) resp[(size_t)c * bins + b] = (double)b / ((double)bins / 2.0);
+    }
+
+    for (it = 0; it < iterations; it++) {
+        double diff = 0.0;
+        memset(next, 0, 3 * bins * sizeof(double));
+        for (p = 0; p < count; p++) {
+            for (c = 0; c < 3; c++) {
+                double const *rc = resp + (size_t)c * bins;
+                double *nc = next + (size_t)c * bins;
+                double num = 0.0, den = 0.0, E;
+                for (k = 0; k < image_count; k++) {
+                    double wz;
+                    zk[k] = alwan__crf_bin(alwan__crf_px(images[k], f32, stride, p, c), bins);
+                    if (zk[k] < 0) continue;
+                    wz = w[zk[k]];
+                    num += e[k] * (wz * rc[zk[k]]);
+                    den += e[k] * e[k] * wz;
+                }
+                E = num * (1.0 / (den + DBL_EPSILON));
+                for (k = 0; k < image_count; k++) {
+                    if (zk[k] >= 0) nc[zk[k]] += e[k] * E;
+                }
+            }
+        }
+        for (c = 0; c < 3; c++) {
+            double *nc = next + (size_t)c * bins;
+            double const *cc = card + (size_t)c * bins;
+            double middle;
+            for (b = 0; b < bins; b++) nc[b] = cc[b] > 0.0 ? nc[b] / cc[b] : 0.0;
+            middle = nc[mid];
+            if (!(middle > 0.0)) {
+                st = ALWAN_E_RANGE;
+                goto done;
+            }
+            for (b = 0; b < bins; b++) {
+                nc[b] /= middle;
+                if (cc[b] > 0.0) diff += ALWAN_ABS(nc[b] - resp[(size_t)c * bins + b]);
+            }
+        }
+        memcpy(resp, next, 3 * bins * sizeof(double));
+        if (diff / 3.0 < threshold) break;
+    }
+
+    /* Bins no pixel fell in: linear between seen neighbours, held at the ends. */
+    for (c = 0; c < 3; c++) {
+        double *rc = resp + (size_t)c * bins;
+        double const *cc = card + (size_t)c * bins;
+        size_t prev = bins;
+        for (b = 0; b < bins; b++) {
+            if (cc[b] == 0.0) continue;
+            if (prev == bins) {
+                size_t q;
+                for (q = 0; q < b; q++) rc[q] = rc[b];
+            } else if (b - prev > 1) {
+                size_t q;
+                for (q = prev + 1; q < b; q++) {
+                    double const f = (double)(q - prev) / (double)(b - prev);
+                    rc[q] = rc[prev] + (rc[b] - rc[prev]) * f;
+                }
+            }
+            prev = b;
+        }
+        for (b = prev + 1; b < bins; b++) rc[b] = rc[prev];
+    }
+    memcpy(out, resp, 3 * bins * sizeof(double));
+done:
+    ALWAN_FREE(w);
+    ALWAN_FREE(zk);
+    return st;
+}
+
+/* The exposure of each image, 1 / L with L its ISO 2720 average luminance. */
+static alwan_status alwan__crf_exposures(double *e, double const *N, double const *t, double const *S,
+                                         size_t image_count) {
+    size_t j;
+    for (j = 0; j < image_count; j++) {
+        alwan_f64 L;
+        if (alwan_average_luminance_f64(&L, N[j], t[j], S[j], 0.0) != ALWAN_OK || !(L > 0.0)) return ALWAN_E_INVALID;
+        e[j] = 1.0 / L;
+    }
+    return ALWAN_OK;
+}
+
+/* ================================================================
  * Public entry points
  * ================================================================ */
 
@@ -507,6 +673,28 @@ alwan_status alwan_crf_debevec1997_f64(alwan_f64 *response_out, alwan_f64 const 
     ALWAN_FREE(B);
     return st;
 }
+
+alwan_status alwan_crf_robertson2003_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride,
+                                         size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count,
+                                         alwan_crf_robertson2003_params const *params) {
+    double *e, *N, *t, *S;
+    alwan_status st;
+    size_t j;
+    ALWAN__CRF_CHECK(images, image_count);
+    if (!response_out || !settings) return ALWAN_E_INVALID;
+    e = (double *)ALWAN_ALLOC(4 * image_count * sizeof(double), sizeof(double));
+    if (!e) return ALWAN_E_NOMEM;
+    N = e + image_count; t = N + image_count; S = t + image_count;
+    for (j = 0; j < image_count; j++) {
+        N[j] = settings[j].f_number; t[j] = settings[j].exposure_time; S[j] = settings[j].iso;
+    }
+    st = alwan__crf_exposures(e, N, t, S, image_count);
+    if (st == ALWAN_OK) {
+        st = alwan__robertson(response_out, (void const *const *)images, 0, in_stride, count, e, image_count, params);
+    }
+    ALWAN_FREE(e);
+    return st;
+}
 #endif /* ALWAN_WITH_F64 */
 
 #if ALWAN_WITH_F32
@@ -544,6 +732,33 @@ alwan_status alwan_crf_debevec1997_f32(alwan_f32 *response_out, alwan_f32 const 
         for (j = 0; j < 3 * bins; j++) response_out[j] = (alwan_f32)wide[j];
     }
     ALWAN_FREE(B);
+    return st;
+}
+
+alwan_status alwan_crf_robertson2003_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride,
+                                         size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count,
+                                         alwan_crf_robertson2003_params const *params) {
+    size_t const bins = params && params->bins ? params->bins : 256;
+    double *e, *N, *t, *S, *wide;
+    alwan_status st;
+    size_t j;
+    ALWAN__CRF_CHECK(images, image_count);
+    if (!response_out || !settings) return ALWAN_E_INVALID;
+    if (bins < 3 || bins > ALWAN__CRF_MAX_BINS) return ALWAN_E_INVALID;
+    e = (double *)ALWAN_ALLOC((4 * image_count + 3 * bins) * sizeof(double), sizeof(double));
+    if (!e) return ALWAN_E_NOMEM;
+    N = e + image_count; t = N + image_count; S = t + image_count; wide = S + image_count;
+    for (j = 0; j < image_count; j++) {
+        N[j] = (double)settings[j].f_number; t[j] = (double)settings[j].exposure_time; S[j] = (double)settings[j].iso;
+    }
+    st = alwan__crf_exposures(e, N, t, S, image_count);
+    if (st == ALWAN_OK) {
+        st = alwan__robertson(wide, (void const *const *)images, 1, in_stride, count, e, image_count, params);
+    }
+    if (st == ALWAN_OK) {
+        for (j = 0; j < 3 * bins; j++) response_out[j] = (alwan_f32)wide[j];
+    }
+    ALWAN_FREE(e);
     return st;
 }
 #endif /* ALWAN_WITH_F32 */
