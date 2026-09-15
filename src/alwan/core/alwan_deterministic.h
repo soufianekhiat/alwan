@@ -552,29 +552,28 @@ ALWAN_INLINE alwan_f32 alwan_det_srgb_eotf_f32(alwan_f32 x) {
  * polynomial serves both standards.
  * ---------------------------------------------------------------- */
 
+/* BT.2020 splits with <, as its fast macro and colour-science do, so 0.018 itself is on
+ * the power segment; the shared helpers split with <=, which is sRGB's rule. */
 ALWAN_INLINE alwan_f64 alwan_det_bt2020_oetf_f64(alwan_f64 x) {
-    return alwan__det_lin_pow_oetf_f64(x,
-        ALWAN_DET_BT2020_OETF_BREAK, 0.45,
-        ALWAN_DET_BT2020_OETF_LINEAR, ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA);
+    if (x < ALWAN_DET_BT2020_OETF_BREAK) return ALWAN_DET_BT2020_OETF_LINEAR * x;
+    return ALWAN_DET_BT2020_OETF_ALPHA * alwan_det_pow_pos_f64(x, 0.45) - ALWAN_DET_BT2020_OETF_BETA;
 }
 
 ALWAN_INLINE alwan_f32 alwan_det_bt2020_oetf_f32(alwan_f32 x) {
-    return alwan__det_lin_pow_oetf_f32(x,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_BREAK, 0.45f,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_LINEAR, (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_BETA);
+    if (x < (alwan_f32)ALWAN_DET_BT2020_OETF_BREAK) return (alwan_f32)ALWAN_DET_BT2020_OETF_LINEAR * x;
+    return (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA * alwan_det_pow_pos_f32(x, 0.45f) -
+           (alwan_f32)ALWAN_DET_BT2020_OETF_BETA;
 }
 
 ALWAN_INLINE alwan_f64 alwan_det_bt2020_eotf_f64(alwan_f64 x) {
-    return alwan__det_lin_pow_eotf_f64(x,
-        ALWAN_DET_BT2020_EOTF_BREAK, ALWAN_DET_BT2020_OETF_LINEAR,
-        ALWAN_DET_BT2020_OETF_ALPHA, ALWAN_DET_BT2020_OETF_BETA, (1.0 / 0.45));
+    if (x < ALWAN_DET_BT2020_EOTF_BREAK) return x / ALWAN_DET_BT2020_OETF_LINEAR;
+    return alwan_det_pow_pos_f64((x + ALWAN_DET_BT2020_OETF_BETA) / ALWAN_DET_BT2020_OETF_ALPHA, (1.0 / 0.45));
 }
 
 ALWAN_INLINE alwan_f32 alwan_det_bt2020_eotf_f32(alwan_f32 x) {
-    return alwan__det_lin_pow_eotf_f32(x,
-        (alwan_f32)ALWAN_DET_BT2020_EOTF_BREAK, (alwan_f32)ALWAN_DET_BT2020_OETF_LINEAR,
-        (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA, (alwan_f32)ALWAN_DET_BT2020_OETF_BETA, (1.0f / 0.45f));
+    if (x < (alwan_f32)ALWAN_DET_BT2020_EOTF_BREAK) return x / (alwan_f32)ALWAN_DET_BT2020_OETF_LINEAR;
+    return alwan_det_pow_pos_f32((x + (alwan_f32)ALWAN_DET_BT2020_OETF_BETA) / (alwan_f32)ALWAN_DET_BT2020_OETF_ALPHA,
+                                 (1.0f / 0.45f));
 }
 
 #else /* ================= GPU backends (single precision) ================= *
@@ -816,14 +815,14 @@ ALWAN_INLINE alwan_scalar alwan_det_srgb_eotf(alwan_scalar x) {
 }
 
 ALWAN_INLINE alwan_scalar alwan_det_bt2020_oetf(alwan_scalar x) {
-    if (x <= (alwan_scalar)ALWAN_DET_BT2020_OETF_BREAK)
+    if (x < (alwan_scalar)ALWAN_DET_BT2020_OETF_BREAK)   /* <, as the C twin */
         return (alwan_scalar)ALWAN_DET_BT2020_OETF_LINEAR * x;
     ALWAN_DET_PRECISE alwan_scalar p = alwan_det_pow_pos(x, (alwan_scalar)0.45);
     return (alwan_scalar)ALWAN_DET_BT2020_OETF_ALPHA * p - (alwan_scalar)ALWAN_DET_BT2020_OETF_BETA;
 }
 
 ALWAN_INLINE alwan_scalar alwan_det_bt2020_eotf(alwan_scalar x) {
-    if (x <= (alwan_scalar)ALWAN_DET_BT2020_EOTF_BREAK)
+    if (x < (alwan_scalar)ALWAN_DET_BT2020_EOTF_BREAK)
         return x / (alwan_scalar)ALWAN_DET_BT2020_OETF_LINEAR;
     alwan_scalar z = (x + (alwan_scalar)ALWAN_DET_BT2020_OETF_BETA) / (alwan_scalar)ALWAN_DET_BT2020_OETF_ALPHA;
     return alwan_det_pow_pos(z, (alwan_scalar)(1.0 / 0.45));
