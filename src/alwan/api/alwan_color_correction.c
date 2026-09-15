@@ -9,6 +9,7 @@
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_color_correction_core.h"
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -613,26 +614,112 @@ static int least_squares_solve(alwan_f64 *A, alwan_f64 const *b,
  * sklearn's Ridge(fit_intercept=False) with sample_weight, every coefficient
  * penalised alike. A sample of weight 0 is left out. With no weights and no ridge the
  * system is A itself and the result is the unweighted fit, bit for bit. */
+/* Least squares by one-sided Jacobi SVD (Hestenes): rotate pairs of columns of A
+ * until they are mutually orthogonal, which leaves A = U S and accumulates V, then
+ * take the minimum-norm solution over the singular values above cutoff. That is
+ * LAPACK's gelsd, which numpy.linalg.lstsq calls. Jacobi is slow for large systems
+ * and very accurate for small ones, and a CCM has at most 35 terms. A is m x n
+ * row-major with m >= n, destroyed; B is m x 3. Returns the rank, -1 when out of
+ * memory. */
+static int alwan__ccm_svd_solve(alwan_f64 *A, alwan_f64 const *B, int m, int n, alwan_f64 cutoff, alwan_f64 *x)
+{
+    alwan_f64 *V = (alwan_f64 *)ALWAN_ALLOC((size_t)n * (size_t)n * sizeof(alwan_f64), sizeof(alwan_f64));
+    alwan_f64 *sv = (alwan_f64 *)ALWAN_ALLOC((size_t)n * sizeof(alwan_f64), sizeof(alwan_f64));
+    alwan_f64 smax = 0.0, thr;
+    int i, j, p, q, c, sweep, rank = 0;
+    if (!V || !sv) {
+        if (V) ALWAN_FREE(V);
+        if (sv) ALWAN_FREE(sv);
+        return -1;
+    }
+    for (i = 0; i < n; i++) for (j = 0; j < n; j++) V[i * n + j] = i == j ? 1.0 : 0.0;
+    for (sweep = 0; sweep < 80; sweep++) {
+        int rotated = 0;
+        for (p = 0; p < n - 1; p++) {
+            for (q = p + 1; q < n; q++) {
+                alwan_f64 alpha = 0.0, beta = 0.0, gamma = 0.0, zeta, t, cs, sn;
+                for (i = 0; i < m; i++) {
+                    alwan_f64 const ap = A[i * n + p], aq = A[i * n + q];
+                    alpha += ap * ap;
+                    beta += aq * aq;
+                    gamma += ap * aq;
+                }
+                if (gamma == 0.0 || fabs(gamma) <= DBL_EPSILON * sqrt(alpha * beta)) continue;
+                rotated = 1;
+                /* The smaller root of t^2 + 2 zeta t - 1 = 0, which zeroes the pair's
+                 * inner product. */
+                zeta = (beta - alpha) / (2.0 * gamma);
+                t = fabs(zeta) > 1e150 ? 0.5 / zeta
+                                       : (zeta >= 0.0 ? 1.0 : -1.0) / (fabs(zeta) + sqrt(1.0 + zeta * zeta));
+                cs = 1.0 / sqrt(1.0 + t * t);
+                sn = cs * t;
+                for (i = 0; i < m; i++) {
+                    alwan_f64 const ap = A[i * n + p], aq = A[i * n + q];
+                    A[i * n + p] = cs * ap - sn * aq;
+                    A[i * n + q] = sn * ap + cs * aq;
+                }
+                for (i = 0; i < n; i++) {
+                    alwan_f64 const vp = V[i * n + p], vq = V[i * n + q];
+                    V[i * n + p] = cs * vp - sn * vq;
+                    V[i * n + q] = sn * vp + cs * vq;
+                }
+            }
+        }
+        if (!rotated) break;
+    }
+    for (j = 0; j < n; j++) {
+        alwan_f64 s2 = 0.0;
+        for (i = 0; i < m; i++) s2 += A[i * n + j] * A[i * n + j];
+        sv[j] = sqrt(s2);
+        if (sv[j] > smax) smax = sv[j];
+    }
+    thr = cutoff * smax;
+    for (i = 0; i < n * 3; i++) x[i] = 0.0;
+    for (j = 0; j < n; j++) {
+        if (!(sv[j] > thr) || !(sv[j] > 0.0)) continue;   /* at or below the cutoff counts as zero, as in gelsd */
+        rank++;
+        for (c = 0; c < 3; c++) {
+            alwan_f64 dot = 0.0, coef;
+            for (i = 0; i < m; i++) dot += A[i * n + j] * B[i * 3 + c];
+            coef = dot / (sv[j] * sv[j]);                  /* (U_j . b) / s_j, with U_j = A_j / s_j */
+            for (i = 0; i < n; i++) x[i * 3 + c] += V[i * n + j] * coef;
+        }
+    }
+    ALWAN_FREE(V);
+    ALWAN_FREE(sv);
+    return rank;
+}
+
 static alwan_status alwan__ccm_solve(alwan_f64 *matrix_out, alwan_f64 const *A, alwan_f64 const *M_R, int m, int n,
                                      alwan_ccm_fit_params const *params)
 {
     alwan_f64 const *w = params ? params->weights : NULL;
     alwan_f64 const ridge = params ? params->ridge : 0.0;
-    int rows = 0, extra, total, i, j, r;
+    alwan_ccm_solver const solver = params ? params->solver : ALWAN_CCM_SOLVER_QR;
+    alwan_f64 const rcond = params ? params->rcond : 0.0;
+    int *const rank_out = params ? params->rank_out : NULL;
+    int rows = 0, extra, total, alloc_rows, i, j, r;
     alwan_f64 *Aa, *ba;
     alwan_status st;
 
     if (m < 1 || n < 1 || !(ridge >= 0.0) || ridge - ridge != 0.0) return ALWAN_E_INVALID;
+    if ((int)solver < (int)ALWAN_CCM_SOLVER_QR || (int)solver > (int)ALWAN_CCM_SOLVER_SVD
+        || !(rcond >= 0.0) || rcond - rcond != 0.0) {
+        return ALWAN_E_INVALID;
+    }
     for (i = 0; i < m; i++) {
         if (w && (!(w[i] >= 0.0) || w[i] - w[i] != 0.0)) return ALWAN_E_INVALID;
         if (!w || w[i] > 0.0) rows++;
     }
     extra = ridge > 0.0 ? n : 0;
     total = rows + extra;
-    if (total < n) return ALWAN_E_INVALID;   /* fewer equations than terms and no ridge to close the gap */
+    /* QR needs as many equations as terms; the SVD answers with fewer, the
+     * minimum-norm fit, and pads the system with zero rows to square it. */
+    if (total < 1 || (solver == ALWAN_CCM_SOLVER_QR && total < n)) return ALWAN_E_INVALID;
+    alloc_rows = total < n ? n : total;
 
-    size_t a_bytes = alwan_safe_array_size((size_t)total * (size_t)n, sizeof(alwan_f64));
-    size_t b_bytes = alwan_safe_array_size((size_t)total * 3, sizeof(alwan_f64));
+    size_t a_bytes = alwan_safe_array_size((size_t)alloc_rows * (size_t)n, sizeof(alwan_f64));
+    size_t b_bytes = alwan_safe_array_size((size_t)alloc_rows * 3, sizeof(alwan_f64));
     if (a_bytes == 0 || b_bytes == 0) return ALWAN_E_NOMEM;
     Aa = (alwan_f64 *)ALWAN_ALLOC(a_bytes, sizeof(alwan_f64));
     ba = (alwan_f64 *)ALWAN_ALLOC(b_bytes, sizeof(alwan_f64));
@@ -641,6 +728,8 @@ static alwan_status alwan__ccm_solve(alwan_f64 *matrix_out, alwan_f64 const *A, 
         if (ba) ALWAN_FREE(ba);
         return ALWAN_E_NOMEM;
     }
+    for (i = total * n; i < alloc_rows * n; i++) Aa[i] = 0.0;
+    for (i = total * 3; i < alloc_rows * 3; i++) ba[i] = 0.0;
     for (i = 0, r = 0; i < m; i++) {
         alwan_f64 s;
         if (w && !(w[i] > 0.0)) continue;
@@ -656,7 +745,19 @@ static alwan_status alwan__ccm_solve(alwan_f64 *matrix_out, alwan_f64 const *A, 
             for (j = 0; j < 3; j++) ba[r * 3 + j] = 0.0;
         }
     }
-    st = (alwan_status)least_squares_solve(Aa, ba, total, n, matrix_out);
+    if (solver == ALWAN_CCM_SOLVER_SVD) {
+        /* numpy's default cutoff: machine precision times the larger dimension. */
+        alwan_f64 const cutoff = rcond > 0.0 ? rcond : DBL_EPSILON * (alwan_f64)(total > n ? total : n);
+        int const rank = alwan__ccm_svd_solve(Aa, ba, alloc_rows, n, cutoff, matrix_out);
+        st = rank < 0 ? ALWAN_E_NOMEM : ALWAN_OK;
+        if (rank_out && rank >= 0) *rank_out = rank;
+    } else {
+        st = (alwan_status)least_squares_solve(Aa, ba, total, n, matrix_out);
+        if (rank_out) {
+            if (st == ALWAN_OK) *rank_out = n;
+            else if (st == ALWAN_E_DIVZERO) *rank_out = -1;
+        }
+    }
     ALWAN_FREE(Aa);
     ALWAN_FREE(ba);
     return st;
@@ -797,7 +898,7 @@ alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_
 
     /* Without a ridge there must be at least as many samples as terms; the solve
      * checks the samples that carry weight. */
-    if (num_samples < exp_size && !(params && params->ridge > 0.0)) {
+    if (num_samples < exp_size && !(params && (params->ridge > 0.0 || params->solver == ALWAN_CCM_SOLVER_SVD))) {
         return ALWAN_E_INVALID;
     }
 

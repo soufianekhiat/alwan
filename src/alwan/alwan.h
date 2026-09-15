@@ -4677,15 +4677,34 @@ void alwan_colour_correct_finlayson2015_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f6
  * ridge:   Tikhonov regularisation, finite and not negative, on every coefficient
  *          alike; 0 for none. It shrinks the high-order terms when the term count
  *          nears the patch count, and lets a fit have more terms than patches.
+ * solver:  ALWAN_CCM_SOLVER_QR (the zero value) or ALWAN_CCM_SOLVER_SVD. QR refuses a
+ *          rank-deficient system with ALWAN_E_DIVZERO: duplicate patches, a clipped
+ *          channel, a chart short of levels. The SVD answers it with the
+ *          minimum-norm fit over the numerical rank, and answers with fewer samples
+ *          than terms too.
+ * rcond:   SVD only: singular values at or below rcond x the largest count as zero;
+ *          0 is numpy's default, DBL_EPSILON x the larger of rows and terms.
+ * rank_out: optional; receives the rank the fit used. For QR that is the term count,
+ *          or -1 when QR finds the system rank deficient.
  * Matches scikit-learn's Ridge(fit_intercept=False) with sample_weight on colour's
- * expansions, which are these term for term. */
+ * expansions, which are these term for term, and with the SVD solver
+ * numpy.linalg.lstsq, rank included. */
+typedef enum {
+    ALWAN_CCM_SOLVER_QR  = 0, /* Householder QR on the expanded samples */
+    ALWAN_CCM_SOLVER_SVD = 1  /* one-sided Jacobi SVD, the minimum-norm fit */
+} alwan_ccm_solver;
+
 typedef struct {
     alwan_f64 const *weights;
     alwan_f64 ridge;
+    alwan_ccm_solver solver;
+    alwan_f64 rcond;
+    int *rank_out;
 } alwan_ccm_fit_params;
 
 /* The two fits above with alwan_ccm_fit_params; the arguments before it are theirs.
- * Without a ridge the samples of non-zero weight must number at least the terms. */
+ * Without a ridge the QR solver needs at least as many samples of non-zero weight as
+ * terms. */
 alwan_status alwan_ccm_fit_cheung2004_f64(alwan_f64 *matrix_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
 alwan_status alwan_ccm_fit_cheung2004_f32(alwan_f32 *matrix_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
 alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_size, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
