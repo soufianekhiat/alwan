@@ -195,6 +195,65 @@ alwan_xyz_from_spd_f64(&white, &d65, NULL,
 alwan_spd_destroy_f64(&d65, ctx);
 ```
 
+Any `method` other than the two rules is `ALWAN_E_INVALID`; before 3.0.0 it ran Simpson.
+
+### alwan_xyz_from_spd_astm_e308
+
+```c
+typedef struct {
+    int observer_range;  /* 0: 360-780 nm; non-zero: 360-830 nm */
+    int tables_at_5nm;   /* 0: omission method; non-zero: E2022 tables */
+    int tables_at_20nm;  /* 0: interpolate to 10 nm first; non-zero: tables at 20 nm */
+} alwan_astm_e308_params;
+
+alwan_status alwan_xyz_from_spd_astm_e308_f64(alwan_xyz_f64 *xyz_out,
+                                              alwan_spd_f64 const *spd,
+                                              alwan_spd_f64 const *illuminant,
+                                              alwan_observer_type observer,
+                                              alwan_astm_e308_params const *params,
+                                              alwan_ctx *ctx);
+```
+
+XYZ by ASTM E308, scaled so a perfect reflector has Y = 100. This is the number a
+spectrophotometer report carries; `alwan_xyz_from_spd` is an integral and is not
+normalised.
+
+| Data interval | Method |
+|---------------|--------|
+| 1 nm | Summed on the samples over the range. |
+| 5 nm | Omission: summed on every fifth 1 nm sample. With `tables_at_5nm`, E2022 tables. |
+| 10 nm | E2022 weighting tables. |
+| 20 nm | Interpolated to 10 nm (ASTM's cubic, extrapolated 20 nm each side), then 10 nm tables. With `tables_at_20nm`, 20 nm tables. |
+
+The tables are built from the 1 nm observer and the illuminant sampled at every
+nanometre (linear between its samples, its end values beyond them). A spectrum that
+stops short of the range keeps its end values in the summed methods; in the tabular
+ones the weights past its ends are added to its end weights, the E308 adjustment.
+`illuminant` `NULL` is the equal-energy illuminant; `params` `NULL` is all zeros.
+
+The samples must lie on whole nanometres at 1, 5, 10 or 20 nm, a multiple of the
+interval from 360 nm, inside the range. Anything else is `ALWAN_E_INVALID`.
+
+Reference: colour-science 0.4.7 `sd_to_XYZ_ASTME308`, on alwan's own observer and
+illuminant data. XYZ agrees to 7e-14 (suite 129).
+
+### alwan_astm_e2022_weights
+
+```c
+alwan_status alwan_astm_e2022_weights_f64(alwan_f64 *weights_out,
+                                          size_t *node_count,
+                                          alwan_spd_f64 const *illuminant,
+                                          alwan_observer_type observer,
+                                          int interval_nm,
+                                          int observer_range,
+                                          alwan_ctx *ctx);
+```
+
+The E2022 weighting tables: `node_count` rows of X, Y, Z weights from 360 nm at
+`interval_nm` (5, 10 or 20), with the Y weights summing to 100. Pass
+`weights_out` `NULL` to get the count. Agrees with colour-science's
+`tristimulus_weighting_factors_ASTME2022` to 9e-16.
+
 ---
 
 ## Camera Sensitivities

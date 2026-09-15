@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **ASTM E308 and E2022.** `alwan_xyz_from_spd_astm_e308_{T}` computes XYZ the way
+  industrial colorimetry reports it, scaled so a perfect reflector has Y = 100. It
+  takes data at 1, 5, 10 or 20 nm. At 10 nm, and at 5 or 20 nm on request, it uses
+  E2022 weighting tables built from the 1 nm observer and illuminant, with the E308
+  adjustment for a shorter spectrum. By default, 20 nm data is interpolated to 10 nm
+  first. `alwan_astm_e2022_weights_{T}` returns the tables. Against colour-science's
+  `sd_to_XYZ_ASTME308`, XYZ agrees to 7e-14 and the tables to 9e-16.
+
 - **CCM fit: leave-one-out and the term count.** `alwan_ccm_loo_cheung2004_{T}` and
   `alwan_ccm_loo_finlayson2015_{T}` score a fit by its held-out error: each patch
   predicted by a fit to the others, with the caller's weights, ridge and solver.
@@ -556,6 +564,11 @@ All notable changes to this project will be documented in this file.
   version they came from.
 
 ### Fixed: output differs
+
+- **An unknown integration method ran Simpson's rule.** `alwan_xyz_from_spd_{T}` and
+  `alwan_xyz_from_spd_camera_{T}` treated every value other than
+  `ALWAN_INTEGRATE_TRAPEZOID` as Simpson, so an out-of-range method integrated
+  instead of failing. It is `ALWAN_E_INVALID` now.
 
 - **The f32 Finlayson 2015 fit wrote past its buffers.** It solved into a stack
   array of 22 x 3 values, where the plain degree-4 basis has 34 terms, and then
