@@ -644,14 +644,14 @@ static int alwan__ccm_svd_solve(alwan_f64 *A, alwan_f64 const *B, int m, int n, 
                     beta += aq * aq;
                     gamma += ap * aq;
                 }
-                if (gamma == 0.0 || fabs(gamma) <= DBL_EPSILON * sqrt(alpha * beta)) continue;
+                if (gamma == 0.0 || ALWAN_ABS(gamma) <= DBL_EPSILON * ALWAN_SQRT(alpha * beta)) continue;
                 rotated = 1;
                 /* The smaller root of t^2 + 2 zeta t - 1 = 0, which zeroes the pair's
                  * inner product. */
                 zeta = (beta - alpha) / (2.0 * gamma);
-                t = fabs(zeta) > 1e150 ? 0.5 / zeta
-                                       : (zeta >= 0.0 ? 1.0 : -1.0) / (fabs(zeta) + sqrt(1.0 + zeta * zeta));
-                cs = 1.0 / sqrt(1.0 + t * t);
+                t = ALWAN_ABS(zeta) > 1e150 ? 0.5 / zeta
+                                            : (zeta >= 0.0 ? 1.0 : -1.0) / (ALWAN_ABS(zeta) + ALWAN_SQRT(1.0 + zeta * zeta));
+                cs = 1.0 / ALWAN_SQRT(1.0 + t * t);
                 sn = cs * t;
                 for (i = 0; i < m; i++) {
                     alwan_f64 const ap = A[i * n + p], aq = A[i * n + q];
@@ -670,7 +670,7 @@ static int alwan__ccm_svd_solve(alwan_f64 *A, alwan_f64 const *B, int m, int n, 
     for (j = 0; j < n; j++) {
         alwan_f64 s2 = 0.0;
         for (i = 0; i < m; i++) s2 += A[i * n + j] * A[i * n + j];
-        sv[j] = sqrt(s2);
+        sv[j] = ALWAN_SQRT(s2);
         if (sv[j] > smax) smax = sv[j];
     }
     thr = cutoff * smax;
@@ -1015,7 +1015,7 @@ static alwan_status alwan__ccm_loo(alwan_f64 *rms_out, alwan_f64 *pred_out, alwa
     ALWAN_FREE(w);
     if (st != ALWAN_OK) return st;
     if (count == 0) return ALWAN_E_INVALID;   /* every weight 0 */
-    *rms_out = sqrt(sum / (3.0 * (alwan_f64)count));
+    *rms_out = ALWAN_SQRT(sum / (3.0 * (alwan_f64)count));
     return ALWAN_OK;
 }
 
