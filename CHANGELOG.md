@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Colorimetric purity.** `alwan_colorimetric_purity_{T}`, excitation purity times
+  y_wl / y, as colour-science's `colorimetric_purity` (suite 134).
+
 - **Luminous flux, mired and the Planckian and daylight loci.**
   `alwan_spd_luminous_flux_{T}`, `_efficiency_{T}` and `_efficacy_{T}`, photopic and
   scotopic, as colour-science integrates them, to 2e-15; `alwan_cct_to_mired_{T}` and
@@ -625,6 +628,19 @@ All notable changes to this project will be documented in this file.
   version they came from.
 
 ### Fixed: output differs
+
+- **Dominant wavelength and excitation purity were wrong for purples.** The locus was
+  not closed by the line of purples, so `alwan_dominant_wavelength_{T}` returned
+  `ALWAN_E_INVALID` for every purple, and `alwan_excitation_purity_{T}` measured a
+  purple against the opposite side of the locus: 0.333 where the CIE definition and
+  colour-science give 0.640. A purple now has the negated complementary wavelength,
+  `xy_wl_out` on the line of purples and `xy_cw_out` on the spectrum locus, as
+  colour-science's `dominant_wavelength`, and `alwan_complementary_wavelength_{T}`
+  returns the negated dominant wavelength when its own ray meets the line of purples.
+  Excitation purity is no longer clamped to [0, 1]: a chromaticity outside the locus
+  reads above 1. Segments were skipped as parallel below a 1e-10 determinant, which the
+  locus's 1 nm steps near 830 nm fall under; only exact parallels are skipped now.
+  Checked against colour-science on 216 chromaticities in suite 134.
 
 - **V(lambda) and V'(lambda) were 10 nm tables.** gendata resampled colour-science's
   1 nm CIE data to 10 nm over 380-780 nm, and alwan interpolated linearly between the

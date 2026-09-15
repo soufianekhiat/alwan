@@ -265,7 +265,29 @@ int alwan_excitation_purity_{T}(alwan_{T} *purity_out,
 int alwan_complementary_wavelength_{T}(alwan_{T} *wavelength_out,
                                        alwan_vec2_{T} *xy_wl_out, alwan_vec2_{T} *xy_cw_out,
                                        alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
+
+int alwan_colorimetric_purity_{T}(alwan_{T} *purity_out,
+                                  alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
 ```
+
+These follow colour-science's `dominant_wavelength`, `complementary_wavelength`,
+`excitation_purity` and `colorimetric_purity` on the CIE 1931 2 degree locus at 1 nm,
+closed by the line of purples from 830 nm back to 360 nm.
+
+- The ray from `xy_white` through `xy` meets the closed locus at `xy_wl_out`. On the
+  spectrum locus the wavelength is that point's and `xy_cw_out` equals `xy_wl_out`.
+  On the line of purples the wavelength is the negated complementary one, and
+  `xy_cw_out` is the locus point of the opposite ray.
+- `alwan_complementary_wavelength` casts the ray away from `xy`, with the same outputs.
+- alwan interpolates the wavelength between the 1 nm samples; colour-science snaps it
+  to the nearest sample, so the two differ by up to half a nanometre. The locus points
+  and purities agree to rounding (suite 134).
+- Excitation purity is `|xy - xy_white| / |xy_wl - xy_white|`: 0 at the white point, 1
+  on the closed locus, above 1 outside it. Colorimetric purity multiplies it by
+  `y_wl / y`, and is `ALWAN_E_INVALID` for `y = 0`.
+- The white point itself has no dominant or complementary wavelength
+  (`ALWAN_E_INVALID`) and purity 0.
+- The f32 twins compute in double.
 
 ---
 
