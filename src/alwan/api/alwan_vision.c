@@ -9,13 +9,14 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_vision_core.h"
 #include "../core/alwan_quality_core.h"
+#include "../core/alwan_table_core.h"
 
 /* ================================================================
  * Luminous Efficiency Function tables (f64 storage)
  * ================================================================ */
 
 /* CIE 1924 Photopic V(lambda) - interleaved {wavelength, value} pairs
- * 42 samples, 380-780 nm (10 nm step + peak at 555 nm)
+ * 471 samples, 360-830 nm at 1 nm
  * Generated from colour-science SDS_LEFS['CIE 1924 Photopic Standard Observer']
  *
  * Dual-declared: the f32 twin lets the templated f32 luminous-efficiency path
@@ -36,10 +37,10 @@ static alwan_f64 const PHOTOPIC_V_DATA_f64[] = {
 };
 ALWAN_DIAG_POP
 #endif
-#define PHOTOPIC_V_COUNT 42
+#define PHOTOPIC_V_COUNT 471
 
 /* CIE 1951 Scotopic V'(lambda) - interleaved {wavelength, value} pairs
- * 42 samples, 380-780 nm (10 nm step + peak at 507 nm)
+ * 401 samples, 380-780 nm at 1 nm
  * Generated from colour-science SDS_LEFS['CIE 1951 Scotopic Standard Observer']
  *
  * Dual-declared (see PHOTOPIC_V_DATA above). */
@@ -59,7 +60,7 @@ static alwan_f64 const SCOTOPIC_VP_DATA_f64[] = {
 };
 ALWAN_DIAG_POP
 #endif
-#define SCOTOPIC_VP_COUNT 42
+#define SCOTOPIC_VP_COUNT 401
 
 /* interpolate_lut() and the photopic/scotopic interpolators are templatized
  * per precision inside alwan_vision_impl.inc (ALWAN_CORE_FNLIT helpers), so the
