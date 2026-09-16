@@ -910,6 +910,8 @@ alwan_status alwan_cmyk_model_fogra39(alwan_cmyk_model **out, alwan_ctx *ctx);
 alwan_status alwan_cmyk_model_from_chart_{T}(alwan_cmyk_model **out, alwan_chart_{T} const *chart, alwan_ctx *ctx);
 void alwan_cmyk_model_destroy(alwan_cmyk_model *model, alwan_ctx *ctx);
 alwan_status alwan_cmyk_to_lab_{T}(alwan_lab_{T} *lab_out, alwan_cmyk_{T} const *cmyk, alwan_cmyk_model const *model);
+alwan_status alwan_lab_to_cmyk_{T}(alwan_cmyk_{T} *cmyk_out, alwan_{T} *delta_e_out, alwan_lab_{T} const *lab,
+                                   alwan_{T} k, alwan_cmyk_model const *model);
 ```
 
 Device CMYK means nothing colorimetric until a printing condition is attached. A model turns
@@ -933,6 +935,45 @@ identifies the data set only and implies no certification by Fogra.
 CGATS.21 CRPC file for instance, using its `LAB_*` columns when it has them and its XYZ
 otherwise. It is `ALWAN_E_NODATA` for a chart without CMYK, or without every node of the six
 cubes. CMYK outside [0, 1] is `ALWAN_E_INVALID`.
+
+### The other way, Lab to CMYK
+
+`alwan_lab_to_cmyk_{T}` asks the characterisation which colorants print closest to a Lab
+value. There is no single answer: the same colour can be printed with more ink and less
+black or the reverse, which is what grey component replacement trades. So the black is an
+input, not something the call solves for. Fix `k` in [0, 1] and the search returns the C, M
+and Y nearest the target by CIEDE2000, with that black carried through to `cmyk_out.k`.
+
+`delta_e_out`, which may be `NULL`, is the difference the search could not close. Inside
+the gamut it is nothing an instrument would read. Outside it, the CMYK is the closest the
+press can reach and the difference says how far short it fell, which is what a caller needs
+in order to decide whether to gamut map first. A colour the press cannot print is not an
+error and is not quietly clamped.
+
+The search scans the target's densest CMY cube, the nine levels of the K = 0 plane, then
+walks downhill from the best several of those nodes on a step that halves. It starts from
+several rather than one because well outside the gamut the difference has more than one
+dip, and the deepest is not always the one under the best node. Every candidate is scored
+by the forward model itself, so the two directions cannot drift apart.
+
+Suite 142 holds it to scipy's own inversion of the same model, on real FOGRA39 patches,
+colours sampled from the model, and three that no coated press can print: every colour
+inside the gamut comes back within 0.0001 dE2000 of the target, and no target, in gamut or
+out, is reached less closely than scipy reaches it.
+
+```c
+alwan_cmyk_model *fogra = NULL;
+alwan_cmyk_model_fogra39(&fogra, ctx);
+
+alwan_lab_f64 want = { 46.0, -5.0, -27.0 };        /* D50 */
+alwan_cmyk_f64 ink;
+alwan_f64 missed;
+alwan_lab_to_cmyk_f64(&ink, &missed, &want, 0.2, fogra);   /* 20 % black */
+if (missed > 2.0) {
+    /* out of reach for this press: gamut map, or try another black */
+}
+alwan_cmyk_model_destroy(fogra, ctx);
+```
 
 ---
 

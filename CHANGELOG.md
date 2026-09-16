@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Lab to CMYK through a printing characterisation.** `alwan_lab_to_cmyk_{T}` searches a
+  characterisation for the colorants that print closest to a Lab value at the black the
+  caller fixes, and reports the CIEDE2000 it could not close. Inside the gamut that
+  difference is nothing a spectrophotometer would read; outside it, the CMYK is the
+  nearest the press can reach and the difference says how far short it fell, rather than
+  being clamped away. Held to scipy's own inversion of the same model (suite 142,
+  `docs/api/reference-data.md`).
+
 - **ITU-R BT.1729 sweeps and staircase.** `ALWAN_PATTERN_BT1729_SWEEP_H`,
   `ALWAN_PATTERN_BT1729_SWEEP_V` and `ALWAN_PATTERN_BT1729_STAIRCASE` render the zones the
   recommendation specifies numerically. The sweeps run 60 to 960 cycles across the picture
