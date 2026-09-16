@@ -468,6 +468,43 @@ ALWAN_TABLE_EXTERN(alwan_table_mallett2019_blue, ALWAN_TABLE_MALLETT2019_SIZE)
 #endif
 
 enum {
+    ALWAN_TABLE_OTSU2018_CLUSTERS          = 8,
+    ALWAN_TABLE_OTSU2018_SAMPLES           = 36,
+    ALWAN_TABLE_OTSU2018_BASIS_PER_CLUSTER = 3,
+    ALWAN_TABLE_OTSU2018_NODES             = 7,
+    ALWAN_TABLE_OTSU2018_BASIS_SIZE        = 8 * 3 * 36,
+    ALWAN_TABLE_OTSU2018_MEANS_SIZE        = 8 * 36,
+    ALWAN_TABLE_OTSU2018_SELECTOR_SIZE     = 7 * 4,
+    ALWAN_TABLE_OTSU2018_M_INVERSE_SIZE    = 8 * 9,
+    ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE       = 8 * 3
+};
+
+/* ---- otsu2018 basis/means/selector/m_inverse/xyz_mu -- INTEGER row ---------
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: colour.recovery BASIS_FUNCTIONS_OTSU2018, CLUSTER_MEANS_OTSU2018 and
+ *         SELECTOR_ARRAY_OTSU2018, via alwan_dev/gendata/data/otsu2018.py
+ *
+ * Flat, with the rank in the extent names above rather than in the declaration,
+ * the way the cubes carry a RES beside a SIZE. Layouts:
+ *   basis      cluster-major, [cluster][basis 0..2][sample 0..35]
+ *   means      [cluster][sample 0..35]
+ *   selector   [node][origin, direction, lesser, greater], 7 internal nodes
+ *   m_inverse  [cluster][row-major 3x3]
+ *   xyz_mu     [cluster][X, Y, Z]
+ *
+ * m_inverse and xyz_mu are not in the paper's data. They are the inverse of the
+ * cluster's basis-to-XYZ matrix and the XYZ of its mean, which colour rebuilds by
+ * integrating against the CMFs on every call. Neither depends on the stimulus, so
+ * the generator computes them once and the runtime never integrates anything. */
+#if ALWAN_TABLE_OTSU2018
+ALWAN_TABLE_EXTERN(alwan_table_otsu2018_basis, ALWAN_TABLE_OTSU2018_BASIS_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_otsu2018_means, ALWAN_TABLE_OTSU2018_MEANS_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_otsu2018_selector, ALWAN_TABLE_OTSU2018_SELECTOR_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_otsu2018_m_inverse, ALWAN_TABLE_OTSU2018_M_INVERSE_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_otsu2018_xyz_mu, ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE)
+#endif
+
+enum {
     ALWAN_TABLE_AGX_SB2383_INSET_ROWS = 3,
     ALWAN_TABLE_AGX_SB2383_INSET_SIZE = 3 * 3
 };

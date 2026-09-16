@@ -160,6 +160,111 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_mallett2019)(
 }
 
 /* ----------------------------------------------------------------
+ * Otsu2018: XYZ to reflectance by clustered basis functions
+ * ---------------------------------------------------------------- */
+/* The selector is a seven node binary tree over CIE xy, walked exactly as
+ * colour's Dataset_Otsu2018.select walks it: start at node 0, compare
+ * xy[direction] against origin, take the lesser branch when less than or equal
+ * and the greater one otherwise. A NEGATIVE branch means "continue at internal
+ * node -branch"; a non-negative one is the cluster and the walk ends.
+ *
+ * Two things keep a malformed table from being dangerous rather than merely
+ * wrong. The loop is bounded by the node count instead of trusting the data to
+ * terminate, and every read goes through alwan_table1d_row, so the address is
+ * clamped whatever the branch value says. The decoded indices are small integers
+ * stored in a float table, not measurements, so rounding them is exact. */
+static int ALWAN_CORE_FN(otsu2018_select)(ALWAN_CORE_T const *selector,
+                                          ALWAN_CORE_T x, ALWAN_CORE_T y) {
+    int node = 0;
+    for (int step = 0; step < ALWAN_TABLE_OTSU2018_NODES; step++) {
+        int const base = node * 4;
+        ALWAN_CORE_T const origin = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+            selector, ALWAN_TABLE_OTSU2018_SELECTOR_SIZE, base + 0);
+        ALWAN_CORE_T const direction = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+            selector, ALWAN_TABLE_OTSU2018_SELECTOR_SIZE, base + 1);
+        ALWAN_CORE_T const coord = (direction < ALWAN_CORE_LITERAL(0.5)) ? x : y;
+        int const slot = (coord <= origin) ? 2 : 3;
+        ALWAN_CORE_T const branch = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+            selector, ALWAN_TABLE_OTSU2018_SELECTOR_SIZE, base + slot);
+
+        if (branch < ALWAN_CORE_LITERAL(0.0)) {
+            int const next = (int)(-branch + ALWAN_CORE_LITERAL(0.5));
+            node = (next >= 0 && next < ALWAN_TABLE_OTSU2018_NODES) ? next : 0;
+        } else {
+            int const leaf = (int)(branch + ALWAN_CORE_LITERAL(0.5));
+            return (leaf >= 0 && leaf < ALWAN_TABLE_OTSU2018_CLUSTERS) ? leaf : 0;
+        }
+    }
+    return 0;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_xyz_to_spectrum_otsu2018)(
+        ALWAN_CORE_SPD *out_spd, ALWAN_CORE_XYZ const *xyz, alwan_ctx *ctx) {
+    if (!xyz || !out_spd) return ALWAN_E_INVALID;
+#if !ALWAN_TABLE_OTSU2018
+    (void)ctx;
+    return ALWAN_E_NODATA;
+#else
+
+    int status = ALWAN_CORE_FNLIT(alwan_spd_create)(out_spd,
+        (ALWAN_CORE_T)OTSU2018_WAVELENGTH_MIN, (ALWAN_CORE_T)OTSU2018_WAVELENGTH_MAX,
+        OTSU2018_WAVELENGTH_COUNT, ctx);
+    if (status != ALWAN_OK) return status;
+
+    /* Same name-then-read shape as the two methods above. */
+    ALWAN_CORE_T const *const selector  = ALWAN_CORE_FNLIT(alwan_table_otsu2018_selector);
+    ALWAN_CORE_T const *const basis     = ALWAN_CORE_FNLIT(alwan_table_otsu2018_basis);
+    ALWAN_CORE_T const *const means     = ALWAN_CORE_FNLIT(alwan_table_otsu2018_means);
+    ALWAN_CORE_T const *const m_inverse = ALWAN_CORE_FNLIT(alwan_table_otsu2018_m_inverse);
+    ALWAN_CORE_T const *const xyz_mu    = ALWAN_CORE_FNLIT(alwan_table_otsu2018_xyz_mu);
+
+    /* xy for the tree. A zero sum has no chromaticity; it walks from the origin
+     * rather than dividing, and lands in whichever cluster owns that corner. */
+    ALWAN_CORE_T const sum = xyz->x + xyz->y + xyz->z;
+    ALWAN_CORE_T const inv = (sum != ALWAN_CORE_LITERAL(0.0))
+                             ? ALWAN_CORE_ONE / sum : ALWAN_CORE_LITERAL(0.0);
+    int const k = ALWAN_CORE_FN(otsu2018_select)(selector, xyz->x * inv, xyz->y * inv);
+
+    /* weights = M_inverse * (XYZ - XYZ_mu), both already built for this cluster
+     * by the generator, so nothing is integrated here. */
+    ALWAN_CORE_T d[3], w[3];
+    d[0] = xyz->x - ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+        xyz_mu, ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE, k * 3 + 0);
+    d[1] = xyz->y - ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+        xyz_mu, ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE, k * 3 + 1);
+    d[2] = xyz->z - ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+        xyz_mu, ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE, k * 3 + 2);
+
+    for (int i = 0; i < 3; i++) {
+        int const row = k * 9 + i * 3;
+        w[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                   m_inverse, ALWAN_TABLE_OTSU2018_M_INVERSE_SIZE, row + 0) * d[0]
+             + ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                   m_inverse, ALWAN_TABLE_OTSU2018_M_INVERSE_SIZE, row + 1) * d[1]
+             + ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                   m_inverse, ALWAN_TABLE_OTSU2018_M_INVERSE_SIZE, row + 2) * d[2];
+    }
+
+    for (int j = 0; j < OTSU2018_WAVELENGTH_COUNT; j++) {
+        ALWAN_CORE_T v = ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+            means, ALWAN_TABLE_OTSU2018_MEANS_SIZE, k * ALWAN_TABLE_OTSU2018_SAMPLES + j);
+        for (int i = 0; i < 3; i++) {
+            v += w[i] * ALWAN_CORE_FNVLIT(alwan_table1d_row)(
+                basis, ALWAN_TABLE_OTSU2018_BASIS_SIZE,
+                (k * ALWAN_TABLE_OTSU2018_BASIS_PER_CLUSTER + i)
+                    * ALWAN_TABLE_OTSU2018_SAMPLES + j);
+        }
+        /* The reference clamps to [0, 1]; a reflectance outside it is not one. */
+        if (v < ALWAN_CORE_LITERAL(0.0)) v = ALWAN_CORE_LITERAL(0.0);
+        if (v > ALWAN_CORE_ONE) v = ALWAN_CORE_ONE;
+        out_spd->values[j] = v;
+    }
+
+    return ALWAN_OK;
+#endif
+}
+
+/* ----------------------------------------------------------------
  * Jakob2019: trilinear LUT sample + polynomial evaluation
  * ---------------------------------------------------------------- */
 /* The three coefficient cubes are PLANAR and b-fastest, not the interleaved

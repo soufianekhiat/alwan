@@ -1285,6 +1285,79 @@ alwan_f64 const alwan_table_mallett2019_blue_f64[ALWAN_TABLE_MALLETT2019_SIZE] =
 
 #endif
 
+#if ALWAN_TABLE_OTSU2018
+/* ---- alwan_table_otsu2018_basis ----
+ * extent ALWAN_TABLE_OTSU2018_BASIS_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: spectral_basis/otsu2018/basis.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_otsu2018_basis_f32[ALWAN_TABLE_OTSU2018_BASIS_SIZE] = {
+#include "spectral_basis/otsu2018/basis.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_otsu2018_basis_f64[ALWAN_TABLE_OTSU2018_BASIS_SIZE] = {
+#include "spectral_basis/otsu2018/basis.csv"
+};
+#endif
+
+/* ---- alwan_table_otsu2018_means ----
+ * extent ALWAN_TABLE_OTSU2018_MEANS_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: spectral_basis/otsu2018/means.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_otsu2018_means_f32[ALWAN_TABLE_OTSU2018_MEANS_SIZE] = {
+#include "spectral_basis/otsu2018/means.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_otsu2018_means_f64[ALWAN_TABLE_OTSU2018_MEANS_SIZE] = {
+#include "spectral_basis/otsu2018/means.csv"
+};
+#endif
+
+/* ---- alwan_table_otsu2018_selector ----
+ * extent ALWAN_TABLE_OTSU2018_SELECTOR_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: spectral_basis/otsu2018/selector.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_otsu2018_selector_f32[ALWAN_TABLE_OTSU2018_SELECTOR_SIZE] = {
+#include "spectral_basis/otsu2018/selector.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_otsu2018_selector_f64[ALWAN_TABLE_OTSU2018_SELECTOR_SIZE] = {
+#include "spectral_basis/otsu2018/selector.csv"
+};
+#endif
+
+/* ---- alwan_table_otsu2018_m_inverse ----
+ * extent ALWAN_TABLE_OTSU2018_M_INVERSE_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: spectral_basis/otsu2018/m_inverse.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_otsu2018_m_inverse_f32[ALWAN_TABLE_OTSU2018_M_INVERSE_SIZE] = {
+#include "spectral_basis/otsu2018/m_inverse.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_otsu2018_m_inverse_f64[ALWAN_TABLE_OTSU2018_M_INVERSE_SIZE] = {
+#include "spectral_basis/otsu2018/m_inverse.csv"
+};
+#endif
+
+/* ---- alwan_table_otsu2018_xyz_mu ----
+ * extent ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: spectral_basis/otsu2018/xyz_mu.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_otsu2018_xyz_mu_f32[ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE] = {
+#include "spectral_basis/otsu2018/xyz_mu.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_otsu2018_xyz_mu_f64[ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE] = {
+#include "spectral_basis/otsu2018/xyz_mu.csv"
+};
+#endif
+
+#endif
+
 #if ALWAN_TABLE_AGX_SB2383_INSET
 /* ---- alwan_table_agx_sb2383_inset ----
  * extent ALWAN_TABLE_AGX_SB2383_INSET_SIZE. Reader: alwan_table1d_row_{f32,f64}

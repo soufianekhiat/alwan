@@ -1714,6 +1714,8 @@ EXPORTS
     alwan_xyz_to_prolab_map_planar_ex
     alwan_xyz_to_rgb_f32
     alwan_xyz_to_rgb_f64
+    alwan_xyz_to_spectrum_otsu2018_f32
+    alwan_xyz_to_spectrum_otsu2018_f64
     alwan_xyz_to_srgb_f32
     alwan_xyz_to_srgb_f32_map_interleave
     alwan_xyz_to_srgb_f32_map_planar

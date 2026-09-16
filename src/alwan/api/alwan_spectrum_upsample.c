@@ -78,6 +78,36 @@ static alwan_f64 const mallett2019_wavelengths[MALLETT2019_WAVELENGTH_COUNT] = {
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
+ * Otsu 2018 Spectral Recovery Geometry
+ * Based on: Otsu, Yamamoto and Hachisuka. "Reproducing Spectral Reflectances
+ * from Tristimulus Colours" (2018)
+ * Wavelength range: 380-730nm, 36 samples (10nm intervals)
+ *
+ * Five tables, ALWAN_TABLE_OTSU2018_* in data/alwan_data_tables.h. Unlike
+ * Smits1999 and Mallett2019 this one takes XYZ rather than RGB: the selector
+ * tree is defined over CIE xy, so there is no RGB space to assume.
+ *
+ * The cluster's basis-to-XYZ matrix is embedded already inverted, and the
+ * cluster mean's XYZ with it. colour integrates both against the CMFs and the
+ * illuminant on every call, but neither depends on the stimulus, so they are
+ * constants. Precomputing them is what keeps this method free of any spectral
+ * integration at runtime, and therefore usable where a CMF table is not.
+ * ---------------------------------------------------------------- */
+
+#define OTSU2018_WAVELENGTH_COUNT 36
+#define OTSU2018_WAVELENGTH_MIN ALWAN_LITERAL(380.0)
+#define OTSU2018_WAVELENGTH_MAX ALWAN_LITERAL(730.0)
+
+/* Wavelengths. Same story as the two arrays above: uniformly spaced, never
+ * subscripted, kept local as provenance of the sample grid. */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const otsu2018_wavelengths[OTSU2018_WAVELENGTH_COUNT] = {
+#include "../data/spectral_basis/otsu2018/wavelengths.csv"
+};
+ALWAN_DIAG_POP
+
+/* ----------------------------------------------------------------
  * Jakob2019 Polynomial LUT Data
  * Based on: Jakob & Hanika. "A Low-Dimensional Function Space for Efficient Spectral Upsampling" (2019)
  * RGB colorspace: sRGB

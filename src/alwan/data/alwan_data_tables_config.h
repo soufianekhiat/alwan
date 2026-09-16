@@ -254,12 +254,18 @@
 #  define ALWAN_TABLE_CAMERA_SIGMA_SDMERILL ALWAN_TABLES_SPD
 #endif
 
-/* --- Smits 1999 / Mallett 2019 spectral upsampling bases --- */
+/* --- Smits 1999 / Mallett 2019 / Otsu 2018 spectral upsampling bases --- */
 #ifndef ALWAN_TABLE_SMITS1999
 #  define ALWAN_TABLE_SMITS1999 ALWAN_TABLES_SPECTRAL
 #endif
 #ifndef ALWAN_TABLE_MALLETT2019
 #  define ALWAN_TABLE_MALLETT2019 ALWAN_TABLES_SPECTRAL
+#endif
+/* One switch for all five Otsu tables. They are useless apart: the selector
+ * chooses a cluster, and the basis, mean, inverse matrix and mean XYZ are that
+ * cluster's four halves of one answer. */
+#ifndef ALWAN_TABLE_OTSU2018
+#  define ALWAN_TABLE_OTSU2018 ALWAN_TABLES_SPECTRAL
 #endif
 
 /* --- AgX SB2383 inset matrix ---

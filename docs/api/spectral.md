@@ -367,7 +367,7 @@ int  alwan_hero_wavelength_batch_f64(alwan_f64 *lambda_out,
 
 ## RGB to Spectrum (Spectral Upsampling)
 
-Recover a plausible reflectance SPD from an RGB triplet. `out_spd` is allocated internally by each call (fixed wavelength range/count per method).
+Recover a plausible reflectance SPD from a colour. Three of these take an RGB triplet. Otsu 2018 takes XYZ, because its cluster selector is defined over chromaticity and so has no RGB space to assume. `out_spd` is allocated internally by each call (fixed wavelength range/count per method).
 
 ### alwan_rgb_to_spectrum_smits1999
 
@@ -413,6 +413,20 @@ typedef enum {
     ALWAN_JAKOB2019_XYZ           /* CIE XYZ */
 } alwan_jakob2019_gamut;
 ```
+
+### alwan_xyz_to_spectrum_otsu2018
+
+```c
+int alwan_xyz_to_spectrum_otsu2018_f64(alwan_spd_f64 *out_spd,
+                                       alwan_xyz_f64 const *xyz,
+                                       alwan_ctx *ctx);
+```
+
+Otsu, Yamamoto and Hachisuka 2018. A decision tree over CIE xy selects one of eight clusters, and the reflectance is that cluster's mean plus a weighted sum of its three basis functions. Input is XYZ on the Y = 1 scale under D65, which is what the embedded cluster matrices were built for. Output: **380-730 nm, 36 samples at 10 nm**, clamped to `[0,1]`.
+
+The cluster's basis-to-XYZ matrix is embedded already inverted, with the XYZ of its mean beside it. The reference implementation rebuilds both by integrating the basis functions against the CMFs and the illuminant on every call, but neither depends on the stimulus, so they are constants. What remains at runtime is a tree walk, a 3x3 multiply and a weighted sum: no spectral integration, and no CMF table needed, which is what keeps this method available where one is not.
+
+Returns `ALWAN_E_NODATA` when the Otsu tables are compiled out (`ALWAN_TABLE_OTSU2018`).
 
 ---
 

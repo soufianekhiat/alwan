@@ -26,6 +26,26 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Otsu et al. 2018 spectral recovery.** `alwan_xyz_to_spectrum_otsu2018_{T}` recovers a
+  reflectance from a tristimulus value: a decision tree over CIE xy picks one of eight
+  clusters, and the answer is that cluster's mean plus a weighted sum of its three basis
+  functions. 36 samples, 380-730nm at 10nm, clamped to [0, 1] as the reference does.
+
+  It takes XYZ where `alwan_rgb_to_spectrum_smits1999` and `..._mallett2019` take RGB. The
+  selector is defined over chromaticity, so there is no RGB space to assume and none is
+  named.
+
+  The cluster's basis-to-XYZ matrix is embedded already inverted, and the XYZ of its mean
+  with it. colour-science rebuilds both by integrating the basis functions against the CMFs
+  and the illuminant on every call, but neither depends on the stimulus, so they are
+  constants rather than per-call work. Precomputing them in gendata leaves no spectral
+  integration in the runtime at all, which is what keeps this method usable where a CMF
+  table is not, the GPU backends included.
+
+  Held to colour-science at 3.9e-16 over 160 colours chosen to reach all eight clusters;
+  the reference generator refuses to write a file whose cases miss one, because the sparse
+  branches are only entered well away from the neutral axis (suite 149).
+
 - **The Helmholtz-Kohlrausch effect (Nayatani 1997).**
   `alwan_hke_object_nayatani1997_{T}` and `alwan_hke_luminous_nayatani1997_{T}` predict how
   much brighter a chromatic stimulus looks than an achromatic one of the same luminance.

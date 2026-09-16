@@ -3482,6 +3482,22 @@ alwan_status alwan_rgb_to_spectrum_smits1999_f32(alwan_spd_f32 *out_spd, alwan_r
 alwan_status alwan_rgb_to_spectrum_mallett2019_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx);
 alwan_status alwan_rgb_to_spectrum_mallett2019_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx);
 
+/* Otsu2018: XYZ to reflectance by clustered basis functions
+ * Reference: Otsu, Yamamoto and Hachisuka. "Reproducing Spectral Reflectances
+ * from Tristimulus Colours" (2018)
+ *
+ * Takes XYZ, not RGB. A decision tree over CIE xy picks one of eight clusters,
+ * and the reflectance is that cluster's mean plus a weighted sum of its three
+ * basis functions. There is no RGB space to assume, so none is named.
+ *
+ * Output: 36 samples, 380-730nm at 10nm, clamped to [0, 1] as the reference does.
+ * The XYZ is taken on the Y = 1 scale and under D65, which is what the embedded
+ * cluster matrices were built for.
+ *
+ * Returns ALWAN_E_NODATA when the Otsu tables are compiled out. */
+alwan_status alwan_xyz_to_spectrum_otsu2018_f64(alwan_spd_f64 *out_spd, alwan_xyz_f64 const *xyz, alwan_ctx *ctx);
+alwan_status alwan_xyz_to_spectrum_otsu2018_f32(alwan_spd_f32 *out_spd, alwan_xyz_f32 const *xyz, alwan_ctx *ctx);
+
 /* Jakob2019 gamut enum - specifies which RGB color space to use for spectral upsampling */
 typedef enum {
 	ALWAN_JAKOB2019_SRGB = 0,        /* sRGB (standard RGB, Rec.709 primaries) */
