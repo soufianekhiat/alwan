@@ -401,6 +401,54 @@ ALWAN_INLINE alwan_scalar alwan_delta_e_hyab_v(alwan_lab lab1, alwan_lab lab2) {
     return ALWAN_SQRT(dL * dL + dCp * dCp + dHp_sq);
 }
 
+ALWAN_INLINE alwan_scalar alwan_delta_e_hych_v(alwan_lab lab1, alwan_lab lab2, alwan_scalar kL) {
+    alwan_scalar C1 = ALWAN_SQRT(lab1.a * lab1.a + lab1.b * lab1.b);
+    alwan_scalar C2 = ALWAN_SQRT(lab2.a * lab2.a + lab2.b * lab2.b);
+    alwan_scalar Cab_mean = (C1 + C2) / ALWAN_LITERAL(2.0);
+    alwan_scalar Cab7 = Cab_mean * Cab_mean * Cab_mean * Cab_mean * Cab_mean * Cab_mean * Cab_mean;
+    alwan_scalar G = ALWAN_LITERAL(0.5) * (ALWAN_LITERAL(1.0) - ALWAN_SQRT(Cab7 / (Cab7 + ALWAN_LITERAL(6103515625.0))));
+    alwan_scalar a1p = (ALWAN_LITERAL(1.0) + G) * lab1.a;
+    alwan_scalar a2p = (ALWAN_LITERAL(1.0) + G) * lab2.a;
+    alwan_scalar C1p = ALWAN_SQRT(a1p * a1p + lab1.b * lab1.b);
+    alwan_scalar C2p = ALWAN_SQRT(a2p * a2p + lab2.b * lab2.b);
+    alwan_scalar h1p_rad = ALWAN_ATAN2(lab1.b, a1p);
+    h1p_rad = ALWAN_SELECT(h1p_rad < ALWAN_LITERAL(0.0), h1p_rad + ALWAN_LITERAL(2.0) * ALWAN_PI, h1p_rad);
+    alwan_scalar h1p = h1p_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;
+    alwan_scalar h2p_rad = ALWAN_ATAN2(lab2.b, a2p);
+    h2p_rad = ALWAN_SELECT(h2p_rad < ALWAN_LITERAL(0.0), h2p_rad + ALWAN_LITERAL(2.0) * ALWAN_PI, h2p_rad);
+    alwan_scalar h2p = h2p_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;
+    alwan_scalar dLp = lab2.L - lab1.L;
+    alwan_scalar dCp = C2p - C1p;
+    alwan_scalar abs_dh = ALWAN_ABS(h2p - h1p);
+    alwan_scalar achromatic = ALWAN_SELECT(C1p * C2p < ALWAN_EPSILON, ALWAN_LITERAL(1.0), ALWAN_LITERAL(0.0));
+    alwan_scalar dhp = ALWAN_SELECT(achromatic > ALWAN_LITERAL(0.5), ALWAN_LITERAL(0.0),
+                        ALWAN_SELECT(abs_dh <= ALWAN_LITERAL(180.0), h2p - h1p,
+                          ALWAN_SELECT(h2p - h1p > ALWAN_LITERAL(180.0), h2p - h1p - ALWAN_LITERAL(360.0),
+                                       h2p - h1p + ALWAN_LITERAL(360.0))));
+    alwan_scalar dHp = ALWAN_LITERAL(2.0) * ALWAN_SQRT(C1p * C2p) * ALWAN_SIN(dhp * ALWAN_PI / ALWAN_LITERAL(360.0));
+    alwan_scalar Lpm = (lab1.L + lab2.L) / ALWAN_LITERAL(2.0);
+    alwan_scalar Cpm = (C1p + C2p) / ALWAN_LITERAL(2.0);
+    alwan_scalar h_sum = h1p + h2p;
+    alwan_scalar Hpm = ALWAN_SELECT(achromatic > ALWAN_LITERAL(0.5), h_sum,
+                        ALWAN_SELECT(abs_dh <= ALWAN_LITERAL(180.0), h_sum / ALWAN_LITERAL(2.0),
+                          ALWAN_SELECT(h_sum < ALWAN_LITERAL(360.0),
+                                       (h_sum + ALWAN_LITERAL(360.0)) / ALWAN_LITERAL(2.0),
+                                       (h_sum - ALWAN_LITERAL(360.0)) / ALWAN_LITERAL(2.0))));
+    alwan_scalar T2k = ALWAN_LITERAL(1.0)
+        - ALWAN_LITERAL(0.17) * ALWAN_COS((Hpm - ALWAN_LITERAL(30.0)) * ALWAN_PI / ALWAN_LITERAL(180.0))
+        + ALWAN_LITERAL(0.24) * ALWAN_COS((ALWAN_LITERAL(2.0) * Hpm) * ALWAN_PI / ALWAN_LITERAL(180.0))
+        + ALWAN_LITERAL(0.32) * ALWAN_COS((ALWAN_LITERAL(3.0) * Hpm + ALWAN_LITERAL(6.0)) * ALWAN_PI / ALWAN_LITERAL(180.0))
+        - ALWAN_LITERAL(0.20) * ALWAN_COS((ALWAN_LITERAL(4.0) * Hpm - ALWAN_LITERAL(63.0)) * ALWAN_PI / ALWAN_LITERAL(180.0));
+    alwan_scalar Lpm50sq = (Lpm - ALWAN_LITERAL(50.0)) * (Lpm - ALWAN_LITERAL(50.0));
+    alwan_scalar SL = ALWAN_LITERAL(1.0) + (ALWAN_LITERAL(0.015) * Lpm50sq) / ALWAN_SQRT(ALWAN_LITERAL(20.0) + Lpm50sq);
+    alwan_scalar SC = ALWAN_LITERAL(1.0) + ALWAN_LITERAL(0.045) * Cpm;
+    alwan_scalar SH = ALWAN_LITERAL(1.0) + ALWAN_LITERAL(0.015) * Cpm * T2k;
+    alwan_scalar t1 = dLp / (kL * SL);
+    alwan_scalar t2 = dCp / SC;
+    alwan_scalar t3 = dHp / SH;
+    return ALWAN_ABS(t1) + ALWAN_SQRT(t2 * t2 + t3 * t3);
+}
+
 ALWAN_INLINE alwan_scalar alwan_delta_e_cam_jab_v(alwan_cam_jab jab1, alwan_cam_jab jab2, alwan_scalar KL) {
     alwan_scalar dJ = (jab1.J - jab2.J) / KL;
     alwan_scalar da = jab1.a - jab2.a;

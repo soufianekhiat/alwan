@@ -1905,6 +1905,47 @@ alwan_f64 alwan_delta_e_itp_f64(alwan_ictcp_f64 const *ictcp1, alwan_ictcp_f64 c
 alwan_f32  alwan_delta_e_hyab_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2);
 alwan_f64 alwan_delta_e_hyab_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2);
 
+/* dE HyCH - Huang et al. 2015: the CIEDE2000 terms, city block in lightness and
+ * Euclidean across chroma and hue. textiles sets k_L to 2, as CIEDE2000 does for
+ * textile work; anything else leaves it at 1. CIEDE2000's R_T has no part in it. */
+alwan_f32  alwan_delta_e_hych_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2, int textiles);
+alwan_f64 alwan_delta_e_hych_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2, int textiles);
+
+/* The power function Huang et al. 2015 fitted to each colour difference formula, to
+ * straighten its relation to visual judgements: dE' = a * dE^b. The pair (a, b) is the
+ * one published for that formula. An unknown formula is ALWAN_E_INVALID, and so is a
+ * negative difference, which no formula produces. */
+typedef enum {
+    ALWAN_HUANG2015_CIE1976 = 0,
+    ALWAN_HUANG2015_CIE1994 = 1,
+    ALWAN_HUANG2015_CIE2000 = 2,
+    ALWAN_HUANG2015_CMC = 3,
+    ALWAN_HUANG2015_CAM02_LCD = 4,
+    ALWAN_HUANG2015_CAM02_SCD = 5,
+    ALWAN_HUANG2015_CAM02_UCS = 6,
+    ALWAN_HUANG2015_CAM16_UCS = 7,
+    ALWAN_HUANG2015_DIN99D = 8,
+    ALWAN_HUANG2015_OSA = 9,
+    ALWAN_HUANG2015_OSA_GP_EUCLIDEAN = 10,
+    ALWAN_HUANG2015_ULAB = 11,
+    ALWAN_HUANG2015_COUNT
+} alwan_huang2015_formula;
+
+alwan_status alwan_power_function_huang2015_f32(alwan_f32 *out, alwan_f32 delta_e, alwan_huang2015_formula formula);
+alwan_status alwan_power_function_huang2015_f64(alwan_f64 *out, alwan_f64 delta_e, alwan_huang2015_formula formula);
+
+/* STRESS, the standardised residual sum of squares of Garcia et al. 2007: how far a set
+ * of computed differences sits from the visual differences it should track, after the
+ * scale factor between them is taken out. Zero is perfect agreement, and the measure is
+ * a fraction, not a percentage. count must be at least 1, and the two arrays are read
+ * in step, one pair per judgement. A degenerate set, where the computed and visual
+ * differences have
+ * no overlap to scale by, is ALWAN_E_DIVZERO; colour-science yields zero there. */
+alwan_status alwan_index_stress_f32(alwan_f32 *stress_out, alwan_f32 const *delta_e, alwan_f32 const *delta_v,
+                                    size_t count);
+alwan_status alwan_index_stress_f64(alwan_f64 *stress_out, alwan_f64 const *delta_e, alwan_f64 const *delta_v,
+                                    size_t count);
+
 /* dE DIN99 - Euclidean distance in DIN99 space (variant: 0=DIN99, 1=b, 2=c, 3=d) */
 alwan_f32  alwan_delta_e_din99_f32(alwan_din99_f32 const *din99_1, alwan_din99_f32 const *din99_2);
 alwan_f64 alwan_delta_e_din99_f64(alwan_din99_f64 const *din99_1, alwan_din99_f64 const *din99_2);

@@ -114,6 +114,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_palette.c
   src/alwan/api/alwan_cmyk.c
   src/alwan/api/alwan_pattern.c
+src/alwan/api/alwan_difference.c
   src/alwan/api/alwan_nayatani95.c
   src/alwan/map/alwan_agx_jp2499_map.c
   src/alwan/map/alwan_agx_map.c

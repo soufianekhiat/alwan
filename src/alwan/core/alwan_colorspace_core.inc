@@ -522,6 +522,57 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_delta_e_hyab)(ALWAN_CORE_LAB l
     return ALWAN_CORE_SQRT(dL * dL + dCp * dCp + dHp_sq);
 }
 
+/* dE HyCH: the CIEDE2000 terms, city block in lightness and Euclidean across
+ * chroma and hue. Huang et al. 2015; k_L is 2 for textiles, 1 otherwise, and
+ * CIEDE2000's R_T has no part in it. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_delta_e_hych)(ALWAN_CORE_LAB lab1, ALWAN_CORE_LAB lab2, ALWAN_CORE_T kL) {
+    ALWAN_CORE_T C1 = ALWAN_CORE_SQRT(lab1.a * lab1.a + lab1.b * lab1.b);
+    ALWAN_CORE_T C2 = ALWAN_CORE_SQRT(lab2.a * lab2.a + lab2.b * lab2.b);
+    ALWAN_CORE_T Cab_mean = (C1 + C2) / ALWAN_CORE_LITERAL(2.0);
+    ALWAN_CORE_T Cab7 = Cab_mean * Cab_mean * Cab_mean * Cab_mean * Cab_mean * Cab_mean * Cab_mean;
+    ALWAN_CORE_T G = ALWAN_CORE_LITERAL(0.5) * (ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_SQRT(Cab7 / (Cab7 + ALWAN_CORE_LITERAL(6103515625.0))));
+    ALWAN_CORE_T a1p = (ALWAN_CORE_LITERAL(1.0) + G) * lab1.a;
+    ALWAN_CORE_T a2p = (ALWAN_CORE_LITERAL(1.0) + G) * lab2.a;
+    ALWAN_CORE_T C1p = ALWAN_CORE_SQRT(a1p * a1p + lab1.b * lab1.b);
+    ALWAN_CORE_T C2p = ALWAN_CORE_SQRT(a2p * a2p + lab2.b * lab2.b);
+    ALWAN_CORE_T h1p_rad = ALWAN_CORE_ATAN2(lab1.b, a1p);
+    h1p_rad = ALWAN_CORE_SELECT(h1p_rad < ALWAN_CORE_LITERAL(0.0), h1p_rad + ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI, h1p_rad);
+    ALWAN_CORE_T h1p = h1p_rad * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
+    ALWAN_CORE_T h2p_rad = ALWAN_CORE_ATAN2(lab2.b, a2p);
+    h2p_rad = ALWAN_CORE_SELECT(h2p_rad < ALWAN_CORE_LITERAL(0.0), h2p_rad + ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI, h2p_rad);
+    ALWAN_CORE_T h2p = h2p_rad * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
+    ALWAN_CORE_T dLp = lab2.L - lab1.L;
+    ALWAN_CORE_T dCp = C2p - C1p;
+    ALWAN_CORE_T abs_dh = ALWAN_CORE_ABS(h2p - h1p);
+    ALWAN_CORE_T achromatic = ALWAN_CORE_SELECT(C1p * C2p < ALWAN_CORE_EPSILON, ALWAN_CORE_LITERAL(1.0), ALWAN_CORE_LITERAL(0.0));
+    ALWAN_CORE_T dhp = ALWAN_CORE_SELECT(achromatic > ALWAN_CORE_LITERAL(0.5), ALWAN_CORE_LITERAL(0.0),
+                        ALWAN_CORE_SELECT(abs_dh <= ALWAN_CORE_LITERAL(180.0), h2p - h1p,
+                          ALWAN_CORE_SELECT(h2p - h1p > ALWAN_CORE_LITERAL(180.0), h2p - h1p - ALWAN_CORE_LITERAL(360.0),
+                                       h2p - h1p + ALWAN_CORE_LITERAL(360.0))));
+    ALWAN_CORE_T dHp = ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_SQRT(C1p * C2p) * ALWAN_CORE_SIN(dhp * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(360.0));
+    ALWAN_CORE_T Lpm = (lab1.L + lab2.L) / ALWAN_CORE_LITERAL(2.0);
+    ALWAN_CORE_T Cpm = (C1p + C2p) / ALWAN_CORE_LITERAL(2.0);
+    ALWAN_CORE_T h_sum = h1p + h2p;
+    ALWAN_CORE_T Hpm = ALWAN_CORE_SELECT(achromatic > ALWAN_CORE_LITERAL(0.5), h_sum,
+                        ALWAN_CORE_SELECT(abs_dh <= ALWAN_CORE_LITERAL(180.0), h_sum / ALWAN_CORE_LITERAL(2.0),
+                          ALWAN_CORE_SELECT(h_sum < ALWAN_CORE_LITERAL(360.0),
+                                       (h_sum + ALWAN_CORE_LITERAL(360.0)) / ALWAN_CORE_LITERAL(2.0),
+                                       (h_sum - ALWAN_CORE_LITERAL(360.0)) / ALWAN_CORE_LITERAL(2.0))));
+    ALWAN_CORE_T T2k = ALWAN_CORE_LITERAL(1.0)
+        - ALWAN_CORE_LITERAL(0.17) * ALWAN_CORE_COS((Hpm - ALWAN_CORE_LITERAL(30.0)) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0))
+        + ALWAN_CORE_LITERAL(0.24) * ALWAN_CORE_COS((ALWAN_CORE_LITERAL(2.0) * Hpm) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0))
+        + ALWAN_CORE_LITERAL(0.32) * ALWAN_CORE_COS((ALWAN_CORE_LITERAL(3.0) * Hpm + ALWAN_CORE_LITERAL(6.0)) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0))
+        - ALWAN_CORE_LITERAL(0.20) * ALWAN_CORE_COS((ALWAN_CORE_LITERAL(4.0) * Hpm - ALWAN_CORE_LITERAL(63.0)) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0));
+    ALWAN_CORE_T Lpm50sq = (Lpm - ALWAN_CORE_LITERAL(50.0)) * (Lpm - ALWAN_CORE_LITERAL(50.0));
+    ALWAN_CORE_T SL = ALWAN_CORE_LITERAL(1.0) + (ALWAN_CORE_LITERAL(0.015) * Lpm50sq) / ALWAN_CORE_SQRT(ALWAN_CORE_LITERAL(20.0) + Lpm50sq);
+    ALWAN_CORE_T SC = ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_LITERAL(0.045) * Cpm;
+    ALWAN_CORE_T SH = ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_LITERAL(0.015) * Cpm * T2k;
+    ALWAN_CORE_T t1 = dLp / (kL * SL);
+    ALWAN_CORE_T t2 = dCp / SC;
+    ALWAN_CORE_T t3 = dHp / SH;
+    return ALWAN_CORE_ABS(t1) + ALWAN_CORE_SQRT(t2 * t2 + t3 * t3);
+}
+
 /* ================================================================
  * CAM-based Delta E (generic Jab with KL scaling)
  * ================================================================ */

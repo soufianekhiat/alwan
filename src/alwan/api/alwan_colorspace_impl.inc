@@ -289,6 +289,12 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_hyab)(ALWAN_CORE_LAB const *lab1, AL
     return ALWAN_CORE_FNVLIT(alwan_delta_e_hyab)(t1, t2);
 }
 
+ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_hych)(ALWAN_CORE_LAB const *lab1, ALWAN_CORE_LAB const *lab2, int textiles) {
+    ALWAN_CORE_LAB t1 = *lab1, t2 = *lab2;
+    ALWAN_DENORM_LAB(&t1); ALWAN_DENORM_LAB(&t2);
+    return ALWAN_CORE_FNVLIT(alwan_delta_e_hych)(t1, t2, textiles ? ALWAN_CORE_LITERAL(2.0) : ALWAN_CORE_LITERAL(1.0));
+}
+
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_delta_e_din99)(ALWAN_CORE_DIN99 const *din99_1, ALWAN_CORE_DIN99 const *din99_2) {
     ALWAN_CORE_DIN99 t1 = *din99_1, t2 = *din99_2;
     ALWAN_DENORM_DIN99(&t1); ALWAN_DENORM_DIN99(&t2);
