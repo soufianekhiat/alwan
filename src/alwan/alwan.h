@@ -4804,7 +4804,16 @@ typedef enum {
     ALWAN_INTERP_LANCZOS = 2, /* Lanczos windowed sinc */
     ALWAN_INTERP_SPRAGUE = 3, /* Sprague 5th order (for smooth spectra) */
     ALWAN_INTERP_LAGRANGE = 4, /* Lagrange polynomial */
-    ALWAN_INTERP_AKIMA = 5 /* Akima spline (non-overshooting) */
+    ALWAN_INTERP_AKIMA = 5, /* Akima spline (non-overshooting) */
+    /* PCHIP, Fritsch and Carlson's monotone cubic. It reads the same four points
+     * ALWAN_INTERP_CUBIC does, and differs in what it does with them: the node
+     * derivatives are chosen so the curve never overshoots between samples. Where the
+     * data turns, PCHIP flattens; ALWAN_INTERP_CUBIC is Catmull-Rom, which stays smooth
+     * and rings. On a reflectance or a transfer curve that overshoot can leave values
+     * outside the range the data never left.
+     *
+     * Matches scipy's PchipInterpolator, which is what colour-science wraps. */
+    ALWAN_INTERP_PCHIP = 6
 } alwan_interp_method;
 
 /* Extrapolation method types */

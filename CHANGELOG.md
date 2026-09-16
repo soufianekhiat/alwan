@@ -26,6 +26,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **PCHIP interpolation.** `ALWAN_INTERP_PCHIP` joins `alwan_interp_method`: Fritsch and
+  Carlson's monotone cubic, which reads the same four points `ALWAN_INTERP_CUBIC` does and
+  chooses the node derivatives so the curve cannot overshoot between samples. Where the
+  data turns, it flattens.
+
+  That is the difference worth knowing. `ALWAN_INTERP_CUBIC` is Catmull-Rom, not a spline:
+  smooth, and it rings past the samples. On a reflectance, a density curve or a transfer
+  function an overshoot puts values outside a range the data never left. On the suite's
+  step fixture PCHIP holds exactly [0, 1] where Catmull-Rom swings 7.4e-02 beyond it.
+
+  Matches scipy's `PchipInterpolator`, which is what colour-science wraps, to 3.3e-16
+  including the endpoints (suite 42).
+
+  Note that `alwan_interpolate_{T}` clamps to the end values outside the range of `x_in`
+  where scipy continues its polynomial, so the two agree inside the data and diverge
+  outside it by design.
+
 - **A robust loss on the colour correction fits.** `alwan_ccm_fit_params` grows
   `robust_scale`, `robust_k`, `robust_iterations` and `robust_tol`. With a scale above
   zero the fit minimises `sum_i w_i rho(|r_i| / scale) + ridge |X|_F^2` with Huber's

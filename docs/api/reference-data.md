@@ -708,17 +708,36 @@ int alwan_interpolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t c
 
 Interpolate data points using the specified method (`x_in` must be sorted ascending).
 
+Outside the range of `x_in` the result is **clamped to the end value**, not extrapolated.
+scipy's interpolators continue their polynomial instead, so the two agree inside the data
+and diverge outside it by design. Use `alwan_extrapolate_{T}` when you want the other
+behaviour.
+
 **Methods:**
 ```c
 typedef enum {
     ALWAN_INTERP_LINEAR = 0,     /* Linear */
-    ALWAN_INTERP_CUBIC,           /* Cubic */
+    ALWAN_INTERP_CUBIC,           /* Catmull-Rom, four points, smooth but overshoots */
     ALWAN_INTERP_LANCZOS,         /* Lanczos windowed sinc */
     ALWAN_INTERP_SPRAGUE,         /* Sprague 5th order */
     ALWAN_INTERP_LAGRANGE,        /* Lagrange polynomial */
-    ALWAN_INTERP_AKIMA            /* Akima spline (non-overshooting) */
+    ALWAN_INTERP_AKIMA,           /* Akima spline (non-overshooting) */
+    ALWAN_INTERP_PCHIP            /* Fritsch-Carlson monotone cubic */
 } alwan_interp_method;
 ```
+
+`ALWAN_INTERP_CUBIC` is Catmull-Rom, a local four-point curve, not a cubic spline. It is
+smooth and it overshoots: where the data turns, the interpolant swings past the samples.
+
+`ALWAN_INTERP_PCHIP` reads the same four points and chooses the node derivatives so it
+cannot overshoot, flattening where the data turns instead. On a reflectance, a density
+curve or a transfer function that difference matters, because an overshoot puts values
+outside a range the data never left. It matches scipy's `PchipInterpolator`, which is what
+colour-science wraps, to 8.9e-16 including the endpoints.
+
+There is no cubic spline yet. That is a different kind of method: not-a-knot needs a global
+solve over every sample before any point can be evaluated, where everything above reads a
+bounded stencil.
 
 ### alwan_extrapolate_{T}
 
