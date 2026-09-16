@@ -1070,6 +1070,10 @@ EXPORTS
     alwan_picture_form_local_exp_resume_m_f64
     alwan_picture_form_pure_exp_f32
     alwan_picture_form_pure_exp_f64
+    alwan_planckian_table_create_f32
+    alwan_planckian_table_create_f64
+    alwan_planckian_table_destroy
+    alwan_planckian_table_size
     alwan_pointer_gamut_boundary
     alwan_poly_expand_cheung2004_f32
     alwan_poly_expand_cheung2004_f64
@@ -1484,6 +1488,8 @@ EXPORTS
     alwan_uint_to_float_f64
     alwan_uv_to_cct_krystek1985_f32
     alwan_uv_to_cct_krystek1985_f64
+    alwan_uv_to_cct_ohno2013_f32
+    alwan_uv_to_cct_ohno2013_f64
     alwan_uvw_to_xyz_f32
     alwan_uvw_to_xyz_f32_map_interleave
     alwan_uvw_to_xyz_f32_map_planar
