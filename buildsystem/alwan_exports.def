@@ -441,6 +441,8 @@ EXPORTS
     alwan_delta_e_din99_f64
     alwan_delta_e_hyab_f32
     alwan_delta_e_hyab_f64
+    alwan_delta_e_hych_f32
+    alwan_delta_e_hych_f64
     alwan_delta_e_itp_f32
     alwan_delta_e_itp_f64
     alwan_delta_e_ok_f32
@@ -746,6 +748,8 @@ EXPORTS
     alwan_image_convert_f64
     alwan_image_convert_rgba_f32
     alwan_image_convert_rgba_f64
+    alwan_index_stress_f32
+    alwan_index_stress_f64
     alwan_interop_count
     alwan_interop_entry_at_f32
     alwan_interop_entry_at_f64
@@ -1073,6 +1077,8 @@ EXPORTS
     alwan_poly_expand_finlayson2015_f64
     alwan_poly_expand_vandermonde_f32
     alwan_poly_expand_vandermonde_f64
+    alwan_power_function_huang2015_f32
+    alwan_power_function_huang2015_f64
     alwan_pq_normalize_peak_f32
     alwan_pq_normalize_peak_f64
     alwan_printer_lights_apply_f32
