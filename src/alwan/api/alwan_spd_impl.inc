@@ -847,6 +847,42 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
 #else
         missing = 1;
 #endif
+    } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_10DEG) {
+        /* Stockman & Sharpe 10 deg cone fundamentals, native 390-830nm */
+#if ALWAN_TABLE_CMF_STOCKMAN_SHARPE_10DEG
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_10deg_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_10deg_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stockman_sharpe_10deg_z));
+#else
+        missing = 1;
+#endif
+    } else if (observer == ALWAN_OBSERVER_SMITH_POKORNY_1975) {
+        /* Smith & Pokorny 1975 normal trichromats, l/m/s, native 380-780nm */
+#if ALWAN_TABLE_CMF_SMITH_POKORNY_1975
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_smith_pokorny_1975_x));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_smith_pokorny_1975_y));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_smith_pokorny_1975_z));
+#else
+        missing = 1;
+#endif
+    } else if (observer == ALWAN_OBSERVER_STILES_BURCH_1955_2DEG) {
+        /* Stiles & Burch 1955 2 deg RGB CMFs, native 390-730nm */
+#if ALWAN_TABLE_CMF_STILES_BURCH_1955_2DEG
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stiles_burch_1955_2deg_r));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stiles_burch_1955_2deg_g));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stiles_burch_1955_2deg_b));
+#else
+        missing = 1;
+#endif
+    } else if (observer == ALWAN_OBSERVER_STILES_BURCH_1959_10DEG) {
+        /* Stiles & Burch 1959 10 deg RGB CMFs, native 390-830nm */
+#if ALWAN_TABLE_CMF_STILES_BURCH_1959_10DEG
+        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stiles_burch_1959_10deg_r));
+        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stiles_burch_1959_10deg_g));
+        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_stiles_burch_1959_10deg_b));
+#else
+        missing = 1;
+#endif
     } else {
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(x_bar, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(y_bar, ctx);

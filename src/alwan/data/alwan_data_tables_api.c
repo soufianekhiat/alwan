@@ -1338,6 +1338,186 @@ alwan_f64 const alwan_table_cmf_wright_guild_1931_b_f64[ALWAN_TABLE_SPD_360_830_
 
 #endif
 
+#if ALWAN_TABLE_CMF_STOCKMAN_SHARPE_10DEG
+/* ---- alwan_table_cmf_stockman_sharpe_10deg_x ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stockman_sharpe_10deg_x_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stockman_sharpe_10deg_x_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stockman_sharpe_10deg_x_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stockman_sharpe_10deg_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stockman_sharpe_10deg_x_360_830_1nm.csv"
+};
+#endif
+
+/* ---- alwan_table_cmf_stockman_sharpe_10deg_y ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stockman_sharpe_10deg_y_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stockman_sharpe_10deg_y_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stockman_sharpe_10deg_y_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stockman_sharpe_10deg_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stockman_sharpe_10deg_y_360_830_1nm.csv"
+};
+#endif
+
+/* ---- alwan_table_cmf_stockman_sharpe_10deg_z ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stockman_sharpe_10deg_z_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stockman_sharpe_10deg_z_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stockman_sharpe_10deg_z_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stockman_sharpe_10deg_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stockman_sharpe_10deg_z_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_CMF_SMITH_POKORNY_1975
+/* ---- alwan_table_cmf_smith_pokorny_1975_x ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/smith_pokorny_1975_x_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_smith_pokorny_1975_x_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/smith_pokorny_1975_x_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_smith_pokorny_1975_x_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/smith_pokorny_1975_x_360_830_1nm.csv"
+};
+#endif
+
+/* ---- alwan_table_cmf_smith_pokorny_1975_y ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/smith_pokorny_1975_y_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_smith_pokorny_1975_y_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/smith_pokorny_1975_y_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_smith_pokorny_1975_y_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/smith_pokorny_1975_y_360_830_1nm.csv"
+};
+#endif
+
+/* ---- alwan_table_cmf_smith_pokorny_1975_z ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/smith_pokorny_1975_z_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_smith_pokorny_1975_z_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/smith_pokorny_1975_z_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_smith_pokorny_1975_z_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/smith_pokorny_1975_z_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_CMF_STILES_BURCH_1955_2DEG
+/* ---- alwan_table_cmf_stiles_burch_1955_2deg_r ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stiles_burch_1955_2deg_r_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stiles_burch_1955_2deg_r_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1955_2deg_r_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stiles_burch_1955_2deg_r_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1955_2deg_r_360_830_1nm.csv"
+};
+#endif
+
+/* ---- alwan_table_cmf_stiles_burch_1955_2deg_g ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stiles_burch_1955_2deg_g_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stiles_burch_1955_2deg_g_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1955_2deg_g_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stiles_burch_1955_2deg_g_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1955_2deg_g_360_830_1nm.csv"
+};
+#endif
+
+/* ---- alwan_table_cmf_stiles_burch_1955_2deg_b ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stiles_burch_1955_2deg_b_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stiles_burch_1955_2deg_b_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1955_2deg_b_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stiles_burch_1955_2deg_b_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1955_2deg_b_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_CMF_STILES_BURCH_1959_10DEG
+/* ---- alwan_table_cmf_stiles_burch_1959_10deg_r ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stiles_burch_1959_10deg_r_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stiles_burch_1959_10deg_r_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1959_10deg_r_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stiles_burch_1959_10deg_r_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1959_10deg_r_360_830_1nm.csv"
+};
+#endif
+
+/* ---- alwan_table_cmf_stiles_burch_1959_10deg_g ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stiles_burch_1959_10deg_g_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stiles_burch_1959_10deg_g_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1959_10deg_g_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stiles_burch_1959_10deg_g_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1959_10deg_g_360_830_1nm.csv"
+};
+#endif
+
+/* ---- alwan_table_cmf_stiles_burch_1959_10deg_b ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: cmf/stiles_burch_1959_10deg_b_360_830_1nm.csv */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_cmf_stiles_burch_1959_10deg_b_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1959_10deg_b_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_cmf_stiles_burch_1959_10deg_b_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "cmf/stiles_burch_1959_10deg_b_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
 #if ALWAN_TABLE_CAMERA_NIKON_5100
 /* ---- alwan_table_camera_nikon_5100_r ----
  * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}

@@ -473,6 +473,46 @@ ALWAN_TABLE_EXTERN(alwan_table_cmf_wright_guild_1931_g, ALWAN_TABLE_SPD_360_830_
 ALWAN_TABLE_EXTERN(alwan_table_cmf_wright_guild_1931_b, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
 #endif
 
+/* ---- cmf_stockman_sharpe_10deg x/y/z -- rank 1, 471, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata, Stockman and Sharpe 10 deg cone fundamentals,
+ *         360-830nm at 1nm, zero outside the native 390-830nm. */
+#if ALWAN_TABLE_CMF_STOCKMAN_SHARPE_10DEG
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stockman_sharpe_10deg_x, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stockman_sharpe_10deg_y, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stockman_sharpe_10deg_z, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+
+/* ---- cmf_smith_pokorny_1975 x/y/z -- rank 1, 471, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata, Smith and Pokorny 1975 normal trichromats, l/m/s in
+ *         the x/y/z slots, 360-830nm at 1nm, zero outside the native 380-780nm. */
+#if ALWAN_TABLE_CMF_SMITH_POKORNY_1975
+ALWAN_TABLE_EXTERN(alwan_table_cmf_smith_pokorny_1975_x, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_cmf_smith_pokorny_1975_y, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_cmf_smith_pokorny_1975_z, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+
+/* ---- cmf_stiles_burch_1955_2deg r/g/b -- rank 1, 471, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata, Stiles and Burch 1955 2 deg RGB CMFs,
+ *         360-830nm at 1nm, zero outside the native 390-730nm. */
+#if ALWAN_TABLE_CMF_STILES_BURCH_1955_2DEG
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stiles_burch_1955_2deg_r, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stiles_burch_1955_2deg_g, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stiles_burch_1955_2deg_b, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+
+/* ---- cmf_stiles_burch_1959_10deg r/g/b -- rank 1, 471, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata, Stiles and Burch 1959 10 deg RGB CMFs,
+ *         360-830nm at 1nm, zero outside the native 390-830nm. */
+#if ALWAN_TABLE_CMF_STILES_BURCH_1959_10DEG
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stiles_burch_1959_10deg_r, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stiles_burch_1959_10deg_g, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+ALWAN_TABLE_EXTERN(alwan_table_cmf_stiles_burch_1959_10deg_b, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+
 /* ---- camera_nikon_5100 r/g/b -- rank 1, 471, INTEGER row ----
  * Reader: alwan_table1d_row_{f32,f64}
  * Source: alwan_dev/gendata, Nikon D5100 spectral sensitivities,

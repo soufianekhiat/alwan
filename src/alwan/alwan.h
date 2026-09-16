@@ -2339,7 +2339,17 @@ typedef enum {
     ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4,  /* Stockman & Sharpe 2000 2 deg cone fundamentals */
     ALWAN_OBSERVER_CIE_2015_2DEG = 5,         /* CIE 2015 2 deg cone-fundamental-based observer */
     ALWAN_OBSERVER_CIE_2015_10DEG = 6,        /* CIE 2015 10 deg cone-fundamental-based observer */
-    ALWAN_OBSERVER_WRIGHT_GUILD_1931 = 7      /* Wright & Guild 1931 2 deg RGB CMFs (historical) */
+    ALWAN_OBSERVER_WRIGHT_GUILD_1931 = 7,     /* Wright & Guild 1931 2 deg RGB CMFs (historical) */
+
+    /* Tabulated over part of 360-830nm and zero outside it. A CMF is zero where the
+     * observer has no response, which is not the constant hold the illuminants use.
+     * Smith & Pokorny is l/m/s cone fundamentals in the x/y/z slots, as Stockman &
+     * Sharpe already is; both Stiles & Burch sets are r/g/b RGB CMFs, as Wright &
+     * Guild is. */
+    ALWAN_OBSERVER_STOCKMAN_SHARPE_10DEG = 8,   /* Stockman & Sharpe 10 deg cone fundamentals, 390-830 */
+    ALWAN_OBSERVER_SMITH_POKORNY_1975 = 9,      /* Smith & Pokorny 1975 normal trichromats, 380-780 */
+    ALWAN_OBSERVER_STILES_BURCH_1955_2DEG = 10, /* Stiles & Burch 1955 2 deg RGB CMFs, 390-730 */
+    ALWAN_OBSERVER_STILES_BURCH_1959_10DEG = 11 /* Stiles & Burch 1959 10 deg RGB CMFs, 390-830 */
 } alwan_observer_type;
 
 /* Camera/Sensor spectral sensitivity identifiers */
