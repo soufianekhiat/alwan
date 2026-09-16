@@ -29,7 +29,8 @@ alias; pick `_f32` or `_f64` at the call site.
 > **f64-internal facades (by design).** `alwan_cct_kang_xy_f32` (a Newton-Raphson
 > inverse with sub-f32-epsilon tolerances) and the spectral quality metrics
 > `alwan_cri_ra_f32` / `alwan_cqs_calculate_f32` / `alwan_tm30_rf_f32` /
-> `alwan_cie224_rf_f32` / `alwan_ssi_calculate_f32` / `alwan_metamerism_index_f32`
+> `alwan_tm30_specification_f32` / `alwan_cie224_rf_f32` / `alwan_ssi_calculate_f32` /
+> `alwan_metamerism_index_f32`
 > (wavelength integration over f64 CMF tables) run the algorithm in `double` and
 > narrow the result. This is a design choice rather than a missing native-f32
 > path: the iterative/integration core needs f64 precision and repeatability. They stay
@@ -208,6 +209,48 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 
 IES TM-30 Fidelity Index (Rf) using 99 CES samples. Returns [0, 100], or negative on
 error.
+
+### alwan_tm30_specification
+
+```c
+#define ALWAN_TM30_HUE_BINS 16
+#define ALWAN_TM30_SAMPLES 99
+
+typedef struct {
+    alwan_f64 rf;                                          /* general fidelity */
+    alwan_f64 rg;                                          /* gamut index */
+    alwan_f64 rfs[ALWAN_TM30_HUE_BINS];                    /* local fidelity */
+    alwan_f64 rcs[ALWAN_TM30_HUE_BINS];                    /* local chroma shift, percent */
+    alwan_f64 rhs[ALWAN_TM30_HUE_BINS];                    /* local hue shift */
+    alwan_f64 average_norms[ALWAN_TM30_HUE_BINS];          /* length of each reference average */
+    alwan_f64 averages_test[ALWAN_TM30_HUE_BINS][2];       /* (a', b') under the test source */
+    alwan_f64 averages_reference[ALWAN_TM30_HUE_BINS][2];  /* (a', b') under the reference */
+    int bins[ALWAN_TM30_SAMPLES];                          /* the bin each sample fell in */
+} alwan_tm30_f64;                                          /* alwan_tm30_f32 is the f32 twin */
+
+alwan_status alwan_tm30_specification_f32(alwan_tm30_f32 *spec_out,
+                                          alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
+alwan_status alwan_tm30_specification_f64(alwan_tm30_f64 *spec_out,
+                                          alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
+```
+
+The rest of ANSI/IES TM-30-18, where `alwan_tm30_rf` gives only the headline number. The
+99 colour evaluation samples are sorted into 16 hue bins by where each one lands under the
+reference illuminant, and the rendition is then reported bin by bin.
+
+`rg` is 100 times the ratio of the areas the test and reference polygons enclose: above
+100 the source saturates on average, below 100 it dulls. `rcs` is signed, positive where
+the bin gains chroma. `rhs` is the component of the shift along the bin's bisector, and is
+not an angle. `averages_test` and `averages_reference` are the two polygons' vertices,
+which is what a colour vector graphic draws; `average_norms` is the length of each
+reference vertex, so a caller plotting the graphic can normalise the test vertex against
+the circle without recomputing it.
+
+A bin with no samples in it leaves its entries at zero. No real source empties one; the 99
+samples were chosen so that none can.
+
+Both entry points cost the same as `alwan_tm30_rf`, which runs the same pipeline and
+discards everything but `rf`.
 
 ### alwan_cie224_rf
 

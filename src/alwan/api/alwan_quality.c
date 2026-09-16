@@ -1526,11 +1526,16 @@ static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwa
  * the 99 CES reflectances were 80 copies of a constant 0.5 and four of the
  * metric's coefficients were wrong.
  */
-alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
+/* The TM-30 pipeline. Returns Rf, or -1 on failure, and fills spec_out when one is given.
+ * The per-sample appearance coordinates that the fidelity index averages away are exactly
+ * what the rest of TM-30-18 is built from, so they are kept here rather than the whole
+ * spectral walk being run a second time. */
+static alwan_f64 quality_tm30(alwan_spd_f64 const *test_spd, alwan_ctx *ctx, alwan_tm30_f64 *spec_out) {
     if (!ctx || !test_spd) {
         return ALWAN_LITERAL(-1.0);
     }
 #if !ALWAN_TABLE_CES_REFLECTANCE
+    (void)spec_out;
     return ALWAN_LITERAL(-1.0);   /* CES reflectances compiled out: the documented error value */
 #else
 
@@ -1742,6 +1747,16 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     /* Step 4: Calculate color differences for every CES sample */
     alwan_f64 delta_e_sum = ALWAN_LITERAL(0.0);
 
+    /* Kept only when the caller asked for the full specification: each sample's colour
+     * difference, its (a', b') under both illuminants, and the hue angle under the
+     * reference, which is what decides the bin it belongs to. */
+    alwan_f64 sample_de[ALWAN_TABLE_CES_SAMPLES] = {ALWAN_LITERAL(0.0)};
+    alwan_f64 sample_ap_test[ALWAN_TABLE_CES_SAMPLES] = {ALWAN_LITERAL(0.0)};
+    alwan_f64 sample_bp_test[ALWAN_TABLE_CES_SAMPLES] = {ALWAN_LITERAL(0.0)};
+    alwan_f64 sample_ap_ref[ALWAN_TABLE_CES_SAMPLES] = {ALWAN_LITERAL(0.0)};
+    alwan_f64 sample_bp_ref[ALWAN_TABLE_CES_SAMPLES] = {ALWAN_LITERAL(0.0)};
+    alwan_f64 sample_h_ref[ALWAN_TABLE_CES_SAMPLES] = {ALWAN_LITERAL(0.0)};
+
     for (int i = 0; i < ALWAN_TABLE_CES_SAMPLES; i++) {
         /* Create CES reflectance SPD */
         alwan_spd_f64 ces_spd;
@@ -1852,6 +1867,15 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         alwan_f64 delta_e = ALWAN_SQRT(dJp * dJp + dap * dap + dbp * dbp);
 
         delta_e_sum += delta_e;
+
+        if (spec_out) {
+            sample_de[i] = delta_e;
+            sample_ap_test[i] = ap_test;
+            sample_bp_test[i] = bp_test;
+            sample_ap_ref[i] = ap_ref;
+            sample_bp_ref[i] = bp_ref;
+            sample_h_ref[i] = h_ref;
+        }
     }
 
     /* Cleanup */
@@ -1886,9 +1910,115 @@ alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
                   ALWAN_LITERAL(10.0);
     alwan_f64 rf = ALWAN_LITERAL(10.0) * ALWAN_LN(ALWAN_LITERAL(1.0) + ALWAN_EXP(t));
 
+    if (spec_out) {
+        int const samples = ALWAN_TABLE_CES_SAMPLES < ALWAN_TM30_SAMPLES
+                          ? ALWAN_TABLE_CES_SAMPLES : ALWAN_TM30_SAMPLES;
+        int counts[ALWAN_TM30_HUE_BINS];
+        alwan_f64 bin_delta_e[ALWAN_TM30_HUE_BINS];
+        alwan_f64 area_test = ALWAN_LITERAL(0.0), area_reference = ALWAN_LITERAL(0.0);
+        int b;
+
+        spec_out->rf = rf;
+        spec_out->rg = ALWAN_LITERAL(0.0);
+        for (b = 0; b < ALWAN_TM30_HUE_BINS; b++) {
+            counts[b] = 0;
+            bin_delta_e[b] = ALWAN_LITERAL(0.0);
+            spec_out->rfs[b] = ALWAN_LITERAL(0.0);
+            spec_out->rcs[b] = ALWAN_LITERAL(0.0);
+            spec_out->rhs[b] = ALWAN_LITERAL(0.0);
+            spec_out->average_norms[b] = ALWAN_LITERAL(0.0);
+            spec_out->averages_test[b][0] = ALWAN_LITERAL(0.0);
+            spec_out->averages_test[b][1] = ALWAN_LITERAL(0.0);
+            spec_out->averages_reference[b][0] = ALWAN_LITERAL(0.0);
+            spec_out->averages_reference[b][1] = ALWAN_LITERAL(0.0);
+        }
+        for (int i = 0; i < ALWAN_TM30_SAMPLES; i++) {
+            spec_out->bins[i] = -1;   /* no such sample, if the CES set is ever shorter */
+        }
+
+        for (int i = 0; i < samples; i++) {
+            /* The bin is where the sample lands under the reference, in sixteen arcs of
+             * 22.5 degrees from zero. Found by walking the arcs rather than by casting the
+             * quotient: a float-derived subscript is what check_table_registry inventories,
+             * and there is no table here to route one through. */
+            alwan_f64 h = sample_h_ref[i];
+            int bin = 0;
+            while (h < ALWAN_LITERAL(0.0)) h += ALWAN_LITERAL(360.0);
+            while (h >= ALWAN_LITERAL(360.0)) h -= ALWAN_LITERAL(360.0);
+            while (bin < ALWAN_TM30_HUE_BINS - 1 &&
+                   h >= ALWAN_LITERAL(22.5) * (alwan_f64)(bin + 1)) {
+                bin++;
+            }
+            spec_out->bins[i] = bin;
+            counts[bin]++;
+            bin_delta_e[bin] += sample_de[i];
+            spec_out->averages_test[bin][0] += sample_ap_test[i];
+            spec_out->averages_test[bin][1] += sample_bp_test[i];
+            spec_out->averages_reference[bin][0] += sample_ap_ref[i];
+            spec_out->averages_reference[bin][1] += sample_bp_ref[i];
+        }
+
+        for (b = 0; b < ALWAN_TM30_HUE_BINS; b++) {
+            alwan_f64 n, tb;
+            if (counts[b] == 0) continue;   /* an empty bin keeps its zeros, as documented */
+            n = (alwan_f64)counts[b];
+            spec_out->averages_test[b][0] /= n;
+            spec_out->averages_test[b][1] /= n;
+            spec_out->averages_reference[b][0] /= n;
+            spec_out->averages_reference[b][1] /= n;
+            tb = (ALWAN_LITERAL(100.0) - ALWAN_LITERAL(6.73) * (bin_delta_e[b] / n)) / ALWAN_LITERAL(10.0);
+            spec_out->rfs[b] = ALWAN_LITERAL(10.0) * ALWAN_LN(ALWAN_LITERAL(1.0) + ALWAN_EXP(tb));
+            spec_out->average_norms[b] = ALWAN_SQRT(
+                spec_out->averages_reference[b][0] * spec_out->averages_reference[b][0] +
+                spec_out->averages_reference[b][1] * spec_out->averages_reference[b][1]);
+        }
+
+        /* The gamut index: the two polygons the bin averages trace, by the shoelace sum. */
+        for (b = 0; b < ALWAN_TM30_HUE_BINS; b++) {
+            int const c = (b + 1) % ALWAN_TM30_HUE_BINS;
+            area_test += (spec_out->averages_test[b][0] * spec_out->averages_test[c][1] -
+                          spec_out->averages_test[b][1] * spec_out->averages_test[c][0]) / ALWAN_LITERAL(2.0);
+            area_reference += (spec_out->averages_reference[b][0] * spec_out->averages_reference[c][1] -
+                               spec_out->averages_reference[b][1] * spec_out->averages_reference[c][0]) /
+                              ALWAN_LITERAL(2.0);
+        }
+        if (area_reference != ALWAN_LITERAL(0.0)) {
+            spec_out->rg = ALWAN_LITERAL(100.0) * (area_test / area_reference);
+        }
+
+        /* The shifts, taken along each bin's bisector and across it. */
+        for (b = 0; b < ALWAN_TM30_HUE_BINS; b++) {
+            alwan_f64 const angle = (ALWAN_LITERAL(22.5) * (alwan_f64)b + ALWAN_LITERAL(11.25)) *
+                                    ALWAN_PI / ALWAN_LITERAL(180.0);
+            alwan_f64 const cs = ALWAN_COS(angle), sn = ALWAN_SIN(angle);
+            alwan_f64 const da = spec_out->averages_test[b][0] - spec_out->averages_reference[b][0];
+            alwan_f64 const db = spec_out->averages_test[b][1] - spec_out->averages_reference[b][1];
+            if (spec_out->average_norms[b] == ALWAN_LITERAL(0.0)) continue;
+            spec_out->rcs[b] = ALWAN_LITERAL(100.0) * (da * cs + db * sn) / spec_out->average_norms[b];
+            spec_out->rhs[b] = (-da * sn + db * cs) / spec_out->average_norms[b];
+        }
+    }
+
     return rf;
 #endif
 }
+
+alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
+    return quality_tm30(test_spd, ctx, NULL);
+}
+
+alwan_status alwan_tm30_specification_f64(alwan_tm30_f64 *spec_out, alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
+    alwan_f64 rf;
+    if (!spec_out || !test_spd || !ctx) return ALWAN_E_INVALID;
+    rf = quality_tm30(test_spd, ctx, spec_out);
+    /* Rf asymptotes towards zero and never passes it; -1 is the pipeline's failure value,
+     * which it returns when the CES reflectances were compiled out or a step failed. */
+    if (rf < ALWAN_LITERAL(0.0)) return ALWAN_E_NODATA;
+    return ALWAN_OK;
+}
+
+/* alwan_tm30_specification_f32 lives with the other f32 wrappers, below the
+ * spd_alloc_f64_from_f32 helper they all need. */
 
 /* ----------------------------------------------------------------
  * CIE 224:2017 Color Fidelity Index
@@ -1986,6 +2116,34 @@ alwan_f32 alwan_tm30_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {
     alwan_f64 result = alwan_tm30_rf_f64(&tmp, ctx);
     alwan_spd_destroy_f64(&tmp, ctx);
     return (alwan_f32)result;
+}
+
+alwan_status alwan_tm30_specification_f32(alwan_tm30_f32 *spec_out, alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {
+    alwan_tm30_f64 wide;
+    alwan_spd_f64 tmp;
+    alwan_status st;
+    int i;
+    if (!spec_out || !test_spd || !ctx) return ALWAN_E_INVALID;
+    if (spd_alloc_f64_from_f32(&tmp, ctx, test_spd) != ALWAN_OK) return ALWAN_E_NOMEM;
+    st = alwan_tm30_specification_f64(&wide, &tmp, ctx);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    if (st != ALWAN_OK) return st;
+    spec_out->rf = (alwan_f32)wide.rf;
+    spec_out->rg = (alwan_f32)wide.rg;
+    for (i = 0; i < ALWAN_TM30_HUE_BINS; i++) {
+        spec_out->rfs[i] = (alwan_f32)wide.rfs[i];
+        spec_out->rcs[i] = (alwan_f32)wide.rcs[i];
+        spec_out->rhs[i] = (alwan_f32)wide.rhs[i];
+        spec_out->average_norms[i] = (alwan_f32)wide.average_norms[i];
+        spec_out->averages_test[i][0] = (alwan_f32)wide.averages_test[i][0];
+        spec_out->averages_test[i][1] = (alwan_f32)wide.averages_test[i][1];
+        spec_out->averages_reference[i][0] = (alwan_f32)wide.averages_reference[i][0];
+        spec_out->averages_reference[i][1] = (alwan_f32)wide.averages_reference[i][1];
+    }
+    for (i = 0; i < ALWAN_TM30_SAMPLES; i++) {
+        spec_out->bins[i] = wide.bins[i];
+    }
+    return ALWAN_OK;
 }
 
 alwan_f32 alwan_cie224_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {

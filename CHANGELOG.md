@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **The rest of TM-30-18, not just Rf.** `alwan_tm30_specification_{T}` fills an
+  `alwan_tm30_{T}` with the gamut index Rg, the sixteen hue bins' local fidelity, chroma
+  shift and hue shift, the bin each of the 99 samples fell in, and the two sets of (a', b')
+  averages a colour vector graphic is drawn from. The pipeline is the one
+  `alwan_tm30_rf_{T}` already ran, which had been throwing all of this away; Rf itself is
+  unchanged. Held to colour-science across daylight, incandescent, a broad and a narrow
+  fluorescent, a phosphor LED and a sodium lamp, so Rg is exercised from 54 to 101 (suite
+  32, `docs/api/cct-light-quality.md`).
+
 - **An exact CCT and Duv solve: the Planckian table and Ohno 2013.**
   `alwan_planckian_table_create_{T}` samples the Planck 1900 locus once, against an
   observer's own CMFs, and keeps it; `alwan_uv_to_cct_ohno2013_{T}` then reads that table

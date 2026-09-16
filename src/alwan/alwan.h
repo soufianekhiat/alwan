@@ -4231,6 +4231,47 @@ alwan_f32 alwan_tm30_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 alwan_f64 alwan_cie224_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 alwan_f32 alwan_cie224_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 
+/* ANSI/IES TM-30-18 in full, where alwan_tm30_rf gives only the headline number.
+ *
+ * The 99 colour evaluation samples are sorted into 16 hue bins by where each one lands
+ * under the reference illuminant, and the rendition is then described bin by bin: how
+ * faithfully it renders (rfs), how much chroma it gains or loses (rcs, in percent) and how
+ * far its hue turns (rhs). The 16 test and reference (a', b') averages are the vertices of
+ * the colour vector graphic, and rg is 100 times the ratio of the areas those two polygons
+ * enclose: above 100 the source saturates on average, below 100 it dulls.
+ *
+ * A hue bin with no samples in it leaves its averages, rfs, rcs and rhs at zero. No real
+ * source empties a bin; the 99 samples were chosen so that none can. */
+#define ALWAN_TM30_HUE_BINS 16
+#define ALWAN_TM30_SAMPLES 99
+
+typedef struct {
+    alwan_f64 rf;                                          /* general fidelity, as alwan_tm30_rf */
+    alwan_f64 rg;                                          /* gamut index */
+    alwan_f64 rfs[ALWAN_TM30_HUE_BINS];                    /* local fidelity */
+    alwan_f64 rcs[ALWAN_TM30_HUE_BINS];                    /* local chroma shift, percent */
+    alwan_f64 rhs[ALWAN_TM30_HUE_BINS];                    /* local hue shift */
+    alwan_f64 average_norms[ALWAN_TM30_HUE_BINS];          /* length of each reference average */
+    alwan_f64 averages_test[ALWAN_TM30_HUE_BINS][2];       /* (a', b') under the test source */
+    alwan_f64 averages_reference[ALWAN_TM30_HUE_BINS][2];  /* (a', b') under the reference */
+    int bins[ALWAN_TM30_SAMPLES];                          /* the bin each sample fell in */
+} alwan_tm30_f64;
+
+typedef struct {
+    alwan_f32 rf;
+    alwan_f32 rg;
+    alwan_f32 rfs[ALWAN_TM30_HUE_BINS];
+    alwan_f32 rcs[ALWAN_TM30_HUE_BINS];
+    alwan_f32 rhs[ALWAN_TM30_HUE_BINS];
+    alwan_f32 average_norms[ALWAN_TM30_HUE_BINS];
+    alwan_f32 averages_test[ALWAN_TM30_HUE_BINS][2];
+    alwan_f32 averages_reference[ALWAN_TM30_HUE_BINS][2];
+    int bins[ALWAN_TM30_SAMPLES];
+} alwan_tm30_f32;
+
+alwan_status alwan_tm30_specification_f64(alwan_tm30_f64 *spec_out, alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
+alwan_status alwan_tm30_specification_f32(alwan_tm30_f32 *spec_out, alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
+
 /* SSI (Spectral Similarity Index) - Academy/SMPTE ST 2122 */
 /* Measures spectral similarity between test and reference light sources */
 /* test_spd: test illuminant SPD
