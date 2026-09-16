@@ -624,20 +624,20 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 143, all passing |
-| Test cases | 957 |
-| Checks executed per run | 108,402 |
-| Assertion sites in the tests | 3,455 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 407 |
+| Test cases | 958 |
+| Checks executed per run | 108,411 |
+| Assertion sites in the tests | 3,464 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 408 |
 | Embedded data tables | 762 |
-| Exported symbols | 1,791 |
-| Internal symbols reached by a test or a public entry point | 155 of 179 (87%) |
+| Exported symbols | 1,793 |
+| Internal symbols reached by a test or a public entry point | 156 of 180 (87%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL under dxc | 40 of 43 |
 
 Two of these deserve the emphasis:
 
-**108,402 checks per run** is what actually executes, not what is written. A
+**108,411 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -681,7 +681,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 143 suites, 957 cases, 108,402 checks executed per run
+  module: 143 suites, 958 cases, 108,411 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
