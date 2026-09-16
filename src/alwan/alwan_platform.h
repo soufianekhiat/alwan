@@ -1515,6 +1515,16 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_DENORM_CIECAM16(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
     (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
 
+/* sCAM: J, C, Q, M, V, K, W and D are all 0-100, h is degrees, H is quadrature. */
+#define ALWAN_NORM_SCAM(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
+    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); \
+    (p)->V *= ALWAN_LITERAL(0.01); (p)->K *= ALWAN_LITERAL(0.01); \
+    (p)->W *= ALWAN_LITERAL(0.01); (p)->D *= ALWAN_LITERAL(0.01); } while(0)
+#define ALWAN_DENORM_SCAM(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
+    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); \
+    (p)->V *= ALWAN_LITERAL(100.0); (p)->K *= ALWAN_LITERAL(100.0); \
+    (p)->W *= ALWAN_LITERAL(100.0); (p)->D *= ALWAN_LITERAL(100.0); } while(0)
+
 /* ZCAM: Jz [0,100] -> [0,1], hz [0,360) -> [0,1], Kz [0,100] -> [0,1], Wz [0,100] -> [0,1] */
 #define ALWAN_NORM_ZCAM(p)   do { (p)->Jz *= ALWAN_LITERAL(0.01); \
     (p)->hz /= ALWAN_LITERAL(360.0); (p)->Kz *= ALWAN_LITERAL(0.01); \
@@ -1623,6 +1633,8 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_DENORM_CAM16(p)       ((void)0)
 #define ALWAN_NORM_CIECAM16(p)      ((void)0)
 #define ALWAN_DENORM_CIECAM16(p)    ((void)0)
+#define ALWAN_NORM_SCAM(p)          ((void)0)
+#define ALWAN_DENORM_SCAM(p)        ((void)0)
 #define ALWAN_NORM_ZCAM(p)          ((void)0)
 #define ALWAN_DENORM_ZCAM(p)        ((void)0)
 #define ALWAN_NORM_HELLWIG2022(p)   ((void)0)

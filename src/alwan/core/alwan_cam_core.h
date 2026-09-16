@@ -794,6 +794,158 @@ ALWAN_INLINE alwan_xyz alwan_ciecam16_inverse_v(
     return result;
 }
 
+
+/* ================================================================
+ * sCAM (Li and Luo 2024)
+ *
+ * The model is assembled rather than self-contained: the caller adapts the
+ * stimulus with Li 2025, divides through by the white's luminance and converts
+ * by sUCS, and what is left is the correlate arithmetic below, which works on
+ * that Iab triple. Splitting there keeps this side free of matrices and of the
+ * two conversions, which already have entry points of their own.
+ * ================================================================ */
+
+typedef struct {
+    alwan_scalar J;  /* the paper's I_a */
+    alwan_scalar C;
+    alwan_scalar h;
+    alwan_scalar Q;
+    alwan_scalar M;
+    alwan_scalar H;
+    alwan_scalar V;
+    alwan_scalar K;
+    alwan_scalar W;
+    alwan_scalar D;
+} alwan_scam_v_correlates;
+
+/* sCAM's own luminance level adaptation factor, which is not CAM16's. */
+ALWAN_INLINE alwan_scalar scam_F_L_v(alwan_scalar La) {
+    return ALWAN_LITERAL(0.1710) * ALWAN_CBRT(La) /
+           (ALWAN_ONE - ALWAN_LITERAL(0.4934) *
+            ALWAN_EXP(-ALWAN_LITERAL(0.9934) * La));
+}
+
+ALWAN_INLINE alwan_scalar scam_z_v(alwan_scalar Yb, alwan_scalar Yw) {
+    return ALWAN_LITERAL(1.48) + ALWAN_SQRT(Yb / Yw);
+}
+
+/* sUCS compresses chroma through a natural logarithm. The core tier has log2 and
+ * log10 but no ln, and ln(x) = log2(x) ln 2 exactly. Taking that route rather than
+ * adding a transcendental also keeps the deterministic build's refitted log2, where
+ * a new ln would have needed a fit of its own. Measured against ln over this
+ * model's whole argument range: 2.2e-16 relative, 1.8e-14 in units of C. */
+ALWAN_INLINE alwan_scalar scam_ln_v(alwan_scalar x) {
+    return ALWAN_LOG2(x) * ALWAN_LITERAL(0.69314718055994530942);
+}
+
+/* sCAM's hue quadrature is not CIECAM02's. It has its own table and its own shape:
+ * h_i runs 15.6, 80.3, 157.8, 219.7, 376.6, so the last entry sits past 360 and a hue
+ * below 15.6 is lifted by 360 into that final sector.
+ *
+ * That single wrapped sector is exactly the construction that was wrong in
+ * cam_hue_to_quadrature, where CIE 159:2004 gives two end branches instead. It is right
+ * here, because this table is built for it. Do not reconcile the two by analogy. */
+ALWAN_INLINE alwan_scalar scam_hue_quadrature_v(alwan_scalar h) {
+    alwan_scalar h_norm = ALWAN_FMOD(h, ALWAN_LITERAL(360.0));
+    h_norm = ALWAN_SELECT(h_norm < ALWAN_ZERO, h_norm + ALWAN_LITERAL(360.0), h_norm);
+    h_norm = ALWAN_SELECT(h_norm < ALWAN_LITERAL(15.6),
+                               h_norm + ALWAN_LITERAL(360.0), h_norm);
+
+    {
+        /* 15.6 .. 80.3, eccentricities 0.7 and 0.6 */
+        alwan_scalar t1_0 = (h_norm - ALWAN_LITERAL(15.6)) / ALWAN_LITERAL(0.7);
+        alwan_scalar t2_0 = (ALWAN_LITERAL(80.3) - h_norm) / ALWAN_LITERAL(0.6);
+        alwan_scalar H_0 = ALWAN_LITERAL(0.0) + ALWAN_LITERAL(100.0) * t1_0 / (t1_0 + t2_0);
+
+        /* 80.3 .. 157.8, eccentricities 0.6 and 1.2 */
+        alwan_scalar t1_1 = (h_norm - ALWAN_LITERAL(80.3)) / ALWAN_LITERAL(0.6);
+        alwan_scalar t2_1 = (ALWAN_LITERAL(157.8) - h_norm) / ALWAN_LITERAL(1.2);
+        alwan_scalar H_1 = ALWAN_LITERAL(100.0) + ALWAN_LITERAL(100.0) * t1_1 / (t1_1 + t2_1);
+
+        /* 157.8 .. 219.7, eccentricities 1.2 and 0.9 */
+        alwan_scalar t1_2 = (h_norm - ALWAN_LITERAL(157.8)) / ALWAN_LITERAL(1.2);
+        alwan_scalar t2_2 = (ALWAN_LITERAL(219.7) - h_norm) / ALWAN_LITERAL(0.9);
+        alwan_scalar H_2 = ALWAN_LITERAL(200.0) + ALWAN_LITERAL(100.0) * t1_2 / (t1_2 + t2_2);
+
+        /* 219.7 .. 376.6, eccentricities 0.9 and 0.7 */
+        alwan_scalar t1_3 = (h_norm - ALWAN_LITERAL(219.7)) / ALWAN_LITERAL(0.9);
+        alwan_scalar t2_3 = (ALWAN_LITERAL(376.6) - h_norm) / ALWAN_LITERAL(0.7);
+        alwan_scalar H_3 = ALWAN_LITERAL(300.0) + ALWAN_LITERAL(100.0) * t1_3 / (t1_3 + t2_3);
+
+        return ALWAN_SELECT(h_norm < ALWAN_LITERAL(80.3), H_0,
+               ALWAN_SELECT(h_norm < ALWAN_LITERAL(157.8), H_1,
+               ALWAN_SELECT(h_norm < ALWAN_LITERAL(219.7), H_2, H_3)));
+    }
+}
+
+ALWAN_INLINE alwan_scam_v_correlates alwan_scam_forward_v(
+    alwan_vec3 iab,
+    alwan_scalar c,
+    alwan_scalar z,
+    alwan_scalar FL,
+    alwan_scalar F)
+{
+    alwan_scam_v_correlates result;
+    alwan_scalar I = iab.v[0];
+    alwan_scalar a = iab.v[1];
+    alwan_scalar b = iab.v[2];
+
+    /* Iab to ICh: the radius is compressed, the angle is not. */
+    alwan_scalar radius = ALWAN_SQRT(a * a + b * b);
+    alwan_scalar C_val = scam_ln_v(ALWAN_ONE + ALWAN_LITERAL(0.0447) * radius)
+                       / ALWAN_LITERAL(0.0252);
+
+    alwan_scalar h = ALWAN_ATAN2(b, a) * ALWAN_LITERAL(180.0) / ALWAN_PI;
+    h = ALWAN_SELECT(h < ALWAN_ZERO, h + ALWAN_LITERAL(360.0), h);
+
+    alwan_scalar I_a = ALWAN_LITERAL(100.0) *
+        ALWAN_POW(I / ALWAN_LITERAL(100.0), c * z);
+
+    alwan_scalar e_t = ALWAN_ONE + ALWAN_LITERAL(0.06) *
+        ALWAN_COS((ALWAN_LITERAL(110.0) + h) * ALWAN_PI / ALWAN_LITERAL(180.0));
+
+    alwan_scalar FL_p = ALWAN_POW(FL, ALWAN_LITERAL(0.1));
+
+    result.J = I_a;
+    result.C = C_val;
+    result.h = h;
+    result.M = C_val * FL_p * e_t * F / ALWAN_POW(I_a, ALWAN_LITERAL(0.27));
+    result.Q = (ALWAN_LITERAL(2.0) / c) * I_a * FL_p;
+    result.H = scam_hue_quadrature_v(h);
+
+    /* Vividness, blackness, whiteness and depth. V passes 100 for a saturated
+     * stimulus, so K runs negative; that is the model, not an overflow. */
+    result.V = ALWAN_SQRT(I_a * I_a + ALWAN_LITERAL(3.0) * C_val * C_val);
+    result.K = ALWAN_LITERAL(100.0) - result.V;
+    result.D = ALWAN_LITERAL(1.3) * ALWAN_SQRT(
+        (ALWAN_LITERAL(100.0) - I_a) * (ALWAN_LITERAL(100.0) - I_a) +
+        ALWAN_LITERAL(1.6) * C_val * C_val);
+    result.W = ALWAN_LITERAL(100.0) - result.D;
+
+    return result;
+}
+
+/* Back to an sUCS Iab triple. The caller takes it from there. */
+ALWAN_INLINE alwan_vec3 alwan_scam_inverse_v(
+    alwan_scalar J,
+    alwan_scalar C,
+    alwan_scalar h,
+    alwan_scalar c,
+    alwan_scalar z)
+{
+    alwan_vec3 iab;
+    alwan_scalar I = ALWAN_LITERAL(100.0) *
+        ALWAN_POW(J / ALWAN_LITERAL(100.0), ALWAN_ONE / (c * z));
+    alwan_scalar radius = (ALWAN_EXP(ALWAN_LITERAL(0.0252) * C) - ALWAN_ONE)
+                        / ALWAN_LITERAL(0.0447);
+    alwan_scalar h_rad = h * ALWAN_PI / ALWAN_LITERAL(180.0);
+
+    iab.v[0] = I;
+    iab.v[1] = radius * ALWAN_COS(h_rad);
+    iab.v[2] = radius * ALWAN_SIN(h_rad);
+    return iab;
+}
+
 #endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_CAM_CORE_H */

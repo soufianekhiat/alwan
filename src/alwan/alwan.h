@@ -3591,6 +3591,34 @@ alwan_status alwan_ciecam16_inverse_f64(alwan_xyz_f64 *xyz_out,
                              alwan_ciecam16_correlates_f64 const *correlates,
                              alwan_ciecam16_viewing_conditions_f64 const *vc);
 
+/* sCAM forward transform: XYZ -> appearance correlates (Li and Luo 2024).
+ *
+ * sCAM is assembled from parts alwan already has rather than built from scratch: the
+ * stimulus is adapted to a D65 white by the Li 2025 model (alwan_cat_li2025), converted
+ * through sUCS (alwan_xyz_to_sucs), and the correlates are computed from that.
+ *
+ * Ten correlates. J is the paper's I_a. V, K, W and D are vividness, blackness, whiteness
+ * and depth, which no other model here reports. colour-science's specification also lists
+ * HC, a hue composition string it never fills in, and that is not carried.
+ *
+ * Returns ALWAN_OK, ALWAN_E_INVALID on a NULL argument, or ALWAN_E_DIVZERO if the white's
+ * Y or the background luminance is not positive. */
+alwan_status alwan_scam_forward_f32(alwan_scam_correlates_f32 *out,
+                             alwan_xyz_f32 const *xyz,
+                             alwan_scam_viewing_conditions_f32 const *vc);
+alwan_status alwan_scam_forward_f64(alwan_scam_correlates_f64 *out,
+                             alwan_xyz_f64 const *xyz,
+                             alwan_scam_viewing_conditions_f64 const *vc);
+
+/* sCAM inverse transform: appearance correlates -> XYZ
+ * Uses J, C and h from the input correlates; the other fields are ignored. */
+alwan_status alwan_scam_inverse_f32(alwan_xyz_f32 *xyz_out,
+                             alwan_scam_correlates_f32 const *correlates,
+                             alwan_scam_viewing_conditions_f32 const *vc);
+alwan_status alwan_scam_inverse_f64(alwan_xyz_f64 *xyz_out,
+                             alwan_scam_correlates_f64 const *correlates,
+                             alwan_scam_viewing_conditions_f64 const *vc);
+
 /* MapCIECAM02 forward transform
  * correlates_out: output appearance correlates (count elements)
  * xyz_in: input XYZ colors (stride in_stride between consecutive colors)

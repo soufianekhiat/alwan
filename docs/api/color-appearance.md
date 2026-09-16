@@ -182,6 +182,49 @@ white's `Y` or the background luminance is not positive.
 
 ---
 
+## sCAM (Li and Luo 2024)
+
+### alwan_scam_forward_{T} / alwan_scam_inverse_{T}
+
+```c
+alwan_status alwan_scam_forward_{T}(alwan_scam_correlates_{T} *out,
+                                    alwan_xyz_{T} const *xyz,
+                                    alwan_scam_viewing_conditions_{T} const *vc);
+
+alwan_status alwan_scam_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                                    alwan_scam_correlates_{T} const *correlates,
+                                    alwan_scam_viewing_conditions_{T} const *vc);
+```
+
+sCAM is assembled rather than self-contained. The stimulus is adapted to a D65 white by
+the Li 2025 model, divided through by the white's luminance, converted by sUCS, and the
+correlates follow from that `Iab` triple. Both of those pieces are separate entry points
+in alwan (`alwan_cat_li2025_{T}` and `alwan_xyz_to_sucs_{T}`) and both are held to
+colour-science on their own.
+
+**Ten correlates**, four of which no other model here reports:
+
+- `J` — lightness, the paper's `I_a`
+- `C`, `h`, `Q`, `M`, `H` — chroma, hue angle, brightness, colourfulness, hue quadrature
+- `V` — vividness, `K` — blackness, `W` — whiteness, `D` — depth
+
+`V` passes 100 for a saturated stimulus, which drives `K = 100 - V` **negative**. That is
+the model, and nothing here clamps it.
+
+colour-science's specification also lists `HC`, a hue composition string it never
+populates. alwan does not carry a field that is always empty.
+
+The surround is its own enum, because sCAM's factors are not CAM16's: `(F, c, Fm)` is
+`(1.0, 0.52, 1.0)` for average, `(0.9, 0.5, 0.95)` dim and `(0.8, 0.39, 0.85)` dark. The
+third factor is part of the published triple and the forward transform never reads it.
+
+The inverse reads `J`, `C` and `h` and reconstructs the rest.
+
+**Returns:** `ALWAN_OK`, `ALWAN_E_INVALID` on a NULL argument, or `ALWAN_E_DIVZERO` if the
+white's `Y` or the background luminance is not positive.
+
+---
+
 ## Batch Processing (CIECAM02 and CAM16)
 
 Each `*_stride` immediately follows the buffer it describes (memcpy argument order).

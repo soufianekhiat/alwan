@@ -26,6 +26,28 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **sCAM (Li and Luo 2024).** `alwan_scam_forward_{T}` and `alwan_scam_inverse_{T}` add the
+  last appearance model alwan was missing. Ten correlates, four of which nothing else here
+  reports: vividness, blackness, whiteness and depth. Blackness is `100 - V` and `V` passes
+  100 for a saturated stimulus, so it goes negative, reaching -33 in the reference. Nothing
+  clamps it and the suite asserts that it happens.
+
+  The model is assembled rather than reimplemented: the stimulus is adapted to a D65 white
+  by Li 2025, divided through by the white's luminance, converted by sUCS, and the
+  correlates follow. Both of those pieces were already in alwan and already held to
+  colour-science on their own, so what is new is the assembly and the correlate arithmetic.
+  It also carries its own hue quadrature, on its own table, which is not CIECAM02's.
+
+  Held to colour-science over 30 conditions spanning three surrounds, four adapting
+  luminances and a discounted illuminant: worst 2.0e-13 forward and 5.7e-14 inverse
+  (suite 146, `docs/api/color-appearance.md`).
+
+  One property of the model is worth knowing before relying on it. **The inverse is not the
+  identity of the forward.** Li 2025's adaptation is reversed by swapping its two whites,
+  and that swap is not its own inverse. Where the two whites are close the gap sits near
+  1e-9; for a D65 white viewed under illuminant A it reaches 7.42 in XYZ. That is the
+  model, not this implementation: colour-science does the same thing to the same digit.
+
 - **CIECAM16 (CIE 248:2022).** `alwan_ciecam16_forward_{T}` and
   `alwan_ciecam16_inverse_{T}` add the CIE's revision of CAM16. It reports the same seven
   correlates and changes two things: the post-adaptation compression becomes linear below

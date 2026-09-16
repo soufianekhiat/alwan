@@ -260,6 +260,15 @@ typedef struct {
     int discount_illuminant;                   /* 1 to discount illuminant, 0 otherwise */
 } ALWAN_TN(alwan_ciecam16_viewing_conditions);
 
+/* sCAM viewing conditions. The surround is its own enum: sCAM's factors are not CAM16's. */
+typedef struct {
+    ALWAN_TN(alwan_xyz) white_xyz;             /* Reference white in XYZ (Y typically 100) */
+    ALWAN_T adapting_luminance;                /* Luminance of adapting field (La) in cd/m^2 */
+    ALWAN_T background_luminance;              /* Relative luminance of background (Yb) */
+    alwan_scam_surround surround;              /* Viewing surround condition */
+    int discount_illuminant;                   /* 1 to discount illuminant, 0 otherwise */
+} ALWAN_TN(alwan_scam_viewing_conditions);
+
 /* ZCAM viewing conditions */
 typedef struct {
     ALWAN_TN(alwan_xyz) xyz_w;                 /* White point (absolute XYZ in cd/m^2) */
@@ -399,6 +408,24 @@ typedef struct {
     ALWAN_T M;  /* Colorfulness (0+) */
     ALWAN_T H;  /* Hue quadrature (0-400) */
 } ALWAN_TN(alwan_ciecam16_correlates);
+
+/* sCAM appearance correlates (Li and Luo 2024).
+ *
+ * Ten, not eleven: colour-science's specification also carries HC, the hue composition
+ * string, and never populates it. A field that is always empty is not worth a word of
+ * every caller's struct. */
+typedef struct {
+    ALWAN_T J;  /* Lightness, the paper's I_a (0-100) */
+    ALWAN_T C;  /* Chroma (0+) */
+    ALWAN_T h;  /* Hue angle (0-360 degrees) */
+    ALWAN_T Q;  /* Brightness (0+) */
+    ALWAN_T M;  /* Colourfulness (0+) */
+    ALWAN_T H;  /* Hue quadrature (0-400) */
+    ALWAN_T V;  /* Vividness (0-100) */
+    ALWAN_T K;  /* Blackness (0-100) */
+    ALWAN_T W;  /* Whiteness (0-100) */
+    ALWAN_T D;  /* Depth (0-100) */
+} ALWAN_TN(alwan_scam_correlates);
 
 /* ZCAM appearance correlates */
 typedef struct {

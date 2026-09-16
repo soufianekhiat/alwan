@@ -1333,6 +1333,10 @@ EXPORTS
     alwan_rlab_inverse_f64
     alwan_saturation_based_speed_focal_plane_exposure_f32
     alwan_saturation_based_speed_focal_plane_exposure_f64
+    alwan_scam_forward_f32
+    alwan_scam_forward_f64
+    alwan_scam_inverse_f32
+    alwan_scam_inverse_f64
     alwan_scatter3_f32
     alwan_scatter3_f64
     alwan_scotopic_luminance_f32

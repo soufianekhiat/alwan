@@ -44,6 +44,15 @@ typedef enum {
     ALWAN_ZCAM_SURROUND_DARK = 2
 } alwan_zcam_surround;
 
+/* sCAM (Li and Luo 2024) tabulates its own surround factors, which are not CAM16's:
+ * the middle factor is 0.52 against CAM16's 0.69 for an average surround, and the
+ * standard carries a third factor Fm that the forward transform never reads. */
+typedef enum {
+    ALWAN_SCAM_SURROUND_AVERAGE = 0,
+    ALWAN_SCAM_SURROUND_DIM = 1,
+    ALWAN_SCAM_SURROUND_DARK = 2
+} alwan_scam_surround;
+
 /* Kim, Weyrich and Kautz (2009) media parameter E. The four values the paper
  * publishes; the model has no continuum, so this is an enum rather than a
  * float. Ordered by increasing E. */

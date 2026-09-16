@@ -183,6 +183,111 @@ alwan_status ALWAN_CORE_FNLIT(alwan_ciecam16_inverse)(ALWAN_CORE_XYZ *xyz_out,
     return ALWAN_OK;
 }
 
+/* ----------------------------------------------------------------
+ * sCAM (Li and Luo 2024)
+ *
+ * Assembled from two things alwan already has: the Li 2025 adaptation and the
+ * sUCS conversion. Both are public entry points and both are already held to
+ * colour-science, so what is added here is the assembly and the correlates.
+ * ---------------------------------------------------------------- */
+
+/* The published triple is (F, c, Fm). Fm is not returned because the forward
+ * transform never reads it; it is part of the standard's table all the same. */
+static void ALWAN_CORE_FN(get_scam_surround_params)(alwan_scam_surround surround,
+                                                    ALWAN_CORE_T *F, ALWAN_CORE_T *c) {
+    switch (surround) {
+        case ALWAN_SCAM_SURROUND_DIM:
+            *F = ALWAN_CORE_LITERAL(0.9); *c = ALWAN_CORE_LITERAL(0.5); break;
+        case ALWAN_SCAM_SURROUND_DARK:
+            *F = ALWAN_CORE_LITERAL(0.8); *c = ALWAN_CORE_LITERAL(0.39); break;
+        default:
+            *F = ALWAN_CORE_LITERAL(1.0); *c = ALWAN_CORE_LITERAL(0.52); break;
+    }
+}
+
+/* The D65 white the model adapts towards, scaled by the adapting luminance the
+ * background implies. */
+static ALWAN_CORE_XYZ ALWAN_CORE_FN(scam_reference_white)(ALWAN_CORE_T La, ALWAN_CORE_T Yb) {
+    ALWAN_CORE_T const scale = La * ALWAN_CORE_LITERAL(100.0) / Yb;
+    ALWAN_CORE_XYZ w;
+    w.x = ALWAN_CORE_LITERAL(0.95047) * scale;
+    w.y = scale;
+    w.z = ALWAN_CORE_LITERAL(1.08883) * scale;
+    return w;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_scam_forward)(ALWAN_CORE_SCAM_CORRELATES *out,
+        ALWAN_CORE_XYZ const *xyz, ALWAN_CORE_SCAM_VIEWING_CONDITIONS const *vc) {
+    if (!out || !xyz || !vc) return ALWAN_E_INVALID;
+    if (vc->white_xyz.y <= ALWAN_CORE_LITERAL(0.0) ||
+        vc->background_luminance <= ALWAN_CORE_LITERAL(0.0)) return ALWAN_E_DIVZERO;
+
+    ALWAN_CORE_T F, c;
+    ALWAN_CORE_FN(get_scam_surround_params)(vc->surround, &F, &c);
+
+    ALWAN_CORE_T const Yw = vc->white_xyz.y;
+    ALWAN_CORE_XYZ const w_d65 = ALWAN_CORE_FN(scam_reference_white)(
+        vc->adapting_luminance, vc->background_luminance);
+
+    ALWAN_CORE_XYZ adapted;
+    alwan_status st = ALWAN_CORE_FNLIT(alwan_cat_li2025)(&adapted, xyz, &vc->white_xyz, &w_d65,
+        vc->adapting_luminance, F, vc->discount_illuminant);
+    if (st != ALWAN_OK) return st;
+
+    adapted.x /= Yw;
+    adapted.y /= Yw;
+    adapted.z /= Yw;
+
+    ALWAN_CORE_VEC3 iab;
+    st = ALWAN_CORE_FNLIT(alwan_xyz_to_sucs)(&iab, &adapted);
+    if (st != ALWAN_OK) return st;
+
+    {
+        ALWAN_CORE_T const z = ALWAN_CORE_FNVLIT(scam_z)(vc->background_luminance, Yw);
+        ALWAN_CORE_T const FL = ALWAN_CORE_FNVLIT(scam_F_L)(vc->adapting_luminance);
+        ALWAN_CORE_FNLIT(alwan_scam_v_correlates) r =
+            ALWAN_CORE_FNVLIT(alwan_scam_forward)(iab, c, z, FL, F);
+        out->J = r.J; out->C = r.C; out->h = r.h; out->Q = r.Q; out->M = r.M;
+        out->H = r.H; out->V = r.V; out->K = r.K; out->W = r.W; out->D = r.D;
+    }
+    ALWAN_NORM_SCAM(out);
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_scam_inverse)(ALWAN_CORE_XYZ *xyz_out,
+        ALWAN_CORE_SCAM_CORRELATES const *correlates, ALWAN_CORE_SCAM_VIEWING_CONDITIONS const *vc) {
+    if (!xyz_out || !correlates || !vc) return ALWAN_E_INVALID;
+    if (vc->white_xyz.y <= ALWAN_CORE_LITERAL(0.0) ||
+        vc->background_luminance <= ALWAN_CORE_LITERAL(0.0)) return ALWAN_E_DIVZERO;
+
+    ALWAN_CORE_SCAM_CORRELATES tmp = *correlates;
+    ALWAN_DENORM_SCAM(&tmp);
+
+    ALWAN_CORE_T F, c;
+    ALWAN_CORE_FN(get_scam_surround_params)(vc->surround, &F, &c);
+
+    ALWAN_CORE_T const Yw = vc->white_xyz.y;
+    ALWAN_CORE_T const z = ALWAN_CORE_FNVLIT(scam_z)(vc->background_luminance, Yw);
+
+    ALWAN_CORE_VEC3 const iab = ALWAN_CORE_FNVLIT(alwan_scam_inverse)(tmp.J, tmp.C, tmp.h, c, z);
+
+    ALWAN_CORE_XYZ adapted;
+    alwan_status st = ALWAN_CORE_FNLIT(alwan_sucs_to_xyz)(&adapted, &iab);
+    if (st != ALWAN_OK) return st;
+
+    adapted.x *= Yw;
+    adapted.y *= Yw;
+    adapted.z *= Yw;
+
+    {
+        ALWAN_CORE_XYZ const w_d65 = ALWAN_CORE_FN(scam_reference_white)(
+            vc->adapting_luminance, vc->background_luminance);
+        st = ALWAN_CORE_FNLIT(alwan_cat_li2025)(xyz_out, &adapted, &w_d65, &vc->white_xyz,
+            vc->adapting_luminance, F, vc->discount_illuminant);
+    }
+    return st;
+}
+
 alwan_status ALWAN_CORE_FNLIT(alwan_cam16_to_ucs)(ALWAN_CORE_CAM_JAB *Jab_out,
         ALWAN_CORE_CAM16_CORRELATES const *correlates) {
     if (!Jab_out || !correlates) return ALWAN_E_INVALID;

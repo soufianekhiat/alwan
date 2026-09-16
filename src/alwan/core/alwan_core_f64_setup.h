@@ -238,6 +238,8 @@
 #define ALWAN_CORE_CAM16_CORRELATES            alwan_cam16_correlates_f64
 #define ALWAN_CORE_CIECAM16_CORRELATES         alwan_ciecam16_correlates_f64
 #define ALWAN_CORE_CIECAM16_VIEWING_CONDITIONS alwan_ciecam16_viewing_conditions_f64
+#define ALWAN_CORE_SCAM_CORRELATES             alwan_scam_correlates_f64
+#define ALWAN_CORE_SCAM_VIEWING_CONDITIONS     alwan_scam_viewing_conditions_f64
 #define ALWAN_CORE_ZCAM_CORRELATES             alwan_zcam_correlates_f64
 #define ALWAN_CORE_RLAB_CORRELATES             alwan_rlab_correlates_f64
 #define ALWAN_CORE_HUNT_CORRELATES             alwan_hunt_correlates_f64

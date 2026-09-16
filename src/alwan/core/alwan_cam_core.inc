@@ -929,6 +929,157 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_ciecam16_inverse)(
 }
 
 /* ================================================================
+ * sCAM (Li and Luo 2024)
+ *
+ * The model is assembled rather than self-contained: the caller adapts the
+ * stimulus with Li 2025, divides through by the white's luminance and converts
+ * by sUCS, and what is left is the correlate arithmetic below, which works on
+ * that Iab triple. Splitting there keeps this side free of matrices and of the
+ * two conversions, which already have entry points of their own.
+ * ================================================================ */
+
+typedef struct {
+    ALWAN_CORE_T J;  /* the paper's I_a */
+    ALWAN_CORE_T C;
+    ALWAN_CORE_T h;
+    ALWAN_CORE_T Q;
+    ALWAN_CORE_T M;
+    ALWAN_CORE_T H;
+    ALWAN_CORE_T V;
+    ALWAN_CORE_T K;
+    ALWAN_CORE_T W;
+    ALWAN_CORE_T D;
+} ALWAN_CORE_FNLIT(alwan_scam_v_correlates);
+
+/* sCAM's own luminance level adaptation factor, which is not CAM16's. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(scam_F_L)(ALWAN_CORE_T La) {
+    return ALWAN_CORE_LITERAL(0.1710) * ALWAN_CORE_CBRT(La) /
+           (ALWAN_CORE_ONE - ALWAN_CORE_LITERAL(0.4934) *
+            ALWAN_CORE_EXP(-ALWAN_CORE_LITERAL(0.9934) * La));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(scam_z)(ALWAN_CORE_T Yb, ALWAN_CORE_T Yw) {
+    return ALWAN_CORE_LITERAL(1.48) + ALWAN_CORE_SQRT(Yb / Yw);
+}
+
+/* sUCS compresses chroma through a natural logarithm. The core tier has log2 and
+ * log10 but no ln, and ln(x) = log2(x) ln 2 exactly. Taking that route rather than
+ * adding a transcendental also keeps the deterministic build's refitted log2, where
+ * a new ln would have needed a fit of its own. Measured against ln over this
+ * model's whole argument range: 2.2e-16 relative, 1.8e-14 in units of C. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(scam_ln)(ALWAN_CORE_T x) {
+    return ALWAN_CORE_LOG2(x) * ALWAN_CORE_LITERAL(0.69314718055994530942);
+}
+
+/* sCAM's hue quadrature is not CIECAM02's. It has its own table and its own shape:
+ * h_i runs 15.6, 80.3, 157.8, 219.7, 376.6, so the last entry sits past 360 and a hue
+ * below 15.6 is lifted by 360 into that final sector.
+ *
+ * That single wrapped sector is exactly the construction that was wrong in
+ * cam_hue_to_quadrature, where CIE 159:2004 gives two end branches instead. It is right
+ * here, because this table is built for it. Do not reconcile the two by analogy. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(scam_hue_quadrature)(ALWAN_CORE_T h) {
+    ALWAN_CORE_T h_norm = ALWAN_CORE_FMOD(h, ALWAN_CORE_LITERAL(360.0));
+    h_norm = ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_ZERO, h_norm + ALWAN_CORE_LITERAL(360.0), h_norm);
+    h_norm = ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_LITERAL(15.6),
+                               h_norm + ALWAN_CORE_LITERAL(360.0), h_norm);
+
+    {
+        /* 15.6 .. 80.3, eccentricities 0.7 and 0.6 */
+        ALWAN_CORE_T t1_0 = (h_norm - ALWAN_CORE_LITERAL(15.6)) / ALWAN_CORE_LITERAL(0.7);
+        ALWAN_CORE_T t2_0 = (ALWAN_CORE_LITERAL(80.3) - h_norm) / ALWAN_CORE_LITERAL(0.6);
+        ALWAN_CORE_T H_0 = ALWAN_CORE_LITERAL(0.0) + ALWAN_CORE_LITERAL(100.0) * t1_0 / (t1_0 + t2_0);
+
+        /* 80.3 .. 157.8, eccentricities 0.6 and 1.2 */
+        ALWAN_CORE_T t1_1 = (h_norm - ALWAN_CORE_LITERAL(80.3)) / ALWAN_CORE_LITERAL(0.6);
+        ALWAN_CORE_T t2_1 = (ALWAN_CORE_LITERAL(157.8) - h_norm) / ALWAN_CORE_LITERAL(1.2);
+        ALWAN_CORE_T H_1 = ALWAN_CORE_LITERAL(100.0) + ALWAN_CORE_LITERAL(100.0) * t1_1 / (t1_1 + t2_1);
+
+        /* 157.8 .. 219.7, eccentricities 1.2 and 0.9 */
+        ALWAN_CORE_T t1_2 = (h_norm - ALWAN_CORE_LITERAL(157.8)) / ALWAN_CORE_LITERAL(1.2);
+        ALWAN_CORE_T t2_2 = (ALWAN_CORE_LITERAL(219.7) - h_norm) / ALWAN_CORE_LITERAL(0.9);
+        ALWAN_CORE_T H_2 = ALWAN_CORE_LITERAL(200.0) + ALWAN_CORE_LITERAL(100.0) * t1_2 / (t1_2 + t2_2);
+
+        /* 219.7 .. 376.6, eccentricities 0.9 and 0.7 */
+        ALWAN_CORE_T t1_3 = (h_norm - ALWAN_CORE_LITERAL(219.7)) / ALWAN_CORE_LITERAL(0.9);
+        ALWAN_CORE_T t2_3 = (ALWAN_CORE_LITERAL(376.6) - h_norm) / ALWAN_CORE_LITERAL(0.7);
+        ALWAN_CORE_T H_3 = ALWAN_CORE_LITERAL(300.0) + ALWAN_CORE_LITERAL(100.0) * t1_3 / (t1_3 + t2_3);
+
+        return ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_LITERAL(80.3), H_0,
+               ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_LITERAL(157.8), H_1,
+               ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_LITERAL(219.7), H_2, H_3)));
+    }
+}
+
+ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_scam_v_correlates) ALWAN_CORE_FNVLIT(alwan_scam_forward)(
+    ALWAN_CORE_VEC3 iab,
+    ALWAN_CORE_T c,
+    ALWAN_CORE_T z,
+    ALWAN_CORE_T FL,
+    ALWAN_CORE_T F)
+{
+    ALWAN_CORE_FNLIT(alwan_scam_v_correlates) result;
+    ALWAN_CORE_T I = iab.v[0];
+    ALWAN_CORE_T a = iab.v[1];
+    ALWAN_CORE_T b = iab.v[2];
+
+    /* Iab to ICh: the radius is compressed, the angle is not. */
+    ALWAN_CORE_T radius = ALWAN_CORE_SQRT(a * a + b * b);
+    ALWAN_CORE_T C_val = ALWAN_CORE_FNVLIT(scam_ln)(ALWAN_CORE_ONE + ALWAN_CORE_LITERAL(0.0447) * radius)
+                       / ALWAN_CORE_LITERAL(0.0252);
+
+    ALWAN_CORE_T h = ALWAN_CORE_ATAN2(b, a) * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
+    h = ALWAN_CORE_SELECT(h < ALWAN_CORE_ZERO, h + ALWAN_CORE_LITERAL(360.0), h);
+
+    ALWAN_CORE_T I_a = ALWAN_CORE_LITERAL(100.0) *
+        ALWAN_CORE_POW(I / ALWAN_CORE_LITERAL(100.0), c * z);
+
+    ALWAN_CORE_T e_t = ALWAN_CORE_ONE + ALWAN_CORE_LITERAL(0.06) *
+        ALWAN_CORE_COS((ALWAN_CORE_LITERAL(110.0) + h) * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0));
+
+    ALWAN_CORE_T FL_p = ALWAN_CORE_POW(FL, ALWAN_CORE_LITERAL(0.1));
+
+    result.J = I_a;
+    result.C = C_val;
+    result.h = h;
+    result.M = C_val * FL_p * e_t * F / ALWAN_CORE_POW(I_a, ALWAN_CORE_LITERAL(0.27));
+    result.Q = (ALWAN_CORE_LITERAL(2.0) / c) * I_a * FL_p;
+    result.H = ALWAN_CORE_FNVLIT(scam_hue_quadrature)(h);
+
+    /* Vividness, blackness, whiteness and depth. V passes 100 for a saturated
+     * stimulus, so K runs negative; that is the model, not an overflow. */
+    result.V = ALWAN_CORE_SQRT(I_a * I_a + ALWAN_CORE_LITERAL(3.0) * C_val * C_val);
+    result.K = ALWAN_CORE_LITERAL(100.0) - result.V;
+    result.D = ALWAN_CORE_LITERAL(1.3) * ALWAN_CORE_SQRT(
+        (ALWAN_CORE_LITERAL(100.0) - I_a) * (ALWAN_CORE_LITERAL(100.0) - I_a) +
+        ALWAN_CORE_LITERAL(1.6) * C_val * C_val);
+    result.W = ALWAN_CORE_LITERAL(100.0) - result.D;
+
+    return result;
+}
+
+/* Back to an sUCS Iab triple. The caller takes it from there. */
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_scam_inverse)(
+    ALWAN_CORE_T J,
+    ALWAN_CORE_T C,
+    ALWAN_CORE_T h,
+    ALWAN_CORE_T c,
+    ALWAN_CORE_T z)
+{
+    ALWAN_CORE_VEC3 iab;
+    ALWAN_CORE_T I = ALWAN_CORE_LITERAL(100.0) *
+        ALWAN_CORE_POW(J / ALWAN_CORE_LITERAL(100.0), ALWAN_CORE_ONE / (c * z));
+    ALWAN_CORE_T radius = (ALWAN_CORE_EXP(ALWAN_CORE_LITERAL(0.0252) * C) - ALWAN_CORE_ONE)
+                        / ALWAN_CORE_LITERAL(0.0447);
+    ALWAN_CORE_T h_rad = h * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0);
+
+    iab.v[0] = I;
+    iab.v[1] = radius * ALWAN_CORE_COS(h_rad);
+    iab.v[2] = radius * ALWAN_CORE_SIN(h_rad);
+    return iab;
+}
+
+/* ================================================================
  * CAM16-UCS Forward Transform (JMh -> Jab) (value-returning)
  * ================================================================ */
 
