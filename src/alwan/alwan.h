@@ -4169,6 +4169,31 @@ alwan_status alwan_uv_to_cct_krystek1985_f32(alwan_f32 *cct_out, alwan_vec2_f32 
 alwan_status alwan_cct_to_uv_planck1900_f64(alwan_vec2_f64 *uv_out, alwan_f64 cct, alwan_observer_type observer, alwan_ctx *ctx);
 alwan_status alwan_cct_to_uv_planck1900_f32(alwan_vec2_f32 *uv_out, alwan_f32 cct, alwan_observer_type observer, alwan_ctx *ctx);
 
+/* A Planckian table: the locus above, sampled once and kept, so that a solve can read it
+ * thousands of times without integrating the CMFs again. Ohno's temperatures rise
+ * geometrically from start to end, the step easing off towards the top, as
+ * colour-science's planckian_table builds them. Zero for start, end or spacing takes
+ * Ohno's own 1000 K, 100000 K and 1.001; spacing must be greater than 1. */
+typedef struct alwan_planckian_table_s alwan_planckian_table;
+
+alwan_status alwan_planckian_table_create_f64(alwan_planckian_table **out, alwan_observer_type observer,
+                                              alwan_f64 start, alwan_f64 end, alwan_f64 spacing, alwan_ctx *ctx);
+alwan_status alwan_planckian_table_create_f32(alwan_planckian_table **out, alwan_observer_type observer,
+                                              alwan_f32 start, alwan_f32 end, alwan_f32 spacing, alwan_ctx *ctx);
+void alwan_planckian_table_destroy(alwan_planckian_table *table, alwan_ctx *ctx);
+size_t alwan_planckian_table_size(alwan_planckian_table const *table);
+
+/* Ohno 2013: the CCT and signed Duv of a CIE 1960 uv, from the table's nearest entry and
+ * its two neighbours. The triangular solution is taken near the locus and the parabolic
+ * one from |Duv| = 0.002 out, which is where colour-science switches. Duv is positive
+ * above the locus, per Ohno 2013 and ANSI C78.377; duv_out may be NULL. A point whose
+ * nearest entry is an end of the table is ALWAN_E_RANGE, since neither solution has the
+ * neighbour it needs. */
+alwan_status alwan_uv_to_cct_ohno2013_f64(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2_f64 const *uv,
+                                          alwan_planckian_table const *table);
+alwan_status alwan_uv_to_cct_ohno2013_f32(alwan_f32 *cct_out, alwan_f32 *duv_out, alwan_vec2_f32 const *uv,
+                                          alwan_planckian_table const *table);
+
 /* The CCT, 4000 K to 25000 K, whose CIE daylight locus point (alwan_d_series_illuminant_xy)
  * is nearest xy, solved exactly on each side of the locus's 7000 K joint. ALWAN_E_RANGE
  * when the nearest point is an end of the range. */
