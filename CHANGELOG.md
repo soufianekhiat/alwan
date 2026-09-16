@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **ITU-R BT.1729 sweeps and staircase.** `ALWAN_PATTERN_BT1729_SWEEP_H`,
+  `ALWAN_PATTERN_BT1729_SWEEP_V` and `ALWAN_PATTERN_BT1729_STAIRCASE` render the zones the
+  recommendation specifies numerically. The sweeps run 60 to 960 cycles across the picture
+  and 32 to 540 down it, which is the recommendation's megahertz written once instead of
+  per system, and they put all sixteen Nyquist markers of Tables 2 and 3 within a tenth of
+  a point of where it prints them (suite 141, `docs/api/patterns.md`).
+
 - **ITU-R BT.814-4 PLUGE.** `ALWAN_PATTERN_PLUGE_BT814` renders the black level signal of
   Annex 2 at any size: twenty narrow stripes above and below black, the higher level patch
   for the gain control, and the two coarse stripes, with `pluge_range` choosing the SDR

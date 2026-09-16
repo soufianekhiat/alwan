@@ -39,6 +39,9 @@ proportions at any size.
 | `ALWAN_PATTERN_EBU_5` | EBU_5: a BT.709 primary or one of the 15 EBU test colours, on black |
 | `ALWAN_PATTERN_EBU_12_GREY` | EBU_12-grey: 50 % grey frame |
 | `ALWAN_PATTERN_PLUGE_BT814` | ITU-R BT.814-4 Annex 2 PLUGE, for HDTV, UHDTV and HDR |
+| `ALWAN_PATTERN_BT1729_SWEEP_H` | ITU-R BT.1729 zone 8: horizontal frequency sweep |
+| `ALWAN_PATTERN_BT1729_SWEEP_V` | ITU-R BT.1729 zone 14: vertical frequency sweep |
+| `ALWAN_PATTERN_BT1729_STAIRCASE` | ITU-R BT.1729 zone 11: luminance staircase in 10 % steps |
 
 ## ITU-R BT.471-1
 
@@ -123,6 +126,33 @@ At 1920 x 1080 and 3840 x 2160 every sample of alwan's render carries the code t
 recommendation's tables place there, which is also the code in the EBU's own PLUGE files
 (suite 140).
 
+## ITU-R BT.1729
+
+The recommendation defines a composite pattern of fifteen zones. alwan renders the three
+that its text specifies numerically: the frequency sweeps of zones 8 and 14, and the
+staircase of zone 11.
+
+The sweeps are linear: the frequency rises evenly across the picture, so the phase is the
+integral of that rise. The recommendation states the sweep in megahertz, once per system,
+but those are one sweep read through each system's sampling clock. In samples of the
+picture width it runs 120 to 1920, and in lines of the picture height 64 to 1080; a sample
+or a line is half a cycle, so the horizontal sweep carries 60 to 960 cycles across the
+picture and the vertical 32 to 540 down it. Tables 2 and 3 place each system's Nyquist and
+0.8 x Nyquist markers as a percentage of the sweep, and those percentages follow from
+those ranges: alwan reproduces all sixteen of them to better than a tenth of a point, and
+the rendered sweep carries the stated frequency where each marker falls (suite 141).
+
+Being defined in cycles across the picture, a sweep is the same signal at any size: past
+each system's own Nyquist it aliases, which is what the markers are there to show.
+
+The staircase is eleven steps of equal width, black to white in tenths.
+
+What is left out, and why: the recommendation fixes the sweep frequencies but not their
+amplitude, so the level here is alwan's own, the sinusoid filling the range from black to
+white. Zone 2 is user text, zone 12 is a bar that moves with time, and the boundaries of
+the fifteen zones are given in figures rather than numbers, so the composite pattern is
+not rendered.
+
 ## Colour space and layout
 
 The signal is the pattern's own. To place the bars in another space, decode and convert
@@ -138,4 +168,5 @@ reproduce its text. SMPTE RP 219 and EG 1 are not freely available, so ARIB STD-
 in for RP 219. EBU Tech 3325 is free from tech.ebu.ch, and so are its pattern files; the
 files state no licence, so alwan_dev records the rectangles and codes measured from them
 rather than the files. ITU-R BT.814-4 is a free download from itu.int; its own tables give
-the PLUGE, and the EBU files only check the transcription.
+the PLUGE, and the EBU files only check the transcription. ITU-R BT.1729 is free from
+itu.int as well.
