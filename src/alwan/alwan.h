@@ -3506,6 +3506,12 @@ alwan_status alwan_picture_form_pure_exp_f64(alwan_f64 *out, alwan_f64 const *in
 alwan_status alwan_rgb_to_spectrum_smits1999_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx);
 alwan_status alwan_rgb_to_spectrum_smits1999_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx);
 
+/* The same recovery over a buffer: in holds three values per pixel, out holds
+ * band_count, both strided in bytes. band_count follows the same in-and-out
+ * rule as the other bulk upsamplers below. */
+alwan_status alwan_rgb_to_spectrum_smits1999_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t *band_count);
+alwan_status alwan_rgb_to_spectrum_smits1999_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t *band_count);
+
 /* Mallett2019: RGB to spectrum conversion using spectral primary decomposition
  * Reference: Mallett & Yuksel. "Spectral Primary Decomposition for Rendering with sRGB Reflectance" (2019)
  * out_spd: output spectral power distribution (wavelength range: 380-780nm, 81 samples at 5nm intervals)
@@ -3514,6 +3520,19 @@ alwan_status alwan_rgb_to_spectrum_smits1999_f32(alwan_spd_f32 *out_spd, alwan_r
  * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure */
 alwan_status alwan_rgb_to_spectrum_mallett2019_f64(alwan_spd_f64 *out_spd, alwan_rgb_f64 const *rgb, alwan_ctx *ctx);
 alwan_status alwan_rgb_to_spectrum_mallett2019_f32(alwan_spd_f32 *out_spd, alwan_rgb_f32 const *rgb, alwan_ctx *ctx);
+
+/* The same recovery over a buffer, which is how an image is upsampled: in holds
+ * three values per pixel and out holds band_count, both strided in bytes. The
+ * basis is resolved once for the whole call rather than per pixel, and nothing
+ * is allocated, so this is the form to use when there is more than one colour.
+ *
+ * band_count is in and out. With out NULL it receives the method's fixed sample
+ * count and nothing is written, which is how a caller sizes the buffer; with
+ * out set it must equal that count or the call is ALWAN_E_INVALID. The count
+ * belongs to the method, so it is reported even where the basis was compiled
+ * out, and only a call that would write returns ALWAN_E_NODATA there. */
+alwan_status alwan_rgb_to_spectrum_mallett2019_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t *band_count);
+alwan_status alwan_rgb_to_spectrum_mallett2019_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t *band_count);
 
 /* Otsu2018: XYZ to reflectance by clustered basis functions
  * Reference: Otsu, Yamamoto and Hachisuka. "Reproducing Spectral Reflectances
@@ -3530,6 +3549,12 @@ alwan_status alwan_rgb_to_spectrum_mallett2019_f32(alwan_spd_f32 *out_spd, alwan
  * Returns ALWAN_E_NODATA when the Otsu tables are compiled out. */
 alwan_status alwan_xyz_to_spectrum_otsu2018_f64(alwan_spd_f64 *out_spd, alwan_xyz_f64 const *xyz, alwan_ctx *ctx);
 alwan_status alwan_xyz_to_spectrum_otsu2018_f32(alwan_spd_f32 *out_spd, alwan_xyz_f32 const *xyz, alwan_ctx *ctx);
+
+/* The same recovery over a buffer: in holds XYZ per pixel, out holds
+ * band_count, both strided in bytes. band_count follows the same in-and-out
+ * rule as the other bulk upsamplers above. */
+alwan_status alwan_xyz_to_spectrum_otsu2018_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t *band_count);
+alwan_status alwan_xyz_to_spectrum_otsu2018_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t *band_count);
 
 /* Jakob2019 gamut enum - specifies which RGB color space to use for spectral upsampling */
 typedef enum {
@@ -3551,6 +3576,14 @@ typedef enum {
  * Note: Requires pre-generated LUT data for the specified gamut (see generate_data.ps1) */
 alwan_status alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f64 const *rgb, alwan_ctx *ctx);
 alwan_status alwan_rgb_to_spectrum_jakob2019_f32(alwan_spd_f32 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f32 const *rgb, alwan_ctx *ctx);
+
+/* The same recovery over a buffer: in holds three values per pixel, out holds
+ * band_count, both strided in bytes. The gamut's three cubes are resolved once
+ * for the whole call rather than per pixel, which is the reason to prefer this
+ * form for an image. band_count follows the same in-and-out rule as the other
+ * bulk upsamplers, and with out NULL the gamut is not consulted at all. */
+alwan_status alwan_rgb_to_spectrum_jakob2019_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t *band_count, alwan_jakob2019_gamut gamut);
+alwan_status alwan_rgb_to_spectrum_jakob2019_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t *band_count, alwan_jakob2019_gamut gamut);
 
 /* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model
