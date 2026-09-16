@@ -127,6 +127,19 @@ chroma/hue. Better correlation with perceived difference for large color differe
 
 ---
 
+### alwan_delta_e_hych_{T}
+
+```c
+alwan_{T} alwan_delta_e_hych_{T}(alwan_lab_{T} const *lab1, alwan_lab_{T} const *lab2, int textiles);
+```
+
+HyCH (Huang et al. 2015) takes the same hybrid shape as HyAB, absolute in lightness and
+Euclidean across chroma and hue, but over CIEDE2000's terms rather than plain Lab: the
+weighting functions S_L, S_C and S_H apply, while CIEDE2000's rotation term R_T does not.
+`textiles` sets k_L to 2, as CIEDE2000 does for textile work; anything else leaves it at 1.
+
+---
+
 ### alwan_delta_e_din99_{T}
 
 ```c
@@ -241,6 +254,43 @@ int alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
     size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt,
     alwan_f64 l, alwan_f64 c);
 ```
+
+---
+
+## Fitting and Agreement
+
+Two things that are about colour differences without being one.
+
+### alwan_power_function_huang2015_{T}
+
+```c
+alwan_status alwan_power_function_huang2015_{T}(alwan_{T} *out, alwan_{T} delta_e,
+                                                alwan_huang2015_formula formula);
+```
+
+Huang et al. 2015 fitted a power function, dE' = a x dE^b, to each of twelve difference
+formulas, so that the numbers a formula produces line up better with what observers
+judged. The pair (a, b) is the published one for the formula named, from
+`ALWAN_HUANG2015_CIE1976` through `ALWAN_HUANG2015_ULAB`. A formula outside that list is
+`ALWAN_E_INVALID`, and so is a negative difference, which no formula produces. Zero stays
+zero.
+
+### alwan_index_stress_{T}
+
+```c
+alwan_status alwan_index_stress_{T}(alwan_{T} *stress_out, alwan_{T} const *delta_e,
+                                    alwan_{T} const *delta_v, size_t count);
+```
+
+STRESS, the standardised residual sum of squares of García et al. 2007: how far a set of
+computed differences sits from the visual differences it should track, once the scale
+factor between the two sets is taken out. Zero is perfect agreement, and the result is a
+fraction rather than a percentage. The two arrays are read in step, one pair per
+judgement, and `count` must be at least 1.
+
+A set with no scale factor between its two halves, where the computed and visual
+differences have no overlap to fit, is `ALWAN_E_DIVZERO`; colour-science yields zero
+there instead.
 
 ---
 

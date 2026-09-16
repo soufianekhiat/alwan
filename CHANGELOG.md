@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **HyCH, the Huang 2015 power function, and STRESS.** `alwan_delta_e_hych_{T}` adds the
+  hybrid difference of Huang et al. 2015, CIEDE2000's terms taken city block in lightness
+  and Euclidean across chroma and hue, with the textile weighting available.
+  `alwan_power_function_huang2015_{T}` applies the power the same authors fitted to each
+  of twelve formulas, and `alwan_index_stress_{T}` reports the STRESS index of García et
+  al. 2007, how far a formula's numbers sit from the visual judgements they should track.
+  All three match colour-science (suite 143, `docs/api/color-difference.md`).
+
 - **Lab to CMYK through a printing characterisation.** `alwan_lab_to_cmyk_{T}` searches a
   characterisation for the colorants that print closest to a Lab value at the black the
   caller fixes, and reports the CIEDE2000 it could not close. Inside the gamut that
