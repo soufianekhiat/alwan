@@ -625,10 +625,10 @@ Re-run it against any checkout to reproduce the table.
 |---|---|
 | Test suites | 150, all passing |
 | Test cases | 987 |
-| Checks executed per run | 112,961 |
+| Checks executed per run | 112,965 |
 | Assertion sites in the tests | 3,661 |
 | Reference datasets (colour-science, OCIO, ACES-dev) | 419 |
-| Embedded data tables | 785 |
+| Embedded data tables | 794 |
 | Exported symbols | 1,817 |
 | Internal symbols reached by a test or a public entry point | 157 of 181 (87%) |
 | Build configurations exercised | 8 |
