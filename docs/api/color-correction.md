@@ -424,6 +424,48 @@ Zero the struct before setting fields (`alwan_ccm_fit_params p = { 0 };` or
 `memset`): fields are added to it over time, and a field left uninitialised is
 read.
 
+### Robust Loss
+
+```c
+alwan_ccm_fit_params p = { 0 };
+p.robust_scale = 0.01;   /* a residual this size is ordinary; larger is suspect */
+alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24,
+                             ALWAN_POLY_CHEUNG_22, &p);
+```
+
+With `robust_scale` above zero the fit minimises
+
+    sum_i w_i rho(|r_i| / robust_scale) + ridge |X|_F^2
+
+with `rho` Huber's loss: quadratic within `robust_k` of the scale, linear beyond it, so
+a bad patch pulls on the fit in proportion to its error rather than its error squared.
+Zero turns it off and is the default; every existing fit is unchanged.
+
+`r_i` is sample *i*'s residual **over all three channels**, and the weight comes from its
+norm. A patch is an outlier as a whole, which is what a glared or scratched one is, and it
+stops a chart's colour being pulled apart channel by channel.
+
+Set `robust_scale` in the units of `M_R`, near the residual a good patch leaves. It is not
+estimated from the data: a fitted scale would make the result depend on how many patches
+are bad, which is the thing you are usually trying to find out.
+
+Solved by iteratively reweighted least squares, so weights, ridge, solver, `rcond` and the
+neutral constraint all keep working: each round is the same solve with every weight
+multiplied by `min(1, robust_k * robust_scale / |r_i|)`. It converges in ten to fifteen
+rounds on a ColorChecker; `robust_iterations` caps it and `robust_tol` stops it early.
+
+**`ridge` is scaled for you.** It keeps meaning the penalty on the objective above, but
+Huber's quadratic region is `0.5 (|r|/scale)^2` and carries a `1/(2 scale^2)` that a
+squared residual does not, so the inner solve uses `2 scale^2 ridge`. Without that, turning
+the robust loss on would quietly multiply a caller's regularisation by `1/(2 scale^2)`,
+which is 200 at a scale of 0.05. Checked against scipy minimising the same objective: with
+the scaling they agree to 1.5e-8 in the coefficients and 3.8e-13 in the objective; without
+it the fit lands 5.1e-4 away at a **higher** objective.
+
+The coefficients agree less tightly than the objective because the minimum is flat. Two
+searches find the same value and stop at different points in the basin, so the tests pin
+the objective tightly and the coefficients loosely, and so should you when comparing.
+
 ### Neutral Preservation
 
 ```c

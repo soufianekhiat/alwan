@@ -5505,6 +5505,36 @@ typedef struct {
      * nothing and cannot be satisfied. */
     alwan_f64 const *neutral_in;
     alwan_f64 const *neutral_out;
+    /* Robust loss. With robust_scale > 0 the fit minimises
+     *
+     *   sum_i w_i rho(|r_i| / robust_scale) + ridge |X|_F^2
+     *
+     * where r_i is sample i's residual over all three channels and rho is Huber's:
+     * quadratic within robust_k of the scale, linear beyond it. 0 turns it off and is
+     * the default, which leaves every fit exactly as it was.
+     *
+     * The residual is the NORM over the three channels, so a patch is an outlier as a
+     * whole rather than per channel. That is what a glared or scratched patch is, and
+     * it keeps a chart's colour from being pulled apart channel by channel.
+     *
+     * robust_scale is in the units of M_R and says how large a residual is still
+     * ordinary; set it near the noise of a good patch. Solved by iteratively reweighted
+     * least squares, so the caller's weights, the ridge, the solver choice and the
+     * neutral constraint all keep working: each round is the same solve with the
+     * weights multiplied by min(1, robust_k * robust_scale / |r_i|).
+     *
+     * ridge keeps meaning the penalty on the objective above, which is not the same
+     * number as a ridge on a plain least squares: Huber's quadratic region carries a
+     * 1/(2 scale^2) that the squared residual does not, and the library scales for it.
+     * Without that a caller switching the robust loss on would silently have their
+     * regularisation multiplied by 1/(2 scale^2), which is 200 at a scale of 0.05.
+     *
+     * ALWAN_E_INVALID for a robust_scale, robust_k, robust_iterations or robust_tol
+     * that is negative or not finite. */
+    alwan_f64 robust_scale;  /* Huber scale in the units of M_R; 0 is off */
+    alwan_f64 robust_k;      /* tuning constant; 0 is 1.345, the usual 95% choice */
+    int robust_iterations;   /* reweighting rounds at most; 0 is 50 */
+    alwan_f64 robust_tol;    /* stop once no coefficient moves by more than this; 0 is 1e-12 */
 } alwan_ccm_fit_params;
 
 /* The two fits above with alwan_ccm_fit_params; the arguments before it are theirs.

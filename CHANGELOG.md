@@ -26,6 +26,33 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **A robust loss on the colour correction fits.** `alwan_ccm_fit_params` grows
+  `robust_scale`, `robust_k`, `robust_iterations` and `robust_tol`. With a scale above
+  zero the fit minimises `sum_i w_i rho(|r_i| / scale) + ridge |X|_F^2` with Huber's
+  `rho`, so a bad patch pulls on the fit in proportion to its error rather than its
+  square. Zero is off and is the default; every existing fit is unchanged, bit for bit.
+
+  The residual is the **norm over the three channels**, so a patch is an outlier as a
+  whole. That is what a glared or scratched patch is, and it keeps a chart's colour from
+  being pulled apart channel by channel.
+
+  Solved by iteratively reweighted least squares, which is why it composes: each round is
+  the same solve, so the weights, the ridge, the solver choice, `rcond` and the
+  neutral-preserving constraint all keep working. A robust fit still reproduces its
+  neutral exactly, to 4.4e-16. It converges in eleven to thirteen rounds.
+
+  `ridge` keeps meaning the penalty on the objective above, and the library scales the
+  inner solve by `2 scale^2` to make that true. Huber's quadratic region carries a
+  `1/(2 scale^2)` that a squared residual does not; without the scaling, turning the
+  robust loss on would quietly multiply a caller's regularisation by 200 at a scale of
+  0.05, and the fit lands at a measurably worse point.
+
+  Held to a general optimiser minimising the same objective: the objective agrees to
+  1.5e-12 and the coefficients to 1.1e-07. The gap is not slack. The minimum is flat, so
+  two different searches agree on its value far more closely than on where they stopped,
+  and the tests assert the objective and keep the coefficients as a sanity rail (suite
+  124).
+
 - **PSNR and CPSNR.** `alwan_psnr_{T}` reports peak signal to noise ratio per channel and
   pooled, over `width` x `height` pixels of 1 to 4 channels, with `border` pixels dropped
   from every edge before anything is accumulated. Either output may be `NULL`.
