@@ -183,6 +183,171 @@ static alwan_status alwan__cmyk_to_lab(double *lab, alwan_cmyk_model const *m, d
     return ALWAN_OK;
 }
 
+/* ---------------------------------------------------------------- the inverse */
+
+/* The colour difference between the target and what c, m, y at this black would print. */
+static double alwan__cmyk_miss(alwan_cmyk_model const *m, alwan_lab_f64 const *target, double c, double mg, double y,
+                               double k) {
+    alwan_lab_f64 got;
+    double lab[3];
+    if (alwan__cmyk_to_lab(lab, m, c, mg, y, k) != ALWAN_OK) return 1e30;
+    got.L = lab[0];
+    got.a = lab[1];
+    got.b = lab[2];
+    return alwan_delta_e_2000_f64(&got, target);
+}
+
+/* Walk downhill from v on a step that halves, trying the whole neighbourhood rather than
+ * one colorant at a time, and return the difference left. Sixteen halvings take the step
+ * from an eighth to under two parts in a million, past any ink a press can hold. */
+static double alwan__cmyk_walk(double *v, alwan_cmyk_model const *m, alwan_lab_f64 const *target, double k,
+                               double miss) {
+    double step;
+    int it, i;
+    for (step = 0.125, it = 0; it < 16; it++, step *= 0.5) {
+        int moved = 1;
+        while (moved) {
+            int dc, dm, dy;
+            moved = 0;
+            for (dc = -1; dc <= 1; dc++) {
+                for (dm = -1; dm <= 1; dm++) {
+                    for (dy = -1; dy <= 1; dy++) {
+                        double trial[3];
+                        double d;
+                        int same = 1;
+                        if (dc == 0 && dm == 0 && dy == 0) continue;
+                        trial[0] = v[0] + (double)dc * step;
+                        trial[1] = v[1] + (double)dm * step;
+                        trial[2] = v[2] + (double)dy * step;
+                        for (i = 0; i < 3; i++) {
+                            if (trial[i] < 0.0) trial[i] = 0.0;
+                            if (trial[i] > 1.0) trial[i] = 1.0;
+                            if (trial[i] != v[i]) same = 0;
+                        }
+                        if (same) continue;
+                        d = alwan__cmyk_miss(m, target, trial[0], trial[1], trial[2], k);
+                        if (d < miss) {
+                            miss = d;
+                            v[0] = trial[0];
+                            v[1] = trial[1];
+                            v[2] = trial[2];
+                            moved = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return miss;
+}
+
+/* The CMY nearest a Lab at a fixed black. The scan covers the target's densest cube, and
+ * the walk starts from the best several of its nodes rather than only the best one: well
+ * outside the gamut the difference has more than one dip, and the deepest is not always
+ * the one under the best node. Every candidate is scored by the forward model itself, so
+ * the two directions cannot drift apart. */
+enum { ALWAN__CMYK_STARTS = 8 };
+
+static alwan_status alwan__lab_to_cmyk(double *out, double *miss_out, alwan_cmyk_model const *m,
+                                       alwan_lab_f64 const *target, double k) {
+    int const n = k_plane_n[0];              /* the densest cube the target carries */
+    double const *levels = k_plane_levels[0];
+    double start[ALWAN__CMYK_STARTS][3], start_d[ALWAN__CMYK_STARTS];
+    double best[3], miss = 1e30;
+    int i, j, l, s, found = 0;
+    if (!m) return ALWAN_E_INVALID;
+    for (s = 0; s < ALWAN__CMYK_STARTS; s++) {
+        start_d[s] = 1e30;
+        start[s][0] = start[s][1] = start[s][2] = 0.0;
+    }
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < n; j++) {
+            for (l = 0; l < n; l++) {
+                double const c = levels[i] * 0.01, mg = levels[j] * 0.01, y = levels[l] * 0.01;
+                double const d = alwan__cmyk_miss(m, target, c, mg, y, k);
+                if (d >= 1e30) continue;
+                found = 1;
+                for (s = 0; s < ALWAN__CMYK_STARTS; s++) {
+                    if (d < start_d[s]) {                    /* keep the list sorted, best first */
+                        int t;
+                        for (t = ALWAN__CMYK_STARTS - 1; t > s; t--) {
+                            start_d[t] = start_d[t - 1];
+                            start[t][0] = start[t - 1][0];
+                            start[t][1] = start[t - 1][1];
+                            start[t][2] = start[t - 1][2];
+                        }
+                        start_d[s] = d;
+                        start[s][0] = c;
+                        start[s][1] = mg;
+                        start[s][2] = y;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if (!found) return ALWAN_E_INVALID;
+    for (s = 0; s < ALWAN__CMYK_STARTS; s++) {
+        double v[3], d;
+        if (start_d[s] >= 1e30) break;
+        v[0] = start[s][0];
+        v[1] = start[s][1];
+        v[2] = start[s][2];
+        d = alwan__cmyk_walk(v, m, target, k, start_d[s]);
+        if (d < miss) {
+            miss = d;
+            best[0] = v[0];
+            best[1] = v[1];
+            best[2] = v[2];
+        }
+    }
+    out[0] = best[0];
+    out[1] = best[1];
+    out[2] = best[2];
+    if (miss_out) *miss_out = miss;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_lab_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_out, alwan_lab_f64 const *lab,
+                                   alwan_f64 k, alwan_cmyk_model const *model) {
+    alwan_lab_f64 target;
+    double cmy[3], miss = 0.0;
+    alwan_status st;
+    if (!cmyk_out || !lab || !model) return ALWAN_E_INVALID;
+    if (!(k >= 0.0 && k <= 1.0)) return ALWAN_E_INVALID;
+    target = *lab;
+    ALWAN_DENORM_LAB(&target);
+    st = alwan__lab_to_cmyk(cmy, &miss, model, &target, (double)k);
+    if (st != ALWAN_OK) return st;
+    cmyk_out->c = cmy[0];
+    cmyk_out->m = cmy[1];
+    cmyk_out->y = cmy[2];
+    cmyk_out->k = k;
+    if (delta_e_out) *delta_e_out = miss;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_lab_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_out, alwan_lab_f32 const *lab,
+                                   alwan_f32 k, alwan_cmyk_model const *model) {
+    alwan_lab_f64 target;
+    double cmy[3], miss = 0.0;
+    alwan_status st;
+    if (!cmyk_out || !lab || !model) return ALWAN_E_INVALID;
+    if (!(k >= 0.0f && k <= 1.0f)) return ALWAN_E_INVALID;
+    target.L = (double)lab->L;
+    target.a = (double)lab->a;
+    target.b = (double)lab->b;
+    ALWAN_DENORM_LAB(&target);
+    st = alwan__lab_to_cmyk(cmy, &miss, model, &target, (double)k);
+    if (st != ALWAN_OK) return st;
+    cmyk_out->c = (alwan_f32)cmy[0];
+    cmyk_out->m = (alwan_f32)cmy[1];
+    cmyk_out->y = (alwan_f32)cmy[2];
+    cmyk_out->k = k;
+    if (delta_e_out) *delta_e_out = (alwan_f32)miss;
+    return ALWAN_OK;
+}
+
 /* A chart's patches as percent CMYK and native Lab: the file's own Lab columns when it
  * has them, else its XYZ in Lab against its illuminant's white. */
 static alwan_status alwan__cmyk_from_chart_f64(alwan_cmyk_model **out, alwan_chart_f64 const *chart) {

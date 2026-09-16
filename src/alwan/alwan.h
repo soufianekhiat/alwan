@@ -4810,6 +4810,20 @@ void alwan_cmyk_model_destroy(alwan_cmyk_model *model, alwan_ctx *ctx);
 alwan_status alwan_cmyk_to_lab_f32(alwan_lab_f32 *lab_out, alwan_cmyk_f32 const *cmyk, alwan_cmyk_model const *model);
 alwan_status alwan_cmyk_to_lab_f64(alwan_lab_f64 *lab_out, alwan_cmyk_f64 const *cmyk, alwan_cmyk_model const *model);
 
+/* The other way: the CMYK that prints closest to a Lab, at the black the caller fixes.
+ * The model is piecewise multilinear and a colour can be printed with more ink and less
+ * black or the reverse, so the black is an input, not something to solve for: k in [0, 1]
+ * is held and the search returns the C, M and Y nearest the target by CIEDE2000.
+ * delta_e_out, which may be NULL, is what the search could not reach: zero or near it
+ * inside the gamut, and the distance to the gamut's edge outside it. A colour the press
+ * cannot print is not an error and is not clamped silently: the CMYK is the closest the
+ * characterisation offers and the difference says how far it fell short. lab is relative
+ * to the data's white, D50 for the ISO printing conditions. */
+alwan_status alwan_lab_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_out, alwan_lab_f32 const *lab,
+                                   alwan_f32 k, alwan_cmyk_model const *model);
+alwan_status alwan_lab_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_out, alwan_lab_f64 const *lab,
+                                   alwan_f64 k, alwan_cmyk_model const *model);
+
 /* Write the chart back out as OQM. The buffer form reports the length it needs when called
  * with a NULL buffer, and returns ALWAN_E_RANGE if what it was given cannot hold the result
  * and its terminator. Spectra are written when the chart has them. */
