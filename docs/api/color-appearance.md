@@ -143,6 +143,45 @@ Convert CAM16 JMh to uniform color space J'a'b' for color difference calculation
 
 ---
 
+## CIECAM16 (CIE 248:2022)
+
+### alwan_ciecam16_forward_{T} / alwan_ciecam16_inverse_{T}
+
+```c
+alwan_status alwan_ciecam16_forward_{T}(alwan_ciecam16_correlates_{T} *out,
+                                        alwan_xyz_{T} const *xyz,
+                                        alwan_ciecam16_viewing_conditions_{T} const *vc);
+
+alwan_status alwan_ciecam16_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                                        alwan_ciecam16_correlates_{T} const *correlates,
+                                        alwan_ciecam16_viewing_conditions_{T} const *vc);
+```
+
+The CIE's own revision of CAM16. It reports the same seven correlates and changes two
+things.
+
+The post-adaptation compression is no longer a bare power curve. Below `q_L = 0.26` it
+becomes a ray through the origin, above `q_U = 150` it follows the curve's own tangent, and
+between the two joins it is the curve CAM16 already used. That is what keeps very dark and
+very bright signals behaving instead of running away.
+
+The adaptation term divides by a fixed `100` rather than by the white's own `Y`.
+
+Both changes have a consequence worth knowing before choosing between the two models:
+**inside the window, with a white on the Y = 100 scale, CIECAM16 and CAM16 produce
+identical numbers**, bit for bit. The difference appears at the extremes and when the white
+is not Y = 100. Measured against colour-science: a stimulus of `(0.02, 0.02, 0.02)` moves J
+by 0.78, `(180, 190, 200)` by 1.32, `(400, 420, 440)` by 42.1, and dropping the white to
+`Y_w = 80` moves J by 0.09 and the hue angle by 1.9 degrees.
+
+The surround factors CIE 248:2022 tabulates are the ones CAM16 uses, so
+`alwan_cam16_surround` is shared rather than duplicated.
+
+**Returns:** `ALWAN_OK`, `ALWAN_E_INVALID` on a NULL argument, or `ALWAN_E_DIVZERO` if the
+white's `Y` or the background luminance is not positive.
+
+---
+
 ## Batch Processing (CIECAM02 and CAM16)
 
 Each `*_stride` immediately follows the buffer it describes (memcpy argument order).

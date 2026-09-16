@@ -1509,6 +1509,12 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_DENORM_CAM16(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
     (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
 
+/* CIECAM16 reports the same seven correlates as CAM16, on the same ranges. */
+#define ALWAN_NORM_CIECAM16(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
+    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); } while(0)
+#define ALWAN_DENORM_CIECAM16(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
+    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
+
 /* ZCAM: Jz [0,100] -> [0,1], hz [0,360) -> [0,1], Kz [0,100] -> [0,1], Wz [0,100] -> [0,1] */
 #define ALWAN_NORM_ZCAM(p)   do { (p)->Jz *= ALWAN_LITERAL(0.01); \
     (p)->hz /= ALWAN_LITERAL(360.0); (p)->Kz *= ALWAN_LITERAL(0.01); \
@@ -1615,6 +1621,8 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_DENORM_CIECAM02(p)    ((void)0)
 #define ALWAN_NORM_CAM16(p)         ((void)0)
 #define ALWAN_DENORM_CAM16(p)       ((void)0)
+#define ALWAN_NORM_CIECAM16(p)      ((void)0)
+#define ALWAN_DENORM_CIECAM16(p)    ((void)0)
 #define ALWAN_NORM_ZCAM(p)          ((void)0)
 #define ALWAN_DENORM_ZCAM(p)        ((void)0)
 #define ALWAN_NORM_HELLWIG2022(p)   ((void)0)

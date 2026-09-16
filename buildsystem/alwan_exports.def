@@ -243,6 +243,10 @@ EXPORTS
     alwan_ciecam02_inverse_f64
     alwan_ciecam02_inverse_f64_map_interleave
     alwan_ciecam02_inverse_map_interleave_ex
+    alwan_ciecam16_forward_f32
+    alwan_ciecam16_forward_f64
+    alwan_ciecam16_inverse_f32
+    alwan_ciecam16_inverse_f64
     alwan_clf_export_buffer_f32
     alwan_clf_export_buffer_f64
     alwan_clf_export_f32

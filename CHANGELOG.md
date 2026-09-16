@@ -6,7 +6,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The hue quadrature was wrong, in CIECAM02 and in CAM16.** CIE 159:2004 interpolates
+  H on `(h - h_i) / e_i`. alwan multiplied by `e_i` instead of dividing, and collapsed the
+  standard's two end sectors into one sector reached by adding 360 to any hue below 20.14.
+  Both are now as the standard has them: below the first tabulated hue H runs from 385.9 to
+  400 on its own coefficients, and from 237.53 the last sector closes on 360 with `e =
+  0.856` and a span of 85.9. The corrected function agrees with colour-science to 5.7e-14
+  across a 40,001 point sweep of the hue circle, and the joins land where they should:
+  H(360) = 385.9 = H(0), H(20.14) = 400.
+
+  **This moves the H correlate that CIECAM02 and CAM16 report.** Nothing else in either
+  model changes; J, C, h, Q, M and s are untouched.
+
+  It survived because nothing ever looked at it. Suites 13 and 14 each load seven
+  correlates per colour from a reference that has carried colour-science's correct H all
+  along, and compared six of them. Both now compare the seventh.
+
 ### Added
+
+- **CIECAM16 (CIE 248:2022).** `alwan_ciecam16_forward_{T}` and
+  `alwan_ciecam16_inverse_{T}` add the CIE's revision of CAM16. It reports the same seven
+  correlates and changes two things: the post-adaptation compression becomes linear below
+  0.26 and linear above 150, tangent to the old curve at both joins, and the adaptation
+  term divides by a fixed 100 rather than by the white's own Y.
+
+  Worth knowing before choosing between the two models: inside that window, with a white on
+  the Y = 100 scale, CIECAM16 and CAM16 produce identical numbers, bit for bit. The
+  difference appears at the extremes and when the white is not Y = 100. Suite 145 asserts
+  both halves of that, 19 rows apart and 16 exactly equal, because a reference that only
+  sampled ordinary colours would be satisfied by a CAM16 clone.
+
+  Held to colour-science over 35 conditions: 1.7e-13 in J, 2.9e-13 in C
+  (`docs/api/color-appearance.md`).
 
 - **Three chromatic adaptation models, and the von Kries cone space.**
   `alwan_cat_cie1994_{T}` (CIE 109-1994), `alwan_cat_vk20_{T}` (Fairchild 2020) and

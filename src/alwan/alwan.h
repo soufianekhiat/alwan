@@ -3561,6 +3561,36 @@ alwan_status alwan_cam16_inverse_f64(alwan_xyz_f64 *xyz_out,
                              alwan_cam16_correlates_f64 const *correlates,
                              alwan_cam16_viewing_conditions_f64 const *vc);
 
+/* CIECAM16 forward transform: XYZ -> appearance correlates (CIE 248:2022).
+ *
+ * The same seven correlates as CAM16, computed the same way apart from two things the
+ * standard changes. The post-adaptation compression is linear below 0.26 and linear above
+ * 150 instead of a bare power curve, which is what keeps very dark and very bright signals
+ * behaving; and the adaptation term divides by a fixed 100 rather than by the white's own
+ * Y. Inside that window, and with a white on the Y = 100 scale, CIECAM16 and CAM16 agree
+ * to the bit, so this is worth reaching for at the extremes rather than everywhere.
+ *
+ * The surround factors CIE 248:2022 tabulates are the ones CAM16 uses, so
+ * alwan_cam16_surround is shared rather than duplicated.
+ *
+ * Returns ALWAN_OK, ALWAN_E_INVALID on a NULL argument, or ALWAN_E_DIVZERO if the white's
+ * Y or the background luminance is not positive. */
+alwan_status alwan_ciecam16_forward_f32(alwan_ciecam16_correlates_f32 *out,
+                             alwan_xyz_f32 const *xyz,
+                             alwan_ciecam16_viewing_conditions_f32 const *vc);
+alwan_status alwan_ciecam16_forward_f64(alwan_ciecam16_correlates_f64 *out,
+                             alwan_xyz_f64 const *xyz,
+                             alwan_ciecam16_viewing_conditions_f64 const *vc);
+
+/* CIECAM16 inverse transform: appearance correlates -> XYZ
+ * Uses J, C, h from the input correlates; the other fields are ignored. */
+alwan_status alwan_ciecam16_inverse_f32(alwan_xyz_f32 *xyz_out,
+                             alwan_ciecam16_correlates_f32 const *correlates,
+                             alwan_ciecam16_viewing_conditions_f32 const *vc);
+alwan_status alwan_ciecam16_inverse_f64(alwan_xyz_f64 *xyz_out,
+                             alwan_ciecam16_correlates_f64 const *correlates,
+                             alwan_ciecam16_viewing_conditions_f64 const *vc);
+
 /* MapCIECAM02 forward transform
  * correlates_out: output appearance correlates (count elements)
  * xyz_in: input XYZ colors (stride in_stride between consecutive colors)

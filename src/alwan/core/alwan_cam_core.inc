@@ -201,40 +201,47 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(cam_hue_to_quadrature)(ALWAN_CORE_T 
     ALWAN_CORE_T h_norm = ALWAN_CORE_FMOD(h, ALWAN_CORE_LITERAL(360.0));
     h_norm = ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_ZERO, h_norm + ALWAN_CORE_LITERAL(360.0), h_norm);
 
-    /* Wrap: if h' < 20.14, shift it up by 360 to match the table range */
-    ALWAN_CORE_T hp = ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_LITERAL(20.14),
-                                   h_norm + ALWAN_CORE_LITERAL(360.0), h_norm);
+    /* CIE 159:2004 interpolates on (h - h_i) / e_i. This divided by e_i until
+     * 2026-09-16, when it multiplied instead, and the two end sectors were a
+     * single wrapped sector rather than the two the standard gives. Nothing
+     * caught it: suites 13 and 14 load seven correlates per colour and compare
+     * three, so H had never been checked against anything.
+     *
+     * Below the first tabulated hue, H runs from 385.9 to 400 on its own
+     * coefficients; at and above the last, the sector closes on 360 with
+     * e = 0.856 and a span of 85.9. The two meet: H(360) = 385.9 = H(0), and
+     * H(20.14) = 400, which is the same red the table opens at. */
+    ALWAN_CORE_T t_low = h_norm / ALWAN_CORE_LITERAL(0.856);
+    ALWAN_CORE_T H_low = ALWAN_CORE_LITERAL(385.9) +
+        (ALWAN_CORE_LITERAL(14.1) * t_low) /
+        (t_low + (ALWAN_CORE_LITERAL(20.14) - h_norm) / ALWAN_CORE_LITERAL(0.8));
 
-    /* Compute H for each of the 4 possible sectors */
     /* Sector 0: h_i[0]=20.14 .. h_i[1]=90.00, e_i[0]=0.8, e_i[1]=0.7 */
-    ALWAN_CORE_T h_diff_0 = hp - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[0];
-    ALWAN_CORE_T hi_diff_0 = ALWAN_CORE_FNLIT(CAM_HQ_h_i)[1] - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[0];
-    ALWAN_CORE_T H_0 = ALWAN_CORE_FNLIT(CAM_HQ_H_i)[0] + (ALWAN_CORE_LITERAL(100.0) * h_diff_0 * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[0]) /
-                        (h_diff_0 * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[0] + (hi_diff_0 - h_diff_0) * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[1]);
+    ALWAN_CORE_T d_0 = (h_norm - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[0]) / ALWAN_CORE_FNLIT(CAM_HQ_e_i)[0];
+    ALWAN_CORE_T H_0 = ALWAN_CORE_FNLIT(CAM_HQ_H_i)[0] + (ALWAN_CORE_LITERAL(100.0) * d_0) /
+                        (d_0 + (ALWAN_CORE_FNLIT(CAM_HQ_h_i)[1] - h_norm) / ALWAN_CORE_FNLIT(CAM_HQ_e_i)[1]);
 
     /* Sector 1: h_i[1]=90.00 .. h_i[2]=164.25, e_i[1]=0.7, e_i[2]=1.0 */
-    ALWAN_CORE_T h_diff_1 = hp - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[1];
-    ALWAN_CORE_T hi_diff_1 = ALWAN_CORE_FNLIT(CAM_HQ_h_i)[2] - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[1];
-    ALWAN_CORE_T H_1 = ALWAN_CORE_FNLIT(CAM_HQ_H_i)[1] + (ALWAN_CORE_LITERAL(100.0) * h_diff_1 * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[1]) /
-                        (h_diff_1 * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[1] + (hi_diff_1 - h_diff_1) * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[2]);
+    ALWAN_CORE_T d_1 = (h_norm - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[1]) / ALWAN_CORE_FNLIT(CAM_HQ_e_i)[1];
+    ALWAN_CORE_T H_1 = ALWAN_CORE_FNLIT(CAM_HQ_H_i)[1] + (ALWAN_CORE_LITERAL(100.0) * d_1) /
+                        (d_1 + (ALWAN_CORE_FNLIT(CAM_HQ_h_i)[2] - h_norm) / ALWAN_CORE_FNLIT(CAM_HQ_e_i)[2]);
 
     /* Sector 2: h_i[2]=164.25 .. h_i[3]=237.53, e_i[2]=1.0, e_i[3]=1.2 */
-    ALWAN_CORE_T h_diff_2 = hp - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[2];
-    ALWAN_CORE_T hi_diff_2 = ALWAN_CORE_FNLIT(CAM_HQ_h_i)[3] - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[2];
-    ALWAN_CORE_T H_2 = ALWAN_CORE_FNLIT(CAM_HQ_H_i)[2] + (ALWAN_CORE_LITERAL(100.0) * h_diff_2 * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[2]) /
-                        (h_diff_2 * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[2] + (hi_diff_2 - h_diff_2) * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[3]);
+    ALWAN_CORE_T d_2 = (h_norm - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[2]) / ALWAN_CORE_FNLIT(CAM_HQ_e_i)[2];
+    ALWAN_CORE_T H_2 = ALWAN_CORE_FNLIT(CAM_HQ_H_i)[2] + (ALWAN_CORE_LITERAL(100.0) * d_2) /
+                        (d_2 + (ALWAN_CORE_FNLIT(CAM_HQ_h_i)[3] - h_norm) / ALWAN_CORE_FNLIT(CAM_HQ_e_i)[3]);
 
-    /* Sector 3: h_i[3]=237.53 .. h_i[4]=380.14, e_i[3]=1.2, e_i[4]=0.8 */
-    ALWAN_CORE_T h_diff_3 = hp - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[3];
-    ALWAN_CORE_T hi_diff_3 = ALWAN_CORE_FNLIT(CAM_HQ_h_i)[4] - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[3];
-    ALWAN_CORE_T H_3 = ALWAN_CORE_FNLIT(CAM_HQ_H_i)[3] + (ALWAN_CORE_LITERAL(100.0) * h_diff_3 * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[3]) /
-                        (h_diff_3 * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[3] + (hi_diff_3 - h_diff_3) * ALWAN_CORE_FNLIT(CAM_HQ_e_i)[4]);
+    /* Sector 3: h_i[3]=237.53 .. 360, e_i[3]=1.2, closing on 0.856 */
+    ALWAN_CORE_T d_3 = (h_norm - ALWAN_CORE_FNLIT(CAM_HQ_h_i)[3]) / ALWAN_CORE_FNLIT(CAM_HQ_e_i)[3];
+    ALWAN_CORE_T H_3 = ALWAN_CORE_FNLIT(CAM_HQ_H_i)[3] + (ALWAN_CORE_LITERAL(85.9) * d_3) /
+                        (d_3 + (ALWAN_CORE_LITERAL(360.0) - h_norm) / ALWAN_CORE_LITERAL(0.856));
 
     /* Nested ALWAN_CORE_SELECT to choose the correct sector */
-    ALWAN_CORE_T H_val = ALWAN_CORE_SELECT(hp < ALWAN_CORE_FNLIT(CAM_HQ_h_i)[1], H_0,
-                         ALWAN_CORE_SELECT(hp < ALWAN_CORE_FNLIT(CAM_HQ_h_i)[2], H_1,
-                         ALWAN_CORE_SELECT(hp < ALWAN_CORE_FNLIT(CAM_HQ_h_i)[3], H_2,
-                                                           H_3)));
+    ALWAN_CORE_T H_val = ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_FNLIT(CAM_HQ_h_i)[0], H_low,
+                         ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_FNLIT(CAM_HQ_h_i)[1], H_0,
+                         ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_FNLIT(CAM_HQ_h_i)[2], H_1,
+                         ALWAN_CORE_SELECT(h_norm < ALWAN_CORE_FNLIT(CAM_HQ_h_i)[3], H_2,
+                                                           H_3))));
 
     return H_val;
 }
@@ -640,6 +647,278 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cam16_inverse)(
     ALWAN_CORE_T B = B_c / D_B;
 
     /* Step 8: LMS -> XYZ via inverse CAT16 matrix */
+    ALWAN_CORE_VEC3 lms_inv = {{R, G, B}};
+    ALWAN_CORE_VEC3 xyz_out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CAM_M_CAT16_INV), lms_inv);
+    result.x = xyz_out.v[0];
+    result.y = xyz_out.v[1];
+    result.z = xyz_out.v[2];
+
+    return result;
+}
+
+/* ================================================================
+ * CIE 248:2022 post-adaptation compression
+ *
+ * CAM16 compresses with a bare power curve, which climbs without bound and
+ * turns very steep near zero. CIE 248:2022 keeps that curve between q_L and
+ * q_U and replaces it outside them: a ray through the origin below q_L, and
+ * the curve's own tangent above q_U. Between the two joins it is the same
+ * curve CAM16 uses, less the 0.1 the caller adds back, so the two models
+ * agree exactly on any signal that lands inside the window.
+ *
+ * f_q takes the unscaled signal q and the luminance factor separately,
+ * because the thresholds are on q itself, not on the scaled argument the
+ * CAM16 helper takes.
+ * ================================================================ */
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(cam_ciecam16_f_q)(ALWAN_CORE_T FL, ALWAN_CORE_T q) {
+    ALWAN_CORE_T s = ALWAN_CORE_POW(FL * q / ALWAN_CORE_LITERAL(100.0), ALWAN_CORE_LITERAL(0.42));
+    return ALWAN_CORE_LITERAL(400.0) * s / (ALWAN_CORE_LITERAL(27.13) + s);
+}
+
+/* Slope of f_q at q. The 1.68 folds in both the 0.42 exponent and the 1/100. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(cam_ciecam16_d_f_q)(ALWAN_CORE_T FL, ALWAN_CORE_T q) {
+    ALWAN_CORE_T u = FL * q / ALWAN_CORE_LITERAL(100.0);
+    ALWAN_CORE_T den = ALWAN_CORE_LITERAL(27.13) + ALWAN_CORE_POW(u, ALWAN_CORE_LITERAL(0.42));
+    return (ALWAN_CORE_LITERAL(1.68) * ALWAN_CORE_LITERAL(27.13) * FL *
+            ALWAN_CORE_POW(u, -ALWAN_CORE_LITERAL(0.58))) / (den * den);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(cam_ciecam16_f_e)(ALWAN_CORE_T q, ALWAN_CORE_T FL) {
+    ALWAN_CORE_T q_L = ALWAN_CORE_LITERAL(0.26);
+    ALWAN_CORE_T q_U = ALWAN_CORE_LITERAL(150.0);
+    ALWAN_CORE_T f_L = ALWAN_CORE_FNVLIT(cam_ciecam16_f_q)(FL, q_L);
+    ALWAN_CORE_T f_U = ALWAN_CORE_FNVLIT(cam_ciecam16_f_q)(FL, q_U);
+    /* The middle branch raises q to a fractional power, so it is evaluated on a
+     * clamped q: below the join the result is discarded, and a negative base
+     * would otherwise make it a NaN first. */
+    ALWAN_CORE_T q_mid = ALWAN_CORE_SELECT(q < q_L, q_L, q);
+    ALWAN_CORE_T mid = ALWAN_CORE_FNVLIT(cam_ciecam16_f_q)(FL, q_mid);
+    ALWAN_CORE_T low = f_L * q / q_L;
+    ALWAN_CORE_T high = f_U + ALWAN_CORE_FNVLIT(cam_ciecam16_d_f_q)(FL, q_U) * (q - q_U);
+    return ALWAN_CORE_SELECT(q > q_U, high, ALWAN_CORE_SELECT(q < q_L, low, mid));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(cam_ciecam16_f_e_inv)(ALWAN_CORE_T a, ALWAN_CORE_T FL) {
+    ALWAN_CORE_T q_L = ALWAN_CORE_LITERAL(0.26);
+    ALWAN_CORE_T q_U = ALWAN_CORE_LITERAL(150.0);
+    ALWAN_CORE_T f_L = ALWAN_CORE_FNVLIT(cam_ciecam16_f_q)(FL, q_L);
+    ALWAN_CORE_T f_U = ALWAN_CORE_FNVLIT(cam_ciecam16_f_q)(FL, q_U);
+    /* Same guard as the forward: the middle branch is evaluated on a clamped
+     * value so the discarded branches cannot produce a NaN. */
+    ALWAN_CORE_T a_mid = ALWAN_CORE_SELECT(a < f_L, f_L, ALWAN_CORE_SELECT(a > f_U, f_U, a));
+    ALWAN_CORE_T mid = ALWAN_CORE_LITERAL(100.0) / FL * ALWAN_CORE_POW(
+        (ALWAN_CORE_LITERAL(27.13) * a_mid) / (ALWAN_CORE_LITERAL(400.0) - a_mid),
+        ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(0.42));
+    ALWAN_CORE_T low = q_L * a / f_L;
+    ALWAN_CORE_T high = q_U + (a - f_U) / ALWAN_CORE_FNVLIT(cam_ciecam16_d_f_q)(FL, q_U);
+    return ALWAN_CORE_SELECT(a > f_U, high, ALWAN_CORE_SELECT(a < f_L, low, mid));
+}
+
+/* ================================================================
+ * CIECAM16 derived viewing parameters
+ *
+ * Differs from cam_compute_derived_params in exactly two places, both of
+ * them the model's own: the adaptation term divides by a fixed 100 where
+ * CAM16 divides by the white's own Y, and the white's achromatic response
+ * goes through the CIE 248:2022 compression. n keeps Yw, as the standard
+ * has it. There is no HPE branch: CIECAM16 works in CAT16 space throughout.
+ * ================================================================ */
+
+ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_cam_derived_params) ALWAN_CORE_FNVLIT(cam_compute_derived_params_ciecam16)(
+    ALWAN_CORE_T F,
+    ALWAN_CORE_T La,
+    ALWAN_CORE_T Yb,
+    ALWAN_CORE_T Yw,
+    ALWAN_CORE_T discount_illuminant,
+    ALWAN_CORE_XYZ white_xyz,
+    ALWAN_CORE_MAT3X3 M_cat
+) {
+    ALWAN_CORE_FNLIT(alwan_cam_derived_params) p;
+
+    p.D = ALWAN_CORE_FNVLIT(cam_compute_D)(F, La, discount_illuminant);
+
+    ALWAN_CORE_T k = ALWAN_CORE_ONE / (ALWAN_CORE_LITERAL(5.0) * La + ALWAN_CORE_ONE);
+    ALWAN_CORE_T k4 = k * k * k * k;
+    p.FL = ALWAN_CORE_LITERAL(0.2) * k4 * (ALWAN_CORE_LITERAL(5.0) * La) +
+           ALWAN_CORE_LITERAL(0.1) * (ALWAN_CORE_ONE - k4) * (ALWAN_CORE_ONE - k4) *
+           ALWAN_CORE_POW(ALWAN_CORE_LITERAL(5.0) * La, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0));
+
+    p.n   = Yb / Yw;
+    p.Nbb = ALWAN_CORE_LITERAL(0.725) * ALWAN_CORE_POW(ALWAN_CORE_ONE / p.n, ALWAN_CORE_LITERAL(0.2));
+    p.Ncb = p.Nbb;
+    p.z   = ALWAN_CORE_LITERAL(1.48) + ALWAN_CORE_SQRT(p.n);
+
+    ALWAN_CORE_VEC3 white_v = {{white_xyz.x, white_xyz.y, white_xyz.z}};
+    ALWAN_CORE_VEC3 lms_w = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(M_cat, white_v);
+
+    ALWAN_CORE_T D_R_w = p.D * (ALWAN_CORE_LITERAL(100.0) / lms_w.v[0]) + ALWAN_CORE_ONE - p.D;
+    ALWAN_CORE_T D_G_w = p.D * (ALWAN_CORE_LITERAL(100.0) / lms_w.v[1]) + ALWAN_CORE_ONE - p.D;
+    ALWAN_CORE_T D_B_w = p.D * (ALWAN_CORE_LITERAL(100.0) / lms_w.v[2]) + ALWAN_CORE_ONE - p.D;
+
+    ALWAN_CORE_T R_aw = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e)(lms_w.v[0] * D_R_w, p.FL) + ALWAN_CORE_LITERAL(0.1);
+    ALWAN_CORE_T G_aw = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e)(lms_w.v[1] * D_G_w, p.FL) + ALWAN_CORE_LITERAL(0.1);
+    ALWAN_CORE_T B_aw = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e)(lms_w.v[2] * D_B_w, p.FL) + ALWAN_CORE_LITERAL(0.1);
+
+    p.A_w = (ALWAN_CORE_LITERAL(2.0) * R_aw + G_aw +
+             ALWAN_CORE_LITERAL(0.05) * B_aw - ALWAN_CORE_LITERAL(0.305)) * p.Nbb;
+
+    return p;
+}
+
+/* ================================================================
+ * CIECAM16 Forward Transform (CIE 248:2022, value-returning)
+ *
+ * The correlates are CAM16's, so the CAM16 correlate struct is reused.
+ * ================================================================ */
+
+ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_cam16_v_correlates) ALWAN_CORE_FNVLIT(alwan_ciecam16_forward)(
+    ALWAN_CORE_XYZ xyz,
+    ALWAN_CORE_XYZ white_xyz,
+    ALWAN_CORE_T F,
+    ALWAN_CORE_T c,
+    ALWAN_CORE_T Nc,
+    ALWAN_CORE_T D,
+    ALWAN_CORE_T FL,
+    ALWAN_CORE_T n,
+    ALWAN_CORE_T Nbb,
+    ALWAN_CORE_T Ncb,
+    ALWAN_CORE_T z,
+    ALWAN_CORE_T A_w
+) {
+    ALWAN_CORE_FNLIT(alwan_cam16_v_correlates) result;
+    ALWAN_UNUSED(F); /* F already folded into pre-computed D */
+    ALWAN_UNUSED(white_xyz); /* the adaptation term is fixed at 100, not the white's Y */
+
+    ALWAN_CORE_VEC3 xyz_v = {{xyz.x, xyz.y, xyz.z}};
+    ALWAN_CORE_VEC3 lms = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CAM_M_CAT16), xyz_v);
+    ALWAN_CORE_T R = lms.v[0];
+    ALWAN_CORE_T G = lms.v[1];
+    ALWAN_CORE_T B = lms.v[2];
+
+    ALWAN_CORE_VEC3 white_v = {{white_xyz.x, white_xyz.y, white_xyz.z}};
+    ALWAN_CORE_VEC3 lms_w = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CAM_M_CAT16), white_v);
+    ALWAN_CORE_T R_w = lms_w.v[0];
+    ALWAN_CORE_T G_w = lms_w.v[1];
+    ALWAN_CORE_T B_w = lms_w.v[2];
+
+    /* Chromatic adaptation against a fixed 100, which is where CIECAM16 parts
+     * company with CAM16 whenever the white is not on the Y = 100 scale. */
+    ALWAN_CORE_T D_R = D * (ALWAN_CORE_LITERAL(100.0) / R_w) + ALWAN_CORE_ONE - D;
+    ALWAN_CORE_T D_G = D * (ALWAN_CORE_LITERAL(100.0) / G_w) + ALWAN_CORE_ONE - D;
+    ALWAN_CORE_T D_B = D * (ALWAN_CORE_LITERAL(100.0) / B_w) + ALWAN_CORE_ONE - D;
+
+    ALWAN_CORE_T R_c = R * D_R;
+    ALWAN_CORE_T G_c = G * D_G;
+    ALWAN_CORE_T B_c = B * D_B;
+
+    ALWAN_CORE_T R_a = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e)(R_c, FL) + ALWAN_CORE_LITERAL(0.1);
+    ALWAN_CORE_T G_a = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e)(G_c, FL) + ALWAN_CORE_LITERAL(0.1);
+    ALWAN_CORE_T B_a = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e)(B_c, FL) + ALWAN_CORE_LITERAL(0.1);
+
+    ALWAN_CORE_T A = (ALWAN_CORE_LITERAL(2.0) * R_a + G_a +
+                ALWAN_CORE_LITERAL(0.05) * B_a - ALWAN_CORE_LITERAL(0.305)) * Nbb;
+
+    ALWAN_CORE_T a = R_a - ALWAN_CORE_LITERAL(12.0) * G_a / ALWAN_CORE_LITERAL(11.0) +
+               B_a / ALWAN_CORE_LITERAL(11.0);
+    ALWAN_CORE_T b = (R_a + G_a - ALWAN_CORE_LITERAL(2.0) * B_a) / ALWAN_CORE_LITERAL(9.0);
+
+    ALWAN_CORE_T h_rad = ALWAN_CORE_ATAN2(b, a);
+    ALWAN_CORE_T h = h_rad * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
+    h = ALWAN_CORE_SELECT(h < ALWAN_CORE_ZERO, h + ALWAN_CORE_LITERAL(360.0), h);
+
+    ALWAN_CORE_T et = ALWAN_CORE_LITERAL(0.25) * (ALWAN_CORE_COS(h * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0) + ALWAN_CORE_LITERAL(2.0)) + ALWAN_CORE_LITERAL(3.8));
+
+    ALWAN_CORE_T H = ALWAN_CORE_FNVLIT(cam_hue_to_quadrature)(h);
+
+    ALWAN_CORE_T J = ALWAN_CORE_LITERAL(100.0) * ALWAN_CORE_POW(A / A_w, c * z);
+
+    ALWAN_CORE_T Q = (ALWAN_CORE_LITERAL(4.0) / c) * ALWAN_CORE_SQRT(J / ALWAN_CORE_LITERAL(100.0)) *
+               (A_w + ALWAN_CORE_LITERAL(4.0)) * ALWAN_CORE_POW(FL, ALWAN_CORE_LITERAL(0.25));
+
+    ALWAN_CORE_T t_val = (ALWAN_CORE_LITERAL(50000.0) / ALWAN_CORE_LITERAL(13.0) * Nc * Ncb * et *
+                ALWAN_CORE_SQRT(a * a + b * b)) /
+               (R_a + G_a + ALWAN_CORE_LITERAL(21.0) / ALWAN_CORE_LITERAL(20.0) * B_a);
+    ALWAN_CORE_T C_val = ALWAN_CORE_POW(t_val, ALWAN_CORE_LITERAL(0.9)) *
+               ALWAN_CORE_SQRT(J / ALWAN_CORE_LITERAL(100.0)) *
+               ALWAN_CORE_POW(ALWAN_CORE_LITERAL(1.64) - ALWAN_CORE_POW(ALWAN_CORE_LITERAL(0.29), n), ALWAN_CORE_LITERAL(0.73));
+
+    ALWAN_CORE_T M = C_val * ALWAN_CORE_POW(FL, ALWAN_CORE_LITERAL(0.25));
+    ALWAN_CORE_T s = ALWAN_CORE_LITERAL(100.0) * ALWAN_CORE_SQRT(M / Q);
+
+    result.J = J;
+    result.C = C_val;
+    result.h = h;
+    result.s = s;
+    result.Q = Q;
+    result.M = M;
+    result.H = H;
+
+    return result;
+}
+
+/* ================================================================
+ * CIECAM16 Inverse Transform (value-returning)
+ * ================================================================ */
+
+ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_ciecam16_inverse)(
+    ALWAN_CORE_T J,
+    ALWAN_CORE_T C,
+    ALWAN_CORE_T h,
+    ALWAN_CORE_XYZ white_xyz,
+    ALWAN_CORE_T F,
+    ALWAN_CORE_T c,
+    ALWAN_CORE_T Nc,
+    ALWAN_CORE_T D,
+    ALWAN_CORE_T FL,
+    ALWAN_CORE_T n,
+    ALWAN_CORE_T Nbb,
+    ALWAN_CORE_T Ncb,
+    ALWAN_CORE_T z,
+    ALWAN_CORE_T A_w
+) {
+    ALWAN_CORE_XYZ result;
+    ALWAN_UNUSED(F); /* F already folded into pre-computed D */
+
+    ALWAN_CORE_T A = A_w * ALWAN_CORE_POW(J / ALWAN_CORE_LITERAL(100.0), ALWAN_CORE_ONE / (c * z));
+
+    ALWAN_CORE_T t_val = ALWAN_CORE_POW(
+        C / (ALWAN_CORE_SQRT(J / ALWAN_CORE_LITERAL(100.0)) *
+             ALWAN_CORE_POW(ALWAN_CORE_LITERAL(1.64) - ALWAN_CORE_POW(ALWAN_CORE_LITERAL(0.29), n), ALWAN_CORE_LITERAL(0.73))),
+        ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(0.9));
+
+    ALWAN_CORE_T et = ALWAN_CORE_LITERAL(0.25) * (ALWAN_CORE_COS(h * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0) + ALWAN_CORE_LITERAL(2.0)) + ALWAN_CORE_LITERAL(3.8));
+
+    ALWAN_CORE_T h_rad = h * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0);
+    ALWAN_CORE_VEC2 ab = ALWAN_CORE_FNVLIT(cam_opponent_colour_inverse)(t_val, h_rad, Nc, Ncb, et, A, Nbb);
+    ALWAN_CORE_T a = ab.v[0];
+    ALWAN_CORE_T b = ab.v[1];
+
+    ALWAN_CORE_T P_2 = A / Nbb + ALWAN_CORE_LITERAL(0.305);
+    ALWAN_CORE_T R_a = (ALWAN_CORE_LITERAL(460.0) * P_2 + ALWAN_CORE_LITERAL(451.0) * a + ALWAN_CORE_LITERAL(288.0) * b) / ALWAN_CORE_LITERAL(1403.0);
+    ALWAN_CORE_T G_a = (ALWAN_CORE_LITERAL(460.0) * P_2 - ALWAN_CORE_LITERAL(891.0) * a - ALWAN_CORE_LITERAL(261.0) * b) / ALWAN_CORE_LITERAL(1403.0);
+    ALWAN_CORE_T B_a = (ALWAN_CORE_LITERAL(460.0) * P_2 - ALWAN_CORE_LITERAL(220.0) * a - ALWAN_CORE_LITERAL(6300.0) * b) / ALWAN_CORE_LITERAL(1403.0);
+
+    /* The inverse compression already returns the unscaled signal, so there is
+     * no 100/FL here, unlike the CAM16 inverse. */
+    ALWAN_CORE_T R_c = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e_inv)(R_a - ALWAN_CORE_LITERAL(0.1), FL);
+    ALWAN_CORE_T G_c = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e_inv)(G_a - ALWAN_CORE_LITERAL(0.1), FL);
+    ALWAN_CORE_T B_c = ALWAN_CORE_FNVLIT(cam_ciecam16_f_e_inv)(B_a - ALWAN_CORE_LITERAL(0.1), FL);
+
+    ALWAN_CORE_VEC3 white_v = {{white_xyz.x, white_xyz.y, white_xyz.z}};
+    ALWAN_CORE_VEC3 lms_w = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CAM_M_CAT16), white_v);
+    ALWAN_CORE_T R_w = lms_w.v[0];
+    ALWAN_CORE_T G_w = lms_w.v[1];
+    ALWAN_CORE_T B_w = lms_w.v[2];
+
+    ALWAN_CORE_T D_R = D * (ALWAN_CORE_LITERAL(100.0) / R_w) + ALWAN_CORE_ONE - D;
+    ALWAN_CORE_T D_G = D * (ALWAN_CORE_LITERAL(100.0) / G_w) + ALWAN_CORE_ONE - D;
+    ALWAN_CORE_T D_B = D * (ALWAN_CORE_LITERAL(100.0) / B_w) + ALWAN_CORE_ONE - D;
+
+    ALWAN_CORE_T R = R_c / D_R;
+    ALWAN_CORE_T G = G_c / D_G;
+    ALWAN_CORE_T B = B_c / D_B;
+
     ALWAN_CORE_VEC3 lms_inv = {{R, G, B}};
     ALWAN_CORE_VEC3 xyz_out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CAM_M_CAT16_INV), lms_inv);
     result.x = xyz_out.v[0];

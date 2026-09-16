@@ -250,6 +250,16 @@ typedef struct {
     int discount_illuminant;                   /* 1 to discount illuminant, 0 otherwise */
 } ALWAN_TN(alwan_cam16_viewing_conditions);
 
+/* CIECAM16 viewing conditions. The surround factors CIE 248:2022 tabulates are the
+ * same F, c and Nc triples CAM16 uses, so the enum is shared rather than duplicated. */
+typedef struct {
+    ALWAN_TN(alwan_xyz) white_xyz;             /* Reference white in XYZ (Y typically 100) */
+    ALWAN_T adapting_luminance;                /* Luminance of adapting field (La) in cd/m^2 */
+    ALWAN_T background_luminance;              /* Relative luminance of background (Yb/Yw) */
+    alwan_cam16_surround surround;             /* Viewing surround condition */
+    int discount_illuminant;                   /* 1 to discount illuminant, 0 otherwise */
+} ALWAN_TN(alwan_ciecam16_viewing_conditions);
+
 /* ZCAM viewing conditions */
 typedef struct {
     ALWAN_TN(alwan_xyz) xyz_w;                 /* White point (absolute XYZ in cd/m^2) */
@@ -377,6 +387,18 @@ typedef struct {
     ALWAN_T M;  /* Colorfulness (0+) */
     ALWAN_T H;  /* Hue quadrature (0-400) */
 } ALWAN_TN(alwan_cam16_correlates);
+
+/* CIECAM16 appearance correlates (CIE 248:2022). Same seven correlates as CAM16;
+ * the models differ in the compression, not in what they report. */
+typedef struct {
+    ALWAN_T J;  /* Lightness (0-100) */
+    ALWAN_T C;  /* Chroma (0+) */
+    ALWAN_T h;  /* Hue angle (0-360 degrees) */
+    ALWAN_T s;  /* Saturation (0+) */
+    ALWAN_T Q;  /* Brightness (0+) */
+    ALWAN_T M;  /* Colorfulness (0+) */
+    ALWAN_T H;  /* Hue quadrature (0-400) */
+} ALWAN_TN(alwan_ciecam16_correlates);
 
 /* ZCAM appearance correlates */
 typedef struct {
