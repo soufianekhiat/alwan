@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **ITU-R BT.814-4 PLUGE.** `ALWAN_PATTERN_PLUGE_BT814` renders the black level signal of
+  Annex 2 at any size: twenty narrow stripes above and below black, the higher level patch
+  for the gain control, and the two coarse stripes, with `pluge_range` choosing the SDR
+  patch (code 940) or the HDR one (399, for PQ and HLG alike). Every edge is the
+  recommendation's own sample and line number as a fraction of the picture, and at 1920 x
+  1080 and 3840 x 2160 every sample matches the tables and the EBU's PLUGE files (suite
+  140, `docs/api/patterns.md`).
+
 - **EBU Tech 3325 test patterns.** `ALWAN_PATTERN_EBU_1` to `ALWAN_PATTERN_EBU_12_GREY`
   render the monitor measurement patterns of EBU Tech 3325: EBU_1 and EBU_2, the 13
   measurement-point patches and four windows of EBU_3, the 20 grey steps of EBU_4, and

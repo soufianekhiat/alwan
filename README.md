@@ -3,9 +3,9 @@
 > **Alwan** (ألوان): Arabic for "colours"
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-139%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-108%2C292%20per%20run-brightgreen)](#validation)
-[![reference data](https://img.shields.io/badge/reference%20data-397%20sets-blue)](#validation)
+[![tests](https://img.shields.io/badge/tests-140%20suites-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-108%2C313%20per%20run-brightgreen)](#validation)
+[![reference data](https://img.shields.io/badge/reference%20data-398%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -623,11 +623,11 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 139, all passing |
-| Test cases | 940 |
-| Checks executed per run | 108,292 |
-| Assertion sites in the tests | 3,381 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 397 |
+| Test suites | 140, all passing |
+| Test cases | 944 |
+| Checks executed per run | 108,313 |
+| Assertion sites in the tests | 3,397 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 398 |
 | Embedded data tables | 761 |
 | Exported symbols | 1,777 |
 | Internal symbols reached by a test or a public entry point | 155 of 179 (87%) |
@@ -637,7 +637,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**108,292 checks per run** is what actually executes, not what is written. A
+**108,313 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -672,7 +672,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 139 test suites, single binary
+./build/tests/Release/alwan_tests   # 140 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -681,7 +681,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 139 suites, 940 cases, 108,292 checks executed per run
+  module: 140 suites, 944 cases, 108,313 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
@@ -719,7 +719,7 @@ alwan/                       # this repo (library only)
 \-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-+-- tests/                   # 139 test suites + reference fixtures
++-- tests/                   # 140 test suites + reference fixtures
 +-- bench/                   # micro-benchmarks
 +-- det_regression/          # cross-platform determinism regression tool
 +-- image_gen/               # validation visuals
@@ -783,7 +783,7 @@ own. Those jobs verify a clean compile; the test suite runs from
 - [x] Dual precision (f32 + f64 in one binary)
 - [x] Data embedding with diagnostic guards
 - [x] Sharpmake + CMake build systems
-- [x] Unified test suite (139 suites, hosted in alwan_dev)
+- [x] Unified test suite (140 suites, hosted in alwan_dev)
 - [x] 109 named RGB spaces, easy to add more via space descriptors
 - [x] Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,

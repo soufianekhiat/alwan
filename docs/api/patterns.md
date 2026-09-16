@@ -38,6 +38,7 @@ proportions at any size.
 | `ALWAN_PATTERN_EBU_4` | EBU_4-1 to 4-20: one grey-scale patch, on black |
 | `ALWAN_PATTERN_EBU_5` | EBU_5: a BT.709 primary or one of the 15 EBU test colours, on black |
 | `ALWAN_PATTERN_EBU_12_GREY` | EBU_12-grey: 50 % grey frame |
+| `ALWAN_PATTERN_PLUGE_BT814` | ITU-R BT.814-4 Annex 2 PLUGE, for HDTV, UHDTV and HDR |
 
 ## ITU-R BT.471-1
 
@@ -97,6 +98,31 @@ the L, u', v' of Tables 6 and 7 within their printed rounding (suite 139). The E
 also carries a caption, which alwan does not draw. EBU_12-burn is not implemented: the
 standard gives its two levels but not the shape of the transition between them.
 
+## ITU-R BT.814-4 PLUGE
+
+The signal a monitor's black level is set with. On a black field: twenty narrow stripes on
+the left, ten at a level slightly above black and ten slightly below, a higher level patch
+at the centre for the gain control, and two coarse stripes on the right, one above black
+and one below. Set the black level so the darker stripes just disappear while the lighter
+ones stay visible.
+
+Levels are 10-bit codes read as (c - 64) / 876: higher level 940, black 64, slightly
+lighter 80, slightly darker 48 (Table 2). `alwan_pattern_params.pluge_range` picks the
+higher level patch: `ALWAN_PATTERN_PLUGE_SDR` (940, the default) or
+`ALWAN_PATTERN_PLUGE_HDR` (399, which Table 3 gives for PQ and HLG alike). Nothing else in
+the frame changes between the two.
+
+Table 4 gives the sample numbers of every vertical edge and Tables 5 and 6 the line
+numbers of every horizontal one. HDTV, 4K and 8K place them at the same fractions of the
+picture, so alwan keeps the fractions and rounds each edge to the nearest sample, which
+reproduces the published numbers exactly at those three sizes and keeps the proportions
+at any other. A narrow stripe is 10 of the 1080 lines and sits on a pitch of twice that,
+starting at Lc and ending at Lh.
+
+At 1920 x 1080 and 3840 x 2160 every sample of alwan's render carries the code the
+recommendation's tables place there, which is also the code in the EBU's own PLUGE files
+(suite 140).
+
 ## Colour space and layout
 
 The signal is the pattern's own. To place the bars in another space, decode and convert
@@ -111,4 +137,5 @@ is free from arib.or.jp; alwan implements the signal the standard defines and do
 reproduce its text. SMPTE RP 219 and EG 1 are not freely available, so ARIB STD-B28 stands
 in for RP 219. EBU Tech 3325 is free from tech.ebu.ch, and so are its pattern files; the
 files state no licence, so alwan_dev records the rectangles and codes measured from them
-rather than the files.
+rather than the files. ITU-R BT.814-4 is a free download from itu.int; its own tables give
+the PLUGE, and the EBU files only check the transcription.
