@@ -809,6 +809,8 @@ EXPORTS
     alwan_kim2009_forward_f64
     alwan_kim2009_inverse_f32
     alwan_kim2009_inverse_f64
+    alwan_lab_to_cmyk_f32
+    alwan_lab_to_cmyk_f64
     alwan_lab_to_din99_f32
     alwan_lab_to_din99_f32_map_interleave
     alwan_lab_to_din99_f32_map_planar
