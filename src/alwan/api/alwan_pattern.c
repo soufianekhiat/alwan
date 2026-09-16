@@ -129,6 +129,55 @@ static void alwan__rect_row(double *row, size_t w, size_t y, double cx, double c
     }
 }
 
+/* ITU-R BT.814-4 Annex 2. Table 4 gives the sample numbers and Tables 5 and 6 the line
+ * numbers of every edge; HDTV, 4K and 8K put them at the same fractions of the picture,
+ * so alwan keeps the fractions: the HDTV sample number over 1920, and the HDTV
+ * progressive line number less the 42 lines before the picture, over 1080.
+ *
+ * Sb, Sc: the narrow stripes; Sd, Se: the higher level patch; Sf, Sg: the coarse stripes. */
+static double const k_pluge_x[6] = { 312.0 / 1920.0,  600.0 / 1920.0,  888.0 / 1920.0,
+                                     1032.0 / 1920.0, 1320.0 / 1920.0, 1608.0 / 1920.0 };
+
+/* Lb, Lc, Ld (= Le), Lf (= Lg), Lh, Li as picture rows. */
+static double const k_pluge_y[6] = { 324.0 / 1080.0, 345.0 / 1080.0, 468.0 / 1080.0,
+                                     612.0 / 1080.0, 735.0 / 1080.0, 756.0 / 1080.0 };
+
+/* Paint, in row y, the band from x0 to x1 and y0 to y1, each a fraction of the picture
+ * rounded to the nearest sample. */
+static void alwan__band_row(double *row, size_t w, size_t h, size_t y, double x0, double x1, double y0, double y1,
+                            double const *rgb) {
+    size_t x, xa, xb;
+    if (y < alwan__edge(y0, h) || y >= alwan__edge(y1, h)) return;
+    xa = alwan__edge(x0, w);
+    xb = alwan__edge(x1, w);
+    for (x = xa; x < xb && x < w; x++) {
+        row[3 * x + 0] = rgb[0];
+        row[3 * x + 1] = rgb[1];
+        row[3 * x + 2] = rgb[2];
+    }
+}
+
+/* One row of the BT.814-4 PLUGE: black, the narrow stripes 2 % above and below it on the
+ * left, the higher level patch at the centre, and the two coarse stripes on the right.
+ * The narrow stripes are 10 lines of the 1080 and sit on a 20 line pitch from Lc, ten at
+ * the lighter level then ten at the darker, ending at Lh. */
+static void alwan__pluge_row(double *row, alwan_pattern_params const *pr, size_t y, size_t w, size_t h) {
+    double const higher = alwan__ebu_level(pr && pr->pluge_range == ALWAN_PATTERN_PLUGE_HDR ? 399 : 940);
+    double lv[3];
+    int k;
+    alwan__fill_row(row, w, 0.0);
+    for (k = 0; k < 20; k++) {
+        double const level = alwan__ebu_level(k < 10 ? 80 : 48);
+        lv[0] = lv[1] = lv[2] = level;
+        if (k == 0) alwan__band_row(row, w, h, y, k_pluge_x[4], k_pluge_x[5], k_pluge_y[0], k_pluge_y[2], lv);
+        if (k == 10) alwan__band_row(row, w, h, y, k_pluge_x[4], k_pluge_x[5], k_pluge_y[3], k_pluge_y[5], lv);
+        alwan__band_row(row, w, h, y, k_pluge_x[0], k_pluge_x[1], (345.0 + 20.0 * k) / 1080.0,
+                        (355.0 + 20.0 * k) / 1080.0, lv);
+    }
+    lv[0] = lv[1] = lv[2] = higher;
+    alwan__band_row(row, w, h, y, k_pluge_x[2], k_pluge_x[3], k_pluge_y[2], k_pluge_y[3], lv);
+}
+
 /* A Tech 3325 patch, an H/7.5 square, at measurement point p (1 to 13, Figure 7):
  * w and h from the centre in fractions of the width and height, h upwards. */
 static void alwan__ebu_patch(double *row, size_t w, size_t h, size_t y, unsigned p, double const *rgb) {
@@ -195,7 +244,9 @@ static void alwan__ebu_row(double *row, alwan_pattern pattern, alwan_pattern_par
 /* One row of a pattern, R'G'B' per sample. */
 static void alwan__pattern_row(double *row, alwan_pattern pattern, alwan_pattern_params const *pr, size_t y, size_t w,
                                size_t h) {
-    if (pattern >= ALWAN_PATTERN_EBU_1) {
+    if (pattern == ALWAN_PATTERN_PLUGE_BT814) {
+        alwan__pluge_row(row, pr, y, w, h);
+    } else if (pattern >= ALWAN_PATTERN_EBU_1) {
         alwan__ebu_row(row, pattern, pr, y, w, h);
     } else if (pattern <= ALWAN_PATTERN_BARS_75_7_5_75_7_5) {
         static double const k_sig[4][4] = { { 1.0, 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.75, 0.0 },
@@ -257,6 +308,9 @@ static alwan_status alwan__pattern_check(alwan_pattern pattern, alwan_pattern_pa
         }
         if (params->ebu_point > 13 || params->ebu_step > 20 || params->ebu_colour > 18) return ALWAN_E_INVALID;
         if (a != 0 && a != 4 && a != 10 && a != 25 && a != 81) return ALWAN_E_INVALID;
+        if ((int)params->pluge_range < 0 || (int)params->pluge_range > (int)ALWAN_PATTERN_PLUGE_HDR) {
+            return ALWAN_E_INVALID;
+        }
     }
     return ALWAN_OK;
 }

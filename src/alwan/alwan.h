@@ -1608,8 +1608,15 @@ typedef enum {
     ALWAN_PATTERN_EBU_4 = 11,              /* EBU_4-1 to 4-20: the grey-scale patch ebu_step, on black */
     ALWAN_PATTERN_EBU_5 = 12,              /* EBU_5: a BT.709 primary or EBU test colour, ebu_colour, on black */
     ALWAN_PATTERN_EBU_12_GREY = 13,        /* EBU_12-grey: 50 % grey frame */
+    ALWAN_PATTERN_PLUGE_BT814 = 14,        /* ITU-R BT.814-4 Annex 2 PLUGE for HDTV, UHDTV and HDR */
     ALWAN_PATTERN_COUNT
 } alwan_pattern;
+
+/* The BT.814-4 higher level patch: 940 for SDR, 399 for PQ and HLG alike (Tables 2 and 3). */
+typedef enum {
+    ALWAN_PATTERN_PLUGE_SDR = 0,
+    ALWAN_PATTERN_PLUGE_HDR = 1
+} alwan_pattern_pluge_range;
 
 /* The ARIB STD-B28 pattern 2 area the standard leaves to the user. */
 typedef enum {
@@ -1627,6 +1634,7 @@ typedef struct {
     unsigned ebu_area;    /* EBU_3_WINDOW: white area in percent, 4, 10, 25 or 81 */
     unsigned ebu_step;    /* EBU_4: grey-scale measurement number 1 to 20 (Table 5) */
     unsigned ebu_colour;  /* EBU_5: 1 to 15 the EBU test colours (Table 7), 16 red, 17 green, 18 blue (Table 6) */
+    alwan_pattern_pluge_range pluge_range; /* PLUGE_BT814: the higher level patch, SDR or HDR */
 } alwan_pattern_params;
 
 alwan_status alwan_pattern_render_f32(alwan_f32 *rgb_out, size_t row_stride, size_t width, size_t height,
