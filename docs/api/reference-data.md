@@ -418,17 +418,19 @@ same file, but they are neither declared in `alwan.h` nor listed in `alwan_expor
 They are unreachable from a DLL build and dead public symbols in a static one. Their data
 is reachable only through `alwan_data_get_illuminant_xy_{T}`.
 
-### xy coverage: 29 of 38 illuminants
+### xy coverage: 29 of 55 illuminants
 
-`alwan_illuminant` has 38 enumerators (0 = `ALWAN_ILLUMINANT_A` through
-37 = `ALWAN_ILLUMINANT_HP5`). The xy switch covers 29 of them.
+`alwan_illuminant` has 55 enumerators (0 = `ALWAN_ILLUMINANT_A` through
+54 = `ALWAN_ILLUMINANT_ID65`). The xy switch covers 29 of them.
 
 - **Has xy:** A, B, C, D40, D45, D50, D55, D60, D65, D75, D93, E, F2, F7, F11,
   LED_B1-LED_B5, LED_BH1, LED_RGB1, LED_V1, LED_V2, HP1-HP5.
-- **No xy (`ALWAN_E_INVALID`):** F1, F3, F4, F5, F6, F8, F9, F10, F12.
+- **No xy (`ALWAN_E_INVALID`):** F1, F3, F4, F5, F6, F8, F9, F10, F12,
+  F3_1-F3_15, ID50, ID65.
 
 An illuminant with no xy still has data. `alwan_spd_illuminant_{T}` carries a full
-471-sample SPD (360-830 nm at 1 nm) for all 38 values, F1 through F12 included.
+471-sample SPD (360-830 nm at 1 nm) for all 55 values, F1 through F12 and the
+FL3.x set included.
 
 The failure is observer-dependent and it propagates.
 `alwan_illuminant_white_point_{T}` takes the xy path when

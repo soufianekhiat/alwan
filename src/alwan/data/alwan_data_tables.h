@@ -335,6 +335,64 @@ ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_hp4, ALWAN_TABLE_SPD_360_830_1NM_S
 ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_hp5, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
 #endif
 
+/* ---- spd_illuminant_f3_1 to f3_15, id50, id65 -- rank 1, 471, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/<NAME>_360_830_1nm.csv, via
+ *         alwan_dev/gendata/data/illuminants_fl3_id.py
+ * The FL3.x fluorescents and the two indoor daylights, on the same 360-830nm 1nm grid
+ * as every illuminant above, by the same interpolation and CIE 15 hold. */
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_1
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_1, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_2
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_2, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_3
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_3, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_4
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_4, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_5
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_5, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_6
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_6, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_7
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_7, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_8
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_8, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_9
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_9, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_10
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_10, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_11
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_11, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_12
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_12, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_13
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_13, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_14
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_14, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_F3_15
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_f3_15, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_ID50
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_id50, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_ID65
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_id65, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+
 /* ---- cmf_cie_1931_2deg x/y/z -- rank 1, 471, INTEGER row ----
  * Reader: alwan_table1d_row_{f32,f64}
  * Source: alwan_dev/gendata, CIE 1931 2 deg Standard Observer,

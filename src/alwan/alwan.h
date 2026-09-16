@@ -615,7 +615,30 @@ typedef enum {
     ALWAN_ILLUMINANT_HP2 = 34, /* High Pressure 2 */
     ALWAN_ILLUMINANT_HP3 = 35, /* High Pressure 3 */
     ALWAN_ILLUMINANT_HP4 = 36, /* High Pressure 4 */
-    ALWAN_ILLUMINANT_HP5 = 37 /* High Pressure 5 */
+    ALWAN_ILLUMINANT_HP5 = 37, /* High Pressure 5 */
+
+    /* CIE FL3.x fluorescents. colour-science spells these FL3.1 to FL3.15; alwan spells
+     * its fluorescents F1 to F12, so they are F3_1 to F3_15 here. F3_1 is not a variant
+     * spelling of F3, which is colour's FL3: they are different lamps. */
+    ALWAN_ILLUMINANT_F3_1 = 38,
+    ALWAN_ILLUMINANT_F3_2 = 39,
+    ALWAN_ILLUMINANT_F3_3 = 40,
+    ALWAN_ILLUMINANT_F3_4 = 41,
+    ALWAN_ILLUMINANT_F3_5 = 42,
+    ALWAN_ILLUMINANT_F3_6 = 43,
+    ALWAN_ILLUMINANT_F3_7 = 44,
+    ALWAN_ILLUMINANT_F3_8 = 45,
+    ALWAN_ILLUMINANT_F3_9 = 46,
+    ALWAN_ILLUMINANT_F3_10 = 47,
+    ALWAN_ILLUMINANT_F3_11 = 48,
+    ALWAN_ILLUMINANT_F3_12 = 49,
+    ALWAN_ILLUMINANT_F3_13 = 50,
+    ALWAN_ILLUMINANT_F3_14 = 51,
+    ALWAN_ILLUMINANT_F3_15 = 52,
+
+    /* Indoor daylight */
+    ALWAN_ILLUMINANT_ID50 = 53, /* Indoor daylight 5000K */
+    ALWAN_ILLUMINANT_ID65 = 54  /* Indoor daylight 6500K */
 } alwan_illuminant;
 
 /* Enum-based illuminant xy chromaticity accessor

@@ -26,6 +26,26 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Seventeen more standard illuminants.** `alwan_illuminant` goes from 38 values to 55:
+  the CIE FL3.1 to FL3.15 fluorescents, and the two indoor daylights ID50 and ID65.
+
+  colour-science spells the fluorescents FL3.1 to FL3.15; alwan spells its fluorescents
+  F1 to F12, so these are `ALWAN_ILLUMINANT_F3_1` to `_F3_15`, a dot not being legal in an
+  identifier. `F3_1` is not a variant spelling of `F3`, which is colour's FL3: they are
+  different lamps.
+
+  Each carries a full 471-sample SPD at 360-830nm and 1nm, on the same grid and by the same
+  linear interpolation and CIE 15 constant hold as the 38 before it, and each has its own
+  `ALWAN_TABLE_SPD_ILLUMINANT_*` switch. None of the seventeen has xy chromaticity, so
+  `alwan_data_get_illuminant_xy_{T}` returns `ALWAN_E_INVALID` for them, as it already does
+  for F1, F3 to F6, F8 to F10 and F12.
+
+  Suite 104 pins all 55 against colour-science at eight probe wavelengths, two of which sit
+  deliberately off the source's 5nm grid, and its structural check that no two illuminants
+  are bit-identical now spans all 55. That check is what would catch a fluorescent variant
+  silently duplicating another, which is the way fifteen illuminant tables once shipped as
+  copies of D65.
+
 - **Otsu et al. 2018 spectral recovery.** `alwan_xyz_to_spectrum_otsu2018_{T}` recovers a
   reflectance from a tristimulus value: a decision tree over CIE xy picks one of eight
   clusters, and the answer is that cluster's mean plus a weighted sum of its three basis
