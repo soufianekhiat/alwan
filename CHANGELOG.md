@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **An exact CCT and Duv solve: the Planckian table and Ohno 2013.**
+  `alwan_planckian_table_create_{T}` samples the Planck 1900 locus once, against an
+  observer's own CMFs, and keeps it; `alwan_uv_to_cct_ohno2013_{T}` then reads that table
+  to return CCT and signed Duv by Ohno's triangular solution near the locus and his
+  parabolic one beyond |Duv| = 0.002. Unlike `alwan_cct_duv_optimize`, which searches a
+  closed-form approximation of the locus and says so, this one is held to
+  colour-science's own Ohno 2013 (suite 133, `docs/api/reference-data.md`).
+
 - **HyCH, the Huang 2015 power function, and STRESS.** `alwan_delta_e_hych_{T}` adds the
   hybrid difference of Huang et al. 2015, CIEDE2000's terms taken city block in lightness
   and Euclidean across chroma and hue, with the textile weighting available.

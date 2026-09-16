@@ -903,6 +903,45 @@ carries no colorimetry alwan can use.
 
 ---
 
+## The Planckian Table and Ohno 2013
+
+```c
+typedef struct alwan_planckian_table_s alwan_planckian_table;
+
+alwan_status alwan_planckian_table_create_{T}(alwan_planckian_table **out, alwan_observer_type observer,
+                                              alwan_{T} start, alwan_{T} end, alwan_{T} spacing, alwan_ctx *ctx);
+void   alwan_planckian_table_destroy(alwan_planckian_table *table, alwan_ctx *ctx);
+size_t alwan_planckian_table_size(alwan_planckian_table const *table);
+
+alwan_status alwan_uv_to_cct_ohno2013_{T}(alwan_{T} *cct_out, alwan_{T} *duv_out, alwan_vec2_{T} const *uv,
+                                          alwan_planckian_table const *table);
+```
+
+`alwan_cct_to_uv_planck1900` sums Planck's law against the observer's colour matching
+functions every time it is called, and Ohno's method wants a few thousand locus points for
+a single query. So the points are taken once and kept: the table loads the CMFs one time
+and integrates for each temperature. The temperatures rise geometrically from `start` to
+`end`, the step easing off towards the top so the table stays dense where the locus turns,
+which is how colour-science builds its own. Zero for any of `start`, `end` or `spacing`
+takes Ohno's values, 1000 K, 100000 K and 1.001; `spacing` must be greater than 1.
+
+`alwan_uv_to_cct_ohno2013_{T}` reads the table. The nearest entry and its two neighbours
+give a triangle whose apex is the answer near the locus; from |Duv| = 0.002 outwards the
+three distances are fitted with a parabola instead, which is where colour-science changes
+over. Duv is signed, positive above the locus, per Ohno 2013 and ANSI C78.377, and
+`duv_out` may be `NULL`. A point whose nearest entry is an end of the table is
+`ALWAN_E_RANGE`, since neither solution has the neighbour it needs.
+
+Against colour-science's own Ohno 2013, over six points on the locus and four off it
+either side of the 0.002 switch, alwan agrees to 2.4e-09 K and 4.7e-13 in Duv (suite 133).
+
+This is the exact solve, and it is the one to reach for when the number matters.
+`alwan_cct_duv_optimize` remains what it has always been: a search over a closed-form
+approximation of the locus, with a CCT residual of about 28 K on the locus that comes from
+that approximation rather than from the minimiser.
+
+---
+
 ## CMYK Printing Characterisations
 
 ```c

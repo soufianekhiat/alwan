@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/badge/tests-143%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-108%2C389%20per%20run-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-108%2C402%20per%20run-brightgreen)](#validation)
 [![reference data](https://img.shields.io/badge/reference%20data-407%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
@@ -625,11 +625,11 @@ Re-run it against any checkout to reproduce the table.
 |---|---|
 | Test suites | 143, all passing |
 | Test cases | 957 |
-| Checks executed per run | 108,389 |
-| Assertion sites in the tests | 3,451 |
+| Checks executed per run | 108,402 |
+| Assertion sites in the tests | 3,455 |
 | Reference datasets (colour-science, OCIO, ACES-dev) | 407 |
 | Embedded data tables | 762 |
-| Exported symbols | 1,785 |
+| Exported symbols | 1,791 |
 | Internal symbols reached by a test or a public entry point | 155 of 179 (87%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -637,7 +637,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**108,389 checks per run** is what actually executes, not what is written. A
+**108,402 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting source lines would undersell the suite by two orders of magnitude.
 The count comes from a counter in the test framework and is printed by the
@@ -681,7 +681,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 143 suites, 957 cases, 108,389 checks executed per run
+  module: 143 suites, 957 cases, 108,402 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
