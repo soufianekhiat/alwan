@@ -153,8 +153,14 @@ EXPORTS
     alwan_camera_sensitivities_f64
     alwan_camera_sensitivities_from_chart_f32
     alwan_camera_sensitivities_from_chart_f64
+    alwan_cat_cie1994_f32
+    alwan_cat_cie1994_f64
+    alwan_cat_li2025_f32
+    alwan_cat_li2025_f64
     alwan_cat_matrix_f32
     alwan_cat_matrix_f64
+    alwan_cat_vk20_f32
+    alwan_cat_vk20_f64
     alwan_cat_zhai2018_f32
     alwan_cat_zhai2018_f64
     alwan_ccm_fit_cheung2004_f32

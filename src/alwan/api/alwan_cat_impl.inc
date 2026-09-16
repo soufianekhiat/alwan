@@ -1,5 +1,38 @@
 /* No include guard -- included twice (f32 and f64 passes) */
 
+/* The cone-response matrix behind a method, or NULL where the method has no fixed matrix:
+ * XYZ scaling is a diagonal built from the white points, and Zhai 2018 is a model rather
+ * than a matrix. Returns the native-precision data twin, so the f32 path reads float data
+ * (ALWAN_CORE_FNLIT(g_cat_NAME) -> g_cat_NAME_f32 / g_cat_NAME_f64). */
+static ALWAN_CORE_T const *ALWAN_CORE_FNLIT(cat_matrix_data)(alwan_cat_method method) {
+    switch (method) {
+        case ALWAN_CAT_BRADFORD:         return ALWAN_CORE_FNLIT(g_cat_bradford);
+        case ALWAN_CAT_CAT02:            return ALWAN_CORE_FNLIT(g_cat_cat02);
+        case ALWAN_CAT_CAT16:            return ALWAN_CORE_FNLIT(g_cat_cat16);
+        case ALWAN_CAT_SHARP:            return ALWAN_CORE_FNLIT(g_cat_sharp);
+        case ALWAN_CAT_FAIRCHILD:        return ALWAN_CORE_FNLIT(g_cat_fairchild);
+        case ALWAN_CAT_CMCCAT97:         return ALWAN_CORE_FNLIT(g_cat_cmccat97);
+        case ALWAN_CAT_CMCCAT2000:       return ALWAN_CORE_FNLIT(g_cat_cmccat2000);
+        case ALWAN_CAT_CAT02_BRILL_2008: return ALWAN_CORE_FNLIT(g_cat_cat02_brill_2008);
+        case ALWAN_CAT_BIANCO_2010:      return ALWAN_CORE_FNLIT(g_cat_bianco_2010);
+        case ALWAN_CAT_BIANCO_PC_2010:   return ALWAN_CORE_FNLIT(g_cat_bianco_pc_2010);
+        case ALWAN_CAT_VON_KRIES:        return ALWAN_CORE_FNLIT(g_cat_von_kries);
+        default: return NULL;
+    }
+}
+
+/* Load a method's matrix and its inverse. */
+static alwan_status ALWAN_CORE_FNLIT(cat_matrix_pair)(ALWAN_CORE_MAT3X3 *M_out,
+                                                      ALWAN_CORE_MAT3X3 *M_inv_out,
+                                                      alwan_cat_method method) {
+    ALWAN_CORE_T const *M_data = ALWAN_CORE_FNLIT(cat_matrix_data)(method);
+    if (!M_data) {
+        return ALWAN_E_INVALID;
+    }
+    memcpy(M_out->m, M_data, sizeof(M_out->m));
+    return (alwan_status)ALWAN_CORE_FNLIT(alwan_mat3_inv)(M_inv_out, M_out);
+}
+
 alwan_status ALWAN_CORE_FNLIT(alwan_cat_matrix)(ALWAN_CORE_MAT3X3 *out,
                      ALWAN_CORE_XYZ const *src_white_xyz,
                      ALWAN_CORE_XYZ const *dst_white_xyz,
@@ -18,21 +51,9 @@ alwan_status ALWAN_CORE_FNLIT(alwan_cat_matrix)(ALWAN_CORE_MAT3X3 *out,
         return ALWAN_OK;
     }
 
-    /* Select the CAT matrix M directly from the native-precision data twin
-     * (ALWAN_CORE_FNLIT(g_cat_NAME) -> g_cat_NAME_f32 / g_cat_NAME_f64). */
-    ALWAN_CORE_T const *M_data;
-    switch (method) {
-        case ALWAN_CAT_BRADFORD:         M_data = ALWAN_CORE_FNLIT(g_cat_bradford);         break;
-        case ALWAN_CAT_CAT02:            M_data = ALWAN_CORE_FNLIT(g_cat_cat02);            break;
-        case ALWAN_CAT_CAT16:            M_data = ALWAN_CORE_FNLIT(g_cat_cat16);            break;
-        case ALWAN_CAT_SHARP:            M_data = ALWAN_CORE_FNLIT(g_cat_sharp);            break;
-        case ALWAN_CAT_FAIRCHILD:        M_data = ALWAN_CORE_FNLIT(g_cat_fairchild);        break;
-        case ALWAN_CAT_CMCCAT97:         M_data = ALWAN_CORE_FNLIT(g_cat_cmccat97);         break;
-        case ALWAN_CAT_CMCCAT2000:       M_data = ALWAN_CORE_FNLIT(g_cat_cmccat2000);       break;
-        case ALWAN_CAT_CAT02_BRILL_2008: M_data = ALWAN_CORE_FNLIT(g_cat_cat02_brill_2008); break;
-        case ALWAN_CAT_BIANCO_2010:      M_data = ALWAN_CORE_FNLIT(g_cat_bianco_2010);      break;
-        case ALWAN_CAT_BIANCO_PC_2010:   M_data = ALWAN_CORE_FNLIT(g_cat_bianco_pc_2010);   break;
-        default: return ALWAN_E_INVALID;
+    ALWAN_CORE_T const *M_data = ALWAN_CORE_FNLIT(cat_matrix_data)(method);
+    if (!M_data) {
+        return ALWAN_E_INVALID;
     }
 
     ALWAN_CORE_MAT3X3 M;
@@ -150,6 +171,107 @@ alwan_status ALWAN_CORE_FNLIT(alwan_cat_zhai2018)(ALWAN_CORE_XYZ *xyz_out,
     /* Delegate to core two-step adaptation */
     *xyz_out = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(M, M_inv, *xyz_in, *xyz_src, *xyz_dst,
                                     D_src, D_dst, *xyz_o);
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * CIE 1994 Chromatic Adaptation Model (CIE 109-1994)
+ *
+ * The cone space is not the caller's to choose: the model is defined in the
+ * von Kries space and its coefficients are fitted to it.
+ * ---------------------------------------------------------------- */
+
+alwan_status ALWAN_CORE_FNLIT(alwan_cat_cie1994)(ALWAN_CORE_XYZ *xyz_out,
+                       ALWAN_CORE_XYZ const *xyz_in,
+                       ALWAN_CORE_VEC2 const *xy_o1,
+                       ALWAN_CORE_VEC2 const *xy_o2,
+                       ALWAN_CORE_T Y_o,
+                       ALWAN_CORE_T E_o1,
+                       ALWAN_CORE_T E_o2,
+                       ALWAN_CORE_T n) {
+    if (!xyz_out || !xyz_in || !xy_o1 || !xy_o2) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* xi, eta and zeta all divide by the adapting field's y */
+    if (xy_o1->v[1] <= ALWAN_CORE_LITERAL(0.0) || xy_o2->v[1] <= ALWAN_CORE_LITERAL(0.0)) {
+        return ALWAN_E_INVALID;
+    }
+
+    ALWAN_CORE_MAT3X3 M, M_inv;
+    alwan_status status = ALWAN_CORE_FNLIT(cat_matrix_pair)(&M, &M_inv, ALWAN_CAT_VON_KRIES);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+
+    *xyz_out = ALWAN_CORE_FNVLIT(alwan_cat_cie1994)(M, M_inv, *xyz_in,
+                                  xy_o1->v[0], xy_o1->v[1], xy_o2->v[0], xy_o2->v[1],
+                                  Y_o, E_o1, E_o2, n);
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * vK20 Chromatic Adaptation Model (Fairchild 2020)
+ * ---------------------------------------------------------------- */
+
+alwan_status ALWAN_CORE_FNLIT(alwan_cat_vk20)(ALWAN_CORE_XYZ *xyz_out,
+                       ALWAN_CORE_XYZ const *xyz_in,
+                       ALWAN_CORE_XYZ const *xyz_p,
+                       ALWAN_CORE_XYZ const *xyz_n,
+                       ALWAN_CORE_XYZ const *xyz_r,
+                       ALWAN_CORE_T D_n,
+                       ALWAN_CORE_T D_r,
+                       ALWAN_CORE_T D_p,
+                       alwan_cat_method transform) {
+    if (!xyz_out || !xyz_in || !xyz_p || !xyz_n) {
+        return ALWAN_E_INVALID;
+    }
+
+    /* The model's own reference illuminant, on the Y = 1 scale it is defined on */
+    ALWAN_CORE_XYZ reference_default = { ALWAN_CORE_LITERAL(0.97941176),
+                                         ALWAN_CORE_LITERAL(1.0),
+                                         ALWAN_CORE_LITERAL(1.73235294) };
+    ALWAN_CORE_XYZ const *xyz_ref = xyz_r ? xyz_r : &reference_default;
+
+    ALWAN_CORE_MAT3X3 M, M_inv;
+    alwan_status status = ALWAN_CORE_FNLIT(cat_matrix_pair)(&M, &M_inv, transform);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+
+    *xyz_out = ALWAN_CORE_FNVLIT(alwan_cat_vk20)(M, M_inv, *xyz_in, *xyz_p, *xyz_n, *xyz_ref,
+                                D_n, D_r, D_p);
+
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
+ * Li 2025 Chromatic Adaptation Model
+ *
+ * Defined in CAT16 cone space, so the matrix is not a parameter.
+ * ---------------------------------------------------------------- */
+
+alwan_status ALWAN_CORE_FNLIT(alwan_cat_li2025)(ALWAN_CORE_XYZ *xyz_out,
+                       ALWAN_CORE_XYZ const *xyz_in,
+                       ALWAN_CORE_XYZ const *xyz_ws,
+                       ALWAN_CORE_XYZ const *xyz_wd,
+                       ALWAN_CORE_T L_A,
+                       ALWAN_CORE_T F_surround,
+                       int discount_illuminant) {
+    if (!xyz_out || !xyz_in || !xyz_ws || !xyz_wd) {
+        return ALWAN_E_INVALID;
+    }
+
+    ALWAN_CORE_MAT3X3 M, M_inv;
+    alwan_status status = ALWAN_CORE_FNLIT(cat_matrix_pair)(&M, &M_inv, ALWAN_CAT_CAT16);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+
+    *xyz_out = ALWAN_CORE_FNVLIT(alwan_cat_li2025)(M, M_inv, *xyz_in, *xyz_ws, *xyz_wd,
+                                 L_A, F_surround, discount_illuminant);
 
     return ALWAN_OK;
 }

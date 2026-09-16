@@ -8,6 +8,25 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Three chromatic adaptation models, and the von Kries cone space.**
+  `alwan_cat_cie1994_{T}` (CIE 109-1994), `alwan_cat_vk20_{T}` (Fairchild 2020) and
+  `alwan_cat_li2025_{T}` join Zhai 2018 as adaptation *models*, where the amount of
+  adaptation depends on the viewing conditions and there is no single matrix to hand back.
+  CIE 1994 takes the two adapting fields' chromaticities, their illuminances and the
+  background luminance factor; vK20 adapts towards a weighted mixture of a previous, a
+  current and a reference white; Li 2025 is a CAT16 von Kries step whose degree of
+  adaptation follows the CIECAM form and which carries both whites' luminances through.
+  `ALWAN_CAT_VON_KRIES` also becomes selectable: the matrix had been generated all along
+  and nothing read it. Held to colour-science over 20 conditions each, worst 5.7e-14,
+  2.2e-16 and 2.8e-14 (suite 144, `docs/api/chromatic-adaptation.md`).
+
+  Fairchild 1990 is not among them, and the documentation says why. colour-science's
+  implementation computes the degrees of adaptation from the stimulus rather than the
+  illuminant and reuses that one `p` for both the forward and inverse gains, where it
+  cancels along with the `c` scaling: its output is identical for adapting luminances of
+  20, 200 and 2000, and identical with the illuminant discounted or not, which leaves a
+  plain von Kries step. There is nothing there to implement against.
+
 - **CRI sample by sample, not just Ra.** `alwan_cri_specification_{T}` returns the
   fourteen special indices of CIE 13.3-1995, R1 to R14, alongside Ra. Ra itself is bit for
   bit what `alwan_cri_ra` returned before, from the same pipeline; the eight samples it

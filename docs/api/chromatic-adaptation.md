@@ -98,6 +98,111 @@ destination illuminant via a baseline illuminant, with independent degree-of-ada
 
 ---
 
+## Adaptation Models
+
+The functions above apply a matrix. The three below are models: the amount of adaptation
+depends on the viewing conditions, so each stimulus is adapted on its own terms and there
+is no single matrix to hand back.
+
+### alwan_cat_cie1994_{T}
+
+```c
+alwan_status alwan_cat_cie1994_{T}(alwan_xyz_{T} *xyz_out,
+                                   alwan_xyz_{T} const *xyz_in,
+                                   alwan_vec2_{T} const *xy_o1,
+                                   alwan_vec2_{T} const *xy_o2,
+                                   alwan_{T} Y_o, alwan_{T} E_o1,
+                                   alwan_{T} E_o2, alwan_{T} n);
+```
+
+CIE 109-1994. Adapts a stimulus seen under one adapting field to the corresponding colour
+under another, working in the von Kries cone space the model fixes.
+
+- `xyz_in` -- stimulus under the test field, Y = 100 scale.
+- `xy_o1` / `xy_o2` -- chromaticities of the test and reference adapting fields.
+- `Y_o` -- luminance factor of the adapting background. The model is defined on `[18, 100]`;
+  outside that the result is extrapolation and the call still returns it.
+- `E_o1` / `E_o2` -- illuminance of the test and reference fields, in lux.
+- `n` -- noise term, `1` in the published model.
+
+**Returns:** `ALWAN_OK`, or `ALWAN_E_INVALID` on a NULL argument or a non-positive `y` in
+either chromaticity, which every intermediate value divides by.
+
+---
+
+### alwan_cat_vk20_{T}
+
+```c
+alwan_status alwan_cat_vk20_{T}(alwan_xyz_{T} *xyz_out,
+                                alwan_xyz_{T} const *xyz_in,
+                                alwan_xyz_{T} const *xyz_p,
+                                alwan_xyz_{T} const *xyz_n,
+                                alwan_xyz_{T} const *xyz_r,
+                                alwan_{T} D_n, alwan_{T} D_r, alwan_{T} D_p,
+                                alwan_cat_method transform);
+```
+
+vK20 (Fairchild 2020). Adapts towards a weighted mixture of three whites rather than one:
+the previous white `xyz_p`, the current white `xyz_n` and a fixed reference `xyz_r`,
+weighted by `D_p`, `D_n` and `D_r`. Fairchild's own condition is `D_n = 0.7, D_r = 0.3,
+D_p = 0`; `D_n = 1` with the other two at zero is a plain von Kries adaptation to the
+current white. Pass `NULL` for `xyz_r` to use the model's reference, `{0.97941176, 1,
+1.73235294}`.
+
+Scale matters here, unlike the matrix transforms. That reference white sits on the Y = 1
+scale, so the stimulus and the other two whites must be on it as well. Feeding Y = 100
+values while leaving `xyz_r` at its default mixes two scales and moves the result by a
+different factor in each channel rather than by 100. To work at Y = 100, pass an `xyz_r`
+scaled to match.
+
+**Returns:** `ALWAN_OK`, or `ALWAN_E_INVALID` on a NULL argument or a `transform` that has
+no matrix behind it (`ALWAN_CAT_XYZ_SCALING` and `ALWAN_CAT_ZHAI_2018`).
+
+---
+
+### alwan_cat_li2025_{T}
+
+```c
+alwan_status alwan_cat_li2025_{T}(alwan_xyz_{T} *xyz_out,
+                                  alwan_xyz_{T} const *xyz_in,
+                                  alwan_xyz_{T} const *xyz_ws,
+                                  alwan_xyz_{T} const *xyz_wd,
+                                  alwan_{T} L_A, alwan_{T} F_surround,
+                                  int discount_illuminant);
+```
+
+Li (2025). A von Kries step in CAT16 cone space whose degree of adaptation follows the
+CIECAM form `D = F (1 - (1/3.6) exp((-L_A - 42) / 92))`, clamped to `[0, 1]`, and which
+carries both whites' luminances through, so a change in adapting luminance is not lost.
+
+- `xyz_in`, `xyz_ws`, `xyz_wd` -- stimulus, source white, destination white, Y = 100 scale.
+- `L_A` -- adapting field luminance, cd/m2.
+- `F_surround` -- `1.0` average, `0.9` dim, `0.8` dark.
+- `discount_illuminant` -- non-zero forces `D = 1`.
+
+**Returns:** `ALWAN_OK`, or `ALWAN_E_INVALID` on a NULL argument.
+
+---
+
+### Fairchild 1990, and why it is not here
+
+`ALWAN_CAT_FAIRCHILD` is the linear Fairchild matrix and is unaffected by any of this. The
+*model* of the same name is not implemented, and the reason is worth writing down.
+
+As colour-science implements it, `chromatic_adaptation_Fairchild1990` computes the degrees
+of adaptation once, from the stimulus rather than from the illuminant, and then uses that
+same `p` to build both the forward and the inverse gain matrices, where it cancels. The
+`c = 0.219 - 0.0784 log10(Y_n)` scaling cancels for the same reason. What is left is a
+plain von Kries step: the function returns identical values for `Y_n` of 20, 200 and 2000,
+and identical values with `discount_illuminant` set either way. Both of the model's
+distinguishing parameters have no effect.
+
+Shipping an entry point whose parameters do nothing would be worse than shipping nothing,
+and implementing the published model instead would leave alwan with no reference to check
+it against. So it waits for a reference that is not derived from that implementation.
+
+---
+
 ## Chromatic Adaptation Methods
 
 ```c
@@ -117,13 +222,19 @@ typedef enum {
     ALWAN_CAT_BIANCO_PC_2010   = 10, /* Bianco PC 2010 */
 
     /* Two-step CAT methods */
-    ALWAN_CAT_ZHAI_2018        = 11  /* Zhai & Luo 2018 two-step CAT */
+    ALWAN_CAT_ZHAI_2018        = 11, /* Zhai & Luo 2018 two-step CAT */
+
+    ALWAN_CAT_VON_KRIES        = 12  /* Von Kries cone space (HPE normalised to E) */
 } alwan_cat_method;
 ```
 
-12 methods total. `ALWAN_CAT_ZHAI_2018` is the only two-step method and is applied through
+13 methods total. `ALWAN_CAT_ZHAI_2018` is the only two-step method and is applied through
 `alwan_cat_zhai2018_{T}`; the others are one-step matrices usable with `alwan_cat_matrix_{T}`
 and `alwan_xyz_adapt_{T}`.
+
+`ALWAN_CAT_VON_KRIES` is the classic cone space the CIE 1994 model is defined in: the
+Hunt-Pointer-Estevez matrix normalised to equal energy. It is not the unnormalised HPE
+matrix alwan embeds for IPT, and the two differ in every element.
 
 ---
 

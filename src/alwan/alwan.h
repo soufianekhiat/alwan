@@ -2155,7 +2155,12 @@ typedef enum {
     ALWAN_CAT_BIANCO_PC_2010  = 10, /* Bianco PC 2010 */
 
     /* Two-step CAT methods */
-    ALWAN_CAT_ZHAI_2018       = 11  /* Zhai & Luo 2018 two-step CAT */
+    ALWAN_CAT_ZHAI_2018       = 11, /* Zhai & Luo 2018 two-step CAT */
+
+    /* The classic von Kries cone space: the Hunt-Pointer-Estevez matrix normalised to
+     * equal energy, which CIE 1994 and Fairchild 1990 both work in. This is not the
+     * unnormalised HPE matrix alwan embeds for IPT; the two differ in every element. */
+    ALWAN_CAT_VON_KRIES       = 12
 } alwan_cat_method;
 
 /* Compute chromatic adaptation matrix from source to destination white point
@@ -2216,6 +2221,84 @@ alwan_status alwan_cat_zhai2018_f64(alwan_xyz_f64 *xyz_out,
                            alwan_f64 D_dst,
                            alwan_xyz_f64 const *xyz_baseline,
                            alwan_cat_method transform);
+
+/* CIE 1994 chromatic adaptation model (CIE 109-1994).
+ *
+ * Adapts a stimulus seen under one adapting field to the corresponding colour under
+ * another. This is not a matrix: the exponents depend on the adapting luminances, so every
+ * stimulus is adapted on its own terms.
+ *
+ * xyz_in: stimulus under the test field, Y = 100 scale
+ * xy_o1, xy_o2: chromaticities of the test and reference adapting fields
+ * Y_o: luminance factor of the adapting background. The model is defined on [18, 100];
+ *      outside it the result is extrapolation and the call still returns it.
+ * E_o1, E_o2: illuminance of the test and reference fields, lux
+ * n: noise term, 1 in the published model
+ * Returns ALWAN_E_INVALID on a NULL argument or a non-positive y in either chromaticity. */
+alwan_status alwan_cat_cie1994_f32(alwan_xyz_f32 *xyz_out,
+                          alwan_xyz_f32 const *xyz_in,
+                          alwan_vec2_f32 const *xy_o1,
+                          alwan_vec2_f32 const *xy_o2,
+                          alwan_f32 Y_o, alwan_f32 E_o1, alwan_f32 E_o2, alwan_f32 n);
+alwan_status alwan_cat_cie1994_f64(alwan_xyz_f64 *xyz_out,
+                          alwan_xyz_f64 const *xyz_in,
+                          alwan_vec2_f64 const *xy_o1,
+                          alwan_vec2_f64 const *xy_o2,
+                          alwan_f64 Y_o, alwan_f64 E_o1, alwan_f64 E_o2, alwan_f64 n);
+
+/* vK20 chromatic adaptation model (Fairchild 2020).
+ *
+ * Adapts towards a weighted mixture of three whites rather than one: the previous white
+ * xyz_p, the current white xyz_n and a fixed reference xyz_r, weighted by D_p, D_n and
+ * D_r. Fairchild's own condition is D_n = 0.7, D_r = 0.3, D_p = 0; D_n = 1 with the other
+ * two at zero is a plain von Kries adaptation to the current white.
+ *
+ * xyz_r: NULL for the model's own reference illuminant (0.97941176, 1, 1.73235294)
+ * transform: the cone space to work in, any matrix method of alwan_cat_method
+ *
+ * Scale matters here, unlike the matrix transforms. The default reference white sits on
+ * the Y = 1 scale, so the stimulus and the other two whites must be on it as well: feeding
+ * Y = 100 values while leaving xyz_r at its default mixes two scales and moves the result
+ * by a different factor in each channel, not by 100. To work at Y = 100, pass an xyz_r
+ * scaled to match.
+ *
+ * Returns ALWAN_E_INVALID on a NULL argument or a method that has no matrix. */
+alwan_status alwan_cat_vk20_f32(alwan_xyz_f32 *xyz_out,
+                          alwan_xyz_f32 const *xyz_in,
+                          alwan_xyz_f32 const *xyz_p,
+                          alwan_xyz_f32 const *xyz_n,
+                          alwan_xyz_f32 const *xyz_r,
+                          alwan_f32 D_n, alwan_f32 D_r, alwan_f32 D_p,
+                          alwan_cat_method transform);
+alwan_status alwan_cat_vk20_f64(alwan_xyz_f64 *xyz_out,
+                          alwan_xyz_f64 const *xyz_in,
+                          alwan_xyz_f64 const *xyz_p,
+                          alwan_xyz_f64 const *xyz_n,
+                          alwan_xyz_f64 const *xyz_r,
+                          alwan_f64 D_n, alwan_f64 D_r, alwan_f64 D_p,
+                          alwan_cat_method transform);
+
+/* Li 2025 chromatic adaptation model.
+ *
+ * A von Kries step in CAT16 cone space whose degree of adaptation follows the CIECAM form
+ * D = F (1 - (1/3.6) exp((-L_A - 42) / 92)), clamped to [0, 1], and which carries the two
+ * whites' luminances through, so a change in adapting luminance is not lost.
+ *
+ * xyz_in, xyz_ws, xyz_wd: stimulus, source white, destination white, Y = 100 scale
+ * L_A: adapting field luminance, cd/m2
+ * F_surround: 1.0 average, 0.9 dim, 0.8 dark
+ * discount_illuminant: non-zero to force D = 1
+ * Returns ALWAN_E_INVALID on a NULL argument. */
+alwan_status alwan_cat_li2025_f32(alwan_xyz_f32 *xyz_out,
+                          alwan_xyz_f32 const *xyz_in,
+                          alwan_xyz_f32 const *xyz_ws,
+                          alwan_xyz_f32 const *xyz_wd,
+                          alwan_f32 L_A, alwan_f32 F_surround, int discount_illuminant);
+alwan_status alwan_cat_li2025_f64(alwan_xyz_f64 *xyz_out,
+                          alwan_xyz_f64 const *xyz_in,
+                          alwan_xyz_f64 const *xyz_ws,
+                          alwan_xyz_f64 const *xyz_wd,
+                          alwan_f64 L_A, alwan_f64 F_surround, int discount_illuminant);
 
 /* ----------------------------------------------------------------
  * Spectral Power Distributions (SPD)

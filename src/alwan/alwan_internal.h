@@ -111,6 +111,12 @@ extern alwan_f32 const g_cat_bianco_pc_2010_f32[9];
 #if ALWAN_WITH_F64_FACADE
 extern alwan_f64 const g_cat_bianco_pc_2010_f64[9];
 #endif
+#if ALWAN_WITH_F32
+extern alwan_f32 const g_cat_von_kries_f32[9];
+#endif
+#if ALWAN_WITH_F64_FACADE
+extern alwan_f64 const g_cat_von_kries_f64[9];
+#endif
 
 /* CAM matrices (Hunt-Pointer-Estevez) */
 extern alwan_f64 const g_hpe[9];
