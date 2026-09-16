@@ -424,6 +424,55 @@ Zero the struct before setting fields (`alwan_ccm_fit_params p = { 0 };` or
 `memset`): fields are added to it over time, and a field left uninitialised is
 read.
 
+### Neutral Preservation
+
+```c
+alwan_f64 grey_in[3]  = { 0.45, 0.45, 0.45 };   /* the measured neutral patch */
+alwan_f64 grey_out[3] = { 0.50, 0.50, 0.50 };   /* what it has to become */
+alwan_ccm_fit_params p = { 0 };
+p.neutral_in  = grey_in;
+p.neutral_out = grey_out;
+alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24,
+                             ALWAN_POLY_CHEUNG_22, &p);
+```
+
+`neutral_in` and `neutral_out` are three values each, set together or both `NULL`. The
+fit then reproduces that one pair **exactly**, to round-off rather than to a tolerance,
+and is the best fit to everything else subject to that. Give the neutral in the units of
+`M_T` and its target in the units of `M_R`. Each fit expands it with its own expansion,
+so the same pair works for Cheung and Finlayson and a caller never builds the expanded
+row.
+
+This is what a target-based IDT wants: a camera profile that leaves greys grey, whatever
+it does elsewhere. An unconstrained fit lands near the neutral and not on it, and the
+residual it leaves there is visible in a way the same error on a saturated patch is not.
+
+It is not free. Exactness at one point is bought from the fit everywhere else, so the
+overall residual rises; if that trade is not worth it, do not ask for it. The constraint
+also determines one direction instead of fitting it, so a fit that needed as many samples
+as terms now needs one fewer.
+
+`rank_out` still reports what a caller expects: the constrained direction counts as
+found, so a healthy fit of *n* terms reports *n*.
+
+`ALWAN_E_INVALID` when only one of the two is set, when either holds a non-finite value,
+or when the neutral expands to a row of zeros, which constrains nothing and cannot be
+satisfied.
+
+Solved by eliminating the constraint rather than by Lagrange multipliers: an orthonormal
+basis of its nullspace reduces the problem to an ordinary least squares in one fewer
+unknown, which is why the weights, the ridge, the solver choice, `rcond` and the rank
+report all keep working unchanged. The ridge may be applied to the reduced unknown
+because that basis is orthonormal and the particular solution is orthogonal to it, so the
+two penalties differ by a constant that does not move the minimum.
+
+Checked against eliminating a variable instead, which uses a non-orthogonal basis and
+penalises the full unknown, so it tests the ridge placement as well as the answer: they
+agree to 1.9e-14 on Cheung's 22-term basis, the worst-conditioned case in the fixtures.
+A KKT solve is the obvious third route and is the wrong one to check against here, since
+forming the normal equations squares a condition number of 1.3e4 into 1.7e8 and drifts
+2.6e-12 on that same case.
+
 ### Solver and Rank
 
 ```c

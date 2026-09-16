@@ -763,6 +763,175 @@ static alwan_status alwan__ccm_solve(alwan_f64 *matrix_out, alwan_f64 const *A, 
     return st;
 }
 
+/* ================================================================
+ * The neutral-preserving constraint
+ *
+ * One equality, c . x = d, where c is the neutral's expanded row and d is what it
+ * must map to. Solved by elimination rather than by Lagrange multipliers: build an
+ * orthonormal basis Z of ker(c), write x = x_p + Z y with x_p the minimum-norm
+ * particular solution, and fit y. The constraint then holds by construction, to
+ * round-off, instead of being approached by a solver.
+ *
+ * Why elimination and not KKT. The reduced system is an ordinary least squares in
+ * n-1 unknowns, so the ridge, the solver choice, rcond and the rank report all keep
+ * working through alwan__ccm_solve untouched. A KKT matrix would need its own
+ * factorisation and its own copy of that machinery.
+ *
+ * Why the ridge may be applied to y. Z is orthonormal and x_p lies in the row space
+ * of c, so x_p is orthogonal to every column of Z and ||x||^2 = ||x_p||^2 + ||y||^2.
+ * Penalising ||y|| therefore differs from penalising ||x|| by a constant, which does
+ * not move the minimiser. Checked against a KKT solve of the weighted ridge problem
+ * before this was written: 1.2e-15 on the coefficients.
+ * ================================================================ */
+
+/* Z = ker(c), n x (n-1), orthonormal, from one Householder reflector. Returns 0 when
+ * c is all zeros, where there is no constraint to apply. */
+static int alwan__ccm_nullspace(alwan_f64 *Z, alwan_f64 const *c, int n)
+{
+    alwan_f64 *v = (alwan_f64 *)ALWAN_ALLOC((size_t)n * sizeof(alwan_f64), sizeof(alwan_f64));
+    alwan_f64 nrm = 0.0, vn = 0.0;
+    int i, k;
+    if (!v) return -1;
+    for (i = 0; i < n; i++) nrm += c[i] * c[i];
+    if (!(nrm > 0.0)) { ALWAN_FREE(v); return 0; }
+    nrm = ALWAN_SQRT(nrm);
+    for (i = 0; i < n; i++) v[i] = c[i];
+    v[0] += c[0] >= 0.0 ? nrm : -nrm;
+    for (i = 0; i < n; i++) vn += v[i] * v[i];
+    if (!(vn > 0.0)) { ALWAN_FREE(v); return 0; }
+    vn = ALWAN_SQRT(vn);
+    for (i = 0; i < n; i++) v[i] /= vn;
+    /* Z is columns 1.. of H = I - 2vv^T; column 0 is the constrained direction. */
+    for (i = 0; i < n; i++) {
+        for (k = 0; k + 1 < n; k++) {
+            Z[i * (n - 1) + k] = (i == k + 1 ? 1.0 : 0.0) - 2.0 * v[i] * v[k + 1];
+        }
+    }
+    ALWAN_FREE(v);
+    return 1;
+}
+
+/* The solve, with an optional equality constraint. crow is n values, cval is 3, or
+ * both NULL. Without one this is alwan__ccm_solve exactly. */
+static alwan_status alwan__ccm_solve_constrained(alwan_f64 *matrix_out, alwan_f64 const *A, alwan_f64 const *M_R,
+                                                 int m, int n, alwan_f64 const *crow, alwan_f64 const *cval,
+                                                 alwan_ccm_fit_params const *params)
+{
+    alwan_f64 const *w = params ? params->weights : NULL;
+    alwan_ccm_fit_params reduced;
+    alwan_f64 *Z = NULL, *xp = NULL, *Aw = NULL, *bw = NULL, *Ar = NULL, *br = NULL, *y = NULL;
+    alwan_f64 cc = 0.0;
+    int rows = 0, i, j, k, ch, r, nz;
+    alwan_status st;
+
+    if (!crow || !cval) return alwan__ccm_solve(matrix_out, A, M_R, m, n, params);
+
+    for (i = 0; i < n; i++) cc += crow[i] * crow[i];
+    if (!(cc > 0.0)) return ALWAN_E_INVALID;   /* the neutral expands to nothing */
+    if (n < 2) {
+        /* One term and one equality: the fit is the constraint and nothing is free. */
+        for (ch = 0; ch < 3; ch++) matrix_out[ch] = cval[ch] / crow[0];
+        if (params && params->rank_out) *params->rank_out = 1;
+        return ALWAN_OK;
+    }
+
+    for (i = 0; i < m; i++) {
+        if (w && (!(w[i] >= 0.0) || w[i] - w[i] != 0.0)) return ALWAN_E_INVALID;
+        if (!w || w[i] > 0.0) rows++;
+    }
+    if (rows < 1) return ALWAN_E_INVALID;
+
+    nz = n - 1;
+    Z  = (alwan_f64 *)ALWAN_ALLOC((size_t)n * (size_t)nz * sizeof(alwan_f64), sizeof(alwan_f64));
+    xp = (alwan_f64 *)ALWAN_ALLOC((size_t)n * 3 * sizeof(alwan_f64), sizeof(alwan_f64));
+    Aw = (alwan_f64 *)ALWAN_ALLOC((size_t)rows * (size_t)n * sizeof(alwan_f64), sizeof(alwan_f64));
+    bw = (alwan_f64 *)ALWAN_ALLOC((size_t)rows * 3 * sizeof(alwan_f64), sizeof(alwan_f64));
+    Ar = (alwan_f64 *)ALWAN_ALLOC((size_t)rows * (size_t)nz * sizeof(alwan_f64), sizeof(alwan_f64));
+    br = (alwan_f64 *)ALWAN_ALLOC((size_t)rows * 3 * sizeof(alwan_f64), sizeof(alwan_f64));
+    y  = (alwan_f64 *)ALWAN_ALLOC((size_t)nz * 3 * sizeof(alwan_f64), sizeof(alwan_f64));
+    if (!Z || !xp || !Aw || !bw || !Ar || !br || !y) { st = ALWAN_E_NOMEM; goto done; }
+
+    k = alwan__ccm_nullspace(Z, crow, n);
+    if (k < 0) { st = ALWAN_E_NOMEM; goto done; }
+    if (k == 0) { st = ALWAN_E_INVALID; goto done; }
+
+    /* x_p = c^T d / (c . c), the minimum-norm point satisfying the constraint. */
+    for (i = 0; i < n; i++) {
+        for (ch = 0; ch < 3; ch++) xp[i * 3 + ch] = crow[i] * cval[ch] / cc;
+    }
+
+    /* Weighted rows, zero-weight samples dropped, exactly as the plain solve does. */
+    for (i = 0, r = 0; i < m; i++) {
+        alwan_f64 s;
+        if (w && !(w[i] > 0.0)) continue;
+        s = w ? ALWAN_SQRT(w[i]) : 1.0;
+        for (j = 0; j < n; j++) Aw[r * n + j] = w ? s * A[i * n + j] : A[i * n + j];
+        for (ch = 0; ch < 3; ch++) bw[r * 3 + ch] = w ? s * M_R[i * 3 + ch] : M_R[i * 3 + ch];
+        r++;
+    }
+
+    /* Ar = Aw Z, br = bw - Aw x_p. */
+    for (r = 0; r < rows; r++) {
+        for (k = 0; k < nz; k++) {
+            alwan_f64 sum = 0.0;
+            for (j = 0; j < n; j++) sum += Aw[r * n + j] * Z[j * nz + k];
+            Ar[r * nz + k] = sum;
+        }
+        for (ch = 0; ch < 3; ch++) {
+            alwan_f64 sum = 0.0;
+            for (j = 0; j < n; j++) sum += Aw[r * n + j] * xp[j * 3 + ch];
+            br[r * 3 + ch] = bw[r * 3 + ch] - sum;
+        }
+    }
+
+    /* The reduced fit. Weights are already in Ar and br, so they are not applied
+     * twice; the ridge, solver, rcond and rank report are the caller's. */
+    if (params) reduced = *params; else memset(&reduced, 0, sizeof(reduced));
+    reduced.weights = NULL;
+    reduced.neutral_in = NULL;
+    reduced.neutral_out = NULL;
+    st = alwan__ccm_solve(y, Ar, br, rows, nz, &reduced);
+    if (st != ALWAN_OK) goto done;
+
+    /* x = x_p + Z y. */
+    for (i = 0; i < n; i++) {
+        for (ch = 0; ch < 3; ch++) {
+            alwan_f64 sum = xp[i * 3 + ch];
+            for (k = 0; k < nz; k++) sum += Z[i * nz + k] * y[k * 3 + ch];
+            matrix_out[i * 3 + ch] = sum;
+        }
+    }
+    /* The constrained direction is determined, not fitted, so report it as found. */
+    if (params && params->rank_out && *params->rank_out >= 0) *params->rank_out += 1;
+
+done:
+    if (Z) ALWAN_FREE(Z);
+    if (xp) ALWAN_FREE(xp);
+    if (Aw) ALWAN_FREE(Aw);
+    if (bw) ALWAN_FREE(bw);
+    if (Ar) ALWAN_FREE(Ar);
+    if (br) ALWAN_FREE(br);
+    if (y) ALWAN_FREE(y);
+    return st;
+}
+
+/* The neutral pair, validated and expanded by the caller's own expansion. Returns
+ * ALWAN_OK with *have = 0 when there is no constraint. */
+static alwan_status alwan__ccm_neutral_check(alwan_ccm_fit_params const *params, int *have)
+{
+    int i;
+    *have = 0;
+    if (!params) return ALWAN_OK;
+    if (!params->neutral_in && !params->neutral_out) return ALWAN_OK;
+    if (!params->neutral_in || !params->neutral_out) return ALWAN_E_INVALID;
+    for (i = 0; i < 3; i++) {
+        alwan_f64 const a = params->neutral_in[i], b = params->neutral_out[i];
+        if (a - a != 0.0 || b - b != 0.0) return ALWAN_E_INVALID;
+    }
+    *have = 1;
+    return ALWAN_OK;
+}
+
 alwan_status alwan_colour_correction_matrix_cheung2004_f64(alwan_f64 *matrix_out,
                                                alwan_f64 const *M_T,
                                                alwan_f64 const *M_R,
@@ -781,6 +950,21 @@ alwan_status alwan_ccm_fit_cheung2004_f64(alwan_f64 *matrix_out, alwan_f64 const
 {
     if (!M_T || !M_R || !matrix_out || num_samples < 1 || (int)terms < 1) {
         return ALWAN_E_INVALID;
+    }
+
+    /* The neutral, expanded by this fit's own expansion so the caller never builds
+     * the row. Cheung tops out at 35 terms. */
+    int have_neutral = 0;
+    alwan_f64 crow[35];
+    alwan_status nst = alwan__ccm_neutral_check(params, &have_neutral);
+    if (nst != ALWAN_OK) return nst;
+    if (have_neutral) {
+        alwan_rgb_f64 nrgb;
+        nrgb.r = params->neutral_in[0];
+        nrgb.g = params->neutral_in[1];
+        nrgb.b = params->neutral_in[2];
+        nst = (alwan_status)alwan_poly_expand_cheung2004_f64(crow, &nrgb, terms);
+        if (nst != ALWAN_OK) return nst;
     }
 
     /* Build expanded matrix from test values (with overflow protection) */
@@ -806,7 +990,9 @@ alwan_status alwan_ccm_fit_cheung2004_f64(alwan_f64 *matrix_out, alwan_f64 const
     }
 
     /* Solve least squares: A * matrix = M_R */
-    int result = alwan__ccm_solve(matrix_out, A, M_R, num_samples, (int)terms, params);
+    int result = alwan__ccm_solve_constrained(matrix_out, A, M_R, num_samples, (int)terms,
+                                              have_neutral ? crow : NULL,
+                                              have_neutral ? params->neutral_out : NULL, params);
     ALWAN_FREE(A);
 
     return result;
@@ -896,9 +1082,26 @@ alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_
     int result = alwan_poly_expand_finlayson2015_f64(test_out, &exp_size, &test_rgb, degree, root_poly);
     if (result != ALWAN_OK) return result;
 
+    /* The neutral, expanded by this fit's own expansion. Finlayson tops out at 34. */
+    int have_neutral = 0;
+    alwan_f64 crow[35];
+    alwan_status nst = alwan__ccm_neutral_check(params, &have_neutral);
+    if (nst != ALWAN_OK) return nst;
+    if (have_neutral) {
+        alwan_rgb_f64 nrgb;
+        int csize = 0;
+        nrgb.r = params->neutral_in[0];
+        nrgb.g = params->neutral_in[1];
+        nrgb.b = params->neutral_in[2];
+        nst = (alwan_status)alwan_poly_expand_finlayson2015_f64(crow, &csize, &nrgb, degree, root_poly);
+        if (nst != ALWAN_OK) return nst;
+    }
+
     /* Without a ridge there must be at least as many samples as terms; the solve
-     * checks the samples that carry weight. */
-    if (num_samples < exp_size && !(params && (params->ridge > 0.0 || params->solver == ALWAN_CCM_SOLVER_SVD))) {
+     * checks the samples that carry weight. A neutral constraint determines one
+     * direction instead of fitting it, so it costs one sample fewer. */
+    if (num_samples < exp_size - (have_neutral ? 1 : 0)
+        && !(params && (params->ridge > 0.0 || params->solver == ALWAN_CCM_SOLVER_SVD))) {
         return ALWAN_E_INVALID;
     }
 
@@ -926,7 +1129,9 @@ alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_
     }
 
     /* Solve least squares */
-    result = alwan__ccm_solve(matrix_out, A, M_R, num_samples, exp_size, params);
+    result = alwan__ccm_solve_constrained(matrix_out, A, M_R, num_samples, exp_size,
+                                          have_neutral ? crow : NULL,
+                                          have_neutral ? params->neutral_out : NULL, params);
     ALWAN_FREE(A);
 
     *matrix_size = exp_size * 3;

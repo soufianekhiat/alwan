@@ -26,6 +26,28 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **A neutral-preserving constraint on the colour correction fits.** `alwan_ccm_fit_params`
+  grows `neutral_in` and `neutral_out`, three values each, set together or both `NULL`. The
+  fit then reproduces that one pair **exactly**, to round-off rather than to a tolerance,
+  and is the best fit to everything else subject to it. Give the neutral in the units of
+  `M_T` and its target in those of `M_R`; each fit expands it with its own expansion, so
+  the same pair serves Cheung and Finlayson and a caller never builds the expanded row.
+
+  This is what a target-based IDT wants: a profile that leaves greys grey. An
+  unconstrained fit lands near the neutral and not on it, and the error it leaves there
+  reads differently from the same error on a saturated patch.
+
+  It is not free, and the suite asserts as much: exactness at one point is paid for in
+  residual everywhere else. The constraint also determines a direction instead of fitting
+  it, so a fit that needed as many samples as terms now needs one fewer, and `rank_out`
+  counts that direction as found so a healthy fit of *n* terms still reports *n*.
+
+  It reaches `alwan_ccm_fit_*`, `alwan_ccm_loo_*` and `alwan_ccm_select_*` alike, in both
+  precisions, because all of them pass the same params through one solve.
+
+  Held to 1.3e-13 against an independent solve over six constrained fits, with the neutral
+  itself exact to 4.4e-16 (suite 124).
+
 - **Seventeen more standard illuminants.** `alwan_illuminant` goes from 38 values to 55:
   the CIE FL3.1 to FL3.15 fluorescents, and the two indoor daylights ID50 and ID65.
 

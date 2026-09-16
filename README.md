@@ -624,9 +624,9 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 149, all passing |
-| Test cases | 980 |
-| Checks executed per run | 112,608 |
-| Assertion sites in the tests | 3,584 |
+| Test cases | 981 |
+| Checks executed per run | 112,678 |
+| Assertion sites in the tests | 3,597 |
 | Reference datasets (colour-science, OCIO, ACES-dev) | 417 |
 | Embedded data tables | 785 |
 | Exported symbols | 1,815 |

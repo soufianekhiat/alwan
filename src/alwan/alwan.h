@@ -5483,6 +5483,28 @@ typedef struct {
     alwan_ccm_solver solver;
     alwan_f64 rcond;
     int *rank_out;
+    /* Neutral-preserving constraint. Both NULL, or both set: three values each, the
+     * measured neutral and what it must map to. The fit then reproduces that pair
+     * EXACTLY, to round-off rather than to a tolerance, and is the best fit to
+     * everything else subject to that.
+     *
+     * Give the neutral in the same units as M_T and its target in the units of M_R.
+     * Each fit expands it with its own expansion, so a caller never builds the
+     * expanded row and the same pair works for Cheung and Finlayson alike.
+     *
+     * A constraint costs residual everywhere else, which is the point: exactness at
+     * one place is bought from the fit elsewhere. It also removes one degree of
+     * freedom, so a fit that needed as many samples as terms now needs one fewer.
+     *
+     * rank_out, when asked for, still reports the rank the caller expects: the
+     * constrained direction is determined rather than fitted, so a healthy fit of n
+     * terms reports n.
+     *
+     * ALWAN_E_INVALID when only one of the two is set, when either holds a
+     * non-finite value, or when the neutral expands to all zeros, which constrains
+     * nothing and cannot be satisfied. */
+    alwan_f64 const *neutral_in;
+    alwan_f64 const *neutral_out;
 } alwan_ccm_fit_params;
 
 /* The two fits above with alwan_ccm_fit_params; the arguments before it are theirs.
