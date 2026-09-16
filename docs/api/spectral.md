@@ -622,6 +622,11 @@ image by repeating the edge sample, Menon's one-dimensional filters mirror it
 without repeating it, and its direction decision reads zero outside. The sums run
 in scipy's order, and the results match colour-demosaicing bit for bit.
 
+To compare the methods, use `alwan_psnr_{T}` in [hdr.md](hdr.md), which reports CPSNR
+with a border crop because the edges are where demosaicing is least reliable and where
+the literature stops measuring. On alwan's own test image: bilinear 30.4 dB, Malvar
+33.6, Menon 33.9 without its refining step and 34.2 with it.
+
 ---
 
 ## Error Codes

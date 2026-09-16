@@ -26,6 +26,28 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **PSNR and CPSNR.** `alwan_psnr_{T}` reports peak signal to noise ratio per channel and
+  pooled, over `width` x `height` pixels of 1 to 4 channels, with `border` pixels dropped
+  from every edge before anything is accumulated. Either output may be `NULL`.
+
+  The crop is not a convenience. A demosaicked image is least reliable at its edges, every
+  paper crops before comparing, and a figure taken over the whole frame is not comparable
+  with the ones they publish.
+
+  CPSNR is one MSE pooled across every channel, which is what the demosaicing literature
+  means by it and what scikit-image returns for a multi-channel image. It is **not** the
+  mean of the per-channel decibels: on the suite's own fixtures the two sit between 0.01
+  and 0.16 dB apart, close enough to pass for rounding, so both sides are asserted.
+
+  A channel that matches exactly reports `+inf`, as `alwan_pu21_psnr_{T}` does. In a
+  deterministic build the logarithm routes through `alwan_det_log10`, so the figures are
+  the same bits on every platform.
+
+  Held to scikit-image's `peak_signal_noise_ratio` at 7.1e-15 dB per channel and 3.6e-15
+  pooled, across channel counts, borders and data ranges (suite 150), which also compares
+  the four demosaicing methods on it: bilinear 30.4 dB, Malvar 2004 33.6, Menon 2007
+  33.9 unrefined and 34.2 with its refining step.
+
 - **A neutral-preserving constraint on the colour correction fits.** `alwan_ccm_fit_params`
   grows `neutral_in` and `neutral_out`, three values each, set together or both `NULL`. The
   fit then reproduces that one pair **exactly**, to round-off rather than to a tolerance,

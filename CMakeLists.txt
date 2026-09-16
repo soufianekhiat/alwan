@@ -106,6 +106,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_demosaic.c
   src/alwan/api/alwan_fusion.c
   src/alwan/api/alwan_ssim.c
+  src/alwan/api/alwan_psnr.c
   src/alwan/api/alwan_tonemap.c
   src/alwan/api/alwan_h273.c
   src/alwan/api/alwan_lightness.c

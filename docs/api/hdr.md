@@ -640,6 +640,45 @@ conditioning in double, and PU-PSNR to 1e-9 dB. PU-SSIM is in the next section.
 
 ---
 
+## PSNR and CPSNR
+
+### alwan_psnr_{T}
+
+```c
+alwan_f64 psnr[3], cpsnr;
+alwan_psnr_f64(psnr, &cpsnr, test, width * 3 * sizeof(alwan_f64),
+               ref, width * 3 * sizeof(alwan_f64), width, height, 3, 4, 1.0);
+```
+
+Peak signal to noise ratio over `width` x `height` pixels of `channels` values each (1 to
+4), rows `row_stride` bytes apart. `psnr_out` receives one value per channel and
+`cpsnr_out` the single pooled figure; either may be `NULL`.
+
+`border` pixels are dropped from every edge **before** anything is accumulated. That is
+what makes the number comparable: a demosaicked image is least reliable at its edges,
+the demosaicing literature crops before it compares, and a figure taken over the whole
+frame is not the figure those papers report. It is a parameter rather than a fixed strip
+so a caller can match whatever the work being compared against used.
+
+**CPSNR is not the mean of the per-channel values.** It is `10 log10(data_range^2 / MSE)`
+with one MSE pooled across every channel, which is what the demosaicing papers mean and
+what scikit-image's `peak_signal_noise_ratio` returns for a multi-channel image. Averaging
+the per-channel decibels gives a different answer that looks plausible: on alwan's own
+fixtures the two sit between 0.01 and 0.16 dB apart. With a single channel the two are the
+same number by definition.
+
+`data_range` is the span the values can take: 1 for `[0, 1]`, 255 for 8-bit. A channel
+that matches exactly reports `+inf`, as `alwan_pu21_psnr_{T}` does. The metric accumulates
+in double in both precisions, and in a deterministic build the logarithm routes through
+`alwan_det_log10`, so the figures are the same bits on every platform.
+
+`ALWAN_E_INVALID` on a NULL image, both outputs NULL, `channels` outside 1 to 4, a
+`data_range` that is not finite and positive, a zero dimension, or a `border` that leaves
+no pixels.
+
+Comparing demosaicing methods is what this is for; see `alwan_cfa_bayer_demosaic_{T}` in
+[spectral.md](spectral.md).
+
 ## SSIM and PU-SSIM
 
 ```c

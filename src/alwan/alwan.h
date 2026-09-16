@@ -6313,6 +6313,31 @@ alwan_status alwan_pu21_psnr_f64(alwan_f64 *psnr_out, alwan_f64 const *test, siz
 alwan_status alwan_pu21_psnr_f32(alwan_f32 *psnr_out, alwan_f32 const *test, size_t test_stride, alwan_f32 const *ref, size_t ref_stride, size_t count, size_t channels, alwan_pu21_variant variant);
 
 /* ----------------------------------------------------------------
+ * PSNR and CPSNR
+ *
+ * width x height pixels of channels values each (1 to 4), rows row_stride bytes apart.
+ * border pixels are dropped from every edge before anything is accumulated: a
+ * demosaicked image is unreliable at its edges, and the literature crops before it
+ * compares, so a number computed any other way is not the number those papers quote.
+ *
+ * psnr_out receives one value per channel and cpsnr_out the single figure over all of
+ * them; either may be NULL. CPSNR is NOT the mean of the per-channel values. It is
+ * 10 log10(data_range^2 / MSE) with ONE MSE pooled across every channel, which is what
+ * the demosaicing papers report and what scikit-image's peak_signal_noise_ratio returns
+ * for a multi-channel image. Averaging the per-channel decibels instead gives a
+ * different, wrong answer that looks plausible.
+ *
+ * data_range is the span the values can take: 1 for [0, 1], 255 for 8-bit. A channel
+ * that matches exactly reports +inf, as alwan_pu21_psnr does.
+ *
+ * ALWAN_E_INVALID on a NULL image, both outputs NULL, channels outside 1 to 4, a
+ * data_range that is not finite and positive, a zero dimension, or a border that leaves
+ * no pixels.
+ * ---------------------------------------------------------------- */
+alwan_status alwan_psnr_f64(alwan_f64 *psnr_out, alwan_f64 *cpsnr_out, alwan_f64 const *test, size_t test_row_stride, alwan_f64 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, size_t border, alwan_f64 data_range);
+alwan_status alwan_psnr_f32(alwan_f32 *psnr_out, alwan_f32 *cpsnr_out, alwan_f32 const *test, size_t test_row_stride, alwan_f32 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, size_t border, alwan_f32 data_range);
+
+/* ----------------------------------------------------------------
  * SSIM: structural similarity, Wang, Bovik, Sheikh and Simoncelli 2004
  *
  * One channel of width x height values, rows row_stride bytes apart, both sides at
