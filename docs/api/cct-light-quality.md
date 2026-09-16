@@ -28,9 +28,9 @@ alias; pick `_f32` or `_f64` at the call site.
 
 > **f64-internal facades (by design).** `alwan_cct_kang_xy_f32` (a Newton-Raphson
 > inverse with sub-f32-epsilon tolerances) and the spectral quality metrics
-> `alwan_cri_ra_f32` / `alwan_cqs_calculate_f32` / `alwan_tm30_rf_f32` /
-> `alwan_tm30_specification_f32` / `alwan_cie224_rf_f32` / `alwan_ssi_calculate_f32` /
-> `alwan_metamerism_index_f32`
+> `alwan_cri_ra_f32` / `alwan_cri_specification_f32` / `alwan_cqs_calculate_f32` /
+> `alwan_tm30_rf_f32` / `alwan_tm30_specification_f32` / `alwan_cie224_rf_f32` /
+> `alwan_ssi_calculate_f32` / `alwan_metamerism_index_f32`
 > (wavelength integration over f64 CMF tables) run the algorithm in `double` and
 > narrow the result. This is a design choice rather than a missing native-f32
 > path: the iterative/integration core needs f64 precision and repeatability. They stay
@@ -168,8 +168,12 @@ alwan_f32 alwan_cri_ra_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 ```
 
-CIE Color Rendering Index Ra: average of 8 TCS (test color samples). Returns a value
-in [0, 100], or negative on error.
+CIE Color Rendering Index Ra: the average of the first eight test colour samples. Returns
+Ra, or -1 on error.
+
+Ra is not clamped. CIE 13.3 lets it go well below zero for a source that renders badly, so
+-1 is a reachable score as well as this call's error value. Where that ambiguity matters,
+use `alwan_cri_specification`, which reports failure as a status.
 
 **Example:**
 ```c
@@ -181,6 +185,34 @@ printf("CRI Ra = %.0f\n", cri);  /* e.g., 82 */
 
 alwan_spd_destroy_f64(&led_spd, ctx);
 ```
+
+### alwan_cri_specification
+
+```c
+#define ALWAN_CRI_SAMPLES 14
+
+typedef struct {
+    alwan_f64 ra;                     /* average of rs[0] to rs[7], as alwan_cri_ra */
+    alwan_f64 rs[ALWAN_CRI_SAMPLES];  /* R1 to R14 */
+} alwan_cri_f64;                      /* alwan_cri_f32 is the f32 twin */
+
+alwan_status alwan_cri_specification_f32(alwan_cri_f32 *spec_out,
+                                         alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
+alwan_status alwan_cri_specification_f64(alwan_cri_f64 *spec_out,
+                                         alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
+```
+
+The fourteen special indices of CIE 13.3-1995, in the standard's own order: the eight
+muted samples that Ra averages, then saturated red, saturated yellow, saturated green and
+saturated blue, then Caucasian skin and leaf green. `ra` is the average of the first
+eight, the same number `alwan_cri_ra` returns, from the same pipeline.
+
+R9, the saturated red, is what an averaged score cannot show. A narrow band fluorescent
+renders the muted samples tolerably and carries almost no red: FL2 scores Ra 64 and R9
+-84. Nothing is clamped, so those negative numbers arrive as they are.
+
+Computing the specification costs six more sample integrations than `alwan_cri_ra`, which
+stops at the eight samples it needs.
 
 ---
 

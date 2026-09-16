@@ -392,21 +392,22 @@ static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwa
  *     its own white and the two differenced, instead of adapting the test
  *     sample onto the reference illuminant first.
  */
-alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
+static alwan_status quality_cri(alwan_f64 *ra_out, alwan_spd_f64 const *test_spd,
+                                alwan_ctx *ctx, alwan_cri_f64 *spec_out) {
     if (!ctx || !test_spd) {
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_INVALID;
     }
 #if !ALWAN_TABLE_TCS_REFLECTANCE
     /* The TCS reflectances were compiled out (data/alwan_data_tables_config.h).
-     * -1 is this function's documented error value. */
-    return ALWAN_LITERAL(-1.0);
+     * alwan_cri_ra turns this into its documented -1. */
+    return ALWAN_E_NODATA;
 #else
 
     /* Step 1: Resample test SPD to TCS wavelength range (360-830nm @ 5nm) */
     alwan_spd_f64 test_spd_resampled;
     int status = alwan_spd_resample_f64(&test_spd_resampled, test_spd, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_NODATA;
     }
 
     /* Step 2: Calculate XYZ and CCT of test illuminant */
@@ -415,7 +416,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     status = alwan_spd_create_f64(&perfect_white, test_spd_resampled.wavelength_min, test_spd_resampled.wavelength_max, test_spd_resampled.count, ctx);
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_NODATA;
     }
 
     for (size_t i = 0; i < perfect_white.count; i++) {
@@ -428,7 +429,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
 
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_NODATA;
     }
 
     /* Calculate normalization factor to scale XYZ to Y=100 for white point */
@@ -444,7 +445,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     alwan_f64 sum = xyz_test_white.x + xyz_test_white.y + xyz_test_white.z;
     if (sum < ALWAN_EPSILON) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_DIVZERO;
     }
 
     alwan_vec2_f64 xy_test;
@@ -455,7 +456,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     alwan_f64 cct = alwan_cct_robertson_xy_f64(&xy_test);
     if (cct < ALWAN_LITERAL(0.0)) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_RANGE;
     }
 
     /* Step 3: Reference illuminant at the test CCT, per CIE 13.3-1995:
@@ -475,14 +476,14 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     }
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_NODATA;
     }
 
     /* Calculate reference white point */
     status = alwan_spd_create_f64(&perfect_white, reference_spd.wavelength_min, reference_spd.wavelength_max, reference_spd.count, ctx);
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&reference_spd, ctx);
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_NODATA;
     }
 
     for (size_t i = 0; i < perfect_white.count; i++) {
@@ -496,7 +497,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     if (status != ALWAN_OK) {
         alwan_spd_destroy_f64(&reference_spd, ctx);
         alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-        return ALWAN_LITERAL(-1.0);
+        return ALWAN_E_NODATA;
     }
 
     /* Calculate normalization factor for reference illuminant */
@@ -517,16 +518,19 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     alwan_f64 const c_r = cri_term_c(u_ref_w,  v_ref_w);
     alwan_f64 const d_r = cri_term_d(u_ref_w,  v_ref_w);
 
-    /* Step 3: Calculate special CRI for first 8 TCS samples */
-    alwan_f64 r_values[8];
+    /* Step 3: Calculate special CRI per TCS sample. Ra needs the first eight; a
+     * caller asking for the specification gets all fourteen, and pays for the six
+     * extra integrations only then. */
+    alwan_f64 r_values[ALWAN_CRI_SAMPLES];
+    int const count = spec_out ? ALWAN_CRI_SAMPLES : 8;
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < count; i++) {
         /* Create TCS reflectance SPD */
         alwan_spd_f64 tcs_spd;
         status = alwan_spd_create_f64(&tcs_spd, TCS_WAVELENGTH_MIN, TCS_WAVELENGTH_MAX, ALWAN_TABLE_QUALITY_SPECTRUM, ctx);
         if (status != ALWAN_OK) {
             alwan_spd_destroy_f64(&reference_spd, ctx);
-            return ALWAN_LITERAL(-1.0);
+            return ALWAN_E_NODATA;
         }
 
         /* Copy TCS reflectance data */
@@ -543,7 +547,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
             alwan_spd_destroy_f64(&tcs_spd, ctx);
             alwan_spd_destroy_f64(&reference_spd, ctx);
             alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-            return ALWAN_LITERAL(-1.0);
+            return ALWAN_E_NODATA;
         }
 
         /* Calculate XYZ under reference illuminant */
@@ -555,7 +559,7 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
         if (status != ALWAN_OK) {
             alwan_spd_destroy_f64(&reference_spd, ctx);
             alwan_spd_destroy_f64(&test_spd_resampled, ctx);
-            return ALWAN_LITERAL(-1.0);
+            return ALWAN_E_NODATA;
         }
 
         /* Normalize sample XYZ values using the same factors as the white points */
@@ -616,16 +620,42 @@ alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
     alwan_spd_destroy_f64(&reference_spd, ctx);
     alwan_spd_destroy_f64(&test_spd_resampled, ctx);
 
-    /* Step 4: Calculate Ra as average of R1...R8 */
+    /* Step 4: Ra is the average of R1 to R8. R9 to R14 are reported and never
+     * averaged in: CIE 13.3 defines Ra on the eight muted samples and leaves the
+     * saturated four, the skin tone and the leaf green as special indices. */
     alwan_f64 ra = ALWAN_LITERAL(0.0);
     for (int i = 0; i < 8; i++) {
         ra += r_values[i];
     }
     ra /= ALWAN_LITERAL(8.0);
 
-    return ra;
+    if (spec_out) {
+        spec_out->ra = ra;
+        for (int i = 0; i < ALWAN_CRI_SAMPLES; i++) {
+            spec_out->rs[i] = r_values[i];
+        }
+    }
+    *ra_out = ra;
+    return ALWAN_OK;
 #endif
 }
+
+alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
+    alwan_f64 ra;
+    /* -1 stays this call's documented failure value. It is also a reachable Ra, which
+     * is why the specification entry point below reports failure as a status. */
+    if (quality_cri(&ra, test_spd, ctx, NULL) != ALWAN_OK) return ALWAN_LITERAL(-1.0);
+    return ra;
+}
+
+alwan_status alwan_cri_specification_f64(alwan_cri_f64 *spec_out, alwan_spd_f64 const *test_spd, alwan_ctx *ctx) {
+    alwan_f64 ra;
+    if (!spec_out || !test_spd || !ctx) return ALWAN_E_INVALID;
+    return quality_cri(&ra, test_spd, ctx, spec_out);
+}
+
+/* alwan_cri_specification_f32 lives with the other f32 wrappers, below the
+ * spd_alloc_f64_from_f32 helper they all need. */
 
 /* ----------------------------------------------------------------
  * Whiteness & Yellowness Indices (ASTM E313, CIE 2004)
@@ -2098,6 +2128,23 @@ alwan_f32 alwan_cri_ra_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {
     alwan_f64 result = alwan_cri_ra_f64(&tmp, ctx);
     alwan_spd_destroy_f64(&tmp, ctx);
     return (alwan_f32)result;
+}
+
+alwan_status alwan_cri_specification_f32(alwan_cri_f32 *spec_out, alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {
+    alwan_cri_f64 wide;
+    alwan_spd_f64 tmp;
+    alwan_status st;
+    int i;
+    if (!spec_out || !test_spd || !ctx) return ALWAN_E_INVALID;
+    if (spd_alloc_f64_from_f32(&tmp, ctx, test_spd) != ALWAN_OK) return ALWAN_E_NOMEM;
+    st = alwan_cri_specification_f64(&wide, &tmp, ctx);
+    alwan_spd_destroy_f64(&tmp, ctx);
+    if (st != ALWAN_OK) return st;
+    spec_out->ra = (alwan_f32)wide.ra;
+    for (i = 0; i < ALWAN_CRI_SAMPLES; i++) {
+        spec_out->rs[i] = (alwan_f32)wide.rs[i];
+    }
+    return ALWAN_OK;
 }
 
 alwan_f32 alwan_cqs_calculate_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx) {

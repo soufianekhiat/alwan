@@ -8,6 +8,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CRI sample by sample, not just Ra.** `alwan_cri_specification_{T}` returns the
+  fourteen special indices of CIE 13.3-1995, R1 to R14, alongside Ra. Ra itself is bit for
+  bit what `alwan_cri_ra` returned before, from the same pipeline; the eight samples it
+  averages are computed once. R9, the saturated red, is the index an average cannot show,
+  and it is reported unclamped: high pressure sodium reaches -261 on it while its Ra reads
+  8.5. The new entry point also reports failure as a status, where `alwan_cri_ra` reports
+  -1, which a genuinely poor source can also score. Held to colour-science over all 35
+  illuminants both libraries carry: worst 0.43 in Ra and 1.70 in a special index (suite 32,
+  `docs/api/cct-light-quality.md`).
+
 - **The rest of TM-30-18, not just Rf.** `alwan_tm30_specification_{T}` fills an
   `alwan_tm30_{T}` with the gamut index Rg, the sixteen hue bins' local fidelity, chroma
   shift and hue shift, the bin each of the 99 samples fell in, and the two sets of (a', b')

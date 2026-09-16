@@ -4213,6 +4213,36 @@ alwan_status alwan_xy_to_cct_cie_d_f32(alwan_f32 *cct_out, alwan_vec2_f32 const 
 alwan_f64 alwan_cri_ra_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 alwan_f32 alwan_cri_ra_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 
+/* CIE 13.3-1995 in full, where alwan_cri_ra gives only the average.
+ *
+ * rs holds the fourteen special indices R1 to R14, one per test colour sample, in the
+ * standard's own order: the eight muted samples that Ra averages, then saturated red,
+ * saturated yellow, saturated green and saturated blue, then Caucasian skin and leaf
+ * green. ra is the average of the first eight; the standard defines no average over the
+ * other six, and this call does not invent one.
+ *
+ * Nothing here is clamped. R9 in particular runs far below zero for a source with no red
+ * content, which is the reading it exists to give: a high pressure sodium lamp scores
+ * around -200 on it.
+ *
+ * Unlike alwan_cri_ra, which reports failure as -1 and so cannot be told apart from a
+ * genuinely poor source, this call returns a status and touches spec_out only on
+ * ALWAN_OK. */
+#define ALWAN_CRI_SAMPLES 14
+
+typedef struct {
+    alwan_f64 ra;                     /* average of rs[0] to rs[7], as alwan_cri_ra */
+    alwan_f64 rs[ALWAN_CRI_SAMPLES];  /* R1 to R14 */
+} alwan_cri_f64;
+
+typedef struct {
+    alwan_f32 ra;
+    alwan_f32 rs[ALWAN_CRI_SAMPLES];
+} alwan_cri_f32;
+
+alwan_status alwan_cri_specification_f64(alwan_cri_f64 *spec_out, alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
+alwan_status alwan_cri_specification_f32(alwan_cri_f32 *spec_out, alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
+
 /* CQS (Color Quality Scale) - NIST metric using 15 saturated samples */
 /* Returns CQS value [0, 100], or negative on error */
 /* Note: Full implementation requires CMCCAT2000 CAT and VS sample data */

@@ -322,6 +322,8 @@ EXPORTS
     alwan_crf_samples_grossberg2003_f64
     alwan_cri_ra_f32
     alwan_cri_ra_f64
+    alwan_cri_specification_f32
+    alwan_cri_specification_f64
     alwan_csf_barten1999_f32
     alwan_csf_barten1999_f64
     alwan_csf_barten1999_params_default_f32
