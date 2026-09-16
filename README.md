@@ -629,7 +629,7 @@ Re-run it against any checkout to reproduce the table.
 | Assertion sites in the tests | 3,451 |
 | Reference datasets (colour-science, OCIO, ACES-dev) | 407 |
 | Embedded data tables | 762 |
-| Exported symbols | 1,779 |
+| Exported symbols | 1,785 |
 | Internal symbols reached by a test or a public entry point | 155 of 179 (87%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
