@@ -594,6 +594,10 @@ EXPORTS
     alwan_hex_to_rgb_f64
     alwan_highlights_recovery_blend_f32_map_interleave
     alwan_highlights_recovery_blend_f64_map_interleave
+    alwan_hke_luminous_nayatani1997_f32
+    alwan_hke_luminous_nayatani1997_f64
+    alwan_hke_object_nayatani1997_f32
+    alwan_hke_object_nayatani1997_f64
     alwan_hlc_to_lch_f32
     alwan_hlc_to_lch_f64
     alwan_hlg_ootf_f32

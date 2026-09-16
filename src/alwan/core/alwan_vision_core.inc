@@ -422,3 +422,69 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_apca_contrast)(ALWAN_CORE_RGB 
 
     return Lc * ALWAN_CORE_LITERAL(100.0);
 }
+
+/* ================================================================
+ * Helmholtz-Kohlrausch effect (Nayatani 1997)
+ *
+ * How much brighter a chromatic stimulus looks than an achromatic one of the
+ * same luminance. Everything works in CIE 1960 UCS chromaticities, the stimulus
+ * against the adapting field.
+ * ================================================================ */
+
+/* Brightness coefficient of the adapting luminance. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hke_coefficient_K_Br)(ALWAN_CORE_T L_a) {
+    ALWAN_CORE_T p = ALWAN_CORE_POW(L_a, ALWAN_CORE_LITERAL(0.4495));
+    return (p * ALWAN_CORE_LITERAL(6.362) + ALWAN_CORE_LITERAL(6.469)) *
+           ALWAN_CORE_LITERAL(0.2717) / (p + ALWAN_CORE_LITERAL(6.469));
+}
+
+/* Hue-dependent coefficient: four harmonics of the chromaticity angle. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hke_coefficient_q)(ALWAN_CORE_T theta) {
+    ALWAN_CORE_T t2 = theta + theta;
+    ALWAN_CORE_T t3 = t2 + theta;
+    ALWAN_CORE_T t4 = t2 + t2;
+    return ALWAN_CORE_LITERAL(-0.01585)
+         - ALWAN_CORE_LITERAL(0.03017) * ALWAN_CORE_COS(theta)
+         - ALWAN_CORE_LITERAL(0.04556) * ALWAN_CORE_COS(t2)
+         - ALWAN_CORE_LITERAL(0.02667) * ALWAN_CORE_COS(t3)
+         - ALWAN_CORE_LITERAL(0.00295) * ALWAN_CORE_COS(t4)
+         + ALWAN_CORE_LITERAL(0.14592) * ALWAN_CORE_SIN(theta)
+         + ALWAN_CORE_LITERAL(0.05084) * ALWAN_CORE_SIN(t2)
+         - ALWAN_CORE_LITERAL(0.01900) * ALWAN_CORE_SIN(t3)
+         - ALWAN_CORE_LITERAL(0.00764) * ALWAN_CORE_SIN(t4);
+}
+
+/* The object variant. method_coefficient is the caller's VCC or VAC weight.
+ *
+ * A stimulus sitting on the adapting field gives S_uv = 0 and therefore exactly
+ * 1, which is the quantity's whole meaning: no chromatic content, no effect. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hke_object_nayatani1997)(
+    ALWAN_CORE_T u,
+    ALWAN_CORE_T v,
+    ALWAN_CORE_T u_c,
+    ALWAN_CORE_T v_c,
+    ALWAN_CORE_T L_a,
+    ALWAN_CORE_T method_coefficient)
+{
+    ALWAN_CORE_T du = u - u_c;
+    ALWAN_CORE_T dv = v - v_c;
+    ALWAN_CORE_T K_Br = ALWAN_CORE_FNVLIT(alwan_hke_coefficient_K_Br)(L_a);
+    ALWAN_CORE_T q = ALWAN_CORE_FNVLIT(alwan_hke_coefficient_q)(ALWAN_CORE_ATAN2(dv, du));
+    ALWAN_CORE_T S_uv = ALWAN_CORE_LITERAL(13.0) * ALWAN_CORE_SQRT(du * du + dv * dv);
+    return ALWAN_CORE_ONE + (method_coefficient * q + ALWAN_CORE_LITERAL(0.0872) * K_Br) * S_uv;
+}
+
+/* The luminous variant, a cube of the object one. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hke_luminous_nayatani1997)(
+    ALWAN_CORE_T u,
+    ALWAN_CORE_T v,
+    ALWAN_CORE_T u_c,
+    ALWAN_CORE_T v_c,
+    ALWAN_CORE_T L_a,
+    ALWAN_CORE_T method_coefficient)
+{
+    ALWAN_CORE_T g = ALWAN_CORE_FNVLIT(alwan_hke_object_nayatani1997)(u, v, u_c, v_c, L_a,
+                                                                      method_coefficient);
+    ALWAN_CORE_T s = g + ALWAN_CORE_LITERAL(0.3086);
+    return ALWAN_CORE_LITERAL(0.4462) * s * s * s;
+}

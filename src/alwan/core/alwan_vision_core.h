@@ -315,6 +315,72 @@ ALWAN_INLINE alwan_scalar alwan_apca_contrast_v(alwan_rgb srgb_text, alwan_rgb s
     return Lc * ALWAN_LITERAL(100.0);
 }
 
+/* ================================================================
+ * Helmholtz-Kohlrausch effect (Nayatani 1997)
+ *
+ * How much brighter a chromatic stimulus looks than an achromatic one of the
+ * same luminance. Everything works in CIE 1960 UCS chromaticities, the stimulus
+ * against the adapting field.
+ * ================================================================ */
+
+/* Brightness coefficient of the adapting luminance. */
+ALWAN_INLINE alwan_scalar alwan_hke_coefficient_K_Br_v(alwan_scalar L_a) {
+    alwan_scalar p = ALWAN_POW(L_a, ALWAN_LITERAL(0.4495));
+    return (p * ALWAN_LITERAL(6.362) + ALWAN_LITERAL(6.469)) *
+           ALWAN_LITERAL(0.2717) / (p + ALWAN_LITERAL(6.469));
+}
+
+/* Hue-dependent coefficient: four harmonics of the chromaticity angle. */
+ALWAN_INLINE alwan_scalar alwan_hke_coefficient_q_v(alwan_scalar theta) {
+    alwan_scalar t2 = theta + theta;
+    alwan_scalar t3 = t2 + theta;
+    alwan_scalar t4 = t2 + t2;
+    return ALWAN_LITERAL(-0.01585)
+         - ALWAN_LITERAL(0.03017) * ALWAN_COS(theta)
+         - ALWAN_LITERAL(0.04556) * ALWAN_COS(t2)
+         - ALWAN_LITERAL(0.02667) * ALWAN_COS(t3)
+         - ALWAN_LITERAL(0.00295) * ALWAN_COS(t4)
+         + ALWAN_LITERAL(0.14592) * ALWAN_SIN(theta)
+         + ALWAN_LITERAL(0.05084) * ALWAN_SIN(t2)
+         - ALWAN_LITERAL(0.01900) * ALWAN_SIN(t3)
+         - ALWAN_LITERAL(0.00764) * ALWAN_SIN(t4);
+}
+
+/* The object variant. method_coefficient is the caller's VCC or VAC weight.
+ *
+ * A stimulus sitting on the adapting field gives S_uv = 0 and therefore exactly
+ * 1, which is the quantity's whole meaning: no chromatic content, no effect. */
+ALWAN_INLINE alwan_scalar alwan_hke_object_nayatani1997_v(
+    alwan_scalar u,
+    alwan_scalar v,
+    alwan_scalar u_c,
+    alwan_scalar v_c,
+    alwan_scalar L_a,
+    alwan_scalar method_coefficient)
+{
+    alwan_scalar du = u - u_c;
+    alwan_scalar dv = v - v_c;
+    alwan_scalar K_Br = alwan_hke_coefficient_K_Br_v(L_a);
+    alwan_scalar q = alwan_hke_coefficient_q_v(ALWAN_ATAN2(dv, du));
+    alwan_scalar S_uv = ALWAN_LITERAL(13.0) * ALWAN_SQRT(du * du + dv * dv);
+    return ALWAN_ONE + (method_coefficient * q + ALWAN_LITERAL(0.0872) * K_Br) * S_uv;
+}
+
+/* The luminous variant, a cube of the object one. */
+ALWAN_INLINE alwan_scalar alwan_hke_luminous_nayatani1997_v(
+    alwan_scalar u,
+    alwan_scalar v,
+    alwan_scalar u_c,
+    alwan_scalar v_c,
+    alwan_scalar L_a,
+    alwan_scalar method_coefficient)
+{
+    alwan_scalar g = alwan_hke_object_nayatani1997_v(u, v, u_c, v_c, L_a,
+                                                                      method_coefficient);
+    alwan_scalar s = g + ALWAN_LITERAL(0.3086);
+    return ALWAN_LITERAL(0.4462) * s * s * s;
+}
+
 #endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_VISION_CORE_H */

@@ -116,6 +116,14 @@ typedef enum {
     ALWAN_SAMPLE_STRICT      = 0x100
 } alwan_sample_mode;
 
+/* Nayatani 1997 Helmholtz-Kohlrausch variants. The two differ in one coefficient and
+ * nothing else: VCC weights q by -0.866, VAC by -0.134. VCC predicts a colour matched
+ * for equal brightness, VAC one matched for equal lightness. */
+typedef enum {
+    ALWAN_HKE_NAYATANI1997_VCC = 0,
+    ALWAN_HKE_NAYATANI1997_VAC = 1
+} alwan_hke_nayatani1997_method;
+
 /* --- f32 types --- */
 #define ALWAN_T float
 #define ALWAN_SUFFIX _f32

@@ -26,6 +26,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **The Helmholtz-Kohlrausch effect (Nayatani 1997).**
+  `alwan_hke_object_nayatani1997_{T}` and `alwan_hke_luminous_nayatani1997_{T}` predict how
+  much brighter a chromatic stimulus looks than an achromatic one of the same luminance.
+  Both take CIE 1960 UCS chromaticities, the stimulus against the adapting field, plus the
+  adapting luminance. They live in the vision layer beside APCA and the Barten family,
+  because they predict a perceptual response rather than convert a colour.
+
+  The two methods differ in exactly one coefficient, the weight on the hue term: -0.866 for
+  VCC, which matches for equal brightness, and -0.134 for VAC, which matches for equal
+  lightness. The object variant returns a multiplier that is **exactly** 1 when the stimulus
+  sits on the adapting field, and the luminous one is `0.4462 (object + 0.3086)^3`.
+
+  Both are native-range with no normalization macro, which `docs/ranges.md` rule 2 already
+  covers and which that document now names explicitly: they are viewing-condition-dependent
+  multipliers with no fixed bound, and normalising them would destroy the 1.0 that is the
+  only value in them anyone recognises.
+
+  Held to colour-science at 2.2e-16 over 960 rows sweeping the full hue period at four
+  saturations and five adapting luminances, both variants on every row (suite 147,
+  `docs/api/vision.md`).
+
 - **sCAM (Li and Luo 2024).** `alwan_scam_forward_{T}` and `alwan_scam_inverse_{T}` add the
   last appearance model alwan was missing. Ten correlates, four of which nothing else here
   reports: vividness, blackness, whiteness and depth. Blackness is `100 - V` and `V` passes

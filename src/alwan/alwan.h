@@ -4637,6 +4637,43 @@ alwan_status alwan_spd_luminous_efficacy_f32(alwan_f32 *efficacy_out, alwan_spd_
 alwan_f32 alwan_csf_f32(alwan_f32 spatial_frequency, alwan_f32 luminance);
 alwan_f64 alwan_csf_f64(alwan_f64 spatial_frequency, alwan_f64 luminance);
 
+/* Helmholtz-Kohlrausch effect (Nayatani 1997)
+ *
+ * How much brighter a chromatic stimulus looks than an achromatic one of the same
+ * luminance. Both entry points take CIE 1960 UCS chromaticities: uv for the stimulus,
+ * uv_c for the adapting field. Note this is the u, v chromaticity pair, not the U*V*W*
+ * triple alwan_xyz_to_ucs returns.
+ *
+ * L_a: adapting luminance in cd/m^2
+ * method: VCC weights the hue coefficient by -0.866, VAC by -0.134; nothing else differs
+ *
+ * The object variant returns a multiplier on luminance, exactly 1 when the stimulus sits
+ * on the adapting field. The luminous variant is 0.4462 (object + 0.3086)^3.
+ *
+ * Both are native-range and have no normalization macro, as docs/ranges.md rule 2
+ * requires: they are viewing-condition-dependent and have no fixed bound. Measured over
+ * the reference sweep the object variant spans about [0.77, 1.40] and the luminous one
+ * about [0.56, 2.24], but those are the sweep's extents, not limits of the model.
+ *
+ * Returns the effect, or a negative value on a NULL argument. */
+alwan_f32 alwan_hke_object_nayatani1997_f32(alwan_vec2_f32 const *uv,
+                                            alwan_vec2_f32 const *uv_c,
+                                            alwan_f32 L_a,
+                                            alwan_hke_nayatani1997_method method);
+alwan_f64 alwan_hke_object_nayatani1997_f64(alwan_vec2_f64 const *uv,
+                                            alwan_vec2_f64 const *uv_c,
+                                            alwan_f64 L_a,
+                                            alwan_hke_nayatani1997_method method);
+
+alwan_f32 alwan_hke_luminous_nayatani1997_f32(alwan_vec2_f32 const *uv,
+                                              alwan_vec2_f32 const *uv_c,
+                                              alwan_f32 L_a,
+                                              alwan_hke_nayatani1997_method method);
+alwan_f64 alwan_hke_luminous_nayatani1997_f64(alwan_vec2_f64 const *uv,
+                                              alwan_vec2_f64 const *uv_c,
+                                              alwan_f64 L_a,
+                                              alwan_hke_nayatani1997_method method);
+
 /* ----------------------------------------------------------------
  * Barten 1999 Full Model - Contrast Sensitivity Functions
  * Reference: Barten (1999), colour-science implementation

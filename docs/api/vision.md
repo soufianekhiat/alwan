@@ -362,6 +362,53 @@ Simplified contrast sensitivity function. Quick estimate without full Barten par
 
 ---
 
+## Helmholtz-Kohlrausch Effect (Nayatani 1997)
+
+### alwan_hke_object_nayatani1997_{T} / alwan_hke_luminous_nayatani1997_{T}
+
+```c
+alwan_{T} alwan_hke_object_nayatani1997_{T}(alwan_vec2_{T} const *uv,
+                                            alwan_vec2_{T} const *uv_c,
+                                            alwan_{T} L_a,
+                                            alwan_hke_nayatani1997_method method);
+
+alwan_{T} alwan_hke_luminous_nayatani1997_{T}(alwan_vec2_{T} const *uv,
+                                              alwan_vec2_{T} const *uv_c,
+                                              alwan_{T} L_a,
+                                              alwan_hke_nayatani1997_method method);
+```
+
+A saturated colour looks brighter than a grey of the same luminance. These predict by how
+much.
+
+- `uv` — the stimulus as a **CIE 1960 UCS chromaticity pair**
+- `uv_c` — the adapting field, same coordinates
+- `L_a` — adapting luminance in cd/m²
+- `method` — `ALWAN_HKE_NAYATANI1997_VCC` or `ALWAN_HKE_NAYATANI1997_VAC`
+
+The two methods differ in exactly one coefficient, the weight on the hue term: `-0.866` for
+VCC, `-0.134` for VAC. VCC corresponds to a colour matched for equal **brightness**, VAC to
+one matched for equal **lightness**.
+
+The object variant returns a multiplier on luminance and is **exactly 1** when the stimulus
+sits on the adapting field, which is the reading the number exists to give: no chromatic
+content, no effect. The luminous variant is `0.4462 (object + 0.3086)³`.
+
+> **These take `u, v` chromaticities, not `U*V*W*`.** `alwan_xyz_to_ucs_{T}` returns the
+> CIE 1964 `U*V*W*` triple, which is a different quantity. The `u, v` pair here is
+> `u = 4X / (X + 15Y + 3Z)`, `v = 6Y / (X + 15Y + 3Z)`.
+
+**Ranges:** both are native and have no normalization macro, per rule 2 of
+[ranges.md](../ranges.md): they are viewing-condition-dependent multipliers with no fixed
+bound. Across a sweep of the full hue period at four saturations and five adapting
+luminances, the object variant spans about `[0.77, 1.40]` and the luminous one about
+`[0.56, 2.24]` — the extents of that sweep, not limits of the model.
+
+**Returns:** the effect, or a negative value on a NULL argument. The effect itself is a
+positive multiplier, so a negative return is unambiguous.
+
+---
+
 ## Rayleigh Scattering
 
 See [Atmospheric Optics](atmosphere.md) for Rayleigh scattering functions:

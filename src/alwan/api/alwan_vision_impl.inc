@@ -407,3 +407,36 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_mesopic_luminance)(ALWAN_CORE_SPD const *spd
     ALWAN_CORE_T const Km_ratio = ALWAN_CORE_LITERAL(683.002) / ALWAN_CORE_LITERAL(1699.998);
     return m * L_p + (ALWAN_CORE_LITERAL(1.0) - m) * Km_ratio * L_s;
 }
+
+/* ================================================================
+ * Helmholtz-Kohlrausch effect (Nayatani 1997)
+ * ================================================================ */
+
+/* The only thing the two variants disagree about. */
+static ALWAN_CORE_T ALWAN_CORE_FN(hke_method_coefficient)(alwan_hke_nayatani1997_method method) {
+    return (method == ALWAN_HKE_NAYATANI1997_VAC)
+        ? ALWAN_CORE_LITERAL(-0.134)
+        : ALWAN_CORE_LITERAL(-0.866);
+}
+
+ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hke_object_nayatani1997)(
+        ALWAN_CORE_VEC2 const *uv,
+        ALWAN_CORE_VEC2 const *uv_c,
+        ALWAN_CORE_T L_a,
+        alwan_hke_nayatani1997_method method) {
+    if (!uv || !uv_c) return ALWAN_CORE_LITERAL(-1.0);
+    return ALWAN_CORE_FNVLIT(alwan_hke_object_nayatani1997)(
+        uv->v[0], uv->v[1], uv_c->v[0], uv_c->v[1], L_a,
+        ALWAN_CORE_FN(hke_method_coefficient)(method));
+}
+
+ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hke_luminous_nayatani1997)(
+        ALWAN_CORE_VEC2 const *uv,
+        ALWAN_CORE_VEC2 const *uv_c,
+        ALWAN_CORE_T L_a,
+        alwan_hke_nayatani1997_method method) {
+    if (!uv || !uv_c) return ALWAN_CORE_LITERAL(-1.0);
+    return ALWAN_CORE_FNVLIT(alwan_hke_luminous_nayatani1997)(
+        uv->v[0], uv->v[1], uv_c->v[0], uv_c->v[1], L_a,
+        ALWAN_CORE_FN(hke_method_coefficient)(method));
+}
