@@ -1609,6 +1609,9 @@ typedef enum {
     ALWAN_PATTERN_EBU_5 = 12,              /* EBU_5: a BT.709 primary or EBU test colour, ebu_colour, on black */
     ALWAN_PATTERN_EBU_12_GREY = 13,        /* EBU_12-grey: 50 % grey frame */
     ALWAN_PATTERN_PLUGE_BT814 = 14,        /* ITU-R BT.814-4 Annex 2 PLUGE for HDTV, UHDTV and HDR */
+    ALWAN_PATTERN_BT1729_SWEEP_H = 15,     /* ITU-R BT.1729 zone 8: horizontal sweep, 60 to 960 cycles across */
+    ALWAN_PATTERN_BT1729_SWEEP_V = 16,     /* zone 14: vertical sweep, 32 to 540 cycles down */
+    ALWAN_PATTERN_BT1729_STAIRCASE = 17,   /* zone 11: luminance staircase in 10 % steps */
     ALWAN_PATTERN_COUNT
 } alwan_pattern;
 

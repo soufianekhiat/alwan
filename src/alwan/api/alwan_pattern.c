@@ -129,6 +129,47 @@ static void alwan__rect_row(double *row, size_t w, size_t y, double cx, double c
     }
 }
 
+/* ITU-R BT.1729 zones 8 to 10 and 14. The recommendation writes the sweep in megahertz,
+ * once per system, but those are one sweep seen through each system's sampling clock: in
+ * samples of the picture width it runs 120 to 1920 and in lines of the picture height 64
+ * to 1080. A sample or a line is half a cycle, so the sweep carries 60 to 960 cycles
+ * across the picture and 32 to 540 down it, and Tables 2 and 3 place each system's
+ * Nyquist marker where its own sample or line count falls in that range. The level is
+ * alwan's own: the recommendation fixes the frequencies, not the amplitude, and the
+ * sinusoid here fills the range from black to white. */
+static double alwan__sweep(double u, double c0, double c1) {
+    /* Cycles accumulated by u, the integral of a frequency rising linearly from c0 to c1. */
+    double const cycles = c0 * u + (c1 - c0) * u * u * 0.5;
+    return 0.5 + 0.5 * ALWAN_SIN(6.283185307179586 * cycles); /* 2 pi */
+}
+
+/* One row of a BT.1729 zone: the sweeps sample at the centre of each sample or line. */
+static void alwan__bt1729_row(double *row, alwan_pattern pattern, size_t y, size_t w, size_t h) {
+    size_t x;
+    if (pattern == ALWAN_PATTERN_BT1729_SWEEP_V) {
+        alwan__fill_row(row, w, alwan__sweep(((double)y + 0.5) / (double)h, 32.0, 540.0));
+    } else if (pattern == ALWAN_PATTERN_BT1729_SWEEP_H) {
+        for (x = 0; x < w; x++) {
+            double const v = alwan__sweep(((double)x + 0.5) / (double)w, 60.0, 960.0);
+            row[3 * x + 0] = v;
+            row[3 * x + 1] = v;
+            row[3 * x + 2] = v;
+        }
+    } else { /* ALWAN_PATTERN_BT1729_STAIRCASE: eleven steps, black to white in tenths */
+        size_t k, x0 = 0;
+        for (k = 0; k < 11; k++) {
+            size_t const end = alwan__edge((double)(k + 1) / 11.0, w);
+            double const level = (double)k / 10.0;
+            for (x = x0; x < end && x < w; x++) {
+                row[3 * x + 0] = level;
+                row[3 * x + 1] = level;
+                row[3 * x + 2] = level;
+            }
+            x0 = end;
+        }
+    }
+}
+
 /* ITU-R BT.814-4 Annex 2. Table 4 gives the sample numbers and Tables 5 and 6 the line
  * numbers of every edge; HDTV, 4K and 8K put them at the same fractions of the picture,
  * so alwan keeps the fractions: the HDTV sample number over 1920, and the HDTV
@@ -244,7 +285,9 @@ static void alwan__ebu_row(double *row, alwan_pattern pattern, alwan_pattern_par
 /* One row of a pattern, R'G'B' per sample. */
 static void alwan__pattern_row(double *row, alwan_pattern pattern, alwan_pattern_params const *pr, size_t y, size_t w,
                                size_t h) {
-    if (pattern == ALWAN_PATTERN_PLUGE_BT814) {
+    if (pattern >= ALWAN_PATTERN_BT1729_SWEEP_H) {
+        alwan__bt1729_row(row, pattern, y, w, h);
+    } else if (pattern == ALWAN_PATTERN_PLUGE_BT814) {
         alwan__pluge_row(row, pr, y, w, h);
     } else if (pattern >= ALWAN_PATTERN_EBU_1) {
         alwan__ebu_row(row, pattern, pr, y, w, h);
