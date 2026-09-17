@@ -623,13 +623,13 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 151, all passing |
-| Test cases | 992 |
-| Checks executed per run | 121,048 |
-| Assertion sites in the tests | 3,686 |
-| Reference datasets (colour-science, OCIO, ACES-dev) | 419 |
+| Test suites | 152, all passing |
+| Test cases | 995 |
+| Checks executed per run | 121,271 |
+| Assertion sites in the tests | 3,707 |
+| Reference datasets (colour-science, OCIO, ACES-dev) | 420 |
 | Embedded data tables | 794 |
-| Exported symbols | 1,825 |
+| Exported symbols | 1,827 |
 | Internal symbols reached by a test or a public entry point | 157 of 181 (87%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
