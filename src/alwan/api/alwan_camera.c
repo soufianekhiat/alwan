@@ -69,6 +69,36 @@ _Static_assert(sizeof(k_cameras) / sizeof(k_cameras[0]) == ALWAN_TABLE_RAWTOACES
                "cameras.inc and the sensitivity table must describe the same cameras");
 #endif
 
+/* The registry's index space. The rawtoaces pack is 0 to 51 and the two NPL cameras,
+ * which were the alwan_camera_sensitivity enum before 3.0.0, follow at 52 and 53. The
+ * slots are fixed whatever is compiled in, so an index never moves: a camera whose own
+ * table is out answers ALWAN_E_NODATA from its slot. The NPL names are colour-science's,
+ * split at the first space, with its spelling. Unlike the pack, the NPL tables are
+ * 360-830 nm at 1 nm. */
+#define ALWAN__CAMERA_PACK_SLOTS 52
+#define ALWAN__CAMERA_NPL_NIKON_5100 52
+#define ALWAN__CAMERA_NPL_SIGMA_SDMERILL 53
+#define ALWAN__CAMERA_SLOTS 54
+
+#if ALWAN_TABLE_CAMERA_RAWTOACES
+_Static_assert(ALWAN_TABLE_RAWTOACES_CAMERAS == ALWAN__CAMERA_PACK_SLOTS,
+               "the NPL cameras sit right after the pack; appending to the pack moves them");
+#endif
+
+static int alwan__camera_npl_on(size_t index) {
+#if ALWAN_TABLE_CAMERA_NIKON_5100
+    if (index == ALWAN__CAMERA_NPL_NIKON_5100) return 1;
+#endif
+#if ALWAN_TABLE_CAMERA_SIGMA_SDMERILL
+    if (index == ALWAN__CAMERA_NPL_SIGMA_SDMERILL) return 1;
+#endif
+    (void)index;
+    return 0;
+}
+
+static char const *const k_npl_make[2] = { "Nikon", "Sigma" };
+static char const *const k_npl_model[2] = { "5100 (NPL)", "SDMerill (NPL)" };
+
 /* ASCII case-insensitive equality: maker strings arrive as "NIKON", "Nikon" and
  * "nikon" depending on who wrote the metadata. */
 static int alwan__eq_nocase(char const *a, char const *b) {
@@ -83,58 +113,67 @@ static int alwan__eq_nocase(char const *a, char const *b) {
 }
 
 size_t alwan_camera_count(void) {
-#if ALWAN_TABLE_CAMERA_RAWTOACES
-    return ALWAN_TABLE_RAWTOACES_CAMERAS;
+#if ALWAN_TABLE_CAMERA_RAWTOACES || ALWAN_TABLE_CAMERA_NIKON_5100 || ALWAN_TABLE_CAMERA_SIGMA_SDMERILL
+    return ALWAN__CAMERA_SLOTS;
 #else
     return 0;
 #endif
 }
 
 alwan_status alwan_camera_find(size_t *index_out, char const *make, char const *model) {
+    char const *canonical = make;
+    size_t i;
     if (!index_out || !make || !model) {
         return ALWAN_E_INVALID;
     }
-#if !ALWAN_TABLE_CAMERA_RAWTOACES
-    return ALWAN_E_NODATA;
-#else
-    {
-        char const *canonical = make;
-        size_t i;
-        for (i = 0; i < sizeof(k_make_aliases) / sizeof(k_make_aliases[0]); i++) {
-            if (alwan__eq_nocase(make, k_make_aliases[i].alias)) {
-                canonical = k_make_aliases[i].make;
-                break;
-            }
+#if ALWAN_TABLE_CAMERA_RAWTOACES
+    for (i = 0; i < sizeof(k_make_aliases) / sizeof(k_make_aliases[0]); i++) {
+        if (alwan__eq_nocase(make, k_make_aliases[i].alias)) {
+            canonical = k_make_aliases[i].make;
+            break;
         }
-        for (i = 0; i < ALWAN_TABLE_RAWTOACES_CAMERAS; i++) {
-            if (alwan__eq_nocase(canonical, k_cameras[i].make) && alwan__eq_nocase(model, k_cameras[i].model)) {
-                *index_out = i;
-                return ALWAN_OK;
-            }
+    }
+    for (i = 0; i < ALWAN_TABLE_RAWTOACES_CAMERAS; i++) {
+        if (alwan__eq_nocase(canonical, k_cameras[i].make) && alwan__eq_nocase(model, k_cameras[i].model)) {
+            *index_out = i;
+            return ALWAN_OK;
         }
-        for (i = 0; i < sizeof(k_camera_aliases) / sizeof(k_camera_aliases[0]); i++) {
-            if (alwan__eq_nocase(canonical, k_camera_aliases[i].make)
-                && alwan__eq_nocase(model, k_camera_aliases[i].model)) {
-                *index_out = k_camera_aliases[i].index;
-                return ALWAN_OK;
-            }
+    }
+    for (i = 0; i < sizeof(k_camera_aliases) / sizeof(k_camera_aliases[0]); i++) {
+        if (alwan__eq_nocase(canonical, k_camera_aliases[i].make)
+            && alwan__eq_nocase(model, k_camera_aliases[i].model)) {
+            *index_out = k_camera_aliases[i].index;
+            return ALWAN_OK;
         }
-        return ALWAN_E_NODATA;
     }
 #endif
+    for (i = 0; i < 2; i++) {
+        size_t const slot = ALWAN__CAMERA_PACK_SLOTS + i;
+        if (alwan__camera_npl_on(slot) && alwan__eq_nocase(canonical, k_npl_make[i])
+            && alwan__eq_nocase(model, k_npl_model[i])) {
+            *index_out = slot;
+            return ALWAN_OK;
+        }
+    }
+    return ALWAN_E_NODATA;
 }
 
 alwan_status alwan_camera_info(char const **make_out, char const **model_out, size_t index) {
     if (!make_out || !model_out) {
         return ALWAN_E_INVALID;
     }
-#if !ALWAN_TABLE_CAMERA_RAWTOACES
-    (void)index;
-    return ALWAN_E_NODATA;
-#else
-    if (index >= ALWAN_TABLE_RAWTOACES_CAMERAS) {
+    if (index >= ALWAN__CAMERA_SLOTS) {
         return ALWAN_E_RANGE;
     }
+    if (index >= ALWAN__CAMERA_PACK_SLOTS) {
+        if (!alwan__camera_npl_on(index)) return ALWAN_E_NODATA;
+        *make_out = k_npl_make[index - ALWAN__CAMERA_PACK_SLOTS];
+        *model_out = k_npl_model[index - ALWAN__CAMERA_PACK_SLOTS];
+        return ALWAN_OK;
+    }
+#if !ALWAN_TABLE_CAMERA_RAWTOACES
+    return ALWAN_E_NODATA;
+#else
     *make_out = k_cameras[index].make;
     *model_out = k_cameras[index].model;
     return ALWAN_OK;
@@ -209,22 +248,64 @@ static alwan_status alwan__spd_narrow(alwan_spd_f32 *out, alwan_spd_f64 const *i
  * The camera pack's tables as SPDs
  * ================================================================ */
 
+/* The two NPL cameras: the 471-sample tables on 360-830 nm, copied as
+ * alwan_spd_camera_sensitivity copied them before 3.0.0, so every integral built on
+ * them is unchanged to the bit. */
+static alwan_status alwan__camera_npl_sensitivities(alwan_spd_f64 *out[3], size_t index, alwan_ctx *ctx) {
+    alwan_f64 const *tab[3] = { NULL, NULL, NULL };
+    size_t c, w;
+    if (index == ALWAN__CAMERA_NPL_NIKON_5100) {
+#if ALWAN_TABLE_CAMERA_NIKON_5100
+        tab[0] = alwan_table_camera_nikon_5100_r_f64;
+        tab[1] = alwan_table_camera_nikon_5100_g_f64;
+        tab[2] = alwan_table_camera_nikon_5100_b_f64;
+#endif
+    } else {
+#if ALWAN_TABLE_CAMERA_SIGMA_SDMERILL
+        tab[0] = alwan_table_camera_sigma_sdmerill_r_f64;
+        tab[1] = alwan_table_camera_sigma_sdmerill_g_f64;
+        tab[2] = alwan_table_camera_sigma_sdmerill_b_f64;
+#endif
+    }
+    if (!tab[0]) {
+        (void)ctx;
+        return ALWAN_E_NODATA;
+    }
+    for (c = 0; c < 3; c++) {
+        alwan_status const st = alwan_spd_create_f64(out[c], ALWAN_LITERAL(360.0), ALWAN_LITERAL(830.0),
+                                                     ALWAN_TABLE_SPD_360_830_1NM_SIZE, ctx);
+        if (st != ALWAN_OK) {
+            while (c > 0) { c--; alwan_spd_destroy_f64(out[c], ctx); }
+            return st;
+        }
+        for (w = 0; w < ALWAN_TABLE_SPD_360_830_1NM_SIZE; w++) {
+            out[c]->values[w] = tab[c][w];
+        }
+    }
+    return ALWAN_OK;
+}
+
 static alwan_status alwan__camera_sensitivities(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b,
                                                 size_t index, alwan_ctx *ctx) {
     if (!spd_r || !spd_g || !spd_b) {
         return ALWAN_E_INVALID;
     }
+    if (index >= ALWAN__CAMERA_SLOTS) {
+        return ALWAN_E_RANGE;
+    }
+    if (index >= ALWAN__CAMERA_PACK_SLOTS) {
+        alwan_spd_f64 *npl[3];
+        npl[0] = spd_r; npl[1] = spd_g; npl[2] = spd_b;
+        return alwan__camera_npl_sensitivities(npl, index, ctx);
+    }
 #if !ALWAN_TABLE_CAMERA_RAWTOACES
-    (void)index; (void)ctx;
+    (void)ctx;
     return ALWAN_E_NODATA;
 #else
     {
         alwan_spd_f64 *out[3];
         size_t c, w;
         out[0] = spd_r; out[1] = spd_g; out[2] = spd_b;
-        if (index >= ALWAN_TABLE_RAWTOACES_CAMERAS) {
-            return ALWAN_E_RANGE;
-        }
         for (c = 0; c < 3; c++) {
             alwan_status const st = alwan_spd_create_f64(out[c], ALWAN_LITERAL(380.0), ALWAN_LITERAL(780.0),
                                                          ALWAN_TABLE_RAWTOACES_BANDS, ctx);

@@ -409,9 +409,14 @@ Coverage in the regression dump (manifest v49):
   10 nm bandpass corrections; the polynomial bandpass branch inside
   `alwan_xyz_from_spd_f64` was previously only exercised at 0 nm.
 - Camera sensitivities (v36): the embedded 471-sample 360-830 nm
-  R/G/B spectral curves themselves for both `ALWAN_CAMERA_NIKON_5100`
-  and `ALWAN_CAMERA_SIGMA_SDMERILL`, plus camera-space XYZ over a CCT
-  sweep via `alwan_xyz_from_spd_camera_f64` with Simpson integration.
+  R/G/B spectral curves themselves for both NPL cameras, the Nikon 5100
+  and the Sigma SDMerill, plus camera-space RGB over a CCT sweep with
+  Simpson integration. In 3.0.0 the dump reaches them as camera registry
+  slots 52 and 53 through `alwan_camera_sensitivities_f64` and
+  `alwan_camera_rgb_from_spd_f64`, where it used the removed
+  `alwan_camera_sensitivity` enum and `alwan_xyz_from_spd_camera_f64`; the
+  section names are unchanged and the 4,370 lines of the camera sections
+  are byte-identical across that change.
 - Extended observers (v37): all 8 observers (CIE 1931 2deg, CIE
   1964 10deg, CIE 2012 2deg/10deg, Stockman & Sharpe 2deg, CIE 2015
   2deg/10deg, Wright & Guild 1931), each integrated against D65 over

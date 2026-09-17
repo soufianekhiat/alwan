@@ -8,6 +8,27 @@ All notable changes to this project will be documented in this file.
 
 ### Breaking
 
+- **Cameras are registry indices; the `alwan_camera_sensitivity` enum is gone.** The enum
+  named two NPL cameras and lived beside the 52-camera registry, so a camera had two kinds
+  of identity depending on which call reached it. The two NPL cameras now join the
+  registry after the pack, at indices 52 and 53, as `"Nikon" "5100 (NPL)"` and
+  `"Sigma" "SDMerill (NPL)"` under colour-science's names, and every camera call takes an
+  index.
+
+  Removed: `alwan_camera_sensitivity`, `alwan_spd_camera_sensitivity_{T}` and
+  `alwan_xyz_from_spd_camera_{T}`, which returned camera RGB in an `alwan_xyz`.
+  `alwan_camera_rgb_from_spd_{T}` now takes `size_t camera`, the registry index, and
+  `alwan_camera_sensitivities_{T}` covers all 54 cameras, each on its own grid: 380-780 nm
+  at 5 nm for the pack, 360-830 nm at 1 nm for the NPL pair. `alwan_camera_count` returns
+  54, or 0 in a build with no camera table at all.
+
+  Migration: `ALWAN_CAMERA_NIKON_5100` is 52, `ALWAN_CAMERA_SIGMA_SDMERILL` is 53, and
+  `alwan_xyz_from_spd_camera` becomes `alwan_camera_rgb_from_spd` reading `.r .g .b`. The
+  NPL cameras' numbers are unchanged to the bit: the det dump's camera sections, 4,370
+  lines of sensitivities and camera RGB over a blackbody sweep, are byte-identical
+  between the old calls and the new. An unknown camera is now `ALWAN_E_RANGE`, the
+  registry's answer, where the enum gave `ALWAN_E_INVALID`.
+
 - **`ALWAN_TABLE_CMF_CIE_2012_2DEG` and `_10DEG` are removed.** CIE 2012 and CIE 2015
   are one observer, the CMFs from the CIE 2006 cone fundamentals that CIE 170-2:2015
   standardised, and alwan stored it twice: six `cie_2012_*` tables byte-identical to

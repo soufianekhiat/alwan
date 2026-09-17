@@ -1410,8 +1410,6 @@ EXPORTS
     alwan_spd_analyze_shape_f64
     alwan_spd_blackbody_f32
     alwan_spd_blackbody_f64
-    alwan_spd_camera_sensitivity_f32
-    alwan_spd_camera_sensitivity_f64
     alwan_spd_cie_daylight_f32
     alwan_spd_cie_daylight_f64
     alwan_spd_create_f32
@@ -1584,8 +1582,6 @@ EXPORTS
     alwan_xyz_adapt_f64
     alwan_xyz_from_spd_astm_e308_f32
     alwan_xyz_from_spd_astm_e308_f64
-    alwan_xyz_from_spd_camera_f32
-    alwan_xyz_from_spd_camera_f64
     alwan_xyz_from_spd_f32
     alwan_xyz_from_spd_f64
     alwan_xyz_to_hdr_cielab_f32

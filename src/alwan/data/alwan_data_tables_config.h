@@ -56,9 +56,9 @@
 #ifndef ALWAN_TABLES_SPECTRAL
 #  define ALWAN_TABLES_SPECTRAL (!ALWAN_DATA_TABLES_MINIMAL)
 #endif
-/* Every illuminant SPD, observer CMF and camera sensitivity: the 360-830nm
+/* Every illuminant SPD, observer CMF and NPL camera sensitivity: the 360-830nm
  * 1nm curves that alwan_spd_illuminant_*, alwan_xyz_from_spd_* and
- * alwan_spd_camera_sensitivity_* copy into an alwan_spd. */
+ * alwan_camera_sensitivities_* (registry slots 52 and 53) copy into an alwan_spd. */
 #ifndef ALWAN_TABLES_SPD
 #  define ALWAN_TABLES_SPD (!ALWAN_DATA_TABLES_MINIMAL)
 #endif

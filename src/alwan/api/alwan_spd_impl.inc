@@ -1920,120 +1920,33 @@ alwan_status ALWAN_CORE_FNLIT(alwan_cct_to_uv_planck1900)(ALWAN_CORE_VEC2 *uv_ou
 }
 
 /* ----------------------------------------------------------------
- * Camera Sensitivity Functions
+ * Camera RGB from an SPD
  * ---------------------------------------------------------------- */
 
-alwan_status ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(ALWAN_CORE_SPD *spd_r, ALWAN_CORE_SPD *spd_g, ALWAN_CORE_SPD *spd_b, alwan_camera_sensitivity camera, alwan_ctx *ctx) {
-    if (!spd_r || !spd_g || !spd_b) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Validate that all SPDs have same wavelength range and count */
-    if (spd_r->wavelength_min != spd_g->wavelength_min || spd_r->wavelength_min != spd_b->wavelength_min ||
-        spd_r->wavelength_max != spd_g->wavelength_max || spd_r->wavelength_max != spd_b->wavelength_max ||
-        spd_r->count != spd_g->count || spd_r->count != spd_b->count) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Expected wavelength range: 360-830nm, 1nm steps = 471 samples */
-    if (spd_r->count != 471) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Copy the camera's registry tables into the three SPDs. A table compiled out
-     * sets `missing`: ALWAN_E_NODATA. */
-    int missing = 0;
-    switch (camera) {
-        case ALWAN_CAMERA_NIKON_5100: {
-#if ALWAN_TABLE_CAMERA_NIKON_5100
-            ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_r));
-            ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_g));
-            ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_nikon_5100_b));
-#else
-            missing = 1;
-#endif
-            break;
-        }
-        case ALWAN_CAMERA_SIGMA_SDMERILL: {
-#if ALWAN_TABLE_CAMERA_SIGMA_SDMERILL
-            ALWAN_CORE_FN(spd_copy_table)(spd_r, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_r));
-            ALWAN_CORE_FN(spd_copy_table)(spd_g, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_g));
-            ALWAN_CORE_FN(spd_copy_table)(spd_b, ALWAN_CORE_FNLIT(alwan_table_camera_sigma_sdmerill_b));
-#else
-            missing = 1;
-#endif
-            break;
-        }
-        default:
-            return ALWAN_E_INVALID;
-    }
-    if (missing) {
-        return ALWAN_E_NODATA;
-    }
-
-    (void)ctx;
-    return ALWAN_OK;
-}
-
-alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(ALWAN_CORE_XYZ *xyz_out, ALWAN_CORE_SPD const *spd, ALWAN_CORE_SPD const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx) {
-    if (!spd || !xyz_out) {
-        return ALWAN_E_INVALID;
-    }
-    /* Anything but the two rules used to fall through to Simpson. */
-    if ((int)method != (int)ALWAN_INTEGRATE_TRAPEZOID && (int)method != (int)ALWAN_INTEGRATE_SIMPSON) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Load camera RGB sensitivities */
-    ALWAN_CORE_SPD r_sens, g_sens, b_sens;
-    int status = ALWAN_CORE_FNLIT(alwan_spd_create)(&r_sens, ALWAN_CORE_LITERAL(360.0), ALWAN_CORE_LITERAL(830.0), 471, ctx);
-    if (status != ALWAN_OK) {
-        return status;
-    }
-    status = ALWAN_CORE_FNLIT(alwan_spd_create)(&g_sens, ALWAN_CORE_LITERAL(360.0), ALWAN_CORE_LITERAL(830.0), 471, ctx);
-    if (status != ALWAN_OK) {
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-        return status;
-    }
-    status = ALWAN_CORE_FNLIT(alwan_spd_create)(&b_sens, ALWAN_CORE_LITERAL(360.0), ALWAN_CORE_LITERAL(830.0), 471, ctx);
-    if (status != ALWAN_OK) {
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_sens, ctx);
-        return status;
-    }
-
-    status = ALWAN_CORE_FNLIT(alwan_spd_camera_sensitivity)(&r_sens, &g_sens, &b_sens, camera, ctx);
-    if (status != ALWAN_OK) {
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_sens, ctx);
-        return status;
-    }
+/* Camera RGB of an SPD against three sensitivities the caller has loaded, on any grid:
+ * each is resampled onto the SPD's grid, linear with zero outside its own range, and the
+ * products integrated. This is alwan_xyz_from_spd_camera's body as it stood before
+ * 3.0.0, operation for operation, so the NPL cameras' results are unchanged to the bit. */
+static alwan_status ALWAN_CORE_FN(camera_rgb_integrate)(ALWAN_CORE_T rgb[3], ALWAN_CORE_SPD const *spd,
+        ALWAN_CORE_SPD const *illuminant, ALWAN_CORE_SPD const *r_sens, ALWAN_CORE_SPD const *g_sens,
+        ALWAN_CORE_SPD const *b_sens, alwan_integrate_method method, alwan_ctx *ctx) {
+    int status;
 
     /* Resample sensitivities to match SPD wavelength range */
     ALWAN_CORE_SPD r_resampled, g_resampled, b_resampled;
-    status = ALWAN_CORE_FNLIT(alwan_spd_resample)(&r_resampled, &r_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
+    status = ALWAN_CORE_FNLIT(alwan_spd_resample)(&r_resampled, r_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_sens, ctx);
         return status;
     }
 
-    status = ALWAN_CORE_FNLIT(alwan_spd_resample)(&g_resampled, &g_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
+    status = ALWAN_CORE_FNLIT(alwan_spd_resample)(&g_resampled, g_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_sens, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_resampled, ctx);
         return status;
     }
 
-    status = ALWAN_CORE_FNLIT(alwan_spd_resample)(&b_resampled, &b_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
+    status = ALWAN_CORE_FNLIT(alwan_spd_resample)(&b_resampled, b_sens, spd->wavelength_min, spd->wavelength_max, spd->count, ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_ZERO, ctx);
     if (status != ALWAN_OK) {
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_sens, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_resampled, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_resampled, ctx);
         return status;
@@ -2042,9 +1955,6 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(ALWAN_CORE_XYZ *xyz_out
     /* Allocate temporary arrays for products (with overflow protection) */
     size_t alloc_size = alwan_safe_array_size(spd->count, sizeof(ALWAN_CORE_T));
     if (alloc_size == 0) {
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_sens, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_resampled, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_resampled, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_resampled, ctx);
@@ -2058,9 +1968,6 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(ALWAN_CORE_XYZ *xyz_out
         if (prod_r) ALWAN_FREE(prod_r);
         if (prod_g) ALWAN_FREE(prod_g);
         if (prod_b) ALWAN_FREE(prod_b);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_sens, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_sens, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_resampled, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_resampled, ctx);
         ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_resampled, ctx);
@@ -2084,27 +1991,23 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(ALWAN_CORE_XYZ *xyz_out
         prod_b[i] = spd_value * b_resampled.values[i];
     }
 
-    /* Integrate to get RGB (stored in XYZ output) */
+    /* Integrate to camera RGB */
     ALWAN_CORE_T dx = (spd->wavelength_max - spd->wavelength_min) / (ALWAN_CORE_T)(spd->count - 1);
     if (spd->count == 1) dx = ALWAN_CORE_LITERAL(1.0);
 
     if (method == ALWAN_INTEGRATE_TRAPEZOID) {
-        xyz_out->x = ALWAN_CORE_FN(integrate_trapezoid)(prod_r, spd->count, dx);
-        xyz_out->y = ALWAN_CORE_FN(integrate_trapezoid)(prod_g, spd->count, dx);
-        xyz_out->z = ALWAN_CORE_FN(integrate_trapezoid)(prod_b, spd->count, dx);
+        rgb[0] = ALWAN_CORE_FN(integrate_trapezoid)(prod_r, spd->count, dx);
+        rgb[1] = ALWAN_CORE_FN(integrate_trapezoid)(prod_g, spd->count, dx);
+        rgb[2] = ALWAN_CORE_FN(integrate_trapezoid)(prod_b, spd->count, dx);
     } else {
-        xyz_out->x = ALWAN_CORE_FN(integrate_simpson)(prod_r, spd->count, dx);
-        xyz_out->y = ALWAN_CORE_FN(integrate_simpson)(prod_g, spd->count, dx);
-        xyz_out->z = ALWAN_CORE_FN(integrate_simpson)(prod_b, spd->count, dx);
+        rgb[0] = ALWAN_CORE_FN(integrate_simpson)(prod_r, spd->count, dx);
+        rgb[1] = ALWAN_CORE_FN(integrate_simpson)(prod_g, spd->count, dx);
+        rgb[2] = ALWAN_CORE_FN(integrate_simpson)(prod_b, spd->count, dx);
     }
 
-    /* Cleanup */
     ALWAN_FREE(prod_r);
     ALWAN_FREE(prod_g);
     ALWAN_FREE(prod_b);
-    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_sens, ctx);
-    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_sens, ctx);
-    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_sens, ctx);
     ALWAN_CORE_FNLIT(alwan_spd_destroy)(&r_resampled, ctx);
     ALWAN_CORE_FNLIT(alwan_spd_destroy)(&g_resampled, ctx);
     ALWAN_CORE_FNLIT(alwan_spd_destroy)(&b_resampled, ctx);
@@ -2480,21 +2383,34 @@ alwan_status ALWAN_SPD_MAPNAME(alwan_spectral_to_tristimulus, ALWAN_CORE_SUFFIX)
     return ALWAN_OK;
 }
 
-/* Camera RGB from an SPD, under its own name: alwan_xyz_from_spd_camera returns the
- * same three numbers in an alwan_xyz. */
+/* Camera RGB from an SPD, for the camera at a registry index (alwan_camera_find). The
+ * sensitivities come from the registry on the camera's own grid and are resampled onto
+ * the SPD's. */
 alwan_status ALWAN_CORE_FNLIT(alwan_camera_rgb_from_spd)(ALWAN_CORE_RGB *rgb_out, ALWAN_CORE_SPD const *spd,
-        ALWAN_CORE_SPD const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method,
+        ALWAN_CORE_SPD const *illuminant, size_t camera, alwan_integrate_method method,
         alwan_ctx *ctx) {
-    ALWAN_CORE_XYZ t;
+    ALWAN_CORE_SPD sens_r, sens_g, sens_b;
+    ALWAN_CORE_T rgb[3];
     alwan_status st;
-    if (!rgb_out) {
+    if (!rgb_out || !spd) {
         return ALWAN_E_INVALID;
     }
-    st = ALWAN_CORE_FNLIT(alwan_xyz_from_spd_camera)(&t, spd, illuminant, camera, method, ctx);
+    if ((int)method != (int)ALWAN_INTEGRATE_TRAPEZOID && (int)method != (int)ALWAN_INTEGRATE_SIMPSON) {
+        return ALWAN_E_INVALID;
+    }
+    st = ALWAN_CORE_FNLIT(alwan_camera_sensitivities)(&sens_r, &sens_g, &sens_b, camera, ctx);
+    if (st != ALWAN_OK) {
+        return st;
+    }
+    st = (alwan_status)ALWAN_CORE_FN(camera_rgb_integrate)(rgb, spd, illuminant, &sens_r, &sens_g, &sens_b,
+                                                           method, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&sens_r, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&sens_g, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&sens_b, ctx);
     if (st == ALWAN_OK) {
-        rgb_out->r = t.x;
-        rgb_out->g = t.y;
-        rgb_out->b = t.z;
+        rgb_out->r = rgb[0];
+        rgb_out->g = rgb[1];
+        rgb_out->b = rgb[2];
     }
     return st;
 }

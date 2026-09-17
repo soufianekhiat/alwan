@@ -288,38 +288,51 @@ The E2022 weighting tables: `node_count` rows of X, Y, Z weights from 360 nm at
 
 ## Camera Sensitivities
 
-### alwan_spd_camera_sensitivity
+Cameras are identified by an index into the camera registry: `alwan_camera_find` by make
+and model, `alwan_camera_count` for the slot count, `alwan_camera_info` for the names.
+Slots 0 to 51 are the rawtoaces-data pack on 380-780 nm at 5 nm. Slots 52 and 53 are
+the two NPL cameras, `"Nikon" "5100 (NPL)"` and `"Sigma" "SDMerill (NPL)"`, on 360-830 nm
+at 1 nm. An index never moves, and a camera whose table is compiled out answers
+`ALWAN_E_NODATA` from its slot.
+
+### alwan_camera_sensitivities
 
 ```c
-int alwan_spd_camera_sensitivity_f64(alwan_spd_f64 *spd_r,
-                                     alwan_spd_f64 *spd_g,
-                                     alwan_spd_f64 *spd_b,
-                                     alwan_camera_sensitivity camera,
-                                     alwan_ctx *ctx);
+alwan_status alwan_camera_sensitivities_f64(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g,
+                                            alwan_spd_f64 *spd_b, size_t index, alwan_ctx *ctx);
 ```
 
-Load measured camera R/G/B spectral sensitivity curves. The three output SPDs **must already be created** (`alwan_spd_create_f64`) with the desired wavelength range/count; the curves are resampled into them. Returns `ALWAN_E_INVALID` for an unsupported camera.
+The camera's R, G and B spectral sensitivities, created by the call on the camera's own
+grid. `ALWAN_E_RANGE` for an index past the registry.
 
-**Camera types:**
-```c
-typedef enum {
-    ALWAN_CAMERA_NIKON_5100,        /* Nikon D5100 (NPL measured) */
-    ALWAN_CAMERA_SIGMA_SDMERILL     /* Sigma SD Merrill (NPL measured) */
-} alwan_camera_sensitivity;
-```
-
-### alwan_xyz_from_spd_camera
+### alwan_camera_rgb_from_spd
 
 ```c
-int alwan_xyz_from_spd_camera_f64(alwan_xyz_f64 *xyz_out,
-                                  alwan_spd_f64 const *spd,
-                                  alwan_spd_f64 const *illuminant,
-                                  alwan_camera_sensitivity camera,
-                                  alwan_integrate_method method,
-                                  alwan_ctx *ctx);
+alwan_status alwan_camera_rgb_from_spd_f64(alwan_rgb_f64 *rgb_out,
+                                           alwan_spd_f64 const *spd,
+                                           alwan_spd_f64 const *illuminant,
+                                           size_t camera,
+                                           alwan_integrate_method method,
+                                           alwan_ctx *ctx);
 ```
 
-Like `alwan_xyz_from_spd`, but integrates against the camera's RGB sensitivities instead of a standard observer (`illuminant` may be `NULL` for an already-weighted SPD).
+Like `alwan_xyz_from_spd`, but integrates against a camera's RGB sensitivities instead of
+a standard observer. The sensitivities are resampled onto the SPD's grid, linearly and
+zero outside their own range; `illuminant` may be `NULL` for an already-weighted SPD.
+
+**Changed in 3.0.0.** `camera` was an `alwan_camera_sensitivity` enum naming the two NPL
+cameras, and the same integration was also `alwan_xyz_from_spd_camera`, which returned
+camera RGB in an `alwan_xyz`. The enum, that function and `alwan_spd_camera_sensitivity`
+are removed:
+
+| before 3.0.0 | from 3.0.0 |
+|---|---|
+| `ALWAN_CAMERA_NIKON_5100` | registry index 52 |
+| `ALWAN_CAMERA_SIGMA_SDMERILL` | registry index 53 |
+| `alwan_xyz_from_spd_camera_{T}(&xyz, spd, ill, cam, m, ctx)` | `alwan_camera_rgb_from_spd_{T}(&rgb, spd, ill, index, m, ctx)`, reading `.r .g .b` for `.x .y .z` |
+| `alwan_spd_camera_sensitivity_{T}` into three pre-created 471-sample SPDs | `alwan_camera_sensitivities_{T}`, which creates them |
+
+The two NPL cameras give the same numbers, to the bit, through the new calls.
 
 ---
 

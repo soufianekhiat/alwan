@@ -2440,12 +2440,6 @@ typedef enum {
     ALWAN_OBSERVER_STILES_BURCH_1959_10DEG = 11 /* Stiles & Burch 1959 10 deg RGB CMFs, 390-830 */
 } alwan_observer_type;
 
-/* Camera/Sensor spectral sensitivity identifiers */
-typedef enum {
-    ALWAN_CAMERA_NIKON_5100 = 0, /* Nikon D5100 (NPL measured) */
-    ALWAN_CAMERA_SIGMA_SDMERILL = 1 /* Sigma SD Merill (NPL measured) */
-} alwan_camera_sensitivity;
-
 /* Get white point XYZ for a standard illuminant
  * Computes XYZ tristimulus values from illuminant xy chromaticity (Y normalized to 1.0)
  * Returns ALWAN_E_INVALID if illuminant not supported */
@@ -2590,27 +2584,25 @@ alwan_status alwan_astm_e2022_weights_f64(alwan_f64 *weights_out, size_t *node_c
 alwan_status alwan_astm_e2022_weights_f32(alwan_f32 *weights_out, size_t *node_count, alwan_spd_f32 const *illuminant, alwan_observer_type observer, int interval_nm, int observer_range, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
- * Camera Sensitivities
+ * Camera RGB from an SPD
  * ---------------------------------------------------------------- */
 
-/* Load camera RGB spectral sensitivities
- * Loads R, G, B sensitivity curves for specified camera
- * All three output SPDs must be pre-created with desired wavelength range/count
- * Returns ALWAN_OK on success, ALWAN_E_INVALID if camera not supported */
-alwan_status alwan_spd_camera_sensitivity_f64(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b, alwan_camera_sensitivity camera, alwan_ctx *ctx);
-alwan_status alwan_spd_camera_sensitivity_f32(alwan_spd_f32 *spd_r, alwan_spd_f32 *spd_g, alwan_spd_f32 *spd_b, alwan_camera_sensitivity camera, alwan_ctx *ctx);
-
-/* Compute XYZ from SPD using camera sensitivities
- * Similar to alwan_xyz_from_spd_f64 but uses camera RGB sensitivities instead of standard observer
- * Returns ALWAN_OK on success */
-alwan_status alwan_xyz_from_spd_camera_f64(alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx);
-alwan_status alwan_xyz_from_spd_camera_f32(alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx);
-
-/* The same integration under its right name. A camera's response is RGB, and
- * alwan_xyz_from_spd_camera returns it in an alwan_xyz only because of when it was
- * written; the two return identical numbers. Prefer this one. */
-alwan_status alwan_camera_rgb_from_spd_f64(alwan_rgb_f64 *rgb_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx);
-alwan_status alwan_camera_rgb_from_spd_f32(alwan_rgb_f32 *rgb_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_camera_sensitivity camera, alwan_integrate_method method, alwan_ctx *ctx);
+/* A camera's RGB response to an SPD, for the camera at a registry index
+ * (alwan_camera_find, alwan_camera_count). The camera's sensitivities are resampled onto
+ * the SPD's grid, linearly and zero outside their own range, multiplied by the SPD and
+ * the illuminant (NULL for none) and integrated by trapezoid or Simpson.
+ *
+ * ALWAN_E_INVALID for NULL rgb_out or spd, or another integration method; ALWAN_E_RANGE
+ * for an index past the registry; ALWAN_E_NODATA when that camera's table was compiled
+ * out.
+ *
+ * Before 3.0.0 the camera was an alwan_camera_sensitivity enum naming the two NPL
+ * cameras, and the same integration was also reachable as alwan_xyz_from_spd_camera,
+ * which returned camera RGB in an alwan_xyz. The enum, that function and
+ * alwan_spd_camera_sensitivity are gone. The NPL cameras are registry indices 52 and 53,
+ * and give the same numbers, to the bit, as they did. */
+alwan_status alwan_camera_rgb_from_spd_f64(alwan_rgb_f64 *rgb_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, size_t camera, alwan_integrate_method method, alwan_ctx *ctx);
+alwan_status alwan_camera_rgb_from_spd_f32(alwan_rgb_f32 *rgb_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, size_t camera, alwan_integrate_method method, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
  * Spectral foundation: observers, generated sources, multispectral images
@@ -2704,16 +2696,18 @@ alwan_status alwan_spectral_to_tristimulus_f32_map_interleave(alwan_f32 *out, si
 /* ----------------------------------------------------------------
  * Spectral camera characterisation
  *
- * The camera pack is rawtoaces-data (Academy Software Foundation, Apache-2.0,
- * data/camera_sensitivities/rawtoaces/LICENSE.txt): 52 cameras on 380-780 nm at 5 nm,
- * plus the 190-patch IDT training set and ISO 7589 studio tungsten. A camera's index
- * is stable: new cameras are appended. Everything here is compiled out with
- * ALWAN_TABLES_CAMERAS=0, and then reports ALWAN_E_NODATA (counts report 0).
+ * The camera registry has 54 slots. 0 to 51 are the rawtoaces-data pack (Academy
+ * Software Foundation, Apache-2.0, data/camera_sensitivities/rawtoaces/LICENSE.txt), on
+ * 380-780 nm at 5 nm, with the pack's 190-patch IDT training set and ISO 7589 studio
+ * tungsten beside it. 52 and 53 are the two NPL cameras, "Nikon" "5100 (NPL)" and
+ * "Sigma" "SDMerill (NPL)" under colour-science's names, on 360-830 nm at 1 nm. A
+ * camera's index is stable: slots are fixed whatever is compiled in, and new cameras are
+ * appended. A camera whose table was compiled out answers ALWAN_E_NODATA from its slot.
  *
  * The f32 entry points widen to f64, compute and narrow, like the CCM fits.
  * ---------------------------------------------------------------- */
 
-/* How many cameras the pack carries; 0 when it was compiled out. */
+/* The registry's slot count: 54, or 0 in a build carrying no camera table at all. */
 size_t alwan_camera_count(void);
 
 /* A camera's index by make and model, ASCII case-insensitive. Alternative model and
@@ -2724,8 +2718,9 @@ alwan_status alwan_camera_find(size_t *index_out, char const *make, char const *
 /* The make and model of a camera; the strings are static. ALWAN_E_RANGE past the end. */
 alwan_status alwan_camera_info(char const **make_out, char const **model_out, size_t index);
 
-/* A camera's R, G, B spectral sensitivities as three SPDs on 380-780 nm at 5 nm,
- * relative units. Creates the SPDs. */
+/* A camera's R, G, B spectral sensitivities as three SPDs on the camera's own grid,
+ * 380-780 nm at 5 nm for the pack and 360-830 nm at 1 nm for the NPL cameras, relative
+ * units. Creates the SPDs. */
 alwan_status alwan_camera_sensitivities_f64(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b, size_t index, alwan_ctx *ctx);
 alwan_status alwan_camera_sensitivities_f32(alwan_spd_f32 *spd_r, alwan_spd_f32 *spd_g, alwan_spd_f32 *spd_b, size_t index, alwan_ctx *ctx);
 
