@@ -1,0 +1,8 @@
+spectral_film_lut, Jan Lohse, MIT (LICENSE.txt beside this file)
+https://github.com/JanLohse/spectral_film_lut at commit 9d04d97ba8e20bfe00b72116e80ae19ab268dce3
+
+Each <STOCK>.csv is the profiled stock as FilmSpectral computes it from the
+digitised datasheet, on 380-780 nm at 10 nm, packed as gendata/data/film_stocks.py
+documents. The four shared tables are the oracle's status densitometry and
+printer light constants on the same grid. Written by gendata/data/film_stocks.py;
+stocks.json lists what each profile is.

@@ -216,10 +216,14 @@ table that can be left out: the spectral upsampling LUTs, the AgX cubes and
 curves, the quality-metric sample sets, the illuminant, observer and camera SPDs,
 the ACES RICD and the rawtoaces-data camera pack. Groups (`ALWAN_TABLES_AGX`,
 `ALWAN_TABLES_SPECTRAL`, `ALWAN_TABLES_SPD`, `ALWAN_TABLES_QUALITY`,
-`ALWAN_TABLES_CAMERAS`, `ALWAN_TABLES_LIGHT_SOURCES`) and single tables have their
-own switches, listed in `src/alwan/data/alwan_data_tables_config.h`; each is on
-unless the minimal build turns it off. The SB2383 inset matrix always stays in,
-because `alwan_agx_default_params` has no way to report it missing.
+`ALWAN_TABLES_CAMERAS`, `ALWAN_TABLES_LIGHT_SOURCES`, `ALWAN_TABLES_FILM`) and single
+tables have their own switches, listed in `src/alwan/data/alwan_data_tables_config.h`;
+each is on unless the minimal build turns it off. The SB2383 inset matrix always stays
+in, because `alwan_agx_default_params` has no way to report it missing.
+
+`ALWAN_TABLES_FILM` covers the 14 profiled film stocks and their four shared
+densitometry tables, 3,400 values a stock; a build with no film pipeline drops them
+with one `-D`, and each stock has its own `ALWAN_TABLE_FILM_*` switch under it.
 
 `ALWAN_TABLES_LIGHT_SOURCES` is the one group that is not simply a category. It
 covers the 56 measured lamps at the end of `alwan_illuminant`, which are more

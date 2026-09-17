@@ -215,6 +215,8 @@ enum { ALWAN_TABLE_SPD_360_830_1NM_SIZE = 471 };
 enum { ALWAN_TABLE_ISO7589_350_690_10NM_SIZE = 35, ALWAN_TABLE_ISO7589_350_560_10NM_SIZE = 22 };
 /* The further luminous efficiency functions, each on its own grid. */
 enum { ALWAN_TABLE_LEF_360_830_1NM_SIZE = 471, ALWAN_TABLE_LEF_370_770_10NM_SIZE = 41, ALWAN_TABLE_LEF_380_780_1NM_SIZE = 401, ALWAN_TABLE_LEF_390_830_1NM_SIZE = 441 };
+/* A profiled film stock, packed; and its shared 41 x 3 tables (380-780 nm at 10 nm). */
+enum { ALWAN_TABLE_FILM_STOCK_SIZE = 3400, ALWAN_TABLE_FILM_41X3_SIZE = 123 };
 
 /* ---- spd_illuminant_* -- 38 tables, rank 1, 471, INTEGER row --------
  * Reader: alwan_table1d_row_{f32,f64}
@@ -1102,6 +1104,70 @@ ALWAN_TABLE_EXTERN_F64_ONLY(alwan_table_camera_basis_rawtoaces, ALWAN_TABLE_CAME
  * one that repoints its consumer: splitting them yields either an
  * unused-static warning or a duplicate symbol.
  * ================================================================ */
+
+/* ---- film_* -- rank 1, 3400 per stock and 123 per shared table, INTEGER row ----
+ * Reader: api/alwan_film_impl.inc indexes the flat layout directly; the layout is
+ *         documented in alwan_dev/gendata/data/film_stocks.py and in alwan.h beside
+ *         alwan_film_profile.
+ * Source: alwan_dev/gendata/data/film_stocks.py, spectral_film_lut (MIT): each stock
+ *         PROFILED by its FilmSpectral on 380-780 nm at 10 nm, packed as one table;
+ *         the four shared tables are its status densitometry and printer lights on
+ *         the same grid. Group switch ALWAN_TABLES_FILM. Declared in alwan_film_stock
+ *         order, shared tables first. */
+#if ALWAN_TABLE_FILM_STATUS_A
+ALWAN_TABLE_EXTERN(alwan_table_film_status_a, ALWAN_TABLE_FILM_41X3_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_STATUS_M
+ALWAN_TABLE_EXTERN(alwan_table_film_status_m, ALWAN_TABLE_FILM_41X3_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_APD
+ALWAN_TABLE_EXTERN(alwan_table_film_apd, ALWAN_TABLE_FILM_41X3_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_PRINTER_LIGHTS
+ALWAN_TABLE_EXTERN(alwan_table_film_printer_lights, ALWAN_TABLE_FILM_41X3_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5203
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_5203, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5207
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_5207, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5213
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_5213, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5219
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_5219, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_400
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_portra_400, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_EKTAR_100
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_ektar_100, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_FUJI_ETERNA_500
+ALWAN_TABLE_EXTERN(alwan_table_film_fuji_eterna_500, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5222
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_5222, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_2383
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_2383, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_2393
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_2393, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_FUJI_3513DI
+ALWAN_TABLE_EXTERN(alwan_table_film_fuji_3513di, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_2302
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_2302, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_KODAK_EKTACHROME_100D
+ALWAN_TABLE_EXTERN(alwan_table_film_kodak_ektachrome_100d, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+#if ALWAN_TABLE_FILM_FUJI_VELVIA_50
+ALWAN_TABLE_EXTERN(alwan_table_film_fuji_velvia_50, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
 
 #ifdef __cplusplus
 }

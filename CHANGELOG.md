@@ -74,6 +74,29 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Film.** Fourteen photographic stocks as their datasheets describe them, and the
+  pipeline from a scene spectrum to the projected print: Vision3 50D, 250D, 200T and
+  500T, Portra 400, Ektar 100, Eterna 500 and the black and white 5222 as negatives;
+  2383, 2393, Eterna-CP 3513DI and the black and white 2302 as prints; Ektachrome 100D
+  and Velvia 50 as reversals. `alwan_film_get_profile_{T}` hands out a stock's tables on
+  380-780 nm at 10 nm: spectral sensitivity per layer, the characteristic curve on a
+  uniform 1024-point log exposure grid, the dye densities, the base, the reference grey
+  and the interlayer masking matrix. `alwan_film_expose`, `_calibrate`, `_develop`,
+  `_transmittance`, `_printer_light`, `_print` and `_project` are the stages,
+  `alwan_film_render` and its `_map_interleave` form the whole trip, and
+  `alwan_film_status_density` is ISO 5-3 Status A, Status M and ACES printing density
+  of a transmittance.
+
+  The profiles are spectral_film_lut's (Jan Lohse, MIT), digitised from the sheets and
+  profiled by its `FilmSpectral`; alwan ships the profiling's output, not the
+  digitisation, with the licence beside the tables, and gendata refuses to write a new
+  profile unless a shipped one regenerates bit for bit. Suite 158 holds every stage to
+  that model over its own spectra, a colour negative printed, a black and white one
+  printed, a reversal projected and a still negative on the other print stock. The model
+  is float32 throughout, so nothing is to the bit: alwan's f64 lands within 5.4e-07
+  relative of it at every stage, and the suite prints the worst it saw. Grain, halation
+  and interlayer diffusion are spatial and are not in this release.
+
 - **Typed image buffers for the spectral entry points.** The four upsamplers, Smits
   1999, Mallett 2019, Otsu 2018 and Jakob 2019, and `alwan_spectral_to_tristimulus` gain
   a `_map_interleave_ex` form: `void` pointers and an `alwan_pixel_format` per side, so

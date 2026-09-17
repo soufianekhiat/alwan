@@ -3836,6 +3836,213 @@ alwan_status alwan_xyz_to_spectrum_otsu2018_map_interleave_ex(void *out, size_t 
 alwan_status alwan_rgb_to_spectrum_jakob2019_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, size_t *band_count, alwan_jakob2019_gamut gamut);
 
 /* ----------------------------------------------------------------
+ * Film: spectral negative, print and reversal stocks
+ *
+ * A photographic stock as its datasheet describes it, profiled into tables a
+ * pixel pipeline can read, and the pipeline itself: a scene spectrum exposes
+ * three layers, each layer's characteristic curve turns log exposure into a dye
+ * amount, the dyes and the base absorb the printer light, the print stock goes
+ * through its own curve, and the projection light through the print's dyes
+ * gives XYZ. Every spectrum in this section is on ALWAN_FILM_BANDS samples,
+ * 380-780 nm at 10 nm, the grid the stocks were profiled on; resample with
+ * alwan_spd_resample, or hand a Mallett 2019 spectrum (81 samples at 5 nm) to
+ * the map form, which reads every second band.
+ *
+ * The profiles are spectral_film_lut's (Jan Lohse, MIT), digitised from the
+ * manufacturers' sheets and profiled by its FilmSpectral: sensitivities
+ * extrapolated and resampled, characteristic curves extended past the sheet
+ * with a logistic roll-off and resampled to a uniform 1024-point log exposure
+ * grid with D-min removed, status densities unmixed into per-layer activations,
+ * dyes normalised so a unit activation reads 1 in its own status channel, the
+ * 18 percent grey placed at 12.5 / ISO lux-seconds. alwan ships that output,
+ * not the digitisation, and suite 158 holds this pipeline to that model's over
+ * the same tables. The model is float32 throughout, so agreement is within
+ * 5.4e-07 relative and not to the bit. Grain, halation and the interlayer
+ * diffusion are spatial and are not here.
+ *
+ * Every stock is a switch under ALWAN_TABLES_FILM; a stock compiled out gives
+ * ALWAN_E_NODATA from alwan_film_get_profile and nothing else is reachable.
+ * ---------------------------------------------------------------- */
+
+enum { ALWAN_FILM_BANDS = 41, ALWAN_FILM_CURVE_COUNT = 1024 };
+
+typedef enum {
+    ALWAN_FILM_KODAK_5203 = 0,                 /* Kodak Vision3 50D 5203, negative, ISO 50 */
+    ALWAN_FILM_KODAK_5207 = 1,                 /* Kodak Vision3 250D 5207, negative, ISO 250 */
+    ALWAN_FILM_KODAK_5213 = 2,                 /* Kodak Vision3 200T 5213, negative, ISO 200 */
+    ALWAN_FILM_KODAK_5219 = 3,                 /* Kodak Vision3 500T 5219, negative, ISO 500 */
+    ALWAN_FILM_KODAK_PORTRA_400 = 4,           /* Kodak Portra 400, negative, ISO 400 */
+    ALWAN_FILM_KODAK_EKTAR_100 = 5,            /* Kodak Ektar 100, negative, ISO 100 */
+    ALWAN_FILM_FUJI_ETERNA_500 = 6,            /* Fuji Eterna 500, negative, ISO 500 */
+    ALWAN_FILM_KODAK_5222 = 7,                 /* Kodak 5222, black and white negative, ISO 250 */
+    ALWAN_FILM_KODAK_2383 = 8,                 /* Kodak Vision 2383, print, no ISO */
+    ALWAN_FILM_KODAK_2393 = 9,                 /* Kodak Vision Premier 2393, print, no ISO */
+    ALWAN_FILM_FUJI_3513DI = 10,               /* Fuji Eterna-CP Type 3513DI, print, no ISO */
+    ALWAN_FILM_KODAK_2302 = 11,                /* Kodak 2302, black and white print, no ISO */
+    ALWAN_FILM_KODAK_EKTACHROME_100D = 12,     /* Kodak Ektachrome 100D, reversal, ISO 100 */
+    ALWAN_FILM_FUJI_VELVIA_50 = 13,            /* Fuji Velvia 50, reversal, ISO 50 */
+    ALWAN_FILM_STOCK_COUNT
+} alwan_film_stock;
+
+/* ISO 5-3 status densitometry and the ACES printing density. */
+typedef enum {
+    ALWAN_FILM_STATUS_A = 0,
+    ALWAN_FILM_STATUS_M = 1,
+    ALWAN_FILM_STATUS_APD = 2
+} alwan_film_status;
+
+/* A profiled stock. The pointers are into the embedded table and stay valid for
+ * the life of the process; nothing is allocated. Spectral tables are
+ * wavelength-major, three values per wavelength: sensitivity[k * 3 + c] is layer
+ * c at 380 + 10 k nm. Filled by alwan_film_get_profile; a caller may also build
+ * one by hand from their own tables, and every function checks the pointers.
+ * A one-layer stock (black and white) stores its one column
+ * three times and says so in layers; every function here reads column 0 of it
+ * and repeats the answer into the other two. The characteristic curve is
+ * density_curve[i * 3 + c], activation of layer c at log exposure
+ * log_h_min + i (log_h_max - log_h_min) / (curve_count - 1), read linearly and
+ * held flat outside. The masking matrix acts on log exposure, row-major, as the
+ * interlayer inhibition at the stock's default strength, and is the identity
+ * where the sheet gives none. */
+typedef struct {
+    alwan_film_stock stock;
+    char const *name;
+    char const *manufacturer;
+    int year;
+    int layers;            /* 3, or 1 for black and white */
+    int is_print;          /* a print stock: exposed by a printer light, not a scene */
+    int is_positive;       /* reversal: a positive image on the camera stock */
+    alwan_f64 iso;         /* 0 where the sheet gives none */
+    alwan_f64 exposure_kelvin;
+    alwan_f64 log_h_min;
+    alwan_f64 log_h_max;
+    size_t curve_count;    /* ALWAN_FILM_CURVE_COUNT, the one grid size the reader takes */
+    alwan_f64 log_h_ref[3];   /* log10 exposure of the 18 percent grey, per layer */
+    alwan_f64 d_ref[3];       /* its activation */
+    alwan_f64 d_min[3];       /* status D-min the sheet reported */
+    alwan_f64 d_max[3];
+    alwan_f64 gamma;
+    alwan_f64 color_masking;  /* default strength; 0 means the matrix is the identity */
+    alwan_f64 rms_granularity;
+    alwan_f64 masking[9];
+    alwan_f64 const *sensitivity;     /* [ALWAN_FILM_BANDS * 3], linear */
+    alwan_f64 const *dye_density;     /* [ALWAN_FILM_BANDS * 3], per unit activation */
+    alwan_f64 const *d_min_spectral;  /* [ALWAN_FILM_BANDS], base plus fog */
+    alwan_f64 const *density_curve;   /* [curve_count * 3] */
+} alwan_film_profile_f64;
+
+typedef struct {
+    alwan_film_stock stock;
+    char const *name;
+    char const *manufacturer;
+    int year;
+    int layers;
+    int is_print;
+    int is_positive;
+    alwan_f32 iso;
+    alwan_f32 exposure_kelvin;
+    alwan_f32 log_h_min;
+    alwan_f32 log_h_max;
+    size_t curve_count;
+    alwan_f32 log_h_ref[3];
+    alwan_f32 d_ref[3];
+    alwan_f32 d_min[3];
+    alwan_f32 d_max[3];
+    alwan_f32 gamma;
+    alwan_f32 color_masking;
+    alwan_f32 rms_granularity;
+    alwan_f32 masking[9];
+    alwan_f32 const *sensitivity;
+    alwan_f32 const *dye_density;
+    alwan_f32 const *d_min_spectral;
+    alwan_f32 const *density_curve;
+} alwan_film_profile_f32;
+
+/* Name and maker of a stock, whether or not its table is compiled in.
+ * ALWAN_E_INVALID for a value outside the enum. Either output may be NULL. */
+alwan_status alwan_film_stock_info(alwan_film_stock stock, char const **name, char const **manufacturer);
+
+/* The profile. ALWAN_E_INVALID for an unknown stock, ALWAN_E_NODATA for one
+ * compiled out. */
+alwan_status alwan_film_get_profile_f64(alwan_film_profile_f64 *out, alwan_film_stock stock);
+alwan_status alwan_film_get_profile_f32(alwan_film_profile_f32 *out, alwan_film_stock stock);
+
+/* Exposure. Layer c receives H_c = factor_c sum_k spd_k balance_k S_kc over the
+ * 41 bands, a plain sum with no bandwidth, and log_h_out[c] = log10 of it floored
+ * at 1e-16. balance is an optional per-band factor, the ratio of the reference
+ * daylight spectrum to the scene white's, which is how the model white balances
+ * the stock; NULL is no balance. factors are the per-layer scale that put the
+ * grey at the stock's reference exposure, from alwan_film_calibrate; NULL is 1.
+ * A one-layer stock fills all three outputs with its one layer. */
+alwan_status alwan_film_expose_f64(alwan_f64 log_h_out[3], alwan_film_profile_f64 const *profile, alwan_f64 const *spd, alwan_f64 const *balance, alwan_f64 const *factors);
+alwan_status alwan_film_expose_f32(alwan_f32 log_h_out[3], alwan_film_profile_f32 const *profile, alwan_f32 const *spd, alwan_f32 const *balance, alwan_f32 const *factors);
+
+/* The factors that expose grey_spd, the scene's 18 percent grey, at exactly
+ * log_h_ref on every layer: 10^log_h_ref divided by the unscaled exposure.
+ * ALWAN_E_RANGE if the grey exposes a layer to nothing. */
+alwan_status alwan_film_calibrate_f64(alwan_f64 factors_out[3], alwan_film_profile_f64 const *profile, alwan_f64 const *grey_spd, alwan_f64 const *balance);
+alwan_status alwan_film_calibrate_f32(alwan_f32 factors_out[3], alwan_film_profile_f32 const *profile, alwan_f32 const *grey_spd, alwan_f32 const *balance);
+
+/* Development: log exposure to per-layer activation through the characteristic
+ * curve. With masking nonzero and three layers the masking matrix is applied to
+ * the log exposures first, which is the interlayer inhibition of a colour
+ * negative; a print stock or a one-layer stock ignores it. Outside the curve's
+ * grid the end value holds. */
+alwan_status alwan_film_develop_f64(alwan_f64 density_out[3], alwan_film_profile_f64 const *profile, alwan_f64 const log_h[3], int masking);
+alwan_status alwan_film_develop_f32(alwan_f32 density_out[3], alwan_film_profile_f32 const *profile, alwan_f32 const log_h[3], int masking);
+
+/* Spectral transmittance of the developed stock, 41 values:
+ * 10^-(sum_c density_c dye_kc + d_min_k). The dye term is not clamped here;
+ * alwan_film_project clamps it at zero, as the reference does, so a negative
+ * activation cannot brighten the projection. */
+alwan_status alwan_film_transmittance_f64(alwan_f64 *transmittance_out, alwan_film_profile_f64 const *profile, alwan_f64 const density[3]);
+alwan_status alwan_film_transmittance_f32(alwan_f32 *transmittance_out, alwan_film_profile_f32 const *profile, alwan_f32 const density[3]);
+
+/* The printer light, 41 values, that prints the negative's reference grey onto
+ * the print stock at the print's reference exposure: the three printer lights
+ * (the ACES printing density printer light split into red, green and blue)
+ * mixed by a 3 x 3 solve through the grey's transmittance and the print's
+ * sensitivities. red, green and blue are offsets in stops on the three lights,
+ * 0 for the neutral print. A one-layer print stock gets a flat light set by
+ * green alone. ALWAN_E_NODATA without the printer light table, ALWAN_E_RANGE if
+ * the solve is singular. */
+alwan_status alwan_film_printer_light_f64(alwan_f64 *light_out, alwan_film_profile_f64 const *negative, alwan_film_profile_f64 const *print, alwan_f64 red, alwan_f64 green, alwan_f64 blue);
+alwan_status alwan_film_printer_light_f32(alwan_f32 *light_out, alwan_film_profile_f32 const *negative, alwan_film_profile_f32 const *print, alwan_f32 red, alwan_f32 green, alwan_f32 blue);
+
+/* Printing: the developed negative's transmittance times the printer light,
+ * integrated against the print stock's sensitivities, floored at 1e-5, through
+ * the print's characteristic curve. No masking on a print. */
+alwan_status alwan_film_print_f64(alwan_f64 density_out[3], alwan_film_profile_f64 const *negative, alwan_f64 const density[3], alwan_film_profile_f64 const *print, alwan_f64 const *light);
+alwan_status alwan_film_print_f32(alwan_f32 density_out[3], alwan_film_profile_f32 const *negative, alwan_f32 const density[3], alwan_film_profile_f32 const *print, alwan_f32 const *light);
+
+/* Projection or viewing: the developed stock's transmittance, dye term clamped
+ * at zero, times the light, against the CIE 1931 2 degree observer at the 41
+ * bands, as a plain sum. XYZ is in the light's units: a light with Y = 1 through
+ * clear film gives Y = 1. ALWAN_E_NODATA without the observer table. */
+alwan_status alwan_film_project_f64(alwan_xyz_f64 *xyz_out, alwan_film_profile_f64 const *profile, alwan_f64 const density[3], alwan_f64 const *light);
+alwan_status alwan_film_project_f32(alwan_xyz_f32 *xyz_out, alwan_film_profile_f32 const *profile, alwan_f32 const density[3], alwan_f32 const *light);
+
+/* ISO 5-3 status density of a transmittance: -log10 of it integrated against
+ * the Status A, Status M or ACES printing density responsivities, whose columns
+ * sum to 1 so clear film reads 0. Status A for prints and reversals, Status M
+ * for negatives, as the sheets are measured. */
+alwan_status alwan_film_status_density_f64(alwan_f64 density_out[3], alwan_f64 const *transmittance, alwan_film_status status);
+alwan_status alwan_film_status_density_f32(alwan_f32 density_out[3], alwan_f32 const *transmittance, alwan_film_status status);
+
+/* The whole trip for one spectrum: expose, develop (masking at the negative's
+ * default strength), print if print is not NULL with printer_light, and project
+ * the last stock with projection_light. printer_light may be NULL when print is.
+ * factors and balance as alwan_film_expose. */
+alwan_status alwan_film_render_f64(alwan_xyz_f64 *xyz_out, alwan_film_profile_f64 const *negative, alwan_film_profile_f64 const *print, alwan_f64 const *spd, alwan_f64 const *balance, alwan_f64 const *factors, alwan_f64 const *printer_light, alwan_f64 const *projection_light);
+alwan_status alwan_film_render_f32(alwan_xyz_f32 *xyz_out, alwan_film_profile_f32 const *negative, alwan_film_profile_f32 const *print, alwan_f32 const *spd, alwan_f32 const *balance, alwan_f32 const *factors, alwan_f32 const *printer_light, alwan_f32 const *projection_light);
+
+/* The same over a buffer: band_count samples per pixel in (41 on the film grid,
+ * or 81 for a Mallett 2019 spectrum, of which every second band is read), XYZ
+ * out, both strided in bytes. */
+alwan_status alwan_film_render_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t band_count, alwan_film_profile_f64 const *negative, alwan_film_profile_f64 const *print, alwan_f64 const *balance, alwan_f64 const *factors, alwan_f64 const *printer_light, alwan_f64 const *projection_light);
+alwan_status alwan_film_render_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t band_count, alwan_film_profile_f32 const *negative, alwan_film_profile_f32 const *print, alwan_f32 const *balance, alwan_f32 const *factors, alwan_f32 const *printer_light, alwan_f32 const *projection_light);
+
+/* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model
  * ---------------------------------------------------------------- */
 
