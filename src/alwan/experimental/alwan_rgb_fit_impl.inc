@@ -431,7 +431,11 @@ static ALWAN_CORE_T ALWAN_CORE_FN(rf_block_error)(ALWAN_CORE_FN(alwan_rgb_fit_st
     for (size_t i = 0; i < used; i++) { m += s->scratch[i]; if (s->scratch[i] > big) big = s->scratch[i]; }
     m /= (ALWAN_CORE_T)used;
     qsort(s->scratch, used, sizeof(ALWAN_CORE_T), ALWAN_CORE_FN(rf_cmp));
-    ALWAN_CORE_T tail = s->scratch[(size_t)((ALWAN_CORE_T)(used - 1) * s->prm.percentile + ALWAN_CORE_LITERAL(0.5))];
+    /* percentile is in [0, 1] (rf_begin), but in f32 (used - 1) is not exact past 2^24
+     * texels and can round up to used, one past the end. Clamp, as rf_stats does. */
+    size_t tail_idx = (size_t)((ALWAN_CORE_T)(used - 1) * s->prm.percentile + ALWAN_CORE_LITERAL(0.5));
+    if (tail_idx >= used) tail_idx = used - 1;
+    ALWAN_CORE_T tail = s->scratch[tail_idx];
     if (mean_out) *mean_out = m;
     if (tail_out) *tail_out = tail;
     if (max_out) *max_out = big;
@@ -819,6 +823,11 @@ static alwan_status ALWAN_CORE_FN(rf_begin)(ALWAN_CORE_FN(alwan_rgb_fit_state) *
     if (params->tf != ALWAN_FIT_TF_POWER && params->tf != ALWAN_FIT_TF_SRGB) return ALWAN_E_INVALID;   /* AUTO is solve's */
     if (params->gamma_min <= ALWAN_CORE_ZERO || params->gamma_max < params->gamma_min) return ALWAN_E_INVALID;
     if (tf && tf->scale > ALWAN_CORE_ZERO && (tf->scale < ALWAN_CORE_LITERAL(1e-8) || tf->scale > ALWAN_CORE_LITERAL(1e8))) return ALWAN_E_INVALID;
+    /* The percentile becomes an index into the sorted errors. Outside [0, 1] that index
+     * leaves the buffer, and a NaN makes the float-to-size_t cast itself undefined, so it
+     * is refused here where every entry point passes. Written as !(in range) so NaN,
+     * which fails every comparison, is refused too. */
+    if (!(params->percentile >= ALWAN_CORE_ZERO && params->percentile <= ALWAN_CORE_ONE)) return ALWAN_E_INVALID;
     *state = NULL;
     ALWAN_CORE_FN(alwan_rgb_fit_state) *s = (ALWAN_CORE_FN(alwan_rgb_fit_state) *)ctx->alloc_fn(sizeof *s, 16);
     if (!s) return ALWAN_E_NOMEM;
@@ -1042,7 +1051,8 @@ alwan_status ALWAN_CORE_FN(alwan_rgb_fit_blocks_solve)(ALWAN_CORE_FN(alwan_rgb_s
                                                        ALWAN_CORE_FN(alwan_rgb_space_desc) const *data_space,
                                                        ALWAN_CORE_FN(alwan_rgb_fit_params) const *params,
                                                        int max_iterations, alwan_ctx *ctx) {
-    if (!tf || max_iterations < 0) return ALWAN_E_INVALID;
+    /* space and params are read below before rf_blocks_run can check them. */
+    if (!space || !tf || !params || max_iterations < 0) return ALWAN_E_INVALID;
     int const warm = (space->primaries_xy[1] > ALWAN_CORE_ZERO && space->white_xy[1] > ALWAN_CORE_ZERO);
     if (params->tf != ALWAN_FIT_TF_AUTO) {
         return ALWAN_CORE_FN(rf_blocks_run)(space, tf, report, image, width, height, data_space, params,

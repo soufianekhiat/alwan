@@ -3506,7 +3506,9 @@ typedef struct {
     int index_bits;                    /* block fit only: bits per texel index, 2 for BC1 */
     alwan_fit_tf_kind tf;              /* POWER or SRGB; AUTO is accepted by solve() only */
     alwan_rgb_fit_metric metric;       /* objective and report units, Oklab by default */
-    alwan_f32 percentile;              /* tail the objective minimises, 0.999; 0 means mean only */
+    alwan_f32 percentile;              /* tail the objective minimises, 0.999; 0 means mean only.
+                                          Must lie in [0, 1]: anything else, NaN included, is
+                                          ALWAN_E_INVALID from every entry point */
     alwan_f32 clip_weight;             /* penalty per unit of linear value outside 0..scale (in units of the scale),
                                           per sample and on the single worst overshoot; 1.0. It buys clipping with
                                           precision, so it sets where on that trade the answer lands, and it is in the

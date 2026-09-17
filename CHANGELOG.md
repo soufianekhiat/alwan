@@ -22,6 +22,17 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **The experimental RGB fit could read past a buffer.** `alwan_rgb_fit_params.percentile`
+  becomes an index into the sorted per-sample errors, and nothing validated it. At 1.5
+  the block path read past the end of that buffer, since it clamped nothing, and a NaN or
+  a negative value made the float-to-index cast undefined on both paths. Every entry
+  point now refuses a percentile outside [0, 1], NaN included, with `ALWAN_E_INVALID`.
+  The block path also clamps its index, because in f32 `(used - 1)` rounds up past 2^24
+  samples even inside the range. And `alwan_rgb_fit_blocks_solve_{T}` read `space` and
+  `params` before checking either, so a NULL crashed rather than returning
+  `ALWAN_E_INVALID`. Suite 107 covers all three. Found by the table registry's
+  float-to-index inventory, which had been reporting the site without anyone looking.
+
 - **The hue quadrature was wrong, in CIECAM02 and in CAM16.** CIE 159:2004 interpolates
   H on `(h - h_i) / e_i`. alwan multiplied by `e_i` instead of dividing, and collapsed the
   standard's two end sectors into one sector reached by adding 360 to any hue below 20.14.
