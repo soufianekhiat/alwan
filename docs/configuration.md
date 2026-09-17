@@ -216,10 +216,16 @@ table that can be left out: the spectral upsampling LUTs, the AgX cubes and
 curves, the quality-metric sample sets, the illuminant, observer and camera SPDs,
 the ACES RICD and the rawtoaces-data camera pack. Groups (`ALWAN_TABLES_AGX`,
 `ALWAN_TABLES_SPECTRAL`, `ALWAN_TABLES_SPD`, `ALWAN_TABLES_QUALITY`,
-`ALWAN_TABLES_CAMERAS`) and single tables have their own switches, listed in
-`src/alwan/data/alwan_data_tables_config.h`; each is on unless the minimal build
-turns it off. The SB2383 inset matrix always stays in, because
-`alwan_agx_default_params` has no way to report it missing.
+`ALWAN_TABLES_CAMERAS`, `ALWAN_TABLES_LIGHT_SOURCES`) and single tables have their
+own switches, listed in `src/alwan/data/alwan_data_tables_config.h`; each is on
+unless the minimal build turns it off. The SB2383 inset matrix always stays in,
+because `alwan_agx_default_params` has no way to report it missing.
+
+`ALWAN_TABLES_LIGHT_SOURCES` is the one group that is not simply a category. It
+covers the 56 measured lamps at the end of `alwan_illuminant`, which are more
+embedded data than every CIE illuminant put together, and it defaults to
+`ALWAN_TABLES_SPD` rather than to the minimal switch. Set it to 0 to keep the
+standard illuminant series and drop the lamp catalogue.
 
 The public surface does not depend on the configuration. A function whose table
 is out still links and returns `ALWAN_E_NODATA`; a count returns 0, and a metric

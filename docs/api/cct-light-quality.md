@@ -175,6 +175,10 @@ Ra is not clamped. CIE 13.3 lets it go well below zero for a source that renders
 -1 is a reachable score as well as this call's error value. Where that ambiguity matters,
 use `alwan_cri_specification`, which reports failure as a status.
 
+The `ALWAN_ILLUMINANT_LS_*` lamps are the set that exercises this. A discharge lamp with
+no continuum to speak of scores far below zero on Ra, and further below on R9, which is
+the reading those numbers exist to give.
+
 **Example:**
 ```c
 alwan_spd_f64 led_spd;

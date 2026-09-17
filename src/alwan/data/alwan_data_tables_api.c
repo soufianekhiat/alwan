@@ -977,6 +977,958 @@ alwan_f64 const alwan_table_spd_illuminant_id65_f64[ALWAN_TABLE_SPD_360_830_1NM_
 #endif
 
 #endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_NATURAL
+/* ---- alwan_table_spd_illuminant_ls_natural ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_NATURAL_360_830_1nm.csv (Natural) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_natural_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_NATURAL_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_natural_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_NATURAL_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHILIPS_TL84
+/* ---- alwan_table_spd_illuminant_ls_philips_tl84 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_PHILIPS_TL84_360_830_1nm.csv (Philips TL-84) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_philips_tl84_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHILIPS_TL84_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_philips_tl84_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHILIPS_TL84_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_SA
+/* ---- alwan_table_spd_illuminant_ls_sa ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_SA_360_830_1nm.csv (SA) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_sa_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_SA_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_sa_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_SA_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_SC
+/* ---- alwan_table_spd_illuminant_ls_sc ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_SC_360_830_1nm.csv (SC) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_sc_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_SC_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_sc_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_SC_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_T8_LUXLINE_PLUS_WHITE
+/* ---- alwan_table_spd_illuminant_ls_t8_luxline_plus_white ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_T8_LUXLINE_PLUS_WHITE_360_830_1nm.csv (T8 Luxline Plus White) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_t8_luxline_plus_white_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_T8_LUXLINE_PLUS_WHITE_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_t8_luxline_plus_white_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_T8_LUXLINE_PLUS_WHITE_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_T8_POLYLUX_3000
+/* ---- alwan_table_spd_illuminant_ls_t8_polylux_3000 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_T8_POLYLUX_3000_360_830_1nm.csv (T8 Polylux 3000) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_t8_polylux_3000_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_T8_POLYLUX_3000_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_t8_polylux_3000_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_T8_POLYLUX_3000_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_T8_POLYLUX_4000
+/* ---- alwan_table_spd_illuminant_ls_t8_polylux_4000 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_T8_POLYLUX_4000_360_830_1nm.csv (T8 Polylux 4000) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_t8_polylux_4000_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_T8_POLYLUX_4000_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_t8_polylux_4000_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_T8_POLYLUX_4000_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_THORN_KOLOR_RITE
+/* ---- alwan_table_spd_illuminant_ls_thorn_kolor_rite ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_THORN_KOLOR_RITE_360_830_1nm.csv (Thorn Kolor-rite) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_thorn_kolor_rite_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_THORN_KOLOR_RITE_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_thorn_kolor_rite_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_THORN_KOLOR_RITE_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_COOL_WHITE_FL
+/* ---- alwan_table_spd_illuminant_ls_cool_white_fl ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_COOL_WHITE_FL_360_830_1nm.csv (Cool White FL) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_cool_white_fl_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_COOL_WHITE_FL_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_cool_white_fl_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_COOL_WHITE_FL_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_DAYLIGHT_FL
+/* ---- alwan_table_spd_illuminant_ls_daylight_fl ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_DAYLIGHT_FL_360_830_1nm.csv (Daylight FL) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_daylight_fl_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_DAYLIGHT_FL_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_daylight_fl_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_DAYLIGHT_FL_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_HPS
+/* ---- alwan_table_spd_illuminant_ls_hps ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_HPS_360_830_1nm.csv (HPS) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_hps_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_HPS_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_hps_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_HPS_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_INCANDESCENT
+/* ---- alwan_table_spd_illuminant_ls_incandescent ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_INCANDESCENT_360_830_1nm.csv (Incandescent) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_incandescent_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_INCANDESCENT_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_incandescent_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_INCANDESCENT_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_LPS
+/* ---- alwan_table_spd_illuminant_ls_lps ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_LPS_360_830_1nm.csv (LPS) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_lps_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_LPS_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_lps_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_LPS_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_MERCURY
+/* ---- alwan_table_spd_illuminant_ls_mercury ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_MERCURY_360_830_1nm.csv (Mercury) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_mercury_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_MERCURY_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_mercury_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_MERCURY_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_METAL_HALIDE
+/* ---- alwan_table_spd_illuminant_ls_metal_halide ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_METAL_HALIDE_360_830_1nm.csv (Metal Halide) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_metal_halide_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_METAL_HALIDE_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_metal_halide_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_METAL_HALIDE_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_NEODIMIUM_INCANDESCENT
+/* ---- alwan_table_spd_illuminant_ls_neodimium_incandescent ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_NEODIMIUM_INCANDESCENT_360_830_1nm.csv (Neodimium Incandescent) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_neodimium_incandescent_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_NEODIMIUM_INCANDESCENT_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_neodimium_incandescent_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_NEODIMIUM_INCANDESCENT_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_SUPER_HPS
+/* ---- alwan_table_spd_illuminant_ls_super_hps ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_SUPER_HPS_360_830_1nm.csv (Super HPS) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_super_hps_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_SUPER_HPS_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_super_hps_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_SUPER_HPS_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_TRIPHOSPHOR_FL
+/* ---- alwan_table_spd_illuminant_ls_triphosphor_fl ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_TRIPHOSPHOR_FL_360_830_1nm.csv (Triphosphor FL) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_triphosphor_fl_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_TRIPHOSPHOR_FL_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_triphosphor_fl_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_TRIPHOSPHOR_FL_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_1
+/* ---- alwan_table_spd_illuminant_ls_3led_1 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_3LED_1_360_830_1nm.csv (3-LED-1 (457/540/605)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_3led_1_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_1_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_3led_1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_1_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_2
+/* ---- alwan_table_spd_illuminant_ls_3led_2 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_3LED_2_360_830_1nm.csv (3-LED-2 (473/545/616)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_3led_2_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_2_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_3led_2_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_2_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_2_YELLOW
+/* ---- alwan_table_spd_illuminant_ls_3led_2_yellow ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_3LED_2_YELLOW_360_830_1nm.csv (3-LED-2 Yellow) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_3led_2_yellow_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_2_YELLOW_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_3led_2_yellow_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_2_YELLOW_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_3
+/* ---- alwan_table_spd_illuminant_ls_3led_3 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_3LED_3_360_830_1nm.csv (3-LED-3 (465/546/614)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_3led_3_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_3_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_3led_3_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_3_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_4
+/* ---- alwan_table_spd_illuminant_ls_3led_4 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_3LED_4_360_830_1nm.csv (3-LED-4 (455/547/623)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_3led_4_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_4_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_3led_4_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_3LED_4_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_4LED_NO_YELLOW
+/* ---- alwan_table_spd_illuminant_ls_4led_no_yellow ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_4LED_NO_YELLOW_360_830_1nm.csv (4-LED No Yellow) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_4led_no_yellow_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_4LED_NO_YELLOW_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_4led_no_yellow_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_4LED_NO_YELLOW_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_4LED_YELLOW
+/* ---- alwan_table_spd_illuminant_ls_4led_yellow ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_4LED_YELLOW_360_830_1nm.csv (4-LED Yellow) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_4led_yellow_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_4LED_YELLOW_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_4led_yellow_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_4LED_YELLOW_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_4LED_1
+/* ---- alwan_table_spd_illuminant_ls_4led_1 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_4LED_1_360_830_1nm.csv (4-LED-1 (461/526/576/624)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_4led_1_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_4LED_1_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_4led_1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_4LED_1_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_4LED_2
+/* ---- alwan_table_spd_illuminant_ls_4led_2 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_4LED_2_360_830_1nm.csv (4-LED-2 (447/512/573/627)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_4led_2_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_4LED_2_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_4led_2_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_4LED_2_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_LUXEON_WW_2880
+/* ---- alwan_table_spd_illuminant_ls_luxeon_ww_2880 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_LUXEON_WW_2880_360_830_1nm.csv (Luxeon WW 2880) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_luxeon_ww_2880_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_LUXEON_WW_2880_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_luxeon_ww_2880_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_LUXEON_WW_2880_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOS_1
+/* ---- alwan_table_spd_illuminant_ls_phos_1 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_PHOS_1_360_830_1nm.csv (PHOS-1) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_phos_1_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOS_1_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_phos_1_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOS_1_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOS_2
+/* ---- alwan_table_spd_illuminant_ls_phos_2 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_PHOS_2_360_830_1nm.csv (PHOS-2) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_phos_2_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOS_2_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_phos_2_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOS_2_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOS_3
+/* ---- alwan_table_spd_illuminant_ls_phos_3 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_PHOS_3_360_830_1nm.csv (PHOS-3) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_phos_3_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOS_3_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_phos_3_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOS_3_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOS_4
+/* ---- alwan_table_spd_illuminant_ls_phos_4 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_PHOS_4_360_830_1nm.csv (PHOS-4) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_phos_4_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOS_4_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_phos_4_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOS_4_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOSPHOR_LED_YAG
+/* ---- alwan_table_spd_illuminant_ls_phosphor_led_yag ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_PHOSPHOR_LED_YAG_360_830_1nm.csv (Phosphor LED YAG) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_phosphor_led_yag_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOSPHOR_LED_YAG_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_phosphor_led_yag_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_PHOSPHOR_LED_YAG_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_60_AW_SOFT_WHITE
+/* ---- alwan_table_spd_illuminant_ls_60_aw_soft_white ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_60_AW_SOFT_WHITE_360_830_1nm.csv (60 A/W (Soft White)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_60_aw_soft_white_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_60_AW_SOFT_WHITE_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_60_aw_soft_white_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_60_AW_SOFT_WHITE_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_C100S54
+/* ---- alwan_table_spd_illuminant_ls_c100s54 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_C100S54_360_830_1nm.csv (C100S54 (HPS)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_c100s54_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_C100S54_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_c100s54_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_C100S54_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_C100S54C
+/* ---- alwan_table_spd_illuminant_ls_c100s54c ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_C100S54C_360_830_1nm.csv (C100S54C (HPS)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_c100s54c_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_C100S54C_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_c100s54c_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_C100S54C_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL830
+/* ---- alwan_table_spd_illuminant_ls_f32t8_tl830 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F32T8_TL830_360_830_1nm.csv (F32T8/TL830 (Triphosphor)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f32t8_tl830_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL830_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f32t8_tl830_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL830_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL835
+/* ---- alwan_table_spd_illuminant_ls_f32t8_tl835 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F32T8_TL835_360_830_1nm.csv (F32T8/TL835 (Triphosphor)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f32t8_tl835_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL835_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f32t8_tl835_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL835_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL841
+/* ---- alwan_table_spd_illuminant_ls_f32t8_tl841 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F32T8_TL841_360_830_1nm.csv (F32T8/TL841 (Triphosphor)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f32t8_tl841_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL841_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f32t8_tl841_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL841_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL850
+/* ---- alwan_table_spd_illuminant_ls_f32t8_tl850 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F32T8_TL850_360_830_1nm.csv (F32T8/TL850 (Triphosphor)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f32t8_tl850_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL850_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f32t8_tl850_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL850_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL865_PLUS
+/* ---- alwan_table_spd_illuminant_ls_f32t8_tl865_plus ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F32T8_TL865_PLUS_360_830_1nm.csv (F32T8/TL865/PLUS (Triphosphor)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f32t8_tl865_plus_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL865_PLUS_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f32t8_tl865_plus_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F32T8_TL865_PLUS_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F34_CW_RS_EW
+/* ---- alwan_table_spd_illuminant_ls_f34_cw_rs_ew ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F34_CW_RS_EW_360_830_1nm.csv (F34/CW/RS/EW (Cool White FL)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f34_cw_rs_ew_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F34_CW_RS_EW_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f34_cw_rs_ew_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F34_CW_RS_EW_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F34T12_LW_RS_EW
+/* ---- alwan_table_spd_illuminant_ls_f34t12_lw_rs_ew ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F34T12_LW_RS_EW_360_830_1nm.csv (F34T12/LW/RS/EW) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f34t12_lw_rs_ew_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F34T12_LW_RS_EW_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f34t12_lw_rs_ew_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F34T12_LW_RS_EW_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F34T12WW_RS_EW
+/* ---- alwan_table_spd_illuminant_ls_f34t12ww_rs_ew ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F34T12WW_RS_EW_360_830_1nm.csv (F34T12WW/RS/EW (Warm White FL)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f34t12ww_rs_ew_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F34T12WW_RS_EW_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f34t12ww_rs_ew_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F34T12WW_RS_EW_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_C50
+/* ---- alwan_table_spd_illuminant_ls_f40_c50 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F40_C50_360_830_1nm.csv (F40/C50 (Broadband FL)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f40_c50_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_C50_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f40_c50_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_C50_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_C75
+/* ---- alwan_table_spd_illuminant_ls_f40_c75 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F40_C75_360_830_1nm.csv (F40/C75 (Broadband FL)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f40_c75_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_C75_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f40_c75_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_C75_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_CWX
+/* ---- alwan_table_spd_illuminant_ls_f40_cwx ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F40_CWX_360_830_1nm.csv (F40/CWX (Broadband FL)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f40_cwx_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_CWX_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f40_cwx_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_CWX_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_DX
+/* ---- alwan_table_spd_illuminant_ls_f40_dx ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F40_DX_360_830_1nm.csv (F40/DX (Broadband FL)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f40_dx_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_DX_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f40_dx_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_DX_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_DXTP
+/* ---- alwan_table_spd_illuminant_ls_f40_dxtp ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F40_DXTP_360_830_1nm.csv (F40/DXTP (Delux FL)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f40_dxtp_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_DXTP_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f40_dxtp_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_DXTP_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_N
+/* ---- alwan_table_spd_illuminant_ls_f40_n ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_F40_N_360_830_1nm.csv (F40/N (Natural FL)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_f40_n_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_N_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_f40_n_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_F40_N_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_H38HT_100
+/* ---- alwan_table_spd_illuminant_ls_h38ht_100 ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_H38HT_100_360_830_1nm.csv (H38HT-100 (Mercury)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_h38ht_100_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_H38HT_100_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_h38ht_100_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_H38HT_100_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_H38JA_100_DX
+/* ---- alwan_table_spd_illuminant_ls_h38ja_100_dx ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_H38JA_100_DX_360_830_1nm.csv (H38JA-100/DX (Mercury DX)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_h38ja_100_dx_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_H38JA_100_DX_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_h38ja_100_dx_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_H38JA_100_DX_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_MHC100_U_MP_3K
+/* ---- alwan_table_spd_illuminant_ls_mhc100_u_mp_3k ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_MHC100_U_MP_3K_360_830_1nm.csv (MHC100/U/MP/3K) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_mhc100_u_mp_3k_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_MHC100_U_MP_3K_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_mhc100_u_mp_3k_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_MHC100_U_MP_3K_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_MHC100_U_MP_4K
+/* ---- alwan_table_spd_illuminant_ls_mhc100_u_mp_4k ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_MHC100_U_MP_4K_360_830_1nm.csv (MHC100/U/MP/4K) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_mhc100_u_mp_4k_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_MHC100_U_MP_4K_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_mhc100_u_mp_4k_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_MHC100_U_MP_4K_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_SDW_T_100W_LV
+/* ---- alwan_table_spd_illuminant_ls_sdw_t_100w_lv ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_SDW_T_100W_LV_360_830_1nm.csv (SDW-T 100W/LV (Super HPS)) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_sdw_t_100w_lv_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_SDW_T_100W_LV_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_sdw_t_100w_lv_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_SDW_T_100W_LV_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_KINOTON_75P
+/* ---- alwan_table_spd_illuminant_ls_kinoton_75p ----
+ * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/LS_KINOTON_75P_360_830_1nm.csv (Kinoton 75P) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_illuminant_ls_kinoton_75p_f32[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_KINOTON_75P_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_illuminant_ls_kinoton_75p_f64[ALWAN_TABLE_SPD_360_830_1NM_SIZE] = {
+#include "illuminants/LS_KINOTON_75P_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
 
 #if ALWAN_TABLE_CMF_CIE_1931_2DEG
 /* ---- alwan_table_cmf_cie_1931_2deg_x ----

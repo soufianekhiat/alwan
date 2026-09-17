@@ -418,31 +418,35 @@ same file, but they are neither declared in `alwan.h` nor listed in `alwan_expor
 They are unreachable from a DLL build and dead public symbols in a static one. Their data
 is reachable only through `alwan_data_get_illuminant_xy_{T}`.
 
-### xy coverage: 29 of 55 illuminants
+### xy coverage: 29 of 111 illuminants
 
-`alwan_illuminant` has 55 enumerators (0 = `ALWAN_ILLUMINANT_A` through
-54 = `ALWAN_ILLUMINANT_ID65`). The xy switch covers 29 of them.
+`alwan_illuminant` has 111 enumerators (0 = `ALWAN_ILLUMINANT_A` through
+110 = `ALWAN_ILLUMINANT_LS_KINOTON_75P`). The xy switch covers 29 of them.
 
 - **Has xy:** A, B, C, D40, D45, D50, D55, D60, D65, D75, D93, E, F2, F7, F11,
   LED_B1-LED_B5, LED_BH1, LED_RGB1, LED_V1, LED_V2, HP1-HP5.
-- **No xy (`ALWAN_E_INVALID`):** F1, F3, F4, F5, F6, F8, F9, F10, F12,
-  F3_1-F3_15, ID50, ID65.
+- **No xy:** F1, F3, F4, F5, F6, F8, F9, F10, F12, F3_1-F3_15, ID50, ID65, and
+  all 56 `LS_` measured light sources.
+
+`alwan_data_get_illuminant_xy_{T}` returns `ALWAN_E_INVALID` for the other 82. That is
+the accessor's own answer, and it is narrow: it means there is no pinned chromaticity
+pair, not that the illuminant is unknown.
 
 An illuminant with no xy still has data. `alwan_spd_illuminant_{T}` carries a full
-471-sample SPD (360-830 nm at 1 nm) for all 55 values, F1 through F12 and the
-FL3.x set included.
+471-sample SPD (360-830 nm at 1 nm) for all 111 values.
 
-The failure is observer-dependent and it propagates.
-`alwan_illuminant_white_point_{T}` takes the xy path when
-`observer == ALWAN_OBSERVER_CIE_1931_2DEG` and the SPD-integration path for every other
-observer, so the nine fluorescents without xy return `ALWAN_E_INVALID` for the 2-degree
-observer and succeed for a 10-degree one. Downstream,
+`alwan_illuminant_white_point_{T}` reads the xy pair when
+`observer == ALWAN_OBSERVER_CIE_1931_2DEG` and there is one, because two divisions beat
+integrating 471 samples. When there is not, it integrates the SPD against the observer,
+which is what it does for every other observer anyway. So the white point is available
+for all 111 illuminants under all observers, and nothing downstream is
+observer-dependent: both
 `alwan_color_checker_data_{T}(&xyz, ALWAN_COLORCHECKER_CLASSIC, ALWAN_ILLUMINANT_F1, i)`
-fails with `ALWAN_E_INVALID` (the tristimulus path needs a 2-degree white point to build
-the adaptation), while
-`alwan_color_checker_data_{T}(&xyz, ALWAN_COLORCHECKER_CLASSIC_OHTA, ALWAN_ILLUMINANT_F1, i)`
-succeeds (the spectral path needs only the SPD). The same public call answers or refuses
-depending on which target you asked about.
+and its `_OHTA` twin answer.
+
+Before 3.0.0 the 2-degree branch returned `ALWAN_E_INVALID` rather than falling through,
+so those 82 illuminants failed under the most common observer while working under every
+other one. Suite 153 now holds all 111 white points to a reference.
 
 ---
 

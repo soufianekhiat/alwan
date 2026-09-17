@@ -134,6 +134,51 @@ All notable changes to this project will be documented in this file.
   silently duplicating another, which is the way fifteen illuminant tables once shipped as
   copies of D65.
 
+- **Fifty-six light sources from colour-science.** `alwan_illuminant` goes from 55 values
+  to 111, taking in `SDS_LIGHT_SOURCES` under colour's own names: eight from RIT's
+  PointerData spreadsheet, then the traditional, LED and Philips sheets of NIST's CQS
+  simulation 7.4, and a Kinoton 75P xenon projector lamp.
+
+  Every identifier carries an `LS_` prefix, which keeps all 56 apart from the standards.
+  That matters most for two of them. `LS_SA` and `LS_SC` are not lamps: they are CIE
+  illuminants A and C as the RIT spreadsheet tabulates them, matching
+  `ALWAN_ILLUMINANT_A` to 5e-4 and `ALWAN_ILLUMINANT_C` exactly over 380-780nm. Below 380nm
+  they are the flat hold where A and C carry real data, so prefer A and C. Unprefixed,
+  `ALWAN_ILLUMINANT_SA` would sit beside `ALWAN_ILLUMINANT_A` as an apparent peer.
+
+  `LS_INCANDESCENT` and `LS_60_AW_SOFT_WHITE` are one measurement. colour ships them
+  bit-identical, from two sheets of the same NIST spreadsheet. Both keep a value, so every
+  entry stays reachable by the name colour gives it.
+
+  Each carries a full 471-sample SPD at 360-830nm and 1nm, on the same grid and by the
+  same rule as the 55 before it. The sources are measured at 380-780nm, so each table is a
+  flat hold over the 20nm below and the 50nm above, which is the convention the FL3.x and
+  ID entries use and less extrapolation than the CIE F series already carries.
+
+  They share one group switch, `ALWAN_TABLE_SPD_ILLUMINANT_LS_*` defaulting to
+  `ALWAN_TABLES_LIGHT_SOURCES` rather than `ALWAN_TABLES_SPD`. Fifty-six 471-sample tables
+  in two precisions is more embedded data than every CIE illuminant put together, so a
+  build that wants the standard series and not the lamp catalogue drops them with one
+  define and still has D65.
+
+  Suite 153 holds their white points and CCTs to colour-science, checks each SPD is
+  non-negative and flat outside the measured range, checks `LS_SA` and `LS_SC` against A
+  and C in both directions, and checks no two tables are bit-identical bar the known pair.
+
+- **`alwan_illuminant_white_point_{T}` answers for every illuminant.** It took a shortcut
+  for `ALWAN_OBSERVER_CIE_1931_2DEG`, reading a pinned xy chromaticity pair rather than
+  integrating, and returned `ALWAN_E_INVALID` when the illuminant had no such pair. Only 29
+  do, so 26 shipped illuminants, every FL3.x and both indoor daylights among them, failed
+  under the most common observer while succeeding under every other one.
+
+  It now falls through to the SPD integration it already used for other observers. The xy
+  shortcut is kept where the data exists, because two divisions beat integrating 471
+  samples. Suite 153 walks all 111 values in both precisions.
+
+  `alwan_data_get_illuminant_xy_{T}` is unchanged and still answers `ALWAN_E_INVALID` for
+  an illuminant with no pinned pair. That is the accessor's own contract: no chromaticity
+  pair is pinned, not no such illuminant.
+
 - **Otsu et al. 2018 spectral recovery.** `alwan_xyz_to_spectrum_otsu2018_{T}` recovers a
   reflectance from a tristimulus value: a decision tree over CIE xy picks one of eight
   clusters, and the answer is that cluster's mean plus a weighted sum of its three basis

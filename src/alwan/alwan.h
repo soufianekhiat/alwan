@@ -638,7 +638,90 @@ typedef enum {
 
     /* Indoor daylight */
     ALWAN_ILLUMINANT_ID50 = 53, /* Indoor daylight 5000K */
-    ALWAN_ILLUMINANT_ID65 = 54  /* Indoor daylight 6500K */
+    ALWAN_ILLUMINANT_ID65 = 54, /* Indoor daylight 6500K */
+
+    /* Light sources from colour-science SDS_LIGHT_SOURCES, reachable by colour's own
+     * names. Most are real lamps as measured. Each is 380-780nm held flat across the
+     * rest of the 360-830nm table range, the convention the F3.x and ID entries use.
+     *
+     * Two are not lamps. LS_SA and LS_SC are CIE illuminants A and C as tabulated in
+     * RIT's PointerData spreadsheet: over 380-780nm they match ALWAN_ILLUMINANT_A to
+     * 5e-4 and ALWAN_ILLUMINANT_C exactly. Below 380nm they are the flat hold, where
+     * A and C carry real data, so prefer ALWAN_ILLUMINANT_A and _C. colour warns that
+     * the RIT spreadsheet names no source and its names cannot be verified.
+     *
+     * LS_INCANDESCENT and LS_60_AW_SOFT_WHITE are one measurement: colour ships them
+     * bit-identical, from two sheets of one NIST spreadsheet. Both keep a value so
+     * every entry stays reachable by colour's name.
+     *
+     * The LS_ prefix keeps all 56 apart from the standards above, including the two
+     * that are those standards by a second, lower-fidelity route. */
+
+    /* RIT PointerData spreadsheet (Pointer 1980); names unverified upstream */
+    ALWAN_ILLUMINANT_LS_NATURAL = 55, /* Natural */
+    ALWAN_ILLUMINANT_LS_PHILIPS_TL84 = 56, /* Philips TL-84 */
+    ALWAN_ILLUMINANT_LS_SA = 57, /* SA: CIE A, 380-780nm only; prefer ALWAN_ILLUMINANT_A */
+    ALWAN_ILLUMINANT_LS_SC = 58, /* SC: CIE C, 380-780nm only; prefer ALWAN_ILLUMINANT_C */
+    ALWAN_ILLUMINANT_LS_T8_LUXLINE_PLUS_WHITE = 59, /* T8 Luxline Plus White */
+    ALWAN_ILLUMINANT_LS_T8_POLYLUX_3000 = 60, /* T8 Polylux 3000 */
+    ALWAN_ILLUMINANT_LS_T8_POLYLUX_4000 = 61, /* T8 Polylux 4000 */
+    ALWAN_ILLUMINANT_LS_THORN_KOLOR_RITE = 62, /* Thorn Kolor-rite */
+
+    /* NIST CQS simulation 7.4, traditional sources */
+    ALWAN_ILLUMINANT_LS_COOL_WHITE_FL = 63, /* Cool White FL */
+    ALWAN_ILLUMINANT_LS_DAYLIGHT_FL = 64, /* Daylight FL */
+    ALWAN_ILLUMINANT_LS_HPS = 65, /* HPS */
+    ALWAN_ILLUMINANT_LS_INCANDESCENT = 66, /* Incandescent; same data as LS_60_AW_SOFT_WHITE */
+    ALWAN_ILLUMINANT_LS_LPS = 67, /* LPS */
+    ALWAN_ILLUMINANT_LS_MERCURY = 68, /* Mercury */
+    ALWAN_ILLUMINANT_LS_METAL_HALIDE = 69, /* Metal Halide */
+    ALWAN_ILLUMINANT_LS_NEODIMIUM_INCANDESCENT = 70, /* Neodimium Incandescent */
+    ALWAN_ILLUMINANT_LS_SUPER_HPS = 71, /* Super HPS */
+    ALWAN_ILLUMINANT_LS_TRIPHOSPHOR_FL = 72, /* Triphosphor FL */
+
+    /* NIST CQS simulation 7.4, LED sources */
+    ALWAN_ILLUMINANT_LS_3LED_1 = 73, /* 3-LED-1 (457/540/605) */
+    ALWAN_ILLUMINANT_LS_3LED_2 = 74, /* 3-LED-2 (473/545/616) */
+    ALWAN_ILLUMINANT_LS_3LED_2_YELLOW = 75, /* 3-LED-2 Yellow */
+    ALWAN_ILLUMINANT_LS_3LED_3 = 76, /* 3-LED-3 (465/546/614) */
+    ALWAN_ILLUMINANT_LS_3LED_4 = 77, /* 3-LED-4 (455/547/623) */
+    ALWAN_ILLUMINANT_LS_4LED_NO_YELLOW = 78, /* 4-LED No Yellow */
+    ALWAN_ILLUMINANT_LS_4LED_YELLOW = 79, /* 4-LED Yellow */
+    ALWAN_ILLUMINANT_LS_4LED_1 = 80, /* 4-LED-1 (461/526/576/624) */
+    ALWAN_ILLUMINANT_LS_4LED_2 = 81, /* 4-LED-2 (447/512/573/627) */
+    ALWAN_ILLUMINANT_LS_LUXEON_WW_2880 = 82, /* Luxeon WW 2880 */
+    ALWAN_ILLUMINANT_LS_PHOS_1 = 83, /* PHOS-1 */
+    ALWAN_ILLUMINANT_LS_PHOS_2 = 84, /* PHOS-2 */
+    ALWAN_ILLUMINANT_LS_PHOS_3 = 85, /* PHOS-3 */
+    ALWAN_ILLUMINANT_LS_PHOS_4 = 86, /* PHOS-4 */
+    ALWAN_ILLUMINANT_LS_PHOSPHOR_LED_YAG = 87, /* Phosphor LED YAG */
+
+    /* NIST CQS simulation 7.4, Philips sources */
+    ALWAN_ILLUMINANT_LS_60_AW_SOFT_WHITE = 88, /* 60 A/W (Soft White); same data as LS_INCANDESCENT */
+    ALWAN_ILLUMINANT_LS_C100S54 = 89, /* C100S54 (HPS) */
+    ALWAN_ILLUMINANT_LS_C100S54C = 90, /* C100S54C (HPS) */
+    ALWAN_ILLUMINANT_LS_F32T8_TL830 = 91, /* F32T8/TL830 (Triphosphor) */
+    ALWAN_ILLUMINANT_LS_F32T8_TL835 = 92, /* F32T8/TL835 (Triphosphor) */
+    ALWAN_ILLUMINANT_LS_F32T8_TL841 = 93, /* F32T8/TL841 (Triphosphor) */
+    ALWAN_ILLUMINANT_LS_F32T8_TL850 = 94, /* F32T8/TL850 (Triphosphor) */
+    ALWAN_ILLUMINANT_LS_F32T8_TL865_PLUS = 95, /* F32T8/TL865/PLUS (Triphosphor) */
+    ALWAN_ILLUMINANT_LS_F34_CW_RS_EW = 96, /* F34/CW/RS/EW (Cool White FL) */
+    ALWAN_ILLUMINANT_LS_F34T12_LW_RS_EW = 97, /* F34T12/LW/RS/EW */
+    ALWAN_ILLUMINANT_LS_F34T12WW_RS_EW = 98, /* F34T12WW/RS/EW (Warm White FL) */
+    ALWAN_ILLUMINANT_LS_F40_C50 = 99, /* F40/C50 (Broadband FL) */
+    ALWAN_ILLUMINANT_LS_F40_C75 = 100, /* F40/C75 (Broadband FL) */
+    ALWAN_ILLUMINANT_LS_F40_CWX = 101, /* F40/CWX (Broadband FL) */
+    ALWAN_ILLUMINANT_LS_F40_DX = 102, /* F40/DX (Broadband FL) */
+    ALWAN_ILLUMINANT_LS_F40_DXTP = 103, /* F40/DXTP (Delux FL) */
+    ALWAN_ILLUMINANT_LS_F40_N = 104, /* F40/N (Natural FL) */
+    ALWAN_ILLUMINANT_LS_H38HT_100 = 105, /* H38HT-100 (Mercury) */
+    ALWAN_ILLUMINANT_LS_H38JA_100_DX = 106, /* H38JA-100/DX (Mercury DX) */
+    ALWAN_ILLUMINANT_LS_MHC100_U_MP_3K = 107, /* MHC100/U/MP/3K */
+    ALWAN_ILLUMINANT_LS_MHC100_U_MP_4K = 108, /* MHC100/U/MP/4K */
+    ALWAN_ILLUMINANT_LS_SDW_T_100W_LV = 109, /* SDW-T 100W/LV (Super HPS) */
+
+    /* Projectors and xenon arc lamps */
+    ALWAN_ILLUMINANT_LS_KINOTON_75P = 110 /* Kinoton 75P */
 } alwan_illuminant;
 
 /* Enum-based illuminant xy chromaticity accessor

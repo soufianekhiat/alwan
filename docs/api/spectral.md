@@ -73,7 +73,28 @@ int alwan_spd_illuminant_f64(alwan_spd_f64 *out,
                              alwan_ctx *ctx);
 ```
 
-Load a standard illuminant SPD (e.g. `ALWAN_ILLUMINANT_D65`) by enum. Returns `ALWAN_E_INVALID` if the illuminant is not supported.
+Load an illuminant SPD (e.g. `ALWAN_ILLUMINANT_D65`) by enum, 471 samples over
+360-830 nm at 1 nm. Returns `ALWAN_E_INVALID` for an enum value out of range, and
+`ALWAN_E_NODATA` when the value is valid but its table was compiled out.
+
+`alwan_illuminant` holds 111 values in two groups. 0 to 54 are the CIE standards:
+A, B, C, the D series, E, F1 to F12, FL3.1 to FL3.15 (spelled `F3_1` to `F3_15`,
+and not variants of `F3`), the LED and HP discharge series, and the indoor
+daylights ID50 and ID65. 55 to 110 are `ALWAN_ILLUMINANT_LS_*`, colour-science's
+`SDS_LIGHT_SOURCES` under colour's own names, most of them real lamps as measured.
+
+The `LS_` prefix keeps them apart from the standards, and two of them show why.
+`LS_SA` and `LS_SC` are CIE illuminants A and C as tabulated in RIT's PointerData
+spreadsheet: over 380-780 nm they match `ALWAN_ILLUMINANT_A` to 5e-4 and
+`ALWAN_ILLUMINANT_C` exactly. Below 380 nm they are the flat hold, while A and C
+carry real data, so use A and C. They exist so a lookup by colour's name finds
+something.
+
+`LS_INCANDESCENT` and `LS_60_AW_SOFT_WHITE` return identical tables. colour ships
+them that way, from two sheets of one NIST spreadsheet.
+
+Every `LS_` source is tabulated over 380-780 nm and held flat over the rest of the
+360-830 nm range. They share one compile switch, `ALWAN_TABLES_LIGHT_SOURCES`.
 
 ### alwan_spd_blackbody
 

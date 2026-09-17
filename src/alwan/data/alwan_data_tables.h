@@ -392,6 +392,182 @@ ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_id50, ALWAN_TABLE_SPD_360_830_1NM_
 #if ALWAN_TABLE_SPD_ILLUMINANT_ID65
 ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_id65, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
 #endif
+/* ---- spd_illuminant_ls_* -- rank 1, 471 ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata, colour-science SDS_LIGHT_SOURCES, the 56 measured lamps
+ *         resampled to 360-830nm at 1nm. Same extent and reader as the illuminant
+ *         tables above; their own group switch, ALWAN_TABLES_LIGHT_SOURCES.
+ * Declared in the order api/alwan_spd_impl.inc switches on, which is colour's own
+ * iteration order over the set. */
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_NATURAL
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_natural, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHILIPS_TL84
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_philips_tl84, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_SA
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_sa, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_SC
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_sc, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_T8_LUXLINE_PLUS_WHITE
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_t8_luxline_plus_white, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_T8_POLYLUX_3000
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_t8_polylux_3000, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_T8_POLYLUX_4000
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_t8_polylux_4000, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_THORN_KOLOR_RITE
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_thorn_kolor_rite, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_COOL_WHITE_FL
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_cool_white_fl, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_DAYLIGHT_FL
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_daylight_fl, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_HPS
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_hps, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_INCANDESCENT
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_incandescent, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_LPS
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_lps, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_MERCURY
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_mercury, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_METAL_HALIDE
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_metal_halide, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_NEODIMIUM_INCANDESCENT
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_neodimium_incandescent, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_SUPER_HPS
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_super_hps, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_TRIPHOSPHOR_FL
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_triphosphor_fl, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_1
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_3led_1, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_2
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_3led_2, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_2_YELLOW
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_3led_2_yellow, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_3
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_3led_3, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_3LED_4
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_3led_4, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_4LED_NO_YELLOW
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_4led_no_yellow, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_4LED_YELLOW
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_4led_yellow, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_4LED_1
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_4led_1, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_4LED_2
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_4led_2, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_LUXEON_WW_2880
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_luxeon_ww_2880, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOS_1
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_phos_1, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOS_2
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_phos_2, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOS_3
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_phos_3, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOS_4
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_phos_4, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_PHOSPHOR_LED_YAG
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_phosphor_led_yag, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_60_AW_SOFT_WHITE
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_60_aw_soft_white, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_C100S54
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_c100s54, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_C100S54C
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_c100s54c, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL830
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f32t8_tl830, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL835
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f32t8_tl835, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL841
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f32t8_tl841, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL850
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f32t8_tl850, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F32T8_TL865_PLUS
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f32t8_tl865_plus, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F34_CW_RS_EW
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f34_cw_rs_ew, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F34T12_LW_RS_EW
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f34t12_lw_rs_ew, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F34T12WW_RS_EW
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f34t12ww_rs_ew, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_C50
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f40_c50, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_C75
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f40_c75, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_CWX
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f40_cwx, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_DX
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f40_dx, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_DXTP
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f40_dxtp, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_F40_N
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_f40_n, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_H38HT_100
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_h38ht_100, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_H38JA_100_DX
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_h38ja_100_dx, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_MHC100_U_MP_3K
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_mhc100_u_mp_3k, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_MHC100_U_MP_4K
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_mhc100_u_mp_4k, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_SDW_T_100W_LV
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_sdw_t_100w_lv, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ILLUMINANT_LS_KINOTON_75P
+ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_kinoton_75p, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
+#endif
+
 
 /* ---- cmf_cie_1931_2deg x/y/z -- rank 1, 471, INTEGER row ----
  * Reader: alwan_table1d_row_{f32,f64}
