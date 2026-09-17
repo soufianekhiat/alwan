@@ -629,11 +629,11 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 153, all passing |
-| Test cases | 1,001 |
-| Checks executed per run | 121,574 |
-| Assertion sites in the tests | 3,728 |
+| Test cases | 1,003 |
+| Checks executed per run | 121,594 |
+| Assertion sites in the tests | 3,740 |
 | Reference datasets (colour-science, OCIO, ACES-dev) | 421 |
-| Embedded data tables | 850 |
+| Embedded data tables | 844 |
 | Exported symbols | 1,827 |
 | Internal symbols reached by a test or a public entry point | 157 of 181 (87%) |
 | Build configurations exercised | 8 |
@@ -642,9 +642,9 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**121,574 checks per run** is what actually executes, not what is written. A
+**121,594 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 3,728 assertion sites would undersell the suite more than
+so counting the 3,740 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
