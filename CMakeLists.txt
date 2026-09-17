@@ -155,6 +155,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_math.c
   src/alwan/api/alwan_spline.c
   src/alwan/api/alwan_film.c
+  src/alwan/experimental/alwan_film_halation.c
   src/alwan/map/alwan_spectrum_upsample_map.c
   src/alwan/api/alwan_oklab.c
   src/alwan/map/alwan_oklab_map.c

@@ -506,7 +506,16 @@ EXPORTS
     alwan_film_expose_f64
     alwan_film_get_profile_f32
     alwan_film_get_profile_f64
+    alwan_film_halation_f32
+    alwan_film_halation_f64
+    alwan_film_halation_kernel_f32
+    alwan_film_halation_kernel_f64
+    alwan_film_halation_params_default
     alwan_film_look_default
+    alwan_film_look_expose_f32_map_interleave
+    alwan_film_look_expose_f64_map_interleave
+    alwan_film_look_finish_f32_map_interleave
+    alwan_film_look_finish_f64_map_interleave
     alwan_film_print_f32
     alwan_film_print_f64
     alwan_film_printer_light_f32

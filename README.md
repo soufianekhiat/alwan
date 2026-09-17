@@ -312,7 +312,9 @@ Low-level colour science operations:
 - RGB->spectrum upsampling: Smits 1999, Mallett 2019, Jakob & Hanika 2019
 - Film: 14 profiled stocks (Vision3, Portra, Ektar, Eterna, 5222, 2383, 2393,
   3513DI, 2302, Ektachrome 100D, Velvia 50), scene spectrum to negative to print
-  to projection, ISO 5-3 status densitometry, held to spectral_film_lut
+  to projection, ISO 5-3 status densitometry, held to spectral_film_lut; a look
+  on scene-linear footage as shot; halation from a derived base-reflection
+  kernel (experimental)
 - Hero wavelength sampling for spectral renderers
 - Gamut mapping (8 core algorithms + HDR ICtCp/JzCzHz mappers),
   matrix-determinant volume estimation, coverage analysis
@@ -631,13 +633,13 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 158, all passing |
-| Test cases | 1,025 |
-| Checks executed per run | 132,280 |
-| Assertion sites in the tests | 3,994 |
+| Test suites | 159, all passing |
+| Test cases | 1,029 |
+| Checks executed per run | 137,218 |
+| Assertion sites in the tests | 4,076 |
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 425 |
 | Embedded data tables | 874 |
-| Exported symbols | 1,863 |
+| Exported symbols | 1,875 |
 | Internal symbols reached by a test or a public entry point | 157 of 181 (87%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -645,9 +647,9 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**132,280 checks per run** is what actually executes, not what is written. A
+**137,218 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 3,994 assertion sites would undersell the suite more than
+so counting the 4,076 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.

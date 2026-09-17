@@ -532,86 +532,175 @@ static alwan_status ALWAN_CORE_FN(film_look_light)(alwan_illuminant which, ALWAN
 #endif
 }
 
-alwan_status ALWAN_FILM_MAPNAME(alwan_film_render_rgb, ALWAN_CORE_SUFFIX)(
-        ALWAN_CORE_T *xyz_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count,
-        alwan_film_look const *look, alwan_ctx *ctx) {
+/* Everything a look resolves once: the two profiles, the light, the calibration, the
+ * printer light and the white the output is relative to. */
+typedef struct {
     ALWAN_CORE_FILM_PROFILE neg, prt;
-    ALWAN_CORE_FILM_PROFILE const *final;
-    ALWAN_CORE_T light[ALWAN_FILM_BANDS], grey[ALWAN_FILM_BANDS], printer[ALWAN_FILM_BANDS], factors[3];
-    ALWAN_CORE_T white_y, gain;
-    alwan_status st;
-    size_t bands = 0, off;
-    int has_print, k;
+    int has_print;
+    ALWAN_CORE_T light[ALWAN_FILM_BANDS], grey[ALWAN_FILM_BANDS], printer[ALWAN_FILM_BANDS];
+    ALWAN_CORE_T factors[3], white_y;
+} ALWAN_CORE_FN(film_look_state);
 
-    if (!xyz_out || !rgb_in || !look || count == 0) return ALWAN_E_INVALID;
-    st = ALWAN_CORE_FNLIT(alwan_film_get_profile)(&neg, look->negative);
+static alwan_status ALWAN_CORE_FN(film_look_setup)(ALWAN_CORE_FN(film_look_state) *s, alwan_film_look const *look,
+                                                   alwan_ctx *ctx) {
+    ALWAN_CORE_T gain;
+    alwan_status st;
+    size_t bands = 0;
+    int k;
+    st = ALWAN_CORE_FNLIT(alwan_film_get_profile)(&s->neg, look->negative);
     if (st != ALWAN_OK) return st;
-    has_print = look->print != ALWAN_FILM_NONE;
-    if (has_print) {
-        st = ALWAN_CORE_FNLIT(alwan_film_get_profile)(&prt, look->print);
+    s->has_print = look->print != ALWAN_FILM_NONE;
+    if (s->has_print) {
+        st = ALWAN_CORE_FNLIT(alwan_film_get_profile)(&s->prt, look->print);
         if (st != ALWAN_OK) return st;
     }
-    final = has_print ? &prt : &neg;
-
     /* The Jakob cubes for this gamut, and that they are 85 bands 360-780 at 5 nm. */
     st = ALWAN_FILM_MAPNAME(alwan_rgb_to_spectrum_jakob2019, ALWAN_CORE_SUFFIX)(NULL, 0, NULL, 0, 0, &bands, look->gamut);
     if (st != ALWAN_OK) return st;
     if (bands != ALWAN__FILM_JAKOB_BANDS) return ALWAN_E_NODATA;
-
-    st = ALWAN_CORE_FN(film_look_light)(look->light, final, light, grey, &white_y, ctx);
+    st = ALWAN_CORE_FN(film_look_light)(look->light, s->has_print ? &s->prt : &s->neg, s->light, s->grey, &s->white_y, ctx);
     if (st != ALWAN_OK) return st;
-
-    st = ALWAN_CORE_FNLIT(alwan_film_calibrate)(factors, &neg, grey, NULL);
+    st = ALWAN_CORE_FNLIT(alwan_film_calibrate)(s->factors, &s->neg, s->grey, NULL);
     if (st != ALWAN_OK) return st;
     if (!look->balance_on_grey) {
         /* One scale for every layer, the green layer's: the stock keeps its own balance. */
-        factors[0] = factors[1];
-        factors[2] = factors[1];
+        s->factors[0] = s->factors[1];
+        s->factors[2] = s->factors[1];
     }
     gain = ALWAN_CORE_EXP((ALWAN_CORE_T)look->stops * ALWAN_CORE_LITERAL(0.6931471805599453));
-    for (k = 0; k < 3; k++) factors[k] *= gain;
-    if (has_print) {
-        st = ALWAN_CORE_FNLIT(alwan_film_printer_light)(printer, &neg, &prt, (ALWAN_CORE_T)look->red,
+    for (k = 0; k < 3; k++) s->factors[k] *= gain;
+    if (s->has_print) {
+        st = ALWAN_CORE_FNLIT(alwan_film_printer_light)(s->printer, &s->neg, &s->prt, (ALWAN_CORE_T)look->red,
                                                         (ALWAN_CORE_T)look->green, (ALWAN_CORE_T)look->blue);
         if (st != ALWAN_OK) return st;
     }
+    return ALWAN_OK;
+}
 
+/* One tile of RGB to linear layer exposures H, three per pixel, calibrated and pushed.
+ * The same product alwan_film_expose forms, stopped before the floor and the log. */
+static alwan_status ALWAN_CORE_FN(film_look_expose_tile)(ALWAN_CORE_FN(film_look_state) const *s,
+                                                         alwan_film_look const *look, ALWAN_CORE_T const *rgb_in,
+                                                         size_t in_stride, size_t off, size_t tile, ALWAN_CORE_T *h_out,
+                                                         size_t h_stride) {
+    ALWAN_CORE_T unit[ALWAN__FILM_RGB_TILE * 3], m[ALWAN__FILM_RGB_TILE];
+    ALWAN_CORE_T cube[ALWAN__FILM_RGB_TILE * ALWAN__FILM_JAKOB_BANDS];
+    size_t bands = ALWAN__FILM_JAKOB_BANDS, i;
+    alwan_status st;
+    int k, c;
+    for (i = 0; i < tile; i++) {
+        ALWAN_CORE_T const *px = (ALWAN_CORE_T const *)((char const *)rgb_in + (off + i) * in_stride);
+        ALWAN_CORE_T r = px[0] > ALWAN_CORE_LITERAL(0.0) ? px[0] : ALWAN_CORE_LITERAL(0.0);
+        ALWAN_CORE_T g = px[1] > ALWAN_CORE_LITERAL(0.0) ? px[1] : ALWAN_CORE_LITERAL(0.0);
+        ALWAN_CORE_T b = px[2] > ALWAN_CORE_LITERAL(0.0) ? px[2] : ALWAN_CORE_LITERAL(0.0);
+        ALWAN_CORE_T mx = r > g ? r : g;
+        if (b > mx) mx = b;
+        if (mx < ALWAN_CORE_LITERAL(1.0)) mx = ALWAN_CORE_LITERAL(1.0);
+        m[i] = mx;
+        unit[i * 3 + 0] = r / mx;
+        unit[i * 3 + 1] = g / mx;
+        unit[i * 3 + 2] = b / mx;
+    }
+    st = ALWAN_FILM_MAPNAME(alwan_rgb_to_spectrum_jakob2019, ALWAN_CORE_SUFFIX)(
+        cube, ALWAN__FILM_JAKOB_BANDS * sizeof(ALWAN_CORE_T), unit, 3 * sizeof(ALWAN_CORE_T), tile, &bands, look->gamut);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < tile; i++) {
+        ALWAN_CORE_T spd[ALWAN_FILM_BANDS];
+        ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)h_out + i * h_stride);
+        for (k = 0; k < ALWAN_FILM_BANDS; k++) {
+            /* 380 + 10 k nm is band 4 + 2 k of the 360-780 nm at 5 nm cube. */
+            spd[k] = cube[i * ALWAN__FILM_JAKOB_BANDS + 4 + 2 * k] * m[i] * s->light[k];
+        }
+        for (c = 0; c < s->neg.layers; c++) {
+            o[c] = ALWAN_CORE_FN(film_layer_exposure)(&s->neg, spd, NULL, c) * s->factors[c];
+        }
+        for (; c < 3; c++) o[c] = o[0];
+    }
+    return ALWAN_OK;
+}
+
+/* One pixel from linear layer exposures to XYZ relative to the clear base: the floor
+ * and the log alwan_film_expose applies, then develop, print and project. */
+static alwan_status ALWAN_CORE_FN(film_look_finish_pixel)(ALWAN_CORE_FN(film_look_state) const *s,
+                                                          ALWAN_CORE_T const h[3], ALWAN_CORE_T o[3]) {
+    ALWAN_CORE_T log_h[3], d[3], dp[3];
+    ALWAN_CORE_XYZ xyz;
+    alwan_status st;
+    int c;
+    for (c = 0; c < 3; c++) {
+        ALWAN_CORE_T v = h[c];
+        if (v < ALWAN_CORE_LITERAL(1e-16)) v = ALWAN_CORE_LITERAL(1e-16);
+        log_h[c] = ALWAN_CORE_LOG10(v);
+    }
+    st = ALWAN_CORE_FNLIT(alwan_film_develop)(d, &s->neg, log_h, s->neg.color_masking != ALWAN_CORE_LITERAL(0.0));
+    if (st != ALWAN_OK) return st;
+    if (s->has_print) {
+        st = ALWAN_CORE_FNLIT(alwan_film_print)(dp, &s->neg, d, &s->prt, s->printer);
+        if (st != ALWAN_OK) return st;
+        st = ALWAN_CORE_FNLIT(alwan_film_project)(&xyz, &s->prt, dp, s->light);
+    } else {
+        st = ALWAN_CORE_FNLIT(alwan_film_project)(&xyz, &s->neg, d, s->light);
+    }
+    if (st != ALWAN_OK) return st;
+    o[0] = xyz.x / s->white_y;
+    o[1] = xyz.y / s->white_y;
+    o[2] = xyz.z / s->white_y;
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_FILM_MAPNAME(alwan_film_look_expose, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *exposure_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count,
+        alwan_film_look const *look, alwan_ctx *ctx) {
+    ALWAN_CORE_FN(film_look_state) s;
+    alwan_status st;
+    size_t off;
+    if (!exposure_out || !rgb_in || !look || count == 0) return ALWAN_E_INVALID;
+    st = ALWAN_CORE_FN(film_look_setup)(&s, look, ctx);
+    if (st != ALWAN_OK) return st;
     for (off = 0; off < count; off += ALWAN__FILM_RGB_TILE) {
-        ALWAN_CORE_T unit[ALWAN__FILM_RGB_TILE * 3], m[ALWAN__FILM_RGB_TILE];
-        ALWAN_CORE_T cube[ALWAN__FILM_RGB_TILE * ALWAN__FILM_JAKOB_BANDS];
+        size_t const tile = count - off < ALWAN__FILM_RGB_TILE ? count - off : ALWAN__FILM_RGB_TILE;
+        st = ALWAN_CORE_FN(film_look_expose_tile)(&s, look, rgb_in, in_stride, off, tile,
+                                                  (ALWAN_CORE_T *)((char *)exposure_out + off * out_stride), out_stride);
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_FILM_MAPNAME(alwan_film_look_finish, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *xyz_out, size_t out_stride, ALWAN_CORE_T const *exposure_in, size_t in_stride, size_t count,
+        alwan_film_look const *look, alwan_ctx *ctx) {
+    ALWAN_CORE_FN(film_look_state) s;
+    alwan_status st;
+    size_t i;
+    if (!xyz_out || !exposure_in || !look || count == 0) return ALWAN_E_INVALID;
+    st = ALWAN_CORE_FN(film_look_setup)(&s, look, ctx);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        st = ALWAN_CORE_FN(film_look_finish_pixel)(&s, (ALWAN_CORE_T const *)((char const *)exposure_in + i * in_stride),
+                                                   (ALWAN_CORE_T *)((char *)xyz_out + i * out_stride));
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_FILM_MAPNAME(alwan_film_render_rgb, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *xyz_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count,
+        alwan_film_look const *look, alwan_ctx *ctx) {
+    ALWAN_CORE_FN(film_look_state) s;
+    alwan_status st;
+    size_t off;
+    if (!xyz_out || !rgb_in || !look || count == 0) return ALWAN_E_INVALID;
+    st = ALWAN_CORE_FN(film_look_setup)(&s, look, ctx);
+    if (st != ALWAN_OK) return st;
+    for (off = 0; off < count; off += ALWAN__FILM_RGB_TILE) {
+        ALWAN_CORE_T h[ALWAN__FILM_RGB_TILE * 3];
         size_t const tile = count - off < ALWAN__FILM_RGB_TILE ? count - off : ALWAN__FILM_RGB_TILE;
         size_t i;
-        for (i = 0; i < tile; i++) {
-            ALWAN_CORE_T const *px = (ALWAN_CORE_T const *)((char const *)rgb_in + (off + i) * in_stride);
-            ALWAN_CORE_T r = px[0] > ALWAN_CORE_LITERAL(0.0) ? px[0] : ALWAN_CORE_LITERAL(0.0);
-            ALWAN_CORE_T g = px[1] > ALWAN_CORE_LITERAL(0.0) ? px[1] : ALWAN_CORE_LITERAL(0.0);
-            ALWAN_CORE_T b = px[2] > ALWAN_CORE_LITERAL(0.0) ? px[2] : ALWAN_CORE_LITERAL(0.0);
-            ALWAN_CORE_T mx = r > g ? r : g;
-            if (b > mx) mx = b;
-            if (mx < ALWAN_CORE_LITERAL(1.0)) mx = ALWAN_CORE_LITERAL(1.0);
-            m[i] = mx;
-            unit[i * 3 + 0] = r / mx;
-            unit[i * 3 + 1] = g / mx;
-            unit[i * 3 + 2] = b / mx;
-        }
-        st = ALWAN_FILM_MAPNAME(alwan_rgb_to_spectrum_jakob2019, ALWAN_CORE_SUFFIX)(
-            cube, ALWAN__FILM_JAKOB_BANDS * sizeof(ALWAN_CORE_T), unit, 3 * sizeof(ALWAN_CORE_T), tile, &bands,
-            look->gamut);
+        st = ALWAN_CORE_FN(film_look_expose_tile)(&s, look, rgb_in, in_stride, off, tile, h, 3 * sizeof(ALWAN_CORE_T));
         if (st != ALWAN_OK) return st;
         for (i = 0; i < tile; i++) {
-            ALWAN_CORE_T spd[ALWAN_FILM_BANDS];
-            ALWAN_CORE_XYZ xyz;
-            ALWAN_CORE_T *o = (ALWAN_CORE_T *)((char *)xyz_out + (off + i) * out_stride);
-            for (k = 0; k < ALWAN_FILM_BANDS; k++) {
-                /* 380 + 10 k nm is band 4 + 2 k of the 360-780 nm at 5 nm cube. */
-                spd[k] = cube[i * ALWAN__FILM_JAKOB_BANDS + 4 + 2 * k] * m[i] * light[k];
-            }
-            st = ALWAN_CORE_FNLIT(alwan_film_render)(&xyz, &neg, has_print ? &prt : NULL, spd, NULL, factors,
-                                                     has_print ? printer : NULL, light);
+            st = ALWAN_CORE_FN(film_look_finish_pixel)(&s, h + i * 3, (ALWAN_CORE_T *)((char *)xyz_out + (off + i) * out_stride));
             if (st != ALWAN_OK) return st;
-            o[0] = xyz.x / white_y;
-            o[1] = xyz.y / white_y;
-            o[2] = xyz.z / white_y;
         }
     }
     return ALWAN_OK;

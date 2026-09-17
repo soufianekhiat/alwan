@@ -4086,6 +4086,78 @@ alwan_status alwan_film_look_default(alwan_film_look *look, alwan_film_stock neg
 alwan_status alwan_film_render_rgb_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_render_rgb_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 
+/* The look in two halves, for a spatial operator between them. alwan_film_look_expose
+ * stops at the negative's linear layer exposures, three per pixel, calibrated and
+ * pushed: the light each layer received, before the log. alwan_film_look_finish
+ * takes those exposures through the log, the masking, the curves, the print and the
+ * projection. Back to back they are alwan_film_render_rgb to the bit; with
+ * alwan_film_halation in between they are the exposed negative with light that
+ * came back from the base. */
+alwan_status alwan_film_look_expose_f64_map_interleave(alwan_f64 *exposure_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_expose_f32_map_interleave(alwan_f32 *exposure_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_finish_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_finish_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+
+/* ----------------------------------------------------------------
+ * EXPERIMENTAL: film halation (src/alwan/experimental/alwan_film_halation.c)
+ *
+ * Light that exposes the emulsion goes on into the base, reflects off its rear
+ * surface and comes back up to expose the emulsion again, a distance away. On
+ * a stock with no anti-halation layer that is the glow around a bright source,
+ * and it is red first, because the red-sensitive layer is the one nearest the
+ * base. The kernel here is derived rather than drawn: light entering the base
+ * with a Lambertian distribution, reflected at the base-to-air interface with
+ * the unpolarised Fresnel reflectance, totally reflected past the critical
+ * angle asin(1 / n), and returning at r = 2 d tan(theta) for a base of
+ * thickness d and index n, gives
+ *
+ *   K(r) proportional to R(theta(r)) / (1 + (r / 2d)^2)^2,  tan(theta) = r / 2d
+ *
+ * which is a disc suppressed by the Fresnel reflectance (4 % at the centre for
+ * n = 1.5), a sharp rim where total internal reflection starts, at
+ * r_c = 2 d / sqrt(n^2 - 1), and a (2d / r)^4 tail beyond it. The rim radius in
+ * pixels is the parameter, not the base thickness; it carries the thickness,
+ * the pixel pitch and the film format in one number. The kernel is normalised to
+ * sum 1 over its support, so each layer's strength is the fraction of its
+ * exposure that comes back: H_c := H_c + strength_c (K * H_c), on linear
+ * exposure, before development, with the edges replicated.
+ *
+ * NOT TESTABLE AGAINST A REFERENCE. No installed library implements this, so
+ * suite 159 pins what can be pinned: the kernel's energy, symmetry, the rim at
+ * r_c and the Fresnel suppression inside it, a point source becoming the kernel
+ * exactly, and a flat field staying flat. Written from: the Fresnel and Snell
+ * relations (Hecht, Optics, 5th ed., sections 4.6 and 4.7); the derivation in
+ * jeremieLouvaert/ComfyUI-Darkroom, docs/halation-derivation.md
+ * (https://github.com/jeremieLouvaert/ComfyUI-Darkroom), reproduced from the
+ * physics rather than its code; and the per-layer additive form of
+ * thatcherfreeman/utility-dctls, Effects/Halation.dctl, MIT
+ * (https://github.com/thatcherfreeman/utility-dctls). Everything under
+ * experimental/ is research code: constants may be inlined and results may
+ * change between releases.
+ * ---------------------------------------------------------------- */
+typedef struct {
+    alwan_f64 rim_radius;    /* pixels: r_c, where total internal reflection starts */
+    alwan_f64 index;         /* refractive index of the base: 1.50 for PET, 1.48 for triacetate */
+    alwan_f64 reach;         /* kernel support as a multiple of rim_radius; 3 by default */
+    alwan_f64 strength[3];   /* fraction of each layer's exposure that comes back: red, green, blue */
+} alwan_film_halation_params;
+
+/* PET base, reach 3, strengths 0.08, 0.03, 0.01: red more than green more than
+ * blue, as the layer order and the anti-halation dye make it. rim_radius must
+ * be positive. */
+alwan_status alwan_film_halation_params_default(alwan_film_halation_params *params, alwan_f64 rim_radius);
+
+/* The kernel, (2 R + 1)^2 values row-major with R = ceil(reach * rim_radius),
+ * summing to 1. kernel_out NULL reports R alone. */
+alwan_status alwan_film_halation_kernel_f64(alwan_f64 *kernel_out, size_t *radius_out, alwan_film_halation_params const *params);
+alwan_status alwan_film_halation_kernel_f32(alwan_f32 *kernel_out, size_t *radius_out, alwan_film_halation_params const *params);
+
+/* In place on a linear exposure image, three values per pixel, rows row_stride
+ * bytes apart. A direct convolution: width x height x (2 R + 1)^2 per layer, so a
+ * rim of 8 pixels at reach 3 is 2,401 taps a pixel. */
+alwan_status alwan_film_halation_f64(alwan_f64 *exposure, size_t row_stride, size_t width, size_t height, alwan_film_halation_params const *params, alwan_ctx *ctx);
+alwan_status alwan_film_halation_f32(alwan_f32 *exposure, size_t row_stride, size_t width, size_t height, alwan_film_halation_params const *params, alwan_ctx *ctx);
+
 /* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model
  * ---------------------------------------------------------------- */

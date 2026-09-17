@@ -190,6 +190,54 @@ that +1 stop is exactly twice the light, that the grey card prints within 0.01 o
 xy, that a 3x highlight lands above grey and below paper white, and that an unbalanced
 tungsten stock under D65 leaves the grey off neutral.
 
+### The look in two halves
+
+```c
+alwan_film_look_expose_f64_map_interleave(h, 24, rgb, 24, pixels, &look, ctx);   /* linear layer exposures */
+alwan_film_halation_f64(h, width * 24, width, height, &halation, ctx);            /* a spatial operator */
+alwan_film_look_finish_f64_map_interleave(xyz, 24, h, 24, pixels, &look, ctx);    /* the rest of the chain */
+```
+
+`expose` stops at the negative's linear layer exposures, calibrated and pushed, before
+the log; `finish` takes them through the log, the masking, the curves, the print and
+the projection. Back to back they are `alwan_film_render_rgb` to the bit (suite 159).
+
+---
+
+## Halation (experimental)
+
+Light that exposes the emulsion goes on into the base, reflects off its rear surface
+and comes back up to expose the emulsion again, a distance away: the glow around a
+bright source on a stock without an anti-halation layer, and red first, because the
+red-sensitive layer is nearest the base. The kernel is derived, not drawn. Light
+entering the base with a Lambertian distribution, reflected at the base-to-air
+interface with the unpolarised Fresnel reflectance, totally reflected past the
+critical angle, and returning at `r = 2d tan(theta)`, gives
+
+    K(r) proportional to R(theta(r)) / (1 + (r / 2d)^2)^2
+
+a disc suppressed by the Fresnel reflectance (4 % at the centre for n = 1.5), a sharp
+rim where total internal reflection starts at `r_c = 2d / sqrt(n^2 - 1)`, and a
+`(2d / r)^4` tail. The rim radius in pixels is the parameter; it carries the base
+thickness, the pixel pitch and the format in one number.
+
+```c
+alwan_film_halation_params p;
+alwan_film_halation_params_default(&p, 8.0);        /* rim at 8 px, PET, reach 3, 8 / 3 / 1 percent */
+alwan_film_halation_f64(h, width * 3 * sizeof(alwan_f64), width, height, &p, ctx);
+```
+
+`H_c := H_c + strength_c (K * H_c)` on linear exposure, edges replicated, the kernel
+summing to 1 so each strength is the fraction of the layer's exposure that comes back.
+It is a direct convolution, `(2R + 1)^2` taps a pixel with `R = ceil(reach x rim)`.
+`alwan_film_halation_kernel` returns the kernel for inspection.
+
+Not testable against a reference: no installed library implements it. Suite 159 pins
+the derivation's own statements (energy, symmetry, the rim at `r_c`, the Fresnel
+suppression inside it, a point source becoming exactly strength times the kernel, a
+flat field staying flat) and the sources it was written from are in the header.
+Everything under `experimental/` is research code and may change between releases.
+
 ---
 
 ## Data

@@ -96,6 +96,18 @@ All notable changes to this project will be documented in this file.
   anchoring a frame's median at grey pushes a low-key scene by stops and makes any stock
   look overexposed; take the scale from the camera, not from the picture.
 
+  The look also comes in two halves, `alwan_film_look_expose` and
+  `alwan_film_look_finish`, which are `alwan_film_render_rgb` to the bit back to back,
+  so a spatial operator can sit between them on the negative's linear exposures. The
+  first such operator is **halation**, in the experimental tier: the light that comes
+  back from the base, with a kernel derived from a Lambertian entry, the unpolarised
+  Fresnel reflectance at the base-to-air interface and total internal reflection past
+  the critical angle, so it has the Fresnel-suppressed disc, the sharp rim at
+  `2d / sqrt(n^2 - 1)` and the `(2d / r)^4` tail, and the rim radius in pixels is the
+  one size parameter. Per-layer strengths, red first. No reference implements it, so
+  suite 159 pins the derivation's own statements and the header names what it was
+  written from.
+
   The profiles are spectral_film_lut's (Jan Lohse, MIT), digitised from the sheets and
   profiled by its `FilmSpectral`; alwan ships the profiling's output, not the
   digitisation, with the licence beside the tables, and gendata refuses to write a new
