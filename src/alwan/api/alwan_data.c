@@ -1029,29 +1029,30 @@ alwan_status alwan_illuminant_white_point_f64(alwan_xyz_f64 *out_xyz,
         size_t count = 0;
         int status = alwan_data_get_illuminant_xy_f64(&xy_data, &count, illuminant, NULL);
 
-        if (status != ALWAN_OK || count < 2) {
-            return ALWAN_E_INVALID;
+        /* Only part of alwan_illuminant has a pinned xy row. The rest fall through to
+         * the SPD integration below, which reaches the same white point from the 1nm
+         * table, rather than refusing an illuminant the library can answer for. */
+        if (status == ALWAN_OK && count >= 2) {
+            /* Extract x and y chromaticity coordinates */
+            alwan_f64 x = xy_data[0];
+            alwan_f64 y = xy_data[1];
+
+            /* Convert xy to XYZ with Y = 1.0 (normalized)
+             * Formula: X = x * Y / y
+             *          Y = 1.0
+             *          Z = (1 - x - y) * Y / y */
+            alwan_f64 const Y = ALWAN_LITERAL(1.0);
+
+            if (y <= ALWAN_LITERAL(0.0)) {
+                return ALWAN_E_INVALID;  /* Invalid chromaticity */
+            }
+
+            out_xyz->x = x * Y / y;                    /* X */
+            out_xyz->y = Y;                             /* Y */
+            out_xyz->z = (ALWAN_LITERAL(1.0) - x - y) * Y / y;  /* Z */
+
+            return ALWAN_OK;
         }
-
-        /* Extract x and y chromaticity coordinates */
-        alwan_f64 x = xy_data[0];
-        alwan_f64 y = xy_data[1];
-
-        /* Convert xy to XYZ with Y = 1.0 (normalized)
-         * Formula: X = x * Y / y
-         *          Y = 1.0
-         *          Z = (1 - x - y) * Y / y */
-        alwan_f64 const Y = ALWAN_LITERAL(1.0);
-
-        if (y <= ALWAN_LITERAL(0.0)) {
-            return ALWAN_E_INVALID;  /* Invalid chromaticity */
-        }
-
-        out_xyz->x = x * Y / y;                    /* X */
-        out_xyz->y = Y;                             /* Y */
-        out_xyz->z = (ALWAN_LITERAL(1.0) - x - y) * Y / y;  /* Z */
-
-        return ALWAN_OK;
     }
 
     /* For other observers, compute from illuminant SPD + observer CMF integration */
@@ -1100,29 +1101,30 @@ alwan_status alwan_illuminant_white_point_f32(alwan_xyz_f32 *out_xyz,
         size_t count = 0;
         int status = alwan_data_get_illuminant_xy_f32(&xy_data, &count, illuminant, NULL);
 
-        if (status != ALWAN_OK || count < 2) {
-            return ALWAN_E_INVALID;
+        /* Only part of alwan_illuminant has a pinned xy row. The rest fall through to
+         * the SPD integration below, which reaches the same white point from the 1nm
+         * table, rather than refusing an illuminant the library can answer for. */
+        if (status == ALWAN_OK && count >= 2) {
+            /* Extract x and y chromaticity coordinates */
+            alwan_f32 x = xy_data[0];
+            alwan_f32 y = xy_data[1];
+
+            /* Convert xy to XYZ with Y = 1.0 (normalized)
+             * Formula: X = x * Y / y
+             *          Y = 1.0
+             *          Z = (1 - x - y) * Y / y */
+            alwan_f32 const Y = 1.0f;
+
+            if (y <= 0.0f) {
+                return ALWAN_E_INVALID;  /* Invalid chromaticity */
+            }
+
+            out_xyz->x = x * Y / y;                    /* X */
+            out_xyz->y = Y;                             /* Y */
+            out_xyz->z = (1.0f - x - y) * Y / y;       /* Z */
+
+            return ALWAN_OK;
         }
-
-        /* Extract x and y chromaticity coordinates */
-        alwan_f32 x = xy_data[0];
-        alwan_f32 y = xy_data[1];
-
-        /* Convert xy to XYZ with Y = 1.0 (normalized)
-         * Formula: X = x * Y / y
-         *          Y = 1.0
-         *          Z = (1 - x - y) * Y / y */
-        alwan_f32 const Y = 1.0f;
-
-        if (y <= 0.0f) {
-            return ALWAN_E_INVALID;  /* Invalid chromaticity */
-        }
-
-        out_xyz->x = x * Y / y;                    /* X */
-        out_xyz->y = Y;                             /* Y */
-        out_xyz->z = (1.0f - x - y) * Y / y;       /* Z */
-
-        return ALWAN_OK;
     }
 
     /* General observer: native f32 SPD + observer-CMF integration (alwan_spd is
