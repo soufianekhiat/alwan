@@ -2378,7 +2378,22 @@ typedef enum {
 typedef enum {
     ALWAN_EXTRAPOLATE_ZERO = 0,     /* Clamp to zero outside range (default for reflectance) */
     ALWAN_EXTRAPOLATE_CONSTANT = 1, /* Repeat edge values (good for smooth SPDs) */
-    ALWAN_EXTRAPOLATE_LINEAR = 2    /* Linear extrapolation from edge slope */
+    ALWAN_EXTRAPOLATE_LINEAR = 2,   /* Linear extrapolation from edge slope */
+    /* The edge slope, floored at zero. A measured source that stops short of
+     * the table it is written into has to be continued somehow, and a straight
+     * line drawn from the last two samples crosses zero and keeps going: a
+     * negative radiance is not a value the source can take. This keeps the
+     * slope where it is positive and stops at zero where it is not.
+     *
+     * It is for sources whose measurement ends well inside the table, where
+     * holding the last value flat across 100 nm or more would invent a plateau
+     * the instrument never saw. Over a short gap ALWAN_EXTRAPOLATE_CONSTANT is
+     * the better answer and the existing tables use it.
+     *
+     * Only the one mode was added. Other continuations are arguable, and an
+     * arguable convention wants a source that needs it rather than a place in
+     * an enum. */
+    ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO = 3
 } alwan_extrapolate_mode;
 
 /* SPD integration method for computing XYZ */
@@ -2430,7 +2445,14 @@ alwan_status alwan_spd_blackbody_f32(alwan_spd_f32 *out, alwan_f32 temperature_K
  * method: resampling method (linear or Catmull-Rom)
  * extrapolate: extrapolation mode for out-of-range values
  * ctx: context
- * Returns ALWAN_OK on success */
+ * Returns ALWAN_OK on success, and ALWAN_E_INVALID for a method or an
+ * extrapolation mode that is not one of the enumerated values.
+ *
+ * That last part changed when ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO was added.
+ * Both enums were read by an if/else chain whose last arm took everything
+ * else, so an unrecognised method resampled by Catmull-Rom and an
+ * unrecognised extrapolation mode extrapolated linearly, silently. With more
+ * values to mistype, a wrong argument is better refused than guessed at. */
 alwan_status alwan_spd_resample_f64(alwan_spd_f64 *dst, alwan_spd_f64 const *src, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx);
 alwan_status alwan_spd_resample_f32(alwan_spd_f32 *dst, alwan_spd_f32 const *src, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx);
 

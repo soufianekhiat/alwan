@@ -80,15 +80,24 @@ static ALWAN_CORE_T ALWAN_CORE_FN(spd_interpolate)(ALWAN_CORE_SPD const *spd, AL
             return ALWAN_CORE_LITERAL(0.0);
         } else if (extrapolate == ALWAN_EXTRAPOLATE_CONSTANT) {
             return spd->values[0];
-        } else /* ALWAN_EXTRAPOLATE_LINEAR */ {
-            /* Linear extrapolation using first two points */
+        } else {
+            /* Linear extrapolation using first two points, floored at zero for
+             * ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO. Both arms share the slope:
+             * the clamp is the only difference, and putting it anywhere but
+             * here would let the two drift. */
+            ALWAN_CORE_T v;
             if (spd->count < 2) {
-                return spd->values[0];
+                v = spd->values[0];
+            } else {
+                ALWAN_CORE_T wl0 = ALWAN_CORE_FN(spd_wavelength_at)(spd, 0);
+                ALWAN_CORE_T wl1 = ALWAN_CORE_FN(spd_wavelength_at)(spd, 1);
+                ALWAN_CORE_T slope = (spd->values[1] - spd->values[0]) / (wl1 - wl0);
+                v = spd->values[0] + slope * (wavelength - wl0);
             }
-            ALWAN_CORE_T wl0 = ALWAN_CORE_FN(spd_wavelength_at)(spd, 0);
-            ALWAN_CORE_T wl1 = ALWAN_CORE_FN(spd_wavelength_at)(spd, 1);
-            ALWAN_CORE_T slope = (spd->values[1] - spd->values[0]) / (wl1 - wl0);
-            return spd->values[0] + slope * (wavelength - wl0);
+            if (extrapolate == ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO && v < ALWAN_CORE_LITERAL(0.0)) {
+                v = ALWAN_CORE_LITERAL(0.0);
+            }
+            return v;
         }
     }
 
@@ -97,16 +106,23 @@ static ALWAN_CORE_T ALWAN_CORE_FN(spd_interpolate)(ALWAN_CORE_SPD const *spd, AL
             return ALWAN_CORE_LITERAL(0.0);
         } else if (extrapolate == ALWAN_EXTRAPOLATE_CONSTANT) {
             return spd->values[spd->count - 1];
-        } else /* ALWAN_EXTRAPOLATE_LINEAR */ {
-            /* Linear extrapolation using last two points */
+        } else {
+            /* The same shape as the low edge above: one slope, and the clamp
+             * as the only difference between the two linear modes. */
+            ALWAN_CORE_T v;
             if (spd->count < 2) {
-                return spd->values[spd->count - 1];
+                v = spd->values[spd->count - 1];
+            } else {
+                size_t n = spd->count;
+                ALWAN_CORE_T wl_n2 = ALWAN_CORE_FN(spd_wavelength_at)(spd, n - 2);
+                ALWAN_CORE_T wl_n1 = ALWAN_CORE_FN(spd_wavelength_at)(spd, n - 1);
+                ALWAN_CORE_T slope = (spd->values[n - 1] - spd->values[n - 2]) / (wl_n1 - wl_n2);
+                v = spd->values[n - 1] + slope * (wavelength - wl_n1);
             }
-            size_t n = spd->count;
-            ALWAN_CORE_T wl_n2 = ALWAN_CORE_FN(spd_wavelength_at)(spd, n - 2);
-            ALWAN_CORE_T wl_n1 = ALWAN_CORE_FN(spd_wavelength_at)(spd, n - 1);
-            ALWAN_CORE_T slope = (spd->values[n - 1] - spd->values[n - 2]) / (wl_n1 - wl_n2);
-            return spd->values[n - 1] + slope * (wavelength - wl_n1);
+            if (extrapolate == ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO && v < ALWAN_CORE_LITERAL(0.0)) {
+                v = ALWAN_CORE_LITERAL(0.0);
+            }
+            return v;
         }
     }
 
@@ -170,6 +186,19 @@ static ALWAN_CORE_T ALWAN_CORE_FN(spd_interpolate)(ALWAN_CORE_SPD const *spd, AL
 
 alwan_status ALWAN_CORE_FNLIT(alwan_spd_resample)(ALWAN_CORE_SPD *dst, ALWAN_CORE_SPD const *src, ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx) {
     if (!src || !dst || count == 0 || wavelength_min >= wavelength_max) {
+        return ALWAN_E_INVALID;
+    }
+    /* Both enums are read below by an if/else chain whose last arm takes
+     * everything else, so before this an unrecognised value resampled by
+     * Catmull-Rom or extrapolated linearly without saying so. Refused here
+     * instead, where there is a status to return: spd_interpolate gives back a
+     * value and has nowhere to report one. */
+    if (method != ALWAN_RESAMPLE_LINEAR && method != ALWAN_RESAMPLE_CATMULL_ROM) {
+        return ALWAN_E_INVALID;
+    }
+    if (extrapolate != ALWAN_EXTRAPOLATE_ZERO && extrapolate != ALWAN_EXTRAPOLATE_CONSTANT
+        && extrapolate != ALWAN_EXTRAPOLATE_LINEAR
+        && extrapolate != ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO) {
         return ALWAN_E_INVALID;
     }
 
