@@ -96,6 +96,57 @@ them that way, from two sheets of one NIST spreadsheet.
 Every `LS_` source is tabulated over 380-780 nm and held flat over the rest of the
 360-830 nm range. They share one compile switch, `ALWAN_TABLES_LIGHT_SOURCES`.
 
+### alwan_spd_iso7589_native, alwan_spd_iso7589
+
+```c
+typedef enum {
+    ALWAN_ISO7589_PHOTOGRAPHIC_DAYLIGHT, ALWAN_ISO7589_SENSITOMETRIC_DAYLIGHT,
+    ALWAN_ISO7589_STUDIO_TUNGSTEN, ALWAN_ISO7589_SENSITOMETRIC_STUDIO_TUNGSTEN,
+    ALWAN_ISO7589_PHOTOFLOOD, ALWAN_ISO7589_SENSITOMETRIC_PHOTOFLOOD,
+    ALWAN_ISO7589_SENSITOMETRIC_PRINTER
+} alwan_iso7589_source;
+
+alwan_status alwan_spd_iso7589_native_f64(alwan_spd_f64 *out, alwan_iso7589_source source, alwan_ctx *ctx);
+alwan_status alwan_spd_iso7589_f64(alwan_spd_f64 *out, alwan_iso7589_source source,
+                                   alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count,
+                                   alwan_resample_method method, alwan_extrapolate_mode extrapolate,
+                                   alwan_ctx *ctx);
+```
+
+The seven ISO 7589 sensitometric sources. They are not `alwan_illuminant` values because
+they do not fit that table: tabulated at 10 nm from 350 to 690 nm (the Printer to 560),
+and five of them are still climbing where the tabulation stops. `_native` returns the
+tabulation exactly, 35 samples (22 for the Printer). `alwan_spd_iso7589` is that table
+and one `alwan_spd_resample` with your method and extrapolation mode, so what happens
+past 690 nm is your choice: `ALWAN_EXTRAPOLATE_CONSTANT` is the flat hold the other
+illuminants have, `ZERO` is what the CMFs have, `LINEAR_CLAMP_ZERO` continues the end
+slope and stops at zero, which the two descending daylight sources reach.
+
+Studio tungsten is also `alwan_spd_iso7589_tungsten`, the Academy's tabulation from the
+camera pack on 380-780 nm at 5 nm. Same curve, scale 200 apart, one curve to 1.4e-16 over
+380-690 nm once scaled at 560 nm.
+
+### alwan_spd_extend_planckian
+
+```c
+alwan_status alwan_spd_extend_planckian_f64(alwan_spd_f64 *dst, alwan_spd_f64 const *src,
+                                            alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count,
+                                            size_t fit_count, alwan_f64 *temperature_out, alwan_ctx *ctx);
+```
+
+An SPD continued past its ends along a Planckian curve, for a source that is near-thermal
+where its tabulation stops. The temperature is fitted to the last `fit_count` samples
+(0 fits all) with the scale free, so only the window's shape sets T, by golden section
+over 1000-25000 K; beyond each end the curve is the Planckian at T through the end sample,
+so the result is continuous, and inside `src`'s range it is the linear resample. Think
+of it as `ALWAN_EXTRAPOLATE_CONSTANT` with the hold replaced by the continuation.
+`temperature_out` may be NULL. `ALWAN_E_INVALID` for fewer than two samples in the window.
+
+Measured (suite 155) on ISO 7589 studio tungsten against the Academy's tabulation of the
+same source, which has real values from 695 to 780 nm: the Planckian tail at the fitted
+3068 K is within 1.1% of them, the straight line 6.0% high, the flat hold 16.5% low. The
+fitted temperature agrees with scipy's to 7e-8 relative.
+
 ### alwan_spd_blackbody
 
 ```c

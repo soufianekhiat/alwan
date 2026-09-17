@@ -182,6 +182,31 @@ All notable changes to this project will be documented in this file.
   silently duplicating another, which is the way fifteen illuminant tables once shipped as
   copies of D65.
 
+- **The seven ISO 7589 sensitometric sources, as tabulated, and a Planckian tail.**
+  Photographic and Sensitometric Daylight, Studio Tungsten and its sensitometric variant,
+  Photoflood and its variant, and the Sensitometric Printer, from colour-science's
+  `SDS_ILLUMINANTS`. They are an `alwan_iso7589_source` rather than seven more
+  `alwan_illuminant` values, because they do not fit the 360-830nm table the others
+  share: tabulated at 10nm from 350 to 690nm (the Printer to 560), five of them still
+  climbing where the tabulation stops. Holding the last value flat, as every
+  `alwan_illuminant` does, would put numbers of alwan's own under a standard's name.
+
+  So `alwan_spd_iso7589_native_{T}` returns the tabulation to the bit, and
+  `alwan_spd_iso7589_{T}` resamples it onto the caller's grid with the caller's
+  `alwan_extrapolate_mode`: the hold, zero, the end slope, or the slope clamped at zero.
+  On 360-830nm at 1nm, CONSTANT and LINEAR match colour's own Constant and Linear
+  extrapolators to 6e-16 (suite 155).
+
+  `alwan_spd_extend_planckian_{T}` is the continuation the physics of a tungsten or
+  photoflood source calls for. It fits a temperature to the last `fit_count` samples
+  (0 for all) with the scale free, so only the shape of the window sets T, by golden
+  section over 1000-25000K, then continues each end along the Planckian through the end
+  sample. The fitted T matches scipy's to 7e-8 relative. Measured on studio tungsten
+  against the Academy's tabulation of the same source, which runs to 780nm where colour's
+  stops at 690: over 695-780nm the Planckian tail is within 1.1% of the measurement, the
+  flat hold 16.5% low, the straight line 6.0% high, and over 380-690nm the two
+  tabulations are one curve to 1.4e-16. The fitted temperature is 3068K.
+
 - **Spectral OpenEXR layout, documented.** `alwan.h` now describes the Fichet, Pacanowski
   and Wilkie layout (JCGT 2021) beside `alwan_spectral_to_tristimulus_{T}_map_interleave`:
   the S0 and T layers, the decimal-comma channel names, the mandatory header attributes,

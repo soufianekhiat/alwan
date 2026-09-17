@@ -1262,6 +1262,202 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_blackbody)(ALWAN_CORE_SPD *out, ALWAN_CO
 }
 
 /* ----------------------------------------------------------------
+ * ISO 7589 sensitometric sources, and a Planckian continuation
+ * ---------------------------------------------------------------- */
+
+/* The table and sample count for a source. 1 for a valid enum value, with table NULL
+ * when it was compiled out; 0 for a value that is not a source at all. */
+static int ALWAN_CORE_FN(iso7589_table)(alwan_iso7589_source source, ALWAN_CORE_T const **table, size_t *count) {
+    *table = NULL;
+    *count = 0;
+    switch (source) {
+        case ALWAN_ISO7589_PHOTOGRAPHIC_DAYLIGHT:
+#if ALWAN_TABLE_SPD_ISO7589_PHOTOGRAPHIC_DAYLIGHT
+            *table = ALWAN_CORE_FNLIT(alwan_table_spd_iso7589_photographic_daylight);
+            *count = ALWAN_TABLE_ISO7589_350_690_10NM_SIZE;
+#endif
+            return 1;
+        case ALWAN_ISO7589_SENSITOMETRIC_DAYLIGHT:
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_DAYLIGHT
+            *table = ALWAN_CORE_FNLIT(alwan_table_spd_iso7589_sensitometric_daylight);
+            *count = ALWAN_TABLE_ISO7589_350_690_10NM_SIZE;
+#endif
+            return 1;
+        case ALWAN_ISO7589_STUDIO_TUNGSTEN:
+#if ALWAN_TABLE_SPD_ISO7589_STUDIO_TUNGSTEN
+            *table = ALWAN_CORE_FNLIT(alwan_table_spd_iso7589_studio_tungsten);
+            *count = ALWAN_TABLE_ISO7589_350_690_10NM_SIZE;
+#endif
+            return 1;
+        case ALWAN_ISO7589_SENSITOMETRIC_STUDIO_TUNGSTEN:
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_STUDIO_TUNGSTEN
+            *table = ALWAN_CORE_FNLIT(alwan_table_spd_iso7589_sensitometric_studio_tungsten);
+            *count = ALWAN_TABLE_ISO7589_350_690_10NM_SIZE;
+#endif
+            return 1;
+        case ALWAN_ISO7589_PHOTOFLOOD:
+#if ALWAN_TABLE_SPD_ISO7589_PHOTOFLOOD
+            *table = ALWAN_CORE_FNLIT(alwan_table_spd_iso7589_photoflood);
+            *count = ALWAN_TABLE_ISO7589_350_690_10NM_SIZE;
+#endif
+            return 1;
+        case ALWAN_ISO7589_SENSITOMETRIC_PHOTOFLOOD:
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_PHOTOFLOOD
+            *table = ALWAN_CORE_FNLIT(alwan_table_spd_iso7589_sensitometric_photoflood);
+            *count = ALWAN_TABLE_ISO7589_350_690_10NM_SIZE;
+#endif
+            return 1;
+        case ALWAN_ISO7589_SENSITOMETRIC_PRINTER:
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_PRINTER
+            *table = ALWAN_CORE_FNLIT(alwan_table_spd_iso7589_sensitometric_printer);
+            *count = ALWAN_TABLE_ISO7589_350_560_10NM_SIZE;
+#endif
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_iso7589_native)(ALWAN_CORE_SPD *out, alwan_iso7589_source source, alwan_ctx *ctx) {
+    ALWAN_CORE_T const *table;
+    size_t count, i;
+    alwan_status st;
+    if (!out) {
+        return ALWAN_E_INVALID;
+    }
+    if (!ALWAN_CORE_FN(iso7589_table)(source, &table, &count)) {
+        return ALWAN_E_INVALID;
+    }
+    if (!table) {
+        return ALWAN_E_NODATA;
+    }
+    /* 350 nm at 10 nm, so the last node is 350 + 10 (count - 1): 690 or 560. */
+    st = ALWAN_CORE_FNLIT(alwan_spd_create)(out, ALWAN_CORE_LITERAL(350.0),
+                                            ALWAN_CORE_LITERAL(350.0) + ALWAN_CORE_LITERAL(10.0) * (ALWAN_CORE_T)(count - 1),
+                                            count, ctx);
+    if (st != ALWAN_OK) {
+        return st;
+    }
+    for (i = 0; i < count; i++) {
+        out->values[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(table, (int)count, (int)i);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_iso7589)(ALWAN_CORE_SPD *out, alwan_iso7589_source source,
+                                                 ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count,
+                                                 alwan_resample_method method, alwan_extrapolate_mode extrapolate,
+                                                 alwan_ctx *ctx) {
+    ALWAN_CORE_SPD native;
+    alwan_status st;
+    if (!out) {
+        return ALWAN_E_INVALID;
+    }
+    st = ALWAN_CORE_FNLIT(alwan_spd_iso7589_native)(&native, source, ctx);
+    if (st != ALWAN_OK) {
+        return st;
+    }
+    /* The resample validates the method and the mode, and refuses an unknown one. */
+    st = ALWAN_CORE_FNLIT(alwan_spd_resample)(out, &native, wavelength_min, wavelength_max, count, method, extrapolate, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&native, ctx);
+    return st;
+}
+
+/* Planck's radiance at a node, relative to the radiance at the window's last node, so
+ * the sums below are O(1) whatever the temperature and the precision. */
+static ALWAN_CORE_T ALWAN_CORE_FN(planck_relative)(ALWAN_CORE_T wavelength_nm, ALWAN_CORE_T ref_nm, ALWAN_CORE_T T) {
+    ALWAN_CORE_T const b = ALWAN_CORE_FNVLIT(spd_planck_radiance)(wavelength_nm * ALWAN_CORE_LITERAL(1e-9), T);
+    ALWAN_CORE_T const r = ALWAN_CORE_FNVLIT(spd_planck_radiance)(ref_nm * ALWAN_CORE_LITERAL(1e-9), T);
+    return b / r;
+}
+
+/* Least-squares residual of the best-scale Planckian at T over src[first..]:
+ * sum s^2 - (sum s b)^2 / sum b^2. The scale is solved in closed form, so what is
+ * left is a function of T alone. */
+static ALWAN_CORE_T ALWAN_CORE_FN(planck_fit_residual)(ALWAN_CORE_SPD const *src, size_t first, ALWAN_CORE_T T) {
+    ALWAN_CORE_T ss = ALWAN_CORE_LITERAL(0.0), sb = ALWAN_CORE_LITERAL(0.0), bb = ALWAN_CORE_LITERAL(0.0);
+    ALWAN_CORE_T const ref_nm = ALWAN_CORE_FN(spd_wavelength_at)(src, src->count - 1);
+    size_t i;
+    for (i = first; i < src->count; i++) {
+        ALWAN_CORE_T const b = ALWAN_CORE_FN(planck_relative)(ALWAN_CORE_FN(spd_wavelength_at)(src, i), ref_nm, T);
+        ALWAN_CORE_T const s = src->values[i];
+        ss += s * s;
+        sb += s * b;
+        bb += b * b;
+    }
+    if (!(bb > ALWAN_CORE_LITERAL(0.0))) {
+        return ss;
+    }
+    return ss - sb * sb / bb;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_extend_planckian)(ALWAN_CORE_SPD *dst, ALWAN_CORE_SPD const *src,
+                                                          ALWAN_CORE_T wavelength_min, ALWAN_CORE_T wavelength_max, size_t count,
+                                                          size_t fit_count, ALWAN_CORE_T *temperature_out, alwan_ctx *ctx) {
+    /* Golden section on ln T over the range alwan_spd_blackbody accepts. A fixed
+     * iteration count rather than a tolerance, so every build takes the same path. */
+    ALWAN_CORE_T const inv_phi = ALWAN_CORE_LITERAL(0.6180339887498949);
+    ALWAN_CORE_T lo = ALWAN_CORE_LN(ALWAN_CORE_LITERAL(1000.0));
+    ALWAN_CORE_T hi = ALWAN_CORE_LN(ALWAN_CORE_LITERAL(25000.0));
+    ALWAN_CORE_T a, b, fa, fb, T;
+    size_t first, i;
+    int it;
+    alwan_status st;
+
+    if (!dst || !src || !src->values || src->count < 2 || count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    if (fit_count > src->count) {
+        return ALWAN_E_INVALID;
+    }
+    first = fit_count ? src->count - fit_count : 0;
+    if (src->count - first < 2) {
+        return ALWAN_E_INVALID;
+    }
+
+    a = hi - inv_phi * (hi - lo);
+    b = lo + inv_phi * (hi - lo);
+    fa = ALWAN_CORE_FN(planck_fit_residual)(src, first, ALWAN_CORE_EXP(a));
+    fb = ALWAN_CORE_FN(planck_fit_residual)(src, first, ALWAN_CORE_EXP(b));
+    for (it = 0; it < 100; it++) {
+        if (fa < fb) {
+            hi = b;
+            b = a;
+            fb = fa;
+            a = hi - inv_phi * (hi - lo);
+            fa = ALWAN_CORE_FN(planck_fit_residual)(src, first, ALWAN_CORE_EXP(a));
+        } else {
+            lo = a;
+            a = b;
+            fa = fb;
+            b = lo + inv_phi * (hi - lo);
+            fb = ALWAN_CORE_FN(planck_fit_residual)(src, first, ALWAN_CORE_EXP(b));
+        }
+    }
+    T = ALWAN_CORE_EXP((lo + hi) * ALWAN_CORE_LITERAL(0.5));
+
+    /* Inside the source's range this is the constant-hold resample; the hold is
+     * then overwritten with the Planckian through each end sample. */
+    st = ALWAN_CORE_FNLIT(alwan_spd_resample)(dst, src, wavelength_min, wavelength_max, count,
+                                              ALWAN_RESAMPLE_LINEAR, ALWAN_EXTRAPOLATE_CONSTANT, ctx);
+    if (st != ALWAN_OK) {
+        return st;
+    }
+    for (i = 0; i < count; i++) {
+        ALWAN_CORE_T const wl = ALWAN_CORE_FN(spd_wavelength_at)(dst, i);
+        if (wl > src->wavelength_max) {
+            dst->values[i] = src->values[src->count - 1] * ALWAN_CORE_FN(planck_relative)(wl, src->wavelength_max, T);
+        } else if (wl < src->wavelength_min) {
+            dst->values[i] = src->values[0] * ALWAN_CORE_FN(planck_relative)(wl, src->wavelength_min, T);
+        }
+    }
+    if (temperature_out) {
+        *temperature_out = T;
+    }
+    return ALWAN_OK;
+}
+
+/* ----------------------------------------------------------------
  * Observer CMF Loading
  * ---------------------------------------------------------------- */
 

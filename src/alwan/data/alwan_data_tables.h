@@ -211,6 +211,8 @@ ALWAN_TABLE_EXTERN(alwan_table_jakob2019_xyz_c2, ALWAN_TABLE_JAKOB2019_SIZE)
  * for all 68 of them, so a regenerated CSV that changes length fails
  * the build instead of silently truncating a copy loop. */
 enum { ALWAN_TABLE_SPD_360_830_1NM_SIZE = 471 };
+/* The ISO 7589 sources at their native 10 nm tabulation; the Printer stops at 560 nm. */
+enum { ALWAN_TABLE_ISO7589_350_690_10NM_SIZE = 35, ALWAN_TABLE_ISO7589_350_560_10NM_SIZE = 22 };
 
 /* ---- spd_illuminant_* -- 38 tables, rank 1, 471, INTEGER row --------
  * Reader: alwan_table1d_row_{f32,f64}
@@ -567,6 +569,35 @@ ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_sdw_t_100w_lv, ALWAN_TABLE_SPD_
 #if ALWAN_TABLE_SPD_ILLUMINANT_LS_KINOTON_75P
 ALWAN_TABLE_EXTERN(alwan_table_spd_illuminant_ls_kinoton_75p, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
 #endif
+
+/* ---- spd_iso7589_* -- rank 1, 35 (Printer 22), INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata/data/iso7589.py, colour-science SDS_ILLUMINANTS, the seven
+ *         ISO 7589 sensitometric sources AS TABULATED: 350-690 nm at 10 nm, the Printer
+ *         350-560. Not on the 360-830 grid on purpose; alwan_spd_iso7589 resamples
+ *         with the caller's extrapolation mode. Declared in enum order. */
+#if ALWAN_TABLE_SPD_ISO7589_PHOTOGRAPHIC_DAYLIGHT
+ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_photographic_daylight, ALWAN_TABLE_ISO7589_350_690_10NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_DAYLIGHT
+ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_sensitometric_daylight, ALWAN_TABLE_ISO7589_350_690_10NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ISO7589_STUDIO_TUNGSTEN
+ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_studio_tungsten, ALWAN_TABLE_ISO7589_350_690_10NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_STUDIO_TUNGSTEN
+ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_sensitometric_studio_tungsten, ALWAN_TABLE_ISO7589_350_690_10NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ISO7589_PHOTOFLOOD
+ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_photoflood, ALWAN_TABLE_ISO7589_350_690_10NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_PHOTOFLOOD
+ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_sensitometric_photoflood, ALWAN_TABLE_ISO7589_350_690_10NM_SIZE)
+#endif
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_PRINTER
+ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_sensitometric_printer, ALWAN_TABLE_ISO7589_350_560_10NM_SIZE)
+#endif
+
 
 
 /* ---- cmf_cie_1931_2deg x/y/z -- rank 1, 471, INTEGER row ----

@@ -2538,6 +2538,64 @@ alwan_status alwan_spd_blackbody_f32(alwan_spd_f32 *out, alwan_f32 temperature_K
 alwan_status alwan_spd_resample_f64(alwan_spd_f64 *dst, alwan_spd_f64 const *src, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx);
 alwan_status alwan_spd_resample_f32(alwan_spd_f32 *dst, alwan_spd_f32 const *src, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx);
 
+/* The seven ISO 7589 sensitometric sources, tabulated at 10 nm from 350 to 690 nm,
+ * the Printer from 350 to 560 nm. They are not in alwan_illuminant, and the reason
+ * is what a caller has to know about them: five of the seven are still climbing
+ * where the tabulation stops, the tungsten and photoflood sources rising toward a
+ * Planckian peak well past 690 nm. Holding the last value flat across the rest of a
+ * 360-830 nm table, as every alwan_illuminant does, would understate them by 16% at
+ * 780 nm against the Academy's own measurement of the studio tungsten source; a
+ * straight line overstates by 6%. Neither is a number a standard's name should
+ * carry, so alwan invents none: the tables ship as tabulated and the caller chooses. */
+typedef enum {
+    ALWAN_ISO7589_PHOTOGRAPHIC_DAYLIGHT = 0,
+    ALWAN_ISO7589_SENSITOMETRIC_DAYLIGHT = 1,
+    ALWAN_ISO7589_STUDIO_TUNGSTEN = 2,
+    ALWAN_ISO7589_SENSITOMETRIC_STUDIO_TUNGSTEN = 3,
+    ALWAN_ISO7589_PHOTOFLOOD = 4,
+    ALWAN_ISO7589_SENSITOMETRIC_PHOTOFLOOD = 5,
+    ALWAN_ISO7589_SENSITOMETRIC_PRINTER = 6  /* 350-560 nm; 22 samples where the others have 35 */
+} alwan_iso7589_source;
+
+/* The source exactly as tabulated: 35 samples on 350-690 nm at 10 nm, 22 on 350-560 nm
+ * for the Printer. Creates the SPD. ALWAN_E_NODATA when the table was compiled out. */
+alwan_status alwan_spd_iso7589_native_f64(alwan_spd_f64 *out, alwan_iso7589_source source, alwan_ctx *ctx);
+alwan_status alwan_spd_iso7589_native_f32(alwan_spd_f32 *out, alwan_iso7589_source source, alwan_ctx *ctx);
+
+/* The source on the caller's grid, by alwan_spd_resample from the native tabulation
+ * with the caller's method and extrapolation mode. Nothing is done to the values on the
+ * way: this is the native table and one resample, so ALWAN_EXTRAPOLATE_CONSTANT is the
+ * flat hold the other illuminants have, ALWAN_EXTRAPOLATE_ZERO is what the CMFs have,
+ * and ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO continues the end slope and stops at zero,
+ * which the two descending daylight sources reach. For a Planckian continuation, which
+ * is the physics of the five ascending sources, see alwan_spd_extend_planckian.
+ *
+ * Studio tungsten is also carried by the camera pack as alwan_spd_iso7589_tungsten,
+ * the Academy's tabulation on 380-780 nm at 5 nm. They are the same curve at scalings
+ * 200 apart: normalised at 560 nm they agree exactly over 380-690 nm. */
+alwan_status alwan_spd_iso7589_f64(alwan_spd_f64 *out, alwan_iso7589_source source, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx);
+alwan_status alwan_spd_iso7589_f32(alwan_spd_f32 *out, alwan_iso7589_source source, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, alwan_resample_method method, alwan_extrapolate_mode extrapolate, alwan_ctx *ctx);
+
+/* An SPD continued past its ends along a Planckian curve, for a source that is
+ * near-thermal where the tabulation stops: tungsten, photoflood, an incandescent lamp.
+ *
+ * The temperature is fitted to the last fit_count samples of src (0 fits every sample)
+ * by least squares with the scale free, so only the SHAPE of the window sets T; a
+ * golden-section search over 1000-25000 K, the range alwan_spd_blackbody accepts. The
+ * fitted scale is then not used. Beyond each end the curve is the Planckian at T scaled
+ * to pass through the end sample, so the result is continuous, and inside src's range
+ * it is alwan_spd_resample with ALWAN_RESAMPLE_LINEAR: this call is
+ * ALWAN_EXTRAPOLATE_CONSTANT with the hold replaced by the continuation. temperature_out
+ * may be NULL.
+ *
+ * Measured on ISO 7589 studio tungsten against the Academy's tabulation of the same
+ * source, which runs to 780 nm where colour's stops at 690: the Planckian tail lands
+ * within a few percent over 695-780 nm, the flat hold 16% low, the straight line 6%
+ * high (alwan_dev suite 155 prints the figures). ALWAN_E_INVALID for fewer than two
+ * samples in the fit window. */
+alwan_status alwan_spd_extend_planckian_f64(alwan_spd_f64 *dst, alwan_spd_f64 const *src, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t count, size_t fit_count, alwan_f64 *temperature_out, alwan_ctx *ctx);
+alwan_status alwan_spd_extend_planckian_f32(alwan_spd_f32 *dst, alwan_spd_f32 const *src, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t count, size_t fit_count, alwan_f32 *temperature_out, alwan_ctx *ctx);
+
 /* Compute XYZ tristimulus values from SPD
  * xyz_out: output XYZ tristimulus values
  * spd: spectral power distribution (reflectance or emission)

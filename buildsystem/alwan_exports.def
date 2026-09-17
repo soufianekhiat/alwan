@@ -1416,12 +1416,18 @@ EXPORTS
     alwan_spd_create_f64
     alwan_spd_destroy_f32
     alwan_spd_destroy_f64
+    alwan_spd_extend_planckian_f32
+    alwan_spd_extend_planckian_f64
     alwan_spd_gaussian_f32
     alwan_spd_gaussian_f64
     alwan_spd_idt_training_f32
     alwan_spd_idt_training_f64
     alwan_spd_illuminant_f32
     alwan_spd_illuminant_f64
+    alwan_spd_iso7589_f32
+    alwan_spd_iso7589_f64
+    alwan_spd_iso7589_native_f32
+    alwan_spd_iso7589_native_f64
     alwan_spd_iso7589_tungsten_f32
     alwan_spd_iso7589_tungsten_f64
     alwan_spd_led_ohno2005_f32

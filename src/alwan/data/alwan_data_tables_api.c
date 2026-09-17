@@ -1929,6 +1929,126 @@ alwan_f64 const alwan_table_spd_illuminant_ls_kinoton_75p_f64[ALWAN_TABLE_SPD_36
 
 #endif
 
+#if ALWAN_TABLE_SPD_ISO7589_PHOTOGRAPHIC_DAYLIGHT
+/* ---- alwan_table_spd_iso7589_photographic_daylight ----
+ * extent ALWAN_TABLE_ISO7589_350_690_10NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/iso7589/photographic_daylight_350_690_10nm.csv, as tabulated (BSD-3, colour-science) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_iso7589_photographic_daylight_f32[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/photographic_daylight_350_690_10nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_iso7589_photographic_daylight_f64[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/photographic_daylight_350_690_10nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_DAYLIGHT
+/* ---- alwan_table_spd_iso7589_sensitometric_daylight ----
+ * extent ALWAN_TABLE_ISO7589_350_690_10NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/iso7589/sensitometric_daylight_350_690_10nm.csv, as tabulated (BSD-3, colour-science) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_iso7589_sensitometric_daylight_f32[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/sensitometric_daylight_350_690_10nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_iso7589_sensitometric_daylight_f64[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/sensitometric_daylight_350_690_10nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ISO7589_STUDIO_TUNGSTEN
+/* ---- alwan_table_spd_iso7589_studio_tungsten ----
+ * extent ALWAN_TABLE_ISO7589_350_690_10NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/iso7589/studio_tungsten_350_690_10nm.csv, as tabulated (BSD-3, colour-science) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_iso7589_studio_tungsten_f32[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/studio_tungsten_350_690_10nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_iso7589_studio_tungsten_f64[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/studio_tungsten_350_690_10nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_STUDIO_TUNGSTEN
+/* ---- alwan_table_spd_iso7589_sensitometric_studio_tungsten ----
+ * extent ALWAN_TABLE_ISO7589_350_690_10NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/iso7589/sensitometric_studio_tungsten_350_690_10nm.csv, as tabulated (BSD-3, colour-science) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_iso7589_sensitometric_studio_tungsten_f32[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/sensitometric_studio_tungsten_350_690_10nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_iso7589_sensitometric_studio_tungsten_f64[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/sensitometric_studio_tungsten_350_690_10nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ISO7589_PHOTOFLOOD
+/* ---- alwan_table_spd_iso7589_photoflood ----
+ * extent ALWAN_TABLE_ISO7589_350_690_10NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/iso7589/photoflood_350_690_10nm.csv, as tabulated (BSD-3, colour-science) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_iso7589_photoflood_f32[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/photoflood_350_690_10nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_iso7589_photoflood_f64[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/photoflood_350_690_10nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_PHOTOFLOOD
+/* ---- alwan_table_spd_iso7589_sensitometric_photoflood ----
+ * extent ALWAN_TABLE_ISO7589_350_690_10NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/iso7589/sensitometric_photoflood_350_690_10nm.csv, as tabulated (BSD-3, colour-science) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_iso7589_sensitometric_photoflood_f32[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/sensitometric_photoflood_350_690_10nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_iso7589_sensitometric_photoflood_f64[ALWAN_TABLE_ISO7589_350_690_10NM_SIZE] = {
+#include "illuminants/iso7589/sensitometric_photoflood_350_690_10nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_PRINTER
+/* ---- alwan_table_spd_iso7589_sensitometric_printer ----
+ * extent ALWAN_TABLE_ISO7589_350_560_10NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: illuminants/iso7589/sensitometric_printer_350_560_10nm.csv, as tabulated (BSD-3, colour-science) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_spd_iso7589_sensitometric_printer_f32[ALWAN_TABLE_ISO7589_350_560_10NM_SIZE] = {
+#include "illuminants/iso7589/sensitometric_printer_350_560_10nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_spd_iso7589_sensitometric_printer_f64[ALWAN_TABLE_ISO7589_350_560_10NM_SIZE] = {
+#include "illuminants/iso7589/sensitometric_printer_350_560_10nm.csv"
+};
+#endif
+
+#endif
+
+
 
 #if ALWAN_TABLE_CMF_CIE_1931_2DEG
 /* ---- alwan_table_cmf_cie_1931_2deg_x ----
