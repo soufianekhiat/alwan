@@ -20,7 +20,9 @@ All notable changes to this project will be documented in this file.
   `alwan_camera_rgb_from_spd_{T}` now takes `size_t camera`, the registry index, and
   `alwan_camera_sensitivities_{T}` covers all 54 cameras, each on its own grid: 380-780 nm
   at 5 nm for the pack, 360-830 nm at 1 nm for the NPL pair. `alwan_camera_count` returns
-  54, or 0 in a build with no camera table at all.
+  54, or 0 in a build with no camera table at all. Code that walks every index and
+  stacks the curves on one grid will now meet two 471-sample cameras at the end; check
+  each camera's `count` and range, or stop at 52 for the pack alone.
 
   Migration: `ALWAN_CAMERA_NIKON_5100` is 52, `ALWAN_CAMERA_SIGMA_SDMERILL` is 53, and
   `alwan_xyz_from_spd_camera` becomes `alwan_camera_rgb_from_spd` reading `.r .g .b`. The
