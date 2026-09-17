@@ -145,6 +145,167 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_luminous_efficiency)(ALWAN_CORE_T wavelength
 }
 
 /* ================================================================
+ * The seven luminous efficiency functions as datasets
+ *
+ * CIE 1924 and CIE 1951 are the interleaved statics above, the same numbers
+ * alwan_luminous_efficiency interpolates. The other five are registry tables,
+ * bare rows on their own grids, 1 nm but for Judd 1951 at 10 nm; the dispatch
+ * below is generated from the CSV file names by alwan_dev's splice, so the grid
+ * each table sits on is read off the file, not assumed here.
+ * ================================================================ */
+
+/* Defined with the flux integrals further down; the flux under a canonical LEF
+ * reads it so both names give one number. */
+static double ALWAN_CORE_FNLIT(alwan__lef_or_zero)(double wl, alwan_vision_type vision);
+
+/* A registry LEF's table, sample count, first wavelength and step. 1 for a
+ * registry value, with table NULL when compiled out; 0 for anything else. */
+static int ALWAN_CORE_FN(lef_registry_table)(alwan_lef lef, ALWAN_CORE_T const **table, size_t *count,
+                                             ALWAN_CORE_T *wl_min, ALWAN_CORE_T *step) {
+    *table = NULL;
+    *count = 0;
+    *wl_min = ALWAN_CORE_LITERAL(0.0);
+    *step = ALWAN_CORE_LITERAL(1.0);
+    switch (lef) {
+        case ALWAN_LEF_JUDD_1951_PHOTOPIC:
+#if ALWAN_TABLE_LEF_JUDD_1951_PHOTOPIC
+            *table = ALWAN_CORE_FNLIT(alwan_table_lef_judd_1951_photopic);
+            *count = ALWAN_TABLE_LEF_370_770_10NM_SIZE;
+            *wl_min = ALWAN_CORE_LITERAL(370.0);
+            *step = ALWAN_CORE_LITERAL(10.0);
+#endif
+            return 1;
+        case ALWAN_LEF_JUDD_VOS_1978_PHOTOPIC:
+#if ALWAN_TABLE_LEF_JUDD_VOS_1978_PHOTOPIC
+            *table = ALWAN_CORE_FNLIT(alwan_table_lef_judd_vos_1978_photopic);
+            *count = ALWAN_TABLE_LEF_380_780_1NM_SIZE;
+            *wl_min = ALWAN_CORE_LITERAL(380.0);
+            *step = ALWAN_CORE_LITERAL(1.0);
+#endif
+            return 1;
+        case ALWAN_LEF_CIE_1964_PHOTOPIC_10DEG:
+#if ALWAN_TABLE_LEF_CIE_1964_PHOTOPIC_10DEG
+            *table = ALWAN_CORE_FNLIT(alwan_table_lef_cie_1964_photopic_10deg);
+            *count = ALWAN_TABLE_LEF_360_830_1NM_SIZE;
+            *wl_min = ALWAN_CORE_LITERAL(360.0);
+            *step = ALWAN_CORE_LITERAL(1.0);
+#endif
+            return 1;
+        case ALWAN_LEF_CIE_2008_PHOTOPIC_2DEG:
+#if ALWAN_TABLE_LEF_CIE_2008_PHOTOPIC_2DEG
+            *table = ALWAN_CORE_FNLIT(alwan_table_lef_cie_2008_photopic_2deg);
+            *count = ALWAN_TABLE_LEF_390_830_1NM_SIZE;
+            *wl_min = ALWAN_CORE_LITERAL(390.0);
+            *step = ALWAN_CORE_LITERAL(1.0);
+#endif
+            return 1;
+        case ALWAN_LEF_CIE_2008_PHOTOPIC_10DEG:
+#if ALWAN_TABLE_LEF_CIE_2008_PHOTOPIC_10DEG
+            *table = ALWAN_CORE_FNLIT(alwan_table_lef_cie_2008_photopic_10deg);
+            *count = ALWAN_TABLE_LEF_390_830_1NM_SIZE;
+            *wl_min = ALWAN_CORE_LITERAL(390.0);
+            *step = ALWAN_CORE_LITERAL(1.0);
+#endif
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_lef)(ALWAN_CORE_SPD *out, alwan_lef lef, alwan_ctx *ctx) {
+    ALWAN_CORE_T const *table;
+    size_t count, i;
+    ALWAN_CORE_T wl_min, step;
+    alwan_status st;
+    if (!out) {
+        return ALWAN_E_INVALID;
+    }
+    if ((int)lef == (int)ALWAN_LEF_CIE_1924_PHOTOPIC || (int)lef == (int)ALWAN_LEF_CIE_1951_SCOTOPIC) {
+        /* The interleaved statics: {wavelength, value} pairs. */
+        int const scotopic = (int)lef == (int)ALWAN_LEF_CIE_1951_SCOTOPIC;
+        ALWAN_CORE_T const *d = scotopic ? ALWAN_CORE_FNLIT(SCOTOPIC_VP_DATA) : ALWAN_CORE_FNLIT(PHOTOPIC_V_DATA);
+        size_t const n = scotopic ? (size_t)SCOTOPIC_VP_COUNT : (size_t)PHOTOPIC_V_COUNT;
+        st = ALWAN_CORE_FNLIT(alwan_spd_create)(out, d[0], d[(n - 1) * 2], n, ctx);
+        if (st != ALWAN_OK) {
+            return st;
+        }
+        for (i = 0; i < n; i++) {
+            out->values[i] = d[i * 2 + 1];
+        }
+        return ALWAN_OK;
+    }
+    if (!ALWAN_CORE_FN(lef_registry_table)(lef, &table, &count, &wl_min, &step)) {
+        return ALWAN_E_INVALID;
+    }
+    if (!table) {
+        return ALWAN_E_NODATA;
+    }
+    st = ALWAN_CORE_FNLIT(alwan_spd_create)(out, wl_min, wl_min + step * (ALWAN_CORE_T)(count - 1), count, ctx);
+    if (st != ALWAN_OK) {
+        return st;
+    }
+    for (i = 0; i < count; i++) {
+        out->values[i] = ALWAN_CORE_FNVLIT(alwan_table1d_row)(table, (int)count, (int)i);
+    }
+    return ALWAN_OK;
+}
+
+/* A registry LEF at a wavelength, linear between its nodes and 0 outside its data,
+ * the counterpart of alwan__lef_or_zero for a bare row on a grid of any step. */
+static double ALWAN_CORE_FN(lef_row_or_zero)(ALWAN_CORE_T const *table, size_t count, ALWAN_CORE_T wl_min,
+                                             ALWAN_CORE_T step, double wl) {
+    ALWAN_CORE_TABLE_CELL c;
+    ALWAN_CORE_T v0, v1;
+    if (wl < (double)wl_min || wl > (double)wl_min + (double)step * (double)(count - 1)) {
+        return 0.0;
+    }
+    c = ALWAN_CORE_FNVLIT(alwan_table_cell_unit)(((ALWAN_CORE_T)wl - wl_min) / step, (int)count);
+    v0 = ALWAN_CORE_FNVLIT(alwan_table1d_row)(table, (int)count, c.i0);
+    v1 = ALWAN_CORE_FNVLIT(alwan_table1d_row)(table, (int)count, c.i1);
+    return (double)(v0 + c.frac * (v1 - v0));
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_spd_luminous_flux_lef)(ALWAN_CORE_T *flux_out, ALWAN_CORE_SPD const *spd,
+                                                           alwan_lef lef, ALWAN_CORE_T K_m, alwan_ctx *ctx) {
+    ALWAN_CORE_T const *table = NULL;
+    size_t count = 0, i;
+    ALWAN_CORE_T wl_min = ALWAN_CORE_LITERAL(0.0), step = ALWAN_CORE_LITERAL(1.0);
+    int const canonical = (int)lef == (int)ALWAN_LEF_CIE_1924_PHOTOPIC || (int)lef == (int)ALWAN_LEF_CIE_1951_SCOTOPIC;
+    int const scotopic = (int)lef == (int)ALWAN_LEF_CIE_1951_SCOTOPIC;
+    double spd_step, w0, v0, vs, km;
+    (void)ctx;
+    if (!flux_out || !spd || !spd->values || spd->count < 2 || K_m < ALWAN_CORE_LITERAL(0.0)) {
+        return ALWAN_E_INVALID;
+    }
+    if (!canonical) {
+        if (!ALWAN_CORE_FN(lef_registry_table)(lef, &table, &count, &wl_min, &step)) {
+            return ALWAN_E_INVALID;
+        }
+        if (!table) {
+            return ALWAN_E_NODATA;
+        }
+    }
+    /* The same trapezoid as alwan__luminous_integrals, summed in double, so the two
+     * canonical functions give one number by either name. */
+    spd_step = ((double)spd->wavelength_max - (double)spd->wavelength_min) / (double)(spd->count - 1);
+    w0 = (double)spd->wavelength_min;
+    v0 = (canonical ? ALWAN_CORE_FNLIT(alwan__lef_or_zero)(w0, scotopic ? ALWAN_VISION_SCOTOPIC : ALWAN_VISION_PHOTOPIC)
+                    : ALWAN_CORE_FN(lef_row_or_zero)(table, count, wl_min, step, w0)) * (double)spd->values[0];
+    vs = 0.0;
+    for (i = 1; i < spd->count; i++) {
+        double const w1 = (double)spd->wavelength_min + (double)i * spd_step;
+        double const v1 = (canonical ? ALWAN_CORE_FNLIT(alwan__lef_or_zero)(w1, scotopic ? ALWAN_VISION_SCOTOPIC : ALWAN_VISION_PHOTOPIC)
+                                     : ALWAN_CORE_FN(lef_row_or_zero)(table, count, wl_min, step, w1)) * (double)spd->values[i];
+        vs += (w1 - w0) * (v1 + v0) / 2.0;
+        w0 = w1;
+        v0 = v1;
+    }
+    km = K_m != ALWAN_CORE_LITERAL(0.0) ? (double)K_m : (scotopic ? 1700.0 : 683.0);
+    *flux_out = (ALWAN_CORE_T)(km * vs);
+    return ALWAN_OK;
+}
+
+/* ================================================================
  * Contrast Sensitivity Function (CSF)
  * ================================================================ */
 

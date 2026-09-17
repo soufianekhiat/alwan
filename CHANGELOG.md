@@ -182,6 +182,22 @@ All notable changes to this project will be documented in this file.
   silently duplicating another, which is the way fifteen illuminant tables once shipped as
   copies of D65.
 
+- **The seven luminous efficiency functions as datasets.** `alwan_lef` names them: CIE
+  1924 V(lambda), Judd 1951 and Judd-Vos 1978, which correct it below 460nm, CIE 1964
+  for the 10 degree field, the CIE 2008 2 and 10 degree physiologically relevant
+  functions on the Stockman and Sharpe cone fundamentals, and CIE 1951 V'(lambda).
+  `alwan_vision_type` keeps naming the regime, and `alwan_luminous_efficiency` keeps
+  reading the two canonical functions, so nothing the deterministic dump pins moves; the
+  five competing photopic functions were reachable by no name before.
+
+  `alwan_spd_lef_{T}` hands any of the seven out as an SPD on its own grid, 1nm for six
+  of them and 10nm over 370-770nm for Judd 1951, as published. CIE 1924 and CIE 1951
+  come from the statics `alwan_luminous_efficiency` reads; the other five are registry
+  tables with a switch each. `alwan_spd_luminous_flux_lef_{T}` is the flux integral
+  under any of them, the same trapezoid as `alwan_spd_luminous_flux`, and matches
+  `colour.luminous_flux(sd, lef=...)` to 8e-16 in f64 over A, D65 and a sodium lamp
+  (suite 156); for the two canonical functions the two calls give one number.
+
 - **The seven ISO 7589 sensitometric sources, as tabulated, and a Planckian tail.**
   Photographic and Sensitometric Daylight, Studio Tungsten and its sensitometric variant,
   Photoflood and its variant, and the Sensitometric Printer, from colour-science's

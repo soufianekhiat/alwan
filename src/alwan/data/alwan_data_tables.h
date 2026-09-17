@@ -213,6 +213,8 @@ ALWAN_TABLE_EXTERN(alwan_table_jakob2019_xyz_c2, ALWAN_TABLE_JAKOB2019_SIZE)
 enum { ALWAN_TABLE_SPD_360_830_1NM_SIZE = 471 };
 /* The ISO 7589 sources at their native 10 nm tabulation; the Printer stops at 560 nm. */
 enum { ALWAN_TABLE_ISO7589_350_690_10NM_SIZE = 35, ALWAN_TABLE_ISO7589_350_560_10NM_SIZE = 22 };
+/* The further luminous efficiency functions, each on its own grid. */
+enum { ALWAN_TABLE_LEF_360_830_1NM_SIZE = 471, ALWAN_TABLE_LEF_370_770_10NM_SIZE = 41, ALWAN_TABLE_LEF_380_780_1NM_SIZE = 401, ALWAN_TABLE_LEF_390_830_1NM_SIZE = 441 };
 
 /* ---- spd_illuminant_* -- 38 tables, rank 1, 471, INTEGER row --------
  * Reader: alwan_table1d_row_{f32,f64}
@@ -597,6 +599,30 @@ ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_sensitometric_photoflood, ALWAN_TABLE
 #if ALWAN_TABLE_SPD_ISO7589_SENSITOMETRIC_PRINTER
 ALWAN_TABLE_EXTERN(alwan_table_spd_iso7589_sensitometric_printer, ALWAN_TABLE_ISO7589_350_560_10NM_SIZE)
 #endif
+
+/* ---- lef_* -- rank 1, per-table extent, INTEGER row ----
+ * Reader: alwan_table1d_row_{f32,f64}
+ * Source: alwan_dev/gendata/data/vision_lefs_extended.py, colour-science SDS_LEFS: the
+ *         five luminous efficiency functions beyond CIE 1924 and CIE 1951, each on
+ *         its own grid (Judd 1951 at 10 nm, the rest at 1 nm), peaking at or within
+ *         5e-3 of 1 as published. CIE 1924 and CIE 1951 stay as the interleaved
+ *         statics in api/alwan_vision.c. Declared in alwan_lef order. */
+#if ALWAN_TABLE_LEF_JUDD_1951_PHOTOPIC
+ALWAN_TABLE_EXTERN(alwan_table_lef_judd_1951_photopic, ALWAN_TABLE_LEF_370_770_10NM_SIZE)
+#endif
+#if ALWAN_TABLE_LEF_JUDD_VOS_1978_PHOTOPIC
+ALWAN_TABLE_EXTERN(alwan_table_lef_judd_vos_1978_photopic, ALWAN_TABLE_LEF_380_780_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_LEF_CIE_1964_PHOTOPIC_10DEG
+ALWAN_TABLE_EXTERN(alwan_table_lef_cie_1964_photopic_10deg, ALWAN_TABLE_LEF_360_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_LEF_CIE_2008_PHOTOPIC_2DEG
+ALWAN_TABLE_EXTERN(alwan_table_lef_cie_2008_photopic_2deg, ALWAN_TABLE_LEF_390_830_1NM_SIZE)
+#endif
+#if ALWAN_TABLE_LEF_CIE_2008_PHOTOPIC_10DEG
+ALWAN_TABLE_EXTERN(alwan_table_lef_cie_2008_photopic_10deg, ALWAN_TABLE_LEF_390_830_1NM_SIZE)
+#endif
+
 
 
 

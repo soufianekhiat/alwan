@@ -4893,6 +4893,42 @@ typedef enum {
 alwan_f32 alwan_luminous_efficiency_f32(alwan_f32 wavelength, alwan_vision_type vision_type);
 alwan_f64 alwan_luminous_efficiency_f64(alwan_f64 wavelength, alwan_vision_type vision_type);
 
+/* The luminous efficiency functions as datasets. alwan_vision_type names a regime and
+ * each regime has one canonical function behind it, CIE 1924 for photopic and CIE 1951
+ * for scotopic; these are the seven functions colour-science ships, five of which
+ * compete for the photopic regime and are reachable only by name. Judd 1951 and
+ * Judd-Vos 1978 correct V(lambda) below 460 nm, where the 1924 function is too low;
+ * CIE 1964 is the 10 degree field; the CIE 2008 pair are the physiologically relevant
+ * functions built on the Stockman and Sharpe cone fundamentals. */
+typedef enum {
+    ALWAN_LEF_CIE_1924_PHOTOPIC = 0,        /* V(lambda); what ALWAN_VISION_PHOTOPIC reads */
+    ALWAN_LEF_JUDD_1951_PHOTOPIC = 1,
+    ALWAN_LEF_JUDD_VOS_1978_PHOTOPIC = 2,
+    ALWAN_LEF_CIE_1964_PHOTOPIC_10DEG = 3,
+    ALWAN_LEF_CIE_2008_PHOTOPIC_2DEG = 4,
+    ALWAN_LEF_CIE_2008_PHOTOPIC_10DEG = 5,
+    ALWAN_LEF_CIE_1951_SCOTOPIC = 6         /* V'(lambda); what ALWAN_VISION_SCOTOPIC reads */
+} alwan_lef;
+
+/* A luminous efficiency function as an SPD on its own grid: 1 nm for six of them,
+ * Judd 1951 at 10 nm over 370-770 nm as published. Each peaks at 1 or within 5e-3 of
+ * it, as published (Judd 1951 at 0.995, the CIE 2008 pair a few 1e-6 under). Creates
+ * the SPD. CIE 1924 and CIE 1951 are the same numbers alwan_luminous_efficiency
+ * interpolates; the other five are registry tables and answer ALWAN_E_NODATA when
+ * compiled out. */
+alwan_status alwan_spd_lef_f64(alwan_spd_f64 *out, alwan_lef lef, alwan_ctx *ctx);
+alwan_status alwan_spd_lef_f32(alwan_spd_f32 *out, alwan_lef lef, alwan_ctx *ctx);
+
+/* Luminous flux of an SPD under any of the seven functions: K_m times the trapezoid of
+ * V(lambda) S(lambda) over the SPD's own samples, V read from the function's table at
+ * each sample and 0 outside the function's data, as colour-science's luminous_flux
+ * computes it when handed a lef. K_m 0 reads as 683, or 1700 for CIE 1951, the
+ * constants alwan_spd_luminous_flux uses. For the two canonical functions this and
+ * alwan_spd_luminous_flux agree. ALWAN_E_INVALID for a negative K_m or fewer than two
+ * samples. */
+alwan_status alwan_spd_luminous_flux_lef_f64(alwan_f64 *flux_out, alwan_spd_f64 const *spd, alwan_lef lef, alwan_f64 K_m, alwan_ctx *ctx);
+alwan_status alwan_spd_luminous_flux_lef_f32(alwan_f32 *flux_out, alwan_spd_f32 const *spd, alwan_lef lef, alwan_f32 K_m, alwan_ctx *ctx);
+
 /* Calculate photopic luminance from SPD
  * spd: spectral power distribution
  * Returns photopic luminance in cd/m^2 (K_m=683.002 lm/W), or negative on error

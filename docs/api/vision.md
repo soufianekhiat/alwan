@@ -343,6 +343,40 @@ efficiency for the efficacy, in lm/W. `vision` is photopic or scotopic; `K_m` 0 
 needs an adaptation level and is `ALWAN_E_INVALID` here, as is a negative `K_m` or an
 SPD of fewer than two samples. Matches colour-science to 2e-15 (suite 133).
 
+### alwan_spd_lef / alwan_spd_luminous_flux_lef
+
+```c
+typedef enum {
+    ALWAN_LEF_CIE_1924_PHOTOPIC, ALWAN_LEF_JUDD_1951_PHOTOPIC, ALWAN_LEF_JUDD_VOS_1978_PHOTOPIC,
+    ALWAN_LEF_CIE_1964_PHOTOPIC_10DEG, ALWAN_LEF_CIE_2008_PHOTOPIC_2DEG,
+    ALWAN_LEF_CIE_2008_PHOTOPIC_10DEG, ALWAN_LEF_CIE_1951_SCOTOPIC
+} alwan_lef;
+
+alwan_status alwan_spd_lef_f64(alwan_spd_f64 *out, alwan_lef lef, alwan_ctx *ctx);
+alwan_status alwan_spd_luminous_flux_lef_f64(alwan_f64 *flux_out, alwan_spd_f64 const *spd,
+                                             alwan_lef lef, alwan_f64 K_m, alwan_ctx *ctx);
+```
+
+The luminous efficiency functions as datasets. `alwan_vision_type` names a regime with
+one canonical function behind it; `alwan_lef` names the function. Seven, as
+colour-science ships them: CIE 1924 V(lambda); Judd 1951 and Judd-Vos 1978, which correct
+it below 460 nm; CIE 1964 for the 10 degree field; the CIE 2008 2 and 10 degree
+physiologically relevant functions on the Stockman and Sharpe cone fundamentals; and CIE
+1951 V'(lambda).
+
+`alwan_spd_lef` creates the function as an SPD on its own grid: 1 nm for six of them,
+10 nm over 370-770 nm for Judd 1951, as published. Peaks are 1, or within 5e-3 of it as
+published (Judd 1951 at 0.995). CIE 1924 and CIE 1951 are the same numbers
+`alwan_luminous_efficiency` interpolates; the other five are registry tables and answer
+`ALWAN_E_NODATA` when compiled out.
+
+`alwan_spd_luminous_flux_lef` is `alwan_spd_luminous_flux` under any of the seven: the
+same trapezoid over the SPD's samples, V read from the function's table at each sample,
+linear between its nodes, 0 outside its data. `K_m` 0 reads as 683, or 1700 for CIE 1951.
+Matches `colour.luminous_flux(sd, lef=...)` to 8e-16 in f64 and 5e-8 in f32 over A, D65
+and a sodium lamp (suite 156); for the two canonical functions this and
+`alwan_spd_luminous_flux` give one number.
+
 ### alwan_mesopic_luminance
 
 ```c

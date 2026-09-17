@@ -2048,6 +2048,92 @@ alwan_f64 const alwan_table_spd_iso7589_sensitometric_printer_f64[ALWAN_TABLE_IS
 
 #endif
 
+#if ALWAN_TABLE_LEF_JUDD_1951_PHOTOPIC
+/* ---- alwan_table_lef_judd_1951_photopic ----
+ * extent ALWAN_TABLE_LEF_370_770_10NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: vision/lef/judd_1951_photopic_370_770_10nm.csv (BSD-3, colour-science SDS_LEFS) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_lef_judd_1951_photopic_f32[ALWAN_TABLE_LEF_370_770_10NM_SIZE] = {
+#include "vision/lef/judd_1951_photopic_370_770_10nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_lef_judd_1951_photopic_f64[ALWAN_TABLE_LEF_370_770_10NM_SIZE] = {
+#include "vision/lef/judd_1951_photopic_370_770_10nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_LEF_JUDD_VOS_1978_PHOTOPIC
+/* ---- alwan_table_lef_judd_vos_1978_photopic ----
+ * extent ALWAN_TABLE_LEF_380_780_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: vision/lef/judd_vos_1978_photopic_380_780_1nm.csv (BSD-3, colour-science SDS_LEFS) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_lef_judd_vos_1978_photopic_f32[ALWAN_TABLE_LEF_380_780_1NM_SIZE] = {
+#include "vision/lef/judd_vos_1978_photopic_380_780_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_lef_judd_vos_1978_photopic_f64[ALWAN_TABLE_LEF_380_780_1NM_SIZE] = {
+#include "vision/lef/judd_vos_1978_photopic_380_780_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_LEF_CIE_1964_PHOTOPIC_10DEG
+/* ---- alwan_table_lef_cie_1964_photopic_10deg ----
+ * extent ALWAN_TABLE_LEF_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: vision/lef/cie_1964_photopic_10deg_360_830_1nm.csv (BSD-3, colour-science SDS_LEFS) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_lef_cie_1964_photopic_10deg_f32[ALWAN_TABLE_LEF_360_830_1NM_SIZE] = {
+#include "vision/lef/cie_1964_photopic_10deg_360_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_lef_cie_1964_photopic_10deg_f64[ALWAN_TABLE_LEF_360_830_1NM_SIZE] = {
+#include "vision/lef/cie_1964_photopic_10deg_360_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_LEF_CIE_2008_PHOTOPIC_2DEG
+/* ---- alwan_table_lef_cie_2008_photopic_2deg ----
+ * extent ALWAN_TABLE_LEF_390_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: vision/lef/cie_2008_photopic_2deg_390_830_1nm.csv (BSD-3, colour-science SDS_LEFS) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_lef_cie_2008_photopic_2deg_f32[ALWAN_TABLE_LEF_390_830_1NM_SIZE] = {
+#include "vision/lef/cie_2008_photopic_2deg_390_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_lef_cie_2008_photopic_2deg_f64[ALWAN_TABLE_LEF_390_830_1NM_SIZE] = {
+#include "vision/lef/cie_2008_photopic_2deg_390_830_1nm.csv"
+};
+#endif
+
+#endif
+
+#if ALWAN_TABLE_LEF_CIE_2008_PHOTOPIC_10DEG
+/* ---- alwan_table_lef_cie_2008_photopic_10deg ----
+ * extent ALWAN_TABLE_LEF_390_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
+ * Source: vision/lef/cie_2008_photopic_10deg_390_830_1nm.csv (BSD-3, colour-science SDS_LEFS) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_lef_cie_2008_photopic_10deg_f32[ALWAN_TABLE_LEF_390_830_1NM_SIZE] = {
+#include "vision/lef/cie_2008_photopic_10deg_390_830_1nm.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_lef_cie_2008_photopic_10deg_f64[ALWAN_TABLE_LEF_390_830_1NM_SIZE] = {
+#include "vision/lef/cie_2008_photopic_10deg_390_830_1nm.csv"
+};
+#endif
+
+#endif
+
+
 
 
 #if ALWAN_TABLE_CMF_CIE_1931_2DEG

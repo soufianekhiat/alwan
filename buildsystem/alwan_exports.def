@@ -1432,12 +1432,16 @@ EXPORTS
     alwan_spd_iso7589_tungsten_f64
     alwan_spd_led_ohno2005_f32
     alwan_spd_led_ohno2005_f64
+    alwan_spd_lef_f32
+    alwan_spd_lef_f64
     alwan_spd_luminous_efficacy_f32
     alwan_spd_luminous_efficacy_f64
     alwan_spd_luminous_efficiency_f32
     alwan_spd_luminous_efficiency_f64
     alwan_spd_luminous_flux_f32
     alwan_spd_luminous_flux_f64
+    alwan_spd_luminous_flux_lef_f32
+    alwan_spd_luminous_flux_lef_f64
     alwan_spd_observer_f32
     alwan_spd_observer_f64
     alwan_spd_resample_f32
