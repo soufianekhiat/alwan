@@ -104,6 +104,8 @@ EXPORTS
     alwan_bake_3dlut_f64
     alwan_bake_3dlut_view_f32
     alwan_bake_3dlut_view_f64
+    alwan_best_illuminant_f32
+    alwan_best_illuminant_f64
     alwan_bt2390_eetf_f32
     alwan_bt2390_eetf_f64
     alwan_bt2390_eetf_luminance_f32
