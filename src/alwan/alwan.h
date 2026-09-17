@@ -3867,6 +3867,7 @@ alwan_status alwan_rgb_to_spectrum_jakob2019_map_interleave_ex(void *out, size_t
 enum { ALWAN_FILM_BANDS = 41, ALWAN_FILM_CURVE_COUNT = 1024 };
 
 typedef enum {
+    ALWAN_FILM_NONE = -1,                      /* no stock: a look with no print stage */
     ALWAN_FILM_KODAK_5203 = 0,                 /* Kodak Vision3 50D 5203, negative, ISO 50 */
     ALWAN_FILM_KODAK_5207 = 1,                 /* Kodak Vision3 250D 5207, negative, ISO 250 */
     ALWAN_FILM_KODAK_5213 = 2,                 /* Kodak Vision3 200T 5213, negative, ISO 200 */
@@ -4041,6 +4042,49 @@ alwan_status alwan_film_render_f32(alwan_xyz_f32 *xyz_out, alwan_film_profile_f3
  * out, both strided in bytes. */
 alwan_status alwan_film_render_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t band_count, alwan_film_profile_f64 const *negative, alwan_film_profile_f64 const *print, alwan_f64 const *balance, alwan_f64 const *factors, alwan_f64 const *printer_light, alwan_f64 const *projection_light);
 alwan_status alwan_film_render_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t band_count, alwan_film_profile_f32 const *negative, alwan_film_profile_f32 const *print, alwan_f32 const *balance, alwan_f32 const *factors, alwan_f32 const *printer_light, alwan_f32 const *projection_light);
+
+/* A look: the whole chain from scene-linear RGB footage, set up once and applied
+ * to a buffer, so a caller never touches a spectrum.
+ *
+ * The input is scene-linear RGB AS SHOT, with the grey card at 0.18: that is
+ * the calibration point, and nothing else is taken from the picture. The
+ * exposure lesson behind this is worth stating: anchoring a frame's median or
+ * mean at grey pushes a low-key scene by stops and makes any film look
+ * overexposed, while the film itself was fine. Push or pull deliberately with
+ * `stops`, or take the scale from the camera's exposure through the ISO 12232
+ * model; do not take it from a statistic of the frame. Do not tone-map first
+ * either: the negative's and the print's curves are the picture formation, and
+ * the highlights above white are what the shoulder is for.
+ *
+ * Each pixel is scaled into the unit cube by m = max(1, max channel), upsampled
+ * with Jakob 2019 in `gamut` (the space the RGB is in), scaled back by m and lit
+ * by `light`, the scene's illuminant normalised to Y = 1, so a highlight above
+ * white keeps its spectrum and its exposure. The negative is calibrated on 0.18
+ * of that light; with balance_on_grey the calibration is per layer, which is
+ * what an 85 filter does for a tungsten stock under daylight, and without it
+ * one scale serves all three layers and the stock shows its cast. The print
+ * gets the neutral printer light plus the three offsets in stops, and the last
+ * stock is projected under the same light. The output is XYZ relative to that
+ * stock's clear base: Y = 1 is paper white, ready for a display encode. */
+typedef struct {
+    alwan_film_stock negative;
+    alwan_film_stock print;          /* ALWAN_FILM_NONE projects the negative or reversal itself */
+    alwan_illuminant light;          /* the scene's light and the projector's; D65 by default */
+    alwan_jakob2019_gamut gamut;     /* the RGB space of the input, for the upsampling */
+    alwan_f64 stops;                 /* push (+) or pull (-) in stops; 0 is as shot */
+    alwan_f64 red, green, blue;      /* printer light offsets in stops; 0 is the neutral print */
+    int balance_on_grey;             /* 1: calibrate each layer on the grey; 0: one scale, the stock's balance shows */
+} alwan_film_look;
+
+/* D65, sRGB input, as shot, neutral print, balanced. print may be ALWAN_FILM_NONE. */
+alwan_status alwan_film_look_default(alwan_film_look *look, alwan_film_stock negative, alwan_film_stock print);
+
+/* Scene-linear RGB in, three values per pixel, XYZ out, both strided in bytes.
+ * The ctx is for the illuminant table read; NULL is the default allocator.
+ * ALWAN_E_NODATA when a stock, the illuminant, the observer or the gamut's
+ * coefficient cubes are compiled out. */
+alwan_status alwan_film_render_rgb_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_render_rgb_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model

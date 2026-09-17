@@ -156,6 +156,42 @@ skipped when `print` is NULL, and the same over a buffer of 41 or 81 bands per p
 
 ---
 
+## A look on scene-linear RGB
+
+```c
+alwan_film_look look;
+alwan_film_look_default(&look, ALWAN_FILM_KODAK_5219, ALWAN_FILM_KODAK_2383);
+look.stops = -0.5;                                   /* pull half a stop */
+alwan_film_render_rgb_f64_map_interleave(xyz, 3 * sizeof(alwan_f64), rgb, 3 * sizeof(alwan_f64),
+                                         pixels, &look, ctx);
+/* xyz is relative to the print's clear base: Y = 1 is paper white; encode for the display */
+```
+
+The whole chain from footage, so a caller never touches a spectrum. The input is
+scene-linear RGB **as shot**, with the grey card at 0.18: that is the calibration point
+and nothing else is taken from the picture. Each pixel is scaled into the unit cube by
+`m = max(1, max channel)`, upsampled with Jakob 2019 in `look.gamut`, scaled back by `m`
+and lit by `look.light` normalised to Y = 1, so a highlight above white keeps its spectrum
+and its exposure. The negative is calibrated on 0.18 of that light, per layer when
+`balance_on_grey` is set (what an 85 filter does for a tungsten stock under daylight),
+with one scale for all three layers otherwise, so the stock shows its cast. The print
+gets the neutral printer light plus `red`, `green`, `blue` offsets in stops, and the last
+stock is projected under the same light. `print` may be `ALWAN_FILM_NONE`.
+
+Two things not to do, both learned the hard way. Do not anchor a frame's median or
+mean at grey before this call: a low-key scene's median sits stops below a grey card,
+and the push makes every stock look overexposed while the film was fine. Push or pull
+with `stops`, or take the scale from the camera's exposure through the ISO 12232 model.
+And do not tone-map first: the negative's and the print's curves are the picture
+formation, and the highlights above white are what the shoulder is for.
+
+Suite 158 holds the call to the same chain spelled out with the public pieces, checks
+that +1 stop is exactly twice the light, that the grey card prints within 0.01 of D65 in
+xy, that a 3x highlight lands above grey and below paper white, and that an unbalanced
+tungsten stock under D65 leaves the grey off neutral.
+
+---
+
 ## Data
 
 `src/alwan/data/film/` holds one CSV per stock (3,400 values in the layout

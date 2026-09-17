@@ -87,6 +87,15 @@ All notable changes to this project will be documented in this file.
   `alwan_film_status_density` is ISO 5-3 Status A, Status M and ACES printing density
   of a transmittance.
 
+  `alwan_film_look` and `alwan_film_render_rgb_{T}_map_interleave` are the chain from
+  scene-linear RGB footage as shot, so a caller never touches a spectrum: Jakob 2019
+  upsampling in the footage's gamut with highlights above white kept, the grey card at
+  0.18 as the calibration point, the negative balanced on it or left with its cast, the
+  neutral printer light with offsets in stops, a push or pull in stops, and XYZ out
+  relative to the print's clear base. The header says what the exposure lesson was:
+  anchoring a frame's median at grey pushes a low-key scene by stops and makes any stock
+  look overexposed; take the scale from the camera, not from the picture.
+
   The profiles are spectral_film_lut's (Jan Lohse, MIT), digitised from the sheets and
   profiled by its `FilmSpectral`; alwan ships the profiling's output, not the
   digitisation, with the licence beside the tables, and gendata refuses to write a new

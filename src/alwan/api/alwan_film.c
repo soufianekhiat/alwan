@@ -37,6 +37,22 @@ alwan_status alwan_film_stock_info(alwan_film_stock stock, char const **name, ch
     return ALWAN_OK;
 }
 
+alwan_status alwan_film_look_default(alwan_film_look *look, alwan_film_stock negative, alwan_film_stock print) {
+    if (!look) return ALWAN_E_INVALID;
+    if ((int)negative < 0 || (int)negative >= (int)ALWAN_FILM_STOCK_COUNT) return ALWAN_E_INVALID;
+    if (print != ALWAN_FILM_NONE && ((int)print < 0 || (int)print >= (int)ALWAN_FILM_STOCK_COUNT)) return ALWAN_E_INVALID;
+    look->negative = negative;
+    look->print = print;
+    look->light = ALWAN_ILLUMINANT_D65;
+    look->gamut = ALWAN_JAKOB2019_SRGB;
+    look->stops = 0.0;
+    look->red = 0.0;
+    look->green = 0.0;
+    look->blue = 0.0;
+    look->balance_on_grey = 1;
+    return ALWAN_OK;
+}
+
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
