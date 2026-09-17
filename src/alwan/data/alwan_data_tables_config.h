@@ -457,11 +457,11 @@
 #ifndef ALWAN_TABLE_CMF_CIE_1964_10DEG
 #  define ALWAN_TABLE_CMF_CIE_1964_10DEG ALWAN_TABLES_SPD
 #endif
-#ifndef ALWAN_TABLE_CMF_CIE_2012_2DEG
-#  define ALWAN_TABLE_CMF_CIE_2012_2DEG ALWAN_TABLES_SPD
-#endif
-#ifndef ALWAN_TABLE_CMF_CIE_2012_10DEG
-#  define ALWAN_TABLE_CMF_CIE_2012_10DEG ALWAN_TABLES_SPD
+/* Removed in 3.0.0: CIE 2012 and CIE 2015 were one observer stored twice, and
+ * ALWAN_OBSERVER_CIE_2012_* now reads the 2015 tables. A build that still sets the
+ * old switch would otherwise get a silent no-op, so it stops here instead. */
+#if defined(ALWAN_TABLE_CMF_CIE_2012_2DEG) || defined(ALWAN_TABLE_CMF_CIE_2012_10DEG)
+#  error "ALWAN_TABLE_CMF_CIE_2012_* was removed in 3.0.0. Use ALWAN_TABLE_CMF_CIE_2015_2DEG / _10DEG, which now serve both the CIE 2012 and CIE 2015 observers."
 #endif
 #ifndef ALWAN_TABLE_CMF_STOCKMAN_SHARPE_2DEG
 #  define ALWAN_TABLE_CMF_STOCKMAN_SHARPE_2DEG ALWAN_TABLES_SPD

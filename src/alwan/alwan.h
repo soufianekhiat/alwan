@@ -2415,13 +2415,18 @@ alwan_status alwan_cat_li2025_f64(alwan_xyz_f64 *xyz_out,
 typedef enum {
     ALWAN_OBSERVER_CIE_1931_2DEG = 0,  /* CIE 1931 2 deg standard observer */
     ALWAN_OBSERVER_CIE_1964_10DEG = 1, /* CIE 1964 10 deg standard observer */
-    ALWAN_OBSERVER_CIE_2012_2DEG = 2,  /* CIE 2012 2 deg standard observer (physiologically-based) */
-    ALWAN_OBSERVER_CIE_2012_10DEG = 3, /* CIE 2012 10 deg standard observer (physiologically-based) */
+    /* CIE 2012 and CIE 2015 are ONE observer under two names: the physiologically
+     * based CMFs derived from the CIE 2006 cone fundamentals, which CVRL published
+     * as the "2012" proposal and CIE 170-2:2015 standardised. Each pair returns the
+     * same CMFs, bit for bit, from one table set. Both names stay so code written
+     * against either keeps compiling; the 2015 names are the standard's. */
+    ALWAN_OBSERVER_CIE_2012_2DEG = 2,  /* Same observer as ALWAN_OBSERVER_CIE_2015_2DEG */
+    ALWAN_OBSERVER_CIE_2012_10DEG = 3, /* Same observer as ALWAN_OBSERVER_CIE_2015_10DEG */
 
     /* Extended observers */
     ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4,  /* Stockman & Sharpe 2000 2 deg cone fundamentals */
-    ALWAN_OBSERVER_CIE_2015_2DEG = 5,         /* CIE 2015 2 deg cone-fundamental-based observer */
-    ALWAN_OBSERVER_CIE_2015_10DEG = 6,        /* CIE 2015 10 deg cone-fundamental-based observer */
+    ALWAN_OBSERVER_CIE_2015_2DEG = 5,         /* CIE 170-2:2015 2 deg cone-fundamental-based observer */
+    ALWAN_OBSERVER_CIE_2015_10DEG = 6,        /* CIE 170-2:2015 10 deg cone-fundamental-based observer */
     ALWAN_OBSERVER_WRIGHT_GUILD_1931 = 7,     /* Wright & Guild 1931 2 deg RGB CMFs (historical) */
 
     /* Tabulated over part of 360-830nm and zero outside it. A CMF is zero where the
@@ -2543,7 +2548,7 @@ alwan_status alwan_spd_resample_f32(alwan_spd_f32 *dst, alwan_spd_f32 const *src
  * xyz_out: output XYZ tristimulus values
  * spd: spectral power distribution (reflectance or emission)
  * illuminant: illuminant SPD (NULL = assume spd is already weighted by illuminant)
- * observer: observer type (CIE 1931/1964/2012 2 deg or 10 deg)
+ * observer: any alwan_observer_type
  * method: integration method (trapezoid or Simpson; any other value is ALWAN_E_INVALID)
  * bandpass_nm: bandpass width for Stearns & Stearns correction (0 = no correction)
  * ctx: context

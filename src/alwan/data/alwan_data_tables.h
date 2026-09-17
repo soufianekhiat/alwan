@@ -589,25 +589,9 @@ ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_1964_10deg_y, ALWAN_TABLE_SPD_360_830_1NM
 ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_1964_10deg_z, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
 #endif
 
-/* ---- cmf_cie_2012_2deg x/y/z -- rank 1, 471, INTEGER row ----
- * Reader: alwan_table1d_row_{f32,f64}
- * Source: alwan_dev/gendata, CIE 2012 2 deg Standard Observer,
- *         360-830nm at 1nm. */
-#if ALWAN_TABLE_CMF_CIE_2012_2DEG
-ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2012_2deg_x, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2012_2deg_y, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2012_2deg_z, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
-#endif
-
-/* ---- cmf_cie_2012_10deg x/y/z -- rank 1, 471, INTEGER row ----
- * Reader: alwan_table1d_row_{f32,f64}
- * Source: alwan_dev/gendata, CIE 2012 10 deg Standard Observer,
- *         360-830nm at 1nm. */
-#if ALWAN_TABLE_CMF_CIE_2012_10DEG
-ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2012_10deg_x, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2012_10deg_y, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2012_10deg_z, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
-#endif
+/* cmf_cie_2012_{2,10}deg were removed in 3.0.0. They were byte-identical to the
+ * cie_2015 tables below, one observer stored twice; ALWAN_OBSERVER_CIE_2012_* now
+ * reads the 2015 tables. The names are retired, not free to reuse. */
 
 /* ---- cmf_stockman_sharpe_2deg x/y/z -- rank 1, 471, INTEGER row ----
  * Reader: alwan_table1d_row_{f32,f64}
@@ -621,8 +605,8 @@ ALWAN_TABLE_EXTERN(alwan_table_cmf_stockman_sharpe_2deg_z, ALWAN_TABLE_SPD_360_8
 
 /* ---- cmf_cie_2015_2deg x/y/z -- rank 1, 471, INTEGER row ----
  * Reader: alwan_table1d_row_{f32,f64}
- * Source: alwan_dev/gendata, CIE 2015 2 deg cone fundamental observer,
- *         360-830nm at 1nm. */
+ * Source: alwan_dev/gendata, CIE 170-2:2015 2 deg cone fundamental observer,
+ *         360-830nm at 1nm. Also serves ALWAN_OBSERVER_CIE_2012_2DEG. */
 #if ALWAN_TABLE_CMF_CIE_2015_2DEG
 ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2015_2deg_x, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
 ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2015_2deg_y, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
@@ -631,8 +615,8 @@ ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2015_2deg_z, ALWAN_TABLE_SPD_360_830_1NM_
 
 /* ---- cmf_cie_2015_10deg x/y/z -- rank 1, 471, INTEGER row ----
  * Reader: alwan_table1d_row_{f32,f64}
- * Source: alwan_dev/gendata, CIE 2015 10 deg cone fundamental observer,
- *         360-830nm at 1nm. */
+ * Source: alwan_dev/gendata, CIE 170-2:2015 10 deg cone fundamental observer,
+ *         360-830nm at 1nm. Also serves ALWAN_OBSERVER_CIE_2012_10DEG. */
 #if ALWAN_TABLE_CMF_CIE_2015_10DEG
 ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2015_10deg_x, ALWAN_TABLE_SPD_360_830_1NM_SIZE)
 ALWAN_TABLE_EXTERN(alwan_table_cmf_cie_2015_10deg_y, ALWAN_TABLE_SPD_360_830_1NM_SIZE)

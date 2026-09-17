@@ -468,11 +468,18 @@ applying the correction at a strength it was never derived for. Pass 0 to skip i
 
 ## Data
 
-### `cie_2012_*` and `cie_2015_*` CMF tables are identical
+### CIE 2012 and CIE 2015 are one observer, stored once
 
-This is correct and must not be "fixed". colour-science carries only
-"CIE 2015 2/10 Degree Standard Observer"; the 2012 proposal was adopted as the
-2015 standard. Two names, one dataset.
+The data being identical is correct and must not be "fixed" by making the two
+differ. colour-science carries only "CIE 2015 2/10 Degree Standard Observer"; the
+2012 proposal was adopted as the 2015 standard. Two names, one dataset.
+
+Until 3.0.0 that dataset was also stored twice: six `cie_2012_*` CSVs and tables,
+byte-identical to the `cie_2015_*` ones, each with its own compile switch. 3.0.0
+removes the copy. `ALWAN_OBSERVER_CIE_2012_*` keep their values and read the 2015
+tables, so every result is unchanged. `ALWAN_TABLE_CMF_CIE_2012_*` are gone, and
+setting one is a compile error rather than a silent no-op. The table names are
+retired, not free to reuse.
 
 ### `cat_xyz_scaling` equals its own inverse
 

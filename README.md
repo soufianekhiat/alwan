@@ -291,7 +291,9 @@ Perceptual modelling and light quality metrics:
 Low-level colour science operations:
 - SPD integration to tristimulus values: trapezoid, Simpson, and ASTM E308 with
   E2022 weighting tables, matching colour-science
-- CMFs: CIE 1931/1964/2012/2015, Stockman & Sharpe, Wright & Guild
+- CMFs: CIE 1931, CIE 1964, CIE 170-2:2015 (also reachable as CIE 2012),
+  Stockman & Sharpe 2 and 10 degree, Smith & Pokorny, Wright & Guild, Stiles &
+  Burch 1955 and 1959
 - Illuminants, 111 of them: A, D-series, E, F-series, FL3.x, LED and HP discharge,
   indoor daylight, plus 56 measured lamps (fluorescent, sodium, mercury, metal
   halide, LED mixes) that carry an `LS_` prefix to keep them apart from the

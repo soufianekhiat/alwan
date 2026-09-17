@@ -1326,24 +1326,6 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
 #else
         missing = 1;
 #endif
-    } else if (observer == ALWAN_OBSERVER_CIE_2012_2DEG) {
-        /* CIE 2012/2015 2 deg Standard Observer (390-830nm) */
-#if ALWAN_TABLE_CMF_CIE_2012_2DEG
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_x));
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_y));
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_2deg_z));
-#else
-        missing = 1;
-#endif
-    } else if (observer == ALWAN_OBSERVER_CIE_2012_10DEG) {
-        /* CIE 2012/2015 10 deg Standard Observer (390-830nm) */
-#if ALWAN_TABLE_CMF_CIE_2012_10DEG
-        ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_x));
-        ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_y));
-        ALWAN_CORE_FN(spd_copy_table)(z_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2012_10deg_z));
-#else
-        missing = 1;
-#endif
     } else if (observer == ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG) {
         /* Stockman & Sharpe 2000 2 deg Cone Fundamentals */
 #if ALWAN_TABLE_CMF_STOCKMAN_SHARPE_2DEG
@@ -1353,8 +1335,9 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
 #else
         missing = 1;
 #endif
-    } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG) {
-        /* CIE 2015 2 deg Cone Fundamental Observer */
+    } else if (observer == ALWAN_OBSERVER_CIE_2015_2DEG || observer == ALWAN_OBSERVER_CIE_2012_2DEG) {
+        /* CIE 170-2:2015 2 deg observer. "CIE 2012" is the same function under the
+         * name CVRL gave the proposal, so both enumerators read one table set. */
 #if ALWAN_TABLE_CMF_CIE_2015_2DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_2deg_y));
@@ -1362,8 +1345,8 @@ static int ALWAN_CORE_FN(load_observer_cmf)(alwan_ctx *ctx,
 #else
         missing = 1;
 #endif
-    } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG) {
-        /* CIE 2015 10 deg Cone Fundamental Observer */
+    } else if (observer == ALWAN_OBSERVER_CIE_2015_10DEG || observer == ALWAN_OBSERVER_CIE_2012_10DEG) {
+        /* CIE 170-2:2015 10 deg observer, also reached as CIE 2012 10 deg. */
 #if ALWAN_TABLE_CMF_CIE_2015_10DEG
         ALWAN_CORE_FN(spd_copy_table)(x_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_x));
         ALWAN_CORE_FN(spd_copy_table)(y_bar, ALWAN_CORE_FNLIT(alwan_table_cmf_cie_2015_10deg_y));

@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Breaking
+
+- **`ALWAN_TABLE_CMF_CIE_2012_2DEG` and `_10DEG` are removed.** CIE 2012 and CIE 2015
+  are one observer, the CMFs from the CIE 2006 cone fundamentals that CIE 170-2:2015
+  standardised, and alwan stored it twice: six `cie_2012_*` tables byte-identical to
+  the `cie_2015_*` ones. The copy is gone.
+
+  `ALWAN_OBSERVER_CIE_2012_2DEG` and `_10DEG` keep their values and now read the 2015
+  tables, so no result changes; suite 12 checks both names return the same CMFs bit
+  for bit in both precisions. What breaks is configuration. A build that set
+  `ALWAN_TABLE_CMF_CIE_2012_*` to compile the observer out now stops with an `#error`
+  naming the replacement, `ALWAN_TABLE_CMF_CIE_2015_*`, which controls both names.
+  A silent no-op would have left the tables in while the build believed them out.
+
 ### Fixed
 
 - **The hue quadrature was wrong, in CIECAM02 and in CAM16.** CIE 159:2004 interpolates

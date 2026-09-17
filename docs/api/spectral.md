@@ -184,14 +184,23 @@ Integrate an SPD against an observer's CMFs to obtain XYZ tristimulus values.
 typedef enum {
     ALWAN_OBSERVER_CIE_1931_2DEG = 0,        /* CIE 1931 2-degree */
     ALWAN_OBSERVER_CIE_1964_10DEG = 1,       /* CIE 1964 10-degree */
-    ALWAN_OBSERVER_CIE_2012_2DEG = 2,        /* CIE 2012 2-degree (physiologically-based) */
-    ALWAN_OBSERVER_CIE_2012_10DEG = 3,       /* CIE 2012 10-degree (physiologically-based) */
+    ALWAN_OBSERVER_CIE_2012_2DEG = 2,        /* same observer as CIE_2015_2DEG */
+    ALWAN_OBSERVER_CIE_2012_10DEG = 3,       /* same observer as CIE_2015_10DEG */
     ALWAN_OBSERVER_STOCKMAN_SHARPE_2DEG = 4, /* Stockman & Sharpe 2000 2-degree cone fundamentals */
-    ALWAN_OBSERVER_CIE_2015_2DEG = 5,        /* CIE 2015 2-degree cone-fundamental-based */
-    ALWAN_OBSERVER_CIE_2015_10DEG = 6,       /* CIE 2015 10-degree cone-fundamental-based */
-    ALWAN_OBSERVER_WRIGHT_GUILD_1931 = 7     /* Wright & Guild 1931 2-degree RGB CMFs (historical) */
+    ALWAN_OBSERVER_CIE_2015_2DEG = 5,        /* CIE 170-2:2015 2-degree cone-fundamental-based */
+    ALWAN_OBSERVER_CIE_2015_10DEG = 6,       /* CIE 170-2:2015 10-degree cone-fundamental-based */
+    ALWAN_OBSERVER_WRIGHT_GUILD_1931 = 7,    /* Wright & Guild 1931 2-degree RGB CMFs (historical) */
+    ALWAN_OBSERVER_STOCKMAN_SHARPE_10DEG = 8,   /* Stockman & Sharpe 10-degree, 390-830 */
+    ALWAN_OBSERVER_SMITH_POKORNY_1975 = 9,      /* Smith & Pokorny 1975, 380-780 */
+    ALWAN_OBSERVER_STILES_BURCH_1955_2DEG = 10, /* Stiles & Burch 1955 2-degree RGB, 390-730 */
+    ALWAN_OBSERVER_STILES_BURCH_1959_10DEG = 11 /* Stiles & Burch 1959 10-degree RGB, 390-830 */
 } alwan_observer_type;
 ```
+
+CIE 2012 and CIE 2015 are one observer under two names: the CMFs derived from the
+CIE 2006 cone fundamentals, published by CVRL as the 2012 proposal and standardised
+as CIE 170-2:2015. Both enumerators return the same CMFs bit for bit from one table
+set, so either name works. The 2015 names are the standard's.
 
 **Integration methods:**
 ```c
