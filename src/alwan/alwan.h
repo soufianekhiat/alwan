@@ -2603,6 +2603,31 @@ alwan_status alwan_spd_iso7589_tungsten_f32(alwan_spd_f32 *out, alwan_ctx *ctx);
 alwan_status alwan_idt_white_balance_f64(alwan_rgb_f64 *white_balance_out, alwan_spd_f64 const *sens_r, alwan_spd_f64 const *sens_g, alwan_spd_f64 const *sens_b, alwan_spd_f64 const *illuminant);
 alwan_status alwan_idt_white_balance_f32(alwan_rgb_f32 *white_balance_out, alwan_spd_f32 const *sens_r, alwan_spd_f32 const *sens_g, alwan_spd_f32 const *sens_b, alwan_spd_f32 const *illuminant);
 
+/* Which of a set of candidate illuminants a camera was shot under, given the white
+ * balance it needed. For each candidate the multipliers it would call for are computed
+ * with alwan_idt_white_balance above, and the one closest to the measured white_balance
+ * wins, by
+ *
+ *     sum over channels of (candidate_multiplier / measured_multiplier - 1)^2
+ *
+ * which is a relative error and has no separate normalising step. index_out receives the
+ * winner's position in candidates; sse_out, when not NULL, receives its error, which is 0
+ * when the measurement came from a candidate exactly. Equal errors keep the earlier
+ * candidate.
+ *
+ * The candidates are the caller's, read on the sensitivities' own grid, so this does not
+ * decide what a sensible bank is. colour-science's rawtoaces v1 bank is 50 sources on
+ * 380-780 nm at 5 nm: daylights every 500 K from 4000 K to 25000 K, blackbodies from
+ * 1000 K to 3500 K, and ISO 7589 studio tungsten, all of which alwan can build from
+ * alwan_spd_cie_daylight, alwan_spd_blackbody and alwan_spd_iso7589_tungsten.
+ *
+ * ALWAN_E_INVALID for no candidates or a measured multiplier that is not positive, since
+ * the error divides by it. A candidate that integrates to nothing in some channel is
+ * reported as ALWAN_E_RANGE rather than passed over, so a degenerate entry in the array
+ * is visible. Matches colour.characterisation.best_illuminant. */
+alwan_status alwan_best_illuminant_f64(size_t *index_out, alwan_f64 *sse_out, alwan_rgb_f64 const *white_balance, alwan_spd_f64 const *sens_r, alwan_spd_f64 const *sens_g, alwan_spd_f64 const *sens_b, alwan_spd_f64 const *candidates, size_t candidate_count);
+alwan_status alwan_best_illuminant_f32(size_t *index_out, alwan_f32 *sse_out, alwan_rgb_f32 const *white_balance, alwan_spd_f32 const *sens_r, alwan_spd_f32 const *sens_g, alwan_spd_f32 const *sens_b, alwan_spd_f32 const *candidates, size_t candidate_count);
+
 /* What the IDT fit minimises. LAB is rawtoaces v1: the norm of the CIE Lab
  * differences, against the ACES white, over every training patch. JZAZBZ is the sum of
  * per-patch Jzazbz distances (colour-science's optimisation_factory_Jzazbz). */

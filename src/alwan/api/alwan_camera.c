@@ -823,6 +823,51 @@ alwan_status alwan_idt_white_balance_f64(alwan_rgb_f64 *white_balance_out, alwan
     return st;
 }
 
+alwan_status alwan_best_illuminant_f64(size_t *index_out, alwan_f64 *sse_out,
+                                       alwan_rgb_f64 const *white_balance,
+                                       alwan_spd_f64 const *sens_r, alwan_spd_f64 const *sens_g,
+                                       alwan_spd_f64 const *sens_b,
+                                       alwan_spd_f64 const *candidates, size_t candidate_count) {
+    alwan_f64 target[3];
+    alwan_f64 best = ALWAN_LITERAL(0.0);
+    size_t best_i = 0;
+    size_t k;
+    int have = 0;
+    int c;
+
+    if (!index_out || !white_balance || !candidates || candidate_count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    target[0] = white_balance->r;
+    target[1] = white_balance->g;
+    target[2] = white_balance->b;
+    for (c = 0; c < 3; c++) {
+        /* The error divides by the measured multipliers, so zero has no answer. */
+        if (!(target[c] > ALWAN_LITERAL(0.0))) return ALWAN_E_INVALID;
+    }
+
+    for (k = 0; k < candidate_count; k++) {
+        alwan_f64 wb[3];
+        alwan_f64 sse = ALWAN_LITERAL(0.0);
+        alwan_status const st = alwan__white_balance_spd(wb, sens_r, sens_g, sens_b, &candidates[k]);
+        if (st != ALWAN_OK) return st;
+        for (c = 0; c < 3; c++) {
+            alwan_f64 const d = wb[c] / target[c] - ALWAN_LITERAL(1.0);
+            sse += d * d;
+        }
+        /* Strictly less, so the first of equal candidates wins, as the reference does. */
+        if (!have || sse < best) {
+            best = sse;
+            best_i = k;
+            have = 1;
+        }
+    }
+
+    *index_out = best_i;
+    if (sse_out) *sse_out = best;
+    return ALWAN_OK;
+}
+
 alwan_status alwan_idt_matrix_f64(alwan_mat3x3_f64 *idt_out, alwan_rgb_f64 *white_balance_out,
                                   alwan_spd_f64 const *sens_r, alwan_spd_f64 const *sens_g, alwan_spd_f64 const *sens_b,
                                   alwan_spd_f64 const *illuminant, alwan_spd_f64 const *training, size_t training_count,
@@ -951,6 +996,58 @@ alwan_status alwan_idt_white_balance_f32(alwan_rgb_f32 *white_balance_out, alwan
         white_balance_out->g = (alwan_f32)wb[1];
         white_balance_out->b = (alwan_f32)wb[2];
     }
+    return st;
+}
+
+alwan_status alwan_best_illuminant_f32(size_t *index_out, alwan_f32 *sse_out,
+                                       alwan_rgb_f32 const *white_balance,
+                                       alwan_spd_f32 const *sens_r, alwan_spd_f32 const *sens_g,
+                                       alwan_spd_f32 const *sens_b,
+                                       alwan_spd_f32 const *candidates, size_t candidate_count) {
+    alwan_spd_f64 s[3];
+    alwan_spd_f64 *cw;
+    alwan_rgb_f64 wb64;
+    alwan_f64 sse = ALWAN_LITERAL(0.0);
+    alwan_status st;
+    size_t k, made = 0;
+    int i;
+
+    if (!index_out || !white_balance || !candidates || candidate_count == 0) {
+        return ALWAN_E_INVALID;
+    }
+    /* The three sensitivities widen once; the candidates widen one at a time,
+     * as alwan_idt_matrix_f32 does with its training spectra. */
+    for (i = 0; i < 3; i++) {
+        alwan_spd_f32 const *const src = (i == 0) ? sens_r : ((i == 1) ? sens_g : sens_b);
+        st = alwan__spd_widen(&s[i], src, NULL);
+        if (st != ALWAN_OK) {
+            while (i > 0) { i--; alwan_spd_destroy_f64(&s[i], NULL); }
+            return st;
+        }
+    }
+
+    cw = (alwan_spd_f64 *)ALWAN_ALLOC(candidate_count * sizeof(alwan_spd_f64), sizeof(alwan_f64));
+    if (!cw) {
+        st = ALWAN_E_NOMEM;
+    } else {
+        for (k = 0; k < candidate_count; k++) {
+            st = alwan__spd_widen(&cw[k], &candidates[k], NULL);
+            if (st != ALWAN_OK) break;
+            made++;
+        }
+        if (st == ALWAN_OK) {
+            wb64.r = white_balance->r;
+            wb64.g = white_balance->g;
+            wb64.b = white_balance->b;
+            st = alwan_best_illuminant_f64(index_out, &sse, &wb64, &s[0], &s[1], &s[2],
+                                           cw, candidate_count);
+        }
+        for (k = 0; k < made; k++) alwan_spd_destroy_f64(&cw[k], NULL);
+        ALWAN_FREE(cw);
+    }
+
+    for (i = 0; i < 3; i++) alwan_spd_destroy_f64(&s[i], NULL);
+    if (st == ALWAN_OK && sse_out) *sse_out = (alwan_f32)sse;
     return st;
 }
 
