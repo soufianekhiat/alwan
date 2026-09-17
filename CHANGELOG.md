@@ -74,6 +74,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Typed image buffers for the spectral entry points.** The four upsamplers, Smits
+  1999, Mallett 2019, Otsu 2018 and Jakob 2019, and `alwan_spectral_to_tristimulus` gain
+  a `_map_interleave_ex` form: `void` pointers and an `alwan_pixel_format` per side, so
+  u8, u16, f16, f32 or f64 colours go in and spectra come back in whichever of those the
+  renderer keeps, or the reverse, without a conversion pass over either buffer. They
+  dispatch as the other `_ex` forms do: both sides f32 is the f32 bulk form, both f64
+  the f64 one, exactly; a mixed pair tiles through f64 when either side is f64, f32
+  otherwise, with the edges converted by the same loaders every `_ex` uses.
+
+  A spectrum is up to 85 channels per pixel where the existing tiles carry three, so
+  rather than grow the scratch, a tile holds fewer pixels the more bands there are, 72
+  at 85 bands. Nothing moves to the heap or the context, and the count per tile cannot
+  change a per-pixel result. The tristimulus form takes f64 weights and always sums in
+  f64, storing to the requested format; the header says so, because an f32/f32 call gets
+  the f64 sum narrowed and not the f32 bulk form's sum. Suite 157 holds every pair to
+  the bulk form it is documented to reproduce, across five tile boundaries.
+
 - **PCHIP interpolation.** `ALWAN_INTERP_PCHIP` joins `alwan_interp_method`: Fritsch and
   Carlson's monotone cubic, which reads the same four points `ALWAN_INTERP_CUBIC` does and
   chooses the node derivatives so the curve cannot overshoot between samples. Where the

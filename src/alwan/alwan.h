@@ -2720,6 +2720,17 @@ alwan_status alwan_spectral_weights_observer_f32(alwan_f32 *weights_out, size_t 
 alwan_status alwan_spectral_to_tristimulus_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t band_count, alwan_f64 const *weights);
 alwan_status alwan_spectral_to_tristimulus_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t band_count, alwan_f32 const *weights);
 
+/* The same sum over a typed cube: void pointers and an alwan_pixel_format on each side
+ * (out_fmt, in_fmt, as the other _map_interleave_ex), so u8, u16, f16, f32 or f64
+ * spectra go straight in and the tristimulus comes out in the format the pipeline
+ * keeps. Weights are f64 and the sum always runs in f64, then stores to out_fmt: an
+ * f32/f32 call gets the f64 sum narrowed, not the f32 bulk form's sum; f64/f64 is the
+ * f64 bulk form exactly. Tiles hold fewer pixels the more bands there are, so no buffer
+ * leaves the stack. A build without f64 narrows the weights once and sums in f32, and
+ * refuses more than 4096 bands with ALWAN_E_RANGE, the scratch the weights go into.
+ * The upsamplers' _ex forms are declared beside them below. */
+alwan_status alwan_spectral_to_tristimulus_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, size_t band_count, alwan_f64 const *weights);
+
 /* Spectral OpenEXR files: the Fichet, Pacanowski and Wilkie layout.
  * (An OpenEXR Layout for Spectral Images, Journal of Computer Graphics Techniques
  * 10(3), 2021.) alwan reads and writes no files; this is what a caller needs to know to
@@ -3805,6 +3816,24 @@ alwan_status alwan_rgb_to_spectrum_jakob2019_f32(alwan_spd_f32 *out_spd, alwan_j
  * bulk upsamplers, and with out NULL the gamut is not consulted at all. */
 alwan_status alwan_rgb_to_spectrum_jakob2019_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t *band_count, alwan_jakob2019_gamut gamut);
 alwan_status alwan_rgb_to_spectrum_jakob2019_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t *band_count, alwan_jakob2019_gamut gamut);
+
+/* The _ex forms of the four upsamplers: void pointers and an alwan_pixel_format on
+ * each side, so an image pipeline hands u8, u16, f16, f32 or f64 colours in and takes
+ * spectra back in the format the renderer keeps, without converting either buffer.
+ * Strides in bytes. Format order is (out_fmt, in_fmt), as the other _map_interleave_ex.
+ *
+ * They keep the bulk forms' band_count contract: out NULL reports the method's band
+ * count, a wrong one is ALWAN_E_INVALID. Both formats f32 runs the f32 bulk form, both
+ * f64 the f64 one, and either result is that form's to the bit; any other pair tiles
+ * through f64 when either side is f64, f32 otherwise, and the result is the tiled
+ * precision's bulk form converted at the edges. A single-precision build tiles through
+ * the precision it has. A tile holds fewer pixels the more bands there are, 72 at 85
+ * bands, so no buffer leaves the stack. The tristimulus direction is
+ * alwan_spectral_to_tristimulus_map_interleave_ex, declared with the weights. */
+alwan_status alwan_rgb_to_spectrum_smits1999_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, size_t *band_count);
+alwan_status alwan_rgb_to_spectrum_mallett2019_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, size_t *band_count);
+alwan_status alwan_xyz_to_spectrum_otsu2018_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, size_t *band_count);
+alwan_status alwan_rgb_to_spectrum_jakob2019_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, size_t *band_count, alwan_jakob2019_gamut gamut);
 
 /* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model

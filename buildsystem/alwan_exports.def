@@ -1309,14 +1309,17 @@ EXPORTS
     alwan_rgb_to_spectrum_jakob2019_f32_map_interleave
     alwan_rgb_to_spectrum_jakob2019_f64
     alwan_rgb_to_spectrum_jakob2019_f64_map_interleave
+    alwan_rgb_to_spectrum_jakob2019_map_interleave_ex
     alwan_rgb_to_spectrum_mallett2019_f32
     alwan_rgb_to_spectrum_mallett2019_f32_map_interleave
     alwan_rgb_to_spectrum_mallett2019_f64
     alwan_rgb_to_spectrum_mallett2019_f64_map_interleave
+    alwan_rgb_to_spectrum_mallett2019_map_interleave_ex
     alwan_rgb_to_spectrum_smits1999_f32
     alwan_rgb_to_spectrum_smits1999_f32_map_interleave
     alwan_rgb_to_spectrum_smits1999_f64
     alwan_rgb_to_spectrum_smits1999_f64_map_interleave
+    alwan_rgb_to_spectrum_smits1999_map_interleave_ex
     alwan_rgb_to_xyz_f32
     alwan_rgb_to_xyz_f64
     alwan_rgb_to_ycbcr_f32
@@ -1452,6 +1455,7 @@ EXPORTS
     alwan_spectral_locus_xy_f64
     alwan_spectral_to_tristimulus_f32_map_interleave
     alwan_spectral_to_tristimulus_f64_map_interleave
+    alwan_spectral_to_tristimulus_map_interleave_ex
     alwan_spectral_weights_f32
     alwan_spectral_weights_f64
     alwan_spectral_weights_observer_f32
@@ -1736,6 +1740,7 @@ EXPORTS
     alwan_xyz_to_spectrum_otsu2018_f32_map_interleave
     alwan_xyz_to_spectrum_otsu2018_f64
     alwan_xyz_to_spectrum_otsu2018_f64_map_interleave
+    alwan_xyz_to_spectrum_otsu2018_map_interleave_ex
     alwan_xyz_to_srgb_f32
     alwan_xyz_to_srgb_f32_map_interleave
     alwan_xyz_to_srgb_f32_map_planar

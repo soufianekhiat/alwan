@@ -522,6 +522,36 @@ The cluster's basis-to-XYZ matrix is embedded already inverted, with the XYZ of 
 
 Returns `ALWAN_E_NODATA` when the Otsu tables are compiled out (`ALWAN_TABLE_OTSU2018`).
 
+### Image buffers: `_map_interleave` and `_map_interleave_ex`
+
+```c
+size_t bands = 0;
+alwan_rgb_to_spectrum_mallett2019_f64_map_interleave(NULL, 0, NULL, 0, 0, &bands); /* 81 */
+alwan_f64 *cube = malloc(pixels * bands * sizeof(alwan_f64));
+alwan_rgb_to_spectrum_mallett2019_f64_map_interleave(cube, bands * sizeof(alwan_f64),
+                                                     rgb, 3 * sizeof(alwan_f64), pixels, &bands);
+
+/* u16 colours straight from a decoder, f32 spectra for the renderer */
+alwan_rgb_to_spectrum_mallett2019_map_interleave_ex(cube32, bands * sizeof(float),
+                                                    rgb16, 3 * sizeof(uint16_t), pixels,
+                                                    ALWAN_PIXEL_F32, ALWAN_PIXEL_U16, &bands);
+```
+
+Each method has a bulk form per precision and one `_ex` form. The bulk forms share
+their body with the per-colour call, so a buffer is its pixels bit for bit (suite 151).
+`out` NULL is a shape query that reports the method's band count; a `band_count` that
+does not match is `ALWAN_E_INVALID`. Strides are in bytes on both sides. Jakob 2019
+takes its `gamut` after `band_count`.
+
+The `_ex` forms take `void` pointers and an `alwan_pixel_format` for each side, in the
+`(out_fmt, in_fmt)` order of the other `_map_interleave_ex`. Both formats f32 runs the
+f32 bulk form, both f64 the f64 one, and either result is that form's exactly. Any other
+pair tiles through f64 when either side is f64 and f32 otherwise, so the result is the
+tiled precision's bulk form with the edges converted: u16 in is `v / 65535` in that
+precision, u8 in `v / 255`, f16 both ways through the half conversion, and an integer out
+is rounded and clamped. A tile holds fewer pixels the more bands there are, 72 at 85
+bands, so the buffers stay on the stack (suite 157).
+
 ---
 
 ## Observers as SPDs
@@ -584,6 +614,11 @@ The weights fold the illuminant, three responses and the integration rule into a
 `alwan_xyz_from_spd` computes for that spectrum. `normalize` scales the rows so a
 perfect reflector has Y = 1. `alwan_spectral_weights_{T}` takes any three
 responses: an observer, cone fundamentals, or a camera.
+
+`alwan_spectral_to_tristimulus_map_interleave_ex` is the same sum over a typed cube:
+`void` pointers, an `alwan_pixel_format` per side, weights as `alwan_f64`. It always sums
+in f64 and stores to `out_fmt`, so an f32/f32 call gets the f64 sum narrowed rather than
+the f32 bulk form's sum; f64/f64 is the f64 bulk form exactly.
 
 ---
 
