@@ -159,6 +159,15 @@ All notable changes to this project will be documented in this file.
   silently duplicating another, which is the way fifteen illuminant tables once shipped as
   copies of D65.
 
+- **Spectral OpenEXR layout, documented.** `alwan.h` now describes the Fichet, Pacanowski
+  and Wilkie layout (JCGT 2021) beside `alwan_spectral_to_tristimulus_{T}_map_interleave`:
+  the S0 and T layers, the decimal-comma channel names, the mandatory header attributes,
+  how to build the interleaved buffer, and which weights reproduce the paper's preview.
+  Two things a reader would otherwise trip on are spelled out: OpenEXR returns channels
+  sorted by name, so `S0.1000nm` comes before `S0.380nm` and bands must be ordered by
+  value; and the paper's default band filter is a gate, which differs from alwan's point
+  sample integration at the end bands. alwan still reads and writes no files.
+
 - **Cubic spline interpolation.** `alwan_interpolate_cubic_spline_{T}` is the C2 spline
   through every sample, with `ALWAN_SPLINE_NOT_A_KNOT` and `ALWAN_SPLINE_NATURAL`
   boundaries. Not-a-knot is what scipy's `CubicSpline` and colour-science's

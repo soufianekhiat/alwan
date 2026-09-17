@@ -2670,6 +2670,37 @@ alwan_status alwan_spectral_weights_observer_f32(alwan_f32 *weights_out, size_t 
 alwan_status alwan_spectral_to_tristimulus_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t band_count, alwan_f64 const *weights);
 alwan_status alwan_spectral_to_tristimulus_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t band_count, alwan_f32 const *weights);
 
+/* Spectral OpenEXR files: the Fichet, Pacanowski and Wilkie layout.
+ * (An OpenEXR Layout for Spectral Images, Journal of Computer Graphics Techniques
+ * 10(3), 2021.) alwan reads and writes no files; this is what a caller needs to know to
+ * turn such a file into the in buffer above, and back.
+ *
+ * Layers and channels. Emissive data is layer S0, plus S1 to S3 when polarised; reflective
+ * data is layer T. Each channel is one wavelength or frequency: layer, a dot, the value
+ * with a decimal COMMA because OpenEXR reserves the dot, an optional E exponent, an
+ * optional SI multiplier and the unit m or Hz. So S0.560,5nm is emissive radiance at
+ * 560.5 nm. The header must carry spectralLayoutVersion "1.0", and an emissive file also
+ * emissiveUnits, one of "W", "W.m^-2", "W.sr^-1" or "W.m^-2.sr^-1".
+ *
+ * Building in. band_count is the number of S0 (or T) channels, and each pixel's samples go
+ * in ascending wavelength. Order them by the parsed value, not by channel order in the
+ * file: OpenEXR hands channels back sorted by name whatever order they were written in,
+ * which puts S0.1000nm before S0.380nm (checked against OpenEXR 3.4), and a frequency
+ * layout runs the other way. alwan_spectral_weights takes the samples as uniform
+ * on [wavelength_min, wavelength_max]; a file need not be, so check the spacing and
+ * resample (alwan_spd_resample) when it is not.
+ *
+ * Integrating. The paper's own preview is CIE 1931 2 degree to linear sRGB. For S0 that is
+ * weights with no illuminant and normalize 0. For T it is weights under D65 with normalize
+ * non-zero, which is its division by Y of D65. One difference to expect at the edges: with
+ * no filter attribute the paper treats each band as a gate reaching halfway to its
+ * neighbours, and the first and last bands as full width, where alwan integrates point
+ * samples by trapezoid or Simpson, both of which weight the end samples less than the
+ * interior ones.
+ *
+ * Not covered: the S1 to S3 Stokes layers and the bi-spectral T.<in>.<out> re-radiation
+ * channels have no counterpart here, and only S0 or T reduce to a tristimulus. */
+
 /* ----------------------------------------------------------------
  * Spectral camera characterisation
  *
