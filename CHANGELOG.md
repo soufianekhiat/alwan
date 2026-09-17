@@ -159,6 +159,23 @@ All notable changes to this project will be documented in this file.
   silently duplicating another, which is the way fifteen illuminant tables once shipped as
   copies of D65.
 
+- **Cubic spline interpolation.** `alwan_interpolate_cubic_spline_{T}` is the C2 spline
+  through every sample, with `ALWAN_SPLINE_NOT_A_KNOT` and `ALWAN_SPLINE_NATURAL`
+  boundaries. Not-a-knot is what scipy's `CubicSpline` and colour-science's
+  `CubicSplineInterpolator` mean by the name; the textbook natural spline misses both by
+  5e-2 to 0.12 near the ends, so the boundary is an argument rather than a guess.
+
+  It is its own entry point rather than an `alwan_interp_method` because its node slopes
+  come from a solve over every sample, which needs scratch; it takes a context for that and
+  uses its allocator. `ALWAN_INTERP_CUBIC` is unchanged, and its header comment now says it
+  is Catmull-Rom and points here. Outside the samples it holds the end value, as
+  `alwan_interpolate_{T}` does.
+
+  Suite 154 holds it to scipy at 1.2e-14 relative on well-conditioned grids in f64 and 2e-5
+  in f32, over both boundaries and the two- and three-sample cases scipy special-cases. On
+  a grid built to be ill-conditioned the two differ by 6.4e-11, and against the same system
+  solved at 50 digits alwan is the closer, 4.8e-11 to scipy's 1.1e-10.
+
 - **Fifty-six light sources from colour-science.** `alwan_illuminant` goes from 55 values
   to 111, taking in `SDS_LIGHT_SOURCES` under colour's own names: eight from RIT's
   PointerData spreadsheet, then the traditional, LED and Philips sheets of NIST's CQS

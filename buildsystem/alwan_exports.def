@@ -774,6 +774,8 @@ EXPORTS
     alwan_interop_format
     alwan_interop_parse_f32
     alwan_interop_parse_f64
+    alwan_interpolate_cubic_spline_f32
+    alwan_interpolate_cubic_spline_f64
     alwan_interpolate_f32
     alwan_interpolate_f64
     alwan_ipt_ragoo2021_to_xyz_f32

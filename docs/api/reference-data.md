@@ -739,9 +739,53 @@ curve or a transfer function that difference matters, because an overshoot puts 
 outside a range the data never left. It matches scipy's `PchipInterpolator`, which is what
 colour-science wraps, to 8.9e-16 including the endpoints.
 
-There is no cubic spline yet. That is a different kind of method: not-a-knot needs a global
-solve over every sample before any point can be evaluated, where everything above reads a
-bounded stencil.
+For a cubic spline, use `alwan_interpolate_cubic_spline_{T}` below. It is not an
+`alwan_interp_method` because it is a different kind of method: every node slope depends
+on every sample, so it needs a solve before any point can be evaluated, where everything
+above reads a bounded stencil.
+
+### alwan_interpolate_cubic_spline_{T}
+
+```c
+typedef enum {
+    ALWAN_SPLINE_NOT_A_KNOT = 0,
+    ALWAN_SPLINE_NATURAL = 1
+} alwan_spline_boundary;
+
+alwan_status alwan_interpolate_cubic_spline_f64(alwan_f64 const *x_in, alwan_f64 const *y_in, size_t count_in,
+                                                alwan_f64 const *x_out, alwan_f64 *y_out, size_t count_out,
+                                                alwan_spline_boundary boundary, alwan_ctx *ctx);
+alwan_status alwan_interpolate_cubic_spline_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t count_in,
+                                                alwan_f32 const *x_out, alwan_f32 *y_out, size_t count_out,
+                                                alwan_spline_boundary boundary, alwan_ctx *ctx);
+```
+
+The C2 cubic spline through every sample. The node slopes come from one tridiagonal solve,
+and each interval is then the cubic Hermite polynomial on its samples and slopes.
+
+**Which boundary.** `ALWAN_SPLINE_NOT_A_KNOT` is what scipy's `CubicSpline` does by
+default and what colour-science's `CubicSplineInterpolator` does: the third derivative is
+continuous across the second and second-to-last samples. Use it to match either.
+`ALWAN_SPLINE_NATURAL` sets the second derivative to zero at both ends. They are different
+curves near the ends, 5e-2 to 0.12 apart on the noisy spectra measured, so a textbook
+natural spline does not reproduce either reference. Two samples give the straight line
+under both; three give the parabola under not-a-knot, as scipy does.
+
+**Scratch.** The solve needs `2 * count_in` values of scratch, taken from `ctx`'s allocator,
+or from the default allocator when `ctx` is NULL. `ALWAN_E_NOMEM` if that fails.
+
+**Contract.** `x_in` strictly increasing: a repeated value, a descending pair or a NaN is
+`ALWAN_E_INVALID`, as are NULL buffers, `count_in < 2`, `count_out == 0` and an unknown
+boundary. Outside `[x_in[0], x_in[count_in - 1]]` the end sample is held, like
+`alwan_interpolate_{T}`; scipy extrapolates the end cubic instead.
+
+**Accuracy.** Against scipy (suite 154): 1.2e-14 relative worst on well-conditioned grids,
+uniform, non-uniform and clustered, in f64, and 2e-5 in f32. On a deliberately
+ill-conditioned grid, a 1e-6 interval among unit ones, the two differ by 6.4e-11, and there
+alwan is the more accurate: against the same system solved at 50 digits, alwan is 4.8e-11
+away and scipy 1.1e-10. The solve does not pivot. That was checked at spacing ratios up to
+1e12, where the smallest pivot reaches 3e-13 and the result still tracks scipy's pivoted
+solver, because a small pivot here always comes with the small interval that caused it.
 
 ### alwan_extrapolate_{T}
 

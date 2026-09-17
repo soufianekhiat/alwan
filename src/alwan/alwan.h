@@ -4980,7 +4980,9 @@ alwan_f64 alwan_csf_barten1999_f64(alwan_f64 u,
 /* Interpolation method types */
 typedef enum {
     ALWAN_INTERP_LINEAR = 0,     /* Linear interpolation (default) */
-    ALWAN_INTERP_CUBIC = 1, /* Cubic interpolation */
+    ALWAN_INTERP_CUBIC = 1, /* Catmull-Rom cubic, local. Not a cubic spline: for the C2 spline
+                             * scipy and colour-science mean by that name, see
+                             * alwan_interpolate_cubic_spline */
     ALWAN_INTERP_LANCZOS = 2, /* Lanczos windowed sinc */
     ALWAN_INTERP_SPRAGUE = 3, /* Sprague 5th order (for smooth spectra) */
     ALWAN_INTERP_LAGRANGE = 4, /* Lagrange polynomial */
@@ -5060,6 +5062,35 @@ alwan_status alwan_interpolate_f64(alwan_f64 const *x_in, alwan_f64 const *y_in,
 alwan_status alwan_interpolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t count_in,
                        alwan_f32 const *x_out, alwan_f32 *y_out, size_t count_out,
                        alwan_interp_method method);
+
+/* Cubic spline: C2 through every sample, with the node slopes from one global
+ * tridiagonal solve. That solve is why this is its own entry point rather than an
+ * alwan_interp_method: it needs count_in values of scratch, taken from ctx's
+ * allocator, or the default one when ctx is NULL.
+ *
+ * NOT_A_KNOT is what "cubic spline" means in scipy.interpolate.CubicSpline by default
+ * and in colour-science's CubicSplineInterpolator, and it is the one to use to match
+ * them: the third derivative is continuous across the second and second-to-last
+ * samples. NATURAL sets the second derivative to zero at both ends instead. The two
+ * are different curves near the ends, measured 6.6e-2 and 0.12 apart on two noisy
+ * spectra, so the textbook natural spline reproduces neither reference. Two samples
+ * give the straight line under both; three under NOT_A_KNOT give the parabola, as
+ * scipy does. */
+typedef enum {
+    ALWAN_SPLINE_NOT_A_KNOT = 0,
+    ALWAN_SPLINE_NATURAL = 1
+} alwan_spline_boundary;
+
+/* x_in strictly increasing (a repeat or a NaN is ALWAN_E_INVALID), count_in >= 2,
+ * count_out >= 1. Outputs outside [x_in[0], x_in[count_in - 1]] hold the end sample,
+ * as alwan_interpolate does; scipy extrapolates the end cubic instead. ALWAN_E_NOMEM
+ * if the scratch cannot be allocated. */
+alwan_status alwan_interpolate_cubic_spline_f64(alwan_f64 const *x_in, alwan_f64 const *y_in, size_t count_in,
+                                                alwan_f64 const *x_out, alwan_f64 *y_out, size_t count_out,
+                                                alwan_spline_boundary boundary, alwan_ctx *ctx);
+alwan_status alwan_interpolate_cubic_spline_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t count_in,
+                                                alwan_f32 const *x_out, alwan_f32 *y_out, size_t count_out,
+                                                alwan_spline_boundary boundary, alwan_ctx *ctx);
 
 /* Enhanced Extrapolation
  * Extrapolates data points (x_in, y_in) to output points x_out
