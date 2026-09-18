@@ -74,6 +74,30 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Three more LUT interchange formats.** `.spi1d` and `.spi3d` (Sony Pictures
+  Imageworks) and `.3dl` (Autodesk, both the Flame and the Lustre flavour), read and
+  written, beside the `.cube` pair that was already here. `alwan_spi1d_import_{T}`
+  reports the file's component count and input domain rather than assuming either; the
+  domain is reported and never applied, since alwan's 1-D samplers address [0, 1].
+  `alwan_3dl_import_{T}` takes the output bit depth from the Lustre header where there
+  is one and infers it from the largest value in the file otherwise, which is what every
+  other reader does and what a table that never reaches its own maximum has to live
+  with. A 3D LUT stays R-fastest in memory, as `.cube` stores it; both of these formats
+  are B-fastest on disk and both directions transpose.
+
+  Suite 161 holds each reader to OpenColorIO's own evaluation of the same file at the
+  cube's grid nodes, where interpolation is the identity, so a difference is the parse.
+  The fixture transform has channel crosstalk on purpose: a symmetric table reads the
+  same whichever way round the axes go. The writers are read back through the reader
+  that pins, rather than compared byte for byte against OCIO, because two writers can
+  differ in spacing and digits and mean the same table; `.spi3d` and `.spi1d` round trip
+  bit for bit and `.3dl` to within half a step of the depth asked for.
+
+  One difference from OCIO 2.5, and the suite pins it. A `.3dl` mesh line at size 3
+  holds three numbers and looks exactly like a data line, so OCIO cannot read back the
+  size-3 file it writes, in either flavour. It is still decidable, because with L
+  three-number lines only one of L and L - 1 can be a perfect cube, and alwan reads it.
+
 - **Film.** Eighty-seven photographic stocks as their datasheets describe them, the
   whole of spectral_film_lut's exported catalogue, and the pipeline from a scene
   spectrum to the projected print. Negatives from Vision3 50D to 500T, the Verita, EXR,

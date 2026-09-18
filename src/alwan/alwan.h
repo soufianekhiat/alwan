@@ -8375,6 +8375,101 @@ alwan_status alwan_cube_import_3d_buffer_f32(alwan_f32 *lut, int *out_size,
                                  char const *buf, size_t buf_len);
 
 /* ----------------------------------------------------------------
+ * .spi1d, .spi3d and .3dl Import / Export
+ *
+ * Three more interchange formats beside .cube: Sony Pictures Imageworks
+ * .spi1d and .spi3d, and Autodesk .3dl in both its Flame and Lustre
+ * flavours. Like .cube they record samples and nothing about meaning, so
+ * what a table converts from and to is the caller's to track.
+ *
+ * The caller allocates, and lut = NULL queries the size from the header
+ * alone, the same two-pass idiom the .cube importers use and with the same
+ * caveat: the file is read twice and can change in between.
+ *
+ * A 3D LUT is held R-fastest in memory, the order .cube uses on disk, so the
+ * sample at (r, g, b) is at ((b * size + g) * size + r) * 3. Both formats
+ * here are B-fastest on disk and both directions transpose. Suite 161 holds
+ * each reader to OCIO's own evaluation of the same file rather than to an
+ * alwan round trip, because a round trip cannot see an ordering that is
+ * wrong in both directions.
+ *
+ * Every value is checked finite before it is stored: sscanf("%lf") turns
+ * "1e999" into an infinity and "nan" into a NaN without failing, and one
+ * non-finite corner poisons every cell that interpolates through it.
+ * ---------------------------------------------------------------- */
+
+/* Import a 1D LUT from a .spi1d file.
+ * lut: output, size * channels values interleaved, or NULL to query
+ * out_size: receives the entry count (the file's Length)
+ * out_channels: receives 1 or 3 (the file's Components), may be NULL
+ * out_domain: receives the file's From pair, may be NULL
+ * path: input file path
+ *
+ * The domain is reported, never applied. alwan's 1D samplers address [0, 1],
+ * so a file whose From line is not "0 1" has to be mapped by the caller
+ * before the table is sampled. A file with no Components line reads as one
+ * channel, which is what the writers that omit it mean. */
+alwan_status alwan_spi1d_import_f64(alwan_f64 *lut, int *out_size, int *out_channels,
+                                    alwan_f64 *out_domain, char const *path);
+alwan_status alwan_spi1d_import_f32(alwan_f32 *lut, int *out_size, int *out_channels,
+                                    alwan_f32 *out_domain, char const *path);
+
+/* Export a 1D LUT to a .spi1d file.
+ * lut: size * channels values interleaved
+ * channels: 1 or 3
+ * domain_min, domain_max: the From pair; domain_max must exceed domain_min */
+alwan_status alwan_spi1d_export_f64(char const *path, alwan_f64 const *lut, int size, int channels,
+                                    alwan_f64 domain_min, alwan_f64 domain_max);
+alwan_status alwan_spi1d_export_f32(char const *path, alwan_f32 const *lut, int size, int channels,
+                                    alwan_f32 domain_min, alwan_f32 domain_max);
+
+/* Import a 3D LUT from a .spi3d file.
+ * lut: output, size^3 * 3 values R-fastest, or NULL to query the size
+ * out_size: receives the cube edge length, 2 to 256
+ *
+ * The format carries an explicit index triple per line, so the file's line
+ * order does not matter and a short file is caught by the sample count rather
+ * than by reading a partial cube. Only cubic tables are accepted: a file
+ * declaring unequal dimensions is ALWAN_E_RANGE. */
+alwan_status alwan_spi3d_import_f64(alwan_f64 *lut, int *out_size, char const *path);
+alwan_status alwan_spi3d_import_f32(alwan_f32 *lut, int *out_size, char const *path);
+
+/* Export a 3D LUT to a .spi3d file. lut is size^3 * 3 values, R-fastest. */
+alwan_status alwan_spi3d_export_f64(char const *path, alwan_f64 const *lut, int size);
+alwan_status alwan_spi3d_export_f32(char const *path, alwan_f32 const *lut, int size);
+
+/* Import a 3D LUT from a .3dl file, either flavour.
+ * lut: output, size^3 * 3 values R-fastest, or NULL to query the size
+ * out_size: receives the cube edge length, 2 to 256
+ *
+ * .3dl holds integers, so the output bit depth decides what they mean. The
+ * Lustre flavour states it in its "Mesh <e> <d>" header and that is used;
+ * the Flame flavour does not, and the depth is then inferred as the smallest
+ * of 8, 10, 12, 14 and 16 bits that holds the largest value in the file. A
+ * table that never reaches its own maximum therefore reads one stop bright,
+ * and nothing in the file can prevent that.
+ *
+ * The mesh line names the cube edge wherever it is not itself three numbers
+ * long. At size 3 it is, and the file is still decidable: with L three-number
+ * lines, L a perfect cube means every line is data and L - 1 a perfect cube
+ * means the first is the mesh, and consecutive cubes differ by more than one
+ * so both cannot hold. OCIO 2.5 does not make that distinction and cannot
+ * read back the size-3 Flame file it writes; this reader can. */
+alwan_status alwan_3dl_import_f64(alwan_f64 *lut, int *out_size, char const *path);
+alwan_status alwan_3dl_import_f32(alwan_f32 *lut, int *out_size, char const *path);
+
+/* Export a 3D LUT to a .3dl file. lut is size^3 * 3 values, R-fastest.
+ * bit_depth: 8, 10, 12, 14 or 16; <= 0 means 12, which is what the Lustre
+ *            writers use. Values are scaled by 2^bit_depth - 1, rounded and
+ *            clamped into range, so a table outside [0, 1] loses what lies
+ *            outside it: this format cannot carry it.
+ *
+ * The Lustre header goes on where the size is 2^e + 1, which is the only
+ * shape that header can state, and the Flame flavour is written otherwise. */
+alwan_status alwan_3dl_export_f64(char const *path, alwan_f64 const *lut, int size, int bit_depth);
+alwan_status alwan_3dl_export_f32(char const *path, alwan_f32 const *lut, int size, int bit_depth);
+
+/* ----------------------------------------------------------------
  * Color Interop Forum -- Interop ID Strings
  *
  * Bidirectional lookup between alwan_rgb_space enum values and

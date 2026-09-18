@@ -1,7 +1,7 @@
 # LUT Baking, Interchange And Sampling API
 
-Bake a colour pipeline into a lookup table, move that table in and out of `.cube`
-and CLF, and sample it.
+Bake a colour pipeline into a lookup table, move that table in and out of
+`.cube`, `.spi1d`, `.spi3d`, `.3dl` and CLF, and sample it.
 
 > **Precision variants:** Every function shown as `name_{T}` exists in two forms:
 > `name_f32` (single precision, `float`) and `name_f64` (double precision, `double`).
@@ -254,6 +254,88 @@ against a number the file chose.
 > written out three times, that is exact. For a file carrying three genuinely
 > different per-channel curves it is not: import it as three separate passes, or
 > keep it as a 3-D LUT.
+
+---
+
+## .spi1d, .spi3d and .3dl
+
+Three more sample formats beside `.cube`, and the same caveat applies to all of
+them: they record numbers, not meaning. What a table converts from and to is
+yours to track.
+
+The caller allocates and `lut = NULL` queries the size, the same two-pass idiom
+the `.cube` importers use. A 3D LUT is held R-fastest in memory, as `.cube`
+stores it; `.spi3d` and `.3dl` are B-fastest on disk and both directions
+transpose.
+
+### Sony Pictures Imageworks
+
+```c
+alwan_status alwan_spi1d_import_{T}(alwan_{T} *lut, int *out_size, int *out_channels,
+                                    alwan_{T} *out_domain, char const *path);
+alwan_status alwan_spi1d_export_{T}(char const *path, alwan_{T} const *lut, int size,
+                                    int channels, alwan_{T} domain_min, alwan_{T} domain_max);
+
+alwan_status alwan_spi3d_import_{T}(alwan_{T} *lut, int *out_size, char const *path);
+alwan_status alwan_spi3d_export_{T}(char const *path, alwan_{T} const *lut, int size);
+```
+
+`.spi1d` carries one or three components and an input domain, and both are
+reported rather than assumed. The domain is **reported, never applied**: alwan's
+1-D samplers address `[0, 1]`, so a file whose `From` line reads `-0.5 1.5` has
+to be mapped by the caller before the table is sampled. `out_channels` and
+`out_domain` may be `NULL` when you do not care. Three components means
+`size * 3` values interleaved, not three separate tables.
+
+`.spi3d` writes an explicit index triple per line, so the file's line order does
+not matter to the reader and a truncated file is caught by the sample count
+rather than by silently reading a partial cube. Only cubic tables are accepted;
+unequal dimensions are `ALWAN_E_RANGE`.
+
+### Autodesk .3dl
+
+```c
+alwan_status alwan_3dl_import_{T}(alwan_{T} *lut, int *out_size, char const *path);
+alwan_status alwan_3dl_export_{T}(char const *path, alwan_{T} const *lut, int size,
+                                  int bit_depth);
+```
+
+One format in two flavours. Flame writes a mesh line and the data; Lustre puts
+`3DMESH` and `Mesh <e> <d>` above it, where the cube edge is `2^e + 1` and `d`
+is the output bit depth, and a `LUT8` trailer below. The reader takes either.
+
+> **The values are integers, so the bit depth decides what they mean.** Lustre
+> states it and that is used. Flame does not, and the depth is then inferred as
+> the smallest of 8, 10, 12, 14 and 16 bits that holds the largest value in the
+> file. A table that never reaches its own maximum reads one stop bright, and
+> nothing in the file can prevent that. This is what every other reader does.
+
+On export, `bit_depth` is 8, 10, 12, 14 or 16, and `<= 0` means 12, which is
+what the Lustre writers use. Values are scaled, rounded and clamped into range,
+so anything outside `[0, 1]` is lost: the format cannot carry it. The Lustre
+header goes on where the size is `2^e + 1`, the only shape that header can
+state, and the Flame flavour is written otherwise.
+
+> **Size 3 is ambiguous in the Flame flavour, and readers differ.** A mesh line
+> at that size holds three numbers and looks exactly like a data line. It is
+> still decidable: with `L` three-number lines, `L` a perfect cube means every
+> line is data and `L - 1` a perfect cube means the first is the mesh, and
+> consecutive cubes differ by more than one so both cannot hold. OCIO 2.5 does
+> not make that distinction and cannot read back the size-3 `.3dl` it writes, in
+> either flavour. This reader can. Suite 161 pins the case.
+
+### What is checked
+
+Suite 161 holds each reader to OpenColorIO's own evaluation of the same file at
+the cube's grid nodes, where interpolation is the identity, so a difference is
+the parse and nothing else. The transform behind the fixtures has channel
+crosstalk on purpose: a symmetric table would read the same whichever way round
+the axes went, and an ordering mistake would survive.
+
+The writers are not compared against OCIO's bytes, since two writers can differ
+in spacing and digits and mean the same table. They are read back through the
+reader that was just pinned: `.spi3d` and `.spi1d` round trip bit for bit, and
+`.3dl` to within half a step of the depth asked for.
 
 ---
 

@@ -182,6 +182,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_lut.c
   src/alwan/api/alwan_export.c
   src/alwan/api/alwan_import.c
+  src/alwan/api/alwan_lut_formats.c
   src/alwan/api/alwan_interop.c
   src/alwan/api/alwan_clf.c
   src/alwan/api/alwan_half.c
