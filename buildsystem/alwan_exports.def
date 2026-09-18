@@ -992,6 +992,8 @@ EXPORTS
     alwan_lut2d_sample_f64
     alwan_lut2d_to_3d_f32
     alwan_lut2d_to_3d_f64
+    alwan_lut3d_invert_f32
+    alwan_lut3d_invert_f64
     alwan_lut3d_sample_f32
     alwan_lut3d_sample_f64
     alwan_lut3d_to_2d_f32

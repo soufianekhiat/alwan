@@ -8274,6 +8274,38 @@ alwan_status alwan_lut3d_sample_f64(alwan_rgb_f64 *result,
                         alwan_rgb_f64 const *rgb,
                         int size);
 
+/* Invert a 3D LUT: build the cube that undoes it.
+ * out: output, out_size^3 * 3 values, R-fastest. Must not alias lut.
+ * out_size: the inverse cube's edge length, 2 to 256
+ * lut, size: the forward cube, size^3 * 3 values R-fastest
+ * iterations: Newton steps per node; <= 0 means 20, above 200 is ALWAN_E_RANGE
+ * out_worst_residual: may be NULL; receives the largest |F(G(y)) - y| over the
+ *      inverse's own nodes, where F is the forward cube sampled trilinearly
+ *
+ * The inverse is addressed over [0, 1] in the FORWARD cube's output space, and
+ * a node outside that domain has nothing to invert.
+ *
+ * A cube is not invertible everywhere, and this does not pretend otherwise.
+ * Where the forward table flattens, one preimage is as good as another and the
+ * iteration settles on one of them. Where a node lies outside the forward
+ * table's image there is no preimage at all, and the iteration ends on the
+ * nearest point it can reach inside the unit cube. Neither is reported as an
+ * error, because neither is one: the residual is the answer. Read
+ * out_worst_residual and judge the table against it, since a large worst
+ * residual over an inverse that is meant to be exact says the forward table
+ * folds, and over one baked from a clipping view transform says only that the
+ * clipped region cannot come back.
+ *
+ * The Jacobian is central differences over half a forward cell and the step
+ * count is fixed, so a deterministic build takes one path through it. Cost is
+ * out_size^3 * iterations * 7 trilinear samples. */
+alwan_status alwan_lut3d_invert_f64(alwan_f64 *out, int out_size,
+                        alwan_f64 const *lut, int size,
+                        int iterations, alwan_f64 *out_worst_residual);
+alwan_status alwan_lut3d_invert_f32(alwan_f32 *out, int out_size,
+                        alwan_f32 const *lut, int size,
+                        int iterations, alwan_f32 *out_worst_residual);
+
 /* ----------------------------------------------------------------
  * .cube File Import / Export
  * ---------------------------------------------------------------- */

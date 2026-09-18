@@ -74,6 +74,25 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **3D LUT inversion.** `alwan_lut3d_invert_{T}` builds the cube that undoes a cube:
+  Newton's method per node on the 3x3 system, the Jacobian by central differences over
+  half a forward cell, a fixed step count so a deterministic build takes one path, and
+  every step clamped into the unit cube. The inverse is addressed over [0, 1] in the
+  forward cube's output space.
+
+  A cube is not invertible everywhere and the entry point does not pretend otherwise.
+  Where the forward table flattens, one preimage is as good as another; where a node
+  lies outside the forward table's image there is no preimage at all. Neither is
+  reported as an error, because neither is one: `out_worst_residual` is the answer, and
+  the header says how to read it.
+
+  Suite 161 asserts the thing that identifies the cause rather than a bare tolerance.
+  Refining the forward grid has to bring the inverse closer to the analytically baked
+  inverse, and it does: 4.13e-02, 1.64e-02, 6.36e-03 at grids of 9, 17 and 33, while the
+  node residual falls 7.9e-06, 1.0e-07, 4.8e-09. The residual column is the solver and it
+  converges to nothing; the other is the grid. The identity inverts to the identity
+  exactly, and a cube clipping above 0.5 reports a residual of exactly 0.50.
+
 - **Five more LUT interchange formats.** `.spi1d`, `.spi3d` and `.spimtx` (Sony
   Pictures Imageworks), `.3dl` (Autodesk, both the Flame and the Lustre flavour) and
   `.csp` (Cinespace), read and written, beside the `.cube` pair that was already here. `alwan_spi1d_import_{T}`

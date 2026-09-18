@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/badge/tests-161%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-190%2C310%20per%20run-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-191%2C150%20per%20run-brightgreen)](#validation)
 [![reference data](https://img.shields.io/badge/reference%20data-427%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
@@ -637,12 +637,12 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 161, all passing |
-| Test cases | 1,037 |
-| Checks executed per run | 190,310 |
-| Assertion sites in the tests | 4,285 |
+| Test cases | 1,038 |
+| Checks executed per run | 191,150 |
+| Assertion sites in the tests | 4,320 |
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 427 |
 | Embedded data tables | 947 |
-| Exported symbols | 1,909 |
+| Exported symbols | 1,911 |
 | Internal symbols reached by a test or a public entry point | 182 of 206 (88%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -650,9 +650,9 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**190,310 checks per run** is what actually executes, not what is written. A
+**191,150 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,285 assertion sites would undersell the suite more than
+so counting the 4,320 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
@@ -850,7 +850,7 @@ Documentation lives in the [docs/](docs/) folder. [alwan.h](src/alwan/alwan.h) i
 - **[Examples](docs/examples.md)**: 12 practical examples
   - Typed single-pixel and planar conversions
   - Image conversion with strides and premultiplied alpha
-  - LUT baking, `.cube` / `.spi1d` / `.spi3d` / `.3dl` / `.csp` / `.spimtx` read and write, CLF export
+  - LUT baking and inversion, `.cube` / `.spi1d` / `.spi3d` / `.3dl` / `.csp` / `.spimtx` read and write, CLF export
   - Half-float and integer-normalization / video workflows
 
 ### API Reference

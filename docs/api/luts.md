@@ -11,13 +11,14 @@ Bake a colour pipeline into a lookup table, move that table in and out of
 
 ## Overview
 
-Three separate jobs live on this page, and they compose in that order:
+Four separate jobs live on this page, and the first three compose in that order:
 
 1. **Bake.** Evaluate a conversion, or a conversion plus a view transform, on a
    regular grid and write the result to a buffer you own.
 2. **Interchange.** Write that buffer as `.cube` (plain or with a Resolve
    shaper), `.spi1d`, `.spi3d`, `.3dl`, `.csp` or CLF, or read one back.
 3. **Sample.** Interpolate the table at an arbitrary coordinate.
+4. **Invert.** Build the cube that undoes one, where the transform allows it.
 
 Nothing here allocates. Every entry point writes into a buffer the caller sized,
 and the sizing rules are in [Layout](#layout) below; getting one wrong is the
@@ -192,6 +193,67 @@ These three are one-line delegates to the general table readers in
 nearest, or `ALWAN_SAMPLE_STRICT`; the addressing contract, including how
 out-of-range coordinates and NaN resolve, is documented there and applies here
 unchanged.
+
+---
+
+## Inversion
+
+```c
+alwan_status alwan_lut3d_invert_{T}(alwan_{T} *out, int out_size,
+                                    alwan_{T} const *lut, int size,
+                                    int iterations, alwan_{T} *out_worst_residual);
+```
+
+Build the cube that undoes a cube. For each node of the output, Newton's method
+on the 3x3 system, with the Jacobian by central differences over half a forward
+cell and a fixed step count so a deterministic build takes one path. The inverse
+is addressed over `[0, 1]` in the **forward cube's output space**.
+
+**Parameters:**
+- `out` -- `out_size^3 * 3` values, R-fastest; must not alias `lut`
+- `out_size` -- the inverse cube's edge, `2` to `256`
+- `lut`, `size` -- the forward cube
+- `iterations` -- `<= 0` means 20; above 200 is `ALWAN_E_RANGE`
+- `out_worst_residual` -- may be `NULL`; the largest `|F(G(y)) - y|` over the
+  inverse's own nodes
+
+> **A cube is not invertible everywhere, and this does not pretend otherwise.**
+> Where the forward table flattens, one preimage is as good as another and the
+> iteration settles on one. Where a node lies outside the forward table's image
+> there is no preimage at all, and the iteration ends on the nearest point it
+> can reach. Neither is an error, because neither is one. **The residual is the
+> answer**: read it and judge the table against it. A large worst residual on an
+> inverse that should be exact says the forward table folds; on one baked from a
+> clipping view transform it says only that the clipped region cannot come back.
+
+Cost is `out_size^3 * iterations * 7` trilinear samples.
+
+### What it is worth
+
+Suite 161 does not assert a tolerance and call that a proof. It asserts the
+thing that identifies the cause: refine the forward grid and the disagreement
+with the analytically baked inverse has to shrink, because the sampled cube
+approaches the transform it was baked from. Inverting P3-to-sRGB against a baked
+sRGB-to-P3 cube of 33:
+
+| forward grid | worst against the baked inverse | worst node residual |
+|---|---|---|
+| 9 | 4.13e-02 | 7.9e-06 |
+| 17 | 1.64e-02 | 1.0e-07 |
+| 33 | 6.36e-03 | 4.8e-09 |
+
+The residual column is the solver and it converges to nothing. The other column
+is the grid, and it halves as the grid refines. A solver that was simply wrong
+would not improve.
+
+Two cases have exact answers and are checked as such: the identity inverts to
+the identity to 0.0, and a cube that clips everything above 0.5 reports a
+residual of exactly 0.50, which is the half that cannot come back.
+
+A round trip through both cubes at points inside the cells, rather than on the
+nodes, lands within 1.2e-02 for a pair of 33-cubes over a display conversion,
+and the worst of it sits in the darks, where a uniformly spaced cube is weakest
+against a display curve. That is the reason a shaper exists.
 
 ---
 

@@ -406,6 +406,133 @@ alwan_status ALWAN_CORE_FNLIT(alwan_lut3d_sample)(ALWAN_CORE_RGB *result,
     return ALWAN_OK;
 }
 
+/* ----------------------------------------------------------------
+ * 3D LUT inversion
+ *
+ * For each node y of the output cube, find an x with F(x) = y, where F is the
+ * forward cube sampled trilinearly. Newton's method on the 3x3 system, with
+ * the Jacobian by central differences over half a forward cell, a fixed
+ * iteration count so a deterministic build takes one path, and every step
+ * clamped back into the unit cube.
+ *
+ * A cube is not invertible everywhere and this cannot pretend otherwise.
+ * Where F flattens, any preimage is as good as another and the iteration
+ * settles on one; where y is outside F's image there is no preimage at all
+ * and the iteration ends on the nearest boundary it can reach. Neither is an
+ * error, so the residual is reported instead: the caller sees how far the
+ * worst node missed and decides what that means for the table they asked for.
+ * ---------------------------------------------------------------- */
+
+/* Solve m x = b by Cramer's rule. Returns 0 when m is too near singular to
+ * use, which is the flat region above rather than a fault. */
+static int ALWAN_CORE_FN(lut_solve3)(ALWAN_CORE_T *x, ALWAN_CORE_T const *m, ALWAN_CORE_T const *b) {
+    ALWAN_CORE_T const a00 = m[0], a01 = m[1], a02 = m[2];
+    ALWAN_CORE_T const a10 = m[3], a11 = m[4], a12 = m[5];
+    ALWAN_CORE_T const a20 = m[6], a21 = m[7], a22 = m[8];
+    ALWAN_CORE_T const c0 = a11 * a22 - a12 * a21;
+    ALWAN_CORE_T const c1 = a12 * a20 - a10 * a22;
+    ALWAN_CORE_T const c2 = a10 * a21 - a11 * a20;
+    ALWAN_CORE_T const det = a00 * c0 + a01 * c1 + a02 * c2;
+    ALWAN_CORE_T inv;
+    if (!(det > ALWAN_CORE_LITERAL(1e-12)) && !(det < ALWAN_CORE_LITERAL(-1e-12))) return 0;
+    inv = ALWAN_CORE_LITERAL(1.0) / det;
+    x[0] = inv * (c0 * b[0] + (a02 * a21 - a01 * a22) * b[1] + (a01 * a12 - a02 * a11) * b[2]);
+    x[1] = inv * (c1 * b[0] + (a00 * a22 - a02 * a20) * b[1] + (a02 * a10 - a00 * a12) * b[2]);
+    x[2] = inv * (c2 * b[0] + (a01 * a20 - a00 * a21) * b[1] + (a00 * a11 - a01 * a10) * b[2]);
+    return 1;
+}
+
+static ALWAN_CORE_T ALWAN_CORE_FN(lut_unit_clamp)(ALWAN_CORE_T v) {
+    if (!(v > ALWAN_CORE_LITERAL(0.0))) return ALWAN_CORE_LITERAL(0.0);   /* NaN lands here */
+    if (v > ALWAN_CORE_LITERAL(1.0)) return ALWAN_CORE_LITERAL(1.0);
+    return v;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_lut3d_invert)(ALWAN_CORE_T *out, int out_size,
+                        ALWAN_CORE_T const *lut, int size,
+                        int iterations, ALWAN_CORE_T *out_worst_residual) {
+    ALWAN_CORE_T const h = ALWAN_CORE_LITERAL(0.5) / (ALWAN_CORE_T)(size - 1);
+    ALWAN_CORE_T worst = ALWAN_CORE_LITERAL(0.0);
+    int nr, ng, nb, it, j;
+
+    if (!out || !lut || out_size < 2 || out_size > 256 || size < 2 || size > 256) {
+        return ALWAN_E_INVALID;
+    }
+    if (iterations <= 0) iterations = 20;
+    if (iterations > 200) return ALWAN_E_RANGE;
+
+    for (nb = 0; nb < out_size; nb++) {
+        for (ng = 0; ng < out_size; ng++) {
+            for (nr = 0; nr < out_size; nr++) {
+                ALWAN_CORE_T y[3], x[3], e[3], jac[9], dx[3];
+                ALWAN_CORE_VEC3 in, f;
+                size_t at = ((size_t)nb * (size_t)out_size + (size_t)ng) * (size_t)out_size
+                            + (size_t)nr;
+                ALWAN_CORE_T res;
+
+                y[0] = (ALWAN_CORE_T)nr / (ALWAN_CORE_T)(out_size - 1);
+                y[1] = (ALWAN_CORE_T)ng / (ALWAN_CORE_T)(out_size - 1);
+                y[2] = (ALWAN_CORE_T)nb / (ALWAN_CORE_T)(out_size - 1);
+                /* The identity is the right first guess: a LUT worth inverting is
+                 * usually not far from one, and it costs nothing when it is. */
+                x[0] = y[0]; x[1] = y[1]; x[2] = y[2];
+
+                for (it = 0; it < iterations; it++) {
+                    in.v[0] = x[0]; in.v[1] = x[1]; in.v[2] = x[2];
+                    f = ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(lut, in, size);
+                    e[0] = y[0] - f.v[0];
+                    e[1] = y[1] - f.v[1];
+                    e[2] = y[2] - f.v[2];
+
+                    for (j = 0; j < 3; j++) {
+                        ALWAN_CORE_VEC3 pp, mm, fp, fm;
+                        ALWAN_CORE_T hp, hm, span;
+                        int k;
+                        for (k = 0; k < 3; k++) { pp.v[k] = x[k]; mm.v[k] = x[k]; }
+                        hp = ALWAN_CORE_FN(lut_unit_clamp)(x[j] + h);
+                        hm = ALWAN_CORE_FN(lut_unit_clamp)(x[j] - h);
+                        pp.v[j] = hp;
+                        mm.v[j] = hm;
+                        span = hp - hm;
+                        if (!(span > ALWAN_CORE_LITERAL(0.0))) span = ALWAN_CORE_LITERAL(1.0);
+                        fp = ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(lut, pp, size);
+                        fm = ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(lut, mm, size);
+                        /* Column j of the Jacobian: how the output moves with x[j]. */
+                        jac[0 * 3 + j] = (fp.v[0] - fm.v[0]) / span;
+                        jac[1 * 3 + j] = (fp.v[1] - fm.v[1]) / span;
+                        jac[2 * 3 + j] = (fp.v[2] - fm.v[2]) / span;
+                    }
+
+                    if (!ALWAN_CORE_FN(lut_solve3)(dx, jac, e)) {
+                        /* Flat here, so Newton says nothing: step along the error,
+                         * which is the right direction for a LUT near the identity
+                         * and harmless where it is not, since the step is clamped. */
+                        dx[0] = e[0]; dx[1] = e[1]; dx[2] = e[2];
+                    }
+                    for (j = 0; j < 3; j++) {
+                        if (dx[j] > ALWAN_CORE_LITERAL(0.5)) dx[j] = ALWAN_CORE_LITERAL(0.5);
+                        if (dx[j] < ALWAN_CORE_LITERAL(-0.5)) dx[j] = ALWAN_CORE_LITERAL(-0.5);
+                        x[j] = ALWAN_CORE_FN(lut_unit_clamp)(x[j] + dx[j]);
+                    }
+                }
+
+                out[at * 3 + 0] = x[0];
+                out[at * 3 + 1] = x[1];
+                out[at * 3 + 2] = x[2];
+
+                in.v[0] = x[0]; in.v[1] = x[1]; in.v[2] = x[2];
+                f = ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(lut, in, size);
+                res = ALWAN_CORE_ABS(f.v[0] - y[0]);
+                if (ALWAN_CORE_ABS(f.v[1] - y[1]) > res) res = ALWAN_CORE_ABS(f.v[1] - y[1]);
+                if (ALWAN_CORE_ABS(f.v[2] - y[2]) > res) res = ALWAN_CORE_ABS(f.v[2] - y[2]);
+                if (res > worst) worst = res;
+            }
+        }
+    }
+    if (out_worst_residual) *out_worst_residual = worst;
+    return ALWAN_OK;
+}
+
 /* Clean up local macros */
 #undef LUT__RESOLVE_EOTF
 #undef LUT__RESOLVE_OETF
